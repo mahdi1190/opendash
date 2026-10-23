@@ -58,7 +58,11 @@ test('logic: personal or work from the address, plain status words, Mail ✓ Cal
   assert.deepEqual(views.map(v => v.primary && v.primary.id), ['sync', 'sign-in', 'approval', 'resume']);
   const elsewhere = c.accStatusView(acc({ here: { fetcher: false, signedIn: false } }));
   assert.equal(elsewhere.secondary[0].label, 'Fetch on this computer instead'); assert.equal(elsewhere.primary, null);
-  const words = JSON.stringify([...views, elsewhere, ['', 'me@', 'me@hotmail.com', 'me@work.example'].map(e => c.accEmailHint(e, 'microsoft'))]);
+  assert.deepEqual(plain(elsewhere.secondary.map(s => s.id)), ['fetch-here', 'sign-in'], 'not signed in here: taking over needs a sign-in on this computer first');
+  assert.match(elsewhere.note, /^Your other computer checks this account/);
+  const named = c.accStatusView(acc({ here: { fetcher: false, signedIn: true, fetcherName: 'Home PC' } }));
+  assert.match(named.note, /^Home PC checks this account/); assert.deepEqual(plain(named.secondary.map(s => s.id)), ['fetch-here']);
+  const words = JSON.stringify([...views, elsewhere, named, ['', 'me@', 'me@hotmail.com', 'me@work.example'].map(e => c.accEmailHint(e, 'microsoft'))]);
   for (const jargon of [/client/i, /port\b/i, /oauth/i, /token/i, /tenant/i, /scope/i, /consent/i, /redirect/i]) assert.ok(!jargon.test(words), `no "${jargon.source}" in what people read`);
   assert.deepEqual(plain(c.accFeatureList(acc({ features: { mail: true, calendar: false } }))), [{ id: 'mail', label: 'Mail', on: true }, { id: 'calendar', label: 'Calendar', on: false }]);
   assert.equal(c.accSyncedText({ lastSync: '2026-10-23T09:00:00Z' }, NOW), 'synced 3 hours ago');

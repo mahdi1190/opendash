@@ -46,6 +46,10 @@ test('the record keeps only contract fields; secrets and bad values never surviv
   assert.equal(validateAccount({ id: 'x', provider: 'aol', email: 'nope' }).errors.length, 3);
   assert.equal(validateAccount({ id, provider: 'google', email: 'a@b.test', status: 'weird' }).account.status, 'needs-sign-in');
   assert.equal(cleanEmail('no-at-sign'), ''); assert.equal(cleanEmail('a@b'), '');
+  // The source ids of the account's snapshots travel with the record (folder sync); bad ones are dropped.
+  const withSources = validateAccount({ id, provider: 'microsoft', email: 'a@example.com', sources: { mail: 'email-outlook-ab12', calendar: '../x', other: 'email-x-1' } }).account;
+  assert.deepEqual(withSources.sources, { mail: 'email-outlook-ab12' });
+  assert.equal('sources' in validateAccount({ id, provider: 'microsoft', email: 'a@example.com', sources: { mail: 'BAD ID' } }).account, false);
 });
 
 test('public view: plain status text, "synced N min ago", the fetcher on this device', () => {
@@ -172,7 +176,8 @@ test('service: add two accounts side by side; re-sign-in keeps choices; pause, f
   await svc.pause(two.account.id);
   await assert.rejects(svc.fetchMail(two.account.id), { code: 'PAUSED' });
   assert.equal((await svc.resume(two.account.id)).status, 'connected');
-  assert.deepEqual(await svc.fetchHere(two.account.id), { ok: false, placeholder: true, message: 'Coming soon: once your computers sync, you can choose which one checks this account.' });
+  const here = await svc.fetchHere(two.account.id);   // signed in here and already its fetcher
+  assert.equal(here.ok, true); assert.equal(here.message, 'This computer checks this account now.'); assert.equal(here.account.here.fetcher, true);
   await svc.remove(two.account.id);
   assert.equal(await secrets.get('accounts/' + two.account.id), null, 'remove deletes this device\'s tokens');
   assert.equal((await svc.list()).length, 1);
@@ -188,6 +193,43 @@ test('service: only the fetcher reads; another device is refused before any prov
   await assert.rejects(b.fetchMail(account.id), { code: 'NOT_FETCHER' });
   const seen = (await b.list())[0];
   assert.equal(seen.statusText, 'Checked on your other computer'); assert.equal(seen.here.signedIn, false);
+});
+
+test('"Fetch on this computer instead": refused without a sign-in here, then the record\'s fetcher moves', async () => {
+  const registry = memoryRegistry();
+  const a = createAccounts({ registry, secrets: memorySecretStore(), providers: { microsoft: fakeProvider() }, redirect: loopbackRedirect({ port: 1 }), deviceId: 'deviceaaaa1' });
+  const { account } = await a.callback({ state: state((await a.begin({ provider: 'microsoft', email: 'me@hotmail.example' })).url), code: 'c' });
+  const bSecrets = memorySecretStore();
+  const b = createAccounts({ registry, secrets: bSecrets, providers: { microsoft: fakeProvider() }, redirect: loopbackRedirect({ port: 1 }), deviceId: 'devicebbbb2' });
+  assert.deepEqual(await b.fetchHere(account.id), { ok: false, code: 'SIGN_IN_FIRST', message: 'Sign in on this computer to take over.' });
+  assert.equal((await b.get(account.id)).fetcher, 'deviceaaaa1', 'a refusal changes nothing');
+  await bSecrets.set('accounts/' + account.id, { refresh_token: 'r-b' });   // B signed in on its own
+  const moved = await b.fetchHere(account.id);
+  assert.equal(moved.ok, true); assert.equal(moved.account.here.fetcher, true);
+  assert.equal(await b.isFetcher(account.id), true); assert.equal(await a.isFetcher(account.id), false);
+  await assert.rejects(a.fetchMail(account.id), { code: 'NOT_FETCHER' });
+  assert.equal((await b.fetchMail(account.id)).count, 1);
+  await assert.rejects(a.fetchHere('acc_0000000000000000'), { code: 'UNKNOWN_ACCOUNT' });
+});
+
+test('a fetcher policy (folder sync) decides who reads and moves the job; null leaves it to the record', async () => {
+  const registry = memoryRegistry(), calls = [];
+  let answer = false;
+  const policy = {
+    async isFetcher(id, acc) { calls.push(['isFetcher', id, !!acc]); return answer; },
+    async takeOver(id, { hasToken }) { calls.push(['takeOver', id, hasToken]); return hasToken ? { ok: true, deviceId: 'x', me: true } : { ok: false, code: 'SIGN_IN_FIRST', message: 'Sign in on this computer to take over.' }; },
+  };
+  const svc = createAccounts({ registry, secrets: memorySecretStore(), providers: { microsoft: fakeProvider() }, redirect: loopbackRedirect({ port: 1 }), deviceId: 'deviceaaaa1', fetcher: policy });
+  const { account } = await svc.callback({ state: state((await svc.begin({ provider: 'microsoft', email: 'me@hotmail.example' })).url), code: 'c' });
+  assert.equal(await svc.isFetcher(account.id), false, 'the policy says another device reads it, although the record names this one');
+  await assert.rejects(svc.fetchMail(account.id), { code: 'NOT_FETCHER' });
+  answer = true;
+  assert.equal((await svc.fetchMail(account.id)).count, 1);
+  const r = await svc.fetchHere(account.id);
+  assert.equal(r.ok, true);
+  assert.deepEqual(calls.filter(c => c[0] === 'takeOver'), [['takeOver', account.id, true]], 'the policy hears whether this device holds a sign-in');
+  answer = null;   // e.g. sync switched off: the record decides
+  assert.equal(await svc.isFetcher(account.id), true);
 });
 
 test('service: errors set plain statuses; admin approval keeps a record to retry', async () => {

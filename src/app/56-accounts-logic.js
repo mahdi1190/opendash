@@ -45,8 +45,12 @@ function accStatusView(a) {
       primary: { id: 'approval', label: 'Ask for approval' }, secondary: [{ id: 'sign-in', label: 'Try again' }] };
   }
   if (!here.fetcher) {
-    return { tone: 'ok', label: 'Connected', note: 'Your other computer checks this account. What it reads appears here too.',
-      primary: null, secondary: [{ id: 'fetch-here', label: 'Fetch on this computer instead' }] };
+    // Another computer reads it (its name when folder sync knows it). Taking over
+    // needs this computer's own sign-in: sign-ins never travel between computers.
+    const who = here.fetcherName ? String(here.fetcherName) : 'Your other computer';
+    return { tone: 'ok', label: 'Connected', note: who + ' checks this account. What it reads appears here too.',
+      primary: null, secondary: here.signedIn ? [{ id: 'fetch-here', label: 'Fetch on this computer instead' }]
+        : [{ id: 'fetch-here', label: 'Fetch on this computer instead' }, { id: 'sign-in', label: 'Sign in on this computer' }] };
   }
   if (a.status === 'needs-sign-in' && a.provider === 'imap' && typeof imapNeedsPasswordView === 'function') return imapNeedsPasswordView(a);
   if (a.status === 'needs-sign-in') return { tone: 'warn', label: 'Sign in again', note: (a.error && a.error.code === 'NEEDS_SIGN_IN' && /^Sign in again to let/.test(a.error.message || '') ? a.error.message + ' ' : `${name} asked you to sign in again. `) + 'Your saved mail and events are still here.', primary: { id: 'sign-in', label: 'Sign in again' }, secondary: [] };

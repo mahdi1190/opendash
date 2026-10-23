@@ -137,7 +137,7 @@ test('pause, features, sync, fetch-here and remove; readers need no Claude', asy
   const synced = await call('/api/accounts/sync', 'POST', { body: { id } });
   assert.deepEqual(synced.json.results.map(r => [r.feature, r.ok]), [['mail', true]]);
   const here = await call('/api/accounts/fetch-here', 'POST', { body: { id } });
-  assert.equal(here.json.placeholder, true); assert.equal(here.json.ok, false);
+  assert.equal(here.json.ok, true, 'signed in on this computer: it checks the account'); assert.equal(here.json.message, 'This computer checks this account now.');
   assert.equal((await call('/api/accounts/pause', 'POST', { body: { id: '../x' } })).status, 400);
   // the source readers go through the account, never through Claude
   const run = () => { throw new Error('Claude must not run'); };

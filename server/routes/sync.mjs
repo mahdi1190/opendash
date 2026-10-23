@@ -14,18 +14,28 @@
 // other devices reach open tabs through the normal live-sync path: the engine
 // commits through the state store, which bumps the version and announces it
 // on /api/events with source 'sync'.
+//
+// Accounts (lib/accounts.mjs): app.ctx.sync is the fetcher policy while sync is
+// on (isFetcher before an account's fetch job, takeOver for "Fetch on this
+// computer instead"); an accounts.json that arrives from another computer
+// brings this computer's account sources in line (reconcileSources).
 
 import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
+import { accountsFor } from '../../lib/accounts.mjs';
 
 export default function register(app) {
   const { store, log, paths, repoRoot, version } = app.ctx;
   const engine = createNodeSyncEngine({
     store, dataDir: paths.root, log, appVersion: version, forbid: [repoRoot],
-    // The account registry and fetched snapshots sync; the connections code asks
+    // The account registry and fetched snapshots sync; the accounts code asks
     // app.ctx.sync.isFetcher(accountId) before running an account's fetch job.
     ...(process.env.DASHBOARD_SYNC_POLL_MS ? { pollMs: Math.max(500, Number(process.env.DASHBOARD_SYNC_POLL_MS) || 5000) } : {}),
   });
   app.ctx.sync = engine;
+  engine.onApplied((info) => {
+    if (!info || !(info.fileRels || []).includes('accounts.json')) return;
+    accountsFor(app.ctx).reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
+  });
   app.onReady(async () => { await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`)); });
   app.onClose(async () => { await engine.stop(); });
 

@@ -76,7 +76,7 @@ before(async () => {
   process.env.CLAUDE_CLI_PATH = join(base, 'no-claude-here.exe');
   process.env.DASHBOARD_OS_EXEC = 'dry-run';
   process.env.DASHBOARD_SYNC_POLL_MS = '3000';
-  process.env.DASHBOARD_SYNC_LOCAL_DIR = join(base, 'local-server');   // normally %LOCALAPPDATA%/OpenDash/sync/<key>
+  process.env.DASHBOARD_SYNC_LOCAL_DIR = join(base, 'local-server');   // normally <device folder>/sync (lib/devicedir.mjs)
   const { setCliPath } = await import('../lib/claude-runner.mjs');
   setCliPath(process.env.CLAUDE_CLI_PATH);
   port = await freePort();

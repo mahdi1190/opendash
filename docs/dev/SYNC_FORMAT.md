@@ -165,11 +165,15 @@ own logs older than 30 days that the snapshot covers.
 
 ```json
 {"v":1,"deviceId":"<id>","format":1,"enc":null,"name":"Work laptop","instance":"<random>",
- "app":"2.14.0","fetch":"background","lastSeen":"2026-10-23T09:00:00.000Z","seq":120}
+ "app":"2.14.0","fetch":"background","fetcherId":"<host id>","lastSeen":"2026-10-23T09:00:00.000Z","seq":120}
 ```
 
 `fetch`: `background` (fetches while no window is open: a desktop server) or
-`foreground` (only while the app is open: a phone or a PWA). `instance`
+`foreground` (only while the app is open: a phone or a PWA). `fetcherId`:
+the id this device uses in an account's `fetcher` field (section 8); on the
+desktop the per-computer host id of `lib/devicedir.mjs` (`ensureHostId`),
+which the accounts code records too; a device without one uses its
+`deviceId`. Readers that find no `fetcherId` take the `deviceId`. `instance`
 changes when a device's identity is copied to another installation; a device
 that finds its own folder with another instance takes a new id.
 
@@ -180,18 +184,34 @@ top-level keys (`SYNC_FILES` in `lib/sync/manifest.mjs`):
 
 | File | Role | Shape |
 |---|---|---|
-| `accounts.json` | shared | `{accounts: [{id, provider, email, label, fetcherDeviceId, fetcherSince, ...}]}`: the account registry, never a token |
-| `roles.json` | shared | `{roles: {<job>: {deviceId, since}}}` for jobs that are not accounts (`bank`, `ai-brief`, `connectors`) |
-| `calendar/sources/<accountId>.json` | published | `{events: [...], calendars: [...], ...}` |
-| `inbox/sources/<accountId>.json` | published | `{messages: [...], ...}` |
+| `accounts.json` | shared | `{version: 1, accounts: [Account]}`, exactly the registry of `lib/accounts-file.mjs` (docs/dev/ACCOUNTS.md section 2): `{id, provider, email, displayName, kind, tenantId?, scopes, features, status, lastSync, error, fetcher, sources?: {mail, calendar}, server? (IMAP host, no password), createdAt, updatedAt, legacy?}`. Never a token: tokens are in each device's secret store |
+| `roles.json` | shared | `{roles: {<job>: {fetcher, since}}}` for jobs that are not accounts (`bank`, `ai-brief`, `connectors`) |
+| `calendar/sources/<sourceId>.json` | published | `{events: [...], calendars: [...], ...}` (lib/calendar-sources.mjs) |
+| `inbox/sources/<sourceId>.json` | published | `{messages: [...], accounts: [...], ...}` (lib/inbox-sources.mjs) |
 | `calendar/events.json`, `inbox/messages.json` | published by `connectors` | the Claude-connector snapshots |
+
+A snapshot in `calendar/sources/` or `inbox/sources/` belongs to the account
+whose record lists its name in `sources` (`{mail: <sourceId>, calendar:
+<sourceId>}`, written by `lib/accounts.mjs` when the account's sources are
+made), or whose id it is named after. A snapshot no account owns (an MCP or
+calendar-link source set up on one device only) is never sent. A device that
+receives an account makes its sources with the recorded ids
+(`reconcileAccountSources`), so every device reads the same file names.
 
 A **published** file is recorded only by the fetcher of its account; the
 other devices rebuild it from the registers alone (an exact copy). The
-fetcher of an account is its `fetcherDeviceId`, of a job its `roles` entry;
-both are ordinary registers (later change wins). An unassigned account or job
-is taken by the first device with `fetch: background` that asks (a
-`foreground` device takes it only when no background device is known).
+fetcher of an account is the record's `fetcher` (a `fetcherId`, section 7),
+of a job its `roles` entry; both are ordinary registers (later change wins).
+An account's `fetcher` holds with sync on or off (two computers that share
+one data folder use it too). An unassigned account or job is taken by the
+first device with `fetch: background` that asks (a `foreground` device takes
+it only when no background device is known). "Fetch on this computer
+instead" (`takeOver`) needs a sign-in on that device first; tokens never
+travel.
+
+A device keeps a synced file locked (the same `<file>.lock` the accounts code
+and the snapshot writers use) from reading it for a pass to writing the
+merge, so a change made in between waits and is captured by the next pass.
 
 ## 9. What never syncs
 

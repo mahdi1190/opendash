@@ -703,8 +703,8 @@ the user's cloud drive already syncs. Format: `docs/dev/SYNC_FORMAT.md`.
 | Part | Files |
 |---|---|
 | Platform-agnostic core (no `node:` imports; a phone/PWA build reuses it) | `lib/sync/hlc.mjs` (clock), `fracindex.mjs` (positions), `model.mjs` (registers, capture, merge, materialize, checks, credential filters), `manifest.mjs` (every state key: synced / device-local / derived; synced files), `engine.mjs` (passes, shadow mode, conflicts, fetcher roles) |
-| Node adapters | `lib/sync/node-host.mjs` (`createNodeSyncEngine`; this computer's files in `%LOCALAPPDATA%/OpenDash/sync/<key>`, never in the data folder), `lib/sync/folder.mjs` (the folder transport, conflict-copy filtering, cloud folder detection) |
-| Server | `server/routes/sync.mjs` (`/api/sync/status`, `/settings`, `/now`; `app.ctx.sync` for the connections code: `isFetcher(accountId)`, `setFetcher`, `takeOver(id, {hasToken})`, `fetcher`, `devices`) |
+| Node adapters | `lib/sync/node-host.mjs` (`createNodeSyncEngine`; this computer's files in `<device folder>/sync` from `lib/devicedir.mjs`, never in the data folder; `fetcherId` = the device folder's host id; synced files locked during a pass), `lib/sync/folder.mjs` (the folder transport, conflict-copy filtering, cloud folder detection) |
+| Server | `server/routes/sync.mjs` (`/api/sync/status`, `/settings`, `/now`; `app.ctx.sync` is the accounts code's fetcher policy while sync is on: `isFetcher(accountId)`, `setFetcher`, `takeOver(id, {hasToken})`, `fetcher`, `devices`; a new `accounts.json` from sync runs `reconcileSources()`) |
 | Page | `src/app/58-settings-sync.js` (Settings > Sync: on/off, folder, apply switch, trial-mode list, devices); `86-live-sync.js` labels changes "Updated by <device>" |
 | Tests | `tests/sync-*.test.mjs` (`sync.shared.mjs` helpers; `OPENDASH_SYNC_TEST_DIR` moves their temp folders) |
 

@@ -11,7 +11,8 @@
 //   POST /api/accounts/features             {id, mail?, calendar?} -> {account}
 //   POST /api/accounts/remove               {id} -> {removed}
 //   POST /api/accounts/sync                 {id} -> {account, results}
-//   POST /api/accounts/fetch-here           {id} -> {ok:false, placeholder:true, message}
+//   POST /api/accounts/fetch-here           {id} -> {ok:true, account, message} | {ok:false, code:'SIGN_IN_FIRST', message}
+//                                           ("Fetch on this computer instead": folder sync moves the job here)
 //   GET  /api/accounts/approval?id=         -> {consentUrl, mailto, tenant}
 //   PUT  /api/accounts/microsoft-app        {clientId | null} -> provider info
 //   PUT  /api/accounts/google-app           {clientId, clientSecret?} | {json} | {clientId: null} -> provider info

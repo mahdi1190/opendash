@@ -231,7 +231,8 @@ function accCard(a) {
     if (id === 'sign-in') return a.provider === 'imap' ? imapConnectFlow({ account: a }) : accOpenSignIn({ provider: a.provider, accountId: a.id });
     if (id === 'approval') return accApproval(a);
     if (id === 'resume') return accAct(a, '/api/accounts/pause', { paused: false });
-    if (id === 'fetch-here') return accAct(a, '/api/accounts/fetch-here', {}, (r) => toast(r.message, { kind: 'info', timeout: 6000 }));
+    // Refused without a sign-in here ("Sign in on this computer to take over"); else this computer reads it from now on.
+    if (id === 'fetch-here') return accAct(a, '/api/accounts/fetch-here', {}, (r) => { toast(r.message, { kind: r.ok ? 'ok' : 'info', timeout: 6000 }); if (r.ok) accReloadData(); });
   };
   for (const s of view.secondary) { const b = _connBtn(s.label, null, 'btn-ghost', () => run(s.id)); b.disabled = busy; acts.appendChild(b); }
   if (view.primary) {

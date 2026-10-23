@@ -431,11 +431,31 @@ Each account has one **fetcher**: the device that reads it (default: the device
 where it was connected; `fetcher` = that device's host id from
 `lib/devicedir.mjs ensureHostId`). Only the fetcher runs its mail and calendar
 jobs; other computers show what the fetcher saved (snapshots are normal data)
-and say "Checked on your other computer". `isFetcher(accountId)` answers for
-this device (an account with no fetcher yet is claimed by the first device that
-reads it). **"Fetch on this computer instead"** (`fetchHere(accountId)`) is a
-placeholder until sync lands: it changes nothing and says so. Tokens never
-travel: a second computer that should read an account signs in there.
+and say "Checked on your other computer" (or "<name> checks this account",
+`here.fetcherName`, when folder sync knows the other device). `isFetcher(accountId)`
+answers for this device (an account with no fetcher yet is claimed by the first
+device that reads it). Tokens never travel: a second computer that should read
+an account signs in there.
+
+**Folder sync** (lib/sync/engine.mjs, docs/dev/SYNC_FORMAT.md section 8) carries
+`accounts.json` and the fetcher's snapshots to the other computers. While
+Settings > Sync is on, the Node binding passes the core a fetcher policy
+(`createAccounts({fetcher})`): `isFetcher` and the fetch guard ask
+`sync.isFetcher(id)`, and **"Fetch on this computer instead"**
+(`fetchHere(accountId)`) calls `sync.takeOver(id, {hasToken})`. Both read and
+write the same `fetcher` field with the same id (the host id), so sync on or off
+agree. `fetchHere` is refused with `{ok:false, code:'SIGN_IN_FIRST', message:
+'Sign in on this computer to take over.'}` when this computer holds no sign-in
+for the account (the card then offers *Sign in on this computer*); otherwise the
+record's `fetcher` becomes this computer, the others stop reading it at their
+next check, and the answer is `{ok:true, account, message}`. Without sync the
+core does the same on the shared record itself.
+
+The record lists the source ids of its snapshots (`sources: {mail, calendar}`):
+a computer that receives the account makes its own sources with those ids
+(`reconcileAccountSources`, run at start-up and whenever sync applies a new
+`accounts.json`), shows the fetcher's snapshots, and removes the sources and
+snapshots of an account that was removed elsewhere.
 
 ## 8. The service (core)
 
@@ -452,7 +472,7 @@ createAccounts({ registry, secrets, providers: { microsoft: createMicrosoftProvi
   .setFeatures(id, { mail?, calendar? }) -> account
   .remove(id)                    -> { removed: id }      // deletes this device's tokens and the record
   .isFetcher(id)                 -> Promise<boolean>
-  .fetchHere(id)                 -> { ok: false, placeholder: true, message }
+  .fetchHere(id)                 -> { ok: true, account, message } | { ok: false, code: 'SIGN_IN_FIRST', message }
   .accessToken(id)
   .fetchMail(id, opts) / .fetchCalendar(id, opts)       // refuse PAUSED / NOT_FETCHER / FEATURE_OFF first
   .approvalHelp(id)              -> { consentUrl, mailto, tenant } | null
@@ -482,7 +502,7 @@ calls these routes on its local server.
 | `POST /api/accounts/features` | `{ id, mail?, calendar? }` | `{ account }` |
 | `POST /api/accounts/remove` | `{ id }` | `{ removed }` |
 | `POST /api/accounts/sync` | `{ id }` | `{ account, results: [{feature, ok, count, error?}] }` (only on the fetcher) |
-| `POST /api/accounts/fetch-here` | `{ id }` | `{ ok:false, placeholder:true, message }` |
+| `POST /api/accounts/fetch-here` | `{ id }` | `{ ok:true, account, message }` or `{ ok:false, code:'SIGN_IN_FIRST', message }` (section 7) |
 | `GET /api/accounts/approval?id=` | - | `{ consentUrl, mailto, tenant }` |
 | `POST /api/accounts/imap/lookup` | `{ email }` | `{ provider }`: `lookupProvider` plus the MX check (section 6, IMAP); nothing saved |
 | `POST /api/accounts/imap/connect` | `{ email, password, username?, host?, port?, security?, accountId? }` | `{ account, inbox: {exists}, results }`: test, save the app password in this computer's secret store, add the account, read its inbox once. A refused sign-in is a 401 with a plain message and saves nothing |

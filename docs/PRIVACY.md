@@ -30,7 +30,7 @@ or the folder you chose with `--data-dir`):
 | Local token | `local-token` | a random secret for local programs |
 | Open computers | `hosts/`, `data-id.json` | one small file per computer that has the folder open (a random id, the computer's name, the app version, when it last checked in), and the folder's random id |
 | Sign-ins and keys | **this computer's private folder, not the data folder**: `%LOCALAPPDATA%\OpenDash\<id>\secrets` (Windows), `~/Library/Application Support/OpenDash/<id>/secrets` (macOS), `~/.local/state/opendash/<id>/secrets` (Linux) | Google and Microsoft sign-ins, Google Health, ElevenLabs, the remote MCP and relay pairings, and under `fin/` your Monzo client and sign-in, your Enable Banking application key and bank sessions, your Plasma One address (only if you set those up; deleted when you disconnect). They never travel with the data folder |
-| Sync across my devices (if on) | outside the data folder: `%LOCALAPPDATA%/OpenDash/sync/` (Windows), `~/Library/Application Support/OpenDash/sync/` (macOS), `~/.local/state/opendash/sync/` (Linux) | this computer's sync identity, what it last synced, clashes between computers, the trial-mode report |
+| Sync across my devices (if on) | **this computer's private folder, not the data folder**: `%LOCALAPPDATA%\OpenDash\<id>\sync` (Windows), `~/Library/Application Support/OpenDash/<id>/sync` (macOS), `~/.local/state/opendash/<id>/sync` (Linux) | this computer's sync identity, what it last synced, clashes between computers, the trial-mode report |
 
 Your browser keeps interface preferences, a fallback copy of unsaved edits
 while the server is down, and an offline copy of the app page (with your
