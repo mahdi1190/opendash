@@ -10,6 +10,9 @@
 //                             (400 {error, code} for a folder that is missing, inside the
 //                             data or app folder; off by default)
 //   POST /api/sync/now        run a sync pass now -> the status
+//   GET  /api/sync/presence   each other device: open | running | asleep | off | outdated, with
+//                             last seen, version and the way it is reached (lib/sync/presence.mjs;
+//                             lib/sync-presence.mjs view) -> {enabled, me, devices, summary, notices}
 //
 // End-to-end encrypted sync (lib/sync/e2e.mjs; every answer is the status, 400 {error, code}
 // for anything the user can fix):
@@ -60,6 +63,7 @@ import { writeProfile, applyProfile, PROFILE_REL } from '../../lib/profile.mjs';
 import { SOURCE_PREFS_REL } from '../../lib/source-prefs.mjs';
 import { applySourcePrefs } from '../../lib/sources.mjs';
 import { DEFAULT_CONFIG } from '../../lib/datadir.mjs';
+import { attachPresence } from '../../lib/sync-presence.mjs';
 
 export default function register(app) {
   const { store, log, paths, repoRoot, version } = app.ctx;
@@ -96,11 +100,22 @@ export default function register(app) {
     engine, dataDir: paths.root, log, canFetch: (acc) => accounts().hasSignIn(acc && acc.id),
     extraRoles: ['phone', 'claude'],
     canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.canHost()))),
+    appVersion: version,
   });
   // Not ctx.liveSync: that is the open tabs' event stream (server/live-sync.mjs), which
   // the calendar writer and the time route emit on.
   app.ctx.peerLive = live;
   if (app.ctx.remoteJobs) app.ctx.remoteJobs.attach(engine, live);
+  // Presence (lib/sync/presence.mjs): is each other device open, running, asleep, off or
+  // outdated? Asked FIRST by everything that needs another device (lib/remote-jobs.mjs,
+  // lib/finance-share.mjs), shown in the top bar (GET /api/sync/presence).
+  const presence = attachPresence({
+    engine, live, version, log,
+    pageCount: () => (app.ctx.liveSync ? app.ctx.liveSync.clientCount : 0),
+    emit: (event, data) => { const sse = app.ctx.liveSync; if (sse && typeof sse.emit === 'function') sse.emit(event, data); },
+  });
+  app.ctx.presence = presence.tracker;
+  app.ctx.presenceView = presence.view;
   app.onReady(async () => {
     // The person's settings as this computer has them, for the others (a first copy: only what differs from the defaults).
     if (typeof app.ctx.getConfig === 'function') await writeProfile(paths.root, app.ctx.getConfig(), { defaults: DEFAULT_CONFIG }).catch(() => {});
@@ -108,10 +123,14 @@ export default function register(app) {
     await applySourcePrefs(paths.root, { log }).catch(() => {});
     await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`));
     if (live) await live.start().catch((e) => log('warn', `live sync could not start: ${e && (e.code || e.message)}`));
+    presence.start();
   });
-  app.onClose(async () => { if (live) await live.stop().catch(() => {}); await engine.stop(); });
+  app.onClose(async () => { presence.stop(); if (live) await live.stop().catch(() => {}); await engine.stop(); });
 
   app.route({ path: '/api/sync/status', method: 'GET', quiet: true, handler: () => engine.status() });
+  // The top bar's sync dot and its panel (src/app/56-presence.js); asking also tells this
+  // server a page is open here (published to the others as "dashboard open").
+  app.route({ path: '/api/sync/presence', method: 'GET', quiet: true, handler: () => { presence.pageBeat(); return presence.view(); } });
   app.route({
     path: '/api/sync/settings', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
