@@ -33,6 +33,8 @@ import { initGoogle } from '../lib/google.mjs';
 import { secretStore } from '../lib/secret-store.mjs';
 import { migrateLegacySecrets } from '../lib/devicedir.mjs';
 import { createPresence, createWriteGate, othersLive } from '../lib/hosts.mjs';
+import { createMoveGate } from '../lib/relocate/gate.mjs';
+import { movedAwayNotice, movedAwayText } from '../lib/relocate/index.mjs';
 import { initFinance, financeAvailable, cleanupPartials } from '../lib/finance.mjs';
 import { createApp } from './router.mjs';
 import { createLogger } from './log.mjs';
@@ -67,6 +69,14 @@ export async function main(argv = process.argv.slice(2)) {
   Add  --dry-run  to see what it would do first.
   (Or start empty on purpose with --fresh.)
 `);
+    process.exitCode = EXIT.CONFIG;
+    return null;
+  }
+
+  // A move took this folder away (lib/relocate/): never start an empty one in its place.
+  const away = has('--fresh') ? null : movedAwayNotice(dataDir);
+  if (away) {
+    console.error(`\n${movedAwayText(away)}\n`);
     process.exitCode = EXIT.CONFIG;
     return null;
   }
@@ -119,7 +129,9 @@ export async function main(argv = process.argv.slice(2)) {
   try { migrateLegacySecrets(paths.root, { othersLive: othersNow, log }); }
   catch (e) { log('warn', `secrets: moving <data>/secrets to this computer stopped (${e.code || e.message}); it finishes at the next start`); }
   initGoogle(secretStore(paths.root));   // this computer's sign-ins (lib/secret-store.mjs)
-  const store = createStateStore({ stateDir, log, writeGate: () => hostGate.check() });
+  // Writes also pause while Settings > Data moves the data folder (lib/relocate/gate.mjs).
+  const moveGate = createMoveGate();
+  const store = createStateStore({ stateDir, log, writeGate: () => { moveGate.check(); hostGate.check(); } });
   // A short hash of index.html as it is on disk now (cached by size + mtime).
   let buildCache = { key: null, id: null };
   function buildId() {
@@ -134,7 +146,7 @@ export async function main(argv = process.argv.slice(2)) {
 
   const ctx = {
     port, dataDir, paths: { ...paths, stateDir }, repoRoot: REPO_ROOT, financeDir, log, store, version, lifecycle: life, buildId, track,
-    hosts: { presence, gate: hostGate, others: othersNow },
+    hosts: { presence, gate: hostGate, others: othersNow }, moveGate,
     getConfig: () => config,
     setConfig: async (patch) => { config = await saveConfig(dataDir, patch); setDefaultModel(config.ai.model); return config; },
   };

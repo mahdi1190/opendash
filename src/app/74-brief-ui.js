@@ -285,12 +285,12 @@ function briefRefreshSteps() {
     { id: 'calendar', label: 'Calendar', icon: 'calendar-clock',
       available: () => (!feat('calendar') ? 'off' : conn('calendar') ? true : 'not connected'),
       stale: () => { const a = CalStore.age(); return a === null || a > 30 * 60 * 1000; },
-      start: async () => { const r = await CalStore.update({ force: false }); return r.error ? { error: 'could not start' } : r.skipped ? { skipped: true } : {}; },
+      start: async () => { const r = await CalStore.update({ force: false }); return r.error ? { error: 'could not start' } : r.skipped ? { skipped: true, runsOn: r.runsOn } : {}; },
       wait: () => _bfWaitStore(CalStore) },
     { id: 'inbox', label: 'Inbox', icon: 'inbox',
       available: () => (!feat('email') ? 'off' : conn('gmail') ? true : 'not connected'),
       stale: () => { const a = InboxStore.age(); return a === null || a > 30 * 60 * 1000; },
-      start: async () => { const r = await InboxStore.update({ force: false }); return r.error ? { error: 'could not start' } : r.skipped ? { skipped: true } : {}; },
+      start: async () => { const r = await InboxStore.update({ force: false }); return r.error ? { error: 'could not start' } : r.skipped ? { skipped: true, runsOn: r.runsOn } : {}; },
       wait: () => _bfWaitStore(InboxStore) },
     { id: 'finance', label: 'Finances', icon: 'wallet',
       available: () => (!feat('finance') ? 'off' : conn('bank') ? true : 'not connected'),
@@ -300,7 +300,9 @@ function briefRefreshSteps() {
         return !(at && Date.now() - at < 12 * 3600 * 1000);
       },
       start: async () => {
-        const r = await fetch('/api/finance/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        // automatic: only the main computer pulls the bank (lib/main-computer.mjs); the others get {skipped, runsOn}
+        const r = await fetch('/api/finance/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"automatic":true}' });
+        if (r.status === 200) { const j = await r.json().catch(() => ({})); if (j.skipped) return { skipped: true, runsOn: j.runsOn || null }; }
         return r.status === 202 || r.status === 409 ? {} : { error: 'HTTP ' + r.status };
       },
       wait: () => new Promise((resolve) => {
@@ -590,10 +592,12 @@ function _bfPaintProgress() {
   const bad = steps.filter(s => res[s.id] && ['error', 'timeout'].includes(res[s.id].status));
   if (!running && !bad.length) {
     const off = steps.filter(s => res[s.id] && res[s.id].status === 'skipped' && res[s.id].reason !== 'off').map(s => s.label);
+    const away = steps.filter(s => res[s.id] && res[s.id].status === 'elsewhere');
     const at = _bf.refreshedAt ? new Date(_bf.refreshedAt) : null;
     host.className = 'bf-progress is-done';
     host.innerHTML = `<span class="bf-uptodate">${icon('circle-check', 'i-sm')}<span>Up to date${at ? ` · ${esc(_calTimeLabel(_calHM(_bfMin(at))))}` : ''}</span></span>`
-      + (off.length ? `<span class="bf-off" title="Connect them in Connections">${esc(off.join(', '))} not connected</span>` : '') + '<span class="spacer"></span>';
+      + (off.length ? `<span class="bf-off" title="Connect them in Connections">${esc(off.join(', '))} not connected</span>` : '')
+      + (away.length ? `<span class="bf-off" title="Settings > Sync > Main computer">${esc(away.map(s => s.label).join(', '))}: ${esc(away[0].id && res[away[0].id].reason || '')}</span>` : '') + '<span class="spacer"></span>';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
     b.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Refresh</span>';
     b.onclick = () => briefRefresh(true);
@@ -603,8 +607,8 @@ function _bfPaintProgress() {
   host.innerHTML = steps.map(s => {
     const r = res[s.id] || { status: 'pending' };
     const st = r.status;
-    const txt = st === 'skipped' ? (r.reason === 'off' ? 'off' : r.reason === 'no location' ? 'no town set' : 'not connected') : _BF_STEP_TEXT[st] || st;
-    const lead = st === 'running' || st === 'pending' ? '<span class="spinner"></span>' : icon(st === 'done' || st === 'fresh' ? 'circle-check' : st === 'skipped' ? 'circle-dashed' : 'circle-alert', 'i-sm');
+    const txt = st === 'skipped' ? (r.reason === 'off' ? 'off' : r.reason === 'no location' ? 'no town set' : 'not connected') : st === 'elsewhere' ? (r.reason || 'on your main computer') : _BF_STEP_TEXT[st] || st;
+    const lead = st === 'running' || st === 'pending' ? '<span class="spinner"></span>' : icon(st === 'done' || st === 'fresh' ? 'circle-check' : st === 'skipped' ? 'circle-dashed' : st === 'elsewhere' ? 'monitor' : 'circle-alert', 'i-sm');
     return `<span class="bf-step s-${escAttr(st)}" title="${escAttr(r.reason || '')}">${lead}<b>${esc(s.label)}</b><span>${esc(txt)}</span></span>`;
   }).join('') + `<span class="spacer"></span>`;
   if (!running) {
@@ -696,7 +700,7 @@ function _bfLoadSummary(m, regenerate) {
     return { hit: r, typed: true };
   };
   run().then(({ hit, typed }) => { _bf.summary.brief = hit ? Object.assign({ date }, hit) : { date, text: null }; _bf.summaryLoading.brief = false; _bfPaintAi(null, typed); _bfSaveSnapshot(true); })
-    .catch(e => { _bf.summaryLoading.brief = false; _bf.summary.brief = { date, text: null, error: e.code === 'OFF' ? 'The AI summary is off in Settings.' : 'The summary could not be written just now.' }; _bfPaintAi(null, false); });
+    .catch(e => { _bf.summaryLoading.brief = false; _bf.summary.brief = { date, text: null, error: e.code === 'OFF' ? 'The AI summary is off in Settings.' : e.code === 'NOT_MAIN' ? e.message : 'The summary could not be written just now.' }; _bfPaintAi(null, false); });
 }
 
 /* ---------- cards ---------- */

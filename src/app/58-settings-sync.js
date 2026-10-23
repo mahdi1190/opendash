@@ -461,5 +461,6 @@ registerSettingsGroup({
   render(el) {
     if (!_syncSt && !_syncErr) syncLoad();
     _syncCard(el);
+    if (typeof settingsMainComputerCard === 'function') settingsMainComputerCard(el);   // 58-settings-main.js
   },
 });

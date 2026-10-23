@@ -34,6 +34,7 @@ import { fetchCalendarSource, saveSourceSnapshot, readSourceSnapshot, mergeCalen
 import { sourcesFor } from '../../lib/sources.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { HttpError } from '../http.mjs';
+import { skippedBody } from '../../lib/main-computer.mjs';
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -132,6 +133,9 @@ export default function register(app) {
     path: '/api/calendar/update', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
       const body = await c.body({ allowEmpty: true });
+      // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };
+      if (!mc.run) return { ...skippedBody(mc), job: null };
       const r = await cal.start({ back: body.back, ahead: body.ahead, force: body.force === true, zone: c.zone });
       if (r.started) return c.json(202, { job: r.job });
       if (r.reason === 'running') return c.json(409, { error: 'An update is already running.', job: r.job });

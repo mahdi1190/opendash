@@ -13,7 +13,7 @@ finds it by itself and some Claude features run by default (see
 ## What is stored, and where
 
 Everything lives in one data folder on your computer (`data/` next to the app,
-or the folder you chose with `--data-dir`):
+or the folder you chose with `--data-dir`, or the one Settings > Data > *Move my data out of OneDrive* moved it to):
 
 | What | Where | Contains |
 |---|---|---|
@@ -30,6 +30,9 @@ or the folder you chose with `--data-dir`):
 | Local token | `local-token` | a random secret for local programs |
 | Sync across my devices (if on) | outside the data folder: `%LOCALAPPDATA%/OpenDash/sync/` (Windows), `~/Library/Application Support/OpenDash/sync/` (macOS), `~/.local/state/opendash/sync/` (Linux) | this computer's sync identity, what it last synced, clashes between computers, the trial-mode report. The sync keys and this computer's private key are with the other sign-ins and keys, in this computer's private folder (below) |
 | Open computers | `hosts/`, `data-id.json` | one small file per computer that has the folder open (a random id, the computer's name, the app version, when it last checked in), and the folder's random id |
+| Main computer (if you chose one) | `main-computer.json` | the random id and name of the computer that runs the automatic background jobs |
+| A move of the data folder (Settings > Data > Move) | outside the data folder, in this computer's OpenDash folder (`%LOCALAPPDATA%\OpenDash\relocation.json` and `moves\` on Windows; `~/Library/Application Support/OpenDash/` on macOS; `~/.local/state/opendash/` on Linux) | the old and new folders, the files copied with their checksums, and each setting the move changed with its old and new value (so Undo can put it back), including the text of Claude scheduled-task files it edited. Never sent anywhere |
+| The daily encrypted copy (if on) | settings and the key made from your passphrase: this computer's private folder (next row). The copies: the folder you chose, by default `OneDrive\OpenDash Backups` | the passphrase itself is never stored. Each copy holds what *Export all data* holds, encrypted (AES-256-GCM) before it is written |
 | Sign-ins and keys | **this computer's private folder, not the data folder**: `%LOCALAPPDATA%\OpenDash\<id>\secrets` (Windows), `~/Library/Application Support/OpenDash/<id>/secrets` (macOS), `~/.local/state/opendash/<id>/secrets` (Linux) | Google and Microsoft sign-ins, Google Health, ElevenLabs, the remote MCP and relay pairings, and under `fin/` your Monzo client and sign-in, your Enable Banking application key and bank sessions, your Plasma One address (only if you set those up; deleted when you disconnect). They never travel with the data folder |
 
 Your browser keeps interface preferences, a fallback copy of unsaved edits
@@ -55,6 +58,8 @@ Only in these cases, and only when you switch the feature on:
 | **Read aloud** (stories and the money brief), only with an online voice | the text being read | your browser's speech service. Voices built into your computer keep everything local; voices marked *(online)* in Settings > Morning brief > *Voice* (for example some "Natural" voices in Microsoft Edge, or Chrome's Google voices) send the text to the browser maker |
 | **Avatars** (if you set an image address on a person) | a normal image request | the site in that address |
 | **Links you open** | whatever your browser sends when you open a web link | that site |
+| **Daily encrypted copy** (off by default; Settings > Data) | once a day, your settings, tasks and notes, calendar and email snapshots and finances (no sign-ins, keys, logs or caches), **encrypted on this computer** with a key made from your passphrase | the folder you chose, by default `OneDrive\OpenDash Backups`: your cloud provider stores scrambled bytes, plus the date, this computer's name and the app version in plain text. Nothing goes to OpenDash. Without the passphrase nobody can open the copies, including you |
+| **Moving the data folder** (Settings > Data > Move) | nothing: the copy is made on this computer. After showing you each change, it updates the settings of your own programs that point at OpenDash: Claude Code (through its own `claude mcp` command), Claude Desktop's settings file, Codex and Gemini CLI (through their commands), Windows start-up entries, shortcuts, and Claude scheduled-task files that name the folder. Only those entries | no one |
 | **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or this screen's view and theme | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, **end-to-end encrypted**: each change is locked (AES-256-GCM) on your computer before it is written, with a key only your devices hold, so your cloud provider stores files it cannot read. It can see how many devices sync, when they write and roughly how much; a new computer waiting to be approved shows its name there until it is approved. The key never goes into the folder; your recovery code is shown once and kept by you. Each of your computers reads the folder from there; nothing goes to OpenDash. Until you also turn on *Use changes from my other computers*, nothing received is applied |
 
 Nothing else. In particular:

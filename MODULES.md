@@ -138,7 +138,7 @@ classic `<script>`. That means:
 | Google Health on Connections and Add connection: local OAuth credentials import, Google consent, verified linked Health profile, read-only seven-day steps/sleep sync and disconnect. Separate credentials from Gmail/Calendar; API availability depends on Google project access. | `56-google-health.js`, `styles/56-google-health.css`, `lib/google-health.mjs`, `server/routes/google-health.mjs`; tests `google-health.test.mjs`, `google-health-ui.test.mjs` | Connections/Settings |
 | Settings > Streams (add, rename, recolour, reorder, archive) and Templates | `58-settings-streams.js` | Connections/Settings |
 | Settings > Home: Customise / Add a widget, the Morning brief and Suggestions panels on Home (shown or hidden in their own slot, one undo step through `homeSaveLayout`), Hide amounts (`homeSetAmountsHidden`), and the working hours (a link to Profile) | `58-settings-home.js` | Home foundation |
-| Settings > Data (folder, backups + restore, export/import all data, JSON export, clean app copy, reset) and Diagnostics | `58-settings-data.js` | Connections/Settings |
+| Settings > Data (folder, backups + restore, export/import all data, JSON export, clean app copy, reset) and Diagnostics; "Move my data out of OneDrive" + Undo move; the daily encrypted copy; Settings > Sync > Main computer | `58-settings-data.js`, `58-settings-move.js`, `58-settings-offsite.js`, `58-settings-main.js`, `styles/58-settings-move.css` | Connections/Settings |
 | Settings > Server (status, Restart / Rebuild & restart / Open log / Stop, the Windows start-up switches read back from Windows, the offline-page switch), `srvRestart({rebuild})` (flush, overlay, wait for a new pid, reload only if the build/version changed), `srvStop()`, `srvOpenLog()`, palette "Restart server" / "Rebuild & restart server" / "Open server log" | `58-settings-server.js`, `styles/58-settings-server.css` | Server control |
 | Settings > Updates (`#view=settings:updates`): Check for updates (a GET to the project's GitHub releases, rate limited to one per 10 s, result kept in `<data>/update-check.json` with the "check once a day" switch, off by default; the page checks at most daily while open and only ever tells, never installs), release notes (text only), Update to X = confirm, then `srvRestart({post:['/api/update/apply', {version}]})`: the server installs the release then restarts with a rebuild. A zip install: download from `github.com/mahdi1190/opendash/releases/download/` only (`DASHBOARD_UPDATE_FEED` swaps in a mirror/test feed), SHA-256 must match SHA256SUMS.txt, one top folder `opendash-vX/`, package.json version must match, build files present; never writes data/ state/ secrets/ logs .git .env index.html; replaced files go to `<data>/update-backup/<old version>/`, a failed write is rolled back, and files a release dropped from `src/app`, `src/styles`, `src/finance`, `server/routes`, `server/actions` are removed (they would still be loaded). A git install: clean tracked files only, `git fetch` the tag, `merge --ff-only`. Needs a server that can restart (501 otherwise); apply needs the page or the local token. Pure rules `upSummary`, `upCheckDue` | `58-settings-updates.js`, `styles/58-settings-updates.css`; server `lib/updater.mjs`, `server/routes/updates.mjs`; tests `tests/updater.test.mjs` | Server control |
 | Browser notifications (morning digest, before events) | `58-notify.js` | Connections/Settings |
@@ -789,6 +789,41 @@ for `secretsDir(dir)` (below), `dataPaths(dir).hosts` the presence folder.
   "OneDrive copy"; others under `onedrive-copies/`). Never merged.
 - The page: `src/app/86-hosts-banner.js` (`hostsBannerModel` is pure).
 
+### lib/relocate/, server/routes/relocate.mjs, tools/relocate.mjs - move the data out of OneDrive
+- Settings > Data > "Move my data out of OneDrive" (`src/app/58-settings-move.js`) and
+  `node tools/relocate.mjs` (plan only without `--yes`) drive `createRelocator()`
+  (`lib/relocate/index.mjs`): plan (the dry run: checks, sizes, every reference with
+  before/after) -> run (write gate `lib/relocate/gate.mjs` 423 MOVING, verified resumable copy
+  `lib/relocate/copy.mjs`, switch, re-point) -> finish (rename the old folder
+  `<name> (moved to <where> on <date>)` + README, after the server stopped) -> undo.
+- The switch is THIS computer's record `<deviceBase>/relocation.json` (`lib/relocate/record.mjs`):
+  `resolveDataDir` follows a folder this computer moved away from (`redirect:false` /
+  `DASHBOARD_NO_REDIRECT=1` to get the folder as given). Never in the data folder.
+- References (`lib/relocate/refs.mjs`): Windows Run entry + dashboard-start:// handler +
+  `DASHBOARD_DATA_DIR`, Claude Code (`claude mcp remove/add`, never editing ~/.claude.json),
+  Claude Desktop (classic + Store app config), Codex / Gemini CLI (their `mcp` commands; the
+  hashed entry name follows the data folder), Claude scheduled-task skills and start-up
+  scripts that name the folder, .lnk shortcuts, this computer's sync identity folder. Each is
+  changed only if still as found, and put back by Undo only if still as the move left it.
+  OS pieces are adapters (`lib/relocate/adapters.mjs`: registry, CLIs, shortcuts, free space,
+  launch); under the test runner the real ones are never reached.
+- After a move from the page, `tools/relocate.mjs --handoff` (detached) waits for the server
+  and its supervisor to end, renames the old folder and starts OpenDash from the new place.
+
+### lib/offsite-backup.mjs, server/routes/offsite-backup.mjs - the daily encrypted copy
+- `exportData()` zip, AES-256-GCM, key from a passphrase (scrypt) or the sync recovery key
+  (HKDF), header authenticated; `OpenDash backup <date> <computer>.odbackup` in
+  `OneDrive\OpenDash Backups` (or a chosen folder), newest 14 per computer kept. The derived
+  key and settings: secret store key `offsite-backup` (this computer only). Restore goes
+  through `importData()` (backs up first). UI: `src/app/58-settings-offsite.js`.
+
+### lib/main-computer.mjs, server/routes/main-computer.mjs - the main computer
+- Only the main computer runs AUTOMATIC jobs (bank, ai-brief, story, connectors); the job
+  routes ask `app.ctx.mainComputer.gate(job, {automatic})` and answer skipped `{runsOn}`
+  (calendar/inbox/finance update) or 409 NOT_MAIN (brief summary, story script, day advice).
+  Clicks always run. Sync on: the engine's fetcher roles; off: `<data>/main-computer.json`.
+  UI: `src/app/58-settings-main.js` (Settings > Sync); Start my day shows "runs on <name>".
+
 ### lib/connections.mjs, lib/sharing.mjs, lib/zip.mjs (Connections/Settings)
 - `createConnections({dataDir, log})` -> `{list(), check(id,{manual}), checkStale(), tooSoon(id)}`.
   `claude` is checked with the `text` profile (Haiku, "reply OK", no tools);
@@ -1378,6 +1413,8 @@ Big made-up data: `node tools/make-fake-finance.mjs <dir> --days 730 --seed 11
 <data>/email/inbox.json            v1 snapshot, imported once into inbox/messages.json
 <data>/data-id.json       {id}: finds this data folder's device folder (lib/devicedir.mjs)
 <data>/hosts/<hostId>.json  presence of each computer that has the folder open (lib/hosts.mjs)
+<data>/main-computer.json {hostId, name, since}: the computer that runs the automatic jobs (lib/main-computer.mjs)
+<deviceBase>/relocation.json, moves/<id>.json   this computer's data-folder moves and their file lists (lib/relocate/)
 <device>/secrets/         every sign-in and key, OUTSIDE the data folder (lib/secret-store.mjs);
                           <device> = %LOCALAPPDATA%\OpenDash\<dataId> and the like (lib/devicedir.mjs)
 <data>/logs/server.log    rotated (server.1.log ... server.5.log)
