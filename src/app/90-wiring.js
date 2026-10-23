@@ -162,18 +162,22 @@ function toggleExpandAll() {
 // space inside #main-body; mousemove past a small threshold draws a rectangle;
 // mouseup adds every intersecting .task[data-id] to multiSelect. Ctrl/Cmd+drag
 // is additive, plain drag replaces the current selection.
+// List and board. It starts on empty space, in the row gutter (left of the rows) or on a
+// board column's background; never on a row or card itself (dragging those moves the task).
+// Rows under the rectangle light up while you drag (.rb-hit); Shift or Ctrl/Cmd adds to the selection.
 function setupRubberBand() {
   const main = document.getElementById('main-body');
   if (!main || main._rubberBandReady) return;
   main._rubberBandReady = true;
-  let startX, startY, rb, started, additive;
+  let startX, startY, rb, started, additive, items = [];
+  const ROWS = '.task[data-id], .kanban-card[data-id]';
   main.addEventListener('mousedown', (e) => {
-    if (state.viewMode !== 'list' || !isTaskView(state.view)) return;
+    if (!['list', 'kanban'].includes(state.viewMode || 'list') || !isTaskView(state.view)) return;
     if (e.button !== 0) return;
-    if (e.target.closest('.task, button, input, select, textarea, .multi-handle, a, .quick-add, .templates-row, .progress-row, .week-bar, .calendar-events, .cal-events, .empty-state, .qa-wrap, .today-sum, .week-strip, .tg-h, .cal-sched, .search-note, .subtasks-inline')) return;
+    if (e.target.closest('.task, .kanban-card, button, input, select, textarea, .multi-handle, a, .quick-add, .templates-row, .progress-row, .week-bar, .calendar-events, .cal-events, .empty-state, .qa-wrap, .today-sum, .week-strip, .tg-h, .cal-sched, .search-note, .subtasks-inline, .kanban-add, .tg-hidden, [contenteditable="true"]')) return;
     startX = e.clientX; startY = e.clientY;
     started = false; rb = null;
-    additive = e.ctrlKey || e.metaKey;
+    additive = e.ctrlKey || e.metaKey || e.shiftKey;
     function onMove(ev) {
       if (!started) {
         if (Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) < 4) return;
@@ -181,27 +185,28 @@ function setupRubberBand() {
         rb.className = 'rubber-band';
         document.body.appendChild(rb);
         started = true;
+        items = [...main.querySelectorAll(ROWS)].map(el => ({ el, r: el.getBoundingClientRect() }));
       }
       const x = Math.min(startX, ev.clientX);
       const y = Math.min(startY, ev.clientY);
+      const w = Math.abs(ev.clientX - startX), h = Math.abs(ev.clientY - startY);
       rb.style.left = x + 'px'; rb.style.top = y + 'px';
-      rb.style.width = Math.abs(ev.clientX - startX) + 'px';
-      rb.style.height = Math.abs(ev.clientY - startY) + 'px';
+      rb.style.width = w + 'px'; rb.style.height = h + 'px';
+      for (const it of items) it.el.classList.toggle('rb-hit', !(it.r.right < x || it.r.left > x + w || it.r.bottom < y || it.r.top > y + h));
     }
     function onUp() {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       if (!started) return;
-      const rbRect = rb.getBoundingClientRect();
       rb.remove();
       if (!additive) multiSelect.ids.clear();
-      const rows = main.querySelectorAll('.task[data-id]');
-      for (const row of rows) {
-        const r = row.getBoundingClientRect();
-        if (r.right < rbRect.left || r.left > rbRect.right || r.bottom < rbRect.top || r.top > rbRect.bottom) continue;
-        const id = row.dataset.id;
-        if (id) multiSelect.ids.add(id);
+      for (const it of items) {
+        if (!it.el.classList.contains('rb-hit')) continue;
+        it.el.classList.remove('rb-hit');
+        const id = it.el.dataset.id;
+        if (id && getItem(id)) multiSelect.ids.add(id);
       }
+      items = [];
       document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
       render();
     }
@@ -261,8 +266,8 @@ document.addEventListener('keydown', e => {
     }
     _lastSelectedTaskId = _lastRenderedTaskIds[next];
     // Update kb-cursor class without a full re-render
-    document.querySelectorAll('.task.kb-cursor').forEach(n => n.classList.remove('kb-cursor'));
-    const newEl = document.querySelector(`.task[data-id="${CSS.escape(_lastSelectedTaskId)}"]`);
+    document.querySelectorAll('.task.kb-cursor, .kanban-card.kb-cursor').forEach(n => n.classList.remove('kb-cursor'));
+    const newEl = document.querySelector(`#main-body .task[data-id="${CSS.escape(_lastSelectedTaskId)}"], #main-body .kanban-card[data-id="${CSS.escape(_lastSelectedTaskId)}"]`);
     if (newEl) {
       newEl.classList.add('kb-cursor');
       newEl.scrollIntoView({ block: 'nearest', behavior: (window.Motion && Motion.prefersReduced()) ? 'auto' : 'smooth' });

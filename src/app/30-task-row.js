@@ -21,17 +21,89 @@ function isTaskDrag(e) {
   const types = e && e.dataTransfer && e.dataTransfer.types;
   return !!types && Array.from(types).includes(TASK_DND_MIME);
 }
+// A selected task drags the whole selection: its ids ride along under this type (the dragged one first),
+// and every task drop target takes them all through draggedTaskIds(e).
+const TASKS_DND_MIME = 'application/x-dashboard-tasks';
+/** Every task a drag carries (the selection when a selected task was dragged), or []. */
+function draggedTaskIds(e) {
+  const one = draggedTaskId(e); if (!one) return [];
+  let ids = null;
+  try { ids = JSON.parse((e.dataTransfer && e.dataTransfer.getData(TASKS_DND_MIME)) || 'null'); } catch (err) { ids = null; }
+  if (!Array.isArray(ids)) return [one];
+  ids = ids.filter((x, i) => typeof x === 'string' && ids.indexOf(x) === i && getItem(x)).slice(0, 500);
+  return ids.includes(one) ? ids : [one];
+}
 function _startTaskDrag(e, item, el) {
   e.dataTransfer.setData(TASK_DND_MIME, item.id);
   e.dataTransfer.setData('text/plain', item.id);
   e.dataTransfer.effectAllowed = 'move';
+  const group = multiSelect.ids.has(item.id) ? [...multiSelect.ids].filter(x => getItem(x)) : [];
+  if (group.length > 1) {
+    const ids = [item.id, ...group.filter(x => x !== item.id)];
+    e.dataTransfer.setData(TASKS_DND_MIME, JSON.stringify(ids));
+    for (const x of ids) { const n = document.querySelector(`#main-body .task[data-id="${CSS.escape(x)}"], #main-body .kanban-card[data-id="${CSS.escape(x)}"]`); if (n) n.classList.add('dragging'); }
+    // What is being dragged, in words: "3 tasks" next to the pointer.
+    try {
+      const g = document.createElement('div'); g.className = 'drag-count'; g.textContent = `${ids.length} tasks`;
+      document.body.appendChild(g);
+      e.dataTransfer.setDragImage(g, 14, 14);
+      setTimeout(() => g.remove(), 0);
+    } catch (err) { /* the browser's own drag image */ }
+  }
   el.classList.add('dragging');
   document.body.classList.add('task-dragging');
 }
 function _endTaskDrag(el) {
   el.classList.remove('dragging');
+  document.querySelectorAll('#main-body .task.dragging, #main-body .kanban-card.dragging').forEach(n => n.classList.remove('dragging'));
   document.body.classList.remove('task-dragging');
   document.querySelectorAll('.drag-over, .drop-before, .drop-after').forEach(n => n.classList.remove('drag-over', 'drop-before', 'drop-after'));
+}
+
+/**
+ * Let a sidebar item take a dragged task (15-nav-sidebar.js): a stream moves it into the stream,
+ * Today makes it due today, No date clears the date, Logbook completes it. Undo in the toast.
+ * view: the item's view ('stream:<id>', 'today', 'no-date', 'completed'); others are left alone.
+ */
+function sbTaskDrop(el, view) {
+  const act = _sbTaskDropAction(view);
+  if (!el || !act) return el;
+  el.addEventListener('dragover', (e) => { if (!isTaskDrag(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', (e) => { if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over'); });
+  el.addEventListener('drop', (e) => {
+    el.classList.remove('drag-over');
+    const ids = draggedTaskIds(e); if (!ids.length) return;
+    e.preventDefault(); e.stopPropagation();
+    if (ids.length > 1) { _sbTaskDropMany(view, ids); return; }
+    const id = ids[0];
+    const msg = act(id, getItem(id));
+    if (msg) toast(msg, { kind: 'ok', icon: view.startsWith('stream:') ? 'layers' : 'calendar', action: { label: 'Undo', run: () => undo() } });
+  });
+  el.dataset.taskDrop = '';   // outlined while a task is dragged (20-main-tasks.css), so the targets show themselves
+  return el;
+}
+/** Several selected tasks dropped on a sidebar item: the same change for all, one undo step (32-tasks-ui.js bulk*). */
+function _sbTaskDropMany(view, ids) {
+  if (view.startsWith('stream:')) {
+    const s = view.slice(7); if (!STREAMS[s]) return;
+    batchTasks(ids, id => { const it = getItem(id); if (it.stream !== s) { logActivity(id, 'stream', { from: it.stream, to: s }); it.stream = s; } });
+    toast(`${ids.length} moved to ${STREAMS[s].label}`, { kind: 'ok', icon: 'layers', action: { label: 'Undo', run: () => undo() } });
+  } else if (view === 'today') bulkSetDue(ids, todayStr());
+  else if (view === 'no-date') bulkSetDue(ids, null);
+  else if (view === 'completed') bulkComplete(ids);
+}
+/** What a drop on a sidebar item does: (id, item) -> toast text ('' when nothing changed or it says so itself). */
+function _sbTaskDropAction(view) {
+  view = String(view || '');
+  if (view.startsWith('stream:')) {
+    const s = view.slice(7);
+    if (!STREAMS[s]) return null;
+    return (id, it) => { if (effStream(it) === s) return ''; setOverride(id, 'stream', s); render(); return `Moved to ${STREAMS[s].label}`; };
+  }
+  if (view === 'today') return (id, it) => { if (effDate(it) === todayStr()) return ''; setDateWithReason(id, todayStr(), null); return 'Due today'; };
+  if (view === 'no-date') return (id, it) => { if (!effDate(it)) return ''; const snap = dueMoveSnap(id); setDateWithReason(id, null, null); dueMovedToast(id, null, snap, { always: true }); return ''; };
+  if (view === 'completed') return (id) => { if (statusOf(id) !== 'done') toggleDone(id); return ''; };   // toggleDone has its own toast + Undo
+  return null;
 }
 
 /** Short due label for rows: Today / 14:00 / Tomorrow / Mon / Yesterday / 12 Sep. */
@@ -159,12 +231,12 @@ function renderTaskRow(item, opts) {
     };
     el.ondragleave = () => el.classList.remove('drop-before', 'drop-after');
     el.ondrop = e => {
-      const draggedId = draggedTaskId(e);
+      const ids = draggedTaskIds(e);
       const after = el.classList.contains('drop-after');
       el.classList.remove('drop-before', 'drop-after');
-      if (!draggedId) return;
+      if (!ids.length) return;
       e.preventDefault(); e.stopPropagation();
-      if (draggedId !== id) reorderTask(draggedId, id, after);
+      if (!ids.includes(id)) reorderTask(ids.length > 1 ? ids : ids[0], id, after);   // a selection moves as one block
     };
   }
 
@@ -186,7 +258,7 @@ function renderTaskRow(item, opts) {
   cb.setAttribute('role', 'checkbox');
   cb.setAttribute('aria-checked', status === 'done' ? 'true' : status === 'doing' ? 'mixed' : 'false');
   cb.setAttribute('aria-label', (status === 'done' ? 'Reopen: ' : 'Complete: ') + effTitle(item));
-  cb.title = status === 'done' ? (wont ? "Won't do · click to reopen" : 'Done · click to reopen') : `${PRIORITIES[prio]?.label || ''} · click to complete · Shift+click: in progress`;
+  cb.title = status === 'done' ? (wont ? "Won't do · click to reopen" : 'Done · click to reopen') : `${PRIORITIES[prio]?.label || ''} · click to complete · Shift+click: in progress · Alt+click: won't do`;
   if (wont) cb.innerHTML = icon('minus', 'i-xs');
   cb.onclick = e => {
     e.stopPropagation();
@@ -222,7 +294,8 @@ function renderTaskRow(item, opts) {
     meta.appendChild(s); return s;
   };
   // In progress shows as the half-filled checkbox (as in the mockup), not as words in the meta line.
-  if (item.plannedFor && status !== 'done' && !(state.view === 'today' && item.plannedFor <= today && daysUntil(effDate(item)) === 0)) {
+  // In Today's sections the "Planned for today" heading already says it (21-task-query.js).
+  if (item.plannedFor && status !== 'done' && !(state.view === 'today' && item.plannedFor <= today && (daysUntil(effDate(item)) === 0 || (!searchQuery && groupForView('today') === 'auto')))) {
     const pd = daysUntil(item.plannedFor);
     if (pd !== null && pd <= 0) m('t-planned', 'sun', 'Today', 'Planned for today');
     else m('t-planned', 'calendar-check', dueLabel(item.plannedFor), 'Planned for ' + item.plannedFor);
@@ -287,17 +360,7 @@ function renderTaskRow(item, opts) {
 
   el.onclick = (e) => {
     if (e.target.closest('.multi-handle')) return;
-    if (e.shiftKey && _lastSelectedTaskId && _lastRenderedTaskIds.length) {
-      const i1 = _lastRenderedTaskIds.indexOf(_lastSelectedTaskId);
-      const i2 = _lastRenderedTaskIds.indexOf(id);
-      if (i1 >= 0 && i2 >= 0) {
-        const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
-        for (let i = lo; i <= hi; i++) multiSelect.ids.add(_lastRenderedTaskIds[i]);
-        document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
-        render();
-        return;
-      }
-    }
+    if (e.shiftKey && _selectRangeTo(id)) return;
     if (e.ctrlKey || e.metaKey) { _lastSelectedTaskId = id; _toggleMulti(id); return; }
     _lastSelectedTaskId = id;
     // The centre card or the side panel (Settings > Tasks): 61-task-card.js. Clicking the open one again is a no-op.
@@ -330,6 +393,22 @@ function _toggleMulti(id) {
   if (multiSelect.ids.has(id)) multiSelect.ids.delete(id); else multiSelect.ids.add(id);
   document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
   render();
+}
+/**
+ * Shift+click (list and board): select every task from the last one clicked (or ticked) to `id`,
+ * in the order on screen, keeping what was selected already. False when there is no anchor.
+ */
+function _selectRangeTo(id) {
+  if (!_lastSelectedTaskId || !_lastRenderedTaskIds.length) return false;
+  const i1 = _lastRenderedTaskIds.indexOf(_lastSelectedTaskId);
+  const i2 = _lastRenderedTaskIds.indexOf(id);
+  if (i1 < 0 || i2 < 0) return false;
+  const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1];
+  for (let i = lo; i <= hi; i++) multiSelect.ids.add(_lastRenderedTaskIds[i]);
+  document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
+  try { const s = window.getSelection && window.getSelection(); if (s) s.removeAllRanges(); } catch (e) { /* no selection API */ }   // Shift+click also selects text
+  render();
+  return true;
 }
 
 function toggleInlineSubtasks(id) {
@@ -366,21 +445,26 @@ function _buildInlineSubtasks(item) {
     if (e.key === 'Enter' && add.value.trim()) { e.preventDefault(); _keepFocus('inline-sub:' + item.id); addSubtask(item.id, add.value.trim()); }
     if (e.key === 'Escape') { add.value = ''; add.blur(); }
   };
+  add.title = 'Paste a list to add one subtask per line';
+  add.addEventListener('paste', (e) => _tdPasteSubtasks(e, add, item.id, 'inline-sub:' + item.id));   // 60-task-detail.js
   wrap.appendChild(add);
   return wrap;
 }
 
-/** Reorder by drag: switches THIS view to manual order (seeded from what is on screen). */
+/** Reorder by drag: switches THIS view to manual order (seeded from what is on screen). draggedId: an id or several (a block, in screen order). */
 function reorderTask(draggedId, targetId, after) {
-  if (!getItem(draggedId) || !getItem(targetId)) return;
   const view = state.view;
+  const seed = _lastRenderedTaskIds;
+  const moving = (Array.isArray(draggedId) ? draggedId : [draggedId]).filter(x => getItem(x) && x !== targetId)
+    .sort((a, b) => (seed.indexOf(a) < 0 ? 1e9 : seed.indexOf(a)) - (seed.indexOf(b) < 0 ? 1e9 : seed.indexOf(b)));
+  if (!moving.length || !getItem(targetId)) return;
   const wasManual = sortForView(view) === 'manual';
   let order = (state.customOrder[view] || []).filter(x => getItem(x));
-  if (!wasManual || !order.length) order = _lastRenderedTaskIds.filter(x => getItem(x));
-  order = order.filter(x => x !== draggedId);
+  if (!wasManual || !order.length) order = seed.filter(x => getItem(x));
+  order = order.filter(x => !moving.includes(x));
   let ti = order.indexOf(targetId);
-  if (ti < 0) order.push(draggedId);
-  else order.splice(ti + (after ? 1 : 0), 0, draggedId);
+  if (ti < 0) order.push(...moving);
+  else order.splice(ti + (after ? 1 : 0), 0, ...moving);
   state.customOrder[view] = order;
   if (!wasManual) {
     setTaskViewPref(view, { sort: 'manual' });

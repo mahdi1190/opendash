@@ -14,7 +14,9 @@
                     Finances' display choices (src/finance/00-core.js SHARED_F),
                     the assistant's model, a running focus block, how often Home
                     refreshes on its own (12-home-refresh.js). Per field.
-     state.drafts   {'week:<from>': {...}}: the weekly review in progress.
+     state.drafts   {'week:<from>': {...}}: the weekly review in progress;
+                    'qa:inline' {text, at}: the inline quick add (31-task-views.js);
+                    'note:<taskId>' {text, at}: a note being written (60-task-detail.js).
    All three are UI keys (no undo step, no backup) that every tab takes from a
    newer copy (SHARED_UI_KEYS) and other computers sync as preferences
    (lib/sync/manifest.mjs '── local ──').

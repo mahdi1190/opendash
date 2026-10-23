@@ -61,7 +61,8 @@ function kbHelpGroups() {
       ['Move between tasks', ['J', 'K']], ['Extend selection', ['Shift', '↑']], ['Open task', ['Enter']],
       ['Complete / reopen', ['X']], ['In progress', ['S']], ['Plan for today', ['T']], ['Due date', ['D']],
       ['Priority', ['P']], ['Set priority', ['1', '–', '4']], ['Edit title', ['E']], ['Task menu', ['.']],
-      ['Move to bin', ['Del']], ['Select a task', [mod, 'click']], ['Select all tasks', [mod, 'A']],
+      ['Move to bin', ['Del']], ['Select a task', [mod, 'click']], ['Select a range', ['Shift', 'click']],
+      ['Select by dragging (from empty space)', ['Drag']], ['Select all tasks', [mod, 'A']], ['Clear the selection', ['Esc']],
       ['With tasks selected: same keys for all', ['X', 'T', 'D', '1–4', 'Del']],
       ['Move a subtask up / down', ['Alt', '↑', '↓']], ['This task’s commands', [mod, 'K']],
     ]],
@@ -154,10 +155,12 @@ function openBulkImport() {
 /* ============================================================
    TASK TEMPLATES
    ============================================================ */
-function saveTaskAsTemplate(taskId) {
-  const item = getItem(taskId); if (!item) return;
-  const name = prompt('Template name:', effTitle(item));
-  if (!name) return;
+async function saveTaskAsTemplate(taskId) {
+  let item = getItem(taskId); if (!item) return;
+  // The app's own dialog (the browser's prompt() blocked the page and looked out of place).
+  const name = await promptDialog({ title: 'Save as template', label: 'Template name', value: effTitle(item), confirmLabel: 'Save template' });
+  item = getItem(taskId);
+  if (!name || !item) return;
   state.taskTemplates.push({
     id: 'tmpl-' + Date.now(), name,
     title: effTitle(item), stream: effStream(item), priority: effPriority(item),
@@ -165,7 +168,7 @@ function saveTaskAsTemplate(taskId) {
     subtasks: effSubtasks(item).map(s => ({ title: s.title, done: false })), recurrence: effRecurrence(item), people: [...(item.people || [])],
   });
   saveData();
-  showToast('✓ template saved', false);
+  toast(`Template “${name}” saved. Find it under Templates in the quick add`, { kind: 'ok', icon: 'layout-template', action: { label: 'Manage', run: () => openTemplatesModal() } });
 }
 function applyTemplate(tmplId) {
   const t = state.taskTemplates.find(x => x.id === tmplId); if (!t) return;

@@ -774,8 +774,10 @@ function homeCompleteTask(id, cardEl, direct) {
 function homeReschedule(id, date) {
   const it = getItem(id); if (!it || !date) return;
   if (effDate(it) === date) return;
+  const snap = typeof dueMoveSnap === 'function' ? dueMoveSnap(id) : null;
   setDateWithReason(id, date, 'Moved on Home');
-  toast(`Moved to ${_tbShortDate(date, true)}`, { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+  // "Moved to Sat 1 Nov", and "· still planned for today" (with Not today) when Today keeps it (32-tasks-ui.js).
+  if (!(snap && dueMovedToast(id, date, snap, { always: true }))) toast(`Moved to ${_tbShortDate(date, true)}`, { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
 }
 function homeSnooze(id) {
   const s = Object.assign({}, homeState().snoozed || {});
