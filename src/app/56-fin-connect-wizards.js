@@ -145,7 +145,12 @@ function finOpenFlow(id, opts) {
   if (id === 'monzo') {
     // A Monzo source whose client is saved but not signed in yet: carry on from Connect.
     const pending = (entry.sources || []).find(x => x && x.status && x.status.configured && !x.status.connected);
-    if (opts.reauth) { w.sourceId = opts.reauth; w.reauth = true; w.step = 'connect'; w.connectAt = null; }
+    if (opts.reauth) {
+      // Signing in again needs a saved client: one never saved starts at Step 1 (not a sign-in page that fails).
+      const mine = (entry.sources || []).find(x => x && x.id === opts.reauth);
+      w.sourceId = opts.reauth; w.reauth = true; w.connectAt = null; w.err = null;
+      w.step = mine && mine.status && mine.status.configured === false ? 'client' : 'connect';
+    }
     else if (!w.sourceId && pending) { w.sourceId = pending.id; if (w.step === 'client') w.step = 'connect'; }
   }
   if (id === 'enable-banking') {

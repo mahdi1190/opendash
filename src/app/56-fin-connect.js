@@ -672,6 +672,7 @@ function _finGroupCard(group, nameOf) {
     : st === 'off' ? _finStatusPill('off', 'Paused')
     : st === 'auth' || due.tone === 'past' ? _finStatusPill('warn', 'Needs sign-in')
     : st === 'error' ? _finStatusPill('err', 'Not working')
+    : st === 'setup' ? _finStatusPill('warn', 'Not finished')
     : (due.tone === 'amber' || due.tone === 'red') ? _finStatusPill(due.tone === 'red' ? 'err' : 'warn', `Re-authorise in ${due.days} day${due.days === 1 ? '' : 's'}`)
     : st === 'ok' ? _finStatusPill('ok', 'Connected') : _finStatusPill('off', 'Not checked yet');
   head.appendChild(pill);
@@ -681,7 +682,9 @@ function _finGroupCard(group, nameOf) {
   head.appendChild(lock);
   const acts = _finEl('div', 'fc-group-acts');
   if (s.kind === 'csv') acts.appendChild(_connBtn('Import a CSV', 'upload', 'btn-ghost', finImportCsv));
-  else if (st === 'auth' || due.tone === 'past' || (due.tone === 'red' && s.kind === 'direct')) {
+  else if (st === 'setup' && s.kind === 'direct') {
+    acts.appendChild(_connBtn('Finish connecting', 'arrow-right', 'btn-secondary', () => finStartProvider(group.provider, { reauth: s.id })));
+  } else if (st === 'auth' || due.tone === 'past' || (due.tone === 'red' && s.kind === 'direct')) {
     acts.appendChild(_connBtn('Sign in again', 'log-in', 'btn-secondary', () => s.kind === 'direct' ? finStartProvider(group.provider, { reauth: s.id }) : _connPageSourceHelp(s)));
   } else {
     const sync = _connBtn(busy ? 'Syncing…' : 'Sync now', busy ? null : 'refresh-cw', 'btn-ghost', () => finSyncSource(s));
@@ -711,8 +714,22 @@ function _finGroupCard(group, nameOf) {
     }
     card.appendChild(m);
   }
+  // An unfinished copy left by an earlier try (a retried Monzo set-up): say so and remove it in one click.
+  if (s.kind === 'direct' && s.setup && !group.accounts.length && _finGroups().some(g => g !== group && g.provider === group.provider && g.source.id !== s.id && g.accounts.length)) {
+    const d = _finEl('div', 'fc-group-msg');
+    d.innerHTML = icon('copy', 'i-xs');
+    d.appendChild(_finEl('span', null, `This looks like an unfinished copy left by an earlier try. Your working ${p.name} connection is listed separately and is not touched.`));
+    d.appendChild(_connBtn('Remove this copy', 'trash-2', 'btn-ghost', async (b) => {
+      b.disabled = true;
+      try { await finApi('sources/' + encodeURIComponent(s.id) + '/disconnect', { method: 'POST', body: { removeData: false } }); toast('Unfinished copy removed.', { kind: 'ok' }); }
+      catch (e) { b.disabled = false; toast('Could not remove it: ' + e.message, { kind: 'err', timeout: 8000 }); return; }
+      await Promise.all([SourcesStore.refresh(), FinConnectStore.load({ force: true })]);
+      _srcAfterChange('bank');
+    }));
+    card.appendChild(d);
+  }
   const list = _finEl('div', 'fc-acc-list'); list.setAttribute('role', 'list');
-  if (!group.accounts.length) list.appendChild(_finEl('p', 'fc-acc-empty', s.kind === 'csv' ? 'Imported accounts appear in Finances.' : 'Accounts appear here after the first sync.'));
+  if (!group.accounts.length) list.appendChild(_finEl('p', 'fc-acc-empty', s.kind === 'csv' ? 'Imported accounts appear in Finances.' : s.setup ? 'Not finished: press Finish connecting (or Sign in again) to bring in accounts.' : 'Accounts appear here after the first sync.'));
   for (const a of group.accounts) list.appendChild(_finAccountRow(group, a, nameOf));
   card.appendChild(list);
   return card;
