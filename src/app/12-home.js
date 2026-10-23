@@ -187,7 +187,8 @@ function homeWaitingPerson(i) {
 function homeAvatar(p, size) {
   if (!p) return '';
   const sz = Number(size) || 20;
-  const url = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || safeUrl(p.avatarUrl);
+  const raw = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || safeUrl(p.avatarUrl);
+  const url = typeof pplPicUrl === 'function' ? pplPicUrl(raw) : raw;    // 50-people.js: a picture that arrived by sync
   const inner = url ? `<img src="${escAttr(url)}" alt="" data-avatar-fallback="${escAttr(p.id)}" data-avatar-size="${sz}">` : esc(avatarInitials(p.name));
   return `<span class="avatar" style="--size:${sz}px;--c:${escAttr(safeColor(p.color, 'var(--sw-slate)'))}" title="${escAttr(p.name || '')}">${inner}</span>`;
 }
@@ -670,6 +671,17 @@ function homeAddSubtask(taskId, title) {
   _homeRefocus = keep;
   addSubtask(taskId, title);                    // saves + repaints; focus comes back below
 }
+/* Text typed in a small Home input (Focus's quick add, a card's "Add a subtask") survives the
+   repaint a save or live sync makes while typing: homeKeepText(input, key) puts it back (caret at
+   the end); the caller calls homeKeepText.clear(key) when it uses the text up. */
+const _homeTyped = new Map();
+function homeKeepText(inp, key) {
+  if (!inp || !key) return;
+  const had = _homeTyped.get(key);
+  if (had && !inp.value) { inp.value = had; try { inp.setSelectionRange(had.length, had.length); } catch (e) { /* not focused yet */ } }
+  inp.addEventListener('input', () => { if (inp.value) _homeTyped.set(key, inp.value); else _homeTyped.delete(key); });
+}
+homeKeepText.clear = (key) => { _homeTyped.delete(key); };
 let _homeRefocus = null;
 function _homeRestoreFocus() {
   if (!_homeRefocus) return;
@@ -762,8 +774,10 @@ function homeCompleteTask(id, cardEl, direct) {
 function homeReschedule(id, date) {
   const it = getItem(id); if (!it || !date) return;
   if (effDate(it) === date) return;
+  const snap = typeof dueMoveSnap === 'function' ? dueMoveSnap(id) : null;
   setDateWithReason(id, date, 'Moved on Home');
-  toast(`Moved to ${_tbShortDate(date, true)}`, { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+  // "Moved to Sat 1 Nov", and "· still planned for today" (with Not today) when Today keeps it (32-tasks-ui.js).
+  if (!(snap && dueMovedToast(id, date, snap, { always: true }))) toast(`Moved to ${_tbShortDate(date, true)}`, { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
 }
 function homeSnooze(id) {
   const s = Object.assign({}, homeState().snoozed || {});
@@ -784,6 +798,17 @@ function homeTaskMenu(anchor, id) {
     { label: 'Today', icon: 'sun', run: () => homeReschedule(id, todayStr()) },
     { label: 'Tomorrow', icon: 'sunrise', run: () => homeReschedule(id, plus(1)) },
     { label: 'Next week', icon: 'calendar-range', hint: _tbShortDate(nextMon, true), run: () => homeReschedule(id, nextMon) },
+    // Any other day without opening the task: the usual date picker (typed dates, the mini month).
+    ...(typeof openDueDatePopover === 'function' ? [{ label: 'Pick a date…', icon: 'calendar-days', run: () => setTimeout(() => {
+      const at = anchor && anchor.isConnected ? anchor : card();
+      if (!at) return;
+      openDueDatePopover(at, { value: effDate(it) || null, title: 'Move to', align: 'end', onPick: (d) => {
+        if (d) { homeReschedule(id, d); return; }
+        if (!effDate(it)) return;                            // "No date" on a task without one: nothing to do
+        setDateWithReason(id, null, 'Moved on Home');
+        toast('Date removed', { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+      } });
+    }, 0) }] : []),
     'sep',
     { label: 'Hide from Focus today', icon: 'eye-off', kbd: 'H', run: () => homeSnooze(id) },
     { label: 'Open in the detail pane', icon: 'panel-right', run: () => selectTask(id) },

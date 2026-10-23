@@ -176,6 +176,8 @@ function _evcLongDate(iso) { return _calFmt(iso, { weekday: 'long', day: 'numeri
  */
 function _evcCommitOn(el, o) {
   let reverted = false;
+  // What is being typed survives a repaint of the panel (43-calendar-panel.js calKeepTyping).
+  if (o.key && typeof calKeepTyping === 'function') calKeepTyping(el, o.key, o.original, o.input);
   el.addEventListener('keydown', (e) => {
     if (e.isComposing) return;
     if (e.key === 'Enter' && (o.single ? !e.shiftKey : (e.ctrlKey || e.metaKey))) {
@@ -393,7 +395,7 @@ function _evcTitle(ev, ed, where) {
   ta.value = orig;
   const fit = _evcAutosize(ta);
   _evcCommitOn(ta, {
-    single: true, original: orig, input: fit,
+    single: true, original: orig, input: fit, key: 'evc-title:' + ev.id,
     commit: (v) => {
       const t = v.replace(/\s+/g, ' ').trim();
       if (!t) { ta.value = orig; fit(); return; }
@@ -454,7 +456,7 @@ function _evcLocation(ev, ed) {
   if (ed.ok) {
     const inp = document.createElement('input'); inp.className = 'evc-in'; inp.dataset.fk = 'evc-loc'; inp.maxLength = 300;
     inp.placeholder = 'Add location'; inp.setAttribute('aria-label', 'Location'); inp.value = loc; inp.autocomplete = 'off';
-    _evcCommitOn(inp, { single: true, original: loc, commit: (v) => evcUpdate(ev, evcPatchDiff({ location: loc }, { location: v })) });
+    _evcCommitOn(inp, { single: true, original: loc, key: 'evc-loc:' + ev.id, commit: (v) => evcUpdate(ev, evcPatchDiff({ location: loc }, { location: v })) });
     row.appendChild(inp);
   } else {
     const t = _evcEl('span', 'evc-loc-t', loc); t.title = loc;
@@ -483,7 +485,7 @@ function _evcDesc(ev, ed, where) {
     ta.placeholder = 'Add a description'; ta.setAttribute('aria-label', 'Description'); ta.value = desc;
     const fit = _evcAutosize(ta, where === 'card' ? 520 : 320);
     _evcCommitOn(ta, {
-      single: false, original: desc, input: fit,
+      single: false, original: desc, input: fit, key: 'evc-desc:' + ev.id,
       commit: (v) => evcUpdate(ev, evcPatchDiff({ description: desc }, { description: v })),
       after: () => { if (_evcDescEditing === ev.id) _evcDescEditing = null; setTimeout(swap, 0); },
     });
@@ -740,9 +742,26 @@ function evcOpenCreate(prefill, o) {
   const cals = _evcWritableCals();
   if (!draft.calendarId || (cals.length && !cals.some(c => c.id === draft.calendarId))) draft.calendarId = _evcDefaultCal() || draft.calendarId;
   if (typeof _calOpenEventId !== 'undefined' && _calOpenEventId) { _calOpenEventId = null; render(); }
+  // What it opened with: leaving it unchanged asks nothing. Words the user typed before (the
+  // quick-create's More options: prefill.typed) count as typed here too.
+  draft.start0 = prefill && prefill.typed ? _evcDraftSig({}) : _evcDraftSig(draft);
   const fromEl = o.from && o.from.isConnected ? o.from : null;
   tcOpen({ kind: 'evcreate', draft }, Object.assign({}, o, { fromEl, fromRect: fromEl ? fromEl.getBoundingClientRect() : null }));
   return 'card';
+}
+function _evcDraftSig(d) { return JSON.stringify([String(d.title || '').trim(), String(d.location || '').trim(), String(d.description || '').trim(), d.guests || []]); }
+/**
+ * The new-event card left without Save (Esc, x, Cancel, the scrim, Back: 61-task-card.js
+ * tcClose / tcBack). When something was typed, the toast says it was not saved and Reopen
+ * brings the card back with everything as it was.
+ */
+function evcCreateLeft(cur) {
+  if (!cur || cur.kind !== 'evcreate' || cur.saved || !cur.draft) return;
+  const d = cur.draft;
+  if (_evcDraftSig(d) === (d.start0 || _evcDraftSig({}))) return;
+  const t = String(d.title || '').replace(/\s+/g, ' ').trim();
+  const name = t ? `“${t.length > 40 ? t.slice(0, 39) + '…' : t}”` : 'The new event';
+  toast(`${name} was not saved`, { icon: 'pencil', timeout: 8000, action: { label: 'Reopen', run: () => tcOpen({ kind: 'evcreate', draft: d }, {}) } });
 }
 /** The scene band for a new event: follows the title, tinted with the calendar's colour. */
 function evcHeroSpec(d) {
@@ -897,6 +916,7 @@ function _evcCreateSave() {
   const args = evcDraftToCreate(d);
   if (!_evcSupports('colorId')) delete args.colorId;
   if (!_evcSupports('guests')) delete args.guests;
+  cur.saved = true;                         // leaving now is not "not saved" (evcCreateLeft)
   const leave = () => { if (_tc.stack.length > 1) { _tc.stack.pop(); _tcPaint({ swap: 'back' }); _tcFocusStart(); } else tcClose(); };
   if (!cw || typeof cw.create !== 'function') {
     const w = d.when;

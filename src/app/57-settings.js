@@ -84,7 +84,9 @@ async function settingsSaveConfig(patch, okMsg) {
     if (okMsg !== false) toast(okMsg || 'Saved', { kind: 'ok' });
     return true;
   } catch (e) {
-    toast('Not saved: ' + ((e && e.message) || 'the OpenDash server is not running'), { kind: 'err' });
+    // Try again sends the same change (and repaints the page so the control shows it).
+    toast('Not saved: ' + (typeof netErrorMessage === 'function' ? netErrorMessage(e, 'the OpenDash server is not running') : ((e && e.message) || 'the OpenDash server is not running')), { kind: 'err',
+      retry: async () => { if (await settingsSaveConfig(patch, okMsg) && typeof renderMain === 'function') renderMain(); } });
     return false;
   }
 }
@@ -247,6 +249,16 @@ registerSettingsGroup({
     row.classList.add('set-row-stack');
     row.appendChild(style);
     el.appendChild(row);
+    // Finances' wording (config.finance): follows you to your other computers (lib/profile.mjs).
+    if (!APP_CONFIG.features || APP_CONFIG.features.finance !== false) {
+      const fin = APP_CONFIG.finance || {};
+      const worded = fin.briefAi !== false;
+      el.appendChild(_settingsRow('Money brief and story', 'Claude rewords the money brief on Finances and the money story. It only sees totals, and every number is checked. Off: they keep their own wording.',
+        _settingsSwitch(worded, 'Claude rewords the money brief and story', async (on) => { if (await settingsSaveConfig({ finance: { briefAi: on } }, on ? 'Claude rewords your money brief' : 'Your money brief keeps its own wording')) render(); })));
+      const model = _settingsSelect(SETTINGS_MODELS, fin.briefModel || 'claude-haiku-4-5', (v) => settingsSaveConfig({ finance: { briefModel: v } }));
+      model.disabled = !worded;
+      el.appendChild(_settingsRow('Money wording', 'The model for the money brief and story.', model));
+    }
   },
 });
 

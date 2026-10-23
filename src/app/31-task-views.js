@@ -24,7 +24,14 @@ function viewTitle(v) {
 
 let _tvLastView = null;
 let _logbookDays = 30;            // Logbook shows this many days, "Show older" adds more
-let _qaDraft = '', _qaFocused = false, _qaIgnore = [], _qaCaret = null;
+let _qaDraft = '', _qaFocused = false, _qaIgnore = [], _qaCaret = null, _qaDraftRead = false;
+/** Keep the quick-add text (state.drafts 'qa:inline'); empty forgets it. */
+function _qaKeepDraft(text) {
+  if (typeof draftSet !== 'function') return;
+  const t = String(text || '');
+  if (!t.trim()) { if (typeof draftGet === 'function' && draftGet('qa:inline')) draftDel('qa:inline'); return; }
+  draftSet('qa:inline', { text: t.slice(0, 2000), at: Date.now() });
+}
 let _qaSuggest = { items: [], index: 0 };
 
 /** Render the current task view into main. Called by _renderMainBody. */
@@ -119,10 +126,16 @@ function renderListView(container, o) {
   if (searching) by = 'none';
   if (by === 'auto' && (view === 'no-date' || view === 'tomorrow' || view.startsWith('day:'))) by = 'none';
   const groups = groupItems(rest, by, view);
+  // Today's sections (21-task-query.js): in the user's order; a hidden one is listed in a note under them.
+  const sections = view === 'today' && by === 'auto';
+  const hiddenNow = [];
   for (const g of groups) {
     if (!g.items.length) continue;
-    list.appendChild(_renderGroup(view, Object.assign({}, g, { label: g.label || (searching ? 'Open' : ''), danger: g.key === 'overdue' })));
+    if (sections && todaySectionHidden(g.key)) { hiddenNow.push(g); continue; }
+    const def = sections ? todaySectionDef(g.key) : null;
+    list.appendChild(_renderGroup(view, Object.assign({}, g, { label: g.label || (searching ? 'Open' : ''), danger: g.key === 'overdue', section: !!def, icon: def ? def.icon : g.icon })));
   }
+  if (hiddenNow.length) list.appendChild(_todayHiddenNote(hiddenNow));
   if (!open.length && view !== 'completed' && !searching) _mountTaskEmpty(list, view, false, true);
   if (closed.length) {
     list.appendChild(_renderGroup(view, {
@@ -152,10 +165,19 @@ function _mountTaskEmpty(list, view, searching, inline) {
     : view === 'completed'
     ? { icon: 'circle-check', title: 'Nothing completed lately', text: 'Finished tasks collect here, newest first.' }
     : view === 'week'
-    ? { icon: 'calendar-range', title: 'A quiet week ahead', text: 'Nothing is due in the next 7 days.' }
+    ? { icon: 'calendar-range', title: 'A quiet week ahead', text: 'Nothing is due in the next 7 days. Add a task above, or drop one on a day in the strip.' }
     : view === 'no-date'
     ? { icon: 'circle-dashed', title: 'Every task has a date', text: 'Tasks without a due date show up here.' }
-    : { icon: 'sparkles', title: 'Nothing here', text: 'Add a task above.' };
+    // What to do next, in the words of the list you are on (a task added here keeps its stream, tag or person).
+    : view.startsWith('stream:')
+    ? { icon: 'layers', title: `Nothing open in ${viewTitle(view)}`, text: 'Add a task above: it goes into this stream. Press Q to add one from anywhere.', actions: [{ label: 'All tasks', icon: 'list', run: () => setView('all') }] }
+    : view.startsWith('tag:')
+    ? { icon: 'hash', title: `Nothing open tagged ${viewTitle(view)}`, text: 'Add a task above: it gets this tag. Or add the tag to a task from its Tags field.', actions: [{ label: 'Manage tags', icon: 'tags', run: () => (typeof openTagManager === 'function' ? openTagManager() : setView('tags')) }] }
+    : view.startsWith('person:')
+    ? { icon: 'users', title: `Nothing open with ${viewTitle(view)}`, text: 'Add a task above and they are linked to it, or type @name in any task.' }
+    : view === 'all'
+    ? { icon: 'sparkles', title: 'No open tasks', text: 'Add one above (try “email Sam fri !p1”), or press Q from anywhere.' }
+    : { icon: 'sparkles', title: 'Nothing here', text: 'Add a task above, or press Q from anywhere.' };
   o.compact = true;
   mountEmptyState(list, o);
 }
@@ -181,6 +203,7 @@ function _renderGroup(view, g) {
     }
     // Drop a task on a day header (Upcoming) to move it to that day.
     if (/^\d{4}-\d{2}-\d{2}$/.test(g.key)) _makeDayDropTarget(h, g.key);
+    if (g.section) _todaySectionHeader(h, g.key);
     grp.appendChild(h);
   }
   if (collapsed) { grp.classList.add('collapsed'); return grp; }
@@ -191,6 +214,78 @@ function _renderGroup(view, g) {
   }
   grp.appendChild(body);
   return grp;
+}
+
+/* ---------- Today's sections: drag a header to reorder, or its Arrange menu (keyboard) ---------- */
+const TODAY_SECTION_MIME = 'application/x-dashboard-section';
+function _todaySectionHeader(h, key) {
+  h.classList.add('tg-sec');
+  h.draggable = true;
+  h.setAttribute('data-sec', key);
+  const grip = document.createElement('span'); grip.className = 'tg-grip'; grip.innerHTML = icon('grip-vertical', 'i-sm'); grip.setAttribute('aria-hidden', 'true');
+  grip.title = 'Drag to move this section';
+  h.insertBefore(grip, h.firstChild);
+  const arr = document.createElement('button'); arr.type = 'button'; arr.className = 'btn-icon btn-sm tg-arrange';
+  arr.innerHTML = icon('ellipsis'); arr.setAttribute('aria-label', 'Arrange sections'); arr.setAttribute('data-tip', 'Arrange sections');
+  arr.onclick = (e) => { e.stopPropagation(); openTodaySectionsMenu(e.currentTarget, key); };
+  h.appendChild(arr);
+  h.addEventListener('dragstart', (e) => {
+    if (e.target !== h && !(e.target instanceof Element && e.target.closest('.tg-sec') === h)) return;
+    e.dataTransfer.setData(TODAY_SECTION_MIME, key); e.dataTransfer.effectAllowed = 'move';
+    h.classList.add('sec-dragging');
+  });
+  h.addEventListener('dragend', () => { h.classList.remove('sec-dragging'); document.querySelectorAll('.sec-drop-before, .sec-drop-after').forEach(n => n.classList.remove('sec-drop-before', 'sec-drop-after')); });
+  h.addEventListener('dragover', (e) => {
+    if (!Array.from((e.dataTransfer && e.dataTransfer.types) || []).includes(TODAY_SECTION_MIME)) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    const r = h.getBoundingClientRect(); const after = e.clientY > r.top + r.height / 2;
+    h.classList.toggle('sec-drop-after', after); h.classList.toggle('sec-drop-before', !after);
+  });
+  h.addEventListener('dragleave', (e) => { if (!h.contains(e.relatedTarget)) h.classList.remove('sec-drop-before', 'sec-drop-after'); });
+  h.addEventListener('drop', (e) => {
+    const from = e.dataTransfer ? e.dataTransfer.getData(TODAY_SECTION_MIME) : '';
+    const after = h.classList.contains('sec-drop-after');
+    h.classList.remove('sec-drop-before', 'sec-drop-after');
+    if (!from || !todaySectionDef(from)) return;
+    e.preventDefault(); e.stopPropagation();
+    if (from === key) return;
+    const order = todaySectionOrder().filter(k => k !== from);
+    const before = after ? (order[order.indexOf(key) + 1] || '') : key;
+    moveTodaySection(from, 0, before);
+    render();
+  });
+}
+/** The Arrange menu of a Today section: move it, hide it, show hidden ones, reset. */
+function openTodaySectionsMenu(anchor, key) {
+  const order = todaySectionOrder();
+  const shown = order.filter(k => !todaySectionHidden(k));
+  const i = shown.indexOf(key);
+  const def = todaySectionDef(key);
+  const hidden = order.filter(k => todaySectionHidden(k));
+  const custom = order.join('|') !== TODAY_SECTIONS.map(s => s.key).join('|') || hidden.length;
+  // Move up/down swap with the next shown section (hidden ones keep their place).
+  const swap = (dir) => { const other = shown[i + dir]; if (!other) return; moveTodaySection(key, 0, dir < 0 ? other : (order[order.indexOf(other) + 1] || '')); render(); };
+  openMenu(anchor, [
+    { heading: def ? def.label : 'Sections' },
+    { label: 'Move up', icon: 'arrow-up', disabled: i <= 0, run: () => swap(-1) },
+    { label: 'Move down', icon: 'arrow-down', disabled: i < 0 || i >= shown.length - 1, run: () => swap(1) },
+    { label: 'Hide this section', icon: 'eye-off', run: () => { setTodaySectionHidden(key, true); render(); toast(`“${def ? def.label : key}” hidden`, { icon: 'eye-off', action: { label: 'Show', run: () => { setTodaySectionHidden(key, false); render(); } } }); } },
+    ...(hidden.length ? ['sep', { heading: 'Hidden' }, ...hidden.map(k => ({ label: `Show “${todaySectionDef(k).label}”`, icon: 'eye', run: () => { setTodaySectionHidden(k, false); render(); } }))] : []),
+    ...(custom ? ['sep', { label: 'Reset sections', icon: 'rotate-ccw', hint: 'Default order, all shown', run: () => { setTaskViewPref('today', { sections: null, hiddenSections: null }); render(); } }] : []),
+  ], { align: 'end', width: 240 });
+}
+/** Under the sections: the hidden ones that have tasks, each with Show. */
+function _todayHiddenNote(groups) {
+  const n = document.createElement('div'); n.className = 'tg-hidden muted';
+  n.innerHTML = icon('eye-off', 'i-sm') + '<span>Hidden:</span>';
+  for (const g of groups) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
+    b.textContent = `${g.label} (${g.items.length})`;
+    b.title = `Show the “${g.label}” section again`;
+    b.onclick = () => { setTodaySectionHidden(g.key, false); render(); };
+    n.appendChild(b);
+  }
+  return n;
 }
 
 function _rescheduleGroupMenu(anchor, ids) {
@@ -272,13 +367,16 @@ function _makeDayDropTarget(el, iso) {
   el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
   el.addEventListener('drop', (e) => {
     el.classList.remove('drag-over');
-    const id = draggedTaskId(e);
-    if (!id) return;
+    const ids = draggedTaskIds(e);   // a dragged selection moves together (30-task-row.js)
+    if (!ids.length) return;
     e.preventDefault(); e.stopPropagation();
+    if (ids.length > 1) { const move = ids.filter(x => getItem(x).dueDate !== iso); if (move.length) bulkSetDue(move, iso); return; }
+    const id = ids[0];
     const it = getItem(id);
     if (it && it.dueDate === iso) return;
+    const snap = dueMoveSnap(id);
     setDateWithReason(id, iso, null);
-    toast(`Moved to ${dueLabel(iso)}`, { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+    dueMovedToast(id, iso, snap, { always: true });   // "Moved to Sat 1 Nov" (· still planned for today), Undo
   });
 }
 
@@ -377,6 +475,8 @@ function _renderQuickAdd(view) {
   const narrow = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
   const eg = _qaExample();
   inp.placeholder = narrow ? 'Add a task' : `Add a task e.g. ${eg}`;
+  // What was being typed survives a reload or a crash (state.drafts, 06-core-seen.js); read once per page.
+  if (!_qaDraftRead) { _qaDraftRead = true; const k = typeof draftGet === 'function' ? draftGet('qa:inline') : null; if (!_qaDraft && k && typeof k.text === 'string') _qaDraft = k.text; }
   inp.value = _qaDraft;
   qa.appendChild(inp);
   // The placeholder in two tones, as in the mockup: "Add a task" + a quieter example (hidden once you type).
@@ -400,7 +500,7 @@ function _renderQuickAdd(view) {
 
   const paint = () => _paintQaPreview(prev, inp, view);
   const paintSug = () => _paintQaSuggest(sug, inp);
-  inp.addEventListener('input', () => { _qaDraft = inp.value; if (!inp.value.trim()) _qaIgnore = []; paint(); paintSug(); });
+  inp.addEventListener('input', () => { _qaDraft = inp.value; _qaKeepDraft(inp.value); if (!inp.value.trim()) _qaIgnore = []; paint(); paintSug(); });
   inp.addEventListener('focus', () => { _qaFocused = true; box.classList.add('focused'); paint(); });
   // Chrome fires blur when a re-render removes the focused box; only a real blur
   // (the box is still on the page and lost focus) ends "typing several tasks".
@@ -417,12 +517,25 @@ function _renderQuickAdd(view) {
       if (e.key === 'Tab' || (e.key === 'Enter' && _qaSuggest.index >= 0)) { e.preventDefault(); _qaAcceptSuggestion(inp, _qaSuggest.items[_qaSuggest.index]); paint(); paintSug(); return; }
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); sug.hidden = true; return; }
     }
-    if (e.key === 'Escape') { e.stopPropagation(); if (inp.value) { inp.value = ''; _qaDraft = ''; _qaIgnore = []; paint(); } else inp.blur(); return; }
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      if (inp.value) {
+        // Cleared, not lost: Restore puts the text back (and the words kept as text).
+        const was = inp.value, ign = _qaIgnore.slice();
+        inp.value = ''; _qaDraft = ''; _qaIgnore = []; _qaKeepDraft(''); paint();
+        if (was.trim().length > 2) toast('Cleared', { icon: 'x', action: { label: 'Restore', run: () => {
+          _qaDraft = was; _qaIgnore = ign; _qaKeepDraft(was); _qaFocused = true; _qaCaret = was.length;
+          const cur = document.getElementById('quick-add');
+          if (cur) { cur.value = was; cur.focus(); _afterQuickAddRender(); } else render();
+        } } });
+      } else inp.blur();
+      return;
+    }
     if (e.key !== 'Enter') return;
     e.preventDefault();
     const parsed = parseQuickAdd(inp.value, { ignore: _qaIgnore });
     if (!parsed.title) return;
-    _qaDraft = ''; _qaIgnore = []; _qaFocused = true; _qaCaret = 0;
+    _qaDraft = ''; _qaIgnore = []; _qaFocused = true; _qaCaret = 0; _qaKeepDraft('');
     inp.value = '';
     const id = addParsedTask(parsed, quickAddDefaults(view));   // saves + renders; the new box gets focus back
     const it = id && getItem(id);
@@ -582,24 +695,61 @@ function renderKanban(container, o) {
     c.addEventListener('dragleave', (e) => { if (!c.contains(e.relatedTarget)) c.classList.remove('dragover'); });
     c.addEventListener('drop', e => {
       c.classList.remove('dragover');
-      const id = draggedTaskId(e); if (!id) return;
+      const ids = draggedTaskIds(e); if (!ids.length) return;
       e.preventDefault();
+      if (ids.length > 1) {   // a dragged selection: all of them into this column, one undo step
+        const move = ids.filter(x => statusOf(x) !== col.key);
+        if (!move.length) return;
+        if (col.key === 'done') { bulkComplete(move); return; }
+        batchTasks(move, x => setStatus(x, col.key, { noSave: true }));
+        toast(`${move.length} moved to ${col.label}`, { kind: 'ok', icon: col.key === 'doing' ? 'circle-dot' : 'circle', action: { label: 'Undo', run: () => undo() } });
+        return;
+      }
+      const id = ids[0];
       const cur = statusOf(id);
       if (col.key === cur) return;
-      if (col.key === 'done') toggleDone(id);
-      else setStatus(id, col.key);
+      if (col.key === 'done') toggleDone(id);   // its own toast + Undo
+      else {
+        setStatus(id, col.key);
+        toast(cur === 'done' ? 'Reopened' : `Moved to ${col.label}`, { icon: col.key === 'doing' ? 'circle-dot' : 'circle', action: { label: 'Undo', run: () => undo() } });
+      }
     });
     const list = document.createElement('div'); list.className = 'kanban-list';
-    for (const it of col.items) {
-      list.appendChild(_renderKanbanCard(it));
-      if (col.key !== 'done') _lastRenderedTaskIds.push(it.id);
+    // Today's board: To do in the same sections as the list (order and hidden ones from the view's preferences).
+    if (view === 'today' && col.key === 'todo' && groupForView('today') === 'auto') {
+      const by = {};
+      for (const it of col.items) { const k = todaySectionOf(it); (by[k] = by[k] || []).push(it); }
+      let hiddenN = 0;
+      for (const k of todaySectionOrder()) {
+        const items = by[k]; if (!items || !items.length) continue;
+        if (todaySectionHidden(k)) { hiddenN += items.length; continue; }
+        const def = todaySectionDef(k);
+        const sh = document.createElement('div'); sh.className = 'kc-sec' + (k === 'overdue' ? ' danger' : '');
+        sh.innerHTML = `${icon(def.icon, 'i-xs')}<span>${esc(def.label)}</span><span class="n">${items.length}</span>`;
+        list.appendChild(sh);
+        for (const it of items) { list.appendChild(_renderKanbanCard(it)); _lastRenderedTaskIds.push(it.id); }
+      }
+      if (hiddenN) {
+        const hn = document.createElement('button'); hn.type = 'button'; hn.className = 'btn btn-ghost btn-sm kc-sec-hidden';
+        hn.textContent = `${hiddenN} in hidden sections · Show`;
+        hn.onclick = () => { setTaskViewPref('today', { hiddenSections: null }); render(); };
+        list.appendChild(hn);
+      }
+    } else {
+      for (const it of col.items) {
+        list.appendChild(_renderKanbanCard(it));
+        if (col.key !== 'done') _lastRenderedTaskIds.push(it.id);
+      }
     }
-    if (!col.items.length) { const e = document.createElement('div'); e.className = 'kanban-empty'; e.textContent = col.key === 'done' ? 'Drop here to complete' : 'Nothing here'; list.appendChild(e); }
+    if (!col.items.length) { const e = document.createElement('div'); e.className = 'kanban-empty'; e.textContent = col.key === 'done' ? 'Drop here to complete' : col.key === 'doing' ? 'Drop a task here to start it' : 'Nothing to do. Add one below'; list.appendChild(e); }
     c.appendChild(list);
     if (col.key !== 'done') {
       const add = document.createElement('input'); add.className = 'kanban-add'; add.placeholder = '+ Add a task';
       add.dataset.fk = 'kanban-add:' + col.key;
+      add.setAttribute('aria-label', `Add a task to ${col.label}`);
+      add.title = 'Enter to add · quick-add words work: fri, !p1, #tag, @person';
       add.onkeydown = (e) => {
+        if (e.key === 'Escape') { e.stopPropagation(); add.value = ''; add.blur(); return; }
         if (e.key !== 'Enter' || !add.value.trim()) return;
         e.preventDefault();
         const parsed = parseQuickAdd(add.value);
@@ -615,16 +765,27 @@ function renderKanban(container, o) {
 function _renderKanbanCard(it) {
   const status = statusOf(it.id);
   const card = document.createElement('div');
-  card.className = 'kanban-card' + (state.selectedTaskId === it.id ? ' selected' : '') + (status === 'done' ? ' done' : '') + (isWontDo(it) ? ' wontdo' : '') + (_lastSelectedTaskId === it.id ? ' kb-cursor' : '');
+  card.className = 'kanban-card' + (state.selectedTaskId === it.id ? ' selected' : '') + (status === 'done' ? ' done' : '') + (isWontDo(it) ? ' wontdo' : '') + (_lastSelectedTaskId === it.id ? ' kb-cursor' : '') + (multiSelect.ids.has(it.id) ? ' multi-selected' : '');
   card.dataset.id = it.id;
   card.draggable = true;
   card.ondragstart = e => _startTaskDrag(e, it, card);
   card.ondragend = () => _endTaskDrag(card);
   const top = document.createElement('div'); top.className = 'kc-top';
+  // The same checkbox as a list row: click = done, Shift+click = in progress, Alt+click = won't do.
+  const wont = isWontDo(it);
   const cb = document.createElement('button'); cb.type = 'button';
-  cb.className = 'checkbox ' + effPriority(it) + (status === 'doing' ? ' doing' : '') + (status === 'done' ? (isWontDo(it) ? ' wontdo' : ' done') : '');
+  cb.className = 'checkbox ' + effPriority(it) + (status === 'doing' ? ' doing' : '') + (status === 'done' ? (wont ? ' wontdo' : ' done') : '');
+  cb.setAttribute('role', 'checkbox');
+  cb.setAttribute('aria-checked', status === 'done' ? 'true' : status === 'doing' ? 'mixed' : 'false');
   cb.setAttribute('aria-label', (status === 'done' ? 'Reopen: ' : 'Complete: ') + effTitle(it));
-  cb.onclick = (e) => { e.stopPropagation(); toggleDone(it.id); };
+  cb.title = status === 'done' ? (wont ? "Won't do · click to reopen" : 'Done · click to reopen') : `${PRIORITIES[effPriority(it)]?.label || ''} · click to complete · Shift+click: in progress · Alt+click: won't do`;
+  if (wont) cb.innerHTML = icon('minus', 'i-xs');
+  cb.onclick = (e) => {
+    e.stopPropagation();
+    if (e.shiftKey && status !== 'done') { toggleDoing(it.id); return; }
+    if (e.altKey && status !== 'done') { markWontDo(it.id); return; }
+    toggleDone(it.id);
+  };
   const ttl = document.createElement('div'); ttl.className = 'ttl'; ttl.textContent = effTitle(it);
   top.append(cb, ttl);
   if (isPinned(it.id) && status !== 'done') {   // the pin marker (Unpin: right-click > Unpin)
@@ -654,7 +815,13 @@ function _renderKanbanCard(it) {
     if (tags.length > 2) { const c = document.createElement('span'); c.className = 'chip chip-more'; c.textContent = '+' + (tags.length - 2); chips.appendChild(c); }
     card.appendChild(chips);
   }
-  card.onclick = () => { _lastSelectedTaskId = it.id; openTask(it.id, { from: card }); };   // centre card or side panel
-  card.oncontextmenu = (e) => { e.preventDefault(); openTaskMenu({ x: e.clientX, y: e.clientY }, it.id); };
+  // As in the list: Ctrl/Cmd+click ticks it for the bulk bar; a plain click opens it (centre card or side panel).
+  card.onclick = (e) => {
+    if (e.shiftKey && _selectRangeTo(it.id)) return;   // Shift+click: everything from the last one clicked (30-task-row.js)
+    _lastSelectedTaskId = it.id;
+    if (e.ctrlKey || e.metaKey) { _toggleMulti(it.id); return; }
+    openTask(it.id, { from: card });
+  };
+  card.oncontextmenu = (e) => { e.preventDefault(); _lastSelectedTaskId = it.id; openTaskMenu({ x: e.clientX, y: e.clientY }, it.id); };
   return card;
 }

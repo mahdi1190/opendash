@@ -322,7 +322,8 @@ async function connCheck(id) {
       document.body.classList.toggle('no-ai', !AI_AVAILABLE);
     }
   } catch (e) {
-    toast((e && e.message) || 'The OpenDash server is not running.', { kind: 'err' });
+    const name = (CONN_NAMES[id] && CONN_NAMES[id].label) || 'the connection';
+    toast(`Could not check ${name}: ${typeof netErrorMessage === 'function' ? netErrorMessage(e, 'the check failed.') : (e && e.message) || 'the check failed.'}`, { kind: 'err', timeout: 10000, action: { label: 'Try again', run: () => connCheck(id) } });
   }
   return connRefresh({ force: true });
 }

@@ -2,7 +2,14 @@ import { narrationFor } from '../../lib/narration.mjs';
 import { HttpError } from '../http.mjs';
 
 export default function register(app) {
-  const voice = app.ctx.narration || narrationFor(app.ctx.dataDir, { getConfig: app.ctx.getConfig, setConfig: app.ctx.setConfig });
+  // Encrypted sync (lib/sync/blobs.mjs): a clip made on another computer comes from the sync
+  // folder instead of being generated again; a new clip here is offered to the others.
+  const blobs = () => (app.ctx.sync && app.ctx.sync.blobs) || null;
+  const voice = app.ctx.narration || narrationFor(app.ctx.dataDir, {
+    getConfig: app.ctx.getConfig, setConfig: app.ctx.setConfig,
+    fetchShared: (id) => { const b = blobs(); return b ? b.fetch(`cache/narration/${id}.mp3`, { waitMs: 20000 }) : Promise.resolve(false); },
+    onSaved: () => { const b = blobs(); if (b) b.noteLocal(); },
+  });
   // Unknown filesystem/network errors are reduced to a fixed message. The
   // router logs only this code, never an API key or a user's narration text.
   const safe = e => new HttpError(e.code === 'BAD_REQUEST' || /^(?:ELEVENLABS_|NARRATION_)/.test(e.code || '') ? e.status || 500 : 500,

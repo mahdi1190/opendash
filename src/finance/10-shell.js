@@ -142,11 +142,12 @@
         const days = Number(a.stale_days) || 0;
         const meta = (R.data && R.data.meta) || {};
         const fresh = R.syncDoneAt && Date.now() - R.syncDoneAt < 2500;   // new data just landed: the dot rings twice
-        // Finances another device reads ("Finance from Home laptop · updated 5 min ago · data to ...").
-        const via = remoteVia(meta);
-        const tip = via ? (meta.remote.online ? `${meta.remote.name} reads your bank; this is the same as there` : `${meta.remote.name} is off right now: this is what it last sent`)
-          : meta.analysisAt ? 'Analysis rebuilt ' + agoText(meta.analysisAt) : null;
-        sub.append(h('span', { class: 'fv-fresh' + (days > 4 ? ' stale' : '') + (fresh ? ' is-new' : ''), title: tip },
+        // Finances another device reads ("Finance from Home laptop · updated 5 min ago · data to ...";
+        // while it is off: "... · last update 2 h ago (it's off) · data to ...", calm, no error).
+        const line = remoteLine(meta);
+        const via = line ? line.text : '';
+        const tip = line ? line.tip : meta.analysisAt ? 'Analysis rebuilt ' + agoText(meta.analysisAt) : null;
+        sub.append(h('span', { class: 'fv-fresh' + (line && line.away ? ' is-away' : days > 4 ? ' stale' : '') + (fresh ? ' is-new' : ''), title: tip },
           h('i', { class: 'fv-dot', 'aria-hidden': 'true' }),
           (via ? via + ' · data' : 'Data') + ` to ${validIso(a.latest_transaction) ? fDayW(dnum(a.latest_transaction)) : '—'} · ${nf0.format(R.model.tx.length)} transactions`
           + (R.model.accts.length > 1 ? ` · ${R.model.accts.length} accounts` : '')));
@@ -154,13 +155,17 @@
     }
     paintSyncBtn();
   }
-  /** "Finance from Home laptop · updated 5 min ago" when another device reads the bank, else ''. */
-  function remoteVia(meta) {
+  /**
+   * "Finance from Home laptop · updated 5 min ago" when another device reads the bank, else null:
+   * {text, tip, away} (src/app/65-finance-view.js financeRemoteLine, the same words as Home and Connections).
+   */
+  function remoteLine(meta) {
     const rm = meta && meta.remote;
-    if (!rm || !rm.name) return '';
-    if (rm.waiting) return `Finance from ${rm.name} · ${rm.trial ? 'turn on "Use changes from my other computers" to see it' : 'waiting for its first update'}`;
+    if (!rm || !rm.name) return null;
+    if (rm.waiting) return { text: `Finance from ${rm.name} · ${rm.trial ? 'turn on "Use changes from my other computers" to see it' : 'waiting for its first update'}`, tip: null, away: '' };
+    if (typeof financeRemoteLine === 'function') { const l = financeRemoteLine(rm); if (l) return l; }
     const ago = rm.updatedAt ? agoText(rm.updatedAt) : '';
-    return `Finance from ${rm.name}` + (ago ? ` · updated ${ago}` : '');
+    return { text: `Finance from ${rm.name}` + (ago ? ` · updated ${ago}` : ''), tip: null, away: '' };
   }
   function paintSyncBtn() {
     const H = R.head; if (!H) return;
@@ -172,7 +177,9 @@
     const rm = meta.remote && meta.remote.name && !meta.remote.trial ? meta.remote : null;
     H.imp.setAttribute('data-tip', rm ? `Import a CSV on ${rm.name}: it shows here after that` : 'Import a CSV export from your bank (works offline)');
     if (rm) H.sync.removeAttribute('data-requires'); else H.sync.setAttribute('data-requires', 'bank');
-    if (rm) H.sync.setAttribute('data-tip', `Asks ${rm.name} to update your finances`); else H.sync.removeAttribute('data-tip');
+    const away = rm ? (remoteLine(meta) || {}).away : '';
+    if (rm) H.sync.setAttribute('data-tip', away === 'off' || away === 'asleep' ? `${rm.name} is ${away} right now: your finances update when it is on again` : `Asks ${rm.name} to update your finances`);
+    else H.sync.removeAttribute('data-tip');
     H.sync.disabled = running; H.caret.disabled = running; H.imp.disabled = running || !!rm;
     H.sync.classList.toggle('busy', running);
     H.sync.classList.toggle('done', !!done);
@@ -277,6 +284,12 @@
     const running = !!(job && job.state === 'running');
     const P = E.progress; P.innerHTML = ''; P.hidden = false;
     if (R.startErr) { callout('danger', 'circle-x', "That didn't work.", ' ' + R.startErr, 'err:' + R.startErr); return; }
+    // The finance computer is off (04-data.js waitRemote): said calmly, the last copy stays on show.
+    if (R.startNote && meta.remote && meta.remote.online) R.startNote = null;   // it is back
+    if (R.startNote && R.dismissed !== 'away:' + R.startNote.at) {
+      callout('', 'moon', `${R.startNote.who} is off right now.`, h('span', { class: 'mute', text: ` This is what it last sent. Your finances update by themselves when ${R.startNote.who} is on again.` }), 'away:' + R.startNote.at);
+      return;
+    }
     if (R.importing) { callout('', 'loader-circle', 'Importing…', h('span', { class: 'mute', text: ' Reading the file, skipping anything already imported, then rebuilding the analysis.' })); P.querySelector('.i').classList.add('fv-spin'); return; }
     if (R.remoteJob) {   // another device reads the bank and was asked to update (04-data.js waitRemote)
       const x = R.remoteJob, who = x.runsOn || 'your other computer';

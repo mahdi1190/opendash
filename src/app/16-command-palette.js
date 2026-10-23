@@ -24,10 +24,29 @@ const PALETTE_SOURCES = [];
 function registerPaletteSource(fn) { if (typeof fn === 'function') PALETTE_SOURCES.push(fn); }
 
 let _paletteClose = null;
-const PALETTE_GROUP_ORDER = ['Assistant', 'Tasks', 'Go to', 'People', 'Tags', 'Files', 'Commands'];
+// 'This task': the open task's (or the keyboard cursor's) commands, with their keys (32-tasks-ui.js).
+const PALETTE_GROUP_ORDER = ['Assistant', 'This task', 'Tasks', 'Go to', 'People', 'Tags', 'Files', 'Commands'];
 const _PAL_SCOPES = [['', 'Everything', 'search'], ['>', 'Commands', 'zap'], ['#', 'Tags', 'hash'], ['@', 'People', 'at-sign'], ['?', 'Ask', 'sparkles']];
 // The "G then a letter" jumps (90-wiring.js), shown as hints.
 const _PAL_G = { home: 'G H', today: 'G T', week: 'G U', all: 'G A', calendar: 'G C', finance: 'G F', people: 'G P', settings: 'G S', bin: 'G B', completed: 'G L' };
+
+// What you opened from here last (this browser): shown first when the box is empty.
+const _PAL_RECENT_KEY = 'dashboard-palette-recent';
+function _palRecentGet() {
+  try { const a = JSON.parse(localStorage.getItem(_PAL_RECENT_KEY) || '[]'); return Array.isArray(a) ? a.filter(r => r && (r.t || (r.g && r.l))).slice(0, 8) : []; } catch (e) { return []; }
+}
+/** Remember a row that was run: a task (by id) or a place/command/setting (by group and label). */
+function _palRecentPush(it) {
+  if (!it) return;
+  const r = it.taskId ? { t: String(it.taskId) } : (it.group && it.label && typeof it.label === 'string' ? { g: it.group, l: it.label } : null);
+  if (!r) return;
+  const same = (x) => (r.t ? x.t === r.t : x.g === r.g && x.l === r.l);
+  const list = [r, ..._palRecentGet().filter(x => !same(x))].slice(0, 8);
+  try { localStorage.setItem(_PAL_RECENT_KEY, JSON.stringify(list)); } catch (e) { /* storage full or blocked */ }
+}
+// Recent first; settings (58-settings-search.js) after the commands.
+PALETTE_GROUP_ORDER.unshift('Recent');
+PALETTE_GROUP_ORDER.push('Settings');
 
 /** Subsequence match with bonuses for word starts and runs. 0 = no match; at most 28. */
 function _palFuzzy(text, q) {
@@ -194,6 +213,23 @@ function _palDueText(due) {
   try { return dt.toLocaleDateString(APP_CONFIG.locale || undefined, o); } catch (e) { return dueLabel(due); }
 }
 
+/** A task as a result row. */
+function _palTaskItem(it) {
+  return {
+    check: effPriority(it), done: statusOf(it.id) === 'done', label: effTitle(it), metaHtml: _palTaskMeta(it), taskId: it.id,
+    // Enter: go to the list the task lives in and open it. Ctrl+Enter ("open beside"): open its detail here.
+    // Centre-card mode: the card opens over the page you are on (61-task-card.js).
+    run: () => {
+      // the card opens over this page; an open side panel takes the task in place
+      if (typeof openTask === 'function' && typeof itemOpenTarget === 'function' && (itemOpenTarget() === 'card' || (typeof detailPaneOpen === 'function' && detailPaneOpen()))) { openTask(it.id); return; }
+      const here = isTaskView(state.view) && typeof matchesView === 'function' && matchesView(it, state.view);
+      if (!here) setView(typeof homeViewForTask === 'function' ? homeViewForTask(it) : 'all');
+      selectTask(it.id);
+    },
+    runBeside: () => (typeof openTask === 'function' ? openTask(it.id, { mode: 'panel' }) : selectTask(it.id)),
+  };
+}
+
 function _palResults(raw) {
   let q = raw.trim();
   let mode = '';
@@ -204,9 +240,10 @@ function _palResults(raw) {
   const ql = q.toLowerCase();
   const groups = new Map();
   const shown = new Set();   // the same place registered twice (a view and a command) is listed once
+  const inRecent = new Set();   // shown under Recent: not again in its own group
   const push = (g, item) => {
     const k = g + '|' + String(item.label).toLowerCase();
-    if (!item.taskId && shown.has(k)) return;
+    if (!item.taskId && (shown.has(k) || inRecent.has(k))) return;
     shown.add(k);
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g).push(item);
@@ -237,21 +274,7 @@ function _palResults(raw) {
     // A balanced list (as in the mockup): a few tasks when places or people match too.
     const others = _palSources('').some(o => o.group !== 'Commands' && Math.max(_palScore(o.label, ql), o.keywords ? _palKwScore(o.keywords, ql) : 0) > 0);
     const cap = others ? 3 : 7;
-    for (const { it } of hits.slice(0, cap)) {
-      push('Tasks', {
-        check: effPriority(it), done: statusOf(it.id) === 'done', label: effTitle(it), metaHtml: _palTaskMeta(it), taskId: it.id,
-        // Enter: go to the list the task lives in and open it. Ctrl+Enter ("open beside"): open its detail here.
-        // Centre-card mode: the card opens over the page you are on (61-task-card.js).
-        run: () => {
-          // the card opens over this page; an open side panel takes the task in place
-          if (typeof openTask === 'function' && typeof itemOpenTarget === 'function' && (itemOpenTarget() === 'card' || (typeof detailPaneOpen === 'function' && detailPaneOpen()))) { openTask(it.id); return; }
-          const here = isTaskView(state.view) && typeof matchesView === 'function' && matchesView(it, state.view);
-          if (!here) setView(typeof homeViewForTask === 'function' ? homeViewForTask(it) : 'all');
-          selectTask(it.id);
-        },
-        runBeside: () => (typeof openTask === 'function' ? openTask(it.id, { mode: 'panel' }) : selectTask(it.id)),
-      });
-    }
+    for (const { it } of hits.slice(0, cap)) push('Tasks', _palTaskItem(it));
     if (hits.length > cap) {
       push('Tasks', { icon: 'list-filter', label: `All ${hits.length} matching tasks`, hint: 'Search in All tasks', run: () => {
         setView('all');
@@ -278,10 +301,23 @@ function _palResults(raw) {
     if (ql && s <= 0) continue;
     scored.push({ o, s: s + (o.weight ? Math.min(o.weight, 20) / 10 : 0) });
   }
+  // Empty box: what you opened from here lately comes first (and is not repeated below it).
+  if (!ql && mode === '') {
+    const recent = [];
+    for (const r of _palRecentGet()) {
+      if (recent.length >= 5) break;
+      if (r.t) { const it = getItem(r.t); if (it) recent.push(_palTaskItem(it)); continue; }
+      const hit = scored.find(x => x.o.group === r.g && String(x.o.label) === r.l);
+      if (hit) recent.push(hit.o);
+    }
+    for (const o of recent) push('Recent', o);
+    for (const o of recent) if (!o.taskId) inRecent.add(o.group + '|' + String(o.label).toLowerCase());
+  }
+
   // Empty query: a short, useful starting list rather than everything.
   if (!ql && mode === '') {
     const pick = (g, n) => scored.filter(x => x.o.group === g).slice(0, n);
-    for (const x of [...pick('Go to', 8), ...pick('Commands', 6)]) push(x.o.group, x.o);
+    for (const x of [...pick('This task', 6), ...pick('Go to', 8), ...pick('Commands', 6)]) push(x.o.group, x.o);
   } else {
     scored.sort((a, b) => b.s - a.s);
     const per = {};
@@ -321,7 +357,15 @@ function _palResults(raw) {
       } });
     }
     push('Commands', { icon: 'plus', label: `New task “${q}”`, run: () => openNewTask(q) });
+    // Looks like a name ("Sam Lee": capitalised words) and nobody has it yet: add them in one step
+    // (the person form opens filled in). With @ it is offered for any text (below).
+    if (typeof addNewPerson === 'function' && /^\p{Lu}[\p{L}'.-]*(\s+\p{Lu}[\p{L}'.-]*){0,3}$/u.test(q) && !(state.people || []).some(p => p && String(p.name || '').toLowerCase() === ql)) {
+      push('Commands', { icon: 'user-plus', label: `Add “${q}” to People`, run: () => addNewPerson({ name: q }) });
+    }
     if (ql.length >= 3) push('Assistant', { icon: 'sparkles', label: `Ask the assistant: “${q}”`, hint: typeof assistantReady === 'function' && !assistantReady() ? 'Connect Claude first' : '', run: () => openAssistant({ message: q, send: true }) });
+  }
+  if (mode === 'people' && ql.length >= 2 && typeof addNewPerson === 'function' && !(state.people || []).some(p => p && String(p.name || '').toLowerCase() === ql)) {
+    push('Commands', { icon: 'user-plus', label: `Add “${q}” to People`, run: () => addNewPerson({ name: q }) });
   }
   const ordered = [];
   const names = [...groups.keys()].sort((a, b) => {
@@ -340,7 +384,7 @@ function openCommandPalette(initial) {
   const scrim = document.createElement('div'); scrim.className = 'scrim cmd-scrim';
   const box = document.createElement('div'); box.className = 'cmd'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Command palette');
   box.innerHTML = `
-    <div class="cmd-in">${icon('search')}<input class="q" type="text" placeholder="Search tasks, jump anywhere, run a command, or ? to ask…" aria-label="Search" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="cmd-list" /><button type="button" class="cmd-scope" aria-haspopup="menu"><span class="lbl">Everything</span>${icon('chevron-down', 'i-xs')}</button></div>
+    <div class="cmd-in">${icon('search')}<input class="q" type="text" placeholder="Search tasks and settings, jump anywhere, run a command, or ? to ask…" aria-label="Search" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="cmd-list" /><button type="button" class="cmd-scope" aria-haspopup="menu"><span class="lbl">Everything</span>${icon('chevron-down', 'i-xs')}</button></div>
     <div class="cmd-list" id="cmd-list" role="listbox"></div>
     <div class="cmd-f">
       <span class="k"><span class="kbd-group"><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd></span>Move</span>
@@ -387,7 +431,7 @@ function openCommandPalette(initial) {
     }
     if (!flat.length) {
       const e = document.createElement('div'); e.className = 'cmd-empty';
-      e.textContent = 'No results. Try a different word, > for commands, or ? to ask the assistant.';
+      e.textContent = 'No results. Try a different word or a setting’s name, > for commands, or ? to ask the assistant.';
       list.appendChild(e);
     }
     cur = Math.min(cur, Math.max(0, flat.length - 1));
@@ -401,6 +445,7 @@ function openCommandPalette(initial) {
   function run(i, beside) {
     const f = flat[i]; if (!f) return;
     close(true);
+    _palRecentPush(f.it);
     const fn = beside && f.it.runBeside ? f.it.runBeside : f.it.run;
     try { const r = fn && fn(); if (r && typeof r.catch === 'function') r.catch(e => console.error('[palette]', e)); } catch (e) { console.error('[palette]', e); }
   }
@@ -488,6 +533,8 @@ async function _palStartJob(url, body, view, msg, after) {
     const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
     const j = await r.json().catch(() => ({}));
     if (r.status === 202 || r.status === 409 || (r.ok && !j.skipped)) toast(r.status === 409 ? 'Already updating…' : msg, { icon: 'refresh-cw' });
+    // calm: the computer that does it is asleep or off (lib/sync/presence.mjs): one calm line, not "up to date".
+    else if (r.ok && j.skipped && j.calm && j.message && typeof presenceNote === 'function') presenceNote(j.message);
     else if (r.ok && j.skipped) toast('Already up to date', { kind: 'ok' });
     else toast(j.error || `Could not start the update (${r.status})`, { kind: 'err' });
   } catch (e) {

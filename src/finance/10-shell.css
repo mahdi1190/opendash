@@ -3,6 +3,7 @@
 .fv-fresh { display: inline-flex; align-items: center; gap: var(--space-1-5); color: var(--fg-subtle); }
 .fv-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex: none; display: inline-block; }
 .fv-fresh.stale .fv-dot { background: var(--warning); }
+.fv-fresh.is-away .fv-dot { background: var(--fg-subtle); opacity: 0.7; }   /* the finance computer is off: calm, not a warning */
 .fv-head-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
 .fv-sync { display: inline-flex; }
 .fv-sync > .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }

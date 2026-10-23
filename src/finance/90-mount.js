@@ -65,6 +65,7 @@
       return;
     }
     R.mounted = true;
+    adoptSharedF();   // display choices made on another computer since (00-core.js; state.uiPrefs.finance)
     if (R.firstMount) {
       R.firstMount = false;
       try { const q = new URLSearchParams(location.search).get('ftab'); if (q && SECTIONS.some(s => s[0] === q)) F.section = q; } catch (e) { /* ignore */ }

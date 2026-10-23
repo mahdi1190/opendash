@@ -9,10 +9,14 @@
                     86-live-sync.js per key), so flags from two computers add up.
                     A day flag is {'YYYY-MM-DD': 1} and a one-off one {name: 1}:
                     two computers marking the same flag write the same value.
-     state.uiPrefs  {story, motion, assistantModel, focusBlock}: the story
+     state.uiPrefs  {story, motion, finance, assistantModel, focusBlock, refreshEvery}: the story
                     player's volume, speed and mute, the animation intensity,
-                    the assistant's model, a running focus block. Per field.
-     state.drafts   {'week:<from>': {...}}: the weekly review in progress.
+                    Finances' display choices (src/finance/00-core.js SHARED_F),
+                    the assistant's model, a running focus block, how often Home
+                    refreshes on its own (12-home-refresh.js). Per field.
+     state.drafts   {'week:<from>': {...}}: the weekly review in progress;
+                    'qa:inline' {text, at}: the inline quick add (31-task-views.js);
+                    'note:<taskId>' {text, at}: a note being written (60-task-detail.js).
    All three are UI keys (no undo step, no backup) that every tab takes from a
    newer copy (SHARED_UI_KEYS) and other computers sync as preferences
    (lib/sync/manifest.mjs '── local ──').
@@ -25,12 +29,17 @@
      inboxZero                         days: the inbox-zero celebration (78-delight-hooks.js)
      animMoment, momentCards           'YYYY-MM-DD|key': once-a-day moments; moment cards shown (the 3-a-day cap)
      once                              {name: 1}: one-off cards, tips and banners (storyHint, new22Anim, onedriveBannerOff,
-                                       travelAddCard, travelOptinLine)
+                                       travelAddCard, travelOptinLine; syncVersion:<id> and syncVersionShown:<id>:
+                                       another device's older version, dismissed / shown once, 56-presence-notice.js)
      openingLast, openingExact         {place: ref}: where the opening scene rotation is (78-anim-wire.js)
      firstSnow                         {winter: day}: the first snowy day of a winter
      moments, travelDepartX            {key: time}: moments shown, departure cards dismissed
      arrival                           {place: {at, by}}: an arrival welcome shown, and by which browser (78-anim-uk.js)
      travelOptin, travelDot            {key: day}: travel prompts answered "Not now"; the travel chip's "new" dots
+     financeTx                         {last: {since, keys, at}}: the transactions seen at the last visit to Finances >
+                                       Transactions, on any computer (src/finance/37-transactions.js; shortened opaque row keys)
+     aiEmail                           {messageId: time}: an email Claude was shown for task suggestions
+                                       (55-email-google.js), so no computer sends it again (kept 60 days)
    Day entries older than three weeks and timed entries past their age are
    pruned; a group itself is never removed (a removed map would hide what
    another computer adds to it at the same time).
@@ -53,7 +62,9 @@
 
    Kept in localStorage on purpose, as first-paint caches the state then
    overrides: dashboard-opening-mode and dashboard-opening-day (body.html),
-   dashboard-motion-level / -last (motion.js, body.html). uiSharedAfterRender
+   dashboard-motion-level / -last (motion.js, body.html). The Finances keys (dash-finance-ui-v1, dash-finance-seen-v1)
+   are folded in by the finance view itself (src/finance/00-core.js, 37-transactions.js): dash-finance-ui-v1 keeps
+   where you are in that view. uiSharedAfterRender
    (80-main-render.js) rewrites them from the state.
    What stays on this computer: the state cache itself, per-tab claims and
    session memory, window sizes, this computer's location (history, arrival
@@ -63,8 +74,8 @@
 const _SEEN_OUTBOX_KEY = 'dashboard-shared-outbox';
 const _SEEN_MIGRATED_KEY = 'dashboard-shared-migrated';
 const _SEEN_DAY_KEEP = 21;                       // days a dated entry is kept
-const _SEEN_TS_DAYS = { moments: 400, travelDepartX: 120, arrival: 30 };   // timed groups: days an entry is kept
-const _UIPREF_RECORDS = new Set(['story', 'motion']);                    // preferences merged field by field
+const _SEEN_TS_DAYS = { moments: 400, travelDepartX: 120, arrival: 30, aiEmail: 60 };   // timed groups: days an entry is kept
+const _UIPREF_RECORDS = new Set(['story', 'motion', 'finance']);         // preferences merged field by field
 const _SEEN_KEPT_CACHES = new Set(['dashboard-motion-level', 'dashboard-motion-last', 'dashboard-motion', 'dashboard-delight-recent']);
 const _SEEN_EMPTY = Object.freeze({ seen: {}, uiPrefs: {}, drafts: {}, keys: [], from: {} });
 let _uiSharedBooted = false;
@@ -225,6 +236,18 @@ function seenSet(group, entry, value) {
   if (changed) { _seenPruneGroup(group); _uiSharedSave(); }
   return changed;
 }
+/** Set many entries of one group to the same value: one prune and one save for the lot. */
+function seenSetMany(group, entries, value) {
+  if (!_seenName(group) || !Array.isArray(entries)) return false;
+  let changed = false;
+  for (const entry of entries) {
+    if (!_seenName(entry)) continue;
+    if (_seenWrite(group, entry, value)) changed = true;
+    if (!_uiSharedBooted) _uiSharedOutboxPut('seen', group, entry, value);
+  }
+  if (changed) { _seenPruneGroup(group); _uiSharedSave(); }
+  return changed;
+}
 function seenDay(group, day) { return !!seenGet(group, day || _seenToday()); }
 function seenMarkDay(group, day) { const d = day || _seenToday(); return _seenIsDay(d) ? seenSet(group, d, 1) : false; }
 /** Once a day per key ('YYYY-MM-DD|key'). */
@@ -251,6 +274,12 @@ function _seenPruneAll() {
   // Weekly drafts of weeks long gone (a review saved since removed its own).
   const cut = _seenAddDays(_seenToday(), -56);
   if (_seenIsObj(state.drafts) && cut) for (const k of Object.keys(state.drafts)) if (/^week:\d{4}-\d{2}-\d{2}$/.test(k) && k.slice(5) < cut) { delete state.drafts[k]; changed = true; }
+  // Half-written notes ('note:<taskId>') of tasks that are gone (not in the list, not in the Bin).
+  if (_seenIsObj(state.drafts) && Array.isArray(state.custom) && state.custom.length) {
+    const live = new Set(state.custom.map(t => t && t.id));
+    for (const b of (state.bin && Array.isArray(state.bin.tasks) ? state.bin.tasks : [])) if (b && b.id) live.add(b.id);
+    for (const k of Object.keys(state.drafts)) if (k.startsWith('note:') && !live.has(k.slice(5))) { delete state.drafts[k]; changed = true; }
+  }
   return changed;
 }
 

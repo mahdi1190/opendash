@@ -39,6 +39,9 @@
 .sync.err .dot { --c: var(--danger); }
 .sync.err { color: var(--danger-ink); }
 .sync.local .dot { --c: var(--warning); }
+/* Offline or paused: nothing is lost, so calm (an amber dot, the usual colour); only a real failure is red. */
+.sync.offline .dot, .sync.paused .dot { --c: var(--warning); }
+.sync.offline, .sync.paused, .sync.err { cursor: pointer; }
 
 /* countdown widget (.cdw) - the top-bar strip; the Home/Countdowns builder owns the editor */
 .cdw {

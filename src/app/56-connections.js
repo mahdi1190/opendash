@@ -81,7 +81,21 @@ async function _connOpenTerminal(btn) {
   try {
     const r = await fetch('/api/connections/open-terminal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     const j = await r.json().catch(() => ({}));
-    if (r.ok && j.opened) toast('A Claude window opened. Finish there, then click Check again.', { kind: 'ok', timeout: 6000 });
+    if (r.ok && j.opened) {
+      toast('A Claude window opened. Finish signing in there: OpenDash checks again when you come back.', { kind: 'ok', timeout: 7000 });
+      // Back in this tab within 10 minutes: check by itself (no hunting for Check again).
+      const t0 = Date.now();
+      const back = async () => {
+        if (document.hidden || Date.now() - t0 < 3000) return;
+        window.removeEventListener('focus', back);
+        if (Date.now() - t0 > 10 * 60000) return;
+        await connCheck('claude');
+        const c = _connAll && _connAll.claude;
+        if (c && c.state === 'ok') toast('Claude is connected. AI features are on.', { kind: 'ok' });
+        else toast('Claude is not signed in yet. Finish in the Claude window, then press Check again.', { kind: 'info', timeout: 9000, action: { label: 'Check again', run: () => connCheck('claude') } });
+      };
+      window.addEventListener('focus', back);
+    }
     else if (r.ok) toast('No terminal app was found. Open one yourself and run: claude', { kind: 'err', timeout: 7000 });
     else toast(j.error || 'Could not open a terminal window.', { kind: 'err' });
   } catch (e) { toast('The OpenDash server is not running.', { kind: 'err' }); }

@@ -116,13 +116,26 @@ closes (`tampered`).
 | `recs` | `items: [{file, rec}]` | the sender's own sealed log records (SYNC_FORMAT.md 11.2) with their log file name (part of the AES-GCM associated data); answers `hi` with what the other missed, then every new record as it is written; at most about 1 MiB per frame |
 | `seen` | `n` | how far the sender now has the other's records |
 | `lease` | `claims` | main-computer claims (section 7) |
+| `pres` | `v`, `page?`, `app?`, `stopping?` | presence (2.16, `lib/sync/presence.mjs`): whether a dashboard page is open on the sender and its OpenDash version, sent on opening, when the page opens or closes, and every 2 minutes; `stopping: true` is the goodbye of a clean stop, sent just before the link closes. Older versions ignore it |
+| `blob` | `v`, `ref`, `id`, `kind`, `data` | a picture or narration clip the sender just stored (SYNC_FORMAT.md section 12): `data` is the sealed blob file (base64url, at most 1.5 MB), `ref` its path in the data folder, `id` the SHA-256 of the plaintext. Sent one at a time, at most about 4 MB a second, at most 64 waiting (the folder brings the rest) |
 | `ping`, `bye` | | keepalive, closing |
+
+Presence also reads the link itself: an open link means the other server
+runs now; a link that closed (`idle`, `closed`, `error`), could not be dialled
+again and stayed away for 30 seconds means the other device went away
+(asleep, shut down, no network). A computer that wakes from sleep (its timers
+fire more than 30 seconds late) dials every member at once, announces itself
+on the network and renews its router port (`live.wake()`), so the others see
+it back within seconds.
 
 A receiver takes `recs` only with `rec.dev` equal to the authenticated
 peer, and passes them to the engine (`deliverLive`), which applies exactly
 the checks of a folder log line (key, removal cut, AES-GCM, schema, secret
 filters) and skips a `(dev, n)` it already has. A record that does not fit
-in one frame is left to the folder.
+in one frame is left to the folder. A `blob` from a member is opened with the
+group key (AD = group, id, key id), checked against its id (and a picture's
+name), and only then written into the data folder (`deliverBlob`); a peer
+on an older version ignores the message.
 
 ## 5. Address book
 
@@ -225,8 +238,25 @@ listening, reach: {state, method, external}, firewall, peers: [{id, name,
 state: live|connecting|not-live, path: lan|internet, reason}], roles:
 [{role, label, deviceId, name, me, acting}], prefs}`; `reason` is one of
 `offline`, `no-address`, `trying`, `new-key`, `firewall`, `lan-blocked`,
-`cgnat`, `router`, `unreachable`. `POST /api/sync/live {enabled?, internet?,
+`cgnat`, `router`, `unreachable`, `held`. `POST /api/sync/live {enabled?, internet?,
 prefer?}` changes the settings (kept in this computer's own `live.json`).
+
+Every wait has a way out (docs/dev/MULTI_DEVICE.md "When something goes
+wrong"): `POST /api/sync/live {retry: <deviceId>|'all'}` drops the back-off and
+any half-open attempt to that device and dials at once (and asks the router
+again); `{hold: <deviceId>}` stops trying (reason `held`: changes go through
+the folder) until *Try again*, a new network or waking from sleep. A dial in
+progress belongs to a generation, so either ends it at its next address.
+
+Sleep and networks: a tick that comes far too late (the computer slept), or a
+change in this computer's addresses (home -> office -> hotspot), closes every
+link, forgets addresses heard on the old network, resets the back-off, asks
+the router again and publishes the new address book at once, then dials
+everyone. The status carries `wokeAt` and `netChangedAt`.
+
+Clocks: `hi` and `seen` carry `at`, the sender's clock (older versions send
+none and ignore it), so each side knows how far the other's clock is
+(`peers[].skewMs`); Health warns over 10 seconds (the Claude host's limit).
 
 ## 10. What works where
 

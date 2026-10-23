@@ -68,14 +68,29 @@
     set();
     if (typeof ResizeObserver !== 'undefined' && R.c2StickRo !== st) { R.c2StickRo = st; new ResizeObserver(set).observe(st); }
   }
-  // Rows that arrived since the last visit to this list (first visit: none).
+  // Rows that arrived since the last visit to this list, on any of your computers (first visit: none).
+  // The flag is synced (state.seen.financeTx.last, src/app/06-core-seen.js; the later visit wins):
+  // {since: day number, keys: [the first TX_SEEN_LEN characters of each row's key], at}. The row
+  // keys are opaque hashes (lib/finance/store.mjs stableKeys), shortened; no amount, merchant or name.
+  // The old per-browser copy (TX_SEEN_KEY) is read once and removed.
+  const TX_SEEN_LEN = 8;
+  function txSeenRead() {
+    let seen = null;
+    try { seen = typeof seenGet === 'function' ? seenGet('financeTx', 'last') : null; } catch (e) { seen = null; }
+    if (seen && typeof seen === 'object' && Array.isArray(seen.keys)) return seen;
+    try { seen = JSON.parse(localStorage.getItem(TX_SEEN_KEY) || 'null'); } catch (e) { seen = null; }
+    return seen && typeof seen === 'object' && Array.isArray(seen.keys) ? seen : null;
+  }
   function txNewSet(M) {
     if (M._vkNew) return M._vkNew;
-    let seen = null;
-    try { seen = JSON.parse(localStorage.getItem(TX_SEEN_KEY) || 'null'); } catch (e) { seen = null; }
-    M._vkNew = VL.unseen(M.tx, seen);
+    const prev = txSeenRead();
+    M._vkNew = VL.unseen(M.tx, prev);
     const since = M.anchor - 60;
-    try { localStorage.setItem(TX_SEEN_KEY, JSON.stringify({ since, keys: M.tx.filter(x => x.n >= since).map(x => x.k), at: new Date(Date.now()).toISOString() })); } catch (e) { /* quota or private mode */ }
+    const flag = { since, keys: [...new Set(M.tx.filter(x => x.n >= since).map(x => String(x.k).slice(0, TX_SEEN_LEN)))], at: new Date(Date.now()).toISOString() };
+    if (prev && prev.since === since && sameJ(prev.keys, flag.keys)) return M._vkNew;   // nothing new to note
+    let saved = false;
+    try { if (typeof seenSet === 'function') { seenSet('financeTx', 'last', flag); saved = true; } } catch (e) { saved = false; }
+    try { if (saved) localStorage.removeItem(TX_SEEN_KEY); else localStorage.setItem(TX_SEEN_KEY, JSON.stringify(flag)); } catch (e) { /* quota or private mode */ }
     return M._vkNew;
   }
   function txBalances(M) {

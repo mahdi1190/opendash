@@ -99,11 +99,14 @@ function calTimeGrid(o) {
   // ---- sticky head: day names, all-day lane, due lane ----
   const head = document.createElement('div'); head.className = 'wv-head';
   let h = '<div class="wv-gut"></div>';
+  // The focused day (Shift+arrows move it, 41-calendar-section.js) is ringed in a week, as in the month.
+  const focusDay = n > 1 && typeof calFocus === 'function' ? calFocus() : null;
   for (const iso of days) {
     const d = _calParse(iso);
     const wd = d.toLocaleDateString(_CAL_LOCALE(), { weekday: n === 1 ? 'long' : 'short' });
     const wk = d.getDay() === 0 || d.getDay() === 6; // clock-ok: wall date
-    h += `<button type="button" class="wv-dh${iso === today ? ' today' : ''}${wk ? ' wkend' : ''}" data-date="${iso}" aria-label="${escAttr(d.toLocaleDateString(_CAL_LOCALE(), { weekday: 'long', day: 'numeric', month: 'long' }))}"><small>${esc(wd)}</small><b>${d.getDate()}</b></button>`; // clock-ok: wall date
+    const sel = iso === focusDay;
+    h += `<button type="button" class="wv-dh${iso === today ? ' today' : ''}${wk ? ' wkend' : ''}${sel ? ' sel' : ''}" data-date="${iso}" aria-label="${escAttr(d.toLocaleDateString(_CAL_LOCALE(), { weekday: 'long', day: 'numeric', month: 'long' }) + (sel ? ', selected' : ''))}"><small>${esc(wd)}</small><b>${d.getDate()}</b></button>`; // clock-ok: wall date
   }
   head.innerHTML = h;
 

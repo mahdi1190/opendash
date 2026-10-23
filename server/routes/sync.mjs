@@ -3,13 +3,17 @@
 //   GET  /api/sync/status     -> {enabled, state: off|syncing|ok|waiting|locked|error, message,
 //                                 folder, cloud, deviceName, devices:[{id, name, kind, me, lastSeen, fetches}],
 //                                 accounts:[{id, label, fetcher}], e2e:{on, ready, reason, pairing,
-//                                 requests, offer, found, ...}, skew:{text}, lastSyncAt, conflicts, ...}
+//                                 requests, offer, found, ...}, skew:{text}, lastSyncAt, conflicts,
+//                                 blobs:{on, used, budget, text: 'Pictures and audio: 34 MB of 200 MB'}, ...}
 //   POST /api/sync/settings   {enabled?, apply?, folder?, deviceName?} -> the status
 //                             apply (default off) = write other computers' changes into this
 //                             data; off = shadow mode: collect them and report what would change
 //                             (400 {error, code} for a folder that is missing, inside the
 //                             data or app folder; off by default)
 //   POST /api/sync/now        run a sync pass now -> the status
+//   GET  /api/sync/presence   each other device: open | running | asleep | off | outdated, with
+//                             last seen, version and the way it is reached (lib/sync/presence.mjs;
+//                             lib/sync-presence.mjs view) -> {enabled, me, devices, summary, notices}
 //
 // End-to-end encrypted sync (lib/sync/e2e.mjs; every answer is the status, 400 {error, code}
 // for anything the user can fix):
@@ -41,7 +45,18 @@
 // state: live|connecting|not-live, path: lan|internet, reason}], reach, roles,
 // firewall}. It runs only with encrypted sync. DASHBOARD_LIVE_SYNC=off turns
 // it off, DASHBOARD_LIVE_NAT=off leaves the router alone.
-//   POST /api/sync/live              {enabled?, internet?, prefer?: [deviceId]} -> the status
+//   POST /api/sync/live              {enabled?, internet?, prefer?: [deviceId], retry?: deviceId|'all',
+//                                    hold?: deviceId} -> the status ("Try again" dials at once, dropping
+//                                    the back-off; "Stop trying" leaves that device to the folder)
+//
+// Health (docs/dev/MULTI_DEVICE.md "When something goes wrong"; lib/sync/health.mjs decides,
+// lib/sync/node-health.mjs makes this computer's cheap checks and runs the fix buttons):
+//   GET  /api/sync/health[?fresh=1]  -> {overall, title, attention, checks:[{id, tone, title, text, fix?, alt?,
+//                                       progress?}], changes:[feed entries], conflicts: n}
+//   POST /api/sync/fix               {fix, folder?} -> {ok, message, health} (fix: one allow-listed name)
+//   GET  /api/sync/changes           -> {entries: [{id, at, from, count, groups, text, live}]} ("What changed")
+//   GET  /api/sync/conflicts         -> {items: [{id, at, what, name, field, kept, lost}], open}
+//   POST /api/sync/conflicts/resolve {id, keep: 'kept'|'lost'} -> {ok, stale} + the status
 //
 // Same-origin only, like every /api/ route (server/router.mjs). Changes from
 // other devices reach open tabs through the normal live-sync path: the engine
@@ -54,12 +69,15 @@
 // brings this computer's account sources in line (reconcileSources).
 
 import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
+import { createNodeSyncHealth } from '../../lib/sync/node-health.mjs';
+import { syncHealth } from '../../lib/sync/health.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { createNodeLive } from '../../lib/sync/live/node-live.mjs';
 import { writeProfile, applyProfile, PROFILE_REL } from '../../lib/profile.mjs';
 import { SOURCE_PREFS_REL } from '../../lib/source-prefs.mjs';
 import { applySourcePrefs } from '../../lib/sources.mjs';
 import { DEFAULT_CONFIG } from '../../lib/datadir.mjs';
+import { attachPresence } from '../../lib/sync-presence.mjs';
 
 export default function register(app) {
   const { store, log, paths, repoRoot, version } = app.ctx;
@@ -87,6 +105,12 @@ export default function register(app) {
     if (!rels.includes('accounts.json')) return;
     accounts().reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
   });
+  // Pictures and narration clips another computer has (encrypted sync, lib/sync/blobs.mjs)
+  // arrive when first asked for: open tabs hear which, and show them in place of the placeholder.
+  engine.onBlobs((rels) => {
+    const sse = app.ctx.liveSync;
+    if (Array.isArray(rels) && rels.length && sse && typeof sse.emit === 'function') { try { sse.emit('synced-files', { rels: rels.slice(0, 50), at: Date.now() }); } catch { /* no open tabs */ } }
+  });
   // Live sync: a computer may take an account's lease only with its own sign-in for that
   // account (accounts/<id> in this computer's secret store; tokens never sync). The
   // 'claude' role (answering remote requests that need Claude, lib/remote-jobs.mjs)
@@ -96,11 +120,22 @@ export default function register(app) {
     engine, dataDir: paths.root, log, canFetch: (acc) => accounts().hasSignIn(acc && acc.id),
     extraRoles: ['phone', 'claude'],
     canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.canHost()))),
+    appVersion: version,
   });
   // Not ctx.liveSync: that is the open tabs' event stream (server/live-sync.mjs), which
   // the calendar writer and the time route emit on.
   app.ctx.peerLive = live;
   if (app.ctx.remoteJobs) app.ctx.remoteJobs.attach(engine, live);
+  // Presence (lib/sync/presence.mjs): is each other device open, running, asleep, off or
+  // outdated? Asked FIRST by everything that needs another device (lib/remote-jobs.mjs,
+  // lib/finance-share.mjs), shown in the top bar (GET /api/sync/presence).
+  const presence = attachPresence({
+    engine, live, version, log,
+    pageCount: () => (app.ctx.liveSync ? app.ctx.liveSync.clientCount : 0),
+    emit: (event, data) => { const sse = app.ctx.liveSync; if (sse && typeof sse.emit === 'function') sse.emit(event, data); },
+  });
+  app.ctx.presence = presence.tracker;
+  app.ctx.presenceView = presence.view;
   app.onReady(async () => {
     // The person's settings as this computer has them, for the others (a first copy: only what differs from the defaults).
     if (typeof app.ctx.getConfig === 'function') await writeProfile(paths.root, app.ctx.getConfig(), { defaults: DEFAULT_CONFIG }).catch(() => {});
@@ -108,10 +143,14 @@ export default function register(app) {
     await applySourcePrefs(paths.root, { log }).catch(() => {});
     await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`));
     if (live) await live.start().catch((e) => log('warn', `live sync could not start: ${e && (e.code || e.message)}`));
+    presence.start();
   });
-  app.onClose(async () => { if (live) await live.stop().catch(() => {}); await engine.stop(); });
+  app.onClose(async () => { presence.stop(); if (live) await live.stop().catch(() => {}); await engine.stop(); });
 
   app.route({ path: '/api/sync/status', method: 'GET', quiet: true, handler: () => engine.status() });
+  // The top bar's sync dot and its panel (src/app/56-presence.js); asking also tells this
+  // server a page is open here (published to the others as "dashboard open").
+  app.route({ path: '/api/sync/presence', method: 'GET', quiet: true, handler: () => { presence.pageBeat(); return presence.view(); } });
   app.route({
     path: '/api/sync/settings', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
@@ -157,8 +196,28 @@ export default function register(app) {
     if (typeof b.enabled === 'boolean') patch.enabled = b.enabled;
     if (typeof b.internet === 'boolean') patch.internet = b.internet;
     if (Array.isArray(b.prefer)) patch.prefer = b.prefer.filter(x => typeof x === 'string').slice(0, 16);
+    for (const k of ['retry', 'hold']) if (typeof b[k] === 'string' && /^([0-9a-f]{16}|all)$/.test(b[k])) patch[k] = b[k];
     await live.configure(patch);
     return engine.status();
+  });
+
+  // ─── Health, What changed, Review ────────────────────────────────────
+  const health = createNodeSyncHealth({ engine, dataDir: paths.root, log });
+  const report = async (fresh = false) => {
+    const os = await health.facts({ fresh }).catch(() => null);
+    let pv = null;
+    try { pv = presence.view(); } catch { pv = null; }
+    return { ...syncHealth({ status: engine.status(), os, platform: process.platform, presence: pv && pv.devices }), changes: engine.changes(10) };
+  };
+  app.route({ path: '/api/sync/health', method: 'GET', quiet: true, handler: (c) => report(c.query.get('fresh') === '1') });
+  app.route({ path: '/api/sync/changes', method: 'GET', quiet: true, handler: () => ({ entries: engine.changes(100) }) });
+  app.route({ path: '/api/sync/conflicts', method: 'GET', quiet: true, handler: () => engine.conflicts({ max: 50 }) });
+  post('/api/sync/conflicts/resolve', (b) => engine.resolveConflict(str(b.id, 40), b.keep === 'lost' ? 'lost' : b.keep === 'kept' ? 'kept' : ''));
+  post('/api/sync/fix', async (b) => {
+    const name = str(b.fix, 40) || '';
+    const r = await health.fix(name, { folder: str(b.folder, 1000) });
+    // This computer's checks again only where the fix changes them (they take a moment on Windows).
+    return { ok: r.ok, message: r.message, health: await report(['start-cloud', 'keep-offline', 'recheck'].includes(name)) };
   });
   // The same take-over as Connections' "Fetch on this computer instead": the accounts code knows
   // whether this computer holds its own sign-in (accounts/<id> in its secret store).

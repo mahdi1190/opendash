@@ -20,6 +20,12 @@ function _rjResponse(status, body) {
 }
 async function remoteFetch(url, init, opts) {
   const r = await fetch(url, init);
+  // The device that would run it is asleep or off (lib/sync/presence.mjs): nothing was started,
+  // and the answer is a calm line (calm: true), shown calmly by toast() (56-presence.js).
+  if (r.status === 503) {
+    try { const j = await r.clone().json(); if (j && j.calm && typeof presenceCalm === 'function') presenceCalm(j.error || j.message); } catch (e) { /* not JSON */ }
+    return r;
+  }
   if (r.status !== 202) return r;
   let j = null;
   try { j = await r.clone().json(); } catch (e) { return r; }
@@ -32,7 +38,7 @@ async function remoteWait(remote, opts) {
   const url = '/api/requests/' + encodeURIComponent(id);
   let cancelled = false;
   const close = opts.quiet ? () => {} : toast(remote.message || ('Asking ' + (remote.runsOn || 'your other computer') + '…'), {
-    icon: 'loader-circle', timeout: 15 * 60000,
+    icon: 'loader-circle', timeout: 21 * 60000,   // outlives the 20-minute wait below: the spinner never goes while Cancel is still needed
     action: { label: 'Cancel', run: () => { cancelled = true; remoteWake(); fetch(url + '/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {}); } },
   });
   // The toast follows the request: "Asking Home laptop…", then "Home laptop is off: using this computer…".
@@ -62,7 +68,9 @@ async function remoteWait(remote, opts) {
       // The answer of the route it ran there, exactly (an error from there too).
       if ((x.status === 'done' || x.status === 'error') && x.result) return _rjResponse(x.result.status || 200, x.result.body || { ok: true });
       if (['error', 'cancelled', 'expired'].includes(x.status)) {
-        return _rjResponse(x.state === 'offline' ? 503 : 502, { error: x.message || 'It did not work.', code: (x.error && x.error.code) || String(x.status).toUpperCase(), runsOn: x.runsOn || null });
+        // It went away while asked (lib/sync/presence.mjs): a calm line, not an error (toast() shows it calmly).
+        if (x.calm && typeof presenceCalm === 'function') presenceCalm(x.message);
+        return _rjResponse(x.state === 'offline' ? 503 : 502, { error: x.message || 'It did not work.', code: (x.error && x.error.code) || String(x.status).toUpperCase(), runsOn: x.runsOn || null, ...(x.calm ? { calm: true } : {}) });
       }
     }
   } finally { close(); }
@@ -80,6 +88,8 @@ function syncedFilesChanged(rels) {
   try { if (typeof InboxStore !== 'undefined' && InboxStore && InboxStore.st && InboxStore.st.loaded && (any('inbox/') || any('email/') || prefs)) InboxStore.load(true); } catch (e) { /* not loaded yet */ }
   if (list.includes('brief/day-advice.json') && typeof homeAdvisorRefresh === 'function') homeAdvisorRefresh();
   if (any('finance-share/') && typeof financeSharedChanged === 'function') financeSharedChanged();   // finances from the computer that reads the bank (65-finance-view.js)
+  // A person's picture arrived from another computer (lib/sync/blobs.mjs): shown in place of the initials (50-people.js).
+  if (any('people/images/') && typeof pplPicturesArrived === 'function') pplPicturesArrived(list);
   _rjFilesRefresh(list, any);
   if ((list.includes('profile.json') || any('briefs/') || prefs) && typeof render === 'function') { try { render(); } catch (e) { /* fine */ } }
   // A proposal applied or dismissed on another computer (state/proposals.json): the assistant's cards follow (70-ai-chats.js).

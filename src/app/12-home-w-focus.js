@@ -376,14 +376,16 @@ function _hfEmptyNew(body) {
   const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 300; inp.dataset.fk = 'hf-qa';
   inp.placeholder = 'Add a task for today, e.g. “Email Sam about rent”';
   inp.setAttribute('aria-label', 'Add a task for today');
+  if (typeof homeKeepText === 'function') homeKeepText(inp, 'hf-qa');      // a repaint keeps what was typed
   inp.addEventListener('keydown', (e) => {
     e.stopPropagation();
     if (e.key === 'Enter' && inp.value.trim()) {
       e.preventDefault();
+      if (typeof homeKeepText === 'function') homeKeepText.clear('hf-qa');
       const v = inp.value.trim(); inp.value = '';
       if (typeof addTaskFromText === 'function') homeFocusAfterAdd(addTaskFromText(v, { plannedFor: todayStr() }), '#main-body .hf-w .hf-new');
       else openNewTask(v);
-    } else if (e.key === 'Escape') { inp.value = ''; inp.blur(); }
+    } else if (e.key === 'Escape') { if (typeof homeKeepText === 'function') homeKeepText.clear('hf-qa'); inp.value = ''; inp.blur(); }
   });
   qa.appendChild(inp);
   body.appendChild(qa);

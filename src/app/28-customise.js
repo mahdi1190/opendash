@@ -121,7 +121,8 @@ async function _czApplyNow(ops, o) {
     if (o.done !== false) toast(o.done || j.summary || 'Done', { kind: 'ok', icon: o.icon || 'circle-check', action: j.undo ? { label: 'Undo', run: () => czUndo(j.undo, o.undone) } : undefined });
     return j;
   } catch (e) {
-    toast(_czErrText(e), { kind: 'err' });
+    // Try again runs the same change (it is checked again on the server first).
+    toast(_czErrText(e), { kind: 'err', retry: () => czApply(ops, o) });
     return null;
   }
 }
@@ -133,7 +134,7 @@ async function czUndo(token, after) {
     render();
     if (typeof _tmRepaint === 'function') _tmRepaint();
     toast('Undone', { kind: 'ok', icon: 'undo-2' });
-  } catch (e) { toast(_czErrText(e), { kind: 'err' }); }
+  } catch (e) { toast(_czErrText(e), { kind: 'err', retry: () => czUndo(token, after) }); }
 }
 
 /* ---------- opening the menu: right-click, Menu key / Shift+F10, long press ---------- */
@@ -281,7 +282,7 @@ function czTagItems(tag, el, at) {
     { label: pinned ? 'Unpin from the sidebar' : 'Pin to the sidebar', icon: pinned ? 'pin-off' : 'pin',
       run: () => czApply([{ op: 'tag.update', tag, pinned: !pinned }], { done: pinned ? `Unpinned #${tag}` : `Pinned #${tag} to the sidebar`, icon: pinned ? 'pin-off' : 'pin' }) },
     'sep',
-    { label: 'Delete…', icon: 'trash-2', danger: true, hint: c.n ? `${c.n} task${c.n === 1 ? '' : 's'}` : '', run: () => czTagDelete(tag) },
+    { label: 'Delete', icon: 'trash-2', danger: true, hint: c.n ? `${c.n} task${c.n === 1 ? '' : 's'}` : '', run: () => czTagDelete(tag) },
   ];
 }
 /** This tab follows a renamed or merged tag: its view and that view's sort/group (UI keys stay per tab). */
@@ -294,14 +295,9 @@ async function czRenameTag(tag, raw) {
   const it = czTagRenameIntent(tag, raw, tglKnown(state), tglNorm);
   if (it.kind === 'empty' || it.kind === 'same') return;
   if (it.kind === 'merge') {
+    // Renaming onto a tag you have merges them: no second question, the toast says what happened and has Undo.
     const c = _czTagCount(tag);
-    const ok = await confirmDialog({
-      title: `#${it.to} already exists`,
-      text: `Merge #${tag} into #${it.to}? ${c.n} task${c.n === 1 ? '' : 's'} with #${tag} get #${it.to} instead, and #${tag} goes. You can undo it.`,
-      confirmLabel: `Merge into #${it.to}`,
-    });
-    if (!ok) return;
-    return czApply([{ op: 'tag.merge', from: [tag], into: it.to }], { confirmed: true, icon: 'git-merge', done: `Merged #${tag} into #${it.to}`, after: () => czFollowTag(tag, it.to), undone: () => czFollowTag(it.to, tag) });
+    return czApply([{ op: 'tag.merge', from: [tag], into: it.to }], { confirmed: true, icon: 'git-merge', done: `#${it.to} already existed, so #${tag} was merged into it (${c.n} task${c.n === 1 ? '' : 's'})`, after: () => czFollowTag(tag, it.to), undone: () => czFollowTag(it.to, tag) });
   }
   // Typing the new name is the confirmation, even when it touches more than 25 tasks.
   return czApply([{ op: 'tag.rename', from: tag, to: it.to }], { confirmed: true, icon: 'tags', after: () => czFollowTag(tag, it.to), undone: () => czFollowTag(it.to, tag) });
@@ -341,13 +337,8 @@ function czTagMerge(tag) {
 }
 async function czTagDelete(tag) {
   const c = _czTagCount(tag);
-  const ok = await confirmDialog({
-    title: `Delete #${tag}?`,
-    text: `It comes off ${c.n} task${c.n === 1 ? '' : 's'} (${c.open} open), the templates and the sidebar. The tasks stay. You can undo it.`,
-    confirmLabel: c.n ? `Delete from ${c.n} task${c.n === 1 ? '' : 's'}` : 'Delete', danger: true,
-  });
-  if (!ok) return;
-  czApply([{ op: 'tag.delete', tag }], { confirmed: true, icon: 'trash-2', done: `Deleted #${tag}`,
+  // No "are you sure?": the tasks stay, and the toast's Undo puts the tag back everywhere.
+  czApply([{ op: 'tag.delete', tag }], { confirmed: true, icon: 'trash-2', done: c.n ? `Deleted #${tag} from ${c.n} task${c.n === 1 ? '' : 's'} (the tasks stay)` : `Deleted #${tag}`,
     after: () => { if (state.view === 'tag:' + tag) { state.view = 'tags'; saveUI(); _syncViewHash(); } } });
 }
 

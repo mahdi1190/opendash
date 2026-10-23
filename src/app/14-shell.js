@@ -350,12 +350,22 @@ function renderSaveStatus() {
   if (!btn) return;
   const lbl = btn.querySelector('.sync-lbl');
   let kind, text, tip;
+  const err = String(_serverLastError || '');
+  // Calm words for the cases where nothing is lost: the server is away, or saving is
+  // paused on purpose. Only a real failure is red, and a click on it tries again (90-wiring.js).
+  const offline = _serverAvailable && ((typeof srvIsOffline === 'function' && srvIsOffline()) || (window.DashboardNet && DashboardNet.down) || /isn.t running|not running/i.test(err));
   if (!_serverAvailable) {
     kind = 'local'; text = 'Local only';
     tip = 'Saved in this browser only. Start OpenDash with start-opendash to save to your data folder.';
-  } else if (_serverLastError) {
-    kind = 'err'; text = 'Not saved';
-    tip = 'Saving to the data folder failed: ' + _serverLastError + '. Your work is still in this browser.';
+  } else if (offline) {
+    kind = 'offline'; text = 'Offline · changes kept';
+    tip = 'The OpenDash server isn’t running. Your changes are kept in this browser and saved as soon as it is back. Click to check again.';
+  } else if (/paused/i.test(err)) {
+    kind = 'paused'; text = 'Paused · changes kept';
+    tip = err.charAt(0).toUpperCase() + err.slice(1) + '. Your changes are kept in this browser and saved when it resumes.';
+  } else if (err) {
+    kind = 'err'; text = 'Not saved · retry';
+    tip = 'Saving to the data folder failed: ' + err + '. Your work is still in this browser. Click to try again.';
   } else if (state._localDirty || _persistInFlight || _persistTimer) {
     kind = 'busy'; text = 'Saving…';
     tip = 'Saving to the data folder';
@@ -363,10 +373,11 @@ function renderSaveStatus() {
     kind = 'ok'; text = 'Saved';
     tip = 'Saved to the data folder' + (state._lastSave ? ' · ' + formatTimestamp(state._lastSave) : '');
   }
-  btn.classList.remove('ok', 'err', 'busy', 'local');
+  btn.classList.remove('ok', 'err', 'busy', 'local', 'offline', 'paused');
   btn.classList.add(kind);
   if (lbl && lbl.textContent !== text) lbl.textContent = text;
   btn.title = tip;
+  btn.setAttribute('aria-label', text + '. ' + tip);
 }
 
 function renderTopbarWidgets() {

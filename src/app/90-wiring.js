@@ -72,7 +72,12 @@ document.getElementById('drawer-btn').onclick = () => {
 };
 document.getElementById('sb-scrim').onclick = () => _shellCloseDrawer();
 document.getElementById('debug-close').onclick = () => document.getElementById('debug-banner').classList.remove('show');
-document.getElementById('folder-btn').onclick = () => { if (_serverAvailable && (state._localDirty || _persistTimer)) flushPersistNow(); renderSaveStatus(); };
+// The save status: offline -> check for the server now; not saved -> try the save again now; else save what is waiting.
+document.getElementById('folder-btn').onclick = () => {
+  if (typeof srvIsOffline === 'function' && srvIsOffline()) { if (typeof srvCheckNow === 'function') srvCheckNow(); }
+  else if (_serverAvailable && (_serverLastError || state._localDirty || _persistTimer)) { _serverLastError = null; renderSaveStatus(); _persistFire(); }
+  renderSaveStatus();
+};
 
 document.addEventListener('click', (e) => {
   // Close date picker if click is outside it
@@ -157,18 +162,22 @@ function toggleExpandAll() {
 // space inside #main-body; mousemove past a small threshold draws a rectangle;
 // mouseup adds every intersecting .task[data-id] to multiSelect. Ctrl/Cmd+drag
 // is additive, plain drag replaces the current selection.
+// List and board. It starts on empty space, in the row gutter (left of the rows) or on a
+// board column's background; never on a row or card itself (dragging those moves the task).
+// Rows under the rectangle light up while you drag (.rb-hit); Shift or Ctrl/Cmd adds to the selection.
 function setupRubberBand() {
   const main = document.getElementById('main-body');
   if (!main || main._rubberBandReady) return;
   main._rubberBandReady = true;
-  let startX, startY, rb, started, additive;
+  let startX, startY, rb, started, additive, items = [];
+  const ROWS = '.task[data-id], .kanban-card[data-id]';
   main.addEventListener('mousedown', (e) => {
-    if (state.viewMode !== 'list' || !isTaskView(state.view)) return;
+    if (!['list', 'kanban'].includes(state.viewMode || 'list') || !isTaskView(state.view)) return;
     if (e.button !== 0) return;
-    if (e.target.closest('.task, button, input, select, textarea, .multi-handle, a, .quick-add, .templates-row, .progress-row, .week-bar, .calendar-events, .cal-events, .empty-state, .qa-wrap, .today-sum, .week-strip, .tg-h, .cal-sched, .search-note, .subtasks-inline')) return;
+    if (e.target.closest('.task, .kanban-card, button, input, select, textarea, .multi-handle, a, .quick-add, .templates-row, .progress-row, .week-bar, .calendar-events, .cal-events, .empty-state, .qa-wrap, .today-sum, .week-strip, .tg-h, .cal-sched, .search-note, .subtasks-inline, .kanban-add, .tg-hidden, [contenteditable="true"]')) return;
     startX = e.clientX; startY = e.clientY;
     started = false; rb = null;
-    additive = e.ctrlKey || e.metaKey;
+    additive = e.ctrlKey || e.metaKey || e.shiftKey;
     function onMove(ev) {
       if (!started) {
         if (Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) < 4) return;
@@ -176,27 +185,28 @@ function setupRubberBand() {
         rb.className = 'rubber-band';
         document.body.appendChild(rb);
         started = true;
+        items = [...main.querySelectorAll(ROWS)].map(el => ({ el, r: el.getBoundingClientRect() }));
       }
       const x = Math.min(startX, ev.clientX);
       const y = Math.min(startY, ev.clientY);
+      const w = Math.abs(ev.clientX - startX), h = Math.abs(ev.clientY - startY);
       rb.style.left = x + 'px'; rb.style.top = y + 'px';
-      rb.style.width = Math.abs(ev.clientX - startX) + 'px';
-      rb.style.height = Math.abs(ev.clientY - startY) + 'px';
+      rb.style.width = w + 'px'; rb.style.height = h + 'px';
+      for (const it of items) it.el.classList.toggle('rb-hit', !(it.r.right < x || it.r.left > x + w || it.r.bottom < y || it.r.top > y + h));
     }
     function onUp() {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       if (!started) return;
-      const rbRect = rb.getBoundingClientRect();
       rb.remove();
       if (!additive) multiSelect.ids.clear();
-      const rows = main.querySelectorAll('.task[data-id]');
-      for (const row of rows) {
-        const r = row.getBoundingClientRect();
-        if (r.right < rbRect.left || r.left > rbRect.right || r.bottom < rbRect.top || r.top > rbRect.bottom) continue;
-        const id = row.dataset.id;
-        if (id) multiSelect.ids.add(id);
+      for (const it of items) {
+        if (!it.el.classList.contains('rb-hit')) continue;
+        it.el.classList.remove('rb-hit');
+        const id = it.el.dataset.id;
+        if (id && getItem(id)) multiSelect.ids.add(id);
       }
+      items = [];
       document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
       render();
     }
@@ -219,17 +229,21 @@ document.addEventListener('keydown', e => {
     // :not([hidden]) - the quick-add suggestion list is a .pop that stays in the DOM while hidden.
     if (document.querySelector('.pop:not([hidden])')) { closePopovers(); return; }
     if (document.getElementById('modal-overlay').classList.contains('open')) { closeModal(); return; }
-    if (document.getElementById('kb-overlay').classList.contains('open')) { document.getElementById('kb-overlay').classList.remove('open'); return; }
+    if (document.getElementById('kb-overlay').classList.contains('open')) { if (typeof closeKbHelp === 'function') closeKbHelp(); else document.getElementById('kb-overlay').classList.remove('open'); return; }
     if (document.getElementById('app').classList.contains('drawer-open')) { _shellCloseDrawer(); return; }
     if (multiSelect.ids.size > 0) { multiSelect.ids.clear(); document.body.classList.remove('has-selection'); render(); return; }
     if (_expandedTaskIds.size > 0) { _expandedTaskIds.clear(); render(); return; }
     // The side panel closes on Esc only when no field is focused: the first Esc leaves a field in it.
     if (inField && e.target.closest && e.target.closest('#detail-pane')) { e.target.blur(); return; }
     if (!inField && (typeof detailPaneOpen === 'function' ? detailPaneOpen() : state.selectedTaskId)) { closeDetail(); return; }
+    // Nothing else to close: Esc dismisses the newest notification (11-ui-kit.js).
+    if (!inField && typeof toastDismissNewest === 'function' && toastDismissNewest()) return;
   }
   // Ctrl/Cmd+K: command palette (works from anywhere, including fields)
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); openCommandPalette(); return; }
   if (overlayOpen) return;
+  // The shortcut sheet is open: '?' closes it again; other keys do not act on the page behind it.
+  if (document.getElementById('kb-overlay').classList.contains('open')) { if (e.key === '?' && !inField) { e.preventDefault(); showKbHelp(); } return; }
   // Ctrl/Cmd+A: select all currently-rendered tasks (skipped when typing in a field)
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'a' && !inField && _lastRenderedTaskIds.length) {
     e.preventDefault();
@@ -252,8 +266,8 @@ document.addEventListener('keydown', e => {
     }
     _lastSelectedTaskId = _lastRenderedTaskIds[next];
     // Update kb-cursor class without a full re-render
-    document.querySelectorAll('.task.kb-cursor').forEach(n => n.classList.remove('kb-cursor'));
-    const newEl = document.querySelector(`.task[data-id="${CSS.escape(_lastSelectedTaskId)}"]`);
+    document.querySelectorAll('.task.kb-cursor, .kanban-card.kb-cursor').forEach(n => n.classList.remove('kb-cursor'));
+    const newEl = document.querySelector(`#main-body .task[data-id="${CSS.escape(_lastSelectedTaskId)}"], #main-body .kanban-card[data-id="${CSS.escape(_lastSelectedTaskId)}"]`);
     if (newEl) {
       newEl.classList.add('kb-cursor');
       newEl.scrollIntoView({ block: 'nearest', behavior: (window.Motion && Motion.prefersReduced()) ? 'auto' : 'smooth' });

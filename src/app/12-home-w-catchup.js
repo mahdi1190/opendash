@@ -669,6 +669,10 @@ function homeCatchupBreakDown(id, fromBtn) {
       const ask = () => {
         const my = ++gen;
         area.innerHTML = `<div class="hcu-steps-wait" role="status"><span class="spinner" aria-hidden="true"></span><span>Asking Claude for 3 to 5 small steps…</span></div>`;
+        // No need to wait: the steps can be written by hand instead (this closes the dialog; Claude's answer is dropped).
+        const self0 = document.createElement('button'); self0.type = 'button'; self0.className = 'btn btn-ghost btn-sm hcu-steps-self';
+        self0.innerHTML = icon('pencil') + '<span>Add them myself instead</span>'; self0.onclick = () => { close(); homeOpenTask(id, fromBtn); };
+        area.firstElementChild.appendChild(self0);
         askAIJson(_hcuStepsPrompt(it, r), _HCU_STEPS_SCHEMA, { effort: 'low' }).then((out) => {
           if (my !== gen) return;
           const steps = (out && Array.isArray(out.steps) ? out.steps : []).map(s => String(s || '').replace(/\s+/g, ' ').trim().slice(0, 200)).filter(Boolean).slice(0, 6);

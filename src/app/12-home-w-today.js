@@ -498,7 +498,8 @@ function _hhEntity(type, ref, text, m) {
   return out;
 }
 function _hhAvatar(p) {
-  const url = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || (typeof safeUrl === 'function' ? safeUrl(p.avatarUrl) : '');
+  const raw = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || (typeof safeUrl === 'function' ? safeUrl(p.avatarUrl) : '');
+  const url = typeof pplPicUrl === 'function' ? pplPicUrl(raw) : raw;    // 50-people.js: a picture that arrived by sync
   const inner = url ? `<img src="${escAttr(url)}" alt="">` : esc(typeof avatarInitials === 'function' ? avatarInitials(p.name) : String(p.name || '?').slice(0, 1));
   return `<span class="avatar hh-av" style="--c:${escAttr(safeColor(p.color, 'var(--sw-slate)'))}">${inner}</span>`;
 }

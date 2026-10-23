@@ -83,10 +83,13 @@ function _hfDetails(item, ctx) {
       <button type="button" class="btn btn-secondary btn-sm hf-open" data-act="open" data-kbd="O">${toPanel ? icon('panel-right') + '<span>Open in side panel</span>' : icon('maximize-2') + '<span>Open full card</span>'}</button>
     </div>`;
   const inp = x.querySelector('.hf-add input');
+  const keepKey = 'hf-add:' + id;
+  if (typeof homeKeepText === 'function') homeKeepText(inp, keepKey);          // a repaint keeps what was typed
+  const forget = () => { if (typeof homeKeepText === 'function') homeKeepText.clear(keepKey); };
   inp.addEventListener('keydown', (e) => {
     e.stopPropagation();
-    if (e.key === 'Enter' && inp.value.trim()) { e.preventDefault(); _homeRememberNow(); homeAddSubtask(id, inp.value.trim()); }
-    else if (e.key === 'Escape') { e.preventDefault(); if (inp.value) inp.value = ''; else _hfFocusRow(id); }
+    if (e.key === 'Enter' && inp.value.trim()) { e.preventDefault(); forget(); _homeRememberNow(); homeAddSubtask(id, inp.value.trim()); }
+    else if (e.key === 'Escape') { e.preventDefault(); forget(); if (inp.value) inp.value = ''; else _hfFocusRow(id); }
   });
   x.addEventListener('keydown', (e) => {
     const t = e.target;

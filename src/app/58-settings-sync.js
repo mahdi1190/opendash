@@ -29,6 +29,7 @@ const _syncIgnored = new Set();
 let _syncOtherOpen = false;  // "Other ways" unfolded
 let _syncJoinDismissed = null;   // the finished join-code panel the user closed (its expiresAt)
 let _syncJoinTick = null;    // the join code's countdown (text only, every second)
+let _syncLastJoinCode = null;   // the 4 letters typed last (Try again sends them again at once)
 
 /** "just now", "12 s ago", "2 min ago", "3 h ago", "2 days ago". */
 function syncAgo(ms, nowMs) {
@@ -91,16 +92,18 @@ function syncLiveLines(st) {
       'router': 'your router does not allow incoming connections',
       'unreachable': `${n} cannot be reached right now`,
     }[p.reason];
-    if (p.reason === 'trying') out.push({ tone: 'idle', text: `Connecting to ${n}...` });
+    // Every wait has a way out: Stop trying while it connects, Try again (at once, no back-off) otherwise.
+    if (p.reason === 'trying') out.push({ tone: 'idle', text: `Connecting to ${n}...`, peer: p.id, act: 'hold' });
+    else if (p.reason === 'held') out.push({ tone: 'idle', text: `Not connecting to ${n} (you stopped it): changes go through ${cloud}.`, peer: p.id, act: 'retry' });
     else if (p.reason === 'offline') out.push({ tone: 'idle', text: `Not live: ${why}.` });
-    else out.push({ tone: 'warn', text: `Not live with ${n}: using ${cloud === 'OneDrive' ? 'OneDrive' : cloud} (${why || 'not connected'})` });
+    else out.push({ tone: 'warn', text: `Not live with ${n}: using ${cloud === 'OneDrive' ? 'OneDrive' : cloud} (${why || 'not connected'})`, peer: p.id, act: 'retry' });
   }
   const r = L.reach || {};
   if (L.internet === false) out.push({ tone: 'idle', text: 'This computer does not ask your router to let your other computers in (turned off below).' });
   else if (r.state === 'mapped') out.push({ tone: 'ok', text: 'Your other computers can reach this one over the internet (your router opened a door for OpenDash).' });
   else if (r.state === 'cgnat') out.push({ tone: 'idle', text: 'This computer cannot be reached from the internet: your internet provider shares one address between many homes. Live sync still works on the same Wi-Fi, or when your other computer can be reached.' });
-  else if (r.state === 'double-nat') out.push({ tone: 'idle', text: 'This computer cannot be reached from the internet: there is a second router in front of this one. Live sync still works on the same Wi-Fi.' });
-  else if (r.state === 'none' || r.state === 'refused') out.push({ tone: 'idle', text: 'This computer cannot be reached from the internet: your router does not allow incoming connections. Live sync still works on the same Wi-Fi; otherwise changes go through ' + cloud + '.' });
+  else if (r.state === 'double-nat') out.push({ tone: 'idle', text: 'This computer cannot be reached from the internet: there is a second router in front of this one. Live sync still works on the same Wi-Fi.', peer: 'all', act: 'retry' });
+  else if (r.state === 'none' || r.state === 'refused') out.push({ tone: 'idle', text: 'This computer cannot be reached from the internet: your router does not allow incoming connections. Live sync still works on the same Wi-Fi; otherwise changes go through ' + cloud + '.', peer: 'all', act: 'retry' });
   else if (r.state === 'trying') out.push({ tone: 'idle', text: 'Asking your router to let your other computers in...' });
   return out;
 }
@@ -146,32 +149,44 @@ function syncPairView(p) {
   const code = syncFormatPairCode(p.code);
   if (p.role === 'join') {
     switch (p.step) {
-      case 'waiting': return { title: 'Waiting for your other computer', text: 'On your other computer, open OpenDash and go to Settings > Sync. It will ask you to check this computer. If nothing happens after a minute, your cloud drive may still be uploading.', actions: [['cancel', 'Cancel']] };
+      case 'waiting': return { title: 'Waiting for your other computer', text: 'On your other computer, open OpenDash and go to Settings > Sync. It will ask you to check this computer. Nothing yet? Your cloud drive may still be uploading: Ask again sends a fresh request now.', actions: [['again', 'Ask again'], ['cancel', 'Cancel']] };
       case 'compare': return { title: 'Check the numbers', code, text: 'Your other computer shows 6 numbers too. Are they exactly the same as these?', actions: [['yes', 'Yes, they match', true], ['no', "No, they're different"]] };
       case 'confirmed': return { title: 'Nearly done', code, text: 'Now click "Yes, the same" on your other computer. This computer finishes by itself.', actions: [['cancel', 'Cancel']] };
       case 'done': return { title: 'Done', text: 'This computer now syncs with your other computer.', actions: [] };
-      case 'declined': return { title: 'Stopped', text: 'Your other computer said the numbers did not match, so nothing was shared. You can try again.', actions: [['again', 'Try again', true]] };
-      case 'cancelled': return { title: 'Stopped', text: 'Nothing was shared.', actions: [['again', 'Try again', true]] };
+      case 'declined': return { title: 'Stopped', text: 'Your other computer said the numbers did not match, so nothing was shared. You can try again.', actions: [['again', 'Try again', true], ['close', 'Close']] };
+      case 'cancelled': return { title: 'Stopped', text: 'Nothing was shared.', actions: [['again', 'Try again', true], ['close', 'Close']] };
       case 'expired': return p.why === 'other-ended'
-        ? { title: 'Your other computer stopped', text: 'It ended this pairing (or was restarted), so nothing was shared. Try again.', actions: [['again', 'Try again', true]] }
-        : { title: 'This took too long', text: 'Nothing was shared. Try again.', actions: [['again', 'Try again', true]] };
-      default: return { title: 'Something went wrong', text: 'Nothing was shared. Try again, or use your recovery code instead.', actions: [['again', 'Try again', true]] };
+        ? { title: 'Your other computer stopped', text: 'It ended this pairing (or was restarted), so nothing was shared. Try again.', actions: [['again', 'Try again', true], ['close', 'Close']] }
+        : { title: 'This took too long', text: 'Nothing was shared. Try again.', actions: [['again', 'Try again', true], ['close', 'Close']] };
+      default: return { title: 'Something went wrong', text: 'Nothing was shared. Try again, or use your recovery code instead.', actions: [['again', 'Try again', true], ['close', 'Close']] };
     }
   }
   switch (p.step) {
     case 'waiting': return { title: 'Checking ' + other, text: 'Waiting for your cloud drive to bring the answer from ' + other + '. This can take a minute.', actions: [['cancel', 'Cancel']] };
     case 'compare': return { title: 'Check the numbers', code, text: 'Does ' + other + ' show exactly these 6 numbers? Only say yes if they are the same: if they differ, someone else may be trying to get in.', actions: [['yes', 'Yes, the same', true], ['no', 'No, different']] };
-    case 'sent': return { title: 'Sent', text: other + ' finishes by itself in a moment.', actions: [] };
-    case 'done': return { title: 'Done', text: other + ' now syncs too.', actions: [] };
-    case 'declined': return { title: 'Stopped', text: other + ' said the numbers did not match, so nothing was shared.', actions: [] };
-    case 'cancelled': return { title: 'Stopped', text: 'Nothing was shared.', actions: [] };
+    case 'sent': return { title: 'Sent', text: other + ' finishes by itself in a moment.', actions: [['cancel', 'Cancel']] };
+    case 'done': return { title: 'Done', text: other + ' now syncs too.', actions: [['close', 'OK', true]] };
+    case 'declined': return { title: 'Stopped', text: other + ' said the numbers did not match, so nothing was shared.', actions: [['close', 'Close']] };
+    case 'cancelled': return { title: 'Stopped', text: 'Nothing was shared. If the new computer asks again, its request shows here at once.', actions: [['close', 'Close']] };
     case 'expired': return p.why === 'other-ended'
-      ? { title: 'The new computer stopped', text: 'It ended its request, so nothing was shared. If it asks again, its new request shows here.', actions: [] }
-      : { title: 'This took too long', text: 'Nothing was shared. Start again on the new computer.', actions: [] };
-    default: return { title: 'Stopped for safety', text: 'Something changed the request while it was being checked, so nothing was shared. Start again on the new computer; if it keeps happening, use the recovery code there instead.', actions: [] };
+      ? { title: 'The new computer stopped', text: 'It ended its request, so nothing was shared. If it asks again, its new request shows here.', actions: [['close', 'Close']] }
+      : { title: 'This took too long', text: 'Nothing was shared. Start again on the new computer (Ask again there).', actions: [['close', 'Close']] };
+    default: return { title: 'Stopped for safety', text: 'Something changed the request while it was being checked, so nothing was shared. Start again on the new computer; if it keeps happening, use the recovery code there instead.', actions: [['close', 'Close']] };
   }
 }
 
+/** One line: what syncs and what never does. */
+function syncWhatSyncs() { return 'What syncs: your tasks, notes, people, streams, countdowns, Home, settings and layout. Never: sign-ins, passwords, bank connections or keys.'; }
+/** The folder row's one line: the personal OneDrive is picked for you, and why. */
+function syncFolderHint(st, first) {
+  const det = (st && st.detected) || [];
+  const pick = (st && st.folder && det.find(d => d.path === st.folder)) || det.find(d => !d.work) || null;
+  const work = det.some(d => d.work);
+  const lead = pick && pick.kind === 'onedrive' && !pick.work
+    ? 'Your personal OneDrive is picked' + (work ? " (not the work or school one: your data stays out of your employer's cloud)" : '') + '. '
+    : '';
+  return lead + (first ? 'OpenDash makes an "OpenDash Sync" folder inside it; everything in it is locked, only your computers can read it.' : 'Choose the same cloud folder as on your other computer.');
+}
 /** "9:41 left" */
 function syncTimeLeft(expiresAt, nowMs) {
   const s = Math.max(0, Math.round((Number(expiresAt) - nowMs) / 1000));
@@ -187,8 +202,8 @@ function syncJoinCodeView(j) {
   const Other = other.charAt(0).toUpperCase() + other.slice(1);
   if (j.role === 'offer') {
     switch (j.step) {
-      case 'waiting': return { title: 'Type this code on the new computer', code: j.code, countdown: true, text: 'On the new computer: OpenDash > Settings > Sync > "No, I already use OpenDash", then type these 4 letters. The code works once.' + (j.wrong ? ' ' + j.wrong + ' wrong ' + (j.wrong === 1 ? 'try' : 'tries') + ' so far: after 3 it stops working.' : ''), actions: [['cancel', 'Cancel']] };
-      case 'sent': return { title: 'Adding ' + other, text: Other + ' finishes by itself in a moment.', actions: [] };
+      case 'waiting': return { title: 'Type this code on the new computer', code: j.code, countdown: true, text: 'On the new computer: OpenDash > Settings > Sync > "No, I already use OpenDash", then type these 4 letters. The code works once.' + (j.wrong ? ' ' + j.wrong + ' wrong ' + (j.wrong === 1 ? 'try' : 'tries') + ' so far: after 3 it stops working.' : ''), actions: [['new', 'New code'], ['cancel', 'Cancel']] };
+      case 'sent': return { title: 'Adding ' + other, text: Other + ' finishes by itself in a moment.', actions: [['cancel', 'Cancel']] };
       case 'done': return { title: 'Done', text: Other + ' now syncs too.', actions: [['close', 'OK', true]] };
       case 'burned': return { title: 'This code no longer works', text: 'It was typed wrongly 3 times, so it was stopped for safety. Nothing was shared.', actions: [['new', 'Make a new code', true], ['close', 'Close']] };
       case 'clash': return { title: 'Two computers tried to use this code', text: 'For safety, neither was added. Start again, with only the new computer.', actions: [['new', 'Start again', true], ['close', 'Close']] };
@@ -197,23 +212,25 @@ function syncJoinCodeView(j) {
     }
   }
   switch (j.step) {
-    case 'looking': return { title: 'Looking for your other computer', countdown: true, text: 'Your cloud drive is bringing its code. This usually takes a few seconds, sometimes a minute.', actions: [['cancel', 'Cancel']] };
-    case 'sent': return { title: 'Checking the code', countdown: true, text: 'Your other computer checks it, then sends this one the key. A few seconds, sometimes a minute.', actions: [['cancel', 'Cancel']] };
+    case 'looking': return { title: 'Looking for your other computer', countdown: true, text: 'Your cloud drive is bringing its code. This usually takes a few seconds, sometimes a minute. Try again looks once more straight away.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
+    case 'sent': return { title: 'Checking the code', countdown: true, text: 'Your other computer checks it, then sends this one the key. A few seconds, sometimes a minute.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
     case 'done': return { title: 'Done', text: 'This computer now syncs with your other computer.', actions: [] };
-    case 'wrong': return { title: 'That code is not right', text: 'Check the 4 letters on your other computer and type them again below.', actions: [] };
-    case 'clash': return { title: 'Two computers tried to use this code', text: 'For safety, neither was added. Make a new code on your other computer and type it below.', actions: [] };
-    case 'taken': return { title: 'That code was already used', text: 'Each code works once. Make a new one on your other computer and type it below.', actions: [] };
-    case 'expired': return { title: 'This took too long', text: 'Make a new code on your other computer and type it below.', actions: [] };
-    default: return { title: 'Stopped', text: 'Nothing was shared. You can type a code again below.', actions: [] };
+    case 'wrong': return { title: 'That code is not right', text: 'Check the 4 letters on your other computer and type them again below.', actions: [['close', 'Close']] };
+    case 'clash': return { title: 'Two computers tried to use this code', text: 'For safety, neither was added. Make a new code on your other computer and type it below.', actions: [['close', 'Close']] };
+    case 'taken': return { title: 'That code was already used', text: 'Each code works once. Make a new one on your other computer and type it below.', actions: [['close', 'Close']] };
+    case 'expired': return { title: 'This took too long', text: 'Make a new code on your other computer and type it below.', actions: [['close', 'Close']] };
+    default: return { title: 'Stopped', text: 'Nothing was shared. You can type a code again below.', actions: [['retry', 'Try again'], ['close', 'Close']] };
   }
 }
 
-async function _syncJson(url, body) {
-  const r = await fetch(url, body === undefined ? { cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+async function _syncJson(url, body, signal) {
+  const r = await fetch(url, body === undefined ? { cache: 'no-store', signal } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error((j && (j.error && (j.error.message || j.error))) || ('HTTP ' + r.status));
   return j;
 }
+/** What makes the Sync tab redraw when it changes: the newest feed line, the clashes waiting. */
+function _syncFeedKey(s) { const c = (s && s.changes) || []; return [c[0] ? c[0].id + ':' + c[0].count : '', s && s.health ? s.health.conflictsOpen || 0 : 0].join('|'); }
 function _syncRefresh() { if (state.view === 'settings:sync') renderMain(); }
 async function syncLoad() {
   try { _syncSt = await _syncJson('/api/sync/status'); _syncErr = ''; }
@@ -221,22 +238,66 @@ async function syncLoad() {
   _syncRefresh();
 }
 async function _syncSave(patch, okMsg) { return _syncPost('/api/sync/settings', patch, okMsg); }
+// Every wait has a way out (the user's rule, 23 Oct 2026): a request in flight shows
+// Cancel, which stops waiting at once; a failure shows its reason with Try again,
+// which sends the same request again straight away. The timeout is only the fallback.
+let _syncAbort = null;           // the AbortController of the request in flight
+let _syncLast = null;            // {url, body, okMsg} of the last request (Try again)
+const SYNC_POST_TIMEOUT_MS = 90 * 1000;
 /** POST, keep the status it answers with, show a code it carries once. */
 async function _syncPost(url, body, okMsg) {
   if (_syncBusy) return null;
   _syncBusy = true; _syncErr = '';
+  _syncLast = { url, body: body || {}, okMsg };
+  const ac = new AbortController();
+  _syncAbort = ac;
+  const timer = setTimeout(() => ac.abort('timeout'), SYNC_POST_TIMEOUT_MS);
   _syncRefresh();
   let j = null;
   try {
-    j = await _syncJson(url, body || {});
+    j = await _syncJson(url, body || {}, ac.signal);
     if (j && j.recoveryCode) { _syncCode = j.recoveryCode; delete j.recoveryCode; }
     if (j && j.offer) { _syncOffer = j.offer; delete j.offer; }
     if (j && j.enabled !== undefined) _syncSt = j;
     if (okMsg) toast(okMsg, { kind: 'ok' });
-  } catch (e) { _syncErr = netErrorMessage(e); }
+    _syncLast = null;
+  } catch (e) {
+    if (ac.signal.aborted) _syncErr = ac.signal.reason === 'timeout' ? 'No answer after 90 seconds. It may still finish: this page shows it when it does.' : 'Stopped waiting. If it finishes anyway, this page shows it.';
+    else _syncErr = netErrorMessage(e);
+    j = null;
+  }
+  clearTimeout(timer);
+  if (_syncAbort === ac) _syncAbort = null;
   _syncBusy = false;
   _syncRefresh();
+  // The status as it is now (a cancelled step may have moved on); the failure line stays.
+  if (!j) _syncJson('/api/sync/status').then((s) => { _syncSt = s; _syncRefresh(); }).catch(() => {});
   return j;
+}
+function syncCancelWait() { if (_syncAbort) _syncAbort.abort('cancel'); }
+/** "Working… [Cancel]" while a request is in flight; "<reason> [Try again]" after one failed. */
+function _syncWaitRow(card) {
+  if (_syncBusy) {
+    const row = _syncEl('div', 'sync-wait'); row.setAttribute('role', 'status');
+    row.appendChild(_syncEl('span', 'spinner'));
+    row.appendChild(_syncEl('span', null, 'Working…'));
+    const x = _syncEl('button', 'btn btn-ghost btn-sm', 'Cancel'); x.type = 'button'; x.onclick = syncCancelWait;   // never disabled
+    row.appendChild(x);
+    card.body.prepend(row);
+  }
+}
+function _syncFailRow(card) {
+  if (!_syncErr) return;
+  const e = _syncEl('div', 'sync-status sync-err sync-fail'); e.setAttribute('role', 'alert');
+  e.appendChild(_syncEl('span', null, _syncErr));
+  if (_syncLast) {
+    const t = _syncEl('button', 'btn btn-secondary btn-sm', 'Try again'); t.type = 'button';
+    t.onclick = () => { const l = _syncLast; _syncErr = ''; _syncPost(l.url, l.body, l.okMsg); };
+    e.appendChild(t);
+  }
+  const c = _syncEl('button', 'btn btn-ghost btn-sm', 'Close'); c.type = 'button'; c.onclick = () => { _syncErr = ''; _syncLast = null; _syncRefresh(); };
+  e.appendChild(c);
+  card.body.prepend(e);
 }
 
 function _syncEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
@@ -255,7 +316,7 @@ function _syncFolderControl(st) {
   // A work or school OneDrive is listed (last) but never chosen for you: personal data stays out of an employer's cloud.
   const firstOwn = det.find(d => !d.work) || null;
   for (const d of det) {
-    const o = document.createElement('option'); o.value = d.path; o.textContent = `${d.label} (${d.path})`;
+    const o = document.createElement('option'); o.value = d.path; o.textContent = `${d.kind === 'onedrive' && !d.work ? 'OneDrive (personal)' : d.label} (${d.path})`;
     if (d.path === cur || (!cur && d === firstOwn)) o.selected = true;
     sel.appendChild(o);
   }
@@ -327,8 +388,8 @@ function _syncPairPanel(card, p) {
   for (const [id, label, primary] of v.actions) {
     row.appendChild(_syncBtn(label, () => {
       if (id === 'yes' || id === 'no') _syncPost('/api/sync/pair/confirm', { sid: p.sid, match: id === 'yes' });
-      else if (id === 'cancel') _syncPost('/api/sync/pair/cancel');
-      else if (id === 'again') _syncPost('/api/sync/pair/start');
+      else if (id === 'cancel' || id === 'close') _syncPost('/api/sync/pair/cancel');     // close: a finished pairing goes at once
+      else if (id === 'again') _syncPost('/api/sync/pair/start');                         // a fresh session now (the old one is replaced on both sides)
     }, primary));
   }
   if (v.actions.length) box.appendChild(row);
@@ -361,8 +422,9 @@ function _syncJoinPanel(card, j) {
     for (const [id, label, primary] of v.actions) {
       row.appendChild(_syncBtn(label, () => {
         if (id === 'cancel') _syncPost('/api/sync/code/cancel');
-        else if (id === 'new') { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); }
-        else if (id === 'close') { _syncJoinDismissed = j.expiresAt; _syncRefresh(); }
+        else if (id === 'new') { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); }                 // a fresh code now; the old one stops
+        else if (id === 'close') { _syncJoinDismissed = j.expiresAt; _syncPost('/api/sync/code/cancel'); }       // a finished one goes at once, on the server too
+        else if (id === 'retry') { if (_syncLastJoinCode) _syncPost('/api/sync/code/join', { code: _syncLastJoinCode }); else { const inp = document.querySelector('.sync-join-input'); if (inp) inp.focus(); } }
       }, primary));
     }
     box.appendChild(row);
@@ -375,7 +437,7 @@ function _syncJoinInput(card) {
   const input = _syncEl('input', 'control sync-join-input');
   input.maxLength = 9; input.autocomplete = 'off'; input.spellcheck = false; input.placeholder = 'ABCD';
   input.setAttribute('aria-label', 'The 4-letter code');
-  const go = () => { const v = input.value.trim(); if (v) _syncPost('/api/sync/code/join', { code: v }); };
+  const go = () => { const v = input.value.trim(); if (v) { _syncLastJoinCode = v; _syncPost('/api/sync/code/join', { code: v }); } };
   input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
   wrap.append(input, _syncBtn('Join', go, true));
   card.body.appendChild(_settingsRow('Type the 4-letter code from your other computer', 'On your other computer: Settings > Sync > Add a computer.', wrap));
@@ -414,11 +476,12 @@ function _syncStart(card, st) {
     _syncBtn('No, I already use OpenDash', () => { _syncFlow = 'join'; _syncRefresh(); }),
   );
   card.body.appendChild(_settingsRow('Is this your first computer with OpenDash?', 'Choose "No" if OpenDash already syncs on another computer of yours.', q));
+  card.body.appendChild(_syncEl('p', 'set-h sync-what', syncWhatSyncs()));
 }
 
 function _syncSetup(card, st, first) {
   const folder = _syncFolderControl(st);
-  card.body.appendChild(_settingsRow('Folder', first ? 'OpenDash makes an "OpenDash Sync" folder inside it. Everything in it is locked: only your computers can read it.' : 'The same cloud folder you chose on your other computer.', folder));
+  card.body.appendChild(_settingsRow('Folder', syncFolderHint(st, first), folder));
   const name = _syncEl('input', 'control control-sm'); name.maxLength = 60;
   name.value = (st && st.deviceName) || ''; name.placeholder = 'Work laptop';
   card.body.appendChild(_settingsRow('This computer is called', 'How your other computers show this one.', name));
@@ -512,7 +575,16 @@ function _syncDevices(card, st) {
 
 function _syncLivePaint(box, st) {
   box.textContent = '';
-  for (const l of syncLiveLines(st)) box.appendChild(_syncEl('div', 'sync-status sync-' + l.tone, l.text));
+  for (const l of syncLiveLines(st)) {
+    const line = _syncEl('div', 'sync-status sync-' + l.tone + (l.act ? ' sync-live-line' : ''));
+    line.appendChild(_syncEl('span', null, l.text));
+    if (l.act && l.peer) {
+      const b = _syncEl('button', 'btn btn-ghost btn-sm', l.act === 'hold' ? 'Stop trying' : 'Try again'); b.type = 'button';
+      b.onclick = () => _syncPost('/api/sync/live', l.act === 'hold' ? { hold: l.peer } : { retry: l.peer }, l.act === 'hold' ? 'Stopped trying: changes go through the sync folder' : 'Trying again now');
+      line.appendChild(b);
+    }
+    box.appendChild(line);
+  }
   const mains = syncMainLines(st);
   if (mains.length) box.appendChild(_syncEl('div', 'set-h', 'Main computer: ' + mains.join(' · ')));
 }
@@ -571,6 +643,15 @@ function _syncCard(el) {
     const status = document.createElement('div');
     status.appendChild(line);
     if (screen === 'plain') { const devs = document.createElement('div'); devs.className = 'set-h sync-devices'; status.appendChild(devs); }
+    // Waiting for the cloud folder, or paused by an error: Try again now (no waiting for the next check), or see Health.
+    if (st && st.enabled && ['waiting', 'error', 'locked'].includes(st.state)) {
+      const acts = _syncEl('div', 'sync-actions');
+      acts.append(
+        _syncBtn('Try again', async () => { try { _syncSt = await _syncJson('/api/sync/now', {}); _syncErr = ''; } catch (e) { _syncErr = netErrorMessage(e); } _syncRefresh(); }),
+        _syncBtn('What is wrong?', () => syncOpenHealth()),
+      );
+      status.appendChild(acts);
+    }
     card.body.appendChild(_settingsRow('Status', '', status));
   }
   if (screen === 'joining') _syncJoining(card, st);
@@ -593,8 +674,16 @@ function _syncCard(el) {
     // "Add a computer": a 4-letter code to type on the new one (the usual way).
     const jc = st.e2e && st.e2e.joinCode && st.e2e.joinCode.role === 'offer' ? st.e2e.joinCode : null;
     if (jc && _syncJoinDismissed !== jc.expiresAt) _syncJoinPanel(card, jc);
-    else card.body.appendChild(_settingsRow('Add a computer', 'Shows a 4-letter code to type on the new computer. It works once, for 10 minutes.', _syncBtn('Add a computer', () => { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); }, true)));
+    else {
+      // The usual way to add a computer, up front: one button, one line.
+      const hero = _syncEl('div', 'sync-add-hero');
+      const txt = _syncEl('div', 'sync-add-hero-t');
+      txt.append(_syncEl('div', 'sync-pair-t', 'Add a computer'), _syncEl('div', 'set-h', 'Shows 4 letters to type on the new computer (Settings > Sync > "No, I already use OpenDash"). Works once, for 10 minutes.'));
+      hero.append(txt, _syncBtn('Add a computer', () => { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); }, true));
+      card.body.appendChild(hero);
+    }
     _syncDevices(card, st);
+    syncChangesRow(card, st);
     _syncLive(card, st);
     _syncOtherWays(card, (box) => {
       if (_syncAdd) _syncAddPanel(box);
@@ -632,10 +721,12 @@ function _syncCard(el) {
     now.disabled = _syncBusy;
     now.onclick = async () => { try { _syncSt = await _syncJson('/api/sync/now', {}); } catch (e) { _syncErr = netErrorMessage(e); } _syncRefresh(); };
     card.body.appendChild(_settingsRow('Check the folder now', 'It also checks by itself every few seconds.', now));
+    // People's pictures and story audio (lib/sync/blobs.mjs), one line: 'Pictures and audio: 34 MB of 200 MB'.
+    if (st.blobs && st.blobs.text) card.body.appendChild(_settingsRow(st.blobs.text, '', null));
     if (st.conflicts && st.conflicts.count) {
       const c = st.conflicts.recent[0];
       const what = c ? `${c.name ? '"' + c.name + '"' : 'an item'}${c.field ? ' (' + c.field + ')' : ''}` : 'an item';
-      card.body.appendChild(_settingsRow('Edits that clashed', `${st.conflicts.count} time${st.conflicts.count === 1 ? '' : 's'} the same thing was changed on two computers at once; the later change was kept. Latest: ${what}, kept the change from ${c ? c.kept.by : 'the other computer'}. Each one is listed in conflicts.jsonl in this computer's OpenDash sync folder.`, null));
+      card.body.appendChild(_settingsRow('Edits that clashed', `${st.conflicts.count} time${st.conflicts.count === 1 ? '' : 's'} the same thing was changed on two computers at once; the later change was kept. Latest: ${what}, kept the change from ${c ? c.kept.by : 'the other computer'}. Review lets you keep the other one instead.`, st.health && st.health.conflictsOpen ? _syncBtn('Review (' + st.health.conflictsOpen + ')', () => { _syncTab = 'review'; syncReviewLoad(); _syncRefresh(); }, true) : null));
     }
   }
   if (st && st.enabled && st.skew) card.body.appendChild(_settingsRow('Clock', st.skew.text || `${st.skew.device}'s clock is about ${st.skew.aheadMin} min ahead of this one. Set both to the right time so the newest change wins.`, null));
@@ -645,17 +736,20 @@ function _syncCard(el) {
     card.body.appendChild(_settingsRow('Not synced from this computer', `${n.slice(0, 3).map(x => x.file + ' (' + x.why + ')').join('; ')}${n.length > 3 ? ` and ${n.length - 3} more` : ''}. ${n.length === 1 ? 'It stays' : 'They stay'} as ${n.length === 1 ? 'it is' : 'they are'} on this computer; your other computers keep their own copy.`, null));
   }
   if (st && st.enabled && screen !== 'joining') card.body.appendChild(_settingsRow('Sync across my devices', 'On. Turn it off to stop syncing this computer (nothing is deleted).', _settingsSwitch(true, 'Sync across my devices', () => _syncSave({ enabled: false }, 'Sync is off'), _syncBusy)));
-  if (_syncErr) { const e = document.createElement('div'); e.className = 'sync-status sync-err'; e.textContent = _syncErr; card.body.appendChild(e); }
+  _syncFailRow(card);
+  _syncWaitRow(card);
   el.appendChild(card.card);
+  // Health's "Type the 4-letter code": straight to the box.
+  if (_syncFocusJoin) { _syncFocusJoin = false; const inp = card.card.querySelector('.sync-join-input'); if (inp) setTimeout(() => { try { inp.focus(); inp.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { /* fine */ } }, 0); }
   paint();
   // Keep "Synced 12 s ago" current while this page is open (text only); re-render when the screen changes.
   clearInterval(_syncTicker);
   _syncTicker = setInterval(() => {
     if (!document.body.contains(line) && !document.body.contains(card.card)) { clearInterval(_syncTicker); _syncTicker = null; return; }
     _syncJson('/api/sync/status').then((s) => {
-      const before = JSON.stringify([syncScreen(_syncSt, _syncFlow), _syncSt && _syncSt.e2e && _syncSt.e2e.pairing, _syncSt && _syncSt.e2e && _syncSt.e2e.joinCode, _syncSt && _syncSt.e2e && _syncSt.e2e.requests, _syncSt && _syncSt.devices && _syncSt.devices.map(d => d.name)]);
+      const before = JSON.stringify([syncScreen(_syncSt, _syncFlow), _syncSt && _syncSt.state, _syncFeedKey(_syncSt), _syncSt && _syncSt.e2e && _syncSt.e2e.pairing, _syncSt && _syncSt.e2e && _syncSt.e2e.joinCode, _syncSt && _syncSt.e2e && _syncSt.e2e.requests, _syncSt && _syncSt.devices && _syncSt.devices.map(d => d.name)]);
       _syncSt = s;
-      const after = JSON.stringify([syncScreen(s, _syncFlow), s.e2e && s.e2e.pairing, s.e2e && s.e2e.joinCode, s.e2e && s.e2e.requests, s.devices && s.devices.map(d => d.name)]);
+      const after = JSON.stringify([syncScreen(s, _syncFlow), s.state, _syncFeedKey(s), s.e2e && s.e2e.pairing, s.e2e && s.e2e.joinCode, s.e2e && s.e2e.requests, s.devices && s.devices.map(d => d.name)]);
       if (before !== after && !_syncBusy) _syncRefresh(); else paint();
     }).catch(() => paint());
   }, 3000);
@@ -666,6 +760,15 @@ registerSettingsGroup({
   description: 'Keep your data the same on your computers through OneDrive, Google Drive or Dropbox, end-to-end encrypted.',
   render(el) {
     if (!_syncSt && !_syncErr) syncLoad();
+    // Sync | Health | What changed | Review (58-settings-sync-health.js), once sync is on.
+    syncTabsBar(el, _syncSt);
+    if (_syncSt && _syncSt.enabled && _syncTab !== 'setup') {
+      if (_syncTab === 'health') syncHealthPage(el);
+      else if (_syncTab === 'changes') syncChangesPage(el);
+      else syncReviewPage(el);
+      return;
+    }
+    if (_syncSt && _syncSt.enabled && !_shHealth && !_shBusy && Date.now() - _shHealthTried > 30000) syncHealthLoad(false);    // the Health tab's count
     _syncCard(el);
     if (typeof settingsMainComputerCard === 'function') settingsMainComputerCard(el);   // 58-settings-main.js
     if (typeof settingsClaudeHostCard === 'function') settingsClaudeHostCard(el);       // 58-settings-claude-host.js

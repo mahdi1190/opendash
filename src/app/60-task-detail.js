@@ -221,7 +221,7 @@ function tdProps(id, o) {
     const wrap = document.createElement('div'); wrap.className = 'prop-row';
     const due = effDate(item);
     const lbl = due ? `${esc(_dayLabel(due, { weekday: 'short', day: 'numeric', month: 'short', year: Math.abs(daysUntil(due)) > 300 ? 'numeric' : undefined }))}${item.dueTime ? ' · ' + esc(item.dueTime) : ''}<span class="rel ${_rowDueClass(item)}">${esc(_relDays(due))}</span>` : '<span class="ph">Add a due date</span>';
-    const b = chipBtn(lbl, 'dp-due', (a) => openDueDatePopover(a, { value: due, time: item.dueTime, allowTime: true, allowClear: true, onPick: (d, t) => { setDateWithReason(id, d, null); if (d) setOverride(id, 'dueTime', t || null); render(); } }), 'Due date and time (D)');
+    const b = chipBtn(lbl, 'dp-due', (a) => openDueDatePopover(a, { value: due, time: item.dueTime, allowTime: true, allowClear: true, onPick: (d, t) => setDueWithNote(id, d, t) }), 'Due date and time (D)');
     wrap.appendChild(b);
     if (due) {
       const r = document.createElement('button'); r.type = 'button'; r.className = 'btn-icon btn-sm dp-resch'; r.innerHTML = icon('history');
@@ -381,11 +381,17 @@ function tdNotesSection(id) {
   const ns = document.createElement('section'); ns.className = 'dp-section dp-notes';
   ns.innerHTML = `<div class="dp-sh"><h4>Notes</h4>${notes.length ? `<span class="count">${notes.length}</span>` : ''}</div>`;
   const comp = document.createElement('div'); comp.className = 'note-compose';
-  const nta = document.createElement('textarea'); nta.placeholder = 'Add a note: progress, a decision, a blocker…'; nta.rows = 1; nta.dataset.fk = 'note-new';
+  const nta = document.createElement('textarea'); nta.placeholder = 'Add a note: progress, a decision, a blocker… (Ctrl+Enter to add)'; nta.rows = 1; nta.dataset.fk = 'note-new';
   nta.setAttribute('aria-label', 'New note');
-  nta.oninput = () => { nta.style.height = 'auto'; nta.style.height = Math.min(240, nta.scrollHeight) + 'px'; comp.classList.toggle('has-text', !!nta.value.trim()); };
+  const fit = () => { nta.style.height = 'auto'; nta.style.height = Math.min(240, nta.scrollHeight) + 'px'; comp.classList.toggle('has-text', !!nta.value.trim()); };
+  // A half-written note is kept per task (closing the card, opening another task, a reload or a crash): state.drafts.
+  const dk = 'note:' + id;
+  const kept = typeof draftGet === 'function' ? draftGet(dk) : null;
+  if (kept && typeof kept.text === 'string' && kept.text.trim()) { nta.value = kept.text; comp.classList.add('has-text'); requestAnimationFrame(() => { if (nta.isConnected) fit(); }); }
+  nta.oninput = () => { fit(); _tdNoteDraft(dk, nta.value); };
   const nadd = document.createElement('button'); nadd.type = 'button'; nadd.className = 'btn btn-primary btn-sm'; nadd.textContent = 'Add note';
-  const submit = () => { const v = nta.value; if (!v.trim()) return; nta.value = ''; _keepFocus('note-new'); addNote(id, v); };
+  nadd.title = 'Add note (Ctrl+Enter)';
+  const submit = () => { const v = nta.value; if (!v.trim()) return; nta.value = ''; _tdNoteDraft(dk, ''); _keepFocus('note-new'); addNote(id, v); };
   nadd.onclick = submit;
   nta.onkeydown = (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); submit(); } };
   comp.append(nta, nadd);
@@ -408,6 +414,13 @@ function tdNotesSection(id) {
     ns.appendChild(bub);
   }
   return ns;
+}
+/** Keep (or, empty, forget) the note being written on a task. */
+function _tdNoteDraft(key, text) {
+  if (typeof draftSet !== 'function') return;
+  const t = String(text || '');
+  if (!t.trim()) { if (typeof draftGet === 'function' && draftGet(key)) draftDel(key); return; }
+  draftSet(key, { text: t.slice(0, 10000), at: Date.now() });
 }
 function tdActivitySection(id, view, rerender) {
   const acts = [...(state.taskActivity[id] || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -450,15 +463,46 @@ function tdChatSection(id) {
   if (older) chatArea.insertAdjacentHTML('beforeend', older);
   if (!chat.length) { const h = document.createElement('div'); h.className = 'chat-hint'; h.textContent = 'Break it down, draft a reply, or suggest next steps.'; chatArea.appendChild(h); }
   for (const msg of chat) { const m = document.createElement('div'); m.className = 'chat-msg ' + (msg.role === 'user' ? 'user' : 'claude'); m.textContent = msg.text; chatArea.appendChild(m); }
+  // Claude writing (70-ai.js _taskChatBusy): a live wait time and Stop.
+  const busy = typeof _taskChatBusy !== 'undefined' && _taskChatBusy[id];
+  if (busy) {
+    const w = document.createElement('div'); w.className = 'chat-msg claude chat-wait'; w.setAttribute('role', 'status');
+    w.insertAdjacentHTML('beforeend', '<span class="spinner"></span>');
+    w.appendChild(document.createTextNode(' Claude is thinking… '));
+    if (typeof aiSinceEl === 'function') w.appendChild(aiSinceEl(busy.at));
+    const stop = document.createElement('button'); stop.type = 'button'; stop.className = 'btn btn-ghost btn-sm'; stop.textContent = 'Stop';
+    stop.onclick = () => stopTaskChat(id);
+    w.appendChild(stop);
+    chatArea.appendChild(w);
+  }
   const err = typeof _taskChatErr !== 'undefined' && _taskChatErr[id];
-  if (err) { const e = document.createElement('div'); e.className = 'chat-msg claude chat-err'; e.textContent = '⚠ ' + err; chatArea.appendChild(e); }
+  if (err) {
+    // The reason in plain words and one fix (Sign in to Claude, How to install...), or Ask again.
+    const e = document.createElement('div'); e.className = 'chat-msg claude chat-err'; e.setAttribute('role', 'alert');
+    e.appendChild(document.createTextNode('⚠ ' + (typeof err === 'string' ? err : err.text)));
+    const acts = document.createElement('div'); acts.className = 'chat-err-a';
+    if (err.fix) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.textContent = err.fix.label; b.onclick = () => err.fix.run(); acts.appendChild(b); }
+    if (typeof err === 'string' || err.retry) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.innerHTML = icon('refresh-cw', 'i-xs') + '<span>Ask again</span>'; b.onclick = () => retryTaskChat(id); acts.appendChild(b); }
+    if (acts.childNodes.length) e.appendChild(acts);
+    chatArea.appendChild(e);
+  }
   cs.appendChild(chatArea);
   const crow = document.createElement('div'); crow.className = 'chat-input-row';
-  const cta = document.createElement('textarea'); cta.placeholder = 'Ask… (Enter to send)'; cta.rows = 1; cta.dataset.fk = 'chat';
+  const cta = document.createElement('textarea'); cta.placeholder = busy ? 'Type your next question… (sends when Claude has answered)' : 'Ask… (Enter to send)'; cta.rows = 1; cta.dataset.fk = 'chat';
   cta.setAttribute('aria-label', 'Ask Claude about this task');
-  const send = () => { const v = cta.value.trim(); if (!v) return; cta.value = ''; _keepFocus('chat'); sendTaskChat(id, v); };
+  // What you type is kept until it is really sent (one reply at a time).
+  const draftKey = 'taskchat-draft:' + id;
+  try { const d = sessionStorage.getItem(draftKey); if (d) cta.value = d; } catch (e) { /* no storage */ }
+  cta.oninput = () => { try { if (cta.value) sessionStorage.setItem(draftKey, cta.value); else sessionStorage.removeItem(draftKey); } catch (e) { /* no storage */ } };
+  const send = () => {
+    const v = cta.value.trim(); if (!v) return;
+    if (typeof _taskChatBusy !== 'undefined' && _taskChatBusy[id]) { toast('Claude is still answering. Your question stays in the box: send it when the answer is in, or press Stop.', { icon: 'clock' }); return; }
+    cta.value = ''; try { sessionStorage.removeItem(draftKey); } catch (e) { /* no storage */ }
+    _keepFocus('chat'); sendTaskChat(id, v);
+  };
   cta.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
   const sbtn = document.createElement('button'); sbtn.type = 'button'; sbtn.className = 'btn btn-secondary btn-sm'; sbtn.textContent = 'Send'; sbtn.onclick = send;
+  sbtn.disabled = !!busy;
   crow.append(cta, sbtn);
   if (chat.length) {
     const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'btn btn-ghost btn-sm'; clr.textContent = 'Clear';
@@ -646,7 +690,11 @@ function _openRescheduleDialog(id) {
       f2.appendChild(reasonIn);
       el.append(f1, f2);
     },
-    actions: [{ label: 'Cancel' }, { label: 'Reschedule', primary: true, run: () => { setDateWithReason(id, dateIn.value || null, reasonIn.value.trim()); } }],
+    actions: [{ label: 'Cancel' }, { label: 'Reschedule', primary: true, run: () => {
+      const snap = dueMoveSnap(id), to = dateIn.value || null, was = effDate(getItem(id) || item);
+      setDateWithReason(id, to, reasonIn.value.trim());
+      if (to !== was) dueMovedToast(id, to, snap);   // says when Today still keeps it (planned for today)
+    } }],
   });
 }
 
@@ -772,9 +820,19 @@ function _buildSubtaskSection(item, subs) {
     c.innerHTML = st.done ? icon('check') : '';
     c.onclick = () => toggleSubtask(id, st.id);
     const inp = document.createElement('input'); inp.className = 'st-text'; inp.value = st.title; inp.dataset.fk = 'st:' + st.id;
-    inp.setAttribute('aria-label', 'Subtask');
-    inp.onblur = () => { const v = inp.value.trim(); if (!v) { deleteSubtask(id, st.id); return; } if (v !== st.title) { updateSubtaskTitle(id, st.id, v); } };
+    inp.setAttribute('aria-label', 'Subtask'); inp.title = 'Alt+↑ / Alt+↓ to move it';
+    let gone = false;   // Backspace on an empty one removed it already
+    inp.onblur = () => { if (gone) return; const v = inp.value.trim(); if (!v) { _tdSubtaskDeleted(id, st.id); return; } if (v !== st.title) { updateSubtaskTitle(id, st.id, v); } };
     inp.onkeydown = (e) => {
+      // Alt+Up / Alt+Down: move it in the list (the keyboard way to drag); focus stays on it.
+      if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        e.preventDefault(); e.stopPropagation();
+        const to = i + (e.key === 'ArrowUp' ? -1 : 1);
+        if (to < 0 || to >= subs.length) return;
+        const v = inp.value.trim(); if (v && v !== st.title) updateSubtaskTitle(id, st.id, v);
+        _keepFocus('st:' + st.id); moveSubtask(id, st.id, to);
+        return;
+      }
       if (e.key === 'Enter') {
         e.preventDefault();
         const v = inp.value.trim(); if (v && v !== st.title) updateSubtaskTitle(id, st.id, v);
@@ -782,7 +840,7 @@ function _buildSubtaskSection(item, subs) {
         const next = sec.querySelector(subs[i + 1] ? `[data-fk="${CSS.escape('st:' + subs[i + 1].id)}"]` : '[data-fk="st-new"]');
         if (next) next.focus();
       }
-      if (e.key === 'Backspace' && !inp.value) { e.preventDefault(); const prev = subs[i - 1]; deleteSubtask(id, st.id); if (prev) { _keepFocus('st:' + prev.id); render(); } }
+      if (e.key === 'Backspace' && !inp.value) { e.preventDefault(); gone = true; const prev = subs[i - 1]; deleteSubtask(id, st.id); if (prev) { _keepFocus('st:' + prev.id); render(); } }
       if (e.key === 'Escape') { e.stopPropagation(); inp.value = st.title; inp.blur(); }
     };
     const more = document.createElement('button'); more.type = 'button'; more.className = 'btn-icon btn-sm st-more'; more.innerHTML = icon('ellipsis');
@@ -792,7 +850,7 @@ function _buildSubtaskSection(item, subs) {
       { label: 'Move up', icon: 'arrow-up', disabled: i === 0, run: () => moveSubtask(id, st.id, i - 1) },
       { label: 'Move down', icon: 'arrow-down', disabled: i === subs.length - 1, run: () => moveSubtask(id, st.id, i + 1) },
       'sep',
-      { label: 'Delete', icon: 'trash-2', danger: true, run: () => deleteSubtask(id, st.id) },
+      { label: 'Delete', icon: 'trash-2', danger: true, run: () => _tdSubtaskDeleted(id, st.id) },
     ], { align: 'end', width: 200 });
     row.append(grip, c, inp, more);
     list.appendChild(row);
@@ -801,11 +859,31 @@ function _buildSubtaskSection(item, subs) {
   const add = document.createElement('div'); add.className = 'add-subtask';
   add.innerHTML = icon('plus', 'i-sm');
   const ai = document.createElement('input'); ai.placeholder = 'Add a subtask'; ai.dataset.fk = 'st-new'; ai.setAttribute('aria-label', 'Add a subtask');
+  ai.title = 'Paste a list to add one subtask per line';
   ai.onkeydown = (e) => {
     if (e.key === 'Enter' && ai.value.trim()) { e.preventDefault(); const v = ai.value.trim(); ai.value = ''; _keepFocus('st-new'); addSubtask(id, v); }
     if (e.key === 'Escape') { e.stopPropagation(); ai.value = ''; ai.blur(); }
   };
+  ai.addEventListener('paste', (e) => _tdPasteSubtasks(e, ai, id, 'st-new'));
   add.appendChild(ai);
   sec.appendChild(add);
   return sec;
+}
+/** A subtask removed by the menu or by clearing its text: say so, with Undo. */
+function _tdSubtaskDeleted(id, stId) {
+  const st = getSubtasks(id).find(x => x.id === stId); if (!st) return;
+  deleteSubtask(id, stId);
+  toast('Subtask deleted', { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
+}
+/** Several lines pasted into an "Add a subtask" box: one subtask per line, one undo step. */
+function _tdPasteSubtasks(e, inp, id, fk) {
+  const txt = e.clipboardData ? e.clipboardData.getData('text') : '';
+  const lines = typeof qaSplitLines === 'function' ? qaSplitLines(txt) : String(txt || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (lines.length < 2) return;
+  e.preventDefault();
+  const typed = inp.value.trim();
+  inp.value = '';
+  _keepFocus(fk);
+  const n = addSubtasks(id, typed ? [typed, ...lines] : lines);
+  if (n) toast(`${n} subtasks added`, { kind: 'ok', icon: 'list-checks', action: { label: 'Undo', run: () => undo() } });
 }

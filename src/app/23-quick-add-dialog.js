@@ -104,11 +104,13 @@ function openQuickAddDialog(prefill, o) {
     if (e.key === 'Escape' && sug && !sug.hidden && document.activeElement === ta) { e.preventDefault(); e.stopPropagation(); sug.hidden = true; }
   };
   window.addEventListener('keydown', escSug, true);
+  let added = false;
   const submit = () => {
     if (!ta) return true;
     const before = typeof _undoStack !== 'undefined' ? _undoStack.length : 0;
     const ids = quickAddLines(ta.value, isTaskView(view) ? view : '', { ignore });
     if (!ids.length) { ta.closest('.qad-box').classList.add('is-invalid'); ta.focus(); return false; }
+    added = true;
     const steps = typeof _undoStack !== 'undefined' ? Math.max(1, _undoStack.length - before) : ids.length;
     _qadAnnounce(ids, steps);
     return true;
@@ -229,7 +231,15 @@ function openQuickAddDialog(prefill, o) {
       { label: 'Cancel' },
       { label: 'Add task', primary: true, icon: 'plus', run: () => submit() },
     ],
-    onClose: () => { if (sug) sug.hidden = true; window.removeEventListener('keydown', escSug, true); },
+    onClose: () => {
+      if (sug) sug.hidden = true; window.removeEventListener('keydown', escSug, true);
+      // Closed with text in it (Esc, Cancel, a click outside): nothing was added, but nothing is lost either.
+      const left = !added && ta ? ta.value : '';
+      if (left.trim()) {
+        toast(o.multi || qaSplitLines(left).length > 1 ? 'Tasks not added' : 'Task not added', { icon: 'file-pen-line',
+          action: { label: 'Restore', run: () => openQuickAddDialog(left, Object.assign({}, o, { multi: o.multi || qaSplitLines(left).length > 1 })) } });
+      }
+    },
   });
   return close;
 }

@@ -283,6 +283,17 @@ function addSubtask(taskId, title, atIndex) {
   setOverride(taskId, 'subtasks', cur); render();
   return st.id;
 }
+/** Several subtasks at once (a pasted list): one save, one undo step. Returns how many were added. */
+function addSubtasks(taskId, titles, atIndex) {
+  const add = (titles || []).map(t => String(t || '').trim()).filter(Boolean).slice(0, 100);
+  if (!add.length || !getItem(taskId)) return 0;
+  const cur = getSubtasks(taskId).slice();
+  const at = typeof atIndex === 'number' && atIndex >= 0 && atIndex <= cur.length ? atIndex : cur.length;
+  const now = Date.now();
+  cur.splice(at, 0, ...add.map((t, i) => ({ id: _newSubId() + i, title: t, done: false, ts: now })));
+  setOverride(taskId, 'subtasks', cur); render();
+  return add.length;
+}
 function updateSubtaskTitle(taskId, stId, title) {
   const cur = getSubtasks(taskId).slice();
   const i = cur.findIndex(x => x.id === stId); if (i < 0) return;
@@ -371,8 +382,8 @@ function deleteTask(id, opts) {
   saveData(); render();
   if (!(opts && opts.quiet)) toast('Moved to the bin', { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
 }
-function restoreTask(binTs) {
-  const i = state.bin.tasks.findIndex(t => t.binTs === binTs); if (i < 0) return;
+function restoreTask(binTs, opts) {
+  const i = state.bin.tasks.findIndex(t => t.binTs === binTs); if (i < 0) return null;
   const t = state.bin.tasks[i];
   if (t.kind === 'custom') {
     let data = t.customData;
@@ -397,14 +408,28 @@ function restoreTask(binTs) {
   if (t.pinned) state.pinned[t.id] = true;
   logActivity(t.id, 'restored', { text: 'Restored from the bin' });
   state.bin.tasks.splice(i, 1);
+  if (opts && opts.noSave) return t.id;
   saveData(); render();
+  return t.id;
 }
-function restoreNote(binTs) {
-  const i = state.bin.notes.findIndex(n => n.binTs === binTs); if (i < 0) return;
+function restoreNote(binTs, opts) {
+  const i = state.bin.notes.findIndex(n => n.binTs === binTs); if (i < 0) return null;
   const b = state.bin.notes[i];
   state.notes[b.taskId] = state.notes[b.taskId] || [];
   if (!state.notes[b.taskId].some(n => n.id === b.note.id)) state.notes[b.taskId].unshift(b.note);
-  state.bin.notes.splice(i, 1); saveData(); render();
+  state.bin.notes.splice(i, 1);
+  if (opts && opts.noSave) return b.taskId;
+  saveData(); render();
+  return b.taskId;
+}
+/** Everything in the bin back where it was: one save, one undo step. Returns how many came back. */
+function restoreAllFromBin() {
+  const tasks = (state.bin.tasks || []).map(t => t.binTs), notes = (state.bin.notes || []).map(n => n.binTs);
+  for (const ts of tasks) restoreTask(ts, { noSave: true });
+  for (const ts of notes) restoreNote(ts, { noSave: true });
+  const n = tasks.length + notes.length;
+  if (n) { saveData(); render(); }
+  return n;
 }
 /** Permanently delete one bin entry (task or note). */
 function purgeBinEntry(kind, binTs) {
