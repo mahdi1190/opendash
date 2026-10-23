@@ -106,7 +106,7 @@ SecretStore = {
   get(key)          -> Promise<object | null>
   set(key, value)   -> Promise<void>
   delete(key)       -> Promise<void>
-  withLock?(key, fn) -> Promise<T>   // optional cross-process exclusive section
+  lock?(key, fn)    -> Promise<T>   // optional cross-process exclusive section (lib/secret-store.mjs)
 }
 ```
 

@@ -1,0 +1,43 @@
+/* Mail and calendar ACCOUNTS on the Connections page (56-accounts.js). Cards
+   reuse the page's source-card look; these rules add the add-buttons row,
+   the Mail / Calendar toggles and the drawers' bits. */
+.conn-page .acc-adds { display: flex; flex-wrap: wrap; gap: 10px; margin: 2px 0 16px; }
+.conn-page .acc-add { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 9px 15px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+.conn-page .acc-add .cp-brand-image { width: 18px; height: 18px; }
+.conn-page .acc-add .i { width: 15px; height: 15px; }
+.conn-page .acc-add-link { margin-left: auto; color: var(--cp-muted); font-weight: 550; }
+.conn-page .acc-card .cp-card-top { align-items: flex-start; }
+.conn-page .acc-titles { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.conn-page .acc-email { margin: 0; color: var(--cp-text); font-size: 15px; font-weight: 630; line-height: 1.45; overflow-wrap: anywhere; }
+.conn-page .acc-sub { color: var(--cp-muted); font-size: 12px; line-height: 1.5; }
+.conn-page .acc-features { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 14px; }
+.conn-page .acc-feature { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 11px; border: 1px solid var(--cp-border); border-radius: 999px; background: var(--cp-subtle); color: var(--cp-muted); font: inherit; font-size: 13px; cursor: pointer; transition: background 150ms ease, border-color 150ms ease, color 150ms ease; }
+.conn-page .acc-feature .i { width: 14px; height: 14px; }
+.conn-page .acc-feature.on { background: var(--cp-green-soft); border-color: transparent; color: var(--cp-green); font-weight: 600; }
+.conn-page .acc-feature:hover:not(:disabled) { border-color: var(--cp-border-strong); }
+.conn-page .acc-feature:disabled { opacity: .6; cursor: default; }
+.conn-page .acc-tick { font-weight: 700; }
+.conn-page .acc-feature:not(.on) .acc-tick { font-size: 11px; font-weight: 500; }
+.conn-page .acc-actions { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.conn-page .acc-card.st-warn { border-color: #e9dbb9; }
+[data-theme="dark"] .conn-page .acc-card.st-warn { border-color: #605035; }
+.conn-page .acc-empty { grid-column: 1 / -1; padding: 22px; border: 1px dashed var(--cp-border-strong); border-radius: 12px; background: var(--cp-subtle); }
+.conn-page .acc-empty h3 { margin: 0 0 4px; font-size: 15px; }
+.conn-page .acc-empty p { margin: 0; color: var(--cp-muted); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { .conn-page .acc-feature { transition: none; } }
+@media (max-width: 720px) { .conn-page .acc-add, .conn-page .acc-add-link { flex: 1 1 100%; justify-content: center; margin-left: 0; } }
+
+/* Drawers: add an account, approval, coming soon */
+.acc-email-field { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 4px; }
+.acc-email-field .control { font-size: 16px; min-height: 44px; }
+.acc-hint { min-height: 1.5em; margin: 4px 0 2px; }
+.acc-swap { margin: 0 0 10px -8px; }
+.acc-promise { display: flex; align-items: flex-start; gap: 6px; }
+.acc-promise .i { margin-top: 3px; flex-shrink: 0; color: var(--success); }
+.acc-waiting { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 8px 0; }
+.acc-advanced { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+.acc-advanced summary { cursor: pointer; color: var(--fg-muted); font-size: var(--text-sm); }
+.acc-advanced .control { width: 100%; margin: 8px 0; }
+.acc-soon { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 18px; border: 1px dashed var(--border-strong); border-radius: 12px; background: var(--bg-subtle); }
+.acc-soon > .i { width: 22px; height: 22px; color: var(--fg-muted); }
+.acc-compact .assistant-actions { flex-wrap: wrap; }

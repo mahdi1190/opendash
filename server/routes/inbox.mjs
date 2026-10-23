@@ -13,6 +13,7 @@
 import { createInboxService, MAX_DAYS } from '../../lib/inbox.mjs';
 import { fetchEmailSource, saveInboxSnapshot, readInboxSnapshot, mergeInboxData } from '../../lib/inbox-sources.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
+import { accountsFor } from '../../lib/accounts.mjs';
 import { HttpError } from '../http.mjs';
 
 // Sources: GET /api/inbox merges every enabled email source (the Gmail preset
@@ -31,9 +32,10 @@ export default function register(app) {
     },
     merge: mergeInboxData,
     noteSync: (id, r) => sources.noteSync(id, r),
+    readsHere: (list) => accountsFor(app.ctx).readsHere(list),
     fetchOther: async (s, { days, todayIso }) => {
       const disc = sources.cached();
-      const r = await fetchEmailSource(s, { dataDir, days, todayIso, serverDef: sources.serverDef(s.server), denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name) });
+      const r = await fetchEmailSource(s, { dataDir, accounts: accountsFor(app.ctx), days, todayIso, serverDef: sources.serverDef(s.server), denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name) });
       await saveInboxSnapshot(paths, s.id, { days, ...r });
       log('note', `email source: ${r.count} messages`);
       return r;
