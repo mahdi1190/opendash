@@ -75,7 +75,12 @@ export default function register(app) {
       const body = await c.body({ allowEmpty: true });
       // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
       const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };
-      if (!mc.run) return { ...skippedBody(mc), job: null };
+      // Not this computer's job: the Claude connectors (and calendar links) wait for the main
+      // computer, but the accounts this computer fetches (lib/sync/roles.mjs) are still read here.
+      if (!mc.run) {
+        const own = mc.reason === 'moving' ? { started: false } : await inbox.start({ days: body.days, force: body.force === true, onlyAccounts: true });
+        return own.started ? c.json(202, { job: own.job, ...skippedBody(mc) }) : { ...skippedBody(mc), job: null };
+      }
       const r = await inbox.start({ days: body.days, force: body.force === true });
       if (r.started) return c.json(202, { job: r.job });
       if (r.reason === 'running') return c.json(409, { error: 'An update is already running.', job: r.job });

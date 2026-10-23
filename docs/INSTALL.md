@@ -254,7 +254,7 @@ so you can replace them freely.
 | The per-install token for local programs | `data/local-token` |
 | Which computers have the folder open (one small file each, updated every minute) | `data/hosts/` |
 | The id that finds this computer's private folder | `data/data-id.json` |
-| Which computer runs the background jobs (if you chose one) | `data/main-computer.json` |
+| Which computer runs the background jobs (if you chose one) | `data/roles.json` |
 | Where this computer moved the data (Settings > Data > Move) | this computer's OpenDash folder: `relocation.json` and `moves/` (never in the data folder) |
 | The key that locks the daily encrypted copy, and its settings | this computer's private folder (with the sign-ins below); the passphrase itself is never stored |
 | Sign-ins and keys (Google, Microsoft, bank connections, API keys) | **not in the data folder**: this computer's private folder, `%LOCALAPPDATA%\OpenDash\<id>\secrets` on Windows, `~/Library/Application Support/OpenDash/<id>/secrets` on macOS, `~/.local/state/opendash/<id>/secrets` on Linux |

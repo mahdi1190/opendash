@@ -17,6 +17,7 @@ import { secretStore } from '../lib/secret-store.mjs';
 import { secretsDir, readHostId } from '../lib/devicedir.mjs';
 import { createAccountsService, resetAccountsServices } from '../lib/accounts.mjs';
 import { readSourcesFile } from '../lib/sources.mjs';
+import { createMainComputer } from '../lib/main-computer.mjs';
 
 const base = tempDir('sync-acc-');
 const release = keepAlive();
@@ -198,4 +199,43 @@ test('two computers through the accounts service: sources made with the same ids
   // Sync switched off: the accounts code is back to the record alone.
   await C.eng.configure({ enabled: false });
   assert.equal(C.eng.enabled, false);
+});
+
+test('one rule for who runs what: jobs follow the main computer; an account follows its own fetcher; no sign-in here, never taken', async () => {
+  const E = makeDevice(base, 'e'), F = makeDevice(base, 'f');
+  const svcE = createAccountsService({ dataDir: E.data, sync: E.eng }), svcF = createAccountsService({ dataDir: F.data, sync: F.eng });
+  const cloud3 = join(base, 'cloud3'); mkdirSync(cloud3);
+  await E.eng.start(); await E.eng.configure({ enabled: true, apply: true, folder: cloud3, deviceName: 'Desk' });
+  await F.eng.start(); await F.eng.configure({ enabled: true, apply: true, folder: cloud3, deviceName: 'Laptop' });
+  await settle(E, F);
+  const mcE = createMainComputer({ dataDir: E.data, sync: E.eng, me: () => ({ id: E.eng.fetcherId, name: 'Desk' }) });
+  const mcF = createMainComputer({ dataDir: F.data, sync: F.eng, me: () => ({ id: F.eng.fetcherId, name: 'Laptop' }) });
+  // Desk is the main computer; an account was connected on the laptop (its sign-in is there).
+  assert.equal((await mcE.set('this')).isMain, true);
+  const ID = 'acc_00000000000000f1';
+  await fileRegistry(F.data).mutate((list) => { list.push(record({ id: ID, email: 'sam@example.org', sources: undefined, fetcher: svcF.deviceId })); });
+  await secretStore(F.data).set('accounts/' + ID, { refresh_token: 'r-f' });
+  await settle(F, E);
+  assert.deepEqual(await mcF.gate('connectors'), { run: false, reason: 'not-main', runsOn: 'Desk' });
+  assert.deepEqual(await mcE.gate('connectors'), { run: true });
+  assert.equal(await svcF.isFetcher(ID), true, 'the account is read where its sign-in is, not on the main computer');
+  assert.equal(await svcE.isFetcher(ID), false);
+  const stF = await mcF.status();
+  assert.equal(stF.main.name, 'Desk'); assert.equal(stF.isMain, false); assert.ok(stF.jobs.every(j => j.runsOn === 'Desk' && !j.here));
+  // An account nobody reads yet: a computer without its sign-in never takes it, not even the main computer.
+  const ID2 = 'acc_00000000000000f2';
+  await fileRegistry(F.data).mutate((list) => { list.push(record({ id: ID2, email: 'jo@example.org', sources: undefined, fetcher: null })); });
+  await settle(F, E);
+  assert.equal(await svcE.isFetcher(ID2), false, 'no sign-in on Desk');
+  assert.equal((await svcE.get(ID2)).fetcher, null, 'and nothing was claimed');
+  await secretStore(F.data).set('accounts/' + ID2, { refresh_token: 'r-f2' });
+  assert.equal(await svcF.isFetcher(ID2), true, 'the laptop holds the sign-in and takes it');
+  await settle(F, E);
+  assert.equal((await svcE.get(ID2)).fetcher, svcF.deviceId);
+  // The laptop becomes the main computer: the jobs move, the accounts stay where their sign-ins are.
+  await mcF.set('this');
+  await settle(F, E);
+  assert.deepEqual(await mcE.gate('bank'), { run: false, reason: 'not-main', runsOn: 'Laptop' });
+  assert.equal(await svcF.isFetcher(ID), true);
+  await E.eng.stop(); await F.eng.stop();
 });

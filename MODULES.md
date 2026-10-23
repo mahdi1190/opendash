@@ -821,7 +821,13 @@ for `secretsDir(dir)` (below), `dataPaths(dir).hosts` the presence folder.
 - Only the main computer runs AUTOMATIC jobs (bank, ai-brief, story, connectors); the job
   routes ask `app.ctx.mainComputer.gate(job, {automatic})` and answer skipped `{runsOn}`
   (calendar/inbox/finance update) or 409 NOT_MAIN (brief summary, story script, day advice).
-  Clicks always run. Sync on: the engine's fetcher roles; off: `<data>/main-computer.json`.
+  Clicks always run. One rule for who runs what (`lib/sync/roles.mjs` recordedRunner): an
+  account follows its own `fetcher` (accounts.json; taken only by a computer that holds its
+  sign-in), a job its role in `<data>/roles.json`, else the `main` role. The sync engine's
+  fetcher API (`isFetcher`, `fetcher`, `setFetcher`, `clearFetcher`, `reloadRoles`) is the
+  implementation, sync on or off (`fileRoles` without an engine). The inbox and calendar
+  updates hold back only the connector part on another computer (`start({onlyAccounts})`).
+  `set(id)` records `main` and clears per-job roles (the jobs follow it).
   UI: `src/app/58-settings-main.js` (Settings > Sync); Start my day shows "runs on <name>".
 
 ### lib/connections.mjs, lib/sharing.mjs, lib/zip.mjs (Connections/Settings)
@@ -1413,7 +1419,7 @@ Big made-up data: `node tools/make-fake-finance.mjs <dir> --days 730 --seed 11
 <data>/email/inbox.json            v1 snapshot, imported once into inbox/messages.json
 <data>/data-id.json       {id}: finds this data folder's device folder (lib/devicedir.mjs)
 <data>/hosts/<hostId>.json  presence of each computer that has the folder open (lib/hosts.mjs)
-<data>/main-computer.json {hostId, name, since}: the computer that runs the automatic jobs (lib/main-computer.mjs)
+<data>/roles.json        {roles: {main|bank|ai-brief|story|connectors: {fetcher, name?, since}}}: who runs each job (lib/sync/roles.mjs; synced by folder sync)
 <deviceBase>/relocation.json, moves/<id>.json   this computer's data-folder moves and their file lists (lib/relocate/)
 <device>/secrets/         every sign-in and key, OUTSIDE the data folder (lib/secret-store.mjs);
                           <device> = %LOCALAPPDATA%\OpenDash\<dataId> and the like (lib/devicedir.mjs)

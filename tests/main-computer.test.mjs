@@ -6,7 +6,7 @@
 // folder otherwise. Temp folders, a real in-process server, never port 4173.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { request, createServer } from 'node:http';
@@ -28,7 +28,7 @@ test('the rule: a click always runs; automatic runs only on the main computer; n
   assert.deepEqual(skippedBody({ run: false, reason: 'not-main', runsOn: 'WORK-LAPTOP' }), { skipped: true, reason: 'main-computer', runsOn: 'WORK-LAPTOP', message: 'Runs on WORK-LAPTOP, your main computer.' });
 });
 
-test('without sync: the choice is a file in the shared data folder; both computers agree', async () => {
+test('without sync: the choice is roles.json in the shared data folder; both computers agree', async () => {
   const data = mkdtempSync(join(ROOT, 'mc-'));
   try {
     let moving = false;
@@ -53,24 +53,31 @@ test('without sync: the choice is a file in the shared data folder; both compute
     assert.equal((await onA.status()).main, null);
     assert.equal((await onA.gate('bank')).run, true);
     await assert.rejects(onA.set('c'.repeat(24)), (e) => e.code === 'UNKNOWN_COMPUTER');
+    assert.ok(!existsSync(join(data, 'main-computer.json')), 'one place for who runs what: roles.json (lib/sync/roles.mjs)');
+    await onA.set(B);
+    assert.equal(JSON.parse(readFileSync(join(data, 'roles.json'), 'utf8')).roles.main.fetcher, B);
   } finally { rmSync(data, { recursive: true, force: true }); }
 });
 
-test("with sync: the sync engine's devices and fetcher roles are used", async () => {
+test("with sync: the sync engine's devices and fetcher roles are used (one choice: the jobs follow the main computer)", async () => {
   const roles = {};
-  const devices = [{ deviceId: '1111111111111111', name: 'HOME-PC', me: true, lastSeen: 1, background: true }, { deviceId: '2222222222222222', name: 'WORK-LAPTOP', me: false, lastSeen: 2, background: true }];
+  const devices = [{ deviceId: '1111111111111111', fetcherId: A, name: 'HOME-PC', me: true, lastSeen: 1, background: true }, { deviceId: '2222222222222222', fetcherId: B, name: 'WORK-LAPTOP', me: false, lastSeen: 2, background: true }];
+  const who = (id) => roles[id] || roles.main || null;       // the rule of lib/sync/roles.mjs, for jobs
   const sync = {
     devices: async () => devices,
-    setFetcher: async (id, dev) => { roles[id] = dev; return {}; },
-    isFetcher: async (id) => !roles[id] || roles[id] === '1111111111111111',
-    fetcher: (id) => (roles[id] ? { deviceId: roles[id], name: devices.find(d => d.deviceId === roles[id]).name, me: roles[id] === '1111111111111111' } : { deviceId: null, name: null, me: true }),
+    setFetcher: async (id, fid) => { roles[id] = fid; return {}; },
+    clearFetcher: async (id) => { delete roles[id]; return {}; },
+    isFetcher: async (id) => !who(id) || who(id) === A,
+    fetcher: (id) => (who(id) ? { deviceId: devices.find(d => d.fetcherId === who(id)).deviceId, name: devices.find(d => d.fetcherId === who(id)).name, me: who(id) === A } : { deviceId: null, name: null, me: true }),
   };
   const mc = createMainComputer({ dataDir: mkdtempSync(join(ROOT, 'mcs-')), sync: () => sync, me: () => ({ id: A, name: 'HOME-PC' }) });
   assert.equal((await mc.gate('ai-brief')).run, true);
+  roles['ai-brief'] = A;                                      // a job's own older role is cleared by the one choice
   const st = await mc.set('2222222222222222');
   assert.equal(st.mode, 'sync');
-  assert.deepEqual(Object.keys(roles).sort(), ['main', ...JOB_IDS].sort());
+  assert.deepEqual(roles, { main: B }, 'the main computer is recorded by its fetcher id; the jobs follow it');
   assert.equal(st.main.name, 'WORK-LAPTOP'); assert.equal(st.isMain, false);
+  assert.ok(st.jobs.every(j => j.runsOn === 'WORK-LAPTOP' && !j.here));
   assert.deepEqual(await mc.gate('ai-brief'), { run: false, reason: 'not-main', runsOn: 'WORK-LAPTOP' });
   assert.deepEqual(await mc.gate('ai-brief', { automatic: false }), { run: true });
   await assert.rejects(mc.set(null), (e) => e.code === 'NEEDS_MAIN');
