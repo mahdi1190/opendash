@@ -710,11 +710,12 @@ function _bfLoadSummary(m, regenerate) {
     .catch(e => { _bf.summaryLoading.brief = false; _bf.summary.brief = { date, text: null, error: e.code === 'OFF' ? 'The AI summary is off in Settings.' : e.code === 'NOT_MAIN' ? e.message : _bfAiErrorText(e) }; _bfPaintAi(null, false); });
 }
 /** Why the summary is missing, in plain words, with the next step (70-ai.js aiErrorView). */
-function _bfAiErrorText(e) {
-  if (typeof aiErrorView !== 'function') return 'The summary could not be written just now.';
+function _bfAiErrorText(e, again, what) {
+  again = again || 'Regenerate'; what = what || 'summary';
+  if (typeof aiErrorView !== 'function') return `The ${what} could not be written just now.`;
   const v = aiErrorView(e);
-  if (v.cancelled) return 'The summary was stopped. Press Regenerate to write it.';
-  return 'No summary yet: ' + v.text.replace(/\.$/, '') + '.' + (v.fix ? ' Fix it in Connections > Claude.' : v.retry ? ' Press Regenerate to try again.' : '');
+  if (v.cancelled) return `The ${what} was stopped. Press ${again} to write it.`;
+  return `No ${what} yet: ` + v.text.replace(/\.$/, '') + '.' + (v.fix ? ' Fix it in Connections > Claude.' : v.retry ? ` Press ${again} to try again.` : '');
 }
 
 /* ---------- cards ---------- */
