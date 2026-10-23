@@ -103,16 +103,27 @@ const _EM_SUG_SCHEMA = {
   } } } },
 };
 let _emSuggesting = false, _emSugCtrl = null, _emSugAt = 0;
+// The last failure, for an inline reason + Try again (Home's inbox widget): aiErrorView's {text, fix, retry} or null.
+let _emSugErr = null;
 /** Stop reading (the Suggest tasks button while it runs): the Claude run is cancelled, nothing is added. */
 function aiStopSuggesting() { if (_emSugCtrl) { try { _emSugCtrl.abort(); } catch (e) { /* already stopped */ } } }
-async function aiSuggestTasksFromEmails() {
-  if (_emSuggesting) { aiStopSuggesting(); return; }
-  if (!AI_AVAILABLE) { toast('Connect Claude to get suggestions.', { icon: 'plug', action: { label: 'Connect', run: () => (window.Connections ? Connections.open('claude') : setView('connections')) } }); return; }
+/**
+ * Ask Claude which recent emails need a task. o.quiet (Refresh today): never stops a run
+ * already going, no toast unless something was found; o.onlyNew: skip the messages Claude was
+ * already shown from any of your computers (state.seen 'aiEmail', synced), so two computers
+ * never send the same email twice. -> {ok, found, error?, skipped?}
+ */
+async function aiSuggestTasksFromEmails(o) {
+  o = o || {};
+  if (_emSuggesting) { if (!o.quiet) aiStopSuggesting(); return { ok: false, skipped: 'running' }; }
+  if (!AI_AVAILABLE) { if (!o.quiet) toast('Connect Claude to get suggestions.', { icon: 'plug', action: { label: 'Connect', run: () => (window.Connections ? Connections.open('claude') : setView('connections')) } }); return { ok: false, skipped: 'no-claude' }; }
   const t = _emTriage();
   const pendingIds = new Set(t.suggestions.filter(s => s.status === 'pending').map(s => s.emailId));
-  const emails = emailMessages().filter(m => !t.handled[m.id] && !pendingIds.has(m.id)).slice(0, 40);
-  if (!emails.length) { toast('Nothing new to look at. Update the inbox first.', { icon: 'inbox' }); return; }
-  _emSuggesting = true; _emSugAt = Date.now(); _emSugCtrl = typeof AbortController === 'function' ? new AbortController() : null; render();
+  const sent = o.onlyNew && typeof seenAll === 'function' ? seenAll('aiEmail') : null;
+  const emails = emailMessages().filter(m => !t.handled[m.id] && !pendingIds.has(m.id) && !(sent && sent[m.id])).slice(0, 40);
+  if (!emails.length) { if (!o.quiet) toast('Nothing new to look at. Update the inbox first.', { icon: 'inbox' }); return { ok: true, found: 0, skipped: 'nothing-new' }; }
+  _emSuggesting = true; _emSugAt = Date.now(); _emSugErr = null; _emSugCtrl = typeof AbortController === 'function' ? new AbortController() : null; render();
+  let result = { ok: false, found: 0 };
   const people = (state.people || []).filter(p => p && !p.self).map(p => ({ id: p.id, name: p.name, emails: typeof pplPersonEmails === 'function' ? pplPersonEmails(p) : [p.email].filter(Boolean), role: p.role || '' }));
   const streams = Object.entries(STREAMS).map(([k, v]) => ({ id: k, label: v.label }));
   const openTitles = getAllItems().filter(i => statusOf(i.id) !== 'done').map(i => effTitle(i).slice(0, 80)).slice(0, 300);
@@ -149,13 +160,22 @@ Emails: ${JSON.stringify(emails.map(m => ({ id: m.id, from: m.sender || _emSende
     // Keep the list tidy: decided suggestions older than 30 days go.
     t.suggestions = t.suggestions.filter(s => s.status === 'pending' || !s.at || now - s.at < 30 * 86400000).slice(-200);
     saveData();
-    toast(list.length ? `${list.length} task${list.length === 1 ? '' : 's'} suggested` : 'No new tasks in these emails', { kind: 'ok', icon: 'sparkles' });
+    // Claude has seen these now: every computer knows (one save for the lot).
+    if (typeof seenSetMany === 'function') seenSetMany('aiEmail', emails.map(m => m.id), Date.now());
+    if (!o.quiet || list.length) toast(list.length ? `${list.length} task${list.length === 1 ? '' : 's'} suggested` : 'No new tasks in these emails', { kind: 'ok', icon: 'sparkles' });
+    result = { ok: true, found: list.length };
   } catch (e) {
     // Why it failed and the fix (sign in, install...), else Try again; Stop is quiet.
-    if (e && e.code === 'CANCELLED') toast('Stopped reading. Nothing was added.', { icon: 'circle-x' });
-    else if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Task suggestions failed', retry: () => aiSuggestTasksFromEmails() });
-    else toast((e && e.message) || 'The suggestions failed.', { kind: 'err' });
+    if (e && e.code === 'CANCELLED') { if (!o.quiet) toast('Stopped reading. Nothing was added.', { icon: 'circle-x' }); result = { ok: false, found: 0, cancelled: true }; }
+    else {
+      _emSugErr = typeof aiErrorView === 'function' ? aiErrorView(e) : { text: (e && e.message) || 'The suggestions failed.', fix: null, retry: true };
+      result = { ok: false, found: 0, error: _emSugErr.text };
+      if (o.quiet) { /* the caller shows it */ }
+      else if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Task suggestions failed', retry: () => aiSuggestTasksFromEmails() });
+      else toast((e && e.message) || 'The suggestions failed.', { kind: 'err' });
+    }
   } finally { _emSuggesting = false; _emSugCtrl = null; render(); }
+  return result;
 }
 
 /** Mark a thread handled ('task' | 'dismiss') or reopen it (null). One undo step. */

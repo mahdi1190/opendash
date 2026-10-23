@@ -498,13 +498,37 @@ function _hinSugs(ctx, sugs) {
   const sec = document.createElement('section'); sec.className = 'hin-sugs'; sec.setAttribute('aria-label', 'Tasks Claude suggests from your email');
   const busy = !ctx.preview && typeof _emSuggesting !== 'undefined' && !!_emSuggesting;
   sec.innerHTML = `<div class="hin-sugs-h"><span class="hgl-ovl">${icon('sparkles')}<span>Suggested tasks</span></span>${sugs.length ? `<span class="hin-sugs-n">${sugs.length}</span>` : ''}<span class="spacer"></span></div>`;
-  const run = _hinBtn('btn btn-ghost btn-sm hin-suggest ai-only', icon(busy ? 'loader-circle' : 'sparkles', _hinSpin(busy)) + `<span>${busy ? 'Reading…' : 'Suggest tasks'}</span>`, null,
-    'Claude reads recent subjects and previews; nothing is added until you choose');
+  // While Claude reads (as on the Inbox page): "Reading… 0:12 · Stop"; the click stops the run (the
+  // server cancels it too) and nothing is added.
+  const canStop = busy && typeof aiStopSuggesting === 'function';
+  const run = _hinBtn('btn btn-ghost btn-sm hin-suggest ai-only' + (busy ? ' is-busy' : ''), icon(busy ? 'loader-circle' : 'sparkles', _hinSpin(busy)) + `<span>${busy ? 'Reading…' : 'Suggest tasks'}</span>`, null,
+    busy ? 'Claude is reading your recent email. Click to stop: nothing is added.' : 'Claude reads recent subjects and previews; nothing is added until you choose');
   run.setAttribute('data-requires', 'claude');
-  run.disabled = busy;
-  if (!ctx.preview) run.onclick = () => { if (typeof aiSuggestTasksFromEmails === 'function' && !(typeof _emSuggesting !== 'undefined' && _emSuggesting)) aiSuggestTasksFromEmails(); };
+  if (busy && typeof aiSinceEl === 'function' && typeof _emSugAt !== 'undefined' && _emSugAt) { const t = aiSinceEl(_emSugAt); t.classList.add('hin-since'); run.appendChild(t); }
+  if (canStop) { const x = document.createElement('span'); x.className = 'hin-stop'; x.textContent = '· Stop'; run.appendChild(x); run.setAttribute('aria-label', 'Reading your email. Stop'); }
+  run.disabled = busy && !canStop;
+  if (!ctx.preview) run.onclick = () => {
+    if (typeof _emSuggesting !== 'undefined' && _emSuggesting) { if (canStop) aiStopSuggesting(); return; }
+    if (typeof aiSuggestTasksFromEmails === 'function') aiSuggestTasksFromEmails();
+  };
   sec.querySelector('.hin-sugs-h').appendChild(run);
+  // The last try failed: the reason in plain words and the next step (its fix, else Try again).
+  const err = !busy && !ctx.preview && typeof _emSugErr !== 'undefined' && _emSugErr ? _emSugErr : null;
+  if (err) {
+    const box = document.createElement('div'); box.className = 'hin-sugs-err'; box.setAttribute('role', 'status');
+    box.innerHTML = icon('circle-alert', 'i-xs') + '<span></span>';
+    box.querySelector('span').textContent = err.text || 'Claude could not read your email just now.';
+    const act = err.fix || (err.retry !== false ? { label: 'Try again', run: () => aiSuggestTasksFromEmails() } : null);
+    if (act) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
+      b.innerHTML = (err.fix ? '' : icon('refresh-cw', 'i-xs')) + `<span>${esc(act.label)}</span>`;
+      b.onclick = () => act.run();
+      box.appendChild(b);
+    }
+    sec.appendChild(box);
+  }
   if (!sugs.length) {
+    if (err) return sec;
     const p = document.createElement('p'); p.className = 'hin-sugs-none';
     p.textContent = busy ? 'Reading your recent email…' : 'No suggestions waiting. Suggest tasks asks Claude which recent emails need you to do something.';
     sec.appendChild(p);
