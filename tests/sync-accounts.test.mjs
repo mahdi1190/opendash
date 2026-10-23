@@ -239,3 +239,38 @@ test('one rule for who runs what: jobs follow the main computer; an account foll
   assert.equal(await svcF.isFetcher(ID), true);
   await E.eng.stop(); await F.eng.stop();
 });
+
+test("live sync's lease answers first: every account fetch (the guarded read and the scheduled jobs' filter) follows it; no answer, the record decides", async () => {
+  const G = makeDevice(base, 'g'), H = makeDevice(base, 'h');
+  const svcG = createAccountsService({ dataDir: G.data, sync: G.eng });
+  const cloud4 = join(base, 'cloud4'); mkdirSync(cloud4);
+  await G.eng.start(); await G.eng.configure({ enabled: true, apply: true, folder: cloud4, deviceName: 'Desk' });
+  await H.eng.start(); await H.eng.configure({ enabled: true, apply: true, folder: cloud4, deviceName: 'Laptop' });
+  await settle(G, H);
+  const MINE = 'acc_00000000000000a7', THEIRS = 'acc_00000000000000a8';
+  await fileRegistry(G.data).mutate((list) => {
+    list.push(record({ id: MINE, email: 'mine@example.org', sources: undefined, fetcher: G.eng.fetcherId }));
+    list.push(record({ id: THEIRS, email: 'theirs@example.org', sources: undefined, fetcher: H.eng.fetcherId }));
+  });
+  await secretStore(G.data).set('accounts/' + MINE, { refresh_token: 'r-1' });
+  await secretStore(G.data).set('accounts/' + THEIRS, { refresh_token: 'r-2' });
+  await settle(G, H);
+  await svcG.reconcileSources();
+  const srcs = (await readSourcesFile(G.data)).sources.filter(s => s.account === MINE || s.account === THEIRS);
+  const reads = async () => (await svcG.readsHere(srcs)).map(s => s.account).filter((v, i, a) => a.indexOf(v) === i).sort();
+  // No answer from the lease: the record decides.
+  assert.deepEqual(await reads(), [MINE]);
+  // The lease: Desk is asleep for MINE (another computer took it), and holds THEIRS while the laptop sleeps.
+  const lease = { [MINE]: false, [THEIRS]: true };
+  G.eng.setLeaseOracle((id) => (id in lease ? lease[id] : null));
+  assert.deepEqual(await reads(), [THEIRS], 'the scheduled inbox and calendar jobs follow the lease');
+  await assert.rejects(svcG.fetchMail(MINE, {}), { code: 'NOT_FETCHER' });
+  assert.equal(await svcG.isFetcher(THEIRS), true);
+  assert.equal((await svcG.get(THEIRS)).fetcher, H.eng.fetcherId, 'a lease moves the job, never the recorded choice');
+  // The lease pins the recorded computer: jobs() names it by its sync device id.
+  const pins = Object.fromEntries(G.eng.jobs().accounts.map(a => [a.id, a.fetcherDeviceId]));
+  assert.deepEqual([pins[MINE], pins[THEIRS]], [G.eng.deviceId, H.eng.deviceId]);
+  G.eng.setLeaseOracle(null);
+  assert.deepEqual(await reads(), [MINE]);
+  await G.eng.stop(); await H.eng.stop();
+});

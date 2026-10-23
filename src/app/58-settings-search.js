@@ -149,6 +149,10 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Recovery code', 'Add a computer without the other one, or make a new code.', 'lost code key encryption'],
     ['Main computer for each account', 'Which computer checks each mail and calendar account.', 'fetch fetcher gmail outlook'],
     ['Not encrypted yet', 'Encrypt sync that started before encryption.', 'encrypt lock privacy'],
+    ['Live connection', 'Changes show on your other computer within a second when they can reach each other.', 'live instant realtime wifi lan internet connected'],
+    ['Let my other computers reach this one over the internet', 'Ask your router to open a door for OpenDash (UPnP).', 'router port upnp firewall nat'],
+    ['Main computer', 'Which computer checks your accounts when more than one is on.', 'main primary home laptop first fetch'],
+    ['Live sync', 'Turn the direct connection between your computers on or off.', 'live direct peer'],
   ],
   updates: [
     ['OpenDash version', 'Check for updates and install a newer release.', 'upgrade GitHub'],

@@ -58,6 +58,55 @@ function syncDeviceLines(st, nowMs) {
   if (!others.length) return ['No other computer yet: turn this on with the same folder on your other computer.'];
   return others.map(d => `Another device: ${d.name}, last seen ${syncAgo(d.lastSeen, nowMs) || 'a while ago'}`);
 }
+/**
+ * Live sync (lib/sync/live/): one {tone, text} per line, in plain words.
+ * st.live = {on, state, why, reach:{state, external}, firewall, peers:[{name,
+ * state, path, reason}], roles:[{label, name, me, acting}]}.
+ */
+function syncLiveLines(st) {
+  const L = st && st.live;
+  if (!st || !st.enabled || !L) return [];
+  const cloud = st.cloud || 'the sync folder';
+  if (!L.on) return [{ tone: 'off', text: `Live sync is off: changes travel through ${cloud} (10 to 60 seconds).` }];
+  if (L.state !== 'on') return [];
+  const out = [];
+  if (L.firewall) out.push({ tone: 'warn', text: 'Windows asked to allow OpenDash on private networks: click Allow. (Missed it? Start > "Allow an app through Windows Firewall" > tick Node.js for Private.)' });
+  else if (L.firewallHint) out.push({ tone: 'idle', text: 'If Windows asks to allow OpenDash (Node.js) on private networks, click Allow: that lets your other computer connect.' });
+  const peers = L.peers || [];
+  if (!peers.length) out.push({ tone: 'idle', text: 'Live sync is ready: it connects as soon as your other computer is on.' });
+  for (const p of peers) {
+    const n = p.name || 'your other computer';
+    if (p.state === 'live') { out.push({ tone: 'ok', text: `Live with ${n} (${p.path === 'lan' ? 'same Wi-Fi' : 'over the internet'})` }); continue; }
+    const why = {
+      'offline': `${n} is off or asleep; its changes come through ${cloud} when it is back`,
+      'no-address': `${n} has not shared how to reach it yet (is OpenDash up to date on it?)`,
+      'trying': null,
+      'new-key': `waiting for ${cloud} to bring the new sync key`,
+      'firewall': 'Windows on one of the computers is blocking OpenDash',
+      'lan-blocked': 'something on this network blocks the connection',
+      'cgnat': 'your internet provider does not allow incoming connections',
+      'router': 'your router does not allow incoming connections',
+      'unreachable': `${n} cannot be reached right now`,
+    }[p.reason];
+    if (p.reason === 'trying') out.push({ tone: 'idle', text: `Connecting to ${n}...` });
+    else if (p.reason === 'offline') out.push({ tone: 'idle', text: `Not live: ${why}.` });
+    else out.push({ tone: 'warn', text: `Not live with ${n}: using ${cloud === 'OneDrive' ? 'OneDrive' : cloud} (${why || 'not connected'})` });
+  }
+  const r = L.reach || {};
+  if (L.internet === false) out.push({ tone: 'idle', text: 'This computer does not ask your router to let your other computers in (turned off below).' });
+  else if (r.state === 'mapped') out.push({ tone: 'ok', text: 'Your other computers can reach this one over the internet (your router opened a door for OpenDash).' });
+  else if (r.state === 'cgnat') out.push({ tone: 'idle', text: 'This computer cannot be reached from the internet: your internet provider shares one address between many homes. Live sync still works on the same Wi-Fi, or when your other computer can be reached.' });
+  else if (r.state === 'double-nat') out.push({ tone: 'idle', text: 'This computer cannot be reached from the internet: there is a second router in front of this one. Live sync still works on the same Wi-Fi.' });
+  else if (r.state === 'none' || r.state === 'refused') out.push({ tone: 'idle', text: 'This computer cannot be reached from the internet: your router does not allow incoming connections. Live sync still works on the same Wi-Fi; otherwise changes go through ' + cloud + '.' });
+  else if (r.state === 'trying') out.push({ tone: 'idle', text: 'Asking your router to let your other computers in...' });
+  return out;
+}
+/** "Main computer for Gmail: Home laptop" lines. */
+function syncMainLines(st) {
+  const L = st && st.live;
+  if (!L || L.state !== 'on') return [];
+  return (L.roles || []).map(r => `${r.label}: ${r.name ? (r.me ? 'this computer' : r.name) : 'no computer yet'}${r.name && !r.acting ? ' (taking over)' : ''}`);
+}
 /** Which screen: start | first | join | plain | joining | removed | locked | ready. */
 function syncScreen(st, flow) {
   if (!st) return 'loading';
@@ -353,6 +402,33 @@ function _syncDevices(card, st) {
   }
 }
 
+function _syncLivePaint(box, st) {
+  box.textContent = '';
+  for (const l of syncLiveLines(st)) box.appendChild(_syncEl('div', 'sync-status sync-' + l.tone, l.text));
+  const mains = syncMainLines(st);
+  if (mains.length) box.appendChild(_syncEl('div', 'set-h', 'Main computer: ' + mains.join(' · ')));
+}
+function _syncLive(card, st) {
+  const L = st.live;
+  if (!L) return;
+  const box = _syncEl('div', 'sync-live');
+  _syncLivePaint(box, st);
+  card.body.appendChild(_settingsRow('Live connection', 'When your computers can reach each other, a change shows on the other one within a second. Otherwise it goes through your cloud folder as before. Only your own paired computers can connect, and everything is encrypted.', box));
+  if (L.on) {
+    card.body.appendChild(_settingsRow('Let my other computers reach this one over the internet', 'Asks your router to open a door for OpenDash only (UPnP). Turn it off if you would rather not.', _settingsSwitch(L.internet !== false, 'Let my other computers reach this one over the internet', (v) => _syncPost('/api/sync/live', { internet: v }, v ? 'Asking your router' : 'Your router is left alone'), _syncBusy)));
+    const computers = (st.devices || []).filter(d => d.kind !== 'phone');
+    if (computers.length > 1) {
+      const sel = document.createElement('select'); sel.className = 'control control-sm';
+      const auto = document.createElement('option'); auto.value = ''; auto.textContent = 'Whichever is on'; sel.appendChild(auto);
+      for (const d of computers) { const o = document.createElement('option'); o.value = d.id; o.textContent = (d.me ? 'This computer' : d.name) + ' first'; sel.appendChild(o); }
+      sel.value = (L.prefs && L.prefs[0]) || '';
+      sel.onchange = () => _syncPost('/api/sync/live', { prefer: sel.value ? [sel.value, ...computers.map(d => d.id).filter(id => id !== sel.value)] : [] }, 'Saved');
+      card.body.appendChild(_settingsRow('Main computer', 'Which computer checks your accounts when more than one is on. When it is off or asleep, another one takes over by itself.', sel));
+    }
+  }
+  card.body.appendChild(_settingsRow('Live sync', L.on ? 'On.' : 'Off: changes travel through your cloud folder only.', _settingsSwitch(!!L.on, 'Live sync', (v) => _syncPost('/api/sync/live', { enabled: v }, v ? 'Live sync is on' : 'Live sync is off'), _syncBusy)));
+}
+
 function _syncAddPanel(card) {
   const box = _syncEl('div', 'sync-add');
   box.appendChild(_syncEl('p', 'set-h', 'On another computer: open OpenDash, go to Settings > Sync and choose "No, I already use OpenDash". This computer will then ask you to check it.'));
@@ -375,6 +451,8 @@ function _syncCard(el) {
     line.textContent = s.text;
     const devs = card.body.querySelector('.sync-devices');
     if (devs) devs.textContent = syncDeviceLines(_syncSt, Date.now()).join('\n');
+    const live = card.body.querySelector('.sync-live');
+    if (live && _syncSt) _syncLivePaint(live, _syncSt);
   };
   if (_syncCode) _syncCodePanel(card);
   const screen = syncScreen(st, _syncFlow);
@@ -399,6 +477,7 @@ function _syncCard(el) {
   if (screen === 'ready') {
     _syncRequests(card, st);
     _syncDevices(card, st);
+    _syncLive(card, st);
     if (_syncAdd) _syncAddPanel(card);
     else card.body.appendChild(_settingsRow('Add a computer or phone', '', _syncBtn('Add a computer or phone', () => { _syncAdd = true; _syncRefresh(); })));
     card.body.appendChild(_settingsRow('Recovery code', 'Lost the one you wrote down? Make a new one: the old one stops working.', _syncBtn('Make a new recovery code', async () => {

@@ -8,6 +8,7 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { SYNC_KEYS, isSecretName, looksSecret, capture, newTree, validateOp, sanitize } from '../lib/sync/model.mjs';
 import { UI_STATE_KEYS, BOOKKEEPING_KEYS } from '../lib/state-keys.mjs';
 import { encodeHlc } from '../lib/sync/hlc.mjs';
@@ -153,8 +154,10 @@ test("this computer's sync files live under the per-computer base of lib/deviced
   for (const bad of [devBase, join(devBase, readDataId(data))]) assert.equal((await h.checkFolder(bad)).ok, false, 'the per-computer folder (it holds the sign-ins) cannot be the sync folder');
   // OpenDash's own per-computer folder is decided by lib/devicedir.mjs only. (folder.mjs may
   // still look up Dropbox's own info.json under %LOCALAPPDATA%: another app's file.)
-  for (const f of readdirSync(new URL('../lib/sync/', import.meta.url))) {
-    const code = readFileSync(new URL('../lib/sync/' + f, import.meta.url), 'utf8').replace(/\/\/.*$/gm, '')
+  const libSync = fileURLToPath(new URL('../lib/sync/', import.meta.url));
+  const all = (d) => readdirSync(d).flatMap(n => (statSync(join(d, n)).isDirectory() ? all(join(d, n)) : n.endsWith('.mjs') ? [join(d, n)] : []));
+  for (const f of all(libSync)) {
+    const code = readFileSync(f, 'utf8').replace(/\/\/.*$/gm, '')
       .replace(/env\.LOCALAPPDATA && j\(env\.LOCALAPPDATA, 'Dropbox', 'info\.json'\)/g, '');
     assert.doesNotMatch(code, /LOCALAPPDATA|XDG_STATE_HOME/, `${f} works out a per-user folder itself`);
   }
