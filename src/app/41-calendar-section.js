@@ -11,7 +11,8 @@
    (UI key). #view=calendar:week etc. opens a mode directly.
    Sidebar blocks here: 'calendars' (one toggle per Google calendar, with
    rename/recolour; replaces the shell's default) and 'cal-sync' (data age +
-   Update now). Keys: t today, j/k or arrows previous/next, m w d a modes,
+   Update now). Keys: t today, j/k or arrows previous/next, Shift+arrows
+   the focused day (a day / a week), m w d a modes,
    Esc closes the event panel. Dragging, resizing, creating and the other
    keys (c, n/p, e, Delete, Alt+arrows) are 45-calendar-grid-edit.js's.
    ============================================================ */
@@ -561,6 +562,9 @@ document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 'escape' && _calOpenEventId) { e.preventDefault(); calCloseEvent(); return; }
   if (k === 't') { e.preventDefault(); _calGridScroll = null; calSetFocus(todayStr()); return; }
+  // Shift+arrows move the focused day (a day sideways, a week up or down) without leaving the view.
+  const dayStep = e.shiftKey ? { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key] : 0;
+  if (dayStep) { e.preventDefault(); calSetFocus(_calAddDays(calFocus(), dayStep)); return; }
   if (k === 'j' || e.key === 'ArrowRight') { e.preventDefault(); calStep(1); return; }
   if (k === 'k' || e.key === 'ArrowLeft') { e.preventDefault(); calStep(-1); return; }
   const mode = { m: 'month', w: 'week', d: 'day', a: 'agenda' }[k];

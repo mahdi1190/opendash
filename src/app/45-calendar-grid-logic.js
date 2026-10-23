@@ -150,6 +150,10 @@ const CGL_KEYS = [
   { key: 'p', action: 'prev', label: 'Previous period', by: 'grid', yieldsToTask: true },
   { key: 'ArrowRight', action: 'next', label: 'Next period', by: 'section' },
   { key: 'ArrowLeft', action: 'prev', label: 'Previous period', by: 'section' },
+  { key: 'ArrowRight', shift: true, action: 'dayNext', label: 'The next day', by: 'section' },
+  { key: 'ArrowLeft', shift: true, action: 'dayPrev', label: 'The day before', by: 'section' },
+  { key: 'ArrowDown', shift: true, action: 'weekNext', label: 'A week later', by: 'section' },
+  { key: 'ArrowUp', shift: true, action: 'weekPrev', label: 'A week earlier', by: 'section' },
   { key: 'e', action: 'open', label: 'Open the selected event', by: 'grid', needsEvent: true, yieldsToTask: true },
   { key: 'Enter', action: 'open', label: 'Open the selected event', by: 'grid', needsEvent: true },
   { key: 'Delete', action: 'delete', label: 'Delete the selected event', by: 'grid', needsEvent: true, yieldsToTask: true },
@@ -178,7 +182,7 @@ function cglKeyAction(e, ctx) {
   if (k.length === 1 && e.shiftKey) return null;
   for (const row of CGL_KEYS) {
     if (row.key !== key || !!row.alt !== !!e.altKey || (row.alt && !!row.shift !== !!e.shiftKey)) continue;
-    if (!row.alt && k.length > 1 && e.shiftKey) continue;
+    if (!row.alt && k.length > 1 && !!e.shiftKey !== !!row.shift) continue;
     if (ctx.by && row.by !== ctx.by) return null;
     if (row.needsEvent && !ctx.hasEvent) return null;
     if (row.yieldsToTask && ctx.taskOpen && !ctx.hasEvent) return null;
@@ -191,6 +195,7 @@ function cglKeyHelp() {
   return [
     ['Create an event', ['C']], ['Go to today', ['T']], ['Day / week / month / agenda', ['D', 'W', 'M', 'A']],
     ['Next / previous period', ['J', 'K']], ['Next / previous (Google keys)', ['N', 'P']],
+    ['Select the next / previous day', ['Shift', '←', '→']], ['Select a week later / earlier', ['Shift', '↑', '↓']],
     ['Open the selected event', ['E']], ['Delete the selected event', ['Del']],
     ['Move it 15 minutes', ['Alt', '↑', '↓']], ['Move it a day', ['Alt', '←', '→']],
     ['Shorter / longer', ['Alt', 'Shift', '↑', '↓']], ['Undo the last change', ['Z']], ['Cancel a drag', ['Esc']],

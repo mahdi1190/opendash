@@ -16,6 +16,7 @@
 .wv-dh b { font-size: var(--text-lg); font-weight: var(--weight-semibold); width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; font-variant-numeric: tabular-nums; }
 .wv-dh.today b { background: var(--accent); color: var(--fg-on-accent); }
 .wv-dh.today small { color: var(--accent-ink); }
+.wv-dh.sel:not(.today) b { box-shadow: inset 0 0 0 1.5px var(--accent); }   /* the focused day (Shift+arrows) */
 .wv-1 .wv-dh { flex-direction: row; justify-content: flex-start; gap: var(--space-2); padding-left: var(--space-3); }
 .wv-1 .wv-dh small { font-size: var(--text-sm); text-transform: none; letter-spacing: 0; color: var(--fg-muted); order: 2; }
 .wv-lbl { font-size: var(--text-2xs); }
