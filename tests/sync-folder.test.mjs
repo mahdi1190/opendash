@@ -126,15 +126,23 @@ test('cloud folders are found from the environment and their usual places (looki
     platform: 'win32', home: 'C:\\Users\\sam', exists, read,
     env: { OneDrive: 'C:\\Users\\sam\\OneDrive', OneDriveConsumer: 'C:\\Users\\sam\\OneDrive', OneDriveCommercial: 'C:\\Users\\sam\\OneDrive - Contoso', APPDATA: 'C:\\Users\\sam\\AppData\\Roaming' },
   });
-  assert.deepEqual(win.map(x => [x.kind, x.path]), [
-    ['onedrive', 'C:\\Users\\sam\\OneDrive'], ['onedrive', 'C:\\Users\\sam\\OneDrive - Contoso'], ['dropbox', 'D:\\Dropbox'], ['gdrive', 'G:\\My Drive'],
+  // A work or school OneDrive is marked and listed last (never the default for personal data).
+  assert.deepEqual(win.map(x => [x.kind, x.path, !!x.work]), [
+    ['onedrive', 'C:\\Users\\sam\\OneDrive', false], ['dropbox', 'D:\\Dropbox', false], ['gdrive', 'G:\\My Drive', false], ['onedrive', 'C:\\Users\\sam\\OneDrive - Contoso', true],
   ]);
+  assert.equal(win[3].label, 'OneDrive (work or school: Contoso)');
+  // %OneDrive% names the account added last: here the work one; the personal one is %OneDriveConsumer%.
+  const both = detectCloudFolders({ platform: 'win32', home: 'C:\\Users\\sam', exists, read: () => { throw new Error('no'); },
+    env: { OneDrive: 'C:\\Users\\sam\\OneDrive - Contoso', OneDriveCommercial: 'C:\\Users\\sam\\OneDrive - Contoso', OneDriveConsumer: 'C:\\Users\\sam\\OneDrive' } });
+  assert.deepEqual(both.filter(x => x.kind === 'onedrive').map(x => [x.path, !!x.work]), [['C:\\Users\\sam\\OneDrive', false], ['C:\\Users\\sam\\OneDrive - Contoso', true]]);
+  const workOnly = detectCloudFolders({ platform: 'win32', home: 'C:\\Users\\nobody', exists, read: () => { throw new Error('no'); }, env: { OneDrive: 'C:\\Users\\sam\\OneDrive - Contoso' } });
+  assert.deepEqual(workOnly.filter(x => x.kind === 'onedrive').map(x => [x.label, !!x.work]), [['OneDrive (work or school: Contoso)', true]], 'known from its folder name alone');
   const mac = detectCloudFolders({
     platform: 'darwin', home: '/Users/sam', env: {}, read: () => { throw new Error('no'); },
     exists: (p) => ['/Users/sam/Library/CloudStorage', '/Users/sam/Library/CloudStorage/OneDrive-Personal', '/Users/sam/Library/CloudStorage/GoogleDrive-sam@example.com/My Drive'].includes(p),
     list: () => ['OneDrive-Personal', 'GoogleDrive-sam@example.com'],
   });
-  assert.deepEqual(mac.map(x => x.kind), ['onedrive', 'gdrive']);
+  assert.deepEqual(mac.map(x => [x.kind, !!x.work]), [['onedrive', false], ['gdrive', false]], 'OneDrive-Personal is personal');
   assert.equal(detectCloudFolders({ platform: 'linux', home: '/home/x', env: {}, exists: () => false, read: () => { throw new Error('no'); } }).length, 0);
   assert.ok(!existsSync(join(base, 'OneDrive')), 'detection never creates anything');
 });

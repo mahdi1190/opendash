@@ -160,14 +160,16 @@ function _syncFolderControl(st) {
   const sel = document.createElement('select'); sel.className = 'control control-sm';
   const cur = st && st.folder;
   const known = det.some(d => d.path === cur);
+  // A work or school OneDrive is listed (last) but never chosen for you: personal data stays out of an employer's cloud.
+  const firstOwn = det.find(d => !d.work) || null;
   for (const d of det) {
     const o = document.createElement('option'); o.value = d.path; o.textContent = `${d.label} (${d.path})`;
-    if (d.path === cur || (!cur && d === det[0])) o.selected = true;
+    if (d.path === cur || (!cur && d === firstOwn)) o.selected = true;
     sel.appendChild(o);
   }
   if (cur && !known) { const o = document.createElement('option'); o.value = cur; o.textContent = cur; o.selected = true; sel.appendChild(o); }
   const other = document.createElement('option'); other.value = '__other'; other.textContent = 'Another folder...';
-  if (_syncOther || (!det.length && !cur)) other.selected = true;
+  if (_syncOther || (!firstOwn && !cur)) other.selected = true;
   sel.appendChild(other);
   sel.disabled = _syncBusy;
   wrap.appendChild(sel);

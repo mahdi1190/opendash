@@ -6,6 +6,8 @@
 //        others: every other computer seen in the last 3 minutes (a warning
 //        banner when one appears later; writes are not paused mid-edit).
 //        oneDrive: the data folder is inside OneDrive (the "one computer at a time" banner).
+//        oneDriveWork: {org} when that OneDrive is a work or school one (lib/onedrive.mjs):
+//        personal data in an employer's cloud (the banner says so and offers the move).
 //        conflicts: OneDrive's '<known-file>-<DEVICE>.json' copies (scanned at
 //        start and every 10 minutes; never merged).
 //   POST /api/hosts/override        {} -> status: "Use here anyway", writes resume (the page only)
@@ -15,6 +17,7 @@
 
 import { findConflictCopies, keepConflictCopy, seenText } from '../../lib/hosts.mjs';
 import { isOneDrivePath } from '../../lib/workspace-index.mjs';
+import { oneDriveOf } from '../../lib/onedrive.mjs';
 import { HttpError } from '../http.mjs';
 
 export const CONFLICT_SCAN_MS = 10 * 60 * 1000;
@@ -56,6 +59,7 @@ export default function register(app) {
       paused: g.paused, by: g.by, overridden: g.overridden,
       others: others.map(h => ({ hostId: h.hostId, hostname: h.hostname, version: h.version, lastSeenMs: h.lastSeenMs, seen: seenText(h.lastSeenMs) })),
       oneDrive: isOneDrivePath(root),
+      ...((() => { const k = oneDriveOf(root); return k && k.work ? { oneDriveWork: { org: k.org || null } } : {}; })()),
       conflicts: conflicts.map(c => ({ rel: c.rel, kind: c.kind, device: c.device, at: c.at })),
     };
   }

@@ -10,7 +10,10 @@
    - Also open: a computer that appears later. A warning only (writes are never
      paused mid-edit); dismissible for this tab.
    - OneDrive: "Your data is in OneDrive: use OpenDash on one computer at a
-     time." Dismissed for good in this browser.
+     time." Dismissed for good in this browser. In a WORK OR SCHOOL OneDrive
+     (oneDriveWork, lib/onedrive.mjs) a warning instead: personal data in an
+     employer's cloud, with the way out (Settings > Data > Move); dismissible
+     for this tab only.
    - OneDrive kept a second copy from <DEVICE> (<date>) [Keep as a backup]:
      moves it into state/backups/ (Settings > Data can open a state copy).
      Nothing is ever merged automatically.
@@ -36,7 +39,7 @@ function _hbDate(iso) {
 
 /**
  * The banners to show for a GET /api/hosts answer:
- * [{key, kind: 'paused'|'also-open'|'onedrive'|'conflict', tone, title, sub, actions:[{id, label, primary}], dismissible}]
+ * [{key, kind: 'paused'|'also-open'|'onedrive'|'onedrive-work'|'conflict', tone, title, sub, actions:[{id, label, primary}], dismissible}]
  * opts: {dismissed: Set of keys, oneDriveOff: bool}
  */
 function hostsBannerModel(st, opts) {
@@ -74,7 +77,15 @@ function hostsBannerModel(st, opts) {
       actions: [{ id: 'keep', label: 'Keep as a backup', primary: false }], dismissible: true,
     });
   }
-  if (st.oneDrive && !o.oneDriveOff && !dismissed.has('onedrive')) {
+  if (st.oneDriveWork && !dismissed.has('onedrive-work')) {
+    const org = st.oneDriveWork.org ? String(st.oneDriveWork.org).slice(0, 60) : '';
+    out.push({
+      key: 'onedrive-work', kind: 'onedrive-work', tone: 'warning',
+      title: `Your data is in your work or school OneDrive${org ? ` (${org})` : ''}.`,
+      sub: 'Your organisation can see what is there. Move it to your own OneDrive or off OneDrive in Settings > Data > Move.',
+      actions: [], dismissible: true,
+    });
+  } else if (st.oneDrive && !o.oneDriveOff && !dismissed.has('onedrive')) {
     out.push({
       key: 'onedrive', kind: 'onedrive', tone: 'info',
       title: 'Your data is in OneDrive: use OpenDash on one computer at a time.',
@@ -157,7 +168,7 @@ function _hbEl(item) {
   el.setAttribute('role', item.kind === 'paused' ? 'alert' : 'status');
   el.dataset.key = item.key;
   const ic = document.createElement('span'); ic.className = 'hb-ic';
-  if (typeof icon === 'function') ic.innerHTML = icon(item.kind === 'onedrive' ? 'cloud' : item.kind === 'conflict' ? 'copy' : 'laptop');
+  if (typeof icon === 'function') ic.innerHTML = icon(/^onedrive/.test(item.kind) ? 'cloud' : item.kind === 'conflict' ? 'copy' : 'laptop');
   const msg = document.createElement('div'); msg.className = 'hb-msg';
   const t = document.createElement('div'); t.className = 'hb-title'; t.textContent = item.title;
   msg.appendChild(t);
