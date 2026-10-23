@@ -159,10 +159,19 @@ function _mountTaskEmpty(list, view, searching, inline) {
     : view === 'completed'
     ? { icon: 'circle-check', title: 'Nothing completed lately', text: 'Finished tasks collect here, newest first.' }
     : view === 'week'
-    ? { icon: 'calendar-range', title: 'A quiet week ahead', text: 'Nothing is due in the next 7 days.' }
+    ? { icon: 'calendar-range', title: 'A quiet week ahead', text: 'Nothing is due in the next 7 days. Add a task above, or drop one on a day in the strip.' }
     : view === 'no-date'
     ? { icon: 'circle-dashed', title: 'Every task has a date', text: 'Tasks without a due date show up here.' }
-    : { icon: 'sparkles', title: 'Nothing here', text: 'Add a task above.' };
+    // What to do next, in the words of the list you are on (a task added here keeps its stream, tag or person).
+    : view.startsWith('stream:')
+    ? { icon: 'layers', title: `Nothing open in ${viewTitle(view)}`, text: 'Add a task above: it goes into this stream. Press Q to add one from anywhere.', actions: [{ label: 'All tasks', icon: 'list', run: () => setView('all') }] }
+    : view.startsWith('tag:')
+    ? { icon: 'hash', title: `Nothing open tagged ${viewTitle(view)}`, text: 'Add a task above: it gets this tag. Or add the tag to a task from its Tags field.', actions: [{ label: 'Manage tags', icon: 'tags', run: () => (typeof openTagManager === 'function' ? openTagManager() : setView('tags')) }] }
+    : view.startsWith('person:')
+    ? { icon: 'users', title: `Nothing open with ${viewTitle(view)}`, text: 'Add a task above and they are linked to it, or type @name in any task.' }
+    : view === 'all'
+    ? { icon: 'sparkles', title: 'No open tasks', text: 'Add one above (try “email Sam fri !p1”), or press Q from anywhere.' }
+    : { icon: 'sparkles', title: 'Nothing here', text: 'Add a task above, or press Q from anywhere.' };
   o.compact = true;
   mountEmptyState(list, o);
 }
@@ -608,20 +617,26 @@ function renderKanban(container, o) {
       e.preventDefault();
       const cur = statusOf(id);
       if (col.key === cur) return;
-      if (col.key === 'done') toggleDone(id);
-      else setStatus(id, col.key);
+      if (col.key === 'done') toggleDone(id);   // its own toast + Undo
+      else {
+        setStatus(id, col.key);
+        toast(cur === 'done' ? `Reopened: ${col.label}` : `Moved to ${col.label}`, { icon: col.key === 'doing' ? 'circle-dot' : 'circle', action: { label: 'Undo', run: () => undo() } });
+      }
     });
     const list = document.createElement('div'); list.className = 'kanban-list';
     for (const it of col.items) {
       list.appendChild(_renderKanbanCard(it));
       if (col.key !== 'done') _lastRenderedTaskIds.push(it.id);
     }
-    if (!col.items.length) { const e = document.createElement('div'); e.className = 'kanban-empty'; e.textContent = col.key === 'done' ? 'Drop here to complete' : 'Nothing here'; list.appendChild(e); }
+    if (!col.items.length) { const e = document.createElement('div'); e.className = 'kanban-empty'; e.textContent = col.key === 'done' ? 'Drop here to complete' : col.key === 'doing' ? 'Drop a task here to start it' : 'Nothing to do. Add one below'; list.appendChild(e); }
     c.appendChild(list);
     if (col.key !== 'done') {
       const add = document.createElement('input'); add.className = 'kanban-add'; add.placeholder = '+ Add a task';
       add.dataset.fk = 'kanban-add:' + col.key;
+      add.setAttribute('aria-label', `Add a task to ${col.label}`);
+      add.title = 'Enter to add · quick-add words work: fri, !p1, #tag, @person';
       add.onkeydown = (e) => {
+        if (e.key === 'Escape') { e.stopPropagation(); add.value = ''; add.blur(); return; }
         if (e.key !== 'Enter' || !add.value.trim()) return;
         e.preventDefault();
         const parsed = parseQuickAdd(add.value);
@@ -637,16 +652,27 @@ function renderKanban(container, o) {
 function _renderKanbanCard(it) {
   const status = statusOf(it.id);
   const card = document.createElement('div');
-  card.className = 'kanban-card' + (state.selectedTaskId === it.id ? ' selected' : '') + (status === 'done' ? ' done' : '') + (isWontDo(it) ? ' wontdo' : '') + (_lastSelectedTaskId === it.id ? ' kb-cursor' : '');
+  card.className = 'kanban-card' + (state.selectedTaskId === it.id ? ' selected' : '') + (status === 'done' ? ' done' : '') + (isWontDo(it) ? ' wontdo' : '') + (_lastSelectedTaskId === it.id ? ' kb-cursor' : '') + (multiSelect.ids.has(it.id) ? ' multi-selected' : '');
   card.dataset.id = it.id;
   card.draggable = true;
   card.ondragstart = e => _startTaskDrag(e, it, card);
   card.ondragend = () => _endTaskDrag(card);
   const top = document.createElement('div'); top.className = 'kc-top';
+  // The same checkbox as a list row: click = done, Shift+click = in progress, Alt+click = won't do.
+  const wont = isWontDo(it);
   const cb = document.createElement('button'); cb.type = 'button';
-  cb.className = 'checkbox ' + effPriority(it) + (status === 'doing' ? ' doing' : '') + (status === 'done' ? (isWontDo(it) ? ' wontdo' : ' done') : '');
+  cb.className = 'checkbox ' + effPriority(it) + (status === 'doing' ? ' doing' : '') + (status === 'done' ? (wont ? ' wontdo' : ' done') : '');
+  cb.setAttribute('role', 'checkbox');
+  cb.setAttribute('aria-checked', status === 'done' ? 'true' : status === 'doing' ? 'mixed' : 'false');
   cb.setAttribute('aria-label', (status === 'done' ? 'Reopen: ' : 'Complete: ') + effTitle(it));
-  cb.onclick = (e) => { e.stopPropagation(); toggleDone(it.id); };
+  cb.title = status === 'done' ? (wont ? "Won't do · click to reopen" : 'Done · click to reopen') : `${PRIORITIES[effPriority(it)]?.label || ''} · click to complete · Shift+click: in progress`;
+  if (wont) cb.innerHTML = icon('minus', 'i-xs');
+  cb.onclick = (e) => {
+    e.stopPropagation();
+    if (e.shiftKey && status !== 'done') { toggleDoing(it.id); return; }
+    if (e.altKey && status !== 'done') { markWontDo(it.id); return; }
+    toggleDone(it.id);
+  };
   const ttl = document.createElement('div'); ttl.className = 'ttl'; ttl.textContent = effTitle(it);
   top.append(cb, ttl);
   if (isPinned(it.id) && status !== 'done') {   // the pin marker (Unpin: right-click > Unpin)
@@ -676,7 +702,12 @@ function _renderKanbanCard(it) {
     if (tags.length > 2) { const c = document.createElement('span'); c.className = 'chip chip-more'; c.textContent = '+' + (tags.length - 2); chips.appendChild(c); }
     card.appendChild(chips);
   }
-  card.onclick = () => { _lastSelectedTaskId = it.id; openTask(it.id, { from: card }); };   // centre card or side panel
-  card.oncontextmenu = (e) => { e.preventDefault(); openTaskMenu({ x: e.clientX, y: e.clientY }, it.id); };
+  // As in the list: Ctrl/Cmd+click ticks it for the bulk bar; a plain click opens it (centre card or side panel).
+  card.onclick = (e) => {
+    _lastSelectedTaskId = it.id;
+    if (e.ctrlKey || e.metaKey) { _toggleMulti(it.id); return; }
+    openTask(it.id, { from: card });
+  };
+  card.oncontextmenu = (e) => { e.preventDefault(); _lastSelectedTaskId = it.id; openTaskMenu({ x: e.clientX, y: e.clientY }, it.id); };
   return card;
 }

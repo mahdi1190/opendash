@@ -22,6 +22,8 @@
 .kanban-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
 .kanban-card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
 .kanban-card.kb-cursor { box-shadow: inset 2px 0 0 var(--accent); }
+/* Ticked for the bulk bar (Ctrl/Cmd+click), as a list row's .multi-selected. */
+.kanban-card.multi-selected { background: var(--accent-soft); border-color: var(--accent); }
 .kanban-card.dragging { opacity: 0.4; }
 .kc-top { display: flex; align-items: flex-start; gap: var(--space-2); }
 .kc-top .checkbox { margin-top: 1px; }
