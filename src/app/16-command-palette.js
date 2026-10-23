@@ -24,7 +24,11 @@ const PALETTE_SOURCES = [];
 function registerPaletteSource(fn) { if (typeof fn === 'function') PALETTE_SOURCES.push(fn); }
 
 let _paletteClose = null;
-const PALETTE_GROUP_ORDER = ['Recent', 'Assistant', 'Tasks', 'Go to', 'People', 'Tags', 'Files', 'Commands', 'Settings'];
+const PALETTE_GROUP_ORDER = ['Assistant', 'Tasks', 'Go to', 'People', 'Tags', 'Files', 'Commands'];
+const _PAL_SCOPES = [['', 'Everything', 'search'], ['>', 'Commands', 'zap'], ['#', 'Tags', 'hash'], ['@', 'People', 'at-sign'], ['?', 'Ask', 'sparkles']];
+// The "G then a letter" jumps (90-wiring.js), shown as hints.
+const _PAL_G = { home: 'G H', today: 'G T', week: 'G U', all: 'G A', calendar: 'G C', finance: 'G F', people: 'G P', settings: 'G S', bin: 'G B', completed: 'G L' };
+
 // What you opened from here last (this browser): shown first when the box is empty.
 const _PAL_RECENT_KEY = 'dashboard-palette-recent';
 function _palRecentGet() {
@@ -39,9 +43,9 @@ function _palRecentPush(it) {
   const list = [r, ..._palRecentGet().filter(x => !same(x))].slice(0, 8);
   try { localStorage.setItem(_PAL_RECENT_KEY, JSON.stringify(list)); } catch (e) { /* storage full or blocked */ }
 }
-const _PAL_SCOPES = [['', 'Everything', 'search'], ['>', 'Commands', 'zap'], ['#', 'Tags', 'hash'], ['@', 'People', 'at-sign'], ['?', 'Ask', 'sparkles']];
-// The "G then a letter" jumps (90-wiring.js), shown as hints.
-const _PAL_G = { home: 'G H', today: 'G T', week: 'G U', all: 'G A', calendar: 'G C', finance: 'G F', people: 'G P', settings: 'G S', bin: 'G B', completed: 'G L' };
+// Recent first; settings (58-settings-search.js) after the commands.
+PALETTE_GROUP_ORDER.unshift('Recent');
+PALETTE_GROUP_ORDER.push('Settings');
 
 /** Subsequence match with bonuses for word starts and runs. 0 = no match; at most 28. */
 function _palFuzzy(text, q) {
@@ -235,9 +239,10 @@ function _palResults(raw) {
   const ql = q.toLowerCase();
   const groups = new Map();
   const shown = new Set();   // the same place registered twice (a view and a command) is listed once
+  const inRecent = new Set();   // shown under Recent: not again in its own group
   const push = (g, item) => {
     const k = g + '|' + String(item.label).toLowerCase();
-    if (!item.taskId && shown.has(k)) return;
+    if (!item.taskId && (shown.has(k) || inRecent.has(k))) return;
     shown.add(k);
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g).push(item);
@@ -295,9 +300,8 @@ function _palResults(raw) {
     if (ql && s <= 0) continue;
     scored.push({ o, s: s + (o.weight ? Math.min(o.weight, 20) / 10 : 0) });
   }
-  // Empty query: a short, useful starting list rather than everything.
+  // Empty box: what you opened from here lately comes first (and is not repeated below it).
   if (!ql && mode === '') {
-    // What you opened from here lately comes first, then a short starting list (without repeating them).
     const recent = [];
     for (const r of _palRecentGet()) {
       if (recent.length >= 5) break;
@@ -306,8 +310,12 @@ function _palResults(raw) {
       if (hit) recent.push(hit.o);
     }
     for (const o of recent) push('Recent', o);
-    const used = new Set(recent.filter(o => !o.taskId).map(o => o.group + '|' + o.label));
-    const pick = (g, n) => scored.filter(x => x.o.group === g && !used.has(x.o.group + '|' + x.o.label)).slice(0, n);
+    for (const o of recent) if (!o.taskId) inRecent.add(o.group + '|' + String(o.label).toLowerCase());
+  }
+
+  // Empty query: a short, useful starting list rather than everything.
+  if (!ql && mode === '') {
+    const pick = (g, n) => scored.filter(x => x.o.group === g).slice(0, n);
     for (const x of [...pick('Go to', 8), ...pick('Commands', 6)]) push(x.o.group, x.o);
   } else {
     scored.sort((a, b) => b.s - a.s);

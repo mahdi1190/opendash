@@ -61,14 +61,16 @@ function kbHelpGroups() {
       ['Move between tasks', ['J', 'K']], ['Extend selection', ['Shift', '↑']], ['Open task', ['Enter']],
       ['Complete / reopen', ['X']], ['In progress', ['S']], ['Plan for today', ['T']], ['Due date', ['D']],
       ['Priority', ['P']], ['Set priority', ['1', '–', '4']], ['Edit title', ['E']], ['Task menu', ['.']],
-      ['Move to bin', ['Del']], ['Select all tasks', [mod, 'A']], ['Maximise the open card', ['M']],
+      ['Move to bin', ['Del']], ['Select a task', [mod, 'click']], ['Select all tasks', [mod, 'A']],
+      ['With tasks selected: same keys for all', ['X', 'T', 'D', '1–4', 'Del']],
+      ['Move a subtask up / down', ['Alt', '↑', '↓']], ['This task’s commands', [mod, 'K']],
     ]],
     ['Search box (' + mod + '+K)', [
       ['Commands only', ['>']], ['Tags', ['#']], ['People', ['@']], ['Ask the assistant', ['?']],
       ['Open beside', [mod, 'Enter']], ['Next group', ['Tab']],
     ]],
-    ['Dialogs', [
-      ['Save / confirm', [mod, 'Enter']], ['Close', ['Esc']],
+    ['Dialogs and cards', [
+      ['Save / confirm', [mod, 'Enter']], ['Close', ['Esc']], ['Maximise the open card', ['M']],
     ]],
     ['View', [
       ['Toggle sidebar', [mod, '\\']], ['Dark mode', [mod, 'Shift', 'D']], ['Focus mode', [mod, 'Shift', 'F']],
@@ -152,12 +154,9 @@ function openBulkImport() {
 /* ============================================================
    TASK TEMPLATES
    ============================================================ */
-async function saveTaskAsTemplate(taskId) {
+function saveTaskAsTemplate(taskId) {
   const item = getItem(taskId); if (!item) return;
-  // The app's own name box (not the browser's prompt), filled with the task's title.
-  const name = typeof promptDialog === 'function'
-    ? await promptDialog({ title: 'Save as a template', label: 'Template name', value: effTitle(item), confirmLabel: 'Save template' })
-    : prompt('Template name:', effTitle(item));
+  const name = prompt('Template name:', effTitle(item));
   if (!name) return;
   state.taskTemplates.push({
     id: 'tmpl-' + Date.now(), name,
@@ -166,7 +165,7 @@ async function saveTaskAsTemplate(taskId) {
     subtasks: effSubtasks(item).map(s => ({ title: s.title, done: false })), recurrence: effRecurrence(item), people: [...(item.people || [])],
   });
   saveData();
-  toast(`Template “${name}” saved`, { kind: 'ok', action: { label: 'Templates', run: () => openTemplatesModal() } });
+  showToast('✓ template saved', false);
 }
 function applyTemplate(tmplId) {
   const t = state.taskTemplates.find(x => x.id === tmplId); if (!t) return;
