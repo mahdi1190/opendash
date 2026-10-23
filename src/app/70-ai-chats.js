@@ -171,8 +171,19 @@ function chatSweep(key) {
   const archLen = arch.length;
   if (cleared) arch = arch.filter(m => (Number(m.ts) || 0) > cleared);
   const inArch = new Set(arch.map(chatMsgKey));
-  const add = sorted.slice(0, Math.max(0, sorted.length - CHAT_KEEP)).filter(m => !m.pending && !inArch.has(chatMsgKey(m)));
-  if (add.length || arch.length !== archLen) {
+  const olderPart = sorted.slice(0, Math.max(0, sorted.length - CHAT_KEEP)).filter(m => !m.pending);
+  const add = olderPart.filter(m => !inArch.has(chatMsgKey(m)));
+  // A copy already archived follows its synced original while both exist (a proposal applied since, a reply finished).
+  const fresh = new Map(olderPart.map(m => [chatMsgKey(m), m]));
+  let refreshed = false;
+  arch = arch.map((a) => {
+    const f = fresh.get(chatMsgKey(a));
+    const same = typeof _mStable === 'function' ? _mStable(f) === _mStable(a) : JSON.stringify(f) === JSON.stringify(a);   // key order may differ after a merge
+    if (!f || same) return a;
+    refreshed = true;
+    return JSON.parse(JSON.stringify(f));
+  });
+  if (add.length || refreshed || arch.length !== archLen) {
     arch = chatSorted([...arch, ...add.map(m => JSON.parse(JSON.stringify(m)))]).slice(-CHAT_ARCHIVE_MAX);
     _chatSetArchive(key, arch);
     changed = true;
