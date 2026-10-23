@@ -320,28 +320,38 @@ function openDrawer(o) {
 /* ---------- toasts ---------- */
 /**
  * toast('Saved', {kind:'ok'}) / toast('Deleted', {action:{label:'Undo', run: undo}})
- * o: {kind:'ok'|'err'|'warn'|'info', icon, action:{label,run}, retry: fn, timeout, dismiss}
+ * o: {kind:'ok'|'err'|'warn'|'info', icon, action:{label,run}, retry: fn, timeout, dismiss, busy}
+ *   - A RUNNING WAIT (o.busy, or a Cancel / Stop button, e.g. "Asking Home
+ *     laptop… Cancel", 56-remote-jobs.js) stays until its job ends: the caller
+ *     calls close() (o.timeout, if given, is only an upper bound), or the user
+ *     presses × or Cancel. Its icon turns, it counts the seconds, and
+ *     close.progress(0..1 | 'text') shows how far it is. Cancel/Stop says
+ *     "Cancelling…" until the job ends. The three-on-screen limit never drops it.
+ *   - Toasts with a button (Undo, Open...) stay at least 12 s (errors 8 s, plain
+ *     notes about reading time). Every toast waits while the pointer or keyboard
+ *     focus is on it and while the tab is hidden; leaving it never cuts what is
+ *     left short (a toast with a button keeps at least 4 s).
  *   - The same message while it is still showing merges into that toast (a ×2
  *     count, the timer starts again, the newest action wins) instead of stacking.
- *   - How long it stays follows its length; errors stay at least 8 s. It waits
- *     while the pointer or keyboard focus is on it and while the tab is hidden.
- *   - Errors (and toasts with a button) get a × to dismiss; Esc closes the
+ *   - Errors, waits and toasts with a button get a × to dismiss; Esc closes the
  *     newest one when nothing else is open (toastDismissNewest, 90-wiring.js).
  *   - retry: fn adds "Try again"; a "server isn't running" error with no
  *     button gets "How to start it" (86-offline-banner.js).
  *   - An Undo button that runs the plain global undo() undoes THAT change,
  *     even after other edits (undoMark / undoMarked, 01-core-state.js).
- * Returns close(); close.update('New words') changes the message.
+ * Returns close(); close.update('New words') changes the message, close.progress(p) the progress.
  */
 const _TOAST_KINDS = { ok: 'ok', success: 'ok', err: 'err', error: 'err', danger: 'err', warn: 'warn', warning: 'warn', info: '' };
 const _toastLive = new Set();   // controllers of the toasts on screen
 const _TOAST_MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl';
-/** How long a toast stays (ms): about reading time, longer for errors and buttons. */
-function _toastMs(msg, o, kind) {
+const _TOAST_STOP_RE = /^(cancel|stop)\b/i;
+/** How long a toast stays (ms): about reading time, longer for errors and buttons. 0 = until closed. */
+function _toastMs(msg, o, kind, busy) {
+  if (busy) return o.timeout || 0;
   if (o.timeout) return o.timeout;
   const read = 2000 + String(msg || '').length * 45;
   if (kind === 'err') return Math.min(14000, Math.max(8000, read));
-  if (o.action || o.retry) return Math.min(12000, Math.max(6000, read));
+  if (o.action || o.retry) return Math.min(16000, Math.max(12000, read));
   return Math.min(8000, Math.max(2800, read));
 }
 /** Is this button the plain global undo (`() => undo()` or `undo`)? Then it is made precise. */
@@ -381,12 +391,14 @@ function toast(msg, o) {
     setTimeout(() => { mark = undoMark(); }, 0);
     action = { label: action.label, run: () => (mark ? undoMarked(mark) : undo()) };
   }
+  // A running wait: it ends when its job does (close()), not on a timer.
+  const busy = kind !== 'err' && kind !== 'ok' && !!(o.busy || (action && _TOAST_STOP_RE.test(String(action.label))));
   const key = kind + '|' + (o.icon || '') + '|' + text;
-  const ms = _toastMs(text, Object.assign({}, o, { action }), kind);
+  const ms = _toastMs(text, Object.assign({}, o, { action }), kind, busy);
 
-  // The same message is already showing: count it instead of stacking another.
-  for (const c of _toastLive) {
-    if (c.key !== key || c.leaving) continue;
+  // The same message is already showing: count it instead of stacking another (never two waits in one).
+  if (!busy) for (const c of _toastLive) {
+    if (c.key !== key || c.leaving || c.busy) continue;
     c.count++;
     c.setAction(action);
     c.restart(ms);
@@ -394,25 +406,42 @@ function toast(msg, o) {
   }
 
   const t = document.createElement('div');
-  t.className = 'toast' + (kind ? ' ' + kind : '');
+  t.className = 'toast' + (kind ? ' ' + kind : '') + (busy ? ' busy' : '');
+  const ic0 = o.icon || (busy ? 'loader-circle' : '');
+  if (busy && /^(loader|loader-circle|refresh-cw|rotate-cw)$/.test(ic0)) t.classList.add('spin');   // a spinner icon turns
   t.setAttribute('role', kind === 'err' ? 'alert' : 'status');
-  const ic = o.icon || (kind === 'ok' ? 'circle-check' : kind === 'err' ? 'circle-alert' : kind === 'warn' ? 'triangle-alert' : 'info');
-  t.innerHTML = icon(ic) + `<span class="msg">${esc(text)}</span><span class="toast-n" hidden></span>`;
-  let timer = null, left = ms, startedAt = 0, hover = false, focus = false, btn = null;
-  const c = { key, count: 1, leaving: false, close: null, setAction: null, restart: null };
+  if (busy) t.setAttribute('aria-busy', 'true');
+  const ic = o.icon || (busy ? 'loader-circle' : kind === 'ok' ? 'circle-check' : kind === 'err' ? 'circle-alert' : kind === 'warn' ? 'triangle-alert' : 'info');
+  t.innerHTML = icon(ic) + `<span class="msg">${esc(text)}</span><span class="toast-n" hidden></span>`
+    + (busy ? '<span class="toast-t" aria-hidden="true"></span><span class="toast-bar" hidden><span></span></span>' : '');
+  let timer = null, left = ms, startedAt = 0, hover = false, focus = false, btn = null, tick = null, shownProgress = null;
+  const c = { key, count: 1, leaving: false, busy, close: null, setAction: null, restart: null };
   const stop = () => { if (timer) { clearTimeout(timer); timer = null; left = Math.max(1200, left - (Date.now() - startedAt)); } };
-  const start = () => { if (timer || hover || focus || c.leaving || (typeof document !== 'undefined' && document.hidden)) return; startedAt = Date.now(); timer = setTimeout(close, left); };
+  const start = () => {
+    if (timer || c.leaving || !left) return;                  // !left: a wait, closed by its job
+    if (!busy && (hover || focus || (typeof document !== 'undefined' && document.hidden))) return;
+    startedAt = Date.now(); timer = setTimeout(close, left);
+  };
+  // A wait counts the seconds (after a moment), unless the caller reports its own progress.
+  const t0 = Date.now();
+  const paintTime = () => {
+    const el = t.querySelector('.toast-t'); if (!el || shownProgress != null) return;
+    const sec = Math.round((Date.now() - t0) / 1000);
+    el.textContent = sec >= 3 ? (sec < 90 ? sec + ' s' : Math.round(sec / 60) + ' min') : '';
+  };
+  if (busy) tick = setInterval(paintTime, 1000);
   function close() {
     if (c.leaving) return;
     c.leaving = true;
     if (timer) clearTimeout(timer);
-    timer = null;
+    if (tick) clearInterval(tick);
+    timer = null; tick = null;
     _toastLive.delete(c);
     t.classList.add('out');
     setTimeout(() => t.remove(), 160);
   }
   c.close = close;
-  c.vis = () => { if (document.hidden) stop(); else start(); };
+  c.vis = () => { if (busy) return; if (document.hidden) stop(); else start(); };
   c.restart = (n) => {
     if (timer) clearTimeout(timer);
     timer = null; left = n;
@@ -428,29 +457,49 @@ function toast(msg, o) {
       const x = t.querySelector('.toast-x');
       if (x) t.insertBefore(btn, x); else t.appendChild(btn);
     }
-    btn.textContent = a.label;
+    btn.textContent = a.label; btn.disabled = false;
     if (/^undo$/i.test(a.label)) { btn.setAttribute('data-tip', 'Undo this change'); btn.setAttribute('data-kbd', _TOAST_MOD + '+Z'); }
-    btn.onclick = () => { close(); try { const r = a.run && a.run(); if (r && typeof r.catch === 'function') r.catch(e => console.error(e)); } catch (e) { console.error(e); } };
+    btn.onclick = () => {
+      const stopping = busy && _TOAST_STOP_RE.test(String(a.label));
+      // Cancel / Stop on a wait: it says so until the job really ends (its close()); 6 s at most.
+      if (stopping) { btn.disabled = true; close.update(/^stop/i.test(a.label) ? 'Stopping…' : 'Cancelling…'); setTimeout(close, 6000); }
+      else close();
+      try { const r = a.run && a.run(); if (r && typeof r.catch === 'function') r.catch(e => console.error(e)); } catch (e) { console.error(e); }
+    };
   };
-  if (kind === 'err' || action || o.dismiss) {
+  if (kind === 'err' || action || busy || o.dismiss) {
     const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm toast-x';
-    x.setAttribute('aria-label', 'Dismiss'); x.innerHTML = icon('x');
+    x.setAttribute('aria-label', busy ? 'Hide (it keeps going)' : 'Dismiss'); x.innerHTML = icon('x');
+    if (busy) x.setAttribute('data-tip', 'Hide (it keeps going)');
     x.onclick = close;
     t.appendChild(x);
   }
   c.setAction(action);
-  // At most three on screen: the oldest goes first.
+  // At most three on screen: the oldest plain one goes first; a running wait is never dropped.
   const live = [..._toastLive].filter(x => !x.leaving);
-  for (let i = 0; i < live.length - 2; i++) live[i].close();
+  let extra = live.length - 2;
+  for (const x of live) { if (extra <= 0) break; if (!x.busy) { x.close(); extra--; } }
   _toastLive.add(c);
   host.appendChild(t);
   start();
-  t.addEventListener('mouseenter', () => { hover = true; stop(); });
-  t.addEventListener('mouseleave', () => { hover = false; left = Math.max(left, 1800); start(); });
-  t.addEventListener('focusin', () => { focus = true; stop(); });
-  t.addEventListener('focusout', (e) => { if (t.contains(e.relatedTarget)) return; focus = false; left = Math.max(left, 1800); start(); });
+  const keep = action || busy ? 4000 : 1800;   // what is left after the pointer or focus leaves, at least
+  t.addEventListener('mouseenter', () => { hover = true; if (!busy) stop(); });
+  t.addEventListener('mouseleave', () => { hover = false; if (!busy) { left = Math.max(left, keep); start(); } });
+  t.addEventListener('focusin', () => { focus = true; if (!busy) stop(); });
+  t.addEventListener('focusout', (e) => { if (t.contains(e.relatedTarget)) return; focus = false; if (!busy) { left = Math.max(left, keep); start(); } });
   /** close.update('New words'): change the message of a toast that is still showing. */
   close.update = (m) => { const s = t.querySelector('.msg'); if (s && m != null) { s.textContent = String(m); c.key = kind + '|' + (o.icon || '') + '|' + String(m); } };
+  /** close.progress(0.4) (a bar) or close.progress('3 of 8'): how far a wait is; null clears it. */
+  close.progress = (p) => {
+    const tt = t.querySelector('.toast-t'), bar = t.querySelector('.toast-bar');
+    shownProgress = p == null ? null : p;
+    if (typeof p === 'number' && Number.isFinite(p) && bar) {
+      const pct = Math.round(Math.max(0, Math.min(1, p)) * 100);
+      bar.hidden = false; bar.firstChild.style.width = pct + '%';
+      if (tt) tt.textContent = pct + '%';
+    } else if (typeof p === 'string' && tt) { tt.textContent = p; if (bar) bar.hidden = true; }
+    else { if (bar) bar.hidden = true; paintTime(); }
+  };
   return close;
 }
 // A toast that appears while you are in another tab waits for you to come back.
