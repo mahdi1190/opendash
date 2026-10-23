@@ -84,7 +84,9 @@ async function settingsSaveConfig(patch, okMsg) {
     if (okMsg !== false) toast(okMsg || 'Saved', { kind: 'ok' });
     return true;
   } catch (e) {
-    toast('Not saved: ' + ((e && e.message) || 'the OpenDash server is not running'), { kind: 'err' });
+    // Try again sends the same change (and repaints the page so the control shows it).
+    toast('Not saved: ' + (typeof netErrorMessage === 'function' ? netErrorMessage(e, 'the OpenDash server is not running') : ((e && e.message) || 'the OpenDash server is not running')), { kind: 'err',
+      retry: async () => { if (await settingsSaveConfig(patch, okMsg) && typeof renderMain === 'function') renderMain(); } });
     return false;
   }
 }

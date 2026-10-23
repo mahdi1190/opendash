@@ -905,7 +905,7 @@ function pcCheckEmail(btn, then, o) {
       free();
       const job = InboxStore.st && InboxStore.st.job;
       if (r && r.noSources) toast('No mailbox is connected yet.', { kind: 'err', action: { label: 'Open Connections', run: () => (window.Connections ? Connections.open('gmail') : setView('connections')) } });
-      else if (job && job.state === 'error') toast(job.error || 'Email could not be checked.', { kind: 'err' });
+      else if (job && job.state === 'error') toast(job.error || 'Email could not be checked.', { kind: 'err', retry: () => pcCheckEmail(null, then, o) });
       else if (!o.quiet) {
         let n = 0;
         try { n = _pcMailCands().length; } catch (e) { n = 0; }
@@ -915,7 +915,7 @@ function pcCheckEmail(btn, then, o) {
       if (then) then(r);
     };
     wait();
-  }, (e) => { free(); toast(netErrorMessage(e), { kind: 'err' }); });
+  }, (e) => { free(); toast(netErrorMessage(e), { kind: 'err', retry: () => pcCheckEmail(null, then, o) }); });
 }
 
 /* ---------- the People page's actions ---------- */

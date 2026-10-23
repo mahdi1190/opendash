@@ -121,7 +121,8 @@ async function _czApplyNow(ops, o) {
     if (o.done !== false) toast(o.done || j.summary || 'Done', { kind: 'ok', icon: o.icon || 'circle-check', action: j.undo ? { label: 'Undo', run: () => czUndo(j.undo, o.undone) } : undefined });
     return j;
   } catch (e) {
-    toast(_czErrText(e), { kind: 'err' });
+    // Try again runs the same change (it is checked again on the server first).
+    toast(_czErrText(e), { kind: 'err', retry: () => czApply(ops, o) });
     return null;
   }
 }
@@ -133,7 +134,7 @@ async function czUndo(token, after) {
     render();
     if (typeof _tmRepaint === 'function') _tmRepaint();
     toast('Undone', { kind: 'ok', icon: 'undo-2' });
-  } catch (e) { toast(_czErrText(e), { kind: 'err' }); }
+  } catch (e) { toast(_czErrText(e), { kind: 'err', retry: () => czUndo(token, after) }); }
 }
 
 /* ---------- opening the menu: right-click, Menu key / Shift+F10, long press ---------- */
