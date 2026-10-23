@@ -191,12 +191,16 @@ function presenceOpenPanel(anchor) {
         ${notes.map(n => `<div class="pr-note" data-id="${escAttr(n.id)}">${icon('info')}<span>${esc(n.text)}</span><button type="button" class="btn btn-ghost btn-sm" data-act="dismiss">Dismiss</button></div>`).join('')}
         <div class="pr-list" role="list" aria-label="Your devices">${devs.length ? devs.map(_prDeviceHtml).join('') : '<div class="pr-empty mute">No other device has joined yet.</div>'}</div>
         ${me ? `<div class="pr-me mute">${icon('monitor')}<span>This computer: ${esc(me.name || 'This computer')}${me.version ? ' · OpenDash ' + esc(me.version) : ''}</span></div>` : ''}
+        ${typeof syncPanelExtrasHtml === 'function' ? syncPanelExtrasHtml(s.tone === 'attention') : ''}
         <div class="pr-foot"><button type="button" class="btn btn-secondary btn-sm" data-act="settings">Sync settings</button></div>`;
       el.querySelector('[data-act="settings"]').onclick = () => { close(); if (typeof setView === 'function') setView('settings:sync'); };
+      // What changed, and Health ("Needs attention" opens it): 58-settings-sync-health.js
+      if (typeof syncPanelExtrasWire === 'function') syncPanelExtrasWire(el, close);
       el.querySelectorAll('.pr-note [data-act="dismiss"]').forEach(btn => { btn.onclick = () => { if (typeof presenceDismissNotice === 'function') presenceDismissNotice(btn.closest('.pr-note').getAttribute('data-id')); paint(); presenceRender(); }; });
     };
     anchor._prPaint = paint;
     paint();
+    if (typeof syncChangesLoad === 'function') syncChangesLoad().then(() => { if (anchor._prPaint) anchor._prPaint(); }).catch(() => {});
   }, { className: 'pr-pop', width: 340, align: 'end', onClose: () => { anchor._prPaint = null; } });
 }
 

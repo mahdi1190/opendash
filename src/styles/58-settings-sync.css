@@ -35,3 +35,62 @@
 .sync-join-input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1.5rem; letter-spacing: .3em; text-transform: uppercase; width: 8.5em; text-align: center; }
 .sync-other-ways > summary { cursor: pointer; padding: var(--space-1) 0; color: var(--text-muted, inherit); }
 .sync-other-ways[open] > summary { margin-bottom: var(--space-2); }
+/* Every wait has a way out: "Working… Cancel", and a failure with Try again */
+.sync-wait { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md, 8px); background: var(--bg-subtle, rgba(127,127,127,.08)); margin-bottom: var(--space-2); }
+.sync-fail { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.sync-fail > span { flex: 1 1 14rem; }
+.sync-live-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.sync-what { margin: var(--space-2) 0 0; }
+/* "Add a computer", up front */
+.sync-add-hero { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--accent, rgba(127,127,127,.35)); border-radius: var(--radius-md, 8px); margin: var(--space-2) 0; }
+.sync-add-hero-t { flex: 1 1 16rem; min-width: 0; }
+/* Tabs: Sync | Health | What changed | Review (58-settings-sync-health.js) */
+.sync-tabs { margin-bottom: var(--space-3); flex-wrap: wrap; }
+/* Health */
+.sh-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) 0 var(--space-3); }
+.sh-head .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--text-muted, #888); flex: none; }
+.sh-head.sh-ok .dot { background: var(--success, #2f9e5b); }
+.sh-head.sh-warn .dot { background: var(--warning, #b7791f); }
+.sh-head.sh-err .dot { background: var(--danger, #c0392b); }
+.sh-head-t { font-weight: 600; flex: 1 1 auto; }
+.sh-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.sh-check { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md, 8px); border: 1px solid var(--border, rgba(127,127,127,.25)); }
+.sh-check.sh-err { border-color: var(--danger, #c0392b); }
+.sh-check.sh-warn { border-color: var(--warning, #b7791f); }
+.sh-check.sh-ok { border-color: transparent; background: var(--bg-subtle, rgba(127,127,127,.06)); }
+.sh-ic { flex: none; padding-top: 2px; }
+.sh-err .sh-ic { color: var(--danger, #c0392b); }
+.sh-warn .sh-ic { color: var(--warning, #b7791f); }
+.sh-ok .sh-ic { color: var(--success, #2f9e5b); }
+.sh-info .sh-ic { color: var(--info, var(--accent)); }
+.sh-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: var(--space-1); }
+.sh-title { font-weight: 500; }
+.sh-steps { margin: 0; padding-left: 1.3em; color: var(--text-muted, inherit); }
+.sh-steps li { margin: 2px 0; }
+.sh-bar { height: 6px; border-radius: 3px; background: var(--bg-emphasis, rgba(127,127,127,.2)); overflow: hidden; max-width: 24rem; }
+.sh-bar > span { display: block; height: 100%; background: var(--accent); transition: width .4s ease; }
+.sh-at { margin-top: var(--space-2); }
+/* What changed */
+.sh-feed { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.sh-feed-row { min-width: 0; }
+.sh-feed-t { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.sh-feed-head { font-weight: 500; }
+.sh-feed-what { color: var(--text-muted, inherit); }
+.sh-live { font-size: .75em; padding: 0 6px; border-radius: 8px; background: var(--bg-emphasis, rgba(127,127,127,.2)); }
+/* Review */
+.sh-review { display: flex; flex-direction: column; gap: var(--space-3); }
+.sh-rev { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: var(--radius-md, 8px); }
+.sh-rev-t { font-weight: 500; }
+.sh-rev-sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--space-2); }
+.sh-rev-side { padding: var(--space-2); border-radius: 6px; background: var(--bg-subtle, rgba(127,127,127,.06)); min-width: 0; }
+.sh-rev-side.is-kept { outline: 1px solid var(--accent); }
+.sh-rev-by { font-size: .85em; color: var(--text-muted, inherit); }
+.sh-rev-v { overflow-wrap: anywhere; }
+/* The sync dot's panel (56-presence.js): the newest changes and Health */
+.pr-feed { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px solid var(--border, rgba(127,127,127,.25)); }
+.pr-feed-row { display: flex; flex-direction: column; font-size: .9em; }
+.pr-feed-head { font-weight: 500; }
+.pr-feed-what { color: var(--text-muted, inherit); }
+.pr-feed .btn { align-self: flex-start; }
+.pr-health { padding: 6px 0; }
+@media (prefers-reduced-motion: reduce) { .sh-bar > span { transition: none; } }
