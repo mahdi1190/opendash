@@ -4,6 +4,7 @@
 // with a key generated for this run: no network, no real credentials.
 
 import { test } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, statSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -199,7 +200,7 @@ test('saveApp: tests the key with GET /application, then stores it 0600 in secre
     assert.deepEqual(r.app.redirects, { bounce: true, paste: true });
     assert.equal(r.app.appIdMasked, '••••00eb');
     assert.ok(!JSON.stringify(r).includes(APP_ID) && !JSON.stringify(r).includes('PRIVATE KEY'));
-    const f = join(env.dataDir, 'secrets', 'fin', 'eb-app.json');
+    const f = join(secretsDir(env.dataDir), 'fin', 'eb-app.json');
     assert.ok(existsSync(f));
     if (process.platform !== 'win32') assert.equal(statSync(f).mode & 0o777, 0o600);
     const inf = await info(env.ctx);
@@ -212,7 +213,7 @@ test('saveApp: a key the app does not know is refused and nothing is saved', asy
   const env = setup({ register: false });
   try {
     await assert.rejects(saveApp(env.ctx, { appId: APP_ID, pem: KEY.pem }), (e) => e.code === 'NOT_CONFIGURED' && /application ID and the .pem/.test(e.message));
-    assert.equal(existsSync(join(env.dataDir, 'secrets', 'fin', 'eb-app.json')), false);
+    assert.equal(existsSync(join(secretsDir(env.dataDir), 'fin', 'eb-app.json')), false);
   } finally { env.cleanup(); }
 });
 

@@ -3,6 +3,7 @@
 // balances with the RPC fallback, failure modes and the core glue. Fakes only
 // (tests/fixtures/fin-fake-plasma.mjs): no network, obviously fake addresses.
 import { test, before, after } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -236,7 +237,7 @@ test('connect: saves the address to secrets only (0600), the source has a hash a
   assert.equal(source.addrHash, addrHash(FAKE_ADDR.active));
   assert.equal(source.extra.mask, '0x00…00a1');
   assert.ok(!JSON.stringify(source).includes(FAKE_ADDR.active), 'the source never holds the address');
-  const f = join(ctx.dataDir, 'secrets', 'fin', `plasma-${source.id}.json`);
+  const f = join(secretsDir(ctx.dataDir), 'fin', `plasma-${source.id}.json`);
   assert.ok(existsSync(f));
   assert.equal(JSON.parse(readFileSync(f, 'utf8')).address, FAKE_ADDR.active);
   if (process.platform !== 'win32') assert.equal(statSync(f).mode & 0o777, 0o600);
@@ -416,7 +417,7 @@ test('preview: balance and this month\'s transfers, smart account noted, token c
   assert.ok(!JSON.stringify(p).includes(FAKE_ADDR.active));
   await assert.rejects(plasma.preview(t.ctx, { address: USDT0.address }), { code: 'BAD_REQUEST' });
   await assert.rejects(plasma.preview(t.ctx, { address: 'apple river stone cloud night table green orbit lemon paper quiet zebra' }), { code: 'SECRET_REFUSED' });
-  assert.ok(!existsSync(join(t.ctx.dataDir, 'secrets')));
+  assert.ok(!existsSync(secretsDir(t.ctx.dataDir)));
   const e = await plasma.preview(t.ctx, { address: FAKE_ADDR.empty });
   assert.equal(e.transfers30d, 0);
   assert.equal(e.balance.amount, 0);
@@ -441,7 +442,7 @@ test('the optional explorer key: saved to secrets, sent as apikey, removable, ne
 test('disconnect deletes the saved address; status then asks for it again', async () => {
   const { ctx, source } = await connected();
   await plasma.disconnect(ctx, source);
-  assert.ok(!existsSync(join(ctx.dataDir, 'secrets', 'fin', `plasma-${source.id}.json`)));
+  assert.ok(!existsSync(join(secretsDir(ctx.dataDir), 'fin', `plasma-${source.id}.json`)));
   const st = await plasma.status(ctx, source);
   assert.equal(st.configured, false);
   await assert.rejects(plasma.fetch(ctx, source, {}), { code: 'NOT_CONFIGURED' });

@@ -3,6 +3,7 @@
 // the first finance update, accounts, the safeguards and disconnect. No network:
 // the USD->GBP rates come from a pre-filled cache in <data>/travel/ (synthetic).
 import { test, before, after } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -92,7 +93,7 @@ test('preview: safeguards (403, 421, 415), secrets refused and never echoed, tok
   assert.ok(!ok.text.includes(ACTIVE));
   const sj = join(dir, 'sources.json');
   assert.ok(!existsSync(sj) || !readFileSync(sj, 'utf8').includes('plasma'), 'a preview saves nothing');
-  assert.ok(!existsSync(join(dir, 'secrets', 'fin')) || !readdirSync(join(dir, 'secrets', 'fin')).some(f => f.startsWith('plasma')));
+  assert.ok(!existsSync(join(secretsDir(dir), 'fin')) || !readdirSync(join(secretsDir(dir), 'fin')).some(f => f.startsWith('plasma')));
 });
 
 let sourceId;
@@ -120,7 +121,7 @@ test('add a wallet: one request, then the first update brings the whole history 
   assert.ok(!a.text.includes(ACTIVE));
   // Credentials: the address is in secrets/fin only.
   assert.ok(!readFileSync(join(dir, 'sources.json'), 'utf8').includes(ACTIVE));
-  const secret = join(dir, 'secrets', 'fin', `plasma-${sourceId}.json`);
+  const secret = join(secretsDir(dir), 'fin', `plasma-${sourceId}.json`);
   assert.equal(JSON.parse(readFileSync(secret, 'utf8')).address, ACTIVE);
 });
 
@@ -151,7 +152,7 @@ test('the same wallet twice is refused; naming an address works; the key route n
 test('disconnect deletes the saved address and keeps past rows by default', async () => {
   const r = await post(`/api/fin-connect/sources/${sourceId}/disconnect`, {});
   assert.equal(r.status, 200, r.text);
-  assert.ok(!existsSync(join(dir, 'secrets', 'fin', `plasma-${sourceId}.json`)));
+  assert.ok(!existsSync(join(secretsDir(dir), 'fin', `plasma-${sourceId}.json`)));
   assert.ok(readFileSync(join(dir, 'finance', '_system', 'transactions.csv'), 'utf8').includes(sourceId + '.w-'));
   // An empty wallet can be added afterwards.
   const e = await post('/api/fin-connect/plasma', { address: EMPTY });

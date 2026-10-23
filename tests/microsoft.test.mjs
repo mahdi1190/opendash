@@ -1,5 +1,6 @@
 // Synthetic Microsoft OAuth/Graph responses only. Never uses real accounts.
 import { test } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -50,7 +51,7 @@ test('Microsoft configuration is honest; /common public-client PKCE is verified,
   await assert.rejects(ms.callback({ state: u.searchParams.get('state'), code: 'synthetic-code' }), { code: 'OAUTH_STATE' });
   const status = await ms.status(); assert.equal(status.connected, true); assert.equal(status.account, 'person@example.test');
   assert.ok(!JSON.stringify(status).includes('synthetic-access'));
-  assert.deepEqual(JSON.parse(readFileSync(join(dir, 'secrets', 'microsoft-client.json'))), { clientId: CLIENT });
+  assert.deepEqual(JSON.parse(readFileSync(join(secretsDir(dir), 'microsoft-client.json'))), { clientId: CLIENT });
   await ms.disconnect(); assert.equal((await ms.status()).connected, false);
 }, (url) => url.endsWith('/token') ? reply(grant()) : reply({ value: [] })));
 
@@ -78,7 +79,7 @@ test('Microsoft concurrent refresh rotates credentials once; revoked refresh req
     await signIn(); advance(3600000);
     await Promise.all([ms.email({ id: 'outlook-email' }), ms.calendar({ id: 'outlook-calendar' }, { from: '2026-01-01', to: '2026-01-07' })]);
     assert.equal(calls.filter(c => c.opts.body?.get('grant_type') === 'refresh_token').length, 1);
-    assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'microsoft-tokens.json'))).refresh_token, 'rotated-refresh');
+    assert.equal(JSON.parse(readFileSync(join(secretsDir(dir), 'microsoft-tokens.json'))).refresh_token, 'rotated-refresh');
     revoked = true; advance(3600000);
     await assert.rejects(ms.email({ id: 'outlook-email' }), { code: 'MICROSOFT_AUTH' });
     assert.equal((await ms.status()).needsAuth, true); assert.equal((await ms.status()).connected, false);
@@ -122,8 +123,8 @@ test('Microsoft source validation/health and readers work without a Claude insta
   const source = { id: 'outlook-email', kind: 'microsoft', capability: 'email', label: 'Outlook Mail', colour: 'blue', enabled: true, accounts: [] };
   assert.equal(validateSource(source).errors.length, 0); assert.ok(validateSource({ ...source, capability: 'bank' }).errors.length);
   assert.ok(validateSource({ ...source, id: 'second-email' }, { existing: [source] }).errors.length);
-  await writeJson(join(dir, 'secrets', 'microsoft-client.json'), { clientId: CLIENT });
-  await writeJson(join(dir, 'secrets', 'microsoft-tokens.json'), { clientId: CLIENT, refresh_token: 'synthetic-refresh', account: 'person@example.test' });
+  await writeJson(join(secretsDir(dir), 'microsoft-client.json'), { clientId: CLIENT });
+  await writeJson(join(secretsDir(dir), 'microsoft-tokens.json'), { clientId: CLIENT, refresh_token: 'synthetic-refresh', account: 'person@example.test' });
   const service = createSourcesService({ dataDir: dir, list: async () => { throw new Error('Claude must not be called'); } });
   assert.equal((await service.healthMap([source], { servers: [], claudeOk: false }))[source.id].state, 'ok');
   const fake = { email: async (s, opts) => ({ count: 1, source: s, opts }), calendar: async (s, opts) => ({ count: 2, source: s, opts }) };

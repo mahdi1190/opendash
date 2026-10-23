@@ -1,13 +1,14 @@
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { REPO_ROOT } from '../../lib/datadir.mjs';
+import { secretsDir } from '../../lib/devicedir.mjs';
 import { readJson, writeJson, withLock } from '../../lib/fsutil.mjs';
 import { createRemoteAuth, remoteOrigin } from '../../lib/remote-mcp-auth.mjs';
 import { HttpError } from '../http.mjs';
 
 export default function register(app) {
   const { dataDir } = app.ctx;
-  const file = join(dataDir, 'secrets', 'remote-mcp-config.json');
+  const file = join(secretsDir(dataDir), 'remote-mcp-config.json');
   const config = () => readJson(file, { fallback: null });
   const authFor = async () => { const cfg = await config(); if (!cfg) throw new HttpError(400, 'Set the Cloudflare hostname first.'); return { cfg, auth: createRemoteAuth({ dataDir, publicOrigin: cfg.publicOrigin }) }; };
   const running = async cfg => {
