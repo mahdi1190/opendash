@@ -1,0 +1,31 @@
+/* "+ Other email" drawer (56-accounts-imap.js): the app-password explanation,
+   the provider's steps, the password field, server settings, errors and the
+   connected screen. Large, calm and readable: people may never have heard of
+   an app password. */
+.imap-title { margin: 4px 0 2px; }
+.imap-intro { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0; padding: 12px 14px; border-radius: 12px; background: var(--bg-subtle); }
+.imap-intro > .i { flex-shrink: 0; margin-top: 2px; color: var(--accent, var(--fg-muted)); }
+.imap-intro strong { display: block; margin-bottom: 2px; }
+.imap-intro p { margin: 0; color: var(--fg-muted); line-height: 1.55; }
+.imap-steps { margin: 8px 0 14px; padding: 12px 14px; border: 1px solid var(--border-subtle); border-radius: 12px; }
+.imap-steps.is-attention { border-color: var(--warning, #d4a72c); }
+.imap-steps .conn-steps { margin: 6px 0 10px; line-height: 1.6; }
+.imap-steps .btn { margin-top: 2px; }
+.imap-tip { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0 0; }
+.imap-tip .i { flex-shrink: 0; margin-top: 3px; }
+.imap-pw-row { display: flex; gap: 8px; align-items: center; }
+.imap-pw-row .control { flex: 1; font-size: 16px; min-height: 44px; letter-spacing: .02em; }
+.imap-server { margin: 6px 0 12px; }
+.imap-server summary { cursor: pointer; color: var(--fg-muted); font-size: var(--text-sm); }
+.imap-server-grid { display: grid; grid-template-columns: 1fr 90px; gap: 8px 10px; margin-top: 8px; }
+.imap-server-grid .field:last-child { grid-column: 1 / -1; }
+.imap-server-grid .control { width: 100%; }
+.imap-error { display: flex; align-items: flex-start; gap: 10px; margin: 10px 0; padding: 12px 14px; border-radius: 12px; background: var(--danger-soft, rgba(220, 38, 38, .08)); }
+.imap-error > .i { flex-shrink: 0; margin-top: 2px; color: var(--danger, #b91c1c); }
+.imap-error strong { display: block; margin-bottom: 2px; }
+.imap-error p { margin: 0; line-height: 1.55; }
+.imap-done { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; }
+.imap-done > .i { width: 26px; height: 26px; color: var(--success); }
+.imap-calendar { margin-top: 16px; }
+.imap-wait { display: flex; align-items: center; gap: 10px; padding: 16px 0; color: var(--fg-muted); }
+@media (max-width: 520px) { .imap-server-grid { grid-template-columns: 1fr; } }

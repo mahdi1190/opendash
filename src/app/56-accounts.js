@@ -160,6 +160,9 @@ function accComingSoon(title, text) {
   } });
 }
 function accOtherEmail() {
+  const d = accList() || {};
+  // "+ Other email": the guided app-password flow (56-accounts-imap.js).
+  if (!(d.providers && d.providers.imap && d.providers.imap.available === false) && typeof imapConnectFlow === 'function') return imapConnectFlow({});
   openDrawer({ title: 'Other email', width: 480, body: (el, close) => {
     const card = _connEl('div', 'acc-soon');
     card.innerHTML = icon('hourglass');
@@ -206,10 +209,10 @@ function accCard(a) {
     const b = _connEl('button', 'acc-feature' + (f.on ? ' on' : '')); b.type = 'button';
     b.setAttribute('aria-pressed', String(f.on));
     b.innerHTML = icon(f.id === 'mail' ? 'mail' : 'calendar-days', 'i-xs');
-    b.append(_connEl('span', null, f.label), _connEl('span', 'acc-tick', f.on ? '✓' : 'off'));
-    b.title = f.on ? `Stop reading ${f.label.toLowerCase()}` : `Read ${f.label.toLowerCase()} too`;
+    b.append(_connEl('span', null, f.label), _connEl('span', 'acc-tick', f.link ? '+' : f.on ? '✓' : 'off'));
+    b.title = f.link ? 'Add a calendar link for this account' : f.on ? `Stop reading ${f.label.toLowerCase()}` : `Read ${f.label.toLowerCase()} too`;
     b.disabled = busy;
-    b.onclick = () => accAct(a, '/api/accounts/features', { [f.id]: !f.on });
+    b.onclick = () => (f.link ? imapCalendarLink(a) : accAct(a, '/api/accounts/features', { [f.id]: !f.on }));
     feats.appendChild(b);
   }
   card.appendChild(feats);
@@ -225,7 +228,7 @@ function accCard(a) {
   const run = (id) => {
     if (id === 'sync') return accAct(a, '/api/accounts/sync', {}, (r) => { const bad = (r.results || []).find(x => !x.ok); toast(bad ? bad.error : 'Checked. Everything is up to date.', { kind: bad ? 'err' : 'ok' }); accReloadData(); });
     if (id === 'sign-in' && a.provider === 'google' && window.AccountProviders && AccountProviders.google) return AccountProviders.google.signIn({ email: a.email, accountId: a.id, features: a.features });
-    if (id === 'sign-in') return accOpenSignIn({ provider: a.provider, accountId: a.id });
+    if (id === 'sign-in') return a.provider === 'imap' ? imapConnectFlow({ account: a }) : accOpenSignIn({ provider: a.provider, accountId: a.id });
     if (id === 'approval') return accApproval(a);
     if (id === 'resume') return accAct(a, '/api/accounts/pause', { paused: false });
     if (id === 'fetch-here') return accAct(a, '/api/accounts/fetch-here', {}, (r) => toast(r.message, { kind: 'info', timeout: 6000 }));

@@ -63,7 +63,7 @@ test('every accounts route refuses another site and a foreign Host; the page its
   assert.equal(ok.status, 200);
   const doc = JSON.parse(ok.text);
   assert.deepEqual(doc.accounts, []);
-  assert.equal(doc.providers.imap.comingSoon, true);
+  assert.equal(doc.providers.imap.available, true);
 });
 
 test('writes need JSON and stay small; unknown ids are refused plainly', async () => {
@@ -83,5 +83,5 @@ test('a forged sign-in return changes nothing; begin without an address explains
   const begin = await raw('POST', '/api/accounts/begin', { ...SAME(), ...JSONH }, '{"provider":"microsoft","email":"nope"}');
   assert.equal(begin.status, 400); assert.match(JSON.parse(begin.text).error, /full email address/);
   const other = await raw('POST', '/api/accounts/begin', { ...SAME(), ...JSONH }, '{"provider":"imap","email":"me@yahoo.example"}');
-  assert.equal(JSON.parse(other.text).code, 'NOT_CONFIGURED');
+  assert.equal(JSON.parse(other.text).code, 'BAD_REQUEST'); assert.match(JSON.parse(other.text).error, /app password/, 'IMAP accounts connect with an app password, not a browser sign-in');
 });

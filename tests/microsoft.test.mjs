@@ -86,7 +86,7 @@ test('add a Hotmail account: begin goes to /consumers, the return page says conn
   assert.equal(replay.status, 400); assert.match(replay.text, /not started from OpenDash/);
   const list = (await call('/api/accounts', 'GET')).json;
   assert.equal(list.accounts.length, 1); assert.equal(list.accounts[0].statusText, 'Connected'); assert.equal(list.accounts[0].syncedText, 'synced just now');
-  assert.equal(list.providers.microsoft.available, true); assert.equal(list.providers.imap.comingSoon, true);
+  assert.equal(list.providers.microsoft.available, true); assert.equal(list.providers.imap.available, true);
   assert.ok(!JSON.stringify(list).includes('refresh-'));
 }));
 
