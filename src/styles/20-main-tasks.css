@@ -58,6 +58,9 @@
 .ws-day.drag-over { background: var(--accent-soft); box-shadow: inset 0 0 0 1.5px var(--accent); opacity: 1; }
 body.task-dragging .ws-day { box-shadow: inset 0 0 0 1px var(--border); }
 body.task-dragging .ws-day.drag-over { box-shadow: inset 0 0 0 1.5px var(--accent); }
+/* Sidebar items that take a dragged task (30-task-row.js sbTaskDrop): streams, Today, No date, Logbook. */
+body.task-dragging .nav-item[data-task-drop] { box-shadow: inset 0 0 0 1px var(--border); }
+body.task-dragging .nav-item[data-task-drop].drag-over { background: var(--accent-soft); color: var(--accent-ink); box-shadow: inset 0 0 0 1.5px var(--accent); }
 
 /* ---------- big centred Today button ---------- */
 .today-jump-row { display: flex; justify-content: center; margin: calc(var(--space-2) * -1) 0 var(--space-4); }

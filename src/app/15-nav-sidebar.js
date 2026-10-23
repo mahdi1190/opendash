@@ -138,7 +138,8 @@ registerSidebarBlock(['home', 'tasks'], {
     // Home's sidebar holds only Home and the Review items: the task views
     // belong to the Tasks tab, so clicking one there never switches tabs.
     const list = ctx.group === 'home' ? [] : rows;
-    for (const r of list) el.appendChild(sbNavItem(r));
+    // Today, No date and Logbook also take a dragged task (30-task-row.js sbTaskDrop).
+    for (const r of list) el.appendChild(typeof sbTaskDrop === 'function' ? sbTaskDrop(sbNavItem(r), r.view) : sbNavItem(r));
   },
 });
 
@@ -194,8 +195,8 @@ registerSidebarBlock('tasks', {
       custom: entries.map(([k]) => k),
       saveCustom: _sbSaveStreamOrder,
       keepId: state.view.startsWith('stream:') ? state.view.slice(7) : null,
-      // Its marker (colour, symbol, shape) and the right-click menu: 28-customise.js.
-      row: (it) => czMark(sbNavItem({ label: it.label, avatarHtml: `<span class="ic">${streamMarkHtml(it.id)}</span>`, view: 'stream:' + it.id, count: it.open || '' }), 'stream', it.id),
+      // Its marker (colour, symbol, shape) and the right-click menu: 28-customise.js. Drop a task on it to move it there (30-task-row.js).
+      row: (it) => { const r = czMark(sbNavItem({ label: it.label, avatarHtml: `<span class="ic">${streamMarkHtml(it.id)}</span>`, view: 'stream:' + it.id, count: it.open || '' }), 'stream', it.id); return typeof sbTaskDrop === 'function' ? sbTaskDrop(r, 'stream:' + it.id) : r; },
     });
     if (empty.length && full.length) {
       el.appendChild(sbNavItem({

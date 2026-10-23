@@ -34,6 +34,40 @@ function _endTaskDrag(el) {
   document.querySelectorAll('.drag-over, .drop-before, .drop-after').forEach(n => n.classList.remove('drag-over', 'drop-before', 'drop-after'));
 }
 
+/**
+ * Let a sidebar item take a dragged task (15-nav-sidebar.js): a stream moves it into the stream,
+ * Today makes it due today, No date clears the date, Logbook completes it. Undo in the toast.
+ * view: the item's view ('stream:<id>', 'today', 'no-date', 'completed'); others are left alone.
+ */
+function sbTaskDrop(el, view) {
+  const act = _sbTaskDropAction(view);
+  if (!el || !act) return el;
+  el.addEventListener('dragover', (e) => { if (!isTaskDrag(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', (e) => { if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over'); });
+  el.addEventListener('drop', (e) => {
+    el.classList.remove('drag-over');
+    const id = draggedTaskId(e); if (!id) return;
+    e.preventDefault(); e.stopPropagation();
+    const msg = act(id, getItem(id));
+    if (msg) toast(msg, { kind: 'ok', icon: view.startsWith('stream:') ? 'layers' : 'calendar', action: { label: 'Undo', run: () => undo() } });
+  });
+  el.dataset.taskDrop = '';   // outlined while a task is dragged (20-main-tasks.css), so the targets show themselves
+  return el;
+}
+/** What a drop on a sidebar item does: (id, item) -> toast text ('' when nothing changed or it says so itself). */
+function _sbTaskDropAction(view) {
+  view = String(view || '');
+  if (view.startsWith('stream:')) {
+    const s = view.slice(7);
+    if (!STREAMS[s]) return null;
+    return (id, it) => { if (effStream(it) === s) return ''; setOverride(id, 'stream', s); render(); return `Moved to ${STREAMS[s].label}`; };
+  }
+  if (view === 'today') return (id, it) => { if (effDate(it) === todayStr()) return ''; setDateWithReason(id, todayStr(), null); return 'Due today'; };
+  if (view === 'no-date') return (id, it) => { if (!effDate(it)) return ''; setDateWithReason(id, null, null); return 'Date removed'; };
+  if (view === 'completed') return (id) => { if (statusOf(id) !== 'done') toggleDone(id); return ''; };   // toggleDone has its own toast + Undo
+  return null;
+}
+
 /** Short due label for rows: Today / 14:00 / Tomorrow / Mon / Yesterday / 12 Sep. */
 function rowDueLabel(item) {
   const iso = effDate(item); if (!iso) return '';
