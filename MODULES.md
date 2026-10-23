@@ -701,6 +701,7 @@ No server, no sign-in: devices exchange field-level changes through a folder
 the user's cloud drive already syncs, end-to-end encrypted (format v 2: the
 folder only holds sealed records; keys live in each device's secret store).
 Format: `docs/dev/SYNC_FORMAT.md` (section 11: encryption, pairing, recovery).
+How sync, accounts, the main computer, safety and secrets fit together: `docs/dev/MULTI_DEVICE.md`.
 
 | Part | Files |
 |---|---|
