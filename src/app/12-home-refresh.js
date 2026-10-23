@@ -238,12 +238,13 @@ async function _hrTriage(run) {
   const seenSet = new Set(Array.isArray(seen) ? seen : []);
   const t = state.emailTriage || {};
   const handled = t.handled || {}, pending = new Set((t.suggestions || []).map(x => x && x.emailId));
-  const fresh = emailMessages().filter(m => m && m.id && !handled[m.id] && !pending.has(m.id) && !seenSet.has(m.id));
-  if (!fresh.length) return { status: 'fresh', reason: 'No new email to look at.' };
+  const open = emailMessages().filter(m => m && m.id && !handled[m.id] && !pending.has(m.id));
+  if (!open.some(m => !seenSet.has(m.id))) return { status: 'fresh', reason: 'No new email to look at.' };
+  const sent = open.slice(0, 40);                 // what aiSuggestTasksFromEmails sends (its own rule)
   await aiSuggestTasksFromEmails();
   await _hrUntil(run, () => typeof _emSuggesting === 'undefined' || !_emSuggesting, 3 * 60000);
   if (run.cancelled) return { status: 'cancelled' };
-  try { localStorage.setItem(HR_TRIAGE_KEY, JSON.stringify([...seenSet, ...fresh.map(m => m.id)].slice(-600))); } catch (e) { /* private mode */ }
+  try { localStorage.setItem(HR_TRIAGE_KEY, JSON.stringify([...new Set([...seenSet, ...sent.map(m => m.id)])].slice(-600))); } catch (e) { /* private mode */ }
   return { status: 'done' };
 }
 function _hrSteps() {
