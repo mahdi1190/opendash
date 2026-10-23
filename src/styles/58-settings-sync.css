@@ -28,3 +28,10 @@
   body.sync-printing > *:not(.sync-print-sheet) { display: none !important; }
   body.sync-printing > .sync-print-sheet { display: block; padding: 2cm; color: #000; background: #fff; }
 }
+/* The 4-letter join code ("Add a computer"): big, spaced, with its countdown */
+.sync-join { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: var(--radius-md, 8px); margin: var(--space-2) 0; align-items: flex-start; }
+.sync-join-code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 3rem; font-weight: 700; letter-spacing: .3em; line-height: 1.1; user-select: all; }
+.sync-join-left { color: var(--text-muted, inherit); font-variant-numeric: tabular-nums; }
+.sync-join-input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1.5rem; letter-spacing: .3em; text-transform: uppercase; width: 8.5em; text-align: center; }
+.sync-other-ways > summary { cursor: pointer; padding: var(--space-1) 0; color: var(--text-muted, inherit); }
+.sync-other-ways[open] > summary { margin-bottom: var(--space-2); }

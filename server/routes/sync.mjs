@@ -23,6 +23,10 @@
 //   POST /api/sync/pair/respond      {sid}          "Check it's yours" on the other computer
 //   POST /api/sync/pair/confirm      {sid, match}   the 6 digits match (or not), on either computer
 //   POST /api/sync/pair/cancel
+//   POST /api/sync/code/start        "Add a computer": a 4-letter join code on this computer
+//                                    (status e2e.joinCode {role:'offer', code, step, expiresAt}); 10 minutes, single use
+//   POST /api/sync/code/cancel       stop the code on screen (or the code being tried on a new computer)
+//   POST /api/sync/code/join         {code}         the new computer types the 4 letters
 //   POST /api/sync/offer             a one-time QR offer for a phone -> {offer: {text, expiresAt}}
 //   POST /api/sync/offer/join        {text}         join with what the QR code says
 //   POST /api/sync/devices/rename    {id, name}
@@ -133,6 +137,9 @@ export default function register(app) {
   post('/api/sync/pair/respond', (b) => engine.pairRespond(str(b.sid, 40)));
   post('/api/sync/pair/confirm', (b) => engine.pairConfirm(str(b.sid, 40), b.match === true));
   post('/api/sync/pair/cancel', () => engine.pairCancel());
+  post('/api/sync/code/start', () => engine.codeStart());
+  post('/api/sync/code/cancel', () => engine.codeCancel());
+  post('/api/sync/code/join', (b) => engine.codeJoin(str(b.code, 40) || ''));
   post('/api/sync/offer', () => engine.makeOffer());
   post('/api/sync/offer/join', (b) => engine.joinWithOffer(str(b.text, 300) || ''));
   post('/api/sync/devices/rename', (b) => engine.renameDevice(str(b.id, 40), str(b.name, 60)));
