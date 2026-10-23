@@ -21,7 +21,7 @@ Code:
 | `lib/accounts/google.mjs` | the Google provider (Gmail + Google Calendar) | **pure JS** |
 | `lib/accounts/shipped.mjs` | the shipped (build-time) client IDs | pure JS |
 | `lib/accounts.mjs` | the Node binding: registry file, secret store, device id, migration, sources | Node |
-| `lib/accounts-google.mjs` | Google's Node side: which Google app (built-in or the user's own), the move of the old single Google connection | Node |
+| `lib/accounts-google.mjs` | Google's Node side: the move of the old single Google connection (the Google app setting, `googleConfig`, is pure and lives in `lib/accounts/google.mjs`) | Node |
 | `server/routes/accounts.mjs` | `/api/accounts` | Node |
 | `src/app/56-accounts*.js` | the Connections tab account list (`56-accounts-google.js`: the card before Google's sign-in, the own-app fold) | page |
 
@@ -96,7 +96,8 @@ Statuses, in plain language:
 Per-feature data (mail, calendar) lives in the usual **sources** (`<data>/sources.json`):
 every account owns up to one `email` and one `calendar` source with
 `kind: <provider>` and `account: <account id>`. `features.mail` mirrors the email
-source's `enabled`, `features.calendar` the calendar source's. Snapshots stay
+source's `enabled`, `features.calendar` the calendar source's (switching the source on
+or off in the source list changes the feature too). Snapshots stay
 where they always were (`<data>/inbox/sources/<sourceId>.json`,
 `<data>/calendar/sources/<sourceId>.json`): normal, syncable data.
 
@@ -115,10 +116,12 @@ Keys used by accounts: `accounts/<accountId>`. The value is the provider's
 **token document** (provider-private shape; Microsoft:
 `{provider, clientId, authority, access_token, refresh_token, expires_at, scope, tenantId}`).
 
-- Node: `secretsDir(dataDir)/accounts/<id>.json` (lib/devicedir.mjs: a
-  per-computer folder outside the data folder), written atomically, mode 0600,
-  under a cross-process lock. **Tokens never enter the data folder, a response,
-  or a log.**
+- Node: `secretStore(dataDir)` from `lib/secret-store.mjs` (its file backend
+  keeps `secretsDir(dataDir)/accounts/<id>.json`, lib/devicedir.mjs: a
+  per-computer folder outside the data folder), written atomically, mode 0600;
+  its `lock(key, fn)` is the cross-process section. An OS keychain backend can
+  replace the files without touching accounts. **Tokens never enter the data
+  folder, a response, or a log.**
 - Mobile: Keychain / Keystore (e.g. a secure-storage plugin). Desktop app: the
   OS keychain. PWA: IndexedDB with a non-extractable key (weakest; document it).
 
@@ -212,6 +215,26 @@ provider = {
 | `PROVIDER_NETWORK`, `PROVIDER_RESPONSE`, `PROVIDER_LIMIT`, `PROVIDER_BUSY` | - (error only) | could not reach / unreadable / too big / 429 |
 | `PAUSED`, `NOT_FETCHER`, `FEATURE_OFF`, `UNKNOWN_ACCOUNT`, `BAD_REQUEST` | - | refused by the core before any request |
 
+### Adding a provider (Google, IMAP)
+
+1. Write `lib/accounts/<name>.mjs` (pure, see section 1) exporting
+   `create<Name>Provider(ctx)` (this interface) and, optionally,
+   `<name>Config({ store }) -> config` (e.g. `{ clientId: async () => ..., clientSecret: async () => ... }`,
+   read from `SHIPPED` in `lib/accounts/shipped.mjs` and/or the secret store).
+   `lib/accounts.mjs` loads `lib/accounts/google.mjs` and `lib/accounts/imap.mjs`
+   by themselves when the files exist (or call `registerProvider(name, factory, config)`).
+2. `configured()` decides whether the page's button is live
+   (`GET /api/accounts` -> `providers.<name>.available`). Until then the page
+   shows "Coming soon" for it.
+3. Use `ctx.redirect.uri()` as the redirect URI (loopback today:
+   `http://localhost:<port>/api/accounts/callback`, which Google's desktop
+   loopback rules accept), `ctx.pending.begin({provider: '<name>', ...})` for the
+   state (store the PKCE verifier there), `ctx.vault` for tokens, and return the
+   snapshot shapes above. The core adds the record, the sources
+   (`kind: '<name>'`, `account: <id>`), the fetcher, pause/remove and the UI.
+4. Give the page a brand mark if you like (`accBrand` in `src/app/56-accounts-logic.js`:
+   google uses `gmail`).
+
 ### Microsoft specifics (`lib/accounts/microsoft.mjs`)
 
 - **Shipped client ID**: `SHIPPED.microsoftClientId` in `lib/accounts/shipped.mjs`,
@@ -259,11 +282,13 @@ provider = {
   triage shows and reads the snippet. No Drive scope. Google lets a person
   untick a box on its consent screen: the account gets only the features that
   were granted; none granted is `MISSING_PERMISSIONS`, and a read that needs a
-  scope the grant lacks fails with `MISSING_PERMISSIONS` before any request.
+  scope the grant lacks (a feature switched on later) is `NEEDS_SIGN_IN` "Sign in
+  again to let OpenDash read your mail/calendar" before any request; that sign-in
+  asks for it.
 - **Client (the Google app)**: a Google "Desktop app" OAuth client; Google still
   wants its client secret in the token request in practice, so the provider sends
   it when the config has one (mobile iOS/Android clients have none and send none).
-  `ctx.config` = `createGoogleConfig({store})`: `clientId()`, `clientSecret(id)`
+  `ctx.config` = `googleConfig({store})` (pure, async, reads the store at each call; the binding loads it with the module): `clientId()`, `clientSecret(id)`
   (only the secret that belongs to that id), `knownClient(id)`. Order: the user's
   own app (Connections > Add Google account > Advanced; secret `google-client`,
   this computer only, the file the single-account setup used; a saved `null`
@@ -360,7 +385,7 @@ calls these routes on its local server.
 
 | route | body / query | answer |
 |---|---|---|
-| `GET /api/accounts` | - | `{ accounts: [publicAccount], providers: { microsoft: {available, custom, clientIdHint}, google: {available, custom, builtIn, hasSecret, clientIdHint}, imap: {available:false, comingSoon:true} }, device: { hostId } }` |
+| `GET /api/accounts` | - | `{ accounts: [publicAccount], providers: { microsoft: {available, custom, builtIn, callback}, google: {available, custom, builtIn, hasSecret, clientIdHint}, imap: {available:false, comingSoon:true} } }` (`microsoft.custom`: the user's own app is in use; `microsoft.callback`: the return address to register for it) |
 | `POST /api/accounts/begin` | `{ provider, email, kind?, accountId?, features?: {mail, calendar} }` | `{ url, kind }`: open `url` in the browser |
 | `GET /api/accounts/begin?provider=&email=&kind=&accountId=&features=mail,calendar` | - | `302` to the provider (the page opens this in a new tab, so no pop-up blocker) |
 | `GET /api/accounts/callback?code=&state=` | - | an HTML page: connected / waiting for your organisation (with the approval link and email) / try again. Also at `/api/microsoft/callback` for app registrations made with the old instructions |
@@ -384,15 +409,19 @@ most one `kind:'microsoft'` email source and one calendar source. On first use
 (`lib/accounts.mjs migrateLegacyMicrosoft`, idempotent, also
 `tools/migrations/090-accounts.mjs`):
 
-1. the token file (device folder first, then the old `<data>/secrets/`) becomes
-   one account `acc_<hash of the Microsoft user id>` (so a re-run finds it), its
-   tokens are written to `accounts/<id>`, `legacy: true`, fetcher = this computer,
-   status `connected` (or `needs-sign-in` if it needed sign-in);
+1. the secret `microsoft-tokens` in this computer's secret store (lib/devicedir.mjs
+   has already moved an old `<data>/secrets/` there at start-up; while another
+   computer still has the folder open it waits, and so does this) becomes one
+   account `acc_<hash of the Microsoft user id>` (so a re-run finds it), its
+   tokens are written to `accounts/<id>` (authority `common`, its own client ID),
+   `legacy: true`, fetcher = this computer, status `connected` (or `needs-sign-in`),
+   features from the old sources' on/off, lastSync from theirs;
 2. the existing Microsoft sources get `account: <id>` and keep their ids, so
    their snapshots (and every message id) stay as they were;
-3. the old token file is renamed `microsoft-tokens.migrated.json` (the device
-   folder move in lib/devicedir.mjs takes care of an old data-folder copy);
-4. a pasted client ID stays where it was and keeps working as the user's own app.
+3. the old `microsoft-tokens` secret is deleted (the tokens live on in `accounts/<id>`);
+4. a pasted client ID (`microsoft-client`) stays where it was and keeps working as
+   the user's own app, marked `legacyRedirect` so new sign-ins with it use the
+   return address it was registered with (`/api/microsoft/callback`).
 
 ### 10b. Migration from the single Google connection
 

@@ -31,6 +31,7 @@ import { esc, HttpError } from '../http.mjs';
 
 const ID_RE = /^acc_[a-f0-9]{16}$/;
 const STOP = new Set(['NEEDS_SIGN_IN', 'NEEDS_ADMIN_APPROVAL', 'PAUSED', 'NOT_FETCHER', 'UNKNOWN_ACCOUNT', 'DEVICE_NOT_ALLOWED']);
+const GUARD = new Set(['PAUSED', 'NOT_FETCHER', 'FEATURE_OFF', 'UNKNOWN_ACCOUNT']);
 
 /** A typed error passes through (plain message + code); anything else becomes a plain 500. */
 function plain(e) {
@@ -75,7 +76,8 @@ export default function register(app) {
         results.push({ feature, ok: true, count: got.count });
       } catch (e) {
         const message = e && e.code ? e.message : 'This could not be read. Try again later.';
-        await sources.noteSync(s.id, { ok: false, error: message, code: e && e.code });
+        // Refused before any read (paused, another computer, switched off): not a failure of the source.
+        if (!(e && GUARD.has(e.code))) await sources.noteSync(s.id, { ok: false, error: message, code: e && e.code });
         results.push({ feature, ok: false, error: message, code: (e && e.code) || 'FAILED' });
         if (e && STOP.has(e.code)) break;
       }

@@ -228,3 +228,17 @@ test('calendar: all-day dates keep their zone, switched-off calendars are skippe
   assert.equal(big.calls.filter(c => c.url.hostname === 'graph.microsoft.com' && c.url.pathname !== '/v1.0/me').length, 40, '40 data requests');
   assert.equal(many.events.length, 38); assert.ok(many.warnings.length);
 });
+
+test('a feature switched on after sign-in asks to sign in again, and that sign-in asks for its permission', async () => {
+  const f = fixture({ handler: (u, opts) => (opts.body && opts.body.get('grant_type') === 'authorization_code' && !opts.body.get('scope').includes('Calendars.Read')
+    ? reply(grant({ access_token: 'access-me@hotmail.com', refresh_token: 'refresh-me@hotmail.com', scope: 'openid profile offline_access User.Read Mail.Read', id_token: idToken({ tid: PERSONAL_TENANT }) })) : null) });
+  const b = await f.svc.begin({ provider: 'microsoft', email: 'me@hotmail.com', features: { mail: true, calendar: false } });
+  assert.ok(!new URL(b.url).searchParams.get('scope').includes('Calendars.Read'), 'only what is switched on is asked for');
+  const { account } = await f.svc.callback({ state: new URL(b.url).searchParams.get('state'), code: 'code-me@hotmail.com' });
+  assert.deepEqual(account.features, { mail: true, calendar: false });
+  await f.svc.setFeatures(account.id, { calendar: true });
+  const err = await f.svc.fetchCalendar(account.id, { source: { id: 'calendar-outlook-aaaa' }, from: '2026-01-01', to: '2026-01-07' }).catch(e => e);
+  assert.equal(err.code, 'NEEDS_SIGN_IN'); assert.equal(err.message, 'Sign in again to let OpenDash read your calendar.');
+  const again = await f.svc.begin({ provider: 'microsoft', accountId: account.id });
+  assert.ok(new URL(again.url).searchParams.get('scope').includes('Calendars.Read'));
+});

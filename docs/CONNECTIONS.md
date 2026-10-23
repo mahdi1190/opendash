@@ -11,6 +11,7 @@ stays visible but greyed out, with a *Connect* link. Checks run when you open
 the page and at most once an hour; *Check again* runs one now.
 
 - [How it fits together](#how-it-fits-together)
+- [Email and calendar accounts](#email-and-calendar-accounts)
 - [Claude (Claude Code on this computer)](#claude-claude-code-on-this-computer)
 - [Gmail, Google Calendar and your bank (claude.ai connectors)](#gmail-google-calendar-and-your-bank-claudeai-connectors)
 - [Money: banks and wallets](#money-banks-and-wallets)
@@ -48,6 +49,51 @@ on the page or written to the logs, never travel with a copied or synced data
 folder, and are deleted when you disconnect. On another computer you connect
 again: keep your Enable Banking `.pem` key and your Monzo client ID and
 secret somewhere safe.
+
+## Email and calendar accounts
+
+There is no OpenDash account to create. Instead, add the email and calendar
+accounts you already have, as many as you like, side by side: a personal
+Hotmail, a personal Gmail and a work Outlook, for example.
+
+At the top of **Connections**, under *Your email and calendar accounts*:
+
+- **+ Add Microsoft account**: type your email address (Hotmail, Outlook, Live,
+  or your work or school email) and press *Continue to Microsoft*. Microsoft
+  opens in a new tab: sign in there and say yes. Come back to OpenDash: the
+  account appears with *Connected*. OpenDash works out from the address whether
+  it is a personal or a work account; if it guessed wrong, press *This is a
+  work or school account* (or *personal*) before continuing.
+- **+ Add Google account**: the same, with Google (coming soon in this copy if
+  the button says so).
+- **+ Other email**: Yahoo, iCloud and other providers with an app password are
+  coming soon.
+- **Add a calendar link**: any calendar you can share as a link (see
+  [Calendars from an iCal link](#calendars-from-an-ical-link)).
+
+Each account shows **Mail ✓ Calendar ✓** (press one to stop or start reading
+it), when it was last synced, and **Check now**. From its ··· menu you can
+**Pause** it (nothing new is read; what was already read stays) or **Remove**
+it (OpenDash forgets its mail and events; your account itself is not changed).
+
+What the words on an account mean:
+
+- **Connected**: it works.
+- **Sign in again**: the provider asked you to sign in again (for example after
+  a password change). Press *Sign in again*.
+- **Waiting for your organisation**: your work or school only lets apps in
+  after an administrator says yes, once. Press *Ask for approval*: if you look
+  after your organisation's Microsoft 365 yourself, approve OpenDash there; if
+  not, *Email my IT team* writes the email for you. When it is approved, press
+  *Try again*.
+- **Paused**: you paused it.
+- **Checked on your other computer**: another computer of yours reads this
+  account; what it reads appears here too.
+
+OpenDash only reads: it never sends, changes or deletes mail or events, and
+your password stays with Microsoft or Google. The sign-in itself stays on the
+computer where you made it (never in a synced data folder); on another computer
+you sign in again.
 
 ## Claude (Claude Code on this computer)
 

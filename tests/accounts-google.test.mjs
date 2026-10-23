@@ -399,11 +399,14 @@ test('fetchMail: newest message per thread, the triage shape, metadata only', as
   assert.equal(g.calls.filter((c) => /\/messages\/m1\b/.test(c.url)).length, 0, 'only the newest message of a thread is read');
 });
 
-test('fetchMail refuses without the Gmail permission, before any request', async () => {
+test('a feature without its permission asks to sign in again (which asks for it), before any request', async () => {
   const g = fakeGoogle();
   const { p, vault } = provider({ fetch: g.fetch });
   await seed(vault, 'acc_000000000000000a', { email: 'a@example.com', refresh: 'rt-a', scope: ['openid', 'email', CAL] });
-  await assert.rejects(p.fetchMail('acc_000000000000000a', {}), { code: 'MISSING_PERMISSIONS' });
+  await assert.rejects(p.fetchMail('acc_000000000000000a', {}), { code: 'NEEDS_SIGN_IN', message: 'Sign in again to let OpenDash read your mail.' });
+  await seed(vault, 'acc_000000000000000c', { email: 'c@example.com', refresh: 'rt-c', scope: ['openid', 'email', MAIL] });
+  await assert.rejects(p.fetchCalendar('acc_000000000000000c', { from: '2026-10-01', to: '2026-10-02' }), { code: 'NEEDS_SIGN_IN', message: 'Sign in again to let OpenDash read your calendar.' });
+  assert.equal((await vault.read('acc_000000000000000c')).needsAuth, false, 'the saved sign-in itself still works for mail');
   await assert.rejects(p.fetchMail('acc_0000000000000404', {}), { code: 'NEEDS_SIGN_IN' });
   assert.equal(g.calls.length, 0);
 });
