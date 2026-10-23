@@ -6,7 +6,7 @@
 // refused), and moving from unencrypted (v 1) sync.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, existsSync, readFileSync, appendFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, existsSync, readFileSync, appendFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as X from '../lib/sync/e2e-crypto.mjs';
 import { SYNC_DIR_NAME } from '../lib/sync/folder.mjs';
@@ -177,11 +177,19 @@ test('remove a device: a new key for the others; the removed one reads nothing n
   const e0 = A.eng.status().e2e.epoch;
   const cId = C.eng.deviceId;
   assert.ok(A.eng.status().devices.some(d => d.id === cId));
+  // C is the main computer for a mail account.
+  writeFileSync(join(A.data, 'accounts.json'), JSON.stringify({ v: 1, accounts: [{ id: 'acc-home', provider: 'outlook', email: 'alex@example.com', label: 'Home mail' }] }));
+  await A.eng.setFetcher('acc-home', cId);
+  await settle([A, B, C]);
+  assert.equal(B.eng.fetcher('acc-home').deviceId, cId);
+  assert.deepEqual(A.eng.status().devices.find(d => d.id === cId).fetches, ['Home mail'], 'the list says which device is main computer');
   await A.eng.removeDevice(cId);
+  assert.equal(A.eng.fetcher('acc-home').deviceId, null, 'a removed device is no longer main computer for anything');
   assert.equal(A.eng.status().e2e.epoch, e0 + 1);
   assert.ok(!A.eng.status().devices.some(d => d.id === cId), 'gone from the list');
   await settle([A, B, C]);
   assert.equal(B.eng.status().e2e.epoch, e0 + 1, 'B has the new key');
+  assert.equal(B.eng.fetcher('acc-home').deviceId, null);
   const cs = C.eng.status();
   assert.equal(cs.e2e.reason, 'removed');
   assert.match(cs.message, /was removed from sync by Work laptop/);
@@ -226,6 +234,34 @@ test('the removed computer can come back with the recovery code, as a new device
   assert.equal(C.eng.status().e2e.ready, true);
   assert.ok((await titles(C)).includes('After the removal, edited'), 'it reads again');
   assert.ok(A.eng.status().devices.some(d => d.id === C.eng.deviceId));
+});
+
+test('a removed computer can also be approved again by pairing (as a new device)', async () => {
+  const D = makeE2EDevice(base, 'again', { state: { custom: [] }, secrets: memorySecrets() });
+  await D.eng.start();
+  await D.eng.joinExisting({ folder: cloud, deviceName: 'Spare laptop', apply: true });
+  await D.eng.joinWithRecovery(code);
+  await settle([A, B, C, D]);
+  const old = D.eng.deviceId;
+  await A.eng.removeDevice(old);
+  await settle([A, B, C, D]);
+  assert.equal(D.eng.status().e2e.reason, 'removed');
+  await D.eng.pairStart();
+  await D.eng.syncNow();
+  assert.notEqual(D.eng.deviceId, old, 'it asks under a new id');
+  await A.eng.syncNow();
+  const req = A.eng.status().e2e.requests.find(r => r.deviceId === D.eng.deviceId);
+  assert.ok(req, 'the request is shown');
+  await A.eng.pairRespond(req.sid);
+  await D.eng.syncNow(); await A.eng.syncNow();
+  const dp = D.eng.status().e2e.pairing, ap = A.eng.status().e2e.pairing;
+  assert.equal(dp.code, ap.code);
+  await D.eng.pairConfirm(dp.sid, true);
+  await A.eng.pairConfirm(ap.sid, true);
+  await settle([A, B, C, D]);
+  assert.equal(D.eng.status().e2e.ready, true);
+  assert.deepEqual(await titles(D), await titles(A));
+  await D.eng.stop();
 });
 
 test('a new recovery code: the old one stops opening new keys', async () => {
