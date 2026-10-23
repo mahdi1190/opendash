@@ -138,7 +138,7 @@ classic `<script>`. That means:
 | Google Health on Connections and Add connection: local OAuth credentials import, Google consent, verified linked Health profile, read-only seven-day steps/sleep sync and disconnect. Separate credentials from Gmail/Calendar; API availability depends on Google project access. | `56-google-health.js`, `styles/56-google-health.css`, `lib/google-health.mjs`, `server/routes/google-health.mjs`; tests `google-health.test.mjs`, `google-health-ui.test.mjs` | Connections/Settings |
 | Settings > Streams (add, rename, recolour, reorder, archive) and Templates | `58-settings-streams.js` | Connections/Settings |
 | Settings > Home: Customise / Add a widget, the Morning brief and Suggestions panels on Home (shown or hidden in their own slot, one undo step through `homeSaveLayout`), Hide amounts (`homeSetAmountsHidden`), and the working hours (a link to Profile) | `58-settings-home.js` | Home foundation |
-| Settings > Data (folder, backups + restore, export/import all data, JSON export, clean app copy, reset) and Diagnostics | `58-settings-data.js` | Connections/Settings |
+| Settings > Data (folder, backups + restore, export/import all data, JSON export, clean app copy, reset) and Diagnostics; "Move my data out of OneDrive" + Undo move; the daily encrypted copy; Settings > Sync > Main computer | `58-settings-data.js`, `58-settings-move.js`, `58-settings-offsite.js`, `58-settings-main.js`, `styles/58-settings-move.css` | Connections/Settings |
 | Settings > Server (status, Restart / Rebuild & restart / Open log / Stop, the Windows start-up switches read back from Windows, the offline-page switch), `srvRestart({rebuild})` (flush, overlay, wait for a new pid, reload only if the build/version changed), `srvStop()`, `srvOpenLog()`, palette "Restart server" / "Rebuild & restart server" / "Open server log" | `58-settings-server.js`, `styles/58-settings-server.css` | Server control |
 | Settings > Updates (`#view=settings:updates`): Check for updates (a GET to the project's GitHub releases, rate limited to one per 10 s, result kept in `<data>/update-check.json` with the "check once a day" switch, off by default; the page checks at most daily while open and only ever tells, never installs), release notes (text only), Update to X = confirm, then `srvRestart({post:['/api/update/apply', {version}]})`: the server installs the release then restarts with a rebuild. A zip install: download from `github.com/mahdi1190/opendash/releases/download/` only (`DASHBOARD_UPDATE_FEED` swaps in a mirror/test feed), SHA-256 must match SHA256SUMS.txt, one top folder `opendash-vX/`, package.json version must match, build files present; never writes data/ state/ secrets/ logs .git .env index.html; replaced files go to `<data>/update-backup/<old version>/`, a failed write is rolled back, and files a release dropped from `src/app`, `src/styles`, `src/finance`, `server/routes`, `server/actions` are removed (they would still be loaded). A git install: clean tracked files only, `git fetch` the tag, `merge --ff-only`. Needs a server that can restart (501 otherwise); apply needs the page or the local token. Pure rules `upSummary`, `upCheckDue` | `58-settings-updates.js`, `styles/58-settings-updates.css`; server `lib/updater.mjs`, `server/routes/updates.mjs`; tests `tests/updater.test.mjs` | Server control |
 | Browser notifications (morning digest, before events) | `58-notify.js` | Connections/Settings |
@@ -216,6 +216,7 @@ classic `<script>`. That means:
 | `renderMain`, `_renderMainBody` (dispatch), `render`, bulk bar | `80-main-render.js` | Core (A1) / Shell |
 | Live sync: `syncMerge3` (pure three-way merge), SSE client, 409 merge, conflict dialog, "Updated by" toast + Undo | `86-live-sync.js`, `styles/86-live-sync.css` | Actions/MCP/Live sync (A3) |
 | Server link: "The dashboard server isn't running" banner ([Start server] = `dashboard-start://` when set up, else instructions; [Retry]; re-checks 1-10 s), `srvConnectionLost/Ok` (fed by the SSE stream and `DashboardNet.onChange` from 02-core-net.js), `srvProbe()` (`/api/health?quick=1`), `srvResync()` (unsaved edits sent, newer file merged), `srvBuildChanged()`, service-worker registration + `?nosw` | `86-offline-banner.js`, `styles/86-offline-banner.css` | Server control |
+| Two computers: "OpenDash is open on X ... paused" banner + [Use here anyway], "also open" warning, OneDrive banner, "OneDrive kept a second copy" + [Keep as a backup]; `hostsBannerModel` (pure), `hostsOnPaused` (a 423 from a save, 04-core-persistence.js), polls `/api/hosts` every minute | `86-hosts-banner.js`, `styles/86-hosts-banner.css` | Server control |
 | Toolbar wiring, menus, theme/density/focus, rubber band, keyboard | `90-wiring.js` | Shell/Design (keys: each area) |
 | Boot | `99-boot.js` | Core (A1) |
 
@@ -581,7 +582,8 @@ feature that applies proposals calls `POST /api/actions {proposalId}`.
 Where bank transactions, calendar events and email come from: ANY number per
 capability (two banks, several calendars, a second mailbox), each with its own
 accounts. `<data>/sources.json` = `{version:1, sources:[{id, capability:
-bank|calendar|email, kind: mcp|ical|csv|microsoft, label, server, preset?, tools?, url?
+bank|calendar|email, kind: mcp|ical|csv|microsoft|google|imap|direct, account? (the
+mail/calendar account it belongs to, docs/dev/ACCOUNTS.md), label, server, preset?, tools?, url?
 (ical, server-side only), colour, enabled, demo?, accounts:[{id, name, colour,
 enabled, own?, renamed?}], lastSync, lastError:{at, code, message}, createdAt}]}`.
 - Presets = the three tuned adapters that existed before: `aureli` (claude.ai
@@ -599,8 +601,11 @@ enabled, own?, renamed?}], lastSync, lastError:{at, code, message}, createdAt}]}
   RECURRENCE-ID, TZID incl. Windows zone names); anything else keeps only its
   first date. CSV = the existing Finances import, labelled.
 - Discovery + health: `claude mcp list` (cached 60 s) is the primary signal;
-  native Microsoft sources instead use their own OAuth status and sync result,
-  without requiring a Claude installation.
+  account sources (kind microsoft/google/imap) instead take their health from
+  their account (`accountSourceHealth`: paused, sign in again, waiting for the
+  organisation, checked on another computer) and their sync result, without
+  requiring a Claude installation. They are read only on the account's fetcher
+  (`readsHere` hook in the calendar and inbox jobs).
   the hourly connector probes (lib/connections.mjs) only run when it is
   unavailable. A real sync's sign-in failure sticks until a later sync works
   (`claude mcp list` can say Connected while the tools say "sign in again").
@@ -630,7 +635,8 @@ enabled, own?, renamed?}], lastSync, lastError:{at, code, message}, createdAt}]}
 | Model, discovery, health, dedupe, service (`sourcesFor(ctx)` shares one per data folder); lastCheck records tools/read readiness separately from lastSync/lastError, status reads sources after discovery | `lib/sources.mjs` |
 | Generic MCP adapter | `lib/source-adapter.mjs` |
 | iCal | `lib/ical.mjs` |
-| Direct Outlook/Hotmail and Microsoft 365 browser sign-in; PKCE, one-use state, read-only Graph, private refresh credentials | `lib/microsoft.mjs`, `server/routes/microsoft.mjs`, shared setup/Connections `src/app/56-microsoft.js`; `tests/microsoft.test.mjs` |
+| Mail and calendar ACCOUNTS, any number side by side (no OpenDash account): the contract, pure core (record, Web Crypto PKCE/state, redirect adapters, per-account token vault, service), the Microsoft provider (personal `/consumers`, work `/organizations`, admin-approval page), shipped client IDs; Node binding (`<data>/accounts.json`, secret store `accounts/<id>`, sources kept in step, the fetcher role, migration of the old single Microsoft connection); `/api/accounts`; the Connections account list | `docs/dev/ACCOUNTS.md`, `lib/accounts/core.mjs`, `lib/accounts/microsoft.mjs`, `lib/accounts/shipped.mjs`, `lib/accounts.mjs`, `lib/accounts-file.mjs`, `server/routes/accounts.mjs`, `tools/migrations/090-accounts.mjs`, `src/app/56-accounts-logic.js`, `src/app/56-accounts.js`, `src/styles/56-accounts.css`; old names kept in `lib/microsoft.mjs`, `src/app/56-microsoft.js`; `tests/accounts-*.test.mjs`, `tests/microsoft.test.mjs` |
+| "+ Other email" (IMAP with an app password, read-only): the provider table (Yahoo, AOL, iCloud, GMX, Zoho, Fastmail, Proton Bridge, Other; Gmail/Outlook redirected; MX check), the pure IMAP client (literals, read-only allowlist, caps, timeouts, STARTTLS) over a transport adapter, MIME preview decoding, the provider on the accounts contract, the Node TLS transport (strict certificates), `/api/accounts/imap/{lookup,connect}`, the guided drawer | `lib/accounts/imap.mjs`, `lib/accounts/imap-wire.mjs`, `lib/accounts/mime.mjs`, `lib/accounts/imap-providers.mjs`, `lib/imap-transport.mjs`, `lib/accounts-imap.mjs`, `server/routes/accounts-imap.mjs`, `src/app/56-accounts-imap-logic.js`, `src/app/56-accounts-imap.js`, `src/styles/56-accounts-imap.css`; `tests/imap-*.test.mjs`, `tests/accounts-imap*.test.mjs`, `tests/fixtures/imap-fake-server.mjs` (docs/dev/ACCOUNTS.md section 6, IMAP) |
 | Shared hosted browser-Claude relay, per-installation OAuth and matching-code approval, outbound-only local connector, propose-mode MCP | `cloudflare/relay-worker.mjs`, `lib/hosted-relay.mjs`, `server/routes/hosted-relay.mjs`, shared setup/Connections `src/app/56-hosted-relay.js`; `tests/hosted-relay.test.mjs`, `docs/dev/HOSTED_RELAY.md` |
 | Default local Link Claude: existing install/auth lookup first, official native installer only if missing, browser auth login, automatic MCP, metadata checks without model calls; optional Open connected Claude launches official Remote Control without bypassing its confirmations | `lib/local-claude-connect.mjs`, helpers in `lib/claude-runner.mjs`, `server/routes/local-claude.mjs`, shared `56-assistant-cards.js` and Connections `56-connections-assistants.js`; `tests/local-claude-connect.test.mjs`, `docs/dev/LOCAL_CLAUDE_CONNECT.md` |
 | Calendar from several sources (snapshots `<data>/calendar/sources/<id>.json`, merge) | `lib/calendar-sources.mjs` (+ hooks in `lib/calendar.mjs`, `server/routes/calendar.mjs`) |
@@ -689,6 +695,32 @@ and own-transfer matching work unchanged.
 | Hooks | `lib/sources.mjs` (`kind:'direct'`, `setDirectHealth`), `lib/finance.mjs` (`only:[ids]`, `manual`, direct sources read; accounts with `enabled:false` are passed to the pipeline as `hideAccounts` and left out of the analysis, rows kept; `refreshFinanceAnalysis()` rebuilds after Show/Hide), `server/routes/finance.mjs` (`fetchSource` dispatch) |
 | Tests | `tests/fin-connect-core.test.mjs`, `tests/fin-connect-monzo.test.mjs`, `tests/fin-connect-security.test.mjs`, `tests/fin-connect-integration.test.mjs` |
 
+### Sync across my devices (owner: Sync) - lib/sync/ (prototype, off by default)
+
+No server, no sign-in: devices exchange field-level changes through a folder
+the user's cloud drive already syncs, end-to-end encrypted (format v 2: the
+folder only holds sealed records; keys live in each device's secret store).
+Format: `docs/dev/SYNC_FORMAT.md` (section 11: encryption, pairing, recovery).
+How sync, accounts, the main computer, safety and secrets fit together: `docs/dev/MULTI_DEVICE.md`.
+
+| Part | Files |
+|---|---|
+| Platform-agnostic core (no `node:` imports; a phone/PWA build reuses it) | `lib/sync/hlc.mjs` (clock), `fracindex.mjs` (positions), `model.mjs` (registers, capture, merge, materialize, checks, credential filters), `manifest.mjs` (every state key: synced / device-local / derived; synced files), `engine.mjs` (passes, shadow mode, conflicts, fetcher roles; the `e2e` option and the Settings API: `setupFirst`, `joinExisting`, `encrypt`, `joinWithRecovery`, `pairStart/Respond/Confirm/Cancel`, `makeOffer`, `joinWithOffer`, `removeDevice`, `renameDevice`, `newRecoveryCode`) |
+| Encryption (Web Crypto only, no `node:`) | `lib/sync/e2e-crypto.mjs` (AES-256-GCM records with associated data, X25519 identity keys and fingerprint device ids, key wraps, pairing commitment and 6-digit code, recovery code), `lib/sync/e2e.mjs` (`createE2E({secrets})`: group, keys and the valid current key, members, removal and key rotation, keys.json / pair.json, pairing state machines, QR offer, recovery) |
+| Node adapters | `lib/sync/node-host.mjs` (`createNodeSyncEngine`; this computer's files in `<deviceBase>/sync/<key>` (`%LOCALAPPDATA%/OpenDash` on Windows), never in the data folder; the sync keys through `lib/secret-store.mjs`, opened only when encrypted sync is used; `fetcherId` = the device folder's host id, the id an account's `fetcher` names; synced files locked during a pass), `lib/sync/folder.mjs` (the folder transport, conflict-copy filtering, cloud folder detection, keys.json / pair.json, named appends) |
+| Live sync (`docs/dev/LIVE_SYNC.md`): paired devices push their sealed records to each other at once (same network, or over the internet through a router-mapped port); the folder stays the catch-up path | Platform-agnostic (no `node:`): `lib/sync/live/wire.mjs` (frames, limits), `handshake.mjs` (Noise-KK-style mutual authentication with the device X25519 keys + a secret of the current sync key; per-direction AES-GCM with counter nonces), `session.mjs` (one link: handshake, sealed JSON messages, keepalive, rate and size limits), `addrbook.mjs` (endpoints published in the encrypted device.json, dialling order), `discovery.mjs` (LAN announcements with an opaque group tag), `lease.mjs` (the automatic main computer per job: claims, views, takeover, preference, pins), `nat.mjs` (UPnP IGD / NAT-PMP / PCP, CGNAT detection), `live.mjs` (`createLive`: the connection ladder, catch-up on connect, status). Node: `node-net.mjs` (TCP, UDP, interfaces, HTTP to the router), `node-live.mjs` (`createNodeLive`; SANDBOX under tests and temp data folders: 127.0.0.1 only, no router, no announcements). Engine hooks: `onRecords`, `deliverLive`, `liveSeen`, `ownRecordsAfter`, `setDeviceExtra`, `peerExtra`, `setLeaseOracle` (the lease answers first in the one rule, `lib/sync/roles.mjs runsNow`; `jobs()` turns an account's `fetcher` into the device id the lease pins), `setLiveStatus`; `e2e.liveAuth()` |
+| Server | `server/routes/sync.mjs` (`/api/sync/status`, `/settings`, `/now`; encrypted sync: `/setup`, `/join`, `/encrypt`, `/recovery`, `/recovery/new`, `/pair/start|respond|confirm|cancel`, `/offer`, `/offer/join`, `/devices/rename`, `/devices/remove`, `/fetcher` (through the accounts code's `fetchHere`), `/live`; `app.ctx.liveSync` (its lease eligibility: the accounts code's `signedInHere`); `app.ctx.sync` is the accounts code's fetcher policy while sync is on: `isFetcher(accountId)`, `setFetcher`, `takeOver(id, {hasToken})`, `fetcher`, `devices`; a new `accounts.json` from sync runs `reconcileSources()`) |
+| Page | `src/app/58-settings-sync.js` (Settings > Sync: "Is this your first computer?", recovery code, approve with 6 digits, devices list with rename/remove and main computer per account, add a computer or phone, apply switch, trial-mode list), `58-settings-sync-qr.js` (QR encoder for the phone offer); `86-live-sync.js` labels changes "Updated by <device>" |
+| Tests | `tests/sync-*.test.mjs` (`sync.shared.mjs` helpers; `OPENDASH_SYNC_TEST_DIR` moves their temp folders); encryption: `sync-e2e-crypto`, `sync-e2e` (end to end), `sync-e2e-attack` (a malicious folder), `sync-e2e-property` (3 replicas, encrypted), `sync-e2e-portable`, `sync-e2e-status`, `sync-e2e-ui`, `sync-e2e-routes` (`sync-e2e.shared.mjs` helpers); live: `live-wire` (framing, handshake, every refusal), `live-sync` (two engines over 127.0.0.1: latency, dedupe, address change, catch-up, leases, removal), `live-discovery`, `live-nat` (fake IGD / NAT-PMP / PCP on 127.0.0.1), `live-lease` (fake clock), `live-addrbook`, `live-ui` (`live.shared.mjs`: one cloud folder per computer, copied only when a test says so) |
+
+Rules: only `store.mutate()` writes the state (a pass captures, merges and
+commits under the lock); a new state key must be added to
+`lib/sync/manifest.mjs` (a test fails otherwise) and, if synced, to
+`SYNC_SPEC`; turning sync on starts in shadow mode (collect and report, apply
+nothing) until the apply switch. Encrypted sync: nothing unencrypted from the
+folder is taken in; a key, a private key or the recovery code never goes into
+the folder; the recovery code is shown once and never stored.
+
 ### lib/fsutil.mjs - the only way to write user data
 - `atomicWrite(path, text)` / `writeJson(path, obj)`: temp file + rename,
   retrying `EPERM/EBUSY/EACCES` with backoff (OneDrive locks files briefly).
@@ -709,7 +741,96 @@ and own-transfer matching work unchanged.
 `resolveDataDir({argv, env})` (`--data-dir`, then `DASHBOARD_DATA_DIR`, then
 `<repo>/data`), `dataPaths(dir)`, `ensureDataDir(dir)`, `loadConfig/saveConfig`
 (validated), `publicConfig` (what the page sees), `loadConnections/
-updateConnection`, `legacyStatus`.
+updateConnection`, `legacyStatus`. `dataPaths(dir).secrets` is a lazy getter
+for `secretsDir(dir)` (below), `dataPaths(dir).hosts` the presence folder.
+
+### lib/devicedir.mjs, lib/secret-store.mjs - this computer's folder and every secret
+- **Platform paths live only in lib/devicedir.mjs.** `deviceRoot(dataDir)` =
+  `%LOCALAPPDATA%\OpenDash\<dataId>` (Windows), `~/Library/Application
+  Support/OpenDash/<dataId>` (macOS), `$XDG_STATE_HOME` or
+  `~/.local/state/opendash/<dataId>` (Linux); `DASHBOARD_DEVICE_DIR` (or
+  `opts.base`) replaces the base. `<dataId>` is made once in
+  `<data>/data-id.json`, so a moved data folder keeps its sign-ins.
+  `secretsDir(dataDir)` = `<device>/secrets`; `ensureHostId/readHostId` (this
+  computer's random id, `<device>/host.json`). Under `node --test` the default
+  base is `<os tmp>/opendash-test-device`: tests never touch the real folder.
+- **Every secret goes through `secretStore(dataDir)`**: `get/set/delete/list/
+  has/update/lock` by key (`microsoft-tokens`, `fin/monzo-<id>`...). Never join a
+  path to a secret yourself (tests/device-secrets.test.mjs scans for it). The
+  default backend is JSON files in `secretsDir` (0600, atomic, locked);
+  `setSecretBackendFactory()` swaps in another one (an OS keychain later)
+  without touching callers. `get` throws `SECRET_CORRUPT` for a damaged value,
+  never "none".
+- `migrateLegacySecrets(dataDir)` moves an old `<data>/secrets` into the device
+  folder: copied and verified by SHA-256, originals kept in
+  `<device>/legacy-secrets-backup/`, resumable, never while another computer
+  is live. The server runs it at every start (a no-op without `<data>/secrets`).
+  Not a numbered migration on purpose: migrate --auto would first copy the
+  secrets into `<data>/backups/`.
+
+### lib/hosts.mjs, server/routes/hosts.mjs - two computers on one data folder
+- Presence: `<data>/hosts/<hostId>.json` `{hostId, hostname, pid, version,
+  startedAt, beatAt}`, written by the server every 60 s (each computer only its
+  own file), removed on a clean stop. `othersLive(dataDir, now)`: the others
+  seen within 3 minutes (by their clock, or a beat this process saw change).
+  Not in runtime.json (it will move device-local).
+- `createWriteGate`: the state store's injectable `writeGate`. Another computer
+  live at START pauses `write()`/`mutate()` with 423 `OTHER_COMPUTER {host,
+  lastSeen}` until `POST /api/hosts/override` (the page's "Use here anyway") or
+  until it goes away; a computer that appears later is a warning only. MCP
+  embedded mode and tools/actions-cli use `pauseLater` (checked before every
+  write). Never an exit code (hidden autostart shows no window).
+- `tools/migrate.mjs --auto` skips pending migrations (exit 0, reason printed)
+  while another computer is live.
+- runtime.json carries `hostname`/`hostId`; `discoverServer` treats another
+  computer's file as stale before looking at its pid.
+- OneDrive conflict copies (`<known-file>-<DEVICE>.json` next to the state,
+  journal, config, sources, connections; never in backups/): scanned at start
+  and every 10 min, `POST /api/hosts/conflicts/keep` moves one into
+  `state/backups/` (`onedrive-<DEVICE>-<stamp>.json` for the state, listed as
+  "OneDrive copy"; others under `onedrive-copies/`). Never merged.
+- The page: `src/app/86-hosts-banner.js` (`hostsBannerModel` is pure).
+
+### lib/relocate/, server/routes/relocate.mjs, tools/relocate.mjs - move the data out of OneDrive
+- Settings > Data > "Move my data out of OneDrive" (`src/app/58-settings-move.js`) and
+  `node tools/relocate.mjs` (plan only without `--yes`) drive `createRelocator()`
+  (`lib/relocate/index.mjs`): plan (the dry run: checks, sizes, every reference with
+  before/after) -> run (write gate `lib/relocate/gate.mjs` 423 MOVING, verified resumable copy
+  `lib/relocate/copy.mjs`, switch, re-point) -> finish (rename the old folder
+  `<name> (moved to <where> on <date>)` + README, after the server stopped) -> undo.
+- The switch is THIS computer's record `<deviceBase>/relocation.json` (`lib/relocate/record.mjs`):
+  `resolveDataDir` follows a folder this computer moved away from (`redirect:false` /
+  `DASHBOARD_NO_REDIRECT=1` to get the folder as given). Never in the data folder.
+- References (`lib/relocate/refs.mjs`): Windows Run entry + dashboard-start:// handler +
+  `DASHBOARD_DATA_DIR`, Claude Code (`claude mcp remove/add`, never editing ~/.claude.json),
+  Claude Desktop (classic + Store app config), Codex / Gemini CLI (their `mcp` commands; the
+  hashed entry name follows the data folder), Claude scheduled-task skills and start-up
+  scripts that name the folder, .lnk shortcuts, this computer's sync identity folder. Each is
+  changed only if still as found, and put back by Undo only if still as the move left it.
+  OS pieces are adapters (`lib/relocate/adapters.mjs`: registry, CLIs, shortcuts, free space,
+  launch); under the test runner the real ones are never reached.
+- After a move from the page, `tools/relocate.mjs --handoff` (detached) waits for the server
+  and its supervisor to end, renames the old folder and starts OpenDash from the new place.
+
+### lib/offsite-backup.mjs, server/routes/offsite-backup.mjs - the daily encrypted copy
+- `exportData()` zip, AES-256-GCM, key from a passphrase (scrypt) or the sync recovery key
+  (HKDF), header authenticated; `OpenDash backup <date> <computer>.odbackup` in
+  `OneDrive\OpenDash Backups` (or a chosen folder), newest 14 per computer kept. The derived
+  key and settings: secret store key `offsite-backup` (this computer only). Restore goes
+  through `importData()` (backs up first). UI: `src/app/58-settings-offsite.js`.
+
+### lib/main-computer.mjs, server/routes/main-computer.mjs - the main computer
+- Only the main computer runs AUTOMATIC jobs (bank, ai-brief, story, connectors); the job
+  routes ask `app.ctx.mainComputer.gate(job, {automatic})` and answer skipped `{runsOn}`
+  (calendar/inbox/finance update) or 409 NOT_MAIN (brief summary, story script, day advice).
+  Clicks always run. One rule for who runs what (`lib/sync/roles.mjs` recordedRunner): an
+  account follows its own `fetcher` (accounts.json; taken only by a computer that holds its
+  sign-in), a job its role in `<data>/roles.json`, else the `main` role. The sync engine's
+  fetcher API (`isFetcher`, `fetcher`, `setFetcher`, `clearFetcher`, `reloadRoles`) is the
+  implementation, sync on or off (`fileRoles` without an engine). The inbox and calendar
+  updates hold back only the connector part on another computer (`start({onlyAccounts})`).
+  `set(id)` records `main` and clears per-job roles (the jobs follow it).
+  UI: `src/app/58-settings-main.js` (Settings > Sync); Start my day shows "runs on <name>".
 
 ### lib/connections.mjs, lib/sharing.mjs, lib/zip.mjs (Connections/Settings)
 - `createConnections({dataDir, log})` -> `{list(), check(id,{manual}), checkStale(), tooSoon(id)}`.
@@ -1286,6 +1407,9 @@ Big made-up data: `node tools/make-fake-finance.mjs <dir> --days 730 --seed 11
 <data>/inbox/drafts.json           Gmail drafts the dashboard made (lib/gmail-draft.mjs): {drafts:[{id, at, purpose,
                                    threadId?, taskId?}]} - ids only, never addresses or text; DELETE only these
 <data>/sources.json                data sources (lib/sources.mjs): banks, calendars, mailboxes and their accounts
+<data>/accounts.json      mail and calendar accounts (lib/accounts-file.mjs, docs/dev/ACCOUNTS.md): {version, accounts:[{id,
+                          provider, email, displayName, kind, tenantId?, scopes, features, status, lastSync, error, fetcher}]}; no secrets
+<device>/secrets/accounts/<id>.json  that account's tokens on THIS computer (secret store key accounts/<id>, 0600)
 <data>/resources/github-cache.json  Files & links: open PRs/issues per repo (30 min), read-only GitHub lookups
 <data>/seed-resources.json         optional personal list for migration 070-resources (never in the repo)
 <data>/index/settings.json         Auto-linking: workspace folders, names-only folders, on/off, auto-attach threshold, judge model + limits
@@ -1295,12 +1419,17 @@ Big made-up data: `node tools/make-fake-finance.mjs <dir> --days 730 --seed 11
 <data>/calendar/sources/<id>.json  snapshot of a non-Google calendar source {fetchedAt, window, calendars, events}
 <data>/inbox/sources/<id>.json     snapshot of a non-Gmail mailbox source {fetchedAt, days, accounts, messages}
 <data>/email/inbox.json            v1 snapshot, imported once into inbox/messages.json
-<data>/secrets/           Google OAuth client + tokens (optional)
+<data>/data-id.json       {id}: finds this data folder's device folder (lib/devicedir.mjs)
+<data>/hosts/<hostId>.json  presence of each computer that has the folder open (lib/hosts.mjs)
+<data>/roles.json        {roles: {main|bank|ai-brief|story|connectors: {fetcher, name?, since}}}: who runs each job (lib/sync/roles.mjs; synced by folder sync)
+<deviceBase>/relocation.json, moves/<id>.json   this computer's data-folder moves and their file lists (lib/relocate/)
+<device>/secrets/         every sign-in and key, OUTSIDE the data folder (lib/secret-store.mjs);
+                          <device> = %LOCALAPPDATA%\OpenDash\<dataId> and the like (lib/devicedir.mjs)
 <data>/logs/server.log    rotated (server.1.log ... server.5.log)
 <data>/backups/pre-migrate-<stamp>/   copies made by migrate --auto (last 5)
 <data>/state/actions-journal.json  actions history (undo), idempotency keys, proposals
 <data>/local-token        per-install secret for local programs (X-Dashboard-Token), 0600
-<data>/runtime.json       {pid, port, stateFile} of the running server (removed on stop)
+<data>/runtime.json       {pid, port, stateFile, hostname, hostId} of the running server (removed on stop)
 <data>/launch.json        {protocol, autostart, checkedAt}: what Settings > Server last read back from Windows
                           (only so the page can offer Start server while the server is down; never exported)
 <data>/logs/mcp.log       the MCP server's log (stdout is protocol-only)

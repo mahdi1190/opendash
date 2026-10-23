@@ -1,7 +1,9 @@
 // The world critic (docs/dev/WORLD_ENGINE.md 6 step 6, 12.3, 12.4, 16.4; requirements P7, C1, C4, C6, U3, U4). Node >= 20, no dependencies.
 //
-//   criticRecordsOfWorld(E, world, o)       -> [{ obj, cls, z, box }]: a v3 world's statics (and its backdrop bands) as screen boxes
-//   criticRecordsOfData(E, data, o)         -> the same for v2 / v1 scene data, from the v2 compile (every placed, scattered and kit item)
+//   criticRecordsOfWorld(E, world, o)       -> [{ obj, cls, z, box }]: a v3 world's statics, its generated buildings (by the extruder's
+//                                              box) and its backdrop bands as screen boxes
+//   criticRecordsOfData(E, data, o)         -> the same for v2 / v1 scene data, from the v2 compile (every placed, scattered and kit item;
+//                                              a generated building by its projected box)
 //   criticScore(records, o)                 -> { near, mid, far: { cover, variety, n }, bare, score }: ONE method for both sides, so a
 //                                              converted scene and its source are judged alike (the box measure, 0..100)
 //   worldCritic(E, spec, o)                 -> { score, richness, worldRichness, coverage, framing: { cuts, landmarks }, problems, by }
@@ -60,13 +62,35 @@ export function criticRecordsOfWorld(E, world, o = {}) {
     if (!box) continue;
     out.push({ obj: e.obj, cls: e.cls || null, z: e.z, box, backdrop: !!e.backdrop, landmark: !!e.landmark });
   }
+  // the generated buildings (spec `buildings`, `along` frontages) are world.buildings, not entities: each one by the box the extruder
+  // draws it in (the v2 generator's own projection, so a converted street and its v2 source are judged alike); one 'kind' per style
+  for (const b of world.buildings || []) {
+    const box = buildingBox(E, cam, b, o.season || world.season || 'summer');
+    if (!box) continue;
+    const z = b.foot.reduce((s, p) => s + p[1], 0) / b.foot.length;
+    out.push({ obj: 'building.' + (b.style || 'victorian-terrace'), cls: 'building', z, box, backdrop: false, landmark: !!b.landmark });
+  }
   return out;
+}
+/** The screen box of a world building: the extruder's (the generator's projection, roof included), else its prism. */
+function buildingBox(E, cam, b, season) {
+  if (!b || !Array.isArray(b.foot) || b.foot.length < 3) return null;
+  if (E.worldExtrudeBuilding) { try { const p = E.worldExtrudeBuilding(b, cam, { season }); if (p && Array.isArray(p.box) && p.box.every(Number.isFinite)) return p.box; } catch { /* the prism */ } }
+  const h = Number.isFinite(b.h) ? b.h : (Number.isFinite(b.storeys) ? b.storeys : 2) * 3.1;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of b.foot) for (const y of [0, h]) { if (!(p[1] > 0.3)) continue; const q = E.sceneProject(cam, p[0], p[1], y); if (q && Number.isFinite(q.X)) { x0 = Math.min(x0, q.X); x1 = Math.max(x1, q.X); y0 = Math.min(y0, q.Y); y1 = Math.max(y1, q.Y); } }
+  return x0 <= x1 ? [x0, y0, x1, y1] : null;
 }
 
 /** v2 / v1 scene data as critic records: every compiled item (placements, scatter, kits, backdrop hills) with its depth. */
 export function criticRecordsOfData(E, data, o = {}) {
   const C = E.sceneCompile(data, { season: o.season || 'summer' }), out = [], cam = C.cam || null;
   for (const it of C.items || []) {
+    // a generated building (data.buildings, data.streets) is a direct item: its own projected box, not its placeholder's 4 x 4 units
+    if (it.direct && Array.isArray(it.direct.box) && it.direct.box.every(Number.isFinite)) {
+      out.push({ obj: 'building.' + (it.direct.style || 'gen'), cls: 'building', z: Number.isFinite(it.direct.dc) ? it.direct.dc : it.g && Number.isFinite(it.g.d) ? it.g.d : 50, box: it.direct.box });
+      continue;
+    }
     const def = E.sceneObj ? E.sceneObj(it.o) : null;
     if (!def || !def.size) continue;
     const w = def.size[0] * (it.s || 1), h = def.size[1] * (it.s || 1);

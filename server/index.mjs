@@ -24,12 +24,19 @@ import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
+import { installSpawnGuard } from '../lib/spawn-guard.mjs';
+installSpawnGuard();   // in a test process, never start a real AI agent CLI (lib/spawn-guard.mjs)
 import {
   REPO_ROOT, argValue, resolveDataDir, dataPaths, ensureDataDir, loadConfig, saveConfig, publicConfig, legacyStatus,
 } from '../lib/datadir.mjs';
 import { setRunnerLogger, setCliPath } from '../lib/claude-runner.mjs';
 import { aiStatus, setDefaultModel } from '../lib/ai.mjs';
 import { initGoogle } from '../lib/google.mjs';
+import { secretStore } from '../lib/secret-store.mjs';
+import { migrateLegacySecrets } from '../lib/devicedir.mjs';
+import { createPresence, createWriteGate, othersLive } from '../lib/hosts.mjs';
+import { createMoveGate } from '../lib/relocate/gate.mjs';
+import { movedAwayNotice, movedAwayText } from '../lib/relocate/index.mjs';
 import { initFinance, financeAvailable, cleanupPartials } from '../lib/finance.mjs';
 import { createApp } from './router.mjs';
 import { createLogger } from './log.mjs';
@@ -68,6 +75,14 @@ export async function main(argv = process.argv.slice(2)) {
     return null;
   }
 
+  // A move took this folder away (lib/relocate/): never start an empty one in its place.
+  const away = has('--fresh') ? null : movedAwayNotice(dataDir);
+  if (away) {
+    console.error(`\n${movedAwayText(away)}\n`);
+    process.exitCode = EXIT.CONFIG;
+    return null;
+  }
+
   const paths = await ensureDataDir(dataDir);
   // Optional environment overrides (e.g. CLAUDE_CLI_PATH, PYTHON): <data>/.env,
   // then <repo>/.env. Variables already set in the environment win.
@@ -97,8 +112,28 @@ export async function main(argv = process.argv.slice(2)) {
   const financeDir = resolve(argValue(argv, '--finance-dir') || process.env.DASHBOARD_FINANCE_DIR || config.financeDir || paths.finance);
   initFinance(financeDir, { currency: config.currency });
   track(cleanupPartials());
-  initGoogle(paths.secrets);
-  const store = createStateStore({ stateDir, log });
+  let version = '0';
+  try { version = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version || '0'; } catch { /* no package.json */ }
+
+  // Two computers on one (OneDrive) data folder (lib/hosts.mjs): this computer's
+  // presence file (written once the server listens: server/routes/hosts.mjs), and
+  // the gate that pauses state writes while another computer that was already
+  // open is still there. Never an exit: under the hidden autostart nobody would
+  // see why; the page shows a banner with "Use here anyway" instead.
+  let presence = null;
+  try { presence = createPresence({ dataDir: paths.root, version, log }); }
+  catch (e) { log('warn', `hosts: this computer's id could not be made (${e.code || e.message}); other computers are still checked`); }
+  const othersNow = () => (presence ? presence.others() : othersLive(paths.root));
+  const hostGate = createWriteGate({ others: othersNow });
+  const atStart = hostGate.init();
+  if (atStart.paused) log('warn', `another computer (${atStart.by.hostname}) has this data folder open: changes are paused until it closes or the user chooses "Use here anyway"`);
+  // An old <data>/secrets moves to this computer once, never while another computer is live (lib/devicedir.mjs).
+  try { migrateLegacySecrets(paths.root, { othersLive: othersNow, log }); }
+  catch (e) { log('warn', `secrets: moving <data>/secrets to this computer stopped (${e.code || e.message}); it finishes at the next start`); }
+  initGoogle(secretStore(paths.root));   // this computer's sign-ins (lib/secret-store.mjs)
+  // Writes also pause while Settings > Data moves the data folder (lib/relocate/gate.mjs).
+  const moveGate = createMoveGate();
+  const store = createStateStore({ stateDir, log, writeGate: () => { moveGate.check(); hostGate.check(); } });
   // A short hash of index.html as it is on disk now (cached by size + mtime).
   let buildCache = { key: null, id: null };
   function buildId() {
@@ -110,11 +145,10 @@ export async function main(argv = process.argv.slice(2)) {
       return buildCache.id;
     } catch { return null; }
   }
-  let version = '0';
-  try { version = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version || '0'; } catch { /* no package.json */ }
 
   const ctx = {
     port, dataDir, paths: { ...paths, stateDir }, repoRoot: REPO_ROOT, financeDir, log, store, version, lifecycle: life, buildId, track,
+    hosts: { presence, gate: hostGate, others: othersNow }, moveGate,
     getConfig: () => config,
     setConfig: async (patch) => { config = await saveConfig(dataDir, patch); setDefaultModel(config.ai.model); return config; },
   };

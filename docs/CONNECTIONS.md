@@ -11,6 +11,7 @@ stays visible but greyed out, with a *Connect* link. Checks run when you open
 the page and at most once an hour; *Check again* runs one now.
 
 - [How it fits together](#how-it-fits-together)
+- [Email and calendar accounts](#email-and-calendar-accounts)
 - [Claude (Claude Code on this computer)](#claude-claude-code-on-this-computer)
 - [Gmail, Google Calendar and your bank (claude.ai connectors)](#gmail-google-calendar-and-your-bank-claudeai-connectors)
 - [Money: banks and wallets](#money-banks-and-wallets)
@@ -19,6 +20,7 @@ the page and at most once an hour; *Check again* runs one now.
 - [Bank CSV files](#bank-csv-files)
 - [GitHub and Google Drive in Files & links](#github-and-google-drive-in-files--links)
 - [Your own Claude using OpenDash (MCP)](#your-own-claude-using-opendash-mcp)
+- [Google accounts (Gmail and Google Calendar, without Claude)](#google-accounts-gmail-and-google-calendar-without-claude)
 - [Troubleshooting](#troubleshooting)
 
 ## How it fits together
@@ -41,9 +43,97 @@ OpenDash never asks for, sees or stores a password for Claude, Google or your
 bank. Sign-in happens on claude.ai, in Claude's own window or on your bank's
 own page. The direct bank connections are the one place OpenDash keeps a
 credential: the Monzo client and sign-in you create, or your Enable Banking key
-file. They stay in your data folder on this computer (`secrets/fin/`), are
-never shown on the page or written to the logs, and are deleted when you
-disconnect.
+file. They stay on this computer, in its private folder outside the data
+folder (`secrets/fin/` there, see [INSTALL.md](INSTALL.md)), are never shown
+on the page or written to the logs, never travel with a copied or synced data
+folder, and are deleted when you disconnect. On another computer you connect
+again: keep your Enable Banking `.pem` key and your Monzo client ID and
+secret somewhere safe.
+
+## Email and calendar accounts
+
+There is no OpenDash account to create. Instead, add the email and calendar
+accounts you already have, as many as you like, side by side: a personal
+Hotmail, a personal Gmail and a work Outlook, for example.
+
+At the top of **Connections**, under *Your email and calendar accounts*:
+
+> **Coming soon in some copies.** The one-click Microsoft and Google buttons
+> need an app registration that the copy of OpenDash ships with. When a copy
+> has none (no built-in app, nothing in the environment or `.env`, and no app
+> of your own), the buttons are greyed out with **Coming soon**. They switch
+> on by themselves as soon as an app is there. Until then a Gmail address can
+> be added through **+ Other email** (below), and an Outlook calendar through
+> **Add a calendar link**. People who look after IT can enter their own app
+> under **Settings > Advanced** (*Your own sign-in apps*).
+
+- **+ Add Microsoft account**: type your email address (Hotmail, Outlook, Live,
+  or your work or school email) and press *Continue to Microsoft*. Microsoft
+  opens in a new tab: sign in there and say yes. Come back to OpenDash: the
+  account appears with *Connected*. OpenDash works out from the address whether
+  it is a personal or a work account; if it guessed wrong, press *This is a
+  work or school account* (or *personal*) before continuing.
+- **+ Add Google account**: type your Gmail or Google Workspace address, tick
+  *Read your email* and/or *See your calendars*, and press *Continue to Google*.
+  Google first says "Google hasn't verified this app": press *Advanced*, then
+  *Go to OpenDash (unsafe)* (see [Google accounts](#google-accounts-gmail-and-google-calendar-without-claude)).
+- **+ Other email**: Yahoo, iCloud, AOL, GMX, Zoho, Fastmail, Proton (through
+  Proton Mail Bridge) and most other email services. Type your address and
+  press *Next*: OpenDash recognises the service and shows its own steps to make
+  an **app password** (a second password your provider makes just for OpenDash,
+  so OpenDash never needs your real password; you can delete it on the
+  provider's website at any time). A button opens the right page. Paste the
+  app password and press *Test connection*. If it does not work, OpenDash says
+  why in plain words (the wrong password, IMAP switched off, two-step
+  verification needed first) and what to do. A Gmail or Outlook address is
+  sent to the one-click buttons instead, while those are switched on.
+  Afterwards OpenDash offers *Add a calendar link* with the steps for that
+  service (iCloud: a public calendar link; Yahoo: the calendar's ICS link).
+  - **Gmail, while + Add Google account says Coming soon**: Gmail works here
+    with an app password (OpenDash reads `imap.gmail.com`, port 993). Google
+    makes app passwords only with **2-Step Verification** on: turn it on at
+    myaccount.google.com/signinoptions/two-step-verification, then make the
+    password at **myaccount.google.com/apppasswords** (name it OpenDash) and
+    paste it. Afterwards *Add your Google Calendar too?* shows where to find
+    the calendar's **Secret address in iCal format** (Google Calendar >
+    Settings > your calendar > *Integrate calendar*). A Google Workspace
+    account may not offer app passwords (the administrator decides).
+  - **Outlook, Hotmail and Live, while + Add Microsoft account says Coming
+    soon**: *Outlook and Hotmail are coming soon*. Microsoft no longer lets
+    apps read Outlook.com mail with an app password, so these need the
+    one-click Microsoft sign-in (the same for Microsoft 365 work addresses).
+    Your Outlook calendar can come in now: Outlook on the web > Settings >
+    Calendar > *Shared calendars* > *Publish a calendar* ("Can view all
+    details"), copy the ICS link and press *Add a calendar link*. The app password is kept on this
+  computer only, never in the data folder; OpenDash only reads mail and never
+  marks it as read. If the app password stops working, the account says
+  *Sign in again*: press *Paste a new app password*.
+- **Add a calendar link**: any calendar you can share as a link (see
+  [Calendars from an iCal link](#calendars-from-an-ical-link)).
+
+Each account shows **Mail ✓ Calendar ✓** (press one to stop or start reading
+it), when it was last synced, and **Check now**. From its ··· menu you can
+**Pause** it (nothing new is read; what was already read stays) or **Remove**
+it (OpenDash forgets its mail and events; your account itself is not changed).
+
+What the words on an account mean:
+
+- **Connected**: it works.
+- **Sign in again**: the provider asked you to sign in again (for example after
+  a password change). Press *Sign in again*.
+- **Waiting for your organisation**: your work or school only lets apps in
+  after an administrator says yes, once. Press *Ask for approval*: if you look
+  after your organisation's Microsoft 365 yourself, approve OpenDash there; if
+  not, *Email my IT team* writes the email for you. When it is approved, press
+  *Try again*.
+- **Paused**: you paused it.
+- **Checked on your other computer**: another computer of yours reads this
+  account; what it reads appears here too.
+
+OpenDash only reads: it never sends, changes or deletes mail or events, and
+your password stays with Microsoft or Google. The sign-in itself stays on the
+computer where you made it (never in a synced data folder); on another computer
+you sign in again.
 
 ## Claude (Claude Code on this computer)
 
@@ -229,7 +319,7 @@ confirmed; if yours is not listed, use a CSV export.
 
 ### What stays on this computer
 
-| Provider | Kept in your data folder's `secrets/fin/` |
+| Provider | Kept on this computer only (`secrets/fin/` in its private folder) |
 |---|---|
 | Plasma One | your public address, and the optional Routescan key |
 | Monzo | your client ID and secret, and the current sign-in |
@@ -309,16 +399,42 @@ Both stay greyed out until those connections work.
 The **OpenDash MCP** card is the other direction: it lets Claude Code, T3 Code
 or Claude Desktop read and change your tasks. See [MCP.md](MCP.md).
 
-## Older setups: Google without Claude
+## Google accounts (Gmail and Google Calendar, without Claude)
 
-Earlier private versions could also read Gmail and Google Calendar directly
-with your own Google Cloud OAuth client (read-only scopes `gmail.readonly` and
-`calendar.readonly`), with the client file in `data/secrets/`. OpenDash 2.0.0
-does not use that route for anything you see: the calendar and email views
-read from the connectors and data sources above. If an older data folder still holds a
-Google client file, Connections shows a *Google (direct sign-in, optional)*
-row; you can leave it alone or delete the files in `data/secrets/`. For a
-calendar without Claude, use [an iCal link](#calendars-from-an-ical-link).
+<a id="older-setups-google-without-claude"></a>
+
+*+ Add Google account* in Connections reads Gmail and Google Calendar straight
+from Google, read-only, with no Claude in between. Add as many Google accounts
+as you like, next to your Microsoft ones.
+
+1. Type the address and tick what OpenDash may read: **Read your email** (who
+   wrote, the subject and Google's short preview; never the whole message) and
+   **See your calendars**. Each is separate; tick one or both.
+2. OpenDash explains the next screen first. Google shows **"Google hasn't
+   verified this app"**: Google reviews apps that read Gmail through a paid
+   security assessment, and this copy of OpenDash runs on your own computer and
+   has not been through it. Click **Advanced**, then **Go to OpenDash
+   (unsafe)**, then tick the same boxes and *Continue*.
+3. Back in OpenDash the account shows *Connected*; mail and events arrive in a
+   moment. Nothing is ever sent, changed, labelled or deleted.
+
+The sign-in stays on this computer (never in the data folder). Remove an
+account in Connections, or remove OpenDash's access at any time at
+myaccount.google.com/permissions; the account then says *Sign in again*.
+
+**Advanced: your own Google app.** If this copy of OpenDash has no built-in
+Google app, or you prefer your own Google Cloud project: create a project,
+enable the Gmail API and the Google Calendar API, set up the consent screen
+(External, then *Publish app*, so sign-ins do not stop after 7 days), add the
+scopes `.../auth/calendar.readonly` and `.../auth/gmail.readonly`, create a
+**Desktop app** client, and paste its client ID and secret (or its JSON) under
+**Settings > Advanced > Your own sign-in apps** (*Advanced: use your own
+Google app*). They are kept on this computer only. Your own Microsoft app goes
+in the same place (*Advanced: use your own Microsoft app*).
+
+**Older setups.** Earlier versions had one direct Google connection with your
+own client file in `data/secrets/`. It is moved into one Google account
+automatically (same sign-in, same Google app) the first time OpenDash starts.
 
 ## Troubleshooting
 

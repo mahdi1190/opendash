@@ -45,7 +45,9 @@ function measure(world, secs) {
     }
     for (let i = 0; i < ag.length; i++) for (let j = i + 1; j < ag.length; j++) {
       const a = ag[i], b = ag[j];
-      if (C._wlfRelated(a, b) || a.squeeze > life.t || b.squeeze > life.t) continue;
+      // (20 Oct) a ghost pass is two translucent walkers walking through each other by design (tests/world-ghost-pass.test.mjs): left
+      // out like a squeeze; two SOLID strangers inside each other still count
+      if (C._wlfRelated(a, b) || a.squeeze > life.t || b.squeeze > life.t || (C._wlfGhostPartner(a, b) && a.ghost > 0.15 && b.ghost > 0.15)) continue;
       const d = Math.hypot(a.x - b.x, a.z - b.z);
       minSep = Math.min(minSep, d);
       if (d < (a.r + b.r) * 0.95) under++;
@@ -69,8 +71,9 @@ test('a busy towpath (12 a minute) holds: no overlap, no jam', () => {
   assert.deepEqual(r.stalled, [], 'stalled: ' + r.stalled.join(', '));
 });
 
-test('a boardwalk one person wide: head-on walkers get past each other (they turn sideways), nothing stays jammed', () => {
+test('a boardwalk one person wide: head-on walkers get past each other (as ghosts since 20 Oct), nothing stays jammed', () => {
   const r = measure(lane({ width: 1.6, over: 'water', life: WALKERS('6/min') }), 600);
+  assert.ok(r.life.ghostLinks > 20, 'they pass as ghosts: ' + r.life.ghostLinks);
   assert.ok(r.stalled.length <= 1, 'jammed: ' + r.stalled.join(', '));
   assert.ok(r.under <= 12, 'strangers inside each other (brushing past in a one-body lane is allowed, briefly): ' + r.under);
 });
@@ -167,26 +170,39 @@ function headOn(gap, dz, seed) {
   assert.ok(A && B, 'two walkers arrived');
   const put = (a, x, z, tx) => { a.x = a.px = x; a.z = a.pz = z; a.goals = [{ go: [tx, z] }]; a.gi = 0; a.route = null; a.leaving = false; a.heading = tx > x ? Math.PI / 2 : -Math.PI / 2; a.fadeIn = 0; a.v = 1.2; };
   put(A, -9, 10 + dz, 9); put(B, 9, 10 - dz, -9);
-  let stall = 0, maxStall = 0, minD = 9, sq = 0, pass = false;
+  let stall = 0, maxStall = 0, minD = 9, minSolid = 9, sq = 0, pass = false;
   for (let i = 0; i < 40 * 15; i++) {
     C.worldLifeTick(life, 1 / 15);
-    minD = Math.min(minD, Math.hypot(A.x - B.x, A.z - B.z));
+    const d = Math.hypot(A.x - B.x, A.z - B.z);
+    minD = Math.min(minD, d);
+    if (!(C._wlfGhostPartner(A, B) && A.ghost > 0.15 && B.ghost > 0.15)) minSolid = Math.min(minSolid, d);
     if (A.squeeze > life.t || B.squeeze > life.t) sq++;
     if ((A.speed < 0.15 || B.speed < 0.15) && Math.abs(A.x) < 5) { stall++; maxStall = Math.max(maxStall, stall); } else stall = 0;
     if (A.x > 3 && B.x < -3) pass = true;
   }
-  return { minD, maxStallS: maxStall / 15, squeezeFrames: sq, pass };
+  return { minD, minSolid, maxStallS: maxStall / 15, squeezeFrames: sq, pass, ghosts: life.ghostLinks };
 }
-test('two walkers meeting head on in a gap between a bollard and a bench pass: no standing nose to nose, no squeeze through each other', () => {
+// 20 Oct (the ghost pass, tests/world-ghost-pass.test.mjs): the user found the waiting and dodging in such gaps "super weird". The one
+// nearer the gap no longer goes first while the other waits at its mouth: the two walk through each other as soft ghosts. The checks
+// were 'stood still at most 1.5 s' and 'never closer than 0.3 m'; now: nobody stands (under 0.2 s), they ARE closer (a ghost pass),
+// and two SOLID bodies are never closer than the old 0.3 m
+test('two walkers meeting head on in a gap between a bollard and a bench pass: no standing nose to nose, no squeeze, a ghost pass', () => {
   for (const dz of [0, 0.2, -0.3]) {
     const r = headOn(1.6, dz, 3);
     assert.ok(r.pass, 'both got through (offset ' + dz + ')');
-    assert.ok(r.maxStallS <= 1.5, 'stood still for ' + r.maxStallS.toFixed(1) + ' s (offset ' + dz + ')');
+    assert.ok(r.maxStallS <= 0.2, 'stood still for ' + r.maxStallS.toFixed(1) + ' s (offset ' + dz + ')');
     assert.equal(r.squeezeFrames, 0, 'squeezed through each other for ' + r.squeezeFrames + ' frames (offset ' + dz + ')');
-    assert.ok(r.minD >= 0.3, 'the closest they came: ' + r.minD.toFixed(2) + ' m');
+    assert.equal(r.ghosts, 1, 'one ghost pass (offset ' + dz + ')');
+    assert.ok(r.minSolid >= 0.3, 'the closest they came while solid: ' + r.minSolid.toFixed(2) + ' m');
   }
 });
-test('an open pass is as it was: head-on walkers 2.4 m between the pieces pass side by side without waiting', () => {
-  const r = headOn(2.4, 0, 3);
-  assert.ok(r.pass && r.maxStallS < 0.5 && r.squeezeFrames === 0, JSON.stringify(r));
+// 2.4 m between the pieces leaves the centres 1.2 m (the nav keeps 0.6 m off a solid): the old engine slowed one walker to 0.04 m/s
+// there for half a second (a shuffle). Since the second ghost round (20 Oct) strangers never dodge each other: long before they meet each
+// keeps a little to its side (the lane habit), and where their paths still meet they pass through each other as ghosts. Neither waits;
+// a pair that is not a ghost pass walks by at shoulder room or more, and solid bodies never come closer than the old 0.3 m.
+test('head-on walkers between a bollard and a bench 3 m or 2.4 m apart: nobody waits; a ghost pass or a walk-by, never a squeeze', () => {
+  for (const gap of [3, 2.4]) {
+    const q = headOn(gap, 0, 3);
+    assert.ok(q.pass && q.maxStallS < 0.2 && q.squeezeFrames === 0 && q.ghosts <= 1 && q.minSolid >= 0.3 && (q.ghosts === 1 || q.minD >= 0.6), gap + ' m: ' + JSON.stringify(q));
+  }
 });

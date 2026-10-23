@@ -4,6 +4,7 @@
 // one-time refresh, sign-in-again, pots, normalisation, dedupe, disconnect.
 // No network, no real account, never port 4173.
 import { test, before, after } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -137,7 +138,7 @@ test('the wizard: client saved (secret never shown), sign-in, approval, full his
   assert.match(m.sources[0].status.client, /^oauth2client_••••\w{4}$/);
   assert.equal(m.redirectUri, `http://localhost:${port}/api/fin-connect/monzo/callback`);
   // Secrets are only in secrets/fin.
-  const sec = JSON.parse(readFileSync(join(dir, 'secrets', 'fin', `monzo-${id}.json`), 'utf8'));
+  const sec = JSON.parse(readFileSync(join(secretsDir(dir), 'fin', `monzo-${id}.json`), 'utf8'));
   assert.equal(sec.clientSecret, SECRET);
   assert.ok(sec.refreshToken && sec.approvedAt);
   assert.ok(!readFileSync(join(dir, 'sources.json'), 'utf8').includes(SECRET));
@@ -165,7 +166,7 @@ test('a normal update fetches only the overlap window and adds nothing twice', a
 
 test('one-time refresh: the new pair is saved before use; a used refresh token is never sent again', async () => {
   const id = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).sources.find(s => s.provider === 'monzo').id;
-  const file = join(dir, 'secrets', 'fin', `monzo-${id}.json`);
+  const file = join(secretsDir(dir), 'fin', `monzo-${id}.json`);
   const { secretsFor } = await import('../lib/fin-connect/secrets.mjs');
   const sec = secretsFor(dir);
   const old = JSON.parse(readFileSync(file, 'utf8'));
@@ -182,7 +183,7 @@ test('one-time refresh: the new pair is saved before use; a used refresh token i
 
 test('sign-in again: a refused refresh marks the source "needs sign-in", and Sign in again keeps the client', async () => {
   const id = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).sources.find(s => s.provider === 'monzo').id;
-  const file = join(dir, 'secrets', 'fin', `monzo-${id}.json`);
+  const file = join(secretsDir(dir), 'fin', `monzo-${id}.json`);
   const { secretsFor } = await import('../lib/fin-connect/secrets.mjs');
   const old = JSON.parse(readFileSync(file, 'utf8'));
   await secretsFor(dir).write(`monzo-${id}`, { ...old, expiresAt: Date.now() - 1000, refreshToken: 'fake-refresh-already-used' });
@@ -249,7 +250,7 @@ test('app approval never arrives: an error with a plain message, nothing importe
   // Same Monzo user as the first source: the sign-in joined it, and the second source is gone.
   const list = JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).sources.filter(s => s.provider === 'monzo');
   assert.equal(list.length, 1);
-  assert.ok(!existsSync(join(dir, 'secrets', 'fin', `monzo-${id2}.json`)));
+  assert.ok(!existsSync(join(secretsDir(dir), 'fin', `monzo-${id2}.json`)));
   const id = list[0].id;
   // The page still asks about the id it started with: it is told where the sign-in went.
   assert.equal((await call('GET', `/api/fin-connect/monzo/approval?source=${id2}`)).json.sourceId, id);
@@ -299,7 +300,7 @@ test('rename, hide, and disconnect (keep data / remove data with Undo)', async (
   assert.equal(d.status, 200, d.text);
   assert.equal(d.json.removed, before);
   assert.ok(d.json.undo);
-  assert.ok(!existsSync(join(dir, 'secrets', 'fin', `monzo-${id}.json`)), 'the saved sign-in is deleted');
+  assert.ok(!existsSync(join(secretsDir(dir), 'fin', `monzo-${id}.json`)), 'the saved sign-in is deleted');
   assert.ok(!JSON.parse(readFileSync(join(dir, 'sources.json'), 'utf8')).sources.some(s => s.id === id));
   await jobIdle();
   assert.equal(store().split(/\r?\n/).filter(l => l.includes(id + '.')).length, 0);
@@ -309,5 +310,5 @@ test('rename, hide, and disconnect (keep data / remove data with Undo)', async (
   await jobIdle();
   assert.equal(store().split(/\r?\n/).filter(l => l.includes(id + '.')).length, before);
   assert.equal((await call('POST', '/api/fin-connect/undo', { token: d.json.undo })).status, 404, 'undo once');
-  assert.equal(readdirSync(join(dir, 'secrets', 'fin')).filter(f => f.startsWith('monzo-')).length, 0);
+  assert.equal(readdirSync(join(secretsDir(dir), 'fin')).filter(f => f.startsWith('monzo-')).length, 0);
 });

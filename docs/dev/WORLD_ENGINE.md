@@ -239,6 +239,10 @@ Integration rules (10 Oct, the integrator pass):
    their key; the parts of one entity draw in tiers (hull, cabin, roof).
 5. Invariant (tests, 16): for every pair whose screen boxes overlap, the one with the smaller footprint-front z is drawn later.
    `worldOrderCheck(order, boxes)` returns violations; it must be 0.
+6. Two footprints side by side (disjoint in x): each is compared at the x between them, clamped into it; there a footprint's front is
+   its extreme point, or (20 Oct) the near end of its edge at that extreme x when the edge runs along the line of sight (over 3 x as
+   long in z as in x: a long buggy-walker a few degrees off the axis has its extreme x at its FAR corner, which read it 2 m behind
+   itself; `worldOrderFrontZ`). A round footprint keeps its extreme point.
 
 ### 2.4 Shadows (engine only; L2, L5)
 
@@ -376,6 +380,48 @@ same layer and level, through the shared spatial index (11.5). Personal space by
 queues at stops and benches, groups keep formation offsets round a leader, speeds by age and gait. A stuck detector (speed
 < 10 % of desired for 3 s) re-plans; after two re-plans the agent idles, then leaves by the nearest spawn cell.
 
+**The ghost pass (20 Oct, widened the same day; `_wlfGhostPass`, `WORLD_LIFE_GHOST` in 79-world-2life.js).** Strangers never
+dodge each other. Where their paths cross they walk THROUGH each other, each drawn as a translucent ghost; where their paths keep a
+comfortable distance they just walk by, solid. (The first version did this in tight places only; the user found the avoiding itself
+weird anywhere.)
+- *Who.* People on foot and dogs on the walk layer (never cyclists, birds or stock), on one floor, strangers (never one group, its
+  leader or a dog on its own walker's lead), none seated, stepping, hopping, aboard or fading, none in a jam (no headway for 1.5 s
+  by the stuck handler's clock, or no nearer its goal along its route for 4 s), none within 1.2 m of its goal (it would stop inside
+  the other), neither in a knot (more than 3 other bodies within 1.5 m), every linked set at most 4 bodies, and not two going the same
+  way at nearly one pace (under 0.6 m/s apart: the one behind follows, as people do). Outside these the steering and the hard floor
+  act as before, so a crowd never becomes a pile of ghosts (`_wlfGhostEligible`, `_wlfGhostRoomFor`, `_wlfGhostFollow`).
+- *Ignore.* The steering (queue, sidestep, keep-left, velocity obstacle, separation) and the pinch yield ignore any such stranger
+  altogether (`_wlfGhostSkip`), linked or not yet: nobody swerves, slows or shuffles for one. People still wait for real reasons
+  (a seat, a stop, a doorway, their group, a taut lead).
+- *Link (early).* By where each WANTS to go (a velocity obstacle on the planned directions): closing at 0.3 m/s or more with the
+  projected closest approach within 2.5 s under 0.9 m between centres (oncoming, crossing, a real overtake, a walker and a stranger
+  standing in its way), or already inside each other's floor; a pass takes both whole groups along (`_wlfGhostPair`, `_wlfGhostLink`).
+  Each walker asks on one tick in three (by a hash of its id), every tick for anyone within 1.2 m; a pair that reaches the floor first
+  is linked there, never shoved.
+- *Lane habit (`_wlfGhostDrift`).* So that most strangers need no ghost at all: a walker with a stranger 6 to 18 m ahead coming toward
+  it, standing, or going its way slower, on a line they would pass under about 1.05 m apart, drifts to keep to its side (away from the
+  other's side; dead on, to its LEFT for one coming toward it, to its right to overtake), a few degrees, eased over 0.6 s, at most
+  sin 0.28 (16 degrees), and only while the room is short. Never under 6 m (closer, it would read as a dodge); not for followers.
+- *Hold.* A link holds while they are closing or moving past each other (over 0.3 m/s) within 0.8 m, and 1 s more; then it ends
+  once they are clear of each other's floor. Two that still overlap when the pass is over (they walk on together, one turned; both
+  stopped, at once; or the link is 8 s old) are *released*: parted by the floor at 2.5 cm a tick, once a tick (never by the steering's
+  swerve), translucent until clear. No ghost pass runs in the 90 s warm-up.
+- *Fade.* Each agent's `ghost` (0..1) eases toward the nearest partner's target: full at 0.4 m apart, none at 0.8 m, read at the
+  distance now less 0.2 s of closing but never under the projected closest approach (two that will pass 0.7 m apart are drawn barely
+  see-through), with time constants 0.25 s, at least 1.5 and at most 2.9 a second: an alpha step of at most 0.11 a 15 Hz tick. For a
+  head-on pass the fade starts with the bodies about 1.2 m apart. `worldAgents` emits `ghost`, `ghostWith` (the linked ids) and
+  `alpha = min(fade in/out, 1 - 0.55 x ghost)`: never under 0.45. Deterministic: no random draw.
+- *Draw.* The compositor draws every agent at its own alpha times the view change's cross-fade (`_wfrAgentAlpha`); a translucent
+  figure of several parts is drawn whole into a scratch and laid on the frame once (part by part, the limbs showed through the
+  body). Its shadow (`worldShadowPlan`: `op` x alpha), contact blob and water reflection fade with it; depth order is unchanged,
+  so of two overlapping ghosts the nearer is drawn later.
+- *Check.* `personalSpace`, `crowd`, `worldLifeCrowdCheck` and the motion tool's `overlap` skip a pair only when BOTH are ghosted
+  over 0.15 and linked to each other (`worldLifeGhostLinked`, `_wivGhostPair`): two solid people, a near-solid ghost or a ghost
+  and a third person are judged as ever. A ghost's alpha does not excuse it from `popping` or `walkInPlace` (only a fade does,
+  `_wivFading`). `ghostFlicker` fails an alpha change over 0.12 between frames 1/30 s apart (3.6 a second); the motion tool marks
+  a change over 0.12 in one tick. `node tools/world.mjs motion` reports the ghost passes; `life.ghostLog` keeps each one's reason
+  (`meet`, `overlap`). Measured: about 2 to 6 % of person-time is ghosted in the test scenes (see the report of 20 Oct).
+
 ## 4. Characters (A1-A11, M6, T1)
 
 ### 4.1 State machines
@@ -405,6 +451,15 @@ spec `W`, `E`, `N`, `S` are their aliases. Movers are never stuck, walking on th
 
 - Facing from velocity in WORLD space against the view ray: one of 8 directions = 5 drawn views (`side, q-front, front, q-back,
   back`) + 3 mirrors, hysteresis 15 degrees (A5). A standing mover keeps its last facing or faces its point of interest.
+  (20 Oct) A live agent is drawn from its BODY's yaw (`anim.yaw`, `_wanYaw`, `WORLD_ANIM_YAW`): the direction it moves from 0.18 m/s
+  (under the facing invariant's 0.25 m/s bound, so a body it judges is never still turning to its heading), its heading below that (starting, stopping, shuffling: the velocity's direction is noise there),
+  followed through 4 degrees of backlash (a direction that wavers by less never turns the body, so a view never flickers at a boundary)
+  and, toward the heading, at most 1.25 x the brain's turn rate. A dog always faces the way it goes.
+- One height from every side (20 Oct): a view object (`views`, SCENE_OBJ_VIEWS) is drawn at the height its SIDE object's art is drawn
+  at: `worldViewNorm(side, view, variant)` is the ratio of the two drawings' exact outline heights per declared `size[1]`
+  (`worldArtBounds`; the library's `_scBox` / `scenePathBox` are conservative: an arc's radius round both its ends), median over summer
+  and winter dress; `worldViewOf` multiplies the sprite scale `s` by it (`out.norm`) and the gait's art height divides by it. Until
+  then person.walker (29 x 64) and its views (30 x 80) differed by a fifth and the dog's head-on art by up to 43 %.
 - Scale is `f * h / z` with `h` from the descriptor's range for its pose and age, seeded per agent (A10, K8). There is no scale
   knob anywhere. No giants near the camera: the near band is reserved for framing.
 - Variety (A11): variant, outfit colours, gait and breed are seeded per agent from the descriptor's pools; two agents walking
@@ -517,8 +572,33 @@ validator knows every version. v1 and v2 scenes keep working until they are conv
 4. v1 scenes: synthesize a camera from `view` (horizon, fov, heading, eye 1.65) and do step 3 for all.
 5. Dropped fields (light, tint, reflect, layer, scale, hand paths, per-scene water looks) are listed in the report, never kept.
 6. The converted scene must be at least as rich as its source (P7, U4): `world critic` compares the two richness scores and the
-   conversion fails below.
+   conversion fails below. Both sides count generated buildings (a v3 world's `buildings` by the extruder's box, a v2 direct item
+   by its projected box), so a carried street is never "poorer than its source".
 7. Converted scenes are new items (`<id>-w3`) and never replace or delete the original until the user approves.
+
+Lossless since 23 Oct (`tools/lib/world/convert.mjs`; each was a review line or a silent drop before, round-1 and round-2
+critiques of the scene pipeline):
+
+- **Buildings.** The v2 generator's records (`data.buildings` by `foot` or `at`/`frontage`/`depth`, and every house of each
+  `data.streets` rule) come through as v3 `buildings`, exactly as the v2 compile drew them: `{ foot (its door edge first),
+  front: 0, storeys | h, style, seed, roof, party, shop, crown }` (`landmark: true` for the v2 subject). Before, a footprint became
+  one `building.<style>` entity that `unknownSize` dropped, an at/frontage building or a street rule vanished, and the compile's
+  `building.gen-direct` placeholders (op 0) were carried as invisible clusters. The core accepts `seed`, `front` and `shop` on a
+  building (the extruder and the generator already read them).
+- **Traffic.** A `drive` flow becomes `cars` with its own mix of vehicle ids, and its `bus` a `buses` population every N min
+  (there is no `traffic` population). A flow on several surfaces is one population per surface.
+- **Conflicts.** `overlap` and `blocksPath` are the placement solver's (the validator leaves them to it): one build of the spec,
+  and every entry the solver moves by at most `NUDGE_MAX_M` (1.2 m) takes the solver's spot, each listed as `nudged ... by the
+  placement solver`; only what it cannot settle is removed. A landmark that overlaps a plain entity stays and the entity goes.
+- **Backdrop.** A city (buildings, streets, `setting: 'urban'`) takes a city backdrop before water makes it a coast.
+- **Pinned drawings.** A pinned v2 drawing with no real size of its own (no `real`, no `SCENE_REAL_SIZE` or `WORLD_SIZE_GAPS` entry,
+  no descriptor size) is drawn 1:1: `h = size[1] x s x anchor depth / f` on the footprint of its pinned corner (2 x 1.2 m), only
+  when every placement of it gives one height (within 10 %) and its library size is more than 25 % off. The sizes are registered
+  with `worldSizeAutoDefine(id, { h, l, w, from })` and written to the GENERATED `src/app/79-world-zdata-sizes.js` (`convert
+  --out` merges into it); no scene session edits `WORLD_SIZE_GAPS` by hand (a hand entry still wins).
+- **Pits.** `pit: true` on a v2 placement becomes a 2 x 2 m soil pit surface under it (kind grass, as the enriched scenes do).
+- **Compact files.** One line per surface, building, entity and population (`compactJson`), so a later edit or re-conversion
+  touches the lines of what changed.
 
 ## 7. Performance plan and budget (F1-F4, Y7, Z1, Z2)
 
@@ -858,6 +938,18 @@ from what the entity is DOING, never from a timer:
 - Secondary motion (M5), cheap and dropped first under budget: leads swing between dog and walker, coats lag, a dog's ears and
   tail react to its gait, boats rock in passing wakes, reeds part as a heron walks through.
 - Transitions (M7): walk to stop, stand to sit, swim to take-off are eased over 0.2-0.6 s with the right view; never instant.
+- A change of view (20 Oct) is a true DISSOLVE over `WORLD_FRAME_FADE_S` (0.16 s; `_wfrDrawDissolve`): the old and the new drawing,
+  each at its OWN scale (the agent's draw memory keeps the view's scale times depth, `m.sz`), each made whole in a scratch, mixed as
+  old x (1 - k) + new x k ('lighter' on premultiplied pixels) and laid on the frame once at the agent's own alpha (the ghost pass and
+  fades multiply in). A second change while the first is under half faded replaces the half-shown drawing; the occluder redraws cover
+  both. Until then the old view took the new view's scale and the two were blitted at 1 - k and k (0.75 cover halfway).
+- Planted feet (20 Oct, `_wanStance`): a person's leg hook pivoted at the hip, seen side-on or three-quarter, is drawn with
+  `stance: 0.5` (sceneAnimPose: through the stance the leg turns at an even pace from -deg to +deg, the other leg half a cycle on,
+  then swings forward on a cosine; lift only while a foot swings) and `deg = asin(full step x crossing share / (2 x hip height))`
+  (the crossing share from the way the body MOVES against the line of sight, `_wanCross`; the step in art units of the drawn view):
+  the foot moves back under the hip by the step's on-screen length while the body moves on by it. The arm hooks swing a quarter cycle
+  on (against the near leg). The anim record's `gait.plane` is that crossing share, so walkInPlace judges what is drawn. End-on views keep
+  the lifted feet; a dog's legs (rocked about its body in the library art) are unchanged.
 - Drawing: the renderer draws an agent's sprite with the v2 animation hooks of its state (`worldAnimHooks`: `sceneBehave.hooks`
   and `sceneBehave.stride` periods), so limbs move at the speed the agent travels.
 - Frame-rate independence (M8): all motion uses scene time from the runner (11.3).
@@ -869,6 +961,11 @@ from what the entity is DOING, never from a timer:
   checker judges what is drawn. A walker under the LOD (14 device px, limbs not drawn) keeps a whole-figure step bob of at least
   `WORLD_FRAME_LOD_BOB` (0.7 px). A quick body bob on a legged animal (a dog's front view) is its gait: twice a stride while it
   moves, never while it stands.
+- Every frame between ticks (life, 20 Oct): the runner's life systems move bodies at 15 Hz; the `life-lerp` system (rate 30) keeps
+  `life.alpha`, the share of a move step gone, so `worldAgents` puts each body between its last two steps on every runner tick (until
+  then nothing set it on the runner path: records stood still one 30 Hz tick in two, then jumped two steps; on a 60 Hz screen a walker
+  moved one frame in four). The steered direction of a walker is eased (`_wlfSteerEase`, `WORLD_LIFE_STEER`: a 0.2 s low-pass; a change
+  of over 100 degrees is taken at once; not for a group member, in a queue or within 3 m of its goal, where a knot must answer at once), a walker standing up from its seat is an immovable body to the separation pass and a dog eases off the outward part of its step from 90 % of its lead (never yanked back).
 - What the legs follow is what the body did (life, 18 Oct): the velocity is measured AFTER the separation pass and the last leash
   (`_wlfTrueV`), the shown speed never exceeds the ground covered over the last 4 ticks (`_wlfShownCap`: a body shaken to and fro
   shows no walk), a walker held by a queue or a taut lead below 0.25 m/s stands and sets off again at 0.4 (`WORLD_LIFE_CREEP`), a
@@ -1028,6 +1125,7 @@ violation is `{ rule, req, id, msg }`; the count must be zero.
 | `slidingFeet`, `facing`, `laneDir` | stride vs speed, view vs velocity, lanes on the left | A5, A6, A9 |
 | `animStill`, `stillMoving`, `staticAnim` | animating while still, still while moving, statics animating | M1, M2 |
 | `walkInPlace` | walking on the spot, judged from the record's POSITIONS and boxes over 0.5 s (never the shown velocity the legs are made from): legs cycling (walk, run, trot, k >= 0.3, drawn 14 px or taller) while the body is held (< 0.15 m/s: `held`), while the feet pace out over twice the ground covered (`slip`), or while the figure moves on screen under a quarter of its height a stride for every full side-on swing it draws (drawn swing = `k x plane`, judged when over 0.3; no gait at all counts as a full side-on swing: `flat`). 0.6 s grace (M7). Shared classifier `worldWalkInPlace(m, h, t)`, thresholds `WORLD_INPLACE` | A6, M1, Q4 |
+| `sizePop` | a change of view (or mirror) never changes a mover's drawn height (the record's `fig`, the exact outline of its rest art, times its depth over its height) by over 6 % (`WORLD_INVARIANT_POP`) | A5, A10, Q4 |
 | `clones`, `windDir` | synchronised phases, sway against the wind | M4, M3 |
 | `order` | `worldOrderCheck` = 0 | R1, R2 |
 | `landmark`, `bare` | landmark face visible, no bare region > 15 % | C4, C6 |
@@ -1051,7 +1149,9 @@ with zero invariant violations, and carry a load log that explains every fix.
 | `sheet <ref> [--matrix] [--sizes]` | dates x times x sizes on one sheet; `--matrix` = 4 seasons x 5 times x 3 weathers |
 | `motion <ref>` | paths, footprints and violations over the still |
 | `inplace <ref> [--browser]` | walking in place measured on what is drawn (tools/lib/world/inplace.mjs): per person per frame the ground and screen speed, clip, view and gait; the share of person-time, the causes (pinch yield, pushed back, group follower, taut lead, queue, sidestep, a side-only figure seen end-on, an end-on view) and the worst offenders; `--browser` reads the frames the real page drew |
+| `pops <ref> [--browser]` | people that pop, slide, snap and shake, measured on what is drawn at 30 fps (tools/lib/world/pops.mjs): the compositor's own draw records and pose plans (`worldFrameFigures`; `--browser`: the blits the page drew, `S.figRec`), each part through its matrix (`worldArtHull`). Per person and dog: size pops and every view change's size ratio by view pair and object, width and position pops, anchor jumps, foot slide (the slower drawn foot against the body side-on), heading snaps, speed and cycle-rate pops, walk/stand and view flicker, gait noise, stutter (the per-frame step's own change), shaking (sideways reversals on a straight course), steering reversals; per person-minute, by kind, worst offenders and examples |
 | `capture <ref> --full` | the WHOLE loop as a frame strip, not just 20 s |
+| `preflight <ref...> [--json]` | what the invariant gate WILL report, predicted in about a second a scene (16.7): each fact once, ranked, with its id, fix and first hit. Not a gate |
 | `critic <ref> [--against <ref>]` | richness, emptiness and framing scores (and against a source) |
 | `compare <v3> <original>` | side by side at 3 dates x 5 times |
 | `adversarial` | every adversarial fixture: load, render, invariants, log |
@@ -1088,3 +1188,38 @@ water mirror lines, invariant violations, the per-system profile, and the scrubb
 | shade under bridges | the bridge casts by geometry (2.4) | look |
 | wide aspect showing unfinished edges | overscan (14.3) | appearance |
 | tiny screens | the subject stays readable in the tile crop (C4 at tile size) | appearance |
+
+### 16.7 The preflight (`world preflight <ref...>`, `tools/lib/world/preflight.mjs`, 23 Oct)
+
+A full gate run is 15 cells x 360 s. But a gate cell is only one of 3 builds (the world depends on the season, not the hour),
+and lane and rail vehicles can only be where their lane or timetable puts them. So most of what the gate finds can be predicted
+from the 3 season worlds in about a second a scene (E1, 22 Oct: engine eval 0.9 s once per process, worldBuild 0.2 s a season,
+the whole preflight 1.1-2.7 s a scene warm):
+
+1. **Statics.** For each gate date: `worldBuild`, then the gate's own `worldInvariants` with the static rule set (`habitat`,
+   `overlap`, `pathBlocked`, `walkwayWater`, `floating`, `orphan`, `giant`, `nearStatic`, `crownCut`, `landmark`, `bare`,
+   `edgeCut`, `season`, `laneDir`) on render's `worldFrameAt(world, 0)` at each of the 15 moments (the absent set and the sun
+   differ by the hour). No threshold is re-implemented.
+2. **Route sweeps.** Every rail vehicle at the gate's clock (the 90 s warm-up and the framed offset life gives it) every 0.1 s over
+   one full timetable pattern, and every arc-length pose at 0.05 m; every lane vehicle along its span at 0.25 m, at its kerb
+   offset. Two corrections are needed to agree with the gate: across a track vertex the heading snaps while the record's velocity
+   is the chord of the last life step, so the body takes every chord pose near each vertex (a hull in perspective follows the
+   velocity, a sprite box the heading: both are judged); and a lane vehicle is drawn one move step behind (the 5 Hz frame lerps at
+   alpha 0). A pose is a candidate when the gate's own geometry touches at all (zero tolerance); it becomes a fact only when
+   `worldInvariants` (`overlap`, `inSolid`, `edgeCut`, `nearBand`, `laneDir`) reports it on render's own frame record of that
+   pose. Rail facts carry the first gate frame (at `--hz`, 5) where they happen; a lane fact happens whenever a vehicle passes.
+3. **Advisories** no gate rule covers: `laneBlocked`, a lane whose traffic never runs because a parked vehicle or another solid
+   stands within 1.2 m of its line (`worldTrafficSpan` gives it no span).
+
+Measured recall: MediaCity's recorded gate (inv-mc.json) has 35 tram-overlap records, 7 distinct (rule, id, date) faults; the
+preflight lists all 7 (fill-15 every date; fill-125 January, fill-75 July, fill-135 and fill-76 October) at the gate's own
+frames (167.6, 200.6, 201.6, 166.4, 167.4 s), and nothing on Deansgate (15 of 15 clean). Lanes, positive: Deansgate converted
+from its v2 source (buses and cars on the near road): one real gate cell reported a landmark/building overlap, buses cut by the
+bottom edge and cars "on the right of" the crossing road at the junction; the preflight lists all three on the lanes they happen
+on. It does not predict the dynamic faults (walkers: `stuck`, `personalSpace`, `order`, `crowd`; those need the life sim), and a
+very large world costs its builds (Fleet Pond 2: 27 s of its 29 s are the three `worldBuild`s). Use it after every edit; run
+the full `world invariants` once before a commit. `tests/world-preflight.test.mjs`.
+
+### Valleys and gritstone edges (18 Oct)
+`valley: { seed, bearing, drop, fall, floor, far: { rise, run }, end: { at, rise, run }, up, concave, noise, roll, fields: { from, to, u, rows, cell, kinds, walls, wallsTo, cross }, woods: { n, s, u, size, obj, density }, hamlet: { at, houses, spread, style, lamps } }`
+is a top-level spec key (`79-world-4valley.js`, `worldValley`, `worldSpecExpand`): the validator and the build replace it with `ground.relief`, a field mosaic (surfaces of kind `field`, each its own id and so its own tone), contour walls, woods (surfaces with tree clusters) and a hamlet (building footprints). `at(s, u)` (s metres downhill to the left of the contours, u along them) is what a scene uses to place the rest. A cliff takes `rock: 'gritstone'` (blocky, buttressed, heather-capped, tors, no trees); `rock.gritstone-block` is its boulder model. A camera on a plateau says `eye` as its height above the relief's zero (the cliff's own `h` is the plateau): the near planes follow the ground under the lens. Cliffs are solid to everything on foot.

@@ -407,8 +407,11 @@ The unit tests and the Node run were green while the page was not. The contract 
   what it drew (`worldFrameDrawn`: the same agents at the same scene time, after the draw's own drops) goes to `worldInvariants`.
   A run whose clock drifts (the page restarted its life mid-run) is an ERROR of the run, never a clean or a dirty result.
 - MV2 [T] Personal space is a hard floor: no two unrelated movers on one layer overlap or pass through each other (invariant
-  `personalSpace`, 85 % of the sum of their body radii; a walker and its dog never share a spot). The one exception is a lane
-  a body wide, where a pair that stalled for 2.5 s turns sideways and passes through each other for a step (`squeeze`).
+  `personalSpace`, 85 % of the sum of their body radii; a walker and its dog never share a spot). The exceptions are a lane
+  a body wide, where a pair that stalled for 2.5 s turns sideways and passes through each other for a step (`squeeze`), and
+  the ghost pass (20 Oct, WORLD_ENGINE 3.3): wherever two strangers' paths cross they walk through each other, both drawn
+  translucent (alpha 0.45 to 1, eased; `ghostFlicker` fails a pop), skipped only while both are ghosted over 0.15 and linked to
+  each other. Strangers are never dodged (MV3's keep-left is now an early lane habit, not a swerve).
 - MV3 [T] Oncoming movers pass side by side, keeping to the LEFT; a mover going the same way slower is followed (queue) or
   overtaken on the right; a sideways shuffle needs no forward speed.
 - MV4 [T] Nobody stands in a lane to wait (a standing mover is the next blockage). A mover with somewhere to go that makes no

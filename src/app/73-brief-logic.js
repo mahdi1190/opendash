@@ -214,7 +214,8 @@ async function briefOrchestrate(steps, opts) {
       const st = await withTimeout(s.start());
       if (st.timeout) { report(s.id, 'timeout'); return; }
       if (st.error) { report(s.id, 'error', { reason: String(st.error) }); return; }
-      if (st.skipped) { report(s.id, 'fresh'); return; }
+      // runsOn: another computer is the main one and runs it (lib/main-computer.mjs)
+      if (st.skipped) { if (st.runsOn) report(s.id, 'elsewhere', { reason: 'runs on ' + st.runsOn }); else report(s.id, 'fresh'); return; }
       const w = s.wait ? await withTimeout(s.wait()) : {};
       if (w.timeout) report(s.id, 'timeout');
       else if (w.error) report(s.id, 'error', { reason: String(w.error) });

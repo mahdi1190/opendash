@@ -252,7 +252,12 @@ so you can replace them freely.
 | Server log (no task text, email content or money) | `data/logs/server.log` |
 | Copies made before each upgrade (the last 5) | `data/backups/` |
 | The per-install token for local programs | `data/local-token` |
-| Optional Google sign-in files | `data/secrets/` |
+| Which computers have the folder open (one small file each, updated every minute) | `data/hosts/` |
+| The id that finds this computer's private folder | `data/data-id.json` |
+| Which computer runs the background jobs (if you chose one) | `data/roles.json` |
+| Where this computer moved the data (Settings > Data > Move) | this computer's OpenDash folder: `relocation.json` and `moves/` (never in the data folder) |
+| The key that locks the daily encrypted copy, and its settings | this computer's private folder (with the sign-ins below); the passphrase itself is never stored |
+| Sign-ins and keys (Google, Microsoft, bank connections, API keys) | **not in the data folder**: this computer's private folder, `%LOCALAPPDATA%\OpenDash\<id>\secrets` on Windows, `~/Library/Application Support/OpenDash/<id>/secrets` on macOS, `~/.local/state/opendash/<id>/secrets` on Linux |
 
 Your browser also keeps a little: interface preferences, a fallback copy of
 unsaved edits while the server is down, and the offline page (the app page
@@ -264,10 +269,100 @@ only, never your tasks).
 - **Move to another computer**: *Export all data (.zip)* on the old one,
   install OpenDash on the new one, then *Import data*. Connections are set up
   again on the new computer.
+- **Sign-ins never travel with the data folder.** They stay in the computer's
+  own private folder (above), so a copied or synced data folder carries no
+  tokens or keys. On another computer you sign in again: Google, Microsoft,
+  ElevenLabs, and the bank connections, including the **Enable Banking `.pem`
+  key** and the **Monzo client ID and secret** (keep the originals somewhere
+  safe: OpenDash cannot copy them over for you). A data folder from an older
+  version that still has a `secrets/` folder has it moved into this
+  computer's private folder at the next start (checked file by file; the
+  originals are kept there in `legacy-secrets-backup/`).
 - **Cloud-synced folders** (OneDrive, Dropbox, iCloud Drive) work for the data
   folder, but run OpenDash on **one computer at a time**: sync tools copy files,
-  they do not merge edits made in two places at once.
+  they do not merge edits made in two places at once. OpenDash helps:
+  - In OneDrive it shows *"Your data is in OneDrive: use OpenDash on one
+    computer at a time."* (you can dismiss it).
+  - If OpenDash is already open on another computer when it starts, changes
+    are paused: *"OpenDash is open on WORK-PC (seen 1 min ago). Changes here
+    are paused so the two computers don't overwrite each other."* Close it
+    there, or choose **Use here anyway**. Data upgrades also wait until it is
+    closed there. A computer that opens it later only gets a warning.
+  - If OneDrive kept a second copy of a file (*"OneDrive kept a second copy
+    from WORK-PC"*), **Keep as a backup** moves it into the backups, where
+    Settings > Data can open a copy of your tasks. Nothing is merged
+    automatically.
 - Keep the data folder private, and out of any public repository.
+
+### Moving your data out of OneDrive
+
+If your data folder is inside OneDrive (or Dropbox, Google Drive, iCloud
+Drive), Settings > Data shows **Your data is in OneDrive** with one button:
+**Move my data out of OneDrive**. It moves the data to a folder that belongs to
+this computer only. Your computers then stay in step through **Settings > Sync**
+instead of through OneDrive.
+
+1. **Choose the place.** The suggested one is right for almost everyone:
+   `%LOCALAPPDATA%\OpenDash\Data` on Windows,
+   `~/Library/Application Support/OpenDash/Data` on macOS,
+   `~/.local/state/opendash/Data` on Linux. If the app folder is in OneDrive
+   too, tick **Move the app too** (it goes to `...\OpenDash\App`).
+2. **Read the list.** Before anything changes, OpenDash shows everything it
+   will do: how many files it copies, and every setting outside the data folder
+   that still uses the old place, with the old and the new value side by side.
+   That includes Windows start-up (*Start automatically when I log in*, the
+   *Start server* button), the OpenDash tools in Claude Code, Claude Desktop,
+   Codex and Gemini CLI, Claude scheduled tasks that name the folder, and
+   desktop shortcuts. If a program it needs is missing, it shows the exact
+   command to run yourself instead.
+3. **Move now.** OpenDash pauses changes for a moment, copies every file and
+   checks each copy against the original, switches to the new place, updates
+   those settings, and starts again from the new place. The page reloads by
+   itself.
+4. **The old folder is kept**, unchanged, renamed to something like
+   `data (moved to AppData-Local-OpenDash-Data on 2026-10-23)`, with a
+   `README` inside that says where everything went. OpenDash never deletes it.
+   When you are sure everything works (a week or two, say), delete it yourself.
+
+It refuses to start when OpenDash is open on another computer with the same
+folder, when the new drive is short of space, or when the new folder already
+has other files in it. If the computer crashes half-way, nothing has been
+switched yet: Settings > Data offers **Finish the move** (files already copied
+are checked, not copied again) or **Stop it**.
+
+**Undo move** (Settings > Data) puts everything back: files you changed since
+the move are copied back into the old folder first (the versions they replace
+are kept in its `backups/before-undo-...` folder), the old folder gets its name
+back, every setting the move changed is put back (unless you changed it again
+since; then it is left and listed), and OpenDash starts again from the old
+place. The new folder is kept too.
+
+From a terminal the same tool is `node tools/relocate.mjs` (it only prints the
+plan) and `node tools/relocate.mjs --run --yes` (with OpenDash closed);
+`--undo` and `--status` work the same way.
+
+### The daily encrypted copy
+
+A data folder that lives only on this computer needs a copy somewhere else in
+case the computer breaks or is lost. **Settings > Data > Daily encrypted copy**
+saves one a day into `OneDrive\OpenDash Backups` (or a folder you choose, such
+as a USB drive) and keeps the newest 14. Each copy is locked on this computer
+with your **passphrase** before it leaves, so OneDrive only stores scrambled
+bytes. Write the passphrase down: without it the copies cannot be opened, and
+nobody can recover it. To restore, pick a copy in the same place and choose
+**Restore**; on a new computer, type the folder under *Look for copies in
+another folder* and enter the passphrase. Your current data is backed up
+before a restore.
+
+### The main computer
+
+With more than one computer, choose one as the **main computer** in
+**Settings > Sync > Main computer**. Only it runs the automatic background
+jobs: bank updates, the AI summary and day review, story scripts, and the
+automatic calendar and email updates. The others show *Runs on <name>*, so the
+bank is not asked twice (a Monzo sign-in can only be used by one computer) and
+Claude does not write the same summary twice. Anything you start with a click
+still runs on the computer you clicked.
 
 ## Updating
 

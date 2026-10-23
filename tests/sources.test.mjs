@@ -298,6 +298,43 @@ test('dedupe: events by iCalUID or start+title across sources (not within one); 
   assert.deepEqual(msgs[1].sources, ['email-gmail', 'email-work']);
 });
 
+test('one Gmail mailbox through the Claude connector AND a Google account: each thread once, other mailboxes never merged', () => {
+  const gm = validateSource({ id: 'email-gmail', capability: 'email', kind: 'mcp', server: 'claude.ai Gmail', preset: 'gmail' }).source;
+  const goo = validateSource({ id: 'email-google-ab12', capability: 'email', kind: 'google', account: 'acc_00000000000000a1', label: 'alex@example.com' }).source;
+  const other = validateSource({ id: 'email-google-cd34', capability: 'email', kind: 'google', account: 'acc_00000000000000a2', label: 'sam@example.org' }).source;
+  const from = (e) => ({ email: e, name: '' });
+  const gmailDoc = { fetchedAt: '2026-10-02T10:00:00Z', messages: [
+    { id: '18c2f0a1b2c3d4e5', subject: 'Lunch', date: '2026-10-02T09:00:00Z', from: from('b@example.org') },
+    { id: '18c2f0a1b2c3d4e7', subject: 'Report', date: '2026-10-02T08:30:00Z', from: from('f@example.org') },
+    { id: '18c2f0a1b2c3d4e6', subject: 'Only via Claude', date: '2026-10-02T08:00:00Z', from: from('c@example.org') }] };
+  const acct = (id, th, subject, date) => ({ id, messageId: '<' + id + '@mail.example.org>', threadId: th, subject, date, accountId: 'default', from: from('d@example.org') });
+  const snapshots = {
+    'email-google-ab12': { fetchedAt: '2026-10-02T10:05:00Z', accounts: [{ id: 'default', name: 'alex@example.com' }], messages: [
+      acct('gm000000000000000000000001', '18c2f0a1b2c3d4e5', 'Lunch', '2026-10-02T09:00:00Z'),
+      acct('gm000000000000000000000004', '18c2f0a1b2c3d4e7', 'Report', '2026-10-02T08:30:00Z'),
+      acct('gm000000000000000000000002', '18c2f0a1b2c3d4f0', 'Only via the account', '2026-10-02T10:01:00Z')] },
+    // Another Google mailbox with one thread whose id happens to match a connector thread: not the connector's mailbox.
+    'email-google-cd34': { fetchedAt: '2026-10-02T10:05:00Z', accounts: [{ id: 'default', name: 'sam@example.org' }], messages: [
+      acct('gm000000000000000000000003', '18c2f0a1b2c3d4e6', 'Other mailbox', '2026-10-02T07:00:00Z')] },
+  };
+  const m = mergeInboxData({ gmailDoc, snapshots: { 'email-google-ab12': snapshots['email-google-ab12'] }, sources: [gm, goo] });
+  assert.deepEqual(m.messages.map(x => x.subject), ['Only via the account', 'Lunch', 'Report', 'Only via Claude'], 'each shared thread once');
+  const lunch = m.messages.find(x => x.subject === 'Lunch');
+  assert.equal(lunch.id, '18c2f0a1b2c3d4e5', "the connector's copy is kept: existing marks and task links use its id");
+  assert.deepEqual(lunch.sources, ['email-gmail', 'email-google-ab12']);
+  assert.deepEqual(lunch.aliases, ['gm000000000000000000000001']);
+  // A second Google mailbox: only the account sharing the most threads is the connector's mailbox.
+  const three = mergeInboxData({ gmailDoc, snapshots, sources: [gm, goo, other] });
+  assert.deepEqual(three.messages.map(x => x.subject), ['Only via the account', 'Lunch', 'Report', 'Only via Claude', 'Other mailbox'], 'the other mailbox is never merged');
+  // A tie (no way to tell which mailbox the connector reads): nothing is merged, as before.
+  const tie = mergeInboxData({ gmailDoc: { ...gmailDoc, messages: [gmailDoc.messages[0], gmailDoc.messages[2]] },
+    snapshots: { ...snapshots, 'email-google-ab12': { ...snapshots['email-google-ab12'], messages: [snapshots['email-google-ab12'].messages[0]] } }, sources: [gm, goo, other] });
+  assert.equal(tie.messages.length, 4);
+  // Without the connector, accounts are never merged with each other by thread id.
+  assert.equal(dedupeMessages([{ sourceId: 'a', gmail: 'account', messages: [acct('x1', '18c2f0a1b2c3d4e5', 'A', '2026-10-02T09:00:00Z')] },
+    { sourceId: 'b', gmail: 'account', messages: [acct('x2', '18c2f0a1b2c3d4e5', 'B', '2026-10-02T09:00:00Z')] }]).length, 2);
+});
+
 // ─── schema validation per capability ────────────────────────────────────────
 test('validateBank: strict fields, window, currency, grounding in the raw tool results, switched-off accounts', () => {
   const raw = '{"items":[{"desc":"CORNER CAFE","amt":"12.50"},{"desc":"SALARY","amt":2500},{"desc":"Shop","minor":1999}]}';

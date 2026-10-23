@@ -330,8 +330,32 @@ const WORLD_CLASS_INFO = Object.freeze({
 });
 /** Classes whose facing is where their front looks (their long axis runs across it). */
 const WORLD_FRONT_CLASSES = Object.freeze(['bench', 'building']);
-/** Gaps: objects whose real size is only a class guess get one here (metres), or they cannot be placed. */
-const WORLD_SIZE_GAPS = Object.freeze({});
+/** Gaps: objects whose real size is only a class guess get one here (metres), or they cannot be placed. Also a drawing pinned at one
+    corner of what it shows (a perspective landmark drawn for one camera): the library's `l` is the length its drawing shows, but the world
+    centres a footprint on the anchor, so that length would reach half its way into the neighbours and the street; such a drawing gets the
+    footprint of its pinned corner only (22 Oct, Deansgate: the John Rylands Library's 42 m crossed the pavement and two buildings).
+    A pinned perspective drawing with no real size of its own got the class guess (2 m) and was drawn at a third or a twentieth of its
+    size: its `h` is the height its box spans at its anchor in its camera (size[1] x anchor depth / f), so it is drawn 1:1 (22 Oct,
+    Stevenson Square: the painted kiosk at 30 m, the painted gable at 87 m, camera fov 58; MediaCity: IWM North at 354 m, the screen
+    at 48 m, camera fov 56). Only drawings with ONE anchor: a drawing whose variants stand at different depths (the MediaCity
+    overhead-line masts) cannot be drawn 1:1 by one height; one that runs out of the frame at 1:1 (MediaCity's swing footbridge and
+    quay rail) is dropped by the appearance pass (C1). */
+const WORLD_SIZE_GAPS = Object.freeze({ 'landmark.mcr-john-rylands': { h: 34, l: 2.5, w: 2 },
+  'structure.mqn-kiosk-v3': { h: 6.24, l: 2, w: 1.2 }, 'structure.mqn-mural-v3': { h: 36.27, l: 2, w: 1.2 },
+  'landmark.mqn-iwm-v2': { h: 112.98, l: 32.5, w: 18 }, 'structure.mqn-screen-v2': { h: 9.57, l: 2, w: 1.2 } });
+/** Sizes computed, not typed (23 Oct): the converter's 1:1 sizes of pinned v2 drawings with no real size of their own (h = the drawn
+    height x the anchor depth / f, the footprint of the pinned corner), registered by the generated src/app/79-world-zdata-sizes.js
+    (tools/lib/world/convert.mjs) so no scene session edits the table above. A WORLD_SIZE_GAPS entry wins.
+    worldSizeAutoDefine(id, { h, l, w, from }) registers one (id, null removes it) -> true when taken. */
+const WORLD_SIZE_AUTO = {};
+function worldSizeAutoDefine(id, s) {
+  if (typeof id !== 'string' || !id) return false;
+  if (s == null) delete WORLD_SIZE_AUTO[id];
+  else if (s && _wcNum(s.h) && s.h > 0) WORLD_SIZE_AUTO[id] = Object.freeze({ h: s.h, l: _wcNum(s.l) && s.l > 0 ? s.l : 2, w: _wcNum(s.w) && s.w > 0 ? s.w : 1.2, from: typeof s.from === 'string' ? s.from : null });
+  else return false;
+  _wcInfoMemo.delete(id);
+  return true;
+}
 const _WC_HAB_ATTACH = Object.freeze({ water: 'water', 'water-margin': 'water', bank: 'ground', walk: 'ground', paving: 'ground', grass: 'ground', soil: 'ground',
   'grass-edge': 'ground', 'road-lane': 'ground', road: 'ground', rail: 'rail', tram: 'rail', roof: 'deck', perch: 'deck', deck: 'deck', air: 'air', wall: 'wall' });
 const _WC_SOLIDITY = Object.freeze(['solid', 'walkable', 'water', 'passable', 'overhead']);
@@ -354,13 +378,18 @@ function worldObjectInfo(id) {
 function _wcInfoOf(id, def, kb) {
   let real = typeof sceneObjReal === 'function' ? sceneObjReal(id) : null;
   if (WORLD_SIZE_GAPS[id]) real = Object.assign({ src: 'gap' }, WORLD_SIZE_GAPS[id]);
+  else if (WORLD_SIZE_AUTO[id]) real = { h: WORLD_SIZE_AUTO[id].h, l: WORLD_SIZE_AUTO[id].l, w: WORLD_SIZE_AUTO[id].w, src: 'auto' };
   const ks = kb && kb.size;
   if (!(real && real.h > 0 && real.src !== 'class') && ks && _wcNum(ks.l) && ks.l > 0) {   // no library size: the descriptor's (K2, K8)
     const kh = Array.isArray(ks.h) ? (ks.h[0] + ks.h[1]) / 2 : ks.h;
     if (_wcNum(kh) && kh > 0) real = { h: kh, l: ks.l, w: _wcNum(ks.w) ? ks.w : ks.l * 0.6, src: 'kb' };
   }
   if (!(real && real.h > 0 && real.src !== 'class')) return null;
-  const c2 = typeof sceneObjClass === 'function' ? sceneObjClass(id) : 'street', cls = _wcClass(id, c2), ci = WORLD_CLASS_INFO[cls] || WORLD_CLASS_INFO.street;
+  const c2 = typeof sceneObjClass === 'function' ? sceneObjClass(id) : 'street';
+  // a library 'class:air' piece that the kb stands on the ground (a fountain jet: kb class street) is grounded: it was drawn 4.6 m up (21 Oct)
+  let cls = _wcClass(id, c2);
+  if (cls === 'air' && kb && ['street', 'post', 'cover'].includes(kb.cls)) cls = kb.cls;
+  const ci = WORLD_CLASS_INFO[cls] || WORLD_CLASS_INFO.street;
   const mv = typeof sceneMoverSize === 'function' ? sceneMoverSize(id) : null;
   // movers keep the v2 real size classes (a duck 0.35 m, a person 1.7 m); everything else its real table size. A seated scenery
   // figure (a picnicker on a rug, a cafe-goer at a table: kb pose 'sit' and a scenery class) is drawn at its seated height (K8)
@@ -439,7 +468,7 @@ function _wcStyleGuess(spec) {
 
 /* ---------- the validator and the repair (5.2) ---------- */
 const _WC_KEYS = {
-  top: ['v', 'place', 'camera', 'cameras', 'ground', 'surfaces', 'lines', 'buildings', 'entities', 'landmarks', 'life', 'backdrop', 'fill', 'seed', 'marsh'],
+  top: ['v', 'place', 'camera', 'cameras', 'ground', 'surfaces', 'lines', 'buildings', 'entities', 'landmarks', 'life', 'backdrop', 'fill', 'seed', 'marsh', 'valley'],
   place: ['lat', 'lon', 'alt', 'region', 'origin', 'style'],
   camera: ['eye', 'fov', 'horizon', 'heading', 'x0', 'lat', 'lon', 'alt', 'water', 'preset'],
   camera31: ['id', 'at', 'height', 'eye', 'heading', 'lookAt', 'frame', 'fov', 'horizon', 'pitch', 'x0', 'lat', 'lon', 'alt', 'water', 'preset', 'relief'],
@@ -447,7 +476,7 @@ const _WC_KEYS = {
   surface: ['id', 'kind', 'water', 'poly', 'path', 'width', 'shallow', 'level', 'obj', 'open', 'y', 'from', 'to', 'hint', 'flow', 'step', 'over'],
   step: ['to', 'kind'],
   line: ['id', 'kind', 'path', 'width', 'h', 'gaps', 'obj', 'stone', 'laid', 'cope'],
-  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark', 'party', 'spacing'],
+  building: ['id', 'foot', 'storeys', 'h', 'roof', 'style', 'facing', 'src', 'along', 'side', 'from', 'to', 'depth', 'shops', 'gap', 'crown', 'landmark', 'party', 'spacing', 'seed', 'front', 'shop'],
   entity: ['id', 'obj', 'at', 'facing', 'attach', 'variant', 'y', 'open', 'blocks', 'framed', 'row', 'parent', 'model'],
   cluster: ['cluster', 'on', 'edge', 'n', 'seed', 'gap', 'variant'],
   landmark: ['id', 'obj', 'at', 'facing', 'src', 'variant', 'attach', 'model'],
@@ -577,6 +606,8 @@ function _wcCheck(spec0, repair) {
   // a `marsh` list is expanded first (79-world-4marsh.js: the walk and a few numbers become the wetland's surfaces, rails and
   // plants), so the validator and the repair see, and judge, exactly what will be built; the scene stays pure data
   let marshProblems = [];
+  // a valley is a few numbers (79-world-4valley.js): its relief, field mosaic, walls, woods and hamlet are generated here, so the scene's data stays small
+  if (spec0.valley != null && typeof worldSpecExpand === 'function') spec0 = worldSpecExpand(spec0);
   if (Array.isArray(spec0.marsh) || spec0.marsh != null) { const ex = _wcMarshExpand(spec0); spec0 = ex.spec; marshProblems = ex.problems; }
   const thrown = [];
   const spec = repair ? _wcClone(spec0, (p, m) => thrown.push({ p, m })) : spec0;
@@ -818,6 +849,11 @@ function _wcCheck(spec0, repair) {
     // a building may be declared a LANDMARK (an abbey, a church, a bridge): the fill never hides its main face (P8), as for a placed landmark
     if (b.landmark != null && typeof b.landmark !== 'boolean') act(p + '.landmark', 'badType', 'landmark is true or false', strip(b, 'landmark', b.id));
     if (b.facing != null && !_wcNum(b.facing)) act(p + '.facing', 'badType', 'facing is degrees', strip(b, 'facing', b.id));
+    // what the v2 generator draws a footprint with (the converter carries them, 23 Oct): its seed (doors, colours, wear), the edge
+    // with the door (an index into foot) and a ground-floor shop ({ kind } or false)
+    if (b.seed != null && !(Number.isInteger(b.seed) && b.seed >= 0)) act(p + '.seed', 'badValue', 'seed is a whole number >= 0', strip(b, 'seed', b.id));
+    if (b.front != null && !(Number.isInteger(b.front) && b.front >= 0 && b.front < b.foot.length)) act(p + '.front', 'badValue', 'front is the index of a footprint edge (0 = foot[0] -> foot[1])', strip(b, 'front', b.id));
+    if (b.shop != null && b.shop !== false && !(_wcObjOf(b.shop) && _wcStr(b.shop.kind))) act(p + '.shop', 'badValue', 'shop is false or { kind }', strip(b, 'shop', b.id));
   });
 
   // entities and landmarks (one bad entry never takes the rest down: G8)
@@ -1346,24 +1382,42 @@ function _wcReliefCompile(cs) {
   const baseCam = base ? { relief: { x: base.x, d: base.d, nx: base.nx, nd: base.nd, h: base.h } } : null, h = new Array(nx * nd);
   // a world with a cliff AND other relief keeps the relief without the cliff (relief.base): the cliff is drawn analytically (4terrain), the rest from the grid
   const mixed = cliffs > 0 && (!!base || feats.some(f => f.kind !== 'cliff')), hb = mixed ? new Array(nx * nd) : null;
+  // the height at a point: [with the features, without the cliffs]
+  const hpt = (x, d) => {
+    let up = 0, down = 0, cl = 0, tal = 0;
+    for (const f of feats) {
+      if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); if (typeof worldCliffTalus === 'function') tal = Math.max(tal, worldCliffTalus(f, x, d)); continue; }
+      if (f.kind === 'slope') { up = Math.max(up, _wcSlopeAt(f, x, d)); continue; }
+      const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
+    }
+    const b0 = baseCam ? sceneGroundHeight(baseCam, x, d) : 0;
+    // a cliff is an absolute height (its face is drawn from the foot up to `h`): it stands where it is higher than the relief it rises out of
+    // (a talus that lies on the slope below the face is added to the ground it lies on)
+    const upc = cl > 0 ? Math.max(b0 + up + tal, cl) : b0 + up + tal;
+    return [_wcR3(upc + down), _wcR3(b0 + up + down)];
+  };
   for (let j = 0; j < nd; j++) {
     const d = z0 * Math.pow(z1 / z0, j / (nd - 1));
     for (let i = 0; i < nx; i++) {
-      const x = x0 + (x1 - x0) * i / (nx - 1);
-      let up = 0, down = 0, cl = 0;
-      for (const f of feats) {
-        if (f.kind === 'cliff') { cl = Math.max(cl, worldCliffHeight(f, x, d)); continue; }
-        if (f.kind === 'slope') { up = Math.max(up, _wcSlopeAt(f, x, d)); continue; }
-        const pr = _wcFeatProfile(f, _wcLineDist(f.path, x, d)); if (!pr) continue; if (f.kind === 'cutting') down = Math.min(down, -Math.abs(f.h) * pr); else up = Math.max(up, Math.abs(f.h) * pr);
-      }
-      let upc = up;
-      if (cl > 0) upc = Math.max(up, cl);
-      const b0 = baseCam ? sceneGroundHeight(baseCam, x, d) : 0;
-      h[j * nx + i] = _wcR3(b0 + upc + down);
-      if (hb) hb[j * nx + i] = _wcR3(b0 + up + down);
+      const v = hpt(x0 + (x1 - x0) * i / (nx - 1), d);
+      h[j * nx + i] = v[0];
+      if (hb) hb[j * nx + i] = v[1];
     }
   }
   const r = { x: [_wcR3(x0), _wcR3(x1)], d: [_wcR3(z0), _wcR3(z1)], nx, nd, h, src: 'features' };
+  // a lens standing on (or within 40 m of) a cliff's plan: the grid's columns (7 m wide over a valley's three kilometres) blur the lip into a ramp, so things
+  // near the rim would stand at the wrong height or be judged hidden. A fine grid (0.5 to 1 m columns, rows 2 % deep, to 400 m) round the lens and along the
+  // nearer faces holds the true heights; sceneGroundHeight reads it first (18 Oct, Stanage: half the heather at the lens was dropped as "behind a rise")
+  if (cliffs && (x1 - x0) / (nx - 1) > 1.2) {
+    let lens = Infinity, xa = -20, xb = 20;
+    for (const f of feats) { const G = f.kind === 'cliff' ? worldCliffGeom(f) : null; if (!G) continue; for (const p of G.pts) { const dd = Math.hypot(p[0], p[1]); lens = Math.min(lens, dd); if (p[1] > 0 && p[1] < 400) { xa = Math.min(xa, p[0] - 40); xb = Math.max(xb, p[0] + 40); } } }
+    if (lens < 40) {
+      xa = Math.max(-160, xa); xb = Math.min(160, xb);
+      const da = 0.4, db = 400, nn = Math.min(321, Math.ceil((xb - xa) / 0.5) + 1), mm = Math.ceil(Math.log(db / da) / Math.log(1.02)) + 1, hn = new Array(nn * mm);
+      for (let j = 0; j < mm; j++) { const d = da * Math.pow(db / da, j / (mm - 1)); for (let i = 0; i < nn; i++) hn[j * nn + i] = hpt(xa + (xb - xa) * i / (nn - 1), d)[0]; }
+      r.near = { x: [_wcR3(xa), _wcR3(xb)], d: [da, db], nx: nn, nd: mm, h: hn };
+    }
+  }
   if (hb) r.base = { x: r.x, d: r.d, nx, nd, h: hb };
   _wcReliefMemo.set(g, r);
   return r;
@@ -1656,6 +1710,14 @@ function worldBuild(spec, o = {}) {
     if (typeof worldFrameCheck === 'function') { try { worldFrameCheck(world, world.cam, { apply: true }); } catch (err) { _wcLogBuild(log, null, 'the frame check: ' + String(err && err.message || err)); } }
     if (typeof worldLandmarkCheck === 'function') { try { worldLandmarkCheck(world, world.cam, { apply: true, demote: true, season }); } catch (err) { _wcLogBuild(log, null, 'the landmark check: ' + String(err && err.message || err)); } }
   }
+  // a parametric model on sloping ground stands at its LOWEST footprint corner (a boulder sits into the hill instead of hanging off its downhill side by up to a
+  // metre; the invariant 'floating' judges a drawn piece the same way). Done last: a fill entity gets its id, and so its model's seeded size, after it is built
+  if (world.cam && world.cam.relief && typeof worldModelFootOf === 'function' && typeof worldModelHas === 'function') {
+    for (const e of world.entities) {
+      if (!e || e.static === false || !/^ground/.test(String(e.attach || '')) || e.host || !worldModelHas(e.obj)) continue;
+      try { let gm = e.y; for (const q of worldModelFootOf(e, e.model) || []) gm = Math.min(gm, sceneGroundHeight(world.cam, q[0], q[1])); if (gm < e.y) e.y = _wcR3(gm); } catch (err) { /* keep the centre's ground */ }
+    }
+  }
   // one shape for every load-log entry, whoever acted (U2, 12.5)
   for (const l of world.log) if (l && typeof l === 'object') for (const k of ['id', 'obj', 'from', 'to']) if (!(k in l)) l[k] = null;
   return world;
@@ -1874,6 +1936,8 @@ function worldAddLog(id, o) {
   }
   return key.built.slice();
 }
+/** The spec of a registered item as its author wrote it (a `valley` key is still the numbers, not the thousand-number relief it expands to), or null. */
+function worldSourceSpec(id) { const key = _wcReg().get(id); return key ? key.spec : null; }
 /** The registered v3 items whose specs had strict errors (they were repaired and registered all the same): [{ pack, id, errors }]. */
 function worldAddProblems() {
   const out = [];

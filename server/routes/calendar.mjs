@@ -32,7 +32,9 @@ import { createCalendarService } from '../../lib/calendar.mjs';
 import { createCalendarWriter, CalWriteError } from '../../lib/calendar-write.mjs';
 import { fetchCalendarSource, saveSourceSnapshot, readSourceSnapshot, mergeCalendarData } from '../../lib/calendar-sources.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
+import { accountsFor } from '../../lib/accounts.mjs';
 import { HttpError } from '../http.mjs';
+import { skippedBody } from '../../lib/main-computer.mjs';
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -54,10 +56,11 @@ export default function register(app) {
     merge: mergeCalendarData,
     myEmails: () => (getConfig() || {}).myEmails || [],
     noteSync: (id, r) => sources.noteSync(id, r),
+    readsHere: (list) => accountsFor(app.ctx).readsHere(list),
     fetchOther: async (s, { from, to, timeZone }) => {
       const disc = sources.cached();
       const r = await fetchCalendarSource(s, {
-        dataDir, from, to, timeZone, serverDef: s.kind === 'mcp' ? sources.serverDef(s.server) : null,
+        dataDir, accounts: accountsFor(app.ctx), from, to, timeZone, serverDef: s.kind === 'mcp' ? sources.serverDef(s.server) : null,
         denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name),
       });
       await saveSourceSnapshot(paths, s.id, { from, to, ...r });
@@ -130,6 +133,14 @@ export default function register(app) {
     path: '/api/calendar/update', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
       const body = await c.body({ allowEmpty: true });
+      // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };
+      // Not this computer's job: the Claude connectors (and calendar links) wait for the main
+      // computer, but the accounts this computer fetches (lib/sync/roles.mjs) are still read here.
+      if (!mc.run) {
+        const own = mc.reason === 'moving' ? { started: false } : await cal.start({ back: body.back, ahead: body.ahead, force: body.force === true, zone: c.zone, onlyAccounts: true });
+        return own.started ? c.json(202, { job: own.job, ...skippedBody(mc) }) : { ...skippedBody(mc), job: null };
+      }
       const r = await cal.start({ back: body.back, ahead: body.ahead, force: body.force === true, zone: c.zone });
       if (r.started) return c.json(202, { job: r.job });
       if (r.reason === 'running') return c.json(409, { error: 'An update is already running.', job: r.job });

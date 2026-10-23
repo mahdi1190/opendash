@@ -96,6 +96,9 @@ function pageProbe(opts, litPixels) {
     if (k == null) { k = recs.length; idx.set(r.id, k); recs.push(r); stat.push({ a: 0, top: 0, own: 0, match: 0, drawn: false, fa: 0, ft: 0 }); }
     const im = imgOf(r), s = stat[k];
     if (!im) { if (!clip) s.drawn = true; return; }
+    // a translucent agent (life's fade in or out, a ghost pass) shows its colour mixed with what lies under it: the expected colour of
+    // each pixel is that mix where the pixel under it is owned (known), and the pixel is left to the ground where it is not
+    const ga = r.agent && Number.isFinite(r.agent.alpha) ? Math.max(0, Math.min(1, r.agent.alpha)) : 1, see = ga < 0.95;
     const d = im.img.data, w = im.img.width, h = im.img.height, topY = (r.box.y0 + (r.box.y1 - r.box.y0) * 0.4) * vs + oy;
     for (let j = 0; j < h; j++) {
       const Y = im.y + j;
@@ -107,6 +110,12 @@ function pageProbe(opts, litPixels) {
         if (clip && (X < clip[0] || X >= clip[2])) continue;
         if (!clip) { s.a++; if (Y < topY) s.top++; }
         const p = Y * W + X;
+        if (see) {
+          if (own[p] < 0) continue;
+          exp[p * 3] = ga * d[q] + (1 - ga) * exp[p * 3]; exp[p * 3 + 1] = ga * d[q + 1] + (1 - ga) * exp[p * 3 + 1]; exp[p * 3 + 2] = ga * d[q + 2] + (1 - ga) * exp[p * 3 + 2];
+          own[p] = k;
+          continue;
+        }
         own[p] = k; exp[p * 3] = d[q]; exp[p * 3 + 1] = d[q + 1]; exp[p * 3 + 2] = d[q + 2];
         if (!r.agent) ownS[p] = k;
       }

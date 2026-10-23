@@ -6,11 +6,12 @@
 //                         mode, tools/actions-cli.mjs) send it as
 //                         X-Dashboard-Token. The page never needs it: it is
 //                         same-origin.
-//   <data>/runtime.json   {app, pid, port, url, stateFile, startedAt, version},
-//                         written by the server once it listens and removed
-//                         when it stops. The MCP server uses it to find a
-//                         running dashboard; a dead pid or a server that
-//                         answers for a different data folder marks it stale.
+//   <data>/runtime.json   {app, pid, port, url, stateFile, startedAt, version,
+//                         hostname, hostId}, written by the server once it
+//                         listens and removed when it stops. The MCP server uses
+//                         it to find a running dashboard; another computer's
+//                         hostId, a dead pid or a server that answers for a
+//                         different data folder marks it stale.
 //
 // It also signs the confirm tokens a dry run hands out (HMAC with the local
 // token), so a confirm survives a server restart and works in embedded mode.
@@ -19,6 +20,7 @@ import { existsSync, readFileSync, unlinkSync, promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { randomBytes, createHmac, createHash, timingSafeEqual } from 'node:crypto';
 import { atomicWrite, withLock, readJson } from '../../lib/fsutil.mjs';
+import { readHostId } from '../../lib/devicedir.mjs';
 
 export const TOKEN_HEADER = 'x-dashboard-token';
 export const tokenPath = (dataDir) => join(dataDir, 'local-token');
@@ -86,11 +88,19 @@ const samePath = (a, b) => {
 // timeoutMs only matters when the port accepts but is slow to answer (a server
 // that is not there refuses at once): a busy machine's live dashboard is
 // better than falling back to embedded mode, so it is generous.
-export async function discoverServer(dataDir, { stateFile, port: forcedPort, timeoutMs = 5000 } = {}) {
+// A runtime.json written by ANOTHER computer (it travels with a OneDrive data
+// folder) is stale here before anything else: its pid means nothing on this
+// computer and its port is not that server's. opts.hostId: this computer's id
+// (default: read from the device folder, lib/devicedir.mjs; never created here).
+export async function discoverServer(dataDir, { stateFile, port: forcedPort, timeoutMs = 5000, hostId } = {}) {
   let rt = null;
   if (existsSync(runtimePath(dataDir))) rt = await readJson(runtimePath(dataDir), { fallback: null }).catch(() => null);
   const port = forcedPort || (rt && rt.port);
   if (!port) return rt ? { stale: 'runtime.json has no port' } : null;
+  if (!forcedPort && rt && rt.hostId) {
+    const mine = hostId !== undefined ? hostId : readHostId(dataDir);
+    if (rt.hostId !== mine) return { stale: `runtime.json was written by another computer (${String(rt.hostname || 'unknown').slice(0, 63)})`, foreign: true };
+  }
   if (!forcedPort && rt && rt.pid && !pidAlive(rt.pid)) return { stale: `the process ${rt.pid} in runtime.json is not running` };
   try {
     // ?quick=1: a server that has just (re)started answers at once instead of

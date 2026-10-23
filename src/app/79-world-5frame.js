@@ -18,7 +18,7 @@
    band, weather, snow, haze) and scale bucket; chunk bitmaps by their members, the frame geometry and those keys; the shadow
    layer by the sun bucket; the water by the sun bucket and the frame; the lights layer by the set of lit lights. A change of
    time inside a light band re-plans the shadows and the lights and reuses every sprite and chunk bitmap.
-   Section 19: a stable tie by id (worldOrderNearer); view changes cross-fade (0.25 s) and keep appearance's hysteresis; scale
+   Section 19: a stable tie by id (worldOrderNearer); view changes dissolve (0.16 s, each view at its own scale) and keep appearance's hysteresis; scale
    buckets change with hysteresis; no chunk seams (integer chunk origins, 1 px bleed, each entity in exactly one chunk).
    PURE part (Node + browser): worldFramePlan, worldFrameScene, worldFrameAt (the frame record of 16.1, no drawing).
    BROWSER part: the pass (registered when the pass registry is loaded) and the rasteriser.
@@ -30,7 +30,7 @@ let _wfrPassDefined = false;
 function worldFramePassOn() { return _wfrPassDefined; }
 
 const WORLD_FRAME_ZMIN = 0.3;              // nearer than this (metres): behind the lens, not drawn
-const WORLD_FRAME_FADE_S = 0.25;           // a view change cross-fades over this (19)
+const WORLD_FRAME_FADE_S = 0.16;           // a view change cross-fades (a true dissolve: _wfrDrawDissolve) over this (19; 0.25 until 20 Oct: two poses showed through each other too long)
 const WORLD_FRAME_LIVE_CAP = 24;           // statics drawn live (they sway by cause, M3): the nearest this many
 const WORLD_FRAME_LIVE_H = 36;             // ... at least this tall on screen (scene units)
 const WORLD_FRAME_LOD_PX = 14;             // a walker or a paddler shorter than this on screen (device px) is drawn whole: its limbs cannot be told apart
@@ -51,7 +51,7 @@ function _wfrView(e, cam, agent, prev) {
   if (typeof worldViewOf === 'function') {
     try {
       const v = worldViewOf(e, cam, prev ? { prev: prev.view, prevMirror: prev.mirror } : undefined);
-      if (v && typeof v.view === 'string') return { view: v.view, mirror: !!v.mirror, obj: typeof v.obj === 'string' ? v.obj : null, variant: Number.isInteger(v.variant) ? v.variant : null, persp: !!v.persp, s: Number.isFinite(v.s) && v.s > 0 ? v.s : null };
+      if (v && typeof v.view === 'string') return { view: v.view, mirror: !!v.mirror, obj: typeof v.obj === 'string' ? v.obj : null, variant: Number.isInteger(v.variant) ? v.variant : null, persp: !!v.persp, s: Number.isFinite(v.s) && v.s > 0 ? v.s : null, norm: Number.isFinite(v.norm) && v.norm > 0 ? v.norm : 1 };
     } catch (err) { /* below */ }
   }
   if (agent && typeof e.view === 'string') return { view: e.view, mirror: !!e.mirror, obj: null, variant: null, persp: false, s: null };
@@ -90,7 +90,8 @@ function _wfrPrimRec(prim, ent, vw) {
     // a low piece a mover runs on (a railway's ballast bed) lies under it in the order (79-world-3order.js: flat things)
     flat: prim.sub === 'ballast' || prim.sub === 'trough' ? true : undefined,
     // a thing standing on a host's deck is ordered just behind the host's nearest edge (0core _wcEntity), so it is drawn after the host
-    orderZ: ent && Number.isFinite(ent.orderZ) ? ent.orderZ : undefined };
+    // (a terrain strip is ordered by its FAR edge: whatever stands inside the strip's depth range is drawn over the ground it stands on, never cut by the strip under it)
+    orderZ: ent && Number.isFinite(ent.orderZ) ? ent.orderZ : prim.sub === 'terrain' && Number.isFinite(prim.orderZ) ? prim.orderZ : undefined };
 }
 /**
  * The draw record of a world entity or agent at a camera (scene units, 1600 x 900): { id, ent, obj, o (the view's object), v,
@@ -110,10 +111,12 @@ function _wfrRec(e, cam, o) {
   const oid = vw.obj && sceneObj(vw.obj) ? vw.obj : (typeof _wh5ViewObj === 'function' ? _wh5ViewObj(e.obj, vw.view) : e.obj), def = sceneObj(oid);
   if (!def || !def.size) return null;
   const v = vw.variant != null ? vw.variant : Number.isInteger(e.variant) ? e.variant : 0;
-  const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = vw.s || (cam.f / e.z) * _wfrHeight(e) / def.size[1];
   // a person is drawn in the wardrobe of the day's weather (an umbrella is up in rain or showers and furled when it is dry: SCENE_LESSONS J);
   // o.wet: true | false from the draw's light, undefined (a record made without one) keeps the season's wardrobe
   const form = o.agent ? (o.season || 'summer') + (o.wet != null && /^person./.test(String(e.obj)) ? (o.wet ? '~wet' : '~dry') : '') : _wfrFormOf(e, o.season, o.ctx);
+  // a view object is drawn at the height of its side object in the dress it is drawn in (appearance's worldViewNorm for this season)
+  const nk = oid !== e.obj && typeof worldViewNorm === 'function' ? worldViewNorm(e.obj, oid, v, o.agent ? o.season || 'summer' : null) : 1;
+  const P = sceneProject(cam, e.x, e.z, Number.isFinite(e.y) ? e.y : null), s = (vw.s ? vw.s / (vw.norm || 1) : (cam.f / e.z) * _wfrHeight(e) / def.size[1]) * nk;
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(oid, v, form) : null, b = (sh && sh.box) || [-def.size[0] / 2, -def.size[1], def.size[0] / 2, 0];
   const flip = !!vw.mirror && def.flippable !== false;
   const box = flip ? { x0: P.X - b[2] * s, y0: P.Y + b[1] * s, x1: P.X - b[0] * s, y1: P.Y + b[3] * s } : { x0: P.X + b[0] * s, y0: P.Y + b[1] * s, x1: P.X + b[2] * s, y1: P.Y + b[3] * s };
@@ -205,6 +208,160 @@ function _wfrAgentEnt(a) {
   // (a spread, not Object.assign: that makes dictionary-mode objects, and copying one of those costs 20 us for an agent's 45 fields)
   return { ...a, id: a.id != null ? String(a.id) : null, static: false, facing, foot: _wfrAgentFoot(a), height: Number.isFinite(a.h) ? a.h : a.height,
     attach: a.attach || (a.host ? 'deck:' + a.host : a.layer === 'swim' ? 'water' : a.layer === 'air' ? 'air' : 'ground') };
+}
+/**
+ * The draw memory of an agent across frames (the compositor's and worldFrameFigures'): its scale bucket (with hysteresis) and the
+ * start of a view change (m.prev: the view, object and flip it changes from; m.since: when). Returns m; sets r.bucket and r.mem.
+ */
+function _wfrAgentMem(mem, r, tau) {
+  let m = mem.get(r.id);
+  if (!m) { m = { e: Math.round(Math.log2(Math.max(1e-3, r.s)) * 4), view: r.view, mirror: r.mirror, o: r.o, flip: r.flip, prev: null, since: -1 }; mem.set(r.id, m); }
+  const ex = Math.log2(Math.max(1e-3, r.s)) * 4;
+  if (Math.abs(ex - m.e) > 0.75) m.e = Math.round(ex);
+  r.bucket = 2 ** (m.e / 4);
+  // sz: the scale times the depth (the view's own scale at any depth): the old view of a change is drawn at ITS scale, not the new one's
+  const sz = r.s * r.z;
+  if (m.o !== r.o || m.flip !== r.flip) {
+    // a second change while the first is less than half faded: the new view takes the place of the half-shown one (the old view keeps
+    // fading out); else the view it leaves becomes the old one. Until 20 Oct the half-shown one vanished at once (a dog's width popped)
+    const k0 = m.prev && m.since >= 0 ? (tau - m.since) / WORLD_FRAME_FADE_S : 1;
+    if (!(k0 < 0.5)) { m.prev = { o: m.o, flip: m.flip, view: m.view, sz: m.sz }; m.since = tau; }
+    m.changed = tau;
+  }
+  m.view = r.view; m.mirror = r.mirror; m.o = r.o; m.flip = r.flip; m.sz = sz;
+  r.mem = m;
+  return m;
+}
+/**
+ * The drawings of an agent this frame: [{ rec, a }] (a: the share of its opacity), two while a view change cross-fades (the old view
+ * under the new), else one. Clears the memory of a finished change.
+ */
+function _wfrFadeRecs(r, m, tau) {
+  const k = m && m.prev && m.since >= 0 ? Math.max(0, Math.min(1, (tau - m.since) / WORLD_FRAME_FADE_S)) : 1;
+  if (k < 1 && m.prev && m.prev.o && !r.prim) {
+    const old = Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip, view: m.prev.view || r.view });
+    // the old view at its own scale (until 20 Oct it took the new view's: a walker's side art shrank by a fifth in the first frame of a
+    // turn toward the eye, whatever the views' heights), its own box and sprite bucket
+    if (m.prev.sz > 0 && r.z > 0) {
+      old.s = m.prev.sz / r.z;
+      old.bucket = 2 ** (Math.round(Math.log2(Math.max(1e-3, old.s)) * 4) / 4);
+      const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(old.o, old.v, old.season) : null, b = sh && sh.box;
+      if (b) old.box = old.flip ? { x0: r.X - b[2] * old.s, y0: r.Y + b[1] * old.s, x1: r.X - b[0] * old.s, y1: r.Y + b[3] * old.s } : { x0: r.X + b[0] * old.s, y0: r.Y + b[1] * old.s, x1: r.X + b[2] * old.s, y1: r.Y + b[3] * old.s };
+    }
+    return [{ rec: old, a: 1 - k, old: true }, { rec: r, a: k }];
+  }
+  if (m) m.prev = null;
+  return [{ rec: r, a: 1 }];
+}
+/**
+ * A view change drawn as a true dissolve (20 Oct): the old and the new drawing each made whole in a scratch, mixed in proportion
+ * (old x (1 - k) + new x k: 'lighter' on premultiplied pixels), and the mix laid on the frame once at the agent's own opacity ga. Two
+ * drawings blitted one over the other at 1 - k and k let the scene show through the figure halfway (0.75 cover at k = 0.5) and the
+ * old view's wider parts vanish at once at the end. Falls back to the two blits when there is no scratch.
+ */
+function _wfrDrawDissolve(env, S, ctx, rOld, rNew, k, tau, ga) {
+  const vs = env.vs, bx = (r) => r.box;
+  const x0f = Math.min(bx(rOld).x0, bx(rNew).x0), y0f = Math.min(bx(rOld).y0, bx(rNew).y0), x1f = Math.max(bx(rOld).x1, bx(rNew).x1), y1f = Math.max(bx(rOld).y1, bx(rNew).y1);
+  const bw = (x1f - x0f) * vs, bh = (y1f - y0f) * vs, pad = Math.ceil(Math.max(4, Math.max(bw, bh) * 0.25));
+  const x0 = Math.floor(x0f * vs + env.ox) - pad, y0 = Math.floor(y0f * vs + env.oy) - pad, w = Math.ceil(bw) + 2 * pad, h = Math.ceil(bh) + 2 * pad;
+  const two = () => _wfrDrawMover(env, S, ctx, rOld, tau, (1 - k) * ga) + _wfrDrawMover(env, S, ctx, rNew, tau, k * ga);
+  if (!(w > 0 && h > 0) || w > 2 * (env.W || 4096) || h > 2 * (env.H || 4096) || rOld.cut || rNew.cut) return two();
+  const grow = (c) => { if (c && c.width >= w && c.height >= h) return c; try { return _wfrCanvas(Math.max(w, c ? c.width : 0, 64), Math.max(h, c ? c.height : 0, 128)); } catch (e) { return null; } };
+  const A = S.fadeA = grow(S.fadeA), B = S.fadeB = grow(S.fadeB);
+  const ax = A && A.getContext ? A.getContext('2d') : null, bx2 = B && B.getContext ? B.getContext('2d') : null;
+  if (!ax || !bx2) return two();
+  const e2 = Object.create(env); e2.ox = env.ox - x0; e2.oy = env.oy - y0;
+  for (const c of [ax, bx2]) { c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, w, h); }
+  let n = 0;
+  try {
+    S.figA = (1 - k) * ga; n += _wfrDrawMover0(e2, S, ax, rOld, tau, 1);
+    S.figA = k * ga; n += _wfrDrawMover0(e2, S, bx2, rNew, tau, 1);
+  } finally { S.figA = null; }
+  ax.setTransform(1, 0, 0, 1, 0, 0);
+  ax.globalCompositeOperation = 'destination-out'; ax.globalAlpha = k; ax.fillStyle = '#000'; ax.fillRect(0, 0, w, h);
+  ax.globalCompositeOperation = 'lighter'; ax.globalAlpha = k; ax.drawImage(B, 0, 0, w, h, 0, 0, w, h);
+  ax.globalCompositeOperation = 'source-over'; ax.globalAlpha = 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = ga;
+  ctx.drawImage(A, 0, 0, w, h, x0, y0, w, h);
+  ctx.globalAlpha = 1;
+  return n + 1;
+}
+/**
+ * The blits of one mover drawing at scene time tau (the compositor draws exactly these; worldFrameFigures measures them):
+ * { blits: [{ part ('*', 'rest:a,b' or a part), M (device matrix), a (the part's own opacity) }], moved }. hooks: its animation hooks
+ * (_wfrHooks); vs: device px a scene unit (the LOD: a figure under WORLD_FRAME_LOD_PX device px is one blit that bobs); M: its rest matrix.
+ */
+function _wfrPosePlan(r, hooks, tau, L, vs, M) {
+  // a far mover (a few pixels tall): the swing of a leg is under a pixel, so its rest art is one blit instead of the body and four limbs.
+  // It keeps its STEP: the whole figure bobs twice a stride by at least WORLD_FRAME_LOD_BOB device px (18 Oct: far walkers glided like
+  // cut-outs while near ones walked; a bob of the art's 1.4 units is a fifth of a pixel at that size)
+  let lodBob = 0;
+  if (hooks.length && !r.static && (r.box.y1 - r.box.y0) * vs < WORLD_FRAME_LOD_PX) {
+    const wk = hooks.find(h => h.kind === 'walk' && h.k > 0.3);
+    if (wk) { try { const b = sceneAnimPose(wk, tau, L, r.x).bob || 0, w = Math.abs(Math.sin(2 * Math.PI * (tau / (wk.period || 0.9) + (wk.phase || 0)))); lodBob = -Math.max(-b * vs * r.s, WORLD_FRAME_LOD_BOB * w * Math.min(1, wk.k)); } catch (e) { lodBob = 0; } }
+    hooks = hooks.filter(h => h.kind !== 'walk' && h.kind !== 'paddle');
+  }
+  const out = [];
+  if (!hooks.length) {
+    if (lodBob) { const MB = M.slice(); MB[5] += lodBob; out.push({ part: '*', M: MB, a: 1 }); } else out.push({ part: '*', M, a: 1 });
+    return { blits: out, moved: null };
+  }
+  const whole = hooks.find(h => _wfrParts(h)[0] === '*'), moved = [...new Set(hooks.filter(h => _wfrParts(h)[0] !== '*').flatMap(_wfrParts))];
+  let bob = 0, sway = 0;
+  for (const h of hooks) if (h.kind === 'walk') { try { const P = sceneAnimPose(h, tau, L, r.x); bob = P.bob || 0; sway = P.sway || 0; } catch (e) { bob = 0; } break; }
+  let W0 = null;
+  if (whole) { try { W0 = sceneAnimPose(whole, tau, L, r.x).m; } catch (e) { W0 = null; } }
+  const MR = W0 ? _wfrMul(M, W0) : M.slice();
+  if (bob) MR[5] += bob * vs * r.s;
+  if (sway) MR[4] += sway * vs * r.s * (MR[0] < 0 ? -1 : 1);
+  if (lodBob) MR[5] += lodBob;
+  out.push({ part: moved.length ? 'rest:' + moved.join(',') : '*', M: MR, a: 1 });
+  for (const h of hooks) {
+    if (h === whole) continue;
+    const parts = _wfrParts(h);
+    if (parts[0] === '*') continue;
+    let pose = null;
+    try { pose = sceneAnimPose(h, tau, L, r.x); } catch (e) { pose = null; }
+    if (!pose) continue;
+    parts.forEach((p, j) => out.push({ part: p, M: _wfrMul(MR, j === 1 && pose.m2 ? pose.m2 : pose.m), a: pose.alphas ? pose.alphas[j] * pose.alpha : pose.alpha }));
+  }
+  return { blits: out, moved };
+}
+/**
+ * What the compositor draws of each agent at scene time t, without drawing (the tools' measure of the drawn figures: tools/lib/world/
+ * pops.mjs): the same draw records (views with their hysteresis memory, scale buckets, the view cross-fade, the near band and the
+ * frame sides) and the same pose plans as a frame. -> [{ id, obj, cls, o, v, season, view, mirror, flip, X, Y, s, x, z, height, alpha,
+ * fade (0..1, 1: no view change under way), draws: [{ o, v, season, flip, s, a (its share of the opacity), old, blits: [{ part, M, a }] }] }]
+ * in scene units (1600 x 900). o: { mem (a Map kept between calls: the draw memory), agents, tau, season, wet, vs (1) }.
+ */
+function worldFrameFigures(world, t, o) {
+  o = o || {};
+  if (!world || !world.cam || typeof sceneObjShapes !== 'function') return [];
+  const cam = world.cam, mem = o.mem || new Map(), tau = Number.isFinite(o.tau) ? o.tau : Number(t) || 0, vs = o.vs || 1;
+  const season = o.season || world.season || 'summer', S = { rec: { world }, season }, seen = new Set(), out = [];
+  const agents = Array.isArray(o.agents) ? o.agents : _wfrWorldAgents(world, o);
+  const base = { vs: 1, ox: 0, oy: 0 };
+  for (const a of agents) {
+    if (a.culled && a.cullReason !== 'occluded') continue;
+    const m0 = mem.get(String(a.id));
+    const r = _wfrRec(_wfrAgentEnt(a), cam, { season, agent: true, prev: m0, regions: [], wet: o.wet });
+    if (!r || r.prim) continue;
+    if (r.z < cam.f * r.height / 405 && !a.framed) continue;
+    if (r.box.x1 < -50 || r.box.x0 > 1650 || r.box.y1 < -50) continue;
+    r.agent = a;
+    const m = _wfrAgentMem(mem, r, tau);
+    seen.add(r.id);
+    const draws = [];
+    for (const f of _wfrFadeRecs(r, m, tau)) {
+      const q = f.rec, sh = sceneObjShapes(q.o, q.v, q.season || season), hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(null, S, q, sh, tau) : [];
+      const plan = _wfrPosePlan(q, hooks, tau, null, vs, _wfrM(base, q));
+      draws.push({ o: q.o, v: q.v, season: q.season || season, flip: !!q.flip, s: q.s, a: f.a, old: !!f.old, blits: plan.blits });
+    }
+    out.push({ id: r.id, obj: r.obj, cls: r.ent.cls || null, o: r.o, v: r.v, season: r.season || season, view: r.view, mirror: !!r.mirror, flip: !!r.flip, X: r.X, Y: r.Y, s: r.s,
+      x: r.x, z: r.z, height: r.height, alpha: _wfrAgentAlpha(r), fade: draws.length > 1 ? draws[1].a : 1, draws });
+  }
+  for (const k of [...mem.keys()]) if (!seen.has(k)) mem.delete(k);
+  return out;
 }
 
 /** The rows of the nav grids a mover can stand on (sorted z, one per row with any standable cell in view): chunk rule (b). */
@@ -386,7 +543,8 @@ function worldFramePlan(world, o) {
   const gentleGround = Array.isArray(world.features) && world.features.length > 0 && world.features.every(f => f && f.kind === 'slope');
   if (typeof worldTerrainPrims === 'function') {
     try {
-      for (const p of worldTerrainPrims(world, cam, { season: o.season }) || []) if (p && p.box) {
+      const tc = o.ctx || null, snowK = tc && (tc.snowDay || tc.snowCover > 0) ? Math.max(0.5, Math.min(1, Number(tc.snowCover) || Number(tc.snowDepth) || 0.7)) : 0;
+      for (const p of worldTerrainPrims(world, cam, { season: o.season, month: tc && Number.isFinite(tc.month) ? tc.month : undefined, snow: snowK }) || []) if (p && p.box) {
         const r = _wfrPrimRec(p, null, null);
         // ground below a mover's feet never covers the mover: the strip is an occluder only where its upper edge reaches above them (4terrain)
         if (p.tops && typeof worldTerrainOccludes === 'function') r.occlude = (box) => worldTerrainOccludes(p, box);
@@ -476,6 +634,14 @@ function worldFrameScene(x, o) {
   return { spec, world, cam: world.cam, season, date, driver, plan, regions, W: 1600, H: 900 };
 }
 function _wfrR3(v) { return Number.isFinite(v) ? Math.round(v * 1000) / 1000 : v; }
+/** A draw record's rest art as drawn (appearance's exact outline bounds, worldArtBounds; scene units): [x0, y0, x1, y1] or null. */
+function _wfrFigBox(r) {
+  if (typeof worldArtBounds !== 'function' || !r || !r.o) return null;
+  const b = worldArtBounds(r.o, r.v, r.season, '*');
+  if (!b) return null;
+  const s = r.s;
+  return r.flip ? [_wfrR3(r.X - b[2] * s), _wfrR3(r.Y + b[1] * s), _wfrR3(r.X - b[0] * s), _wfrR3(r.Y + b[3] * s)] : [_wfrR3(r.X + b[0] * s), _wfrR3(r.Y + b[1] * s), _wfrR3(r.X + b[2] * s), _wfrR3(r.Y + b[3] * s)];
+}
 // geometry at full precision: a checker reading the record reproduces the order's own comparisons (no rounding ties)
 function _wfrBoxArr(b) { return b ? [b.x0, b.y0, b.x1, b.y1] : null; }
 function _wfrPts(P) { return Array.isArray(P) ? P.map(q => [q[0], q[1]]) : null; }
@@ -583,9 +749,11 @@ function worldFrameAt(scene, t, o) {
       state: agent ? a.state || null : null, born: agent && Number.isFinite(a.born) ? a.born : null, anim, sway, shadow, reflect, waterline: Number.isFinite(e.waterline) ? _wfrR3(e.waterline) : null,
       prim: r.prim ? (r.prim.walkway ? 'walkway' : r.prim.kind || null) : null, spans: !!(r.prim && r.prim.spans), tops: r.prim && r.prim.tops ? _wfrPlain(r.prim.tops) : null, redrawFor: !agent && redrawn.has(r.id) ? redrawn.get(r.id).slice() : null, alpha: agent && Number.isFinite(a.alpha) ? _wfrR3(a.alpha) : null, pose: agent ? a.pose || null : null, age: agent ? a.age || null : null, solidity: e.solidity || null, decal: !!e.decal,
       // what the checkers need of a mover: its body radius, its group (the leader's id), whether it has a lead, and its intent (life)
-      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, stepping: agent ? !!e.stepping : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false,
+      r: agent && Number.isFinite(e.r) ? _wfrR3(e.r) : null, group: agent ? e.group || null : null, leash: agent ? !!e.lead : false, intent: agent ? e.intent || null : null, squeeze: agent ? !!e.squeeze : false, ghost: agent && e.ghost > 0 ? _wfrR3(e.ghost) : 0, ghostWith: agent && Array.isArray(e.ghostWith) && e.ghostWith.length ? e.ghostWith.map(String) : null, stepping: agent ? !!e.stepping : false, leader: agent ? e.leader || null : null, resident: agent ? !!e.resident : false,
       // the look drawn (A11) and what a check needs to judge the frame by itself (variant, outfit, attach, deck, live)
-      variant: r.v != null ? r.v : null, outfit: agent && e.outfit != null ? e.outfit : null, attach: e.attach || null, deck: e.deck || null, live: !!r.live };
+      variant: r.v != null ? r.v : null, outfit: agent && e.outfit != null ? e.outfit : null, attach: e.attach || null, deck: e.deck || null, live: !!r.live,
+      // the drawn extent of an agent's rest art (exact outlines, not the conservative box): the sizePop rule compares it frame to frame
+      fig: agent && !r.prim ? _wfrFigBox(r) : null, vobj: agent ? r.o : undefined };
   };
   const ents = plan.recs.map(r => one(r, false)).concat(aRecs.map(r => one(r, true)));
   let lights = [];
@@ -1480,7 +1648,8 @@ function _wfrRun(S, ms) {
 function _wfrHooks(env, S, r, sh, tau) {
   if (typeof worldAnimHooks === 'function') {
     try {
-      const h = worldAnimHooks(r.ent, tau, { obj: r.o, variant: r.v, season: r.season || S.season, world: S.rec.world });
+      // (the view DRAWN: the old one of a view change keeps its own swing; appearance's own view otherwise)
+      const h = worldAnimHooks(r.ent, tau, { obj: r.o, variant: r.v, season: r.season || S.season, world: S.rec.world, view: r.agent || r.mem ? r.view : undefined });
       const list = Array.isArray(h) ? h : h && Array.isArray(h.hooks) ? h.hooks : null;
       if (list) return list.filter(x => x && x.kind);
     } catch (e) { /* below */ }
@@ -1489,23 +1658,42 @@ function _wfrHooks(env, S, r, sh, tau) {
   const ph = Number.isFinite(r.ent.phase) ? r.ent.phase : 0;
   return sh.anim.filter(h => h.kind === 'walk' || h.kind === 'paddle' || h.kind === 'flap').map(h => Object.assign({}, h, { phase: ((h.phase || 0) + ph) % 1 }));
 }
-/** Draw one mover (an agent or a live static): its rest sprite and its moving parts posed at the scene time, cut at a waterline. */
+/**
+ * Draw one mover at an opacity (alpha: the view change's cross-fade times the agent's own alpha, life's fade in or out and its ghost
+ * pass). Opaque, a bitmap or a drawn piece: straight onto the frame. A translucent figure of several parts (a body and four posed
+ * limbs) is drawn whole into a scratch and laid on the frame once at its alpha: blitted part by part, each limb showed through the
+ * body under it (an x-ray figure) and the overlaps were darker (the ghost pass, 20 Oct).
+ */
 function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
+  const A = alpha == null ? 1 : alpha;
+  if (A >= 0.999 || !(A > 0) || r.bmp || r.prim || r.static || !r.box) return _wfrDrawMover0(env, S, ctx, r, tau, alpha);
+  const b = r.box, vs = env.vs, bw = (b.x1 - b.x0) * vs, bh = (b.y1 - b.y0) * vs, pad = Math.ceil(Math.max(4, Math.max(bw, bh) * 0.25));
+  const x0 = Math.floor(b.x0 * vs + env.ox) - pad, y0 = Math.floor(b.y0 * vs + env.oy) - pad, w = Math.ceil(bw) + 2 * pad, h = Math.ceil(bh) + 2 * pad;
+  if (!(w > 0 && h > 0) || w > 2 * (env.W || 4096) || h > 2 * (env.H || 4096)) return _wfrDrawMover0(env, S, ctx, r, tau, alpha);
+  let sc = S.ghostScratch;
+  if (!sc || sc.width < w || sc.height < h) { try { sc = S.ghostScratch = _wfrCanvas(Math.max(w, sc ? sc.width : 0, 64), Math.max(h, sc ? sc.height : 0, 128)); } catch (e) { sc = null; } }
+  const sx = sc && sc.getContext ? sc.getContext('2d') : null;
+  if (!sx) return _wfrDrawMover0(env, S, ctx, r, tau, alpha);
+  sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalAlpha = 1; sx.globalCompositeOperation = 'source-over'; sx.clearRect(0, 0, w, h);
+  // the same drawing with the frame's origin moved to the scratch's corner (env is only read by the draw)
+  const e2 = Object.create(env); e2.ox = env.ox - x0; e2.oy = env.oy - y0;
+  S.figA = A;
+  let n;
+  try { n = _wfrDrawMover0(e2, S, sx, r, tau, 1); } finally { S.figA = null; }
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = A;
+  ctx.drawImage(sc, 0, 0, w, h, x0, y0, w, h);
+  ctx.globalAlpha = 1;
+  return n + 1;
+}
+/** Draw one mover (an agent or a live static): its rest sprite and its moving parts posed at the scene time, cut at a waterline. */
+function _wfrDrawMover0(env, S, ctx, r, tau, alpha) {
   if (r.bmp) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.drawImage(r.bmp.c, 0, 0, r.bmp.w, r.bmp.h, r.bmp.x, r.bmp.y, r.bmp.w, r.bmp.h); ctx.globalAlpha = 1; return 1; }
   if (r.prim) return _wfrDrawRec(ctx, env, S, r, null, 0, 0, alpha);
   const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(r.o, r.v, r.season || S.season) : null;
   const L = env.Lnow || env.L, night = !!(L && (L.windows || L.dark > 0.5)), lit = !r.static && night && /vehicle|tram|train|boat|bus|car/.test(String(r.ent.cls || r.obj));
-  let hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [];
-  // a far mover (a few pixels tall): the swing of a leg is under a pixel, so its rest art is one blit instead of the body and four limbs.
-  // It keeps its STEP: the whole figure bobs twice a stride by at least WORLD_FRAME_LOD_BOB device px (18 Oct: far walkers glided like
-  // cut-outs while near ones walked; a bob of the art's 1.4 units is a fifth of a pixel at that size)
-  let lodBob = 0;
-  if (hooks.length && !r.static && (r.box.y1 - r.box.y0) * env.vs < WORLD_FRAME_LOD_PX) {
-    const wk = hooks.find(h => h.kind === 'walk' && h.k > 0.3);
-    if (wk) { try { const b = sceneAnimPose(wk, tau, L, r.x).bob || 0, w = Math.abs(Math.sin(2 * Math.PI * (tau / (wk.period || 0.9) + (wk.phase || 0)))); lodBob = -Math.max(-b * env.vs * r.s, WORLD_FRAME_LOD_BOB * w * Math.min(1, wk.k)); } catch (e) { lodBob = 0; } }
-    hooks = hooks.filter(h => h.kind !== 'walk' && h.kind !== 'paddle');
-  }
+  const hooks = typeof sceneAnimPose === 'function' ? _wfrHooks(env, S, r, sh, tau) : [];
   const d = r.static ? S.draw.get(r.id) : null, M = d && d.M ? d.M : _wfrM(env, r);
+  const plan = _wfrPosePlan(r, hooks, tau, L, env.vs, M);
   const x = { litGlow: lit, bucket: r.bucket };
   if (r.cut) { ctx.save(); _wfrClipCut(ctx, r.cut, env, 0, 0); }
   let n = 0;
@@ -1513,44 +1701,28 @@ function _wfrDrawMover(env, S, ctx, r, tau, alpha) {
     let ga = -1;   // the alpha last set here (the first blit always sets it): not set again when it is the same
     const blit = (sp, MM, al) => { if (!sp || !sp.c || !(al > 0)) return; if (al !== ga) { ctx.globalAlpha = ga = al; } ctx.setTransform(MM[0], MM[1], MM[2], MM[3], MM[4], MM[5]); ctx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h); n++; };
     const A0 = alpha == null ? 1 : alpha;
-    if (!hooks.length) {
-      const sp = _wfrSpriteOf(env, S, r, '*', x);
-      r.spNow = sp;
+    r.spNow = null;
+    plan.blits.forEach((b, i) => {
+      const sp = _wfrSpriteOf(env, S, r, b.part, x);
+      if (i === 0 && b.part === '*') r.spNow = sp;
       if (sp && env.keep) env.keep(sp);
-      if (lodBob) { const MB = M.slice(); MB[5] += lodBob; blit(sp, MB, A0); } else blit(sp, M, A0);
-    } else {
-      const whole = hooks.find(h => _wfrParts(h)[0] === '*'), moved = [...new Set(hooks.filter(h => _wfrParts(h)[0] !== '*').flatMap(_wfrParts))];
-      const rest = _wfrSpriteOf(env, S, r, moved.length ? 'rest:' + moved.join(',') : '*', x);
-      r.spNow = moved.length ? null : rest;
-      if (rest && env.keep) env.keep(rest);
-      let bob = 0, sway = 0;
-      for (const h of hooks) if (h.kind === 'walk') { try { const P = sceneAnimPose(h, tau, L, r.x); bob = P.bob || 0; sway = P.sway || 0; } catch (e) { bob = 0; } break; }
-      let W0 = null;
-      if (whole) { try { W0 = sceneAnimPose(whole, tau, L, r.x).m; } catch (e) { W0 = null; } }
-      const MR = W0 ? _wfrMul(M, W0) : M.slice();
-      if (bob) MR[5] += bob * env.vs * r.s;
-      if (sway) MR[4] += sway * env.vs * r.s * (MR[0] < 0 ? -1 : 1);
-      if (lodBob) MR[5] += lodBob;
-      blit(rest, MR, A0);
-      for (const h of hooks) {
-        if (h === whole) continue;
-        const parts = _wfrParts(h);
-        if (parts[0] === '*') continue;
-        let pose = null;
-        try { pose = sceneAnimPose(h, tau, L, r.x); } catch (e) { pose = null; }
-        if (!pose) continue;
-        parts.forEach((p, j) => {
-          const al = pose.alphas ? pose.alphas[j] * pose.alpha : pose.alpha;
-          const sp = _wfrSpriteOf(env, S, r, p, x);
-          if (sp && env.keep) env.keep(sp);
-          blit(sp, _wfrMul(MR, j === 1 && pose.m2 ? pose.m2 : pose.m), A0 * al);
-        });
-      }
+      blit(sp, b.M, A0 * b.a);
+    });
+    // the tools' record of what was drawn (pops.mjs --browser: S.figs is set only while a tool measures), in scene units of the frame
+    if (S.figs && !r.static && r.agent) {
+      const vs = env.vs || 1, ox = env.ox || 0, oy = env.oy || 0, fa = S.figA == null ? A0 : S.figA;
+      S.figs.push({ id: r.id, obj: r.obj, o: r.o, v: r.v, season: r.season || S.season, flip: !!r.flip, s: r.s, a: fa, X: r.X, Y: r.Y, x: r.x, z: r.z, height: r.height, view: r.view, mirror: !!r.mirror, blits: plan.blits.map(b => ({ part: b.part, a: b.a, M: [b.M[0] / vs, b.M[1] / vs, b.M[2] / vs, b.M[3] / vs, (b.M[4] - ox) / vs, (b.M[5] - oy) / vs] })) });
     }
   } finally { if (r.cut) ctx.restore(); ctx.globalAlpha = 1; }
   // a live static's lit glass (a lamp's lantern, a lit window): the chunk path draws it for a baked one
   if (r.static && !r.prim && S.lightNow) { try { n += _wfrDrawGlass(ctx, env, S, r, 0, 0, S.lightNow) || 0; } catch (e) { /* unlit */ } }
   return n;
+}
+/** An agent record's own opacity 0..1 (life's alpha: fading in or out, a ghost pass), 1 for anything else. */
+function _wfrAgentAlpha(r) {
+  const a = r && (r.agent || r.ent);
+  const v = a && Number.isFinite(a.alpha) ? a.alpha : 1;
+  return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 /** The contact blob under a grounded agent (no look package): a soft ellipse, never on water or in the air. */
 function _wfrBlob(ctx, env, r) {
@@ -1558,7 +1730,7 @@ function _wfrBlob(ctx, env, r) {
   if (_wfrIsWater(a) || a.layer === 'wade' || a.layer === 'air' || /^air/.test(String(a.attach || ''))) return 0;
   const w = Math.max(3, (r.box.x1 - r.box.x0) * 0.7) * env.vs, h = Math.max(1, w * 0.18);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = env.Lnow && env.Lnow.dark > 0.7 ? 0.12 : 0.22;
+  ctx.globalAlpha = (env.Lnow && env.Lnow.dark > 0.7 ? 0.12 : 0.22) * _wfrAgentAlpha(r);   // fades with the body
   ctx.fillStyle = '#10161e';
   ctx.beginPath(); ctx.ellipse(r.X * env.vs + env.ox, r.Y * env.vs + env.oy, w / 2, h / 2, 0, 0, 2 * Math.PI); ctx.fill();
   ctx.globalAlpha = 1;
@@ -1604,7 +1776,7 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
       if (r.prim) {
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.beginPath(); ctx.rect(-1e5, yClip, 2e5, 1e5); ctx.clip();
-        ctx.globalAlpha = k;
+        ctx.globalAlpha = k * _wfrAgentAlpha(r);   // a boat fading in or out: its reflection with it
         const b = r.box, x0 = Math.floor(b.x0 * vs + ox) - 1, y0 = Math.floor(b.y0 * vs + oy) - 1, ww = Math.ceil((b.x1 - b.x0) * vs) + 2, hh = Math.min(Math.ceil(Yc - y0) + 1, Math.ceil((b.y1 - b.y0) * vs) + 2);
         if (ww > 0 && hh > 0 && ww < 4 * env.W && hh < 4 * env.H) {
           const sc = S.scratch && S.scratch.width >= ww && S.scratch.height >= hh ? S.scratch : (S.scratch = _wfrCanvas(Math.max(ww, 64), Math.max(hh, 64)));
@@ -1619,6 +1791,7 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
       } else {
         const sp = _wfrSpriteOf(env, S, r, '*', { bucket: r.bucket });
         if (sp && sp.c) {
+          ctx.globalAlpha = k * _wfrAgentAlpha(r);   // a ghost's (or a fading mover's) reflection fades with it
           // the mirror shows only below the contact row: the art rows from the top down to ycut (the sprite's own rows below its anchor
           // flip above the axis); cropped from the source, not clipped (a save, a rect clip and a restore an agent)
           const M = _wfrM(env, r), ycut = (2 * Yc - M[5] - yClip) / M[3];
@@ -1668,20 +1841,16 @@ function _wfrDraw(env, ctx, t) {
     if (!r.prim && r.z < cam.f * r.height / 405 && !a.framed) continue;
     if (r.box.x1 * vs + ox < -50 || r.box.x0 * vs + ox > env.W + 50 || r.box.y1 * vs + oy < -50) continue;
     r.agent = a;
-    let m = m0;
-    if (!m) { m = { e: Math.round(Math.log2(Math.max(1e-3, r.s)) * 4), view: r.view, mirror: r.mirror, o: r.o, flip: r.flip, prev: null, since: -1 }; mem.set(r.id, m); }
-    const ex = Math.log2(Math.max(1e-3, r.s)) * 4;
-    if (Math.abs(ex - m.e) > 0.75) m.e = Math.round(ex);
-    r.bucket = 2 ** (m.e / 4);
-    if (m.o !== r.o || m.flip !== r.flip) { m.prev = { o: m.o, flip: m.flip, view: m.view }; m.since = tau; }
-    m.view = r.view; m.mirror = r.mirror; m.o = r.o; m.flip = r.flip;
-    r.mem = m; seen.add(r.id);
+    _wfrAgentMem(mem, r, tau);
+    seen.add(r.id);
     aRecs.push(r);
   }
   for (const k of [...mem.keys()]) if (!seen.has(k)) mem.delete(k);
   // what this frame really draws (the invariant checker's input on the real frame: worldFrameDrawn): the agents that survived the
   // draw's own drops (the near band, the frame sides, the governor's thinning), at the scene time they were drawn
   S.drawn = { t, tau, agents: aRecs.map(r => r.agent) };
+  // a tool measuring the drawn figures (pops.mjs --browser sets S.figRec): every blit of every agent this frame (_wfrDrawMover0)
+  S.figs = S.figRec ? (S.drawn.figs = []) : null;
   const tRecs = _wfrNow();
   const sea = _wfrSea(L), live = S.plan.live.some(r => r.rocks) ? S.plan.live.map(r => (r.rocks ? _wfrRockRec(env, S, r, tau, sea) : r)) : S.plan.live;
   const movers = live.concat(aRecs);
@@ -1800,13 +1969,15 @@ function _wfrDraw(env, ctx, t) {
     }
     if (it.kind === 'agent') {
       const r = it.ref, m = r.mem;
-      const k = m && m.prev && m.since >= 0 ? Math.max(0, Math.min(1, (tau - m.since) / WORLD_FRAME_FADE_S)) : 1;
-      if (k < 1 && m.prev && m.prev.o && !r.prim) draws += _wfrDrawMover(env, S, ctx, Object.assign({}, r, { o: m.prev.o, flip: !!m.prev.flip }), tau, 1 - k);
-      else if (m) m.prev = null;
-      draws += _wfrDrawMover(env, S, ctx, r, tau, k);
+      // the agent's own opacity (life: a fade in or out, a ghost pass through another walker), times the view change's cross-fade
+      const ga = _wfrAgentAlpha(r);
+      const fr = r.agent ? _wfrFadeRecs(r, m, tau) : [{ rec: r, a: 1 }];
+      if (fr.length === 2 && !r.prim && !r.bmp) draws += _wfrDrawDissolve(env, S, ctx, fr[0].rec, fr[1].rec, fr[1].a, tau, ga);
+      else for (const f of fr) draws += _wfrDrawMover(env, S, ctx, f.rec, tau, f.a * ga);
       const own = (agentLights && agentLights.get(r.id)) || (r.static && S.liveLights && S.liveLights.get(r.id));
       if (own) { try { draws += worldDrawLights(ctx, own, cam, { vs, ox, oy, sky: S.sky || undefined, stage: 'glow' }) || 0; } catch (e) { /* no lamp */ } ctx.setTransform(1, 0, 0, 1, 0, 0); }
-      const b = r.box;
+      // (the occluder redraws cover both drawings of a view change)
+      const b = fr.length === 2 ? { x0: Math.min(r.box.x0, fr[0].rec.box.x0), y0: Math.min(r.box.y0, fr[0].rec.box.y0), x1: Math.max(r.box.x1, fr[0].rec.box.x1), y1: Math.max(r.box.y1, fr[0].rec.box.y1) } : r.box;
       clip = [Math.floor(b.x0 * vs + ox) - 1, Math.floor(b.y0 * vs + oy) - 1, Math.ceil(b.x1 * vs + ox) + 1, Math.ceil(b.y1 * vs + oy) + 1];
       continue;
     }

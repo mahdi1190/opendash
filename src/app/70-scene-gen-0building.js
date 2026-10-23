@@ -774,6 +774,8 @@ function _scbgGlowOf(sp, e, face) {
   const r = sceneRnd(sceneHash('glow|' + sp.seed + '|' + (face.edge || 0) + '|' + _scbgR1(e.s) + '|' + _scbgR1(e.z)));
   const a = r(), theta = (Math.floor(r() * 8) + 0.5) / 8;   // 8 buckets, exact in binary (windows merge per bucket)
   const rf = r(), q = sp.style.win && sp.style.win.reflQ;   // reflQ: a few sky-reflection levels (a tall facade's panes merge into few shapes)
+  // a daytime-only building (a style with night.on 0: a gallery, an office closed at night) never lights a pane, its door glass included
+  if (sp.on === 0) return { kind: 'window', theta: 2, refl: q ? Math.round(rf * q) / q : rf };
   return { kind: e.shopGlass ? 'shop' : a < sp.tv ? 'tv' : a < sp.tv + sp.curtain ? 'curtain' : 'window', theta, refl: q ? Math.round(rf * q) / q : rf };
 }
 function _scbgDrawWin(e, face, ctx, T) {

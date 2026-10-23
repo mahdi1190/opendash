@@ -71,7 +71,8 @@ function _srcPill(st) {
   return _connEl('span', 'status ' + kind, label);
 }
 function _srcKindText(s) {
-  if (s.kind === 'microsoft') return 'Microsoft browser sign-in · read-only';
+  if (s.kind === 'microsoft') return (s.account ? s.label + ' · ' : '') + 'Microsoft sign-in · read-only';
+  if (s.kind === 'google') return (s.account ? s.label + ' · ' : '') + 'Google sign-in · read-only';
   if (s.kind === 'csv') return 'CSV export · imported in Finances';
   if (s.kind === 'ical') return 'iCal link · ' + (s.urlHint || 'calendar feed') + ' · read-only';
   return (s.server || 'MCP server') + ' · read-only';
@@ -158,7 +159,7 @@ function _srcRow(s) {
 
 function _srcFixHelp(s) {
   const box = _connEl('div', 'conn-help src-help');
-  if (s.kind === 'microsoft') { box.appendChild(_connBtn('Sign in with Microsoft', 'log-in', 'btn-primary', microsoftSignIn)); return box; }
+  if (['microsoft', 'google'].includes(s.kind)) { box.appendChild(_connBtn('Sign in again', 'log-in', 'btn-primary', () => (s.account ? accOpenSignIn({ provider: s.kind, accountId: s.account }) : accAdd(s.kind)))); return box; }
   const claudeAi = /^claude\.ai /.test(s.server || '');
   if (claudeAi) {
     box.appendChild(_connSteps([
@@ -377,13 +378,16 @@ function srcAddFlow(o) {
   // offers every provider; only a named MCP server or "another bank MCP" comes here.
   if (o.capability === 'bank' && !o.edit && !o.server && !o.mcpBank && typeof finMoneyBlock === 'function') { connOpen('money'); return; }
   const f = {
-    step: o.edit ? (o.edit.kind === 'ical' ? 'url' : 'tools') : o.capability ? (o.server ? 'tools' : 'from') : 'what',
-    capability: o.edit ? o.edit.capability : o.capability || null,
-    kind: o.edit ? o.edit.kind : o.server ? 'mcp' : null,
+    // o.ical: straight to "paste the calendar link" (Connections > Add a calendar link).
+    step: o.edit ? (o.edit.kind === 'ical' ? 'url' : 'tools') : o.ical ? 'url' : o.capability ? (o.server ? 'tools' : 'from') : 'what',
+    capability: o.edit ? o.edit.capability : o.ical ? 'calendar' : o.capability || null,
+    kind: o.edit ? o.edit.kind : o.ical ? 'ical' : o.server ? 'mcp' : null,
     server: o.edit ? o.edit.server : o.server || null,
     tools: null, toolsErr: null, selected: new Set(o.edit && o.edit.tools ? o.edit.tools : []),
-    url: '', label: o.edit ? o.edit.label : '', colour: o.edit ? o.edit.colour : null,
+    url: '', label: o.edit ? o.edit.label : String(o.label || ''), colour: o.edit ? o.edit.colour : null,
     test: null, testing: false, saving: false, edit: o.edit || null,
+    // o.icalHelp {steps, url, button, note}: where this provider keeps its link ("+ Other email", 56-accounts-imap.js).
+    icalHelp: !o.edit && o.icalHelp && Array.isArray(o.icalHelp.steps) ? o.icalHelp : null,
   };
   if (o.server && !o.capability) {
     const sv = ((SourcesStore.data && SourcesStore.data.servers) || []).find(x => x.name === o.server);
@@ -500,7 +504,7 @@ function srcAddFlow(o) {
       const used = new Set(((SourcesStore.data && SourcesStore.data.sources) || []).filter(s => s.kind === 'mcp' && s.capability === f.capability).map(s => s.server));
       const g = _connEl('div', 'src-choices');
       const ranked = servers.slice().sort((a, b) => ((b.capability === f.capability) - (a.capability === f.capability)) || ((b.status === 'ok') - (a.status === 'ok')) || a.name.localeCompare(b.name));
-      if (['calendar', 'email'].includes(f.capability)) g.appendChild(choice('mail', 'Outlook / Microsoft 365', 'Personal Outlook/Hotmail or work and school accounts. Browser sign-in, read-only.', false, () => { closeFn && closeFn(); microsoftConnectionSetup(); }));
+      if (['calendar', 'email'].includes(f.capability)) g.appendChild(choice('mail', 'Outlook / Microsoft 365', 'Personal Outlook/Hotmail or work and school accounts. Sign in with Microsoft, read-only.', false, () => { closeFn && closeFn(); accAdd('microsoft'); }));
       for (const sv of ranked) {
         const badge = _connEl('span', 'src-srv-dot st-' + ({ ok: 'ok', auth: 'auth', error: 'error' }[sv.status] || 'unknown'));
         const sub = used.has(sv.name) ? 'Already a source' : !sv.usable ? 'Only user-scope servers can be used' : sv.status === 'auth' ? 'Needs sign-in in Claude first' : sv.status === 'error' ? 'Not working in Claude right now' : (sv.capability === f.capability ? 'Looks like a ' + cap.one + ' · ' : '') + (sv.kind === 'claude.ai' ? 'claude.ai connector' : 'MCP server');
@@ -565,7 +569,11 @@ function srcAddFlow(o) {
       const inp = document.createElement('input'); inp.className = 'control'; inp.type = 'url'; inp.placeholder = 'https://…/calendar.ics'; inp.value = f.url; inp.setAttribute('autofocus', '');
       inp.oninput = () => { f.url = inp.value.trim(); paintFoot(); };
       fld.appendChild(inp);
-      fld.appendChild(_connEl('span', 'field-hint', f.edit ? 'The current link is kept on this computer only; paste a new one to replace it.' : 'In Google Calendar: Settings > your calendar > "Secret address in iCal format". In Outlook: Settings > Shared calendars > Publish. The link stays on this computer.'));
+      if (f.icalHelp) {
+        bodyEl.appendChild(_connSteps(f.icalHelp.steps));
+        if (f.icalHelp.url) bodyEl.appendChild(_connBtn(f.icalHelp.button || 'Open your calendar', 'external-link', 'btn-ghost', () => window.open(f.icalHelp.url, '_blank', 'noopener,noreferrer')));
+      }
+      fld.appendChild(_connEl('span', 'field-hint', f.edit ? 'The current link is kept on this computer only; paste a new one to replace it.' : f.icalHelp ? (f.icalHelp.note || 'The link stays on this computer.') : 'In Google Calendar: Settings > your calendar > "Secret address in iCal format". In Outlook: Settings > Shared calendars > Publish. The link stays on this computer.'));
       bodyEl.appendChild(fld);
       setTimeout(() => { try { inp.focus(); } catch (e) {} }, 0);
       paintFoot();

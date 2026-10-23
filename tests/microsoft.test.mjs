@@ -1,163 +1,175 @@
-// Synthetic Microsoft OAuth/Graph responses only. Never uses real accounts.
+// Microsoft through the accounts routes (server/routes/accounts.mjs): sign-in
+// pages, first read, approval page, pause/features/remove, and readers that
+// need no Claude. Synthetic OAuth/Graph responses only; never a real account.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createHash } from 'node:crypto';
+import { createAccountsService } from '../lib/accounts.mjs';
 import { createMicrosoft, MICROSOFT_SCOPES } from '../lib/microsoft.mjs';
-import { createSourcesService, validateSource, readSourcesFile } from '../lib/sources.mjs';
-import { fetchCalendarSource, readSourceSnapshot } from '../lib/calendar-sources.mjs';
-import { fetchEmailSource, readInboxSnapshot } from '../lib/inbox-sources.mjs';
-import { writeJson } from '../lib/fsutil.mjs';
+import { PERSONAL_TENANT } from '../lib/accounts/microsoft.mjs';
+import { readSourcesFile, createSourcesService } from '../lib/sources.mjs';
+import { readSourceSnapshot, fetchCalendarSource } from '../lib/calendar-sources.mjs';
+import { readInboxSnapshot, fetchEmailSource } from '../lib/inbox-sources.mjs';
 import { dataPaths } from '../lib/datadir.mjs';
-import registerMicrosoft from '../server/routes/microsoft.mjs';
+import { secretStore } from '../lib/secret-store.mjs';
+import registerAccounts from '../server/routes/accounts.mjs';
 
 const CLIENT = '00000000-0000-4000-8000-000000000001';
+const WORK_TID = '11111111-2222-4333-8444-555555555555';
 const reply = (doc, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(doc) });
-const grant = extra => ({ access_token: 'synthetic-access', refresh_token: 'synthetic-refresh', expires_in: 3600, scope: 'User.Read Mail.Read Calendars.Read', ...extra });
-async function fixture(run, handler = () => reply({ value: [] })) {
-  const dir = mkdtempSync(join(tmpdir(), 'microsoft-test-')); let clock = 1700000000000;
+const tok = (email) => String(email).replace('@', '_at_');   // fake tokens and codes carry the address without an @ (privacy scan)
+const idToken = (claims) => 'h.' + Buffer.from(JSON.stringify(claims)).toString('base64url') + '.s';
+
+async function fixture(run, { graph } = {}) {
+  const base = mkdtempSync(join(tmpdir(), 'microsoft-routes-'));
+  const dir = join(base, 'data'); mkdirSync(dir);
+  process.env.OPENDASH_MICROSOFT_CLIENT_ID = CLIENT;
   const calls = [];
-  const ms = createMicrosoft({ dataDir: dir, now: () => clock, fetchFn: async (url, opts) => {
-    calls.push({ url: new URL(url), opts });
+  const fetchFn = async (url, opts) => {
+    const u = new URL(url); calls.push({ url: u, opts });
     assert.equal(opts.redirect, 'error');
-    if (url.endsWith('/token')) return handler(url, opts, calls) || reply(grant());
-    assert.equal(opts.method, 'GET', 'Graph is read-only');
-    assert.equal(new URL(url).hostname, 'graph.microsoft.com', 'token never goes to another host');
-    if (new URL(url).pathname === '/v1.0/me') return reply({ id: 'synthetic-account', mail: 'person@example.test' });
-    return handler(url, opts, calls);
-  } });
-  const signIn = async () => { await ms.configure(CLIENT); const u = new URL(await ms.authUrl('http://localhost:4900/api/microsoft/callback')); await ms.callback({ state: u.searchParams.get('state'), code: 'synthetic-code' }); return u; };
-  try { await run({ dir, ms, calls, signIn, advance: n => clock += n }); } finally { rmSync(dir, { recursive: true, force: true }); }
+    if (u.hostname === 'login.microsoftonline.com') {
+      assert.ok(!opts.body.has('client_secret'));
+      const email = (opts.body.get('code') || '').replace(/^code-/, '').replace('_at_', '@') || 'me@hotmail.com';
+      return reply({ access_token: 'access-' + tok(email), refresh_token: 'refresh-' + tok(email), expires_in: 3600, scope: 'User.Read Mail.Read Calendars.Read', id_token: idToken({ tid: /hotmail/.test(email) ? PERSONAL_TENANT : WORK_TID }) });
+    }
+    assert.equal(u.hostname, 'graph.microsoft.com'); assert.equal(opts.method, 'GET', 'Graph is read-only');
+    const custom = graph && graph(u, opts);
+    if (custom) return custom;
+    if (u.pathname === '/v1.0/me') { const email = String(opts.headers.Authorization).replace(/^Bearer access-/, '').replace('_at_', '@'); return reply({ id: 'graph-' + email, mail: email, displayName: 'Synthetic' }); }
+    if (u.pathname.endsWith('/calendars')) return reply({ value: [{ id: 'cal-1', name: 'Calendar' }] });
+    if (u.pathname.endsWith('/messages')) return reply({ value: [{ id: 'm1', subject: 'Synthetic', from: { emailAddress: { address: 'a@example.test' } }, receivedDateTime: '2026-10-22T09:00:00Z', bodyPreview: 'hello', isRead: true }] });
+    return reply({ value: [] });
+  };
+  const ctx = { dataDir: dir, paths: dataPaths(dir), port: 4900, log: () => {} };
+  ctx.accounts = createAccountsService({ dataDir: dir, port: () => 4900, fetchFn, deviceId: 'deviceaaaa1' });
+  const routes = [];
+  registerAccounts({ ctx, route: (r) => routes.push(r), onReady() {} });
+  const find = (path, method = 'GET') => routes.find(r => r.path === path && [].concat(r.method).includes(method));
+  const call = async (path, method, { query = {}, body } = {}) => {
+    const out = { status: 200, headers: {} };
+    const c = {
+      query: new URLSearchParams(query), body: async () => body || {}, clockNow: () => ({ today: '2026-10-23' }),
+      res: { setHeader() {}, writeHead(s, h) { out.status = s; out.headers = h; }, end() {} },
+      send: (s, text) => { out.status = s; out.text = text; },
+    };
+    try { out.json = await find(path, method).handler(c); } catch (e) { out.status = e.status || 500; out.error = e; }
+    return out;
+  };
+  try { await run({ dir, ctx, routes, call, calls, paths: ctx.paths }); }
+  finally { delete process.env.OPENDASH_MICROSOFT_CLIENT_ID; rmSync(base, { recursive: true, force: true }); }
 }
+const stateOf = (loc) => new URL(loc).searchParams.get('state');
 
-test('Microsoft configuration is honest; /common public-client PKCE is verified, state is single-use', async () => fixture(async ({ ms, dir, calls }) => {
-  assert.equal((await ms.status()).connected, false);
-  await assert.rejects(ms.authUrl('http://localhost:4900/api/microsoft/callback'), { code: 'NOT_CONFIGURED' });
-  await assert.rejects(ms.configure('not-an-id'), { code: 'BAD_REQUEST' });
-  await ms.configure(CLIENT);
-  await assert.rejects(ms.authUrl('https://example.test/api/microsoft/callback'), { code: 'BAD_REQUEST' });
-  const u = new URL(await ms.authUrl('http://localhost:4900/api/microsoft/callback'));
-  assert.equal(u.pathname, '/common/oauth2/v2.0/authorize'); assert.equal(u.searchParams.get('code_challenge_method'), 'S256');
-  assert.deepEqual(u.searchParams.get('scope').split(' '), MICROSOFT_SCOPES);
-  assert.ok(!u.searchParams.has('client_secret'));
-  await assert.rejects(ms.callback({ state: 'bad', code: 'x' }), { code: 'OAUTH_STATE' });
-  await ms.callback({ state: u.searchParams.get('state'), code: 'synthetic-code' });
-  const exchange = calls[0].opts.body;
-  assert.equal(createHash('sha256').update(exchange.get('code_verifier')).digest('base64url'), u.searchParams.get('code_challenge'));
-  assert.equal(exchange.get('redirect_uri'), u.searchParams.get('redirect_uri')); assert.equal(exchange.has('client_secret'), false);
-  await assert.rejects(ms.callback({ state: u.searchParams.get('state'), code: 'synthetic-code' }), { code: 'OAUTH_STATE' });
-  const status = await ms.status(); assert.equal(status.connected, true); assert.equal(status.account, 'person@example.test');
-  assert.ok(!JSON.stringify(status).includes('synthetic-access'));
-  assert.deepEqual(JSON.parse(readFileSync(join(dir, 'secrets', 'microsoft-client.json'))), { clientId: CLIENT });
-  await ms.disconnect(); assert.equal((await ms.status()).connected, false);
-}, (url) => url.endsWith('/token') ? reply(grant()) : reply({ value: [] })));
-
-test('Microsoft expired/cancelled states and changed configuration cannot connect', async () => fixture(async ({ ms, advance, calls }) => {
-  await ms.configure(CLIENT);
-  const expired = new URL(await ms.authUrl('http://localhost/api/microsoft/callback')); advance(600001);
-  await assert.rejects(ms.callback({ state: expired.searchParams.get('state'), code: 'x' }), { code: 'OAUTH_STATE' });
-  const cancelled = new URL(await ms.authUrl('http://localhost/api/microsoft/callback'));
-  await assert.rejects(ms.callback({ state: cancelled.searchParams.get('state'), error: 'access_denied' }), { code: 'OAUTH_CANCELLED' });
-  await assert.rejects(ms.callback({ state: cancelled.searchParams.get('state'), code: 'x' }), { code: 'OAUTH_STATE' });
-  const pending = new URL(await ms.authUrl('http://localhost/api/microsoft/callback')); await ms.disconnect();
-  await assert.rejects(ms.callback({ state: pending.searchParams.get('state'), code: 'x' }), { code: 'OAUTH_STATE' });
-  assert.equal(calls.length, 0);
+test('only the sign-in returns accept cross-site navigation', async () => fixture(async ({ routes }) => {
+  assert.deepEqual(routes.filter(r => r.crossSite).map(r => r.path).sort(), ['/api/accounts/callback', '/api/microsoft/callback']);
+  assert.ok(routes.filter(r => r.crossSite).every(r => r.method === 'GET'));
+  assert.equal(routes.find(r => r.path === '/api/accounts/begin' && r.method === 'GET').sameOrigin, true);
 }));
 
-test('Microsoft requires all read scopes and never exposes provider errors', async () => fixture(async ({ ms }) => {
-  await ms.configure(CLIENT); const u = new URL(await ms.authUrl('http://localhost/api/microsoft/callback'));
-  await assert.rejects(ms.callback({ state: u.searchParams.get('state'), code: 'x' }), { code: 'MICROSOFT_CONSENT' });
-  assert.equal((await ms.status()).connected, false);
-}, () => reply(grant({ scope: 'User.Read Mail.Read' }))));
-
-test('Microsoft concurrent refresh rotates credentials once; revoked refresh requires sign-in', async () => {
-  let revoked = false;
-  await fixture(async ({ ms, signIn, advance, calls, dir }) => {
-    await signIn(); advance(3600000);
-    await Promise.all([ms.email({ id: 'outlook-email' }), ms.calendar({ id: 'outlook-calendar' }, { from: '2026-01-01', to: '2026-01-07' })]);
-    assert.equal(calls.filter(c => c.opts.body?.get('grant_type') === 'refresh_token').length, 1);
-    assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'microsoft-tokens.json'))).refresh_token, 'rotated-refresh');
-    revoked = true; advance(3600000);
-    await assert.rejects(ms.email({ id: 'outlook-email' }), { code: 'MICROSOFT_AUTH' });
-    assert.equal((await ms.status()).needsAuth, true); assert.equal((await ms.status()).connected, false);
-  }, (url, opts) => url.endsWith('/token') ? opts.body.get('grant_type') === 'refresh_token' ? revoked ? reply({ error: 'invalid_grant', error_description: 'sensitive provider detail' }, 400) : reply(grant({ refresh_token: 'rotated-refresh' })) : reply(grant()) : reply({ value: [] }));
-});
-
-test('Microsoft mail normalizes previews and personal web links; disabled mailbox returns no messages', async () => fixture(async ({ ms, signIn, calls }) => {
-  await signIn(); const source = { id: 'outlook-email', accounts: [] };
-  const got = await ms.email(source, { days: 14, todayIso: '2026-01-15' });
-  assert.equal(got.messages.length, 1); const m = got.messages[0];
-  assert.equal(m.sourceId, source.id); assert.equal(m.accountId, 'default'); assert.equal(m.unread, true); assert.equal(m.important, true);
-  assert.equal(m.from.email, 'sender@example.test'); assert.ok(m.link.startsWith('https://outlook.live.com/')); assert.ok(!('body' in m));
-  assert.equal(m.snippet.length, 300); assert.equal(calls.at(-1).url.searchParams.get('$filter'), 'receivedDateTime ge 2026-01-01T00:00:00.000Z');
-  assert.ok(!calls.at(-1).url.searchParams.get('$select').split(',').includes('body'));
-  const before = calls.length;
-  assert.equal((await ms.email({ ...source, accounts: [{ id: 'default', enabled: false }] })).count, 0);
-  assert.equal(calls.length, before, 'disabled mailbox causes no Microsoft reads');
-}, url => url.endsWith('/token') ? reply(grant()) : reply({ value: [{ id: 'mail-1', subject: 'Synthetic mail', from: { emailAddress: { name: 'Sender', address: 'SENDER@example.test' } }, receivedDateTime: '2026-01-14T09:00:00Z', bodyPreview: 'x'.repeat(400), body: 'must not surface', isRead: false, importance: 'high', webLink: 'https://outlook.live.com/mail/0/id/synthetic' }] })));
-
-test('Microsoft Graph paging rejects another host before sending any credential', async () => fixture(async ({ ms, signIn, calls }) => {
-  await signIn(); await assert.rejects(ms.email({ id: 'outlook-email' }), { code: 'MICROSOFT_RESPONSE' });
-  assert.equal(calls.length, 3);
-}, url => url.endsWith('/token') ? reply(grant()) : reply({ value: [], '@odata.nextLink': 'https://example.test/steal' })));
-
-test('Microsoft calendar keeps all-day dates in original zone and respects selected calendars', async () => fixture(async ({ ms, signIn, calls }) => {
-  await signIn(); const source = { id: 'outlook-calendar' };
-  const got = await ms.calendar(source, { from: '2026-01-01', to: '2026-01-07' });
-  assert.equal(got.events.length, 2); assert.deepEqual(got.events[0].start, { date: '2026-01-02' }); assert.deepEqual(got.events[0].end, { date: '2026-01-03' });
-  assert.equal(got.events[1].start.dateTime, '2026-01-04T08:00:00.000Z');
-  assert.ok(got.events.every(e => e.calendarId === source.id + '/' + got.calendars[0].id));
-  assert.equal(calls.find(c => c.url.pathname.endsWith('/events/day')).opts.headers.Prefer, 'outlook.timezone="Pacific Standard Time"');
-  assert.equal((await ms.calendar({ ...source, accounts: [{ id: got.calendars[0].id, enabled: false }] }, { from: '2026-01-01', to: '2026-01-07' })).count, 0);
-}, url => {
-  if (url.endsWith('/token')) return reply(grant()); const path = new URL(url).pathname;
-  if (path.endsWith('/calendars')) return reply({ value: [{ id: 'cal-1', name: 'Personal' }] });
-  if (path.endsWith('/events/day')) return reply({ start: { dateTime: '2026-01-02T00:00:00' }, end: { dateTime: '2026-01-03T00:00:00' } });
-  return reply({ value: [{ id: 'day', subject: 'Day off', isAllDay: true, originalStartTimeZone: 'Pacific Standard Time', start: { dateTime: '2026-01-02T08:00:00' }, end: { dateTime: '2026-01-03T08:00:00' } }, { id: 'timed', subject: 'Meeting', start: { dateTime: '2026-01-04T09:00:00+01:00' }, end: { dateTime: '2026-01-04T10:00:00+01:00' } }, { id: 'cancelled', isCancelled: true }] });
+test('add a Hotmail account: begin goes to /consumers, the return page says connected, mail and calendar are read', async () => fixture(async ({ call, dir, paths }) => {
+  const b = await call('/api/accounts/begin', 'GET', { query: { provider: 'microsoft', email: 'me@hotmail.com' } });
+  assert.equal(b.status, 302);
+  const to = new URL(b.headers.Location);
+  assert.equal(to.origin + to.pathname, 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize');
+  assert.equal(to.searchParams.get('login_hint'), 'me@hotmail.com');
+  const cb = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.headers.Location), code: 'code-me_at_hotmail.com' } });
+  assert.equal(cb.status, 200); assert.match(cb.text, /Your account is connected/); assert.match(cb.text, /me@hotmail\.com is now connected/);
+  assert.ok(!/access-|refresh-/.test(cb.text), 'no token on the page');
+  const src = (await readSourcesFile(dir)).sources;
+  assert.equal(src.length, 2);
+  assert.equal((await readInboxSnapshot(paths, src.find(s => s.capability === 'email').id)).messages.length, 1);
+  assert.ok(await readSourceSnapshot(paths, src.find(s => s.capability === 'calendar').id));
+  assert.ok(src.every(s => s.lastSync));
+  const replay = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.headers.Location), code: 'code-me_at_hotmail.com' } });
+  assert.equal(replay.status, 400); assert.match(replay.text, /not started from OpenDash/);
+  const list = (await call('/api/accounts', 'GET')).json;
+  assert.equal(list.accounts.length, 1); assert.equal(list.accounts[0].statusText, 'Connected'); assert.equal(list.accounts[0].syncedText, 'synced just now');
+  assert.equal(list.providers.microsoft.available, true); assert.equal(list.providers.imap.available, true);
+  assert.ok(!JSON.stringify(list).includes('refresh-'));
 }));
 
-test('Microsoft source validation/health and readers work without a Claude installation', async () => fixture(async ({ dir }) => {
-  const source = { id: 'outlook-email', kind: 'microsoft', capability: 'email', label: 'Outlook Mail', colour: 'blue', enabled: true, accounts: [] };
-  assert.equal(validateSource(source).errors.length, 0); assert.ok(validateSource({ ...source, capability: 'bank' }).errors.length);
-  assert.ok(validateSource({ ...source, id: 'second-email' }, { existing: [source] }).errors.length);
-  await writeJson(join(dir, 'secrets', 'microsoft-client.json'), { clientId: CLIENT });
-  await writeJson(join(dir, 'secrets', 'microsoft-tokens.json'), { clientId: CLIENT, refresh_token: 'synthetic-refresh', account: 'person@example.test' });
-  const service = createSourcesService({ dataDir: dir, list: async () => { throw new Error('Claude must not be called'); } });
-  assert.equal((await service.healthMap([source], { servers: [], claudeOk: false }))[source.id].state, 'ok');
-  const fake = { email: async (s, opts) => ({ count: 1, source: s, opts }), calendar: async (s, opts) => ({ count: 2, source: s, opts }) };
+test('a work account whose organisation blocks consent gets the approval page, the admin link and the IT email', async () => fixture(async ({ call }) => {
+  const b = await call('/api/accounts/begin', 'GET', { query: { provider: 'microsoft', email: 'me@work.example' } });
+  assert.match(b.headers.Location, /\/organizations\/oauth2\/v2\.0\/authorize/);
+  const cb = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.headers.Location), error: 'access_denied', error_description: 'AADSTS90094: Admin consent required.' } });
+  assert.equal(cb.status, 200);
+  assert.match(cb.text, /Your organisation needs to approve OpenDash once/);
+  assert.ok(cb.text.includes('https://login.microsoftonline.com/work.example/adminconsent?client_id=' + CLIENT));
+  assert.match(cb.text, /href="mailto:\?subject=/); assert.match(cb.text, /Email my IT team/);
+  assert.ok(!cb.text.includes('AADSTS'), 'never Microsoft\'s own text');
+  const a = (await call('/api/accounts', 'GET')).json.accounts[0];
+  assert.equal(a.status, 'needs-admin-approval'); assert.equal(a.statusText, 'Waiting for your organisation'); assert.ok(a.approval.mailto);
+  const ap = (await call('/api/accounts/approval', 'GET', { query: { id: a.id } })).json;
+  assert.equal(ap.tenant, 'work.example');
+  // an admin who approved comes back with admin_consent and no state of ours
+  const thanks = await call('/api/accounts/callback', 'GET', { query: { admin_consent: 'True', tenant: WORK_TID } });
+  assert.equal(thanks.status, 200); assert.match(thanks.text, /OpenDash is approved/);
+  // Try again: the same record becomes connected
+  const again = await call('/api/accounts/begin', 'POST', { body: { provider: 'microsoft', accountId: a.id } });
+  const ok = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(again.json.url), code: 'code-me_at_work.example' } });
+  assert.match(ok.text, /Your account is connected/);
+  const after = (await call('/api/accounts', 'GET')).json.accounts;
+  assert.equal(after.length, 1); assert.equal(after[0].status, 'connected'); assert.equal(after[0].kind, 'work'); assert.equal(after[0].tenantId, WORK_TID);
+}));
+
+test('a personal address sent to the work sign-in offers to try again as a personal account', async () => fixture(async ({ call }) => {
+  const b = await call('/api/accounts/begin', 'GET', { query: { provider: 'microsoft', email: 'me@custom.example' } });
+  const cb = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.headers.Location), error: 'invalid_request', error_description: 'AADSTS50020: no such user' } });
+  assert.match(cb.text, /This looks like a personal account/);
+  assert.ok(cb.text.includes('/api/accounts/begin?provider=microsoft&amp;email=me%40custom.example&amp;kind=personal'));
+  const none = await call('/api/accounts/begin', 'GET', { query: { provider: 'microsoft', email: 'nope' } });
+  assert.equal(none.status, 400); assert.match(none.text, /Type your full email address/);
+}));
+
+test('pause, features, sync, fetch-here and remove; readers need no Claude', async () => fixture(async ({ call, dir, ctx }) => {
+  const b = await call('/api/accounts/begin', 'POST', { body: { provider: 'microsoft', email: 'me@hotmail.com' } });
+  await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.json.url), code: 'code-me_at_hotmail.com' } });
+  const id = (await call('/api/accounts', 'GET')).json.accounts[0].id;
+  assert.equal((await call('/api/accounts/pause', 'POST', { body: { id, paused: true } })).json.account.status, 'paused');
+  const s = await call('/api/accounts/sync', 'POST', { body: { id } });
+  assert.equal(s.json.results[0].code, 'PAUSED');
+  assert.equal((await call('/api/accounts/pause', 'POST', { body: { id, paused: false } })).json.account.status, 'connected');
+  assert.ok((await readSourcesFile(dir)).sources.every(x => !x.lastError), 'a refused-while-paused check is not a source failure');
+  assert.equal((await call('/api/accounts/features', 'POST', { body: { id, calendar: false } })).json.account.features.calendar, false);
+  assert.equal((await readSourcesFile(dir)).sources.find(x => x.capability === 'calendar').enabled, false);
+  const synced = await call('/api/accounts/sync', 'POST', { body: { id } });
+  assert.deepEqual(synced.json.results.map(r => [r.feature, r.ok]), [['mail', true]]);
+  const here = await call('/api/accounts/fetch-here', 'POST', { body: { id } });
+  assert.equal(here.json.ok, true, 'signed in on this computer: it checks the account'); assert.equal(here.json.message, 'This computer checks this account now.');
+  assert.equal((await call('/api/accounts/pause', 'POST', { body: { id: '../x' } })).status, 400);
+  // the source readers go through the account, never through Claude
   const run = () => { throw new Error('Claude must not run'); };
-  assert.equal((await fetchEmailSource(source, { microsoft: fake, days: 14, run })).count, 1);
-  assert.equal((await fetchCalendarSource({ ...source, capability: 'calendar' }, { microsoft: fake, from: '2026-01-01', to: '2026-01-07', run })).count, 2);
+  const src = (await readSourcesFile(dir)).sources;
+  assert.equal((await fetchEmailSource(src.find(x => x.capability === 'email'), { accounts: ctx.accounts, days: 14, todayIso: '2026-10-23', run })).count, 1);
+  await assert.rejects(fetchCalendarSource(src.find(x => x.capability === 'calendar'), { accounts: ctx.accounts, from: '2026-10-01', to: '2026-10-07', run }), { code: 'FEATURE_OFF' });
+  const health = await createSourcesService({ dataDir: dir, list: async () => { throw new Error('Claude must not be called'); } }).healthMap(src, { servers: [], claudeOk: false });
+  assert.equal(health[src.find(x => x.capability === 'email').id].state, 'ok');
+  assert.deepEqual((await call('/api/accounts/remove', 'POST', { body: { id } })).json, { removed: id });
+  assert.equal((await readSourcesFile(dir)).sources.length, 0);
+  assert.equal((await call('/api/accounts', 'GET')).json.accounts.length, 0);
 }));
 
-test('Microsoft calendar request budget prevents unbounded all-day reads', async () => fixture(async ({ ms, signIn, calls }) => {
-  await signIn(); const got = await ms.calendar({ id: 'outlook-calendar' }, { from: '2026-01-01', to: '2026-01-07' });
-  assert.equal(calls.filter(c => c.url.hostname === 'graph.microsoft.com').length, 41, '40 data requests plus sign-in profile');
-  assert.equal(got.events.length, 38); assert.ok(got.warnings.length);
-}, url => {
-  if (url.endsWith('/token')) return reply(grant()); const path = new URL(url).pathname;
-  if (path.endsWith('/calendars')) return reply({ value: [{ id: 'cal-1', name: 'Synthetic calendar' }] });
-  if (path.includes('/events/')) return reply({ start: { dateTime: '2026-01-02T00:00:00' }, end: { dateTime: '2026-01-03T00:00:00' } });
-  return reply({ value: Array.from({ length: 100 }, (_, n) => ({ id: 'day-' + n, isAllDay: true, originalStartTimeZone: 'Pacific Standard Time' })) });
-}));
+test('a Graph 403 on a work account after sign-in shows "Waiting for your organisation"', async () => fixture(async ({ call }) => {
+  const b = await call('/api/accounts/begin', 'POST', { body: { provider: 'microsoft', email: 'me@work.example' } });
+  const cb = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.json.url), code: 'code-me_at_work.example' } });
+  assert.match(cb.text, /Your organisation needs to approve OpenDash once/);
+  assert.ok(cb.text.includes(WORK_TID + '/adminconsent?client_id=' + CLIENT));
+  const a = (await call('/api/accounts', 'GET')).json.accounts[0];
+  assert.equal(a.status, 'needs-admin-approval'); assert.match(a.approval.consentUrl, new RegExp(WORK_TID + '/adminconsent'));
+}, { graph: (u) => (u.pathname.includes('/mailFolders/') ? reply({ error: { code: 'ErrorAccessDenied' } }, 403) : null) }));
 
-test('Microsoft callback provisions both source snapshots and disconnect pauses them; only callback accepts cross-site', async () => fixture(async ({ dir, ms }) => {
-  const routes = [], paths = dataPaths(dir);
-  registerMicrosoft({ ctx: { dataDir: dir, paths, log: () => {}, microsoft: ms }, route: r => routes.push(r) });
-  assert.deepEqual(routes.filter(r => r.crossSite).map(r => r.path), ['/api/microsoft/callback']);
-  await ms.configure(CLIENT); const auth = new URL(await ms.authUrl('http://localhost/api/microsoft/callback'));
-  const callback = routes.find(r => r.path.endsWith('/callback')).handler;
-  let status, html;
-  const context = { query: new URLSearchParams({ state: auth.searchParams.get('state'), code: 'synthetic-code' }), res: { setHeader() {} }, clockNow: () => ({ today: '2026-01-01' }), send: (s, text) => { status = s; html = text; } };
-  await callback(context); assert.equal(status, 200); assert.ok(html.includes('Microsoft connected'));
-  const sources = (await readSourcesFile(dir)).sources.filter(s => s.kind === 'microsoft');
-  assert.equal(sources.length, 2); assert.ok(sources.every(s => s.enabled));
-  assert.ok(await readSourceSnapshot(paths, sources.find(s => s.capability === 'calendar').id));
-  assert.ok(await readInboxSnapshot(paths, sources.find(s => s.capability === 'email').id));
-  await callback(context); assert.equal(status, 400, 'cannot replay successful callback');
-  await routes.find(r => r.path.endsWith('/disconnect')).handler({ body: async () => ({}) });
-  assert.equal((await ms.status()).connected, false);
-  assert.ok((await readSourcesFile(dir)).sources.filter(s => s.kind === 'microsoft').every(s => !s.enabled));
-}, url => url.endsWith('/token') ? reply(grant()) : reply({ value: [] })));
+test('compat: the old module keeps the user\'s own app ID in the secret store and summarises accounts', async () => {
+  const base = mkdtempSync(join(tmpdir(), 'microsoft-compat-'));
+  try {
+    const ms = createMicrosoft({ dataDir: base });
+    assert.deepEqual(MICROSOFT_SCOPES, ['offline_access', 'User.Read', 'Mail.Read', 'Calendars.Read']);
+    assert.equal((await ms.configure(CLIENT)).changed, true);
+    assert.deepEqual(await secretStore(base).get('microsoft-client'), { clientId: CLIENT });
+    const st = await ms.status();
+    assert.equal(st.configured, true); assert.equal(st.connected, false); assert.equal(st.accounts, 0);
+    await assert.rejects(ms.configure('not-an-id'), { code: 'BAD_REQUEST' });
+  } finally { rmSync(base, { recursive: true, force: true }); }
+});

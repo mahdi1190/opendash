@@ -134,9 +134,11 @@ registerSettingsGroup({
       const cp = _sdBtn('Copy', 'copy', 'btn-ghost', async () => { try { await navigator.clipboard.writeText(_sdInfo.dataDir); toast('Copied', { kind: 'ok' }); } catch (e) { /* ignore */ } });
       folder.appendChild(cp);
     }
-    const fr = _settingsRow('Data folder', 'To move it, start the app with --data-dir <folder> or set DASHBOARD_DATA_DIR. Keep it out of any public repository.', null);
+    const fr = _settingsRow('Data folder', 'Where your data lives on this computer. Keep it out of shared drives and public repositories.', null);
     fr.classList.add('set-row-stack'); fr.appendChild(folder);
     el.appendChild(fr);
+    // Move it out of OneDrive / Undo move (58-settings-move.js); the daily encrypted copy (58-settings-offsite.js)
+    if (typeof settingsMoveCard === 'function') settingsMoveCard(el);
 
     // Backups
     const bk = _settingsCard('Backups', 'Made automatically when your data changes (at most every 10 minutes, plus one a day for 30 days).');
@@ -169,6 +171,7 @@ registerSettingsGroup({
       bk.body.appendChild(p);
     }
     el.appendChild(bk.card);
+    if (typeof settingsOffsiteCard === 'function') settingsOffsiteCard(el);
 
     // Move to another computer
     const mv = _settingsCard('Export and import', 'Moving to another computer: export everything here, then import it there. Connections and sign-ins are set up again on the new computer.');

@@ -57,12 +57,18 @@ jobs:
       - name: Package, extract, build and test
         env:
           VERSION: ${{ steps.v.outputs.version }}
+          # The built-in app registrations go into the zip only (tools/release-client-ids.mjs);
+          # repository secrets, never committed. A secret that is not set leaves its placeholder.
+          OPENDASH_MICROSOFT_CLIENT_ID: ${{ secrets.OPENDASH_MICROSOFT_CLIENT_ID }}
+          OPENDASH_GOOGLE_CLIENT_ID: ${{ secrets.OPENDASH_GOOGLE_CLIENT_ID }}
+          OPENDASH_GOOGLE_CLIENT_SECRET: ${{ secrets.OPENDASH_GOOGLE_CLIENT_SECRET }}
         run: >-
           node tools/release-package.mjs
           --from "$RUNNER_TEMP/opendash"
           --version "$VERSION"
           --out "$RUNNER_TEMP/dist"
           --check-package-version
+          --client-ids
 
       - name: Build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0

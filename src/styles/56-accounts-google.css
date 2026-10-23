@@ -1,0 +1,8 @@
+/* Google accounts: the card before Google's sign-in (src/app/56-accounts-google.js). */
+.conn-tick { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-2) 0; cursor: pointer; }
+.conn-tick input[type="checkbox"] { margin-top: 3px; flex: none; }
+.conn-tick-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.conn-tick-t b { font-weight: var(--weight-semibold); color: var(--fg); }
+.google-unverified { margin-top: var(--space-3); padding: var(--space-4); background: var(--warning-soft); border-color: transparent; }
+.google-unverified .conn-text { margin: 0; }
+.google-own-app .cp-advanced-body { display: flex; flex-direction: column; gap: var(--space-3); }

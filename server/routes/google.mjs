@@ -2,7 +2,8 @@
 // with snapshot fallbacks.
 //
 //   GET  /api/google/status       -> {configured, connected, account, snapshot:{inbox, calendar}, usable}
-//   GET  /api/google/connect      -> 302 to Google's consent page (same-origin only)
+//   GET  /api/google/connect      -> 302 to Connections (Google accounts are added there now:
+//                                    + Add Google account, /api/accounts); never a new single connection
 //   GET  /api/google/callback     <- Google redirects here with ?code= (the only /api/ route
 //                                    another site may navigate to; its state is checked)
 //   POST /api/google/disconnect   -> {ok}
@@ -16,7 +17,7 @@
 
 import { existsSync } from 'node:fs';
 import {
-  googleStatus, authUrl, exchangeCode, takeOauthState, recentEmails, personEmails, todayEvents, disconnect,
+  googleStatus, exchangeCode, takeOauthState, recentEmails, personEmails, todayEvents, disconnect,
 } from '../../lib/google.mjs';
 import { readJson } from '../../lib/fsutil.mjs';
 import { inboxFiles } from '../../lib/inbox.mjs';
@@ -71,10 +72,8 @@ export default function register(app) {
   app.route({
     path: '/api/google/connect', method: 'GET', sameOrigin: true,
     handler: async (c) => {
-      try {
-        c.res.writeHead(302, { Location: await authUrl(`http://localhost:${c.port}/api/google/callback`) });
-        c.res.end();
-      } catch (e) { throw new HttpError(400, e.message); }
+      c.res.writeHead(302, { Location: '/#view=connections', 'Cache-Control': 'no-store' });
+      c.res.end();
     },
   });
 

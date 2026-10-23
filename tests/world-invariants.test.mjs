@@ -42,7 +42,11 @@ test('WORLD_INVARIANTS lists every rule of 16.2 with its requirement ids', () =>
     // 16 Oct: a walkway never crosses open water
     'walkwayWater',
     // 18 Oct: walking in place, judged from the drawn positions (tests/world-walk-in-place.test.mjs)
-    'walkInPlace'];
+    'walkInPlace',
+    // 20 Oct: the ghost pass fades people in and out; their opacity must never pop (tests/world-ghost-pass.test.mjs)
+    'ghostFlicker',
+    // 20 Oct: a change of view never changes the drawn height (tests/world-pops.test.mjs)
+    'sizePop'];
   assert.deepEqual(E.WORLD_INVARIANTS.map(r => r.rule).sort(), want.slice().sort());
   for (const r of E.WORLD_INVARIANTS) { assert.match(r.req, /^[A-Z]\d/, r.rule); assert.ok(r.what.length > 10, r.rule); }
 });

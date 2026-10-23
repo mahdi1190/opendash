@@ -37,6 +37,8 @@ const { publicSchema } = await import('../server/actions/validate.mjs');
 const { ActionError } = await import('../server/actions/model.mjs');
 const { discoverServer, ensureLocalToken, TOKEN_HEADER } = await import('../server/actions/auth.mjs');
 const { createLogger } = await import('../server/log.mjs');
+const { createWriteGate, othersLive } = await import('../lib/hosts.mjs');
+const { redirectDataDir } = await import('../lib/relocate/record.mjs');
 const { INSTRUCTIONS, PROPOSE_ADDENDUM, PROMPTS } = await import('./instructions.mjs');
 const { installInfo, installText } = await import('./install.mjs');
 
@@ -61,7 +63,11 @@ const legacyAtStart = legacyStatus({ dataDir: DATA_DIR });
 
 // ─── Transport ─────────────────────────────────────────────────────────────
 let embedded = null;
-const getEmbedded = () => (embedded = embedded || createActions({ dataDir: DATA_DIR, log: (l, m) => log(l, m) }));
+// Embedded writes go straight to the data folder: while another computer has it
+// open (lib/hosts.mjs presence files) they are refused with OTHER_COMPUTER, checked
+// before every write (an MCP call is never half-way through an edit).
+const embeddedGate = createWriteGate({ others: () => othersLive(DATA_DIR), pauseLater: true, recheckMs: 5000 });
+const getEmbedded = () => (embedded = embedded || createActions({ dataDir: DATA_DIR, log: (l, m) => log(l, m), writeGate: () => embeddedGate.check() }));
 let route = { kind: null, at: 0 };   // cached discovery
 
 async function transport() {
@@ -102,6 +108,10 @@ async function call(httpFn, embeddedFn) {
   if (legacy) {
     throw new ActionError('NOT_SET_UP', `the data folder ${legacy.dataDir} has no dashboard data yet (the old copy is still in ${legacy.legacyStateDir})`, { hint: `ask the user to run: ${legacy.command}` });
   }
+  // The data folder moved after this MCP server started (Settings > Data > Move,
+  // lib/relocate/): never read or write the old place.
+  const moved = redirectDataDir(DATA_DIR);
+  if (moved !== DATA_DIR) throw new ActionError('DATA_MOVED', `OpenDash's data folder moved to ${moved}. Restart this assistant (or its OpenDash tools) to use the new place.`, { hint: 'ask the user to restart the assistant app' });
   const r = await transport();
   if (r.kind === 'http') {
     try { return await httpFn(r); } catch (e) {

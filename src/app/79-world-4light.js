@@ -282,13 +282,15 @@ function worldShadowPlan(world, cam, sun, o) {
     if (at === 'water' || at === 'air' || at.startsWith('air') || e.layer === 'swim' || e.layer === 'air' || e.cls === 'boat') return;   // floaters and flyers: the water dims
     const deck = _wlDeckOf(e), y = deck != null && Number.isFinite(e.y) ? e.y : null;   // the receiver plane: a deck, else the ground
     const foot = _wlFoot(e), h = _wlHeight(e), cls = e.cls || (typeof worldObjectInfo === 'function' && worldObjectInfo(e.obj) ? worldObjectInfo(e.obj).cls : null);
+    // a mover's shadow fades with its body (life's alpha: fading in or out, a ghost pass through another walker; 20 Oct)
+    const ka = mover && Number.isFinite(e.alpha) ? Math.max(0, Math.min(1, e.alpha)) : 1;
     const cx = foot.reduce((a, p) => a + p[0], 0) / foot.length, cz = foot.reduce((a, p) => a + p[1], 0) / foot.length;
     if (e.z < WORLD_SHADOW_FAR) {
       // contact: a flattened disc a little wider than the foot (never on water: a wader's disc is a hole there)
       const rx = Math.max(0.15, Math.max(...foot.map(p => Math.abs(p[0] - cx))) * 1.15), rz = Math.max(0.12, Math.max(...foot.map(p => Math.abs(p[1] - cz))) * 1.15);
       const c = [];
       for (let i = 0; i < 10; i++) { const a = i / 10 * 2 * Math.PI; c.push([cx + rx * Math.cos(a), cz + rz * Math.sin(a)]); }
-      push({ ref: e.id, kind: 'contact', mover: !!mover, poly: c, scr: scr(c, y), y, op: (S.contact || 0.3) * fogK(e.z), blur: 1, holes: deck != null ? [] : holesOf(c), on: deck != null ? 'deck:' + deck : 'ground' });
+      push({ ref: e.id, kind: 'contact', mover: !!mover, poly: c, scr: scr(c, y), y, op: (S.contact || 0.3) * fogK(e.z) * ka, blur: 1, holes: deck != null ? [] : holesOf(c), on: deck != null ? 'deck:' + deck : 'ground' });
     }
     // a bridge or a raised deck: its slab casts onto whatever is beneath (shade under bridges by geometry)
     if (S.kind && e.deck && Array.isArray(e.deck.poly) && Number.isFinite(e.deck.y) && e.deck.y - (Number.isFinite(e.y) ? e.y : 0) > 1.2 && e.z < WORLD_SHADOW_FAR && !mover) {
@@ -299,13 +301,19 @@ function worldShadowPlan(world, cam, sun, o) {
     if (!S.kind || _WL_NO_CAST.test(e.obj) || h < 0.25 || e.z > WORLD_SHADOW_FAR) return;
     if (cls === 'walkway' && e.deck) return;                          // a deck's own cast is its slab, above
     const tip = typeof sceneShadowTip === 'function' ? sceneShadowTip(cam, cx, cz, h, S.g, S.tan) : [cx + S.g[0] * h * S.tan, cz + S.g[1] * h * S.tan];
-    const dx = tip[0] - cx, dz = tip[1] - cz;
+    let dx = tip[0] - cx, dz = tip[1] - cz;
+    // a shadow lies on ground at the caster's own level: where the ground falls away (the lip of an edge, a quay) it stops, never drawn in the air over the drop
+    if (deck == null && cam.relief) {
+      const gy = _wlGroundY(cam, cx, cz); let k = 0;
+      for (let i = 4; i >= 1; i--) { const t = i / 4; if (Math.abs(_wlGroundY(cam, cx + dx * t, cz + dz * t) - gy) <= 0.8) { k = t; break; } }
+      if (k < 1) { dx *= k; dz *= k; }
+    }
     const poly = _wlHull(foot.concat(foot.map(p => [p[0] + dx, p[1] + dz])));
     const size = e.size || (typeof worldObjectInfo === 'function' && worldObjectInfo(e.obj) ? worldObjectInfo(e.obj).size : null);
     const thin = _WL_THIN_CLS.has(cls) || (size && Math.min(size.w || 1, size.d || 1) < 0.3) || /railing|fence|post|lamp|reed|rush|pole|wire|sign/.test(e.obj);
     const sil = !_WL_PRISM_CLS.has(cls) || /railing|fence|palisade/.test(e.obj);
     const see = _WL_SEE_THROUGH.test(e.obj) ? 0.55 : 1;
-    push({ ref: e.id, kind: 'cast', mover: !!mover, poly, scr: scr(poly, y), y, op: S.op * see * fogK(e.z), blur: S.blur, fade: !!S.fade, sun: S.kind, dir: [dx, dz],
+    push({ ref: e.id, kind: 'cast', mover: !!mover, poly, scr: scr(poly, y), y, op: S.op * see * fogK(e.z) * ka, blur: S.blur, fade: !!S.fade, sun: S.kind, dir: [dx, dz],
       holes: deck != null ? [] : holesOf(poly), on: deck != null ? 'deck:' + deck : 'ground', thin: !!thin, sil, h });
   };
   if (o.statics !== false) for (const e of (world && world.entities) || []) if (e && e.static !== false) one(e, false);

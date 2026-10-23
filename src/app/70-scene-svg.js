@@ -175,6 +175,16 @@ function sceneAnimPose(a, t, L, x) {
       // lift (art units, optional): a foreshortened stride (a walker seen end-on) lifts each foot in turn instead of swinging it in the
       // picture plane; sway (optional): the body's shift from foot to foot, an x offset of the rest of the figure (the world's drawer)
       const sw = Math.sin(w), lf = a.lift || 0;
+      // stance (optional, 0..1: the share of a stride a foot is planted; the world's drawer, 20 Oct): through the stance the leg turns at
+      // an even pace from -deg to +deg (the foot moves back under the body at the body's own speed: planted, no sliding), then swings
+      // forward in the rest of the cycle; the other leg is half a cycle on. Lift (end-on) only while a foot swings. Absent: the sine.
+      if (a.stance > 0 && a.stance < 1) {
+        const st = a.stance, A = (a.deg || 22) * k, sA = Math.sin(Math.min(80, Math.abs(A)) * Math.PI / 180) * Math.sign(A || 1);
+        const leg = (u) => { u -= Math.floor(u); if (u < st) { const g = -1 + 2 * u / st; return { deg: Math.asin(Math.max(-1, Math.min(1, g * sA))) * 180 / Math.PI, up: 0 }; } const v = (u - st) / (1 - st), g = Math.cos(Math.PI * v); return { deg: Math.asin(Math.max(-1, Math.min(1, g * sA))) * 180 / Math.PI, up: Math.sin(Math.PI * v) }; };
+        const u0 = t / per + ph, L1 = leg(u0), L2 = leg(u0 + 0.5);
+        return { m: _scAbout(p[0], p[1], L1.deg, 1, 1, 0, lf ? -lf * L1.up : 0), m2: _scAbout(p[0], p[1], L2.deg, 1, 1, 0, lf ? -lf * L2.up : 0),
+          bob: -(a.bob == null ? 1.5 : a.bob) * Math.abs(sw), sway: (a.sway || 0) * sw, alpha: 1 };
+      }
       return { m: _scAbout(p[0], p[1], (a.deg || 22) * k * sw, 1, 1, 0, lf ? -lf * Math.max(0, sw) : 0), m2: _scAbout(p[0], p[1], -(a.deg || 22) * k * sw, 1, 1, 0, lf ? -lf * Math.max(0, -sw) : 0),
         bob: -(a.bob == null ? 1.5 : a.bob) * Math.abs(sw), sway: (a.sway || 0) * sw, alpha: 1 };
     }

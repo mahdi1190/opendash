@@ -117,7 +117,8 @@ function pageBox() {
     selUndoGroup: (fn) => { group++; inGroup++; try { return fn(); } finally { inGroup--; } },
     saveData: () => saves.push({ inGroup: inGroup > 0, group }),
     render: () => {}, toast: () => () => {}, undo: () => {},
-    todayStr: () => '2026-10-10', userName: () => 'Test User',
+    // The page clock, pinned to the messages' NOW (the ages of the threads depend on it).
+    Clock: { now: () => NOW }, todayStr: () => '2026-10-10', userName: () => 'Test User',
     getItem: (id) => state.custom.find(t => t.id === id),
     getPerson: (id) => state.people.find(p => p.id === id),
     statusOf: (id) => state.statuses[id] || 'todo',
@@ -153,6 +154,8 @@ test('emailQuickTask: the task, the person, the related thread and "handled" in 
   assert.equal(ctx.emailQuickTask(null), null);
   // Needs reply over the page's stores: the handled thread has gone
   assert.deepEqual(plain(ctx.emailNeedsReply({})).map(r => r.id), ['a2']);
+  // ...whatever the real date is: the page clock decides, and an explicit time wins over it
+  assert.deepEqual(plain(ctx.emailNeedsReply({ now: NOW + 30 * 86400000 })), [], 'a month later both threads are too old');
 });
 
 test('GmailDraft.prefill: a reply in the thread, a nudge for a task, a note; addresses only from People or the thread', () => {

@@ -87,7 +87,7 @@ function _wtrTops(prim) {
   let a = Infinity, b = -Infinity;
   const pts = [];
   for (const f of prim.faces || []) for (const q of f.pts) pts.push(q);
-  for (const op of prim.ops || []) { if (op.p) for (const q of op.p) pts.push(q); else if (op.t === 'tree' || op.t === 'scrub') { pts.push([op.x - op.w, op.y - op.h * 1.1], [op.x + op.w, op.y]); } }
+  for (const op of prim.ops || []) { if (op.p) for (const q of op.p) pts.push(q); else if (op.ps) { for (const P of op.ps) for (const q of P) pts.push(q); } else if (op.t === 'tree' || op.t === 'scrub') { pts.push([op.x - op.w, op.y - op.h * 1.1], [op.x + op.w, op.y]); } }
   for (const q of pts) { if (q[0] < a) a = q[0]; if (q[0] > b) b = q[0]; }
   if (!pts.length || !isFinite(a)) return null;
   const x0 = Math.floor(a / W), n = Math.floor(b / W) - x0 + 1, y = new Array(n).fill(1e9);                     // 1e9: no quad in the column (a plain number: the frame record is JSON, which turns Infinity into null)
@@ -199,7 +199,193 @@ function _wtrBankTone(hex, x, z, wet) {
   if (wet > 0) c = _wtrMixHex(c, '#4a6234', Math.min(0.7, wet));                      // damp grass at the water's foot
   return c;
 }
+/**
+ * The tone of a field seen from far off (a valley's patchwork: grass, silage, hay, stubble, a darker pasture), by the SURFACE's id: every field is
+ * one polygon with its own id, so each takes its own tone and the mosaic reads at two kilometres without a colour in the spec. Only 'field' polygons.
+ */
+function _wtrFieldTone(hex, id) {
+  const u = _wtrU(_wtrHashId(id) * 0.013, 17.3), v = _wtrU(_wtrHashId(id) * 0.007 + 5, 3.1);
+  const picks = ['#6f9a3f', '#a7ad58', '#d0c47a', '#86a548', '#4f7a38', '#b0a45a', '#7d9d4a', '#8a7a4f', '#5c8a3a', '#c8bd72'];
+  const c = picks[Math.floor(u * picks.length) % picks.length];
+  return _wtrShade(_wtrMixHex(hex, c, 0.72), 0.92 + 0.16 * v);
+}
+/** The ground's grass and heather in the season: pasture and moor go straw in autumn and a grey-brown mat in winter (the strips are baked from fixed colours, so the season is mixed in here; stone and scree keep theirs). */
+function _wtrSeasonTone(hex, season) {
+  if (season === 'autumn') return _wtrMixHex(hex, '#a99a5c', 0.3);
+  if (season === 'winter') return _wtrShade(_wtrMixHex(hex, '#7d7664', 0.5), 0.93);
+  if (season === 'spring') return _wtrMixHex(hex, '#8fc05a', 0.1);
+  return hex;
+}
+function _wtrHashId(id) { let h = 2166136261 >>> 0; const t = String(id); for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return (h % 9973) + 1; }
+/**
+ * A moor through the year (month 0..11, the northern hemisphere): the colour of each plant of it that month. Ling heather is a dark olive-brown carpet
+ * that flowers purple in August and the first half of September (a few early bells of bell heather in late July) and goes bronze-brown after; bracken
+ * unfurls green in May, yellows in September, is russet in October and stands dead brown all winter; the bents and purple moor-grass bleach to
+ * pale straw from October to March (a winter moor is brown and bleached, never green); bilberry is green in summer and red in autumn. ONE seasonal
+ * model: the ground's material ('heath') does not season it again.
+ */
+function _wtrMoorCols(month) {
+  const m = Number.isFinite(month) ? ((Math.round(month) % 12) + 12) % 12 : 6;
+  const bloom = m === 7 ? 1 : m === 8 ? 0.6 : m === 6 ? 0.2 : 0;
+  const hb = m >= 3 && m <= 5 ? '#4f4c36' : m >= 6 && m <= 8 ? '#4c4733' : m === 9 || m === 10 ? '#5d4533' : '#57402f';
+  const BR = ['#87593a', '#87593a', '#83583a', '#7c5938', '#7d7f3c', '#66833a', '#62803a', '#6c8a3c', '#94953e', '#ad692e', '#985a31', '#8a593a'];
+  const GR = ['#c2b48c', '#c0b28a', '#b8ad84', '#aba876', '#98a462', '#8e9e58', '#8f9c56', '#9a9d5a', '#a9a062', '#b9a56c', '#c0ae7e', '#c3b48c'];
+  const BI = ['#6b4a3a', '#6a4b3a', '#6c4d3a', '#5f5a36', '#557a38', '#4f7034', '#4f6e34', '#56703a', '#6a6a34', '#8c3b2a', '#7a3e2e', '#6b4a3a'];
+  return { heather: _wtrMixHex(hb, '#8d5389', bloom * 0.8), bloom, bracken: BR[m], grass: GR[m], bilberry: BI[m], peat: '#3b3127', m };
+}
+const _wtrSm = t => { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+/**
+ * The tone of a moor at a point: drifts of heather, bracken (thickest on the steep slopes under an edge), bleached bents, dark bilberry and bare peat,
+ * in patches of 20 to 60 m with a finer grain near the lens, blended smoothly (a threshold drew patches as staircases of quads). In plan metres, so it
+ * is the same in every frame; the colours are the month's (_wtrMoorCols).
+ */
+function _wtrMoorTone(hex, x, z, dist, Mc, slope) {
+  const M = Mc || _wtrMoorCols(6), d = dist || 0;
+  const near = Math.max(0, Math.min(1, 1.6 - d / 160)), far = Math.max(0.08, Math.min(1, 1.5 - d / 1200));
+  const a = _wtrN2(x / 70 + 11, z / 70 - 5) * 0.75 + 0.45 * _wtrN2(x / 31 + 3, z / 31 - 9), b = near * _wtrN2(x / 13 - 3, z / 13 + 8), c = _wtrN2(x / 140 + 2, z / 140 + 41);
+  let t = _wtrMixHex(M.grass, M.heather, 0.25 + 0.65 * _wtrSm((a + 0.3) / 0.65));
+  const wBr = Math.max(_wtrSm((-a - 0.35) / 0.35) * 0.8, _wtrSm(((slope || 0) - 0.12) / 0.9) * _wtrSm((_wtrN2(x / 40 + 7, z / 40 - 3) + 0.15) / 0.6) * 0.75);
+  t = _wtrMixHex(t, M.bracken, wBr);
+  if (b > 0.2) t = _wtrMixHex(t, M.grass, Math.min(0.45, (b - 0.2) * 0.8));
+  else if (b < -0.3) t = _wtrMixHex(t, b < -0.6 ? M.peat : M.bilberry, Math.min(0.42, (-0.3 - b) * 0.8));
+  // far off the drifts merge into the moor's mean tone (a mosaic of 20 m patches at two kilometres is noise)
+  t = _wtrMixHex(_wtrMixHex(M.grass, M.heather, 0.55), t, far);
+  return _wtrShade(_wtrMixHex(hex, t, 0.92), 0.95 + 0.1 * c);
+}
+/** '#rrggbb' quantised to steps of q (so the clumps of a strip share a few fills). */
+function _wtrQuant(hex, q) { const n = parseInt(hex.slice(1), 16), f = v => Math.min(255, Math.round(v / q) * q); return '#' + ((1 << 24) | (f((n >> 16) & 255) << 16) | (f((n >> 8) & 255) << 8) | f(n & 255)).toString(16).slice(1); }
+/**
+ * The carpet of a moor nearer than 260 m: clumps of heather and bilberry (dark domes, their shadow side), tufts of bleached bents catching the light,
+ * the purple of the heather's flowers in its months, snow lying on the tops on a snow day. Each clump 3 to 10 px across, so it reads as texture at
+ * any depth; placed by hashes of the quad (the same in every frame) and collected by colour into a few fills per strip (B: Map hex -> polygons).
+ */
+function _wtrMoorDeco(q, cam, hAt, B, ext, Mc, snow) {
+  if (q.cz > 700 || q.cz < 7) return;
+  const k = cam.f / Math.max(1, q.cz);
+  const yA = sceneProject(cam, q.cx, q.za, hAt(q.cx, q.za)).Y, yB = sceneProject(cam, q.cx, q.zb, hAt(q.cx, q.zb)).Y;
+  const wpx = (q.x2 - q.x) * k, hpx = Math.max(1, Math.abs(yA - yB));
+  const n = Math.min(16, Math.floor(wpx * hpx / (q.slope > 0.15 ? 30 : 46) + _wtrU(q.cx * 1.3 + 3, q.cz * 0.7)));
+  const put = (hex, pts) => { const key = _wtrQuant(hex, 9); let L = B.get(key); if (!L) { L = []; B.set(key, L); } L.push(pts); for (const p of pts) { if (p[0] < ext.minX) ext.minX = p[0]; if (p[0] > ext.maxX) ext.maxX = p[0]; if (p[1] < ext.minY) ext.minY = p[1]; if (p[1] > ext.maxY) ext.maxY = p[1]; } };
+  for (let i = 0; i < n; i++) {
+    const u1 = _wtrU(q.cx * 3.1 + i * 7.3, q.cz * 1.7 + i), u2 = _wtrU(q.cx * 0.7 - i * 3.9, q.cz * 2.9 + i * 1.3), u3 = _wtrU(q.cx * 5.3 + i, q.cz * 0.3 - i * 2.1);
+    const x = q.x + (q.x2 - q.x) * u1, z = q.za + (q.zb - q.za) * u2, y = hAt(x, z);
+    const sz = Math.max(0.1, Math.min(2.2, (q.slope > 0.15 ? 4 + 9 * u3 : 3 + 7 * u3) / k)), p = sceneProject(cam, x, z, y), X = p.X, Y = p.Y + 0.6, w2 = Math.max(1.2, sz * k * 0.5), hh = Math.max(1, sz * k * (0.28 + 0.14 * u2));
+    const col = _wtrMoorTone('#5a5038', x, z, q.cz, Mc, q.slope), lit = u3 > 0.58;
+    const pts = [], ns = w2 > 3 ? 4 : 3, hs = hh * (lit ? 1.6 : 1.25);
+    pts.push([X - w2, Y]);
+    for (let j = 0; j < ns; j++) {
+      const t0 = (j + 0.5) / ns, tx = X - w2 + 2 * w2 * t0 + (_wtrU(x * 7 + j, z * 5) - 0.5) * w2 * 0.5, th = hs * (0.7 + 0.5 * _wtrU(x * 3 - j, z * 11 + j));
+      pts.push([tx, Y - th], [X - w2 + 2 * w2 * (j + 1) / ns, Y - th * (lit ? 0.18 : 0.42)]);
+    }
+    pts[pts.length - 1] = [X + w2, Y];
+    for (let j = 0; j < pts.length; j++) pts[j] = [Math.round(pts[j][0] * 10) / 10, Math.round(pts[j][1] * 10) / 10];
+    const stone = q.slope > 0.15 && u1 < 0.06;
+    put(stone ? _wtrShade("#8d8270", 0.85 + 0.3 * u2) : lit ? _wtrShade(col, 1.12 + 0.16 * u1) : _wtrShade(col, 0.56 + 0.16 * u1), pts);
+    // the flowers of the heather in its months: a few purple points on the top of a dark clump
+    if (!lit && Mc && Mc.bloom > 0.15 && u2 < Mc.bloom * 0.8 && w2 > 1.6) { const r = Math.max(0.6, w2 * 0.22); put('#a7609f', [[X - r, Y - hh * 0.75], [X, Y - hh * 0.95 - r], [X + r, Y - hh * 0.75], [X, Y - hh * 0.55]]); }
+    // snow lies on the tops of the clumps on a snow day
+    if (snow && u1 < 0.45 + 0.4 * snow) put('#e8edf0', [[X - w2 * 0.8, Y - hs * 0.35], [X, Y - hs * 0.75], [X + w2 * 0.8, Y - hs * 0.35], [X, Y - hs * 0.15]]);
+  }
+}
 function _wtrU(x, z) { let h = Math.imul(Math.round(x * 4) | 0, 374761393) ^ Math.imul(Math.round(z * 4) | 0, 668265263); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+
+/* ---------- a valley seen from above: fields, woods and lanes as their own shapes (18 Oct, Stanage: "a smooth, flat-shaded, CG-looking smear") ----------
+   The quads of a strip are 10 to 40 m wide at a kilometre: a field's edge drawn by them is a staircase and its walls and hedges are lost. So every field,
+   wood and lane of the world (the valley's mosaic, or any author's) is also drawn as ITS OWN polygon, clipped to each strip's depth band and laid on the
+   relief there: the boundaries are crisp lines, the dry-stone walls of the upper rows and the hedges of the valley floor are drawn as dark lines with the
+   hedgerow trees along them, a wood is a dark canopy of crowns, a lane a pale line winding between the walls. The colours are the month's (hay cut pale
+   in July, pasture green, straw and dull winter greens), shaded by the slope and hazed with distance like the quads under them. */
+function _wtrValleyOf(world) {
+  const out = { fields: [], lanes: [] };
+  for (const s of (world && world.surfaces) || []) {
+    if (!s || !s.id) continue;
+    const wood = /^wood-/.test(s.id);
+    if ((s.kind === 'field' || wood) && Array.isArray(s.poly) && s.poly.length >= 3) {
+      let z0 = Infinity, z1 = -Infinity; for (const p of s.poly) { z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); }
+      const m = /^fld-(\d+)-/.exec(s.id);
+      if (z1 > 120) out.fields.push({ id: s.id, poly: s.poly, z0, z1, wood, row: m ? +m[1] : 0, h: _wtrHashId(s.id) });
+    } else if ((s.kind === 'track' || s.kind === 'lane') && Array.isArray(s.path) && s.path.length >= 2) out.lanes.push({ id: s.id, path: s.path, w: Number.isFinite(s.width) ? s.width : 4 });
+  }
+  return out;
+}
+/** The fields' colours in a month (0..11): pasture, silage, hay meadow (cut pale in July and August), rough grazing. */
+function _wtrFieldPal(month) {
+  const m = Number.isFinite(month) ? ((Math.round(month) % 12) + 12) % 12 : 6;
+  if (m >= 5 && m <= 7) return ['#6f9a40', '#80a648', '#93ae52', '#c9c27a', '#b9b76a', '#5f8c3a', '#a3b45c', '#7a9c46', '#d2c784', '#688f3e'];
+  if (m >= 8 && m <= 10) return ['#73923f', '#82984a', '#94a052', '#a9a462', '#b4a86c', '#668a3c', '#8c9a4e', '#9a9a58'];
+  if (m >= 3 && m <= 4) return ['#75a648', '#88b452', '#6c9c42', '#98b95c', '#80aa4c', '#a0bc62'];
+  return ['#6f8448', '#7d8c52', '#8a9058', '#69804a', '#949464', '#76874e', '#868a5c'];
+}
+/** Clip a plan polygon to zA <= z <= zB (Sutherland-Hodgman on two lines). */
+function _wtrClipZ(P, zA, zB) {
+  const cut = (Q, Z, keepAbove) => { const o = []; for (let i = 0; i < Q.length; i++) { const a = Q[i], b = Q[(i + 1) % Q.length], ia = keepAbove ? a[1] >= Z : a[1] <= Z, ib = keepAbove ? b[1] >= Z : b[1] <= Z; if (ia) o.push(a); if (ia !== ib) { const t = (Z - a[1]) / (b[1] - a[1]); o.push([a[0] + (b[0] - a[0]) * t, Z]); } } return o; };
+  const A = cut(P, zA, true); return A.length >= 3 ? cut(A, zB, false) : [];
+}
+/** Clip a segment to zA <= z <= zB: [[x, z], [x, z]] or null. */
+function _wtrSegZ(a, b, zA, zB) {
+  let t0 = 0, t1 = 1; const dz = b[1] - a[1];
+  if (Math.abs(dz) < 1e-9) { if (a[1] < zA || a[1] > zB) return null; }
+  else { const u = (zA - a[1]) / dz, v = (zB - a[1]) / dz; t0 = Math.max(t0, Math.min(u, v)); t1 = Math.min(t1, Math.max(u, v)); if (t0 >= t1) return null; }
+  return [[a[0] + (b[0] - a[0]) * t0, a[1] + dz * t0], [a[0] + (b[0] - a[0]) * t1, a[1] + dz * t1]];
+}
+function _wtrInPoly(P, x, z) { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const a = P[i], b = P[j]; if ((a[1] > z) !== (b[1] > z) && x < (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; }
+/** The ops of the valley's fields, woods and lanes in the strip [za, zb] (pushed onto sops; ext grown). */
+function _wtrValleyOps(V, cam, hAt, za, zb, month, ops, ext) {
+  const zm = (za + zb) / 2, k = cam.f / zm, L = Math.max(4, zm * 0.025), pal = _wtrFieldPal(month), winter = !(month >= 3 && month <= 9);
+  const hz = (hex) => zm > 500 ? _wtrMixHex(hex, '#a3b7cb', Math.min(0.78, 0.9 * (1 - Math.exp(-(zm - 500) / 3600)))) : hex;
+  const r1 = v => Math.round(v * 10) / 10;
+  const proj = (x, z) => { const p = sceneProject(cam, x, z, hAt(x, z) + 0.15); return [r1(p.X), r1(p.Y)]; };
+  const grow = (pts) => { for (const q of pts) { if (q[0] < ext.minX) ext.minX = q[0]; if (q[0] > ext.maxX) ext.maxX = q[0]; if (q[1] < ext.minY) ext.minY = q[1]; if (q[1] > ext.maxY) ext.maxY = q[1]; } };
+  const line = (a, b) => { const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / L)), o = []; for (let i = 0; i <= n; i++) o.push(proj(a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n)); return o; };
+  const xl = (-400 - cam.x0) * zb / cam.f, xr = (2000 - cam.x0) * zb / cam.f;
+  const dots = new Map(), dot = (hex, X, Y, r) => { let D = dots.get(hex); if (!D) { D = []; dots.set(hex, D); } const n = r > 3 ? 8 : 6, P = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; P.push([r1(X + Math.cos(a) * r), r1(Y + Math.sin(a) * r * 0.82)]); } D.push(P); grow(P); };
+  const strokes = new Map(), stroke = (hex, w, pts) => { const key = hex + '|' + w; let S = strokes.get(key); if (!S) { S = []; strokes.set(key, S); } S.push(pts); grow(pts); };
+  for (const F of V.fields) {
+    if (F.z1 < za || F.z0 > zb) continue;
+    const C = _wtrClipZ(F.poly, za, zb);
+    if (C.length < 3) continue;
+    let cx = 0, cz = 0; for (const q of C) { cx += q[0]; cz += q[1]; } cx /= C.length; cz /= C.length;
+    if (Math.max(...C.map(q => q[0])) < xl || Math.min(...C.map(q => q[0])) > xr) continue;
+    const pts = []; for (let i = 0; i < C.length; i++) { const seg = line(C[i], C[(i + 1) % C.length]); seg.pop(); for (const q of seg) pts.push(q); }
+    // the slope's light, as on the quads under it
+    const e = Math.max(4, zm * 0.02), gx = (hAt(cx + e, cz) - hAt(cx - e, cz)) / (2 * e), gz = (hAt(cx, cz + e) - hAt(cx, cz - e)) / (2 * e), nl = Math.hypot(gx, gz, 1), lam = (gx * 0.45 + gz * 0.4 + 0.8) / nl, shade = Math.max(0.66, Math.min(1.12, 0.8 + 0.3 * lam));
+    const u = (F.h % 997) / 997;
+    let hex = F.wood ? (winter ? (u < 0.5 ? '#5d5a48' : '#4a5440') : (u < 0.5 ? '#3f5c30' : '#4a6636')) : pal[F.h % pal.length];
+    hex = _wtrShade(hex, shade * (0.95 + 0.1 * u));
+    const gp = _wtrGrow(pts, 0.6); ops.push({ t: 'f', p: gp, m: 'heath', h: hz(hex), a: 1 }); grow(gp);
+    // a wood is a canopy of crowns (dark and lit), never a flat green
+    if (F.wood) {
+      const g = Math.max(9, 4 / k * 3);
+      for (let x = Math.floor(Math.min(...C.map(q => q[0])) / g) * g; x < Math.max(...C.map(q => q[0])); x += g) for (let z = Math.floor(za / g) * g; z < zb; z += g * 0.6) {
+        const h1 = _wtrU(x * 0.31 + 5, z * 0.17), xx = x + g * h1, zz = z + g * 0.6 * _wtrU(x * 0.13, z * 0.29 + 2);
+        if (zz < za || zz > zb || !_wtrInPoly(F.poly, xx, zz)) continue;
+        const p = sceneProject(cam, xx, zz, hAt(xx, zz) + 6), r = Math.max(0.9, (4 + 3 * h1) * k);
+        dot(hz(_wtrShade(winter ? '#5f5848' : '#3a5530', h1 < 0.5 ? 0.82 : 1.22)), p.X, p.Y, r);
+      }
+    }
+    // the boundaries: dry-stone walls on the upper rows (grey), hedges with their trees on the valley floor (dark green; bare in winter)
+    const hedge = !F.wood && F.row >= 3, wallK = F.row < 3 && !F.wood;
+    for (let i = 0; i < F.poly.length; i++) {
+      const s = _wtrSegZ(F.poly[i], F.poly[(i + 1) % F.poly.length], za, zb); if (!s) continue;
+      const P2 = line(s[0], s[1]);
+      if (wallK || hedge) stroke(hz(wallK ? '#57524a' : '#3d5230'), Math.round(Math.max(0.7, Math.min(2.2, (wallK ? 1.4 : 3) * k)) * 10) / 10, P2);
+      if (hedge && ((F.h + i * 7) % 10) < 6) {
+        const len = Math.hypot(s[1][0] - s[0][0], s[1][1] - s[0][1]), sp = 26 + 20 * u;
+        for (let d = (F.h % 13); d < len; d += sp * (0.7 + 0.6 * _wtrU(d * 0.1 + i, F.h * 0.01))) {
+          const t = d / len, xx = s[0][0] + (s[1][0] - s[0][0]) * t, zz = s[0][1] + (s[1][1] - s[0][1]) * t, p = sceneProject(cam, xx, zz, hAt(xx, zz) + 5);
+          dot(hz(winter ? '#6a6250' : _wtrShade('#3c5a2e', 0.9 + 0.25 * _wtrU(xx, zz))), p.X, p.Y, Math.max(0.8, (3 + 2.5 * _wtrU(zz, xx)) * k));
+        }
+      }
+    }
+  }
+  // lanes: a pale line between the walls
+  for (const Ln of V.lanes) for (let i = 1; i < Ln.path.length; i++) {
+    const s = _wtrSegZ(Ln.path[i - 1], Ln.path[i], za, zb); if (!s) continue;
+    stroke(hz('#b3aa92'), Math.round(Math.max(0.8, Math.min(3, Ln.w * k)) * 10) / 10, line(s[0], s[1]));
+  }
+  for (const [key, S] of strokes) { const [h, w] = key.split('|'); for (const P2 of S) ops.push({ t: 's', p: P2, m: 'heath', h, w: +w, a: 0.9 }); }   // (heath: a wall or hedge two kilometres off is a dark line at night, never a moonlit wire)
+  for (const [h, D] of dots) ops.push({ t: 'fm', ps: D, m: 'heath', h, a: 1 });
+}
 
 /**
  * What a pasture hillside has that a flat colour has not (found on Malham Cove: a green slab): sheep trods along the contours
@@ -214,7 +400,7 @@ function _wtrHillDeco(q, cam, hAt, ops, ext) {
   const note = (pts) => { for (const p of pts) { if (p[0] < ext.minX) ext.minX = p[0]; if (p[0] > ext.maxX) ext.maxX = p[0]; if (p[1] < ext.minY) ext.minY = p[1]; if (p[1] > ext.maxY) ext.maxY = p[1]; } };
   const n1 = _wtrN2(q.cx / 14, q.cz / 14), n2 = _wtrN2(q.cx / 5 + 3, q.cz / 5);
   // a sheep trod: along the contour, a few metres to a dozen long, thicker where the slope is steeper
-  if (h(1.7, 1.3, 11) < 0.15 + 0.1 * Math.max(0, n2) && q.slope > 0.12) {
+  if (q.kind !== 'heath' && h(1.7, 1.3, 11) < 0.15 + 0.1 * Math.max(0, n2) && q.slope > 0.12) {
     const cx = -q.gz / cl, cz = q.gx / cl, half = 2.5 + 6 * h(0.9, 2.1, 5), pts = [], lo = [];
     for (let i = 0; i <= 4; i++) {
       const t = (i / 4 * 2 - 1) * half, x = q.x + W * h(3.1, 0.7, 2) + cx * t, z = Math.max(1, Math.min(q.zb, q.za + (q.zb - q.za) * h(0.4, 4.3, 9)) + cz * t * 0.25), y = hAt(x, z);
@@ -225,8 +411,8 @@ function _wtrHillDeco(q, cam, hAt, ops, ext) {
     note(pts); note(lo);
   }
   // tussocks and rush: dark rounded bumps, in clusters where the noise is high
-  if (h(2.3, 1.1, 21) < 0.16 + 0.2 * Math.max(0, n1)) {
-    const x = q.x + W * h(5.3, 0.3, 4), z = q.za + (q.zb - q.za) * h(0.2, 6.1, 3), y = hAt(x, z), sz = 0.5 + 1.1 * h(1.9, 2.9, 8), pts = [];
+  if (q.cz > (q.kind === 'heath' ? 30 : 0) && h(2.3, 1.1, 21) < 0.16 + 0.2 * Math.max(0, n1)) {
+    const x = q.x + W * h(5.3, 0.3, 4), z = q.za + (q.zb - q.za) * h(0.2, 6.1, 3), y = hAt(x, z), sz = (0.5 + 1.1 * h(1.9, 2.9, 8)) * (q.kind === 'heath' ? 0.55 : 1), pts = [];
     const [X, Y] = P(x, z, y), w2 = Math.max(1.2, sz * k * 0.5), hh = Math.max(1.1, sz * k * 0.38);
     for (let i = 0; i < 8; i++) { const an = Math.PI + i / 7 * Math.PI, rj = 0.78 + 0.3 * _wtrU(q.cx + i, q.cz); pts.push([X + Math.cos(an) * w2 * rj, Y + Math.sin(an) * hh * rj]); }
     pts.push([X + w2 * 0.9, Y + 0.4], [X - w2 * 0.9, Y + 0.4]);
@@ -235,7 +421,7 @@ function _wtrHillDeco(q, cam, hAt, ops, ext) {
     note(e);
   }
   // limestone scars on the steeper pasture, in clusters: a ragged outcrop (a lit, stepped top, a darker front, a shadow under it)
-  if (q.slope > 0.25 && n1 + 0.6 * n2 > 0.62 && h(3.7, 2.7, 31) < 0.34) {
+  if (q.kind !== 'heath' && q.slope > 0.25 && n1 + 0.6 * n2 > 0.62 && h(3.7, 2.7, 31) < 0.34) {
     const x = q.x + W * h(2.1, 3.3, 13), z = q.za + (q.zb - q.za) * h(4.4, 0.9, 17), wm = 0.9 + 2.8 * h(1.3, 5.7, 19), hm = 0.7 + 1.2 * h(6.1, 1.1, 23), nS = 5;
     const bot = [], top = [];
     for (let i = 0; i <= nS; i++) {
@@ -258,7 +444,7 @@ function _wtrClipT(poly, T, sgn) {
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i], b = poly[(i + 1) % poly.length], ia = inside(a), ib = inside(b);
     if (ia) out.push(a);
-    if (ia !== ib) { const u = (T - a.t) / (b.t - a.t); out.push({ x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, t: T, m: a.m + (b.m - a.m) * u, fw: (a.fw == null ? 1 : a.fw) + ((b.fw == null ? 1 : b.fw) - (a.fw == null ? 1 : a.fw)) * u }); }
+    if (ia !== ib) { const u = (T - a.t) / (b.t - a.t); out.push({ x: a.x + (b.x - a.x) * u, z: a.z + (b.z - a.z) * u, t: T, m: a.m + (b.m - a.m) * u, fw: (a.fw == null ? 1 : a.fw) + ((b.fw == null ? 1 : b.fw) - (a.fw == null ? 1 : a.fw)) * u, s: a.s != null && b.s != null ? a.s + (b.s - a.s) * u : a.s }); }
   }
   return out;
 }
@@ -279,23 +465,38 @@ function _wtrCliffPieces(corners, cliffs, cam, hAt) {
   for (const G of cliffs) {
     const next = [];
     for (const pc of pieces) {
-      const V = pc.fresh ? pc.poly.map(v => { const s = worldCliffSample(G, v.x, v.z); return { x: v.x, z: v.z, t: s.t, m: s.m, fw: s.fw }; }) : pc.poly;
+      const V = pc.fresh || pc.G !== G ? pc.poly.map(v => { const s = worldCliffSample(G, v.x, v.z); return { x: v.x, z: v.z, t: s.t, m: s.m, fw: s.fw, s: s.s }; }) : pc.poly;
       const mm = Math.max(...V.map(v => v.m));
-      if (mm < WORLD_CLIFF_MIN_M) { next.push({ poly: V, scree: pc.scree, fresh: false }); continue; }
+      if (mm < WORLD_CLIFF_MIN_M) { next.push({ poly: V, scree: pc.scree, fresh: false, G }); continue; }
       const E = worldCliffEdges(G, mm), tmin = Math.min(...V.map(v => v.t)), tmax = Math.max(...V.map(v => v.t));
       // what lies behind the face is hidden only where the sight line from the eye is still below the face's top where it crosses it
       const hide = (poly) => { let cx = 0, cz = 0, hh = 0; for (const v of poly) { cx += v.x; cz += v.z; if (hAt) hh = Math.max(hh, hAt(v.x, v.z)); } return worldCliffHides(G, cx / poly.length, cz / poly.length, hh, cam.eye); };
-      if (tmax <= E.tA) next.push({ poly: V, scree: Math.max(pc.scree, _wtrScreeOf(G, V, mm)), fresh: false });
-      else if (tmin >= E.tB) { if (!hide(V)) next.push({ poly: V, scree: pc.scree, fresh: false }); }
+      if (tmax <= E.tA) next.push({ poly: V, scree: Math.max(pc.scree, _wtrScreeOf(G, V, mm)), fresh: false, G });
+      else if (tmin >= E.tB) { if (!hide(V)) next.push({ poly: V, scree: pc.scree, fresh: false, G }); }
       else {
         const fr = tmin < E.tA ? _wtrClipT(V, E.tA, 1) : [], bk = tmax > E.tB ? _wtrClipT(V, E.tB, -1) : [];
-        if (fr.length >= 3) next.push({ poly: fr, scree: Math.max(pc.scree, _wtrScreeOf(G, fr, mm)), fresh: false });
-        if (bk.length >= 3 && !hide(bk)) next.push({ poly: bk, scree: pc.scree, fresh: false });
+        if (fr.length >= 3) next.push({ poly: fr, scree: Math.max(pc.scree, _wtrScreeOf(G, fr, mm)), fresh: false, G });
+        if (bk.length >= 3 && !hide(bk)) next.push({ poly: bk, scree: pc.scree, fresh: false, G });
       }
     }
     pieces = next;
+    // a blocky rock's plateau ends in bare rock: the cap (2 to 7 m of slab behind the lip, its width wandering along the edge)
+    if (G.slopeTalus && typeof _WCL_LOOK === 'object' && _WCL_LOOK[G.rock] && _WCL_LOOK[G.rock].blocky) {
+      const next2 = [];
+      for (const pc of pieces) {
+        const V = pc.poly, mm = Math.max(...V.map(v => v.m == null ? 0 : v.m));
+        if (pc.cap != null || mm < 0.5 || !V.every(v => v.t != null)) { next2.push(pc); continue; }
+        const E = worldCliffEdges(G, mm), tmin = Math.min(...V.map(v => v.t)), sm = V.reduce((a, v) => a + (v.s || 0), 0) / V.length;
+        const cw = E.tB + 1.5 + 3 * (0.5 + 0.5 * Math.sin(sm / 9.3 + 1.1) * Math.cos(sm / 23.7 - 0.4)), zc = V.reduce((a, v) => a + v.z, 0) / V.length;
+        if (zc < 9 || tmin < E.tB - 0.01 || tmin >= cw) { next2.push(pc); continue; }
+        const ins = _wtrClipT(V, cw, 1), out = _wtrClipT(V, cw, -1);
+        if (ins.length >= 3) next2.push({ poly: ins, scree: pc.scree, fresh: false, cap: 1 });
+        if (out.length >= 3) next2.push({ poly: out, scree: pc.scree, fresh: false, cap: 0 });
+      }
+      pieces = next2;
+    }
   }
-  return pieces.map(p => ({ poly: p.poly.map(v => [v.x, v.z]), scree: p.scree }));
+  return pieces.map(p => ({ poly: p.poly.map(v => [v.x, v.z]), scree: p.scree, cap: p.cap || 0 }));
 }
 
 /** Does the strip at depth zm (across x within xlim) cross the talus skirt of this cliff? (a finer grid of quads there: the scree is smooth, not a mosaic) */
@@ -308,7 +509,7 @@ const _wtrMemo = new WeakMap();
 function worldTerrainPrims(world, cam, o) {
   o = o || {};
   if (world && typeof world === 'object' && cam && cam.relief) {
-    const key = (o.season || '') + '|' + cam.f + '|' + cam.horizon + '|' + cam.x0 + '|' + cam.eye + '|' + (world.features ? world.features.length : 0);
+    const key = (o.season || '') + '|' + (Number.isFinite(o.month) ? o.month : '') + '|' + (o.snow ? 1 : 0) + '|' + cam.f + '|' + cam.horizon + '|' + cam.x0 + '|' + cam.eye + '|' + (world.features ? world.features.length : 0);
     let m = _wtrMemo.get(world);
     if (m && m.key === key && m.relief === cam.relief) return m.out.slice();
     const out = _wtrPrims(world, cam, o);
@@ -328,9 +529,9 @@ function _wtrPrims(world, cam, o) {
   // the height of the ground: the grid; with a cliff, the cliff's own analytic function over the relief that is not a cliff
   const baseGrid = world.reliefBase ? { relief: world.reliefBase } : null;
   const hAt = cliffs.length
-    ? (x, z) => { let h = baseGrid ? sceneGroundHeight(baseGrid, x, z) : 0; for (const G of cliffs) { const v = worldCliffHeight(G.f, x, z); if (v > h) h = v; } return h; }
+    ? (x, z) => { let h = baseGrid ? sceneGroundHeight(baseGrid, x, z) : 0, tal = 0; for (const G of cliffs) if (G.slopeTalus) tal = Math.max(tal, worldCliffTalus(G.f, x, z)); h += tal; for (const G of cliffs) { const v = worldCliffHeight(G.f, x, z); if (v > 0 && v > h) h = v; } return h; }   // (a cliff only counts where it stands: its 0 away from it is not a floor under a valley)
     : (x, z) => sceneGroundHeight(cam, x, z);
-  const railBanks = _wtrRailBanks(world);
+  const VAL = _wtrValleyOf(world), railBanks = _wtrRailBanks(world), MC = _wtrMoorCols(Number.isFinite(o.month) ? o.month : o.season === 'winter' ? 0 : o.season === 'autumn' ? 9 : o.season === 'spring' ? 4 : 6);
   const rock = cliffs.length && typeof _WCL_LOOK === 'object' ? (_WCL_LOOK[cliffs[0].rock] || _WCL_LOOK.limestone) : null;
   const stones = cliffs.length && typeof worldCliffStones === 'function' ? worldCliffStones(world, cam) : [];
   let si = 0;
@@ -343,7 +544,7 @@ function _wtrPrims(world, cam, o) {
     const bankStrip = railBanks.length && typeof _wcLineDist === 'function' && railBanks.some(b => { for (let x = xl; x <= xr; x += Math.max(20, (xr - xl) / 8)) if (_wcLineDist(b.path, x, zm) < b.half) return true; return false; });
     const step = Math.max(screeStrip ? 0.6 : 0.9, zm / (screeStrip ? 220 : cliffs.length ? 70 : bankStrip ? 120 : 44)), faces = [], sops = [];
     let hi = 0, xmin = Infinity, xmax = -Infinity, minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity;
-    const hillQ = [];
+    const hillQ = [], capQ = [];
     for (let x = xl; x < xr - 1e-6; x += step) {
       const x2 = Math.min(xr, x + step);
       // a quad that more than one surface kind lies under (a lane, a flight of steps, a path across a slope) is cut into a finer grid, so a
@@ -360,7 +561,7 @@ function _wtrPrims(world, cam, o) {
         const poly = pc.poly, hs = poly.map(p => hAt(p[0], p[1])), hm = Math.max(...hs);
         if (hm < 0.12 && Math.min(...hs) > -0.12) continue;                      // flat ground: the v2 base
         let cx0 = 0, cz0 = 0; for (const p of poly) { cx0 += p[0]; cz0 += p[1]; } cx0 /= poly.length; cz0 /= poly.length;
-        const kind = worldTerrainKind(world, cx0, cz0);
+        const surf = worldTerrainSurface(world, cx0, cz0), kind = surf ? surf.kind : 'grass';
         // the slope from the plan quad's four corners (a clipped piece keeps the quad's own gradient)
         // (a clipped piece takes the gradient at its own middle: the face's own jump is not its slope)
         const e = Math.max(0.3, (x2 - x) * 0.5), gx = (hAt(cx0 + e, cz0) - hAt(cx0 - e, cz0)) / (2 * e), gz = (hAt(cx0, cz0 + e) - hAt(cx0, Math.max(0.1, cz0 - e))) / (cz0 + e - Math.max(0.1, cz0 - e)), slope = Math.hypot(gx, gz);
@@ -375,22 +576,37 @@ function _wtrPrims(world, cam, o) {
           // the ground beside such a surface (the sliver a quad's centre puts outside it, the foot of a wall): not a green wedge cutting into the paving
           else if (kind === 'grass' && _wtrBesideThinPaved(world, cx0, cz0, Math.max(0.9, (x2 - x) * 1.1))) continue;
         }
+        if (rock && (kind === 'path' || kind === 'track') && m.mat === 'stone' && slope <= 1.3) { const pn = _wtrN2(cx0 / 3.1 + 7, cz0 / 3.1 - 2), pn2 = _wtrN2(cx0 / 0.9, cz0 / 0.9 + 3); m = { mat: 'gravel', hex: _wtrShade(_wtrMixHex(_wtrMixHex(rock.light, '#7a6a50', 0.45), pn < -0.2 ? '#4a3d30' : '#b0a080', Math.min(0.5, Math.abs(pn) * 0.7)), 0.95 + 0.07 * pn2) }; }
+        // a steep quad beside a cliff is the cliff's own rock (never the generic pale grey: a gritstone edge is dark, chalk is white)
+        if (m.mat === 'stone' && slope > 1.3 && rock) m = { mat: 'stone', hex: _wtrMixHex(rock.base, rock.dark, 0.3) };
+        if (m.mat === 'grass' && kind === 'heath' && slope < 1.3) {
+          let hx = _wtrMoorTone(m.hex, cx0, cz0, Math.hypot(cx0, cz0), MC, slope);
+          // snow on a snow day: drifts in the hollows and on the lee of the walls and the rim, the tops of the heather showing through elsewhere
+          if (o.snow) { const sn = 0.6 * _wtrN2(cx0 / 22 + 5, cz0 / 22 - 7) + 0.4 * _wtrN2(cx0 / 7 - 2, cz0 / 7 + 4) + 0.35 * (o.snow - 0.5); hx = _wtrMixHex(hx, '#e6ebee', 0.88 * _wtrSm((sn + 0.05) / 0.35)); }
+          m = { mat: Math.hypot(cx0, cz0) > 900 ? 'grass' : 'heath', hex: hx };
+        }
+        else if (m.mat === 'grass' && kind === 'field' && surf && surf.id) m = { mat: m.mat, hex: _wtrFieldTone(m.hex, surf.id) };
         // the scree of a cliff is where the cliff's own talus is the ground: a hill that rises higher there (the dale side beside the cove) is not scree
         if (pc.scree > 0 && baseGrid && sceneGroundHeight(baseGrid, cx0, cz0) > hAt(cx0, cz0) - 0.3 && sceneGroundHeight(baseGrid, cx0, cz0) > 0.5) pc.scree = 0;
+        if (pc.cap && rock) {
+          const cn = _wtrN2(cx0 / 9 + 4, cz0 / 9 - 1), cn2 = _wtrN2(cx0 / 25 - 3, cz0 / 25 + 2);
+          m = { mat: 'stone', hex: _wtrShade(_wtrMixHex(_wtrMixHex(rock.light, rock.base, 0.35 + 0.25 * cn2), cn < 0 ? rock.dark : rock.lichen || rock.light, Math.min(0.18, Math.abs(cn) * 0.25)), 0.98 + 0.04 * cn) };
+          capQ.push({ cx: cx0, cz: cz0, x, x2, za, zb });
+        }
         const jit0 = _wtrU(cx0, cz0);
         // a pasture is patchy (dry bent, rush, a greener flush by a spring), never one tone: two scales of noise in the colour, the yellower and the darker patches mixed in
-        if (m.mat === 'grass' && pc.scree <= 0.05 && hm > 0.5) {
+        if ((m.mat === 'grass' || m.mat === 'heath') && pc.scree <= 0.05 && Math.max(hm, -Math.min(...hs)) > 0.5) {
           const na = _wtrN2(cx0 / 13, cz0 / 13), nb = _wtrN2(cx0 / 4.1 + 5, cz0 / 4.1 - 2);
           let hx = m.hex;
-          if (na > 0.25) hx = _wtrMixHex(hx, '#b4ab62', Math.min(0.5, (na - 0.25) * 0.7)); else if (na < -0.3) hx = _wtrMixHex(hx, '#4d7a3a', Math.min(0.5, (-0.3 - na) * 0.8));
-          m = { mat: m.mat, hex: _wtrShade(hx, 1 + 0.07 * na + 0.05 * nb) };
-          hillQ.push({ cx: cx0, cz: cz0, x, x2, za, zb, gx, gz, slope, hex: m.hex, hm });
+          if (kind === 'heath') { /* the moor has its own patches (_wtrMoorTone) */ } else if (kind === 'field') { hx = _wtrShade(hx, 1 + 0.05 * na); } else if (na > 0.25) hx = _wtrMixHex(hx, '#b4ab62', Math.min(0.5, (na - 0.25) * 0.7)); else if (na < -0.3) hx = _wtrMixHex(hx, '#4d7a3a', Math.min(0.5, (-0.3 - na) * 0.8));
+          m = kind === 'field' ? { mat: m.mat, hex: hx } : { mat: m.mat, hex: _wtrShade(hx, 1 + 0.07 * na + 0.05 * nb) };
+          hillQ.push({ cx: cx0, cz: cz0, x, x2, za, zb, gx, gz, slope, hex: m.hex, hm, kind });
         }
         // a talus skirt: pale broken rock where the slope comes off the foot of a cliff, grass creeping up from the toe
         const lf = Math.sin(cx0 * 0.09 + 1.3) * Math.sin(cz0 * 0.12 - 0.4);
         if (pc.scree > 0.05 && rock) { const sc = Math.max(0, Math.min(1, pc.scree * (0.9 + 0.3 * lf))); m = sc > 0.5 ? { mat: 'scree', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), Math.min(1, sc * 1.1)) } : { mat: 'grass', hex: _wtrMixHex(m.hex, _wtrShade(rock.base, 0.74), sc * 0.9) }; }
         // the shade of the slope against a sun high on the left behind the eye (the light pass grades the colour by the real sun after)
-        const nl = Math.hypot(gx, gz, 1), lam = (-gx * -0.45 + -gz * -0.4 + 1 * 0.8) / (nl * 1.0), shade = Math.max(0.6, Math.min(1.12, 0.78 + 0.34 * lam));
+        const nl = Math.hypot(gx, gz, 1), lam = (-gx * -0.45 + -gz * -0.4 + 1 * 0.8) / (nl * 1.0), shade = kind === 'heath' ? Math.max(0.72, Math.min(1.08, 0.86 + 0.22 * lam)) : Math.max(0.6, Math.min(1.12, 0.78 + 0.34 * lam));
         // a few percent of variation along the strip (mowing, grazing) so a slope is never one flat tone; scree varies more
         const jit = 1 + 0.018 * Math.sin(cx0 * 0.37 + cz0 * 0.21) + 0.012 * Math.sin(cx0 * 1.3 - cz0 * 0.7) + (pc.scree > 0.05 ? 0.03 * lf : 0);
         // a railway bank is mottled, and wetter at a foot standing in the water
@@ -407,15 +623,31 @@ function _wtrPrims(world, cam, o) {
         hi = Math.max(hi, hm); xmin = Math.min(xmin, x); xmax = Math.max(xmax, x2);
         // a lane drawn flat (above the eye the base draws nothing): its cells vary a few percent cell to cell, so it reads as worn stone and not as a tarmac ribbon
         const stoneJit = _WTR_STONE.has(kind) && slope < WORLD_TERRAIN_GENTLE ? 1 + 0.12 * (jit0 - 0.5) + 0.05 * Math.sin(cx0 * 2.3 + cz0 * 0.9) : 1;
-        faces.push({ pts, role: 'ground', mat: m.mat, hex: _wtrShade(m.hex, shade * jit * stoneJit), z: cz0, alpha: 1 });
+                // the far ground is hazy: a ridge at four kilometres is blue-grey and soft, never the saturated tone of the heather at your feet (the haze of
+        // a fair day; the light pass grades it after, so night and dusk follow)
+        let hexF = _wtrShade(m.mat === 'grass' ? _wtrSeasonTone(m.hex, o.season) : m.hex, shade * jit * stoneJit);
+        if (zm > 500) hexF = _wtrMixHex(hexF, '#a3b7cb', Math.min(0.78, 0.9 * (1 - Math.exp(-(zm - 500) / 3600))));
+        faces.push({ pts, role: 'ground', mat: m.mat, hex: hexF, z: cz0, alpha: 1 });
       }
       }
     }
     // the pasture's own marks (trods, tussocks, scars), far to near within the strip
     if (hillQ.length) {
-      const ext = { minX, maxX, minY, maxY };
-      for (const q of hillQ) _wtrHillDeco(q, cam, hAt, sops, ext);
+      const ext = { minX, maxX, minY, maxY }, B = new Map();
+      for (const q of hillQ) { if (q.kind === 'heath') _wtrMoorDeco(q, cam, hAt, B, ext, MC, o.snow || 0); else _wtrHillDeco(q, cam, hAt, sops, ext); }
+      for (const [h, ps] of B) sops.push({ t: 'fm', ps, m: 'heath', h, a: 0.96 });
       ({ minX, maxX, minY, maxY } = ext);
+    }
+    // the cap's marks: joints across the slab, round weathering pits (dark, a pale rim), lichen rosettes; in plan metres from hashes
+    for (const q of capQ) {
+      const k = cam.f / Math.max(1, q.cz); if (k > 90) continue; const n = Math.min(4, Math.floor((q.x2 - q.x) * k / 40 + _wtrU(q.cx * 2.1, q.cz * 1.3)));
+      for (let i = 0; i < n; i++) {
+        const u1 = _wtrU(q.cx * 1.7 + i * 3.3, q.cz * 2.3 - i), u2 = _wtrU(q.cx * 4.1 - i, q.cz * 0.9 + i * 2.7), u3 = _wtrU(q.cx * 0.3 + i * 7, q.cz * 5.1);
+        const x = q.x + (q.x2 - q.x) * u1, z = q.za + (q.zb - q.za) * u2, y = hAt(x, z) + 0.01, p = sceneProject(cam, x, z, y);
+        if (u3 < 0.35) { const L = (0.6 + 1.6 * u1) * k, a2 = (u2 - 0.5) * 0.6, e = [[p.X - L * Math.cos(a2), p.Y - L * 0.12 * Math.sin(a2)], [p.X, p.Y + 0.4], [p.X + L * Math.cos(a2), p.Y + L * 0.12 * Math.sin(a2)]]; sops.push({ t: 's', p: e.map(q2 => [Math.round(q2[0] * 10) / 10, Math.round(q2[1] * 10) / 10]), m: 'stone', h: rock.dark, w: Math.max(0.7, 0.05 * k), a: 0.55 }); }
+        else { const rx = (0.12 + 0.35 * u1) * k, ry = Math.max(0.6, rx * Math.min(0.5, 30 / Math.max(30, q.cz * 4) + 0.12)), pit = u3 < 0.7, P4 = [[p.X - rx, p.Y], [p.X - rx * 0.6, p.Y - ry * 0.8], [p.X + rx * 0.5, p.Y - ry * 0.9], [p.X + rx, p.Y], [p.X + rx * 0.5, p.Y + ry * 0.8], [p.X - rx * 0.6, p.Y + ry * 0.75]].map(q2 => [Math.round(q2[0] * 10) / 10, Math.round(q2[1] * 10) / 10]); sops.push({ t: 'f', p: P4, m: 'stone', h: pit ? rock.dark : (u2 < 0.4 && rock.lichen2 ? rock.lichen2 : rock.lichen), a: pit ? 0.45 : 0.55 }); }
+        minX = Math.min(minX, p.X - 30); maxX = Math.max(maxX, p.X + 30); minY = Math.min(minY, p.Y - 10); maxY = Math.max(maxY, p.Y + 10);
+      }
     }
     // scrub on a railway bank's slope: drawn with the strip (the same depth as the ground it stands on), far to near
     if (bankStrip && faces.length) {
@@ -428,8 +660,14 @@ function _wtrPrims(world, cam, o) {
     while (si < stones.length && stones[si].z < za) si++;
     let sj = si; while (sj < stones.length && stones[sj].z < zb) sj++;
     for (let j = sj - 1; j >= si; j--) for (const op of stones[j].ops) { sops.push(op); for (const q of op.p) { minX = Math.min(minX, q[0]); maxX = Math.max(maxX, q[0]); minY = Math.min(minY, q[1]); maxY = Math.max(maxY, q[1]); } xmin = Math.min(xmin, stones[j].x); xmax = Math.max(xmax, stones[j].x); }
+    // the valley's fields, woods and lanes as their own shapes (beyond 120 m: nearer, the quads and the dressing are the ground)
+    if (faces.length && zb > 120 && (VAL.fields.length || VAL.lanes.length)) {
+      const ext = { minX, maxX, minY, maxY };
+      _wtrValleyOps(VAL, cam, hAt, za, zb, MC.m, sops, ext);
+      ({ minX, maxX, minY, maxY } = ext);
+    }
     if (!faces.length) continue;
-    const strip = { id: 'terrain-' + k, kind: 'line', sub: 'terrain', lineKind: 'terrain', box: [minX, minY, maxX, maxY], zKey: za, foot: [[xmin, za], [xmax, za], [xmax, zb], [xmin, zb]], height: Math.max(0.3, hi), solidity: 'passable', faces, mat: 'grass', ops: sops.length ? sops : undefined, heading: cam.heading || 0 };
+    const strip = { id: 'terrain-' + k, kind: 'line', sub: 'terrain', lineKind: 'terrain', box: [minX, minY, maxX, maxY], zKey: za, orderZ: zb, foot: [[xmin, za], [xmax, za], [xmax, zb], [xmin, zb]], height: Math.max(0.3, hi), solidity: 'passable', faces, mat: 'grass', ops: sops.length ? sops : undefined, heading: cam.heading || 0 };
     strip.tops = _wtrTops(strip);
     out.push(strip);
   }
@@ -544,6 +782,7 @@ function _wtrDrawOps(ctx, prim, o, colour) {
     if (k !== 1 && op.m === 'stone' && hex) { const key = hex + k + mk; let v = _wtrShadeMemo.get(key); if (!v) { v = _wtrShade(hex, k); if (_wtrShadeMemo.size > 4000) _wtrShadeMemo.clear(); _wtrShadeMemo.set(key, v); } hex = v; }
     ctx.globalAlpha = A * (op.a == null ? 1 : op.a);
     if (op.t === 'f') { ctx.fillStyle = colour(op.m, hex); _wtrPoly(ctx, op.p); ctx.closePath(); ctx.fill(); n++; }
+    else if (op.t === 'fm') { ctx.fillStyle = colour(op.m, hex); ctx.beginPath(); for (const pts of op.ps) { ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); } ctx.fill(); n++; }
     else if (op.t === 'fg') {
       // a smooth fill whose colour drifts along it: the stops carry the colour and the normal of their own column (shaded one by one)
       const gr = ctx.createLinearGradient(op.x0, 0, op.x1, 0);

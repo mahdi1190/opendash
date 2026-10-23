@@ -177,7 +177,7 @@ function openOnboarding() {
       body.appendChild(el('h2', 'conn-name', 'Choose your assistant (optional)'));
       body.appendChild(el('p', 'conn-note', 'Connect your assistant and its OpenDash tools together. Everything else works without an assistant.'));
       body.appendChild(assistantConnectionCards((window.Connections && Connections.all()) || {}, paint, true));
-      body.appendChild(microsoftConnectionCard((window.Connections && Connections.all()) || {}, true));
+      if (typeof accountsCompactCard === 'function') body.appendChild(accountsCompactCard());
       if (typeof hostedRelayCard === 'function') {
         const browser = el('details'), summary = el('summary', 'conn-note', 'Advanced: browser-only Claude connection');
         browser.appendChild(summary);

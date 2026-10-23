@@ -9,7 +9,9 @@
 //
 // Common options: --data-dir <dir> (default: DASHBOARD_DATA_DIR, then <repo>/data),
 //                 --dry-run (print what would change, write nothing).
-// Exit codes: 0 ok, 1 a migration failed, 2 the legacy folder must be copied first (001).
+// Exit codes: 0 ok (also when another computer has the data folder open: the
+// pending migrations are skipped and the reason printed), 1 a migration failed,
+// 2 the legacy folder must be copied first (001).
 //
 // Migration 001-data-dir is never applied automatically: copying the old
 // state/ folder is a one-time step the user runs on purpose.
@@ -19,7 +21,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { copyTree } from '../lib/fsutil.mjs';
 import { resolveDataDir, dataPaths, ensureDataDir, legacyStatus } from '../lib/datadir.mjs';
+import { movedAwayNotice, movedAwayText } from '../lib/relocate/index.mjs';
 import { applyMigration, loadApplied } from './migrations/_lib.mjs';
+import { othersLive, seenText } from '../lib/hosts.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MIG_DIR = join(HERE, 'migrations');
@@ -45,7 +49,9 @@ export async function backupDataDir(dataDir) {
   const dest = join(p.backups, `pre-migrate-${stamp()}`);
   const skip = (rel, isDir) => {
     const r = rel.replace(/\\/g, '/');
-    return (isDir && (r === 'backups' || r === 'logs' || r === 'state/backups' || r === 'state/sync-backups'
+    // secrets/: an old <data>/secrets never gets a copy inside the (shared) data folder;
+    // hosts/: other computers' presence files are not data
+    return (isDir && (r === 'backups' || r === 'logs' || r === 'state/backups' || r === 'state/sync-backups' || r === 'secrets' || r === 'hosts'
       || r === 'finance/_system/backups' || /(^|\/)__pycache__$/.test(r))) || /\.lock$/.test(r);
   };
   const r = await copyTree(p.root, dest, { skip });
@@ -55,11 +61,28 @@ export async function backupDataDir(dataDir) {
   return { dest, files: r.copied.length };
 }
 
-/** Apply pending auto migrations. Returns {status, applied:[...]}. */
-export async function autoMigrate({ dataDir, dryRun = false, log = console.log, argv = [], repoRoot } = {}) {
+/**
+ * Apply pending auto migrations. Returns {status, applied:[...]}.
+ * status 'other-computer' (with host, pending): another computer has this
+ * data folder open (lib/hosts.mjs), so nothing is migrated now - rewriting the
+ * shared files under it would fight its saves. They run at a later start.
+ * opts.othersLive() (tests) replaces the presence check.
+ */
+export async function autoMigrate({ dataDir, dryRun = false, log = console.log, argv = [], repoRoot, othersLive: others } = {}) {
   const legacy = legacyStatus({ dataDir, ...(repoRoot ? { repoRoot } : {}) });
   if (legacy) return { status: 'legacy', legacy, applied: [] };
+  // A move took this folder away (lib/relocate/): never set up an empty one in its place.
+  const away = argv.includes('--fresh') ? null : movedAwayNotice(dataDir);
+  if (away) return { status: 'moved', moved: away, applied: [] };
   const mods = await loadMigrations();
+  if (existsSync(dataPaths(dataDir).root)) {
+    const live = typeof others === 'function' ? others() : othersLive(dataDir);
+    if (live.length) {
+      const done0 = new Set((await loadApplied(dataPaths(dataDir))).applied.map(a => a.id));
+      const pending = mods.filter(m => m.auto && !done0.has(m.id)).map(m => m.id);
+      if (pending.length) return { status: 'other-computer', host: live[0], pending, applied: [] };
+    }
+  }
   // A new data folder (missing or empty): the migrations only set it up, so
   // there is nothing to back up and no upgrade to report step by step.
   const root = dataPaths(dataDir).root;
@@ -98,6 +121,18 @@ async function main(argv) {
       console.error(`  Copy it into the data folder once with:\n\n     ${r.legacy.command}\n`);
       console.error('  Add --finance-from "<folder>" to bring a finance folder along, and --dry-run to preview.\n');
       process.exitCode = 2;
+      return;
+    }
+    if (r.status === 'moved') {
+      console.error(`\n${movedAwayText(r.moved)}\n`);
+      process.exitCode = 2;
+      return;
+    }
+    if (r.status === 'other-computer') {
+      // Exit 0: the launcher goes on and the server starts with its banner (a
+      // non-zero code would stop it, and under the hidden autostart nobody would see why).
+      console.log(`  OpenDash is open on ${r.host.hostname} (seen ${seenText(r.host.lastSeenMs)}): ${r.pending.length} pending migration(s) skipped`);
+      console.log('  so the two computers don\'t overwrite each other. They run at the next start once it is closed there.\n');
       return;
     }
     console.log(r.status === 'up-to-date' ? '  Data is up to date.\n' : r.fresh ? '  Data folder ready.\n' : `  Applied ${r.applied.length} migration(s).\n`);

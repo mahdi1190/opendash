@@ -48,15 +48,44 @@ those off). Details in [PRIVACY.md](PRIVACY.md).
 
 **Is my data encrypted?**
 OpenDash does not encrypt the data folder itself. Use your operating system's
-disk encryption.
+disk encryption. The optional *daily encrypted copy* (below) is encrypted
+before it leaves your computer.
 
 **How do I back up?**
 Backups are automatic (Settings > Data lists them, with restore). For a copy
-you keep elsewhere, use *Export all data (.zip)*.
+somewhere else, switch on **Settings > Data > Daily encrypted copy**: once a
+day a locked copy goes to `OneDrive\OpenDash Backups` (or a folder you choose),
+and the newest 14 are kept. Or use *Export all data (.zip)* now and then.
+
+**What if I forget the passphrase of the encrypted copies?**
+Then they cannot be opened, by you or anyone else; that is the point of the
+lock. The computer that made them can still restore them without typing it,
+and you can switch the copy off and on again with a new passphrase (new copies
+use the new one).
 
 **Can I keep the data folder in OneDrive, Dropbox or iCloud?**
-Yes, with `--data-dir`, but run OpenDash on one computer at a time: sync tools
-copy files, they do not merge edits made in two places at once.
+It works, but it is not a good idea: sync tools copy files, they do not merge
+edits made on two computers, so edits can be lost. OpenDash says so (*Your data
+is in OneDrive*) and offers **Move my data out of OneDrive** in Settings > Data:
+it copies everything to a folder on this computer, checks every file, updates
+the start-up and assistant settings that use the old place, keeps the old
+folder (renamed, never deleted) and can be undone. Your computers then stay in
+step through Settings > Sync. Until you move it, use OpenDash on one computer
+at a time: it pauses changes when another computer has the folder open (choose
+*Use here anyway* to go on).
+
+**I moved my data. Where did it go, and can I go back?**
+Settings > Data shows the new place and the name of the kept old folder (there
+is a `README` in it). **Undo move** puts everything back, including changes you
+made since: they are copied back into the old folder first. Delete the old
+folder yourself once you are happy; OpenDash never deletes it.
+
+**Why does a job say "Runs on HOME-PC"?**
+That computer is your *main computer* (Settings > Sync > Main computer). Only
+it runs the automatic background jobs: bank updates, AI summaries and reviews,
+story scripts, calendar and email updates. That way your bank is not asked
+twice and Claude does not do the same work on two computers. A click still
+runs the job where you are.
 
 **How do I move to a new computer?**
 *Export all data (.zip)* on the old one, install OpenDash on the new one,

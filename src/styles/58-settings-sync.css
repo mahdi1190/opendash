@@ -1,0 +1,30 @@
+/* Settings > Sync (src/app/58-settings-sync.js) */
+.sync-folder { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; max-width: 100%; }
+.sync-folder select { max-width: 100%; }
+.sync-other { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.sync-other[hidden] { display: none; }
+.sync-other input { flex: 1 1 16rem; min-width: 0; }
+.sync-status { font-weight: 500; padding: var(--space-1) 0; }
+.sync-status.sync-ok { color: var(--success, var(--accent)); }
+.sync-status.sync-warn { color: var(--warning, #b7791f); }
+.sync-status.sync-err { color: var(--danger, #c0392b); }
+.sync-status.sync-off, .sync-status.sync-idle { color: var(--text-muted, inherit); }
+.sync-devices { white-space: pre-line; }
+.sync-preview { white-space: pre-line; max-height: 12rem; overflow: auto; }
+/* End-to-end encrypted sync: recovery code, pairing, devices, QR */
+.sync-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.sync-code, .sync-pair, .sync-add { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: var(--radius-md, 8px); margin: var(--space-2) 0; }
+.sync-code-t, .sync-pair-t { font-weight: 600; }
+.sync-code-v { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1.15rem; letter-spacing: .06em; user-select: all; }
+.sync-code-input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; text-transform: uppercase; letter-spacing: .04em; }
+.sync-pair-code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 2rem; font-weight: 600; letter-spacing: .12em; }
+.sync-dev-list { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.sync-dev { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); align-items: center; }
+.sync-dev-info { min-width: 0; }
+.sync-dev-name { font-weight: 500; }
+.sync-qr svg { display: block; max-width: 100%; height: auto; border-radius: 4px; }
+.sync-print-sheet { display: none; }
+@media print {
+  body.sync-printing > *:not(.sync-print-sheet) { display: none !important; }
+  body.sync-printing > .sync-print-sheet { display: block; padding: 2cm; color: #000; background: #fff; }
+}

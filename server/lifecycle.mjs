@@ -27,6 +27,8 @@
 //   DASHBOARD_RESPAWN_WAIT=ms       retry the port this long (the old one may still hold it)
 
 import { spawn } from 'node:child_process';
+import { installSpawnGuard } from '../lib/spawn-guard.mjs';
+installSpawnGuard();   // in a test process, never start a real AI agent CLI (lib/spawn-guard.mjs)
 import { openSync, closeSync, readFileSync, statSync, readSync } from 'node:fs';
 import { join } from 'node:path';
 import { REPO_ROOT } from '../lib/datadir.mjs';

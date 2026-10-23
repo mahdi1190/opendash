@@ -159,7 +159,8 @@ function _scgrRelief(g) {
   if (!r || !Array.isArray(r.x) || !Array.isArray(r.d) || !Array.isArray(r.h)) return null;
   const nx = r.nx | 0, nd = r.nd | 0;
   if (nx < 2 || nd < 2 || r.h.length !== nx * nd || !r.h.every(Number.isFinite) || !(r.x[1] > r.x[0]) || !(r.d[1] > r.d[0]) || !(r.d[0] > 0)) return null;
-  return { x: [r.x[0], r.x[1]], d: [r.d[0], r.d[1]], nx, nd, h: r.h.slice(), src: r.src || null };
+  const n = r.near, nOk = n && Array.isArray(n.x) && Array.isArray(n.d) && Array.isArray(n.h) && (n.nx | 0) >= 2 && (n.nd | 0) >= 2 && n.h.length === (n.nx | 0) * (n.nd | 0) && n.d[0] > 0 && n.d[1] > n.d[0] && n.x[1] > n.x[0];
+  return { x: [r.x[0], r.x[1]], d: [r.d[0], r.d[1]], nx, nd, h: r.h.slice(), src: r.src || null, near: nOk ? { x: n.x.slice(), d: n.d.slice(), nx: n.nx | 0, nd: n.nd | 0, h: n.h } : null };
 }
 /**
  * The camera of a v2 scene (2.1), memoised per data object: { eye, fov, horizon, heading, x0, f, dMin, dMax, water, lat, lon, alt,
@@ -175,13 +176,18 @@ function sceneCamera(data) {
   const cam = { eye, fov, horizon, heading, x0, f, dMin: f * eye / (900 - horizon), dMax: SCENE_DMAX, water: _scgrNum(c.water, 0),
     lat: _scgrNum(c.lat, _scgrNum(v.lat, null)), lon: _scgrNum(c.lon, _scgrNum(v.lon, null)), alt: _scgrNum(c.alt, null),
     bands: _scgrBands(data), relief: _scgrRelief(data && data.ground), preset: c.preset || null };
+  // a camera standing on high ground (an edge's plateau 36 m above the relief's zero) sees the ground from its true height above it: the nearest
+  // visible ground is f * (eye above the ground) / (rows below the horizon), not the distance a 37 m eye over flat ground would give (83 m)
+  if (cam.relief) { const g0 = sceneGroundHeight(cam, 0, Math.max(cam.relief.d[0], 1)); if (g0 > 2 && g0 < eye - 0.2) cam.dMin = f * (eye - g0) / (900 - horizon); }
   if (data && typeof data === 'object') _scgrCams.set(data, cam);
   return cam;
 }
 /** The ground height at (x, d) in metres (2.4): bilinear in (x, log d) over the relief grid, clamped at its edges; 0 without relief. */
 function sceneGroundHeight(cam, x, d) {
-  const r = cam && cam.relief;
+  let r = cam && cam.relief;
   if (!r) return 0;
+  // a fine grid round the lens (a camera on a cliff's rim: the world's relief compiler) is read first where it covers the point
+  if (r.near && x >= r.near.x[0] && x <= r.near.x[1] && d >= r.near.d[0] && d <= r.near.d[1]) r = r.near;
   const u = _scgrClamp((x - r.x[0]) / (r.x[1] - r.x[0]), 0, 1) * (r.nx - 1);
   const w = _scgrClamp(Math.log(Math.max(d, 1e-3) / r.d[0]) / Math.log(r.d[1] / r.d[0]), 0, 1) * (r.nd - 1);
   const i = Math.min(r.nx - 2, Math.floor(u)), j = Math.min(r.nd - 2, Math.floor(w)), fu = u - i, fw = w - j, H = (a, b) => r.h[b * r.nx + a];

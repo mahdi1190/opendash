@@ -15,7 +15,9 @@
    2. liveSyncStart() - listens to /api/events; when the server's version is
       newer, it adopts it (keeping this tab's view, selection and unsaved
       edits) and shows "Updated by <source>" with an Undo for assistant/MCP
-      changes.
+      changes. Preferences (theme, density, the calendars you hide...:
+      SHARED_UI_KEYS, 01-core-state.js) come along like data: they follow you
+      to every tab and computer (syncMergeTab).
    3. liveSyncHandleConflict(payload, key) - called by serverStateWrite
       (04-core-persistence.js) on 409: merges this tab's edits onto the newer
       file, asks the user only about true conflicts, then saves.
@@ -172,6 +174,48 @@ function syncResolve(merged, conflict, side) {
   return true;
 }
 
+/*
+ * Fields inside a shared preference that still belong to the tab: the calendar
+ * mode it is in and its one-stream filter (the view carries them:
+ * #view=calendar:week). lib/sync/manifest.mjs keeps them on each computer too.
+ */
+const _LIVE_TAB_FIELDS = Object.freeze({ calPrefs: Object.freeze(['mode', 'stream']) });
+/**
+ * The merge a tab makes when a newer copy of the state arrives: syncMerge3 over
+ * everything except the tab's own keys (opts.tab: where you are, panel sizes,
+ * caches, bookkeeping). Preferences (opts.prefs: theme, density, the calendars
+ * you hide... SHARED_UI_KEYS) merge like data, but a clash in one keeps this
+ * tab's choice without asking (it is saved next, so it becomes the later one
+ * everywhere), and _LIVE_TAB_FIELDS inside them stay this tab's.
+ * -> { merged, conflicts } (conflicts: data only)
+ */
+function syncMergeTab(base, local, remote, opts) {
+  const prefs = new Set((opts && opts.prefs) ? [...opts.prefs] : []);
+  const res = syncMerge3(base, local, remote, { skip: opts && opts.tab });
+  const merged = res.merged;
+  for (const k of Object.keys(_LIVE_TAB_FIELDS)) {
+    if (!_mIsObj(merged[k])) continue;
+    const l = local && _mIsObj(local[k]) ? local[k] : {};
+    const out = Object.assign({}, merged[k]);
+    for (const f of _LIVE_TAB_FIELDS[k]) { if (Object.prototype.hasOwnProperty.call(l, f)) out[f] = l[f]; else delete out[f]; }
+    merged[k] = out;
+  }
+  return { merged, conflicts: res.conflicts.filter(c => !prefs.has(c.path[0])) };
+}
+/** A state's shared part (data and preferences, less the tab's own keys and fields) as a comparable string. */
+function syncSharedKey(s, tab, skip) {
+  const own = new Set([...(tab || []), ...(skip || [])]);
+  const o = {};
+  for (const k of Object.keys(s || {})) if (!own.has(k)) o[k] = s[k];
+  for (const k of Object.keys(_LIVE_TAB_FIELDS)) {
+    if (!_mIsObj(o[k])) continue;
+    const c = Object.assign({}, o[k]);
+    for (const f of _LIVE_TAB_FIELDS[k]) delete c[f];
+    o[k] = c;
+  }
+  return _mStable(o);
+}
+
 // ---------- 2-4. the page side (only runs in the browser) ----------
 let _liveES = null;
 let _liveRetryTimer = null;
@@ -189,6 +233,7 @@ function _liveSourceLabel(d) {
   if (d.source === 'assistant') return 'the assistant';
   if (d.source === 'script') return d.client ? d.client : 'a script';
   if (d.source === 'ui') return 'another tab';
+  if (d.source === 'sync') return d.client ? d.client : 'another computer';   // Settings > Sync (lib/sync/engine.mjs)
   return 'outside this tab';
 }
 function _liveToast(msg, opts) {
@@ -225,13 +270,21 @@ function _liveShow(v) {
   return String(v);
 }
 
-/** Replace this tab's DATA with `merged` (keeps view, selection, caches); take the server's version. */
+/** This tab's own keys: the UI keys that are not preferences (view, selection, panel sizes, caches) and bookkeeping. */
+function _liveTabOwn() {
+  const shared = new Set(typeof SHARED_UI_KEYS !== 'undefined' ? SHARED_UI_KEYS : []);
+  return new Set([..._NON_DATA_KEYS].filter(k => !shared.has(k)));
+}
+/** Replace this tab's data and preferences with `merged` (keeps view, selection, caches); take the server's version. */
 function _liveApply(merged, remoteVersion) {
-  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k) && !_NOT_PERSISTED.includes(k)) delete state[k];
-  for (const k of Object.keys(merged)) if (!_NON_DATA_KEYS.has(k) && !_NOT_PERSISTED.includes(k)) state[k] = merged[k];
+  const own = _liveTabOwn();
+  for (const k of Object.keys(state)) if (!own.has(k) && !_NOT_PERSISTED.includes(k)) delete state[k];
+  for (const k of Object.keys(merged)) if (!own.has(k) && !_NOT_PERSISTED.includes(k)) state[k] = merged[k];
   state._lastSave = Number(remoteVersion) || state._lastSave;
   ensureStateDefaults(state);
   if (state.selectedTaskId && !getItem(state.selectedTaskId)) state.selectedTaskId = null;
+  // Auto may have just been switched on elsewhere: this computer's own evening decides the theme.
+  if (typeof applyAutoTheme === 'function') { try { applyAutoTheme(); } catch (e) { /* the next render paints it */ } }
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
   resetUndoHistory();
 }
@@ -304,7 +357,8 @@ async function _liveReconcile(remote, baseKey, info) {
   let base = null;
   try { base = baseKey ? JSON.parse(baseKey) : null; } catch (e) { base = null; }
   const local = _stateForPersist();
-  const res = syncMerge3(base, local, remote, { skip: _NON_DATA_KEYS });
+  // Data and preferences merge; the tab keeps where it is (syncMergeTab above).
+  const res = syncMergeTab(base, local, remote, { tab: _liveTabOwn(), prefs: typeof SHARED_UI_KEYS !== 'undefined' ? SHARED_UI_KEYS : [] });
   let merged = res.merged;
   const who = _liveSourceLabel(info);
   if (res.conflicts.length) {
@@ -314,20 +368,17 @@ async function _liveReconcile(remote, baseKey, info) {
   }
   const before = _liveDataKey(state);
   _liveApply(merged, remote._lastSave);
-  // Only DATA counts: every tab has its own view/selection (UI keys), and
-  // re-saving just those after each sync would make two tabs ping-pong.
+  // Only data and preferences count: every tab has its own view/selection
+  // (the other UI keys), and re-saving just those after each sync would make
+  // two tabs ping-pong.
   const after = _liveDataKey(state);
   const ours = after !== _liveDataKey(remote);
   state._localDirty = ours;
   _liveRender();
   return { ours, conflicts: res.conflicts.length, changed: before !== after };
 }
-/** The data part of a state object as a comparable string (UI keys, caches and versions left out). */
-function _liveDataKey(s) {
-  const o = {};
-  for (const k of Object.keys(s || {})) if (!_NON_DATA_KEYS.has(k) && !_NOT_PERSISTED.includes(k)) o[k] = s[k];
-  return _mStable(o);
-}
+/** The shared part of a state object (data and preferences) as a comparable string: the tab's own keys, caches and versions left out. */
+function _liveDataKey(s) { return syncSharedKey(s, _liveTabOwn(), _NOT_PERSISTED); }
 
 /** 409 from PUT /api/state: merge instead of throwing this tab's edits away. */
 async function liveSyncHandleConflict(payload, key) {

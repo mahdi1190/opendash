@@ -838,6 +838,12 @@ function worldExtrudeDraw(ctx, prim, o) {
         n++;
       }
       if (night) for (const sh of D.lit || []) { ctx.globalAlpha = (sh.op == null ? 1 : sh.op) * A; ctx.fillStyle = _wexPaint(ctx, sh.f); fill(sh); n++; }
+      // a house too far off to resolve its windows (a hamlet in a valley two kilometres away) still shows as warm points at night: one to three, by its lit windows
+      if (night && Array.isArray(prim.box) && prim.box[2] - prim.box[0] < 18) {
+        const nl = (D.shapes || []).filter(q => q && q.glow && (q.theta == null || q.theta < share)).length, bw = prim.box[2] - prim.box[0], bh = prim.box[3] - prim.box[1];
+        const pts = nl > 0 ? Math.min(3, nl) : (((Math.floor(prim.zKey * 37 + prim.box[0] * 13) % 100) + 100) % 100) / 100 < share ? 1 : 0;   // (no windows resolved at this size: a seeded share of the houses has a light on)
+        for (let k = 0; k < pts; k++) { ctx.globalAlpha = 0.9 * A; ctx.fillStyle = nightCol.window || '#ffd98a'; ctx.fillRect(prim.box[0] + bw * (0.2 + 0.3 * k), prim.box[3] - bh * 0.45, Math.max(1.4, bw * 0.14), Math.max(1.2, bh * 0.14)); n++; }
+      }
     } else if (prim.kind === 'hull') {
       const spriteOf = (obj) => {
         if (typeof o.sprite !== 'function') return null;

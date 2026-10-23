@@ -49,6 +49,15 @@ const UI_STATE_KEYS = [
   'achievements',   // Achievements: the unlocks (78-achievements.js); never an undo step
   'sidebarLists',   // Sidebar Streams / Tags / People: sort and how many show (15-nav-order.js); the custom order is data (sidebarOrder)
 ];
+// UI keys that are PREFERENCES (theme, density, sort, the calendars you hide...):
+// they follow you to your other computers (folder sync) and to every tab (live
+// sync takes them from a newer copy, 86-live-sync.js), still without undo steps.
+// The rest belong to this tab: where you are, panel sizes, caches.
+const SHARED_UI_KEYS = [
+  'sortBy', 'groupBy', 'theme', 'density', 'collapsedSidebar', 'autoTheme',
+  'taskViewPrefs', 'calPrefs', 'peopleView', 'openItemsIn', 'itemHero',
+  'homeUI', 'achievements', 'sidebarLists',
+];
 const BOOKKEEPING_KEYS = ['_lastSave', '_saveCount', '_localDirty'];
 const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);
 // Retired features (brainstorm boards): an older backup's data for them is
@@ -66,12 +75,25 @@ function saveData() {
     _captureUndo();
     state._saveCount = (state._saveCount || 0) + 1;
     state._localDirty = true;
-    _writeLocal();
-    showToast('✓ saved', false);
-    maybeAutoBackup();
+    // Browser storage is only a first-paint cache (about 5 MiB per site). When it
+    // is full (QuotaExceededError) the edit must still be queued for the server.
+    let localOk = true;
+    try { _writeLocal(); } catch (e) { localOk = false; }
     if (typeof schedulePersist === 'function') schedulePersist();
+    if (localOk) showToast('✓ saved', false);
+    else _saveLocalFull();
+    maybeAutoBackup();
   }
   catch (e) { showToast('⚠ save failed', true); }
+}
+let _localFullToastAt = 0;
+/** Browser storage refused the copy: say where the edit went (at most once a minute). */
+function _saveLocalFull() {
+  const server = typeof _serverAvailable === 'undefined' || _serverAvailable;
+  if (!server) { showToast('⚠ save failed: browser storage is full and the OpenDash server isn’t running', true); return; }
+  if (Date.now() - _localFullToastAt < 60000) return;
+  _localFullToastAt = Date.now();
+  showToast('Browser storage is full; saved to the server', false);
 }
 /**
  * Save a UI change (view, selection, sort, theme, calendar month, caches): no

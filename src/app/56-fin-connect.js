@@ -18,7 +18,7 @@
                           56-fin-connect-wizards.js are driven by them
 
    Every finance connector is read-only: it can never move money. Saved
-   sign-ins stay in the data folder's secrets area on this computer; the
+   sign-ins stay on this computer, outside the data folder (lib/secret-store.mjs); the
    page only ever sees "configured: true", masked ids and statuses. Every
    name, label and message from a server or a bank is set as text or esc().
    ============================================================ */
@@ -49,7 +49,7 @@ const FIN_PROVIDERS = [
       need: 'Your Plasma wallet address (starts with 0x). Never your recovery phrase: OpenDash refuses it.',
       time: '10 seconds',
     },
-    more: 'A wallet address is public, so this connection can only read: there is nothing to sign in to and nothing that could move money. OpenDash keeps the address in your data folder’s secrets area and reads transfers from a public block explorer. Card payments are settled by the card issuer, so a shop name is not on the blockchain.',
+    more: 'A wallet address is public, so this connection can only read: there is nothing to sign in to and nothing that could move money. OpenDash keeps the address on this computer only (never in your data folder) and reads transfers from a public block explorer. Card payments are settled by the card issuer, so a shop name is not on the blockchain.',
     action: 'Paste address' },
   { id: 'monzo', group: 'direct', name: 'Monzo', sub: 'Monzo’s personal developer API', mark: 'monzo', flow: 'monzo',
     keywords: 'monzo bank current joint pots uk',
@@ -60,7 +60,7 @@ const FIN_PROVIDERS = [
       need: 'Your Monzo app, and a free Monzo developer client (we walk you through it).',
       time: 'About 4 minutes',
     },
-    more: 'You make a small “client” on Monzo’s developer site; its ID and secret are saved only in your data folder’s secrets area and are never shown again. Monzo then asks you to approve OpenDash in the app. OpenDash only calls Monzo’s read endpoints: it cannot move money, move money into or out of pots, or post to your feed.',
+    more: 'You make a small “client” on Monzo’s developer site; its ID and secret are saved only on this computer (never in your data folder, so a second computer connects again) and are never shown again. Monzo then asks you to approve OpenDash in the app. OpenDash only calls Monzo’s read endpoints: it cannot move money, move money into or out of pots, or post to your feed.',
     action: 'Connect Monzo' },
   { id: 'enable-banking', group: 'direct', name: 'Other UK and EU banks', sub: 'Via Enable Banking (open banking)', mark: 'enable-banking', flow: 'enable-banking',
     keywords: 'enable banking open banking psd2 bank eu uk europe barclays lloyds hsbc natwest santander revolut starling nationwide halifax',
@@ -71,7 +71,7 @@ const FIN_PROVIDERS = [
       need: 'A free Enable Banking account, about 10 minutes once, and your bank’s app or login.',
       time: 'About 10 minutes, then 1 minute per extra bank',
     },
-    more: 'Enable Banking is a regulated open-banking service. You create your own free app with them; its key file is saved only in your data folder’s secrets area. You sign in at your bank, which gives read-only access for a limited time. Only accounts you link yourself are visible.',
+    more: 'Enable Banking is a regulated open-banking service. You create your own free app with them; its key file is saved only on this computer (never in your data folder: keep the original to connect another computer). You sign in at your bank, which gives read-only access for a limited time. Only accounts you link yourself are visible.',
     action: 'Check my bank' },
   { id: 'csv', group: 'file', name: 'Import a CSV', sub: 'Any bank · a statement file', mark: 'csv', flow: 'csv',
     keywords: 'csv file import statement export spreadsheet any bank',
@@ -840,7 +840,7 @@ function finMoneyBlock() {
   section.appendChild(_finChooser(groups));
   const foot = _finEl('p', 'fc-privacy');
   foot.innerHTML = icon('hard-drive', 'i-xs');
-  foot.appendChild(_finEl('span', null, 'Transactions are saved in your data folder on this computer. Sign-ins for direct connections are kept in its secrets area, never in the page, logs or exports. Disconnecting deletes them.'));
+  foot.appendChild(_finEl('span', null, 'Transactions are saved in your data folder on this computer. Sign-ins for direct connections are kept on this computer only, outside the data folder, never in the page, logs or exports. Disconnecting deletes them.'));
   section.appendChild(foot);
   return section;
 }

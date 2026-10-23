@@ -238,7 +238,7 @@
     palette: PP.palette({ wood: PP.tone4('#c07a36'), brass: PP.tone4('#d4a634'), steel: PP.tone4('#b4b8bc') }),
     anim: { turn: { part: 'arm', pivot: busk0.shoulders.near.map(n => Math.round(n * 10) / 10), deg: 9, period: 0.55, hold: 0 }, bob: { part: '*', dy: 0.8, period: 1.6 } },
     shadow: { rx: 24, ry: 2.6, h: 62 }, night: PP.NIGHT, detailPx: true,
-    tags: ['uk', 'london', 'people', 'anonymous', 'busker', 'music', 'station', 'kit:people', 'kit:london', 'kit:urban', 'role:walker'],
+    tags: ['uk', 'london', 'people', 'anonymous', 'silhouette', 'busker', 'music', 'station', 'kit:people', 'kit:london', 'kit:urban', 'role:walker'],
     credit: 'the shared people builder (scenePeople.figure) with instruments (no makers\' marks)',
     build(v, r, ctx) {
       const p = BUSK[v], o = Object.assign(PP.outfit(p, ctx.season), { arms: { far: { hand: HANDS[p.play].far }, near: { hand: HANDS[p.play].near } } });

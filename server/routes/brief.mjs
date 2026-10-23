@@ -22,6 +22,7 @@
 // Logs: method, path, status, timing, counts. Never the place, titles or money.
 
 import { HttpError } from '../http.mjs';
+import { skippedBody } from '../../lib/main-computer.mjs';
 import { createWeatherService, ATTRIBUTION } from '../../lib/weather.mjs';
 import {
   briefPaths, saveSnapshot, readSnapshot, listSnapshots, readSummary, writeSummary, summaryPrompt, tidySummary,
@@ -108,6 +109,9 @@ export default function register(app) {
         const hit = await readSummary(dataDir, b.kind, b.date);
         if (hit && hit.text) return { ...hit, cached: true };
       }
+      // Written by the main computer only (lib/main-computer.mjs); "Regenerate" is a click and always runs.
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('ai-brief', { automatic: !b.regenerate }) : { run: true };
+      if (!mc.run) throw new HttpError(409, skippedBody(mc).message, { code: mc.reason === 'moving' ? 'MOVING' : 'NOT_MAIN', runsOn: mc.runsOn || null });
       const key = b.kind + '|' + b.date;
       if (pending.has(key)) return pending.get(key);
       const run = (async () => {

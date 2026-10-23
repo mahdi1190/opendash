@@ -13,7 +13,9 @@
 import { createInboxService, MAX_DAYS } from '../../lib/inbox.mjs';
 import { fetchEmailSource, saveInboxSnapshot, readInboxSnapshot, mergeInboxData } from '../../lib/inbox-sources.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
+import { accountsFor } from '../../lib/accounts.mjs';
 import { HttpError } from '../http.mjs';
+import { skippedBody } from '../../lib/main-computer.mjs';
 
 // Sources: GET /api/inbox merges every enabled email source (the Gmail preset
 // plus any other mailbox MCP server) into one list; each message carries
@@ -31,9 +33,10 @@ export default function register(app) {
     },
     merge: mergeInboxData,
     noteSync: (id, r) => sources.noteSync(id, r),
+    readsHere: (list) => accountsFor(app.ctx).readsHere(list),
     fetchOther: async (s, { days, todayIso }) => {
       const disc = sources.cached();
-      const r = await fetchEmailSource(s, { dataDir, days, todayIso, serverDef: sources.serverDef(s.server), denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name) });
+      const r = await fetchEmailSource(s, { dataDir, accounts: accountsFor(app.ctx), days, todayIso, serverDef: sources.serverDef(s.server), denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name) });
       await saveInboxSnapshot(paths, s.id, { days, ...r });
       log('note', `email source: ${r.count} messages`);
       return r;
@@ -70,6 +73,14 @@ export default function register(app) {
     path: '/api/inbox/update', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
       const body = await c.body({ allowEmpty: true });
+      // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };
+      // Not this computer's job: the Claude connectors (and calendar links) wait for the main
+      // computer, but the accounts this computer fetches (lib/sync/roles.mjs) are still read here.
+      if (!mc.run) {
+        const own = mc.reason === 'moving' ? { started: false } : await inbox.start({ days: body.days, force: body.force === true, onlyAccounts: true });
+        return own.started ? c.json(202, { job: own.job, ...skippedBody(mc) }) : { ...skippedBody(mc), job: null };
+      }
       const r = await inbox.start({ days: body.days, force: body.force === true });
       if (r.started) return c.json(202, { job: r.job });
       if (r.reason === 'running') return c.json(409, { error: 'An update is already running.', job: r.job });

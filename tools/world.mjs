@@ -15,6 +15,14 @@
 //                         SCAFFOLD a new place: writes src/app/79-world-zscene-<slug>-1.js (a short spec built from the kit's recipe; it shows in the gallery at once),
 //                         then validates it and prints what the engine dropped. Next: render <slug>-1-w3. docs/dev/NEW_SCENE_GUIDE.md
 //   node tools/world.mjs motion <ref> [--seconds=600] [--svg=file] [--json]
+//   node tools/world.mjs preflight <ref...> [--json]
+//                         PREDICT what the invariant gate will report, in about a second a scene, before any 15-cell run (16.7,
+//                         tools/lib/world/preflight.mjs): the 3 season worlds; the gate's own static rules (worldInvariants) on render's
+//                         frame at all 15 moments; exact route sweeps of every lane and rail vehicle (the timetable at the gate's clock,
+//                         chord poses across track vertices, lane vehicles drawn a step behind) confirmed by the gate's own rules; and
+//                         advisories no rule covers (laneBlocked: a parked car in a lane). Each fact once, ranked, with its id, fix and
+//                         first hit. One process and one engine for every ref. NOT a gate: exit 1 on a predicted fault; run the full
+//                         `invariants` before a commit
 //   node tools/world.mjs invariants <ref> [--seconds=360] [--hz=5] [--matrix] [--browser] [--json]
 //                         the invariant checker (16.2) over the full loop at 3 dates x 5 times (--matrix: 4 seasons x 5 times x 3
 //                         weathers, V7); exit 1 on any violation
@@ -22,6 +30,12 @@
 //                         WALKING IN PLACE measured on what is drawn (tools/lib/world/inplace.mjs): per person per frame the ground and
 //                         screen speed over 0.5 s, the clip, view and gait; the share of person-time striding on the spot, by cause, and
 //                         the worst offenders. --browser: the frames the real page drew. Exit 1 when any lasts past the grace (walkInPlace)
+//   node tools/world.mjs pops <ref> [--seconds=240] [--fps=30] [--browser] [--at=<ISO>] [--json]
+//                         PEOPLE THAT POP, SLIDE, SNAP AND SHAKE measured on what is drawn (tools/lib/world/pops.mjs): per person and dog per
+//                         frame the drawn figure's height, width, head, feet and centre, its view, facing, speed and walk cycle: size pops
+//                         (and the size change of every view change, by view pair and object), position pops, foot slide, heading snaps,
+//                         speed pops, view flicker, jitter (shaking, steering reversals), per person-minute and by kind. --browser: the
+//                         blits the real page drew. Exit 1 on any size pop
 //   node tools/world.mjs adversarial [<id>] [--seconds=120] [--hz=5] [--json]
 //                         every adversarial fixture (16.3): registers, builds, explains every fix in its log, zero violations
 //   node tools/world.mjs critic <ref> [--against=<ref>] [--json]      richness, emptiness and framing (P7, C1, C4, C6)
@@ -57,7 +71,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 
 import { join, resolve, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { loadEngine, resolveRef, convertRef, validateSpec, sceneFileSource, WORLD_TEST_REFS, WORLD_ALIASES } from './lib/world/convert.mjs';
+import { loadEngine, resolveRef, convertRef, validateSpec, sceneFileSource, sizeFileSource, sizeFileRead, SIZE_FILE, WORLD_TEST_REFS, WORLD_ALIASES } from './lib/world/convert.mjs';
 import { worldPerfNode, worldPerfBrowser, worldPerfCheck, worldPerfText, worldMotion, worldMotionSvg, worldPerfProfile, worldPerfProfileText, worldPerfMatrix } from './lib/world/perf.mjs';
 import { adversarialFixtures, adversarialText, worldMomentsOf, worldMatrixCells, worldWeatherFits, OWNERS } from './lib/world/adversarial.mjs';
 import { worldCritic, criticOfRef, criticText } from './lib/world/critic.mjs';
@@ -496,6 +510,13 @@ async function main() {
       if (existsSync(file) && !flags.force) { out(`  NOT written: ${file} exists (--force to replace; or --out=<other file>)`); return 1; }
       writeFileSync(file, sceneFileSource(c.meta, c.spec, R));
       out(`  wrote ${file}`);
+      // the 1:1 sizes of its pinned drawings go to the generated size file beside it (src/app/79-world-zdata-sizes.js), merged
+      if (R.sizes && R.sizes.length) {
+        const sf = join(resolve(file, '..'), SIZE_FILE), have = existsSync(sf) ? sizeFileRead(readFileSync(sf, 'utf8')) : {};
+        for (const s of R.sizes) if (!have[s.id]) have[s.id] = { h: s.h, l: s.l, w: s.w, from: s.from };
+        writeFileSync(sf, sizeFileSource(have));
+        out(`  sizes: ${R.sizes.map(s => `${s.id} ${s.h} m`).join(', ')} -> ${sf}`);
+      }
     }
     return c.ok ? 0 : 1;
   }
@@ -505,7 +526,7 @@ async function main() {
     const r = worldMotion(E, s.spec, { seconds: Number(flags.seconds) || 600 });
     if (flags.json) out(JSON.stringify(Object.assign({}, r, { tracks: undefined }), null, 1));
     else {
-      out(`${s.id}: ${r.seconds} s simulated, ${r.agentsSeen} agents, ${r.red.length} red mark(s)`);
+      out(`${s.id}: ${r.seconds} s simulated, ${r.agentsSeen} agents, ${r.ghosts || 0} ghost pass(es), ${r.red.length} red mark(s)`);
       const by = {}; for (const m of r.red) by[m.rule] = (by[m.rule] || 0) + 1;
       for (const [k, v] of Object.entries(by)) out(`  ${k}: ${v}`);
       for (const m of r.red.slice(0, 20)) out(`    t ${m.t.toFixed(1)} ${m.id} (${m.cls}) ${m.rule}: ${m.msg}`);
@@ -529,6 +550,37 @@ async function main() {
     } else r = worldInPlaceRun(E, s.spec, { ms: Date.parse(at), seconds: Number(flags.seconds) || 120, hz: Number(flags.hz) || 10 });
     out(flags.json ? JSON.stringify(r, null, 1) : worldInPlaceText(r, s.id + (flags.browser ? ' (the page)' : ' (Node)')));
     return r.sustained || r.error || (r.errors && r.errors.length) ? 1 : 0;
+  }
+
+  if (cmd === 'pops') {
+    // people that pop in size, jump, slide, snap and shake, measured on what is drawn at 30 fps (tools/lib/world/pops.mjs)
+    const s = specOf(E, ref);
+    const { worldPopsRun, worldPopsBrowser, worldPopsText } = await import('./lib/world/pops.mjs');
+    const at = typeof flags.at === 'string' ? (DATES[flags.at] || flags.at) : '2026-07-15T12:00:00Z';
+    let r;
+    if (flags.browser) {
+      const chrome = await chromeOf(!flags['no-gpu']);
+      try { r = await worldPopsBrowser(chrome, pageSrcOf(s), { E, at, seconds: Number(flags.seconds) || 60, fps: Number(flags.fps) || 30, root }); } finally { await chrome.close(); }
+    } else r = worldPopsRun(E, s.spec, { ms: Date.parse(at), seconds: Number(flags.seconds) || 240, fps: Number(flags.fps) || 30 });
+    out(flags.json ? JSON.stringify(r, null, 1) : worldPopsText(r, s.id + (flags.browser ? ' (the page)' : ' (Node)')));
+    const c = r.counts || {};
+    return r.error || (r.errors && r.errors.length) || c.swapPop || c.sizePop ? 1 : 0;
+  }
+
+  if (cmd === 'preflight') {
+    // every ref in this one process, through the one engine loaded above
+    const { worldPreflight, preflightText } = await import('./lib/world/preflight.mjs');
+    const all = [];
+    let bad = 0;
+    for (const r of pos.slice(1)) {
+      let s, res;
+      try { s = specOf(E, r); res = worldPreflight(E, s.spec, { id: s.id, ref: s.ref || r, hz: Number(flags.hz) || 5 }); } catch (e) { bad++; all.push({ ref: r, error: e.message }); if (!flags.json) out(`world preflight: ${r}: ERROR ${e.message}`); continue; }
+      if (res.facts.some(f => f.sev === 'error')) bad++;
+      all.push(res);
+      if (!flags.json) out(preflightText(res, s.id + (s.converted ? ' (converted in memory)' : '')));
+    }
+    if (flags.json) out(JSON.stringify(all, null, 1));
+    return bad ? 1 : 0;
   }
 
   if (cmd === 'invariants' && flags.browser) {
@@ -757,7 +809,7 @@ async function main() {
     out(`GATE: ${res.pass ? 'PASS' : 'FAIL'}${res.pass ? '' : ' - nothing is shown to the user until every item passes and a fresh reviewer signs off (X4)'}`);
     return res.pass ? 0 : 1;
   }
-  out(`unknown command '${cmd}' (validate | convert | render | motion | invariants | adversarial | critic | sheet | capture | check | compare | perf | glitch | models | accept)`);
+  out(`unknown command '${cmd}' (validate | convert | render | motion | preflight | invariants | adversarial | critic | sheet | capture | check | compare | perf | glitch | models | accept)`);
   return 2;
 }
 

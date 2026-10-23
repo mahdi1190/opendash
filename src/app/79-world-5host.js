@@ -184,7 +184,7 @@ function worldHostV2Data(spec, o) {
     surfaces: [{ id: 'world-rest', kind: urban ? 'plot' : 'grass', rest: true }], water: [], place: [], scatter: [], actors: [], flows: [], world3: true };
   // a far shore that is the world's own (the estuary's low line of roofs, cranes and trees in haze, 79-world-4backdrop.js) is not painted
   // again by the v2 backdrop: its UK woodland band was a wall of green trees along the whole far shore of the Mersey (user, 16 Oct)
-  if (world && world.backdrop && world.backdrop.style === 'estuary') data.backdrop = 'none';
+  if (world && world.backdrop && typeof WORLD_BACKDROP_STYLES === 'object' && WORLD_BACKDROP_STYLES[world.backdrop.style] && WORLD_BACKDROP_STYLES[world.backdrop.style].own) data.backdrop = 'none';   // a style with `own: true` (estuary, upland) is the world's own far ground
   // the terrain (W2) is drawn by the world (79-world-4terrain.js): the v2 base keeps its flat ground, so it needs no relief
   // the spec rides along (not enumerable: the bake cache and JSON never see it) so worldHostSpec finds it from the data
   try { Object.defineProperty(data, '$spec', { value: spec, enumerable: false }); } catch (e) { /* frozen */ }
@@ -406,7 +406,7 @@ function worldHostAgents(agents, cam, o) {
     const s = (cam.f / Math.max(0.3, a.z)) * hM / def.size[1];
     if (p.X < -200 || p.X > 1800 || p.Y < -200) continue;
     out.push({ a, id: a.id, o: obj, v: a.variant == null ? 0 : a.variant, X: p.X, Y: p.Y, s, flip: !!a.mirror, d: a.z, layer: _wh5LayerOf(cam, a.z, o.layers),
-      view: a.view || 'side', alpha: 1, kind: a.cls, moving: Math.hypot(a.vx || 0, a.vz || 0) > 0.05, phase: a.phase || 0 });
+      view: a.view || 'side', alpha: Number.isFinite(a.alpha) ? Math.max(0, Math.min(1, a.alpha)) : 1, kind: a.cls, moving: Math.hypot(a.vx || 0, a.vz || 0) > 0.05, phase: a.phase || 0 });
   }
   out.sort((p, q) => q.d - p.d);
   return out;

@@ -154,7 +154,7 @@ function createGoogleDataStore(o) {
         return { error: true, noSources: true };
       }
       if (r.status === 202 || r.status === 409) { st.job = j.job || null; changed('job'); poll(); return { started: r.status === 202 }; }
-      if (r.ok && j.skipped) return { skipped: true };
+      if (r.ok && j.skipped) return { skipped: true, runsOn: j.runsOn || null };
       throw new Error(j.error || 'HTTP ' + r.status);
     } catch (e) {
       if (opts.force !== false) toast((e && e.message) || 'The update could not start.', { kind: 'err' });
