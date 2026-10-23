@@ -25,7 +25,8 @@
      inboxZero                         days: the inbox-zero celebration (78-delight-hooks.js)
      animMoment, momentCards           'YYYY-MM-DD|key': once-a-day moments; moment cards shown (the 3-a-day cap)
      once                              {name: 1}: one-off cards, tips and banners (storyHint, new22Anim, onedriveBannerOff,
-                                       travelAddCard, travelOptinLine)
+                                       travelAddCard, travelOptinLine; syncVersion:<id> and syncVersionShown:<id>:
+                                       another device's older version, dismissed / shown once, 56-presence-notice.js)
      openingLast, openingExact         {place: ref}: where the opening scene rotation is (78-anim-wire.js)
      firstSnow                         {winter: day}: the first snowy day of a winter
      moments, travelDepartX            {key: time}: moments shown, departure cards dismissed

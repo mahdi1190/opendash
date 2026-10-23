@@ -155,6 +155,8 @@ function createGoogleDataStore(o) {
       }
       // Another of your devices was asked too (it reads sources this one does not): its update arrives by sync.
       if (r.status === 202 && Array.isArray(j.asked) && j.asked.length && opts.force !== false) toast(j.message || 'Asking your other computer to update.', { icon: 'loader-circle' });
+      // Another device that reads some of them is asleep or off (lib/sync/presence.mjs): not asked; one calm line, once.
+      else if (j.calm && j.message && opts.force !== false && typeof presenceNote === 'function') presenceNote(j.message);
       if (r.status === 202 || r.status === 409) { st.job = j.job || null; changed('job'); poll(); return { started: r.status === 202 }; }
       if (r.ok && j.skipped) return { skipped: true, runsOn: j.runsOn || null };
       throw new Error(j.error || 'HTTP ' + r.status);

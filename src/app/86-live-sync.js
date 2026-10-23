@@ -484,6 +484,8 @@ function liveSyncStart() {
   _liveES.addEventListener('time', () => { if (typeof Clock !== 'undefined') Clock.check(); });
   // Another of your devices published something (its calendar, an answer to a request, an AI result): 56-remote-jobs.js.
   _liveES.addEventListener('synced-files', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof syncedFilesChanged === 'function') syncedFilesChanged(d.rels); });
+  // Another device went asleep, off or came back (lib/sync/presence.mjs): the top bar's sync dot (56-presence.js).
+  _liveES.addEventListener('presence', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof presenceOnEvent === 'function') presenceOnEvent(d); });
   // After a reconnect the hello carries the current version: catch up on anything missed.
   _liveES.addEventListener('hello', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && d.version) _liveOnRemote({ version: d.version, source: 'external' }); });
 }

@@ -20,6 +20,12 @@ function _rjResponse(status, body) {
 }
 async function remoteFetch(url, init, opts) {
   const r = await fetch(url, init);
+  // The device that would run it is asleep or off (lib/sync/presence.mjs): nothing was started,
+  // and the answer is a calm line (calm: true), shown calmly by toast() (56-presence.js).
+  if (r.status === 503) {
+    try { const j = await r.clone().json(); if (j && j.calm && typeof presenceCalm === 'function') presenceCalm(j.error || j.message); } catch (e) { /* not JSON */ }
+    return r;
+  }
   if (r.status !== 202) return r;
   let j = null;
   try { j = await r.clone().json(); } catch (e) { return r; }
@@ -62,7 +68,9 @@ async function remoteWait(remote, opts) {
       // The answer of the route it ran there, exactly (an error from there too).
       if ((x.status === 'done' || x.status === 'error') && x.result) return _rjResponse(x.result.status || 200, x.result.body || { ok: true });
       if (['error', 'cancelled', 'expired'].includes(x.status)) {
-        return _rjResponse(x.state === 'offline' ? 503 : 502, { error: x.message || 'It did not work.', code: (x.error && x.error.code) || String(x.status).toUpperCase(), runsOn: x.runsOn || null });
+        // It went away while asked (lib/sync/presence.mjs): a calm line, not an error (toast() shows it calmly).
+        if (x.calm && typeof presenceCalm === 'function') presenceCalm(x.message);
+        return _rjResponse(x.state === 'offline' ? 503 : 502, { error: x.message || 'It did not work.', code: (x.error && x.error.code) || String(x.status).toUpperCase(), runsOn: x.runsOn || null, ...(x.calm ? { calm: true } : {}) });
       }
     }
   } finally { close(); }

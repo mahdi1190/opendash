@@ -151,7 +151,11 @@ export default function register(app) {
       // are left to it (lib/remote-jobs.mjs hostFetch); the ones it lacks, and the others, are read here.
       const hf = body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.hostFetch('fetch:calendar', body, c).catch(() => ({ skip: [], asked: [] })) : { skip: [], asked: [] };
       const asked = [...hf.asked, ...(body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.askOthers('fetch:calendar', body, c).catch(() => []) : [])].filter((a, i, all) => all.findIndex(b => b.id === a.id) === i);
-      const also = asked.length ? { asked, message: `Asking ${[...new Set(asked.map(a => a.runsOn))].join(' and ')} to update the calendar.` } : hf.message ? { message: hf.message } : {};
+      // ── presence ── the ones that are asleep or off are not asked; one calm line says so (lib/remote-jobs.mjs awayFor).
+      const away = body.force === true && !c.internal && app.ctx.remoteJobs && typeof app.ctx.remoteJobs.awayFor === 'function' ? app.ctx.remoteJobs.awayFor('fetch:calendar') : [];
+      const awayText = away.map(a => a.text).join(' ');
+      const also = asked.length ? { asked, message: `Asking ${[...new Set(asked.map(a => a.runsOn))].join(' and ')} to update the calendar.${awayText ? ' ' + awayText : ''}` }
+        : hf.message ? { message: hf.message, calm: true } : awayText ? { message: awayText, calm: true } : {};
       const pick = { ...(hf.skip.length ? { skip: hf.skip } : {}), ...(Array.isArray(body.only) && c.internal ? { only: body.only.filter(x => typeof x === 'string').slice(0, 30) } : {}) };
       // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
       const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };

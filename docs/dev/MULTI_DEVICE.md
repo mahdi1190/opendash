@@ -285,17 +285,19 @@ it, even from a computer that has Claude too. Only when it is off does a
 computer run the work itself, if it has Claude; without Claude it says "Home
 laptop is off".
 
-- **Reachable**: live sync's `claude` lease decides when it has an answer
-  (the lease is pinned to the host; another holder means the host's claim ran
-  out, so two computers that both think they are the host follow one holder).
-  Without it: an open live link, or seen in the last 2 minutes. The host must
-  also claim the request within 8 seconds.
+- **Reachable**: presence first (section *What you see when a device is
+  off*): a host that is asleep or off is never asked. Then live sync's
+  `claude` lease decides when it has an answer (the lease is pinned to the
+  host; another holder means the host's claim ran out, so two computers that
+  both think they are the host follow one holder). Without either: an open
+  live link, or seen in the last 2 minutes. The host must also claim the
+  request within 8 seconds (at once taken back if presence sees it go away).
 - **Run Claude on** (each computer's own choice, never synced: its sync
   folder's `claude-host.json`): *<host> first, then this computer* (default),
   *This computer only*, *Only <host>*. A computer set to *Only <host>* never
   takes the `claude` lease, so it never stands in for the host.
 - **Status**, in plain words: "Claude: using Home laptop", "Home laptop is
-  off: using this computer", "Home laptop is off". The toast of a request
+  asleep: using this computer", "Home laptop is off". The toast of a request
   follows it ("Asking Home laptop…", then "Home laptop is off: using this
   computer…").
 - **One result, never two.** A request this computer may run itself carries
@@ -320,6 +322,109 @@ laptop is off".
   so a fetch never runs twice. The automatic Claude jobs (AI summaries,
   reviews, story scripts, the connectors' update) follow the host too, and the
   `claude` lease holder while the host sleeps.
+
+## What you see when a device is off
+
+The rule (the user's, 23 Oct 2026): it must be clear when something does not
+work, and a computer that is off must not cause a stream of error messages.
+So every computer knows, for each of your other devices, whether it is there
+(**presence**, `lib/sync/presence.mjs`), and everything that needs another
+device asks presence **first**.
+
+### The states
+
+| State | Means | How it is known |
+|---|---|---|
+| **open** | its server runs and a dashboard page is open on it | an open live link and its `pres` message says `page: true`; or, through the folder, a heartbeat in the last 3.5 minutes whose `page.open` is true. A page counts as open while its event stream (`/api/events`) is connected or it asked for presence in the last 90 s |
+| **running** | its server runs, no page is open | an open live link; or a device.json heartbeat (every 2 minutes) in the last 3.5 minutes (the cloud folder may take a minute or more to bring it) |
+| **asleep** | nothing heard for a while, seen in the last 12 hours | no heartbeat for over 3.5 minutes; or, much sooner, its live link went quiet (closed after 45 s without a word), could not be dialled again and stayed away for 30 s, with nothing newer through the folder |
+| **off** | it said goodbye, or not seen for longer | a clean stop sends `pres {stopping}` on every link and writes a goodbye device.json (`stoppedAt`): "off" at once, not "asleep"; or not seen for over 12 hours |
+| **outdated** | it runs (open or running) an older OpenDash than this one | its version (device.json `app`, or the `pres` message) is older; `version` says which |
+
+**The API (stable).** `presenceOf(id)` (a sync device id or a fetcher id; null
+when unknown or sync is off) and `presenceAll()` (every other device; `[]`
+with sync off), from `lib/sync/presence.mjs`. Each row:
+
+| Field | Values |
+|---|---|
+| `state` | `open` \| `running` \| `asleep` \| `off` \| `outdated` (`STATES`): the one state above |
+| `base` | `open` \| `running` \| `asleep` \| `off` (`BASES`): the same without *outdated* |
+| `word` | `online` \| `asleep` \| `off` \| `checking` (`WORDS`): the short word the texts use (`open`, `running` and `outdated` are all `online`) |
+| `reachable` | true when `base` is open or running and it is not `checking`: the one test for "may I ask it now?" |
+| `checking` | this computer woke in the last 45 s and has no news from it yet |
+| `outdated`, `version` | it runs an older OpenDash; its version string |
+| `path` | `live` \| `folder` \| null: how it was heard |
+| `lastSeen`, `ago` | when it was last heard (ms, this computer's clock), and how long ago |
+| `page` | a dashboard page is open on it |
+| `behind` | this computer's changes it has not received yet |
+| `why` | `stopped` (it said goodbye), `link-gone`, `quiet`, `never`, or null |
+| `name`, `kind`, `deviceId`, `fetcherId` | who it is |
+| `short`, `text` | "Mac is asleep" / "Asleep · last seen 2 h ago" |
+
+`isThere(x)` accepts any of the three vocabularies (`open`, `running`,
+`outdated`, `online` are there). `calmText(p, kind, opts)` makes the calm lines
+below (`changes`, `claude`, `fetch`, `finance`, `request`). The server binds its
+tracker once (`lib/sync-presence.mjs`), and the engine's `groupCaps()` rows carry
+`reachable`, so `isOnline` (`lib/sync/caps.mjs`) and `reachable`
+(`lib/sync/claude-host.mjs`) follow it.
+
+- **Clocks.** The other device's `lastSeen` is its own clock. It is used only
+  until this computer has watched its device.json change (`observedAt`, this
+  computer's clock); a time in the future counts as now. The page state is
+  read against the same record, so it needs no clock at all.
+- **Sleep and wake.** A computer that wakes (its timers fire more than 30 s
+  late) writes device.json at once and dials every member (`engine.touch`,
+  `live.wake`): the others see it back within seconds of its link opening.
+  For 45 s after waking, this computer marks the others **checking**
+  ("Checking Mac…") until their news comes in, and never treats old news as
+  "reachable".
+
+### What happens, and what you see
+
+Nothing waits for a request that can only time out, nothing that can run here
+is refused, and changes wait in the sync folder as always (they are never
+lost; the other device takes them when it is back).
+
+| You do | The device it needs is asleep or off | You see |
+|---|---|---|
+| edit anything | the change waits in the sync folder | the top bar: "Mac off · 3 changes waiting" |
+| AI work (task chat, email suggestions, the day adviser, summaries, story scripts) with Claude here | runs here at once (no 8-second wait) | "Mac is asleep: using this computer" |
+| the same without Claude here | nothing is asked (503 `PEER_OFF` / `HOST_OFF`, `calm: true`) | "Mac is asleep. Claude answers there when it's back." |
+| Update the calendar or email | the devices that are away are not asked; this computer reads its own | "Mac is asleep: its calendar shows what it last sent." |
+| Sync bank, Finances, Home's money cards on a computer that shows another's finances | the finance code asks `presenceOf(<finance computer>)` (section *Finances on every device*) | "Finance from Mac · last update 2 h ago (it's off)"; the Home card and the palette show a calm `skipped` answer as one calm line |
+| something it was asked to do, and it went away meanwhile | taken back (a host-first request at once) or ended calmly (`HOLDER_OFFLINE`, `calm: true`) | "Mac is off. It runs this when it's back." |
+
+**Calm, not errors.** These lines carry `calm: true` from the server. The
+page (`src/app/56-presence.js`) shows them with a moon, never red, through
+`toast()`: a toast whose words only say a device is away is shown calmly,
+the same line again within 5 minutes only pulses the sync dot, and identical
+toasts collapse into one. "Try again" is never offered for a device that is
+away.
+
+### The sync dot in the top bar
+
+Next to *Saved*, hidden while sync is off:
+
+| Dot | Words | When |
+|---|---|---|
+| green | "In sync · Mac online" | the others are there (or some are, and the rest catch up later) |
+| grey | "Mac off · 3 changes waiting" | nobody else is there now; nothing is wrong |
+| amber | "Needs attention" | sync is locked or in error, or a version notice is waiting; a click shows why |
+| spinning | "Sending…" | changes on their way over a live link |
+
+A click opens the panel: every device with its state (Online, Asleep, Off,
+Older version, Checking), what it is doing (dashboard open or not), when it
+was last seen, its OpenDash version and how it is reached (live on the same
+network or over the internet, or the sync folder), and *Sync settings*.
+`GET /api/sync/presence` answers it; the live event `presence` brings a
+change at once.
+
+### An older version on another device
+
+"Mac is on 2.15.0: update it to sync everything": one gentle notice per device
+and version (`src/app/56-presence-notice.js`): a toast once, then at the top of
+the panel with *Dismiss* (the dot is amber until then). Shown and dismissed
+are synced seen flags (`seen.once`), so the other computer does not repeat it.
 
 ## Safety
 

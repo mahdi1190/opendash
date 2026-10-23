@@ -116,7 +116,16 @@ closes (`tampered`).
 | `recs` | `items: [{file, rec}]` | the sender's own sealed log records (SYNC_FORMAT.md 11.2) with their log file name (part of the AES-GCM associated data); answers `hi` with what the other missed, then every new record as it is written; at most about 1 MiB per frame |
 | `seen` | `n` | how far the sender now has the other's records |
 | `lease` | `claims` | main-computer claims (section 7) |
+| `pres` | `v`, `page?`, `app?`, `stopping?` | presence (2.16, `lib/sync/presence.mjs`): whether a dashboard page is open on the sender and its OpenDash version, sent on opening, when the page opens or closes, and every 2 minutes; `stopping: true` is the goodbye of a clean stop, sent just before the link closes. Older versions ignore it |
 | `ping`, `bye` | | keepalive, closing |
+
+Presence also reads the link itself: an open link means the other server
+runs now; a link that closed (`idle`, `closed`, `error`), could not be dialled
+again and stayed away for 30 seconds means the other device went away
+(asleep, shut down, no network). A computer that wakes from sleep (its timers
+fire more than 30 seconds late) dials every member at once, announces itself
+on the network and renews its router port (`live.wake()`), so the others see
+it back within seconds.
 
 A receiver takes `recs` only with `rec.dev` equal to the authenticated
 peer, and passes them to the engine (`deliverLive`), which applies exactly
