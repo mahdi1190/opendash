@@ -185,6 +185,20 @@ body.task-dragging .nav-item[data-task-drop].drag-over { background: var(--accen
 .task-group.danger .tg-t { color: var(--danger-ink); }
 .tg-act { margin-left: auto; color: var(--fg-muted); }
 .tg-h.drag-over { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); }
+/* Today's sections (31-task-views.js _todaySectionHeader): drag the header to reorder, ⋯ = Arrange sections. */
+.tg-sec { position: relative; }
+.tg-grip { position: absolute; left: -16px; top: 50%; transform: translateY(-50%); display: inline-flex; color: var(--fg-subtle); opacity: 0; cursor: grab; transition: opacity var(--m-fast); }
+.tg-sec:hover .tg-grip, .tg-sec:focus-within .tg-grip { opacity: .8; }
+.tg-arrange { margin-left: auto; opacity: 0; transition: opacity var(--m-fast); color: var(--fg-subtle); }
+.tg-act + .tg-arrange { margin-left: 0; }
+.tg-sec:hover .tg-arrange, .tg-sec:focus-within .tg-arrange, .tg-arrange[aria-expanded="true"] { opacity: 1; }
+.tg-sec.sec-dragging { opacity: .45; }
+.tg-sec.sec-drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.tg-sec.sec-drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
+.tg-hidden { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--fg-subtle); margin: calc(-1 * var(--space-2)) 0 var(--space-4); }
+.tg-hidden .btn { color: var(--fg-muted); }
+@media (hover: none) { .tg-arrange { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tg-grip, .tg-arrange { transition: none; } }
 
 /* ---------- task row ----------
    DOM: [drag-handle][multi-handle][checkbox][t-body][t-right]; handles sit in the gutter. */
@@ -340,3 +354,6 @@ body.has-selection .task .drag-handle { display: none; }
   .ws-day .dw { display: none; }
   .drag-handle { display: none; }
 }
+/* Display popover > Sections (Today): four toggles that wrap to two rows in the narrow popover. */
+.seg.seg-wrap { flex-wrap: wrap; }
+.seg.seg-wrap button { flex: 1 1 45%; white-space: nowrap; }

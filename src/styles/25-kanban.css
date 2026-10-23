@@ -50,3 +50,10 @@
 
 /* Pinned card marker (pinned cards lead their column). */
 .kanban-card .kc-pin { flex: none; margin-left: auto; color: var(--warning); display: inline-flex; }
+
+/* Today's board: the To do column in the list's sections (31-task-views.js; order from the view's preferences). */
+.kc-sec { display: flex; align-items: center; gap: 6px; margin: var(--space-2) var(--space-1) 2px; font-size: var(--text-xs); font-weight: var(--weight-semibold); color: var(--fg-muted); }
+.kc-sec:first-child { margin-top: 0; }
+.kc-sec .n { color: var(--fg-subtle); font-weight: var(--weight-regular); font-variant-numeric: tabular-nums; }
+.kc-sec.danger { color: var(--danger-ink); }
+.kc-sec-hidden { align-self: flex-start; color: var(--fg-subtle); }

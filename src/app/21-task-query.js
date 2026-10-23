@@ -219,14 +219,59 @@ function sortItems(items, by, view) {
   return arr;
 }
 
+/* ---------- Today's sections (Smart grouping) ----------
+   Each open task in Today is in ONE section: Planned for today (the user planned it for
+   today, or a past day and it is not done: whatever its deadline), else Overdue, Due today,
+   In progress. So a task whose deadline moves out of today leaves Due today at once, and
+   stays in Today only when it is planned (or in progress), under that heading.
+   The user's order, hidden sections and folded ones are view preferences (taskViewPrefs.today:
+   sections [keys], hiddenSections {key: true}, collapsed {key: true}): synced to every device. */
+const TODAY_SECTIONS = [
+  { key: 'overdue', label: 'Overdue', icon: 'triangle-alert' },
+  { key: 'due', label: 'Due today', icon: 'calendar' },
+  { key: 'planned', label: 'Planned for today', icon: 'sun' },
+  { key: 'doing', label: 'In progress', icon: 'circle-dot' },
+];
+function todaySectionOf(it, today) {
+  today = today || todayStr();
+  if (it.plannedFor && it.plannedFor <= today) return 'planned';
+  const d = daysUntil(effDate(it));
+  if (d !== null && d < 0) return 'overdue';
+  if (d === 0) return 'due';
+  return 'doing';
+}
+function todaySectionDef(key) { return TODAY_SECTIONS.find(s => s.key === key) || null; }
+/** The section keys in the user's order (unknown keys dropped, new ones appended in the default order). */
+function todaySectionOrder() {
+  const saved = Array.isArray(taskViewPrefs('today').sections) ? taskViewPrefs('today').sections : [];
+  const keys = TODAY_SECTIONS.map(s => s.key);
+  return [...saved.filter((k, i) => keys.includes(k) && saved.indexOf(k) === i), ...keys.filter(k => !saved.includes(k))];
+}
+function todaySectionHidden(key) { const h = taskViewPrefs('today').hiddenSections; return !!(h && typeof h === 'object' && h[key]); }
+function setTodaySectionOrder(keys) { setTaskViewPref('today', { sections: keys.slice() }); }
+function setTodaySectionHidden(key, hidden) {
+  const h = Object.assign({}, taskViewPrefs('today').hiddenSections || {});
+  if (hidden) h[key] = true; else delete h[key];
+  setTaskViewPref('today', { hiddenSections: Object.keys(h).length ? h : null });
+}
+/** Move a section `by` places (-1 up, +1 down) or before another section (`before` key). */
+function moveTodaySection(key, by, before) {
+  const cur = todaySectionOrder();
+  const rest = cur.filter(k => k !== key);
+  let at;
+  if (before !== undefined) { at = before ? rest.indexOf(before) : rest.length; if (at < 0) at = rest.length; }   // before '': to the end
+  else at = cur.indexOf(key) + by;
+  rest.splice(Math.max(0, Math.min(rest.length, at)), 0, key);
+  if (rest.join('|') !== cur.join('|')) setTodaySectionOrder(rest);
+}
+
 /** Group label + order for one task under the "Smart" grouping of a view. */
 function _smartGroup(it, view, today) {
   const due = effDate(it);
   const d = daysUntil(due);
   if (view === 'today') {
-    if (d !== null && d < 0) return ['overdue', 'Overdue'];
-    if (d === 0 || (it.plannedFor && it.plannedFor <= today)) return ['today', 'Today'];
-    return ['doing', 'In progress'];
+    const s = todaySectionDef(todaySectionOf(it, today));
+    return [s.key, s.label];
   }
   if (view === 'week') {
     if (d !== null && d < 0) return ['overdue', 'Overdue'];
@@ -272,7 +317,9 @@ function groupItems(items, by, view) {
     if (!groups.has(key)) groups.set(key, { key, label, sub: sub || '', items: [] });
     groups.get(key).items.push(it);
   }
+  const todayOrder = by === 'auto' && view === 'today' ? todaySectionOrder() : null;
   return Array.from(groups.values()).sort((a, b) => {
+    if (todayOrder) return todayOrder.indexOf(a.key) - todayOrder.indexOf(b.key);
     if (by === 'auto' && view !== 'week' && view !== 'completed') return _SMART_ORDER.indexOf(a.key) - _SMART_ORDER.indexOf(b.key);
     if (by === 'auto' && view === 'week') { if (a.key === 'overdue') return -1; if (b.key === 'overdue') return 1; return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; }
     if (by === 'auto' && view === 'completed') return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;

@@ -659,7 +659,11 @@ function _openRescheduleDialog(id) {
       f2.appendChild(reasonIn);
       el.append(f1, f2);
     },
-    actions: [{ label: 'Cancel' }, { label: 'Reschedule', primary: true, run: () => { setDateWithReason(id, dateIn.value || null, reasonIn.value.trim()); } }],
+    actions: [{ label: 'Cancel' }, { label: 'Reschedule', primary: true, run: () => {
+      const snap = dueMoveSnap(id), to = dateIn.value || null, was = effDate(getItem(id) || item);
+      setDateWithReason(id, to, reasonIn.value.trim());
+      if (to !== was) dueMovedToast(id, to, snap);   // says when Today still keeps it (planned for today)
+    } }],
   });
 }
 

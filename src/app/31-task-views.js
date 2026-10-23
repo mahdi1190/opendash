@@ -126,10 +126,16 @@ function renderListView(container, o) {
   if (searching) by = 'none';
   if (by === 'auto' && (view === 'no-date' || view === 'tomorrow' || view.startsWith('day:'))) by = 'none';
   const groups = groupItems(rest, by, view);
+  // Today's sections (21-task-query.js): in the user's order; a hidden one is listed in a note under them.
+  const sections = view === 'today' && by === 'auto';
+  const hiddenNow = [];
   for (const g of groups) {
     if (!g.items.length) continue;
-    list.appendChild(_renderGroup(view, Object.assign({}, g, { label: g.label || (searching ? 'Open' : ''), danger: g.key === 'overdue' })));
+    if (sections && todaySectionHidden(g.key)) { hiddenNow.push(g); continue; }
+    const def = sections ? todaySectionDef(g.key) : null;
+    list.appendChild(_renderGroup(view, Object.assign({}, g, { label: g.label || (searching ? 'Open' : ''), danger: g.key === 'overdue', section: !!def, icon: def ? def.icon : g.icon })));
   }
+  if (hiddenNow.length) list.appendChild(_todayHiddenNote(hiddenNow));
   if (!open.length && view !== 'completed' && !searching) _mountTaskEmpty(list, view, false, true);
   if (closed.length) {
     list.appendChild(_renderGroup(view, {
@@ -197,6 +203,7 @@ function _renderGroup(view, g) {
     }
     // Drop a task on a day header (Upcoming) to move it to that day.
     if (/^\d{4}-\d{2}-\d{2}$/.test(g.key)) _makeDayDropTarget(h, g.key);
+    if (g.section) _todaySectionHeader(h, g.key);
     grp.appendChild(h);
   }
   if (collapsed) { grp.classList.add('collapsed'); return grp; }
@@ -207,6 +214,78 @@ function _renderGroup(view, g) {
   }
   grp.appendChild(body);
   return grp;
+}
+
+/* ---------- Today's sections: drag a header to reorder, or its Arrange menu (keyboard) ---------- */
+const TODAY_SECTION_MIME = 'application/x-dashboard-section';
+function _todaySectionHeader(h, key) {
+  h.classList.add('tg-sec');
+  h.draggable = true;
+  h.setAttribute('data-sec', key);
+  const grip = document.createElement('span'); grip.className = 'tg-grip'; grip.innerHTML = icon('grip-vertical', 'i-sm'); grip.setAttribute('aria-hidden', 'true');
+  grip.title = 'Drag to move this section';
+  h.insertBefore(grip, h.firstChild);
+  const arr = document.createElement('button'); arr.type = 'button'; arr.className = 'btn-icon btn-sm tg-arrange';
+  arr.innerHTML = icon('ellipsis'); arr.setAttribute('aria-label', 'Arrange sections'); arr.setAttribute('data-tip', 'Arrange sections');
+  arr.onclick = (e) => { e.stopPropagation(); openTodaySectionsMenu(e.currentTarget, key); };
+  h.appendChild(arr);
+  h.addEventListener('dragstart', (e) => {
+    if (e.target !== h && !(e.target instanceof Element && e.target.closest('.tg-sec') === h)) return;
+    e.dataTransfer.setData(TODAY_SECTION_MIME, key); e.dataTransfer.effectAllowed = 'move';
+    h.classList.add('sec-dragging');
+  });
+  h.addEventListener('dragend', () => { h.classList.remove('sec-dragging'); document.querySelectorAll('.sec-drop-before, .sec-drop-after').forEach(n => n.classList.remove('sec-drop-before', 'sec-drop-after')); });
+  h.addEventListener('dragover', (e) => {
+    if (!Array.from((e.dataTransfer && e.dataTransfer.types) || []).includes(TODAY_SECTION_MIME)) return;
+    e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+    const r = h.getBoundingClientRect(); const after = e.clientY > r.top + r.height / 2;
+    h.classList.toggle('sec-drop-after', after); h.classList.toggle('sec-drop-before', !after);
+  });
+  h.addEventListener('dragleave', (e) => { if (!h.contains(e.relatedTarget)) h.classList.remove('sec-drop-before', 'sec-drop-after'); });
+  h.addEventListener('drop', (e) => {
+    const from = e.dataTransfer ? e.dataTransfer.getData(TODAY_SECTION_MIME) : '';
+    const after = h.classList.contains('sec-drop-after');
+    h.classList.remove('sec-drop-before', 'sec-drop-after');
+    if (!from || !todaySectionDef(from)) return;
+    e.preventDefault(); e.stopPropagation();
+    if (from === key) return;
+    const order = todaySectionOrder().filter(k => k !== from);
+    const before = after ? (order[order.indexOf(key) + 1] || '') : key;
+    moveTodaySection(from, 0, before);
+    render();
+  });
+}
+/** The Arrange menu of a Today section: move it, hide it, show hidden ones, reset. */
+function openTodaySectionsMenu(anchor, key) {
+  const order = todaySectionOrder();
+  const shown = order.filter(k => !todaySectionHidden(k));
+  const i = shown.indexOf(key);
+  const def = todaySectionDef(key);
+  const hidden = order.filter(k => todaySectionHidden(k));
+  const custom = order.join('|') !== TODAY_SECTIONS.map(s => s.key).join('|') || hidden.length;
+  // Move up/down swap with the next shown section (hidden ones keep their place).
+  const swap = (dir) => { const other = shown[i + dir]; if (!other) return; moveTodaySection(key, 0, dir < 0 ? other : (order[order.indexOf(other) + 1] || '')); render(); };
+  openMenu(anchor, [
+    { heading: def ? def.label : 'Sections' },
+    { label: 'Move up', icon: 'arrow-up', disabled: i <= 0, run: () => swap(-1) },
+    { label: 'Move down', icon: 'arrow-down', disabled: i < 0 || i >= shown.length - 1, run: () => swap(1) },
+    { label: 'Hide this section', icon: 'eye-off', run: () => { setTodaySectionHidden(key, true); render(); toast(`“${def ? def.label : key}” hidden`, { icon: 'eye-off', action: { label: 'Show', run: () => { setTodaySectionHidden(key, false); render(); } } }); } },
+    ...(hidden.length ? ['sep', { heading: 'Hidden' }, ...hidden.map(k => ({ label: `Show “${todaySectionDef(k).label}”`, icon: 'eye', run: () => { setTodaySectionHidden(k, false); render(); } }))] : []),
+    ...(custom ? ['sep', { label: 'Reset sections', icon: 'rotate-ccw', hint: 'Default order, all shown', run: () => { setTaskViewPref('today', { sections: null, hiddenSections: null }); render(); } }] : []),
+  ], { align: 'end', width: 240 });
+}
+/** Under the sections: the hidden ones that have tasks, each with Show. */
+function _todayHiddenNote(groups) {
+  const n = document.createElement('div'); n.className = 'tg-hidden muted';
+  n.innerHTML = icon('eye-off', 'i-sm') + '<span>Hidden:</span>';
+  for (const g of groups) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
+    b.textContent = `${g.label} (${g.items.length})`;
+    b.title = `Show the “${g.label}” section again`;
+    b.onclick = () => { setTodaySectionHidden(g.key, false); render(); };
+    n.appendChild(b);
+  }
+  return n;
 }
 
 function _rescheduleGroupMenu(anchor, ids) {
@@ -293,8 +372,9 @@ function _makeDayDropTarget(el, iso) {
     e.preventDefault(); e.stopPropagation();
     const it = getItem(id);
     if (it && it.dueDate === iso) return;
+    const snap = dueMoveSnap(id);
     setDateWithReason(id, iso, null);
-    toast(`Moved to ${dueLabel(iso)}`, { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+    dueMovedToast(id, iso, snap, { always: true });   // "Moved to Sat 1 Nov" (· still planned for today), Undo
   });
 }
 
@@ -624,9 +704,31 @@ function renderKanban(container, o) {
       }
     });
     const list = document.createElement('div'); list.className = 'kanban-list';
-    for (const it of col.items) {
-      list.appendChild(_renderKanbanCard(it));
-      if (col.key !== 'done') _lastRenderedTaskIds.push(it.id);
+    // Today's board: To do in the same sections as the list (order and hidden ones from the view's preferences).
+    if (view === 'today' && col.key === 'todo' && groupForView('today') === 'auto') {
+      const by = {};
+      for (const it of col.items) { const k = todaySectionOf(it); (by[k] = by[k] || []).push(it); }
+      let hiddenN = 0;
+      for (const k of todaySectionOrder()) {
+        const items = by[k]; if (!items || !items.length) continue;
+        if (todaySectionHidden(k)) { hiddenN += items.length; continue; }
+        const def = todaySectionDef(k);
+        const sh = document.createElement('div'); sh.className = 'kc-sec' + (k === 'overdue' ? ' danger' : '');
+        sh.innerHTML = `${icon(def.icon, 'i-xs')}<span>${esc(def.label)}</span><span class="n">${items.length}</span>`;
+        list.appendChild(sh);
+        for (const it of items) { list.appendChild(_renderKanbanCard(it)); _lastRenderedTaskIds.push(it.id); }
+      }
+      if (hiddenN) {
+        const hn = document.createElement('button'); hn.type = 'button'; hn.className = 'btn btn-ghost btn-sm kc-sec-hidden';
+        hn.textContent = `${hiddenN} in hidden sections · Show`;
+        hn.onclick = () => { setTaskViewPref('today', { hiddenSections: null }); render(); };
+        list.appendChild(hn);
+      }
+    } else {
+      for (const it of col.items) {
+        list.appendChild(_renderKanbanCard(it));
+        if (col.key !== 'done') _lastRenderedTaskIds.push(it.id);
+      }
     }
     if (!col.items.length) { const e = document.createElement('div'); e.className = 'kanban-empty'; e.textContent = col.key === 'done' ? 'Drop here to complete' : col.key === 'doing' ? 'Drop a task here to start it' : 'Nothing to do. Add one below'; list.appendChild(e); }
     c.appendChild(list);

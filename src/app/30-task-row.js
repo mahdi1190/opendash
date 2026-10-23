@@ -63,7 +63,7 @@ function _sbTaskDropAction(view) {
     return (id, it) => { if (effStream(it) === s) return ''; setOverride(id, 'stream', s); render(); return `Moved to ${STREAMS[s].label}`; };
   }
   if (view === 'today') return (id, it) => { if (effDate(it) === todayStr()) return ''; setDateWithReason(id, todayStr(), null); return 'Due today'; };
-  if (view === 'no-date') return (id, it) => { if (!effDate(it)) return ''; setDateWithReason(id, null, null); return 'Date removed'; };
+  if (view === 'no-date') return (id, it) => { if (!effDate(it)) return ''; const snap = dueMoveSnap(id); setDateWithReason(id, null, null); dueMovedToast(id, null, snap, { always: true }); return ''; };
   if (view === 'completed') return (id) => { if (statusOf(id) !== 'done') toggleDone(id); return ''; };   // toggleDone has its own toast + Undo
   return null;
 }
@@ -256,7 +256,8 @@ function renderTaskRow(item, opts) {
     meta.appendChild(s); return s;
   };
   // In progress shows as the half-filled checkbox (as in the mockup), not as words in the meta line.
-  if (item.plannedFor && status !== 'done' && !(state.view === 'today' && item.plannedFor <= today && daysUntil(effDate(item)) === 0)) {
+  // In Today's sections the "Planned for today" heading already says it (21-task-query.js).
+  if (item.plannedFor && status !== 'done' && !(state.view === 'today' && item.plannedFor <= today && (daysUntil(effDate(item)) === 0 || (!searchQuery && groupForView('today') === 'auto')))) {
     const pd = daysUntil(item.plannedFor);
     if (pd !== null && pd <= 0) m('t-planned', 'sun', 'Today', 'Planned for today');
     else m('t-planned', 'calendar-check', dueLabel(item.plannedFor), 'Planned for ' + item.plannedFor);

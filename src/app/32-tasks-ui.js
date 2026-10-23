@@ -216,10 +216,58 @@ function setStreamWithNote(id, k) {
   setOverride(id, 'stream', k); render();
   if (before && !_taskOpenNow(id) && !_taskListedHere(getItem(id))) toast(`Moved to ${STREAMS[k]?.label || k}`, { kind: 'ok', icon: 'layers', action: { label: 'Undo', run: () => undo() } });
 }
+/** Before a deadline changes: what the toast afterwards needs to know. */
+function dueMoveSnap(id) {
+  const it = getItem(id);
+  const due = it ? effDate(it) : null;
+  return { listed: _taskListedHere(it), dueToday: !!due && due <= todayStr() };
+}
+/** "Sat 1 Nov" (the year when it is not this year; today and tomorrow in words). */
+function dueMoveLabel(iso) {
+  const d = daysUntil(iso);
+  if (d === 0) return 'today';
+  if (d === 1) return 'tomorrow';
+  return _dayLabel(iso, { weekday: 'short', day: 'numeric', month: 'short', year: String(iso).slice(0, 4) !== todayStr().slice(0, 4) ? 'numeric' : undefined });
+}
+/**
+ * The toast after a deadline moved (already saved, one undo step): "Moved to Sat 1 Nov", Undo.
+ * When it was due today (or overdue) and Today still lists it, it says why: "· still planned for
+ * today" (its section, 21-task-query.js) with Not today (takes the plan away), or "· still in
+ * Today: in progress". Otherwise it shows only when the task left the list on screen, or o.always
+ * (drops, menus). Returns true when it showed.
+ */
+function dueMovedToast(id, iso, snap, o) {
+  o = o || {};
+  const it = getItem(id); if (!it) return false;
+  const today = todayStr();
+  const out = !!(snap && snap.dueToday) && !(iso && iso <= today);
+  const still = out && statusOf(id) !== 'done' && inViewScope(it, 'today', today);
+  const planned = still && !!it.plannedFor && it.plannedFor <= today;
+  const left = !!(snap && snap.listed) && !_taskListedHere(it) && !_taskOpenNow(id);
+  if (!o.always && !still && !left) return false;
+  let msg = iso ? `Moved to ${dueMoveLabel(iso)}` : 'Date removed';
+  if (planned) msg += ' · still planned for today';
+  else if (still && statusOf(id) === 'doing') msg += ' · still in Today: in progress';
+  _toastWithExtra(msg, { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } },
+    planned ? { label: 'Not today', run: () => { setPlanned(id, null); toast('Removed from Today', { icon: 'sun', action: { label: 'Undo', run: () => undo() } }); } } : null);
+  return true;
+}
+/** toast() with a second button (the toast kit takes one action): added to the toast it just made. */
+function _toastWithExtra(msg, opts, extra) {
+  const close = toast(msg, opts);
+  if (!extra) return close;
+  const host = document.getElementById('toast-host');
+  const t = host && host.lastElementChild;
+  if (!t || !t.classList.contains('toast')) return close;
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
+  b.textContent = extra.label;
+  b.onclick = () => { close(); try { extra.run(); } catch (e) { console.error(e); } };
+  t.appendChild(b);
+  return close;
+}
 function setDueWithNote(id, d, t) {
   const it = getItem(id); if (!it) return;
-  const listed = _taskListedHere;
-  const before = listed(it);
+  const snap = dueMoveSnap(id);
   const from = it.dueDate || null, fromT = it.dueTime || null;
   d = d || null;
   const time = d ? (t === undefined ? fromT : (t || null)) : null;
@@ -229,7 +277,7 @@ function setDueWithNote(id, d, t) {
   it.dueDate = d;
   if (time) it.dueTime = time; else delete it.dueTime;
   saveData(); render();
-  if (before && !_taskOpenNow(id) && !listed(getItem(id))) toast(d ? `Moved to ${dueLabel(d)}` : 'Date removed', { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+  if (from !== d) dueMovedToast(id, d, snap);
 }
 
 /** Everything you can do to a task, as menu rows (context menu, "…" button). */
@@ -360,6 +408,24 @@ function openTaskDisplayPopover(anchor) {
           sortForView(view) === 'manual' ? 'Your own order (drag rows). Pick another sort to go back.' : 'Drag a row to switch this list to your own order.');
         row('Group', TASK_GROUPS, groupForView(view), v => setTaskViewPref(view, { group: v }));
       }
+      // Today's sections (21-task-query.js): show or hide each; the order is dragged on the list itself.
+      if (view === 'today' && groupForView(view) === 'auto') {
+        const f = document.createElement('div'); f.className = 'field'; f.style.marginBottom = '12px';
+        f.innerHTML = '<span class="field-label">Sections</span>';
+        const seg = document.createElement('div'); seg.className = 'seg seg-block seg-wrap';
+        for (const k of todaySectionOrder()) {
+          const b = document.createElement('button'); b.type = 'button'; b.textContent = todaySectionDef(k).label;
+          b.setAttribute('aria-pressed', todaySectionHidden(k) ? 'false' : 'true');
+          b.title = todaySectionHidden(k) ? 'Hidden: click to show' : 'Shown: click to hide';
+          b.onclick = () => { setTodaySectionHidden(k, !todaySectionHidden(k)); render(); paint(); };
+          seg.appendChild(b);
+        }
+        f.appendChild(seg);
+        const n = document.createElement('span'); n.className = 'field-hint';
+        n.textContent = 'Drag a section’s header to move it, or use its ⋯ menu.';
+        f.appendChild(n);
+        el.appendChild(f);
+      }
       row('Rows', [['normal', 'Comfortable'], ['compact', 'Compact']], state.density === 'compact' ? 'compact' : 'normal', v => { state.density = v; saveUI(); });
       const any = _lastRenderedTaskIds.some(id => getSubtasks(id).length);
       if (any) {
@@ -387,8 +453,17 @@ function bulkPlanToday(list) {
   _bulkDone(`${list.length} planned for today`);
 }
 function bulkSetDue(list, d) {
+  const today = todayStr();
+  const wasDue = new Set(list.filter(id => { const x = getItem(id); const due = x && effDate(x); return !!due && due <= today; }));
   batchTasks(list, id => { const it = getItem(id); const from = it.dueDate || null; if (from !== d) { logActivity(id, 'date', { from, to: d, reason: 'bulk' }); it.dueDate = d; if (!d) delete it.dueTime; } });
-  _bulkDone(`${list.length} moved to ${d ? dueLabel(d) : 'no date'}`);
+  // Moved out of today but planned for today: they stay in Today's "Planned for today", and the toast says so.
+  const kept = !d || d > today ? list.filter(id => { const x = getItem(id); return wasDue.has(id) && x && x.plannedFor && x.plannedFor <= today && statusOf(id) !== 'done'; }) : [];
+  _toastWithExtra(`${list.length} moved to ${d ? dueMoveLabel(d) : 'no date'}${kept.length ? ` · ${kept.length} still planned for today` : ''}`,
+    { kind: 'ok', action: { label: 'Undo', run: () => undo() } },
+    kept.length ? { label: 'Not today', run: () => {
+      batchTasks(kept, id => { const x = getItem(id); if (!x.plannedFor) return; logActivity(id, 'plan', { from: x.plannedFor, to: null }); delete x.plannedFor; delete x.plannedTime; delete x.plannedMinutes; });
+      toast(`${kept.length} removed from Today`, { icon: 'sun', action: { label: 'Undo', run: () => undo() } });
+    } } : null);
 }
 function bulkPriority(list, k) {
   batchTasks(list, id => { const it = getItem(id); if (effPriority(it) !== k) { logActivity(id, 'priority', { from: effPriority(it), to: k }); it.priority = k; } });
