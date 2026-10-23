@@ -157,3 +157,26 @@ test('a cloud folder that disappears (signed out, deleted) costs no CPU while sy
   await waitFor(() => d.eng.status().state === 'ok', 3000, 'sync to resume');
   await d.eng.stop();
 });
+
+test('a line that is encrypted (reserved enc field) or in a newer format stops reading and is reported, never skipped', async () => {
+  const cloud = join(base, 'cloud-enc');
+  mkdirSync(cloud);
+  const me = makeDevice(base, 'enc', { state: { custom: [], statuses: {} }, pollMs: 100 });
+  await me.eng.start();
+  await me.eng.configure({ enabled: true, apply: true, folder: cloud, deviceName: 'Me' });
+  const dir = join(cloud, SYNC_DIR_NAME, 'devices', OTHER);
+  mkdirSync(dir, { recursive: true });
+  const wall = Date.now();
+  const ok = line(1, [[['statuses', '@alive'], true], [['statuses', 'u-1'], 'doing']], wall);
+  const enc = JSON.stringify({ v: 1, dev: OTHER, n: 2, h: encodeHlc(wall + 2, 0, OTHER), enc: { alg: 'A256GCM', iv: 'x', ct: 'y' } }) + '\n';
+  const after = line(3, [[['statuses', 'u-2'], 'done']], wall);
+  writeFileSync(join(dir, 'ops-20261023.jsonl'), ok + enc + after);
+  await waitFor(async () => ((await me.store.readObject()).statuses || {})['u-1'] === 'doing', 5000, 'the plain line');
+  await sleep(400);
+  assert.equal((await me.store.readObject()).statuses['u-2'], undefined, 'nothing after the encrypted line is applied (order is kept)');
+  assert.match(me.eng.status().message, /cannot read yet/);
+  writeFileSync(join(dir, 'ops-20261024.jsonl'), JSON.stringify({ v: 2, dev: OTHER, n: 4, h: encodeHlc(wall + 4, 0, OTHER), w: [] }) + '\n');
+  await sleep(300);
+  assert.match(me.eng.status().message, /newer format/);
+  await me.eng.stop();
+});
