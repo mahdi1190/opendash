@@ -31,28 +31,28 @@ test('the drawer script parses and uses only helpers the page has', () => {
 
 test('address box: plain hints, lower case', () => {
   const B = box();
-  assert.deepEqual(plain(B.imapEmailCheck('  Jo@Yahoo.COM ')), { ok: true, email: 'jo@yahoo.com', hint: '' });
+  assert.deepEqual(plain(B.imapEmailCheck('  Name@Yahoo.COM ')), { ok: true, email: 'name@yahoo.com', hint: '' });
   assert.match(B.imapEmailCheck('jo').hint, /whole email address/);
-  assert.match(B.imapEmailCheck('jo@yahoo').hint, /name@example\.com/);
+  assert.match(B.imapEmailCheck('name@yahoo').hint, /name@example\.com/);
   assert.equal(B.imapEmailCheck('').ok, false);
 });
 
 test('screens from the real provider table: Yahoo, iCloud, Proton (Bridge), Other, Gmail/Outlook redirect', () => {
   const B = box();
-  const y = plain(B.imapScreenFor(lookupProvider('jo@yahoo.com')));
+  const y = plain(B.imapScreenFor(lookupProvider('name@yahoo.com')));
   assert.equal(y.kind, 'password'); assert.equal(y.title, 'Connect Yahoo Mail');
   assert.equal(y.intro.title, 'What is an app password?'); assert.match(y.intro.text, /never needs your real password/);
   assert.ok(y.steps.length >= 4); assert.equal(y.open.url, 'https://login.yahoo.com/account/security');
   assert.equal(y.passwordLabel, 'App password'); assert.equal(y.showServer, false); assert.equal(y.askUsername, false);
   assert.deepEqual(y.server, { host: 'imap.mail.yahoo.com', port: 993, security: 'tls' });
   for (const t of [y.title, y.intro.text, ...y.steps, ...y.tips, y.passwordLabel, y.serverNote]) assert.doesNotMatch(t, JARGON, t);
-  const i = plain(B.imapScreenFor(lookupProvider('jo@me.com')));
+  const i = plain(B.imapScreenFor(lookupProvider('name@me.com')));
   assert.equal(i.passwordPlaceholder, 'abcd-efgh-ijkl-mnop'); assert.equal(i.open.label, 'Open Apple Account');
-  const gmx = plain(B.imapScreenFor(lookupProvider('jo@gmx.de')));
+  const gmx = plain(B.imapScreenFor(lookupProvider('name@gmx.de')));
   assert.equal(gmx.passwordLabel, 'App password (or your email password)', 'GMX and Zoho work with the normal password when two-step is off');
-  const p = plain(B.imapScreenFor(lookupProvider('jo@proton.me')));
+  const p = plain(B.imapScreenFor(lookupProvider('name@proton.me')));
   assert.equal(p.askUsername, true); assert.equal(p.passwordLabel, 'Password from Bridge'); assert.equal(p.bridge, true);
-  const o = plain(B.imapScreenFor(lookupProvider('jo@btinternet.com')));
+  const o = plain(B.imapScreenFor(lookupProvider('name@btinternet.com')));
   assert.equal(o.title, 'Connect btinternet.com'); assert.equal(o.showServer, true); assert.equal(o.server.host, 'imap.btinternet.com'); assert.equal(o.open, null);
   assert.match(o.serverNote, /guessed/);
   const g = plain(B.imapScreenFor(lookupProvider('me@gmail.com')));
@@ -76,19 +76,19 @@ test('password hints: a soft nudge when it does not look like that service’s a
 
 test('the connect request: the server only when the user could see it; the account when re-pasting', () => {
   const B = box();
-  const known = B.imapScreenFor(lookupProvider('jo@yahoo.com'));
-  assert.deepEqual(plain(B.imapConnectBody({ email: ' Jo@Yahoo.com', password: 'pw', host: 'imap.mail.yahoo.com', port: '993' }, known)), { email: 'jo@yahoo.com', password: 'pw' });
-  assert.deepEqual(plain(B.imapConnectBody({ email: 'jo@yahoo.com', password: 'pw', host: 'imap.custom.example', port: '143', security: 'starttls', serverOpened: true }, known, { id: 'acc_0123456789abcdef' })),
-    { email: 'jo@yahoo.com', password: 'pw', host: 'imap.custom.example', port: 143, security: 'starttls', accountId: 'acc_0123456789abcdef' });
-  const other = B.imapScreenFor(lookupProvider('jo@isp.example'));
-  assert.deepEqual(plain(B.imapConnectBody({ email: 'jo@isp.example', password: 'pw', host: 'mail.isp.example', port: '993', security: 'tls' }, other)), { email: 'jo@isp.example', password: 'pw', host: 'mail.isp.example', port: 993, security: 'tls' });
-  const bridge = B.imapScreenFor(lookupProvider('jo@proton.me'));
-  assert.equal(B.imapConnectBody({ email: 'jo@proton.me', password: 'pw', username: ' bridge-user ' }, bridge).username, 'bridge-user');
+  const known = B.imapScreenFor(lookupProvider('name@yahoo.com'));
+  assert.deepEqual(plain(B.imapConnectBody({ email: ' Name@Yahoo.com', password: 'pw', host: 'imap.mail.yahoo.com', port: '993' }, known)), { email: 'name@yahoo.com', password: 'pw' });
+  assert.deepEqual(plain(B.imapConnectBody({ email: 'name@yahoo.com', password: 'pw', host: 'imap.custom.example', port: '143', security: 'starttls', serverOpened: true }, known, { id: 'acc_0123456789abcdef' })),
+    { email: 'name@yahoo.com', password: 'pw', host: 'imap.custom.example', port: 143, security: 'starttls', accountId: 'acc_0123456789abcdef' });
+  const other = B.imapScreenFor(lookupProvider('name@isp.example'));
+  assert.deepEqual(plain(B.imapConnectBody({ email: 'name@isp.example', password: 'pw', host: 'mail.isp.example', port: '993', security: 'tls' }, other)), { email: 'name@isp.example', password: 'pw', host: 'mail.isp.example', port: 993, security: 'tls' });
+  const bridge = B.imapScreenFor(lookupProvider('name@proton.me'));
+  assert.equal(B.imapConnectBody({ email: 'name@proton.me', password: 'pw', username: ' bridge-user ' }, bridge).username, 'bridge-user');
 });
 
 test('errors: each code gets a title, where to look next, and the steps or the server settings', () => {
   const B = box();
-  const y = B.imapScreenFor(lookupProvider('jo@yahoo.com'));
+  const y = B.imapScreenFor(lookupProvider('name@yahoo.com'));
   const v = (code, message = 'Plain words from the server.') => plain(B.imapErrorView({ code, message }, y));
   assert.deepEqual((({ title, focus, showSteps, openServer }) => ({ title, focus, showSteps, openServer }))(v('WRONG_PASSWORD')), { title: 'That password did not work', focus: 'password', showSteps: true, openServer: false });
   assert.equal(v('WRONG_PASSWORD').text, 'Plain words from the server.', 'the server’s plain message is shown as it is');
@@ -102,37 +102,37 @@ test('errors: each code gets a title, where to look next, and the steps or the s
   assert.equal(v('BAD_REQUEST', 'Type the mail server name, for example imap.example.com.').focus, 'server');
   assert.match(v('NETWORK').text, /OpenDash itself did not answer/);
   assert.equal(v('SOMETHING_NEW').title, 'That did not work');
-  const p = B.imapScreenFor(lookupProvider('jo@proton.me'));
+  const p = B.imapScreenFor(lookupProvider('name@proton.me'));
   assert.equal(plain(B.imapErrorView({ code: 'WRONG_PASSWORD', message: 'x' }, p)).focus, 'username', 'Bridge: check the user name first');
   for (const code of ['WRONG_PASSWORD', 'APP_PASSWORD_NEEDED', 'TWO_STEP_NEEDED', 'PROVIDER_BUSY']) assert.doesNotMatch(v(code).title, JARGON, code);
 });
 
 test('connected: how much mail, then the calendar link offer (or why there is none)', () => {
   const B = box();
-  const y = B.imapScreenFor(lookupProvider('jo@yahoo.com'));
-  const d = plain(B.imapDoneView({ account: { email: 'jo@yahoo.com' }, inbox: { exists: 1234 }, results: [{ feature: 'mail', ok: true, count: 41 }] }, y));
+  const y = B.imapScreenFor(lookupProvider('name@yahoo.com'));
+  const d = plain(B.imapDoneView({ account: { email: 'name@yahoo.com' }, inbox: { exists: 1234 }, results: [{ feature: 'mail', ok: true, count: 41 }] }, y));
   assert.equal(d.title, 'Connected');
-  assert.equal(d.lines[0], 'jo@yahoo.com is connected. Your inbox has 1,234 messages.');
+  assert.equal(d.lines[0], 'name@yahoo.com is connected. Your inbox has 1,234 messages.');
   assert.match(d.lines[1], /\(41\)/);
   assert.match(d.lines.at(-1), /never sends, changes or deletes/);
   assert.equal(d.calendar.ics, true); assert.equal(d.calendar.title, 'Add your Yahoo calendar too?'); assert.equal(d.calendar.label, 'Yahoo calendar');
   assert.ok(d.calendar.steps.length >= 3); assert.equal(d.calendar.url, 'https://calendar.yahoo.com/');
-  const ic = plain(B.imapDoneView({ account: { email: 'jo@icloud.com' }, inbox: { exists: 1 }, results: [{ feature: 'mail', ok: false }] }, B.imapScreenFor(lookupProvider('jo@icloud.com'))));
-  assert.equal(ic.lines[0], 'jo@icloud.com is connected. Your inbox has 1 message.');
+  const ic = plain(B.imapDoneView({ account: { email: 'name@icloud.com' }, inbox: { exists: 1 }, results: [{ feature: 'mail', ok: false }] }, B.imapScreenFor(lookupProvider('name@icloud.com'))));
+  assert.equal(ic.lines[0], 'name@icloud.com is connected. Your inbox has 1 message.');
   assert.match(ic.lines[1], /another try/);
   assert.equal(ic.calendar.title, 'Add your iCloud calendar too?');
   assert.match(ic.calendar.steps.join(' '), /Public Calendar/);
-  const aol = plain(B.imapDoneView({ account: { email: 'jo@aol.com' } }, B.imapScreenFor(lookupProvider('jo@aol.com'))));
+  const aol = plain(B.imapDoneView({ account: { email: 'name@aol.com' } }, B.imapScreenFor(lookupProvider('name@aol.com'))));
   assert.equal(aol.calendar.ics, false); assert.match(aol.calendar.text, /cannot be shared as a link/);
-  const other = plain(B.imapDoneView({ account: { email: 'jo@isp.example' } }, B.imapScreenFor(lookupProvider('jo@isp.example'))));
+  const other = plain(B.imapDoneView({ account: { email: 'name@isp.example' } }, B.imapScreenFor(lookupProvider('name@isp.example'))));
   assert.equal(other.calendar.title, 'Add your calendar too?');
 });
 
 test('IMAP account cards: the service name, "Paste a new app password", a Calendar link button instead of a calendar toggle', () => {
   const B = box();
-  const a = { id: 'acc_0000000000000009', provider: 'imap', email: 'jo@yahoo.com', kind: 'personal', features: { mail: true, calendar: false }, status: 'connected', server: { service: 'yahoo', host: 'imap.mail.yahoo.com', port: 993, security: 'tls' }, here: { fetcher: true, signedIn: true } };
+  const a = { id: 'acc_0000000000000009', provider: 'imap', email: 'name@yahoo.com', kind: 'personal', features: { mail: true, calendar: false }, status: 'connected', server: { service: 'yahoo', host: 'imap.mail.yahoo.com', port: 993, security: 'tls' }, here: { fetcher: true, signedIn: true } };
   assert.equal(B.accProviderName(a), 'Yahoo Mail');
-  assert.equal(B.accProviderName({ ...a, server: { service: 'other' }, email: 'jo@isp.example' }), 'isp.example');
+  assert.equal(B.accProviderName({ ...a, server: { service: 'other' }, email: 'name@isp.example' }), 'isp.example');
   assert.deepEqual(plain(B.accFeatureList(a)), [{ id: 'mail', label: 'Mail', on: true }, { id: 'calendar', label: 'Calendar link', on: false, link: true }]);
   const ok = plain(B.accStatusView(a));
   assert.equal(ok.primary.id, 'sync');

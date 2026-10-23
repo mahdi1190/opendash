@@ -11,15 +11,15 @@ const host = (email) => lookupProvider(email).imap && lookupProvider(email).imap
 
 test('known services: the right server for every domain variant', () => {
   const cases = {
-    'jo@yahoo.com': ['yahoo', 'imap.mail.yahoo.com'], 'jo@yahoo.co.uk': ['yahoo', 'imap.mail.yahoo.com'], 'jo@yahoo.fr': ['yahoo', 'imap.mail.yahoo.com'],
-    'jo@ymail.com': ['yahoo', 'imap.mail.yahoo.com'], 'jo@rocketmail.com': ['yahoo', 'imap.mail.yahoo.com'], 'jo@yahoo.com.au': ['yahoo', 'imap.mail.yahoo.com'],
-    'jo@aol.com': ['aol', 'imap.aol.com'], 'jo@aol.co.uk': ['aol', 'imap.aol.com'], 'jo@aim.com': ['aol', 'imap.aol.com'],
-    'jo@icloud.com': ['icloud', 'imap.mail.me.com'], 'jo@me.com': ['icloud', 'imap.mail.me.com'], 'jo@mac.com': ['icloud', 'imap.mail.me.com'],
-    'jo@gmx.com': ['gmx', 'imap.gmx.com'], 'jo@gmx.co.uk': ['gmx', 'imap.gmx.com'], 'jo@gmx.net': ['gmx', 'imap.gmx.net'], 'jo@gmx.de': ['gmx', 'imap.gmx.net'], 'jo@gmx.at': ['gmx', 'imap.gmx.net'],
-    'jo@zoho.com': ['zoho', 'imap.zoho.com'], 'jo@zohomail.com': ['zoho', 'imap.zoho.com'], 'jo@zoho.eu': ['zoho', 'imap.zoho.eu'], 'jo@zohomail.in': ['zoho', 'imap.zoho.in'],
-    'jo@fastmail.com': ['fastmail', 'imap.fastmail.com'], 'jo@fastmail.fm': ['fastmail', 'imap.fastmail.com'], 'jo@sent.com': ['fastmail', 'imap.fastmail.com'],
-    'jo@proton.me': ['proton', '127.0.0.1'], 'jo@protonmail.com': ['proton', '127.0.0.1'], 'jo@pm.me': ['proton', '127.0.0.1'],
-    '  Jo@Yahoo.COM ': ['yahoo', 'imap.mail.yahoo.com'],
+    'name@yahoo.com': ['yahoo', 'imap.mail.yahoo.com'], 'name@yahoo.co.uk': ['yahoo', 'imap.mail.yahoo.com'], 'name@yahoo.fr': ['yahoo', 'imap.mail.yahoo.com'],
+    'name@ymail.com': ['yahoo', 'imap.mail.yahoo.com'], 'name@rocketmail.com': ['yahoo', 'imap.mail.yahoo.com'], 'name@yahoo.com.au': ['yahoo', 'imap.mail.yahoo.com'],
+    'name@aol.com': ['aol', 'imap.aol.com'], 'name@aol.co.uk': ['aol', 'imap.aol.com'], 'name@aim.com': ['aol', 'imap.aol.com'],
+    'name@icloud.com': ['icloud', 'imap.mail.me.com'], 'name@me.com': ['icloud', 'imap.mail.me.com'], 'name@mac.com': ['icloud', 'imap.mail.me.com'],
+    'name@gmx.com': ['gmx', 'imap.gmx.com'], 'name@gmx.co.uk': ['gmx', 'imap.gmx.com'], 'name@gmx.net': ['gmx', 'imap.gmx.net'], 'name@gmx.de': ['gmx', 'imap.gmx.net'], 'name@gmx.at': ['gmx', 'imap.gmx.net'],
+    'name@zoho.com': ['zoho', 'imap.zoho.com'], 'name@zohomail.com': ['zoho', 'imap.zoho.com'], 'name@zoho.eu': ['zoho', 'imap.zoho.eu'], 'name@zohomail.in': ['zoho', 'imap.zoho.in'],
+    'name@fastmail.com': ['fastmail', 'imap.fastmail.com'], 'name@fastmail.fm': ['fastmail', 'imap.fastmail.com'], 'name@sent.com': ['fastmail', 'imap.fastmail.com'],
+    'name@proton.me': ['proton', '127.0.0.1'], 'name@protonmail.com': ['proton', '127.0.0.1'], 'name@pm.me': ['proton', '127.0.0.1'],
+    '  Name@Yahoo.COM ': ['yahoo', 'imap.mail.yahoo.com'],
   };
   for (const [email, [id, h]] of Object.entries(cases)) {
     const p = lookupProvider(email);
@@ -28,12 +28,12 @@ test('known services: the right server for every domain variant', () => {
     assert.equal(p.imap.host, h, email);
     assert.equal(p.email, email.trim().toLowerCase());
   }
-  assert.equal(lookupProvider('jo@proton.me').imap.port, 1143);
-  assert.equal(lookupProvider('jo@proton.me').imap.security, 'starttls');
-  assert.equal(lookupProvider('jo@proton.me').bridge, true);
-  assert.equal(lookupProvider('jo@yahoo.com').imap.port, 993);
-  assert.equal(lookupProvider('jo@icloud.com').username, 'email-then-local');
-  assert.equal(lookupProvider('jo@zoho.eu').appPassword.url, 'https://accounts.zoho.eu/home#security/app_password', 'the account page in the same data centre');
+  assert.equal(lookupProvider('name@proton.me').imap.port, 1143);
+  assert.equal(lookupProvider('name@proton.me').imap.security, 'starttls');
+  assert.equal(lookupProvider('name@proton.me').bridge, true);
+  assert.equal(lookupProvider('name@yahoo.com').imap.port, 993);
+  assert.equal(lookupProvider('name@icloud.com').username, 'email-then-local');
+  assert.equal(lookupProvider('name@zoho.eu').appPassword.url, 'https://accounts.zoho.eu/home#security/app_password', 'the account page in the same data centre');
 });
 
 test('every known service: plain steps, an https app-password page, the app-password explanation, calendar help', () => {
@@ -53,10 +53,10 @@ test('every known service: plain steps, an https app-password page, the app-pass
     } else assert.match(info.calendar.text, /cannot be shared/);
     assert.match(info.webmail, /^https:\/\//);
   }
-  assert.equal(lookupProvider('a@icloud.com').calendar.ics, true);
-  assert.equal(lookupProvider('a@yahoo.com').calendar.ics, true);
-  assert.equal(lookupProvider('a@aol.com').calendar.ics, false);
-  assert.match(lookupProvider('a@proton.me').steps[0], /Proton Mail Bridge/);
+  assert.equal(lookupProvider('someone@icloud.com').calendar.ics, true);
+  assert.equal(lookupProvider('someone@yahoo.com').calendar.ics, true);
+  assert.equal(lookupProvider('someone@aol.com').calendar.ics, false);
+  assert.match(lookupProvider('someone@proton.me').steps[0], /Proton Mail Bridge/);
 });
 
 test('Gmail and Outlook addresses go to the one-click buttons', () => {
@@ -67,10 +67,10 @@ test('Gmail and Outlook addresses go to the one-click buttons', () => {
 });
 
 test('other addresses: a guessed server; invalid addresses: a plain hint', () => {
-  const o = lookupProvider('jo@btinternet.com');
+  const o = lookupProvider('name@btinternet.com');
   assert.equal(o.kind, 'other'); assert.equal(o.imap.host, 'imap.btinternet.com'); assert.equal(o.imap.port, 993); assert.equal(o.guessed, true);
   assert.ok(o.steps.length >= 2); assert.equal(o.calendar.ics, true);
-  for (const bad of ['', 'jo', 'jo@', '@x.com', 'jo@x', null, 'a b@x.com']) assert.equal(lookupProvider(bad).kind, 'invalid', String(bad));
+  for (const bad of ['', 'jo', 'name@', '@example.com', 'name@x', null, 'a b@example.com']) assert.equal(lookupProvider(bad).kind, 'invalid', String(bad));
   assert.match(lookupProvider('jo').message, /whole email address/);
 });
 
@@ -105,8 +105,8 @@ test('typed servers and user names', () => {
   for (const bad of [{ host: '' }, { host: 'imap example.com' }, { host: 'http://imap.x.com' }, { host: '999.1.1.1' }, { host: 'x.com', port: 0 }, { host: 'x.com', port: 70000 }, { host: 'x.com', port: 'abc' }]) {
     assert.ok(cleanServer(bad).error, JSON.stringify(bad));
   }
-  assert.deepEqual(usernamesFor('Jo@iCloud.com', 'email-then-local'), ['jo@icloud.com', 'jo']);
-  assert.deepEqual(usernamesFor('jo@yahoo.com', 'email'), ['jo@yahoo.com']);
-  assert.deepEqual(usernamesFor('jo@proton.me', 'email', 'bridge-user'), ['bridge-user']);
+  assert.deepEqual(usernamesFor('Name@iCloud.com', 'email-then-local'), ['name@icloud.com', 'name']);
+  assert.deepEqual(usernamesFor('name@yahoo.com', 'email'), ['name@yahoo.com']);
+  assert.deepEqual(usernamesFor('name@proton.me', 'email', 'bridge-user'), ['bridge-user']);
   assert.ok(isLoopbackHost('127.0.0.1') && isLoopbackHost('localhost') && !isLoopbackHost('imap.mail.me.com'));
 });

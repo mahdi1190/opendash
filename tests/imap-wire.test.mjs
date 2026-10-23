@@ -96,8 +96,8 @@ test('parser: a whole FETCH with ENVELOPE (literals, NIL, escapes, groups), BODY
   const subj = 'Café "menu"';
   const sb = te.encode(subj);
   const wire = '* 12 FETCH (UID 345 FLAGS (\\Seen \\Flagged) INTERNALDATE "17-Jul-1996 02:44:25 -0700" RFC822.SIZE 4286 '
-    + `ENVELOPE ("Wed, 17 Jul 1996 02:23:25 -0700 (PDT)" {${sb.length}}\r\n${subj} (("Terry \\"T\\" Gray" NIL "gray" "cac.washington.edu")) `
-    + '(("Terry Gray" NIL "gray" "cac.washington.edu")) NIL ((NIL NIL "list" NIL)("A" NIL "a" "x.org")(NIL NIL NIL NIL)) NIL NIL "<parent@x>" "<B27397-0100000@cac.washington.edu>") '
+    + `ENVELOPE ("Wed, 17 Jul 1996 02:23:25 -0700 (PDT)" {${sb.length}}\r\n${subj} (("Terry \\"T\\" Gray" NIL "gray" "mail.example.org")) `
+    + '(("Terry Gray" NIL "gray" "mail.example.org")) NIL ((NIL NIL "list" NIL)("A" NIL "a" "x.org")(NIL NIL NIL NIL)) NIL NIL "<parent@x>" "<B27397-0100000@mail.example.org>") '
     + 'BODYSTRUCTURE (("TEXT" "PLAIN" ("CHARSET" "US-ASCII") NIL NIL "7BIT" 1152 23)("TEXT" "HTML" ("CHARSET" "utf-8") NIL NIL "BASE64" 300 4) "ALTERNATIVE" ("BOUNDARY" "b1") NIL NIL) '
     + 'BODY[HEADER.FIELDS (CONTENT-TYPE CONTENT-TRANSFER-ENCODING)] {28}\r\nContent-Type: text/plain\r\n\r\n BODY[1]<0> "short")';
   const r = createResponseReader();
@@ -110,10 +110,10 @@ test('parser: a whole FETCH with ENVELOPE (literals, NIL, escapes, groups), BODY
   assert.equal(m.internalDate, '1996-07-17T09:44:25.000Z');
   assert.equal(m.size, 4286);
   assert.equal(m.envelope.subject, subj, 'a literal subject, UTF-8');
-  assert.deepEqual(m.envelope.from, [{ name: 'Terry "T" Gray', mailbox: 'gray', host: 'cac.washington.edu' }]);
+  assert.deepEqual(m.envelope.from, [{ name: 'Terry "T" Gray', mailbox: 'gray', host: 'mail.example.org' }]);
   assert.deepEqual(m.envelope.to, [{ name: 'A', mailbox: 'a', host: 'x.org' }], 'group markers are skipped');
   assert.equal(m.envelope.inReplyTo, '<parent@x>');
-  assert.equal(m.envelope.messageId, '<B27397-0100000@cac.washington.edu>');
+  assert.equal(m.envelope.messageId, '<B27397-0100000@mail.example.org>');
   assert.ok(Array.isArray(m.bodyStructure) && Array.isArray(m.bodyStructure[0]));
   assert.match(td.decode(m.sections.HEADER), /^Content-Type: text\/plain/);
   assert.equal(td.decode(m.sections['1']), 'short', 'a quoted section with <origin>');

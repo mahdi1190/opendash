@@ -52,14 +52,14 @@ function service(srv, { lookup, timeoutMs = 3000 } = {}) {
 const everything = (x) => JSON.stringify(x);
 
 let srv;
-before(async () => { srv = await startFakeImap({ tls: CERT, messages: MESSAGES, users: { 'jo@yahoo.com': PASS, 'jo': 'icloud-app-pass', 'me@gmx.de': 'normal pass' } }); });
+before(async () => { srv = await startFakeImap({ tls: CERT, messages: MESSAGES, users: { 'name@yahoo.com': PASS, 'name': 'icloud-app-pass', 'me@gmx.de': 'normal pass' } }); });
 after(async () => { await srv.close(); });
 
 test('connect: tested first, then the password goes to the secret store only; the record names the server', async () => {
   const { svc, reg, secrets } = service(srv);
-  const out = await svc.connect({ provider: 'imap', email: 'Jo@Yahoo.com', password: ' abcd efgh ijkl mnop ' });   // pasted with spaces
+  const out = await svc.connect({ provider: 'imap', email: 'Name@Yahoo.com', password: ' abcd efgh ijkl mnop ' });   // pasted with spaces
   const a = out.account;
-  assert.equal(a.provider, 'imap'); assert.equal(a.email, 'jo@yahoo.com'); assert.equal(a.status, 'connected');
+  assert.equal(a.provider, 'imap'); assert.equal(a.email, 'name@yahoo.com'); assert.equal(a.status, 'connected');
   assert.deepEqual(a.features, { mail: true, calendar: false }, 'an IMAP account has no calendar (a calendar link is separate)');
   assert.deepEqual(a.server, { service: 'yahoo', host: '127.0.0.1', port: srv.port, security: 'tls' });
   assert.equal(a.fetcher, 'deviceaaaa1');
@@ -68,11 +68,11 @@ test('connect: tested first, then the password goes to the secret store only; th
   assert.doesNotMatch(everything(reg.doc), new RegExp(PASS), 'no password in the registry');
   assert.doesNotMatch(everything(out), new RegExp(PASS), 'no password in the answer');
   const saved = await secrets.get('accounts/' + a.id);
-  assert.deepEqual([saved.provider, saved.username, saved.password, saved.host, saved.service], ['imap', 'jo@yahoo.com', PASS, '127.0.0.1', 'yahoo']);
+  assert.deepEqual([saved.provider, saved.username, saved.password, saved.host, saved.service], ['imap', 'name@yahoo.com', PASS, '127.0.0.1', 'yahoo']);
   assert.ok(!srv.commands.some((c) => ['SELECT', 'STORE', 'UID STORE', 'APPEND', 'EXPUNGE', 'COPY'].includes(c.verb)));
   // connecting again (a new app password) keeps the same account, its features and fetcher
   await svc.setFeatures(a.id, { mail: true });
-  const again = await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: PASS, accountId: a.id });
+  const again = await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: PASS, accountId: a.id });
   assert.equal(again.account.id, a.id); assert.equal(again.isNew, false);
   assert.equal(reg.doc.accounts.length, 1);
   // remove: the device's secret goes too
@@ -83,16 +83,16 @@ test('connect: tested first, then the password goes to the secret store only; th
 
 test('connect refused: nothing is saved; the reasons are plain', async () => {
   const { svc, reg, secrets } = service(srv);
-  const e = await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: 'my-normal-password' }).catch((x) => x);
+  const e = await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: 'my-normal-password' }).catch((x) => x);
   assert.equal(e.code, 'WRONG_PASSWORD'); assert.match(e.message, /app password/);
   assert.doesNotMatch(e.message, /AUTHENTICATIONFAILED|Failure|IMAP/, 'never the server’s own words');
   assert.equal(reg.doc.accounts.length, 0); assert.equal(secrets._map.size, 0);
-  assert.equal((await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: '   ' }).catch((x) => x)).code, 'BAD_REQUEST');
+  assert.equal((await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: '   ' }).catch((x) => x)).code, 'BAD_REQUEST');
   assert.equal((await svc.connect({ provider: 'imap', email: 'not an address', password: 'x' }).catch((x) => x)).code, 'BAD_REQUEST');
   const g = await svc.connect({ provider: 'imap', email: 'me@gmail.com', password: 'x' }).catch((x) => x);
   assert.equal(g.code, 'USE_ONE_CLICK'); assert.equal(g.retryProvider, 'google');
   assert.equal((await svc.connect({ provider: 'imap', email: 'me@hotmail.co.uk', password: 'x' }).catch((x) => x)).retryProvider, 'microsoft');
-  assert.equal((await svc.connect({ provider: 'imap', email: 'jo@other.example', password: 'x', host: 'not a host' }).catch((x) => x)).code, 'BAD_REQUEST');
+  assert.equal((await svc.connect({ provider: 'imap', email: 'name@other.example', password: 'x', host: 'not a host' }).catch((x) => x)).code, 'BAD_REQUEST');
   assert.equal(srv.commands.filter((c) => c.verb === 'AUTHENTICATE' || c.verb === 'LOGIN').length > 0, true);
 });
 
@@ -110,7 +110,7 @@ test('server answers -> friendly errors (through a real session, and the classif
     const s = await startFakeImap({ tls: CERT, users: {}, loginError });
     try {
       const { svc } = service(s);
-      const e = await svc.connect({ provider: 'imap', email: 'jo@gmx.com', password: 'whatever' }).catch((x) => x);
+      const e = await svc.connect({ provider: 'imap', email: 'name@gmx.com', password: 'whatever' }).catch((x) => x);
       assert.equal(e.code, code, loginError.text);
       assert.ok(e.message.length > 20 && e.message.length < 300);
       if (code === 'IMAP_DISABLED') assert.match(e.message, /GMX: Settings > POP3 & IMAP/, 'provider-specific help');
@@ -135,11 +135,11 @@ test('an unreachable server, and a server whose certificate is not trusted: the 
   const gone = await startFakeImap({ tls: CERT });
   const port = gone.port; await gone.close();
   const { svc } = service({ port });
-  assert.equal((await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: PASS }).catch((x) => x)).code, 'IMAP_UNREACHABLE');
+  assert.equal((await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: PASS }).catch((x) => x)).code, 'IMAP_UNREACHABLE');
   const other = selfSignedCert();          // a certificate the client does not trust
-  const s = await startFakeImap({ tls: other, users: { 'jo@yahoo.com': PASS } });
+  const s = await startFakeImap({ tls: other, users: { 'name@yahoo.com': PASS } });
   try {
-    const e = await service(s).svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: PASS }).catch((x) => x);
+    const e = await service(s).svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: PASS }).catch((x) => x);
     assert.equal(e.code, 'IMAP_NOT_TRUSTED');
     assert.equal(s.commands.length, 0, 'nothing was sent');
   } finally { await s.close(); }
@@ -147,9 +147,9 @@ test('an unreachable server, and a server whose certificate is not trusted: the 
 
 test('iCloud: the whole address first, then the name before @ (Apple accepts either)', async () => {
   const { svc, secrets } = service(srv);
-  const { account } = await svc.connect({ provider: 'imap', email: 'jo@icloud.com', password: 'icloud-app-pass' });
+  const { account } = await svc.connect({ provider: 'imap', email: 'name@icloud.com', password: 'icloud-app-pass' });
   assert.equal(account.server.service, 'icloud');
-  assert.equal((await secrets.get('accounts/' + account.id)).username, 'jo');
+  assert.equal((await secrets.get('accounts/' + account.id)).username, 'name');
   // a typed user name wins (Proton Bridge shows its own)
   const typed = await svc.connect({ provider: 'imap', email: 'someone@gmx.de', username: 'me@gmx.de', password: 'normal pass' });
   assert.equal((await secrets.get('accounts/' + typed.account.id)).username, 'me@gmx.de');
@@ -157,11 +157,11 @@ test('iCloud: the whole address first, then the name before @ (Apple accepts eit
 
 test('fetchMail: previews decoded, flags kept, newest first, the same shape as the Microsoft provider', async () => {
   const { svc } = service(srv);
-  const { account } = await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: PASS });
+  const { account } = await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: PASS });
   const before = srv.commands.length;
   const got = await svc.fetchMail(account.id, { source: { id: 'email-mail-aaaa', accounts: [] }, days: 14, todayIso: '2026-10-23' });
   assert.equal(got.count, 3, 'the September message is older than 14 days');
-  assert.deepEqual(got.accounts, [{ id: 'default', name: 'jo@yahoo.com' }]);
+  assert.deepEqual(got.accounts, [{ id: 'default', name: 'name@yahoo.com' }]);
   assert.deepEqual(got.messages.map((m) => m.subject), ['Grüße', 'Invoice', 'Réunion à 10h'], 'newest first; encoded words decoded');
   const [shop, invoice, renee] = got.messages;
   assert.equal(renee.snippet, 'On se voit à 10h ? Merci.', 'quoted-printable utf-8, the plain part');
@@ -210,20 +210,20 @@ async function microsoftMessage() {
 }
 
 test('fetchMail: a revoked app password marks the account "sign in again"; unreadable messages are left out with a note; a big inbox is capped', async () => {
-  const s = await startFakeImap({ tls: CERT, users: { 'jo@yahoo.com': PASS }, messages: [...MESSAGES, { uid: 14, flags: [], internalDate: '2026-10-22T09:00:00Z', brokenStructure: true, raw: rawMessage({ subject: 'broken' }) }] });
+  const s = await startFakeImap({ tls: CERT, users: { 'name@yahoo.com': PASS }, messages: [...MESSAGES, { uid: 14, flags: [], internalDate: '2026-10-22T09:00:00Z', brokenStructure: true, raw: rawMessage({ subject: 'broken' }) }] });
   try {
     const { svc } = service(s);
-    const { account } = await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: PASS });
+    const { account } = await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: PASS });
     const got = await svc.fetchMail(account.id, { source: { id: 'email-mail-bbbb' }, days: 14, todayIso: '2026-10-23' });
     assert.equal(got.count, 3);
     assert.ok(got.warnings.some((w) => /could not be read/.test(w)));
     s.commands.length = 0;
   } finally { await s.close(); }
   // the password is revoked on the server
-  const s2 = await startFakeImap({ tls: CERT, users: { 'jo@yahoo.com': 'a-new-one' }, messages: MESSAGES });
+  const s2 = await startFakeImap({ tls: CERT, users: { 'name@yahoo.com': 'a-new-one' }, messages: MESSAGES });
   try {
     const { svc, reg } = service(s2);
-    const { account } = await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: 'a-new-one' });
+    const { account } = await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: 'a-new-one' });
     s2.close();
     const s3 = await startFakeImap({ tls: CERT, users: {}, messages: MESSAGES });
     // point the saved secret at the new server (same account, password now refused)
@@ -237,10 +237,10 @@ test('fetchMail: a revoked app password marks the account "sign in again"; unrea
   } finally { await s2.close().catch(() => {}); }
   // more than MAX_MESSAGES recent messages: the newest are kept, with a note
   const many = Array.from({ length: MAX_MESSAGES + 5 }, (_, i) => ({ uid: 1000 + i, flags: ['\\Seen'], internalDate: new Date(Date.parse('2026-10-20T00:00:00Z') + i * 60000).toISOString(), raw: rawMessage({ subject: 'n' + i, body: 'b' + i }) }));
-  const s4 = await startFakeImap({ tls: CERT, users: { 'jo@yahoo.com': PASS }, messages: many });
+  const s4 = await startFakeImap({ tls: CERT, users: { 'name@yahoo.com': PASS }, messages: many });
   try {
     const { svc } = service(s4);
-    const { account } = await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: PASS });
+    const { account } = await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: PASS });
     const got = await svc.fetchMail(account.id, { source: { id: 'email-mail-dddd' }, days: 14, todayIso: '2026-10-23' });
     assert.equal(got.count, MAX_MESSAGES);
     assert.equal(got.messages[0].subject, 'n' + (MAX_MESSAGES + 4));
@@ -267,9 +267,9 @@ test('the Node binding: registry file and data folder never hold the password; t
     const svc = createAccountsService({ dataDir, store, deviceId: 'deviceaaaa1', fetchFn: async () => { throw new Error('no network'); },
       imap: { openTransport: nodeImapTransport({ ca: CERT.cert }), mx: false, lookup: async (email) => ({ ...lookupProvider(email), imap: { host: '127.0.0.1', port: srv.port, security: 'tls' } }) } });
     assert.equal((await svc.providersInfo()).imap.available, true);
-    const info = await svc.imapLookup('jo@yahoo.com');
+    const info = await svc.imapLookup('name@yahoo.com');
     assert.equal(info.name, 'Yahoo Mail');
-    const { account } = await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: PASS });
+    const { account } = await svc.connect({ provider: 'imap', email: 'name@yahoo.com', password: PASS });
     const files = [];
     const walk = (d) => { for (const n of readdirSync(d)) { const f = join(d, n); if (statSync(f).isDirectory()) walk(f); else files.push(f); } };
     walk(dataDir);

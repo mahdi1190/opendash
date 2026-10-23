@@ -4,7 +4,7 @@
 // client under test (lib/accounts/imap-wire.mjs): its own line reader, its own
 // MIME walker, its own ENVELOPE / BODYSTRUCTURE builder.
 //
-//   const srv = await startFakeImap({ users: {'a@yahoo.com': 'pw'}, messages: [...] })
+//   const srv = await startFakeImap({ users: {'someone@yahoo.com': 'pw'}, messages: [...] })
 //   srv.port, srv.commands ([{verb, raw}]: what the client sent; passwords are redacted),
 //   srv.close()
 //

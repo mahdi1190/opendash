@@ -41,7 +41,7 @@ before(async () => {
   base = mkdtempSync(join(tmpdir(), 'imap-routes-'));
   dir = join(base, 'data'); secretsDir = join(base, 'device', 'secrets'); mkdirSync(dir, { recursive: true });
   const today = new Date(); const iso = (d) => new Date(today.getTime() - d * 86400000).toISOString();
-  imap = await startFakeImap({ tls: CERT, users: { 'jo@yahoo.com': PASS }, messages: [
+  imap = await startFakeImap({ tls: CERT, users: { 'name@yahoo.com': PASS }, messages: [
     { uid: 1, flags: [], internalDate: iso(2), raw: rawMessage({ subject: 'Lunch?', from: 'Sam <sam@example.com>', body: 'Are you free on Friday?' }) },
     { uid: 2, flags: ['\\Seen'], internalDate: iso(40), raw: rawMessage({ subject: 'Too old' }) },
   ] });
@@ -70,7 +70,7 @@ test('the IMAP routes refuse another site, a foreign Host, non-JSON and big bodi
 });
 
 test('lookup: the provider and its steps; Gmail sent to the one-click button; nothing saved', async () => {
-  const y = JSON.parse((await post('/api/accounts/imap/lookup', { email: 'jo@yahoo.com' })).text).provider;
+  const y = JSON.parse((await post('/api/accounts/imap/lookup', { email: 'name@yahoo.com' })).text).provider;
   assert.equal(y.kind, 'known'); assert.equal(y.name, 'Yahoo Mail'); assert.ok(y.steps.length >= 4);
   const g = JSON.parse((await post('/api/accounts/imap/lookup', { email: 'me@gmail.com' })).text).provider;
   assert.deepEqual([g.kind, g.provider], ['redirect', 'google']);
@@ -79,14 +79,14 @@ test('lookup: the provider and its steps; Gmail sent to the one-click button; no
 });
 
 test('connect: a wrong password is a plain 401 and saves nothing; the right one connects and reads the inbox once', async () => {
-  const bad = await post('/api/accounts/imap/connect', { email: 'jo@yahoo.com', password: 'my normal password' });
+  const bad = await post('/api/accounts/imap/connect', { email: 'name@yahoo.com', password: 'my normal password' });
   assert.equal(bad.status, 401);
   assert.equal(JSON.parse(bad.text).code, 'WRONG_PASSWORD');
   assert.ok(!existsSync(join(dir, 'accounts.json')) || !JSON.parse(readFileSync(join(dir, 'accounts.json'), 'utf8')).accounts.length);
   const gm = await post('/api/accounts/imap/connect', { email: 'me@gmail.com', password: 'x' });
   assert.deepEqual([gm.status, JSON.parse(gm.text).code, JSON.parse(gm.text).retryProvider], [400, 'USE_ONE_CLICK', 'google']);
 
-  const ok = await post('/api/accounts/imap/connect', { email: 'jo@yahoo.com', password: PASS.match(/.{4}/g).join(' ') });
+  const ok = await post('/api/accounts/imap/connect', { email: 'name@yahoo.com', password: PASS.match(/.{4}/g).join(' ') });
   assert.equal(ok.status, 200, ok.text);
   assert.ok(!ok.text.includes(PASS), 'the password is never in an answer');
   const out = JSON.parse(ok.text);

@@ -12,7 +12,7 @@ import { createImapClient, ImapError } from '../lib/accounts/imap-wire.mjs';
 import { nodeImapTransport } from '../lib/imap-transport.mjs';
 
 const td = new TextDecoder();
-const USER = 'jo@yahoo.com', PASS = 'abcdefghijklmnop';
+const USER = 'name@yahoo.com', PASS = 'abcdefghijklmnop';
 const MESSAGES = [
   { uid: 101, flags: ['\\Seen'], internalDate: '2026-10-01T09:00:00Z', raw: rawMessage({ subject: 'Old one', body: 'too old' }) },
   { uid: 205, flags: [], internalDate: '2026-10-20T08:30:00Z', raw: rawMessage({ subject: '=?UTF-8?B?Q2Fmw6kgImF0IiAxMA==?=', from: '"Sam \\"T\\"" <sam@example.com>', body: 'Caf=C3=A9 at 10?', encoding: 'quoted-printable', messageId: '<m205@example.com>' }) },
@@ -51,11 +51,11 @@ test('a whole read-only session: AUTHENTICATE PLAIN (SASL-IR), EXAMINE, UID SEAR
 
 test('LOGIN with a synchronizing literal (no LITERAL+, no AUTH=PLAIN), and AUTHENTICATE PLAIN without SASL-IR', async () => {
   const pw = 'päss wörd';
-  const srv = await startFakeImap({ caps: ['IMAP4rev1'], users: { 'jo@gmx.de': pw } });
+  const srv = await startFakeImap({ caps: ['IMAP4rev1'], users: { 'name@gmx.de': pw } });
   try {
     const c = open(srv);
     await c.open();
-    await c.login('jo@gmx.de', pw);
+    await c.login('name@gmx.de', pw);
     await c.examine();
     await c.logout();
     assert.deepEqual(verbs(srv), ['LOGIN', 'EXAMINE', 'LOGOUT'], 'the greeting listed the capabilities');
