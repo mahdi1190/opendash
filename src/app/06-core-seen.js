@@ -251,6 +251,12 @@ function _seenPruneAll() {
   // Weekly drafts of weeks long gone (a review saved since removed its own).
   const cut = _seenAddDays(_seenToday(), -56);
   if (_seenIsObj(state.drafts) && cut) for (const k of Object.keys(state.drafts)) if (/^week:\d{4}-\d{2}-\d{2}$/.test(k) && k.slice(5) < cut) { delete state.drafts[k]; changed = true; }
+  // Half-written notes ('note:<taskId>') of tasks that are gone (not in the list, not in the Bin).
+  if (_seenIsObj(state.drafts) && Array.isArray(state.custom) && state.custom.length) {
+    const live = new Set(state.custom.map(t => t && t.id));
+    for (const b of (state.bin && Array.isArray(state.bin.tasks) ? state.bin.tasks : [])) if (b && b.id) live.add(b.id);
+    for (const k of Object.keys(state.drafts)) if (k.startsWith('note:') && !live.has(k.slice(5))) { delete state.drafts[k]; changed = true; }
+  }
   return changed;
 }
 
