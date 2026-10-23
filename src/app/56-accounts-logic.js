@@ -24,6 +24,7 @@ function accProviderName(a) {
   if (!a) return 'Email';
   if (a.provider === 'microsoft') return a.kind === 'work' ? 'Microsoft 365' : 'Outlook';
   if (a.provider === 'google') return a.kind === 'work' ? 'Google Workspace' : 'Gmail';
+  if (a.provider === 'imap' && typeof imapServiceName === 'function') return imapServiceName(a);   // 56-accounts-imap-logic.js
   return 'Email';
 }
 /** The brand mark for _connMark (56-connections-brands.js). */
@@ -47,12 +48,15 @@ function accStatusView(a) {
     return { tone: 'ok', label: 'Connected', note: 'Your other computer checks this account. What it reads appears here too.',
       primary: null, secondary: [{ id: 'fetch-here', label: 'Fetch on this computer instead' }] };
   }
+  if (a.status === 'needs-sign-in' && a.provider === 'imap' && typeof imapNeedsPasswordView === 'function') return imapNeedsPasswordView(a);
   if (a.status === 'needs-sign-in') return { tone: 'warn', label: 'Sign in again', note: (a.error && a.error.code === 'NEEDS_SIGN_IN' && /^Sign in again to let/.test(a.error.message || '') ? a.error.message + ' ' : `${name} asked you to sign in again. `) + 'Your saved mail and events are still here.', primary: { id: 'sign-in', label: 'Sign in again' }, secondary: [] };
   return { tone: 'ok', label: 'Connected', note: a.error && a.error.message ? a.error.message : null, primary: { id: 'sync', label: 'Check now' }, secondary: [] };
 }
 /** Mail ✓ Calendar ✓ */
 function accFeatureList(a) {
   const f = (a && a.features) || {};
+  // An IMAP account has no calendar of its own: its button adds a calendar link instead.
+  if (a && a.provider === 'imap') return [{ id: 'mail', label: 'Mail', on: f.mail !== false }, { id: 'calendar', label: 'Calendar link', on: false, link: true }];
   return [{ id: 'mail', label: 'Mail', on: f.mail !== false }, { id: 'calendar', label: 'Calendar', on: f.calendar !== false }];
 }
 /** "synced 4 min ago", from the server's text, else worked out here. */
