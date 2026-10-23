@@ -670,6 +670,17 @@ function homeAddSubtask(taskId, title) {
   _homeRefocus = keep;
   addSubtask(taskId, title);                    // saves + repaints; focus comes back below
 }
+/* Text typed in a small Home input (Focus's quick add, a card's "Add a subtask") survives the
+   repaint a save or live sync makes while typing: homeKeepText(input, key) puts it back (caret at
+   the end); the caller calls homeKeepText.clear(key) when it uses the text up. */
+const _homeTyped = new Map();
+function homeKeepText(inp, key) {
+  if (!inp || !key) return;
+  const had = _homeTyped.get(key);
+  if (had && !inp.value) { inp.value = had; try { inp.setSelectionRange(had.length, had.length); } catch (e) { /* not focused yet */ } }
+  inp.addEventListener('input', () => { if (inp.value) _homeTyped.set(key, inp.value); else _homeTyped.delete(key); });
+}
+homeKeepText.clear = (key) => { _homeTyped.delete(key); };
 let _homeRefocus = null;
 function _homeRestoreFocus() {
   if (!_homeRefocus) return;

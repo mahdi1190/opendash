@@ -152,7 +152,8 @@ button.hcu-ed-day.on { border-color: var(--accent); background: var(--accent-sof
 .hcu-ed-item.sel-done { opacity: 0.6; }
 .hcu-steps-h { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-subtle); }
 .hcu-steps-b { display: flex; flex-direction: column; gap: var(--space-3); min-height: 80px; }
-.hcu-steps-wait { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-2); font-size: var(--text-sm); color: var(--fg-muted); }
+.hcu-steps-wait { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-2); font-size: var(--text-sm); color: var(--fg-muted); flex-wrap: wrap; }
+.hcu-steps-wait .hcu-steps-self { margin-left: auto; }
 .hcu-steps-err { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); background: var(--danger-soft); color: var(--danger-ink); font-size: var(--text-sm); }
 .hcu-steps-err .i { flex: none; margin-top: 2px; }
 .hcu-steps-acts { display: flex; gap: var(--space-2); flex-wrap: wrap; }

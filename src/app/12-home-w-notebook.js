@@ -173,8 +173,13 @@ function _nbSmall(body, ctx, today) {
   inp.dataset.fk = 'nb-write'; inp.maxLength = 500; inp.enterKeyHint = 'send';
   inp.placeholder = dnPlaceholder({ hour: Clock.parts().h, rel: 0 });
   inp.setAttribute('aria-label', `Write a line in the note for ${_nbLong(today)}`);
+  // The half-written line is kept (drafts: a reload or another computer still has it, the same day).
+  if (!_nb.writeDraft && typeof draftGet === 'function') { const d = draftGet('nb:write'); if (d && d.day === today && typeof d.text === 'string') _nb.writeDraft = d.text; }
   inp.value = _nb.writeDraft;
-  inp.oninput = () => { _nb.writeDraft = inp.value; };
+  inp.oninput = () => {
+    _nb.writeDraft = inp.value;
+    if (typeof draftSet === 'function') { if (inp.value.trim()) draftSet('nb:write', { text: inp.value, day: todayStr() }); else if (typeof draftDel === 'function') draftDel('nb:write'); }
+  };
   inp.onkeydown = (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : form.onsubmit(e); } };
   const go = _nbBtn('btn btn-secondary btn-sm nb-write-go', `${icon('corner-down-left')}<span>Write</span>`, { tip: 'Adds the line with the time' });
   go.type = 'submit';
@@ -187,6 +192,7 @@ function _nbSmall(body, ctx, today) {
     const r = daynoteAppend(day, dnTimeLine(text, _nbNowHM()));
     if (!r.ok) { _nbFail(r.error); return; }
     inp.value = ''; _nb.writeDraft = '';
+    if (typeof draftDel === 'function') draftDel('nb:write');
     if (_nb.ta && _nb.taDate === day && !_nb.dirty) _nbReconcile(day);
     _nbPaintLast(last, day, true);
     _nbSaved();
@@ -375,7 +381,9 @@ function _nbFail(msg) {
   _nb.failed = msg || 'The note could not be saved.';
   _nbPaintStatus(false);
   // Announced (role=alert); a successful save is not.
-  toast(`Daily note not saved: ${_nb.failed}`, { kind: 'err' });
+  // The words stay in the editor; Copy puts them somewhere safe meanwhile.
+  const text = _nb.ta ? _nb.ta.value : '';
+  toast(`Daily note not saved: ${_nb.failed}`, { kind: 'err', timeout: 9000, action: text && navigator.clipboard ? { label: 'Copy the text', run: () => navigator.clipboard.writeText(text).then(() => toast('Copied', { kind: 'ok', icon: 'copy' }), () => toast('Could not copy the note', { kind: 'err' })) } : undefined });
 }
 function _nbPaintStatus(fresh) {
   const st = _nb.statusEl;
