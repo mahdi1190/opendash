@@ -361,6 +361,15 @@ function toast(msg, o) {
   o = o || {};
   const host = document.getElementById('toast-host');
   if (!host) return () => {};
+  // An "error" that only says another of your devices is asleep or off (56-presence.js) is not
+  // an error: shown calmly (a moon, not red), and the same line again soon only pulses the sync dot.
+  if ((o.kind === 'err' || o.kind === 'error') && !o.calm && typeof presenceCalmMatch === 'function') {
+    const calm = presenceCalmMatch(msg);
+    if (calm) {
+      if (typeof presenceCalmShowOk === 'function' && !presenceCalmShowOk(calm)) return Object.assign(() => {}, { update: () => {} });
+      o = Object.assign({}, o, { kind: '', icon: 'moon', calm: true, retry: null, action: o.action && /try again/i.test(o.action.label || '') ? null : o.action });
+    }
+  }
   const kind = Object.prototype.hasOwnProperty.call(_TOAST_KINDS, o.kind) ? _TOAST_KINDS[o.kind] : (o.kind ? String(o.kind).replace(/[^a-z-]/g, '') : '');
   const text = String(msg == null ? '' : msg);
   let action = o.action && o.action.label ? o.action : null;
