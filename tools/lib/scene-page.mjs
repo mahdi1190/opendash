@@ -35,9 +35,9 @@ export function sceneSourceFiles(root = repoRoot(), { browser = false, fixtures 
   if (!names.includes('70-scene-0core.js')) {
     // the core is not merged yet: the shim takes its place in the order (before every other 70-scene file)
     const i = list.findIndex(f => f >= '70-scene-0core.js');
-    paths.splice(i < 0 ? paths.length : i, 0, join(root, 'tests', 'fixtures', 'scene-core-shim.js'));
+    paths.splice(i < 0 ? paths.length : i, 0, join(root, 'tools', 'fixtures', 'scene-core-shim.js'));
   }
-  if (fixtures) for (const f of FIXTURES) paths.push(join(root, 'tests', 'fixtures', f));
+  if (fixtures) for (const f of FIXTURES) paths.push(join(root, 'tools', 'fixtures', f));
   return paths;
 }
 

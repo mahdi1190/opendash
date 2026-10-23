@@ -27,7 +27,7 @@ export const TOP_FILES = [
   /^start-[\w-]+\.(bat|cmd|sh|command)$/i,
   /^\.(gitignore|gitattributes|editorconfig|nvmrc|node-version)$/,
 ];
-export const TOP_DIRS = ['src', 'server', 'lib', 'mcp', 'cloudflare', 'tools', 'vendor', 'tests', 'docs', '.github'];
+export const TOP_DIRS = ['src', 'server', 'lib', 'mcp', 'cloudflare', 'tools', 'vendor', 'docs', '.github'];
 // Folders of which only some subfolders are published. An entry is a folder ('brand') or a nested path
 // ('skills/animation-pack'); everything else inside the folder is left out and reported.
 // .claude/skills/animation-pack is committed source that ships: the animation tool's briefs (tools/lib/anim-templates/)

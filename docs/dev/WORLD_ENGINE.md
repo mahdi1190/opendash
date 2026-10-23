@@ -1,5 +1,7 @@
 # World engine (scene format v3.1): a world-first, game-style core
 
+> **No tests (owner's rule, 23 Oct 2026):** the test suite, security tests and test CI were removed. Do not write or run tests, invariant matrices, perf budgets or review agents; check the build (`node build.mjs`) and look at the result. Mentions of `tests/`, `npm test` or mandatory gates below are out of date. Only the privacy scan stays, before publishing. See CLAUDE.md.
+
 Status: design, second pass, 10 Oct 2026. **The contract is `WORLD_ENGINE_REQUIREMENTS.md`.** Where this file and the
 requirements disagree, the requirements win. This file says how the engine meets them, and cites the requirement ids (W1, K3,
 H1 ...) in each section. The gap analysis behind this pass lists, for every id, what exists and what is left.

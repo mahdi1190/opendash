@@ -204,7 +204,7 @@ export async function worldAccept(E, o = {}) {
   const quick = !!o.quick, seconds = quick ? 30 : (Number.isFinite(E.WORLD_LOOP_S) ? E.WORLD_LOOP_S : 360), hz = quick ? 2 : (o.hz || 5);
   const failedRules = new Set();
   // 1. unit tests (world-acceptance runs items 2 and 3 below itself)
-  if (o.tests !== false) {
+  if (o.tests !== false && existsSync(join(root, 'tests'))) {
     const files = readdirSync(join(root, 'tests')).filter(f => /^world-.*\.test\.mjs$/.test(f) && f !== 'world-acceptance.test.mjs').map(f => join('tests', f));
     const r = spawnSync(process.execPath, ['--test', ...files], { cwd: root, encoding: 'utf8', timeout: 30 * 60000 });
     const fails = (r.stdout || '').split('\n').filter(l => /^not ok|^✖/.test(l.trim())).slice(0, 20);

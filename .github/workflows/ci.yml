@@ -1,11 +1,6 @@
-# CI: on every push and pull request, check the build, run the whole test
-# suite and the privacy scan on Linux, Windows and macOS with each supported
-# Node.js version. No npm install: the app has zero dependencies.
-#
-# Time budget (16 Oct 2026): the suite is ~270 files and about an hour of CPU in one process (the scene, animation and world-engine files draw
-# whole scenes), so each cell runs it in FIVE SHARDS (node --test --test-shard=i/5, available from Node 20.5) in parallel jobs of about
-# ten minutes. The syntax check and the privacy scan run once per cell, in shard 1. The browser parts of the world tests are skipped
-# unless WORLD_BROWSER=1 (run them locally: WORLD_BROWSER=1 node --test tests/world-acceptance.test.mjs).
+# CI: on every push and pull request, check that OpenDash builds and run the
+# privacy scan (generic rules). One quick job; there is no test suite (the
+# owner removed it on 23 Oct 2026: it cost far more than it found).
 name: CI
 
 on:
@@ -22,20 +17,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Node ${{ matrix.node }} on ${{ matrix.os }} (shard ${{ matrix.shard }}/5)
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [20, 22, 24]
-        shard: [1, 2, 3, 4, 5]
-    env:
-      # Runners have no Claude Code CLI. Point at a file that does not exist so
-      # nothing ever finds one by accident: tests that need it must skip.
-      CLAUDE_CLI_PATH: ${{ github.workspace }}/.no-claude-cli/claude
+  build:
+    name: Build and privacy scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -43,83 +28,13 @@ jobs:
 
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
 
-      - name: Syntax check (node build.mjs --syntax)
-        if: matrix.shard == 1
+      - name: Syntax check
         run: node build.mjs --syntax
 
-      - name: Build index.html (node build.mjs)
+      - name: Build
         run: node build.mjs
-
-      # bash expands the glob on every OS, so Node 20 (no glob support in
-      # --test) runs exactly the same files as Node 22 and 24.
-      - name: Tests (node --test --test-shard=${{ matrix.shard }}/5 tests/*.test.mjs)
-        shell: bash
-        run: node --test --test-shard=${{ matrix.shard }}/5 tests/*.test.mjs
 
       - name: Privacy scan (generic rules)
-        if: matrix.shard == 1
         run: node tools/privacy-scan.mjs --no-terms
-
-  # The suite with the machine's clock in other time zones: ahead of UTC,
-  # behind it, a half-hour zone and the +14 date line. The DST weeks (UK 25
-  # Oct, US 1 Nov) are covered inside tests/clock.test.mjs. The scene, world
-  # and animation-pack files draw from fixed dates and seeds and never read the
-  # machine's zone, so they are left to the main job (they are most of the
-  # run time): this job runs everything else.
-  timezones:
-    name: Time zone ${{ matrix.tz }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        tz: [America/New_York, Asia/Tokyo, Australia/Adelaide, Pacific/Kiritimati]
-    env:
-      TZ: ${{ matrix.tz }}
-      CLAUDE_CLI_PATH: ${{ github.workspace }}/.no-claude-cli/claude
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
-        with:
-          node-version: 22
-
-      - name: Build index.html
-        run: node build.mjs
-
-      - name: Tests (TZ=${{ matrix.tz }})
-        shell: bash
-        run: node --test $(ls tests/*.test.mjs | grep -Ev '^tests/(world-|scene-|anim-pack|anim-quality)')
-
-  # The suite with no network and no Claude CLI, as on a user's offline
-  # machine (the scene, world and animation-pack files make no network calls
-  # and are left to the main job). Advisory until every network or Claude test
-  # skips cleanly.
-  offline:
-    name: Offline (no network, no Claude CLI)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    continue-on-error: true
-    env:
-      CLAUDE_CLI_PATH: ${{ github.workspace }}/.no-claude-cli/claude
-    steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
-        with:
-          node-version: 22
-
-      - name: Build index.html
-        run: node build.mjs
-
-      - name: Tests with the network switched off (tools/release-offline.mjs)
-        shell: bash
-        run: |
-          export NODE_OPTIONS="--import=file://$PWD/tools/release-offline.mjs"
-          node --test $(ls tests/*.test.mjs | grep -Ev '^tests/(world-|scene-|anim-pack|anim-quality)')

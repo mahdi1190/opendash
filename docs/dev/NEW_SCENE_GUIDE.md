@@ -1,5 +1,7 @@
 # A new place in under 15 minutes
 
+> **No tests (owner's rule, 23 Oct 2026):** the test suite, security tests and test CI were removed. Do not write or run tests, invariant matrices, perf budgets or review agents; check the build (`node build.mjs`) and look at the result. Mentions of `tests/`, `npm test` or mandatory gates below are out of date. Only the privacy scan stays, before publishing. See CLAUDE.md.
+
 The goal (the user, 16 Oct): "make sure we can generate new scenes fast". A new place takes a short description and a few minutes to a
 good first render, with no engine work, at the quality of Whitby, York and Malham. The layout only has to be plausible (not map
 accurate); the landmarks have to be recognisable; it has to LOOK good.

@@ -1,5 +1,7 @@
 # Scene lessons: what went wrong, why, and the rule that prevents it
 
+> **No tests (owner's rule, 23 Oct 2026):** the test suite, security tests and test CI were removed. Do not write or run tests, invariant matrices, perf budgets or review agents; check the build (`node build.mjs`) and look at the result. Mentions of `tests/`, `npm test` or mandatory gates below are out of date. Only the privacy scan stays, before publishing. See CLAUDE.md.
+
 Read this BEFORE building or editing any scene. Every item below cost at least one full
 review round in Oct 2026. Most are now enforced by the engine or the lint; the rest are
 rules for the author. Skipping them is the main reason a scene takes three rounds instead of one.

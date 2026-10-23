@@ -8,6 +8,8 @@ sections and migrations.
 
 ## Hard rules
 
+- **No tests (owner's rule, 23 Oct 2026).** The test suite, the security tests and the test CI were removed because they cost far more time and usage than they found. Do not write test files, do not run test suites, invariant matrices, perf budgets, adversarial or security reviews, and do not ask agents to. Check your work with `node build.mjs --syntax` and `node build.mjs`, and look at the result (one render for visual work). Older docs that still mention `tests/`, `npm test` or mandatory gates are out of date: this rule wins. The one check that stays: `node tools/privacy-scan.mjs` before anything is published (a leak cannot be undone).
+
 - **The git remote is PUBLIC.** Never commit or push user data. All user data
   lives in the data folder (`data/` by default, gitignored; `--data-dir` /
   `DASHBOARD_DATA_DIR` to move it). The legacy `state/` and `secrets/` folders
@@ -39,9 +41,8 @@ sections and migrations.
 
 1. Edit `src/app/NN-*.js`, `src/styles/NN-*.css`, `src/body.html`, `server/`, `lib/`.
 2. `node build.mjs --syntax` (or `check.bat`), then `node build.mjs`.
-3. `npm test` (node:test, no dependencies).
-4. Check it in a real browser on your own port: every view, no console errors.
-5. Leave changes uncommitted unless the owner asks for a commit.
+3. Check it in a real browser on your own port if the change is visible.
+4. Leave changes uncommitted unless the owner asks for a commit.
 
 Starting it for real: `start-opendash.bat` / `start-opendash.sh` (the old
 `start-dashboard.*` names are shims that call them; runs
