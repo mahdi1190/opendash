@@ -112,6 +112,9 @@ laptop is off".
   (the host went off mid-request). The host's late answer is thrown away and
   its Claude runs are cancelled (`withAbortSignal` in `lib/claude-runner.mjs`).
   Clocks may differ by up to 10 s (Settings > Sync warns when they differ more).
+  A host on an older version (its capabilities lack `host: 1`) does not wait
+  for the go-ahead, so a computer with Claude keeps running its own work, as
+  before, until both are up to date.
 - **Fetches**: a click on Update leaves the Claude-run sources the host reads
   too to the host (`hostFetch`) and reads the rest here; a source the host's
   connectors miss is read here (fallback for that source only). The host runs
