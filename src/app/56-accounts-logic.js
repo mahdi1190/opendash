@@ -71,6 +71,7 @@ function accBeginUrl(o) {
   if (o.email) q.set('email', accCleanEmail(o.email) || String(o.email).trim());
   if (o.kind === 'personal' || o.kind === 'work') q.set('kind', o.kind);
   if (o.accountId) q.set('accountId', o.accountId);
+  if (o.features && typeof o.features === 'object') q.set('features', ['mail', 'calendar'].filter(k => o.features[k]).join(','));
   return '/api/accounts/begin?' + q.toString();
 }
 /** Personal before work, then by provider and address. */

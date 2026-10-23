@@ -142,3 +142,47 @@ test('Advanced: save your own Google app (id + secret, or Google\'s JSON), or go
   assert.equal(all(none).some((e) => e.textContent === 'Use the built-in app'), false);
   assert.ok(ctx.window.AccountProviders.google.signIn === ctx.googleAddAccount);
 });
+
+test('inside the account list: the sign-in tab opens through accOpenSignIn with the ticked features, then the list waits', async () => {
+  const { ctx, dialogs, calls } = page();
+  const opened = [], drawers = [];
+  ctx.accOpenSignIn = (o) => opened.push(JSON.parse(JSON.stringify(o)));
+  ctx.accWaiting = (name) => { const e = new El('div'); e.textContent = 'waiting for ' + name; return e; };
+  ctx.openDrawer = (o) => { const body = new El('div'); o.body(body, () => {}); drawers.push({ o, body }); };
+  const p = ctx.googleAddAccount({ info: { available: true, custom: false, builtIn: true } });
+  const d = dialogs[0];
+  all(d.body).find((e) => e.type === 'email').value = 'kim@example.com';
+  all(d.body).find((e) => e.dataset.feature === 'calendar').checked = false;
+  assert.ok(all(d.body).some((e) => e.tagName === 'DETAILS'), 'the own-app fold is under the card');
+  d.press('Continue to Google');
+  await p;
+  assert.deepEqual(opened, [{ provider: 'google', email: 'kim@example.com', features: { mail: true, calendar: false } }]);
+  assert.equal(calls.filter((c) => c[0] === 'api' || c[0] === 'open').length, 0, 'the list opens the tab itself (GET begin)');
+  assert.match(text(drawers[0].body), /waiting for Google/);
+});
+
+test('no Google app in this copy: the setup drawer explains it and opens Advanced; saving one goes on to the card', async () => {
+  const { ctx, dialogs, calls } = page(async () => ({ available: true, custom: true, builtIn: false, hasSecret: true, clientIdHint: 'synthetic…' }));
+  const drawers = [];
+  ctx.openDrawer = (o) => { const body = new El('div'); o.body(body, () => drawers.push('closed')); drawers.push({ o, body }); };
+  ctx.googleAddAccount({ info: { available: false, custom: false, builtIn: false } });
+  assert.equal(dialogs.length, 0, 'no sign-in card without an app');
+  const body = drawers[0].body;
+  assert.match(text(body), /not switched on in this copy/);
+  const fold = all(body).find((e) => e.tagName === 'DETAILS');
+  assert.equal(fold.open, true);
+  all(body).find((e) => e.tagName === 'TEXTAREA').value = 'synthetic-own-9.apps.googleusercontent.com';
+  all(body).find((e) => e.type === 'password').value = 'GOCSPX-synthetic';
+  await all(body).find((e) => e.tagName === 'BUTTON' && e.textContent === 'Save my Google app').onclick();
+  await tick();
+  assert.equal(calls.find((c) => c[0] === 'api')[1], '/api/accounts/google-app');
+  assert.equal(dialogs.length, 1, 'with an app saved, the sign-in card follows');
+});
+
+test('the list\'s begin address carries the ticked features (GET /api/accounts/begin?features=)', () => {
+  const ctx = vm.createContext({ URLSearchParams });
+  vm.runInContext(readFileSync(new URL('../src/app/56-accounts-logic.js', import.meta.url), 'utf8'), ctx);
+  const u = new URLSearchParams(ctx.accBeginUrl({ provider: 'google', email: 'kim@example.com', features: { mail: false, calendar: true } }).split('?')[1]);
+  assert.deepEqual([u.get('provider'), u.get('email'), u.get('features')], ['google', 'kim@example.com', 'calendar']);
+  assert.equal(new URLSearchParams(ctx.accBeginUrl({ provider: 'microsoft', email: 'kim@example.com' }).split('?')[1]).has('features'), false);
+});

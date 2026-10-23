@@ -1,15 +1,18 @@
 /* Google accounts in Connections (docs/dev/ACCOUNTS.md, "Google specifics").
    The shared account list (56-accounts*.js) owns "+ Add Google account" and
    the list itself; this file adds what is Google's own:
-     googleAddAccount({email, accountId, features, custom})
+     googleAddAccount({email, accountId, features, custom, info})
          the card before the browser goes to Google: which features to allow
          (email, calendar: separate ticks), and what Google's "Google hasn't
          verified this app" screen means and how to get past it; then Google
-         in a new tab (POST /api/accounts/begin).
+         in a new tab through the list's accOpenSignIn (GET /api/accounts/begin
+         with features=), else POST /api/accounts/begin. info = providers.google:
+         with no Google app at all it shows googleSetupNeeded instead.
+     googleSetupNeeded(info)   no Google app in this copy: what that means + Advanced.
      googleAdvancedFold(el, google, {onChange})
          Advanced: use your own Google app (PUT /api/accounts/google-app).
-   window.AccountProviders.google = {signIn, advanced, permissions} is how
-   the shared list finds them. No token or secret ever reaches this page:
+   window.AccountProviders.google = {signIn, setup, advanced, permissions} is
+   how the shared list finds them. No token or secret ever reaches this page:
    a saved client secret is never sent back, only whether there is one. */
 
 const GOOGLE_PERMISSIONS = Object.freeze([
@@ -93,26 +96,53 @@ async function _googleBegin({ email, accountId, features }, popup) {
 }
 
 /** "+ Add Google account" (or "Sign in again" with accountId): the card, then Google. */
-function googleAddAccount({ email = '', accountId = null, features = null, custom = false } = {}) {
+function googleAddAccount({ email = '', accountId = null, features = null, custom = false, info = null } = {}) {
+  // No Google app in this copy (and none of the user's own yet): explain, and offer Advanced.
+  if (info && info.available === false) return googleSetupNeeded(info);
   return new Promise((resolve) => {
     let card = null, done = false;
     openDialog({
       title: accountId ? 'Sign in to Google again' : 'Add a Google account', width: 560, resizeKey: 'google-sign-in',
-      body: (el) => { card = googleSignInCard(el, { email, features, custom, reconnect: !!accountId }); },
+      body: (el) => {
+        card = googleSignInCard(el, { email, features, custom: custom || !!(info && info.custom), reconnect: !!accountId });
+        if (info && !accountId) googleAdvancedFold(el, info, { onChange: () => { if (typeof accLoad === 'function') accLoad(); } });
+      },
       actions: [
         { label: 'Cancel', run: () => { done = true; resolve(null); } },
         { label: 'Continue to Google', primary: true, icon: 'external-link', run: () => {
           const choice = { email: card.email(), features: card.features(), accountId };
           const problem = googleChoiceProblem(choice.email, choice.features);
           if (problem) { card.error(problem); return false; }
+          done = true;
+          // The account list (56-accounts.js) opens the sign-in tab inside this click and notices the return.
+          if (typeof accOpenSignIn === 'function') {
+            accOpenSignIn({ provider: 'google', email: choice.email, features: choice.features, ...(accountId ? { accountId } : {}) });
+            if (typeof accWaiting === 'function') openDrawer({ title: 'Add a Google account', width: 520, body: (el, close) => el.appendChild(accWaiting('Google', close)) });
+            resolve(choice);
+            return;
+          }
           let popup = null;
           try { popup = window.open('about:blank', '_blank'); } catch (_) { popup = null; }
-          done = true;
           _googleBegin(choice, popup).then((ok) => resolve(ok ? choice : null));
         } },
       ],
       onClose: () => { if (!done) resolve(null); },
     });
+  });
+}
+
+/** "+ Add Google account" when this copy has no Google app: what that means, and the user's own app. */
+function googleSetupNeeded(info = {}) {
+  return new Promise((resolve) => {
+    openDrawer({ title: 'Add a Google account', width: 560, onClose: () => resolve(null), body: (el, close) => {
+      el.appendChild(_connEl('p', 'conn-text', 'Google sign-in is not switched on in this copy of OpenDash yet. The person who gave you OpenDash can switch it on, or you can use your own Google app (about 10 minutes, once).'));
+      el.appendChild(_connEl('p', 'conn-note', 'Until then, Gmail and Google Calendar can also come in through Claude: choose Add connection at the top of this page.'));
+      const fold = googleAdvancedFold(el, info, { onChange: async (out) => {
+        if (typeof accLoad === 'function') await accLoad();
+        if (out && out.available) { close(); googleAddAccount({ info: out }).then(resolve); }
+      } });
+      fold.open = true;
+    } });
   });
 }
 
@@ -168,6 +198,6 @@ function googleAdvancedFold(el, google = {}, { onChange } = {}) {
 
 if (typeof window !== 'undefined') {
   window.AccountProviders = Object.assign(window.AccountProviders || {}, {
-    google: { signIn: googleAddAccount, advanced: googleAdvancedFold, permissions: GOOGLE_PERMISSIONS, unverifiedSteps: googleUnverifiedSteps },
+    google: { signIn: googleAddAccount, setup: googleSetupNeeded, advanced: googleAdvancedFold, permissions: GOOGLE_PERMISSIONS, unverifiedSteps: googleUnverifiedSteps },
   });
 }

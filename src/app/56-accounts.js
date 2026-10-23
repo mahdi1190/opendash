@@ -64,6 +64,8 @@ function accAdd(provider) {
   const d = accList() || {};
   const p = d.providers || {};
   if (provider === 'other') return accOtherEmail();
+  // Google has its own card (56-accounts-google.js): the ticks, the unverified-app explanation, its own app.
+  if (provider === 'google' && window.AccountProviders && AccountProviders.google) return AccountProviders.google.signIn({ info: p.google || null });
   if (provider === 'google' && !(p.google && p.google.available)) return accComingSoon('Google accounts', 'Adding a Google account with one click is on its way. Until then, Gmail and Google Calendar can come in through Claude: choose Add connection at the top of this page.');
   openDrawer({ title: provider === 'google' ? 'Add a Google account' : 'Add a Microsoft account', width: 520, body: (el, close) => {
     const name = provider === 'google' ? 'Google' : 'Microsoft';
@@ -215,6 +217,7 @@ function accCard(a) {
   const acts = _connEl('div', 'acc-actions');
   const run = (id) => {
     if (id === 'sync') return accAct(a, '/api/accounts/sync', {}, (r) => { const bad = (r.results || []).find(x => !x.ok); toast(bad ? bad.error : 'Checked. Everything is up to date.', { kind: bad ? 'err' : 'ok' }); });
+    if (id === 'sign-in' && a.provider === 'google' && window.AccountProviders && AccountProviders.google) return AccountProviders.google.signIn({ email: a.email, accountId: a.id, features: a.features });
     if (id === 'sign-in') return accOpenSignIn({ provider: a.provider, accountId: a.id });
     if (id === 'approval') return accApproval(a);
     if (id === 'resume') return accAct(a, '/api/accounts/pause', { paused: false });
