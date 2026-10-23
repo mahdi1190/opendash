@@ -12,7 +12,9 @@
      state.uiPrefs  {story, motion, assistantModel, focusBlock}: the story
                     player's volume, speed and mute, the animation intensity,
                     the assistant's model, a running focus block. Per field.
-     state.drafts   {'week:<from>': {...}}: the weekly review in progress.
+     state.drafts   {'week:<from>': {...}}: the weekly review in progress;
+                    'qa:inline' {text, at}: the inline quick add (31-task-views.js);
+                    'note:<taskId>' {text, at}: a note being written (60-task-detail.js).
    All three are UI keys (no undo step, no backup) that every tab takes from a
    newer copy (SHARED_UI_KEYS) and other computers sync as preferences
    (lib/sync/manifest.mjs '── local ──').

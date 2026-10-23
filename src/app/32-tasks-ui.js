@@ -543,19 +543,19 @@ function _palTaskAnchor(id, sel) {
   const open = () => { const id = _palTaskId(); return id && statusOf(id) !== 'done'; };
   const short = () => { const it = getItem(_palTaskId()); const t = it ? effTitle(it) : ''; return t.length > 48 ? t.slice(0, 47) + '…' : t; };
   const cmd = (def) => registerCommand(Object.assign({ group: 'This task' }, def, { run: () => { const id = _palTaskId(); if (id) def.run(id); } }));
-  cmd({ id: 'task-done', icon: 'circle-check', kbd: 'X', keywords: 'complete done finish tick reopen', when: has,
+  cmd({ id: 'this-task-done', icon: 'circle-check', kbd: 'X', keywords: 'complete done finish tick reopen', when: has,
     label: () => `${statusOf(_palTaskId()) === 'done' ? 'Reopen' : 'Complete'} “${short()}”`, run: (id) => toggleDone(id) });
-  cmd({ id: 'task-doing', icon: 'circle-dot', kbd: 'S', keywords: 'start progress doing', when: open,
+  cmd({ id: 'this-task-doing', icon: 'circle-dot', kbd: 'S', keywords: 'start progress doing', when: open,
     label: () => statusOf(_palTaskId()) === 'doing' ? 'Stop progress' : 'Start (in progress)', run: (id) => toggleDoing(id) });
-  cmd({ id: 'task-today', icon: 'sun', kbd: 'T', keywords: 'plan today', when: open,
+  cmd({ id: 'this-task-today', icon: 'sun', kbd: 'T', keywords: 'plan today', when: open,
     label: () => { const it = getItem(_palTaskId()); return it && it.plannedFor && it.plannedFor <= todayStr() ? 'Remove from Today' : 'Plan for today'; }, run: (id) => togglePlannedToday(id) });
-  cmd({ id: 'task-due', icon: 'calendar-days', kbd: 'D', keywords: 'date due reschedule deadline', when: has, label: 'Change due date…',
+  cmd({ id: 'this-task-due', icon: 'calendar-days', kbd: 'D', keywords: 'date due reschedule deadline', when: has, label: 'Change due date…',
     run: (id) => { const it = getItem(id); openDueDatePopover(_palTaskAnchor(id, '.dp-due'), { value: effDate(it), time: it.dueTime, allowTime: true, allowClear: true, align: 'end', onPick: (d, t) => setDueWithNote(id, d, t) }); } });
-  cmd({ id: 'task-tomorrow', icon: 'sunrise', keywords: 'snooze postpone later push', when: open, label: 'Due tomorrow', run: (id) => setDueWithNote(id, tomorrowStr()) });
-  cmd({ id: 'task-priority', icon: 'flag', kbd: 'P', keywords: 'priority urgent important', when: has, label: 'Set priority…', run: (id) => openPriorityMenu(_palTaskAnchor(id, '.dp-prio'), id) });
-  cmd({ id: 'task-stream', icon: 'layers', keywords: 'stream move project area', when: has, label: 'Move to stream…', run: (id) => openStreamMenu(_palTaskAnchor(id, '.dp-stream'), id) });
-  cmd({ id: 'task-pin', icon: 'pin', keywords: 'pin top unpin', when: has, label: () => isPinned(_palTaskId()) ? 'Unpin' : 'Pin to top', run: (id) => togglePin(id) });
-  cmd({ id: 'task-copy', icon: 'copy', keywords: 'duplicate clone copy', when: has, label: 'Duplicate task', run: (id) => cloneTask(id) });
-  cmd({ id: 'task-bin', icon: 'trash-2', kbd: 'Del', keywords: 'delete remove bin trash', when: has, label: 'Move to bin',
+  cmd({ id: 'this-task-tomorrow', icon: 'sunrise', keywords: 'snooze postpone later push', when: open, label: 'Due tomorrow', run: (id) => setDueWithNote(id, tomorrowStr()) });
+  cmd({ id: 'this-task-priority', icon: 'flag', kbd: 'P', keywords: 'priority urgent important', when: has, label: 'Set priority…', run: (id) => openPriorityMenu(_palTaskAnchor(id, '.dp-prio'), id) });
+  cmd({ id: 'this-task-stream', icon: 'layers', keywords: 'stream move project area', when: has, label: 'Move to stream…', run: (id) => openStreamMenu(_palTaskAnchor(id, '.dp-stream'), id) });
+  cmd({ id: 'this-task-pin', icon: 'pin', keywords: 'pin top unpin', when: has, label: () => isPinned(_palTaskId()) ? 'Unpin' : 'Pin to top', run: (id) => togglePin(id) });
+  cmd({ id: 'this-task-copy', icon: 'copy', keywords: 'duplicate clone copy', when: has, label: 'Duplicate task', run: (id) => cloneTask(id) });
+  cmd({ id: 'this-task-bin', icon: 'trash-2', kbd: 'Del', keywords: 'delete remove bin trash', when: has, label: 'Move to bin',
     run: (id) => { if (typeof tcCurrentTaskId === 'function' && tcCurrentTaskId() === id && typeof _tcDelete === 'function') _tcDelete(id); else deleteTask(id); } });
 }
