@@ -143,6 +143,12 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Status', 'When it last synced and which other computers were seen.', 'last seen devices'],
     ['This computer is called', 'How your other computers show this one.', 'device name'],
     ['Check the folder now', 'Look for changes from your other computers now.', 'sync now refresh'],
+    ['Is this your first computer with OpenDash?', 'Set up sync on your first computer, or add this one to it.', 'join setup start encrypted'],
+    ['Devices', 'Every computer and phone that syncs: rename one, or remove one you no longer have.', 'remove lost stolen rename phone laptop'],
+    ['Add a computer or phone', 'Approve a new computer with 6 numbers, or show a code for a phone.', 'pair approve qr scan'],
+    ['Recovery code', 'Add a computer without the other one, or make a new code.', 'lost code key encryption'],
+    ['Main computer for each account', 'Which computer checks each mail and calendar account.', 'fetch fetcher gmail outlook'],
+    ['Not encrypted yet', 'Encrypt sync that started before encryption.', 'encrypt lock privacy'],
   ],
   updates: [
     ['OpenDash version', 'Check for updates and install a newer release.', 'upgrade GitHub'],
