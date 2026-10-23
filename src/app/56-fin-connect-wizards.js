@@ -361,8 +361,12 @@ function _finMonzoClient(ctx, body) {
     if (secret.value.trim().length < 8) { err.replaceChildren(_finCallout('err', 'circle-alert', 'Paste the client secret too.')); secret.focus(); return; }
     save.disabled = true;
     try {
-      // Always the connection this sheet already made: saving again (a retry) never adds a second Monzo.
-      const j = await finApi('monzo/client', { method: 'PUT', body: { clientId: c.value, clientSecret: secret.value.trim(), sourceId: w.sourceId || undefined } });
+      // The connection this sheet already made (unless it is a working one and this is a new client:
+      // that adds a second Monzo rather than signing the working one out). The server also reuses
+      // an unfinished one, so a retry never adds a duplicate.
+      const cur = (ctx.entry().sources || []).find(x => x && x.id === w.sourceId);
+      const reuse = w.sourceId && (w.reauth || !(cur && cur.status && cur.status.connected));
+      const j = await finApi('monzo/client', { method: 'PUT', body: { clientId: c.value, clientSecret: secret.value.trim(), sourceId: reuse ? w.sourceId : undefined } });
       secret.value = ''; delete w.clientSecret; w.changeClient = false;
       w.sourceId = j.sourceId || (j.source && j.source.id) || w.sourceId;
       FinConnectStore.load({ force: true });
