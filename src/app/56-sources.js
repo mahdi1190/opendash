@@ -233,25 +233,48 @@ function _srcAfterChange(cap) {
     if (cap === 'bank' && window.FinanceView && FinanceView.refresh && state.view === 'finance') FinanceView.refresh();
   } catch (e) { console.error('[sources]', e); }
 }
-async function _srcSync(s) {
+/**
+ * After a sync: how it went for this source, from what the server recorded
+ * (lastSync / lastError since `since`): its reason and the fix, or "up to date".
+ * Says nothing when the update recorded nothing (it ran on another computer).
+ */
+function _srcSyncOutcome(id, since) {
+  const s = ((SourcesStore.data && SourcesStore.data.sources) || []).find(x => x.id === id);
+  if (!s) return;
+  const errAt = Date.parse((s.lastError && s.lastError.at) || '') || 0;
+  const okAt = Date.parse(s.lastSync || '') || 0;
+  if (errAt >= since - 5000 && errAt >= okAt) {
+    const reconnect = _srcNeedsReconnect(s);
+    toast(`${s.label} did not sync: ${String(s.lastError.message || 'the update failed.').replace(/^Last sync failed:\s*/i, '')}`, { kind: 'err', timeout: 12000,
+      action: reconnect ? { label: 'Reconnect', run: () => _connPageSourceHelp(s) } : { label: 'Try again', run: () => _srcSync(s) } });
+  } else if (okAt >= since - 5000) toast(`${s.label} is up to date.`, { kind: 'ok' });
+}
+async function _srcSync(s, opts) {
   SourcesStore.busy[s.id] = true; renderMain();
+  const since = Date.now();
+  let started = false;
   try {
     const j = await _srcApi('/api/sources/' + encodeURIComponent(s.id) + '/sync', { method: 'POST', body: {}, okStatuses: [409] });
     if (j.job && j.capability === 'calendar' && typeof CalStore !== 'undefined') { CalStore.st.job = j.job; CalStore.poll(); }
     else if (j.job && j.capability === 'email' && typeof InboxStore !== 'undefined') { InboxStore.st.job = j.job; InboxStore.poll(); }
     toast(j.error || `Syncing ${s.label}…`, { icon: 'refresh-cw' });
+    started = !j.error;
     // Watch the job, then show the result on the card.
     const t0 = Date.now();
     const statusUrl = s.capability === 'calendar' ? '/api/calendar/status' : s.capability === 'email' ? '/api/inbox/status' : '/api/finance/status';
+    let misses = 0;
     while (Date.now() - t0 < 20 * 60000) {
       await new Promise(r => setTimeout(r, 2500));
       const st = await _srcApi(statusUrl).catch(() => null);
-      if (!st || !st.job || st.job.state !== 'running') break;
+      if (!st) { if (++misses >= 4) break; continue; }    // a busy server: a few misses are fine
+      misses = 0;
+      if (!st.job || st.job.state !== 'running') break;
     }
-  } catch (e) { toast(e.message, { kind: 'err' }); }
+  } catch (e) { toast(`${s.label} did not sync: ${netErrorMessage(e)}`, { kind: 'err', timeout: 10000, action: { label: 'Try again', run: () => _srcSync(s) } }); }
   delete SourcesStore.busy[s.id];
   await SourcesStore.refresh();
   _srcAfterChange(s.capability);
+  if (started && !(opts && opts.quiet)) _srcSyncOutcome(s.id, since);
 }
 async function _srcTestExisting(s) {
   SourcesStore.busy[s.id] = true; renderMain();

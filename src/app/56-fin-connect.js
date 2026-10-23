@@ -419,23 +419,60 @@ function _finConnectAureli() {
   if (typeof connCloudSignIn === 'function') connCloudSignIn(null, 'bank');
   else window.open(CONNECTORS_URL, '_blank', 'noopener');
 }
+/** Wait for the finance update `id` (or whatever runs now) to end. -> the last job seen, or null. */
+async function _finWaitJob(id, maxMs) {
+  const t0 = Date.now();
+  let last = null, misses = 0;
+  while (Date.now() - t0 < maxMs) {
+    await new Promise(r => setTimeout(r, 2500));
+    const st = await finApi('/api/finance/status').catch(() => null);
+    if (!st) { if (++misses >= 4) break; continue; }      // a busy server: a few misses are fine
+    misses = 0;
+    if (st.job) last = st.job;
+    if (!st.job || st.job.state !== 'running' || (id && st.job.id !== id)) break;
+  }
+  return last;
+}
+/** The fix for a failed direct sync: sign in again for sign-in problems, else Try again. */
+function _finSyncFix(s, code) {
+  const provider = finProviderOf(s);
+  if (['AUTH', 'CONSENT_EXPIRED', 'NOT_APPROVED', 'NOT_CONFIGURED'].includes(code)) return { label: code === 'NOT_CONFIGURED' ? 'Finish connecting' : 'Sign in again', run: () => finStartProvider(provider, { reauth: s.id }) };
+  return { label: 'Try again', run: () => finSyncSource(s) };
+}
 async function finSyncSource(s) {
   if (s.kind !== 'direct') { _srcSync(s); return; }
   if (SourcesStore.busy[s.id]) return;
   SourcesStore.busy[s.id] = true; renderMain();
+  const label = s.label || finProviderInfo(finProviderOf(s)).name;
+  let job = null;
   try {
-    const j = await finApi('sources/' + encodeURIComponent(s.id) + '/sync', { method: 'POST', body: {} });
-    toast(j.message || `Syncing ${s.label}…`, { icon: 'refresh-cw' });
-    const t0 = Date.now();
-    while (Date.now() - t0 < 10 * 60000) {
-      await new Promise(r => setTimeout(r, 2500));
-      const st = await finApi('/api/finance/status').catch(() => null);
-      if (!st || !st.job || st.job.state !== 'running') break;
+    const go = () => finApi('sources/' + encodeURIComponent(s.id) + '/sync', { method: 'POST', body: {} });
+    let j;
+    try { j = await go(); }
+    catch (e) {
+      if (e.code !== 'BUSY') throw e;
+      // Another update is running: this one waits for it, then starts (no need to press again).
+      toast(`Another finance update is running. ${label} syncs as soon as it finishes.`, { icon: 'clock', timeout: 7000 });
+      await _finWaitJob(null, 10 * 60000);
+      j = await go();
     }
-  } catch (e) { toast(e.message, { kind: 'err', timeout: 8000 }); }
+    toast(j.message || `Syncing ${label}…`, { icon: 'refresh-cw' });
+    job = await _finWaitJob(j.job && j.job.id, 10 * 60000);
+  } catch (e) {
+    const fix = _finSyncFix(s, e.code);
+    toast(`${label} did not sync: ${e.message}`, { kind: 'err', timeout: 12000, action: fix });
+    job = null;
+  }
   delete SourcesStore.busy[s.id];
   await Promise.all([SourcesStore.refresh(), FinConnectStore.load({ force: true })]);
   _srcAfterChange('bank');
+  // How it went for this source: its own result in the update (reason and the fix when it failed).
+  const mine = job && job.result && Array.isArray(job.result.sources) ? job.result.sources.find(x => x && x.id === s.id) : null;
+  if (mine && mine.ok) toast(`${label} is up to date.`, { kind: 'ok' });
+  else if (mine && !mine.ok) {
+    const fresh = ((SourcesStore.data && SourcesStore.data.sources) || []).find(x => x.id === s.id) || s;
+    toast(`${label} did not sync: ${mine.error || 'the update failed.'}`, { kind: 'err', timeout: 12000, action: _finSyncFix(fresh, fresh.lastError && fresh.lastError.code) });
+  } else if (job && job.state === 'error') toast(`The finance update stopped: ${job.error || 'unknown problem'}.`, { kind: 'err', timeout: 12000, action: { label: 'Try again', run: () => finSyncSource(s) } });
 }
 async function _finPatchAccount(group, a, patch, msg) {
   try {
@@ -663,6 +700,15 @@ function _finGroupCard(group, nameOf) {
   if (msg && st !== 'off' && (st !== 'ok' || (group.api && group.api.historyMode === '90d'))) {
     const m = _finEl('div', 'fc-group-msg' + (st === 'error' ? ' is-err' : ''));
     m.innerHTML = icon('circle-alert', 'i-xs'); m.appendChild(_finEl('span', null, String(msg).replace(/:\s*open Connections( to connect it)?\.?$/i, '.')));
+    // A failed sync says when, and gets its fix right here (not only the head's buttons).
+    if (st === 'error' && s.kind === 'direct') {
+      const at = s.lastError && s.lastError.at;
+      if (at) m.appendChild(_finEl('span', 'fc-mute', ' (' + _connAgo(at) + ')'));
+      const fix = _finSyncFix(s, (group.api && group.api.code) || (s.lastError && s.lastError.code));
+      const b = _connBtn(busy ? 'Syncing…' : fix.label, busy ? null : 'refresh-cw', 'btn-ghost', fix.run);
+      b.disabled = busy;
+      m.appendChild(b);
+    }
     card.appendChild(m);
   }
   const list = _finEl('div', 'fc-acc-list'); list.setAttribute('role', 'list');
