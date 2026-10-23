@@ -29,6 +29,7 @@ import { sourcesFor } from '../../lib/sources.mjs';
 import { fetchFromSource, describeRejected } from '../../lib/source-adapter.mjs';
 import { finConnectFor } from '../../lib/fin-connect/index.mjs';
 import { HttpError } from '../http.mjs';
+import { skippedBody } from '../../lib/main-computer.mjs';
 import { clockTodayIn, canonZone } from '../../lib/clock.mjs';
 import { financeDir } from '../../lib/finance.mjs';
 import { MBM, briefFor, aiBrief, readBriefCache, writeBriefCache, briefCacheFile, DEFAULT_BRIEF_MODEL } from '../../lib/finance/brief.mjs';
@@ -124,6 +125,9 @@ export default function register(app) {
     path: '/api/finance/update', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
       const body = await c.body({ allowEmpty: true });
+      // {automatic: true} ("Start my day"): only on the main computer (lib/main-computer.mjs).
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('bank', { automatic: body.automatic === true }) : { run: true };
+      if (!mc.run) return skippedBody(mc);
       const r = startFinanceUpdate({ full: body.full === true, bank: body.bank !== false });
       if (r.error) throw new HttpError(400, r.error);
       if (!r.started) return c.json(409, { error: 'An update is already running.', job: r.job });

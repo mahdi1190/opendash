@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, mkdtempSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { request, createServer } from 'node:http';
-import { makeComputer, adaptersFor, fakeCli } from './relocate.shared.mjs';
+import { makeComputer, adaptersFor, fakeCli, safeServerEnv } from './relocate.shared.mjs';
 import { README } from '../lib/relocate/index.mjs';
 
 let pc, port, srv;
@@ -29,6 +29,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 before(async () => {
   pc = makeComputer({ files: 6 });
+  await safeServerEnv();
   port = await freePort();
   const { main } = await import('../server/index.mjs');
   srv = await main(['--port', String(port), '--no-open', '--data-dir', pc.data]);

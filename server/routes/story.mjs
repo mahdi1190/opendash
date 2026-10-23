@@ -21,6 +21,7 @@
 // sent by the page). Logs: kind, counts and timings, never titles or names.
 
 import { HttpError } from '../http.mjs';
+import { skippedBody } from '../../lib/main-computer.mjs';
 import { createWeatherService } from '../../lib/weather.mjs';
 import { briefPaths } from '../../lib/brief-store.mjs';
 import { buildStoryData, STORY_KINDS } from '../../lib/story-data.mjs';
@@ -82,6 +83,9 @@ export default function register(app) {
     const body=await c.body();
     if(body.automatic && !c.getConfig().brief?.advisorAuto) throw new HttpError(409,'Automatic day advice is off.');
     if(c.getConfig().brief?.ai===false) throw new HttpError(409,'AI advice is off in Settings.');
+    // The automatic review runs on the main computer only (lib/main-computer.mjs); a click always runs.
+    const mc=app.ctx.mainComputer?await app.ctx.mainComputer.gate('ai-brief',{automatic:!!body.automatic}):{run:true};
+    if(!mc.run) throw new HttpError(409,skippedBody(mc).message,{code:mc.reason==='moving'?'MOVING':'NOT_MAIN',runsOn:mc.runsOn||null});
     if(pending.has('advice')) return pending.get('advice');
     const job=(async()=>{
       const {q,data}=await dayModel(c,'morning');
@@ -151,6 +155,9 @@ export default function register(app) {
           if (v.script) return { script: { ...v.script, at: hit.at || v.script.at }, cached: true, dropped: v.dropped };
         }
       }
+      // Prepared by the main computer only (lib/main-computer.mjs); "Regenerate" is a click and always runs.
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('story', { automatic: !b.regenerate }) : { run: true };
+      if (!mc.run) throw new HttpError(409, skippedBody(mc).message, { code: mc.reason === 'moving' ? 'MOVING' : 'NOT_MAIN', runsOn: mc.runsOn || null });
       const key = kind + '|' + date;
       if (pending.has(key)) return pending.get(key);
       const run = (async () => {

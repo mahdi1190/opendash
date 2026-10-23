@@ -14,6 +14,7 @@ import { createInboxService, MAX_DAYS } from '../../lib/inbox.mjs';
 import { fetchEmailSource, saveInboxSnapshot, readInboxSnapshot, mergeInboxData } from '../../lib/inbox-sources.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
 import { HttpError } from '../http.mjs';
+import { skippedBody } from '../../lib/main-computer.mjs';
 
 // Sources: GET /api/inbox merges every enabled email source (the Gmail preset
 // plus any other mailbox MCP server) into one list; each message carries
@@ -70,6 +71,9 @@ export default function register(app) {
     path: '/api/inbox/update', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
       const body = await c.body({ allowEmpty: true });
+      // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };
+      if (!mc.run) return { ...skippedBody(mc), job: null };
       const r = await inbox.start({ days: body.days, force: body.force === true });
       if (r.started) return c.json(202, { job: r.job });
       if (r.reason === 'running') return c.json(409, { error: 'An update is already running.', job: r.job });

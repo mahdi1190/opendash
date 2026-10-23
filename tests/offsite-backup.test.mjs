@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { encryptBackup, decryptBackup, deriveKey, parseBackup, createOffsiteBackup, backupName, KEEP, MAGIC } from '../lib/offsite-backup.mjs';
 import { secretStore } from '../lib/secret-store.mjs';
 import { createZip, readZip } from '../lib/zip.mjs';
+import { safeServerEnv } from './relocate.shared.mjs';
 
 const ROOT = process.platform === 'win32' && existsSync('C:/tmp') ? 'C:/tmp/relocate-test' : join(tmpdir(), 'relocate-test');
 mkdirSync(ROOT, { recursive: true });
@@ -113,6 +114,7 @@ test('server: set up, copy now, inspect and restore (the current data is backed 
     });
     req.on('error', rej); if (body !== undefined) req.write(JSON.stringify(body)); req.end();
   });
+  await safeServerEnv();     // the fake claude CLI, temp sync folder
   const { main } = await import('../server/index.mjs');
   const srv = await main(['--port', String(port), '--no-open', '--data-dir', data, '--fresh']);
   try {

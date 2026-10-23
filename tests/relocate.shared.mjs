@@ -7,6 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { createDryRunExec } from '../lib/os-integration.mjs';
 import { registryAdapter } from '../lib/relocate/adapters.mjs';
 
@@ -144,4 +145,19 @@ export function adaptersFor(pc, { free = 1e12, cli, shortcuts, sync = null } = {
     syncLocalDir: sync,
     freeBytes: () => free,
   };
+}
+
+/**
+ * Before a test starts an in-process server: the fake claude CLI (never the
+ * real one: a forced calendar update would otherwise run a real Claude job),
+ * temp sync and device folders. Call before importing server/index.mjs.
+ */
+export async function safeServerEnv() {
+  const fake = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'fake-claude.mjs');
+  process.env.CLAUDE_CLI_PATH = fake;
+  process.env.FAKE_CLAUDE_MODE = 'ok';
+  if (!process.env.DASHBOARD_SYNC_LOCAL_DIR) process.env.DASHBOARD_SYNC_LOCAL_DIR = mkdtempSync(join(ROOT, 'sync-'));
+  const { setCliPath } = await import('../lib/claude-runner.mjs');
+  setCliPath(fake);
+  return fake;
 }
