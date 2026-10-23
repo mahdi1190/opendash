@@ -87,6 +87,7 @@ async function _pollAiStatus(tries) {
 }
 
 bootStatePersistence().then(() => {
+  if (typeof uiSharedBoot === 'function') uiSharedBoot();   // flags set before the file loaded + this browser's old keys, once (06-core-seen.js)
   document.body.classList.toggle('no-ai', !AI_AVAILABLE);
   document.body.classList.toggle('no-gmail', !GOOGLE_CONNECTED);
   updateGoogleButton();
