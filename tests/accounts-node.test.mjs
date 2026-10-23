@@ -172,3 +172,23 @@ test('the user\'s own app ID wins over the built-in one; no ID at all means "not
   assert.equal(info.microsoft.available, false); assert.equal(info.imap.available, true, '+ Other email (IMAP) is built in');
   await assert.rejects(fresh.begin({ provider: 'microsoft', email: 'me@hotmail.com' }), { code: 'NOT_CONFIGURED' });
 }));
+
+test('another provider joins through registerProvider: same list, same sources, its own config per data folder', async () => fixture(async ({ dir, svc }) => {
+  const { registerProvider } = await import('../lib/accounts.mjs');
+  const seen = [];
+  registerProvider('google', (ctx) => ({
+    id: 'google',
+    async configured() { return { ok: !!(await ctx.config.clientId()) }; },
+    async beginSignIn({ loginHint, kind }) { const state = ctx.pending.begin({ provider: 'google', loginHint, kind: kind || 'personal', features: { mail: true, calendar: true }, scopes: [] }); return { url: 'https://accounts.example.test/?state=' + state, state, kind: 'personal' }; },
+    async handleCallback(params, pend) { const id = await ctx.accountIdFor({ provider: 'google', email: pend.loginHint }); await ctx.vault.write(id, { refresh_token: 'g' }); return { id, provider: 'google', email: pend.loginHint, kind: 'personal', scopes: [], features: pend.features, status: 'connected' }; },
+    async accessToken() { return 'x'; }, async fetchMail() { return { accounts: [], messages: [], count: 0, warnings: [] }; }, async fetchCalendar() { return { calendars: [], events: [], count: 0, warnings: [] }; },
+    async disconnect(id) { await ctx.vault.remove(id); },
+  }), ({ store }) => { seen.push(store.location); return { clientId: async () => 'synthetic-google-client' }; });
+  assert.equal((await svc.providersInfo()).google.available, true);
+  const b = await svc.begin({ provider: 'google', email: 'me@gmail.com' });
+  const { account } = await svc.callback({ state: new URL(b.url).searchParams.get('state') });
+  assert.equal(account.provider, 'google');
+  const src = (await readSourcesFile(dir)).sources.filter(s => s.account === account.id);
+  assert.deepEqual(src.map(s => s.kind + '/' + s.capability).sort(), ['google/calendar', 'google/email']);
+  assert.ok(seen.length && seen.every(l => l === secretStore(dir).location), 'config built with this data folder\'s secret store');
+}));

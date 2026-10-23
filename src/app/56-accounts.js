@@ -40,6 +40,12 @@ async function accAct(a, path, body, done) {
   if (typeof SourcesStore !== 'undefined') SourcesStore.refresh({ cached: true });
 }
 
+/** New mail or events were saved: the calendar and inbox views read them again. */
+function accReloadData() {
+  try { if (typeof CalStore !== 'undefined' && CalStore.load) CalStore.load(true); } catch (e) { /* not loaded */ }
+  try { if (typeof InboxStore !== 'undefined' && InboxStore.load) InboxStore.load(true); } catch (e) { /* not loaded */ }
+}
+
 /* ---------- signing in (a new tab), and noticing the return ---------- */
 function accOpenSignIn(o) {
   _accSignInAt = Date.now();
@@ -56,6 +62,7 @@ window.addEventListener('focus', async () => {
     toast(`${fresh.email} is connected. Mail and calendar are on their way.`, { kind: 'ok', timeout: 6000 });
     if (typeof _drawerClose === 'function' && _drawerClose) _drawerClose();
     if (typeof SourcesStore !== 'undefined') SourcesStore.refresh({ cached: true });
+    accReloadData();
   }
 });
 
@@ -214,7 +221,7 @@ function accCard(a) {
   const when = _connEl('span', 'cp-synced'); when.innerHTML = icon('clock', 'i-xs'); when.appendChild(_connEl('span', null, accSyncedText(a)));
   const acts = _connEl('div', 'acc-actions');
   const run = (id) => {
-    if (id === 'sync') return accAct(a, '/api/accounts/sync', {}, (r) => { const bad = (r.results || []).find(x => !x.ok); toast(bad ? bad.error : 'Checked. Everything is up to date.', { kind: bad ? 'err' : 'ok' }); });
+    if (id === 'sync') return accAct(a, '/api/accounts/sync', {}, (r) => { const bad = (r.results || []).find(x => !x.ok); toast(bad ? bad.error : 'Checked. Everything is up to date.', { kind: bad ? 'err' : 'ok' }); accReloadData(); });
     if (id === 'sign-in') return accOpenSignIn({ provider: a.provider, accountId: a.id });
     if (id === 'approval') return accApproval(a);
     if (id === 'resume') return accAct(a, '/api/accounts/pause', { paused: false });
@@ -238,8 +245,7 @@ function accCard(a) {
         if (ok) accAct(a, '/api/accounts/remove', {}, () => toast(`${a.email} was removed.`, { kind: 'ok' }));
       } },
     ];
-    if (typeof openMenu === 'function') openMenu(more, items);
-    else items[items.length - 1].run();
+    openMenu(more, items);
   };
   acts.appendChild(more);
   foot.append(when, acts);

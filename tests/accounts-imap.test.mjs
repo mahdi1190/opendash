@@ -266,7 +266,7 @@ test('the Node binding: registry file and data folder never hold the password; t
     const store = secretStore(dataDir, { backend: fileBackend(secretsDir) });
     const svc = createAccountsService({ dataDir, store, deviceId: 'deviceaaaa1', fetchFn: async () => { throw new Error('no network'); },
       imap: { openTransport: nodeImapTransport({ ca: CERT.cert }), mx: false, lookup: async (email) => ({ ...lookupProvider(email), imap: { host: '127.0.0.1', port: srv.port, security: 'tls' } }) } });
-    assert.deepEqual((await svc.providersInfo()).imap, { available: true });
+    assert.equal((await svc.providersInfo()).imap.available, true);
     const info = await svc.imapLookup('jo@yahoo.com');
     assert.equal(info.name, 'Yahoo Mail');
     const { account } = await svc.connect({ provider: 'imap', email: 'jo@yahoo.com', password: PASS });

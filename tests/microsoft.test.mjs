@@ -131,6 +131,7 @@ test('pause, features, sync, fetch-here and remove; readers need no Claude', asy
   const s = await call('/api/accounts/sync', 'POST', { body: { id } });
   assert.equal(s.json.results[0].code, 'PAUSED');
   assert.equal((await call('/api/accounts/pause', 'POST', { body: { id, paused: false } })).json.account.status, 'connected');
+  assert.ok((await readSourcesFile(dir)).sources.every(x => !x.lastError), 'a refused-while-paused check is not a source failure');
   assert.equal((await call('/api/accounts/features', 'POST', { body: { id, calendar: false } })).json.account.features.calendar, false);
   assert.equal((await readSourcesFile(dir)).sources.find(x => x.capability === 'calendar').enabled, false);
   const synced = await call('/api/accounts/sync', 'POST', { body: { id } });
