@@ -22,7 +22,9 @@ export default function register(app) {
       const p = glanceParams(c.query.get('cushion'), c.query.get('mode'));
       if (p.error) throw new HttpError(400, p.error);
       const d = await financeData();
-      if (d.status !== 'ok' || !d.analysis) return { status: 'empty', error: 'No finance data yet.' };
+      // Another device reads the bank (lib/finance-share.mjs): say which, so the card names it instead of "connect a bank".
+      const remote = d.meta && d.meta.remote ? { name: d.meta.remote.name, online: !!d.meta.remote.online, updatedAt: d.meta.remote.updatedAt || null, waiting: !!d.meta.remote.waiting } : null;
+      if (d.status !== 'ok' || !d.analysis) return { status: 'empty', error: 'No finance data yet.', ...(remote ? { remote } : {}) };
       const cfg = typeof app.ctx.getConfig === 'function' ? app.ctx.getConfig() || {} : {};
       const lu = d.meta && d.meta.lastUpdate;
       // cfg.timezone is the HOME zone, on purpose: banks date transactions at home,
@@ -31,6 +33,7 @@ export default function register(app) {
         mode: p.mode, cushion: p.cushion, currency: cfg.currency || (d.meta && d.meta.currency) || 'GBP', locale: cfg.locale,
         today: todayIn(cfg.timezone), lastUpdateAt: lu && (lu.state === 'ok' || lu.state === 'warning') && typeof lu.at === 'string' ? lu.at : null,
       });
+      if (remote) g.remote = remote;
       log('info', `finance glance: ${g.bills.length} bills before payday, ${g.balance ? g.balance.accounts.length : 0} accounts`);
       return g;
     },
