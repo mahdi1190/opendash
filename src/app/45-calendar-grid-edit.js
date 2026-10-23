@@ -849,7 +849,27 @@ function _cgeWhenText(s) {
   if (s.kind === 'timed') return `${_cgeDayLabel(s.day, true)} · ${_cgeRange(s.start, s.end)}`;
   return s.first === s.last ? `${_cgeDayLabel(s.first, true)} · All day` : `${_cgeSpanLabel(s.first, s.last)} · All day`;
 }
-function _cgeQuickCreate(d, spec) {
+/* A quick-create closed with words in it (a click elsewhere, Esc, x) is easy to do by accident:
+   the toast offers Reopen, which brings the same slot back with the title, place, Event | Task
+   and calendar as they were. Save and More options hand the words on, so they never ask. */
+function _cgeOfferReopen(spec, pre) {
+  if (!pre || (!pre.title && !pre.loc)) return;
+  const name = pre.title ? `“${pre.title.length > 40 ? pre.title.slice(0, 39) + '…' : pre.title}”` : 'The new event';
+  toast(`${name} was not saved`, { icon: 'pencil', timeout: 8000, action: { label: 'Reopen', run: () => _cgeReopen(spec, pre) } });
+}
+function _cgeReopen(spec, pre) {
+  if (!_cgeOnCal()) { setView('calendar'); setTimeout(() => { if (_cgeOnCal()) _cgeReopen(spec, pre); }, 60); return; }
+  _cgeCloseQC();
+  const mode = calMode();
+  const d = { draft: true, color: _cgeDraftColor(), title: pre.title || '(No title)', ghosts: [] };
+  if (mode === 'month') { d.month = true; d.mode = 'm-create'; d.root = document.querySelector('#main-body .month.cge-on'); }
+  else { d.mode = 'create'; d.root = mode === 'agenda' ? null : document.querySelector('#main-body .wv.cge-on'); }
+  // The slot may be off screen now (another week): the popover then sits under New.
+  d.anchor = document.querySelector('#main-body .cal-h [data-new]') || document.querySelector('#main-body .cal-h');
+  if (d.root) _cgePaintSpec(d, spec);
+  _cgeQuickCreate(d, spec, pre);
+}
+function _cgeQuickCreate(d, spec, pre) {
   const anchor = _cgeDraftAnchor(d);
   if (!anchor) { _cgeClearVisuals(d); return; }
   const cals = _cgeWritableCalendars();
@@ -860,9 +880,9 @@ function _cgeQuickCreate(d, spec) {
       : CalStore.access() === 'no' ? 'Connect Google Calendar in Connections to add events.'
         : rawCals.length && !rawCals.some(c => c && c.accessRole) ? 'Update the calendar once so the dashboard learns which calendars you can add events to.'
           : 'None of your calendars can be changed from here.';
-  let kind = cals.length ? _cgeLastKind : 'task';
-  let calId = (cals.find(c => c.id === _cgeLastCal) || cals.find(c => c.primary) || cals[0] || {}).id || null;
-  let saving = false, pop = null, titleIn = null, locIn = null;
+  let kind = pre && (pre.kind === 'task' || cals.length) ? pre.kind : cals.length ? _cgeLastKind : 'task';
+  let calId = (cals.find(c => pre && c.id === pre.calId) || cals.find(c => c.id === _cgeLastCal) || cals.find(c => c.primary) || cals[0] || {}).id || null;
+  let saving = false, handed = false, pop = null, titleIn = null, locIn = null;
   const close = openPopover(anchor, (el, closeFn) => {
     pop = el;
     el.setAttribute('aria-label', 'New event');
@@ -914,11 +934,19 @@ function _cgeQuickCreate(d, spec) {
     el.querySelector('[data-x]').onclick = () => closeFn();
     el.querySelector('[data-save]').onclick = () => save();
     el.querySelector('[data-more]').onclick = () => more();
+    if (pre) {
+      titleIn.value = pre.title || ''; locIn.value = pre.loc || '';
+      if (pre.title) _cgeTitleSet(d, pre.title);
+    }
     setKind(kind, false);
-  }, { width: 380, className: 'cge-qc', role: 'dialog', onClose: () => { if (_cgeQC && _cgeQC.d === d) _cgeQC = null; if (!saving) _cgeClearVisuals(d); } });
+  }, { width: 380, className: 'cge-qc', role: 'dialog', onClose: () => {
+    if (_cgeQC && _cgeQC.d === d) _cgeQC = null;
+    if (!saving) _cgeClearVisuals(d);
+    if (!saving && !handed && titleIn && locIn) _cgeOfferReopen(spec, { title: titleIn.value.trim(), loc: locIn.value.trim(), kind, calId });
+  } });
   _cgeQC = { d, spec, close, pop };
   _cgePlaceQC();
-  setTimeout(() => { try { if (titleIn && titleIn.isConnected) titleIn.focus({ preventScroll: true }); } catch (e) { /* closed already */ } }, 0);
+  setTimeout(() => { try { if (titleIn && titleIn.isConnected) { titleIn.focus({ preventScroll: true }); if (pre) titleIn.setSelectionRange(titleIn.value.length, titleIn.value.length); } } catch (e) { /* closed already */ } }, 0);
 
   const when = () => (spec.kind === 'timed' ? cglTimedPatch(spec.day, spec.start, spec.end) : cglAllDayPatch(spec.first, spec.last));
   function save() {
@@ -960,6 +988,7 @@ function _cgeQuickCreate(d, spec) {
   function more() {
     const title = titleIn.value.trim();
     const from = _cgeDraftAnchor(d);
+    handed = true;                      // the full editor takes the words over
     if (kind === 'task') {
       const timed = spec.kind === 'timed';
       const pre = { title, date: timed ? spec.day : spec.first, time: timed ? _calHM(spec.start) : null, minutes: timed ? spec.end - spec.start : null };
