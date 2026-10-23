@@ -60,6 +60,9 @@
     const rm = meta.remote;
     if (rm && rm.name) {
       const ask = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => startUpdate({}) }, ic('refresh-cw'), h('span', { text: `Ask ${rm.name} to update` }));
+      if (rm.trial) return emptyState({ icon: 'wallet', cls: 'fv-welcome', title: `Finance from ${rm.name}`,
+        text: `${rm.name} reads your bank. To see your finances here too, turn on "Use changes from my other computers" in Settings > Sync.`,
+        actions: [h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => setView('settings:sync') }, ic('refresh-cw'), h('span', { text: 'Open Settings > Sync' }))] });
       return emptyState({ icon: 'wallet', cls: 'fv-welcome', title: `Finance from ${rm.name}`,
         text: `${rm.name} reads your bank. Your finances show here, the same as there, after its next update${rm.online ? '.' : ' (it is off right now).'}`, actions: [ask] });
     }
@@ -152,7 +155,7 @@
   function remoteVia(meta) {
     const rm = meta && meta.remote;
     if (!rm || !rm.name) return '';
-    if (rm.waiting) return `Finance from ${rm.name} · waiting for its first update`;
+    if (rm.waiting) return `Finance from ${rm.name} · ${rm.trial ? 'turn on "Use changes from my other computers" to see it' : 'waiting for its first update'}`;
     const ago = rm.updatedAt ? agoText(rm.updatedAt) : '';
     return `Finance from ${rm.name}` + (ago ? ` · updated ${ago}` : '');
   }

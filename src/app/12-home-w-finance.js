@@ -346,7 +346,8 @@ function _hbFinRender(el, ctx) {
   if ((!g || _hbFin.status !== 'ok' || !g.count) && rm) {
     // Another device reads the bank and has not sent anything yet: name it, never "Connect your bank".
     const off = ctx.off ? ctx.off({ icon: 'wallet', title: 'Money at a glance',
-      text: `Finance from ${rm.name} · waiting for its first update. What you spend shows here once ${rm.name} has updated${rm.online ? '' : ' (it is off right now)'}.`,
+      text: rm.trial ? `Finance from ${rm.name}. To see it here, turn on "Use changes from my other computers" in Settings > Sync.`
+        : `Finance from ${rm.name} · waiting for its first update. What you spend shows here once ${rm.name} has updated${rm.online ? '' : ' (it is off right now)'}.`,
       action: { label: 'Open Finances', icon: 'wallet', run: () => _hbFinOpen(null) } })
       : hglEmpty({ icon: 'wallet', title: 'Money at a glance', actions: [{ label: 'Open Finances', icon: 'wallet', run: () => _hbFinOpen(null) }] });
     off.classList.add('hgl-off');

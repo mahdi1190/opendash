@@ -103,7 +103,7 @@ function _hspRender(el, ctx) {
     // Another device reads the bank (lib/finance-share.mjs) and has not sent anything yet: name it.
     const rm = res.data && res.data.remote && res.data.remote.name ? res.data.remote : null;
     const off = ctx.off({ icon: 'wallet', title: 'Payday & safe to spend',
-      text: rm ? `Finance from ${rm.name} · waiting for its first update. What you can spend each day shows here once ${rm.name} has updated.` : 'Import a statement or connect a bank to see what you can spend each day until payday.',
+      text: rm ? (rm.trial ? `Finance from ${rm.name}. To see it here, turn on "Use changes from my other computers" in Settings > Sync.` : `Finance from ${rm.name} · waiting for its first update. What you can spend each day shows here once ${rm.name} has updated.`) : 'Import a statement or connect a bank to see what you can spend each day until payday.',
       action: { label: 'Open Finances', icon: 'wallet', run: () => _hspOpen('overview') } });
     off.classList.add('hgl-off', 'hsp-off');
     const art = hglScene('finance', { size: 'lg', hover: true });
