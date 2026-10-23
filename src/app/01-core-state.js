@@ -175,12 +175,84 @@ function redo() {
  * "Undo" buttons in toasts undo THEIR change, not whatever happened last.
  * undoMark() is taken just after the change is saved; undoMarked(mark):
  *   - nothing happened since: the plain undo() (so Redo still works);
- *   - other edits since (yours, a sync, a background job): only the parts of
- *     the state that change touched are put back, when nothing since touched
- *     the same parts; otherwise it says so and leaves everything as it is.
+ *   - other edits since (yours, a sync, a background job): only what that
+ *     change touched is put back, down to the task, person or field
+ *     (_undoRevert3), when nothing since touched the same thing; otherwise
+ *     it says so calmly and leaves everything as it is.
+ * Ctrl+Z (undo/redo) is unchanged: one step back at a time.
  */
 function undoMark() {
   return { before: _undoStack.length ? _undoStack[_undoStack.length - 1] : null, after: _prevSnapshot, depth: _undoStack.length };
+}
+function _undoSame(x, y) { return x === y || JSON.stringify(x) === JSON.stringify(y); }
+function _undoIsObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
+/** Every entry an object with its own id (tasks, people, notes, subtasks, countdowns...). */
+function _undoIdKeyed(arr) {
+  const seen = new Set();
+  for (const e of arr) {
+    if (!_undoIsObj(e) || (typeof e.id !== 'string' && typeof e.id !== 'number')) return false;
+    const k = String(e.id); if (seen.has(k)) return false; seen.add(k);
+  }
+  return true;
+}
+/**
+ * Take the change b -> a back out of c (c = a plus whatever happened later),
+ * touching only what that change touched. -> {ok, v}; ok false when a later
+ * change touched the same entry (the same field of the same task...).
+ * Objects go key by key, id lists entry by entry, other lists by value.
+ */
+function _undoRevert3(b, a, c) {
+  if (_undoSame(a, c)) return { ok: true, v: b };     // nothing later here: as it was before
+  if (_undoSame(b, a)) return { ok: true, v: c };     // this change did not touch it
+  if (_undoSame(b, c)) return { ok: true, v: c };     // already back as it was
+  if (_undoIsObj(b) && _undoIsObj(a) && _undoIsObj(c)) {
+    const out = Object.assign({}, c);
+    for (const k of new Set([...Object.keys(b), ...Object.keys(a), ...Object.keys(c)])) {
+      const r = _undoRevert3(b[k], a[k], c[k]);
+      if (!r.ok) return r;
+      if (r.v === undefined) delete out[k]; else out[k] = r.v;
+    }
+    return { ok: true, v: out };
+  }
+  if (!Array.isArray(b) || !Array.isArray(a) || !Array.isArray(c)) return { ok: false };
+  if (_undoIdKeyed(b) && _undoIdKeyed(a) && _undoIdKeyed(c)) {
+    const id = (e) => String(e.id);
+    const B = new Map(b.map(e => [id(e), e])), A = new Map(a.map(e => [id(e), e])), Cids = new Set(c.map(id));
+    const both = (x, Y) => x.map(id).filter(k => Y.has(k));
+    const moved = !_undoSame(both(b, A), both(a, B));   // this change reordered entries
+    if (moved && !_undoSame(a.map(id), c.map(id))) return { ok: false };
+    const out = [];
+    for (const e of c) {
+      const k = id(e);
+      if (!A.has(k)) { if (B.has(k)) return { ok: false }; out.push(e); continue; }   // added later: kept
+      const r = _undoRevert3(B.get(k), A.get(k), e);
+      if (!r.ok) return r;
+      if (r.v !== undefined) out.push(r.v);                // added by this change (and untouched since): goes
+    }
+    for (const [k, e] of A) if (!Cids.has(k)) { const r = _undoRevert3(B.get(k), e, undefined); if (!r.ok) return r; }   // removed later
+    // What this change removed comes back where it was.
+    b.forEach((e, bi) => {
+      const k = id(e);
+      if (A.has(k) || out.some(x => id(x) === k)) return;
+      let at = 0;
+      for (let q = bi - 1; q >= 0; q--) { const j = out.findIndex(x => id(x) === id(b[q])); if (j >= 0) { at = j + 1; break; } }
+      out.splice(at, 0, e);
+    });
+    if (moved) { const pos = new Map(b.map((e, n) => [id(e), n])); out.sort((x, y) => (pos.get(id(x)) ?? 1e9) - (pos.get(id(y)) ?? 1e9)); }
+    return { ok: true, v: out };
+  }
+  // Other lists (tags, people ids, logs): what this change added goes, what it removed comes back.
+  const key = (e) => JSON.stringify(e);
+  const count = (arr) => { const m = new Map(); for (const e of arr) m.set(key(e), (m.get(key(e)) || 0) + 1); return m; };
+  const nb = count(b), na = count(a);
+  const added = [], removed = [];
+  for (const [k, n] of na) for (let q = (nb.get(k) || 0); q < n; q++) added.push(k);
+  for (const [k, n] of nb) for (let q = (na.get(k) || 0); q < n; q++) removed.push(k);
+  if (!added.length && !removed.length) return { ok: false };   // only the order changed, and more changed since
+  const out = c.slice();
+  for (const k of added) { const j = out.map(key).lastIndexOf(k); if (j < 0) return { ok: false }; out.splice(j, 1); }
+  for (const k of removed) { const e = JSON.parse(k); const bi = b.findIndex(x => key(x) === k); out.splice(Math.min(bi < 0 ? out.length : bi, out.length), 0, e); }
+  return { ok: true, v: out };
 }
 function undoMarked(m) {
   if (!m || !m.before || !m.after) return undo();
@@ -189,14 +261,16 @@ function undoMarked(m) {
   if (cur === m.after && _undoStack[_undoStack.length - 1] === m.before) return undo();
   let B, A, C;
   try { B = JSON.parse(m.before); A = JSON.parse(m.after); C = JSON.parse(cur); } catch (e) { return undo(); }
-  const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
-  const mine = [...new Set([...Object.keys(B), ...Object.keys(A)])].filter(k => !same(B[k], A[k]));
-  if (!mine.length) { showToast('Nothing to undo', false); return; }
-  if (mine.some(k => !same(A[k], C[k]))) {
-    if (typeof toast === 'function') toast('Can’t undo that on its own: later changes touched the same things. Press ' + (/Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl') + '+Z to step back one change at a time.', { icon: 'undo-2', timeout: 9000, dismiss: true });
+  if (_undoSame(B, A)) { showToast('Nothing to undo', false); return; }
+  const r = _undoRevert3(B, A, C);
+  if (!r.ok || !_undoIsObj(r.v)) {
+    if (typeof toast === 'function') toast('That changed since: open it to undo by hand (or press ' + (/Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl') + '+Z to step back one change at a time).', { icon: 'undo-2', timeout: 9000, dismiss: true });
     return;
   }
-  for (const k of mine) { if (Object.prototype.hasOwnProperty.call(B, k)) state[k] = B[k]; else delete state[k]; }
+  for (const k of new Set([...Object.keys(B), ...Object.keys(A), ...Object.keys(C)])) {
+    if (_undoSame(r.v[k], C[k])) continue;
+    if (r.v[k] === undefined) delete state[k]; else state[k] = r.v[k];
+  }
   ensureStateDefaults(state);
   if (state.selectedTaskId && !getItem(state.selectedTaskId)) state.selectedTaskId = null;
   saveData();   // a new step of its own: Ctrl+Z takes this undo back
