@@ -169,6 +169,6 @@ test('the user\'s own app ID wins over the built-in one; no ID at all means "not
   delete process.env.OPENDASH_MICROSOFT_CLIENT_ID;
   const fresh = make();
   const info = await fresh.providersInfo();
-  assert.equal(info.microsoft.available, false); assert.equal(info.imap.comingSoon, true);
+  assert.equal(info.microsoft.available, false); assert.equal(info.imap.available, true, '+ Other email (IMAP) is built in');
   await assert.rejects(fresh.begin({ provider: 'microsoft', email: 'me@hotmail.com' }), { code: 'NOT_CONFIGURED' });
 }));
