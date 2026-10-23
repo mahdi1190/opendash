@@ -195,8 +195,13 @@ function openDialog(o) {
   let closed = false;
   const onKey = (e) => {
     if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); }
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { const p = dlg.querySelector('.modal-f .btn-primary'); if (p) { e.preventDefault(); p.click(); } }
+    // Ctrl+Enter: the main button (a red one too, e.g. Delete in a confirm).
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { const p = dlg.querySelector('.modal-f .btn-primary') || [...dlg.querySelectorAll('.modal-f .btn-danger')].pop(); if (p) { e.preventDefault(); p.click(); } }
   };
+  // A click beside the dialog does not throw away what you typed in it: the first one
+  // only points at the dialog; a second click (or Esc, ×, Cancel) closes it.
+  let typed = false, warned = false;
+  dlg.addEventListener('input', () => { typed = true; });
   function close() {
     if (closed) return; closed = true;
     _dialogClose = null;
@@ -206,7 +211,12 @@ function openDialog(o) {
     if (prevFocus && prevFocus.focus) try { prevFocus.focus({ preventScroll: true }); } catch (e) {}
   }
   x.onclick = close;
-  scrim.onclick = close;
+  scrim.onclick = () => {
+    if (!typed || warned || o.keepOnOutside === false) { close(); return; }
+    warned = true;
+    dlg.classList.remove('nudge'); void dlg.offsetWidth; dlg.classList.add('nudge');
+    toast('You’ve typed something here. Click outside again to close without saving it.', { icon: 'pencil', timeout: 4000 });
+  };
   if (typeof o.body === 'function') o.body(b, close);
   else if (o.html) b.innerHTML = o.html;
   if (o.actions && o.actions.length) {
