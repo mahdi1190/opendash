@@ -19,6 +19,7 @@ the page and at most once an hour; *Check again* runs one now.
 - [Bank CSV files](#bank-csv-files)
 - [GitHub and Google Drive in Files & links](#github-and-google-drive-in-files--links)
 - [Your own Claude using OpenDash (MCP)](#your-own-claude-using-opendash-mcp)
+- [Google accounts (Gmail and Google Calendar, without Claude)](#google-accounts-gmail-and-google-calendar-without-claude)
 - [Troubleshooting](#troubleshooting)
 
 ## How it fits together
@@ -309,16 +310,40 @@ Both stay greyed out until those connections work.
 The **OpenDash MCP** card is the other direction: it lets Claude Code, T3 Code
 or Claude Desktop read and change your tasks. See [MCP.md](MCP.md).
 
-## Older setups: Google without Claude
+## Google accounts (Gmail and Google Calendar, without Claude)
 
-Earlier private versions could also read Gmail and Google Calendar directly
-with your own Google Cloud OAuth client (read-only scopes `gmail.readonly` and
-`calendar.readonly`), with the client file in `data/secrets/`. OpenDash 2.0.0
-does not use that route for anything you see: the calendar and email views
-read from the connectors and data sources above. If an older data folder still holds a
-Google client file, Connections shows a *Google (direct sign-in, optional)*
-row; you can leave it alone or delete the files in `data/secrets/`. For a
-calendar without Claude, use [an iCal link](#calendars-from-an-ical-link).
+<a id="older-setups-google-without-claude"></a>
+
+*+ Add Google account* in Connections reads Gmail and Google Calendar straight
+from Google, read-only, with no Claude in between. Add as many Google accounts
+as you like, next to your Microsoft ones.
+
+1. Type the address and tick what OpenDash may read: **Read your email** (who
+   wrote, the subject and Google's short preview; never the whole message) and
+   **See your calendars**. Each is separate; tick one or both.
+2. OpenDash explains the next screen first. Google shows **"Google hasn't
+   verified this app"**: Google reviews apps that read Gmail through a paid
+   security assessment, and this copy of OpenDash runs on your own computer and
+   has not been through it. Click **Advanced**, then **Go to OpenDash
+   (unsafe)**, then tick the same boxes and *Continue*.
+3. Back in OpenDash the account shows *Connected*; mail and events arrive in a
+   moment. Nothing is ever sent, changed, labelled or deleted.
+
+The sign-in stays on this computer (never in the data folder). Remove an
+account in Connections, or remove OpenDash's access at any time at
+myaccount.google.com/permissions; the account then says *Sign in again*.
+
+**Advanced: your own Google app.** If this copy of OpenDash has no built-in
+Google app, or you prefer your own Google Cloud project: create a project,
+enable the Gmail API and the Google Calendar API, set up the consent screen
+(External, then *Publish app*, so sign-ins do not stop after 7 days), add the
+scopes `.../auth/calendar.readonly` and `.../auth/gmail.readonly`, create a
+**Desktop app** client, and paste its client ID and secret (or its JSON) under
+*Add Google account > Advanced*. They are kept on this computer only.
+
+**Older setups.** Earlier versions had one direct Google connection with your
+own client file in `data/secrets/`. It is moved into one Google account
+automatically (same sign-in, same Google app) the first time OpenDash starts.
 
 ## Troubleshooting
 

@@ -29,7 +29,7 @@ or the folder you chose with `--data-dir`):
 | Logs | `logs/` | what the server did: requests, timings, counts, errors. No task text, email content, names or money |
 | Local token | `local-token` | a random secret for local programs |
 | Bank and wallet connections | `secrets/fin/` | your Monzo client and sign-in, your Enable Banking application key and bank sessions, your Plasma One address: only if you set those up in Connections > Money; deleted when you disconnect |
-| Google sign-in files from older setups | `secrets/` | only if an earlier version's direct Google route was set up (see [CONNECTIONS.md](CONNECTIONS.md#older-setups-google-without-claude)) |
+| Google sign-in files from older setups | `secrets/` | only if an earlier version's direct Google route was set up; moved into a Google account on this computer at the first start of 2.15 (see [CONNECTIONS.md](CONNECTIONS.md#google-accounts-gmail-and-google-calendar-without-claude)) |
 
 Your browser keeps interface preferences, a fallback copy of unsaved edits
 while the server is down, and an offline copy of the app page (with your

@@ -18,11 +18,12 @@ Code:
 |---|---|---|
 | `lib/accounts/core.mjs` | the record, validation, ids, PKCE/state, redirect adapters, token vault, the service | **pure JS** (no `node:` imports) |
 | `lib/accounts/microsoft.mjs` | the Microsoft provider (Graph mail + calendar) | **pure JS** |
-| `lib/accounts/google.mjs` | the Google provider (built against this contract) | **pure JS** |
+| `lib/accounts/google.mjs` | the Google provider (Gmail + Google Calendar) | **pure JS** |
 | `lib/accounts/shipped.mjs` | the shipped (build-time) client IDs | pure JS |
 | `lib/accounts.mjs` | the Node binding: registry file, secret store, device id, migration, sources | Node |
+| `lib/accounts-google.mjs` | Google's Node side: which Google app (built-in or the user's own), the move of the old single Google connection | Node |
 | `server/routes/accounts.mjs` | `/api/accounts` | Node |
-| `src/app/56-accounts*.js` | the Connections tab account list | page |
+| `src/app/56-accounts*.js` | the Connections tab account list (`56-accounts-google.js`: the card before Google's sign-in, the own-app fold) | page |
 
 ## 1. Portability rules (native apps later)
 
@@ -143,6 +144,8 @@ webRedirect({ origin, path = '/oauth/callback' })
 | `custom-scheme` | iOS/Android apps (universal/app links later) | `com.opendash.app:/oauth2redirect` | Microsoft: "Mobile and desktop applications" custom URI |
 | `web` | PWA / hosted page | `https://<origin>/oauth/callback` | Microsoft: "Single-page application" (refresh tokens live 24 h there) |
 
+Google: a **Desktop app** client takes any `http://localhost:<port>/<path>` with no registration (loopback); an iOS or Android client returns to `com.googleusercontent.apps.<client id prefix>:/oauth2redirect` (custom scheme, no client secret); a Web client needs each `https://` return address listed.
+
 The app (or the browser) brings the returned `?code=&state=` back to
 `accounts.callback(params)`: the server's GET callback page for loopback, a
 `POST /api/accounts/callback` (or the embedded core) for the other kinds.
@@ -203,7 +206,8 @@ provider = {
 | `NEEDS_ADMIN_APPROVAL` | needs-admin-approval | consent blocked (AADSTS65001, 90094, 90095 ..., Graph 403 on work accounts); `err.account` carries `{email, kind:'work', tenantId?}` so a record exists to retry |
 | `DEVICE_NOT_ALLOWED` | - (error only) | the organisation only allows its own devices (AADSTS53000/53003) |
 | `WRONG_ACCOUNT_TYPE` | - | a personal address went to the work sign-in or the reverse; `err.retryKind` says which to use |
-| `MISSING_PERMISSIONS` | - | the grant lacks a needed scope (personal accounts) |
+| `MISSING_PERMISSIONS` | - | the grant lacks a needed scope (personal accounts; Google: a box left unticked on its consent screen) |
+| `WRONG_ACCOUNT` | - | Google: "sign in again" came back as another Google account; the old sign-in is kept |
 | `NOT_CONFIGURED` | - | no client ID in this copy of OpenDash |
 | `PROVIDER_NETWORK`, `PROVIDER_RESPONSE`, `PROVIDER_LIMIT`, `PROVIDER_BUSY` | - (error only) | could not reach / unreadable / too big / 429 |
 | `PAUSED`, `NOT_FETCHER`, `FEATURE_OFF`, `UNKNOWN_ACCOUNT`, `BAD_REQUEST` | - | refused by the core before any request |
@@ -234,6 +238,81 @@ provider = {
   another host or path are refused before any token is sent, 5 MB response
   limit, no message bodies or attachments, calendar budget of 40 requests /
   60 s / 1,000 events.
+
+### Google specifics (`lib/accounts/google.mjs`, `lib/accounts-google.mjs`)
+
+- **Sign-in**: the installed-app flow (RFC 8252) with PKCE S256, the core's
+  single-use state, `login_hint` from the typed address, `access_type=offline`
+  and `prompt=consent` (Google then always returns a refresh token). Who signed
+  in comes from the id token (issuer, audience = our client ID, expiry checked;
+  received straight from the token endpoint over TLS, OpenID Connect Core
+  3.1.3.7 (6)). `kind` is `work` when the token has `hd` (Google Workspace),
+  else `personal`; before sign-in it is guessed from the address (gmail.com /
+  googlemail.com = personal). "Sign in again" (`accountId`) must come back as
+  the same Google account (same `sub`; same address while no `sub` is known),
+  else `WRONG_ACCOUNT` and the old sign-in is kept.
+- **Scopes, least first, per ticked feature**: always `openid email`; calendar
+  `https://www.googleapis.com/auth/calendar.readonly` (sensitive: Google
+  verification, no security assessment); mail
+  `https://www.googleapis.com/auth/gmail.readonly` (restricted). `gmail.metadata`
+  is not enough: it gives no snippet and refuses Gmail search (`q=`), and Email
+  triage shows and reads the snippet. No Drive scope. Google lets a person
+  untick a box on its consent screen: the account gets only the features that
+  were granted; none granted is `MISSING_PERMISSIONS`, and a read that needs a
+  scope the grant lacks fails with `MISSING_PERMISSIONS` before any request.
+- **Client (the Google app)**: a Google "Desktop app" OAuth client; Google still
+  wants its client secret in the token request in practice, so the provider sends
+  it when the config has one (mobile iOS/Android clients have none and send none).
+  `ctx.config` = `createGoogleConfig({store})`: `clientId()`, `clientSecret(id)`
+  (only the secret that belongs to that id), `knownClient(id)`. Order: the user's
+  own app (Connections > Add Google account > Advanced; secret `google-client`,
+  this computer only, the file the single-account setup used; a saved `null`
+  means "built-in") wins over the built-in one: `SHIPPED.googleClientId` /
+  `SHIPPED.googleClientSecret` in `lib/accounts/shipped.mjs` (placeholders
+  `OPENDASH_GOOGLE_CLIENT_ID` / `OPENDASH_GOOGLE_CLIENT_SECRET`), else the
+  environment variables of those names (or `<data>/.env`). A token is always
+  refreshed with the client that issued it; tokens from a client that is no
+  longer set up are `NEEDS_SIGN_IN` without a request.
+  Releases: the real values go into the **zip only**, never into a pushed commit
+  (Google's policy; the privacy scan's `google-secret` rule refuses them in the
+  tree). A Desktop client's secret is not confidential once shipped (Google says
+  so for installed apps), so a downloaded zip holding it is expected.
+- **Tokens**: `{provider:'google', clientId, sub, email, hd?, scope, access_token,
+  refresh_token, expires_at, needsAuth?, legacy?}` under `accounts/<id>`.
+  `accessToken()` runs in the vault's per-account queue (concurrent reads share
+  one refresh), keeps a rotated refresh token, retries once after a 401 with a
+  refreshed token, and writes `needsAuth` on `invalid_grant` (or a second 401), so
+  later reads fail at once. `disconnect()` deletes this device's tokens, then asks
+  Google (best effort) to revoke the grant.
+- **Reads**: GET only, `https://gmail.googleapis.com/gmail/v1/users/me/...` and
+  `https://www.googleapis.com/calendar/v3/...` only (`isAllowedRequest`; POST only
+  to `oauth2.googleapis.com/token` and `/revoke`), `redirect: 'error'`, 5 MB limit.
+  Mail: `messages.list` (`in:inbox after:<epoch>`, 5 pages of 100), the newest
+  message of each thread (up to 300) by `messages.get?format=metadata` (Subject,
+  From, Date, Message-ID; never a body), 6 at a time, 90 s budget. Message =
+  the snapshot shape plus `lastMessageId` and `category`; `id` = `gm` + 24 hex of
+  sha256(sourceId|threadId); `messageId` = the RFC 822 Message-ID (cross-source
+  de-dup); `link` opens the thread in that account (`authuser=`). Calendar:
+  `calendarList` (reader or better, not hidden; primary first, up to 40), then
+  `events` per calendar (singleEvents, 60 requests / 60 s / 2,000 events);
+  Event = the Google preset's fields (`htmlLink` with `authuser=`, `link`,
+  `conferenceUrl` for known video hosts only, attendees `{email, name, self?,
+  organizer?, optional?, response}`, `selfResponse`, `recurring`, `free`,
+  `eventType`); calendar ids are `c` + 24 hex of sha256(Google calendar id). An
+  instance of a repeating event gets no `iCalUID` (every instance shares it).
+  Descriptions are not read.
+- **Workspace admins** can block apps they have not configured
+  (`admin_policy_enforced` -> `NEEDS_ADMIN_APPROVAL`); `approvalHelp()` points to
+  the Admin console's app access control with a prefilled email holding the
+  client ID.
+- **The page** (`src/app/56-accounts-google.js`): `window.AccountProviders.google
+  = {signIn, advanced}`. `signIn({email, accountId?, features?, custom?})` shows
+  the card before the browser goes to Google: the address, two ticks (*Read your
+  email*, *See your calendars*), and what Google's "Google hasn't verified this
+  app" screen means and how to pass it (Advanced > Go to OpenDash (unsafe)); then
+  an empty tab inside the click, `POST /api/accounts/begin`, and the tab goes to
+  the returned `accounts.google.com` address (a blocked pop-up: this tab).
+  `advanced(el, providers.google)` is the own-app fold (`PUT /api/accounts/google-app`).
 
 ## 7. The fetcher ("main computer")
 
@@ -281,9 +360,9 @@ calls these routes on its local server.
 
 | route | body / query | answer |
 |---|---|---|
-| `GET /api/accounts` | - | `{ accounts: [publicAccount], providers: { microsoft: {available, custom, clientIdHint}, google: {available}, imap: {available:false, comingSoon:true} }, device: { hostId } }` |
-| `POST /api/accounts/begin` | `{ provider, email, kind?, accountId?, features? }` | `{ url, kind }`: open `url` in the browser |
-| `GET /api/accounts/begin?provider=&email=&kind=&accountId=` | - | `302` to the provider (the page opens this in a new tab, so no pop-up blocker) |
+| `GET /api/accounts` | - | `{ accounts: [publicAccount], providers: { microsoft: {available, custom, clientIdHint}, google: {available, custom, builtIn, hasSecret, clientIdHint}, imap: {available:false, comingSoon:true} }, device: { hostId } }` |
+| `POST /api/accounts/begin` | `{ provider, email, kind?, accountId?, features?: {mail, calendar} }` | `{ url, kind }`: open `url` in the browser |
+| `GET /api/accounts/begin?provider=&email=&kind=&accountId=&features=mail,calendar` | - | `302` to the provider (the page opens this in a new tab, so no pop-up blocker) |
 | `GET /api/accounts/callback?code=&state=` | - | an HTML page: connected / waiting for your organisation (with the approval link and email) / try again. Also at `/api/microsoft/callback` for app registrations made with the old instructions |
 | `POST /api/accounts/callback` | `{ state, code?, error?, error_description? }` | `{ account }` (custom-scheme and web redirects) |
 | `POST /api/accounts/pause` | `{ id, paused: true|false }` | `{ account }` |
@@ -293,6 +372,7 @@ calls these routes on its local server.
 | `POST /api/accounts/fetch-here` | `{ id }` | `{ ok:false, placeholder:true, message }` |
 | `GET /api/accounts/approval?id=` | - | `{ consentUrl, mailto, tenant }` |
 | `PUT /api/accounts/microsoft-app` | `{ clientId }` (or `null` to use the built-in one) | `{ custom, available }` |
+| `PUT /api/accounts/google-app` | `{ clientId, clientSecret? }`, `{ json }` (Google's downloaded JSON) or `{ clientId: null }` (built-in) | `providers.google` (never the secret) |
 
 Errors are `{ error: '<plain message>', code }` with the HTTP status.
 
@@ -314,6 +394,27 @@ most one `kind:'microsoft'` email source and one calendar source. On first use
    folder move in lib/devicedir.mjs takes care of an old data-folder copy);
 4. a pasted client ID stays where it was and keeps working as the user's own app.
 
+### 10b. Migration from the single Google connection
+
+Before 2.15 Google was one direct connection (`lib/google.mjs`): the user's
+own Google Cloud client (secret `google-client`, or the download's
+`client_secret_*` name) and secret `google-tokens`, read by nothing the views
+show. `migrateLegacyGoogle` (`lib/accounts-google.mjs`, run in the binding's
+`ready()`, idempotent):
+
+1. the token file becomes `accounts/<id>`, id `acc_` + sha256('google:' + address)[0..16]
+   (an existing Google account with that address keeps its id, and a newer
+   sign-in already saved for it is never replaced); `legacy: true`, both
+   features on, fetcher = this computer, status `connected`;
+2. the binding's `connected` hook makes its email and calendar sources;
+3. the old client stays this computer's own Google app (under `google-client`),
+   because a refresh token only works with the client that issued it;
+4. `google-tokens` becomes `google-tokens.migrated`. A token file with no
+   client, no known address or unreadable JSON is left alone (`skipped`).
+
+`/api/google/connect` now leads to Connections, so no new single connection
+is made; `googleStatus()` also counts Google accounts signed in on this computer.
+
 ## 11. Tests
 
 Synthetic provider responses only, temp folders, no network:
@@ -321,4 +422,9 @@ Synthetic provider responses only, temp folders, no network:
 `tests/accounts-microsoft.test.mjs` (authority, consent, refresh, Graph parsing),
 `tests/accounts-node.test.mjs` (registry file, secret files, migration, isolation),
 `tests/accounts-routes.test.mjs` (routes and their checks),
-`tests/accounts-ui.test.mjs` (the page's logic helpers).
+`tests/accounts-ui.test.mjs` (the page's logic helpers),
+`tests/accounts-google.test.mjs` (Google: PKCE/state, scopes, id token, refresh and rotation,
+invalid_grant, isolation, Gmail/Calendar shapes, the host allow-list, purity),
+`tests/accounts-google-node.test.mjs` (the Google app setting, the migration),
+`tests/accounts-google-routes.test.mjs` (Google through the real router and binding),
+`tests/accounts-google-ui.test.mjs` (the card before Google's sign-in, the own-app fold).
