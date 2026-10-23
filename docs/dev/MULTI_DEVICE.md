@@ -335,9 +335,9 @@ device asks presence **first**.
 
 | State | Means | How it is known |
 |---|---|---|
-| **open** | its server runs and a dashboard page is open on it | an open live link and its `pres` message says `page: true`; or, through the folder, a heartbeat in the last 2.5 minutes whose `page.open` is true. A page counts as open while its event stream (`/api/events`) is connected or it asked for presence in the last 90 s |
-| **running** | its server runs, no page is open | an open live link; or a device.json heartbeat (every 2 minutes) in the last 2.5 minutes |
-| **asleep** | nothing heard for a while, seen in the last 12 hours | no heartbeat for over 2.5 minutes; or its live link went quiet (closed after 45 s without a word), could not be dialled again and stayed away for 30 s, with nothing newer through the folder |
+| **open** | its server runs and a dashboard page is open on it | an open live link and its `pres` message says `page: true`; or, through the folder, a heartbeat in the last 3.5 minutes whose `page.open` is true. A page counts as open while its event stream (`/api/events`) is connected or it asked for presence in the last 90 s |
+| **running** | its server runs, no page is open | an open live link; or a device.json heartbeat (every 2 minutes) in the last 3.5 minutes (the cloud folder may take a minute or more to bring it) |
+| **asleep** | nothing heard for a while, seen in the last 12 hours | no heartbeat for over 3.5 minutes; or, much sooner, its live link went quiet (closed after 45 s without a word), could not be dialled again and stayed away for 30 s, with nothing newer through the folder |
 | **off** | it said goodbye, or not seen for longer | a clean stop sends `pres {stopping}` on every link and writes a goodbye device.json (`stoppedAt`): "off" at once, not "asleep"; or not seen for over 12 hours |
 | **outdated** | it runs (open or running) an older OpenDash than this one | its version (device.json `app`, or the `pres` message) is older; `version` says which |
 

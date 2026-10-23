@@ -23,7 +23,7 @@
 const PR_POLL_MS = 30000;
 const PR_CALM_KEEP_MS = 2 * 60 * 1000;
 const PR_CALM_REPEAT_MS = 5 * 60 * 1000;
-const _pr = { view: null, at: 0, loading: null, timer: 0, calm: new Map(), shown: new Map() };
+const _pr = { view: null, at: 0, loading: null, timer: 0, calm: new Map(), shown: new Map(), busyAt: 0, lastShown: null };
 
 /** Ask the server (at most once in flight); repaints what shows presence. */
 function presenceLoad(force) {
@@ -127,8 +127,14 @@ function presenceRender() {
   const b = document.getElementById('presence-btn');
   if (!b) return;
   const v = _pr.view;
-  const s = v && v.enabled ? _prSummary(v) : null;
+  let s = v && v.enabled ? _prSummary(v) : null;
   if (!s || s.tone === 'none') { b.hidden = true; if (b._popClose) b._popClose(); return; }
+  // "Sending…" only once it lasts a moment: a change that arrives within a second never flickers the dot.
+  if (s.tone === 'busy') {
+    if (!_pr.busyAt) { _pr.busyAt = Date.now(); setTimeout(presenceRender, 900); }
+    if (Date.now() - _pr.busyAt < 800) s = _pr.lastShown || { tone: 'ok', text: 'In sync', tip: '' };
+  } else _pr.busyAt = 0;
+  _pr.lastShown = s.tone === 'busy' ? _pr.lastShown : s;
   b.hidden = false;
   for (const k of ['ok', 'off', 'attention', 'busy']) b.classList.toggle('pr-' + k, s.tone === k);
   const lbl = b.querySelector('.sync-lbl');
