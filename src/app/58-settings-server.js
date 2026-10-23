@@ -83,8 +83,17 @@ async function srvRestart(opts) {
     await _ssFlush();
     const before = await srvProbe(5000);
     let r;
-    try { r = await (opts && opts.post ? _ssPost(opts.post[0], opts.post[1]) : _ssPost('/api/server/restart', { rebuild })); }
-    catch (e) { _ssOverlayOff(); toast((opts && opts.post ? '' : 'Could not restart: ') + _srvErrText(e), { kind: 'err', timeout: 10000 }); return false; }
+    // An update (opts.post) first downloads and checks the release: say so, with the seconds going by.
+    const post = !!(opts && opts.post);
+    let tick = null;
+    if (post) {
+      const t1 = Date.now();
+      const step = () => _ssOverlay(label, `Step 1 of 2 · Downloading the release and checking it (${Math.round((Date.now() - t1) / 1000)} s)`);
+      step(); tick = setInterval(step, 1000);
+    }
+    try { r = await (post ? _ssPost(opts.post[0], opts.post[1]) : _ssPost('/api/server/restart', { rebuild })); }
+    catch (e) { _ssOverlayOff(); toast((post ? '' : 'Could not restart: ') + _srvErrText(e), { kind: 'err', timeout: 10000, retry: () => srvRestart(opts) }); return false; }
+    finally { if (tick) clearInterval(tick); }
     if (typeof _srvLink !== 'undefined') _srvLink.state = 'restarting';
     const oldPid = (r && r.pid) || (before && before.pid);
     if (r && r.updated) { try { sessionStorage.setItem('dashboard-updated', JSON.stringify({ from: r.updated.from, to: r.updated.to })); } catch (e) { /* fine */ } }
@@ -93,7 +102,7 @@ async function srvRestart(opts) {
     let h = null;
     while (Date.now() - t0 < budget) {
       const secs = Math.round((Date.now() - t0) / 1000);
-      _ssOverlay(label, rebuild ? `Migrations, check and build, then start (${secs} s)` : `Waiting for the new server (${secs} s)`);
+      _ssOverlay(label, post ? `Step 2 of 2 · Installing, building and restarting (${secs} s)` : rebuild ? `Migrations, check and build, then start (${secs} s)` : `Waiting for the new server (${secs} s)`);
       await new Promise(res => setTimeout(res, 600));
       const x = await srvProbe(2500);
       if (x && x.pid && x.pid !== oldPid) { h = x; break; }

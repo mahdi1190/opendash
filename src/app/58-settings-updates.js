@@ -54,7 +54,7 @@ async function upCheck(opts) {
   try {
     _upStatus = await _upPost('/api/update/check', {}); _upError = '';
     if (!quiet) { const s = upSummary(_upStatus); toast(s.text, { kind: s.tone === 'err' ? 'err' : 'ok' }); }
-  } catch (e) { _upError = netErrorMessage(e); if (!quiet) toast(_upError, { kind: 'err' }); }
+  } catch (e) { _upError = netErrorMessage(e); if (!quiet) toast(_upError, { kind: 'err', retry: () => upCheck() }); }
   finally { _upBusy = false; _upRefresh(); }
   return _upStatus;
 }
@@ -66,15 +66,55 @@ async function upInstall() {
   const how = st.kind === 'git'
     ? 'This moves the git checkout to the release tag, then rebuilds and restarts the server.'
     : 'This downloads the release, checks it against its published checksum, replaces the app files (the replaced ones are copied to the update-backup folder in your data folder first), then rebuilds and restarts the server.';
-  const ok = await confirmDialog({
-    title: `Update to OpenDash ${st.latest.version}?`,
-    text: how + ' Your data folder is kept (it is backed up before any upgrade step). The page reloads when it is done.',
-    confirmLabel: 'Update and restart',
-  });
+  // One decision with everything on it: what is new, what happens, and Not now.
+  const ok = await _upAsk(st, how + ' Your data folder is kept (it is backed up before any upgrade step). It takes about a minute; the page reloads when it is done.');
   if (!ok) return false;
   const done = await srvRestart({ rebuild: true, label: `Updating to ${st.latest.version}…`, post: ['/api/update/apply', { version: st.latest.version }] });
   _upStatus = null;
   return done;
+}
+
+/** The release notes as text (trimmed to `max` lines, with a note when cut). */
+function _upNotesText(latest, max) {
+  const lines = String((latest && latest.notes) || '').replace(/\r/g, '').split('\n');
+  while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+  if (!lines.length) return '(no release notes)';
+  return max && lines.length > max ? lines.slice(0, max).join('\n') + '\n…' : lines.join('\n');
+}
+/** "Update to X?" with the release notes in it. Resolves true to go ahead. */
+function _upAsk(st, how) {
+  return new Promise((resolve) => {
+    let answered = false;
+    openDialog({
+      title: `Update to OpenDash ${st.latest.version}?`, width: 560, resizeKey: 'update-ask',
+      body: (el) => {
+        const h = document.createElement('h3'); h.className = 'up-ask-h'; h.textContent = `What’s new in ${st.latest.version}`;
+        const pre = document.createElement('pre'); pre.className = 'up-notes'; pre.tabIndex = 0; pre.textContent = _upNotesText(st.latest, 40);
+        const p = document.createElement('p'); p.className = 'muted'; p.textContent = how;
+        el.append(h, pre, p);
+      },
+      actions: [
+        { label: 'Not now', run: () => { answered = true; resolve(false); } },
+        { label: 'Update and restart', icon: 'download', primary: true, run: () => { answered = true; resolve(true); } },
+      ],
+      onClose: () => { if (!answered) resolve(false); },
+    });
+  });
+}
+/** The release notes on their own (after an update: "What's new"). */
+async function upShowNotes() {
+  const st = _upStatus || await upLoad();
+  const latest = st && st.latest;
+  if (!latest || !latest.notes) { setView('settings:updates'); return; }
+  openDialog({
+    title: `What’s new in OpenDash ${latest.version}`, width: 560, resizeKey: 'update-notes',
+    body: (el) => {
+      const pre = document.createElement('pre'); pre.className = 'up-notes'; pre.tabIndex = 0; pre.textContent = _upNotesText(latest, 0);
+      el.appendChild(pre);
+      if (latest.url) { const a = document.createElement('a'); a.href = safeUrl(latest.url); a.target = '_blank'; a.rel = 'noopener noreferrer'; a.className = 'set-h'; a.textContent = 'Open the release on GitHub'; el.appendChild(a); }
+    },
+    actions: [{ label: 'Close', primary: true }],
+  });
 }
 
 function _upCard(el) {
@@ -117,7 +157,7 @@ function _upAutoCard(el) {
   card.body.appendChild(_settingsRow('Check once a day', 'When on, this page asks GitHub for the newest release at most once a day while it is open, and tells you if there is one. Off by default: otherwise OpenDash never contacts the internet on its own for this.',
     _settingsSwitch(!!(st && st.auto), 'Check for updates once a day', async (v) => {
       try { _upStatus = await _upPost('/api/update/settings', { auto: v }); toast(v ? 'Will check once a day' : 'Automatic checks off', { kind: 'ok' }); }
-      catch (e) { toast(netErrorMessage(e), { kind: 'err' }); }
+      catch (e) { toast(netErrorMessage(e), { kind: 'err' }); }   // the switch shows the old state again: flip it to retry
       _upRefresh();
     }, !st)));
   if (st) card.body.appendChild(_settingsRow('This copy', st.kind === 'git' ? 'A git checkout: updating moves it to the release tag (it refuses when tracked files are changed).' : 'Installed from a release zip: updating replaces the app files and keeps your data folder.', null));
@@ -146,7 +186,7 @@ if (typeof window !== 'undefined') window.addEventListener('load', () => {
     if (raw) {
       sessionStorage.removeItem('dashboard-updated');
       const u = JSON.parse(raw);
-      if (u && u.to) setTimeout(() => toast(`OpenDash updated to ${u.to}`, { kind: 'ok', timeout: 8000 }), 900);
+      if (u && u.to) setTimeout(() => toast(`OpenDash updated to ${u.to}`, { kind: 'ok', timeout: 10000, action: { label: 'What’s new', run: () => upShowNotes() } }), 900);
     }
   } catch (e) { /* fine */ }
   setTimeout(async () => {
@@ -154,7 +194,8 @@ if (typeof window !== 'undefined') window.addEventListener('load', () => {
       const st = await _upJson('/api/update/status');
       if (!upCheckDue(st, Date.now())) return;
       const fresh = await upCheck({ quiet: true });
-      if (fresh && fresh.available) toast(`OpenDash ${fresh.latest.version} is available`, { icon: 'download', timeout: 12000, action: { label: 'View', run: () => setView('settings:updates') } });
+      // One click from the toast: the update dialog (what's new, Update and restart, Not now).
+      if (fresh && fresh.available) toast(`OpenDash ${fresh.latest.version} is available`, { icon: 'download', timeout: 12000, action: { label: fresh.canApply ? 'See what’s new' : 'View', run: () => (fresh.canApply ? upInstall() : setView('settings:updates')) } });
     } catch (e) { /* offline or no server: nothing to say */ }
   }, 6000);
 }, { once: true });
