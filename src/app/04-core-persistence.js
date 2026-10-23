@@ -123,6 +123,8 @@ async function serverStateWrite() {
       // stays in this browser (unsaved) and is sent once changes resume here.
       let j = null;
       try { j = await r.json(); } catch (e) { j = null; }
+      // Settings > Data is moving the data folder (58-settings-move.js): kept here, saved after the restart.
+      if (j && j.code === 'MOVING') { _serverLastError = 'changes are paused while your data moves'; return false; }
       if (typeof hostsOnPaused === 'function') hostsOnPaused(j);
       _serverLastError = 'changes are paused: OpenDash is open on ' + ((j && j.host) || 'another computer');
       return false;
