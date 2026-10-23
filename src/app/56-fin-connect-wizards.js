@@ -63,12 +63,17 @@ function finMonzoView(st) {
   st = st || {};
   const n = Number(st.imported) || 0;
   const year = st.earliest ? String(st.earliest).slice(0, 4) : '';
+  const waitMin = Math.max(1, Math.round((Number(st.waitSeconds) || 900) / 60));
   switch (st.state) {
-    case 'waiting': return { phase: 'waiting', title: 'Approve in your Monzo app now', text: 'Open Monzo on your phone and tap Allow access. Do it within 5 minutes to bring in your full history.' };
-    case 'importing': return { phase: 'importing', title: 'Bringing in your history', text: `${n.toLocaleString()} transaction${n === 1 ? '' : 's'}${year ? ', back to ' + year : ''} so far. Keep this open for a moment.` };
+    case 'waiting': return { phase: 'waiting', title: 'Approve in your Monzo app now', text: 'Open Monzo on your phone and tap Allow access. As soon as you do, OpenDash brings in your full history by itself (Monzo allows that for 5 minutes after you approve), so keep this open.',
+      missed: `Not seeing it? Monzo’s app shows a notification; if it is not there, open the app and look at the top of the home screen. If ${waitMin} minutes pass first, nothing is lost: press Keep waiting, no new sign-in needed.` };
+    case 'importing': return { phase: 'importing', title: 'Bringing in your history', text: `${n.toLocaleString()} transaction${n === 1 ? '' : 's'}${year ? ', back to ' + year : ''} so far. Keep this open for a moment.`,
+      missed: 'If the 5 minutes run out first, OpenDash keeps what came and adds the last 90 days; Get full history fetches the rest later.' };
     case 'done': return { phase: 'done', title: 'Your Monzo history is in', text: `${n.toLocaleString()} transaction${n === 1 ? '' : 's'}${year ? ' since ' + year : ''}.` };
     case 'expired': return { phase: 'expired', title: 'Connected, with the last 90 days', text: 'Monzo is connected, with the last 90 days. To bring in older history, press Get full history and approve within 5 minutes.' };
-    case 'auth': case 'error': return { phase: 'error', title: 'Monzo did not connect', text: st.message || 'Sign in to Monzo again from step 2.' };
+    case 'auth': case 'error': return { phase: 'error', retry: !!st.canRetry,
+      title: st.code === 'NOT_APPROVED' ? 'Not approved in the Monzo app yet' : st.signIn ? 'The Monzo sign-in did not finish' : 'Monzo did not connect',
+      text: st.message || 'Sign in to Monzo again from step 2.' };
     default: return { phase: 'signin', title: 'Waiting for Monzo sign-in', text: 'Finish signing in on the Monzo tab: enter your email, then open the link Monzo emails you.' };
   }
 }
@@ -351,7 +356,8 @@ function _finMonzoClient(ctx, body) {
     if (secret.value.trim().length < 8) { err.replaceChildren(_finCallout('err', 'circle-alert', 'Paste the client secret too.')); secret.focus(); return; }
     save.disabled = true;
     try {
-      const j = await finApi('monzo/client', { method: 'PUT', body: { clientId: c.value, clientSecret: secret.value.trim(), sourceId: w.reauth ? w.sourceId : undefined } });
+      // Always the connection this sheet already made: saving again (a retry) never adds a second Monzo.
+      const j = await finApi('monzo/client', { method: 'PUT', body: { clientId: c.value, clientSecret: secret.value.trim(), sourceId: w.sourceId || undefined } });
       secret.value = ''; delete w.clientSecret; w.changeClient = false;
       w.sourceId = j.sourceId || (j.source && j.source.id) || w.sourceId;
       FinConnectStore.load({ force: true });
@@ -361,6 +367,23 @@ function _finMonzoClient(ctx, body) {
   id.oninput = () => { w.clientId = id.value; };
   secret.oninput = () => { w.clientSecret = secret.value; };        // only while the sheet is open
 }
+const FIN_MONZO_LINK_MS = 10 * 60 * 1000;   // the sign-in link OpenDash makes lasts 10 minutes (server STATE_TTL_MS)
+/** The countdown the approve step shows: the wait for Allow access, then Monzo's 5-minute import window. */
+function _finMonzoClockFrom(w, st) {
+  if (st && st.state === 'waiting' && st.waitSecondsLeft != null) { w.deadline = Date.now() + Number(st.waitSecondsLeft) * 1000; w.total = Number(st.waitSeconds) || 900; }
+  else if (st && st.secondsLeft != null) { w.deadline = Date.now() + Number(st.secondsLeft) * 1000; w.total = Number(st.windowSeconds) || FIN_MONZO_WINDOW; }
+}
+/** "OpenDash is not answering": shown after a few failed checks, cleared at the next answer. */
+function _finPollProblem(el, fails, e) {
+  if (!el) return;
+  if (fails < 3) { el.replaceChildren(); return; }
+  el.replaceChildren(_finCallout('warn', 'circle-alert', (e && (e.code === 'SERVER_DOWN' || e.code === 'NETWORK') ? e.message : 'OpenDash is not answering right now (' + String((e && e.message) || 'no answer').replace(/\.$/, '') + ').') + ' Still trying every few seconds.'));
+}
+/** Stop the server waiting for this Monzo sign-in (nothing is removed). Quiet: the page moves on anyway. */
+function _finMonzoStop(w) {
+  if (!w.sourceId) return Promise.resolve();
+  return finApi('monzo/approval?source=' + encodeURIComponent(w.sourceId), { method: 'DELETE' }).catch(() => {});
+}
 function _finMonzoConnect(ctx, body) {
   const w = ctx.w;
   body.appendChild(_finEl('p', 'fc-lead', 'Monzo opens in a new tab. Enter your email, then open the link Monzo emails you. Come back here straight after: the next step has a 5-minute window.'));
@@ -368,25 +391,47 @@ function _finMonzoConnect(ctx, body) {
   body.appendChild(steps);
   const wait = _finEl('div', 'fc-waiting'); wait.setAttribute('aria-live', 'polite');
   body.appendChild(wait);
+  const problem = _finEl('div', 'fc-field-err'); problem.setAttribute('aria-live', 'polite');
   const start = () => {
     if (!w.sourceId) { ctx.go('client'); return; }
     const tab = window.open(FIN_API + 'monzo/connect?source=' + encodeURIComponent(w.sourceId), '_blank');
     if (!tab) toast('Your browser blocked the new tab. Allow pop-ups for OpenDash and press Connect Monzo again.', { kind: 'err', timeout: 8000 });
-    w.connectAt = Date.now(); ctx.paint();
+    _finMonzoStop(w);                      // an answer left from an earlier try is not this one's
+    w.connectAt = Date.now(); w.err = null; ctx.paint();
   };
   if (w.connectAt) {
     wait.innerHTML = '<span class="spinner"></span>';
-    wait.appendChild(_finEl('span', null, 'Waiting for you to finish signing in on the Monzo tab…'));
+    const line = _finEl('span', null, '');
+    wait.appendChild(line);
+    const tick = () => {
+      const gone = Date.now() - w.connectAt;
+      if (gone > FIN_MONZO_LINK_MS) {
+        ctx.stop(); w.connectAt = null;
+        w.err = 'That sign-in link has expired (links last 10 minutes). Press Connect Monzo to get a new one: nothing is lost.';
+        ctx.paint(); return;
+      }
+      line.textContent = `Waiting for you to finish signing in on the Monzo tab… ${finClock(gone / 1000)} (the link works for ${finClock((FIN_MONZO_LINK_MS - gone) / 1000)} more)`;
+    };
+    tick(); ctx.every(tick, 1000);
+    let fails = 0;
     const poll = async () => {
       try {
         const st = await finApi('monzo/approval?source=' + encodeURIComponent(w.sourceId));
-        if (st && ['waiting', 'importing', 'done', 'expired'].includes(st.state)) { w.approval = st; w.deadline = Date.now() + (Number(st.secondsLeft) || 0) * 1000; ctx.go('approve'); }
-        else if (st && (st.state === 'auth' || st.state === 'error')) { w.connectAt = null; w.err = st.message || 'Monzo did not finish the sign-in. Try again.'; ctx.paint(); }
-      } catch (e) { /* keep waiting: the server may be busy */ }
+        fails = 0; _finPollProblem(problem, 0);
+        if (w.connectAt == null) return;
+        if (st && st.sourceId && st.sourceId !== w.sourceId) w.sourceId = st.sourceId;     // joined an existing Monzo connection
+        const fresh = !(st && st.startedAt) || st.startedAt >= w.connectAt - 2000;
+        if (st && ['waiting', 'importing', 'done', 'expired'].includes(st.state)) { w.approval = st; _finMonzoClockFrom(w, st); ctx.go('approve'); }
+        else if (st && fresh && (st.state === 'auth' || st.state === 'error')) { w.connectAt = null; w.err = st.message || 'Monzo did not finish the sign-in. Press Connect Monzo to try again.'; ctx.paint(); }
+      } catch (e) { fails++; _finPollProblem(problem, fails, e); /* keep waiting: the server may be busy */ }
     };
     ctx.every(poll, 2000); poll();
+    const stop = _finEl('button', 'fc-link', 'Stop waiting'); stop.type = 'button';
+    stop.onclick = () => { ctx.stop(); w.connectAt = null; w.err = null; _finMonzoStop(w); ctx.paint(); };
+    body.appendChild(stop);
     ctx.foot.add('Open Monzo again', 'external-link', 'btn-secondary', start);
-  } else ctx.foot.add('Connect Monzo', 'log-in', 'btn-primary', start, { act: 'monzo-connect' });
+  } else ctx.foot.add(w.err ? 'Try again' : 'Connect Monzo', 'log-in', 'btn-primary', start, { act: 'monzo-connect' });
+  body.appendChild(problem);
   if (w.err) body.appendChild(_finCallout('err', 'circle-alert', w.err));
 }
 function _finMonzoApprove(ctx, body) {
@@ -394,9 +439,9 @@ function _finMonzoApprove(ctx, body) {
   const view = finMonzoView(w.approval);
   const reduced = _finReduced();
   const wrap = _finEl('div', 'fc-approve is-' + view.phase);
-  const total = Number(w.approval && w.approval.windowSeconds) || Number(ctx.entry().windowSeconds) || FIN_MONZO_WINDOW;
+  const total = Number(w.total) || Number(w.approval && w.approval.windowSeconds) || Number(ctx.entry().windowSeconds) || FIN_MONZO_WINDOW;
   const clock = _finEl('div', 'fc-ring' + (reduced ? ' is-plain' : ''));
-  clock.setAttribute('role', 'timer'); clock.setAttribute('aria-label', 'Time left to approve');
+  clock.setAttribute('role', 'timer'); clock.setAttribute('aria-label', view.phase === 'importing' ? 'Time left to bring in your full history' : 'Time left to approve');
   const C = 2 * Math.PI * 52;
   if (!reduced) clock.innerHTML = `<svg viewBox="0 0 120 120" aria-hidden="true"><circle class="fc-ring-bg" cx="60" cy="60" r="52"/><circle class="fc-ring-fg" cx="60" cy="60" r="52" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="0" transform="rotate(-90 60 60)"/></svg>`;
   const num = _finEl('span', 'fc-ring-n');
@@ -410,8 +455,13 @@ function _finMonzoApprove(ctx, body) {
     const ph = _finEl('div', 'fc-phone'); ph.innerHTML = icon('phone', 'i-xs'); ph.appendChild(_finEl('span', null, 'Monzo app › Allow access'));
     text.appendChild(ph);
   }
+  if (view.missed) text.appendChild(_finEl('p', 'fc-mute', view.missed));
   wrap.append(view.phase === 'expired' || view.phase === 'error' ? _finEl('span') : clock, text);
   body.appendChild(wrap);
+  // While it keeps trying: what is wrong (Monzo's answer, or this computer's connection).
+  const problem = _finEl('div', 'fc-field-err'); problem.setAttribute('aria-live', 'polite');
+  if (w.approval && w.approval.problem && view.phase === 'waiting') problem.appendChild(_finCallout('warn', 'circle-alert', 'Still trying: ' + String(w.approval.problem).replace(/\.$/, '') + '.'));
+  body.appendChild(problem);
   const tick = () => {
     const left = Math.max(0, Math.round(((w.deadline || Date.now()) - Date.now()) / 1000));
     num.textContent = finClock(left);
@@ -421,23 +471,44 @@ function _finMonzoApprove(ctx, body) {
   };
   tick();
   if (view.phase === 'waiting' || view.phase === 'importing') ctx.every(tick, 1000);
+  let fails = 0;
   const poll = async () => {
     try {
       const st = await finApi('monzo/approval?source=' + encodeURIComponent(w.sourceId));
+      fails = 0;
       if (!st) return;
-      if (st.secondsLeft != null) w.deadline = Date.now() + Number(st.secondsLeft) * 1000;
-      const changed = !w.approval || st.state !== w.approval.state || st.imported !== w.approval.imported;
+      if (st.sourceId && st.sourceId !== w.sourceId) w.sourceId = st.sourceId;
+      const changed = !w.approval || st.state !== w.approval.state || st.imported !== w.approval.imported || st.problem !== w.approval.problem;
+      const phaseChanged = !w.approval || st.state !== w.approval.state;
       w.approval = st;
+      if (phaseChanged || st.state !== 'waiting') _finMonzoClockFrom(w, st);
       if (st.state === 'done') { w.doneSource = w.sourceId; FinConnectStore.load({ force: true }); SourcesStore.refresh(); ctx.go('done'); return; }
+      if (st.state === 'idle') { ctx.stop(); w.approval = null; w.connectAt = null; ctx.go('connect'); return; }
       if (changed) { ctx.stop(); ctx.paint(); }
-    } catch (e) { /* keep the countdown going */ }
+    } catch (e) { fails++; _finPollProblem(problem, fails, e); /* keep the countdown going */ }
   };
   if (view.phase === 'waiting' || view.phase === 'importing' || view.phase === 'signin') ctx.every(poll, 2000);
-  if (view.phase === 'expired') {
+  const retry = async (b) => {
+    if (b) b.disabled = true;
+    try {
+      const st = await finApi('monzo/approval', { method: 'POST', body: { source: w.sourceId } });
+      w.approval = st; _finMonzoClockFrom(w, st); ctx.stop(); ctx.paint();
+    } catch (e) {
+      if (b) b.disabled = false;
+      if (e.code === 'AUTH' || e.code === 'NOT_CONFIGURED') { w.connectAt = null; w.approval = null; w.err = e.message; ctx.go(e.code === 'NOT_CONFIGURED' ? 'client' : 'connect'); }
+      else problem.replaceChildren(_finCallout('err', 'circle-alert', e.message));
+    }
+  };
+  if (view.phase === 'waiting') {
+    ctx.foot.add('Stop waiting', null, 'btn-ghost', async () => { ctx.stop(); await _finMonzoStop(w); w.approval = null; w.connectAt = null; w.err = null; ctx.go('connect'); }, { act: 'monzo-stop' });
+  } else if (view.phase === 'expired') {
     ctx.foot.add('Finish with 90 days', null, 'btn-secondary', () => { w.doneSource = w.sourceId; _finRefreshAll(); ctx.go('done'); });
     ctx.foot.add('Get full history', 'history', 'btn-primary', () => { w.connectAt = null; w.approval = null; ctx.go('connect'); }, { act: 'monzo-full' });
   } else if (view.phase === 'error') {
-    ctx.foot.add('Sign in again', 'log-in', 'btn-primary', () => { w.connectAt = null; w.approval = null; ctx.go('connect'); });
+    if (view.retry) {
+      ctx.foot.add('Sign in again', 'log-in', 'btn-ghost', () => { w.connectAt = null; w.approval = null; ctx.go('connect'); });
+      ctx.foot.add(w.approval && w.approval.code === 'NOT_APPROVED' ? 'Keep waiting' : 'Try again', 'refresh-cw', 'btn-primary', (b) => retry(b), { act: 'monzo-retry' });
+    } else ctx.foot.add('Sign in again', 'log-in', 'btn-primary', () => { w.connectAt = null; w.approval = null; ctx.go('connect'); });
   }
 }
 
@@ -574,7 +645,7 @@ function _finEbApp(ctx, body) {
       body.appendChild(_finSteps(['In the Enable Banking Control Panel, open your OpenDash app.', 'Press Activate by linking accounts, and link the bank you want.', 'Come back here and press Check again.']));
       ctx.foot.add('Check again', 'refresh-cw', 'btn-primary', async (b) => {
         b.disabled = true;
-        try { w.app = await finApi('eb/app'); } catch (e) { toast(e.message, { kind: 'err' }); }
+        try { w.app = await finApi('eb/app'); } catch (e) { b.disabled = false; toast('Could not check the app: ' + e.message, { kind: 'err', timeout: 8000 }); }
         if (w.app && w.app.active) toast('Your Enable Banking app is active.', { kind: 'ok' });
         ctx.paint();
       }, { act: 'eb-check' });
@@ -657,7 +728,7 @@ function _finEbBank(ctx, body) {
     try {
       const j = await finApi('eb/banks?country=' + encodeURIComponent(w.country));
       w.banks = (j.banks || []).map(b => Object.assign({ country: w.country }, b)); w.banksFor = w.country;
-    } catch (e) { w.banks = null; w.banksFor = null; out.replaceChildren(_finCallout('err', 'circle-alert', e.message)); return; }
+    } catch (e) { w.banks = null; w.banksFor = null; out.replaceChildren(_finCallout('err', 'circle-alert', 'The bank list did not load: ' + e.message, _connBtn('Try again', 'refresh-cw', 'btn-secondary', () => load()))); return; }
     paint();
   };
   const paint = () => {
@@ -723,11 +794,24 @@ function _finEbSignin(ctx, body) {
   }
   const finished = (sourceIds) => { w.doneSources = sourceIds; w.doneSource = sourceIds[0]; w.startedAt = null; _finRefreshAll(); ctx.go('done'); };
   if (red.mode === 'bounce') {
-    wait.innerHTML = '<span class="spinner"></span>'; wait.appendChild(_finEl('span', null, `Waiting for ${bank.name}… Finish signing in on the bank’s tab; it brings you back here.`));
+    wait.innerHTML = '<span class="spinner"></span>';
+    const line = _finEl('span', null, '');
+    wait.appendChild(line);
     body.appendChild(wait);
+    const problem = _finEl('div', 'fc-field-err'); problem.setAttribute('aria-live', 'polite');
+    body.appendChild(problem);
+    // The sign-in OpenDash started lasts 10 minutes (server STATE_TTL_MS): count it, and say when it has gone.
+    const LINK_MS = 10 * 60 * 1000;
+    const tick = () => {
+      const gone = Date.now() - w.startedAt;
+      if (gone > LINK_MS + 30000) { ctx.stop(); w.startedAt = null; w.err = `The sign-in with ${bank.name} took longer than 10 minutes, so it expired. Press Continue to ${bank.name} to start a new one: nothing is lost.`; ctx.paint(); return; }
+      line.textContent = `Waiting for ${bank.name}… ${finClock(gone / 1000)}. Finish signing in on the bank’s tab; it brings you back here.`;
+    };
+    tick(); ctx.every(tick, 1000);
+    let fails = 0;
     ctx.every(async () => {
       let r = null;
-      try { r = w.ebState ? await finApi('eb/pending?state=' + encodeURIComponent(w.ebState)) : null; } catch (e) { return; }
+      try { r = w.ebState ? await finApi('eb/pending?state=' + encodeURIComponent(w.ebState)) : null; fails = 0; _finPollProblem(problem, 0); } catch (e) { fails++; _finPollProblem(problem, fails, e); return; }
       if (r && r.status === 'done' && r.sourceId) { ctx.stop(); finished([r.sourceId]); }
       else if (r && r.status === 'error') { ctx.stop(); w.startedAt = null; w.err = r.message || 'The bank sign-in did not finish. Try again.'; ctx.paint(); }
       else if (r && r.status === 'unknown') { ctx.stop(); w.startedAt = null; w.err = 'This bank sign-in expired. Start it again.'; ctx.paint(); }
@@ -750,7 +834,8 @@ function _finEbSignin(ctx, body) {
     input.oninput = () => { const c = finEbPasteCheck(input.value); err.replaceChildren(); if (input.value && !c.ok && c.message) err.appendChild(_finEl('span', 'fc-bad', c.message)); };
   }
   body.appendChild(err);
-  const again = _finEl('button', 'fc-link', `Open ${bank.name} again`); again.type = 'button';
-  again.onclick = () => { w.startedAt = null; ctx.paint(); };
+  // Stop waiting / start over: back to "Continue to <bank>" (a new sign-in), nothing is lost.
+  const again = _finEl('button', 'fc-link', red.mode === 'bounce' ? `Stop waiting (start the ${bank.name} sign-in again)` : `Open ${bank.name} again`); again.type = 'button';
+  again.onclick = () => { ctx.stop(); w.startedAt = null; w.err = null; ctx.paint(); };
   body.appendChild(again);
 }
