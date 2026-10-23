@@ -41,26 +41,34 @@ function showModal(html, onOpen) {
 }
 function closeModal() { const o = document.getElementById('modal-overlay'); if (o) o.classList.remove('open'); }
 
-// Keyboard-shortcut sheet ('?' or the topbar ? button). Was referenced but
-// never defined, so both threw a ReferenceError.
-function showKbHelp() {
-  const ov = document.getElementById('kb-overlay'), card = document.getElementById('kb-card');
-  if (!ov || !card) return;
+// Keyboard-shortcut sheet ('?', the sidebar's keyboard button, More > Keyboard
+// shortcuts). Every key the app answers to, one place; type to find one.
+// '?' again, Esc, × or a click outside closes it, and focus goes back.
+let _kbPrevFocus = null;
+function kbHelpGroups() {
   const mod = /Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl';
-  const groups = [
+  return [
     ['General', [
-      ['Search or jump to', [mod, 'K']], ['New task', ['Q']], ['Filter this list', ['/']],
-      ['Undo', [mod, 'Z']], ['Redo', [mod, 'Shift', 'Z']], ['Close / clear', ['Esc']], ['This sheet', ['?']],
+      ['Search or jump to', [mod, 'K']], ['New task', ['Q']], ['New task (anywhere)', [mod, '/']], ['Filter this list', ['/']],
+      ['Ask the assistant', [mod, 'J']], ['Undo', [mod, 'Z']], ['Redo', [mod, 'Shift', 'Z']], ['Redo (also)', [mod, 'Y']],
+      ['Close / clear', ['Esc']], ['Dismiss a notification', ['Esc']], ['This sheet', ['?']],
     ]],
     ['Go to', [
-      ['Home', ['G', 'H']], ['Today', ['G', 'T']], ['Upcoming', ['G', 'U']], ['Calendar', ['G', 'C']],
-      ['Finances', ['G', 'F']], ['People', ['G', 'P']], ['Settings', ['G', 'S']],
+      ['Home', ['G', 'H']], ['Today', ['G', 'T']], ['Upcoming', ['G', 'U']], ['All tasks', ['G', 'A']], ['Logbook', ['G', 'L']],
+      ['Calendar', ['G', 'C']], ['Finances', ['G', 'F']], ['People', ['G', 'P']], ['Settings', ['G', 'S']], ['Bin', ['G', 'B']],
     ]],
     ['Tasks', [
       ['Move between tasks', ['J', 'K']], ['Extend selection', ['Shift', '↑']], ['Open task', ['Enter']],
       ['Complete / reopen', ['X']], ['In progress', ['S']], ['Plan for today', ['T']], ['Due date', ['D']],
       ['Priority', ['P']], ['Set priority', ['1', '–', '4']], ['Edit title', ['E']], ['Task menu', ['.']],
-      ['Move to bin', ['Del']], ['Select all tasks', [mod, 'A']],
+      ['Move to bin', ['Del']], ['Select all tasks', [mod, 'A']], ['Maximise the open card', ['M']],
+    ]],
+    ['Search box (' + mod + '+K)', [
+      ['Commands only', ['>']], ['Tags', ['#']], ['People', ['@']], ['Ask the assistant', ['?']],
+      ['Open beside', [mod, 'Enter']], ['Next group', ['Tab']],
+    ]],
+    ['Dialogs', [
+      ['Save / confirm', [mod, 'Enter']], ['Close', ['Esc']],
     ]],
     ['View', [
       ['Toggle sidebar', [mod, '\\']], ['Dark mode', [mod, 'Shift', 'D']], ['Focus mode', [mod, 'Shift', 'F']],
@@ -69,12 +77,47 @@ function showKbHelp() {
     // The calendar's keys, Google Calendar's (45-calendar-grid-logic.js)
     ...(typeof cglKeyHelp === 'function' ? [['Calendar', cglKeyHelp()]] : []),
   ];
+}
+function kbHelpOpen() { const ov = document.getElementById('kb-overlay'); return !!(ov && ov.classList.contains('open')); }
+function closeKbHelp() {
+  const ov = document.getElementById('kb-overlay');
+  if (!ov || !ov.classList.contains('open')) return;
+  ov.classList.remove('open');
+  const f = _kbPrevFocus; _kbPrevFocus = null;
+  if (f && f.isConnected && f.focus) try { f.focus({ preventScroll: true }); } catch (e) { /* gone */ }
+}
+function showKbHelp() {
+  const ov = document.getElementById('kb-overlay'), card = document.getElementById('kb-card');
+  if (!ov || !card) return;
+  if (ov.classList.contains('open')) { closeKbHelp(); return; }   // '?' again closes it
+  const groups = kbHelpGroups();
   const keys = (ks) => `<span class="kbd-group">${ks.map(k => `<kbd class="kbd">${esc(k)}</kbd>`).join('')}</span>`;
-  card.innerHTML = `<div class="kb-head"><h3>Keyboard shortcuts</h3><button type="button" class="btn-icon" id="kb-close" aria-label="Close">${icon('x')}</button></div>`
-    + `<div class="kb-cols">${groups.map(([g, rows]) => `<section><h4>${esc(g)}</h4>${rows.map(([l, k]) => `<div class="kb-row"><span>${esc(l)}</span>${keys(k)}</div>`).join('')}</section>`).join('')}</div>`;
-  card.querySelector('#kb-close').onclick = () => ov.classList.remove('open');
-  ov.onclick = (e) => { if (e.target === ov) ov.classList.remove('open'); };
+  card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true'); card.setAttribute('aria-labelledby', 'kb-title');
+  card.innerHTML = `<div class="kb-head"><h3 id="kb-title">Keyboard shortcuts</h3>`
+    + `<label class="input input-sm kb-find">${icon('search')}<input type="search" id="kb-find" placeholder="Find a shortcut" aria-label="Find a shortcut" autocomplete="off" spellcheck="false" /></label>`
+    + `<button type="button" class="btn-icon" id="kb-close" aria-label="Close">${icon('x')}</button></div>`
+    + `<div class="kb-cols">${groups.map(([g, rows]) => `<section><h4>${esc(g)}</h4>${rows.map(([l, k]) => `<div class="kb-row" data-find="${escAttr((g + ' ' + l + ' ' + k.join(' ')).toLowerCase())}"><span>${esc(l)}</span>${keys(k)}</div>`).join('')}</section>`).join('')}</div>`
+    + `<p class="kb-none muted" hidden>No shortcut matches. Try a word like “undo”, “today” or “sidebar”.</p>`;
+  const find = card.querySelector('#kb-find');
+  find.oninput = () => {
+    const q = find.value.trim().toLowerCase();
+    let any = false;
+    for (const sec of card.querySelectorAll('.kb-cols section')) {
+      let n = 0;
+      for (const row of sec.querySelectorAll('.kb-row')) { const on = !q || row.dataset.find.includes(q); row.hidden = !on; if (on) n++; }
+      sec.hidden = !n; if (n) any = true;
+    }
+    card.querySelector('.kb-none').hidden = any;
+  };
+  find.onkeydown = (e) => {
+    if (e.key === 'Escape' && find.value) { e.preventDefault(); e.stopPropagation(); find.value = ''; find.oninput(); }
+    else if (e.key === '?' && !find.value) { e.preventDefault(); closeKbHelp(); }   // '?' again closes the sheet
+  };
+  card.querySelector('#kb-close').onclick = closeKbHelp;
+  ov.onclick = (e) => { if (e.target === ov) closeKbHelp(); };
+  _kbPrevFocus = document.activeElement;
   ov.classList.add('open');
+  setTimeout(() => { try { find.focus({ preventScroll: true }); } catch (e) { /* fine */ } }, 0);
 }
 
 /* ============================================================

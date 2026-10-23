@@ -224,7 +224,7 @@ document.addEventListener('keydown', e => {
     // :not([hidden]) - the quick-add suggestion list is a .pop that stays in the DOM while hidden.
     if (document.querySelector('.pop:not([hidden])')) { closePopovers(); return; }
     if (document.getElementById('modal-overlay').classList.contains('open')) { closeModal(); return; }
-    if (document.getElementById('kb-overlay').classList.contains('open')) { document.getElementById('kb-overlay').classList.remove('open'); return; }
+    if (document.getElementById('kb-overlay').classList.contains('open')) { if (typeof closeKbHelp === 'function') closeKbHelp(); else document.getElementById('kb-overlay').classList.remove('open'); return; }
     if (document.getElementById('app').classList.contains('drawer-open')) { _shellCloseDrawer(); return; }
     if (multiSelect.ids.size > 0) { multiSelect.ids.clear(); document.body.classList.remove('has-selection'); render(); return; }
     if (_expandedTaskIds.size > 0) { _expandedTaskIds.clear(); render(); return; }
@@ -237,6 +237,8 @@ document.addEventListener('keydown', e => {
   // Ctrl/Cmd+K: command palette (works from anywhere, including fields)
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'k') { e.preventDefault(); openCommandPalette(); return; }
   if (overlayOpen) return;
+  // The shortcut sheet is open: '?' closes it again; other keys do not act on the page behind it.
+  if (document.getElementById('kb-overlay').classList.contains('open')) { if (e.key === '?' && !inField) { e.preventDefault(); showKbHelp(); } return; }
   // Ctrl/Cmd+A: select all currently-rendered tasks (skipped when typing in a field)
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'a' && !inField && _lastRenderedTaskIds.length) {
     e.preventDefault();
