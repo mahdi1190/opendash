@@ -3,6 +3,7 @@
 // except the OAuth return, JSON only (415), body limits (413), one-use state,
 // and no secret ever in a response or the server log.
 import { test, before, after } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -80,7 +81,7 @@ test('a full fake run: no secret, token, user id or account number in any respon
   assert.equal((await call('GET', cbUrl.pathname + cbUrl.search, undefined, nav)).status, 400);
   await until(async () => (await call('GET', `/api/fin-connect/monzo/approval?source=${id}`)).json.state === 'done');
   await until(async () => { const s = (await call('GET', '/api/finance/status')).json; return s.job && s.job.state !== 'running'; });
-  const sec = JSON.parse(readFileSync(join(dir, 'secrets', 'fin', `monzo-${id}.json`), 'utf8'));
+  const sec = JSON.parse(readFileSync(join(secretsDir(dir), 'fin', `monzo-${id}.json`), 'utf8'));
   const needles = [SECRET, CLIENT, sec.accessToken, sec.refreshToken, sec.userId, 'FAKE0011', 'FAKE0022', cbUrl.searchParams.get('code'), cbUrl.searchParams.get('state')];
   const bodies = [];
   for (const p of ['/api/fin-connect/providers', '/api/fin-connect/accounts', `/api/fin-connect/monzo/approval?source=${id}`, '/api/sources', '/api/finance', '/api/connections']) bodies.push((await call('GET', p)).text);
