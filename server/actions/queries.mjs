@@ -9,6 +9,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readJson } from '../../lib/fsutil.mjs';
+import { SHARE_REL, decodeShare } from '../../lib/sync/finance-share.mjs';
 import {
   ActionError, STATUSES, PRIORITIES, PRIORITY_LABELS, RECURRENCES, streamList, defaultStream, tagCounts, tagRegistry,
   isIsoDate, isoInTz, stampInTz, addDaysIso, daysBetween, weekdayOf, resolvePerson, resolveStream, normTag, truncate, dateError, closest, levenshtein,
@@ -440,7 +441,13 @@ export const QUERIES = [
     async run(q) {
       const dir = q.financeDir;
       const file = dir ? join(dir, '_system', 'analysis.json') : null;
-      const a = file && existsSync(file) ? await readJson(file, { fallback: null }).catch(() => null) : null;
+      let a = file && existsSync(file) ? await readJson(file, { fallback: null }).catch(() => null) : null;
+      // None here: the copy the computer that reads the bank published (lib/sync/finance-share.mjs).
+      if (!a && q.paths && q.paths.root) {
+        const doc = await readJson(join(q.paths.root, ...SHARE_REL.split('/')), { fallback: null }).catch(() => null);
+        const d = doc ? decodeShare(doc) : null;
+        a = d ? d.analysis : null;
+      }
       if (!a) return { available: false, note: 'no finance analysis yet: set up Finances in the dashboard' };
       const num = (v) => (typeof v === 'number' && isFinite(v) ? Math.round(v * 100) / 100 : null);
       const top = (o, n = 8) => Object.entries(o || {}).filter(([, v]) => typeof v === 'number').sort((x, y) => y[1] - x[1]).slice(0, n).map(([k, v]) => ({ category: k, total: num(v) }));

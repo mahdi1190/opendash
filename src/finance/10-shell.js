@@ -60,8 +60,8 @@
     const rm = meta.remote;
     if (rm && rm.name && !rm.trial) {
       const ask = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => startUpdate({}) }, ic('refresh-cw'), h('span', { text: `Ask ${rm.name} to update` }));
-      return emptyState({ icon: 'wallet', cls: 'fv-welcome', title: `Finance from ${rm.name}`,
-        text: `${rm.name} reads your bank. Your finances show here, the same as there, after its next update${rm.online ? '.' : ' (it is off right now).'}`, actions: [ask] });
+      return welcomeScene(emptyState({ icon: 'wallet', cls: 'fv-welcome', title: `Finance from ${rm.name}`,
+        text: `${rm.name} reads your bank. Your finances show here, the same as there, after its next update${rm.online ? '.' : ' (it is off right now).'}`, actions: [ask] }));
     }
     const imp = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => pickCsv() }, ic('upload'), h('span', { text: 'Import a CSV' }));
     const sync = h('button', { class: 'btn btn-secondary', type: 'button', 'data-requires': 'bank', 'data-requires-hint': 'Syncing needs the bank connection. Importing a CSV export works without it.', onclick: () => startUpdate({}) }, ic('landmark'), h('span', { text: 'Sync from your bank' }));
@@ -79,7 +79,10 @@
     const el = emptyState({ icon: 'wallet', cls: 'fv-welcome', title: 'Bring in your transactions',
       text: 'Import a CSV export from your bank, or connect your bank to sync it automatically (read-only). Your data stays in your data folder.',
       actions: [imp, sync, h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('landmark'), h('span', { text: 'Connect a bank or wallet' }))], after: h('div', null, trial, pending, steps) });
-    // One calm animated scene (a coin dropping into a jar) instead of a static icon.
+    return welcomeScene(el);
+  }
+  // One calm animated scene (a coin dropping into a jar) instead of a static icon.
+  function welcomeScene(el) {
     try {
       const FS = window.FinSymbols, box = el.querySelector('.es-icon');
       if (FS && typeof FS.categoryIcon === 'function' && box) {
