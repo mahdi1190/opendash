@@ -5,7 +5,7 @@
    Views: today | tomorrow | week (Upcoming) | all | no-date | completed
           (Logbook) | stream:<id> | tag:<tag> | day:<YYYY-MM-DD>
    Today = open tasks due today or earlier, planned for today (or a past day
-   and not done yet), or in progress.
+   and not done yet), or in progress; shown in sections (TODAY_SECTIONS below).
    ============================================================ */
 const _locale = () => (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.locale) || undefined;
 function _tWeekStart() {
