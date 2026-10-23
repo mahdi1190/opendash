@@ -127,6 +127,7 @@ export default function register(app) {
         const text = tidySummary(r.text);
         if (!text) throw new HttpError(502, 'The AI summary came back empty.', { code: 'BAD_OUTPUT' });
         const out = { kind: b.kind, date: b.date, text, model: r.model || model, at: new Date().toISOString() };
+        if (c.remoteCommit) await c.remoteCommit();   // asked by another device: only while it still wants this answer (lib/sync/claude-host.mjs)
         await writeSummary(dataDir, b.kind, b.date, out);
         log('info', `brief summary ${b.kind} ${out.model} ${Date.now() - t0}ms`);
         return { ...out, cached: false };

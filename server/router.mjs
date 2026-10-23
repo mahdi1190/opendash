@@ -140,8 +140,11 @@ export function createApp(ctx) {
    * device made: lib/remote-jobs.mjs), exactly as a click would, without a
    * socket: -> {status, body}. Only for the allow-listed jobs of
    * lib/sync/requests.mjs; c.internal is true (never forwarded again).
+   * guard (── host ──): c.remoteCommit, awaited by a route just before it saves
+   * its result; it throws when the asking device took the request back
+   * (lib/sync/claude-host.mjs mayRun), so a late run never saves anything.
    */
-  async function invoke(method, path, { body = {}, zone = null } = {}) {
+  async function invoke(method, path, { body = {}, zone = null, guard = null } = {}) {
     const m = String(method || 'GET').toUpperCase();
     const url = new URL(path, `http://localhost:${ctx.port || 0}`);
     const { route: r } = find(m, url.pathname);
@@ -154,6 +157,7 @@ export function createApp(ctx) {
       text: async () => JSON.stringify(body || {}),
       body: async () => structuredClone(body || {}),
       zone: typeof zone === 'string' && zone ? zone : null,
+      remoteCommit: typeof guard === 'function' ? guard : null,
     };
     c.clockNow = (now = Date.now()) => {
       const cfg = (typeof ctx.getConfig === 'function' && ctx.getConfig()) || {};
