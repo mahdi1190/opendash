@@ -23,6 +23,7 @@
                        main computer pulls the bank (never twice across devices). Fresh for 30
                        minutes after a click (bank budgets), 12 hours otherwise
      Weather           briefLoadWeather(true) and the travel forecasts
+     Tasks from email  a click, after the inbox: Claude looks only at messages it has not seen
      Day adviser       Think through my day (12-home-advisor.js), ONLY when the day's inputs
                        changed since the last review or it is over 2 hours old (a click); the
                        automatic run only reads the latest review (one made on another device
@@ -222,6 +223,29 @@ async function _hrAdviser(run) {
   _hrAiSet('adviser', sig);
   return { status: 'done' };
 }
+/**
+ * Tasks from new email (55-email-google.js aiSuggestTasksFromEmails), after the inbox: a click
+ * only, and only for messages Claude has not looked at from this browser yet (the triage list
+ * already skips those handled or with a suggestion). Its own toast says what it found.
+ */
+const HR_TRIAGE_KEY = 'dashboard-refresh-triaged';
+async function _hrTriage(run) {
+  if (run.p && run.p.inbox) await run.p.inbox;
+  if (run.cancelled) return { status: 'cancelled' };
+  if (!run.manual) return { status: 'skipped', reason: 'runs when you ask' };
+  let seen = [];
+  try { seen = JSON.parse(localStorage.getItem(HR_TRIAGE_KEY) || '[]'); } catch (e) { seen = []; }
+  const seenSet = new Set(Array.isArray(seen) ? seen : []);
+  const t = state.emailTriage || {};
+  const handled = t.handled || {}, pending = new Set((t.suggestions || []).map(x => x && x.emailId));
+  const fresh = emailMessages().filter(m => m && m.id && !handled[m.id] && !pending.has(m.id) && !seenSet.has(m.id));
+  if (!fresh.length) return { status: 'fresh', reason: 'No new email to look at.' };
+  await aiSuggestTasksFromEmails();
+  await _hrUntil(run, () => typeof _emSuggesting === 'undefined' || !_emSuggesting, 3 * 60000);
+  if (run.cancelled) return { status: 'cancelled' };
+  try { localStorage.setItem(HR_TRIAGE_KEY, JSON.stringify([...seenSet, ...fresh.map(m => m.id)].slice(-600))); } catch (e) { /* private mode */ }
+  return { status: 'done' };
+}
 function _hrSteps() {
   const ai = typeof briefPrefs === 'function' && !!briefPrefs().ai;
   return [
@@ -237,6 +261,9 @@ function _hrSteps() {
     { id: 'weather', label: 'Weather', ms: HR_QUICK_MS,
       available: () => (typeof briefLoadWeather !== 'function' ? 'off' : APP_CONFIG.location ? true : 'no town set'),
       run: _hrWeather },
+    { id: 'triage', label: 'Tasks from email', ms: 8 * 60000,
+      available: () => (!ai || !_hrFeat('email') || typeof aiSuggestTasksFromEmails !== 'function' || typeof emailMessages !== 'function' || !_hrConn('gmail') ? 'off' : _hrConn('claude') ? true : 'off'),
+      run: _hrTriage },
     { id: 'adviser', label: 'Day adviser', ms: 4 * 60000,
       available: () => (!ai || typeof homeAdvisorReview !== 'function' ? 'off' : _hrConn('claude') ? true : 'not connected'),
       run: _hrAdviser },
@@ -258,7 +285,9 @@ function _hrRunStep(run, s) {
   run.results[s.id] = { status: 'running' };
   _hrPaint();
   const limit = new Promise((res) => setTimeout(() => res({ status: 'slow', reason: 'Still working. It finishes in the background.' }), s.ms || HR_QUICK_MS));
-  return Promise.race([Promise.resolve().then(() => s.run(run)), limit, run.stop])
+  const work = Promise.resolve().then(() => s.run(run));
+  (run.p || (run.p = {}))[s.id] = work.catch(() => null);           // a later part may wait for this one (triage after the inbox)
+  return Promise.race([work, limit, run.stop])
     .then((r) => r || { status: 'done' }, (e) => ({ status: 'error', reason: _hrMsg(e, 'That part did not finish.') }))
     .then((r) => {
       if (run.cancelled && r.status !== 'done' && r.status !== 'fresh') r = { status: 'cancelled' };
