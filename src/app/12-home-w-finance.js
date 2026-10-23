@@ -347,7 +347,7 @@ function _hbFinRender(el, ctx) {
     // Another device reads the bank and has not sent anything yet: name it, never "Connect your bank".
     const off = ctx.off ? ctx.off({ icon: 'wallet', title: 'Money at a glance',
       text: rm.trial ? `Finance from ${rm.name}. To see it here, turn on "Use changes from my other computers" in Settings > Sync.`
-        : `Finance from ${rm.name} · waiting for its first update. What you spend shows here once ${rm.name} has updated${rm.online ? '' : ` (it's ${rm.state === 'asleep' ? 'asleep' : 'off'} right now)`}.`,
+        : `Finance from ${rm.name} · waiting for its first update. What you spend shows here once ${rm.name} has updated${rm.online ? '' : ' (it is off right now)'}.`,
       action: { label: 'Open Finances', icon: 'wallet', run: () => _hbFinOpen(null) } })
       : hglEmpty({ icon: 'wallet', title: 'Money at a glance', actions: [{ label: 'Open Finances', icon: 'wallet', run: () => _hbFinOpen(null) }] });
     off.classList.add('hgl-off');
@@ -385,10 +385,8 @@ function _hbFinViaHtml(rm) {
   const t = rm.updatedAt ? Date.parse(rm.updatedAt) : NaN;
   const s = Number.isFinite(t) ? Math.max(0, Math.round((Date.now() - t) / 1000)) : null;
   const ago = s == null ? '' : s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`;
-  // ── presence ── "Finance from Mac · last update 2 h ago (it's off)" while it is away (lib/sync/presence.mjs).
-  const away = rm.state === 'asleep' ? 'asleep' : rm.state === 'checking' ? 'not answering yet' : 'off';
-  const text = rm.online ? `Finance from ${rm.name}${ago ? ` · updated ${ago}` : ''}` : `Finance from ${rm.name}${ago ? ` · last update ${ago}` : ''} (it's ${away})`;
-  const tip = rm.online ? `${rm.name} reads your bank; this is the same as there` : `${rm.name} is ${away} right now: this is what it last sent. It updates when ${rm.name} is back.`;
+  const text = `Finance from ${rm.name}${ago ? ` · updated ${ago}` : ''}`;
+  const tip = rm.online ? `${rm.name} reads your bank; this is the same as there` : `${rm.name} is off right now: this is what it last sent`;
   return `<div class="hbf-via" title="${escAttr(tip)}">${icon('laptop', 'i-xs')}<span>${esc(text)}</span></div>`;
 }
 

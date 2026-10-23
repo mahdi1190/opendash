@@ -228,7 +228,7 @@ export default function register(app) {
       if (r.error) throw new HttpError(400, r.error);
       if (!r.started) return c.json(409, { error: 'An update is already running.', job: r.job });
       log('note', `finance update started${body.bank === false ? ' (no bank)' : body.full === true ? ' (full)' : ''}`);
-      const asked = hf.asked.length ? { asked: hf.asked, message: `Asking ${[...new Set(hf.asked.map(a => a.runsOn))].join(' and ')} to update your bank.` } : hf.message ? { message: hf.message, calm: true } : {};
+      const asked = hf.asked.length ? { asked: hf.asked, message: `Asking ${[...new Set(hf.asked.map(a => a.runsOn))].join(' and ')} to update your bank.` } : hf.message ? { message: hf.message } : {};
       return c.json(202, { job: r.job, ...asked });
     },
   });

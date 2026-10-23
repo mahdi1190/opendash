@@ -186,6 +186,16 @@ which the accounts code records too; a device without one uses its
 changes when a device's identity is copied to another installation; a device
 that finds its own folder with another instance takes a new id.
 
+Presence (2.16, `lib/sync/presence.mjs`; with encrypted sync both are inside
+`enc`): `page: {open, at}` says whether a dashboard page is open on the
+device (`at`: by its own clock, the heartbeat's time while open, the moment it
+closed otherwise); the record is written again within about 15 seconds of a
+change instead of waiting for the 2-minute heartbeat. `stoppedAt` (ms, its
+own clock) appears only in the goodbye record a clean stop writes; the next
+heartbeat leaves it out. Readers that do not know them ignore both. Readers
+judge freshness by when THEY watched the record change, not by its
+`lastSeen`, so a wrong clock elsewhere never keeps a device "online".
+
 ## 8. Synced files and fetchers
 
 Besides the state, some files of the data folder sync, as `file:<path>`
@@ -534,7 +544,7 @@ Associated data (AD) of every sealed record:
   `{v:2, dev, seq, enc}`, `ct` seals `{hlc, seen, covers, createdAt, data}`.
 - `device.json` (`kind` `device`, `file` `device.json`, `seq` 0): in the
   clear `{v:2, format:2, deviceId, pub, instance, app, fetch, lastSeen}`, and
-  `enc` seals `{name, kind, seen, seq, fetcherId}` (`enc` is null while the device has no key).
+  `enc` seals `{name, kind, seen, seq, fetcherId, live?, caps?, page?, stoppedAt?}` (`enc` is null while the device has no key).
 
 A reader refuses (counts, never applies): anything that fails AES-GCM; a
 plain (v 1) record in an encrypted group; a record from a removed device

@@ -61,15 +61,13 @@
   // whole history; {bank:false} = only import inbox CSVs and rebuild.
   async function startUpdate(opts) {
     opts = opts && typeof opts === 'object' ? opts : (opts ? { full: true } : {});
-    R.startErr = null; R.startNote = null; R.dismissed = null;
+    R.startErr = null; R.dismissed = null;
     try {
       const body = opts.bank === false ? { bank: false } : opts.full ? { full: true } : {};
       const r = await api('/api/finance/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       // Another device reads the bank: it was asked to update (lib/finance-share.mjs).
       if (r.status === 202 && r.body.remote) { waitRemote(r.body.remote); return; }
       if (r.status === 202 || (r.status === 409 && r.body.job)) { if (r.body.job) R.job = r.body.job; startPolling(); }
-      // calm: the computer that reads the bank is asleep or off (lib/finance-share.mjs): nothing was asked; a calm line, not "That didn't work".
-      else if (r.body.calm) R.startNote = r.body.message || r.body.error || null;
       else R.startErr = (r.body.skipped && r.body.message) || r.body.error || ('Could not start the update (HTTP ' + r.status + ')');
     } catch (e) { R.startErr = 'Could not reach the OpenDash server. Is it still running?'; }
     paintUpdate();
@@ -101,10 +99,7 @@
       else if (job && job.state === 'error') toast('Update failed. See the message at the top.', { bad: true });
       else if (!before && R.model) { syncDone(); toast(`Your finances from ${who} are here`, { kind: 'ok', icon: 'circle-check' }); }
       else { syncDone(); syncToast(syncDiff(before, R.model ? R.model.tx : []), job && job.result ? job.result.imported : 0); }
-    } else if (!(res && res.status === 499)) {
-      if (body.calm) R.startNote = body.error || null;          // it went away while asked: calm
-      else R.startErr = body.error || 'Your other computer could not update your finances.';
-    }
+    } else if (!(res && res.status === 499)) R.startErr = body.error || 'Your other computer could not update your finances.';
     paintUpdate();
   }
   // Another device published new finances, or an edit arrived (56-remote-jobs.js):
