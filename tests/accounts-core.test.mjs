@@ -96,7 +96,7 @@ test('redirect adapters: loopback (desktop), custom scheme (mobile), web (PWA)',
 
 test('vault: refresh is serialized per account, shared by concurrent callers, rotates; accounts never share', async () => {
   const store = memorySecretStore(); const locks = [];
-  store.withLock = async (key, fn) => { locks.push(key); return fn(); };
+  store.lock = async (key, fn) => { locks.push(key); return fn(); };
   const v = createVault(store);
   const a = newAccountId(), b = newAccountId();
   await v.write(a, { refresh_token: 'ra', n: 0 }); await v.write(b, { refresh_token: 'rb', n: 0 });
