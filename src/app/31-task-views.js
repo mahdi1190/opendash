@@ -665,7 +665,7 @@ function _renderKanbanCard(it) {
   cb.setAttribute('role', 'checkbox');
   cb.setAttribute('aria-checked', status === 'done' ? 'true' : status === 'doing' ? 'mixed' : 'false');
   cb.setAttribute('aria-label', (status === 'done' ? 'Reopen: ' : 'Complete: ') + effTitle(it));
-  cb.title = status === 'done' ? (wont ? "Won't do · click to reopen" : 'Done · click to reopen') : `${PRIORITIES[effPriority(it)]?.label || ''} · click to complete · Shift+click: in progress`;
+  cb.title = status === 'done' ? (wont ? "Won't do · click to reopen" : 'Done · click to reopen') : `${PRIORITIES[effPriority(it)]?.label || ''} · click to complete · Shift+click: in progress · Alt+click: won't do`;
   if (wont) cb.innerHTML = icon('minus', 'i-xs');
   cb.onclick = (e) => {
     e.stopPropagation();

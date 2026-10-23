@@ -128,7 +128,7 @@ function openStreamMenu(anchor, id, onPick) {
   const rows = Object.entries(STREAMS).filter(([k, s]) => !s.archived || k === cur).sort((a, b) => (a[1].order ?? 0) - (b[1].order ?? 0));
   openMenu(anchor, rows.map(([k, s]) => ({
     label: s.label, icon: streamMarkHtml(k), checked: cur === k,
-    run: () => { if (onPick) onPick(k); else { setOverride(id, 'stream', k); render(); } },
+    run: () => { if (onPick) onPick(k); else setStreamWithNote(id, k); },
   })), { align: 'start', width: 220 });
 }
 /** Link people to a task: search, toggle, or create a new person by name. */
@@ -207,9 +207,18 @@ function openPeoplePicker(anchor, id) {
  * then leaves the list on screen (and is not open in the card or the panel), a toast says where
  * it went, with Undo: the row vanishing on its own looked like the task was lost.
  */
+function _taskListedHere(x) { return !!x && typeof isTaskView === 'function' && isTaskView(state.view) && typeof matchesView === 'function' && matchesView(x, state.view); }
+function _taskOpenNow(id) { return state.selectedTaskId === id || (typeof tcCurrentTaskId === 'function' && tcCurrentTaskId() === id); }
+/** Move a task to another stream; in a stream's own list (where it then vanishes) a toast says where it went, with Undo. */
+function setStreamWithNote(id, k) {
+  const it = getItem(id); if (!it || effStream(it) === k) return;
+  const before = _taskListedHere(it);
+  setOverride(id, 'stream', k); render();
+  if (before && !_taskOpenNow(id) && !_taskListedHere(getItem(id))) toast(`Moved to ${STREAMS[k]?.label || k}`, { kind: 'ok', icon: 'layers', action: { label: 'Undo', run: () => undo() } });
+}
 function setDueWithNote(id, d, t) {
   const it = getItem(id); if (!it) return;
-  const listed = (x) => !!x && typeof isTaskView === 'function' && isTaskView(state.view) && typeof matchesView === 'function' && matchesView(x, state.view);
+  const listed = _taskListedHere;
   const before = listed(it);
   const from = it.dueDate || null, fromT = it.dueTime || null;
   d = d || null;
@@ -220,8 +229,7 @@ function setDueWithNote(id, d, t) {
   it.dueDate = d;
   if (time) it.dueTime = time; else delete it.dueTime;
   saveData(); render();
-  const open = state.selectedTaskId === id || (typeof tcCurrentTaskId === 'function' && tcCurrentTaskId() === id);
-  if (before && !open && !listed(getItem(id))) toast(d ? `Moved to ${dueLabel(d)}` : 'Date removed', { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+  if (before && !_taskOpenNow(id) && !listed(getItem(id))) toast(d ? `Moved to ${dueLabel(d)}` : 'Date removed', { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
 }
 
 /** Everything you can do to a task, as menu rows (context menu, "…" button). */
@@ -509,8 +517,8 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     const i = _lastRenderedTaskIds.indexOf(id);
     const nextId = _lastRenderedTaskIds[i + 1] || _lastRenderedTaskIds[i - 1] || null;
+    _lastSelectedTaskId = nextId;   // before the render, so the cursor shows on the next row at once
     deleteTask(id);
-    _lastSelectedTaskId = nextId;
     return;
   }
 });
