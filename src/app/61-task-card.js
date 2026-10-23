@@ -159,6 +159,7 @@ function openEvent(id, o) {
 function tcOpenCreate(prefill, o) {
   o = o || {};
   const draft = tcDraftFrom(prefill, state.view, typeof quickAddDefaults === 'function' && typeof isTaskView === 'function' && isTaskView(state.view) ? quickAddDefaults(state.view) : {});
+  draft._t0 = draft.title; draft._d0 = draft.detail;   // what it opened with: only typing makes "not saved" worth a Restore
   const ae = document.activeElement;
   const fromEl = o.from && o.from.isConnected ? o.from
     : (ae && ae !== document.body && ae.getBoundingClientRect && !(_tc && _tc.card.contains(ae)) && ae.offsetParent !== null ? ae : null);
@@ -173,7 +174,7 @@ function tcOpen(entry, o) {
     const inside = (o.from && _tc.card.contains(o.from)) || _tc.card.contains(document.activeElement);
     const push = o.push === true || (o.push !== false && inside);
     if (push) { _tc.stack.push(entry); if (_tc.stack.length > TC_STACK_MAX) _tc.stack.shift(); }
-    else _tc.stack[_tc.stack.length - 1] = entry;
+    else { _tcDraftLeft(_tc.stack[_tc.stack.length - 1]); _tc.stack[_tc.stack.length - 1] = entry; }
     if (o.context) _tc.context = o.context;
     _tcPaint({ swap: push ? 'push' : 'swap' });
     _tcFocusStart();
@@ -705,7 +706,7 @@ function _tcBackBtn() {
 }
 function tcBack() {
   if (!_tc || _tc.stack.length < 2) return false;
-  _tc.stack.pop();
+  _tcDraftLeft(_tc.stack.pop());
   _tcPaint({ swap: 'back' });
   _tcFocusStart();
   return true;
@@ -1128,6 +1129,7 @@ function _tcCreateSave(close) {
   };
   const id = d.eventId && typeof selUndoGroup === 'function' ? selUndoGroup(make) : make();
   if (!id) return null;
+  d._saved = true;
   if (d.onCreated) { try { d.onCreated(id); } catch (e) { console.error(e); } }
   if (!_tc) return id;
   if (close) {
@@ -1141,6 +1143,21 @@ function _tcCreateSave(close) {
     toast(d.eventId ? 'Task added and linked to the event' : 'Task added', { kind: 'ok', action: { label: 'Undo', run: () => undo() } });
   }
   return id;
+}
+
+/**
+ * A new task left before it was created (Esc, Cancel, x, a click outside, another item opened over it)
+ * with something typed in it: say so, and Restore opens it again as it was.
+ */
+function _tcDraftLeft(entry) {
+  if (!entry || entry.kind !== 'create' || !entry.draft || entry.draft._saved) return;
+  const d = entry.draft;
+  const typed = (s, s0) => String(s || '').trim() && String(s || '').trim() !== String(s0 || '').trim();
+  if (!typed(d.title, d._t0) && !typed(d.detail, d._d0)) return;
+  toast('New task not saved', { icon: 'file-pen-line', action: { label: 'Restore', run: () => {
+    if (d._saved) return;
+    tcOpen({ kind: 'create', draft: d }, { push: !!_tc });
+  } } });
 }
 
 /* ---------- keyboard ---------- */
@@ -1263,6 +1280,7 @@ function tcClose(o) {
   if (typeof closePopovers === 'function') { try { closePopovers(); } catch (e) { /* none open */ } }
   _tdViews.card.lastId = null; _tdViews.card.editingDesc = null;
   _tcMarkRows();
+  _tcDraftLeft([...t.stack].reverse().find(e => e && e.kind === 'create' && !(e.draft && e.draft._saved)));
   const cur = t.stack[t.stack.length - 1];
   const target = cur && cur.kind === 'task' ? _tcRowFor(cur.id) : (t.fromEl && t.fromEl.isConnected ? t.fromEl : null);
   const remove = () => t.root.remove();

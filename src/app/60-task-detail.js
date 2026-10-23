@@ -381,11 +381,17 @@ function tdNotesSection(id) {
   const ns = document.createElement('section'); ns.className = 'dp-section dp-notes';
   ns.innerHTML = `<div class="dp-sh"><h4>Notes</h4>${notes.length ? `<span class="count">${notes.length}</span>` : ''}</div>`;
   const comp = document.createElement('div'); comp.className = 'note-compose';
-  const nta = document.createElement('textarea'); nta.placeholder = 'Add a note: progress, a decision, a blocker…'; nta.rows = 1; nta.dataset.fk = 'note-new';
+  const nta = document.createElement('textarea'); nta.placeholder = 'Add a note: progress, a decision, a blocker… (Ctrl+Enter to add)'; nta.rows = 1; nta.dataset.fk = 'note-new';
   nta.setAttribute('aria-label', 'New note');
-  nta.oninput = () => { nta.style.height = 'auto'; nta.style.height = Math.min(240, nta.scrollHeight) + 'px'; comp.classList.toggle('has-text', !!nta.value.trim()); };
+  const fit = () => { nta.style.height = 'auto'; nta.style.height = Math.min(240, nta.scrollHeight) + 'px'; comp.classList.toggle('has-text', !!nta.value.trim()); };
+  // A half-written note is kept per task (closing the card, opening another task, a reload or a crash): state.drafts.
+  const dk = 'note:' + id;
+  const kept = typeof draftGet === 'function' ? draftGet(dk) : null;
+  if (kept && typeof kept.text === 'string' && kept.text.trim()) { nta.value = kept.text; comp.classList.add('has-text'); requestAnimationFrame(() => { if (nta.isConnected) fit(); }); }
+  nta.oninput = () => { fit(); _tdNoteDraft(dk, nta.value); };
   const nadd = document.createElement('button'); nadd.type = 'button'; nadd.className = 'btn btn-primary btn-sm'; nadd.textContent = 'Add note';
-  const submit = () => { const v = nta.value; if (!v.trim()) return; nta.value = ''; _keepFocus('note-new'); addNote(id, v); };
+  nadd.title = 'Add note (Ctrl+Enter)';
+  const submit = () => { const v = nta.value; if (!v.trim()) return; nta.value = ''; _tdNoteDraft(dk, ''); _keepFocus('note-new'); addNote(id, v); };
   nadd.onclick = submit;
   nta.onkeydown = (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); e.stopPropagation(); submit(); } };
   comp.append(nta, nadd);
@@ -408,6 +414,13 @@ function tdNotesSection(id) {
     ns.appendChild(bub);
   }
   return ns;
+}
+/** Keep (or, empty, forget) the note being written on a task. */
+function _tdNoteDraft(key, text) {
+  if (typeof draftSet !== 'function') return;
+  const t = String(text || '');
+  if (!t.trim()) { if (typeof draftGet === 'function' && draftGet(key)) draftDel(key); return; }
+  draftSet(key, { text: t.slice(0, 10000), at: Date.now() });
 }
 function tdActivitySection(id, view, rerender) {
   const acts = [...(state.taskActivity[id] || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0));

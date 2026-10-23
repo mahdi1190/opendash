@@ -24,7 +24,14 @@ function viewTitle(v) {
 
 let _tvLastView = null;
 let _logbookDays = 30;            // Logbook shows this many days, "Show older" adds more
-let _qaDraft = '', _qaFocused = false, _qaIgnore = [], _qaCaret = null;
+let _qaDraft = '', _qaFocused = false, _qaIgnore = [], _qaCaret = null, _qaDraftRead = false;
+/** Keep the quick-add text (state.drafts 'qa:inline'); empty forgets it. */
+function _qaKeepDraft(text) {
+  if (typeof draftSet !== 'function') return;
+  const t = String(text || '');
+  if (!t.trim()) { if (typeof draftGet === 'function' && draftGet('qa:inline')) draftDel('qa:inline'); return; }
+  draftSet('qa:inline', { text: t.slice(0, 2000), at: Date.now() });
+}
 let _qaSuggest = { items: [], index: 0 };
 
 /** Render the current task view into main. Called by _renderMainBody. */
@@ -377,6 +384,8 @@ function _renderQuickAdd(view) {
   const narrow = window.matchMedia && window.matchMedia('(max-width: 640px)').matches;
   const eg = _qaExample();
   inp.placeholder = narrow ? 'Add a task' : `Add a task e.g. ${eg}`;
+  // What was being typed survives a reload or a crash (state.drafts, 06-core-seen.js); read once per page.
+  if (!_qaDraftRead) { _qaDraftRead = true; const k = typeof draftGet === 'function' ? draftGet('qa:inline') : null; if (!_qaDraft && k && typeof k.text === 'string') _qaDraft = k.text; }
   inp.value = _qaDraft;
   qa.appendChild(inp);
   // The placeholder in two tones, as in the mockup: "Add a task" + a quieter example (hidden once you type).
@@ -400,7 +409,7 @@ function _renderQuickAdd(view) {
 
   const paint = () => _paintQaPreview(prev, inp, view);
   const paintSug = () => _paintQaSuggest(sug, inp);
-  inp.addEventListener('input', () => { _qaDraft = inp.value; if (!inp.value.trim()) _qaIgnore = []; paint(); paintSug(); });
+  inp.addEventListener('input', () => { _qaDraft = inp.value; _qaKeepDraft(inp.value); if (!inp.value.trim()) _qaIgnore = []; paint(); paintSug(); });
   inp.addEventListener('focus', () => { _qaFocused = true; box.classList.add('focused'); paint(); });
   // Chrome fires blur when a re-render removes the focused box; only a real blur
   // (the box is still on the page and lost focus) ends "typing several tasks".
@@ -417,12 +426,25 @@ function _renderQuickAdd(view) {
       if (e.key === 'Tab' || (e.key === 'Enter' && _qaSuggest.index >= 0)) { e.preventDefault(); _qaAcceptSuggestion(inp, _qaSuggest.items[_qaSuggest.index]); paint(); paintSug(); return; }
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); sug.hidden = true; return; }
     }
-    if (e.key === 'Escape') { e.stopPropagation(); if (inp.value) { inp.value = ''; _qaDraft = ''; _qaIgnore = []; paint(); } else inp.blur(); return; }
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      if (inp.value) {
+        // Cleared, not lost: Restore puts the text back (and the words kept as text).
+        const was = inp.value, ign = _qaIgnore.slice();
+        inp.value = ''; _qaDraft = ''; _qaIgnore = []; _qaKeepDraft(''); paint();
+        if (was.trim().length > 2) toast('Cleared', { icon: 'x', action: { label: 'Restore', run: () => {
+          _qaDraft = was; _qaIgnore = ign; _qaKeepDraft(was); _qaFocused = true; _qaCaret = was.length;
+          const cur = document.getElementById('quick-add');
+          if (cur) { cur.value = was; cur.focus(); _afterQuickAddRender(); } else render();
+        } } });
+      } else inp.blur();
+      return;
+    }
     if (e.key !== 'Enter') return;
     e.preventDefault();
     const parsed = parseQuickAdd(inp.value, { ignore: _qaIgnore });
     if (!parsed.title) return;
-    _qaDraft = ''; _qaIgnore = []; _qaFocused = true; _qaCaret = 0;
+    _qaDraft = ''; _qaIgnore = []; _qaFocused = true; _qaCaret = 0; _qaKeepDraft('');
     inp.value = '';
     const id = addParsedTask(parsed, quickAddDefaults(view));   // saves + renders; the new box gets focus back
     const it = id && getItem(id);
