@@ -18,6 +18,39 @@
 
 const _CAL_RSVP = { accepted: ['yes', 'Going'], tentative: ['maybe', 'Maybe'], declined: ['no', 'Declined'], needsAction: ['wait', 'Invited'] };
 
+/* ---------- typing survives a repaint ----------
+   The calendar page is rebuilt on every render (a save, live sync, a calendar refresh,
+   "Saving to Google... Saved"), which used to throw away what was being typed in the side
+   panel's notes, title, place or description (their blur saves, and a repaint is no blur).
+   calKeepTyping(el, key, original): the field being typed in is remembered by key (the
+   field and the event); the next copy of that field built within a few seconds takes the
+   text, the caret and the focus back, so its own blur still saves it. Focus that went
+   somewhere else on purpose is left alone (the field then shows the saved text). */
+let _calTyping = null;   // {key, el, value, s, e, at}
+function calKeepTyping(el, key, original, onRestore) {
+  if (!el || !key) return;
+  const L = _calTyping;
+  if (L && L.key === key && L.el !== el && !L.el.isConnected && L.value !== original && Date.now() - L.at < 5000) {
+    el.value = L.value;
+    L.el = el;
+    if (onRestore) onRestore();
+    setTimeout(() => {
+      if (!el.isConnected) return;
+      const a = document.activeElement;
+      if (a && a !== document.body && a !== el) {           // the user moved on: show what is saved
+        el.value = original; if (onRestore) onRestore();
+        if (_calTyping && _calTyping.el === el) _calTyping = null;
+        return;
+      }
+      try { if (a !== el) el.focus({ preventScroll: true }); el.setSelectionRange(L.s, L.e); } catch (e) { /* not a text field */ }
+    }, 0);
+  }
+  el.addEventListener('input', () => { _calTyping = { key, el, value: el.value, s: el.selectionStart, e: el.selectionEnd, at: Date.now() }; });
+  el.addEventListener('keyup', () => { if (_calTyping && _calTyping.el === el) { _calTyping.s = el.selectionStart; _calTyping.e = el.selectionEnd; _calTyping.at = Date.now(); } });
+  // A real blur (the field still on the page) saves it: nothing to carry over any more.
+  el.addEventListener('blur', () => { if (el.isConnected && _calTyping && _calTyping.el === el) _calTyping = null; });
+}
+
 function _calWhenText(ev) {
   const L = _CAL_LOCALE();
   const s = calEventStart(ev), e = calEventEnd(ev);
@@ -293,14 +326,18 @@ function calEventParts(ev, o) {
   ta.value = meta.notes || '';
   const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(320, Math.max(40, ta.scrollHeight)) + 'px'; };
   ta.addEventListener('input', fit);
-  ta.addEventListener('change', () => {
+  const saveNotes = () => {
     const v = ta.value.replace(/\s+$/, '');
     const m = calEventMeta(ev.id, true);
     if ((m.notes || '') === v) return;
     if (v) m.notes = v.slice(0, 4000); else delete m.notes;
     if (!m.tasks && !m.notes && m.important === undefined && !m.origin && !m.wrapped) delete state.eventMeta[ev.id];
     saveData();
-  });
+  };
+  ta.addEventListener('change', saveNotes);
+  // Text carried over a repaint was set by the page, so no change event follows: the blur saves it.
+  ta.addEventListener('blur', () => { if (ta.isConnected) saveNotes(); });
+  calKeepTyping(ta, 'ev-notes:' + ev.id, meta.notes || '', fit);
   // One box for the notes and the "drafted from…" line, as in mockup 07.
   const nbox = document.createElement('div'); nbox.className = 'ev-notes-box';
   nbox.appendChild(ta);

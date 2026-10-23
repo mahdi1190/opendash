@@ -176,6 +176,8 @@ function _evcLongDate(iso) { return _calFmt(iso, { weekday: 'long', day: 'numeri
  */
 function _evcCommitOn(el, o) {
   let reverted = false;
+  // What is being typed survives a repaint of the panel (43-calendar-panel.js calKeepTyping).
+  if (o.key && typeof calKeepTyping === 'function') calKeepTyping(el, o.key, o.original, o.input);
   el.addEventListener('keydown', (e) => {
     if (e.isComposing) return;
     if (e.key === 'Enter' && (o.single ? !e.shiftKey : (e.ctrlKey || e.metaKey))) {
@@ -393,7 +395,7 @@ function _evcTitle(ev, ed, where) {
   ta.value = orig;
   const fit = _evcAutosize(ta);
   _evcCommitOn(ta, {
-    single: true, original: orig, input: fit,
+    single: true, original: orig, input: fit, key: 'evc-title:' + ev.id,
     commit: (v) => {
       const t = v.replace(/\s+/g, ' ').trim();
       if (!t) { ta.value = orig; fit(); return; }
@@ -454,7 +456,7 @@ function _evcLocation(ev, ed) {
   if (ed.ok) {
     const inp = document.createElement('input'); inp.className = 'evc-in'; inp.dataset.fk = 'evc-loc'; inp.maxLength = 300;
     inp.placeholder = 'Add location'; inp.setAttribute('aria-label', 'Location'); inp.value = loc; inp.autocomplete = 'off';
-    _evcCommitOn(inp, { single: true, original: loc, commit: (v) => evcUpdate(ev, evcPatchDiff({ location: loc }, { location: v })) });
+    _evcCommitOn(inp, { single: true, original: loc, key: 'evc-loc:' + ev.id, commit: (v) => evcUpdate(ev, evcPatchDiff({ location: loc }, { location: v })) });
     row.appendChild(inp);
   } else {
     const t = _evcEl('span', 'evc-loc-t', loc); t.title = loc;
@@ -483,7 +485,7 @@ function _evcDesc(ev, ed, where) {
     ta.placeholder = 'Add a description'; ta.setAttribute('aria-label', 'Description'); ta.value = desc;
     const fit = _evcAutosize(ta, where === 'card' ? 520 : 320);
     _evcCommitOn(ta, {
-      single: false, original: desc, input: fit,
+      single: false, original: desc, input: fit, key: 'evc-desc:' + ev.id,
       commit: (v) => evcUpdate(ev, evcPatchDiff({ description: desc }, { description: v })),
       after: () => { if (_evcDescEditing === ev.id) _evcDescEditing = null; setTimeout(swap, 0); },
     });
