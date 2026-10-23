@@ -146,3 +146,17 @@ test('migration leaves what it cannot use: no app, no address, a signed-out or u
   assert.equal(readFileSync(join(dir, 'secrets', 'google-tokens.json'), 'utf8'), '{not json');
   assert.equal(reg.doc.accounts.length, 0);
 }));
+
+test('the old status call counts Google accounts signed in on this computer (health, the connector gate)', async () => withStore(async ({ store }) => {
+  const { initGoogle, googleStatus } = await import('../lib/google.mjs');
+  try {
+    initGoogle(store);
+    assert.deepEqual([(await googleStatus()).connected, (await googleStatus()).accounts], [false, 0]);
+    await store.set('accounts/acc_00000000000000a1', { provider: 'google', clientId: OWN, email: 'a@gmail.com', refresh_token: 'rt-a' });
+    await store.set('accounts/acc_00000000000000a2', { provider: 'google', clientId: OWN, email: 'b@gmail.com', refresh_token: 'rt-b', needsAuth: true });
+    await store.set('accounts/acc_00000000000000a3', { provider: 'microsoft', clientId: 'x', refresh_token: 'rt-m' });
+    const st = await googleStatus();
+    assert.deepEqual([st.connected, st.account, st.accounts], [true, 'a@gmail.com', 1]);
+    assert.ok(!JSON.stringify(st).includes('rt-a'));
+  } finally { initGoogle(null); }
+}));

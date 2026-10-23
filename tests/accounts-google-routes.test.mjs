@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { createServer, request } from 'node:http';
 import { createApp } from '../server/router.mjs';
 import registerAccounts from '../server/routes/accounts.mjs';
+import registerGoogle from '../server/routes/google.mjs';
 import { createAccountsService } from '../lib/accounts.mjs';
 import { dataPaths } from '../lib/datadir.mjs';
 import { secretStore, fileBackend } from '../lib/secret-store.mjs';
@@ -49,6 +50,7 @@ async function serverFor(name, google, { prepare } = {}) {
   ctx.accounts = createAccountsService({ dataDir: dir, port: () => p, fetchFn: google, deviceId: 'device-google-1', store });
   const app = createApp(ctx);
   registerAccounts(app);
+  registerGoogle(app);
   return { dir, store, port: p, ctx };
 }
 
@@ -115,6 +117,11 @@ test('own Google app -> begin with only mail ticked -> sign-in return -> account
   const r302 = await raw(p, 'GET', '/api/accounts/begin?provider=google&email=pat.synthetic%40gmail.com&features=calendar', { 'Sec-Fetch-Site': 'same-origin' });
   assert.equal(r302.status, 302);
   assert.equal(new URL(r302.headers.location).searchParams.get('scope'), `openid email ${GOOGLE_SCOPES.calendar}`);
+
+  // The old "Connect Google" address now leads to Connections; it never starts a single connection.
+  const old = await raw(p, 'GET', '/api/google/connect', { 'Sec-Fetch-Site': 'same-origin' });
+  assert.deepEqual([old.status, old.headers.location], [302, '/#view=connections']);
+  assert.equal(await store.get('google-tokens'), null);
 
   // Back to the built-in app (there is none in this copy): Google is not available any more.
   const reset = JSON.parse((await raw(p, 'PUT', '/api/accounts/google-app', SAME(p), { clientId: null })).text);
