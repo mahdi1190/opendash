@@ -67,8 +67,11 @@ them; the account list (`<data>/accounts.json`) holds no secret.
      Never commit them: Google's policy says client credentials do not belong
      in public repositories, and the privacy scan (`google-secret`) refuses
      them. Google treats a Desktop client's secret as not confidential, so a
-     downloaded zip holding it is expected. (The release tools do not do this
-     step yet.)
+     downloaded zip holding it is expected. The release tools do this step:
+     set `OPENDASH_GOOGLE_CLIENT_ID` and `OPENDASH_GOOGLE_CLIENT_SECRET` (the
+     Release workflow takes them from repository secrets) and package with
+     `tools/release-package.mjs --client-ids` (docs/dev/RELEASING.md,
+     *Built-in sign-ins*).
 8. Google Workspace accounts: an administrator who blocks unconfigured apps
    allows the client ID once in the Admin console (Security > Access and data
    control > API controls > Manage third-party app access); OpenDash shows

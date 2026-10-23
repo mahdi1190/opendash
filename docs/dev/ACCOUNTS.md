@@ -249,7 +249,10 @@ provider = {
 
 - **Shipped client ID**: `SHIPPED.microsoftClientId` in `lib/accounts/shipped.mjs`,
   the placeholder `OPENDASH_MICROSOFT_CLIENT_ID` until a release build writes the
-  real GUID (or `OPENDASH_MICROSOFT_CLIENT_ID` in the environment / `<data>/.env`).
+  real GUID into the zip (`tools/release-package.mjs --client-ids`,
+  tools/release-client-ids.mjs; docs/dev/RELEASING.md) (or
+  `OPENDASH_MICROSOFT_CLIENT_ID` in the environment / `<data>/.env`).
+  `OPENDASH_SHIPPED_IDS=off` ignores the written values (the zip's own tests).
   A user's own app ID (Connections > Add Microsoft account > Advanced) wins; it is
   kept on this computer (`secretsDir/microsoft-client.json`, the old file).
 - **Authority from the typed address**: personal domains (hotmail.*, outlook.*,

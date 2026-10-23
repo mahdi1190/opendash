@@ -15,6 +15,7 @@ there is nothing to install.
 | `tools/privacy-scan.mjs` | looks for personal data and secrets in a folder, in the git index and in commits (see [PRIVACY-SCAN.md](PRIVACY-SCAN.md)) |
 | `tools/privacy-deep.mjs` | the scan's `--deep` pass: many more terms from your data folder, hidden and encoded terms, machine ids, coordinates |
 | `tools/release-package.mjs` | zips an export, writes `SHA256SUMS.txt` and the release notes, then unzips the result into a fresh folder and builds and tests it |
+| `tools/release-client-ids.mjs` | the built-in Microsoft and Google app registrations: read from the environment, written into the zip only (`release-package --client-ids`) |
 | `tools/release-rules.mjs` | the allowlist and the never-publish rules that the three tools share |
 | `tools/release-trace.mjs` | records which files a build reads, so the export can prove nothing the build needs was left out |
 | `tools/release-offline.mjs` | switches the network off for one Node process, to check that tests skip cleanly offline |
@@ -33,6 +34,10 @@ there is nothing to install.
    node tools/privacy-scan.mjs ../opendash-release/opendash
    node tools/release-package.mjs --from ../opendash-release/opendash --version X.Y.Z --check-package-version
    ```
+
+   To rehearse with the built-in sign-ins, set the three variables in this
+   shell first and add `--client-ids` (see
+   [Built-in sign-ins](#built-in-sign-ins-client-ids-in-the-zip-only)).
 
 4. **Commit, tag and push the tag:**
 
@@ -139,6 +144,50 @@ fresh temporary folder and runs `node build.mjs --syntax`, `node build.mjs`,
 the generic privacy scan and `node --test` on every `tests/*.test.mjs`.
 Failing tests are listed with their file and line. Exit codes: 0 ok, 1 a
 check failed, 2 usage or file error.
+
+### Built-in sign-ins: client IDs in the zip only
+
+A release lets people add a Microsoft or Google account with one click because
+it ships the project's own app registrations. The repository never holds them:
+`lib/accounts/shipped.mjs` keeps the placeholders `OPENDASH_MICROSOFT_CLIENT_ID`,
+`OPENDASH_GOOGLE_CLIENT_ID` and `OPENDASH_GOOGLE_CLIENT_SECRET` (Google's policy
+forbids committing a client secret, and the privacy scan's `google-secret`
+rule refuses one in the tree).
+
+```sh
+# the values come from the environment only (never a command-line argument: shell history, CI logs)
+export OPENDASH_MICROSOFT_CLIENT_ID=...         # Entra "Application (client) ID", a GUID (public)
+export OPENDASH_GOOGLE_CLIENT_ID=...            # ....apps.googleusercontent.com (Desktop app client)
+export OPENDASH_GOOGLE_CLIENT_SECRET=...        # its secret (not confidential once shipped, per Google)
+node tools/release-client-ids.mjs --check       # which are set (masked) and valid
+node tools/release-package.mjs --from <export> --version X.Y.Z --client-ids
+```
+
+- `--client-ids` rewrites the `lib/accounts/shipped.mjs` **entry of the zip**
+  while the zip is built in memory. The export folder and the repository are
+  never changed, so nothing with the values can be committed or exported by
+  mistake. A variable that is not set keeps its placeholder (a note names it;
+  that sign-in is then "not set up in this copy"). `--require-client-ids`
+  fails instead. A value that does not look right (not a GUID, not a Google
+  client ID, a Google ID without its secret, quotes or line breaks) stops the
+  packaging (exit 2) before anything is written.
+- The check of the extracted zip then: (1) imports the zip's `shipped.mjs`
+  and fails unless it returns exactly these values; (2) runs the privacy scan
+  with the repository's reviewed exceptions **plus** an allow entry for each
+  value, exact match, in `lib/accounts/shipped.mjs` only (written next to the
+  extracted copy, removed with it), so the same value anywhere else, or any
+  other secret, is still an error; (3) runs the tests with
+  `OPENDASH_SHIPPED_IDS=off` and the three variables removed from their
+  environment, so they see a copy without built-in apps, as in the
+  repository.
+- The **Release** workflow passes the repository secrets of the same names to
+  this step with `--client-ids`. Set them in GitHub under Settings > Secrets
+  and variables > Actions. Making the apps live (redirect URIs, Google
+  verification) is described in [MICROSOFT_CONNECT.md](MICROSOFT_CONNECT.md)
+  and [GOOGLE_CONNECT.md](GOOGLE_CONNECT.md).
+- Checking a downloaded zip by hand: `node tools/privacy-scan.mjs <unzipped>`
+  reports the built-in Google ID and secret in `lib/accounts/shipped.mjs` as
+  `google-secret`. That is expected for a release (and only there).
 
 ## Continuous integration
 

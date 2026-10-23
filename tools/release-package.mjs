@@ -12,6 +12,13 @@
 //                               (tools/release-offline.mjs, CLAUDE_CLI_PATH -> a missing file)
 //     --keep                    keep the extracted copy (its path is printed)
 //     --check-package-version   fail unless package.json has the same version (release CI)
+//     --client-ids              write the built-in app registrations into the ZIP's
+//                               lib/accounts/shipped.mjs, from the environment only:
+//                               OPENDASH_MICROSOFT_CLIENT_ID, OPENDASH_GOOGLE_CLIENT_ID,
+//                               OPENDASH_GOOGLE_CLIENT_SECRET (tools/release-client-ids.mjs).
+//                               The export and the repository are never changed; a value
+//                               that is not set stays a placeholder (a note says so)
+//     --require-client-ids      the same, and fail unless all three are set
 //
 // Writes, into --out:
 //   opendash-v<version>.zip   the export (minus .git) under one top folder
@@ -27,7 +34,9 @@
 // Checks: the export holds nothing tools/release-rules.mjs leaves out; every
 // zip entry is inside the top folder and allowed; the zip is extracted into a
 // fresh temp folder, which must pass node build.mjs --syntax, node build.mjs,
-// node --test tests/*.test.mjs and the generic privacy scan.
+// node --test tests/*.test.mjs and the generic privacy scan (with --client-ids:
+// the injected values are allowed in shipped.mjs only, the zip's shipped.mjs
+// must return them, and the tests run with OPENDASH_SHIPPED_IDS=off).
 // SOURCE_DATE_EPOCH (seconds) fixes the timestamps inside the zip.
 // Exit codes: 0 ok, 1 a check failed, 2 usage or file error.
 
@@ -39,6 +48,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { createZip, readZip } from '../lib/zip.mjs';
 import { collectRelease, neverRule } from './release-rules.mjs';
+import { readClientIds, injectShipped, allowEntries, SHIPPED_REL, VARS, masked } from './release-client-ids.mjs';
 
 // Where the changelog may live (the first one found is used).
 export const CHANGELOGS = ['CHANGELOG.md', 'docs/CHANGELOG.md'];
@@ -89,7 +99,7 @@ export function downloadLine(zipName, rels) {
 }
 
 /** Build the zip in memory: -> {buffer, top, entries}. Throws if the export holds anything it must not. */
-export function buildZip(exportDir, version, { name = 'opendash', mtime = null } = {}) {
+export function buildZip(exportDir, version, { name = 'opendash', mtime = null, transform = null } = {}) {
   const { files, excluded } = collectRelease(exportDir);
   const bad = excluded.filter(e => e.rel !== '.git');
   if (bad.length) throw new Error(`the export holds paths a release must not contain:\n${bad.map(e => `  ${e.rel}${e.dir ? '/' : ''}  (${e.why})`).join('\n')}`);
@@ -98,7 +108,7 @@ export function buildZip(exportDir, version, { name = 'opendash', mtime = null }
   const when = mtime || (process.env.SOURCE_DATE_EPOCH ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000) : new Date());
   const entries = files.map(f => ({
     name: `${top}/${f.rel}`,
-    data: releaseBytes(f.rel, readFileSync(f.full)),
+    data: transform ? transform(f.rel, releaseBytes(f.rel, readFileSync(f.full))) : releaseBytes(f.rel, readFileSync(f.full)),
     mtime: when,
     mode: /\.(sh|command)$/i.test(f.rel) ? 0o755 : 0o644,
   }));
@@ -165,13 +175,16 @@ export function tapSummary(out) {
 }
 
 /** Run the checks inside an extracted copy. -> {ok, steps:[{step, ok, detail}], tests} */
-export function verifyTree(root, { tests = true, offline = false, log = console.log } = {}) {
+export function verifyTree(root, { tests = true, offline = false, log = console.log, clientIds = null, allowFile = null } = {}) {
   const steps = [];
   // A node --test parent marks its children with NODE_TEST_CONTEXT; a nested
   // `node --test` that inherits it reports to that parent instead of printing TAP.
   const plain = { ...process.env };
   delete plain.NODE_TEST_CONTEXT;
-  const env = { ...plain };
+  // The release's client IDs are in the zip already (if asked for); the build,
+  // the scan and the tests never see them in their environment.
+  for (const v of Object.values(VARS)) delete plain[v];
+  const env = { ...plain, OPENDASH_SHIPPED_IDS: 'off' };   // the tests see a copy without built-in apps, as in the repository
   if (offline) {
     env.CLAUDE_CLI_PATH = join(root, 'no-such-dir', process.platform === 'win32' ? 'claude.exe' : 'claude');
     const pre = `--import=${pathToFileURL(join(root, 'tools', 'release-offline.mjs')).href}`;
@@ -186,7 +199,20 @@ export function verifyTree(root, { tests = true, offline = false, log = console.
   };
   run('node build.mjs --syntax', ['build.mjs', '--syntax'], { env: plain });
   run('node build.mjs', ['build.mjs'], { env: plain });
-  run('node tools/privacy-scan.mjs --no-terms (generic rules)', ['tools/privacy-scan.mjs', '--no-terms', '--summary', '.'], { env: plain });
+  const ids = clientIds && Object.keys(clientIds).length ? clientIds : null;
+  if (ids) {
+    // The values went into the zip: its shipped.mjs must return exactly them (they travel in the
+    // child's environment only, never on a command line).
+    const want = {}; for (const [k, v] of Object.entries(ids)) want[`RELEASE_EXPECT_${VARS[k]}`] = v;
+    const check = "import('./" + SHIPPED_REL + "').then(m => { const e = process.env, g = m.shippedGoogleClient({}), ms = m.shippedMicrosoftClientId({});"
+      + " const bad = [];"
+      + " if (e.RELEASE_EXPECT_OPENDASH_MICROSOFT_CLIENT_ID && ms !== e.RELEASE_EXPECT_OPENDASH_MICROSOFT_CLIENT_ID) bad.push('microsoft');"
+      + " if (e.RELEASE_EXPECT_OPENDASH_GOOGLE_CLIENT_ID && (!g || g.clientId !== e.RELEASE_EXPECT_OPENDASH_GOOGLE_CLIENT_ID || g.clientSecret !== e.RELEASE_EXPECT_OPENDASH_GOOGLE_CLIENT_SECRET)) bad.push('google');"
+      + " if (bad.length) { console.error('not built in: ' + bad.join(', ')); process.exit(1); } })";
+    run(`the built-in client IDs are in the zip (${Object.keys(ids).join(', ')})`, ['--input-type=module', '-e', check], { env: { ...plain, ...want } });
+  }
+  const scanArgs = ['tools/privacy-scan.mjs', '--no-terms', '--summary', ...(allowFile ? ['--allow', allowFile] : []), '.'];
+  run(`node tools/privacy-scan.mjs --no-terms (generic rules${allowFile ? '; the built-in client IDs allowed in ' + SHIPPED_REL + ' only' : ''})`, scanArgs, { env: plain });
   let summary = null;
   if (tests) {
     const files = readdirSync(join(root, 'tests')).filter(f => f.endsWith('.test.mjs')).sort().map(f => `tests/${f}`);
@@ -201,7 +227,7 @@ export async function main(argv = process.argv.slice(2), { log = console.log, er
   const val = (n) => { const i = argv.indexOf(n); return i >= 0 ? argv[i + 1] : undefined; };
   const has = (n) => argv.includes(n);
   if (has('--help') || has('-h')) {
-    log('usage: node tools/release-package.mjs --from <export dir> --version X.Y.Z [--out <dir>] [--name opendash] [--no-verify] [--no-tests] [--offline] [--keep] [--check-package-version]');
+    log('usage: node tools/release-package.mjs --from <export dir> --version X.Y.Z [--out <dir>] [--name opendash] [--no-verify] [--no-tests] [--offline] [--keep] [--check-package-version] [--client-ids | --require-client-ids]');
     return 0;
   }
   const withValue = new Set(['--from', '--version', '--out', '--name']);
@@ -231,9 +257,21 @@ export async function main(argv = process.argv.slice(2), { log = console.log, er
   if (!section && !prerelease) { error(`release-package: ${clPath ? relative(exportDir, clPath) : 'CHANGELOG.md'} has no section for ${version} (a heading like "## [${version}] - YYYY-MM-DD")`); return 1; }
   if (!section) log(`  note: no changelog section for ${version}; pre-release, so a placeholder note is used`);
 
+  // The built-in app registrations (zip only; tools/release-client-ids.mjs).
+  let ids = null, transform = null;
+  if (has('--client-ids') || has('--require-client-ids')) {
+    const r = readClientIds(process.env);
+    if (r.errors.length) { for (const e of r.errors) error(`release-package: ${e}`); return 2; }
+    if (r.missing.length && has('--require-client-ids')) { error(`release-package: not set: ${r.missing.join(', ')}`); return 2; }
+    for (const [k, v] of Object.entries(r.values)) log(`  built in: ${VARS[k]} ${masked(v)}`);
+    if (r.missing.length) log(`  note: not set, so the zip keeps the placeholder (that sign-in is not set up in this zip): ${r.missing.join(', ')}`);
+    ids = r.values;
+    transform = (rel, buf) => (rel === SHIPPED_REL && Object.keys(ids).length ? Buffer.from(injectShipped(buf.toString('utf8'), ids), 'utf8') : buf);
+  }
+
   // The zip.
   let z;
-  try { z = buildZip(exportDir, version, { name }); } catch (e) { error(`release-package: ${e.message}`); return 1; }
+  try { z = buildZip(exportDir, version, { name, transform }); } catch (e) { error(`release-package: ${e.message}`); return 1; }
   const zipName = `${z.top}.zip`;
   const digest = sha256(z.buffer);
   const check = checkZip(z.buffer, z.top, z.entries.map(e => e.name));
@@ -268,7 +306,17 @@ export async function main(argv = process.argv.slice(2), { log = console.log, er
     extract(check.items, work);
     const root = join(work, z.top);
     log(`Verifying the extracted zip in ${root}`);
-    res = verifyTree(root, { tests: !has('--no-tests'), offline: has('--offline'), log });
+    let allowFile = null;
+    if (ids && Object.keys(ids).length) {
+      // The repository's reviewed exceptions plus these exact values in shipped.mjs: written next to
+      // the extracted copy (never inside it, never in the export), removed with it.
+      const own = join(root, 'tools', 'privacy-allow.json');
+      const doc = existsSync(own) ? JSON.parse(readFileSync(own, 'utf8')) : { allow: [] };
+      doc.allow = [...(Array.isArray(doc.allow) ? doc.allow : []), ...allowEntries(ids)];
+      allowFile = join(work, 'release-allow.json');
+      writeFileSync(allowFile, JSON.stringify(doc, null, 1));
+    }
+    res = verifyTree(root, { tests: !has('--no-tests'), offline: has('--offline'), log, clientIds: ids, allowFile });
     const listed = res.tests && res.tests.failed.length;
     for (const s of res.steps.filter(x => !x.ok && !(listed && x.step.startsWith('node --test')))) {
       const tail = s.out.split(/\r?\n/).filter(l => /Error|error|FAIL|✖/.test(l)).slice(0, 40).join('\n');

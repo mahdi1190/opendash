@@ -99,10 +99,12 @@ AADSTS53000 / 53003 (Conditional Access, compliant device required) show
 4. **Branding & properties**: a publisher domain and, ideally, publisher
    verification (Partner Center); without it Microsoft shows "unverified" and
    tenants that allow only verified publishers block the app entirely.
-5. Copy the **Application (client) ID** into `lib/accounts/shipped.mjs`
-   (`microsoftClientId`) in the release build, or set
-   `OPENDASH_MICROSOFT_CLIENT_ID` for a test build. The ID is public; nothing
-   else is needed.
+5. Give the **Application (client) ID** to the release: the repository secret
+   `OPENDASH_MICROSOFT_CLIENT_ID`, which `tools/release-package.mjs --client-ids`
+   writes into the zip's `lib/accounts/shipped.mjs` (`microsoftClientId`) only
+   (docs/dev/RELEASING.md, *Built-in sign-ins*); or set
+   `OPENDASH_MICROSOFT_CLIENT_ID` in the environment for a test build. The ID
+   is public; nothing else is needed.
 6. A work organisation's administrator then approves the app once for their
    tenant (the link OpenDash shows, or Entra admin centre > Enterprise
    applications > OpenDash > Permissions > Grant admin consent).
