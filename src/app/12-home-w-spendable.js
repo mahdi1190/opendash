@@ -305,6 +305,12 @@ async function _hspSyncStart() {
     return;
   }
   if (r.status === 202 || (r.status === 409 && j && j.job)) { _hspPoll(); return; }   // 409 with a job: an update is running already: follow it
+  // The computer that reads the bank is asleep or off (lib/finance-share.mjs): nothing was asked; one calm line.
+  if (r.ok && j && j.skipped) {
+    _hsp.sync = null; _hspPaintSync();
+    if (j.message) { if (typeof presenceNote === 'function') presenceNote(j.message); else toast(j.message, { icon: 'moon' }); }
+    return;
+  }
   _hsp.sync = null; _hspPaintSync();
   const msg = j && j.error ? (j.error.message || j.error) : `HTTP ${r.status}`;
   toast(`Couldn’t start the sync: ${msg}`, { kind: 'err', action: { label: 'Open Finances', run: () => _hspOpen('overview') } });
