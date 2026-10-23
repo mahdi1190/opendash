@@ -356,7 +356,7 @@ function pcPersonView(inner, cur, keep) {
     b.onclick = (e) => run(e.currentTarget);
     foot.appendChild(b); return b;
   };
-  fb('trash-2', 'Delete…', 'btn-ghost tc-f-del', 'pc-del', () => pplConfirmDelete(p.id), 'Delete this person (their tasks stay)');
+  fb('trash-2', 'Delete', 'btn-ghost tc-f-del', 'pc-del', () => pplConfirmDelete(p.id), 'Delete this person (their tasks stay)');
   fb('git-merge', 'Merge…', 'btn-ghost', 'pc-merge', () => openPersonMerge(p.id), 'Fold a duplicate into someone else');
   const keys = document.createElement('span'); keys.className = 'tc-keys';
   keys.innerHTML = `${nav.n > 1 ? '<span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> next</span>' : ''}<span><kbd class="kbd">E</kbd> edit</span><span><kbd class="kbd">N</kbd> new task</span>`;
@@ -460,7 +460,7 @@ function _pcMoreMenu(anchor, id) {
     { label: p.inactive ? 'Mark as active' : 'Mark as inactive', icon: p.inactive ? 'user-check' : 'user-minus', run: () => _pcApply([{ op: 'person.update', id, inactive: !p.inactive }], p.inactive ? `${p.name} is active again` : `${p.name} marked inactive`) },
     'sep',
     { label: 'Merge into…', icon: 'git-merge', run: () => openPersonMerge(id) },
-    { label: 'Delete…', icon: 'trash-2', danger: true, run: () => pplConfirmDelete(id) },
+    { label: 'Delete', icon: 'trash-2', danger: true, run: () => pplConfirmDelete(id) },
   ], { align: 'end', width: 240 });
 }
 /** Ops through the actions layer, with an Undo toast; falls back to the page model offline for simple field changes. */
@@ -905,7 +905,7 @@ function pcCheckEmail(btn, then, o) {
       free();
       const job = InboxStore.st && InboxStore.st.job;
       if (r && r.noSources) toast('No mailbox is connected yet.', { kind: 'err', action: { label: 'Open Connections', run: () => (window.Connections ? Connections.open('gmail') : setView('connections')) } });
-      else if (job && job.state === 'error') toast(job.error || 'Email could not be checked.', { kind: 'err' });
+      else if (job && job.state === 'error') toast(job.error || 'Email could not be checked.', { kind: 'err', retry: () => pcCheckEmail(null, then, o) });
       else if (!o.quiet) {
         let n = 0;
         try { n = _pcMailCands().length; } catch (e) { n = 0; }
@@ -915,7 +915,7 @@ function pcCheckEmail(btn, then, o) {
       if (then) then(r);
     };
     wait();
-  }, (e) => { free(); toast(netErrorMessage(e), { kind: 'err' }); });
+  }, (e) => { free(); toast(netErrorMessage(e), { kind: 'err', retry: () => pcCheckEmail(null, then, o) }); });
 }
 
 /* ---------- the People page's actions ---------- */

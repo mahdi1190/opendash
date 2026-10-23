@@ -325,3 +325,24 @@ function settingsSearchReveal(body) {
     timeout = setTimeout(() => { if (body.isConnected && _settingsSearchPending === entry) focus(body); else finish(); }, 4000);
   });
 }
+
+/* The command palette (Ctrl+K) reaches every setting too ("dark", "backups",
+   "notifications"...): the same entries as this search, in a Settings group
+   that shows when you type (16-command-palette.js registerPaletteSource). */
+if (typeof registerPaletteSource === 'function') registerPaletteSource((add, mode) => {
+  if (mode !== '' && mode !== 'cmd') return;
+  let entries = [];
+  try { entries = settingsSearchEntries(); } catch (e) { return; }
+  // A group's own page that is already a "Go to" command (Server, Diagnostics...) is listed once.
+  const known = new Set(PALETTE_COMMANDS.filter(c => typeof c.label === 'string').map(c => c.label.toLowerCase()));
+  for (const entry of entries) {
+    if (!entry || !entry.label) continue;
+    if (entry.overview && known.has(String(entry.label).toLowerCase())) continue;
+    add({
+      group: 'Settings', icon: entry.icon || 'settings', label: entry.label,
+      hint: entry.overview ? 'Settings' : 'Settings › ' + entry.groupTitle,
+      keywords: [entry.groupTitle, entry.keywords, entry.description].filter(Boolean).join(' '),
+      run: () => settingsSearchOpen(entry),
+    });
+  }
+});

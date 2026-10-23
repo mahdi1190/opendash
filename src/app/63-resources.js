@@ -511,7 +511,7 @@ function resAddMenu(anchor, link) {
   resIntegrations();
 }
 async function resBrowse(mode, links, opts) {
-  const t = toast(mode === 'folder' ? 'Choose a folder in the window that opened…' : 'Choose a file in the window that opened…', { icon: mode === 'folder' ? 'folder' : 'file', timeout: 60000 });
+  const t = toast(mode === 'folder' ? 'Choose a folder in the window that opened…' : 'Choose a file in the window that opened…', { icon: mode === 'folder' ? 'folder' : 'file', busy: true, timeout: 10 * 60000 });   // a wait: stays until the picker answers
   try {
     const out = await _resApi('/api/resources/pick', { mode, multi: mode === 'file' });
     t();
