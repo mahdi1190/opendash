@@ -167,6 +167,56 @@ connecting) asks this rule. One place records it: `accounts.json` for accounts,
 `isFetcher / fetcher / setFetcher / clearFetcher` is the only implementation;
 `lib/main-computer.mjs` is a view on it.
 
+## The Claude host
+
+One computer is the **Claude host**: the one with Claude and the claude.ai
+connectors (Settings > Sync > Claude > *Claude host*; until one is picked, the
+main computer). It is recorded once for every device (`roles.json` role
+`claude`). The rule (`lib/sync/claude-host.mjs` `claudeRoute`): while the
+host is reachable, **all AI work** (the remote-marked routes: `/api/ai` with
+task chat and email suggestions, the day adviser, the brief summaries, story
+scripts) **and every Claude-run fetch** (the Google Calendar and Gmail
+connectors, MCP servers; the bank through Claude once the money syncs) goes to
+it, even from a computer that has Claude too. Only when it is off does a
+computer run the work itself, if it has Claude; without Claude it says "Home
+laptop is off".
+
+- **Reachable**: live sync's `claude` lease decides when it has an answer
+  (the lease is pinned to the host; another holder means the host's claim ran
+  out, so two computers that both think they are the host follow one holder).
+  Without it: an open live link, or seen in the last 2 minutes. The host must
+  also claim the request within 8 seconds.
+- **Run Claude on** (each computer's own choice, never synced: its sync
+  folder's `claude-host.json`): *<host> first, then this computer* (default),
+  *This computer only*, *Only <host>*. A computer set to *Only <host>* never
+  takes the `claude` lease, so it never stands in for the host.
+- **Status**, in plain words: "Claude: using Home laptop", "Home laptop is
+  off: using this computer", "Home laptop is off". The toast of a request
+  follows it ("Asking Home laptop…", then "Home laptop is off: using this
+  computer…").
+- **One result, never two.** A request this computer may run itself carries
+  `hostFirst`. The asker is the only arbiter and writes only its own fields:
+  `grant` (the go-ahead, 60 s, renewed while the host's 10-second heartbeats
+  `beat` arrive), `back` (taken back) and `local` (its own run). The host
+  starts only with the go-ahead, and saves anything (the route's file, its
+  answer: `c.remoteCommit`) only while it holds (`mayRun`: until the go-ahead
+  ends minus 10 s by its clock, never once it sees `back`). The asker takes a
+  request back when it was not claimed in 8 s, when the host released it (it
+  restarted, or never got the go-ahead), or 10 s after the go-ahead ran out
+  (the host went off mid-request). The host's late answer is thrown away and
+  its Claude runs are cancelled (`withAbortSignal` in `lib/claude-runner.mjs`).
+  Clocks may differ by up to 10 s (Settings > Sync warns when they differ more).
+  A host on an older version (its capabilities lack `host: 1`) does not wait
+  for the go-ahead, so a computer with Claude keeps running its own work, as
+  before, until both are up to date.
+- **Fetches**: a click on Update leaves the Claude-run sources the host reads
+  too to the host (`hostFetch`) and reads the rest here; a source the host's
+  connectors miss is read here (fallback for that source only). The host runs
+  a fetch only with the go-ahead and this computer only after taking it back,
+  so a fetch never runs twice. The automatic Claude jobs (AI summaries,
+  reviews, story scripts, the connectors' update) follow the host too, and the
+  `claude` lease holder while the host sleeps.
+
 ## Safety
 
 - **Write gate** (`lib/hosts.mjs`): each computer that has a data folder open

@@ -668,5 +668,6 @@ registerSettingsGroup({
     if (!_syncSt && !_syncErr) syncLoad();
     _syncCard(el);
     if (typeof settingsMainComputerCard === 'function') settingsMainComputerCard(el);   // 58-settings-main.js
+    if (typeof settingsClaudeHostCard === 'function') settingsClaudeHostCard(el);       // 58-settings-claude-host.js
   },
 });

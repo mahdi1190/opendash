@@ -35,7 +35,12 @@ async function remoteWait(remote, opts) {
     icon: 'loader-circle', timeout: 15 * 60000,
     action: { label: 'Cancel', run: () => { cancelled = true; remoteWake(); fetch(url + '/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {}); } },
   });
-  const tell = (x) => { if (typeof opts.onState === 'function') { try { opts.onState(x); } catch (e) { console.error('[remote]', e); } } };
+  // The toast follows the request: "Asking Home laptop…", then "Home laptop is off: using this computer…".
+  let shown = remote.message || '';
+  const tell = (x) => {
+    if (x && x.message && x.message !== shown && typeof close.update === 'function') { shown = x.message; close.update(x.message); }
+    if (typeof opts.onState === 'function') { try { opts.onState(x); } catch (e) { console.error('[remote]', e); } }
+  };
   tell(remote);
   const t0 = Date.now();
   try {
