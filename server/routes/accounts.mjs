@@ -2,8 +2,8 @@
 // accounts, any number side by side (docs/dev/ACCOUNTS.md section 9).
 //
 //   GET  /api/accounts                      -> {accounts, providers}
-//   POST /api/accounts/begin                {provider, email, kind?, accountId?} -> {url, kind}
-//   GET  /api/accounts/begin?provider=&email=&kind=&accountId=  -> 302 to the provider (opened in a new tab)
+//   POST /api/accounts/begin                {provider, email, kind?, accountId?, features?:{mail, calendar}} -> {url, kind}
+//   GET  /api/accounts/begin?provider=&email=&kind=&accountId=&features=mail,calendar  -> 302 to the provider (opened in a new tab)
 //   GET  /api/accounts/callback?code=&state=  -> an HTML page (the only cross-site route here;
 //                                              also at /api/microsoft/callback for old app registrations)
 //   POST /api/accounts/callback             {state, code?, error?, error_description?} -> {account} (apps)
@@ -14,6 +14,8 @@
 //   POST /api/accounts/fetch-here           {id} -> {ok:false, placeholder:true, message}
 //   GET  /api/accounts/approval?id=         -> {consentUrl, mailto, tenant}
 //   PUT  /api/accounts/microsoft-app        {clientId | null} -> provider info
+//   PUT  /api/accounts/google-app           {clientId, clientSecret?} | {json} | {clientId: null} -> provider info
+//                                           (the user's own Google app; the secret is never sent back)
 //
 // The router's checks apply to all of them (Host 421, same origin 403, JSON
 // 415, body limits 413); only the GET callback takes a cross-site navigation,
@@ -86,8 +88,13 @@ export default function register(app) {
     catch (e) { throw plain(e); }
   } });
 
+  // features: {mail, calendar} (POST) or 'mail,calendar' (GET); left out = the account's own choice (both for a new one).
+  const featuresInput = (f) => {
+    if (typeof f === 'string') { const l = f.split(',').map((x) => x.trim()); return { mail: l.includes('mail'), calendar: l.includes('calendar') }; }
+    return f && typeof f === 'object' && !Array.isArray(f) ? { mail: f.mail === true, calendar: f.calendar === true } : undefined;
+  };
   const beginInput = (q) => ({ provider: String(q.provider || ''), email: String(q.email || '').slice(0, 254), kind: ['personal', 'work'].includes(q.kind) ? q.kind : undefined,
-    accountId: q.accountId && ID_RE.test(String(q.accountId)) ? String(q.accountId) : undefined });
+    accountId: q.accountId && ID_RE.test(String(q.accountId)) ? String(q.accountId) : undefined, features: featuresInput(q.features) });
   app.route({ path: '/api/accounts/begin', method: 'POST', handler: async (c) => {
     try { const b = await accounts().begin(beginInput(await c.body())); return { url: b.url, kind: b.kind }; }
     catch (e) { throw plain(e); }
@@ -199,6 +206,23 @@ export default function register(app) {
   app.route({ path: '/api/accounts/approval', method: 'GET', handler: async (c) => {
     try { return (await accounts().approvalHelp(needId(c.query.get('id')))) || { consentUrl: null, mailto: null }; }
     catch (e) { throw plain(e); }
+  } });
+  app.route({ path: '/api/accounts/google-app', method: 'PUT', handler: async (c) => {
+    const b = await c.body();
+    const secret = typeof b.clientSecret === 'string' && b.clientSecret.trim() ? b.clientSecret.trim().slice(0, 600) : null;
+    let input = null;
+    if (typeof b.json === 'string') {
+      // Google's downloaded JSON ({installed:{client_id, client_secret}}); a secret typed next to it wins.
+      let doc;
+      try { doc = JSON.parse(b.json.slice(0, 20000)); } catch { throw new HttpError(400, 'That is not the JSON file from Google Cloud. Paste the client ID instead.', { code: 'BAD_REQUEST' }); }
+      const inner = doc && typeof doc === 'object' ? (doc.installed || doc.web || doc) : {};
+      input = { clientId: inner.client_id || inner.clientId, clientSecret: secret || inner.client_secret || inner.clientSecret || null };
+    } else if (b.clientId != null && b.clientId !== '') input = { clientId: String(b.clientId).trim().slice(0, 300), clientSecret: secret };
+    try {
+      await accounts().googleApp.set(input);
+      log('note', input ? 'accounts: own Google app saved' : 'accounts: Google sign-ins use the built-in app');
+      return (await accounts().providersInfo()).google;
+    } catch (e) { throw plain(e); }
   } });
   app.route({ path: '/api/accounts/microsoft-app', method: 'PUT', handler: async (c) => {
     const { clientId } = await c.body();
