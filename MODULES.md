@@ -1154,6 +1154,14 @@ Files: `lib/finance.mjs`, `lib/finance/*`, `server/routes/finance.mjs`,
   the page is in memory; UI preferences go to localStorage `dash-finance-ui-v1`.
 - LLMs see finances read-only (`get_finance_summary`, totals only); there are no
   finance write ops in the actions layer on purpose.
+- **On every device** (sync on and encrypted; docs/dev/MULTI_DEVICE.md
+  "Finances on every device"): the computer that runs the `bank` job publishes
+  its analysis after every rebuild (`finance-share/finance.json`, packed per
+  month by `lib/sync/finance-share.mjs`); `financeData()` answers from that copy
+  on the others (`meta.remote`), whose Sync bank asks it (`fetch:finance`), and
+  categories, budgets and account edits are shared edits
+  (`finance-share/edits.json`) it applies. `lib/finance-share.mjs` is the
+  service; the route wires it (`app.ctx.financeShare`).
 - **Money brief wording** (optional, opt-in from the Overview's "Rewrite with
   Claude"): `GET /api/finance/brief?mode=cycle|month[&ai=1|&regenerate=1]`
   (same-origin only) runs the page's own model (`lib/finance/brief.mjs`

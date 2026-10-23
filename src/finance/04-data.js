@@ -94,8 +94,10 @@
         await new Promise(r => setTimeout(r, 1000));
       }
       const job = body.job || null;
+      const who = (R.data && R.data.meta && R.data.meta.remote && R.data.meta.remote.name) || remote.runsOn || 'your other computer';
       if (job && job.state === 'warning') toast("Couldn't reach your bank; inbox CSVs were imported", { bad: true });
       else if (job && job.state === 'error') toast('Update failed. See the message at the top.', { bad: true });
+      else if (!before && R.model) { syncDone(); toast(`Your finances from ${who} are here`, { kind: 'ok', icon: 'circle-check' }); }
       else { syncDone(); syncToast(syncDiff(before, R.model ? R.model.tx : []), job && job.result ? job.result.imported : 0); }
     } else if (!(res && res.status === 499)) R.startErr = body.error || 'Your other computer could not update your finances.';
     paintUpdate();
