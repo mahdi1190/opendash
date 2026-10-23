@@ -1,5 +1,48 @@
-/* Refresh derived Home content using the dashboard clock. No AI regeneration,
- * connector jobs, page reload or writes to tasks/notes are needed. */
+/* ============================================================
+   REFRESH TODAY: refresh EVERYTHING, now and on its own. Owner: Home.
+   User request, 24 Oct: "Refresh today should refresh everything: all calendar,
+   inbox, finances, weather, as well as actuate any AI advisors like Think through
+   my day... But it should also periodically refresh."
+
+     homeRefreshToday()        the button (top bar on Home, the hero's "Day so far" card):
+                               a full refresh with the panel; during a run it shows that
+                               run's panel instead of starting a second one
+     homeRefreshAll({manual})  one run at a time: a manual call while an automatic run is
+                               going joins it (and shows its panel)
+     homeRefreshRetry(id)      run one part again (the panel's Retry)
+     homeRefreshDerived()      repaint what Home derives from the clock (no fetch)
+
+   THE PARTS (_hrSteps), all at once, each with its own outcome:
+     Calendar, Inbox   CalStore / InboxStore.update (40-calendar.js) then wait for the job;
+                       a click forces it (and asks the other devices that read sources this
+                       one does not), the automatic run does not (the server's 30-minute rule
+                       and the main-computer rule decide)
+     Finances          POST /api/finance/update: a click on a computer that is not the finance
+                       computer asks that computer through the request path (remoteFetch,
+                       quiet); the automatic run sends {automatic: true}, so only the finance /
+                       main computer pulls the bank (never twice across devices). Fresh for 30
+                       minutes after a click (bank budgets), 12 hours otherwise
+     Weather           briefLoadWeather(true) and the travel forecasts
+     Day adviser       Think through my day (12-home-advisor.js), ONLY when the day's inputs
+                       changed since the last review or it is over 2 hours old (a click); the
+                       automatic run only reads the latest review (one made on another device
+                       shows) and leaves the automatic AI review to homeAdvisorTick and the
+                       server's once-per-period rule
+     quiet parts       location, Home widget data, presence, travel, suggestions: refreshed,
+                       not listed
+   A device that is off or asleep (presence) is not waited for: its part says so calmly
+   ("Finances: Mac is off"), in grey, not as a failure.
+
+   THE PANEL (#hr-panel, under the top bar; never blocks the page): "Calendar ✓ · Inbox ✓ ·
+   Finances… · Day adviser…" with one Cancel for the whole run; afterwards a plain line for
+   each part that failed with a Retry for just that part, or "Everything is up to date" that
+   goes by itself. The automatic runs show no panel.
+
+   ON ITS OWN: every 30 minutes while a dashboard page is open and visible, after the computer
+   wakes from sleep, and when the tab comes back after more than 10 minutes away. One tab runs
+   it for the computer (a stamp in localStorage); the server's rules keep the bank and Claude
+   jobs to one device.
+   ============================================================ */
 let _homeTodayRefresh = null, _homeClockMinute = '', _homeCurrentDate = '';
 function homeCurrentSummary() {
   const advice = typeof homeAdviceCurrent === 'function' ? homeAdviceCurrent() : null;
@@ -37,53 +80,380 @@ function homeRefreshDerived() {
     }
   }
 }
-function homeRefreshToday() {
-  if (_homeTodayRefresh) return _homeTodayRefresh;
-  _homeCurrentDate = todayStr();
-  _homeClockMinute = String(Math.floor(Clock.now() / 60000));
-  if (typeof _hd !== 'undefined') { _hd.story = null; _hd.storyAt = 0; }
-  homeRefreshDerived();
-  const btn = document.getElementById('tb-home-refresh');
-  if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); _homeRefreshLabel(btn, true); }
-  // A slow part (a location fix, a server that stopped answering) no longer keeps the
-  // button greyed for good: each part gets _HOME_REFRESH_WAIT, then Home shows what it has.
-  const capped = (p) => Promise.race([Promise.resolve(p), new Promise((res) => setTimeout(() => res('slow'), _HOME_REFRESH_WAIT))]);
-  _homeTodayRefresh = Promise.resolve().then(async () => {
-    let slow = false;
-    if (typeof dashboardLocationAutoRefresh === 'function') slow = (await capped(dashboardLocationAutoRefresh(true).catch(() => false))) === 'slow';
-    const jobs = [];
-    if (typeof homeDataRefreshVisible === 'function') jobs.push(homeDataRefreshVisible());
-    const up = typeof _serverAvailable !== 'undefined' && _serverAvailable;
-    if (up) {
-      if (typeof briefLoadWeather === 'function') jobs.push(briefLoadWeather());
-      if (typeof CalStore !== 'undefined' && typeof CalStore.load === 'function') jobs.push(CalStore.load(true));
-    }
-    const res = await Promise.allSettled(jobs.map(capped));
-    slow = slow || res.some(r => r.status === 'fulfilled' && r.value === 'slow');
-    if (state.view === 'home') homeRefreshDerived();
-    if (typeof toast !== 'function') return;
-    // Say what did not come in, with a way to try again, instead of a tick either way.
-    const calErr = up && typeof CalStore !== 'undefined' && CalStore.st && CalStore.st.error;
-    const again = { label: 'Try again', run: () => homeRefreshToday() };
-    if (!up && typeof _serverAvailable !== 'undefined') toast('Refreshed for the current time. The OpenDash server is not answering, so new events and data could not be fetched.', { icon: 'triangle-alert', timeout: 7000, action: again });
-    else if (calErr) toast('Refreshed for the current time, but the calendar could not be read.', { icon: 'triangle-alert', timeout: 7000, action: again });
-    else if (slow) toast('Refreshed for the current time. Some parts are still loading and appear when they arrive.', { icon: 'clock' });
-    else toast('Today refreshed for the current time', { kind: 'ok' });
-  }).finally(() => {
-    _homeTodayRefresh = null;
-    const current = document.getElementById('tb-home-refresh');
-    if (current) { current.disabled = false; current.removeAttribute('aria-busy'); _homeRefreshLabel(current, false); }
-  });
-  return _homeTodayRefresh;
+
+/* ---------- timings ---------- */
+const HR_EVERY_MS = 30 * 60000;          // the automatic run
+const HR_AWAY_MS = 10 * 60000;           // back on the tab after this long: run
+const HR_WAKE_GAP_MS = 5 * 60000;        // a minute timer this late: the computer slept
+const HR_FRESH_MS = 3 * 60000;           // calendar / inbox read this recently: a click does not read again
+const HR_FIN_FRESH_MS = 30 * 60000;      // the bank after a click (providers have daily budgets)
+const HR_FIN_AUTO_MS = 12 * 3600000;     // the bank, automatic
+const HR_AI_MS = 2 * 3600000;            // the day adviser: again when older than this (or the day changed)
+const HR_JOB_MS = 4 * 60000;             // a job still going after this: "still working", it finishes anyway
+const HR_QUICK_MS = 20000;               // a fetch / a location fix
+const HR_STAMP_KEY = 'dashboard-refresh-auto';
+const HR_AI_KEY = 'dashboard-refresh-ai';
+
+const _hr = { run: null, last: null, lastAt: 0, tickAt: Date.now(), hiddenAt: 0, hideT: 0, hooked: false };
+
+/* ---------- helpers ---------- */
+function _hrUp() { return typeof _serverAvailable === 'undefined' || !!_serverAvailable; }
+function _hrConn(id) { return typeof connHas === 'function' ? connHas(id) : typeof gdConnAccess === 'function' && gdConnAccess(id) === 'yes'; }
+function _hrFeat(k) { return !(typeof APP_CONFIG !== 'undefined' && APP_CONFIG.features && APP_CONFIG.features[k] === false); }
+function _hrSleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function _hrHM(ms) { const p = Clock.parts(ms); return typeof _calTimeLabel === 'function' ? _calTimeLabel(String(p.h).padStart(2, '0') + ':' + String(p.mi).padStart(2, '0')) : `${String(p.h).padStart(2, '0')}:${String(p.mi).padStart(2, '0')}`; }
+function _hrMsg(e, fallback) { return typeof netErrorMessage === 'function' ? netErrorMessage(e, fallback) : (e && e.message) || fallback; }
+/** Wait until cond() (may be async) is true, the run is cancelled, or ms pass. -> true when cond held. */
+async function _hrUntil(run, cond, ms) {
+  const t0 = Date.now();
+  for (;;) {
+    if (run.cancelled) return false;
+    let ok = false;
+    try { ok = await cond(); } catch (e) { ok = false; }
+    if (ok) return true;
+    if (Date.now() - t0 > ms) return false;
+    await _hrSleep(Date.now() - t0 < 20000 ? 1000 : 2500);
+  }
 }
-const _HOME_REFRESH_WAIT = 15000;
-/** The button says it is working (and spins, unless motion is reduced) rather than only greying out. */
+async function _hrJson(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }
+/** The device a connection comes from when it is asleep or off right now (presence): a calm line, else ''. */
+function _hrAway(conn, what) {
+  if (typeof connLocalHas === 'function' && connLocalHas(conn)) return '';
+  const via = typeof connVia === 'function' ? connVia(conn) : null;
+  if (!via || typeof connViaOnline !== 'function' || connViaOnline(conn)) return '';
+  const d = typeof presenceFor === 'function' ? presenceFor(via) : null;
+  const how = d && d.state === 'asleep' ? 'asleep' : 'off';
+  return `${via} is ${how}: ${what} update when it is back.`;
+}
+function _hrHash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+/** What the day adviser reasons over (tasks, today's events, the part of the day), as one short key. */
+function _hrDaySig() {
+  try {
+    const f = typeof _bfFacts === 'function' && typeof briefModel === 'function' ? Object.assign({}, _bfFacts(briefModel())) : {};
+    delete f.now; delete f.weather;
+    return _hrHash(JSON.stringify(f) + '|' + (typeof homeAdvicePeriod === 'function' ? homeAdvicePeriod() : '') + '|' + todayStr());
+  } catch (e) { return ''; }
+}
+function _hrAiGet(k) { try { const o = JSON.parse(localStorage.getItem(HR_AI_KEY) || '{}'); return o && o[k] ? o[k] : null; } catch (e) { return null; } }
+function _hrAiSet(k, sig) {
+  try { const o = JSON.parse(localStorage.getItem(HR_AI_KEY) || '{}') || {}; o[k] = { sig, at: Date.now() }; localStorage.setItem(HR_AI_KEY, JSON.stringify(o)); } catch (e) { /* private mode */ }
+}
+
+/* ---------- the parts ---------- */
+/** Calendar / inbox: one update job, then its outcome. */
+async function _hrStore(run, store, conn, what) {
+  if (typeof store === 'undefined' || !store) return { status: 'skipped', reason: 'off' };
+  const age = store.age();
+  if (run.manual && age !== null && age < HR_FRESH_MS && !store.running()) return { status: 'fresh', at: Date.now() - age };
+  const away = _hrAway(conn, what);
+  if (away) { store.load(true).catch(() => {}); return { status: 'away', reason: away }; }
+  if (!store.running()) {
+    const r = await store.update({ force: !!run.manual, quiet: true });
+    if (run.cancelled) return { status: 'cancelled' };
+    if (r.noSources) return { status: 'skipped', reason: 'not connected' };
+    if (r.error) return { status: 'error', reason: r.message || 'The update could not start.' };
+    if (r.skipped) {
+      await store.load(true);
+      return r.runsOn ? { status: 'elsewhere', reason: r.message || `comes from ${r.runsOn}` } : { status: 'fresh', at: store.data && Date.parse(store.data.fetchedAt) };
+    }
+    if (r.calm && r.message && !r.asked && !r.started) return { status: 'away', reason: r.message };
+    // Only another device reads these (nothing runs here): what it fetches arrives by sync.
+    if (r.asked && !store.running()) return { status: 'elsewhere', reason: r.message || 'Asked your other computer: it shows here when it arrives.' };
+  }
+  const ok = await _hrUntil(run, () => !store.running(), HR_JOB_MS);
+  if (run.cancelled) return { status: 'cancelled' };
+  if (!ok) return { status: 'slow', reason: 'Still reading. It finishes in the background and shows when it is done.' };
+  await store.load(true);
+  const job = store.st.job;
+  if (job && job.state === 'error') return { status: 'error', reason: String(job.error || 'The update did not finish.') };
+  if (store.st.error) return { status: 'error', reason: String(store.st.error) };
+  return { status: 'done' };
+}
+async function _hrFinance(run) {
+  let s = null;
+  try { s = await _hrJson('/api/finance/status'); } catch (e) { return { status: 'error', reason: _hrMsg(e, 'Finances could not be checked.') }; }
+  const at = s && s.lastUpdate && Date.parse(s.lastUpdate.at || s.lastUpdate.finishedAt || '');
+  const busy = () => !!(s && s.job && s.job.state === 'running');
+  if (!busy() && at && Date.now() - at < (run.manual ? HR_FIN_FRESH_MS : HR_FIN_AUTO_MS)) return { status: 'fresh', at };
+  const away = _hrAway('bank', 'your finances');
+  if (away) return { status: 'away', reason: away };
+  if (!busy()) {
+    let r, j;
+    try {
+      // A click on a computer that does not read the bank: the server asks the one that does (lib/finance-share.mjs ask).
+      const go = run.manual && typeof remoteFetch === 'function' ? remoteFetch : fetch;
+      r = await go('/api/finance/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(run.manual ? {} : { automatic: true }) }, { quiet: true });
+      j = await r.json().catch(() => ({}));
+    } catch (e) { return { status: 'error', reason: _hrMsg(e, 'The finance update could not start.') }; }
+    if (run.cancelled) return { status: 'cancelled' };
+    if (j && j.skipped) return { status: 'elsewhere', reason: j.message || (j.runsOn ? `Finance comes from ${j.runsOn}.` : 'Finance is updated on your main computer.') };
+    if (j && j.calm) return { status: 'away', reason: String(j.error || j.message || 'Your other computer is away.') };
+    if (r.status !== 202 && r.status !== 409 && !r.ok) return { status: 'error', reason: String((j && (j.error && j.error.message || j.error)) || 'HTTP ' + r.status) };
+    if (r.status === 409 && j && j.code && !j.job) return { status: 'error', reason: String(j.error || 'The finance update could not start.') };
+  }
+  // Wait for this computer's job (one run on another computer has already finished when its answer came).
+  const ok = await _hrUntil(run, async () => { s = await _hrJson('/api/finance/status'); return !busy(); }, HR_JOB_MS);
+  if (run.cancelled) return { status: 'cancelled' };
+  if (!ok) return { status: 'slow', reason: 'Still updating. It finishes in the background.' };
+  if (typeof financeSharedChanged === 'function') { try { financeSharedChanged(); } catch (e) { /* no finance view */ } }
+  if (s && s.job && s.job.state === 'error') return { status: 'error', reason: String(s.job.error || 'The bank update did not finish.') };
+  return { status: 'done' };
+}
+async function _hrWeather() {
+  const w = await briefLoadWeather(true);
+  if (typeof _trlCache !== 'undefined' && _trlCache && _trlCache.weather) _trlCache.weather.clear();   // travel forecasts: read again when shown
+  if (w && w.ok === false) return w.reason === 'offline' ? { status: 'error', reason: 'The forecast could not be fetched.' } : { status: 'skipped', reason: String(w.reason || 'no forecast') };
+  return { status: 'done' };
+}
+async function _hrAdviser(run) {
+  if (typeof homeAdvisorRefresh === 'function') { try { await homeAdvisorRefresh(); } catch (e) { /* the last one stays */ } }
+  if (run.cancelled) return { status: 'cancelled' };
+  const cur = typeof homeAdviceCurrent === 'function' ? homeAdviceCurrent() : null;
+  // Automatic: no AI here (homeAdvisorTick and the server's once-per-period rule do the automatic review).
+  if (!run.manual) return cur ? { status: 'fresh', at: cur.at } : { status: 'skipped', reason: 'runs when you ask' };
+  const sig = _hrDaySig(), last = _hrAiGet('adviser');
+  if (cur && Date.now() - (cur.at || 0) < HR_AI_MS && (!last || !sig || last.sig === sig)) {
+    if (!last && sig) _hrAiSet('adviser', sig);
+    return { status: 'fresh', at: cur.at, reason: 'Nothing changed since the last review.' };
+  }
+  await homeAdvisorReview(false, { quiet: true });
+  if (run.cancelled) return { status: 'cancelled' };
+  if (typeof _homeAdviceError !== 'undefined' && _homeAdviceError) return { status: 'error', reason: String(_homeAdviceError) };
+  _hrAiSet('adviser', sig);
+  return { status: 'done' };
+}
+function _hrSteps() {
+  const ai = typeof briefPrefs === 'function' && !!briefPrefs().ai;
+  return [
+    { id: 'calendar', label: 'Calendar', ms: HR_JOB_MS + 30000,
+      available: () => (!_hrFeat('calendar') || typeof CalStore === 'undefined' ? 'off' : _hrConn('calendar') ? true : 'not connected'),
+      run: (r) => _hrStore(r, CalStore, 'calendar', 'its calendars') },
+    { id: 'inbox', label: 'Inbox', ms: HR_JOB_MS + 30000,
+      available: () => (!_hrFeat('email') || typeof InboxStore === 'undefined' ? 'off' : _hrConn('gmail') ? true : 'not connected'),
+      run: (r) => _hrStore(r, InboxStore, 'gmail', 'your email will') },
+    { id: 'finance', label: 'Finances', ms: HR_JOB_MS + 30000,
+      available: () => (!_hrFeat('finance') ? 'off' : _hrConn('bank') ? true : 'not connected'),
+      run: _hrFinance },
+    { id: 'weather', label: 'Weather', ms: HR_QUICK_MS,
+      available: () => (typeof briefLoadWeather !== 'function' ? 'off' : APP_CONFIG.location ? true : 'no town set'),
+      run: _hrWeather },
+    { id: 'adviser', label: 'Day adviser', ms: 4 * 60000,
+      available: () => (!ai || typeof homeAdvisorReview !== 'function' ? 'off' : _hrConn('claude') ? true : 'not connected'),
+      run: _hrAdviser },
+    // Refreshed with the rest, not listed.
+    { id: 'location', quiet: true, ms: HR_QUICK_MS, available: () => typeof dashboardLocationAutoRefresh === 'function',
+      run: async (r) => { await dashboardLocationAutoRefresh(!!r.manual); return { status: 'done' }; } },
+    { id: 'widgets', quiet: true, ms: HR_QUICK_MS, available: () => typeof homeDataRefreshVisible === 'function',
+      run: async () => { await homeDataRefreshVisible(); return { status: 'done' }; } },
+    { id: 'presence', quiet: true, ms: HR_QUICK_MS, available: () => typeof presenceLoad === 'function',
+      run: async () => { await presenceLoad(true); return { status: 'done' }; } },
+    { id: 'travel', quiet: true, ms: HR_QUICK_MS, available: () => typeof TravelStore !== 'undefined' && TravelStore && typeof TravelStore.refresh === 'function',
+      run: async () => { await TravelStore.refresh(); return { status: 'done' }; } },
+  ];
+}
+
+/* ---------- a run ---------- */
+/** One part, with its time limit; the outcome lands in run.results[id] and the panel repaints. */
+function _hrRunStep(run, s) {
+  run.results[s.id] = { status: 'running' };
+  _hrPaint();
+  const limit = new Promise((res) => setTimeout(() => res({ status: 'slow', reason: 'Still working. It finishes in the background.' }), s.ms || HR_QUICK_MS));
+  return Promise.race([Promise.resolve().then(() => s.run(run)), limit, run.stop])
+    .then((r) => r || { status: 'done' }, (e) => ({ status: 'error', reason: _hrMsg(e, 'That part did not finish.') }))
+    .then((r) => {
+      if (run.cancelled && r.status !== 'done' && r.status !== 'fresh') r = { status: 'cancelled' };
+      run.results[s.id] = r;
+      _hrPaint();
+      return r;
+    });
+}
+/**
+ * Refresh everything (see the header). o: {manual}. A run already going is joined (a click
+ * makes its panel show). -> Promise of the run.
+ */
+function homeRefreshAll(o) {
+  o = o || {};
+  if (_hr.run) {
+    // A click during an automatic run joins it; the day adviser (which the automatic run leaves
+    // alone) gets its turn when the run ends, under its own inputs-changed / 2-hour rule.
+    if (o.manual) { _hr.run.visible = true; if (!_hr.run.manual) _hr.run.joined = true; _hrPaint(); }
+    return _hr.run.promise;
+  }
+  const run = { manual: !!o.manual, visible: !!o.manual, cancelled: false, results: {}, steps: [], at: Date.now(), done: false };
+  let stopNow = null;
+  run.stop = new Promise((res) => { stopNow = res; });
+  run.cancel = () => {
+    if (run.done || run.cancelled) return;
+    run.cancelled = true;
+    if (run.results.adviser && run.results.adviser.status === 'running' && typeof homeAdvisorCancel === 'function') homeAdvisorCancel();
+    stopNow({ status: 'cancelled' });
+  };
+  _hr.run = run;
+  _homeTodayRefresh = run;
+  if (run.manual) {
+    _homeCurrentDate = todayStr();
+    _homeClockMinute = String(Math.floor(Clock.now() / 60000));
+    if (typeof _hd !== 'undefined') { _hd.story = null; _hd.storyAt = 0; }
+    if (state.view === 'home') homeRefreshDerived();
+  }
+  try { localStorage.setItem(HR_STAMP_KEY, String(Date.now())); } catch (e) { /* private mode */ }
+  _hrButtons();
+  if (run.visible && typeof homeAnnounce === 'function') homeAnnounce('Refreshing everything');
+  run.promise = Promise.resolve().then(async () => {
+    if (!_hrUp()) { run.results.server = { status: 'error', reason: typeof NET_DOWN_MESSAGE !== 'undefined' ? NET_DOWN_MESSAGE : 'The OpenDash server is not answering.' }; run.offline = true; return; }
+    const steps = _hrSteps();
+    const jobs = [];
+    for (const s of steps) {
+      let av = false;
+      try { av = s.available(); } catch (e) { av = false; }
+      if (av !== true) { if (!s.quiet && av !== 'off') run.results[s.id] = { status: 'skipped', reason: typeof av === 'string' ? av : 'not connected' }; continue; }
+      if (!s.quiet) run.steps.push(s);
+      jobs.push(_hrRunStep(run, s));
+    }
+    _hrPaint();
+    await Promise.race([Promise.allSettled(jobs), run.stop]);
+  }).catch((e) => { console.error('[refresh]', e); }).then(() => {
+    run.done = true;
+    _hr.run = null; _hr.last = run; _hr.lastAt = Date.now();
+    _homeTodayRefresh = null;
+    if (typeof sgRefresh === 'function') { try { sgRefresh(); } catch (e) { /* none */ } }
+    if (state.view === 'home') homeRefreshDerived();
+    if (typeof briefLoadMoney === 'function' && !run.offline) briefLoadMoney(true).then(() => { if (typeof _bfUpdate === 'function') _bfUpdate(['money']); }, () => {});
+    _hrButtons();
+    _hrPaint();
+    if (run.joined && !run.cancelled && !run.offline) { setTimeout(() => homeRefreshRetry('adviser'), 0); return run; }
+    if (run.visible && !_hrProblems(run).length) _hrAutoHide();
+    if (typeof homeAnnounce === 'function' && run.visible) homeAnnounce(_hrSummaryText(run));
+    return run;
+  });
+  return run.promise;
+}
+/** Run one part again (the panel's Retry), as a click. */
+function homeRefreshRetry(id) {
+  const run = _hr.last;
+  if (_hr.run || !run) { homeRefreshToday(); return; }
+  const s = _hrSteps().find(x => x.id === id);
+  let av = false;
+  try { av = s ? s.available() : false; } catch (e) { av = false; }
+  if (!s || av !== true) { _hrPaint(); return; }
+  run.cancelled = false; run.done = false; run.manual = true; run.visible = true;
+  let stopNow = null;
+  run.stop = new Promise((res) => { stopNow = res; });
+  run.cancel = () => { if (run.done) return; run.cancelled = true; if (id === 'adviser' && typeof homeAdvisorCancel === 'function') homeAdvisorCancel(); stopNow({ status: 'cancelled' }); };
+  if (!run.steps.some(x => x.id === s.id)) run.steps.push(s);
+  _hr.run = run; _homeTodayRefresh = run;
+  _hrButtons();
+  run.joined = false;
+  run.promise = _hrRunStep(run, s).then(() => {
+    run.done = true; _hr.run = null; _homeTodayRefresh = null; _hr.lastAt = Date.now();
+    if (state.view === 'home') homeRefreshDerived();
+    _hrButtons(); _hrPaint();
+    if (!_hrProblems(run).length) _hrAutoHide();
+    if (typeof homeAnnounce === 'function') homeAnnounce(_hrSummaryText(run));
+    return run;
+  });
+}
+function homeRefreshToday() { return homeRefreshAll({ manual: true }); }
+/** The automatic run: one tab per computer (the stamp), only while visible and the server answers. */
+function homeRefreshAuto(why) {
+  if (_hr.run || document.hidden || !_hrUp()) return;
+  let last = 0;
+  try { last = Number(localStorage.getItem(HR_STAMP_KEY)) || 0; } catch (e) { last = 0; }
+  const need = why === 'timer' ? HR_EVERY_MS - 60000 : HR_AWAY_MS;   // another tab did it this recently: nothing
+  if (Date.now() - Math.max(last, _hr.lastAt) < need) return;
+  homeRefreshAll({ manual: false });
+}
+
+/* ---------- the panel ---------- */
+const _HR_PROBLEM = new Set(['error', 'slow']);
+function _hrProblems(run) { return run ? Object.entries(run.results).filter(([, r]) => r && _HR_PROBLEM.has(r.status)) : []; }
+function _hrLabel(run, id) { if (id === 'server') return 'Server'; const s = (run.steps || []).find(x => x.id === id) || _hrSteps().find(x => x.id === id); return s ? s.label : id; }
+function _hrChip(run, id, r) {
+  const st = r.status;
+  const label = _hrLabel(run, id);
+  const ic = st === 'running' ? '<span class="spinner" aria-hidden="true"></span>'
+    : icon(st === 'done' || st === 'fresh' ? 'check' : st === 'away' ? 'moon' : st === 'elsewhere' ? 'monitor' : st === 'skipped' || st === 'cancelled' ? 'minus' : st === 'slow' ? 'clock' : 'x', 'i-xs');
+  const word = st === 'running' ? '…' : st === 'fresh' ? ' up to date' : st === 'skipped' ? ` · ${r.reason || 'not connected'}` : st === 'cancelled' ? ' · stopped' : st === 'slow' ? ' · still working' : st === 'elsewhere' || st === 'away' ? ' · ' + (st === 'away' ? 'away' : 'elsewhere') : st === 'error' ? ' · failed' : '';
+  const tip = r.reason || (st === 'fresh' && r.at ? `Already up to date (${_hrHM(r.at)})` : '');
+  return `<span class="hr-chip s-${escAttr(st)}"${tip ? ` title="${escAttr(tip)}"` : ''}>${ic}<span>${esc(label)}${esc(word)}</span></span>`;
+}
+function _hrSummaryText(run) {
+  if (run.offline) return 'Refreshed for the current time. The OpenDash server is not answering, so nothing new could be fetched.';
+  const bad = _hrProblems(run);
+  if (run.cancelled) return 'Refresh stopped. What already came in is shown.';
+  if (bad.length) return `Refreshed, but ${bad.map(([id]) => _hrLabel(run, id)).join(' and ')} ${bad.length === 1 ? 'needs' : 'need'} another try.`;
+  return 'Everything is up to date';
+}
+function _hrPaint() {
+  const run = _hr.run || _hr.last;
+  let el = document.getElementById('hr-panel');
+  if (!run || !run.visible) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('div'); el.id = 'hr-panel'; el.className = 'hr-panel';
+    el.setAttribute('role', 'region'); el.setAttribute('aria-label', 'Refresh today');
+    el.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.stopPropagation(); _hrClose(); } });
+    el.addEventListener('mouseenter', () => clearTimeout(_hr.hideT));
+    el.addEventListener('focusin', () => clearTimeout(_hr.hideT));
+    document.body.appendChild(el);
+  }
+  // The control that had focus gets it back after the repaint (Cancel becomes Close when the run ends).
+  const ae = document.activeElement;
+  const fk = ae && el.contains(ae) ? (ae.dataset.hrRetry ? 'retry:' + ae.dataset.hrRetry : ae.hasAttribute('data-hr-cancel') || ae.hasAttribute('data-hr-close') ? 'end' : '') : '';
+  const busy = !run.done;
+  const ids = (run.steps || []).map(s => s.id).concat(Object.keys(run.results).filter(id => !(run.steps || []).some(s => s.id === id)));
+  const chips = ids.filter(id => run.results[id]).map(id => _hrChip(run, id, run.results[id])).join('<span class="hr-sep" aria-hidden="true">·</span>');
+  const head = busy ? `<span class="spinner" aria-hidden="true"></span><b>Refreshing everything</b>`
+    : `${icon(_hrProblems(run).length || run.offline ? 'triangle-alert' : 'circle-check', 'i-sm')}<b>${esc(_hrSummaryText(run))}</b><span class="hr-at">${esc(_hrHM(_hr.lastAt || Date.now()))}</span>`;
+  const rows = busy ? '' : (run.offline ? [['server', run.results.server]] : _hrProblems(run)).map(([id, r]) =>
+    `<div class="hr-row s-${escAttr(r.status)}"><span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || 'It did not finish.')}</span><button type="button" class="btn btn-ghost btn-sm" data-hr-retry="${escAttr(id)}">${icon('refresh-cw', 'i-xs')}<span>Retry</span></button></div>`).join('');
+  const calm = busy ? '' : Object.entries(run.results).filter(([, r]) => r && (r.status === 'away' || r.status === 'elsewhere')).map(([id, r]) =>
+    `<div class="hr-row is-calm">${icon(r.status === 'away' ? 'moon' : 'monitor', 'i-xs')}<span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || '')}</span></div>`).join('');
+  el.classList.toggle('is-busy', busy);
+  el.classList.toggle('is-warn', !busy && (!!run.offline || _hrProblems(run).length > 0));
+  el.innerHTML = `<div class="hr-top">${head}<span class="spacer"></span>`
+    + (busy ? `<button type="button" class="btn btn-ghost btn-sm" data-hr-cancel>Cancel</button>` : `<button type="button" class="btn-icon btn-sm" data-hr-close aria-label="Close" data-tip="Close" data-kbd="Esc">${icon('x')}</button>`)
+    + `</div>${chips ? `<div class="hr-chips">${chips}</div>` : ''}${rows}${calm}`;
+  const c = el.querySelector('[data-hr-cancel]'); if (c) c.onclick = () => { if (_hr.run && _hr.run.cancel) _hr.run.cancel(); };
+  const x = el.querySelector('[data-hr-close]'); if (x) x.onclick = _hrClose;
+  el.querySelectorAll('[data-hr-retry]').forEach(b => { b.onclick = () => { if (b.dataset.hrRetry === 'server') homeRefreshToday(); else homeRefreshRetry(b.dataset.hrRetry); }; });
+  if (fk) {
+    const to = (fk.startsWith('retry:') && el.querySelector(`[data-hr-retry="${CSS.escape(fk.slice(6))}"]`)) || el.querySelector('[data-hr-cancel], [data-hr-close]');
+    if (to) try { to.focus({ preventScroll: true }); } catch (e) { /* gone */ }
+  }
+}
+function _hrClose() {
+  clearTimeout(_hr.hideT);
+  if (_hr.run) _hr.run.visible = false; else if (_hr.last) _hr.last.visible = false;
+  const el = document.getElementById('hr-panel');
+  if (!el) return;
+  const had = el.contains(document.activeElement);
+  el.remove();
+  if (had) { const b = document.getElementById('tb-home-refresh'); if (b) try { b.focus({ preventScroll: true }); } catch (e) { /* gone */ } }
+}
+/** All good: the panel goes by itself after a moment (not while the pointer or focus is on it). */
+function _hrAutoHide() {
+  clearTimeout(_hr.hideT);
+  _hr.hideT = setTimeout(() => {
+    const el = document.getElementById('hr-panel');
+    if (!el || el.matches(':hover') || el.contains(document.activeElement)) return;
+    if (window.Motion && !Motion.prefersReduced() && el.animate) el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180 }).finished.then(_hrClose, _hrClose);
+    else _hrClose();
+  }, 4500);
+}
+
+/* ---------- the button ---------- */
+/** The button says it is working (and spins, unless motion is reduced); its tip says when it last ran. */
 function _homeRefreshLabel(btn, busy) {
   const t = btn.querySelector('span'); if (t) t.textContent = busy ? 'Refreshing…' : 'Refresh today';
   const i = btn.querySelector('.i'); if (i) i.classList.toggle('spin', !!busy);
+  if (busy) btn.setAttribute('aria-busy', 'true'); else btn.removeAttribute('aria-busy');
+  const when = _hr.lastAt ? ` Last refreshed ${_hrHM(_hr.lastAt)}.` : '';
+  btn.setAttribute('data-tip', busy ? 'Refreshing calendar, inbox, finances, weather and the day adviser. Click to see how it is going.'
+    : `Refresh everything: calendar, inbox, finances, weather and the day adviser. It also refreshes on its own every 30 minutes.${when}`);
 }
+function _hrButtons() { const b = document.getElementById('tb-home-refresh'); if (b) _homeRefreshLabel(b, !!_hr.run); }
 function homeRefreshClock() {
-  if (state.view !== 'home' || document.hidden || _homeTodayRefresh) return;
+  if (state.view !== 'home' || document.hidden || _hr.run) return;
   const minute = String(Math.floor(Clock.now() / 60000));
   if (minute === _homeClockMinute) return;
   _homeClockMinute = minute; // Set before painting; hero painting invokes its ticker.
@@ -93,15 +463,35 @@ function homeRefreshClock() {
   if (typeof homeAdvisorTick === 'function') homeAdvisorTick();
 }
 function homeRefreshButton(crumb) {
+  _hrHook();
   if (document.getElementById('tb-home-refresh')) return;
   const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'tb-home-refresh'; btn.className = 'tb-home-cust';
   btn.innerHTML = icon('refresh-cw') + '<span>Refresh today</span>';
-  btn.setAttribute('data-tip', 'Update ideas, day so far and Home widgets for the current time');
-  btn.disabled = !!_homeTodayRefresh;
-  if (_homeTodayRefresh) { btn.setAttribute('aria-busy', 'true'); _homeRefreshLabel(btn, true); }
-  btn.onclick = homeRefreshToday;
+  btn.setAttribute('aria-controls', 'hr-panel');
+  _homeRefreshLabel(btn, !!_hr.run);
+  btn.onclick = homeRefreshToday;          // during a run: shows that run (it never starts a second)
   crumb.insertAdjacentElement('afterend', btn);
 }
-if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) homeRefreshClock();
-});
+
+/* ---------- on its own ---------- */
+/** The timers: hooked once (the first Home paint, or a moment after load on any page). */
+function _hrHook() {
+  if (_hr.hooked || typeof document === 'undefined' || typeof document.addEventListener !== 'function' || typeof setInterval !== 'function') return;
+  _hr.hooked = true;
+  _hr.lastAt = _hr.lastAt || Date.now();   // the page has just loaded everything
+  _hr.tickAt = Date.now();
+  setInterval(() => {
+    const now = Date.now(), gap = now - _hr.tickAt;
+    _hr.tickAt = now;
+    if (document.hidden) return;
+    if (gap > HR_WAKE_GAP_MS) { homeRefreshAuto('wake'); return; }    // the computer slept
+    if (now - _hr.lastAt >= HR_EVERY_MS) homeRefreshAuto('timer');
+  }, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { _hr.hiddenAt = Date.now(); return; }
+    homeRefreshClock();
+    if (_hr.hiddenAt && Date.now() - _hr.hiddenAt > HR_AWAY_MS) homeRefreshAuto('visible');
+    _hr.hiddenAt = 0;
+  });
+}
+if (typeof setTimeout === 'function' && typeof document !== 'undefined') setTimeout(_hrHook, 0);

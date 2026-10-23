@@ -134,6 +134,9 @@ function createGoogleDataStore(o) {
   function finished(job) {
     if (!job) return;
     _gdLoadConn(true).then(() => { try { window.Connections && window.Connections.refresh && window.Connections.refresh(); } catch (e) {} _gdRepaint(); });
+    // A job started by Refresh today (update({quiet: true})): its own panel says how it went (12-home-refresh.js).
+    const quiet = st.quietJob; st.quietJob = false;
+    if (quiet) return;
     if (job.state === 'ok') {
       if (job.forced) toast(`${o.label} updated` + (job.result && Number.isFinite(job.result.count) ? ` · ${job.result.count} ${o.noun}` : ''), { kind: 'ok', icon: 'refresh-cw' });
     } else if (job.state === 'error' && (job.forced || _GD_AUTH_CODES.has(job.code))) {
@@ -146,21 +149,29 @@ function createGoogleDataStore(o) {
   async function update(opts) {
     opts = opts || {};
     if (running()) return { running: true };
+    // opts.quiet (Refresh today): no toasts of its own; the caller shows the outcome (message, calm).
+    const loud = opts.force !== false && !opts.quiet;
     try {
       const r = await fetch(o.updateUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ force: opts.force !== false }, opts.body || {})) });
       const j = await r.json().catch(() => ({}));
       if (r.status === 409 && j.code === 'NO_SOURCES') {
-        if (opts.force !== false) toast(j.error || 'Nothing is connected yet.', { icon: 'plug', timeout: 8000, action: { label: 'Open Connections', run: () => (window.Connections ? Connections.open(o.connector) : setView('connections')) } });
+        if (loud) toast(j.error || 'Nothing is connected yet.', { icon: 'plug', timeout: 8000, action: { label: 'Open Connections', run: () => (window.Connections ? Connections.open(o.connector) : setView('connections')) } });
         return { error: true, noSources: true };
       }
       // Another of your devices was asked too (it reads sources this one does not): its update arrives by sync.
-      if (r.status === 202 && Array.isArray(j.asked) && j.asked.length && opts.force !== false) toast(j.message || 'Asking your other computer to update.', { icon: 'loader-circle' });
+      if (r.status === 202 && Array.isArray(j.asked) && j.asked.length && loud) toast(j.message || 'Asking your other computer to update.', { icon: 'loader-circle' });
       // Another device that reads some of them is asleep or off (lib/sync/presence.mjs): not asked; one calm line, once.
-      else if (j.calm && j.message && opts.force !== false && typeof presenceNote === 'function') presenceNote(j.message);
-      if (r.status === 202 || r.status === 409) { st.job = j.job || null; changed('job'); poll(); return { started: r.status === 202 }; }
-      if (r.ok && j.skipped) return { skipped: true, runsOn: j.runsOn || null };
+      else if (j.calm && j.message && loud && typeof presenceNote === 'function') presenceNote(j.message);
+      if (r.status === 202 || r.status === 409) {
+        st.job = j.job || null;
+        if (opts.quiet && r.status === 202 && st.job) st.quietJob = true;
+        changed('job'); poll();
+        return { started: r.status === 202, message: j.message || '', calm: !!j.calm, asked: Array.isArray(j.asked) ? j.asked.length : 0 };
+      }
+      if (r.ok && j.skipped) return { skipped: true, runsOn: j.runsOn || null, message: j.message || '' };
       throw new Error(j.error || 'HTTP ' + r.status);
     } catch (e) {
+      if (opts.quiet) return { error: true, message: typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The update could not start.') : (e && e.message) || 'The update could not start.' };
       if (opts.force !== false) {
         // A network failure reads as "the server isn't running"; either way the toast offers the next step.
         const msg = typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The update could not start.') : (e && e.message) || 'The update could not start.';

@@ -59,9 +59,11 @@ function homeAdvisorPaint() {
   }
   if(typeof _bfPaintAi==='function')_bfPaintAi(null,false);
 }
-async function homeAdvisorReview(automatic) {
+/** o.quiet (Refresh today): no toasts and no "Asking..." toast; the refresh panel says how it went (_homeAdviceError). */
+async function homeAdvisorReview(automatic,o) {
+  const quiet=!!(o&&o.quiet);
   if(_homeAdviceBusy)return _homeAdviceBusy;
-  if(!briefPrefs().ai){if(!automatic)toast('Turn AI on in Home and stories settings.');return;}
+  if(!briefPrefs().ai){if(!automatic&&!quiet)toast('Turn AI on in Home and stories settings.');return;}
   const gen=++_homeAdviceGen;
   const ctl=typeof AbortController==='function'?new AbortController():null;
   _homeAdviceAbort=ctl;_homeAdviceStopped=false;
@@ -72,18 +74,18 @@ async function homeAdvisorReview(automatic) {
       if(state._localDirty)throw new Error('Wait for your latest changes to finish saving, then try again.');
       if(gen!==_homeAdviceGen)return;
       // No Claude here but on another of your devices: it thinks it through there (56-remote-jobs.js).
-      const response=await (typeof remoteFetch==='function'&&!automatic?remoteFetch:fetch)('/api/story/advice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({automatic:!!automatic}),...(ctl?{signal:ctl.signal}:{})});
+      const response=await (typeof remoteFetch==='function'&&!automatic?remoteFetch:fetch)('/api/story/advice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({automatic:!!automatic}),...(ctl?{signal:ctl.signal}:{})},{quiet});
       const data=await response.json();
       if(gen!==_homeAdviceGen)return;                          // cancelled meanwhile: the answer is not shown
       if(!response.ok)throw new Error(data.error?.message||data.error||'The AI review could not finish.');
       _homeAdvice=data;
       try{localStorage.setItem(_HOME_ADVICE_KEY,JSON.stringify(data));}catch(e){/* Private mode. */}
-      if(!automatic)toast(data.cached?'Showing the recent AI review':'Your AI day review is ready',{kind:'ok'});
+      if(!automatic&&!quiet)toast(data.cached?'Showing the recent AI review':'Your AI day review is ready',{kind:'ok'});
     }catch(e){
       if(gen!==_homeAdviceGen||(e&&e.name==='AbortError'))return;
       const msg=typeof netErrorMessage==='function'?netErrorMessage(e,'The AI review could not finish.'):(e&&e.message)||'The AI review could not finish.';
       _homeAdviceError=msg;
-      if(!automatic)toast(msg,{kind:'err',action:{label:'Try again',run:()=>homeAdvisorReview(false)}});
+      if(!automatic&&!quiet)toast(msg,{kind:'err',action:{label:'Try again',run:()=>homeAdvisorReview(false)}});
     }
     finally{if(gen===_homeAdviceGen){_homeAdviceBusy=null;_homeAdviceAbort=null;homeAdvisorPaint();}}
   };
