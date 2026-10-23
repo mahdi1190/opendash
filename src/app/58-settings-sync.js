@@ -1,19 +1,31 @@
 /* ============================================================
    SETTINGS > SYNC ACROSS MY DEVICES (owner: Sync)
    Server: server/routes/sync.mjs and lib/sync/engine.mjs. Off by default.
-   One switch, the folder (the OneDrive / Google Drive / Dropbox folder the
-   server found, or another one typed in), this computer's name, and the
-   status in plain words: "Synced 12 s ago", "Waiting for OneDrive",
-   "Another device: Work laptop, last seen 2 min ago".
+   End-to-end encrypted (lib/sync/e2e.mjs): the cloud folder only ever holds
+   locked files.
+     Off:        "Is this your first computer with OpenDash?"
+                 Yes -> the folder, a name, Turn on -> the recovery code (once)
+                 No  -> the folder, a name -> "Approve on your other computer"
+                        (6 digits on both screens) or "Type your recovery code"
+     On:         the status in plain words, a new computer asking to join,
+                 the devices (name, kind, last seen, This computer, Rename,
+                 Remove this device, main computer for each account), add a
+                 phone (QR code), a new recovery code, the trial switch.
    Changes from the other computer arrive through live sync (86-live-sync.js
    shows "Updated by Work laptop"). The helpers syncAgo / syncStatusLine /
-   syncDeviceLines are pure (tested in Node).
+   syncDeviceLines / syncScreen / syncPairView / syncKindLabel /
+   syncDeviceSummary / syncCodeLines are pure (tested in Node).
    ============================================================ */
 let _syncSt = null;
 let _syncErr = '';
 let _syncBusy = false;
 let _syncOther = false;      // "Another folder..." picked: show the path box
 let _syncTicker = null;
+let _syncFlow = null;        // before sync is on: null (the question), 'first' or 'join'
+let _syncCode = null;        // a recovery code to show once
+let _syncOffer = null;       // {text, expiresAt}: the QR offer on screen
+let _syncAdd = false;        // "Add a computer or phone" open
+const _syncIgnored = new Set();
 
 /** "just now", "12 s ago", "2 min ago", "3 h ago", "2 days ago". */
 function syncAgo(ms, nowMs) {
@@ -34,8 +46,10 @@ function syncStatusLine(st, nowMs) {
   if (!st.enabled) return { tone: 'off', text: 'Off. Your data stays on this computer.' };
   if (st.mode === 'shadow' && st.state === 'ok') return { tone: 'warn', text: st.message || 'Trial mode: nothing is applied yet.' };
   if (st.state === 'error') return { tone: 'err', text: st.message || 'Sync is paused.' };
+  if (st.state === 'locked') return { tone: 'warn', text: st.message || "This computer can't read the synced data yet." };
   if (st.state === 'waiting') return { tone: 'warn', text: st.message || 'Waiting for the cloud folder.' };
   if (!st.lastSyncAt) return { tone: 'idle', text: 'Starting...' };
+  if (st.message && st.message !== 'Up to date.' && st.state === 'ok') return { tone: 'warn', text: st.message };
   return { tone: 'ok', text: 'Synced ' + syncAgo(st.lastSyncAt, nowMs) };
 }
 /** One line per other computer. */
@@ -43,6 +57,63 @@ function syncDeviceLines(st, nowMs) {
   const others = ((st && st.devices) || []).filter(d => !d.me);
   if (!others.length) return ['No other computer yet: turn this on with the same folder on your other computer.'];
   return others.map(d => `Another device: ${d.name}, last seen ${syncAgo(d.lastSeen, nowMs) || 'a while ago'}`);
+}
+/** Which screen: start | first | join | plain | joining | removed | locked | ready. */
+function syncScreen(st, flow) {
+  if (!st) return 'loading';
+  const e = st.e2e || {};
+  if (!st.enabled) return flow === 'first' ? 'first' : flow === 'join' ? 'join' : 'start';
+  if (!e.on) return 'plain';
+  if (e.ready && st.state !== 'locked') return 'ready';
+  if (e.reason === 'removed') return 'removed';
+  if (e.reason === 'not-joined') return 'joining';
+  return 'locked';
+}
+function syncKindLabel(k) { return k === 'phone' ? 'Phone' : k === 'tablet' ? 'Tablet' : 'Computer'; }
+/** "482 913" */
+function syncFormatPairCode(c) { return typeof c === 'string' && /^\d{6}$/.test(c) ? c.slice(0, 3) + ' ' + c.slice(3) : ''; }
+/** The recovery code in two lines of four groups (easier to copy by hand). */
+function syncCodeLines(code) {
+  const g = String(code || '').split('-');
+  return g.length === 8 ? [g.slice(0, 4).join('-'), g.slice(4).join('-')] : [String(code || '')];
+}
+/** {name, detail} for a row of the devices list. */
+function syncDeviceSummary(d, nowMs) {
+  const parts = [syncKindLabel(d.kind)];
+  parts.push(d.me ? 'This computer' : ('last seen ' + (syncAgo(d.lastSeen, nowMs) || 'a while ago')));
+  if (d.fetches && d.fetches.length) parts.push('main computer for ' + d.fetches.join(', '));
+  return { name: d.name || 'A device', detail: parts.join(' · ') };
+}
+/**
+ * What the pairing panel says: {title, text, code, actions: [[id, label, primary?]]}.
+ * p: the status's e2e.pairing ({role, step, code, name}).
+ */
+function syncPairView(p) {
+  if (!p) return null;
+  const other = p.name ? '"' + p.name + '"' : 'the new computer';
+  const code = syncFormatPairCode(p.code);
+  if (p.role === 'join') {
+    switch (p.step) {
+      case 'waiting': return { title: 'Waiting for your other computer', text: 'On your other computer, open OpenDash and go to Settings > Sync. It will ask you to check this computer. If nothing happens after a minute, your cloud drive may still be uploading.', actions: [['cancel', 'Cancel']] };
+      case 'compare': return { title: 'Check the numbers', code, text: 'Your other computer shows 6 numbers too. Are they exactly the same as these?', actions: [['yes', 'Yes, they match', true], ['no', "No, they're different"]] };
+      case 'confirmed': return { title: 'Nearly done', code, text: 'Now click "Yes, the same" on your other computer. This computer finishes by itself.', actions: [['cancel', 'Cancel']] };
+      case 'done': return { title: 'Done', text: 'This computer now syncs with your other computer.', actions: [] };
+      case 'declined': return { title: 'Stopped', text: 'Your other computer said the numbers did not match, so nothing was shared. You can try again.', actions: [['again', 'Try again', true]] };
+      case 'cancelled': return { title: 'Stopped', text: 'Nothing was shared.', actions: [['again', 'Try again', true]] };
+      case 'expired': return { title: 'This took too long', text: 'Nothing was shared. Try again.', actions: [['again', 'Try again', true]] };
+      default: return { title: 'Something went wrong', text: 'Nothing was shared. Try again, or use your recovery code instead.', actions: [['again', 'Try again', true]] };
+    }
+  }
+  switch (p.step) {
+    case 'waiting': return { title: 'Checking ' + other, text: 'Waiting for your cloud drive to bring the answer from ' + other + '. This can take a minute.', actions: [['cancel', 'Cancel']] };
+    case 'compare': return { title: 'Check the numbers', code, text: 'Does ' + other + ' show exactly these 6 numbers? Only say yes if they are the same: if they differ, someone else may be trying to get in.', actions: [['yes', 'Yes, the same', true], ['no', 'No, different']] };
+    case 'sent': return { title: 'Sent', text: other + ' finishes by itself in a moment.', actions: [] };
+    case 'done': return { title: 'Done', text: other + ' now syncs too.', actions: [] };
+    case 'declined': return { title: 'Stopped', text: other + ' said the numbers did not match, so nothing was shared.', actions: [] };
+    case 'cancelled': return { title: 'Stopped', text: 'Nothing was shared.', actions: [] };
+    case 'expired': return { title: 'This took too long', text: 'Nothing was shared. Start again on the new computer.', actions: [] };
+    default: return { title: 'Stopped for safety', text: 'Something changed the request while it was being checked, so nothing was shared. Start again on the new computer; if it keeps happening, use the recovery code there instead.', actions: [] };
+  }
 }
 
 async function _syncJson(url, body) {
@@ -57,16 +128,30 @@ async function syncLoad() {
   catch (e) { _syncErr = netErrorMessage(e); }
   _syncRefresh();
 }
-async function _syncSave(patch, okMsg) {
-  if (_syncBusy) return;
+async function _syncSave(patch, okMsg) { return _syncPost('/api/sync/settings', patch, okMsg); }
+/** POST, keep the status it answers with, show a code it carries once. */
+async function _syncPost(url, body, okMsg) {
+  if (_syncBusy) return null;
   _syncBusy = true; _syncErr = '';
   _syncRefresh();
+  let j = null;
   try {
-    _syncSt = await _syncJson('/api/sync/settings', patch);
+    j = await _syncJson(url, body || {});
+    if (j && j.recoveryCode) { _syncCode = j.recoveryCode; delete j.recoveryCode; }
+    if (j && j.offer) { _syncOffer = j.offer; delete j.offer; }
+    if (j && j.enabled !== undefined) _syncSt = j;
     if (okMsg) toast(okMsg, { kind: 'ok' });
   } catch (e) { _syncErr = netErrorMessage(e); }
   _syncBusy = false;
   _syncRefresh();
+  return j;
+}
+
+function _syncEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function _syncBtn(label, onClick, primary, disabled) {
+  const b = _syncEl('button', 'btn ' + (primary ? 'btn-primary' : 'btn-secondary') + ' btn-sm', label);
+  b.type = 'button'; b.disabled = !!disabled || _syncBusy; b.onclick = onClick;
+  return b;
 }
 
 function _syncFolderControl(st) {
@@ -90,7 +175,13 @@ function _syncFolderControl(st) {
   const input = document.createElement('input'); input.className = 'control control-sm'; input.placeholder = 'Full path of a folder your cloud drive syncs';
   input.value = cur && !known ? cur : ''; input.maxLength = 1000;
   const use = document.createElement('button'); use.type = 'button'; use.className = 'btn btn-secondary btn-sm'; use.textContent = 'Use this folder';
-  use.onclick = () => { const v = input.value.trim(); if (v) { _syncOther = false; _syncSave({ folder: v }, 'Sync folder changed'); } };
+  use.onclick = () => {
+    const v = input.value.trim();
+    if (!v) return;
+    _syncOther = false;
+    if (st && st.enabled) _syncSave({ folder: v }, 'Sync folder changed');
+    else if (_syncSt) { _syncSt = Object.assign({}, _syncSt, { folder: v }); _syncRefresh(); }
+  };
   box.append(input, use);
   box.hidden = !(_syncOther || (!det.length && !cur));
   wrap.appendChild(box);
@@ -100,12 +191,181 @@ function _syncFolderControl(st) {
     if (st && st.enabled) _syncSave({ folder: sel.value }, 'Sync folder changed');
     else if (_syncSt) _syncSt = Object.assign({}, _syncSt, { folder: sel.value });
   };
+  wrap._value = () => (sel.value === '__other' ? (input.value.trim() || null) : sel.value);
   return wrap;
+}
+
+/** The recovery code, once: write it down or print it. */
+function _syncCodePanel(card) {
+  const box = _syncEl('div', 'sync-code');
+  box.appendChild(_syncEl('div', 'sync-code-t', 'Your recovery code'));
+  const c = _syncEl('div', 'sync-code-v');
+  for (const l of syncCodeLines(_syncCode)) c.appendChild(_syncEl('div', null, l));
+  box.appendChild(c);
+  box.appendChild(_syncEl('p', 'set-h', 'Write it down or print it, and keep it somewhere safe (not on this computer). You need it to add a computer when your other one is not around, or if you lose this one. OpenDash cannot show it again.'));
+  const row = _syncEl('div', 'sync-actions');
+  row.append(
+    _syncBtn('Print', () => {
+      const sheet = _syncEl('div', 'sync-print-sheet');
+      sheet.appendChild(_syncEl('h1', null, 'OpenDash recovery code'));
+      for (const l of syncCodeLines(_syncCode)) sheet.appendChild(_syncEl('p', 'sync-code-v', l));
+      sheet.appendChild(_syncEl('p', null, 'Keep this somewhere safe. With it, a new computer can read your synced OpenDash data.'));
+      document.body.appendChild(sheet); document.body.classList.add('sync-printing');
+      const done = () => { document.body.classList.remove('sync-printing'); sheet.remove(); window.removeEventListener('afterprint', done); };
+      window.addEventListener('afterprint', done);
+      window.print();
+      setTimeout(done, 60000);
+    }),
+    _syncBtn('I have written it down', () => { _syncCode = null; _syncRefresh(); }, true),
+  );
+  box.appendChild(row);
+  card.body.appendChild(box);
+}
+
+function _syncPairPanel(card, p) {
+  const v = syncPairView(p);
+  if (!v) return;
+  const box = _syncEl('div', 'sync-pair');
+  box.appendChild(_syncEl('div', 'sync-pair-t', v.title));
+  if (v.code) box.appendChild(_syncEl('div', 'sync-pair-code', v.code));
+  box.appendChild(_syncEl('p', 'set-h', v.text));
+  const row = _syncEl('div', 'sync-actions');
+  for (const [id, label, primary] of v.actions) {
+    row.appendChild(_syncBtn(label, () => {
+      if (id === 'yes' || id === 'no') _syncPost('/api/sync/pair/confirm', { sid: p.sid, match: id === 'yes' });
+      else if (id === 'cancel') _syncPost('/api/sync/pair/cancel');
+      else if (id === 'again') _syncPost('/api/sync/pair/start');
+    }, primary));
+  }
+  if (v.actions.length) box.appendChild(row);
+  card.body.appendChild(box);
+}
+
+/** "Type your recovery code" */
+function _syncRecoveryRow(card, title, hint) {
+  const wrap = _syncEl('div', 'sync-other');
+  const input = _syncEl('input', 'control control-sm sync-code-input');
+  input.placeholder = 'XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX'; input.maxLength = 60; input.autocomplete = 'off'; input.spellcheck = false;
+  const go = () => { const v = input.value.trim(); if (v) _syncPost('/api/sync/recovery', { code: v }, 'This computer now syncs'); };
+  input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+  wrap.append(input, _syncBtn('Use this code', go, true));
+  card.body.appendChild(_settingsRow(title, hint, wrap));
+}
+
+function _syncStart(card, st) {
+  const e2e = (st && st.e2e) || {};
+  if (!e2e.available) {
+    // An older server: the plain switch.
+    card.body.appendChild(_settingsRow('Sync across my devices', 'Off by default.', _settingsSwitch(false, 'Sync across my devices', () => _syncSave({ enabled: true }, 'Sync is on'), _syncBusy)));
+    return;
+  }
+  const q = _syncEl('div', 'sync-actions');
+  q.append(
+    _syncBtn('Yes, this is my first', () => { _syncFlow = 'first'; _syncRefresh(); }, true),
+    _syncBtn('No, I already use OpenDash', () => { _syncFlow = 'join'; _syncRefresh(); }),
+  );
+  card.body.appendChild(_settingsRow('Is this your first computer with OpenDash?', 'Choose "No" if OpenDash already syncs on another computer of yours.', q));
+}
+
+function _syncSetup(card, st, first) {
+  const folder = _syncFolderControl(st);
+  card.body.appendChild(_settingsRow('Folder', first ? 'OpenDash makes an "OpenDash Sync" folder inside it. Everything in it is locked: only your computers can read it.' : 'The same cloud folder you chose on your other computer.', folder));
+  const name = _syncEl('input', 'control control-sm'); name.maxLength = 60;
+  name.value = (st && st.deviceName) || ''; name.placeholder = 'Work laptop';
+  card.body.appendChild(_settingsRow('This computer is called', 'How your other computers show this one.', name));
+  const row = _syncEl('div', 'sync-actions');
+  row.append(
+    _syncBtn('Back', () => { _syncFlow = null; _syncRefresh(); }),
+    _syncBtn(first ? 'Turn on sync' : 'Find my sync', async () => {
+      const f = folder._value();
+      const body = Object.assign({ apply: true }, f ? { folder: f } : {}, name.value.trim() ? { deviceName: name.value.trim() } : {});
+      const j = await _syncPost(first ? '/api/sync/setup' : '/api/sync/join', body, first ? 'Sync is on' : null);
+      if (j) _syncFlow = null;
+      _syncRefresh();
+    }, true),
+  );
+  card.body.appendChild(row);
+}
+
+function _syncJoining(card, st) {
+  const e = st.e2e || {};
+  const p = e.pairing;
+  if (p && p.role === 'join') { _syncPairPanel(card, p); if (p.step !== 'done' && p.step !== 'declined' && p.step !== 'cancelled' && p.step !== 'expired' && p.step !== 'failed') return; }
+  if (e.found && e.found.groups) {
+    card.body.appendChild(_settingsRow('Approve on your other computer', 'Your other computer will show 6 numbers; you check this one shows the same.', _syncBtn('Ask my other computer', () => _syncPost('/api/sync/pair/start'), true)));
+    _syncRecoveryRow(card, 'Or type your recovery code', 'The code you wrote down or printed when you turned sync on.');
+  }
+  card.body.appendChild(_settingsRow('Stop', 'Turn sync off on this computer.', _syncBtn('Turn off', () => _syncSave({ enabled: false }, 'Sync is off'))));
+}
+
+function _syncRequests(card, st) {
+  const reqs = ((st.e2e && st.e2e.requests) || []).filter(r => !_syncIgnored.has(r.sid));
+  const p = st.e2e && st.e2e.pairing;
+  if (p && p.role === 'approve') _syncPairPanel(card, p);
+  if (p && p.role === 'approve' && (p.step === 'waiting' || p.step === 'compare')) return;
+  for (const r of reqs.slice(0, 3)) {
+    const row = _syncEl('div', 'sync-actions');
+    row.append(
+      _syncBtn("Check it's yours", () => _syncPost('/api/sync/pair/respond', { sid: r.sid }), true),
+      _syncBtn('Not mine', () => { _syncIgnored.add(r.sid); _syncRefresh(); }),
+    );
+    card.body.appendChild(_settingsRow(`A new ${syncKindLabel(r.kind).toLowerCase()}, "${r.name}", wants to join your sync`, 'Only continue if you are setting it up now.', row));
+  }
+}
+
+function _syncDevices(card, st) {
+  const list = _syncEl('div', 'sync-dev-list');
+  for (const d of st.devices || []) {
+    const s = syncDeviceSummary(d, Date.now());
+    const row = _syncEl('div', 'sync-dev');
+    const info = _syncEl('div', 'sync-dev-info');
+    info.append(_syncEl('div', 'sync-dev-name', s.name), _syncEl('div', 'set-h', s.detail));
+    const acts = _syncEl('div', 'sync-actions');
+    acts.appendChild(_syncBtn('Rename', async () => {
+      const n = await promptDialog({ title: 'Rename ' + s.name, label: 'Name', value: d.name || '', confirmLabel: 'Save' });
+      if (n) _syncPost('/api/sync/devices/rename', { id: d.id, name: n }, 'Name saved');
+    }));
+    if (!d.me && st.e2e && st.e2e.on) {
+      acts.appendChild(_syncBtn('Remove this device', async () => {
+        const ok = await confirmDialog({ title: 'Remove "' + s.name + '"?', text: 'It stops getting your changes, and what it changes is no longer used here. It keeps what it already has. Your other devices get a new key.', confirmLabel: 'Remove', danger: true });
+        if (ok) _syncPost('/api/sync/devices/remove', { id: d.id }, 'Removed. Your other devices now use a new key.');
+      }));
+    }
+    row.append(info, acts);
+    list.appendChild(row);
+  }
+  card.body.appendChild(_settingsRow('Devices', 'Every computer and phone that syncs.', list));
+  const accounts = st.accounts || [];
+  if (accounts.length) {
+    const box = _syncEl('div', 'sync-dev-list');
+    for (const a of accounts) {
+      const f = a.fetcher || {};
+      const row = _syncEl('div', 'sync-dev');
+      const info = _syncEl('div', 'sync-dev-info');
+      info.append(_syncEl('div', 'sync-dev-name', a.label), _syncEl('div', 'set-h', f.me ? 'Checked by this computer' : f.name ? 'Checked by ' + f.name + (f.note ? '. ' + f.note : '') : 'Not checked by any computer yet'));
+      row.appendChild(info);
+      if (!f.me) row.appendChild(_syncBtn('Use this computer instead', () => _syncPost('/api/sync/fetcher', { account: a.id }, 'This computer checks it now')));
+      box.appendChild(row);
+    }
+    card.body.appendChild(_settingsRow('Main computer for each account', 'One computer checks each mail or calendar account and shares what it finds. It needs its own sign-in.', box));
+  }
+}
+
+function _syncAddPanel(card) {
+  const box = _syncEl('div', 'sync-add');
+  box.appendChild(_syncEl('p', 'set-h', 'On another computer: open OpenDash, go to Settings > Sync and choose "No, I already use OpenDash". This computer will then ask you to check it.'));
+  if (_syncOffer && _syncOffer.expiresAt > Date.now()) {
+    box.appendChild(_syncEl('p', 'set-h', 'On a phone: open OpenDash and scan this code. It works once, for 10 minutes. Do not share a photo of it.'));
+    try { const q = _syncEl('div', 'sync-qr'); q.appendChild(syncQrSvg(_syncOffer.text, 220)); box.appendChild(q); }
+    catch (e) { box.appendChild(_syncEl('p', 'sync-status sync-err', 'The code could not be drawn.')); }
+  } else box.appendChild(_syncBtn('Show a code for a phone', () => _syncPost('/api/sync/offer')));
+  box.appendChild(_syncBtn('Close', () => { _syncAdd = false; _syncOffer = null; _syncRefresh(); }));
+  card.body.appendChild(_settingsRow('Add a computer or phone', '', box));
 }
 
 function _syncCard(el) {
   const st = _syncSt;
-  const card = _settingsCard('Sync across my devices', 'Keeps your tasks, notes, people, streams and countdowns the same on your computers, through a cloud folder you already have (OneDrive, Google Drive or Dropbox). No account and no OpenDash server. Sign-ins, bank connections and keys never leave this computer.');
+  const card = _settingsCard('Sync across my devices', 'Keeps your tasks, notes, people, streams and countdowns the same on your computers, through a cloud folder you already have (OneDrive, Google Drive or Dropbox). Everything is locked before it leaves this computer: the cloud cannot read it. No account and no OpenDash server. Sign-ins, bank connections and keys never leave this computer.');
   const line = document.createElement('div'); line.className = 'sync-status'; line.setAttribute('role', 'status');
   const paint = () => {
     const s = syncStatusLine(_syncSt, Date.now());
@@ -114,19 +374,37 @@ function _syncCard(el) {
     const devs = card.body.querySelector('.sync-devices');
     if (devs) devs.textContent = syncDeviceLines(_syncSt, Date.now()).join('\n');
   };
-  card.body.appendChild(_settingsRow('Sync across my devices', 'Off by default. Turn it on here and on your other computer, with the same folder.',
-    _settingsSwitch(!!(st && st.enabled), 'Sync across my devices', (v) => {
-      const sel = card.body.querySelector('.sync-folder select');
-      const folder = st && st.folder ? st.folder : (sel && sel.value !== '__other' ? sel.value : null);
-      _syncSave(v ? Object.assign({ enabled: true }, folder ? { folder } : {}) : { enabled: false }, v ? 'Sync is on' : 'Sync is off');
-    }, !st || _syncBusy)));
-  card.body.appendChild(_settingsRow('Folder', 'OpenDash makes an "OpenDash Sync" folder inside it. Each computer writes only its own files there.', _syncFolderControl(st)));
-  const status = document.createElement('div');
-  status.appendChild(line);
-  const devs = document.createElement('div'); devs.className = 'set-h sync-devices';
-  status.appendChild(devs);
-  card.body.appendChild(_settingsRow('Status', '', status));
-  if (st && st.enabled) {
+  if (_syncCode) _syncCodePanel(card);
+  const screen = syncScreen(st, _syncFlow);
+  if (screen === 'loading') card.body.appendChild(_settingsRow('Status', '', line));
+  else if (screen === 'start') _syncStart(card, st);
+  else if (screen === 'first' || screen === 'join') _syncSetup(card, st, screen === 'first');
+  else {
+    const status = document.createElement('div');
+    status.appendChild(line);
+    if (screen === 'plain') { const devs = document.createElement('div'); devs.className = 'set-h sync-devices'; status.appendChild(devs); }
+    card.body.appendChild(_settingsRow('Status', '', status));
+  }
+  if (screen === 'joining') _syncJoining(card, st);
+  if (screen === 'removed' || screen === 'locked') {
+    _syncRecoveryRow(card, 'Type your recovery code', 'The code you wrote down or printed when you turned sync on.');
+    if (st.e2e && st.e2e.found && st.e2e.found.groups) card.body.appendChild(_settingsRow('Or approve on your other computer', '', _syncBtn('Ask my other computer', () => _syncPost('/api/sync/pair/start'))));
+    if (st.e2e && st.e2e.pairing && st.e2e.pairing.role === 'join') _syncPairPanel(card, st.e2e.pairing);
+  }
+  if (screen === 'plain') {
+    card.body.appendChild(_settingsRow('Not encrypted yet', 'This sync started before encryption. Lock it so the cloud cannot read it; your other computer joins afterwards.', _syncBtn('Encrypt my synced data', () => _syncPost('/api/sync/encrypt', {}, 'Your synced data is now encrypted'), true)));
+  }
+  if (screen === 'ready') {
+    _syncRequests(card, st);
+    _syncDevices(card, st);
+    if (_syncAdd) _syncAddPanel(card);
+    else card.body.appendChild(_settingsRow('Add a computer or phone', '', _syncBtn('Add a computer or phone', () => { _syncAdd = true; _syncRefresh(); })));
+    card.body.appendChild(_settingsRow('Recovery code', 'Lost the one you wrote down? Make a new one: the old one stops working.', _syncBtn('Make a new recovery code', async () => {
+      const ok = await confirmDialog({ title: 'Make a new recovery code?', text: 'The old code will stop working. Write the new one down straight away.', confirmLabel: 'Make a new code' });
+      if (ok) _syncPost('/api/sync/recovery/new');
+    })));
+  }
+  if (screen === 'plain' || screen === 'ready') {
     // Trial mode first: changes from the other computers are listed, not applied.
     card.body.appendChild(_settingsRow('Use changes from my other computers', st.apply
       ? 'On: changes made on your other computers appear here within seconds of your cloud drive bringing them.'
@@ -142,10 +420,13 @@ function _syncCard(el) {
       list.textContent = lines.join('\n');
       card.body.appendChild(_settingsRow('Waiting to be used', `${p.tasks.added} new, ${p.tasks.changed} changed and ${p.tasks.removed} removed task${p.tasks.removed === 1 ? '' : 's'} from ${p.from.join(', ') || 'another computer'}${p.conflicts ? `; ${p.conflicts} edit${p.conflicts === 1 ? '' : 's'} clash with yours (the later one would be kept)` : ''}.`, list));
     }
-    const name = document.createElement('input'); name.className = 'control control-sm'; name.maxLength = 60;
-    name.value = st.deviceName || ''; name.placeholder = 'Work laptop';
-    name.onchange = () => _syncSave({ deviceName: name.value.trim() }, 'Name saved');
-    card.body.appendChild(_settingsRow('This computer is called', 'How your other computers show this one.', name));
+    if (screen === 'plain') {
+      const name = document.createElement('input'); name.className = 'control control-sm'; name.maxLength = 60;
+      name.value = st.deviceName || ''; name.placeholder = 'Work laptop';
+      name.onchange = () => _syncSave({ deviceName: name.value.trim() }, 'Name saved');
+      card.body.appendChild(_settingsRow('This computer is called', 'How your other computers show this one.', name));
+    }
+    card.body.appendChild(_settingsRow('Folder', 'OpenDash keeps an "OpenDash Sync" folder inside it. Each computer writes only its own files there.', _syncFolderControl(st)));
     const now = document.createElement('button'); now.type = 'button'; now.className = 'btn btn-secondary btn-sm'; now.textContent = 'Sync now';
     now.disabled = _syncBusy;
     now.onclick = async () => { try { _syncSt = await _syncJson('/api/sync/now', {}); } catch (e) { _syncErr = netErrorMessage(e); } _syncRefresh(); };
@@ -155,22 +436,28 @@ function _syncCard(el) {
       const what = c ? `${c.name ? '"' + c.name + '"' : 'an item'}${c.field ? ' (' + c.field + ')' : ''}` : 'an item';
       card.body.appendChild(_settingsRow('Edits that clashed', `${st.conflicts.count} time${st.conflicts.count === 1 ? '' : 's'} the same thing was changed on two computers at once; the later change was kept. Latest: ${what}, kept the change from ${c ? c.kept.by : 'the other computer'}. Each one is listed in conflicts.jsonl in this computer's OpenDash sync folder.`, null));
     }
-    if (st.skew) card.body.appendChild(_settingsRow('Clock', `${st.skew.device}'s clock is about ${st.skew.aheadMin} min ahead of this one. Set both to the right time so the newest change wins.`, null));
   }
+  if (st && st.enabled && st.skew) card.body.appendChild(_settingsRow('Clock', st.skew.text || `${st.skew.device}'s clock is about ${st.skew.aheadMin} min ahead of this one. Set both to the right time so the newest change wins.`, null));
+  if (st && st.enabled && screen !== 'joining') card.body.appendChild(_settingsRow('Sync across my devices', 'On. Turn it off to stop syncing this computer (nothing is deleted).', _settingsSwitch(true, 'Sync across my devices', () => _syncSave({ enabled: false }, 'Sync is off'), _syncBusy)));
   if (_syncErr) { const e = document.createElement('div'); e.className = 'sync-status sync-err'; e.textContent = _syncErr; card.body.appendChild(e); }
   el.appendChild(card.card);
   paint();
-  // Keep "Synced 12 s ago" current while this page is open (text only, no re-render).
+  // Keep "Synced 12 s ago" current while this page is open (text only); re-render when the screen changes.
   clearInterval(_syncTicker);
   _syncTicker = setInterval(() => {
-    if (!document.body.contains(line)) { clearInterval(_syncTicker); _syncTicker = null; return; }
-    _syncJson('/api/sync/status').then((s) => { _syncSt = s; paint(); }).catch(() => paint());
-  }, 5000);
+    if (!document.body.contains(line) && !document.body.contains(card.card)) { clearInterval(_syncTicker); _syncTicker = null; return; }
+    _syncJson('/api/sync/status').then((s) => {
+      const before = JSON.stringify([syncScreen(_syncSt, _syncFlow), _syncSt && _syncSt.e2e && _syncSt.e2e.pairing, _syncSt && _syncSt.e2e && _syncSt.e2e.requests, _syncSt && _syncSt.devices && _syncSt.devices.map(d => d.name)]);
+      _syncSt = s;
+      const after = JSON.stringify([syncScreen(s, _syncFlow), s.e2e && s.e2e.pairing, s.e2e && s.e2e.requests, s.devices && s.devices.map(d => d.name)]);
+      if (before !== after && !_syncBusy) _syncRefresh(); else paint();
+    }).catch(() => paint());
+  }, 3000);
 }
 
 registerSettingsGroup({
   id: 'sync', title: 'Sync', icon: 'refresh-cw', order: 91,
-  description: 'Keep your data the same on your computers through OneDrive, Google Drive or Dropbox.',
+  description: 'Keep your data the same on your computers through OneDrive, Google Drive or Dropbox, end-to-end encrypted.',
   render(el) {
     if (!_syncSt && !_syncErr) syncLoad();
     _syncCard(el);

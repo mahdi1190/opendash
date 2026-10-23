@@ -138,20 +138,19 @@ test('end to end: nothing secret reaches the shared folder or the other computer
   await a.eng.stop(); await b.eng.stop();
 });
 
-test("this computer's sync files live in its device folder (lib/devicedir.mjs), never in the data folder; lib/sync never picks a per-user folder itself", async () => {
+test("this computer's sync files live under the per-computer base of lib/devicedir.mjs, never in the data folder; lib/sync never picks a per-user folder itself", async () => {
   const { defaultLocalDir, createNodeHost } = await import('../lib/sync/node-host.mjs');
   const { readDataId, readHostId } = await import('../lib/devicedir.mjs');
   const data = join(base, 'data-devicedir'), devBase = join(base, 'device-root');
   mkdirSync(data, { recursive: true });
-  const dir = defaultLocalDir(data, { env: {}, deviceOpts: { base: devBase } });
-  assert.equal(dir, join(devBase, readDataId(data), 'sync'), '<device folder>/sync, found by the data folder id');
+  const dir = defaultLocalDir(data, 'host-x', { env: {}, base: devBase });
+  assert.ok(dir.startsWith(join(devBase, 'sync')), '<device base>/sync/<key>');
   assert.ok(!dir.startsWith(data));
-  assert.equal(defaultLocalDir(data, { env: { DASHBOARD_SYNC_LOCAL_DIR: join(base, 'own') } }), join(base, 'own'));
-  const h = createNodeHost({ dataDir: data, stateFile: join(data, 'state', 'dashboard-state.json'), env: {}, deviceOpts: { base: devBase }, detect: () => [] });
+  assert.equal(defaultLocalDir(data, 'host-x', { env: { DASHBOARD_SYNC_LOCAL_DIR: join(base, 'own') } }), join(base, 'own'));
+  const h = createNodeHost({ dataDir: data, stateFile: join(data, 'state', 'dashboard-state.json'), host: 'host-x', env: {}, deviceOpts: { base: devBase }, detect: () => [] });
   assert.equal(h.local.where, dir);
-  assert.equal(h.fetcherId, readHostId(data, { base: devBase }), 'the fetcher id is the host id in the same device folder');
-  const bad = await h.checkFolder(join(devBase, readDataId(data)));
-  assert.equal(bad.ok, false, 'the device folder (it holds the sign-ins) cannot be the sync folder');
+  assert.equal(h.fetcherId, readHostId(data, { base: devBase }), 'the fetcher id is the host id in the device folder (what lib/accounts.mjs records)');
+  for (const bad of [devBase, join(devBase, readDataId(data))]) assert.equal((await h.checkFolder(bad)).ok, false, 'the per-computer folder (it holds the sign-ins) cannot be the sync folder');
   // OpenDash's own per-computer folder is decided by lib/devicedir.mjs only. (folder.mjs may
   // still look up Dropbox's own info.json under %LOCALAPPDATA%: another app's file.)
   for (const f of readdirSync(new URL('../lib/sync/', import.meta.url))) {

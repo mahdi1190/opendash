@@ -1,15 +1,17 @@
-# OpenDash sync format, version 1
+# OpenDash sync format, versions 1 and 2
 
 This is the on-disk format that OpenDash devices use to sync through a shared
 folder (OneDrive, Google Drive for desktop, Dropbox, or any other place that
 copies files). A different client (a phone app, a PWA, a desktop shell) can
 read and write it from this page alone. The reference implementation is
-`lib/sync/` (`hlc.mjs`, `fracindex.mjs`, `model.mjs`, `manifest.mjs` and
-`engine.mjs` are platform-agnostic; `folder.mjs` and `node-host.mjs` are the
-Node adapters).
+`lib/sync/` (`hlc.mjs`, `fracindex.mjs`, `model.mjs`, `manifest.mjs`,
+`engine.mjs`, `e2e.mjs` and `e2e-crypto.mjs` are platform-agnostic;
+`folder.mjs` and `node-host.mjs` are the Node adapters).
 
-Status: prototype. The format version is `1`; snapshot register data is
-version `2`. A reader that meets a higher version stops and reports it (see
+Status: prototype. Version `1` is the plain format (sections 1-10). Version
+`2` is the same data END-TO-END ENCRYPTED (section 11): every record is
+sealed, and the folder holds no key. Snapshot register data is version `2`
+in both. A reader that meets a higher version stops and reports it (see
 [Versions](#versions-and-unknown-data)).
 
 ## 1. Layout
@@ -20,6 +22,8 @@ version `2`. A reader that meets a higher version stops and reports it (see
   devices/<deviceId>/ops-YYYYMMDD.jsonl
   devices/<deviceId>/ops-YYYYMMDD-NN.jsonl
   devices/<deviceId>/snapshot.json
+  devices/<deviceId>/keys.json        (v 2) the key, wrapped for each member
+  devices/<deviceId>/pair.json        (v 2) adding a device
 ```
 
 - `deviceId`: 16 lower-case hex digits, random (`crypto.getRandomValues`).
@@ -31,8 +35,9 @@ version `2`. A reader that meets a higher version stops and reports it (see
   log file always starts with the previous version's bytes.
 - `YYYYMMDD` is the UTC date of the first line. `NN` (01, 02, ...) continues
   the same day once a part reaches about 512 KB.
-- **Names readers accept:** exactly `device.json`, `snapshot.json` and
-  `^ops-\d{8}(-\d{2})?\.jsonl$`, inside folders named `^[0-9a-f]{16}$`.
+- **Names readers accept:** exactly `device.json`, `snapshot.json`,
+  `keys.json`, `pair.json` and `^ops-\d{8}(-\d{2})?\.jsonl$`, inside folders
+  named `^[0-9a-f]{16}$`.
   Everything else is ignored: temporary files, `ops-20261023 (1).jsonl`,
   `ops-20261023-DESKTOP-AB12CD.jsonl` (OneDrive), `... (conflicted copy ...)`
   (Dropbox), `desktop.ini` and so on.
@@ -224,9 +229,152 @@ make that field not sync at all, in both directions.
 ## 10. Versions and unknown data
 
 - Unknown fields in any object: ignore them.
-- A log line or snapshot with `v` above 1, or with a non-null `enc`
-  (**reserved for end-to-end encryption**: `{v:1, dev, n, h, enc:{...}}` will
-  carry the encrypted `s`, `w`, `x`), is not understood: stop reading that log
-  there (never skip it) and tell the user to update.
+- A version-1 reader that meets a log line or snapshot with `v` above 1, or
+  with a non-null `enc` (end-to-end encryption, section 11: `{v:2, dev, n,
+  enc:{k, iv, ct}}`), does not understand it: it stops reading that log there
+  (never skips it) and tells the user to update (or, when the folder holds an
+  encrypted group, to add this computer to it).
 - A change to anything in sections 1-8 that an older reader would misread
   needs a new `v`.
+- Version 2 (section 11) uses exactly this rule: a version-1 reader stops at
+  the first encrypted line and says so; it never skips or guesses.
+
+## 11. End-to-end encryption (version 2)
+
+Reference: `lib/sync/e2e-crypto.mjs` (primitives) and `lib/sync/e2e.mjs`
+(keys, members, pairing). Web Crypto only: AES-256-GCM, X25519, HKDF-SHA-256,
+SHA-256. Base64 below is base64url without padding (`b64u`).
+
+**Threat model.** The folder (the cloud provider, or anyone with the
+account's files) may read, write, delete, copy and replay any file. It must
+not learn the key or the data, and nothing it writes may change anyone's
+data. It can still see how many devices sync, when and how much they write,
+delete or hold back files (sync then waits), and the name a new device gives
+itself while it waits to be approved. Devices that hold the key are trusted
+(group-key records do not say which member wrote them); a removed device is
+not trusted for anything after its removal.
+
+### 11.1 Keys and devices
+
+- **Identity**: each device has an X25519 key pair; the private half stays in
+  the device's secret store. Its **device id** is
+  `hex(SHA-256("opendash-device-v2\n" || pub))[0:16]`, so a public key cannot be
+  passed off as a member's (every reader checks the fingerprint).
+- **Group**: a random 16-hex id per shared folder.
+- **Keys**: random 256-bit AES-GCM keys, each with a random 16-hex id `kid`,
+  an epoch number `n`, its creator `by`, `excl` (every device removed when it
+  was made), `cut` (after a removal: `{deviceId: last change number the
+  creator had seen}`) and `rec` (the recovery public key). A key is **valid**
+  when its creator is not removed and `excl` contains every removed device.
+  Records are written with the **current** key: the valid key with the
+  highest `(n, by, kid)`. No valid key (two removals at once) -> a device
+  makes one with `n = max + 1`.
+- **Members**: devices allowed to read. Learned from key wraps (below) and
+  from rosters encrypted with the current key (a holder of the current key may
+  announce itself). **Removed**: permanent, learned only from key wraps and
+  authenticated removal notices.
+
+### 11.2 Records
+
+Associated data (AD) of every sealed record:
+`"opendash-sync-v2\n" + kind + "\n" + group + "\n" + deviceId + "\n" + file + "\n" + seq + "\n" + kid`
+(UTF-8). A fresh random 96-bit nonce per record; the 128-bit tag is part of `ct`.
+
+```json
+{"v":2,"dev":"<id>","n":17,"enc":{"k":"<kid>","iv":"<b64u>","ct":"<b64u>"}}
+```
+
+- A log line (`kind` `log`, `file` = the log file's name, `seq` = `n`):
+  `ct` seals `{h, s, w, x}` of section 6. The line cannot be moved to another
+  file, device or position, and `h` is not visible.
+- `snapshot.json` (`kind` `snapshot`, `seq` = the snapshot's `seq`):
+  `{v:2, dev, seq, enc}`, `ct` seals `{hlc, seen, covers, createdAt, data}`.
+- `device.json` (`kind` `device`, `file` `device.json`, `seq` 0): in the
+  clear `{v:2, format:2, deviceId, pub, instance, app, fetch, lastSeen}`, and
+  `enc` seals `{name, kind, seen, seq, fetcherId}` (`enc` is null while the device has no key).
+
+A reader refuses (counts, never applies): anything that fails AES-GCM; a
+plain (v 1) record in an encrypted group; a record from a removed device
+with `seq` above its cut; a record under a key whose creator was removed at
+or before that key's epoch; a record under an older key than a removal key
+with `seq` above that removal's `cut` for its device (such a device writes a
+fresh snapshot with the new key once it has it). A record under a key it does
+not have yet: stop reading that log there and wait. The same `(dev, n)` twice: taken once.
+
+### 11.3 keys.json
+
+```json
+{"v":2,"t":"keys","dev":"<id>","pub":"<b64u>","group":"<16 hex>","kid":"<current kid>","n":3,
+ "to":{"<memberId>":{"iv":"...","ct":"..."}},
+ "rec":{"eph":"<b64u>","iv":"...","ct":"..."},
+ "gone":{"<removedId>":{"iv":"...","ct":"..."}},
+ "roster":{"k":"<kid>","iv":"...","ct":"..."},"at":"<iso>"}
+```
+
+- `to[m]`: the KEYRING for member `m`: `{t:"keyring", v:2, group, purpose:"member",
+  for:m, by:dev, at, keys:{kid:{k, n, by, at, excl, cut, rec}}, members:{id:{pub,
+  kind, since, via}}, removed:{id:{at, by, n, cut}}, names:{id:{name, at, by}}}`,
+  sealed with AES-GCM under `HKDF(X25519(priv_dev, pub_m), salt = pub_dev||pub_m,
+  info = label)`, AD = label = `opendash-wrap-v2|group|kid|dev|m`. Static-static:
+  only `dev` and `m` can compute it, so opening it proves who sent it. Readers
+  take wraps only from members.
+- `rec`: the same keyring (`purpose:"recovery"`), ECIES to the recovery
+  public key (one-time key `eph`), label `opendash-recovery-wrap-v2|group|kid|dev`.
+- `gone[r]`: `{t:"removed", v:2, group, id:r, at, by, n, cut}` wrapped from
+  `dev` to `r` (label `opendash-removed-v2|group|dev|r`): a removed device
+  learns it was removed; the folder cannot fake it.
+- `roster`: `{members, names, at}` sealed with the current key
+  (AD kind `roster`, file `keys.json`, seq 0). Taken only under the reader's current key.
+
+Every member rewrites its keys.json whenever its keyring changes (and when it
+finds the file changed by someone else).
+
+### 11.4 Recovery code
+
+8 groups of 4 characters from `0123456789ABCDEFGHJKMNPQRSTVWXYZ`. Each group
+is 3 data characters and a check character: Luhn mod 32 over
+`[group number (0-7), c0, c1, c2]`. The 24 data characters are 15 bytes (120
+bits) in base 32. Readers accept lower case, spaces and dashes, `O` as `0`,
+`I`/`L` as `1`. Recovery key pair: X25519 with private key
+`HKDF(secret, salt "opendash-recovery-v2", info "x25519 recovery key", 32)`.
+Members keep only the public half (`rec` of a key; never in the folder) and
+wrap every new key to it. A joining device tries every `rec` wrap and takes
+the newest keyring it opens; one that is older than the newest key the members
+announce is refused (an old, replaced code). The code is shown once and never stored.
+
+### 11.5 Pairing ("Approve on your other computer")
+
+In each device's own `pair.json` (`{v:2, t:"pair", dev, pub, at, join?, approve?, offer?}`):
+
+1. New device N: `join: {sid, commit, name, kind, at, exp}` with
+   `commit = b64u(SHA-256(JSON ["opendash-pair-commit-v2", sid, pubN, name, kind, nN]))`,
+   `nN` 32 random bytes (b64u). The request lasts 15 minutes.
+2. Member E (its user clicked "Check it's yours") locks onto that commit and
+   writes `approve: {sid, to:N, group, commit, nonce:nE, at, exp}`.
+3. N takes the FIRST answer for its `sid` and reveals `join.open = nN`.
+4. E checks the commitment (any mismatch ends the session). Both show
+   `code = SHA-256(JSON ["opendash-pair-code-v2", sid, group, commit, pubN, pubE, nN, nE])`,
+   first 6 bytes as a 48-bit number mod 10^6, 6 digits.
+5. The user compares the screens and confirms on BOTH. E writes
+   `approve.wrap`: the keyring (`purpose:"pair"`) wrapped from E to N,
+   label `opendash-pair-wrap-v2|group|sid|E|N`. N opens it only after its own
+   user confirmed, from the `pubE` it locked onto.
+
+Each side answers once per session, and each value is fixed before the other
+side's last value is visible, so a man in the middle cannot search for keys
+that make the codes match: it gets one blind 1-in-a-million guess per pairing
+the user starts. A "no" on either side writes `abort:true`.
+
+**QR offer** (a phone): E writes `offer: {id, exp, iv, ct}`: the keyring
+(`purpose:"offer"`) sealed under `HKDF(T, "opendash-offer-v2", label)`, label
+`opendash-offer-wrap-v2|group|E|id`, where `T` is 16 random bytes that exist
+only in the QR code `opendash-join:1:<group>:<E>:<id>:<b64u T>`. It lasts 10
+minutes and is withdrawn once a device joins with it.
+
+### 11.6 Moving from version 1
+
+A device that synced plainly takes a new (fingerprint) id, KEEPS what it has
+(its registers keep their timestamps), writes an encrypted snapshot, then
+deletes its own old folder. The first one makes the group (and shows the
+recovery code); the others join it. Plain records from other devices are not
+taken in once a device is encrypted; their changes arrive once they join.

@@ -698,21 +698,26 @@ and own-transfer matching work unchanged.
 ### Sync across my devices (owner: Sync) - lib/sync/ (prototype, off by default)
 
 No server, no sign-in: devices exchange field-level changes through a folder
-the user's cloud drive already syncs. Format: `docs/dev/SYNC_FORMAT.md`.
+the user's cloud drive already syncs, end-to-end encrypted (format v 2: the
+folder only holds sealed records; keys live in each device's secret store).
+Format: `docs/dev/SYNC_FORMAT.md` (section 11: encryption, pairing, recovery).
 
 | Part | Files |
 |---|---|
-| Platform-agnostic core (no `node:` imports; a phone/PWA build reuses it) | `lib/sync/hlc.mjs` (clock), `fracindex.mjs` (positions), `model.mjs` (registers, capture, merge, materialize, checks, credential filters), `manifest.mjs` (every state key: synced / device-local / derived; synced files), `engine.mjs` (passes, shadow mode, conflicts, fetcher roles) |
-| Node adapters | `lib/sync/node-host.mjs` (`createNodeSyncEngine`; this computer's files in `<device folder>/sync` from `lib/devicedir.mjs`, never in the data folder; `fetcherId` = the device folder's host id; synced files locked during a pass), `lib/sync/folder.mjs` (the folder transport, conflict-copy filtering, cloud folder detection) |
-| Server | `server/routes/sync.mjs` (`/api/sync/status`, `/settings`, `/now`; `app.ctx.sync` is the accounts code's fetcher policy while sync is on: `isFetcher(accountId)`, `setFetcher`, `takeOver(id, {hasToken})`, `fetcher`, `devices`; a new `accounts.json` from sync runs `reconcileSources()`) |
-| Page | `src/app/58-settings-sync.js` (Settings > Sync: on/off, folder, apply switch, trial-mode list, devices); `86-live-sync.js` labels changes "Updated by <device>" |
-| Tests | `tests/sync-*.test.mjs` (`sync.shared.mjs` helpers; `OPENDASH_SYNC_TEST_DIR` moves their temp folders) |
+| Platform-agnostic core (no `node:` imports; a phone/PWA build reuses it) | `lib/sync/hlc.mjs` (clock), `fracindex.mjs` (positions), `model.mjs` (registers, capture, merge, materialize, checks, credential filters), `manifest.mjs` (every state key: synced / device-local / derived; synced files), `engine.mjs` (passes, shadow mode, conflicts, fetcher roles; the `e2e` option and the Settings API: `setupFirst`, `joinExisting`, `encrypt`, `joinWithRecovery`, `pairStart/Respond/Confirm/Cancel`, `makeOffer`, `joinWithOffer`, `removeDevice`, `renameDevice`, `newRecoveryCode`) |
+| Encryption (Web Crypto only, no `node:`) | `lib/sync/e2e-crypto.mjs` (AES-256-GCM records with associated data, X25519 identity keys and fingerprint device ids, key wraps, pairing commitment and 6-digit code, recovery code), `lib/sync/e2e.mjs` (`createE2E({secrets})`: group, keys and the valid current key, members, removal and key rotation, keys.json / pair.json, pairing state machines, QR offer, recovery) |
+| Node adapters | `lib/sync/node-host.mjs` (`createNodeSyncEngine`; this computer's files in `<deviceBase>/sync/<key>` (`%LOCALAPPDATA%/OpenDash` on Windows), never in the data folder; the sync keys through `lib/secret-store.mjs`, opened only when encrypted sync is used; `fetcherId` = the device folder's host id, the id an account's `fetcher` names; synced files locked during a pass), `lib/sync/folder.mjs` (the folder transport, conflict-copy filtering, cloud folder detection, keys.json / pair.json, named appends) |
+| Server | `server/routes/sync.mjs` (`/api/sync/status`, `/settings`, `/now`; encrypted sync: `/setup`, `/join`, `/encrypt`, `/recovery`, `/recovery/new`, `/pair/start|respond|confirm|cancel`, `/offer`, `/offer/join`, `/devices/rename`, `/devices/remove`, `/fetcher` (through the accounts code's `fetchHere`); `app.ctx.sync` is the accounts code's fetcher policy while sync is on: `isFetcher(accountId)`, `setFetcher`, `takeOver(id, {hasToken})`, `fetcher`, `devices`; a new `accounts.json` from sync runs `reconcileSources()`) |
+| Page | `src/app/58-settings-sync.js` (Settings > Sync: "Is this your first computer?", recovery code, approve with 6 digits, devices list with rename/remove and main computer per account, add a computer or phone, apply switch, trial-mode list), `58-settings-sync-qr.js` (QR encoder for the phone offer); `86-live-sync.js` labels changes "Updated by <device>" |
+| Tests | `tests/sync-*.test.mjs` (`sync.shared.mjs` helpers; `OPENDASH_SYNC_TEST_DIR` moves their temp folders); encryption: `sync-e2e-crypto`, `sync-e2e` (end to end), `sync-e2e-attack` (a malicious folder), `sync-e2e-property` (3 replicas, encrypted), `sync-e2e-portable`, `sync-e2e-status`, `sync-e2e-ui`, `sync-e2e-routes` (`sync-e2e.shared.mjs` helpers) |
 
 Rules: only `store.mutate()` writes the state (a pass captures, merges and
 commits under the lock); a new state key must be added to
 `lib/sync/manifest.mjs` (a test fails otherwise) and, if synced, to
 `SYNC_SPEC`; turning sync on starts in shadow mode (collect and report, apply
-nothing) until the apply switch.
+nothing) until the apply switch. Encrypted sync: nothing unencrypted from the
+folder is taken in; a key, a private key or the recovery code never goes into
+the folder; the recovery code is shown once and never stored.
 
 ### lib/fsutil.mjs - the only way to write user data
 - `atomicWrite(path, text)` / `writeJson(path, obj)`: temp file + rename,
