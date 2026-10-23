@@ -234,8 +234,25 @@ listening, reach: {state, method, external}, firewall, peers: [{id, name,
 state: live|connecting|not-live, path: lan|internet, reason}], roles:
 [{role, label, deviceId, name, me, acting}], prefs}`; `reason` is one of
 `offline`, `no-address`, `trying`, `new-key`, `firewall`, `lan-blocked`,
-`cgnat`, `router`, `unreachable`. `POST /api/sync/live {enabled?, internet?,
+`cgnat`, `router`, `unreachable`, `held`. `POST /api/sync/live {enabled?, internet?,
 prefer?}` changes the settings (kept in this computer's own `live.json`).
+
+Every wait has a way out (docs/dev/MULTI_DEVICE.md "When something goes
+wrong"): `POST /api/sync/live {retry: <deviceId>|'all'}` drops the back-off and
+any half-open attempt to that device and dials at once (and asks the router
+again); `{hold: <deviceId>}` stops trying (reason `held`: changes go through
+the folder) until *Try again*, a new network or waking from sleep. A dial in
+progress belongs to a generation, so either ends it at its next address.
+
+Sleep and networks: a tick that comes far too late (the computer slept), or a
+change in this computer's addresses (home -> office -> hotspot), closes every
+link, forgets addresses heard on the old network, resets the back-off, asks
+the router again and publishes the new address book at once, then dials
+everyone. The status carries `wokeAt` and `netChangedAt`.
+
+Clocks: `hi` and `seen` carry `at`, the sender's clock (older versions send
+none and ignore it), so each side knows how far the other's clock is
+(`peers[].skewMs`); Health warns over 10 seconds (the Claude host's limit).
 
 ## 10. What works where
 

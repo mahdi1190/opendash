@@ -29,7 +29,18 @@ in both. A reader that meets a higher version stops and reports it (see
 - `deviceId`: 16 lower-case hex digits, random (`crypto.getRandomValues`).
 - **Single writer.** A device writes only inside its own
   `devices/<deviceId>/` folder. No two devices ever write the same file, so a
-  cloud client never needs a conflict copy.
+  cloud client never needs a conflict copy. One exception, a deletion: the
+  files of a device REMOVED from encrypted sync, once it has been removed and
+  quiet for a week and the remaining device that removed it (else the member
+  with the smallest id) has written a snapshot since, are deleted by that
+  device (only the names below, then the folder if it is empty). Nobody reads
+  what a removed device wrote after its removal, and the snapshots carry what
+  it shared before.
+- **A folder that went missing is never made again by itself.** A device that
+  synced through `OpenDash Sync` before and finds it gone (or finds only
+  devices it does not know there) writes nothing until the user chooses: the
+  same sync where it is now, or starting again in that folder
+  (docs/dev/MULTI_DEVICE.md "When something goes wrong").
 - **Atomic writes.** Every file is written to a temporary name in the same
   folder and renamed over the target. Logs only ever grow: a new version of a
   log file always starts with the previous version's bytes.
