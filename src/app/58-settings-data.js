@@ -171,6 +171,7 @@ registerSettingsGroup({
       bk.body.appendChild(p);
     }
     el.appendChild(bk.card);
+    if (typeof settingsOffsiteCard === 'function') settingsOffsiteCard(el);
 
     // Move to another computer
     const mv = _settingsCard('Export and import', 'Moving to another computer: export everything here, then import it there. Connections and sign-ins are set up again on the new computer.');
