@@ -31,7 +31,8 @@
 import { createCalendarService } from '../../lib/calendar.mjs';
 import { createCalendarWriter, CalWriteError } from '../../lib/calendar-write.mjs';
 import { fetchCalendarSource, saveSourceSnapshot, readSourceSnapshot, mergeCalendarData } from '../../lib/calendar-sources.mjs';
-import { sourcesFor } from '../../lib/sources.mjs';
+import { sourcesFor, cleanSourcePref } from '../../lib/sources.mjs';
+import { readSourcePrefs, withPrefs } from '../../lib/source-prefs.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { HttpError } from '../http.mjs';
 import { skippedBody } from '../../lib/main-computer.mjs';
@@ -50,7 +51,13 @@ export default function register(app) {
     // This computer's calendar sources, plus the ones another of the user's devices reads itself
     // (its calendar links, its Claude connectors: lib/remote-jobs.mjs remoteSources). Those
     // carry `remote`: their snapshots arrive by sync; they are shown here, never fetched here.
-    list: async () => { const own = (await sources.all()).filter(s => s.capability === 'calendar'); const rj = app.ctx.remoteJobs; return rj ? [...own, ...rj.remoteSources('calendar', own.map(s => s.id))] : own; },
+    // The other devices' sources wear your choices on them (names, colours, on/off: lib/source-prefs.mjs).
+    list: async () => {
+      const own = (await sources.all()).filter(s => s.capability === 'calendar'); const rj = app.ctx.remoteJobs;
+      if (!rj) return own;
+      const prefs = await readSourcePrefs(paths.root).catch(() => null);
+      return [...own, ...rj.remoteSources('calendar', own.map(s => s.id)).map(s => withPrefs(s, prefs, { clean: cleanSourcePref }))];
+    },
     readSnapshots: async (list) => {
       const out = {};
       for (const s of list) if (s.preset !== 'google-calendar') out[s.id] = await readSourceSnapshot(paths, s.id).catch(() => null);
