@@ -86,18 +86,27 @@ function _wkRange() {
   const back = briefDaysBetween(r.from, today) < 2;
   return back ? { from: r.prevFrom, to: r.prevTo, nextFrom: r.from, nextTo: r.to } : { from: r.from, to: r.to, nextFrom: r.nextFrom, nextTo: r.nextTo };
 }
-function _wkDraftKey(from) { return 'dashboard-weekly-draft-' + from; }
+// The review in progress is state.drafts['week:<from>'] (synced: start it on one computer, finish it on
+// the other; 06-core-seen.js). Which step this tab is on stays the tab's own (_wk.step).
+function _wkDraftKey(from) { return 'week:' + from; }
 function _wkDraft() {
   const r = _wkRange();
-  if (_wk.weekFrom !== r.from || !_wk.draft) {
-    _wk.weekFrom = r.from; _wk.step = 0;
-    let d = null; try { d = JSON.parse(localStorage.getItem(_wkDraftKey(r.from)) || 'null'); } catch (e) { d = null; }
+  const stored = draftGet(_wkDraftKey(r.from));
+  // A newer copy (another tab or computer) replaces this one, but never under the cursor.
+  const typing = typeof _liveIsEditing === 'function' && _liveIsEditing();
+  if (_wk.weekFrom !== r.from || !_wk.draft || (stored && stored !== _wk.draft && !typing)) {
+    if (_wk.weekFrom !== r.from || !_wk.draft) _wk.step = 0;
+    _wk.weekFrom = r.from;
     const saved = (state.reviews || []).find(x => x && x.kind === 'week' && x.date === r.from);
-    _wk.draft = d || (saved ? { outcomes: Object.fromEntries((saved.outcomes || []).map(o => [o.area, o.items.concat(['', '', '']).slice(0, 3)])), notes: saved.notes || '', summary: saved.summary || '', wins: (saved.wins || []).join('\n'), done: {} } : { outcomes: {}, notes: '', summary: '', wins: '', done: {} });
+    if (stored) {
+      // Kept as the same object, so the fields typed into it are the ones saved.
+      for (const [k, v] of Object.entries({ outcomes: {}, notes: '', summary: '', wins: '', done: {} })) if (stored[k] === undefined || stored[k] === null) stored[k] = v;
+      _wk.draft = stored;
+    } else _wk.draft = saved ? { outcomes: Object.fromEntries((saved.outcomes || []).map(o => [o.area, o.items.concat(['', '', '']).slice(0, 3)])), notes: saved.notes || '', summary: saved.summary || '', wins: (saved.wins || []).join('\n'), done: {} } : { outcomes: {}, notes: '', summary: '', wins: '', done: {} };
   }
   return _wk.draft;
 }
-function _wkSaveDraft() { try { localStorage.setItem(_wkDraftKey(_wk.weekFrom), JSON.stringify(_wk.draft)); } catch (e) { /* full */ } }
+function _wkSaveDraft() { try { draftSet(_wkDraftKey(_wk.weekFrom), _wk.draft); } catch (e) { /* the next edit saves it */ } }
 
 function weeklyRender(container) {
   const r = _wkRange();
@@ -367,8 +376,8 @@ function _wkFinish(b, r, d) {
       stats: { completed: st.completed, slipped: st.slipped.length, perStream: st.perStream.slice(0, 30).map(x => ({ stream: String(x.stream).slice(0, 80), n: x.n })), spent: _bf.money && _bf.money.week ? _bf.money.week.total : null, spentAvg: _bf.money && _bf.money.week ? _bf.money.week.avg : null },
     };
     if (await reviewSave(op, 'Weekly review saved')) {
-      d.done.finish = true; _wkSaveDraft();
-      try { localStorage.removeItem(_wkDraftKey(r.from)); } catch (e) { /* ignore */ }
+      d.done.finish = true;
+      draftDel(_wkDraftKey(r.from));   // saved: the draft goes on every computer
       if (typeof animBurst === 'function') animBurst(save, 'celebration');
       state.lastReviewPrompt = Date.now(); saveUI();
       setTimeout(() => setView('home:history'), 700);

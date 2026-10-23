@@ -57,6 +57,8 @@ import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { createNodeLive } from '../../lib/sync/live/node-live.mjs';
 import { writeProfile, applyProfile, PROFILE_REL } from '../../lib/profile.mjs';
+import { SOURCE_PREFS_REL } from '../../lib/source-prefs.mjs';
+import { applySourcePrefs } from '../../lib/sources.mjs';
 import { DEFAULT_CONFIG } from '../../lib/datadir.mjs';
 
 export default function register(app) {
@@ -80,17 +82,20 @@ export default function register(app) {
     if (rels.includes(PROFILE_REL) && typeof app.ctx.setConfig === 'function') {
       applyProfile(paths.root, { getConfig: () => app.ctx.getConfig(), setConfig: (p) => app.ctx.setConfig(p), log }).catch(() => {});
     }
+    // Your choices on sources (names, colours, on/off: lib/source-prefs.mjs) changed on another computer: into this sources.json.
+    if (rels.includes(SOURCE_PREFS_REL)) applySourcePrefs(paths.root, { log }).catch((e) => log('warn', `sync: source choices could not be used (${e && (e.code || e.message)})`));
     if (!rels.includes('accounts.json')) return;
     accounts().reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
   });
   // Live sync: a computer may take an account's lease only with its own sign-in for that
   // account (accounts/<id> in this computer's secret store; tokens never sync). The
   // 'claude' role (answering remote requests that need Claude, lib/remote-jobs.mjs)
-  // is claimed only by a computer where Claude works.
+  // is claimed only by a computer where Claude works, and not by one set to "Only <host>"
+  // (lib/sync/claude-host.mjs: it never answers for the Claude host while that is off).
   const live = createNodeLive({
     engine, dataDir: paths.root, log, canFetch: (acc) => accounts().hasSignIn(acc && acc.id),
     extraRoles: ['phone', 'claude'],
-    canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.localCaps()).claude)),
+    canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.canHost()))),
   });
   // Not ctx.liveSync: that is the open tabs' event stream (server/live-sync.mjs), which
   // the calendar writer and the time route emit on.
@@ -99,6 +104,8 @@ export default function register(app) {
   app.onReady(async () => {
     // The person's settings as this computer has them, for the others (a first copy: only what differs from the defaults).
     if (typeof app.ctx.getConfig === 'function') await writeProfile(paths.root, app.ctx.getConfig(), { defaults: DEFAULT_CONFIG }).catch(() => {});
+    // Source choices that arrived while this computer was not running them in yet.
+    await applySourcePrefs(paths.root, { log }).catch(() => {});
     await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`));
     if (live) await live.start().catch((e) => log('warn', `live sync could not start: ${e && (e.code || e.message)}`));
   });

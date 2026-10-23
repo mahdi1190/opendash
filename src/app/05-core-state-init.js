@@ -37,6 +37,11 @@ function ensureStateDefaults(s) {
   s.sidebarCollapsed = !!s.sidebarCollapsed;
   s.emailTriage      = s.emailTriage      || { emails: [], suggestions: [], lastFetched: 0, daysWindow: 7 };
   s.taskChat         = s.taskChat         || {};
+  // The assistant panel's conversation, each chat's cleared/read/older-messages note, and this computer's older messages (70-ai-chats.js).
+  if (!s.assistantChat || typeof s.assistantChat !== 'object' || Array.isArray(s.assistantChat)) s.assistantChat = { messages: [] };
+  if (!Array.isArray(s.assistantChat.messages)) s.assistantChat.messages = [];
+  if (!s.chatMeta || typeof s.chatMeta !== 'object' || Array.isArray(s.chatMeta)) s.chatMeta = {};
+  if (!s.chatArchive || typeof s.chatArchive !== 'object' || Array.isArray(s.chatArchive)) s.chatArchive = {};
   s.taskActivity     = s.taskActivity     || {};      // {taskId: [{id, ts, type, from, to, reason, ...}]}      // { taskId: [{role, text, ts}] }
   s.taskTemplates    = s.taskTemplates    || [];      // [{id, name, title, stream, priority, tags, detail, subtasks}]
   s.weeklyReviews    = s.weeklyReviews    || [];      // [{ts, week, answers}]

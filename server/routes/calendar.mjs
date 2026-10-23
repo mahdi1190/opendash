@@ -31,7 +31,8 @@
 import { createCalendarService } from '../../lib/calendar.mjs';
 import { createCalendarWriter, CalWriteError } from '../../lib/calendar-write.mjs';
 import { fetchCalendarSource, saveSourceSnapshot, readSourceSnapshot, mergeCalendarData } from '../../lib/calendar-sources.mjs';
-import { sourcesFor } from '../../lib/sources.mjs';
+import { sourcesFor, cleanSourcePref } from '../../lib/sources.mjs';
+import { readSourcePrefs, withPrefs } from '../../lib/source-prefs.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { HttpError } from '../http.mjs';
 import { skippedBody } from '../../lib/main-computer.mjs';
@@ -50,7 +51,13 @@ export default function register(app) {
     // This computer's calendar sources, plus the ones another of the user's devices reads itself
     // (its calendar links, its Claude connectors: lib/remote-jobs.mjs remoteSources). Those
     // carry `remote`: their snapshots arrive by sync; they are shown here, never fetched here.
-    list: async () => { const own = (await sources.all()).filter(s => s.capability === 'calendar'); const rj = app.ctx.remoteJobs; return rj ? [...own, ...rj.remoteSources('calendar', own.map(s => s.id))] : own; },
+    // The other devices' sources wear your choices on them (names, colours, on/off: lib/source-prefs.mjs).
+    list: async () => {
+      const own = (await sources.all()).filter(s => s.capability === 'calendar'); const rj = app.ctx.remoteJobs;
+      if (!rj) return own;
+      const prefs = await readSourcePrefs(paths.root).catch(() => null);
+      return [...own, ...rj.remoteSources('calendar', own.map(s => s.id)).map(s => withPrefs(s, prefs, { clean: cleanSourcePref }))];
+    },
     readSnapshots: async (list) => {
       const out = {};
       for (const s of list) if (s.preset !== 'google-calendar') out[s.id] = await readSourceSnapshot(paths, s.id).catch(() => null);
@@ -140,8 +147,12 @@ export default function register(app) {
       // calendar links, their Claude connectors) to update them (lib/remote-jobs.mjs);
       // what they fetch arrives by sync. Never for an automatic update, nor for one asked
       // by another device (c.internal).
-      const asked = body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.askOthers('fetch:calendar', body, c).catch(() => []) : [];
-      const also = asked.length ? { asked, message: `Asking ${[...new Set(asked.map(a => a.runsOn))].join(' and ')} to update the calendar.` } : {};
+      // ── host ── The Claude-run calendars (the connector, MCP servers) that the Claude host reads too
+      // are left to it (lib/remote-jobs.mjs hostFetch); the ones it lacks, and the others, are read here.
+      const hf = body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.hostFetch('fetch:calendar', body, c).catch(() => ({ skip: [], asked: [] })) : { skip: [], asked: [] };
+      const asked = [...hf.asked, ...(body.force === true && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.askOthers('fetch:calendar', body, c).catch(() => []) : [])].filter((a, i, all) => all.findIndex(b => b.id === a.id) === i);
+      const also = asked.length ? { asked, message: `Asking ${[...new Set(asked.map(a => a.runsOn))].join(' and ')} to update the calendar.` } : hf.message ? { message: hf.message } : {};
+      const pick = { ...(hf.skip.length ? { skip: hf.skip } : {}), ...(Array.isArray(body.only) && c.internal ? { only: body.only.filter(x => typeof x === 'string').slice(0, 30) } : {}) };
       // An automatic update runs only on the main computer (lib/main-computer.mjs); a click always runs.
       const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('connectors', { automatic: body.force !== true }) : { run: true };
       // Not this computer's job: the Claude connectors (and calendar links) wait for the main
@@ -150,8 +161,9 @@ export default function register(app) {
         const own = mc.reason === 'moving' ? { started: false } : await cal.start({ back: body.back, ahead: body.ahead, force: body.force === true, zone: c.zone, onlyAccounts: true });
         return own.started ? c.json(202, { job: own.job, ...skippedBody(mc), ...also }) : asked.length ? c.json(202, { job: null, ...also }) : { ...skippedBody(mc), job: null };
       }
-      const r = await cal.start({ back: body.back, ahead: body.ahead, force: body.force === true, zone: c.zone });
+      const r = await cal.start({ back: body.back, ahead: body.ahead, force: body.force === true, zone: c.zone, ...pick });
       if (r.started) return c.json(202, { job: r.job, ...also });
+      if (r.reason === 'no-sources' && pick.skip && !asked.length) return { skipped: true, reason: 'host', job: r.job, ...also };
       if (r.reason === 'running') return c.json(409, { error: 'An update is already running.', job: r.job });
       if (r.reason === 'no-sources' && asked.length) return c.json(202, { job: null, ...also });
       if (r.reason === 'no-sources') return c.json(409, { error: 'No calendar is connected yet: add one in Connections.', code: 'NO_SOURCES', job: r.job });

@@ -168,12 +168,18 @@ function acceptSuggestion(sugId, quiet) {
   const t = _emTriage();
   const sug = t.suggestions.find(s => s.id === sugId);
   if (!sug) return null;
+  // Synced (emailTriage): accepted or dismissed already, here or on another computer, is not added again.
+  if (sug.status && sug.status !== 'pending') return null;
+  // Guard by id: the task's id comes from the suggestion, so two computers accepting it before
+  // either heard of the other make ONE task (sync merges the same id), and a copy already here is reused.
+  const sid = 'u-' + (Number(sug.at) || Date.now()) + '-s' + (typeof _chatHash === 'function' ? _chatHash(sug.id) : String(sug.id).replace(/[^a-z0-9]/gi, '').slice(-8));
+  if (getItem(sid)) { emailMarkHandled(sug.emailId, 'task', sid); return sid; }
   const email = emailById(sug.emailId);
   let due = null;
   if (typeof sug.dueHint === 'number') due = Clock.addDays(todayStr(), sug.dueHint);
   const tags = [...new Set(['email', ...(sug.tags || [])])].filter(x => x !== 'from-email');
   const detail = [sug.detail, email ? `From: ${email.sender || _emSenderName(email)}\nSubject: ${email.subject}\n${_emLink(email)}` : ''].filter(Boolean).join('\n\n');
-  const id = addCustomTask(sug.title, due, sug.priority, tags, sug.stream, 'none', { people: sug.peopleIds || [], detail });
+  const id = addCustomTask(sug.title, due, sug.priority, tags, sug.stream, 'none', { people: sug.peopleIds || [], detail, id: sid });
   if (!id) return null;
   emailMarkHandled(sug.emailId, 'task', id);
   if (!quiet) toast('Task added', { kind: 'ok', action: { label: 'Open', run: () => openTask(id) } });

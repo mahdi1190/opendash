@@ -20,6 +20,8 @@ function dashboardLocationHistoryClear() {
   _locationHistoryMemory={version:1,visits:[],observations:[]};
   if (typeof _aukArrivalMemory !== 'undefined') _aukArrivalMemory=null;
   try { localStorage.removeItem('dashboard-location-history');localStorage.removeItem('dashboard-anim-uk-arrival'); } catch (e) { /* private mode */ }
+  // The welcomes shown (synced flags keyed by place, 06-core-seen.js) go too: they say where you were.
+  try { if (typeof seenAll === 'function') for (const k of Object.keys(seenAll('arrival'))) seenSet('arrival', k, null); } catch (e) { /* kept until they age out (30 days) */ }
 }
 function dashboardLocationHistoryPanel() {
   const box=document.createElement('div');box.className='loc-history';

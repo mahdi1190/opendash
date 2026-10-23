@@ -219,11 +219,17 @@ export default function register(app) {
       // {automatic: true} ("Start my day"): only on the main computer (lib/main-computer.mjs).
       const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('bank', { automatic: body.automatic === true }) : { run: true };
       if (!mc.run) return skippedBody(mc);
-      const r = startFinanceUpdate({ full: body.full === true, bank: body.bank !== false });
+      // ── host ── A click: the banks read through Claude that the Claude host reads too are left to it
+      // (lib/remote-jobs.mjs hostFetch; only once the money itself syncs). c.internal: asked by another
+      // device, or this computer's own fallback for those banks (body.only).
+      const hf = body.automatic !== true && body.bank !== false && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.hostFetch('fetch:finance', body, c).catch(() => ({ skip: [], asked: [] })) : { skip: [], asked: [] };
+      const only = c.internal && Array.isArray(body.only) ? body.only.filter(x => typeof x === 'string').slice(0, 10) : null;
+      const r = startFinanceUpdate({ full: body.full === true, bank: body.bank !== false, ...(hf.skip.length ? { skip: hf.skip } : {}), ...(only && only.length ? { only } : {}), ...(c.internal && body.manual === true ? { manual: true } : {}) });
       if (r.error) throw new HttpError(400, r.error);
       if (!r.started) return c.json(409, { error: 'An update is already running.', job: r.job });
       log('note', `finance update started${body.bank === false ? ' (no bank)' : body.full === true ? ' (full)' : ''}`);
-      return c.json(202, { job: r.job });
+      const asked = hf.asked.length ? { asked: hf.asked, message: `Asking ${[...new Set(hf.asked.map(a => a.runsOn))].join(' and ')} to update your bank.` } : hf.message ? { message: hf.message } : {};
+      return c.json(202, { job: r.job, ...asked });
     },
   });
 

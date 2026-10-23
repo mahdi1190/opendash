@@ -126,6 +126,7 @@ export default function register(app) {
         // by: the device that made it (with sync on), so another device can say where it came from.
         let by=null;try{const e=app.ctx.sync;by=e&&e.enabled?e.status().deviceName||null:null;}catch{by=null;}
         const result={...advice,date:facts.date,tz:data.tz,at:Date.now(),expiresAt:Date.now()+2*60*60*1000,period:fresh.data.part,model,periods:[...new Set([...periods,fresh.data.part])],...(by?{by}:{})};
+        if(c.remoteCommit) await c.remoteCommit();   // asked by another device: only while it still wants this answer (lib/sync/claude-host.mjs)
         await writeJson(file,result);
         return {...result,cached:false};
       });
@@ -183,6 +184,7 @@ export default function register(app) {
         const t0 = Date.now();
         const r = await generateStoryScript({ kind, data, askJson: ai().askJson, model, userName: cfg.userName, style: cfg.ai && cfg.ai.style });
         if (!r.script) throw new HttpError(502, 'The AI script came back unusable.', { code: 'BAD_OUTPUT' });
+        if (c.remoteCommit) await c.remoteCommit();   // asked by another device: only while it still wants this answer
         await writeStoryScript(dataDir, kind, date, { ...r.script, tz: data.tz });
         log('info', `story script ${kind} ${r.script.model || model} sentences=${r.script.sentences.length} dropped=${r.dropped} ${Date.now() - t0}ms`);
         return { script: r.script, cached: false, dropped: r.dropped };

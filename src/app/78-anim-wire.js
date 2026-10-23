@@ -36,17 +36,16 @@ function animCtx() {
     ...(() => { const w = typeof animWorldWhere === 'function' ? animWorldWhere() : null; return { city: w ? w.city : '', country: w ? w.country : '' }; })(),   // the world pack (78-anim-world.js)
   };
 }
-/** The first snowy day of this winter (Oct-Apr), remembered on this device. */
+/** The first snowy day of this winter (Oct-Apr), remembered for every computer (state.seen.firstSnow, 06-core-seen.js). */
 function _awFirstSnow() {
   const today = todayStr(), mo = +today.slice(5, 7);
   if (mo > 4 && mo < 10) return '';
   const winter = String(mo >= 10 ? +today.slice(0, 4) : +today.slice(0, 4) - 1);
-  let rec = null;
-  try { rec = JSON.parse(localStorage.getItem('dashboard-anim-first-snow') || 'null'); } catch (e) { rec = null; }
-  if (rec && rec.winter === winter) return rec.day || '';
+  const first = seenGet('firstSnow', winter);
+  if (typeof first === 'string' && first) return first;
   const w = typeof _bf !== 'undefined' && _bf.weather && _bf.weather.ok ? _bf.weather : null;
   if (w && w.current && w.current.cond === 'snow') {
-    try { localStorage.setItem('dashboard-anim-first-snow', JSON.stringify({ winter, day: today })); } catch (e) { /* private mode */ }
+    seenSet('firstSnow', winter, today);
     return today;
   }
   return '';
@@ -128,7 +127,8 @@ function animOpeningPlay(force) {
    A click or any key skips everything (the splash's own handlers). */
 const _AW_SEQ_MS = { subtle: [800, 1000, 2200], standard: [1000, 1600, 3600], playful: [1200, 1800, 4400] };
 function animOpeningMode() { try { return animLook().opening; } catch (e) { return 'daily'; } }
-function animOpeningModeSync() { try { localStorage.setItem('dashboard-opening-mode', animOpeningMode()); } catch (e) { /* storage blocked */ } }
+/** The splash (body.html) reads the mode before any script has the state: keep its copy in step (called after each render too, 06-core-seen.js). */
+function animOpeningModeSync() { try { const m = animOpeningMode(); if (localStorage.getItem('dashboard-opening-mode') !== m) localStorage.setItem('dashboard-opening-mode', m); } catch (e) { /* storage blocked */ } }
 /** The part of the day for the scene's light: dawn, day, dusk or night (the clock in the user's zone). */
 function animTimeOfDay() {
   let h = 12;
@@ -146,9 +146,8 @@ function animOpeningScene(w, rotate) {
   const exact = mine.filter(x => x.ukTown && String(x.ukTown).toLowerCase() === String(w.town || '').toLowerCase());
   if (arrival && arrival.exactRemaining > 0 && exact.length) mine = exact;
   if (!mine.length) return { it: null, origin: '' };
-  const key = 'dashboard-opening-last-' + w.id;
-  let last = '';
-  try { last = localStorage.getItem(key) || ''; } catch (e) { /* private mode */ }
+  // Where the rotation is, per place: synced, so the other computer shows the next scene, not the same one (06-core-seen.js).
+  const last = String(seenGet('openingLast', w.id) || '');
   const signature = mine.find(x => x.signature);
   const pin = mine.find(x => look.pin && x.ref === look.pin.opening);
   const pool = _awByPlace(mine);
@@ -156,7 +155,7 @@ function animOpeningScene(w, rotate) {
   const next = pool[(previous >= 0 ? previous + 1 : Math.max(0, pool.indexOf(signature) + 1)) % pool.length];
   const localIntro = mine.find(x => x.ukTown === w.town);
   const it = rotate ? pin || next : pin || localIntro || signature || mine[0];
-  try { localStorage.setItem(key, it.ref); } catch (e) { /* private mode */ }
+  seenSet('openingLast', w.id, it.ref);
   const site = it.site || it.label.replace(new RegExp(', ' + w.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '');
   const county = ukCounty(it.county);
   const area = county ? county.name : it.ukLocality || '';
@@ -179,8 +178,7 @@ function animOpeningPeek() {
     if (!mine.length) return [];
     const pin = mine.find(x => look.pin && x.ref === look.pin.opening);
     if (pin) return composed(pin.ref) ? [pin.ref] : [];
-    let last = '';
-    try { last = localStorage.getItem('dashboard-opening-last-' + w.id) || ''; } catch (e) { /* private mode */ }
+    const last = String(seenGet('openingLast', w.id) || '');
     const signature = mine.find(x => x.signature), pool = _awByPlace(mine), prev = pool.findIndex(x => x.ref === last);
     const next = pool[(prev >= 0 ? prev + 1 : Math.max(0, pool.indexOf(signature) + 1)) % pool.length];
     const first = mine.find(x => x.ukTown === w.town) || signature || mine[0];
@@ -204,11 +202,10 @@ function animOpeningExactScene(tx, arrival) {
     && ((tx.placeField && it[tx.placeField] === tx.id) || it.usPlace === tx.id || it.asiaPlace === tx.id || (it.txTown && it.txTown.toLowerCase() === tx.name.toLowerCase()))
     && _animWhen(it, todayStr(), ctx));
   if (!exact.length) return;
-  const key = 'dashboard-opening-exact-' + tx.cc + '-' + tx.id;
-  let last = '';
-  try { last = localStorage.getItem(key) || ''; } catch (e) { /* private mode */ }
+  const key = tx.cc + '-' + tx.id;
+  const last = String(seenGet('openingExact', key) || '');
   tx.it = exact[(exact.findIndex(it => it.ref === last) + 1) % exact.length];
-  try { localStorage.setItem(key, tx.it.ref); } catch (e) { /* private mode */ }
+  seenSet('openingExact', key, tx.it.ref);
 }
 function animOpeningLocation(w, tx) {
   if (w) return w;
@@ -296,6 +293,11 @@ function animOpeningSequence() {
     if (!alive()) return;
     // the first-run set-up (a new data folder): nothing in front of it
     if (!st || firstRun()) { done(); return; }
+    // Once a day for the person, not per computer: already played today on another one, the brand fades into the app.
+    _awOpeningSeenElsewhere(ctl.day, (elsewhere) => {
+    if (!alive()) return;
+    if (elsewhere) { done(); return; }
+    if (typeof seenMarkDay === 'function') seenMarkDay('opening', ctl.day);
     _awSceneReady(st.box, _AW_SEQ_READY_MS, () => {
     if (!alive()) return;
     const { box, helloMs } = st;
@@ -319,8 +321,26 @@ function animOpeningSequence() {
       });
     });
     });
+    });
   }));
   return true;
+}
+/**
+ * cb(true) when the full opening already played today on another of your computers
+ * (state.seen.opening, 06-core-seen.js). The splash decided to hold on this browser's own copy
+ * (dashboard-opening-day), before any script had the state: wait a little for the state file
+ * (at most _AW_SEQ_SEEN_MS), then ask it. "Every load" never asks.
+ */
+const _AW_SEQ_SEEN_MS = 1500;
+function _awOpeningSeenElsewhere(day, cb) {
+  if (animOpeningMode() === 'every' || typeof seenDay !== 'function') { cb(false); return; }
+  const t0 = performance.now();
+  const check = () => {
+    const booted = typeof _uiSharedBooted === 'undefined' || _uiSharedBooted;
+    if (booted || performance.now() - t0 > _AW_SEQ_SEEN_MS) { let seen = false; try { seen = seenDay('opening', day); } catch (e) { seen = false; } cb(seen); return; }
+    setTimeout(check, 80);
+  };
+  check();
 }
 /** How long the welcome may wait past the brand for the scene to be baked and warmed up (a slow machine still gets its opening). */
 const _AW_SEQ_READY_MS = 2500;

@@ -639,6 +639,11 @@ function _syncCard(el) {
     }
   }
   if (st && st.enabled && st.skew) card.body.appendChild(_settingsRow('Clock', st.skew.text || `${st.skew.device}'s clock is about ${st.skew.aheadMin} min ahead of this one. Set both to the right time so the newest change wins.`, null));
+  // Files too big to send from this computer (lib/sync/engine.mjs notSynced): they stay as they are here.
+  if (st && st.enabled && Array.isArray(st.notSynced) && st.notSynced.length) {
+    const n = st.notSynced;
+    card.body.appendChild(_settingsRow('Not synced from this computer', `${n.slice(0, 3).map(x => x.file + ' (' + x.why + ')').join('; ')}${n.length > 3 ? ` and ${n.length - 3} more` : ''}. ${n.length === 1 ? 'It stays' : 'They stay'} as ${n.length === 1 ? 'it is' : 'they are'} on this computer; your other computers keep their own copy.`, null));
+  }
   if (st && st.enabled && screen !== 'joining') card.body.appendChild(_settingsRow('Sync across my devices', 'On. Turn it off to stop syncing this computer (nothing is deleted).', _settingsSwitch(true, 'Sync across my devices', () => _syncSave({ enabled: false }, 'Sync is off'), _syncBusy)));
   if (_syncErr) { const e = document.createElement('div'); e.className = 'sync-status sync-err'; e.textContent = _syncErr; card.body.appendChild(e); }
   el.appendChild(card.card);
@@ -663,5 +668,6 @@ registerSettingsGroup({
     if (!_syncSt && !_syncErr) syncLoad();
     _syncCard(el);
     if (typeof settingsMainComputerCard === 'function') settingsMainComputerCard(el);   // 58-settings-main.js
+    if (typeof settingsClaudeHostCard === 'function') settingsClaudeHostCard(el);       // 58-settings-claude-host.js
   },
 });

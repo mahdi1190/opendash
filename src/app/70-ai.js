@@ -37,11 +37,18 @@ async function askAIJson(prompt, schema, opts) {
 /* ============================================================
    TASK CHAT
    ============================================================ */
-function getTaskChat(taskId) { return state.taskChat[taskId] || []; }
-function addTaskChatMsg(taskId, role, text) {
-  state.taskChat[taskId] = state.taskChat[taskId] || [];
-  state.taskChat[taskId].push({ role, text, ts: Date.now() });
-  saveData();
+// Synced on every computer (70-ai-chats.js): each message has an id and a time,
+// the chat shows in time order with this computer's older messages, and a
+// reply is added once, when it is complete. A failed reply is shown in this
+// tab only (_taskChatErr): it is not part of the conversation.
+const _taskChatErr = {};
+function getTaskChat(taskId) { return chatView('task:' + taskId).messages; }
+function addTaskChatMsg(taskId, role, text, ts) {
+  if (!state.taskChat || typeof state.taskChat !== 'object') state.taskChat = {};
+  const list = Array.isArray(state.taskChat[taskId]) ? state.taskChat[taskId].slice() : [];
+  list.push({ id: chatNewId('c'), role, text, ts: ts || Date.now() });
+  state.taskChat[taskId] = list;
+  chatSave('task:' + taskId);
 }
 async function sendTaskChat(taskId, userMsg) {
   if (!userMsg.trim()) return;
@@ -53,7 +60,9 @@ async function sendTaskChat(taskId, userMsg) {
       + 'Claude Code is installed and signed in.');
     return;
   }
-  addTaskChatMsg(taskId, 'user', userMsg);
+  delete _taskChatErr[taskId];
+  const asked = Date.now();
+  addTaskChatMsg(taskId, 'user', userMsg, asked);
   render();
   const item = getItem(taskId); if (!item) return;
   const history = getTaskChat(taskId);
@@ -66,10 +75,11 @@ async function sendTaskChat(taskId, userMsg) {
   const prompt = `${context}\n\n--- conversation so far ---\n${messages}\n\nReply to the last message:`;
   try {
     const txt = await askAI(prompt, { model: APP_CONFIG.ai.chatModel, effort: APP_CONFIG.ai.effort, purpose: 'taskchat' });
-    addTaskChatMsg(taskId, 'claude', txt);
+    // Right after its question in time order, whatever arrived from another computer meanwhile.
+    addTaskChatMsg(taskId, 'claude', txt, Math.max(asked + 1, Date.now()));
     render();
   } catch (e) {
-    addTaskChatMsg(taskId, 'claude', '⚠ ' + ((e && e.message) || e));
+    _taskChatErr[taskId] = String((e && e.message) || e || 'The reply could not be written.').slice(0, 300);
     render();
   }
 }

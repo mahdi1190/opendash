@@ -735,8 +735,7 @@ function _bfIntro(root, m) {
 
 /* ---------- seen + snapshot ---------- */
 function _bfMarkSeen() {
-  const t = todayStr();
-  try { localStorage.setItem('dashboard-brief-seen', t); } catch (e) { /* private mode */ }
+  seenMarkDay('brief', todayStr());   // synced: the other computer does not open it again today (06-core-seen.js)
   _bfSaveSnapshot(false);
 }
 let _bfSnapTimer = null;
@@ -776,11 +775,10 @@ async function briefMaybeAutoOpen() {
   if (typeof _obOpen !== 'undefined' && _obOpen) return;
   if (!APP_CONFIG.onboardedAt && !getAllItems().length) return;       // the welcome set-up comes first
   const today = todayStr();
-  let local = null; try { local = localStorage.getItem('dashboard-brief-seen'); } catch (e) { /* ignore */ }
-  if (local === today) return;
+  if (seenDay('brief', today)) return;   // seen today here or on another computer
   try {
     const j = await _bfJson('/api/brief/day?date=' + today);
-    if (j && j.brief && j.brief.seen) { try { localStorage.setItem('dashboard-brief-seen', today); } catch (e) { /* ignore */ } return; }
+    if (j && j.brief && j.brief.seen) { seenMarkDay('brief', today); return; }
   } catch (e) { return; }
   briefOpen({ welcome: true });
   if (typeof storyAutoOpen === 'function') storyAutoOpen('morning');   // the story poster over the brief (79-story-engine.js)

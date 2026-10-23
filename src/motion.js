@@ -96,8 +96,9 @@
     html.setAttribute('data-motion', prefersReduced() ? 'reduced' : 'full');
     html.setAttribute('data-motion-level', level());
   }
+  function _levelOk(l) { return HAS_LOGIC ? MOTION_LEVELS.includes(l) : /^(off|subtle|standard|playful)$/.test(l); }
   function setLevel(l) {
-    if (HAS_LOGIC ? !MOTION_LEVELS.includes(l) : !/^(off|subtle|standard|playful)$/.test(l)) return;
+    if (!_levelOk(l)) return;
     const prev = chosenLevel();
     if (l === 'off' && prev !== 'off') _set(LAST_KEY, prev);
     _sessionLevel = l;
@@ -105,6 +106,20 @@
     _set(PREF_KEY, l === 'off' ? 'reduced' : null);   // older builds read the legacy switch
     applyAttr();
     syncToggle();
+    // The intensity follows the person (state.uiPrefs.motion, src/app/06-core-seen.js); localStorage
+    // stays this browser's first-paint copy (body.html reads it before any script has the state).
+    if (typeof window.uiSharedMotionChanged === 'function') { try { window.uiSharedMotionChanged(l, _get(LAST_KEY)); } catch (e) { /* saved here anyway */ } }
+  }
+  /** A level chosen on another computer (or tab) arrived with the state: take it, without sending it back. True if it changed. */
+  function applySyncedLevel(l, last) {
+    if (last && _levelOk(last) && last !== 'off' && _get(LAST_KEY) !== last) _set(LAST_KEY, last);
+    if (!_levelOk(l) || l === chosenLevel()) return false;
+    _sessionLevel = l;
+    _set(LEVEL_KEY, l);
+    _set(PREF_KEY, l === 'off' ? 'reduced' : null);
+    applyAttr();
+    syncToggle();
+    return true;
   }
   /** The Reduce motion switch: Off, or back to the level before Off. */
   function setReduced(on) {
@@ -592,7 +607,7 @@
     tokens: { durations: Object.assign({}, D), easings: Object.assign({}, E) },
     prefersReduced, setReduced, animate, countUp, stagger, viewTransition,
     completeTask, expand, collapse, decorateSidebar, afterRender,
-    level, chosenLevel, setLevel, profile, systemReduced, osReduced, osOverride, setOsOverride,
+    level, chosenLevel, setLevel, applySyncedLevel, profile, systemReduced, osReduced, osOverride, setOsOverride,
     navigate, hint, scrollTopIfScrolled, swapIn, beforeMain, afterMain, withoutFlip, themeSwap,
   };
 

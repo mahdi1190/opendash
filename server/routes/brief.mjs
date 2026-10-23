@@ -113,7 +113,8 @@ export default function register(app) {
         if (hit && hit.text) return { ...hit, cached: true };
       }
       // Written by the main computer only (lib/main-computer.mjs); "Regenerate" is a click and always runs.
-      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('ai-brief', { automatic: !b.regenerate }) : { run: true };
+      // c.internal (── host ──): asked by another device's page, or this computer's own fallback when the Claude host is off: a click.
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('ai-brief', { automatic: !b.regenerate && !c.internal }) : { run: true };
       if (!mc.run) throw new HttpError(409, skippedBody(mc).message, { code: mc.reason === 'moving' ? 'MOVING' : 'NOT_MAIN', runsOn: mc.runsOn || null });
       const key = b.kind + '|' + b.date;
       if (pending.has(key)) return pending.get(key);
@@ -127,6 +128,7 @@ export default function register(app) {
         const text = tidySummary(r.text);
         if (!text) throw new HttpError(502, 'The AI summary came back empty.', { code: 'BAD_OUTPUT' });
         const out = { kind: b.kind, date: b.date, text, model: r.model || model, at: new Date().toISOString() };
+        if (c.remoteCommit) await c.remoteCommit();   // asked by another device: only while it still wants this answer (lib/sync/claude-host.mjs)
         await writeSummary(dataDir, b.kind, b.date, out);
         log('info', `brief summary ${b.kind} ${out.model} ${Date.now() - t0}ms`);
         return { ...out, cached: false };
