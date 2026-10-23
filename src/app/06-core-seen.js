@@ -132,7 +132,8 @@ function _seenLegacyRead() {
     else if (k === 'dashboard-anim-focus') {
       const r = json();
       // Only a block still running moves over (a finished one would only be cleared again).
-      if (r && Number.isFinite(r.start) && Number.isFinite(r.ms) && r.start + r.ms > Date.now()) { out.uiPrefs.focusBlock = { start: r.start, ms: r.ms, ref: String(r.ref || ''), ...(r.told ? { told: true } : {}) }; out.from['uiPrefs\nfocusBlock'] = k; }
+      const now = typeof Clock !== 'undefined' && Clock.now ? Clock.now() : Date.now();   // the block was timed with Clock.now()
+      if (r && Number.isFinite(r.start) && Number.isFinite(r.ms) && r.start + r.ms > now) { out.uiPrefs.focusBlock = { start: r.start, ms: r.ms, ref: String(r.ref || ''), ...(r.told ? { told: true } : {}) }; out.from['uiPrefs\nfocusBlock'] = k; }
     }
     else if (k.startsWith('dashboard-weekly-draft-')) { const r = json(); const from = k.slice(23); if (_seenIsObj(r) && _seenIsDay(from)) { out.drafts['week:' + from] = r; out.from['drafts\nweek:' + from] = k; } }
     else used = false;
@@ -351,7 +352,7 @@ function uiSharedBoot() {
   if (L !== _SEEN_EMPTY) changed = _uiSharedFold(L) || changed;
   _seenLegacyMemo = _SEEN_EMPTY;             // the state has everything now
   changed = _seenPruneAll() || changed;
-  if (changed && typeof saveUI === 'function') saveUI();
+  if (changed) _uiSharedSave();              // this browser at once, the server in a few seconds
   if (L !== _SEEN_EMPTY) _uiSharedConfirm(L.keys, 0);
   uiSharedAfterRender();
 }
