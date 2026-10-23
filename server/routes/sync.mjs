@@ -3,7 +3,8 @@
 //   GET  /api/sync/status     -> {enabled, state: off|syncing|ok|waiting|locked|error, message,
 //                                 folder, cloud, deviceName, devices:[{id, name, kind, me, lastSeen, fetches}],
 //                                 accounts:[{id, label, fetcher}], e2e:{on, ready, reason, pairing,
-//                                 requests, offer, found, ...}, skew:{text}, lastSyncAt, conflicts, ...}
+//                                 requests, offer, found, ...}, skew:{text}, lastSyncAt, conflicts,
+//                                 blobs:{on, used, budget, text: 'Pictures and audio: 34 MB of 200 MB'}, ...}
 //   POST /api/sync/settings   {enabled?, apply?, folder?, deviceName?} -> the status
 //                             apply (default off) = write other computers' changes into this
 //                             data; off = shadow mode: collect them and report what would change
@@ -86,6 +87,12 @@ export default function register(app) {
     if (rels.includes(SOURCE_PREFS_REL)) applySourcePrefs(paths.root, { log }).catch((e) => log('warn', `sync: source choices could not be used (${e && (e.code || e.message)})`));
     if (!rels.includes('accounts.json')) return;
     accounts().reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
+  });
+  // Pictures and narration clips another computer has (encrypted sync, lib/sync/blobs.mjs)
+  // arrive when first asked for: open tabs hear which, and show them in place of the placeholder.
+  engine.onBlobs((rels) => {
+    const sse = app.ctx.liveSync;
+    if (Array.isArray(rels) && rels.length && sse && typeof sse.emit === 'function') { try { sse.emit('synced-files', { rels: rels.slice(0, 50), at: Date.now() }); } catch { /* no open tabs */ } }
   });
   // Live sync: a computer may take an account's lease only with its own sign-in for that
   // account (accounts/<id> in this computer's secret store; tokens never sync). The

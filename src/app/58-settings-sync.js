@@ -632,6 +632,8 @@ function _syncCard(el) {
     now.disabled = _syncBusy;
     now.onclick = async () => { try { _syncSt = await _syncJson('/api/sync/now', {}); } catch (e) { _syncErr = netErrorMessage(e); } _syncRefresh(); };
     card.body.appendChild(_settingsRow('Check the folder now', 'It also checks by itself every few seconds.', now));
+    // People's pictures and story audio (lib/sync/blobs.mjs), one line: 'Pictures and audio: 34 MB of 200 MB'.
+    if (st.blobs && st.blobs.text) card.body.appendChild(_settingsRow(st.blobs.text, '', null));
     if (st.conflicts && st.conflicts.count) {
       const c = st.conflicts.recent[0];
       const what = c ? `${c.name ? '"' + c.name + '"' : 'an item'}${c.field ? ' (' + c.field + ')' : ''}` : 'an item';

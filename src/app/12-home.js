@@ -187,7 +187,8 @@ function homeWaitingPerson(i) {
 function homeAvatar(p, size) {
   if (!p) return '';
   const sz = Number(size) || 20;
-  const url = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || safeUrl(p.avatarUrl);
+  const raw = (typeof pcPhotoUrl === 'function' && pcPhotoUrl(p.photo)) || safeUrl(p.avatarUrl);
+  const url = typeof pplPicUrl === 'function' ? pplPicUrl(raw) : raw;    // 50-people.js: a picture that arrived by sync
   const inner = url ? `<img src="${escAttr(url)}" alt="" data-avatar-fallback="${escAttr(p.id)}" data-avatar-size="${sz}">` : esc(avatarInitials(p.name));
   return `<span class="avatar" style="--size:${sz}px;--c:${escAttr(safeColor(p.color, 'var(--sw-slate)'))}" title="${escAttr(p.name || '')}">${inner}</span>`;
 }

@@ -8,11 +8,17 @@
 //                            `photo` / `cover` through the actions layer (update_person), so
 //                            Undo, history and live sync work as for any other change.
 //   GET  /api/people/image/<name>  -> the picture (only names this server makes; 404 otherwise)
+//                            Not on this computer yet but synced from another one (encrypted
+//                            sync, lib/sync/blobs.mjs): it is fetched from the sync folder
+//                            first (a few seconds at most; meanwhile 404, so the page shows the
+//                            initials, and a 'synced-files' event brings the picture once here).
 //
 // Same protections as every mutating route (Host, same origin, JSON, body limit).
 // The log gets the kind and size, never names.
 
-import { createPeopleImages, ImageError, MAX_BODY } from '../../lib/people-images.mjs';
+import { createPeopleImages, ImageError, MAX_BODY, IMG_NAME_RE } from '../../lib/people-images.mjs';
+
+const FETCH_WAIT_MS = 4000;     // a picture from the sync folder: how long a request waits for it
 
 export default function register(app) {
   const { paths, log, store } = app.ctx;
@@ -22,8 +28,12 @@ export default function register(app) {
   app.route({
     path: '/api/people/image', method: 'POST', methodError: 'POST only', maxBody: MAX_BODY,
     handler: async (c) => {
-      try { return await images.save(await c.body()); }
-      catch (e) {
+      try {
+        const r = await images.save(await c.body());
+        // Encrypted sync: the new picture goes to the other computers once a person shows it.
+        try { const b = app.ctx.sync && app.ctx.sync.blobs; if (b) b.noteLocal(); } catch { /* sync is optional */ }
+        return r;
+      } catch (e) {
         if (e instanceof ImageError) return c.json(e.status, e.toJSON());
         throw e;
       }
@@ -34,7 +44,13 @@ export default function register(app) {
     handler: async (c) => {
       let name;
       try { name = decodeURIComponent(c.path.slice('/api/people/image/'.length)); } catch { return c.json(404, { error: 'not found' }); }
-      const img = await images.read(name);
+      let img = await images.read(name);
+      if (!img && IMG_NAME_RE.test(name)) {
+        // Synced from another computer and not fetched yet: from the sync folder (lib/sync/blobs.mjs).
+        const b = app.ctx.sync && app.ctx.sync.blobs;
+        if (b && await b.fetch(`people/images/${name}`, { waitMs: FETCH_WAIT_MS }).catch(() => false)) img = await images.read(name);
+      }
+      // (A 404 goes out no-store, server/http.mjs: the picture can arrive a moment later.)
       if (!img) return c.json(404, { error: 'not found' });
       // The name holds the picture's hash, so it never changes: cache it.
       c.send(200, img.buf, img.mime, { 'Cache-Control': 'private, max-age=31536000, immutable', 'Content-Disposition': 'inline' });
