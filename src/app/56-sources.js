@@ -384,8 +384,10 @@ function srcAddFlow(o) {
     kind: o.edit ? o.edit.kind : o.ical ? 'ical' : o.server ? 'mcp' : null,
     server: o.edit ? o.edit.server : o.server || null,
     tools: null, toolsErr: null, selected: new Set(o.edit && o.edit.tools ? o.edit.tools : []),
-    url: '', label: o.edit ? o.edit.label : '', colour: o.edit ? o.edit.colour : null,
+    url: '', label: o.edit ? o.edit.label : String(o.label || ''), colour: o.edit ? o.edit.colour : null,
     test: null, testing: false, saving: false, edit: o.edit || null,
+    // o.icalHelp {steps, url, button, note}: where this provider keeps its link ("+ Other email", 56-accounts-imap.js).
+    icalHelp: !o.edit && o.icalHelp && Array.isArray(o.icalHelp.steps) ? o.icalHelp : null,
   };
   if (o.server && !o.capability) {
     const sv = ((SourcesStore.data && SourcesStore.data.servers) || []).find(x => x.name === o.server);
@@ -567,7 +569,11 @@ function srcAddFlow(o) {
       const inp = document.createElement('input'); inp.className = 'control'; inp.type = 'url'; inp.placeholder = 'https://…/calendar.ics'; inp.value = f.url; inp.setAttribute('autofocus', '');
       inp.oninput = () => { f.url = inp.value.trim(); paintFoot(); };
       fld.appendChild(inp);
-      fld.appendChild(_connEl('span', 'field-hint', f.edit ? 'The current link is kept on this computer only; paste a new one to replace it.' : 'In Google Calendar: Settings > your calendar > "Secret address in iCal format". In Outlook: Settings > Shared calendars > Publish. The link stays on this computer.'));
+      if (f.icalHelp) {
+        bodyEl.appendChild(_connSteps(f.icalHelp.steps));
+        if (f.icalHelp.url) bodyEl.appendChild(_connBtn(f.icalHelp.button || 'Open your calendar', 'external-link', 'btn-ghost', () => window.open(f.icalHelp.url, '_blank', 'noopener,noreferrer')));
+      }
+      fld.appendChild(_connEl('span', 'field-hint', f.edit ? 'The current link is kept on this computer only; paste a new one to replace it.' : f.icalHelp ? (f.icalHelp.note || 'The link stays on this computer.') : 'In Google Calendar: Settings > your calendar > "Secret address in iCal format". In Outlook: Settings > Shared calendars > Publish. The link stays on this computer.'));
       bodyEl.appendChild(fld);
       setTimeout(() => { try { inp.focus(); } catch (e) {} }, 0);
       paintFoot();
