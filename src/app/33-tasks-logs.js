@@ -122,7 +122,7 @@ function renderWinsLog(container) {
         if (statusOf(c.id) === 'done' && !isWontDo(it)) {
           const u = document.createElement('button'); u.type = 'button'; u.className = 'btn btn-ghost btn-sm win-undo'; u.textContent = 'Not done';
           u.title = 'Reopen this task';
-          u.onclick = (e) => { e.stopPropagation(); setStatus(c.id, 'todo'); };
+          u.onclick = (e) => { e.stopPropagation(); setStatus(c.id, 'todo'); toast('Reopened', { icon: 'rotate-ccw', action: { label: 'Undo', run: () => undo() } }); };
           row.appendChild(u);
         }
       }
@@ -144,10 +144,21 @@ function renderBin(container) {
   }
   const head = document.createElement('div'); head.className = 'bin-head';
   head.innerHTML = `<span class="muted">${total} item${total === 1 ? '' : 's'}. Restore anything, or delete it for good.</span>`;
+  // Restore all: one undo step (20-task-model.js restoreAllFromBin).
+  if (total > 1) {
+    const all = document.createElement('button'); all.type = 'button'; all.className = 'btn btn-secondary btn-sm';
+    all.innerHTML = icon('rotate-ccw') + '<span>Restore all</span>';
+    all.onclick = () => { const n = restoreAllFromBin(); if (n) toast(`${n} item${n === 1 ? '' : 's'} restored`, { kind: 'ok', icon: 'rotate-ccw', action: { label: 'Undo', run: () => undo() } }); };
+    head.appendChild(all);
+  }
   const empty = document.createElement('button'); empty.type = 'button'; empty.className = 'btn btn-danger btn-sm';
   empty.innerHTML = icon('trash-2') + '<span>Empty bin</span>';
   empty.onclick = async () => {
-    if (await confirmDialog({ title: 'Empty the bin?', text: `Permanently delete ${total} item${total === 1 ? '' : 's'}. This cannot be undone.`, confirmLabel: 'Delete for good', danger: true })) emptyBin();
+    // Undo (the toast, or Ctrl+Z) brings it back until the page is closed.
+    if (await confirmDialog({ title: 'Empty the bin?', text: `Permanently delete ${total} item${total === 1 ? '' : 's'}. You can undo this until you close the page.`, confirmLabel: 'Delete for good', danger: true })) {
+      emptyBin();
+      toast('Bin emptied', { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
+    }
   };
   head.appendChild(empty);
   container.appendChild(head);
@@ -170,10 +181,17 @@ function renderBin(container) {
     info.append(ttl, meta);
     const restore = document.createElement('button'); restore.type = 'button'; restore.className = 'btn btn-secondary btn-sm';
     restore.innerHTML = icon('rotate-ccw') + '<span>Restore</span>';
-    restore.onclick = () => e.kind === 'task' ? restoreTask(e.d.binTs) : restoreNote(e.d.binTs);
+    // Restored: say so, and offer the task (it left this list, so it is easy to lose track of).
+    restore.onclick = () => {
+      const tid = e.kind === 'task' ? restoreTask(e.d.binTs) : restoreNote(e.d.binTs);
+      const it = tid && getItem(tid);
+      toast(e.kind === 'task' ? 'Task restored' : 'Note restored', { kind: 'ok', icon: 'rotate-ccw',
+        action: it ? { label: 'Open', run: () => (typeof openTask === 'function' ? openTask(tid) : selectTask(tid)) } : { label: 'Undo', run: () => undo() } });
+    };
+    // One item: no "are you sure?" first, Undo in the toast instead (Ctrl+Z works too).
     const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-icon btn-sm bin-del';
     del.innerHTML = icon('x'); del.setAttribute('aria-label', 'Delete for good'); del.setAttribute('data-tip', 'Delete for good');
-    del.onclick = async () => { if (await confirmDialog({ title: 'Delete for good?', text: 'This item will be gone permanently.', confirmLabel: 'Delete', danger: true })) purgeBinEntry(e.kind, e.d.binTs); };
+    del.onclick = () => { purgeBinEntry(e.kind, e.d.binTs); toast('Deleted for good', { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } }); };
     row.append(ic, info, restore, del);
     list.appendChild(row);
   }
