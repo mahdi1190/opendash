@@ -1,6 +1,0 @@
-{ "v": 3, "place": {"lat": 53.25, "lon": -1.62, "region": "derbyshire", "style": "woodland"},
-  "camera": {"eye": 1.65, "fov": 62, "horizon": 470, "heading": 300}, "backdrop": {"style": "woodland"},
-  "surfaces": [{"id": "ride", "kind": "path", "path": [[0.5, 1], [3, 30], [-2, 90], [5, 250]], "width": 2.6}],
-  "entities": [{"obj": "tree.canal-oak", "at": [-9, 22]}],
-  "life": [{"who": "walkers", "on": "ride", "rate": "2/min", "mix": {"dog-walker": 0.5, "stroll": 0.5}, "edges": ["S", "N"]}],
-  "seed": 24 }

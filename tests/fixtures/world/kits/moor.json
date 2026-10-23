@@ -1,9 +1,0 @@
-{ "v": 3, "place": {"lat": 53.38, "lon": -1.64, "region": "peak-district", "style": "moor"},
-  "camera": {"eye": 1.65, "fov": 64, "horizon": 430, "heading": 250}, "backdrop": {"style": "heath"},
-  "surfaces": [
-    {"id": "moor", "kind": "heath", "poly": [[-500, 1], [500, 1], [500, 800], [-500, 800]]},
-    {"id": "track", "kind": "path", "path": [[-1, 1], [4, 60], [-10, 200], [10, 500]], "width": 2.4}
-  ],
-  "lines": [{"id": "wall", "kind": "wall", "path": [[9, 2], [12, 80], [30, 220]]}],
-  "life": [{"who": "walkers", "on": "track", "rate": "1/min", "edges": ["S", "N"]}],
-  "seed": 31 }

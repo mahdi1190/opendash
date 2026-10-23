@@ -1,5 +1,7 @@
 # Releasing OpenDash
 
+> **No tests (owner's rule, 23 Oct 2026):** the test suite, security tests and test CI were removed. Do not write or run tests, invariant matrices, perf budgets or review agents; check the build (`node build.mjs`) and look at the result. Mentions of `tests/`, `npm test` or mandatory gates below are out of date. Only the privacy scan stays, before publishing. See CLAUDE.md.
+
 Notes for maintainers. Users never need any of this: they download a release
 zip, or clone the repository, and run the launcher.
 

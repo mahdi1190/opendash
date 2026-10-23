@@ -5,6 +5,8 @@ description: Make, extend and review OpenDash animation packs, regions and piece
 
 # Animation packs (OpenDash)
 
+> **No tests (owner's rule, 23 Oct 2026):** the test suite, security tests and test CI were removed. Do not write or run tests, invariant matrices, perf budgets or review agents; check the build (`node build.mjs`) and look at the result. Mentions of `tests/`, `npm test` or mandatory gates below are out of date. Only the privacy scan stays, before publishing. See CLAUDE.md.
+
 OpenDash plays a full-screen animated scene when the user opens the day and is somewhere (the US, Asia, ...), and shows small animated symbols beside things. There are 397 scenes and 575 small items; the strict hand-drawn set
 (229 scenes, 245 symbols) is ONE consistent body of work: flat-vector painting built back to front in ten layers, one daylight palette graded for evening by the page, motion in the kit's classes at three depths. New work must be
 indistinguishable in craft from it. The tools (`node tools/anim-pack.mjs`) and the gates below are what keep it so.

@@ -1,5 +1,5 @@
 # Release: pushing a tag vX.Y.Z (or vX.Y.Z-pre) builds the clean export,
-# scans it, packages it, proves the zip builds and passes its tests, and
+# scans it, packages it, proves the zip builds (no test suite: removed 23 Oct 2026), and
 # publishes a GitHub release with the zip, SHA256SUMS.txt and the changelog
 # section as notes. How to cut a release: docs/dev/RELEASING.md.
 name: Release
@@ -54,7 +54,7 @@ jobs:
       - name: Privacy scan of the export (generic rules)
         run: node tools/privacy-scan.mjs "$RUNNER_TEMP/opendash" --no-terms
 
-      - name: Package, extract, build and test
+      - name: Package, extract and build
         env:
           VERSION: ${{ steps.v.outputs.version }}
           # The built-in app registrations go into the zip only (tools/release-client-ids.mjs);
@@ -69,6 +69,7 @@ jobs:
           --out "$RUNNER_TEMP/dist"
           --check-package-version
           --client-ids
+          --no-tests
 
       - name: Build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0

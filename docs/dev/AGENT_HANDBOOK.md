@@ -1,5 +1,7 @@
 # Agent handbook: building OpenDash scenes and objects (ChatGPT, Gemini, any agent)
 
+> **No tests (owner's rule, 23 Oct 2026):** the test suite, security tests and test CI were removed. Do not write or run tests, invariant matrices, perf budgets or review agents; check the build (`node build.mjs`) and look at the result. Mentions of `tests/`, `npm test` or mandatory gates below are out of date. Only the privacy scan stays, before publishing. See CLAUDE.md.
+
 For an AI agent that can read and write files and run commands in this checkout. **The user never runs a command by hand:
 you do every step yourself, from the first file to the local commit.** Copy-paste prompts: `docs/dev/agent-prompts/`
 (`scene-builder.md`: one real place composed from library objects; `painted-scene.md`: one real place painted by image

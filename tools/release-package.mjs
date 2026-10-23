@@ -215,7 +215,7 @@ export function verifyTree(root, { tests = true, offline = false, log = console.
   run(`node tools/privacy-scan.mjs --no-terms (generic rules${allowFile ? '; the built-in client IDs allowed in ' + SHIPPED_REL + ' only' : ''})`, scanArgs, { env: plain });
   let summary = null;
   if (tests) {
-    const files = readdirSync(join(root, 'tests')).filter(f => f.endsWith('.test.mjs')).sort().map(f => `tests/${f}`);
+    const files = !existsSync(join(root, 'tests')) ? [] : readdirSync(join(root, 'tests')).filter(f => f.endsWith('.test.mjs')).sort().map(f => `tests/${f}`);
     const r = run(`node --test tests/*.test.mjs (${files.length} files${offline ? ', offline, no Claude CLI' : ''})`, ['--test', '--test-reporter=tap', ...files]);
     summary = tapSummary(`${r.stdout || ''}`);
     log(`       tests ${summary.tests}, pass ${summary.pass}, fail ${summary.fail}, skipped ${summary.skipped}`);

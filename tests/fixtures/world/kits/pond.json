@@ -1,9 +1,0 @@
-{ "v": 3, "place": {"lat": 54.37, "lon": -2.91, "region": "cumbria", "style": "pond"},
-  "camera": {"eye": 1.65, "fov": 62, "horizon": 440, "heading": 200}, "backdrop": {"style": "woodland"},
-  "surfaces": [
-    {"id": "shore", "kind": "grass", "poly": [[-300, 1], [300, 1], [300, 500], [-300, 500]]},
-    {"id": "lake", "kind": "water", "water": "lake", "poly": [[-120, 16], [90, 13], [170, 260], [-190, 300]]},
-    {"id": "path", "kind": "path", "path": [[7, 1], [13, 9], [60, 12], [140, 9]], "width": 2}
-  ],
-  "life": [{"who": "walkers", "on": "path", "rate": "3/min", "edges": ["S", "E"]}],
-  "seed": 22 }
