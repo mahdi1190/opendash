@@ -283,6 +283,7 @@ registerSettingsGroup({
     el.appendChild(briefSettingsLocationRow());
     el.appendChild(_settingsRow('AI day adviser', 'Review your day once each morning, afternoon and evening while Home is open (at most three automatic reviews daily). Uses the AI chat model selected in Settings > AI. The manual button can request another review. Tasks and calendar context go to your connected Claude account.',
       _settingsSwitch(p.advisorAuto, 'Automatic AI day reviews', on => save({ advisorAuto: on }), !p.ai)));
+    if (typeof homeRefreshSettingsRow === 'function') el.appendChild(homeRefreshSettingsRow());   // 12-home-refresh.js
     if (typeof storySettingsRows === 'function') storySettingsRows(el);   // 79-story-engine.js
     const open = document.createElement('button'); open.type = 'button'; open.className = 'btn btn-secondary btn-sm';
     open.innerHTML = icon('sunrise', 'i-sm') + '<span>Go to Home now</span>';

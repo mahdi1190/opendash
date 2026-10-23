@@ -11,7 +11,8 @@
    (UI key). #view=calendar:week etc. opens a mode directly.
    Sidebar blocks here: 'calendars' (one toggle per Google calendar, with
    rename/recolour; replaces the shell's default) and 'cal-sync' (data age +
-   Update now). Keys: t today, j/k or arrows previous/next, m w d a modes,
+   Update now). Keys: t today, j/k or arrows previous/next, Shift+arrows
+   the focused day (a day / a week), m w d a modes,
    Esc closes the event panel. Dragging, resizing, creating and the other
    keys (c, n/p, e, Delete, Alt+arrows) are 45-calendar-grid-edit.js's.
    ============================================================ */
@@ -102,6 +103,7 @@ registerSection('calendar', {
       _calTimer = setInterval(() => {
         if (state.view !== 'calendar' && !state.view.startsWith('calendar:')) return;
         _calTickNow();
+        _calPaintFresh();
         CalStore.maybeAuto();
       }, 60000);
     }
@@ -172,7 +174,7 @@ function _calHeader() {
     + `<button type="button" class="btn btn-icon" data-step="-1" aria-label="Previous" data-tip="Previous" data-kbd="K">${icon('chevron-left')}</button>`
     + `<button type="button" class="btn btn-icon" data-step="1" aria-label="Next" data-tip="Next" data-kbd="J">${icon('chevron-right')}</button>`
     + `<h1>${esc(a)} <span>${esc(b)}</span></h1>`
-    + `<div class="cal-h-r"><div class="seg" role="tablist" aria-label="Calendar view">${_CAL_MODES.map(([k, l]) => `<button type="button" role="tab" data-mode="${k}" class="${calMode() === k ? 'on' : ''}" aria-selected="${calMode() === k}" data-tip="${escAttr(l)} view" data-kbd="${l[0]}">${esc(l)}</button>`).join('')}</div>`
+    + `<div class="cal-h-r">${_calFreshHtml()}<div class="seg" role="tablist" aria-label="Calendar view">${_CAL_MODES.map(([k, l]) => `<button type="button" role="tab" data-mode="${k}" class="${calMode() === k ? 'on' : ''}" aria-selected="${calMode() === k}" data-tip="${escAttr(l)} view" data-kbd="${l[0]}">${esc(l)}</button>`).join('')}</div>`
     + _calStreamChip()
     + `<button type="button" class="btn btn-secondary" data-filter>${icon('list-filter', 'i-sm')}<span>Filter</span>${_calFilterCount() ? `<span class="badge">${_calFilterCount()}</span>` : ''}</button>`
     + `<button type="button" class="btn btn-primary" data-new>${icon('plus', 'i-sm')}<span>New</span></button></div>`;
@@ -180,6 +182,8 @@ function _calHeader() {
   h.querySelector('[data-today]').onclick = () => { _calGridScroll = null; calSetFocus(todayStr()); };
   h.querySelectorAll('[data-mode]').forEach(btn => { btn.onclick = () => calSetMode(btn.dataset.mode); });
   h.querySelector('[data-filter]').onclick = (e) => calFilterMenu(e.currentTarget);
+  const upd = h.querySelector('[data-cal-update]');
+  if (upd) upd.onclick = () => { if (!CalStore.running()) CalStore.update({ force: true }); };
   const clr = h.querySelector('[data-clear-stream]');
   if (clr) clr.onclick = () => calSetStreamFilter(null);
   h.querySelector('[data-new]').onclick = (e) => {
@@ -192,6 +196,39 @@ function _calHeader() {
     ], { align: 'end' });
   };
   return h;
+}
+
+/* ---------- how fresh the events are (the sidebar card can be folded away) ---------- */
+// "Updated 12 min ago" with a refresh in the header: Updating... while it reads, Update failed
+// (with the reason in the tip) after an error; nothing before anything was ever read (the
+// rail's card says how to connect). The minute timer keeps the words current (_calPaintFresh).
+const _CAL_STALE_MS = 30 * 60000;
+function _calFreshState() {
+  if (APP_CONFIG.features && APP_CONFIG.features.calendar === false) return null;
+  const running = CalStore.running();
+  const at = CalStore.data && CalStore.data.fetchedAt;
+  if (!running && !at) return null;
+  const job = CalStore.st.job;
+  const failed = !running && !!(job && job.state === 'error');
+  const age = CalStore.age();
+  const stale = !running && !failed && (age === null || age > _CAL_STALE_MS);
+  const label = running ? 'Updating…' : failed ? 'Update failed' : gdAgeLabel(at);
+  const tip = running ? 'Reading your calendars' : failed ? `${job.error || 'The calendar could not be updated.'} Click to try again.` : 'Read your calendars again';
+  return { running, failed, stale, label, tip };
+}
+function _calFreshHtml() {
+  const f = _calFreshState();
+  if (!f) return '';
+  return `<button type="button" class="btn btn-ghost cal-fresh${f.failed ? ' is-err' : ''}${f.stale ? ' is-stale' : ''}" data-cal-update${f.running ? ' aria-busy="true"' : ''} data-tip="${escAttr(f.tip)}" aria-label="${escAttr(f.label + '. ' + f.tip)}">`
+    + `${icon(f.failed ? 'circle-alert' : 'refresh-cw', 'i-sm' + (f.running ? ' spin' : ''))}<span>${esc(f.label)}</span></button>`;
+}
+function _calPaintFresh() {
+  const b = document.querySelector('#main-body .cal-h [data-cal-update]');
+  const f = b ? _calFreshState() : null;
+  if (!b || !f) return;
+  const t = b.querySelector('span'); if (t && t.textContent !== f.label) t.textContent = f.label;
+  b.classList.toggle('is-stale', f.stale);
+  b.setAttribute('aria-label', f.label + '. ' + f.tip);
 }
 
 /* ---------- filter: what the calendar shows ---------- */
@@ -525,6 +562,9 @@ document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k === 'escape' && _calOpenEventId) { e.preventDefault(); calCloseEvent(); return; }
   if (k === 't') { e.preventDefault(); _calGridScroll = null; calSetFocus(todayStr()); return; }
+  // Shift+arrows move the focused day (a day sideways, a week up or down) without leaving the view.
+  const dayStep = e.shiftKey ? { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key] : 0;
+  if (dayStep) { e.preventDefault(); calSetFocus(_calAddDays(calFocus(), dayStep)); return; }
   if (k === 'j' || e.key === 'ArrowRight') { e.preventDefault(); calStep(1); return; }
   if (k === 'k' || e.key === 'ArrowLeft') { e.preventDefault(); calStep(-1); return; }
   const mode = { m: 'month', w: 'week', d: 'day', a: 'agenda' }[k];

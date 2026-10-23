@@ -151,10 +151,16 @@ button.ag-dh:hover b { color: var(--accent-ink, var(--accent)); }
 .cal-sync .link-btn:hover, .ev-panel .link-btn:hover { text-decoration: underline; }
 .cal-sync .link-btn.is-gated { color: var(--fg-subtle); }
 @keyframes cal-spin { to { transform: rotate(360deg); } }
-.cal-sync .spin, .cal-connect .spin { animation: cal-spin 0.9s linear infinite; }
+.cal-sync .spin, .cal-connect .spin, .cal-fresh .spin { animation: cal-spin 0.9s linear infinite; }
 
-@media (prefers-reduced-motion: reduce) { .cal-sync .spin, .cal-connect .spin { animation: none; } }
-html[data-motion="reduced"] .cal-sync .spin, html[data-motion="reduced"] .cal-connect .spin { animation: none; }
+@media (prefers-reduced-motion: reduce) { .cal-sync .spin, .cal-connect .spin, .cal-fresh .spin { animation: none; } }
+html[data-motion="reduced"] .cal-sync .spin, html[data-motion="reduced"] .cal-connect .spin, html[data-motion="reduced"] .cal-fresh .spin { animation: none; }
+/* The header's "Updated 12 min ago" (41-calendar-section.js _calFreshHtml): quiet until it is old or failed. */
+.cal-h .cal-fresh { gap: 6px; color: var(--fg-subtle); font-size: var(--text-xs); font-weight: var(--weight-regular); white-space: nowrap; }
+.cal-h .cal-fresh:hover { color: var(--fg); }
+.cal-h .cal-fresh.is-stale { color: var(--fg-muted); }
+.cal-h .cal-fresh.is-err { color: var(--danger); }
+.cal-h .cal-fresh[aria-busy="true"] { cursor: progress; }
 
 /* narrower windows: the rail goes; the panel floats over the grid */
 @container main (max-width: 980px) {
@@ -163,6 +169,7 @@ html[data-motion="reduced"] .cal-sync .spin, html[data-motion="reduced"] .cal-co
   .cal-wrap.with-panel { grid-template-columns: minmax(0, 1fr); position: relative; }
   .cal-wrap.with-panel > .ev-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(360px, 92%); z-index: 5; box-shadow: var(--shadow-lg); }
   .cal-h-r .btn[data-filter] span:not(.badge) { display: none; }
+  .cal-h-r .cal-fresh:not(.is-stale):not(.is-err) span { display: none; }
 }
 @container main (max-width: 720px) {
   .cal-h { flex-wrap: wrap; }

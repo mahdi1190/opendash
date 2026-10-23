@@ -705,6 +705,8 @@ function _tcBackBtn() {
 }
 function tcBack() {
   if (!_tc || _tc.stack.length < 2) return false;
+  const top = _tc.stack[_tc.stack.length - 1];
+  if (top && top.kind === 'evcreate' && typeof evcCreateLeft === 'function') evcCreateLeft(top);   // typed, not saved: Reopen
   _tc.stack.pop();
   _tcPaint({ swap: 'back' });
   _tcFocusStart();
@@ -1264,6 +1266,7 @@ function tcClose(o) {
   _tdViews.card.lastId = null; _tdViews.card.editingDesc = null;
   _tcMarkRows();
   const cur = t.stack[t.stack.length - 1];
+  if (cur && cur.kind === 'evcreate' && typeof evcCreateLeft === 'function') evcCreateLeft(cur);   // a new event typed, not saved: Reopen
   const target = cur && cur.kind === 'task' ? _tcRowFor(cur.id) : (t.fromEl && t.fromEl.isConnected ? t.fromEl : null);
   const remove = () => t.root.remove();
   if (o.instant || _tcReduced() || !t.card.animate) remove();

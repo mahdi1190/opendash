@@ -137,6 +137,13 @@
 .hin .hin-suggest { height: 26px; padding: 0 8px; gap: 5px; font-size: 12px; color: var(--fg-muted); }
 .hin .hin-suggest .i { width: 13px; height: 13px; }
 .hin-sugs-none { margin: 2px 0 4px; font-size: 12px; line-height: 18px; color: var(--fg-muted); }
+/* Suggest tasks while Claude reads: "Reading… 0:12 · Stop" (12-home-w-inbox.js _hinSugs). */
+.hin .hin-suggest.is-busy { color: var(--fg); }
+.hin .hin-suggest .hin-since { font-variant-numeric: tabular-nums; color: var(--fg-subtle); }
+.hin .hin-suggest .hin-stop { color: var(--accent-ink, var(--accent)); font-weight: var(--weight-medium); }
+.hin-sugs-err { display: flex; align-items: center; gap: 6px; margin: 2px 0 4px; font-size: 12px; line-height: 18px; color: var(--fg-muted); }
+.hin-sugs-err > .i { color: var(--danger); flex: none; }
+.hin-sugs-err > span { flex: 1; min-width: 0; }
 .hin-sugs .sel-bar { margin: 0 0 2px; }
 .hin-sug-list { display: flex; flex-direction: column; gap: 2px; }
 .hin-sug { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px; border-radius: 8px; }

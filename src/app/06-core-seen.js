@@ -9,10 +9,11 @@
                     86-live-sync.js per key), so flags from two computers add up.
                     A day flag is {'YYYY-MM-DD': 1} and a one-off one {name: 1}:
                     two computers marking the same flag write the same value.
-     state.uiPrefs  {story, motion, finance, assistantModel, focusBlock}: the story
+     state.uiPrefs  {story, motion, finance, assistantModel, focusBlock, refreshEvery}: the story
                     player's volume, speed and mute, the animation intensity,
                     Finances' display choices (src/finance/00-core.js SHARED_F),
-                    the assistant's model, a running focus block. Per field.
+                    the assistant's model, a running focus block, how often Home
+                    refreshes on its own (12-home-refresh.js). Per field.
      state.drafts   {'week:<from>': {...}}: the weekly review in progress.
    All three are UI keys (no undo step, no backup) that every tab takes from a
    newer copy (SHARED_UI_KEYS) and other computers sync as preferences
@@ -35,6 +36,8 @@
      travelOptin, travelDot            {key: day}: travel prompts answered "Not now"; the travel chip's "new" dots
      financeTx                         {last: {since, keys, at}}: the transactions seen at the last visit to Finances >
                                        Transactions, on any computer (src/finance/37-transactions.js; shortened opaque row keys)
+     aiEmail                           {messageId: time}: an email Claude was shown for task suggestions
+                                       (55-email-google.js), so no computer sends it again (kept 60 days)
    Day entries older than three weeks and timed entries past their age are
    pruned; a group itself is never removed (a removed map would hide what
    another computer adds to it at the same time).
@@ -69,7 +72,7 @@
 const _SEEN_OUTBOX_KEY = 'dashboard-shared-outbox';
 const _SEEN_MIGRATED_KEY = 'dashboard-shared-migrated';
 const _SEEN_DAY_KEEP = 21;                       // days a dated entry is kept
-const _SEEN_TS_DAYS = { moments: 400, travelDepartX: 120, arrival: 30 };   // timed groups: days an entry is kept
+const _SEEN_TS_DAYS = { moments: 400, travelDepartX: 120, arrival: 30, aiEmail: 60 };   // timed groups: days an entry is kept
 const _UIPREF_RECORDS = new Set(['story', 'motion', 'finance']);         // preferences merged field by field
 const _SEEN_KEPT_CACHES = new Set(['dashboard-motion-level', 'dashboard-motion-last', 'dashboard-motion', 'dashboard-delight-recent']);
 const _SEEN_EMPTY = Object.freeze({ seen: {}, uiPrefs: {}, drafts: {}, keys: [], from: {} });
@@ -228,6 +231,18 @@ function seenSet(group, entry, value) {
   const changed = _seenWrite(group, entry, value);
   if (!_uiSharedBooted) _uiSharedOutboxPut('seen', group, entry, value);
   if (value == null) _seenForgetLegacy(group, entry);
+  if (changed) { _seenPruneGroup(group); _uiSharedSave(); }
+  return changed;
+}
+/** Set many entries of one group to the same value: one prune and one save for the lot. */
+function seenSetMany(group, entries, value) {
+  if (!_seenName(group) || !Array.isArray(entries)) return false;
+  let changed = false;
+  for (const entry of entries) {
+    if (!_seenName(entry)) continue;
+    if (_seenWrite(group, entry, value)) changed = true;
+    if (!_uiSharedBooted) _uiSharedOutboxPut('seen', group, entry, value);
+  }
   if (changed) { _seenPruneGroup(group); _uiSharedSave(); }
   return changed;
 }
