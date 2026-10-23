@@ -313,7 +313,20 @@ function toast(msg, o) {
   o = o || {};
   const host = document.getElementById('toast-host');
   if (!host) return () => {};
+  // An "error" that only says another of your devices is asleep or off (56-presence.js) is not
+  // an error: shown calmly (a moon, not red), and the same line again soon only pulses the sync dot.
+  if (o.kind === 'err' && !o.calm && typeof presenceCalmMatch === 'function') {
+    const calm = presenceCalmMatch(msg);
+    if (calm) {
+      if (typeof presenceCalmShowOk === 'function' && !presenceCalmShowOk(calm)) return Object.assign(() => {}, { update: () => {} });
+      o = Object.assign({}, o, { kind: '', icon: 'moon', calm: true, action: o.action && /try again/i.test(o.action.label || '') ? null : o.action });
+    }
+  }
+  // The same words already showing: keep that toast (its timer starts again), never a stack of copies.
+  const same = o.action ? null : [...host.children].find(c => c._msg === String(msg) && !c.classList.contains('out') && c._kind === (o.kind || '') && !c._action);
+  if (same && same._again) return same._again();
   const t = document.createElement('div');
+  t._msg = String(msg); t._kind = o.kind || ''; t._action = !!(o.action && o.action.label);
   t.className = 'toast' + (o.kind ? ' ' + o.kind : '');
   t.setAttribute('role', o.kind === 'err' ? 'alert' : 'status');
   const ic = o.icon || (o.kind === 'ok' ? 'circle-check' : o.kind === 'err' ? 'circle-alert' : 'info');
@@ -336,7 +349,8 @@ function toast(msg, o) {
   t.addEventListener('mouseenter', () => { if (timer) clearTimeout(timer); });
   t.addEventListener('mouseleave', () => { timer = setTimeout(close, 1800); });
   /** close.update('New words'): change the message of a toast that is still showing. */
-  close.update = (m) => { const s = t.querySelector('.msg'); if (s && m != null) s.textContent = String(m); };
+  close.update = (m) => { const s = t.querySelector('.msg'); if (s && m != null) { s.textContent = String(m); t._msg = String(m); } };
+  t._again = () => { if (timer) clearTimeout(timer); timer = setTimeout(close, o.timeout || (o.action ? 6000 : 2800)); return close; };
   return close;
 }
 

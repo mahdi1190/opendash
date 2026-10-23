@@ -23,7 +23,7 @@ export default function register(app) {
       if (p.error) throw new HttpError(400, p.error);
       const d = await financeData();
       // Another device reads the bank (lib/finance-share.mjs): say which, so the card names it instead of "connect a bank".
-      const remote = d.meta && d.meta.remote ? { name: d.meta.remote.name, online: !!d.meta.remote.online, updatedAt: d.meta.remote.updatedAt || null, waiting: !!d.meta.remote.waiting, trial: !!d.meta.remote.trial } : null;
+      const remote = d.meta && d.meta.remote ? { name: d.meta.remote.name, online: !!d.meta.remote.online, state: d.meta.remote.state || null, updatedAt: d.meta.remote.updatedAt || null, waiting: !!d.meta.remote.waiting, trial: !!d.meta.remote.trial } : null;
       if (d.status !== 'ok' || !d.analysis) return { status: 'empty', error: 'No finance data yet.', ...(remote ? { remote } : {}) };
       const cfg = typeof app.ctx.getConfig === 'function' ? app.ctx.getConfig() || {} : {};
       const lu = d.meta && d.meta.lastUpdate;

@@ -160,6 +160,8 @@
     if (!rm || !rm.name) return '';
     if (rm.waiting) return `Finance from ${rm.name} · ${rm.trial ? 'turn on "Use changes from my other computers" to see it' : 'waiting for its first update'}`;
     const ago = rm.updatedAt ? agoText(rm.updatedAt) : '';
+    // ── presence ── "Finance from Mac · last update 2 h ago (it's off)" while it is away.
+    if (!rm.online) return `Finance from ${rm.name}` + (ago ? ` · last update ${ago}` : '') + ` (it's ${rm.state === 'asleep' ? 'asleep' : rm.state === 'checking' ? 'not answering yet' : 'off'})`;
     return `Finance from ${rm.name}` + (ago ? ` · updated ${ago}` : '');
   }
   function paintSyncBtn() {
@@ -277,6 +279,8 @@
     const running = !!(job && job.state === 'running');
     const P = E.progress; P.innerHTML = ''; P.hidden = false;
     if (R.startErr) { callout('danger', 'circle-x', "That didn't work.", ' ' + R.startErr, 'err:' + R.startErr); return; }
+    // The computer that reads the bank is asleep or off (lib/sync/presence.mjs): one calm line, dismissible.
+    if (R.startNote && R.dismissed !== 'note:' + R.startNote) { callout('', 'moon', R.startNote, '', 'note:' + R.startNote); return; }
     if (R.importing) { callout('', 'loader-circle', 'Importing…', h('span', { class: 'mute', text: ' Reading the file, skipping anything already imported, then rebuilding the analysis.' })); P.querySelector('.i').classList.add('fv-spin'); return; }
     if (R.remoteJob) {   // another device reads the bank and was asked to update (04-data.js waitRemote)
       const x = R.remoteJob, who = x.runsOn || 'your other computer';

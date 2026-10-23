@@ -488,6 +488,8 @@ async function _palStartJob(url, body, view, msg, after) {
     const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
     const j = await r.json().catch(() => ({}));
     if (r.status === 202 || r.status === 409 || (r.ok && !j.skipped)) toast(r.status === 409 ? 'Already updating…' : msg, { icon: 'refresh-cw' });
+    // calm: the computer that does it is asleep or off (lib/sync/presence.mjs): one calm line, not "up to date".
+    else if (r.ok && j.skipped && j.calm && j.message && typeof presenceNote === 'function') presenceNote(j.message);
     else if (r.ok && j.skipped) toast('Already up to date', { kind: 'ok' });
     else toast(j.error || `Could not start the update (${r.status})`, { kind: 'err' });
   } catch (e) {
