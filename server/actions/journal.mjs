@@ -9,9 +9,24 @@
 //   idem         idempotencyKey -> {at, response}   (kept 24 hours)
 //   proposals    id -> {at, ops, preview, ...}       (kept 7 days)
 //
+// PROPOSALS ARE A SYNCED FILE (<data>/state/proposals.json, lib/sync/manifest.mjs
+// SYNC_FILES 'proposals'): a change the assistant (or an MCP client in propose
+// mode) proposed on one computer shows, and can be applied or dismissed, on
+// every computer, and its status follows: applied or dismissed on one shows on
+// the other, and the apply path refuses a proposal that is not pending
+// (server/actions/index.mjs, under the state lock). On disk each proposal is an
+// item of a list (merged by id) and the ops applied so far are a MAP
+// {opIndex: true} (merged entry by entry), so two computers applying different
+// parts both count; the status is derived from it (all ops applied = applied).
+// The rest of the journal (undo history with its snapshots, idempotency keys)
+// belongs to this computer and stays in actions-journal.json. An older journal
+// that still holds proposals hands them over on its next write.
+//
 // Written with lib/fsutil (atomic, OneDrive-safe) under its own lock. When a
 // state write and a journal write happen together the state lock is taken
-// first, always in that order, so the two can never deadlock.
+// first, always in that order, so the two can never deadlock: state, then the
+// journal, then the proposals file (the sync engine takes state, then the
+// synced files; it never takes the journal's lock).
 
 import { join } from 'node:path';
 import { withLock, writeJson, readJson } from '../../lib/fsutil.mjs';
@@ -23,19 +38,71 @@ export const PROPOSAL_TTL_MS = 7 * 24 * 3600 * 1000;
 const MAX_ENTITY_BYTES = 6 * 1024 * 1024;
 
 const empty = () => ({ version: 1, history: [], idem: {}, proposals: {} });
+/** The synced proposals file, relative to the data folder (lib/sync/manifest.mjs SYNC_FILES 'proposals'). */
+export const PROPOSALS_REL = 'state/proposals.json';
+const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const sortKeys = (v) => (Array.isArray(v) ? v.map(sortKeys) : isObj(v) ? Object.fromEntries(Object.keys(v).sort().map(k => [k, sortKeys(v[k])])) : v);
 
-export function createJournal(stateDir, { now = () => Date.now() } = {}) {
+/**
+ * The proposals file -> {id: proposal} as the actions layer uses it
+ * (appliedIdx a sorted list, status derived: every op applied = 'applied').
+ */
+export function proposalsFromFile(doc) {
+  const out = {};
+  const list = isObj(doc) && Array.isArray(doc.proposals) ? doc.proposals : [];
+  for (const x of list) {
+    if (!isObj(x) || typeof x.id !== 'string' || !x.id || ['__proto__', 'constructor', 'prototype'].includes(x.id)) continue;
+    const { id, applied, ...p } = x;
+    const idx = isObj(applied) ? Object.keys(applied).filter(k => applied[k] && /^\d{1,4}$/.test(k)).map(Number).sort((a, b) => a - b) : [];
+    const n = Array.isArray(p.ops) ? p.ops.length : 0;
+    p.appliedIdx = idx;
+    if (isObj(p.createdIds)) p.createdIds = { ...p.createdIds }; else delete p.createdIds;
+    // Two computers applying different parts both count (the map merged them): all applied is applied,
+    // even when the other one's status said pending or dismissed.
+    if (n && idx.length >= n) p.status = 'applied';
+    else if (!['pending', 'applied', 'dismissed'].includes(p.status)) p.status = 'pending';
+    p.at = Number(p.at) || 0;
+    out[id] = p;
+  }
+  return out;
+}
+/** {id: proposal} -> the proposals file (oldest first; appliedIdx as a map {opIndex: true}). */
+export function proposalsToFile(map) {
+  const list = Object.entries(map || {}).filter(([, p]) => isObj(p)).map(([id, p]) => {
+    const { appliedIdx, ...rest } = p;
+    const n = Array.isArray(p.ops) ? p.ops.length : 0;
+    // A whole proposal applied in one click has no appliedIdx: every op is applied.
+    const idx = p.status === 'applied' && !(Array.isArray(appliedIdx) && appliedIdx.length) ? [...Array(n).keys()] : (Array.isArray(appliedIdx) ? appliedIdx : []);
+    const applied = {};
+    for (const i of idx) if (Number.isInteger(i) && i >= 0) applied[String(i)] = true;
+    return { id, ...rest, at: Number(p.at) || 0, applied };
+  }).sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
+  return { version: 1, proposals: list };
+}
+
+export function createJournal(stateDir, { now = () => Date.now(), proposalsFile } = {}) {
   const file = join(stateDir, 'actions-journal.json');
+  const pfile = proposalsFile || join(stateDir, 'proposals.json');
 
+  async function loadProposals(strict) {
+    const doc = await readJson(pfile, { fallback: null }).catch((e) => { if (strict) throw e; return null; });
+    return proposalsFromFile(doc);
+  }
   // strict (used before a write): a journal that exists but cannot be READ
   // (locked by another program) throws instead of counting as empty - writing
   // an empty journal would lose the undo history and idempotency keys.
   // A corrupt (unparseable) journal still starts afresh.
   async function load(strict = false) {
-    const j = await readJson(file, { fallback: null }).catch((e) => { if (strict) throw e; return null; });
-    if (!j || typeof j !== 'object' || !Array.isArray(j.history)) return empty();
+    const j0 = await readJson(file, { fallback: null }).catch((e) => { if (strict) throw e; return null; });
+    const j = !j0 || typeof j0 !== 'object' || !Array.isArray(j0.history) ? empty() : j0;
     j.idem = j.idem && typeof j.idem === 'object' ? j.idem : {};
-    j.proposals = j.proposals && typeof j.proposals === 'object' ? j.proposals : {};
+    // The synced file is the proposals' home; an older journal's own ones (not in the file) come along.
+    const legacy = j.proposals && typeof j.proposals === 'object' ? j.proposals : {};
+    const props = await loadProposals(strict);
+    let moved = 0;
+    for (const [id, p] of Object.entries(legacy)) if (p && typeof p === 'object' && !Object.hasOwn(props, id)) { props[id] = p; moved++; }
+    j.proposals = props;
+    Object.defineProperty(j, '_moved', { value: moved, enumerable: false });
     return j;
   }
 
@@ -56,14 +123,20 @@ export function createJournal(stateDir, { now = () => Date.now() } = {}) {
     return j;
   }
 
-  /** Read-modify-write under the journal lock. fn(j) may return a value. */
+  /** Read-modify-write under the journal lock, then the proposals file's (the sync engine's lock on it). fn(j) may return a value. */
   async function update(fn) {
-    return withLock(file, async () => {
+    return withLock(file, () => withLock(pfile, async () => {
       const j = await load(true);
+      const before = JSON.stringify(sortKeys(proposalsToFile(j.proposals)));
       const out = await fn(j);
-      await writeJson(file, prune(j));
+      prune(j);
+      const doc = proposalsToFile(j.proposals);
+      // Only a real change rewrites the synced file (each write is a sync pass's work).
+      if (j._moved || JSON.stringify(sortKeys(doc)) !== before) await writeJson(pfile, doc, { trailingNewline: true });
+      const { proposals, ...rest } = j;
+      await writeJson(file, { ...rest, proposals: {} });
       return out;
-    });
+    }));
   }
 
   const brief = (h) => ({
@@ -77,7 +150,7 @@ export function createJournal(stateDir, { now = () => Date.now() } = {}) {
   });
 
   return {
-    file, load, update,
+    file, proposalsFile: pfile, load, update,
     async history(limit = 20) {
       const j = await load();
       return j.history.slice(-limit).reverse().map(brief);

@@ -202,7 +202,9 @@ function syncMergeTab(base, local, remote, opts) {
     for (const f of _LIVE_TAB_FIELDS[k]) { if (Object.prototype.hasOwnProperty.call(l, f)) out[f] = l[f]; else delete out[f]; }
     merged[k] = out;
   }
-  return { merged, conflicts: res.conflicts.filter(c => !prefs.has(c.path[0])) };
+  // A clash inside an AI chat is settled without asking (70-ai-chats.js).
+  const rest = typeof chatSettleConflicts === 'function' ? chatSettleConflicts(merged, res.conflicts) : res.conflicts;
+  return { merged, conflicts: rest.filter(c => !prefs.has(c.path[0])) };
 }
 /** A state's shared part (data and preferences, less the tab's own keys and fields) as a comparable string. */
 function syncSharedKey(s, tab, skip) {
@@ -303,6 +305,9 @@ function _liveApply(merged, remoteVersion) {
   if (state.selectedTaskId && !getItem(state.selectedTaskId)) state.selectedTaskId = null;
   // Auto may have just been switched on elsewhere: this computer's own evening decides the theme.
   if (typeof applyAutoTheme === 'function') { try { applyAutoTheme(); } catch (e) { /* the next render paints it */ } }
+  // AI chats: older messages into this computer's archive before any trim, time order, the panel repainted (70-ai-chats.js).
+  // A change here makes the reconcile below save it (it differs from the remote copy).
+  if (typeof chatAfterAdopt === 'function') chatAfterAdopt();
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
   resetUndoHistory();
 }

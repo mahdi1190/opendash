@@ -4,7 +4,7 @@
 //
 // Node stdlib only. Nothing here touches the disk.
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 
 // ─── Errors ────────────────────────────────────────────────────────────────
 // Every refusal carries a stable code, the field at fault and, whenever there
@@ -185,7 +185,33 @@ const rand = (n = 3) => randomBytes(8).toString('base64url').replace(/[^a-z0-9]/
 // handed out twice by this process: the suffixes used in the current
 // millisecond are remembered, per prefix, and a repeat is drawn again.
 const _issued = new Map();   // prefix -> { ms, used: Set }
+// Applying a stored PROPOSAL makes its ids from the proposal instead
+// (withIdSeed): op k of proposal P always gets the same ids, on every computer
+// and every try. So the same proposal applied on two computers before either
+// heard of the other (both offline) makes the same task, note and activity
+// ids, and sync merges them into one copy instead of two; and an apply that
+// finds one of those ids already in the data knows it was applied already
+// (server/actions/index.mjs). The seed lives only for the synchronous run of
+// the ops (execute), so nothing else can draw from it.
+let _seed = null;   // { base, at, op, count: Map, issued: [] }
+/** fn() with ids derived from `seed` ({base: proposal id, at: its time in ms}); returns {value, issued: [{op, id}]}. */
+export function withIdSeed(seed, fn) {
+  const prev = _seed;
+  _seed = { base: String(seed.base), at: Math.max(0, Math.floor(Number(seed.at) || 0)), op: '', count: new Map(), issued: [] };
+  const mine = _seed;
+  try { return { value: fn(), issued: mine.issued }; } finally { _seed = prev; }
+}
+/** Ids drawn from now on belong to op `k` (its number in the proposal). */
+export function seedOp(k) { if (_seed) _seed.op = String(k); }
 function uniqueId(prefix, n) {
+  if (_seed) {
+    const key = `${_seed.op}|${prefix}`;
+    const c = (_seed.count.get(key) || 0) + 1;
+    _seed.count.set(key, c);
+    const id = `${prefix}-${_seed.at}-${createHash('sha256').update(`${_seed.base}|${key}|${c}`).digest('hex').slice(0, n + 5)}`;
+    _seed.issued.push({ op: _seed.op, id });
+    return id;
+  }
   const ms = Date.now();
   let e = _issued.get(prefix);
   if (!e || e.ms !== ms) { e = { ms, used: new Set() }; _issued.set(prefix, e); }
@@ -200,6 +226,7 @@ export const newSubtaskId = () => uniqueId('st', 3);
 export const newNoteId = () => uniqueId('n', 5);
 export const newActivityId = () => uniqueId('a', 3);
 export const newCountdownId = () => uniqueId('cd', 3);
+export const newPersonNoteId = () => uniqueId('pn', 5);
 export const newToken = (prefix) => `${prefix}_${randomBytes(9).toString('base64url')}`;
 
 // ─── Fuzzy helpers ─────────────────────────────────────────────────────────

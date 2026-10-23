@@ -31,9 +31,12 @@ function _adoptState(fromFile, msg) {
   // Keep this tab's view: the URL it was opened with, else its current hash.
   { const hv = _viewFromHash(_BOOT_HASH) || _viewFromHash(); if (hv) { state.view = hv; if (hv.startsWith('person:')) state.selectedTaskId = null; } }
   state._localDirty = false;
+  // AI chats: archive older messages, time order (70-ai-chats.js); a change is saved back.
+  const chatsChanged = typeof chatAfterAdopt === 'function' && chatAfterAdopt();
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
   resetUndoHistory();
   render();
+  if (chatsChanged) { state._localDirty = true; if (typeof schedulePersist === 'function') schedulePersist(); }
   if (msg) showToast(msg, false);
 }
 
@@ -96,6 +99,8 @@ bootStatePersistence().then(() => {
   if (typeof briefMaybeAutoOpen === 'function') setTimeout(briefMaybeAutoOpen, 600);   // Home's morning greeting, first visit of the day (74-brief-ui.js)
   if (typeof liveSyncStart === 'function') liveSyncStart();   // changes from the assistant, MCP clients, other tabs
   if (typeof clockBoot === 'function') clockBoot();           // the time-zone sensor, banner and server sync (87-clock-ui.js)
+  // AI chats: a reply this tab was writing before a reload is marked interrupted on every computer; the Ask button's unread dot (72-assistant.js).
+  if (typeof _asstOnAdopt === 'function') { try { _asstOnAdopt(); } catch (e) { /* the panel does it when opened */ } }
 });
 
 // Persist when the tab is hidden (normal request) or closed (beacon), so the

@@ -76,6 +76,8 @@ function syncedFilesChanged(rels) {
   if (list.includes('brief/day-advice.json') && typeof homeAdvisorRefresh === 'function') homeAdvisorRefresh();
   _rjFilesRefresh(list, any);
   if ((list.includes('profile.json') || any('briefs/') || prefs) && typeof render === 'function') { try { render(); } catch (e) { /* fine */ } }
+  // A proposal applied or dismissed on another computer (state/proposals.json): the assistant's cards follow (70-ai-chats.js).
+  if (list.includes('state/proposals.json') && typeof chatProposalsChanged === 'function') chatProposalsChanged();
 }
 /**
  * The other files a view shows (lib/sync/manifest.mjs SYNC_FILES, "files"):
