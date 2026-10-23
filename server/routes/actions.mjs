@@ -22,6 +22,7 @@
 // program that sends X-Dashboard-Token with the contents of <data>/local-token.
 // Anything else gets 401. The token file is created on first boot.
 
+import { hostname } from 'node:os';
 import { createActions } from '../actions/index.mjs';
 import { QUERY_BY_NAME, QUERY_BY_TOOL } from '../actions/queries.mjs';
 import { ActionError, SOURCES } from '../actions/model.mjs';
@@ -46,7 +47,10 @@ export default function register(app) {
   app.onReady(async () => {
     await getToken();
     await live.start();
-    await writeRuntime(dataDir, { pid: process.pid, port: ctx.port, url: `http://localhost:${ctx.port}/`, stateFile: store.file, startedAt: new Date().toISOString(), version: ctx.version });
+    // hostId/hostname: a runtime.json that OneDrive brought from another computer is stale here (discoverServer)
+    const presence = ctx.hosts && ctx.hosts.presence;
+    await writeRuntime(dataDir, { pid: process.pid, port: ctx.port, url: `http://localhost:${ctx.port}/`, stateFile: store.file, startedAt: new Date().toISOString(), version: ctx.version,
+      hostname: presence ? presence.hostname : hostname(), hostId: presence ? presence.hostId : null });
     process.once('exit', () => removeRuntimeSync(dataDir));
   });
   app.onClose(async () => { live.close(); await removeRuntime(dataDir); });

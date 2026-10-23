@@ -47,10 +47,11 @@ import {
 export const MAX_OPS = 200;
 export const CONFIRM_OVER = 25;
 
-export function createActions({ dataDir, store, getConfig, financeDir, log = () => {}, now = () => Date.now() } = {}) {
+export function createActions({ dataDir, store, getConfig, financeDir, log = () => {}, now = () => Date.now(), writeGate = null } = {}) {
   if (!dataDir) throw new Error('createActions needs dataDir');
   const paths = dataPaths(dataDir);
-  store = store || createStateStore({ stateDir: paths.stateDir, log });
+  // writeGate: for a store made here (MCP embedded mode, tools), see server/state-store.mjs
+  store = store || createStateStore({ stateDir: paths.stateDir, log, writeGate });
   const journal = createJournal(store.stateDir || paths.stateDir, { now });
 
   let cfgCache = null, cfgAt = 0;
