@@ -366,6 +366,8 @@ function _buildInlineSubtasks(item) {
     if (e.key === 'Enter' && add.value.trim()) { e.preventDefault(); _keepFocus('inline-sub:' + item.id); addSubtask(item.id, add.value.trim()); }
     if (e.key === 'Escape') { add.value = ''; add.blur(); }
   };
+  add.title = 'Paste a list to add one subtask per line';
+  add.addEventListener('paste', (e) => _tdPasteSubtasks(e, add, item.id, 'inline-sub:' + item.id));   // 60-task-detail.js
   wrap.appendChild(add);
   return wrap;
 }
