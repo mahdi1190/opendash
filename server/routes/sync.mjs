@@ -57,6 +57,8 @@ import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { createNodeLive } from '../../lib/sync/live/node-live.mjs';
 import { writeProfile, applyProfile, PROFILE_REL } from '../../lib/profile.mjs';
+import { SOURCE_PREFS_REL } from '../../lib/source-prefs.mjs';
+import { applySourcePrefs } from '../../lib/sources.mjs';
 import { DEFAULT_CONFIG } from '../../lib/datadir.mjs';
 
 export default function register(app) {
@@ -80,6 +82,8 @@ export default function register(app) {
     if (rels.includes(PROFILE_REL) && typeof app.ctx.setConfig === 'function') {
       applyProfile(paths.root, { getConfig: () => app.ctx.getConfig(), setConfig: (p) => app.ctx.setConfig(p), log }).catch(() => {});
     }
+    // Your choices on sources (names, colours, on/off: lib/source-prefs.mjs) changed on another computer: into this sources.json.
+    if (rels.includes(SOURCE_PREFS_REL)) applySourcePrefs(paths.root, { log }).catch((e) => log('warn', `sync: source choices could not be used (${e && (e.code || e.message)})`));
     if (!rels.includes('accounts.json')) return;
     accounts().reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
   });
@@ -99,6 +103,8 @@ export default function register(app) {
   app.onReady(async () => {
     // The person's settings as this computer has them, for the others (a first copy: only what differs from the defaults).
     if (typeof app.ctx.getConfig === 'function') await writeProfile(paths.root, app.ctx.getConfig(), { defaults: DEFAULT_CONFIG }).catch(() => {});
+    // Source choices that arrived while this computer was not running them in yet.
+    await applySourcePrefs(paths.root, { log }).catch(() => {});
     await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`));
     if (live) await live.start().catch((e) => log('warn', `live sync could not start: ${e && (e.code || e.message)}`));
   });

@@ -69,10 +69,42 @@ function syncedFilesChanged(rels) {
   const list = Array.isArray(rels) ? rels : [];
   if (list.includes('requests.json')) remoteWake();
   const any = (prefix) => list.some(r => typeof r === 'string' && r.startsWith(prefix));
-  try { if (typeof CalStore !== 'undefined' && CalStore && CalStore.st && CalStore.st.loaded && (any('calendar/'))) CalStore.load(true); } catch (e) { /* not loaded yet */ }
-  try { if (typeof InboxStore !== 'undefined' && InboxStore && InboxStore.st && InboxStore.st.loaded && any('inbox/')) InboxStore.load(true); } catch (e) { /* not loaded yet */ }
+  // Your choices on sources (names, colours, on/off: source-prefs.json) change both lists.
+  const prefs = list.includes('source-prefs.json');
+  try { if (typeof CalStore !== 'undefined' && CalStore && CalStore.st && CalStore.st.loaded && (any('calendar/') || prefs)) CalStore.load(true); } catch (e) { /* not loaded yet */ }
+  try { if (typeof InboxStore !== 'undefined' && InboxStore && InboxStore.st && InboxStore.st.loaded && (any('inbox/') || any('email/') || prefs)) InboxStore.load(true); } catch (e) { /* not loaded yet */ }
   if (list.includes('brief/day-advice.json') && typeof homeAdvisorRefresh === 'function') homeAdvisorRefresh();
-  if ((list.includes('profile.json') || any('briefs/')) && typeof render === 'function') { try { render(); } catch (e) { /* fine */ } }
+  _rjFilesRefresh(list, any);
+  if ((list.includes('profile.json') || any('briefs/') || prefs) && typeof render === 'function') { try { render(); } catch (e) { /* fine */ } }
+}
+/**
+ * The other files a view shows (lib/sync/manifest.mjs SYNC_FILES, "files"):
+ * read again WITHOUT asking for a fresh fetch (a refresh here would fetch,
+ * write and send it back: a loop). The server answers from the copy that arrived.
+ */
+function _rjFilesRefresh(list, any) {
+  const repaint = () => { if (typeof render === 'function') { try { render(); } catch (e) { /* fine */ } } };
+  // The Morning brief's forecast (briefs/weather.json).
+  if (list.includes('briefs/weather.json') && typeof briefLoadWeather === 'function' && typeof _bf !== 'undefined' && _bf && _bf.weather) {
+    try { _bf.weatherAt = 0; briefLoadWeather(false).then(repaint, () => {}); } catch (e) { /* fine */ }
+  }
+  // Travel: the forecast and the online holidays (travel/weather.json, travel/holidays-*.json).
+  if (any('travel/') && typeof _trlCache !== 'undefined' && _trlCache) {
+    try {
+      if (list.includes('travel/weather.json')) _trlCache.weather.clear();
+      if (any('travel/holidays-')) _trlCache.online.clear();
+      if (typeof _homeDataCache !== 'undefined' && typeof homeDataRefresh === 'function') for (const k of [..._homeDataCache.keys()]) if (k.startsWith('travel:wx:')) homeDataRefresh(k);
+      if (typeof _trlBump === 'function') _trlBump();
+    } catch (e) { /* not loaded yet */ }
+  }
+  // Open "Open on GitHub" panels (resources/github-cache.json): the server answers from the cache.
+  if (list.includes('resources/github-cache.json') && typeof _resGh !== 'undefined' && _resGh && typeof resLoadGithub === 'function') {
+    for (const id of Object.keys(_resGh)) if (_resGh[id] && _resGh[id].data && !_resGh[id].loading) { try { resLoadGithub(id, false); } catch (e) { /* fine */ } }
+  }
+  // My animations (animations/mine.json).
+  if (list.includes('animations/mine.json') && typeof animMineLoad === 'function') { try { Promise.resolve(animMineLoad()).then(repaint, () => {}); } catch (e) { /* fine */ } }
+  // Auto-link settings (index/settings.json), when that panel is open.
+  if (list.includes('index/settings.json') && typeof alStatus === 'function' && typeof _alPaintSettings === 'function') { try { alStatus(true).then(() => _alPaintSettings(), () => {}); } catch (e) { /* fine */ } }
 }
 
 window.RemoteJobs = { fetch: remoteFetch, wait: remoteWait, wake: remoteWake, filesChanged: syncedFilesChanged };

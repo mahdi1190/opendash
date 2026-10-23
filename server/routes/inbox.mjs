@@ -12,7 +12,8 @@
 
 import { createInboxService, MAX_DAYS } from '../../lib/inbox.mjs';
 import { fetchEmailSource, saveInboxSnapshot, readInboxSnapshot, mergeInboxData } from '../../lib/inbox-sources.mjs';
-import { sourcesFor } from '../../lib/sources.mjs';
+import { sourcesFor, cleanSourcePref } from '../../lib/sources.mjs';
+import { readSourcePrefs, withPrefs } from '../../lib/source-prefs.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { HttpError } from '../http.mjs';
 import { skippedBody } from '../../lib/main-computer.mjs';
@@ -27,7 +28,13 @@ export default function register(app) {
   const hooks = {
     // This computer's mailboxes, plus the ones another of the user's devices reads itself (lib/remote-jobs.mjs):
     // shown here from their synced snapshots, never fetched here.
-    list: async () => { const own = (await sources.all()).filter(s => s.capability === 'email'); const rj = app.ctx.remoteJobs; return rj ? [...own, ...rj.remoteSources('email', own.map(s => s.id))] : own; },
+    // (and wear your choices on them: lib/source-prefs.mjs)
+    list: async () => {
+      const own = (await sources.all()).filter(s => s.capability === 'email'); const rj = app.ctx.remoteJobs;
+      if (!rj) return own;
+      const prefs = await readSourcePrefs(paths.root).catch(() => null);
+      return [...own, ...rj.remoteSources('email', own.map(s => s.id)).map(s => withPrefs(s, prefs, { clean: cleanSourcePref }))];
+    },
     readSnapshots: async (list) => {
       const out = {};
       for (const s of list) if (s.preset !== 'gmail') out[s.id] = await readInboxSnapshot(paths, s.id).catch(() => null);

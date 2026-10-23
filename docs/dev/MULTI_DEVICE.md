@@ -90,6 +90,39 @@ bookkeeping stay. Every item, with the reason in one line.
 
 <!-- 2.16 integration: files, finance, browser storage, AI chats and who runs Claude are filled in below -->
 
+<!-- ── files ── -->
+### Files in the data folder (results, caches, settings)
+
+Whichever computer made a result or fetched a cache sends it; the others
+show it. For results the copy **produced** last wins (its own `at`,
+`savedAt` or `fetchedAt`), whatever order they arrive in, so a computer that
+slept never puts an older copy back ([SYNC_FORMAT.md](SYNC_FORMAT.md) 8.1).
+An open page reloads a file the moment it arrives, without fetching again.
+
+| Item | | Why |
+|---|---|---|
+| the day adviser's review (`brief/day-advice.json`), AI summaries and story scripts (`briefs/ai/`, `briefs/story/`), what the brief showed (`briefs/days/`), Claude's scene guesses (`briefs/anim-ai.json`) | synced, newest wins | results: a computer without Claude cannot make them |
+| the brief's and travel's last forecast (`briefs/weather.json`, `travel/weather.json`), online public holidays (`travel/holidays-*.json`) | synced, newest wins | the same forecast and holidays on both; no second request |
+| the old v1 calendar and mail snapshots (`calendar/calendar.json`, `email/inbox.json`) | synced, newest wins | the fallback while the newer snapshots are missing |
+| Gmail drafts OpenDash made (`inbox/drafts.json`) | synced | any computer can remove one |
+| open pull requests and issues (`resources/github-cache.json`) | synced, newest per repository | read through one computer's GitHub server, shown on both |
+| My animations (`animations/mine.json`) | synced | things you made |
+| auto-link choices (`index/settings.json`: auto-attach, threshold, the judge, interval) | synced, field by field | your choices |
+| auto-link's folders, names-only paths and its background switch | this computer's own | paths on this computer; a background job must not run twice |
+| your choices on each source: its name, colour, on/off, and each calendar's or account's name, colour, on/off and "mine" (`source-prefs.json`, from `sources.json`) | synced, field by field | your choices; a computer that was never set up never overwrites them with its defaults |
+| the source definitions (`sources.json`: iCal links, MCP server names, bank sessions, check results) | this computer's own | secret links and this computer's servers; other computers' sources show through their capabilities, account sources follow `accounts.json` |
+| connection checks (`connections.json`) | this computer's own | is Claude signed in HERE; it decides what this computer can do (capabilities carry the others') |
+| observed zone history (`time.json`) | this computer's own | the zone the computer is in |
+| last update runs (`calendar/update.json`, `inbox/update.json`) | this computer's own | the 30-minute throttle: a copy would stop a computer reading its own accounts |
+| exchange-rate caches (`travel/rates-*.json`) | this computer's own | public data each computer fetches; merging their ranges would lose some |
+| undo history (`state/actions-journal.json`) | this computer's own | its tokens name this computer's state versions |
+| pictures and audio (`people/images/`, `cache/narration/`) | this computer's own | binary files: sync carries JSON only |
+
+A file too big to send (over its limit, or one value over 256 KB) stays as
+it is on that computer, and Settings > Sync lists it under *Not synced from
+this computer*.
+<!-- ── /files ── -->
+
 ### Never leaves this computer
 
 | Item | Why |

@@ -222,6 +222,76 @@ A device keeps a synced file locked (the same `<file>.lock` the accounts code
 and the snapshot writers use) from reading it for a pass to writing the
 merge, so a change made in between waits and is captured by the next pass.
 
+<!-- ── files ── -->
+### 8.1 Results, caches and settings files (2.16)
+
+Every other file a view shows syncs too (`SYNC_FILES`, and `FILE_RULES` for
+how each merges, in `lib/sync/manifest.mjs`). All are role `shared`: the
+device that produced a copy sends it, the others show it.
+
+| File | Shape (registers) | Merge |
+|---|---|---|
+| `brief/day-advice.json` | one value | newest `at` |
+| `briefs/ai/<kind>-<date>.json`, `briefs/story/<kind>-<date>.json` | one value | newest `at` |
+| `briefs/days/<date>.<kind>.json` | one value | newest `savedAt` |
+| `briefs/anim-ai.json` | `types` per title | later change |
+| `briefs/weather.json`, `travel/weather.json` | one value `{key, at, raw}` | newest `at` |
+| `travel/holidays-<CC>-<year>.json` | one value `{at, rows}` | newest `at` |
+| `calendar/calendar.json`, `email/inbox.json` (the v1 snapshots) | one value | newest `fetchedAt` |
+| `inbox/drafts.json` | `drafts` by id | later change |
+| `resources/github-cache.json` | one value per repository | newest `fetchedAt`, per repository |
+| `animations/mine.json` | `items` by id | later change |
+| `index/settings.json` | per field; `folders`, `namesOnly`, `enabled` stay on each device | later change |
+| `source-prefs.json` | `sources` per source id, `accounts` per account id, per field | later change |
+
+**Newest produced-at wins** (`newest`). A copy of such a file says when it
+was produced (`at`, `savedAt`, `fetchedAt`). Its register is written with
+the timestamp `<that time, at most now>.00000.<deviceId>` instead of the
+device's clock (one log line per such timestamp; `n` still counts up), so
+plain last-writer-wins (section 4) keeps the copy PRODUCED last on every
+device, in any order: a copy captured late (a computer that slept, the first
+pass after an update, a joining device) never replaces a newer one. A device
+never sends a local copy older than the one its registers hold (or older
+than that file's removal elsewhere); it writes the known one back into the
+file instead. A copy with the same produced-at as the register, or a
+register written by a clock that ran ahead, goes out as an ordinary change.
+Readers need nothing new: these are ordinary registers and lines. Clashes
+on these files are not reported (`quiet`).
+
+**Echo.** A received file is written from the registers; the next pass reads
+it, finds it equal to its registers and sends nothing. Views reload it
+through the open tabs' `synced-files` event without asking for a fresh
+fetch (a fresh fetch would write and send it back).
+
+**Too big.** A file over its `maxBytes` (or a single value over 256 KB,
+section 9) is not sent; that file then stays exactly as it is on this device
+(a smaller copy from another device does not replace it), and the status
+lists it (`notSynced: [{file, why, whole}]`, Settings > Sync).
+
+**source-prefs.json** (`lib/source-prefs.mjs`) is the person's part of
+`sources.json`: `{version: 1, sources: {<sourceId>: {label?, colour?,
+enabled?, accounts: {<accountId>: {name?, renamed?, colour?, enabled?,
+own?}}}}}`. It is written whenever `sources.json` is, and a received one is
+laid over `sources.json`: only choices on sources and accounts the device
+already has (sync never adds or removes a source through it), an account
+source's on/off is left to `accounts.json`, and a field the file does not
+have yet is only added when it is a real choice (not the default), so a
+device that was never set up cannot overwrite the other's choices. Another
+device's MCP and calendar-link sources (shown through its capabilities) wear
+these choices too.
+
+**Stay on each device** (reasons in `lib/sync/manifest.mjs` FILE_RULES):
+`connections.json` (this computer's own checks; they decide what it can
+do), `sources.json` (iCal secret links, MCP server names, bank sessions; a
+source that does not validate elsewhere would be dropped and the drop sent
+back), `time.json` (this computer's observed zone), `calendar/update.json`
+and `inbox/update.json` (the job throttle: a copy would stop a computer
+from reading its own accounts), `travel/rates-*.json` (public rate caches),
+`index/files.json`, `index/status.json`, `state/actions-journal.json`
+(undo tokens of this computer), binary files (`people/images/`,
+`cache/narration/`), and every identity, secret and bookkeeping file.
+<!-- ── /files ── -->
+
 ## 9. What syncs, and what never does
 
 Only the keys in the manifest and the files above. Sign-ins and keys are
