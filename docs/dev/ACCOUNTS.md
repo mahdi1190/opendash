@@ -166,6 +166,7 @@ ctx = {
   pending,          // pending sign-ins (section 5)
   config,           // { clientId() -> string|null, ... } provider settings
   accountIdFor,     // async ({provider, email, tenantId}) -> existing id or a new one
+  account,          // async (id) -> the account record (read-only) or null
   log,              // (level, message): never tokens, never mail content
 }
 provider = {
