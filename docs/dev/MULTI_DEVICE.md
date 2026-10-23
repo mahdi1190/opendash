@@ -89,6 +89,8 @@ bookkeeping stay. Every item, with the reason in one line.
 | 12 or 24-hour clocks (`time.clock12`) | synced (2.16) | how you read the time |
 | which zone this computer shows (`time.follow`, `.zone`, `.trip`) | this computer's own | the zone of the computer |
 | browser notifications (`notifications`) | this computer's own | the permission is per browser |
+| Finances' AI choices: Claude's wording of the money brief and story on or off, their models, the bank country (`finance.briefAi`, `.briefModel`, `.storyModel`, `.country`; Settings > AI) | synced (2.15.2), field by field | the person's settings |
+| how Enable Banking returns to this computer (`finance.ebRedirect`) | this computer's own | it belongs to the Enable Banking app saved on this computer (its sign-in is in this computer's secrets) |
 | the finance folder (`financeDir`), first-run marker, file format | this computer's own | a path, and this computer's set-up |
 
 ### AI proposals, finances and who runs Claude
