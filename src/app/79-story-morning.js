@@ -169,8 +169,8 @@ function _smGo(fn) { storyClose(); setTimeout(() => { try { fn(); } catch (e) { 
 /** One confetti burst a day (transform + opacity only). */
 function _smConfetti(host, bag) {
   if (_smStill() || !host) return;
-  const k = 'dashboard-story-confetti';
-  try { if (localStorage.getItem(k) === todayStrSafe()) return; localStorage.setItem(k, todayStrSafe()); } catch (e) { return; }
+  if (seenDay('confetti:morning', todayStrSafe())) return;   // once a day on any computer (06-core-seen.js)
+  seenMarkDay('confetti:morning', todayStrSafe());
   const box = document.createElement('div'); box.className = 'sm-confetti'; box.setAttribute('aria-hidden', 'true');
   const cols = ['var(--sw-pink)', 'var(--sw-amber)', 'var(--sw-indigo)', 'var(--sw-teal)', 'var(--sw-violet)', 'var(--sw-green)', 'var(--sw-orange)'];
   let html = '';
@@ -188,10 +188,10 @@ function _smConfetti(host, bag) {
  * drive it, for a few seconds, once. Any of those keys or a click dismisses it early.
  */
 function _smHint(f, bag) {
-  const k = 'dashboard-story-hint';
   // Phones: tapping through a story needs no telling (and there is no room above the weather).
   if (window.matchMedia && window.matchMedia('(max-width: 700px)').matches) return;
-  try { if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch (e) { return; }
+  if (seenOnce('storyHint')) return;   // once, on any computer (06-core-seen.js)
+  seenMarkOnce('storyHint');
   const kbd = (s) => `<kbd>${esc(s)}</kbd>`;
   const tip = document.createElement('p');
   tip.className = 'sm-hint'; tip.setAttribute('role', 'note');

@@ -123,6 +123,33 @@ it is on that computer, and Settings > Sync lists it under *Not synced from
 this computer*.
 <!-- ── /files ── -->
 
+<!-- ── local ── -->
+### Browser storage (what the page kept in localStorage)
+
+Since 2.16 these are in the state (`seen`, `uiPrefs`, `drafts`: preferences, no undo step, the later choice
+wins quietly; `src/app/06-core-seen.js`). A computer that updates folds its old browser values in once:
+flags add up, values only fill what the state does not have yet.
+
+| Item | | Why |
+|---|---|---|
+| the Morning brief seen today, Home's read-along, the full opening sequence, each story played, the stories' confetti, the weekly story opening by itself, the inbox-zero celebration, once-a-day moments (payday, birthday) | synced (`seen`, per day) | seen on one computer, not shown again on the other |
+| the 2.2 animations card, the story tip, the OneDrive notice, the Trip card offer, the zone banner's travel line | synced (`seen.once`) | one-off: dismissed once for the person |
+| where the opening scene rotation is (per place), the first snow of the winter | synced (`seen`) | the other computer shows the next scene, not the same one |
+| moments shown and today's moment cards, departure cards dismissed, travel prompts answered "Not now", the travel chip's dots | synced (`seen`) | shown or dismissed once for the person |
+| an arrival welcome shown (per place) | synced (`seen.arrival`) | one welcome per arrival; the arrival record itself stays (below) |
+| the story player's volume, speed and today's mute; the animation intensity; the assistant's model; a running focus block | synced (`uiPrefs`) | preferences; the focus block follows like Focus mode |
+| the weekly review in progress | synced (`drafts`) | start it on one computer, finish it on the other |
+| first-paint copies: `dashboard-opening-mode`, `dashboard-opening-day`, `dashboard-motion-level` / `-last` | this browser, rewritten from the state | the splash decides before any script has the state |
+| this computer's location: the location history, the arrival record, the county last welcomed | this computer's own | where this computer is (two computers in different places must not pass arrivals back and forth); the history never leaves the browser |
+| "Animate anyway" (`dashboard-motion-os-override`) | this computer's own | answers this computer's own reduced-motion setting |
+| the zone-change banner and the "computer is on UTC" card | this computer's own | about this computer's clock |
+| window sizes (`dash-window-sizes-v1`) | this computer's own | the screen's size |
+| the state cache, the sync base, the outbox and the migration marker, this browser's id, per-tab claims (notifications, travel moments), update notices (sessionStorage), the opening once per tab | this computer's own | caches and bookkeeping of this browser |
+| the connections cache, the day adviser's last review, scene images (IndexedDB) | this computer's own | caches of synced files and rebuildable art |
+| the day adviser's automatic-run and story prefetch throttles, the celebrations' rotation memory | this computer's own | request throttles and rolling counts (a last-writer merge would lose counts) |
+| the server's start link, the offline page switch | this computer's own | this computer's set-up |
+<!-- ── end local ── -->
+
 ### Never leaves this computer
 
 | Item | Why |

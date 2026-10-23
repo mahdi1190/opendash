@@ -113,5 +113,6 @@ function _render() {
 
   // Multi-select action bar (one undo step per action): 32-tasks-ui.js
   renderBulkBar();
+  if (typeof uiSharedAfterRender === 'function') uiSharedAfterRender();   // what a newer copy brought: intensity, focus block, opening copies (06-core-seen.js)
 }
 

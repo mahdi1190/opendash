@@ -44,7 +44,7 @@ registerHomeWidget({
   unmount() { _hhStopTicker(); clearTimeout(_hh.waitTimer); },
 });
 
-const _HH_READ_KEY = 'dashboard-home-read';     // localStorage: the day the read-along last played
+// The day the read-along last played: state.seen.homeRead (synced: once a day on any computer, 06-core-seen.js).
 const _HH_WAIT_MS = 900;                         // first paint of an entry: wait this long for the words
 const _HH_PO = { p1: 0, p2: 1, p3: 2, p0: 3 };
 /* Lucide geometry (ISC, vendor/icons/Lucide-LICENSE.txt). Trusted constant markup. */
@@ -310,9 +310,7 @@ function _hhRender(el, ctx) {
     _hh.readAt = 0;
     _hh.shown = false;
     _hh.waitUntil = Date.now() + _HH_WAIT_MS;
-    let seen = '';
-    try { seen = localStorage.getItem(_HH_READ_KEY) || ''; } catch (e) { /* private mode */ }
-    _hh.read = !reduced && !document.hidden && seen !== m.today && !m.isNew && !document.documentElement.classList.contains('story-open');
+    _hh.read = !reduced && !document.hidden && !seenDay('homeRead', m.today) && !m.isNew && !document.documentElement.classList.contains('story-open');
     clearTimeout(_hh.waitTimer);
     _hh.waitTimer = setTimeout(() => { if (_hhLive() && _hh.el.classList.contains('is-waiting')) _hhRerender(); }, _HH_WAIT_MS + 30);
   }
@@ -357,7 +355,10 @@ function _hhPaintHero(root, m, ctx, reduced, compact) {
   // Entrance timing, carried across re-renders by negative delays.
   if (!reduced && now - _hh.entryAt < 1600) { root.classList.add('is-entering'); root.style.setProperty('--hh-en', `${-Math.round(now - _hh.entryAt)}ms`); }
   if (!compact && !waiting && _hh.read && !reduced) {
-    if (!_hh.readAt) { _hh.readAt = now; try { localStorage.setItem(_HH_READ_KEY, m.today); } catch (e) { /* private mode */ } }
+    // The first paint decided on this browser's cached state; once the file is in, a read-along another
+    // computer already played today is not played again here (06-core-seen.js).
+    if (!_hh.readAt && typeof _uiSharedBooted !== 'undefined' && _uiSharedBooted && seenDay('homeRead', m.today)) _hh.read = false;
+    else if (!_hh.readAt) { _hh.readAt = now; seenMarkDay('homeRead', m.today); }
     if (now - _hh.readAt < 2200) { root.classList.add('is-reading'); root.style.setProperty('--hh-rd', `${-Math.round(now - _hh.readAt)}ms`); }
   }
   root.classList.toggle('is-waiting', waiting);

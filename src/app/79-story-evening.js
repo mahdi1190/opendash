@@ -376,10 +376,8 @@ storyRegisterBeatType('ev-done', (f, b, ctx) => {
   const w = el.querySelector('.sev-win');
   if (w && b.dt && b.dt.confetti && !ctx.reduced) {
     T.set(() => {
-      let seen = '';
-      try { seen = localStorage.getItem('dashboard-story-ev-confetti') || ''; } catch (e) { /* private mode */ }
-      if (seen === d.date || !w.isConnected || document.hidden) return;
-      try { localStorage.setItem('dashboard-story-ev-confetti', d.date); } catch (e) { /* private mode */ }
+      if (seenDay('confetti:evening', d.date) || !w.isConnected || document.hidden) return;   // once a day on any computer (06-core-seen.js)
+      seenMarkDay('confetti:evening', d.date);
       w.classList.add('is-burst');
       if (typeof animBurst === 'function') animBurst(w.querySelector('.anim-scene') || w, 'celebration');
     }, 900 + tileEls.length * 90);

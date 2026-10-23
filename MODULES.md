@@ -91,6 +91,7 @@ classic `<script>`. That means:
 | Debug banner | `03-core-debug.js` | Core (A1) |
 | Server persistence (versions, 409, beacon), capability flags (`AI_AVAILABLE`, `GOOGLE_*`) | `04-core-persistence.js` | Core (A1) |
 | `ensureStateDefaults`, `let state`, in-browser legacy shape fixes, global UI vars | `05-core-state-init.js` | Core (A1) |
+| What used to be per browser, now synced (2.16): seen / played / dismissed flags `seenGet`/`seenSet`/`seenDay`/`seenMarkDay`/`seenOnce`/`seenMarkOnce`/`seenAll` (`state.seen`), preferences `uiPrefGet`/`uiPrefSet` (`state.uiPrefs`), drafts `draftGet`/`draftSet`/`draftDel` (`state.drafts`); the pre-boot outbox, the one-time fold of the old localStorage keys (`uiSharedBoot`, 99-boot.js) and `uiSharedAfterRender` (80-main-render.js). Never add a new localStorage flag: use these | `06-core-seen.js` | Core (A1) |
 | Date helpers (`fmtDate`, `todayStr`, `daysUntil`, `dueLabel`...) | `08-utils-dates.js` | Core (A1) |
 | Top-bar widget strip (`renderTopbar` fills `#countdowns`): widget model `tbNormalize`/`tbList`/`tbCompute`/`tbSave`/`tbUpdate`, drag to reorder, "+N" overflow, the shared next-events cache `calendarSoon()` | `10-header.js` | Home / top-bar builder |
 | "Customise top bar" editor `openTopbarCustomiser({select, add})` (+ old `openCountdownEditor(id)`), symbol list `TB_SYMBOLS`, `uiDateField()` (date button + mini month, used by Home too) | `10-header-editor.js` | Home / top-bar builder |

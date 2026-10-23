@@ -17,8 +17,8 @@
    brief.story.weekOpen 'story' | 'page'), the weekly prompt, the palette.
    Styles: src/styles/79-story-weekly.css.
    ============================================================ */
-const STW_CONFETTI_KEY = 'dashboard-story-week-confetti';
-const STW_AUTO_KEY = 'dashboard-story-week-auto-';
+// Once-a-day confetti and the week's own opening are synced flags (state.seen 'confetti:week' and
+// 'weekStory', 06-core-seen.js): seen on one computer, not repeated on the other.
 
 /* ---------- what only the page knows ---------- */
 function _stwEnv(ctx) {
@@ -91,7 +91,8 @@ function _stwFresh(b) {
 }
 function _stwConfettiDue(ctx) {
   if (ctx.reduced) return false;
-  try { if (localStorage.getItem(STW_CONFETTI_KEY) === todayStrSafe()) return false; localStorage.setItem(STW_CONFETTI_KEY, todayStrSafe()); } catch (e) { return false; }
+  if (seenDay('confetti:week', todayStrSafe())) return false;   // once a day on any computer (06-core-seen.js)
+  seenMarkDay('confetti:week', todayStrSafe());
   return true;
 }
 function _stwConfetti(n) {
@@ -548,15 +549,15 @@ function storyWeekOnEnter() {
   if (storyWeekPrefs().weekOpen !== 'story' || typeof storyOpen !== 'function' || storyIsOpen()) return;
   let from = '';
   try { from = _wkRange().from; } catch (e) { return; }
-  const key = STW_AUTO_KEY + from;
-  try { if (localStorage.getItem(key)) return; localStorage.setItem(key, '1'); } catch (e) { return; }
+  if (seenDay('weekStory', from)) return;   // the week's first visit on any computer (06-core-seen.js)
+  seenMarkDay('weekStory', from);
   if (_stwSavedThisWeek()) return;
   setTimeout(() => { if (!storyIsOpen() && String(state.view) === 'home:week') storyOpen('week', { autoplay: false }); }, 0);
 }
 /** The weekly prompt's Start: the story over the Week page (plays at once: it is a click). */
 function storyWeekFromPrompt() {
   if (typeof storyOpen !== 'function') { setView('home:week'); return; }
-  try { localStorage.setItem(STW_AUTO_KEY + _wkRange().from, '1'); } catch (e) { /* ignore */ }
+  try { seenMarkDay('weekStory', _wkRange().from); } catch (e) { /* ignore */ }
   storyOpen('week', { autoplay: true });
   if (state.view !== 'home:week') setView('home:week');
 }

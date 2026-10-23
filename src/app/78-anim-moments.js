@@ -33,15 +33,11 @@ function _amPick(slot, o) {
     return animPickFor(slot, todayStr(), animLook(), { level: lv === 'off' || lv === 'reduced' ? 'standard' : lv, theme: animThemeFor(todayStr(), animLook()) }, o);
   } catch (e) { return null; }
 }
-/** True once per key per day on this device (payday, a month under budget, a birthday). */
+/** True once per key per day on any of your computers (payday, a month under budget, a birthday): state.seen.animMoment, 06-core-seen.js. */
 function _amOnceToday(key) {
   try {
-    const k = 'dashboard-anim-moment', day = todayStr();
-    let rec = JSON.parse(localStorage.getItem(k) || '{}');
-    if (!rec || rec.day !== day) rec = { day, keys: [] };
-    if (rec.keys.includes(key)) return false;
-    rec.keys = rec.keys.concat([key]).slice(-60);
-    localStorage.setItem(k, JSON.stringify(rec));
+    if (seenOn('animMoment', key)) return false;
+    seenMarkOn('animMoment', key);
     return true;
   } catch (e) { return true; }
 }
@@ -154,20 +150,21 @@ function animLivingPaint(root) {
   if (!old) { el.innerHTML = '<i class="ap-orb"></i><i class="ap-blob a"></i><i class="ap-blob b"></i>'; root.prepend(el); }
 }
 
-/* ---------- focus sessions ---------- */
-const _AM_FOCUS_KEY = 'dashboard-anim-focus';
+/* ---------- focus sessions ----------
+   The running block is state.uiPrefs.focusBlock (synced like Focus mode: started on one computer, it
+   shows and ends on the other too; 06-core-seen.js repaints it when it arrives). */
 function _amFocusRec() {
-  try { const r = JSON.parse(localStorage.getItem(_AM_FOCUS_KEY) || 'null'); return r && isFinite(r.start) && isFinite(r.ms) ? r : null; } catch (e) { return null; }
+  try { const r = uiPrefGet('focusBlock'); return r && isFinite(r.start) && isFinite(r.ms) ? r : null; } catch (e) { return null; }
 }
 function animFocusStart(min) {
   const ms = Math.max(5, Math.min(120, Number(min) || 25)) * 60000;
   const it = _amPick('focus');
-  try { localStorage.setItem(_AM_FOCUS_KEY, JSON.stringify({ start: Clock.now(), ms, ref: it ? it.ref : '' })); } catch (e) { /* private mode */ }
+  uiPrefSet('focusBlock', { start: Clock.now(), ms, ref: it ? it.ref : '' });
   animFocusPaint();
   if (typeof toast === 'function') toast(`Focus block: ${Math.round(ms / 60000)} minutes. The scene grows as you go.`, { icon: 'timer' });
 }
 function animFocusStop(quiet) {
-  try { localStorage.removeItem(_AM_FOCUS_KEY); } catch (e) { /* private mode */ }
+  if (_amFocusRec()) uiPrefSet('focusBlock', null);
   clearTimeout(_am.focusTimer);
   const el = document.getElementById('ap-focus');
   if (el) el.remove();
@@ -204,7 +201,7 @@ function animFocusPaint() {
   el.querySelector('small').textContent = done ? 'Take a short break.' : 'Focus block';
   if (done) {
     if (!r.told) {
-      try { localStorage.setItem(_AM_FOCUS_KEY, JSON.stringify(Object.assign({}, r, { told: true }))); } catch (e) { /* private mode */ }
+      uiPrefSet('focusBlock', Object.assign({}, r, { told: true }));
       if (on && typeof animBurst === 'function') animBurst(art, 'celebration');
       if (typeof achNote === 'function') achNote('focus');   // the first focus block (78-achievements.js)
     }

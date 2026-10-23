@@ -14,7 +14,7 @@
    ============================================================ */
 
 /* ---------- Home ---------- */
-function _briefSeenToday() { try { return localStorage.getItem('dashboard-brief-seen') === todayStr(); } catch (e) { return false; } }
+function _briefSeenToday() { try { return seenDay('brief', todayStr()); } catch (e) { return false; } }   // synced (06-core-seen.js)
 // Hours where the user is (Clock, travel spec 2.7 P11).
 function _briefHourNow() { return Clock.parts(Clock.now()).h; }
 function _eveningNow() { return _briefHourNow() >= briefPrefs().eveningHour; }

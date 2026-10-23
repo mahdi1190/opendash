@@ -48,6 +48,9 @@ const UI_STATE_KEYS = [
   'suggestStats',   // Suggestions: local counts (68-suggest-*.js), never sent anywhere
   'achievements',   // Achievements: the unlocks (78-achievements.js); never an undo step
   'sidebarLists',   // Sidebar Streams / Tags / People: sort and how many show (15-nav-order.js); the custom order is data (sidebarOrder)
+  // ── local ── (2.16: what this page kept in localStorage, now in the state: 06-core-seen.js)
+  'seen', 'uiPrefs', 'drafts',
+  // ── end local ──
 ];
 // UI keys that are PREFERENCES (theme, density, sort, the calendars you hide...):
 // they follow you to your other computers (folder sync) and to every tab (live
@@ -59,6 +62,9 @@ const SHARED_UI_KEYS = [
   'homeUI', 'achievements', 'sidebarLists',
   // 2.16: the rest of the layout follows you too (one change here, the same change there)
   'viewMode', 'focus', 'sidebarCollapsed', 'paneSizes', 'lastReviewPrompt', 'suggestStats',
+  // ── local ── seen flags, per-browser preferences and drafts follow you too (06-core-seen.js)
+  'seen', 'uiPrefs', 'drafts',
+  // ── end local ──
 ];
 const BOOKKEEPING_KEYS = ['_lastSave', '_saveCount', '_localDirty'];
 const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);

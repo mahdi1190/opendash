@@ -29,23 +29,19 @@
    OS setting as Reduced and the sidebar's "Reduce motion" as Off.
    ============================================================ */
 
-const _TM_LS_SHOWN = 'dashboard-moments-shown';     // non-travel moments' once-keys (travel ones are data)
-const _TM_LS_DAY = 'dashboard-moments-day';         // {date, n, lastAt}: the 3-a-day cap
-const _TM_LS_DOT = 'dashboard-travel-dot';          // {key, date}: the chip's "new" dot (UI only)
-const _TM_LS_DEPART_X = 'dashboard-travel-depart-x:';
+// Synced flags (state.seen, 06-core-seen.js; travel moments themselves are in state.travel):
+//   moments {key: time}           non-travel moments shown
+//   momentCards {'day|key': time} cards shown (the 3-a-day cap counts today's)
+//   travelDot.moments {key, date} the chip's "new" dot
+//   travelDepartX {key: time}     departure cards dismissed
 const _TM = {
   bootAt: Date.now(), queue: [], showing: null, timer: null, started: false, banner: null, bannerTimer: null,
   last: null, open: null, departDecided: null, departPlayed: new Set(), departStart: null, lastCheck: 0, uid: 0, log: [],
 };
 
 /* ---------- small helpers ---------- */
-function _tmLs(k, v) {
-  try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { /* private mode */ }
-  return null;
-}
 /** A short in-memory trail of what the queue did (QA reads TravelMoments._state.log; no places or text). */
 function _tmLog(msg) { _TM.log.push(Math.round((Date.now() - _TM.bootAt) / 100) / 10 + 's ' + msg); if (_TM.log.length > 40) _TM.log.shift(); }
-function _tmJson(k) { try { return JSON.parse(_tmLs(k) || 'null'); } catch (e) { return null; } }
 function _tmNowMs() { return typeof Clock !== 'undefined' ? Clock.now() : Date.now(); }
 function _tmToday() { return typeof Clock !== 'undefined' ? Clock.today() : todayStr(); }
 function _tmIcon(n, cls) { return typeof icon === 'function' ? icon(n, cls || 'i-xs') : ''; }
@@ -456,7 +452,7 @@ function trDepartureHomeCard(entering) {
     _TM.departDecided = { m: pending ? null : _tmDepartDue(), pending, at: entering || !d0 ? Date.now() : d0.at };
   }
   const d = _TM.departDecided.m;
-  if (!d || _tmNowMs() >= d.departAt || _tmLs(_TM_LS_DEPART_X + d.key)) return null;
+  if (!d || _tmNowMs() >= d.departAt || seenGet('travelDepartX', d.key)) return null;
   const level = trMomentLevelNow();
   // The entrance plays once per leg, ever. A re-render during it (a save, live sync, the
   // suggestions refreshing) continues it from where it is (negative delays): nothing restarts.
@@ -476,7 +472,7 @@ function trDepartureHomeCard(entering) {
     + `<h2 class="trm-title" id="${id}" aria-label="${esc(d.title)}"><span aria-hidden="true">${_tmWords(d.title)}</span></h2>`
     + `<p class="trm-line">${esc(d.lineText)}</p><div class="trm-chips">${_tmChipsHtml(d.chips)}</div></div></section>`;
   el.querySelector('.trm-x').addEventListener('click', () => {
-    _tmLs(_TM_LS_DEPART_X + d.key, String(Date.now()));
+    seenSet('travelDepartX', d.key, Date.now());   // dismissed on every computer
     if (el.animate && level !== 'off') el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }).finished.catch(() => {}).then(() => el.remove());
     else el.remove();
   });
@@ -544,19 +540,21 @@ function trMomentsTakeBanner(ev, words, show) {
 
 /* ---------- the queue and the driver ---------- */
 function _tmShownMap() {
-  const ls = _tmJson(_TM_LS_SHOWN) || {};
+  const ls = seenAll('moments');
   const tr = typeof TravelStore !== 'undefined' ? TravelStore.decisions().moments : {};
   return Object.assign({}, ls, tr);
 }
 function _tmMarkShown(item) {
   if (item.kind === 'travel' && typeof TravelStore !== 'undefined') { TravelStore.momentShown(item.key); return; }
-  const ls = _tmJson(_TM_LS_SHOWN) || {};
-  ls[item.key] = Date.now();
-  const cut = Date.now() - 400 * 86400000;
-  for (const [k, v] of Object.entries(ls)) if (Number(v) < cut) delete ls[k];
-  _tmLs(_TM_LS_SHOWN, JSON.stringify(ls));
+  if (!seenGet('moments', item.key)) seenSet('moments', item.key, Date.now());   // kept 400 days (06-core-seen.js prunes)
 }
-function _tmDayCount() { const d = _tmJson(_TM_LS_DAY); return d && d.date === _tmToday() ? d : { date: _tmToday(), n: 0, lastAt: null }; }
+/** Today's cards on any computer: {date, n, lastAt}. */
+function _tmDayCount() {
+  const date = _tmToday(), pre = date + '|';
+  let n = 0, lastAt = null;
+  for (const [k, at] of Object.entries(seenAll('momentCards'))) if (k.startsWith(pre)) { n++; if (Number(at) > (lastAt || 0)) lastAt = Number(at); }
+  return { date, n, lastAt };
+}
 /** Motion.moment (MOTION 9.1): queue a moment; render(as, done) draws it as card | flourish | pop. */
 function tmMomentAdd(id, render, o) {
   o = o || {};
@@ -585,11 +583,11 @@ function _tmPump(snap) {
   _TM.showing = item;
   _tmLog('show ' + item.key + ' as ' + r.as);
   _tmMarkShown(item);
-  if (r.as === 'card') _tmLs(_TM_LS_DAY, JSON.stringify({ date: day.date, n: day.n + 1, lastAt: now }));
+  if (r.as === 'card') seenSet('momentCards', day.date + '|' + item.key, now);
   const done = () => { if (_TM.showing === item) _TM.showing = null; setTimeout(() => TravelMoments.check(), 400); };
   try { item.render(r.as, done); } catch (e) { console.error('[moments]', e); done(); }
 }
-function _tmSetDot(key) { _tmLs(_TM_LS_DOT, JSON.stringify({ key, date: _tmToday() })); if (window.Travel && typeof Travel.chipDot === 'function') Travel.chipDot(true); try { document.dispatchEvent(new CustomEvent('travel-moments-dot')); } catch (e) { /* old browser */ } if (typeof renderTopbarWidgets === 'function') renderTopbarWidgets(); }
+function _tmSetDot(key) { seenSet('travelDot', 'moments', { key, date: _tmToday() }); if (window.Travel && typeof Travel.chipDot === 'function') Travel.chipDot(true); try { document.dispatchEvent(new CustomEvent('travel-moments-dot')); } catch (e) { /* old browser */ } if (typeof renderTopbarWidgets === 'function') renderTopbarWidgets(); }
 /** Arrival content from the snapshot, the cached weather and the calendar. */
 async function _tmArrivalFor(mo, snap) {
   const place = mo.place || {};
@@ -680,9 +678,9 @@ const TravelMoments = {
   openFull() { return TravelMoments.reopen(); },
   hasDot() {
     if (window.Travel && typeof Travel.chipDot === 'function' && Travel.chipDot()) return true;
-    const d = _tmJson(_TM_LS_DOT); return !!(d && d.date === _tmToday());
+    const d = seenGet('travelDot', 'moments'); return !!(d && d.date === _tmToday());
   },
-  clearDot() { _tmLs(_TM_LS_DOT, null); if (window.Travel && typeof Travel.chipDot === 'function') Travel.chipDot(false); if (typeof renderTopbarWidgets === 'function') renderTopbarWidgets(); },
+  clearDot() { seenSet('travelDot', 'moments', null); if (window.Travel && typeof Travel.chipDot === 'function') Travel.chipDot(false); if (typeof renderTopbarWidgets === 'function') renderTopbarWidgets(); },
   dotHtml() { return TravelMoments.hasDot() ? '<i class="trm-newdot" aria-label="New: arrival card"></i>' : ''; },
   chipMenu() {
     const t = _TM.last && _TM.last.tripId;
@@ -711,7 +709,7 @@ if (typeof window !== 'undefined') window.TravelMoments = TravelMoments;
 function _tmLastArrivalModel() {
   if (!_tmTravelOn()) return null;
   const snap = trSnapshot();
-  const d = _tmJson(_TM_LS_DOT);
+  const d = seenGet('travelDot', 'moments');
   const shown = TravelStore.decisions().moments;
   const key = (d && d.key) || Object.keys(shown).filter(k => k.startsWith('arrive:')).sort((a, b) => shown[b] - shown[a])[0];
   if (!key || !snap.where || !snap.where.away) return null;
