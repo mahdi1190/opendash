@@ -216,7 +216,7 @@ test('a missing CLI makes the MCP entry "manual" with the exact commands; a fail
 test('registry references with Windows paths (any platform): only our own entries, put back exactly', async () => {
   const dry = createDryRunExec();
   const registry = registryAdapter({ exec: dry.exec, env: { SystemRoot: 'C:\\Windows' } });
-  const app = 'C:\\Users\\u\\OneDrive\\opendash', data = `${app}\\data`, nd = 'C:\\Users\\u\\AppData\\Local\\OpenDash\\Data';
+  const app = 'C:\\Users\\alex\\OneDrive\\opendash', data = `${app}\\data`, nd = 'C:\\Users\\alex\\AppData\\Local\\OpenDash\\Data';
   const cmd = `"C:\\Program Files\\nodejs\\node.exe" "${app}\\tools\\start-hidden.mjs" --port 4300`;
   await registry.set(RUN_KEY, RUN_VALUE, 'REG_SZ', cmd);
   const refs = await discoverRefs({ mappings: [{ from: data, to: nd }], from: { data, app }, to: { data: nd, app: null }, platform: 'win32', env: {}, home: join(process.env.DASHBOARD_DEVICE_DIR, 'nohome'), adapters: { registry } });

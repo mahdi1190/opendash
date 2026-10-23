@@ -18,26 +18,26 @@ const skipDev = (r) => r === 'runtime.json' || r.startsWith('hosts');
 const mk = (pc, extra = {}) => createRelocator({ dataDir: pc.data, appDir: pc.app, env: pc.env, home: pc.home, hostname: 'HOME-PC', base: pc.base, adapters: adaptersFor(pc, extra.ad), othersLive: () => [], now: () => Date.parse('2026-10-23T15:00:00Z'), ...extra.opts });
 
 test('paths: mapping keeps the slash style, matches whole folder names only, any case on Windows', () => {
-  const m = [{ from: 'C:\\Users\\bob\\OneDrive\\app', to: 'C:\\Users\\bob\\AppData\\Local\\OpenDash\\App' }, { from: 'C:\\Users\\bob\\OneDrive\\app\\data', to: 'C:\\Users\\bob\\AppData\\Local\\OpenDash\\Data' }];
-  assert.equal(mapPath('c:/users/bob/onedrive/app/mcp/server.mjs', m, 'win32'), 'C:/Users/bob/AppData/Local/OpenDash/App/mcp/server.mjs');
-  assert.equal(mapPath('C:\\Users\\bob\\OneDrive\\app\\data', m, 'win32'), 'C:\\Users\\bob\\AppData\\Local\\OpenDash\\Data', 'the longer mapping wins');
-  assert.equal(mapPath('C:\\Users\\bob\\OneDrive\\app-old\\x', m, 'win32'), 'C:\\Users\\bob\\OneDrive\\app-old\\x');
-  const t = mapText('a "C:\\\\Users\\\\bob\\\\OneDrive\\\\app\\\\data" b C:/Users/bob/OneDrive/app/x c C:\\Users\\bob\\OneDrive\\apple', m, 'win32');
+  const m = [{ from: 'C:\\Users\\alex\\OneDrive\\app', to: 'C:\\Users\\alex\\AppData\\Local\\OpenDash\\App' }, { from: 'C:\\Users\\alex\\OneDrive\\app\\data', to: 'C:\\Users\\alex\\AppData\\Local\\OpenDash\\Data' }];
+  assert.equal(mapPath('c:/users/alex/onedrive/app/mcp/server.mjs', m, 'win32'), 'C:/Users/alex/AppData/Local/OpenDash/App/mcp/server.mjs');
+  assert.equal(mapPath('C:\\Users\\alex\\OneDrive\\app\\data', m, 'win32'), 'C:\\Users\\alex\\AppData\\Local\\OpenDash\\Data', 'the longer mapping wins');
+  assert.equal(mapPath('C:\\Users\\alex\\OneDrive\\app-old\\x', m, 'win32'), 'C:\\Users\\alex\\OneDrive\\app-old\\x');
+  const t = mapText('a "C:\\\\Users\\\\alex\\\\OneDrive\\\\app\\\\data" b C:/Users/alex/OneDrive/app/x c C:\\Users\\alex\\OneDrive\\apple', m, 'win32');
   assert.equal(t.count, 2);
-  assert.match(t.text, /"C:\\\\Users\\\\bob\\\\AppData\\\\Local\\\\OpenDash\\\\Data"/);
-  assert.match(t.text, /C:\/Users\/bob\/AppData\/Local\/OpenDash\/App\/x/);
+  assert.match(t.text, /"C:\\\\Users\\\\alex\\\\AppData\\\\Local\\\\OpenDash\\\\Data"/);
+  assert.match(t.text, /C:\/Users\/alex\/AppData\/Local\/OpenDash\/App\/x/);
   assert.match(t.text, /OneDrive\\apple/);
-  assert.equal(movedFolderName('data', 'C:\\Users\\bob\\AppData\\Local\\OpenDash\\Data', '2026-10-23', { home: 'C:\\Users\\bob', platform: 'win32' }), 'data (moved to AppData-Local-OpenDash-Data on 2026-10-23)');
+  assert.equal(movedFolderName('data', 'C:\\Users\\alex\\AppData\\Local\\OpenDash\\Data', '2026-10-23', { home: 'C:\\Users\\alex', platform: 'win32' }), 'data (moved to AppData-Local-OpenDash-Data on 2026-10-23)');
   assert.ok(!/[:\\/]/.test(movedFolderName('data', 'D:\\Dash', '2026-10-23', { platform: 'win32' })));
   assert.ok(samePath('C:\\A\\b\\', 'c:/a/B', 'win32') && !samePath('/a/b', '/a/B', 'linux'));
   assert.ok(isUnder('C:\\a\\b\\c', 'c:\\A', 'win32') && !isUnder('C:\\ab', 'C:\\a', 'win32'));
-  assert.equal(syncedFolderKind('C:\\Users\\bob\\OneDrive\\x', {}), 'OneDrive');
-  assert.equal(syncedFolderKind('/home/u/Dropbox/x', {}), 'Dropbox');
-  assert.equal(syncedFolderKind('C:\\Users\\bob\\AppData\\Local\\OpenDash\\Data', {}), null);
+  assert.equal(syncedFolderKind('C:\\Users\\alex\\OneDrive\\x', {}), 'OneDrive');
+  assert.equal(syncedFolderKind('/home/alex/Dropbox/x', {}), 'Dropbox');
+  assert.equal(syncedFolderKind('C:\\Users\\alex\\AppData\\Local\\OpenDash\\Data', {}), null);
 });
 
 test('paths: a start-up command gets the moved app and an explicit --data-dir', () => {
-  const app = 'C:\\Users\\bob\\OneDrive\\app';
+  const app = 'C:\\Users\\alex\\OneDrive\\app';
   const cmd = `"C:\\Windows\\System32\\conhost.exe" --headless "C:\\Program Files\\nodejs\\node.exe" "${app}\\tools\\start-hidden.mjs"`;
   const dataOnly = repointCommand(cmd, [{ from: `${app}\\data`, to: 'C:\\L\\OpenDash\\Data' }], { dataDir: 'C:\\L\\OpenDash\\Data', defaultDataDir: `${app}\\data`, platform: 'win32' });
   assert.equal(dataOnly, `${cmd} --data-dir "C:\\L\\OpenDash\\Data"`);
