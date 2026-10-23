@@ -149,25 +149,59 @@ function _captureUndo() {
   }
   _prevSnapshot = cur;
 }
-function _afterUndoRedo(msg) {
+function _afterUndoRedo(msg, other) {
   _prevSnapshot = _dataSnapshot();
   state._localDirty = true;
   try { _writeLocal(); } catch (e) {}
   if (typeof schedulePersist === 'function') schedulePersist();
   render();
-  showToast(msg, false);
+  // "Undone" offers Redo (and "Redone" offers Undo), so a slip of Ctrl+Z is one click to put back.
+  if (other && typeof toast === 'function' && document.getElementById('toast-host')) toast(msg, { icon: other === 'redo' ? 'undo-2' : 'redo-2', action: { label: other === 'redo' ? 'Redo' : 'Undo again', run: other === 'redo' ? redo : undo } });
+  else showToast(msg, false);
 }
 function undo() {
   if (_undoStack.length === 0) { showToast('Nothing to undo', false); return; }
   _redoStack.push(_dataSnapshot());
   _restoreDataSnapshot(_undoStack.pop());
-  _afterUndoRedo('↶ undone');
+  _afterUndoRedo('Undone', 'redo');
 }
 function redo() {
   if (_redoStack.length === 0) { showToast('Nothing to redo', false); return; }
   _undoStack.push(_dataSnapshot());
   _restoreDataSnapshot(_redoStack.pop());
-  _afterUndoRedo('↷ redone');
+  _afterUndoRedo('Redone', 'undo');
+}
+/**
+ * "Undo" buttons in toasts undo THEIR change, not whatever happened last.
+ * undoMark() is taken just after the change is saved; undoMarked(mark):
+ *   - nothing happened since: the plain undo() (so Redo still works);
+ *   - other edits since (yours, a sync, a background job): only the parts of
+ *     the state that change touched are put back, when nothing since touched
+ *     the same parts; otherwise it says so and leaves everything as it is.
+ */
+function undoMark() {
+  return { before: _undoStack.length ? _undoStack[_undoStack.length - 1] : null, after: _prevSnapshot, depth: _undoStack.length };
+}
+function undoMarked(m) {
+  if (!m || !m.before || !m.after) return undo();
+  const cur = _dataSnapshot();
+  if (cur === m.before) { showToast('Already undone', false); return; }
+  if (cur === m.after && _undoStack[_undoStack.length - 1] === m.before) return undo();
+  let B, A, C;
+  try { B = JSON.parse(m.before); A = JSON.parse(m.after); C = JSON.parse(cur); } catch (e) { return undo(); }
+  const same = (x, y) => JSON.stringify(x) === JSON.stringify(y);
+  const mine = [...new Set([...Object.keys(B), ...Object.keys(A)])].filter(k => !same(B[k], A[k]));
+  if (!mine.length) { showToast('Nothing to undo', false); return; }
+  if (mine.some(k => !same(A[k], C[k]))) {
+    if (typeof toast === 'function') toast('Can’t undo that on its own: later changes touched the same things. Press ' + (/Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl') + '+Z to step back one change at a time.', { icon: 'undo-2', timeout: 9000, dismiss: true });
+    return;
+  }
+  for (const k of mine) { if (Object.prototype.hasOwnProperty.call(B, k)) state[k] = B[k]; else delete state[k]; }
+  ensureStateDefaults(state);
+  if (state.selectedTaskId && !getItem(state.selectedTaskId)) state.selectedTaskId = null;
+  saveData();   // a new step of its own: Ctrl+Z takes this undo back
+  render();
+  showToast('Undone', false);
 }
 /** Forget undo history (after a restore or adopting another copy of the state). */
 function resetUndoHistory() { _undoStack.length = 0; _redoStack.length = 0; _prevSnapshot = _dataSnapshot(); }

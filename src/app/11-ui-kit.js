@@ -308,37 +308,134 @@ function openDrawer(o) {
 }
 
 /* ---------- toasts ---------- */
-/** toast('Saved', {kind:'ok'}) / toast('Deleted', {action:{label:'Undo', run: undo}}) */
+/**
+ * toast('Saved', {kind:'ok'}) / toast('Deleted', {action:{label:'Undo', run: undo}})
+ * o: {kind:'ok'|'err'|'warn'|'info', icon, action:{label,run}, retry: fn, timeout, dismiss}
+ *   - The same message while it is still showing merges into that toast (a ×2
+ *     count, the timer starts again, the newest action wins) instead of stacking.
+ *   - How long it stays follows its length; errors stay at least 8 s. It waits
+ *     while the pointer or keyboard focus is on it and while the tab is hidden.
+ *   - Errors (and toasts with a button) get a × to dismiss; Esc closes the
+ *     newest one when nothing else is open (toastDismissNewest, 90-wiring.js).
+ *   - retry: fn adds "Try again"; a "server isn't running" error with no
+ *     button gets "How to start it" (86-offline-banner.js).
+ *   - An Undo button that runs the plain global undo() undoes THAT change,
+ *     even after other edits (undoMark / undoMarked, 01-core-state.js).
+ * Returns close(); close.update('New words') changes the message.
+ */
+const _TOAST_KINDS = { ok: 'ok', success: 'ok', err: 'err', error: 'err', danger: 'err', warn: 'warn', warning: 'warn', info: '' };
+const _toastLive = new Set();   // controllers of the toasts on screen
+const _TOAST_MOD = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl';
+/** How long a toast stays (ms): about reading time, longer for errors and buttons. */
+function _toastMs(msg, o, kind) {
+  if (o.timeout) return o.timeout;
+  const read = 2000 + String(msg || '').length * 45;
+  if (kind === 'err') return Math.min(14000, Math.max(8000, read));
+  if (o.action || o.retry) return Math.min(12000, Math.max(6000, read));
+  return Math.min(8000, Math.max(2800, read));
+}
+/** Is this button the plain global undo (`() => undo()` or `undo`)? Then it is made precise. */
+function _toastIsPlainUndo(a) {
+  if (!a || typeof a.run !== 'function' || !/^undo$/i.test(String(a.label || ''))) return false;
+  if (typeof undo === 'function' && a.run === undo) return true;
+  return /^(?:\(\)|_)\s*=>\s*\{?\s*undo\(\)\s*;?\s*\}?$/.test(String(a.run).trim());
+}
+/** Close the newest toast (Esc). False when none is showing. */
+function toastDismissNewest() {
+  const list = [..._toastLive].filter(c => !c.leaving);
+  if (!list.length) return false;
+  list[list.length - 1].close();
+  return true;
+}
 function toast(msg, o) {
   o = o || {};
   const host = document.getElementById('toast-host');
   if (!host) return () => {};
+  const kind = Object.prototype.hasOwnProperty.call(_TOAST_KINDS, o.kind) ? _TOAST_KINDS[o.kind] : (o.kind ? String(o.kind).replace(/[^a-z-]/g, '') : '');
+  const text = String(msg == null ? '' : msg);
+  let action = o.action && o.action.label ? o.action : null;
+  if (!action && typeof o.retry === 'function') action = { label: 'Try again', run: o.retry };
+  if (!action && kind === 'err' && typeof srvShowStartHelp === 'function' && typeof NET_DOWN_MESSAGE !== 'undefined' && text.includes(NET_DOWN_MESSAGE)) action = { label: 'How to start it', run: () => srvShowStartHelp() };
+  if (action && _toastIsPlainUndo(action) && typeof undoMark === 'function') {
+    // Taken after this tick, so a save made just after the toast call is the step it undoes.
+    let mark = null;
+    setTimeout(() => { mark = undoMark(); }, 0);
+    action = { label: action.label, run: () => (mark ? undoMarked(mark) : undo()) };
+  }
+  const key = kind + '|' + (o.icon || '') + '|' + text;
+  const ms = _toastMs(text, Object.assign({}, o, { action }), kind);
+
+  // The same message is already showing: count it instead of stacking another.
+  for (const c of _toastLive) {
+    if (c.key !== key || c.leaving) continue;
+    c.count++;
+    c.setAction(action);
+    c.restart(ms);
+    return c.close;
+  }
+
   const t = document.createElement('div');
-  t.className = 'toast' + (o.kind ? ' ' + o.kind : '');
-  t.setAttribute('role', o.kind === 'err' ? 'alert' : 'status');
-  const ic = o.icon || (o.kind === 'ok' ? 'circle-check' : o.kind === 'err' ? 'circle-alert' : 'info');
-  t.innerHTML = icon(ic) + `<span class="msg">${esc(msg)}</span>`;
-  let timer = null;
-  const close = () => {
+  t.className = 'toast' + (kind ? ' ' + kind : '');
+  t.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+  const ic = o.icon || (kind === 'ok' ? 'circle-check' : kind === 'err' ? 'circle-alert' : kind === 'warn' ? 'triangle-alert' : 'info');
+  t.innerHTML = icon(ic) + `<span class="msg">${esc(text)}</span><span class="toast-n" hidden></span>`;
+  let timer = null, left = ms, startedAt = 0, hover = false, focus = false, btn = null;
+  const c = { key, count: 1, leaving: false, close: null, setAction: null, restart: null };
+  const stop = () => { if (timer) { clearTimeout(timer); timer = null; left = Math.max(1200, left - (Date.now() - startedAt)); } };
+  const start = () => { if (timer || hover || focus || c.leaving || (typeof document !== 'undefined' && document.hidden)) return; startedAt = Date.now(); timer = setTimeout(close, left); };
+  function close() {
+    if (c.leaving) return;
+    c.leaving = true;
     if (timer) clearTimeout(timer);
+    timer = null;
+    _toastLive.delete(c);
     t.classList.add('out');
     setTimeout(() => t.remove(), 160);
-  };
-  if (o.action && o.action.label) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
-    b.textContent = o.action.label;
-    b.onclick = () => { close(); try { o.action.run && o.action.run(); } catch (e) { console.error(e); } };
-    t.appendChild(b);
   }
-  while (host.children.length >= 3) host.firstChild.remove();
+  c.close = close;
+  c.vis = () => { if (document.hidden) stop(); else start(); };
+  c.restart = (n) => {
+    if (timer) clearTimeout(timer);
+    timer = null; left = n;
+    const badge = t.querySelector('.toast-n');
+    if (badge && c.count > 1) { badge.hidden = false; badge.textContent = '×' + c.count; badge.setAttribute('aria-label', c.count + ' times'); }
+    t.classList.remove('bump'); void t.offsetWidth; t.classList.add('bump');
+    start();
+  };
+  c.setAction = (a) => {
+    if (!a) { if (btn) { btn.remove(); btn = null; } return; }
+    if (!btn) {
+      btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-ghost btn-sm toast-act';
+      const x = t.querySelector('.toast-x');
+      if (x) t.insertBefore(btn, x); else t.appendChild(btn);
+    }
+    btn.textContent = a.label;
+    if (/^undo$/i.test(a.label)) { btn.setAttribute('data-tip', 'Undo this change'); btn.setAttribute('data-kbd', _TOAST_MOD + '+Z'); }
+    btn.onclick = () => { close(); try { const r = a.run && a.run(); if (r && typeof r.catch === 'function') r.catch(e => console.error(e)); } catch (e) { console.error(e); } };
+  };
+  if (kind === 'err' || action || o.dismiss) {
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm toast-x';
+    x.setAttribute('aria-label', 'Dismiss'); x.innerHTML = icon('x');
+    x.onclick = close;
+    t.appendChild(x);
+  }
+  c.setAction(action);
+  // At most three on screen: the oldest goes first.
+  const live = [..._toastLive].filter(x => !x.leaving);
+  for (let i = 0; i < live.length - 2; i++) live[i].close();
+  _toastLive.add(c);
   host.appendChild(t);
-  timer = setTimeout(close, o.timeout || (o.action ? 6000 : 2800));
-  t.addEventListener('mouseenter', () => { if (timer) clearTimeout(timer); });
-  t.addEventListener('mouseleave', () => { timer = setTimeout(close, 1800); });
+  start();
+  t.addEventListener('mouseenter', () => { hover = true; stop(); });
+  t.addEventListener('mouseleave', () => { hover = false; left = Math.max(left, 1800); start(); });
+  t.addEventListener('focusin', () => { focus = true; stop(); });
+  t.addEventListener('focusout', (e) => { if (t.contains(e.relatedTarget)) return; focus = false; left = Math.max(left, 1800); start(); });
   /** close.update('New words'): change the message of a toast that is still showing. */
-  close.update = (m) => { const s = t.querySelector('.msg'); if (s && m != null) s.textContent = String(m); };
+  close.update = (m) => { const s = t.querySelector('.msg'); if (s && m != null) { s.textContent = String(m); c.key = kind + '|' + (o.icon || '') + '|' + String(m); } };
   return close;
 }
+// A toast that appears while you are in another tab waits for you to come back.
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => { for (const c of [..._toastLive]) c.vis && c.vis(); });
 
 /* ---------- tooltips: [data-tip] / [data-kbd] ---------- */
 let _tipEl = null, _tipTimer = null, _tipFor = null;

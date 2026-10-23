@@ -335,8 +335,20 @@ button.chip:hover { background: var(--bg-muted); color: var(--fg); }
 .toast > .i { color: var(--fg-subtle); }
 .toast.ok > .i { color: var(--success); }
 .toast.err > .i { color: var(--danger); }
+.toast.warn > .i { color: var(--warning); }
 .toast .msg { padding: var(--space-2) var(--space-1); }
+/* The same message again: "×2" instead of another toast (11-ui-kit.js). */
+.toast .toast-n { flex: none; font-size: var(--text-xs); font-variant-numeric: tabular-nums; color: var(--fg-subtle); padding: 1px 6px; border-radius: 999px; background: var(--bg-muted); }
+.toast .toast-n[hidden] { display: none; }
+.toast .toast-x { flex: none; color: var(--fg-subtle); }
+.toast .toast-x:hover { color: var(--fg); }
+.toast.bump { animation: ui-toast-bump var(--m-fast) var(--m-ease-out); }
 .toast.out { animation: ui-toast-out var(--m-fast) var(--m-ease-in) both; }
+@keyframes ui-toast-bump { 50% { transform: scale(1.03); } }
+@media (prefers-reduced-motion: reduce) { .toast.bump { animation: none; } }
+html[data-motion="reduced"] .toast.bump { animation: none; }
+/* Never on top of the bulk action bar (same place at the bottom): sit above it. */
+body:has(.bulk-bar.open) .toast-host { bottom: 84px; }
 @keyframes ui-toast-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes ui-toast-out { to { opacity: 0; transform: translateY(4px); } }
 
