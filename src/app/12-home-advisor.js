@@ -81,7 +81,7 @@ async function homeAdvisorReview(automatic) {
       if(!automatic)toast(data.cached?'Showing the recent AI review':'Your AI day review is ready',{kind:'ok'});
     }catch(e){
       if(gen!==_homeAdviceGen||(e&&e.name==='AbortError'))return;
-      const msg=typeof netErrorMessage==='function'&&e instanceof TypeError?netErrorMessage(e):(e&&e.message)||'The AI review could not finish.';
+      const msg=typeof netErrorMessage==='function'?netErrorMessage(e,'The AI review could not finish.'):(e&&e.message)||'The AI review could not finish.';
       _homeAdviceError=msg;
       if(!automatic)toast(msg,{kind:'err',action:{label:'Try again',run:()=>homeAdvisorReview(false)}});
     }

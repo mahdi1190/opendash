@@ -159,7 +159,11 @@ function createGoogleDataStore(o) {
       if (r.ok && j.skipped) return { skipped: true, runsOn: j.runsOn || null };
       throw new Error(j.error || 'HTTP ' + r.status);
     } catch (e) {
-      if (opts.force !== false) toast((e && e.message) || 'The update could not start.', { kind: 'err' });
+      if (opts.force !== false) {
+        // A network failure reads as "the server isn't running"; either way the toast offers the next step.
+        const msg = typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The update could not start.') : (e && e.message) || 'The update could not start.';
+        toast(msg, { kind: 'err', timeout: 8000, action: { label: 'Try again', run: () => update(Object.assign({}, opts, { force: true })) } });
+      }
       return { error: true };
     }
   }
