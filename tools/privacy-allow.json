@@ -2485,6 +2485,228 @@
       "path": "tests/anim-pack-cli.shared.mjs",
       "line_sha256": "184a20e61f0e4e8688780c5d2db8bccb1672ecd459a8de43e7e8ef196a590d1a",
       "why": "an ordinary English word in a test comment or pattern (reviewed)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/SCENE_LESSONS.md",
+      "line_sha256": "f3e0fd9b3d9cedddfcdb041403244fa6e3fcc3db60f2d97285f92946d91c3095",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "docs/dev/WORLD_MODELS.md",
+      "line_sha256": "8069815b5d83366b8c9b81d285b9cef7cbf76e9b4426e2ce1c87798473441f60",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/58-settings-sync-qr.js",
+      "line_sha256": "646b41542f90227fe3a4590f41d0078f781df34e66d58c94f915733d94712041",
+      "why": "part of a technical term for QR error correction (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-gen-style-manchester-midland.js",
+      "line_sha256": "dd9305cb10a9c223cc35dece93b20986f581698ec5fd70690cb1ceffc36857ce",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-gen-style-tudor-colourwash.js",
+      "line_sha256": "eed2ca36713e9dae009f83837403292fe4855409a0c7f56c26fb2b615f1e79e4",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-gen-style-village-cotswold.js",
+      "line_sha256": "4b51d20afca5f8fc153cb3865b0a327f868db1872ef4798dcf15c587f89ef42b",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-gen-style-yorkshire-civic.js",
+      "line_sha256": "d471ca1c9b54af86568aabcf1b4d6d7d24894772223efc7d1f79f7df5438ac66",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-gen-style-yorkshire-civic.js",
+      "line_sha256": "363298c2e8e1b52715fc6376980d5b8eb7ccfb6e48f741316da7aa35217ea817",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-landmark-us-st-louis-gateway-arch.js",
+      "line_sha256": "453d5d9cb1ecb9ed4776822b2b747e8fbaa7acf4e29026adbd1294d654322826",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-landmark-us-st-louis-gateway-arch.js",
+      "line_sha256": "7a54329033b2d1f83aa534eeca2797c02cd614fea09cacce1f99b29f6b5ccdae",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-landmark-us-st-louis-gateway-arch.js",
+      "line_sha256": "25c58c5c7a7c53336f29bbe00532b2399364a0a95daef83ac5f3469c7b02f2c8",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-moor.js",
+      "line_sha256": "f86aaea27d48345ee81f80a7c35014e1c5ab14bfdb7ee421c379bc8d0076462d",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/70-scene-lib-moor.js",
+      "line_sha256": "b8f8cac47d8aeada6465ed973d385b322b110cd046a718799296396927ddc0bb",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-anim-registry.js",
+      "line_sha256": "1371f2e423c6198fcd1b46ac9b47c4addd0ddfe16c6dbcf962f3e7a33e1c7736",
+      "why": "a folk-custom name in a scene id (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-mo-riverboat.js",
+      "line_sha256": "21a4b376f42f2762dfcce947100fb43e1a6bbc5494a5299b2fb35038289a96e4",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-mo-riverboat.js",
+      "line_sha256": "8cbe719f73073df801c8075fee40d99c8a1a2eba8f73ae32f8ec7677c654f5e5",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-st-louis-gateway-arch.js",
+      "line_sha256": "248167a39831eab40c958a4872a59118263ab04d2c9537a63eed135cf550f4e8",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-st-louis-gateway-arch.js",
+      "line_sha256": "b3f69eda0aebecdb4b1408edd49e6537dba9e87d583f03c3a28d79bb5c1502f9",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-st-louis-gateway-arch.js",
+      "line_sha256": "6864a21ea7f7e9a8f2f8b6a4ee240479daeb6f8443f39179e454db06aa22888a",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-st-louis-gateway-arch.js",
+      "line_sha256": "475e86a5ef37a0ca406c497921f3584252e53e81cda658a2a557173f1814695f",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-st-louis-gateway-arch.js",
+      "line_sha256": "976befbd3017a9790f04a32413425b67ce514da3cb439455d040242e9f8bd1d3",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-st-louis-gateway-arch.js",
+      "line_sha256": "b5cc25b93247d55144aa3748f26babb0a66e7d87dcdec68134f379e83c48d3e0",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/71-scene-upgrade-us-tampa-skyway-bridge.js",
+      "line_sha256": "c67fd78829a0e1d6f6149ceeb8edc02a79c6e4a68df3e964050f9552ed680991",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/78-scene-water.js",
+      "line_sha256": "2b28ce8a53d3b33fe8c9f4741a03b623f5f00615cbb5b868943e411199b4c31c",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-4terrain.js",
+      "line_sha256": "4e6e78f51bfc1c28278bdc6d7d4e96c4b4274838c558c13b9a3407ebd74a90e2",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-4terrain.js",
+      "line_sha256": "6a51badc3a9f1b5719da4df20bd9737aad58031c0182d80b55cc57d143e7f051",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-4terrain.js",
+      "line_sha256": "08105a9ad2948bd0fae726d516dadffed70636c04e13d17098e4992e7b56dbdf",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-4terrain.js",
+      "line_sha256": "529c922037dcb8aabaf79fdef9142254e9bba76efe410d865c51c053a8e268c9",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-4terrain.js",
+      "line_sha256": "a63e38a6991b743ebab377c259f56f7f2cb2e1c0c3646197f7eb7840611ecafc",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-zscene-greater-manchester-manchester-centre-3.js",
+      "line_sha256": "62616306e7a59cf3c906d0d70f95bebdd171ab051af78245f52e357953030da0",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-zscene-peak-stanage-edge-1.js",
+      "line_sha256": "29240e93bfccfd96fcd886190bc9ed9f46b9c62e8cbe0d57edaa2a03e609424d",
+      "why": "a place name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/79-world-zscene-sheffield-winter-garden-1.js",
+      "line_sha256": "0e2abe8f81898f220990d4c97a45ae72bda28b64301694f245c0d117d5259759",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/fixtures/scene-compiled-v1-hashes.json",
+      "line_sha256": "26e3f4e38b76db7ba73cf06dec1839ddf975e821bf60cef44269d11013737081",
+      "why": "part of a US city name in scene ids (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/sync-e2e-ui.test.mjs",
+      "line_sha256": "343827d0c6ce58e8dfbcaf95987cf96dcbc9da283df9e69498c1e5026f83afe4",
+      "why": "part of a technical term for QR error correction (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/sync-e2e-ui.test.mjs",
+      "line_sha256": "5f84868cfaeeb40b0dde7f05b3c970f85d3c03854a85770ba4f4035fc5206c45",
+      "why": "part of a technical term for QR error correction (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/sync-e2e-ui.test.mjs",
+      "line_sha256": "4360f78a603669b7c7faab8c50672c76c5d3c31d5dc537a397d7f112aa2b75c8",
+      "why": "part of a technical term for QR error correction (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "tests/world-valley.test.mjs",
+      "line_sha256": "829a15d5bc5952a0108498da10ad25256fafeb60224e589f6f7987131ecc54bf",
+      "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
     }
   ]
 }

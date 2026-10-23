@@ -357,7 +357,7 @@ export const COMMON_WORDS = new Set(`
   calendar google student students summary mark will doctor launch product house car kids self user you the and for new
   old main default archive someday later today week month year meeting meetings email emails chat notes note ideas idea
   tasks task todo dashboard opendash demo example test sample music sport sports hobby hobbies garden church volunteering
-  shopping house household chores reviews review planning plan goals goal habits habit
+  shopping house household chores reviews review planning plan goals goal habits habit move moving
   alex sam kim taylor jordan lee smith robin acme
 `.trim().split(/\s+/));
 
