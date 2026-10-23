@@ -103,8 +103,96 @@ function _prPulse() {
   b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse');
 }
 
-/* ---------- painting (the top bar's dot: presenceRender) ---------- */
-function presenceRender() { /* the top bar's sync dot and its panel: below */ }
+/* ---------- the top bar's sync dot (#presence-btn) and its panel ----------
+   Hidden while sync is off. Its tones (lib/sync/presence.mjs summarize):
+     ok         green  "In sync · Mac online"
+     off        grey   "Mac off · 3 changes waiting"  (nothing is wrong: it catches up later)
+     attention  amber  "Needs attention"              sync has a problem, or a version notice
+                                                      not dismissed yet; the click opens the details
+     busy       spins  "Sending…"                     changes on their way over a live link
+   A click opens the panel: every device with its state, last seen, version and
+   the way it is reached (live on the same network / over the internet, or the
+   sync folder). */
+const _PR_ICON = { open: 'laptop', running: 'laptop', outdated: 'laptop', asleep: 'moon', off: 'cloud-off' };
+const _PR_CHIP = { open: 'Online', running: 'Online', outdated: 'Older version', asleep: 'Asleep', off: 'Off' };
+/** Version notices not dismissed yet (56-presence-notice.js), or []. */
+function _prNotices(v) { return typeof presenceFreshNotices === 'function' ? presenceFreshNotices(v) : []; }
+function _prSummary(v) {
+  const s = Object.assign({ tone: 'none', text: '', tip: '' }, v && v.summary);
+  const fresh = _prNotices(v);
+  if (fresh.length && s.tone !== 'attention') return { tone: 'attention', text: 'Needs attention', tip: fresh[0].text };
+  return s;
+}
+function presenceRender() {
+  const b = document.getElementById('presence-btn');
+  if (!b) return;
+  const v = _pr.view;
+  const s = v && v.enabled ? _prSummary(v) : null;
+  if (!s || s.tone === 'none') { b.hidden = true; if (b._popClose) b._popClose(); return; }
+  b.hidden = false;
+  for (const k of ['ok', 'off', 'attention', 'busy']) b.classList.toggle('pr-' + k, s.tone === k);
+  const lbl = b.querySelector('.sync-lbl');
+  if (lbl && lbl.textContent !== s.text) lbl.textContent = s.text;
+  b.setAttribute('aria-label', 'Your devices: ' + s.text + (s.tip ? '. ' + s.tip : ''));
+  b.setAttribute('data-tip', s.tip || s.text);
+  if (!b._prWired) { b._prWired = true; b.onclick = () => presenceOpenPanel(b); }
+  if (b._prPaint) b._prPaint();
+  if (typeof presenceShowNotices === 'function') presenceShowNotices(v);
+}
+function _prAgo(ms) {
+  if (!Number.isFinite(ms) || ms < 0) return '';
+  const m = Math.round(ms / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + ' min ago';
+  const h = Math.round(m / 60);
+  if (h < 24) return h + ' h ago';
+  const d = Math.round(h / 24);
+  return d <= 1 ? 'yesterday' : d + ' days ago';
+}
+function _prWay(d) {
+  if (d.path === 'live') return d.via === 'lan' ? 'Live, same network' : d.via === 'internet' ? 'Live, over the internet' : 'Live';
+  if (d.path === 'folder') return 'Through the sync folder';
+  return '';
+}
+function _prDeviceHtml(d) {
+  const st = d.checking ? 'checking' : d.state;
+  const chip = d.checking ? 'Checking…' : (_PR_CHIP[d.state] || d.state);
+  const bits = [];
+  if (d.version) bits.push('OpenDash ' + d.version);
+  const way = _prWay(d);
+  if (way) bits.push(way);
+  if (!d.reachable && Number.isFinite(d.ago)) bits.push('last seen ' + _prAgo(d.ago + Math.max(0, Date.now() - _pr.at)));
+  if (d.behind) bits.push(d.behind + ' change' + (d.behind === 1 ? '' : 's') + ' waiting');
+  return `<div class="pr-dev pr-${esc(st)}" role="listitem">
+    <span class="pr-dev-ic">${icon(d.checking ? 'loader-circle' : (_PR_ICON[d.state] || 'laptop'))}</span>
+    <span class="pr-dev-main"><span class="pr-dev-name">${esc(d.name)}</span><span class="pr-dev-text">${esc(d.text || '')}</span>${bits.length ? `<span class="pr-dev-meta">${esc(bits.join(' · '))}</span>` : ''}</span>
+    <span class="pr-chip">${esc(chip)}</span>
+  </div>`;
+}
+/** The panel under the sync dot. */
+function presenceOpenPanel(anchor) {
+  if (typeof openPopover !== 'function') return;
+  presenceLoad(true);
+  openPopover(anchor, (el, close) => {
+    const paint = () => {
+      const v = _pr.view || {};
+      const s = _prSummary(v);
+      const devs = Array.isArray(v.devices) ? v.devices : [];
+      const notes = _prNotices(v);
+      const me = v.me || null;
+      el.innerHTML = `
+        <div class="pr-head pr-${esc(s.tone)}"><span class="dot"></span><span><b>${esc(s.text || 'Sync')}</b>${s.tip ? `<span class="pr-tip">${esc(s.tip)}</span>` : ''}</span></div>
+        ${notes.map(n => `<div class="pr-note" data-id="${escAttr(n.id)}">${icon('info')}<span>${esc(n.text)}</span><button type="button" class="btn btn-ghost btn-sm" data-act="dismiss">Dismiss</button></div>`).join('')}
+        <div class="pr-list" role="list" aria-label="Your devices">${devs.length ? devs.map(_prDeviceHtml).join('') : '<div class="pr-empty mute">No other device has joined yet.</div>'}</div>
+        ${me ? `<div class="pr-me mute">${icon('monitor')}<span>This computer: ${esc(me.name || 'This computer')}${me.version ? ' · OpenDash ' + esc(me.version) : ''}</span></div>` : ''}
+        <div class="pr-foot"><button type="button" class="btn btn-secondary btn-sm" data-act="settings">Sync settings</button></div>`;
+      el.querySelector('[data-act="settings"]').onclick = () => { close(); if (typeof setView === 'function') setView('settings:sync'); };
+      el.querySelectorAll('.pr-note [data-act="dismiss"]').forEach(btn => { btn.onclick = () => { if (typeof presenceDismissNotice === 'function') presenceDismissNotice(btn.closest('.pr-note').getAttribute('data-id')); paint(); presenceRender(); }; });
+    };
+    anchor._prPaint = paint;
+    paint();
+  }, { className: 'pr-pop', width: 340, align: 'end', onClose: () => { anchor._prPaint = null; } });
+}
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   // Poll while the page is visible; a hidden tab still counts as open through its event stream.
