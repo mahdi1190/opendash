@@ -113,7 +113,8 @@ export default function register(app) {
         if (hit && hit.text) return { ...hit, cached: true };
       }
       // Written by the main computer only (lib/main-computer.mjs); "Regenerate" is a click and always runs.
-      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('ai-brief', { automatic: !b.regenerate }) : { run: true };
+      // c.internal (── host ──): asked by another device's page, or this computer's own fallback when the Claude host is off: a click.
+      const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('ai-brief', { automatic: !b.regenerate && !c.internal }) : { run: true };
       if (!mc.run) throw new HttpError(409, skippedBody(mc).message, { code: mc.reason === 'moving' ? 'MOVING' : 'NOT_MAIN', runsOn: mc.runsOn || null });
       const key = b.kind + '|' + b.date;
       if (pending.has(key)) return pending.get(key);
