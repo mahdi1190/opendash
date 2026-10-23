@@ -342,7 +342,7 @@ function _finMonzoClient(ctx, body) {
   body.appendChild(_finEl('p', 'fc-sub', 'Then press Submit and copy the two values Monzo shows:'));
   const id = _finEl('input', 'fc-input fc-mono'); id.value = w.clientId || ''; id.placeholder = 'oauth2client_…'; id.autocomplete = 'off'; id.spellcheck = false; id.dataset.autofocus = '1';
   const secret = _finEl('input', 'fc-input fc-mono'); secret.type = 'password'; secret.value = w.clientSecret || ''; secret.autocomplete = 'new-password'; secret.placeholder = 'mnzconf.…';
-  body.append(_finField('Client ID', id), _finField('Client secret', secret, 'Saved only on this computer, in your data folder’s secrets area. It is never shown again.'));
+  body.append(_finField('Client ID', id), _finField('Client secret', secret, 'Saved only on this computer, outside your data folder. It is never shown again.'));
   const err = _finEl('div', 'fc-field-err'); err.setAttribute('aria-live', 'polite'); body.appendChild(err);
   if (w.err) err.appendChild(_finCallout('err', 'circle-alert', w.err));
   const save = ctx.foot.add('Save and continue', 'arrow-right', 'btn-primary', async () => {
@@ -601,7 +601,7 @@ function _finEbApp(ctx, body) {
   const file = _finEl('input'); file.type = 'file'; file.accept = '.pem,application/x-pem-file,text/plain'; file.className = 'fc-file';
   drop.innerHTML = icon(w.pemName ? 'circle-check' : 'file-up');
   const dt = _finEl('span', 'fc-drop-t');
-  dt.append(_finEl('b', null, w.pemName ? 'Key file ready' : 'Upload the .pem key file'), _finEl('span', null, w.pemName ? `${w.pemName} · kept only on this computer` : 'Drop it here or choose it. It is saved only in your data folder’s secrets area.'));
+  dt.append(_finEl('b', null, w.pemName ? 'Key file ready' : 'Upload the .pem key file'), _finEl('span', null, w.pemName ? `${w.pemName} · kept only on this computer` : 'Drop it here or choose it. It is saved only on this computer, never in your data folder.'));
   drop.append(dt, file);
   body.appendChild(drop);
   const err = _finEl('div', 'fc-field-err'); err.setAttribute('aria-live', 'polite');

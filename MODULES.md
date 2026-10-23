@@ -216,6 +216,7 @@ classic `<script>`. That means:
 | `renderMain`, `_renderMainBody` (dispatch), `render`, bulk bar | `80-main-render.js` | Core (A1) / Shell |
 | Live sync: `syncMerge3` (pure three-way merge), SSE client, 409 merge, conflict dialog, "Updated by" toast + Undo | `86-live-sync.js`, `styles/86-live-sync.css` | Actions/MCP/Live sync (A3) |
 | Server link: "The dashboard server isn't running" banner ([Start server] = `dashboard-start://` when set up, else instructions; [Retry]; re-checks 1-10 s), `srvConnectionLost/Ok` (fed by the SSE stream and `DashboardNet.onChange` from 02-core-net.js), `srvProbe()` (`/api/health?quick=1`), `srvResync()` (unsaved edits sent, newer file merged), `srvBuildChanged()`, service-worker registration + `?nosw` | `86-offline-banner.js`, `styles/86-offline-banner.css` | Server control |
+| Two computers: "OpenDash is open on X ... paused" banner + [Use here anyway], "also open" warning, OneDrive banner, "OneDrive kept a second copy" + [Keep as a backup]; `hostsBannerModel` (pure), `hostsOnPaused` (a 423 from a save, 04-core-persistence.js), polls `/api/hosts` every minute | `86-hosts-banner.js`, `styles/86-hosts-banner.css` | Server control |
 | Toolbar wiring, menus, theme/density/focus, rubber band, keyboard | `90-wiring.js` | Shell/Design (keys: each area) |
 | Boot | `99-boot.js` | Core (A1) |
 
@@ -709,7 +710,55 @@ and own-transfer matching work unchanged.
 `resolveDataDir({argv, env})` (`--data-dir`, then `DASHBOARD_DATA_DIR`, then
 `<repo>/data`), `dataPaths(dir)`, `ensureDataDir(dir)`, `loadConfig/saveConfig`
 (validated), `publicConfig` (what the page sees), `loadConnections/
-updateConnection`, `legacyStatus`.
+updateConnection`, `legacyStatus`. `dataPaths(dir).secrets` is a lazy getter
+for `secretsDir(dir)` (below), `dataPaths(dir).hosts` the presence folder.
+
+### lib/devicedir.mjs, lib/secret-store.mjs - this computer's folder and every secret
+- **Platform paths live only in lib/devicedir.mjs.** `deviceRoot(dataDir)` =
+  `%LOCALAPPDATA%\OpenDash\<dataId>` (Windows), `~/Library/Application
+  Support/OpenDash/<dataId>` (macOS), `$XDG_STATE_HOME` or
+  `~/.local/state/opendash/<dataId>` (Linux); `DASHBOARD_DEVICE_DIR` (or
+  `opts.base`) replaces the base. `<dataId>` is made once in
+  `<data>/data-id.json`, so a moved data folder keeps its sign-ins.
+  `secretsDir(dataDir)` = `<device>/secrets`; `ensureHostId/readHostId` (this
+  computer's random id, `<device>/host.json`). Under `node --test` the default
+  base is `<os tmp>/opendash-test-device`: tests never touch the real folder.
+- **Every secret goes through `secretStore(dataDir)`**: `get/set/delete/list/
+  has/update/lock` by key (`microsoft-tokens`, `fin/monzo-<id>`...). Never join a
+  path to a secret yourself (tests/device-secrets.test.mjs scans for it). The
+  default backend is JSON files in `secretsDir` (0600, atomic, locked);
+  `setSecretBackendFactory()` swaps in another one (an OS keychain later)
+  without touching callers. `get` throws `SECRET_CORRUPT` for a damaged value,
+  never "none".
+- `migrateLegacySecrets(dataDir)` moves an old `<data>/secrets` into the device
+  folder: copied and verified by SHA-256, originals kept in
+  `<device>/legacy-secrets-backup/`, resumable, never while another computer
+  is live. The server runs it at every start (a no-op without `<data>/secrets`).
+  Not a numbered migration on purpose: migrate --auto would first copy the
+  secrets into `<data>/backups/`.
+
+### lib/hosts.mjs, server/routes/hosts.mjs - two computers on one data folder
+- Presence: `<data>/hosts/<hostId>.json` `{hostId, hostname, pid, version,
+  startedAt, beatAt}`, written by the server every 60 s (each computer only its
+  own file), removed on a clean stop. `othersLive(dataDir, now)`: the others
+  seen within 3 minutes (by their clock, or a beat this process saw change).
+  Not in runtime.json (it will move device-local).
+- `createWriteGate`: the state store's injectable `writeGate`. Another computer
+  live at START pauses `write()`/`mutate()` with 423 `OTHER_COMPUTER {host,
+  lastSeen}` until `POST /api/hosts/override` (the page's "Use here anyway") or
+  until it goes away; a computer that appears later is a warning only. MCP
+  embedded mode and tools/actions-cli use `pauseLater` (checked before every
+  write). Never an exit code (hidden autostart shows no window).
+- `tools/migrate.mjs --auto` skips pending migrations (exit 0, reason printed)
+  while another computer is live.
+- runtime.json carries `hostname`/`hostId`; `discoverServer` treats another
+  computer's file as stale before looking at its pid.
+- OneDrive conflict copies (`<known-file>-<DEVICE>.json` next to the state,
+  journal, config, sources, connections; never in backups/): scanned at start
+  and every 10 min, `POST /api/hosts/conflicts/keep` moves one into
+  `state/backups/` (`onedrive-<DEVICE>-<stamp>.json` for the state, listed as
+  "OneDrive copy"; others under `onedrive-copies/`). Never merged.
+- The page: `src/app/86-hosts-banner.js` (`hostsBannerModel` is pure).
 
 ### lib/connections.mjs, lib/sharing.mjs, lib/zip.mjs (Connections/Settings)
 - `createConnections({dataDir, log})` -> `{list(), check(id,{manual}), checkStale(), tooSoon(id)}`.
@@ -1295,12 +1344,15 @@ Big made-up data: `node tools/make-fake-finance.mjs <dir> --days 730 --seed 11
 <data>/calendar/sources/<id>.json  snapshot of a non-Google calendar source {fetchedAt, window, calendars, events}
 <data>/inbox/sources/<id>.json     snapshot of a non-Gmail mailbox source {fetchedAt, days, accounts, messages}
 <data>/email/inbox.json            v1 snapshot, imported once into inbox/messages.json
-<data>/secrets/           Google OAuth client + tokens (optional)
+<data>/data-id.json       {id}: finds this data folder's device folder (lib/devicedir.mjs)
+<data>/hosts/<hostId>.json  presence of each computer that has the folder open (lib/hosts.mjs)
+<device>/secrets/         every sign-in and key, OUTSIDE the data folder (lib/secret-store.mjs);
+                          <device> = %LOCALAPPDATA%\OpenDash\<dataId> and the like (lib/devicedir.mjs)
 <data>/logs/server.log    rotated (server.1.log ... server.5.log)
 <data>/backups/pre-migrate-<stamp>/   copies made by migrate --auto (last 5)
 <data>/state/actions-journal.json  actions history (undo), idempotency keys, proposals
 <data>/local-token        per-install secret for local programs (X-Dashboard-Token), 0600
-<data>/runtime.json       {pid, port, stateFile} of the running server (removed on stop)
+<data>/runtime.json       {pid, port, stateFile, hostname, hostId} of the running server (removed on stop)
 <data>/launch.json        {protocol, autostart, checkedAt}: what Settings > Server last read back from Windows
                           (only so the page can offer Start server while the server is down; never exported)
 <data>/logs/mcp.log       the MCP server's log (stdout is protocol-only)

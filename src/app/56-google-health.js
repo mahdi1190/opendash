@@ -1,5 +1,5 @@
 /* Google Health connects directly through Google OAuth, independently of mail
-   and calendar. Credentials stay in the local server's secrets folder. */
+   and calendar. Credentials stay in this computer's secret store (lib/secret-store.mjs). */
 let _googleHealthBusy = false;
 let _googleHealthConsentCleanup = null;
 
@@ -123,7 +123,7 @@ function googleHealthConnectionSetup() {
       'Enable the Google Health API in a Google Cloud project with access. Add your Google Account as a test user on the OAuth consent screen.',
       'In Google Auth Platform → Data Access, allow the Google Health read-only scopes for activity and fitness (googlehealth.activity_and_fitness.readonly) and sleep (googlehealth.sleep.readonly).',
       'Create a Web application OAuth client and add the redirect address below exactly. Download its credentials JSON.',
-      'Choose that JSON file below. It is saved only to OpenDash’s local secrets folder, then you can sign in with Google.',
+      'Choose that JSON file below. It is saved only on this computer (never in your data folder), then you can sign in with Google.',
     ]));
     const redirect = health.redirectUri || location.origin.replace('127.0.0.1', 'localhost') + '/api/google-health/callback';
     details.appendChild(_connCode(redirect, 'Copy redirect address'));

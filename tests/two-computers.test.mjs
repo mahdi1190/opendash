@@ -135,6 +135,8 @@ test('server started while another computer is live: writes 423 + banner data, "
     const act = await req('POST', '/api/actions', { body: { ops: [{ op: 'task.create', title: 'Refused' }] } });
     assert.equal(act.status, 423);
     assert.equal(act.json.error.code, 'OTHER_COMPUTER');
+    assert.equal(act.json.error.host, 'WORK-LAPTOP');
+    assert.ok(act.json.error.lastSeen);
     // the override is the page's own click: a local program cannot send it
     assert.equal((await req('POST', '/api/hosts/override', { body: {}, origin: false })).status, 403);
     const o = await req('POST', '/api/hosts/override', { body: {} });

@@ -252,7 +252,9 @@ so you can replace them freely.
 | Server log (no task text, email content or money) | `data/logs/server.log` |
 | Copies made before each upgrade (the last 5) | `data/backups/` |
 | The per-install token for local programs | `data/local-token` |
-| Optional Google sign-in files | `data/secrets/` |
+| Which computers have the folder open (one small file each, updated every minute) | `data/hosts/` |
+| The id that finds this computer's private folder | `data/data-id.json` |
+| Sign-ins and keys (Google, Microsoft, bank connections, API keys) | **not in the data folder**: this computer's private folder, `%LOCALAPPDATA%\OpenDash\<id>\secrets` on Windows, `~/Library/Application Support/OpenDash/<id>/secrets` on macOS, `~/.local/state/opendash/<id>/secrets` on Linux |
 
 Your browser also keeps a little: interface preferences, a fallback copy of
 unsaved edits while the server is down, and the offline page (the app page
@@ -264,9 +266,29 @@ only, never your tasks).
 - **Move to another computer**: *Export all data (.zip)* on the old one,
   install OpenDash on the new one, then *Import data*. Connections are set up
   again on the new computer.
+- **Sign-ins never travel with the data folder.** They stay in the computer's
+  own private folder (above), so a copied or synced data folder carries no
+  tokens or keys. On another computer you sign in again: Google, Microsoft,
+  ElevenLabs, and the bank connections, including the **Enable Banking `.pem`
+  key** and the **Monzo client ID and secret** (keep the originals somewhere
+  safe: OpenDash cannot copy them over for you). A data folder from an older
+  version that still has a `secrets/` folder has it moved into this
+  computer's private folder at the next start (checked file by file; the
+  originals are kept there in `legacy-secrets-backup/`).
 - **Cloud-synced folders** (OneDrive, Dropbox, iCloud Drive) work for the data
   folder, but run OpenDash on **one computer at a time**: sync tools copy files,
-  they do not merge edits made in two places at once.
+  they do not merge edits made in two places at once. OpenDash helps:
+  - In OneDrive it shows *"Your data is in OneDrive: use OpenDash on one
+    computer at a time."* (you can dismiss it).
+  - If OpenDash is already open on another computer when it starts, changes
+    are paused: *"OpenDash is open on WORK-PC (seen 1 min ago). Changes here
+    are paused so the two computers don't overwrite each other."* Close it
+    there, or choose **Use here anyway**. Data upgrades also wait until it is
+    closed there. A computer that opens it later only gets a warning.
+  - If OneDrive kept a second copy of a file (*"OneDrive kept a second copy
+    from WORK-PC"*), **Keep as a backup** moves it into the backups, where
+    Settings > Data can open a copy of your tasks. Nothing is merged
+    automatically.
 - Keep the data folder private, and out of any public repository.
 
 ## Updating
