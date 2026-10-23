@@ -12,7 +12,7 @@ import { createSyncEngine } from '../lib/sync/engine.mjs';
 import { syncedView } from '../lib/sync/model.mjs';
 
 const LIB = join(dirname(fileURLToPath(import.meta.url)), '..', 'lib', 'sync');
-const CORE = ['hlc.mjs', 'fracindex.mjs', 'model.mjs', 'manifest.mjs', 'engine.mjs'];
+const CORE = ['hlc.mjs', 'fracindex.mjs', 'model.mjs', 'manifest.mjs', 'roles.mjs', 'engine.mjs'];   // roles.mjs: who runs what (accounts, main computer)
 
 test('the core imports nothing platform-specific', () => {
   for (const f of CORE) {
