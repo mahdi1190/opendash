@@ -28,7 +28,8 @@
                                        travelAddCard, travelOptinLine)
      openingLast, openingExact         {place: ref}: where the opening scene rotation is (78-anim-wire.js)
      firstSnow                         {winter: day}: the first snowy day of a winter
-     moments, travelDepartX, arrival   {key: time}: moments shown, departure cards dismissed, arrival welcomes shown
+     moments, travelDepartX            {key: time}: moments shown, departure cards dismissed
+     arrival                           {place: {at, by}}: an arrival welcome shown, and by which browser (78-anim-uk.js)
      travelOptin, travelDot            {key: day}: travel prompts answered "Not now"; the travel chip's "new" dots
    Day entries older than three weeks and timed entries past their age are
    pruned; a group itself is never removed (a removed map would hide what
