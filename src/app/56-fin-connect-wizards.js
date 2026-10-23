@@ -429,8 +429,9 @@ function _finMonzoConnect(ctx, body) {
         fails = 0; _finPollProblem(problem, 0);
         if (w.connectAt == null) return;
         if (st && st.sourceId && st.sourceId !== w.sourceId) w.sourceId = st.sourceId;     // joined an existing Monzo connection
+        // Only this sign-in's answer: an earlier try's "done", "90 days" or error is not this one.
         const fresh = !(st && st.startedAt) || st.startedAt >= w.connectAt - 2000;
-        if (st && ['waiting', 'importing', 'done', 'expired'].includes(st.state)) { w.approval = st; _finMonzoClockFrom(w, st); ctx.go('approve'); }
+        if (st && fresh && ['waiting', 'importing', 'done', 'expired'].includes(st.state)) { w.approval = st; _finMonzoClockFrom(w, st); ctx.go('approve'); }
         else if (st && fresh && (st.state === 'auth' || st.state === 'error')) { w.connectAt = null; w.err = st.message || 'Monzo did not finish the sign-in. Press Connect Monzo to try again.'; ctx.paint(); }
       } catch (e) { fails++; _finPollProblem(problem, fails, e); /* keep waiting: the server may be busy */ }
     };
