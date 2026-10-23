@@ -54,7 +54,11 @@ function emailQuickTask(m, o) {
   return id;
 }
 
-/** Threads that need the user (Home's Needs reply), from the inbox store. */
+/**
+ * Threads that need the user (Home's Needs reply), from the inbox store.
+ * o: {maxDays, knownOnly, limit, now}. The time comes from the page clock
+ * (window.Clock, which tests and screenshots pin) unless o.now gives it.
+ */
 function emailNeedsReply(o) {
   o = o || {};
   const taskThreads = new Set();
@@ -67,7 +71,7 @@ function emailNeedsReply(o) {
   try { idx = typeof pplIndex === 'function' ? pplIndex() : null; } catch (e) { idx = null; }
   return homeNeedsReply(typeof emailMessages === 'function' ? emailMessages() : [], state.emailTriage || {}, {
     myEmails: (APP_CONFIG.myEmails || []).concat(...(state.people || []).filter(p => p && p.self).map(p => pplPersonEmails(p))),
-    peopleIdx: idx, maxDays: o.maxDays, knownOnly: !!o.knownOnly, now: Date.now(), taskThreads, limit: o.limit,
+    peopleIdx: idx, maxDays: o.maxDays, knownOnly: !!o.knownOnly, now: Number.isFinite(o.now) ? o.now : (typeof Clock !== 'undefined' ? Clock.now() : Date.now()), taskThreads, limit: o.limit,
   });
 }
 
