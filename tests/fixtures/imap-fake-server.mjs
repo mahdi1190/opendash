@@ -112,8 +112,10 @@ function addrList(v) {
   if (!v) return 'NIL';
   const out = [];
   for (const one of v.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/)) {
-    const m = /^\s*(?:"?([^"<]*?)"?\s*)?<([^@>\s]+)@([^>\s]+)>\s*$/.exec(one) || /^\s*()([^@\s]+)@(\S+)\s*$/.exec(one);
-    if (m) out.push(`(${q(m[1] ? m[1].trim() : null)} NIL ${q(m[2])} ${q(m[3])})`);
+    const m = /^\s*(?:"((?:[^"\\]|\\.)*)"|([^<"]*?))\s*<([^@>\s]+)@([^>\s]+)>\s*$/.exec(one) || /^\s*()()([^@\s<>]+)@([^\s<>]+)\s*$/.exec(one);
+    if (!m) continue;
+    const name = m[1] != null ? m[1].replace(/\\(.)/g, '$1') : (m[2] || '').trim();
+    out.push(`(${q(name || null)} NIL ${q(m[3])} ${q(m[4])})`);
   }
   return out.length ? `(${out.join('')})` : 'NIL';
 }
@@ -151,6 +153,7 @@ export async function startFakeImap(opts = {}) {
   const uidValidity = opts.uidValidity || 4242;
   const messages = (opts.messages || []).map((m) => ({ ...m, flags: [...(m.flags || [])], tree: parseEntity(m.raw) })).sort((a, b) => a.uid - b.uid);
   const commands = [];
+  const stats = { syncLiterals: 0 };
   const sockets = new Set();
 
   function session(sock0) {
@@ -177,7 +180,7 @@ export async function startFakeImap(opts = {}) {
         if (i < 0) return;
         const part = buf.subarray(0, i).toString('latin1').replace(/\r$/, ''); buf = buf.subarray(i + 1);
         const m = /\{(\d+)(\+?)\}$/.exec(part);
-        if (m) { line += part + '\r\n'; want = Number(m[1]); if (!m[2]) write('+ Ready for literal\r\n'); continue; }
+        if (m) { line += part + '\r\n'; want = Number(m[1]); if (!m[2]) { stats.syncLiterals++; write('+ Ready for literal\r\n'); } continue; }
         const full = line + part; line = '';
         busy = busy.then(() => handle(full)).catch(() => {});
       }
@@ -313,7 +316,7 @@ export async function startFakeImap(opts = {}) {
   server.on('tlsClientError', () => {});
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return {
-    port: server.address().port, host: '127.0.0.1', commands, messages,
+    port: server.address().port, host: '127.0.0.1', commands, messages, stats,
     async close() { for (const s of sockets) s.destroy(); await new Promise((r) => server.close(() => r())); },
   };
 }
