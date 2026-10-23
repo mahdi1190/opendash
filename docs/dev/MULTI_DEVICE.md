@@ -249,6 +249,10 @@ sync off or plain sync: each computer has its own finances, as before.
   there (`lib/remote-jobs.mjs` `financeSyncs()` is false on purpose: a bank
   the host read for someone else would land in a finance folder nobody
   publishes). Each computer's own banks: only the finance computer's show.
+- **Trial mode** (a computer that does not take changes from the others yet)
+  keeps its own finances, edits and imports; its Finances and Home only say
+  where they would come from ("Finance from Home laptop · turn on 'Use
+  changes from my other computers' to see it").
 
 Code: `lib/sync/finance-share.mjs` (format, pure), `lib/finance-share.mjs`
 (who publishes, publish, apply, ask), the hooks in `lib/finance.mjs`
