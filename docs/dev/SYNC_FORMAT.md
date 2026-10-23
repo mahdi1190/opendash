@@ -81,6 +81,10 @@ The synced data is a tree of registers. A **path** is an array of strings:
 How each top-level key is shaped (list of items, map, record, or one whole
 value) is `SYNC_SPEC` in `lib/sync/model.mjs`; which keys sync at all is
 `lib/sync/manifest.mjs`. A path that does not fit that schema is invalid.
+A record may name **local fields** (`calPrefs.mode`, `calPrefs.stream`,
+`homeUI.hideAmounts`): they stay on each device, so they are never captured,
+never written in, and a path to one is invalid. A top-level key may be
+**local while** another key is `true` (`theme` while `autoTheme`, section 9).
 Segments are 1-300 characters; `__proto__`, `constructor`, `prototype` and
 anything starting with `@` (except the two meta leaves) are invalid; a field
 whose name looks like a credential (`isSecretName`: `token`, `secret`,
@@ -218,13 +222,98 @@ A device keeps a synced file locked (the same `<file>.lock` the accounts code
 and the snapshot writers use) from reading it for a pass to writing the
 merge, so a change made in between waits and is captured by the next pass.
 
-## 9. What never syncs
+## 9. What syncs, and what never does
 
 Only the keys in the manifest and the files above. Sign-ins and keys are
 files in the device's own secrets folder and are never read. Field names that
 look like credentials are dropped, and string values that look like one (API
 keys, OAuth tokens, JWTs, private keys, URLs carrying `token=`/`key=`/`sig=`)
 make that field not sync at all, in both directions.
+
+### 9.1 Preferences follow the person
+
+Data (tasks, notes, people, streams, countdowns, Home layout, reviews,
+calendar names and colours) syncs, and so do the person's **preferences**:
+they follow them to every device. Only what belongs to one screen or one
+moment stays on the device. Maps merge entry by entry, so hiding one calendar
+on one computer and showing another on the other computer both survive;
+plain values merge by last writer. A clash on a preference is not reported
+as a conflict: the later choice wins quietly (`isPreference` in the
+manifest).
+
+| Preference (synced) | Merges | Why it syncs |
+|---|---|---|
+| `theme` | one value; local while `autoTheme` is on | light or dark is the person's choice; under Auto each computer turns dark in its own evening |
+| `autoTheme` | one value | Auto (dark from 19:00 to 07:00 by each computer's own clock) is a choice too |
+| `density` | one value | row density |
+| `sortBy`, `groupBy` | one value each | sort and grouping of the Display menu |
+| `openItemsIn` | one value | open items in the side panel or a card |
+| `itemHero` | one value | card header style |
+| `viewFilter` | one value | the saved view filter (tag renames rewrite it) |
+| `collapsedSidebar` | per heading | folded sidebar headings |
+| `taskViewPrefs` | per view, per field; `collapsed` per group | each view's sort, grouping and folded groups |
+| `calPrefs` | per field; `hidden` per entry (`cal:<id>`, `google`, `tasks`, `plans`, `countdowns`, `declined`); `mode` and `stream` stay | the calendars you follow or hide; the mode you are in and a one-stream filter are where you are (the view carries them: `#view=calendar:week`) |
+| `peopleView` | per field | People layout, sort, grouping and filter |
+| `homeUI` | per field; `listFold` per list card; `hideAmounts` stays | Home cards: expanded, folded groups, "not now", celebrations, gallery badges; blurring amounts is this screen's privacy |
+| `sidebarLists` | per list, per field | sidebar list sort and length |
+| `animPrefs` | per field; `overrides` per event, `look` per field | scene rules, per-event overrides and the animation look |
+| `achievements` | per field; `unlocked` and `notes` per entry | unlocks: nothing earned is lost |
+
+| Device-local (never synced) | Why it stays |
+|---|---|
+| `view` | where you are |
+| `viewMode` | the list, board or review mode of the view you are in (part of where you are) |
+| `selectedTaskId` | the open task |
+| `calMonth`, `weekBarOffset` | the month and week shown |
+| `_snappedFor` | scroll bookkeeping |
+| `focus` | Focus mode is a moment (it ends when the sidebar opens) |
+| `personEditMode` | an edit in progress |
+| `paneSizes`, `sidebarCollapsed` | panel and sidebar sizes: this screen's size |
+| `lastReviewPrompt` | when this screen last asked for a review |
+| `_lastBackup` | this browser's last download backup |
+| `suggestStats` | counters (shown, acted on, ignored per rule and day): last-writer-wins would lose counts |
+| `env` | this computer |
+| `travel` | this computer's zone, trips and places (they move with the computer) |
+| `_lastSave`, `_saveCount`, `_localDirty`, `_overridesMigrated_v1`, `_demo`, `taskOverrides`, `dateOverrides` | bookkeeping and emptied legacy keys |
+
+Derived keys (`calCache`, `peopleEmailCache`, `emailTriage`, `autolink`,
+`suggest`, `taskChat`) are rebuilt on each device and never synced.
+
+**Theme under Auto.** While `autoTheme` is `true` on a device, its `theme`
+is not captured and an incoming `theme` is not written in (the register
+still merges). Whenever `autoTheme` is written in, `theme` is written in
+after it from the registers if Auto is then off: turning Auto off on one
+computer gives the others that computer's theme.
+
+**The page.** Preferences are UI keys there (no undo step, no backup), but a
+tab takes them from a newer copy like data (`src/app/86-live-sync.js`
+`syncMergeTab`; the list is `SHARED_UI_KEYS` in `lib/state-keys.mjs`), so an
+open tab never writes its old theme back over a choice made elsewhere. A
+clash keeps the tab's choice without asking (it is saved next, so it becomes
+the later one). `calPrefs.mode` and `.stream` stay each tab's own.
+
+### 9.2 Devices that synced before preferences did
+
+The format does not change (no new `v`). After the update:
+
+- A device's **first pass** finds its preferences in its state file but not
+  in its registers, and publishes them as **ordinary changes** (its normal
+  clock, not the joining floor of section 2). Nothing is deleted or reset.
+- Map entries merge one by one: the calendars hidden on one computer and
+  those shown on the other are all kept; an option set on only one is kept.
+- Where two computers had different values for the same plain preference
+  (`theme`, `density`...) or the same entry, the one whose first pass came
+  later wins, like any later change, quietly. Change it once afterwards on
+  either computer to choose.
+- A computer still on the older version drops these writes (they are outside
+  its schema, section 6: counted as rejected, never applied) and sends none
+  of its own. Once updated it publishes its own on its first pass; what the
+  others published meanwhile reaches it with their next snapshot (written
+  within a day of a change, section 7) or with that preference's next change.
+- A **fresh device that joins** writes its first capture at the floor
+  (section 2), so the group's preferences win wherever the group has one
+  (its theme, its hidden calendars), and what only the new device has is
+  added. Its own view, open task and panel sizes stay as they were.
 
 ## 10. Versions and unknown data
 
@@ -235,7 +324,8 @@ make that field not sync at all, in both directions.
   (never skips it) and tells the user to update (or, when the folder holds an
   encrypted group, to add this computer to it).
 - A change to anything in sections 1-8 that an older reader would misread
-  needs a new `v`.
+  needs a new `v`. A new synced key or field does not: an older reader drops
+  writes outside its schema (section 6) and catches up once updated (9.2).
 - Version 2 (section 11) uses exactly this rule: a version-1 reader stops at
   the first encrypted line and says so; it never skips or guesses.
 

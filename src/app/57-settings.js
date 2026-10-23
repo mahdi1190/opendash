@@ -199,10 +199,10 @@ registerSettingsGroup({
 /* ---------- Appearance ---------- */
 registerSettingsGroup({
   id: 'appearance', title: 'Appearance', icon: 'palette', order: 20,
-  description: 'How the dashboard looks on this device.',
+  description: 'How the dashboard looks. With sync on, your other computers follow.',
   render(el) {
     const themeNow = state.autoTheme ? 'auto' : (state.theme === 'dark' ? 'dark' : 'light');
-    el.appendChild(_settingsRow('Theme', 'Auto switches to dark in the evening.', _settingsSeg(
+    el.appendChild(_settingsRow('Theme', 'Auto switches to dark in the evening, on each computer by its own clock.', _settingsSeg(
       [['light', 'Light', 'sun'], ['dark', 'Dark', 'moon'], ['auto', 'Auto', 'sun-moon']], themeNow,
       (k) => { state.autoTheme = k === 'auto'; if (k !== 'auto') state.theme = k; else applyAutoTheme(); saveUI(); render(); })));
     el.appendChild(_settingsRow('Task rows', 'Compact fits more on screen.', _settingsSeg(

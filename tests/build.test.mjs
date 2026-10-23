@@ -8,7 +8,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { concatDir, buildHtml, syntaxCheck, CONFIG_TAG as BUILD_TAG } from '../build.mjs';
 import { CONFIG_TAG as SERVER_TAG } from '../server/http.mjs';
-import { UI_STATE_KEYS, BOOKKEEPING_KEYS, RETIRED_STATE_KEYS } from '../lib/state-keys.mjs';
+import { UI_STATE_KEYS, SHARED_UI_KEYS, BOOKKEEPING_KEYS, RETIRED_STATE_KEYS } from '../lib/state-keys.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -53,6 +53,7 @@ test('the page and the server agree on which state keys are UI-only', () => {
     return m[1].match(/'[^']+'/g).map(s => s.slice(1, -1));
   };
   assert.deepEqual(grab('UI_STATE_KEYS'), [...UI_STATE_KEYS]);
+  assert.deepEqual(grab('SHARED_UI_KEYS'), [...SHARED_UI_KEYS]);
   assert.deepEqual(grab('BOOKKEEPING_KEYS'), [...BOOKKEEPING_KEYS]);
   assert.deepEqual(grab('RETIRED_STATE_KEYS'), [...RETIRED_STATE_KEYS]);
 });

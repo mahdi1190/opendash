@@ -79,14 +79,18 @@ test('a new computer joins: it gets everything, delivered late, half-first and o
   // Nothing has been delivered yet: B has only its own (empty) data.
   assert.equal((await B.store.readObject()).custom.length, 0);
   await deliver(cloudA, cloudB, idA, { order: 'reverse', halfFirst: true, junk: true });
-  await waitFor(async () => (await view(A)) === (await view(B)), 8000, 'B to match A');
+  // B has everything A has (and its own theme, which reaches A once B's files do).
+  await waitFor(async () => (await view(A)) === syncedView({ ...(await B.store.readObject()), theme: undefined }), 8000, 'B to match A');
   const b = await B.store.readObject();
   assert.equal(b.custom.length, 40);
-  assert.equal(b.view, 'home', 'B keeps its own view and theme (UI keys are not synced)');
-  assert.equal(b.theme, 'dark');
+  assert.equal(b.view, 'home', 'B keeps its own view (where you are is not synced)');
+  assert.equal(b.theme, 'dark', 'A never chose a theme, so B keeps its own (and offers it to A)');
   await deliver(cloudB, cloudA, idB);
   await settled(A, B);
   assert.equal(await view(A), await view(B));
+  const a = await A.store.readObject();
+  assert.equal(a.theme, 'dark', "a preference only the joining computer had is added, like its tasks");
+  assert.equal(a.view, undefined, "B's view never reaches A");
   const st = A.eng.status();
   assert.equal(st.state, 'ok');
   assert.deepEqual(st.devices.filter(d => !d.me).map(d => d.name), ['Work laptop']);

@@ -10,7 +10,7 @@ import { mkdirSync, writeFileSync, readFileSync, readdirSync, statSync } from 'n
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SYNC_KEYS, isSecretName, looksSecret, capture, newTree, validateOp, sanitize } from '../lib/sync/model.mjs';
-import { UI_STATE_KEYS, BOOKKEEPING_KEYS } from '../lib/state-keys.mjs';
+import { UI_STATE_KEYS, SHARED_UI_KEYS, BOOKKEEPING_KEYS } from '../lib/state-keys.mjs';
 import { encodeHlc } from '../lib/sync/hlc.mjs';
 import { tempDir, rm, stopAll, makeDevice, waitFor, keepAlive } from './sync.shared.mjs';
 
@@ -55,8 +55,9 @@ function lacedState() {
 }
 
 test('the allow-list holds no UI, bookkeeping or credential keys', () => {
-  for (const k of [...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]) assert.ok(!SYNC_KEYS.includes(k), `${k} is a UI/bookkeeping key`);
-  for (const k of ['connections', 'secrets', 'credentials', 'oauth', 'tokens', 'hostedRelay', 'relay', 'remoteMcp', 'finConnect', 'finance', 'bank', 'narration', 'emailTriage', 'taskChat', 'travel', 'autolink', 'env', 'suggest', 'achievements']) {
+  // UI keys sync only when they are preferences (theme, calendar choices...: SHARED_UI_KEYS); the rest and bookkeeping never.
+  for (const k of [...UI_STATE_KEYS.filter(x => !SHARED_UI_KEYS.includes(x)), ...BOOKKEEPING_KEYS]) assert.ok(!SYNC_KEYS.includes(k), `${k} is a UI/bookkeeping key`);
+  for (const k of ['connections', 'secrets', 'credentials', 'oauth', 'tokens', 'hostedRelay', 'relay', 'remoteMcp', 'finConnect', 'finance', 'bank', 'narration', 'emailTriage', 'taskChat', 'travel', 'autolink', 'env', 'suggest', 'suggestStats', 'paneSizes']) {
     assert.ok(!SYNC_KEYS.includes(k), `${k} must not be synced`);
   }
   for (const k of SYNC_KEYS) assert.ok(!isSecretName(k), k);

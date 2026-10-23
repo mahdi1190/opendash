@@ -79,7 +79,7 @@ test('capturing a state, then materializing its registers, gives the same synced
     people: [{ id: 'sam', name: 'Sam', notes: [{ id: 'pn-1', ts: 2, text: 'likes tea' }] }], streams: [{ id: 'work', label: 'Work', color: '#333' }],
     countdowns: [{ id: 'cd-1', label: 'Launch', date: '2026-11-26' }], home: { layout: { version: 1, widgets: [] }, snoozed: { 'u-2': '2026-10-24' } },
     bin: { tasks: [{ binTs: 5, id: 'u-9', title: 'old' }], notes: [] }, daynotes: { '2026-10-23': { md: 'hi', updatedAt: 3 } },
-    view: 'home', theme: 'dark',   // UI keys: never synced
+    view: 'home', paneSizes: { sidebar: 240 },   // where you are and this screen's sizes: never synced (theme etc. do: tests/sync-prefs.test.mjs)
   };
   const tree = newTree();
   const cap = capture(s, tree);
@@ -87,7 +87,8 @@ test('capturing a state, then materializing its registers, gives the same synced
   assert.deepEqual(capture(s, tree), { w: [], x: [], skipped: 0 }, 'nothing left to capture');
   const back = materialize({ custom: [] }, tree);
   assert.equal(syncedView(back), syncedView(s));
-  assert.equal(back.view, undefined, 'UI keys are not part of sync');
+  assert.equal(back.view, undefined, 'where you are is not part of sync');
+  assert.equal(back.paneSizes, undefined, "this screen's panel sizes are not part of sync");
   // ...and through the serialized form (meta.json, snapshot.json).
   assert.equal(syncedView(materialize({ custom: [] }, loadTree(JSON.parse(JSON.stringify(serializeTree(tree)))))), syncedView(s));
 });

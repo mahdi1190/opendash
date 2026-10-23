@@ -5,9 +5,9 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MANIFEST, classOf, syncedKeys } from '../lib/sync/manifest.mjs';
+import { MANIFEST, classOf, syncedKeys, isPreference } from '../lib/sync/manifest.mjs';
 import { SYNC_KEYS } from '../lib/sync/model.mjs';
-import { UI_STATE_KEYS, BOOKKEEPING_KEYS } from '../lib/state-keys.mjs';
+import { UI_STATE_KEYS, SHARED_UI_KEYS, BOOKKEEPING_KEYS } from '../lib/state-keys.mjs';
 import { buildFakeData } from '../tools/make-fake-data.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -20,8 +20,12 @@ test('every key the page sets up is classified (src/app/05-core-state-init.js)',
   for (const k of keys) assert.ok(MANIFEST[k], `${k} is not in lib/sync/manifest.mjs`);
 });
 
-test('UI and bookkeeping keys are device-local; keys the actions layer touches are classified', () => {
-  for (const k of UI_STATE_KEYS) assert.notEqual(classOf(k), 'synced', k);   // device-local, or a cache (derived)
+test('UI keys sync exactly when they are preferences; bookkeeping is device-local; keys the actions layer touches are classified', () => {
+  for (const k of SHARED_UI_KEYS) assert.ok(UI_STATE_KEYS.includes(k), `${k} is a UI key`);
+  for (const k of UI_STATE_KEYS) {
+    if (SHARED_UI_KEYS.includes(k)) { assert.equal(classOf(k), 'synced', k); assert.ok(isPreference(k), `${k} is a preference`); }
+    else assert.notEqual(classOf(k), 'synced', k);   // device-local, or a cache (derived)
+  }
   for (const k of BOOKKEEPING_KEYS) assert.equal(classOf(k), 'device-local', k);
   const touched = new Set();
   for (const f of readdirSync(join(ROOT, 'server', 'actions'))) {
@@ -36,4 +40,21 @@ test('the synced keys are exactly the keys the sync model knows how to merge', (
   assert.equal(classOf('someFutureKey'), 'device-local', 'an unknown key is never synced');
   for (const k of ['emailTriage', 'autolink', 'calCache', 'peopleEmailCache', 'suggest', 'taskChat']) assert.equal(classOf(k), 'derived', k);
   for (const [k, [cls, why]] of Object.entries(MANIFEST)) assert.ok(['synced', 'device-local', 'derived'].includes(cls) && why, k);
+});
+
+test('preferences follow the person; only one screen or moment stays on the computer', () => {
+  // The product rule (docs/dev/SYNC_FORMAT.md section 9): every preference syncs...
+  for (const k of ['theme', 'autoTheme', 'density', 'calPrefs', 'taskViewPrefs', 'peopleView', 'sortBy', 'groupBy', 'homeUI', 'sidebarLists',
+    'openItemsIn', 'itemHero', 'animPrefs', 'achievements', 'viewFilter', 'collapsedSidebar']) {
+    assert.equal(classOf(k), 'synced', k);
+    assert.ok(isPreference(k), `${k}: a clash is not reported`);
+  }
+  // ...and what belongs to one screen or moment stays.
+  for (const k of ['view', 'viewMode', 'selectedTaskId', 'calMonth', 'weekBarOffset', '_snappedFor', 'personEditMode', 'focus',
+    'paneSizes', 'sidebarCollapsed', 'lastReviewPrompt', '_lastBackup', 'env', 'travel', 'suggestStats', '_lastSave', '_saveCount', '_localDirty']) {
+    assert.equal(classOf(k), 'device-local', k);
+    assert.ok(!isPreference(k), k);
+  }
+  // Data is synced but not a "preference": its clashes are still reported.
+  for (const k of ['custom', 'people', 'home', 'calendarSettings']) assert.ok(classOf(k) === 'synced' && !isPreference(k), k);
 });

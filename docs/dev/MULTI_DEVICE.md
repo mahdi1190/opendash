@@ -30,7 +30,7 @@ How the pieces fit together, in plain words. The details are in
 
 | Travels (sync, or the shared folder) | Stays on each computer |
 |---|---|
-| tasks, notes, people, streams, countdowns, Home, reviews | where you are in the app, theme, panel sizes, this computer's zone and trips |
+| tasks, notes, people, streams, countdowns, Home, reviews, and your preferences (theme, density, sort and grouping, the calendars you hide, per-view options, Home cards; [SYNC_FORMAT.md](SYNC_FORMAT.md) section 9) | where you are in the app (view, open task, calendar mode), Focus mode, panel sizes, this computer's zone and trips |
 | the list of connected accounts (`accounts.json`: address, provider, features, who reads it, the ids of its snapshot files) | **every sign-in, token, app password and key** |
 | the mail and calendar each account's reader saved | `config.json`, `sources.json`, `connections.json`, the local token |
 | who runs which background job (`roles.json`) | the sync identity and its encryption keys |

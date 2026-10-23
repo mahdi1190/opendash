@@ -49,6 +49,15 @@ const UI_STATE_KEYS = [
   'achievements',   // Achievements: the unlocks (78-achievements.js); never an undo step
   'sidebarLists',   // Sidebar Streams / Tags / People: sort and how many show (15-nav-order.js); the custom order is data (sidebarOrder)
 ];
+// UI keys that are PREFERENCES (theme, density, sort, the calendars you hide...):
+// they follow you to your other computers (folder sync) and to every tab (live
+// sync takes them from a newer copy, 86-live-sync.js), still without undo steps.
+// The rest belong to this tab: where you are, panel sizes, caches.
+const SHARED_UI_KEYS = [
+  'sortBy', 'groupBy', 'theme', 'density', 'collapsedSidebar', 'autoTheme',
+  'taskViewPrefs', 'calPrefs', 'peopleView', 'openItemsIn', 'itemHero',
+  'homeUI', 'achievements', 'sidebarLists',
+];
 const BOOKKEEPING_KEYS = ['_lastSave', '_saveCount', '_localDirty'];
 const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);
 // Retired features (brainstorm boards): an older backup's data for them is

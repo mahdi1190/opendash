@@ -11,7 +11,7 @@ const SRC = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'app', '8
 const box = {};
 vm.createContext(box);
 vm.runInContext(readFileSync(SRC, 'utf8'), box, { filename: '86-live-sync.js' });
-const { syncMerge3, syncResolve } = box;
+const { syncMerge3, syncResolve, syncMergeTab, syncSharedKey } = box;
 const plain = (x) => JSON.parse(JSON.stringify(x));
 const merge = (b, l, r, opts) => plain(syncMerge3(plain(b), plain(l), plain(r), opts));
 
@@ -149,4 +149,45 @@ test('a big realistic state merges quickly', () => {
   assert.ok(Date.now() - t0 < 1500);
   assert.equal(conflicts.length, 0);
   assert.equal(merged.custom.length, 401);
+});
+
+// A tab adopting a newer copy (86-live-sync.js syncMergeTab): preferences
+// (theme, the calendars you hide... SHARED_UI_KEYS) come along like data, so a
+// tab never writes its stale copy back over a choice made on another computer;
+// where the tab is (view, panel sizes, the calendar mode) stays its own.
+const TAB = ['view', 'viewMode', 'selectedTaskId', 'paneSizes', '_lastSave'];
+const PREFS = ['theme', 'density', 'calPrefs', 'taskViewPrefs'];
+const withPrefs = () => ({ ...base(), theme: 'light', density: 'normal', paneSizes: { sidebar: 200 }, calPrefs: { mode: 'month', hidden: { declined: true } } });
+const tabMerge = (b, l, r) => plain(syncMergeTab(plain(b), plain(l), plain(r), { tab: TAB, prefs: PREFS }));
+
+test("a preference changed on the other computer reaches the tab; the tab's own keys stay", () => {
+  const b = withPrefs();
+  const l = withPrefs(); l.view = 'calendar:week'; l.paneSizes = { sidebar: 320 }; l.calPrefs.mode = 'week';
+  const r = withPrefs(); r.theme = 'dark'; r.calPrefs.hidden['cal:alex'] = true; r.view = 'home'; r.paneSizes = { sidebar: 100 }; r.calPrefs.mode = 'day';
+  const { merged, conflicts } = tabMerge(b, l, r);
+  assert.equal(conflicts.length, 0);
+  assert.equal(merged.theme, 'dark', 'not written back as light by this tab');
+  assert.deepEqual(merged.calPrefs, { mode: 'week', hidden: { declined: true, 'cal:alex': true } }, "Alex's calendar hidden; the calendar mode is this tab's");
+  assert.deepEqual([merged.view, merged.paneSizes], ['calendar:week', { sidebar: 320 }]);
+});
+
+test("a preference changed in this tab is kept; a clash keeps the tab's choice without asking; data clashes are still asked", () => {
+  const b = withPrefs(); b.taskViewPrefs = { today: { sort: 'date' } };
+  const l = withPrefs(); l.density = 'compact'; l.calPrefs.hidden['cal:sam'] = false; l.custom[0].title = 'Mine'; l.taskViewPrefs = { today: { sort: 'priority' } };
+  const r = withPrefs(); r.calPrefs.hidden['cal:alex'] = true; r.custom[0].title = 'Theirs'; r.taskViewPrefs = { today: { sort: 'title' } };
+  const { merged, conflicts } = tabMerge(b, l, r);
+  assert.equal(merged.density, 'compact', 'changed here only: kept');
+  assert.equal(merged.taskViewPrefs.today.sort, 'priority', 'changed on both sides: the tab saves next, so its choice becomes the later one');
+  assert.deepEqual(merged.calPrefs.hidden, { declined: true, 'cal:sam': false, 'cal:alex': true }, 'per calendar');
+  assert.deepEqual(conflicts.map(c => c.path[0]), ['custom'], 'only the data clash is asked about');
+});
+
+test('the shared key ignores the tab: two tabs that differ only in where they are do not save again', () => {
+  const x = withPrefs(), y = withPrefs();
+  y.view = 'people'; y.paneSizes = { sidebar: 10 }; y.calPrefs.mode = 'agenda'; y._lastSave = 9;
+  assert.equal(syncSharedKey(x, TAB, []), syncSharedKey(y, TAB, []));
+  y.theme = 'dark';
+  assert.notEqual(syncSharedKey(x, TAB, []), syncSharedKey(y, TAB, []), 'a preference counts');
+  const z = withPrefs(); z.calCache = { events: [1] };
+  assert.equal(syncSharedKey(x, TAB, ['calCache']), syncSharedKey(z, TAB, ['calCache']), 'caches never count');
 });
