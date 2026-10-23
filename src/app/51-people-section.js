@@ -418,7 +418,7 @@ function _pplPanel(el, p) {
     { label: 'Link tasks…', icon: 'link', run: () => pcOpenLinkTasks(p.id) },
     { label: 'Merge into…', icon: 'git-merge', run: () => openPersonMerge(p.id) },
     'sep',
-    { label: 'Delete…', icon: 'trash-2', danger: true, run: () => pplConfirmDelete(p.id) },
+    { label: 'Delete', icon: 'trash-2', danger: true, run: () => pplConfirmDelete(p.id) },
   ], { align: 'end', width: 220 }));
   // The side panel's way back to the big card (54-people-card.js), like a task's "Open in the centre".
   const centre = mk('scan', 'Open in the centre', () => pcToCard(p.id, centre));
@@ -490,7 +490,7 @@ function _pplPanel(el, p) {
     const v = await promptDialog({ title: 'Add an alias', label: `Another name for ${p.name} (a nickname, surname or initials)`, placeholder: 'e.g. Sam', confirmLabel: 'Add' });
     if (!v) return;
     const err = updatePersonFields(p.id, { aliases: [...(p.aliases || []), v] });
-    if (err) toast(err, { kind: 'error' }); else render();
+    if (err) toast(err, { kind: 'err' }); else render();
   };
 
   // Open tasks: I owe them / waiting on them
@@ -765,11 +765,10 @@ function openPersonMerge(fromId) {
 async function pplConfirmDelete(id) {
   const p = getPerson(id); if (!p || p.self) return;
   const n = tasksForPerson(id).length;
-  const ok = await confirmDialog({ title: `Delete ${p.name}?`, text: `${n ? `They are unlinked from ${n} task${n === 1 ? '' : 's'} (the tasks stay). ` : ''}If you just don't work with them any more, "Mark as inactive" keeps their history.`, confirmLabel: 'Delete', danger: true });
-  if (!ok) return;
+  // No "are you sure?" first: the toast's Undo (or Ctrl+Z) brings them back with every task link.
   deletePersonById(id);
   if (state.view !== 'people') setView('people'); else render();
-  toast(`Deleted ${p.name}`, { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
+  toast(`Deleted ${p.name}${n ? ` · unlinked from ${n} task${n === 1 ? '' : 's'} (the tasks stay)` : ''}`, { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
 }
 
 /* ---------- link suggestions + new names ---------- */

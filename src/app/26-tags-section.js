@@ -88,7 +88,8 @@ async function confirmNewTag(tag) {
 function _tagDone(msg) {
   saveData(); render();
   if (_tmRepaint) _tmRepaint();
-  toast(msg, { kind: 'ok', icon: 'tags', action: { label: 'Undo', run: () => { undo(); if (_tmRepaint) _tmRepaint(); } } });
+  const mark = typeof undoMark === 'function' ? undoMark() : null;   // Undo takes back THIS edit (01-core-state.js)
+  toast(msg, { kind: 'ok', icon: 'tags', action: { label: 'Undo', run: () => { if (mark) undoMarked(mark); else undo(); if (_tmRepaint) _tmRepaint(); } } });
 }
 const _tagTasks = (r) => `${r.tasks} task${r.tasks === 1 ? '' : 's'}` + (r.done ? ` (${r.open} open, ${r.done} done)` : '');
 async function tagRename(from) {
@@ -96,9 +97,8 @@ async function tagRename(from) {
   if (to === null) return;
   const t = tglNorm(to);
   if (!t || t === from) return;
-  const u = tglUsage(state).get(from) || { total: 0 };
   const exists = tagIsKnown(t);
-  if (exists && !(await confirmDialog({ title: `Merge #${from} into #${t}?`, text: `#${t} already exists. ${u.total} task${u.total === 1 ? '' : 's'} with #${from} will get #${t} instead.`, confirmLabel: 'Merge' }))) return;
+  // Renaming onto a tag you have merges them (the dialog says so); the toast's Undo takes it back, so no second question.
   const r = tglRename(state, from, t, _tagLog());
   _tmSel.delete(from);
   _tagDone(`${exists ? 'Merged' : 'Renamed'} #${from} → #${t} on ${_tagTasks(r)}`);
@@ -146,14 +146,7 @@ async function tagMergeDialog(tags) {
 async function tagDelete(tags) {
   const list = [...new Set(tags)].filter(Boolean);
   if (!list.length) return;
-  let n = 0, open = 0;
-  for (const i of getAllItems()) if (effTags(i).some(t => list.includes(t))) { n++; if (statusOf(i.id) !== 'done') open++; }
-  const ok = await confirmDialog({
-    title: list.length === 1 ? `Delete #${list[0]}?` : `Delete ${list.length} tags?`,
-    text: `${list.length === 1 ? 'It' : 'They'} will be removed from ${n} task${n === 1 ? '' : 's'} (${open} open). The tasks stay. Archive instead if you only want ${list.length === 1 ? 'it' : 'them'} out of the sidebar and the pickers.`,
-    confirmLabel: 'Delete', danger: true,
-  });
-  if (!ok) return;
+  // No "are you sure?": the tasks stay, and the toast's Undo (or Ctrl+Z) puts the tag back on every one.
   let tasks = 0;
   for (const t of list) { tasks += tglDelete(state, t, _tagLog()).tasks; _tmSel.delete(t); }
   _tagDone(`Deleted ${list.length === 1 ? '#' + list[0] : list.length + ' tags'} from ${tasks} task${tasks === 1 ? '' : 's'}`);
@@ -298,7 +291,7 @@ function _buildTagManager(root, o) {
         'sep',
         { label: r.pinned ? 'Unpin from sidebar' : 'Pin to sidebar', icon: r.pinned ? 'pin-off' : 'pin', run: () => tagSetFlags([r.tag], { pinned: !r.pinned }, r.pinned ? `Unpinned #${r.tag}` : `Pinned #${r.tag} to the sidebar`) },
         { label: r.archived ? 'Unarchive' : 'Archive', icon: r.archived ? 'archive-restore' : 'archive', run: () => tagSetFlags([r.tag], { archived: !r.archived }, r.archived ? `#${r.tag} is back in the pickers` : `Archived #${r.tag}: it stays on its tasks`) },
-        { label: 'Delete…', icon: 'trash-2', danger: true, run: () => tagDelete([r.tag]) },
+        { label: 'Delete', icon: 'trash-2', danger: true, run: () => tagDelete([r.tag]) },
       ], { align: 'end', width: 220 });
       row.append(cb, name, bar, cnt, mb);
       list.appendChild(row);
