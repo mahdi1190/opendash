@@ -26,6 +26,9 @@ let _syncCode = null;        // a recovery code to show once
 let _syncOffer = null;       // {text, expiresAt}: the QR offer on screen
 let _syncAdd = false;        // "Add a computer or phone" open
 const _syncIgnored = new Set();
+let _syncOtherOpen = false;  // "Other ways" unfolded
+let _syncJoinDismissed = null;   // the finished join-code panel the user closed (its expiresAt)
+let _syncJoinTick = null;    // the join code's countdown (text only, every second)
 
 /** "just now", "12 s ago", "2 min ago", "3 h ago", "2 days ago". */
 function syncAgo(ms, nowMs) {
@@ -149,7 +152,9 @@ function syncPairView(p) {
       case 'done': return { title: 'Done', text: 'This computer now syncs with your other computer.', actions: [] };
       case 'declined': return { title: 'Stopped', text: 'Your other computer said the numbers did not match, so nothing was shared. You can try again.', actions: [['again', 'Try again', true]] };
       case 'cancelled': return { title: 'Stopped', text: 'Nothing was shared.', actions: [['again', 'Try again', true]] };
-      case 'expired': return { title: 'This took too long', text: 'Nothing was shared. Try again.', actions: [['again', 'Try again', true]] };
+      case 'expired': return p.why === 'other-ended'
+        ? { title: 'Your other computer stopped', text: 'It ended this pairing (or was restarted), so nothing was shared. Try again.', actions: [['again', 'Try again', true]] }
+        : { title: 'This took too long', text: 'Nothing was shared. Try again.', actions: [['again', 'Try again', true]] };
       default: return { title: 'Something went wrong', text: 'Nothing was shared. Try again, or use your recovery code instead.', actions: [['again', 'Try again', true]] };
     }
   }
@@ -160,8 +165,46 @@ function syncPairView(p) {
     case 'done': return { title: 'Done', text: other + ' now syncs too.', actions: [] };
     case 'declined': return { title: 'Stopped', text: other + ' said the numbers did not match, so nothing was shared.', actions: [] };
     case 'cancelled': return { title: 'Stopped', text: 'Nothing was shared.', actions: [] };
-    case 'expired': return { title: 'This took too long', text: 'Nothing was shared. Start again on the new computer.', actions: [] };
+    case 'expired': return p.why === 'other-ended'
+      ? { title: 'The new computer stopped', text: 'It ended its request, so nothing was shared. If it asks again, its new request shows here.', actions: [] }
+      : { title: 'This took too long', text: 'Nothing was shared. Start again on the new computer.', actions: [] };
     default: return { title: 'Stopped for safety', text: 'Something changed the request while it was being checked, so nothing was shared. Start again on the new computer; if it keeps happening, use the recovery code there instead.', actions: [] };
+  }
+}
+
+/** "9:41 left" */
+function syncTimeLeft(expiresAt, nowMs) {
+  const s = Math.max(0, Math.round((Number(expiresAt) - nowMs) / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' left';
+}
+/**
+ * What the join-code panel says: {title, text, code?, countdown?, actions: [[id, label, primary?]]}.
+ * j: the status's e2e.joinCode ({role: 'offer' (this computer shows the code) | 'join', step, code, expiresAt, name, wrong}).
+ */
+function syncJoinCodeView(j) {
+  if (!j) return null;
+  const other = j.name ? '"' + j.name + '"' : 'the new computer';
+  const Other = other.charAt(0).toUpperCase() + other.slice(1);
+  if (j.role === 'offer') {
+    switch (j.step) {
+      case 'waiting': return { title: 'Type this code on the new computer', code: j.code, countdown: true, text: 'On the new computer: OpenDash > Settings > Sync > "No, I already use OpenDash", then type these 4 letters. The code works once.' + (j.wrong ? ' ' + j.wrong + ' wrong ' + (j.wrong === 1 ? 'try' : 'tries') + ' so far: after 3 it stops working.' : ''), actions: [['cancel', 'Cancel']] };
+      case 'sent': return { title: 'Adding ' + other, text: Other + ' finishes by itself in a moment.', actions: [] };
+      case 'done': return { title: 'Done', text: Other + ' now syncs too.', actions: [['close', 'OK', true]] };
+      case 'burned': return { title: 'This code no longer works', text: 'It was typed wrongly 3 times, so it was stopped for safety. Nothing was shared.', actions: [['new', 'Make a new code', true], ['close', 'Close']] };
+      case 'clash': return { title: 'Two computers tried to use this code', text: 'For safety, neither was added. Start again, with only the new computer.', actions: [['new', 'Start again', true], ['close', 'Close']] };
+      case 'expired': return { title: 'The code ran out', text: 'Nothing was shared. Make a new one when the new computer is ready.', actions: [['new', 'Make a new code', true], ['close', 'Close']] };
+      default: return { title: 'Stopped', text: 'Nothing was shared.', actions: [['new', 'Make a new code', true], ['close', 'Close']] };
+    }
+  }
+  switch (j.step) {
+    case 'looking': return { title: 'Looking for your other computer', countdown: true, text: 'Your cloud drive is bringing its code. This usually takes a few seconds, sometimes a minute.', actions: [['cancel', 'Cancel']] };
+    case 'sent': return { title: 'Checking the code', countdown: true, text: 'Your other computer checks it, then sends this one the key. A few seconds, sometimes a minute.', actions: [['cancel', 'Cancel']] };
+    case 'done': return { title: 'Done', text: 'This computer now syncs with your other computer.', actions: [] };
+    case 'wrong': return { title: 'That code is not right', text: 'Check the 4 letters on your other computer and type them again below.', actions: [] };
+    case 'clash': return { title: 'Two computers tried to use this code', text: 'For safety, neither was added. Make a new code on your other computer and type it below.', actions: [] };
+    case 'taken': return { title: 'That code was already used', text: 'Each code works once. Make a new one on your other computer and type it below.', actions: [] };
+    case 'expired': return { title: 'This took too long', text: 'Make a new code on your other computer and type it below.', actions: [] };
+    default: return { title: 'Stopped', text: 'Nothing was shared. You can type a code again below.', actions: [] };
   }
 }
 
@@ -292,6 +335,61 @@ function _syncPairPanel(card, p) {
   card.body.appendChild(box);
 }
 
+/** The join code panel (either computer), with its countdown. */
+function _syncJoinPanel(card, j) {
+  const v = syncJoinCodeView(j);
+  if (!v) return;
+  const box = _syncEl('div', 'sync-join');
+  box.setAttribute('role', 'status');
+  box.appendChild(_syncEl('div', 'sync-pair-t', v.title));
+  if (v.code) { const c = _syncEl('div', 'sync-join-code', v.code); c.setAttribute('aria-label', 'Code: ' + v.code.split('').join(' ')); box.appendChild(c); }
+  if (v.countdown && j.expiresAt) {
+    const left = _syncEl('div', 'sync-join-left', syncTimeLeft(j.expiresAt, Date.now()));
+    left.dataset.exp = String(j.expiresAt);
+    box.appendChild(left);
+    if (!_syncJoinTick) {
+      _syncJoinTick = setInterval(() => {
+        const els = document.querySelectorAll('.sync-join-left');
+        if (!els.length) { clearInterval(_syncJoinTick); _syncJoinTick = null; return; }
+        els.forEach(el => { el.textContent = syncTimeLeft(el.dataset.exp, Date.now()); });
+      }, 1000);
+    }
+  }
+  box.appendChild(_syncEl('p', 'set-h', v.text));
+  if (v.actions.length) {
+    const row = _syncEl('div', 'sync-actions');
+    for (const [id, label, primary] of v.actions) {
+      row.appendChild(_syncBtn(label, () => {
+        if (id === 'cancel') _syncPost('/api/sync/code/cancel');
+        else if (id === 'new') { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); }
+        else if (id === 'close') { _syncJoinDismissed = j.expiresAt; _syncRefresh(); }
+      }, primary));
+    }
+    box.appendChild(row);
+  }
+  card.body.appendChild(box);
+}
+/** "Type the 4-letter code from your other computer" (the new computer's default way in). */
+function _syncJoinInput(card) {
+  const wrap = _syncEl('div', 'sync-other');
+  const input = _syncEl('input', 'control sync-join-input');
+  input.maxLength = 9; input.autocomplete = 'off'; input.spellcheck = false; input.placeholder = 'ABCD';
+  input.setAttribute('aria-label', 'The 4-letter code');
+  const go = () => { const v = input.value.trim(); if (v) _syncPost('/api/sync/code/join', { code: v }); };
+  input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+  wrap.append(input, _syncBtn('Join', go, true));
+  card.body.appendChild(_settingsRow('Type the 4-letter code from your other computer', 'On your other computer: Settings > Sync > Add a computer.', wrap));
+}
+/** A folded "Other ways" box; fill(box) adds rows to box.body like a card. */
+function _syncOtherWays(card, fill) {
+  const det = document.createElement('details'); det.className = 'sync-other-ways';
+  det.open = _syncOtherOpen;
+  det.ontoggle = () => { _syncOtherOpen = det.open; };
+  det.appendChild(_syncEl('summary', null, 'Other ways'));
+  fill({ body: det });
+  card.body.appendChild(det);
+}
+
 /** "Type your recovery code" */
 function _syncRecoveryRow(card, title, hint) {
   const wrap = _syncEl('div', 'sync-other');
@@ -338,15 +436,23 @@ function _syncSetup(card, st, first) {
   card.body.appendChild(row);
 }
 
+const _SYNC_PAIR_LIVE = ['waiting', 'compare', 'confirmed'];
+/** The new computer: the 4-letter code first; approving with 6 numbers and the recovery code under "Other ways". */
 function _syncJoining(card, st) {
   const e = st.e2e || {};
-  const p = e.pairing;
-  if (p && p.role === 'join') { _syncPairPanel(card, p); if (p.step !== 'done' && p.step !== 'declined' && p.step !== 'cancelled' && p.step !== 'expired' && p.step !== 'failed') return; }
-  if (e.found && e.found.groups) {
-    card.body.appendChild(_settingsRow('Approve on your other computer', 'Your other computer will show 6 numbers; you check this one shows the same.', _syncBtn('Ask my other computer', () => _syncPost('/api/sync/pair/start'), true)));
-    _syncRecoveryRow(card, 'Or type your recovery code', 'The code you wrote down or printed when you turned sync on.');
-  }
-  card.body.appendChild(_settingsRow('Stop', 'Turn sync off on this computer.', _syncBtn('Turn off', () => _syncSave({ enabled: false }, 'Sync is off'))));
+  const p = e.pairing && e.pairing.role === 'join' ? e.pairing : null;
+  const jc = e.joinCode && e.joinCode.role === 'join' ? e.joinCode : null;
+  const stop = () => card.body.appendChild(_settingsRow('Stop', 'Turn sync off on this computer.', _syncBtn('Turn off', () => _syncSave({ enabled: false }, 'Sync is off'))));
+  if (p && _SYNC_PAIR_LIVE.includes(p.step)) { _syncPairPanel(card, p); return; }
+  if (jc) _syncJoinPanel(card, jc);
+  if (jc && (jc.step === 'looking' || jc.step === 'sent')) { stop(); return; }
+  if (p) _syncPairPanel(card, p);
+  _syncJoinInput(card);
+  _syncOtherWays(card, (box) => {
+    box.body.appendChild(_settingsRow('Approve on your other computer', 'Your other computer shows 6 numbers; you check this one shows the same.', _syncBtn('Ask my other computer', () => _syncPost('/api/sync/pair/start'))));
+    _syncRecoveryRow(box, 'Type your recovery code', 'The long code you wrote down or printed when you turned sync on: for when your other computer is not around.');
+  });
+  stop();
 }
 
 function _syncRequests(card, st) {
@@ -360,7 +466,9 @@ function _syncRequests(card, st) {
       _syncBtn("Check it's yours", () => _syncPost('/api/sync/pair/respond', { sid: r.sid }), true),
       _syncBtn('Not mine', () => { _syncIgnored.add(r.sid); _syncRefresh(); }),
     );
-    card.body.appendChild(_settingsRow(`A new ${syncKindLabel(r.kind).toLowerCase()}, "${r.name}", wants to join your sync`, 'Only continue if you are setting it up now.', row));
+    // A computer that was removed and asks again is shown too (it comes back as a new device).
+    if (r.removed) card.body.appendChild(_settingsRow(`A ${syncKindLabel(r.kind).toLowerCase()} you removed, "${r.oldName || r.name}", wants to join again`, 'Only continue if you are adding it back now. It comes back as a new device; its old place stays removed.', row));
+    else card.body.appendChild(_settingsRow(`A new ${syncKindLabel(r.kind).toLowerCase()}, "${r.name}", wants to join your sync`, 'Only continue if you are setting it up now.', row));
   }
 }
 
@@ -431,7 +539,7 @@ function _syncLive(card, st) {
 
 function _syncAddPanel(card) {
   const box = _syncEl('div', 'sync-add');
-  box.appendChild(_syncEl('p', 'set-h', 'On another computer: open OpenDash, go to Settings > Sync and choose "No, I already use OpenDash". This computer will then ask you to check it.'));
+  box.appendChild(_syncEl('p', 'set-h', 'Without the 4-letter code: on the other computer, open OpenDash, go to Settings > Sync, choose "No, I already use OpenDash", then "Other ways" > "Ask my other computer". This computer will then ask you to check it.'));
   if (_syncOffer && _syncOffer.expiresAt > Date.now()) {
     box.appendChild(_syncEl('p', 'set-h', 'On a phone: open OpenDash and scan this code. It works once, for 10 minutes. Do not share a photo of it.'));
     try { const q = _syncEl('div', 'sync-qr'); q.appendChild(syncQrSvg(_syncOffer.text, 220)); box.appendChild(q); }
@@ -467,19 +575,31 @@ function _syncCard(el) {
   }
   if (screen === 'joining') _syncJoining(card, st);
   if (screen === 'removed' || screen === 'locked') {
-    _syncRecoveryRow(card, 'Type your recovery code', 'The code you wrote down or printed when you turned sync on.');
-    if (st.e2e && st.e2e.found && st.e2e.found.groups) card.body.appendChild(_settingsRow('Or approve on your other computer', '', _syncBtn('Ask my other computer', () => _syncPost('/api/sync/pair/start'))));
+    const jc = st.e2e && st.e2e.joinCode && st.e2e.joinCode.role === 'join' ? st.e2e.joinCode : null;
+    if (jc) _syncJoinPanel(card, jc);
     if (st.e2e && st.e2e.pairing && st.e2e.pairing.role === 'join') _syncPairPanel(card, st.e2e.pairing);
+    // Removed: the code (or approving) brings it back as a new device.
+    if (!(jc && (jc.step === 'looking' || jc.step === 'sent'))) _syncJoinInput(card);
+    _syncOtherWays(card, (box) => {
+      _syncRecoveryRow(box, 'Type your recovery code', 'The long code you wrote down or printed when you turned sync on.');
+      if (st.e2e && st.e2e.found && st.e2e.found.groups) box.body.appendChild(_settingsRow('Approve on your other computer', '', _syncBtn('Ask my other computer', () => _syncPost('/api/sync/pair/start'))));
+    });
   }
   if (screen === 'plain') {
     card.body.appendChild(_settingsRow('Not encrypted yet', 'This sync started before encryption. Lock it so the cloud cannot read it; your other computer joins afterwards.', _syncBtn('Encrypt my synced data', () => _syncPost('/api/sync/encrypt', {}, 'Your synced data is now encrypted'), true)));
   }
   if (screen === 'ready') {
     _syncRequests(card, st);
+    // "Add a computer": a 4-letter code to type on the new one (the usual way).
+    const jc = st.e2e && st.e2e.joinCode && st.e2e.joinCode.role === 'offer' ? st.e2e.joinCode : null;
+    if (jc && _syncJoinDismissed !== jc.expiresAt) _syncJoinPanel(card, jc);
+    else card.body.appendChild(_settingsRow('Add a computer', 'Shows a 4-letter code to type on the new computer. It works once, for 10 minutes.', _syncBtn('Add a computer', () => { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); }, true)));
     _syncDevices(card, st);
     _syncLive(card, st);
-    if (_syncAdd) _syncAddPanel(card);
-    else card.body.appendChild(_settingsRow('Add a computer or phone', '', _syncBtn('Add a computer or phone', () => { _syncAdd = true; _syncRefresh(); })));
+    _syncOtherWays(card, (box) => {
+      if (_syncAdd) _syncAddPanel(box);
+      else box.body.appendChild(_settingsRow('Add a phone, or approve with 6 numbers', '', _syncBtn('Show the other ways', () => { _syncAdd = true; _syncOtherOpen = true; _syncRefresh(); })));
+    });
     card.body.appendChild(_settingsRow('Recovery code', 'Lost the one you wrote down? Make a new one: the old one stops working.', _syncBtn('Make a new recovery code', async () => {
       const ok = await confirmDialog({ title: 'Make a new recovery code?', text: 'The old code will stop working. Write the new one down straight away.', confirmLabel: 'Make a new code' });
       if (ok) _syncPost('/api/sync/recovery/new');
@@ -519,6 +639,11 @@ function _syncCard(el) {
     }
   }
   if (st && st.enabled && st.skew) card.body.appendChild(_settingsRow('Clock', st.skew.text || `${st.skew.device}'s clock is about ${st.skew.aheadMin} min ahead of this one. Set both to the right time so the newest change wins.`, null));
+  // Files too big to send from this computer (lib/sync/engine.mjs notSynced): they stay as they are here.
+  if (st && st.enabled && Array.isArray(st.notSynced) && st.notSynced.length) {
+    const n = st.notSynced;
+    card.body.appendChild(_settingsRow('Not synced from this computer', `${n.slice(0, 3).map(x => x.file + ' (' + x.why + ')').join('; ')}${n.length > 3 ? ` and ${n.length - 3} more` : ''}. ${n.length === 1 ? 'It stays' : 'They stay'} as ${n.length === 1 ? 'it is' : 'they are'} on this computer; your other computers keep their own copy.`, null));
+  }
   if (st && st.enabled && screen !== 'joining') card.body.appendChild(_settingsRow('Sync across my devices', 'On. Turn it off to stop syncing this computer (nothing is deleted).', _settingsSwitch(true, 'Sync across my devices', () => _syncSave({ enabled: false }, 'Sync is off'), _syncBusy)));
   if (_syncErr) { const e = document.createElement('div'); e.className = 'sync-status sync-err'; e.textContent = _syncErr; card.body.appendChild(e); }
   el.appendChild(card.card);
@@ -528,9 +653,9 @@ function _syncCard(el) {
   _syncTicker = setInterval(() => {
     if (!document.body.contains(line) && !document.body.contains(card.card)) { clearInterval(_syncTicker); _syncTicker = null; return; }
     _syncJson('/api/sync/status').then((s) => {
-      const before = JSON.stringify([syncScreen(_syncSt, _syncFlow), _syncSt && _syncSt.e2e && _syncSt.e2e.pairing, _syncSt && _syncSt.e2e && _syncSt.e2e.requests, _syncSt && _syncSt.devices && _syncSt.devices.map(d => d.name)]);
+      const before = JSON.stringify([syncScreen(_syncSt, _syncFlow), _syncSt && _syncSt.e2e && _syncSt.e2e.pairing, _syncSt && _syncSt.e2e && _syncSt.e2e.joinCode, _syncSt && _syncSt.e2e && _syncSt.e2e.requests, _syncSt && _syncSt.devices && _syncSt.devices.map(d => d.name)]);
       _syncSt = s;
-      const after = JSON.stringify([syncScreen(s, _syncFlow), s.e2e && s.e2e.pairing, s.e2e && s.e2e.requests, s.devices && s.devices.map(d => d.name)]);
+      const after = JSON.stringify([syncScreen(s, _syncFlow), s.e2e && s.e2e.pairing, s.e2e && s.e2e.joinCode, s.e2e && s.e2e.requests, s.devices && s.devices.map(d => d.name)]);
       if (before !== after && !_syncBusy) _syncRefresh(); else paint();
     }).catch(() => paint());
   }, 3000);
@@ -543,5 +668,6 @@ registerSettingsGroup({
     if (!_syncSt && !_syncErr) syncLoad();
     _syncCard(el);
     if (typeof settingsMainComputerCard === 'function') settingsMainComputerCard(el);   // 58-settings-main.js
+    if (typeof settingsClaudeHostCard === 'function') settingsClaudeHostCard(el);       // 58-settings-claude-host.js
   },
 });

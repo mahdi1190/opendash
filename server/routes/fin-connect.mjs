@@ -63,7 +63,22 @@ export default async function register(app) {
       const patch = {};
       for (const k of ['name', 'colour', 'enabled', 'keep']) if (k in b) patch[k] = b[k];
       if (!Object.keys(patch).length) throw new FinError('BAD_REQUEST', 'Nothing to change.');
-      return { ok: true, account: await svc.patchAccount(key, patch) };
+      // Finances on every device (lib/finance-share.mjs): an account's name, colour and
+      // Show in Finances are shared edits; the finance computer applies them to its sources.
+      const fs = app.ctx.financeShare;
+      const sh = fs ? await fs.sharing().catch(() => null) : null;
+      if (sh && !sh.publisher) {
+        const d = await fs.readShare().catch(() => null);
+        const known = d && d.meta && Array.isArray(d.meta.accounts) ? d.meta.accounts.find(a => a && a.key === key) : null;
+        if (known) {
+          if (patch.name != null && (typeof patch.name !== 'string' || !patch.name.trim())) throw new FinError('BAD_REQUEST', 'Give the account a name.');
+          const x = await fs.editAccount(key, patch);
+          return { ok: true, account: { ...known, ...(x && x.name ? { name: x.name } : {}), ...(x && x.colour ? { colour: x.colour } : {}), ...(x && typeof x.hidden === 'boolean' ? { enabled: !x.hidden } : {}) }, remote: { name: (sh.host && sh.host.name) || null } };
+        }
+      }
+      const account = await svc.patchAccount(key, patch);
+      if (sh) await fs.editAccount(key, patch).catch(() => {});
+      return { ok: true, account };
     },
   });
 

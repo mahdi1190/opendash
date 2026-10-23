@@ -198,6 +198,8 @@ top-level keys (`SYNC_FILES` in `lib/sync/manifest.mjs`):
 | `calendar/sources/<sourceId>.json` | published | `{events: [...], calendars: [...], ...}` (lib/calendar-sources.mjs) |
 | `inbox/sources/<sourceId>.json` | published | `{messages: [...], accounts: [...], ...}` (lib/inbox-sources.mjs) |
 | `calendar/events.json`, `inbox/messages.json` | published by `connectors` | the Claude-connector snapshots |
+| `finance-share/finance.json` | published by `bank` | `{v: 1, head: {<analysis field>: JSON text}, tx: {'YYYY-MM'[~n]: {w: [word], r: [[k, day, m, c, a, acct, memo, how, bc, extra?]]}}, bal: {'YYYY-MM': {w: [account], r: [[day, total, [i, value, ...]]]}}, meta: {at, updatedAt, by, fid, currency, lastUpdate, analysisAt, storeCount, accounts, sources}}`: the finance analysis, one register per month of transactions (lib/sync/finance-share.mjs; docs/dev/MULTI_DEVICE.md "Finances on every device"). Written only with encrypted sync |
+| `finance-share/edits.json` | shared | `{v: 1, overrides: {m<hash>: {m, c, at, by}}, budgets: {b<hash>: {c, v, at, by}}, accounts: {a<hash>: {k, name?, colour?, hidden?}}}`: finance edits from any device, one register per entry (an account's fields one each) |
 
 A snapshot in `calendar/sources/` or `inbox/sources/` belongs to the account
 whose record lists its name in `sources` (`{mail: <sourceId>, calendar:
@@ -221,6 +223,76 @@ travel.
 A device keeps a synced file locked (the same `<file>.lock` the accounts code
 and the snapshot writers use) from reading it for a pass to writing the
 merge, so a change made in between waits and is captured by the next pass.
+
+<!-- ── files ── -->
+### 8.1 Results, caches and settings files (2.16)
+
+Every other file a view shows syncs too (`SYNC_FILES`, and `FILE_RULES` for
+how each merges, in `lib/sync/manifest.mjs`). All are role `shared`: the
+device that produced a copy sends it, the others show it.
+
+| File | Shape (registers) | Merge |
+|---|---|---|
+| `brief/day-advice.json` | one value | newest `at` |
+| `briefs/ai/<kind>-<date>.json`, `briefs/story/<kind>-<date>.json` | one value | newest `at` |
+| `briefs/days/<date>.<kind>.json` | one value | newest `savedAt` |
+| `briefs/anim-ai.json` | `types` per title | later change |
+| `briefs/weather.json`, `travel/weather.json` | one value `{key, at, raw}` | newest `at` |
+| `travel/holidays-<CC>-<year>.json` | one value `{at, rows}` | newest `at` |
+| `calendar/calendar.json`, `email/inbox.json` (the v1 snapshots) | one value | newest `fetchedAt` |
+| `inbox/drafts.json` | `drafts` by id | later change |
+| `resources/github-cache.json` | one value per repository | newest `fetchedAt`, per repository |
+| `animations/mine.json` | `items` by id | later change |
+| `index/settings.json` | per field; `folders`, `namesOnly`, `enabled` stay on each device | later change |
+| `source-prefs.json` | `sources` per source id, `accounts` per account id, per field | later change |
+
+**Newest produced-at wins** (`newest`). A copy of such a file says when it
+was produced (`at`, `savedAt`, `fetchedAt`). Its register is written with
+the timestamp `<that time, at most now>.00000.<deviceId>` instead of the
+device's clock (one log line per such timestamp; `n` still counts up), so
+plain last-writer-wins (section 4) keeps the copy PRODUCED last on every
+device, in any order: a copy captured late (a computer that slept, the first
+pass after an update, a joining device) never replaces a newer one. A device
+never sends a local copy older than the one its registers hold (or older
+than that file's removal elsewhere); it writes the known one back into the
+file instead. A copy with the same produced-at as the register, or a
+register written by a clock that ran ahead, goes out as an ordinary change.
+Readers need nothing new: these are ordinary registers and lines. Clashes
+on these files are not reported (`quiet`).
+
+**Echo.** A received file is written from the registers; the next pass reads
+it, finds it equal to its registers and sends nothing. Views reload it
+through the open tabs' `synced-files` event without asking for a fresh
+fetch (a fresh fetch would write and send it back).
+
+**Too big.** A file over its `maxBytes` (or a single value over 256 KB,
+section 9) is not sent; that file then stays exactly as it is on this device
+(a smaller copy from another device does not replace it), and the status
+lists it (`notSynced: [{file, why, whole}]`, Settings > Sync).
+
+**source-prefs.json** (`lib/source-prefs.mjs`) is the person's part of
+`sources.json`: `{version: 1, sources: {<sourceId>: {label?, colour?,
+enabled?, accounts: {<accountId>: {name?, renamed?, colour?, enabled?,
+own?}}}}}`. It is written whenever `sources.json` is, and a received one is
+laid over `sources.json`: only choices on sources and accounts the device
+already has (sync never adds or removes a source through it), an account
+source's on/off is left to `accounts.json`, and a field the file does not
+have yet is only added when it is a real choice (not the default), so a
+device that was never set up cannot overwrite the other's choices. Another
+device's MCP and calendar-link sources (shown through its capabilities) wear
+these choices too.
+
+**Stay on each device** (reasons in `lib/sync/manifest.mjs` FILE_RULES):
+`connections.json` (this computer's own checks; they decide what it can
+do), `sources.json` (iCal secret links, MCP server names, bank sessions; a
+source that does not validate elsewhere would be dropped and the drop sent
+back), `time.json` (this computer's observed zone), `calendar/update.json`
+and `inbox/update.json` (the job throttle: a copy would stop a computer
+from reading its own accounts), `travel/rates-*.json` (public rate caches),
+`index/files.json`, `index/status.json`, `state/actions-journal.json`
+(undo tokens of this computer), binary files (`people/images/`,
+`cache/narration/`), and every identity, secret and bookkeeping file.
+<!-- ── /files ── -->
 
 ## 9. What syncs, and what never does
 
@@ -252,32 +324,53 @@ manifest).
 | `viewFilter` | one value | the saved view filter (tag renames rewrite it) |
 | `collapsedSidebar` | per heading | folded sidebar headings |
 | `taskViewPrefs` | per view, per field; `collapsed` per group | each view's sort, grouping and folded groups |
-| `calPrefs` | per field; `hidden` per entry (`cal:<id>`, `google`, `tasks`, `plans`, `countdowns`, `declined`); `mode` and `stream` stay | the calendars you follow or hide; the mode you are in and a one-stream filter are where you are (the view carries them: `#view=calendar:week`) |
+| `calPrefs` | per field; `hidden` per entry (`cal:<id>`, `google`, `tasks`, `plans`, `countdowns`, `declined`) | the calendars you follow or hide, the calendar mode (month, week, day, agenda) and the one-stream filter (since 2.16; a tab showing the calendar moves its view, `#view=calendar:week`, to the new mode) |
 | `peopleView` | per field | People layout, sort, grouping and filter |
-| `homeUI` | per field; `listFold` per list card; `hideAmounts` stays | Home cards: expanded, folded groups, "not now", celebrations, gallery badges; blurring amounts is this screen's privacy |
+| `homeUI` | per field; `listFold` per list card | Home cards: expanded, folded groups, "not now", celebrations, gallery badges, amounts hidden (since 2.16) |
 | `sidebarLists` | per list, per field | sidebar list sort and length |
 | `animPrefs` | per field; `overrides` per event, `look` per field | scene rules, per-event overrides and the animation look |
 | `achievements` | per field; `unlocked` and `notes` per entry | unlocks: nothing earned is lost |
+| `viewMode` | one value | list, board or review mode of the task views (2.16) |
+| `focus` | one value | Focus mode: on until you turn it off or open the sidebar (2.16) |
+| `sidebarCollapsed` | one value | the sidebar folded or open (2.16) |
+| `paneSizes` | per panel | panel sizes in pixels; each screen clamps them to what fits (2.16) |
+| `lastReviewPrompt` | one value | when you were last asked for a weekly review: answered on one computer, not asked again on the other (2.16) |
+| `suggestStats` | `rules` per rule and field, `seen` per key | the suggestions' counts; the later count wins per field (a count can come out a little low, never doubled) (2.16) |
+
+Data (not a preference: clashes are reported like task edits): `travel` (2.16), the trip decisions, `trips` per trip and field, `notTrips` and `moments` per entry. The zone each computer is in is not in it: that is `time.json` and `config.time`, which stay on each computer.
+
+<!-- ── local ── -->
+**What the page kept per browser (2.16).** Three more preferences hold what used to be in each
+browser's localStorage (`src/app/06-core-seen.js`):
+
+| Preference (synced) | Merges | Why it syncs |
+|---|---|---|
+| `seen` | per group, per entry (`map(map())`) | seen, played and dismissed: the brief, stories, confetti, one-off cards and tips, the opening rotation, moments shown, banners dismissed, arrival welcomes. A day flag is `{'YYYY-MM-DD': 1}` and a one-off `once: {name: 1}`, so two computers marking the same flag write the same value and flags only add up; dated entries are pruned after three weeks, a group is never removed |
+| `uiPrefs` | per field; `story` and `motion` field by field | the story player's volume, speed and mute, the animation intensity (`motion.level`, `.last`), the assistant's model, a running focus block |
+| `drafts` | per draft, per field | the weekly review in progress (`week:<from>`); saving the review removes it |
+
+An updated computer folds its old browser keys in once, after the state file has loaded: flags are
+added, values and preferences only fill what the state does not have (a value another computer
+synced is never overwritten), and the old keys go only once the server holds the result, so the fold
+is idempotent on one computer or two. A write made before the state file loads also goes to a small
+outbox in the browser and is written into the loaded state (a newer file replaces the cached copy
+wholesale). The splash's first-paint copies stay in the browser and are rewritten from the state.
+<!-- ── end local ── -->
 
 | Device-local (never synced) | Why it stays |
 |---|---|
-| `view` | where you are |
-| `viewMode` | the list, board or review mode of the view you are in (part of where you are) |
+| `view` | where you are (it follows `calPrefs.mode` when that changes elsewhere) |
 | `selectedTaskId` | the open task |
 | `calMonth`, `weekBarOffset` | the month and week shown |
 | `_snappedFor` | scroll bookkeeping |
-| `focus` | Focus mode is a moment (it ends when the sidebar opens) |
 | `personEditMode` | an edit in progress |
-| `paneSizes`, `sidebarCollapsed` | panel and sidebar sizes: this screen's size |
-| `lastReviewPrompt` | when this screen last asked for a review |
 | `_lastBackup` | this browser's last download backup |
-| `suggestStats` | counters (shown, acted on, ignored per rule and day): last-writer-wins would lose counts |
 | `env` | this computer |
-| `travel` | this computer's zone, trips and places (they move with the computer) |
 | `_lastSave`, `_saveCount`, `_localDirty`, `_overridesMigrated_v1`, `_demo`, `taskOverrides`, `dateOverrides` | bookkeeping and emptied legacy keys |
 
-Derived keys (`calCache`, `peopleEmailCache`, `emailTriage`, `autolink`,
-`suggest`, `taskChat`) are rebuilt on each device and never synced.
+Derived keys (`calCache`, `peopleEmailCache`, `autolink`) are rebuilt on each
+device and never synced. Results (`emailTriage`, `suggest`) sync: a computer
+without Claude cannot rebuild them. AI chats sync too: section 9.3.
 
 **Theme under Auto.** While `autoTheme` is `true` on a device, its `theme`
 is not captured and an incoming `theme` is not written in (the register
@@ -290,7 +383,7 @@ tab takes them from a newer copy like data (`src/app/86-live-sync.js`
 `syncMergeTab`; the list is `SHARED_UI_KEYS` in `lib/state-keys.mjs`), so an
 open tab never writes its old theme back over a choice made elsewhere. A
 clash keeps the tab's choice without asking (it is saved next, so it becomes
-the later one). `calPrefs.mode` and `.stream` stay each tab's own.
+the later one). Since 2.16 no field inside a preference stays a tab's own.
 
 ### 9.2 Devices that synced before preferences did
 
@@ -313,7 +406,67 @@ The format does not change (no new `v`). After the update:
 - A **fresh device that joins** writes its first capture at the floor
   (section 2), so the group's preferences win wherever the group has one
   (its theme, its hidden calendars), and what only the new device has is
-  added. Its own view, open task and panel sizes stay as they were.
+  added. Its own view and open task stay as they were.
+
+The same holds for every key and field that 2.16 made synced (`viewMode`,
+`focus`, `sidebarCollapsed`, `paneSizes`, `lastReviewPrompt`,
+`suggestStats`, `travel`, `calPrefs.mode` and `.stream`,
+`homeUI.hideAmounts`): an updated device publishes what it has on its first
+pass, maps merge entry by entry (panel sizes, trips, "not a trip", the
+suggestions' seen list), and a plain value takes the later device's choice.
+A field that used to be device-local inside a record (`calPrefs.mode`) is
+refused by older versions (their schema still says local), so they keep
+their own until updated.
+
+**The person's settings (`profile.json`).** A key that `profile.json` does
+not hold yet (a new file, or a key a later version added: `travel`,
+`locationMode`, `manualLocation`, `time` in 2.16) is written only when this
+computer's value differs from the defaults (`lib/profile.mjs` writeProfile),
+so an updated computer with blank settings never overwrites the other's
+choices; one with its own choice publishes it as an ordinary change. Keys
+only part of which follows the person (`PERSON_PART`): `travel` without
+`sources.geo` (the browser's location permission), `time` with only
+`clock12` (which zone a computer shows stays its own). When the typed place
+is chosen for the weather (`locationMode` manual), applying `manualLocation`
+sets this computer's `location` to it too.
+
+### 9.3 AI chats and proposals
+
+Every AI conversation syncs (`src/app/70-ai-chats.js`; the `chats` blocks of
+the manifest and `SYNC_SPEC`):
+
+| Key or file | Merges | Notes |
+|---|---|---|
+| `taskChat` | per task, messages by id | `{taskId: [{id, role, text, ts}]}`; older messages without an id merge by content |
+| `assistantChat` | `messages` by id, each message's `proposals` by id, per field | the assistant panel's one conversation; a proposal card's state (`pending`, `applied`, `dismissed`, `undone`), applied/skipped parts, `appliedOn: {id, name}` |
+| `chatMeta` | per chat (`task:<id>`, `assistant`), per field; `older` per computer | `clearedAt`, `readAt` (read on one computer is read on all), `older: {deviceId: {n, name}}` |
+| `chatArchive` | never synced | this computer's older messages of a long chat |
+| `file:state/proposals.json` | shared; `proposals` by id, `applied` and `createdIds` per entry | `{version: 1, proposals: [{id, at, status, ops, preview, previewHash, summary, applied: {opIndex: true}, createdIds, ...}]}` (`server/actions/journal.mjs`) |
+
+- **Messages** get an id when they are made and carry their time; every
+  device shows them in time order (ties by id), so two devices sending at the
+  same moment keep both, once each. A reply being written is published once
+  (`pending: true`, `by: {tab, dev, name}`) and replaced by its id when done;
+  progress stays in the tab. A pending reply older than 15 minutes shows as
+  interrupted.
+- **Long chats**: past 100 messages a chat keeps its newest 60 in sync. Each
+  device copies the messages older than its newest 60 into `chatArchive` as
+  soon as it sees them, so a trim on another device loses nothing there, and
+  records in `chatMeta[...].older[<its id>]` how many it keeps; the others
+  show "N older messages on <device>".
+- **Clearing** empties the list (the container stays alive, so a message
+  sent elsewhere at that moment survives) and sets `clearedAt`, which each
+  device applies to its own archive.
+- **Proposals**: the apply path refuses one that is not pending (applied or
+  dismissed on any device), and the ops applied so far merge as a map, so
+  two devices applying different parts both count (all applied = applied).
+  Applying a proposal derives the ids it creates from the proposal id and the
+  op number (`server/actions/model.mjs withIdSeed`): an op whose ids are
+  already in the data was applied elsewhere and is refused, and two offline
+  devices applying the same proposal make the same ids, which merge into one
+  copy. Undo stays on the device that applied it (its undo history).
+- Chats can quote mail: like all synced data they travel end-to-end
+  encrypted, and the sync log never holds their text in the clear.
 
 ## 10. Versions and unknown data
 
@@ -438,7 +591,9 @@ In each device's own `pair.json` (`{v:2, t:"pair", dev, pub, at, join?, approve?
 
 1. New device N: `join: {sid, commit, name, kind, at, exp}` with
    `commit = b64u(SHA-256(JSON ["opendash-pair-commit-v2", sid, pubN, name, kind, nN]))`,
-   `nN` 32 random bytes (b64u). The request lasts 15 minutes.
+   `nN` 32 random bytes (b64u). A session ends after 1 minute without
+   progress; each step gives it another minute (`PAIR_MS`). Requests whose
+   `exp` is up to 20 minutes ahead (older versions wrote 15) are accepted.
 2. Member E (its user clicked "Check it's yours") locks onto that commit and
    writes `approve: {sid, to:N, group, commit, nonce:nE, at, exp}`.
 3. N takes the FIRST answer for its `sid` and reveals `join.open = nN`.
@@ -453,7 +608,30 @@ In each device's own `pair.json` (`{v:2, t:"pair", dev, pub, at, join?, approve?
 Each side answers once per session, and each value is fixed before the other
 side's last value is visible, so a man in the middle cannot search for keys
 that make the codes match: it gets one blind 1-in-a-million guess per pairing
-the user starts. A "no" on either side writes `abort:true`.
+the user starts. A "no" on either side writes `abort:true`; Cancel works at
+every step, including after E has sent the keyring.
+
+**Restarts, renames, removed devices** (2.16):
+
+- Both sides keep the session in their secret store (`sync-e2e-pairing`:
+  sid, nonces, the step), so a restart carries on with the same session.
+- E follows the newest request of the same device: when N's `join` carries
+  another `sid` with a later `at` (N started again: a restart on an older
+  version, a new name), E answers it with a fresh `nE`, fixed before it sees
+  the new opening. N never follows a second answer for one `sid` (that would
+  let the folder pick `nE` after seeing `nN`).
+- A side whose peer's message has been missing from the folder for 15 s
+  ends the session ("the other computer stopped") instead of waiting.
+- E keeps the keyring in `approve.wrap` until N's `keys.json` shows up (at
+  most 10 minutes), however slow the cloud is.
+- A request from a REMOVED device is shown ("A computer you removed, ...,
+  wants to join again"). Removal is permanent, so approving it does not add
+  the old id: the keyring tells N it was removed and N joins under a new
+  identity (adopt), which it announces in its roster; E sees it arrive.
+- A device that is not in a group but finds a member's authenticated
+  "removed" notice (`gone[<its id>]`, section 11.3) starts its pairing or
+  join code again with a fresh identity by itself (a fake notice could only
+  make it pick a new key pair).
 
 **QR offer** (a phone): E writes `offer: {id, exp, iv, ct}`: the keyring
 (`purpose:"offer"`) sealed under `HKDF(T, "opendash-offer-v2", label)`, label
@@ -468,3 +646,43 @@ A device that synced plainly takes a new (fingerprint) id, KEEPS what it has
 deletes its own old folder. The first one makes the group (and shows the
 recovery code); the others join it. Plain records from other devices are not
 taken in once a device is encrypted; their changes arrive once they join.
+
+### 11.7 Join code ("Add a computer", 2.16)
+
+The usual way in: E shows 4 letters from `ABCDEFGHJKLMNPQRSTUVWXYZ` (no I, O,
+0 or 1; 24^4 codes), valid 10 minutes (`CODE_MS`, separate from the
+pairing's idle minute), single use. N types them. A short code can be
+guessed offline from anything derived from it, so nothing that lets anyone
+TEST a guess is ever written to the folder: no code, no hash, no MAC of it.
+Both sides run CPace, a balanced PAKE:
+
+- `G` = Elligator 2 (RFC 9380, curve25519, Z = 2) of
+  `HKDF-SHA-256(code, salt "opendash-joincode-v1", info "opendash-joincode-generator|<sid>", 48 bytes)`
+  read as a big-endian integer mod 2^255 - 19, as a little-endian u-coordinate.
+- Each side picks a fresh X25519 secret `y` and publishes `Y = X25519(y, G)`;
+  `K = X25519(y_self, Y_other)`.
+- Transcript `T = [sid, E, pubE, Y_E, N, pubN, Y_N, name, kind]`;
+  `HKDF(K, salt SHA-256(JSON ["opendash-joincode-transcript-v1", ...T]), info "opendash-joincode-confirm-v1", 64)`:
+  the first 32 bytes are N's tag, the last 32 E's.
+
+In `pair.json`:
+
+1. E: `code: {sid, Y, at, exp}` (and `no: {<N>: <at>}` for wrong answers).
+2. N: `claims: [{sid, to: E, Y, name, kind, tag, at}]`, one per open session it
+   finds (at most 3: a fake session costs N one).
+3. E checks each answer once. A wrong tag counts; after 3 the code is burned
+   (`abort: "burned"`). One device with a right tag, still alone after 3 s,
+   is let in: `code: {sid, done: {to: N, wrap, tag: E's tag}}`, the keyring
+   (`purpose:"joincode"`) wrapped from E to N (label
+   `opendash-joincode-wrap-v1|sid|E|N`). Two devices with right tags: both are
+   refused (`abort: "clash"`, "Two computers tried to use this code").
+4. N checks E's tag (E knew the code), opens the wrap from `pubE` and adopts
+   the keyring (a removed identity comes back as a new one, as in 11.5).
+
+What the folder can do: it sees `Y_E`, `Y_N` and the tags, from which no
+guess can be checked (that would need `y`). A fake E or N gets one guess per
+session (1 in 331,776), and E stops after 3 wrong ones. Someone with write
+access to the folder could only race a legitimate join in the few seconds
+before E acts on it, and only with the right code (which they cannot learn
+from the folder); two right answers are refused. Both sides keep their session
+in the secret store, so a restart carries on.

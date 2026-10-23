@@ -28,8 +28,7 @@ function animProfileAt(look, day, level, ctx, w) {
     if (!pool.length) return null;
     const priority = Math.max(...pool.map(it => it.priority || 1));
     pool = pool.filter(it => (it.priority || 1) === priority);
-    let last = '';
-    try { last = localStorage.getItem('dashboard-opening-last-' + place) || ''; } catch (e) { /* Private mode. */ }
+    const last = typeof seenGet === 'function' ? String(seenGet('openingLast', place) || '') : '';   // the opening rotation (synced, 06-core-seen.js)
     return pool.find(it => it.ref === last) || pool[_animHash(day + '|' + place) % pool.length];
   };
   if (w) {

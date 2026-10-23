@@ -19,11 +19,24 @@
 //
 // The finance folder is <data>/finance unless --finance-dir / config.financeDir say otherwise.
 // Logs carry counts only, never amounts, merchants or descriptions.
+//
+// FINANCES ON EVERY DEVICE (lib/finance-share.mjs; sync on and encrypted): the
+// device that runs the 'bank' job publishes its analysis after every rebuild;
+// on the others GET /api/finance (and every route that reads finances) shows
+// that copy with meta.remote = {name, online, updatedAt}, "Sync bank" (POST
+// /update) asks that device and answers 202 {remote} (src/app/56-remote-jobs.js
+// waits for it), recategorise and budgets are shared edits, an import is
+// refused (409 FINANCE_ELSEWHERE: import it on the device that reads the bank)
+// and the export is built from the copy.
 
 import {
   financeData, financeJob, startFinanceUpdate, categoriseMerchant, getBudgets, setBudgets,
   importUpload, exportTransactions, setFinanceHooks, MAX_UPLOAD_BYTES,
+  localFinanceData, localBudgets, writeBudgetsFile, applyMerchantOverrides,
 } from '../../lib/finance.mjs';
+import { createFinanceShare } from '../../lib/finance-share.mjs';
+import { EDITS_REL, SHARE_REL } from '../../lib/sync/finance-share.mjs';
+import { transactionsCsv } from '../../lib/finance/report.mjs';
 import { updateConnection } from '../../lib/datadir.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
 import { fetchFromSource, describeRejected } from '../../lib/source-adapter.mjs';
@@ -98,16 +111,86 @@ export default function register(app) {
     }
     return out;
   }
+  /** The bank sources and accounts the Finances chips show: {sources, accounts, canSync}. */
+  async function sourcesMeta(analysis) {
+    const st = await sources.status({ discover: false });
+    return {
+      sources: st.sources.filter(s => s.capability === 'bank').map(s => ({ id: s.id, label: s.label, kind: s.kind, colour: s.colour, enabled: s.enabled, state: s.health && s.health.state, lastSync: s.lastSync })),
+      accounts: await accountsMeta(analysis),
+      canSync: st.capabilities.bank.available,
+    };
+  }
+
+  // Finances on every device (lib/finance-share.mjs): publish here, or show what the finance computer published.
+  const share = createFinanceShare({
+    dataDir: (app.ctx.paths && app.ctx.paths.root) || dataDir, log,
+    sync: () => app.ctx.sync || null, remoteJobs: () => app.ctx.remoteJobs || null,
+    hooks: {
+      localData: () => localFinanceData(),
+      extraMeta: async (analysis) => { const m = await sourcesMeta(analysis); return { sources: m.sources, accounts: m.accounts }; },
+      financeDir: () => financeDir(),
+      localBudgets: () => localBudgets(),
+      writeBudgets: (map) => writeBudgetsFile(map),
+      applyOverrides: (list) => applyMerchantOverrides(list),
+      // An account's name, colour or Show in Finances chosen on another device: into this computer's sources.
+      applyAccounts: async (list) => {
+        const svc = finConnectFor(app.ctx);
+        const all = (await sources.all()).filter(s => s.capability === 'bank');
+        let n = 0;
+        for (const x of list) {
+          let cur = null;
+          for (const s of all) for (const a of s.accounts || []) if ((s.preset === 'aureli' || s.kind === 'csv' ? a.id : `${s.id}.${a.id}`) === x.k) cur = a;
+          if (!cur) continue;
+          const patch = {};
+          if (x.name && x.name !== cur.name) patch.name = x.name;
+          if (x.colour && x.colour !== cur.colour) patch.colour = x.colour;
+          if (typeof x.hidden === 'boolean' && x.hidden === (cur.enabled !== false)) patch.enabled = !x.hidden;
+          if (!Object.keys(patch).length) continue;
+          try { await svc.patchAccount(x.k, patch); n++; } catch (e) { log('warn', `finance share: an account edit was not applied (${e.code || 'error'})`); }
+        }
+        return n > 0;
+      },
+    },
+  });
+  app.ctx.financeShare = share;
+  setFinanceHooks({ share });
+  // Edits from the other devices are applied by the finance computer; a device
+  // that just became it publishes. Also every few minutes, and once at start.
+  let shareTimer = null;
+  // This computer's open tabs reload Finances once another device's edits are applied here.
+  const tellTabs = (changed) => {
+    const sse = app.ctx.liveSync;
+    if (changed && sse && typeof sse.emit === 'function') { try { sse.emit('synced-files', { rels: [SHARE_REL], at: Date.now() }); } catch { /* no open tabs */ } }
+  };
+  const applyEdits = () => share.applyEdits().then(tellTabs, () => {});
+  app.onReady(() => {
+    const e = app.ctx.sync;
+    if (e && typeof e.onApplied === 'function') {
+      e.onApplied((info) => {
+        const rels = (info && info.fileRels) || [];
+        if (rels.includes(EDITS_REL)) applyEdits();
+        else if (rels.includes('roles.json') || rels.includes('accounts.json')) share.publish();
+      });
+    }
+    const first = setTimeout(applyEdits, 15000); first.unref?.();
+    shareTimer = setInterval(applyEdits, 5 * 60 * 1000); shareTimer.unref?.();
+  });
+  app.onClose(() => { clearInterval(shareTimer); });
 
   app.route({
     path: '/api/finance', method: 'GET', methodError: 'GET only',
     handler: async () => {
       const d = await financeData();
+      const r = d.meta && d.meta.remote;
       try {
-        const st = await sources.status({ discover: false });
-        d.meta.sources = st.sources.filter(s => s.capability === 'bank').map(s => ({ id: s.id, label: s.label, kind: s.kind, colour: s.colour, enabled: s.enabled, state: s.health && s.health.state, lastSync: s.lastSync }));
-        d.meta.accounts = await accountsMeta(d.analysis);
-        d.meta.canSync = st.capabilities.bank.available;
+        if (r && !r.waiting) {
+          // The finance computer's copy: its accounts and sources (with this device's edits not applied there yet).
+          d.meta.accounts = await share.accountOverlay(d.meta.accounts || []);
+          d.meta.canSync = true;
+        } else {
+          Object.assign(d.meta, await sourcesMeta(d.analysis));
+          if (r && !r.trial) d.meta.canSync = true;
+        }
       } catch (e) { log('warn', `finance: sources meta failed (${e.message})`); }
       return d;
     },
@@ -125,14 +208,28 @@ export default function register(app) {
     path: '/api/finance/update', method: 'POST', methodError: 'POST only',
     handler: async (c) => {
       const body = await c.body({ allowEmpty: true });
+      // Another device reads the bank: it runs the update (asked by name), then publishes.
+      const v = c.internal ? null : await share.view().catch(() => null);
+      if (v && v.kind !== 'local') {
+        const name = (v.host && v.host.name) || 'your other computer';
+        if (body.automatic === true) return { skipped: true, reason: 'finance-computer', runsOn: name, message: `Finance comes from ${name}.` };
+        const r = await share.ask(body, c);
+        return c.json(r.status, r.body);
+      }
       // {automatic: true} ("Start my day"): only on the main computer (lib/main-computer.mjs).
       const mc = app.ctx.mainComputer ? await app.ctx.mainComputer.gate('bank', { automatic: body.automatic === true }) : { run: true };
       if (!mc.run) return skippedBody(mc);
-      const r = startFinanceUpdate({ full: body.full === true, bank: body.bank !== false });
+      // ── host ── A click: the banks read through Claude that the Claude host reads too are left to it
+      // (lib/remote-jobs.mjs hostFetch; only once the money itself syncs). c.internal: asked by another
+      // device, or this computer's own fallback for those banks (body.only).
+      const hf = body.automatic !== true && body.bank !== false && !c.internal && app.ctx.remoteJobs ? await app.ctx.remoteJobs.hostFetch('fetch:finance', body, c).catch(() => ({ skip: [], asked: [] })) : { skip: [], asked: [] };
+      const only = c.internal && Array.isArray(body.only) ? body.only.filter(x => typeof x === 'string').slice(0, 10) : null;
+      const r = startFinanceUpdate({ full: body.full === true, bank: body.bank !== false, ...(hf.skip.length ? { skip: hf.skip } : {}), ...(only && only.length ? { only } : {}), ...(c.internal && body.manual === true ? { manual: true } : {}) });
       if (r.error) throw new HttpError(400, r.error);
       if (!r.started) return c.json(409, { error: 'An update is already running.', job: r.job });
       log('note', `finance update started${body.bank === false ? ' (no bank)' : body.full === true ? ' (full)' : ''}`);
-      return c.json(202, { job: r.job });
+      const asked = hf.asked.length ? { asked: hf.asked, message: `Asking ${[...new Set(hf.asked.map(a => a.runsOn))].join(' and ')} to update your bank.` } : hf.message ? { message: hf.message } : {};
+      return c.json(202, { job: r.job, ...asked });
     },
   });
 
@@ -142,6 +239,11 @@ export default function register(app) {
     maxBody: Math.ceil(MAX_UPLOAD_BYTES * 4 / 3) + 4096,
     handler: async (c) => {
       const body = await c.body();
+      const v = await share.view().catch(() => null);
+      if (v && v.kind !== 'local') {
+        const name = (v.host && v.host.name) || 'your other computer';
+        return c.json(409, { code: 'FINANCE_ELSEWHERE', runsOn: name, error: `Your finances come from ${name}, so a CSV is imported there: open OpenDash on ${name} and import it in Finances. It shows here after that.` });
+      }
       const r = await importUpload({ name: body.name, data: body.data, force: body.force === true });
       log('note', `finance import: ${r.rows} rows, ${r.imported} new`);
       return r;
@@ -161,13 +263,26 @@ export default function register(app) {
   app.route({ path: '/api/finance/budgets', method: 'GET', methodError: 'GET or PUT only', handler: () => getBudgets() });
   app.route({
     path: '/api/finance/budgets', method: 'PUT', methodError: 'GET or PUT only',
-    handler: async (c) => setBudgets((await c.body()).budgets),
+    // base: the budgets the page started from (with sync on, only what it changed is written).
+    handler: async (c) => { const b = await c.body(); return setBudgets(b.budgets, b.base && typeof b.base === 'object' ? b.base : null); },
   });
+
+  /** The export on a device that shows another device's finances: built from that copy. */
+  function mirrorCsv(analysis) {
+    const exclude = Array.isArray(analysis.exclude_from_spending) ? analysis.exclude_from_spending : ['Income', 'Internal transfers'];
+    const rows = (analysis.transactions || []).filter(t => t && typeof t.d === 'string').map(t => {
+      const amount = Number(t.a) || 0;
+      return { date: t.d, n: Date.parse(t.d + 'T12:00:00Z') / 864e5, merchant: String(t.m || ''), category: String(t.c || 'Uncategorised'), amount,
+        spend: exclude.includes(t.c) ? 0 : -amount, account: String(t.acct || ''), subcategory: '', memo: String(t.memo || ''), source: '' };
+    });
+    return transactionsCsv(rows);
+  }
 
   app.route({
     path: '/api/finance/export', method: 'GET', methodError: 'GET only', sameOrigin: true,
     handler: async (c) => {
-      const csv = await exportTransactions();
+      const d = await financeData();
+      const csv = d.meta && d.meta.remote && !d.meta.remote.waiting && d.analysis ? mirrorCsv(d.analysis) : await exportTransactions();
       const day = clockTodayIn(canonZone((c.getConfig() || {}).timezone) || 'UTC');   // the home day, not UTC (travel spec S7)
       c.send(200, '﻿' + csv, 'text/csv; charset=utf-8', { 'Content-Disposition': `attachment; filename="transactions-${day}.csv"` });
     },

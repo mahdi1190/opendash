@@ -12,7 +12,9 @@
    under Off / Reduced / Animations off; the level (Settings > Animations >
    Intensity) sets the weight and the particle count (delightAllowed).
    Variants rotate per day and never repeat the last one shown
-   (localStorage 'dashboard-delight-recent', UI only, per device).
+   (localStorage 'dashboard-delight-recent', UI only, per device: rolling play
+   counts that a last-writer-wins merge would lose). The once-a-day inbox-zero
+   celebration is a synced flag (state.seen.inboxZero, 06-core-seen.js).
    ============================================================ */
 const _DL_RECENT_KEY = 'dashboard-delight-recent';
 const _DL_WORDS = {
@@ -99,11 +101,12 @@ function delightInboxSeen(count) {
   if (count > ib.max) ib.max = count;
   const all = _dlLoad(); all.inbox = ib; _dlSave(all);
   if (count === 0 && ib.max >= 3 && typeof achNote === 'function') achNote('inbox-zero');   // the achievement (78-achievements.js); motion or not
-  if (count !== 0 || ib.max < 5 || ib.zeroShown) return;
+  if (count !== 0 || ib.max < 5 || ib.zeroShown || (typeof seenDay === 'function' && seenDay('inboxZero'))) return;   // once a day on any computer (06-core-seen.js)
   if (typeof _pointer === 'undefined' || Date.now() - _pointer.at > 4000) return;   // reached by the user's own action, not a sync
   const lv = _dlLevel();
   if (lv === 'off' || lv === 'reduced') return;
   ib.zeroShown = true; all.inbox = ib; _dlSave(all);
+  if (typeof seenMarkDay === 'function') seenMarkDay('inboxZero');
   const pick = Delight.delightFor(null, { event: 'inbox-zero' }, rec.m, todayStr());
   if (pick && _dlUnblocked(pick)) _dlPlay(pick, rec, lv, {});
 }

@@ -42,6 +42,7 @@ import { nearDuplicate } from './find.mjs';
 import { clockFor, systemZone, timeStoreFor } from '../../lib/clock.mjs';
 import {
   ActionError, SOURCES, clock, clone, stable, cleanLine, normTag, tagCounts, tagRegistry, closest, truncate, newActivityId, newToken, weekdayOf,
+  withIdSeed, seedOp,
 } from './model.mjs';
 
 export const MAX_OPS = 200;
@@ -151,7 +152,14 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
   };
 
   /** Run the ops on a copy of `cur`. Never throws ActionErrors: returns them. */
-  function execute(cur, items, { source, client, today, timeNow }) {
+  function execute(cur, items, m) {
+    // A stored proposal's ops make ids from the proposal (model.mjs withIdSeed): r.issued lists them per op.
+    if (!m.idSeed) return executeOps(cur, items, m);
+    const { value, issued } = withIdSeed(m.idSeed, () => executeOps(cur, items, m));
+    value.issued = issued;
+    return value;
+  }
+  function executeOps(cur, items, { source, client, today, timeNow, idSeed }) {
     const s = clone(cur);
     s.custom = Array.isArray(s.custom) ? s.custom : [];
     const rec = recorder(s);
@@ -210,6 +218,7 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
     };
     for (const it of items) {
       current = it.index;
+      if (idSeed) seedOp(idSeed.idx && idSeed.idx[it.index] !== undefined ? idSeed.idx[it.index] : it.index);   // its number in the proposal
       try {
         const r = it.def.run(ctx, it.params) || { summary: it.def.name, changes: [] };
         preview.push({ index: it.index, op: it.def.name, summary: r.summary, changes: r.changes || [], ...(r.created ? { created: r.created } : {}) });
@@ -331,14 +340,28 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
       if (key) { const prev = await replay(); if (prev) { response = prev; return null; } }
       // Under the state lock (the journal is updated under it too): two clicks
       // on the same proposal, or two overlapping parts of it, apply once.
+      // The proposals file is synced, so this also refuses one applied or dismissed on another computer.
       if (internal.proposalId) {
         const pr = await journal.getProposal(internal.proposalId);
         if (!pr || pr.status !== 'pending') throw new ActionError('ALREADY_APPLIED', `that proposal is ${pr ? pr.status : 'gone'}`, { field: 'proposalId' });
         const done = new Set(Array.isArray(pr.appliedIdx) ? pr.appliedIdx : []);
         if ((internal.proposalIdx || []).some(i => done.has(i))) throw new ActionError('ALREADY_APPLIED', 'some of these changes were applied already', { field: 'only' });
+        m.idSeed = { base: internal.proposalId, at: Date.parse(pr.at) || 0, idx: internal.proposalIdx || null };
       }
       const r = execute(cur, items, m);
       if (r.errors.length) throw batchError(r.errors);
+      // Guard by id: an op whose ids (derived from the proposal) are already in the
+      // data ran before, on another computer whose "applied" has not arrived yet
+      // (its tasks and notes synced first). Those ops count as applied; nothing runs twice.
+      if (r.issued && r.issued.length) {
+        const text = JSON.stringify(cur);
+        const ran = [...new Set(r.issued.filter(x => text.includes(JSON.stringify(x.id))).map(x => Number(x.op)))].filter(Number.isInteger).sort((a, b) => a - b);
+        if (ran.length) {
+          const pid = internal.proposalId;
+          await journal.update((j) => { if (j.proposals[pid]) markProposalOps(j.proposals[pid], ran, [], null); }).catch(() => {});
+          throw new ActionError('ALREADY_APPLIED', `${ran.length === 1 ? 'one of these changes was' : `${ran.length} of these changes were`} applied already (on another of your computers)`, { field: internal.proposalIdx ? 'only' : 'proposalId' });
+        }
+      }
       const ph = previewHash(r.preview);
       if (internal.trustedPreviewHash) {
         if (internal.trustedPreviewHash !== ph) {

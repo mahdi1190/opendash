@@ -91,6 +91,7 @@ classic `<script>`. That means:
 | Debug banner | `03-core-debug.js` | Core (A1) |
 | Server persistence (versions, 409, beacon), capability flags (`AI_AVAILABLE`, `GOOGLE_*`) | `04-core-persistence.js` | Core (A1) |
 | `ensureStateDefaults`, `let state`, in-browser legacy shape fixes, global UI vars | `05-core-state-init.js` | Core (A1) |
+| What used to be per browser, now synced (2.16): seen / played / dismissed flags `seenGet`/`seenSet`/`seenDay`/`seenMarkDay`/`seenOnce`/`seenMarkOnce`/`seenAll` (`state.seen`), preferences `uiPrefGet`/`uiPrefSet` (`state.uiPrefs`), drafts `draftGet`/`draftSet`/`draftDel` (`state.drafts`); the pre-boot outbox, the one-time fold of the old localStorage keys (`uiSharedBoot`, 99-boot.js) and `uiSharedAfterRender` (80-main-render.js). Never add a new localStorage flag: use these | `06-core-seen.js` | Core (A1) |
 | Date helpers (`fmtDate`, `todayStr`, `daysUntil`, `dueLabel`...) | `08-utils-dates.js` | Core (A1) |
 | Top-bar widget strip (`renderTopbar` fills `#countdowns`): widget model `tbNormalize`/`tbList`/`tbCompute`/`tbSave`/`tbUpdate`, drag to reorder, "+N" overflow, the shared next-events cache `calendarSoon()` | `10-header.js` | Home / top-bar builder |
 | "Customise top bar" editor `openTopbarCustomiser({select, add})` (+ old `openCountdownEditor(id)`), symbol list `TB_SYMBOLS`, `uiDateField()` (date button + mini month, used by Home too) | `10-header-editor.js` | Home / top-bar builder |
@@ -212,6 +213,7 @@ classic `<script>`. That means:
 | Review section (`#view=review[:today\|evening\|week\|history]`, Home group): tabs, the 7-step weekly review, History; `reviewSave(op)` | `77-brief-review.js` | Brief + Review |
 | Brief hooks: Home banner (`briefHomeBanner`), top-bar pill, sidebar Review block, palette commands, Settings > Morning brief and > Animations (gallery, keyword rules, overrides), weather town (`briefSettingsLocationRow`, `briefOnboardingLocationField`), celebrations (`animCelebrate`, `animBurst`), hover scenes, `animPanelHeader` (event panel), `reviewMaybePrompt` | `78-brief-hooks.js` | Brief + Review |
 | `serverAsk`/`askAI`/`askAIJson`, per-task chat | `70-ai.js` | AI assistant / MCP |
+| Synced AI chats: message ids and time order, a reply published once then replaced by id, long chats keep their older messages on the computer that has them (`chatArchive`, "N older messages on <computer>"), clear everywhere, synced read state, clash settling for chats (`chatSettleConflicts`); proposals are the synced `state/proposals.json` (`server/actions/journal.mjs`), applied with ids derived from the proposal (`withIdSeed`) | `70-ai-chats.js`; SYNC_FORMAT.md 9.3 | Sync / chats |
 | Context menu, modal, shortcuts sheet, bulk import, templates modal, weekly review | `75-modals.js` | Shell/Design (+ the area that owns each modal) |
 | `renderMain`, `_renderMainBody` (dispatch), `render`, bulk bar | `80-main-render.js` | Core (A1) / Shell |
 | Live sync: `syncMerge3` (pure three-way merge), SSE client, 409 merge, conflict dialog, "Updated by" toast + Undo | `86-live-sync.js`, `styles/86-live-sync.css` | Actions/MCP/Live sync (A3) |
@@ -1154,6 +1156,14 @@ Files: `lib/finance.mjs`, `lib/finance/*`, `server/routes/finance.mjs`,
   the page is in memory; UI preferences go to localStorage `dash-finance-ui-v1`.
 - LLMs see finances read-only (`get_finance_summary`, totals only); there are no
   finance write ops in the actions layer on purpose.
+- **On every device** (sync on and encrypted; docs/dev/MULTI_DEVICE.md
+  "Finances on every device"): the computer that runs the `bank` job publishes
+  its analysis after every rebuild (`finance-share/finance.json`, packed per
+  month by `lib/sync/finance-share.mjs`); `financeData()` answers from that copy
+  on the others (`meta.remote`), whose Sync bank asks it (`fetch:finance`), and
+  categories, budgets and account edits are shared edits
+  (`finance-share/edits.json`) it applies. `lib/finance-share.mjs` is the
+  service; the route wires it (`app.ctx.financeShare`).
 - **Money brief wording** (optional, opt-in from the Overview's "Rewrite with
   Claude"): `GET /api/finance/brief?mode=cycle|month[&ai=1|&regenerate=1]`
   (same-origin only) runs the page's own model (`lib/finance/brief.mjs`

@@ -22,12 +22,21 @@
    changes that link them to tasks follow, with Undo). The assistant suggests
    several things at once, including people from meetings and tasks who are not in
    People yet (list_link_suggestions; ignored names never come back).
-   Conversation memory: this tab's session (sessionStorage), last 40 messages;
-   the server gets the last 12 turns with each question. Model choice is kept
-   on this device (Opus 5.5 medium by default; Haiku 4.5 for speed).
+   Conversation memory: ONE conversation, synced to every computer and tab
+   (state.assistantChat, 70-ai-chats.js): messages by id in time order, each
+   proposal's state with it (applied, skipped, dismissed), and the proposals
+   themselves in the synced state/proposals.json, so a change proposed on one
+   computer can be applied or dismissed on the other and shows as such on both
+   (the server refuses one that is no longer pending). A reply being written is
+   published once ("Answering on Home laptop…") and replaced by its id when
+   done; its progress stays in this tab. "New conversation" clears it
+   everywhere. A long conversation keeps its newest messages synced and the
+   older ones on the computer that has them. The server gets the last 12 turns
+   with each question. Model choice follows you to your other computers
+   (state.uiPrefs.assistantModel, 06-core-seen.js; Opus 5.5 medium by default;
+   Haiku 4.5 for speed).
    ============================================================ */
 const _ASST_KEY = 'dashboard-assistant-v1';
-const _ASST_MODEL_KEY = 'dashboard-assistant-model';
 const _ASST_MODELS_FALLBACK = [
   { id: 'claude-opus-5-5', effort: 'medium', label: 'Opus 5.5', hint: 'Medium effort' },
   { id: 'claude-sonnet-5', effort: 'medium', label: 'Sonnet 5', hint: 'Medium effort' },
@@ -40,24 +49,60 @@ const _ASST_SUGGESTIONS = [
   ['users', 'What am I waiting on from other people?'],
   ['lightbulb', 'Suggest a few things to tidy up, including people to add'],
 ];
-let _asst = { el: null, open: false, messages: [], busy: false, ctrl: null, models: null, prevFocus: null, pollTimer: null, unsub: null };
+// This tab's own: live (reply id -> {status, interim} while it is written),
+// inflight (replies this tab is writing), applying (proposal ids being applied
+// here). None of it is saved: another computer sees the published reply and
+// the final state of each proposal.
+let _asst = { el: null, open: false, busy: false, ctrl: null, models: null, prevFocus: null, pollTimer: null, unsub: null,
+  live: new Map(), inflight: new Set(), applying: new Set(), loaded: false };
+
+/** The synced messages (write here) and what the panel shows (with this computer's older ones). */
+function _asstMsgs() { return chatList('assistant'); }
+function _asstShown() { return chatView('assistant').messages; }
+function _asstMsgById(id) { return _asstMsgs().find(m => m && m.id === id) || null; }
+/** The current copy of a proposal: a newer copy of the state (another tab, another computer) replaces the objects. */
+function _asstPLive(p) {
+  if (!p || !p.id) return p;
+  for (const m of _asstMsgs()) for (const q of (m && m.proposals) || []) if (q && q.id === p.id) return q;
+  return p;
+}
+/** A proposal's state as this tab shows it ('applying' only while this tab applies it). */
+function _asstPS(p) { return p && _asst.applying.has(p.id) ? 'applying' : ((p && p.state) || 'pending'); }
 
 function _asstLoad() {
+  if (_asst.loaded) return;
+  _asst.loaded = true;
+  let changed = false;
+  // The conversation used to live in this tab's session: bring it into the synced one, once.
   try {
     const s = JSON.parse(sessionStorage.getItem(_ASST_KEY) || 'null');
-    if (s && Array.isArray(s.messages)) {
-      _asst.messages = s.messages.slice(-40);
-      for (const m of _asst.messages) if (m.pending) { m.pending = false; if (!m.text && !m.error) m.error = { code: 'CANCELLED', message: 'Interrupted (the page was reloaded).' }; }
+    if (s && Array.isArray(s.messages) && s.messages.length && !_asstMsgs().length) {
+      chatSetList('assistant', s.messages.slice(-40).filter(m => m && typeof m === 'object').map(m => Object.assign({}, m, { id: m.id || chatNewId('m'), ts: Number(m.ts) || Date.now() })));
+      changed = true;
     }
-  } catch (e) { _asst.messages = []; }
+    sessionStorage.removeItem(_ASST_KEY);
+  } catch (e) { /* nothing to bring over */ }
+  // A reply this tab was writing when it was reloaded will never finish.
+  if (_asstInterruptOwn()) changed = true;
+  if (changed) _asstSave();
 }
-function _asstSave() {
-  try { sessionStorage.setItem(_ASST_KEY, JSON.stringify({ messages: _asst.messages.slice(-40) })); } catch (e) { /* storage full: memory only */ }
+/** Replies left pending by THIS tab (it was reloaded): interrupted. True when any changed. */
+function _asstInterruptOwn() {
+  let changed = false;
+  const tab = typeof chatTabId === 'function' ? chatTabId() : null;
+  for (const m of _asstMsgs()) {
+    if (!m || !m.pending || _asst.inflight.has(m.id) || !(m.by && m.by.tab === tab)) continue;
+    m.pending = false;
+    if (!m.text && !m.error) m.error = { code: 'CANCELLED', message: 'Interrupted (the page was reloaded).' };
+    changed = true;
+  }
+  return changed;
 }
+function _asstSave() { chatSave('assistant'); }
 function _asstModelChoice() {
   const list = _asst.models || _ASST_MODELS_FALLBACK;
   let id = null;
-  try { id = localStorage.getItem(_ASST_MODEL_KEY); } catch (e) { id = null; }
+  try { id = uiPrefGet('assistantModel') || null; } catch (e) { id = null; }   // follows you to your other computers (06-core-seen.js)
   return list.find(m => m.id === id) || list[0];
 }
 async function _asstLoadModels() {
@@ -161,7 +206,7 @@ function _asstProposalHtml(p) {
 // failed request never loses what was ticked.
 const _asstSelStores = new WeakMap();
 /** Two or more changes still open: tick which to apply. */
-function _asstSelectable(p) { return (p.preview || []).length > 1 && ['pending', 'error', 'applying'].includes(p.state || 'pending'); }
+function _asstSelectable(p) { return (p.preview || []).length > 1 && ['pending', 'error', 'applying'].includes(_asstPS(p)); }
 /** deps[i] = the changes op i needs ($ref to a task another change creates). */
 function _asstDeps(p) {
   const n = (p.preview || []).length;
@@ -230,9 +275,9 @@ function _asstMountSelect(msg, p, card) {
       return { also: users.map(String), note: users.length ? `Also unticked ${n(users.length)} that need${users.length === 1 ? 's' : ''} it` : '' };
     },
     normalize: (on) => { for (const id of [...on]) for (const k of opsTickClosure(deps, Number(id))) if (open(k)) on.add(String(k)); },
-    onChange: (on) => { p.sel = [...on].map(Number); _asstSave(); },
+    onChange: (on) => { _asstPLive(p).sel = [...on].map(Number); _asstSave(); },
   });
-  if (p.state === 'applying') sl.setBusy(true);
+  if (_asstPS(p) === 'applying') sl.setBusy(true);
   card.classList.add('has-sel');
   list.addEventListener('click', (e) => {
     const b = e.target.closest('[data-row-act]'); if (!b || !list.contains(b)) return;
@@ -249,7 +294,8 @@ function _asstWithUsers(p, i) {
 }
 /** One change's own button: apply it now (with Undo), skip it, restore it, or open the person editor prefilled. */
 async function _asstRowAct(msg, p, i, act, btn) {
-  if (p.state === 'applying') return;
+  p = _asstPLive(p);
+  if (_asstPS(p) === 'applying') return;
   if (act === 'apply') return _asstApplySome(msg, p, [i]);
   if (act === 'skip' || act === 'unskip') {
     // Skipping a change skips the ones that need it; restoring one restores it alone.
@@ -280,11 +326,14 @@ async function _asstPersonAdded(msg, p, i, pid) {
   const users = _asstWithUsers(p, i).filter(k => k !== i);
   const links = users.map(k => (p.preview || []).find(x => x.index === k)).filter(op => op && op.op === 'task.link_person');
   const ops = links.map(op => { const c = (op.changes || []).find(x => x.id) || {}; return c.id ? { op: 'task.link_person', id: c.id, person: pid } : null; }).filter(Boolean);
+  p = _asstPLive(p);
   p.handled = [...new Set([...(p.handled || []), i])];
   p.sel = (p.sel || []).filter(k => k !== i);
+  _asstSave();
   if (ops.length && typeof actionsApply === 'function') {
     const j = await actionsApply(ops, { client: 'dashboard assistant', done: `Linked to ${ops.length} task${ops.length === 1 ? '' : 's'}` });
-    if (j) { const idx = links.map(op => op.index); p.handled = [...new Set([...p.handled, ...idx])]; p.sel = (p.sel || []).filter(k => !idx.includes(k)); }
+    p = _asstPLive(p);
+    if (j) { const idx = links.map(op => op.index); p.handled = [...new Set([...(p.handled || []), i, ...idx])]; p.sel = (p.sel || []).filter(k => k !== i && !idx.includes(k)); }
   }
   _asstSettle(p); _asstSave(); _asstPaint();
 }
@@ -296,19 +345,20 @@ function _asstSettle(p) {
   p.state = (p.applied || []).length || (p.handled || []).length ? 'applied' : 'dismissed';
 }
 function _asstProposalCard(msg, p) {
+  const ps = _asstPS(p);
   const card = document.createElement('div');
-  card.className = 'asst-prop card is-' + (p.state || 'pending');
+  card.className = 'asst-prop card is-' + ps;
   const selectable = _asstSelectable(p);
   const n = (p.preview || []).reduce((a, op) => a + Math.max(1, (op.changes || []).length), 0);
   const badge = { pending: '', applying: '<span class="status busy">Applying…</span>', applied: `<span class="status ok">Applied</span>`,
-    undone: '<span class="status">Undone</span>', dismissed: '<span class="status">Dismissed</span>', error: '<span class="status err">Not applied</span>' }[p.state || 'pending'] || '';
+    undone: '<span class="status">Undone</span>', dismissed: '<span class="status">Dismissed</span>', error: '<span class="status err">Not applied</span>' }[ps] || '';
   card.innerHTML = `
     <div class="asst-prop-h">${icon('wand-sparkles', 'i-sm')}<b>Proposed change${n === 1 ? '' : 's'}</b><span class="subtle">${n} change${n === 1 ? '' : 's'}</span><span class="spacer"></span>${badge}</div>
     ${p.note ? `<div class="asst-prop-note">${esc(p.note)}</div>` : ''}
     ${p.notice ? `<div class="callout warn">${icon('info', 'i-sm')}<span>${esc(p.notice)}</span></div>` : ''}
     <div class="asst-pv">${selectable || (p.skipped || []).length || (p.handled || []).length ? _asstOpRowsHtml(p) : _asstProposalHtml(p)}</div>
     ${(p.warnings || []).length ? `<div class="asst-prop-warn subtle">${p.warnings.slice(0, 3).map(w => esc(w.message || w)).join('<br>')}</div>` : ''}
-    ${p.needsConfirm && p.state === 'pending' && !(p.applied || []).length ? `<div class="callout danger">${icon('triangle-alert', 'i-sm')}<span>${esc(_asstConfirmText(p))} You can still undo it.</span></div>` : ''}
+    ${p.needsConfirm && ps === 'pending' && !(p.applied || []).length ? `<div class="callout danger">${icon('triangle-alert', 'i-sm')}<span>${esc(_asstConfirmText(p))} You can still undo it.</span></div>` : ''}
     ${p.error ? `<div class="callout danger">${icon('circle-alert', 'i-sm')}<span>${esc(p.error)}</span></div>` : ''}
     <div class="asst-prop-f"></div>`;
   const f = card.querySelector('.asst-prop-f');
@@ -319,33 +369,33 @@ function _asstProposalCard(msg, p) {
   };
   // Parts applied one at a time: an Undo for each.
   const parts = (p.parts || []).filter(x => x.state === 'applied' && x.undo);
-  const partUndos = () => parts.forEach((x) => btn(parts.length > 1 || selectable ? `Undo ${x.idx.length} applied` : 'Undo', 'btn-secondary', 'undo-2', () => _asstUndoPart(msg, p, x)));
+  const partUndos = () => parts.filter(x => _asstUndoHere(x)).forEach((x) => btn(parts.length > 1 || selectable ? `Undo ${x.idx.length} applied` : 'Undo', 'btn-secondary', 'undo-2', () => _asstUndoPart(msg, p, x)));
   if (selectable) {
     // Apply selected / Apply all live in the selection bar above the changes.
     _asstMountSelect(msg, p, card);
-    if (p.state !== 'applying') btn((p.applied || []).length ? 'Dismiss the rest' : 'Dismiss', 'btn-ghost', null, () => _asstDismiss(msg, p));
+    if (ps !== 'applying') btn((p.applied || []).length ? 'Dismiss the rest' : 'Dismiss', 'btn-ghost', null, () => _asstDismiss(msg, p));
     else f.insertAdjacentHTML('beforeend', '<span class="spinner"></span><span class="subtle">Applying…</span>');
     f.insertAdjacentHTML('beforeend', '<span class="spacer"></span>');
     partUndos();
-  } else if (p.state === 'pending' || p.state === 'error') {
+  } else if (ps === 'pending' || ps === 'error') {
     const one = (p.preview || [])[0];
     const draft = (p.preview || []).length === 1 ? _asstPersonDraft(p, one) : null;
     if (draft && typeof openPersonEditor === 'function') {
       btn(`Add ${draft.name.split(/\s+/)[0]}…`, 'btn-primary', 'user-plus', () => openPersonEditor(null, { id: draft.id || undefined, name: draft.name, emails: draft.email ? [draft.email] : [] }, {
-        stay: true, onSaved: () => { _asstDismiss(msg, p).then(() => { p.state = 'applied'; p.note = p.note || null; _asstSave(); _asstPaint(); }); },
+        stay: true, onSaved: () => { _asstDismiss(msg, p).then(() => { const q = _asstPLive(p); q.state = 'applied'; q.note = q.note || null; _asstSave(); _asstPaint(); }); },
       }));
       btn('Apply as it is', 'btn-secondary', 'check', () => _asstApply(msg, p));
     } else btn('Apply', p.needsConfirm ? 'btn-danger' : 'btn-primary', 'check', () => _asstApply(msg, p));
     btn('Dismiss', 'btn-ghost', null, () => _asstDismiss(msg, p));
-  } else if (p.state === 'applied' && parts.length > 1) {
-    f.insertAdjacentHTML('beforeend', `<span class="subtle">${icon('circle-check', 'i-sm')} Done. </span>`);
+  } else if (ps === 'applied' && parts.length > 1) {
+    f.insertAdjacentHTML('beforeend', `<span class="subtle">${icon('circle-check', 'i-sm')} Done${_asstElsewhere(p)}. </span>`);
     partUndos();
-  } else if (p.state === 'applying') {
+  } else if (ps === 'applying') {
     f.innerHTML = '<span class="spinner"></span><span class="subtle">Applying…</span>';
-  } else if (p.state === 'applied') {
-    f.insertAdjacentHTML('beforeend', `<span class="subtle">${icon('circle-check', 'i-sm')} Done. </span>`);
-    if (p.undo) btn('Undo', 'btn-secondary', 'undo-2', () => _asstUndo(msg, p));
-  } else if (p.state === 'undone') {
+  } else if (ps === 'applied') {
+    f.insertAdjacentHTML('beforeend', `<span class="subtle">${icon('circle-check', 'i-sm')} Done${_asstElsewhere(p)}. </span>`);
+    if (p.undo && _asstUndoHere(p)) btn('Undo', 'btn-secondary', 'undo-2', () => _asstUndo(msg, p));
+  } else if (ps === 'undone') {
     f.insertAdjacentHTML('beforeend', `<span class="subtle">${icon('undo-2', 'i-sm')} Undone.</span>`);
   }
   return card;
@@ -397,32 +447,61 @@ function _asstConfirmText(p) {
   if (bulk) return 'This changes a lot at once (more than 25 tasks or changes).';
   return 'This includes moving something to the bin, deleting or merging.';
 }
+// Every await below may return to a NEWER copy of the state (the apply itself
+// makes the server announce one; another computer may answer too): the
+// proposal is looked up again by id (_asstPLive) before it is changed, or the
+// change would land on an object that is no longer in the state.
+/** This computer, recorded with what it applies (sync on): undo works only where the change was applied. */
+function _asstHere() { const d = typeof chatDevice === 'function' ? chatDevice() : null; return d ? { id: d.id, name: d.name } : null; }
+/** Can this computer undo it (x: a proposal or one applied part)? Its undo history is on the computer that applied it. */
+function _asstUndoHere(x) { const on = x && x.appliedOn; const d = typeof chatDevice === 'function' ? chatDevice() : null; return !on || !d || on.id === d.id; }
+/** " on Home laptop" when another computer applied it (escaped), else ''. */
+function _asstElsewhere(p) { const on = p && p.appliedOn; const d = typeof chatDevice === 'function' ? chatDevice() : null; return on && d && on.id !== d.id ? ' on ' + esc(on.name || 'another computer') : ''; }
+/** The current copy of one applied part (found by when it was applied and what it holds). */
+function _asstPartLive(p, part) {
+  const key = (x) => (x ? (x.at || 0) + ':' + (x.idx || []).join(',') : '');
+  return ((p && p.parts) || []).find(x => key(x) === key(part)) || part;
+}
 async function _asstApply(msg, p) {
   if (p.needsConfirm) {
     const ok = await confirmDialog({ title: 'Apply these changes?', text: _asstConfirmText(p) + ' You can undo it afterwards.', confirmLabel: 'Apply', danger: true });
     if (!ok) return;
   }
-  p.state = 'applying'; p.error = null; p.notice = null; _asstPaint();
+  p = _asstPLive(p);
+  if (_asstPS(p) === 'applying' || !['pending', 'error'].includes(p.state || 'pending')) { _asstPaint(); return; }   // applied or dismissed meanwhile (here or on another computer)
+  _asst.applying.add(p.id);
+  p.error = null; p.notice = null; _asstPaint();
   try {
     const j = await _asstPost('/api/actions', { proposalId: p.id, source: 'assistant', client: 'dashboard assistant' });
-    p.state = 'applied'; p.undo = j.undo || null;
+    p = _asstPLive(p);
+    p.state = 'applied'; p.undo = j.undo || null; p.appliedOn = _asstHere();
+    _asst.applying.delete(p.id);
+    _asstSave();
     await _asstAdopt(j.version);
   } catch (e) {
+    p = _asstPLive(p);
     if (e.code === 'PREVIEW_CHANGED') {
       try {
         const r = await fetch('/api/query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'proposal.get', params: { id: p.id } }) });
         const fresh = await r.json();
+        p = _asstPLive(p);
         if (r.ok && fresh && fresh.preview) { p.preview = fresh.preview; p.needsConfirm = !!fresh.needsConfirm; p.reasons = Array.isArray(fresh.reasons) ? fresh.reasons : []; }
       } catch (e2) { /* keep the old preview */ }
       p.state = 'pending';
       p.notice = 'Your tasks changed since this was proposed, so here is what it would do now. Check it, then apply again.';
     } else if (e.code === 'ALREADY_APPLIED') {
-      p.state = 'applied';
+      // Applied (or dismissed) already, maybe on another computer: show what the server knows, all or part of it.
+      p.state = 'pending';
+      await _asstRefreshProposal(p);
+      p = _asstPLive(p);
+      if (p.state === 'pending') p.notice = 'Some of these were already applied on another of your computers. Check the rest, then apply again.';
     } else {
       // Nothing was applied (a batch is all-or-nothing). The ticks stay, so Apply tries again.
       p.state = 'error'; p.error = netErrorMessage(e, 'Could not apply.');
       _asstMarkOpErrors(p, e);
     }
+  } finally {
+    _asst.applying.delete(p.id);
   }
   _asstSave(); _asstPaint();
 }
@@ -434,16 +513,22 @@ function _asstMarkOpErrors(p, e) {
   for (const x of list) if (Number.isInteger(x.opIndex)) p.opErrors[x.opIndex] = String(x.message || e.message || '').replace(/^ops\[\d+\]\s*(\([^)]*\))?:?\s*/, '');
   if (list.length) p.error = list.length === 1 ? 'Nothing was applied: one change could not be made (marked below).' : `Nothing was applied: ${list.length} changes could not be made (marked below).`;
 }
-/** Bring a proposal's applied/undone state in step with the server's copy. */
+/** Bring a proposal's applied/dismissed state in step with the server's copy (the synced proposals file). True when it changed. */
 async function _asstRefreshProposal(p) {
   try {
     const r = await fetch('/api/query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'proposal.get', params: { id: p.id } }) });
     const fresh = await r.json();
-    if (!r.ok || !fresh) return;
-    if (Array.isArray(fresh.appliedIdx)) p.applied = fresh.appliedIdx;
+    if (!r.ok || !fresh) return false;
+    p = _asstPLive(p);
+    const before = JSON.stringify([p.applied || [], p.state || 'pending', p.preview || null]);
+    if (Array.isArray(fresh.appliedIdx)) p.applied = [...new Set([...(p.applied || []), ...fresh.appliedIdx])].sort((a, b) => a - b);
     if (fresh.preview) { p.preview = fresh.preview; p.needsConfirm = !!fresh.needsConfirm; p.reasons = Array.isArray(fresh.reasons) ? fresh.reasons : []; }
-    if (fresh.status && fresh.status !== 'pending') p.state = fresh.status;
-  } catch (e) { /* keep what we have */ }
+    // The server says applied or dismissed: applied wins (it happened, here or elsewhere); this card's own "undone" stays.
+    if (fresh.status === 'applied' && !['applied', 'undone'].includes(p.state)) p.state = 'applied';
+    else if (fresh.status === 'dismissed' && ['pending', 'error', undefined].includes(p.state)) p.state = 'dismissed';
+    if (p.sel) p.sel = p.sel.filter(i => !(p.applied || []).includes(i));
+    return before !== JSON.stringify([p.applied || [], p.state || 'pending', p.preview || null]);
+  } catch (e) { return false; /* keep what we have */ }
 }
 /** A dry run of a subset that deletes/merges, or that changed since it was proposed: show what it will do now. */
 function _asstConfirmSubset(p, dry) {
@@ -477,51 +562,73 @@ function _asstConfirmSubset(p, dry) {
  * ticked and ready.
  */
 async function _asstApplySome(msg, p, ids) {
+  p = _asstPLive(p);
+  if (_asstPS(p) === 'applying') return;
   const aside = new Set([...(p.skipped || []), ...(p.handled || [])]);
   ids = [...new Set(ids)].filter(Number.isInteger).filter(i => !aside.has(i)).sort((a, b) => a - b);
   if (!ids.length) return;
-  const applied = new Set(p.applied || []);
-  if (!applied.size && !aside.size && !(p.parts || []).length && ids.length >= (p.preview || []).length) return _asstApply(msg, p);   // all of it: the one-click path
-  p.state = 'applying'; p.error = null; p.notice = null; p.opErrors = {};
-  _asstSave(); _asstPaint();
+  const applied0 = new Set(p.applied || []);
+  if (!applied0.size && !aside.size && !(p.parts || []).length && ids.length >= (p.preview || []).length) return _asstApply(msg, p);   // all of it: the one-click path
+  _asst.applying.add(p.id);
+  p.error = null; p.notice = null; p.opErrors = {};
+  _asstPaint();
   const body = { proposalId: p.id, source: 'assistant', client: 'dashboard assistant' };
   try {
     const dry = await _asstPost('/api/actions', Object.assign({}, body, { only: ids, dryRun: true }));
     if (dry.needsConfirm || dry.changedSinceProposal) {
-      if (!await _asstConfirmSubset(p, dry)) { p.state = 'pending'; _asstSave(); _asstPaint(); return; }
+      if (!await _asstConfirmSubset(_asstPLive(p), dry)) { _asst.applying.delete(p.id); _asstPaint(); return; }
     }
     const j = await _asstPost('/api/actions', Object.assign({}, body, { only: dry.only, confirm: dry.confirm }));
-    const part = { idx: j.only || dry.only, undo: j.undo || null, state: 'applied', at: Date.now() };
+    p = _asstPLive(p);
+    const part = { idx: j.only || dry.only, undo: j.undo || null, state: 'applied', at: Date.now(), appliedOn: _asstHere() };
     p.parts = [...(p.parts || []), part];
-    p.applied = Array.isArray(j.appliedIdx) ? j.appliedIdx : [...applied, ...part.idx];
+    p.applied = [...new Set([...(Array.isArray(j.appliedIdx) ? j.appliedIdx : []), ...(p.applied || []), ...part.idx])].sort((a, b) => a - b);
     p.sel = (p.sel || []).filter(i => !p.applied.includes(i));
     p.state = j.status === 'applied' ? 'applied' : 'pending';
-    if (p.state === 'applied') p.undo = part.undo;
+    if (p.state === 'applied') { p.undo = part.undo; p.appliedOn = part.appliedOn; }
     else _asstSettle(p);
+    _asst.applying.delete(p.id);
+    _asstSave();
     await _asstAdopt(j.version);
     const k = part.idx.length;
-    toast(`Applied ${k} change${k === 1 ? '' : 's'}${p.state === 'applied' ? '' : `; ${(p.preview || []).length - p.applied.length} still to decide`}`, { kind: 'ok', icon: 'check', action: part.undo ? { label: 'Undo', run: () => _asstUndoPart(msg, p, part) } : undefined });
+    const q = _asstPLive(p);
+    toast(`Applied ${k} change${k === 1 ? '' : 's'}${q.state === 'applied' ? '' : `; ${(q.preview || []).length - (q.applied || []).length} still to decide`}`, { kind: 'ok', icon: 'check', action: part.undo ? { label: 'Undo', run: () => _asstUndoPart(msg, q, part) } : undefined });
   } catch (e) {
-    p.state = 'pending';
-    if (e.code === 'ALREADY_APPLIED') await _asstRefreshProposal(p);
-    else if (e.code === 'PREVIEW_CHANGED' || e.code === 'BAD_CONFIRM') {
+    p = _asstPLive(p);
+    if (e.code === 'ALREADY_APPLIED') {
+      await _asstRefreshProposal(p);
+      p = _asstPLive(p);
+      if ((p.state || 'pending') === 'pending') p.notice = 'Some of these were already applied on another of your computers. Check the rest, then apply again.';
+    } else if (e.code === 'PREVIEW_CHANGED' || e.code === 'BAD_CONFIRM') {
       p.notice = 'Your tasks changed while this was being applied, so nothing was applied. Check the changes, then apply again.';
       await _asstRefreshProposal(p);
-      if (p.state === 'applying') p.state = 'pending';
     } else {
       p.error = netErrorMessage(e, 'Could not apply.');
       _asstMarkOpErrors(p, e);
     }
+  } finally {
+    _asst.applying.delete(p.id);
   }
   _asstSave(); _asstPaint();
 }
+/** The undo history is on the computer that applied it: say so instead of failing quietly. */
+function _asstUndoError(e, x) {
+  if (e && e.code === 'NOT_FOUND') {
+    const on = x && x.appliedOn && x.appliedOn.name;
+    return `This was applied ${on ? 'on ' + on : 'on another computer'}: undo it there, or change it back here.`;
+  }
+  return netErrorMessage(e, 'Could not undo');
+}
 async function _asstUndoPart(msg, p, part, force) {
+  p = _asstPLive(p); part = _asstPartLive(p, part);
   if (!part || part.state !== 'applied' || !part.undo) return;
   try {
     const j = await _asstPost('/api/actions/undo', { token: part.undo, force: !!force, source: 'ui', client: 'dashboard assistant' });
+    p = _asstPLive(p); part = _asstPartLive(p, part);
     part.state = 'undone';
     p.undoneIdx = [...new Set([...(p.undoneIdx || []), ...part.idx])];
     if ((p.parts || []).every(x => x.state === 'undone') && p.state === 'applied') p.state = 'undone';
+    _asstSave();
     await _asstAdopt(j.version);
   } catch (e) {
     if (e.code === 'CONFLICT' && !force) {
@@ -529,14 +636,17 @@ async function _asstUndoPart(msg, p, part, force) {
       if (ok) return _asstUndoPart(msg, p, part, true);
       return;
     }
-    toast(netErrorMessage(e, 'Could not undo'), { kind: 'err' });
+    toast(_asstUndoError(e, part), { kind: 'err' });
   }
   _asstSave(); _asstPaint();
 }
 async function _asstUndo(msg, p, force) {
+  p = _asstPLive(p);
   try {
     const j = await _asstPost('/api/actions/undo', { token: p.undo, force: !!force, source: 'ui', client: 'dashboard assistant' });
+    p = _asstPLive(p);
     p.state = 'undone';
+    _asstSave();
     await _asstAdopt(j.version);
   } catch (e) {
     if (e.code === 'CONFLICT' && !force) {
@@ -544,20 +654,40 @@ async function _asstUndo(msg, p, force) {
       if (ok) return _asstUndo(msg, p, true);
       return;
     }
-    toast(e.message || 'Could not undo', { kind: 'err' });
+    toast(_asstUndoError(e, p), { kind: 'err' });
   }
   _asstSave(); _asstPaint();
 }
 async function _asstDismiss(msg, p) {
-  try { await _asstPost('/api/actions', { proposalId: p.id, dismiss: true }); } catch (e) { /* expired or gone: dismiss locally anyway */ }
-  p.state = 'dismissed';
+  // Dismissed in the synced proposals file too, so no computer can apply it any more.
+  let refused = false;
+  try { await _asstPost('/api/actions', { proposalId: p.id, dismiss: true }); } catch (e) { refused = true; }
+  // Not pending on the server any more: applied on another computer shows as applied, not dismissed.
+  if (refused) await _asstRefreshProposal(p);
+  p = _asstPLive(p);
+  if (!['applied', 'undone'].includes(p.state)) p.state = 'dismissed';
   _asstSave(); _asstPaint();
+}
+/** The synced proposals file changed (another computer applied or dismissed one): open cards follow it. */
+let _asstPropBusy = false;
+async function _asstProposalsChanged() {
+  if (_asstPropBusy) return;
+  _asstPropBusy = true;
+  try {
+    const open = [];
+    for (const m of _asstMsgs()) for (const p of (m && m.proposals) || []) if (p && p.id && ['pending', 'error'].includes(p.state || 'pending') && !_asst.applying.has(p.id)) open.push(p);
+    let changed = false;
+    for (const p of open.slice(-12)) if (await _asstRefreshProposal(p)) changed = true;
+    for (const p of open) { const q = _asstPLive(p); const was = q.state; _asstSettle(q); if (q.state !== was) changed = true; }
+    if (changed) { _asstSave(); _asstPaint(); }
+  } finally { _asstPropBusy = false; }
 }
 
 /* ---------- talking to the server ---------- */
-function _asstHistory(upto) {
+function _asstHistory(list) {
   const out = [];
-  for (const m of _asst.messages.slice(0, upto)) {
+  for (const m of list) {
+    if (!m || m.pending) continue;   // a reply still being written (here or on another computer) is not history yet
     if (m.role === 'user') { out.push({ role: 'user', text: m.text }); continue; }
     if (m.role !== 'assistant' || (!m.text && !(m.proposals || []).length)) continue;
     let t = m.text || '';
@@ -579,23 +709,30 @@ async function _asstSend(text) {
   text = String(text || '').trim();
   if (!text || _asst.busy) return;
   if (!assistantReady()) { _asstPaint(); return; }
+  _asstLoad();
   const model = _asstModelChoice();
-  const user = { id: 'm' + Date.now(), role: 'user', text: text.slice(0, 4000), ts: Date.now() };
-  _asst.messages.push(user);
-  const reply = { id: 'm' + (Date.now() + 1), role: 'assistant', text: '', ts: Date.now(), pending: true, status: 'Thinking', proposals: [], model: model.label };
-  _asst.messages.push(reply);
+  const history = _asstHistory(_asstShown());
+  const now = Date.now();
+  const user = { id: chatNewId('m'), role: 'user', text: text.slice(0, 4000), ts: now };
+  // Published ONCE while it is written (another computer shows "Answering on <this one>…"),
+  // then replaced by its id when done. Its progress (status, interim text) stays in this tab.
+  const reply = { id: chatNewId('m'), role: 'assistant', text: '', ts: now + 1, pending: true, by: chatWriter(), proposals: [], model: model.label };
+  chatSetList('assistant', [..._asstMsgs(), user, reply]);
+  _asst.inflight.add(reply.id);
+  _asst.live.set(reply.id, { status: 'Thinking', interim: '' });
   _asst.busy = true;
   _asst.ctrl = new AbortController();
   _asstSave(); _asstPaint(true);
   const t0 = Date.now();
+  const acc = { text: '', error: null, stopped: false, via: null };
   try {
     const r = await fetch('/api/assistant', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: _asst.ctrl.signal,
-      body: JSON.stringify({ message: user.text, history: _asstHistory(_asst.messages.length - 2), page: _asstPageContext(), model: model.id, effort: model.effort }),
+      body: JSON.stringify({ message: user.text, history, page: _asstPageContext(), model: model.id, effort: model.effort }),
     });
     if (!r.ok || !r.body) {
       const j = await r.json().catch(() => ({}));
-      reply.error = { code: j.code || 'HTTP_' + r.status, message: j.error || `The assistant could not start (${r.status}).` };
+      acc.error = { code: j.code || 'HTTP_' + r.status, message: j.error || `The assistant could not start (${r.status}).` };
     } else {
       const reader = r.body.getReader();
       const dec = new TextDecoder();
@@ -609,30 +746,51 @@ async function _asstSend(text) {
           const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
           if (!line) continue;
           let ev; try { ev = JSON.parse(line); } catch (e) { continue; }
-          _asstOnEvent(reply, ev);
+          _asstOnEvent(reply.id, acc, ev);
         }
       }
     }
   } catch (e) {
-    if (e && e.name === 'AbortError') reply.stopped = true;
-    else reply.error = { code: 'NETWORK', message: netErrorMessage(e, NET_DOWN_MESSAGE) };
+    if (e && e.name === 'AbortError') acc.stopped = true;
+    else acc.error = { code: 'NETWORK', message: netErrorMessage(e, NET_DOWN_MESSAGE) };
   } finally {
-    reply.pending = false;
-    reply.ms = Date.now() - t0;
-    if (reply.stopped && !reply.text) reply.text = 'Stopped.';
+    _asstFinish(reply.id, acc, Date.now() - t0);
     _asst.busy = false; _asst.ctrl = null;
-    _asstSave(); _asstPaint(true);
+    _asstPaint(true);
+    renderSidebarFooterAssistant();
     const ta = _asst.el && _asst.el.querySelector('.asst-input');
     if (ta && _asst.open) ta.focus({ preventScroll: true });
   }
 }
-function _asstOnEvent(reply, ev) {
-  if (ev.type === 'status') reply.status = ev.text;
-  else if (ev.type === 'text') reply.interim = ev.text;
-  else if (ev.type === 'fallback') reply.status = 'Answering without the dashboard tools';
-  else if (ev.type === 'proposal' && ev.proposal) reply.proposals.push(Object.assign({}, ev.proposal, { state: 'pending' }));
-  else if (ev.type === 'done') { reply.text = ev.text || ''; reply.via = ev.via; }
-  else if (ev.type === 'error') reply.error = { code: ev.code, message: ev.error };
+/** The reply is done: written into its published message (found again by id: the state may be a newer copy). */
+function _asstFinish(id, acc, ms) {
+  _asst.inflight.delete(id);
+  _asst.live.delete(id);
+  const m = _asstMsgById(id);
+  if (!m) return;   // the conversation was cleared meanwhile (here or on another computer)
+  m.pending = false;
+  m.ms = ms;
+  m.text = acc.text || (acc.stopped ? 'Stopped.' : '');
+  if (acc.error) m.error = acc.error;
+  if (acc.stopped) m.stopped = true;
+  if (acc.via) m.via = acc.via;
+  _asstSave();
+}
+function _asstOnEvent(id, acc, ev) {
+  const live = _asst.live.get(id) || {};
+  if (ev.type === 'status') live.status = ev.text;
+  else if (ev.type === 'text') live.interim = ev.text;
+  else if (ev.type === 'fallback') live.status = 'Answering without the dashboard tools';
+  else if (ev.type === 'proposal' && ev.proposal && ev.proposal.id) {
+    // Into the published message at once: the proposal is stored on the server, so it shows (and can be applied) everywhere.
+    const m = _asstMsgById(id);
+    if (m && !(m.proposals || []).some(q => q && q.id === ev.proposal.id)) {
+      m.proposals = [...(m.proposals || []), Object.assign({}, ev.proposal, { state: 'pending' })];
+      _asstSave();
+    }
+  } else if (ev.type === 'done') { acc.text = ev.text || ''; acc.via = ev.via; }
+  else if (ev.type === 'error') acc.error = { code: ev.code, message: ev.error };
+  _asst.live.set(id, live);
   _asstPaint(true);
 }
 
@@ -677,7 +835,8 @@ function _asstBuild() {
   el.querySelector('.asst-close').onclick = () => closeAssistant();
   el.querySelector('.asst-new').onclick = () => {
     if (_asst.busy && _asst.ctrl) _asst.ctrl.abort();
-    _asst.messages = []; _asstSave(); _asstPaint(); ta.focus();
+    chatClear('assistant');   // on every computer (70-ai-chats.js): a message sent elsewhere at this moment stays
+    _asstPaint(); ta.focus();
   };
   const mb = el.querySelector('.asst-model');
   mb.onclick = async () => {
@@ -685,7 +844,7 @@ function _asstBuild() {
     const cur = _asstModelChoice();
     openMenu(mb, [{ heading: 'Model' }, ...list.map(m => ({
       label: m.label, hint: m.hint || (m.effort ? m.effort : ''), checked: m.id === cur.id,
-      run: () => { try { localStorage.setItem(_ASST_MODEL_KEY, m.id); } catch (e) {} _asstPaint(); },
+      run: () => { try { uiPrefSet('assistantModel', m.id); } catch (e) {} _asstPaint(); },
     }))]);
   };
   el.addEventListener('keydown', (e) => {
@@ -697,10 +856,15 @@ function _asstBuild() {
     const c = e.target.closest('[data-asst-connect]');
     if (c) { if (window.Connections && Connections.open) Connections.open('claude'); else setView('connections'); return; }
     const retry = e.target.closest('[data-asst-retry]');
-    if (retry) {
-      const i = _asst.messages.findIndex(m => m.id === retry.getAttribute('data-asst-retry'));
-      const q = i > 0 ? _asst.messages[i - 1] : null;
-      if (q && q.role === 'user') { _asst.messages.splice(i - 1, 2); _asstSend(q.text); }
+    if (retry && !_asst.busy) {
+      const shown = _asstShown();
+      const i = shown.findIndex(m => m.id === retry.getAttribute('data-asst-retry'));
+      const q = i > 0 ? shown[i - 1] : null;
+      if (q && q.role === 'user') {
+        const gone = new Set([q.id, shown[i].id]);
+        chatSetList('assistant', _asstMsgs().filter(m => !(m && gone.has(m.id))));
+        _asstSend(q.text);
+      }
     }
   });
   document.body.appendChild(el);
@@ -708,6 +872,9 @@ function _asstBuild() {
 }
 
 function _asstBubble(m, i) {
+  const mine = m.pending && _asst.inflight.has(m.id);
+  // A reply another tab or computer stopped writing long ago (it was closed, or crashed): interrupted.
+  if (m.pending && !mine && chatIsStale(m)) m = Object.assign({}, m, { pending: false, error: { code: 'CANCELLED', message: 'Interrupted: the reply was never finished.' } });
   const row = document.createElement('div');
   row.className = 'asst-msg ' + m.role + (m.pending ? ' is-pending' : '') + (m.error ? ' is-error' : '');
   if (m.role === 'user') {
@@ -716,8 +883,11 @@ function _asstBubble(m, i) {
   }
   let html = '';
   if (m.pending) {
-    html += `<div class="asst-status"><span class="spinner"></span><span>${esc(m.status || 'Thinking')}…</span></div>`;
-    if (m.interim) html += `<div class="asst-interim">${_asstMd(m.interim)}</div>`;
+    const live = _asst.live.get(m.id) || {};
+    const where = mine ? '' : chatWriterName(m);
+    const status = mine ? (live.status || 'Thinking') : where ? 'Answering on ' + where : 'Answering in another window';
+    html += `<div class="asst-status"><span class="spinner"></span><span>${esc(status)}…</span></div>`;
+    if (mine && live.interim) html += `<div class="asst-interim">${_asstMd(live.interim)}</div>`;
   } else if (m.error) {
     const code = m.error.code || '';
     const connect = ['CLI_MISSING', 'NOT_SIGNED_IN', 'UNAVAILABLE'].includes(code);
@@ -731,7 +901,8 @@ function _asstBubble(m, i) {
   for (const p of (m.proposals || [])) row.appendChild(_asstProposalCard(m, p));
   if (!m.pending && !m.error && (m.model || m.ms)) {
     const meta = document.createElement('div'); meta.className = 'asst-meta';
-    meta.textContent = [m.model, m.ms ? (m.ms / 1000).toFixed(1) + 's' : '', m.via === 'json' ? 'without tools' : ''].filter(Boolean).join(' · ');
+    const on = chatWriterName(m);   // answered on another computer
+    meta.textContent = [m.model, m.ms ? (m.ms / 1000).toFixed(1) + 's' : '', m.via === 'json' ? 'without tools' : '', on ? 'on ' + on : ''].filter(Boolean).join(' · ');
     row.appendChild(meta);
   }
   return row;
@@ -746,7 +917,8 @@ function _asstPaint(stick) {
   const model = _asstModelChoice();
   el.querySelector('.asst-model').innerHTML = `<span>${esc(model.label)}</span><span class="subtle">${esc(model.effort ? model.effort[0].toUpperCase() + model.effort.slice(1) : (model.hint || ''))}</span>${icon('chevron-down', 'i-xs')}`;
   body.innerHTML = '';
-  if (!_asst.messages.length) {
+  const shown = _asstShown();
+  if (!shown.length) {
     const e = document.createElement('div'); e.className = 'asst-empty';
     e.innerHTML = `<div class="asst-empty-ic">${icon('sparkles')}</div>
       <div class="asst-empty-t">Ask about your tasks, or say what to change</div>
@@ -754,8 +926,12 @@ function _asstPaint(stick) {
       <div class="asst-sugs">${_ASST_SUGGESTIONS.map(([ic, t]) => `<button type="button" class="asst-sug" data-asst-suggest="${escAttr(t)}"${ready ? '' : ' disabled'}>${icon(ic, 'i-sm')}<span>${esc(t)}</span></button>`).join('')}</div>`;
     body.appendChild(e);
   } else {
-    _asst.messages.forEach((m, i) => body.appendChild(_asstBubble(m, i)));
+    const older = chatOlderNoteHtml('assistant');   // a long conversation: the older part is on another computer
+    if (older) body.insertAdjacentHTML('beforeend', older);
+    shown.forEach((m, i) => body.appendChild(_asstBubble(m, i)));
   }
+  // Read here is read everywhere (chatMeta readAt): the badge on the Ask button goes on every computer.
+  if (chatMarkRead('assistant') && !_asst.adopting) _asstSave();
   const gate = el.querySelector('.asst-gate');
   gate.hidden = ready;
   if (!ready) {
@@ -827,8 +1003,10 @@ async function showAssistantProposal(id, text) {
     deps: opsRefDeps(pr.ops), applied: Array.isArray(pr.appliedIdx) ? pr.appliedIdx : [], state: pr.status && pr.status !== 'pending' ? pr.status : 'pending',
     people: Object.fromEntries(pr.ops.map((o, i) => [i, o]).filter(([, o]) => o && o.op === 'person.create').map(([i, o]) => { const q = o.params || o; return [i, { id: q.id || '', name: q.name || '', email: q.email || (Array.isArray(q.emails) ? q.emails[0] : '') || '' }]; })),
   };
-  if (!_asst.el) _asstLoad();   // openAssistant() builds the panel (and reloads these messages)
-  _asst.messages.push({ id: 'm' + Date.now(), role: 'assistant', text: String(text || ''), ts: Date.now(), proposals: [p] });
+  _asstLoad();
+  // Already in the conversation (shown before, or from another computer): not twice.
+  const known = _asstMsgs().some(m => m && (m.proposals || []).some(q => q && q.id === id));
+  if (!known) chatSetList('assistant', [..._asstMsgs(), { id: chatNewId('m'), role: 'assistant', text: String(text || ''), ts: Date.now(), proposals: [p] }]);
   _asstSave();
   openAssistant();
   _asstPaint(true);
@@ -837,7 +1015,17 @@ async function showAssistantProposal(id, text) {
 /** Keep the sidebar footer button's pressed state in step (the footer is re-drawn by the shell). */
 function renderSidebarFooterAssistant() {
   const b = document.querySelector('#sb-foot [data-act="assistant"]');
-  if (b) { b.classList.toggle('on', _asst.open); b.setAttribute('aria-pressed', _asst.open ? 'true' : 'false'); }
+  if (!b) return;
+  b.classList.toggle('on', _asst.open); b.setAttribute('aria-pressed', _asst.open ? 'true' : 'false');
+  const unread = !_asst.open && typeof chatUnread === 'function' && chatUnread('assistant');
+  b.classList.toggle('has-unread', unread);
+  b.setAttribute('aria-label', unread ? 'Ask the assistant (new answer)' : 'Ask the assistant');
+}
+/** A newer copy of the state arrived (70-ai-chats.js chatAfterAdopt): the panel and the Ask button show it. */
+function _asstOnAdopt() {
+  _asstLoad();
+  _asst.adopting = true;
+  try { _asstPaint(); renderSidebarFooterAssistant(); } finally { _asst.adopting = false; }
 }
 window.Assistant = { open: openAssistant, close: closeAssistant, toggle: toggleAssistant, ready: assistantReady, showProposal: showAssistantProposal };
 

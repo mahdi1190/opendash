@@ -48,6 +48,9 @@ const UI_STATE_KEYS = [
   'suggestStats',   // Suggestions: local counts (68-suggest-*.js), never sent anywhere
   'achievements',   // Achievements: the unlocks (78-achievements.js); never an undo step
   'sidebarLists',   // Sidebar Streams / Tags / People: sort and how many show (15-nav-order.js); the custom order is data (sidebarOrder)
+  // ── local ── (2.16: what this page kept in localStorage, now in the state: 06-core-seen.js)
+  'seen', 'uiPrefs', 'drafts',
+  // ── end local ──
 ];
 // UI keys that are PREFERENCES (theme, density, sort, the calendars you hide...):
 // they follow you to your other computers (folder sync) and to every tab (live
@@ -57,6 +60,11 @@ const SHARED_UI_KEYS = [
   'sortBy', 'groupBy', 'theme', 'density', 'collapsedSidebar', 'autoTheme',
   'taskViewPrefs', 'calPrefs', 'peopleView', 'openItemsIn', 'itemHero',
   'homeUI', 'achievements', 'sidebarLists',
+  // 2.16: the rest of the layout follows you too (one change here, the same change there)
+  'viewMode', 'focus', 'sidebarCollapsed', 'paneSizes', 'lastReviewPrompt', 'suggestStats',
+  // ── local ── seen flags, per-browser preferences and drafts follow you too (06-core-seen.js)
+  'seen', 'uiPrefs', 'drafts',
+  // ── end local ──
 ];
 const BOOKKEEPING_KEYS = ['_lastSave', '_saveCount', '_localDirty'];
 const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);
@@ -116,14 +124,18 @@ const _undoStack = [];
 const _redoStack = [];
 const UNDO_LIMIT = 50;
 let _prevSnapshot = null;
+// The AI chats (70-ai-chats.js) are data that never makes an undo step and is
+// never rolled back by one: undoing a task edit must not take back a message,
+// a reply from another computer or a proposal's Applied.
+const _NO_UNDO_KEYS = new Set(['taskChat', 'assistantChat', 'chatMeta', 'chatArchive']);
 function _dataSnapshot() {
   const o = {};
-  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k)) o[k] = state[k];
+  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k) && !_NO_UNDO_KEYS.has(k)) o[k] = state[k];
   return JSON.stringify(o);
 }
 function _restoreDataSnapshot(json) {
   const d = JSON.parse(json);
-  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k)) delete state[k];
+  for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k) && !_NO_UNDO_KEYS.has(k)) delete state[k];
   Object.assign(state, d);
   ensureStateDefaults(state);
   if (state.selectedTaskId && !getItem(state.selectedTaskId)) state.selectedTaskId = null;

@@ -335,6 +335,8 @@ function toast(msg, o) {
   timer = setTimeout(close, o.timeout || (o.action ? 6000 : 2800));
   t.addEventListener('mouseenter', () => { if (timer) clearTimeout(timer); });
   t.addEventListener('mouseleave', () => { timer = setTimeout(close, 1800); });
+  /** close.update('New words'): change the message of a toast that is still showing. */
+  close.update = (m) => { const s = t.querySelector('.msg'); if (s && m != null) s.textContent = String(m); };
   return close;
 }
 

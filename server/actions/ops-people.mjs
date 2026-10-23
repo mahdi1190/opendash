@@ -24,7 +24,7 @@
 // The matching rules live in ONE place, src/app/52-people-link.js, loaded
 // through lib/people-tags.mjs (the page uses the same file).
 
-import { ActionError, LIMITS, cleanLine, cleanText, normTag, slug, resolvePerson, truncate, clone } from './model.mjs';
+import { ActionError, LIMITS, cleanLine, cleanText, normTag, slug, resolvePerson, truncate, clone, newPersonNoteId } from './model.mjs';
 import { pplBuildIndex, pplLinked, pplAutoLink, pplSuggest, pplFold, pplNormalizePerson, pplTerms, tglRegistry, tglSetFlags } from '../../lib/people-tags.mjs';
 import { czCleanSymbol, czRenameAliases, spriteIconNames } from '../../lib/customise.mjs';
 import { refKind, COVER_PRESETS } from '../../lib/people-images.mjs';
@@ -302,7 +302,7 @@ export const PEOPLE_OPS = [
       const text = cleanText(p.text, 4000);
       if (!text) throw new ActionError('BAD_VALUE', 'note text must not be empty', { field: 'text' });
       ctx.touch('person:' + who.id);
-      const n = { id: `pn-${ctx.now}-${Math.random().toString(36).slice(2, 7)}`, ts: ctx.now, text, via: ctx.source };
+      const n = { id: newPersonNoteId(), ts: ctx.now, text, via: ctx.source };
       who.notes = [n, ...(Array.isArray(who.notes) ? who.notes : [])];
       return { summary: `Add a note about ${who.name}`, changes: [pchange(who, 'note+', null, truncate(text, 80))], created: { noteId: n.id } };
     },

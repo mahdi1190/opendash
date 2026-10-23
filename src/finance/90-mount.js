@@ -79,6 +79,8 @@
 
   window.FinanceView = {
     mount, unmount, refresh: () => load(true),
+    // Finances from another device changed (src/app/65-finance-view.js financeSharedChanged).
+    sharedChanged: () => sharedChanged(),
     // For the app shell's sidebar and breadcrumb (14-shell.js / 15-nav-sidebar.js).
     sections: () => SECTIONS.map(([id, label]) => ({ id, label })),
     section: () => F.section,

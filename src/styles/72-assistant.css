@@ -106,6 +106,14 @@ html[data-motion="reduced"] .asst-body { scroll-behavior: auto; }
 /* the sidebar footer's Ask button */
 .sb-foot .sb-ask .i { color: var(--accent); }
 .sb-foot .sb-ask.on { color: var(--fg); background: var(--accent-soft); }
+/* an answer not read yet (on any of your computers: 70-ai-chats.js chatUnread) */
+.sb-foot .sb-ask { position: relative; }
+.sb-foot .sb-ask.has-unread::after { content: ''; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+
+/* synced chats: a long chat's older part is on another computer; a failed reply shown in this tab only */
+.chat-older { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: var(--text-2xs); color: var(--fg-subtle); padding: 2px 0 var(--space-1); }
+.chat-older .i { width: 11px; height: 11px; }
+.chat-msg.chat-err { color: var(--danger-ink); border-color: color-mix(in oklab, var(--danger) 35%, var(--border)); }
 
 /* Wide screens: the page makes room, so the tasks being changed stay visible next to the chat. */
 @media (min-width: 1200px) {

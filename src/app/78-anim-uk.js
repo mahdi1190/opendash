@@ -12,6 +12,10 @@
      animUkCheck(o)      the "Welcome to <county>" moment when the detected county
                          changes (remembered per device); o.first: also on the first
                          detection (just switched on)
+   Where this computer is (the arrival record 'dashboard-anim-uk-arrival', the
+   county last welcomed, the location history) stays on this computer; a welcome
+   shown is a synced flag (state.seen.arrival, 06-core-seen.js), so the same
+   arrival is not welcomed again on your other computer.
    ============================================================ */
 const _AUK_KEY = 'dashboard-anim-uk-county';
 let _aukMemo = { at: 0, key: '', where: null };
@@ -55,10 +59,15 @@ function animLocationArrivalState(w, consume = false, acknowledge = false) {
         visits: [...visits.filter(v => v.key !== placeKey), {key: placeKey, at: now, count}].slice(-12), sequence: (Number(rec.sequence) || 0) + 1 };
     }
   }
+  // Welcomed here on another of your computers in the last 12 hours (both travelled together, or the typed
+  // place changed for both): one welcome per arrival, not one per computer. The record itself stays this
+  // computer's own (where it is), so two computers in different places never pass an arrival back and forth.
+  if (rec.pending && _aukWelcomedElsewhere(placeKey)) { rec.remaining = 0; rec.exactRemaining = 0; rec.pending = false; rec.egg = null; rec.eggChoices = []; rec.eggUsed = []; }
   if (rec.exactRemaining === undefined) rec.exactRemaining = rec.remaining || 0;
   if ((rec.remaining > 0 || rec.exactRemaining > 0) && (!Number.isFinite(rec.until) || Date.now() >= rec.until)) { rec.remaining = 0; rec.exactRemaining = 0; rec.pending = false; rec.egg = null; rec.eggChoices = []; rec.eggUsed = []; }
   const result = { remaining: Math.max(0, Math.min(3, Number(rec.remaining) || 0)), exactRemaining: Math.max(0, Math.min(3, Number(rec.exactRemaining) || 0)), pending: !!rec.pending, egg: rec.egg || null };
   if (consume) {
+    if (result.remaining > 0 || result.exactRemaining > 0) _aukMarkWelcomed(placeKey);
     rec.remaining = Math.max(0, result.remaining - 1); rec.pending = false;
     rec.exactRemaining = Math.max(0, result.exactRemaining - 1);
     if (rec.egg) {
@@ -74,6 +83,14 @@ function animLocationArrivalState(w, consume = false, acknowledge = false) {
   try { localStorage.setItem('dashboard-anim-uk-arrival', JSON.stringify(rec)); } catch (e) { /* private mode */ }
   return result;
 }
+/** state.seen.arrival[place] = {at, by}: a welcome shown (06-core-seen.js). Another browser's within 12 hours counts. */
+function _aukWelcomedElsewhere(placeKey) {
+  try {
+    const r = typeof seenGet === 'function' ? seenGet('arrival', placeKey) : null;
+    return !!(r && typeof r === 'object' && r.by !== seenBrowserId() && Number.isFinite(r.at) && Date.now() - r.at < 12 * 3600e3);
+  } catch (e) { return false; }
+}
+function _aukMarkWelcomed(placeKey) { try { if (typeof seenSet === 'function') seenSet('arrival', placeKey, { at: Date.now(), by: seenBrowserId() }); } catch (e) { /* not remembered */ } }
 // Preserve callers and the existing per-device record while sharing the budget
 // with US, Asian and other location openings.
 function animUkArrivalState(w, consume = false, acknowledge = false) { return animLocationArrivalState(w, consume, acknowledge); }
@@ -130,8 +147,11 @@ function animUkCheck(o) {
     try { last = localStorage.getItem(_AUK_KEY) || ''; } catch (e) { last = ''; }
     if (last === w.id && !arrival.pending && !o.force) return false;
     if (!last && !o.first && !arrival.pending) { try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ } return false; }
+    const placeKey = w.id + '|' + String(w.town || w.name || '').toLowerCase();
+    if (!o.force && _aukWelcomedElsewhere(placeKey)) { try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ } return false; }   // welcomed on another computer
     if (document.hidden || _aukShowing || document.querySelector('.ap-opening:not(.anim-scene), .ap-cine, #od-splash') || document.documentElement.classList.contains('story-open')) return false;   // try again on the next check
     try { localStorage.setItem(_AUK_KEY, w.id); } catch (e) { /* private mode */ }
+    _aukMarkWelcomed(placeKey);
     const words = w.town || w.name;
     const on = typeof _awOn === 'function' ? _awOn() : true;
     if (!on) { if (typeof toast === 'function') toast(words); animUkArrivalState(w, false, true); return true; }

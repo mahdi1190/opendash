@@ -23,6 +23,10 @@
 //   POST /api/sync/pair/respond      {sid}          "Check it's yours" on the other computer
 //   POST /api/sync/pair/confirm      {sid, match}   the 6 digits match (or not), on either computer
 //   POST /api/sync/pair/cancel
+//   POST /api/sync/code/start        "Add a computer": a 4-letter join code on this computer
+//                                    (status e2e.joinCode {role:'offer', code, step, expiresAt}); 10 minutes, single use
+//   POST /api/sync/code/cancel       stop the code on screen (or the code being tried on a new computer)
+//   POST /api/sync/code/join         {code}         the new computer types the 4 letters
 //   POST /api/sync/offer             a one-time QR offer for a phone -> {offer: {text, expiresAt}}
 //   POST /api/sync/offer/join        {text}         join with what the QR code says
 //   POST /api/sync/devices/rename    {id, name}
@@ -53,6 +57,8 @@ import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { createNodeLive } from '../../lib/sync/live/node-live.mjs';
 import { writeProfile, applyProfile, PROFILE_REL } from '../../lib/profile.mjs';
+import { SOURCE_PREFS_REL } from '../../lib/source-prefs.mjs';
+import { applySourcePrefs } from '../../lib/sources.mjs';
 import { DEFAULT_CONFIG } from '../../lib/datadir.mjs';
 
 export default function register(app) {
@@ -76,17 +82,20 @@ export default function register(app) {
     if (rels.includes(PROFILE_REL) && typeof app.ctx.setConfig === 'function') {
       applyProfile(paths.root, { getConfig: () => app.ctx.getConfig(), setConfig: (p) => app.ctx.setConfig(p), log }).catch(() => {});
     }
+    // Your choices on sources (names, colours, on/off: lib/source-prefs.mjs) changed on another computer: into this sources.json.
+    if (rels.includes(SOURCE_PREFS_REL)) applySourcePrefs(paths.root, { log }).catch((e) => log('warn', `sync: source choices could not be used (${e && (e.code || e.message)})`));
     if (!rels.includes('accounts.json')) return;
     accounts().reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
   });
   // Live sync: a computer may take an account's lease only with its own sign-in for that
   // account (accounts/<id> in this computer's secret store; tokens never sync). The
   // 'claude' role (answering remote requests that need Claude, lib/remote-jobs.mjs)
-  // is claimed only by a computer where Claude works.
+  // is claimed only by a computer where Claude works, and not by one set to "Only <host>"
+  // (lib/sync/claude-host.mjs: it never answers for the Claude host while that is off).
   const live = createNodeLive({
     engine, dataDir: paths.root, log, canFetch: (acc) => accounts().hasSignIn(acc && acc.id),
     extraRoles: ['phone', 'claude'],
-    canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.localCaps()).claude)),
+    canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.canHost()))),
   });
   // Not ctx.liveSync: that is the open tabs' event stream (server/live-sync.mjs), which
   // the calendar writer and the time route emit on.
@@ -95,6 +104,8 @@ export default function register(app) {
   app.onReady(async () => {
     // The person's settings as this computer has them, for the others (a first copy: only what differs from the defaults).
     if (typeof app.ctx.getConfig === 'function') await writeProfile(paths.root, app.ctx.getConfig(), { defaults: DEFAULT_CONFIG }).catch(() => {});
+    // Source choices that arrived while this computer was not running them in yet.
+    await applySourcePrefs(paths.root, { log }).catch(() => {});
     await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`));
     if (live) await live.start().catch((e) => log('warn', `live sync could not start: ${e && (e.code || e.message)}`));
   });
@@ -133,6 +144,9 @@ export default function register(app) {
   post('/api/sync/pair/respond', (b) => engine.pairRespond(str(b.sid, 40)));
   post('/api/sync/pair/confirm', (b) => engine.pairConfirm(str(b.sid, 40), b.match === true));
   post('/api/sync/pair/cancel', () => engine.pairCancel());
+  post('/api/sync/code/start', () => engine.codeStart());
+  post('/api/sync/code/cancel', () => engine.codeCancel());
+  post('/api/sync/code/join', (b) => engine.codeJoin(str(b.code, 40) || ''));
   post('/api/sync/offer', () => engine.makeOffer());
   post('/api/sync/offer/join', (b) => engine.joinWithOffer(str(b.text, 300) || ''));
   post('/api/sync/devices/rename', (b) => engine.renameDevice(str(b.id, 40), str(b.name, 60)));

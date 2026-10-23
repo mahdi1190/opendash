@@ -100,7 +100,10 @@ function _hspRender(el, ctx) {
   }
   if (!g) {
     for (const b of card.querySelectorAll('.hsp-eye, .hsp-sync')) b.remove();   // nothing to hide or sync yet: Open Finances is the way in
-    const off = ctx.off({ icon: 'wallet', title: 'Payday & safe to spend', text: 'Import a statement or connect a bank to see what you can spend each day until payday.',
+    // Another device reads the bank (lib/finance-share.mjs) and has not sent anything yet: name it.
+    const rm = res.data && res.data.remote && res.data.remote.name ? res.data.remote : null;
+    const off = ctx.off({ icon: 'wallet', title: 'Payday & safe to spend',
+      text: rm ? (rm.trial ? `Finance from ${rm.name}. To see it here, turn on "Use changes from my other computers" in Settings > Sync.` : `Finance from ${rm.name} · waiting for its first update. What you can spend each day shows here once ${rm.name} has updated.`) : 'Import a statement or connect a bank to see what you can spend each day until payday.',
       action: { label: 'Open Finances', icon: 'wallet', run: () => _hspOpen('overview') } });
     off.classList.add('hgl-off', 'hsp-off');
     const art = hglScene('finance', { size: 'lg', hover: true });
@@ -291,7 +294,17 @@ async function _hspSyncStart() {
     toast(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'The OpenDash server isn’t running.', { kind: 'err' });
     return;
   }
-  if (r.status === 202 || r.status === 409) { _hspPoll(); return; }   // 409: an update is running already: follow it
+  // Another device reads the bank: it was asked to update; wait for its answer (56-remote-jobs.js), then a fresh glance.
+  if (r.status === 202 && j && j.remote && window.RemoteJobs && typeof RemoteJobs.wait === 'function') {
+    let res = null, body = {};
+    try { res = await RemoteJobs.wait(j.remote, {}); body = await res.json().catch(() => ({})); } catch (e) { res = null; }
+    _hsp.sync = null; _hspPaintSync();
+    homeDataRefresh(_HSP_DATA);
+    if (res && res.ok) { if (typeof homeAnnounce === 'function') homeAnnounce('Bank data synced'); }
+    else if (!(res && res.status === 499)) toast(`Couldn’t sync: ${(body && body.error) || 'your other computer did not answer.'}`, { kind: 'err', action: { label: 'Open Finances', run: () => _hspOpen('overview') } });
+    return;
+  }
+  if (r.status === 202 || (r.status === 409 && j && j.job)) { _hspPoll(); return; }   // 409 with a job: an update is running already: follow it
   _hsp.sync = null; _hspPaintSync();
   const msg = j && j.error ? (j.error.message || j.error) : `HTTP ${r.status}`;
   toast(`Couldn’t start the sync: ${msg}`, { kind: 'err', action: { label: 'Open Finances', run: () => _hspOpen('overview') } });

@@ -65,10 +65,47 @@
     try {
       const body = opts.bank === false ? { bank: false } : opts.full ? { full: true } : {};
       const r = await api('/api/finance/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (r.status === 202 || r.status === 409) { if (r.body.job) R.job = r.body.job; startPolling(); }
-      else R.startErr = r.body.error || ('Could not start the update (HTTP ' + r.status + ')');
+      // Another device reads the bank: it was asked to update (lib/finance-share.mjs).
+      if (r.status === 202 && r.body.remote) { waitRemote(r.body.remote); return; }
+      if (r.status === 202 || (r.status === 409 && r.body.job)) { if (r.body.job) R.job = r.body.job; startPolling(); }
+      else R.startErr = (r.body.skipped && r.body.message) || r.body.error || ('Could not start the update (HTTP ' + r.status + ')');
     } catch (e) { R.startErr = 'Could not reach the OpenDash server. Is it still running?'; }
     paintUpdate();
+  }
+  // "Sync bank" on a device that shows another device's finances: that device
+  // updates (src/app/56-remote-jobs.js waits for its answer), then publishes; the
+  // new copy arrives with the answer or a moment after it.
+  async function waitRemote(remote) {
+    if (!window.RemoteJobs || typeof window.RemoteJobs.wait !== 'function') { R.startErr = 'Reload the page to ask your other computer.'; paintUpdate(); return; }
+    R.remoteJob = remote; paintUpdate();
+    const before = txKeySet(R.model);
+    const at0 = R.data && R.data.meta && R.data.meta.remote ? R.data.meta.remote.at : null;
+    let res = null, body = {};
+    try {
+      res = await window.RemoteJobs.wait(remote, { quiet: true, onState: (x) => { if (R.remoteJob) { R.remoteJob = x; paintUpdate(); } } });
+      body = await res.json().catch(() => ({}));
+    } catch (e) { body = { error: 'Could not reach the OpenDash server. Is it still running?' }; }
+    R.remoteJob = null;
+    if (res && res.ok) {
+      for (let i = 0; i < 6; i++) {
+        await load(true);
+        const at = R.data && R.data.meta && R.data.meta.remote ? R.data.meta.remote.at : null;
+        if (at !== at0 || i === 5) break;
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      const job = body.job || null;
+      const who = (R.data && R.data.meta && R.data.meta.remote && R.data.meta.remote.name) || remote.runsOn || 'your other computer';
+      if (job && job.state === 'warning') toast("Couldn't reach your bank; inbox CSVs were imported", { bad: true });
+      else if (job && job.state === 'error') toast('Update failed. See the message at the top.', { bad: true });
+      else if (!before && R.model) { syncDone(); toast(`Your finances from ${who} are here`, { kind: 'ok', icon: 'circle-check' }); }
+      else { syncDone(); syncToast(syncDiff(before, R.model ? R.model.tx : []), job && job.result ? job.result.imported : 0); }
+    } else if (!(res && res.status === 499)) R.startErr = body.error || 'Your other computer could not update your finances.';
+    paintUpdate();
+  }
+  // Another device published new finances, or an edit arrived (56-remote-jobs.js):
+  // reload now when the view is open, else on the next visit.
+  function sharedChanged() {
+    if (R.mounted) load(true); else R.loadedAt = 0;
   }
   function startPolling() {
     if (R.poll) return;

@@ -455,7 +455,9 @@
     const b = cleanBudgets(R.budgetDraft);
     R.budgetsBusy = true; UPDATE.budgets(R.ctx);
     try {
-      const r = await api('/api/finance/budgets', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgets: b }) });
+      // base: what this draft started from, so with sync on only the budgets changed here are written
+      // (one another device set meanwhile is kept; lib/finance-share.mjs).
+      const r = await api('/api/finance/budgets', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgets: b, base: cleanBudgets(R.budgets || {}) }) });
       if (r.ok && r.body && r.body.budgets) { R.budgets = cleanBudgets(r.body.budgets); R.budgetsLocal = false; R.budgetDraft = null; toast('Budgets saved'); }
       else if (r.status === 404 || r.status === 405) { R.budgets = b; F.localBudgets = b; saveF(); R.budgetsLocal = true; R.budgetDraft = null; toast('Saved in this browser (restart the OpenDash server to store budgets in the finance folder)'); }
       else toast('Could not save budgets: ' + (r.body.error || 'HTTP ' + r.status), { bad: true });

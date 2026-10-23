@@ -445,8 +445,13 @@ function tdChatSection(id) {
   if (chat.length) cs.open = true;
   cs.innerHTML = `<summary><span class="dp-sh-in">${icon('sparkles', 'i-sm')}<h4>Ask Claude about this task</h4></span>${icon('chevron-down', 'i-xs')}</summary>`;
   const chatArea = document.createElement('div'); chatArea.className = 'chat-area';
+  // Synced (70-ai-chats.js): a long chat's older messages may be on another computer.
+  const older = typeof chatOlderNoteHtml === 'function' ? chatOlderNoteHtml('task:' + id) : '';
+  if (older) chatArea.insertAdjacentHTML('beforeend', older);
   if (!chat.length) { const h = document.createElement('div'); h.className = 'chat-hint'; h.textContent = 'Break it down, draft a reply, or suggest next steps.'; chatArea.appendChild(h); }
-  for (const msg of chat) { const m = document.createElement('div'); m.className = 'chat-msg ' + msg.role; m.textContent = msg.text; chatArea.appendChild(m); }
+  for (const msg of chat) { const m = document.createElement('div'); m.className = 'chat-msg ' + (msg.role === 'user' ? 'user' : 'claude'); m.textContent = msg.text; chatArea.appendChild(m); }
+  const err = typeof _taskChatErr !== 'undefined' && _taskChatErr[id];
+  if (err) { const e = document.createElement('div'); e.className = 'chat-msg claude chat-err'; e.textContent = '⚠ ' + err; chatArea.appendChild(e); }
   cs.appendChild(chatArea);
   const crow = document.createElement('div'); crow.className = 'chat-input-row';
   const cta = document.createElement('textarea'); cta.placeholder = 'Ask… (Enter to send)'; cta.rows = 1; cta.dataset.fk = 'chat';
@@ -457,7 +462,8 @@ function tdChatSection(id) {
   crow.append(cta, sbtn);
   if (chat.length) {
     const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'btn btn-ghost btn-sm'; clr.textContent = 'Clear';
-    clr.onclick = async () => { if (await confirmDialog({ title: 'Clear this chat?', confirmLabel: 'Clear', danger: true })) { delete state.taskChat[id]; saveData(); render(); } };
+    // Cleared on every computer (70-ai-chats.js chatClear): a message sent elsewhere at that moment stays.
+    clr.onclick = async () => { if (await confirmDialog({ title: 'Clear this chat?', text: 'It is cleared on all your computers.', confirmLabel: 'Clear', danger: true })) { if (typeof _taskChatErr !== 'undefined') delete _taskChatErr[id]; chatClear('task:' + id); render(); } };
     crow.appendChild(clr);
   }
   cs.appendChild(crow);
