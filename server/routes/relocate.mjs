@@ -25,6 +25,8 @@
 // re-pointing, the rename).
 
 import { spawn } from 'node:child_process';
+import { installSpawnGuard } from '../../lib/spawn-guard.mjs';
+installSpawnGuard();   // in a test process, never start a real AI agent CLI (lib/spawn-guard.mjs)
 import { join, isAbsolute } from 'node:path';
 import { createRelocator, publicMove } from '../../lib/relocate/index.mjs';
 import { readRecord, openMove } from '../../lib/relocate/record.mjs';

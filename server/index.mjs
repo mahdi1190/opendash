@@ -24,6 +24,8 @@ import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
+import { installSpawnGuard } from '../lib/spawn-guard.mjs';
+installSpawnGuard();   // in a test process, never start a real AI agent CLI (lib/spawn-guard.mjs)
 import {
   REPO_ROOT, argValue, resolveDataDir, dataPaths, ensureDataDir, loadConfig, saveConfig, publicConfig, legacyStatus,
 } from '../lib/datadir.mjs';

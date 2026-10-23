@@ -323,7 +323,7 @@ test('templates: every placeholder of every template is supplied by the commands
 test('the generated test keeps the repo GREEN while the region is drawn (structural checks hard, coverage checks todo) and turns hard once the config says complete: true (run for real, in the temp checkout)', async () => {
   const root = makeRoot();
   assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
-  const env = { ...process.env }; delete env.NODE_TEST_CONTEXT;   // inside `node --test` a nested run would think it is a child of this one
+  const env = { ...process.env, OPENDASH_NO_REAL_AGENTS: '1' }; delete env.NODE_TEST_CONTEXT;   // inside `node --test` a nested run would think it is a child of this one (the agent guard stays on: lib/spawn-guard.mjs)
   const test = () => spawnSync(process.execPath, ['--test', '--test-reporter=tap', 'tests/zz-pack.test.mjs'], { cwd: root, encoding: 'utf8', env });
   const cfg = join(root, 'src', 'app', '71-anim-region-zz.js');
   assert.match(readFileSync(cfg, 'utf8'), /\n {2}complete: false, /, 'the scaffold says complete: false');
@@ -1196,7 +1196,7 @@ test('a scaffold keeps the repo-wide tests GREEN (region-framework: structural c
   cpSync(join(ROOT, 'tools', 'lib', 'raster-assets.mjs'), join(root, 'tools', 'lib', 'raster-assets.mjs'));   // build.mjs embeds the raster objects' images through it
   for (const f of ['region-framework.test.mjs', 'anim-packs.test.mjs']) cpSync(join(ROOT, 'tests', f), join(root, 'tests', f));
   assert.equal((await run(['new', 'zz', 'Zed Land', '--groups', 'west,east', '--unit-word', 'province', '--root', root])).code, 0);
-  const env = { ...process.env, ANIM_PACKS_ONLY_REGISTRATION: '1' }; delete env.NODE_TEST_CONTEXT;
+  const env = { ...process.env, ANIM_PACKS_ONLY_REGISTRATION: '1', OPENDASH_NO_REAL_AGENTS: '1' }; delete env.NODE_TEST_CONTEXT;
   // anim-packs.test.mjs runs here for its registration test (a scaffold's empty pack file may register nothing until complete: true). Its
   // per-pack quality gates and the UK place tests are the repo's own run's business: in this temp checkout (no place packs) they would only
   // draw every scene again, twice. (An env var read by anim-packs.test.mjs, not a name pattern: a lookahead in --test-name-pattern did not exclude on Node 24 and --test-skip-pattern does not exist before Node 22.)

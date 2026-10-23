@@ -1,5 +1,7 @@
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
+import { installSpawnGuard } from '../../lib/spawn-guard.mjs';
+installSpawnGuard();   // in a test process, never start a real AI agent CLI (lib/spawn-guard.mjs)
 import { REPO_ROOT } from '../../lib/datadir.mjs';
 import { secretStore } from '../../lib/secret-store.mjs';
 import { createRemoteAuth, remoteOrigin } from '../../lib/remote-mcp-auth.mjs';
