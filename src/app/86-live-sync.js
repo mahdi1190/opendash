@@ -189,6 +189,7 @@ function _liveSourceLabel(d) {
   if (d.source === 'assistant') return 'the assistant';
   if (d.source === 'script') return d.client ? d.client : 'a script';
   if (d.source === 'ui') return 'another tab';
+  if (d.source === 'sync') return d.client ? d.client : 'another computer';   // Settings > Sync (lib/sync/engine.mjs)
   return 'outside this tab';
 }
 function _liveToast(msg, opts) {
