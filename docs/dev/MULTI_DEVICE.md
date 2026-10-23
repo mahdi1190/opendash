@@ -201,7 +201,11 @@ The bank is read on one computer, the **finance computer**: the one that runs
 the `bank` job by the rule above. With capabilities known, that is the
 computer that reads a bank (a bank connector, a direct connection), else the
 one that holds the finance store (CSV imports, the spreadsheet), else the
-recorded role or the main computer. Only while sync is end-to-end encrypted;
+recorded role or the main computer. The first time it publishes it is
+recorded as the `bank` role (`roles.json`) when none is, so two computers that
+could both read the bank (the same Claude account's connector on each) never
+take turns while one sleeps; choosing a main computer clears it, as for every
+job. Only while sync is end-to-end encrypted;
 sync off or plain sync: each computer has its own finances, as before.
 
 - **Published** (`finance-share/finance.json`, role `published`, account
