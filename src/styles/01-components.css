@@ -352,6 +352,8 @@ button.chip:hover { background: var(--bg-muted); color: var(--fg); }
 html[data-motion="reduced"] .toast.bump { animation: none; }
 /* Never on top of the bulk action bar (same place at the bottom): sit above it. */
 body:has(.bulk-bar.open) .toast-host { bottom: 84px; }
+/* A maximised task card reaches the bottom of the window: keep its footer buttons uncovered. */
+body:has(.tc.is-max) .toast-host { bottom: 80px; }
 @keyframes ui-toast-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes ui-toast-out { to { opacity: 0; transform: translateY(4px); } }
 
