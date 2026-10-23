@@ -30,11 +30,12 @@ const _HB_KIND_TEXT = {
   sources: 'your list of connected sources', connections: 'the connection status',
 };
 
-/** "23 Oct" (local), or '' when the date is unreadable. */
+/** "23 Oct" in the page clock's zone (Clock, 07-core-clock.js: where a traveller is), or '' when the date is unreadable. */
 function _hbDate(iso) {
   const t = Date.parse(iso || '');
   if (!Number.isFinite(t)) return '';
-  try { return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch (e) { return new Date(t).toISOString().slice(0, 10); }
+  if (typeof Clock !== 'undefined' && Clock && typeof Clock.fmtDate === 'function') return Clock.fmtDate(t, { day: 'numeric', month: 'short' });
+  try { return new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); } catch (e) { return ''; }
 }
 
 /**

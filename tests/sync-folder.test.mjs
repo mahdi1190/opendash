@@ -135,7 +135,7 @@ test('cloud folders are found from the environment and their usual places (looki
   const both = detectCloudFolders({ platform: 'win32', home: 'C:\\Users\\sam', exists, read: () => { throw new Error('no'); },
     env: { OneDrive: 'C:\\Users\\sam\\OneDrive - Contoso', OneDriveCommercial: 'C:\\Users\\sam\\OneDrive - Contoso', OneDriveConsumer: 'C:\\Users\\sam\\OneDrive' } });
   assert.deepEqual(both.filter(x => x.kind === 'onedrive').map(x => [x.path, !!x.work]), [['C:\\Users\\sam\\OneDrive', false], ['C:\\Users\\sam\\OneDrive - Contoso', true]]);
-  const workOnly = detectCloudFolders({ platform: 'win32', home: 'C:\\Users\\nobody', exists, read: () => { throw new Error('no'); }, env: { OneDrive: 'C:\\Users\\sam\\OneDrive - Contoso' } });
+  const workOnly = detectCloudFolders({ platform: 'win32', home: 'C:\\Users\\alex', exists, read: () => { throw new Error('no'); }, env: { OneDrive: 'C:\\Users\\sam\\OneDrive - Contoso' } });
   assert.deepEqual(workOnly.filter(x => x.kind === 'onedrive').map(x => [x.label, !!x.work]), [['OneDrive (work or school: Contoso)', true]], 'known from its folder name alone');
   const mac = detectCloudFolders({
     platform: 'darwin', home: '/Users/sam', env: {}, read: () => { throw new Error('no'); },

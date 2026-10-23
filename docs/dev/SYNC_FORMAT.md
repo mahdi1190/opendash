@@ -12,7 +12,7 @@ Status: prototype. Version `1` is the plain format (sections 1-10). Version
 `2` is the same data END-TO-END ENCRYPTED (section 11): every record is
 sealed, and the folder holds no key. Snapshot register data is version `2`
 in both. A reader that meets a higher version stops and reports it (see
-[Versions](#versions-and-unknown-data)).
+[Versions](#10-versions-and-unknown-data)).
 
 ## 1. Layout
 
