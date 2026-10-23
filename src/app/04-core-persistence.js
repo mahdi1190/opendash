@@ -118,6 +118,15 @@ async function serverStateWrite() {
       _serverLastError = null;
       return !!fromFile;
     }
+    if (r.status === 423) {
+      // Another computer has this data folder open (86-hosts-banner.js): the edit
+      // stays in this browser (unsaved) and is sent once changes resume here.
+      let j = null;
+      try { j = await r.json(); } catch (e) { j = null; }
+      if (typeof hostsOnPaused === 'function') hostsOnPaused(j);
+      _serverLastError = 'changes are paused: OpenDash is open on ' + ((j && j.host) || 'another computer');
+      return false;
+    }
     if (!r.ok) {
       let msg = 'PUT ' + r.status;
       try { const j = await r.json(); if (j && j.error) msg += ' — ' + j.error; } catch (e) {}

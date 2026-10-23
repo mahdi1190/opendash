@@ -1,4 +1,5 @@
 import { test } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -48,7 +49,7 @@ test('remote OAuth requires local approval, PKCE, exact callback and resource; s
     const tokens = await auth.token(input);
     await assert.rejects(auth.token(input), 'code is single-use');
     assert.ok(await auth.verify(tokens.access_token));
-    const stored = readFileSync(join(dir, 'secrets', 'remote-mcp-auth.json'), 'utf8');
+    const stored = readFileSync(join(secretsDir(dir), 'remote-mcp-auth.json'), 'utf8');
     assert.ok(!stored.includes(tokens.access_token)); assert.ok(!stored.includes(tokens.refresh_token));
     clock += 3600001; assert.equal(await auth.verify(tokens.access_token), null);
     const refresh = { grant_type: 'refresh_token', refresh_token: tokens.refresh_token, client_id: a.client.client_id, resource: origin + '/mcp' };

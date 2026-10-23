@@ -2,6 +2,7 @@
 // secrets, the cross-provider duplicate check, historical exchange rates, and
 // the Monzo normaliser. Pure / in-process; no network (fetch is always a fake).
 import { test } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -134,7 +135,7 @@ test('secrets: secrets/fin only, private file mode, strict reads, masked ids', a
     const s = secretsFor(dir);
     assert.equal(await s.read('monzo-bank-monzo-1a2b'), null);
     await s.write('monzo-bank-monzo-1a2b', { clientId: 'oauth2client_x', clientSecret: 'shh' });
-    const f = join(dir, 'secrets', 'fin', 'monzo-bank-monzo-1a2b.json');
+    const f = join(secretsDir(dir), 'fin', 'monzo-bank-monzo-1a2b.json');
     assert.ok(existsSync(f));
     if (process.platform !== 'win32') assert.equal(statSync(f).mode & 0o777, 0o600);
     await s.update('monzo-bank-monzo-1a2b', (cur) => ({ ...cur, accessToken: 't' }));

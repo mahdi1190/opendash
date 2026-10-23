@@ -22,6 +22,7 @@
 // program that sends X-Dashboard-Token with the contents of <data>/local-token.
 // Anything else gets 401. The token file is created on first boot.
 
+import { hostname } from 'node:os';
 import { createActions } from '../actions/index.mjs';
 import { QUERY_BY_NAME, QUERY_BY_TOOL } from '../actions/queries.mjs';
 import { ActionError, SOURCES } from '../actions/model.mjs';
@@ -46,7 +47,10 @@ export default function register(app) {
   app.onReady(async () => {
     await getToken();
     await live.start();
-    await writeRuntime(dataDir, { pid: process.pid, port: ctx.port, url: `http://localhost:${ctx.port}/`, stateFile: store.file, startedAt: new Date().toISOString(), version: ctx.version });
+    // hostId/hostname: a runtime.json that OneDrive brought from another computer is stale here (discoverServer)
+    const presence = ctx.hosts && ctx.hosts.presence;
+    await writeRuntime(dataDir, { pid: process.pid, port: ctx.port, url: `http://localhost:${ctx.port}/`, stateFile: store.file, startedAt: new Date().toISOString(), version: ctx.version,
+      hostname: presence ? presence.hostname : hostname(), hostId: presence ? presence.hostId : null });
     process.once('exit', () => removeRuntimeSync(dataDir));
   });
   app.onClose(async () => { live.close(); await removeRuntime(dataDir); });
@@ -68,7 +72,7 @@ export default function register(app) {
   }
   function fail(c, e) {
     if (e instanceof ActionError) return c.json(e.status || 400, { ok: false, error: e.toJSON() });
-    if (e && e.status && e.status < 500) return c.json(e.status, { ok: false, error: { code: e.code || 'BAD_REQUEST', message: e.message } });
+    if (e && e.status && e.status < 500) return c.json(e.status, { ok: false, error: { code: e.code || 'BAD_REQUEST', message: e.message, ...(e.code === 'OTHER_COMPUTER' ? { host: e.host, lastSeen: e.lastSeen } : {}) } });
     if (e && (e.code === 'LOCK_TIMEOUT' || e.status === 503)) return c.json(503, { ok: false, error: { code: e.code || 'BUSY', message: e.message, hint: 'try again in a moment' } });
     log('error', `actions: ${e && e.stack || e}`);
     return c.json(500, { ok: false, error: { code: 'INTERNAL', message: 'internal error (see the server log)' } });

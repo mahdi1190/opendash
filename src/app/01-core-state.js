@@ -66,12 +66,25 @@ function saveData() {
     _captureUndo();
     state._saveCount = (state._saveCount || 0) + 1;
     state._localDirty = true;
-    _writeLocal();
-    showToast('✓ saved', false);
-    maybeAutoBackup();
+    // Browser storage is only a first-paint cache (about 5 MiB per site). When it
+    // is full (QuotaExceededError) the edit must still be queued for the server.
+    let localOk = true;
+    try { _writeLocal(); } catch (e) { localOk = false; }
     if (typeof schedulePersist === 'function') schedulePersist();
+    if (localOk) showToast('✓ saved', false);
+    else _saveLocalFull();
+    maybeAutoBackup();
   }
   catch (e) { showToast('⚠ save failed', true); }
+}
+let _localFullToastAt = 0;
+/** Browser storage refused the copy: say where the edit went (at most once a minute). */
+function _saveLocalFull() {
+  const server = typeof _serverAvailable === 'undefined' || _serverAvailable;
+  if (!server) { showToast('⚠ save failed: browser storage is full and the OpenDash server isn’t running', true); return; }
+  if (Date.now() - _localFullToastAt < 60000) return;
+  _localFullToastAt = Date.now();
+  showToast('Browser storage is full; saved to the server', false);
 }
 /**
  * Save a UI change (view, selection, sort, theme, calendar month, caches): no

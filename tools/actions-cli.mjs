@@ -25,6 +25,7 @@ import { readFileSync } from 'node:fs';
 import { argValue, resolveDataDir, dataPaths } from '../lib/datadir.mjs';
 import { createActions } from '../server/actions/index.mjs';
 import { discoverServer, ensureLocalToken, TOKEN_HEADER } from '../server/actions/auth.mjs';
+import { createWriteGate, othersLive } from '../lib/hosts.mjs';
 
 const argv = process.argv.slice(2);
 const has = (f) => argv.includes(f);
@@ -52,7 +53,9 @@ async function backend() {
       describe: () => createActions({ dataDir }).describe(),
     };
   }
-  const a = createActions({ dataDir });
+  // Straight onto the data folder: refused (OTHER_COMPUTER) while another computer has it open (lib/hosts.mjs).
+  const gate = createWriteGate({ others: () => othersLive(paths.root), pauseLater: true });
+  const a = createActions({ dataDir, writeGate: () => gate.check() });
   return {
     via: `the data folder ${paths.root}`,
     apply: (b) => a.apply({ ...b, source: 'script', client }),

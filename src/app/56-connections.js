@@ -8,7 +8,7 @@
    for a password: sign-in happens in Claude's own window, on claude.ai or
    on the provider's own page. Money (banks and wallets) is its own block,
    56-fin-connect.js: its direct connections save a Monzo client or an
-   Enable Banking key file in the data folder's secrets area, never in the
+   Enable Banking key file on this computer only (lib/secret-store.mjs), never in the
    page.
    ============================================================ */
 const CONNECTORS_URL = 'https://claude.ai/customize/connectors';
