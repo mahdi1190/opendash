@@ -32,6 +32,7 @@ import { createCalendarService } from '../../lib/calendar.mjs';
 import { createCalendarWriter, CalWriteError } from '../../lib/calendar-write.mjs';
 import { fetchCalendarSource, saveSourceSnapshot, readSourceSnapshot, mergeCalendarData } from '../../lib/calendar-sources.mjs';
 import { sourcesFor } from '../../lib/sources.mjs';
+import { accountsFor } from '../../lib/accounts.mjs';
 import { HttpError } from '../http.mjs';
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
@@ -54,10 +55,11 @@ export default function register(app) {
     merge: mergeCalendarData,
     myEmails: () => (getConfig() || {}).myEmails || [],
     noteSync: (id, r) => sources.noteSync(id, r),
+    readsHere: (list) => accountsFor(app.ctx).readsHere(list),
     fetchOther: async (s, { from, to, timeZone }) => {
       const disc = sources.cached();
       const r = await fetchCalendarSource(s, {
-        dataDir, from, to, timeZone, serverDef: s.kind === 'mcp' ? sources.serverDef(s.server) : null,
+        dataDir, accounts: accountsFor(app.ctx), from, to, timeZone, serverDef: s.kind === 'mcp' ? sources.serverDef(s.server) : null,
         denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name),
       });
       await saveSourceSnapshot(paths, s.id, { from, to, ...r });
