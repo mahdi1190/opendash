@@ -65,16 +65,16 @@ function kbHelpGroups() {
       ['With tasks selected: same keys for all', ['X', 'T', 'D', '1–4', 'Del']],
       ['Move a subtask up / down', ['Alt', '↑', '↓']], ['This task’s commands', [mod, 'K']],
     ]],
+    ['View', [
+      ['Toggle sidebar', [mod, '\\']], ['Dark mode', [mod, 'Shift', 'D']], ['Focus mode', [mod, 'Shift', 'F']],
+      ['Export to Markdown', [mod, 'E']], ['Print view', [mod, 'P']],
+    ]],
     ['Search box (' + mod + '+K)', [
       ['Commands only', ['>']], ['Tags', ['#']], ['People', ['@']], ['Ask the assistant', ['?']],
       ['Open beside', [mod, 'Enter']], ['Next group', ['Tab']],
     ]],
     ['Dialogs and cards', [
       ['Save / confirm', [mod, 'Enter']], ['Close', ['Esc']], ['Maximise the open card', ['M']],
-    ]],
-    ['View', [
-      ['Toggle sidebar', [mod, '\\']], ['Dark mode', [mod, 'Shift', 'D']], ['Focus mode', [mod, 'Shift', 'F']],
-      ['Export to Markdown', [mod, 'E']], ['Print view', [mod, 'P']],
     ]],
     // The calendar's keys, Google Calendar's (45-calendar-grid-logic.js)
     ...(typeof cglKeyHelp === 'function' ? [['Calendar', cglKeyHelp()]] : []),
