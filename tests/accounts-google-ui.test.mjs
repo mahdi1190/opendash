@@ -153,7 +153,7 @@ test('inside the account list: the sign-in tab opens through accOpenSignIn with 
   const d = dialogs[0];
   all(d.body).find((e) => e.type === 'email').value = 'kim@example.com';
   all(d.body).find((e) => e.dataset.feature === 'calendar').checked = false;
-  assert.ok(all(d.body).some((e) => e.tagName === 'DETAILS'), 'the own-app fold is under the card');
+  assert.ok(!all(d.body).some((e) => e.tagName === 'DETAILS'), 'your own Google app lives in Settings > Advanced, never on this card');
   d.press('Continue to Google');
   await p;
   assert.deepEqual(opened, [{ provider: 'google', email: 'kim@example.com', features: { mail: true, calendar: false } }]);
@@ -161,22 +161,18 @@ test('inside the account list: the sign-in tab opens through accOpenSignIn with 
   assert.match(text(drawers[0].body), /waiting for Google/);
 });
 
-test('no Google app in this copy: the setup drawer explains it and opens Advanced; saving one goes on to the card', async () => {
-  const { ctx, dialogs, calls } = page(async () => ({ available: true, custom: true, builtIn: false, hasSecret: true, clientIdHint: 'synthetic…' }));
+test('no Google app in this copy: coming soon (no sign-in card, no own-app fold: that is in Settings > Advanced)', async () => {
+  const { ctx, dialogs, calls } = page();
   const drawers = [];
   ctx.openDrawer = (o) => { const body = new El('div'); o.body(body, () => drawers.push('closed')); drawers.push({ o, body }); };
   ctx.googleAddAccount({ info: { available: false, custom: false, builtIn: false } });
   assert.equal(dialogs.length, 0, 'no sign-in card without an app');
   const body = drawers[0].body;
-  assert.match(text(body), /not switched on in this copy/);
-  const fold = all(body).find((e) => e.tagName === 'DETAILS');
-  assert.equal(fold.open, true);
-  all(body).find((e) => e.tagName === 'TEXTAREA').value = 'synthetic-own-9.apps.googleusercontent.com';
-  all(body).find((e) => e.type === 'password').value = 'GOCSPX-synthetic';
-  await all(body).find((e) => e.tagName === 'BUTTON' && e.textContent === 'Save my Google app').onclick();
-  await tick();
-  assert.equal(calls.find((c) => c[0] === 'api')[1], '/api/accounts/google-app');
-  assert.equal(dialogs.length, 1, 'with an app saved, the sign-in card follows');
+  assert.match(text(body), /Coming soon/);
+  assert.match(text(body), /\+ Other email with an app password/);
+  assert.match(text(body), /Settings > Advanced/);
+  assert.equal(all(body).find((e) => e.tagName === 'DETAILS'), undefined);
+  assert.equal(calls.length, 0, 'nothing is sent');
 });
 
 test('the list\'s begin address carries the ticked features (GET /api/accounts/begin?features=)', () => {

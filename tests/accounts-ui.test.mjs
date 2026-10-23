@@ -70,8 +70,9 @@ test('logic: personal or work from the address, plain status words, Mail ✓ Cal
   assert.equal(c.accBeginUrl({ provider: 'microsoft', email: ' Me@Hotmail.com', kind: 'work' }), '/api/accounts/begin?provider=microsoft&email=me%40hotmail.com&kind=work');
   assert.equal(c.accBeginUrl({ provider: 'microsoft', accountId: 'acc_0000000000000001' }), '/api/accounts/begin?provider=microsoft&accountId=acc_0000000000000001');
   assert.deepEqual(c.accSort([acc({ id: 'w', kind: 'work', email: 'a@w.example' }), acc({ id: 'p', email: 'z@example.com' })]).map(a => a.id), ['p', 'w']);
-  assert.deepEqual(plain(c.accAddButtons({ microsoft: { available: true }, google: { available: false }, imap: { comingSoon: true } })).map(b => [b.label, b.available]),
-    [['+ Add Google account', false], ['+ Add Microsoft account', true], ['+ Other email', false]]);
+  assert.deepEqual(plain(c.accAddButtons({ microsoft: { available: true }, google: { available: false }, imap: { comingSoon: true } })).map(b => [b.label, b.available, b.soon]),
+    [['+ Add Google account', false, true], ['+ Add Microsoft account', true, false], ['+ Other email', false, false]]);
+  assert.deepEqual(plain(c.accAddButtons({ microsoft: { available: false }, google: { available: true }, imap: { available: true } })).map(b => b.soon), [false, true, false], 'a client ID appears: the button switches on by itself');
   assert.equal(c.accNewlyConnected([{ id: 'a', status: 'needs-sign-in' }], [acc({ id: 'a' })]).id, 'a');
   assert.equal(c.accNewlyConnected([{ id: 'a', status: 'connected' }], [acc({ id: 'a' })]), null);
   assert.equal(c.accSignInPending(NOW - 1000, NOW), true); assert.equal(c.accSignInPending(NOW - 700000, NOW), false);
@@ -81,8 +82,12 @@ test('the list: three add buttons, a calendar link, and one card per account wit
   const { c, calls } = sandbox();
   vm.runInContext("AccountsStore", c).data = { accounts: [acc(), acc({ id: 'acc_0000000000000002', email: 'me@work.example', kind: 'work', status: 'needs-admin-approval', features: { mail: true, calendar: false } })], providers: { microsoft: { available: true }, google: { available: false }, imap: { comingSoon: true } } };
   const s = c.accountsSection();
-  const labels = nodes(s).filter(n => n.dataset && n.dataset.add).map(n => text(n).trim());
-  assert.deepEqual(labels, ['+ Add Google account', '+ Add Microsoft account', '+ Other email']);
+  const adds = nodes(s).filter(n => n.dataset && n.dataset.add);
+  assert.deepEqual(adds.map(n => text(n).trim()), ['+ Add Google account Coming soon', '+ Add Microsoft account', '+ Other email']);
+  // No Google app in this copy: greyed out with "Coming soon", disabled (not hidden), nothing happens on a click.
+  const g = adds.find(n => n.dataset.add === 'google');
+  assert.equal(g.disabled, true); assert.equal(g.title, 'Coming soon'); assert.equal(g.onclick, undefined);
+  assert.ok(!adds.find(n => n.dataset.add === 'microsoft').disabled, 'a configured sign-in is a normal button');
   assert.match(text(s), /Add a calendar link/);
   const cards = nodes(s).filter(n => n.dataset && n.dataset.accountId);
   assert.equal(cards.length, 2);
@@ -107,10 +112,8 @@ test('+ Add Microsoft account asks only for the address, then opens Microsoft in
   c.accAdd('microsoft');
   const [, title, el] = calls.find(x => x[0] === 'drawer');
   assert.equal(title, 'Add a Microsoft account');
-  const advanced = find(el, n => n.tagName === 'DETAILS');
-  const outside = nodes(el).filter(n => !nodes(advanced).includes(n));
-  assert.ok(!/client|port|tenant|token/i.test(outside.map(n => n.textContent).join(' ')), 'no jargon outside the Advanced fold');
-  assert.match(text(advanced), /Advanced: use your own Microsoft app/);
+  assert.equal(nodes(el).find(n => n.tagName === 'DETAILS'), undefined, 'your own app lives in Settings > Advanced, never on this card');
+  assert.ok(!/client|port|tenant|token/i.test(nodes(el).map(n => n.textContent).join(' ')), 'no jargon on the card');
   const input = find(el, n => n.tagName === 'INPUT' && n.type === 'email');
   input.value = 'Me@Hotmail.co.uk'; input.oninput();
   assert.match(text(el), /Personal Microsoft account/);
@@ -132,11 +135,12 @@ test('+ Other email and Google (until it lands) say "coming soon" kindly', () =>
   assert.match(text(d[2]), /Coming soon: Yahoo, iCloud and others with an app password/);
   c.accAdd('google');
   d = calls.filter(x => x[0] === 'drawer').at(-1);
-  assert.match(text(d[2]), /Coming soon/);
-  // Microsoft not set up in this copy: say so, and open the Advanced fold
+  assert.match(text(d[2]), /Coming soon/); assert.match(text(d[2]), /\+ Other email with an app password/);
+  // Microsoft not set up in this copy (reached from a search or a shortcut; the button itself is greyed out): coming soon, no fold
   vm.runInContext("AccountsStore", c).data = { accounts: [], providers: { microsoft: { available: false } } };
   c.accAdd('microsoft');
   d = calls.filter(x => x[0] === 'drawer').at(-1);
-  assert.match(text(d[2]), /not ready in this copy of OpenDash yet/);
-  assert.equal(find(d[2], n => n.tagName === 'DETAILS').open, true);
+  assert.match(text(d[2]), /Coming soon/); assert.match(text(d[2]), /Outlook calendar can come in now through a calendar link/);
+  assert.equal(nodes(d[2]).find(n => n.tagName === 'DETAILS'), undefined);
+  assert.match(text(d[2]), /Settings > Advanced/);
 });

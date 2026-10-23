@@ -253,7 +253,7 @@ provider = {
   tools/release-client-ids.mjs; docs/dev/RELEASING.md) (or
   `OPENDASH_MICROSOFT_CLIENT_ID` in the environment / `<data>/.env`).
   `OPENDASH_SHIPPED_IDS=off` ignores the written values (the zip's own tests).
-  A user's own app ID (Connections > Add Microsoft account > Advanced) wins; it is
+  A user's own app ID (Settings > Advanced > Your own sign-in apps) wins; it is
   kept on this computer (`secretsDir/microsoft-client.json`, the old file).
 - **Authority from the typed address**: personal domains (hotmail.*, outlook.*,
   live.*, msn.com, windowslive.com, passport.com, and addresses at public mail
@@ -305,7 +305,7 @@ How to make the shipped Google app live, and Google's review rules: [GOOGLE_CONN
   it when the config has one (mobile iOS/Android clients have none and send none).
   `ctx.config` = `googleConfig({store})` (pure, async, reads the store at each call; the binding loads it with the module): `clientId()`, `clientSecret(id)`
   (only the secret that belongs to that id), `knownClient(id)`. Order: the user's
-  own app (Connections > Add Google account > Advanced; secret `google-client`,
+  own app (Settings > Advanced > Your own sign-in apps; secret `google-client`,
   this computer only, the file the single-account setup used; a saved `null`
   means "built-in") wins over the built-in one: `SHIPPED.googleClientId` /
   `SHIPPED.googleClientSecret` in `lib/accounts/shipped.mjs` (placeholders

@@ -72,15 +72,12 @@ function accAdd(provider) {
   const p = d.providers || {};
   if (provider === 'other') return accOtherEmail();
   // Google has its own card (56-accounts-google.js): the ticks, the unverified-app explanation, its own app.
+  // Not switched on in this copy (the button is greyed out; this answers a search or a shortcut).
+  if (provider === 'google' && !(p.google && p.google.available)) return accComingSoon('Google accounts', 'Adding a Google account with one click is coming soon. Until then, Gmail can come in through + Other email with an app password, or through Claude: choose Add connection at the top of this page.');
+  if (provider === 'microsoft' && p.microsoft && p.microsoft.available === false) return accComingSoon('Microsoft accounts', 'Adding Outlook, Hotmail and Microsoft 365 accounts with one click is coming soon. Your Outlook calendar can come in now through a calendar link: choose Add a calendar link.');
   if (provider === 'google' && window.AccountProviders && AccountProviders.google) return AccountProviders.google.signIn({ info: p.google || null });
-  if (provider === 'google' && !(p.google && p.google.available)) return accComingSoon('Google accounts', 'Adding a Google account with one click is on its way. Until then, Gmail and Google Calendar can come in through Claude: choose Add connection at the top of this page.');
   openDrawer({ title: provider === 'google' ? 'Add a Google account' : 'Add a Microsoft account', width: 520, body: (el, close) => {
     const name = provider === 'google' ? 'Google' : 'Microsoft';
-    if (provider === 'microsoft' && p.microsoft && p.microsoft.available === false) {
-      el.appendChild(_connEl('p', 'conn-text', 'Microsoft sign-in is not ready in this copy of OpenDash yet. The person who gave you OpenDash can switch it on. People who look after IT can use their own Microsoft app under Advanced below.'));
-      el.appendChild(accAdvancedMicrosoft(p.microsoft, close, true));
-      return;
-    }
     el.appendChild(_connEl('p', 'conn-text', provider === 'google'
       ? 'Type the Gmail or Google Workspace address you want to add.'
       : 'Type the email address you use with Microsoft: Hotmail, Outlook or Live, or your work or school email.'));
@@ -117,7 +114,7 @@ function accAdd(provider) {
     input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!go.disabled) go.click(); } };
     actions.appendChild(go); el.appendChild(actions);
     paintHint();
-    if (provider === 'microsoft') el.appendChild(accAdvancedMicrosoft(p.microsoft || {}, close, false));
+    // (Your own Microsoft app: Settings > Advanced, 58-settings-advanced.js; never on this card.)
   } });
 }
 function accWaiting(name, close) {
@@ -155,9 +152,23 @@ function accComingSoon(title, text) {
   openDrawer({ title, width: 480, body: (el) => {
     const card = _connEl('div', 'acc-soon');
     card.innerHTML = icon('hourglass');
-    card.append(_connEl('h3', 'conn-name', 'Coming soon'), _connEl('p', 'conn-text', text));
+    card.append(_connEl('h3', 'conn-name', 'Coming soon'), _connEl('p', 'conn-text', text),
+      _connEl('p', 'conn-note', 'People who look after IT can use their own app in Settings > Advanced.'));
     el.appendChild(card);
   } });
+}
+/** An add button: greyed out with "Coming soon" when that sign-in is not switched on (disabled, not hidden). */
+function accAddButton(b, cls) {
+  const btn = _connEl('button', 'btn ' + cls + ' acc-add' + (b.soon ? ' acc-add-soon' : '')); btn.type = 'button'; btn.dataset.add = b.id;
+  btn.innerHTML = b.id === 'other' ? icon('at-sign', 'i-xs') : _connMark(b.id === 'google' ? 'gmail' : 'outlook', 'mail');
+  btn.appendChild(_connEl('span', null, b.label));
+  if (b.soon) {
+    btn.disabled = true;
+    btn.title = 'Coming soon';
+    btn.setAttribute('aria-disabled', 'true');
+    btn.appendChild(_connEl('span', 'acc-soon-tag', 'Coming soon'));
+  } else btn.onclick = () => accAdd(b.id);
+  return btn;
 }
 function accOtherEmail() {
   const d = accList() || {};
@@ -270,13 +281,7 @@ function accountsSection() {
   const note = _connEl('span', 'cp-readonly'); note.innerHTML = icon('lock', 'i-xs'); note.appendChild(_connEl('span', null, 'Read-only'));
   head.append(title, note); section.appendChild(head);
   const adds = _connEl('div', 'acc-adds');
-  for (const b of accAddButtons(d && d.providers)) {
-    const btn = _connEl('button', 'btn ' + (b.id === 'other' ? 'btn-ghost' : 'btn-secondary') + ' acc-add'); btn.type = 'button'; btn.dataset.add = b.id;
-    btn.innerHTML = b.id === 'other' ? icon('at-sign', 'i-xs') : _connMark(b.id === 'google' ? 'gmail' : 'outlook', 'mail');
-    btn.appendChild(_connEl('span', null, b.label));
-    btn.onclick = () => accAdd(b.id);
-    adds.appendChild(btn);
-  }
+  for (const b of accAddButtons(d && d.providers)) adds.appendChild(accAddButton(b, b.id === 'other' ? 'btn-ghost' : 'btn-secondary'));
   const ics = _connEl('button', 'btn btn-ghost acc-add acc-add-link'); ics.type = 'button'; ics.innerHTML = icon('link', 'i-xs'); ics.appendChild(_connEl('span', null, 'Add a calendar link'));
   ics.onclick = accAddCalendarLink;
   adds.appendChild(ics);
@@ -301,7 +306,7 @@ function accountsCompactCard() {
   box.append(_connEl('div', 'conn-name', 'Email and calendar (optional)'), _connEl('p', 'conn-note', 'Add your accounts now or later from Connections. OpenDash only reads.'));
   for (const a of accSort((d && d.accounts) || [])) box.appendChild(_connEl('p', 'conn-note', `${a.email}: ${accStatusView(a).label}`));
   const row = _connEl('div', 'assistant-actions');
-  for (const b of accAddButtons(d && d.providers)) row.appendChild(_connBtn(b.label, null, b.id === 'other' ? 'btn-ghost' : 'btn-secondary', () => accAdd(b.id)));
+  for (const b of accAddButtons(d && d.providers)) row.appendChild(accAddButton(b, b.id === 'other' ? 'btn-ghost' : 'btn-secondary'));
   box.appendChild(row);
   return box;
 }

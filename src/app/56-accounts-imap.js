@@ -26,6 +26,7 @@ function imapConnectFlow(o) {
       if (st.step === 'email') return paintEmail(el);
       if (st.step === 'loading') { const b = _connEl('div', 'imap-wait'); const sp = _connEl('span', 'spinner'); sp.setAttribute('aria-hidden', 'true'); b.append(sp, _connEl('span', null, 'One moment…')); el.appendChild(b); return; }
       if (st.step === 'redirect') return paintRedirect(el, close);
+      if (st.step === 'soon') return paintSoon(el, close);
       if (st.step === 'password') return paintPassword(el);
       if (st.step === 'done') return paintDone(el, close);
     };
@@ -38,7 +39,7 @@ function imapConnectFlow(o) {
         st.info = r.provider; st.screen = imapScreenFor(r.provider); st.email = chk.email;
         if (st.screen.kind === 'invalid') { st.error = { title: 'Check the address', text: st.screen.text }; st.step = 'email'; }
         else {
-          st.step = st.screen.kind === 'redirect' ? 'redirect' : 'password';
+          st.step = st.screen.kind === 'redirect' ? 'redirect' : st.screen.kind === 'soon' ? 'soon' : 'password';
           if (st.screen.kind === 'password') Object.assign(st.form, { host: st.screen.server.host, port: String(st.screen.server.port), security: st.screen.server.security, serverOpened: st.screen.showServer });
         }
       } catch (e) { st.error = { title: 'That did not work', text: e.message || netErrorMessage(e) }; st.step = account ? 'email' : st.step; }
@@ -78,6 +79,28 @@ function imapConnectFlow(o) {
         if (avail && typeof accOpenSignIn === 'function') { accOpenSignIn({ provider: s.provider, email: st.email }); if (typeof accWaiting === 'function') openDrawer({ title: 'Signing in', width: 480, body: (el2, close2) => el2.appendChild(accWaiting(s.provider === 'google' ? 'Google' : 'Microsoft', close2)) }); }
         else if (typeof accAdd === 'function') accAdd(s.provider);
       }));
+      actions.appendChild(_connBtn('Use another address', null, 'btn-ghost', () => { st.step = 'email'; st.error = null; paint(); }));
+      box.appendChild(actions);
+    }
+
+    /* ---- Outlook / Hotmail while Microsoft sign-in is off: coming soon, and the calendar link ---- */
+    function paintSoon(box, closeFn) {
+      const s = st.screen;
+      box.append(_connEl('h3', 'conn-name', s.title), _connEl('p', 'conn-text', s.text), _connEl('p', 'conn-note', st.email));
+      if (s.calendar && s.calendar.ics) {
+        const cal = _connEl('div', 'imap-steps imap-calendar');
+        cal.appendChild(_connEl('p', 'src-lead', `Add your ${s.calendar.name || 'calendar'} now`));
+        cal.appendChild(_connSteps(s.calendar.steps));
+        const row = _connEl('div', 'assistant-actions');
+        row.appendChild(_connBtn('Add a calendar link', 'link', 'btn-primary', () => {
+          closeFn();
+          if (typeof srcAddFlow === 'function') srcAddFlow({ ical: true, label: s.calendar.name || 'Calendar', icalHelp: { steps: s.calendar.steps, url: s.calendar.url, button: s.calendar.button, note: s.calendar.note } });
+        }));
+        if (s.calendar.url) row.appendChild(_connBtn(s.calendar.button || 'Open your calendar', 'external-link', 'btn-ghost', () => window.open(s.calendar.url, '_blank', 'noopener,noreferrer')));
+        cal.appendChild(row);
+        box.appendChild(cal);
+      }
+      const actions = _connEl('div', 'assistant-actions');
       actions.appendChild(_connBtn('Use another address', null, 'btn-ghost', () => { st.step = 'email'; st.error = null; paint(); }));
       box.appendChild(actions);
     }

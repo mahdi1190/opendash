@@ -30,8 +30,9 @@ function imapEmailCheck(value) {
 
 /**
  * The screen after the address, from the server's lookup.
- * -> {kind: 'redirect'|'password'|'invalid', ...}
+ * -> {kind: 'redirect'|'soon'|'password'|'invalid', ...}
  *   redirect: {provider: 'google'|'microsoft', title, text, button}
+ *   soon:     {provider: 'microsoft', title, text, calendar}  (Outlook / Hotmail while Microsoft sign-in is off)
  *   password: {title, name, intro, steps, tips, open: {label, url}|null, askUsername, usernameLabel,
  *              passwordLabel, passwordPlaceholder, showServer, server, serverNote, bridge, calendar}
  */
@@ -42,6 +43,10 @@ function imapScreenFor(info) {
     const google = p.provider === 'google';
     return { kind: 'redirect', provider: google ? 'google' : 'microsoft', title: google ? 'This is a Google address' : 'This is a Microsoft address',
       text: p.message || '', button: google ? 'Continue with Google' : 'Continue with Microsoft' };
+  }
+  if (p.kind === 'soon') {
+    return { kind: 'soon', provider: p.provider || 'microsoft', title: p.title || 'Coming soon', text: p.message || '',
+      calendar: p.calendar && p.calendar.ics ? { ...p.calendar, steps: (p.calendar.steps || []).slice() } : { ics: false, text: '' } };
   }
   const other = p.kind === 'other';
   const name = other ? p.domain || 'your email' : p.name;
@@ -114,6 +119,7 @@ function imapErrorView(err, screen) {
     case 'BRIDGE_NOT_RUNNING': return v('Proton Mail Bridge is not running', null, { showSteps: true });
     case 'PROVIDER_BUSY': case 'PROVIDER_NETWORK': return v(`${name} did not answer in time`, null);
     case 'USE_ONE_CLICK': return v('Use the one-click button', 'email', { redirect: (err && err.retryProvider) || (/google|gmail/i.test(text) ? 'google' : 'microsoft') });
+    case 'COMING_SOON': return v('Coming soon', 'email');
     case 'BAD_REQUEST': return v('Check what you typed', /server/i.test(text) ? 'server' : /address/i.test(text) ? 'email' : 'password', { openServer: /server|port/i.test(text) });
     case 'NETWORK': return v('OpenDash is not answering', null, { text: 'OpenDash itself did not answer. Check it is still running, then try again.' });
     default: return v('That did not work', null);
@@ -134,7 +140,7 @@ function imapDoneView(result, screen) {
   const short = screen && screen.id && screen.id !== 'other' && screen.name ? screen.name.replace(/ Mail$/, '') + ' ' : '';
   return {
     title: 'Connected', lines,
-    calendar: cal.ics ? { ics: true, title: `Add your ${short}calendar too?`, label: `${short}calendar`.replace(/^./, (c) => c.toUpperCase()), steps: cal.steps || [], url: cal.url || '', button: cal.button || '', note: cal.note || '' }
+    calendar: cal.ics ? { ics: true, title: cal.name ? `Add your ${cal.name} too?` : `Add your ${short}calendar too?`, label: cal.name || `${short}calendar`.replace(/^./, (c) => c.toUpperCase()), steps: cal.steps || [], url: cal.url || '', button: cal.button || '', note: cal.note || '' }
       : { ics: false, text: cal.text || '' },
   };
 }

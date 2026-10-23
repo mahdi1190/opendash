@@ -88,12 +88,20 @@ function accSort(list) {
   return (list || []).slice().sort((x, y) => (x.kind === 'work') - (y.kind === 'work') || (rank[x.provider] ?? 9) - (rank[y.provider] ?? 9) || String(x.email).localeCompare(String(y.email)));
 }
 /** The three add buttons, in the order people expect. */
+/**
+ * The add buttons. A one-click sign-in with no app in this copy (no shipped
+ * client ID, none in the environment, no app of the user's own) is shown
+ * greyed out with "Coming soon" (soon: true; the page disables it); it
+ * switches on by itself once a client ID is there.
+ */
 function accAddButtons(providers) {
   const p = providers || {};
+  const google = !!(p.google && p.google.available);
+  const microsoft = !(p.microsoft && p.microsoft.available === false);
   return [
-    { id: 'google', label: '+ Add Google account', available: !!(p.google && p.google.available) },
-    { id: 'microsoft', label: '+ Add Microsoft account', available: !(p.microsoft && p.microsoft.available === false) },
-    { id: 'other', label: '+ Other email', available: !!(p.imap && p.imap.available) },
+    { id: 'google', label: '+ Add Google account', available: google, soon: !google },
+    { id: 'microsoft', label: '+ Add Microsoft account', available: microsoft, soon: !microsoft },
+    { id: 'other', label: '+ Other email', available: !!(p.imap && p.imap.available), soon: false },
   ];
 }
 /** What the email box says under it while the user types. */

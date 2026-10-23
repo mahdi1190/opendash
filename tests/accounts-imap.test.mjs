@@ -286,3 +286,30 @@ test('the Node binding: registry file and data folder never hold the password; t
   } finally { rmSync(base, { recursive: true, force: true }); }
   if (process.env.LOCALAPPDATA) assert.ok(!existsSync(join(process.env.LOCALAPPDATA, 'OpenDash')), 'the real device folder is never touched');
 });
+
+test('without the one-click sign-ins (no client ID anywhere): Gmail through + Other email, Outlook "coming soon"; with one, the redirects come back', async () => {
+  const base = mkdtempSync(join(tmpdir(), 'imap-soon-'));
+  const saved = { ms: process.env.OPENDASH_MICROSOFT_CLIENT_ID, gid: process.env.OPENDASH_GOOGLE_CLIENT_ID, gs: process.env.OPENDASH_GOOGLE_CLIENT_SECRET };
+  delete process.env.OPENDASH_MICROSOFT_CLIENT_ID; delete process.env.OPENDASH_GOOGLE_CLIENT_ID; delete process.env.OPENDASH_GOOGLE_CLIENT_SECRET;
+  try {
+    const dataDir = join(base, 'data');
+    mkdirSync(dataDir, { recursive: true });
+    const store = secretStore(dataDir, { backend: fileBackend(join(base, 'device', 'secrets')) });
+    const svc = createAccountsService({ dataDir, store, deviceId: 'deviceaaaa1', fetchFn: async () => { throw new Error('no network'); }, imap: { openTransport: async () => { throw new Error('never dialled'); }, mx: false } });
+    const info = await svc.providersInfo();
+    assert.deepEqual([info.microsoft.available, info.google.available], [false, false], 'nothing configured in this copy');
+    const g = await svc.imapLookup('me@gmail.com');
+    assert.deepEqual([g.kind, g.id, g.imap.host], ['known', 'gmail', 'imap.gmail.com']);
+    const o = await svc.imapLookup('me@hotmail.com');
+    assert.deepEqual([o.kind, o.title], ['soon', 'Outlook and Hotmail are coming soon']);
+    const refused = await svc.connect({ provider: 'imap', email: 'me@outlook.com', password: 'x' }).catch((e) => e);
+    assert.equal(refused.code, 'COMING_SOON', 'refused before any connection');
+    // A Microsoft client ID appears (the user's own app): Outlook goes back to the one-click button.
+    await svc.microsoftApp.set('00000000-0000-4000-8000-0000000000bb');
+    assert.equal((await svc.imapLookup('me@hotmail.com')).kind, 'redirect');
+    assert.equal((await svc.imapLookup('me@gmail.com')).kind, 'known', 'Google is still off');
+  } finally {
+    for (const [k, v] of [['OPENDASH_MICROSOFT_CLIENT_ID', saved.ms], ['OPENDASH_GOOGLE_CLIENT_ID', saved.gid], ['OPENDASH_GOOGLE_CLIENT_SECRET', saved.gs]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
+    rmSync(base, { recursive: true, force: true });
+  }
+});

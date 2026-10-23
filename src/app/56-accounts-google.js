@@ -8,7 +8,7 @@
          in a new tab through the list's accOpenSignIn (GET /api/accounts/begin
          with features=), else POST /api/accounts/begin. info = providers.google:
          with no Google app at all it shows googleSetupNeeded instead.
-     googleSetupNeeded(info)   no Google app in this copy: what that means + Advanced.
+     googleSetupNeeded(info)   no Google app in this copy: coming soon (your own app: Settings > Advanced).
      googleAdvancedFold(el, google, {onChange})
          Advanced: use your own Google app (PUT /api/accounts/google-app).
    window.AccountProviders.google = {signIn, setup, advanced, permissions} is
@@ -105,7 +105,7 @@ function googleAddAccount({ email = '', accountId = null, features = null, custo
       title: accountId ? 'Sign in to Google again' : 'Add a Google account', width: 560, resizeKey: 'google-sign-in',
       body: (el) => {
         card = googleSignInCard(el, { email, features, custom: custom || !!(info && info.custom), reconnect: !!accountId });
-        if (info && !accountId) googleAdvancedFold(el, info, { onChange: () => { if (typeof accLoad === 'function') accLoad(); } });
+        // (Your own Google app: Settings > Advanced, 58-settings-advanced.js; never on this card.)
       },
       actions: [
         { label: 'Cancel', run: () => { done = true; resolve(null); } },
@@ -140,17 +140,13 @@ function googleAddAccount({ email = '', accountId = null, features = null, custo
   });
 }
 
-/** "+ Add Google account" when this copy has no Google app: what that means, and the user's own app. */
+/** "+ Add Google account" when this copy has no Google app: coming soon (the own app lives in Settings > Advanced). */
 function googleSetupNeeded(info = {}) {
   return new Promise((resolve) => {
-    openDrawer({ title: 'Add a Google account', width: 560, onClose: () => resolve(null), body: (el, close) => {
-      el.appendChild(_connEl('p', 'conn-text', 'Google sign-in is not switched on in this copy of OpenDash yet. The person who gave you OpenDash can switch it on, or you can use your own Google app (about 10 minutes, once).'));
-      el.appendChild(_connEl('p', 'conn-note', 'Until then, Gmail and Google Calendar can also come in through Claude: choose Add connection at the top of this page.'));
-      const fold = googleAdvancedFold(el, info, { onChange: async (out) => {
-        if (typeof accLoad === 'function') await accLoad();
-        if (out && out.available) { close(); googleAddAccount({ info: out }).then(resolve); }
-      } });
-      fold.open = true;
+    openDrawer({ title: 'Add a Google account', width: 560, onClose: () => resolve(null), body: (el) => {
+      el.appendChild(_connEl('h3', 'conn-name', 'Coming soon'));
+      el.appendChild(_connEl('p', 'conn-text', 'Adding a Google account with one click is coming soon in this copy of OpenDash.'));
+      el.appendChild(_connEl('p', 'conn-note', 'Until then, Gmail can come in through + Other email with an app password, or through Claude: choose Add connection at the top of this page. People who look after IT can use their own Google app in Settings > Advanced.'));
     } });
   });
 }

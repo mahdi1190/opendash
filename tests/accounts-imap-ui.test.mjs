@@ -61,6 +61,17 @@ test('screens from the real provider table: Yahoo, iCloud, Proton (Bridge), Othe
   assert.deepEqual([m.kind, m.provider, m.button], ['redirect', 'microsoft', 'Continue with Microsoft']);
   assert.equal(B.imapScreenFor(lookupProvider('nope')).kind, 'invalid');
   assert.equal(B.imapScreenFor(null).kind, 'invalid');
+  // Without the one-click sign-ins: Gmail is an app-password screen; Outlook is "coming soon" with its calendar link.
+  const off = { oneClick: { google: false, microsoft: false } };
+  const gm = plain(B.imapScreenFor(lookupProvider('me@gmail.com', off)));
+  assert.deepEqual([gm.kind, gm.title, gm.passwordLabel, gm.open.url], ['password', 'Connect Gmail', 'App password', 'https://myaccount.google.com/apppasswords']);
+  for (const t of [gm.title, gm.intro.text, ...gm.steps, ...gm.tips]) assert.doesNotMatch(t, JARGON, t);
+  const done = plain(B.imapDoneView({ account: { email: 'me@gmail.com' }, inbox: { exists: 3 }, results: [{ feature: 'mail', ok: true, count: 3 }] }, gm));
+  assert.equal(done.calendar.title, 'Add your Google Calendar too?'); assert.match(done.calendar.steps.join(' '), /Secret address in iCal format/);
+  const soon = plain(B.imapScreenFor(lookupProvider('me@outlook.com', off)));
+  assert.deepEqual([soon.kind, soon.title], ['soon', 'Outlook and Hotmail are coming soon']);
+  assert.match(soon.text, /no longer lets apps read Outlook\.com/); assert.equal(soon.calendar.name, 'Outlook calendar'); assert.ok(soon.calendar.steps.length >= 3);
+  assert.equal(B.imapErrorView({ code: 'COMING_SOON', message: 'x' }, soon).title, 'Coming soon');
 });
 
 test('password hints: a soft nudge when it does not look like that service’s app password', () => {

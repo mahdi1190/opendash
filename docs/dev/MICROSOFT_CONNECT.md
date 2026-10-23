@@ -20,9 +20,10 @@ only keep old names working.
 - **Shipped app**: OpenDash signs in as one public native client whose ID is
   built in (`lib/accounts/shipped.mjs`, placeholder `OPENDASH_MICROSOFT_CLIENT_ID`
   until a release writes the real GUID; the environment variable of the same
-  name, e.g. in `<data>/.env`, also sets it). A user's own app ID (Connections >
-  Add Microsoft account > *Advanced: use your own Microsoft app*) wins on that
-  computer; it is kept in the secret store under `microsoft-client`.
+  name, e.g. in `<data>/.env`, also sets it). A user's own app ID (Settings > Advanced >
+  *Your own sign-in apps* > *Advanced: use your own Microsoft app*) wins on that
+  computer; with none of the three, *+ Add Microsoft account* is greyed out with
+  "Coming soon" and switches on by itself once there is one; it is kept in the secret store under `microsoft-client`.
 - **Authority from the address**: Hotmail / Outlook / Live / MSN addresses, and
   public mail addresses used as a Microsoft account (gmail.com ...), go to
   `/consumers`; any other domain goes to `/organizations`. Always with

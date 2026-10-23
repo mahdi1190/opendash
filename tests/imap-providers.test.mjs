@@ -38,7 +38,8 @@ test('known services: the right server for every domain variant', () => {
 
 test('every known service: plain steps, an https app-password page, the app-password explanation, calendar help', () => {
   for (const p of IMAP_PROVIDERS) {
-    const info = lookupProvider('someone@' + { yahoo: 'yahoo.com', aol: 'aol.com', icloud: 'icloud.com', gmx: 'gmx.com', zoho: 'zoho.com', fastmail: 'fastmail.com', proton: 'proton.me' }[p.id]);
+    // (Gmail is only set up here while the one-click Google sign-in is off.)
+    const info = lookupProvider('someone@' + { gmail: 'gmail.com', yahoo: 'yahoo.com', aol: 'aol.com', icloud: 'icloud.com', gmx: 'gmx.com', zoho: 'zoho.com', fastmail: 'fastmail.com', proton: 'proton.me' }[p.id], p.id === 'gmail' ? { oneClick: { google: false } } : {});
     assert.equal(info.id, p.id);
     assert.match(info.appPassword.url, /^https:\/\/[a-z0-9.-]+\.[a-z]{2,}\//, p.id);
     assert.ok(info.appPassword.button.length > 5, p.id);
@@ -64,6 +65,34 @@ test('Gmail and Outlook addresses go to the one-click buttons', () => {
   for (const e of ['me@hotmail.com', 'me@outlook.com', 'me@live.co.uk', 'me@hotmail.co.uk', 'me@msn.com', 'me@outlook.fr']) assert.deepEqual([lookupProvider(e).kind, lookupProvider(e).provider], ['redirect', 'microsoft'], e);
   assert.match(lookupProvider('me@gmail.com').message, /Add Google account/);
   assert.match(lookupProvider('me@hotmail.com').message, /Add Microsoft account/);
+});
+
+test('without the one-click sign-ins: Gmail with an app password (and its iCal secret address); Outlook and Hotmail coming soon (and a published calendar)', () => {
+  const off = { oneClick: { google: false, microsoft: false } };
+  for (const e of ['me@gmail.com', 'me@googlemail.com']) {
+    const g = lookupProvider(e, off);
+    assert.deepEqual([g.kind, g.id, g.imap.host, g.imap.port, g.imap.security, g.username], ['known', 'gmail', 'imap.gmail.com', 993, 'tls', 'email'], e);
+  }
+  const g = lookupProvider('me@gmail.com', off);
+  assert.equal(g.appPassword.url, 'https://myaccount.google.com/apppasswords'); assert.equal(g.appPassword.twoStep, true);
+  assert.match(g.steps[0], /2-Step Verification/); assert.match(g.steps.join(' '), /myaccount\.google\.com\/apppasswords/);
+  assert.deepEqual([g.calendar.ics, g.calendar.name], [true, 'Google Calendar']); assert.match(g.calendar.steps.join(' '), /Secret address in iCal format/);
+  for (const e of ['me@hotmail.com', 'me@outlook.com', 'me@live.co.uk', 'me@msn.com']) {
+    const m = lookupProvider(e, off);
+    assert.deepEqual([m.kind, m.provider, m.title], ['soon', 'microsoft', 'Outlook and Hotmail are coming soon'], e);
+  }
+  const m = lookupProvider('me@outlook.com', off);
+  assert.match(m.message, /no longer lets apps read Outlook\.com/); assert.deepEqual([m.calendar.ics, m.calendar.name], [true, 'Outlook calendar']);
+  assert.match(m.calendar.steps.join(' '), /Publish a calendar/);
+  // Only the one that is off changes; with both on (the default) the redirects come back.
+  assert.equal(lookupProvider('me@gmail.com', { oneClick: { google: true, microsoft: false } }).kind, 'redirect');
+  assert.equal(lookupProvider('me@outlook.com', { oneClick: { google: false, microsoft: true } }).kind, 'redirect');
+  assert.equal(lookupProvider('me@gmail.com').kind, 'redirect');
+  // Own domains by MX: Google Workspace through Gmail's IMAP; Microsoft 365 coming soon.
+  const ws = providerFromMx('me@corp.example', ['aspmx.l.google.com'], off);
+  assert.deepEqual([ws.kind, ws.id, ws.imap.host, ws.viaMx], ['known', 'gmail', 'imap.gmail.com', true]);
+  const m365 = providerFromMx('me@corp.example', ['corp-example.mail.protection.outlook.com'], off);
+  assert.deepEqual([m365.kind, m365.title], ['soon', 'Microsoft 365 is coming soon']);
 });
 
 test('other addresses: a guessed server; invalid addresses: a plain hint', () => {

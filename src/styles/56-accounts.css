@@ -41,3 +41,6 @@
 .acc-soon { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 18px; border: 1px dashed var(--border-strong); border-radius: 12px; background: var(--bg-subtle); }
 .acc-soon > .i { width: 22px; height: 22px; color: var(--fg-muted); }
 .acc-compact .assistant-actions { flex-wrap: wrap; }
+/* "+ Add Microsoft/Google account" while that sign-in is not switched on in this copy: greyed out, not hidden. */
+.acc-add.acc-add-soon, .acc-add.acc-add-soon:hover { opacity: .6; cursor: not-allowed; }
+.acc-soon-tag { margin-left: 6px; padding: 1px 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--bg-subtle); color: var(--fg-muted); border: 1px solid var(--border); }

@@ -154,6 +154,11 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Main computer', 'Which computer checks your accounts when more than one is on.', 'main primary home laptop first fetch'],
     ['Live sync', 'Turn the direct connection between your computers on or off.', 'live direct peer'],
   ],
+  advanced: [
+    ['Your own sign-in apps', 'For IT teams and developers: your own Microsoft or Google app for signing in.', 'client id application entra azure google cloud oauth developer it'],
+    ['Advanced: use your own Microsoft app', 'Enter the application (client) ID of your own Microsoft Entra app.', 'outlook hotmail office 365 client id'],
+    ['Advanced: use your own Google app', 'Enter the client ID and secret of your own Google app.', 'gmail google workspace client id secret json'],
+  ],
   updates: [
     ['OpenDash version', 'Check for updates and install a newer release.', 'upgrade GitHub'],
     ['Check once a day', 'Choose whether to check for updates automatically.'],

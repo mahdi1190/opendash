@@ -58,6 +58,15 @@ Hotmail, a personal Gmail and a work Outlook, for example.
 
 At the top of **Connections**, under *Your email and calendar accounts*:
 
+> **Coming soon in some copies.** The one-click Microsoft and Google buttons
+> need an app registration that the copy of OpenDash ships with. When a copy
+> has none (no built-in app, nothing in the environment or `.env`, and no app
+> of your own), the buttons are greyed out with **Coming soon**. They switch
+> on by themselves as soon as an app is there. Until then a Gmail address can
+> be added through **+ Other email** (below), and an Outlook calendar through
+> **Add a calendar link**. People who look after IT can enter their own app
+> under **Settings > Advanced** (*Your own sign-in apps*).
+
 - **+ Add Microsoft account**: type your email address (Hotmail, Outlook, Live,
   or your work or school email) and press *Continue to Microsoft*. Microsoft
   opens in a new tab: sign in there and say yes. Come back to OpenDash: the
@@ -77,9 +86,25 @@ At the top of **Connections**, under *Your email and calendar accounts*:
   app password and press *Test connection*. If it does not work, OpenDash says
   why in plain words (the wrong password, IMAP switched off, two-step
   verification needed first) and what to do. A Gmail or Outlook address is
-  sent to the one-click buttons instead. Afterwards OpenDash offers *Add a
-  calendar link* with the steps for that service (iCloud: a public calendar
-  link; Yahoo: the calendar's ICS link). The app password is kept on this
+  sent to the one-click buttons instead, while those are switched on.
+  Afterwards OpenDash offers *Add a calendar link* with the steps for that
+  service (iCloud: a public calendar link; Yahoo: the calendar's ICS link).
+  - **Gmail, while + Add Google account says Coming soon**: Gmail works here
+    with an app password (OpenDash reads `imap.gmail.com`, port 993). Google
+    makes app passwords only with **2-Step Verification** on: turn it on at
+    myaccount.google.com/signinoptions/two-step-verification, then make the
+    password at **myaccount.google.com/apppasswords** (name it OpenDash) and
+    paste it. Afterwards *Add your Google Calendar too?* shows where to find
+    the calendar's **Secret address in iCal format** (Google Calendar >
+    Settings > your calendar > *Integrate calendar*). A Google Workspace
+    account may not offer app passwords (the administrator decides).
+  - **Outlook, Hotmail and Live, while + Add Microsoft account says Coming
+    soon**: *Outlook and Hotmail are coming soon*. Microsoft no longer lets
+    apps read Outlook.com mail with an app password, so these need the
+    one-click Microsoft sign-in (the same for Microsoft 365 work addresses).
+    Your Outlook calendar can come in now: Outlook on the web > Settings >
+    Calendar > *Shared calendars* > *Publish a calendar* ("Can view all
+    details"), copy the ICS link and press *Add a calendar link*. The app password is kept on this
   computer only, never in the data folder; OpenDash only reads mail and never
   marks it as read. If the app password stops working, the account says
   *Sign in again*: press *Paste a new app password*.
@@ -403,7 +428,9 @@ enable the Gmail API and the Google Calendar API, set up the consent screen
 (External, then *Publish app*, so sign-ins do not stop after 7 days), add the
 scopes `.../auth/calendar.readonly` and `.../auth/gmail.readonly`, create a
 **Desktop app** client, and paste its client ID and secret (or its JSON) under
-*Add Google account > Advanced*. They are kept on this computer only.
+**Settings > Advanced > Your own sign-in apps** (*Advanced: use your own
+Google app*). They are kept on this computer only. Your own Microsoft app goes
+in the same place (*Advanced: use your own Microsoft app*).
 
 **Older setups.** Earlier versions had one direct Google connection with your
 own client file in `data/secrets/`. It is moved into one Google account
