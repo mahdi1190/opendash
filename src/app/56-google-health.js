@@ -90,7 +90,7 @@ async function googleHealthSync() {
   try {
     const result = await _srcApi('/api/google-health/sync', { method: 'POST', body: {} });
     toast(result.snapshot && result.snapshot.warnings && result.snapshot.warnings.length ? 'Google Health synced with some missing data. See the connection for details.' : 'Google Health synced.', { kind: 'ok' });
-  } catch (e) { toast(e.message, { kind: 'err', timeout: 7000 }); }
+  } catch (e) { toast('Google Health did not sync: ' + netErrorMessage(e), { kind: 'err', timeout: 12000, action: { label: 'Try again', run: () => googleHealthSync() } }); }
   finally { _googleHealthBusy = false; await connRefresh({ force: true }); if (state.view === 'connections') renderMain(); }
 }
 
@@ -100,7 +100,13 @@ function googleHealthConnectionSetup() {
     el.appendChild(_connEl('p', 'conn-text', 'Connect activity and sleep from Google Health, including supported Fitbit devices. Sign in to the Google Health mobile app with the same Google Account first.'));
     let health;
     try { health = await _srcApi('/api/google-health/status'); }
-    catch (e) { if (alive) el.appendChild(_connEl('p', 'conn-note', e.message)); return; }
+    catch (e) {
+      if (!alive) return;
+      const p = _connEl('p', 'conn-note', 'The Google Health status did not load: ' + netErrorMessage(e) + ' ');
+      p.appendChild(_connBtn('Try again', 'refresh-cw', 'btn-ghost', () => { close(); googleHealthConnectionSetup(); }));
+      el.appendChild(p);
+      return;
+    }
     if (!alive) return;
     const notice = _connEl('p', 'callout info conn-msg', 'Google currently pauses access for new projects. An approved Google Cloud project is needed to finish connecting.');
     el.appendChild(notice);

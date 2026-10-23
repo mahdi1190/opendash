@@ -325,7 +325,7 @@ function _evLoadSummary(m, generate) {
   const p = generate ? _bfPost('/api/brief/summary', { kind: 'evening', date, facts: _evFacts(m), regenerate: !!(cur && cur.text) })
     : _bfJson(`/api/brief/summary?kind=evening&date=${date}`);
   p.then(j => { _bf.summary.evening = Object.assign({ date }, j); _bf.summaryLoading.evening = false; _evPaintAi(null, !!generate); })
-    .catch(e => { _bf.summaryLoading.evening = false; _bf.summary.evening = { date, text: null, error: e.status === 503 ? 'Connect Claude for a written recap.' : 'The recap could not be written just now.' }; _evPaintAi(null, false); });
+    .catch(e => { _bf.summaryLoading.evening = false; _bf.summary.evening = { date, text: null, error: e.code === 'OFF' ? 'The AI recap is off in Settings.' : e.code === 'NOT_MAIN' ? e.message : typeof _bfAiErrorText === 'function' ? _bfAiErrorText(e, 'Write my recap', 'recap') : e.status === 503 ? 'Connect Claude for a written recap.' : 'The recap could not be written just now.' }; _evPaintAi(null, false); });
 }
 
 function _evFooter(m) {

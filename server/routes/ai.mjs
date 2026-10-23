@@ -11,7 +11,7 @@
 // with 400 rather than silently swapped. Omitted model -> config ai.model.
 
 import { askText, askJson, aiStatus } from '../../lib/ai.mjs';
-import { MODELS, EFFORTS, queueStats, isAllowedModel, isAllowedEffort } from '../../lib/claude-runner.mjs';
+import { MODELS, EFFORTS, queueStats, isAllowedModel, isAllowedEffort, withAbortSignal } from '../../lib/claude-runner.mjs';
 import { HttpError } from '../http.mjs';
 
 const MAX_PROMPT = 200000;
@@ -37,19 +37,28 @@ export default function register(app) {
       const model = b.model ?? cfg.ai.model;
       const effort = b.effort ?? undefined;
       const t0 = Date.now();
+      // Stop on the page (or a closed tab) ends the request: the Claude run is
+      // cancelled too, so it does not use Claude for an answer nobody reads.
+      const ac = new AbortController();
+      const gone = () => { if (c.res && !c.res.writableFinished) ac.abort(); };
+      if (c.res && typeof c.res.on === 'function') c.res.on('close', gone);
       try {
-        if (b.schema) {
-          const r = await askJson({ prompt: b.prompt, schema: b.schema, model, effort, system: b.system });
-          log('info', `ai json ${r.model} ${Date.now() - t0}ms`);
-          return { json: r.json, text: r.text, model: r.model, ms: r.ms };
-        }
-        const r = await askText({ prompt: b.prompt, model, effort, system: b.system });
-        log('info', `ai ${r.model} ${Date.now() - t0}ms`);
-        return { text: r.text, model: r.model, ms: r.ms };
+        return await withAbortSignal(ac.signal, async () => {
+          if (b.schema) {
+            const r = await askJson({ prompt: b.prompt, schema: b.schema, model, effort, system: b.system });
+            log('info', `ai json ${r.model} ${Date.now() - t0}ms`);
+            return { json: r.json, text: r.text, model: r.model, ms: r.ms };
+          }
+          const r = await askText({ prompt: b.prompt, model, effort, system: b.system });
+          log('info', `ai ${r.model} ${Date.now() - t0}ms`);
+          return { text: r.text, model: r.model, ms: r.ms };
+        });
       } catch (e) {
         // The code only: a failed run's message can repeat CLI output or prompt text.
-        log('warn', `ai FAILED ${e.code || 'error'}`);
+        log(e && e.code === 'CANCELLED' ? 'info' : 'warn', `ai ${e && e.code === 'CANCELLED' ? 'cancelled by the page' : 'FAILED ' + (e.code || 'error')} ${Date.now() - t0}ms`);
         throw e;   // ClaudeError carries .status and .toJSON() -> {error, code}
+      } finally {
+        if (c.res && typeof c.res.off === 'function') c.res.off('close', gone);
       }
     },
   });

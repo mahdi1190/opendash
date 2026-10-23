@@ -102,14 +102,17 @@ const _EM_SUG_SCHEMA = {
     actionType: { type: 'string', enum: ['reply', 'do', 'followup', 'decision', 'form'] }, confidence: { type: 'number' },
   } } } },
 };
-let _emSuggesting = false;
+let _emSuggesting = false, _emSugCtrl = null, _emSugAt = 0;
+/** Stop reading (the Suggest tasks button while it runs): the Claude run is cancelled, nothing is added. */
+function aiStopSuggesting() { if (_emSugCtrl) { try { _emSugCtrl.abort(); } catch (e) { /* already stopped */ } } }
 async function aiSuggestTasksFromEmails() {
+  if (_emSuggesting) { aiStopSuggesting(); return; }
   if (!AI_AVAILABLE) { toast('Connect Claude to get suggestions.', { icon: 'plug', action: { label: 'Connect', run: () => (window.Connections ? Connections.open('claude') : setView('connections')) } }); return; }
   const t = _emTriage();
   const pendingIds = new Set(t.suggestions.filter(s => s.status === 'pending').map(s => s.emailId));
   const emails = emailMessages().filter(m => !t.handled[m.id] && !pendingIds.has(m.id)).slice(0, 40);
   if (!emails.length) { toast('Nothing new to look at. Update the inbox first.', { icon: 'inbox' }); return; }
-  _emSuggesting = true; render();
+  _emSuggesting = true; _emSugAt = Date.now(); _emSugCtrl = typeof AbortController === 'function' ? new AbortController() : null; render();
   const people = (state.people || []).filter(p => p && !p.self).map(p => ({ id: p.id, name: p.name, emails: typeof pplPersonEmails === 'function' ? pplPersonEmails(p) : [p.email].filter(Boolean), role: p.role || '' }));
   const streams = Object.entries(STREAMS).map(([k, v]) => ({ id: k, label: v.label }));
   const openTitles = getAllItems().filter(i => statusOf(i.id) !== 'done').map(i => effTitle(i).slice(0, 80)).slice(0, 300);
@@ -128,7 +131,7 @@ People: ${JSON.stringify(people)}
 Open tasks: ${JSON.stringify(openTitles)}
 Emails: ${JSON.stringify(emails.map(m => ({ id: m.id, from: m.sender || _emSenderName(m), subject: m.subject, snippet: m.snippet, date: m.date })))}`;
   try {
-    const out = await askAIJson(prompt, _EM_SUG_SCHEMA, { effort: 'low', purpose: 'triage' });
+    const out = await askAIJson(prompt, _EM_SUG_SCHEMA, { effort: 'low', purpose: 'triage', signal: _emSugCtrl ? _emSugCtrl.signal : undefined });
     const ids = new Set(emails.map(m => m.id));
     const list = (out && Array.isArray(out.tasks) ? out.tasks : []).filter(s => s && ids.has(s.emailId) && (typeof s.confidence !== 'number' || s.confidence >= 0.5));
     const now = Date.now();
@@ -148,8 +151,11 @@ Emails: ${JSON.stringify(emails.map(m => ({ id: m.id, from: m.sender || _emSende
     saveData();
     toast(list.length ? `${list.length} task${list.length === 1 ? '' : 's'} suggested` : 'No new tasks in these emails', { kind: 'ok', icon: 'sparkles' });
   } catch (e) {
-    toast((e && e.message) || 'The suggestions failed.', { kind: 'err' });
-  } finally { _emSuggesting = false; render(); }
+    // Why it failed and the fix (sign in, install...), else Try again; Stop is quiet.
+    if (e && e.code === 'CANCELLED') toast('Stopped reading. Nothing was added.', { icon: 'circle-x' });
+    else if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Task suggestions failed', retry: () => aiSuggestTasksFromEmails() });
+    else toast((e && e.message) || 'The suggestions failed.', { kind: 'err' });
+  } finally { _emSuggesting = false; _emSugCtrl = null; render(); }
 }
 
 /** Mark a thread handled ('task' | 'dismiss') or reopen it (null). One undo step. */
@@ -251,8 +257,11 @@ function renderEmailTriage(container) {
   upd.onclick = () => InboxStore.update({ force: true, body: { days: Number(daysSel.value) || 14 } });
   const sug = document.createElement('button'); sug.type = 'button'; sug.className = 'btn btn-primary btn-sm ai-only';
   sug.setAttribute('data-requires', 'claude');
-  sug.innerHTML = icon(_emSuggesting ? 'loader-circle' : 'sparkles', 'i-sm' + (_emSuggesting ? ' spin' : '')) + `<span>${_emSuggesting ? 'Reading…' : 'Suggest tasks'}</span>`;
-  sug.disabled = _emSuggesting || !msgs.length;
+  // While Claude reads: a live wait time, and the button stops it.
+  sug.innerHTML = icon(_emSuggesting ? 'loader-circle' : 'sparkles', 'i-sm' + (_emSuggesting ? ' spin' : '')) + `<span>${_emSuggesting ? 'Reading… Stop' : 'Suggest tasks'}</span>`;
+  if (_emSuggesting && typeof aiSinceEl === 'function') sug.appendChild(aiSinceEl(_emSugAt));
+  if (_emSuggesting) sug.setAttribute('data-tip', 'Claude is reading your recent email. Click to stop: nothing is added.');
+  sug.disabled = !_emSuggesting && !msgs.length;
   sug.onclick = () => aiSuggestTasksFromEmails();
   acts.append(daysSel, upd, sug);
   bar.append(st, acts);

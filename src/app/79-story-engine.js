@@ -498,8 +498,14 @@ async function storyOpen(kind, opts) {
     if (seq !== _story.seq) return;
     root.classList.remove('is-loading'); root.classList.add('is-error');
     root.querySelector('.st-poster-h').textContent = 'The story could not load.';
-    root.querySelector('.st-poster-sub').textContent = _serverAvailable === false ? 'The OpenDash server is not running.' : (e.message || 'Try again in a moment.');
+    root.querySelector('.st-poster-sub').textContent = _serverAvailable === false ? 'The OpenDash server is not running. Start OpenDash, then press Try again.' : (e.message || 'Try again in a moment.');
     root.querySelector('.st-bigplay').hidden = true;
+    // One click to load it again (no closing and finding the story again).
+    const again = document.createElement('button'); again.type = 'button'; again.className = 'btn btn-secondary btn-sm st-retry';
+    again.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Try again</span>';
+    again.onclick = () => { storyClose({ quiet: true }); storyOpen(kind, opts); };
+    root.querySelector('.st-poster-sub').after(again);
+    requestAnimationFrame(() => { if (again.isConnected) again.focus({ preventScroll: true }); });
     return;
   }
   if (seq !== _story.seq || !_story.open) return;
@@ -739,6 +745,11 @@ function storyAutoOpen(kind) {
 }
 
 /* ---------- AI script ---------- */
+/** Rewriting failed: why (signed out, usage limit, timeout...) and the fix or Try again (70-ai.js). */
+function _stAiError(e, retry) {
+  if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Claude could not rewrite the story', retry });
+  else toast((e && e.message) || 'Claude could not rewrite the story just now.', { kind: 'err' });
+}
 /** A page-built kind's Claude version: src.ai(payload, {regenerate}) -> a new script or null (quiet unless asked). */
 async function _stSourceAi(src, regenerate) {
   const p = _story.payload;
@@ -752,7 +763,7 @@ async function _stSourceAi(src, regenerate) {
     _story.payload.script = sc; _story.payload.ai = { state: 'cached', model: sc.model || null };
     _stSwapScript();
   } catch (e) {
-    if (regenerate && seq === _story.seq) toast((e && e.message) || 'Claude could not rewrite the story just now.', { kind: 'err' });
+    if (regenerate && seq === _story.seq) _stAiError(e, () => _stSourceAi(src, true));
   } finally {
     if (seq === _story.seq) { _story.aiBusy = false; _stSrcBadge(); }
   }
@@ -763,7 +774,7 @@ async function _stMaybeAi(regenerate) {
   if (!regenerate && p.ai && p.ai.state !== 'missing') return;
   if (typeof briefPrefs === 'function' && !briefPrefs().ai) return;
   const ai = typeof connHas === 'function' ? connHas('claude') : (typeof AI_AVAILABLE !== 'undefined' && AI_AVAILABLE);
-  if (!ai) { if (regenerate) toast('Connect Claude to rewrite the story.', { kind: 'err' }); return; }
+  if (!ai) { if (regenerate) toast('Rewriting the story needs Claude. Connect it in Connections > Claude.', { kind: 'err', action: { label: 'Open Connections', run: () => { storyClose(); connOpen('claude'); } } }); return; }
   const seq = _story.seq;
   _story.aiBusy = true; _stSrcBadge();
   try {
@@ -772,7 +783,7 @@ async function _stMaybeAi(regenerate) {
     _story.payload.script = r.script; _story.payload.ai = { state: 'cached', model: r.script.model };
     _stSwapScript();
   } catch (e) {
-    if (regenerate && seq === _story.seq) toast(e.message || 'Claude could not rewrite the story just now.', { kind: 'err' });
+    if (regenerate && seq === _story.seq) _stAiError(e, () => _stMaybeAi(true));
   } finally {
     if (seq === _story.seq) { _story.aiBusy = false; _stSrcBadge(); }
   }
