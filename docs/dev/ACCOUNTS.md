@@ -304,7 +304,7 @@ calls these routes on its local server.
 
 | route | body / query | answer |
 |---|---|---|
-| `GET /api/accounts` | - | `{ accounts: [publicAccount], providers: { microsoft: {available, custom, clientIdHint}, google: {available}, imap: {available:false, comingSoon:true} }, device: { hostId } }` |
+| `GET /api/accounts` | - | `{ accounts: [publicAccount], providers: { microsoft: {available, custom, builtIn, callback}, google: {available}, imap: {available:false, comingSoon:true} } }` (`microsoft.custom`: the user's own app is in use; `microsoft.callback`: the return address to register for it) |
 | `POST /api/accounts/begin` | `{ provider, email, kind?, accountId?, features? }` | `{ url, kind }`: open `url` in the browser |
 | `GET /api/accounts/begin?provider=&email=&kind=&accountId=` | - | `302` to the provider (the page opens this in a new tab, so no pop-up blocker) |
 | `GET /api/accounts/callback?code=&state=` | - | an HTML page: connected / waiting for your organisation (with the approval link and email) / try again. Also at `/api/microsoft/callback` for app registrations made with the old instructions |
