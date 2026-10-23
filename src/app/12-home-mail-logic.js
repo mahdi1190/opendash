@@ -78,7 +78,9 @@ function homeNeedsReply(messages, triage, o) {
   for (const m of Array.isArray(messages) ? messages : []) {
     if (!m || typeof m.id !== 'string' || !m.id || seen.has(m.id)) continue;
     seen.add(m.id);
-    if (handled[m.id] || linked.has(m.id)) continue;
+    // A mail read through two sources (the Claude Gmail connector and a Google account) is one
+    // message; `aliases` are the other copy's ids, so a mark or a task link on either counts.
+    if (handled[m.id] || linked.has(m.id) || (Array.isArray(m.aliases) && m.aliases.some(a => handled[a] || linked.has(a)))) continue;
     const email = String((m.from && m.from.email) || '').trim().toLowerCase();
     if (!email || mine.has(email)) continue;
     if (m.category && HOME_MAIL_SKIP_CATS.includes(String(m.category).toLowerCase())) continue;
