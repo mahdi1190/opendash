@@ -16,7 +16,8 @@ async function serverAsk(prompt, opts) {
     body: JSON.stringify(body),
   });
   const data = await r.json().catch(() => ({}));
-  if (!r.ok) { const e = new Error(data.error || ('AI request failed: ' + r.status)); e.code = data.code || null; throw e; }
+  // calm: the device that runs Claude is asleep or off (lib/sync/presence.mjs); toast() shows the line calmly.
+  if (!r.ok) { const e = new Error(data.error || ('AI request failed: ' + r.status)); e.code = data.code || null; e.calm = !!data.calm; throw e; }
   if (opts && opts.schema) return data;
   if (typeof data.text !== 'string' || !data.text.trim()) {
     throw new Error('AI returned an empty response');

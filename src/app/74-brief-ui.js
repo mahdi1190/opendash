@@ -246,7 +246,7 @@ function _bfJson(url, opts) {
   const go = opts && opts.method === 'POST' && typeof remoteFetch === 'function' ? remoteFetch : fetch;
   return go(url, Object.assign({ cache: 'no-store', headers: { Accept: 'application/json' } }, opts || {})).then(async r => {
     const j = await r.json().catch(() => ({}));
-    if (!r.ok) { const e = new Error(j.error || ('HTTP ' + r.status)); e.status = r.status; e.code = j.code; throw e; }
+    if (!r.ok) { const e = new Error(j.error || ('HTTP ' + r.status)); e.status = r.status; e.code = j.code; e.calm = !!j.calm; throw e; }
     return j;
   });
 }
@@ -702,7 +702,7 @@ function _bfLoadSummary(m, regenerate) {
     return { hit: r, typed: true };
   };
   run().then(({ hit, typed }) => { _bf.summary.brief = hit ? Object.assign({ date }, hit) : { date, text: null }; _bf.summaryLoading.brief = false; _bfPaintAi(null, typed); _bfSaveSnapshot(true); })
-    .catch(e => { _bf.summaryLoading.brief = false; _bf.summary.brief = { date, text: null, error: e.code === 'OFF' ? 'The AI summary is off in Settings.' : e.code === 'NOT_MAIN' ? e.message : 'The summary could not be written just now.' }; _bfPaintAi(null, false); });
+    .catch(e => { _bf.summaryLoading.brief = false; _bf.summary.brief = { date, text: null, error: e.code === 'OFF' ? 'The AI summary is off in Settings.' : e.code === 'NOT_MAIN' || e.calm ? e.message : 'The summary could not be written just now.' }; _bfPaintAi(null, false); });
 }
 
 /* ---------- cards ---------- */
