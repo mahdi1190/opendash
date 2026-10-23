@@ -15,12 +15,14 @@
 // commits through the state store, which bumps the version and announces it
 // on /api/events with source 'sync'.
 
-import { createSyncEngine } from '../../lib/sync/engine.mjs';
+import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
 
 export default function register(app) {
   const { store, log, paths, repoRoot, version } = app.ctx;
-  const engine = createSyncEngine({
+  const engine = createNodeSyncEngine({
     store, dataDir: paths.root, log, appVersion: version, forbid: [repoRoot],
+    // The account registry and fetched snapshots sync; the connections code asks
+    // app.ctx.sync.isFetcher(accountId) before running an account's fetch job.
     ...(process.env.DASHBOARD_SYNC_POLL_MS ? { pollMs: Math.max(500, Number(process.env.DASHBOARD_SYNC_POLL_MS) || 5000) } : {}),
   });
   app.ctx.sync = engine;

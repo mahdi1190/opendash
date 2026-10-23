@@ -206,7 +206,7 @@ test('with file watching unavailable, the 5 s poll still picks changes up', asyn
 test('after a restart the engine resumes where it was (no re-send, no lost offsets)', async () => {
   await A.eng.stop();
   const before = readdirSync(join(devs(cloudA), idA)).map(n => [n, statSync(join(devs(cloudA), idA, n)).size]);
-  const A2 = { ...A, eng: (await import('../lib/sync/engine.mjs')).createSyncEngine({ store: A.store, dataDir: A.data, localDir: join(base, 'local-a'), host: 'host-a', pollMs: 200, debounceMs: 30, detect: () => [] }) };
+  const A2 = { ...A, eng: (await import('../lib/sync/node-host.mjs')).createNodeSyncEngine({ store: A.store, dataDir: A.data, localDir: join(base, 'local-a'), host: 'host-a', pollMs: 200, debounceMs: 30, detect: () => [] }) };
   await A2.eng.start();
   assert.equal(A2.eng.deviceId, idA, 'same identity');
   await A2.eng.syncNow();

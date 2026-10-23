@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createStateStore } from '../server/state-store.mjs';
-import { createSyncEngine } from '../lib/sync/engine.mjs';
+import { createNodeSyncEngine } from '../lib/sync/node-host.mjs';
 
 export const TEST_BASE = process.env.OPENDASH_SYNC_TEST_DIR || tmpdir();
 export function tempDir(prefix) { mkdirSync(TEST_BASE, { recursive: true }); return mkdtempSync(join(TEST_BASE, prefix)); }
@@ -27,7 +27,7 @@ export function makeDevice(base, name, { state = { custom: [] }, pollMs = 200, w
   if (state) writeFileSync(join(data, 'state', 'dashboard-state.json'), JSON.stringify({ ...state, _lastSave: 1 }));
   const store = createStateStore({ stateDir: join(data, 'state') });
   // This computer's own sync files (normally %LOCALAPPDATA%, outside the data folder).
-  const eng = createSyncEngine({ store, dataDir: data, localDir: join(base, `local-${name}`), host: `host-${name}`, pollMs, watch, debounceMs, detect: () => [], ...(now ? { now } : {}), ...(log ? { log } : {}) });
+  const eng = createNodeSyncEngine({ store, dataDir: data, localDir: join(base, `local-${name}`), host: `host-${name}`, pollMs, watch, debounceMs, detect: () => [], ...(now ? { now } : {}), ...(log ? { log } : {}) });
   engines.add(eng);
   return { name, data, store, eng };
 }
