@@ -264,6 +264,8 @@ provider = {
 
 ### Google specifics (`lib/accounts/google.mjs`, `lib/accounts-google.mjs`)
 
+How to make the shipped Google app live, and Google's review rules: [GOOGLE_CONNECT.md](GOOGLE_CONNECT.md).
+
 - **Sign-in**: the installed-app flow (RFC 8252) with PKCE S256, the core's
   single-use state, `login_hint` from the typed address, `access_type=offline`
   and `prompt=consent` (Google then always returns a refresh token). Who signed

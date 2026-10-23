@@ -64,8 +64,10 @@ At the top of **Connections**, under *Your email and calendar accounts*:
   account appears with *Connected*. OpenDash works out from the address whether
   it is a personal or a work account; if it guessed wrong, press *This is a
   work or school account* (or *personal*) before continuing.
-- **+ Add Google account**: the same, with Google (coming soon in this copy if
-  the button says so).
+- **+ Add Google account**: type your Gmail or Google Workspace address, tick
+  *Read your email* and/or *See your calendars*, and press *Continue to Google*.
+  Google first says "Google hasn't verified this app": press *Advanced*, then
+  *Go to OpenDash (unsafe)* (see [Google accounts](#google-accounts-gmail-and-google-calendar-without-claude)).
 - **+ Other email**: Yahoo, iCloud and other providers with an app password are
   coming soon.
 - **Add a calendar link**: any calendar you can share as a link (see
