@@ -405,21 +405,23 @@ function _finMonzoConnect(ctx, body) {
     if (!w.sourceId) { ctx.go('client'); return; }
     const tab = window.open(FIN_API + 'monzo/connect?source=' + encodeURIComponent(w.sourceId), '_blank');
     if (!tab) toast('Your browser blocked the new tab. Allow pop-ups for OpenDash and press Connect Monzo again.', { kind: 'err', timeout: 8000 });
-    _finMonzoStop(w);                      // an answer left from an earlier try is not this one's
-    w.connectAt = Date.now(); w.err = null; ctx.paint();
+    // A first Connect clears an answer left from an earlier try; "Open Monzo again" never does
+    // (that sign-in may have just finished) and keeps the start time the answer is checked against.
+    if (!w.connectAt) { _finMonzoStop(w); w.connectAt = Date.now(); }
+    w.linkAt = Date.now(); w.err = null; ctx.paint();
   };
   if (w.connectAt) {
     wait.innerHTML = '<span class="spinner"></span>';
     const line = _finEl('span', null, '');
     wait.appendChild(line);
     const tick = () => {
-      const gone = Date.now() - w.connectAt;
-      if (gone > FIN_MONZO_LINK_MS) {
+      const gone = Date.now() - w.connectAt, linkGone = Date.now() - (w.linkAt || w.connectAt);
+      if (linkGone > FIN_MONZO_LINK_MS) {
         ctx.stop(); w.connectAt = null;
         w.err = 'That sign-in link has expired (links last 10 minutes). Press Connect Monzo to get a new one: nothing is lost.';
         ctx.paint(); return;
       }
-      line.textContent = `Waiting for you to finish signing in on the Monzo tab… ${finClock(gone / 1000)} (the link works for ${finClock((FIN_MONZO_LINK_MS - gone) / 1000)} more)`;
+      line.textContent = `Waiting for you to finish signing in on the Monzo tab… ${finClock(gone / 1000)} (the link works for ${finClock((FIN_MONZO_LINK_MS - linkGone) / 1000)} more)`;
     };
     tick(); ctx.every(tick, 1000);
     let fails = 0;
