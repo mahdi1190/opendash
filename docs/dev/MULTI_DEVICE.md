@@ -4,7 +4,8 @@ How the pieces fit together, in plain words. The details are in
 [SYNC_FORMAT.md](SYNC_FORMAT.md) (the sync folder and its files),
 [ACCOUNTS.md](ACCOUNTS.md) (mail and calendar accounts),
 [GOOGLE_CONNECT.md](GOOGLE_CONNECT.md) and
-[MICROSOFT_CONNECT.md](MICROSOFT_CONNECT.md) (the two one-click sign-ins).
+[MICROSOFT_CONNECT.md](MICROSOFT_CONNECT.md) (the two one-click sign-ins),
+[LIVE_SYNC.md](LIVE_SYNC.md) (computers talking to each other directly).
 
 ## Two ways to use OpenDash on two computers
 
@@ -15,7 +16,10 @@ How the pieces fit together, in plain words. The details are in
    cloud stores files it cannot read. A new computer is approved from one you
    already use (six digits to compare) or with the recovery code. Trial mode
    comes first: OpenDash lists what would change and applies nothing until you
-   switch *Use changes from my other computers* on.
+   switch *Use changes from my other computers* on. With encrypted sync,
+   **live sync** also connects your computers directly (same Wi-Fi, or over the
+   internet through a port your router opens), so a change shows on the other
+   within a second; the folder stays the catch-up path.
 2. **One data folder inside OneDrive**, opened by both computers (older
    set-ups). Only one computer at a time may write: the second one sees
    "OpenDash is open on X" and its changes wait (the write gate, below).
@@ -56,14 +60,18 @@ computer** (Settings > Sync > Main computer); the others show "Runs on <name>".
 A click always runs where you clicked. While a move copies the data, nothing
 runs automatically.
 
-**One rule for both** (`lib/sync/roles.mjs`): an account follows its own
-fetcher; a job follows its own role, else the main computer; with nothing
-recorded every computer runs it (sync off) or the first computer that can
-takes it (sync on). One place records it: `accounts.json` for accounts,
+**One rule for both** (`lib/sync/roles.mjs`): live sync's lease first, when
+it has an answer (for each account and the phone: an election among the
+computers that hold the sign-in and run in the background, pinned to the
+recorded fetcher; it moves the job while that computer sleeps and gives it
+back when it wakes); else an account follows its own fetcher and a job its own
+role, else the main computer; with nothing recorded every computer runs it
+(sync off) or the first computer that can takes it (sync on). Every account
+fetch (the scheduled inbox and calendar jobs, *Check now*, the first read after
+connecting) asks this rule. One place records it: `accounts.json` for accounts,
 `roles.json` for jobs, with sync on or off. The sync engine's
 `isFetcher / fetcher / setFetcher / clearFetcher` is the only implementation;
-`lib/main-computer.mjs` is a view on it (a later leader election can answer for
-the main role behind the same calls).
+`lib/main-computer.mjs` is a view on it.
 
 ## Safety
 
