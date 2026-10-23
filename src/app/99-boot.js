@@ -99,6 +99,8 @@ bootStatePersistence().then(() => {
   if (typeof briefMaybeAutoOpen === 'function') setTimeout(briefMaybeAutoOpen, 600);   // Home's morning greeting, first visit of the day (74-brief-ui.js)
   if (typeof liveSyncStart === 'function') liveSyncStart();   // changes from the assistant, MCP clients, other tabs
   if (typeof clockBoot === 'function') clockBoot();           // the time-zone sensor, banner and server sync (87-clock-ui.js)
+  // AI chats: a reply this tab was writing before a reload is marked interrupted on every computer; the Ask button's unread dot (72-assistant.js).
+  if (typeof _asstOnAdopt === 'function') { try { _asstOnAdopt(); } catch (e) { /* the panel does it when opened */ } }
 });
 
 // Persist when the tab is hidden (normal request) or closed (beacon), so the

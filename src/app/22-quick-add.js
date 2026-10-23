@@ -295,7 +295,8 @@ function ensurePersonByName(name) {
 
 /**
  * Create a task. Returns the new id.
- * extra: {dueTime, people, newPeople, estimate, plannedFor, detail, subtasks, status}
+ * extra: {dueTime, people, newPeople, estimate, plannedFor, detail, subtasks, status, id}
+ * extra.id: a given 'u-' id (one derived from what is being accepted, so two computers make the same task); a new one when taken.
  */
 function addCustomTask(title, dueDate, priority, tags, stream, recurrence, extra) {
   title = String(title || '').trim();
@@ -304,7 +305,7 @@ function addCustomTask(title, dueDate, priority, tags, stream, recurrence, extra
   const people = [...(extra.people || [])];
   for (const n of (extra.newPeople || [])) { const pid = ensurePersonByName(n); if (pid && !people.includes(pid)) people.push(pid); }
   const item = {
-    id: _newTaskId(),
+    id: typeof extra.id === 'string' && /^u-\d{10,}-[a-z0-9]{1,24}$/i.test(extra.id) && !getItem(extra.id) ? extra.id : _newTaskId(),
     title, dueDate: dueDate || null, priority: priority || 'p0',
     tags: tags || [],
     stream: stream || (state.view.startsWith('stream:') ? state.view.slice(7) : defaultStreamId()),

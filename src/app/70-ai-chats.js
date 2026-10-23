@@ -38,7 +38,7 @@
    ============================================================ */
 const CHAT_KEEP = 60;                    // messages that keep travelling once a chat is trimmed
 const CHAT_MAX = 100;                    // a chat longer than this is trimmed to CHAT_KEEP
-const CHAT_ARCHIVE_MAX = 5000;           // older messages one computer keeps per chat
+const CHAT_ARCHIVE_MAX = 1000;           // older messages one computer keeps per chat (the state is also the browser's first-paint cache)
 const CHAT_STALE_MS = 15 * 60 * 1000;    // a reply still "being written" after this was interrupted
 const CHAT_KEYS = ['taskChat', 'assistantChat', 'chatMeta', 'chatArchive'];
 
