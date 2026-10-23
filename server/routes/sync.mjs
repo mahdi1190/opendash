@@ -198,7 +198,9 @@ export default function register(app) {
   const health = createNodeSyncHealth({ engine, dataDir: paths.root, log });
   const report = async (fresh = false) => {
     const os = await health.facts({ fresh }).catch(() => null);
-    return { ...syncHealth({ status: engine.status(), os, platform: process.platform }), changes: engine.changes(10) };
+    let pv = null;
+    try { pv = presence.view(); } catch { pv = null; }
+    return { ...syncHealth({ status: engine.status(), os, platform: process.platform, presence: pv && pv.devices }), changes: engine.changes(10) };
   };
   app.route({ path: '/api/sync/health', method: 'GET', quiet: true, handler: (c) => report(c.query.get('fresh') === '1') });
   app.route({ path: '/api/sync/changes', method: 'GET', quiet: true, handler: () => ({ entries: engine.changes(100) }) });

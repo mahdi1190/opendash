@@ -38,7 +38,7 @@ async function remoteWait(remote, opts) {
   const url = '/api/requests/' + encodeURIComponent(id);
   let cancelled = false;
   const close = opts.quiet ? () => {} : toast(remote.message || ('Asking ' + (remote.runsOn || 'your other computer') + '…'), {
-    icon: 'loader-circle', timeout: 15 * 60000,
+    icon: 'loader-circle', timeout: 21 * 60000,   // outlives the 20-minute wait below: the spinner never goes while Cancel is still needed
     action: { label: 'Cancel', run: () => { cancelled = true; remoteWake(); fetch(url + '/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {}); } },
   });
   // The toast follows the request: "Asking Home laptop…", then "Home laptop is off: using this computer…".
