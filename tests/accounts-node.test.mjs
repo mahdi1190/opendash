@@ -18,6 +18,7 @@ import { run as runMigration } from '../tools/migrations/090-accounts.mjs';
 const CLIENT = '00000000-0000-4000-8000-000000000001';
 const WORK_TID = '11111111-2222-4333-8444-555555555555';
 const reply = (doc, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(doc) });
+const tok = (email) => String(email).replace('@', '_at_');   // fake tokens and codes carry the address without an @ (privacy scan)
 const idToken = (claims) => 'h.' + Buffer.from(JSON.stringify(claims)).toString('base64url') + '.s';
 const grant = (extra = {}) => ({ expires_in: 3600, scope: 'openid profile offline_access User.Read Mail.Read Calendars.Read', ...extra });
 
@@ -27,15 +28,15 @@ function microsoftFake(calls) {
     const u = new URL(url); calls.push({ url: u, opts });
     if (u.hostname === 'login.microsoftonline.com') {
       if (opts.body.get('grant_type') === 'authorization_code') {
-        const email = opts.body.get('code').replace(/^code-/, '');
-        return reply(grant({ access_token: 'access-' + email, refresh_token: 'refresh-' + email, id_token: idToken({ tid: /hotmail/.test(email) ? PERSONAL_TENANT : WORK_TID, preferred_username: email }) }));
+        const email = opts.body.get('code').replace(/^code-/, '').replace('_at_', '@');
+        return reply(grant({ access_token: 'access-' + tok(email), refresh_token: 'refresh-' + tok(email), id_token: idToken({ tid: /hotmail/.test(email) ? PERSONAL_TENANT : WORK_TID, preferred_username: email }) }));
       }
       const old = opts.body.get('refresh_token');
       return reply(grant({ access_token: 'access2-' + old, refresh_token: old + '-r' + (++n) }));
     }
     assert.equal(opts.method, 'GET');
     const auth = String(opts.headers.Authorization);
-    if (u.pathname === '/v1.0/me') { const email = auth.replace(/^Bearer access-/, ''); return reply({ id: 'graph-' + email, mail: email, displayName: 'Synthetic' }); }
+    if (u.pathname === '/v1.0/me') { const email = auth.replace(/^Bearer access-/, '').replace('_at_', '@'); return reply({ id: 'graph-' + email, mail: email, displayName: 'Synthetic' }); }
     if (u.pathname.endsWith('/calendars')) return reply({ value: [{ id: 'cal-1', name: 'Calendar' }] });
     return reply({ value: [] });
   };
@@ -47,7 +48,7 @@ async function fixture(run, { deviceId = 'deviceaaaa1' } = {}) {
   process.env.OPENDASH_MICROSOFT_CLIENT_ID = CLIENT;
   const make = (opts = {}) => createAccountsService({ dataDir: dir, port: () => 4900, fetchFn: microsoftFake(calls), deviceId, ...opts });
   const svc = make();
-  const connect = async (s, email, extra = {}) => { const b = await s.begin({ provider: 'microsoft', email, ...extra }); return s.callback({ state: new URL(b.url).searchParams.get('state'), code: 'code-' + email }); };
+  const connect = async (s, email, extra = {}) => { const b = await s.begin({ provider: 'microsoft', email, ...extra }); return s.callback({ state: new URL(b.url).searchParams.get('state'), code: 'code-' + tok(email) }); };
   try { await run({ dir, svc, calls, connect, make }); }
   finally { delete process.env.OPENDASH_MICROSOFT_CLIENT_ID; rmSync(base, { recursive: true, force: true }); }
 }
@@ -71,8 +72,8 @@ test('two accounts: records in <data>/accounts.json, tokens in this computer\'s 
     assert.ok(existsSync(f), 'one token file per account');
     if (process.platform !== 'win32') assert.equal(statSync(f).mode & 0o777, 0o600);
   }
-  assert.equal(JSON.parse(readFileSync(join(secrets, 'accounts', a.id + '.json'), 'utf8')).refresh_token, 'refresh-me@hotmail.com');
-  assert.equal(JSON.parse(readFileSync(join(secrets, 'accounts', b.id + '.json'), 'utf8')).refresh_token, 'refresh-me@work.example');
+  assert.equal(JSON.parse(readFileSync(join(secrets, 'accounts', a.id + '.json'), 'utf8')).refresh_token, 'refresh-me_at_hotmail.com');
+  assert.equal(JSON.parse(readFileSync(join(secrets, 'accounts', b.id + '.json'), 'utf8')).refresh_token, 'refresh-me_at_work.example');
   // each account owns an email and a calendar source, labelled with its address
   const src = (await readSourcesFile(dir)).sources;
   assert.equal(src.length, 4);

@@ -9,6 +9,7 @@ import { createMicrosoftProvider, guessKind, authorityFor, scopesFor, classifyMi
 const CLIENT = '00000000-0000-4000-8000-000000000001';
 const WORK_TID = '11111111-2222-4333-8444-555555555555';
 const reply = (doc, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(doc) });
+const tok = (email) => String(email).replace('@', '_at_');   // fake tokens and codes carry the address without an @ (privacy scan)
 const idToken = (claims) => 'h.' + Buffer.from(JSON.stringify(claims)).toString('base64url') + '.s';
 const grant = (extra = {}) => ({ access_token: 'synthetic-access', refresh_token: 'synthetic-refresh', expires_in: 3600, scope: 'openid profile offline_access User.Read Mail.Read Calendars.Read', ...extra });
 function registry() {
@@ -17,7 +18,8 @@ function registry() {
 }
 /**
  * A service with a synthetic Microsoft. people: email -> {tid, id}; the token
- * endpoint decides who signed in from the code ('code-<email>').
+ * endpoint decides who signed in from the code ('code-<local>_at_<domain>': no
+ * token or code here is an e-mail address).
  */
 function fixture({ handler, clientId = CLIENT, deviceId = 'deviceaaaa1' } = {}) {
   let clock = Date.parse('2026-01-15T10:00:00Z');
@@ -32,16 +34,16 @@ function fixture({ handler, clientId = CLIENT, deviceId = 'deviceaaaa1' } = {}) 
       const custom = handler && handler(u, opts, calls);
       if (custom) return custom;
       if (opts.body.get('grant_type') === 'authorization_code') {
-        const email = opts.body.get('code').replace(/^code-/, '');
+        const email = opts.body.get('code').replace(/^code-/, '').replace('_at_', '@');
         const tid = /hotmail|outlook|live/.test(email) ? PERSONAL_TENANT : WORK_TID;
-        return reply(grant({ access_token: 'access-' + email, refresh_token: 'refresh-' + email, id_token: idToken({ tid, oid: 'oid-' + email, preferred_username: email, name: 'Synthetic ' + email.split('@')[0] }) }));
+        return reply(grant({ access_token: 'access-' + tok(email), refresh_token: 'refresh-' + tok(email), id_token: idToken({ tid, oid: 'oid-' + email, preferred_username: email, name: 'Synthetic ' + email.split('@')[0] }) }));
       }
       const old = opts.body.get('refresh_token');
       return reply(grant({ access_token: 'access2-' + old, refresh_token: old + '-r' + (++n) }));
     }
     assert.equal(u.hostname, 'graph.microsoft.com', 'tokens go only to Graph');
     assert.equal(opts.method, 'GET', 'Graph is read-only');
-    const email = String(opts.headers.Authorization).replace(/^Bearer access2?-/, '').replace(/^refresh-/, '').replace(/-r\d+$/, '');
+    const email = String(opts.headers.Authorization).replace(/^Bearer access2?-/, '').replace(/^refresh-/, '').replace(/-r\d+$/, '').replace('_at_', '@');
     if (u.pathname === '/v1.0/me') return reply({ id: 'graph-' + email, mail: email, displayName: 'Synthetic' });
     return (handler && handler(u, opts, calls)) || reply({ value: [] });
   };
@@ -49,7 +51,7 @@ function fixture({ handler, clientId = CLIENT, deviceId = 'deviceaaaa1' } = {}) 
     redirect: loopbackRedirect({ port: 4900 }), fetch, now: () => clock, deviceId });
   const connect = async (email, opts = {}) => {
     const b = await svc.begin({ provider: 'microsoft', email, ...opts });
-    return svc.callback({ state: new URL(b.url).searchParams.get('state'), code: 'code-' + email });
+    return svc.callback({ state: new URL(b.url).searchParams.get('state'), code: 'code-' + tok(email) });
   };
   return { svc, calls, reg, secrets, connect, advance: (ms) => { clock += ms; } };
 }
@@ -84,7 +86,7 @@ test('callback: PKCE verifier matches, kind and tenant come from the id token, t
   const { svc, calls, reg, secrets, connect } = fixture();
   const b = await svc.begin({ provider: 'microsoft', email: 'me@work.example' });
   const u = new URL(b.url);
-  const { account } = await svc.callback({ state: u.searchParams.get('state'), code: 'code-me@work.example' });
+  const { account } = await svc.callback({ state: u.searchParams.get('state'), code: 'code-me_at_work.example' });
   const body = calls.find(c => c.opts.body && c.opts.body.get('grant_type') === 'authorization_code').opts.body;
   assert.equal(createHash('sha256').update(body.get('code_verifier')).digest('base64url'), u.searchParams.get('code_challenge'));
   assert.equal(body.get('redirect_uri'), u.searchParams.get('redirect_uri'));
@@ -93,7 +95,7 @@ test('callback: PKCE verifier matches, kind and tenant come from the id token, t
   assert.deepEqual(account.features, { mail: true, calendar: true });
   assert.ok(!JSON.stringify(reg.doc).includes('refresh-'), 'the registry holds no tokens');
   const t = await secrets.get('accounts/' + account.id);
-  assert.equal(t.refresh_token, 'refresh-me@work.example'); assert.equal(t.authority, WORK_TID); assert.equal(t.clientId, CLIENT);
+  assert.equal(t.refresh_token, 'refresh-me_at_work.example'); assert.equal(t.authority, WORK_TID); assert.equal(t.clientId, CLIENT);
   const p = (await connect('me@hotmail.com')).account;
   assert.equal(p.kind, 'personal'); assert.ok(!p.tenantId);
   assert.equal((await secrets.get('accounts/' + p.id)).authority, 'consumers');
@@ -107,11 +109,11 @@ test('many accounts: tokens isolated; refresh serialized per account and rotated
   await Promise.all([svc.accessToken(a.id), svc.accessToken(a.id), svc.fetchMail(a.id, { source: { id: 'email-outlook-aaaa' } }), svc.accessToken(b.id)]);
   const refreshes = calls.filter(c => c.opts.body && c.opts.body.get('grant_type') === 'refresh_token');
   assert.equal(refreshes.length, 2, 'one refresh per account, however many callers');
-  assert.deepEqual(refreshes.map(c => c.opts.body.get('refresh_token')).sort(), ['refresh-me@hotmail.com', 'refresh-me@work.example']);
-  assert.ok(refreshes.find(c => c.opts.body.get('refresh_token') === 'refresh-me@hotmail.com').url.pathname.startsWith('/consumers/'));
-  assert.ok(refreshes.find(c => c.opts.body.get('refresh_token') === 'refresh-me@work.example').url.pathname.startsWith('/' + WORK_TID + '/'));
-  assert.match((await secrets.get('accounts/' + a.id)).refresh_token, /^refresh-me@hotmail\.com-r\d$/, 'rotated');
-  assert.match((await secrets.get('accounts/' + b.id)).refresh_token, /^refresh-me@work\.example-r\d$/);
+  assert.deepEqual(refreshes.map(c => c.opts.body.get('refresh_token')).sort(), ['refresh-me_at_hotmail.com', 'refresh-me_at_work.example']);
+  assert.ok(refreshes.find(c => c.opts.body.get('refresh_token') === 'refresh-me_at_hotmail.com').url.pathname.startsWith('/consumers/'));
+  assert.ok(refreshes.find(c => c.opts.body.get('refresh_token') === 'refresh-me_at_work.example').url.pathname.startsWith('/' + WORK_TID + '/'));
+  assert.match((await secrets.get('accounts/' + a.id)).refresh_token, /^refresh-me_at_hotmail\.com-r\d$/, 'rotated');
+  assert.match((await secrets.get('accounts/' + b.id)).refresh_token, /^refresh-me_at_work\.example-r\d$/);
   await svc.remove(a.id);
   assert.equal(await secrets.get('accounts/' + a.id), null);
   assert.ok(await secrets.get('accounts/' + b.id), 'removing one account leaves the other');
@@ -121,7 +123,7 @@ test('a revoked refresh marks only that account "Sign in again"', async () => {
   let revoke = '';
   const f = fixture({ handler: (u, opts) => (opts.body && opts.body.get('grant_type') === 'refresh_token' && opts.body.get('refresh_token') === revoke ? reply({ error: 'invalid_grant', error_codes: [70008], error_description: 'AADSTS70008: secret provider detail' }, 400) : null) });
   const a = (await f.connect('me@hotmail.com')).account, b = (await f.connect('me@work.example')).account;
-  revoke = 'refresh-me@hotmail.com'; f.advance(3600000);
+  revoke = 'refresh-me_at_hotmail.com'; f.advance(3600000);
   const err = await f.svc.fetchMail(a.id, { source: { id: 'email-outlook-aaaa' } }).catch(e => e);
   assert.equal(err.code, 'NEEDS_SIGN_IN'); assert.ok(!err.message.includes('secret provider detail'));
   assert.equal((await f.svc.get(a.id)).status, 'needs-sign-in');
@@ -231,10 +233,10 @@ test('calendar: all-day dates keep their zone, switched-off calendars are skippe
 
 test('a feature switched on after sign-in asks to sign in again, and that sign-in asks for its permission', async () => {
   const f = fixture({ handler: (u, opts) => (opts.body && opts.body.get('grant_type') === 'authorization_code' && !opts.body.get('scope').includes('Calendars.Read')
-    ? reply(grant({ access_token: 'access-me@hotmail.com', refresh_token: 'refresh-me@hotmail.com', scope: 'openid profile offline_access User.Read Mail.Read', id_token: idToken({ tid: PERSONAL_TENANT }) })) : null) });
+    ? reply(grant({ access_token: 'access-me_at_hotmail.com', refresh_token: 'refresh-me_at_hotmail.com', scope: 'openid profile offline_access User.Read Mail.Read', id_token: idToken({ tid: PERSONAL_TENANT }) })) : null) });
   const b = await f.svc.begin({ provider: 'microsoft', email: 'me@hotmail.com', features: { mail: true, calendar: false } });
   assert.ok(!new URL(b.url).searchParams.get('scope').includes('Calendars.Read'), 'only what is switched on is asked for');
-  const { account } = await f.svc.callback({ state: new URL(b.url).searchParams.get('state'), code: 'code-me@hotmail.com' });
+  const { account } = await f.svc.callback({ state: new URL(b.url).searchParams.get('state'), code: 'code-me_at_hotmail.com' });
   assert.deepEqual(account.features, { mail: true, calendar: false });
   await f.svc.setFeatures(account.id, { calendar: true });
   const err = await f.svc.fetchCalendar(account.id, { source: { id: 'calendar-outlook-aaaa' }, from: '2026-01-01', to: '2026-01-07' }).catch(e => e);

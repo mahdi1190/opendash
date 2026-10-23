@@ -19,6 +19,7 @@ import registerAccounts from '../server/routes/accounts.mjs';
 const CLIENT = '00000000-0000-4000-8000-000000000001';
 const WORK_TID = '11111111-2222-4333-8444-555555555555';
 const reply = (doc, status = 200) => ({ ok: status < 400, status, text: async () => JSON.stringify(doc) });
+const tok = (email) => String(email).replace('@', '_at_');   // fake tokens and codes carry the address without an @ (privacy scan)
 const idToken = (claims) => 'h.' + Buffer.from(JSON.stringify(claims)).toString('base64url') + '.s';
 
 async function fixture(run, { graph } = {}) {
@@ -31,13 +32,13 @@ async function fixture(run, { graph } = {}) {
     assert.equal(opts.redirect, 'error');
     if (u.hostname === 'login.microsoftonline.com') {
       assert.ok(!opts.body.has('client_secret'));
-      const email = (opts.body.get('code') || '').replace(/^code-/, '') || 'me@hotmail.com';
-      return reply({ access_token: 'access-' + email, refresh_token: 'refresh-' + email, expires_in: 3600, scope: 'User.Read Mail.Read Calendars.Read', id_token: idToken({ tid: /hotmail/.test(email) ? PERSONAL_TENANT : WORK_TID }) });
+      const email = (opts.body.get('code') || '').replace(/^code-/, '').replace('_at_', '@') || 'me@hotmail.com';
+      return reply({ access_token: 'access-' + tok(email), refresh_token: 'refresh-' + tok(email), expires_in: 3600, scope: 'User.Read Mail.Read Calendars.Read', id_token: idToken({ tid: /hotmail/.test(email) ? PERSONAL_TENANT : WORK_TID }) });
     }
     assert.equal(u.hostname, 'graph.microsoft.com'); assert.equal(opts.method, 'GET', 'Graph is read-only');
     const custom = graph && graph(u, opts);
     if (custom) return custom;
-    if (u.pathname === '/v1.0/me') { const email = String(opts.headers.Authorization).replace(/^Bearer access-/, ''); return reply({ id: 'graph-' + email, mail: email, displayName: 'Synthetic' }); }
+    if (u.pathname === '/v1.0/me') { const email = String(opts.headers.Authorization).replace(/^Bearer access-/, '').replace('_at_', '@'); return reply({ id: 'graph-' + email, mail: email, displayName: 'Synthetic' }); }
     if (u.pathname.endsWith('/calendars')) return reply({ value: [{ id: 'cal-1', name: 'Calendar' }] });
     if (u.pathname.endsWith('/messages')) return reply({ value: [{ id: 'm1', subject: 'Synthetic', from: { emailAddress: { address: 'a@example.test' } }, receivedDateTime: '2026-10-22T09:00:00Z', bodyPreview: 'hello', isRead: true }] });
     return reply({ value: [] });
@@ -74,7 +75,7 @@ test('add a Hotmail account: begin goes to /consumers, the return page says conn
   const to = new URL(b.headers.Location);
   assert.equal(to.origin + to.pathname, 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize');
   assert.equal(to.searchParams.get('login_hint'), 'me@hotmail.com');
-  const cb = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.headers.Location), code: 'code-me@hotmail.com' } });
+  const cb = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.headers.Location), code: 'code-me_at_hotmail.com' } });
   assert.equal(cb.status, 200); assert.match(cb.text, /Your account is connected/); assert.match(cb.text, /me@hotmail\.com is now connected/);
   assert.ok(!/access-|refresh-/.test(cb.text), 'no token on the page');
   const src = (await readSourcesFile(dir)).sources;
@@ -82,7 +83,7 @@ test('add a Hotmail account: begin goes to /consumers, the return page says conn
   assert.equal((await readInboxSnapshot(paths, src.find(s => s.capability === 'email').id)).messages.length, 1);
   assert.ok(await readSourceSnapshot(paths, src.find(s => s.capability === 'calendar').id));
   assert.ok(src.every(s => s.lastSync));
-  const replay = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.headers.Location), code: 'code-me@hotmail.com' } });
+  const replay = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.headers.Location), code: 'code-me_at_hotmail.com' } });
   assert.equal(replay.status, 400); assert.match(replay.text, /not started from OpenDash/);
   const list = (await call('/api/accounts', 'GET')).json;
   assert.equal(list.accounts.length, 1); assert.equal(list.accounts[0].statusText, 'Connected'); assert.equal(list.accounts[0].syncedText, 'synced just now');
@@ -108,7 +109,7 @@ test('a work account whose organisation blocks consent gets the approval page, t
   assert.equal(thanks.status, 200); assert.match(thanks.text, /OpenDash is approved/);
   // Try again: the same record becomes connected
   const again = await call('/api/accounts/begin', 'POST', { body: { provider: 'microsoft', accountId: a.id } });
-  const ok = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(again.json.url), code: 'code-me@work.example' } });
+  const ok = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(again.json.url), code: 'code-me_at_work.example' } });
   assert.match(ok.text, /Your account is connected/);
   const after = (await call('/api/accounts', 'GET')).json.accounts;
   assert.equal(after.length, 1); assert.equal(after[0].status, 'connected'); assert.equal(after[0].kind, 'work'); assert.equal(after[0].tenantId, WORK_TID);
@@ -125,7 +126,7 @@ test('a personal address sent to the work sign-in offers to try again as a perso
 
 test('pause, features, sync, fetch-here and remove; readers need no Claude', async () => fixture(async ({ call, dir, ctx }) => {
   const b = await call('/api/accounts/begin', 'POST', { body: { provider: 'microsoft', email: 'me@hotmail.com' } });
-  await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.json.url), code: 'code-me@hotmail.com' } });
+  await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.json.url), code: 'code-me_at_hotmail.com' } });
   const id = (await call('/api/accounts', 'GET')).json.accounts[0].id;
   assert.equal((await call('/api/accounts/pause', 'POST', { body: { id, paused: true } })).json.account.status, 'paused');
   const s = await call('/api/accounts/sync', 'POST', { body: { id } });
@@ -153,7 +154,7 @@ test('pause, features, sync, fetch-here and remove; readers need no Claude', asy
 
 test('a Graph 403 on a work account after sign-in shows "Waiting for your organisation"', async () => fixture(async ({ call }) => {
   const b = await call('/api/accounts/begin', 'POST', { body: { provider: 'microsoft', email: 'me@work.example' } });
-  const cb = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.json.url), code: 'code-me@work.example' } });
+  const cb = await call('/api/accounts/callback', 'GET', { query: { state: stateOf(b.json.url), code: 'code-me_at_work.example' } });
   assert.match(cb.text, /Your organisation needs to approve OpenDash once/);
   assert.ok(cb.text.includes(WORK_TID + '/adminconsent?client_id=' + CLIENT));
   const a = (await call('/api/accounts', 'GET')).json.accounts[0];

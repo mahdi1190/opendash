@@ -69,7 +69,7 @@ test('logic: personal or work from the address, plain status words, Mail ✓ Cal
   assert.equal(c.accSyncedText({}), 'not synced yet');
   assert.equal(c.accBeginUrl({ provider: 'microsoft', email: ' Me@Hotmail.com', kind: 'work' }), '/api/accounts/begin?provider=microsoft&email=me%40hotmail.com&kind=work');
   assert.equal(c.accBeginUrl({ provider: 'microsoft', accountId: 'acc_0000000000000001' }), '/api/accounts/begin?provider=microsoft&accountId=acc_0000000000000001');
-  assert.deepEqual(c.accSort([acc({ id: 'w', kind: 'work', email: 'a@w.example' }), acc({ id: 'p', email: 'z@hotmail.com' })]).map(a => a.id), ['p', 'w']);
+  assert.deepEqual(c.accSort([acc({ id: 'w', kind: 'work', email: 'a@w.example' }), acc({ id: 'p', email: 'z@example.com' })]).map(a => a.id), ['p', 'w']);
   assert.deepEqual(plain(c.accAddButtons({ microsoft: { available: true }, google: { available: false }, imap: { comingSoon: true } })).map(b => [b.label, b.available]),
     [['+ Add Google account', false], ['+ Add Microsoft account', true], ['+ Other email', false]]);
   assert.equal(c.accNewlyConnected([{ id: 'a', status: 'needs-sign-in' }], [acc({ id: 'a' })]).id, 'a');

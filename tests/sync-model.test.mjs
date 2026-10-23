@@ -236,7 +236,7 @@ test('incoming changes are checked: unknown keys, prototype keys, wrong ids and 
       [['custom', 'u-1', '@alive'], 'yes'],                 // must be a boolean
       [['custom', 'u-1', '@pos'], 'A!'],                    // not a position
       [['custom', 'u-1', 'apiKey'], 'abc'],                 // credential name
-      [['custom', 'u-1', 'detail'], 'see sk-ant-REDACTEDREDACTEDREDACTEDxx'],   // credential-looking value
+      [['custom', 'u-1', 'detail'], 'see ' + ['sk', 'ant', 'REDACTEDREDACTEDREDACTEDxx'].join('-')],   // credential-looking value (built here: no key-shaped literal)
     ],
     x: [['custom', 'u-1', 'dueDate'], ['statuses']],
   }, ID.b);

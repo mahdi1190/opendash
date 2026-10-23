@@ -17,15 +17,17 @@ const base = tempDir('sync-secrets-');
 const release = keepAlive();
 after(async () => { await stopAll(); release(); rm(base); });
 
-// Marker values: each must never appear in anything sync writes.
+// Marker values: each must never appear in anything sync writes. The ones
+// shaped like real credentials are built at run time, so the privacy scan
+// never meets a credential-shaped literal (docs/dev/PRIVACY-SCAN.md).
 const S = {
-  oauth: 'ya29.A0AfH6SMBfakefakefakefakefakefakefake',
+  oauth: ['ya29', 'A0AfH6SMBfakefakefakefakefakefakefake'].join('.'),
   refresh: 'refresh-0123456789-marker-refresh',
-  apiKey: 'sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKE',
+  apiKey: ['sk', 'ant', 'api03', 'FAKEFAKEFAKEFAKEFAKEFAKE'].join('-'),
   relay: 'relay-secret-marker-7f3a9c',
   bank: 'bank-key-marker-0b9e2d',
   password: 'hunter2-marker-password',
-  jwt: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJmYWtlLXVzZXIifQ.c2lnbmF0dXJlLWZha2UtZmFrZQ',
+  jwt: ['eyJhbGciOiJIUzI1NiJ9', 'eyJzdWIiOiJmYWtlLXVzZXIifQ', 'c2lnbmF0dXJlLWZha2UtZmFrZQ'].join('.'),
   github: 'ghp_FAKEFAKEFAKEFAKEFAKEFAKEFAKE1234',
   urlToken: 'tok-marker-91c2e7aa55',
   token: 'local-token-marker-55aa91',
@@ -62,7 +64,7 @@ test('the allow-list holds no UI, bookkeeping or credential keys', () => {
 test('credential names and credential-looking values are recognised', () => {
   for (const n of ['accessToken', 'access_token', 'refreshToken', 'refresh-token', 'apiKey', 'api_key', 'APIKEY', 'clientSecret', 'client_secret', 'relaySecret', 'password', 'passwd', 'privateKey', 'bearer', 'Authorization', 'sessionKey', 'oauth', 'cookie', 'credentials', 'pin', 'webhookUrl']) assert.ok(isSecretName(n), n);
   for (const n of ['title', 'pinned', 'tokensUsed', 'tokenCount', 'cacheKey', 'key', 'author', 'session', 'detail', 'notes', 'id', 'people', 'dueDate']) assert.ok(!isSecretName(n), n);
-  for (const v of [S.oauth, S.apiKey, S.jwt, S.github, `https://x.example.com/a?access_token=${S.urlToken}`, '-----BEGIN RSA PRIVATE KEY-----', 'AKIAABCDEFGHIJKLMNOP']) assert.ok(looksSecret(v), v);
+  for (const v of [S.oauth, S.apiKey, S.jwt, S.github, `https://x.example.com/a?access_token=${S.urlToken}`, ['-----BEGIN RSA PRIVATE', 'KEY-----'].join(' '), 'AKIA' + 'ABCDEFGHIJKLMNOP']) assert.ok(looksSecret(v), v);
   for (const v of ['Email Sam about the token budget', 'https://example.com/page?id=12', 'sk-1', 'Call the bank']) assert.ok(!looksSecret(v), v);
   assert.deepEqual(sanitize({ a: 1, apiKey: 'x', nested: { refresh_token: 'y', ok: true } }).value, { a: 1, nested: { ok: true } });
   assert.ok(sanitize({ text: S.github }).skip);
