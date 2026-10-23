@@ -41,7 +41,18 @@
 // state: live|connecting|not-live, path: lan|internet, reason}], reach, roles,
 // firewall}. It runs only with encrypted sync. DASHBOARD_LIVE_SYNC=off turns
 // it off, DASHBOARD_LIVE_NAT=off leaves the router alone.
-//   POST /api/sync/live              {enabled?, internet?, prefer?: [deviceId]} -> the status
+//   POST /api/sync/live              {enabled?, internet?, prefer?: [deviceId], retry?: deviceId|'all',
+//                                    hold?: deviceId} -> the status ("Try again" dials at once, dropping
+//                                    the back-off; "Stop trying" leaves that device to the folder)
+//
+// Health (docs/dev/MULTI_DEVICE.md "When something goes wrong"; lib/sync/health.mjs decides,
+// lib/sync/node-health.mjs makes this computer's cheap checks and runs the fix buttons):
+//   GET  /api/sync/health[?fresh=1]  -> {overall, title, attention, checks:[{id, tone, title, text, fix?, alt?,
+//                                       progress?}], changes:[feed entries], conflicts: n}
+//   POST /api/sync/fix               {fix, folder?} -> {ok, message, health} (fix: one allow-listed name)
+//   GET  /api/sync/changes           -> {entries: [{id, at, from, count, groups, text, live}]} ("What changed")
+//   GET  /api/sync/conflicts         -> {items: [{id, at, what, name, field, kept, lost}], open}
+//   POST /api/sync/conflicts/resolve {id, keep: 'kept'|'lost'} -> {ok, stale} + the status
 //
 // Same-origin only, like every /api/ route (server/router.mjs). Changes from
 // other devices reach open tabs through the normal live-sync path: the engine
@@ -54,6 +65,8 @@
 // brings this computer's account sources in line (reconcileSources).
 
 import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
+import { createNodeSyncHealth } from '../../lib/sync/node-health.mjs';
+import { syncHealth } from '../../lib/sync/health.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { createNodeLive } from '../../lib/sync/live/node-live.mjs';
 import { writeProfile, applyProfile, PROFILE_REL } from '../../lib/profile.mjs';
@@ -157,8 +170,26 @@ export default function register(app) {
     if (typeof b.enabled === 'boolean') patch.enabled = b.enabled;
     if (typeof b.internet === 'boolean') patch.internet = b.internet;
     if (Array.isArray(b.prefer)) patch.prefer = b.prefer.filter(x => typeof x === 'string').slice(0, 16);
+    for (const k of ['retry', 'hold']) if (typeof b[k] === 'string' && /^([0-9a-f]{16}|all)$/.test(b[k])) patch[k] = b[k];
     await live.configure(patch);
     return engine.status();
+  });
+
+  // ─── Health, What changed, Review ────────────────────────────────────
+  const health = createNodeSyncHealth({ engine, dataDir: paths.root, log });
+  const report = async (fresh = false) => {
+    const os = await health.facts({ fresh }).catch(() => null);
+    return { ...syncHealth({ status: engine.status(), os, platform: process.platform }), changes: engine.changes(10) };
+  };
+  app.route({ path: '/api/sync/health', method: 'GET', quiet: true, handler: (c) => report(c.query.get('fresh') === '1') });
+  app.route({ path: '/api/sync/changes', method: 'GET', quiet: true, handler: () => ({ entries: engine.changes(100) }) });
+  app.route({ path: '/api/sync/conflicts', method: 'GET', quiet: true, handler: () => engine.conflicts({ max: 50 }) });
+  post('/api/sync/conflicts/resolve', (b) => engine.resolveConflict(str(b.id, 40), b.keep === 'lost' ? 'lost' : b.keep === 'kept' ? 'kept' : ''));
+  post('/api/sync/fix', async (b) => {
+    const name = str(b.fix, 40) || '';
+    const r = await health.fix(name, { folder: str(b.folder, 1000) });
+    // This computer's checks again only where the fix changes them (they take a moment on Windows).
+    return { ok: r.ok, message: r.message, health: await report(['start-cloud', 'keep-offline', 'recheck'].includes(name)) };
   });
   // The same take-over as Connections' "Fetch on this computer instead": the accounts code knows
   // whether this computer holds its own sign-in (accounts/<id> in its secret store).
