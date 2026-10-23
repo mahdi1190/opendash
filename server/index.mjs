@@ -30,6 +30,9 @@ import {
 import { setRunnerLogger, setCliPath } from '../lib/claude-runner.mjs';
 import { aiStatus, setDefaultModel } from '../lib/ai.mjs';
 import { initGoogle } from '../lib/google.mjs';
+import { secretStore } from '../lib/secret-store.mjs';
+import { migrateLegacySecrets } from '../lib/devicedir.mjs';
+import { createPresence, createWriteGate, othersLive } from '../lib/hosts.mjs';
 import { initFinance, financeAvailable, cleanupPartials } from '../lib/finance.mjs';
 import { createApp } from './router.mjs';
 import { createLogger } from './log.mjs';
@@ -97,8 +100,26 @@ export async function main(argv = process.argv.slice(2)) {
   const financeDir = resolve(argValue(argv, '--finance-dir') || process.env.DASHBOARD_FINANCE_DIR || config.financeDir || paths.finance);
   initFinance(financeDir, { currency: config.currency });
   track(cleanupPartials());
-  initGoogle(paths.secrets);
-  const store = createStateStore({ stateDir, log });
+  let version = '0';
+  try { version = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version || '0'; } catch { /* no package.json */ }
+
+  // Two computers on one (OneDrive) data folder (lib/hosts.mjs): this computer's
+  // presence file (written once the server listens: server/routes/hosts.mjs), and
+  // the gate that pauses state writes while another computer that was already
+  // open is still there. Never an exit: under the hidden autostart nobody would
+  // see why; the page shows a banner with "Use here anyway" instead.
+  let presence = null;
+  try { presence = createPresence({ dataDir: paths.root, version, log }); }
+  catch (e) { log('warn', `hosts: this computer's id could not be made (${e.code || e.message}); other computers are still checked`); }
+  const othersNow = () => (presence ? presence.others() : othersLive(paths.root));
+  const hostGate = createWriteGate({ others: othersNow });
+  const atStart = hostGate.init();
+  if (atStart.paused) log('warn', `another computer (${atStart.by.hostname}) has this data folder open: changes are paused until it closes or the user chooses "Use here anyway"`);
+  // An old <data>/secrets moves to this computer once, never while another computer is live (lib/devicedir.mjs).
+  try { migrateLegacySecrets(paths.root, { othersLive: othersNow, log }); }
+  catch (e) { log('warn', `secrets: moving <data>/secrets to this computer stopped (${e.code || e.message}); it finishes at the next start`); }
+  initGoogle(secretStore(paths.root));   // this computer's sign-ins (lib/secret-store.mjs)
+  const store = createStateStore({ stateDir, log, writeGate: () => hostGate.check() });
   // A short hash of index.html as it is on disk now (cached by size + mtime).
   let buildCache = { key: null, id: null };
   function buildId() {
@@ -110,11 +131,10 @@ export async function main(argv = process.argv.slice(2)) {
       return buildCache.id;
     } catch { return null; }
   }
-  let version = '0';
-  try { version = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version || '0'; } catch { /* no package.json */ }
 
   const ctx = {
     port, dataDir, paths: { ...paths, stateDir }, repoRoot: REPO_ROOT, financeDir, log, store, version, lifecycle: life, buildId, track,
+    hosts: { presence, gate: hostGate, others: othersNow },
     getConfig: () => config,
     setConfig: async (patch) => { config = await saveConfig(dataDir, patch); setDefaultModel(config.ai.model); return config; },
   };

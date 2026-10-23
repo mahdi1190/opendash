@@ -1,5 +1,6 @@
 // Synthetic OAuth and Health responses only. No real account or health data.
 import { test } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -61,18 +62,18 @@ test('Google Health configuration isolates secrets and OAuth uses one-use state 
   assert.equal(calls[1].url.pathname, '/v4/users/me/identity');
   await assert.rejects(health.callback({ state: u.searchParams.get('state'), code: 'synthetic-code' }), { code: 'OAUTH_STATE' });
   assert.ok(!/synthetic-access|synthetic-refresh|synthetic-client-secret/.test(JSON.stringify(out)));
-  const stored = JSON.parse(readFileSync(join(dir, 'secrets', 'google-health-client.json')));
+  const stored = JSON.parse(readFileSync(join(secretsDir(dir), 'google-health-client.json')));
   assert.equal(stored.clientId, CREDENTIALS.web.client_id); assert.equal('token_uri' in stored, false);
   assert.equal((await health.configure(JSON.stringify(CREDENTIALS))).changed, false); assert.equal((await health.status()).connected, true);
   await health.disconnect(); assert.equal((await health.status()).connected, false);
-  assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'google-health-tokens.json'))), null);
+  assert.equal(JSON.parse(readFileSync(join(secretsDir(dir), 'google-health-tokens.json'))), null);
 }));
 
 test('Google Health verifies linkage before storing tokens and reports unlinked accounts plainly', async () => fixture(async ({ health, begin, dir }) => {
   const u = await begin();
   await assert.rejects(health.callback({ state: u.searchParams.get('state'), code: 'x' }), { code: 'ACCOUNT_NOT_LINKED' });
   const out = await health.status(); assert.equal(out.connected, false); assert.match(out.error, /mobile app/);
-  assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'google-health-tokens.json'))), null);
+  assert.equal(JSON.parse(readFileSync(join(secretsDir(dir), 'google-health-tokens.json'))), null);
 }, url => url.pathname.endsWith('/identity') ? reply({ error: { message: 'sensitive provider detail', details: [{ reason: 'ACCOUNT_NOT_LINKED', metadata: { redirect_uri: 'https://example.test/steal' } }] } }, 400) : undefined));
 
 test('Google Health refuses identity responses without a health user ID', async () => fixture(async ({ health, begin }) => {
@@ -138,7 +139,7 @@ test('Google Health concurrent sync refreshes once and invalid grants require re
     await signIn(); advance(3600000);
     await Promise.all([health.sync(), health.sync()]);
     assert.equal(calls.filter(c => c.opts.body?.get?.('grant_type') === 'refresh_token').length, 1);
-    assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'google-health-tokens.json'))).refresh_token, 'rotated-refresh');
+    assert.equal(JSON.parse(readFileSync(join(secretsDir(dir), 'google-health-tokens.json'))).refresh_token, 'rotated-refresh');
     revoked = true; advance(3600000);
     await assert.rejects(health.sync(), { code: 'GOOGLE_HEALTH_AUTH' });
     const out = await health.status(); assert.equal(out.connected, false); assert.equal(out.needsAuth, true); assert.equal(out.snapshot, null);
@@ -155,7 +156,7 @@ test('Google Health disconnect during refresh cannot resurrect tokens or cached 
     await entered.promise; const disconnected = health.disconnect(); release.resolve();
     await rejected; await disconnected;
     assert.equal((await health.status()).connected, false);
-    assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'google-health-tokens.json'))), null);
+    assert.equal(JSON.parse(readFileSync(join(secretsDir(dir), 'google-health-tokens.json'))), null);
   }, async (url, opts) => {
     if (url.hostname === 'oauth2.googleapis.com' && opts.body.get('grant_type') === 'refresh_token') { entered.resolve(); await release.promise; return reply(grant()); }
   });
@@ -168,7 +169,7 @@ test('Google Health disconnect during identity verification prevents callback sa
     const rejected = assert.rejects(callback, { code: 'GOOGLE_HEALTH_CHANGED' });
     await entered.promise; await health.disconnect(); release.resolve(); await rejected;
     assert.equal((await health.status()).connected, false);
-    assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'google-health-tokens.json'))), null);
+    assert.equal(JSON.parse(readFileSync(join(secretsDir(dir), 'google-health-tokens.json'))), null);
   }, async url => { if (url.pathname.endsWith('/identity')) { entered.resolve(); await release.promise; return reply(identity); } });
 });
 

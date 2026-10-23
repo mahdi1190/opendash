@@ -1,5 +1,6 @@
 // Synthetic provider responses only: no real API key, account or narration.
 import { test } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -49,8 +50,8 @@ test('narration starts locally, persists settings through normal config validati
   assert.deepEqual(config.brief.story.narration, { provider: 'browser', voiceId: 'v'.repeat(80), modelId: 'eleven_v3', scope: 'highlights', monthlyLimit: 9000 });
   assert.equal(JSON.stringify(publicConfig(config)).includes(KEY), false);
   assert.equal(readFileSync(join(dir, 'config.json'), 'utf8').includes(KEY), false);
-  assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'narration.json'))).apiKey, KEY);
-  if (process.platform !== 'win32') assert.equal(statSync(join(dir, 'secrets', 'narration.json')).mode & 0o777, 0o600);
+  assert.equal(JSON.parse(readFileSync(join(secretsDir(dir), 'narration.json'))).apiKey, KEY);
+  if (process.platform !== 'win32') assert.equal(statSync(join(secretsDir(dir), 'narration.json')).mode & 0o777, 0o600);
   assert.equal(JSON.stringify(configured).includes(KEY), false); assert.equal(calls.length, 0);
   await voice.configure({ removeKey: true });
   assert.equal((await voice.status()).connected, false); assert.equal((await voice.status()).provider, 'browser');
@@ -166,13 +167,13 @@ test('narration month rollover preserves earlier usage, disconnecting never rese
   assert.deepEqual((await voice.status()).usage, { used: 0, remaining: 10, period: '2026-11' });
   await voice.speech({ text: 'November.', delivery: { pauseMs: 0 } });
   setTime('2026-10-29T12:00:00Z'); assert.equal((await voice.status()).usage.used, before);
-  const ledger = JSON.parse(readFileSync(join(dir, 'secrets', 'narration-usage.json')));
+  const ledger = JSON.parse(readFileSync(join(secretsDir(dir), 'narration-usage.json')));
   assert.equal(ledger.months['2026-10'], before); assert.equal(ledger.months['2026-11'], 9);
 }));
 
 test('narration rejects a corrupted quota ledger instead of silently starting a new allowance', async () => fixture(async ({ dir, voice, connect, calls }) => {
   await connect();
-  writeFileSync(join(dir, 'secrets', 'narration-usage.json'), '{broken');
+  writeFileSync(join(secretsDir(dir), 'narration-usage.json'), '{broken');
   await assert.rejects(voice.speech({ text: 'No extra spend.' }), { code: 'ELEVENLABS_USAGE' });
   assert.equal(calls.length, 0);
 }));
@@ -221,7 +222,7 @@ test('narration removing a key during account refresh cannot restore its credent
     await connect(); const refresh = voice.voices(); const rejected = assert.rejects(refresh, { code: 'ELEVENLABS_CHANGED' });
     await started.promise; await voice.configure({ removeKey: true }); release.resolve(); await rejected;
     assert.equal((await voice.status()).connected, false); assert.equal((await voice.status()).provider, 'browser');
-    assert.equal(JSON.parse(readFileSync(join(dir, 'secrets', 'narration.json'))), null);
+    assert.equal(JSON.parse(readFileSync(join(secretsDir(dir), 'narration.json'))), null);
   }, async url => { if (url.pathname === '/v1/user/subscription') { started.resolve(); await release.promise; return json(subscription()); } });
 });
 

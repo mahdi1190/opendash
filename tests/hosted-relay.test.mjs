@@ -1,5 +1,6 @@
 // Synthetic Worker/Durable Object runtime and temporary local data only.
 import { test } from 'node:test';
+import { secretsDir } from '../lib/devicedir.mjs';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -125,7 +126,7 @@ test('outbound local connector links without user tunnel, isolates secrets and e
   const local = createHostedRelay({ dataDir: dir, publicOrigin: ORIGIN, fetchFn: rt.fetcher, rpc: async msg => { calls.push(msg); return { jsonrpc: '2.0', id: msg.id, result: { ok: true } }; } });
   try {
     const initial = await local.link(); assert.ok(initial.endpoint); assert.ok(!JSON.stringify(initial).includes('secret'));
-    const cfg = JSON.parse(readFileSync(join(dir, 'secrets', 'hosted-relay.json')));
+    const cfg = JSON.parse(readFileSync(join(secretsDir(dir), 'hosted-relay.json')));
     const a = await authorization(rt, cfg, { approve: false });
     await local.refresh(); await local.approve(a.ticket, a.pending.displayCode);
     const code = new URL((await rt.request(a.base + '/oauth/continue?ticket=' + a.ticket)).headers.get('Location')).searchParams.get('code');

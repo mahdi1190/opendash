@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { REPO_ROOT, resolveDataDir, argValue } from '../lib/datadir.mjs';
-import { readJson, writeJson } from '../lib/fsutil.mjs';
+import { secretStore } from '../lib/secret-store.mjs';
 import { createRemoteAuth, remoteOrigin } from '../lib/remote-mcp-auth.mjs';
 
 export function bridgeMcp(dataDir, message) {
@@ -82,12 +82,12 @@ export function createRemoteServer({ dataDir, publicOrigin, now, rpc = message =
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const argv = process.argv.slice(2), dataDir = resolveDataDir({ argv });
-  const file = join(dataDir, 'secrets', 'remote-mcp-config.json');
-  const saved = await readJson(file, { fallback: {} });
+  const store = secretStore(dataDir), KEY = 'remote-mcp-config';   // this computer's secret store
+  const saved = (await store.get(KEY).catch(() => null)) || {};
   const publicOrigin = remoteOrigin(argValue(argv, '--public-origin') || saved.publicOrigin || '');
   const port = Number(argValue(argv, '--listen-port')) || 4911;
   if (!Number.isInteger(port) || port < 1024 || port > 65535 || port === 4173) throw new Error('Choose a separate gateway port.');
-  await writeJson(file, { publicOrigin, port }, { mode: 0o600 });
+  await store.set(KEY, { publicOrigin, port });
   const { server } = createRemoteServer({ dataDir, publicOrigin });
   server.listen(port, '127.0.0.1', () => process.stderr.write(`Remote MCP gateway listening on loopback port ${port}; tunnel only this port.\n`));
 }
