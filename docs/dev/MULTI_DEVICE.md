@@ -32,7 +32,7 @@ How the pieces fit together, in plain words. The details are in
 |---|---|
 | tasks, notes, people, streams, countdowns, Home, reviews, trips, and the whole layout and every preference (theme, density, sort and grouping, the calendars you hide, the calendar mode, list or board, Focus mode, the sidebar, panel sizes, Home cards; [SYNC_FORMAT.md](SYNC_FORMAT.md) section 9) | where you are in the app (the view, the open task, the month shown), this computer's zone |
 | the list of connected accounts (`accounts.json`: address, provider, features, who reads it, the ids of its snapshot files) | **every sign-in, token, app password and key** |
-| the mail and calendar each account's reader saved | `config.json`, `sources.json`, `connections.json`, the local token |
+| the mail and calendar each account's reader saved; results, caches and the person's settings (below) | this computer's paths and zone in `config.json`, the source definitions in `sources.json` (secret links), `connections.json` (what works here), the local token |
 | who runs which background job (`roles.json`) | the sync identity and its encryption keys |
 | the finances the computer that reads the bank published (`finance-share/finance.json`), and your finance edits from any device (`finance-share/edits.json`: categories, budgets, account names, colours, Show in Finances); encrypted sync only | the finance folder (transaction store, CSV imports, the spreadsheet, `rules.json`), bank sign-ins and connector tokens |
 
@@ -56,7 +56,9 @@ bookkeeping stay. Every item, with the reason in one line.
 | streams, countdowns and top-bar widgets, resources, tags, pinned tags, sidebar order, default stream, archive days | synced | your data |
 | Home layout, focus settings, snoozes, widget settings; daily notes; notes on calendar events; calendar names and colours; weekly reviews | synced | your data and the Home page itself |
 | trips: confirmed and renamed, "not a trip", travel moments already shown (`travel`) | synced (2.16) | your decisions; the zone each computer is in is not in it |
-| Claude's suggestions from your mail and what you did with each thread (`emailTriage`), the suggestions' memory (`suggest`), each task's AI chat (`taskChat`) | synced | results: a computer without Claude cannot rebuild them |
+| Claude's suggestions from your mail and what you did with each thread (`emailTriage`), the suggestions' memory (`suggest`) | synced | results: a computer without Claude cannot rebuild them |
+| every AI conversation: each task's chat (`taskChat`), the assistant's conversation and its proposal cards (`assistantChat`), read and cleared marks (`chatMeta`) | synced, messages by id in time order | the same conversation everywhere, each message once ([SYNC_FORMAT.md](SYNC_FORMAT.md) 9.3) |
+| older messages of a long chat (`chatArchive`) | this computer's own | kept where they were; the others say "N older messages on <computer>" |
 | calendar and mail caches per page (`calCache`, `peopleEmailCache`), auto-link suggestions (`autolink`) | rebuilt on each computer | caches of synced data, or of this computer's file index |
 
 ### Layout and preferences (no undo step; the later choice wins quietly)
@@ -89,7 +91,18 @@ bookkeeping stay. Every item, with the reason in one line.
 | browser notifications (`notifications`) | this computer's own | the permission is per browser |
 | the finance folder (`financeDir`), first-run marker, file format | this computer's own | a path, and this computer's set-up |
 
-<!-- 2.16 integration: files, finance, browser storage, AI chats and who runs Claude are filled in below -->
+### AI proposals, finances and who runs Claude
+
+| Item | | Why |
+|---|---|---|
+| proposals waiting for Apply and their state (`state/proposals.json`) | synced, per proposal and part | applied or dismissed on one computer, shown as such on all; ids it creates come from the proposal, so it is never applied twice |
+| the finance numbers the Finances view and the Home money cards show (`finance-share/finance.json`) | published by the finance computer | the bank or the spreadsheet is read on one computer; the others show "Finance from <computer>" instead of "Connect your bank" (section *Finances on every device*) |
+| your finance edits: categories, budgets, account names, colours, Show in Finances (`finance-share/edits.json`) | synced, per entry | made on any computer; the finance computer applies them once |
+| the finance folder (transactions, CSV imports, the spreadsheet and its path, `rules.json`), bank sign-ins | this computer's own | files and secrets of the computer that reads the bank |
+| which computer is the Claude host (`roles.json` `claude`) | synced | one host for every computer (section *The Claude host*) |
+| Run Claude on: the host first, then this computer / this computer only / only the host | this computer's own | each computer's own choice |
+| the requests one computer sends another (`requests.json`) | synced, per request and field | the asker and the runner write different fields; one result is used, never two |
+
 
 <!-- ── files ── -->
 ### Files in the data folder (results, caches, settings)
