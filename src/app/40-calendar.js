@@ -153,6 +153,8 @@ function createGoogleDataStore(o) {
         if (opts.force !== false) toast(j.error || 'Nothing is connected yet.', { icon: 'plug', timeout: 8000, action: { label: 'Open Connections', run: () => (window.Connections ? Connections.open(o.connector) : setView('connections')) } });
         return { error: true, noSources: true };
       }
+      // Another of your devices was asked too (it reads sources this one does not): its update arrives by sync.
+      if (r.status === 202 && Array.isArray(j.asked) && j.asked.length && opts.force !== false) toast(j.message || 'Asking your other computer to update.', { icon: 'loader-circle' });
       if (r.status === 202 || r.status === 409) { st.job = j.job || null; changed('job'); poll(); return { started: r.status === 202 }; }
       if (r.ok && j.skipped) return { skipped: true, runsOn: j.runsOn || null };
       throw new Error(j.error || 'HTTP ' + r.status);

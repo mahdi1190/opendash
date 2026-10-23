@@ -38,7 +38,9 @@ test('UI keys sync exactly when they are preferences; bookkeeping is device-loca
 test('the synced keys are exactly the keys the sync model knows how to merge', () => {
   assert.deepEqual([...syncedKeys()].sort(), [...SYNC_KEYS].sort());
   assert.equal(classOf('someFutureKey'), 'device-local', 'an unknown key is never synced');
-  for (const k of ['emailTriage', 'autolink', 'calCache', 'peopleEmailCache', 'suggest', 'taskChat']) assert.equal(classOf(k), 'derived', k);
+  for (const k of ['autolink', 'calCache', 'peopleEmailCache']) assert.equal(classOf(k), 'derived', k);
+  // Results a computer without Claude cannot rebuild, and the user's own choices: synced (docs/dev/MULTI_DEVICE.md).
+  for (const k of ['emailTriage', 'suggest', 'taskChat']) assert.equal(classOf(k), 'synced', k);
   for (const [k, [cls, why]] of Object.entries(MANIFEST)) assert.ok(['synced', 'device-local', 'derived'].includes(cls) && why, k);
 });
 

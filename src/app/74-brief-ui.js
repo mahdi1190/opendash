@@ -242,7 +242,9 @@ const _bf = {
 };
 function todayStrSafe() { try { return todayStr(); } catch (e) { return ''; } }
 function _bfJson(url, opts) {
-  return fetch(url, Object.assign({ cache: 'no-store', headers: { Accept: 'application/json' } }, opts || {})).then(async r => {
+  // A POST this computer cannot do (no Claude here) is asked of the one that can (56-remote-jobs.js): same answer, after "Asking <device>…".
+  const go = opts && opts.method === 'POST' && typeof remoteFetch === 'function' ? remoteFetch : fetch;
+  return go(url, Object.assign({ cache: 'no-store', headers: { Accept: 'application/json' } }, opts || {})).then(async r => {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { const e = new Error(j.error || ('HTTP ' + r.status)); e.status = r.status; e.code = j.code; throw e; }
     return j;

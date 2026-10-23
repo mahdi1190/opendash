@@ -128,7 +128,7 @@ People: ${JSON.stringify(people)}
 Open tasks: ${JSON.stringify(openTitles)}
 Emails: ${JSON.stringify(emails.map(m => ({ id: m.id, from: m.sender || _emSenderName(m), subject: m.subject, snippet: m.snippet, date: m.date })))}`;
   try {
-    const out = await askAIJson(prompt, _EM_SUG_SCHEMA, { effort: 'low' });
+    const out = await askAIJson(prompt, _EM_SUG_SCHEMA, { effort: 'low', purpose: 'triage' });
     const ids = new Set(emails.map(m => m.id));
     const list = (out && Array.isArray(out.tasks) ? out.tasks : []).filter(s => s && ids.has(s.emailId) && (typeof s.confidence !== 'number' || s.confidence >= 0.5));
     const now = Date.now();

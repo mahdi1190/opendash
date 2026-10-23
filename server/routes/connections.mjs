@@ -61,6 +61,13 @@ export default function register(app) {
         all.sources = st.sources.map(s => ({ id: s.id, capability: s.capability, kind: s.kind, label: s.label, colour: s.colour, enabled: s.enabled, state: s.health && s.health.state, message: s.health && s.health.message }));
         all.discovery = { at: st.discovery.at, error: st.discovery.error, servers: Array.isArray(st.servers) ? st.servers.length : null, ...(st.discovery.pending ? { pending: true } : {}) };
       } catch (e) { log('warn', `connections: sources status failed (${e.message})`); }
+      // Connect once, use everywhere (lib/remote-jobs.mjs): what the user's OTHER devices can do,
+      // so a feature that works through one of them is not greyed out here ("Uses Claude on
+      // Home laptop"). This computer's own capabilities are published for them at the same time.
+      if (app.ctx.remoteJobs) {
+        app.ctx.remoteJobs.refreshCaps().catch(() => {});
+        try { const g = app.ctx.remoteJobs.group(); if (g) all.group = g; } catch (e) { log('warn', `connections: group failed (${e.code || 'error'})`); }
+      }
       return all;
     },
   });

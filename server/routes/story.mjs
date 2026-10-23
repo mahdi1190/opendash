@@ -79,7 +79,19 @@ export default function register(app) {
   const sameZone = (hit, data) => (hit && (!hit.tz || hit.tz === data.tz) ? hit : null);
   const storyCfg = (cfg) => (cfg.brief && cfg.brief.story) || {};
 
-  app.route({path:'/api/story/advice',method:'POST',maxBody:4096,handler:async c=>{
+  // The latest review (brief/day-advice.json, synced: one made on another device shows here
+  // too), revalidated against today's tasks; {advice:null} when there is none for today.
+  app.route({path:'/api/story/advice',method:'GET',quiet:true,handler:async c=>{
+    const cache=await readJson(join(dataDir,'brief','day-advice.json'),{fallback:null}).catch(()=>null);
+    if(!cache||!cache.date||!Array.isArray(cache.ideas))return {advice:null};
+    const {q,data}=await dayModel(c,'morning');
+    const facts=dayAdvisorFacts(q,data);
+    if(cache.date!==facts.date||cache.tz!==facts.timezone)return {advice:null};
+    return {advice:{...validateDayAdvice(cache,facts),date:cache.date,tz:cache.tz,at:cache.at||0,expiresAt:cache.expiresAt||0,period:cache.period,model:cache.model,...(cache.by?{by:cache.by}:{}),cached:true}};
+  }});
+  // "Think through my day" (a click) on a computer without Claude runs on one that has it
+  // (lib/remote-jobs.mjs, kind 'dayplan'); the automatic review stays on the main computer.
+  app.route({path:'/api/story/advice',method:'POST',maxBody:4096,remote:{kind:(b)=>(b&&b.automatic?null:'dayplan')},handler:async c=>{
     const body=await c.body();
     if(body.automatic && !c.getConfig().brief?.advisorAuto) throw new HttpError(409,'Automatic day advice is off.');
     if(c.getConfig().brief?.ai===false) throw new HttpError(409,'AI advice is off in Settings.');
@@ -111,7 +123,9 @@ export default function register(app) {
         if(currentFacts.date!==facts.date||currentFacts.timezone!==facts.timezone) throw new HttpError(409,'The day or time zone changed. Try again.');
         const advice=validateDayAdvice(answer.json,currentFacts);
         if(!advice.summary) throw new HttpError(502,'The adviser returned an incomplete response.');
-        const result={...advice,date:facts.date,tz:data.tz,at:Date.now(),expiresAt:Date.now()+2*60*60*1000,period:fresh.data.part,model,periods:[...new Set([...periods,fresh.data.part])]};
+        // by: the device that made it (with sync on), so another device can say where it came from.
+        let by=null;try{const e=app.ctx.sync;by=e&&e.enabled?e.status().deviceName||null:null;}catch{by=null;}
+        const result={...advice,date:facts.date,tz:data.tz,at:Date.now(),expiresAt:Date.now()+2*60*60*1000,period:fresh.data.part,model,periods:[...new Set([...periods,fresh.data.part])],...(by?{by}:{})};
         await writeJson(file,result);
         return {...result,cached:false};
       });
@@ -141,6 +155,8 @@ export default function register(app) {
 
   app.route({
     path: '/api/story/script', method: 'POST', maxBody: 4 * 1024, methodError: 'POST only',
+    // "Regenerate" (a click) without Claude here: asked of a device that has it (lib/remote-jobs.mjs).
+    remote: { kind: (b) => (b && b.regenerate ? 'story' : null) },
     handler: async (c) => {
       const b = await c.body();
       const kind = kindOf(b.kind);

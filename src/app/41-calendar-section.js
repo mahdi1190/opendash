@@ -263,8 +263,10 @@ function calRail() {
     const card = document.createElement('div'); card.className = 'cal-connect';
     const access = CalStore.access();
     const running = CalStore.running();
-    card.innerHTML = `<div class="cal-connect-h">${icon('calendar-days')}<b>${esc(running ? 'Reading your calendar…' : access === 'yes' ? 'No events yet' : 'Bring in your calendar')}</b></div>`
-      + `<p>${esc(running ? 'This takes a minute. Your events appear here when it is done.' : access === 'yes' ? 'Update to read your Google calendars. Tasks and countdowns already show.' : 'Connect a calendar (Google Calendar, or any iCal link with no AI involved) to see your events next to your tasks. Tasks and countdowns already show.')}</p>`;
+    // Read by another of your devices (connect once, use everywhere): its events arrive by sync.
+    const calVia = access === 'yes' && typeof connViaText === 'function' ? connViaText('calendar') : '';
+    card.innerHTML = `<div class="cal-connect-h">${icon('calendar-days')}<b>${esc(running ? 'Reading your calendar…' : calVia ? calVia : access === 'yes' ? 'No events yet' : 'Bring in your calendar')}</b></div>`
+      + `<p>${esc(running ? 'This takes a minute. Your events appear here when it is done.' : calVia ? 'Its events show here as soon as they sync. Update asks it to read the calendar again. Tasks and countdowns already show.' : access === 'yes' ? 'Update to read your Google calendars. Tasks and countdowns already show.' : 'Connect a calendar (Google Calendar, or any iCal link with no AI involved) to see your events next to your tasks. Tasks and countdowns already show.')}</p>`;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-primary btn-sm';
     if (running || access === 'yes') {
       b.setAttribute('data-requires', 'calendar');

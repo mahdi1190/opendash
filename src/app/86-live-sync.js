@@ -459,6 +459,8 @@ function liveSyncStart() {
   _liveES.addEventListener('calendar', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (typeof calwOnRemote === 'function') calwOnRemote(d); });
   // Another tab told the server the computer's zone changed: read our own now (07-core-clock.js).
   _liveES.addEventListener('time', () => { if (typeof Clock !== 'undefined') Clock.check(); });
+  // Another of your devices published something (its calendar, an answer to a request, an AI result): 56-remote-jobs.js.
+  _liveES.addEventListener('synced-files', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof syncedFilesChanged === 'function') syncedFilesChanged(d.rels); });
   // After a reconnect the hello carries the current version: catch up on anything missed.
   _liveES.addEventListener('hello', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && d.version) _liveOnRemote({ version: d.version, source: 'external' }); });
 }

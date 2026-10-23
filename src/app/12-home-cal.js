@@ -82,6 +82,8 @@ function homeCalStatus(onUpdate) {
     if (!st.loaded) { if (_homeServerUp()) out.loading = true; else out.none = true; return out; }
     if (st.error && !d) { out.error = String(st.error); return out; }
     const has = !!(d && (d.fetchedAt || (Array.isArray(d.events) && d.events.length) || (Array.isArray(d.calendars) && d.calendars.length)));
+    // Read by another of your devices: its events are on their way by sync, so no "Connect a calendar" here (56-connections-gate.js connViaText).
+    if (!has && typeof connViaText === 'function' && connViaText('calendar')) { out.loading = true; out.via = connViaText('calendar'); return out; }
     if (!has) { out.none = true; return out; }
     out.ok = true;
     out.fetchedAt = d.fetchedAt || '';

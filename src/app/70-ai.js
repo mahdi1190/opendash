@@ -9,7 +9,8 @@
 async function serverAsk(prompt, opts) {
   if (!AI_AVAILABLE) { const e = new Error('AI backend not available'); e.code = 'UNAVAILABLE'; throw e; }
   const body = Object.assign({ prompt }, opts || {});
-  const r = await fetch('/api/ai', {
+  // No Claude on this computer but on another of yours: asked there (56-remote-jobs.js).
+  const r = await (typeof remoteFetch === 'function' ? remoteFetch : fetch)('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -64,7 +65,7 @@ async function sendTaskChat(taskId, userMsg) {
   const messages = history.slice(-10).map(m => `${m.role === 'user' ? (userName() || 'User') : 'You'}: ${m.text}`).join('\n\n');
   const prompt = `${context}\n\n--- conversation so far ---\n${messages}\n\nReply to the last message:`;
   try {
-    const txt = await askAI(prompt, { model: APP_CONFIG.ai.chatModel, effort: APP_CONFIG.ai.effort });
+    const txt = await askAI(prompt, { model: APP_CONFIG.ai.chatModel, effort: APP_CONFIG.ai.effort, purpose: 'taskchat' });
     addTaskChatMsg(taskId, 'claude', txt);
     render();
   } catch (e) {

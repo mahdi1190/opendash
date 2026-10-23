@@ -52,6 +52,8 @@
 import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { createNodeLive } from '../../lib/sync/live/node-live.mjs';
+import { writeProfile, applyProfile, PROFILE_REL } from '../../lib/profile.mjs';
+import { DEFAULT_CONFIG } from '../../lib/datadir.mjs';
 
 export default function register(app) {
   const { store, log, paths, repoRoot, version } = app.ctx;
@@ -65,14 +67,34 @@ export default function register(app) {
   // The accounts service of this data folder (the server's ctx; a bare {dataDir} for stand-in apps).
   const accounts = () => accountsFor(app.ctx.dataDir ? app.ctx : { dataDir: paths.root });
   engine.onApplied((info) => {
-    if (!info || !(info.fileRels || []).includes('accounts.json')) return;
+    // Open tabs hear which synced files changed (the calendar or inbox another
+    // device published, an answer to a remote request, an AI result) and reload them.
+    const rels = (info && info.fileRels) || [];
+    const sse = app.ctx.liveSync;
+    if (rels.length && sse && typeof sse.emit === 'function') { try { sse.emit('synced-files', { rels: rels.slice(0, 50), at: Date.now() }); } catch { /* no open tabs */ } }
+    // The person's settings changed on another computer (lib/profile.mjs): into this config.json.
+    if (rels.includes(PROFILE_REL) && typeof app.ctx.setConfig === 'function') {
+      applyProfile(paths.root, { getConfig: () => app.ctx.getConfig(), setConfig: (p) => app.ctx.setConfig(p), log }).catch(() => {});
+    }
+    if (!rels.includes('accounts.json')) return;
     accounts().reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
   });
   // Live sync: a computer may take an account's lease only with its own sign-in for that
-  // account (accounts/<id> in this computer's secret store; tokens never sync).
-  const live = createNodeLive({ engine, dataDir: paths.root, log, canFetch: (acc) => accounts().hasSignIn(acc && acc.id) });
-  app.ctx.liveSync = live;
+  // account (accounts/<id> in this computer's secret store; tokens never sync). The
+  // 'claude' role (answering remote requests that need Claude, lib/remote-jobs.mjs)
+  // is claimed only by a computer where Claude works.
+  const live = createNodeLive({
+    engine, dataDir: paths.root, log, canFetch: (acc) => accounts().hasSignIn(acc && acc.id),
+    extraRoles: ['phone', 'claude'],
+    canRun: async (role) => (role !== 'claude' ? true : !!(app.ctx.remoteJobs && (await app.ctx.remoteJobs.localCaps()).claude)),
+  });
+  // Not ctx.liveSync: that is the open tabs' event stream (server/live-sync.mjs), which
+  // the calendar writer and the time route emit on.
+  app.ctx.peerLive = live;
+  if (app.ctx.remoteJobs) app.ctx.remoteJobs.attach(engine, live);
   app.onReady(async () => {
+    // The person's settings as this computer has them, for the others (a first copy: only what differs from the defaults).
+    if (typeof app.ctx.getConfig === 'function') await writeProfile(paths.root, app.ctx.getConfig(), { defaults: DEFAULT_CONFIG }).catch(() => {});
     await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`));
     if (live) await live.start().catch((e) => log('warn', `live sync could not start: ${e && (e.code || e.message)}`));
   });

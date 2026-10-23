@@ -64,7 +64,9 @@ function _connPageAssistantCards(all, repaint = _connPageAssistantRepaint, compa
     head.append(mark, titles); card.append(head, _connEl('p', 'conn-text', compact ? short[provider.id] : provider.text));
     const info = _connEl('div', 'cp-assistant-info');
     info.appendChild(_connEl('span', 'status assistant-state ' + detail.kind, detail.status));
-    if (provider.id === 'claude') info.appendChild(_connEl('span', 'cp-assistant-hint', all.claude && all.claude.state === 'ok' ? 'Dashboard AI is ready' : 'Powers dashboard AI'));
+    // Not here but on another of your devices: AI works here through it (connect once, use everywhere).
+    const viaClaude = provider.id === 'claude' && !(all.claude && all.claude.state === 'ok') && typeof connVia === 'function' ? connVia('claude') : null;
+    if (provider.id === 'claude') info.appendChild(_connEl('span', 'cp-assistant-hint', all.claude && all.claude.state === 'ok' ? 'Dashboard AI is ready' : viaClaude ? `Uses Claude on ${viaClaude}` : 'Powers dashboard AI'));
     else info.appendChild(_connEl('span', 'cp-assistant-hint', provider.id === 'grok' ? 'No local dashboard access' : 'Dashboard AI uses Claude'));
     card.appendChild(info);
     if (!compact && provider.id === 'claude') card.appendChild(_connEl('p', 'conn-note', all.assistants && all.assistants.claudeDesktop && all.assistants.claudeDesktop.detected ? 'Claude Desktop detected; it is optional.' : 'Claude Desktop is optional.'));
@@ -76,7 +78,7 @@ function _connPageAssistantCards(all, repaint = _connPageAssistantRepaint, compa
     if (local) {
       const checking = provider.id !== 'claude' && !(all.assistants && all.assistants[provider.id]);
       const flow = provider.id === 'claude' && localClaudeProgress(all);
-      const b = _connBtn(flow && flow.busy ? localClaudePhaseLabel(flow) + '…' : _assistantBusy === provider.id ? 'Connecting…' : checking ? 'Checking…' : provider.id === 'claude' ? 'Link Claude' : detail.working ? 'Check status' : installed ? `Connect ${localName}` : `Set up ${localName}`, detail.working ? 'refresh-cw' : 'plug', detail.working ? 'btn-secondary' : 'btn-primary', async () => {
+      const b = _connBtn(flow && flow.busy ? localClaudePhaseLabel(flow) + '…' : _assistantBusy === provider.id ? 'Connecting…' : checking ? 'Checking…' : provider.id === 'claude' ? (viaClaude ? 'Also set up on this computer' : 'Link Claude') : detail.working ? 'Check status' : installed ? `Connect ${localName}` : `Set up ${localName}`, detail.working ? 'refresh-cw' : 'plug', detail.working || viaClaude ? 'btn-secondary' : 'btn-primary', async () => {
         if (provider.id === 'claude') assistantConnect(provider.id, repaint);
         else if (detail.working) { await connRefresh({ force: true }); repaint(); }
         else if (installed) assistantConnect(provider.id, repaint);

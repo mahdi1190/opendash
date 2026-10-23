@@ -77,6 +77,7 @@ async function _pollAiStatus(tries) {
     if (s && typeof s.available === 'boolean') {
       AI_PENDING = false;
       AI_AVAILABLE = s.available;
+      AI_VIA = (!s.local && s.via) || null;
       document.body.classList.toggle('no-ai', !AI_AVAILABLE);
       if (AI_AVAILABLE) render();
       return;

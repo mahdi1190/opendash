@@ -99,6 +99,9 @@ export default function register(app) {
   });
   app.route({
     path: '/api/brief/summary', method: 'POST', maxBody: 48 * 1024, methodError: 'GET or POST only',
+    // Without Claude here: "Regenerate", or a summary nobody has written yet (the AI summaries
+    // sync, so one made on another device is simply read), is asked of a device that has Claude.
+    remote: { kind: async (b) => (b && SUMMARY_KINDS.includes(b.kind) && isIsoDate(b.date) && (b.regenerate || !(await readSummary(dataDir, b.kind, b.date).catch(() => null))) ? 'brief' : null) },
     handler: async (c) => {
       const b = await c.body();
       if (!SUMMARY_KINDS.includes(b.kind)) throw new HttpError(400, 'kind must be brief, evening or week');
