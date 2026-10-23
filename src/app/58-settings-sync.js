@@ -32,6 +32,7 @@ function syncAgo(ms, nowMs) {
 function syncStatusLine(st, nowMs) {
   if (!st) return { tone: 'idle', text: 'Reading...' };
   if (!st.enabled) return { tone: 'off', text: 'Off. Your data stays on this computer.' };
+  if (st.mode === 'shadow' && st.state === 'ok') return { tone: 'warn', text: st.message || 'Trial mode: nothing is applied yet.' };
   if (st.state === 'error') return { tone: 'err', text: st.message || 'Sync is paused.' };
   if (st.state === 'waiting') return { tone: 'warn', text: st.message || 'Waiting for the cloud folder.' };
   if (!st.lastSyncAt) return { tone: 'idle', text: 'Starting...' };
@@ -126,6 +127,21 @@ function _syncCard(el) {
   status.appendChild(devs);
   card.body.appendChild(_settingsRow('Status', '', status));
   if (st && st.enabled) {
+    // Trial mode first: changes from the other computers are listed, not applied.
+    card.body.appendChild(_settingsRow('Use changes from my other computers', st.apply
+      ? 'On: changes made on your other computers appear here within seconds of your cloud drive bringing them.'
+      : 'Off for now (trial): OpenDash checks what your other computers changed and lists it below, without changing anything here. Turn this on when the list looks right.',
+    _settingsSwitch(!!st.apply, 'Use changes from my other computers', (v) => _syncSave({ apply: v }, v ? 'Changes from your other computers will be used' : 'Back to trial mode'), _syncBusy)));
+    if (!st.apply && st.preview && st.preview.changes) {
+      const p = st.preview, list = document.createElement('div'); list.className = 'set-h sync-preview';
+      const lines = [];
+      for (const t of p.sample.added) lines.push('New: ' + (t.title || 'a task'));
+      for (const t of p.sample.changed) lines.push('Changed: ' + (t.title || 'a task') + (t.fields.length ? ' (' + t.fields.join(', ') + ')' : ''));
+      for (const t of p.sample.removed) lines.push('Removed: ' + (t.title || 'a task'));
+      if (p.keys.length) lines.push('Also: ' + p.keys.map(k => String(k).replace(/^file:/, '')).join(', '));
+      list.textContent = lines.join('\n');
+      card.body.appendChild(_settingsRow('Waiting to be used', `${p.tasks.added} new, ${p.tasks.changed} changed and ${p.tasks.removed} removed task${p.tasks.removed === 1 ? '' : 's'} from ${p.from.join(', ') || 'another computer'}${p.conflicts ? `; ${p.conflicts} edit${p.conflicts === 1 ? '' : 's'} clash with yours (the later one would be kept)` : ''}.`, list));
+    }
     const name = document.createElement('input'); name.className = 'control control-sm'; name.maxLength = 60;
     name.value = st.deviceName || ''; name.placeholder = 'Work laptop';
     name.onchange = () => _syncSave({ deviceName: name.value.trim() }, 'Name saved');
@@ -137,7 +153,7 @@ function _syncCard(el) {
     if (st.conflicts && st.conflicts.count) {
       const c = st.conflicts.recent[0];
       const what = c ? `${c.name ? '"' + c.name + '"' : 'an item'}${c.field ? ' (' + c.field + ')' : ''}` : 'an item';
-      card.body.appendChild(_settingsRow('Edits that clashed', `${st.conflicts.count} time${st.conflicts.count === 1 ? '' : 's'} the same thing was changed on two computers at once; the later change was kept. Latest: ${what}, kept the change from ${c ? c.kept.by : 'the other computer'}. Each one is listed in sync/conflicts.jsonl in the data folder.`, null));
+      card.body.appendChild(_settingsRow('Edits that clashed', `${st.conflicts.count} time${st.conflicts.count === 1 ? '' : 's'} the same thing was changed on two computers at once; the later change was kept. Latest: ${what}, kept the change from ${c ? c.kept.by : 'the other computer'}. Each one is listed in conflicts.jsonl in this computer's OpenDash sync folder.`, null));
     }
     if (st.skew) card.body.appendChild(_settingsRow('Clock', `${st.skew.device}'s clock is about ${st.skew.aheadMin} min ahead of this one. Set both to the right time so the newest change wins.`, null));
   }

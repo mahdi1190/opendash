@@ -139,6 +139,7 @@ const SETTINGS_SEARCH_CATALOG = {
   sync: [
     ['Sync across my devices', 'Keep tasks, notes and people the same on your computers through a cloud folder.', 'onedrive google drive dropbox cloud laptop multi-device'],
     ['Folder', 'The cloud folder that carries the changes between computers.', 'onedrive dropbox google drive path'],
+    ['Use changes from my other computers', 'Trial mode first: see what would change before anything is applied.', 'shadow trial apply preview'],
     ['Status', 'When it last synced and which other computers were seen.', 'last seen devices'],
     ['This computer is called', 'How your other computers show this one.', 'device name'],
     ['Check the folder now', 'Look for changes from your other computers now.', 'sync now refresh'],

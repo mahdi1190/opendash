@@ -28,6 +28,9 @@ test('the status line: off, synced, waiting for the cloud, paused', () => {
   assert.equal(box.syncStatusLine({ enabled: true, state: 'waiting', message: 'Waiting for OneDrive: the folder is not there.' }, now).text, 'Waiting for OneDrive: the folder is not there.');
   assert.equal(box.syncStatusLine({ enabled: true, state: 'error', message: 'Sync paused: OneDrive is holding a file.' }, now).tone, 'err');
   assert.equal(box.syncStatusLine(null, now).text, 'Reading...');
+  const trial = box.syncStatusLine({ enabled: true, mode: 'shadow', state: 'ok', lastSyncAt: now, message: 'Trial mode: Work laptop has changes waiting (2 new tasks). Nothing here has been changed yet.' }, now);
+  assert.equal(trial.tone, 'warn');
+  assert.match(trial.text, /^Trial mode/);
 });
 
 test('other computers are listed by name with when they were last seen', () => {

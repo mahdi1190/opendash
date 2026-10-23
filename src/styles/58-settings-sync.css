@@ -10,3 +10,4 @@
 .sync-status.sync-err { color: var(--danger, #c0392b); }
 .sync-status.sync-off, .sync-status.sync-idle { color: var(--text-muted, inherit); }
 .sync-devices { white-space: pre-line; }
+.sync-preview { white-space: pre-line; max-height: 12rem; overflow: auto; }
