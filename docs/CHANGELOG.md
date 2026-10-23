@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.15.1] - 2026-10-23
+
+### Added
+
+- **Everything syncs:** your two computers now show the same dashboard. Layout and display choices (panel sizes, folded sidebar, list or board, the calendar mode, hidden amounts, focus mode), the whole Home page content (day plan, briefs, weather, holidays), calendar and inbox snapshots, drafts, your own animations, source names and colours, and the things you have already seen (the morning brief, stories, special animations, dismissed notices) all follow you. Only where you are right now (the open page, task and month), this computer's own zone, and secrets stay on each computer.
+- **Finances on every computer:** the computer that reads your bank or spreadsheet publishes your finances (accounts, balances, transactions, categories, budgets, the Home money cards); the other shows them as "Finance from Home laptop · updated 5 min ago" and asks it to update. Recategorising, budgets and account names can be changed from either computer. Bank sign-ins stay on the computer that made them.
+- **Every AI chat syncs:** task chats, the assistant panel, proposals waiting for Apply (never applied twice) and which answers you have read.
+- **Claude host first:** while your Claude computer is reachable, AI work and Claude-run updates go to it, even from a computer that also has Claude; if it is off, this computer takes over when it can. Choose it in Settings > Sync > Claude.
+- **A 4-letter join code:** Settings > Sync > Add a computer shows four letters, valid for 10 minutes; type them on the new computer. The 6-digit approval and the recovery code are still under Other ways.
+
+### Fixed
+
+- **Monzo:** the full history imports again. Monzo now refuses transaction lists longer than a year, so OpenDash reads them a year at a time.
+- **Joining a computer:** a computer you removed can ask to join again and be approved; a pairing survives a restart or a rename on either side; a pairing that makes no progress ends after a minute, and Cancel works at every step.
+
+
 ## [2.15.0] - 2026-10-23
 
 ### Changed
