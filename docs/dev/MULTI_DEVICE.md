@@ -130,7 +130,7 @@ An open page reloads a file the moment it arrives, without fetching again.
 | last update runs (`calendar/update.json`, `inbox/update.json`) | this computer's own | the 30-minute throttle: a copy would stop a computer reading its own accounts |
 | exchange-rate caches (`travel/rates-*.json`) | this computer's own | public data each computer fetches; merging their ranges would lose some |
 | undo history (`state/actions-journal.json`) | this computer's own | its tokens name this computer's state versions |
-| pictures and audio (`people/images/`, `cache/narration/`) | this computer's own | binary files: sync carries JSON only |
+| people's pictures and story narration clips (`people/images/`, `cache/narration/`) | synced with encrypted sync (2.16), as sealed blobs | a picture or clip made on one computer is fetched on the other the first time it is shown (the initials or the computer voice until then); a clip is never paid for twice. 5 MB per file, 200 MB for the group, clips only while it is under 75 %; Settings > Sync shows *Pictures and audio: 34 MB of 200 MB* ([SYNC_FORMAT.md](SYNC_FORMAT.md) section 12) |
 
 A file too big to send (over its limit, or one value over 256 KB) stays as
 it is on that computer, and Settings > Sync lists it under *Not synced from

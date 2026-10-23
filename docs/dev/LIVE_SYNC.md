@@ -116,13 +116,17 @@ closes (`tampered`).
 | `recs` | `items: [{file, rec}]` | the sender's own sealed log records (SYNC_FORMAT.md 11.2) with their log file name (part of the AES-GCM associated data); answers `hi` with what the other missed, then every new record as it is written; at most about 1 MiB per frame |
 | `seen` | `n` | how far the sender now has the other's records |
 | `lease` | `claims` | main-computer claims (section 7) |
+| `blob` | `v`, `ref`, `id`, `kind`, `data` | a picture or narration clip the sender just stored (SYNC_FORMAT.md section 12): `data` is the sealed blob file (base64url, at most 1.5 MB), `ref` its path in the data folder, `id` the SHA-256 of the plaintext. Sent one at a time, at most about 4 MB a second, at most 64 waiting (the folder brings the rest) |
 | `ping`, `bye` | | keepalive, closing |
 
 A receiver takes `recs` only with `rec.dev` equal to the authenticated
 peer, and passes them to the engine (`deliverLive`), which applies exactly
 the checks of a folder log line (key, removal cut, AES-GCM, schema, secret
 filters) and skips a `(dev, n)` it already has. A record that does not fit
-in one frame is left to the folder.
+in one frame is left to the folder. A `blob` from a member is opened with the
+group key (AD = group, id, key id), checked against its id (and a picture's
+name), and only then written into the data folder (`deliverBlob`); a peer
+on an older version ignores the message.
 
 ## 5. Address book
 
