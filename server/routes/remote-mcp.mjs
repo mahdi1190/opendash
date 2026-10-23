@@ -1,15 +1,14 @@
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { REPO_ROOT } from '../../lib/datadir.mjs';
-import { secretsDir } from '../../lib/devicedir.mjs';
-import { readJson, writeJson, withLock } from '../../lib/fsutil.mjs';
+import { secretStore } from '../../lib/secret-store.mjs';
 import { createRemoteAuth, remoteOrigin } from '../../lib/remote-mcp-auth.mjs';
 import { HttpError } from '../http.mjs';
 
 export default function register(app) {
   const { dataDir } = app.ctx;
-  const file = join(secretsDir(dataDir), 'remote-mcp-config.json');
-  const config = () => readJson(file, { fallback: null });
+  const store = secretStore(dataDir), KEY = 'remote-mcp-config';   // this computer's secret store
+  const config = () => store.get(KEY).catch(e => { if (e.code === 'SECRET_CORRUPT') return null; throw e; });
   const authFor = async () => { const cfg = await config(); if (!cfg) throw new HttpError(400, 'Set the Cloudflare hostname first.'); return { cfg, auth: createRemoteAuth({ dataDir, publicOrigin: cfg.publicOrigin }) }; };
   const running = async cfg => {
     try {
@@ -26,10 +25,10 @@ export default function register(app) {
     const b = await c.body(); let origin;
     try { origin = remoteOrigin(b.publicOrigin); } catch { throw new HttpError(400, 'Enter the public HTTPS hostname managed by your Cloudflare account.'); }
     // Fixed independent port; never tunnel the main dashboard server.
-    await withLock(file, async () => {
+    await store.lock(KEY, async () => {
       const previous = await config();
       if (previous && previous.publicOrigin !== origin && await running(previous)) throw new HttpError(409, 'Stop the existing gateway before changing its hostname.');
-      await writeJson(file, { publicOrigin: origin, port: 4911 }, { mode: 0o600 });
+      await store.set(KEY, { publicOrigin: origin, port: 4911 });
     });
     return { ok: true };
   } });

@@ -30,7 +30,7 @@ import {
 import { setRunnerLogger, setCliPath } from '../lib/claude-runner.mjs';
 import { aiStatus, setDefaultModel } from '../lib/ai.mjs';
 import { initGoogle } from '../lib/google.mjs';
-import { secretsDir } from '../lib/devicedir.mjs';
+import { secretStore } from '../lib/secret-store.mjs';
 import { initFinance, financeAvailable, cleanupPartials } from '../lib/finance.mjs';
 import { createApp } from './router.mjs';
 import { createLogger } from './log.mjs';
@@ -98,7 +98,7 @@ export async function main(argv = process.argv.slice(2)) {
   const financeDir = resolve(argValue(argv, '--finance-dir') || process.env.DASHBOARD_FINANCE_DIR || config.financeDir || paths.finance);
   initFinance(financeDir, { currency: config.currency });
   track(cleanupPartials());
-  initGoogle(secretsDir(paths.root));   // this computer's sign-ins (lib/devicedir.mjs)
+  initGoogle(secretStore(paths.root));   // this computer's sign-ins (lib/secret-store.mjs)
   const store = createStateStore({ stateDir, log });
   // A short hash of index.html as it is on disk now (cached by size + mtime).
   let buildCache = { key: null, id: null };
