@@ -149,3 +149,12 @@ test('server: set up, copy now, inspect and restore (the current data is backed 
     assert.ok(readZip(await createOffsiteBackup({ secrets: secretStore(data), exportZip: () => Buffer.alloc(0) }).open(name)).some(e => e.name.endsWith('state/dashboard-state.json')));
   } finally { await srv.close(); rmSync(t, { recursive: true, force: true }); }
 });
+
+test('the suggested folder is the PERSONAL OneDrive, never a work one', async () => {
+  const { defaultBackupFolder } = await import('../lib/offsite-backup.mjs');
+  const work = join('C:', 'Users', 'alex', 'OneDrive - Contoso'), personal = join('C:', 'Users', 'alex', 'OneDrive');
+  assert.equal(defaultBackupFolder({ OneDrive: work, OneDriveCommercial: work, OneDriveConsumer: personal }), join(personal, 'OpenDash Backups'));
+  assert.equal(defaultBackupFolder({ OneDrive: work, OneDriveCommercial: work }), null, 'only a work OneDrive: the user chooses');
+  assert.equal(defaultBackupFolder({ OneDrive: personal }), join(personal, 'OpenDash Backups'));
+  assert.equal(defaultBackupFolder({}), null);
+});

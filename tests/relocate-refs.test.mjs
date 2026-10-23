@@ -230,3 +230,13 @@ test('registry references with Windows paths (any platform): only our own entrie
   assert.equal((await registry.query(RUN_KEY, RUN_VALUE)).data, cmd);
   assert.ok(dry.calls.every(c => /reg\.exe$/i.test(c.file)), 'only reg.exe, and only the in-memory one');
 });
+
+test('a work OneDrive in %OneDrive% does not hide the personal one: its skills and Desktop shortcuts are still found', async () => {
+  const pc = makeComputer({ files: 1 });
+  try {
+    const env = { ...pc.env, OneDrive: join(pc.home, 'OneDrive - Contoso'), OneDriveCommercial: join(pc.home, 'OneDrive - Contoso'), OneDriveConsumer: pc.oneDrive };
+    const R = createRelocator({ dataDir: pc.data, appDir: pc.app, env, home: pc.home, base: pc.base, adapters: adaptersFor(pc), othersLive: () => [], now: () => T0 });
+    const p = await R.plan({ moveApp: false });
+    assert.ok(p.refs.some(r => r.kind === 'text' && /task-ops/.test(r.where)), 'the personal OneDrive scheduled task');
+  } finally { pc.cleanup(); }
+});
