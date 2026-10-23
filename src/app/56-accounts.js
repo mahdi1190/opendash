@@ -10,7 +10,7 @@
    56-accounts-logic.js (tested); this file only draws.
    ============================================================ */
 const AccountsStore = { data: null, loading: null, error: null, busy: {} };
-let _accSignInAt = 0, _accBefore = null;
+let _accSignInAt = 0, _accBefore = null, _accSignInOpts = null;
 
 async function accLoad() {
   if (AccountsStore.loading) return AccountsStore.loading;
@@ -49,11 +49,13 @@ function accReloadData() {
 /* ---------- signing in (a new tab), and noticing the return ---------- */
 function accOpenSignIn(o) {
   _accSignInAt = Date.now();
-  _accBefore = ((AccountsStore.data && AccountsStore.data.accounts) || []).map(a => ({ id: a.id, status: a.status }));
+  _accSignInOpts = o || null;
+  _accBefore = ((AccountsStore.data && AccountsStore.data.accounts) || []).map(a => ({ id: a.id, status: a.status, err: a.error ? a.error.message || a.error.code || '' : '' }));
   window.open(accBeginUrl(o), '_blank', 'noopener');
 }
-window.addEventListener('focus', async () => {
-  if (!accSignInPending(_accSignInAt)) return;
+/** Check whether the sign-in came back: true when an account was connected (the toast says so). */
+async function accCheckSignIn() {
+  if (!accSignInPending(_accSignInAt)) return false;
   const before = _accBefore;
   const d = await accLoad();
   const fresh = accNewlyConnected(before, d && d.accounts);
@@ -63,8 +65,22 @@ window.addEventListener('focus', async () => {
     if (typeof _drawerClose === 'function' && _drawerClose) _drawerClose();
     if (typeof SourcesStore !== 'undefined') SourcesStore.refresh({ cached: true });
     accReloadData();
+    return true;
   }
-});
+  return false;
+}
+/** What the server says went wrong with the sign-in (a new error, or approval needed), or ''. */
+function accSignInProblem() {
+  const was = new Map((_accBefore || []).map(a => [a.id, a]));
+  for (const a of ((AccountsStore.data && AccountsStore.data.accounts) || [])) {
+    const old = was.get(a.id);
+    if (a.status === 'needs-admin-approval' && (!old || old.status !== 'needs-admin-approval')) return `${a.email} needs your organisation to approve OpenDash once. Close this and press Ask for approval on its card.`;
+    const err = a.error ? a.error.message || a.error.code || '' : '';
+    if (err && (!old || old.err !== err)) return `${a.email}: ${err}`;
+  }
+  return '';
+}
+window.addEventListener('focus', () => { accCheckSignIn(); });
 
 /* ---------- the add flows ---------- */
 function accAdd(provider) {
@@ -120,9 +136,42 @@ function accAdd(provider) {
 function accWaiting(name, close) {
   const box = _connEl('div', 'acc-waiting');
   const sp = _connEl('span', 'spinner'); sp.setAttribute('aria-hidden', 'true');
-  box.append(sp, _connEl('h3', 'conn-name', `Finish signing in on the ${name} tab`), _connEl('p', 'conn-text', 'When you have said yes, come back here. This page updates by itself.'));
+  const since = _accSignInAt || Date.now();
+  const line = _connEl('p', 'conn-text', '');
+  box.append(sp, _connEl('h3', 'conn-name', `Finish signing in on the ${name} tab`), line);
+  const note = _connEl('div', 'acc-wait-note'); note.setAttribute('aria-live', 'polite');
+  box.appendChild(note);
+  const say = (text, warn) => { note.replaceChildren(); if (text) { const p = _connEl('p', 'conn-note' + (warn ? ' attention-note' : ''), text); note.appendChild(p); } };
+  // Check every few seconds while this is open (no need to switch tabs), and count the time the sign-in still works.
+  const tick = async () => {
+    if (!box.isConnected) { clearInterval(timer); return; }
+    const gone = Date.now() - since;
+    if (!accSignInPending(since)) {
+      clearInterval(timer); sp.remove();
+      line.textContent = 'This sign-in expired (it works for 10 minutes). Press Open the sign-in again to start a fresh one: nothing is lost.';
+      return;
+    }
+    const s = Math.floor(gone / 1000);
+    line.textContent = `When you have said yes, come back here: this updates by itself. Waiting ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}.`;
+    if (s > 0 && s % 5 === 0 && !document.hidden) {
+      if (await accCheckSignIn()) { clearInterval(timer); return; }
+      const why = accSignInProblem();
+      if (why) say(why, true);
+    }
+  };
+  const timer = setInterval(tick, 1000); tick();
   const actions = _connEl('div', 'assistant-actions');
-  actions.append(_connBtn('I have finished', 'check', 'btn-primary', async () => { await accLoad(); close(); }), _connBtn('Cancel', null, 'btn-ghost', () => { _accSignInAt = 0; close(); }));
+  actions.append(
+    _connBtn('I have finished', 'check', 'btn-primary', async (b) => {
+      b.disabled = true;
+      const ok = await accCheckSignIn();
+      b.disabled = false;
+      if (ok) { clearInterval(timer); return; }
+      // Not there yet: say so, with what to do, instead of closing as if it worked.
+      say(accSignInProblem() || (AccountsStore.error ? 'OpenDash could not check just now: ' + AccountsStore.error : `OpenDash has not received the sign-in yet. If the ${name} tab is still open, finish there. If it showed an error or you closed it, press Open the sign-in again.`), true);
+    }),
+    _connBtn('Open the sign-in again', 'external-link', 'btn-secondary', () => { if (_accSignInOpts) { accOpenSignIn(_accSignInOpts); clearInterval(timer); box.replaceWith(accWaiting(name, close)); } }),
+    _connBtn('Cancel', null, 'btn-ghost', () => { clearInterval(timer); _accSignInAt = 0; close(); }));
   box.appendChild(actions);
   return box;
 }
@@ -237,7 +286,7 @@ function accCard(a) {
   const when = _connEl('span', 'cp-synced'); when.innerHTML = icon('clock', 'i-xs'); when.appendChild(_connEl('span', null, accSyncedText(a)));
   const acts = _connEl('div', 'acc-actions');
   const run = (id) => {
-    if (id === 'sync') return accAct(a, '/api/accounts/sync', {}, (r) => { const bad = (r.results || []).find(x => !x.ok); toast(bad ? bad.error : 'Checked. Everything is up to date.', { kind: bad ? 'err' : 'ok' }); accReloadData(); });
+    if (id === 'sync') return accAct(a, '/api/accounts/sync', {}, (r) => { const bad = (r.results || []).find(x => !x.ok); toast(bad ? `${a.email} did not update: ${bad.error || 'the check failed.'}` : 'Checked. Everything is up to date.', bad ? { kind: 'err', timeout: 12000, action: { label: 'Try again', run: () => run('sync') } } : { kind: 'ok' }); accReloadData(); });
     if (id === 'sign-in' && a.provider === 'google' && window.AccountProviders && AccountProviders.google) return AccountProviders.google.signIn({ email: a.email, accountId: a.id, features: a.features });
     if (id === 'sign-in') return a.provider === 'imap' ? imapConnectFlow({ account: a }) : accOpenSignIn({ provider: a.provider, accountId: a.id });
     if (id === 'approval') return accApproval(a);
@@ -288,7 +337,11 @@ function accountsSection() {
   section.appendChild(adds);
   const grid = _connEl('div', 'cp-source-grid acc-grid');
   const list = accSort((d && d.accounts) || []);
-  if (!d) grid.appendChild(_connEl('p', 'cp-loading', AccountsStore.error ? 'Your accounts are unavailable. Try again when the server is ready.' : 'Loading your accounts…'));
+  if (!d) {
+    const p = _connEl('p', 'cp-loading', AccountsStore.error ? 'Your accounts did not load: ' + AccountsStore.error + ' ' : 'Loading your accounts…');
+    if (AccountsStore.error) p.appendChild(_connBtn('Try again', 'refresh-cw', 'btn-ghost', () => { AccountsStore.error = null; renderMain(); accLoad(); }));
+    grid.appendChild(p);
+  }
   else if (!list.length) {
     const empty = _connEl('div', 'cp-empty acc-empty');
     empty.append(_connEl('h3', null, 'No accounts yet'), _connEl('p', null, 'Add your first one above. OpenDash only reads: it never sends, changes or deletes anything.'));

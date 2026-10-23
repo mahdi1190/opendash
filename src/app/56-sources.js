@@ -60,6 +60,7 @@ async function _srcApi(path, opts) {
     method: opts.method || 'GET', cache: 'no-store',
     headers: opts.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
     body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    ...(opts.signal ? { signal: opts.signal } : {}),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok && !(opts.okStatuses || []).includes(r.status)) throw Object.assign(new Error(j.error || 'The OpenDash server did not answer.'), { code: j.code, status: r.status });
@@ -233,25 +234,48 @@ function _srcAfterChange(cap) {
     if (cap === 'bank' && window.FinanceView && FinanceView.refresh && state.view === 'finance') FinanceView.refresh();
   } catch (e) { console.error('[sources]', e); }
 }
-async function _srcSync(s) {
+/**
+ * After a sync: how it went for this source, from what the server recorded
+ * (lastSync / lastError since `since`): its reason and the fix, or "up to date".
+ * Says nothing when the update recorded nothing (it ran on another computer).
+ */
+function _srcSyncOutcome(id, since) {
+  const s = ((SourcesStore.data && SourcesStore.data.sources) || []).find(x => x.id === id);
+  if (!s) return;
+  const errAt = Date.parse((s.lastError && s.lastError.at) || '') || 0;
+  const okAt = Date.parse(s.lastSync || '') || 0;
+  if (errAt >= since - 5000 && errAt >= okAt) {
+    const reconnect = _srcNeedsReconnect(s);
+    toast(`${s.label} did not sync: ${String(s.lastError.message || 'the update failed.').replace(/^Last sync failed:\s*/i, '')}`, { kind: 'err', timeout: 12000,
+      action: reconnect ? { label: 'Reconnect', run: () => _connPageSourceHelp(s) } : { label: 'Try again', run: () => _srcSync(s) } });
+  } else if (okAt >= since - 5000) toast(`${s.label} is up to date.`, { kind: 'ok' });
+}
+async function _srcSync(s, opts) {
   SourcesStore.busy[s.id] = true; renderMain();
+  const since = Date.now();
+  let started = false;
   try {
     const j = await _srcApi('/api/sources/' + encodeURIComponent(s.id) + '/sync', { method: 'POST', body: {}, okStatuses: [409] });
     if (j.job && j.capability === 'calendar' && typeof CalStore !== 'undefined') { CalStore.st.job = j.job; CalStore.poll(); }
     else if (j.job && j.capability === 'email' && typeof InboxStore !== 'undefined') { InboxStore.st.job = j.job; InboxStore.poll(); }
     toast(j.error || `Syncing ${s.label}…`, { icon: 'refresh-cw' });
+    started = !j.error;
     // Watch the job, then show the result on the card.
     const t0 = Date.now();
     const statusUrl = s.capability === 'calendar' ? '/api/calendar/status' : s.capability === 'email' ? '/api/inbox/status' : '/api/finance/status';
+    let misses = 0;
     while (Date.now() - t0 < 20 * 60000) {
       await new Promise(r => setTimeout(r, 2500));
       const st = await _srcApi(statusUrl).catch(() => null);
-      if (!st || !st.job || st.job.state !== 'running') break;
+      if (!st) { if (++misses >= 4) break; continue; }    // a busy server: a few misses are fine
+      misses = 0;
+      if (!st.job || st.job.state !== 'running') break;
     }
-  } catch (e) { toast(e.message, { kind: 'err' }); }
+  } catch (e) { toast(`${s.label} did not sync: ${netErrorMessage(e)}`, { kind: 'err', timeout: 10000, action: { label: 'Try again', run: () => _srcSync(s) } }); }
   delete SourcesStore.busy[s.id];
   await SourcesStore.refresh();
   _srcAfterChange(s.capability);
+  if (started && !(opts && opts.quiet)) _srcSyncOutcome(s.id, since);
 }
 async function _srcTestExisting(s) {
   SourcesStore.busy[s.id] = true; renderMain();
@@ -417,11 +441,17 @@ function srcAddFlow(o) {
     paint();
   }
   async function runTest() {
-    f.testing = true; f.test = null; paint();
+    if (f.testCtrl) f.testCtrl.abort();
+    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    f.testCtrl = ctrl; f.testing = true; f.testAt = Date.now(); f.test = null; paint();
     try {
-      f.test = await _srcApi('/api/sources/test', { method: 'POST', body: { source: draft() } });
-    } catch (e) { f.test = { ok: false, error: e.message }; }
-    f.testing = false; paint();
+      f.test = await _srcApi('/api/sources/test', { method: 'POST', body: { source: draft() }, signal: ctrl ? ctrl.signal : undefined });
+    } catch (e) {
+      if (f.testCtrl !== ctrl) return;                       // a newer test took over
+      f.test = e && e.name === 'AbortError' ? { ok: false, error: 'Stopped. Nothing was saved: press Test again when you are ready.', code: 'CANCELLED' } : { ok: false, error: netErrorMessage(e) };
+    }
+    if (f.testCtrl !== ctrl) return;
+    f.testCtrl = null; f.testing = false; paint();
   }
   function draft() {
     const d = { capability: f.capability, kind: f.kind, label: f.label || defaultLabel(), colour: f.colour || nextColour() };
@@ -608,7 +638,10 @@ function srcAddFlow(o) {
       bodyEl.appendChild(_connEl('p', 'src-lead', f.testing ? 'Testing a short, read-only fetch…' : 'Test'));
       if (f.testing) {
         const l = _connEl('div', 'src-loading'); l.innerHTML = '<span class="spinner"></span>';
-        l.appendChild(_connEl('span', null, f.kind === 'ical' ? 'Reading the calendar…' : 'Claude is reading a few days of data with the tools you chose. This can take a minute.'));
+        l.appendChild(_connEl('span', null, (f.kind === 'ical' ? 'Reading the calendar… ' : 'Claude is reading a few days of data with the tools you chose. This can take a minute. ')));
+        if (typeof aiSinceEl === 'function' && f.testAt) l.appendChild(aiSinceEl(f.testAt));
+        // Stop: the request ends and the server stops the Claude run behind it.
+        l.appendChild(_connBtn('Stop', null, 'btn-ghost', () => { if (f.testCtrl) f.testCtrl.abort(); }));
         bodyEl.appendChild(l);
       } else if (f.test && f.test.ok) {
         const ok = _connEl('div', 'callout success conn-msg src-msg'); ok.innerHTML = icon('circle-check');
@@ -654,6 +687,8 @@ function srcAddFlow(o) {
 
   closeFn = openDrawer({
     title: f.edit ? `Edit ${f.edit.label}` : 'Add a source', width: 520,
+    // Closing the sheet stops a test still running (and the Claude run behind it).
+    onClose: () => { if (f.testCtrl) { const c = f.testCtrl; f.testCtrl = null; c.abort(); } },
     body: (el) => { bodyEl = el; el.classList.add('src-flow'); },
     footer: (el) => { footEl = el; el.classList.add('src-flow-f'); },
   });

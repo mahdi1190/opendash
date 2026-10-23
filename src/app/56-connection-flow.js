@@ -16,10 +16,15 @@ async function connVerifySignInReturn() {
     if (pending.source) {
       if (SourcesStore.busy[pending.source.id]) return;
       // Use the normal read-only update, not just the MCP transport status.
-      await _srcSync(pending.source);
+      await _srcSync(pending.source, { quiet: true });
       const fresh = SourcesStore.data && SourcesStore.data.sources.find(s => s.id === pending.source.id);
       if (fresh && fresh.health && fresh.health.state === 'ok' && fresh.lastSync && Date.parse(fresh.lastSync) >= pending.at) toast('Connection verified and data updated.', { kind: 'ok' });
-      else toast('Sign-in returned, but the data update did not succeed. Check the source’s message.', { kind: 'err' });
+      else {
+        // Say what went wrong (the source's own message) and offer the next step, not "check the message".
+        const why = fresh && ((fresh.lastError && Date.parse(fresh.lastError.at || '') >= pending.at && fresh.lastError.message) || (fresh.health && fresh.health.message));
+        toast('You are back from signing in, but the data update did not work' + (why ? ': ' + String(why).replace(/^Last sync failed:\s*/i, '') : '.'), { kind: 'err', timeout: 12000,
+          action: fresh ? { label: 'Try again', run: () => _srcSync(fresh) } : undefined });
+      }
     } else if (pending.legacyId) await connCheck(pending.legacyId);
     if (typeof connRefresh === 'function') await connRefresh();
   } finally { _connVerifyingSignIn = false; }

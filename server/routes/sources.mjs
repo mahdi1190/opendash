@@ -23,7 +23,7 @@ import { fetchCalendarSource } from '../../lib/calendar-sources.mjs';
 import { fetchEmailSource } from '../../lib/inbox-sources.mjs';
 import { fetchFromSource, describeRejected } from '../../lib/source-adapter.mjs';
 import { startFinanceUpdate } from '../../lib/finance.mjs';
-import { ClaudeError } from '../../lib/claude-runner.mjs';
+import { ClaudeError, withAbortSignal } from '../../lib/claude-runner.mjs';
 import { addDays, isoDay } from '../../lib/calendar-jobkit.mjs';
 import { HttpError } from '../http.mjs';
 
@@ -81,7 +81,11 @@ export default function register(app) {
         if (existing) await sources.noteCheck(existing.id, { ok: result.ok, level, at: new Date(t0).toISOString(), error: result.error, code: result.code, expected: source });
         return { ...result, level };
       };
-      try {
+      // Stop on the page (or a closed sheet) ends the request: the Claude run behind the test stops too.
+      const ac = new AbortController();
+      const gone = () => { if (c.res && !c.res.writableFinished) ac.abort(); };
+      if (c.res && typeof c.res.on === 'function') c.res.on('close', gone);
+      return withAbortSignal(ac.signal, async () => { try {
         if (source.kind === 'csv') return { ok: true, count: 0, accounts: [], preview: [], note: 'CSV imports need no connection.' };
         if (source.preset) {
           // A tuned preset: checking the server answers is the test (its full job runs on Update).
@@ -110,9 +114,10 @@ export default function register(app) {
         return await finish({ ok: true, count: r.rows.length, accounts: r.accounts, warnings: rej ? [`Left out: ${rej}.`] : [], ms: Date.now() - t0,
           preview: r.rows.slice(0, 5).map(x => ({ title: x.memo, when: x.date })) });
       } catch (e) {
+        if (e && e.code === 'CANCELLED') { log('info', 'sources: test stopped by the page'); return { ok: false, error: 'Stopped.', code: 'CANCELLED' }; }
         log('warn', `sources: test failed (${e.code || 'error'})`);
         return await finish(fail(e));
-      }
+      } }).finally(() => { if (c.res && typeof c.res.off === 'function') c.res.off('close', gone); });
     },
   });
 

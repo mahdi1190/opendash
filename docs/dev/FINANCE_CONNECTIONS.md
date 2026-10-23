@@ -512,7 +512,9 @@ is under 16 KB). Only the two OAuth return routes are `crossSite: true`
 | PUT `monzo/client` `{clientId, clientSecret, sourceId?}` | save the client |
 | GET `monzo/connect?source=` (`sameOrigin: true`) | 302 to Monzo |
 | GET `monzo/callback` (`crossSite: true`) | code exchange, start approval polling |
-| GET `monzo/approval?source=` | `{state: waiting|importing|done|expired, secondsLeft, imported, earliest}` |
+| GET `monzo/approval?source=` | `{state: waiting|importing|done|expired|error, startedAt, secondsLeft, waitSecondsLeft, imported, earliest, canRetry?, problem?}` |
+| POST `monzo/approval` `{source}` | Try again / Keep waiting with the saved sign-in (no new Monzo email); `AUTH` when it must sign in again |
+| DELETE `monzo/approval?source=` | stop waiting (or forget a finished try); an import keeps going |
 | PUT `eb/app` `{appId, pem}` | save + test the app |
 | GET `eb/banks?country=&q=` | live `/aspsps` (cached 24 h) or the bundled snapshot |
 | POST `eb/start` `{bank, country, psuType}` | `{url}` |
@@ -823,10 +825,25 @@ to `lib/sources.mjs`, `lib/finance.mjs`, `server/routes/finance.mjs`,
   but the 5-minute window closed first: connected with 90 days, `code:
   'LIMITED_HISTORY'`), `error` (`code: 'NOT_APPROVED'` when the app approval
   never came: nothing can be read, so this is NOT "connected with 90 days";
-  also `AUTH`, `BUSY`). Fields: `sourceId`, `approved`, `secondsLeft`,
-  `windowSeconds`, `imported`, `earliest`, `historyMode`, `message`, `code`.
+  also `AUTH`, `BUSY`; a failed sign-in callback is reported here too, with
+  `signIn: true`). Fields: `sourceId`, `approved`, `startedAt`, `secondsLeft`
+  (the import window), `windowSeconds`, `waitSecondsLeft` / `waitSeconds`
+  (while waiting: the time left to tap Allow access), `imported`, `earliest`,
+  `historyMode`, `message`, `code`, `providerCode` (Monzo's own error code),
+  `canRetry` (POST `monzo/approval` can try again without a new sign-in),
+  `problem` (what is wrong while it keeps trying).
   The server waits up to 15 minutes for the approval (the window opens AT
   approval, so a late approval still gets the full history).
+- **Provider errors** name the provider's reason in plain words, the next step
+  and its own code (`providerCode`, e.g. `bad_request.invalid_time_range`);
+  the code and a scrubbed copy of the provider's message are logged
+  (`fin-connect monzo transaction list: HTTP 400 <code> (<message>)`).
+  Network failures name the cause (timed out, offline/DNS, refused, dropped,
+  certificate) and log its code. Monzo reads are retried after 1 s and 4 s on
+  no answer or a Monzo 5xx.
+- **No duplicate Monzo sources from retries**: saving the client again reuses
+  the source with the same client (else one never signed in), and a sign-in
+  removes unfinished leftovers with the same client.
 - **One Monzo source per Monzo user**: a second wizard that signs in as the same
   person joins the first source (secrets moved, the new source removed);
   `GET monzo/approval?source=<old id>` answers with `sourceId: <kept id>`, so

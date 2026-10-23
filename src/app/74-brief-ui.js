@@ -676,7 +676,12 @@ function _bfPaintAi(card, typeIt) {
   } else if (loading) {
     t.innerHTML = '<span class="skeleton skeleton-text" style="width:92%"></span><span class="skeleton skeleton-text" style="width:70%;margin-top:8px"></span>';
   } else {
-    t.textContent = ai ? (s && s.error ? s.error : 'Writing your summary…') : 'Connect Claude to get a short summary of your day here.';
+    // Never a "Writing…" that nothing is writing: say why there is no summary.
+    const why = s && s.error ? s.error
+      : typeof _serverAvailable !== 'undefined' && _serverAvailable === false ? 'The OpenDash server is not running, so there is no summary yet.'
+      : typeof briefPrefs === 'function' && !briefPrefs().ai ? 'The AI summary is off in Settings.'
+      : 'Writing your summary…';
+    t.textContent = ai ? why : 'Connect Claude to get a short summary of your day here.';
     t.classList.add('muted');
   }
 }
@@ -702,7 +707,15 @@ function _bfLoadSummary(m, regenerate) {
     return { hit: r, typed: true };
   };
   run().then(({ hit, typed }) => { _bf.summary.brief = hit ? Object.assign({ date }, hit) : { date, text: null }; _bf.summaryLoading.brief = false; _bfPaintAi(null, typed); _bfSaveSnapshot(true); })
-    .catch(e => { _bf.summaryLoading.brief = false; _bf.summary.brief = { date, text: null, error: e.code === 'OFF' ? 'The AI summary is off in Settings.' : e.code === 'NOT_MAIN' || e.calm ? e.message : 'The summary could not be written just now.' }; _bfPaintAi(null, false); });
+    .catch(e => { _bf.summaryLoading.brief = false; _bf.summary.brief = { date, text: null, error: e.code === 'OFF' ? 'The AI summary is off in Settings.' : e.code === 'NOT_MAIN' || e.calm ? e.message : _bfAiErrorText(e) }; _bfPaintAi(null, false); });
+}
+/** Why the summary is missing, in plain words, with the next step (70-ai.js aiErrorView). */
+function _bfAiErrorText(e, again, what) {
+  again = again || 'Regenerate'; what = what || 'summary';
+  if (typeof aiErrorView !== 'function') return `The ${what} could not be written just now.`;
+  const v = aiErrorView(e);
+  if (v.cancelled) return `The ${what} was stopped. Press ${again} to write it.`;
+  return `No ${what} yet: ` + v.text.replace(/\.$/, '') + '.' + (v.fix ? ' Fix it in Connections > Claude.' : v.retry ? ` Press ${again} to try again.` : '');
 }
 
 /* ---------- cards ---------- */

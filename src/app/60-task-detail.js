@@ -450,15 +450,46 @@ function tdChatSection(id) {
   if (older) chatArea.insertAdjacentHTML('beforeend', older);
   if (!chat.length) { const h = document.createElement('div'); h.className = 'chat-hint'; h.textContent = 'Break it down, draft a reply, or suggest next steps.'; chatArea.appendChild(h); }
   for (const msg of chat) { const m = document.createElement('div'); m.className = 'chat-msg ' + (msg.role === 'user' ? 'user' : 'claude'); m.textContent = msg.text; chatArea.appendChild(m); }
+  // Claude writing (70-ai.js _taskChatBusy): a live wait time and Stop.
+  const busy = typeof _taskChatBusy !== 'undefined' && _taskChatBusy[id];
+  if (busy) {
+    const w = document.createElement('div'); w.className = 'chat-msg claude chat-wait'; w.setAttribute('role', 'status');
+    w.insertAdjacentHTML('beforeend', '<span class="spinner"></span>');
+    w.appendChild(document.createTextNode(' Claude is thinking… '));
+    if (typeof aiSinceEl === 'function') w.appendChild(aiSinceEl(busy.at));
+    const stop = document.createElement('button'); stop.type = 'button'; stop.className = 'btn btn-ghost btn-sm'; stop.textContent = 'Stop';
+    stop.onclick = () => stopTaskChat(id);
+    w.appendChild(stop);
+    chatArea.appendChild(w);
+  }
   const err = typeof _taskChatErr !== 'undefined' && _taskChatErr[id];
-  if (err) { const e = document.createElement('div'); e.className = 'chat-msg claude chat-err'; e.textContent = '⚠ ' + err; chatArea.appendChild(e); }
+  if (err) {
+    // The reason in plain words and one fix (Sign in to Claude, How to install...), or Ask again.
+    const e = document.createElement('div'); e.className = 'chat-msg claude chat-err'; e.setAttribute('role', 'alert');
+    e.appendChild(document.createTextNode('⚠ ' + (typeof err === 'string' ? err : err.text)));
+    const acts = document.createElement('div'); acts.className = 'chat-err-a';
+    if (err.fix) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.textContent = err.fix.label; b.onclick = () => err.fix.run(); acts.appendChild(b); }
+    if (typeof err === 'string' || err.retry) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.innerHTML = icon('refresh-cw', 'i-xs') + '<span>Ask again</span>'; b.onclick = () => retryTaskChat(id); acts.appendChild(b); }
+    if (acts.childNodes.length) e.appendChild(acts);
+    chatArea.appendChild(e);
+  }
   cs.appendChild(chatArea);
   const crow = document.createElement('div'); crow.className = 'chat-input-row';
-  const cta = document.createElement('textarea'); cta.placeholder = 'Ask… (Enter to send)'; cta.rows = 1; cta.dataset.fk = 'chat';
+  const cta = document.createElement('textarea'); cta.placeholder = busy ? 'Type your next question… (sends when Claude has answered)' : 'Ask… (Enter to send)'; cta.rows = 1; cta.dataset.fk = 'chat';
   cta.setAttribute('aria-label', 'Ask Claude about this task');
-  const send = () => { const v = cta.value.trim(); if (!v) return; cta.value = ''; _keepFocus('chat'); sendTaskChat(id, v); };
+  // What you type is kept until it is really sent (one reply at a time).
+  const draftKey = 'taskchat-draft:' + id;
+  try { const d = sessionStorage.getItem(draftKey); if (d) cta.value = d; } catch (e) { /* no storage */ }
+  cta.oninput = () => { try { if (cta.value) sessionStorage.setItem(draftKey, cta.value); else sessionStorage.removeItem(draftKey); } catch (e) { /* no storage */ } };
+  const send = () => {
+    const v = cta.value.trim(); if (!v) return;
+    if (typeof _taskChatBusy !== 'undefined' && _taskChatBusy[id]) { toast('Claude is still answering. Your question stays in the box: send it when the answer is in, or press Stop.', { icon: 'clock' }); return; }
+    cta.value = ''; try { sessionStorage.removeItem(draftKey); } catch (e) { /* no storage */ }
+    _keepFocus('chat'); sendTaskChat(id, v);
+  };
   cta.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
   const sbtn = document.createElement('button'); sbtn.type = 'button'; sbtn.className = 'btn btn-secondary btn-sm'; sbtn.textContent = 'Send'; sbtn.onclick = send;
+  sbtn.disabled = !!busy;
   crow.append(cta, sbtn);
   if (chat.length) {
     const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'btn btn-ghost btn-sm'; clr.textContent = 'Clear';

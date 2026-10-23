@@ -3,26 +3,90 @@
    ============================================================ */
 // Every AI call from the page goes through serverAsk(). The server runs it
 // with no tools and no MCP servers; model and effort must be on the server's
-// allowlist. opts: { model, effort, system, schema }. With a schema the
+// allowlist. opts: { model, effort, system, schema, signal }. With a schema the
 // server returns parsed JSON in .json. Errors carry .code (CLI_MISSING,
-// NOT_SIGNED_IN, USAGE_LIMIT, TIMEOUT, BAD_OUTPUT, ...).
+// NOT_SIGNED_IN, USAGE_LIMIT, TIMEOUT, BAD_OUTPUT, CANCELLED, ...): show them with
+// aiErrorView(e) / aiErrorToast(e). opts.signal (an AbortController's) stops the
+// request; the server then cancels the Claude run too (server/routes/ai.mjs).
 async function serverAsk(prompt, opts) {
+  const signal = opts && opts.signal;
+  if (!signal) return _serverAsk(prompt, opts);
+  // Stop works even when the question went to another computer (56-remote-jobs.js
+  // waits there without this signal): a late answer is then simply dropped.
+  const cancelled = () => { const c = new Error('Stopped.'); c.code = 'CANCELLED'; return c; };
+  if (signal.aborted) throw cancelled();
+  const run = _serverAsk(prompt, opts);
+  run.catch(() => { /* seen through the race below, or dropped after Stop */ });
+  return Promise.race([run, new Promise((_, reject) => signal.addEventListener('abort', () => reject(cancelled()), { once: true }))]);
+}
+async function _serverAsk(prompt, opts) {
   if (!AI_AVAILABLE) { const e = new Error('AI backend not available'); e.code = 'UNAVAILABLE'; throw e; }
-  const body = Object.assign({ prompt }, opts || {});
-  // No Claude on this computer but on another of yours: asked there (56-remote-jobs.js).
-  const r = await (typeof remoteFetch === 'function' ? remoteFetch : fetch)('/api/ai', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const { signal, ...rest } = opts || {};
+  const body = Object.assign({ prompt }, rest);
+  let r;
+  try {
+    // No Claude on this computer but on another of yours: asked there (56-remote-jobs.js).
+    r = await (typeof remoteFetch === 'function' ? remoteFetch : fetch)('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
+    });
+  } catch (e) {
+    if ((e && e.name === 'AbortError') || (signal && signal.aborted)) { const c = new Error('Stopped.'); c.code = 'CANCELLED'; throw c; }
+    throw e;   // the dashboard server is not running: SERVER_DOWN (02-core-net.js)
+  }
   const data = await r.json().catch(() => ({}));
   // calm: the device that runs Claude is asleep or off (lib/sync/presence.mjs); toast() shows the line calmly.
-  if (!r.ok) { const e = new Error(data.error || ('AI request failed: ' + r.status)); e.code = data.code || null; e.calm = !!data.calm; throw e; }
+  if (!r.ok) { const e = new Error(data.error || ('AI request failed: ' + r.status)); e.code = data.code || (r.status === 504 ? 'TIMEOUT' : r.status === 429 ? 'USAGE_LIMIT' : null); e.calm = !!data.calm; throw e; }
   if (opts && opts.schema) return data;
   if (typeof data.text !== 'string' || !data.text.trim()) {
-    throw new Error('AI returned an empty response');
+    const e = new Error('Claude sent back an empty answer.'); e.code = 'BAD_OUTPUT'; throw e;
   }
   return data.text;
+}
+
+/**
+ * What to tell the user when an AI call failed: the reason in plain words and
+ * ONE fix. -> {text, fix: {label, run} | null, retry: boolean, cancelled: boolean}
+ *   retry: Try again is the right next step (timeouts, busy, odd answers...).
+ */
+function aiErrorView(e) {
+  const code = (e && e.code) || '';
+  const own = String((e && e.message) || '').trim();
+  const open = { label: 'Open Connections', run: () => (typeof connOpen === 'function' ? connOpen('claude') : setView('connections')) };
+  if (code === 'CANCELLED' || (e && e.name === 'AbortError')) return { text: 'Stopped.', fix: null, retry: true, cancelled: true };
+  if (typeof netIsDown === 'function' && netIsDown(e)) return { text: netErrorMessage(e), fix: null, retry: true, cancelled: false };
+  switch (code) {
+    case 'UNAVAILABLE': case 'CLI_MISSING':
+      return { text: 'Claude Code is not installed on this computer, so OpenDash cannot ask Claude.', fix: { label: 'How to install', run: open.run }, retry: false, cancelled: false };
+    case 'NOT_SIGNED_IN':
+      return { text: 'Claude Code is signed out on this computer.', fix: { label: 'Sign in to Claude', run: () => (typeof _connOpenTerminal === 'function' ? _connOpenTerminal() : open.run()) }, retry: false, cancelled: false };
+    case 'USAGE_LIMIT':
+      return { text: 'Your Claude usage limit is reached for now. It resets on its own (usually within a few hours); try again then.', fix: null, retry: false, cancelled: false };
+    case 'TIMEOUT':
+      return { text: 'Claude took too long, so OpenDash stopped waiting. Your text is kept: try again (a shorter question is quicker).', fix: null, retry: true, cancelled: false };
+    case 'QUEUE_FULL':
+      return { text: 'Claude is busy with other OpenDash requests. Try again in a minute.', fix: null, retry: true, cancelled: false };
+    case 'BAD_OUTPUT':
+      return { text: 'Claude’s answer came back empty or in the wrong shape. Trying again usually works.', fix: null, retry: true, cancelled: false };
+    case 'CONNECTOR_AUTH': case 'TOOL_MISSING':
+      return { text: own || 'A Claude connector needs you to sign in again.', fix: open, retry: false, cancelled: false };
+    case 'NOT_MAIN':
+      return { text: own || 'This runs on your main computer.', fix: null, retry: false, cancelled: false };
+    case 'CLI_FAILED':
+      return { text: 'Claude Code stopped unexpectedly' + (own && !/^Claude Code stopped unexpectedly\.?$/.test(own) ? ': ' + own.replace(/\.$/, '') : '') + '. Try again; if it keeps happening, check Connections > Claude.', fix: null, retry: true, cancelled: false };
+    default:
+      return { text: own || 'Claude could not answer just now.', fix: null, retry: true, cancelled: false };
+  }
+}
+/** A toast for a failed AI call: the reason and its fix, else Try again (when `retry` is given). Quiet when stopped by the user. */
+function aiErrorToast(e, opts) {
+  opts = opts || {};
+  const v = aiErrorView(e);
+  if (v.cancelled) return;
+  const action = v.fix || (v.retry && typeof opts.retry === 'function' ? { label: 'Try again', run: opts.retry } : null);
+  toast((opts.what ? opts.what + ': ' : '') + v.text, { kind: 'err', timeout: 12000, action: action || undefined });
 }
 
 // Text answer, trimmed. opts as for serverAsk (no schema).
@@ -42,7 +106,10 @@ async function askAIJson(prompt, schema, opts) {
 // the chat shows in time order with this computer's older messages, and a
 // reply is added once, when it is complete. A failed reply is shown in this
 // tab only (_taskChatErr): it is not part of the conversation.
+// While Claude writes, _taskChatBusy[taskId] = {at, ctrl}: the chat shows
+// "Claude is thinking… 0:12" with Stop, Send waits, and what you type stays.
 const _taskChatErr = {};
+const _taskChatBusy = {};
 function getTaskChat(taskId) { return chatView('task:' + taskId).messages; }
 function addTaskChatMsg(taskId, role, text, ts) {
   if (!state.taskChat || typeof state.taskChat !== 'object') state.taskChat = {};
@@ -51,21 +118,39 @@ function addTaskChatMsg(taskId, role, text, ts) {
   state.taskChat[taskId] = list;
   chatSave('task:' + taskId);
 }
+/** Stop the reply being written for this task (the server stops the Claude run too). */
+function stopTaskChat(taskId) {
+  const b = _taskChatBusy[taskId];
+  if (b && b.ctrl) { try { b.ctrl.abort(); } catch (e) { /* already stopped */ } }
+}
+/** Ask again for the last question (after an error or Stop), without adding it a second time. */
+function retryTaskChat(taskId) {
+  const last = getTaskChat(taskId).slice().reverse().find(m => m && m.role === 'user');
+  if (last) _askTaskChat(taskId, Number(last.ts) || Date.now());
+}
 async function sendTaskChat(taskId, userMsg) {
   if (!userMsg.trim()) return;
   if (!AI_AVAILABLE) {
     // Deliberately NOT written into state: this used to persist a warning
     // into the saved conversation on every send, permanently.
-    showDebug('Chat unavailable',
-      'Per-task chat needs Claude. Start OpenDash with start-opendash.bat and make sure '
-      + 'Claude Code is installed and signed in.');
-    return;
+    _taskChatErr[taskId] = { text: 'Task chat needs Claude Code on this computer (or another of yours). Set it up in Connections > Claude.', fix: { label: 'Open Connections', run: () => (typeof connOpen === 'function' ? connOpen('claude') : setView('connections')) } };
+    render();
+    return false;
   }
+  if (_taskChatBusy[taskId]) return false;           // one reply at a time; the box keeps what was typed
   delete _taskChatErr[taskId];
   const asked = Date.now();
   addTaskChatMsg(taskId, 'user', userMsg, asked);
-  render();
+  await _askTaskChat(taskId, asked);
+  return true;
+}
+async function _askTaskChat(taskId, asked) {
   const item = getItem(taskId); if (!item) return;
+  if (_taskChatBusy[taskId]) return;
+  delete _taskChatErr[taskId];
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+  _taskChatBusy[taskId] = { at: Date.now(), ctrl };
+  render();
   const history = getTaskChat(taskId);
   const stream = effStream(item);
   const who = userLabel();
@@ -75,13 +160,32 @@ async function sendTaskChat(taskId, userMsg) {
   const messages = history.slice(-10).map(m => `${m.role === 'user' ? (userName() || 'User') : 'You'}: ${m.text}`).join('\n\n');
   const prompt = `${context}\n\n--- conversation so far ---\n${messages}\n\nReply to the last message:`;
   try {
-    const txt = await askAI(prompt, { model: APP_CONFIG.ai.chatModel, effort: APP_CONFIG.ai.effort, purpose: 'taskchat' });
+    const txt = await askAI(prompt, { model: APP_CONFIG.ai.chatModel, effort: APP_CONFIG.ai.effort, purpose: 'taskchat', signal: ctrl ? ctrl.signal : undefined });
+    delete _taskChatBusy[taskId];
     // Right after its question in time order, whatever arrived from another computer meanwhile.
     addTaskChatMsg(taskId, 'claude', txt, Math.max(asked + 1, Date.now()));
     render();
   } catch (e) {
-    _taskChatErr[taskId] = String((e && e.message) || e || 'The reply could not be written.').slice(0, 300);
+    delete _taskChatBusy[taskId];
+    const v = aiErrorView(e);
+    _taskChatErr[taskId] = { text: v.cancelled ? 'Stopped. Your question is kept: press Ask again to get an answer.' : v.text, fix: v.fix, retry: v.retry || v.cancelled, code: (e && e.code) || null };
     render();
   }
 }
 
+/* ---------- "Claude is thinking… 0:12": a live wait time for any AI wait ---------- */
+let _aiSinceTimer = null;
+function _aiSinceFmt(ms) { const s = Math.max(0, Math.floor(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+/** An element showing the time since `at` (ms), kept up to date while it is on the page. */
+function aiSinceEl(at) {
+  const el = document.createElement('span'); el.className = 'ai-since'; el.dataset.aiSince = String(at);
+  el.textContent = _aiSinceFmt(Date.now() - at);
+  if (!_aiSinceTimer) {
+    _aiSinceTimer = setInterval(() => {
+      const els = document.querySelectorAll('[data-ai-since]');
+      if (!els.length) { clearInterval(_aiSinceTimer); _aiSinceTimer = null; return; }
+      for (const x of els) x.textContent = _aiSinceFmt(Date.now() - Number(x.dataset.aiSince));
+    }, 1000);
+  }
+  return el;
+}

@@ -391,7 +391,7 @@ registerSettingsGroup({
       if (!titles.size) { toast('Every event in the next 30 days already has a scene.', { kind: 'ok' }); return; }
       ask.disabled = true; ask.innerHTML = '<span class="spinner"></span><span>Asking…</span>';
       try { const j = await _bfPost('/api/brief/scenes', { titles: [...titles].slice(0, 25) }); _animAi = j.types || _animAi; _animEvCache.clear(); toast(`Claude sorted ${j.asked} title${j.asked === 1 ? '' : 's'}`, { kind: 'ok' }); }
-      catch (e) { toast(e.message || 'Claude could not be asked just now.', { kind: 'err' }); }
+      catch (e) { if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Claude could not sort the titles' }); else toast(e.message || 'Claude could not be asked just now.', { kind: 'err' }); }
       render();
     };
     el.appendChild(_settingsRow('Unmatched titles', 'Titles no keyword fits get a plain calendar scene. Claude (Haiku) can suggest better ones; the answers are remembered per title.', ask));

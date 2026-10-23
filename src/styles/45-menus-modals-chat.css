@@ -51,6 +51,11 @@
 .chat-msg.user { background: var(--accent); color: var(--fg-on-accent); align-self: flex-end; }
 .chat-msg.claude { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; white-space: pre-wrap; color: var(--fg); }
 .chat-msg .meta { font-size: var(--text-2xs); opacity: 0.7; margin-top: 2px; }
+/* Claude writing a reply: spinner, live wait time, Stop (70-ai.js). An error's fix buttons. */
+.chat-msg.chat-wait { display: flex; align-items: center; gap: var(--space-1-5); white-space: normal; color: var(--fg-muted); }
+.chat-msg.chat-wait .btn { margin-left: auto; }
+.ai-since { font-variant-numeric: tabular-nums; }
+.chat-err-a { display: flex; flex-wrap: wrap; gap: var(--space-1-5); margin-top: var(--space-1-5); white-space: normal; }
 .chat-input-row { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
 .chat-input-row textarea {
   flex: 1; padding: var(--space-2) var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md);
