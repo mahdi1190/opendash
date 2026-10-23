@@ -373,8 +373,10 @@
     unseen(rows, seen) {
       const out = new Set();
       if (!seen || !Array.isArray(seen.keys) || !seen.keys.length || !isFinite(seen.since)) return out;
-      const had = new Set(seen.keys);
-      for (const x of rows) if (x.n >= seen.since && !had.has(x.k)) out.add(x.k);
+      const had = new Set(seen.keys.map(String));
+      // The synced flag keeps shortened keys (37-transactions.js TX_SEEN_LEN); an older copy has whole ones.
+      const n = String(seen.keys[0]).length;
+      for (const x of rows) if (x.n >= seen.since && !had.has(String(x.k).slice(0, n))) out.add(x.k);
       return out;
     },
   };

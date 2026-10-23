@@ -9,8 +9,9 @@
                     86-live-sync.js per key), so flags from two computers add up.
                     A day flag is {'YYYY-MM-DD': 1} and a one-off one {name: 1}:
                     two computers marking the same flag write the same value.
-     state.uiPrefs  {story, motion, assistantModel, focusBlock}: the story
+     state.uiPrefs  {story, motion, finance, assistantModel, focusBlock}: the story
                     player's volume, speed and mute, the animation intensity,
+                    Finances' display choices (src/finance/00-core.js SHARED_F),
                     the assistant's model, a running focus block. Per field.
      state.drafts   {'week:<from>': {...}}: the weekly review in progress.
    All three are UI keys (no undo step, no backup) that every tab takes from a
@@ -31,6 +32,8 @@
      moments, travelDepartX            {key: time}: moments shown, departure cards dismissed
      arrival                           {place: {at, by}}: an arrival welcome shown, and by which browser (78-anim-uk.js)
      travelOptin, travelDot            {key: day}: travel prompts answered "Not now"; the travel chip's "new" dots
+     financeTx                         {last: {since, keys, at}}: the transactions seen at the last visit to Finances >
+                                       Transactions, on any computer (src/finance/37-transactions.js; shortened opaque row keys)
    Day entries older than three weeks and timed entries past their age are
    pruned; a group itself is never removed (a removed map would hide what
    another computer adds to it at the same time).
@@ -53,7 +56,9 @@
 
    Kept in localStorage on purpose, as first-paint caches the state then
    overrides: dashboard-opening-mode and dashboard-opening-day (body.html),
-   dashboard-motion-level / -last (motion.js, body.html). uiSharedAfterRender
+   dashboard-motion-level / -last (motion.js, body.html). The Finances keys (dash-finance-ui-v1, dash-finance-seen-v1)
+   are folded in by the finance view itself (src/finance/00-core.js, 37-transactions.js): dash-finance-ui-v1 keeps
+   where you are in that view. uiSharedAfterRender
    (80-main-render.js) rewrites them from the state.
    What stays on this computer: the state cache itself, per-tab claims and
    session memory, window sizes, this computer's location (history, arrival
@@ -64,7 +69,7 @@ const _SEEN_OUTBOX_KEY = 'dashboard-shared-outbox';
 const _SEEN_MIGRATED_KEY = 'dashboard-shared-migrated';
 const _SEEN_DAY_KEEP = 21;                       // days a dated entry is kept
 const _SEEN_TS_DAYS = { moments: 400, travelDepartX: 120, arrival: 30 };   // timed groups: days an entry is kept
-const _UIPREF_RECORDS = new Set(['story', 'motion']);                    // preferences merged field by field
+const _UIPREF_RECORDS = new Set(['story', 'motion', 'finance']);         // preferences merged field by field
 const _SEEN_KEPT_CACHES = new Set(['dashboard-motion-level', 'dashboard-motion-last', 'dashboard-motion', 'dashboard-delight-recent']);
 const _SEEN_EMPTY = Object.freeze({ seen: {}, uiPrefs: {}, drafts: {}, keys: [], from: {} });
 let _uiSharedBooted = false;

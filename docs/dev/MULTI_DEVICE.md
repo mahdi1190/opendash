@@ -155,6 +155,9 @@ flags add up, values only fill what the state does not have yet.
 | an arrival welcome shown (per place) | synced (`seen.arrival`) | one welcome per arrival; the arrival record itself stays (below) |
 | the story player's volume, speed and today's mute; the animation intensity; the assistant's model; a running focus block | synced (`uiPrefs`) | preferences; the focus block follows like Focus mode |
 | the weekly review in progress | synced (`drafts`) | start it on one computer, finish it on the other |
+| Finances' display choices: chart modes, sorts, page size, income and transfers shown, compare (`uiPrefs.finance`, from `dash-finance-ui-v1`) | synced (`uiPrefs`, per field; 2.15.2) | preferences; this browser's old choices only fill what the state does not have |
+| the transactions seen at the last visit to Finances > Transactions (`seen.financeTx`, from `dash-finance-seen-v1`) | synced (`seen`; 2.15.2) | new rows are marked once, on whichever computer you look; shortened opaque row keys, no amount or merchant |
+| where you are in Finances (the section, the date range, the filters, the budget picked), the category colour slots, budgets kept in the browser while the server lacked the route (`dash-finance-ui-v1`) | this computer's own | where you are; the slots are worked out from your spending, and a budget is an amount |
 | first-paint copies: `dashboard-opening-mode`, `dashboard-opening-day`, `dashboard-motion-level` / `-last` | this browser, rewritten from the state | the splash decides before any script has the state |
 | this computer's location: the location history, the arrival record, the county last welcomed | this computer's own | where this computer is (two computers in different places must not pass arrivals back and forth); the history never leaves the browser |
 | "Animate anyway" (`dashboard-motion-os-override`) | this computer's own | answers this computer's own reduced-motion setting |

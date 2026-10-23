@@ -7,8 +7,10 @@
 
    Data comes from GET /api/finance (analysis.json written by the pipeline in the
    finance folder, outside this repo). Nothing financial is stored in
-   dashboard state; only UI preferences go to localStorage under
-   'dash-finance-ui-v1'.
+   dashboard state. UI preferences only: the display choices in the synced
+   state (state.uiPrefs.finance, below), the transaction list's "seen" flag
+   in state.seen.financeTx (37-transactions.js: opaque row keys), and where
+   you are in the view in localStorage under 'dash-finance-ui-v1'.
 
    Lifecycle: the dashboard calls render() on every task change and
    renderMain() empties #main-body each time. mount() therefore re-attaches
@@ -193,10 +195,17 @@
     catMode: 'donut', stackMode: 'abs', merchSort: 'spend', histMode: 'count', pageSize: 25,
     sort: { key: 'd', dir: -1 }, mSort: { key: 'total', dir: -1 }, budgetCat: '', slots: {}, localBudgets: null,
   };
-  function loadF() {
-    let s = {};
-    try { s = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (e) { s = {}; }
-    const f = Object.assign({}, DEFAULT_F, s);
+  // Display choices follow the person (2.16 rule, docs/dev/MULTI_DEVICE.md "Browser storage"): they
+  // live in the synced state, state.uiPrefs.finance, one register per field (src/app/06-core-seen.js
+  // uiPrefGet / uiPrefSet). Where you are in the view (the section, the date range, the filters, the
+  // budget picked), the category colour slots (worked out from your spending) and budgets kept in the
+  // browser stay in this browser's LS_KEY. No amount, merchant or name goes into the state.
+  const SHARED_F = ['inc', 'xfer', 'compare', 'catMode', 'stackMode', 'merchSort', 'histMode', 'pageSize', 'sort', 'mSort'];
+  const sameJ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  function sharedF() {
+    try { const v = typeof uiPrefGet === 'function' ? uiPrefGet('finance') : null; return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch (e) { return null; }
+  }
+  function cleanF(f) {
     if (!SECTIONS.some(x => x[0] === f.section)) f.section = 'overview';
     if (!PRESETS.includes(f.preset) && f.preset !== 'custom') f.preset = '3M';
     if (!GRANS.some(g => g[0] === f.gran)) f.gran = 'week';
@@ -206,8 +215,63 @@
     if (!f.sort || typeof f.sort !== 'object') f.sort = { key: 'd', dir: -1 };
     if (!f.mSort || typeof f.mSort !== 'object') f.mSort = { key: 'total', dir: -1 };
     if (!f.slots || typeof f.slots !== 'object') f.slots = {};
+    for (const k of ['inc', 'xfer', 'compare']) if (typeof f[k] !== 'boolean') f[k] = DEFAULT_F[k];
+    for (const k of ['catMode', 'stackMode', 'merchSort', 'histMode']) if (typeof f[k] !== 'string' || !f[k] || f[k].length > 24) f[k] = DEFAULT_F[k];
     f.merchant = typeof f.merchant === 'string' ? f.merchant : '';
     f.q = typeof f.q === 'string' ? f.q : '';
+    return f;
+  }
+  // shBase[k]: the synced value F last took or wrote (the default while the state has none: shGap).
+  // A field goes to the state only when F moved away from it here, so a value that is old in this
+  // page never overwrites a newer choice from another computer.
+  const shBase = {}, shGap = new Set();
+  function noteShared(sh) {
+    for (const k of SHARED_F) {
+      const has = !!sh && sh[k] !== undefined && sh[k] !== null;
+      shBase[k] = has ? sh[k] : DEFAULT_F[k];
+      if (has) shGap.delete(k); else shGap.add(k);
+    }
+  }
+  /** F's changed choices into the state (one register per field). */
+  function pushShared() {
+    if (typeof uiPrefSet !== 'function') return;
+    const sh = sharedF() || {};
+    const p = {};
+    const booted = typeof _uiSharedBooted !== 'undefined' && _uiSharedBooted;   // 06-core-seen.js: the state file has loaded
+    for (const k of SHARED_F) {
+      if (sameJ(F[k], shBase[k])) continue;
+      // The state had none when this page read it, and has one now: another computer's, the later choice.
+      if (shGap.has(k) && sh[k] !== undefined && sh[k] !== null) { F[k] = sh[k]; shBase[k] = sh[k]; shGap.delete(k); continue; }
+      // Filling a gap (this browser's old choice) waits for the state file: before it, a write would beat a newer one in it.
+      if (shGap.has(k) && !booted) continue;
+      p[k] = F[k]; shBase[k] = F[k]; shGap.delete(k);
+    }
+    if (Object.keys(p).length) { try { uiPrefSet('finance', p); } catch (e) { /* the next change writes it */ } }
+  }
+  /**
+   * On every entry to Finances: a choice another computer made since is taken (the later one), and
+   * this browser's own old choices (the localStorage copy before 2.16) fill only what the state
+   * does not have yet, so a computer that never changed them never writes its defaults over the other's.
+   */
+  function adoptSharedF() {
+    const sh = sharedF() || {};
+    let changed = false;
+    for (const k of SHARED_F) {
+      if (sh[k] === undefined || sh[k] === null || sameJ(sh[k], shBase[k])) continue;
+      shBase[k] = sh[k]; shGap.delete(k);
+      if (!sameJ(F[k], sh[k])) { F[k] = sh[k]; changed = true; }
+    }
+    if (changed) cleanF(F);
+    saveF();                                    // this browser's copy keeps only where you are; the choices go to the state
+    return changed;
+  }
+  function loadF() {
+    let s = {};
+    try { s = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (e) { s = {}; }
+    const sh = sharedF();
+    noteShared(sh);
+    if (sh) for (const k of SHARED_F) if (sh[k] !== undefined && sh[k] !== null) s[k] = sh[k];
+    const f = cleanF(Object.assign({}, DEFAULT_F, s));
     // The filter panel lives in the sticky bar; reopening it on every visit
     // would cover a third of the screen while scrolling. Start collapsed.
     f.more = false;
@@ -217,7 +281,14 @@
   let saveTimer = 0;
   function saveF() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => { try { localStorage.setItem(LS_KEY, JSON.stringify(F)); } catch (e) { /* quota or private mode */ } }, 150);
+    saveTimer = setTimeout(() => {
+      // This browser keeps where you are; the display choices go to the synced state (one not
+      // written yet, waiting for the state file, stays here too until it is).
+      pushShared();
+      const local = {};
+      for (const k of Object.keys(F)) if (!SHARED_F.includes(k) || (shGap.has(k) && !sameJ(F[k], DEFAULT_F[k]))) local[k] = F[k];
+      try { localStorage.setItem(LS_KEY, JSON.stringify(local)); } catch (e) { /* quota or private mode */ }
+    }, 150);
   }
 
   // Runtime state (in memory only).
