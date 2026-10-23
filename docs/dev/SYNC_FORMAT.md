@@ -277,7 +277,7 @@ manifest).
 | `_lastSave`, `_saveCount`, `_localDirty`, `_overridesMigrated_v1`, `_demo`, `taskOverrides`, `dateOverrides` | bookkeeping and emptied legacy keys |
 
 Derived keys (`calCache`, `peopleEmailCache`, `emailTriage`, `autolink`,
-`suggest`, `taskChat`) are rebuilt on each device and never synced.
+`suggest`) are rebuilt on each device and never synced. AI chats sync: section 9.3.
 
 **Theme under Auto.** While `autoTheme` is `true` on a device, its `theme`
 is not captured and an incoming `theme` is not written in (the register
@@ -314,6 +314,44 @@ The format does not change (no new `v`). After the update:
   (section 2), so the group's preferences win wherever the group has one
   (its theme, its hidden calendars), and what only the new device has is
   added. Its own view, open task and panel sizes stay as they were.
+
+### 9.3 AI chats and proposals
+
+Every AI conversation syncs (`src/app/70-ai-chats.js`; the `chats` blocks of
+the manifest and `SYNC_SPEC`):
+
+| Key or file | Merges | Notes |
+|---|---|---|
+| `taskChat` | per task, messages by id | `{taskId: [{id, role, text, ts}]}`; older messages without an id merge by content |
+| `assistantChat` | `messages` by id, each message's `proposals` by id, per field | the assistant panel's one conversation; a proposal card's state (`pending`, `applied`, `dismissed`, `undone`), applied/skipped parts, `appliedOn: {id, name}` |
+| `chatMeta` | per chat (`task:<id>`, `assistant`), per field; `older` per computer | `clearedAt`, `readAt` (read on one computer is read on all), `older: {deviceId: {n, name}}` |
+| `chatArchive` | never synced | this computer's older messages of a long chat |
+| `file:state/proposals.json` | shared; `proposals` by id, `applied` and `createdIds` per entry | `{version: 1, proposals: [{id, at, status, ops, preview, previewHash, summary, applied: {opIndex: true}, createdIds, ...}]}` (`server/actions/journal.mjs`) |
+
+- **Messages** get an id when they are made and carry their time; every
+  device shows them in time order (ties by id), so two devices sending at the
+  same moment keep both, once each. A reply being written is published once
+  (`pending: true`, `by: {tab, dev, name}`) and replaced by its id when done;
+  progress stays in the tab. A pending reply older than 15 minutes shows as
+  interrupted.
+- **Long chats**: past 100 messages a chat keeps its newest 60 in sync. Each
+  device copies the messages older than its newest 60 into `chatArchive` as
+  soon as it sees them, so a trim on another device loses nothing there, and
+  records in `chatMeta[...].older[<its id>]` how many it keeps; the others
+  show "N older messages on <device>".
+- **Clearing** empties the list (the container stays alive, so a message
+  sent elsewhere at that moment survives) and sets `clearedAt`, which each
+  device applies to its own archive.
+- **Proposals**: the apply path refuses one that is not pending (applied or
+  dismissed on any device), and the ops applied so far merge as a map, so
+  two devices applying different parts both count (all applied = applied).
+  Applying a proposal derives the ids it creates from the proposal id and the
+  op number (`server/actions/model.mjs withIdSeed`): an op whose ids are
+  already in the data was applied elsewhere and is refused, and two offline
+  devices applying the same proposal make the same ids, which merge into one
+  copy. Undo stays on the device that applied it (its undo history).
+- Chats can quote mail: like all synced data they travel end-to-end
+  encrypted, and the sync log never holds their text in the clear.
 
 ## 10. Versions and unknown data
 
