@@ -34,6 +34,7 @@ How the pieces fit together, in plain words. The details are in
 | the list of connected accounts (`accounts.json`: address, provider, features, who reads it, the ids of its snapshot files) | **every sign-in, token, app password and key** |
 | the mail and calendar each account's reader saved; results, caches and the person's settings (below) | this computer's paths and zone in `config.json`, the source definitions in `sources.json` (secret links), `connections.json` (what works here), the local token |
 | who runs which background job (`roles.json`) | the sync identity and its encryption keys |
+| people's pictures and story narration clips, as sealed blobs fetched when first shown (`blobs/index.json` names them; [SYNC_FORMAT.md](SYNC_FORMAT.md) section 12); encrypted sync only, 200 MB for the group | without encryption, pictures and clips stay on the computer that has them |
 | the finances the computer that reads the bank published (`finance-share/finance.json`), and your finance edits from any device (`finance-share/edits.json`: categories, budgets, account names, colours, Show in Finances); encrypted sync only | the finance folder (transaction store, CSV imports, the spreadsheet, `rules.json`), bank sign-ins and connector tokens |
 
 Sign-ins never travel, on purpose: a refresh token that two computers both use
