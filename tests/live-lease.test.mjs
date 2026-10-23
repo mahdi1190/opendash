@@ -154,7 +154,7 @@ test('not ready (the folder not read yet): no claims and never main; junk claims
   L.renew(true);
   assert.equal(L.isMain('phone'), false);
   assert.deepEqual(L.publish('live').roles, {});
-  for (const bad of [null, {}, { v: 2, at: 1, ttl: 30000 }, { v: 1, at: 'x', ttl: 30000 }, { v: 1, at: 1, ttl: 5 }, { v: 1, at: 1, ttl: 1e9 }]) assert.equal(cleanClaims(bad), null);
+  for (const bad of [null, {}, { v: 2, at: 1, ttl: 30000 }, { v: 1, at: 'x', ttl: 30000 }, { v: 1, at: 1, ttl: 50 }, { v: 1, at: 1, ttl: 1e9 }]) assert.equal(cleanClaims(bad), null);
   const c = cleanClaims({ v: 1, at: 5, ttl: 30000, roles: { phone: { since: 1, view: 'not-an-id' }, 'bad role!': { since: 1 }, 'fetch:x': { since: 'no' } }, prefs: { list: ['zz', B], at: 3 } });
   assert.deepEqual(Object.keys(c.roles), ['phone']);
   assert.equal(c.roles.phone.view, null);

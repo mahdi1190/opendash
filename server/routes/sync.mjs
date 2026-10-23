@@ -30,12 +30,22 @@
 //   POST /api/sync/fetcher           {account}      "Use this computer instead" (needs this
 //                                                   computer's own sign-in for that account)
 //
+// Live sync (lib/sync/live/, docs/dev/LIVE_SYNC.md): paired computers connect
+// to each other directly (same Wi-Fi, or over the internet through a port the
+// router opens) and a change shows on the other within a second; the folder
+// stays the catch-up path. The status carries `live` {on, state, peers:[{name,
+// state: live|connecting|not-live, path: lan|internet, reason}], reach, roles,
+// firewall}. It runs only with encrypted sync. DASHBOARD_LIVE_SYNC=off turns
+// it off, DASHBOARD_LIVE_NAT=off leaves the router alone.
+//   POST /api/sync/live              {enabled?, internet?, prefer?: [deviceId]} -> the status
+//
 // Same-origin only, like every /api/ route (server/router.mjs). Changes from
 // other devices reach open tabs through the normal live-sync path: the engine
 // commits through the state store, which bumps the version and announces it
 // on /api/events with source 'sync'.
 
 import { createNodeSyncEngine } from '../../lib/sync/node-host.mjs';
+import { createNodeLive } from '../../lib/sync/live/node-live.mjs';
 import { secretStore } from '../../lib/secret-store.mjs';
 
 /** Does this computer hold its own sign-in for an account's provider? (Tokens never sync.) */
@@ -55,8 +65,14 @@ export default function register(app) {
     ...(process.env.DASHBOARD_SYNC_POLL_MS ? { pollMs: Math.max(500, Number(process.env.DASHBOARD_SYNC_POLL_MS) || 5000) } : {}),
   });
   app.ctx.sync = engine;
-  app.onReady(async () => { await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`)); });
-  app.onClose(async () => { await engine.stop(); });
+  // Live sync: a computer may be the main computer for an account only with its own sign-in for it.
+  const live = createNodeLive({ engine, dataDir: paths.root, log, canFetch: (acc) => hasSignIn(paths.root, acc && acc.provider) });
+  app.ctx.liveSync = live;
+  app.onReady(async () => {
+    await engine.start().catch((e) => log('warn', `sync could not start: ${e && (e.code || e.message)}`));
+    if (live) await live.start().catch((e) => log('warn', `live sync could not start: ${e && (e.code || e.message)}`));
+  });
+  app.onClose(async () => { if (live) await live.stop().catch(() => {}); await engine.stop(); });
 
   app.route({ path: '/api/sync/status', method: 'GET', quiet: true, handler: () => engine.status() });
   app.route({
@@ -95,6 +111,15 @@ export default function register(app) {
   post('/api/sync/offer/join', (b) => engine.joinWithOffer(str(b.text, 300) || ''));
   post('/api/sync/devices/rename', (b) => engine.renameDevice(str(b.id, 40), str(b.name, 60)));
   post('/api/sync/devices/remove', (b) => engine.removeDevice(str(b.id, 40)));
+  post('/api/sync/live', async (b) => {
+    if (!live) { const e = new Error('Live sync is turned off on this computer (DASHBOARD_LIVE_SYNC=off).'); e.status = 400; e.code = 'LIVE_OFF'; throw e; }
+    const patch = {};
+    if (typeof b.enabled === 'boolean') patch.enabled = b.enabled;
+    if (typeof b.internet === 'boolean') patch.internet = b.internet;
+    if (Array.isArray(b.prefer)) patch.prefer = b.prefer.filter(x => typeof x === 'string').slice(0, 16);
+    await live.configure(patch);
+    return engine.status();
+  });
   post('/api/sync/fetcher', async (b) => {
     const id = str(b.account, 200);
     const acc = (engine.status().accounts || []).find(a => a.id === id);
