@@ -10,6 +10,35 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.15.2] - 2026-10-24
+
+### Added
+
+- **Calm when another computer is off:** a computer that is asleep or shut down is no longer an error. OpenDash says so in one quiet line (a moon, not red) and catches up when it is back. A sync dot in the top bar shows how things stand, for example "In sync · Mac online" or "Mac off · 3 changes waiting", and a computer on an older version says "update it to sync everything".
+- **Sync health** (Settings > Sync > Health): every way syncing can go wrong, checked on this computer, each problem with one button that fixes it: a computer that slept or changed network, a cloud folder that moved, a full disk, old devices. Clashes can be reviewed and settled.
+- **What changed** (Settings > Sync): a plain-words feed of what arrived from your other computers and when.
+- **People's photos and story narration audio sync** between your computers, encrypted like everything else. Settings > Sync shows how much room they take.
+- **Finances on every computer, part two:** your finance AI choices follow you, and Connections > Money on your other computers lists the finance computer's accounts. When the finance computer is away, OpenDash says so calmly.
+- **Refresh today refreshes everything:** calendar, inbox, finances, weather and the day adviser in one go, with progress, one Cancel and a Try again for each part. It also refreshes on its own: choose every 30 minutes, every hour (the default), every 2 hours or only when you click in Settings > Home and stories.
+
+### Changed
+
+- **Cancel and Try again everywhere:** every wait shows that it is running and can be cancelled; every failure offers Try again. A running wait no longer disappears before it ends.
+- **Connections say what really went wrong** and what to do next, show that they are waiting, and can be stopped (Monzo approval, email task suggestions, Think through my day).
+- **Tasks:**
+  - Undo instead of "Are you sure?" (deleting from the bin, subtasks, tags, people).
+  - Nothing typed is lost: half-written notes, the quick add and a new task you closed without saving can be restored.
+  - Today is in sections: Overdue, Due today, Planned for today, In progress. You can reorder, fold or hide them.
+  - Multi-select in the list and on the board: Shift+click for a range, drag a box around tasks, and drag the whole selection at once.
+  - More keyboard: X, T, D, 1-4 and Del act on all selected tasks, and Alt+Up/Down moves a subtask.
+- **Across the app:**
+  - A toast's Undo takes back exactly its own change.
+  - Repeated messages fold into one, and toasts wait while you hover or are away.
+  - The shortcut sheet (?) is complete and searchable.
+  - Ctrl+K finds every setting.
+  - Updating shows one dialog with what's new and each step's progress.
+- **Home and Calendar:** what you type survives a refresh, a closed new event can be reopened, and lists say when they were last updated.
+
 ## [2.15.1] - 2026-10-23
 
 ### Added
