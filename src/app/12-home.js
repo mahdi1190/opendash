@@ -784,6 +784,17 @@ function homeTaskMenu(anchor, id) {
     { label: 'Today', icon: 'sun', run: () => homeReschedule(id, todayStr()) },
     { label: 'Tomorrow', icon: 'sunrise', run: () => homeReschedule(id, plus(1)) },
     { label: 'Next week', icon: 'calendar-range', hint: _tbShortDate(nextMon, true), run: () => homeReschedule(id, nextMon) },
+    // Any other day without opening the task: the usual date picker (typed dates, the mini month).
+    ...(typeof openDueDatePopover === 'function' ? [{ label: 'Pick a date…', icon: 'calendar-days', run: () => setTimeout(() => {
+      const at = anchor && anchor.isConnected ? anchor : card();
+      if (!at) return;
+      openDueDatePopover(at, { value: effDate(it) || null, title: 'Move to', align: 'end', onPick: (d) => {
+        if (d) { homeReschedule(id, d); return; }
+        if (!effDate(it)) return;                            // "No date" on a task without one: nothing to do
+        setDateWithReason(id, null, 'Moved on Home');
+        toast('Date removed', { kind: 'ok', icon: 'calendar', action: { label: 'Undo', run: () => undo() } });
+      } });
+    }, 0) }] : []),
     'sep',
     { label: 'Hide from Focus today', icon: 'eye-off', kbd: 'H', run: () => homeSnooze(id) },
     { label: 'Open in the detail pane', icon: 'panel-right', run: () => selectTask(id) },
