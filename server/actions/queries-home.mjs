@@ -92,6 +92,7 @@ export const HOME_QUERIES = [
           const d = homeCatalogEntry(w.id);
           const o = { id: w.id, title: homeInstanceTitle(w.id), size: w.size, sizes: [...d.sizes] };
           if (splitHomeInstance(w.id).n > 1) o.copyOf = d.id; else if (d.multi > 1) o.maxCopies = d.multi;
+          if (w.c) o.columns = w.c;                          // a free width (1-12 columns of 12), set by dragging its edge in Customise
           if (w.h) o.heightRows = w.h;                       // set by dragging its bottom edge in Customise
           if (w.hidden) o.hidden = true; else o.position = pos++;
           if (wp[w.id] && typeof wp[w.id] === 'object' && Object.keys(wp[w.id]).length) o.settings = wp[w.id];

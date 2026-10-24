@@ -246,6 +246,7 @@
     R.groupLast = R.groupLast || {}; R.groupLast[groupOf(id)] = id;
     paintGroupTabs();
     try { if (typeof window.renderCrumb === 'function') window.renderCrumb(); } catch (e) { /* shell not loaded */ }
+    try { if (typeof state !== 'undefined' && state.view === 'finance' && typeof renderSidebar === 'function') renderSidebar(); } catch (e) { /* the sidebar lights the tab on its next paint */ }   // 2.19.5: the tab is lit in the sidebar too
     if (R.mode !== 'ready') return;
     // The old section leaves away from the direction of travel, the new one arrives from it.
     const dir = from && from !== id && !(opts && opts.instant) ? (MK.dir(from, id) || 1) : 0;

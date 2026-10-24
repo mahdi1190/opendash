@@ -19,6 +19,7 @@
     const E = BDR.el = {};
     BDR.grid = g; g.classList.add('fvb-grid');
     BDR.tmp = h('div');
+    E.hero = h('div', { class: 'fvb-hero', style: { '--span': 12, '--span-md': 12 }, hidden: true });   // 2.19.5: the welcome banner (Home's hero)
     E.top = h('div', { class: 'fvb-top', style: { '--span': 12, '--span-md': 12 } });
     E.quick = h('div', { class: 'fvb-quick', role: 'toolbar', 'aria-label': 'Quick filters' });
     E.tools = h('div', { class: 'fvb-tools' });
@@ -26,8 +27,14 @@
     E.intro = h('div', { class: 'fvb-intro', style: { '--span': 12, '--span-md': 12 }, hidden: true });
     E.strip = h('div', { class: 'fvb-strip', style: { '--span': 12, '--span-md': 12 }, role: 'group', 'aria-label': 'Today at a glance' });
     E.empty = h('div', { class: 'fvb-empty', style: { '--span': 12, '--span-md': 12 }, hidden: true });
-    g.append(E.top, E.intro, E.strip, E.empty);
+    g.append(E.hero, E.top, E.intro, E.strip, E.empty);
     BDR.frames = new Map();
+    if (typeof ResizeObserver === 'function') {
+      let w0 = 0;
+      if (BDR.ro) BDR.ro.disconnect();
+      BDR.ro = new ResizeObserver(() => { if (Math.abs(g.clientWidth - w0) > 1) { w0 = g.clientWidth; bdFill(); if (BDR.editing) bdGapSlots(); } });
+      BDR.ro.observe(g);
+    }
     S.onEsc = () => {
       if (BDR.editing) { bdEdit(false); return true; }
       if (F.trip) { setTrip(null); return true; }
@@ -42,9 +49,10 @@
   UPDATE.board = ctx => {
     const X = bdPass(ctx);
     R.root.classList.toggle('fv-amts-hidden', bdHidden());
-    bdPaintTools(X); bdPaintQuick(X); bdPaintIntro(X); bdPaintStrip(X);
+    bdPaintHero(X); bdPaintTools(X); bdPaintQuick(X); bdPaintIntro(X); bdPaintStrip(X);
     bdSync(X);
     bdUpdateFrames(X);
+    bdFill();
     // The first visit: the widgets rise in as they come into view, like every section's cards.
     if (R.entering) MK.inView(BDR.grid, { sel: ':scope > .fvb-w', step: 60, max: 420, distance: 14 });
   };
@@ -66,6 +74,44 @@
     const keep = { preset: F.preset, from: F.from, to: F.to, gran: F.gran };
     try { F.preset = p; F.from = F.to = null; F.gran = autoGran(getRange().len); return makeCtx(); }
     finally { Object.assign(F, keep); }
+  }
+
+  /* ---------- the welcome banner (2.19.5): Home's hero on Money ----------
+     The greeting over the sky, the one line that matters (what is safe to spend today), a big Play money story
+     button and a Money brief button. It can be hidden (the x; More brings it back: F.heroOff, synced). It is
+     rebuilt only when its words change, so the sky does not restart on every update. */
+  function bdHeroOff(off) { F.heroOff = !!off; saveF(); if (R.ctx && R.sectionId === 'board') { R.noAnim = true; try { UPDATE.board(R.ctx); } finally { R.noAnim = false; } } }
+  function bdPaintHero(X) {
+    const el = BDR.el.hero;
+    const off = F.heroOff === true || typeof heroBannerEl !== 'function';
+    el.hidden = off;
+    if (off) { el.replaceChildren(); el._key = ''; return; }
+    const M = X.M, B = X.brief();
+    let lead = '', line = 'Your money, in one place.', sub = '', cap = null;
+    if (B && B.balance) {
+      const left = round2(B.balance.total - B.billsTotal - B.cushion);
+      const days = Math.max(1, B.cycle.daysLeft);
+      if (left < 0) { lead = gbp(-left); line = B.mode === 'cycle' ? 'short for your bills and cushion until payday' : 'short for your bills and cushion this month'; }
+      else { lead = gbp(round2(left / days)); line = 'safe to spend today'; }
+      sub = left < 0 ? 'Go gently until money comes in.' : (days > 1 ? `${gbp(left)} over the next ${days} days` + (B.mode === 'cycle' ? ' · ' : ' · this month') : '') + (B.mode === 'cycle' ? `${days > 1 ? '' : 'Last day before '}payday ${fDayW(B.cycle.next)}` : '');
+    } else if (M) { line = 'Update your bank to see what is safe to spend today.'; }
+    try {
+      const next = M ? MBM.billsBetween(M.recurring, M.anchor, M.anchor + 32)[0] : null;
+      cap = next ? { why: 'Next bill', title: `${next.m} ${gbp2(next.amount)}` } : { why: 'Next bill', title: 'Nothing due this month' };
+    } catch (e) { cap = null; }
+    let date = ''; try { date = fd(localToday(), { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { date = ''; }
+    let greet = 'Your money';
+    try { if (typeof _bfGreeting === 'function' && typeof Clock !== 'undefined') greet = _bfGreeting({ nowD: new Date(Clock.now()) }); } catch (e) { /* the plain title stays */ }
+    const canPlay = (() => { try { return msCanPlay(); } catch (e) { return false; } })();
+    const key = JSON.stringify([date, greet, lead, line, sub, cap, canPlay]);
+    if (el._key === key && el.firstChild) return;
+    el._key = key;
+    el.replaceChildren(heroBannerEl({
+      date, greet, lead, line, sub, scene: 'finance', caption: cap,
+      play: canPlay ? { label: 'Play money story', aria: 'Play money story: your month in money, full screen and read aloud', run: () => msOpen({}) } : null,
+      alt: { label: 'Money brief', icon: 'sparkles', title: 'Your money in three sentences, the days to payday and what is worth a look', run: () => setSection('overview') },
+      onHide: () => bdHeroOff(true),
+    }));
   }
 
   /* ---------- tools: the layout menu, Customise, Hide amounts ---------- */
@@ -93,7 +139,10 @@
       next.strip = L.strip;
       boardSave(next, `${BD_PRESET_INFO[name].label} layout`, { icon: BD_PRESET_INFO[name].icon });
     };
-    const items = [{ label: 'Money brief', icon: 'sparkles', hint: 'in three sentences', title: 'Your money in three sentences, the days to payday and what is worth a look', run: () => setSection('overview') }, 'sep', { heading: 'Start from' }];
+    const items = [{ label: 'Money brief', icon: 'sparkles', hint: 'in three sentences', title: 'Your money in three sentences, the days to payday and what is worth a look', run: () => setSection('overview') },
+      { label: 'Play money story', icon: 'play', title: 'Your month in money as a short story, read aloud', run: () => msOpen({}) },
+      { label: F.heroOff ? 'Show the welcome banner' : 'Hide the welcome banner', icon: 'image', title: 'The greeting with what is safe to spend today', run: () => bdHeroOff(!F.heroOff) },
+      'sep', { heading: 'Start from' }];
     for (const k of ['simple', 'detailed', 'scratch']) items.push({ label: BD_PRESET_INFO[k].label, icon: BD_PRESET_INFO[k].icon, title: BD_PRESET_INFO[k].desc, checked: L.preset === k, run: () => pick(k) });
     items.push('sep',
       { label: 'Plain words, big numbers', icon: 'type', checked: L.style === 'simple', title: 'Short sentences and big numbers instead of charts', run: () => boardSave(Object.assign({}, L, { style: L.style === 'simple' ? 'detailed' : 'simple' }), null, { quiet: true }) },
@@ -267,9 +316,10 @@
   function bdFrame(w, X) {
     const d = bwDef(w.t);
     const ch = bdChartH(w, X);
-    const cd = card(BDR.tmp, { title: d.title, span: BD_SIZE_COLS[w.s], chart: ch > 0, height: ch, cls: 'fvb-w fvb-t-' + w.t });
+    const cd = card(BDR.tmp, { title: d.title, span: bdColsOf(w), chart: ch > 0, height: ch, cls: 'fvb-w fvb-t-' + w.t });
     const el = cd.el;
-    el.dataset.wid = w.i; el.dataset.flip = w.i; el.dataset.t = w.t; el.dataset.size = w.s; el.dataset.sig = bdSig(w, X);
+    el.dataset.wid = w.i; el.dataset.flip = w.i; el.dataset.t = w.t; el.dataset.sig = bdSig(w, X);
+    bdSetSpan(el, w);
     el.setAttribute('data-flip-size', '');
     el.setAttribute('aria-label', d.title);
     el.querySelector('.fv-card-t h3').prepend(h('span', { class: 'fvb-ic', 'aria-hidden': 'true' }, ic(d.icon)));
@@ -279,10 +329,23 @@
     if (r && r.build) r.build(cd, w, X);
     return cd;
   }
-  function bdSetSpan(el, s) {
-    el.dataset.size = s;
-    el.style.setProperty('--span', BD_SIZE_COLS[s]);
-    el.style.setProperty('--span-md', BD_SIZE_COLS[s] <= 6 ? 6 : 12);
+  /** The columns a widget takes: its own width, else its size's. */
+  const bdColsOf = w => w.c || BD_SIZE_COLS[w.s];
+  /** What a frame shows of its widget's size (a resize in progress passes {s, c, h} too): the preset, the columns, the rows. */
+  const bdDims = w => w.s + '/' + (w.c || '') + '/' + (w.h || '');
+  function bdSetSpan(el, w) {
+    const cols = bdColsOf(w);
+    el.dataset.size = w.s; el.dataset.dims = bdDims(w);
+    if (w.c) el.dataset.c = String(w.c); else delete el.dataset.c;
+    if (w.h) { el.dataset.h = String(w.h); el.style.setProperty('--hg-h', String(w.h)); } else { delete el.dataset.h; el.style.removeProperty('--hg-h'); }
+    el.style.setProperty('--span', cols);
+    el.style.setProperty('--span-md', cols <= 6 ? 6 : 12);
+  }
+  /** View mode: a row that does not add up to 12 columns hands its free columns to its last widget (no gaps). Customising shows the true widths. */
+  function bdFill() {
+    const g = BDR.grid; if (!g || !g.isConnected) return;
+    if (BDR.editing) { for (const k of g.querySelectorAll(':scope > .fvb-w')) k.style.removeProperty('grid-column'); return; }
+    if (typeof boardFillGaps === 'function') boardFillGaps(g, k => k.classList.contains('fvb-w'), true);
   }
   function bdDisposeFrame(el) { const k = bdKey({ i: el.dataset.wid }); disposeChart(k); disposeAll(k + ':'); }
   /** Make the grid's widget cards match the layout: keep, move, resize, build or drop each by id. */
@@ -299,7 +362,7 @@
     for (const w of want) {
       let el = have.get(w.i);
       if (!el) { el = bdFrame(w, X).el; el._fresh = true; if (BDR.editing) bdChrome(el); }
-      if (el.dataset.size !== w.s || !el.style.getPropertyValue('--span')) bdSetSpan(el, w.s);
+      if (el.dataset.dims !== bdDims(w) || !el.style.getPropertyValue('--span')) bdSetSpan(el, w);
       if (el !== ref) g.insertBefore(el, ref); else ref = ref.nextSibling;
       ref = el.nextSibling;
     }
@@ -343,9 +406,22 @@
     const next = Object.assign({}, L, { w: L.w.map(x => (x.i === wid ? Object.assign({}, x, { o: Object.assign({}, x.o, { [k]: v }) }) : x)) });
     boardSave(bdCustom(next), null, { quiet: true });
   }
-  function bdSetSize(wid, s) {
-    const L = boardGet(); const w = L.w.find(x => x.i === wid); if (!w || w.s === s) return false;
-    return boardSave(bdCustom(Object.assign({}, L, { w: L.w.map(x => (x.i === wid ? Object.assign({}, x, { s }) : x)) })), null, { quiet: true });
+  function bdSetSize(wid, s) { return bdSetDims(wid, { size: s }); }
+  /** A widget's size in one save. ch: {size: a preset (drops a custom width), cols: any width 1-12, h: rows, null = fits its content}. */
+  function bdSetDims(wid, ch, say) {
+    const L = boardGet(); const w = L.w.find(x => x.i === wid); if (!w) return false;
+    const d = bwDef(w.t), o = Object.assign({}, w);
+    if (ch.size && d.sizes.includes(ch.size)) { o.s = ch.size; delete o.c; }
+    if (ch.cols) { const f = boardFit(ch.cols, d.sizes, BD_SIZE_COLS); o.s = f.size; if (f.c) o.c = f.c; else delete o.c; }
+    if (ch.h !== undefined) { if (ch.h) o.h = ch.h; else delete o.h; }
+    const ok = boardSave(bdCustom(Object.assign({}, L, { w: L.w.map(x => (x.i === wid ? o : x)) })), null, { quiet: true });
+    if (ok) { bdFocus(wid); if (say && typeof homeAnnounce === 'function') homeAnnounce(say); }   // (a resized widget may be rebuilt: the keyboard stays on it)
+    return ok;
+  }
+  /** Reset layout: the default (Simple), one undoable save. */
+  function bdReset() {
+    if (sameJ(boardGet(), bdPreset('simple'))) { toast('My money already has the default layout', { icon: 'layout-template' }); return; }
+    boardSave(bdPreset('simple'), 'Layout reset to the default', { icon: 'rotate-ccw' });
   }
   function bdRemove(wid) {
     const L = boardGet(); const w = L.w.find(x => x.i === wid); if (!w) return;
@@ -378,7 +454,7 @@
         const d = bwDef(w.t);
         el.innerHTML = '';
         el.append(h('div', { class: 'fvb-pop-h' }, ic(d.icon), h('b', { text: d.title })), h('p', { class: 'fvb-pop-d', text: d.desc }));
-        if (d.sizes.length > 1) el.append(bdSegRow('Size', d.sizes.map(s => [s, BD_SIZE_LABEL[s], BD_SIZE_LONG[s]]), w.s, v => { bdSetSize(wid, v); paint(); }));
+        if (d.sizes.length > 1) el.append(bdSegRow('Size', d.sizes.map(s => [s, BD_SIZE_LABEL[s], BD_SIZE_LONG[s]]), w.c ? null : w.s, v => { bdSetSize(wid, v); paint(); }));   // (drag an edge for any width)
         for (const o of d.opts) {
           const cur = bwOpt(w, o.k);
           if (!o.input || o.input === 'acct' || o.input === 'cat') {

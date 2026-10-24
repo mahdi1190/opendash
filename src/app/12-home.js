@@ -74,7 +74,8 @@
    DATA (state.home, saved with saveData = one undo step):
      focus {count, pinned, p1, overdue, doing, planned, dueSoonDays, streams[]},
      focusOrder [taskId], snoozed {taskId: 'YYYY-MM-DD'},
-     layout {version: 1, widgets: [{id, size, hidden}]}   (missing = the defaults; ids may be copies)
+     layout {version: 1, widgets: [{id, size, hidden, h?, c?}]}   (c: free width 1-12; h: height in rows)
+                             (missing = the defaults; ids may be copies)
      widgetPrefs {instanceId: {...}}                      each widget copy's own settings
    UI (saveUI, no undo): state.homeUI {expanded: [taskId], hideAmounts, gallerySeen: [id]}.
    Assistants: set_home_focus / get_home_focus, set_home_layout / reset_home_layout /
@@ -86,8 +87,12 @@ const HOME_FOCUS_DEFAULTS = Object.freeze({ count: 5, pinned: true, p1: true, ov
 const HOME_SIZES = Object.freeze(['s', 'm', 'l', 'full']);
 const HOME_SIZE_COLS = Object.freeze({ s: 4, m: 6, l: 8, full: 12 });
 // A widget's optional height (Customise: drag its bottom edge): h rows of HOME_ROW_PX; none = its content's height.
-const HOME_ROW_PX = 40, HOME_H_MIN = 3, HOME_H_MAX = 30;
+const HOME_ROW_PX = 40, HOME_H_MIN = 2, HOME_H_MAX = 60;
 function homeHeightRows(h) { return Number.isInteger(h) && h >= HOME_H_MIN && h <= HOME_H_MAX ? h : undefined; }
+// 2.19.5 free sizing: a widget may also have its own width c (1-12 columns of 12; none = its size's columns). s / m / l / full are presets.
+function homeColsN(c) { return Number.isInteger(c) && c >= 1 && c <= 12 ? c : undefined; }
+/** The columns a layout entry takes on a wide screen. */
+function homeColsOf(w) { return homeColsN(w && w.c) || HOME_SIZE_COLS[w && w.size] || 12; }
 const HOME_SIZE_LABEL = Object.freeze({ s: 'Small', m: 'Medium', l: 'Large', full: 'Full width' });
 const HOME_LAYOUT_VERSION = 1;
 
@@ -293,6 +298,8 @@ function homeClampSize(size, sizes, fallback) {
   }
   return best;
 }
+/** The allowed size nearest to a width in columns (ties: the larger). */
+function homeSizeForCols(cols, sizes) { return boardNearestSize(cols, sizes, HOME_SIZE_COLS); }
 function homeLayoutNormalize(raw, catalog, prefs) {
   const list = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' && Array.isArray(raw.widgets) ? raw.widgets : []);
   const byId = new Map(catalog.map(c => [c.id, c]));
@@ -306,7 +313,11 @@ function homeLayoutNormalize(raw, catalog, prefs) {
     if (!c || seen.has(w.id)) continue;
     seen.add(w.id);
     const h = homeHeightRows(w.h);
-    out.push({ id: w.id, size: homeClampSize(w.size, c.sizes, c.defaultSize), hidden: w.hidden === true, ...(h ? { h } : {}) });
+    // A free width (c) wins over the size: the size is then the allowed one nearest it, and c is kept only when it is not exactly that size's columns.
+    const c0 = homeColsN(w.c);
+    const size = c0 ? homeSizeForCols(c0, c.sizes) : homeClampSize(w.size, c.sizes, c.defaultSize);
+    const cc = c0 && c0 !== HOME_SIZE_COLS[size] ? c0 : undefined;
+    out.push({ id: w.id, size, hidden: w.hidden === true, ...(h ? { h } : {}), ...(cc ? { c: cc } : {}) });
   }
   // A widget the saved board has never seen goes in after its catalogue neighbour, not at
   // the end (so a new default one sits beside its neighbour on an old board).
@@ -522,6 +533,7 @@ function _homeFrame(def, w) {
   f.dataset.base = def.baseId || def.id;
   f.dataset.sec = homeSectionOf(def);                    // Today / Coming up / Money and life (12-home-grid.js)
   f.dataset.size = w.size;
+  if (w.c) f.dataset.c = String(w.c);                    // a free width (1-12 columns); the CSS reads it (13-home-core.css)
   if (w.h) { f.dataset.h = String(w.h); f.style.setProperty('--hg-h', String(w.h)); }
   f.dataset.flip = 'w:' + def.id;
   f.setAttribute('data-flip-size', '');                  // a size change morphs (12-home-grid.js)

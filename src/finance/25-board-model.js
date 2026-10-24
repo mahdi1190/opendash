@@ -9,8 +9,11 @@
   // The layout is a synced preference (F.board -> state.uiPrefs.finance.board,
   // 00-core.js SHARED_F), so it follows the person to every device:
   //   {v: 1, preset: 'simple' | 'detailed' | 'scratch' | 'custom', style: 'simple' | 'detailed',
-  //    strip: true (the everyday strip on top), w: [{i: uid, t: type, s: size, o: {settings}}]}
-  // Sizes are Home's: s (a third), m (half), l (two thirds), xl (full width).
+  //    strip: true (the everyday strip on top), w: [{i: uid, t: type, s: size, o: {settings}, c?: columns, h?: rows}]}
+  // Sizes are Home's: s (a third), m (half), l (two thirds), xl (full width). 2.19.5 (free sizing, the board engine
+  // of 12-home-board.js is shared with Home): a widget may also have its own width c (1-12 columns of 12) and height
+  // h (rows, HOME_ROW_PX each; none = as tall as its content); s is then the allowed size nearest c. A layout saved
+  // before has neither and keeps its sizes.
   // Nothing about money goes in: types, sizes and choices only.
   //
   //   BW_DEFS / bwDef(t)        the catalogue: {t, title, icon, group, desc, sizes, size, opts: [{k, label, choices, def}
@@ -181,7 +184,11 @@
         if (opt.input) { const v = bwInput(opt, x.o[opt.k]); if (v !== undefined) o[opt.k] = v; }
         else if (opt.choices.some(c => c[0] === x.o[opt.k])) o[opt.k] = x.o[opt.k];
       }
-      w.push({ i: id, t: x.t, s: d.sizes.includes(x.s) ? x.s : d.size, o });
+      // A free width (c) wins over the size; c is kept only when it is not exactly that size's columns.
+      const c0 = Number.isInteger(x.c) && x.c >= 1 && x.c <= 12 ? x.c : undefined;
+      const s = c0 ? boardNearestSize(c0, d.sizes, BD_SIZE_COLS) : (d.sizes.includes(x.s) ? x.s : d.size);
+      const hr = Number.isInteger(x.h) && x.h >= HOME_H_MIN && x.h <= HOME_H_MAX ? x.h : undefined;
+      w.push({ i: id, t: x.t, s, o, ...(c0 && c0 !== BD_SIZE_COLS[s] ? { c: c0 } : {}), ...(hr ? { h: hr } : {}) });
     }
     return {
       v: 1, preset: ['simple', 'detailed', 'scratch', 'custom'].includes(b.preset) ? b.preset : 'custom',

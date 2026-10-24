@@ -86,6 +86,9 @@ const WHATS_NEW = [
   { id: 'money-calm', group: 'n219', icon: 'wallet', title: '2.19.4: a calmer Money',
     text: 'Money has one row of controls: the period and a Filters button. Layout, Hide amounts and the Money brief are under More, and an import is a quiet note instead of a banner. The top bar and the garden shop are simpler too.',
     view: ['finance'], sel: ['#main-body'] },
+  { id: 'boards-anywhere', group: 'n219', icon: 'layout-grid', title: '2.19.5: arrange Home and Money your way',
+    text: 'Resize any widget to any size and drag it anywhere on Home and Money; gaps fill themselves. Money has its welcome banner and Play money story back, and both pages are in the sidebar as well as the tabs.',
+    view: ['finance', 'home'], sel: ['#sidebar', '#main-body'] },
 
   // ---- 2.18.1 ----
   { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',

@@ -1,15 +1,17 @@
   // @part 39-board-edit.js · NEW (2.16) · OWNER: FUX (My money: Customise and Add widget)
-  // ── Customise My money (Home's editing model, 12-home-gridedit.js) ────
+  // ── Customise My money (Home's board engine: 12-home-board.js, boardEditor in 12-home-gridedit.js) ────
   // Customise outlines every widget and gives it Home's controls: a minus to remove it
   // (top left; Undo in the toast), a grip (top centre; touch drags by it), the size
-  // switcher S M L XL and its settings (top right), and a handle on its right edge.
+  // presets S M L XL and its settings (top right), and handles on its right edge,
+  // bottom edge and corner. 2.19.5: this file only holds the host's side (the adapter, the bar's buttons,
+  // Add widget); the pointer, the resize, the keys and the gap slots are the engine's, the same as Home.
   //   Move: press a widget and drag. A copy follows the pointer; its place becomes the
   //     dashed "Drop here" that moves to where it would land while the others glide
   //     (homeShelfDropIndex: over a widget its left / right half, the empty end of a
   //     shelf, below them all = last). Release saves; Esc puts it back.
-  //   Resize: drag the right edge; the width snaps to the widget's sizes (4, 6, 8, 12 of 12
-  //     columns) and a badge says it. Release saves; Esc puts it back.
-  //   Keyboard (a widget focused): arrows move it, Shift + arrows resize it, Delete removes
+  //   Resize: drag the right edge, bottom edge or corner; the width snaps to the 12 columns (any of 1-12;
+  //     S M L XL are the presets 4, 6, 8, 12) and the height to rows, and a badge says it. Release saves; Esc puts it back.
+  //   Keyboard (a widget focused): arrows move it, Shift + arrows resize it by a column / row, Delete removes
   //     it, Enter opens its settings.
   // The toolbar floats at the foot (Home's .home-editbar): Add widget, Undo (every layout
   // change before this one), the layout menu, Done. Nothing glides with reduced motion.
@@ -26,215 +28,97 @@
       R.root.classList.add('fvb-edit-enter'); setTimeout(() => R.root && R.root.classList.remove('fvb-edit-enter'), 700);
       for (const el of g.querySelectorAll(':scope > .fvb-w')) bdChrome(el);
       bdEditBar();
-      if (!BDR.edit) BDR.edit = bdEditor(g);
+      if (!BDR.edit) BDR.edit = boardEditor(g, bdBoardAdapter());
+      bdFill(); bdGapSlots();
     } else {
       for (const el of g.querySelectorAll(':scope > .fvb-w')) bdUnchrome(el);
       if (BDR.edit) { BDR.edit.destroy(); BDR.edit = null; }
       if (BDR.bar) { BDR.bar.remove(); BDR.bar = null; }
+      for (const x of g.querySelectorAll(':scope > .hg-slot')) x.remove();
+      bdFill();
     }
     if (R.ctx) { bdPaintTools(bdPass(R.ctx)); bdPaintIntro(bdPass(R.ctx)); }
   }
-  /** After a change while customising: new widgets get their controls, the bar its Undo state. */
+  /** After a change while customising: widgets whose size changed get their controls again, the bar its Undo / Reset state, the gaps their slots. */
   function bdEditRefresh() {
     const g = BDR.grid; if (!g) return;
-    for (const el of g.querySelectorAll(':scope > .fvb-w')) if (!el.querySelector(':scope > .hg-x')) bdChrome(el);
-    for (const el of g.querySelectorAll(':scope > .fvb-w')) bdPaintSizes(el);
+    for (const el of g.querySelectorAll(':scope > .fvb-w')) if (!el.querySelector(':scope > .hg-x') || el._chromeDims !== el.dataset.dims) bdChrome(el);
     if (BDR.bar && BDR.bar._undo) BDR.bar._undo.disabled = !BD_UNDO.length;
+    if (BDR.bar && BDR.bar._reset) BDR.bar._reset.disabled = sameJ(boardGet(), bdPreset('simple'));
+    bdFill(); bdGapSlots();
   }
+  /** The controls of one widget (the shared ones: minus, grip, size presets, settings, resize handles, keys). */
   function bdChrome(el) {
-    if (el.querySelector(':scope > .hg-x')) return;
-    const wid = el.dataset.wid, d = bwDef(el.dataset.t);
-    el.tabIndex = 0;
-    el.setAttribute('aria-roledescription', 'widget, arrows move it, Shift and arrows resize it');
-    el.style.setProperty('--wq', String([...el.parentElement.children].indexOf(el) % 7));
-    const x = h('button', { type: 'button', class: 'hg-x', 'aria-label': 'Remove ' + d.title, title: 'Remove (Undo in the toast)', onclick: e => { e.stopPropagation(); bdRemove(wid); } }, ic('minus'));
-    const grip = h('span', { class: 'hg-grip', 'aria-hidden': 'true', title: 'Drag to move' }, ic('grip-vertical'));
-    const sizes = h('span', { class: 'seg hg-sizes', role: 'radiogroup', 'aria-label': d.title + ' size' });
-    for (const s of d.sizes) sizes.append(h('button', { type: 'button', role: 'radio', 'data-size': s, title: BD_SIZE_LONG[s], text: BD_SIZE_LABEL[s], onclick: e => { e.stopPropagation(); if (el.dataset.size !== s) bdSetSize(wid, s); } }));
-    const set = h('button', { type: 'button', class: 'btn-icon', 'aria-label': d.title + ': settings', title: 'Settings', onclick: e => { e.stopPropagation(); bdSettings(e.currentTarget, wid); } }, ic('sliders-horizontal'));
-    const chrome = h('span', { class: 'hg-chrome' }, d.sizes.length > 1 ? sizes : null, set);
-    el.append(x, grip, chrome);
-    if (d.sizes.length > 1) el.append(h('span', { class: 'hg-rs hg-rs-e', 'data-dir': 'e', 'aria-hidden': 'true', title: 'Drag to change the width' }));
-    bdPaintSizes(el);
-  }
-  function bdPaintSizes(el) {
-    for (const b of el.querySelectorAll(':scope > .hg-chrome .hg-sizes button')) {
-      const on2 = b.dataset.size === el.dataset.size;
-      b.classList.toggle('on', on2); b.setAttribute('aria-checked', on2 ? 'true' : 'false');
-    }
+    const wid = el.dataset.wid, w = boardGet().w.find(x => x.i === wid), d = bwDef(el.dataset.t);
+    if (!w || !d) return;
+    const A = bdBoardAdapter();
+    boardChrome(el, {
+      title: d.title, roledesc: 'widget, arrows move it, Shift and arrows resize it',
+      removeLabel: 'Remove ' + d.title, removeTip: 'Remove (Undo in the toast)', onRemove: () => bdRemove(wid),
+      sizes: d.sizes.map(s => ({ key: s, text: BD_SIZE_LABEL[s], aria: BD_SIZE_LONG[s], tip: BD_SIZE_LONG[s] })), cur: w.c ? null : w.s,
+      onSize: s => bdSetSize(wid, s),
+      settings: b => bdSettings(b, wid), settingsAria: d.title + ': settings',
+      onKey: e => boardEditKey(A, e, wid, el),
+    });
+    el._chromeDims = el.dataset.dims;
   }
   function bdUnchrome(el) {
     for (const c of el.querySelectorAll(':scope > .hg-x, :scope > .hg-grip, :scope > .hg-chrome, :scope > .hg-rs, :scope > .hg-rs-tip')) c.remove();
-    el.removeAttribute('tabindex'); el.removeAttribute('aria-roledescription');
+    el.removeAttribute('tabindex'); el.removeAttribute('aria-roledescription'); el.onkeydown = null; el.style.removeProperty('--wq'); delete el._chromeDims;
   }
   function bdEditBar() {
     if (BDR.bar && BDR.bar.isConnected) return;
-    const undo = h('button', { type: 'button', class: 'btn btn-ghost btn-sm', disabled: !BD_UNDO.length, onclick: () => boardUndo() }, ic('undo-2'), h('span', { text: 'Undo' }));
-    const bar = h('div', { class: 'home-editbar fvb-editbar', role: 'toolbar', 'aria-label': 'Customise My money' },
-      h('div', { class: 'heb-t' }, ic('pencil'), h('div', null, h('b', { text: 'Customising My money' }), h('span', { text: 'Drag to move · drag the right edge to resize · arrows on a selected widget' }))),
-      h('span', { class: 'spacer' }),
-      h('button', { type: 'button', class: 'btn btn-secondary btn-sm heb-add', onclick: () => bdGallery() }, ic('plus'), h('span', { text: 'Add widget' })),
-      undo,
-      h('button', { type: 'button', class: 'btn btn-ghost btn-sm heb-reset', 'aria-haspopup': 'menu', onclick: e => bdLayoutMenu(e.currentTarget) }, ic('layout-template'), h('span', { text: 'Layout' })),
-      h('button', { type: 'button', class: 'btn btn-primary btn-sm', onclick: () => bdEdit(false) }, ic('check'), h('span', { text: 'Done' })));
-    bar._undo = undo;
+    const { bar, btn } = boardEditBar({
+      title: 'Customising My money', aria: 'Customise My money', icon: 'pencil', cls: 'fvb-editbar',
+      hint: 'Drag to move · drag an edge or corner to resize to any size · arrows on a selected widget, <kbd class="kbd">Shift</kbd>+arrows resize',
+      buttons: [
+        { key: 'add', label: 'Add widget', icon: 'plus', kind: 'secondary', cls: 'heb-add', aria: 'Add widget', run: () => bdGallery() },
+        { key: 'layouts', label: 'Layouts', icon: 'layers', cls: 'heb-presets', tip: 'Start from Simple or Detailed, plain words, the everyday strip', run: (e, el) => bdLayoutMenu(el) },
+        { key: 'undo', label: 'Undo', icon: 'undo-2', cls: 'heb-undo', tip: 'Undo the last change to the layout', disabled: !BD_UNDO.length, run: () => boardUndo() },
+        { key: 'reset', label: 'Reset', icon: 'rotate-ccw', cls: 'heb-reset', aria: 'Reset layout', tip: 'Back to the default layout', disabled: sameJ(boardGet(), bdPreset('simple')), run: () => bdReset() },
+        { key: 'done', label: 'Done', icon: 'check', kind: 'primary', cls: 'heb-done', kbd: 'Esc', run: () => bdEdit(false) },
+      ],
+    });
+    bar._undo = btn.undo; bar._reset = btn.reset;
+    btn.add.setAttribute('aria-haspopup', 'dialog'); btn.layouts.setAttribute('aria-haspopup', 'menu');
     R.els.panel.append(bar);
     BDR.bar = bar;
   }
+  /** The dashed "Add a widget here" slots in the holes the packing leaves (customising only). */
+  function bdGapSlots() {
+    const g = BDR.grid; if (!g || !g.isConnected) return;
+    if (!BDR.editing) { for (const x of g.querySelectorAll(':scope > .hg-slot')) x.remove(); return; }
+    boardGapSlots(g, { isFrame: k => k.classList.contains('fvb-w'), onAdd: cols => bdGallery(null, cols) });
+  }
 
-  /* ---------- pointer moving and resizing ---------- */
-  function bdEditor(grid) {
-    const coarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
-    let press = null, op = null;
-    const frames = () => [...grid.querySelectorAll(':scope > .fvb-w')];
-    const glide = fn => { if (!MK.reduced() && typeof homeFlip === 'function') homeFlip(grid, fn); else fn(); };
-    const boxOf = f => { const r = f.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom }; };
-    function onDown(e) {
-      if (e.button !== 0 || op || e.ctrlKey || e.metaKey || e.altKey) return;
-      const fr = e.target.closest('.fvb-w');
-      if (!fr || fr.parentElement !== grid) return;
-      const rs = e.target.closest('.hg-rs');
-      if (!rs) {
-        if (e.target.closest('.hg-x, .hg-chrome, input, select, textarea, a[href]')) return;
-        if (coarse && !e.target.closest('.hg-grip')) return;   // touch: drag by the grip so the page still scrolls
-      } else { e.preventDefault(); e.stopPropagation(); }
-      press = { fr, rs: !!rs, x: e.clientX, y: e.clientY };
-      window.addEventListener('pointermove', onMove, true);
-      window.addEventListener('pointerup', onUp, true);
-      window.addEventListener('pointercancel', onCancel, true);
-    }
-    function onMove(e) {
-      if (!press) return;
-      if (!op) {
-        if (!press.rs && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5) return;
-        op = press.rs ? startResize(press) : startMove(press);
-        if (!op) { cleanup(); return; }
-      }
-      e.preventDefault();
-      if (op.kind === 'move') moveTo(e.clientX, e.clientY); else resizeTo(e.clientX);
-    }
-    function cleanup() {
-      window.removeEventListener('pointermove', onMove, true);
-      window.removeEventListener('pointerup', onUp, true);
-      window.removeEventListener('pointercancel', onCancel, true);
-      press = null;
-    }
-    function begin() { document.body.classList.add('is-sorting'); if (typeof closePopovers === 'function') closePopovers(); }
-    function end() {
-      document.body.classList.remove('is-sorting');
-      const swallow = ev => { ev.stopPropagation(); ev.preventDefault(); };   // the click after the drag lands on nothing
-      window.addEventListener('click', swallow, true);
-      setTimeout(() => window.removeEventListener('click', swallow, true), 0);
-    }
-    function startMove(p) {
-      const fr = p.fr, r = fr.getBoundingClientRect();
-      begin();
-      const lift = fr.cloneNode(true);
-      lift.removeAttribute('data-flip'); lift.removeAttribute('tabindex');
-      for (const c of lift.querySelectorAll('canvas')) c.remove();
-      lift.classList.add('fvb-lift'); lift.setAttribute('aria-hidden', 'true');
-      const k = Math.max(0.4, Math.min(1, 340 / r.height, 560 / r.width));
-      const dx = p.x - r.left, dy = p.y - r.top;
-      Object.assign(lift.style, { position: 'fixed', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', margin: '0', pointerEvents: 'none', zIndex: 'var(--z-tooltip, 1000)', transformOrigin: `${dx}px ${dy}px` });
-      lift.style.transform = `scale(${(k * (MK.reduced() ? 1 : 1.02)).toFixed(3)})${MK.reduced() ? '' : ' rotate(0.6deg)'}`;
-      document.body.append(lift);
-      fr.classList.add('is-ghost');
-      return { kind: 'move', fr, lift, dx, dy, order0: frames().map(f => f.dataset.wid), next0: fr.nextSibling, at: null };
-    }
-    function moveTo(x, y) {
-      const o = op;
-      o.lift.style.left = (x - o.dx) + 'px'; o.lift.style.top = (y - o.dy) + 'px';
-      if (o.at && Math.hypot(x - o.at.x, y - o.at.y) < 10) return;
-      const others = frames().filter(f => f !== o.fr);
-      if (typeof homeShelfDropIndex !== 'function') return;
-      const i = homeShelfDropIndex(others.map(boxOf), x, y, grid.clientWidth);
-      if (i === null) return;
-      if (i === frames().indexOf(o.fr)) return;
-      const ref = i < others.length ? others[i] : (others.length ? others[others.length - 1].nextSibling : null);
-      glide(() => grid.insertBefore(o.fr, ref));
-      o.at = { x, y };
-    }
-    function finishMove(o, commit) {
-      if (!commit) glide(() => grid.insertBefore(o.fr, o.next0 && o.next0.parentNode === grid ? o.next0 : null));
-      const ids = frames().map(f => f.dataset.wid);
-      const done = () => {
-        o.lift.remove(); o.fr.classList.remove('is-ghost');
-        if (commit && ids.join() !== o.order0.join()) {
-          const L = boardGet(); const by = new Map(L.w.map(w => [w.i, w]));
-          boardSave(bdCustom(Object.assign({}, L, { w: ids.map(id => by.get(id)).filter(Boolean) })), null, { quiet: true });
-          bdFocus(o.fr.dataset.wid);
-        }
-      };
-      if (MK.reduced() || typeof o.lift.animate !== 'function') { done(); return; }
-      const to = o.fr.getBoundingClientRect();
-      const a = o.lift.animate([{ left: o.lift.style.left, top: o.lift.style.top, transform: o.lift.style.transform }, { left: to.left + 'px', top: to.top + 'px', transform: 'none' }],
-        { duration: 300, easing: 'cubic-bezier(0.34, 1.4, 0.64, 1)', fill: 'forwards' });
-      let fired = false; const once = () => { if (!fired) { fired = true; done(); } };
-      a.finished.then(once, once); setTimeout(once, 420);
-    }
-    function startResize(p) {
-      const fr = p.fr, d = bwDef(fr.dataset.t); if (!d) return null;
-      begin();
-      fr.classList.add('is-resizing');
-      const gap = parseFloat(getComputedStyle(grid).columnGap) || 16;
-      const colW = (grid.clientWidth - 11 * gap) / 12;
-      const tip = h('span', { class: 'hg-rs-tip', 'aria-hidden': 'true' });
-      fr.append(tip);
-      const r = fr.getBoundingClientRect();
-      const o = { kind: 'resize', fr, d, gap, colW, tip, size0: fr.dataset.size, size: fr.dataset.size, offX: r.right - p.x };
-      showTip(o);
-      return o;
-    }
-    function showTip(o) { o.tip.textContent = `${BD_SIZE_LONG[o.size]} · ${BD_SIZE_COLS[o.size]} of 12 columns`; }
-    function resizeTo(x) {
-      const o = op, r = o.fr.getBoundingClientRect();
-      const cols = (x + o.offX - r.left + o.gap) / (o.colW + o.gap);
-      let best = o.size, bd = Infinity;
-      for (const s of o.d.sizes) { const dd = Math.abs(BD_SIZE_COLS[s] - cols) - (s === o.size ? 0.35 : 0); if (dd < bd) { bd = dd; best = s; } }
-      if (best === o.size) return;
-      o.size = best;
-      glide(() => bdSetSpan(o.fr, best));
-      bdPaintSizes(o.fr); showTip(o);
-    }
-    function finishResize(o, commit) {
-      o.fr.classList.remove('is-resizing'); o.tip.remove();
-      if (!commit || o.size === o.size0) { if (o.size !== o.size0) glide(() => bdSetSpan(o.fr, o.size0)); bdPaintSizes(o.fr); return; }
-      bdSetSize(o.fr.dataset.wid, o.size);
-    }
-    function finish(commit) { const o = op; op = null; if (!o) return; end(); if (o.kind === 'move') finishMove(o, commit); else finishResize(o, commit); }
-    function onUp() { const was = !!op; cleanup(); if (was) finish(true); }
-    function onCancel() { const was = !!op; cleanup(); if (was) finish(false); }
-    function onKey(e) {
-      if (e.key === 'Escape' && op) { e.stopPropagation(); e.preventDefault(); cleanup(); finish(false); return; }
-      const fr = e.target && e.target.closest ? e.target.closest('.fvb-w') : null;
-      if (!fr || e.target !== fr || fr.parentElement !== grid) return;
-      const wid = fr.dataset.wid, L = boardGet(), i = L.w.findIndex(w => w.i === wid), w = L.w[i];
-      if (!w) return;
-      const d = bwDef(w.t);
-      if (/^Arrow(Left|Right|Up|Down)$/.test(e.key)) {
-        e.preventDefault();
-        const fwd = e.key === 'ArrowRight' || e.key === 'ArrowDown';
-        if (e.shiftKey) {
-          const j = d.sizes.indexOf(w.s) + (fwd ? 1 : -1);
-          if (j < 0 || j >= d.sizes.length) { toast(`${d.title} is already as ${fwd ? 'wide' : 'narrow'} as it goes`); return; }
-          bdSetSize(wid, d.sizes[j]);
-        } else if (!bdMove(wid, i + (fwd ? 1 : -1))) { toast(`${d.title} is already ${fwd ? 'last' : 'first'}`); return; }
-        bdFocus(wid);
-      } else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); bdRemove(wid); }
-      else if (e.key === 'Enter') { e.preventDefault(); const b = fr.querySelector('.hg-chrome .btn-icon'); if (b) bdSettings(b, wid); }
-    }
-    const noNative = e => { if (e.target.closest && e.target.closest('.fvb-w')) e.preventDefault(); };
-    grid.addEventListener('pointerdown', onDown);
-    grid.addEventListener('dragstart', noNative);
-    document.addEventListener('keydown', onKey, true);
-    return {
-      destroy() {
-        grid.removeEventListener('pointerdown', onDown); grid.removeEventListener('dragstart', noNative);
-        document.removeEventListener('keydown', onKey, true);
-        cleanup();
-        if (op) { const o = op; op = null; document.body.classList.remove('is-sorting'); if (o.lift) o.lift.remove(); if (o.fr) o.fr.classList.remove('is-ghost', 'is-resizing'); }
+  /* ---------- the shared board engine (12-home-board.js, boardEditor in 12-home-gridedit.js) runs the pointer and keys ---------- */
+  let bdA = null;
+  function bdBoardAdapter() {
+    if (bdA) return bdA;
+    return (bdA = {
+      sel: '.fvb-w[data-wid]',
+      map: BD_SIZE_COLS, presets: BD_SIZES,
+      sizeName: s => BD_SIZE_LONG[s].split(' · ')[0],
+      state(id) {
+        const w = boardGet().w.find(x => x.i === id); if (!w) return null;
+        return { size: w.s, c: w.c, cols: bdColsOf(w), h: w.h || null, sizes: bwDef(w.t).sizes, title: bwDef(w.t).title };
       },
-    };
+      setSize: (id, ch, say) => bdSetDims(id, ch, say),
+      preview: (f, st) => bdSetSpan(f, { s: st.size, c: st.c, h: st.h }),
+      ids: () => boardGet().w.map(w => w.i),
+      moveTo: (id, j) => { if (bdMove(id, j)) bdFocus(id); },
+      order(ids, movedId) {
+        const L = boardGet(); const by = new Map(L.w.map(w => [w.i, w]));
+        boardSave(bdCustom(Object.assign({}, L, { w: ids.map(id => by.get(id)).filter(Boolean) })), null, { quiet: true });
+        bdFocus(movedId);
+      },
+      remove: id => bdRemove(id),
+      add: () => bdGallery(),
+      say: msg => toast(msg),
+      reflow: (grid, fn) => { if (!MK.reduced() && typeof homeFlip === 'function') homeFlip(grid, fn); else fn(); },
+      after: () => bdGapSlots(),
+      lift: { cls: ['fvb-lift'], prep(l) { for (const c of l.querySelectorAll('canvas')) c.remove(); } },
+    });
   }
   function bdFocus(wid) {
     requestAnimationFrame(() => { const f = BDR.grid && BDR.grid.querySelector(`:scope > .fvb-w[data-wid="${CSS.escape(wid)}"]`); if (f) { try { f.focus({ preventScroll: false }); } catch (e) { /* old browser */ } } });
@@ -242,12 +126,14 @@
 
   /* ---------- Add widget: the gallery ---------- */
   const BD_GAL_W = { s: 365, m: 556, l: 746, xl: 1128 };
-  function bdGallery(pick) {
+  function bdGallery(pick, fitCols) {
     if (typeof openDialog !== 'function') return;
     const L0 = boardGet();
     const count = t => boardGet().w.filter(w => w.t === t).length;
+    // From a free slot (fitCols): the size that fits it, and the widget then takes exactly the slot's columns.
+    const startSize = d => (fitCols ? d.sizes.filter(s => BD_SIZE_COLS[s] <= fitCols).pop() || d.sizes[0] : d.size);
     let sel = bwDef(pick) || BW_DEFS.find(d => !count(d.t)) || BW_DEFS[0];
-    let size = sel.size;
+    let size = startSize(sel);
     let added = 0;
     openDialog({
       title: 'Add a widget to My money', size: 'xl', fixed: true, resizable: false,
@@ -268,7 +154,7 @@
           if (!defs.length) continue;
           const head = h('div', { class: 'hgal-gh', text: label }); list.append(head);
           for (const d of defs) {
-            const b = h('button', { type: 'button', class: 'hgal-item', role: 'option', 'data-t': d.t, onclick: () => { if (sel.t !== d.t) { sel = d; size = d.size; paint(); } } },
+            const b = h('button', { type: 'button', class: 'hgal-item', role: 'option', 'data-t': d.t, onclick: () => { if (sel.t !== d.t) { sel = d; size = startSize(d); paint(); } } },
               h('span', { class: 'hgal-ic' }, ic(d.icon)), h('span', { class: 'hgal-t', text: d.title }), h('span', { class: 'fvb-gal-badge' }));
             b._d = d; b._head = head; list.append(b); items.push(b);
           }
@@ -280,7 +166,7 @@
           for (const b of items) b.hidden = !!s && !(b._d.title + ' ' + b._d.desc + ' ' + b._d.group).toLowerCase().includes(s);
           for (const hd of list.querySelectorAll('.hgal-gh')) hd.hidden = items.filter(b => b._head === hd).every(b => b.hidden);
           const v = visible(); none.hidden = v.length > 0;
-          if (v.length && !v.some(b => b._d.t === sel.t)) { sel = v[0]._d; size = sel.size; paint(); }
+          if (v.length && !v.some(b => b._d.t === sel.t)) { sel = v[0]._d; size = startSize(sel); paint(); }
         });
         q.addEventListener('keydown', e => { if (e.key === 'ArrowDown' || e.key === 'Enter') { const v = visible(); if (!v.length) return; e.preventDefault(); const b = v.find(x => x._d.t === sel.t) || v[0]; b.focus(); if (b._d.t !== sel.t) b.click(); } });
         list.addEventListener('keydown', e => {
@@ -327,6 +213,7 @@
           const addB = h('button', { type: 'button', class: 'btn btn-primary', onclick: () => {
             const L = boardGet();
             const w = { i: bdUid(d.t), t: d.t, s: size, o: {} };
+            if (fitCols && size === startSize(d)) { const f = boardFit(fitCols, d.sizes, BD_SIZE_COLS); w.s = f.size; if (f.c) w.c = f.c; }
             if (L.w.length >= BD_MAX) { toast(`My money holds up to ${BD_MAX} widgets. Remove one first.`, { bad: true }); return; }
             boardSave(bdCustom(Object.assign({}, L, { w: L.w.concat([w]) })), `${d.title} added`, { icon: d.icon });
             added++; close(); bdArrive(w.i);

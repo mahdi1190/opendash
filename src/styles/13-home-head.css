@@ -73,3 +73,29 @@ html[data-motion="reduced"] .hd-idea-row > *, html.anim-off .hd-idea-row > * { a
 .hd-advisor .hd-idea { background: none; border: 0; box-shadow: none; padding: var(--space-2) 0; border-top: 1px solid var(--border-subtle); border-radius: 0; }
 .hd-idea-row { gap: var(--space-2) var(--space-4); }
 .hd-idea { background: none; border: 0; box-shadow: none; padding: var(--space-1-5) 0; border-radius: 0; }
+
+/* ----- 2.19.5: the same hero on another page (Money's welcome banner; 12-home-head.js heroBannerEl) ----- */
+.bf-hero.is-page { min-height: 0; padding: var(--space-6) var(--space-8); }
+.bf-hero.is-page .bf-hero-in { min-height: 148px; }
+.bf-hero.is-page .bf-greet { font-size: clamp(26px, calc(3cqi + 8px), 38px); }
+.bf-hero .bf-key { margin: var(--space-2) 0 0; font-size: var(--text-lg); line-height: 24px; color: var(--hero-fg2); }
+.bf-hero .bf-key b { font-size: var(--text-xl); line-height: 28px; font-weight: 640; color: var(--hero-fg); letter-spacing: -0.015em; }
+.bf-hero .bf-key-sub { margin: var(--space-0-5) 0 0; font-size: var(--text-md); color: var(--hero-fg2); }
+.bf-hero.is-page .bf-play-row { flex-wrap: wrap; margin-top: var(--space-4); }
+.bf-hero .hd-alt {
+  display: inline-flex; align-items: center; gap: var(--space-1-5); height: 44px; padding: 0 var(--space-4); border: 1px solid color-mix(in oklab, var(--hero-fg) 22%, transparent); border-radius: var(--radius-full);
+  background: var(--glass); color: var(--hero-fg); font: inherit; font-size: var(--text-md); font-weight: 560; cursor: pointer;
+  transition: transform var(--m-fast, 120ms) var(--m-ease-out, ease-out), background var(--m-fast, 120ms);
+}
+.bf-hero .hd-alt:hover { transform: translateY(-1px); background: color-mix(in oklab, var(--glass) 70%, var(--hero-fg) 14%); }
+.bf-hero .hd-alt:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--hero-fg2); }
+.bf-hero .bf-hide {
+  position: absolute; top: var(--space-3); right: var(--space-3); z-index: 2; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--hero-fg2); cursor: pointer; opacity: 0.7; transition: opacity var(--m-fast, 120ms), background var(--m-fast, 120ms);
+}
+.bf-hero .bf-hide:hover, .bf-hero .bf-hide:focus-visible { opacity: 1; background: var(--glass); outline: none; }
+html[data-motion="reduced"] .bf-hero .hd-alt, html.anim-off .bf-hero .hd-alt { transition: none; transform: none !important; }
+@media (max-width: 640px) {
+  .bf-hero.is-page { padding: var(--space-5) var(--space-4); }
+  .bf-hero .hd-alt { height: 44px; padding: 0 var(--space-3); }
+}

@@ -41,6 +41,75 @@ function homeHeadPlayRow(row) {
   row.appendChild(b);
 }
 
+/* ---------- A welcome banner for another page (2.19.5: Money) ----------
+   Home's hero (the weather sky, the greeting, one big button, a scene) for a page that is not Home, so
+   Money greets you the same way: finance/39-board.js bdPaintHero. o: {date, greet, lead, line, sub,
+   scene, caption: {why, title}, play: {label, run}, alt: {label, icon, run}, onHide}. All text is escaped here. */
+function _hdSkyHtml(w) {
+  const cond = w && w.current ? w.current.cond : 'none';
+  const tod = typeof briefTod === 'function' ? briefTod(w, null) : 'day';
+  return { cond, tod, dark: /night|evening|dusk/.test(tod) || /rain|thunder/.test(cond), html: typeof briefSkyHtml === 'function' ? briefSkyHtml(cond, tod) : '' };
+}
+function heroBannerEl(o) {
+  o = o || {};
+  const bfw = () => (typeof _bf !== 'undefined' && _bf && _bf.weather && _bf.weather.ok ? _bf.weather : null);
+  const sky = _hdSkyHtml(bfw());
+  const hero = document.createElement('section');
+  hero.className = 'bf-hero is-page' + (sky.dark ? ' on-dark' : '');
+  hero.dataset.tod = sky.tod; hero.dataset.cond = sky.cond;
+  hero.setAttribute('aria-label', 'Welcome');
+  const scene = o.scene && typeof animSceneHtml === 'function' ? animSceneHtml(o.scene, { size: 'hero', hero: true, label: o.caption && o.caption.title || '' }) : '';
+  const cap = o.caption && o.caption.title ? `<figure class="bf-headline">${scene}<figcaption><span class="overline">${esc(o.caption.why || '')}</span><b>${esc(o.caption.title)}</b></figcaption></figure>` : '';
+  hero.innerHTML = sky.html + `
+    <div class="bf-hero-in">
+      <div class="bf-hero-l">
+        ${o.date ? `<div class="bf-date overline">${esc(o.date)}</div>` : ''}
+        <h1 class="bf-greet">${esc(o.greet || '')}</h1>
+        <p class="bf-key">${o.lead ? `<b class="num">${esc(o.lead)}</b> ` : ''}<span>${esc(o.line || '')}</span></p>
+        ${o.sub ? `<p class="bf-key-sub">${esc(o.sub)}</p>` : ''}
+        <div class="bf-play-row"></div>
+      </div>
+      ${cap ? `<div class="bf-hero-r">${cap}</div>` : ''}
+    </div>`;
+  const row = hero.querySelector('.bf-play-row');
+  if (o.play && typeof o.play.run === 'function') {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-lg hd-play';
+    b.innerHTML = `${_hdSvg('play')}<span>${esc(o.play.label || 'Play')}</span>`;
+    b.setAttribute('aria-label', o.play.aria || o.play.label || 'Play');
+    b.onclick = (e) => o.play.run(e, b);
+    row.appendChild(b);
+  }
+  if (o.alt && typeof o.alt.run === 'function') {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn hd-alt';
+    b.innerHTML = `${o.alt.icon && typeof icon === 'function' ? icon(o.alt.icon, 'i-sm') : ''}<span>${esc(o.alt.label || '')}</span>`;
+    if (o.alt.title) b.title = o.alt.title;
+    b.onclick = (e) => o.alt.run(e, b);
+    row.appendChild(b);
+  }
+  if (!row.firstChild) row.remove();
+  if (typeof o.onHide === 'function') {
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'bf-hide';
+    x.title = 'Hide this banner (More brings it back)'; x.setAttribute('aria-label', 'Hide this banner');
+    x.innerHTML = typeof icon === 'function' ? icon('x', 'i-sm') : '×';
+    x.onclick = (e) => o.onHide(e, x);
+    hero.appendChild(x);
+  }
+  // The sky wants the weather: fetch it once (Home's cache), then repaint the sky only.
+  if (!bfw() && typeof briefLoadWeather === 'function') {
+    briefLoadWeather().then(() => {
+      const w = bfw(); if (!w || !hero.isConnected) return;
+      const s2 = _hdSkyHtml(w), old = hero.querySelector(':scope > .bf-sky');
+      if (!old || !s2.html) return;
+      const t = document.createElement('template'); t.innerHTML = s2.html;
+      if (t.content.firstElementChild) old.replaceWith(t.content.firstElementChild);
+      hero.classList.toggle('on-dark', s2.dark); hero.dataset.tod = s2.tod; hero.dataset.cond = s2.cond;
+    }).catch(() => { /* no weather: the clear sky stays */ });
+  }
+  if (typeof animLivingPaint === 'function') { try { animLivingPaint(hero); } catch (e) { /* the light is a bonus */ } }
+  if (typeof animActivate === 'function') { try { animActivate(hero); } catch (e) { /* scenes stay still */ } }
+  return hero;
+}
+
 /* ---------- Ideas for today ---------- */
 /** The story's model for today (its suggestions are the fallback ideas); cached 10 minutes. */
 function _hdStoryData() {

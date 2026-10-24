@@ -214,7 +214,15 @@ function sbTaskViewRows(c) {
 registerSidebarBlock(['home', 'tasks'], {
   id: 'task-views', order: 10,
   render(el, ctx) {
-    if (ctx.group === 'home') { el.appendChild(sbNavItem({ label: 'Home', icon: 'house', view: 'home' })); return; }
+    if (ctx.group === 'home') {
+      // 2.19.5: Home's four pages (Today, Evening, Week, History) are here as well as the tabs at the top of Home
+      // (HOME_TABS, 77-brief-review.js); the one you are on is lit in both places.
+      const tabs = typeof HOME_TABS !== 'undefined' ? HOME_TABS : [['today', 'Today', 'sunrise'], ['evening', 'Evening', 'sunset'], ['week', 'Week', 'calendar-range'], ['history', 'History', 'history']];
+      const on = /^home(:|$)/.test(String(state.view || '')) && typeof homeTabOf === 'function' ? homeTabOf(state.view) : '';
+      const tips = { today: 'Your day: the story, your cards and the daily note', evening: 'An evening recap and your top 3 for tomorrow', week: 'A calm look back at your week, and a plan for the next', history: 'Your past reviews and recaps' };
+      for (const [id, label, ic] of tabs) el.appendChild(sbNavItem({ label, icon: ic, view: id === 'today' ? 'home' : 'home:' + id, active: on === id, fresh: false, title: tips[id] || '' }));
+      return;
+    }
     const L = typeof sbLayout === 'function' ? sbLayout() : null;
     const place = (v) => (L && typeof sbViewPlacement === 'function' ? sbViewPlacement(v, L) : (SB_VIEWS_FRONT.includes(v) ? 'shown' : 'more'));
     const chosen = (v) => !!(L && Array.isArray(L.more) && L.more.includes(v));
@@ -490,11 +498,20 @@ registerSidebarBlock('calendar', {
   },
 });
 
-/* ---------- Money: the page (2.19: its sections are the tabs in the page header, not repeated here) ---------- */
+/* ---------- Money: the page's five tabs (2.19.5: in the sidebar as well as the tabs in the page header) ----------
+   Overview, Spending, Cash flow, Budgets and Transactions (FinanceView.groups); Expenses follows (66-expenses-1page.js).
+   The tab you are on is lit here and in the header. A tab opens the section you last used in it (FinanceView.openGroup). */
 registerSidebarBlock('finance', {
   id: 'finance-sections', order: 10,
   render(el) {
-    if (!window.FinanceView) return false;
-    el.appendChild(sbNavItem({ label: 'Money', icon: 'wallet', view: 'finance', active: state.view === 'finance', title: 'Overview, spending, cash flow, budgets and transactions' }));
+    const FV = window.FinanceView;
+    if (!FV) return false;
+    let groups = [], cur = '';
+    try { groups = typeof FV.groups === 'function' ? FV.groups() : []; if (state.view === 'finance' && typeof FV.group === 'function') cur = FV.group(); } catch (e) { groups = []; }
+    if (!groups.length) { el.appendChild(sbNavItem({ label: 'Money', icon: 'wallet', view: 'finance', active: state.view === 'finance', title: 'Overview, spending, cash flow, budgets and transactions' })); return; }
+    for (const g of groups) {
+      el.appendChild(sbNavItem({ label: g.label, icon: g.icon, active: state.view === 'finance' && cur === g.id, fresh: false, title: g.id === 'overview' ? 'My money, the Money brief and the money story' : '',
+        onClick: () => { if (state.view !== 'finance') setView('finance'); try { FV.openGroup(g.id); } catch (e) { console.error('[finance] openGroup', e); } if (typeof renderSidebar === 'function') renderSidebar(); } }));
+    }
   },
 });
