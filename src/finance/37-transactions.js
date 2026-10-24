@@ -9,6 +9,7 @@
   // visit carry a soft highlight.
   const TX_CHUNK = 150;
   const TX_SEEN_KEY = 'dash-finance-seen-v1';
+  SEC_OPTS.transactions = { kpis: false };   // 2.19.4: the card's own line says it (shown, out, in); no second row of tiles above the list
   BUILD.transactions = g => {
     S.tx = card(g, { title: 'Transactions', span: 12, cls: 'fv-tx-card' });
     S.txFirst = true;
@@ -45,7 +46,8 @@
       h('div', { class: 'fv-tx-ctl' }, S.txFlowSeg.el, S.txCatBtn, S.txKindBtn, S.txSortBtn, h('span', { class: 'fv-grow' }), S.txCount, S.txExport));
     S.txList = h('div', { class: 'fv-txl', role: 'list', 'aria-label': 'Transactions' });
     S.txMore = h('div', { class: 'fv-tx-more', 'aria-hidden': 'true' });
-    cd.body.append(S.txBar, S.txList, S.txMore);
+    cd.el.querySelector(':scope > .fv-card-h').append(S.txBar);   // 2.19.4: the title and the tools are one row
+    cd.body.append(S.txList, S.txMore);
     S.txList.addEventListener('click', e => {
       if (e.target.closest('select,button,input,a,.fv-txx')) return;
       const row = e.target.closest('.fv-txr'); if (row) txToggle(row);

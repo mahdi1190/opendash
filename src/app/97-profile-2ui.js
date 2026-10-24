@@ -1,5 +1,6 @@
 /* ============================================================
-   PROFILE, what you see (2.17): Settings > Profile (#view=settings:me):
+   PROFILE, what you see (2.17; its own Life page since 2.19.4: #view=profile, profile:avatar, profile:sharing,
+   with a short link and your name left in Settings > Profile, #view=settings:me):
    your card, About you (name, pronouns, status, bio, what you are working
    on, the card colour, "reacts to your day"), the CHARACTER BUILDER (tabs
    Face / Hair / Outfit / Extras / Background, a close-up of every option,
@@ -37,27 +38,59 @@ function _pfDebounce(fn, ms) { let t = 0; return (...a) => { clearTimeout(t); t 
 if (typeof registerSettingsGroup === 'function') {
   registerSettingsGroup({
     id: 'me', title: 'Profile', icon: 'user-round', order: 9,
-    description: 'Your name, picture, status and badges. Friends see your card.',
+    description: 'Your name, and the way to your profile page in Life.',
     // Settings search (SIMPLIFY_PLAN.md 6): the name rows live here; "Name" in Region & language moved to "Your name"
     search: [
       { label: 'Your name', description: 'In greetings, the app title and your card', keywords: 'name display name user name greeting title card friends called' },
       { label: 'Show friends a different name', description: 'Friends see another name instead of your own', keywords: 'name for friends friends name nickname alias different name display name' },
     ],
-    render(el) { _pfSettings(el); },
+    render(el) { _pfSettingsLink(el); },
   });
+}
+/** Profile's page (2.19.4): full width like Connections, in Life with the Life sidebar; its tabs are the page's sections (15-nav-life.js). */
+if (typeof registerSection === 'function') {
+  registerSection('profile', {
+    match: v => v === 'profile' || /^profile:(avatar|sharing)$/.test(String(v || '')),
+    title: () => 'Profile',
+    crumb: v => { const s = _pfSecOf(v); return s === 'card' ? [] : [{ label: 'Profile', view: 'profile' }, (_PF_SECS.find(x => x[0] === s) || [0, 'Profile'])[1]]; },
+    group: 'life', hashable: true, taskControls: false,
+    mount(container, view) {
+      const sub = document.getElementById('view-subtitle'); if (sub) sub.textContent = '';
+      _pfUI.sec = _pfSecOf(view || state.view);
+      _pfSettings(container);
+    },
+  });
+}
+/** Settings > Profile since 2.19.4: a link to the Profile page, and the few settings that belong here (your name). */
+function _pfSettingsLink(el) {
+  if (typeof profileFriendNameDecide === 'function') profileFriendNameDecide();   // before any edit: a friends name that differs from yours is kept as the different name
+  const { card, body } = _settingsCard('Your profile');
+  body.appendChild(_settingsRow('Card, avatar, wardrobe and sharing', 'They have their own page in Life now.',
+    uiButton({ label: 'Open Profile', icon: 'arrow-right', kind: 'secondary', size: 'sm', run: () => setView('profile') })));
+  const p = profileGet();
+  const nm = _pfEl('input', 'control control-sm set-input'); nm.maxLength = PF_MAX.name; nm.value = p.name || profileDisplayName(p); nm.placeholder = 'Your name'; nm.setAttribute('aria-label', 'Your name');
+  const save = _pfDebounce(() => { const v = profileText(nm.value, PF_MAX.name); profileSet({ name: v }); _pfNameSaved(v); }, 400);
+  nm.oninput = save; nm.onblur = () => { const v = profileText(nm.value, PF_MAX.name); if (nm.value !== v) nm.value = v; };
+  body.appendChild(_settingsRow('Your name', '', nm));
+  body.appendChild(_pfFriendNameRow(() => {}));
+  el.appendChild(card);
 }
 /** Profile's three pages (2.19.1): the card, the avatar with its wardrobe, and what friends see. Shows one and repaints. */
 const _PF_SECS = Object.freeze([['card', 'Card', 'id-card'], ['avatar', 'Avatar and wardrobe', 'shirt'], ['sharing', 'Sharing', 'share-2']]);
+/** The Profile page's view for a tab: 'profile', 'profile:avatar' or 'profile:sharing'; and the tab for a view. */
+function _pfViewOf(sec) { return sec === 'avatar' || sec === 'sharing' ? 'profile:' + sec : 'profile'; }
+function _pfSecOf(view) { const m = /^profile:(avatar|sharing)$/.exec(String(view || '')); return m ? m[1] : 'card'; }
 function _pfShowSec(sec) {
   _pfUI.sec = _PF_SECS.some(x => x[0] === sec) ? sec : 'card';
-  if (typeof state !== 'undefined' && state.view === 'settings:me') render(); else setView('settings:me');
+  const v = _pfViewOf(_pfUI.sec);
+  if (typeof state !== 'undefined' && state.view === v) render(); else setView(v);
 }
 function _pfSettings(el) {
   if (typeof profileFriendNameDecide === 'function') profileFriendNameDecide();   // before any edit: a friends name that differs from yours is kept as the different name
   const sec = _PF_SECS.some(x => x[0] === _pfUI.sec) ? _pfUI.sec : 'card';
   // the tabs are the page header's pills (a fallback inside the page if the header is not there)
   const tabsEl = subTabs({ label: 'Profile', active: sec, onChange: (id) => _pfShowSec(id), tabs: _PF_SECS.map(([id, label, ic]) => ({ id, label, icon: ic })) });
-  if (!headerSubTabs(tabsEl, /^settings:me$/)) el.appendChild(tabsEl);
+  if (!headerSubTabs(tabsEl, /^profile(:|$)/)) el.appendChild(tabsEl);
   let cardHost = null;
   const paintCard = () => { if (cardHost) cardHost.replaceChildren(profileCardEl(null, { visits: true })); };
   const changed = () => { paintCard(); };
@@ -875,7 +908,7 @@ function _pfFriendsCard() {
 
 /* ---------- the command palette ---------- */
 if (typeof registerCommand === 'function') {
-  registerCommand({ id: 'profile-open', group: 'Go to', label: 'Profile: your card and avatar', icon: 'user-round', keywords: 'profile me avatar character name bio pronouns status badges places card', run: () => setView('settings:me') });
+  registerCommand({ id: 'profile-open', group: 'Go to', label: 'Profile: your card and avatar', icon: 'user-round', keywords: 'profile me avatar character name bio pronouns status badges places card', run: () => setView('profile') });
   registerCommand({ id: 'profile-card', label: 'Customise your card: banner, nameplate, title', icon: 'image', keywords: 'profile card banner background header nameplate font name style title emoji currently tint', run: () => _pfOpenLook() });
   registerCommand({ id: 'profile-avatar', label: 'Customise your avatar', icon: 'wand-sparkles', keywords: 'avatar character builder customise hair outfit hat glasses face', run: () => { _pfShowSec('avatar'); setTimeout(() => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ block: 'start' }); }, 60); } });
   registerCommand({ id: 'profile-status', label: 'Set your status', icon: 'circle-user', keywords: 'status away busy focusing holiday travelling emoji', run: () => profileOpenPop() });

@@ -219,15 +219,44 @@ function _gsvLeft(c, t) {
   const used = (c.used && c.used[t]) || 0, cap = c.caps && c.caps[t] ? c.caps[t] : { per: 1, all: 1, usedAll: 0 };
   return Math.max(0, Math.min(cap.per - used, (cap.all || cap.per) - (cap.usedAll || 0)));
 }
+/** What the Water tool can do right now, in plain words (2.19.4). `thirsty` = the plants you can water now. */
+function _gsvWaterInfo(f, c) {
+  const first = _gscFirst(f.id), plants = (c && c.garden && c.garden.snap && c.garden.snap.plants) || [];
+  const left = c ? _gsvLeft(c, 'water') : 0;
+  const done = new Set(((c && c.mine) || []).filter(a => a.t === 'water' && a.d === c.today).map(a => a.x + ',' + a.y));
+  const drinkers = plants.filter(r => gsocWaterOk(r[0]));
+  const thirsty = drinkers.filter(r => (r[5] & 1) && !done.has(r[1] + ',' + r[2]));
+  if (!plants.length) return { n: 0, thirsty: [], text: `${first} has no plants yet` };
+  if (!left) return { n: 0, thirsty: [], text: 'You watered here today, come back tomorrow' };
+  if (!drinkers.length) return { n: 0, thirsty: [], text: `${first}'s plants find their own water` };
+  if (!thirsty.length) return { n: 0, thirsty: [], text: `Nothing in ${first}'s garden looks thirsty right now` };
+  return { n: thirsty.length, thirsty, text: `Pick a thirsty plant to water (${thirsty.length} ${thirsty.length === 1 ? 'is' : 'are'} thirsty)` };
+}
+/** The always-visible line over the garden: the Water tool's state, so "it will not let me" is never a guess. */
+function _gsvWaterNote(f, c) {
+  const info = _gsvWaterInfo(f, c);
+  const n = _gsvEl('div', 'gsv-water-note ' + (info.n ? 'is-ok' : 'is-none'));
+  n.setAttribute('role', 'status');
+  n.innerHTML = icon('droplet', 'i-sm');
+  n.appendChild(_gsvEl('span', null, info.text));
+  return n;
+}
+/** Mark the plants a drink would help (they glow and pulse in Water mode; the rest dim). */
+function _gsvMarkCan(fig, info) {
+  if (!fig) return;
+  const can = new Set((info.thirsty || []).map(r => r[1] + ',' + r[2]));
+  for (const g of fig.querySelectorAll('.gd-plant')) g.classList.toggle('gsv-can', can.has(g.getAttribute('data-x') + ',' + g.getAttribute('data-y')));
+}
 function _gsvToolbar(f, c) {
   const bar = _gsvEl('div', 'gd-toolbar gsv-toolbar');
   const tools = _gsvEl('div', 'gd-tools'); tools.setAttribute('role', 'group'); tools.setAttribute('aria-label', 'What a click does');
-  const waterLeft = _gsvLeft(c, 'water');
-  const set = (mode) => { _gsv.mode = mode; const box = _gsv.root && _gsv.root.querySelector('.gsv-stagebox'); if (box) box.dataset.mode = mode; for (const b of tools.querySelectorAll('.gd-tool')) b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'); _gsvStatus(mode === 'water' ? (waterLeft ? 'Pick a plant to water: a drink from you helps it grow a little faster' : `You've watered here today. ${_gscFirst(f.id)}'s garden would love another visit tomorrow.`) : ''); };
+  const waterLeft = _gsvLeft(c, 'water'), winfo = _gsvWaterInfo(f, c);
+  const set = (mode) => { _gsv.mode = mode; const box = _gsv.root && _gsv.root.querySelector('.gsv-stagebox'); if (box) box.dataset.mode = mode; for (const b of tools.querySelectorAll('.gd-tool')) b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'); _gsvStatus(mode === 'water' ? winfo.text + (winfo.n ? ': a drink from you helps it grow a little faster' : '') : ''); };
   for (const [mode, label, ic] of [['look', 'Look', 'eye'], ['water', waterLeft ? 'Water' : 'Watered today', 'droplet']]) {
     const b = _gsvEl('button', 'gd-tool'); b.type = 'button'; b.dataset.mode = mode;
     b.innerHTML = icon(ic); b.appendChild(_gsvEl('span', null, label));
     b.setAttribute('aria-pressed', _gsv.mode === mode ? 'true' : 'false');
+    if (mode === 'water') b.setAttribute('data-tip', winfo.text);
     if (mode === 'water' && waterLeft) b.appendChild(_gsvEl('i', 'gd-tooln', String(waterLeft)));
     b.onclick = () => set(mode);
     tools.appendChild(b);
@@ -257,7 +286,7 @@ function _gsvStageBox(f, c) {
   try { tod = typeof _gdTod === 'function' ? _gdTod(_gscNow(), snap.season) : ''; } catch (e) { tod = ''; }
   const key = f.id + '|' + sig + '|' + tod;   // drawn again when it changes, or when your sky turns to dusk or night
   let fig = _gsv.stage.get(key);
-  if (fig) for (const g of fig.querySelectorAll('.gsv-hot, .gsv-watered')) g.classList.remove('gsv-hot', 'gsv-watered');
+  if (fig) for (const g of fig.querySelectorAll('.gsv-hot, .gsv-watered, .gsv-can')) g.classList.remove('gsv-hot', 'gsv-watered', 'gsv-can');
   if (!fig) {
     const holder = _gsvEl('div');
     const r = gardenRender(holder, snap, { readOnly: true, visitor: { name: gardenSocialName(f) }, size: 'm', crop: 'all', friend: f });   // integrate 2.18: f brings their pet (agent pets)
@@ -274,7 +303,9 @@ function _gsvStageBox(f, c) {
     const g = fig.querySelector(`.gd-plant[data-x="${a.x}"][data-y="${a.y}"]`);
     if (g) { g.classList.remove('is-thirsty'); g.classList.add('gsv-watered'); }
   }
+  _gsvMarkCan(fig, _gsvWaterInfo(f, c));
   box.appendChild(fig);
+  box.appendChild(_gsvWaterNote(f, c));
   const over = _gsvEl('div', 'gsv-over'); over.setAttribute('aria-hidden', 'true');
   box.appendChild(over);
   box.appendChild(_gsvEl('div', 'gd-status gsv-status'));
@@ -298,14 +329,14 @@ function _gsvBindStage(box, f, snap) {
     if (hot === g) return;
     if (hot) hot.classList.remove('gsv-hot');
     hot = g;
-    if (!g) { _gsvStatus(_gsv.mode === 'water' ? 'Pick a plant to water' : ''); return; }
+    if (!g) { const cc = gardenSocialFriendCached(f.id); _gsvStatus(_gsv.mode === 'water' && cc ? _gsvWaterInfo(f, cc).text : ''); return; }
     g.classList.add('gsv-hot');
     const x = +g.getAttribute('data-x'), y = +g.getAttribute('data-y');
     if (g.classList.contains('gd-plant')) {
       const r = _gsvRowAt(snap, x, y);
       if (!r) return _gsvStatus('');
-      const can = gsocWaterOk(r[0]);
-      _gsvStatus(_gsvRowLabel(r) + (_gsv.mode === 'water' ? (can ? ' · click to water' : ' · finds its own water') : ''));
+      const cc = gardenSocialFriendCached(f.id), can = gsocWaterOk(r[0]), left = cc ? _gsvLeft(cc, 'water') : 1;
+      _gsvStatus(_gsvRowLabel(r) + (_gsv.mode === 'water' ? (!can ? ' · finds its own water' : !left ? ' · you watered here today' : g.classList.contains('gsv-can') ? ' · click to water' : (r[5] & 1) ? ' · you watered it today' : ' · not thirsty, but you can still water it') : ''));
     } else {
       const d = snap.decor.find(q => q[1] === x && q[2] === y), def = d ? gardenDecor(d[0]) : null;
       _gsvStatus(def ? def.name : '');
@@ -346,16 +377,24 @@ function _gsvPlantCard(f, r, g) {
     }
   }, { align: 'center' });
 }
+/** A plant that cannot be watered says why, in the toast and in the line over the garden. */
+function _gsvWhy(msg) {
+  toast(msg, { icon: 'droplet', timeout: 3600 });
+  _gsvStatus(msg);
+  const n = _gsv.root && _gsv.root.querySelector('.gsv-water-note');
+  if (n) { n.classList.remove('is-nudge'); void n.offsetWidth; n.classList.add('is-nudge'); }
+}
 async function _gsvWater(f, r, g) {
-  if (!gsocWaterOk(r[0])) { toast(gardenPlant(r[0]) && gardenPlant(r[0]).special === 'heart' ? 'The old oak finds its own water: its roots go deep.' : 'It lives in the pond: never thirsty.', { icon: 'droplet', timeout: 3200 }); return; }
+  if (!gsocWaterOk(r[0])) { _gsvWhy(gardenPlant(r[0]) && gardenPlant(r[0]).special === 'heart' ? 'The old oak finds its own water: its roots go deep, so it never needs yours.' : 'This one lives in the pond and is never thirsty.'); return; }
   const c = gardenSocialFriendCached(f.id);
-  if (c && !_gsvLeft(c, 'water')) { toast(`One drink a day for ${_gscFirst(f.id)}'s garden: come back tomorrow.`, { icon: 'droplet', timeout: 3200 }); return; }
+  if (c && !_gsvLeft(c, 'water')) { _gsvWhy('You watered here today, come back tomorrow.'); return; }
+  if (g && g.classList && g.classList.contains('gsv-watered')) { _gsvWhy('You already watered this one today.'); return; }
   const over = _gsv.root && _gsv.root.querySelector('.gsv-over');
   const at = _gsvAt(r[1], r[2], (gardenPlant(r[0]) || {}).fp);
   _gsvWalk(over, at.l - 3.4, at.t);
   const res = await gardenSocialAct(f.id, 'water', { p: r[0], x: r[1], y: r[2] });
   if (!res) return;
-  if (g && g.classList) { g.classList.remove('is-thirsty'); g.classList.add('gsv-watered'); }
+  if (g && g.classList) { g.classList.remove('is-thirsty', 'gsv-can'); g.classList.add('gsv-watered'); }
   _gsvFx(over, 'water', at);
   _gsvRefreshSide(f);
 }
@@ -432,6 +471,8 @@ function _gsvRefreshSide(f) {
     const c = gardenSocialFriendCached(f.id); if (!c || !c.garden) return;
     const side = _gsv.root.querySelector('.gsv-side'), bar = _gsv.root.querySelector('.gsv-toolbar');
     if (bar) bar.replaceWith(_gsvToolbar(f, c));
+    const note = _gsv.root.querySelector('.gsv-water-note'); if (note) note.replaceWith(_gsvWaterNote(f, c));
+    _gsvMarkCan(_gsv.root.querySelector('.gsv-stagebox > :first-child'), _gsvWaterInfo(f, c));
     if (side) { const today = side.querySelector('.gsv-todo'); if (today) today.replaceWith(_gsvToday(f, c)); const book = side.querySelector('.gsv-bookcard'); if (book && !book.contains(document.activeElement)) book.replaceWith(_gsvBook(f, c)); }
     const v = _gsv.root.querySelector('.gsv-visited'); if (v) v.hidden = !(c.used && c.used.visit);
   });

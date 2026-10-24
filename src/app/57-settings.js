@@ -391,9 +391,9 @@ function _settingsGroupFromView(v) {
   const id = m ? m[1] : SETTINGS_DEFAULT_GROUP;
   return SETTINGS_GROUPS.find(g => g.id === id) || SETTINGS_GROUPS.find(g => g.id === SETTINGS_DEFAULT_GROUP) || SETTINGS_GROUPS[0];
 }
-// Pages (the registry, 14-shell.js): Settings, the animation gallery and Diagnostics; Profile (settings:me) is
-// listed under Life > You (15-nav-life.js). The Settings page owns every other settings:<group>.
-const _SET_OWN_PAGES = new Set(['settings:me', 'settings:animations', 'settings:diagnostics']);
+// Pages (the registry, 14-shell.js): Settings, the animation gallery and Diagnostics. Profile is its own Life page since 2.19.4
+// (view 'profile', 97-profile-2ui.js); Settings > Profile (settings:me) is a short link to it plus your name.
+const _SET_OWN_PAGES = new Set(['settings:animations', 'settings:diagnostics']);
 registerPage({ id: 'animations', view: 'settings:animations', match: v => v === 'settings:animations', label: 'Animation gallery', icon: 'film', area: 'system', order: 60, family: 'settings',
   desc: 'Every scene, reward and recap, to watch and choose', keywords: 'animations scenes gallery library rewards recaps motion' });
 registerPage({ id: 'diagnostics', view: 'settings:diagnostics', match: v => v === 'settings:diagnostics', label: 'Diagnostics', icon: 'stethoscope', area: 'system', order: 70, family: 'settings',

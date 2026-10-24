@@ -147,7 +147,13 @@
     if (vh && show && H.el.parentElement !== vh) vh.append(H.el);
     // The shared page header draws these actions when it can (65-finance-view.js registerHeaderActions); else this row.
     H.el.hidden = !show || typeof window.headerActionsFor === 'function';
-    // Freshness, as the page subtitle ("Finances  Data to Fri 2 Oct · 234 transactions").
+    paintSub();
+    paintSyncBtn();
+  }
+  // The page subtitle: freshness ("Data to Fri 2 Oct · 234 transactions · Imported 0 new, 12 min ago"). The result of the last
+  // import or update is a quiet note on this line (R.quiet, set by paintUpdate), not a banner.
+  function paintSub() {
+    if (!R.mounted) return;
     const sub = document.getElementById('view-subtitle');
     if (sub) {
       sub.textContent = '';
@@ -164,10 +170,10 @@
         sub.append(h('span', { class: 'fv-fresh' + (line && line.away ? ' is-away' : days > 4 ? ' stale' : '') + (fresh ? ' is-new' : ''), title: tip },
           h('i', { class: 'fv-dot', 'aria-hidden': 'true' }),
           (via ? via + ' · data' : 'Data') + ` to ${validIso(a.latest_transaction) ? fDayW(dnum(a.latest_transaction)) : '—'} · ${nf0.format(R.model.tx.length)} transactions`
-          + (R.model.accts.length > 1 ? ` · ${R.model.accts.length} accounts` : '')));
+          + (R.model.accts.length > 1 ? ` · ${R.model.accts.length} accounts` : '')
+          + (R.quiet ? ` · ${R.quiet}` : '')));
       }
     }
-    paintSyncBtn();
   }
   /**
    * "Finance from Home laptop · updated 5 min ago" when another device reads the bank, else null:
@@ -314,7 +320,14 @@
     P.append(ic(iconName), h('div', { class: 'fv-callout-b' }, h('b', { text: title }), rest));
     if (closable) P.append(h('button', { type: 'button', class: 'btn-icon btn-sm fv-callout-x', 'aria-label': 'Dismiss', onclick: () => { R.dismissed = closable; P.hidden = true; } }, ic('x')));
   }
+  // A routine result (an import or update that went well) is a quiet note on the page's status line; a callout is only for
+  // what is happening now or needs you (progress, a problem, a warning).
   function paintUpdate() {
+    R.quiet = '';
+    paintUpdateBody();
+    paintSub();
+  }
+  function paintUpdateBody() {
     const E = R.els; paintSyncBtn(); if (!E.progress) return;
     const meta = (R.data && R.data.meta) || {};
     const job = R.job || meta.job;
@@ -351,7 +364,8 @@
     if (R.lastImport && (!meta.lastUpdate || !meta.lastUpdate.at || R.lastImport.at > meta.lastUpdate.at) && !(job && job.finishedAt > R.lastImport.at)) {
       const L = R.lastImport;
       if (R.dismissed === 'imp:' + L.at || Date.now() - Date.parse(L.at) > 30 * 60e3) { P.hidden = true; return; }
-      callout(L.errs.length ? 'warn' : 'ok', L.errs.length ? 'triangle-alert' : 'circle-check', `Imported ${nf0.format(L.added)} new transaction${L.added === 1 ? '' : 's'}.`,
+      if (!L.errs.length) { R.quiet = `Imported ${nf0.format(L.added)} new${L.rows - L.added > 0 ? `, ${nf0.format(L.rows - L.added)} already here` : ''} · ${agoText(L.at)}`; P.hidden = true; return; }
+      callout('warn', 'triangle-alert', `Imported ${nf0.format(L.added)} new transaction${L.added === 1 ? '' : 's'}.`,
         [h('span', { class: 'mute', text: L.rows - L.added > 0 ? ` ${nf0.format(L.rows - L.added)} were already there.` : '' }), L.errs.length ? h('ul', { class: 'fv-warn-list' }, L.errs.map(e => h('li', { text: e }))) : null], 'imp:' + L.at);
       return;
     }
@@ -365,7 +379,8 @@
     const imported = r.imported != null ? `Imported ${nf0.format(r.imported)} new transaction${r.imported === 1 ? '' : 's'}` : '';
     const upto = validIso(r.latest) ? `data up to ${fDayW(dnum(r.latest))}` : '';
     const warns = (r.warnings || []).length ? h('ul', { class: 'fv-warn-list' }, r.warnings.map(w => h('li', { text: w }))) : null;
-    if (last.state === 'ok') callout('ok', 'circle-check', (imported || 'Updated') + (upto ? ', ' + upto : '') + '.', [h('span', { class: 'mute', text: when }), warns], key);
+    if (last.state === 'ok' && !warns) { R.quiet = (r.imported != null ? `Imported ${nf0.format(r.imported)} new` : 'Updated') + (last.at ? ` · ${agoText(last.at)}` : ''); P.hidden = true; return; }
+    if (last.state === 'ok') callout('warn', 'triangle-alert', (imported || 'Updated') + (upto ? ', ' + upto : '') + '.', [h('span', { class: 'mute', text: when }), warns], key);
     else if (last.state === 'warning') callout('warn', 'triangle-alert', "Couldn't fetch from your bank.", [' ' + (last.error || ''), imported ? h('div', { text: `${imported} from CSVs in the inbox folder${upto ? ', ' + upto : ''}.` }) : null, h('span', { class: 'mute', text: when }), warns], key);
     else callout('danger', 'circle-x', 'Update failed.', [' ' + (last.error || 'Unknown error'), h('span', { class: 'mute', text: when }), warns], key);
   }

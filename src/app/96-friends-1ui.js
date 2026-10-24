@@ -472,7 +472,7 @@ function _frPresenceSelect(d) {
 }
 /** Settings > Profile, at "Your name" (97-profile-2ui.js). */
 function _frOpenProfileName() {
-  setView('settings:me');
+  setView('profile');
   setTimeout(() => { const r = document.querySelector('[data-setting-label="Your name"]'); if (r) { r.scrollIntoView({ block: 'center' }); const i = r.querySelector('input'); if (i) i.focus({ preventScroll: true }); } }, 80);
 }
 

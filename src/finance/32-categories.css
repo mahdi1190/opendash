@@ -75,3 +75,9 @@
   .fv-uncat-row.c1-uncat-row { grid-template-columns: 28px minmax(0, 1fr) auto; }
   .fv-uncat-row.c1-uncat-row .fv-catsel { grid-column: 2 / -1; }
 }
+
+/* 2.19.4: the category focus card sits beside the treemap (8 + 4) instead of alone in a row. */
+@container fvbody (min-width: 1001px) {
+  .fv-grid > .c1-focus { grid-column: span 4; }
+  .fv-grid > .c1-tree-card:has(+ .c1-focus:not([hidden])) { grid-column: span 8; }
+}

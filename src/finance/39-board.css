@@ -288,5 +288,23 @@ html.anim-paused .fvb-streak .i { animation-play-state: paused; }
 [data-motion="reduced"] .fvb-stamp, [data-motion="reduced"] .fvb-minibars i { animation: none; }
 @media (prefers-reduced-motion: reduce) { .fvb-stamp, .fvb-minibars i { animation: none; } }
 
-/* 2.19: a widget is as tall as its own content; a short card beside a tall one no longer stretches into an empty box. */
-.fvb-w { align-self: start; }
+/* 2.19.4: cards in a row are one height (the lists are capped to the same number of rows, so nothing is left empty). */
+.fvb-w { align-self: stretch; }
+
+/* ---------- 2.19.4: one calm row, even cards ---------- */
+.fvb-top { min-height: 34px; }
+.fvb-period button { height: 26px; }
+.fvb-period .fvb-range { gap: 5px; cursor: default; }
+.fvb-period .i { width: 13px; height: 13px; }
+.fvb-filters { gap: 6px; height: 28px; }
+.fvb-filters .i { width: 14px; height: 14px; color: var(--fg-muted); }
+.fvb-filters .i:last-child { width: 12px; height: 12px; opacity: 0.7; }
+.fvb-filters.has { background: var(--accent-soft); border-color: var(--accent-soft-2); color: var(--accent-ink); }
+.fvb-filters.has .i { color: var(--accent-ink); }
+.fvb-chips + .fvb-chips { padding-left: 0; border-left: 0; }
+.fvb-eye.on .i { color: var(--accent-ink); }
+/* Rows of cards share a height and flat cards keep the page quiet; the two lists in a pair have the same row height. */
+.fvb-w { box-shadow: none; }
+.fvb-t-budgets .fv-row, .fvb-t-bills .fv-row { min-height: 52px; }
+.fvb-t-budgets .fvb-more, .fvb-t-bills .fvb-more { margin-top: auto; padding-top: var(--space-2); }
+.fvb-w .fv-card-b { flex: 1 1 auto; }

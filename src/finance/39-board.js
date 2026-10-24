@@ -71,14 +71,13 @@
   /* ---------- tools: the layout menu, Customise, Hide amounts ---------- */
   function bdPaintTools(X) {
     const E = BDR.el; E.tools.innerHTML = '';
-    const L = X.L;
-    const name = L.preset === 'custom' ? 'Your own' : (BD_PRESET_INFO[L.preset] || BD_PRESET_INFO.simple).label;
+    // 2.19.4: Hide amounts, the layout presets, plain words, the everyday strip, Customise and Money brief are all in More.
+    // While amounts are hidden a quiet chip says so (one click shows them again).
     E.tools.append(
-      h('button', { type: 'button', class: 'btn btn-ghost btn-sm fvb-layout', 'aria-haspopup': 'menu', title: 'Presets, plain words and the everyday strip', onclick: e => bdLayoutMenu(e.currentTarget) },
-        ic('layout-template'), h('span', { text: name }), ic('chevron-down')),
-      ...(BDR.editing ? [h('button', { type: 'button', class: 'btn btn-secondary btn-sm fvb-cust', 'aria-pressed': 'true', onclick: () => bdEdit(false) }, ic('check'), h('span', { text: 'Done' }))] : []),   // Customise… is in the layout menu
-      h('button', { type: 'button', class: 'btn-icon btn-sm fvb-eye' + (bdHidden() ? ' on' : ''), 'aria-pressed': bdHidden() ? 'true' : 'false',
-        'aria-label': bdHidden() ? 'Show amounts' : 'Hide amounts', title: bdHidden() ? 'Show amounts' : 'Hide amounts (hover one to see it; Home follows)', onclick: () => bdToggleAmounts() }, ic(bdHidden() ? 'eye-off' : 'eye')));
+      ...(bdHidden() ? [h('button', { type: 'button', class: 'btn btn-ghost btn-sm fvb-eye on', 'aria-pressed': 'true', title: 'Show amounts', onclick: () => bdToggleAmounts() }, ic('eye-off'), h('span', { text: 'Amounts hidden' }))] : []),
+      ...(BDR.editing ? [h('button', { type: 'button', class: 'btn btn-secondary btn-sm fvb-cust', 'aria-pressed': 'true', onclick: () => bdEdit(false) }, ic('check'), h('span', { text: 'Done' }))] : []),   // Customise… is in the More menu
+      h('button', { type: 'button', class: 'btn btn-ghost btn-sm fvb-layout', 'aria-haspopup': 'menu', title: 'Layout, plain words, hide amounts and the Money brief', onclick: e => bdLayoutMenu(e.currentTarget) },
+        ic('ellipsis'), h('span', { text: 'More' })));
   }
   function bdToggleAmounts() {
     if (typeof homeSetAmountsHidden !== 'function') return;
@@ -94,14 +93,16 @@
       next.strip = L.strip;
       boardSave(next, `${BD_PRESET_INFO[name].label} layout`, { icon: BD_PRESET_INFO[name].icon });
     };
-    const items = [{ heading: 'Start from' }];
+    const items = [{ label: 'Money brief', icon: 'sparkles', hint: 'in three sentences', title: 'Your money in three sentences, the days to payday and what is worth a look', run: () => setSection('overview') }, 'sep', { heading: 'Start from' }];
     for (const k of ['simple', 'detailed', 'scratch']) items.push({ label: BD_PRESET_INFO[k].label, icon: BD_PRESET_INFO[k].icon, title: BD_PRESET_INFO[k].desc, checked: L.preset === k, run: () => pick(k) });
     items.push('sep',
       { label: 'Plain words, big numbers', icon: 'type', checked: L.style === 'simple', title: 'Short sentences and big numbers instead of charts', run: () => boardSave(Object.assign({}, L, { style: L.style === 'simple' ? 'detailed' : 'simple' }), null, { quiet: true }) },
       { label: 'Everyday strip', icon: 'layout-list', checked: L.strip, title: 'Spent today, safe to spend, the next bill and unusual this week', run: () => boardSave(Object.assign({}, L, { strip: !L.strip }), null, { quiet: true }) },
       'sep',
       { label: 'Add a widget…', icon: 'circle-plus', run: () => bdGallery() },
-      { label: BDR.editing ? 'Done customising' : 'Customise…', icon: 'pencil', run: () => bdEdit(!BDR.editing) });
+      { label: BDR.editing ? 'Done customising' : 'Customise…', icon: 'pencil', run: () => bdEdit(!BDR.editing) },
+      'sep',
+      { label: 'Hide amounts', icon: bdHidden() ? 'eye-off' : 'eye', checked: bdHidden(), title: 'Blur every amount (hover one to see it; Home follows)', run: () => bdToggleAmounts() });
     if (typeof window.openMenu === 'function') window.openMenu(anchor, items, { align: 'end' });
   }
 
@@ -109,34 +110,62 @@
   const BD_QUICK = [['TW', 'This week'], ['TM', 'This month'], ['LM', 'Last month'], ['3M', '3 months'], ['YTD', 'This year']];
   function bdPaintQuick(X) {
     const E = BDR.el, M = X.M; const box = E.quick; box.innerHTML = '';
-    const dates = h('div', { class: 'fvb-chips', role: 'group', 'aria-label': 'Dates' });
+    // The period: one segmented control (a custom range from the timeline or a trip shows as an extra, lit, option).
+    const dates = h('div', { class: 'fv-seg fvb-period', role: 'radiogroup', 'aria-label': 'Dates' });
     for (const [p, l] of BD_QUICK) {
       const on2 = F.preset === p && !F.trip;
-      dates.append(h('button', { type: 'button', class: 'fv-chip' + (on2 ? ' on' : ''), 'aria-pressed': String(on2), 'aria-current': on2 ? 'true' : null, onclick: () => { if (!on2) setPreset(p); } }, l));
+      dates.append(h('button', { type: 'button', role: 'radio', 'aria-checked': String(on2), class: on2 ? 'on' : '', onclick: () => { if (!on2) setPreset(p); } }, l));
     }
     const known = BD_QUICK.some(q => q[0] === F.preset) && !F.trip;
-    if (!known && !F.trip) dates.append(h('span', { class: 'fv-chip on fvb-range', 'aria-current': 'true' }, ic('calendar-range'), fRange(X.ctx.rg.from, X.ctx.rg.to)));
+    if (!known && !F.trip) dates.append(h('button', { type: 'button', role: 'radio', 'aria-checked': 'true', class: 'on fvb-range', tabindex: '-1' }, ic('calendar-range'), fRange(X.ctx.rg.from, X.ctx.rg.to)));
     box.append(dates);
-    const menus = h('div', { class: 'fvb-chips', role: 'group', 'aria-label': 'Filters' });
-    // A trip: its dates as the range.
+    // ONE Filters button (trip, country, category); what is set shows beside it as chips, each with its x.
+    const nAct = (F.trip ? 1 : 0) + (F.country ? 1 : 0) + F.cats.length + (F.merchant ? 1 : 0) + F.accts.length + (F.q ? 1 : 0) + (F.amt ? 1 : 0);
+    box.append(h('button', { type: 'button', class: 'fv-btn fvb-filters' + (nAct ? ' has' : ''), 'aria-haspopup': 'dialog', title: 'Trip, country and category', onclick: e => bdFilterPop(e.currentTarget, X) },
+      ic('list-filter'), h('span', { text: 'Filters' }), nAct ? h('span', { class: 'fv-badge', text: String(nAct) }) : null, ic('chevron-down')));
+    const menus = h('div', { class: 'fvb-chips', role: 'group', 'aria-label': 'Active filters' });
     const trips = PL.trips(M).slice().reverse();
     const tr = F.trip ? trips.find(t => t.id === F.trip) : null;
     if (tr) menus.append(bdPill(h('span', { class: 'fvb-pflag', html: PL.flag(tr.cc) }), tr.label, () => setTrip(null), 'Back to the dates before the trip'));
-    else if (trips.length) menus.append(h('button', { type: 'button', class: 'fv-chip fvb-menu', 'aria-haspopup': 'menu', onclick: e => bdTripMenu(e.currentTarget, trips) }, ic('plane'), 'Trip', ic('chevron-down')));
-    // A country.
     if (F.country) menus.append(bdPill(h('span', { class: 'fvb-pflag', html: PL.flag(F.country === 'HOME' ? '' : F.country) }), PL.label(F.country === 'HOME' ? '' : F.country), () => setCountry(''), 'Everywhere again'));
-    else menus.append(h('button', { type: 'button', class: 'fv-chip fvb-menu', 'aria-haspopup': 'menu', onclick: e => bdCountryMenu(e.currentTarget, X) }, ic('globe'), 'Country', ic('chevron-down')));
-    // A category.
     if (F.cats.length) menus.append(bdPill(h('i', { class: 'fv-sw', style: { background: catColor(F.cats[0]) } }), F.cats.length === 1 ? F.cats[0] : `${F.cats.length} categories`, () => setCats([]), 'All categories again'));
-    else menus.append(h('button', { type: 'button', class: 'fv-chip fvb-menu', 'aria-haspopup': 'menu', onclick: e => bdCatMenu(e.currentTarget, X) }, ic('layout-grid'), 'Category', ic('chevron-down')));
     // Filters set elsewhere (a merchant, accounts, a search, an amount) show here too, each with its ×.
     if (F.merchant) menus.append(bdPill(ic('building-2'), F.merchant, () => setMerchant('')));
     if (F.accts.length) menus.append(bdPill(ic('landmark'), F.accts.length === 1 ? (M.acctNames[F.accts[0]] || 'Account') : `${F.accts.length} accounts`, () => { F.accts = []; changed(); }));
     if (F.q) menus.append(bdPill(ic('search'), `“${F.q}”`, () => { F.q = ''; changed(); }));
     if (F.amt) menus.append(bdPill(ic('coins'), `${gbp(F.amt[0])} – ${F.amt[1] >= M.maxAmt - 0.01 ? 'any' : gbp(F.amt[1])}`, () => { F.amt = null; changed(); }));
-    const any = F.cats.length || F.accts.length || F.merchant || F.q || F.amt || F.country || F.trip;
-    if (any) menus.append(h('button', { type: 'button', class: 'fv-link fvb-clear', text: 'Clear', onclick: () => { const t2 = F.trip; F.cats = []; F.accts = []; F.merchant = ''; F.q = ''; F.amt = null; F.country = ''; if (t2) setTrip(null); else changed(); } }));
-    box.append(menus);
+    if (nAct > 1) menus.append(h('button', { type: 'button', class: 'fv-link fvb-clear', text: 'Clear', onclick: () => { const t2 = F.trip; F.cats = []; F.accts = []; F.merchant = ''; F.q = ''; F.amt = null; F.country = ''; if (t2) setTrip(null); else changed(); } }));
+    if (menus.childElementCount) box.append(menus);
+  }
+  /** The Filters popover: a trip, a country and a category, as three plain lists. */
+  function bdFilterPop(anchor, X) {
+    if (typeof window.openPopover !== 'function') return;
+    const M = X.M;
+    window.openPopover(anchor, (el, close) => {
+      el.classList.add('fvb-pop');
+      const pick = (label, none, groups, cur, go) => {
+        const sel = h('select', { class: 'input input-sm', 'aria-label': label });
+        sel.append(h('option', { value: '', text: none }));
+        for (const [g, items] of groups) {
+          if (!items.length) continue;
+          const par = h('optgroup', { label: g });
+          for (const [v, l] of items) par.append(h('option', { value: String(v), text: l }));
+          sel.append(par);
+        }
+        sel.value = cur; if (sel.value !== cur) sel.value = '';
+        sel.onchange = () => { const v = sel.value; close(); go(v); };
+        return h('label', { class: 'fvb-pop-f' }, h('span', { text: label }), sel);
+      };
+      el.append(h('div', { class: 'fvb-pop-h' }, ic('list-filter'), h('b', { text: 'Filters' })),
+        h('p', { class: 'fvb-pop-d', text: 'They apply to every card on this page and to the other tabs.' }));
+      const trips = PL.trips(M).slice().reverse().slice(0, 15);
+      if (trips.length) el.append(pick('Trip', 'Any trip', [['Latest first', trips.map(t => [t.id, t.label + ' · ' + fRange(dnum(t.from), dnum(t.to || t.from))])]], F.trip || '', v => setTrip(v ? trips.find(t => t.id === v) : null)));
+      const list = PL.agg(ccRows(X.ctx)); const all = PL.agg(M.tx.filter(t => t.kind === 'spend')); const inRange = new Set(list.map(x => x.cc));
+      el.append(pick('Country', 'Everywhere', [['In these dates', list.slice(0, 14).map(x => [x.cc, x.label])], ['Other dates', all.filter(x => !inRange.has(x.cc)).slice(0, 10).map(x => [x.cc, x.label])]], F.country || '', v => setCountry(v)));
+      const tot = X.ctx.catTotals(X.ctx.spendNoCat());
+      const cats = Object.entries(tot).filter(e => e[1] > 0.004).sort((a, b) => b[1] - a[1]).slice(0, 24);
+      el.append(pick('Category', F.cats.length > 1 ? `${F.cats.length} categories` : 'All categories', [['In these dates', cats.map(([c, v]) => [c, bdHidden() ? c : `${c} · ${gbp(v)}`])]], F.cats.length === 1 ? F.cats[0] : '', v => { if (v) toggleCat(v, true); else setCats([]); }));
+    }, { align: 'start', width: 320 });
   }
   function bdPill(lead, label, x, title) {
     return h('span', { class: 'fv-pill sel fvb-pill' }, lead, h('span', { class: 'fv-pill-t', text: label }),

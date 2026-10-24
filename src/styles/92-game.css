@@ -235,3 +235,8 @@ body:has(#ap-focus) .gm-timer { bottom: 76px; }
 .gm-layout > .pg-side .gm-grid, .gm-layout > .pg-side .aw-next-grid { grid-template-columns: minmax(0, 1fr); }
 .gm-grid-list > .pg-list-b { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-2); }
 .gm-grid-list .pg-list-more { display: flex; justify-content: center; padding-top: var(--space-3); }
+
+/* 2.19.4: level, streak and XP read as ONE compact chip (thin dividers, tighter gaps) */
+.gm-chip { gap: var(--space-1); height: 26px; padding-right: var(--space-2-5, 10px); }
+.gm-chip .gm-flame, .gm-chip .gm-chip-xp { padding-left: var(--space-1-5); border-left: 1px solid var(--border-subtle); line-height: 1; }
+.gm-chip .gm-chip-xp { font-size: var(--text-2xs); }

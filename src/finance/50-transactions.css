@@ -109,3 +109,13 @@
   .fv-txx dd > .fsym-cat { display: none; }
   .fv-txx-side { border-left: 0; padding-left: 0; border-top: 1px solid var(--border-subtle); padding-top: var(--space-3); }
 }
+
+/* ---------- 2.19.4: the title and the tools are one row ---------- */
+.fv-tx-card > .fv-card-h { align-items: center; gap: var(--space-2) var(--space-4); padding-bottom: var(--space-3); margin-bottom: 0; border-bottom: 1px solid var(--border-subtle); }
+.fv-tx-card > .fv-card-h .fv-card-t { flex: 0 1 auto; min-width: 190px; }
+.fv-tx-card > .fv-card-h .fv-tx-tools { flex: 1 1 560px; padding: 0; border-bottom: 0; justify-content: flex-end; }
+.fv-tx-card > .fv-card-h .fv-tx-ctl { flex: 1 1 auto; justify-content: flex-end; }
+.fv-tx-card > .fv-card-h .fv-tx-search { flex: 0 1 260px; }
+.fv-tx-card .fv-tx-count { display: none; }
+.fv-tx-card > .fv-card-h .fv-tx-tools { flex: 1 1 auto; }
+.fv-tx-card > .fv-card-h .fv-tx-search { flex: 0 1 280px; min-width: 170px; }

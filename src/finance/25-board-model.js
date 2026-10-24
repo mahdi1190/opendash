@@ -55,11 +55,12 @@
     { t: 'budgets', title: 'Budgets', icon: 'piggy-bank', group: 'plan', size: 'm', sizes: ['s', 'm', 'l', 'xl'], now: true,
       desc: 'Each monthly budget: spent, left and whether it is on pace for the month.',
       opts: [{ k: 'show', label: 'Show', choices: [['all', 'All budgets'], ['watch', 'Only ones to watch']], def: 'all' },
-        { k: 'top', label: 'How many', choices: [[4, '4'], [8, '8'], [20, 'All']], def: 8 }] },
+        { k: 'top', label: 'How many', choices: [[4, '4'], [5, '5'], [8, '8'], [20, 'All']], def: 5 }] },
     { t: 'bills', title: 'Bills and subscriptions', icon: 'repeat', group: 'plan', size: 'm', sizes: ['s', 'm', 'l', 'xl'], now: true,
       desc: 'What is due next and what you pay every month, with cancel reminders you can note on any subscription.',
       opts: [{ k: 'days', label: 'Coming up in', choices: [[7, '7 days'], [14, '14 days'], [30, '30 days'], [60, '60 days']], def: 30 },
-        { k: 'kind', label: 'Show', choices: [['all', 'Everything'], ['bills', 'Bills'], ['subs', 'Subscriptions']], def: 'all' }] },
+        { k: 'kind', label: 'Show', choices: [['all', 'Everything'], ['bills', 'Bills'], ['subs', 'Subscriptions']], def: 'all' },
+        { k: 'top', label: 'How many', choices: [[4, '4'], [5, '5'], [8, '8'], [12, '12']], def: 5 }] },
     { t: 'balances', title: 'Balances and pots', icon: 'landmark', group: 'accounts', size: 's', sizes: ['s', 'm', 'l'], now: true,
       desc: 'Every account and pot with its latest balance, and the total.',
       opts: [{ k: 'pots', label: 'Pots', choices: [['show', 'Show'], ['hide', 'Hide']], def: 'show' },
@@ -136,7 +137,7 @@
   // Start from scratch: an empty board and the gallery.
   const BD_PRESETS = {
     simple: () => [
-      ['safe', 'm'], ['vsmonth', 'm', { chart: 'off' }], ['budgets', 'm', { top: 4 }], ['bills', 'm', { days: 14 }], ['recent', 'xl', { n: 5 }],
+      ['safe', 'm'], ['vsmonth', 'm', { chart: 'off' }], ['budgets', 'm', { top: 4 }], ['bills', 'm', { days: 14, top: 4 }], ['recent', 'xl', { n: 5 }],
     ],
     detailed: () => [
       ['safe', 's'], ['vsmonth', 'm'], ['payday', 's'],

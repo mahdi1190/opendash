@@ -9,10 +9,10 @@
     S.vcWrap = h('div', { class: 'fv-vc-wrap' }, S.vc);
     g.append(S.vcWrap);
     S.vcEls = new Map(); S.vcFirst = true;
-    S.race = card(g, { title: 'Leaderboard', span: 7, chart: true, height: 300, cls: 'fv-race-card' });
+    S.race = card(g, { title: 'Leaderboard', span: 8, chart: true, height: 300, cls: 'fv-race-card' });
     S.raceSeg = seg([['spend', 'Spend'], ['visits', 'Visits']], R.raceMetric || 'spend', v => { R.raceMetric = v; S.raceSeg.set(v); raceChart(S.race, R.ctx, { metric: true }); }, 'Race by');
     S.race.tools.append(S.raceSeg.el);
-    S.bub = card(g, { title: 'How often vs how much', span: 5, md: 12, chart: true, height: 360 });
+    S.bub = card(g, { title: 'How often vs how much', span: 4, md: 12, chart: true, height: 360 });
     S.list = card(g, { title: 'All merchants', span: 12 });
   };
   UPDATE.merchants = ctx => {

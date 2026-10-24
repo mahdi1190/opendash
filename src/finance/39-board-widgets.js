@@ -210,7 +210,7 @@
       box.append(h('div', { class: 'fvb-budhead' }, amt(gbp(totS), 'b'), h('span', { class: 'mute' }, ' of ', amt(gbp(totB)), ' budgeted · '), amt(gbp(Math.max(0, totB - totS))), h('span', { class: 'mute', text: ' left' })));
       if (!list.length) { box.append(h('p', { class: 'fvb-note good', text: 'Every budget is on pace. Nothing to watch.' })); return; }
       const ul = h('ul', { class: 'fv-list' });
-      for (const x of list.slice(0, Number(bwOpt(w, 'top')) || 8)) {
+      for (const x of list.slice(0, Number(bwOpt(w, 'top')) || 5)) {
         const frac = clamp(x.s / x.b, 0, 1.2);
         ul.append(h('li', null, h('button', { type: 'button', class: 'fv-row fvb-bud tone-' + x.look.tone, onclick: () => setSection('budgets'), title: x.look.l },
           C1.catIconEl(x.c, { size: 'sm' }),
@@ -220,6 +220,7 @@
           h('span', { class: 'fv-cc-v' }, amt(gbp(x.s), 'fv-row-v'), h('small', null, 'of ', amt(gbp(x.b)))))));
       }
       box.append(ul);
+      if (!cd.more) cd.more = bdMore(cd, list.length > ul.childElementCount ? `All ${list.length} budgets` : 'All budgets', () => setSection('budgets'));
     },
   };
 
@@ -270,8 +271,11 @@
   BWR.bills = {
     update(cd, w, X) {
       const M = X.M; const box = bdBox(cd);
-      const days = Number(bwOpt(w, 'days')) || 30, kind = bwOpt(w, 'kind');
-      const list = bdBills(M, days, kind);
+      const top = Number(bwOpt(w, 'top')) || 5, kind = bwOpt(w, 'kind');
+      let days = Number(bwOpt(w, 'days')) || 30;
+      let list = bdBills(M, days, kind);
+      // Fewer due than rows: look further ahead (30, then 60 days) so the card is not half empty.
+      for (const d of [30, 60]) if (list.length < top && d > days) { days = d; list = bdBills(M, days, kind); }
       const recs = M.recurring.filter(r => r.active && !MBM.NOT_BILLS.includes(r.cat) && (kind === 'all' || (kind === 'bills' ? bdIsBill(r.cat) : !bdIsBill(r.cat))));
       const monthly = sum(recs, r => r.monthly);
       cd.setSub(`Next ${days} days · `);
@@ -281,7 +285,7 @@
       box.append(h('div', { class: 'fvb-budhead' }, amt(gbp(total), 'b'), h('span', { class: 'mute', text: ` in ${list.length} payment${list.length === 1 ? '' : 's'}` })));
       const ul = h('ul', { class: 'fv-list' });
       const rerender = () => BWR.bills.update(cd, w, X);
-      for (const b of list.slice(0, X.size(w) === 's' ? 5 : 9)) {
+      for (const b of list.slice(0, top)) {
         const note = bdNote(b.m);
         const soon = b.n - M.anchor <= 2;
         const sub = [dayWord(b.n, M.anchor), b.freq].filter(Boolean);

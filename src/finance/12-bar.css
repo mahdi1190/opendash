@@ -175,3 +175,21 @@
 .fv-esc-hint { display: none; font: 500 10.5px/1 var(--font-sans); color: var(--fg-subtle); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; padding: 2px 5px; }
 .fv-pills.has-sel .fv-esc-hint { display: inline-block; }
 @keyframes fv-chip-in { from { opacity: 0; transform: scale(0.9); } }
+
+/* ---------- 2.19.4: one control row (the section chooser, the period, the range, Filters) ---------- */
+.fv-bar { min-height: 36px; }
+.fv-bar .fv-tabs { flex: none; margin: 0; border-bottom: 0; padding-right: var(--space-3); border-right: 1px solid var(--border-subtle); }
+.fv-bar .fv-tab { height: 30px; }
+.fv-bar .fv-tabs[hidden] { display: none; }
+.fv-back-board[hidden] { display: none; }
+.fv-back-board { padding-left: var(--space-2); }
+.fv-back-board .i { width: 14px; height: 14px; }
+.fv-more-btn .i:last-child { width: 12px; height: 12px; opacity: 0.7; transition: transform var(--fv-fast) var(--fv-ease); }
+.fv-more-btn.on .i:last-child { transform: rotate(180deg); }
+.fv-more-btn.on { background: var(--bg-muted); }
+.fv-tl-wrap { flex: 1 1 auto; min-width: 0; }
+.fv-more.open .fv-more-in { padding: var(--space-3) 0 var(--space-2); border-top: 1px solid var(--border-subtle); margin-top: var(--space-2); }
+.fv-filters { gap: 0; }
+@container fvbody (max-width: 560px) {
+  .fv-bar .fv-tabs { flex: 1 1 100%; padding-right: 0; border-right: 0; border-bottom: 1px solid var(--border-subtle); margin-bottom: var(--space-1); }
+}

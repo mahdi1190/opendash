@@ -30,7 +30,7 @@ const _ACW_GO = {
   'cmd:rf-sweep': 'Sweep Today', 'cmd:game-focus-next': 'Start a focus timer', 'cmd:quick-capture': 'Quick capture', 'view:waiting': 'Open Waiting',
   'cmd:sidebar-customise': 'Customise the sidebar', 'view:memories': 'Open Memories', 'view:finance': 'Open Money', 'view:locations': 'Open Places',
   'view:people': 'Open People', 'view:calendar': 'Open Calendar', 'view:friends': 'Open Friends', 'view:garden': 'Open the garden', 'view:pet': 'Open Pets',
-  'view:settings:me': 'Edit your profile', 'view:settings:animations': 'Open the scenes', 'view:game': 'Open quests',
+  'view:profile': 'Edit your profile', 'view:settings:animations': 'Open the scenes', 'view:game': 'Open quests',
 };
 const _ACW_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
