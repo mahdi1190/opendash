@@ -54,18 +54,20 @@ function _rfHomeRender(el, ctx) {
   const rows = _rfHomeRows(!!ctx.preview);
   if (!rows.length) return false;
   const card = document.createElement('section'); card.className = 'card home-card rf-hc rf-hc--' + (ctx.size || 'full');
+  card.appendChild(cardHead({ icon: 'calendar-check', title: 'Review', count: rows.length > 1 ? rows.length : '' }));
+  const list = document.createElement('div'); list.className = 'rf-hc-rows';
+  card.appendChild(list);
   for (const r of rows) {
     const row = document.createElement('div'); row.className = 'rf-hc-row' + (r.primary ? ' is-main' : '');
     const art = r.scene && typeof hglScene === 'function' ? hglScene(r.scene, { size: r.primary ? 'lg' : 'md', hover: true }) : '';
     row.innerHTML = `<span class="rf-hc-art anim-hover-host">${art || `<span class="rf-hc-i">${icon(r.ic)}</span>`}</span><span class="rf-hc-b"><b>${esc(r.title)}</b><span class="muted">${esc(r.sub)}</span></span>`
       + (r.people && r.people.length ? `<span class="rf-hc-ppl">${r.people.map(p => homeAvatar(p, 24)).join('')}</span>` : '');
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + (r.primary ? 'btn-primary' : 'btn-secondary') + ' btn-sm';
-    b.innerHTML = `<span>${esc(r.cta)}</span>${icon('arrow-right', 'i-sm')}`;
-    b.onclick = (e) => { e.stopPropagation(); r.run(); };
+    const b = uiButton({ label: r.cta, kind: r.primary ? 'primary' : 'secondary', size: 'sm', run: () => r.run() });
+    b.insertAdjacentHTML('beforeend', icon('arrow-right', 'i-sm'));
     row.appendChild(b);
-    card.appendChild(row);
+    list.appendChild(row);
   }
   el.appendChild(card);
-  if (ctx.enterNew) ctx.enterNew(card.children, (n) => n.querySelector('b') ? n.querySelector('b').textContent : '');
+  if (ctx.enterNew) ctx.enterNew(list.children, (n) => n.querySelector('b') ? n.querySelector('b').textContent : '');
   return true;
 }

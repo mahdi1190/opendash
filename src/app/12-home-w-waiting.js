@@ -6,11 +6,10 @@
    follow-up date, and Nudge, which drafts an email (never sends).
    Owner: HB4 (finance, people, waiting). CSS: 13-home-w-glances.css.
    Click a row: the task (the centre card, ctx.openTask); it stays the current
-   row while its card is open. Sizes: S (5 rows), M (8 rows, the follow-up
-   date in its own column). "+N more" opens the rest in place. Under 250 px:
+   row while its card is open. Sizes: S and M (the follow-up date in its own
+   column), 5 rows; "N more" opens the Waiting list. Under 250 px:
    a tile (how many, the oldest). No tasks at all: hidden (a new user).
    ============================================================ */
-let _hbwAll = false;          // "+N more" opened (until Home is left)
 
 registerHomeWidget({
   id: 'waiting', title: 'Waiting on', icon: 'hourglass', order: 90,    // beside This week (L) on the default board
@@ -45,33 +44,28 @@ function _hbwRender(el, ctx) {
   if (!getAllItems().length) return false;                       // a new user: nothing to chase yet
   const rows = homeWaitingRows();
   const size = ctx.size || 's';
-  if (ctx.firstPaint) _hbwAll = false;
   const card = document.createElement('section');
   card.className = `card home-card hbw hbw--${size}`;
-  card.appendChild(hglHead({ icon: 'hourglass', title: 'Waiting on', n: rows.length ? String(rows.length) : '' }));
+  // The title opens the Waiting list (the grid's title link, NAVIGATION_PLAN.md 2.8).
+  card.appendChild(cardHead({ icon: 'hourglass', title: 'Waiting on', count: rows.length ? String(rows.length) : '' }));
   const body = document.createElement('div'); body.className = 'card-b hbw-b';
   card.appendChild(body);
   el.appendChild(card);
   if (!rows.length) {
-    body.appendChild(hglEmpty({ scene: 'email', title: 'Nothing to chase', text: 'Tag a task waiting (or blocked-name) and it waits here, oldest first, until they reply.' }));
+    body.appendChild(hglEmpty({ scene: 'email', title: 'Nothing to chase', text: 'Mark a task as waiting on someone and it shows here until they reply.' }));
     return true;
   }
-  const cap = size === 'm' ? 8 : 5;
-  const shown = _hbwAll ? rows : rows.slice(0, cap);
+  // The card template: at most 5 rows, oldest first, then "N more" opens the Waiting list.
+  const cap = 5;
   const list = document.createElement('ul'); list.className = 'hbw-list';
-  let nudges = 0;
-  for (const r of shown) { const li = _hbwRow(r, ctx); if (li.querySelector('.hgl-mini')) nudges++; list.appendChild(li); }
+  list.setAttribute('aria-label', 'Oldest first');
+  for (const r of rows.slice(0, cap)) list.appendChild(_hbwRow(r, ctx));
   body.appendChild(list);
-  const foot = document.createElement('div'); foot.className = 'hgl-foot hbw-foot';
-  foot.innerHTML = `${icon('info')}<span>Oldest first${nudges ? ' · nudges draft an email, never send it' : ''}</span>`;
   if (rows.length > cap) {
-    const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-ghost btn-sm hbw-more';
-    more.innerHTML = `<span>${_hbwAll ? 'Show less' : `+${rows.length - cap} more`}</span>${icon(_hbwAll ? 'chevron-up' : 'chevron-down')}`;
-    more.setAttribute('aria-expanded', _hbwAll ? 'true' : 'false');
-    more.onclick = () => { _hbwAll = !_hbwAll; if (ctx.rerender) ctx.rerender(); };
-    foot.appendChild(more);
+    const foot = document.createElement('div'); foot.className = 'hgl-foot hbw-foot';
+    foot.appendChild(uiButton({ label: `${rows.length - cap} more`, kind: 'link', cls: 'hbw-more', run: () => { if (state.view !== 'waiting') setView('waiting'); } }));
+    body.appendChild(foot);
   }
-  body.appendChild(foot);
   // The tile (under 250 px): how many, and the oldest.
   const oldest = rows.find(r => r.age != null);
   const tile = document.createElement('div'); tile.className = 'hbw-tile';
@@ -90,7 +84,7 @@ function _hbwRow(r, ctx) {
   li.dataset.flip = 'wt:' + i.id; li.dataset.id = i.id;
   const main = document.createElement('button'); main.type = 'button'; main.className = 'hbw-main';
   const org = p && (p.kind === 'org' || p.kind === 'mailbox');
-  const av = p && !org ? homeAvatar(p, 28) : `<span class="hbw-org">${icon(org ? 'building-2' : 'hourglass')}</span>`;
+  const av = p && !org ? homeAvatar(p, 28) : `<span class="hbw-org">${icon(org ? 'building-2' : 'hourglass', 'i-sm')}</span>`;
   const who = p ? (org ? (p.name || p.id) : hglFirst(p)) : 'Someone';
   // "Clara · asked 28 Sep · 9 days"; a narrow card drops the date (it is in the tooltip).
   let meta = esc(who);
@@ -109,12 +103,8 @@ function _hbwRow(r, ctx) {
     + `<span class="hbw-fu-col">${follow}</span>`;
   li.appendChild(main);
   if (url) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'hgl-mini';
-    b.innerHTML = icon('bell') + '<span>Nudge</span>';
-    b.title = `Draft a nudge to ${who} in your mail app (nothing is sent)`;
-    b.setAttribute('aria-label', `Nudge ${who} about ${effTitle(i)} (drafts an email)`);
-    b.onclick = () => hglOpenMail(url);
-    li.appendChild(b);
+    li.appendChild(uiButton({ label: 'Nudge', icon: 'bell', iconCls: 'i-sm', size: 'sm', cls: 'hgl-mini',
+      tip: `Draft a nudge to ${who} in your mail app (nothing is sent)`, aria: `Nudge ${who} about ${effTitle(i)} (drafts an email)`, run: () => hglOpenMail(url) }));
   }
   hglTrackCurrent(li, i.id, main);
   main.onclick = () => hglOpenTask(ctx, i.id, li, main);

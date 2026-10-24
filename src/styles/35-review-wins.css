@@ -1,11 +1,12 @@
+/* Tokens: spacing, type and radius use var(--space-*), var(--text-*), var(--radius-*); a raw 1px hairline or 2px optical nudge is intentional. */
 /* ============= REVIEW MODE, WINS, BIN (owner: Tasks; 33-tasks-logs.js) ============= */
 .review, .wins { display: flex; flex-direction: column; gap: var(--space-3); }
 .review-scope { margin: 0; font-size: var(--text-xs); }
 .stat-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); padding: var(--space-3) var(--space-4); min-width: 0; }
 .stat-card .lbl { font-size: var(--text-xs); color: var(--fg-subtle); font-weight: var(--weight-medium); }
-.stat-card .num { font-size: var(--text-2xl); line-height: var(--lh-2xl); font-weight: var(--weight-semibold); color: var(--fg); margin-top: 2px; font-variant-numeric: tabular-nums; letter-spacing: var(--tracking-tighter); }
-.stat-card .sub { font-size: var(--text-xs); color: var(--fg-subtle); margin-top: 2px; }
+.stat-card .num { font-size: var(--text-2xl); line-height: var(--lh-2xl); font-weight: var(--weight-semibold); color: var(--fg); margin-top: var(--space-0-5); font-variant-numeric: tabular-nums; letter-spacing: var(--tracking-tighter); }
+.stat-card .sub { font-size: var(--text-xs); color: var(--fg-subtle); margin-top: var(--space-0-5); }
 .stat-card.danger .num { color: var(--danger-ink); }
 .stat-card.success .num { color: var(--success-ink); }
 
@@ -26,7 +27,7 @@
 
 .win-row {
   display: grid; grid-template-columns: 120px 8px minmax(0, 1fr) auto; align-items: center; gap: var(--space-3); width: 100%;
-  min-height: 34px; padding: 4px var(--space-1); border: 0; border-top: 1px solid var(--border-subtle); background: none;
+  min-height: 34px; padding: var(--space-1) var(--space-1); border: 0; border-top: 1px solid var(--border-subtle); background: none;
   font: inherit; font-size: var(--text-sm); color: var(--fg); text-align: left;
 }
 button.win-row, .win-row[role="button"] { cursor: pointer; }

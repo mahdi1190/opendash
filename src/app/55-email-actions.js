@@ -219,7 +219,7 @@ function _gmdOpenEditor(prefill, o) {
       txt.oninput = upd; upd();
       bf.append(txt, cnt); el.appendChild(bf);
       const note = document.createElement('p'); note.className = 'gmd-note';
-      note.innerHTML = icon('shield-check', 'i-xs') + '<span>Saved as a draft in your Gmail. Nothing is sent: you send it from Gmail when you are ready.</span>';
+      note.innerHTML = icon('shield-check', 'i-xs') + '<span>Saved as a draft in Gmail. Nothing was sent.</span>';
       el.appendChild(note);
       errEl = document.createElement('div'); errEl.className = 'gmd-err'; errEl.setAttribute('role', 'alert'); errEl.hidden = true;
       el.appendChild(errEl);

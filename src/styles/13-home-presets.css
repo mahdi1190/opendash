@@ -2,22 +2,22 @@
    The Layouts popover in Customise: one row per preset with a mini board. */
 .hp-pop { padding: var(--space-1-5); }
 .hp-opt {
-  display: flex; align-items: flex-start; gap: var(--space-3); width: 100%; padding: var(--space-2) var(--space-2-5, 10px);
+  display: flex; align-items: flex-start; gap: var(--space-3); width: 100%; padding: var(--space-2) var(--space-2);
   border: 1px solid transparent; border-radius: var(--radius-md); background: none; color: var(--fg); font: inherit; text-align: left; cursor: pointer;
   transition: background-color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out);
 }
-.hp-opt + .hp-opt { margin-top: 2px; }
+.hp-opt + .hp-opt { margin-top: var(--space-0-5); }
 .hp-opt:hover, .hp-opt:focus-visible { background: var(--bg-muted); outline: none; }
 .hp-opt:focus-visible { box-shadow: var(--focus-ring); }
 .hp-opt.on { background: var(--accent-soft); border-color: color-mix(in oklab, var(--accent) 22%, transparent); cursor: default; }
 .hp-ic { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: var(--radius-md); background: var(--accent-grad-soft); color: var(--accent-ink); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent); }
 .hp-opt.on .hp-ic { background: var(--accent-grad); color: var(--fg-on-accent); box-shadow: none; }
-.hp-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.hp-txt { display: flex; flex-direction: column; gap: var(--space-0-5); min-width: 0; flex: 1; }
 .hp-t { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); font-weight: var(--weight-semibold); }
-.hp-now { display: inline-flex; align-items: center; gap: 3px; font-size: var(--text-2xs); font-weight: var(--weight-medium); color: var(--accent-ink); }
+.hp-now { display: inline-flex; align-items: center; gap: var(--space-0-5); font-size: var(--text-2xs); font-weight: var(--weight-medium); color: var(--accent-ink); }
 .hp-s { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-muted); white-space: normal; }
-.hp-mini { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; margin-top: var(--space-1-5); max-width: 160px; }
-.hp-cell { display: block; height: 5px; border-radius: 2px; background: color-mix(in oklab, var(--accent) 34%, var(--bg-emphasis)); }
+.hp-mini { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--space-0-5); margin-top: var(--space-1-5); max-width: 160px; }
+.hp-cell { display: block; height: 5px; border-radius: var(--radius-xs); background: color-mix(in oklab, var(--accent) 34%, var(--bg-emphasis)); }
 .hp-opt.on .hp-cell { background: var(--accent); }
 .hp-cell.hp-more { background: repeating-linear-gradient(90deg, var(--border-strong) 0 4px, transparent 4px 7px); }
 .hp-n { font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }

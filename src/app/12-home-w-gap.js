@@ -151,7 +151,7 @@ function _gapInHours() {
 function _gapCard(el, ctx) {
   const card = document.createElement('section');
   card.className = `card home-card hgap hgap--${ctx.size || 's'}`;
-  card.innerHTML = `<div class="card-h hgap-h">${icon('zap')}<h3>Fill the gap</h3><span class="spacer"></span></div><div class="card-b hgap-b"></div>`;
+  card.innerHTML = `${cardHeadHtml({ icon: 'zap', title: 'Fill the gap', cls: 'hgap-h' })}<div class="card-b hgap-b"></div>`;
   el.appendChild(card);
   return card;
 }
@@ -299,7 +299,7 @@ function _gapList(m, ctx, pick) {
 
 /* ---------- buttons ---------- */
 function _gapBtn(cls, html, aria) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html;
+  const b = hglBtn(cls); b.innerHTML = html;
   if (aria) b.setAttribute('aria-label', aria);
   return b;
 }

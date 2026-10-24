@@ -143,7 +143,7 @@ function openAppIconPicker(anchor, opts) {
         const list = czSymbolSearch(typed && !czIsEmoji(typed) ? typed : '', curated, czSpriteIcons(), typed ? 120 : 63);
         if (appIconKind(cur()) === 'icon' && !list.includes(cur())) list.unshift(cur());
         for (const n of list) sym(n, icon(n), n.replace(/-/g, ' '));
-        if (!list.length) { const e = document.createElement('div'); e.className = 'cz-empty subtle'; e.textContent = 'No icon matches. Try another word, or paste an emoji.'; grid.appendChild(e); }
+        if (!list.length) grid.appendChild(emptyLine('No icon matches. Try another word, or paste an emoji.'));
       }
       markAll();
     }

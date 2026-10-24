@@ -15,10 +15,11 @@ function _advRefresh() {
 }
 
 function _advOwnAppsCard(el) {
-  const card = _settingsCard('Your own sign-in apps', 'For IT teams and developers. OpenDash signs in to Microsoft and Google with its own app registrations. If this copy has none, or your organisation wants its own, register an app and enter its ID here. Most people never need this.');
+  // One sentence (P2): OpenDash signs in with its own app registrations; an organisation (or a copy with none) can enter its own here.
+  const card = _settingsCard('Your own sign-in apps', 'For an organisation that registers its own Microsoft or Google app; most people never need this.');
   const d = (typeof accList === 'function' && accList()) || null;
   if (!d) {
-    card.body.appendChild(_connEl('p', 'conn-note', (typeof AccountsStore !== 'undefined' && AccountsStore.error) ? 'Your accounts are unavailable. Try again when the server is ready.' : 'Loading…'));
+    card.body.appendChild((typeof AccountsStore !== 'undefined' && AccountsStore.error) ? emptyLine('Couldn’t load your accounts just now.', { label: 'Try again', run: _advRefresh }) : _connEl('p', 'conn-note', 'Loading…'));
     if (typeof accLoad === 'function' && typeof AccountsStore !== 'undefined' && !AccountsStore.loading) _advRefresh();
     el.appendChild(card.card);
     return;
@@ -35,6 +36,6 @@ function _advOwnAppsCard(el) {
 
 registerSettingsGroup({
   id: 'advanced', title: 'Advanced', icon: 'wrench', order: 96,
-  description: 'For IT teams and developers: your own Microsoft or Google app for signing in.',
+  description: 'Your own Microsoft or Google sign-in app, for IT teams.',
   render(el) { _advOwnAppsCard(el); },
 });

@@ -42,16 +42,16 @@
 /* The Today hero greets, so the page header ("Home", already in the breadcrumb) stays
    for screen readers only and the hero sits right under the top bar. */
 .main:has(> #main-body > .home.has-hero) > .view-header {
-  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+  position: absolute; width: 1px; height: 1px; margin: -1px /* nudge */; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
 }
 /* Customise: a quiet pill beside the breadcrumb (12-home-edit.js); pressed while customising. */
 .tb-home-cust {
-  display: inline-flex; align-items: center; gap: 6px; flex: none; height: 26px; padding: 0 10px 0 8px; margin-left: var(--space-2);
+  display: inline-flex; align-items: center; gap: var(--space-1-5); flex: none; height: 26px; padding: 0 var(--space-2) 0 var(--space-2); margin-left: var(--space-2);
   border-radius: var(--radius-full); border: 1px solid var(--border); background: var(--surface); color: var(--fg-muted);
-  font: inherit; font-size: 12.5px; font-weight: var(--weight-medium); cursor: pointer; white-space: nowrap;
+  font: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; white-space: nowrap;
   transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out);
 }
-.tb-home-cust .i { width: 14px; height: 14px; color: var(--fg-subtle); }
+.tb-home-cust .i { color: var(--fg-subtle); }
 .tb-home-cust:hover { background: var(--bg-muted); color: var(--fg); }
 .tb-home-cust:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .tb-home-cust[aria-pressed="true"] { background: var(--accent-soft); border-color: color-mix(in oklab, var(--accent) 35%, transparent); color: var(--accent-ink); cursor: default; }
@@ -64,28 +64,27 @@ html[data-motion="reduced"] .tb-home-cust .i.spin { animation: none; }
 /* Refresh today's panel (12-home-refresh.js): under the top bar, never over the whole page. */
 .hr-panel {
   position: fixed; top: calc(var(--topbar-h) + 8px); left: 50%; transform: translateX(-50%); z-index: var(--z-toast);
-  width: max-content; max-width: min(680px, calc(100vw - 24px)); padding: 8px 10px 8px 12px;
+  width: max-content; max-width: min(680px, calc(100vw - 24px)); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
   border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); box-shadow: var(--shadow-lg);
-  font-size: var(--text-sm); color: var(--fg); display: flex; flex-direction: column; gap: 6px;
+  font-size: var(--text-sm); color: var(--fg); display: flex; flex-direction: column; gap: var(--space-1-5);
 }
-.hr-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hr-top { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .hr-top b { font-weight: var(--weight-semibold); }
 .hr-top .i { flex: none; color: var(--success, var(--accent)); }
 .hr-panel.is-warn .hr-top > .i { color: var(--warning-ink, var(--fg-muted)); }
 .hr-at { color: var(--fg-subtle); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
 .hr-top .spinner, .hr-chip .spinner { width: 12px; height: 12px; flex: none; }
-.hr-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: var(--text-xs); color: var(--fg-muted); }
+.hr-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-0-5) var(--space-1-5); font-size: var(--text-xs); color: var(--fg-muted); }
 .hr-sep { color: var(--fg-subtle); }
-.hr-chip { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
-.hr-chip .i { width: 12px; height: 12px; }
+.hr-chip { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
 .hr-chip.s-done .i, .hr-chip.s-fresh .i { color: var(--success, var(--accent)); }
 .hr-chip.s-error { color: var(--danger); }
 .hr-chip.s-running { color: var(--fg); }
 .hr-chip.s-skipped, .hr-chip.s-cancelled, .hr-chip.s-away, .hr-chip.s-elsewhere { color: var(--fg-subtle); }
-.hr-row { display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); color: var(--fg-muted); }
+.hr-row { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--fg-muted); }
 .hr-row.s-error .hr-row-t b { color: var(--danger); }
 .hr-row.is-calm { color: var(--fg-subtle); }
-.hr-row .i { width: 12px; height: 12px; flex: none; }
+.hr-row .i { flex: none; }
 .hr-row-t { flex: 1; min-width: 0; }
 .hr-row-t b { color: var(--fg); font-weight: var(--weight-medium); }
 @media (max-width: 640px) { .hr-panel { left: 12px; right: 12px; transform: none; width: auto; } }
@@ -95,43 +94,41 @@ html[data-motion="reduced"] .tb-home-cust .i.spin { animation: none; }
   .tb-home-cust { width: 30px; height: 30px; padding: 0; margin-left: 0; justify-content: center; }
   .tb-home-cust > span { display: none; }
 }
-.home-sec .act { display: inline-flex; gap: 2px; }
+.home-sec .act { display: inline-flex; gap: var(--space-0-5); }
 .home-sec .n { font-variant-numeric: tabular-nums; }
 
 /* ----- side cards ----- */
 /* One header for every widget (HOME_SPEC.md 2): 44 px, a 16 px icon, the title at 13/600, a
    12 px count, links on the right; no rule under it. Headers on a shelf line up. */
-.home-card .card-h { padding: 10px var(--space-2) 6px var(--space-4); min-height: 44px; border-bottom: 0; }
-.home-card .card-h > .i { color: var(--fg-subtle); width: 16px; height: 16px; flex: none; }
-.home-card .card-h h3 { font-size: 13px; letter-spacing: -0.005em; white-space: nowrap; }
+.home-card .card-h { padding: var(--space-2) var(--space-2) var(--space-1-5) var(--space-4); min-height: 44px; border-bottom: 0; }
+.home-card .card-h > .i { color: var(--fg-subtle); flex: none; }
+.home-card .card-h h3 { font-size: var(--text-sm); letter-spacing: -0.005em; white-space: nowrap; }
 .home-card .card-h .n { font-size: var(--text-xs); color: var(--fg-subtle); }
 .home-card .card-h .spacer { flex: 1; }
 .home-card .card-h .btn { margin-left: auto; }
-.home-card .card-h .btn .i { width: 14px; height: 14px; }
 .home-card .card-b { padding: var(--space-1) var(--space-4) var(--space-4); }
 .home-card.is-off { background: var(--bg-subtle); box-shadow: none; }
 .home-card.is-off .card-h h3, .home-card.is-off .card-h > .i { color: var(--fg-subtle); }
 .home-empty { display: flex; gap: var(--space-3); align-items: flex-start; flex-wrap: wrap; font-size: var(--text-sm); color: var(--fg-muted); }
-.home-empty > .i { width: 18px; height: 18px; color: var(--fg-subtle); flex: none; margin-top: 1px; }
-.home-empty > div { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+.home-empty > .i { color: var(--fg-subtle); flex: none; margin-top: 1px /* nudge */; }
+.home-empty > div { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: var(--space-0-5); }
 .home-empty b { color: var(--fg); font-weight: var(--weight-medium); }
 .home-empty span { font-size: var(--text-xs); color: var(--fg-subtle); line-height: 18px; }
-.home-empty code { font-family: var(--font-mono); font-size: 11px; padding: 0 3px; border-radius: 3px; background: var(--bg-muted); color: var(--fg-muted); }
-.home-empty > .btn { margin-left: 30px; }
-.home-foot { display: flex; align-items: center; gap: 6px; margin-top: var(--space-3); font-size: var(--text-xs); color: var(--fg-subtle); }
-.home-foot .i { width: 13px; height: 13px; }
+.home-empty code { font-family: var(--font-mono); font-size: var(--text-2xs); padding: 0 var(--space-0-5); border-radius: var(--radius-xs); background: var(--bg-muted); color: var(--fg-muted); }
+.home-empty > .btn { margin-left: calc(var(--space-5) + var(--space-3)); }   /* under the text: the icon and the gap */
+.home-foot { display: flex; align-items: center; gap: var(--space-1-5); margin-top: var(--space-3); font-size: var(--text-xs); color: var(--fg-subtle); }
+.home-foot .i { width: 13px; height: 13px; }   /* the evening foot line (76-brief-evening.js, another batch's file) draws its icon without a size class */
 .home .skeleton { height: 14px; }
 .home .danger { color: var(--danger-ink); }
 
 /* ----- a dragged task outside its list (makeSortable compactLift, _homeDragPill) ----- */
 .sortable-pill {
-  display: inline-flex; align-items: center; gap: var(--space-2); max-width: 340px; padding: 6px var(--space-3) 6px var(--space-2-5, 10px);
+  display: inline-flex; align-items: center; gap: var(--space-2); max-width: 340px; padding: var(--space-1-5) var(--space-3) var(--space-1-5) var(--space-2);
   border-radius: var(--radius-full); background: var(--surface-raised); border: 1px solid var(--border); box-shadow: var(--shadow-drag);
   font-size: var(--text-sm); color: var(--fg); white-space: nowrap; transform: none !important;
 }
 .sortable-pill .sp-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; font-weight: var(--weight-medium); }
-.sortable-pill .sp-k { display: inline-flex; align-items: center; gap: 4px; flex: none; font-size: var(--text-2xs); color: var(--fg-subtle); padding-left: var(--space-2); border-left: 1px solid var(--border); }
-.sortable-pill .sp-k .i { width: 12px; height: 12px; }
+.sortable-pill .sp-k { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; font-size: var(--text-2xs); color: var(--fg-subtle); padding-left: var(--space-2); border-left: 1px solid var(--border); }
 .hw-p { width: 6px; height: 6px; border-radius: 50%; background: var(--p0); flex: none; }
 .hw-p.p1 { background: var(--p1); } .hw-p.p2 { background: var(--p2); } .hw-p.p3 { background: var(--p3); }
 

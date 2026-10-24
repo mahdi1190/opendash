@@ -136,10 +136,7 @@ function _stwTypeInto(inp, text, still, done) {
   step();
 }
 function _stwBtn(label, ic, cls, run) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'stw-btn' + (cls ? ' ' + cls : '');
-  b.innerHTML = (ic ? icon(ic, 'i-sm') : '') + `<span>${esc(label)}</span>`;
-  b.addEventListener('click', (e) => { e.stopPropagation(); run(b, e); });
-  return b;
+  return uiButton({ label, icon: ic, size: 'sm', cls: 'stw-btn' + (cls ? ' ' + cls : ''), run: (e, b) => run(b, e) });
 }
 
 /* ---------- 1. the week in numbers ---------- */
@@ -564,6 +561,6 @@ function storyWeekFromPrompt() {
 /** Settings > Home and stories: how the weekly review opens. */
 function storyWeekSettingsRows(el) {
   if (typeof _settingsRow !== 'function' || typeof _settingsSeg !== 'function') return;
-  el.appendChild(_settingsRow('Weekly review opens as', 'The first visit to Home > Week each week: the full-screen story with a Play button, or straight to the step-by-step page.',
+  el.appendChild(_settingsRow('Weekly review opens as', 'A full-screen story, or the step-by-step page.',
     _settingsSeg([['story', 'Story'], ['page', 'Page']], storyWeekPrefs().weekOpen, (k) => settingsSaveConfig({ brief: { story: { weekOpen: k } } }, 'Saved').then(ok => { if (ok) render(); }))));
 }

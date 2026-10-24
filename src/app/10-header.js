@@ -508,10 +508,7 @@ function _tbOverflowMenu(anchor) {
       el.appendChild(b);
     }
     if (typeof togetherTopbarOverflow === 'function') togetherTopbarOverflow(el, close);   // hidden pinned shared countdowns
-    const c = document.createElement('button'); c.type = 'button'; c.className = 'btn btn-ghost btn-sm';
-    c.innerHTML = icon('sliders-horizontal') + '<span>Customise top bar</span>';
-    c.onclick = () => { close(); openTopbarCustomiser({}); };
-    el.appendChild(c);
+    el.appendChild(uiButton({ label: 'Customise top bar', icon: 'sliders-horizontal', kind: 'ghost', size: 'sm', run: () => { close(); openTopbarCustomiser({}); } }));
   }, { align: 'end' });
 }
 let _tbResizeT = null;

@@ -24,7 +24,7 @@ function _hhmRender(el, ctx) {
   const year = todayStr().slice(0, 4);
   const card = document.createElement('section');
   card.className = 'card home-card hhm hhm-sz-' + size;
-  card.innerHTML = `<div class="card-h">${icon('calendar-days')}<h3>Your year</h3><span class="n"></span><span class="spacer"></span></div><div class="card-b hhm-b"></div>`;
+  card.innerHTML = `${cardHeadHtml({ icon: 'calendar-days', title: 'Your year', cls: '', count: ' ' })}<div class="card-b hhm-b"></div>`;
   card.querySelector('.n').textContent = `${_memPlural(M.total, 'task')} in ${weeks === 53 ? 'the last year' : weeks + ' weeks'}`;
   const w = document.createElement('button'); w.type = 'button'; w.className = 'btn btn-ghost btn-sm hhm-wrapped';
   w.innerHTML = `${icon('party-popper', 'i-sm')}<span></span>`; w.lastChild.textContent = `Your ${year}`;

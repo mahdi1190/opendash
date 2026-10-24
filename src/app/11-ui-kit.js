@@ -505,6 +505,13 @@ function toast(msg, o) {
     t.appendChild(x);
   }
   c.setAction(action);
+  // A second button beside the first (o.action2, e.g. "Open it" next to Undo).
+  if (action && o.action2 && o.action2.label && !busy) {
+    const b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'btn btn-ghost btn-sm toast-act';
+    b2.textContent = o.action2.label;
+    b2.onclick = () => { close(); try { const r = o.action2.run && o.action2.run(); if (r && typeof r.catch === 'function') r.catch(e => console.error(e)); } catch (e) { console.error(e); } };
+    t.insertBefore(b2, btn);
+  }
   // At most three on screen: the oldest plain one goes first; a running wait is never dropped.
   const live = [..._toastLive].filter(x => !x.leaving);
   let extra = live.length - 2;

@@ -414,10 +414,10 @@ function _cckRender(el, ctx) {
     body.appendChild(wrap);
     _cckKeys(wrap, ctx, model);
     const foot = document.createElement('div'); foot.className = 'hgl-foot cck-foot';
-    foot.innerHTML = `${icon('info')}<span>Next ${prefs.days || 14} days · replies tell the organiser</span>`;
+    foot.innerHTML = `${icon('info', 'i-sm')}<span>Next ${prefs.days || 14} days · replies tell the organiser</span>`;
     if (model.total > cap) {
       const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-ghost btn-sm cck-more';
-      more.innerHTML = `<span>${_cckAll ? 'Show less' : `+${model.total - cap} more`}</span>${icon(_cckAll ? 'chevron-up' : 'chevron-down')}`;
+      more.innerHTML = `<span>${_cckAll ? 'Show less' : `+${model.total - cap} more`}</span>${icon(_cckAll ? 'chevron-up' : 'chevron-down', 'i-sm')}`;
       more.setAttribute('aria-expanded', _cckAll ? 'true' : 'false');
       if (!ctx.preview) more.onclick = () => { _cckAll = !_cckAll; if (ctx.rerender) ctx.rerender(); };
       foot.appendChild(more);
@@ -449,13 +449,12 @@ function _cckEnter(card, rows) {
   bars.forEach((b, i) => hglAnim(b, [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 520, delay: 360 + i * 70 }));
 }
 function _cckHead(ctx, model, cal, size) {
-  const h = document.createElement('div'); h.className = 'card-h hgl-h cck-h';
   const parts = cckSummary(model.counts);
   const n = size === 's' || parts.length < 2 ? '' : parts.map(s => s.text).join(' · ');
-  h.innerHTML = `${icon('calendar-clock')}<h3>Invites &amp; clashes</h3>${n ? `<span class="n hgl-n">${esc(n)}</span>` : ''}<span class="spacer"></span>`;
+  const h = cardHead({ icon: 'calendar-clock', title: 'Invites & clashes', count: n, cls: 'hgl-h cck-h' });
   if (cal && cal.ok && (cal.stale || cal.running) && cal.label) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'cck-upd' + (cal.running ? ' is-running' : '');
-    b.innerHTML = icon('refresh-cw') + `<span>${esc(cal.running ? 'Updating…' : cal.label)}</span>`;
+    b.innerHTML = icon('refresh-cw', 'i-xs') + `<span>${esc(cal.running ? 'Updating…' : cal.label)}</span>`;
     b.setAttribute('aria-label', cal.running ? 'Updating the calendar' : `${cal.label}. Read the calendar again`);
     if (cal.running) b.disabled = true;
     else b.onclick = () => { if (typeof CalStore !== 'undefined' && CalStore.update) CalStore.update({ force: true }); };
@@ -482,8 +481,8 @@ function _cckKeys(list, ctx, model) {
 /* ---------- one row ---------- */
 function _cckBtn(cls, ic, label, o) {
   o = o || {};
-  const b = document.createElement('button'); b.type = 'button'; b.className = cls;
-  b.innerHTML = (ic ? icon(ic) : '') + (o.iconOnly ? '' : `<span>${esc(label)}</span>`);
+  const b = hglBtn(cls);
+  b.innerHTML = (ic ? icon(ic, 'i-sm') : '') + (o.iconOnly ? '' : `<span>${esc(label)}</span>`);
   if (o.iconOnly || o.tip) { b.setAttribute('aria-label', o.aria || label); b.setAttribute('data-tip', o.tip || label); }
   else if (o.aria) b.setAttribute('aria-label', o.aria);
   return b;
@@ -643,7 +642,7 @@ function _cckSettings(anchor, ctx) {
     const paint = () => {
       const p = homePrefs(id);
       const wh = _cckWorkHours();
-      el.innerHTML = `<div class="hg-set-h">${icon('calendar-clock')}<b>Invites &amp; clashes settings</b></div>`;
+      el.innerHTML = `${cardHeadHtml({ icon: 'calendar-clock', title: 'Invites & clashes settings', cls: 'hg-set-h' })}`;
       for (const [k, label] of checks) {
         const on = !p.checks || p.checks[k] !== false;
         const row = document.createElement('div'); row.className = 'hg-set-row'; row.dataset.key = k;

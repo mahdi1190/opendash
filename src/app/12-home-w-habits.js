@@ -145,12 +145,18 @@ function _habRender(el, ctx) {
   card.className = `card home-card hab hab-${size}` + (t.allDone ? ' is-alldone' : '');
   const count = t.due ? `${t.done}/${t.due}` : (empty ? '' : String(m.list.length));
   const countSay = t.due ? `${t.done} of ${t.due} done today` : `${m.list.length} habit${m.list.length === 1 ? '' : 's'}`;
-  card.innerHTML = `<div class="card-h">${icon('repeat')}<h3>Habits</h3>`
-    + (count ? `<span class="n num" aria-label="${escAttr(countSay)}" title="${escAttr(countSay)}">${esc(count)}</span>` : '')
-    + `<span class="spacer"></span>`
-    + (!empty ? `<button type="button" class="btn-icon btn-sm hab-add" data-act="adding" aria-expanded="${adding ? 'true' : 'false'}" aria-label="New habit" data-tip="New habit">${icon(adding ? 'x' : 'plus')}</button>` : '')
-    + `</div><div class="card-b hab-b"></div>`;
-  if (!ctx.preview && typeof homeSettingsButton === 'function') card.querySelector('.card-h').appendChild(homeSettingsButton(ctx, 'Habits settings'));
+  // The header (cardHead): the count, the add button (the card's click handler reads data-act) and the gear.
+  const head = cardHead({ icon: 'repeat', title: 'Habits', count });
+  const nEl = head.querySelector('.n');
+  if (nEl) { nEl.setAttribute('aria-label', countSay); nEl.setAttribute('data-tip', countSay); }
+  if (!empty) {
+    const add = uiButton({ icon: adding ? 'x' : 'plus', iconCls: 'i-sm', size: 'sm', cls: 'hab-add', aria: 'New habit', tip: 'New habit', data: { act: 'adding' } });
+    add.setAttribute('aria-expanded', adding ? 'true' : 'false');
+    head.appendChild(add);
+  }
+  if (!ctx.preview && typeof homeSettingsButton === 'function') head.appendChild(homeSettingsButton(ctx, 'Habits settings'));
+  card.appendChild(head);
+  card.insertAdjacentHTML('beforeend', '<div class="card-b hab-b"></div>');
   el.appendChild(card);
   const body = card.querySelector('.hab-b');
   if (empty) _habEmpty(body, ctx, m, size);
@@ -179,12 +185,12 @@ function _habTickHtml(h, cls) {
     : h.tickable ? `Tick off ${h.title}` : h.now === 'before' ? `${h.title}: starts ${_habDate(h.next || h.start)}` : h.next ? `${h.title}: next ${_habDate(h.next)}` : `${h.title}: not due now`;
   return `<button type="button" class="${cls}${done ? ' is-done' : ''}${skipped ? ' is-skipped' : ''}" data-act="tick" data-fk="hab-tick:${escAttr(h.id)}" aria-pressed="${done ? 'true' : 'false'}"`
     + `${h.tickable ? '' : ' aria-disabled="true"'} aria-label="${escAttr(label)}" title="${escAttr(done ? 'Done. Undo is in the toast' : skipped ? 'Skipped' : h.tickable ? 'Tick it off' : '')}">`
-    + `${icon(done ? 'check' : skipped ? 'redo-2' : h.tickable ? 'circle' : 'circle-dashed')}</button>`;
+    + `${icon(done ? 'check' : skipped ? 'redo-2' : h.tickable ? 'circle' : 'circle-dashed', done || skipped ? 'i-md' : 'i-xl')}</button>`;
 }
 function _habSkipHtml(h) {
   if (!h.tickable) return '<span class="hab-skip-ph" aria-hidden="true"></span>';
   const u = _habUnit(h);
-  return `<button type="button" class="btn-icon btn-sm hab-skip" data-act="skip" aria-label="Skip ${h.kind === 'period' ? 'this ' + u : 'today'}: ${escAttr(h.title)}" data-tip="Skip ${h.kind === 'period' ? 'this ' + u : 'today'} (keeps the chain)">${icon('redo-2')}</button>`;
+  return `<button type="button" class="btn-icon btn-sm hab-skip" data-act="skip" aria-label="Skip ${h.kind === 'period' ? 'this ' + u : 'today'}: ${escAttr(h.title)}" data-tip="Skip ${h.kind === 'period' ? 'this ' + u : 'today'} (keeps the chain)">${icon('redo-2', 'i-sm')}</button>`;
 }
 function _habCurrent(id) { try { return typeof tcCurrentTaskId === 'function' && tcCurrentTaskId() === id; } catch (e) { return false; } }
 function _habMoreHtml(n, open) {
@@ -199,7 +205,7 @@ function _habPills(body, ctx, m) {
     const next = m.list.filter(h => h.next && (h.now === 'later' || h.now === 'before' || h.now === 'open' || h.now === 'off' || h.now === 'done'))
       .slice().sort((a, b) => String(a.next).localeCompare(String(b.next))).slice(0, 3);
     const safe = m.list.some(h => h.streak > 0);
-    body.innerHTML = `<div class="hab-none">${icon('circle-check')}<div><b>Nothing due today</b>${safe ? `<span>Your ${m.list.length === 1 ? 'streak is' : 'streaks are'} safe.</span>` : ''}</div></div>`
+    body.innerHTML = `<div class="hab-none">${icon('circle-check', 'i-lg')}<div><b>Nothing due today</b>${safe ? `<span>Your ${m.list.length === 1 ? 'streak is' : 'streaks are'} safe.</span>` : ''}</div></div>`
       + (next.length ? `<ul class="hab-next" role="list">${next.map(h => `<li class="hab-nx" data-id="${escAttr(h.id)}"><button type="button" class="hab-nx-b" data-act="open" aria-label="${escAttr(`${h.title}: ${_habSub(h)}`)}"><span class="hab-t">${esc(h.title)}</span><span class="hab-nx-d">${esc(_habDate(h.next))}</span></button></li>`).join('')}</ul>` : '');
     return;
   }
@@ -210,9 +216,9 @@ function _habPills(body, ctx, m) {
     return `<span class="hab-pw${done ? ' is-done' : ''}${skipped ? ' is-skipped' : ''}" data-id="${escAttr(h.id)}" style="--i:${i}">`
       + `<button type="button" class="hab-pill${done ? ' is-done' : ''}${skipped ? ' is-skipped' : ''}" data-act="tick" data-fk="hab-pill:${escAttr(h.id)}" aria-pressed="${done ? 'true' : 'false'}"`
       + `${h.tickable ? '' : ' aria-disabled="true"'} aria-label="${escAttr(homeHabitSay(h.title, h))}">`
-      + `<span class="hab-ck" aria-hidden="true">${icon(done ? 'check' : skipped ? 'redo-2' : 'circle')}</span>`
+      + `<span class="hab-ck" aria-hidden="true">${icon(done ? 'check' : skipped ? 'redo-2' : 'circle', done || skipped ? 'i-md' : 'i-xl')}</span>`
       + `<span class="hab-pt">${esc(h.title)}</span>`
-      + `<span class="hab-sn${h.streak ? '' : ' is-zero'}" aria-hidden="true">${icon('flame')}<b class="num">${esc(h.streak)}</b></span>`
+      + `<span class="hab-sn${h.streak ? '' : ' is-zero'}" aria-hidden="true">${icon('flame', 'i-md')}<b class="num">${esc(h.streak)}</b></span>`
       + `</button>${h.tickable ? _habSkipHtml(h) : ''}</span>`;
   }).join('')}</div>` + _habMoreHtml(today.length - shown.length, open && today.length > _HAB_MAX.s);
 }
@@ -228,7 +234,7 @@ function _habRows(body, ctx, m) {
       + _habTickHtml(h, 'hab-tk')
       + `<span class="hab-nm" title="${escAttr(`${h.title} · ${_habRecLabel(h)}`)}"><span class="hab-t">${esc(h.title)}</span><span class="hab-sub">${esc(h.now === 'before' || h.now === 'later' ? _habSub(h) : sum)}</span></span>`
       + `<span class="hab-dots" style="--n:${h.cells.length}" aria-hidden="true">${h.cells.map((c, i) => `<i class="c-${c.state}" style="--i:${Math.round(i * Math.min(1, 14 / h.cells.length) * 10) / 10}" title="${escAttr(`${_habDate(c.date)}: ${_habCellWord(h, c.state)}`)}"></i>`).join('')}</span>`
-      + `<span class="hab-st" aria-hidden="true"><span class="hab-sn${h.streak ? '' : ' is-zero'}">${icon('flame')}<b class="num">${esc(h.streak)}</b></span><small>best ${esc(h.best)}</small></span>`
+      + `<span class="hab-st" aria-hidden="true"><span class="hab-sn${h.streak ? '' : ' is-zero'}">${icon('flame', 'i-md')}<b class="num">${esc(h.streak)}</b></span><small>best ${esc(h.best)}</small></span>`
       + _habSkipHtml(h) + `</li>`;
   }).join('')}</ul>` + _habMoreHtml(m.list.length - shown.length, open && m.list.length > _HAB_MAX.m);
 }
@@ -254,7 +260,7 @@ function _habCards(body, ctx, m) {
       + `<div class="hab-ch">${_habTickHtml(h, 'hab-tk')}<span class="hab-nm"><span class="hab-t">${esc(h.title)}</span><span class="hab-sub">${esc(h.now === 'before' || h.now === 'later' ? _habSub(h) : _habRecLabel(h))}</span></span>${h.tickable ? _habSkipHtml(h) : ''}${scene}</div>`
       + `<div class="hab-cb"><span class="hab-heat" role="img" aria-label="${escAttr(`Last 8 weeks: done on ${days8} day${days8 === 1 ? '' : 's'}`)}">`
       + h.heat.map((c, i) => `<i class="c-${c.state}" style="--c:${Math.floor(i / 7)}" title="${escAttr(c.state === 'future' ? '' : `${_habDate(c.date, true)}: ${_habCellWord(h, c.state)}`)}"></i>`).join('')
-      + `</span><dl class="hab-kv"><div class="is-streak"><dt>streak</dt><dd><span class="hab-sn${h.streak ? '' : ' is-zero'}">${icon('flame')}<b class="num">${esc(h.streak)}</b></span></dd></div>`
+      + `</span><dl class="hab-kv"><div class="is-streak"><dt>streak</dt><dd><span class="hab-sn${h.streak ? '' : ' is-zero'}">${icon('flame', 'i-md')}<b class="num">${esc(h.streak)}</b></span></dd></div>`
       + `<div><dt>best</dt><dd class="num">${esc(h.best)}</dd></div><div><dt>last 30 days</dt><dd class="num">${esc(rate)}</dd></div></dl></div>`
       + `<div class="hab-cs">${esc(sum)}</div>`
       + `</article>`;
@@ -269,7 +275,7 @@ function _habEmpty(body, ctx, m, size) {
   if (m.others.length && !ctx.preview) {
     const ul = document.createElement('ul'); ul.className = 'hab-others'; ul.setAttribute('role', 'list');
     ul.setAttribute('aria-label', 'Repeating tasks you could track');
-    ul.innerHTML = m.others.map(t => `<li class="hab-other" data-id="${escAttr(t.id)}"><button type="button" class="hab-ot" data-act="open" aria-label="${escAttr(`Open ${t.title}`)}">${icon('repeat')}<span class="hab-t">${esc(t.title)}</span><span class="hab-sub">${esc(typeof recurrenceLabel === 'function' ? recurrenceLabel(t.recurrence) : t.recurrence)}</span></button>`
+    ul.innerHTML = m.others.map(t => `<li class="hab-other" data-id="${escAttr(t.id)}"><button type="button" class="hab-ot" data-act="open" aria-label="${escAttr(`Open ${t.title}`)}">${icon('repeat', 'i-sm')}<span class="hab-t">${esc(t.title)}</span><span class="hab-sub">${esc(typeof recurrenceLabel === 'function' ? recurrenceLabel(t.recurrence) : t.recurrence)}</span></button>`
       + `<button type="button" class="btn-icon btn-sm hab-quick" data-act="track" aria-label="${escAttr(`Track ${t.title} as a habit now`)}" data-tip="Track it (adds #${escAttr(m.pick.tag)})">${icon('check')}</button></li>`).join('');
     body.appendChild(ul);
   }
@@ -280,7 +286,7 @@ function _habNewForm(ctx, m) {
   const f = document.createElement('div'); f.className = 'hab-new'; f.setAttribute('role', 'group'); f.setAttribute('aria-label', 'New habit');
   const tags = _habNewTags(m);
   f.innerHTML = `<input type="text" class="input input-sm" data-fk="hab-new" maxlength="200" placeholder="New habit, e.g. Stretch" aria-label="New habit name" aria-describedby="hab-hint-${escAttr(ctx.id)}" autocomplete="off">`
-    + `<button type="button" class="btn btn-secondary btn-sm hab-new-open" data-act="new-open">${icon('plus')}<span>Add habit</span></button>`
+    + `<button type="button" class="btn btn-secondary btn-sm hab-new-open" data-act="new-open">${icon('plus', 'i-sm')}<span>Add habit</span></button>`
     + `<button type="button" class="btn-icon btn-sm hab-quick" data-act="new-quick" aria-label="Add it now, as it is" data-tip="Add it now (Ctrl+Enter)">${icon('check')}</button>`
     + `<p class="hab-hint" id="hab-hint-${escAttr(ctx.id)}">Every day from today${tags.length ? `, tagged #${esc(tags[0])}` : ''}. Add habit opens it to adjust first.</p>`;
   const inp = f.querySelector('input');

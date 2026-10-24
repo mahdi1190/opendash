@@ -41,6 +41,17 @@ the welcome screen.
   for each at the top of every Life page. Under **You** in its sidebar: your
   profile, the wardrobe and your status. Your avatar's menu has **Open Life**
   and an icon for each part.
+- **The Garden** is a full-screen game: plant seeds on free tiles, water them,
+  pick what is ripe and decorate. The bar on top shows your level, coins,
+  water, seeds, the season and the next daily goal; the tools are on the left
+  (Plant, Water, Harvest, Fertilise, Trim, Dig up, Decorate; keys 1 to 7); your
+  seeds are in the tray under the garden (click one, then a tile, or drag it
+  in); the panel on the right always suggests **what to do next**. **Coins come
+  from time spent working**: about 12 coins an hour while the focus timer runs
+  on a task (sessions under 5 minutes do not count), a bonus when you finish a
+  task for the time it took, at most 120 a day; quick or empty tasks pay
+  nothing and each task pays once. The **Help** button explains everything and
+  replays the first-run tour. Plants never die: a thirsty one only droops.
 - **All pages** (the grid button next to the search box, the last row of
   every sidebar, or G then G) lists every page with a one-line description:
   type to find one, Enter opens it, Shift+Enter pins it to the sidebar.
@@ -344,6 +355,18 @@ weekly-review day.
   [PRIVACY.md](PRIVACY.md).
 
 ![The morning story](screenshots/story-morning-light.png)
+
+## Expenses
+
+For money you spend on someone else's behalf (your employer, a client, a friend) and want paid back. Find it under **Money > Expenses**; **Owed to you** on Home shows the total.
+
+- **Add one**: on a purchase in Money > Transactions press **Expense**, or press **Add an expense** on the page (for a card that is not connected), or **More > Make this an expense** on a task. Pick who pays you back; OpenDash remembers them.
+- **Receipts**: drop a PDF or photo on the expense (or paste, or choose a file). If your email is connected, receipt emails that match the amount and date are suggested; one click links them. Nothing is sent anywhere.
+- **Claim**: select expenses and press **Submit**. Copy the summary or download the pack (a summary page, a spreadsheet and the receipts), send it yourself, then **Mark as submitted**. Every step has Undo.
+- **Paid back**: when money arrives from the payer that equals a claim (or several together), it is marked **Paid** with an Undo. If OpenDash is not sure it asks one question (Yes / No) and never guesses. Payers' bank text and claim deadlines are in **More > Payers and deadlines**.
+- **Tasks**: each expense gets "Submit expense" and "Check <payer> paid" tasks (switch off in **More**). Finishing the first offers to mark the expense submitted; marking it paid finishes the second.
+- **Claude**: ask it to file an expense from a pasted order. It asks you who the payer is when unsure.
+- **Private**: expenses and receipts sync only between your own computers with encrypted sync, and are never shared with friends.
 
 ## The assistant
 

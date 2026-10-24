@@ -193,10 +193,9 @@ function _mwrFill(slide, s) {
     card.innerHTML = `<div class="mwr-sum"><span class="mwr-sum-y">${Y.year}</span><b>${Y.total}</b><span>tasks finished</span>`
       + `<dl>${[['Active days', Y.activeDays], ['Best streak', `${Y.streak.days} days`], ['Biggest day', Y.busiest.n ? `${Y.busiest.n} tasks` : '–'], ['Top stream', top ? top.label : '–'], ['Most in touch', tp ? tp.name : '–'], ['Countries', Y.postcards.length || '–']].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(String(v))}</dd></div>`).join('')}</dl></div>`;
     const act = slide.querySelector('.mwr-actions');
-    const b = (label, ic, run, cls) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'btn ' + (cls || 'btn-secondary'); x.innerHTML = `${icon(ic, 'i-sm')}<span></span>`; x.lastChild.textContent = label; x.onclick = (e) => { e.stopPropagation(); run(); }; return x; };
-    act.append(b('Save as image', 'download', () => _mwrSaveImage(Y), 'btn-primary'), b('Play again', 'history', () => _mwrGo(0)));
-    const ny = memSeason(); if (ny && ny.kind === 'newyear' && ny.year === Y.year + 1) act.append(b(`Set my ${Y.year + 1} goals`, 'target', () => { memWrappedClose(); memGoalsDialog(Y.year + 1); }));
-    act.append(b('Close', 'x', () => memWrappedClose()));
+    act.append(uiButton({ label: 'Save as image', icon: 'download', kind: 'primary', run: () => _mwrSaveImage(Y) }), uiButton({ label: 'Play again', icon: 'history', run: () => _mwrGo(0) }));
+    const ny = memSeason(); if (ny && ny.kind === 'newyear' && ny.year === Y.year + 1) act.append(uiButton({ label: `Set my ${Y.year + 1} goals`, icon: 'target', run: () => { memWrappedClose(); memGoalsDialog(Y.year + 1); } }));
+    act.append(uiButton({ label: 'Close', icon: 'x', run: () => memWrappedClose() }));
   }
 }
 function _mwrCount(slide) {
@@ -246,11 +245,11 @@ function _mwrSaveImage(Y) {
     }
     g.globalAlpha = 0.7; g.font = `500 30px ${font}`; g.fillText('Made with OpenDash', 92, H - 70);
     c.toBlob((blob) => {
-      if (!blob) { toast('The picture could not be made', { kind: 'err' }); return; }
+      if (!blob) { toastError('make the picture', null, () => _mwrSaveImage(Y)); return; }
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `opendash-wrapped-${Y.year}.png`;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
       toast('Saved your Wrapped card to Downloads', { kind: 'ok', icon: 'download' });
     }, 'image/png');
-  } catch (e) { toast('The picture could not be made', { kind: 'err' }); }
+  } catch (e) { toastError('make the picture', e, () => _mwrSaveImage(Y)); }
 }

@@ -287,18 +287,11 @@ function _tcListFor(id, fromEl) {
   }
   return [id];
 }
+/** A card icon button: uiButton (icon only) with the card's tc-ib look; run gets the button. */
 function _tcBtn(ic, label, run, o) {
   o = o || {};
-  const b = document.createElement('button'); b.type = 'button';
-  b.className = 'btn-icon tc-ib' + (o.on ? ' on' : '') + (o.cls ? ' ' + o.cls : '');
-  b.innerHTML = icon(ic);
-  b.setAttribute('aria-label', label); b.setAttribute('data-tip', label);
-  if (o.kbd) b.setAttribute('data-kbd', o.kbd);
-  if (o.fk) b.dataset.fk = o.fk;
-  if (o.pressed !== undefined) b.setAttribute('aria-pressed', o.pressed ? 'true' : 'false');
-  if (o.disabled) b.disabled = true;
-  b.onclick = (e) => { e.stopPropagation(); run(e.currentTarget); };
-  return b;
+  return uiButton({ icon: ic, tip: label, aria: label, kbd: o.kbd, disabled: o.disabled, pressed: o.pressed,
+    cls: 'tc-ib' + (o.on ? ' on' : '') + (o.cls ? ' ' + o.cls : ''), data: o.fk ? { fk: o.fk } : null, run: (e, btn) => run(btn) });
 }
 function _tcGroup(cls, nodes) {
   const g = document.createElement('div'); g.className = 'tc-grp' + (cls ? ' ' + cls : '');
@@ -600,10 +593,9 @@ function _tcTaskView(inner, cur, keep) {
   /* foot: quick actions */
   const foot = document.createElement('div'); foot.className = 'tc-foot';
   const fb = (ic, label, cls, fk, run, tip) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.dataset.fk = fk;
-    b.innerHTML = icon(ic) + `<span>${esc(label)}</span>`;
-    if (tip) b.setAttribute('data-tip', tip);
-    b.onclick = (e) => run(e.currentTarget);
+    const kind = /btn-primary/.test(cls) ? 'primary' : /btn-ghost/.test(cls) ? 'ghost' : 'secondary';
+    const extra = cls.split(/\s+/).filter(c => c && !/^btn-(primary|ghost|secondary)$/.test(c)).join(' ');
+    const b = uiButton({ label, icon: ic, kind, size: 'sm', cls: extra, tip, data: { fk }, bubble: true, run: (e, btn) => run(btn) });
     foot.appendChild(b); return b;
   };
   fb('trash-2', 'Delete', 'btn-ghost tc-f-del', 'tc-del', () => _tcDelete(id), 'Move to the bin (Del)');
@@ -918,11 +910,8 @@ function _tcCreateView(inner, cur, keep) {
 
   const foot = document.createElement('div'); foot.className = 'tc-foot';
   foot.innerHTML = '<span class="tc-keys is-left"><span><kbd class="kbd">↵</kbd> create</span><span><kbd class="kbd">Ctrl</kbd><kbd class="kbd">↵</kbd> create and close</span><span><kbd class="kbd">Esc</kbd> cancel</span></span>';
-  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn btn-ghost btn-sm'; cancel.textContent = 'Cancel';
-  cancel.onclick = () => _tcBackOrClose();
-  const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-primary btn-sm'; go.dataset.fk = 'tc-create';
-  go.innerHTML = icon('plus') + '<span>Create task</span>';
-  go.onclick = () => _tcCreateSave(false);
+  const cancel = uiButton({ label: 'Cancel', kind: 'ghost', size: 'sm', bubble: true, run: () => _tcBackOrClose() });
+  const go = uiButton({ label: 'Create task', icon: 'plus', kind: 'primary', size: 'sm', data: { fk: 'tc-create' }, bubble: true, run: () => _tcCreateSave(false) });
   foot.append(cancel, go);
   inner.appendChild(foot);
   // The prefill sweep: once per draft, over the fields a suggestion filled in (prototype t6).
@@ -1386,22 +1375,23 @@ function _tcSheetDragStart(e) {
 /* ---------- Settings > Tasks ---------- */
 if (typeof registerSettingsGroup === 'function') registerSettingsGroup({
   id: 'tasks', title: 'Tasks', icon: 'circle-check', order: 25,
-  description: 'How tasks and calendar events open, and what the card shows.',
+  description: 'How tasks and events open.',
   render(el) {
-    el.appendChild(_settingsRow('Open tasks and events in', 'The centre card is big and keeps you in the middle of the screen; the side panel keeps the list in view. Either one has a button to switch to the other.', _settingsSeg(
+    el.appendChild(_settingsRow('Open tasks and events in', 'The centre card, or the side panel beside your list.', _settingsSeg(
       [['card', 'Centre card', 'scan'], ['panel', 'Side panel', 'panel-right']], itemOpenSetting(),
       (k) => { setItemOpenMode(k); render(); toast(k === 'card' ? 'Tasks and events open in the centre' : 'Tasks and events open in the side panel', { kind: 'ok' }); })));
-    el.appendChild(_settingsRow('Scene header', 'The animated scene at the top of the card (and a small one in the side panel). Click a scene to change it.', _settingsSwitch(itemHeroOn(), 'Scene header',
+    el.appendChild(_settingsRow('Scene header', 'The animated scene at the top of the card.', _settingsSwitch(itemHeroOn(), 'Scene header',
       (on) => { state.itemHero = on ? true : false; saveUI(); render(); })));
-    const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-secondary btn-sm';
-    reset.innerHTML = icon('rotate-ccw') + '<span>Reset sizes</span>';
-    reset.onclick = () => {
-      state.paneSizes = {}; saveUI();
-      try { localStorage.removeItem(typeof RZ_STORE !== 'undefined' ? RZ_STORE : 'dash-window-sizes-v1'); } catch (e) { /* storage off */ }
-      if (typeof splitSync === 'function') splitSync();
-      render(); toast('Panel and window sizes are back to their defaults', { kind: 'ok' });
-    };
-    el.appendChild(_settingsRow('Panel and window sizes', 'Drag the edge of the sidebar, the side panel, the assistant, the calendar, the card, dialogs and drawers to resize them; double-click an edge to reset it.', reset));
+    // Occasional: resetting sizes lives in a More fold (SIMPLIFY_PLAN.md 5.1, key tasks-card-more).
+    setFold(el, 'tasks-card-more', 'More', ({ body }) => {
+      const reset = uiButton({ label: 'Reset sizes', icon: 'rotate-ccw', size: 'sm', run: () => {
+        state.paneSizes = {}; saveUI();
+        try { localStorage.removeItem(typeof RZ_STORE !== 'undefined' ? RZ_STORE : 'dash-window-sizes-v1'); } catch (e) { /* storage off */ }
+        if (typeof splitSync === 'function') splitSync();
+        render(); toast('Panel and window sizes reset', { kind: 'ok' });
+      } });
+      body.appendChild(_settingsRow('Panel and window sizes', 'Drag an edge to resize; double-click it to reset.', reset));
+    });
   },
 });
 if (typeof registerCommand === 'function') registerCommand({

@@ -142,7 +142,7 @@ function _hdpRender(el, ctx) {
   card.dataset.level = m.cap.level;
   card.dataset.sig = m.sig;
   card.dataset.day = m.today;
-  card.innerHTML = `<div class="card-h hdp-h">${icon('gauge')}<h3>Plan my day</h3>${m.rows.length ? `<span class="n">${m.rows.length} today</span>` : ''}<span class="spacer"></span></div><div class="card-b hdp-b"></div>`;
+  card.innerHTML = `${cardHeadHtml({ icon: 'gauge', title: 'Plan my day', count: m.rows.length ? `${m.rows.length} today` : '', cls: 'hdp-h' })}<div class="card-b hdp-b"></div>`;
   if (!pv && typeof homeSettingsButton === 'function' && !ctx.editing) card.querySelector('.hdp-h').appendChild(homeSettingsButton(ctx));
   el.appendChild(card);
   const body = card.querySelector('.hdp-b');
@@ -300,7 +300,7 @@ function _hdpRowHtml(r, wide) {
   const meta = [st ? `<span class="hdp-st">${typeof streamMarkHtml === 'function' ? streamMarkHtml(r.stream) : ''}<span>${esc(st.label || r.stream)}</span></span>` : '', _hdpDueHtml(r), wide ? '' : _hdpPlaceHtml(r)].filter(Boolean).join('');
   const label = `${r.title}${r.dueState === 'overdue' ? ', overdue' : r.dueState === 'today' ? ', due today' : ''}${r.place ? `, ${homeHM(r.place.start)} to ${homeHM(r.place.end)}` : ''}, ${r.estimate ? homeDayplanSayDur(r.estimate) : 'no estimate'}`;
   return `<div class="hdp-row${r.place ? ' is-placed' : ''}" data-id="${escAttr(r.id)}" data-flip="hdp-r:${escAttr(r.id)}"${drag} ${homeRowAttrs(r.id, label)}${_hdpOpenId === r.id ? ' aria-current="true"' : ''}>`
-    + (wide ? `<span class="hdp-grip" aria-hidden="true">${icon('grip-vertical', 'i-xs')}</span>` : '')
+    + (wide ? `<span class="hdp-grip" aria-hidden="true">${icon('grip-vertical', 'i-sm')}</span>` : '')
     + `<span class="hdp-rt"><button type="button" class="hdp-tt" data-act="open" tabindex="-1">${esc(r.title)}</button>${meta ? `<span class="hdp-rm">${meta}</span>` : ''}</span>`
     + `<span class="hdp-ra">${_hdpEstHtml(r)}${_hdpTomorrowHtml(r)}<button type="button" class="btn-icon btn-sm hdp-mn" data-act="menu" aria-haspopup="menu" aria-label="${escAttr('More for ' + r.title)}">${icon('ellipsis')}</button></span></div>`;
 }
@@ -310,7 +310,7 @@ function _hdpListEl(m, ctx, size) {
   const rows = wide ? m.unplaced : m.rows;
   if (!m.rows.length) { box.appendChild(_hdpEmptyEl(m, ctx)); return box; }
   if (!rows.length) {
-    box.innerHTML = `<div class="hdp-allset">${icon('circle-check', 'i-xs')}<span>Everything for today has a time.</span></div>`;
+    box.innerHTML = `<div class="hdp-allset">${icon('circle-check', 'i-sm')}<span>Everything for today has a time.</span></div>`;
     return box;
   }
   const max = _HDP_ROWS[size] || 6;
@@ -347,7 +347,7 @@ function _hdpTrayEl(m) {
     + list.map(i => {
       const d = effDate(i), est = Number(i.estimate) > 0 ? homeDayplanDur(Number(i.estimate)) : '';
       return `<div class="hdp-ti" role="listitem" data-id="${escAttr(i.id)}" data-drag="${escAttr(i.id)}" data-flip="hdp-t:${escAttr(i.id)}" ${homeRowAttrs(i.id, `${effTitle(i)}${d ? ', due ' + dueLabel(d) : ''}`)}>`
-        + `<span class="hdp-grip" aria-hidden="true">${icon('grip-vertical', 'i-xs')}</span>${typeof streamMarkHtml === 'function' ? streamMarkHtml(effStream(i)) : ''}`
+        + `<span class="hdp-grip" aria-hidden="true">${icon('grip-vertical', 'i-sm')}</span>${typeof streamMarkHtml === 'function' ? streamMarkHtml(effStream(i)) : ''}`
         + `<span class="hdp-ti-t">${esc(effTitle(i))}</span>${d ? `<small>${esc(dueLabel(d))}</small>` : ''}${est ? `<small class="num">${esc(est)}</small>` : ''}`
         + `<button type="button" class="hdp-ti-add" data-act="today" aria-label="${escAttr('Plan ' + effTitle(i) + ' for today')}" data-tip="Plan it for today">${icon('plus', 'i-xs')}<span>Today</span></button></div>`;
     }).join('') + '</div>';
@@ -747,7 +747,7 @@ function _hdpDragMove(e) {
     document.body.classList.add('hdp-is-dragging');
     d.card.classList.add('is-dropzone');
     const pill = document.createElement('div'); pill.className = 'hdp-pill'; pill.setAttribute('aria-hidden', 'true');
-    pill.innerHTML = `${icon('calendar-clock', 'i-xs')}<span class="hdp-pill-t"></span><small></small>`;
+    pill.innerHTML = `${icon('calendar-clock', 'i-sm')}<span class="hdp-pill-t"></span><small></small>`;
     pill.querySelector('.hdp-pill-t').textContent = d.title;
     pill.querySelector('small').textContent = homeDayplanDur(d.minutes);
     document.body.appendChild(pill);
@@ -834,7 +834,7 @@ function _hdpSettings(anchor, ctx) {
   homeSettingsMenu(anchor, ctx, [
     { key: 'unestimated', label: 'A task with no estimate counts as', type: 'choice', choices: [[15, '15 min'], [30, '30 min'], [60, '1 h']] },
     { key: 'buffer', label: 'Space between blocks', type: 'choice', choices: [[0, 'None'], [5, '5 min'], [10, '10 min'], [15, '15 min']] },
-    { key: 'book', label: 'Auto-plan books blocks in my calendar', type: 'toggle', hint: 'Google Calendar events with no guests; one Undo removes them' },
+    { key: 'book', label: 'Auto-plan books blocks in my calendar', type: 'toggle', hint: 'Calendar events with no guests; one Undo removes them' },
   ], { foot: `Working hours: ${wh.start}–${wh.end} (Settings > Profile).` });
   requestAnimationFrame(() => {
     const foot = document.querySelector('.hg-set-pop .hg-set-foot');

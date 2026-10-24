@@ -208,7 +208,7 @@ function _hcuMoveAllBar(m, ctx, small) {
   const ok = document.createElement('button'); ok.type = 'button';
   ok.className = 'btn btn-secondary btn-sm btn-icon hcu-ok';
   ok.dataset.act = 'move-all-now';
-  ok.innerHTML = icon('check');
+  ok.innerHTML = icon('check', 'i-sm');
   ok.setAttribute('aria-label', `Move all ${m.slipped.length} to tomorrow now`);
   ok.setAttribute('data-tip', 'Move them now · Undo');
   if (!ctx.preview) {
@@ -248,7 +248,7 @@ function _hcuListBody(body, m, ctx, size) {
   if (hidden || _hcuAll) {
     const foot = document.createElement('div'); foot.className = 'hgl-foot hcu-foot';
     const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-ghost btn-sm hcu-more';
-    more.innerHTML = `<span>${_hcuAll ? 'Show less' : `+${hidden} more`}</span>${icon(_hcuAll ? 'chevron-up' : 'chevron-down')}`;
+    more.innerHTML = `<span>${_hcuAll ? 'Show less' : `+${hidden} more`}</span>${icon(_hcuAll ? 'chevron-up' : 'chevron-down', 'i-sm')}`;
     more.setAttribute('aria-expanded', _hcuAll ? 'true' : 'false');
     if (!ctx.preview) more.onclick = () => { _hcuAll = !_hcuAll; if (ctx.rerender) ctx.rerender(); };
     foot.appendChild(more);
@@ -287,7 +287,7 @@ function _hcuRowShell(id, label, ctx) {
   return { li, main };
 }
 function _hcuActBtn(act, ic, label, kbd, text) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'hcu-act' + (text ? ' has-text' : ''); b.tabIndex = -1;
+  const b = uiButton({ icon: ic, label: text || '', aria: label, tip: label, kbd, size: 'sm', cls: 'hcu-act' + (text ? ' has-text' : '') }); b.tabIndex = -1;
   b.dataset.act = act;
   b.innerHTML = icon(ic) + (text ? `<span>${esc(text)}</span>` : '');
   b.setAttribute('aria-label', label); b.setAttribute('data-tip', label); if (kbd) b.setAttribute('data-kbd', kbd);
@@ -344,12 +344,12 @@ function _hcuStuckRow(r, ctx, size) {
   if (size === 'l') {
     const dec = document.createElement('div'); dec.className = 'hcu-decide';
     const bd = document.createElement('button'); bd.type = 'button'; bd.className = 'chip chip-sm hcu-dec'; bd.dataset.act = 'breakdown';
-    bd.innerHTML = icon('wand-sparkles') + '<span>Break it down</span>';
+    bd.innerHTML = icon('wand-sparkles', 'i-sm') + '<span>Break it down</span>';
     bd.setAttribute('data-tip', 'Claude suggests 3 to 5 small steps; you tick and edit them, then Add');
     bd.setAttribute('data-kbd', 'B'); bd.setAttribute('aria-haspopup', 'dialog');
     const sm = document.createElement('button'); sm.type = 'button'; sm.className = 'chip chip-sm hcu-dec'; sm.dataset.act = 'smaller';
     const est = it && Number(it.estimate) > 0 ? Number(it.estimate) : 0;
-    sm.innerHTML = icon('minimize-2') + `<span>Make it smaller${est ? ` · ${esc(_hcuMins(est))}` : ''}</span>`;
+    sm.innerHTML = icon('minimize-2', 'i-sm') + `<span>Make it smaller${est ? ` · ${esc(_hcuMins(est))}` : ''}</span>`;
     sm.setAttribute('data-tip', 'Set a smaller estimate'); sm.setAttribute('data-kbd', 'S'); sm.setAttribute('aria-haspopup', 'menu');
     if (!ctx.preview) {
       bd.onclick = () => homeCatchupBreakDown(r.id, bd);
@@ -544,12 +544,12 @@ function homeCatchupOpenEditor(ctx, fromBtn) {
   let sl = null;
   const applyLabel = () => `Move to ${_hcuDayText(st.day)}`;
   _hcuEditor = openDialog({
-    title: 'Catch up', width: 560, resizeKey: 'catchup-move',
+    title: 'Catch up', size: 'md', fixed: true, resizeKey: 'catchup-move',
     onClose: () => { _hcuEditor = null; if (fromBtn && fromBtn.isConnected) try { fromBtn.focus({ preventScroll: true }); } catch (e) { /* gone */ } },
     body(b, close) {
       b.classList.add('hcu-ed');
       const intro = document.createElement('p'); intro.className = 'muted hcu-ed-intro';
-      intro.textContent = 'Untick what should stay where it is. Overdue tasks get the new due date (the move and its reason are kept in their history); missed plans get the new day.';
+      intro.textContent = 'Untick what should stay. The rest moves to the new day.';
       b.appendChild(intro);
       // Move to
       const dayRow = document.createElement('div'); dayRow.className = 'hcu-ed-row';
@@ -656,7 +656,7 @@ function homeCatchupBreakDown(id, fromBtn) {
   const store = { on: new Set(), seen: new Set(), done: new Set(), errors: new Map() };
   let gen = 0;
   _hcuSteps = openDialog({
-    title: 'Break it down', width: 560, resizeKey: 'catchup-steps',
+    title: 'Break it down', size: 'md', fixed: true, resizeKey: 'catchup-steps',
     onClose: () => { _hcuSteps = null; gen++; if (fromBtn && fromBtn.isConnected) try { fromBtn.focus({ preventScroll: true }); } catch (e) { /* gone */ } },
     body(b, close) {
       b.classList.add('hcu-ed', 'hcu-steps');

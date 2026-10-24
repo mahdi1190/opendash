@@ -274,7 +274,7 @@ function _rwPlanHtml(t, preview) {
     return `<span class="rw-split"><button type="button" class="btn btn-secondary btn-sm rw-plan" data-act="block" data-start="${b.block.start}" aria-label="Plan ${name} for today: open a new event ${range}, to adjust and save" data-tip="Opens a new event ${range} for it, to adjust; Save books it and plans it for today">${icon('calendar-plus')}<span>Plan for today</span></button>`
       + `<button type="button" class="btn btn-secondary btn-sm btn-icon rw-ok" data-act="plan" aria-label="Plan ${name} for today now, without a time, with Undo" data-tip="Plan for today now, no time · Undo">${icon('check')}</button></span>`;
   }
-  const tip = b.why === 'full' ? 'Plans it for today (no free time left today to book)' : b.why === 'stale' ? 'Plans it for today (update the calendar to book time for it)' : b.why === 'nocal' ? 'Plans it for today (connect Google Calendar to book time for it)' : 'Plans it for today · Undo';
+  const tip = b.why === 'full' ? 'Plans it for today (no free time left today to book)' : b.why === 'stale' ? 'Plans it for today (update the calendar to book time for it)' : b.why === 'nocal' ? 'Plans it for today (connect a calendar you can write to, to book time)' : 'Plans it for today · Undo';
   return `<button type="button" class="btn btn-secondary btn-sm rw-plan" data-act="plan" aria-label="Plan ${name} for today, with Undo" data-tip="${escAttr(tip)}">${icon('sun')}<span>Plan for today</span></button>`;
 }
 function _rwTaskHtml(t, ctx, m) {
@@ -300,13 +300,15 @@ function _rwRender(el, ctx) {
   card.className = `card home-card rw rw-${size}`;
   card.dataset.flip = 'rw:' + ctx.id;
   const cd = r.countdown || null;
-  const head = `<div class="card-h">${icon('milestone')}`
-    + (cd && !r.setup ? `<h3 class="rw-h"><button type="button" class="rw-name" data-act="cd" aria-label="${escAttr(`Edit the countdown ${cd.label || ''}`)}">${esc(cd.label || 'Countdown')}</button></h3>`
-      : `<h3>${esc(ctx.def && ctx.def.title || 'Deadline runway')}</h3>`)
-    + (!r.setup && size !== 's' ? `<span class="rw-scope">${_rwScopeHtml(r.prefs.scope)}</span>` : '')
-    + `<span class="spacer"></span></div>`;
-  card.innerHTML = head + `<div class="card-b rw-b"></div>`;
-  const hd = card.querySelector('.card-h');
+  const hd = cardHead({ icon: 'milestone', title: (ctx.def && ctx.def.title) || 'Deadline runway' });
+  if (cd && !r.setup) {
+    // The title is the countdown's name, and a button that edits it.
+    const h3 = hd.querySelector('h3'); h3.className = 'rw-h';
+    h3.innerHTML = `<button type="button" class="rw-name" data-act="cd" aria-label="${escAttr(`Edit the countdown ${cd.label || ''}`)}">${esc(cd.label || 'Countdown')}</button>`;
+  }
+  if (!r.setup && size !== 's') hd.querySelector('.spacer').insertAdjacentHTML('beforebegin', `<span class="rw-scope">${_rwScopeHtml(r.prefs.scope)}</span>`);
+  card.appendChild(hd);
+  card.insertAdjacentHTML('beforeend', '<div class="card-b rw-b"></div>');
   if (!ctx.preview) {
     const gear = homeSettingsButton(ctx, 'Choose what this runway tracks');
     gear.dataset.act = 'choose';
@@ -351,7 +353,7 @@ function _rwReadyHtml(body, r, ctx, size) {
     if (size === 'l') {
       const facts = [_rwProjectedText(m), _rwHoursText(m)].filter(Boolean);
       if (facts.length) {
-        html += `<ul class="rw-more">` + facts.map((f, i) => `<li class="${i === 0 && m.projectedLate ? 'is-late' : i === 1 && m.hours && m.hours.short ? 'is-late' : ''}">${icon(i === 0 ? 'flag' : 'clock', 'i-xs')}<span>${esc(f)}</span></li>`).join('') + `</ul>`;
+        html += `<ul class="rw-more">` + facts.map((f, i) => `<li class="${i === 0 && m.projectedLate ? 'is-late' : i === 1 && m.hours && m.hours.short ? 'is-late' : ''}">${icon(i === 0 ? 'flag' : 'clock', 'i-sm')}<span>${esc(f)}</span></li>`).join('') + `</ul>`;
       }
     }
     const next = m.next.slice(0, size === 'l' ? 3 : 1);
@@ -534,11 +536,12 @@ function _rwPicker(anchor, ctx) {
       const cds = _rwCountdowns();
       const today = todayStr();
       const opt = (key, on, html, attrs) => `<button type="button" class="rw-opt${on ? ' on' : ''}" role="radio" aria-checked="${on}" data-k="${escAttr(key)}" ${attrs}>${html}${on ? icon('check', 'i-xs rw-opt-ck') : ''}</button>`;
-      let html = `<div class="hg-set-h">${icon('milestone')}<b>${esc((ctx.def && ctx.def.title) || 'Deadline runway')}</b></div>`;
-      html += `<div class="rw-sec"><div class="rw-sec-h" id="rw-cd-h-${escAttr(id)}">Deadline</div><div class="rw-opts" role="radiogroup" aria-labelledby="rw-cd-h-${escAttr(id)}">`
+      const secH = (hid, title) => secHeadHtml({ title, cls: 'rw-sec-h' }).replace('<h2>', `<h2 id="${hid}">`);
+      let html = cardHeadHtml({ icon: 'milestone', title: (ctx.def && ctx.def.title) || 'Deadline runway', cls: 'hg-set-h' });
+      html += `<div class="rw-sec">${secH(`rw-cd-h-${escAttr(id)}`, 'Deadline')}<div class="rw-opts" role="radiogroup" aria-labelledby="rw-cd-h-${escAttr(id)}">`
         + cds.map(w => opt('cd:' + w.id, p.countdownId === w.id, `<span class="rw-ol">${esc(w.label || 'Countdown')}</span><small>${esc(w.date ? _rwDate(w.date) + (w.date < today ? ' · passed' : '') : 'no date')}</small>`, `data-cd="${escAttr(w.id)}"`)).join('')
-        + `</div><button type="button" class="rw-opt rw-new" data-k="new-cd" data-new="1">${icon('plus', 'i-xs')}<span class="rw-ol">New countdown…</span></button></div>`;
-      html += `<div class="rw-sec"><div class="rw-sec-h" id="rw-sc-h-${escAttr(id)}">What counts</div>`
+        + `</div><button type="button" class="rw-opt rw-new" data-k="new-cd" data-new="1">${icon('plus', 'i-sm')}<span class="rw-ol">New countdown…</span></button></div>`;
+      html += `<div class="rw-sec">${secH(`rw-sc-h-${escAttr(id)}`, 'What counts')}`
         + `<span class="seg rw-kinds" role="radiogroup" aria-labelledby="rw-sc-h-${escAttr(id)}">${[['stream', 'Stream'], ['tag', 'Tag'], ['query', 'Search']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${kind === k}" class="${kind === k ? 'on' : ''}" data-k="kind:${k}" data-kind="${k}">${l}</button>`).join('')}</span>`;
       if (kind === 'stream') {
         html += `<div class="rw-opts" role="radiogroup" aria-label="Streams">` + _rwStreams().map(s => {
@@ -556,9 +559,9 @@ function _rwPicker(anchor, ctx) {
         html += `<input class="input input-sm rw-q-in" type="text" data-k="query" maxlength="200" placeholder="#corrections stream:report" aria-label="Tasks that count: a task search" value="${escAttr(v)}">`
           + `<p class="rw-hint">A task search: #tag, @person, stream:name, words. Press Enter to use it.</p>`;
       }
-      html += `</div><div class="rw-sec rw-row"><div class="rw-sec-h" id="rw-u-h-${escAttr(id)}">Count</div><span class="seg" role="radiogroup" aria-labelledby="rw-u-h-${escAttr(id)}">`
+      html += `</div><div class="rw-sec rw-row">${secH(`rw-u-h-${escAttr(id)}`, 'Count')}<span class="seg" role="radiogroup" aria-labelledby="rw-u-h-${escAttr(id)}">`
         + [['tasks', 'Tasks'], ['steps', 'Checklist steps']].map(([k, l]) => `<button type="button" role="radio" aria-checked="${p.unit === k}" class="${p.unit === k ? 'on' : ''}" data-k="unit:${k}" data-unit="${k}">${l}</button>`).join('') + `</span></div>`
-        + `<div class="rw-sec rw-row"><div class="rw-sec-h"><span>Weekends count as workdays</span></div><button type="button" class="switch${p.countWeekends ? ' on' : ''}" role="switch" aria-checked="${!!p.countWeekends}" aria-label="Weekends count as workdays" data-k="weekends" data-weekends="1"></button></div>`;
+        + `<div class="rw-sec rw-row">${secHeadHtml({ title: 'Weekends count as workdays', cls: 'rw-sec-h' })}<button type="button" class="switch${p.countWeekends ? ' on' : ''}" role="switch" aria-checked="${!!p.countWeekends}" aria-label="Weekends count as workdays" data-k="weekends" data-weekends="1"></button></div>`;
       el.innerHTML = html;
       fit();
       if (focusKey) {

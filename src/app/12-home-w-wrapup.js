@@ -321,7 +321,7 @@ function _wuRow(m, ctx, size, kit) {
 
 function _wuBtn(cls, ic, label, o) {
   o = o || {};
-  const b = document.createElement('button'); b.type = 'button'; b.className = cls;
+  const b = hglBtn(cls);
   b.innerHTML = icon(ic) + (o.iconOnly ? '' : `<span>${esc(label)}</span>`);
   b.setAttribute('aria-label', o.aria || label);
   if (o.tip) b.setAttribute('data-tip', o.tip);
@@ -366,7 +366,7 @@ function _wuFoot(ctx, size, total, cap, preview) {
       const at = CalStore.data && CalStore.data.fetchedAt ? Date.parse(CalStore.data.fetchedAt) : NaN;
       const run = typeof CalStore.running === 'function' && CalStore.running();
       const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm wu-upd';
-      b.innerHTML = icon('refresh-cw') + `<span>${esc(run ? 'Updating calendar…' : Number.isFinite(at) ? `Updated ${_wuDayDiff(at) === 0 ? _wuHM(at) : _wuDayShort(at)}` : 'Update calendar')}</span>`;
+      b.innerHTML = icon('refresh-cw', 'i-sm') + `<span>${esc(run ? 'Updating calendar…' : Number.isFinite(at) ? `Updated ${_wuDayDiff(at) === 0 ? _wuHM(at) : _wuDayShort(at)}` : 'Update calendar')}</span>`;
       b.title = 'The calendar was last updated a while ago: update it now';
       if (run) { b.disabled = true; b.setAttribute('aria-busy', 'true'); }
       b.onclick = () => { if (!(typeof CalStore.running === 'function' && CalStore.running())) { CalStore.update({ force: true }); b.disabled = true; b.querySelector('span').textContent = 'Updating calendar…'; } };
@@ -375,7 +375,7 @@ function _wuFoot(ctx, size, total, cap, preview) {
   }
   if (size !== 's' && total > cap) {
     const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-ghost btn-sm wu-more';
-    more.innerHTML = `<span>${_wuAll ? 'Show less' : `+${total - cap} more`}</span>${icon(_wuAll ? 'chevron-up' : 'chevron-down')}`;
+    more.innerHTML = `<span>${_wuAll ? 'Show less' : `+${total - cap} more`}</span>${icon(_wuAll ? 'chevron-up' : 'chevron-down', 'i-sm')}`;
     more.setAttribute('aria-expanded', _wuAll ? 'true' : 'false');
     more.onclick = () => { if (preview) return; _wuAll = !_wuAll; if (ctx.rerender) ctx.rerender(); };
     foot.appendChild(more); any = true;
@@ -393,7 +393,7 @@ function _wuPaintCleared(el, ctx, size) {
   card.dataset.ids = '';
   const box = document.createElement('div'); box.className = 'wu-clear';
   const art = typeof animSceneHtml === 'function' ? animSceneHtml('review', { size: size === 's' ? 'md' : 'lg', once: true }) : '';
-  box.innerHTML = `<span class="wu-clear-art" data-scene-key="wu:cleared">${art || icon('check-check')}</span><div><b>All wrapped up</b><span>Notes and follow-ups are in. The next meeting shows here when it ends.</span></div>`;
+  box.innerHTML = `<span class="wu-clear-art" data-scene-key="wu:cleared">${art || icon('check-check', 'i-hero')}</span><div><b>All wrapped up</b><span>Notes and follow-ups are in. The next meeting shows here when it ends.</span></div>`;
   card.querySelector('.wu-b').appendChild(box);
   return true;
 }
@@ -415,7 +415,7 @@ function _wuLeave(li, m, fn) {
   const hadFocus = li.contains(document.activeElement);
   if (list && list.children.length === 1 && wuMeetingsToWrap(_wuPrefs(null)).length <= 1) _wuCleared = Date.now();   // the last one: the "All wrapped up" moment
   const go = () => {
-    try { fn(); } catch (e) { console.error('[wrapup]', e); toast(typeof netErrorMessage === 'function' ? netErrorMessage(e, 'That did not work') : 'That did not work', { kind: 'err' }); }
+    try { fn(); } catch (e) { console.error('[wrapup]', e); toastError('finish that action', e); }
     // Keyboard focus was in the row (or went to the page with it): the next row takes it.
     const a = document.activeElement;
     if (!hadFocus && a && a !== document.body) return;

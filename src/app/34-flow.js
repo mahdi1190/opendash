@@ -35,8 +35,10 @@ function rfDeckOpen(o) {
   Object.assign(_rfDeck, { o, q, at: 0, hist: [], counts: {}, skipped: 0, editing: false, startedAt: Date.now(), enter: null, endKeys: {}, dir: 'next', ended: false });
   const onKey = (e) => _rfDeckKey(e);
   window.addEventListener('keydown', onKey, true);
+  // A fixed size (UI_CLEANUP_PLAN.md 1.3): the card area scrolls, so the rail, the action keys and
+  // the back / skip controls stay exactly where they are from one card to the next.
   _rfDeck.close = openDialog({
-    title: o.title || 'Review', width: 780, resizable: false, resizeKey: 'rf-deck',
+    title: o.title || 'Review', size: 'lg', fixed: true, className: 'rf-deck', resizable: false, resizeKey: 'rf-deck',
     body: (b) => { _rfDeck.root = b; b.classList.add('rf-deck-b'); b.tabIndex = -1; _rfDeckSkipDone(); _rfDeckPaint(); setTimeout(() => { try { b.focus({ preventScroll: true }); } catch (e) {} }, 10); },
     onClose: () => {
       window.removeEventListener('keydown', onKey, true);
@@ -46,8 +48,6 @@ function rfDeckOpen(o) {
       if (oo && oo.onClose) try { oo.onClose(ctx); } catch (err) { console.error('[review] close', err); }
     },
   });
-  const dlg = _rfDeck.root && _rfDeck.root.closest('.modal');
-  if (dlg) dlg.classList.add('rf-deck');
 }
 function rfDeckIsOpen() { return !!_rfDeck.o; }
 function _rfDeckCtx() {
@@ -66,9 +66,14 @@ function _rfDeckSkipDone() {
 }
 
 function _rfDeckPaint() {
-  const b = _rfDeck.root; if (!b) return;
+  const root = _rfDeck.root; if (!root) return;
   const o = _rfDeck.o, q = _rfDeck.q;
-  b.innerHTML = '';
+  root.innerHTML = '';
+  // Three rows: the rail and progress (top), the card (the middle, which scrolls), the keys and footer (pinned).
+  const top = document.createElement('div'); top.className = 'rf-deck-top';
+  const b = document.createElement('div'); b.className = 'rf-deck-mid';
+  const bot = document.createElement('div'); bot.className = 'rf-deck-bot';
+  root.append(top, b, bot);
   const atEnd = _rfDeck.at >= q.length;
   // Stage rail: each stage with how many it holds; the current one selected.
   const rail = document.createElement('div'); rail.className = 'rf-rail'; rail.setAttribute('role', 'list');
@@ -88,13 +93,13 @@ function _rfDeckPaint() {
   const fin = document.createElement('span'); fin.className = 'rf-pill' + (atEnd ? ' on' : '');
   fin.innerHTML = `${icon('party-popper', 'i-xs')}<span>${esc(o.finishLabel || 'Summary')}</span>`;
   rail.appendChild(fin);
-  b.appendChild(rail);
+  top.appendChild(rail);
   const prog = document.createElement('div'); prog.className = 'rf-prog';
   const doneN = Math.min(q.length, _rfDeck.at);
   const left = q.length - doneN;
   prog.innerHTML = `<span class="rf-prog-bar"><i style="--pct:${q.length ? Math.round(doneN / q.length * 100) : 100}%"></i></span><span class="rf-prog-t num">${atEnd ? `${q.length} of ${q.length}` : `${doneN + 1} of ${q.length}`}${!atEnd && left > 1 ? ` · about ${Math.max(1, Math.round(left * 15 / 60))} min left` : ''}</span>`;
-  b.appendChild(prog);
-  if (atEnd) { _rfDeckFinish(b); return; }
+  top.appendChild(prog);
+  if (atEnd) { bot.remove(); _rfDeckFinish(b); return; }
   _rfDeck.enter = null; _rfDeck.endKeys = {};
   const cur = q[_rfDeck.at];
   const i = getItem(cur.id);
@@ -112,17 +117,17 @@ function _rfDeckPaint() {
     btn.onclick = () => _rfDecide(kind, btn);
     acts.appendChild(btn);
   }
-  b.appendChild(acts);
+  bot.appendChild(acts);
   const foot = document.createElement('div'); foot.className = 'rf-foot';
   foot.innerHTML = `<span><kbd class="kbd">←</kbd> back</span><span><kbd class="kbd">Space</kbd> skip</span><span><kbd class="kbd">U</kbd> undo</span><span class="spacer"></span><span><kbd class="kbd">Esc</kbd> close · your progress is kept</span>`;
   const nav = document.createElement('span'); nav.className = 'rf-foot-nav';
-  const back = document.createElement('button'); back.type = 'button'; back.className = 'btn-icon btn-sm'; back.setAttribute('aria-label', 'Back'); back.innerHTML = icon('arrow-left', 'i-sm'); back.disabled = _rfDeck.at === 0; back.onclick = () => _rfDeckBack();
-  const skip = document.createElement('button'); skip.type = 'button'; skip.className = 'btn-icon btn-sm'; skip.setAttribute('aria-label', 'Skip'); skip.innerHTML = icon('arrow-right', 'i-sm'); skip.onclick = () => _rfDeckSkip();
-  const un = document.createElement('button'); un.type = 'button'; un.className = 'btn-icon btn-sm'; un.setAttribute('aria-label', 'Undo the last decision'); un.innerHTML = icon('undo-2', 'i-sm'); un.disabled = !_rfDeck.hist.length; un.onclick = () => _rfDeckUndo();
+  const back = uiButton({ icon: 'arrow-left', iconCls: 'i-sm', size: 'sm', aria: 'Back', disabled: _rfDeck.at === 0, run: () => _rfDeckBack() });
+  const skip = uiButton({ icon: 'arrow-right', iconCls: 'i-sm', size: 'sm', aria: 'Skip', run: () => _rfDeckSkip() });
+  const un = uiButton({ icon: 'undo-2', iconCls: 'i-sm', size: 'sm', aria: 'Undo the last decision', disabled: !_rfDeck.hist.length, run: () => _rfDeckUndo() });
   nav.append(back, skip, un);
   foot.prepend(nav);
-  b.appendChild(foot);
-  if (typeof animActivate === 'function') try { animActivate(b); } catch (e) { /* scenes are a bonus */ }
+  bot.appendChild(foot);
+  if (typeof animActivate === 'function') try { animActivate(root); } catch (e) { /* scenes are a bonus */ }
 }
 
 function _rfCard(i, st, cur) {
@@ -219,7 +224,7 @@ function _rfEdit() {
   const inp = document.createElement('input'); inp.className = 'control rf-card-in'; inp.value = effTitle(i); inp.maxLength = 500; inp.setAttribute('aria-label', 'Title');
   h.replaceWith(inp);
   const row = document.createElement('div'); row.className = 'rf-edit-row';
-  const mk = (label, ic, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.innerHTML = icon(ic, 'i-sm') + `<span>${esc(label)}</span>`; b.onclick = () => run(b); return b; };
+  const mk = (label, ic, run) => uiButton({ label, icon: ic, iconCls: 'i-sm', size: 'sm', run: (e, b) => run(b) });
   const stop = () => { _rfDeck.editing = false; _rfDeckPaint(); };
   row.append(
     mk('Deadline…', 'calendar', (b) => openDueDatePopover(b, { value: effDate(i), allowClear: true, title: 'Deadline', onPick: (d) => { setDateWithReason(i.id, d || null, _rfDeck.o ? _rfDeck.o.reason : 'Review'); _rfDeck.hist.push({ at: _rfDeck.at, id: i.id, kind: 'edit', mark: undoMark(), prev: cur.dec }); stop(); } })),

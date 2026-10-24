@@ -56,7 +56,7 @@ function _amWhy(e) {
 function animMakeOpen(onSaved) {
   let draft = null, busy = false;
   openDialog({
-    title: 'Create an animation', width: 560, resizeKey: 'anim-make',
+    title: 'Create an animation', size: 'md', resizeKey: 'anim-make',
     body: (el, close) => {
       el.innerHTML = `<p class="muted am-intro">Describe a small looping animation and the assistant draws it. It is checked for safety and size, and you see it before anything is saved.</p>`
         + `<label class="field"><span class="field-label">Describe it</span><textarea class="control am-desc" rows="3" maxlength="400" placeholder="A paper boat bobbing on small waves, with a gull overhead"></textarea></label>`
@@ -111,7 +111,7 @@ function animMakeOpen(onSaved) {
         try {
           const j = await _amPost('/api/anim/mine', { draft });
           _amRegister(j.items);
-          if (typeof toast === 'function') toast(`Saved to My animations: ${draft.label}`);
+          if (typeof toast === 'function') toast(`Saved to My animations: ${draft.label}`, { kind: 'ok' });
           close();
           if (typeof onSaved === 'function') onSaved(j.item);
         } catch (e) {
@@ -150,7 +150,7 @@ function animMineSection(onChange) {
         const j = await _amPost('/api/anim/mine/delete', { id: r.id });
         _amRegister(j.items);
         if (onChange) onChange();
-      } catch (e) { if (typeof toast === 'function') toast(netErrorMessage(e, 'Not deleted. Try again.')); }
+      } catch (e) { if (typeof toast === 'function') toastError('delete it', e); }
     });
     const acts = document.createElement('div'); acts.className = 'apg-acts'; acts.appendChild(del);
     f.appendChild(acts);

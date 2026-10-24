@@ -51,9 +51,9 @@ function hostsBannerModel(st, opts) {
   if (st.paused && st.by) {
     out.push({
       key: 'paused', kind: 'paused', tone: 'warning',
-      title: `OpenDash is open on ${st.by.hostname} (seen ${st.by.seen || 'just now'}).`,
-      sub: 'Changes here are paused so the two computers don’t overwrite each other. Close it there, or use it here anyway.',
-      actions: [{ id: 'override', label: 'Use here anyway', primary: true }], dismissible: false,
+      title: `OpenDash is open on ${st.by.hostname}, so changes here are paused.`,
+      sub: '',
+      actions: [{ id: 'override', label: 'Use it here', primary: true }], dismissible: false,
     });
   } else {
     for (const h of (Array.isArray(st.others) ? st.others : []).slice(0, 2)) {
@@ -61,8 +61,8 @@ function hostsBannerModel(st, opts) {
       if (dismissed.has(key)) continue;
       out.push({
         key, kind: 'also-open', tone: 'warning',
-        title: `OpenDash is also open on ${h.hostname} (seen ${h.seen || 'just now'}).`,
-        sub: 'Use it on one computer at a time: changes made on both can overwrite each other.',
+        title: `OpenDash is also open on ${h.hostname}. Use one at a time.`,
+        sub: '',
         actions: [], dismissible: true,
       });
     }
@@ -82,15 +82,15 @@ function hostsBannerModel(st, opts) {
     const org = st.oneDriveWork.org ? String(st.oneDriveWork.org).slice(0, 60) : '';
     out.push({
       key: 'onedrive-work', kind: 'onedrive-work', tone: 'warning',
-      title: `Your data is in your work or school OneDrive${org ? ` (${org})` : ''}.`,
-      sub: 'Your organisation can see what is there. Move it to your own OneDrive or off OneDrive in Settings > Data > Move.',
-      actions: [], dismissible: true,
+      title: `Your data is in your work OneDrive${org ? ` (${org})` : ''}, which your employer can see.`,
+      sub: '',
+      actions: [{ id: 'move', label: 'Move it', primary: true }], dismissible: true,
     });
   } else if (st.oneDrive && !o.oneDriveOff && !dismissed.has('onedrive')) {
     out.push({
       key: 'onedrive', kind: 'onedrive', tone: 'info',
       title: 'Your data is in OneDrive: use OpenDash on one computer at a time.',
-      sub: '', actions: [], dismissible: true,
+      sub: '', actions: [{ id: 'move', label: 'Move it', primary: false }], dismissible: true,
     });
   }
   return out;
@@ -133,9 +133,11 @@ async function _hbAction(item, act, btn) {
   _hb.busy = true;
   if (btn) btn.disabled = true;
   try {
-    if (act.id === 'override') {
+    if (act.id === 'move') {
+      if (typeof setView === 'function') setView('settings:data');
+    } else if (act.id === 'override') {
       const r = await fetch('/api/hosts/override', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-      if (!r.ok) throw new Error('the server did not accept it');
+      if (!r.ok) throw new Error('OpenDash didn’t accept it');
       _hb.status = await r.json();
       _hbRender();
       _hbResumed();
@@ -146,7 +148,7 @@ async function _hbAction(item, act, btn) {
       if (!r.ok) throw new Error((j && (typeof j.error === 'string' ? j.error : j.error && j.error.message)) || 'it could not be kept');
       if (_hb.status) _hb.status.conflicts = j.conflicts || [];
       _hbRender();
-      if (typeof toast === 'function') toast(item.rel.indexOf('dashboard-state') >= 0 ? 'Kept as a backup: Settings › Data can open it' : 'Kept as a backup in state/backups', { kind: 'ok' });
+      if (typeof toast === 'function') toast(item.rel.indexOf('dashboard-state') >= 0 ? 'Kept as a backup (Settings > Data)' : 'Kept as a backup (Settings > Data)', { kind: 'ok' });
     }
   } catch (e) {
     const msg = typeof netErrorMessage === 'function' ? netErrorMessage(e) : String((e && e.message) || e);

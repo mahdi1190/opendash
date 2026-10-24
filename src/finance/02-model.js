@@ -69,11 +69,20 @@
       s.med = median(s.amts);
       s.cat = Object.entries(s.cats).sort((p, q) => q[1] - p[1])[0][0];
     }
+    // Card payments the bank has not settled yet (analysis.pending, lib/finance.mjs): shown, never counted in the totals.
+    const pending = [];
+    for (const g of Array.isArray(a.pending) ? a.pending : []) for (const r of (g && g.rows) || []) {
+      const amt = Number(r && r.a);
+      if (!r || !validIso(r.d) || !isFinite(amt) || !amt) continue;
+      pending.push({ pending: true, i: -1 - pending.length, d: r.d.slice(0, 10), n: Math.min(dnum(r.d), today), m: String(r.memo || 'Card payment').slice(0, 60), c: 'Pending', a: amt, acct: r.acct ? String(r.acct) : '',
+        kind: amt < 0 ? 'spend' : 'income', s: amt < 0 ? -amt : 0, inc: amt > 0 ? amt : 0, abs: Math.abs(amt), k: 'p' + pending.length, cc: '', city: '', lc: '', la: 0, ol: 0 });
+    }
+    pending.sort((p, q) => q.n - p.n);
     const spendAmts = tx.filter(t => t.s > 0).map(t => t.s);
     const M = {
       a, tx, exclude, categories, spendCats, accts, acctNames, acctInfo, sources, minN, maxN, anchor, today, mstats,
       p99: quantile(spendAmts, 0.99), maxAmt: Math.max(10, ...spendAmts, ...tx.map(t => t.abs)),
-      slots: {},
+      pending, slots: {},
     };
     // Stable colour slots: the 7 biggest named categories get a hue; a
     // category keeps its hue across reloads for as long as it stays top-7.

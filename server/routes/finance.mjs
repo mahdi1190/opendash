@@ -79,7 +79,7 @@ export default function register(app) {
       const r = await fetchFromSource(src, { ...opts, accountOn, serverDef: sources.serverDef(src.server), denyServers: ((disc && disc.servers) || []).filter(x => x.kind === 'claude.ai').map(x => x.name) });
       const rej = describeRejected(r.rejected);
       log('note', `bank source: ${r.rows.length} transactions, ${r.accounts.length} account(s)`);
-      return { ...r, ...(rej ? { warning: `left out ${rej}` } : {}) };
+      return { ...r, incomplete: r.failedCalls > 0, ...(rej ? { warning: `left out ${rej}` } : {}) };
     },
     noteSync: (id, r) => sources.noteSync(id, r),
   });
@@ -95,12 +95,13 @@ export default function register(app) {
   async function accountsMeta(analysis) {
     const list = (await sources.all()).filter(s => s.capability === 'bank');
     const out = [];
+    const stats = await finConnectFor(app.ctx).accountStats();
     const seen = new Set();
     for (const s of list) {
       for (const a of s.accounts || []) {
         const key = s.preset === 'aureli' || s.kind === 'csv' ? a.id : `${s.id}.${a.id}`;
         if (seen.has(key)) continue; seen.add(key);
-        out.push({ key, sourceId: s.id, sourceLabel: s.label, sourceColour: s.colour, provider: providerOf(s), kind: a.kind || null, name: a.name, colour: a.colour, enabled: a.enabled !== false && s.enabled, lastSync: s.lastSync || null });
+        out.push({ ...(stats[key] || { transactionCount: 0, latestTransaction: null }), mask: a.mask || null, key, sourceId: s.id, sourceLabel: s.label, sourceColour: s.colour, provider: providerOf(s), kind: a.kind || null, name: a.name, colour: a.colour, enabled: a.enabled !== false && s.enabled, lastSync: s.lastSync || null });
       }
     }
     // Accounts in the data that no source names: CSV imports (or a bank that was removed).
@@ -113,7 +114,7 @@ export default function register(app) {
       // Aureli ids are opaque tokens; CSV exports carry sort code / account numbers.
       const isAureli = !generic && aureli && /^[A-Za-z0-9_-]{8,64}$/.test(k) && /[A-Za-z]/.test(k);
       const src = generic || (isAureli ? aureli : csv) || null;
-      out.push({ key: k, sourceId: src ? src.id : null, sourceLabel: src ? src.label : 'Imported', sourceColour: src ? src.colour : 'slate', provider: providerOf(src), kind: null,
+      out.push({ ...(stats[k] || { transactionCount: 0, latestTransaction: null }), key: k, sourceId: src ? src.id : null, sourceLabel: src ? src.label : 'Imported', sourceColour: src ? src.colour : 'slate', provider: providerOf(src), kind: null,
         // Account numbers are shortened; a readable label from a CSV is kept as it is.
         name: /\d{5,}/.test(k) || (isAureli && !generic) ? 'Account …' + String(k).replace(/^.*\./, '').replace(/\s+/g, '').slice(-4) : String(k).replace(/^.*\./, '').slice(0, 30),
         colour: null, enabled: true, lastSync: (src && src.lastSync) || null });
@@ -124,7 +125,7 @@ export default function register(app) {
   async function sourcesMeta(analysis) {
     const st = await sources.status({ discover: false });
     return {
-      sources: st.sources.filter(s => s.capability === 'bank').map(s => ({ id: s.id, label: s.label, kind: s.kind, provider: providerOf(s), colour: s.colour, enabled: s.enabled, state: s.health && s.health.state, lastSync: s.lastSync })),
+      sources: st.sources.filter(s => s.capability === 'bank').map(s => ({ id: s.id, label: s.label, kind: s.kind, provider: providerOf(s), colour: s.colour, enabled: s.enabled, state: s.health && s.health.state, lastSync: s.lastSync, lastAttempt: s.lastAttempt, lastFetchStatus: s.lastFetchStatus, lastError: s.lastError })),
       accounts: await accountsMeta(analysis),
       canSync: st.capabilities.bank.available,
     };

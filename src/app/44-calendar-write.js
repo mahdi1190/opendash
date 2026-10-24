@@ -173,7 +173,7 @@ function _calwAskScope(ev, op, o) {
     ];
     if (op === 'rsvp') opts.splice(1, 1);
     closeDlg = openDialog({
-      title: `${verb} recurring event`, width: 420, resizeKey: 'calw-scope',
+      title: `${verb} recurring event`, size: 'sm', resizeKey: 'calw-scope',
       body: (el) => {
         el.classList.add('calw-dlg');
         const list = document.createElement('div'); list.className = 'calw-scope'; list.setAttribute('role', 'radiogroup');
@@ -214,7 +214,7 @@ function _calwAskGuests(ev, kind, invitees) {
       : kind === 'invite' ? 'Google will email them an invitation, unless you choose not to send it.'
         : 'Google will email them the change, unless you choose not to send it.';
     openDialog({
-      title, width: 440, resizeKey: 'calw-guests',
+      title, size: 'sm', resizeKey: 'calw-guests',
       body: (el) => {
         el.classList.add('calw-dlg');
         const p = document.createElement('p'); p.className = 'calw-lead';

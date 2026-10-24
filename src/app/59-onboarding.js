@@ -77,7 +77,7 @@ function openOnboarding() {
         try {
           const r = await fetch('/api/demo/load', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
           if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || ('HTTP ' + r.status)); }
-        } catch (e) { toast('Demo data could not be loaded: ' + e.message, { kind: 'err' }); }
+        } catch (e) { toastError('load the example data', e); }
       } else {
         const p = OB_PRESETS.find(x => x.id === d.preset) || OB_PRESETS[0];
         state.streams = p.streams.map(([id, label, color], i) => ({ id, label, color, order: i, archived: false }));
@@ -126,20 +126,20 @@ function openOnboarding() {
     body.append(h, p);
     if (step === 0) {
       h.textContent = 'Welcome to OpenDash';
-      p.textContent = 'Your tasks, calendar, money and memories in one calm place. It runs on this computer and keeps everything in your own data folder. Four quick questions, about a minute, and you can skip any of them.';
+      p.textContent = 'Your tasks, calendar, money and memories in one calm place, on this computer. Four quick questions; skip any.';
       const inp = el('input', 'control'); inp.id = 'ob-name'; inp.maxLength = 60; inp.placeholder = 'e.g. Sam'; inp.value = d.userName; inp.autocomplete = 'given-name';
       inp.oninput = () => { d.userName = inp.value; setBrandMark(mark, inp.value); };
-      body.appendChild(field('What should we call you?', inp, 'Optional. Used in greetings and the app title.'));
+      body.appendChild(field('What should we call you?', inp, 'Optional.'));
       const em = el('input', 'control'); em.id = 'ob-emails'; em.type = 'text'; em.placeholder = 'you@example.org'; em.value = d.myEmails; em.autocomplete = 'email';
       em.oninput = () => { d.myEmails = em.value; };
-      body.appendChild(field('Your email address', em, 'Optional; add several with commas. Shared calendars of other people then start hidden.'));
+      body.appendChild(field('Your email address', em, 'Optional. Helps tell your calendars from other people’s.'));
       setTimeout(() => inp.focus(), 30);
     } else if (step === 1) {
       h.textContent = 'Where are you?';
-      p.textContent = 'So that “today”, due dates and money look right. Detected from this computer.';
+      p.textContent = 'Detected from this computer.';
       const grid = el('div', 'ob-grid');
       grid.append(
-        field('Home time zone', _settingsSelect(settingsTimeZones(), d.timezone, (v) => { d.timezone = v; paint(); }), 'Where you live. While you travel, the dashboard follows this computer’s clock.'),
+        field('Home time zone', _settingsSelect(settingsTimeZones(), d.timezone, (v) => { d.timezone = v; paint(); }), 'Where you live.'),
         field('Language and date format', _settingsSelect(SETTINGS_LOCALES, d.locale, (v) => { d.locale = v; paint(); }), 'Example: ' + settingsDateExample(d.locale, d.timezone)),
         field('Currency', _settingsSelect(SETTINGS_CURRENCIES, d.currency, (v) => { d.currency = v; })),
         field('Week starts on', seg([['Mon', 'Monday'], ['Sun', 'Sunday'], ['Sat', 'Saturday']], d.weekStart, (k) => { d.weekStart = k; })));
@@ -147,7 +147,7 @@ function openOnboarding() {
       if (typeof briefOnboardingLocationField === 'function') body.appendChild(briefOnboardingLocationField(d));   // weather town (78-brief-hooks.js)
     } else if (step === 2) {
       h.textContent = 'How do you organise things?';
-      p.textContent = 'Streams are the big areas your tasks belong to. Pick a starting set; you can rename, add or archive them any time.';
+      p.textContent = 'The big areas your tasks belong to. Change them any time.';
       const list = el('div', 'ob-choices');
       for (const pr of OB_PRESETS) {
         const b = el('button', 'ob-choice' + (d.preset === pr.id ? ' on' : '')); b.type = 'button'; b.setAttribute('aria-pressed', d.preset === pr.id ? 'true' : 'false');
@@ -166,7 +166,7 @@ function openOnboarding() {
       })));
     } else {
       h.textContent = 'Ready when you are';
-      p.textContent = 'Start with a clean slate, or look around with made-up example data first. Right after this, three quick tips show you around.';
+      p.textContent = 'Start clean, or explore with made-up examples first.';
       const list = el('div', 'ob-choices ob-choices-2');
       const opt = (val, title, text, ic) => {
         const b = el('button', 'ob-choice' + (d.demo === val ? ' on' : '')); b.type = 'button'; b.setAttribute('aria-pressed', d.demo === val ? 'true' : 'false');
@@ -179,7 +179,7 @@ function openOnboarding() {
         opt(true, 'Explore with demo data', 'Example tasks, people, a calendar and finances, all invented. Reset it later in Settings > Data.', 'sparkles'));
       body.appendChild(list);
       body.appendChild(el('h2', 'conn-name', 'Choose your assistant (optional)'));
-      body.appendChild(el('p', 'conn-note', 'Connect your assistant and its OpenDash tools together. Everything else works without an assistant.'));
+      body.appendChild(el('p', 'conn-note', 'Optional: everything else works without it.'));
       body.appendChild(assistantConnectionCards((window.Connections && Connections.all()) || {}, paint, true));
       if (typeof accountsCompactCard === 'function') body.appendChild(accountsCompactCard());
       if (typeof hostedRelayCard === 'function') {

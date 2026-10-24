@@ -355,7 +355,7 @@ function _liveAskConflicts(conflicts, merged, local, remote, who) {
     if (typeof openDialog === 'function') {
       let done = false;
       openDialog({
-        title: 'Changes made in two places', width: 560, body: build,
+        title: 'Changes made in two places', size: 'md', body: build,
         actions: [
           { label: 'Keep all mine', run: () => { done = true; choice.fill('local'); finish(); } },
           { label: 'Save choices', primary: true, run: () => { done = true; finish(); } },
@@ -406,7 +406,7 @@ function _liveDataKey(s) { return syncSharedKey(s, _liveTabOwn(), _NOT_PERSISTED
 /** 409 from PUT /api/state: merge instead of throwing this tab's edits away. */
 async function liveSyncHandleConflict(payload, key) {
   if (_liveMergeDepth > 4) {
-    showToast('Could not save: the dashboard keeps changing elsewhere. Retrying shortly.', true);
+    toast('Still saving: changes keep arriving from another tab. Trying again in a moment.', { kind: 'info' });
     _liveMergeDepth = 0;
     schedulePersist(5000);
     return false;
@@ -460,7 +460,7 @@ async function liveSyncUndo(token) {
     if (!r.ok || j.ok === false) throw new Error((j.error && j.error.message) || ('undo failed (' + r.status + ')'));
     _liveToast('Undone', { kind: 'ok' });
   } catch (e) {
-    _liveToast(String(e.message || e), { kind: 'err' });
+    toastError('undo it', e, () => liveSyncUndo(token));
   }
 }
 

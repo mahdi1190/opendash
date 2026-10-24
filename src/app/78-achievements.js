@@ -242,8 +242,8 @@ function achHistorySummary() {
   if (!n && !xp) return;
   if (typeof gameOn === 'function' && !gameOn()) return;   // Fun level Off: the wall still shows them
   const lv = (() => { try { const s = gameStats(); return s ? s.level.level : 0; } catch (e) { return 0; } })();
-  const text = n ? `You'd already earned ${n.toLocaleString()} achievement${n === 1 ? '' : 's'} from your history${xp ? ` (+${xp.toLocaleString()} XP${lv ? `, level ${lv}` : ''})` : ''}.`
-    : `Your earlier achievements now give XP: +${xp.toLocaleString()}${lv ? ` (level ${lv})` : ''}.`;
+  const text = n ? `You'd already earned ${n.toLocaleString()} achievement${n === 1 ? '' : 's'} from your history${xp ? ` (+${xp.toLocaleString()} XP${lv ? `, level ${lv}` : ''})` : ''}`
+    : `Your earlier achievements now give XP: +${xp.toLocaleString()}${lv ? ` (level ${lv})` : ''}`;
   toast(text, { icon: 'award', timeout: 9000, action: { label: 'Have a look', run: () => { if (typeof gameWallOpen === 'function') gameWallOpen('', { filter: 'history' }); else if (typeof gameOpenWall === 'function') gameOpenWall(); } } });
 }
 /** Mark the summary seen (the wall's Dismiss). */
@@ -260,11 +260,11 @@ function _achRewardLabel(d) {
 function achUnlockMoment(ids) {
   if (!ids || !ids.length) return;
   if (typeof gameAchMoment === 'function') { try { gameAchMoment(ids); return; } catch (e) { /* fall back to the toast */ } }
-  if (ids.length > 1) { toast(`${ids.length} achievements unlocked.`, { icon: 'award', action: { label: 'See them', run: () => achOpenPanel() } }); return; }
+  if (ids.length > 1) { toast(`${ids.length} achievements unlocked`, { icon: 'award', action: { label: 'See them', run: () => achOpenPanel() } }); return; }
   const d = achDef(ids[0]);
   if (!d) return;
   const rw = _achRewardLabel(d);
-  toast(`${d.label}.${rw ? ` Unlocked: ${rw}.` : ''}`, { icon: 'award', action: { label: 'See it', run: () => achOpenPanel() } });
+  toast(`${d.label}${rw ? `: unlocked ${rw}` : ''}`, { icon: 'award', action: { label: 'See it', run: () => achOpenPanel() } });
   const it = d.reward && d.reward.item ? animItem(d.reward.item) : null;
   const lv = typeof _amLevel === 'function' ? _amLevel() : 'standard';
   if (it && typeof animMomentPlay === 'function') animMomentPlay(it, { center: true, size: 'lg', ms: lv === 'subtle' ? 1300 : 2000, cls: 'ach-moment', caption: d.label });
@@ -282,12 +282,9 @@ function achPanelRender(el) {
   const n = ACH_DEFS.filter(d => s.unlocked[d.id]).length;
   // Here only the ones that unlock something for the library; every achievement is on the achievements wall
   const withReward = ACH_DEFS.filter(d => d.reward || (d.unlock && /^anim:/.test(d.unlock)));
-  root.innerHTML = `<div class="anim-gallery-h"><h3>Achievements</h3><span class="muted">${n} of ${ACH_DEFS.length} earned · these ${withReward.length} unlock something for your library. Nothing is ever lost.</span></div>`;
-  if (typeof gameOpenWall === 'function') {
-    const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'btn btn-secondary btn-sm'; wb.innerHTML = icon('trophy', 'i-sm') + '<span>Open the achievements</span>';
-    wb.onclick = () => gameOpenWall();
-    root.appendChild(wb);
-  }
+  // The section header (secHead, UI_CLEANUP_PLAN.md 3.2); its one action opens the Achievements page.
+  root.appendChild(secHead({ title: 'Achievements', sub: `${n} of ${ACH_DEFS.length} earned · these ${withReward.length} unlock something for your library. Nothing is ever lost.`,
+    actions: typeof gameOpenWall === 'function' ? [{ label: 'Open the achievements', icon: 'trophy', kind: 'secondary', run: () => gameOpenWall() }] : [] }));
   const grid = document.createElement('div'); grid.className = 'ach-grid';
   for (const d of withReward) {
     const got = s.unlocked[d.id], p = achProgress(d, facts);
@@ -309,12 +306,11 @@ function achPanelRender(el) {
     const row = document.createElement('div'); row.className = 'ach-recaps';
     const today = todayStr();
     const lastMonth = Clock.addDays(today.slice(0, 8) + '01', -1).slice(0, 7);
-    const btn = (label, ic, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.innerHTML = icon(ic, 'i-sm') + `<span>${esc(label)}</span>`; b.onclick = run; return b; };
     row.append(
-      btn(`Play my ${today.slice(0, 4)}`, 'sparkles', () => recapOpen('year', today.slice(0, 4))),
-      btn('Play this month', 'calendar-days', () => recapOpen('month', today.slice(0, 7))),
-      btn('Play last month', 'calendar-days', () => recapOpen('month', lastMonth)));
-    root.appendChild(_settingsRow('Your year and month in OpenDash', 'An animated recap from the data on this device: tasks done, your busiest day, streams, people, meetings, money totals and the look of the year. A summary card can be saved as an image from its last moment.', row));
+      uiButton({ label: `Play my ${today.slice(0, 4)}`, icon: 'sparkles', size: 'sm', run: () => recapOpen('year', today.slice(0, 4)) }),
+      uiButton({ label: 'Play this month', icon: 'calendar-days', size: 'sm', run: () => recapOpen('month', today.slice(0, 7)) }),
+      uiButton({ label: 'Play last month', icon: 'calendar-days', size: 'sm', run: () => recapOpen('month', lastMonth) }));
+    root.appendChild(_settingsRow('Your year and month in OpenDash', 'An animated recap of your tasks, busiest day, people and money; save its last card as an image.', row));
   }
   el.appendChild(root);
 }

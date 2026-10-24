@@ -85,6 +85,8 @@ function _czErrText(e) {
   if (typeof netIsDown === 'function' && netIsDown(e)) return netErrorMessage(e);
   return (e && e.message ? e.message : 'That did not work') + (e && e.hint ? ` (${e.hint})` : '');
 }
+/** The error toastError reads: a lost connection as it is, anything else with its hint in the words. */
+function _czErrObj(e) { return typeof netIsDown === 'function' && netIsDown(e) ? e : new Error(_czErrText(e)); }
 /**
  * Apply ops through POST /api/actions, adopt the result, render, and offer
  * Undo. o: {done, icon, confirmed (the caller already asked: a danger op runs
@@ -122,7 +124,7 @@ async function _czApplyNow(ops, o) {
     return j;
   } catch (e) {
     // Try again runs the same change (it is checked again on the server first).
-    toast(_czErrText(e), { kind: 'err', retry: () => czApply(ops, o) });
+    toastError('make that change', _czErrObj(e), () => czApply(ops, o));
     return null;
   }
 }
@@ -134,7 +136,7 @@ async function czUndo(token, after) {
     render();
     if (typeof _tmRepaint === 'function') _tmRepaint();
     toast('Undone', { kind: 'ok', icon: 'undo-2' });
-  } catch (e) { toast(_czErrText(e), { kind: 'err', retry: () => czUndo(token, after) }); }
+  } catch (e) { toastError('undo that', _czErrObj(e), () => czUndo(token, after)); }
 }
 
 /* ---------- opening the menu: right-click, Menu key / Shift+F10, long press ---------- */
@@ -259,9 +261,7 @@ function czShowStreamInCalendar(sid) {
 }
 function czCopyLink(view, label) {
   const url = location.origin + location.pathname + '#view=' + encodeURIComponent(view).replace(/%3A/gi, ':');
-  const done = () => toast(`Copied a link to ${label}`, { kind: 'ok', icon: 'link' });
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => toast('Could not copy the link', { kind: 'err' }));
-  else toast('Could not copy the link', { kind: 'err' });
+  copyText(url, 'link to ' + label);
 }
 
 /* ---------- tags ---------- */
@@ -307,7 +307,7 @@ function czTagMerge(tag) {
   let input = null, info = null;
   const others = tagPickerOptions('', [tag]);
   openDialog({
-    title: `Merge #${tag} into…`, width: 440,
+    title: `Merge #${tag} into…`, size: 'sm',
     body: (el) => {
       const f = document.createElement('label'); f.className = 'field';
       f.innerHTML = '<span class="field-label">Tag to keep</span>';
@@ -373,7 +373,7 @@ function czPersonMerge(pid) {
   const others = (state.people || []).filter(x => x && x.id !== a.id && !x.stub).sort((x, y) => String(x.name).localeCompare(String(y.name)));
   let sel = null;
   openDialog({
-    title: `Merge ${a.name} into…`, width: 460,
+    title: `Merge ${a.name} into…`, size: 'sm',
     body: (el) => {
       const p = document.createElement('p'); p.className = 'muted';
       p.textContent = `For duplicates. ${a.name}'s task links, emails, aliases and notes move to the person you pick, and ${a.name}'s name becomes one of their aliases.`;
@@ -612,7 +612,7 @@ function czOpenCustomise(kind, id, where) {
         const list = czSymbolSearch(typed && !czIsEmoji(typed) ? typed : '', curated, czSpriteIcons(), typed ? 120 : 63);
         if (cur.icon && czSymbolKind(cur.icon) === 'icon' && !list.includes(cur.icon)) list.unshift(cur.icon);
         for (const n of list) sym(n, icon(n), n.replace(/-/g, ' '));
-        if (!list.length) { const e = document.createElement('div'); e.className = 'cz-empty subtle'; e.textContent = 'No icon matches. Try another word, or paste an emoji.'; grid.appendChild(e); }
+        if (!list.length) grid.appendChild(emptyLine('No icon matches. Try another word, or paste an emoji.'));
       }
       markGrid();
     }

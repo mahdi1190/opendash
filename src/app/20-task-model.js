@@ -136,6 +136,7 @@ function setStatus(id, s, opts) {
     state.statuses[id] = s;
     delete item.resolution; delete item.resolvedAt;
   }
+  if (s === 'done' && prev !== 'done' && typeof expensesOnTaskDone === 'function') { try { expensesOnTaskDone(id); } catch (e) { console.error('[expenses]', e); } }   // finishing "Submit expense" offers to mark it submitted (66-expenses-0core.js)
   if (s === 'done' && prev !== 'done' && typeof rfOnClosed === 'function') rfOnClosed(id);   // tasks it blocked light up (34-blocked.js)
   if (!opts.noSave) { saveData(); render(); }
   return result;

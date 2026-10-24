@@ -1,5 +1,5 @@
 /* Settings > Your relay (src/app/58-settings-relay.js) */
-.relay-steps { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: var(--radius-md, 8px); margin: var(--space-2) 0; }
+.relay-steps { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: var(--radius-md); margin: var(--space-2) 0; }
 .relay-step { display: flex; align-items: center; gap: var(--space-2); color: var(--fg-muted); }
 .relay-step svg { flex: none; width: 1rem; height: 1rem; }
 .relay-step-doing { color: inherit; font-weight: 500; }
@@ -20,8 +20,8 @@
 .relay-name { display: flex; align-items: center; gap: var(--space-1); font-weight: 500; }
 .relay-name svg { width: 1rem; height: 1rem; flex: none; }
 .relay-bar { display: flex; flex-direction: column; gap: var(--space-1); min-width: 12rem; }
-.relay-bar-track { height: 6px; border-radius: 3px; background: var(--border-subtle, rgba(127,127,127,.2)); overflow: hidden; }
-.relay-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+.relay-bar-track { height: 6px; border-radius: var(--radius-xs); background: var(--border-subtle, rgba(127,127,127,.2)); overflow: hidden; }
+.relay-bar-fill { height: 100%; background: var(--accent); border-radius: var(--radius-xs); }
 .relay-bar-hot { background: var(--warning, #b7791f); }
 .relay-name .relay-av { flex: none; }
 .relay-name .pf-av.relay-av > svg { width: 100%; height: 100%; }
@@ -39,14 +39,14 @@
 .relay-account-id { flex: none; color: var(--fg-muted); font-size: var(--text-xs); }
 .relay-next { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); margin-bottom: var(--space-3); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); animation: relay-pop .35s ease-out both; }
 .relay-next-h { display: flex; align-items: flex-start; gap: var(--space-3); }
-.relay-next-h > div { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.relay-next-h > div { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-0-5); }
 .relay-next-h b { font-size: var(--text-lg); }
 .relay-next-ic { display: inline-flex; align-items: center; justify-content: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); flex: none; }
 .relay-next-ic svg { width: 1.2rem; height: 1.2rem; }
 .relay-next-x { flex: none; }
 .relay-next-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-2); }
-.relay-next-step { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md, 8px); background: var(--surface); border: 1px solid var(--border-subtle, rgba(127,127,127,.2)); flex-wrap: wrap; }
-.relay-next-step > div { flex: 1 1 10rem; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.relay-next-step { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md); background: var(--surface); border: 1px solid var(--border-subtle, rgba(127,127,127,.2)); flex-wrap: wrap; }
+.relay-next-step > div { flex: 1 1 10rem; min-width: 0; display: flex; flex-direction: column; gap: var(--space-0-5); }
 .relay-next-n { display: inline-flex; color: var(--accent); flex: none; }
 .relay-next-n svg { width: 1.1rem; height: 1.1rem; }
 @keyframes relay-pop { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
@@ -58,7 +58,7 @@
 .relay-info { display: flex; flex-direction: column; gap: var(--space-1); flex: 1 1 14rem; }
 .relay-info > .set-h { margin: 0; }
 .relay-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-.relay-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: var(--radius-full); background: var(--bg-muted); color: var(--fg-muted); font-size: var(--text-xs); }
+.relay-chip { display: inline-flex; align-items: center; gap: var(--space-1); padding: 1px var(--space-2); border-radius: var(--radius-full); background: var(--bg-muted); color: var(--fg-muted); font-size: var(--text-xs); }
 .relay-chip svg { width: .8rem; height: .8rem; }
 .relay-member-acts { align-items: center; flex-wrap: wrap; }
 .relay-sw { display: inline-flex; align-items: center; gap: var(--space-1); }

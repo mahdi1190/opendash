@@ -19,6 +19,8 @@
      profileWardrobeTabEl(tab, {get, apply})   a tab's extras below the tabs: quick expressions on Face
      window.OpenDashWardrobe            {list, save, wear(id), surprise(theme)}
    Private names: _pfw*. Styles: src/styles/97-profile-wardrobe.css.
+   2.18 templates (UI_CLEANUP_PLAN.md C6): a section of the builder (secHead), buttons through uiButton, at most
+   three style chips and then "+N" (a menu), Undo on every removal.
    ============================================================ */
 const PFW_MAX = 6, PFW_NAME_MAX = 24;
 const _pfw = { editing: '', n: 0 };
@@ -137,10 +139,7 @@ function profileWardrobeEl(o) {
     const paint = () => {
       wrap.replaceChildren();
       const a = profileAvatarNormalize(get()), list = profileWardrobeList(), theme = profileGet().theme;
-      const head = _pfwEl('div', 'pfw-head');
-      head.appendChild(_pfwEl('span', 'pfw-title', 'Outfits'));
-      head.appendChild(_pfwEl('span', 'pfw-hint', list.length ? 'Click one to put it on. Your face and hair stay as they are.' : 'Save what you are wearing and put it back on in one click. Up to six.'));
-      wrap.appendChild(head);
+      wrap.appendChild(secHead({ title: 'Outfits', cls: 'pfw-head', sub: list.length ? 'Click one to put it on; click a name to rename it.' : 'Save what you are wearing and put it back on in one click. Up to six.' }));
       const row = _pfwEl('div', 'pfw-row');
       row.setAttribute('role', 'list');
       for (const it of list) row.appendChild(_pfwSlot(it, a, theme, apply, paint));
@@ -151,11 +150,11 @@ function profileWardrobeEl(o) {
         add.setAttribute('data-tip', 'Saves your clothes, shoes, jewellery and accessories');
         add.onclick = () => {
           const id = profileWardrobeSave(profileOutfitOf(get()));
-          if (!id) { toast('Six outfits saved. Take one off the rail to save another.', { icon: 'shirt' }); return; }
+          if (!id) { toast('Six outfits saved: remove one to save another', { icon: 'shirt' }); return; }
           const saved = profileWardrobeList().find(x => x.id === id);
           _pfw.editing = '';
           paint();
-          toast(`Saved “${saved ? saved.name : 'your outfit'}”. Click its name to rename it.`, { icon: 'shirt', action: { label: 'Undo', run: () => { profileWardrobeRemove(id); paint(); } } });
+          toast(`Saved “${saved ? saved.name : 'your outfit'}”`, { icon: 'shirt', action: { label: 'Undo', run: () => { profileWardrobeRemove(id); paint(); } } });
         };
         row.appendChild(add);
       } else {
@@ -167,13 +166,20 @@ function profileWardrobeEl(o) {
       if (themes.length) {
         const sur = _pfwEl('div', 'pfw-surprise');
         sur.appendChild(_pfwEl('span', 'pfw-sur-l', 'Surprise me'));
-        for (const t of themes) {
+        const wearTheme = (t) => { apply(profileOutfitThemed(t.id, Math.random, ok, get())); _pfwRoll(); };
+        // at most three chips, then "+N" (a menu of the rest): a season's style comes first while it lasts
+        const ordered = themes.slice().sort((x, y) => (y.season ? 1 : 0) - (x.season ? 1 : 0));
+        for (const t of ordered.slice(0, 3)) {
           const b = _pfwEl('button', 'chip chip-lg pfw-theme' + (t.season ? ' is-season' : '')); b.type = 'button';
           b.innerHTML = icon(/^[a-z0-9-]+$/.test(t.icon) ? t.icon : 'sparkles', 'i-sm');
           b.appendChild(_pfwEl('span', null, t.label));
           b.setAttribute('data-tip', t.season ? `A ${t.label.toLowerCase()} outfit, while the season lasts` : `A ${t.label.toLowerCase()} outfit from what you have unlocked`);
-          b.onclick = () => { apply(profileOutfitThemed(t.id, Math.random, ok, get())); _pfwRoll(); };
+          b.onclick = () => wearTheme(t);
           sur.appendChild(b);
+        }
+        if (ordered.length > 3) {
+          const rest = ordered.slice(3);
+          sur.appendChild(uiButton({ label: `+${rest.length}`, kind: 'ghost', size: 'sm', tip: 'More styles to surprise you with', run: (e, b) => openMenu(b, rest.map(t => ({ label: t.label, icon: /^[a-z0-9-]+$/.test(t.icon) ? t.icon : 'sparkles', run: () => wearTheme(t) }))) }));
         }
         wrap.appendChild(sur);
       }
@@ -207,14 +213,11 @@ function _pfwSlot(it, a, theme, apply, repaint) {
     nm.onclick = () => { _pfw.editing = it.id; repaint(); };
     slot.appendChild(nm);
   }
-  const x = _pfwEl('button', 'btn-icon btn-sm pfw-x'); x.type = 'button';
-  x.innerHTML = icon('x', 'i-xs'); x.setAttribute('aria-label', `Remove ${it.name}`); x.setAttribute('data-tip', 'Remove');
-  x.onclick = () => {
+  slot.appendChild(uiButton({ icon: 'x', iconCls: 'i-xs', kind: 'ghost', size: 'sm', cls: 'pfw-x', aria: `Remove ${it.name}`, tip: 'Remove', run: () => {
     const gone = profileWardrobeRemove(it.id);
     repaint();
-    if (gone) toast(`Removed “${gone.name}”.`, { icon: 'shirt', action: { label: 'Undo', run: () => { profileWardrobeRestore(gone); repaint(); } } });
-  };
-  slot.appendChild(x);
+    if (gone) toast(`Removed “${gone.name}”`, { icon: 'shirt', action: { label: 'Undo', run: () => { profileWardrobeRestore(gone); repaint(); } } });
+  } }));
   return slot;
 }
 
@@ -263,6 +266,6 @@ if (typeof registerCommand === 'function') {
       const before = profileGet().avatar, ok = _pfwOk(), themes = profileLookThemes(profileUnlockCtx().today, ok);
       const t = themes[Math.floor(Math.random() * themes.length)] || { id: 'casual', label: 'Casual' };
       profileSet({ avatar: profileOutfitThemed(t.id, Math.random, ok, before) });
-      toast(`A ${t.label.toLowerCase()} outfit.`, { icon: 'shirt', action: { label: 'Undo', run: () => profileSet({ avatar: before }) } });
+      toast(`New ${t.label.toLowerCase()} outfit`, { icon: 'shirt', action: { label: 'Undo', run: () => profileSet({ avatar: before }) } });
     } });
 }

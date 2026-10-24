@@ -329,9 +329,8 @@ function openSidebarCustomiser(tab) {
       name.setAttribute('aria-label', `Name for ${dflt}`);
       name.onchange = () => { const v = name.value.trim(); sbLayoutEdit(Lx => { if (!v || v === dflt) delete Lx.names[b.id]; else Lx.names[b.id] = v.slice(0, 40); }); };
       name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
-      const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'btn-icon btn-sm sbc-eye';
-      eye.innerHTML = icon(hidden ? 'eye-off' : 'eye'); eye.setAttribute('aria-label', hidden ? `Show ${dflt}` : `Hide ${dflt}`); eye.setAttribute('data-tip', hidden ? 'Hidden: click to show' : 'Shown: click to hide');
-      eye.onclick = () => { sbLayoutEdit(Lx => { _sbSetBlockHidden(Lx, tab, b, !hidden); }); paint(); };
+      const eye = uiButton({ icon: hidden ? 'eye-off' : 'eye', size: 'sm', cls: 'sbc-eye', aria: hidden ? `Show ${dflt}` : `Hide ${dflt}`, tip: hidden ? 'Hidden: click to show' : 'Shown: click to hide',
+        run: () => { sbLayoutEdit(Lx => { _sbSetBlockHidden(Lx, tab, b, !hidden); }); paint(); } });
       row.append(name, eye);
       row.addEventListener('keydown', (e) => {
         if (e.target === name) return;
@@ -350,11 +349,7 @@ function openSidebarCustomiser(tab) {
       const front = rows.filter(r => sbViewPlacement(r.view, L) === 'shown').length;
       note.textContent = 'Shown rows sit up front; In More ones wait under More views (Waiting, Email triage and Do now still come up front while they need you).';
       if (front > 6) {
-        const calm = document.createElement('button'); calm.type = 'button'; calm.className = 'btn btn-ghost btn-sm';
-        calm.textContent = 'Fold the extras';
-        calm.setAttribute('data-tip', 'Inbox, Today, Upcoming and All tasks up front; the rest under More views');
-        calm.onclick = () => { sbViewsCalmDefault(); paint(); };
-        note.appendChild(calm);
+        note.appendChild(uiButton({ label: 'Fold the extras', kind: 'ghost', size: 'sm', tip: 'Inbox, Today, Upcoming and All tasks up front; the rest under More views', run: () => { sbViewsCalmDefault(); paint(); } }));
       }
       body.appendChild(note);
       const vl = document.createElement('div'); vl.className = 'sbc-list'; vl.setAttribute('role', 'list');
@@ -373,9 +368,8 @@ function openSidebarCustomiser(tab) {
           b.onclick = () => { if (at !== k) { sbSetViewPlacement(r.view, k); paint(); } };
           seg.appendChild(b);
         }
-        const pin = document.createElement('button'); pin.type = 'button'; pin.className = 'btn-icon btn-sm sbc-pin' + (sbIsPinned(r.view) ? ' on' : '');
-        pin.innerHTML = icon('pin'); pin.setAttribute('aria-label', sbIsPinned(r.view) ? `Unpin ${r.label}` : `Pin ${r.label}`); pin.setAttribute('aria-pressed', sbIsPinned(r.view) ? 'true' : 'false');
-        pin.onclick = () => { sbTogglePin(r.view, { quiet: true }); paint(); };
+        const pin = uiButton({ icon: 'pin', size: 'sm', cls: 'sbc-pin' + (sbIsPinned(r.view) ? ' on' : ''), aria: sbIsPinned(r.view) ? `Unpin ${r.label}` : `Pin ${r.label}`, pressed: sbIsPinned(r.view),
+          run: () => { sbTogglePin(r.view, { quiet: true }); paint(); } });
         row.append(pin, seg);
         row.addEventListener('keydown', (e) => {
           if (e.target !== row) return;
@@ -403,22 +397,19 @@ function openSidebarCustomiser(tab) {
       const info = sbPinInfo(v, null);
       const row = document.createElement('div'); row.className = 'sbc-row' + (info ? '' : ' is-hidden'); row.dataset.id = v; row.tabIndex = 0;
       row.innerHTML = `<span class="sbc-grip">${icon('grip-vertical', 'i-sm')}</span><span class="sbc-ic">${info && info.avatarHtml ? info.avatarHtml : icon((info && info.icon) || 'circle', 'i-sm')}</span><span class="sbc-lbl">${esc(info ? info.label : v + ' (gone)')}</span>${i < 9 ? `<kbd class="kbd">Alt+${i + 1}</kbd>` : ''}`;
-      const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm'; x.innerHTML = icon('x'); x.setAttribute('aria-label', 'Unpin');
-      x.onclick = () => { sbUnpin(v); paint(); };
-      row.appendChild(x);
+      row.appendChild(uiButton({ icon: 'x', size: 'sm', aria: 'Unpin', run: () => { sbUnpin(v); paint(); } }));
       pl.appendChild(row);
     });
-    if (!pins.length) { const p = document.createElement('p'); p.className = 'subtle sbc-empty'; p.textContent = 'Nothing pinned yet. Right-click a list, stream, tag or person to pin it, or add one here.'; pl.appendChild(p); }
+    // An empty list inside a dialog: one muted line that says what goes here (UI_CLEANUP_PLAN.md 3.6).
+    if (!pins.length) pl.appendChild(emptyLine('Nothing pinned yet. Right-click a list, stream, tag or person to pin it, or add one here.'));
     body.appendChild(pl);
     if (typeof makeSortable === 'function' && pins.length > 1) makeSortable(pl, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { Lx.pins = ids; }); paint(); } });
-    const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-ghost btn-sm sbc-add';
-    add.innerHTML = icon('pin') + '<span>Pin something…</span>';
-    add.onclick = (e) => openMenu(e.currentTarget, _sbPinChoices(), { align: 'start', width: 260 });
-    body.appendChild(add);
+    body.appendChild(uiButton({ label: 'Pin something…', icon: 'pin', kind: 'ghost', size: 'sm', cls: 'sbc-add', run: (e, btn) => openMenu(btn, _sbPinChoices(), { align: 'start', width: 260 }) }));
     body.scrollTop = keepScroll;
   };
+  // A tab per area, so a fixed height: switching tabs never moves the buttons (UI_CLEANUP_PLAN.md 1.3).
   openDialog({
-    title: 'Customise sidebar', width: 560, resizeKey: 'sidebar-custom',
+    title: 'Customise sidebar', size: 'md', fixed: true, resizeKey: 'sidebar-custom',
     body: (el) => { el.classList.add('sbc'); body = el; paint(); },
     actions: [
       { label: 'Reset sidebar', icon: 'rotate-ccw', run: () => { sbResetLayout(); paint(); return false; } },

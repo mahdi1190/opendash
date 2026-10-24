@@ -188,20 +188,25 @@ function _sbViewsMoreToggle() {
   state.collapsedSidebar['views-more'] = sbViewsMoreOpen() ? true : false;
   saveUI(); renderSidebar();
 }
-/** The Views rows with their counts (the identity of each row: _sbViewRows in 15-nav-custom.js). */
+/** The Views rows with their counts (the identity of each row: _sbViewRows in 15-nav-custom.js).
+ *  A number shows only where it asks something of you (UX_BLUEPRINT.md 3, density): Inbox to sort,
+ *  Today due, Waiting to chase, Email triage to decide, Do now once chosen. The other rows keep
+ *  their number in the tooltip, so nothing is lost. */
 function sbTaskViewRows(c) {
   const pendingSugs = ((state.emailTriage && state.emailTriage.suggestions) || []).filter(s => s.status === 'pending').length;
+  const quiet = (n, what) => (n ? `${n} ${what}` : '');
+  const files = typeof resList === 'function' ? resList().length : 0;
   const extra = {
     inbox: { count: c.inbox || '', title: c.inbox ? `${c.inbox} to sort` : 'Quick capture lands here' },   // 24-quick-capture.js
     today: { count: c.today || '', countAlert: c.overdue > 0, title: c.overdue ? `${c.overdue} overdue` : '' },
     now: { count: c.now || '', title: 'What can I do now?', need: typeof doNowActive === 'function' && doNowActive() },   // 24-do-now.js
-    week: { count: c.week || '' },
-    all: { count: c.all || '' },
-    'no-date': { count: c['no-date'] || '' },
+    week: { title: quiet(c.week, 'coming up') },
+    all: { title: quiet(c.all, 'open') },
+    'no-date': { title: quiet(c['no-date'], 'without a date') },
     waiting: { count: c.waiting || '', title: c.waiting ? `${c.waiting} waiting on someone` : 'Tasks waiting on someone', need: c.waiting > 0 },
-    'tag:someday': { count: c.someday || '', title: 'Tagged #someday: not now, not forgotten' },
+    'tag:someday': { title: 'Tagged #someday: not now, not forgotten' + (c.someday ? ` (${c.someday})` : '') },
     triage: { count: pendingSugs || '', need: pendingSugs > 0 },
-    files: { count: (typeof resList === 'function' ? resList().length : 0) || '' },
+    files: { title: quiet(files, files === 1 ? 'file or link' : 'files and links') },
   };
   const rows = typeof _sbViewRows === 'function' ? _sbViewRows() : SB_VIEWS_FRONT.map(v => ({ view: v, label: viewTitle(v), icon: 'circle' }));
   return rows.map(r => Object.assign({ label: r.label, icon: r.icon, view: r.view }, extra[r.view] || {}));
@@ -224,7 +229,9 @@ registerSidebarBlock(['home', 'tasks'], {
     for (const r of front) el.appendChild(row(r));
     const lists = typeof smartListsAll === 'function' ? smartListsAll().length : 1;
     const boards = typeof boardSavedList === 'function' ? boardSavedList().length : 1;
-    if (!more.length && lists && boards) return;
+    // Together (2.18.1): the Together section hides while nothing is shared, so its way in stays here, always.
+    const togEmpty = typeof tgOn === 'function' && tgOn() && typeof tgSpaces === 'function' && !tgSpaces().length && !tgInvites().length && !/^together(:|$)/.test(String(state.view || ''));
+    if (!more.length && lists && boards && !togEmpty) return;
     const open = sbViewsMoreOpen();
     const fold = sbNavItem({ label: open ? 'Fewer views' : 'More views', icon: open ? 'chevron-up' : 'chevron-right', className: 'nav-more sb-views-more', active: false,
       title: open ? '' : more.map(r => r.label).join(', '), onClick: _sbViewsMoreToggle });
@@ -233,6 +240,7 @@ registerSidebarBlock(['home', 'tasks'], {
     if (!open) return;
     const box = document.createElement('div'); box.className = 'sb-views-more-list';
     for (const r of more) box.appendChild(row(r));
+    if (togEmpty) box.appendChild(sbNavItem({ label: 'Together', icon: 'handshake', view: 'together', title: 'Lists you share with friends' }));
     // Nothing saved yet: the Smart lists and Boards headings stay away, and their first one starts here.
     if (!lists) box.appendChild(sbNavItem({ label: 'New smart list', icon: 'list-plus', className: 'nav-more', active: false, title: 'Any filter, grouping and view as one click', onClick: () => openSmartListEditor(null) }));
     if (!boards && typeof boardNewDialog === 'function') box.appendChild(sbNavItem({ label: 'New board', icon: 'square-kanban', className: 'nav-more', active: false, title: 'Columns your way: by status, priority, person, due date or your own', onClick: () => boardNewDialog() }));
@@ -325,7 +333,8 @@ registerSidebarBlock('tasks', {
     for (const [t] of all.sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))) { if (top.length >= SIDEBAR_TAG_LIMIT) break; if (!top.includes(t)) top.push(t); }
     const cur = state.view.startsWith('tag:') ? state.view.slice(4) : null;
     if (cur && !top.includes(cur)) top.push(cur);
-    for (const t of top) el.appendChild(sbNavItem({ label: t, icon: 'hash', view: 'tag:' + t, count: ctx.counts.tags[t] || '' }));
+    // A tag's number is a total, not a thing to do: it sits in the tooltip (UX_BLUEPRINT.md 3, density).
+    for (const t of top) el.appendChild(sbNavItem({ label: t, icon: 'hash', view: 'tag:' + t, title: ctx.counts.tags[t] ? `${ctx.counts.tags[t]} open` : '' }));
     const more = sbNavItem({ label: `All ${all.length} tags`, icon: 'tags', className: 'nav-more', view: 'tags', active: state.view === 'tags' });
     if (all.length > SIDEBAR_TAG_LIMIT) {
       const link = document.createElement('span'); link.className = 'link'; link.textContent = 'Clean up';
@@ -439,6 +448,9 @@ registerSidebarBlock('calendar', {
     }
   },
 });
+// At most 12 rows in a sidebar before a fold (UX_BLUEPRINT.md 3): the first countdowns, then "N more".
+const SB_COUNTDOWN_LIMIT = 6;
+let _sbAllCountdowns = false;
 registerSidebarBlock('calendar', {
   id: 'cal-countdowns', order: 30,
   render(el) {
@@ -446,7 +458,8 @@ registerSidebarBlock('calendar', {
     const list = (typeof tbList === 'function' ? tbList() : (Array.isArray(state.countdowns) ? state.countdowns : [])).filter(c => c.date && c.visible !== false);
     if (!list.length) return false;
     el.appendChild(sbSection({ title: 'Countdowns' }));
-    for (const c of list) {
+    const fold = list.length > SB_COUNTDOWN_LIMIT + 1;
+    for (const c of fold && !_sbAllCountdowns ? list.slice(0, SB_COUNTDOWN_LIMIT) : list) {
       const d = daysUntil(c.date);
       // Same number and unit as the widget in the top bar (15w, 79d, 40%), in the widget's colour.
       let count = d === null ? '' : d < 0 ? `${-d}d ago` : `${d}d`;
@@ -465,6 +478,12 @@ registerSidebarBlock('calendar', {
         if (col.style) ic.setAttribute('style', col.style);
       }
       el.appendChild(item);
+    }
+    if (fold) {
+      const n = list.length - SB_COUNTDOWN_LIMIT;
+      el.appendChild(sbNavItem({ label: _sbAllCountdowns ? 'Fewer countdowns' : `${n} more countdown${n === 1 ? '' : 's'}`,
+        icon: _sbAllCountdowns ? 'chevron-up' : 'chevron-right', className: 'nav-more', active: false,
+        onClick: () => { _sbAllCountdowns = !_sbAllCountdowns; renderSidebar(); } }));
     }
   },
 });

@@ -69,14 +69,14 @@ function _hfDetails(item, ctx) {
         ${descHtml ? `<div class="hf-desc md${full ? ' is-full' : ''}">${descHtml}</div><button type="button" class="btn-link hf-more" data-act="more" aria-expanded="${full ? 'true' : 'false'}" hidden>${full ? 'Less' : 'More'}</button>` : ''}
         ${prog.total ? `<div class="hf-subh"><span class="hf-ovl">Subtasks</span><span class="n">${esc(prog.done)} of ${esc(prog.total)}</span><span class="hf-bar" aria-hidden="true"><i style="--pct:${prog.pct}%"></i></span></div>` : ''}
         <ul class="hf-subs" aria-label="Subtasks">${subs.map(s => _hfSubHtml(s, prog)).join('')}</ul>
-        <label class="hf-add">${icon('plus')}<input type="text" placeholder="Add a subtask" aria-label="Add a subtask" maxlength="300" data-fk="add-${escAttr(id)}"></label>
+        <label class="hf-add">${icon('plus', 'i-sm')}<input type="text" placeholder="Add a subtask" aria-label="Add a subtask" maxlength="300" data-fk="add-${escAttr(id)}"></label>
       </div>
       ${aside ? `<aside class="hf-aside">${aside}</aside>` : ''}
     </div>
     <div class="hf-acts">
       <button type="button" class="btn btn-sm hf-b-ok" data-act="done" data-kbd="X">${icon('check')}<span>Done</span></button>
-      <button type="button" class="btn btn-sm hf-b-soft" data-act="snooze" aria-haspopup="menu">${icon('alarm-clock')}<span>Snooze</span>${icon('chevron-down', 'i-cv')}</button>
-      <button type="button" class="btn btn-sm hf-b-soft" data-act="resched" aria-haspopup="dialog">${icon('calendar-days')}<span>Reschedule</span>${icon('chevron-down', 'i-cv')}</button>
+      <button type="button" class="btn btn-sm hf-b-soft" data-act="snooze" aria-haspopup="menu">${icon('alarm-clock')}<span>Snooze</span>${icon('chevron-down', 'i-xs i-cv')}</button>
+      <button type="button" class="btn btn-sm hf-b-soft" data-act="resched" aria-haspopup="dialog">${icon('calendar-days')}<span>Reschedule</span>${icon('chevron-down', 'i-xs i-cv')}</button>
       <button type="button" class="btn btn-ghost btn-sm hf-b-doing${doing ? ' on' : ''}" data-act="doing" aria-pressed="${doing ? 'true' : 'false'}">${icon('circle-dot')}<span>${doing ? 'In progress' : 'Start'}</span></button>
       <span class="spacer"></span>
       <button type="button" class="btn-icon btn-sm hf-b-menu" data-act="menu" aria-label="More actions" data-tip="More">${icon('ellipsis')}</button>
@@ -109,8 +109,8 @@ function _hfDetails(item, ctx) {
 }
 function _hfSubHtml(s, prog) {
   return `<li class="hf-sub${s.done ? ' done' : ''}${prog.next === s.id ? ' next' : ''}" data-st="${escAttr(s.id)}" data-flip="${escAttr('st:' + s.id)}">`
-    + `<span class="hf-grip" aria-hidden="true">${icon('grip-vertical')}</span>`
-    + `<button type="button" class="hf-cbx" role="checkbox" aria-checked="${s.done ? 'true' : 'false'}" aria-label="${escAttr(s.title)}" data-act="sub" data-fk="${escAttr('st-' + s.id)}">${icon('check')}</button>`
+    + `<span class="hf-grip" aria-hidden="true">${icon('grip-vertical', 'i-sm')}</span>`
+    + `<button type="button" class="hf-cbx" role="checkbox" aria-checked="${s.done ? 'true' : 'false'}" aria-label="${escAttr(s.title)}" data-act="sub" data-fk="${escAttr('st-' + s.id)}">${icon('check', 'i-xs')}</button>`
     + `<span class="hf-sub-t">${esc(s.title)}</span><span class="hf-next" aria-hidden="true">Next</span></li>`;
 }
 /** Linked (folder, files, links, a linked meeting), With (people), Time. '' when there is nothing. */

@@ -79,7 +79,7 @@ function homeHeadIdeas() {
     }
   } catch (e) { cards = null; }
   const wrap = document.createElement('section'); wrap.className = 'hd-ideas';
-  wrap.innerHTML = `<header class="hd-ideas-h">${icon('lightbulb')}<h2 class="overline">Ideas for today</h2></header>`;
+  wrap.innerHTML = `<header class="hd-ideas-h">${icon('lightbulb', 'i-sm')}<h2 class="overline">Ideas for today</h2></header>`;
   const row = document.createElement('div'); row.className = 'hd-idea-row';
   if (cards) {
     row.classList.add('is-engine');
@@ -120,12 +120,7 @@ function _hdIdea(s, p) {
   else if (s.kind === 'roll') act = { label: 'Roll over', icon: 'arrow-right', run: () => setView('home:evening') };
   const el = document.createElement('article'); el.className = 'hd-idea';
   el.innerHTML = `<span class="hd-ii">${icon(_HD_IDEA_ICON[s.kind] || 'sparkles')}</span><p>${esc(s.text)}</p>`;
-  if (act) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm';
-    b.innerHTML = icon(act.icon) + `<span>${esc(act.label)}</span>`;
-    b.onclick = () => act.run(b);
-    el.appendChild(b);
-  }
+  if (act) el.appendChild(uiButton({ label: act.label, icon: act.icon, size: 'sm', bubble: true, run: (e, b) => act.run(b) }));
   return el;
 }
 /** A free stretch: the event editor opens on it, prefilled (the user adjusts, then Saves). */

@@ -3,5 +3,5 @@
 .up-status.up-new { color: var(--accent); }
 .up-status.up-err { color: var(--danger, #c0392b); }
 .up-btns { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
-.up-notes { max-height: 280px; overflow: auto; white-space: pre-wrap; word-break: break-word; margin: 0 0 var(--space-2); padding: var(--space-3); background: var(--surface-2, rgba(127, 127, 127, 0.08)); border-radius: var(--radius, 8px); font: inherit; font-size: 13px; }
+.up-notes { max-height: 280px; overflow: auto; white-space: pre-wrap; word-break: break-word; margin: 0 0 var(--space-2); padding: var(--space-3); background: var(--surface-2, rgba(127, 127, 127, 0.08)); border-radius: var(--radius, var(--radius-sm)); font: inherit; font-size: var(--text-sm); }
 .up-ask-h { margin: 0 0 var(--space-2); font-size: var(--text-sm); font-weight: var(--weight-semibold); }

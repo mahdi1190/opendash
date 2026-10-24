@@ -12,7 +12,7 @@ function renderStoryVoiceSettings(el) {
   let voices = [], busy = false, previewAudio = null, displayedProvider = null;
   const controls = [];
   const make = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
-  const button = (text, cls) => { const b = make('button', 'btn btn-secondary btn-sm ' + (cls || ''), text); b.type = 'button'; controls.push(b); return b; };
+  const button = (text, cls) => { const b = uiButton({ label: text, size: 'sm', cls }); controls.push(b); return b; };
   const input = (label, type) => { const n = make('input', 'control control-sm'); n.type = type || 'text'; n.setAttribute('aria-label', label); controls.push(n); return n; };
   const select = (label, options) => {
     const n = make('select', 'control control-sm'); n.setAttribute('aria-label', label); controls.push(n);
@@ -29,7 +29,7 @@ function renderStoryVoiceSettings(el) {
     run('Saving voice choice…', async () => { stopPreview(); accept(await request('/api/narration/settings', { provider: v })); return v === 'elevenlabs' ? 'ElevenLabs selected. Connect your account and choose a voice below.' : 'Browser voice selected.'; });
   });
   for (const b of provider.querySelectorAll('button')) controls.push(b);
-  row('Narration voice', 'The browser voice stays available if ElevenLabs is unavailable or your allowance runs out.', provider);
+  row('Narration voice', 'The browser voice is the fallback.', provider);
   const connection = make('p', 'stv-connection'); section.appendChild(connection);
   const feedback = make('p', 'stv-feedback'); feedback.id = id + '-feedback'; feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite'); feedback.setAttribute('aria-atomic', 'true'); section.appendChild(feedback);
   const cloud = make('details', 'stv-cloud');
@@ -40,7 +40,7 @@ function renderStoryVoiceSettings(el) {
   const connect = button('Connect ElevenLabs');
   const remove = button('Remove connection');
   keyWrap.append(key, connect, remove);
-  const keyRow = row('ElevenLabs connection', 'Your key is saved on this OpenDash server. It is never shown again in the browser.', keyWrap, cloud); keyRow.classList.add('set-row-stack');
+  const keyRow = row('ElevenLabs connection', 'Saved on this computer; never shown again.', keyWrap, cloud); keyRow.classList.add('set-row-stack');
   keyRow.querySelector('.set-h').id = id + '-key-note';
   const links = make('p', 'stv-note');
   const keyLink = make('a', '', 'Get an API key'); keyLink.href = 'https://elevenlabs.io/app/settings/api-keys'; keyLink.target = '_blank'; keyLink.rel = 'noopener noreferrer';
@@ -49,27 +49,27 @@ function renderStoryVoiceSettings(el) {
   const voiceWrap = make('div', 'stv-inline');
   const voice = select('ElevenLabs voice', [['', 'Load voices or enter a voice ID']]);
   const load = button('Load voices'); voiceWrap.append(voice, load);
-  row('ElevenLabs voice', 'Choose a voice available to your account. Shared Voice Library voices may need a paid plan.', voiceWrap, cloud);
+  row('ElevenLabs voice', 'A voice from your account.', voiceWrap, cloud);
   const manual = make('details', 'stv-manual');
   const summary = make('summary', '', 'Use a voice ID'); manual.appendChild(summary);
   const manualWrap = make('div', 'stv-inline');
   const voiceId = input('ElevenLabs voice ID'); voiceId.placeholder = 'Voice ID from your account'; voiceId.autocomplete = 'off'; voiceId.maxLength = 80;
   const saveId = button('Use this voice'); manualWrap.append(voiceId, saveId);
-  row('Voice ID', 'Useful if your account provides a voice that is not listed above.', manualWrap, manual); cloud.appendChild(manual);
+  row('Voice ID', 'For a voice that isn’t listed.', manualWrap, manual); cloud.appendChild(manual);
   const model = select('Speech model', [['eleven_flash_v2_5', 'Flash 2.5 · economical'], ['eleven_v3', 'Eleven v3 · more allowance']]);
-  row('Speech model', 'Flash stretches a small allowance. Eleven v3 adds expressive delivery cues and uses more account credits. Availability depends on your account.', model, cloud);
+  row('Speech model', 'Flash stretches a small allowance; v3 is more expressive and uses more credits.', model, cloud);
   const scope = select('Use ElevenLabs for', [['all', 'Every spoken moment'], ['highlights', 'Intros, recap and closing']]);
-  row('Use ElevenLabs for', 'Every spoken moment keeps the same voice throughout. Highlights saves allowance by using the browser voice for supporting moments.', scope, cloud);
+  row('Use ElevenLabs for', 'Highlights saves allowance by using the browser voice for the rest.', scope, cloud);
 
   const limitWrap = make('div', 'stv-inline');
   const limit = input('Monthly character limit', 'number'); limit.min = '0'; limit.max = '1000000'; limit.step = '500'; limit.inputMode = 'numeric'; limit.setAttribute('aria-describedby', id + '-limit-note');
   const saveLimit = button('Save limit'); limitWrap.append(limit, saveLimit);
-  const limitRow = row('Monthly character limit', 'OpenDash stops creating new audio at this limit and uses the browser voice. Set 0 to use saved audio only. Replaying saved audio uses no new allowance.', limitWrap, cloud); limitRow.querySelector('.set-h').id = id + '-limit-note';
+  const limitRow = row('Monthly character limit', 'At this limit OpenDash uses the browser voice. 0 means saved audio only.', limitWrap, cloud); limitRow.querySelector('.set-h').id = id + '-limit-note';
   const usage = make('div', 'stv-usage');
   const usageText = make('p', 'stv-usage-text');
   const meter = make('progress', 'stv-meter'); meter.max = 18000; meter.value = 0; meter.setAttribute('aria-label', 'OpenDash monthly generated speech characters');
   const accountText = make('p', 'stv-note'); usage.append(usageText, meter, accountText);
-  row('This month', 'OpenDash counts generated characters and resets each calendar month. ElevenLabs counts account credits, with its own reset date and usage from other apps.', usage, cloud);
+  row('This month', 'Generated characters, counted each calendar month.', usage, cloud);
 
   const previewWrap = make('div', 'stv-preview');
   const preview = button('Test ElevenLabs voice');
@@ -77,7 +77,7 @@ function renderStoryVoiceSettings(el) {
   const previewHint = make('p', 'stv-note', 'A short sample uses your allowance once. Identical samples replay saved audio.'); previewHint.id = id + '-preview-note'; preview.setAttribute('aria-describedby', previewHint.id);
   const audio = make('audio', 'stv-audio'); audio.controls = true; audio.preload = 'none'; audio.hidden = true; audio.setAttribute('aria-label', 'ElevenLabs voice preview');
   previewWrap.append(preview, stop, previewHint, audio);
-  row('Try ElevenLabs', 'Hear a warm, unhurried greeting with your chosen voice.', previewWrap, cloud);
+  row('Try ElevenLabs', 'Hear a short sample of your chosen voice.', previewWrap, cloud);
 
   const message = (text, error) => { feedback.textContent = text || ''; feedback.classList.toggle('is-error', !!error); };
   const number = value => Math.max(0, Math.floor(Number(value) || 0));

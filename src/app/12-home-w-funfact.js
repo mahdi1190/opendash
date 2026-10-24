@@ -21,7 +21,7 @@ function _hffRender(el, ctx) {
   if (!f) return false;
   const card = document.createElement('section');
   card.className = 'card home-card hff';
-  card.innerHTML = `<div class="card-h">${icon('lightbulb')}<h3>Did you know?</h3><span class="spacer"></span></div><div class="card-b hff-b"><span class="hff-ic">${icon(f.icon || 'sparkles', 'i-md')}</span><p class="hff-t"></p></div>`;
+  card.innerHTML = `${cardHeadHtml({ icon: 'lightbulb', title: 'Did you know?', cls: '' })}<div class="card-b hff-b"><span class="hff-ic">${icon(f.icon || 'sparkles', 'i-md')}</span><p class="hff-t"></p></div>`;
   card.querySelector('.hff-t').textContent = f.text;
   if (all.length > 1) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.innerHTML = `${icon('refresh-cw', 'i-sm')}<span>Another</span>`;

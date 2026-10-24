@@ -12,7 +12,7 @@
    attendees (40-calendar.js CalStore, loaded on demand), else the light
    list (calendarSoon: names in titles only). homePeopleToday() is pure
    (tests/home-glances.test.mjs). Click a row: the person's page.
-   Sizes: S a list; M two columns. Under 250 px: a tile (avatars, count).
+   Sizes: S a list; M two columns; at most 5 people, then "N more today" opens People. Under 250 px: a tile (avatars, count).
    No people at all: hidden (it appears once People has someone).
    ============================================================ */
 let _hbpCalAsked = false;
@@ -260,14 +260,15 @@ function _hbpRender(el, ctx) {
   const events = _hbpEvents(today, tomorrow);
   const tasks = _hbpTasks();
   const idx = typeof pplIndex === 'function' ? pplIndex() : undefined;
-  const first = homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date(Clock.now())), locale: APP_CONFIG.locale, max: ctx.size === 'm' ? 8 : 5 });
+  const first = homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date(Clock.now())), locale: APP_CONFIG.locale, max: 5 });
   const seen = _hbpLastSeen(first.rows.filter(r => r.meeting && !r.group).map(r => r.id), today);
-  const res = Object.keys(seen).length ? homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date(Clock.now())), lastSeen: seen, locale: APP_CONFIG.locale, max: ctx.size === 'm' ? 8 : 5 }) : first;
+  const res = Object.keys(seen).length ? homePeopleToday({ people: state.people, idx, events, tasks, today, nowHM: _hbpHM(new Date(Clock.now())), lastSeen: seen, locale: APP_CONFIG.locale, max: 5 }) : first;
 
   const card = document.createElement('section');
   card.className = `card home-card hbp hbp--${ctx.size || 's'}`;
   const nToday = res.people;
-  card.appendChild(hglHead({ icon: 'users', title: 'People today', n: nToday ? `${nToday} today` : '', link: { label: 'People', title: 'All people', run: () => { if (state.view !== 'people') setView('people'); } } }));
+  // The title opens People (the grid's title link, NAVIGATION_PLAN.md 2.8). At most 5 rows (the card template).
+  card.appendChild(cardHead({ icon: 'users', title: 'People today', count: nToday ? `${nToday} today` : '' }));
   const body = document.createElement('div'); body.className = 'card-b hbp-b';
   card.appendChild(body);
   el.appendChild(card);
@@ -281,7 +282,11 @@ function _hbpRender(el, ctx) {
   const list = document.createElement('ul'); list.className = 'hbp-list';
   for (const r of res.rows) list.appendChild(_hbpRow(r, today));
   body.appendChild(list);
-  if (res.more) { const m = document.createElement('div'); m.className = 'hgl-foot'; m.textContent = `+${res.more} more today`; body.appendChild(m); }
+  if (res.more) {
+    const m = document.createElement('div'); m.className = 'hgl-foot';
+    m.appendChild(uiButton({ label: `${res.more} more today`, kind: 'link', run: () => { if (state.view !== 'people') setView('people'); } }));
+    body.appendChild(m);
+  }
   if (res.owed) body.appendChild(_hbpOwedCard(res.owed));
   _hbpTile(body, res);
   if (ctx.enterNew) ctx.enterNew(list.children, (li) => li.dataset.flip);
@@ -309,10 +314,10 @@ function _hbpRow(r, today) {
     try { if (m.ev && m.ev.raw && typeof animForEvent === 'function') type = animForEvent(m.ev.raw).type || 'event'; else if (typeof animClassify === 'function') type = animClassify({ kind: 'event', title: m.title, location: m.location }).type || 'event'; } catch (e) { /* default */ }
     scene = hglScene(type, { size: 'xs', hover: true, cls: 'hbp-sc' });
   }
-  const meta = m ? `<div class="hbp-m">${scene || icon('calendar')}<span>${esc(m.title)}${m.location ? ` · ${esc(m.location)}` : ''}</span></div>`
-    : (r.focus.length ? `<div class="hbp-m hbp-mf" title="${escAttr('In Focus: ' + r.focus.map(f => f.title).join(' · '))}">${icon('target')}<span>${esc(r.focus[0].title)}</span>${r.focus.length > 1 ? `<em>+${r.focus.length - 1}</em>` : ''}</div>` : '');
-  const owed = r.owed ? `<span class="hbp-tagw">${icon('hourglass')}Waiting on you · ${esc(String(r.owed.days))} d</span>` : '';
-  const time = r.time ? `<time class="num">${r.past ? icon('check') : ''}${esc(r.time)}</time>` : '<span></span>';
+  const meta = m ? `<div class="hbp-m">${scene || icon('calendar', 'i-sm')}<span>${esc(m.title)}${m.location ? ` · ${esc(m.location)}` : ''}</span></div>`
+    : (r.focus.length ? `<div class="hbp-m hbp-mf" title="${escAttr('In Focus: ' + r.focus.map(f => f.title).join(' · '))}">${icon('target', 'i-sm')}<span>${esc(r.focus[0].title)}</span>${r.focus.length > 1 ? `<em>+${r.focus.length - 1}</em>` : ''}</div>` : '');
+  const owed = r.owed ? `<span class="hbp-tagw">${icon('hourglass', 'i-xs')}Waiting on you · ${esc(String(r.owed.days))} d</span>` : '';
+  const time = r.time ? `<time class="num">${r.past ? icon('check', 'i-xs') : ''}${esc(r.time)}</time>` : '<span></span>';
   if (r.group) {
     // One row for a group meeting: stacked faces, first names, the event.
     const names = r.people.slice(0, 3).map(hglFirst).join(', ') + (r.people.length > 3 ? ` +${r.people.length - 3}` : '');
@@ -339,14 +344,13 @@ function _hbpOwedCard(o) {
   // Two buttons side by side (the person, then Reply), never one inside the other.
   const box = document.createElement('div'); box.className = 'hbp-owed hgl-row'; box.dataset.flip = 'pp-owed:' + o.id;
   const main = document.createElement('button'); main.type = 'button'; main.className = 'hbp-row hbp-main'; main.title = `Open ${p.name || 'this person'}`;
-  main.innerHTML = `${homeAvatar(p, 32)}<span class="hbp-body"><span class="hbp-n"><span class="nm">${esc(p.name || p.id)}</span><span class="hbp-tagw">${icon('hourglass')}Waiting on you · ${esc(String(o.days))} d</span></span><span class="hbp-y">${esc(o.task.title)}${o.late ? ' · overdue' : ''}</span></span>`;
+  main.innerHTML = `${homeAvatar(p, 32)}<span class="hbp-body"><span class="hbp-n"><span class="nm">${esc(p.name || p.id)}</span><span class="hbp-tagw">${icon('hourglass', 'i-xs')}Waiting on you · ${esc(String(o.days))} d</span></span><span class="hbp-y">${esc(o.task.title)}${o.late ? ' · overdue' : ''}</span></span>`;
   main.onclick = () => hglOpenPerson(o.id);
   box.appendChild(main);
   const url = hglMailto(p, 'Re: ' + o.task.title, `Hi ${hglFirst(p)},\n\n`);
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'hgl-mini';
-  if (url) { b.innerHTML = icon('send') + '<span>Reply</span>'; b.title = 'Draft a reply in your mail app (nothing is sent)'; b.onclick = () => hglOpenMail(url); }
-  else { b.innerHTML = icon('arrow-right') + '<span>Open</span>'; b.title = 'Open the task'; b.onclick = () => hglOpenTask(null, o.task.id, box, b); }
-  box.appendChild(b);
+  box.appendChild(url
+    ? uiButton({ label: 'Reply', icon: 'send', iconCls: 'i-sm', size: 'sm', cls: 'hgl-mini', tip: 'Draft a reply in your mail app (nothing is sent)', run: () => hglOpenMail(url) })
+    : uiButton({ label: 'Open', icon: 'arrow-right', iconCls: 'i-sm', size: 'sm', cls: 'hgl-mini', tip: 'Open the task', run: (e, b) => hglOpenTask(null, o.task.id, box, b) }));
   return box;
 }
 /** The phone tile (under 250 px): stacked avatars, a count and who is waiting. */

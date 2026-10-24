@@ -60,7 +60,7 @@ function googleSignInCard(el, { email = '', features = null, custom = false, rec
   warn.appendChild(_connEl('h3', 'conn-name', 'Google will show a warning first'));
   warn.appendChild(_connEl('p', 'conn-text', custom
     ? 'Your own Google app has not been through Google’s review, so Google says “Google hasn’t verified this app”. That is expected for an app you made yourself.'
-    : 'Google reviews apps that read Gmail through a paid security assessment. This copy of OpenDash runs on your own computer and has not been through it, so Google says “Google hasn’t verified this app”. It is not a sign that something is wrong.'));
+    : 'Google reviews Gmail apps through a paid assessment this copy hasn’t had. It’s not a sign that anything is wrong.'));
   warn.appendChild(_connEl('p', 'conn-text', 'It is your own app: nobody else sees what it reads, and you can remove its access at any time at myaccount.google.com/permissions.'));
   warn.appendChild(_connSteps(googleUnverifiedSteps(custom)));
   el.appendChild(warn);
@@ -85,12 +85,12 @@ async function _googleBegin({ email, accountId, features }, popup) {
     const r = await _srcApi('/api/accounts/begin', { method: 'POST', body: { provider: 'google', email, features, ...(accountId ? { accountId } : {}) } });
     const url = String(r && r.url || '');
     if (!/^https:\/\/accounts\.google\.com\//.test(url)) throw new Error('OpenDash could not start the Google sign-in. Try again.');
-    if (popup) { popup.opener = null; popup.location.replace(url); toast('Finish in the Google tab, then come back here.', { icon: 'external-link' }); return true; }
-    toast('The sign-in tab did not open. You can sign in in this tab instead.', { kind: 'info', timeout: 8000, action: { label: 'Sign in here', run: () => location.assign(url) } });
+    if (popup) { popup.opener = null; popup.location.replace(url); toast('Finish in the Google tab, then come back here', { icon: 'external-link' }); return true; }
+    toast('The sign-in tab didn’t open. You can sign in in this tab instead', { kind: 'info', timeout: 8000, action: { label: 'Sign in here', run: () => location.assign(url) } });
     return true;
   } catch (e) {
     if (popup) try { popup.close(); } catch (_) { /* already closed */ }
-    toast((e && e.message) || 'OpenDash could not start the Google sign-in.', { kind: 'err' });
+    toastError('start the Google sign-in', e);
     return false;
   }
 }
@@ -183,19 +183,19 @@ function googleAdvancedFold(el, google = {}, { onChange } = {}) {
     try {
       const out = await _srcApi('/api/accounts/google-app', { method: 'PUT', body: payload });
       id.value = ''; secret.value = '';
-      toast(payload.clientId ? 'Your Google app is saved.' : 'Google sign-ins use the built-in app again.', { kind: 'ok' });
+      toast(payload.clientId ? 'Google app saved' : 'Google sign-ins use the built-in app again', { kind: 'ok' });
       if (typeof onChange === 'function') onChange(out);
-    } catch (e) { toast((e && e.message) || 'The Google app could not be saved.', { kind: 'err' }); }
+    } catch (e) { toastError('save the Google app', e); }
     finally { if (b) b.disabled = false; }
   };
-  actions.appendChild(_connBtn('Save my Google app', 'check', 'btn-primary', (b) => {
+  actions.appendChild(uiButton({ label: 'Save my Google app', icon: 'check', kind: 'primary', size: 'sm', run: (e, b) => {
     const raw = String(id.value || '').trim();
-    if (!raw) { toast('Paste the client ID first.', { kind: 'err' }); return; }
+    if (!raw) { toast('Paste the client ID first', { kind: 'err' }); return; }
     let payload = { clientId: raw, clientSecret: String(secret.value || '').trim() || null };
     if (raw.startsWith('{')) payload = { json: raw, ...(payload.clientSecret ? { clientSecret: payload.clientSecret } : {}) };
     return save(payload, b);
-  }));
-  if (google.custom && google.builtIn) actions.appendChild(_connBtn('Use the built-in app', 'rotate-ccw', 'btn-secondary', (b) => save({ clientId: null }, b)));
+  } }));
+  if (google.custom && google.builtIn) actions.appendChild(uiButton({ label: 'Use the built-in app', icon: 'rotate-ccw', kind: 'secondary', size: 'sm', run: (e, b) => save({ clientId: null }, b) }));
   body.appendChild(actions);
   box.appendChild(body); el.appendChild(box);
   return box;

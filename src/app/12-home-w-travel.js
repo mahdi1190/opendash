@@ -28,6 +28,18 @@ registerHomeWidget({
   sample() { return null; },
 });
 
+/** The card's header (cardHead): the flag where the icon goes, the place as the title, when, and the weather. */
+function _hwtHead(label, flagHtml, wxHtml) {
+  const head = cardHead({ icon: 'plane', title: label, cls: 'hwt-h' });
+  const ic = head.querySelector(':scope > .i');
+  if (ic && flagHtml) { ic.insertAdjacentHTML('afterend', flagHtml); ic.remove(); }
+  head.querySelector('h3').classList.add('hwt-city');
+  const sp = head.querySelector('.spacer');
+  sp.insertAdjacentHTML('beforebegin', '<span class="subtle hwt-when"></span>');
+  if (wxHtml) sp.insertAdjacentHTML('afterend', wxHtml);
+  return head;
+}
+
 /** A small analogue dial: the hour and minute hands; night = a dark face. */
 function _hwtDial(h, mi, o) {
   o = o || {};
@@ -100,9 +112,7 @@ function _hwtRender(el, ctx) {
   const card = document.createElement('div'); card.className = 'card hwt hwt-' + ctx.size + ' is-' + mode;
   const label = (trip && trip.label) || place.label || Clock.label(zone);
   const wx = _hwtWeather(place.cityId, ctx);
-  const head = document.createElement('div'); head.className = 'hwt-h';
-  head.innerHTML = `${typeof trFlagHtml === 'function' ? trFlagHtml(place.cc, { sheen: !!ctx.firstPaint }) : ''}<b class="hwt-city"></b><span class="subtle hwt-when"></span><span class="spacer"></span>${_hwtWxPill(wx)}`;
-  head.querySelector('.hwt-city').textContent = label;
+  const head = _hwtHead(label, typeof trFlagHtml === 'function' ? trFlagHtml(place.cc, { sheen: !!ctx.firstPaint }) : '', _hwtWxPill(wx));
   head.querySelector('.hwt-when').textContent = trip ? (mode === 'before' ? trUiRange(trip.from, trip.to) : trUiTripWhen(trip, snap.today)) : 'away';
   head.addEventListener('click', (e) => { if (trip && !e.target.closest('button')) Travel.openTrip(trip.id); });
   if (trip) { head.classList.add('is-link'); head.setAttribute('role', 'link'); head.tabIndex = 0; head.addEventListener('keydown', (e) => { if (e.key === 'Enter') Travel.openTrip(trip.id); }); }
@@ -205,9 +215,11 @@ function _hwtSample(el, ctx) {
   const card = document.createElement('div'); card.className = 'card hwt hwt-' + ctx.size + ' is-sample';
   const now = Clock.now();
   const z = 'Asia/Tokyo', hz = Clock.home();
-  card.innerHTML = `<div class="hwt-h">${typeof trFlagHtml === 'function' ? trFlagHtml('JP') : ''}<b class="hwt-city">Tokyo</b><span class="subtle hwt-when">day 2 of 6</span><span class="spacer"></span>${_hwtWxPill({ temp: 17, cond: 'rain', label: 'Rain', isDay: true })}</div>`
-    + `<div class="hwt-dials"><div class="hwt-clock">${_hwtDial(Clock.parts(now, z).h, Clock.parts(now, z).mi)}<div><b class="num">${esc(Clock.fmtTime(now, { zone: z }))}</b><span class="subtle">Tokyo · your time</span></div></div>`
-    + `<div class="hwt-clock is-home">${_hwtDial(Clock.parts(now, hz).h, Clock.parts(now, hz).mi)}<div><b class="num">${esc(Clock.fmtTime(now, { zone: hz }))}</b><span class="subtle">${esc(Clock.label(hz))} · home</span></div></div></div>`;
+  const sh = _hwtHead('Tokyo', typeof trFlagHtml === 'function' ? trFlagHtml('JP') : '', _hwtWxPill({ temp: 17, cond: 'rain', label: 'Rain', isDay: true }));
+  sh.querySelector('.hwt-when').textContent = 'day 2 of 6';
+  card.appendChild(sh);
+  card.insertAdjacentHTML('beforeend', `<div class="hwt-dials"><div class="hwt-clock">${_hwtDial(Clock.parts(now, z).h, Clock.parts(now, z).mi)}<div><b class="num">${esc(Clock.fmtTime(now, { zone: z }))}</b><span class="subtle">Tokyo · your time</span></div></div>`
+    + `<div class="hwt-clock is-home">${_hwtDial(Clock.parts(now, hz).h, Clock.parts(now, hz).mi)}<div><b class="num">${esc(Clock.fmtTime(now, { zone: hz }))}</b><span class="subtle">${esc(Clock.label(hz))} · home</span></div></div></div>`);
   el.appendChild(card);
   return true;
 }

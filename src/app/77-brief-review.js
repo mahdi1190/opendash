@@ -52,11 +52,11 @@ async function reviewSave(op, okMsg) {
       if (typeof _asstAdopt === 'function') await _asstAdopt(j.version);
       toast(okMsg || 'Saved', { kind: 'ok', icon: 'circle-check', action: j.undo ? { label: 'Undo', run: async () => {
         try { const u = await fetch('/api/actions/undo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: j.undo, source: 'ui', client: 'review' }) }).then(x => x.json()); if (typeof _asstAdopt === 'function') await _asstAdopt(u.version); }
-        catch (e) { toast('Could not undo', { kind: 'err' }); }
+        catch (e) { toastError('undo that', e); }
       } } : undefined });
       return true;
     } catch (e) {
-      toast('Not saved: ' + (e.message || 'the server did not answer'), { kind: 'err' });
+      toastError('save the review', e, () => reviewSave(op, okMsg));
       return false;
     }
   }
@@ -113,9 +113,9 @@ function weeklyRender(container) {
   const d = _wkDraft();
   const root = document.createElement('div'); root.className = 'wk';
   const saved = (state.reviews || []).find(x => x && x.kind === 'week' && x.date === r.from);
-  const head = document.createElement('div'); head.className = 'wk-head';
-  head.innerHTML = `<div><div class="overline">Weekly review</div><h1>${esc(_wkLabel(r.from, r.to))}</h1><p class="muted">Seven short steps. Your answers are kept in this browser until you save.</p></div>${saved ? `<span class="badge badge-success">${icon('circle-check', 'i-xs')}Saved ${esc(new Date(saved.savedAt).toLocaleDateString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short' }))}</span>` : ''}`;
-  root.appendChild(head);
+  // The section header (secHead): the review and its week; the Saved badge is its one action slot.
+  const savedBadge = saved ? Object.assign(document.createElement('span'), { className: 'badge badge-success', innerHTML: `${icon('circle-check', 'i-xs')}Saved ${esc(new Date(saved.savedAt).toLocaleDateString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short' }))}` }) : null;
+  root.appendChild(secHead({ title: 'Weekly review', count: _wkLabel(r.from, r.to), sub: 'Seven short steps. Your answers are kept in this browser until you save.', actions: savedBadge ? [savedBadge] : [] }));
   const layout = document.createElement('div'); layout.className = 'wk-layout';
   const rail = document.createElement('ol'); rail.className = 'wk-rail';
   WEEK_STEPS.forEach(([id, label, ic], i) => {
@@ -127,18 +127,15 @@ function weeklyRender(container) {
   });
   const pane = document.createElement('section'); pane.className = 'card wk-pane';
   const [sid, slabel, sic] = WEEK_STEPS[_wk.step];
-  pane.innerHTML = `<div class="wk-pane-h">${icon(sic)}<h2>${esc(slabel)}</h2><span class="muted">Step ${_wk.step + 1} of ${WEEK_STEPS.length}</span></div><div class="wk-pane-b"></div>`;
+  pane.innerHTML = `${cardHeadHtml({ icon: sic, title: slabel, count: `Step ${_wk.step + 1} of ${WEEK_STEPS.length}`, cls: 'wk-pane-h' })}<div class="wk-pane-b"></div>`;
   const b = pane.querySelector('.wk-pane-b');
   try { ({ inbox: _wkInbox, overdue: _wkOverdue, waiting: _wkWaiting, capacity: _wkCapacity, outcomes: _wkOutcomes, wins: _wkWins, finish: _wkFinish })[sid](b, r, d); }
-  catch (e) { console.error('[weekly ' + sid + ']', e); b.textContent = 'This step could not be shown.'; }
+  catch (e) { console.error('[weekly ' + sid + ']', e); b.appendChild(emptyLine('This step couldn’t be shown: try another step, or reload the page.')); }
   const nav = document.createElement('div'); nav.className = 'wk-nav';
-  if (_wk.step > 0) { const bk = document.createElement('button'); bk.type = 'button'; bk.className = 'btn btn-ghost'; bk.innerHTML = icon('arrow-left') + '<span>Back</span>'; bk.onclick = () => { _wk.step--; renderMain(); }; nav.appendChild(bk); }
+  if (_wk.step > 0) nav.appendChild(uiButton({ label: 'Back', icon: 'arrow-left', kind: 'ghost', run: () => { _wk.step--; renderMain(); } }));
   nav.appendChild(Object.assign(document.createElement('span'), { className: 'spacer' }));
   if (_wk.step < WEEK_STEPS.length - 1) {
-    const nx = document.createElement('button'); nx.type = 'button'; nx.className = 'btn btn-primary';
-    nx.innerHTML = '<span>Next</span>' + icon('arrow-right');
-    nx.onclick = () => { d.done[sid] = true; _wkSaveDraft(); _wk.step++; renderMain(); };
-    nav.appendChild(nx);
+    nav.appendChild(uiButton({ label: 'Next', kind: 'primary', run: () => { d.done[sid] = true; _wkSaveDraft(); _wk.step++; renderMain(); } }));
   }
   pane.appendChild(nav);
   layout.append(rail, pane);
@@ -159,12 +156,8 @@ function _wkRow(i, extra) {
   li.addEventListener('click', (e) => { if (!e.target.closest('button')) homeOpenSheet(i.id, li); });
   return li;
 }
-function _wkBtn(label, ic, run, cls) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm' + (cls ? ' ' + cls : '');
-  b.innerHTML = (ic ? icon(ic, 'i-sm') : '') + `<span>${esc(label)}</span>`;
-  b.onclick = (e) => { e.stopPropagation(); run(b); };
-  return b;
-}
+/** The review's row button: a thin adapter over the kit's uiButton (ghost, small; run(button)). */
+function _wkBtn(label, ic, run, cls) { return uiButton({ label, icon: ic, kind: 'ghost', size: 'sm', cls, run: (e, b) => run(b) }); }
 function _wkIntro(b, text) { const p = document.createElement('p'); p.className = 'wk-intro'; p.textContent = text; b.appendChild(p); }
 
 /* 1. inbox and suggestions */
@@ -363,9 +356,7 @@ function _wkFinish(b, r, d) {
   ta.oninput = () => { d.notes = ta.value; _wkSaveDraft(); };
   n.appendChild(ta);
   b.appendChild(n);
-  const save = document.createElement('button'); save.type = 'button'; save.className = 'btn btn-primary btn-lg wk-save';
-  save.innerHTML = icon('circle-check') + '<span>Save this review</span>';
-  save.onclick = async () => {
+  const save = uiButton({ label: 'Save this review', icon: 'circle-check', kind: 'primary', size: 'lg', cls: 'wk-save', wait: true, run: async () => {
     const st = _wkStats(r);
     const op = {
       op: 'review.save', kind: 'week', date: r.from,
@@ -382,7 +373,7 @@ function _wkFinish(b, r, d) {
       state.lastReviewPrompt = Date.now(); saveUI();
       setTimeout(() => setView('home:history'), 700);
     }
-  };
+  } });
   b.appendChild(save);
 }
 
@@ -392,7 +383,7 @@ function _wkFinish(b, r, d) {
 const _hist = { snaps: null, at: 0, open: null };
 function historyRender(container) {
   const root = document.createElement('div'); root.className = 'hist';
-  root.innerHTML = `<div class="wk-head"><div><div class="overline">Home</div><h1>History</h1><p class="muted">Your weekly reviews, evening recaps and the mornings you opened.</p></div></div>`;
+  root.appendChild(secHead({ title: 'History', sub: 'Your weekly reviews, evening recaps and the mornings you opened.' }));
   const list = document.createElement('div'); list.className = 'hist-list';
   root.appendChild(list);
   container.appendChild(root);

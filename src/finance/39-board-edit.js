@@ -250,7 +250,7 @@
     let size = sel.size;
     let added = 0;
     openDialog({
-      title: 'Add a widget to My money', width: 940, resizable: false,
+      title: 'Add a widget to My money', size: 'xl', fixed: true, resizable: false,
       onClose: () => { disposeChart('s:b:prev'); if (added && BDR.editing) bdEditRefresh(); },
       body: (el, close) => {
         el.classList.add('hgal-b');

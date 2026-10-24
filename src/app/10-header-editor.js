@@ -88,9 +88,7 @@ function uiDateField(o) {
   }
   let clr = null;
   if (o.clearable) {
-    clr = document.createElement('button'); clr.type = 'button'; clr.className = 'btn-icon btn-sm ui-datef-x';
-    clr.innerHTML = icon('x'); clr.setAttribute('aria-label', 'Clear the date');
-    clr.onclick = (e) => { e.stopPropagation(); o.value = ''; paint(); o.onChange && o.onChange(''); };
+    clr = uiButton({ icon: 'x', size: 'sm', cls: 'ui-datef-x', aria: 'Clear the date', run: () => { o.value = ''; paint(); o.onChange && o.onChange(''); } });
     wrap.appendChild(clr);
   }
   const pick = (iso) => { o.value = iso; paint(); o.onChange && o.onChange(iso); };
@@ -180,10 +178,13 @@ function openTopbarCustomiser(opts) {
 
   const scrim = document.createElement('div'); scrim.className = 'scrim tbe-scrim';
   const dlg = document.createElement('div');
-  dlg.className = 'modal tbe'; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-labelledby', 'tbe-title');
+  // The kit's xl size (a 920 px width snaps there) and a fixed height: picking another widget never moves
+  // the buttons (UI_CLEANUP_PLAN.md 1.2 and 1.3; its own markup, so the classes are set here).
+  dlg.className = 'modal modal-xl is-fixed tbe'; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-labelledby', 'tbe-title');
+  dlg.style.width = `min(var(--modal-xl, ${DIALOG_SIZES.xl}px), calc(100vw - 32px))`;
+  dlg.style.setProperty('--modal-h', '788px');
   dlg.innerHTML = `
-    <div class="modal-h">${icon('sliders-horizontal', 'i-lg')}<h2 id="tbe-title">Customise top bar</h2><span class="tbe-hint">Drag to reorder. Changes preview live.</span>
-      <button type="button" class="btn-icon" data-act="close" aria-label="Close">${icon('x')}</button></div>
+    <div class="modal-h">${icon('sliders-horizontal', 'i-lg')}<h2 id="tbe-title">Customise top bar</h2><span class="tbe-hint">Drag to reorder. Changes preview live.</span></div>
     <div class="tbe-preview">
       <div class="tbe-preview-h"><span class="overline">Preview</span><span class="tbe-fit"></span></div>
       <div class="tbe-strip" role="list" aria-label="Preview of the top bar"></div>
@@ -197,13 +198,18 @@ function openTopbarCustomiser(opts) {
       </div>
       <div class="tbe-form"></div>
     </div>
-    <div class="modal-f">
-      <button type="button" class="btn btn-ghost tbe-del" data-act="delete">${icon('trash-2', 'i-sm')}<span>Delete widget</span></button>
-      <span class="spacer"></span>
-      <button type="button" class="btn btn-ghost" data-act="cancel">Cancel</button>
-      <button type="button" class="btn btn-primary" data-act="save"><span>Save</span><kbd class="kbd tbe-kbd" aria-label="Ctrl+Enter">Ctrl ↵</kbd></button>
-    </div>`;
+    <div class="modal-f"></div>`;
   const $ = (s) => dlg.querySelector(s);
+  // The buttons (uiButton): Close in the header; Delete widget, Cancel and Save (Ctrl+Enter) in the footer.
+  $('.modal-h').appendChild(uiButton({ icon: 'x', aria: 'Close', data: { act: 'close' }, run: () => cancel() }));
+  const spacer = document.createElement('span'); spacer.className = 'spacer';
+  const saveBtn = uiButton({ label: 'Save', kind: 'primary', data: { act: 'save' }, run: () => save() });
+  saveBtn.insertAdjacentHTML('beforeend', '<kbd class="kbd tbe-kbd" aria-label="Ctrl+Enter">Ctrl ↵</kbd>');
+  $('.modal-f').append(
+    uiButton({ label: 'Delete widget', icon: 'trash-2', iconCls: 'i-sm', kind: 'ghost', cls: 'tbe-del', data: { act: 'delete' }, run: () => del() }),
+    spacer,
+    uiButton({ label: 'Cancel', kind: 'ghost', data: { act: 'cancel' }, run: () => cancel() }),
+    saveBtn);
   const prevFocus = document.activeElement;
   let sortStrip = null, sortRows = null, closed = false;
   const cur = () => ed.draft.find(w => w.id === ed.sel) || null;
@@ -579,10 +585,6 @@ function openTopbarCustomiser(opts) {
     if (prevFocus && prevFocus.isConnected && prevFocus.focus) try { prevFocus.focus({ preventScroll: true }); } catch (e) {}
   }
 
-  dlg.querySelector('[data-act="close"]').onclick = cancel;
-  dlg.querySelector('[data-act="cancel"]').onclick = cancel;
-  dlg.querySelector('[data-act="save"]').onclick = save;
-  dlg.querySelector('[data-act="delete"]').onclick = del;
   scrim.onclick = cancel;
   document.body.append(scrim, dlg);
   if (typeof makeResizable === 'function') makeResizable(dlg, { key: 'dialog:topbar-editor', center: 'x', min: { w: 560, h: 360 }, max: () => ({ h: window.innerHeight - 80 }) });   // 13-splitter.js

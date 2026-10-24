@@ -121,7 +121,7 @@ function _hcapRender(el, ctx) {
   if (showSort && size !== 'l') {
     const pill = document.createElement('button'); pill.type = 'button'; pill.className = 'hcap-pill';
     const n = m.unsorted.length;
-    pill.innerHTML = `${icon('inbox')}<span>${n} to sort</span>${icon(_hcap.sortOpen ? 'chevron-up' : 'chevron-down')}`;
+    pill.innerHTML = `${icon('inbox', 'i-sm')}<span>${n} to sort</span>${icon(_hcap.sortOpen ? 'chevron-up' : 'chevron-down', 'i-sm')}`;
     pill.setAttribute('aria-expanded', _hcap.sortOpen ? 'true' : 'false');
     pill.setAttribute('aria-label', `${n} recent task${n === 1 ? '' : 's'} to sort: ${_hcap.sortOpen ? 'hide' : 'show'} them`);
     if (!preview) pill.onclick = () => { _hcap.sortOpen = !_hcap.sortOpen; _hcap.sortAll = false; if (ctx.rerender) ctx.rerender(); };
@@ -156,7 +156,7 @@ function _hcapRender(el, ctx) {
     sec.appendChild(list);
     if (m.unsorted.length > cap) {
       const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-ghost btn-sm hcap-more';
-      more.innerHTML = `<span>${_hcap.sortAll ? 'Show less' : `+${m.unsorted.length - cap} more`}</span>${icon(_hcap.sortAll ? 'chevron-up' : 'chevron-down')}`;
+      more.innerHTML = `<span>${_hcap.sortAll ? 'Show less' : `+${m.unsorted.length - cap} more`}</span>${icon(_hcap.sortAll ? 'chevron-up' : 'chevron-down', 'i-sm')}`;
       more.setAttribute('aria-expanded', _hcap.sortAll ? 'true' : 'false');
       if (!preview) more.onclick = () => { _hcap.sortAll = !_hcap.sortAll; if (ctx.rerender) ctx.rerender(); };
       sec.appendChild(more);
@@ -383,7 +383,7 @@ function _hcapPasteBlock(ctx, prefs) {
   const h = document.createElement('div'); h.className = 'hcap-paste-h';
   h.innerHTML = `${icon('clipboard-list')}<b>${n} task${n === 1 ? '' : 's'} from what you pasted</b><span class="spacer"></span>`;
   const full = document.createElement('button'); full.type = 'button'; full.className = 'btn btn-ghost btn-sm hcap-paste-full';
-  full.innerHTML = `${icon('maximize-2')}<span>Edit in full</span>`;
+  full.innerHTML = `${icon('maximize-2', 'i-sm')}<span>Edit in full</span>`;
   full.onclick = () => { const txt = _hcap.lines; _hcap.lines = null; if (ctx.rerender) ctx.rerender(); openQuickAddDialog(txt, { multi: true }); };
   h.appendChild(full);
   box.appendChild(h);
@@ -454,13 +454,13 @@ function _hcapTemplates(ctx, tpls, preview) {
   for (const t of tpls) {
     const chip = document.createElement('span'); chip.className = 'hcap-tpl'; chip.dataset.flip = 'tpl:' + t.key;
     const main = document.createElement('button'); main.type = 'button'; main.className = 'hcap-tpl-main';
-    main.innerHTML = `${t.stream && typeof STREAMS !== 'undefined' && STREAMS[t.stream] ? streamMarkHtml(t.stream) : icon(t.kind === 'task' ? 'copy' : 'layout-template', 'i-xs')}<span>${esc(t.label)}</span>`;
+    main.innerHTML = `${t.stream && typeof STREAMS !== 'undefined' && STREAMS[t.stream] ? streamMarkHtml(t.stream) : icon(t.kind === 'task' ? 'copy' : 'layout-template', 'i-sm')}<span>${esc(t.label)}</span>`;
     main.title = `New task from “${t.label}”: opens it filled in; Save creates it`;
     main.setAttribute('aria-label', `New task from the template ${t.label} (opens the editor)`);
     chip.appendChild(main);
     if (!homeCaptureTemplateOpenEnded(t)) {
       const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'hcap-tpl-ok';
-      ok.innerHTML = icon('check', 'i-xs');
+      ok.innerHTML = icon('check', 'i-sm');
       ok.setAttribute('aria-label', `Add “${t.title.trim()}” now`);
       ok.setAttribute('data-tip', 'Add it now');
       const used = _hcap.used[t.key] || 0;
@@ -682,7 +682,7 @@ function _hcapSettings(anchor, ctx) {
     el.classList.add('hg-set', 'hcap-set');
     const paint = (focusKey) => {
       const p = homePrefs(wid);
-      el.innerHTML = `<div class="hg-set-h">${icon('circle-plus')}<b>Quick capture settings</b></div>`;
+      el.innerHTML = `${cardHeadHtml({ icon: 'circle-plus', title: 'Quick capture settings', cls: 'hg-set-h' })}`;
       // The stream for new tasks (a list: a seg would not fit ten streams).
       const r1 = document.createElement('div'); r1.className = 'hg-set-row'; r1.dataset.key = 'stream';
       const dflt = typeof defaultStreamId === 'function' ? defaultStreamId() : '';

@@ -27,13 +27,6 @@ const _PF_HEAD_CROP = new Set(['hair', 'hat', 'glasses', 'headphones']);
 const _PF_UNTIL = [['0', "Don't clear"], ['1h', 'In an hour'], ['4h', 'In 4 hours'], ['today', 'Tonight'], ['week', 'In a week']];
 
 function _pfEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-function _pfBtn(label, ic, run, cls) {
-  const b = _pfEl('button', 'btn btn-sm ' + (cls || 'btn-secondary'));
-  b.type = 'button';
-  b.innerHTML = (ic ? icon(ic, 'i-sm') : '') + `<span>${esc(label)}</span>`;
-  b.onclick = (e) => run(e, b);
-  return b;
-}
 function _pfUntil(k) {
   const now = Date.now();   // clock-ok: a real time stamp
   return k === '1h' ? now + 36e5 : k === '4h' ? now + 4 * 36e5 : k === 'today' ? _pfEndOfDay() : k === 'week' ? now + 7 * 864e5 : 0;
@@ -44,19 +37,25 @@ function _pfDebounce(fn, ms) { let t = 0; return (...a) => { clearTimeout(t); t 
 if (typeof registerSettingsGroup === 'function') {
   registerSettingsGroup({
     id: 'me', title: 'Profile', icon: 'user-round', order: 9,
-    description: 'You: your name, status, avatar and the badges you show. It follows you to your other devices, and friends see your card.',
+    description: 'Your name, picture, status and badges. Friends see your card.',
+    // Settings search (SIMPLIFY_PLAN.md 6): the name rows live here; "Name" in Region & language moved to "Your name"
+    search: [
+      { label: 'Your name', description: 'In greetings, the app title and your card', keywords: 'name display name user name greeting title card friends called' },
+      { label: 'Show friends a different name', description: 'Friends see another name instead of your own', keywords: 'name for friends friends name nickname alias different name display name' },
+    ],
     render(el) { _pfSettings(el); },
   });
 }
 function _pfSettings(el) {
+  if (typeof profileFriendNameDecide === 'function') profileFriendNameDecide();   // before any edit: a friends name that differs from yours is kept as the different name
   const top = _pfEl('div', 'pf-set-top');
   const cardHost = _pfEl('div', 'pf-set-card');
   const paintCard = () => { cardHost.replaceChildren(profileCardEl(null, { visits: true })); };
   paintCard();
   const side = _pfEl('div', 'pf-set-side');
-  side.append(_pfEl('p', 'set-h', 'This is your card: in the top-left corner, in your profile, and what your friends see. Click your avatar in the corner to set a quick status; the Friends button beside it opens Friends.'));
-  const ed = _pfBtn('Customise your card', 'wand-sparkles', () => { const b = document.getElementById('pf-look'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); }, 'btn-primary');
-  const av = _pfBtn('Customise your avatar', 'user-round-pen', () => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); });
+  side.append(_pfEl('p', 'set-h', 'Your card. Friends see it too.'));
+  const ed = uiButton({ label: 'Customise your card', icon: 'wand-sparkles', kind: 'primary', size: 'sm', run: () => { const b = document.getElementById('pf-look'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); } });
+  const av = uiButton({ label: 'Customise your avatar', icon: 'user-round-pen', size: 'sm', run: () => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); } });
   side.append(ed, av);
   top.append(cardHost, side);
   el.appendChild(top);
@@ -71,19 +70,20 @@ function _pfSettings(el) {
 
 /* ---------- About you ---------- */
 function _pfAboutCard(changed) {
-  const { card, body } = _settingsCard('About you', 'All of it is optional. Plain text only.');
+  const { card, body } = _settingsCard('About you');
   const p = profileGet();
-  const input = (key, max, ph, label, list) => {
-    const i = _pfEl('input', 'control control-sm set-input'); i.maxLength = max; i.value = p[key] || ''; i.placeholder = ph || ''; i.setAttribute('aria-label', label);
-    const save = _pfDebounce(() => { profileSet({ [key]: profileText(i.value, max) }); changed(); }, 400);
+  const input = (key, max, ph, label, list, onSave) => {
+    const i = _pfEl('input', 'control control-sm set-input'); i.maxLength = max; i.value = p[key] || (key === 'name' ? profileDisplayName(p) : ''); i.placeholder = ph || ''; i.setAttribute('aria-label', label);
+    const save = _pfDebounce(() => { const v = profileText(i.value, max); profileSet({ [key]: v }); if (onSave) onSave(v); changed(); }, 400);
     i.oninput = save; i.onblur = () => { const v = profileText(i.value, max); if (i.value !== v) i.value = v; };
     if (list) { const dl = _pfEl('datalist'); dl.id = 'pf-dl-' + key; for (const v of list) { const o = _pfEl('option'); o.value = v; dl.appendChild(o); } i.setAttribute('list', dl.id); i._dl = dl; }
     return i;
   };
-  const nm = input('name', PF_MAX.name, (typeof userName === 'function' && userName()) || 'Your name', 'Display name');
-  body.appendChild(_settingsRow('Display name', 'Shown on your card and to friends. Greetings still use the name in Name & region.', nm));
+  // One name (SIMPLIFY_PLAN.md L11): greetings, the app title, your card and, unless you say otherwise, friends.
+  const nm = input('name', PF_MAX.name, 'Your name', 'Your name', null, _pfNameSaved);
+  body.appendChild(_settingsRow('Your name', 'In greetings, the app title and your card.', nm));
   const pr = input('pronouns', PF_MAX.pronouns, 'Optional', 'Pronouns', ['she/her', 'he/him', 'they/them', 'she/they', 'he/they', 'any pronouns']);
-  const prRow = _settingsRow('Pronouns', 'Optional.', pr); prRow.appendChild(pr._dl);
+  const prRow = _settingsRow('Pronouns', null, pr); prRow.appendChild(pr._dl);
   body.appendChild(prRow);
   body.appendChild(_pfStatusRow(changed));
   const bio = _pfEl('textarea', 'control set-textarea'); bio.maxLength = PF_MAX.bio; bio.rows = 2; bio.value = p.bio || '';
@@ -100,10 +100,40 @@ function _pfAboutCard(changed) {
   const wk = input('working', PF_MAX.working, 'e.g. Chapter 4', "What you're working on", doing);
   const wkRow = _settingsRow("What I'm working on", doing.length ? 'Type it, or pick one of the tasks you are doing.' : 'One line.', wk); wkRow.appendChild(wk._dl);
   body.appendChild(wkRow);
-  body.appendChild(_settingsRow('Card colour', 'The colour of your card, your ring and what friends see.', _pfSwatchRow(p.theme, (v) => { profileSet({ theme: v }); changed(); }, true)));
-  body.appendChild(_settingsRow('Reacts to your day', 'Your avatar grins on a streak, sparkles when the week’s quests are done, gets sleepy late at night and wears a party hat on your birthday.',
-    _settingsSwitch(p.react, 'Reacts to your day', (on) => { profileSet({ react: on }); changed(); if (typeof renderMain === 'function') renderMain(); })));
+  body.appendChild(_settingsRow('Card colour', 'Your card and ring.', _pfSwatchRow(p.theme, (v) => { profileSet({ theme: v }); changed(); }, true)));
+  // More: the occasional choices (rows are built now, so Settings search finds them and opens the fold)
+  setFold({ card, body }, 'profile-about-more', 'More', ({ body: more }) => {
+    more.appendChild(_pfFriendNameRow(changed));
+    more.appendChild(_settingsRow('Reacts to your day', 'Your avatar reacts to streaks, quests, late nights and your birthday.',
+      _settingsSwitch(p.react, 'Reacts to your day', (on) => { profileSet({ react: on }); changed(); if (typeof renderMain === 'function') renderMain(); })));
+  });
   return card;
+}
+/** Your name was saved: the app's name follows (config.userName, which greetings and the title read), and friends' too. */
+function _pfNameSaved(v) {
+  const name = profileText(v, PF_MAX.name);
+  if (name && typeof settingsSaveConfig === 'function' && typeof userName === 'function' && name !== userName()) settingsSaveConfig({ userName: name }, false);
+  profileFriendNameSync();
+}
+/** "Show friends a different name": a switch, and the name when it is on. Off: friends see your name above. */
+function _pfFriendNameRow(changed) {
+  const wrap = _pfEl('div', 'pf-fn');
+  const row = _settingsRow('Show friends a different name', 'Off: friends see your name above.', wrap);
+  const paint = () => {
+    wrap.replaceChildren();
+    const p = profileGet(), on = p.friendNameOn === true;
+    wrap.appendChild(_settingsSwitch(on, 'Show friends a different name', (v) => {
+      profileSet({ friendNameOn: v, friendName: v && !p.friendName ? profileDisplayName(p) : p.friendName });
+      profileFriendNameSync(); changed(); paint();
+    }));
+    if (on) {
+      const i = _pfEl('input', 'control control-sm set-input'); i.maxLength = PF_MAX.name; i.value = p.friendName || ''; i.placeholder = profileDisplayName(p); i.setAttribute('aria-label', 'The name friends see');
+      i.oninput = _pfDebounce(() => { profileSet({ friendName: profileText(i.value, PF_MAX.name) }); profileFriendNameSync(); changed(); }, 400);
+      wrap.appendChild(i);
+    }
+  };
+  paint();
+  return row;
 }
 function _pfSwatchRow(cur, onPick, withCustom) {
   const row = _pfEl('div', 'pf-sws');
@@ -215,17 +245,15 @@ function _pfLookCard(changed) {
     pv.appendChild(profileCardEl(null, { visits: true }));
     stage.appendChild(pv);
     const acts = _pfEl('div', 'pf-b-acts');
-    const sb = _pfBtn('Surprise me', 'wand-sparkles', surprise);
-    sb.setAttribute('data-tip', 'A random banner, nameplate and title from what you have unlocked');
-    const ub = _pfBtn('', 'undo-2', undo, 'btn-ghost'); ub.setAttribute('aria-label', 'Undo'); ub.setAttribute('data-tip', 'Undo'); ub.setAttribute('data-kbd', 'Ctrl+Z'); ub.disabled = !_pfUI.lookUndo.length;
-    const rb = _pfBtn('', 'redo-2', redo, 'btn-ghost'); rb.setAttribute('aria-label', 'Redo'); rb.setAttribute('data-tip', 'Redo'); rb.setAttribute('data-kbd', 'Ctrl+Shift+Z'); rb.disabled = !_pfUI.lookRedo.length;
-    const reset = _pfBtn('', 'rotate-ccw', () => {
+    const sb = uiButton({ label: 'Surprise me', icon: 'wand-sparkles', size: 'sm', tip: 'A random banner, nameplate and title from what you have unlocked', run: surprise });
+    const ub = uiButton({ icon: 'undo-2', kind: 'ghost', size: 'sm', aria: 'Undo', tip: 'Undo', kbd: 'Ctrl+Z', disabled: !_pfUI.lookUndo.length, run: undo });
+    const rb = uiButton({ icon: 'redo-2', kind: 'ghost', size: 'sm', aria: 'Redo', tip: 'Redo', kbd: 'Ctrl+Shift+Z', disabled: !_pfUI.lookRedo.length, run: redo });
+    const reset = uiButton({ icon: 'rotate-ccw', kind: 'ghost', size: 'sm', aria: 'Back to the plain look', tip: 'Back to the plain look', run: () => {
       const before = cur();
       if (JSON.stringify(before) === JSON.stringify(profileLookNormalize(null))) return;
       apply(profileLookDefault());
-      toast('Your card is back to the plain look.', { icon: 'rotate-ccw', action: { label: 'Undo', run: () => { profileSet({ look: before }); paintStage(); paintPanel(); changed(); } } });
-    }, 'btn-ghost');
-    reset.setAttribute('aria-label', 'Back to the plain look'); reset.setAttribute('data-tip', 'Back to the plain look');
+      toast('Card back to the plain look', { icon: 'rotate-ccw', action: { label: 'Undo', run: () => { profileSet({ look: before }); paintStage(); paintPanel(); changed(); } } });
+    } });
     acts.append(sb, ub, rb, reset);
     stage.appendChild(acts);
     const next = _pfLookNext();
@@ -369,7 +397,7 @@ function _pfFirstScene() {
 function _pfLookScenes(host, look, apply) {
   const all = _pfAllScenes();
   const sec = _pfLookSection(host, 'Your scene');
-  if (!all.length) { sec.appendChild(_pfEl('div', 'set-h', 'The scenes are still loading, or this dashboard has none yet. Your colour shows meanwhile.')); return; }
+  if (!all.length) { sec.appendChild(emptyLine('The scenes are still loading, or this dashboard has none yet. Your colour shows meanwhile.')); return; }
   const chosen = all.find(it => it.ref === look.scene) || null;
   sec.appendChild(_pfEl('div', 'set-h', chosen ? `Showing ${chosen.label}. Friends see it if their OpenDash has it too; otherwise your colour.` : 'Pick a scene. Friends see it if their OpenDash has it too; otherwise your colour.'));
   const q = _pfEl('input', 'control control-sm set-input pf-l-q'); q.type = 'search'; q.placeholder = `Search ${all.length} scenes`; q.setAttribute('aria-label', 'Search the scenes');
@@ -387,9 +415,9 @@ function _pfLookScenes(host, look, apply) {
       b.onclick = () => { if (!on) apply({ banner: 'scene', scene: it.ref }); };
       list.appendChild(b);
     }
-    if (!hits.length) list.appendChild(_pfEl('span', 'set-h', 'No scene matches that. Try another word.'));
+    if (!hits.length) list.appendChild(emptyLine('No scene matches that. Try another word.'));
     else if (hits.length > shown.length) {
-      const more = _pfBtn(`Show more (${hits.length - shown.length})`, 'chevron-down', () => { _pfUI.sceneN += 40; paint(); }, 'btn-ghost');
+      const more = uiButton({ label: `Show more (${hits.length - shown.length})`, icon: 'chevron-down', kind: 'ghost', size: 'sm', run: () => { _pfUI.sceneN += 40; paint(); } });
       list.appendChild(more);
     }
   };
@@ -525,8 +553,8 @@ function _pfFriendsPanels() {
       row.appendChild(profileCardEl(null, { visits: true }));
       const side = _pfEl('div', 'pf-fr-you-side');
       side.appendChild(_pfEl('p', 'muted', 'This is the card your friends see when they open your page: your banner, name style, title and favourite emoji.'));
-      side.appendChild(_pfBtn('Customise your card', 'wand-sparkles', () => _pfOpenLook(), 'btn-primary'));
-      side.appendChild(_pfBtn('Preview what friends see', 'eye', () => openDialog({ title: 'What your friends see', width: 460, body: (el) => { el.appendChild(profileCardEl(null, { preview: true })); } })));
+      side.appendChild(uiButton({ label: 'Customise your card', icon: 'wand-sparkles', kind: 'primary', size: 'sm', run: () => _pfOpenLook() }));
+      side.appendChild(uiButton({ label: 'Preview what friends see', icon: 'eye', size: 'sm', run: () => openDialog({ title: 'What your friends see', size: 'sm', body: (el) => { el.appendChild(profileCardEl(null, { preview: true })); } }) }));
       row.appendChild(side);
       sec.appendChild(row);
     } });
@@ -547,7 +575,7 @@ _pfFriendsPanels();
 
 /* ---------- the character builder ---------- */
 function _pfBuilderCard(changed) {
-  const { card, body } = _settingsCard('Your avatar', 'Pick each part. Some open up as you level up, earn achievements or when their season comes round, and stay yours.');
+  const { card, body } = _settingsCard('Your avatar', 'Some parts unlock as you level up.');
   card.id = 'pf-builder';
   const wrap = _pfEl('div', 'pf-b'); wrap.tabIndex = -1;
   const stage = _pfEl('div', 'pf-b-stage'), panel = _pfEl('div', 'pf-b-panel');
@@ -595,10 +623,9 @@ function _pfBuilderCard(changed) {
     for (const n of [64, 40, 28]) sizes.appendChild(profileAvatarEl(null, n, { mood: {} }));
     stage.appendChild(sizes);
     const acts = _pfEl('div', 'pf-b-acts');
-    const rb = _pfBtn('Randomise', 'wand-sparkles', (e) => randomise(!!e.shiftKey));
-    rb.setAttribute('data-tip', 'A new look (your skin tone stays). Shift+click: only this tab');
-    const ub = _pfBtn('', 'undo-2', undo, 'btn-ghost'); ub.setAttribute('aria-label', 'Undo'); ub.setAttribute('data-tip', 'Undo'); ub.setAttribute('data-kbd', 'Ctrl+Z'); ub.disabled = !_pfUI.undo.length;
-    const reb = _pfBtn('', 'redo-2', redo, 'btn-ghost'); reb.setAttribute('aria-label', 'Redo'); reb.setAttribute('data-tip', 'Redo'); reb.setAttribute('data-kbd', 'Ctrl+Shift+Z'); reb.disabled = !_pfUI.redo.length;
+    const rb = uiButton({ label: 'Randomise', icon: 'wand-sparkles', size: 'sm', tip: 'A new look (your skin tone stays). Shift+click: only this tab', run: (e) => randomise(!!e.shiftKey) });
+    const ub = uiButton({ icon: 'undo-2', kind: 'ghost', size: 'sm', aria: 'Undo', tip: 'Undo', kbd: 'Ctrl+Z', disabled: !_pfUI.undo.length, run: undo });
+    const reb = uiButton({ icon: 'redo-2', kind: 'ghost', size: 'sm', aria: 'Redo', tip: 'Redo', kbd: 'Ctrl+Shift+Z', disabled: !_pfUI.redo.length, run: redo });
     acts.append(rb, ub, reb);
     stage.appendChild(acts);
     const fig = profileFigureSvg(a, { size: 150, walk: _pfUI.walk && _pfMotionOk() });
@@ -711,18 +738,16 @@ function _pfNextUnlocks() {
 
 /* ---------- badges ---------- */
 function _pfBadgesCard(changed) {
-  const { card, body } = _settingsCard('Badges you show', 'Pick up to six of the achievements you have earned, or let your card show the newest three (never money or places badges: pick those yourself if you want them shown).');
+  const { card, body } = _settingsCard('Badges you show', 'Pick up to six of the achievements you have earned, or let your card show the newest three.');
   const paint = () => {
     body.replaceChildren();
     const earned = _pfEarned(), p = profileGet();
     if (!earned.length) {
-      const e = _pfEl('div', 'set-h', 'No achievements yet. They come from finishing tasks, streaks, focus and more.');
-      body.appendChild(e);
-      if (typeof setView === 'function') body.appendChild(_pfBtn('See the achievements', 'award', () => setView('game')));
+      body.appendChild(emptyLine('No achievements yet. They come from finishing tasks, streaks, focus and more.', typeof setView === 'function' ? { label: 'See the achievements', icon: 'award', run: () => setView('game') } : null));
       return;
     }
     const auto = !Array.isArray(p.badges);
-    body.appendChild(_settingsRow('Show', null, _settingsSeg([['auto', 'Newest three'], ['pick', 'My pick']], auto ? 'auto' : 'pick', (k) => {
+    body.appendChild(_settingsRow('Show', 'Money and places badges are never picked for you.', _settingsSeg([['auto', 'Newest three'], ['pick', 'My pick']], auto ? 'auto' : 'pick', (k) => {
       if (k === 'auto') profileSet({ badges: null }); else profileSet({ badges: profileShowcase(p) });
       paint(); changed();
     })));
@@ -765,7 +790,7 @@ function _pfPlaceSuggestions() {
   } catch (e) { return []; }
 }
 function _pfPlacesCard(changed) {
-  const { card, body } = _settingsCard('Favourite places', 'Up to five. Names only, never coordinates. Friends see them only if you switch it on under Friends.');
+  const { card, body } = _settingsCard('Favourite places', 'Up to five, names only. Friends see them only if you turn it on below.');
   const paint = () => {
     body.replaceChildren();
     const list = profileGet().places, sug = _pfPlaceSuggestions();
@@ -794,7 +819,7 @@ function _pfPlacesCard(changed) {
       for (const s of sug) { const o = _pfEl('option'); o.value = s.label; dl.appendChild(o); }
       i.setAttribute('list', dl.id);
       i.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); add(i.value); } };
-      const line = _pfEl('div', 'pf-st-line'); line.append(i, dl, _pfBtn('Add', 'plus', () => add(i.value)));
+      const line = _pfEl('div', 'pf-st-line'); line.append(i, dl, uiButton({ label: 'Add', icon: 'plus', size: 'sm', run: () => add(i.value) }));
       body.appendChild(line);
       const quick = sug.filter(s => !list.some(x => x.label.toLowerCase() === s.label.toLowerCase())).slice(0, 6);
       if (quick.length) {
@@ -811,20 +836,32 @@ function _pfPlacesCard(changed) {
 
 /* ---------- friends ---------- */
 function _pfFriendsCard() {
-  const { card, body } = _settingsCard('What friends see', 'Your card goes to your friends through OpenDash Friends, end-to-end encrypted. Your level and streak are shared by the game.');
+  const { card, body } = _settingsCard('What friends see', 'Your card goes to your friends, encrypted.');
   const F = _pfFriends();
   const paint = () => {
     body.replaceChildren();
     const sh = profileGet().share;
-    body.appendChild(_settingsRow('What goes', 'Your display name, pronouns, bio, status, what you are working on, the card colour, your avatar, your card’s look (banner, nameplate, title, favourite emoji, what you are currently into) and the badges you show. Nothing else from your dashboard.', null));
-    body.appendChild(_settingsRow('Favourite places', 'Off unless you switch it on. Names only.', _settingsSwitch(!!sh.places, 'Share favourite places with friends', (on) => { profileSet({ share: { places: on } }); paint(); })));
+    body.appendChild(_settingsRow('Share favourite places', 'Names only.', _settingsSwitch(!!sh.places, 'Share favourite places with friends', (on) => { profileSet({ share: { places: on } }); paint(); })));
     body.appendChild(_settingsRow('Count my visits', 'When you open a friend’s card, their visitors count goes up by one (once a day). They only ever see a number, never who.', _settingsSwitch(sh.visits !== false, 'Count my visits to friends’ cards', (on) => { profileSet({ share: { visits: on } }); paint(); })));
     const acts = _pfEl('div', 'pf-b-acts');
-    acts.appendChild(_pfBtn(_pfUI.preview ? 'Hide the preview' : 'Preview what friends see', 'eye', () => { _pfUI.preview = !_pfUI.preview; paint(); }));
-    if (F) acts.appendChild(_pfBtn('Send it now', 'send', async (e, b) => { b.disabled = true; const ok = await profileShareNow(true); b.disabled = false; toast(ok ? 'Your card is on its way to your friends.' : 'Not sent yet: Friends is not ready. It goes as soon as it is.', { icon: ok ? 'send' : 'cloud-off', kind: ok ? 'ok' : undefined }); }));
-    else acts.appendChild(_pfEl('span', 'set-h', 'Friends is not set up on this dashboard yet; your card goes as soon as it is.'));
+    acts.appendChild(uiButton({ label: _pfUI.preview ? 'Hide the preview' : 'Preview what friends see', icon: 'eye', size: 'sm', run: () => { _pfUI.preview = !_pfUI.preview; paint(); } }));
     body.appendChild(acts);
     if (_pfUI.preview) { const pv = _pfEl('div', 'pf-preview'); pv.appendChild(profileCardEl(null, { preview: true })); body.appendChild(pv); }
+    if (!F) body.appendChild(emptyLine('Friends isn’t set up yet.'));
+    // More: what goes, and sending it now (it sends by itself a moment after every change)
+    setFold({ card, body }, 'profile-friends-more', 'More', ({ body: more }) => {
+      more.appendChild(_settingsRow('What goes', 'Your name, pronouns, bio, status, what you are working on, your card and its look, your avatar and the badges you show. Nothing else from your dashboard.', null));
+      if (F) {
+        const send = (b) => {
+          b.disabled = true;
+          return profileShareNow(true).then((ok) => {
+            if (ok) toast('Card sent to your friends', { kind: 'ok', icon: 'send' });
+            else toast('Couldn’t send your card: Friends isn’t ready. It goes as soon as it is.', { kind: 'err', icon: 'cloud-off', retry: () => send(b) });
+          }).finally(() => { b.disabled = false; });
+        };
+        more.appendChild(_settingsRow('Send it now', null, uiButton({ label: 'Send it now', icon: 'send', size: 'sm', run: (e, b) => send(b) })));
+      }
+    });
   };
   paint();
   return card;
@@ -836,10 +873,10 @@ if (typeof registerCommand === 'function') {
   registerCommand({ id: 'profile-card', label: 'Customise your card: banner, nameplate, title', icon: 'image', keywords: 'profile card banner background header nameplate font name style title emoji currently tint', run: () => _pfOpenLook() });
   registerCommand({ id: 'profile-avatar', label: 'Customise your avatar', icon: 'wand-sparkles', keywords: 'avatar character builder customise hair outfit hat glasses face', run: () => { setView('settings:me'); setTimeout(() => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ block: 'start' }); }, 60); } });
   registerCommand({ id: 'profile-status', label: 'Set your status', icon: 'circle-user', keywords: 'status away busy focusing holiday travelling emoji', run: () => profileOpenPop() });
-  registerCommand({ id: 'profile-status-clear', label: 'Clear your status', icon: 'x', keywords: 'status clear', when: () => !!profileStatusNow(), run: () => { profileSet({ status: { emoji: '', text: '', until: 0 } }); toast('Status cleared.', { icon: 'circle-user' }); } });
+  registerCommand({ id: 'profile-status-clear', label: 'Clear your status', icon: 'x', keywords: 'status clear', when: () => !!profileStatusNow(), run: () => { profileSet({ status: { emoji: '', text: '', until: 0 } }); toast('Status cleared', { icon: 'circle-user' }); } });
   registerCommand({ id: 'profile-random', label: 'Randomise your avatar', icon: 'wand-sparkles', keywords: 'avatar random surprise shuffle new look', run: () => {
     const before = profileGet().avatar, ctx = profileUnlockCtx();
     profileSet({ avatar: profileAvatarRandom(Math.random, (k, id) => !profileLockOf(k, id, ctx), { skin: before.skin }) });
-    toast('A new look.', { icon: 'wand-sparkles', action: { label: 'Undo', run: () => profileSet({ avatar: before }) } });
+    toast('New look', { icon: 'wand-sparkles', action: { label: 'Undo', run: () => profileSet({ avatar: before }) } });
   } });
 }

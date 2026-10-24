@@ -28,8 +28,7 @@ function rfNudgeMany(ids) {
   const mark = rfDoMany(items.map(i => ['nudged', i.id]));
   if (url) { hglOpenMail(url); rfToast(`Nudge to ${p.name} drafted in your mail app (nothing is sent)`, mark, 'bell'); return mark; }
   const who = p ? p.name : 'them';
-  try { navigator.clipboard.writeText(t.body).then(() => rfToast(`No email address for ${who}: the nudge is copied, paste it in a message`, mark, 'clipboard-list'), () => rfToast(`Marked as followed up (no email address for ${who})`, mark, 'bell')); }
-  catch (e) { rfToast(`Marked as followed up (no email address for ${who})`, mark, 'bell'); }
+  copyText(t.body, 'nudge', { quiet: true }).then((ok) => rfToast(ok ? `No email address for ${who}: the nudge is copied, paste it in a message` : `Marked as followed up (no email address for ${who})`, mark, ok ? 'clipboard-list' : 'bell'));
   return mark;
 }
 
@@ -70,11 +69,11 @@ function rfRenderWaiting(main) {
   if (![2, 3, 5, 7, 10, 14, 21].includes(nd)) { const o = document.createElement('option'); o.value = nd; o.textContent = `${nd} days`; o.selected = true; sel.appendChild(o); }
   sel.onchange = () => { setTaskViewPref('waiting', { nudgeDays: Number(sel.value) }); render(); };
   bar.appendChild(sel);
-  bar.insertAdjacentHTML('beforeend', `<span class="spacer"></span><span class="rf-keys muted"><kbd class="kbd">N</kbd> nudge <kbd class="kbd">C</kbd> arrived <kbd class="kbd">R</kbd> back on my list</span>`);
+  if (total) bar.insertAdjacentHTML('beforeend', `<span class="spacer"></span><span class="rf-keys muted"><kbd class="kbd">N</kbd> nudge <kbd class="kbd">C</kbd> arrived <kbd class="kbd">R</kbd> back on my list</span>`);
   page.appendChild(bar);
   if (!total) {
     const box = document.createElement('div'); page.appendChild(box);
-    mountEmptyState(box, { icon: 'hourglass', title: 'Nobody to wait on', text: `Press W on a task (or D in the weekly review) when it waits on someone. It leaves your lists and waits here, and a nudge appears after ${nd} days.`, actions: [{ label: 'Back to Today', icon: 'sun', run: () => setView('today') }] });
+    mountEmptyState(box, { icon: 'hourglass', title: 'Nobody to wait on', text: `Press W on a task that waits on someone: it moves here, and a nudge appears after ${nd} days.`, actions: [{ label: 'Back to Today', icon: 'sun', run: () => setView('today') }] });
     main.appendChild(page);
     return;
   }
@@ -83,16 +82,12 @@ function rfRenderWaiting(main) {
     const sec = document.createElement('section'); sec.className = 'card rf-wait-g' + (g.due ? ' has-due' : '');
     const p = g.p;
     const head = document.createElement('div'); head.className = 'rf-wait-gh';
-    head.innerHTML = `${p ? homeAvatar(p, 30) : `<span class="rf-wait-anon">${icon('users')}</span>`}<div class="rf-wait-who"><b>${esc(p ? p.name : 'Someone')}</b><span class="muted">${g.items.length} thing${g.items.length === 1 ? '' : 's'} they owe you · longest ${esc(typeof hglAge === 'function' ? hglAge(g.oldest) : g.oldest + ' d')}</span></div><span class="spacer"></span>`;
+    // Card template: the name opens their card (the title link); one action, the nudge about everything.
+    head.innerHTML = `${p ? homeAvatar(p, 30) : `<span class="rf-wait-anon">${icon('users')}</span>`}<div class="rf-wait-who"><b class="rf-wait-name">${esc(p ? p.name : 'Someone')}</b><span class="muted">${g.items.length} thing${g.items.length === 1 ? '' : 's'} they owe you · longest ${esc(typeof hglAge === 'function' ? hglAge(g.oldest) : g.oldest + ' d')}</span></div><span class="spacer"></span>`;
     if (p) {
-      const open = document.createElement('button'); open.type = 'button'; open.className = 'btn btn-ghost btn-sm'; open.innerHTML = icon('circle-user', 'i-sm') + '<span>Card</span>';
-      open.onclick = () => { if (typeof openPerson === 'function') openPerson(p.id); };
-      head.appendChild(open);
-      if (g.items.length > 1) {
-        const all = document.createElement('button'); all.type = 'button'; all.className = 'btn btn-secondary btn-sm'; all.innerHTML = icon('bell', 'i-sm') + `<span>Nudge about all ${g.items.length}</span>`;
-        all.onclick = () => rfNudgeMany(g.items.map(i => i.id));
-        head.appendChild(all);
-      }
+      const link = uiButton({ label: p.name, kind: 'link', cls: 'rf-wait-name', tip: `Open ${p.name}'s card`, run: () => { if (typeof openPerson === 'function') openPerson(p.id); } });
+      head.querySelector('.rf-wait-name').replaceWith(link);
+      if (g.items.length > 1) head.appendChild(uiButton({ label: `Nudge about all ${g.items.length}`, icon: 'bell', iconCls: 'i-sm', size: 'sm', run: () => rfNudgeMany(g.items.map(i => i.id)) }));
     }
     sec.appendChild(head);
     const ul = document.createElement('ul'); ul.className = 'rf-wait-list';
@@ -113,7 +108,7 @@ function _rfWaitRow(i) {
   const art = typeof animSceneHtml === 'function' && typeof animForTask === 'function' ? animSceneHtml(animForTask(i).type, { size: 'xs', hover: true }) : '';
   li.innerHTML = `${art}<button type="button" class="rf-wait-main"><span class="rf-wait-t">${esc(effTitle(i))}</span><span class="rf-wait-s">${since ? `since ${esc(_rfShort(since))} · ` : ''}<b class="${due ? 'due' : ''}">${n ? esc(n + ' day' + (n === 1 ? '' : 's')) : 'today'}</b>${i.waitingNudgedAt ? ` · nudged ${esc(_rfShort(i.waitingNudgedAt))}` : ''}${d ? ` · follow-up ${esc(dueLabel(d))}` : ''}</span></button>`;
   const acts = document.createElement('span'); acts.className = 'rf-wait-acts';
-  const btn = (label, ic, run, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm' + (cls ? ' ' + cls : ''); b.innerHTML = icon(ic, 'i-sm') + `<span>${esc(label)}</span>`; b.onclick = (e) => { e.stopPropagation(); run(); }; return b; };
+  const btn = (label, ic, run, cls) => uiButton({ label, icon: ic, iconCls: 'i-sm', kind: 'ghost', size: 'sm', cls, run: () => run() });
   acts.append(
     btn('Nudge', 'bell', () => rfNudge(i.id), due ? 'is-due' : ''),
     btn('Arrived', 'circle-check', () => { const m = rfDo('done', i.id); rfToast('Done: it arrived', m, 'circle-check'); }),
@@ -151,10 +146,9 @@ function rfTodayFollowUps() {
   const people = [];
   for (const i of due) { const p = rfWaitPerson(i); if (p && !people.some(x => x.id === p.id)) people.push(p); }
   el.innerHTML = `${icon('bell', 'i-sm')}<span class="rf-strip-t"><b>Time to follow up</b> · ${esc(due.length)} thing${due.length === 1 ? '' : 's'} waiting${people.length ? ' on ' + esc(people.slice(0, 3).map(p => typeof hglFirst === 'function' ? hglFirst(p) : p.name).join(', ')) + (people.length > 3 ? ` +${people.length - 3}` : '') : ''}</span>`;
-  const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-secondary btn-sm'; go.innerHTML = '<span>Open Waiting</span>' + icon('arrow-right', 'i-sm');
-  go.onclick = () => setView('waiting');
-  const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm'; x.setAttribute('aria-label', 'Hide until tomorrow'); x.title = 'Hide until tomorrow'; x.innerHTML = icon('x', 'i-sm');
-  x.onclick = () => { setTaskViewPref('waiting', { stripHiddenOn: today }); el.remove(); };
+  const go = uiButton({ label: 'Open Waiting', size: 'sm', run: () => setView('waiting') });
+  go.insertAdjacentHTML('beforeend', icon('arrow-right', 'i-sm'));
+  const x = uiButton({ icon: 'x', iconCls: 'i-sm', size: 'sm', tip: 'Hide until tomorrow', run: () => { setTaskViewPref('waiting', { stripHiddenOn: today }); el.remove(); } });
   el.append(go, x);
   return el;
 }
@@ -175,10 +169,7 @@ function rfPersonOwe(personId, open) {
 function rfPersonNudgeButton(personId, items) {
   const due = items.filter(i => rfIsWaiting(i));
   if (!due.length) return null;
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm rf-pc-nudge';
   const late = due.filter(rfNudgeDue).length;
-  b.innerHTML = icon('bell', 'i-sm') + `<span>${late ? `Nudge (${late} due)` : 'Nudge'}</span>`;
-  b.title = 'Draft one email about everything they owe you (nothing is sent)';
-  b.onclick = (e) => { e.stopPropagation(); rfNudgeMany(due.map(i => i.id)); };
-  return b;
+  return uiButton({ label: late ? `Nudge (${late} due)` : 'Nudge', icon: 'bell', iconCls: 'i-sm', kind: 'ghost', size: 'sm', cls: 'rf-pc-nudge',
+    tip: 'Draft one email about everything they owe you (nothing is sent)', run: () => rfNudgeMany(due.map(i => i.id)) });
 }

@@ -46,11 +46,12 @@
      homeTick(ctx|wid, fn)  one shared timer on the minute; paused while the tab is hidden,
                             stopped when Home is left; fn(now) updates text in place or
                             returns 'rerender'. Nothing in a preview. Call it from render().
-     homeAction(btn, run|ops, {done, toast, undo, say, wid})
+     homeAction(btn, run|ops, {done, toast, undo, say, wid, what})
                             one click: busy (aria-busy, disabled) -> done (data-done, label
                             `done`), so a re-click does nothing; `toast` with Undo (`undo:
-                            true` = the page's undo(), or a function); errors: netErrorMessage,
-                            the button comes back, the toast offers Try again. run(btn) may
+                            true` = the page's undo(), or a function); errors: toastError
+                            ("Couldn't <what>: <reason>."), the button comes back, the toast
+                            offers Try again. run(btn) may
                             return a Promise; false = nothing happened. An array = server ops
                             (homeOps). After a save Home repaints: draw the done state from the data.
      homeOps(ops, {done, wid, client})   ops through POST /api/actions (validation, history,
@@ -189,18 +190,17 @@ function homeSetPrefs(ctxOrId, patch, msg) {
   if (JSON.stringify(cur) === JSON.stringify(before) && keep === had) return false;
   const json = JSON.stringify(cur);
   const bytes = typeof TextEncoder === 'function' ? new TextEncoder().encode(json).length : json.length;
-  if (bytes > HOME_PREFS_MAX_BYTES) { toast('Those settings are too large to save', { kind: 'err' }); return false; }
+  if (bytes > HOME_PREFS_MAX_BYTES) { toastError('save these settings', 'They are too large.'); return false; }
   if (keep) all[id] = cur; else delete all[id];
   homeUpdate({ widgetPrefs: Object.keys(all).length ? all : undefined }, msg || null);
   return true;
 }
 /** A gear for a widget's own header (outside Customise): opens def.settings(anchor, ctx). */
 function homeSettingsButton(ctx, label) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-icon btn-sm hg-gear'; b.dataset.act = 'settings';
-  b.innerHTML = icon('sliders-horizontal');
   const t = label || `${(ctx && ctx.def && ctx.def.title) || 'Widget'} settings`;
-  b.setAttribute('aria-label', t); b.setAttribute('data-tip', 'Settings'); b.setAttribute('aria-haspopup', 'dialog');
-  b.onclick = (e) => { e.stopPropagation(); homeOpenSettings(ctx, b); };
+  // Quiet at rest: it shows when the card is hovered or has focus (13-home-platform.css), and always while customising.
+  const b = uiButton({ icon: 'sliders-horizontal', size: 'sm', cls: 'hg-gear', aria: t, tip: 'Settings', data: { act: 'settings' }, run: (e, btn) => homeOpenSettings(ctx, btn) });
+  b.setAttribute('aria-haspopup', 'dialog');
   return b;
 }
 function homeOpenSettings(ctx, anchor) {
@@ -218,7 +218,7 @@ function homeSettingsMenu(anchor, ctx, fields, o) {
   return openPopover(anchor, (el, close) => {
     el.classList.add('hg-set');
     const title = o.title || `${(ctx && ctx.def && ctx.def.title) || 'Widget'} settings`;
-    el.innerHTML = `<div class="hg-set-h">${icon((ctx && ctx.def && ctx.def.icon) || 'sliders-horizontal')}<b>${esc(title)}</b></div>`;
+    el.innerHTML = cardHeadHtml({ icon: (ctx && ctx.def && ctx.def.icon) || 'sliders-horizontal', title, cls: 'hg-set-h' });
     const paint = () => {
       for (const x of el.querySelectorAll('.hg-set-row')) x.remove();
       const p = homePrefs(id);
@@ -450,13 +450,13 @@ async function actionsApply(ops, o) {
     if (o.done !== false) {
       toast(o.done || 'Done', { kind: 'ok', action: j.undo ? { label: 'Undo', run: async () => {
         try { await actionsUndo(j.undo, { client }); }
-        catch (e) { toast(netErrorMessage(e, 'Could not undo'), { kind: 'err' }); }
+        catch (e) { toastError('undo that', e); }
       } } : undefined });
     }
     return j;
   } catch (e) {
     if (o.throw) throw e;
-    toast(netErrorMessage(e, 'That did not work'), { kind: 'err' });
+    toastError(o.what || 'make that change', e, () => actionsApply(ops, o));
     return false;
   }
 }
@@ -495,7 +495,7 @@ function homeAction(btn, run, o) {
     restore();
     btn.innerHTML = label;
     console.warn('[home] action failed', e);
-    toast(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'That did not work', { kind: 'err', action: { label: 'Try again', run: () => homeAction(btn, run, o) } });
+    toastError(o.what || 'do that', e, () => homeAction(btn, run, o));
     return false;
   });
 }

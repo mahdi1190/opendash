@@ -1,0 +1,85 @@
+/* Expenses (2.18.1): Money > Expenses, the Owed to you widget, the task panel chip, Finances' Expense button. */
+.xp { max-width: 860px; margin: 0 auto; padding: 4px 0 40px; display: flex; flex-direction: column; gap: 14px; }
+.xp-head { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.xp-loading, .xp-none, .xp-hint { color: var(--fg-muted); font-size: var(--text-sm); padding: 6px 2px; }
+.xp-band { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; justify-content: space-between; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.xp-owed { display: flex; flex-direction: column; gap: 2px; }
+.xp-big, .xw-big { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
+.xp-sub, .xw-sub { color: var(--fg-muted); font-size: var(--text-sm); }
+.xp-payers, .xp-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.xp-chip { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--fg-muted); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.xp-chip:hover { border-color: var(--border-strong); color: var(--fg); }
+.xp-chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink, var(--accent)); }
+.xp-ask { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; }
+.xp-ask-t { flex: 1; font-size: var(--text-md); }
+.xp-remind { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; background: var(--bg-subtle); color: var(--fg-muted); font-size: var(--text-sm); }
+.xp-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.xp-search { flex: 1; min-width: 180px; max-width: 320px; }
+.xp-in { height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--fg); font: inherit; font-size: var(--text-sm); width: 100%; box-sizing: border-box; }
+.xp-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
+.xp-payer-sel { width: auto; }
+.xp-sec { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.xp-sec + .xp-sec { margin-top: 2px; }
+.xp-sec-h { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); }
+.xp-sec-h h3 { margin: 0; font-size: var(--text-md); }
+.xp-sec-h .n { color: var(--fg-subtle); font-size: var(--text-xs); }
+.xp-sec-t { color: var(--fg-muted); font-size: var(--text-sm); }
+.xp-hint { padding: 6px 14px 0; }
+.xp-claim { padding: 8px 14px 2px; font-size: var(--text-xs); color: var(--fg-subtle); display: flex; align-items: center; gap: 5px; text-transform: uppercase; letter-spacing: .04em; }
+.xp-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; }
+.xp-row:last-child { border-bottom: 0; }
+.xp-row:hover, .xp-row:focus-visible { background: var(--bg-subtle); outline: none; }
+.xp-row.xp-drop, .xp-dz.xp-drop { background: var(--accent-soft); outline: 2px dashed var(--accent); outline-offset: -4px; }
+.xp-cb { width: 16px; height: 16px; flex: none; accent-color: var(--accent); }
+.xp-st { width: 16px; display: grid; place-items: center; flex: none; color: var(--fg-subtle); }
+.xp-st.st-paid { color: var(--success); }
+.xp-main { flex: 1; min-width: 0; }
+.xp-t { font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.xp-m { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; color: var(--fg-muted); font-size: var(--text-xs); margin-top: 2px; }
+.xp-warn { color: var(--warning); }
+.xp-am { font-weight: 600; text-align: right; white-space: nowrap; }
+.xp-am small { display: block; color: var(--fg-subtle); font-weight: 400; font-size: var(--text-xs); }
+.xp-tag { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 999px; background: var(--bg-muted); color: var(--fg-muted); font-size: var(--text-xs); }
+.xp-tag.ok, .xp-tag.st-paid { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+.xp-tag.warn, .xp-tag.st-to-claim { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.xp-tag.st-submitted { background: var(--accent-soft); color: var(--accent-ink, var(--accent)); }
+.xp-empty { padding: 20px 0; }
+/* dialogs */
+.xp-form { display: flex; flex-direction: column; gap: 12px; }
+.xp-lead { margin: 0; color: var(--fg-muted); font-size: var(--text-sm); }
+.xp-f { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.xp-fl { font-size: var(--text-xs); color: var(--fg-muted); font-weight: 550; }
+.xp-fh { font-size: var(--text-xs); color: var(--fg-subtle); margin: 0; }
+.xp-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.xp-dz { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px; border: 1.5px dashed var(--border-strong); border-radius: 10px; color: var(--fg-muted); font-size: var(--text-sm); }
+.xp-dz-l { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.xp-rcl, .xp-sug { display: flex; flex-direction: column; gap: 6px; }
+.xp-rc { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 10px; }
+.xp-rc > span { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; text-overflow: ellipsis; }
+.xp-rc small { color: var(--fg-subtle); font-size: var(--text-xs); }
+.xp-sumlist { display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow: auto; padding: 8px 10px; border-radius: 10px; background: var(--bg-subtle); }
+.xp-sumlist > div, .xp-yr { display: flex; justify-content: space-between; gap: 12px; font-size: var(--text-sm); }
+.xp-pack { display: flex; flex-wrap: wrap; gap: 8px; }
+.xp-payer { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--border-subtle); border-radius: 10px; }
+.xp-year { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.xp-year div { display: flex; flex-direction: column; padding: 10px; border-radius: 10px; background: var(--bg-subtle); }
+.xp-year b { font-size: var(--text-xl); }
+.xp-year span { color: var(--fg-muted); font-size: var(--text-xs); }
+/* the widget */
+.xw-b { display: flex; flex-direction: column; gap: 6px; }
+.xw-list { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.xw-list li { display: flex; gap: 8px; align-items: baseline; font-size: var(--text-sm); }
+.xw-list li > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.xw-n { color: var(--fg-subtle); font-size: var(--text-xs); }
+.xw-ask { font-size: var(--text-sm); color: var(--accent-ink, var(--accent)); display: flex; gap: 5px; align-items: center; }
+.xw-acts { display: flex; gap: 6px; margin-top: 6px; }
+/* task panel, Finances */
+.xp-tasksec .dp-sec-h { display: flex; align-items: center; gap: 6px; }
+.xp-trow { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.xp-trow .xp-t { flex: 1; }
+.xp-hintchip { display: inline-flex; align-items: center; gap: 2px; }
+.xp-hintb, .xp-hintx { display: inline-flex; align-items: center; gap: 3px; border: 1px dashed var(--border-strong); background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-xs); padding: 0 6px; height: 20px; border-radius: 999px; cursor: pointer; }
+.xp-hintx { border-style: solid; border-color: transparent; padding: 0 3px; }
+.xp-hintb:hover { color: var(--accent); border-color: var(--accent); }
+@media (max-width: 640px) { .xp-two { grid-template-columns: 1fr; } .xp-band { flex-direction: column; align-items: flex-start; } }
+@media (prefers-reduced-motion: no-preference) { .xp-row { transition: background .12s; } }

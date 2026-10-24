@@ -54,20 +54,18 @@ async function upCheck(opts) {
   try {
     _upStatus = await _upPost('/api/update/check', {}); _upError = '';
     if (!quiet) { const s = upSummary(_upStatus); toast(s.text, { kind: s.tone === 'err' ? 'err' : 'ok' }); }
-  } catch (e) { _upError = netErrorMessage(e); if (!quiet) toast(_upError, { kind: 'err', retry: () => upCheck() }); }
+  } catch (e) { _upError = netErrorMessage(e); if (!quiet) toastError('check for updates', e, () => upCheck()); }
   finally { _upBusy = false; _upRefresh(); }
   return _upStatus;
 }
 
 async function upInstall() {
   const st = _upStatus || await upLoad();
-  if (!st || !st.available) { toast('There is no newer version to install. Check first.', { kind: 'info' }); return false; }
+  if (!st || !st.available) { toast('No newer version yet. Check for updates first.', { kind: 'info' }); return false; }
   if (!st.canApply) { toast(st.reason || 'This copy cannot update itself.', { kind: 'err', timeout: 9000 }); return false; }
-  const how = st.kind === 'git'
-    ? 'This moves the git checkout to the release tag, then rebuilds and restarts the server.'
-    : 'This downloads the release, checks it against its published checksum, replaces the app files (the replaced ones are copied to the update-backup folder in your data folder first), then rebuilds and restarts the server.';
+  const how = 'OpenDash downloads it, checks it, keeps a copy of the old files and restarts. Your data stays as it is. About a minute.';
   // One decision with everything on it: what is new, what happens, and Not now.
-  const ok = await _upAsk(st, how + ' Your data folder is kept (it is backed up before any upgrade step). It takes about a minute; the page reloads when it is done.');
+  const ok = await _upAsk(st, how);
   if (!ok) return false;
   const done = await srvRestart({ rebuild: true, label: `Updating to ${st.latest.version}…`, post: ['/api/update/apply', { version: st.latest.version }] });
   _upStatus = null;
@@ -86,7 +84,7 @@ function _upAsk(st, how) {
   return new Promise((resolve) => {
     let answered = false;
     openDialog({
-      title: `Update to OpenDash ${st.latest.version}?`, width: 560, resizeKey: 'update-ask',
+      title: `Update to OpenDash ${st.latest.version}?`, size: 'md', fixed: true, resizeKey: 'update-ask',
       body: (el) => {
         const h = document.createElement('h3'); h.className = 'up-ask-h'; h.textContent = `What’s new in ${st.latest.version}`;
         const pre = document.createElement('pre'); pre.className = 'up-notes'; pre.tabIndex = 0; pre.textContent = _upNotesText(st.latest, 40);
@@ -107,7 +105,7 @@ async function upShowNotes() {
   const latest = st && st.latest;
   if (!latest || !latest.notes) { setView('settings:updates'); return; }
   openDialog({
-    title: `What’s new in OpenDash ${latest.version}`, width: 560, resizeKey: 'update-notes',
+    title: `What’s new in OpenDash ${latest.version}`, size: 'md', fixed: true, resizeKey: 'update-notes',
     body: (el) => {
       const pre = document.createElement('pre'); pre.className = 'up-notes'; pre.tabIndex = 0; pre.textContent = _upNotesText(latest, 0);
       el.appendChild(pre);
@@ -119,22 +117,21 @@ async function upShowNotes() {
 
 function _upCard(el) {
   const st = _upStatus;
-  const card = _settingsCard('OpenDash version', 'Updates come from the project’s GitHub releases. Checking sends nothing about you; it only asks GitHub for the newest release.');
-  const sum = _upError ? { tone: 'err', text: _upError } : upSummary(st);
-  const row = document.createElement('div'); row.className = 'up-status up-' + sum.tone; row.setAttribute('role', 'status');
-  row.innerHTML = icon(sum.tone === 'new' ? 'download' : sum.tone === 'ok' ? 'circle-check' : sum.tone === 'err' ? 'circle-alert' : 'info') + `<span>${esc(sum.text)}</span>`;
-  const btns = document.createElement('div'); btns.className = 'up-btns';
-  const check = _ssBtn(_upBusy ? 'Checking…' : 'Check for updates', 'refresh-cw', 'btn-secondary', () => upCheck());
-  check.disabled = _upBusy;
-  btns.appendChild(check);
-  if (st && st.available) {
-    const go = _ssBtn(`Update to ${st.latest.version}`, 'download', 'btn-primary', () => upInstall());
-    go.disabled = _upBusy || !st.canApply;
-    btns.appendChild(go);
-  }
-  card.body.append(row, btns);
+  const card = _settingsCard('OpenDash version');
+  if (_upError) card.body.appendChild(setStatusLine('warn', 'Needs you', _upError));
+  else if (!st) card.body.appendChild(setStatusLine('idle', 'Checking', ''));
+  else if (st.available) card.body.appendChild(setStatusLine('busy', 'Update available', `${st.latest.version} (you have ${st.current})`));
+  else if (st.error) card.body.appendChild(setStatusLine('warn', 'Needs you', st.error));
+  else if (st.upToDate) card.body.appendChild(setStatusLine('ok', 'Up to date', `OpenDash ${st.current}`));
+  else card.body.appendChild(setStatusLine('idle', 'Not checked yet', `OpenDash ${st.current}`));
+  card.body.appendChild(_settingsRow('', 'Checking sends nothing about you.', null));
+  if (st && st.available) setAction(card, st.canApply ? 'Update and restart' : `Update to ${st.latest.version}`, () => upInstall(), { icon: 'download', disabled: _upBusy || !st.canApply });
+  else setAction(card, _upBusy ? 'Checking…' : 'Check for updates', () => upCheck(), { icon: 'refresh-cw', disabled: _upBusy });
   if (st && st.available && st.reason) { const n = document.createElement('p'); n.className = 'set-h'; n.textContent = st.reason; card.body.appendChild(n); }
-  if (st && st.checkedAt) { const n = document.createElement('p'); n.className = 'set-h'; n.textContent = 'Last checked ' + _upWhen(st.checkedAt) + '.'; card.body.appendChild(n); }
+  setFold(card, 'updates-card-more', 'More', ({ body }) => {
+    if (st && st.available) body.appendChild(_settingsRow('Check again', '', _ssBtn(_upBusy ? 'Checking…' : 'Check for updates', 'refresh-cw', 'btn-secondary', () => upCheck())));
+    if (st && st.checkedAt) body.appendChild(_settingsRow('Last checked', _upWhen(st.checkedAt), null));
+  });
   el.appendChild(card.card);
 }
 
@@ -154,19 +151,24 @@ function _upNotesCard(el) {
 function _upAutoCard(el) {
   const st = _upStatus;
   const card = _settingsCard('Automatic checks');
-  card.body.appendChild(_settingsRow('Check once a day', 'When on, this page asks GitHub for the newest release at most once a day while it is open, and tells you if there is one. Off by default: otherwise OpenDash never contacts the internet on its own for this.',
+  card.body.appendChild(_settingsRow('Check once a day', 'Asks GitHub once a day while OpenDash is open. It only tells you; it never installs.',
     _settingsSwitch(!!(st && st.auto), 'Check for updates once a day', async (v) => {
       try { _upStatus = await _upPost('/api/update/settings', { auto: v }); toast(v ? 'Will check once a day' : 'Automatic checks off', { kind: 'ok' }); }
-      catch (e) { toast(netErrorMessage(e), { kind: 'err' }); }   // the switch shows the old state again: flip it to retry
+      catch (e) { toastError('save that', e); }   // the switch shows the old state again: flip it to retry
       _upRefresh();
     }, !st)));
-  if (st) card.body.appendChild(_settingsRow('This copy', st.kind === 'git' ? 'A git checkout: updating moves it to the release tag (it refuses when tracked files are changed).' : 'Installed from a release zip: updating replaces the app files and keeps your data folder.', null));
+  if (st) setFold(card, 'updates-auto-adv', 'Advanced', ({ body }) => body.appendChild(_settingsRow('This copy', st.kind === 'git' ? 'Installed from source: updating moves it to the release, and refuses when files are changed.' : 'Installed from a release zip: updating replaces the app files and keeps your data folder.', null)), { advanced: true });
   el.appendChild(card.card);
 }
 
 registerSettingsGroup({
   id: 'updates', title: 'Updates', icon: 'download', order: 93,
-  description: 'Check for a newer OpenDash and install it.',
+  description: 'Get the newest OpenDash.',
+  search: [
+    { label: 'OpenDash version', target: 'OpenDash version', description: 'Check for updates and install a newer release.', keywords: 'upgrade github update release install latest rollback' },
+    { label: 'Check once a day', target: 'Check once a day', description: 'Choose whether to check for updates automatically.', keywords: 'automatic check daily' },
+    { label: 'This copy', target: 'This copy', description: 'How this app copy was installed and updated.', keywords: 'zip git installed source' },
+  ],
   render(el) {
     upLoad();
     _upCard(el);

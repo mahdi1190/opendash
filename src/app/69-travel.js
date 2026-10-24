@@ -274,7 +274,7 @@ const TravelStore = {
       for (const s of t.stops || []) if (s && s.cityId) _trlCache.weather.delete(s.cityId);
       _trlCache.changesAt = 0;
     }
-    if (!o.quiet && typeof toast === 'function') toast(o.forget ? 'Trip forgotten. Your events, tasks and payments are unchanged.' : 'Not a trip: it will not be suggested again.', { kind: 'ok', icon: 'map-pin' });
+    if (!o.quiet && typeof toast === 'function') toast(o.forget ? 'Trip forgotten: your events, tasks and payments are unchanged' : 'Not a trip: it won’t be suggested again', { kind: 'ok', icon: 'map-pin' });
     return { ok: true, ids };
   },
   /** Everything travel kept (6.5): decisions, the zone history (the current zone stays), caches; travel off. */

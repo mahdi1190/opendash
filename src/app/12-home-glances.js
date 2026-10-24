@@ -19,16 +19,69 @@
 
 function hglHead(o) {
   o = o || {};
-  const h = document.createElement('div'); h.className = 'card-h hgl-h';
-  h.innerHTML = `${icon(o.icon || 'layout-grid')}<h3>${esc(o.title || '')}</h3>${o.n ? `<span class="n hgl-n">${esc(o.n)}</span>` : ''}<span class="spacer"></span>`;
+  const h = cardHead({ icon: o.icon || 'layout-grid', title: o.title, count: o.n, cls: 'hgl-h' });
   if (o.link && typeof o.link.run === 'function') {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm hgl-link';
-    b.innerHTML = `<span>${esc(o.link.label)}</span>${icon('arrow-right')}`;
-    if (o.link.title) b.title = o.link.title;
-    b.onclick = (e) => { e.stopPropagation(); o.link.run(); };
+    const b = uiButton({ label: o.link.label, kind: 'ghost', size: 'sm', cls: 'hgl-link', tip: o.link.title, run: () => o.link.run() });
+    b.insertAdjacentHTML('beforeend', icon('arrow-right', 'i-sm'));
     h.appendChild(b);
   }
   return h;
+}
+
+/**
+ * A small button for a Home row, made by uiButton. `cls` is the class string the row writes
+ * (btn-primary | btn-secondary | btn-ghost | btn-danger for the kind, btn-icon for an icon-only
+ * button, then its own classes): the kind and size come from the kit, never doubled. A string with
+ * none of those is a plain button (a whole row that can be clicked). Click stops are the row's.
+ */
+function hglBtn(cls) {
+  const parts = String(cls || '').split(/s+/).filter(Boolean);
+  const KIND = /^btn-(primary|secondary|ghost|danger|danger-solid)$/;
+  const kindCls = parts.find(c => KIND.test(c));
+  const iconOnly = parts.includes('btn-icon');
+  const rest = parts.filter(c => c !== 'btn' && c !== 'btn-sm' && c !== 'btn-icon' && !KIND.test(c)).join(' ');
+  const b = uiButton({ size: 'sm', kind: kindCls ? kindCls.slice(4) : 'secondary', cls: rest, bubble: true });
+  if (iconOnly) b.className = (kindCls && kindCls !== 'btn-ghost' ? `btn ${kindCls} btn-sm btn-icon` : 'btn-icon btn-sm') + (rest ? ' ' + rest : '');
+  else if (!parts.includes('btn') && !kindCls) b.className = rest;
+  return b;
+}
+
+/**
+ * The Money cards (Money, Payday & safe to spend) while another computer reads the bank and nothing
+ * has come yet (SIMPLIFY_PLAN.md 5.11, L17) -> the options for ctx.off().
+ *   rm: {name, online, trial} (lib/finance-share.mjs); o: {title, icon, reload(), open()}
+ *   Preview mode (rm.trial: Sync's "Preview changes first" is on here): "{name} reads your bank.
+ *   Preview changes first is on in Sync, so it isn't used here yet." with Use it (apply: true, Undo).
+ *   Otherwise: "Your bank is read on {name}. It shows here after its next update." (asleep: "when
+ *   {name} wakes"): calm and grey, never "Connect your bank" (P6).
+ */
+function hglRemoteBank(rm, o) {
+  o = o || {};
+  const name = String((rm && rm.name) || 'your other computer');
+  const base = { icon: o.icon || 'wallet', title: o.title || 'Money' };
+  if (rm && rm.trial) {
+    return Object.assign(base, { text: `${name} reads your bank. Preview changes first is on in Sync, so it isn’t used here yet.`,
+      action: { label: 'Use it', icon: 'check', run: () => hglUseSyncChanges(o.reload) } });
+  }
+  let asleep = !!(rm && rm.online === false);
+  try { const p = typeof presenceFor === 'function' ? presenceFor(name) : null; if (p && p.state) asleep = p.state === 'asleep' || p.state === 'off'; } catch (e) { /* no presence */ }
+  return Object.assign(base, { text: `Your bank is read on ${name}. It shows here ${asleep ? `when ${name} wakes` : 'after its next update'}.`,
+    action: typeof o.open === 'function' ? { label: 'Open Finances', icon: 'wallet', run: o.open } : undefined });
+}
+/** Sync's "Preview changes first" off on this computer (POST /api/sync/settings {apply: true}), with Undo; then after(). */
+async function hglUseSyncChanges(after) {
+  const post = async (apply) => {
+    const r = await fetch('/api/sync/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apply }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error((j && j.error && (j.error.message || j.error)) || 'HTTP ' + r.status); }
+  };
+  const again = () => { if (typeof after === 'function') try { after(); } catch (e) { console.error('[home] money', e); } };
+  try { await post(true); }
+  catch (e) { toastError('turn off Preview changes first', e, () => hglUseSyncChanges(after)); return false; }
+  toast('Preview changes first turned off', { kind: 'ok', icon: 'check', action: { label: 'Undo', run: async () => {
+    try { await post(false); again(); } catch (e) { toastError('undo that', e); }
+  } } });
+  again();
+  return true;
 }
 
 function hglScene(type, o) {
@@ -40,17 +93,13 @@ function hglEmpty(o) {
   o = o || {};
   const box = document.createElement('div'); box.className = 'hgl-emp';
   const art = o.scene ? hglScene(o.scene, { size: 'lg', hover: true }) : '';
-  box.innerHTML = (art || `<span class="hgl-emp-ic">${icon(o.icon || 'sparkles')}</span>`)
+  box.innerHTML = (art || `<span class="hgl-emp-ic">${icon(o.icon || 'sparkles', 'i-xl')}</span>`)
     + `<h4>${esc(o.title || '')}</h4>` + (o.text ? `<p>${esc(o.text)}</p>` : '');
-  const acts = (o.actions || []).filter(a => a && typeof a.run === 'function');
-  if (acts.length) {
+  // The card template: an empty card offers ONE action (the first one given).
+  const a = (o.actions || []).find(x => x && typeof x.run === 'function');
+  if (a) {
     const row = document.createElement('div'); row.className = 'hgl-emp-acts';
-    for (const a of acts) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + (a.primary ? 'btn-primary' : 'btn-secondary');
-      b.innerHTML = (a.icon ? icon(a.icon) : '') + `<span>${esc(a.label)}</span>`;
-      b.onclick = () => a.run();
-      row.appendChild(b);
-    }
+    row.appendChild(uiButton({ label: a.label, icon: a.icon, size: 'sm', kind: a.primary ? 'primary' : 'secondary', bubble: true, run: () => a.run() }));
     box.appendChild(row);
   }
   return box;

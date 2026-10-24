@@ -128,7 +128,7 @@ function dashboardLocationSettings() {
   }
   ctl.appendChild(status);
   if (typeof dashboardLocationHistoryPanel === 'function') ctl.appendChild(dashboardLocationHistoryPanel());
-  return _settingsRow('Your location', 'Choose one source for weather, opening titles and nearby art. Device mode checks on load, Refresh today and tab return, watches for changes while visible, and polls every 15 minutes. Local visit history keeps arrivals, confirmed presence, departure estimates and observation gaps. Coordinates are rounded to about 1 km; town names are approximate. Weather coordinates go to Open-Meteo.', ctl);
+  return _settingsRow('Your location', 'For the weather on Home.', ctl);
 }
 if (typeof window !== 'undefined') window.addEventListener('load', () => {
   dashboardLocationInitialRefresh();

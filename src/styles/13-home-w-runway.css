@@ -11,23 +11,23 @@
 .rw.rw-st-behind, .rw.rw-st-past { --rw-st: var(--danger); }
 
 /* ----- header: the countdown's name (opens its editor) and what counts ----- */
-.rw .card-h { gap: 6px; }
-.rw .rw-h { display: flex; flex: 0 1 auto; min-width: 0; margin-left: -5px; }
+.rw .card-h { gap: var(--space-1-5); }
+.rw .rw-h { display: flex; flex: 0 1 auto; min-width: 0; margin-left: calc(-1 * var(--space-1)); }
 .rw-scope { flex: 0 10 auto; }
 .rw-name {
   appearance: none; border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
-  flex: 0 1 auto; min-width: 0; padding: 2px 5px; margin: -2px 0; border-radius: var(--radius-sm);
+  flex: 0 1 auto; min-width: 0; padding: var(--space-0-5) var(--space-1); margin: -2px 0 /* nudge */; border-radius: var(--radius-sm);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: background-color var(--m-fast) var(--m-ease-out);
 }
 .rw-name:hover { background: var(--bg-muted); }
 .rw-name:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .rw-scope {
-  display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 45%; height: 20px; padding: 0 8px 0 7px;
-  border-radius: var(--radius-full); background: var(--bg-muted); color: var(--fg-muted); font-size: 11.5px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; max-width: 45%; height: 20px; padding: 0 var(--space-2) 0 var(--space-1-5);
+  border-radius: var(--radius-full); background: var(--bg-muted); color: var(--fg-muted); font-size: var(--text-2xs); white-space: nowrap;
 }
 .rw-scope > span { overflow: hidden; text-overflow: ellipsis; }
-.rw-scope .i { width: 12px; height: 12px; flex: none; }
+.rw-scope .i { flex: none; }
 
 /* ----- the numbers: ring, days and what is left, the pace pill ----- */
 .rw-b { display: flex; flex-direction: column; gap: var(--space-3); }
@@ -43,19 +43,19 @@
 }
 .rw-ring.is-zero .fl { visibility: hidden; }
 .rw-ring.is-sweep .fl { animation: rw-ring 900ms var(--m-ease-out, ease-out) 160ms both; }
-.rw-ring-n { position: absolute; inset: 0; display: flex; align-items: baseline; justify-content: center; padding-top: 18px; line-height: 1; color: var(--fg); }
-.rw-s .rw-ring-n { padding-top: 21px; }
-.rw-ring-n b { font-size: 14px; font-weight: 600; }
-.rw-ring-n small { font-size: 10px; color: var(--fg-subtle); }
-.rw-facts { min-width: 0; display: flex; flex-direction: column; gap: 5px; }
-.rw-left { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 6px; font-size: 13.5px; color: var(--fg-muted); line-height: 1.25; }
-.rw-left b { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; color: var(--fg); }
+.rw-ring-n { position: absolute; inset: 0; display: flex; align-items: baseline; justify-content: center; padding-top: var(--space-4); line-height: 1; color: var(--fg); }
+.rw-s .rw-ring-n { padding-top: var(--space-5); }
+.rw-ring-n b { font-size: var(--text-md); font-weight: 600; }
+.rw-ring-n small { font-size: var(--text-2xs); color: var(--fg-subtle); }
+.rw-facts { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.rw-left { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 var(--space-1-5); font-size: var(--text-sm); color: var(--fg-muted); line-height: 1.25; }
+.rw-left b { font-size: var(--text-xl); font-weight: 600; letter-spacing: -0.015em; color: var(--fg); }
 .rw-sep { color: var(--fg-subtle); }
-.rw-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; }
-.rw-when { font-size: 12px; color: var(--fg-subtle); white-space: nowrap; }
+.rw-sub { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-2); min-width: 0; }
+.rw-when { font-size: var(--text-xs); color: var(--fg-subtle); white-space: nowrap; }
 .rw-pill {
-  display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: var(--radius-full);
-  font-size: 11.5px; font-weight: 600; white-space: nowrap; background: var(--bg-muted); color: var(--fg-muted);
+  display: inline-flex; align-items: center; gap: var(--space-1); height: 20px; padding: 0 var(--space-2); border-radius: var(--radius-full);
+  font-size: var(--text-2xs); font-weight: 600; white-space: nowrap; background: var(--bg-muted); color: var(--fg-muted);
 }
 .rw-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .rw-pill.is-on, .rw-pill.is-done { background: var(--success-soft); color: var(--success-ink); }
@@ -64,7 +64,7 @@
 
 /* ----- the burn-up chart (a button: the scope's own view) ----- */
 .rw-chart {
-  display: block; width: 100%; padding: 6px 6px 2px; margin: 0; border: 1px solid transparent; border-radius: var(--radius-md);
+  display: block; width: 100%; padding: var(--space-1-5) var(--space-1-5) var(--space-0-5); margin: 0; border: 1px solid transparent; border-radius: var(--radius-md);
   background: none; font: inherit; color: inherit; text-align: left; cursor: pointer;
   transition: background-color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out);
 }
@@ -79,41 +79,41 @@
 .rw-need { fill: none; stroke: var(--rw-st); stroke-width: 1.5; stroke-dasharray: 5 4; stroke-linecap: round; }
 .rw-dl { stroke: var(--border-strong); stroke-width: 1; }
 .rw-dot {
-  position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
+  position: absolute; width: 9px; height: 9px; margin: calc(-1 * var(--space-1)) 0 0 calc(-1 * var(--space-1)); border-radius: 50%;
   background: var(--accent); box-shadow: 0 0 0 2px var(--surface); pointer-events: none;
 }
-.rw-axis { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; font-size: 10.5px; color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
-.rw-pace { margin: 0; font-size: 12.5px; color: var(--fg-muted); line-height: 1.35; }
-.rw-more { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--fg-muted); }
-.rw-more li { display: flex; align-items: center; gap: 6px; }
-.rw-more li .i { width: 13px; height: 13px; color: var(--fg-subtle); flex: none; }
+.rw-axis { display: flex; justify-content: space-between; gap: var(--space-2); margin-top: var(--space-0-5); font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.rw-pace { margin: 0; font-size: var(--text-xs); color: var(--fg-muted); line-height: 1.35; }
+.rw-more { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--text-xs); color: var(--fg-muted); }
+.rw-more li { display: flex; align-items: center; gap: var(--space-1-5); }
+.rw-more li .i { color: var(--fg-subtle); flex: none; }
 .rw-more li.is-late, .rw-more li.is-late .i { color: var(--danger-ink); }
 
 /* ----- the next open task(s) ----- */
-.rw-next { display: flex; flex-direction: column; gap: 2px; padding-top: var(--space-2); border-top: 1px solid var(--border-subtle); margin-top: auto; }
-.rw-next-h { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-subtle); }
-.rw-tasks { display: flex; flex-direction: column; gap: 1px; }
+.rw-next { display: flex; flex-direction: column; gap: var(--space-0-5); padding-top: var(--space-2); border-top: 1px solid var(--border-subtle); margin-top: auto; }
+.rw-next-h { font-size: var(--text-2xs); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-subtle); }
+.rw-tasks { display: flex; flex-direction: column; gap: 1px /* hairline */; }
 .rw-task {
-  display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 4px 6px; margin: 0 -6px; border-radius: var(--radius-md);
+  display: flex; align-items: center; gap: var(--space-2); min-height: 42px; padding: var(--space-1) var(--space-1-5); margin: 0 calc(-1 * var(--space-1-5)); border-radius: var(--radius-md);
   transition: background-color var(--m-fast) var(--m-ease-out);
 }
 .rw-task:hover { background: var(--bg-muted); }
 .rw-task:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .rw-task.is-current { background: var(--accent-soft); }
 .rw-task.is-current .rw-tt { color: var(--accent-ink); cursor: default; }
-.rw-p { flex: none; align-self: stretch; width: 3px; margin: 4px 0; border-radius: 2px; background: var(--p0); }
+.rw-p { flex: none; align-self: stretch; width: 3px; margin: var(--space-1) 0; border-radius: var(--radius-xs); background: var(--p0); }
 .rw-p.p1 { background: var(--p1); } .rw-p.p2 { background: var(--p2); } .rw-p.p3 { background: var(--p3); }
-.rw-tm { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.rw-tm { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px /* hairline */; }
 .rw-tt {
-  appearance: none; border: 0; padding: 0; background: none; font: inherit; font-size: 13px; color: var(--fg); text-align: left; cursor: pointer;
+  appearance: none; border: 0; padding: 0; background: none; font: inherit; font-size: var(--text-sm); color: var(--fg); text-align: left; cursor: pointer;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
 }
 .rw-tt:hover { text-decoration: underline; text-decoration-color: var(--border-strong); text-underline-offset: 2px; }
-.rw-meta { font-size: 11.5px; color: var(--fg-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rw-meta { font-size: var(--text-2xs); color: var(--fg-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rw-tact { flex: none; display: flex; align-items: center; }
 .rw-split { display: inline-flex; }
 .rw-split .rw-plan { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.rw-split .rw-ok { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
+.rw-split .rw-ok { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px /* nudge */; }
 .rw-planned { color: var(--success-ink); cursor: default; }
 .rw-planned .i { color: var(--success); }
 .rw-planned:hover { background: transparent; }
@@ -122,44 +122,44 @@
 /* ----- set-up and empty states (never hidden) ----- */
 .rw-setup { display: flex; flex-direction: column; gap: var(--space-3); }
 .rw-intro { display: flex; align-items: center; gap: var(--space-3); }
-.rw-intro p { margin: 0; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--fg-muted); line-height: 1.35; }
+.rw-intro p { margin: 0; display: flex; flex-direction: column; gap: var(--space-0-5); font-size: var(--text-xs); color: var(--fg-muted); line-height: 1.35; }
 .rw-intro b, .rw-q b { color: var(--fg); font-weight: 600; }
-.rw-intro b { font-size: 14px; }
-.rw-q { margin: 0; font-size: 13px; color: var(--fg-muted); }
-.rw-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.rw-chip { height: 28px; max-width: 100%; padding: 0 10px; gap: 6px; border-radius: var(--radius-full); font-size: 12.5px; color: var(--fg); cursor: pointer; }
-button.rw-chip { font-size: 12.5px; }
+.rw-intro b { font-size: var(--text-md); }
+.rw-q { margin: 0; font-size: var(--text-sm); color: var(--fg-muted); }
+.rw-chips { display: flex; flex-wrap: wrap; gap: var(--space-1-5); }
+.rw-chip { height: 28px; max-width: 100%; padding: 0 var(--space-2); gap: var(--space-1-5); border-radius: var(--radius-full); font-size: var(--text-xs); color: var(--fg); cursor: pointer; }
+button.rw-chip { font-size: var(--text-xs); }
 .rw-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.rw-chip small { font-size: 11px; color: var(--fg-subtle); }
+.rw-chip small { font-size: var(--text-2xs); color: var(--fg-subtle); }
 .rw-chip.is-more { color: var(--fg-muted); border-style: dashed; }
-.rw-chip .i { width: 12px; height: 12px; }
 .rw-empty { display: flex; align-items: flex-start; flex-wrap: wrap; gap: var(--space-3); }
-.rw-empty > div:not(.rw-empty-act) { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--fg-muted); line-height: 1.4; }
-.rw-empty b { font-size: 13.5px; color: var(--fg); font-weight: 600; }
-.rw-empty-act { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
+.rw-empty > div:not(.rw-empty-act) { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: var(--space-0-5); font-size: var(--text-xs); color: var(--fg-muted); line-height: 1.4; }
+.rw-empty b { font-size: var(--text-sm); color: var(--fg); font-weight: 600; }
+.rw-empty-act { display: flex; flex-wrap: wrap; gap: var(--space-1-5); width: 100%; }
 
 /* ----- the picker (Choose… and the gear) ----- */
 .rw-pop { max-height: calc(100vh - 16px); overflow: auto; }
-.rw-pick .rw-sec { display: flex; flex-direction: column; gap: 6px; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border-subtle); }
+.rw-pick .rw-sec { display: flex; flex-direction: column; gap: var(--space-1-5); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border-subtle); }
 .rw-pick .rw-row { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-3); }
-.rw-sec-h { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-subtle); }
-.rw-row .rw-sec-h { font-size: var(--text-sm); font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--fg); }
+/* The section heading is the kit's secHead (.sec-h > h2); here it is a quiet label inside the picker. */
+.rw-pick .rw-sec-h { margin: 0; min-height: 0; }
+.rw-sec-h h2 { font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-subtle); }
+.rw-row .rw-sec-h h2 { font-size: var(--text-sm); font-weight: var(--weight-regular); letter-spacing: 0; text-transform: none; color: var(--fg); }
 .rw-kinds { align-self: flex-start; }
-.rw-opts { display: flex; flex-direction: column; gap: 1px; max-height: 164px; overflow: auto; }
+.rw-opts { display: flex; flex-direction: column; gap: 1px /* hairline */; max-height: 164px; overflow: auto; }
 .rw-opt {
-  display: flex; align-items: center; gap: 8px; width: 100%; min-height: 30px; padding: 4px 8px; border: 0; border-radius: var(--radius-sm);
-  background: none; font: inherit; font-size: 13px; color: var(--fg); text-align: left; cursor: pointer;
+  display: flex; align-items: center; gap: var(--space-2); width: 100%; min-height: 30px; padding: var(--space-1) var(--space-2); border: 0; border-radius: var(--radius-sm);
+  background: none; font: inherit; font-size: var(--text-sm); color: var(--fg); text-align: left; cursor: pointer;
 }
 .rw-opt:hover { background: var(--bg-muted); }
 .rw-opt:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .rw-opt.on { background: var(--accent-soft); color: var(--accent-ink); cursor: default; }
 .rw-ol { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rw-opt small { font-size: 11.5px; color: var(--fg-subtle); white-space: nowrap; }
+.rw-opt small { font-size: var(--text-2xs); color: var(--fg-subtle); white-space: nowrap; }
 .rw-opt.on small { color: inherit; opacity: 0.8; }
 .rw-opt .rw-opt-ck { width: 13px; height: 13px; flex: none; }
 .rw-new { color: var(--accent-ink); }
-.rw-new .i { width: 13px; height: 13px; }
-.rw-hint { margin: 0; font-size: 11.5px; line-height: 1.4; color: var(--fg-subtle); }
+.rw-hint { margin: 0; font-size: var(--text-2xs); line-height: 1.4; color: var(--fg-subtle); }
 .rw-q-in { width: 100%; }
 
 /* ----- motion: the ring sweeps and the chart draws once per entry; later changes glide ----- */

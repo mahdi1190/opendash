@@ -147,16 +147,12 @@ function rfReviewFinish(el, ctx) {
   });
   el.appendChild(focus);
   const bar = document.createElement('div'); bar.className = 'rf-end-bar';
-  const planBtn = document.createElement('button'); planBtn.type = 'button'; planBtn.className = 'btn btn-secondary';
-  planBtn.innerHTML = icon('calendar-days') + '<span>Plan my week</span><kbd class="kbd">P</kbd>';
-  planBtn.onclick = () => { ctx.close(); rfPlanWeekOpen({ from: r.nextFrom }); };
-  const hist = document.createElement('button'); hist.type = 'button'; hist.className = 'btn btn-ghost';
-  hist.innerHTML = icon('calendar-range') + '<span>Full review (wins, outcomes)</span>';
-  hist.onclick = () => { ctx.close(); setView('home:week'); };
-  const save = document.createElement('button'); save.type = 'button'; save.className = 'btn btn-primary';
+  const planBtn = uiButton({ label: 'Plan my week', icon: 'calendar-days', run: () => { ctx.close(); rfPlanWeekOpen({ from: r.nextFrom }); } });
+  planBtn.insertAdjacentHTML('beforeend', '<kbd class="kbd">P</kbd>');
+  const hist = uiButton({ label: 'Full review (wins, outcomes)', icon: 'calendar-range', kind: 'ghost', run: () => { ctx.close(); setView('home:week'); } });
   const saved = rfReviewSaved();
-  save.innerHTML = icon('circle-check') + `<span>${saved ? 'Save again' : 'Save this review'}</span><kbd class="kbd">Enter</kbd>`;
-  save.onclick = () => rfReviewSave(save, ctx);
+  const save = uiButton({ label: saved ? 'Save again' : 'Save this review', icon: 'circle-check', kind: 'primary', run: (e, b) => rfReviewSave(b, ctx) });
+  save.insertAdjacentHTML('beforeend', '<kbd class="kbd">Enter</kbd>');
   bar.append(hist, Object.assign(document.createElement('span'), { className: 'spacer' }), planBtn, save);
   el.appendChild(bar);
   ctx.enter(() => save.click());
@@ -198,9 +194,8 @@ function rfHeaderButton() {
   let g = document.getElementById('rf-head');
   if (!g) {
     g = document.createElement('div'); g.id = 'rf-head'; g.className = 'rf-head';
-    const main = document.createElement('button'); main.type = 'button'; main.className = 'btn btn-secondary rf-head-main'; main.dataset.tip = 'One task at a time: keep, move, wait, drop'; main.dataset.kbd = 'Shift+R';
-    main.innerHTML = icon('calendar-check') + '<span>Weekly review</span><i class="rf-head-dot" aria-hidden="true"></i>';
-    main.onclick = () => rfReviewStart();
+    const main = uiButton({ label: 'Weekly review', icon: 'calendar-check', cls: 'rf-head-main', tip: 'One task at a time: keep, move, wait, drop', kbd: 'Shift+R', run: () => rfReviewStart() });
+    main.insertAdjacentHTML('beforeend', '<i class="rf-head-dot" aria-hidden="true"></i>');
     const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-secondary rf-head-more'; more.setAttribute('aria-label', 'More review tools'); more.setAttribute('aria-haspopup', 'menu');
     more.innerHTML = icon('chevron-down', 'i-sm');
     more.onclick = () => openMenu(more, rfToolsMenu(), { align: 'end', width: 270 });
@@ -242,9 +237,9 @@ function rfReviewHub() {
     : sorted ? `${esc(sorted)} sorted so far · ${esc(size.n)} to go` : `${esc(size.n)} task${size.n === 1 ? '' : 's'} to look at, one at a time`;
   hero.innerHTML = `<div class="rf-hub-art anim-hover-host">${art}</div><div class="rf-hub-b"><div class="overline">Weekly review · about ${esc(size.minutes)} min</div><h2>${saved ? 'This week is reviewed' : sorted ? 'Pick up where you left off' : 'Clear your head for next week'}</h2><p class="muted">${line}</p>`
     + `<div class="rf-hub-steps">${rfReviewStreak() >= 2 ? `<span class="rf-pill rf-streak-pill">${icon('flame', 'i-xs')}<span>${esc(rfReviewStreak())}-week streak</span></span>` : ''}${size.stages.map(s => `<span class="rf-pill${s.ids.length ? '' : ' empty'}">${icon(s.icon, 'i-xs')}<span>${esc(s.label)}</span><b class="num">${esc(s.ids.length)}</b></span>`).join('')}</div></div>`;
-  const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-primary btn-lg rf-hub-go';
-  go.innerHTML = icon(sorted && !saved ? 'arrow-right' : 'calendar-check') + `<span>${saved ? 'Review again' : sorted ? 'Resume' : 'Start the review'}</span><kbd class="kbd">Shift+R</kbd>`;
-  go.onclick = () => rfReviewStart();
+  // The hero button stays .btn-lg (UI_CLEANUP_PLAN.md 3.4).
+  const go = uiButton({ label: saved ? 'Review again' : sorted ? 'Resume' : 'Start the review', icon: sorted && !saved ? 'arrow-right' : 'calendar-check', kind: 'primary', size: 'lg', cls: 'rf-hub-go', run: () => rfReviewStart() });
+  go.insertAdjacentHTML('beforeend', '<kbd class="kbd">Shift+R</kbd>');
   hero.appendChild(go);
   hub.appendChild(hero);
   const tools = document.createElement('div'); tools.className = 'rf-hub-tools';

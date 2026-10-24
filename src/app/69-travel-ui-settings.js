@@ -46,7 +46,7 @@ async function _trsSave(patch, msg) {
 
 /** The time rows (CLOCK's), keyed for 5.9, plus the home-zone proposal and the travel time rows. */
 function _trsTimeRows(el, after) {
-  el.appendChild(_trsHead('h-time', 'Time', '“Today”, due dates and the calendar follow the time zone below. This works whether or not travel features are on.'));
+  el.appendChild(_trsHead('h-time', 'Time'));
   const before = el.children.length;
   if (typeof clockSettingsRows === 'function') clockSettingsRows(el, { onChange: after });
   const keys = ['follow', 'home', 'clock'];
@@ -108,7 +108,7 @@ function _trsTravelRows(el, repaint) {
     if (typeof TravelStore !== 'undefined') TravelStore.changed();
     repaint();
   });
-  el.appendChild(_trsRow('travel', 'Travel features', 'Notices trips from your calendar, time zone and card payments, and shows local time, weather and tips. Everything stays on this computer.', sw));
+  el.appendChild(_trsRow('travel', 'Travel features', 'Spots trips and shows local time, weather and tips.', sw));
   if (!on) return;
   const src = t.sources || {};
   const box = document.createElement('div'); box.className = 'tr-set-cbs';
@@ -117,10 +117,10 @@ function _trsTravelRows(el, repaint) {
     _trsCheck('this computer’s time zone', src.zone !== false, setSrc('zone')),
     _trsCheck('calendar flights and trips', src.calendar !== false, setSrc('calendar')),
     _trsCheck('card payments abroad', src.bank !== false, setSrc('bank')),
-    _trsCheck('this browser’s location', src.geo === true, setSrc('geo'), { hint: 'Asks the browser. On Windows, Chrome may use Windows location services. The dashboard keeps only the nearest city, never coordinates.' }));
+    _trsCheck('this browser’s location', src.geo === true, setSrc('geo'), { hint: 'Keeps only the nearest city.' }));
   const r1 = _trsRow('sources', 'Notice trips from', null, box); r1.classList.add('set-row-stack');
   el.appendChild(r1);
-  el.appendChild(_trsRow('moments', 'Moments', 'Arrival, departure and welcome-home cards, at most once each. How much they move follows Appearance > Motion.',
+  el.appendChild(_trsRow('moments', 'Moments', 'Arrival and welcome-home cards. Motion follows Settings > Animations.',
     _settingsSwitch(t.moments !== false, 'Travel moments', (v) => _trsSave({ moments: v }))));
   el.appendChild(_trsRow('weather', 'Weather where you are', 'Sends the city’s position, not yours, to Open-Meteo.',
     _settingsSwitch(t.weather !== false, 'Weather where you are', (v) => _trsSave({ weather: v }))));
@@ -142,16 +142,22 @@ function _trsTravelRows(el, repaint) {
     _trsCheck('look them up online (date.nager.at)', h.online === true, (v) => _trsSave({ holidays: { online: v } }), { hint: 'Only for countries without offline rules, and to confirm estimated dates. Sends the country and year.' }));
   hb.appendChild(hc);
   const r2 = _trsRow('holidays', 'Public holidays', null, hb); r2.classList.add('set-row-stack');
-  el.appendChild(r2);
-  el.appendChild(_trsRow('rates', 'Exchange rates', 'Your own card payments give the rate the bank used.',
-    _settingsSeg([['own', 'From my card payments'], ['online', 'Online (frankfurter.dev)']], t.rates === 'online' ? 'online' : 'own', async (k) => { if (await _trsSave({ rates: k })) render(); })));
-  el.appendChild(_trsRow('jetlag', 'Jet-lag tips', 'Timing tips after long flights (no medical advice). Meetings with others are never moved.',
-    _settingsSwitch(t.jetlag !== false, 'Jet-lag tips', (v) => _trsSave({ jetlag: v }))));
-  el.appendChild(_trsRow('ai', 'Let Claude see trips', 'Adds the current city and trip dates to what Claude and MCP clients see. Off: only the time zone.',
+  el.appendChild(_trsRow('ai', 'Let Claude see trips', 'Claude and your AI apps see your city and trip dates.',
     _settingsSwitch(t.shareWithAi === true, 'Let Claude see trips', (v) => _trsSave({ shareWithAi: v }))));
-  el.appendChild(_trsRow('keep', 'Keep past trips', 'Your decisions about trips (names, “not a trip”) older than this are removed.',
-    _settingsSelect(_TRS_KEEP, String(t.keepDays || 365), (v) => _trsSave({ keepDays: Number(v) }))));
   el.appendChild(_trsTripsRow());
+  // Occasional things under More, rare ones under Advanced. Built now, so Settings search finds them.
+  setFold(el, 'time-travel-more', 'More', ({ body }) => {
+    body.appendChild(r2);
+    body.appendChild(_trsRow('rates', 'Exchange rates', 'Your own card payments give the rate the bank used.',
+      _settingsSeg([['own', 'From my card payments'], ['online', 'Online (frankfurter.dev)']], t.rates === 'online' ? 'online' : 'own', async (k) => { if (await _trsSave({ rates: k })) render(); })));
+    body.appendChild(_trsRow('jetlag', 'Jet-lag tips', 'Timing tips after long flights.',
+      _settingsSwitch(t.jetlag !== false, 'Jet-lag tips', (v) => _trsSave({ jetlag: v }))));
+  });
+  setFold(el, 'time-travel-adv', 'Advanced', ({ body }) => {
+    body.appendChild(_trsRow('keep', 'Keep past trips', 'Your decisions about trips (names, “not a trip”) older than this are removed.',
+      _settingsSelect(_TRS_KEEP, String(t.keepDays || 365), (v) => _trsSave({ keepDays: Number(v) }))));
+    body.appendChild(_trsForgetAllRow());
+  }, { advanced: true });
 }
 /** The trips the dashboard knows: Open / Forget; Forget all travel history. */
 function _trsTripsRow() {
@@ -171,18 +177,20 @@ function _trsTripsRow() {
     r.append(open, forget);
     wrap.appendChild(r);
   }
-  const all = document.createElement('button'); all.type = 'button'; all.className = 'btn btn-danger btn-sm tr-set-forget-all';
-  all.innerHTML = icon('trash-2', 'i-sm') + '<span>Forget all travel history</span>';
-  all.addEventListener('click', async () => {
+  const r = _trsRow('trips', 'Trips', null, wrap); r.classList.add('set-row-stack');
+  return r;
+}
+/** Forget all travel history (Advanced): asks first, clears the trip decisions and turns travel off. */
+function _trsForgetAllRow() {
+  const all = uiButton({ label: 'Forget all travel history', icon: 'trash-2', iconCls: 'i-sm', kind: 'danger', size: 'sm', cls: 'tr-set-forget-all', run: async () => {
     const ok = await confirmDialog({ title: 'Forget all travel history?', danger: true, confirmLabel: 'Forget everything',
-      text: 'This clears your trip decisions, the time-zone history (the current zone stays) and the cached weather and holidays, then turns travel features off. Your calendar events, tasks and payments are not touched. The time-zone history cannot be brought back.' });
+      text: 'Clears trips and time-zone history and turns travel off. Events, tasks and payments stay.' });
     if (!ok) return;
     await TravelStore.forgetAll();
-    toast('Travel history forgotten. Travel features are off.', { kind: 'ok', icon: 'trash-2' });
+    toast('Travel history forgotten', { kind: 'ok', icon: 'trash-2' });
     render();
-  });
-  wrap.appendChild(all);
-  const r = _trsRow('trips', 'Trips', null, wrap); r.classList.add('set-row-stack');
+  } });
+  const r = _trsRow('forget', 'Forget all travel history', null, all);
   return r;
 }
 
@@ -253,15 +261,14 @@ function _trsRepaint(el) {
 
 registerSettingsGroup({
   id: 'time', title: 'Travel & time', icon: 'globe', order: 15,
-  description: 'Which time the dashboard shows, your home time zone, and travel features (off until you turn them on).',
+  description: 'Your time zone, clock and travel features.',
   render(el) { _trsBuild(el); },
 });
-/** Name & region keeps a link to the time rows (6.4). */
+/** Region & language keeps a link to the time rows (6.4). */
 function trSettingsProfileLink() {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm';
-  b.innerHTML = icon('globe', 'i-sm') + '<span>Travel & time</span>' + icon('arrow-right', 'i-xs');
-  b.addEventListener('click', () => setView('settings:time'));
-  const r = _settingsRow('Time zone', `Home: ${Clock.label(Clock.home())}. The dashboard shows ${Clock.label(Clock.zone())} time. Dashboard time, home time zone and the clock are in Travel & time.`, b);
+  const b = uiButton({ label: 'Travel & time', icon: 'globe', iconCls: 'i-sm', size: 'sm', run: () => setView('settings:time') });
+  b.insertAdjacentHTML('beforeend', icon('arrow-right', 'i-xs'));
+  const r = _settingsRow('Time zone', `Home: ${Clock.label(Clock.home())}. More in Travel & time.`, b);
   r.dataset.mKey = 'profile:time';
   return r;
 }
@@ -276,9 +283,9 @@ async function trForgetTripAsk(id, o) {
   if (!ok) return false;
   const before = state.travel ? JSON.parse(JSON.stringify(state.travel)) : undefined;
   const r = await TravelStore.notTrip(id, { forget: true, quiet: true });
-  if (!r || r.ok === false) { toast('Not forgotten: ' + ((r && r.message) || 'something went wrong'), { kind: 'err' }); return false; }
+  if (!r || r.ok === false) { toastError('forget the trip', (r && r.message) || 'something went wrong', () => trForgetTripAsk(id, o)); return false; }
   if (o.after) o.after();
-  toast(`${label} forgotten. Your events, tasks and payments are unchanged.`, { kind: 'ok', icon: 'trash-2', timeout: 9000,
+  toast(`${label} forgotten, your events and tasks are unchanged`, { kind: 'ok', icon: 'trash-2', timeout: 9000,
     action: { label: 'Undo', run: () => { state.travel = before; saveData(); if (typeof TravelStore !== 'undefined') TravelStore.changed(); render(); toast('Trip back', { kind: 'ok', icon: 'undo-2' }); } } });
   render();
   return true;

@@ -29,9 +29,7 @@ function _hwfrNow() {
 }
 function _hwfrRender(el, ctx) {
   const card = document.createElement('div'); card.className = 'card home-card hwfr';
-  const head = document.createElement('div'); head.className = 'card-h';
-  head.innerHTML = icon('users');
-  const h3 = document.createElement('h3'); h3.textContent = 'Friends around'; head.appendChild(h3);
+  const head = cardHead({ icon: 'users', title: 'Friends around', page: 'friends' });
   card.appendChild(head);
   const body = document.createElement('div'); body.className = 'card-b hwfr-b';
   card.appendChild(body);

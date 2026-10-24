@@ -29,7 +29,7 @@ function sgChooseOpen(a, o) {
   const items = (a.items || []).slice(0, 12);
   const pick = new Map(items.map(it => [String(it.id), 0]));      // row -> chosen alt index
   const close = openDialog({
-    title: a.title || 'Choose', width: 520, resizeKey: 'sg-choose',
+    title: a.title || 'Choose', size: 'md', fixed: true, resizeKey: 'sg-choose',
     body: (b, closeDlg) => {
       b.closest('.modal').classList.add('sg-choose');
       if (a.intro) { const p = document.createElement('p'); p.className = 'muted sgc-intro'; p.textContent = a.intro; b.appendChild(p); }
@@ -71,7 +71,7 @@ function sgChooseOpen(a, o) {
           const n = ids.length;
           toast(`${a.line || 'Done'}: ${n} item${n === 1 ? '' : 's'}`, { kind: 'ok', icon: 'check', timeout: 9000, action: j.undo ? { label: 'Undo', run: () => sgUndoOps(j.undo).then((u) => {
             if (u && u.ok) { toast('Undone', { kind: 'ok', icon: 'undo-2' }); if (key) { try { sgMemWrite(m => { const x = sgMemNorm(m); delete x.accepted[key]; return x; }); } catch (e) { /* fine */ } } }
-            else toast((u && u.message) || 'Could not undo.', { kind: 'err' });
+            else toastError('undo that', (u && u.message) || 'it could not be undone');
           }) } : null });
           return { done: ids };
         } },

@@ -38,7 +38,7 @@ let _actvDay = '';                         // the day the widget last painted (a
 
 registerHomeWidget({
   id: 'activity', title: 'What changed', icon: 'history', order: 250, group: 'system',
-  description: 'What assistants and scripts changed, with Undo',
+  description: 'What Claude and your AI apps changed, with Undo',
   sizes: ['s', 'm', 'l'], defaultSize: 's', defaultHidden: true, fresh: true,
   aliases: ['what changed', 'changes', 'history', 'undo', 'audit', 'recent changes'],
   defaults: { mine: false, range: 'today' },
@@ -117,7 +117,7 @@ function _actvRender(el, ctx) {
   else _actvList(body, m, ctx, range, size, ui);
   if (v.error && !ctx.preview) {                             // a refresh failed: the last answer stands
     const f = document.createElement('div'); f.className = 'actv-stale';
-    f.innerHTML = `${icon('circle-alert')}<span>Could not refresh</span>`;
+    f.innerHTML = `${icon('circle-alert', 'i-sm')}<span>Could not refresh</span>`;
     f.appendChild(_actvRetryBtn(ctx, 'btn btn-ghost btn-sm'));
     body.appendChild(f);
   }
@@ -162,7 +162,7 @@ function _actvSmall(body, m, ctx, range) {
     const p = document.createElement('p'); p.className = 'actv-quiet';
     p.innerHTML = a
       ? `The last one was <span data-actv-ago="${a.at}">${esc(actvAgo(a.at, Date.now()))}</span>: ${esc(_actvShort(a.e.summary, 70))}`
-      : 'When an assistant, an MCP client, auto-link or a script changes something, it shows here with Undo.';
+      : 'Changes made by Claude, your AI apps or auto-link show here, with Undo.';
     body.appendChild(p);
   }
 }
@@ -193,7 +193,7 @@ function _actvList(body, m, ctx, range, size, ui) {
     body.appendChild(hglEmpty({
       scene: size === 'l' ? 'review' : '', icon: 'shield-check',
       title: who ? `No changes by ${who} ${when}` : (ctx.prefs && ctx.prefs.mine ? `No changes ${when}` : actvCountText(0, range)),
-      text: a ? `The last one was ${actvAgo(a.at, Date.now())}: ${_actvShort(a.e.summary, 70)}` : 'When an assistant, an MCP client, auto-link or a script changes something, it shows here with Undo.',
+      text: a ? `The last one was ${actvAgo(a.at, Date.now())}: ${_actvShort(a.e.summary, 70)}` : 'Changes made by Claude, your AI apps or auto-link show here, with Undo.',
     }));
     return;
   }
@@ -207,10 +207,10 @@ function _actvList(body, m, ctx, range, size, ui) {
     done: (tok, row) => { const b = row.parentElement && row.parentElement.querySelector(':scope > .actv-undo'); if (b && !b.disabled) b.click(); },
   });
   const foot = document.createElement('div'); foot.className = 'hgl-foot actv-foot';
-  foot.innerHTML = `${icon('info')}<span>Undo puts back what was there before</span>`;
+  foot.innerHTML = `${icon('info', 'i-sm')}<span>Undo puts back what was there before</span>`;
   if (m.rows.length > cap) {
     const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-ghost btn-sm actv-more';
-    more.innerHTML = `<span>${ui.all ? 'Show less' : `+${m.rows.length - cap} more`}</span>${icon(ui.all ? 'chevron-up' : 'chevron-down')}`;
+    more.innerHTML = `<span>${ui.all ? 'Show less' : `+${m.rows.length - cap} more`}</span>${icon(ui.all ? 'chevron-up' : 'chevron-down', 'i-sm')}`;
     more.setAttribute('aria-expanded', ui.all ? 'true' : 'false');
     more.onclick = () => { ui.all = !ui.all; if (ctx.rerender) ctx.rerender(); };
     foot.appendChild(more);
@@ -253,7 +253,7 @@ function _actvMain(r, ctx, size, ui, open) {
   main.innerHTML = `<span class="actv-ic k-${escAttr(r.kind)}" aria-hidden="true">${icon(r.icon || 'history')}</span>`
     + `<span class="actv-body"><span class="actv-t">${esc(r.e.summary || 'A change')}</span>`
     + `<span class="actv-s"><span class="actv-who">${esc(r.label)}</span> · ${when}${state}</span></span>`
-    + (toggles ? `<span class="actv-chev" aria-hidden="true">${icon('chevron-down')}</span>` : '');
+    + (toggles ? `<span class="actv-chev" aria-hidden="true">${icon('chevron-down', 'i-sm')}</span>` : '');
   if (opensTask) {
     main.title = 'Open the task';
     main.onclick = () => hglOpenTask(ctx, r.task, main.closest('.hgl-row'), main);
@@ -272,7 +272,7 @@ function _actvMain(r, ctx, size, ui, open) {
 function _actvTag(r) {
   const t = document.createElement('span'); t.className = 'actv-tag';
   const at = r.e.undone && r.e.undone.at ? actvTime(r.e.undone.at) : NaN;
-  t.innerHTML = `${icon('undo-2')}<span>Undone</span>`;
+  t.innerHTML = `${icon('undo-2', 'i-xs')}<span>Undone</span>`;
   if (Number.isFinite(at)) t.title = `Undone ${actvWhen(at, todayStr(), APP_CONFIG.locale)}`;
   return t;
 }
@@ -284,8 +284,8 @@ function _actvUndoBtn(r, ctx, text) {
   b.setAttribute('aria-label', `${verb}: ${_actvShort(_actvWhat(r), 120)}`);
   if (_actvBusy.has(r.target)) {
     b.disabled = true; b.setAttribute('aria-busy', 'true'); b.classList.add('is-busy');
-    b.innerHTML = `${icon('loader-circle', _ACTV_SPIN)}<span>${verb === 'Redo' ? 'Redoing' : 'Undoing'}…</span>`;
-  } else b.innerHTML = `${icon(verb === 'Redo' ? 'redo-2' : 'undo-2')}<span>${esc(text)}</span>`;
+    b.innerHTML = `${icon('loader-circle', _ACTV_SPIN + ' i-sm')}<span>${verb === 'Redo' ? 'Redoing' : 'Undoing'}…</span>`;
+  } else b.innerHTML = `${icon(verb === 'Redo' ? 'redo-2' : 'undo-2', 'i-sm')}<span>${esc(text)}</span>`;
   if (ctx.preview) { b.tabIndex = -1; return b; }
   b.onclick = (e) => { e.stopPropagation(); _actvUndo(r, b, ctx); };
   return b;
@@ -321,13 +321,13 @@ function _actvDetails(r, ctx) {
       const li = document.createElement('li');
       if (en.task || en.person) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'actv-ent';
-        b.innerHTML = `${icon(en.icon)}<span>${esc(en.label)}</span>`;
+        b.innerHTML = `${icon(en.icon, 'i-sm')}<span>${esc(en.label)}</span>`;
         if (en.task) {
           if (hglIsCurrentTask(en.task)) b.setAttribute('aria-current', 'true');
           b.onclick = () => { if (hglIsCurrentTask(en.task)) return; b.setAttribute('aria-current', 'true'); ctx.openTask(en.task, b); };
         } else b.onclick = () => hglOpenPerson(en.person);
         li.appendChild(b);
-      } else li.innerHTML = `<span class="actv-ent is-plain">${icon(en.icon)}<span>${esc(en.label)}</span></span>`;
+      } else li.innerHTML = `<span class="actv-ent is-plain">${icon(en.icon, 'i-sm')}<span>${esc(en.label)}</span></span>`;
       ul.appendChild(li);
     }
     if (n > keys.length) { const li = document.createElement('li'); li.className = 'actv-more-ents'; li.textContent = `and ${n - keys.length} more`; ul.appendChild(li); }
@@ -353,7 +353,7 @@ function _actvSkeleton(size) {
 function _actvFailed(v, ctx) {
   const box = document.createElement('div'); box.className = 'actv-fail';
   const msg = v.offline && typeof NET_DOWN_MESSAGE === 'string' ? NET_DOWN_MESSAGE : (v.error || 'Could not load the recent changes.');
-  box.innerHTML = `${icon('circle-alert')}<p role="status">${esc(msg)}</p>`;
+  box.innerHTML = `${icon('circle-alert', 'i-lg')}<p role="status">${esc(msg)}</p>`;
   if (!ctx.preview) box.appendChild(_actvRetryBtn(ctx, 'btn btn-secondary btn-sm'));
   return box;
 }
@@ -395,7 +395,7 @@ async function _actvRevert(tok, r, redo) {
   let u = null;
   const refused = (err) => {
     if (!(err && /^(ALREADY_UNDONE|NOT_UNDOABLE|NOT_FOUND)$/.test(String(err.code || '')))) return false;
-    toast(netErrorMessage(err, redo ? 'Could not redo that' : 'Could not undo that'), { kind: 'err' });
+    toastError(redo ? 'redo that' : 'undo that', err);
     return true;
   };
   try {

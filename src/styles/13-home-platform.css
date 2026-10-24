@@ -11,11 +11,11 @@
 .hgal-side .hgal-list { flex: 1; min-height: 0; border-right: 0; background: none; padding-top: var(--space-1); }
 .hgal-q { flex: none; margin: var(--space-3) var(--space-3) var(--space-1); width: auto; }
 .hgal-none { margin: 0; padding: var(--space-2) var(--space-4) var(--space-4); font-size: var(--text-xs); color: var(--fg-muted); }
-.hgal-gh.hgal-sg { padding: var(--space-2) var(--space-2) 2px; font-size: var(--text-2xs); font-weight: var(--weight-medium); letter-spacing: 0.02em; text-transform: none; color: var(--fg-muted); }
+.hgal-gh.hgal-sg { padding: var(--space-2) var(--space-2) var(--space-0-5); font-size: var(--text-2xs); font-weight: var(--weight-medium); letter-spacing: 0.02em; text-transform: none; color: var(--fg-muted); }
 .hgal-gh.hgal-top + .hgal-sg { padding-top: 0; }
 .hgal-gh[hidden], .hgal-item[hidden] { display: none; }
 .hgal-new {
-  padding: 1px 6px; border-radius: var(--radius-full); background: var(--accent-soft); color: var(--accent-ink);
+  padding: 1px var(--space-1-5) /* nudge */; border-radius: var(--radius-full); background: var(--accent-soft); color: var(--accent-ink);
   font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: 0.02em;
 }
 .hgal-foot { flex-wrap: wrap; }
@@ -50,8 +50,9 @@
 
 /* ----- the settings popover (homeSettingsMenu) ----- */
 .hg-set-pop { padding: var(--space-2) 0; }
-.hg-set-h { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-3) var(--space-2); font-size: var(--text-sm); }
-.hg-set-h .i { width: 15px; height: 15px; color: var(--fg-muted); }
+/* its header is a cardHead (11-ui-kit.js); in a popover it sits tight, with no rule under it */
+.hg-set-h.card-h { padding: var(--space-1) var(--space-3) var(--space-2); border-bottom: 0; }
+.hg-set-h.card-h > .i { color: var(--fg-muted); }
 .hg-set-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1-5) var(--space-3); }
 .hg-set-row .seg { flex: none; }
 .hg-set-row .input { width: 120px; flex: none; }
@@ -62,6 +63,11 @@
 /* ----- a widget's settings gear outside Customise (homeSettingsButton) ----- */
 .hg-gear { color: var(--fg-subtle); }
 .hg-gear:hover { color: var(--fg); }
+/* The card template (UX_BLUEPRINT.md 3): a calm header at rest; the gear shows on hover and focus
+   (and on touch screens, which have no hover). Customise has its own settings button too. */
+.home-card .card-h .hg-gear { opacity: 0; transition: opacity var(--m-fast) var(--m-ease-out); }
+.home-card:hover .card-h .hg-gear, .home-card:focus-within .card-h .hg-gear, .home-card .card-h .hg-gear[aria-expanded="true"] { opacity: 1; }
+@media (hover: none) { .home-card .card-h .hg-gear { opacity: 1; } }
 /* In a gallery preview and while customising (the frame has its own settings button) it is not needed. */
 .hgal-w .hg-gear, .home.is-editing .hg-body .hg-gear { visibility: hidden; }
 

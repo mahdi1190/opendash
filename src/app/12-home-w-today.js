@@ -550,7 +550,7 @@ function _hhPaintChips(host, m) {
     b.className = 'hh-dl' + (c.tone ? ' ' + c.tone : '');
     b.setAttribute('role', 'listitem');
     const ic = c.kind === 'countdown' ? 'timer' : c.kind === 'event' ? 'sunrise' : 'flag';
-    b.innerHTML = `${icon(ic)}<b>${esc(c.lead)}</b><span>${esc(c.text)}</span>`;
+    b.innerHTML = `${icon(ic, 'i-sm')}<b>${esc(c.lead)}</b><span>${esc(c.text)}</span>`;
     b.title = c.title;
     // When the row is tight, long titles give way first: a short chip ("34 d Product launch") keeps its words.
     b.style.setProperty('--hh-shrink', String(Math.max(0, Array.from(String(c.text || '')).length - 16)));
@@ -631,7 +631,7 @@ function _hhGoButton(g) {
   const b = document.createElement('button'); b.type = 'button';
   b.className = 'btn hh-go' + (g.quiet ? ' is-quiet' : '');
   const st = _hhStory();
-  b.innerHTML = `${g.ic === 'play' ? _HH_PLAY : icon(g.ic)}<span>${esc(g.label)}</span>${st && !g.quiet ? '<span class="meta">Story</span>' : ''}`;
+  b.innerHTML = `${g.ic === 'play' ? _HH_PLAY : icon(g.ic, g.quiet ? 'i-md' : 'i-lg')}<span>${esc(g.label)}</span>${st && !g.quiet ? '<span class="meta">Story</span>' : ''}`;
   b.setAttribute('data-tip', g.kind === 'week' ? 'Your week as a short story, then the review' : g.kind === 'evening' ? 'Your day as a short story, then wrap up' : 'Your day as a short story, read out');
   b.onclick = () => _hhGo(g.kind);
   return b;
@@ -664,17 +664,17 @@ function _hhPaintStats(host, m, first) {
   const cells = [];
   const cell = (k, html, label, run) => cells.push({ k, html, label, run });
   const noCal = !m.hasCal && !m.calLoading;
-  const due = () => cell('due', `<span class="l">${icon('sun')}Due today</span><span class="v">${esc(s.due.n)}</span><span class="s${s.due.bad ? ' bad' : ''}">${esc(s.due.sub)}</span>`,
+  const due = () => cell('due', `<span class="l">${icon('sun', 'i-sm')}Due today</span><span class="v">${esc(s.due.n)}</span><span class="s${s.due.bad ? ' bad' : ''}">${esc(s.due.sub)}</span>`,
     `Due today: ${s.due.n}. ${s.due.sub}.`, () => setView('today'));
-  const evs = () => cell('events', `<span class="l">${icon('calendar-days')}Events</span><span class="v">${noCal || s.events.unknown ? '—' : m.evening && s.events.timed ? `${esc(s.events.held)}<small>of ${esc(s.events.timed)}</small>` : esc(s.events.n)}</span><span class="s">${esc(s.events.sub)}</span>`,
+  const evs = () => cell('events', `<span class="l">${icon('calendar-days', 'i-sm')}Events</span><span class="v">${noCal || s.events.unknown ? '—' : m.evening && s.events.timed ? `${esc(s.events.held)}<small>of ${esc(s.events.timed)}</small>` : esc(s.events.n)}</span><span class="s">${esc(s.events.sub)}</span>`,
     `Events today: ${s.events.n}. ${s.events.sub}.`, () => (noCal ? setView('connections') : _hhOpenCalendar()));
   const next = () => cell('next', `<span class="l"><i class="hh-pulse${s.next.state === 'soon' || s.next.state === 'now' ? '' : ' is-off'}" aria-hidden="true"></i>Next</span><span class="v">${_hhNextV(s.next)}</span>${_hhNextWho(s.next, m)}`,
     s.next.title ? `Next: ${s.next.title}, ${s.next.big}${s.next.small ? ' ' + s.next.small : ''}` : `Next: ${s.next.at}`, (el) => (s.next.id ? _hhOpenEvent(s.next.id, el) : noCal ? setView('connections') : _hhOpenCalendar()));
   const focus = () => cell('focus', `${_hhRing(s.focus.done, s.focus.total, first)}<span><span class="l">Focus</span><span class="v">${s.focus.total ? `${esc(s.focus.done)}<small>/ ${esc(s.focus.total)}</small>` : '—'}</span></span>`,
     s.focus.total ? `Focus: ${s.focus.done} of ${s.focus.total} steps done today` : 'Focus: nothing yet', () => _hhToFocus());
-  const done = () => cell('done', `<span class="l">${icon('circle-check')}Done today</span><span class="v">${esc(s.done.n)}</span><span class="s">${esc(s.done.sub)}</span>`,
+  const done = () => cell('done', `<span class="l">${icon('circle-check', 'i-sm')}Done today</span><span class="v">${esc(s.done.n)}</span><span class="s">${esc(s.done.sub)}</span>`,
     `Done today: ${s.done.n}`, () => setView('completed'));
-  const slip = () => cell('slipped', `<span class="l">${icon('arrow-right')}Slipped</span><span class="v">${esc(s.slipped.n)}</span><span class="s">${esc(s.slipped.sub)}</span>`,
+  const slip = () => cell('slipped', `<span class="l">${icon('arrow-right', 'i-sm')}Slipped</span><span class="v">${esc(s.slipped.n)}</span><span class="s">${esc(s.slipped.sub)}</span>`,
     `Slipped: ${s.slipped.n}. ${s.slipped.sub}.`, () => setView(s.slipped.n ? 'home:evening' : 'today'));
   if (m.evening) { done(); evs(); next(); focus(); slip(); } else { due(); evs(); next(); focus(); done(); }
   for (const c of cells) {
@@ -737,7 +737,7 @@ function _hhPaintWelcome(root, m) {
       <ol class="hh-setup">
         <li class="hh-stp"><span class="no">1</span><b>Add your first task</b><p>Type it the way you would say it: “Draft the intro Friday”.</p>
           <label class="hh-qa">${icon('plus')}<input type="text" placeholder="Add a task…" aria-label="Add your first task" data-fk="hh-first-task" enterkeyhint="done"><span class="kbd">Enter</span></label></li>
-        <li class="hh-stp${cal ? ' done' : ''}"><span class="no">${cal ? icon('check') : '2'}</span><b>Connect a calendar</b><p>Read-only. Your events appear in Today’s schedule with their own scenes.</p>
+        <li class="hh-stp${cal ? ' done' : ''}"><span class="no">${cal ? icon('check', 'i-sm') : '2'}</span><b>Connect a calendar</b><p>Read-only. Your events appear in Today’s schedule with their own scenes.</p>
           <button type="button" class="btn btn-secondary btn-sm" data-act="cal">${icon('calendar-plus')}<span>${cal ? 'Calendar connected' : 'Connect calendar'}</span></button></li>
         <li class="hh-stp"><span class="no">3</span><b>Or explore with demo data</b><p>A realistic week of made-up tasks, people and money. Reset it later in Settings › Data.</p>
           <button type="button" class="btn btn-ghost btn-sm" data-act="demo">${icon('sparkles')}<span>Load demo data</span></button></li>
@@ -768,7 +768,7 @@ function _hhPaintWelcome(root, m) {
       location.reload();
     } catch (e) {
       demo.disabled = false; demo.querySelector('span').textContent = 'Load demo data';
-      toast(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'Demo data could not be loaded: ' + e.message, { kind: 'err' });
+      toastError('load demo data', e);
     }
   };
 }

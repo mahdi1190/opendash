@@ -14,18 +14,12 @@
 
 /* ---------- small DOM helpers ---------- */
 function _pmEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
-function _pmBtn(label, ic, run, cls) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + (cls || 'btn-secondary');
-  b.innerHTML = (ic ? icon(ic) : '') + `<span>${esc(label)}</span>`;
-  b.onclick = run;
-  return b;
-}
-/** An error in a panel or dialog: the cause in one plain line, then Try again. */
+/** An error in a panel or dialog: "Couldn’t <what>: <reason>." in one plain line, then Try again. */
 function _pmErrLine(box, what, e, again) {
-  const why = typeof netErrorMessage === 'function' ? netErrorMessage(e) : String((e && e.message) || e || 'something went wrong');
+  const why = typeof netErrorReason === 'function' ? netErrorReason(e) : String((e && e.message) || e || 'something went wrong');
   const p = _pmEl('div', 'pm-err');
-  p.appendChild(_pmEl('span', '', `${what}: ${String(why).replace(/[.\s]+$/, '')}.`));
-  if (again) p.appendChild(_pmBtn('Try again', 'refresh-cw', again, 'btn-ghost'));
+  p.appendChild(_pmEl('span', '', `Couldn’t ${what}: ${String(why).replace(/[.\s]+$/, '')}.`));
+  if (again) p.appendChild(uiButton({ label: 'Try again', icon: 'refresh-cw', kind: 'ghost', size: 'sm', run: again }));
   box.appendChild(p);
 }
 function _pmIcon(name) { const s = document.createElement('span'); s.className = 'pm-ic'; s.innerHTML = icon(name); return s; }
@@ -93,10 +87,10 @@ function _pmCalRow(e, tz) {
 }
 function permsRenderData(scope, mode, data) {
   const box = _pmEl('div', 'pm-data pm-data-' + scope);
-  if (!data || typeof data !== 'object') { box.appendChild(_pmEl('p', 'muted', 'Nothing.')); return box; }
+  if (!data || typeof data !== 'object') { box.appendChild(emptyLine('Nothing.')); return box; }
   if (scope === 'tasks') {
     const items = Array.isArray(data.items) ? data.items.slice().sort((a, b) => ((a.status === 'done') - (b.status === 'done')) || String(a.due || '9999').localeCompare(String(b.due || '9999'))) : [];
-    if (!items.length) { box.appendChild(_pmEl('p', 'muted', mode === 'shared' ? 'No tasks shared yet.' : 'No tasks.')); return box; }
+    if (!items.length) { box.appendChild(emptyLine(mode === 'shared' ? 'No tasks shared yet.' : 'No tasks.')); return box; }
     const ul = _pmEl('ul', 'pm-list');
     for (const t of items.slice(0, 150)) {
       const li = _pmEl('li', 'pm-item' + (t.status === 'done' ? ' is-done' : ''));
@@ -117,7 +111,7 @@ function permsRenderData(scope, mode, data) {
     // them when their zone differs; all-day events and an older sender's wall times stay as sent.
     const tz = typeof data.tz === 'string' && typeof Clock !== 'undefined' && Clock.valid(data.tz) ? data.tz : '';
     const items = (Array.isArray(data.items) ? data.items : []).map(e => _pmCalRow(e, tz)).sort((a, b) => (a.date + a.key).localeCompare(b.date + b.key));
-    if (!items.length) { box.appendChild(_pmEl('p', 'muted', 'Nothing in the calendar for these weeks.')); return box; }
+    if (!items.length) { box.appendChild(emptyLine('Nothing in the calendar for these weeks.')); return box; }
     let day = '', ul = null, n = 0;
     for (const r of items) {
       const e = r.e;
@@ -202,7 +196,7 @@ function permsRenderData(scope, mode, data) {
   }
   if (scope === 'memories') {
     const items = Array.isArray(data.items) ? data.items : [];
-    if (!items.length) { box.appendChild(_pmEl('p', 'muted', 'No memories chosen yet.')); return box; }
+    if (!items.length) { box.appendChild(emptyLine('No memories chosen yet.')); return box; }
     for (const m of items) {
       const card = _pmEl('div', 'pm-mem');
       const kind = { journal: 'Journal', postcard: 'Postcard', capsule: 'Time capsule', goals: 'Goals' }[m.kind] || 'Memory';
@@ -234,7 +228,7 @@ function permsRenderData(scope, mode, data) {
   // ── garden-social ── (2.18) the garden snapshot: counts and words, never the rows themselves
   if (scope === 'garden') {
     const snap = typeof gardenSnapshotClean === 'function' ? gardenSnapshotClean(data) : null;
-    if (!snap) { box.appendChild(_pmEl('p', 'muted', 'Nothing yet: it goes once your garden has grown a little.')); return box; }
+    if (!snap) { box.appendChild(emptyLine('Nothing yet: it goes once your garden has grown a little.')); return box; }
     const areas = snap.areas.map(a => (typeof gardenArea === 'function' && gardenArea(a) ? gardenArea(a).name : a)).join(', ');
     box.appendChild(_pmKv([['Level', String(snap.lv)], ['Season', snap.season], ['Plants', String(snap.plants.length)], ['Decorations', String(snap.decor.length)], ['Areas', areas]]));
     return box;
@@ -244,7 +238,7 @@ function permsRenderData(scope, mode, data) {
     box.appendChild(_pmEl('p', '', data.s || data.state || ''));
     return box;
   }
-  box.appendChild(_pmEl('p', 'muted', 'Nothing.'));
+  box.appendChild(emptyLine('Nothing.'));
   return box;
 }
 
@@ -256,7 +250,7 @@ function _pmPickTasks(friendId, after) {
   const tasks = (state.custom || []).filter(t => t && typeof t.id === 'string' && !(state.deleted && state.deleted[t.id]) && (statusOf(t.id) !== 'done' || cur.has(t.id)))
     .sort((a, b) => (cur.has(b.id) - cur.has(a.id)) || String(a.dueDate || '9999').localeCompare(String(b.dueDate || '9999')));
   openDialog({
-    title: `Tasks ${name} can see`, width: 620, resizeKey: 'perms-tasks',
+    title: `Tasks ${name} can see`, size: 'md', fixed: true, resizeKey: 'perms-tasks',   // it has a filter: the dialog keeps its size
     body: (el, close) => {
       el.appendChild(_pmEl('p', 'muted', `Tick the tasks to share. ${name} sees their title, due date, status, priority, stream, tags and steps done; never notes, descriptions, files or the people on them.`));
       const filter = document.createElement('input'); filter.className = 'control'; filter.type = 'search'; filter.placeholder = 'Find a task'; filter.setAttribute('aria-label', 'Find a task');
@@ -291,9 +285,9 @@ function _pmPickMemories(friendId, after) {
   const g = m.goals && typeof m.goals === 'object' ? m.goals : {};
   for (const y of Object.keys(g).filter(x => /^\d{4}$/.test(x)).sort().reverse()) rows.push({ id: 'goals-' + y, t: 'Goals · ' + y, s: ((g[y] && g[y].list) || []).map(x => x && x.text).filter(Boolean).slice(0, 3).join(', ') });
   openDialog({
-    title: `Memories ${name} can see`, width: 620, resizeKey: 'perms-mem',
+    title: `Memories ${name} can see`, size: 'md', resizeKey: 'perms-mem',
     body: (el, close) => {
-      if (!rows.length) { el.appendChild(_pmEl('p', 'muted', 'No memories yet: the journal, postcards, capsules and goals appear here as you make them.')); return; }
+      if (!rows.length) { el.appendChild(emptyLine('No memories yet: the journal, postcards, capsules and goals appear here as you make them.')); return; }
       el.appendChild(_pmEl('p', 'muted', `Only what you tick goes to ${name}, as it shows here.`));
       const list = _pmEl('div', 'pm-pick');
       for (const r of rows) {
@@ -318,7 +312,7 @@ function _pmPickWindow(friendId, scope, after) {
   try { if (typeof TravelStore !== 'undefined' && TravelStore.on()) trips = (TravelStore.trips() || []).filter(t => t && !t.candidate && t.from && (t.to || t.from) >= _pmToday()).slice(0, 12); } catch (e) { trips = []; }
   let pick = c.label && c.from ? 'trip' : c.from ? 'between' : c.until ? 'until' : 'always';
   openDialog({
-    title: `How long ${name} can see your ${((permsScope(scope) || {}).label || scope).toLowerCase()}`, width: 480, resizeKey: 'perms-window',
+    title: `How long ${name} can see your ${((permsScope(scope) || {}).label || scope).toLowerCase()}`, size: 'sm', resizeKey: 'perms-window',
     body: (el) => {
       const mk = (id, label) => {
         const l = _pmEl('label', 'pm-radio'); const r = document.createElement('input'); r.type = 'radio'; r.name = 'pm-win'; r.value = id; r.checked = pick === id;
@@ -411,7 +405,7 @@ function _pmScopeRow(friendId, def, f, eff, name, refresh) {
     const n = (c.ids || []).length;
     const x = _pmEl('div', 'pm-row-x');
     x.appendChild(_pmEl('span', 'muted', `${n} ${n === 1 ? 'task' : 'tasks'} shared`));
-    x.appendChild(_pmBtn('Choose tasks', 'list-checks', () => _pmPickTasks(friendId, refresh), 'btn-ghost'));
+    x.appendChild(uiButton({ label: 'Choose tasks', icon: 'list-checks', kind: 'ghost', size: 'sm', run: () => _pmPickTasks(friendId, refresh) }));
     left.appendChild(x);
   }
   if (def.id === 'tasks' && c.mode === 'chosen') {
@@ -434,17 +428,22 @@ function _pmScopeRow(friendId, def, f, eff, name, refresh) {
     const n = (c.items || []).length;
     const x = _pmEl('div', 'pm-row-x');
     x.appendChild(_pmEl('span', 'muted', `${n} ${n === 1 ? 'memory' : 'memories'} shared`));
-    x.appendChild(_pmBtn('Choose memories', 'list-checks', () => _pmPickMemories(friendId, refresh), 'btn-ghost'));
+    x.appendChild(uiButton({ label: 'Choose memories', icon: 'list-checks', kind: 'ghost', size: 'sm', run: () => _pmPickMemories(friendId, refresh) }));
     left.appendChild(x);
   }
   // the time window
   if (permsIsOn(c.mode)) {
     const w = _pmWindowText(c);
     const x = _pmEl('div', 'pm-row-x');
-    x.appendChild(_pmBtn(w ? 'Shared ' + w : 'Shared until you change it', 'hourglass', () => _pmPickWindow(friendId, def.id, refresh), 'btn-ghost pm-win'));
+    x.appendChild(uiButton({ label: w ? 'Shared ' + w : 'Shared until you change it', icon: 'hourglass', kind: 'ghost', size: 'sm', cls: 'pm-win', run: () => _pmPickWindow(friendId, def.id, refresh) }));
     left.appendChild(x);
   }
-  if (def.id === 'presence' && e.on && !permsPresenceSwitchOn()) left.appendChild(_pmEl('p', 'pm-audit muted', 'Also turn on “Show friends when I’m around” in the Friends tab: until then nobody sees it.'));
+  if (def.id === 'presence' && e.on && !permsPresenceSwitchOn()) {
+    // Online status is one setting for everyone (Friends > settings): off there means nobody sees it, whatever is chosen here (L15)
+    const g = _pmEl('p', 'pm-audit muted', 'Your online status is off for everyone. ');
+    g.appendChild(uiButton({ label: 'Turn it on', kind: 'link', run: () => _pmTurnOnPresence(refresh) }));
+    left.appendChild(g);
+  }
   const risk = e.on ? permsRisky(def.id, c.mode) : '';
   if (risk) { const r = _pmEl('p', 'pm-risk'); r.appendChild(_pmIcon('triangle-alert')); r.appendChild(_pmEl('span', '', risk)); left.appendChild(r); }
   if (def.by === 'perms') { const a = permsAuditLine(friendId, def.id, name); if (a) left.appendChild(_pmEl('p', 'pm-audit muted', a)); }
@@ -457,6 +456,12 @@ function _pmScopeRow(friendId, def, f, eff, name, refresh) {
   right.appendChild(sel);
   row.appendChild(right);
   return row;
+}
+/** "Turn it on": flips Friends' online status for everyone (96-friends-0core.js friendsPresenceShare), then repaints. */
+function _pmTurnOnPresence(refresh) {
+  Promise.resolve(typeof permsPresenceTurnOn === 'function' ? permsPresenceTurnOn() : null)
+    .then(() => { toast('Online status on', { kind: 'ok' }); if (refresh) refresh(); })
+    .catch((e) => toastError('turn on your online status', e, () => _pmTurnOnPresence(refresh)));
 }
 /** The Permissions panel for one friend (a friend's page, Settings > Privacy, the palette). */
 function permsPanelEl(friendId) {
@@ -472,20 +477,20 @@ function permsPanelEl(friendId) {
     const head = _pmEl('div', 'pm-head');
     const ht = _pmEl('div', 'pm-head-t');
     ht.appendChild(_pmEl('h3', '', `What ${name} can see`));
-    ht.appendChild(_pmEl('p', 'muted', 'Only what you turn on here ever leaves this computer, and only to them. Profile and game progress are on to start with; everything else is off.'));
+    ht.appendChild(_pmEl('p', 'muted', 'Only what you turn on goes to them.'));
     head.appendChild(ht);
-    head.appendChild(_pmBtn(`Preview what ${name} sees`, 'eye', () => permsPreviewOpen(friendId), 'btn-secondary'));
+    head.appendChild(uiButton({ label: `Preview what ${name} sees`, icon: 'eye', size: 'sm', run: () => permsPreviewOpen(friendId) }));
     root.appendChild(head);
     const banner = (text, btn) => { const b = _pmEl('div', 'pm-banner'); b.appendChild(_pmIcon('eye-off')); b.appendChild(_pmEl('span', '', text)); if (btn) b.appendChild(btn); root.appendChild(b); };
     if (!view || view.status !== 'friend') banner(view && view.status === 'blocked' ? `${name} is blocked: nothing goes to them.` : `Nothing goes to ${name} until you are both confirmed friends.`);
-    if (p.stopped) banner('All sharing is stopped. Your choices are kept for when you share again.', _pmBtn('Share again', 'undo-2', () => { permsResumeAll(); build(); }, 'btn-primary'));
-    else if (f.stopped) banner(`Sharing with ${name} is stopped. Your choices are kept.`, _pmBtn('Share again', 'undo-2', () => { permsResumeFriend(friendId); build(); }, 'btn-primary'));
+    if (p.stopped) banner('All sharing is stopped. Your choices are kept for when you share again.', uiButton({ label: 'Share again', icon: 'undo-2', kind: 'primary', size: 'sm', run: () => { permsResumeAll(); build(); } }));
+    else if (f.stopped) banner(`Sharing with ${name} is stopped. Your choices are kept.`, uiButton({ label: 'Share again', icon: 'undo-2', kind: 'primary', size: 'sm', run: () => { permsResumeFriend(friendId); build(); } }));
     // trusted
     const trust = _pmEl('div', 'pm-trust');
     trust.appendChild(_pmIcon('shield-check'));
     const tt = _pmEl('div', 'pm-trust-t');
     tt.appendChild(_pmEl('div', 'pm-row-t', 'Trusted friend'));
-    tt.appendChild(_pmEl('p', 'muted', f.trusted ? `${name} can be given more than your profile and game progress.` : `Turn this on to share tasks, calendar, money, places, memories or presence with ${name}.`));
+    tt.appendChild(_pmEl('p', 'muted', 'Needed to share tasks, calendar, money, places, memories or online status.'));
     trust.appendChild(tt);
     trust.appendChild(_settingsSwitch(f.trusted, 'Trusted friend', (v) => { permsSetTrusted(friendId, v); build(); }));
     root.appendChild(trust);
@@ -493,8 +498,8 @@ function permsPanelEl(friendId) {
     for (const def of PERMS_SCOPES) rows.appendChild(_pmScopeRow(friendId, def, f, eff, name, build));
     root.appendChild(rows);
     const foot = _pmEl('div', 'pm-foot');
-    if (!f.stopped && !p.stopped) foot.appendChild(_pmBtn(`Stop sharing with ${name}`, 'eye-off', () => { permsStopFriend(friendId); build(); }, 'btn-danger'));
-    foot.appendChild(_pmBtn(`What ${name} shares with you`, 'users', () => permsReceivedOpen(friendId), 'btn-ghost'));
+    if (!f.stopped && !p.stopped) foot.appendChild(uiButton({ label: `Stop sharing with ${name}`, icon: 'eye-off', kind: 'danger', size: 'sm', run: () => { permsStopFriend(friendId); build(); } }));
+    foot.appendChild(uiButton({ label: `What ${name} shares with you`, icon: 'users', kind: 'ghost', size: 'sm', run: () => permsReceivedOpen(friendId) }));
     root.appendChild(foot);
   };
   build();
@@ -506,16 +511,16 @@ function permsPanelEl(friendId) {
   return root;
 }
 function permsPanelDialog(friendId) {
-  openDialog({ title: `${permsFriendName(friendId)}: what they can see`, width: 720, resizeKey: 'perms-panel', body: (el) => el.appendChild(permsPanelEl(friendId)) });
+  openDialog({ title: `${permsFriendName(friendId)}: what they can see`, size: 'lg', resizeKey: 'perms-panel', body: (el) => el.appendChild(permsPanelEl(friendId)) });
 }
 
 /* ---------- 'What Sam can see' ---------- */
 function permsPreviewOpen(friendId) {
   const name = permsFriendName(friendId);
   openDialog({
-    title: `What ${name} can see`, width: 760, resizeKey: 'perms-preview',
+    title: `What ${name} can see`, size: 'lg', resizeKey: 'perms-preview',
     body: (el) => {
-      el.appendChild(_pmEl('p', 'muted', `Exactly what would go to ${name} now, made by the same code that sends it. Nothing else leaves this computer.`));
+      el.appendChild(_pmEl('p', 'muted', `Exactly what would go to ${name} now.`));
       const box = _pmEl('div', 'pm-preview');
       el.appendChild(box);
       const load = () => {
@@ -539,13 +544,17 @@ function permsPreviewOpen(friendId) {
             else {
               sec.appendChild(permsRenderData(r.scope, r.mode, r.data));
               const d = document.createElement('details'); d.className = 'pm-raw';
-              d.appendChild(_pmEl('summary', '', `The data as sent (${r.bodies} ${r.bodies === 1 ? 'message' : 'messages'}, ${Math.max(1, Math.round((r.bytes || 0) / 1024))} KB, end-to-end encrypted)`));
+              d.appendChild(_pmEl('summary', '', `The data as sent (${r.bodies} ${r.bodies === 1 ? 'message' : 'messages'}, ${Math.max(1, Math.round((r.bytes || 0) / 1024))} KB)`));
               d.appendChild(_pmEl('pre', '', JSON.stringify(r.data, null, 1)));
               sec.appendChild(d);
             }
           } else if (r.sent) {
             sec.appendChild(permsRenderData(r.scope, r.mode, r.sent));
-            sec.appendChild(_pmEl('p', 'muted', r.needsSwitch ? 'Nothing goes yet: “Show friends when I’m around” is off in the Friends tab.' : `Sent by the Friends tab${r.sentAt ? ', last updated ' + _pmAgo(r.sentAt) : ''}.`));
+            if (r.needsSwitch) {
+              const g = _pmEl('p', 'muted', 'Nothing goes yet: your online status is off for everyone. ');
+              g.appendChild(uiButton({ label: 'Turn it on', kind: 'link', run: () => _pmTurnOnPresence(load) }));
+              sec.appendChild(g);
+            } else sec.appendChild(_pmEl('p', 'muted', `Sent by the Friends tab${r.sentAt ? ', last updated ' + _pmAgo(r.sentAt) : ''}.`));
           } else {
             sec.appendChild(_pmEl('p', 'muted', permsLevelText(r.scope, r.mode, name) + ' The Friends tab sends it.'));
           }
@@ -561,7 +570,7 @@ function permsPreviewOpen(friendId) {
         }
       }).catch((e) => {
         box.textContent = '';
-        _pmErrLine(box, `What ${name} sees could not be worked out`, e, load);
+        _pmErrLine(box, `work out what ${name} sees`, e, load);
       });
       };
       load();
@@ -572,7 +581,7 @@ function permsPreviewOpen(friendId) {
 function permsReceivedOpen(friendId) {
   const name = permsFriendName(friendId);
   openDialog({
-    title: `What ${name} shares with you`, width: 720, resizeKey: 'perms-recv',
+    title: `What ${name} shares with you`, size: 'lg', resizeKey: 'perms-recv',
     body: (el, close) => {
       const box = _pmEl('div', 'pm-preview');
       el.appendChild(box);
@@ -584,7 +593,7 @@ function permsReceivedOpen(friendId) {
         box.textContent = '';
         const scopes = doc && doc.scopes ? doc.scopes : {};
         const keys = PERMS_SENT_SCOPES.filter(sc => scopes[sc] && !(scopes[sc].until && scopes[sc].until < _pmNow()));
-        if (!keys.length && !engine.length) box.appendChild(_pmEl('p', 'muted', `${name} has not shared anything with you yet.`));
+        if (!keys.length && !engine.length) box.appendChild(emptyLine(`${name} has not shared anything with you yet.`));
         for (const [sc, label, data] of engine) {
           const sec = _pmEl('section', 'pm-pv');
           const h = _pmEl('div', 'pm-pv-h'); h.appendChild(_pmIcon((permsScope(sc) || {}).icon || 'user')); h.appendChild(_pmEl('span', 'pm-row-t', label));
@@ -604,13 +613,13 @@ function permsReceivedOpen(friendId) {
         }
         if (keys.length) {
           const foot = _pmEl('div', 'pm-foot');
-          foot.appendChild(_pmEl('p', 'muted', `Kept read-only on your own devices. ${name} can stop sharing at any time and it disappears here.`));
-          foot.appendChild(_pmBtn('Remove from this computer', 'trash-2', () => { close(); permsForgetReceived(friendId); }, 'btn-ghost'));
+          foot.appendChild(_pmEl('p', 'muted', `Kept read-only on your computers. ${name} can stop sharing at any time and it disappears here.`));
+          foot.appendChild(uiButton({ label: 'Remove from this computer', icon: 'trash-2', kind: 'ghost', size: 'sm', run: () => { close(); permsForgetReceived(friendId); } }));
           box.appendChild(foot);
         }
       }).catch((e) => {
         box.textContent = '';
-        _pmErrLine(box, `What ${name} shares could not be read`, e, load);
+        _pmErrLine(box, `read what ${name} shares`, e, load);
       });
       };
       load();
@@ -627,9 +636,9 @@ function permsForgetReceived(friendId) {
   let undone = false;
   const run = () => _pmJson('/api/friends/received/forget', { friend: friendId })
     .then(() => { _pm.recv.delete(friendId); _pmNotify(friendId, null); })
-    .catch((e) => toast(`What ${name} shared was not removed (${typeof netErrorMessage === 'function' ? netErrorMessage(e) : e.message}).`, { kind: 'err', retry: run }));
+    .catch((e) => toastError(`remove what ${name} shared`, e, run));
   const timer = setTimeout(() => { if (!undone) run(); }, 10000);
-  toast(`Removed what ${name} shared from your devices. Anything they send later appears again.`, { icon: 'trash-2', timeout: 10000,
+  toast(`Removed what ${name} shared from your computers. Anything they send later appears again.`, { icon: 'trash-2', timeout: 10000,
     action: { label: 'Undo', run: () => { undone = true; clearTimeout(timer); toast(`Kept what ${name} shared`, { kind: 'ok', icon: 'undo-2' }); } } });
 }
 
@@ -644,9 +653,19 @@ function _pmSummary(friendId, view) {
   });
   return on.length ? on.join(', ') : 'Nothing';
 }
+/** Friends with more than the starting profile and game progress turned on (the overview's "more with N"). */
+function _pmMoreCount(friends) {
+  let n = 0;
+  for (const f of friends) {
+    if (f.status !== 'friend') continue;
+    const eff = permsEffective(permsGet(), f.id, { status: f.status, today: _pmToday() });
+    if (PERMS_SCOPES.some(d => !['profile', 'game', 'garden'].includes(d.id) && eff[d.id] && eff[d.id].on)) n++;
+  }
+  return n;
+}
 registerSettingsGroup({
   id: 'privacy', title: 'Privacy', icon: 'shield-check', order: 45,
-  description: 'What your friends can see. Only what you turn on leaves this computer, end-to-end encrypted, to that friend.',
+  description: 'What each friend can see.',
   render(el) {
     const p = permsGet();
     const friends = permsFriends().filter(f => f.status === 'friend' || f.status === 'blocked');
@@ -655,20 +674,24 @@ registerSettingsGroup({
     if (F && F.ready && typeof F.ready.then === 'function' && !_pm.friendsReady) F.ready.then(() => { if (_pm.friendsReady) return; _pm.friendsReady = true; if (state.view === 'settings:privacy' && typeof renderMain === 'function') renderMain(); });
     // the "last received" lines come from the audit log: paint again once it is here (once)
     if (!permsAuditCached() && friends.length) permsAudit().then(() => { if (state.view === 'settings:privacy' && typeof renderMain === 'function') renderMain(); });
-    const { card, body } = _settingsCard('Friends', 'Profile and game progress are shared with friends to start with. Everything else is off until you turn it on for a friend you trust.');
+    const { card, body } = _settingsCard('Friends');
+    const real = friends.filter(f => f.status === 'friend');
+    // status first (SIMPLIFY_PLAN.md 5.8), then the one action that fits it
     if (p.stopped) {
-      const b = _pmEl('div', 'pm-banner');
-      b.appendChild(_pmIcon('eye-off'));
-      b.appendChild(_pmEl('span', '', `All sharing has been stopped since ${new Date(p.stopped).toLocaleString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Your choices are kept.`));
-      b.appendChild(_pmBtn('Share again', 'undo-2', () => permsResumeAll(), 'btn-primary'));
-      body.appendChild(b);
+      body.appendChild(setStatusLine('idle', 'Stopped', `Nothing goes to anyone since ${new Date(p.stopped).toLocaleString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`));
+      setAction(card, 'Share again', () => permsResumeAll(), { icon: 'undo-2' });
+    } else if (!friends.length) {
+      body.appendChild(setStatusLine('idle', 'No friends yet', ''));
+      body.appendChild(emptyLine('When you add one, you choose here what they can see.', { label: 'Add a friend', icon: 'user-plus', run: () => { if (typeof friendsAddDialog === 'function') friendsAddDialog(); else setView('friends'); } }));
     } else {
-      body.appendChild(_settingsRow('Stop sharing everything', 'One click: nothing more goes to anyone (Together spaces, cheers and challenges pause too), and every friend\'s app is asked to delete what you shared with them (after 15 seconds, so you can undo).',
-        _pmBtn('Stop sharing everything', 'eye-off', () => permsStopAll(), 'btn-danger')));
+      const m = _pmMoreCount(friends);
+      body.appendChild(setStatusLine('ok', 'Sharing', `Your card and game progress with ${real.length} ${real.length === 1 ? 'friend' : 'friends'}${m ? `; more with ${m}` : ''}`));
     }
-    if (!friends.length) {
-      body.appendChild(_pmEl('p', 'muted', 'No friends yet. When you add one in the Friends tab, you choose here what they can see.'));
-    } else {
+    if (!p.stopped) {
+      body.appendChild(_settingsRow('Stop sharing everything', 'Nothing more goes to anyone, and friends are asked to delete what you shared. Undo for 15 seconds.',
+        uiButton({ label: 'Stop sharing everything', icon: 'eye-off', kind: 'danger', size: 'sm', run: () => permsStopAll() })));
+    }
+    if (friends.length) {
       const list = _pmEl('div', 'pm-friends');
       for (const f of friends) {
         const fc = permsFor(f.id);
@@ -686,52 +709,56 @@ registerSettingsGroup({
         if (last) main.appendChild(_pmEl('div', 'muted', 'Last received from you ' + _pmAgo(last)));
         row.appendChild(main);
         const act = _pmEl('div', 'pm-friend-act');
-        act.appendChild(_pmBtn('Choose', 'shield-check', () => permsPanelDialog(f.id), 'btn-secondary'));
-        act.appendChild(_pmBtn('Preview', 'eye', () => permsPreviewOpen(f.id), 'btn-ghost'));
+        act.appendChild(uiButton({ label: 'Choose', icon: 'shield-check', size: 'sm', run: () => permsPanelDialog(f.id) }));
+        act.appendChild(uiButton({ label: 'Preview', icon: 'eye', kind: 'ghost', size: 'sm', run: () => permsPreviewOpen(f.id) }));
         row.appendChild(act);
         list.appendChild(row);
       }
       body.appendChild(list);
     }
+    // More: what went to whom (the log), and how sharing works. Built now, so Settings search finds them.
+    setFold({ card, body }, 'privacy-friends-more', 'More', ({ body: more }) => {
+      const act = _pmEl('div', 'pm-more-blk');
+      act.appendChild(_pmEl('div', 'set-t', 'Sharing activity'));
+      act.appendChild(_pmEl('div', 'set-h', 'What went to whom and when. The log keeps no copy of the data itself.'));
+      const box = _pmEl('div', 'pm-activity');
+      box.appendChild(_pmEl('p', 'muted', 'Loading…'));
+      act.appendChild(box);
+      const send = _pmEl('div', 'pm-foot');
+      send.appendChild(uiButton({ label: 'Send changes now', icon: 'send', kind: 'ghost', size: 'sm', run: async () => {
+        try { const r = await permsSendNow(); toast(r && r.sent ? `Sent ${r.sent} ${r.sent === 1 ? 'update' : 'updates'}` : 'Nothing new to send', { kind: 'ok' }); render(); }
+        catch (e) { toastError('send your changes', e, () => permsSendNow().then(() => toast('Sent', { kind: 'ok' }))); }
+      } }));
+      act.appendChild(send);
+      more.appendChild(act);
+      const loadAudit = () => permsAudit().then((a) => {
+        box.textContent = '';
+        const ev = (a && Array.isArray(a.events) ? a.events : []).slice().reverse().slice(0, 40);
+        if (!ev.length) { box.appendChild(emptyLine('Nothing sent yet. When you share something with a friend, each update shows here.')); return; }
+        const ul = _pmEl('ul', 'pm-list');
+        for (const x of ev) {
+          const who = permsFriendName(x.friend);
+          const what = ((permsScope(x.scope) || {}).label || x.scope || '').toLowerCase();
+          const text = x.op === 'revoke' ? `Asked ${who} to delete your ${what}`
+            : `Your ${what} (${_pmModeLabel(x.scope, x.mode).toLowerCase()}) to ${who}${x.op === 'diff' ? ', changes only' : ''}${x.n > 1 ? ` · ${x.n} items` : ''}${x.bytes ? ` · ${Math.max(1, Math.round(x.bytes / 1024))} KB` : ''}`;
+          const li = _pmEl('li', 'pm-item');
+          li.appendChild(_pmEl('span', 'pm-when', _pmAgo(x.at)));
+          li.appendChild(_pmEl('div', 'pm-item-t', text));
+          ul.appendChild(li);
+        }
+        box.appendChild(ul);
+      }).catch((e) => { box.textContent = ''; _pmErrLine(box, 'read the sharing log', e, () => { box.textContent = ''; box.appendChild(_pmEl('p', 'muted', 'Loading…')); loadAudit(); }); });
+      loadAudit();
+      const how = _pmEl('div', 'pm-more-blk');
+      how.appendChild(_pmEl('div', 'set-t', 'How sharing works'));
+      for (const t of [
+        'Each friend\'s packet is made on this computer from your own data, with only the fields their level allows, and sent end-to-end encrypted to that friend alone.',
+        'Changes go out a few seconds after you make them, as small updates. Turning something off, a share ending or Stop sharing asks their app to delete its copy; a well-behaved app does, but deletion on someone else\'s computer cannot be forced.',
+        'What friends share with you is kept read-only on your own computers, is never shown to Claude or used by the assistant, and goes when they stop sharing.',
+      ]) how.appendChild(_pmEl('p', 'muted', t));
+      more.appendChild(how);
+    });
     el.appendChild(card);
-
-    const act = _settingsCard('Sharing activity', 'What went to whom and when. The log keeps no copy of the data itself.');
-    const box = _pmEl('div', 'pm-activity');
-    box.appendChild(_pmEl('p', 'muted', 'Loading…'));
-    act.body.appendChild(box);
-    const send = _pmEl('div', 'pm-foot');
-    send.appendChild(_pmBtn('Send changes now', 'send', async () => {
-      try { const r = await permsSendNow(); toast(r && r.sent ? `Sent ${r.sent} ${r.sent === 1 ? 'update' : 'updates'}` : 'Nothing new to send', { kind: 'ok' }); render(); }
-      catch (e) { toast(`Changes not sent (${typeof netErrorMessage === 'function' ? netErrorMessage(e) : e.message}). They go again by themselves; or try now.`, { kind: 'err', retry: () => permsSendNow().then(() => toast('Sent', { kind: 'ok' })) }); }
-    }, 'btn-ghost'));
-    act.body.appendChild(send);
-    el.appendChild(act.card);
-    const loadAudit = () => permsAudit().then((a) => {
-      box.textContent = '';
-      const ev = (a && Array.isArray(a.events) ? a.events : []).slice().reverse().slice(0, 40);
-      if (!ev.length) { box.appendChild(_pmEl('p', 'muted', 'Nothing sent yet. When you share something with a friend, each update shows here.')); return; }
-      const ul = _pmEl('ul', 'pm-list');
-      for (const x of ev) {
-        const who = permsFriendName(x.friend);
-        const what = ((permsScope(x.scope) || {}).label || x.scope || '').toLowerCase();
-        const text = x.op === 'revoke' ? `Asked ${who} to delete your ${what}`
-          : `Your ${what} (${_pmModeLabel(x.scope, x.mode).toLowerCase()}) to ${who}${x.op === 'diff' ? ', changes only' : ''}${x.n > 1 ? ` · ${x.n} items` : ''}${x.bytes ? ` · ${Math.max(1, Math.round(x.bytes / 1024))} KB` : ''}`;
-        const li = _pmEl('li', 'pm-item');
-        li.appendChild(_pmEl('span', 'pm-when', _pmAgo(x.at)));
-        li.appendChild(_pmEl('div', 'pm-item-t', text));
-        ul.appendChild(li);
-      }
-      box.appendChild(ul);
-    }).catch((e) => { box.textContent = ''; _pmErrLine(box, 'The sharing log could not be read', e, () => { box.textContent = ''; box.appendChild(_pmEl('p', 'muted', 'Loading…')); loadAudit(); }); });
-    loadAudit();
-
-    const how = _settingsCard('How sharing works', null);
-    for (const t of [
-      'Each friend\'s packet is made on this computer from your own data, with only the fields their level allows, and sent end-to-end encrypted to that friend alone.',
-      'Changes go out a few seconds after you make them, as small updates. Turning something off, a share ending or Stop sharing asks their app to delete its copy; a well-behaved app does, but deletion on someone else\'s device cannot be forced.',
-      'What friends share with you is kept read-only on your own devices, is never shown to Claude or used by the assistant, and goes when they stop sharing.',
-    ]) how.body.appendChild(_pmEl('p', 'muted', t));
-    el.appendChild(how.card);
   },
 });
 
@@ -747,7 +774,7 @@ registerCommand({ id: 'perms-share-task', label: 'Share the open task with a fri
     if (!friends.length) { toast('No friends yet: add one in Friends, then share tasks with them.', { kind: 'info', action: { label: 'Open Friends', run: () => setView('friends') } }); return; }
     const now = new Set(permsTaskSharedWith(id));
     openDialog({
-      title: `Share “${effTitle(t) || 'this task'}”`, width: 460, resizeKey: 'perms-share-task',
+      title: `Share “${effTitle(t) || 'this task'}”`, size: 'sm', resizeKey: 'perms-share-task',
       body: (el, close) => {
         el.appendChild(_pmEl('p', 'muted', 'They see its title, due date, status, priority, stream, tags and steps done. Only trusted friends can be given tasks.'));
         const list = _pmEl('div', 'pm-pick');

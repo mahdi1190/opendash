@@ -316,7 +316,7 @@ const _HB_CAT_ICONS = [[/grocer|supermarket|food shop/i, 'shopping-cart'], [/eat
 function _hbCatIcon(c, bc) {
   try { if (window.FinSymbols && typeof FinSymbols.categoryIcon === 'function') return FinSymbols.categoryIcon(c, { size: 'sm', live: 'hover', bc: bc || undefined }); } catch (e) { /* fallback */ }
   const hit = _HB_CAT_ICONS.find(([re]) => re.test(String(c || '')));
-  return `<span class="hbf-cic">${icon(hit ? hit[1] : 'wallet')}</span>`;
+  return `<span class="hbf-cic">${icon(hit ? hit[1] : 'wallet', 'i-sm')}</span>`;
 }
 
 /* ---------- render ---------- */
@@ -328,7 +328,8 @@ function _hbFinRender(el, ctx) {
   const card = document.createElement('section');
   card.className = `card home-card hbf hbf--${size}`;
   const monthName = (() => { try { return new Date((g ? g.month.start : todayStr()) + 'T12:00:00').toLocaleDateString(APP_CONFIG.locale || undefined, { month: 'long' }); } catch (e) { return ''; } })();
-  card.appendChild(hglHead({ icon: 'wallet', title: 'Money', n: g ? monthName : '', link: { label: 'Finances', title: 'Open Finances', run: () => _hbFinOpen(null) } }));
+  // The title opens Finances (the grid's title link, NAVIGATION_PLAN.md 2.8).
+  card.appendChild(cardHead({ icon: 'wallet', title: 'Money', count: g ? monthName : '' }));
   const body = document.createElement('div'); body.className = 'card-b hbf-b';
   card.appendChild(body);
   el.appendChild(card);
@@ -338,17 +339,16 @@ function _hbFinRender(el, ctx) {
     return true;
   }
   if (!g && _hbFin.err) {
-    body.appendChild(hglEmpty({ icon: 'circle-alert', title: 'Couldn’t read Finances', text: 'The OpenDash server didn’t answer. Your data is safe.',
-      actions: [{ label: 'Retry', icon: 'refresh-cw', run: () => { _hbFin.at = 0; _hbFin.err = null; _hbFin.key = ''; _hbFinLoad(0); homeRerenderWidget('finance'); } }] }));
+    body.appendChild(hglEmpty({ icon: 'circle-alert', title: 'Couldn’t read Finances', text: 'OpenDash isn’t answering. Your data is safe.',
+      actions: [{ label: 'Try again', icon: 'refresh-cw', run: () => { _hbFin.at = 0; _hbFin.err = null; _hbFin.key = ''; _hbFinLoad(0); homeRerenderWidget('finance'); } }] }));
     return true;
   }
   const rm = _hbFin.remote;
   if ((!g || _hbFin.status !== 'ok' || !g.count) && rm) {
-    // Another device reads the bank and has not sent anything yet: name it, never "Connect your bank".
-    const off = ctx.off ? ctx.off({ icon: 'wallet', title: 'Money at a glance',
-      text: rm.trial ? `Finance from ${rm.name}. To see it here, turn on "Use changes from my other computers" in Settings > Sync.`
-        : `Finance from ${rm.name} · waiting for its first update. What you spend shows here once ${rm.name} has updated${rm.online ? '' : ' (it is off right now)'}.`,
-      action: { label: 'Open Finances', icon: 'wallet', run: () => _hbFinOpen(null) } })
+    // Another computer reads the bank and has not sent anything yet: name it, never "Connect your bank".
+    // In preview mode (Sync's "Preview changes first") its finances are not used here: "Use it" (SIMPLIFY_PLAN.md L17).
+    const reload = () => { _hbFin.at = 0; _hbFin.key = ''; _hbFinLoad(0); };
+    const off = ctx.off ? ctx.off(hglRemoteBank(rm, { title: 'Money at a glance', icon: 'wallet', reload, open: () => _hbFinOpen(null) }))
       : hglEmpty({ icon: 'wallet', title: 'Money at a glance', actions: [{ label: 'Open Finances', icon: 'wallet', run: () => _hbFinOpen(null) }] });
     off.classList.add('hgl-off');
     const art = hglScene('finance', { size: 'lg', hover: true });
@@ -410,7 +410,7 @@ function _hbFinHeroHtml(g) {
   const t = g.today;
   const stale = g.asOf && g.asOf < t.iso;
   let sub;
-  if (stale) sub = `<span class="hbf-stale">${icon('history')}Payments up to ${esc(_hbWhen(g.asOf).toLowerCase() === 'yesterday' ? 'yesterday' : _hbDay(g.asOf, { weekday: 'short', day: 'numeric', month: 'short' }))}</span>`;
+  if (stale) sub = `<span class="hbf-stale">${icon('history', 'i-xs')}Payments up to ${esc(_hbWhen(g.asOf).toLowerCase() === 'yesterday' ? 'yesterday' : _hbDay(g.asOf, { weekday: 'short', day: 'numeric', month: 'short' }))}</span>`;
   else if (t.usual == null) sub = t.count ? `${t.count} payment${t.count === 1 ? '' : 's'} so far` : 'Nothing spent yet';
   else if (Math.abs(t.diff) < 0.5) sub = 'About a usual day';
   else if (t.diff < 0) sub = `<b class="good">${esc(_hbMoney(-t.diff))} under</b> a usual day`;
@@ -456,15 +456,15 @@ function _hbFinBody(g, size) {
   const recent = g.recent.length ? `<ul class="hbf-tx" aria-label="Latest payments">${g.recent.map(t => `<li><button type="button" class="hbf-txr fsym-host" data-go="transactions" data-flip="tx:${escAttr(t.k)}">${_hbMerchantTile(t.m, t.c, t.bc)}<span class="n"><span class="nm">${esc(_hbMerchantName(t.m))}</span><small>${esc(_hbWhen(t.iso))} · ${esc(t.c)}</small></span><span class="a num${t.s < 0 ? ' in' : ''}">${t.s < 0 ? '+' : ''}${esc(_hbMoney(Math.abs(t.s), 2))}</span></button></li>`).join('')}</ul>` : '';
   const legend = (g.week.usualEnd != null || g.month.usualEnd != null) ? '<div class="hbf-lg" aria-hidden="true"><span><i></i>spent</span><span><u></u>usual by now</span><span class="r">/ usual total</span></div>' : '';
   const budget = g.budgetTotal > 0 && size !== 's'
-    ? `<div class="hbf-budget">${icon('piggy-bank')}<span>Budgets: <b class="num">${esc(_hbMoney(g.month.spent))}</b> of ${esc(_hbMoney(g.budgetTotal))} · ${Math.round(g.month.spent / g.budgetTotal * 100)}% used, ${Math.round((g.month.day + 1) / g.month.len * 100)}% of the month gone</span></div>` : '';
+    ? `<div class="hbf-budget">${icon('piggy-bank', 'i-sm')}<span>Budgets: <b class="num">${esc(_hbMoney(g.month.spent))}</b> of ${esc(_hbMoney(g.budgetTotal))} · ${Math.round(g.month.spent / g.budgetTotal * 100)}% used, ${Math.round((g.month.day + 1) / g.month.len * 100)}% of the month gone</span></div>` : '';
   const a = `<div class="hbf-col hbf-a">${_hbFinHeroHtml(g)}<div class="hbf-rows">${_hbFinMeter('This week', g.week, 'week')}${_hbFinMeter('This month', g.month, 'month')}${legend}</div>${budget}</div>`;
   let catsHtml = '', billsHtml = '';
   if (size === 'l') {
     const cs = g.cats.slice(0, 5); const mx = cs.length ? cs[0].v : 1;
     catsHtml = cs.length ? `<div class="hbf-cats"><div class="ovl">Categories this month</div>${cs.map(c => `<button type="button" class="hbf-cat fsym-host" data-go="categories" title="${escAttr(c.c + ': ' + _hbMoney(c.v, 2) + (c.share != null ? ` · ${Math.round(c.share * 100)}%` : ''))}"><span class="l">${esc(c.c)}</span><span class="v num">${esc(_hbMoney(c.v))}</span><span class="bar"><i style="--pct:${(c.v / mx * 100).toFixed(1)}%"></i></span></button>`).join('')}</div>` : '';
     billsHtml = `<div class="hbf-bills"><div class="ovl">Due soon</div>${g.bills.length
-      ? `<ul>${g.bills.slice(0, 4).map(b => `<li><button type="button" class="hbf-bill fsym-host" data-go="recurring"><span class="hbf-cal"><b>${esc(_hbDay(b.iso, { day: 'numeric' }))}</b><small>${esc(_hbDay(b.iso, { month: 'short' }))}</small></span><span class="n"><span class="nm">${esc(_hbMerchantName(b.m))}</span><small>${b.due ? 'Due now' : esc(_hbWhen(b.iso))} · ${esc(String(b.freq).toLowerCase())}</small></span><span class="a num">${esc(_hbMoney(b.amount, 2))}</span></button></li>`).join('')}</ul>`
-      : '<p class="hbf-none">No regular payments due in the next two weeks.</p>'}</div>`;
+      ? `<ul>${g.bills.slice(0, 5).map(b => `<li><button type="button" class="hbf-bill fsym-host" data-go="recurring"><span class="hbf-cal"><b>${esc(_hbDay(b.iso, { day: 'numeric' }))}</b><small>${esc(_hbDay(b.iso, { month: 'short' }))}</small></span><span class="n"><span class="nm">${esc(_hbMerchantName(b.m))}</span><small>${b.due ? 'Due now' : esc(_hbWhen(b.iso))} · ${esc(String(b.freq).toLowerCase())}</small></span><span class="a num">${esc(_hbMoney(b.amount, 2))}</span></button></li>`).join('')}</ul>${g.bills.length > 5 ? `<button type="button" class="btn-link hbf-more" data-go="recurring">${g.bills.length - 5} more</button>` : ''}`
+      : '<p class="empty-line">Regular payments due in the next two weeks show here.</p>'}</div>`;
   }
   const b = `<div class="hbf-col hbf-b2">${_hbFinSparkHtml(g)}${topHtml}${catsHtml}</div>`;
   const c = `<div class="hbf-col hbf-c">${recent}${billsHtml}</div>`;

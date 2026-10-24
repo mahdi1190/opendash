@@ -6,15 +6,14 @@
    user's own tick (.is-ticked, .is-up); none with reduced motion. */
 .hab { container: hab / inline-size; }
 .hab .card-h .hab-add { margin-left: 0; }
-.hab .card-h .hab-add .i { width: 14px; height: 14px; }
-.hab .card-h .n { margin-left: 2px; }
+.hab .card-h .n { margin-left: var(--space-0-5); }
 
 /* ----- S: today's habits as large toggle pills ----- */
-.hab-pills { display: flex; flex-direction: column; gap: 6px; }
+.hab-pills { display: flex; flex-direction: column; gap: var(--space-1-5); }
 .hab-pw { position: relative; display: flex; align-items: stretch; min-width: 0; }
 .hab-pill {
-  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 44px;
-  padding: 6px 14px 6px 9px; border-radius: var(--radius-full); border: 1px solid var(--border);
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--space-2); min-height: 44px;
+  padding: var(--space-1-5) var(--space-3) var(--space-1-5) var(--space-2); border-radius: var(--radius-full); border: 1px solid var(--border);
   background: var(--surface); color: var(--fg); font: inherit; font-size: var(--text-sm);
   font-weight: var(--weight-medium); text-align: left; cursor: pointer; position: relative;
   transition: background-color var(--m-fast, 120ms) var(--m-ease-out, ease-out), border-color var(--m-fast, 120ms) var(--m-ease-out, ease-out), transform var(--m-fast, 120ms) var(--m-ease-out, ease-out);
@@ -23,16 +22,13 @@
 .hab-pill:active:not([aria-disabled="true"]) { transform: scale(0.985); }
 .hab-pill:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .hab-ck { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none; color: var(--fg-subtle); transition: background-color var(--m-fast, 120ms) ease, color var(--m-fast, 120ms) ease; }
-.hab-ck .i { width: 22px; height: 22px; }
 .hab-pill:hover:not([aria-disabled="true"]) .hab-ck { color: var(--success); }
 .hab-pill.is-done { background: var(--success-soft); border-color: color-mix(in oklab, var(--success) 38%, transparent); cursor: default; }
 .hab-pill.is-done .hab-ck { background: var(--success); color: var(--fg-on-accent); }
-.hab-pill.is-done .hab-ck .i { width: 15px; height: 15px; }
 .hab-pill.is-skipped { background: var(--bg-subtle); color: var(--fg-muted); border-style: dashed; cursor: default; }
-.hab-pill.is-skipped .hab-ck .i { width: 16px; height: 16px; }
 .hab-pt { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hab-sn { display: inline-flex; align-items: center; gap: 2px; flex: none; color: var(--fg); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; transition: opacity var(--m-fast, 120ms) ease; }
-.hab-sn .i { width: 14px; height: 14px; color: var(--sw-orange); }
+.hab-sn { display: inline-flex; align-items: center; gap: var(--space-0-5); flex: none; color: var(--fg); font-weight: var(--weight-semibold); font-variant-numeric: tabular-nums; transition: opacity var(--m-fast, 120ms) ease; }
+.hab-sn .i { color: var(--sw-orange); }
 .hab-sn b { font-weight: inherit; min-width: 1ch; display: inline-block; line-height: 1.2; }
 .hab-sn.is-zero { color: var(--fg-subtle); font-weight: var(--weight-medium); }
 .hab-sn.is-zero .i { color: var(--fg-disabled); }
@@ -41,17 +37,17 @@
 .hab-pw:is(:hover, :focus-within) .hab-skip { opacity: 1; pointer-events: auto; }
 .hab-pw:is(:hover, :focus-within):has(.hab-skip) .hab-pill .hab-sn { opacity: 0; }
 @media (hover: none) { .hab-pw .hab-skip { display: none; } .hab-pw:has(.hab-skip) .hab-pill .hab-sn { opacity: 1; } }
-.hab-more { align-self: flex-start; margin-top: 6px; border: 0; background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-xs); cursor: pointer; padding: 4px 6px; border-radius: var(--radius-sm); }
+.hab-more { align-self: flex-start; margin-top: var(--space-1-5); border: 0; background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-xs); cursor: pointer; padding: var(--space-1) var(--space-1-5); border-radius: var(--radius-sm); }
 .hab-more:hover { background: var(--bg-muted); color: var(--fg); }
 .hab-more:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
 /* Nothing due today (S): what comes next. */
-.hab-none { display: flex; gap: 10px; align-items: flex-start; padding: 2px 0 8px; }
-.hab-none > .i { width: 18px; height: 18px; color: var(--success); flex: none; margin-top: 1px; }
+.hab-none { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-0-5) 0 var(--space-2); }
+.hab-none > .i { color: var(--success); flex: none; margin-top: 1px /* nudge */; }
 .hab-none b { display: block; font-size: var(--text-sm); color: var(--fg); font-weight: var(--weight-medium); }
 .hab-none span { font-size: var(--text-xs); color: var(--fg-subtle); }
-.hab-next { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.hab-nx-b { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 0; background: none; border-radius: var(--radius-sm); font: inherit; color: var(--fg); cursor: pointer; text-align: left; min-width: 0; }
+.hab-next { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-0-5); }
+.hab-nx-b { width: 100%; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1-5) var(--space-2); border: 0; background: none; border-radius: var(--radius-sm); font: inherit; color: var(--fg); cursor: pointer; text-align: left; min-width: 0; }
 .hab-nx-b:hover { background: var(--bg-muted); }
 .hab-nx-b:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .hab-nx-b .hab-t { flex: 1 1 auto; }
@@ -60,26 +56,22 @@
 
 /* ----- the tick (M and L) ----- */
 .hab-tk { width: 30px; height: 30px; border-radius: 50%; border: 0; padding: 0; background: none; display: grid; place-items: center; color: var(--fg-subtle); cursor: pointer; flex: none; transition: background-color var(--m-fast, 120ms) ease, color var(--m-fast, 120ms) ease; }
-.hab-tk .i { width: 24px; height: 24px; }
 .hab-tk:hover:not([aria-disabled="true"]) { color: var(--success); background: var(--success-soft); }
 .hab-tk:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .hab-tk.is-done { background: var(--success); color: var(--fg-on-accent); cursor: default; }
-.hab-tk.is-done .i { width: 16px; height: 16px; }
 .hab-tk.is-skipped { color: var(--fg-muted); background: var(--bg-muted); cursor: default; }
-.hab-tk.is-skipped .i { width: 16px; height: 16px; }
 .hab-tk[aria-disabled="true"]:not(.is-done):not(.is-skipped) { color: var(--fg-disabled); cursor: default; }
 .hab-t { font-size: var(--text-sm); font-weight: var(--weight-medium); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .hab-sub { font-size: var(--text-xs); color: var(--fg-subtle); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.hab-nm { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.hab-nm { display: flex; flex-direction: column; gap: 1px /* hairline */; min-width: 0; }
 .hab-skip { color: var(--fg-subtle); }
-.hab-skip .i { width: 14px; height: 14px; }
 .hab-skip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
 /* ----- M: a row per habit ----- */
-.hab-rows { list-style: none; margin: 0 calc(-1 * var(--space-2)); padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.hab-rows { list-style: none; margin: 0 calc(-1 * var(--space-2)); padding: 0; display: flex; flex-direction: column; gap: 1px /* hairline */; }
 .hab-row {
   display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto 28px; grid-template-areas: "tk nm dots st sk";
-  align-items: center; column-gap: 10px; row-gap: 6px; padding: 6px var(--space-2); border-radius: var(--radius-md); cursor: pointer;
+  align-items: center; column-gap: var(--space-2); row-gap: var(--space-1-5); padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-md); cursor: pointer;
   transition: background-color var(--m-fast, 120ms) ease;
 }
 .hab-row > .hab-tk { grid-area: tk; }
@@ -97,7 +89,7 @@
 .hab-st small { font-size: var(--text-2xs); color: var(--fg-subtle); white-space: nowrap; }
 
 /* The dots: one per day (a ring = today; hollow = missed; dashed = skipped; tinted = a period already done). */
-.hab-dots { display: grid; grid-template-columns: repeat(var(--n, 14), minmax(3px, 9px)); gap: 3px; align-items: center; justify-content: end; width: calc(var(--n, 14) * 12px); max-width: 42cqi; }
+.hab-dots { display: grid; grid-template-columns: repeat(var(--n, 14), minmax(3px, 9px)); gap: var(--space-0-5); align-items: center; justify-content: end; width: calc(var(--n, 14) * 12px); max-width: 42cqi; }
 .hab-dots > i, .hab-heat > i { display: block; aspect-ratio: 1; border-radius: 50%; background: var(--bg-emphasis); box-sizing: border-box; }
 .hab :is(.hab-dots, .hab-heat) > i.c-done { background: var(--success); }
 .hab :is(.hab-dots, .hab-heat) > i.c-extra { background: color-mix(in oklab, var(--success) 55%, transparent); }
@@ -115,56 +107,54 @@
 /* ----- L: a card per habit with an 8-week heatmap ----- */
 .hab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: var(--space-3); }
 .hab-card {
-  display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding: var(--space-2) var(--space-3) var(--space-3); border: 1px solid var(--border);
   border-radius: var(--radius-lg); background: var(--surface); cursor: pointer;
   transition: border-color var(--m-fast, 120ms) ease, background-color var(--m-fast, 120ms) ease;
 }
 .hab-card:hover { border-color: var(--border-strong); }
 .hab-card:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .hab-card[aria-current="true"] { border-color: color-mix(in oklab, var(--accent) 55%, transparent); background: var(--accent-soft); cursor: default; }
-.hab-ch { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.hab-ch { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
 .hab-ch .hab-nm { flex: 1 1 auto; }
 .hab-ch .hab-skip { opacity: 0; transition: opacity var(--m-fast, 120ms) ease; flex: none; }
 .hab-card:is(:hover, :focus-within) .hab-ch .hab-skip { opacity: 1; }
 @media (hover: none) { .hab-ch .hab-skip { opacity: 1; } }
 .hab-scene { flex: none; display: inline-flex; }
-.hab-cb { display: flex; align-items: flex-start; gap: 16px; min-width: 0; }
-.hab-heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; gap: 3px; flex: none; }
-.hab-heat > i { border-radius: 3px; aspect-ratio: auto; }
+.hab-cb { display: flex; align-items: flex-start; gap: var(--space-4); min-width: 0; }
+.hab-heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 11px); grid-auto-columns: 11px; gap: var(--space-0-5); flex: none; }
+.hab-heat > i { border-radius: var(--radius-xs); aspect-ratio: auto; }
 /* The numbers beside the heatmap: "15 streak", "16 best", "89% last 30 days" (number first). */
-.hab-kv { margin: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; padding-top: 2px; }
-.hab-kv > div { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.hab-kv { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; padding-top: var(--space-0-5); }
+.hab-kv > div { display: flex; align-items: baseline; gap: var(--space-1-5); min-width: 0; }
 .hab-kv dt { order: 1; font-size: var(--text-xs); color: var(--fg-subtle); white-space: nowrap; }
 .hab-kv dd { margin: 0; font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--fg); line-height: 1.2; }
 .hab-kv .is-streak dd { font-size: var(--text-lg); }
-.hab-kv .hab-sn .i { width: 15px; height: 15px; align-self: center; }
+.hab-kv .hab-sn .i { align-self: center; }
 .hab-cs { font-size: var(--text-xs); color: var(--fg-subtle); }
 
 /* ----- all done today ----- */
 .hab-alldone {
-  display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 10px; border-radius: var(--radius-md);
+  display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-md);
   background: var(--success-soft); color: var(--success-ink); font-size: var(--text-sm); font-weight: var(--weight-medium); position: relative;
 }
-.hab-m .hab-alldone, .hab-l .hab-alldone { margin: 0 0 8px; }
+.hab-m .hab-alldone, .hab-l .hab-alldone { margin: 0 0 var(--space-2); }
 .hab-ad-i { display: inline-flex; }
-.hab-ad-i .i { width: 16px; height: 16px; }
 .hab-ad-scene { margin-left: auto; display: inline-flex; }
 
 /* ----- no habits yet, and the new-habit row ----- */
-.hab-empty { display: flex; gap: 12px; align-items: center; }
+.hab-empty { display: flex; gap: var(--space-3); align-items: center; }
 .hab-empty-s { flex: none; display: inline-flex; }
-.hab-empty h4 { margin: 0 0 2px; font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); }
+.hab-empty h4 { margin: 0 0 var(--space-0-5); font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); }
 .hab-empty p { margin: 0; font-size: var(--text-xs); color: var(--fg-subtle); line-height: 1.5; }
-.hab-new { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.hab-new { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); margin-top: var(--space-2); }
 .hab-new .input { flex: 1 1 150px; min-width: 0; }
-.hab-new .hab-new-open .i { width: 14px; height: 14px; }
 .hab-quick { color: var(--success); }
 .hab-quick:hover { color: var(--success-ink); background: var(--success-soft); }
 .hab-hint { flex-basis: 100%; margin: 0; font-size: var(--text-2xs); color: var(--fg-subtle); }
-.hab-others { list-style: none; margin: 10px 0 0; padding: 8px 0 0; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: 2px; }
-.hab-other { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.hab-ot { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 5px 8px; border: 0; background: none; border-radius: var(--radius-sm); font: inherit; color: var(--fg); cursor: pointer; text-align: left; }
-.hab-ot > .i { width: 14px; height: 14px; color: var(--fg-subtle); flex: none; }
+.hab-others { list-style: none; margin: var(--space-2) 0 0; padding: var(--space-2) 0 0; border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: var(--space-0-5); }
+.hab-other { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.hab-ot { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); border: 0; background: none; border-radius: var(--radius-sm); font: inherit; color: var(--fg); cursor: pointer; text-align: left; }
+.hab-ot > .i { color: var(--fg-subtle); flex: none; }
 .hab-ot .hab-t { flex: 1 1 auto; }
 .hab-ot .hab-sub { flex: none; }
 .hab-ot:hover { background: var(--bg-muted); }

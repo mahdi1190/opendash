@@ -3,11 +3,14 @@
    logic). The rules are pure, in 12-home-plan-logic.js (the server runs the
    same file through lib/plan-logic.mjs). CSS: styles/33-plan-slots.css.
 
-   Working hours (config.workHours, Settings > Profile):
+   Working hours (config.workHours; its one control is in Settings > Home, SIMPLIFY_PLAN.md L12):
      homeWorkHours()                  planWorkHours(APP_CONFIG.workHours), memoised
      homeWorkDay(iso)                 is that day a working day
      homeWorkWindow()                 {workStart, workEnd} in minutes, for homeDayModel(o)
-     planSettingsWorkHoursRow()       the Settings > Profile row
+     planSettingsWorkHoursRow()       the control (Settings > Home)
+     planWorkHoursText(wh?)           '09:00–18:00, Mon–Fri'
+     planSettingsWorkHoursLink()      a link row for other pages (Region & language, Suggestions):
+                                      the hours, and Change -> Settings > Home
 
    Planned slots (task.plannedFor + plannedTime + plannedMinutes; the deadline
    is never touched). Shown as dashed "Planned" blocks in Today's schedule
@@ -139,7 +142,21 @@ function planDropOnDay(id, where) {
   return true;
 }
 
-/* ---------- Settings > Profile: working hours ---------- */
+/* ---------- Settings > Home: working hours (the one control) ---------- */
+/** '09:00–18:00, Mon–Fri' (or the days by name). */
+function planWorkHoursText(wh) {
+  wh = wh || homeWorkHours();
+  const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const d = (wh.days || []).slice().sort((a, b) => a - b);
+  const days = d.join(',') === '1,2,3,4,5' ? 'Mon–Fri' : d.join(',') === '0,1,2,3,4,5,6' ? 'every day' : d.map(x => names[x]).join(', ');
+  return `${wh.start}–${wh.end}, ${days}`;
+}
+/** Working hours on a page that is not their home: the hours, and Change (opens Settings > Home at the row). */
+function planSettingsWorkHoursLink() {
+  const b = uiButton({ label: 'Change', icon: 'arrow-right', size: 'sm', kind: 'ghost', aria: 'Change your working hours (Settings > Home)',
+    run: () => { if (typeof settingsOpenRow === 'function') settingsOpenRow('home', 'Working hours'); else setView('settings:home'); } });
+  return _settingsRow('Working hours', planWorkHoursText(), b);
+}
 function planSettingsWorkHoursRow() {
   const wh = homeWorkHours();
   const box = document.createElement('div'); box.className = 'set-workhours';
@@ -158,12 +175,12 @@ function planSettingsWorkHoursRow() {
     b.setAttribute('aria-pressed', wh.days.includes(d) ? 'true' : 'false');
     days.appendChild(b);
   }
-  const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-ghost btn-sm set-wh-reset'; reset.textContent = 'Reset';
+  const reset = uiButton({ label: 'Reset', kind: 'ghost', size: 'sm', cls: 'set-wh-reset', tip: 'Back to 09:00–18:00, Monday to Friday', run: () => resetHours() });
   reset.hidden = !wh.custom;
   const save = async (patch, msg) => {
     if (patch) {
       const err = planWorkHoursCheck(patch);
-      if (err) { toast(err, { kind: 'err' }); start.value = homeWorkHours().start; end.value = homeWorkHours().end; return; }
+      if (err) { toastError('save the working hours', err); start.value = homeWorkHours().start; end.value = homeWorkHours().end; return; }
       const cur = homeWorkHours();
       if (cur.custom && patch.start === cur.start && patch.end === cur.end && patch.days.join() === cur.days.join()) return;
     }
@@ -174,18 +191,18 @@ function planSettingsWorkHoursRow() {
   days.addEventListener('click', (e) => {
     const b = e.target.closest('.set-wh-day'); if (!b) return;
     const on = b.getAttribute('aria-pressed') === 'true';
-    if (on && days.querySelectorAll('[aria-pressed="true"]').length === 1) { toast('Keep at least one working day', { kind: 'err' }); return; }
+    if (on && days.querySelectorAll('[aria-pressed="true"]').length === 1) { toastError('remove the day', 'keep at least one working day'); return; }
     b.setAttribute('aria-pressed', on ? 'false' : 'true');
     save(read(), 'Working days saved');
   });
-  reset.onclick = () => {
+  function resetHours() {
     const d = planWorkHours(null);
     start.value = d.start; end.value = d.end;
     for (const b of days.querySelectorAll('.set-wh-day')) b.setAttribute('aria-pressed', d.days.includes(Number(b.dataset.d)) ? 'true' : 'false');
     save(null, 'Working hours reset');
-  };
+  }
   const times = document.createElement('div'); times.className = 'set-wh-times';
   times.append(start, to, end, reset);
   box.append(times, days);
-  return _settingsRow('Working hours', 'Free time, focus gaps and planning use these hours (default 09:00 to 18:00, Monday to Friday).', box);
+  return _settingsRow('Working hours', 'Used to plan your free time.', box);
 }

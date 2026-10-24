@@ -930,6 +930,6 @@ function _evcCreateSave() {
   const linked = !!(d.link && typeof sgAfterEventCreate === 'function');
   _evcWrite('new:' + d.key, (w) => w.create(args, linked ? { silent: true } : undefined)).then((r) => {
     if (r && r.ok !== false && !r.cancelled) { if (linked) sgAfterEventCreate(r, d); return; }
-    toast(`“${title}” was not saved to Google.`, { kind: 'err', timeout: 9000, action: { label: 'Edit again', run: () => tcOpen({ kind: 'evcreate', draft: d }, {}) } });
+    toastError(`save “${title}” to Google`, new Error((r && (r.message || r.error)) || 'it was not saved'), { label: 'Edit again', run: () => tcOpen({ kind: 'evcreate', draft: d }, {}) });
   });
 }

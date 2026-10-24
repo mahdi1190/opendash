@@ -172,7 +172,7 @@ Emails: ${JSON.stringify(emails.map(m => ({ id: m.id, from: m.sender || _emSende
       result = { ok: false, found: 0, error: _emSugErr.text };
       if (o.quiet) { /* the caller shows it */ }
       else if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Task suggestions failed', retry: () => aiSuggestTasksFromEmails() });
-      else toast((e && e.message) || 'The suggestions failed.', { kind: 'err' });
+      else toastError('get suggestions', e);
     }
   } finally { _emSuggesting = false; _emSugCtrl = null; render(); }
   return result;
@@ -261,7 +261,7 @@ function renderEmailTriage(container) {
   if (running) line = (job && job.detail) || 'Reading your recent email…';
   else if (job && job.state === 'error') line = job.error || 'The inbox could not be updated.';
   else if (d && d.fetchedAt) line = `${gdAgeLabel(d.fetchedAt)} · ${msgs.length} thread${msgs.length === 1 ? '' : 's'}${d.days ? ` from the last ${d.days} days` : ''}${d.source === 'snapshot' ? ' (older snapshot)' : ''}`;
-  else line = 'No email yet. Update the inbox to read your recent email (subjects, senders and a short preview only).';
+  else line = 'No email yet. Update the inbox.';
   st.innerHTML = `${icon(running ? 'loader-circle' : job && job.state === 'error' ? 'circle-alert' : 'inbox', running ? 'i-sm spin' : 'i-sm')}<span></span>`;
   st.querySelector('span').textContent = line;
   if (job && job.state === 'error' && !running) st.classList.add('err');
@@ -342,7 +342,7 @@ function renderEmailTriage(container) {
   const list = document.createElement('div'); list.className = 'em-list';
   if (!msgs.length) {
     mountEmptyState(list, InboxStore.access() === 'no'
-      ? { icon: 'mail', title: 'Connect a mailbox', text: 'Email triage reads recent subjects, senders and previews (never full emails) from Gmail or any mailbox you connect, and suggests tasks. Nothing is sent, labelled or deleted.', actions: [{ label: 'Open Connections', icon: 'plug', primary: true, run: () => (window.Connections ? Connections.open('gmail') : setView('connections')) }] }
+      ? { icon: 'mail', title: 'Connect a mailbox', text: 'OpenDash reads subjects, senders and previews and suggests tasks. It never sends or deletes.', actions: [{ label: 'Open Connections', icon: 'plug', primary: true, run: () => (window.Connections ? Connections.open('gmail') : setView('connections')) }] }
       : { icon: 'inbox', title: running ? 'Reading your inbox…' : 'No email yet', text: running ? 'This takes a minute.' : 'Update the inbox to see your recent threads here.' });
   } else if (!shown.length) {
     mountEmptyState(list, { icon: 'check-check', title: _emFilter === 'handled' ? 'Nothing handled yet' : 'Inbox triaged', text: _emFilter === 'handled' ? 'Threads you turn into tasks or mark as nothing to do show here.' : 'Every recent thread has a task or needs nothing. Nice.', compact: true });

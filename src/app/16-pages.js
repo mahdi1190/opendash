@@ -27,6 +27,7 @@
    Styles: src/styles/16-pages.css.
    ============================================================ */
 let _apClose = null;
+const _apOpenSecs = new Set();   // pages whose section chips are all shown (the +N chip opens them; this session)
 
 /** Open a page (its run, else its view) or one of its sections; no 'Back to' (it is not a link inside a page). */
 function pagesOpen(p, section) {
@@ -65,9 +66,9 @@ function openAllPages(o) {
   const scrim = document.createElement('div'); scrim.className = 'scrim ap-scrim';
   const box = document.createElement('div'); box.className = 'ap'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'All pages');
   box.innerHTML = `<div class="ap-in">${icon('search')}<input class="ap-q" type="text" placeholder="Find a page…" aria-label="Find a page" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="ap-list" />`
-    + `<button type="button" class="btn-icon btn-sm ap-x" aria-label="Close" data-tip="Close" data-kbd="Esc">${icon('x')}</button></div>`
-    + '<div class="ap-list" id="ap-list" role="listbox" aria-label="Pages"></div><div class="ap-f"></div>';
+    + '</div><div class="ap-list" id="ap-list" role="listbox" aria-label="Pages"></div><div class="ap-f"></div>';
   const input = box.querySelector('.ap-q'), list = box.querySelector('.ap-list'), foot = box.querySelector('.ap-f');
+  box.querySelector('.ap-in').appendChild(uiButton({ icon: 'x', size: 'sm', cls: 'ap-x', aria: 'Close', kbd: 'Esc', run: () => close(false) }));
   let items = [], cur = 0;
 
   function close(ran) {
@@ -79,6 +80,7 @@ function openAllPages(o) {
   }
   function openItem(it, pin) {
     if (!it) return;
+    if (it.expand) { _apOpenSecs.add(it.expand); paint(); input.focus(); return; }   // "+N": the rest of a page's sections
     if (pin && it.page) {
       close(true);
       const v = pageView(it.page);
@@ -108,22 +110,28 @@ function openAllPages(o) {
   function pinBtn(p) {
     const v = pageView(p);
     const on = typeof sbIsPinned === 'function' && sbIsPinned(v);
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-icon btn-sm ap-pin' + (on ? ' on' : '');
-    b.innerHTML = icon(on ? 'pin-off' : 'pin', 'i-sm');
-    b.setAttribute('aria-label', (on ? 'Unpin ' : 'Pin ') + pageLabel(p) + (on ? ' from' : ' to') + ' the sidebar');
-    b.setAttribute('data-tip', on ? 'Unpin from the sidebar' : 'Pin to the sidebar (Shift+Enter)');
-    b.onclick = (e) => { e.stopPropagation(); if (typeof sbTogglePin === 'function') sbTogglePin(v); paint(); };
-    return b;
+    return uiButton({ icon: on ? 'pin-off' : 'pin', iconCls: 'i-sm', size: 'sm', cls: 'ap-pin' + (on ? ' on' : ''),
+      aria: (on ? 'Unpin ' : 'Pin ') + pageLabel(p) + (on ? ' from' : ' to') + ' the sidebar', tip: on ? 'Unpin from the sidebar' : 'Pin to the sidebar (Shift+Enter)',
+      run: () => { if (typeof sbTogglePin === 'function') sbTogglePin(v); paint(); } });
   }
+  /** A page's sections as chips: three, then "+N" (UX_BLUEPRINT.md 3); a search shows every match. */
   function sectionChips(host, p, q) {
     const secs = pageSectionsOf(p);
     if (secs.length < 2) return;
     const row = document.createElement('div'); row.className = 'ap-secs';
-    for (const s of secs) {
-      if (q && typeof _palScore === 'function' && !_palScore(s.label, q) && !_apScore(p, q)) continue;
+    const hits = secs.filter(s => !(q && typeof _palScore === 'function' && !_palScore(s.label, q) && !_apScore(p, q)));
+    const all = !!q || _apOpenSecs.has(p.id) || hits.length <= 4;
+    for (const s of all ? hits : hits.slice(0, 3)) {
       const c = document.createElement('span'); c.className = 'ap-sec';
       c.textContent = s.label;
       row.appendChild(addItem(c, { page: p, section: s }));
+    }
+    if (!all) {
+      const c = document.createElement('span'); c.className = 'ap-sec ap-sec-more';
+      c.textContent = '+' + (hits.length - 3);
+      c.setAttribute('aria-label', `${hits.length - 3} more in ${pageLabel(p)}`);
+      c.title = hits.slice(3).map(s => s.label).join(', ');
+      row.appendChild(addItem(c, { expand: p.id }));
     }
     if (row.childNodes.length) host.appendChild(row);
   }
@@ -161,9 +169,8 @@ function openAllPages(o) {
             + (fresh ? '<span class="ap-new">New</span>' : badge ? `<span class="ap-badge">${esc(badge)}</span>` : '') + '</div>'
             + `<div class="ap-desc">${esc(off ? off.label : pageDesc(p))}</div>`;
           if (off && off.action) {
-            const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm ap-off-b'; b.textContent = off.action.label || 'Turn on';
-            b.onclick = (e) => { e.stopPropagation(); try { off.action.run(); } catch (x) { console.error('[all pages] turn on', x); } paint(); };
-            card.appendChild(b);
+            card.appendChild(uiButton({ label: off.action.label || 'Turn on', size: 'sm', cls: 'ap-off-b',
+              run: () => { try { off.action.run(); } catch (x) { console.error('[all pages] turn on', x); } paint(); } }));
           }
           card.querySelector('.ap-card-h').appendChild(pinBtn(p));
           grid.appendChild(addItem(card, { page: p }));
@@ -201,9 +208,7 @@ function openAllPages(o) {
     if (!items.length) {
       const e = document.createElement('div'); e.className = 'ap-empty';
       e.innerHTML = `${icon('search', 'i-lg')}<div><b>No page called that</b><span>Try another word, or search everything (tasks, people, settings) in the palette.</span></div>`;
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.textContent = 'Search everything';
-      b.onclick = () => { const v = input.value; close(true); openCommandPalette(v); };
-      e.appendChild(b);
+      e.appendChild(uiButton({ label: 'Search everything', size: 'sm', run: () => { const v = input.value; close(true); openCommandPalette(v); } }));
       list.appendChild(e);
     }
     // The cursor: the best match while you type, else where it was (or the page you are on).
@@ -214,16 +219,8 @@ function openAllPages(o) {
   }
   function paintFoot() {
     foot.innerHTML = `<span class="k"><span class="kbd-group"><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd></span>Move</span><span class="k"><kbd class="kbd">↵</kbd>Open</span><span class="k"><span class="kbd-group"><kbd class="kbd">Shift</kbd><kbd class="kbd">↵</kbd></span>Pin</span><span class="spacer"></span>`;
-    if (pagesFresh().length) {
-      const m = document.createElement('button'); m.type = 'button'; m.className = 'btn btn-ghost btn-sm'; m.textContent = 'Mark all as seen';
-      m.onclick = () => { const n = pagesMarkAllSeen(); if (n) { renderShell(); renderSidebar(); } paint(); input.focus(); };
-      foot.appendChild(m);
-    }
-    if (typeof openSidebarCustomiser === 'function') {
-      const c = document.createElement('button'); c.type = 'button'; c.className = 'btn btn-ghost btn-sm'; c.textContent = 'Customise sidebar…';
-      c.onclick = () => { close(true); openSidebarCustomiser(); };
-      foot.appendChild(c);
-    }
+    if (pagesFresh().length) foot.appendChild(uiButton({ label: 'Mark all as seen', kind: 'ghost', size: 'sm', run: () => { const n = pagesMarkAllSeen(); if (n) { renderShell(); renderSidebar(); } paint(); input.focus(); } }));
+    if (typeof openSidebarCustomiser === 'function') foot.appendChild(uiButton({ label: 'Customise sidebar…', kind: 'ghost', size: 'sm', run: () => { close(true); openSidebarCustomiser(); } }));
   }
   /** Up / Down: the item in the next row whose middle is nearest (a grid of cards, rows, chips). */
   function vertical(dir) {
@@ -256,7 +253,6 @@ function openAllPages(o) {
   function onDocKey(e) { if (!box.contains(e.target) || e.target === input) return; if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(false); } }
   input.addEventListener('keydown', onKey);
   input.addEventListener('input', () => paint());
-  box.querySelector('.ap-x').onclick = () => close(false);
   scrim.onclick = () => close(false);
   document.body.append(scrim, box);
   document.addEventListener('keydown', onDocKey, true);

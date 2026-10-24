@@ -628,7 +628,8 @@ function tgFindTimeDialog(o) {
     return row;
   };
   openDialog({
-    title: 'Find a time', width: 580,
+    title: 'Find a time', size: 'md', fixed: true,   // the slots change as you pick: the dialog keeps its size
+    
     body: (el, close) => {
       closeDlg = close;
       if (!v0) { el.appendChild(tgEl('div', 'field-label', 'With')); tgFriendPicker(el, chosen, { onChange: paint }); }

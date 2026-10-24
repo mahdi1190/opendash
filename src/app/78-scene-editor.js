@@ -949,7 +949,7 @@ async function sceneEditorOpen(ref, o) {
     rebuildB.disabled = true;
     try {
       const r = await _scedJson('POST', '/api/scene-editor/rebuild', {});
-      if (r.ok) { if (typeof toast === 'function') toast('Rebuilt. Reload the page to see the saved scene in the gallery.', { kind: 'ok', action: { label: 'Reload', run: () => location.reload() } }); }
+      if (r.ok) { if (typeof toast === 'function') toast('Rebuilt: reload the page to see the saved scene in the gallery', { kind: 'ok', action: { label: 'Reload', run: () => location.reload() } }); }
       else say(r.json.error || 'The rebuild failed.', 'err');
     } catch (e) { say(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'The rebuild failed.', 'err'); }
     rebuildB.disabled = false;
@@ -1000,8 +1000,7 @@ async function sceneEditorOpen(ref, o) {
     if (!p) { insp.innerHTML = '<p class="muted">Select a handle on the stage, or a placement in the list.</p>'; return; }
     const def = E.objDef(p.obj), cls = E.objClass(p.obj), g = E.placeGround(s, ed.cam, p);
     const v = g ? E.validAt(s, ed.cam, p.obj, g.x, g.d, { C: ed.C, fix: p.fix }) : null;
-    const info = document.createElement('p'); info.className = 'muted';
-    info.textContent = `${cls}${g ? ` · x ${E.r1(g.x)} m, ${E.r1(g.d)} m away` : ' · pixel placement'}${v && v.at ? ' · on ' + v.at.id + ' (' + v.at.kind + ')' : ''}${v && !v.ok && !v.exempt ? (v.snap ? ' · snaps ' + E.r1(v.snap.m) + ' m' : ' · REFUSED here') : ''}`;
+    const info = emptyLine(`${cls}${g ? ` · x ${E.r1(g.x)} m, ${E.r1(g.d)} m away` : ' · pixel placement'}${v && v.at ? ' · on ' + v.at.id + ' (' + v.at.kind + ')' : ''}${v && !v.ok && !v.exempt ? (v.snap ? ' · snaps ' + E.r1(v.snap.m) + ' m' : ' · REFUSED here') : ''}`);
     insp.appendChild(info);
     // swap: the same category, role and class
     const role = def && (def.tags || []).find(t => /^role:/.test(t));
@@ -1038,8 +1037,7 @@ async function sceneEditorOpen(ref, o) {
     if (!ed.addAt) { addSec.innerHTML = '<p class="muted">Click the ground on the stage to add an object there.</p>'; return; }
     const s = ed.rec.scene, at = E.surfaceAt(s, ed.addAt.x, ed.addAt.d);
     const kind = at ? at.kind : 'grass';
-    const info = document.createElement('p'); info.className = 'muted';
-    info.textContent = `${at ? at.id + ' (' + kind + ')' : 'ground'} · x ${E.r1(ed.addAt.x)} m, ${E.r1(ed.addAt.d)} m away. Only objects that may stand here are listed.`;
+    const info = emptyLine(`${at ? at.id + ' (' + kind + ')' : 'ground'} · x ${E.r1(ed.addAt.x)} m, ${E.r1(ed.addAt.d)} m away. Only objects that may stand here are listed.`);
     addSec.appendChild(info);
     const q = document.createElement('input'); q.type = 'search'; q.className = 'control control-sm'; q.placeholder = 'Filter objects…'; q.setAttribute('aria-label', 'Filter objects');
     const box = document.createElement('div'); box.className = 'sced-palette';
@@ -1057,7 +1055,7 @@ async function sceneEditorOpen(ref, o) {
         box.appendChild(b);
       }
       if (list.length > 80) { const m = document.createElement('span'); m.className = 'muted'; m.textContent = `${list.length - 80} more: type to filter`; box.appendChild(m); }
-      if (!list.length) { const m = document.createElement('span'); m.className = 'muted'; m.textContent = 'Nothing in the library may stand on ' + kind + '.'; box.appendChild(m); }
+      if (!list.length) box.appendChild(emptyLine('Nothing in the library may stand on ' + kind + '.'));
     };
     q.oninput = paint; paint();
     addSec.append(q, box);
@@ -1096,7 +1094,7 @@ async function sceneEditorOpen(ref, o) {
         pr.appendChild(b);
       }
       camSec.appendChild(pr);
-    } else { const m = document.createElement('p'); m.className = 'muted'; m.textContent = 'Camera presets appear when the presets file (70-scene-1camera.js) is loaded.'; camSec.appendChild(m); }
+    } else { camSec.appendChild(emptyLine('Camera presets appear when the presets file (70-scene-1camera.js) is loaded.')); }
   }
   function paintEnv() {
     envSec.replaceChildren();
@@ -1129,7 +1127,7 @@ async function sceneEditorOpen(ref, o) {
     envSec.append(field('Time', slider), out, (() => { const r = document.createElement('div'); r.className = 'sced-row'; r.append(field('Moment', moment), saveAt); return r; })(),
       (() => { const r = document.createElement('div'); r.className = 'sced-row'; r.append(field('Weather', wx), saveWx); return r; })(),
       (() => { const r = document.createElement('div'); r.className = 'sced-row'; r.append(field('Season', season), saveSeason); return r; })());
-    if (!wxOk) { const m = document.createElement('p'); m.className = 'muted'; m.textContent = 'The weather preview needs the v2 host (sceneHostSet); time and season preview now.'; envSec.appendChild(m); }
+    if (!wxOk) { envSec.appendChild(emptyLine('The weather preview needs the v2 host (sceneHostSet); time and season preview now.')); }
     const note = document.createElement('p'); note.className = 'muted'; note.textContent = 'Previews only: nothing here is saved unless you press Save as authored, then Save.'; envSec.appendChild(note);
   }
   const lintB = btn('Lint', '', () => lint(), 'btn-secondary'), lintOut = document.createElement('div');

@@ -161,7 +161,7 @@ function animFocusStart(min) {
   const it = _amPick('focus');
   uiPrefSet('focusBlock', { start: Clock.now(), ms, ref: it ? it.ref : '' });
   animFocusPaint();
-  if (typeof toast === 'function') toast(`Focus block: ${Math.round(ms / 60000)} minutes. The scene grows as you go.`, { icon: 'timer' });
+  if (typeof toast === 'function') toast(`Focus block: ${Math.round(ms / 60000)} minutes, and the scene grows as you go`, { icon: 'timer' });
 }
 function animFocusStop(quiet) {
   if (_amFocusRec()) uiPrefSet('focusBlock', null);
@@ -169,7 +169,7 @@ function animFocusStop(quiet) {
   const el = document.getElementById('ap-focus');
   if (el) el.remove();
   document.documentElement.classList.remove('ap-focusing');
-  if (!quiet && typeof toast === 'function') toast('Focus block stopped.', { icon: 'timer' });
+  if (!quiet && typeof toast === 'function') toast('Focus block stopped', { icon: 'timer' });
 }
 function animFocusPaint() {
   clearTimeout(_am.focusTimer);

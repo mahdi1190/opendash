@@ -90,7 +90,7 @@ function tgExpenseDialog(spaceId) {
   const who = new Set(tgMembers(v));
   let what, amount, cur, paid, date;
   openDialog({
-    title: 'Add a cost', width: 460,
+    title: 'Add a cost', size: 'sm',
     body: (el) => {
       const f = (label, inp) => { const l = tgEl('label', 'field'); l.append(tgEl('span', 'field-label', label), inp); el.appendChild(l); };
       what = document.createElement('input'); what.className = 'control'; what.maxLength = 120; what.placeholder = 'Dinner, train tickets, electricity…'; what.setAttribute('autofocus', ''); f('What', what);
@@ -197,7 +197,7 @@ function tgTripDialog(spaceId) {
   const v = tgVal(spaceId); if (!v) return;
   let s, e, p;
   openDialog({
-    title: 'The trip', width: 420,
+    title: 'The trip', size: 'sm',
     body: (el) => {
       const f = (label, inp) => { const l = tgEl('label', 'field'); l.append(tgEl('span', 'field-label', label), inp); el.appendChild(l); };
       p = document.createElement('input'); p.className = 'control'; p.maxLength = 120; p.value = v.meta.place || ''; p.placeholder = 'Where'; f('Where', p);
@@ -282,7 +282,7 @@ function tgBirthdayDialog(spaceId) {
   const me = tgMe(), cur = v.members[me] && v.members[me].birthday;
   let d;
   openDialog({
-    title: 'Your birthday', width: 380,
+    title: 'Your birthday', size: 'sm',
     body: (el) => {
       el.appendChild(tgEl('p', 'muted tg-sm', 'Only the day and month, and only with the people in this space. Share it in each space you like.'));
       d = document.createElement('input'); d.type = 'date'; d.className = 'control'; d.value = cur ? `2000-${cur}` : '';

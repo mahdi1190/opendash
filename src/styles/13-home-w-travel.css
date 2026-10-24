@@ -3,13 +3,12 @@
    (travel spec 5.1, prototype t5-surfaces: Trip widget M and S). Tokens only.
    ============================================================ */
 .hwt { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); container-type: inline-size; }
-.hwt-h { display: flex; align-items: center; gap: var(--space-2); min-width: 0; font-size: var(--text-sm); }
 .hwt-h.is-link { cursor: pointer; border-radius: var(--radius-md); }
 .hwt-h.is-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .hwt-h .tr-flag { --tr-flag-h: 13px; }
 .hwt-city { font-weight: var(--weight-semibold); }
 .hwt-when { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hwt-wx { display: inline-flex; align-items: center; gap: 4px; flex: none; padding: 2px var(--space-2); border-radius: var(--radius-full); background: var(--bg-subtle); font-size: var(--text-xs); color: var(--fg-muted); }
+.hwt-wx { display: inline-flex; align-items: center; gap: var(--space-1); flex: none; padding: var(--space-0-5) var(--space-2); border-radius: var(--radius-full); background: var(--bg-subtle); font-size: var(--text-xs); color: var(--fg-muted); }
 .hwt-wx b { color: var(--fg); }
 
 /* S: the time, big */
@@ -17,7 +16,7 @@
 .hwt-mot { flex: none; }
 .hwt-big { display: flex; flex-direction: column; min-width: 0; }
 .hwt-big > .hwt-t { font-size: var(--text-3xl); line-height: 1.1; font-weight: var(--weight-regular); font-variant-numeric: tabular-nums; }
-.hwt-home { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-sm); }
+.hwt-home { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-sm); }
 
 /* M / L: two dials */
 .hwt-dials { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
@@ -38,11 +37,11 @@
 .hwt-dial.is-night .hwt-hh, .hwt-dial.is-night .hwt-c { stroke: var(--surface); fill: var(--surface); }
 
 /* the trip, day by day */
-.hwt-tl { display: flex; flex-direction: column; gap: 1px; }
-.hwt-row { position: relative; display: flex; align-items: baseline; gap: var(--space-2); width: 100%; padding: 3px var(--space-1) 3px 18px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--fg); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
+.hwt-tl { display: flex; flex-direction: column; gap: 1px /* hairline */; }
+.hwt-row { position: relative; display: flex; align-items: baseline; gap: var(--space-2); width: 100%; padding: var(--space-0-5) var(--space-1) var(--space-0-5) var(--space-4); border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--fg); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
 .hwt-row:hover { background: var(--bg-muted); }
 .hwt-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.hwt-dot { position: absolute; left: 5px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: var(--radius-full); border: 1.5px solid var(--accent); background: var(--surface); }
+.hwt-dot { position: absolute; left: 5px; top: 50%; width: 7px; height: 7px; margin-top: calc(-1 * var(--space-1)); border-radius: var(--radius-full); border: 1.5px solid var(--accent); background: var(--surface); }
 .hwt-row.is-leg .hwt-dot { background: var(--accent); }
 .hwt-row.is-done .hwt-rt { text-decoration: line-through; color: var(--fg-muted); }
 .hwt-rd { flex: none; width: 76px; font-variant-numeric: tabular-nums; }
@@ -60,7 +59,7 @@
 
 /* L */
 .hwt-strip { display: flex; gap: var(--space-1); overflow-x: auto; }
-.hwt-sd { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 52px; padding: var(--space-1); border-radius: var(--radius-md); font-size: var(--text-xs); }
+.hwt-sd { display: flex; flex-direction: column; align-items: center; gap: var(--space-0-5); min-width: 52px; padding: var(--space-1); border-radius: var(--radius-md); font-size: var(--text-xs); }
 .hwt-sd.is-today { background: var(--accent-soft); }
 .hwt-hols { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .hwt-pack { display: flex; align-items: center; gap: var(--space-2); width: 100%; padding: var(--space-1) 0; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }

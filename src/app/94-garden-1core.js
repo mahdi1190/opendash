@@ -131,6 +131,45 @@ function _gdActivity(A, t0, now) {
   return first + _gdCumAt(A, d1) - _gdCumAt(A, d0);
 }
 function _gdStreakAt(A, d) { let n = 0, c = d; while (A.days.has(c) && A.days.get(c).n > 0 && n < 400) { n++; c = _gdAddDays(c, -1); } return n; }
+/* ---------- 2.18.1: what earned coins, per day (focus sessions and finished tasks; rules in 94-garden-0econ.js) ---------- */
+function _gdEconFrom(g) { return (g && g.seen && g.seen.econ2) || '9999-12-31'; }
+/** From the day the 2.18.1 rules began: earlier days keep the 2.18.0 amounts, so nobody loses coins. Set once, synced. */
+function _gdEconMark() {
+  const g = _gdG();
+  if (!g.since || g.seen.econ2 || !gardenReady()) return;
+  g.seen.econ2 = _gdToday(); _gd.walletKey = ''; _gd.memoKey = '';
+  if (typeof saveUI === 'function') saveUI();
+}
+/** Map(day -> {sessions: [{ms}], done: [{first, gapMs, estimate, loggedMs}]}) */
+function _gdEconInputs(A) {
+  if (A.econIn) return A.econIn;
+  const inp = new Map(), slot = (d) => { let r = inp.get(d); if (!r) inp.set(d, r = { sessions: [], done: [] }); return r; };
+  const tasks = new Map();
+  for (const t of ((typeof state !== 'undefined' && state && state.custom) || [])) if (t && t.id) tasks.set(t.id, t);
+  let list = [];
+  try { const st = typeof gameStats === 'function' ? gameStats() : null; list = (st && st.focus && st.focus.list) || []; } catch (e) { list = []; }
+  const minMs = GARDEN_ECON.minSessionMin * 60000, byTask = new Map();
+  for (const s of list) {
+    if (!s || !(Number(s.ms) >= minMs) || !s.d) continue;
+    slot(s.d).sessions.push({ ms: Number(s.ms) });
+    if (s.t) { let a = byTask.get(s.t); if (!a) byTask.set(s.t, a = []); a.push({ d: s.d, ms: Number(s.ms) }); }
+  }
+  const log = (typeof state !== 'undefined' && state && state.completionLog) || {};
+  for (const [id, arr] of Object.entries(log)) {
+    if (!Array.isArray(arr)) continue;
+    const t = tasks.get(id), rep = !!(t && t.recurrence && t.recurrence !== 'none');
+    const tss = arr.map(Number).filter(x => isFinite(x) && x > 0).sort((a, b) => a - b), days = new Set();
+    tss.forEach((ts, i) => {
+      const day = _gdDayOf(ts), first = rep ? !days.has(day) : i === 0;
+      days.add(day);
+      let logged = 0;
+      for (const x of byTask.get(id) || []) if (rep ? x.d === day : x.d <= day) logged += x.ms;
+      slot(day).done.push({ first, gapMs: t && Number(t.createdAt) > 0 ? ts - Number(t.createdAt) : -1, estimate: t ? Number(t.estimate) || 0 : 0, loggedMs: logged });
+    });
+  }
+  A.econIn = inp;
+  return inp;
+}
 
 /* ---------- weather, rain, time of day ---------- */
 const _GD_WET = new Set(['rain', 'drizzle', 'showers', 'thunder']);
@@ -319,8 +358,10 @@ function _gdResolve(items, seed) {
   }
   return out;
 }
+/** A daily garden task pays half from the 2.18.1 day on (they are clicks). */
+function gardenDailyCoins(def, day) { const ef = _gdEconFrom(_gdG()); return (day || _gdToday()) >= ef ? Math.max(1, Math.round(def.c * GARDEN_ECON.dailyShare)) : def.c; }
 function _gdRewardOf(kind, id, key) {
-  if (kind === 'dt') { const t = GARDEN_DAILY.find(x => x.id === id); return t ? { c: t.c, x: t.x, i: _gdResolve(t.i, 'dt|' + key + '|' + id) } : null; }
+  if (kind === 'dt') { const t = GARDEN_DAILY.find(x => x.id === id); return t ? { c: gardenDailyCoins(t, key), x: t.x, i: _gdResolve(t.i, 'dt|' + key + '|' + id) } : null; }
   if (kind === 'wq') { const t = GARDEN_QUESTS.find(x => x.id === id); return t ? { c: t.c, x: t.x, i: _gdResolve(t.i, 'wq|' + key + '|' + id) } : null; }
   if (kind === 'rib') { const r = GARDEN_RIBBONS.find(x => x.id === id); return r ? { c: r.reward.c || 0, x: 25, i: r.reward.i || null } : null; }
   return null;
@@ -346,16 +387,26 @@ function gardenWallet() {
   if (_gd.wallet && _gd.walletKey === key) return _gd.wallet;
   const items = {}, n = { planted: 0, harvests: 0, bouquets: 0, sold: 0, fed: 0, pruned: 0, bought: 0, wishes: 0, collected: 0, daily: 0, quests: 0 };
   let coins = 0, xp = 0, earned = 0, today = _gdToday();
-  // earned from the data since the garden began
+  // earned from the data since the garden began (2.18.0 rules before the econ2 day, the time-based rules from it)
+  let econToday = null;
   if (g.since) {
-    const qd = _gdGameQuestsByDay();
+    const qd = _gdGameQuestsByDay(), ef = _gdEconFrom(g), EI = _gdEconInputs(A);
     const pool = _gdSeedPool(p => p.rarity === 'common' && p.lv <= 2);
-    let run = _gdStreakAt(A, _gdAddDays(g.since, -1));
+    let run = _gdStreakAt(A, _gdAddDays(g.since, -1)), run2 = 0;
     for (let d = g.since, i = 0; d <= today && i < 3000; d = _gdAddDays(d, 1), i++) {
       const r = A.days.get(d); run = r && r.n > 0 ? run + 1 : 0;
       const e = _gdEarnDay(A, d, qd[d], run);
-      coins += e.c; earned += e.c;
-      for (let k = 0; k < e.packets; k++) { const id = pool[gardenHash('gd-packet|' + d + '|' + k) % pool.length]; items['seed:' + id] = (items['seed:' + id] || 0) + 1; }
+      let c = e.c, packets = e.packets;
+      if (d >= ef) {
+        const t = gardenEconDay(Object.assign({ sessions: [], done: [] }, EI.get(d), { run: run2 + 1 }));
+        run2 = t.base > 0 ? run2 + 1 : 0;
+        const legacy = d === ef ? e.c - 25 * (qd[d] || 0) : 0;   // the day it began, nobody earns less than the old rules gave
+        c = Math.max(legacy, t.coins) + 25 * (qd[d] || 0);
+        packets = d === ef ? Math.max(packets, t.packets) : t.packets;
+        if (d === today) econToday = t;
+      }
+      coins += c; earned += c;
+      for (let k = 0; k < packets; k++) { const id = pool[gardenHash('gd-packet|' + d + '|' + k) % pool.length]; items['seed:' + id] = (items['seed:' + id] || 0) + 1; }
     }
   }
   // the ledger and the bank
@@ -378,7 +429,7 @@ function gardenWallet() {
   for (const d of Object.values(g.decor)) if (d && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;
   for (const k of Object.keys(items)) if (items[k] < 0) items[k] = 0;
   const lv = gardenLevelOf(xp);
-  _gd.wallet = { coins: Math.max(0, Math.round(coins)), xp: Math.max(0, xp), level: lv, items, n, earned };
+  _gd.wallet = { coins: Math.max(0, Math.round(coins)), xp: Math.max(0, xp), level: lv, items, n, earned, econToday: econToday || gardenEconDay({ sessions: [], done: [] }), econFrom: _gdEconFrom(g) };
   _gd.walletKey = key;
   return _gd.wallet;
 }
@@ -393,7 +444,7 @@ function gardenWaterInfo(model) {
   const per = {};
   for (const d of Object.values(g.decor)) { const dd = d && gardenDecor(d.d); if (dd && dd.effect && dd.effect.kind === 'can' && (per[dd.id] || 0) < 2) { per[dd.id] = (per[dd.id] || 0) + 1; cap += dd.effect.n || 0; } }
   const A = _gdAct(), doneToday = A.days.has(today) ? A.days.get(today).n : 0;
-  const bonus = Math.min(10, 2 * doneToday);
+  const wal = gardenWallet(), bonus = today >= wal.econFrom ? wal.econToday.water : Math.min(10, 2 * doneToday);
   const used = Object.keys(g.wl[today] || {}).length;
   const rain = model ? model.rain : _gdRain(now);
   return { cap, bonus, used, left: Math.max(0, cap + bonus - used), raining: !!rain.now };
@@ -404,6 +455,7 @@ function _gdAreasOpen(level) { return GARDEN_AREAS.filter(a => level >= a.lv).ma
 function gardenModel(nowArg) {
   const g = _gdG();
   if (!g.since) gardenEnsure();
+  _gdEconMark();
   const now = nowArg || _gdNow();
   const A = _gdAct();
   const w = _gdWeather();
@@ -600,7 +652,7 @@ function gardenTick() {
       if (u.event && m.events.includes(u.event)) { const k = 'ev:' + p.id + ':' + today.slice(0, 4); if (!g.gr[k]) { g.gr[k] = today; changed = true; moments.push({ kind: 'grant', text: `${(GARDEN_EVENTS.find(e => e.id === u.event) || {}).label || 'An event'}: a free ${p.name} seed`, icon: 'gift', id: p.id }); } }
     }
     // daily tasks and the week's quests: paid once when done
-    for (const t of gardenDailyTasks(m)) if (t.done && !t.claimed) { (g.dt[today] = g.dt[today] || {})[t.id] = today; changed = true; moments.push({ kind: 'daily', text: `Garden task done: ${t.label} · +${t.def.c} coins`, icon: t.def.icon }); }
+    for (const t of gardenDailyTasks(m)) if (t.done && !t.claimed) { (g.dt[today] = g.dt[today] || {})[t.id] = today; changed = true; moments.push({ kind: 'daily', text: `Garden task done: ${t.label} · +${gardenDailyCoins(t.def)} coins`, icon: t.def.icon }); }
     const wk = _gdWeekFrom(today);
     for (const q of gardenWeekQuests(m)) if (q.done && !q.claimed) { (g.wq[wk] = g.wq[wk] || {})[q.id] = today; changed = true; moments.push({ kind: 'quest', text: `Garden quest complete: ${q.label} · +${q.def.c} coins`, icon: 'flag' }); }
     if (changed) { _gd.walletKey = ''; _gd.memoKey = ''; }
@@ -773,7 +825,7 @@ function gardenWater(uid, o) {
   pl.dh = Math.round(((Number(pl.dh) || 0) + p.dry) * 10) / 10;
   pl.w = m.now;
   (g.wl[today] = g.wl[today] || {})[uid] = 1;
-  _gdEmit('water', { uid });
+  _gdEmit('water', { uid, x: p.x, y: p.y, fp: p.fp });
   return _gdDone(o.quiet ? '' : `Watered the ${p.def.name.toLowerCase().replace(/^the /, '')}`, 'watering', mark, { icon: 'droplet', quiet: o.quiet });
 }
 /** Water every plant that wants it (the thirstiest first), as far as the can goes. */
@@ -804,7 +856,7 @@ function gardenFeed(uid) {
   const mark = _gdMark([['plants', uid], ['led', lk]]);
   pl.f = m.now; pl.fb = (Number(pl.fb) || 0) + 12;
   g.led[lk] = { d: m.today, k: 'f', i: { fertiliser: -1 }, x: 1, n: 1 };
-  _gdEmit('feed', { uid });
+  { const q = gardenPlantById(m, uid); _gdEmit('feed', { uid, x: q ? q.x : 0, y: q ? q.y : 0, fp: q ? q.fp : 1 }); }
   return _gdDone(`Fed the ${p.def.name.toLowerCase().replace(/^the /, '')}: half a day’s growth`, 'feeding', mark, { icon: 'flask-conical' });
 }
 function gardenPrune(uid) {
@@ -830,7 +882,7 @@ function gardenHarvest(uid) {
   if (!p.def.yield) return _gdNo(`${p.def.name} is grown for its looks`);
   if (!p.ripe) return _gdNo(p.nextIn ? `Not ready yet: about ${_gdHoursLabel(p.nextIn)}` : 'Not ready yet');
   const r = _gdHarvestOne(m, p);
-  _gdEmit('harvest', { id: p.def.id, n: r.n });
+  _gdEmit('harvest', { id: p.def.id, n: r.n, x: p.x, y: p.y, fp: p.fp, gold: !!r.gold });
   return _gdDone(`Picked ${r.n} ${r.what}${r.extra}`, 'harvesting', r.mark, { icon: 'shopping-basket' });
 }
 /** Every ripe plant at once: one save, one Undo. */
@@ -840,7 +892,7 @@ function gardenHarvestAll() {
   const marks = [];
   let items = 0, extra = '';
   for (const p of ready) { const r = _gdHarvestOne(m, p); marks.push(...r.mark); items += r.n; if (r.extra && !extra) extra = r.extra; }
-  _gdEmit('harvest', { n: items, plants: ready.length });
+  _gdEmit('harvest', { n: items, plants: ready.length, cells: ready.map(p => [p.x, p.y, p.fp, p.def.id]) });
   return _gdDone(`Harvested ${ready.length} plant${ready.length === 1 ? '' : 's'}: ${items} into your basket${extra}`, 'the harvest', marks, { icon: 'shopping-basket' });
 }
 function _gdHarvestOne(m, p) {
@@ -853,6 +905,9 @@ function _gdHarvestOne(m, p) {
   let extra = '';
   if ((p.def.cat === 'wild' || p.def.cat === 'flower') && rnd() < 0.01 + luck + (m.plants.some(q => q.def.id === 'four-leaf-clover') ? 0.02 : 0)) { items['seed:four-leaf-clover'] = 1; items.clover = 1; extra = ' · and a four-leaf clover!'; }
   else if (rnd() < 0.04 + luck) { const pool = _gdSeedPool(q => q.rarity === 'uncommon' || q.rarity === 'rare'); const id = pool[Math.floor(rnd() * pool.length)]; items['seed:' + id] = 1; extra = ` · a ${gardenPlant(id).name} seed fell out`; }
+  // 2.18.1: now and then a golden harvest, double (a small surprise; seeded so every device agrees)
+  const gold = gardenRand('gd-gold|' + uid + '|' + (p.hc || 0) + '|' + m.today)() < 0.06;
+  if (gold) { items['crop:' + p.def.id] = n * 2; n *= 2; extra += ' · a golden harvest, double!'; }
   const lk = 'h.' + m.today + '.' + uid + '.' + (p.hc || 0);
   const mark = _gdMark([['plants', uid], ['led', lk], ['disc', 'four-leaf-clover']]);
   g.led[lk] = { d: m.today, k: 'h', i: items, x: 3, n: 1 };
@@ -861,7 +916,7 @@ function _gdHarvestOne(m, p) {
   if (y.regrow > 0) { pl.hv = m.now; pl.hc = (Number(pl.hc) || 0) + 1; }
   else delete g.plants[uid];
   const what = y.item || (p.def.cat === 'flower' || p.def.cat === 'wild' || p.def.cat === 'water' ? `${p.def.name.toLowerCase()} stems` : p.def.name.toLowerCase());
-  return { mark, n, extra, what };
+  return { mark, n, extra, what, gold };
 }
 function gardenDig(uid) {
   const m = gardenModel(), p = gardenPlantById(m, uid);

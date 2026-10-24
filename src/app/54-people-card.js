@@ -180,7 +180,7 @@ function pcPersonView(inner, cur, keep) {
     const c = document.createElement('button'); c.type = 'button'; c.className = 'chip pc-mail';
     c.innerHTML = icon('at-sign', 'i-xs') + `<span>${esc(e)}</span>`;
     c.title = 'Copy the address';
-    c.onclick = () => { try { navigator.clipboard.writeText(e).then(() => toast('Address copied', { icon: 'copy' }), () => {}); } catch (err) { /* no clipboard */ } };
+    c.onclick = () => copyText(e, 'address');
     chips.appendChild(c);
   }
   const aliases = (p.aliases || []).filter(a => pplFold(a) !== pplFold(p.name));
@@ -217,7 +217,7 @@ function pcPersonView(inner, cur, keep) {
   inner.appendChild(top);
   if (p.stub) {
     const c = document.createElement('div'); c.className = 'callout warn pc-stub';
-    c.innerHTML = icon('info') + '<div class="grow">Tasks pointed at this id with no profile, so a basic one was made. Add a name and email so it links properly.</div>';
+    c.innerHTML = icon('info') + '<div class="grow">Made from tasks that mention them. Add a name and email to finish.</div>';
     inner.appendChild(c);
   }
 
@@ -563,7 +563,7 @@ function pcOpenPictures(id, tab) {
     for (const b of btns) if (b) r.querySelector('.pc-src-b').appendChild(b);
     return r;
   };
-  const btn = (label, cls, run2, ic) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + (cls || 'btn-secondary'); b.innerHTML = (ic ? icon(ic) : '') + `<span>${esc(label)}</span>`; b.onclick = run2; return b; };
+  const btn = (label, cls, run2, ic) => uiButton({ label, icon: ic, kind: /primary/.test(cls || '') ? 'primary' : /ghost/.test(cls || '') ? 'ghost' : 'secondary', size: 'sm', bubble: true, run: (e) => run2(e) });
   const paint = () => {
     const p = getPerson(id); if (!p || !bodyEl) return;
     tabsEl.innerHTML = '';
@@ -587,10 +587,10 @@ function pcOpenPictures(id, tab) {
     const list = document.createElement('div'); list.className = 'pc-src-list';
     if (cur === 'photo') {
       const kind = pcRefKind(p.photo);
-      list.appendChild(opt('upload', 'Upload a picture', 'Cropped to a square, resized to 256 px and kept in your data folder. PNG, JPEG, WebP or GIF.', [btn('Choose a picture…', 'btn-primary', () => fileIn.click(), 'image')], { on: kind === 'file' }));
+      list.appendChild(opt('upload', 'Upload a picture', 'Kept in your data folder. PNG, JPEG, WebP or GIF.', [btn('Choose a picture…', 'btn-primary', () => fileIn.click(), 'image')], { on: kind === 'file' }));
       list.appendChild(opt('sparkle', 'Emoji or symbol', 'Shown instead of their initials when there is no picture.', [btn('Choose…', '', () => { close(); czOpenCustomise('person', id, null); })], { on: !kind && !!p.icon }));
       const g = _pcConnected('gmail') || _pcConnected('google') || _pcConnected('calendar');
-      list.appendChild(opt('plug', 'From Gmail or Google', `Not available: the Gmail and Google Calendar connections${g ? '' : ' (when connected)'} only share names and email addresses, not contact photos, so the dashboard cannot fetch their Google picture.`, [], { cls: 'is-off' }));
+      list.appendChild(opt('plug', 'From Gmail or Google', `Not available: your Google connection${g ? '' : ' (when connected)'} doesn’t share contact photos.`, [], { cls: 'is-off' }));
       const emails = pplPersonEmails(p);
       if (!emails.length) list.appendChild(opt('globe', 'Gravatar', 'Gravatar needs an email address. Add one in Edit details first.', [], { cls: 'is-off' }));
       else if (kind === 'gravatar') list.appendChild(opt('globe', 'Gravatar', 'On for this person: the picture loads from gravatar.com. If they have none, their initials show.', [btn('Stop using Gravatar', '', () => set('photo', '', 'Gravatar off for ' + p.name))], { on: true }));
@@ -598,7 +598,7 @@ function pcOpenPictures(id, tab) {
         const sel = document.createElement('select'); sel.className = 'control control-sm pc-grav-mail'; sel.setAttribute('aria-label', 'Address to look up');
         sel.innerHTML = emails.map(e => `<option value="${escAttr(e)}">${esc(e)}</option>`).join('');
         const go = btn('Use Gravatar', '', () => run(async () => _pcApply([{ op: 'person.update', id, photo: 'gravatar:' + await _pcSha256(sel.value) }], 'Gravatar on for ' + p.name)), 'globe');
-        const o2 = opt('globe', 'Gravatar (opt-in, this person only)', 'Gravatar is a public picture service. Turning it on sends a fingerprint of this address (a SHA-256 hash) to gravatar.com every time the picture loads, and Gravatar sees your IP address. Nothing else is sent.', [emails.length > 1 ? sel : null, go]);
+        const o2 = opt('globe', 'Gravatar (opt-in, this person only)', 'Asks gravatar.com for their picture each time it loads. Gravatar sees your IP address.', [emails.length > 1 ? sel : null, go]);
         list.appendChild(o2);
       }
       if (p.photo) list.appendChild(opt('x', 'No picture', 'Back to their initials (or symbol).', [btn('Remove picture', 'btn-ghost', () => set('photo', '', 'Picture removed'))]));
@@ -625,7 +625,7 @@ function pcOpenPictures(id, tab) {
     bodyEl.append(list, fileIn);
   };
   const close = openDialog({
-    title: `Pictures for ${p0.name}`, width: 600, resizeKey: 'person-pictures',
+    title: `Pictures for ${p0.name}`, size: 'md', fixed: true, resizeKey: 'person-pictures',
     body: (el) => {
       el.classList.add('pc-pics');
       tabsEl = document.createElement('div'); tabsEl.className = 'tabs pc-pic-tabs'; tabsEl.setAttribute('role', 'tablist');
@@ -720,7 +720,7 @@ function pcOpenLinkTasks(id) {
     });
   };
   openDialog({
-    title: `Link tasks to ${p.name}`, width: 640, resizeKey: 'person-link-tasks',
+    title: `Link tasks to ${p.name}`, size: 'md', fixed: true, resizeKey: 'person-link-tasks',
     body: (el) => {
       el.classList.add('pc-linkdlg');
       linkedHost = document.createElement('div'); linkedHost.className = 'pc-linked';
@@ -787,7 +787,7 @@ function pcOpenAssign(o) {
     summary();
   };
   openDialog({
-    title: 'Assign people to tasks', width: 720, resizeKey: 'people-assign',
+    title: 'Assign people to tasks', size: 'lg', fixed: true, resizeKey: 'people-assign',
     body: (el) => {
       el.classList.add('pc-assign');
       el.insertAdjacentHTML('beforeend', '<div class="pc-th">1. Who<span class="subtle">tick one or more</span></div>');
@@ -826,14 +826,14 @@ function pcOpenMailPeople() {
     head.appendChild(chk);
     bodyEl.appendChild(head);
     if (!loaded) {
-      bodyEl.insertAdjacentHTML('beforeend', `<div class="pc-empty">${icon('loader-circle', 'i-sm')} Reading the email snapshot…</div>`);
+      bodyEl.insertAdjacentHTML('beforeend', `<div class="pc-empty">${icon('loader-circle', 'i-sm')} Reading your recent email…</div>`);
       if (typeof InboxStore !== 'undefined') Promise.resolve(InboxStore.load()).then(paint, paint);
       return;
     }
     const all = _pcMailCands();
     const attach = all.filter(c => c.match && getPerson(c.match));
     const fresh = all.filter(c => !(c.match && getPerson(c.match)));
-    if (!all.length) { mountEmptyState(bodyEl, { icon: 'user-check', title: 'Everyone is in People', text: 'Nobody in the recent email is missing. Check email again later for new people.' }); return; }
+    if (!all.length) { mountEmptyState(bodyEl, { icon: 'user-check', title: 'Everyone is in People', text: 'Everyone in your recent email is in People.' }); return; }
     if (attach.length) {
       bodyEl.insertAdjacentHTML('beforeend', `<div class="pc-th">New addresses for people you have<span class="subtle">${attach.length}</span></div>`);
       for (const c of attach) {
@@ -879,7 +879,7 @@ function pcOpenMailPeople() {
     });
   };
   openDialog({
-    title: 'Find people in emails', width: 640, resizeKey: 'people-from-email',
+    title: 'Find people in emails', size: 'md', fixed: true, resizeKey: 'people-from-email',
     body: (el) => { el.classList.add('pc-maildlg'); bodyEl = el; paint(); },
     actions: [{ label: 'Close' }],
   });
@@ -908,8 +908,8 @@ function pcCheckEmail(btn, then, o) {
       if (InboxStore.running()) { setTimeout(wait, 1500); return; }
       free();
       const job = InboxStore.st && InboxStore.st.job;
-      if (r && r.noSources) toast('No mailbox is connected yet.', { kind: 'err', action: { label: 'Open Connections', run: () => (window.Connections ? Connections.open('gmail') : setView('connections')) } });
-      else if (job && job.state === 'error') toast(job.error || 'Email could not be checked.', { kind: 'err', retry: () => pcCheckEmail(null, then, o) });
+      if (r && r.noSources) toast('No mailbox is connected yet.', { icon: 'plug', action: { label: 'Open Connections', run: () => (window.Connections ? Connections.open('gmail') : setView('connections')) } });
+      else if (job && job.state === 'error') toastError('check your email', new Error(job.error || 'something went wrong'), () => pcCheckEmail(null, then, o));
       else if (!o.quiet) {
         let n = 0;
         try { n = _pcMailCands().length; } catch (e) { n = 0; }
@@ -919,7 +919,7 @@ function pcCheckEmail(btn, then, o) {
       if (then) then(r);
     };
     wait();
-  }, (e) => { free(); toast(netErrorMessage(e), { kind: 'err', retry: () => pcCheckEmail(null, then, o) }); });
+  }, (e) => { free(); toastError('check your email', e, () => pcCheckEmail(null, then, o)); });
 }
 
 /* ---------- the People page's actions ---------- */

@@ -104,10 +104,13 @@ const GARDEN_CAT_ORDER = _gdF(['flower', 'wild', 'herb', 'veg', 'fruit', 'tree',
                wants water (default 24; 0 = never: pond plants), fp: footprint 1 or 2 (2 x 2 cells), areas:
                override the category's areas, attracts: visitor ids, night: opens only at night, glow: glows
                after dark, special: engine rules ('heart' = grows with every task you ever finished), blurb. */
+/* 2.18.1: prices about 2x for cheap things up to 3x for dear ones (the early curve stays smooth: a first daisy is 6). */
+function _gdUp(p) { p = Number(p) || 0; if (p <= 0) return 0; if (p <= 6) return Math.ceil(p * 2); if (p <= 40) return Math.round(p * 2.5); return Math.round(p * 3); }
 function _gP(id, name, cat, rarity, grow, seasons, look, more) {
   const m = more || {};
   const r = Object.assign({ id, name, cat, rarity, grow, seasons: seasons === 'all' ? GARDEN_SEASONS : _gdF(seasons), look: _gdF(Object.assign({ h: 0.7 }, look)) }, m);
   if (r.price === undefined) r.price = { common: 5, uncommon: 14, rare: 36, epic: 90, legendary: 0 }[rarity] + (grow === 'slow' ? 3 : grow === 'tree' ? 12 : grow === 'ancient' ? 30 : 0);
+  r.price = _gdUp(r.price);
   if (r.lv === undefined) r.lv = 1;
   if (r.thirst === undefined) r.thirst = cat === 'water' ? 0 : cat === 'succulent' ? 96 : cat === 'tree' ? 48 : cat === 'herb' ? 30 : 24;
   if (r.fp === undefined) r.fp = 1;
@@ -268,6 +271,7 @@ const _GD_PLANT = new Map(GARDEN_PLANTS.map(p => [p.id, p]));
    effect {kind, ...} (94-garden-1core.js applies it), areas (only there), look {c, c2, h}, blurb. */
 function _gD(id, name, cat, more) {
   const r = Object.assign({ id, name, cat, w: 1, h: 1, layer: 'object', price: 10, lv: 1 }, more || {});
+  r.price = _gdUp(r.price);
   r.look = _gdF(Object.assign({ h: 0.6 }, r.look || {}));
   if (r.effect) r.effect = _gdF(r.effect);
   if (r.unlock) r.unlock = _gdF(r.unlock);
@@ -443,14 +447,14 @@ const GARDEN_LAWN = _gdF({ id: 'lawn', name: 'Lawn', lv: 1, tile: 'grass', cats:
 const _GD_AREA = new Map(GARDEN_AREAS.map(a => [a.id, a]));
 
 /* ---------- tools, bouquets, levels ---------- */
-const GARDEN_TOOLS = _gdRows([
+const GARDEN_TOOLS = _gdRows(([
   { id: 'can-2', name: 'Bigger watering can', kind: 'can', n: 4, price: 60, lv: 3, icon: 'droplet', blurb: 'Four more cans of water every day.' },
   { id: 'can-3', name: 'Copper watering can', kind: 'can', n: 4, price: 150, lv: 7, needs: 'can-2', icon: 'droplets', blurb: 'Four more again, and it shines.' },
   { id: 'can-4', name: 'Golden watering can', kind: 'can', n: 6, price: 400, lv: 12, needs: 'can-3', icon: 'droplets', blurb: 'The finest can there is: six more a day.' },
   { id: 'hose', name: 'Garden hose', kind: 'hose', price: 120, lv: 6, icon: 'waves', blurb: 'Water a whole row with one click.' },
   { id: 'golden-shears', name: 'Golden shears', kind: 'shears', price: 200, lv: 10, icon: 'scissors', blurb: 'Pruning finds a cutting twice as often.' },
   { id: 'fertiliser', name: 'Fertiliser', kind: 'consumable', price: 6, lv: 1, icon: 'flask-conical', blurb: 'A feed gives a plant half a day’s growth.' },
-]);
+]).map(x => Object.assign({}, x, { price: _gdUp(x.price) })));
 const _GD_TOOL = new Map(GARDEN_TOOLS.map(t => [t.id, t]));
 /* Bouquets: the first style whose rule the chosen flowers meet (gardenBouquetOf). n = how many stems at least. */
 const GARDEN_BOUQUETS = _gdRows([

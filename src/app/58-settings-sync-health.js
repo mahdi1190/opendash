@@ -277,7 +277,7 @@ function syncChangesRow(card, st) {
 /* ---------- Review (clashes) ---------- */
 /** The two buttons of a clash: [[keep, label, primary]]. */
 function syncReviewChoices(c) {
-  if (c.kind === 'edit-after-delete') return [['kept', 'Keep it deleted'], ['lost', 'Bring it back (' + (c.lost.mine ? 'my' : c.lost.by + "'s") + ' edit)']];
+  if (c.kind === 'edit-after-delete') return [['kept', 'Keep it deleted'], ['lost', 'Bring it back']];
   if (c.kept.mine) return [['kept', 'Keep mine'], ['lost', 'Keep ' + c.lost.by + "'s"]];
   if (c.lost.mine) return [['lost', 'Keep mine'], ['kept', 'Keep ' + c.kept.by + "'s"]];
   return [['kept', 'Keep ' + c.kept.by + "'s"], ['lost', 'Use ' + c.lost.by + "'s"]];
@@ -291,7 +291,7 @@ async function _shResolve(c, keep) {
   syncReviewLoad();
 }
 function syncReviewPage(el) {
-  const card = _settingsCard('Review', 'Changed on two computers at once. The later change was kept; pick the other here.');
+  const card = _settingsCard('Review', 'Something of yours changed on two computers at once. The later change was kept; pick the other one here if you want it.');
   const r = _shReview;
   if (!r) { card.body.appendChild(_syncEl('div', 'set-h', 'Reading…')); syncReviewLoad(); }
   else if (r.error) card.body.appendChild(_syncEl('div', 'sync-status sync-err', r.error));
@@ -300,7 +300,8 @@ function syncReviewPage(el) {
     const list = _syncEl('div', 'sh-review'); list.setAttribute('role', 'list');
     for (const c of r.items) {
       const row = _syncEl('div', 'sh-rev'); row.setAttribute('role', 'listitem');
-      const what = (c.what ? c.what.charAt(0).toUpperCase() + c.what.slice(1) : 'Item') + (c.name ? ' "' + c.name + '"' : '') + (c.field ? ' · ' + c.field : '');
+      // 2.17.2: the server's plain sentence ("On Mahdi Work you changed the task "X" after this computer deleted it.")
+      const what = c.text || ((c.what ? c.what.charAt(0).toUpperCase() + c.what.slice(1) : 'Item') + (c.name ? ' "' + c.name + '"' : '') + (c.field ? ' · ' + c.field : ''));
       row.appendChild(_syncEl('div', 'sh-rev-t', what));
       const sides = _syncEl('div', 'sh-rev-sides');
       const side = (s, kept) => { const d = _syncEl('div', 'sh-rev-side' + (kept ? ' is-kept' : '')); d.appendChild(_syncEl('div', 'sh-rev-by', (s.mine ? 'This computer' : s.by) + (kept ? ' · kept now' : ''))); d.appendChild(_syncEl('div', 'sh-rev-v', s.value)); return d; };

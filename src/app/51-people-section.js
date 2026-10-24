@@ -92,7 +92,7 @@ function _pplGroups(list) {
 /* ---------- section ---------- */
 registerSection('people', {
   group: 'tasks',
-  layout: 'bare',
+  // The shared page header draws the title; the one primary action and the rest go through headerActions (UI_CLEANUP_PLAN.md 3.3).
   match: v => v === 'people' || (/^person:./.test(v) && !!getPerson(v.slice(7))),
   title: v => { if (v.startsWith('person:')) { const p = getPerson(v.slice(7)); return p ? p.name : 'Person'; } return 'People'; },
   crumb: v => { if (v.startsWith('person:')) { const p = getPerson(v.slice(7)); return [{ label: 'People', view: 'people' }, p ? p.name : v.slice(7)]; } return ['People']; },
@@ -101,6 +101,18 @@ registerSection('people', {
     renderPeoplePage(container, view.startsWith('person:') ? view.slice(7) : null, { entering });
   },
   unmount() { _pplEntered = false; },
+  headerActions() {
+    const hasHidden = _pplCalloutHidden || (state.peopleIgnoredNames || []).length;
+    return {
+      primary: { label: 'Add person', icon: 'user-plus', run: () => openPersonEditor(null) },
+      more: [
+        { label: 'Review link suggestions…', icon: 'link', run: () => openLinkSuggestions() },
+        { label: 'Link people when a task is created', icon: state.peopleAutoLink !== false ? 'check' : 'wand-sparkles',
+          run: () => { state.peopleAutoLink = state.peopleAutoLink === false; saveData(); toast(state.peopleAutoLink === false ? 'New tasks will not be linked automatically' : 'New tasks link the people their title names', { icon: 'link' }); } },
+        ...(hasHidden ? [{ label: 'Show the names callout again', icon: 'eye', run: () => { _pplCalloutHidden = false; state.peopleIgnoredNames = []; saveData(); renderMain(); } }] : []),
+      ],
+    };
+  },
 });
 
 registerPage({ id: 'people', view: 'people', match: v => v === 'people' || /^person:./.test(String(v || '')), label: 'People', icon: 'users', area: 'tasks', order: 120,
@@ -119,9 +131,10 @@ function renderPeoplePage(container, selId, o) {
   wrap.appendChild(page);
   container.appendChild(wrap);
 
-  // Header
-  const ph = document.createElement('div'); ph.className = 'ph';
-  ph.innerHTML = `<h1>People</h1><span class="ph-sub">${all.length} contact${all.length === 1 ? '' : 's'}</span>`;
+  // The title, Add person and the More menu live in the shared page header (headerActions above); this row is the page's own controls.
+  const ph = document.createElement('div'); ph.className = 'ph ppl-bar';
+  const cnt = document.createElement('span'); cnt.className = 'ph-sub'; cnt.textContent = `${all.length} contact${all.length === 1 ? '' : 's'}`;
+  ph.appendChild(cnt);
   const acts = document.createElement('div'); acts.className = 'ph-actions';
   const filt = document.createElement('label'); filt.className = 'input input-sm ppl-filter';
   filt.innerHTML = icon('search');
@@ -137,30 +150,13 @@ function renderPeoplePage(container, selId, o) {
     b.onclick = () => { if (pref.mode === k) return; pref.mode = k; saveUI(); renderMain(); };
     seg.appendChild(b);
   }
-  const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-primary';
-  add.innerHTML = icon('user-plus', 'i-sm') + '<span>Add person</span>';
-  add.onclick = () => openPersonEditor(null);
-  // The "..." menu only appears once there is something to bring back (mockup 04
-  // has no menu here): the callout's Review all, the sidebar's link button and
-  // the suggestions dialog's switch cover the other two items.
-  const more = document.createElement('button'); more.type = 'button'; more.className = 'btn-icon'; more.innerHTML = icon('ellipsis');
-  more.hidden = !_pplCalloutHidden && !(state.peopleIgnoredNames || []).length;
-  more.setAttribute('aria-label', 'More people actions'); more.setAttribute('data-tip', 'More');
-  more.onclick = () => openMenu(more, [
-    { label: 'Review link suggestions…', icon: 'link', run: () => openLinkSuggestions() },
-    { label: 'Link people when a task is created', icon: 'wand-sparkles', checked: () => state.peopleAutoLink !== false,
-      run: () => { state.peopleAutoLink = state.peopleAutoLink === false; saveData(); toast(state.peopleAutoLink === false ? 'New tasks will not be linked automatically' : 'New tasks link the people their title names', { icon: 'link' }); } },
-    'sep',
-    { label: 'Show the names callout again', icon: 'eye', hidden: () => !_pplCalloutHidden && !(state.peopleIgnoredNames || []).length,
-      run: () => { _pplCalloutHidden = false; state.peopleIgnoredNames = []; saveData(); renderMain(); } },
-  ], { align: 'end', width: 300 });
-  acts.append(filt, seg, add, more);
+  acts.append(filt, seg);
   ph.appendChild(acts);
   page.appendChild(ph);
   if (typeof pcPeopleToolbar === 'function') page.appendChild(pcPeopleToolbar());   // 54-people-card.js
 
   if (!all.length) {
-    mountEmptyState(page, { icon: 'users', title: 'No people yet', text: 'Add the people you work with. Tasks that mention them link automatically, and you see what you owe each of them and what you are waiting on.' });
+    mountEmptyState(page, { icon: 'users', title: 'No people yet', text: 'Add the people you work with. Tasks that name them link by themselves.', actions: [{ label: 'Add person', icon: 'user-plus', primary: true, run: () => openPersonEditor(null) }] });
     const sugBox = document.createElement('div'); page.appendChild(sugBox);
     _pplCallout(sugBox);
   } else {
@@ -174,7 +170,7 @@ function renderPeoplePage(container, selId, o) {
     _pplPanel(panel, sel);
   } else if (selId && !sel) {
     const panel = document.createElement('aside'); panel.className = 'ppl-panel';
-    mountEmptyState(panel, { icon: 'user-x', title: 'Not in People', text: 'Nobody with this id. They may have been merged or deleted.' });
+    mountEmptyState(panel, { icon: 'user-x', title: 'Not in People', text: 'This person isn’t here any more. They may have been merged or deleted.' });
     wrap.appendChild(panel);
   }
   _pplPaintBody();
@@ -208,7 +204,7 @@ function _pplCallout(box) {
   items.slice(0, SHOW).forEach((it, i) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip';
     b.innerHTML = icon(it.orphan ? 'link-2-off' : 'user-plus', 'i-xs') + `<span>${esc(it.label)}</span><span class="subtle">· ${it.count}${i === 0 ? ` task${it.count === 1 ? '' : 's'}` : ''}</span>`;
-    b.title = it.orphan ? `Tasks point at “${it.label}” but there is no profile: create it` : `Add ${it.label} to People`;
+    b.title = it.orphan ? `Tasks mention “${it.label}”, who isn’t in People yet: add them` : `Add ${it.label} to People`;
     b.onclick = () => it.orphan ? openPersonEditor(null, { id: it.id, name: it.label.replace(/[-_]+/g, ' ').replace(/(^|\s)\p{Ll}/gu, m => m.toUpperCase()) }) : openPersonEditor(null, { name: it.label });
     chips.appendChild(b);
   });
@@ -412,7 +408,7 @@ function _pplStreamsFromTasks(tasks) {
 function _pplPanel(el, p) {
   const f = _pplFacts(p);
   const top = document.createElement('div'); top.className = 'ppl-panel-top';
-  const mk = (ic, label, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-icon btn-sm'; b.innerHTML = icon(ic, 'i-sm'); b.setAttribute('aria-label', label); b.setAttribute('data-tip', label); b.onclick = run; return b; };
+  const mk = (ic, label, run) => uiButton({ icon: ic, iconCls: 'i-sm', size: 'sm', tip: label, aria: label, bubble: true, run: (e) => run(e) });
   const doneN = f.tasks.length - f.open.length;
   const moreBtn = mk('ellipsis', 'More', () => openMenu(moreBtn, [
     { label: p.pinned ? 'Unpin from sidebar' : 'Pin to sidebar', icon: p.pinned ? 'pin-off' : 'pin', run: () => { updatePersonFields(p.id, { pinned: !p.pinned }); render(); } },
@@ -437,7 +433,7 @@ function _pplPanel(el, p) {
   el.appendChild(hero);
   if (p.stub) {
     const c = document.createElement('div'); c.className = 'callout warn ppl-stub';
-    c.innerHTML = icon('info') + '<div class="grow">Tasks pointed at this id with no profile, so a basic one was made. Add a name and email so it links properly.</div>';
+    c.innerHTML = icon('info') + '<div class="grow">Made from tasks that mention them. Add a name and email to finish.</div>';
     el.appendChild(c);
   }
 
@@ -636,7 +632,7 @@ function _pplMailInto(box, p) {
   }
   if (cached && !gmail && gst && (gst.state === 'auth' || gst.status === 'auth')) { msg('circle-alert', 'Gmail sign-in expired. <button type="button" class="link ppl-conn">Reconnect</button>'); }
   else if (cached && cached.err && !gmail) { msg('mail-x', 'Gmail is not connected. <button type="button" class="link ppl-conn">Connect</button>'); }
-  else if (cached) { msg('inbox', gmail ? 'No recent email with ' + esc(_pplFirst(p)) + '.' : 'Nothing in the email snapshot. <button type="button" class="link ppl-conn">Connect Gmail</button>'); }
+  else if (cached) { msg('inbox', gmail ? 'No recent email with ' + esc(_pplFirst(p)) + '.' : 'No recent email. <button type="button" class="link ppl-conn">Connect Gmail</button>'); }
   else {
     msg('loader-circle', 'Looking for recent email…');
     // Only repaint once there is an answer in the cache: fetchPersonEmails
@@ -645,7 +641,7 @@ function _pplMailInto(box, p) {
     fetchPersonEmails(p.id).then(() => {
       if (!box.isConnected) return;
       if (_pplMail[p.id]) _pplMailInto(box, p);
-      else msg('mail', 'Recent email shows here once the OpenDash server is running.');
+      else msg('mail', 'Recent email shows here when OpenDash is running.');
     }, () => {});
     return;
   }
@@ -662,7 +658,7 @@ function openPersonEditor(id, prefill, o) {
   const F = {};
   const groups = [...new Set((state.people || []).map(x => x && x.group).filter(Boolean))].sort();
   openDialog({
-    title: p ? `Edit ${p.name}` : 'Add person', width: 560,
+    title: p ? `Edit ${p.name}` : 'Add person', size: 'md',
     body: (el) => {
       el.classList.add('ppl-form');
       const field = (label, input, hint) => {
@@ -754,7 +750,7 @@ function openPersonMerge(fromId) {
   const others = _pplVisible().filter(p => p.id !== a.id).sort((x, y) => String(x.name).localeCompare(String(y.name)));
   let sel = null, info = null;
   openDialog({
-    title: `Merge ${a.name} into…`, width: 480,
+    title: `Merge ${a.name} into…`, size: 'sm',
     body: (el) => {
       const p = document.createElement('p'); p.className = 'muted';
       p.textContent = `Use this for duplicates. ${a.name}'s task links, emails, aliases and notes move to the person you pick; ${a.name}'s name becomes an alias.`;
@@ -863,7 +859,7 @@ function openLinkSuggestions(tab) {
     } else {
       if (!d.names.length && !d.orphans.length) { mountEmptyState(bodyEl, { icon: 'user-check', title: 'No new names', text: 'Every name in your open tasks belongs to someone in People.' }); return; }
       const hint = document.createElement('div'); hint.className = 'subtle ppl-sug-head';
-      hint.textContent = 'Capitalised names in your open tasks that match nobody, and ids tasks point at with no profile. Add the people; ignore the rest (places, companies, books).';
+      hint.textContent = 'Names in your open tasks that match nobody. Add the people; ignore the rest (places, companies, books).';
       bodyEl.appendChild(hint);
       for (const [oid, r] of d.orphans) {
         const row = document.createElement('div'); row.className = 'ppl-name-row';
@@ -907,7 +903,7 @@ function openLinkSuggestions(tab) {
     }
   };
   openDialog({
-    title: 'People in your tasks', width: 640,
+    title: 'People in your tasks', size: 'md', fixed: true,
     body: (el) => {
       el.closest('.modal').classList.add('ppl-sug-modal');
       tabsEl = document.createElement('div'); tabsEl.className = 'tabs ppl-sug-tabs';

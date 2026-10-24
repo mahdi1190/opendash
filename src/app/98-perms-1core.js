@@ -203,10 +203,15 @@ function _pmEngineShared(friendId, key) {
   const v = f && f[key];
   return v && typeof v === 'object' ? (v.b && typeof v.b === 'object' ? v.b : v) : null;
 }
-/** "Show friends when I'm around" in the Friends tab (presence also needs it). */
+/** Online status is on for everyone (Friends > settings; presence also needs it). */
 function permsPresenceSwitchOn() {
   const F = _pmFriendsApi();
   try { const me = F && typeof F.me === 'function' ? F.me() : null; return !!(me && me.prefs && me.prefs.presence && me.prefs.presence.share); } catch (e) { return false; }
+}
+/** "Turn it on" in Privacy: the same switch as Friends' Online status (96-friends-0core.js friendsPresenceShare). -> Promise */
+function permsPresenceTurnOn() {
+  if (typeof friendsPresenceShare !== 'function') return Promise.reject(new Error('Friends isn’t ready'));
+  return friendsPresenceShare(true);
 }
 /** {mode, at, got, until?, data} | null for tasks, calendar, money, locations, memories (a load starts when needed). */
 function friendsDataInfo(friendId, scope) {

@@ -55,7 +55,7 @@ function srvRememberScheme(scheme) {
 function _srvErrText(e) {
   const m = String((e && e.message) || e || '');
   const down = typeof netIsDown === 'function' ? netIsDown(e) : /failed to fetch|networkerror|load failed|network request failed/i.test(m);
-  if (down) return 'the OpenDash server isn\'t running';
+  if (down) return 'OpenDash isn\'t running';
   if (typeof netErrorMessage === 'function') return netErrorMessage(e, 'something went wrong');
   return m || 'something went wrong';
 }
@@ -135,7 +135,7 @@ async function srvBackOnline(h) {
   if (typeof srvSettingsInvalidate === 'function') srvSettingsInvalidate();   // Settings > Server shows the new process
   const ok = await srvResync(h);
   if (h && srvBuildChanged(h)) { srvReloadForNewBuild(); return; }
-  if (ok) _srvToast('Connected to the OpenDash server again', { kind: 'ok' });
+  if (ok) _srvToast('OpenDash is back', { kind: 'ok' });
 }
 
 /** Did the server come back with a different app than this page? */
@@ -219,7 +219,7 @@ function _srvBannerEl() {
   el.className = 'srv-banner'; el.id = 'srv-banner';
   el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
   el.innerHTML = `<span class="srv-ic">${icon('cloud-off')}</span>`
-    + '<div class="srv-msg"><div class="srv-title">The OpenDash server isn’t running.</div><div class="srv-sub"></div></div>'
+    + '<div class="srv-msg"><div class="srv-title">OpenDash isn’t running.</div><div class="srv-sub"></div></div>'
     + '<div class="srv-acts"></div>';
   // In the flow between the top bar and the page (pushes it down, covers nothing);
   // floating at the top when the shell is not there.
@@ -245,7 +245,7 @@ function _srvShowBanner() {
     start.addEventListener('click', () => srvShowStartHelp());
   }
   start.className = 'btn btn-primary btn-sm srv-start';
-  start.innerHTML = icon('plug-zap') + '<span>Start server</span>';
+  start.innerHTML = icon('plug-zap') + '<span>Start</span>';
   const retry = document.createElement('button'); retry.type = 'button'; retry.className = 'btn btn-secondary btn-sm srv-retry';
   retry.innerHTML = icon('refresh-cw') + '<span>Retry</span>';
   retry.addEventListener('click', () => srvCheckNow());
@@ -262,7 +262,7 @@ function _srvUpdateBanner() {
   if (!el || el.hidden) return;
   const sub = el.querySelector('.srv-sub');
   const dirty = typeof state !== 'undefined' && state && (state._localDirty || (typeof _persistTimer !== 'undefined' && _persistTimer));
-  const keep = dirty ? 'Your unsaved changes are kept in this browser and saved when it is back. ' : 'Changes you make are kept in this browser until it is back. ';
+  const keep = 'Your changes wait in this browser. ';
   const left = _srvLink.nextAt ? Math.max(0, Math.ceil((_srvLink.nextAt - Date.now()) / 1000)) : 0;
   const when = _srvLink.nextAt ? (left > 0 ? `Checking again in ${left} s.` : 'Checking…') : 'Checking…';
   const text = keep + when;
@@ -279,16 +279,16 @@ function _srvHideBanner() {
 function srvShowStartHelp() {
   const plat = _srvPlatform();
   openDialog({
-    title: 'Start the OpenDash server', width: 520,
+    title: 'Start OpenDash', size: 'sm',
     body: (el) => {
       const p = document.createElement('p');
       p.textContent = plat === 'windows'
-        ? 'Double-click your OpenDash shortcut (or start-opendash.bat in the app folder). This page reconnects by itself once it is running.'
+        ? 'Double-click your OpenDash shortcut. This page reconnects by itself.'
         : 'Run sh start-opendash.sh from the app folder in a terminal. This page reconnects by itself once it is running.';
       el.appendChild(p);
       const h = document.createElement('p'); h.className = 'muted';
       h.textContent = plat === 'windows'
-        ? 'To start it from this button next time: Settings › Server › “Enable the Start server button”. “Start automatically when I log in” keeps it running from the moment you sign in to Windows.'
+        ? 'Next time: Settings > Server > Start button on the “not running” banner.'
         : 'Settings › Server shows how to start it automatically when you log in.';
       el.appendChild(h);
     },
@@ -311,7 +311,7 @@ function _srvWriteFailed(input) {
   if (path === STATE_API || path.startsWith('/api/server/') || path === '/api/events') return;
   if (Date.now() - _srvLink.lastWriteToast < 5000) return;
   _srvLink.lastWriteToast = Date.now();
-  _srvToast('That change was not saved: the OpenDash server isn’t running. Start it, then try again.', { kind: 'err', timeout: 7000 });
+  _srvToast('Not saved: OpenDash isn’t running. Start it, then try again.', { kind: 'err', timeout: 7000 });
 }
 if (typeof window !== 'undefined' && window.DashboardNet && typeof window.DashboardNet.onChange === 'function') {
   // 02-core-net.js already watches every request (and gives callers its clear

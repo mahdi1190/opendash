@@ -12,14 +12,11 @@
    ============================================================ */
 
 /* ---------- toolbar ---------- */
+/** A toolbar button: uiButton (ghost, small) with the bar's "Label  Value  v" markup. */
 function _bdBarBtn(o) {
-  const btn = document.createElement('button'); btn.type = 'button';
-  btn.className = 'btn btn-ghost btn-sm kb-bar-btn' + (o.className ? ' ' + o.className : '');
+  const btn = uiButton({ label: o.label || o.value || ' ', kind: 'ghost', size: 'sm', cls: 'kb-bar-btn' + (o.className ? ' ' + o.className : ''), tip: o.tip, aria: o.aria, run: (e, b) => o.run(b) });
   btn.innerHTML = (o.icon ? icon(o.icon) : '') + (o.label ? `<span class="k">${esc(o.label)}</span>` : '') + (o.value ? `<span class="v">${esc(o.value)}</span>` : '') + (o.menu ? icon('chevron-down', 'i-xs kb-chev') : '');
-  if (o.tip) btn.dataset.tip = o.tip;
-  if (o.aria) btn.setAttribute('aria-label', o.aria);
   if (o.menu) btn.setAttribute('aria-haspopup', 'menu');
-  btn.onclick = (e) => { e.stopPropagation(); o.run(btn); };
   return btn;
 }
 function _bdFilterLabel(b) { const v = (b.filter && b.filter.view) || 'all'; return typeof viewTitle === 'function' ? viewTitle(v) : v; }
@@ -294,7 +291,7 @@ function boardEditColumn(L, col, o) {
     }, cur ? `Column “${label}” saved` : `Column “${label}” added`, { icon: 'columns-3' });
   };
   openDialog({
-    title: cur ? 'Edit column' : 'New column', width: 460, resizeKey: 'board-column',
+    title: cur ? 'Edit column' : 'New column', size: 'sm', resizeKey: 'board-column',
     body: (el, close) => {
       const f1 = document.createElement('label'); f1.className = 'field';
       f1.innerHTML = '<span class="field-label">Name</span>';
@@ -350,7 +347,7 @@ function boardNewDialog(o) {
     toast(`Board “${b.name}” made. It is in the sidebar under Boards`, { kind: 'ok', icon: 'square-kanban', action: { label: 'Undo', run: () => undo() } });
   };
   openDialog({
-    title: 'New board', width: 620, resizeKey: 'board-new',
+    title: 'New board', size: 'md', resizeKey: 'board-new',
     body: (el, close) => {
       const box = document.createElement('div'); box.className = 'kb-dlg';
       const f1 = document.createElement('label'); f1.className = 'field';
@@ -406,12 +403,8 @@ function renderSavedBoard(container, id) {
   const b = boardById(id);
   const sub = document.getElementById('view-subtitle');
   if (!b) {
-    const e = document.createElement('div'); e.className = 'empty-state';
-    e.innerHTML = '<div class="msg">This board is gone: it was deleted here or on another device. Its tasks are still in your lists.</div>';
-    const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-secondary btn-sm'; go.textContent = 'Go to All tasks'; go.onclick = () => setView('all');
-    const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'btn btn-ghost btn-sm'; nb.textContent = 'New board'; nb.onclick = () => boardNewDialog();
-    e.append(go, nb);
-    container.appendChild(e);
+    mountEmptyState(container, { icon: 'square-kanban', title: 'This board is gone', text: 'It was deleted here or on another computer; its tasks are still in your lists.',
+      actions: [{ label: 'Go to All tasks', icon: 'list', primary: true, run: () => setView('all') }, { label: 'New board', icon: 'plus', run: () => boardNewDialog() }] });
     return;
   }
   const def = _bdNormalize(b);

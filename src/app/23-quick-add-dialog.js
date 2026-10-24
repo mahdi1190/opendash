@@ -119,7 +119,8 @@ function openQuickAddDialog(prefill, o) {
     return true;
   };
   const close = openDialog({
-    title: o.multi ? 'Add several tasks' : 'New task', width: 600, resizeKey: o.multi ? 'quick-add-multi' : 'quick-add',
+    // Several lines: a fixed height, so the lines list scrolls and the buttons stay put (UI_CLEANUP_PLAN.md 1.3).
+    title: o.multi ? 'Add several tasks' : 'New task', size: 'md', fixed: !!o.multi, resizeKey: o.multi ? 'quick-add-multi' : 'quick-add',
     body: (el) => {
       el.classList.add('qad');
       const box = document.createElement('div'); box.className = 'qad-box';

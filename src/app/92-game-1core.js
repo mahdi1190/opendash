@@ -541,7 +541,7 @@ function _gmCheckAll() {
     _gmSave();
     gameAccentApply();
     _gm.introUntil = Date.now() + 15000;
-    if (gameOn()) toast(`New: OpenDash keeps score. From your history you're level ${lv} (${s.level.title}) with ${s.xp.total.toLocaleString()} XP.`, { icon: 'trophy', action: { label: 'Have a look', run: () => setView('game') } });
+    if (gameOn()) toast(`New: OpenDash keeps score. From your history you're level ${lv} (${s.level.title}) with ${s.xp.total.toLocaleString()} XP`, { icon: 'trophy', action: { label: 'Have a look', run: () => setView('game') } });
     return;
   }
   // level
@@ -615,7 +615,7 @@ function _gmCheckAll() {
     const qn = lq && lq.done ? Object.keys(lq.done).filter(k => k !== 'all').length : 0;
     if (xp > 0 && gameOn()) {
       const wd = best ? new Date(best.d + 'T12:00:00Z').toLocaleDateString((APP_CONFIG && APP_CONFIG.locale) || undefined, { weekday: 'long', timeZone: 'UTC' }) : '';
-      setTimeout(() => toast(`Last week: ${xp.toLocaleString()} XP${lq && lq.list ? ` · ${qn} of ${lq.list.length} quests` : ''}${best ? ` · best day ${wd} (${best.n} done)` : ''}. New quests are up.`, { icon: 'calendar-range', action: { label: 'See them', run: () => setView('game') } }), 2500);
+      setTimeout(() => toast(`Last week: ${xp.toLocaleString()} XP${lq && lq.list ? ` · ${qn} of ${lq.list.length} quests` : ''}${best ? ` · best day ${wd} (${best.n} done)` : ''}: new quests are up`, { icon: 'calendar-range', action: { label: 'See them', run: () => setView('game') } }), 2500);
     }
   }
   if (dirty) _gmSave();
@@ -648,7 +648,7 @@ function gameMoment(o) {
   if (!o || !gameOn()) return;
   if (o.sound) gameSound(o.sound);
   if (gameFun() === 'subtle' || document.hidden) {
-    toast(`${o.over ? o.over + ': ' : ''}${o.title}${o.sub ? '. ' + o.sub : ''}`, { icon: o.icon || 'award', action: o.action || null });
+    toast(`${o.over ? o.over + ': ' : ''}${o.title}${o.sub ? ' · ' + o.sub : ''}`, { icon: o.icon || 'award', action: o.action || null });
     if (o.big && o.art && typeof animMomentPlay === 'function' && typeof animItem === 'function') { const it = animItem(o.art); if (it) animMomentPlay(it, { center: true, size: 'lg', ms: 1300, cls: 'ach-moment', caption: o.title }); }
     return;
   }
@@ -711,7 +711,7 @@ function gameAchMoment(ids, o) {
   _gmEmit('achievement', { ids: rest });
   if (rest.length > 2) {
     const xp = rest.reduce((t, id) => { const d = achDef(id); return t + (d && d.xp ? d.xp : 0); }, 0);
-    toast(`${rest.length} achievements earned${xp ? ` (+${xp.toLocaleString()} XP)` : ''}.`, { icon: 'award', action: { label: 'See them', run: () => gameOpenWall(rest[0]) } });
+    toast(`${rest.length} achievements earned${xp ? ` (+${xp.toLocaleString()} XP)` : ''}`, { icon: 'award', action: { label: 'See them', run: () => gameOpenWall(rest[0]) } });
     gameSound('achievement');
     return;
   }

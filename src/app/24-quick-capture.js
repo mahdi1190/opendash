@@ -193,7 +193,7 @@ function openCaptureLauncher() {
   const url = location.origin + location.pathname + '#capture';
   const win = /Windows/i.test(navigator.userAgent || '');
   openDialog({
-    title: 'Capture from outside the app', width: 560, resizeKey: 'capture-launcher',
+    title: 'Capture from outside the app', size: 'md', resizeKey: 'capture-launcher',
     body: (el) => {
       el.classList.add('qcap-launch');
       const p = document.createElement('p'); p.className = 'muted';
@@ -225,10 +225,8 @@ function openCaptureLauncher() {
       s2.innerHTML = `<div class="qcap-step-h">${icon('link', 'i-sm')}<b>Any browser: a bookmark</b></div><p class="subtle">Bookmark this address (or pin it as an app). Add <code>=your text</code> after it to start with that text.</p>`;
       const row = document.createElement('div'); row.className = 'hstack qcap-url';
       const inp = document.createElement('input'); inp.className = 'control control-sm'; inp.readOnly = true; inp.value = url; inp.onfocus = () => inp.select();
-      const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'btn btn-secondary btn-sm'; cp.innerHTML = icon('copy') + '<span>Copy</span>';
-      cp.onclick = () => { try { navigator.clipboard.writeText(url); toast('Address copied', { kind: 'ok' }); } catch (e) { inp.select(); } };
-      const tryIt = document.createElement('button'); tryIt.type = 'button'; tryIt.className = 'btn btn-ghost btn-sm'; tryIt.innerHTML = icon('external-link') + '<span>Try it</span>';
-      tryIt.onclick = () => { try { window.open(url, 'opendash-capture', 'popup,width=620,height=260'); } catch (e) { /* blocked */ } };
+      const cp = uiButton({ label: 'Copy', icon: 'copy', size: 'sm', run: () => copyText(url, 'address').then((ok) => { if (!ok) inp.select(); }) });
+      const tryIt = uiButton({ label: 'Try it', icon: 'external-link', kind: 'ghost', size: 'sm', run: () => { try { window.open(url, 'opendash-capture', 'popup,width=620,height=260'); } catch (e) { /* blocked */ } } });
       row.append(inp, cp, tryIt);
       s2.appendChild(row);
       el.appendChild(s2);

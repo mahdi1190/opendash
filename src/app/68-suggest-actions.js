@@ -73,7 +73,7 @@ function sgUndoGroup(key) {
       }
       if (fails.length) {
         const f = fails[0];
-        toast((f.kind === 'ops' ? 'The task link could not be undone: ' : 'Not everything could be undone: ') + (f.message || 'try again from the event or the task'), { kind: 'err', timeout: 9000 });
+        toastError(f.kind === 'ops' ? 'undo the task link' : 'undo everything', f.message || 'try again from the event or the task');
       }
       return { ok: !fails.length, fails };
     },
@@ -567,7 +567,7 @@ sgDefineAction('list.open', {
     if (typeof openDialog !== 'function' || typeof selectList !== 'function') return { ok: false, message: 'The list is not available.' };
     const key = 'sg-list:' + ((o.card && o.card.key) || a.title || '');
     openDialog({
-      title: String(a.title || 'Suggested changes').slice(0, 120),
+      title: String(a.title || 'Suggested changes').slice(0, 120), size: 'md', fixed: true,
       body(el, close) {
         const list = document.createElement('div');
         list.className = 'sg-list';

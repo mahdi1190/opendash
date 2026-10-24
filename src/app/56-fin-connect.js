@@ -34,10 +34,11 @@ const FIN_READONLY_TIP = 'OpenDash can only read. It can never move money.';
 const FIN_PROVIDERS = [
   { id: 'aureli', group: 'claude', name: 'Aureli', sub: 'Through Claude · claude.ai Bank connector', mark: 'aureli', flow: 'aureli',
     keywords: 'aureli claude bank connector claude.ai mcp',
+    line: 'Through Claude · uses a little Claude usage',
     facts: {
       covers: 'The banks Aureli supports (you pick yours on Aureli’s own sign-in). Balances and transactions.',
       cost: 'Needs an Aureli account. One connected bank account is free; more need a paid Aureli plan.',
-      limits: 'Synced through Claude: each update uses a little of your Claude usage and takes a few minutes.',
+      limits: 'Updated through Claude: each update uses a little of your Claude usage and takes a few minutes.',
       need: 'Claude Code signed in on this computer, and an Aureli login.',
       time: 'About 3 minutes',
     },
@@ -45,6 +46,7 @@ const FIN_PROVIDERS = [
     action: 'Connect in Claude' },
   { id: 'plasma', group: 'direct', name: 'Plasma One', sub: 'Stablecoin wallet · public Plasma blockchain', mark: 'plasma', flow: 'plasma',
     keywords: 'plasma one wallet usdt usdt0 stablecoin crypto rain card blockchain 0x',
+    line: 'Plasma One wallet · free · read-only',
     facts: {
       covers: 'Your Plasma One USDT balance and transfers in and out, read from the public Plasma blockchain.',
       cost: 'Free.',
@@ -56,6 +58,7 @@ const FIN_PROVIDERS = [
     action: 'Paste address' },
   { id: 'monzo', group: 'direct', name: 'Monzo', sub: 'Monzo’s personal developer API', mark: 'monzo', flow: 'monzo',
     keywords: 'monzo bank current joint pots uk',
+    line: 'Monzo · free · read-only',
     facts: {
       covers: 'Every Monzo current and joint account, pot balances, and transactions with shop names and Monzo’s categories.',
       cost: 'Free (Monzo’s developer API for your own account).',
@@ -67,6 +70,7 @@ const FIN_PROVIDERS = [
     action: 'Connect Monzo' },
   { id: 'enable-banking', group: 'direct', name: 'Other UK and EU banks', sub: 'Via Enable Banking (open banking)', mark: 'enable-banking', flow: 'enable-banking',
     keywords: 'enable banking open banking psd2 bank eu uk europe barclays lloyds hsbc natwest santander revolut starling nationwide halifax',
+    line: 'Most UK and EU banks · free · sign in every 90 days',
     facts: {
       covers: 'Banks Enable Banking supports in your country. Check yours first.',
       cost: 'Free for your own accounts (Enable Banking’s restricted mode, personal non-commercial use).',
@@ -78,6 +82,7 @@ const FIN_PROVIDERS = [
     action: 'Check my bank' },
   { id: 'csv', group: 'file', name: 'Import a CSV', sub: 'Any bank · a statement file', mark: 'csv', flow: 'csv',
     keywords: 'csv file import statement export spreadsheet any bank',
+    line: 'Any bank · CSV file',
     facts: {
       covers: 'Any bank that lets you download a statement (CSV).',
       cost: 'Free. No account, no connection.',
@@ -251,6 +256,7 @@ function finMergeAccounts(sources, apiAccounts) {
       const key = provider === 'aureli' ? String(a.id) : s.id + '.' + a.id, x = extra.get(key) || {};
       seen.add(key);
       return {
+        transactionCount: x.transactionCount, latestTransaction: x.latestTransaction,
         key, sourceId: s.id, id: a.id, name: a.name || x.name || a.id, bankName: x.bankName || x.originalName || '',
         kind: x.kind || a.kind || '', mask: x.mask || a.mask || '', colour: a.colour || s.colour || 'slate',
         enabled: a.enabled !== false, balance: pence(x), currency: x.currency || '', balanceOnly: !!(x.balanceOnly || a.balanceOnly),
@@ -273,7 +279,7 @@ function finMergeAccounts(sources, apiAccounts) {
         health: api && api.state ? { state: api.state, message: api.message || null } : undefined }, provider: p.id, accounts: [], api };
       groups.push(g);
     }
-    g.accounts.push({ key, sourceId: sid, id: x.accountId || key.slice(sid.length + 1), name: x.name || 'Account', bankName: x.bankName || '', kind: x.kind || '', mask: x.mask || '',
+    g.accounts.push({ transactionCount: x.transactionCount, latestTransaction: x.latestTransaction, key, sourceId: sid, id: x.accountId || key.slice(sid.length + 1), name: x.name || 'Account', bankName: x.bankName || '', kind: x.kind || '', mask: x.mask || '',
       colour: x.colour || g.source.colour || 'slate', enabled: x.enabled !== false, balance: pence(x), currency: x.currency || '', balanceOnly: !!x.balanceOnly,
       lastSync: x.lastSync || null, reauthDue: x.reauthDue || null, needsAuth: !!x.needsAuth, duplicateOf: x.duplicateOf || null, duplicateOfName: x.duplicateOfName || null, hiddenReason: x.hiddenReason || null });
   }
@@ -324,7 +330,7 @@ const FinConnectStore = {
           this.remote = a && !Array.isArray(a) && a.remote && typeof a.remote === 'object' ? a.remote : null;
           this.missing = !p; this.error = null; this.at = Date.now();
         }
-      } catch (e) { if (gen === this.gen) this.error = (e && e.message) || 'Could not load the money connections.'; }
+      } catch (e) { if (gen === this.gen) this.error = (e && e.message) || 'OpenDash isn’t answering'; }
       if (gen === this.gen) { this.loading = null; if (state.view === 'connections') renderMain(); }
       return this;
     })();
@@ -342,10 +348,10 @@ async function finApi(path, opts) {
       headers: opts.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
-  } catch (e) { throw Object.assign(new Error('The OpenDash server isn’t running. Start OpenDash and try again.'), { code: 'NETWORK' }); }
+  } catch (e) { throw Object.assign(new Error('OpenDash isn’t running. Start it and try again'), { code: 'NETWORK' }); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const fallback = r.status === 404 ? 'This needs a newer OpenDash server. Restart OpenDash after updating.' : finErrorText(j.code) || 'The OpenDash server did not answer.';
+    const fallback = r.status === 404 ? 'Restart OpenDash to finish updating' : finErrorText(j.code) || 'OpenDash isn’t answering. Try again in a moment';
     throw Object.assign(new Error(j.error || fallback), { code: j.code, status: r.status });
   }
   return j;
@@ -353,7 +359,7 @@ async function finApi(path, opts) {
 const FIN_ERRORS = {
   NOT_CONFIGURED: 'This connection is not set up yet.', AUTH: 'Sign in again to keep this connection working.',
   CONSENT_EXPIRED: 'Your bank’s permission ended. Sign in again to renew it.', NOT_APPROVED: 'Approve OpenDash in your Monzo app first.',
-  RATE_LIMITED: 'The provider asked us to slow down. Try again in a few minutes.', NETWORK: 'Could not reach the provider. Check your internet connection.',
+  RATE_LIMITED: 'The provider asked us to slow down. Try again in a few minutes.', NETWORK: 'Couldn’t reach the provider. Check your internet connection.',
   BAD_RESPONSE: 'The provider sent something unexpected. Try again later.', POLICY: 'That request was blocked: finance connections can only read.',
   NOT_SUPPORTED: 'That bank is not available through Enable Banking. Import a CSV instead.',
   SECRET_REFUSED: 'That looks like your secret recovery phrase or key. Never paste it anywhere. OpenDash only needs your public address.',
@@ -361,7 +367,7 @@ const FIN_ERRORS = {
 function finErrorText(code) { return FIN_ERRORS[code] || ''; }
 
 /* ---------- page state ---------- */
-let _finQuery = '', _finMoreOpen = new Set(), _finOpenRow = null, _finRenaming = null, _finEntered = false, _finSearchFocus = false;
+let _finQuery = '', _finOpenRow = null, _finRenaming = null, _finEntered = false, _finSearchFocus = false;
 let _finBanks = { country: null, list: null, source: null, asOf: null, loading: false };
 function finMoneyUnmount() { _finEntered = false; _finSearchFocus = false; _finRenaming = null; }
 
@@ -413,7 +419,7 @@ function _finAureliSource() {
 function _finConnectAureli() {
   const all = (window.Connections && Connections.all && Connections.all()) || {};
   if (all.claude && all.claude.state && all.claude.state !== 'ok') {
-    toast('Aureli is read through Claude: connect Claude first.', { icon: 'sparkles', action: { label: 'Go to Claude', run: () => connOpen('claude') } });
+    toast('Aureli is read through Claude. Connect Claude first', { icon: 'sparkles', action: { label: 'Go to Claude', run: () => connOpen('claude') } });
     return;
   }
   const src = _finAureliSource();
@@ -438,7 +444,7 @@ async function _finWaitJob(id, maxMs) {
   }
   return last;
 }
-/** The fix for a failed direct sync: sign in again for sign-in problems, else Try again. */
+/** The fix for a failed direct update: sign in again for sign-in problems, else Try again. */
 function _finSyncFix(s, code) {
   const provider = finProviderOf(s);
   if (['AUTH', 'CONSENT_EXPIRED', 'NOT_APPROVED', 'NOT_CONFIGURED'].includes(code)) return { label: code === 'NOT_CONFIGURED' ? 'Finish connecting' : 'Sign in again', run: () => finStartProvider(provider, { reauth: s.id }) };
@@ -457,15 +463,15 @@ async function finSyncSource(s) {
     catch (e) {
       if (e.code !== 'BUSY') throw e;
       // Another update is running: this one waits for it, then starts (no need to press again).
-      toast(`Another finance update is running. ${label} syncs as soon as it finishes.`, { icon: 'clock', timeout: 7000 });
+      toast(`Another finance update is running. ${label} updates as soon as it finishes`, { icon: 'clock', timeout: 7000 });
       await _finWaitJob(null, 10 * 60000);
       j = await go();
     }
-    toast(j.message || `Syncing ${label}…`, { icon: 'refresh-cw' });
+    toast(j.message || `Updating ${label}…`, { icon: 'refresh-cw' });
     job = await _finWaitJob(j.job && j.job.id, 10 * 60000);
   } catch (e) {
     const fix = _finSyncFix(s, e.code);
-    toast(`${label} did not sync: ${e.message}`, { kind: 'err', timeout: 12000, action: fix });
+    toastError('update ' + label, e, fix);
     job = null;
   }
   delete SourcesStore.busy[s.id];
@@ -473,18 +479,43 @@ async function finSyncSource(s) {
   _srcAfterChange('bank');
   // How it went for this source: its own result in the update (reason and the fix when it failed).
   const mine = job && job.result && Array.isArray(job.result.sources) ? job.result.sources.find(x => x && x.id === s.id) : null;
-  if (mine && mine.ok) toast(`${label} is up to date.`, { kind: 'ok' });
+  if (mine && mine.ok) toast(`${label} is up to date`, { kind: 'ok' });
   else if (mine && !mine.ok) {
     const fresh = ((SourcesStore.data && SourcesStore.data.sources) || []).find(x => x.id === s.id) || s;
-    toast(`${label} did not sync: ${mine.error || 'the update failed.'}`, { kind: 'err', timeout: 12000, action: _finSyncFix(fresh, fresh.lastError && fresh.lastError.code) });
-  } else if (job && job.state === 'error') toast(`The finance update stopped: ${job.error || 'unknown problem'}.`, { kind: 'err', timeout: 12000, action: { label: 'Try again', run: () => finSyncSource(s) } });
+    toastError('update ' + label, new Error(mine.error || 'the update failed'), _finSyncFix(fresh, fresh.lastError && fresh.lastError.code));
+  } else if (job && job.state === 'error') toastError('finish the finance update', new Error(job.error || 'unknown problem'), () => finSyncSource(s));
+}
+/** "234 payments · last 23 Oct" or "No transactions": tells accounts with the same name apart. */
+function _finAccountFacts(a) {
+  if (!Number.isFinite(a.transactionCount)) return '';
+  if (a.transactionCount === 0) return 'No transactions';
+  return `${a.transactionCount} payment${a.transactionCount === 1 ? '' : 's'}${a.latestTransaction ? ' · last ' + finDateLabel(a.latestTransaction) : ''}`;
+}
+/**
+ * After hiding an account: a calm warning with Undo when what is left can look wrong, i.e. the hidden one
+ * has the most recent payments of the bank's accounts, or only accounts without transactions stay shown.
+ * Returns the warning, or null.
+ */
+function _finHideWarning(group, a, patch) {
+  if (!(patch.enabled === false || patch.keep === 'other') || !a.enabled || a.balanceOnly || !(a.transactionCount > 0)) return null;
+  const real = x => x !== a && !x.balanceOnly && x.kind !== 'pot';
+  const kept = group.accounts.filter(x => real(x) && (x.enabled || (patch.keep === 'other' && (x.key === a.duplicateOf || x.id === a.duplicateOf))));
+  const newest = !group.accounts.some(x => real(x) && x.transactionCount > 0 && x.latestTransaction && a.latestTransaction && x.latestTransaction >= a.latestTransaction);
+  const noneLeft = !kept.some(x => x.transactionCount > 0);
+  if (!newest && !noneLeft) return null;
+  const facts = _finAccountFacts(a);
+  return noneLeft
+    ? `${a.name} (${facts}) is now hidden, and the accounts still shown have no transactions. Check that is the one you meant.`
+    : `${a.name} (${facts}) has your most recent payments and is now hidden. Check that is the one you meant.`;
 }
 async function _finPatchAccount(group, a, patch, msg) {
+  const warn = _finHideWarning(group, a, patch);
   try {
     if (!FinConnectStore.missing) await finApi('accounts/' + encodeURIComponent(a.key), { method: 'PATCH', body: patch });
     else await _srcApi('/api/sources/' + encodeURIComponent(group.source.id), { method: 'PUT', body: { accounts: [Object.assign({ id: a.id }, patch)] } });
-    if (msg) toast(msg, { kind: 'ok' });
-  } catch (e) { toast(e.message, { kind: 'err' }); }
+    if (warn) toast(warn, { kind: 'warn', timeout: 15000, action: { label: 'Undo', run: () => _finPatchAccount(group, a, patch.keep === 'other' ? { keep: 'this' } : { enabled: true }, `${a.name} shown again`) } });
+    else if (msg) toast(msg, { kind: 'ok' });
+  } catch (e) { toastError('save that change', e); }
   await Promise.all([SourcesStore.refresh(), FinConnectStore.load({ force: true })]);
   _srcAfterChange('bank');
 }
@@ -507,7 +538,7 @@ function finDisconnect(group) {
   const label = s.label || p.name;
   let removeData = false, busy = false;
   openDrawer({
-    title: `Stop syncing ${label}?`, width: 480, resizable: false,
+    title: `Disconnect ${label}?`, width: 480, resizable: false,
     body: (el, close) => {
       el.classList.add('fc-sheet', 'fc-disconnect');
       el.appendChild(_finEl('p', 'fc-lead', s.kind === 'direct'
@@ -527,23 +558,23 @@ function finDisconnect(group) {
       };
       paint(); el.appendChild(opts);
       const foot = _finEl('div', 'fc-foot');
-      foot.append(_finEl('span', 'spacer'), _connBtn('Cancel', null, 'btn-ghost', () => close()));
-      const go = _connBtn('Disconnect', 'unplug', 'btn-danger', async (b) => {
+      foot.append(_finEl('span', 'spacer'), uiButton({ label: 'Cancel', kind: 'ghost', size: 'sm', run: () => close() }));
+      const go = uiButton({ label: 'Disconnect', icon: 'unplug', kind: 'danger', size: 'sm', run: async (e, b) => {
         if (busy) return; busy = true; b.disabled = true;
         try {
           if (s.kind === 'direct') {
             const j = await finApi('sources/' + encodeURIComponent(s.id) + '/disconnect', { method: 'POST', body: { removeData } });
             close();
-            toast(removeData ? `${label} disconnected. ${j && j.removed ? j.removed + ' transactions removed.' : ''}` : `${label} disconnected. Past transactions are kept.`, { kind: 'ok', timeout: 9000,
-              action: j && j.undo ? { label: 'Undo', run: () => finApi('undo', { method: 'POST', body: { token: j.undo } }).then(() => { toast('Transactions put back.', { kind: 'ok' }); _srcAfterChange('bank'); }).catch(e => toast(e.message, { kind: 'err' })) } : undefined });
+            toast(removeData ? `${label} disconnected${j && j.removed ? ', ' + j.removed + ' transactions removed' : ''}` : `${label} disconnected. Past transactions are kept`, { kind: 'ok', timeout: 9000,
+              action: j && j.undo ? { label: 'Undo', run: () => finApi('undo', { method: 'POST', body: { token: j.undo } }).then(() => { toast('Transactions put back', { kind: 'ok' }); _srcAfterChange('bank'); }).catch(e => toastError('put the transactions back', e)) } : undefined });
           } else {
             await _srcApi('/api/sources/' + encodeURIComponent(s.id), { method: 'DELETE' });
             close(); toast(`${label} removed`, { kind: 'ok' });
           }
-        } catch (e) { busy = false; b.disabled = false; toast(e.message, { kind: 'err', timeout: 8000 }); return; }
+        } catch (e) { busy = false; b.disabled = false; toastError('disconnect ' + label, e); return; }
         await Promise.all([SourcesStore.refresh(), FinConnectStore.load({ force: true })]);
         _srcAfterChange('bank');
-      });
+      } });
       foot.appendChild(go);
       el.appendChild(foot);
     },
@@ -607,7 +638,7 @@ function _finAccountRow(group, a, nameOf) {
     names.appendChild(input);
     requestAnimationFrame(() => { if (input.isConnected) { input.focus(); input.select(); } });
   } else names.appendChild(_finEl('span', 'fc-acc-name', a.name));
-  const subBits = [a.bankName && a.bankName !== a.name ? a.bankName : '', FIN_KIND_LABEL[a.kind] || '', finMask(a.mask), a.balanceOnly || a.kind === 'pot' ? 'balance only' : ''].filter(Boolean);
+  const subBits = [a.bankName && a.bankName !== a.name ? a.bankName : '', FIN_KIND_LABEL[a.kind] || '', finMask(a.mask || String(a.id || a.key).slice(-4)), _finAccountFacts(a), a.balanceOnly || a.kind === 'pot' ? 'balance only' : ''].filter(Boolean);
   names.appendChild(_finEl('span', 'fc-acc-sub', subBits.join(' · ') || finProviderInfo(group.provider).name));
   main.appendChild(names);
   const bal = _finEl('span', 'fc-acc-bal' + (a.balance == null ? ' is-empty' : ''), a.balance == null ? '—' : finMoney(a.balance, a.currency));
@@ -615,7 +646,7 @@ function _finAccountRow(group, a, nameOf) {
   main.appendChild(bal);
   const syncTone = finSyncTone(a.lastSync);
   const when = _finEl('span', 'fc-acc-when' + (syncTone === 'red' ? ' is-late' : ''));
-  when.innerHTML = icon('clock', 'i-xs'); when.appendChild(_finEl('span', null, a.lastSync ? _connAgo(a.lastSync) : 'Not synced yet'));
+  when.innerHTML = icon('clock', 'i-xs'); when.appendChild(_finEl('span', null, a.lastSync ? 'Fetched ' + _connAgo(a.lastSync) : 'Not fetched yet'));
   main.appendChild(when);
   row.appendChild(main);
   // Re-auth (outside the button so it can be its own badge).
@@ -644,8 +675,8 @@ function _finAccountRow(group, a, nameOf) {
     const dup = _finEl('div', 'fc-dup');
     dup.innerHTML = icon('copy', 'i-xs');
     dup.appendChild(_finEl('span', null, `Possible duplicate of ${other}. ${a.enabled ? 'Both are counted in Finances.' : 'Hidden so nothing is counted twice.'}`));
-    dup.append(_connBtn('Keep this one', null, 'btn-ghost', () => _finPatchAccount(group, a, { keep: 'this' }, `Keeping ${a.name}`)),
-      _connBtn('Keep the other', null, 'btn-ghost', () => _finPatchAccount(group, a, { keep: 'other' }, `Keeping ${other}`)));
+    dup.append(uiButton({ label: 'Keep this one', kind: 'ghost', size: 'sm', run: () => _finPatchAccount(group, a, { keep: 'this' }, `Keeping ${a.name}`) }),
+      uiButton({ label: 'Keep the other', kind: 'ghost', size: 'sm', run: () => _finPatchAccount(group, a, { keep: 'other' }, `Keeping ${other}`) }));
     row.appendChild(dup);
   }
   if (open) {
@@ -654,7 +685,7 @@ function _finAccountRow(group, a, nameOf) {
     add('Provider', finProviderInfo(group.provider).name);
     add('Kind', FIN_KIND_LABEL[a.kind] || '');
     add('Account', finMask(a.mask));
-    add('Last sync', a.lastSync ? new Date(a.lastSync).toLocaleString() : 'Not synced yet');
+    add('Last fetched', a.lastSync ? new Date(a.lastSync).toLocaleString() : 'Not synced yet');
     if (a.reauthDue) add('Sign in again', finDateLabel(a.reauthDue));
     add('In Finances', a.enabled ? 'Shown' : a.hiddenReason === 'duplicate' ? 'Hidden (possible duplicate)' : 'Hidden; its data is kept');
     if (group.provider === 'plasma') add('Note', 'Card purchases show as “Plasma One payment” without the shop name.');
@@ -686,13 +717,13 @@ function _finGroupCard(group, nameOf) {
   lock.appendChild(_finEl('span', null, s.kind === 'csv' ? 'Local' : 'Read-only'));
   head.appendChild(lock);
   const acts = _finEl('div', 'fc-group-acts');
-  if (s.kind === 'csv') acts.appendChild(_connBtn('Import a CSV', 'upload', 'btn-ghost', finImportCsv));
+  if (s.kind === 'csv') acts.appendChild(uiButton({ label: 'Import a CSV', icon: 'upload', kind: 'ghost', size: 'sm', run: (e, b) => finImportCsv(b) }));
   else if (st === 'setup' && s.kind === 'direct') {
-    acts.appendChild(_connBtn('Finish connecting', 'arrow-right', 'btn-secondary', () => finStartProvider(group.provider, { reauth: s.id })));
+    acts.appendChild(uiButton({ label: 'Finish connecting', icon: 'arrow-right', kind: 'secondary', size: 'sm', run: () => finStartProvider(group.provider, { reauth: s.id }) }));
   } else if (st === 'auth' || due.tone === 'past' || (due.tone === 'red' && s.kind === 'direct')) {
-    acts.appendChild(_connBtn('Sign in again', 'log-in', 'btn-secondary', () => s.kind === 'direct' ? finStartProvider(group.provider, { reauth: s.id }) : _connPageSourceHelp(s)));
+    acts.appendChild(uiButton({ label: 'Sign in again', icon: 'log-in', kind: 'secondary', size: 'sm', run: () => s.kind === 'direct' ? finStartProvider(group.provider, { reauth: s.id }) : _connPageSourceHelp(s) }));
   } else {
-    const sync = _connBtn(busy ? 'Syncing…' : 'Sync now', busy ? null : 'refresh-cw', 'btn-ghost', () => finSyncSource(s));
+    const sync = uiButton({ label: busy ? 'Updating…' : 'Update now', icon: busy ? null : 'refresh-cw', kind: 'ghost', size: 'sm', run: () => finSyncSource(s) });
     if (busy) { sync.disabled = true; sync.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
     if (st === 'off') sync.disabled = true;
     acts.appendChild(sync);
@@ -713,7 +744,7 @@ function _finGroupCard(group, nameOf) {
       const at = s.lastError && s.lastError.at;
       if (at) m.appendChild(_finEl('span', 'fc-mute', ' (' + _connAgo(at) + ')'));
       const fix = _finSyncFix(s, (group.api && group.api.code) || (s.lastError && s.lastError.code));
-      const b = _connBtn(busy ? 'Syncing…' : fix.label, busy ? null : 'refresh-cw', 'btn-ghost', fix.run);
+      const b = uiButton({ label: busy ? 'Updating…' : fix.label, icon: busy ? null : 'refresh-cw', kind: 'ghost', size: 'sm', run: (e, b) => fix.run(b) });
       b.disabled = busy;
       m.appendChild(b);
     }
@@ -725,17 +756,17 @@ function _finGroupCard(group, nameOf) {
     const d = _finEl('div', 'fc-group-msg');
     d.innerHTML = icon('copy', 'i-xs');
     d.appendChild(_finEl('span', null, `This looks like an unfinished copy left by an earlier try. Your working ${p.name} connection is listed separately and is not touched.`));
-    d.appendChild(_connBtn('Remove this copy', 'trash-2', 'btn-ghost', async (b) => {
+    d.appendChild(uiButton({ label: 'Remove this copy', icon: 'trash-2', kind: 'ghost', size: 'sm', run: async (e, b) => {
       b.disabled = true;
-      try { await finApi('sources/' + encodeURIComponent(s.id) + '/disconnect', { method: 'POST', body: { removeData: false } }); toast('Unfinished copy removed.', { kind: 'ok' }); }
-      catch (e) { b.disabled = false; toast('Could not remove it: ' + e.message, { kind: 'err', timeout: 8000 }); return; }
+      try { await finApi('sources/' + encodeURIComponent(s.id) + '/disconnect', { method: 'POST', body: { removeData: false } }); toast('Unfinished copy removed', { kind: 'ok' }); }
+      catch (e) { b.disabled = false; toastError('remove it', e); return; }
       await Promise.all([SourcesStore.refresh(), FinConnectStore.load({ force: true })]);
       _srcAfterChange('bank');
-    }));
+    } }));
     card.appendChild(d);
   }
   const list = _finEl('div', 'fc-acc-list'); list.setAttribute('role', 'list');
-  if (!group.accounts.length) list.appendChild(_finEl('p', 'fc-acc-empty', s.kind === 'csv' ? 'Imported accounts appear in Finances.' : s.setup ? 'Not finished: press Finish connecting (or Sign in again) to bring in accounts.' : 'Accounts appear here after the first sync.'));
+  if (!group.accounts.length) list.appendChild(_finEl('p', 'fc-acc-empty', s.kind === 'csv' ? 'Imported accounts appear in Finances.' : s.setup ? 'Not finished: press Finish connecting (or Sign in again) to bring in accounts.' : 'Accounts appear here after the first update.'));
   for (const a of group.accounts) list.appendChild(_finAccountRow(group, a, nameOf));
   card.appendChild(list);
   return card;
@@ -782,7 +813,7 @@ function _finRemoteGroups(remote) {
         label: a.sourceLabel || s.label || finProviderInfo(provider).name, colour: col(a.sourceColour) || col(s.colour) || 'slate', enabled: s.enabled !== false, state: s.state || null, lastSync: s.lastSync || null } };
       groups.set(sid, g);
     }
-    g.accounts.push({ key: String(a.key), sourceId: sid, name: String(a.name || 'Account'), kind: a.kind || '', colour: col(a.colour) || g.source.colour,
+    g.accounts.push({ transactionCount: a.transactionCount, latestTransaction: a.latestTransaction, mask: a.mask, key: String(a.key), sourceId: sid, name: String(a.name || 'Account'), kind: a.kind || '', colour: col(a.colour) || g.source.colour,
       enabled: a.enabled !== false, lastSync: a.lastSync || g.source.lastSync || null });
   }
   const rank = { aureli: 0, monzo: 1, 'enable-banking': 2, plasma: 3, mcp: 4, csv: 5 };
@@ -828,10 +859,10 @@ function _finRemoteRow(group, a, remote) {
     names.appendChild(input);
     requestAnimationFrame(() => { if (input.isConnected) { input.focus(); input.select(); } });
   } else names.appendChild(_finEl('span', 'fc-acc-name', a.name));
-  names.appendChild(_finEl('span', 'fc-acc-sub', [group.source.label, FIN_KIND_LABEL[a.kind] || ''].filter(Boolean).join(' · ')));
+  names.appendChild(_finEl('span', 'fc-acc-sub', [group.source.label, FIN_KIND_LABEL[a.kind] || '', finMask(a.mask || String(a.key).slice(-4)), _finAccountFacts(a)].filter(Boolean).join(' · ')));
   main.appendChild(names);
   const when = _finEl('span', 'fc-acc-when');
-  when.innerHTML = icon('clock', 'i-xs'); when.appendChild(_finEl('span', null, a.lastSync ? 'Updated ' + _connAgo(a.lastSync) : 'Not updated yet'));
+  when.innerHTML = icon('clock', 'i-xs'); when.appendChild(_finEl('span', null, a.lastSync ? 'Fetched ' + _connAgo(a.lastSync) : 'Not fetched yet'));
   when.setAttribute('data-tip', a.lastSync ? `Last read on ${remote.name}: ${new Date(a.lastSync).toLocaleString()}` : `${remote.name} has not read it yet`);
   main.appendChild(when);
   row.appendChild(main);
@@ -909,8 +940,8 @@ async function _finUseHere(remote, auto) {
   _finTakeOver = null;
   try {
     const j = await finApi('/api/finance/here', { method: 'POST', body: {} });
-    toast(j.already ? 'This computer reads your bank already.' : `This computer reads your bank now. ${who} shows your finances from here.`, { kind: 'ok', icon: 'landmark' });
-  } catch (e) { toast(e.message, e.code === 'SIGN_IN_FIRST' ? { icon: 'log-in' } : { kind: 'err' }); }
+    toast(j.already ? 'This computer reads your bank already' : `This computer reads your bank now. ${who} shows your finances from here`, { kind: 'ok', icon: 'landmark' });
+  } catch (e) { if (e.code === 'SIGN_IN_FIRST') toast(e.message, { icon: 'log-in' }); else toastError('switch to this computer', e); }
   await Promise.all([SourcesStore.refresh(), FinConnectStore.load({ force: true })]);
   _srcAfterChange('bank');
 }
@@ -934,7 +965,7 @@ function _finRemoteSection(remote, ownGroups) {
   if (ownGroups.some(g => g.source.kind === 'direct' && g.accounts.length > 0)) {
     const here = _finEl('div', 'fc-remote-here');
     here.appendChild(_finEl('span', null, `This computer has a bank connection of its own, but ${who} reads your bank.`));
-    here.appendChild(_connBtn('Read my bank on this computer', 'landmark', 'btn-ghost', () => _finUseHere(remote, false)));
+    here.appendChild(uiButton({ label: 'Read my bank on this computer', icon: 'landmark', kind: 'ghost', size: 'sm', run: () => _finUseHere(remote, false) }));
     wrap.appendChild(here);
   }
   return wrap;
@@ -954,24 +985,23 @@ function _finProviderCard(p, groups, match, wide) {
   top.append(mark, titles);
   if (status) { const badges = _finEl('div', 'fc-card-badges'); badges.appendChild(_finStatusPill(status.kind, status.label)); top.appendChild(badges); }
   card.appendChild(top);
-  const facts = _finEl('dl', 'fc-facts');
-  for (const [k, label, ic] of FIN_FACT_ROWS) {
-    const dt = _finEl('dt'); dt.innerHTML = icon(ic, 'i-xs'); dt.appendChild(_finEl('span', null, label));
-    const dd = _finEl('dd');
-    const free = k === 'cost' && /^Free\b/.exec(p.facts[k]);
-    if (free) { dd.append(_finEl('b', 'fc-free', 'Free'), document.createTextNode(p.facts[k].slice(4))); }
-    else dd.textContent = p.facts[k];
-    facts.append(dt, dd);
-  }
-  card.appendChild(facts);
-  const open = _finMoreOpen.has(p.id);
-  if (open) card.appendChild(_finEl('p', 'fc-more-text', p.more));
+  // The card template: the name and one line; the facts and the story fold under Details.
+  card.appendChild(_finEl('p', 'fc-line', p.line || p.sub));
+  setFold(card, 'conn-fin-' + p.id + '-details', 'Details', ({ body }) => {
+    const facts = _finEl('dl', 'fc-facts');
+    for (const [k, label, ic] of FIN_FACT_ROWS) {
+      const dt = _finEl('dt'); dt.innerHTML = icon(ic, 'i-xs'); dt.appendChild(_finEl('span', null, label));
+      const dd = _finEl('dd');
+      const free = k === 'cost' && /^Free\b/.exec(p.facts[k]);
+      if (free) { dd.append(_finEl('b', 'fc-free', 'Free'), document.createTextNode(p.facts[k].slice(4))); }
+      else dd.textContent = p.facts[k];
+      facts.append(dt, dd);
+    }
+    body.appendChild(facts);
+    body.appendChild(_finEl('p', 'fc-more-text', p.more));
+  });
   const foot = _finEl('div', 'fc-card-foot');
-  const moreBtn = _finEl('button', 'fc-more-btn', open ? 'Less' : 'More'); moreBtn.type = 'button';
-  moreBtn.setAttribute('aria-expanded', String(open));
-  moreBtn.onclick = () => { if (open) _finMoreOpen.delete(p.id); else _finMoreOpen.add(p.id); renderMain(); };
   const left = _finEl('div', 'fc-card-foot-l');
-  left.appendChild(moreBtn);
   const lock = _finEl('span', 'fc-lock'); lock.innerHTML = icon(p.id === 'csv' ? 'hard-drive' : 'lock', 'i-xs');
   lock.appendChild(_finEl('span', null, p.id === 'csv' ? 'On this computer' : 'Read-only'));
   lock.setAttribute('data-tip', p.id === 'csv' ? 'The file is read on this computer.' : FIN_READONLY_TIP);
@@ -985,12 +1015,12 @@ function _finProviderCard(p, groups, match, wide) {
   else if (p.id === 'monzo' && entry.configured && !(status && status.kind === 'ok')) { label = 'Finish connecting'; ic = 'arrow-right'; }
   else if (p.id === 'enable-banking' && status && status.kind === 'ok') { label = 'Add another bank'; ic = 'plus'; }
   else if (p.id === 'plasma' && status && status.kind === 'ok') { label = 'Add a wallet'; ic = 'plus'; }
-  const go = _connBtn(label, ic, 'btn-primary fc-go', () => {
+  const go = uiButton({ label: label, icon: ic, kind: 'primary', size: 'sm', cls: 'fc-go', run: () => {
     if (p.id === 'enable-banking' && match.query && match.banks.length === 1) finStartProvider(p.id, { bank: match.banks[0].name });
     else finStartProvider(p.id);
-  });
+  } });
   go.classList.remove('btn-sm');
-  if (p.id === 'aureli' && label === 'Connected') { go.className = 'btn btn-secondary fc-go'; go.onclick = (e) => { e.stopPropagation(); const s = _finAureliSource(); if (s) finSyncSource(s); }; go.innerHTML = icon('refresh-cw') + '<span>Sync now</span>'; }
+  if (p.id === 'aureli' && label === 'Connected') { go.className = 'btn btn-secondary fc-go'; go.onclick = (e) => { e.stopPropagation(); const s = _finAureliSource(); if (s) finSyncSource(s); }; go.innerHTML = icon('refresh-cw') + '<span>Update now</span>'; }
   go.dataset.act = 'connect-' + p.id;
   foot.appendChild(go);
   card.appendChild(foot);
@@ -1057,7 +1087,7 @@ function _finChooser(groups) {
     if (!shown) {
       const empty = _finEl('div', 'fc-none');
       empty.append(_finEl('b', null, 'Nothing matches.'), _finEl('span', null, 'Any bank works with a CSV export.'));
-      empty.appendChild(_connBtn('Import a CSV', 'upload', 'btn-secondary', finImportCsv));
+      empty.appendChild(uiButton({ label: 'Import a CSV', icon: 'upload', kind: 'secondary', size: 'sm', run: (e, b) => finImportCsv(b) }));
       body.appendChild(empty);
     }
   };
@@ -1077,16 +1107,10 @@ function finMoneyBlock() {
   const section = _finEl('section', 'cp-money' + (_finEntered ? '' : ' fc-enter'));
   _finEntered = true;
   section.dataset.conn = 'money'; section.id = 'money';
-  const head = _finEl('div', 'cp-section-head');
-  const title = _finEl('div');
-  title.append(_finEl('h2', null, 'Money'), _finEl('p', null, 'Banks and wallets that bring transactions into Finances. Pick the way that suits each one.'));
-  const note = _finEl('span', 'cp-readonly'); note.innerHTML = icon('shield-check', 'i-xs');
-  note.appendChild(_finEl('span', null, 'Read-only: can never move money')); note.setAttribute('data-tip', FIN_READONLY_TIP);
-  head.append(title, note);
-  section.appendChild(head);
+  section.appendChild(secHead({ title: 'Money', sub: 'Read-only. OpenDash can never move money.' }));
   if (FinConnectStore.error) {
     const err = _finEl('div', 'cp-fetch-error'); err.setAttribute('role', 'alert');
-    err.append(_finEl('span', null, 'Could not load the money connections. ' + FinConnectStore.error), _connBtn('Try again', 'refresh-cw', 'btn-secondary', () => FinConnectStore.load({ force: true })));
+    err.append(_finEl('span', null, 'Couldn’t load the money connections: ' + String(FinConnectStore.error).replace(/[.\s]+$/, '') + '.'), uiButton({ label: 'Try again', icon: 'refresh-cw', kind: 'secondary', size: 'sm', run: () => FinConnectStore.load({ force: true }) }));
     section.appendChild(err);
   }
   const groups = SourcesStore.data ? _finGroups() : [];
@@ -1106,8 +1130,8 @@ function finMoneyBlock() {
   const foot = _finEl('p', 'fc-privacy');
   foot.innerHTML = icon(remote ? 'lock' : 'hard-drive', 'i-xs');
   foot.appendChild(_finEl('span', null, remote
-    ? `Your finances come from ${who}, end-to-end encrypted through your sync folder. Bank sign-ins stay on the computer that reads the bank, never in the page, logs or exports.`
-    : 'Transactions are saved in your data folder on this computer. Sign-ins for direct connections are kept on this computer only, outside the data folder, never in the page, logs or exports. Disconnecting deletes them.'));
+    ? `Your bank is read on ${who}; this computer gets the results, encrypted. Bank sign-ins stay on ${who}.`
+    : 'Transactions stay in your data folder. Sign-ins stay on this computer only.'));
   section.appendChild(foot);
   return section;
 }

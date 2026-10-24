@@ -30,7 +30,7 @@
                                      {detail: badge} and emitShell('locations:badge', badge)
    No Claude calls, no network beyond this dashboard's own server.
    ============================================================ */
-const LOC_NOTICE = "OpenDash keeps a private history of where you've been, for fun facts. It stays on your devices unless you choose to share places with a friend.";
+const LOC_NOTICE = "OpenDash keeps a private history of where you've been, for fun facts. It stays on your computers unless you share places with a friend.";
 const _LOC_CUR_KEY = 'dashboard-location-log-cur';
 const _LOC_MIGRATED_KEY = 'dashboard-location-log-migrated';
 const _loc = { data: null, loading: null, recs: new Map(), sent: new Map(), dirty: new Set(), doneQ: new Map(), badgeQ: {}, timer: null, ver: 0, subs: new Set(), badgeSubs: new Set(), memo: null, memoKey: '', spend: undefined, booted: false, zonesAt: 0 };
@@ -279,21 +279,21 @@ async function locLogSetOn(on) {
     else { _locTouch(); }
     _locBump();
     return true;
-  } catch (e) { toast(netErrorMessage(e, 'Could not change it.'), { kind: 'err' }); return false; }
+  } catch (e) { toastError('change your location history', e, () => { locLogSetOn(on).then(ok => { if (ok) render(); }); }); return false; }
 }
 async function locLogDelete() {
-  const ok = await confirmDialog({ title: 'Delete my location history?', text: 'Every place, time-zone move and trip in your location history is removed from this dashboard and, through sync, from your other devices. Your tasks and trips themselves are not touched. This cannot be undone.', confirmLabel: 'Delete my location history', danger: true });
+  const ok = await confirmDialog({ title: 'Delete my location history?', text: 'Every place, time-zone move and trip in your location history is removed from this computer and, through sync, from your other computers too. Your tasks and trips themselves are not touched. This cannot be undone.', confirmLabel: 'Delete my location history', danger: true });
   if (!ok) return false;
   try {
     const r = await fetch('/api/locations/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-  } catch (e) { toast(netErrorMessage(e, 'Could not delete it.'), { kind: 'err' }); return false; }
+  } catch (e) { toastError('delete your location history', e, () => { locLogDelete().then(ok => { if (ok) render(); }); }); return false; }
   _loc.recs.clear(); _loc.sent.clear(); _loc.dirty.clear(); _loc.doneQ.clear(); _locCurSet(null);
   if (_loc.data) { _loc.data.done = []; _loc.data.badges = {}; }
   if (typeof dashboardLocationHistoryClear === 'function') dashboardLocationHistoryClear();
   try { localStorage.setItem(_LOC_MIGRATED_KEY, String(_locNow())); } catch (e) { /* private mode */ }
   _locBump();
-  toast('Location history deleted. New places are logged from now on' + (locLogOn() ? '' : ' (logging is off)') + '.', { kind: 'ok', icon: 'trash-2' });
+  toast('Location history deleted: new places are logged from now on' + (locLogOn() ? '' : ' (logging is off)'), { kind: 'ok', icon: 'trash-2' });
   return true;
 }
 
@@ -317,7 +317,7 @@ function locLogExport(fmt) {
     const out = { app: 'OpenDash', kind: 'location-history', v: 1, exportedAt: new Date().toISOString(), records: recs, done: (_loc.data && _loc.data.done) || [], badges: (_loc.data && _loc.data.badges) || {} };
     _locDownload(`opendash-locations-${day}.json`, JSON.stringify(out, null, 1), 'application/json');
   }
-  toast('Exported ' + recs.length + ' places.', { kind: 'ok', icon: 'download' });
+  toast('Exported ' + recs.length + (recs.length === 1 ? ' place' : ' places'), { kind: 'ok', icon: 'download' });
 }
 
 /* ---------- the facts and badges ---------- */
@@ -363,7 +363,7 @@ function _locCheckBadges() {
     if (typeof emitShell === 'function') { try { emitShell('locations:badge', b); } catch (e) { /* no listeners */ } }
   }
   if (first) {
-    if (fresh.length > 1) toast(`Your Locations tab is ready: ${fresh.length} badges so far.`, { icon: 'map-pin', timeout: 9000, action: { label: 'Open', run: () => setView('locations') } });
+    if (fresh.length > 1) toast(`Your Places page is ready: ${fresh.length} badges so far`, { icon: 'map-pin', timeout: 9000, action: { label: 'Open', run: () => setView('locations') } });
     return;
   }
   const show = fresh.slice(-2);
@@ -379,9 +379,9 @@ function _locMaybeNotice() {
   const seen = (on) => { answered = true; fetch('/api/locations/prefs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ noticeAt: _locNow(), ...(on === false ? { on: false } : {}) }) }).then(r => r.json()).then(j => { if (j && j.prefs && _loc.data) { _loc.data.prefs = j.prefs; _locBump(); } }).catch(() => {}); };
   _loc.data.prefs.noticeAt = _locNow();
   openDialog({
-    title: 'Your places, kept for you', width: 460,
+    title: 'Your places, kept for you', size: 'sm',
     body: (el) => {
-      el.innerHTML = `<div class="loc-notice">${icon('map-pin', 'loc-notice-ic')}<p>${esc(LOC_NOTICE)}</p></div><p class="muted loc-notice-sm">You'll find it under Locations: countries and cities, firsts, time zones crossed, where you got the most done, and badges. Turn it off or delete it any time in Settings &gt; Location history.</p>`;
+      el.innerHTML = `<div class="loc-notice">${icon('map-pin', 'i-xl loc-notice-ic')}<p>${esc(LOC_NOTICE)}</p></div><p class="muted loc-notice-sm">You'll find it under Places: countries and cities, firsts, time zones crossed, where you got the most done, and badges. Turn it off or delete it any time in Settings &gt; Location history.</p>`;
     },
     actions: [
       { label: 'Turn it off', run: () => { seen(false); if (_loc.data) _loc.data.prefs.on = false; _loc.dirty.clear(); _loc.doneQ.clear(); } },
@@ -397,29 +397,26 @@ registerSettingsGroup({
   description: LOC_NOTICE,
   render(el) {
     const on = locLogOn();
-    el.appendChild(_settingsRow('Keep my location history', 'On by default. When off, nothing new is added (what is there stays until you delete it).',
+    el.appendChild(_settingsRow('Keep my location history', 'When off, nothing new is added.',
       _settingsSwitch(on, 'Keep my location history', async (v) => { if (await locLogSetOn(v)) render(); })));
     const f = locationsFacts();
     const info = document.createElement('div'); info.className = 'loc-set-info';
     const since = f.began ? new Date(f.began).toLocaleDateString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
-    const synced = _loc.data && _loc.data.synced;
     info.innerHTML = `<p>${f.records ? `<b>${f.records.toLocaleString()}</b> stays and moves since ${esc(since)}: ${f.countries.length} ${f.countries.length === 1 ? 'country' : 'countries'}, ${f.cities.length} ${f.cities.length === 1 ? 'place' : 'places'}.` : 'Nothing logged yet.'}</p>
-      <p class="muted">${synced ? 'Synced end-to-end encrypted between your own devices (Settings &gt; Sync).' : 'Kept in this dashboard\'s data folder. With encrypted sync on, your own devices share it too.'} Never pruned automatically. Sources: your browser's location when you choose Device location, the place you pick, your computer's time zone and your trips; never your IP address. Positions are rounded to about 1 km.</p>`;
+      <p class="muted">Kept in your data folder and on your other computers (encrypted). Never pruned automatically. Sources: your browser's location when you choose Device location, the place you pick, your computer's time zone and your trips; never your IP address. Positions are rounded to about 1 km.</p>`;
     el.appendChild(_settingsRow('What is kept', null, info));
     const act = document.createElement('div'); act.className = 'loc-set-act';
-    const b = (label, ic, run, cls) => { const x = document.createElement('button'); x.type = 'button'; x.className = 'btn btn-sm ' + (cls || 'btn-secondary'); x.innerHTML = icon(ic) + `<span>${esc(label)}</span>`; x.onclick = run; act.appendChild(x); return x; };
-    b('Open Locations', 'map-pin', () => setView('locations'));
-    b('Export JSON', 'download', () => locLogExport('json'), 'btn-ghost');
-    b('Export CSV', 'download', () => locLogExport('csv'), 'btn-ghost');
+    act.append(
+      uiButton({ label: 'Open Places', icon: 'map-pin', size: 'sm', run: () => setView('locations') }),
+      uiButton({ label: 'Export JSON', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('json') }),
+      uiButton({ label: 'Export CSV', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('csv') }));
     el.appendChild(_settingsRow('Your data', 'Download everything, any time.', act));
     const del = document.createElement('div');
-    const dx = document.createElement('button'); dx.type = 'button'; dx.className = 'btn btn-sm btn-danger'; dx.innerHTML = icon('trash-2') + '<span>Delete my location history</span>';
-    dx.onclick = async () => { if (await locLogDelete()) render(); };
-    del.appendChild(dx);
-    el.appendChild(_settingsRow('Delete', 'Only when you ask: removes it here and on your synced devices.', del));
+    del.appendChild(uiButton({ label: 'Delete my location history', icon: 'trash-2', kind: 'danger', size: 'sm', run: async () => { if (await locLogDelete()) render(); } }));
+    el.appendChild(_settingsRow('Delete', 'Only when you ask: removes it here and on your other computers.', del));
   },
 });
-registerCommand({ id: 'locations', label: 'Locations', icon: 'map-pin', group: 'Go to', keywords: 'places countries cities visited travel map where have I been fun facts badges', run: () => setView('locations') });
+registerCommand({ id: 'locations', label: 'Places', icon: 'map-pin', group: 'Go to', keywords: 'locations places countries cities visited travel map where have I been fun facts badges', run: () => setView('locations') });
 registerCommand({ id: 'locations-settings', label: 'Location history settings', icon: 'map-pin', group: 'Settings', keywords: 'location history privacy export delete places', run: () => setView('settings:locations') });
 
 /* ---------- window.Locations (for the 'game' side and other modules) ---------- */

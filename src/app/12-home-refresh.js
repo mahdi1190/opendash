@@ -36,7 +36,7 @@
 
    THE PANEL (#hr-panel, under the top bar; never blocks the page): "Calendar ✓ · Inbox ✓ ·
    Finances… · Day adviser…" with one Cancel for the whole run; afterwards a plain line for
-   each part that failed with a Retry for just that part, or "Everything is up to date" that
+   each part that failed with a Try again for just that part, or "Everything is up to date" that
    goes by itself. The automatic runs show no panel.
 
    ON ITS OWN (user request, 24 Oct: Claude usage matters): Settings > Home and stories >
@@ -378,7 +378,7 @@ function homeRefreshAll(o) {
   _hrButtons();
   if (run.visible && typeof homeAnnounce === 'function') homeAnnounce('Refreshing everything');
   run.promise = Promise.resolve().then(async () => {
-    if (!_hrUp()) { run.results.server = { status: 'error', reason: typeof NET_DOWN_MESSAGE !== 'undefined' ? NET_DOWN_MESSAGE : 'The OpenDash server is not answering.' }; run.offline = true; return; }
+    if (!_hrUp()) { run.results.server = { status: 'error', reason: typeof NET_DOWN_MESSAGE !== 'undefined' ? NET_DOWN_MESSAGE : 'OpenDash isn’t answering.' }; run.offline = true; return; }
     const steps = _hrSteps();
     const jobs = [];
     for (const s of steps) {
@@ -457,7 +457,7 @@ function _hrChip(run, id, r) {
   return `<span class="hr-chip s-${escAttr(st)}"${tip ? ` title="${escAttr(tip)}"` : ''}>${ic}<span>${esc(label)}${esc(word)}</span></span>`;
 }
 function _hrSummaryText(run) {
-  if (run.offline) return 'Refreshed for the current time. The OpenDash server is not answering, so nothing new could be fetched.';
+  if (run.offline) return 'Refreshed for the current time. OpenDash isn’t answering, so nothing new came in.';
   const bad = _hrProblems(run);
   if (run.cancelled) return 'Refresh stopped. What already came in is shown.';
   if (bad.length) return `Refreshed, but ${bad.map(([id]) => _hrLabel(run, id)).join(' and ')} ${bad.length === 1 ? 'needs' : 'need'} another try.`;
@@ -484,7 +484,7 @@ function _hrPaint() {
   const head = busy ? `<span class="spinner" aria-hidden="true"></span><b>Refreshing everything</b>`
     : `${icon(_hrProblems(run).length || run.offline ? 'triangle-alert' : 'circle-check', 'i-sm')}<b>${esc(_hrSummaryText(run))}</b><span class="hr-at">${esc(_hrHM(_hr.lastAt || Date.now()))}</span>`;
   const rows = busy ? '' : (run.offline ? [['server', run.results.server]] : _hrProblems(run)).map(([id, r]) =>
-    `<div class="hr-row s-${escAttr(r.status)}"><span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || 'It did not finish.')}</span><button type="button" class="btn btn-ghost btn-sm" data-hr-retry="${escAttr(id)}">${icon('refresh-cw', 'i-xs')}<span>Retry</span></button></div>`).join('');
+    `<div class="hr-row s-${escAttr(r.status)}"><span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || 'It did not finish.')}</span><button type="button" class="btn btn-ghost btn-sm" data-hr-retry="${escAttr(id)}">${icon('refresh-cw', 'i-xs')}<span>Try again</span></button></div>`).join('');
   const calm = busy ? '' : Object.entries(run.results).filter(([, r]) => r && (r.status === 'away' || r.status === 'elsewhere')).map(([id, r]) =>
     `<div class="hr-row is-calm">${icon(r.status === 'away' ? 'moon' : 'monitor', 'i-xs')}<span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || '')}</span></div>`).join('');
   el.classList.toggle('is-busy', busy);
@@ -545,7 +545,7 @@ function homeRefreshButton(crumb) {
   _hrHook();
   if (document.getElementById('tb-home-refresh')) return;
   const btn = document.createElement('button'); btn.type = 'button'; btn.id = 'tb-home-refresh'; btn.className = 'tb-home-cust';
-  btn.innerHTML = icon('refresh-cw') + '<span>Refresh today</span>';
+  btn.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Refresh today</span>';
   btn.setAttribute('aria-controls', 'hr-panel');
   _homeRefreshLabel(btn, !!_hr.run);
   btn.onclick = homeRefreshToday;          // during a run: shows that run (it never starts a second)
@@ -581,10 +581,13 @@ function homeRefreshSettingsRow() {
   const sel = _settingsSelect(HR_EVERY_CHOICES, homeRefreshEvery(), (v) => {
     if (typeof uiPrefSet === 'function') uiPrefSet('refreshEvery', v);
     _hrButtons();
-    toast(v === 'off' ? 'Home refreshes only when you click Refresh today' : `Home refreshes on its own ${_hrEveryText()}`, { kind: 'ok', icon: 'refresh-cw' });
+    const c = HR_EVERY_CHOICES.find(x => x[0] === v);
+    toast(`Refresh set to ${c ? c[1].toLowerCase() : 'every hour'}`, { kind: 'ok', icon: 'refresh-cw' });
   });
   sel.setAttribute('aria-label', 'Refresh everything automatically');
+  // One sentence on the face (SIMPLIFY_PLAN.md 5.1, P2); the details stay in the tooltip.
+  sel.setAttribute('data-tip', 'Weather, travel and data read without Claude refresh on this schedule. Parts that use Claude (calendars and email read through Claude, the bank update, the day adviser, tasks from email) refresh at most every hour, and only when something could have changed. Refresh today always refreshes everything at once. The same on all your computers.');
   return _settingsRow('Refresh everything automatically',
-    'While a dashboard page is open: weather, travel and data read without Claude refresh on this schedule. Parts that use Claude (calendars and email read through Claude, the bank update, the day adviser, tasks from email) refresh at most every hour, and only when something could have changed. Refresh today always refreshes everything at once. The same on all your computers.',
+    'While OpenDash is open; parts that use Claude refresh at most once an hour.',
     sel);
 }

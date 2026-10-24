@@ -28,13 +28,9 @@ function renderBoardInto(container, def, o) {
   wrap.dataset.board = b.id;
   wrap.style.setProperty('--kb-tpl', L.cols.map(c => _bdColSet(b, c.key).folded ? 'var(--kb-fold-w)' : 'minmax(var(--kb-colw), 1fr)').join(' ') || '1fr');
   if (!L.cols.length) {
-    const e = document.createElement('div'); e.className = 'empty-state kb-noc';
-    e.innerHTML = `<div class="msg">${L.hidden.length ? 'Every column is hidden.' : 'This board has no columns yet.'}</div>`;
-    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-secondary btn-sm';
-    if (L.hidden.length) { btn.textContent = 'Show all columns'; btn.onclick = () => boardUpdate(b, d => { for (const c of L.hidden) if (d.col[c.key]) delete d.col[c.key].hidden; }, 'Columns shown'); }
-    else { btn.textContent = 'Add a column'; btn.onclick = () => boardEditColumn(L, null); }
-    e.appendChild(btn);
-    container.appendChild(e);
+    mountEmptyState(container, L.hidden.length
+      ? { icon: 'eye-off', compact: true, text: 'Every column is hidden: show them to see your cards here.', actions: [{ label: 'Show all columns', icon: 'eye', primary: true, run: () => boardUpdate(b, d => { for (const c of L.hidden) if (d.col[c.key]) delete d.col[c.key].hidden; }, 'Columns shown') }] }
+      : { icon: 'columns-3', compact: true, text: 'Your cards appear here once the board has a column.', actions: [{ label: 'Add a column', icon: 'plus', primary: true, run: () => boardEditColumn(L, null) }] });
     return;
   }
   if (!L.lanes) for (const col of L.cols) wrap.appendChild(_bdColumn(L, col, null));

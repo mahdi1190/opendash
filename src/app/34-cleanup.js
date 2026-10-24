@@ -28,10 +28,9 @@ function rfCleanupOpen() {
       for (const n of [30, 45, 60, 90, 120, 180]) { const o = document.createElement('option'); o.value = n; o.textContent = `${n} days`; if (n === days) o.selected = true; sel.appendChild(o); }
       sel.onchange = () => setTaskViewPref('cleanup', { days: Number(sel.value) });
       lbl.appendChild(sel);
-      const bin = document.createElement('button'); bin.type = 'button'; bin.className = 'btn btn-ghost'; bin.innerHTML = icon('trash-2') + '<span>Open the Bin</span>';
-      bin.onclick = () => { ctx.close(); setView('bin'); };
-      const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'btn btn-primary'; ok.innerHTML = '<span>Done</span><kbd class="kbd">Enter</kbd>';
-      ok.onclick = () => ctx.close();
+      const bin = uiButton({ label: 'Open the Bin', icon: 'trash-2', kind: 'ghost', run: () => { ctx.close(); setView('bin'); } });
+      const ok = uiButton({ label: 'Done', kind: 'primary', run: () => ctx.close() });
+      ok.insertAdjacentHTML('beforeend', '<kbd class="kbd">Enter</kbd>');
       row.append(lbl, Object.assign(document.createElement('span'), { className: 'spacer' }), ...(c.bin ? [bin] : []), ok);
       el.appendChild(row);
       ctx.enter(() => ok.click());
@@ -49,10 +48,9 @@ function rfCleanupBanner() {
   if (n < 5) return null;
   const el = document.createElement('div'); el.className = 'rf-strip rf-strip-stale';
   el.innerHTML = `${icon('archive', 'i-sm')}<span class="rf-strip-t"><b>${esc(n)} tasks untouched for ${esc(days)} days.</b> Review them? One key each: keep, someday or bin.</span>`;
-  const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-secondary btn-sm'; go.innerHTML = '<span>Review them</span>' + icon('arrow-right', 'i-sm');
-  go.onclick = () => rfCleanupOpen();
-  const later = document.createElement('button'); later.type = 'button'; later.className = 'btn btn-ghost btn-sm'; later.textContent = 'Not now';
-  later.onclick = () => { setTaskViewPref('cleanup', { snoozeUntil: Date.now() + 7 * 864e5 }); el.remove(); };
+  const go = uiButton({ label: 'Review them', size: 'sm', run: () => rfCleanupOpen() });
+  go.insertAdjacentHTML('beforeend', icon('arrow-right', 'i-sm'));
+  const later = uiButton({ label: 'Not now', kind: 'ghost', size: 'sm', run: () => { setTaskViewPref('cleanup', { snoozeUntil: Date.now() + 7 * 864e5 }); el.remove(); } });
   el.append(go, later);
   return el;
 }

@@ -85,17 +85,7 @@ function gameWallNextUp(n, F) {
   return pick;
 }
 
-/* ---------- small pieces ---------- */
-function _acwBtn(label, ic, run, kind) {
-  let b = null;
-  if (typeof uiButton === 'function') { try { b = uiButton({ label, icon: ic, kind: kind || 'secondary', size: 'sm' }); } catch (e) { b = null; } }   // UI_CLEANUP_PLAN.md, when it is there
-  if (!b || !b.nodeType) {
-    b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm btn-' + (kind || 'secondary');
-    b.innerHTML = (ic ? icon(ic, 'i-sm') : '') + `<span>${esc(label)}</span>`;
-  }
-  b.onclick = (e) => { e.stopPropagation(); run(e.currentTarget); };
-  return b;
-}
+/* ---------- small pieces (buttons: the kit's uiButton, small) ---------- */
 function _acwRarityPill(d) { const r = ACH_RARITY[d.rarity] || ACH_RARITY.common; return `<span class="aw-rar aw-r-${r.id}">${esc(r.label)}</span>`; }
 function _acwBar(p, label) {
   const pct = Math.round(100 * Math.max(0, Math.min(1, p.ratio != null ? p.ratio : p.n / Math.max(1, p.of))));
@@ -107,8 +97,8 @@ function _acwGo(go) {
   if (!m) return;
   if (m[1] === 'view') { setView(m[2]); return; }
   const c = typeof PALETTE_COMMANDS !== 'undefined' ? PALETTE_COMMANDS.find(x => x.id === m[2]) : null;
-  if (!c || (typeof c.when === 'function' && !c.when())) { toast('That is not available right now.', { icon: 'info' }); return; }
-  try { c.run(); } catch (e) { toast("Couldn't open it. Try again in a moment.", { kind: 'err' }); }
+  if (!c || (typeof c.when === 'function' && !c.when())) { toast('That isn’t available right now.', { icon: 'info' }); return; }
+  try { c.run(); } catch (e) { toastError('open it', e, () => _acwGo(go)); }
 }
 /** One card (an achievement, or a series as one card with pips). */
 function _acwCard(d, F, un, members) {
@@ -228,25 +218,26 @@ function _acwSummaryLine(F, un) {
     + `<span class="aw-dot" aria-hidden="true"></span><span class="muted"><b class="num">${_acwNum(thisMonth)}</b> this month</span>`
     + (sec.length ? `<span class="aw-dot" aria-hidden="true"></span><span class="muted"><b class="num">${secGot}</b> of ${sec.length} secrets found</span>` : '')
     + `<span class="aw-dot" aria-hidden="true"></span><span class="muted"><b class="num">${_acwNum(xp)}</b> XP from achievements</span>`;
-  if (typeof gameOn === 'function' && !gameOn()) el.insertAdjacentHTML('beforeend', '<span class="aw-off muted">The Fun level is Off: no moments, the page still counts.</span>');
+  // With the Fun level Off the shared header shows one calm "Turn Fun on" row (15-nav-life.js): no second note here.
   return el;
 }
 function _acwHistoryCard() {
   const ids = typeof achHistoryPending === 'function' ? achHistoryPending() : [];
   if (!ids.length) return null;
   const card = document.createElement('section'); card.className = 'card aw-hist';
-  const names = ids.slice(0, 6).map(id => { const d = achDef(id); return `<span class="chip chip-solid">${esc(d.name)}</span>`; }).join('');
+  // At most three chips, then +N (UX_BLUEPRINT.md 3).
+  const names = ids.slice(0, 3).map(id => { const d = achDef(id); return `<span class="chip chip-solid">${esc(d.name)}</span>`; }).join('');
   card.innerHTML = `<div class="aw-hist-t">${icon('history', 'i-sm')}<div><b>You'd already earned these</b><span class="muted">${_acwNum(ids.length)} achievement${ids.length === 1 ? '' : 's'} from what you did before this update. Nothing to do: they're yours.</span></div></div>`
-    + `<div class="chips aw-hist-chips">${names}${ids.length > 6 ? `<span class="chip chip-more">+${ids.length - 6} more</span>` : ''}</div>`;
+    + `<div class="chips aw-hist-chips">${names}${ids.length > 3 ? `<span class="chip chip-more">+${ids.length - 3}</span>` : ''}</div>`;
   const row = document.createElement('div'); row.className = 'aw-hist-a';
   row.append(
-    _acwBtn('Show them', 'eye', () => { _acw.extra = new Set(['history']); _acw.status.clear(); _acw.shelf = 'all'; _acwRerender(); }, 'secondary'),
-    _acwBtn('Dismiss', 'x', () => {
+    uiButton({ label: 'Show them', icon: 'eye', size: 'sm', run: () => { _acw.extra = new Set(['history']); _acw.status.clear(); _acw.shelf = 'all'; _acwRerender(); } }),
+    uiButton({ label: 'Close', kind: 'ghost', size: 'sm', run: () => {
       const before = achState().histSeen;
       achHistorySeen();
       _acwRerender();
-      toast('Dismissed. They stay earned.', { icon: 'check', action: { label: 'Undo', run: () => { const s = achState(); s.histSeen = before; _achSave(s); _acwRerender(); } } });
-    }, 'ghost'));
+      toast('Put away: they stay earned', { icon: 'check', action: { label: 'Undo', run: () => { const s = achState(); s.histSeen = before; _achSave(s); _acwRerender(); } } });
+    } }));
   card.appendChild(row);
   return card;
 }
@@ -261,22 +252,28 @@ function _acwTools() {
   inp.addEventListener('focus', () => { _acw.searchFocus = true; });
   inp.addEventListener('blur', () => { _acw.searchFocus = false; _acw.caret = inp.selectionStart || 0; });
   inp.addEventListener('keydown', (e) => { if (e.key === 'Escape' && inp.value) { e.preventDefault(); e.stopPropagation(); inp.value = ''; _acw.q = ''; _acwRenderBody(); } });
-  const shelves = document.createElement('div'); shelves.className = 'seg aw-shelves'; shelves.setAttribute('role', 'tablist'); shelves.setAttribute('aria-label', 'Shelves');
-  for (const [id, label] of [['all', 'All'], ...ACH_SHELVES.map(s => [s.id, s.label]), ['secrets', 'Secrets']]) {
-    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab');
-    b.textContent = label; b.setAttribute('aria-selected', _acw.shelf === id ? 'true' : 'false'); b.setAttribute('aria-pressed', _acw.shelf === id ? 'true' : 'false');
-    b.onclick = () => { if (_acw.shelf === id) return; _acw.shelf = id; for (const x of shelves.children) { const on = x === b; x.setAttribute('aria-selected', on ? 'true' : 'false'); x.setAttribute('aria-pressed', on ? 'true' : 'false'); } _acwRenderBody(); };
-    shelves.appendChild(b);
-  }
+  // The shelves are a filter, not a third row of tabs (the page's sections are level 2, UX_BLUEPRINT.md 3).
+  const shelfOpts = [['all', 'All shelves'], ...ACH_SHELVES.map(s => [s.id, s.label]), ['secrets', 'Secrets']];
+  const shelves = typeof _settingsSelect === 'function' ? _settingsSelect(shelfOpts, _acw.shelf, (v) => { _acw.shelf = v; _acwRenderBody(); }, 'aw-shelves') : document.createElement('span');
+  shelves.setAttribute('aria-label', 'Shelf');
+  // Three status chips; the other filters behind "More filters" (at most 3 chips in a row, UX_BLUEPRINT.md 3).
   const chips = document.createElement('div'); chips.className = 'chips aw-chips'; chips.setAttribute('aria-label', 'Filters');
-  const hasHist = typeof achState === 'function' && Object.keys(achState().hist).length > 0;
-  for (const [id, label, set] of [..._ACW_STATUS.map(x => [...x, 'status']), ..._ACW_EXTRA.filter(x => x[0] !== 'history' || hasHist).map(x => [...x, 'extra'])]) {
+  for (const [id, label] of _ACW_STATUS) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip chip-lg aw-chip';
-    const S = set === 'status' ? _acw.status : _acw.extra;
-    b.textContent = label; b.setAttribute('aria-pressed', S.has(id) ? 'true' : 'false');
-    b.onclick = () => { if (S.has(id)) S.delete(id); else S.add(id); b.setAttribute('aria-pressed', S.has(id) ? 'true' : 'false'); _acwRenderBody(); };
+    b.textContent = label; b.setAttribute('aria-pressed', _acw.status.has(id) ? 'true' : 'false');
+    b.onclick = () => { if (_acw.status.has(id)) _acw.status.delete(id); else _acw.status.add(id); b.setAttribute('aria-pressed', _acw.status.has(id) ? 'true' : 'false'); _acwRenderBody(); };
     chips.appendChild(b);
   }
+  const hasHist = typeof achState === 'function' && Object.keys(achState().hist).length > 0;
+  const extras = _ACW_EXTRA.filter(x => x[0] !== 'history' || hasHist);
+  const moreLabel = () => (_acw.extra.size ? `More filters (${_acw.extra.size})` : 'More filters');
+  chips.appendChild(uiButton({ label: moreLabel(), icon: 'list-filter', kind: 'ghost', size: 'sm', cls: 'aw-more', pressed: _acw.extra.size > 0,
+    run: (e, btn) => openMenu(btn, extras.map(([id, label]) => ({ label, checked: () => _acw.extra.has(id),
+      run: () => {
+        if (_acw.extra.has(id)) _acw.extra.delete(id); else _acw.extra.add(id);
+        btn.setAttribute('aria-pressed', _acw.extra.size ? 'true' : 'false'); const sp = btn.querySelector('span'); if (sp) sp.textContent = moreLabel();
+        _acwRenderBody();
+      } }))) }));
   const sort = typeof _settingsSelect === 'function' ? _settingsSelect(_ACW_SORTS, _acw.sort, (v) => { _acw.sort = v; _acwRenderBody(); }, 'aw-sort') : document.createElement('span');
   sort.setAttribute('aria-label', 'Sort');
   t.append(search, shelves, chips, sort);
@@ -306,7 +303,7 @@ function _acwRenderBody() {
 }
 function _acwNextSec(list) {
   const sec = document.createElement('section'); sec.className = 'aw-next'; sec.setAttribute('aria-label', 'Next up');
-  sec.innerHTML = '<div class="aw-h"><span class="overline">Next up</span></div>';
+  sec.appendChild(secHead({ title: 'Next up' }));
   const grid = document.createElement('div'); grid.className = 'aw-next-grid';
   for (const { def: d, p, suggested } of list) grid.appendChild(_acwNextCard(d, p, suggested));
   sec.appendChild(grid);
@@ -320,8 +317,9 @@ function _acwNextCard(d, p, suggested) {
     + (p.of > 1 ? `${_acwBar(p, d.name)}<small class="muted num">${esc(_acwProgText(d, p))}</small>` : '')
     + `<span class="muted aw-nc-d">${esc(d.desc)}</span>`;
   const row = document.createElement('div'); row.className = 'aw-nc-a';
-  if (d.go) row.appendChild(_acwBtn(_acwGoLabel(d.go), 'arrow-right', () => _acwGo(d.go), 'secondary'));
-  row.appendChild(_acwBtn('Details', '', () => _acwDetail(d, null), 'ghost'));
+  // One action on a card (UX_BLUEPRINT.md 3); Details is a quiet link.
+  if (d.go) row.appendChild(uiButton({ label: _acwGoLabel(d.go), icon: 'arrow-right', size: 'sm', run: () => _acwGo(d.go) }));
+  row.appendChild(uiButton({ label: 'Details', kind: 'link', run: () => _acwDetail(d, null) }));
   card.appendChild(row);
   return card;
 }
@@ -339,7 +337,7 @@ function _acwAlmost(F, un) {
     b.onclick = () => _acwDetail(d, null);
     el.appendChild(b);
   }
-  if (list.length > 5) el.appendChild(_acwBtn(`Show all ${list.length}`, '', () => { _acw.status = new Set(['progress']); _acw.sort = 'closest'; _acwRerender(); }, 'ghost'));
+  if (list.length > 5) el.appendChild(uiButton({ label: `${list.length - 5} more`, kind: 'ghost', size: 'sm', run: () => { _acw.status = new Set(['progress']); _acw.sort = 'closest'; _acwRerender(); } }));
   return el;
 }
 function _acwOpenMap() {
@@ -368,7 +366,7 @@ function _acwShelves(F, un) {
     if (!cats.length) continue;
     const sec = document.createElement('section'); sec.className = 'aw-shelf'; sec.dataset.shelf = sh.id;
     const all = ACH_DEFS.filter(d => d.shelf === sh.id), got = all.filter(d => un[d.id]).length;
-    sec.innerHTML = `<div class="aw-h"><span class="overline">${esc(sh.label)}</span><span class="muted num">${_acwNum(got)} of ${_acwNum(all.length)}</span></div>`;
+    sec.appendChild(secHead({ title: sh.label, count: `${_acwNum(got)} of ${_acwNum(all.length)}` }));
     for (const c of cats) sec.appendChild(_acwCatRow(c, F, un, !!open[c.id]));
     wrap.appendChild(sec);
   }
@@ -381,7 +379,7 @@ function _acwCatRow(c, F, un, isOpen) {
   if (!_acwCatOn(c) && !got) {   // the feature is off: one calm row
     row.classList.add('is-off');
     row.innerHTML = `<div class="aw-cat-h is-static">${icon(c.icon, 'i-sm')}<b>${esc(c.label)}</b><span class="muted">${_acwNum(defs.length)} achievement${defs.length === 1 ? '' : 's'} wait here, ${esc(_acwNeedsWords(c.needs))}.</span></div>`;
-    if (c.go) row.querySelector('.aw-cat-h').appendChild(_acwBtn(_acwGoLabel(c.go), 'arrow-right', () => _acwGo(c.go), 'ghost'));
+    if (c.go) row.querySelector('.aw-cat-h').appendChild(uiButton({ label: _acwGoLabel(c.go), icon: 'arrow-right', kind: 'ghost', size: 'sm', run: () => _acwGo(c.go) }));
     return row;
   }
   const h = document.createElement('button'); h.type = 'button'; h.className = 'aw-cat-h';
@@ -414,15 +412,13 @@ function _acwResults(F, un) {
     if (typeof mountEmptyState === 'function') mountEmptyState(wrap, { icon: 'search-x', compact: true, title: _acw.q ? `No achievements match “${_acw.q}”` : 'Nothing here with these filters', text: 'Try fewer words or another filter.', actions: [{ label: 'Clear search and filters', icon: 'x', run: () => { _acw.q = ''; _acw.status.clear(); _acw.extra.clear(); _acw.shelf = 'all'; _acw.sort = 'closest'; _acwRerender(); } }] });
     return wrap;
   }
-  const head = document.createElement('div'); head.className = 'aw-h';
-  head.innerHTML = `<span class="muted num">${_acwNum(match.length)} achievement${match.length === 1 ? '' : 's'}</span>`;
-  head.appendChild(_acwBtn('Clear', 'x', () => { _acw.q = ''; _acw.status.clear(); _acw.extra.clear(); _acw.shelf = 'all'; _acw.sort = 'closest'; _acwRerender(); }, 'ghost'));
-  wrap.appendChild(head);
+  wrap.appendChild(secHead({ title: `${_acwNum(match.length)} achievement${match.length === 1 ? '' : 's'}`,
+    actions: [{ label: 'Clear', icon: 'x', run: () => { _acw.q = ''; _acw.status.clear(); _acw.extra.clear(); _acw.shelf = 'all'; _acw.sort = 'closest'; _acwRerender(); } }] }));
   const items = _acwSortList(match.map(d => ({ def: d, members: null })), F, un);
   const grid = document.createElement('div'); grid.className = 'aw-grid';
   for (const x of items.slice(0, _acw.limit)) grid.appendChild(_acwCard(x.def, F, un, null));
   wrap.appendChild(grid);
-  if (items.length > _acw.limit) wrap.appendChild(_acwBtn(`Show ${_acwNum(Math.min(120, items.length - _acw.limit))} more`, '', () => { _acw.limit += 120; _acwRenderBody(); }, 'ghost'));
+  if (items.length > _acw.limit) wrap.appendChild(uiButton({ label: `Show ${_acwNum(Math.min(120, items.length - _acw.limit))} more`, kind: 'ghost', size: 'sm', run: () => { _acw.limit += 120; _acwRenderBody(); } }));
   return wrap;
 }
 
@@ -452,7 +448,7 @@ function _acwDetail(d, members) {
   if (!got && !hidden && d.go && achNeedsOn(d)) actions.push({ label: _acwGoLabel(d.go), icon: 'arrow-right', primary: true, run: () => { setTimeout(() => _acwGo(d.go), 0); } });
   actions.push({ label: 'Close', run: () => true });
   openDialog({
-    title, width: 440, resizable: false, resizeKey: 'ach-detail',
+    title, size: 'sm', resizable: false, resizeKey: 'ach-detail',
     body: (b) => {
       b.classList.add('aw-d');
       b.innerHTML = rows.join('');
@@ -473,7 +469,7 @@ function _acwShowcaseRow(d) {
     if (want) { if (list.length >= max) list.shift(); list.push(d.id); }
     profileSet({ badges: list });
     sw.setAttribute('aria-checked', want ? 'true' : 'false');
-    toast(want ? (d.private ? 'On your profile. Friends will see this one.' : 'On your profile.') : 'Taken off your profile.', { icon: 'award', action: { label: 'Undo', run: () => { profileSet({ badges: before }); sw.setAttribute('aria-checked', on ? 'true' : 'false'); } } });
+    toast(want ? (d.private ? 'Added to your profile: friends will see this one' : 'Added to your profile') : 'Taken off your profile', { icon: 'award', action: { label: 'Undo', run: () => { profileSet({ badges: before }); sw.setAttribute('aria-checked', on ? 'true' : 'false'); } } });
   }) : null;
   if (!sw) return row;
   const t = document.createElement('span');
@@ -542,11 +538,11 @@ function gameWallSummary() {
   const F = _acwF(), un = F.unlocked;
   const got = ACH_DEFS.filter(d => un[d.id]).length;
   const sec = document.createElement('section'); sec.className = 'gm-sec aw-mini'; sec.id = 'gm-ach';
-  sec.innerHTML = `<div class="gm-sec-h"><h2>Achievements</h2><span class="muted">${_acwNum(got)} of ${_acwNum(ACH_DEFS.length)} earned. Each stays earned for good.</span></div>`;
+  sec.appendChild(secHead({ title: 'Achievements', sub: `${_acwNum(got)} of ${_acwNum(ACH_DEFS.length)} earned. Each stays earned for good.` }));
   const nx = gameWallNextUp(3, F);
   if (nx.length) { const grid = document.createElement('div'); grid.className = 'aw-next-grid'; for (const { def: d, p, suggested } of nx) grid.appendChild(_acwNextCard(d, p, suggested)); sec.appendChild(grid); }
-  else sec.insertAdjacentHTML('beforeend', '<p class="muted">Nothing close right now. They come with weeks of steady work.</p>');
-  sec.appendChild(_acwBtn(`See all ${_acwNum(ACH_DEFS.length)} achievements`, 'trophy', () => gameWallOpen(), 'secondary'));
+  else sec.appendChild(emptyLine('Nothing close right now. They come with weeks of steady work.'));
+  sec.appendChild(uiButton({ label: `See all ${_acwNum(ACH_DEFS.length)} achievements`, icon: 'trophy', size: 'sm', run: () => gameWallOpen() }));
   return sec;
 }
 

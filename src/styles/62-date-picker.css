@@ -1,3 +1,4 @@
+/* Tokens: spacing, type and radius use var(--space-*), var(--text-*), var(--radius-*); a raw 1px hairline or 2px optical nudge is intentional. */
 /* ============= DATE PICKING (owner: Tasks; 32-tasks-ui.js) =============
    Mini month (buildMiniMonth) + the due-date popover (openDueDatePopover).
    The old #date-picker element in body.html is no longer used. */
@@ -7,7 +8,7 @@
 .mm-h { display: flex; align-items: center; justify-content: space-between; height: 30px; padding: 0 2px; margin-bottom: 2px; }
 .mm-h b { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); }
 .mm-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; text-align: center; font-variant-numeric: tabular-nums; }
-.mm-wd { height: 22px; line-height: 22px; font-size: 10px; font-weight: var(--weight-medium); color: var(--fg-subtle); }
+.mm-wd { height: 22px; line-height: 22px; font-size: var(--text-2xs); font-weight: var(--weight-medium); color: var(--fg-subtle); }
 .mm-d {
   position: relative; height: 30px; border: 0; background: none; border-radius: var(--radius-sm); padding: 0;
   font: inherit; font-size: var(--text-xs); color: var(--fg); cursor: pointer;
@@ -23,7 +24,7 @@
 .mm-foot { display: flex; justify-content: flex-end; padding-top: var(--space-1); margin-top: var(--space-1); border-top: 1px solid var(--border-subtle); }
 
 .due-pop { padding: var(--space-2); }
-.due-pop .pop-label { padding: 2px 4px 6px; }
+.due-pop .pop-label { padding: 2px var(--space-1) var(--space-1-5); }
 .due-pop-in { margin-bottom: var(--space-1); }
 .due-pop-hint { font-size: var(--text-xs); color: var(--success-ink); white-space: nowrap; }
 .due-pop-quick { display: flex; flex-direction: column; padding: 2px 0 var(--space-1); margin-bottom: var(--space-1); border-bottom: 1px solid var(--border-subtle); }

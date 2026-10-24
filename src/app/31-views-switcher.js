@@ -10,12 +10,19 @@
      viewsRenderMode(main, o)         renderTaskView's hook: draws Timeline / Matrix, true when it did
      V / Shift+V                      next / previous layout (List, Board, Timeline, Matrix)
    List fields (which bits a list row shows), saved in the synced
-   taskViewPrefs._rows = {hide: ['tags', ...]} (every list, one choice):
+   taskViewPrefs._rows = {hide: ['tags', ...], v: 2} (every list, one choice;
+   UI_CLEANUP_PLAN.md 2.2). With nothing saved, rows are Calm: the title, the
+   due date, the priority (the checkbox colour) and the stream dot. Every write
+   stores an explicit array (Everything = []); an older non-empty hide (no v) is
+   kept, with the four 2.18 fields hidden too; a missing or null value is Calm.
      VIEW_ROW_FIELDS                  [[key, label]]
+     VIEW_ROW_CALM                    the default hidden list
      viewsRowHidden()                 Set of hidden field keys
      viewsSetRowHidden(key, hidden)   one field on / off
+     viewsSetRowPreset(hide)          a whole choice (a preset)
      viewsApplyListFields(el)         stamps data-vf-hide on a list (CSS hides the parts)
      viewsListFieldsField(el, paint)  the "Show on rows" field in the Display popover
+   Hidden is not gone: the row's tooltip lists what is hidden (30-task-row.js).
    ============================================================ */
 const VIEW_MODES = [
   { k: 'list', label: 'List', icon: 'layout-list' },
@@ -95,46 +102,86 @@ function viewsKeyHelp() {
 }
 
 /* ---------- list fields ---------- */
-const VIEW_ROW_FIELDS = [['due', 'Due date'], ['stream', 'Stream'], ['tags', 'Tags'], ['people', 'People'], ['subtasks', 'Subtasks'], ['estimate', 'Estimate'], ['details', 'Notes, files, repeat']];
-const _VW_ROW_PRESETS = [['all', 'Everything', []], ['calm', 'Calm', ['tags', 'people', 'details']], ['bare', 'Bare', ['stream', 'tags', 'people', 'subtasks', 'estimate', 'details']]];
+const VIEW_ROW_FIELDS = [['due', 'Due date'], ['stream', 'Stream'], ['streamLabel', 'Stream name'], ['tags', 'Tags'], ['people', 'People'], ['subtasks', 'Subtasks'],
+  ['estimate', 'Estimate'], ['context', 'Context and energy'], ['planned', 'Planned day'], ['pin', 'Pin'], ['details', 'Notes, files, repeat']];
+/** The fields 2.18 added: an older explicit choice hides them too, so Calm and Bare users stay calm. */
+const _VW_ROW_NEW = ['streamLabel', 'context', 'planned', 'pin'];
+const VIEW_ROW_CALM = ['streamLabel', 'tags', 'people', 'subtasks', 'estimate', 'details', 'context', 'planned', 'pin'];
+const _VW_ROW_PRESETS = [['all', 'Everything', []], ['calm', 'Calm', VIEW_ROW_CALM], ['bare', 'Bare', VIEW_ROW_FIELDS.map(f => f[0]).filter(k => k !== 'due')]];
+function _vwRowKeys(list) { return list.filter(k => VIEW_ROW_FIELDS.some(f => f[0] === k)); }
 function viewsRowHidden() {
-  const h = taskViewPrefs('_rows').hide;
-  return new Set(Array.isArray(h) ? h.filter(k => VIEW_ROW_FIELDS.some(f => f[0] === k)) : []);
+  const p = taskViewPrefs('_rows');
+  const h = p.hide;
+  if (p.v === 2 && Array.isArray(h)) return new Set(_vwRowKeys(h));                   // a 2.18 choice, as it is
+  if (Array.isArray(h) && h.length) return new Set(_vwRowKeys(h).concat(_VW_ROW_NEW));   // an older explicit choice
+  return new Set(VIEW_ROW_CALM);                                                         // nothing saved: Calm
 }
+/** Save a whole choice: always an explicit array (Everything is []), marked v: 2. */
+function viewsSetRowPreset(hide) { setTaskViewPref('_rows', { hide: _vwRowKeys(hide || []).slice(), v: 2 }); }
 function viewsSetRowHidden(key, hidden) {
   const s = viewsRowHidden();
   if (hidden) s.add(key); else s.delete(key);
-  setTaskViewPref('_rows', { hide: s.size ? [...s] : null });
+  viewsSetRowPreset([...s]);
 }
 function viewsApplyListFields(el) {
   if (!el) return el;
   const s = viewsRowHidden();
   if (s.size) el.setAttribute('data-vf-hide', [...s].join(' ')); else el.removeAttribute('data-vf-hide');
+  _vwCalmTipSoon();
   return el;
+}
+/* The one case that cannot be told apart (UI_CLEANUP_PLAN.md 2.2, step 3): someone who had OpenDash
+   before 2.18 and nothing saved (they had Everything) now sees Calm rows. One tip on the Display
+   button, once on every device (seen.once), whose button writes Everything. */
+const _VW_CALM_TIP = 'calmRows:2.18';
+let _vwCalmTipTimer = null, _vwCalmTipShown = false;
+function _vwCalmTipWanted() {
+  if (_vwCalmTipShown || typeof seenOnce !== 'function' || seenOnce(_VW_CALM_TIP)) return false;
+  const p = taskViewPrefs('_rows');
+  if (p.v === 2 || (Array.isArray(p.hide) && p.hide.length)) return false;   // a choice was made
+  return typeof pagesBaseline === 'function' && pagesBaseline() === 'upgrade';
+}
+function _vwCalmTipSoon() {
+  if (_vwCalmTipTimer || !_vwCalmTipWanted()) return;
+  _vwCalmTipTimer = setTimeout(() => { _vwCalmTipTimer = null; _vwCalmTip(); }, 1200);
+}
+function _vwCalmTip() {
+  const btn = document.getElementById('display-btn');
+  if (!btn || btn.hidden || !btn.getClientRects().length || !_vwCalmTipWanted()) return;
+  if (document.querySelector('.modal, .pop')) return;   // not over a dialog or a menu: the next list render tries again
+  _vwCalmTipShown = true;
+  const done = () => { if (typeof seenMarkOnce === 'function') seenMarkOnce(_VW_CALM_TIP); };
+  openPopover(btn, (pop, close) => {
+    const t = document.createElement('p'); t.className = 'vw-tip-t'; t.textContent = 'Rows are calmer now. Show everything?';
+    const row = document.createElement('div'); row.className = 'vw-tip-acts';
+    row.append(
+      uiButton({ label: 'Not now', kind: 'ghost', size: 'sm', run: () => close() }),
+      uiButton({ label: 'Show everything', kind: 'primary', size: 'sm', run: () => { viewsSetRowPreset([]); close(); render(); } }),
+    );
+    pop.append(t, row);
+  }, { className: 'vw-tip', align: 'end', width: 260, focus: false, onClose: done });
 }
 /** "Show on rows": a toggle per field plus three presets (Everything, Calm, Bare). */
 function viewsListFieldsField(el, paint) {
   const hid = viewsRowHidden();
-  const f = document.createElement('div'); f.className = 'field vw-fields'; f.style.marginBottom = '12px';
+  const f = document.createElement('div'); f.className = 'field vw-fields';
   const l = document.createElement('span'); l.className = 'field-label'; l.textContent = 'Show on rows'; f.appendChild(l);
   const seg = document.createElement('div'); seg.className = 'seg seg-block seg-wrap'; seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Show on rows');
   for (const [k, t] of VIEW_ROW_FIELDS) {
     const b = document.createElement('button'); b.type = 'button'; b.textContent = t;
     b.setAttribute('aria-pressed', hid.has(k) ? 'false' : 'true');
     b.title = hid.has(k) ? 'Hidden: click to show' : 'Shown: click to hide';
-    b.onclick = () => { viewsSetRowHidden(k, !hid.has(k)); render(); paint(); };
+    b.onclick = () => { viewsSetRowHidden(k, !hid.has(k)); if (typeof seenMarkOnce === 'function') seenMarkOnce(_VW_CALM_TIP); render(); paint(); };
     seg.appendChild(b);
   }
   f.appendChild(seg);
   const pre = document.createElement('div'); pre.className = 'vw-presets';
   const curKey = [...hid].sort().join(',');
   for (const [k, t, hide] of _VW_ROW_PRESETS) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
-    b.textContent = t;
     const on = hide.slice().sort().join(',') === curKey;
-    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const b = uiButton({ label: t, kind: 'ghost', size: 'sm', pressed: on, bubble: true, tip: k === 'calm' ? 'Title, due date, priority and the stream dot' : k === 'bare' ? 'Title and due date' : '',
+      run: () => { if (on) return; viewsSetRowPreset(hide); if (typeof seenMarkOnce === 'function') seenMarkOnce(_VW_CALM_TIP); render(); paint(); } });
     if (on) b.setAttribute('aria-current', 'true');
-    b.onclick = () => { if (on) return; setTaskViewPref('_rows', { hide: hide.length ? hide.slice() : null }); render(); paint(); };
     pre.appendChild(b);
   }
   f.appendChild(pre);

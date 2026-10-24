@@ -297,14 +297,16 @@ function renderTaskRow(item, opts) {
   // In Today's sections the "Planned for today" heading already says it (21-task-query.js).
   if (item.plannedFor && status !== 'done' && !(state.view === 'today' && item.plannedFor <= today && (daysUntil(effDate(item)) === 0 || (!searchQuery && groupForView('today') === 'auto')))) {
     const pd = daysUntil(item.plannedFor);
-    if (pd !== null && pd <= 0) m('t-planned', 'sun', 'Today', 'Planned for today');
-    else m('t-planned', 'calendar-check', dueLabel(item.plannedFor), 'Planned for ' + item.plannedFor);
+    // Planned for today is a status chip (it stays on calm rows); another day is the 'planned' field.
+    if (pd !== null && pd <= 0) m('t-planned is-today', 'sun', 'Today', 'Planned for today');
+    else m('t-planned', 'calendar-check', dueLabel(item.plannedFor), 'Planned for ' + item.plannedFor).dataset.sum = 'Planned ' + dueLabel(item.plannedFor);
   }
   if (subs.length > 0) {
     const ss = document.createElement('button'); ss.type = 'button';
     ss.className = 'm sub-count' + (subDone === subs.length ? ' all-done' : '') + (_expandedTaskIds.has(id) ? ' open' : '');
     ss.innerHTML = icon('list-checks') + `<span>${subDone}/${subs.length}</span>`;
     ss.title = `${subDone} of ${subs.length} subtasks done · click to ${_expandedTaskIds.has(id) ? 'hide' : 'show'}`;
+    ss.dataset.sum = `${subDone}/${subs.length} subtasks`;
     ss.onclick = e => { e.stopPropagation(); toggleInlineSubtasks(id); };
     meta.appendChild(ss);
   }
@@ -315,7 +317,7 @@ function renderTaskRow(item, opts) {
   const meet = _rowMeeting(id);
   if (meet) m('t-meet', 'video', meet.title, 'Linked meeting: ' + meet.title + (meet.when ? ' · ' + meet.when : ''));
   if (recurrence && recurrence !== 'none') m('t-recur', 'repeat', _rowRecurLabel(recurrence, effDate(item)), recurrenceLabel(recurrence));
-  if (item.estimate) m('t-est', 'timer', fmtEstimate(item.estimate), 'Estimate');
+  if (item.estimate) m('t-est', 'timer', fmtEstimate(item.estimate), 'Estimate').dataset.sum = '~' + fmtEstimate(item.estimate);
   if (typeof ctxRowMeta === 'function') ctxRowMeta(item, m);   // @context and energy (24-task-contexts-ui.js)
   if (pinned) m('t-pin', 'pin', '', 'Pinned');
   if (typeof rfRowDecorate === 'function') rfRowDecorate(item, el, m);   // waiting / blocked chips and dimming (34-blocked.js)
@@ -327,11 +329,11 @@ function renderTaskRow(item, opts) {
   body.appendChild(meta);
   el.appendChild(body);
 
-  // Side: at most 3 tag chips (+N), people, due date.
+  // Side: at most 2 tag chips (+N, UX_BLUEPRINT.md 3), people, due date.
   const right = document.createElement('div'); right.className = 't-right';
   if (tags.length) {
     const chips = document.createElement('span'); chips.className = 'chips t-tags';
-    for (const t of tags.slice(0, 3)) {
+    for (const t of tags.slice(0, 2)) {
       const c = document.createElement('button'); c.type = 'button'; c.className = 'chip t-tag';
       c.innerHTML = `<span data-cz-label>${esc(t)}</span>`;
       czTagChip(c, t);   // the tag's colour and symbol, and its right-click menu (28-customise.js)
@@ -339,10 +341,10 @@ function renderTaskRow(item, opts) {
       c.onclick = e => { e.stopPropagation(); setView('tag:' + t); };
       chips.appendChild(c);
     }
-    if (tags.length > 3) {
+    if (tags.length > 2) {
       const more = document.createElement('span'); more.className = 'chip chip-more';
-      more.textContent = '+' + (tags.length - 3);
-      more.title = tags.slice(3).map(t => '#' + t).join('  ');
+      more.textContent = '+' + (tags.length - 2);
+      more.title = tags.slice(2).map(t => '#' + t).join('  ');
       chips.appendChild(more);
     }
     right.appendChild(chips);
@@ -360,6 +362,12 @@ function renderTaskRow(item, opts) {
   right.appendChild(ds);
   el.appendChild(right);
 
+  // Hidden is not gone (UI_CLEANUP_PLAN.md 2.2): the row's tooltip lists what Display > Show on rows hides.
+  // Built on hover from the row itself, so it always matches the list's choice; no reveal inside the row.
+  el.addEventListener('pointerenter', () => {
+    const sum = _rowHiddenSummary(el, item);
+    if (sum) el.title = sum; else el.removeAttribute('title');
+  });
   el.onclick = (e) => {
     if (e.target.closest('.multi-handle')) return;
     if (e.shiftKey && _selectRangeTo(id)) return;
@@ -389,6 +397,22 @@ function renderTaskRow(item, opts) {
   block.appendChild(el);
   block.appendChild(_buildInlineSubtasks(item));
   return block;
+}
+
+/** "#design #review · @phone · ~30m · 2 notes": what this row hides ('' when nothing is hidden). */
+function _rowHiddenSummary(el, item) {
+  const hid = (n) => !!n && getComputedStyle(n).display === 'none';
+  const parts = [];
+  const sd = el.querySelector(':scope > .t-body .t-streamdot');
+  if (sd) { const lab = sd.querySelector('[data-cz-label]'); if (lab && (hid(sd) || hid(lab))) parts.push(lab.textContent.trim()); }
+  const tg = el.querySelector(':scope > .t-right > .t-tags');
+  if (hid(tg)) parts.push(effTags(item).map(t => '#' + t).join(' '));
+  for (const n of el.querySelectorAll(':scope > .t-body > .t-meta > .m')) if (hid(n)) parts.push(n.dataset.sum || n.title || n.textContent.trim());
+  const pp = el.querySelector(':scope > .t-right > .t-people');
+  if (hid(pp)) parts.push(pp.title);
+  const due = el.querySelector(':scope > .t-right > .due-stamp');
+  if (hid(due) && due.textContent) parts.push('Due ' + due.textContent);
+  return parts.filter(Boolean).join(' · ');
 }
 
 function _toggleMulti(id) {

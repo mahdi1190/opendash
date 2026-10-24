@@ -116,7 +116,7 @@ async function tagMergeDialog(tags) {
     return { into, froms, n };
   };
   openDialog({
-    title: list.length > 1 ? `Merge ${list.length} tags` : `Merge #${list[0]} into…`, width: 460,
+    title: list.length > 1 ? `Merge ${list.length} tags` : `Merge #${list[0]} into…`, size: 'sm',
     body: (el) => {
       const p = document.createElement('div'); p.className = 'tm-merge-from';
       p.innerHTML = list.map(t => `<span class="chip">#${esc(t)}</span>`).join('');
@@ -196,7 +196,8 @@ function openTagManager(o) {
   o = o || {};
   if (o.query !== undefined) _tmQuery = o.query;
   const scrim = document.createElement('div'); scrim.className = 'scrim';
-  const dlg = document.createElement('div'); dlg.className = 'modal tm'; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-label', 'Tags');
+  // A 'lg' fixed dialog like openDialog's (UI_CLEANUP_PLAN.md 1.2): the list scrolls, the header and footer stay.
+  const dlg = document.createElement('div'); dlg.className = 'modal modal-lg is-fixed tm'; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true'); dlg.setAttribute('aria-label', 'Tags');
   const prevFocus = document.activeElement;
   let closed = false;
   const close = () => {
@@ -233,7 +234,8 @@ function _buildTagManager(root, o) {
     const max = Math.max(1, ...rows.map(r => r.open));
     // Header
     const h = document.createElement('div'); h.className = 'modal-h tm-h';
-    h.innerHTML = icon('tags') + `<h2>Tags</h2><span class="badge badge-soft">${rows.length}</span>`;
+    // As a dialog it has its own title; as the Tags page the shared header draws it (UX_BLUEPRINT.md 3).
+    if (o.close) h.innerHTML = icon('tags', 'i-lg') + `<h2>Tags</h2><span class="badge badge-soft">${rows.length}</span>`;
     const fl = document.createElement('label'); fl.className = 'input input-sm tm-filter'; fl.innerHTML = icon('search');
     const fin = document.createElement('input'); fin.type = 'search'; fin.placeholder = 'Filter tags'; fin.value = _tmQuery; fin.setAttribute('aria-label', 'Filter tags');
     fin.oninput = () => { _tmQuery = fin.value; paint(); };
@@ -246,10 +248,7 @@ function _buildTagManager(root, o) {
       seg.appendChild(b);
     }
     h.append(fl, seg);
-    if (o.close) {
-      const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon tm-x'; x.innerHTML = icon('x'); x.setAttribute('aria-label', 'Close');
-      x.onclick = o.close; h.appendChild(x);
-    }
+    if (o.close) h.appendChild(uiButton({ icon: 'x', aria: 'Close', cls: 'tm-x', run: () => o.close() }));
     root.appendChild(h);
 
     // Body: list + suggestions
@@ -262,9 +261,8 @@ function _buildTagManager(root, o) {
       : (a, b) => (a.archived - b.archived) || b.open - a.open || b.total - a.total || a.tag.localeCompare(b.tag));
     for (const t of [..._tmSel]) if (!rows.some(r => r.tag === t)) _tmSel.delete(t);
     if (!shown.length) {
-      const e = document.createElement('div'); e.className = 'tm-empty subtle';
-      e.textContent = rows.length ? (q ? 'No tag matches.' : 'Every tag is in use on an open task.') : 'No tags yet. Add #tags to tasks and they show up here.';
-      list.appendChild(e);
+      list.appendChild(emptyLine(rows.length ? (q ? 'No tag matches that.' : 'Every tag is in use on an open task.') : 'Add #tags to tasks and they show up here.',
+        q ? { label: 'Clear the filter', run: () => { _tmQuery = ''; paint(); } } : null));
     }
     for (const r of shown) {
       const row = document.createElement('div'); row.className = 'tm-row' + (r.archived ? ' archived' : '') + (_tmSel.has(r.tag) ? ' sel' : ''); row.setAttribute('role', 'listitem');
@@ -282,8 +280,7 @@ function _buildTagManager(root, o) {
       const cnt = document.createElement('span'); cnt.className = 'num subtle tm-count';
       cnt.textContent = `${r.open} task${r.open === 1 ? '' : 's'}`;
       cnt.title = `${r.open} open · ${r.total} in all`;
-      const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'btn-icon btn-sm'; mb.innerHTML = icon('ellipsis'); mb.setAttribute('aria-label', 'Actions for #' + r.tag);
-      mb.onclick = () => openMenu(mb, [
+      const mb = uiButton({ icon: 'ellipsis', iconCls: 'i-sm', size: 'sm', aria: 'Actions for #' + r.tag, run: (e, btn) => openMenu(btn, [
         { label: 'Show tasks', icon: 'list', run: () => { if (o.close) o.close(); setView('tag:' + r.tag); } },
         { label: 'Rename…', icon: 'pencil', run: () => tagRename(r.tag) },
         { label: 'Merge into…', icon: 'git-merge', run: () => tagMergeDialog([r.tag]) },
@@ -292,7 +289,7 @@ function _buildTagManager(root, o) {
         { label: r.pinned ? 'Unpin from sidebar' : 'Pin to sidebar', icon: r.pinned ? 'pin-off' : 'pin', run: () => tagSetFlags([r.tag], { pinned: !r.pinned }, r.pinned ? `Unpinned #${r.tag}` : `Pinned #${r.tag} to the sidebar`) },
         { label: r.archived ? 'Unarchive' : 'Archive', icon: r.archived ? 'archive-restore' : 'archive', run: () => tagSetFlags([r.tag], { archived: !r.archived }, r.archived ? `#${r.tag} is back in the pickers` : `Archived #${r.tag}: it stays on its tasks`) },
         { label: 'Delete', icon: 'trash-2', danger: true, run: () => tagDelete([r.tag]) },
-      ], { align: 'end', width: 220 });
+      ], { align: 'end', width: 220 }) });
       row.append(cb, name, bar, cnt, mb);
       list.appendChild(row);
     }
@@ -309,17 +306,16 @@ function _buildTagManager(root, o) {
     n.textContent = sel.length ? `${sel.length} selected` : 'Select tags to merge, pin, archive or delete them together.';
     f.appendChild(n);
     if (sel.length) {
-      const mk = (ic, label, cls, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.innerHTML = icon(ic) + `<span>${esc(label)}</span>`; b.onclick = run; return b; };
       const allPinned = sel.every(t => tglIsPinned(state, t));
       f.append(
-        mk('git-merge', 'Merge…', 'btn-secondary', () => tagMergeDialog(sel)),
-        mk(allPinned ? 'pin-off' : 'pin', allPinned ? 'Unpin' : 'Pin to sidebar', 'btn-secondary', () => tagSetFlags(sel, { pinned: !allPinned }, allPinned ? `Unpinned ${sel.length}` : `Pinned ${sel.length} to the sidebar`)),
-        mk('archive', 'Archive', 'btn-secondary', () => tagSetFlags(sel, { archived: true }, `Archived ${sel.length} tag${sel.length === 1 ? '' : 's'}`)),
-        mk('trash-2', 'Delete', 'btn-ghost tm-del', () => tagDelete(sel)),
+        uiButton({ label: 'Merge…', icon: 'git-merge', size: 'sm', run: () => tagMergeDialog(sel) }),
+        uiButton({ label: allPinned ? 'Unpin' : 'Pin to sidebar', icon: allPinned ? 'pin-off' : 'pin', size: 'sm', run: () => tagSetFlags(sel, { pinned: !allPinned }, allPinned ? `Unpinned ${sel.length}` : `Pinned ${sel.length} to the sidebar`) }),
+        uiButton({ label: 'Archive', icon: 'archive', size: 'sm', run: () => tagSetFlags(sel, { archived: true }, `Archived ${sel.length} tag${sel.length === 1 ? '' : 's'}`) }),
+        uiButton({ label: 'Delete', icon: 'trash-2', kind: 'ghost', size: 'sm', cls: 'tm-del', run: () => tagDelete(sel) }),
       );
     }
     const sp = document.createElement('span'); sp.className = 'grow'; f.appendChild(sp);
-    if (o.close) { const d = document.createElement('button'); d.type = 'button'; d.className = 'btn btn-primary'; d.textContent = 'Done'; d.onclick = o.close; f.appendChild(d); }
+    if (o.close) f.appendChild(uiButton({ label: 'Done', kind: 'primary', run: () => o.close() }));
     root.appendChild(f);
     const nl = root.querySelector('.tm-list'); if (nl) nl.scrollTop = listScroll;
     if (keepFocus) { const i = root.querySelector('.tm-filter input'); if (i) { i.focus({ preventScroll: true }); try { i.setSelectionRange(caret, caret); } catch (e) {} } }
@@ -340,10 +336,9 @@ function _tmSuggestions(side, rows, o) {
     any = true;
     runs.set(id, mutate);
     const c = document.createElement('div'); c.className = 'merge'; c.dataset.selId = id;
-    c.innerHTML = `<div class="merge-t">${icon(iconName)}<span>${titleHtml}</span></div>` + (bodyHtml || '');
+    c.innerHTML = `<div class="merge-t">${icon(iconName, 'i-sm')}<span>${titleHtml}</span></div>` + (bodyHtml || '');
     c.setAttribute('aria-label', c.querySelector('.merge-t').textContent.trim());
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.textContent = btnLabel; b.onclick = () => _tagDone(mutate());
-    c.appendChild(b);
+    c.appendChild(uiButton({ label: btnLabel, size: 'sm', run: () => _tagDone(mutate()) }));
     box.appendChild(c);
   };
   const ruleRun = (kind, label) => () => {

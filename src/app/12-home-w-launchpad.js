@@ -235,7 +235,7 @@ function lpOpenPicker(preset) {
   const want = new Set((preset || []).map(String));
   const store = { on: new Set(all.filter(r => want.has(r.id)).map(r => r.id)), seen: new Set(all.map(r => r.id)), done: new Set(), errors: new Map() };
   openDialog({
-    title: 'Pin to Launchpad', width: 560,
+    title: 'Pin to Launchpad', size: 'md',
     body: (el, close) => {
       const p = document.createElement('p'); p.className = 'muted lp-pk-intro';
       p.textContent = 'What you tick goes on Launchpad, at the end. The most linked come first.';
@@ -251,7 +251,7 @@ function lpOpenPicker(preset) {
         const row = document.createElement('div'); row.className = 'lp-pk-row'; row.dataset.selId = r.id;
         const n = Array.isArray(r.links) ? r.links.length : 0;
         row.setAttribute('aria-label', rsrcDisplayLabel(r));
-        row.innerHTML = `<span class="res-ic k-${escAttr(r.kind)}">${icon(rsrcIcon(r))}</span><span class="lp-pk-t"><span class="lp-pk-n">${esc(rsrcDisplayLabel(r))}</span>`
+        row.innerHTML = `<span class="res-ic k-${escAttr(r.kind)}">${icon(rsrcIcon(r), 'i-sm')}</span><span class="lp-pk-t"><span class="lp-pk-n">${esc(rsrcDisplayLabel(r))}</span>`
           + `<span class="lp-pk-s">${esc(rsrcKindLabel(r))}${n ? ` · linked to ${n}` : ''}</span></span>`;
         list.appendChild(row);
       }
@@ -336,9 +336,8 @@ function _lpRender(el, ctx) {
   const items = lpPinned(list, prefs.order);
   const card = document.createElement('section');
   card.className = `card home-card lp lp--${size}${labels ? '' : ' is-iconic'}`;
-  const head = document.createElement('div'); head.className = 'card-h lp-h';
-  head.innerHTML = `${icon('rocket')}<h3>Launchpad</h3>${items.length ? `<span class="n num">${esc(items.length)}</span>` : ''}<span class="spacer"></span>`
-    + (items.length ? `<span class="lp-help" aria-hidden="true" data-tip="1–9 open a tile · arrows move · right-click or hold for more · drag to reorder · drop a link or path here to pin it">${icon('keyboard')}</span>` : '');
+  const head = cardHead({ icon: 'rocket', title: 'Launchpad', cls: 'lp-h', count: items.length ? items.length : '' });
+  if (items.length) head.insertAdjacentHTML('beforeend', `<span class="lp-help" aria-hidden="true" data-tip="1–9 open a tile · arrows move · right-click or hold for more · drag to reorder · drop a link or path here to pin it">${icon('keyboard', 'i-md')}</span>`);
   card.appendChild(head);
   const body = document.createElement('div'); body.className = 'card-b lp-b';
   card.appendChild(body);
@@ -430,7 +429,7 @@ function _lpTile(r, o) {
   b.setAttribute('aria-label', lpAriaLabel(r, { phone: o.phone }));
   b.setAttribute('data-tip', _lpTip(r, o.labels));
   if (typeof _resExplore !== 'undefined' && _resExplore && _resExplore.id === r.id) b.setAttribute('aria-current', 'true');   // open in Explore
-  b.innerHTML = `<span class="lp-ic res-ic k-${escAttr(r.kind)}${g ? ' g-' + escAttr(g.type) : ''}">${icon(rsrcIcon(r))}<span class="res-missing lp-miss" ${_lpMissing(r) ? '' : 'hidden'}></span></span>`
+  b.innerHTML = `<span class="lp-ic res-ic k-${escAttr(r.kind)}${g ? ' g-' + escAttr(g.type) : ''}">${icon(rsrcIcon(r), 'i-sm')}<span class="res-missing lp-miss" ${_lpMissing(r) ? '' : 'hidden'}></span></span>`
     + (o.labels ? `<span class="lp-l">${_lpBreakable(rsrcDisplayLabel(r))}</span>` : '')
     + (o.n <= 9 ? `<span class="lp-k num" aria-hidden="true">${o.n}</span>` : '');
   return b;
@@ -441,7 +440,7 @@ function _lpChip(r, n) {
   b.dataset.lp = r.id; b.dataset.flip = 'lp:' + r.id;
   b.setAttribute('aria-label', lpAriaLabel(r));
   b.setAttribute('data-tip', 'Copy · ' + _lpShort(r).slice(0, 90));
-  b.innerHTML = `${icon('square-code', 'i-lpchip')}<span class="lp-chip-l">${esc(rsrcDisplayLabel(r))}</span>${icon('copy', 'i-lpcopy')}`
+  b.innerHTML = `${icon('square-code', 'i-sm i-lpchip')}<span class="lp-chip-l">${esc(rsrcDisplayLabel(r))}</span>${icon('copy', 'i-sm i-lpcopy')}`
     + (n <= 9 ? `<span class="lp-k num" aria-hidden="true">${n}</span>` : '');
   return b;
 }
@@ -449,7 +448,7 @@ function _lpAddTile(labels) {
   const a = document.createElement('button'); a.type = 'button'; a.className = 'lp-tile lp-add'; a.dataset.lpAct = 'add'; a.dataset.flip = 'lp:add';
   a.setAttribute('aria-label', 'Pin something: a folder, file, link or snippet'); a.setAttribute('aria-haspopup', 'menu');
   a.setAttribute('data-tip', 'Pin a folder, file, link or snippet');
-  a.innerHTML = `<span class="lp-ic">${icon('plus')}</span>${labels ? '<span class="lp-l">Add</span>' : ''}`;
+  a.innerHTML = `<span class="lp-ic">${icon('plus', 'i-lg')}</span>${labels ? '<span class="lp-l">Add</span>' : ''}`;
   return a;
 }
 /** Suggested pins: the main press opens the pin picker with it ticked; the check pins it now. */
@@ -464,7 +463,7 @@ function _lpSuggestBlock(rows, o) {
     const main = document.createElement('button'); main.type = 'button'; main.className = 'lp-sug-main'; main.dataset.lpAct = 'pick'; main.dataset.id = r.id;
     main.setAttribute('aria-label', `Pin ${rsrcDisplayLabel(r)}: choose what to pin, with it ticked`);
     main.setAttribute('data-tip', 'Choose what to pin (this one ticked)');
-    main.innerHTML = `<span class="res-ic k-${escAttr(r.kind)}">${icon(rsrcIcon(r))}</span><span class="lp-sug-t"><span class="lp-sug-n">${esc(rsrcDisplayLabel(r))}</span>`
+    main.innerHTML = `<span class="res-ic k-${escAttr(r.kind)}">${icon(rsrcIcon(r), 'i-sm')}</span><span class="lp-sug-t"><span class="lp-sug-n">${esc(rsrcDisplayLabel(r))}</span>`
       + `<span class="lp-sug-s">${esc(rsrcKindLabel(r))}${n ? ` · linked to ${n}` : ''}</span></span>`;
     const ok = document.createElement('button'); ok.type = 'button'; ok.className = 'btn btn-secondary btn-sm btn-icon lp-ok'; ok.dataset.lpAct = 'pin'; ok.dataset.id = r.id;
     ok.innerHTML = icon('check'); ok.setAttribute('aria-label', `Pin ${rsrcDisplayLabel(r)} now`); ok.setAttribute('data-tip', 'Pin now · Undo');
@@ -477,7 +476,7 @@ function _lpEmpty(ctx, list, size) {
   const sug = ctx.preview ? [] : lpSuggest(list, size === 's' ? 4 : 6);
   const box = document.createElement('div'); box.className = 'lp-empty' + (sug.length ? ' has-sug' : '');
   const lead = document.createElement('div'); lead.className = 'lp-empty-lead';
-  lead.innerHTML = `${sug.length ? `<span class="lp-empty-ic">${icon('rocket')}</span>` : hglScene('work', { size: 'lg', hover: true }) || `<span class="lp-empty-ic">${icon('rocket')}</span>`}`
+  lead.innerHTML = `${sug.length ? `<span class="lp-empty-ic">${icon('rocket', 'i-lg')}</span>` : hglScene('work', { size: 'lg', hover: true }) || `<span class="lp-empty-ic">${icon('rocket')}</span>`}`
     + `<div class="lp-empty-t"><b>Pin folders, links and snippets you open every day</b>${sug.length ? '' : '<span>Then they are one click away: a folder opens on this computer, a link in a new tab, a snippet is copied.</span>'}</div>`;
   const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-sm ' + (sug.length ? 'btn-secondary' : 'btn-primary') + ' lp-empty-add';
   add.dataset.lpAct = 'add'; add.setAttribute('aria-haspopup', 'menu');

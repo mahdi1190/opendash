@@ -1,3 +1,4 @@
+/* Tokens: spacing, type and radius use var(--space-*), var(--text-*), var(--radius-*); a raw 1px hairline or 2px optical nudge is intentional. */
 /* =====================================================================
    PRIORITY MATRIX (31-views-matrix.js): the urgent / important 2x2. The rows
    inside are the list's own task rows (20-main-tasks.css).
@@ -12,7 +13,7 @@
   grid-template-rows: auto minmax(160px, auto) minmax(160px, auto);
   grid-template-areas: ". x1 x2" "y1 do plan" "y2 fit later";
 }
-.vm-ax { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-subtle); }
+.vm-ax { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--fg-subtle); }
 .vm-ax .i { width: 12px; height: 12px; }
 .vm-ax-x1 { grid-area: x1; } .vm-ax-x2 { grid-area: x2; }
 .vm-ax-y1, .vm-ax-y2 { writing-mode: vertical-rl; transform: rotate(180deg); }
@@ -34,9 +35,9 @@
 .vm-t { font-weight: var(--weight-semibold); font-size: var(--text-sm); color: var(--fg); }
 .vm-sub { font-size: var(--text-2xs); color: var(--fg-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vm-n { font-size: var(--text-xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; min-width: 20px; text-align: right; }
-.vm-est, .vm-win { display: inline-flex; align-items: center; gap: 3px; font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vm-est, .vm-win { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .vm-est .i, .vm-win .i { width: 11px; height: 11px; }
-.vm-win { color: var(--success-ink); background: var(--success-soft); border-radius: var(--radius-full); padding: 1px 7px; }
+.vm-win { color: var(--success-ink); background: var(--success-soft); border-radius: var(--radius-full); padding: 1px var(--space-1-5); }
 .vm-b { display: flex; flex-direction: column; padding: var(--space-1); min-height: 64px; max-height: 420px; overflow-y: auto; }
 .vm-b .task { border-radius: var(--radius-sm); }
 .vm-empty { margin: auto; padding: var(--space-4) var(--space-3); text-align: center; font-size: var(--text-xs); color: var(--fg-subtle); max-width: 280px; }

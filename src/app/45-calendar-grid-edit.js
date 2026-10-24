@@ -66,7 +66,7 @@ let _cgeLive = null;           // aria-live region
 const _cgeInflight = new Set(); // drops handed to CalWrite whose ghost still shows
 
 /* ---------- CalWrite, or a stand-in until it is there ---------- */
-const _CGE_NO_WRITE = 'Changes are made in Google Calendar: saving from the dashboard is not available here.';
+const _CGE_NO_WRITE = 'Couldn’t save the change: edit this calendar in Google Calendar.';
 function _cgeShimFail() { const e = new Error(_CGE_NO_WRITE); e.code = 'UNAVAILABLE'; return Promise.reject(e); }
 const _cgeShim = {
   shim: true,

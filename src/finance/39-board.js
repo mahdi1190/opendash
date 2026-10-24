@@ -191,13 +191,16 @@
     const M = X.M; el.innerHTML = '';
     const today = M.today, anchor = M.anchor;
     // Spent today, against a usual day (the median of the last 4 weeks, quiet days included).
-    const spentToday = sum(M.tx.filter(t => t.kind === 'spend' && t.n === today), t => t.s);
-    const nToday = M.tx.filter(t => t.kind === 'spend' && t.n === today && t.s > 0).length;
+    // Card payments the bank has not settled yet count too, so the day matches the balance.
+    const pendToday = (M.pending || []).filter(t => t.kind === 'spend' && t.n >= today);
+    const pendSum = sum(pendToday, t => t.s);
+    const spentToday = sum(M.tx.filter(t => t.kind === 'spend' && t.n === today), t => t.s) + pendSum;
+    const nToday = M.tx.filter(t => t.kind === 'spend' && t.n === today && t.s > 0).length + pendToday.length;
     const days = []; for (let n = today - 28; n < today; n++) if (n >= M.minN) days.push(0);
     for (const t of M.tx) if (t.kind === 'spend' && t.n >= today - 28 && t.n < today && t.n >= M.minN) days[t.n - Math.max(today - 28, M.minN)] += t.s;
     const usual = days.length >= 7 ? median(days) : null;
     el.append(bdTile('receipt', 'Spent today', gbp(spentToday),
-      nToday ? `${nToday} payment${nToday === 1 ? '' : 's'}` + (usual != null ? ` · a usual day ${gbp(usual)}` : '') : (usual != null ? `Nothing yet · a usual day ${gbp(usual)}` : 'Nothing yet'),
+      nToday ? `${nToday} payment${nToday === 1 ? '' : 's'}` + (pendSum > 0 ? ` · ${gbp2(pendSum)} pending` : '') + (usual != null ? ` · a usual day ${gbp(usual)}` : '') : (usual != null ? `Nothing yet · a usual day ${gbp(usual)}` : 'Nothing yet'),
       spentToday > 0 && usual != null && spentToday > usual * 1.5 ? 'warn' : '', () => setCustomRange(today, Math.max(today, Math.min(anchor, today)))));
     // Safe to spend until payday.
     const B = X.brief();
@@ -206,7 +209,7 @@
       const per = round2(Math.max(0, left) / Math.max(1, B.cycle.daysLeft));
       el.append(bdTile('wallet', B.mode === 'cycle' ? 'Safe to spend until payday' : 'Safe to spend this month', gbp(per) + ' a day',
         `${gbp(Math.max(0, left))} in ${B.cycle.daysLeft} day${B.cycle.daysLeft === 1 ? '' : 's'}` + (B.mode === 'cycle' ? ` · payday ${fDayW(B.cycle.next)}` : ''), left < 0 ? 'bad' : '', () => setSection('overview')));
-    } else el.append(bdTile('wallet', 'Safe to spend', '—', 'Needs your balances: Sync bank', 'mute', () => setSection('overview')));
+    } else el.append(bdTile('wallet', 'Safe to spend', '—', 'Needs your balances: Update bank', 'mute', () => setSection('overview')));
     // The next bill.
     const next = MBM.billsBetween(M.recurring, anchor, anchor + 32)[0];
     if (next) {

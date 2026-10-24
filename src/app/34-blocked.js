@@ -43,6 +43,11 @@ function rfRowDecorate(item, el, m) {
     m('rf-chip rf-chip-block', 'lock', `after: ${t.length > 32 ? t.slice(0, 31) + '…' : t}${blockers.length > 1 ? ' +' + (blockers.length - 1) : ''}`,
       'Blocked by: ' + blockers.map(b => effTitle(b)).join(', ') + ' — stays out of Today until done');
   }
+  // At most two status chips at once (UX_BLUEPRINT.md 3): waiting and blocked win over "planned for today",
+  // which folds away (.rf-capped) and is listed in the row's tooltip instead (30-task-row.js).
+  const meta = el.querySelector('.t-meta');
+  const status = meta ? [...meta.querySelectorAll(':scope > .rf-chip, :scope > .t-planned.is-today')] : [];
+  if (status.length > 2) for (const c of status.filter(c => c.classList.contains('t-planned')).slice(0, status.length - 2)) c.classList.add('rf-capped');
   const lit = _rfLit.get(item.id);
   if (lit && Date.now() - lit < 6000) el.classList.add('rf-lit');
   else if (lit) _rfLit.delete(item.id);

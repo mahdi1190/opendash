@@ -63,16 +63,30 @@ function renderFinanceView(container) {
     mountEmptyState(container, { icon: 'circle-alert', title: 'The Finances module did not load', text: 'Rebuild the page (node build.mjs) and reload.' });
     return;
   }
-  container.insertAdjacentHTML('beforeend', '<div class="empty-state"><div class="es-icon"><span class="spinner" aria-hidden="true"></span></div><div class="es-text">Loading finances…</div></div>');
+  mountEmptyState(container, { icon: 'loader-circle', title: 'Loading finances…', art: false });
   if (!_finWaitTimer) {
     _finWaitTimer = setTimeout(() => { _finWaitTimer = null; _finWaitTries++; if (state.view === 'finance') render(); }, 50);
   }
 }
 
-registerPage({ id: 'money', view: 'finance', match: v => v === 'finance', label: 'Money', icon: 'wallet', area: 'money', order: 10, ownTabs: true,
+registerPage({ id: 'money', view: 'finance', match: v => v === 'finance', label: 'Money', icon: 'wallet', area: 'money', tab: true, order: 10, ownTabs: true,
   desc: 'Spending, budgets, transactions and your money story', keywords: 'money finances finance bank spending budgets transactions recurring cash flow merchants categories',
   sections: () => { const FV = window.FinanceView; let l = []; try { l = FV && typeof FV.sections === 'function' ? FV.sections() : []; } catch (e) { l = []; } return l.map(s => ({ label: s.label, run: () => { if (state.view !== 'finance') setView('finance'); try { FV.setSection(s.id); } catch (e) { console.error('[finance] setSection', e); } if (typeof renderSidebar === 'function') renderSidebar(); } })); },
   available: () => !(APP_CONFIG.features && APP_CONFIG.features.finance === false) });
+// The page template: one primary action ("Update bank"), the rest under More (UX_BLUEPRINT.md 3).
+if (typeof registerHeaderActions === 'function') registerHeaderActions(v => v === 'finance', () => {
+  const FV = window.FinanceView;
+  if (!FV || typeof FV.update !== 'function') return null;
+  return {
+    primary: { label: 'Update bank', icon: 'refresh-cw', tip: 'Reads new transactions from your bank', run: () => FV.update({}) },
+    more: [
+      { label: 'Import a CSV…', icon: 'upload', run: () => FV.importCsv() },
+      { label: 'Read my whole bank history again', icon: 'history', run: () => FV.update({ full: true }) },
+      { label: 'Import from the Finances folder', icon: 'rotate-ccw', run: () => FV.update({ bank: false }) },
+      { label: 'Export all transactions', icon: 'download', run: () => FV.exportAll() },
+    ],
+  };
+});
 registerSection('finance', {
   group: 'finance',
   match: v => v === 'finance',

@@ -27,10 +27,10 @@
 .stv-manual .set-row { border-top: 0; }
 .stv-usage { min-width: 0; width: 240px; }
 .stv-usage-text { margin: 0 0 var(--space-2); font-size: var(--text-xs); color: var(--fg); font-variant-numeric: tabular-nums; }
-.stv-meter { display: block; width: 100%; height: 6px; appearance: none; overflow: hidden; border: 0; border-radius: var(--radius-full, 999px); background: var(--bg-muted); accent-color: var(--accent); }
-.stv-meter::-webkit-progress-bar { background: var(--bg-muted); border-radius: var(--radius-full, 999px); }
-.stv-meter::-webkit-progress-value { background: var(--accent); border-radius: var(--radius-full, 999px); }
-.stv-meter::-moz-progress-bar { background: var(--accent); border-radius: var(--radius-full, 999px); }
+.stv-meter { display: block; width: 100%; height: 6px; appearance: none; overflow: hidden; border: 0; border-radius: var(--radius-full, var(--radius-full)); background: var(--bg-muted); accent-color: var(--accent); }
+.stv-meter::-webkit-progress-bar { background: var(--bg-muted); border-radius: var(--radius-full, var(--radius-full)); }
+.stv-meter::-webkit-progress-value { background: var(--accent); border-radius: var(--radius-full, var(--radius-full)); }
+.stv-meter::-moz-progress-bar { background: var(--accent); border-radius: var(--radius-full, var(--radius-full)); }
 .stv-usage .stv-note { margin-top: var(--space-2); }
 .stv-preview { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); width: 240px; min-width: 0; }
 .stv-preview > .stv-note, .stv-audio { flex-basis: 100%; width: 100%; min-width: 0; }

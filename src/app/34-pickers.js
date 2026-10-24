@@ -65,7 +65,7 @@ function rfPickPerson(anchor, o) {
           rows.push({ id: '+new', html: `${icon('user-plus', 'i-sm')}<span class="lbl">Add “${esc(q)}” as a new person</span>`, run: () => {
             const r = typeof createPerson === 'function' ? createPerson({ name: q }) : { error: 'People are not available' };
             close();
-            if (r && r.id) { if (o.onPick) o.onPick(r.id); } else toast((r && r.error) || 'Could not add that person', { kind: 'err' });
+            if (r && r.id) { if (o.onPick) o.onPick(r.id); } else toastError('add that person', (r && r.error) || '');
           } });
         }
         if (!q) rows.push({ id: '-', html: `${icon('hourglass', 'i-sm')}<span class="lbl">Someone (no one in particular)</span>`, run: () => { close(); o.onPick && o.onPick(null); } });
@@ -88,8 +88,7 @@ function rfPickTask(anchor, o) {
       for (const t of cur) {
         const row = document.createElement('div'); row.className = 'rf-pick-cur' + (rfIsOpen(t) ? '' : ' is-done');
         row.innerHTML = `${icon(rfIsOpen(t) ? 'lock' : 'lock-open', 'i-sm')}<span class="lbl">${esc(effTitle(t))}</span>`;
-        const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm'; x.setAttribute('aria-label', 'Remove'); x.innerHTML = icon('x', 'i-sm');
-        x.onclick = () => { if (o.onRemove) o.onRemove(t.id); paintHead(); picker.repaint(); };
+        const x = uiButton({ icon: 'x', iconCls: 'i-sm', size: 'sm', aria: 'Remove', run: () => { if (o.onRemove) o.onRemove(t.id); paintHead(); picker.repaint(); } });
         row.appendChild(x); head.appendChild(row);
       }
     };

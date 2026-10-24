@@ -265,39 +265,40 @@ function briefSettingsLocationRow() { return dashboardLocationSettings(); }
 function briefOnboardingLocationField(d) {
   const f = document.createElement('label'); f.className = 'field';
   const l = document.createElement('span'); l.className = 'field-label'; l.textContent = 'Town for the weather (optional)';
-  const h = document.createElement('span'); h.className = 'field-hint'; h.textContent = 'For Home’s greeting and the stories. Weather data by Open-Meteo.com.';
+  const h = document.createElement('span'); h.className = 'field-hint'; h.textContent = 'For the weather on Home.';
   f.append(l, briefLocationPicker(d.location || null, (loc) => { d.location = loc; }), h);
   return f;
 }
 
 /* ---------- Settings: Home's day (the hero, the stories, Finish the day, the week) ---------- */
 registerSettingsGroup({
-  id: 'brief', title: 'Home and stories', icon: 'sunrise', order: 55,
-  description: 'The top of Home (the greeting, the day in three sentences, Play my morning), Finish the day and the weekly review.',
+  id: 'brief', title: 'Brief and stories', icon: 'sunrise', order: 55,
+  description: 'The morning greeting, Finish the day and the weekly review.',
   render(el) {
     const p = briefPrefs();
     const save = (patch, msg) => settingsSaveConfig({ brief: patch }, msg).then(ok => { if (ok) render(); });
-    el.appendChild(_settingsRow('Open on the first visit of the day', 'Home comes forward with today’s greeting the first time you open the dashboard each day. It refreshes your calendar, inbox and finances in the background.', _settingsSwitch(p.autoOpen, 'Open automatically', (on) => save({ autoOpen: on }, on ? 'Home will greet you each morning' : 'Home will wait for you'))));
-    el.appendChild(_settingsRow('Day in three sentences', 'A short summary written by Claude, once a day. Needs Claude (Connections).', _settingsSwitch(p.ai, 'AI summary', (on) => save({ ai: on }))));
-    el.appendChild(_settingsRow('Model for summaries', 'Haiku is quick and light; the others write a little more carefully.', _settingsSelect(SETTINGS_MODELS, p.model, (v) => save({ model: v }))));
+    el.appendChild(_settingsRow('Open on the first visit of the day', 'Home greets you the first time you open OpenDash each day.', _settingsSwitch(p.autoOpen, 'Open automatically', (on) => save({ autoOpen: on }, on ? 'Home will greet you each morning' : 'Home will wait for you'))));
+    // The model for the summary is picked in Settings > AI > Models for each job (L13).
+    el.appendChild(settingsRowNote(_settingsRow('Day in three sentences', 'A short summary by Claude, once a day.', _settingsSwitch(p.ai, 'AI summary', (on) => save({ ai: on }))), settingsModelNote('Morning summary', p.model)));
     el.appendChild(_settingsRow('Offer “Finish the day” from', 'Home and the top bar suggest the evening recap from this hour.', _settingsSelect(['15', '16', '17', '18', '19', '20', '21'].map(x => [x, x + ':00']), String(p.eveningHour), (v) => save({ eveningHour: Number(v) }))));
     el.appendChild(_settingsRow('Temperatures', null, _settingsSeg([['metric', '°C'], ['imperial', '°F']], p.units, (k) => save({ units: k }).then(() => { _bf.weather = null; }))));
     el.appendChild(briefSettingsLocationRow());
-    el.appendChild(_settingsRow('AI day adviser', 'Review your day once each morning, afternoon and evening while Home is open (at most three automatic reviews daily). Uses the AI chat model selected in Settings > AI. The manual button can request another review. Tasks and calendar context go to your connected Claude account.',
-      _settingsSwitch(p.advisorAuto, 'Automatic AI day reviews', on => save({ advisorAuto: on }), !p.ai)));
     if (typeof homeRefreshSettingsRow === 'function') el.appendChild(homeRefreshSettingsRow());   // 12-home-refresh.js
-    if (typeof storySettingsRows === 'function') storySettingsRows(el);   // 79-story-engine.js
-    const open = document.createElement('button'); open.type = 'button'; open.className = 'btn btn-secondary btn-sm';
-    open.innerHTML = icon('sunrise', 'i-sm') + '<span>Go to Home now</span>';
-    open.onclick = () => briefOpen({ welcome: false });
-    el.appendChild(_settingsRow('Try it', null, open));
+    el.appendChild(_settingsRow('Try it', null, uiButton({ label: 'Go to Home now', icon: 'sunrise', iconCls: 'i-sm', run: () => briefOpen({ welcome: false }) })));
+    // The AI day adviser goes under More, beside the weekly review row (79-story-weekly.js).
+    const moreRows = (body) => {
+      body.appendChild(_settingsRow('AI day adviser', 'Claude looks over your day up to three times while Home is open.',
+        _settingsSwitch(p.advisorAuto, 'Automatic AI day reviews', on => save({ advisorAuto: on }), !p.ai)));
+    };
+    if (typeof storySettingsRows === 'function') storySettingsRows(el, moreRows);   // 79-story-engine.js: Voice, More, Advanced
+    else setFold(el, 'brief-main-more', 'More', ({ body }) => moreRows(body));
   },
 });
 
 /* ---------- Settings: Animations ---------- */
 registerSettingsGroup({
   id: 'animations', title: 'Animations', icon: 'sparkles', order: 56,
-  description: 'The little scenes for events and tasks, the weather sky and the small celebrations.',
+  description: 'Scenes, the weather sky and small celebrations.',
   render(el) {
     animGalleryRender(el);
     const p = briefPrefs();
@@ -309,11 +310,9 @@ registerSettingsGroup({
       const note = document.createElement('div'); note.className = 'callout set-callout' + (anyway ? '' : ' warn');
       note.innerHTML = icon('info') + `<span>${anyway
         ? 'Your computer asks apps for reduced motion, but you chose to animate anyway on this device.'
-        : 'Your computer asks apps for reduced motion (on Windows: Settings &gt; Accessibility &gt; Visual effects &gt; Animation effects is off), so nearly every animation here is silenced. Turn that back on, or animate anyway on this device.'}</span>`;
+        : 'Your computer asks apps for reduced motion (on Windows: Settings &gt; Accessibility &gt; Visual effects &gt; Animation effects is off), so nearly every animation here is silenced. Turn that back on, or animate anyway on this device (under Advanced).'}</span>`;
       note.setAttribute('data-anim-os-note', '');
       el.appendChild(note);
-      el.appendChild(_settingsRow('Animate anyway', 'Ignore the system’s reduced-motion request in this browser only. Your intensity choice below still applies.',
-        _settingsSwitch(anyway, 'Animate anyway', (on) => { Motion.setOsOverride(on); _animSyncRoot(); render(); })));
     }
     // Intensity (per device, src/motion.js): scales every duration, distance and stagger, or turns motion off.
     if (window.Motion && Motion.setLevel) {
@@ -325,17 +324,26 @@ registerSettingsGroup({
       const pv = document.createElement('span'); pv.className = 'mx-preview'; pv.setAttribute('aria-hidden', 'true');
       pv.innerHTML = '<i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i>';
       wrap.append(seg, pv);
-      el.appendChild(_settingsRow('Intensity', osRed ? 'Your system asks for reduced motion, so only short fades play whatever this says.' : 'How much the interface moves on this device: Off keeps everything still; Playful adds bigger celebrations.', wrap));
+      el.appendChild(_settingsRow('Intensity', osRed ? 'Your system asks for reduced motion, so only short fades play whatever this says.' : 'From Off (still) to Playful.', wrap));
     }
     // The opening sequence (78-anim-wire.js): the brand, "Welcome to <county>", the county's scene.
     if (typeof animOpeningModeSync === 'function') {
       const seg = _settingsSeg([['every', 'Every load'], ['daily', 'First load of the day'], ['off', 'Off']], animOpeningMode(),
         (k) => { animLookSave({ opening: k }); animOpeningModeSync(); render(); });
-      el.appendChild(_settingsRow('Opening', 'When the app opens: the OpenDash mark, then "Welcome to …" your county (with Regional animations (UK) on) and today\'s scene from it, full screen, for a few seconds. Later loads that day show just the short mark. A click or any key skips it.', seg));
+      el.appendChild(_settingsRow('Opening', 'A short welcome when OpenDash opens. Click or press a key to skip.', seg));
     }
     el.appendChild(_settingsRow('Animations', sys ? 'Reduced motion is on (system or Appearance), so scenes stay still whatever this says.' : 'Weather, scenes and moving text. Everything stays still when this is off.', _settingsSwitch(p.animations, 'Animations', (on) => save({ animations: on }))));
     el.appendChild(_settingsRow('Celebrate completed tasks', 'A tiny animation where you clicked, for a second. Never for bulk changes.', _settingsSwitch(p.celebrate, 'Celebrations', (on) => save({ celebrate: on }))));
 
+    // Advanced: Animate anyway (only when the system asks for less motion) and the scene rules.
+    setFold(el, 'animations-main-adv', 'Advanced', ({ body }) => {
+      if (window.Motion && Motion.osReduced && Motion.osReduced()) {
+        const anyway = Motion.osOverride();
+        body.appendChild(_settingsRow('Animate anyway', 'Ignores your system’s reduce-motion setting in this browser.',
+          _settingsSwitch(anyway, 'Animate anyway', (on) => { Motion.setOsOverride(on); _animSyncRoot(); render(); })));
+      }
+    }, { advanced: true });
+    setFold(el, 'animations-scenes-adv', 'Scene rules', ({ body: el }) => {
     // Keyword rules
     const prefs = animPrefs();
     const rules = document.createElement('div'); rules.className = 'anim-rules';
@@ -343,19 +351,18 @@ registerSettingsGroup({
     prefs.rules.forEach((r, i) => {
       const li = document.createElement('li');
       li.innerHTML = `<code>${esc(r.kw)}</code>${icon('arrow-right', 'i-xs')}${animSceneHtml(r.type, { size: 'xs' })}<span>${esc(animScene(r.type).label)}</span>`;
-      const x = document.createElement('button'); x.type = 'button'; x.className = 'btn btn-ghost btn-sm btn-icon'; x.setAttribute('aria-label', 'Remove rule'); x.innerHTML = icon('x', 'i-sm');
-      x.onclick = () => { const next = prefs.rules.slice(); next.splice(i, 1); state.animPrefs = Object.assign({}, state.animPrefs || {}, { rules: next }); saveData(); render(); };
+      const x = uiButton({ icon: 'x', kind: 'ghost', size: 'sm', aria: 'Remove rule',
+        run: () => { const next = prefs.rules.slice(); next.splice(i, 1); state.animPrefs = Object.assign({}, state.animPrefs || {}, { rules: next }); saveData(); render(); } });
       li.appendChild(x); list.appendChild(li);
     });
     const add = document.createElement('div'); add.className = 'anim-rule-add';
     const kw = document.createElement('input'); kw.className = 'control control-sm'; kw.placeholder = 'a word in the title, e.g. 5-a-side'; kw.maxLength = 40;
     const sel = _settingsSelect(ANIM_SCENES.map(s => [s.type, s.label]), 'party', () => {});
-    const ab = document.createElement('button'); ab.type = 'button'; ab.className = 'btn btn-secondary btn-sm'; ab.innerHTML = icon('plus', 'i-sm') + '<span>Add rule</span>';
-    ab.onclick = () => {
+    const ab = uiButton({ label: 'Add rule', icon: 'plus', iconCls: 'i-sm', size: 'sm', run: () => {
       const k = kw.value.trim().slice(0, 40); if (!k) { kw.focus(); return; }
       state.animPrefs = Object.assign({}, state.animPrefs || {}, { rules: [...prefs.rules.filter(r => r.kw.toLowerCase() !== k.toLowerCase()), { kw: k, type: sel.value }] });
       saveData(); render();
-    };
+    } });
     add.append(kw, sel, ab);
     rules.append(list, add);
     const rr = _settingsRow('Your keyword rules', 'Checked before everything else: a title containing the word gets that scene.', null);
@@ -370,8 +377,7 @@ registerSettingsGroup({
         const it = k.startsWith('t:') ? getItem(k.slice(2)) : null;
         const li = document.createElement('li');
         li.innerHTML = `${animSceneHtml(t, { size: 'xs' })}<span class="truncate">${esc(it ? effTitle(it) : k.slice(2))}</span><span class="muted">${esc(animScene(t).label)}</span>`;
-        const x = document.createElement('button'); x.type = 'button'; x.className = 'btn btn-ghost btn-sm btn-icon'; x.setAttribute('aria-label', 'Back to automatic'); x.innerHTML = icon('rotate-ccw', 'i-sm');
-        x.onclick = () => animSetOverride(k, null);
+        const x = uiButton({ icon: 'rotate-ccw', kind: 'ghost', size: 'sm', aria: 'Back to automatic', run: () => animSetOverride(k, null) });
         li.appendChild(x); ul.appendChild(li);
       }
       const orow = _settingsRow('Set by hand', 'Change one in the calendar event panel (click its scene).', null);
@@ -380,10 +386,8 @@ registerSettingsGroup({
     }
 
     // Ask Claude about titles nothing matched
-    const ask = document.createElement('button'); ask.type = 'button'; ask.className = 'btn btn-secondary btn-sm';
-    ask.setAttribute('data-requires', 'claude');
-    ask.innerHTML = icon('sparkles', 'i-sm') + '<span>Ask Claude about unmatched titles</span>';
-    ask.onclick = async () => {
+    const ask = uiButton({ label: 'Ask Claude about unmatched titles', icon: 'sparkles', iconCls: 'i-sm', size: 'sm', data: { requires: 'claude' }, run: () => askScenes() });
+    const askScenes = async () => {
       const today = todayStr(), end = briefAddDays(today, 30);
       const titles = new Set();
       for (const ev of (typeof calAllEvents === 'function' ? calAllEvents() : [])) {
@@ -394,12 +398,21 @@ registerSettingsGroup({
       if (!titles.size) { toast('Every event in the next 30 days already has a scene.', { kind: 'ok' }); return; }
       ask.disabled = true; ask.innerHTML = '<span class="spinner"></span><span>Asking…</span>';
       try { const j = await _bfPost('/api/brief/scenes', { titles: [...titles].slice(0, 25) }); _animAi = j.types || _animAi; _animEvCache.clear(); toast(`Claude sorted ${j.asked} title${j.asked === 1 ? '' : 's'}`, { kind: 'ok' }); }
-      catch (e) { if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Claude could not sort the titles' }); else toast(e.message || 'Claude could not be asked just now.', { kind: 'err' }); }
+      catch (e) { if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Claude could not sort the titles' }); else toastError('sort the titles', e, askScenes); }
       render();
     };
     el.appendChild(_settingsRow('Unmatched titles', 'Titles no keyword fits get a plain calendar scene. Claude (Haiku) can suggest better ones; the answers are remembered per title.', ask));
+
+    }, { advanced: true });
 
     // Achievements and recaps (v2.2 wave 5): 78-achievements.js
     if (typeof achPanelRender === 'function') achPanelRender(el);
   },
 });
+
+function briefModelRow() {
+  return _settingsRow('Morning summary', null, _settingsSelect(SETTINGS_MODELS, briefPrefs().model, v => settingsSaveConfig({ brief: { model: v } })));
+}
+function animSceneModelRow() {
+  return _settingsRow('Scene suggestions', 'Haiku 4.5 finds a scene for unmatched titles.', null);
+}

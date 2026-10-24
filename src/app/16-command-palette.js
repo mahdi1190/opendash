@@ -545,9 +545,9 @@ async function _palStartJob(url, body, view, msg, after) {
     // calm: the computer that does it is asleep or off (lib/sync/presence.mjs): one calm line, not "up to date".
     else if (r.ok && j.skipped && j.calm && j.message && typeof presenceNote === 'function') presenceNote(j.message);
     else if (r.ok && j.skipped) toast('Already up to date', { kind: 'ok' });
-    else toast(j.error || `Could not start the update (${r.status})`, { kind: 'err' });
+    else toastError('start the update', new Error(j.error || `HTTP ${r.status}`), () => _palStartJob(url, body, view, msg, after));
   } catch (e) {
-    toast('The OpenDash server is not running.', { kind: 'err' });
+    toastError('start the update', e, () => _palStartJob(url, body, view, msg, after));
   }
   try { after && after(); } catch (e) { /* the section repaints itself */ }
 }
