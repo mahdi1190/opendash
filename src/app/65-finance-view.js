@@ -94,7 +94,7 @@ registerSection('finance', {
   crumb: () => [],   // the tab you are on is lit in the page header (2.19), so the crumb does not repeat it
   layout: 'page',
   // render() keeps the mounted root attached (80-main-render.js): re-attaching it replayed the KPI entrance (C6).
-  keepRoot: (main) => !!(window.FinanceView && main.childElementCount === 1 && main.firstElementChild.classList.contains('fv')),
-  mount(container) { renderFinanceView(container); },
+  keepRoot: (main) => !(typeof fdWhoseFriend === 'function' && fdWhoseFriend('money')) && !!(window.FinanceView && main.childElementCount === 1 && main.firstElementChild.classList.contains('fv')),
+  mount(container) { if (typeof fdWhoseFriend === 'function' && fdWhoseFriend('money')) { fdMoneyPage(container); return; } renderFinanceView(container); },   // a friend's shared money, read-only (96-friends-3data.js)
   unmount() { try { if (window.FinanceView && FinanceView.unmount) FinanceView.unmount(); } catch (e) { console.error('[finance] unmount', e); } },
 });

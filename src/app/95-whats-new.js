@@ -80,6 +80,9 @@ const WHATS_NEW = [
   { id: 'centred-calm', group: 'n219', icon: 'layout-grid', title: '2.19.1: every page centred, and calmer',
     text: 'Every page sits in the middle of the window with the same margins. Home groups its cards under Today, Coming up and Money and life; Tasks keep their header to a title, New task and More; the calendar has its view tabs and its day panel beside it. The rest waits under More, in Add widget, or behind Show more.',
     view: ['home'], sel: ['#main-body'] },
+  { id: 'friends-data', group: 'n219', icon: 'folder-open', title: '2.19.3: browse what friends share',
+    text: 'Friends has a Shared with me tab: pick a friend, then their tasks, calendar, money, places or memories (only what they chose to share, read-only). Tasks, Calendar and Money have a Mine switch in the header to look at a friend’s instead.',
+    view: ['friends:data'], sel: ['#view-subtabs', '#main-body'] },
 
   // ---- 2.18.1 ----
   { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',

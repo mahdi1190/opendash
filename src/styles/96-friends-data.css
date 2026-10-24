@@ -1,0 +1,54 @@
+/* FRIENDS 2.19.3: browse what friends share with you, read-only (96-friends-3data.js). Calm: the same rows, agenda and cards as
+   your own pages, a banner that says whose it is, a small "Whose" switch in the page header. */
+.fd-banner { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); margin-bottom: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-subtle); }
+.fd-banner-ic { flex: none; display: inline-flex; color: var(--accent); }
+.fd-banner-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--text-sm); }
+.fd-banner-t .muted { font-size: var(--text-xs); }
+.fd-pane { display: flex; flex-direction: column; min-width: 0; }
+.fd-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-3); }
+.fd-head h2 { margin: 0; font-size: var(--text-lg); line-height: var(--lh-lg); font-weight: var(--weight-semibold); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-head .spacer { flex: 1 1 auto; }
+.fd-area { display: flex; flex-direction: column; min-width: 0; }
+.fd-page { min-width: 0; }
+/* the "Whose" switch (after the page title; in the calendar's own header on Calendar) */
+.fd-whose { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); min-width: 0; }
+.fd-whose-btn { gap: var(--space-1); }
+.fd-whose-btn.is-friend { background: var(--accent-soft); color: var(--accent-ink); border-color: transparent; }
+.fd-check { display: inline-flex; align-items: center; gap: var(--space-1-5); font-size: var(--text-xs); color: var(--fg-muted); cursor: pointer; white-space: nowrap; user-select: none; }
+.fd-check:hover { color: var(--fg); }
+.fd-check input { margin: 0; accent-color: var(--accent); cursor: pointer; }
+.cal-h-r > .fd-whose { margin-right: var(--space-2); }
+.view-header > .fd-money-box { flex: 1 0 100%; order: 12; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-4); padding: var(--space-2) var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-subtle); font-size: var(--text-sm); }
+.fd-mb-h { display: inline-flex; align-items: center; gap: var(--space-1-5); color: var(--fg-muted); }
+.fd-mb-row { display: inline-flex; align-items: baseline; gap: var(--space-2); padding: 2px var(--space-2); border: 0; border-radius: var(--radius-sm); background: none; color: var(--fg); font: inherit; cursor: pointer; }
+.fd-mb-row:hover { background: var(--bg-emphasis); }
+.fd-mb-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* tasks: your own rows, nothing to click */
+.fd-tasks .task.fd-ro, .fd-tasks .task.fd-ro:hover { cursor: default; background: transparent; }
+.fd-ro .checkbox { pointer-events: none; }
+.fd-stream { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--fg-muted); }
+.fd-dot { display: inline-block; width: 8px; height: 8px; border-radius: var(--radius-full); background: var(--c, var(--fg-disabled)); flex: none; }
+/* calendar: your agenda rows */
+.fd-agd .agd-h { cursor: default; pointer-events: none; }
+.fd-ev { cursor: default; }
+.fd-ev.fd-busy { --c: var(--fg-disabled); }
+.fd-ev.fd-busy .t span { color: var(--fg-muted); font-weight: var(--weight-regular); }
+.fd-calbody { padding-top: var(--space-3); }
+/* money */
+.fd-money { display: flex; flex-direction: column; gap: var(--space-3); }
+.fd-sum { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.fd-sum-word { font-size: var(--text-xl); line-height: var(--lh-xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); }
+.fd-sum p { margin: 0; }
+.fd-meter { height: 6px; border-radius: var(--radius-full); background: var(--bg-emphasis); overflow: hidden; }
+.fd-meter > i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+.fd-sum.is-over .fd-meter > i, .fd-meter.is-over > i { background: var(--danger, #d64545); }
+.fd-sum.is-under .fd-meter > i { background: var(--success, #2f9e63); }
+.fd-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-3); }
+.fd-kpi { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); }
+.fd-kpi-k { font-size: var(--text-xs); color: var(--fg-muted); }
+.fd-kpi-v { font-size: var(--text-xl); line-height: var(--lh-xl); font-weight: var(--weight-semibold); }
+.fd-kpi-s { font-size: var(--text-xs); }
+.fd-cats { padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.fd-cat { display: flex; flex-direction: column; gap: 4px; }
+.fd-cat-t { display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--text-sm); }
+.fd-card { padding: var(--space-3) var(--space-4); }

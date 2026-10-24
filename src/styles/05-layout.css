@@ -87,13 +87,17 @@
    1080 for its two columns; full-width sections opt out with .main.wide */
 .main { --page-w: var(--page-max); padding: var(--space-6) var(--page-gutter) var(--space-16); }
 .main > .view-header, .main > #main-body { width: 100%; max-width: var(--page-w); margin-left: auto; margin-right: auto; }
-/* 2.19.1: ONE width and ONE gutter for every page, centred at any window width. The header and the page body
+/* 2.19.3: switching a page's tabs never moves the content. The page decides its width, never a tab: a page with tabs in its header
+   (pills or sections) keeps one container for all of them (a tab without a side column simply spans it), and the scrollbar's room is
+   always kept so a long tab and a short one start at the same left edge.
+   2.19.1: ONE width and ONE gutter for every page, centred at any window width. The header and the page body
    always share --page-w, so a title never sits left of a centred column. A page that really wants more room
    says layout 'wide' (a tags board); a page of plain rows (Settings) is narrower. Page CSS never sets its own
    max-width or margin: auto on its root. */
 .main.wide { --page-w: var(--page-max-wide); }
 .main:has(> #main-body > .settings),
-.main:has(#main-body .pg-layout.no-side:not(.md-detail *, .pg-main *, .pg-side *, .card *)) { --page-w: var(--page-max-narrow); }   /* a one-column page is a narrower page, header and all */
+.main:not(:has(> .view-header :is(.view-subtabs, .area-secs))):has(#main-body .pg-layout.no-side:not(.md-detail *, .pg-main *, .pg-side *, .card *)) { --page-w: var(--page-max-narrow); }   /* a one-column page (with no tabs) is a narrower page, header and all */
+.main:not(.bare) { scrollbar-gutter: stable; }
 .main.bare { padding: 0; --page-w: none; }
 .main.bare > .view-header { display: none; }
 .main.bare > #main-body { max-width: none; height: 100%; }

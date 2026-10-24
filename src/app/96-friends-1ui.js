@@ -30,7 +30,7 @@ const _frUI = { entry: '', root: null, feedN: 30, feed: null, feedAt: 0, feedBus
 const _FR_PRES = Object.freeze({ online: ['Here now', 'circle-dot'], focusing: ['Focusing', 'timer'], travelling: ['Travelling', 'plane'], away: ['Away', 'moon'], offline: ['Not around', 'moon'] });
 const _FR_CHEERS = Object.freeze(['👏', '🎉', '💪', '🔥', '❤️', '🌟']);
 /** Every Friends view: the five tabs (96-friends-2tabs.js) and a friend's page. */
-const _FR_VIEW_RE = /^friends(:(feed|requests|shared|settings|[0-9a-f]{16}))?$/;
+const _FR_VIEW_RE = /^friends(:(feed|requests|shared|settings|data(:[0-9a-f]{16})?|[0-9a-f]{16}))?$/;
 function _frIdOf(v) { const m = /^friends:([0-9a-f]{16})$/.exec(String(v || '')); return m ? m[1] : null; }
 
 registerSection('friends', {
@@ -210,6 +210,7 @@ function _frMount(container, view) {
   _frUI.root = root;
   const d = _fr.data;
   if (!d || !d.me || !d.me.id) {
+    headerSubTabs(_frSubTabs(tab, d), /^friends(:|$)/);   // the tabs are there from the first paint: nothing moves when the page has loaded
     root.appendChild(_frLoading());
     friendsLoad(true).then(() => friendsPageRefresh()).catch((e) => { if (!root.isConnected) return; root.textContent = ''; root.appendChild(_frErrorCard(e)); });
     return;

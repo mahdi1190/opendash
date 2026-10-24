@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.19.3] - 2026-10-24
+
+Browse what your friends share with you as easily as your own data, and no more pages that shift sideways when you change tabs.
+
+- New Friends tab, "Shared with me": pick a friend on the left, then their Tasks, Calendar, Money, Places or Memories, but only the areas they chose to share. It looks like your own pages (task rows, the calendar agenda, money cards), says whose it is and that it is read-only, and tells you how sharing works when a friend has not shared something yet.
+- Tasks, Calendar and Money have a small "Mine" switch in the header: pick a friend who shares that area to look at theirs, then "Back to mine". Tasks and Calendar also show "Show friends' tasks" and "Show friends' events" tick boxes, and Money can show a "Friends' money" summary when someone shares it.
+- Each friend's page has a "View their data" button.
+- New shares appear by themselves, without a reload.
+- Switching tabs on a page (Friends, Achievements, Memories, Places, Profile, Money) no longer moves the content sideways or changes its width, and the tabs under the page title stay where they are.
+
 ## [2.19.2] - 2026-10-24
 
 - Fixes a crash ("tgDueChip is not defined") in task lists and shared spaces after 2.19.1: part of the shared-spaces code had been removed by mistake during the tidy-up. Shared lists, the Together hub and space pages work again.

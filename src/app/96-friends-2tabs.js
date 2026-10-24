@@ -10,14 +10,15 @@
      Shared    #view=friends:shared           shared spaces (Together), friends' gardens and pets
      Settings  #view=friends:settings         your card, name, online status, relay, who you blocked
 
+   2.19.3 adds Shared with me (#view=friends:data[:<id>], 96-friends-3data.js): browse what friends share with you, read-only.
    The tabs are the page header's pills (subTabs / headerSubTabs, 11-ui-kit.js). Other modules put their
    panels where they belong with Friends.registerPanel({..., tab, zone}) (96-friends-0core.js).
    Friend strings are set with textContent only (the owner's rule).
    ============================================================ */
-const _FR_TABS = Object.freeze([['friends', 'Friends', 'users'], ['feed', 'Feed', 'newspaper'], ['requests', 'Requests', 'user-check'], ['shared', 'Shared', 'handshake'], ['settings', 'Settings', 'settings']]);
+const _FR_TABS = Object.freeze([['friends', 'Friends', 'users'], ['data', 'Shared with me', 'folder-open'], ['feed', 'Feed', 'newspaper'], ['requests', 'Requests', 'user-check'], ['shared', 'Shared', 'handshake'], ['settings', 'Settings', 'settings']]);
 const _FR_FEED_PAGE = 10, _FR_FEED_FETCH = 40;
 _frUI.sel = ''; _frUI.listTop = 0; _frUI.feedC = new Map(); _frUI.folds = new Set(); _frUI.tab = '';
-function _frTabOf(view) { const m = /^friends:(feed|requests|shared|settings)$/.exec(String(view || '')); return m ? m[1] : 'friends'; }
+function _frTabOf(view) { const m = /^friends:(feed|requests|shared|settings|data)(?::[0-9a-f]{16})?$/.exec(String(view || '')); return m ? m[1] : 'friends'; }
 function _frViewOfTab(tab) { return tab === 'friends' ? 'friends' : 'friends:' + tab; }
 /** Requests that wait for you, and friends that need a look (the Requests tab's badge and the Friends tab's one line). */
 function _frNeedsYou(d) {
@@ -39,7 +40,7 @@ function _frRenderTabs(root, view) {
   headerSubTabs(_frSubTabs(tab, d), /^friends(:|$)/);
   const sub = document.getElementById('view-subtitle');
   if (sub) sub.textContent = '';
-  ({ friends: _frTabFriends, feed: _frTabFeed, requests: _frTabRequests, shared: _frTabShared, settings: _frTabSettings })[tab](root, view, d);
+  ({ friends: _frTabFriends, data: _frTabData, feed: _frTabFeed, requests: _frTabRequests, shared: _frTabShared, settings: _frTabSettings })[tab](root, view, d);
 }
 
 /* ---------- panels other modules registered ---------- */
@@ -204,6 +205,7 @@ function _frFriendHero(f) {
   el.appendChild(ring);
   // actions: Cheer first, the fun module adds Wave / High five / Gift before More (funFriendHero), More last
   const acts = _frEl('div', 'fr-fhero-a');
+  if (typeof fdOpen === 'function') acts.appendChild(uiButton({ label: 'View their data', icon: 'eye', kind: 'ghost', size: 'sm', tip: `What ${friendName(f)} shares with you: tasks, calendar, money, places, memories`, run: () => fdOpen(f.id) }));
   acts.appendChild(uiButton({ label: 'Cheer', icon: 'heart', size: 'sm', run: (e, b) => _frCheerMenu(b, f) }));
   acts.appendChild(uiButton({ icon: 'ellipsis', kind: 'ghost', size: 'sm', aria: 'More', tip: 'More', run: (e, b) => openMenu(b, _frFriendMore(f), { align: 'end' }) }));
   el.appendChild(acts);

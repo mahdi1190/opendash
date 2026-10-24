@@ -89,6 +89,7 @@ function _frRepaint() {
   try {
     if (/^friends(:|$)/.test(String(state.view || '')) && typeof friendsPageRefresh === 'function') friendsPageRefresh();
     if (typeof renderSidebar === 'function') renderSidebar();
+    if (typeof fdRepaintSoon === 'function') fdRepaintSoon();   // Whose / Shared with me when the friends list arrives or changes (96-friends-3data.js)
   } catch (e) { console.error('[friends] repaint', e); }
 }
 function _frAfterLoad(before, d) {
