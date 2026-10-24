@@ -33,6 +33,14 @@
      setStatusPaint(el, tone, word, detail)                repaint it in place
      setFold(host, key, label, fill({body, card}), {advanced}) -> <details>   More / Advanced
      setAction(host, label, run, {icon, kind, disabled, tip, wait}) -> <button>   the one main button
+     secHead({..., sticky: true})         a section header that stays at the top while its section is on screen
+
+   The 2.19 layout primitives (lean UI; MODULES.md "Layout primitives"; styles at the end of 01-components.css):
+     pageLayout({main, side, sideWidth, sticky, cls})      two zones that stack on narrow windows (sticky: a short side stays in view)
+     masterDetail({list, detail, empty, listWidth, label}) a list of things beside the selected one
+     mdRow({title, sub, icon|avatar, badge, active, run})  one row of such a list
+     subTabs({tabs, active, onChange, label})              the pill tabs of a page; headerSubTabs() puts them in the page header
+     pagedList({items, pageSize, render, empty, loadMore}) a long list shown a page at a time (Show more)
    Everything that takes text escapes it or sets textContent.
    ============================================================ */
 
@@ -695,7 +703,7 @@ function secHeadHtml(o) {
   o = o || {};
   const n = o.count != null && o.count !== '' ? `<span class="n num">${esc(o.count)}</span>` : '';
   const sub = o.sub ? `<span class="sec-sub">${esc(o.sub)}</span>` : '';
-  return `<div class="sec-h${o.cls ? ' ' + esc(o.cls) : ''}">${o.icon ? icon(o.icon) : ''}<h2>${esc(o.title || '')}</h2>${n}${sub}<span class="spacer"></span></div>`;
+  return `<div class="sec-h${o.sticky ? ' is-sticky' : ''}${o.cls ? ' ' + esc(o.cls) : ''}">${o.icon ? icon(o.icon) : ''}<h2>${esc(o.title || '')}</h2>${n}${sub}<span class="spacer"></span></div>`;
 }
 function secHead(o) {
   o = o || {};
@@ -828,4 +836,161 @@ function setAction(host, label, run, opts) {
   row.appendChild(b);
   (host.body || host).appendChild(row);
   return b;
+}
+
+/* ---------- 2.19 layout primitives (lean UI; MODULES.md "Layout primitives") ----------
+   Small, reusable pieces for pages that had grown into one long stack of cards: a two-zone page,
+   a list beside the selected thing, pill tabs in the page header, a long list shown a page at a time.
+   Every text goes in with textContent; `main`, `side`, `list`, `detail`, `empty` take an element, a
+   plain string, or a function(host) that fills (or returns) one. They stack on a narrow window by the
+   width of the page itself (container query on #main), so a half-width window and a phone read well. */
+function _lyFill(host, v) {
+  if (typeof v === 'function') { const r = v(host); if (r && r.nodeType) host.appendChild(r); return; }
+  if (v && v.nodeType) host.appendChild(v);
+  else if (typeof v === 'string' && v) host.appendChild(emptyLine(v));
+}
+const _lyCls = (c) => (c ? ' ' + String(c).replace(/[^a-zA-Z0-9 _-]/g, '') : '');
+/** Two zones: `main` (grows, a readable width) and `side` (a fixed column; sticky: true keeps a SHORT one in view). -> .pg-layout (.pgMain, .pgSide) */
+function pageLayout(o) {
+  o = o || {};
+  const el = document.createElement('div');
+  el.className = 'pg-layout' + (o.side ? '' : ' no-side') + (o.side && o.sticky ? ' is-sticky' : '') + _lyCls(o.cls);
+  if (o.sideWidth) el.style.setProperty('--pg-side', Math.max(220, Math.min(480, Number(o.sideWidth) || 320)) + 'px');
+  const main = document.createElement('div'); main.className = 'pg-main';
+  _lyFill(main, o.main);
+  el.appendChild(main);
+  el.pgMain = main; el.pgSide = null;
+  if (o.side) { const side = document.createElement('aside'); side.className = 'pg-side'; _lyFill(side, o.side); el.appendChild(side); el.pgSide = side; }
+  return el;
+}
+/**
+ * A list of things and the selected one beside it. `list` fills the left column (build its rows with mdRow);
+ * `detail` fills the right one, or `empty` shows when there is nothing to show. -> .md
+ * (.mdList, .mdDetail; .mdSet(detail) swaps the right side without touching the list, so scroll and focus stay).
+ */
+function masterDetail(o) {
+  o = o || {};
+  const el = document.createElement('div');
+  el.className = 'md' + _lyCls(o.cls);
+  if (o.listWidth) el.style.setProperty('--md-list', Math.max(200, Math.min(420, Number(o.listWidth) || 280)) + 'px');
+  const list = document.createElement('div'); list.className = 'md-list'; list.setAttribute('role', 'list');
+  if (o.label) list.setAttribute('aria-label', String(o.label));
+  _lyFill(list, o.list);
+  const pane = document.createElement('div'); pane.className = 'md-detail';
+  const set = (v) => { pane.replaceChildren(); if (v === null || v === undefined || v === false) _lyFill(pane, o.empty); else _lyFill(pane, v); };
+  set(o.detail);
+  el.append(list, pane);
+  el.mdList = list; el.mdDetail = pane; el.mdSet = set;
+  return el;
+}
+/** One row of a masterDetail list: {title, sub, icon | avatar (an element), badge, active, tip, run}. -> <button class="md-row"> */
+function mdRow(o) {
+  o = o || {};
+  const b = document.createElement('button'); b.type = 'button';
+  b.className = 'md-row' + (o.active ? ' on' : '') + _lyCls(o.cls);
+  b.setAttribute('role', 'listitem');
+  if (o.active) b.setAttribute('aria-current', 'true');
+  if (o.tip) b.title = String(o.tip);
+  if (o.avatar && o.avatar.nodeType) { const a = document.createElement('span'); a.className = 'md-row-lead'; a.appendChild(o.avatar); b.appendChild(a); }
+  else if (o.icon) { const a = document.createElement('span'); a.className = 'md-row-lead md-row-ic'; a.appendChild(iconEl(o.icon)); b.appendChild(a); }
+  const t = document.createElement('span'); t.className = 'md-row-t';
+  const n = document.createElement('span'); n.className = 'md-row-n'; n.textContent = String(o.title == null ? '' : o.title);
+  t.appendChild(n);
+  if (o.sub) { const s = document.createElement('span'); s.className = 'md-row-s'; s.textContent = String(o.sub); t.appendChild(s); }
+  b.appendChild(t);
+  if (o.badge != null && o.badge !== '' && o.badge !== 0) { const g = document.createElement('span'); g.className = 'md-row-b num'; g.textContent = String(o.badge); b.appendChild(g); }
+  if (typeof o.run === 'function') b.onclick = (e) => o.run(e, b);
+  return b;
+}
+/**
+ * The pill tabs of a page: tabs [{id, label, icon, badge}], the active id, onChange(id, tab). Arrow keys move,
+ * Home / End jump. -> .sub-tabs. headerSubTabs(el, /^friends/) puts it in the page header (below the title and the
+ * area tabs; it goes away by itself when the view stops matching the regexp) and returns the host.
+ */
+function subTabs(o) {
+  o = o || {};
+  const bar = document.createElement('div'); bar.className = 'sub-tabs'; bar.setAttribute('role', 'tablist');
+  if (o.label) bar.setAttribute('aria-label', String(o.label));
+  const tabs = Array.isArray(o.tabs) ? o.tabs.filter(t => t && t.id) : [];
+  for (const t of tabs) {
+    const on = t.id === o.active;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'sub-tab' + (on ? ' on' : '');
+    b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; b.dataset.tab = String(t.id);
+    if (t.icon) b.appendChild(iconEl(t.icon, 'i-xs'));
+    const s = document.createElement('span'); s.textContent = String(t.label || t.id); b.appendChild(s);
+    if (t.badge != null && t.badge !== '' && t.badge !== 0) { const g = document.createElement('span'); g.className = 'sub-tab-n num'; g.textContent = String(t.badge); b.appendChild(g); }
+    b.onclick = () => { if (!on && typeof o.onChange === 'function') o.onChange(t.id, t); };
+    bar.appendChild(b);
+  }
+  bar.addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    const all = [...bar.querySelectorAll('.sub-tab')], i = all.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    all[e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length].focus();
+  });
+  bar.dataset.k = JSON.stringify([o.active, tabs.map(t => [t.id, t.label, t.badge || 0])]);
+  return bar;
+}
+function headerSubTabs(el, viewRe) {
+  const head = document.getElementById('view-header');
+  if (!head) return null;
+  let host = document.getElementById('view-subtabs');
+  if (!el) { if (host) host.remove(); return null; }
+  if (host && host.firstChild && host.firstChild.dataset.k === el.dataset.k) return host;   // nothing changed: focus stays
+  const had = host && host.contains(document.activeElement) ? [...host.querySelectorAll('button')].indexOf(document.activeElement) : -1;
+  if (!host) { host = document.createElement('div'); host.id = 'view-subtabs'; host.className = 'view-subtabs'; head.appendChild(host); }
+  host.dataset.for = viewRe instanceof RegExp ? viewRe.source : '';
+  host.replaceChildren(el);
+  if (had >= 0) { const b = el.querySelectorAll('button')[had]; if (b) b.focus({ preventScroll: true }); }
+  return host;
+}
+/** The shell calls this on every page change: tabs a page put in the header leave with it. */
+function headerSubTabsSweep() {
+  const host = document.getElementById('view-subtabs');
+  if (!host) return;
+  let keep = false;
+  try { keep = !!host.dataset.for && new RegExp(host.dataset.for).test(String(state.view || '')); } catch (e) { keep = false; }
+  if (!keep) host.remove();
+}
+/**
+ * A long list shown a page at a time: items, pageSize (20), render(item, i) -> element, empty (as for pageLayout),
+ * tag ('div'). "Show more (n)" reveals the next page in place. For a list the server pages (a feed), pass
+ * loadMore(): Promise<array of the next items> (an empty answer ends it), or hasMore:false to hide the button.
+ * start: how many to draw first (default one page); onShown(n): told how many are drawn, so a repaint can ask for the same.
+ * -> .pg-list (.setItems(items, {hasMore, keep}) starts over, or keeps the count shown; .shown() how many are drawn)
+ */
+function pagedList(o) {
+  o = o || {};
+  const size = Math.max(3, Math.min(200, Number(o.pageSize) || 20));
+  const el = document.createElement('div'); el.className = 'pg-list' + _lyCls(o.cls);
+  const body = document.createElement(o.tag || 'div'); body.className = 'pg-list-b';
+  const foot = document.createElement('div'); foot.className = 'pg-list-more';
+  el.append(body, foot);
+  let startN = Math.max(0, Number(o.start) || 0);   // how many to draw first (a repaint keeps what was already shown)
+  let items = [], shown = 0, remote = typeof o.loadMore === 'function' && o.hasMore !== false;
+  const draw = (to) => {
+    for (; shown < to && shown < items.length; shown++) { let n = null; try { n = o.render(items[shown], shown); } catch (e) { console.error('[pagedList] render', e); } if (n && n.nodeType) body.appendChild(n); }
+    foot.replaceChildren();
+    if (typeof o.onShown === 'function') { try { o.onShown(shown); } catch (e) { /* the caller's note */ } }
+    const left = items.length - shown;
+    if (left > 0) foot.appendChild(uiButton({ label: `Show more (${left})`, kind: 'ghost', size: 'sm', run: () => draw(shown + size) }));
+    else if (remote) foot.appendChild(uiButton({ label: 'Show more', kind: 'ghost', size: 'sm', wait: true, run: async () => {
+      let more = [];
+      try { more = await o.loadMore(); } catch (e) { toastError('load more', e); return; }
+      if (!Array.isArray(more) || !more.length) { remote = false; draw(shown); return; }
+      items = items.concat(more); draw(shown + size);
+    } }));
+  };
+  const empty = () => { const h = document.createElement('div'); h.className = 'pg-list-empty'; _lyFill(h, o.empty); body.appendChild(h); };
+  el.setItems = (next, opt) => {
+    const keepN = opt && opt.keep ? shown : 0;
+    items = Array.isArray(next) ? next : []; shown = 0; body.replaceChildren(); foot.replaceChildren();
+    if (opt && opt.hasMore === false) remote = false; else if (opt && opt.hasMore === true) remote = typeof o.loadMore === 'function';
+    if (!items.length) { empty(); return; }
+    draw(Math.max(size, keepN, startN)); startN = 0;
+  };
+  el.shown = () => shown;
+  el.setItems(o.items);
+  return el;
 }

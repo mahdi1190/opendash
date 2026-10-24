@@ -14,11 +14,13 @@
                                          kind: exact, 'share:*' / 'space:*', or '*'
                                          (live kinds arrive as /api/events 'friends' {type: 'live'}: never stored)
      Friends.shared(id, kind)            what a friend shares now: Promise {at, b} | null
-     Friends.feed({friend, kind, limit}) Promise [entry]
+     Friends.feed({friend, kind, limit, before}) Promise [entry]   (before: the lc of the last one you have, for the next page)
      Friends.presence(id)                'online'|'focusing'|'travelling'|'away'|'offline'
      Friends.describe(kind, fn(entry, friend, me) -> {icon, text, tone?})   how a feed line reads
-     Friends.registerPanel({id, order, where: 'friend'|'hangout', render(el, friend|data)})
-                                         a section of a friend's page or of the hangout
+     Friends.registerPanel({id, order, where: 'friend'|'hangout', tab, zone, render(el, friend|data)})
+                                         a section of a friend's page or of the hangout (2.19: tab: which Friends tab shows a
+                                         'hangout' panel: 'friends'|'feed'|'shared'|'settings', default 'feed', 'none' = never;
+                                         zone: where a 'friend' panel sits in the friend's detail: 'main'|'side'|'fold', default 'side')
      Friends.open(id)                    that friend's page
    friendsFeedPost({kind, text, icon, to?, body?, friend?, group?})  agent 'together'
    profileAvatarEl(friend, {size})       agent 'profile' defines it: the avatar element
@@ -198,7 +200,7 @@ window.Friends = Object.freeze({
     return () => _fr.handlers.get(k).delete(fn);
   },
   shared: (id, kind) => _frApi('/api/friends/friend?id=' + encodeURIComponent(id)).then(r => (r.shared && r.shared[kind]) || null),
-  feed: (o) => { const q = new URLSearchParams(); o = o || {}; if (o.friend) q.set('friend', o.friend); if (o.kind) q.set('kind', o.kind); if (o.limit) q.set('limit', String(o.limit)); return _frApi('/api/friends/feed?' + q.toString()).then(r => r.entries || []); },
+  feed: (o) => { const q = new URLSearchParams(); o = o || {}; if (o.friend) q.set('friend', o.friend); if (o.kind) q.set('kind', o.kind); if (o.limit) q.set('limit', String(o.limit)); if (o.before != null) q.set('before', String(o.before)); return _frApi('/api/friends/feed?' + q.toString()).then(r => r.entries || []); },
   presence: (id) => { const f = friendsGet(id); return f ? f.presence : 'offline'; },
   describe(kind, fn) { if (typeof fn === 'function') _fr.describers.set(String(kind), fn); },
   registerPanel(def) {

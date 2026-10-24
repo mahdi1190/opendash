@@ -525,7 +525,7 @@ registerSidebarBlock('tasks', {
    reachable from the Friends hangout too: your spaces, each opening together:<id>, and one way to make one. */
 if (typeof window !== 'undefined' && window.Friends && typeof window.Friends.registerPanel === 'function') {
   window.Friends.registerPanel({
-    id: 'shared-spaces', order: 8, where: 'hangout', title: 'Shared spaces', icon: 'handshake',
+    id: 'shared-spaces', order: 8, where: 'hangout', tab: 'none', title: 'Shared spaces', icon: 'handshake',
     render(el, d) {
       if (!tgOn()) return false;
       if (!tgHas()) { if (!_tg.loading && typeof tgLoad === 'function') tgLoad(); return false; }

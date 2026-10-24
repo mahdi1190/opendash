@@ -47,29 +47,43 @@ function tgRenderHub(root) {
   const sub = document.getElementById('view-subtitle');
   if (sub) sub.textContent = tgChannel() ? `${tgSpaces().length} shared space${tgSpaces().length === 1 ? '' : 's'}` : '';
   // New space, Find a time, Focus together, the refresh and the settings live in the shared page header (tgHeaderActions below).
-  if (!tgHas() || _tg.data.failed) { root.appendChild(tgWaitEl('your spaces')); return; }
+  root.appendChild(tgSpacesPane({}));
+}
+/**
+ * Your shared spaces as a list and the one you picked beside it (2.19, lean UI): who is waiting for you first, then
+ * the spaces (masterDetail), then what spans them (coming up, challenges, the ones you left). The hub
+ * (#view=together) shows it and so does Friends > Shared (o.embedded). Picking a space swaps the right side only.
+ */
+function tgSpacesPane(o) {
+  o = o || {};
+  const pane = tgEl('div', 'tg-pane');
+  if (!tgHas() || _tg.data.failed) { pane.appendChild(tgWaitEl('your spaces')); return pane; }
   if (!tgChannel()) {
     const box = tgEl('div', 'tg-card tg-intro');
     box.innerHTML = `<div class="tg-intro-ic">${icon('users')}</div>`;
     const t = tgEl('div', 'tg-intro-t');
     t.append(tgEl('h3', '', 'Do things together with friends'),
-      tgEl('p', 'muted', 'Shared lists and boards, tasks you hand to each other, trips, split costs, quests and challenges. First add a friend in Friends: everything between you is end-to-end encrypted, and nothing a friend sends ever changes your own tasks without your click.'));
-    const go = tgBtn('Open Friends', { primary: true, icon: 'user-plus', run: () => { if (typeof sectionFor === 'function' && sectionFor('friends')) setView('friends'); else toast('Friends is not on this computer yet: update OpenDash (Settings > Updates).', { icon: 'info' }); } });
+      tgEl('p', 'muted', 'Shared lists and boards, tasks you hand to each other, trips, split costs, quests and challenges. First add a friend: everything between you is end-to-end encrypted, and nothing a friend sends ever changes your own tasks without your say-so.'));
+    const go = tgBtn(o.embedded ? 'Add a friend' : 'Open Friends', { primary: true, icon: 'user-plus', run: () => {
+      if (o.embedded && typeof friendsAddDialog === 'function') friendsAddDialog();
+      else if (typeof sectionFor === 'function' && sectionFor('friends')) setView('friends');
+      else toast('Friends is not on this computer yet: update OpenDash (Settings > Updates).', { kind: 'warn' });
+    } });
     t.appendChild(go);
     box.appendChild(t);
-    root.appendChild(box);
+    pane.appendChild(box);
   }
   // Invitations and requests first: they wait for you.
   const inv = tgInvites(), req = tgRequests();
   if (inv.length || req.length) {
-    const sec = tgSection(root, 'Waiting for you', 'inbox', inv.length + req.length);
+    const sec = tgSection(pane, 'Waiting for you', 'inbox', inv.length + req.length);
     for (const s of inv) sec.appendChild(tgInviteCard(s));
     for (const r of req) sec.appendChild(tgRequestRow(r.sp, r.it));
   }
-  if (typeof tgFocusStrip === 'function') { const f = tgFocusStrip(); if (f) root.appendChild(f); }
+  if (typeof tgFocusStrip === 'function') { const f = tgFocusStrip(); if (f) pane.appendChild(f); }
   const sps = tgSpaces();
-  const sec = tgSection(root, 'Your spaces', 'layout-grid', sps.length);
   if (!sps.length) {
+    const sec = tgSection(pane, 'Your spaces', 'layout-grid', 0);
     sec.appendChild(tgEl('p', 'muted tg-pad', tgChannel() ? 'No shared spaces yet. Make one: a shopping list with your housemates, a board for a project, a party with quests, a trip.' : 'Your shared spaces will show here.'));
     if (tgChannel()) {
       const ideas = tgEl('div', 'tg-ideas');
@@ -79,15 +93,36 @@ function tgRenderHub(root) {
       sec.appendChild(ideas);
     }
   } else {
-    const grid = tgEl('div', 'tg-grid');
-    for (const s of sps) grid.appendChild(tgSpaceCard(s));
-    sec.appendChild(grid);
+    let cur = sps.find(x => x.id === _tg.sel) || sps[0];
+    _tg.sel = cur.id;
+    const rows = new Map();
+    const pick = (id) => {
+      const sp = sps.find(x => x.id === id);
+      if (!sp || sp.id === cur.id) return;
+      cur = sp; _tg.sel = id;
+      for (const [rid, b] of rows) { b.classList.toggle('on', rid === id); if (rid === id) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); }
+      md.mdSet(tgSpaceSummary(sp));
+    };
+    const md = masterDetail({
+      label: 'Shared spaces', listWidth: 256,
+      list: (host) => {
+        for (const sp of sps) {
+          const open = tgOpenCount(sp);
+          const b = mdRow({ icon: _tgIconOf(sp), title: tgSpaceName(sp), sub: TG_KIND_LABEL[tgKindOf(sp)] + ' · ' + tgMembers(sp.value).length + ' people', badge: open || '', active: sp.id === cur.id, run: () => pick(sp.id) });
+          rows.set(sp.id, b);
+          host.appendChild(b);
+        }
+        host.appendChild(mdRow({ icon: 'plus', title: 'New shared space', cls: 'tg-md-new', run: () => tgNewSpaceDialog() }));
+      },
+      detail: () => tgSpaceSummary(cur),
+    });
+    pane.appendChild(md);
   }
-  if (typeof tgHubLife === 'function') tgHubLife(root);     // coming up: countdowns, trips, birthdays (4life)
-  if (typeof tgHubGame === 'function') tgHubGame(root);     // challenges, trophies, leaderboard (3game)
+  if (typeof tgHubLife === 'function') tgHubLife(pane);     // coming up: countdowns, trips, birthdays (4life)
+  if (typeof tgHubGame === 'function') tgHubGame(pane);     // challenges, trophies, leaderboard (3game)
   const left = tgAllSpaces().filter(s => s.status === 'left' || s.status === 'declined' || s.status === 'removed');
   if (left.length) {
-    const ls = tgSection(root, 'Left or declined', 'archive', left.length, true);
+    const ls = tgSection(pane, 'Left or declined', 'archive', left.length, true);
     for (const s of left) {
       const row = tgEl('div', 'tg-row tg-row-flat');
       row.append(tgEl('span', 'tg-row-t', tgSpaceName(s)), tgEl('span', 'muted tg-sm', s.status === 'removed' ? 'Removed by its owner' : s.status === 'declined' ? 'Declined' : 'Left'));
@@ -95,6 +130,42 @@ function tgRenderHub(root) {
       ls.appendChild(row);
     }
   }
+  return pane;
+}
+/** The picked space at a glance: who, what is open (tick it off here), one line to add to it, and Open for the whole space. */
+function tgSpaceSummary(sp) {
+  const v = sp.value, kind = tgKindOf(sp), id = sp.id;
+  const box = tgEl('div', 'tg-sum');
+  const head = tgEl('div', 'tg-sum-h');
+  head.insertAdjacentHTML('beforeend', `<span class="tg-sc-ic">${icon(_tgIconOf(sp))}</span>`);
+  const nm = tgEl('div', 'tg-sum-t');
+  nm.append(tgEl('h2', '', tgSpaceName(sp)), tgEl('span', 'muted tg-sm', TG_KIND_LABEL[kind]));
+  head.appendChild(nm);
+  head.appendChild(tgAvatarStack(tgMembers(v).filter(x => x !== tgMe()), v, 5));
+  const acts = tgEl('div', 'tg-acts');
+  acts.append(tgBtn('Open', { primary: true, icon: 'arrow-right', run: () => setView('together:' + id) }),
+    tgIconBtn('ellipsis', 'Space menu', (e, b) => tgSpaceMenu(b, sp)));
+  head.appendChild(acts);
+  box.appendChild(head);
+  const streak = typeof tgPartyStreak === 'function' ? tgPartyStreak(v) : 0;
+  const next = typeof tgNextDate === 'function' ? tgNextDate(v) : null;
+  if (streak > 1 || next) {
+    const f = tgEl('div', 'tg-sc-foot');
+    if (streak > 1) { const st = tgEl('span', 'tg-chip tg-chip-fire'); st.insertAdjacentHTML('beforeend', icon('flame', 'i-xs')); st.appendChild(tgEl('span', '', `${streak}-day party streak`)); f.appendChild(st); }
+    if (next) { const n = tgEl('span', 'tg-chip'); n.insertAdjacentHTML('beforeend', icon('calendar', 'i-xs')); n.appendChild(tgEl('span', '', next)); f.appendChild(n); }
+    box.appendChild(f);
+  }
+  const add = tgEl('div', 'tg-add');
+  add.insertAdjacentHTML('beforeend', icon('plus'));
+  add.appendChild(tgInput('add:' + id, { placeholder: 'Add to the list for everyone… (Enter)', max: 300, aria: 'New shared task', onEnter: (val, el) => { const t = String(val || '').trim(); if (!t) return; tgClearDraft('add:' + id); el.value = ''; tgAddItem(id, { title: t }); } }));
+  box.appendChild(add);
+  const open = tgItemsOf(v).filter(it => it.status !== 'done');
+  const list = tgEl('div', 'tg-list'); list.setAttribute('role', 'list');
+  if (!open.length) list.appendChild(tgEl('p', 'muted tg-pad', (v.items || []).length ? 'All done here.' : 'Nothing here yet. Add the first thing above.'));
+  for (const it of open.slice(0, 6)) list.appendChild(tgItemRow(sp, it, false));
+  box.appendChild(list);
+  if (open.length > 6) box.appendChild(tgBtn(`${open.length - 6} more in ${tgSpaceName(sp)}`, { ghost: true, icon: 'arrow-right', run: () => setView('together:' + id) }));
+  return box;
 }
 function tgSection(root, title, ic, count, folded) {
   const box = tgEl('section', 'tg-sec' + (folded ? ' is-folded' : ''));
@@ -108,32 +179,6 @@ function tgSection(root, title, ic, count, folded) {
   box.appendChild(body);
   root.appendChild(box);
   return body;
-}
-function tgSpaceCard(s) {
-  const v = s.value;
-  const c = tgEl('button', 'tg-card tg-space-card'); c.type = 'button';
-  c.onclick = () => setView('together:' + s.id);
-  const top = tgEl('div', 'tg-sc-top');
-  top.insertAdjacentHTML('beforeend', `<span class="tg-sc-ic">${icon(_tgIconOf(s))}</span>`);
-  const nm = tgEl('div', 'tg-sc-name');
-  nm.append(tgEl('b', '', tgSpaceName(s)), tgEl('span', 'muted tg-sm', TG_KIND_LABEL[tgKindOf(s)]));
-  top.appendChild(nm);
-  c.appendChild(top);
-  const others = tgMembers(v).filter(f => f !== tgMe());
-  const row = tgEl('div', 'tg-sc-row');
-  row.appendChild(tgAvatarStack(others, v, 5));
-  const open = tgOpenCount(s), mine = (v.items || []).filter(it => it.status !== 'done' && tgIsMine(it)).length;
-  row.appendChild(tgEl('span', 'muted tg-sm', open ? `${open} open${mine ? ` · ${mine} yours` : ''}` : 'All done'));
-  c.appendChild(row);
-  const streak = typeof tgPartyStreak === 'function' ? tgPartyStreak(v) : 0;
-  const next = typeof tgNextDate === 'function' ? tgNextDate(v) : null;
-  if (streak > 1 || next) {
-    const f = tgEl('div', 'tg-sc-foot');
-    if (streak > 1) { const st = tgEl('span', 'tg-chip tg-chip-fire'); st.insertAdjacentHTML('beforeend', icon('flame', 'i-xs')); st.appendChild(tgEl('span', '', `${streak}-day party streak`)); f.appendChild(st); }
-    if (next) { const n = tgEl('span', 'tg-chip'); n.insertAdjacentHTML('beforeend', icon('calendar', 'i-xs')); n.appendChild(tgEl('span', '', next)); f.appendChild(n); }
-    c.appendChild(f);
-  }
-  return c;
 }
 function tgInviteCard(s) {
   const v = s.value, by = s.invitedBy || (v.meta && v.meta.owner);

@@ -317,3 +317,11 @@ button.tg-where:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .tg-fr-space .muted { font-size: var(--text-xs); flex: none; }
 .tg-fr-space.is-invite { border-style: dashed; }
 .tg-fr-acts { display: flex; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap; }
+
+/* ---------- 2.19: the spaces list and the picked space (99-together-1space.js tgSpacesPane) ---------- */
+.tg-pane { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.tg-sum { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface); min-width: 0; }
+.tg-sum-h { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.tg-sum-t { flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; }
+.tg-sum-t h2 { margin: 0; font-size: var(--text-lg); line-height: var(--lh-lg); overflow-wrap: anywhere; }
+.tg-md-new .md-row-ic { color: var(--accent); }

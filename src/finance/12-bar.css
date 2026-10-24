@@ -15,13 +15,17 @@
 /* Budgets (and any section with SEC_OPTS.filters false) keep only the tabs. */
 .fv-sticky.no-filters .fv-filters { display: none; }
 .fv-sticky.no-filters .fv-tabs { margin-bottom: 0; }
+/* 2.19: the section chooser is small and only there when the tab has more than one section; with no filters either, the bar is gone. */
+.fv-tabs[hidden], .fv-tab[hidden] { display: none; }
+.fv-sticky.no-filters.no-tabs { display: none; }
+.fv-sticky.no-tabs { padding-top: 0; }
 
 /* ---------- tabs: icon + label, one ink that glides (transform only) ---------- */
 .fv-tabs { position: relative; display: flex; gap: 2px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--border-subtle); margin-bottom: var(--space-3); }
 .fv-tabs::-webkit-scrollbar { display: none; }
 .fv-tab {
   appearance: none; border: 0; background: none; font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
-  color: var(--fg-muted); height: 40px; padding: 0 10px; cursor: pointer; white-space: nowrap; flex: none;
+  color: var(--fg-muted); height: 32px; padding: 0 10px; cursor: pointer; white-space: nowrap; flex: none;
   display: inline-flex; align-items: center; gap: 7px; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   transition: color var(--fv-fast) var(--fv-ease), background-color var(--fv-fast) var(--fv-ease);
 }

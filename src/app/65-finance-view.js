@@ -91,11 +91,7 @@ registerSection('finance', {
   group: 'finance',
   match: v => v === 'finance',
   title: () => 'Money',   // 'Finances' until 2.18 (NAVIGATION_PLAN.md 2.1)
-  crumb: () => {
-    let sub = '';
-    try { sub = (window.FinanceView && FinanceView.sectionLabel()) || ''; } catch (e) { /* not loaded yet */ }
-    return sub ? [sub] : [];
-  },
+  crumb: () => [],   // the tab you are on is lit in the page header (2.19), so the crumb does not repeat it
   layout: 'wide',
   // render() keeps the mounted root attached (80-main-render.js): re-attaching it replayed the KPI entrance (C6).
   keepRoot: (main) => !!(window.FinanceView && main.childElementCount === 1 && main.firstElementChild.classList.contains('fv')),

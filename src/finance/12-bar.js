@@ -21,18 +21,19 @@
     root.append(body);
     // Sticky bar: tabs + filters
     const sentinel = h('div', { class: 'fv-sentinel', 'aria-hidden': 'true' });
-    E.tabs = h('div', { class: 'fv-tabs', role: 'tablist', 'aria-label': 'Finance sections' });
+    E.tabs = h('div', { class: 'fv-tabs', role: 'tablist', 'aria-label': 'In this tab' });
     E.ink = h('span', { class: 'fv-tab-ink', 'aria-hidden': 'true' });
     E.tabBtns = SECTIONS.map(([id, label]) => {
       const b = h('button', { type: 'button', role: 'tab', class: 'fv-tab', 'data-id': id, 'aria-controls': 'fv-panel', onclick: () => setSection(id) },
-        h('span', { class: 'fv-tab-ic', 'data-id': id, 'aria-hidden': 'true' }, ic(SECTION_ICONS[id] || 'circle')), h('span', { class: 'fv-tab-l', text: label }));
+        h('span', { class: 'fv-tab-l', text: INNER_LABEL[id] || label }));
       E.tabs.append(b); return b;
     });
     E.tabs.append(E.ink);
     E.tabs.addEventListener('keydown', e => {
       if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
       const i = E.tabBtns.indexOf(document.activeElement); if (i < 0) return;
-      e.preventDefault(); const nb = E.tabBtns[(i + (e.key === 'ArrowRight' ? 1 : E.tabBtns.length - 1)) % E.tabBtns.length]; nb.focus(); nb.click();
+      e.preventDefault(); const vis = E.tabBtns.filter(b => !b.hidden), vi = vis.indexOf(document.activeElement); if (vi < 0) return;
+      const nb = vis[(vi + (e.key === 'ArrowRight' ? 1 : vis.length - 1)) % vis.length]; nb.focus(); nb.click();
     });
     // Fonts landing or the strip resizing move the tabs: keep the ink under the current one.
     if (R.tabRo) { R.tabRo.disconnect(); R.tabRo = null; }
@@ -116,6 +117,7 @@
     wireKeys();
     MK.wireVis();
     buildKpis();
+    paintTabs(false);   // only this tab's sections show (and none when it has one)
   }
 
   // ── Filter bar painting ───────────────────────────────────────────────
@@ -238,8 +240,9 @@
     // @new-end
     const from = R.sectionId;
     F.section = id; saveF();
-    // Keep the shell's breadcrumb and sidebar (Finances › <section>) in step.
-    try { if (typeof window.renderCrumb === 'function') window.renderCrumb(); if (typeof window.renderSidebar === 'function' && R.mounted) window.renderSidebar(); } catch (e) { /* shell not loaded */ }
+    R.groupLast = R.groupLast || {}; R.groupLast[groupOf(id)] = id;
+    paintGroupTabs();
+    try { if (typeof window.renderCrumb === 'function') window.renderCrumb(); } catch (e) { /* shell not loaded */ }
     if (R.mode !== 'ready') return;
     // The old section leaves away from the direction of travel, the new one arrives from it.
     const dir = from && from !== id && !(opts && opts.instant) ? (MK.dir(from, id) || 1) : 0;
@@ -260,9 +263,25 @@
   }
   // One 2 px ink under the current tab, moved with transform only
   // (translateX + scaleX of a 100 px bar, 240 ms); no slide on first paint.
+  // The page header's tabs (one per group) and, under them, the chooser for the sections inside the group.
+  function paintGroupTabs() {
+    if (typeof subTabs !== 'function' || typeof headerSubTabs !== 'function') return;
+    if (typeof state !== 'undefined' && state.view !== 'finance') return;   // never touch another page's tabs
+    if (!R.mounted || R.mode !== 'ready') { headerSubTabs(null); return; }
+    R.groupLast = R.groupLast || {}; R.groupLast[groupOf(F.section)] = F.section;
+    headerSubTabs(subTabs({
+      label: 'Money', active: groupOf(F.section),
+      tabs: GROUPS.map(([id, label, icon]) => ({ id, label, icon })),
+      onChange: (id) => { const g = GROUPS.find(x => x[0] === id); if (g) setSection(R.groupLast[id] || g[3][0]); },
+    }), /^finance$/);
+  }
   function paintTabs(animate) {
     const E = R.els; if (!E.tabBtns) return;
     let cur = null;
+    const grp = groupOf(F.section), many = GROUPS.find(g => g[0] === grp)[3].length > 1;
+    E.tabBtns.forEach(b => { b.hidden = groupOf(b.getAttribute('data-id')) !== grp; });
+    E.tabs.hidden = !many;
+    if (E.sticky) E.sticky.classList.toggle('no-tabs', !many);
     E.tabBtns.forEach(b => {
       const onn = b.getAttribute('data-id') === F.section;
       b.classList.toggle('on', onn); b.setAttribute('aria-selected', String(onn)); b.tabIndex = onn ? 0 : -1;

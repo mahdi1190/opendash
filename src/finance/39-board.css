@@ -287,3 +287,6 @@ html.anim-paused .fvb-streak .i { animation-play-state: paused; }
 .fvb-payday p { margin-top: 2px; }
 [data-motion="reduced"] .fvb-stamp, [data-motion="reduced"] .fvb-minibars i { animation: none; }
 @media (prefers-reduced-motion: reduce) { .fvb-stamp, .fvb-minibars i { animation: none; } }
+
+/* 2.19: a widget is as tall as its own content; a short card beside a tall one no longer stretches into an empty box. */
+.fvb-w { align-self: start; }

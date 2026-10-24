@@ -28,6 +28,7 @@ import { QUERY_BY_NAME, QUERY_BY_TOOL } from '../actions/queries.mjs';
 import { ActionError, SOURCES } from '../actions/model.mjs';
 import { ensureLocalToken, tokenMatches, TOKEN_HEADER, writeRuntime, removeRuntime, removeRuntimeSync } from '../actions/auth.mjs';
 import { createLiveSync } from '../live-sync.mjs';
+import { createFileWatch } from '../file-watch.mjs';
 import { installInfo } from '../../mcp/install.mjs';
 import { OPS } from '../actions/ops.mjs';
 import { INSTRUCTIONS } from '../../mcp/instructions.mjs';
@@ -41,19 +42,22 @@ export default function register(app) {
   ctx.actions = actions;            // other route files (e.g. the assistant) use the same instance
   const live = createLiveSync({ store, journal: actions.journal, log });
   ctx.liveSync = live;
+  // Files another process writes (the assistant's MCP, a sync from another computer) reach open tabs as `files` events.
+  const fileWatch = createFileWatch({ dataDir, extraDirs: [ctx.financeDir], emit: (ev, data) => live.emit(ev, data), log });
   let token = null;
   const getToken = async () => (token = token || await ensureLocalToken(dataDir));
 
   app.onReady(async () => {
     await getToken();
     await live.start();
+    await fileWatch.start().catch((e) => log('warn', `file watch: ${e.message}`));
     // hostId/hostname: a runtime.json that OneDrive brought from another computer is stale here (discoverServer)
     const presence = ctx.hosts && ctx.hosts.presence;
     await writeRuntime(dataDir, { pid: process.pid, port: ctx.port, url: `http://localhost:${ctx.port}/`, stateFile: store.file, startedAt: new Date().toISOString(), version: ctx.version,
       hostname: presence ? presence.hostname : hostname(), hostId: presence ? presence.hostId : null });
     process.once('exit', () => removeRuntimeSync(dataDir));
   });
-  app.onClose(async () => { live.close(); await removeRuntime(dataDir); });
+  app.onClose(async () => { live.close(); fileWatch.close(); await removeRuntime(dataDir); });
 
   /** 'browser' | 'token'; throws 401 otherwise. */
   async function who(c, { write }) {

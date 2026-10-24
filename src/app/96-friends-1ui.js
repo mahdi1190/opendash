@@ -29,32 +29,22 @@
 const _frUI = { entry: '', root: null, feedN: 30, feed: null, feedAt: 0, feedBusy: false, detail: new Map(), detailAt: new Map(), burstSeen: new Set() };
 const _FR_PRES = Object.freeze({ online: ['Here now', 'circle-dot'], focusing: ['Focusing', 'timer'], travelling: ['Travelling', 'plane'], away: ['Away', 'moon'], offline: ['Not around', 'moon'] });
 const _FR_CHEERS = Object.freeze(['👏', '🎉', '💪', '🔥', '❤️', '🌟']);
+/** Every Friends view: the five tabs (96-friends-2tabs.js) and a friend's page. */
+const _FR_VIEW_RE = /^friends(:(feed|requests|shared|settings|[0-9a-f]{16}))?$/;
 function _frIdOf(v) { const m = /^friends:([0-9a-f]{16})$/.exec(String(v || '')); return m ? m[1] : null; }
 
 registerSection('friends', {
-  match: v => v === 'friends' || /^friends:[0-9a-f]{16}$/.test(String(v || '')),
+  match: v => _FR_VIEW_RE.test(String(v || '')),
   title: () => 'Friends',
   crumb: v => { const id = _frIdOf(v); if (!id) return []; const f = friendsGet(id); return [{ label: 'Friends', view: 'friends' }, f ? friendName(f) : 'Friend']; },
-  group: 'life', layout: 'page', hashable: true, taskControls: false,   // Life > Friends since 2.18 (NAVIGATION_PLAN.md 2.2)
+  group: 'life', layout: 'wide', hashable: true, taskControls: false,   // Life > Friends since 2.18 (NAVIGATION_PLAN.md 2.2)
   mount(container, view) { _frMount(container, view || state.view); },
   unmount() { _frUI.entry = ''; _frUI.root = null; },
   // The page template (UX_BLUEPRINT.md 3): one primary action in the shared header, the rest under its More.
   headerActions(view) { frShellHeadMark('friends'); return _frHeadActions(view || state.view); },
 });
-/** The header's primary action and More items: the hangout's (Add a friend) or a friend's page's (Cheer). */
+/** The header's primary action (Add a friend, on every tab) and its More items. A friend's own actions (Cheer, Share a task, Remove, Block) sit on their card. */
 function _frHeadActions(view) {
-  const id = _frIdOf(view);
-  if (id) {
-    const f = friendsGet(id);
-    if (!f || f.status !== 'friend') return {};
-    return {
-      primary: { label: 'Cheer', icon: 'heart', tip: `Cheer ${friendName(f)} on`, run: (e, b) => _frCheerMenu(b || _frHeadAnchor(), f) },
-      more: [
-        { label: 'Remove friend', icon: 'user-minus', run: () => _frRemove(f, false) },
-        { label: 'Block', icon: 'lock', danger: true, run: () => _frRemove(f, true) },
-      ],
-    };
-  }
   return { primary: { label: 'Add a friend', icon: 'user-plus', run: () => friendsAddDialog() }, more: _frMoreItems(_fr.data) };
 }
 /** The hangout's occasional things (the header's More, or the page's own More until the shell draws it). */
@@ -76,7 +66,7 @@ function _frCheckNow(btn) {
 // Life's first tab (2.18): the sidebar row, the tab strip, All pages and the corner hub read this. The Home row it
 // replaces ('friends-nav', hidden by default in 2.17.1) is gone; a friend's page offers the shared 'Back to'.
 registerPage({
-  id: 'friends', view: 'friends', match: v => v === 'friends' || /^friends:[0-9a-f]{16}$/.test(String(v || '')),
+  id: 'friends', view: 'friends', match: v => _FR_VIEW_RE.test(String(v || '')),
   label: 'Friends', icon: 'users', area: 'life', tab: true, order: 10, since: '2.17', discover: true,
   desc: 'Your friends, cheers, and things to do together',
   keywords: 'friends social hangout cheer cheers streak level feed invite gifts stickers together',
@@ -212,10 +202,9 @@ function _frRelayBtn(d, o) {
 /* ---------- mount and repaint ---------- */
 function _frMount(container, view) {
   _fr.opened = true;
-  const entering = _frUI.entry !== view;
-  _frUI.entry = view;
-  const sub = document.getElementById('view-subtitle');
-  if (sub) sub.textContent = 'Cheer each other on, compare streaks, do things together';
+  const tab = _frTabOf(view);
+  const entering = _frUI.entry !== tab;   // moving between friends on one tab is not an entrance
+  _frUI.entry = tab;
   const root = _frEl('div', 'fr-page' + (entering ? ' is-enter' : ''));
   container.appendChild(root);
   _frUI.root = root;
@@ -226,7 +215,7 @@ function _frMount(container, view) {
     return;
   }
   _frRender(root, view);
-  if (entering && window.Motion && Motion.stagger) Motion.stagger(root, { selector: '.fr-sec, .fr-hang, .fr-fhero, .fr-pend', step: 35, max: 8 });
+  if (entering && window.Motion && Motion.stagger) Motion.stagger(root, { selector: '.fr-sec, .fr-fhero, .fr-pend, .md-list', step: 35, max: 6 });
   if (entering || Date.now() - _fr.at > 15000) friendsLoad(true).then(() => friendsPageRefresh()).catch(() => {});
 }
 /** Paint the open Friends page again in place (no entrance motion, scroll kept). */
@@ -245,8 +234,7 @@ function friendsPageRefresh() {
 }
 function _frRender(root, view) {
   try {
-    const id = _frIdOf(view);
-    if (id) _frFriendPage(root, id); else _frHangout(root);
+    _frRenderTabs(root, view);   // 96-friends-2tabs.js
   } catch (e) {
     console.error('[friends] page', e);
     root.textContent = '';
@@ -270,93 +258,12 @@ function _frErrorCard(e) {
 }
 
 /* ---------- the hangout ---------- */
-function _frHangout(root) {
-  const d = _fr.data;
-  const all = d.friends || [];
-  const friends = all.filter(f => f.status === 'friend').sort((a, b) => _frPresRank(a) - _frPresRank(b) || (b.lastAt || 0) - (a.lastAt || 0) || friendName(a).localeCompare(friendName(b)));
-  root.appendChild(_frHangHeader(d, friends));
-  if (!d.relay || !d.relay.home) root.appendChild(_frNoRelay(d));
-  // A key renewal still on its way (yours), and friends' renewals that need you (FRIENDS.md section 15).
-  const rot = d.me && d.me.rotation;
-  if (rot && (rot.step !== 'done' || Date.now() - (rot.doneAt || 0) < 3 * 86400000)) { const s = _frSec('Locking out a lost computer', 'key-round'); s.appendChild(_frKeysEl(d)); root.appendChild(s); }
-  const attn = all.filter(f => f.status === 'frozen' || f.relayAsk);
-  if (attn.length) root.appendChild(_frAttentionSec(attn));
-  const pend = all.filter(f => f.status === 'incoming' || f.status === 'requested').sort((a, b) => (a.status === 'incoming' ? 0 : 1) - (b.status === 'incoming' ? 0 : 1) || (b.addedAt - a.addedAt));
-  if (pend.length) root.appendChild(_frPendingSec(pend));
-  const declined = all.filter(f => f.status === 'declined');
-  if (declined.length) root.appendChild(_frDeclinedSec(declined));
-  root.appendChild(_frGridSec(d, friends));
-  for (const p of _fr.panels.filter(x => x.where === 'hangout')) {
-    const sec = _frSec(p.title || '', p.icon || 'sparkles');
-    try { if (p.render(sec, d) !== false) root.appendChild(sec); } catch (e) { console.error('[friends] panel ' + p.id, e); }
-  }
-  root.appendChild(_frFeedSec(null));
-  root.appendChild(_frSettingsSec(d));
-}
 const _frPresRank = (f) => ({ online: 0, focusing: 1, travelling: 2, away: 3 })[f.presence] ?? 4;
 /** A section of the page: the kit's section header (secHead, 11-ui-kit.js) and an optional action beside it. */
 function _frSec(title, ic, extra) {
   const s = _frEl('section', 'fr-sec');
   s.appendChild(secHead({ title, icon: ic || 'sparkles', cls: 'fr-sec-h', actions: extra ? [extra] : [] }));
   return s;
-}
-function _frHangHeader(d, friends) {
-  const el = _frEl('section', 'fr-hang');
-  const top = _frEl('div', 'fr-hang-top');
-  const t = _frEl('div', 'fr-hang-t');
-  const online = friends.filter(f => f.presence !== 'offline').length;
-  // The shared header says "Friends"; the hero says how things stand (status first), then the people.
-  t.appendChild(_frEl('h2', null, friends.length ? 'Your hangout' : 'Bring your people'));
-  t.appendChild(_frEl('p', 'muted', friends.length
-    ? `${friends.length} friend${friends.length === 1 ? '' : 's'}${online ? ` · ${online} around now` : ''}`
-    : 'Add a friend to cheer each other on and do quests together.'));
-  top.appendChild(t);
-  // Add a friend and the rest live in the shared header (headerActions); until the shell draws them, here.
-  if (!frShellHeadOn('friends')) {
-    const acts = _frEl('div', 'fr-hang-acts');
-    acts.appendChild(uiButton({ label: 'Add a friend', icon: 'user-plus', kind: 'primary', run: () => friendsAddDialog() }));
-    if (d.me.code) {
-      const chip = uiButton({ cls: 'fr-codechip', tip: 'Your friend code: people on your relay add you with it. Click to copy.', run: () => copyText(d.me.code, 'your friend code') });
-      chip.innerHTML = icon('key-round', 'i-sm');
-      chip.appendChild(_frEl('span', 'num', d.me.code));
-      acts.appendChild(chip);
-    }
-    acts.appendChild(uiButton({ icon: 'ellipsis', kind: 'ghost', aria: 'More', tip: 'More', run: (e, b) => openMenu(b, _frMoreItems(d), { align: 'end' }) }));
-    top.appendChild(acts);
-  }
-  el.appendChild(top);
-  // everyone, floating gently
-  const row = _frEl('div', 'fr-bubbles');
-  const me = _frEl('div', 'fr-bubble is-me');
-  me.append(_frMeAvatar(d, 52), _frEl('span', 'fr-bubble-n', 'You'));
-  { const fg = typeof friendsSceneFigureEl === 'function' ? friendsSceneFigureEl('me', 60) : null; if (fg) { me.classList.add('has-fig'); me.prepend(fg); } }   // the full figure (99s-friends-scenes-0core.js)
-  row.appendChild(me);
-  friends.slice(0, 14).forEach((f, i) => {
-    const b = _frEl('button', 'fr-bubble');
-    b.type = 'button';
-    b.style.setProperty('--d', ((i * 0.37) % 2.4).toFixed(2) + 's');
-    b.append(_frAvatarWrap(f, 52), _frEl('span', 'fr-bubble-n', friendName(f)));
-    { const fg = typeof friendsSceneFigureEl === 'function' ? friendsSceneFigureEl(f, 60) : null; if (fg) { b.classList.add('has-fig'); b.prepend(fg); } }   // their full figure, when they share an avatar
-    const pw = (_FR_PRES[f.presence] || _FR_PRES.offline)[0];
-    b.setAttribute('aria-label', `${friendName(f)}, ${pw}`);
-    b.onclick = () => setView('friends:' + f.id);
-    row.appendChild(b);
-  });
-  if (friends.length > 14) row.appendChild(_frEl('span', 'fr-bubble-more muted', `+${friends.length - 14}`));
-  if (!friends.length) {
-    for (let i = 0; i < 3; i++) {
-      const b = _frEl('button', 'fr-bubble is-empty');
-      b.type = 'button';
-      b.style.setProperty('--d', (i * 0.6) + 's');
-      b.innerHTML = `<span class="fr-av fr-av-empty" style="--size:52px">${icon('plus')}</span>`;
-      b.appendChild(_frEl('span', 'fr-bubble-n', i === 0 ? 'Add someone' : ''));
-      b.setAttribute('aria-label', 'Add a friend');
-      b.onclick = () => friendsAddDialog();
-      row.appendChild(b);
-    }
-  }
-  el.appendChild(row);
-  return el;
 }
 /** No relay yet: status first (Not set up, grey: nothing is wrong), one sentence, Set up my relay (SIMPLIFY_PLAN.md 5.9). */
 function _frNoRelay(d) {
@@ -446,87 +353,6 @@ function _frDeclinedSec(list) {
 }
 
 /* ---------- friend cards ---------- */
-function _frGridSec(d, friends) {
-  const sec = _frSec('Friends', 'users');
-  if (!friends.length) {
-    // An empty section teaches: what will appear here and the one action that makes it appear (UX_BLUEPRINT.md 2).
-    const relay = !!(d.relay && d.relay.home);
-    mountEmptyState(sec, { icon: 'users', compact: true, title: 'No friends here yet',
-      text: relay ? 'Send someone an invite link, or add them with their friend code if they use your relay.' : "Set up your relay first, or paste a friend's invite to join theirs.",
-      actions: relay ? [{ label: 'Add a friend', icon: 'user-plus', primary: true, run: () => friendsAddDialog() }] : [] });
-    return sec;
-  }
-  const grid = _frEl('div', 'fr-grid');
-  for (const f of friends) grid.appendChild(_frCard(f));
-  sec.appendChild(grid);
-  return sec;
-}
-function _frCard(f) {
-  const c = _frEl('div', 'card fr-card');
-  c.tabIndex = 0;
-  c.setAttribute('role', 'link');
-  c.setAttribute('aria-label', `${friendName(f)}'s page`);
-  c.onclick = () => setView('friends:' + f.id);
-  c.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); setView('friends:' + f.id); } };
-  const head = _frEl('div', 'fr-card-h');
-  head.appendChild(_frAvatarWrap(f, 48));
-  const nm = _frEl('div', 'fr-card-n');
-  nm.appendChild(_frEl('b', null, friendName(f)));
-  const pr = _FR_PRES[f.presence] || _FR_PRES.offline;
-  const pl = _frEl('span', 'fr-pres muted');
-  pl.setAttribute('data-fr-presence', f.id);
-  pl.setAttribute('data-p', f.presence || 'offline');
-  pl.appendChild(_frEl('span', 'fr-pres-dot'));
-  pl.appendChild(_frEl('span', null, pr[0] + (f.direct ? ' · connected directly' : '')));
-  nm.appendChild(pl);
-  head.appendChild(nm);
-  c.appendChild(head);
-  // their game
-  const g = f.game;
-  const gl = _frEl('div', 'fr-card-g');
-  if (g && g.level) {
-    const lv = _frEl('span', 'fr-lv');
-    lv.innerHTML = icon('gamepad-2', 'i-xs');
-    lv.appendChild(_frEl('span', 'num', `Level ${g.level}`));
-    if (g.title) lv.appendChild(_frEl('span', 'muted', ' · ' + g.title));
-    gl.appendChild(lv);
-    if (g.streak) {
-      const st = _frEl('span', 'fr-flame');
-      st.innerHTML = icon('flame', 'i-xs');
-      st.appendChild(_frEl('span', 'num', String(g.streak)));
-      st.title = `${g.streak}-day streak`;
-      gl.appendChild(st);
-    }
-  } else gl.appendChild(_frEl('span', 'muted fr-small', 'Not sharing game progress'));
-  c.appendChild(gl);
-  // your friendship
-  const fs = f.friendship;
-  if (fs) {
-    const fw = _frEl('div', 'fr-card-f');
-    const top = _frEl('div', 'fr-card-ft');
-    top.appendChild(_frEl('span', null, fs.title));
-    top.appendChild(_frEl('span', 'muted num', `Lv ${fs.level}`));
-    fw.appendChild(top);
-    const bar = _frEl('div', 'fr-bar');
-    bar.setAttribute('role', 'progressbar');
-    bar.setAttribute('aria-label', 'Friendship level progress');
-    bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', String(fs.need)); bar.setAttribute('aria-valuenow', String(fs.into));
-    const i = _frEl('i'); i.style.setProperty('--pct', (fs.pct * 100).toFixed(1) + '%');
-    bar.appendChild(i);
-    fw.appendChild(bar);
-    c.appendChild(fw);
-  }
-  const foot = _frEl('div', 'fr-card-foot');
-  const streak = fs && fs.streak ? `${fs.streak} day${fs.streak === 1 ? '' : 's'} in touch` : (fs && fs.milestone && fs.milestone.today ? fs.milestone.today.label : (f.friendsAt ? 'Friends since ' + new Date(f.friendsAt).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : ''));
-  foot.appendChild(_frEl('span', 'muted fr-small', streak));
-  foot.appendChild(_frEl('span', 'spacer'));
-  if (typeof tgPickTaskToShare === 'function' && f.status === 'friend') foot.appendChild(uiButton({ icon: 'user-plus', size: 'sm', kind: 'ghost', tip: `Share a task with ${friendName(f)}`, aria: `Share a task with ${friendName(f)}`, run: (e) => { if (e && e.stopPropagation) e.stopPropagation(); tgPickTaskToShare(f.id); } }));
-  foot.appendChild(uiButton({ icon: 'heart', size: 'sm', kind: 'ghost', cls: 'fr-cheer', tip: `Cheer ${friendName(f)} on`, aria: `Cheer ${friendName(f)} on`, run: (e, b) => _frCheerMenu(b, f) }));
-  c.appendChild(foot);
-  if (fs && fs.milestone && fs.milestone.today) c.classList.add('is-milestone');
-  if (typeof funFriendCard === 'function') { try { funFriendCard(c, f); } catch (e) { console.error('[friends] fun card', e); } }   // agent 'fun': duo flame, gifts, quick actions
-  return c;
-}
 function _frCheerMenu(anchor, f) {
   openPopover(anchor, (el, close) => {
     el.classList.add('fr-cheers');
@@ -583,71 +409,15 @@ function _frDescribe(e, f) {
       return { icon: 'sparkles', text: mine ? `You sent ${who} a ${e.k.split(':')[0]}` : `${who} sent you a ${e.k.split(':')[0]}` };
   }
 }
-function _frFeedSec(friendId) {
-  const more = uiButton({ icon: 'refresh-cw', size: 'sm', kind: 'ghost', tip: 'Check for new messages now', aria: 'Check now', run: (e, b) => _frCheckNow(b) });
-  const sec = _frSec(friendId ? 'You two' : "What's happening", 'sparkles', more);
-  const list = _frEl('ul', 'fr-feed');
-  sec.appendChild(list);
-  const key = friendId || '*';
-  const line = (text, action) => { const li = _frEl('li', 'fr-feed-empty'); li.appendChild(emptyLine(text, action)); return li; };
-  const paint = (entries) => {
-    list.textContent = '';
-    if (!entries.length) {
-      const f = friendId ? friendsGet(friendId) : null;
-      list.appendChild(f ? line('Nothing between you yet. Send a cheer to start your streak.', { label: 'Send a cheer', icon: 'heart', run: (e, b) => _frCheerMenu(b || _frHeadAnchor(), f) })
-        : line('Nothing yet. Cheers, level-ups, streaks and finished quests show up here.'));
-      return;
-    }
-    for (const e of entries) {
-      const f = e.f ? friendsGet(e.f) : (Array.isArray(e.to) && e.to.length ? friendsGet(e.to[0]) : null);
-      const dsc = _frDescribe(e, f);
-      const li = _frEl('li', 'fr-feed-i' + (dsc.tone ? ' is-' + dsc.tone : '') + (e.dir === 'in' ? ' is-in' : ' is-mine'));
-      const av = f ? _frAvatarWrap(f, 30, { presence: false }) : _frEl('span', 'fr-feed-ic');
-      if (!f) av.innerHTML = icon(dsc.icon || 'sparkles', 'i-sm');
-      li.appendChild(av);
-      const tx = _frEl('div', 'fr-feed-t');
-      const line = _frEl('span', 'fr-feed-l');
-      const ic = _frEl('span', 'fr-feed-k');
-      ic.innerHTML = icon(/^[a-z0-9-]{1,40}$/.test(dsc.icon || '') ? dsc.icon : 'sparkles', 'i-xs');
-      line.append(ic, _frEl('span', null, dsc.text));
-      tx.appendChild(line);
-      tx.appendChild(_frEl('span', 'muted fr-small', _frAgo(e.at)));
-      if (dsc.el && dsc.el.nodeType === 1) tx.appendChild(dsc.el);   // a describer's card (a postcard: 99s-friends-scenes-2postcards.js)
-      li.appendChild(tx);
-      if (f && e.dir === 'in' && (e.k === 'game:level' || e.k === 'game:streak' || (e.k === 'quest' && e.b && e.b.state === 'done') || (e.k === 'challenge' && e.b && e.b.state === 'win'))) {
-        li.appendChild(uiButton({ icon: 'heart', size: 'sm', kind: 'ghost', cls: 'fr-cheer', tip: `Cheer ${friendName(f)}`, aria: `Cheer ${friendName(f)}`, run: (ev, b) => _frCheerMenu(b, f) }));
-      }
-      if (typeof funFeedItem === 'function') { try { funFeedItem(li, e, f); } catch (x) { console.error('[friends] fun feed', x); } }   // agent 'fun': reactions, Unwrap, Answer
-      list.appendChild(li);
-    }
-    if (entries.length >= _frUI.feedN) {
-      const li = _frEl('li', 'fr-feed-more');
-      li.appendChild(uiButton({ label: 'Show more', size: 'sm', kind: 'ghost', run: () => { _frUI.feedN += 30; _frUI.feedAt = 0; friendsPageRefresh(); } }));
-      list.appendChild(li);
-    }
-  };
-  const cached = _frUI.feed && _frUI.feed.key === key ? _frUI.feed.entries : null;
-  if (cached) paint(cached); else list.appendChild(line('Loading…'));
-  const fresh = cached && Date.now() - _frUI.feedAt < 4000 && _frUI.feed.n === _frUI.feedN && _fr.at <= _frUI.feedAt;
-  if (!fresh && !_frUI.feedBusy) {
-    _frUI.feedBusy = true;
-    _frUI.feedAt = Date.now();
-    Friends.feed({ friend: friendId || undefined, limit: _frUI.feedN }).then((entries) => {
-      _frUI.feed = { key, entries, n: _frUI.feedN };
-      if (list.isConnected) paint(entries);
-    }).catch(() => { if (list.isConnected && !cached) { list.textContent = ''; list.appendChild(line("The feed couldn't load just now.", { label: 'Try again', run: () => { _frUI.feedAt = 0; friendsPageRefresh(); } })); } })
-      .finally(() => { _frUI.feedBusy = false; });
-  }
-  return sec;
-}
 
 /* ---------- settings (quiet, at the bottom; SIMPLIFY_PLAN.md 5.9) ----------
    On the face: your name (one name, changed on Profile), Online status (one select), your relay.
    More: who you blocked. Advanced: connecting directly on the same Wi-Fi, and Lost a computer?. */
-function _frSettingsSec(d) {
-  const det = _frEl('details', 'fr-sec fr-settings');
+function _frSettingsSec(d, o) {
+  const open = !!(o && o.open);   // the Settings tab shows it open; elsewhere it would be a fold
+  const det = _frEl(open ? 'section' : 'details', 'fr-sec fr-settings' + (open ? ' is-open' : ''));
   det.id = 'fr-settings';
-  const sum = _frEl('summary', 'fr-sec-h');
+  const sum = _frEl(open ? 'div' : 'summary', 'fr-sec-h');
   sum.innerHTML = icon('settings', 'i-sm');
   sum.appendChild(_frEl('h2', null, 'Friends settings and privacy'));
   det.appendChild(sum);
@@ -657,6 +427,8 @@ function _frSettingsSec(d) {
   body.appendChild(_settingsRow(`Your name: ${d.me.name || (typeof profileDisplayName === 'function' ? profileDisplayName() : '') || 'not set'}`, '', toProfile));
   // online status: one select (Off, or how you show) (L15)
   body.appendChild(_settingsRow('Online status', 'A word like “focusing”, never where you are.', _frPresenceSelect(d)));
+  // your friend code: people on your relay add you with it
+  if (d.me.code) body.appendChild(_settingsRow('Your friend code', 'People on your relay add you with it.', uiButton({ label: d.me.code, icon: 'key-round', size: 'sm', cls: 'num', tip: 'Copy your friend code', run: () => copyText(d.me.code, 'your friend code') })));
   // your relay
   const home = d.relay && d.relay.home;
   body.appendChild(_settingsRow(home ? (home.role === 'owner' ? 'Relay: yours' : 'Relay: a friend’s') : 'Relay: not set up', '',
@@ -717,92 +489,6 @@ function _frDetail(id) {
     }).catch(() => {});
   }
   return _frUI.detail.get(id) || null;
-}
-function _frFriendPage(root, id) {
-  const f = friendsGet(id);
-  if (!f || f.status === 'removing' || f.status === 'blocked') {
-    mountEmptyState(root, { icon: 'user-x', title: "This friend isn't here any more", text: 'They may have been removed on one of your computers.',
-      actions: [{ label: 'All friends', icon: 'arrow-left', run: () => setView('friends') }] });
-    return;
-  }
-  if (f.status !== 'friend') { root.appendChild(_frPendCard(f)); return; }
-  const det = _frDetail(id);
-  root.appendChild(_frFriendHero(f));
-  if (typeof tgPickTaskToShare === 'function' || typeof tgNewSpaceDialog === 'function') {
-    const tact = _frEl('div', 'fr-fhero-a fr-together-a');
-    if (typeof tgPickTaskToShare === 'function') tact.appendChild(uiButton({ label: `Share a task with ${friendName(f)}`, icon: 'user-plus', kind: 'secondary', run: () => tgPickTaskToShare(f.id) }));
-    if (typeof tgNewSpaceDialog === 'function') tact.appendChild(uiButton({ label: `Start a shared list with ${friendName(f)}`, icon: 'list-plus', kind: 'secondary', run: () => tgNewSpaceDialog({ kind: 'list', members: [f.id] }) }));
-    root.appendChild(tact);
-  }
-  const cols = _frEl('div', 'fr-cols');
-  const left = _frEl('div', 'fr-col');
-  const right = _frEl('div', 'fr-col');
-  left.appendChild(_frFriendGame(f));
-  left.appendChild(_frFriendProfile(f, det));
-  for (const p of _fr.panels.filter(x => x.where !== 'hangout')) {
-    const sec = _frSec(p.title || '', p.icon || 'sparkles');
-    try { if (p.render(sec, f) !== false) left.appendChild(sec); } catch (e) { console.error('[friends] panel ' + p.id, e); }
-  }
-  right.appendChild(_frFeedSec(id));
-  cols.append(left, right);
-  root.appendChild(cols);
-}
-function _frFriendHero(f) {
-  const el = _frEl('section', 'fr-fhero');
-  const fs = f.friendship || { level: 1, title: 'New friends', into: 0, need: 30, pct: 0, streak: 0, best: 0, milestone: {} };
-  const avc = _frEl('div', 'fr-fhero-av');
-  avc.appendChild(_frAvatarWrap(f, 96));
-  el.appendChild(avc);
-  const t = _frEl('div', 'fr-fhero-t');
-  t.appendChild(_frEl('h2', null, friendName(f)));   // the shared header says "Friends" (crumb: Friends > name)
-  if (f.nick && f.name && f.nick !== f.name) t.appendChild(_frEl('span', 'muted', f.name));
-  const pr = _FR_PRES[f.presence] || _FR_PRES.offline;
-  const pl = _frEl('span', 'fr-pres');
-  pl.setAttribute('data-fr-presence', f.id);
-  pl.setAttribute('data-p', f.presence || 'offline');
-  pl.appendChild(_frEl('span', 'fr-pres-dot'));
-  pl.appendChild(_frEl('span', null, pr[0] + (f.direct ? ' · connected directly' : '')));
-  t.appendChild(pl);
-  const days = fs.milestone && fs.milestone.days ? fs.milestone.days : 0;
-  if (f.friendsAt) t.appendChild(_frEl('span', 'muted', `Friends since ${_frDate(f.friendsAt)}${days ? ` · ${days.toLocaleString()} day${days === 1 ? '' : 's'}` : ''}`));
-  const m = fs.milestone || {};
-  if (m.today) {
-    const b = _frEl('div', 'fr-milestone');
-    b.innerHTML = icon('party-popper', 'i-sm');
-    b.appendChild(_frEl('b', null, m.today.label));
-    t.appendChild(b);
-    const key = f.id + '|' + m.today.label;
-    if (!_frUI.burstSeen.has(key)) { _frUI.burstSeen.add(key); setTimeout(() => _frBurst(b), 400); }
-  } else if (m.next && m.next.inDays <= 30) {
-    t.appendChild(_frEl('span', 'fr-next muted', `${m.next.label} in ${m.next.inDays} day${m.next.inDays === 1 ? '' : 's'}`));
-  }
-  el.appendChild(t);
-  // the friendship ring
-  const ring = _frEl('div', 'fr-fring');
-  const rv = _frEl('span', 'fr-ringw');
-  rv.innerHTML = _frRingSvg(fs.pct);
-  rv.appendChild(_frEl('b', 'num', String(fs.level)));
-  ring.appendChild(rv);
-  const rt = _frEl('div', 'fr-fring-t');
-  rt.appendChild(_frEl('span', 'overline', 'Friendship'));
-  rt.appendChild(_frEl('b', null, fs.title));
-  rt.appendChild(_frEl('span', 'muted fr-small num', `${fs.into} of ${fs.need} XP to level ${fs.level + 1}`));
-  const st = _frEl('span', 'fr-flame');
-  st.innerHTML = icon('flame', 'i-xs');
-  st.appendChild(_frEl('span', null, fs.streak ? `${fs.streak} day${fs.streak === 1 ? '' : 's'} in touch` : 'Start a streak today'));
-  if (fs.best > fs.streak) st.appendChild(_frEl('span', 'muted', ` · best ${fs.best}`));
-  rt.appendChild(st);
-  ring.appendChild(rt);
-  el.appendChild(ring);
-  // actions: Cheer and More live in the shared header (headerActions); until the shell draws them, here
-  const acts = _frEl('div', 'fr-fhero-a');
-  if (!frShellHeadOn('friends')) {
-    acts.appendChild(uiButton({ label: 'Cheer', icon: 'heart', kind: 'primary', run: (e, b) => _frCheerMenu(b, f) }));
-    acts.appendChild(uiButton({ icon: 'ellipsis', kind: 'ghost', aria: 'More', tip: 'More', run: (e, b) => openMenu(b, _frHeadActions('friends:' + f.id).more || []) }));
-  }
-  el.appendChild(acts);
-  if (typeof funFriendHero === 'function') { try { funFriendHero(el, f); } catch (e) { console.error('[friends] fun hero', e); } }   // agent 'fun': wave, high five, gift
-  return el;
 }
 function _frFriendGame(f) {
   const sec = _frSec(`${friendName(f)}'s game`, 'gamepad-2');

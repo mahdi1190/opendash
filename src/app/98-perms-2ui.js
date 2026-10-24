@@ -811,6 +811,6 @@ registerCommand({ id: 'perms-share-task', label: 'Share the open task with a fri
 
 /* ---------- the friend page (agent friends): the panel is a section of each friend's page ---------- */
 if (typeof window !== 'undefined' && window.Friends && typeof window.Friends.registerPanel === 'function') {
-  try { window.Friends.registerPanel({ id: 'perms', order: 20, where: 'friend', title: 'Privacy', icon: 'shield-check', render: (el, friend) => { if (!friend || !permsFriendIdOk(friend.id)) return false; el.appendChild(permsPanelEl(friend.id)); } }); }
+  try { window.Friends.registerPanel({ id: 'perms', order: 20, where: 'friend', zone: 'fold', title: 'Privacy', icon: 'shield-check', render: (el, friend) => { if (!friend || !permsFriendIdOk(friend.id)) return false; el.appendChild(permsPanelEl(friend.id)); } }); }
   catch (e) { console.error('[perms]', e); }
 }

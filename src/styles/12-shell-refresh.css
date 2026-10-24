@@ -111,3 +111,12 @@ html[data-motion="reduced"] .wn-flash { animation: none; }
 .view-header > .view-off-row { flex: 1 0 100%; order: 11; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border-subtle); color: var(--fg-muted); font-size: var(--text-sm); }
 .view-off-row > .i { color: var(--fg-subtle); flex: none; }
 .view-off-row > span { flex: 1; min-width: 0; }
+
+/* ---------- 2.19: one rule for getting around ----------
+   Area switcher (the tiles) > the area's sidebar (its pages) > tabs in the page header (the page's own
+   sections) > Back. The strip of the area's pages in the header says the same as the sidebar, so it shows
+   only while the sidebar is away (folded, Focus mode, a phone: the drawer). */
+@media (min-width: 901px) {
+  .app:not(.sidebar-collapsed):not(.focus) .view-header .area-tabs { display: none; }
+  .app:not(.sidebar-collapsed):not(.focus) .view-header > .area-strips:not(:has(.area-secs)) { display: none; }
+}

@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.19.0] - 2026-10-24
+
+A tidier OpenDash. Nothing you have is taken away; it is shown in a calmer order.
+
+- Friends and Expenses are now a list with the one you pick beside it, so you see the person or the expense and what you can do with it without scrolling through one long page.
+- Money has tabs at the top (Overview, Spending, Cash flow, Budgets, Transactions) and, inside a tab with more than one view, a small switch. The filters and totals only show where they help.
+- Expenses shows what you are owed on top, the expense you pick on the right with its receipts, and long lists show a few at a time with Show more.
+- Getting around works one way: switch area at the top, pick a page in the sidebar, switch views with the tabs at the top of the page, and use Back to return. The same list is no longer repeated in several places.
+- Changes made by the AI assistant (an expense it adds, for example) or by your other computer now show up by themselves, without refreshing the page.
+
 ## [2.18.4] - 2026-10-24
 
 - The AI assistant can now attach a receipt file (a PDF or picture already on your computer) to an expense, not only receipt emails. It copies the file into the dashboard's private receipts, with the same 5 MB limit and file-type checks as adding one yourself.

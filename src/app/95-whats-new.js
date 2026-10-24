@@ -37,13 +37,14 @@
      openQuickStart()          the first-run card
    Styles: src/styles/95-whats-new.css. Reduced motion: no glides, no pulse.
    ============================================================ */
-const WHATS_NEW_VERSION = '2.18.1';
-const _WN_SEEN = 'whatsNew:2.18.1';
+const WHATS_NEW_VERSION = '2.19';
+const _WN_SEEN = 'whatsNew:2.19';
 const _WN_QS_KEY = 'dashboard-quickstart';
 
 // The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
-  ['n2181', 'New in 2.18.1', 'sparkles'],
+  ['n219', 'New in 2.19', 'sparkles'],
+  ['n2181', 'Expenses and the garden (2.18.1)', 'receipt'],
   ['life', 'Life, the fifth area (2.18)', 'heart'],
   ['garden', 'A garden to play in (2.18)', 'sprout'],
   ['neighbours', 'Gardens with friends (2.18)', 'flower-2'],
@@ -62,11 +63,21 @@ const WHATS_NEW_GROUPS = Object.freeze([
   ['fun', 'Fun and motivation (2.16)', 'party-popper'],
   ['money', 'Money (2.16)', 'wallet'],
 ]);
-const _WN_CURRENT_GROUPS = ['n2181'];
+const _WN_CURRENT_GROUPS = ['n219'];
 function _wnHasPage(id) { try { const p = typeof pageById === 'function' ? pageById(id) : null; return !!(p && pageAvailable(p)); } catch (e) { return false; } }
 const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets');
 
 const WHATS_NEW = [
+  // ---- 2.19 ----
+  { id: 'lean-pages', group: 'n219', icon: 'layout-grid', title: 'Tidier Friends and Money',
+    text: 'Friends and Expenses are a list with the one you pick beside it. Money has tabs at the top (Overview, Spending, Cash flow, Budgets, Transactions) instead of one long page.',
+    view: ['finance'], sel: ['#view-subtabs', '#main-body'] },
+  { id: 'one-way-around', group: 'n219', icon: 'compass', title: 'One way to get around',
+    text: 'Switch area at the top, pick a page in the sidebar, switch views with the tabs under the page title, and use Back to return. Nothing is repeated in three places any more.',
+    sel: ['#sidebar', '#main-body'] },
+  { id: 'live-updates', group: 'n219', icon: 'refresh-cw', title: 'Changes show up by themselves',
+    text: 'When the AI assistant adds an expense, or another computer of yours changes something, the page updates without a refresh.' },
+
   // ---- 2.18.1 ----
   { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',
     text: 'The garden now fills the window, with tools to plant, water and trim, a short tour and a guide. You earn coins from focus time and time logged on tasks (with a daily cap), and everything you own is kept.',

@@ -142,6 +142,7 @@
     const vh = document.getElementById('view-header');
     const show = R.mode === 'ready' || R.mode === 'empty';
     if (!R.head) buildHead();
+    paintGroupTabs();
     const H = R.head;
     if (vh && show && H.el.parentElement !== vh) vh.append(H.el);
     // The shared page header draws these actions when it can (65-finance-view.js registerHeaderActions); else this row.

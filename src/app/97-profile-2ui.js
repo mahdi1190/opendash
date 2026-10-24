@@ -548,7 +548,7 @@ function _pfFriendsPanels() {
   const F = typeof window !== 'undefined' ? window.Friends : null;
   if (!F || typeof F.registerPanel !== 'function') return;
   try {
-    F.registerPanel({ id: 'profile-you', order: 3, where: 'hangout', title: 'Your card', icon: 'circle-user', render: (sec) => {
+    F.registerPanel({ id: 'profile-you', order: 3, where: 'hangout', tab: 'settings', title: 'Your card', icon: 'circle-user', render: (sec) => {
       const row = _pfEl('div', 'pf-fr-you');
       row.appendChild(profileCardEl(null, { visits: true }));
       const side = _pfEl('div', 'pf-fr-you-side');

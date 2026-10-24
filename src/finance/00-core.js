@@ -26,9 +26,20 @@
   // 'board' = My money (2.16): the page you put together yourself (39-board*.js); 'countries' =
   // Spending by country (38-countries.js).
   const SECTIONS = [
-    ['board', 'My money'], ['overview', 'Overview'], ['spending', 'Spending'], ['categories', 'Categories'], ['merchants', 'Merchants'],
+    ['board', 'My money'], ['overview', 'Money brief'], ['spending', 'Spending'], ['categories', 'Categories'], ['merchants', 'Merchants'],
     ['countries', 'Countries'], ['cashflow', 'Cash flow'], ['recurring', 'Recurring'], ['budgets', 'Budgets'], ['transactions', 'Transactions'],
   ];
+  // 2.19 (lean UI): the ten sections sit under five tabs in the page header (the shell's subTabs); a tab with
+  // more than one section shows a small chooser for them above the filters (12-bar.js). Order = SECTIONS order.
+  const GROUPS = [
+    ['overview', 'Overview', 'gauge', ['board', 'overview']],
+    ['spending', 'Spending', 'chart-column', ['spending', 'categories', 'merchants', 'countries']],
+    ['cash', 'Cash flow', 'arrow-up-down', ['cashflow', 'recurring']],
+    ['budgets', 'Budgets', 'piggy-bank', ['budgets']],
+    ['transactions', 'Transactions', 'receipt', ['transactions']],
+  ];
+  const groupOf = (id) => (GROUPS.find(g => g[3].includes(id)) || GROUPS[0])[0];
+  const INNER_LABEL = { spending: 'Over time', cashflow: 'Cash flow' };   // inside its tab, where the tab's own name would repeat
   const PRESETS = ['1W', '1M', '3M', '6M', 'YTD', '1Y', 'All'];
   // Calendar periods My money's quick filters pick (this week, this month, last month): valid
   // ranges everywhere, but not buttons in the bar's preset strip.
