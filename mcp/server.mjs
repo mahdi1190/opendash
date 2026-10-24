@@ -21,8 +21,8 @@
 //
 // stdout carries protocol messages only. Logs go to stderr and <data>/logs/mcp.log.
 
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, lstatSync } from 'node:fs';
+import { join, isAbsolute, basename, extname, relative } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 // Nothing but JSON-RPC may reach stdout: route stray console output to stderr
@@ -158,6 +158,9 @@ const EXPENSE_TOOLS = [
   { name: 'attach_expense_receipt', title: 'attach expense receipt',
     description: "Attach a receipt REFERENCE to an expense: the receipt email's id, subject, sender and date (and its https mail link if you have one). The email text is never copied. The user adds receipt files in the dashboard. Use dryRun:true to preview.",
     inputSchema: { type: 'object', additionalProperties: false, required: ['id', 'emailId'], properties: { id: { type: 'string', description: 'expense id from list_expenses' }, emailId: { type: 'string', maxLength: 120 }, subject: { type: 'string', maxLength: 160 }, from: { type: 'string', maxLength: 120 }, date: { type: 'string', maxLength: 40 }, link: { type: 'string', maxLength: 300 }, dryRun: { type: 'boolean' } } } },
+  { name: 'attach_expense_file', title: 'attach expense receipt file',
+    description: "Attach a receipt FILE (PDF, PNG, JPEG, WebP or GIF, 5 MB at most) from the user's computer to an expense, by its full path, e.g. the receipt the user already linked to the task the expense came from or saved in a known folder. Copies it into the dashboard's private receipts. Use dryRun:true to preview. If you do not know the exact path, ask the user for it.",
+    inputSchema: { type: 'object', additionalProperties: false, required: ['id', 'path'], properties: { id: { type: 'string', description: 'expense id from list_expenses' }, path: { type: 'string', maxLength: 500, description: 'absolute path of the file on this computer' }, dryRun: { type: 'boolean' } } } },
   { name: 'mark_expense_submitted', title: 'mark expense submitted',
     description: "Record that the user has SENT the claim for these expenses to the payer (it does not send anything). Only when the user says they submitted it. Ask for the payer when the expenses have none. Use dryRun:true to preview.",
     inputSchema: { type: 'object', additionalProperties: false, required: ['ids'], properties: { ids: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 50 }, payer: { type: 'string', maxLength: 80 }, date: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'the day it was sent (default today)' }, method: { type: 'string', enum: ['email', 'portal', 'in-person', 'other'] }, dryRun: { type: 'boolean' } } } },
@@ -196,6 +199,20 @@ async function expenseTool(name, a) {
     const r = await EX.addMailReceipt(DATA_DIR, String(a.id), mail, { home });
     if (r.error) fail(r.error);
     return { ok: true, ...(r.undo ? { undo: r.undo } : {}), already: r.already || undefined };
+  }
+  if (name === 'attach_expense_file') {
+    const p = String(a.path || '');
+    if (!isAbsolute(p) || p.length > 500) fail('Give the full path of the file (for example C:\Users\...\receipt.pdf).');
+    if (!/.(pdf|png|jpe?g|webp|gif)$/i.test(extname(p))) fail('Receipts can be a PDF or a picture (PNG, JPEG, WebP or GIF).');
+    const inData = relative(DATA_DIR, p); if (inData && !inData.startsWith('..') && !isAbsolute(inData)) fail('That file is already inside the dashboard.');
+    let st; try { st = lstatSync(p); } catch { fail('I could not find that file. Check the path with the user.'); }
+    if (!st.isFile() || st.isSymbolicLink()) fail('That path is not a regular file.');
+    if (st.size > 5 * 1024 * 1024) fail('That file is over 5 MB.');
+    if (a.dryRun === true) return { dryRun: true, wouldAttach: { expense: a.id, file: basename(p), bytes: st.size } };
+    const buf = readFileSync(p);
+    const r = await EX.addReceipt(DATA_DIR, String(a.id), { name: basename(p), data: buf.toString('base64') }, { home });
+    if (r.error) fail(r.error);
+    return { ok: true, ref: r.ref, already: r.already || undefined, ...(r.undo ? { undo: r.undo } : {}), note: 'The receipt is on the expense under Money > Expenses.' };
   }
   if (name === 'mark_expense_submitted') {
     const S = await EX.readStore(DATA_DIR, { home });
