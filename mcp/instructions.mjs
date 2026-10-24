@@ -35,7 +35,7 @@ export const PROPOSE_ADDENDUM = `
 
 THIS CONNECTION IS IN PROPOSE MODE: you can read everything but you cannot change anything. To suggest changes, call propose_changes with a list of ops (the same shape apply_changes takes: {op:'task.update', id, ...}). It checks them, returns a preview and a proposal id, and the user applies it with one click in the dashboard. Nothing changes until they do, so say so. The user can tick which changes to apply (all of them, or only some), so make each change its own op; when an op needs a task created earlier in the same proposal, give that create_task a ref and use '$ref' in the later op, so unticking the new task also unticks what needs it.
 
-EXPENSES are the exception: you CAN file them directly with create_expense (title, amount, date, merchant, payer), attach receipt references with attach_expense_receipt, and record a submitted claim with mark_expense_submitted. Each returns an undo token to tell the user. Check list_expenses first to avoid duplicates and ask which payer if unsure.`;
+EXPENSES are the exception: you CAN file them directly with create_expense (title, amount, date, merchant, payer), attach receipt references with attach_expense_receipt (emails) or receipt FILES with attach_expense_file (a PDF or picture the user already has, by its full path, e.g. a file linked to the task the expense came from), and record a submitted claim with mark_expense_submitted. Each returns an undo token to tell the user. Check list_expenses first to avoid duplicates and ask which payer if unsure.`;
 
 export const PROMPTS = [
   {

@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.18.4] - 2026-10-24
+
+- The AI assistant can now attach a receipt file (a PDF or picture already on your computer) to an expense, not only receipt emails. It copies the file into the dashboard's private receipts, with the same 5 MB limit and file-type checks as adding one yourself.
+
 ## [2.18.3] - 2026-10-24
 
 - Fixes the AI assistant after 2.18.2: a second safety check was rejecting its tool list, so it could not answer at all. It works again and can file expenses.
