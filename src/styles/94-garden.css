@@ -490,3 +490,24 @@ html[data-motion="reduced"] .gd-float, html[data-motion="reduced"] .gd-pop i, ht
 .gsv-full .gsv-toolbar .gd-quick .btn { flex-direction: column; height: auto; min-height: 48px; padding: 6px 2px; gap: 2px; font-size: 11px; white-space: normal; text-align: center; line-height: 1.1; }
 .gsv-how { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; background: linear-gradient(135deg, color-mix(in srgb, var(--sw-green) 10%, var(--surface)), var(--surface)); }
 .gsv-how p { margin: 0; font-size: var(--text-sm); }
+
+/* ---------- 2.19.4: the shop, simplified. One HUD row, one control row, a slim deal strip, ~8 cards and "Show more" ---------- */
+.gd-full:not(.gd-tab-garden) > .gd-head { flex-wrap: nowrap; }
+.gd-full:not(.gd-tab-garden) .gd-head-r { overflow: hidden; }
+.gd-full:not(.gd-tab-garden) .gd-chip.is-sky, .gd-full:not(.gd-tab-garden) .gd-chip.is-goal { display: none; }
+.gd-full:not(.gd-tab-garden) .gd-tabs { flex: none; }
+.gd-shop-top { gap: var(--space-2); }
+.gd-shop-cat { min-width: 170px; max-width: 240px; }
+.gd-shop-top .gd-event { padding: 2px var(--space-2); font-size: var(--text-xs); }
+.gd-deal { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1-5) var(--space-3); border: 1px solid color-mix(in srgb, var(--sw-amber) 35%, var(--border-subtle)); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.gd-deal .gd-deal-art { display: inline-grid; place-items: center; flex: none; }
+.gd-deal .gd-deal-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-shop-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+.gd-card .gd-facts { font-size: var(--text-xs); color: var(--fg); line-height: 1.35; }
+.gd-card-f { flex-wrap: wrap; justify-content: flex-start; }
+.gd-buy.is-open { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1-5); }
+.gd-step { display: inline-flex; align-items: center; gap: 4px; }
+.gd-step-n { min-width: 1.6em; text-align: center; font-variant-numeric: tabular-nums; }
+.gd-shop-more { display: flex; align-items: center; justify-content: center; gap: var(--space-3); padding: var(--space-2) 0 var(--space-4); }
+.gd-full .gd-shop-top { margin-bottom: var(--space-3); }
+.gd-full .gd-deal { margin-bottom: var(--space-3); }

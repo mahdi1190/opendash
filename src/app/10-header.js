@@ -372,6 +372,7 @@ function _tbRenderStrip() {
   }
   // Shared countdowns pinned from Together (data-tg, not data-id: never dragged or saved here).
   if (typeof togetherTopbarWidgets === 'function') { try { togetherTopbarWidgets(cdEl); } catch (e) { console.error('[topbar] together', e); } }
+  _tbFoldDates(cdEl, shown);
   const more = document.createElement('button');
   more.type = 'button'; more.className = 'cdw-more'; more.hidden = true;
   more.setAttribute('aria-label', 'More widgets');
@@ -395,6 +396,25 @@ function _tbRenderStrip() {
       onReorder: (ids) => { _tbDragging = false; tbApplyOrder(ids); },
     });
   }
+}
+/** 2.19.4: the top bar shows ONE date chip, the next countdown; every other date (more countdowns,
+ *  counters, progress bars and pinned shared dates) is folded behind "+N" and listed there. Folded chips
+ *  stay in the DOM with .cdw-fold (display:none) so drag order, the editor and the popover still find them. */
+function _tbFoldDates(cdEl, shown) {
+  const dated = shown.filter(w => TB_TYPES[w.type].dated);
+  const days = (w) => (w.date ? _tbDays(w.date) : null);
+  const upcoming = dated.filter(w => w.type === 'countdown' && days(w) !== null && days(w) >= 0)
+    .sort((a, b) => (a.date + (a.time || '00:00')).localeCompare(b.date + (b.time || '00:00')))[0];
+  const tgs = [...cdEl.querySelectorAll('.cdw[data-tg]')];
+  // Nothing upcoming of your own: keep the first date that exists (a past one, a counter), else the first shared pin.
+  const keep = upcoming || dated[0] || null;
+  const keepTg = !keep && tgs.length ? tgs[0] : null;
+  for (const w of dated) {
+    if (w === keep) continue;
+    const el = cdEl.querySelector(`.cdw[data-id="${CSS.escape(w.id)}"]`);
+    if (el) el.classList.add('cdw-fold');
+  }
+  for (const n of tgs) if (n !== keepTg) n.classList.add('cdw-fold');
 }
 /** Save a new display order of the shown widgets (hidden ones keep their slots). */
 function tbApplyOrder(ids) {
@@ -474,8 +494,17 @@ function _tbFitOverflow() {
   if (!cdEl || !host) return;
   const more = cdEl.querySelector('.cdw-more');
   if (!more) return;
-  more.hidden = true;
-  const items = [...cdEl.querySelectorAll('.cdw[data-id], .cdw[data-tg]')];   // pinned shared countdowns come last: they go first
+  // Dates folded on purpose (_tbFoldDates) count in "+N" from the start.
+  const folded = cdEl.querySelectorAll('.cdw.cdw-fold').length;
+  const setMore = (n) => {
+    more.hidden = n === 0;
+    if (!n) return;
+    more.textContent = '+' + n;
+    more.title = `${n} more date${n === 1 ? '' : 's'} and widget${n === 1 ? '' : 's'}`;
+    more.setAttribute('aria-label', more.title);
+  };
+  setMore(folded);
+  const items = [...cdEl.querySelectorAll('.cdw[data-id]:not(.cdw-fold), .cdw[data-tg]:not(.cdw-fold)')];   // pinned shared countdowns come last: they go first
   items.forEach(n => { n.style.display = ''; });
   // The strip is right-aligned, so overflow happens on the left where
   // scrollWidth cannot see it: add up what is shown instead.
@@ -492,16 +521,18 @@ function _tbFitOverflow() {
   for (let i = items.length - 1; i >= 0 && over(); i--) {
     if (i === 0 && items.length > 1) break;        // the headline always stays
     items[i].style.display = 'none'; hidden++;
-    more.textContent = '+' + hidden;
+    more.textContent = '+' + (hidden + folded);
   }
-  if (!hidden) { more.hidden = true; return; }
-  more.title = `${hidden} more widget${hidden === 1 ? '' : 's'}`;
+  setMore(hidden + folded);
 }
 function _tbOverflowMenu(anchor) {
-  const ids = [...document.querySelectorAll('#countdowns .cdw[data-id]')].filter(n => n.style.display === 'none').map(n => n.dataset.id);
+  const off = (n) => n.style.display === 'none' || n.classList.contains('cdw-fold');
+  const ids = [...document.querySelectorAll('#countdowns .cdw[data-id]')].filter(off).map(n => n.dataset.id);
   const list = tbList().filter(w => ids.includes(w.id));
   openPopover(anchor, (el, close) => {
     el.classList.add('tb-overflow');
+    const head = document.createElement('div'); head.className = 'tb-overflow-h'; head.textContent = 'Also coming up';
+    el.appendChild(head);
     for (const w of list) {
       const b = tbWidgetEl(w);
       b.onclick = () => { close(); _tbActivate(w); };

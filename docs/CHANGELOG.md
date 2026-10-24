@@ -10,6 +10,19 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.19.4] - 2026-10-24
+
+A calmer top bar, a tidier Money, and a few things that now say what they do.
+
+- The top bar shows only the next date that matters; the others are one click away under "+N". Your level, streak and XP are one small chip, and "Needs you" and "Saved" only appear when there is something to say.
+- Money is reorganised and has far fewer controls. Under the tabs there is one row: pick the period, and one Filters button for trip, country and category. Everything else (layout, plain words, Hide amounts, Money brief) is under More.
+- Money's pages (Spending, Cash flow, Transactions and the rest) have the same single row, with the date slider and Group by / Compare inside Filters. On Transactions the title and its search, sort and type are one row.
+- After an import or an update, Money no longer shows a green banner: a short note at the top ("Imported 3 new, 12 min ago") says it. A banner only appears when something needs you.
+- Money's cards sit in an even grid: key numbers first (safe to spend, this month against last), then budgets, then bills and subscriptions. Lists show the same number of rows so each pair of cards is level; "How many" is a setting on Bills.
+- The garden shop is simpler: one row of controls, a small strip for today's deal, eight clearly worded cards at a time ("costs 10 coins, grows in about 2 days, sells for 3") with one Buy button, and Show more.
+- In a friend's garden the Water tool always tells you what it can do, plants that can be watered glow, and when you can't water something it says why.
+- Profile is its own full-width page in Life (Card, Avatar and wardrobe, Sharing). The "You" buttons open the right place: Wardrobe opens the wardrobe tab, and Set status opens the status box where you clicked. Settings > Profile is a short link to it.
+
 ## [2.19.3] - 2026-10-24
 
 Browse what your friends share with you as easily as your own data, and no more pages that shift sideways when you change tabs.

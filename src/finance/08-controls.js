@@ -5,8 +5,8 @@
     const tools = h('div', { class: 'fv-card-tools' });
     const span = o.span || 12;
     // o.fill: the chart grows to fill the card when a neighbour in the same
-    // row is taller (its height is then a minimum, not a fixed size).
-    const el = h('section', { class: 'fv-card' + (o.fill ? ' fill' : '') + (o.cls ? ' ' + o.cls : ''), style: { '--span': span, '--span-md': o.md || (span <= 6 ? 6 : 12) } },
+    // row is taller (its height is then a minimum, not a fixed size). 2.19.4: every chart card does, so a row has no empty gap.
+    const el = h('section', { class: 'fv-card' + (o.fill || o.chart ? ' fill' : '') + (o.cls ? ' ' + o.cls : ''), style: { '--span': span, '--span-md': o.md || (span <= 6 ? 6 : 12) } },
       h('header', { class: 'fv-card-h' }, h('div', { class: 'fv-card-t' }, h('h3', { text: o.title }), subEl), tools));
     const body = h('div', { class: 'fv-card-b' });
     let chart = null;

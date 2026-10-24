@@ -7,8 +7,8 @@
     S.sankey.tools.append(S.sankeySeg.el);
     S.kept = card(g, { title: 'Kept', span: 4, md: 12, chart: true, height: 190, cls: 'c1-kept' });
     S.keptBody = h('div', { class: 'c1-kept-b' }); S.kept.body.append(S.keptBody);
-    S.flow = card(g, { title: 'Money in and out', span: 7, md: 12, chart: true, height: 320 });
-    S.cum = card(g, { title: 'Cumulative net', span: 5, md: 12, chart: true, height: 320, fill: true });
+    S.flow = card(g, { title: 'Money in and out', span: 8, md: 12, chart: true, height: 320 });
+    S.cum = card(g, { title: 'Cumulative net', span: 4, md: 12, chart: true, height: 320, fill: true });
     // Balances and their history sit side by side (one story); either takes
     // the full row if the other has nothing to show.
     S.bal = card(g, { title: 'Balances', span: 4, md: 12, cls: 'fv-bal-card' });

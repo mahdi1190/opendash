@@ -232,7 +232,7 @@ function profileCollectSeasonal() {
   if (typeof toast === 'function' && (typeof gameOn !== 'function' || gameOn())) {
     toast(`New for your profile this season: ${got.join(', ')}. ${got.length > 1 ? 'They are' : 'It is'} yours to keep.`,
       { icon: 'sparkles', timeout: 9000, action: { label: 'Try it on', run: () => {
-        if (banners && typeof _pfOpenLook === 'function') { _pfUI.lookTab = 'banner'; _pfOpenLook(); } else if (typeof setView === 'function') setView('settings:me');
+        if (banners && typeof _pfOpenLook === 'function') { _pfUI.lookTab = 'banner'; _pfOpenLook(); } else if (typeof setView === 'function') setView('profile');
       } } });
   }
   return got;
@@ -396,7 +396,7 @@ function profileAchReward(kind, ref) {
   try {
     if (typeof profileLookRewardRef !== 'function' || !profileLookRewardRef(kind, ref)) return false;
     _pf.chipKey = '';
-    if (typeof state !== 'undefined' && state && state.view === 'settings:me' && typeof render === 'function') render();
+    if (typeof state !== 'undefined' && state && /^profile(:|$)/.test(String(state.view)) && typeof render === 'function') render();
     else if (typeof profileCornerPaint === 'function') profileCornerPaint();
     return true;
   } catch (e) { return false; }
@@ -646,7 +646,7 @@ function _pfChipPaint() {
 /** Set a quick status: the corner's hub opens on the quick statuses (anchor: optional; falls back to Settings > Profile). */
 function profileOpenPop(anchor) {
   if (typeof profileHubOpen === 'function' && profileHubOpen(anchor, { status: true })) return;
-  if (typeof setView === 'function') setView('settings:me');
+  if (typeof setView === 'function') setView('profile');
 }
 function _pfEndOfDay() {
   try { const t = Clock.parts(Clock.now()); return Clock.now() + (24 * 60 - 1 - t.min) * 60000 + (59 - (t.s || 0)) * 1000; } catch (e) { const d = new Date(); d.setHours(23, 59, 59, 0); return d.getTime(); }   // clock-ok: fallback only

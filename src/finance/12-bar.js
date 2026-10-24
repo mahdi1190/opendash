@@ -45,7 +45,7 @@
     E.back = h('button', { class: 'btn-icon fv-icon-btn', type: 'button', 'data-tip': 'Back to the previous date range', 'aria-label': 'Back to the previous date range', onclick: rangeBack }, ic('undo-2'));
     E.gran = seg(GRANS, F.gran, g => { F.gran = g; changed(); }, 'Granularity');
     E.compare = toggle('Compare', F.compare, v => { F.compare = v; changed(); }, 'Compare with the previous period of the same length');
-    E.moreBtn = h('button', { class: 'fv-btn ghost fv-more-btn', type: 'button', 'aria-expanded': 'false', onclick: () => { F.more = !F.more; saveF(); paintFilters(); } }, ic('list-filter'), h('span', { text: 'Filters' }), h('span', { class: 'fv-badge', hidden: true }));
+    E.moreBtn = h('button', { class: 'fv-btn fv-more-btn', type: 'button', 'aria-expanded': 'false', title: 'Dates, view, categories, accounts, search and amounts', onclick: () => { F.more = !F.more; saveF(); paintFilters(); } }, ic('list-filter'), h('span', { text: 'Filters' }), h('span', { class: 'fv-badge', hidden: true }), ic('chevron-down'));
     E.reset = h('button', { class: 'fv-btn ghost', type: 'button', text: 'Reset', title: 'Reset all filters', onclick: resetFilters });
     // Active filters as chips beside the range (clear with ×, "Clear all" or Esc).
     E.pills = h('div', { class: 'fv-pills', 'aria-live': 'polite', hidden: true });
@@ -56,11 +56,13 @@
     E.pills.append(E.pillClear);
     // "Updating…" while a refresh is on its way (the old render stays, dimmed).
     E.upd = h('span', { class: 'fv-upd', role: 'status' }, ic('loader-circle', 'fv-spin'), h('span', { text: 'Updating…' }));
-    // Two groups: the date controls on the left, view controls on the right.
-    // Each group wraps as a unit, so narrow widths never strand one button.
+    // 2.19.4: ONE control row. The section chooser (when the tab has several) and the period on the left, the one Filters
+    // button on the right. The timeline and the view options (group by, compare) live in the Filters panel.
+    // Money brief is reached from My money's More menu; here it has a way back instead of a second row of tabs.
+    E.backBoard = h('button', { class: 'fv-btn ghost fv-back-board', type: 'button', onclick: () => setSection('board') }, ic('arrow-left'), h('span', { text: 'My money' }));
     const row1 = h('div', { class: 'fv-bar' },
-      h('div', { class: 'fv-bar-l' }, E.presets.el, E.back, E.rangeLbl, E.pills, E.upd),
-      h('div', { class: 'fv-bar-r' }, E.gran.el, E.compare.el, h('span', { class: 'fv-bar-sep', 'aria-hidden': 'true' }), E.moreBtn, E.reset));
+      h('div', { class: 'fv-bar-l' }, E.backBoard, E.tabs, E.presets.el, E.back, E.rangeLbl, E.pills, E.upd),
+      h('div', { class: 'fv-bar-r' }, E.moreBtn, E.reset));
 
     // The navigator: the whole history as a soft area, the chosen window lit in the accent.
     E.navSel = null;
@@ -94,7 +96,8 @@
     E.gran2 = seg(GRANS, F.gran, g => { F.gran = g; changed(); }, 'Granularity');
     E.compare2 = toggle('Compare', F.compare, v => { F.compare = v; changed(); }, 'Compare with the previous period of the same length');
     E.more = h('div', { class: 'fv-more' }, h('div', { class: 'fv-more-in' },
-      h('div', { class: 'fv-frow fv-phone-only' }, h('span', { class: 'fv-flabel', text: 'View' }), h('div', { class: 'fv-toggles' }, E.gran2.el, E.compare2.el,
+      h('div', { class: 'fv-frow' }, h('span', { class: 'fv-flabel', text: 'Dates' }), h('div', { class: 'fv-tl-wrap' }, E.timeline.el)),
+      h('div', { class: 'fv-frow' }, h('span', { class: 'fv-flabel', text: 'View' }), h('div', { class: 'fv-toggles' }, E.gran2.el, E.compare2.el,
         h('button', { class: 'fv-btn ghost', type: 'button', text: 'Reset', title: 'Reset all filters', onclick: resetFilters }))),
       h('div', { class: 'fv-frow' }, h('span', { class: 'fv-flabel', text: 'Categories' }), E.catChips),
       E.acctRow = h('div', { class: 'fv-frow' }, h('span', { class: 'fv-flabel', text: 'Accounts' }), E.acctChips),
@@ -102,7 +105,7 @@
         h('div', { class: 'fv-fcell' }, h('span', { class: 'fv-flabel', text: 'Search' }), E.search),
         h('div', { class: 'fv-fcell grow' }, h('span', { class: 'fv-flabel', text: 'Amount' }), E.amount.el),
         h('div', { class: 'fv-fcell' }, h('span', { class: 'fv-flabel', text: 'Include' }), h('div', { class: 'fv-toggles' }, E.incT.el, E.xferT.el)))));
-    E.sticky = h('div', { class: 'fv-sticky' }, E.tabs, h('div', { class: 'fv-filters' }, row1, E.timeline.el, E.more));
+    E.sticky = h('div', { class: 'fv-sticky' }, h('div', { class: 'fv-filters' }, row1, E.more));
     body.append(sentinel, E.sticky);
     if (R.io) { R.io.disconnect(); R.io = null; }   // one per rebuild, never stacked
     if ('IntersectionObserver' in window) {
@@ -278,7 +281,8 @@
   function paintTabs(animate) {
     const E = R.els; if (!E.tabBtns) return;
     let cur = null;
-    const grp = groupOf(F.section), many = GROUPS.find(g => g[0] === grp)[3].length > 1;
+    const grp = groupOf(F.section), many = grp !== 'overview' && GROUPS.find(g => g[0] === grp)[3].length > 1;
+    if (E.backBoard) E.backBoard.hidden = F.section !== 'overview';
     E.tabBtns.forEach(b => { b.hidden = groupOf(b.getAttribute('data-id')) !== grp; });
     E.tabs.hidden = !many;
     if (E.sticky) E.sticky.classList.toggle('no-tabs', !many);

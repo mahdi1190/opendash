@@ -83,7 +83,7 @@ const ACH_CATS = Object.freeze([
   ['friends', 'people', 'Friends and together', 'users', 'fr', 'view:friends', 'friends', { needs: ['friends'] }],
   ['garden', 'play', 'Garden', 'flower-2', 'gd', 'view:garden', 'milestones', { needs: ['garden'] }],
   ['pets', 'play', 'Pets', 'paw-print', 'pt', 'view:pet', 'milestones', { needs: ['pets'] }],
-  ['style', 'play', 'Wardrobe and profile', 'shirt', 'st', 'view:settings:me', 'milestones'],
+  ['style', 'play', 'Wardrobe and profile', 'shirt', 'st', 'view:profile', 'milestones'],
   ['scenes', 'play', 'Scenes and seasons', 'image', 'sc', 'view:settings:animations', 'milestones'],
   ['game', 'play', 'Quests, bosses and records', 'crown', 'gm', 'view:game', 'quests'],
   ['secrets', 'play', 'Secrets', 'sparkles', 'sx', '', 'milestones'],

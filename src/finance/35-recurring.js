@@ -4,13 +4,13 @@
     S.rsum = h('section', { class: 'fv-card fv-rc-sum', style: { '--span': 12 }, 'aria-label': 'Recurring payments in total' });
     g.append(S.rsum);
     S.rcMonth = null; S.rcFirst = true;
-    S.rcal = card(g, { title: 'This month', span: 7, md: 12, cls: 'fv-rc-cal-card' });
+    S.rcal = card(g, { title: 'This month', span: 8, md: 12, cls: 'fv-rc-cal-card' });
     S.rcNav = h('div', { class: 'fv-seg fv-rc-nav', role: 'group', 'aria-label': 'Month' },
       S.rcPrev = h('button', { type: 'button', 'aria-label': 'Previous month', onclick: () => rcGoMonth(-1) }, ic('chevron-left')),
       S.rcNow = h('button', { type: 'button', class: 'on', onclick: () => rcGoMonth(0) }),
       S.rcNext = h('button', { type: 'button', 'aria-label': 'Next month', onclick: () => rcGoMonth(1) }, ic('chevron-right')));
     S.rcal.tools.append(S.rcNav);
-    S.rnext = card(g, { title: 'Next 30 days', span: 5, md: 12, cls: 'fv-rc-next-card' });
+    S.rnext = card(g, { title: 'Next 30 days', span: 4, md: 12, cls: 'fv-rc-next-card' });
     S.rnextSeg = seg([['30', '30 days'], ['60', '60 days']], String(R.rcDays || 30), v => { R.rcDays = +v; S.rnextSeg.set(v); rcNextList(S.rnext, R.ctx); }, 'Look ahead');
     S.rnext.tools.append(S.rnextSeg.el);
     S.rall = card(g, { title: 'All recurring payments', span: 12, cls: 'fv-rc-all-card' });

@@ -190,3 +190,17 @@ html.anim-paused .gsv-fig *, html.anim-paused .gsv-fx *, html.anim-paused .gsv-t
 html[data-motion="reduced"] .gsv-fig, html[data-motion="reduced"] .gsv-fig .fsc-fig, html[data-motion="reduced"] .gsv-wave, html[data-motion="reduced"] .gsv-visited.is-new,
 html[data-motion="reduced"] .gsv-parcel-art, html[data-motion="reduced"] .gsv-thumb-wait, html[data-motion="reduced"] .gsv-gcard, html[data-motion="reduced"] .gsv-react-e { animation: none !important; transition: none !important; }
 html[data-motion="reduced"] .gsv-fx { display: none; }
+
+/* 2.19.4: the Water tool says what it can do, and the plants a drink would help are clearly marked */
+.gsv-water-note { position: absolute; left: 50%; top: var(--space-3); transform: translateX(-50%); z-index: 3; display: inline-flex; align-items: center; gap: var(--space-2); max-width: min(92%, 640px); padding: 6px 14px; border-radius: var(--radius-full); background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(6px); box-shadow: var(--shadow-sm); font-size: var(--text-sm); color: var(--fg); pointer-events: none; }
+.gsv-water-note.is-ok { color: #1f5f93; }
+.gsv-water-note.is-ok .i { color: #3a8fd6; }
+.gsv-water-note.is-none { color: var(--fg-muted); }
+.gsv-water-note.is-nudge { animation: gsv-nudge .5s ease-out; }
+@keyframes gsv-nudge { 0%, 100% { transform: translateX(-50%); } 25% { transform: translateX(calc(-50% - 5px)); } 75% { transform: translateX(calc(-50% + 5px)); } }
+.gsv-stagebox .gd-plant.gsv-can { filter: drop-shadow(0 0 2px rgba(95, 179, 240, .8)); }
+.gsv-stagebox[data-mode="water"] .gd-plant.gsv-can { animation: gsv-can-pulse 1.4s ease-in-out infinite; cursor: pointer; }
+.gsv-stagebox[data-mode="water"] .gd-plant:not(.gsv-can) { opacity: .62; }
+@keyframes gsv-can-pulse { 0%, 100% { filter: drop-shadow(0 0 3px rgba(95, 179, 240, .85)) drop-shadow(0 0 7px rgba(95, 179, 240, .5)); } 50% { filter: drop-shadow(0 0 5px rgba(120, 200, 255, 1)) drop-shadow(0 0 14px rgba(95, 179, 240, .85)); } }
+@media (prefers-reduced-motion: reduce) { .gsv-stagebox[data-mode="water"] .gd-plant.gsv-can, .gsv-water-note.is-nudge { animation: none; } }
+html[data-motion="reduced"] .gsv-stagebox[data-mode="water"] .gd-plant.gsv-can, html[data-motion="reduced"] .gsv-water-note.is-nudge { animation: none; }

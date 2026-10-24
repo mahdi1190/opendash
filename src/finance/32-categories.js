@@ -2,14 +2,14 @@
   // ----- Categories -----
   const ctView = () => (['donut', 'bar', 'sun'].includes(F.ctView) ? F.ctView : (F.catMode === 'bar' ? 'bar' : 'donut'));
   BUILD.categories = g => {
-    S.cats = card(g, { title: 'Where it went', span: 7, md: 12, chart: true, height: 272, cls: 'fv-cats c1-where' });
+    S.cats = card(g, { title: 'Where it went', span: 8, md: 12, chart: true, height: 272, cls: 'fv-cats c1-where' });
     S.catSeg = seg([['donut', 'Donut'], ['bar', 'Ranked'], ['sun', 'Sunburst', 'Categories with their biggest merchants']], ctView(), v => { F.ctView = v; saveF(); S.catSeg.set(v); catWhere(R.ctx); }, 'Chart type');
     S.cats.tools.append(S.catSeg.el);
     S.catCentre = h('div', { class: 'c1-dcenter', 'aria-hidden': 'true' }, h('span', { class: 'c1-dc-t' }, h('span', { class: 'c1-dc-i' }), h('span', { class: 'c1-dc-n' })), h('b', { class: 'c1-dc-v num' }), h('span', { class: 'c1-dc-s' }));
     S.catList = h('div', { class: 'fv-legend c1-cl' });
     const box = h('div', { class: 'c1-where-chart' }, S.cats.chart, S.catCentre);
     S.cats.body.prepend(h('div', { class: 'c1-where-wrap' }, box, S.catList));
-    S.area = card(g, { title: 'Category trends', span: 5, md: 12, chart: true, height: 300, fill: true });
+    S.area = card(g, { title: 'Category trends', span: 4, md: 12, chart: true, height: 300, fill: true });
     S.areaSeg = seg([['abs', SYM], ['pct', '%']], F.stackMode, v => { F.stackMode = v; saveF(); S.areaSeg.set(v); stackedArea(S.area, R.ctx); }, 'Scale');
     S.area.tools.append(S.areaSeg.el);
     S.multi = card(g, { title: 'Each category over time', span: 12, cls: 'c1-multi-card' });

@@ -66,22 +66,24 @@ registerPage({
   available: () => _lifeHasSection('pet'),
   off: lifeFunOffState,
 });
-// You (Life sidebar › You): listed under Life in All pages, but the page itself is Settings › Profile.
+// You (Life sidebar › You): since 2.19.4 Profile is its own full-width Life page (97-profile-2ui.js registers its section):
+// Card, Avatar and wardrobe, Sharing. It stays in Life with the Life sidebar; Settings › Profile is a short link to it.
 registerPage({
-  id: 'profile', view: 'settings:me', match: v => v === 'settings:me', label: 'Profile', icon: 'user-round', area: 'life', order: 80, keepGroup: true, family: 'settings',
-  desc: 'Your card, avatar and status', keywords: 'profile avatar character card status name you me',
+  id: 'profile', view: 'profile', match: v => v === 'profile' || /^profile:(avatar|sharing)$/.test(String(v || '')), label: 'Profile', icon: 'user-round', area: 'life', order: 80, ownTabs: true,
+  desc: 'Your card, avatar and status', keywords: 'profile avatar character card status name you me wardrobe sharing',
+  sections: [['profile', 'Card', 'id-card'], ['profile:avatar', 'Avatar and wardrobe', 'shirt'], ['profile:sharing', 'Sharing', 'share-2']],
   available: () => typeof profileGet === 'function',
 });
 registerPage({
-  id: 'wardrobe', view: 'settings:me', match: () => false, label: 'Wardrobe', icon: 'shirt', area: 'life', order: 85, keepGroup: true, since: '2.18',
+  id: 'wardrobe', view: 'profile:avatar', match: () => false, label: 'Wardrobe', icon: 'shirt', area: 'life', order: 85, since: '2.18',
   desc: 'Outfits for your character, and Surprise me', keywords: 'wardrobe outfit clothes dress up avatar surprise',
   available: () => typeof profileWardrobeEl === 'function',
   run: () => lifeOpenWardrobe(),
 });
-/** Settings › Profile, scrolled to the wardrobe (the wardrobe module marks it data-whats-new~="wardrobe"). */
+/** Profile › Avatar and wardrobe, scrolled to the wardrobe (the wardrobe module marks it data-whats-new~="wardrobe"). */
 function lifeOpenWardrobe() {
   try { seenSet('pages', 'wardrobe', todayStr()); } catch (e) { /* the dot clears next time */ }
-  if (typeof _pfShowSec === 'function') _pfShowSec('avatar'); else if (state.view !== 'settings:me') setView('settings:me');   // the wardrobe is on the Avatar tab
+  if (typeof _pfShowSec === 'function') _pfShowSec('avatar'); else if (state.view !== 'profile:avatar') setView('profile:avatar');   // the wardrobe is on the Avatar tab
   let n = 0;
   const find = () => {
     const el = document.querySelector('[data-whats-new~="wardrobe"], .pfw-strip, .pfw');
@@ -96,7 +98,7 @@ function lifeTabs() { return pagesInArea('life', { tabs: true }); }
 function _lifeViewOk(v) {
   if (typeof v !== 'string' || !v) return false;
   const p = pageFor(v);
-  if (!p || p.area !== 'life' || p.keepGroup || !pageAvailable(p)) return false;
+  if (!p || p.area !== 'life' || p.keepGroup || p.id === 'profile' || !pageAvailable(p)) return false;   // Profile is reached from You, never the Life tile's memory
   try { return typeof _viewFromHash !== 'function' || _viewFromHash('#view=' + v) === v; } catch (e) { return false; }
 }
 function _lifeHasFriend() { try { return !!(_fr && _fr.data && Array.isArray(_fr.data.friends) && _fr.data.friends.some(f => f && f.status === 'friend')); } catch (e) { return false; } }
@@ -149,12 +151,14 @@ registerSidebarBlock('life', {
   render(el) {
     if (typeof profileGet !== 'function') return false;
     el.appendChild(sbSection({ title: 'You' }));
-    el.appendChild(sbNavItem({ label: 'Profile', icon: 'user-round', view: 'settings:me', title: 'Your card, avatar and status' }));
+    const v = String(state.view || '');
+    // Profile opens the Life page; Wardrobe opens its Avatar and wardrobe tab; Set status opens the status popover right here.
+    el.appendChild(sbNavItem({ label: 'Profile', icon: 'user-round', view: 'profile', active: v === 'profile' || v === 'profile:sharing', title: 'Your card, avatar and sharing' }));
     const w = pageById('wardrobe');
-    if (w && pageAvailable(w)) el.appendChild(sbNavItem({ label: 'Wardrobe', icon: 'shirt', active: false, fresh: pageIsFresh(w), title: pageDesc(w), onClick: () => lifeOpenWardrobe() }));
+    if (w && pageAvailable(w)) el.appendChild(sbNavItem({ label: 'Wardrobe', icon: 'shirt', active: v === 'profile:avatar', fresh: pageIsFresh(w), title: pageDesc(w), onClick: () => lifeOpenWardrobe() }));
     if (typeof profileHubOpen === 'function') {
       el.appendChild(sbNavItem({ label: 'Set status', icon: 'circle-user', active: false, title: 'Focusing, on holiday… it clears itself',
-        onClick: () => { const a = document.getElementById('ws-btn'); setTimeout(() => profileHubOpen(a, { status: true }), 0); } }));
+        onClick: (e) => { const a = e && e.currentTarget; setTimeout(() => profileHubOpen(a || document.getElementById('ws-btn'), { status: true, align: 'start' }), 0); } }));
     }
   },
 });

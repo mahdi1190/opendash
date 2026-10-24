@@ -93,7 +93,7 @@ function _froStep(n, done, active, title, sub) {
   return { li, body, acts };
 }
 function _froOpenBuilder() {
-  if (typeof _pfShowSec === 'function') _pfShowSec('avatar'); else setView('settings:me');
+  if (typeof _pfShowSec === 'function') _pfShowSec('avatar'); else setView('profile');
   setTimeout(() => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 80);
 }
 function _froConnect() {

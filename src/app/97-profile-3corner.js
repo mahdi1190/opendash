@@ -146,7 +146,7 @@ function profileCornerPaint() {
   const you = profileCornerHasYou();
   const fr = _pfcFriends(), requests = fr ? fr.requests : 0, around = fr ? fr.around.length : 0;
   const view = String((typeof state !== 'undefined' && state && state.view) || '');
-  btn.classList.toggle('is-here', view === 'settings:me');   // Friends has its own button beside you (2.18)
+  btn.classList.toggle('is-here', /^profile(:|$)/.test(String(view)));   // Friends has its own button beside you (2.18)
   try { _pfcFriendsBtnPaint(btn, fr, view); } catch (e) { console.error('[corner] friends button', e); }
   let p = null, st = null, mood = null, key;
   if (you) {
@@ -245,7 +245,7 @@ function profileHubOpen(anchor, o) {
   if (a._popClose) { a._popClose(); if (!o.status) return true; }   // a second click closes it; "Set your status" opens it again on the statuses
   _pfc.statusOpen = !!o.status;
   openPopover(a, (el, close) => _pfcBuild(el, close), {
-    className: 'pfc-pop', width: 336, align: a === ws ? 'start' : 'end', role: 'dialog', focus: false,
+    className: 'pfc-pop', width: 336, align: o.align || (a === ws ? 'start' : 'end'), role: 'dialog', focus: false,
     // Focus goes back to the corner when the hub closes with it inside (an item, a status); a dialog an item opens returns there too.
     onClose: () => { const f = document.activeElement; if ((!f || f === document.body) && _pfcVisible(a)) { try { a.focus({ preventScroll: true }); } catch (e) { /* gone */ } } },
   });
@@ -297,7 +297,7 @@ function _pfcCard(close, toggle) {
   const btn = (label, ic, run) => uiButton({ label, icon: ic, size: 'sm', run: (e, b) => run(b) });
   const set = btn('Set status', 'circle-user', toggle);
   set.setAttribute('aria-expanded', String(_pfc.statusOpen)); set.setAttribute('aria-controls', 'pfc-status');
-  acts.append(btn('Edit profile', 'user-round-pen', () => { close(); setView('settings:me'); }), set);
+  acts.append(btn('Edit profile', 'user-round-pen', () => { close(); setView('profile'); }), set);
   const wrap = _pfcEl('div', 'pfc-me');
   wrap.appendChild(profileCardEl(null, { compact: true, visits: true }));
   wrap.appendChild(acts);
@@ -336,7 +336,7 @@ function _pfcStatusPaint(host, close) {
       toast('Status cleared', { icon: 'circle-user', action: { label: 'Undo', run: () => profileSet({ status: before }) } });
     } });
   }
-  items.push({ icon: 'pencil', label: 'Write your own…', run: () => setView('settings:me') });
+  items.push({ icon: 'pencil', label: 'Write your own…', run: () => setView('profile') });
   const m = _pfcEl('div', 'pfc-menu'); m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Status');
   buildMenuItems(m, items, close);
   host.appendChild(m);

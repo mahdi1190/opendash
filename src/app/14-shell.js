@@ -632,6 +632,13 @@ function renderSaveStatus() {
   }
   btn.classList.remove('ok', 'err', 'busy', 'local', 'offline', 'paused');
   btn.classList.add(kind);
+  // 2.19.4: "Saved" is a dot, and the word only shows for a couple of seconds right after a save finishes.
+  if (kind === 'ok' && renderSaveStatus._prev && renderSaveStatus._prev !== 'ok') {
+    btn.classList.add('flash');
+    clearTimeout(renderSaveStatus._flashT);
+    renderSaveStatus._flashT = setTimeout(() => btn.classList.remove('flash'), 2500);
+  } else if (kind !== 'ok') btn.classList.remove('flash');
+  renderSaveStatus._prev = kind;
   if (lbl && lbl.textContent !== text) lbl.textContent = text;
   btn.title = tip;
   btn.setAttribute('aria-label', text + '. ' + tip);

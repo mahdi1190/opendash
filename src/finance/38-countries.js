@@ -78,11 +78,11 @@
   BUILD.countries = g => {
     S.ccHead = h('section', { class: 'fv-card fv-cc-head', style: { '--span': 12, '--span-md': 12 } });
     g.append(S.ccHead);
-    S.ccList = card(g, { title: 'Where you spent', span: 7, md: 12 });
+    S.ccList = card(g, { title: 'Where you spent', span: 8, md: 12 });
     S.ccScope = seg([['all', 'Everywhere'], ['abroad', 'Abroad only']], F.ccScope === 'abroad' ? 'abroad' : 'all', v => { F.ccScope = v; saveF(); S.ccScope.set(v); ccPaintList(R.ctx); }, 'Which countries');
     S.ccList.tools.append(S.ccScope.el);
     S.ccListBox = h('div'); S.ccList.body.append(S.ccListBox);
-    S.ccMonths = card(g, { title: 'Month by month', span: 5, md: 12, chart: true, height: 280, fill: true });
+    S.ccMonths = card(g, { title: 'Month by month', span: 4, md: 12, chart: true, height: 280, fill: true });
     S.ccTrips = card(g, { title: 'Trips', span: 6 });
     S.ccTripT = toggle('Trip dates count', F.boardTripRows !== false, v => { F.boardTripRows = v; saveF(); if (R.model) { R.model._ccSlot = null; PL.ensure(R.model); } changed(); },
       'A payment with no other sign of where (a card that shows only pounds, say) counts in the country of the trip you were on that day');

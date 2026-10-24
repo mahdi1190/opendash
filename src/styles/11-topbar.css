@@ -188,3 +188,15 @@
 .ui-datef-pop .mm-d.out { color: var(--fg-disabled); }
 .ui-datef-pop .mm-d.today { color: var(--accent-ink); font-weight: var(--weight-semibold); }
 .ui-datef-pop .mm-d.sel { background: var(--accent); color: var(--fg-on-accent); }
+
+/* 2.19.4: one date chip in the bar, the rest behind "+N"; sync and save are dots until they have something to say */
+.cdw.cdw-fold { display: none !important; }
+.pop.tb-overflow .tb-overflow-h { font-size: var(--text-2xs); font-weight: var(--weight-semibold); letter-spacing: 0.04em; text-transform: uppercase; color: var(--fg-subtle); padding: 0 var(--space-1); }
+.tb-actions .psync .sync-lbl { display: none; }
+.tb-actions .psync { padding: 0 var(--space-2); }
+.tb-actions .psync.pr-attention .dot { width: 8px; height: 8px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--warning) 25%, transparent); }
+.tb-actions #folder-btn.ok:not(.flash) .sync-lbl, .tb-actions #folder-btn.busy .sync-lbl { display: none; }
+.tb-actions #folder-btn.ok:not(.flash), .tb-actions #folder-btn.busy { padding: 0 var(--space-2); }
+.tb-actions #folder-btn.flash .sync-lbl { animation: tb-flash-in var(--m-base, 160ms) var(--m-ease-out, ease-out) both; }
+@keyframes tb-flash-in { from { opacity: 0; } to { opacity: 1; } }
+[data-motion="reduced"] .tb-actions #folder-btn.flash .sync-lbl { animation: none; }

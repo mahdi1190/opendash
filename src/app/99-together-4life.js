@@ -359,7 +359,7 @@ function togetherTopbarWidgets(strip) {
   for (const p of tgPinnedDates()) strip.appendChild(_tgPinWidget(p));
 }
 function togetherTopbarOverflow(el, close) {
-  const hidden = new Set([...document.querySelectorAll('#countdowns .cdw[data-tg]')].filter(n => n.style.display === 'none').map(n => n.dataset.tg));
+  const hidden = new Set([...document.querySelectorAll('#countdowns .cdw[data-tg]')].filter(n => n.style.display === 'none' || n.classList.contains('cdw-fold')).map(n => n.dataset.tg));
   for (const p of tgPinnedDates()) {
     if (!hidden.has(p.sp.id + ':' + p.key)) continue;
     const b = _tgPinWidget(p);

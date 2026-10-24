@@ -83,6 +83,9 @@ const WHATS_NEW = [
   { id: 'friends-data', group: 'n219', icon: 'folder-open', title: '2.19.3: browse what friends share',
     text: 'Friends has a Shared with me tab: pick a friend, then their tasks, calendar, money, places or memories (only what they chose to share, read-only). Tasks, Calendar and Money have a Mine switch in the header to look at a friend’s instead.',
     view: ['friends:data'], sel: ['#view-subtabs', '#main-body'] },
+  { id: 'money-calm', group: 'n219', icon: 'wallet', title: '2.19.4: a calmer Money',
+    text: 'Money has one row of controls: the period and a Filters button. Layout, Hide amounts and the Money brief are under More, and an import is a quiet note instead of a banner. The top bar and the garden shop are simpler too.',
+    view: ['finance'], sel: ['#main-body'] },
 
   // ---- 2.18.1 ----
   { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',
@@ -168,10 +171,10 @@ const WHATS_NEW = [
     cmd: ['profile-card'], present: () => typeof profileCardEl === 'function' },
   { id: 'profile-extras', group: 'card', icon: 'award', title: 'Titles, favourite emoji and what you are into',
     text: 'Wear a title you have earned, show up to six favourite emoji and a “currently” line (listening to, reading, growing...), and pick a tint. Your card counts friends’ visits, never who. Life › You › Profile.',
-    view: ['settings:me'], sel: ['[data-whats-new~="profile-extras"]', '#pf-look'], present: () => typeof profileCardEl === 'function' },
+    view: ['profile'], sel: ['[data-whats-new~="profile-extras"]', '#pf-look'], present: () => typeof profileCardEl === 'function' },
   { id: 'wardrobe', group: 'card', icon: 'shirt', title: 'A much bigger wardrobe, saved outfits and Surprise me',
     text: 'About 70 things to pick: 33 hairstyles with dyes, 24 tops in 17 fabric patterns, coats, dresses, shoes, jewellery, make-up and face paint, more hats and glasses, and quick expressions. Keep up to six named outfits, or let Surprise me dress you. Life › You › Wardrobe.',
-    view: ['settings:me'], sel: ['[data-whats-new~="wardrobe"]', '#pf-builder'], present: () => typeof profileWardrobeEl === 'function' },
+    view: ['profile:avatar'], sel: ['[data-whats-new~="wardrobe"]', '#pf-builder'], present: () => typeof profileWardrobeEl === 'function' },
 
   // ---- 2.18: achievements (ACHIEVEMENTS_500.md 2.5; the 500 more come in 2.18.1) ----
   { id: 'ach-page', group: 'ach18', icon: 'award', title: 'A page for your achievements',
