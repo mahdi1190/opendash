@@ -1,10 +1,10 @@
 /* Expenses (2.18.1): Money > Expenses, the Owed to you widget, the task panel chip, Finances' Expense button. */
-.xp { max-width: 860px; margin: 0 auto; padding: 4px 0 40px; display: flex; flex-direction: column; gap: 14px; }
-.xp-head { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.xp { max-width: 1280px; margin: 0 auto; padding: 0 0 var(--space-8); display: flex; flex-direction: column; gap: var(--space-3); }
 .xp-loading, .xp-none, .xp-hint { color: var(--fg-muted); font-size: var(--text-sm); padding: 6px 2px; }
-.xp-band { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; justify-content: space-between; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.xp-band { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.xp-chips { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
 .xp-owed { display: flex; flex-direction: column; gap: 2px; }
-.xp-big, .xw-big { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
+.xp-big, .xw-big { font-size: 26px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
 .xp-sub, .xw-sub { color: var(--fg-muted); font-size: var(--text-sm); }
 .xp-payers, .xp-seg { display: flex; flex-wrap: wrap; gap: 6px; }
 .xp-chip { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--fg-muted); font: inherit; font-size: var(--text-sm); cursor: pointer; }
@@ -29,7 +29,7 @@
 .xp-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); cursor: pointer; }
 .xp-row:last-child { border-bottom: 0; }
 .xp-row:hover, .xp-row:focus-visible { background: var(--bg-subtle); outline: none; }
-.xp-row.xp-drop, .xp-dz.xp-drop { background: var(--accent-soft); outline: 2px dashed var(--accent); outline-offset: -4px; }
+.md-row.xp-drop, .xp-dz.xp-drop { background: var(--accent-soft); outline: 2px dashed var(--accent); outline-offset: -4px; }
 .xp-cb { width: 16px; height: 16px; flex: none; accent-color: var(--accent); }
 .xp-st { width: 16px; display: grid; place-items: center; flex: none; color: var(--fg-subtle); }
 .xp-st.st-paid { color: var(--success); }
@@ -83,3 +83,19 @@
 .xp-hintb:hover { color: var(--accent); border-color: var(--accent); }
 @media (max-width: 640px) { .xp-two { grid-template-columns: 1fr; } .xp-band { flex-direction: column; align-items: flex-start; } }
 @media (prefers-reduced-motion: no-preference) { .xp-row { transition: background .12s; } }
+
+/* 2.19: the list beside the picked expense */
+.xp-md > .md-list { padding: var(--space-2); }
+.xp-md .xp-search { max-width: none; min-width: 0; margin-bottom: var(--space-1); }
+.xp-md .md-row-lead .xp-st { width: 16px; }
+.xp-md .md-row-b { background: none; color: var(--fg-muted); font-size: var(--text-xs); padding: 0; min-width: 0; }
+.xp-d { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); background: var(--surface); }
+.xp-d-head { display: flex; align-items: baseline; gap: var(--space-3); justify-content: space-between; }
+.xp-d-t { margin: 0; font-size: var(--text-lg); font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+.xp-d-am { font-size: 22px; font-weight: 650; white-space: nowrap; text-align: right; }
+.xp-d-am small { display: block; color: var(--fg-subtle); font-weight: 400; font-size: var(--text-xs); }
+.xp-d-note { margin: 0; color: var(--fg-muted); font-size: var(--text-sm); }
+.xp-d-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.xp-d-sec { display: flex; flex-direction: column; gap: var(--space-1); }
+.xp-d-sec > .sec-h { margin: var(--space-2) 0 0; }
+.xp-d .xp-dz { padding: var(--space-3); }

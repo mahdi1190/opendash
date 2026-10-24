@@ -522,7 +522,7 @@ document.addEventListener('opendash:pet', () => {
 /* ---------- Friends: a friend's pet on their page, friends' pets in the hangout ---------- */
 if (typeof Friends !== 'undefined' && Friends && typeof Friends.registerPanel === 'function') {
   Friends.registerPanel({ id: 'pet', order: 9, where: 'friend', title: 'Their pet', icon: 'paw-print', render: (el, friend) => _ptFriendPanel(el, friend) });
-  Friends.registerPanel({ id: 'pets', order: 30, where: 'hangout', title: "Friends' pets", icon: 'paw-print', render: (el) => _ptHangoutPanel(el) });
+  Friends.registerPanel({ id: 'pets', order: 30, where: 'hangout', tab: 'shared', title: "Friends' pets", icon: 'paw-print', render: (el) => _ptHangoutPanel(el) });
 }
 function _ptFriendPanel(el, friend) {
   if (!friend || !friend.profile) return false;

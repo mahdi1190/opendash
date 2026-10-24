@@ -12,7 +12,7 @@
    menu (32-tasks-ui.js), the task panel (60-task-detail.js), Finances' transaction rows (src/finance/37),
    syncedFilesChanged (56-remote-jobs.js).
    ============================================================ */
-const EXP = { data: null, loaded: false, loading: null, at: 0, asks: [], error: '', currency: 'GBP', scanAt: 0, scanSig: '', q: '', payer: '', status: 'all', picked: new Set(), tab: 'all' };
+const EXP = { data: null, loaded: false, loading: null, at: 0, asks: [], error: '', currency: 'GBP', scanAt: 0, scanSig: '', q: '', payer: '', status: 'all', picked: new Set(), tab: 'all', sel: '' };
 
 /* ---------- API ---------- */
 async function expApi(path, body, o) {

@@ -807,7 +807,7 @@ function _gsvSharing(friends, d) {
 function _gsvRegisterPanels(F) {
   if (!F || typeof F.registerPanel !== 'function') return;
   F.registerPanel({
-    id: 'garden-gallery', where: 'hangout', order: 35, title: 'Gardens', icon: 'sprout',
+    id: 'garden-gallery', where: 'hangout', tab: 'shared', order: 35, title: 'Gardens', icon: 'sprout',
     render(sec) {
       if (!_gscFriendList().length) return false;
       sec.classList.add('gsv-panel');

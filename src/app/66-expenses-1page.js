@@ -14,7 +14,7 @@ registerPage({
   badge: () => { const o = EXP.data && EXP.data.summary; return o && o.toClaimCount && expPrefs().reminders ? o.toClaimCount : ''; },
 });
 registerSection('expenses', {
-  group: 'finance', hashable: true, match: v => v === 'expenses', title: () => 'Expenses', crumb: () => [], layout: 'page',
+  group: 'finance', hashable: true, match: v => v === 'expenses', title: () => 'Expenses', crumb: () => [], layout: 'wide',
   mount(container) { _xpMount(container); },
   unmount() { EXP.picked = new Set(); },
 });
@@ -33,11 +33,6 @@ function _xpMount(container) {
   if (EXP.error && !EXP.data) { mountEmptyState(root, { icon: 'circle-alert', title: 'Expenses did not load', text: EXP.error, actions: [{ label: 'Try again', primary: true, run: () => { EXP.loaded = false; render(); } }] }); return; }
   expScan(false);
   const d = EXP.data, items = d.items, sum = d.summary;
-  // header: the one action, and More
-  const head = _xe('div', 'xp-head');
-  head.append(uiButton({ label: 'Add an expense', icon: 'plus', kind: 'primary', run: () => expAddDialog({}) }),
-    uiButton({ icon: 'ellipsis', tip: 'More', aria: 'More', run: (e, b) => _xpMore(b) }));
-  root.appendChild(head);
   if (!items.length) {
     const box = _xe('div', 'xp-empty'); root.appendChild(box);
     mountEmptyState(box, { icon: 'receipt', title: 'Get paid back, without the chasing',
@@ -45,107 +40,157 @@ function _xpMount(container) {
       actions: [{ label: 'Add an expense', icon: 'plus', primary: true, run: () => expAddDialog({}) }, { label: 'Open transactions', icon: 'arrow-right', run: () => { setView('finance'); try { window.FinanceView.setSection('transactions'); } catch (e) { /* later */ } } }] });
     return;
   }
-  // status band
-  const band = _xe('div', 'xp-band');
-  band.innerHTML = `<div class="xp-owed"><span class="xp-big num">${esc(expMoney(sum.total))}</span><span class="xp-sub">${sum.count ? `owed to you · ${sum.toClaimCount} to claim · ${sum.submittedCount} waiting${sum.oldestDays > 1 ? ` · oldest ${esc(String(sum.oldestDays))} days` : ''}` : 'Nothing owed. All paid back.'}</span></div>`;
-  const pc = _xe('div', 'xp-payers');
-  for (const p of sum.payers.slice(0, 5)) pc.appendChild(_xChip(`${p.payer} · ${expMoney(p.total)}`, 'user', 'xp-chip' + (EXP.payer === p.key ? ' on' : ''), () => { EXP.payer = EXP.payer === p.key ? '' : p.key; render(); }));
-  band.appendChild(pc); root.appendChild(band);
-  // the one question
+  // The owed summary on top: the total, the status and payer filters in one band (2.19: lean).
+  root.appendChild(_xpBand(d, sum));
   const ask = EXP.asks[0];
   if (ask) root.appendChild(_xpAsk(ask));
-  // gentle reminder
   const rem = sum.reminders.find(r => r.kind === 'to-claim');
   if (rem && expPrefs().reminders && rem.deadline) {
     const t = _xe('div', 'xp-remind'); t.innerHTML = icon('bell') + `<span>${rem.count} expense${rem.count === 1 ? '' : 's'} not claimed yet · ${rem.payer ? esc(rem.payer) + ' deadline ' : 'deadline '}${rem.days <= 0 ? 'today' : rem.days === 1 ? 'tomorrow' : `in ${rem.days} days`}</span>`;
     root.appendChild(t);
   }
-  // tools
-  const tools = _xe('div', 'xp-tools');
-  const q = _xe('label', 'input input-sm xp-search', icon('search') + '<input type="search" placeholder="Search expenses" aria-label="Search expenses">');
-  const qi = q.querySelector('input'); qi.value = EXP.q;
-  let qt = 0; qi.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { EXP.q = qi.value; _xpList(listEl); }, 160); });
-  tools.appendChild(q);
-  const seg = _xe('div', 'xp-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Status');
-  for (const [k, l] of [['all', 'All'], ['to-claim', 'To claim'], ['submitted', 'Submitted'], ['paid', 'Paid']]) seg.appendChild(_xChip(l, '', 'xp-chip' + (EXP.status === k ? ' on' : ''), () => { EXP.status = k; render(); }));
-  tools.appendChild(seg);
-  if (d.payers.length > 1) {
-    const sel = _xe('select', 'xp-in xp-payer-sel'); sel.setAttribute('aria-label', 'Payer');
-    sel.innerHTML = '<option value="">Everyone</option>' + d.payers.map(p => `<option value="${escAttr(p.key)}"${EXP.payer === p.key ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
-    sel.onchange = () => { EXP.payer = sel.value; render(); };
-    tools.appendChild(sel);
-  }
-  root.appendChild(tools);
-  const listEl = _xe('div', 'xp-list'); root.appendChild(listEl);
-  _xpList(listEl);
-  // a receipt dropped anywhere on the page goes to the expense under it (rows), so nothing here
+  // The list beside the picked expense: its details, actions and receipts.
+  const all = _xpFiltered();
+  const sel = all.find(e => e.id === EXP.sel) || all[0] || null;
+  EXP.sel = sel ? sel.id : '';
+  const md = masterDetail({
+    label: 'Expenses', listWidth: 340, cls: 'xp-md',
+    list: (host) => _xpListInto(host, all, sel, (e) => _xpSelect(md, e)),
+    detail: sel ? _xpDetail(sel) : null,
+    empty: () => { const b = _xe('div', 'xp-none', 'Nothing matches. <button class="btn-link" type="button">Clear the filters</button>'); b.querySelector('button').onclick = () => { EXP.q = ''; EXP.payer = ''; EXP.status = 'all'; render(); }; return b; },
+  });
+  root.appendChild(md);
+}
+/** "12 Oct" (and the year when it is not this one). */
+function _xpDate(iso) {
+  const d = new Date(String(iso) + 'T12:00:00');
+  if (Number.isNaN(d.getTime())) return String(iso || '');
+  return d.toLocaleDateString(undefined, d.getFullYear() === new Date().getFullYear() ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
 }
 function _xChip(label, ic, cls, run) {
   const b = _xe('button', cls, (ic ? icon(ic, 'i-xs') : '') + `<span>${esc(label)}</span>`); b.type = 'button';
   if (cls.includes(' on')) b.setAttribute('aria-pressed', 'true'); else if (/\bxp-chip\b/.test(cls)) b.setAttribute('aria-pressed', 'false');
   b.onclick = run; return b;
 }
+/** The band: what you are owed, then one row of status chips (with counts) and the payers. */
+function _xpBand(d, sum) {
+  const band = _xe('div', 'xp-band');
+  band.innerHTML = `<div class="xp-owed"><span class="xp-big num">${esc(expMoney(sum.total))}</span><span class="xp-sub">${sum.count ? `owed to you${sum.oldestDays > 1 ? ` · oldest ${esc(String(sum.oldestDays))} days` : ''}` : 'Nothing owed. All paid back.'}</span></div>`;
+  const n = { all: d.items.length, 'to-claim': 0, submitted: 0, paid: 0 };
+  for (const e of d.items) n[e.status]++;
+  const chips = _xe('div', 'xp-chips');
+  const seg = _xe('div', 'xp-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Status');
+  for (const [k, l] of [['all', 'All'], ['to-claim', 'To claim'], ['submitted', 'Waiting'], ['paid', 'Paid']]) seg.appendChild(_xChip(`${l} ${n[k]}`, '', 'xp-chip' + (EXP.status === k ? ' on' : ''), () => { EXP.status = k; render(); }));
+  chips.appendChild(seg);
+  if (d.payers.length > 1) {
+    const pc = _xe('div', 'xp-payers');
+    for (const p of sum.payers.slice(0, 4)) pc.appendChild(_xChip(`${p.payer} · ${expMoney(p.total)}`, 'user', 'xp-chip' + (EXP.payer === p.key ? ' on' : ''), () => { EXP.payer = EXP.payer === p.key ? '' : p.key; render(); }));
+    if (d.payers.length > 4 || sum.payers.length < d.payers.length) {
+      const sel = _xe('select', 'xp-in xp-payer-sel'); sel.setAttribute('aria-label', 'Payer');
+      sel.innerHTML = '<option value="">Everyone</option>' + d.payers.map(p => `<option value="${escAttr(p.key)}"${EXP.payer === p.key ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+      sel.onchange = () => { EXP.payer = sel.value; render(); };
+      pc.appendChild(sel);
+    }
+    chips.appendChild(pc);
+  }
+  band.appendChild(chips);
+  return band;
+}
 function _xpFiltered() {
   const q = expNorm(EXP.q);
   return expItems().filter(e => (EXP.status === 'all' || e.status === EXP.status) && (!EXP.payer || expPayerKey(e.payer) === EXP.payer)
     && (!q || expNorm(`${e.title} ${e.payer} ${e.merchant || ''} ${e.category || ''} ${e.note || ''}`).includes(q)));
 }
-function _xpList(host) {
-  host.innerHTML = '';
-  const all = _xpFiltered();
-  if (!all.length) { host.appendChild(_xe('div', 'xp-none', 'Nothing matches. <button class="btn-link" type="button">Clear the filters</button>')); host.querySelector('button').onclick = () => { EXP.q = ''; EXP.payer = ''; EXP.status = 'all'; render(); }; return; }
-  const groups = [['to-claim', 'To claim', 'Add the receipt, then send the claim.'], ['submitted', 'Submitted', 'Waiting to be paid back. OpenDash looks for the payment.'], ['paid', 'Paid', '']];
+/** The list column: search, then To claim / Waiting / Paid, each a page at a time (paid ones fold to 8). */
+function _xpListInto(host, all, sel, pick) {
+  const q = _xe('label', 'input input-sm xp-search', icon('search') + '<input type="search" placeholder="Search expenses" aria-label="Search expenses">');
+  const qi = q.querySelector('input'); qi.value = EXP.q;
+  let qt = 0;
+  qi.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { EXP.q = qi.value; const at = qi.selectionStart; render(); const again = document.querySelector('.xp-search input'); if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (e) { /* fine */ } } }, 260); });
+  host.appendChild(q);
+  const groups = [['to-claim', 'To claim', 'Add the receipt, then send the claim.'], ['submitted', 'Waiting', 'Sent and waiting to be paid back. OpenDash looks for the payment.'], ['paid', 'Paid', '']];
   for (const [st, title, hint] of groups) {
-    let list = all.filter(e => e.status === st);
+    const list = all.filter(e => e.status === st);
     if (!list.length) continue;
-    const sec = _xe('section', 'xp-sec');
     const total = list.reduce((s, e) => s + e.amount, 0);
-    const h = _xe('div', 'sec-h xp-sec-h'); h.innerHTML = `<h3>${esc(title)}</h3><span class="n">${list.length}</span><span class="xp-sec-t num">${esc(expMoney(total))}</span><span class="spacer"></span>`;
+    const h = secHead({ title, count: list.length, sub: expMoney(total) });
+    if (hint) h.title = hint;
     if (st === 'to-claim') {
-      const pick = [...EXP.picked].filter(id => list.some(e => e.id === id));
-      h.append(uiButton({ label: pick.length ? `Submit ${pick.length}` : 'Submit all', icon: 'send', kind: 'primary', size: 'sm', run: () => expSubmitDialog(pick.length ? pick : list.map(e => e.id)) }));
+      const pickd = () => [...EXP.picked].filter(id => list.some(e => e.id === id));
+      const btn = uiButton({ label: 'Submit all', icon: 'send', kind: 'ghost', size: 'sm', run: () => { const p = pickd(); expSubmitDialog(p.length ? p : list.map(e => e.id)); } });
+      h.appendChild(btn);
+      h._upd = () => { const p = pickd(); const s = btn.querySelector('span:not(.i)') || btn; s.textContent = p.length ? `Submit ${p.length}` : 'Submit all'; };
+      h._upd();
     }
-    sec.appendChild(h);
-    if (hint && st !== 'paid') sec.appendChild(_xe('div', 'xp-hint', esc(hint)));
-    if (st === 'paid') { const cap = EXP.status === 'paid' || EXP.q ? 200 : 8; if (list.length > cap) { const more = list.length - cap; list = list.slice(0, cap); sec.dataset.more = more; } }
-    if (st === 'submitted') {
-      const byClaim = new Map();
-      for (const e of list) { const k = e.claimId || e.id; if (!byClaim.has(k)) byClaim.set(k, []); byClaim.get(k).push(e); }
-      for (const [cid, es] of byClaim) {
-        const c = EXP.data.claims.find(x => x.id === cid);
-        if (c && es.length > 1) sec.appendChild(_xe('div', 'xp-claim', `${icon('send', 'i-xs')} Sent ${esc(expAgo(c.submittedAt))}${c.payer ? ' to ' + esc(c.payer) : ''} · ${esc(expMoney(es.reduce((s, e) => s + e.amount, 0)))}`));
-        es.forEach(e => sec.appendChild(_xpRow(e)));
-      }
-    } else list.forEach(e => sec.appendChild(_xpRow(e)));
-    if (sec.dataset.more) sec.appendChild(_xe('div', 'xp-hint', `${sec.dataset.more} older paid expenses are hidden. Use the Paid filter to see them all.`));
-    host.appendChild(sec);
+    host.appendChild(h);
+    const at = sel ? list.findIndex(e => e.id === sel.id) : -1;
+    host.appendChild(pagedList({ items: list, pageSize: st === 'paid' && !EXP.q && EXP.status !== 'paid' ? 8 : 15, start: at + 1,
+      render: (e) => _xpListRow(e, sel && e.id === sel.id, pick, h) }));
   }
 }
-function _xpRow(e) {
-  const row = _xe('div', 'xp-row'); row.tabIndex = 0; row.dataset.id = e.id; row.setAttribute('role', 'group'); row.setAttribute('aria-label', `${e.title}, ${expMoney(e.amount, e.currency)}`);
+function _xpListRow(e, active, pick, head) {
+  let lead;
   if (e.status === 'to-claim') {
-    const cb = _xe('input', 'xp-cb'); cb.type = 'checkbox'; cb.checked = EXP.picked.has(e.id); cb.setAttribute('aria-label', 'Select ' + e.title);
-    cb.onclick = (ev) => ev.stopPropagation(); cb.onchange = () => { if (cb.checked) EXP.picked.add(e.id); else EXP.picked.delete(e.id); _xpList(row.closest('.xp-list')); };
-    row.appendChild(cb);
-  } else row.appendChild(_xe('span', 'xp-st st-' + e.status, icon(XP_STATUS[e.status][1])));
-  const main = _xe('div', 'xp-main');
+    lead = _xe('input', 'xp-cb'); lead.type = 'checkbox'; lead.checked = EXP.picked.has(e.id); lead.setAttribute('aria-label', 'Select ' + e.title);
+    lead.onclick = (ev) => ev.stopPropagation();
+    lead.onchange = () => { if (lead.checked) EXP.picked.add(e.id); else EXP.picked.delete(e.id); if (head && head._upd) head._upd(); };
+  } else lead = _xe('span', 'xp-st st-' + e.status, icon(XP_STATUS[e.status][1]));
   const rc = e.receipts.length;
-  const chips = [];
-  chips.push(rc ? `<span class="xp-tag ok">${icon('paperclip', 'i-xs')}${rc} receipt${rc === 1 ? '' : 's'}</span>` : (e.status === 'to-claim' ? `<span class="xp-tag warn">${icon('paperclip', 'i-xs')}No receipt</span>` : ''));
-  if (e.status === 'paid' && e.paidAt) chips.push(`<span class="xp-tag ok">Paid ${esc(expAgo(e.paidAt))}</span>`);
-  if (e.status === 'submitted' && e.claimId) { const c = EXP.data.claims.find(x => x.id === e.claimId); if (c) chips.push(`<span class="xp-tag">Sent ${esc(expAgo(c.submittedAt))}</span>`); }
-  if (e.kind === 'mileage') chips.push(`<span class="xp-tag">${e.miles} miles</span>`);
-  if (e.vat) chips.push(`<span class="xp-tag">VAT ${esc(expMoney(e.vat))}</span>`);
-  main.innerHTML = `<div class="xp-t">${esc(e.title)}</div><div class="xp-m"><span>${esc(typeof fmtDateShort === 'function' ? fmtDateShort(e.date) : e.date)}</span>${e.payer ? `<span>· ${esc(e.payer)}</span>` : '<span class="xp-warn">· no payer yet</span>'}${chips.join('')}</div>`;
-  row.appendChild(main);
-  const am = _xe('div', 'xp-am num', esc(expMoney(e.amount, e.currency)) + (e.foreign ? `<small>${esc(e.foreign.amount.toFixed(2) + ' ' + e.foreign.currency)}</small>` : ''));
-  row.appendChild(am);
-  row.appendChild(uiButton({ icon: 'paperclip', tip: 'Receipts', aria: 'Receipts for ' + e.title, size: 'sm', run: () => expReceiptsDialog(e.id) }));
-  row.appendChild(uiButton({ icon: 'ellipsis', tip: 'More', aria: 'More for ' + e.title, size: 'sm', run: (ev, b) => _xpRowMenu(e, b) }));
-  row.addEventListener('click', (ev) => { if (!ev.target.closest('button,input')) expAddDialog({ edit: e.id }); });
-  row.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target === row) expAddDialog({ edit: e.id }); });
+  const when = _xpDate(e.date);
+  const sub = [when, e.payer || 'no payer yet', e.status === 'to-claim' && !rc ? 'no receipt' : ''].filter(Boolean).join(' · ');
+  const row = mdRow({ title: e.title, sub, avatar: lead, badge: expMoney(e.amount, e.currency), active, tip: `${e.title}, ${expMoney(e.amount, e.currency)}`, run: () => pick(e) });
+  row.dataset.id = e.id;
   expAcceptFiles(row, () => e.id);
   return row;
+}
+/** Pick an expense: the right side changes, the list (scroll, checkboxes) stays. */
+function _xpSelect(md, e) {
+  EXP.sel = e.id;
+  for (const r of md.mdList.querySelectorAll('.md-row')) { const on = r.dataset.id === e.id; r.classList.toggle('on', on); if (on) r.setAttribute('aria-current', 'true'); else r.removeAttribute('aria-current'); }
+  md.mdSet(_xpDetail(e));
+}
+/** The picked expense: what it is, the next step, the receipts. */
+function _xpDetail(e) {
+  const box = _xe('div', 'xp-d');
+  const head = _xe('div', 'xp-d-head');
+  head.append(_xe('h2', 'xp-d-t', esc(e.title)), _xe('div', 'xp-d-am num', esc(expMoney(e.amount, e.currency)) + (e.foreign ? `<small>${esc(e.foreign.amount.toFixed(2) + ' ' + e.foreign.currency)}</small>` : '')));
+  box.appendChild(head);
+  const meta = _xe('div', 'xp-m');
+  const chips = [`<span class="xp-tag st-${e.status}">${icon(XP_STATUS[e.status][1], 'i-xs')}${esc(XP_STATUS[e.status][0])}</span>`];
+  chips.push(`<span>${esc(_xpDate(e.date))}</span>`);
+  chips.push(e.payer ? `<span>${esc(e.payer)}</span>` : '<span class="xp-warn">no payer yet</span>');
+  if (e.merchant) chips.push(`<span>${esc(e.merchant)}</span>`);
+  if (e.category) chips.push(`<span>${esc(e.category)}</span>`);
+  if (e.status === 'paid' && e.paidAt) chips.push(`<span class="xp-tag ok">Paid ${esc(expAgo(e.paidAt))}</span>`);
+  if (e.status === 'submitted' && e.claimId) {
+    const c = EXP.data.claims.find(x => x.id === e.claimId);
+    if (c) {
+      const mates = expItems().filter(x => x.claimId === e.claimId);
+      chips.push(`<span class="xp-tag">Sent ${esc(expAgo(c.submittedAt))}${mates.length > 1 ? ` with ${mates.length - 1} more · ${esc(expMoney(mates.reduce((s, x) => s + x.amount, 0)))}` : ''}</span>`);
+    }
+  }
+  if (e.kind === 'mileage') chips.push(`<span class="xp-tag">${e.miles} miles</span>`);
+  if (e.vat) chips.push(`<span class="xp-tag">VAT ${esc(expMoney(e.vat))}</span>`);
+  meta.innerHTML = chips.join('');
+  box.appendChild(meta);
+  if (e.note) box.appendChild(_xe('p', 'xp-d-note', esc(e.note)));
+  const acts = _xe('div', 'xp-d-acts');
+  if (e.status === 'to-claim') acts.appendChild(uiButton({ label: 'Submit', icon: 'send', kind: 'primary', size: 'sm', run: () => expSubmitDialog([e.id]) }));
+  else if (e.status === 'submitted') acts.appendChild(uiButton({ label: 'Mark as paid', icon: 'circle-check', kind: 'primary', size: 'sm', run: () => expMarkPaid([e.id]) }));
+  acts.append(uiButton({ label: 'Edit', icon: 'pencil', size: 'sm', run: () => expAddDialog({ edit: e.id }) }),
+    uiButton({ icon: 'ellipsis', tip: 'More', aria: 'More for ' + e.title, size: 'sm', run: (ev, b) => _xpRowMenu(e, b) }));
+  box.appendChild(acts);
+  const rs = _xe('section', 'xp-d-sec'); rs.appendChild(secHead({ title: 'Receipts', count: e.receipts.length || '' }));
+  const rb = _xe('div', 'xp-form'); rs.appendChild(rb); box.appendChild(rs);
+  _xpReceiptsBody(rb, e.id, false);
+  const linked = (e.taskIds || []).map(id => getItem(id)).filter(Boolean);
+  if (linked.length) {
+    const ts = _xe('section', 'xp-d-sec'); ts.appendChild(secHead({ title: 'Tasks', count: linked.length }));
+    for (const t of linked.slice(0, 4)) ts.appendChild(uiButton({ label: effTitle(t).slice(0, 60), icon: 'list-todo', kind: 'ghost', size: 'sm', run: () => (typeof openTask === 'function' ? openTask(t.id) : selectTask(t.id)) }));
+    box.appendChild(ts);
+  }
+  expAcceptFiles(box, () => e.id);
+  return box;
 }
 function _xpRowMenu(e, anchor) {
   const items = [{ label: 'Edit', icon: 'pencil', run: () => expAddDialog({ edit: e.id }) }, { label: 'Receipts…', icon: 'paperclip', run: () => expReceiptsDialog(e.id) }];
@@ -169,9 +214,10 @@ function _xpAsk(a) {
   card.append(uiButton({ label: 'Yes', kind: 'primary', size: 'sm', run: () => expAnswer(a, true) }), uiButton({ label: 'No', size: 'sm', run: () => expAnswer(a, false) }));
   return card;
 }
-function _xpMore(anchor) {
+/** The page header's More menu (registerHeaderActions below): settings, payers, a check now, CSV, the year. */
+function _xpMoreItems() {
   const p = expPrefs();
-  openMenu(anchor, [
+  return [
     { label: 'Add tasks for each expense', icon: 'list-checks', checked: p.autoTasks, hint: 'Submit, then check it was paid', run: () => expDo('/prefs', { patch: { autoTasks: !p.autoTasks } }, { quiet: true }) },
     { label: 'Hint “Expense?” on transactions', icon: 'lightbulb', checked: p.hints, run: () => expDo('/prefs', { patch: { hints: !p.hints } }, { quiet: true }) },
     { label: 'Deadline reminders', icon: 'bell', checked: p.reminders, run: () => expDo('/prefs', { patch: { reminders: !p.reminders } }, { quiet: true }) },
@@ -180,8 +226,13 @@ function _xpMore(anchor) {
     { label: 'Check for payments now', icon: 'refresh-cw', run: () => { EXP.scanAt = 0; expScan(true).then(() => toast(EXP.asks.length ? 'There is one thing to confirm' : 'Looked: nothing new arrived', { icon: 'search' })); } },
     { label: 'Download all as CSV', icon: 'download', run: () => expPack({ ids: expItems().map(e => e.id).slice(0, 200) }, 'csv') },
     { label: 'Paid back this year…', icon: 'calendar-check', run: () => expYearDialog() },
-  ], { align: 'end', width: 290 });
+  ];
 }
+// One primary action in the page header (UX_BLUEPRINT.md 3), the rest under More.
+if (typeof registerHeaderActions === 'function') registerHeaderActions(v => v === 'expenses', () => ({
+  primary: { label: 'Add an expense', icon: 'plus', run: () => expAddDialog({}) },
+  more: _xpMoreItems(),
+}));
 
 /* ---------- add / edit ---------- */
 function _xField(label, input, hint) { const w = _xe('label', 'xp-f'); w.appendChild(_xe('span', 'xp-fl', esc(label))); w.appendChild(input); if (hint) w.appendChild(_xe('span', 'xp-fh', esc(hint))); return w; }
@@ -234,44 +285,45 @@ function expAddDialog(pre) {
 }
 
 /* ---------- receipts ---------- */
+/** The receipts of one expense (files, emails, the drop zone, receipt emails that look right) into el; repaints itself. */
+function _xpReceiptsBody(el, id, lead) {
+  const paint = async () => {
+    const e = expItem(id); el.innerHTML = '';
+    if (!e) { el.textContent = 'That expense is gone.'; return; }
+    if (lead) el.appendChild(_xe('p', 'xp-lead', `${esc(e.title)} · ${esc(expMoney(e.amount, e.currency))}`));
+    const list = _xe('div', 'xp-rcl');
+    for (const r of e.receipts) {
+      const row = _xe('div', 'xp-rc');
+      const label = r.ref ? `<a href="/api/expenses/receipt/${encodeURIComponent(r.ref)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : (r.mail.link ? `<a href="${escAttr(r.mail.link)}" target="_blank" rel="noopener noreferrer">${esc(r.mail.subject || 'Email')}</a>` : esc(r.mail.subject || 'Email'));
+      row.innerHTML = `${icon(r.ref ? 'file-text' : 'mail')}<span>${label}<small>${r.ref ? 'File' : 'Email · ' + esc(r.mail.from || '')}</small></span>`;
+      row.appendChild(uiButton({ icon: 'x', tip: 'Remove', aria: 'Remove receipt', size: 'sm', run: () => expDo('/receipt/remove', { id, ref: r.ref || r.mail.id }, { done: 'Receipt removed', what: 'remove it' }).then(paint) }));
+      list.appendChild(row);
+    }
+    if (!e.receipts.length) list.appendChild(_xe('div', 'xp-hint', 'No receipt yet.'));
+    el.appendChild(list);
+    const dz = _xe('div', 'xp-dz', `${icon('paperclip')}<span>Drop a PDF or photo here, paste one, or <button class="btn-link" type="button">choose a file</button></span>`); dz.tabIndex = 0;
+    dz.querySelector('button').onclick = () => expPickFile(id);
+    expAcceptFiles(dz, () => id);
+    el.appendChild(dz);
+    const sug = _xe('div', 'xp-sug'); el.appendChild(sug);
+    try {
+      const r = await expApi('/receipt-matches?id=' + encodeURIComponent(id));
+      if (r.matches.length) {
+        sug.innerHTML = '<div class="xp-fl">Receipt emails that look right</div>';
+        for (const m of r.matches) {
+          const row = _xe('div', 'xp-rc', `${icon('mail')}<span>${esc(m.subject || 'Email')}<small>${esc(m.from)} · ${esc(m.date)} · matches ${esc(m.why)}</small></span>`);
+          row.appendChild(uiButton({ label: 'Attach', size: 'sm', run: () => expDo('/receipt/mail', { id, mail: { id: m.id, src: m.src, subject: m.subject, from: m.from, date: m.date, link: m.link } }, { done: 'Email linked as the receipt', icon: 'mail', what: 'attach it' }).then(paint) }));
+          sug.appendChild(row);
+        }
+      } else if (r.connected) sug.appendChild(_xe('div', 'xp-hint', 'No receipt email found in your recent mail.'));
+    } catch (err) { /* offline: the rest still works */ }
+  };
+  paint();
+}
 function expReceiptsDialog(id) {
   openDialog({
     title: 'Receipts', size: 'md', fixed: false,
-    body(el) {
-      el.className += ' xp-form';
-      const paint = async () => {
-        const e = expItem(id); el.innerHTML = '';
-        if (!e) { el.textContent = 'That expense is gone.'; return; }
-        el.appendChild(_xe('p', 'xp-lead', `${esc(e.title)} · ${esc(expMoney(e.amount, e.currency))}`));
-        const list = _xe('div', 'xp-rcl');
-        for (const r of e.receipts) {
-          const row = _xe('div', 'xp-rc');
-          const label = r.ref ? `<a href="/api/expenses/receipt/${encodeURIComponent(r.ref)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : (r.mail.link ? `<a href="${escAttr(r.mail.link)}" target="_blank" rel="noopener noreferrer">${esc(r.mail.subject || 'Email')}</a>` : esc(r.mail.subject || 'Email'));
-          row.innerHTML = `${icon(r.ref ? 'file-text' : 'mail')}<span>${label}<small>${r.ref ? 'File' : 'Email · ' + esc(r.mail.from || '')}</small></span>`;
-          row.appendChild(uiButton({ icon: 'x', tip: 'Remove', aria: 'Remove receipt', size: 'sm', run: () => expDo('/receipt/remove', { id, ref: r.ref || r.mail.id }, { done: 'Receipt removed', what: 'remove it' }).then(paint) }));
-          list.appendChild(row);
-        }
-        if (!e.receipts.length) list.appendChild(_xe('div', 'xp-hint', 'No receipt yet.'));
-        el.appendChild(list);
-        const dz = _xe('div', 'xp-dz', `${icon('paperclip')}<span>Drop a PDF or photo here, paste one, or <button class="btn-link" type="button">choose a file</button></span>`); dz.tabIndex = 0;
-        dz.querySelector('button').onclick = () => expPickFile(id);
-        expAcceptFiles(dz, () => id);
-        el.appendChild(dz);
-        const sug = _xe('div', 'xp-sug'); el.appendChild(sug);
-        try {
-          const r = await expApi('/receipt-matches?id=' + encodeURIComponent(id));
-          if (r.matches.length) {
-            sug.innerHTML = '<div class="xp-fl">Receipt emails that look right</div>';
-            for (const m of r.matches) {
-              const row = _xe('div', 'xp-rc', `${icon('mail')}<span>${esc(m.subject || 'Email')}<small>${esc(m.from)} · ${esc(m.date)} · matches ${esc(m.why)}</small></span>`);
-              row.appendChild(uiButton({ label: 'Attach', size: 'sm', run: () => expDo('/receipt/mail', { id, mail: { id: m.id, src: m.src, subject: m.subject, from: m.from, date: m.date, link: m.link } }, { done: 'Email linked as the receipt', icon: 'mail', what: 'attach it' }).then(paint) }));
-              sug.appendChild(row);
-            }
-          } else if (r.connected) sug.appendChild(_xe('div', 'xp-hint', 'No receipt email found in your recent mail.'));
-        } catch (err) { /* offline: the rest still works */ }
-      };
-      paint();
-    },
+    body(el) { el.className += ' xp-form'; _xpReceiptsBody(el, id, true); },
     actions: [{ label: 'Done', primary: true }],
   });
 }

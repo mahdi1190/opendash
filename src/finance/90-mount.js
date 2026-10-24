@@ -84,6 +84,7 @@
     sharedChanged: () => sharedChanged(),
     // For the app shell's sidebar and breadcrumb (14-shell.js / 15-nav-sidebar.js).
     sections: () => SECTIONS.map(([id, label]) => ({ id, label })),
+    groups: () => GROUPS.map(([id, label, icon, secs]) => ({ id, label, icon, sections: secs.slice() })),
     section: () => F.section,
     sectionLabel: () => (SECTIONS.find(s => s[0] === F.section) || [])[1] || '',
     setSection: (id) => setSection(id),

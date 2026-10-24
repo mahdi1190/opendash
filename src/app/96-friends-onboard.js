@@ -255,7 +255,7 @@ function friendsOnboardOpen() {
 }
 
 if (typeof Friends !== 'undefined' && Friends && typeof Friends.registerPanel === 'function') {
-  Friends.registerPanel({ id: 'onboard', order: 1, where: 'hangout', title: 'Getting started', icon: 'sparkles', render: _froRender });
+  Friends.registerPanel({ id: 'onboard', order: 1, where: 'hangout', tab: 'friends', title: 'Getting started', icon: 'sparkles', render: _froRender });
 }
 // The character changed (Settings > Profile): step 1 may be done now.
 document.addEventListener('opendash:profile', () => { if (/^friends$/.test(String(state.view || ''))) _froRepaint(); });

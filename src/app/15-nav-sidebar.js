@@ -488,29 +488,11 @@ registerSidebarBlock('calendar', {
   },
 });
 
-/* ---------- Finances: its sections ---------- */
-const _FIN_SECTION_ICONS = { board: 'layout-template', countries: 'globe', overview: 'gauge', spending: 'chart-column', categories: 'layout-grid', merchants: 'building-2', cashflow: 'arrow-up-down', recurring: 'repeat', budgets: 'piggy-bank', transactions: 'receipt' };
+/* ---------- Money: the page (2.19: its sections are the tabs in the page header, not repeated here) ---------- */
 registerSidebarBlock('finance', {
   id: 'finance-sections', order: 10,
   render(el) {
-    const FV = window.FinanceView;
-    const list = FV && typeof FV.sections === 'function' ? FV.sections() : [];
-    if (!list.length) return false;
-    const cur = FV && typeof FV.section === 'function' ? FV.section() : null;
-    el.appendChild(sbSection({ title: 'Money' }));
-    for (const s of list) {
-      el.appendChild(sbNavItem({
-        label: s.label, icon: _FIN_SECTION_ICONS[s.id] || 'circle', active: state.view === 'finance' && cur === s.id,
-        onClick: () => {
-          if (state.view !== 'finance') setView('finance');
-          try { FV.setSection(s.id); } catch (e) { console.error('[finance] setSection', e); }
-          renderSidebar(); renderCrumb();
-        },
-      }));
-    }
+    if (!window.FinanceView) return false;
+    el.appendChild(sbNavItem({ label: 'Money', icon: 'wallet', view: 'finance', active: state.view === 'finance', title: 'Overview, spending, cash flow, budgets and transactions' }));
   },
-});
-// The Finances view has its own tab strip; keep the sidebar and breadcrumb in step with it.
-document.addEventListener('click', (e) => {
-  if (e.target && e.target.closest && e.target.closest('.fv-tabs')) setTimeout(() => { if (state.view === 'finance') { renderSidebar(); } }, 0);
 });

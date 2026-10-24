@@ -464,6 +464,41 @@ async function liveSyncUndo(token) {
   }
 }
 
+/* ---------- 5. files another process wrote (server/file-watch.mjs: event 'files') ----------
+   The assistant's MCP process and a sync from another computer write data files directly. The server
+   watches those files and says which changed ({rels: ['expenses/expenses.json', ...]}); each page that
+   shows one reads its data again, so nothing needs a reload. liveRefresh(match, run) adds a page's own
+   reader: match is a RegExp (or a path prefix) tested against each changed path, run(rels) is called once
+   per burst with the paths that matched. Handlers are called only after the events settle (200 ms). */
+const _liveFileHandlers = [];
+let _liveFileTimer = 0;
+const _liveFilePending = new Set();
+function liveRefresh(match, run) {
+  if (typeof run !== 'function') return () => {};
+  const h = { test: match instanceof RegExp ? (r) => match.test(r) : (r) => r.startsWith(String(match)), run };
+  _liveFileHandlers.push(h);
+  return () => { const i = _liveFileHandlers.indexOf(h); if (i >= 0) _liveFileHandlers.splice(i, 1); };
+}
+function liveFilesChanged(rels) {
+  for (const r of (Array.isArray(rels) ? rels : []).slice(0, 80)) if (typeof r === 'string' && r.length < 200) _liveFilePending.add(r);
+  if (!_liveFilePending.size || _liveFileTimer) return;
+  _liveFileTimer = setTimeout(() => {
+    _liveFileTimer = 0;
+    const list = [..._liveFilePending]; _liveFilePending.clear();
+    for (const h of _liveFileHandlers.slice()) {
+      const hit = list.filter(h.test);
+      if (hit.length) { try { h.run(hit); } catch (e) { console.error('[live] files', e); } }
+    }
+  }, 200);
+}
+// The pages and what reads their data again (each reader is the page's own load function; none writes anything).
+liveRefresh(/^expenses\//, (rels) => { if (typeof expensesFilesChanged === 'function') expensesFilesChanged(rels); });                       // Expenses page, the Owed widget, a task's expenses (66-expenses-0core.js)
+liveRefresh(/^friends\/(friends|feed|shared|me|relays|fun)\.json$/, () => { if (typeof _frReloadSoon === 'function') _frReloadSoon(250); });     // Friends: the list, the feed, what friends share (96-friends-0core.js)
+liveRefresh('friends/spaces.json', () => { if (typeof togetherFilesChanged === 'function') togetherFilesChanged(); });                      // Together: shared spaces (99-together-0core.js)
+liveRefresh('friends/garden.json', () => { if (typeof _gscReloadSoon === 'function') _gscReloadSoon(300); });                               // Friends' gardens and the co-op bed (94-garden-social-1core.js)
+liveRefresh('profile.json', () => { if (typeof render === 'function') { try { render(); } catch (e) { /* fine */ } } });                     // your card and look
+liveRefresh(/^finance(-share)?\//, () => { if (typeof financeSharedChanged === 'function') financeSharedChanged(); });                     // Money and Home's money widgets (65-finance-view.js)
+
 /** Open the event stream (once the server is known to be there). */
 function liveSyncStart() {
   if (_liveES && _liveES.readyState === 2) { try { _liveES.close(); } catch (e) {} _liveES = null; }   // gave up (e.g. after a restart): open a new one
@@ -482,6 +517,8 @@ function liveSyncStart() {
   _liveES.addEventListener('calendar', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (typeof calwOnRemote === 'function') calwOnRemote(d); });
   // Another tab told the server the computer's zone changed: read our own now (07-core-clock.js).
   _liveES.addEventListener('time', () => { if (typeof Clock !== 'undefined') Clock.check(); });
+  // A data file changed on disk behind the server's back (the assistant's MCP, a sync): the open page reads it again (section 5).
+  _liveES.addEventListener('files', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && Array.isArray(d.rels)) liveFilesChanged(d.rels); });
   // Another of your devices published something (its calendar, an answer to a request, an AI result): 56-remote-jobs.js.
   _liveES.addEventListener('synced-files', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof syncedFilesChanged === 'function') syncedFilesChanged(d.rels); });
   // ── together ── shared spaces with friends (99-together-0core.js)

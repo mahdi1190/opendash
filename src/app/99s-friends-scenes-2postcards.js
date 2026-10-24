@@ -568,7 +568,7 @@ function friendsPostcardButton(it) {
   const F = window.Friends;
   if (!F) return;
   try { F.describe('postcard', (e, f) => _fpcDescribe(e, f)); } catch (e) { console.error('[postcards] describe', e); }
-  try { F.registerPanel({ id: 'postcards', where: 'friend', order: 45, title: 'Scene cards', icon: 'mail', render: (sec, f) => _fpcAlbum(sec, f) }); } catch (e) { console.error('[postcards] panel', e); }
+  try { F.registerPanel({ id: 'postcards', where: 'friend', zone: 'fold', order: 45, title: 'Scene cards', icon: 'mail', render: (sec, f) => _fpcAlbum(sec, f) }); } catch (e) { console.error('[postcards] panel', e); }
   try {
     F.on('postcard', (m, f) => {
       if (!m || m.revoked || !f || !f.id) return;
