@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.18.2] - 2026-10-24
+
+- The AI assistant can now file expenses for you: tell it about a purchase (or paste an order) and it adds the expense, with an Undo, and can attach a receipt or mark claims as submitted.
+
 ## [2.18.1] - 2026-10-24
 
 A playable garden, a way to keep track of money you are owed back, and a calmer app. Nothing you already have is taken away.

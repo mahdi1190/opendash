@@ -1,6 +1,6 @@
 {
   "name": "opendash",
-  "version": "2.18.1",
+  "version": "2.18.2",
   "description": "OpenDash: a calm, local-first productivity dashboard for tasks, calendar, finances and people, with an optional Claude assistant.",
   "private": true,
   "license": "MIT",
@@ -8,7 +8,16 @@
   "repository": "github:mahdi1190/opendash",
   "homepage": "https://github.com/mahdi1190/opendash#readme",
   "bugs": "https://github.com/mahdi1190/opendash/issues",
-  "keywords": ["dashboard", "productivity", "local-first", "self-hosted", "tasks", "calendar", "mcp", "claude"],
+  "keywords": [
+    "dashboard",
+    "productivity",
+    "local-first",
+    "self-hosted",
+    "tasks",
+    "calendar",
+    "mcp",
+    "claude"
+  ],
   "engines": {
     "node": ">=20"
   },
