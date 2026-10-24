@@ -235,7 +235,7 @@ const ann = (title, readOnly, destructive = false) => ({ title, readOnlyHint: re
 
 function toolList() {
   const tools = [];
-  for (const t of EXPENSE_TOOLS) if (t.read || MODE !== 'propose') tools.push({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: ann(t.title, !!t.read) });
+  for (const t of EXPENSE_TOOLS) tools.push({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: ann(t.title, !!t.read) });
   for (const q of QUERIES) if (MODE !== 'propose' || q.assistant !== false) tools.push({ name: q.tool, title: q.tool.replace(/_/g, ' '), description: q.description, inputSchema: publicSchema(q.schema), annotations: ann(q.tool, true) });
   tools.push({
     name: 'describe_operations', title: 'describe operations',
@@ -297,7 +297,6 @@ async function callTool(name, args) {
     }
     const ex = EXPENSE_TOOLS.find(x => x.name === name);
     if (ex) {
-      if (MODE === 'propose' && !ex.read) throw new ActionError('PROPOSE_ONLY', 'this connection can only read expenses');
       return ok(await expenseTool(name, args));
     }
     const q = QUERY_BY_TOOL.get(name);
