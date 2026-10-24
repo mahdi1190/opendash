@@ -77,12 +77,14 @@ registerTopbarWidget({
 
 /* ---------- sidebar (Home) and palette ---------- */
 registerSidebarBlock('home', {
-  id: 'review-nav', order: 12,
+  id: 'review-nav', order: 12, label: 'Plan',
   render(el, ctx) {
-    // Home's other tabs (77-brief-review.js); Home itself (the Today tab) is the item above.
-    el.appendChild(sbSection({ title: 'Review' }));
+    // Home's other tabs (77-brief-review.js); Home itself (the Today tab) is the item above. Since 2.18 the heading
+    // is Plan (the block id stays, so a rename or a move the user made stays) and Plan my week runs the planner.
+    el.appendChild(sbSection({ title: 'Plan' }));
     el.appendChild(sbNavItem({ label: 'Finish the day', icon: 'sunset', view: 'home:evening', badge: _eveningNow() && !_eveningSavedToday() ? 'now' : '' }));
     el.appendChild(sbNavItem({ label: 'Weekly review', icon: 'calendar-range', view: 'home:week' }));
+    if (typeof rfPlanWeekOpen === 'function') el.appendChild(sbNavItem({ label: 'Plan my week', icon: 'calendar-days', active: false, title: 'Spread your tasks across the week (Shift+P)', onClick: () => rfPlanWeekOpen() }));
     el.appendChild(sbNavItem({ label: 'History', icon: 'history', view: 'home:history' }));
   },
 });

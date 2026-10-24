@@ -9,11 +9,14 @@
       awards:  {key: {d, xp, k, n?, t?}}   XP for moments the data cannot show (boss tasks, quests,
                                            the bonus task, inbox zero, places, other modules' events)
       ticks:   {kind: {day: 1}}            streak days the data cannot show (inbox zero, focus blocks)
+      counts:  {kind: {'YYYY-MM|slot': n}} (2.18) events counted per month and device (92-game-4facts.js gameCount)
+      marks:   {kind: {key: day}}          (2.18) firsts and collections by app id (92-game-4facts.js gameMark)
       focus:   {id: {t, s, ms, e, k, d}}   focus timer sessions: task, start, length, the estimate then,
                                            the kind of work (first tag or stream), the day
       run:     {t, s, f, acc, p} | null    the running focus timer (follows you to your other devices)
       quests:  {weekFrom: {list, done: {questId|'all': day}}}
-      records: {key: {v, d, at}}           the personal bests already seen (a new one gets a moment)
+      records: {key: {v, d, at}}           the personal bests already seen (a new one gets a moment); combo: the
+                                           longest run of tasks under 20 minutes apart (2.18)
       seen:    {level, levelMax, intro, weekRecap, bonus: {d, t}, milestones: {}}}
    Everything else (XP from tasks and focus, levels, streaks, records, quest progress) is
    computed here from the data on each device: the same numbers everywhere, nothing to merge.
@@ -52,16 +55,16 @@ const _gm = { memo: null, key: '', rev: 0, days: new Map(), fin: null, finAt: 0,
   combo: { n: 0, at: 0 }, checkT: 0, paintQ: 0, introUntil: 0, ac: null, queue: [], showing: false, bossHit: null };
 const GAME_AWARD_XP = Object.freeze({ 'inbox-zero': 15, journal: 5, garden: 5, habit: 5,
   'place-new': 10, 'city-new': 15, 'country-new': 30, 'person-catchup': 10, wrapped: 10, 'focus-block': 5 });
-const _GM_INTERNAL = new Set(['boss', 'quest', 'bonus']);
+const _GM_INTERNAL = new Set(['boss', 'quest', 'bonus', 'ach']);   // ach: an achievement's XP (78-achievements.js), never through gameAward
 // Earned straight from the data, so an award for them would count twice: a weekly review 40, an evening review 10, a daily note 5.
 const _GM_DERIVED = new Set(['review-week', 'review-evening', 'review', 'daynote']);
 const GAME_DATA_XP = Object.freeze({ week: 40, evening: 10, daynote: 5 });
 
 function _gmG() {
-  if (typeof state === 'undefined' || !state) return { prefs: {}, awards: {}, ticks: {}, focus: {}, quests: {}, records: {}, seen: {} };
+  if (typeof state === 'undefined' || !state) return { prefs: {}, awards: {}, ticks: {}, counts: {}, marks: {}, focus: {}, quests: {}, records: {}, seen: {} };
   if (!state.game || typeof state.game !== 'object' || Array.isArray(state.game)) state.game = { v: 1 };
   const g = state.game;
-  for (const k of ['prefs', 'awards', 'ticks', 'focus', 'quests', 'records', 'seen']) if (!g[k] || typeof g[k] !== 'object' || Array.isArray(g[k])) g[k] = {};
+  for (const k of ['prefs', 'awards', 'ticks', 'counts', 'marks', 'focus', 'quests', 'records', 'seen']) if (!g[k] || typeof g[k] !== 'object' || Array.isArray(g[k])) g[k] = {};
   if (!g.v) g.v = 1;
   return g;
 }
@@ -88,8 +91,18 @@ function gamePrefSet(patch) {
 function gameAccentApply() {
   const g = _gmG(), id = String(g.prefs.accent || '');
   const a = GAME_ACCENTS.find(x => x.id === id);
-  const ok = a && a.id && a.level <= Math.max(1, Number(g.seen.levelMax) || 1);
+  const ok = a && a.id && gameAccentOpen(a);
   if (ok) document.documentElement.setAttribute('data-game-accent', a.id); else document.documentElement.removeAttribute('data-game-accent');
+}
+
+/** An accent is open from its level, or (2.18) from the achievement that unlocks 'accent:<id>' (a.ach or achUnlockOf). */
+function gameAccentOpen(a) {
+  if (!a) return false;
+  if (!a.id) return true;
+  if (a.level && a.level <= Math.max(1, Number(_gmG().seen.levelMax) || 1) && !a.achOnly) return true;
+  const ach = a.ach || (typeof achUnlockOf === 'function' ? achUnlockOf('accent', a.id) : null);
+  if (!ach) return false;
+  try { return typeof achState === 'function' && !!achState().unlocked[ach]; } catch (e) { return false; }
 }
 
 /* ---------- days (Clock's zone; cached per timestamp) ---------- */
@@ -206,7 +219,7 @@ function _gmCompute() {
   for (const a of Object.values(g.awards)) {
     if (!a || typeof a !== 'object') continue;
     const xp = Math.max(0, Number(a.xp) || 0);
-    xa += xp; if (a.d) awByDay[a.d] = (awByDay[a.d] || 0) + xp;
+    xa += xp; if (a.d && a.k !== 'ach') awByDay[a.d] = (awByDay[a.d] || 0) + xp;   // achievement XP: in the total, never in a day
     if (a.k === 'boss') bossDefeated.push({ t: a.t || '', n: Number(a.n) || 0, d: a.d || '' });
   }
   // reviews and daily notes, straight from the data
@@ -475,6 +488,10 @@ function _gmTaskDone(item) {
   const now = Date.now();
   _gm.combo.n = now - _gm.combo.at < 20 * 60000 ? _gm.combo.n + 1 : 1;
   _gm.combo.at = now;
+  if (_gm.combo.n >= 3) {   // 2.18: the longest combo is a record (the achievements' game.comboBest)
+    const rc = g.records.combo;
+    if (!rc || _gm.combo.n > (Number(rc.v) || 0)) { g.records.combo = { v: _gm.combo.n, d: today, at: today }; _gm.key = ''; if (typeof saveUI === 'function') saveUI(); }
+  }
   if (xp + bonus > 0) {
     const sub = [bonus ? 'Bonus task: double XP' : '', _gm.combo.n >= 2 && gameFun() === 'full' ? `Combo x${_gm.combo.n}` : ''].filter(Boolean).join(' · ');
     _gmFloat(`+${xp + bonus} XP`, sub);
@@ -571,6 +588,7 @@ function _gmCheckAll() {
     if (old && fresh && !told && old.v >= MIN[k] && old.at !== today) {
       told = true;
       _gmEmit('record', { record: k, value: r.v, was: old.v });
+      if (typeof gameCount === 'function') gameCount('record');   // 2.18: personal records set (92-game-4facts.js)
       gameMoment({ over: 'New personal record', title: WORDS[k](r.v), sub: `Your best was ${k === 'focusLongest' ? Math.round(old.v / 60000) + ' minutes' : old.v.toLocaleString()}.`, icon: 'medal', sound: 'achievement' });
     }
   }
@@ -679,27 +697,41 @@ function gameSound(kind) {
     });
   } catch (e) { /* no audio here */ }
 }
-/** The achievements' unlock moment (78-achievements.js achUnlockMoment hands over to this). */
-function gameAchMoment(ids) {
+/**
+ * The achievements' unlock moment (78-achievements.js achUnlockMoment hands over to this), by rarity:
+ * common and uncommon a quiet toast (Full: a small card), rare a card with confetti, epic and legendary a
+ * big card with art and a chime (if sounds are on). Three or more at once: one toast. Unlocks from history
+ * never come here: 78-achievements.js shows them once, as one calm summary (achHistorySummary).
+ */
+function gameAchMoment(ids, o) {
+  o = o || {};
   if (!ids || !ids.length || !gameOn()) return;
   const rest = ids.filter(id => !/^level-\d+$/.test(id));   // level unlocks ride on the level-up moment
   if (!rest.length) return;
   _gmEmit('achievement', { ids: rest });
   if (rest.length > 2) {
-    toast(`${rest.length} achievements earned${Date.now() < _gm.introUntil ? ' from your history' : ''}.`, { icon: 'award', action: { label: 'See the wall', run: () => gameOpenWall() } });
+    const xp = rest.reduce((t, id) => { const d = achDef(id); return t + (d && d.xp ? d.xp : 0); }, 0);
+    toast(`${rest.length} achievements earned${xp ? ` (+${xp.toLocaleString()} XP)` : ''}.`, { icon: 'award', action: { label: 'See them', run: () => gameOpenWall(rest[0]) } });
     gameSound('achievement');
     return;
   }
   const MILE = /^(done-(100|500|1000|2500|5000)|year-(one|two)|streak-(30|100|365))$/;
   for (const id of rest) {
     const d = achDef(id); if (!d) continue;
+    const rank = (typeof ACH_RARITY !== 'undefined' && ACH_RARITY[d.rarity] ? ACH_RARITY[d.rarity].rank : 1);
     const rw = d.reward && typeof _achRewardLabel === 'function' ? _achRewardLabel(d) : '';
-    const mile = MILE.test(id);
-    gameMoment({ over: mile ? 'Milestone' : 'Achievement', title: d.label, sub: rw ? `Unlocked ${rw}.` : d.hint, icon: d.icon || 'award', art: d.reward && d.reward.item ? d.reward.item : '', big: mile, sound: mile ? 'milestone' : 'achievement', action: { label: 'See', run: () => gameOpenWall(id) } });
+    const un = d.unlock && typeof achRewardLabel === 'function' ? achRewardLabel(d.unlock) : '';
+    const big = MILE.test(id) || rank >= 4;
+    const r = typeof ACH_RARITY !== 'undefined' && ACH_RARITY[d.rarity] ? ACH_RARITY[d.rarity] : null;
+    const over = big ? (rank >= 5 ? 'Legendary achievement' : MILE.test(id) ? 'Milestone' : 'Epic achievement') : (rank === 3 ? 'Rare achievement' : 'Achievement');
+    const sub = [rw ? `Unlocked ${rw}.` : un ? `Unlocked: ${un}.` : d.hint, r && d.xp ? `+${d.xp} XP` : ''].filter(Boolean).join(' ');
+    gameMoment({ over, title: d.label, sub, icon: d.icon || 'award', art: d.reward && d.reward.item ? d.reward.item : '', big, quiet: rank <= 2, sound: big ? 'milestone' : rank >= 3 ? 'achievement' : '', action: { label: 'See', run: () => gameOpenWall(id) } });
   }
 }
+/** The achievements wall (Life > Achievements; the view 'game:wall'), at one achievement when given. */
 function gameOpenWall(id) {
-  setView('game');
+  if (typeof gameWallOpen === 'function') { gameWallOpen(id); return; }   // the Achievements page (92-game-5wall.js)
+  setView('game:wall');   // Life > Achievements (2.18)
   requestAnimationFrame(() => setTimeout(() => {
     const el = (id && document.querySelector(`.gm-ach[data-ach="${id}"]`)) || document.getElementById('gm-wall');
     if (el) { el.scrollIntoView({ block: id ? 'center' : 'start', behavior: _gmMotion() ? 'smooth' : 'auto' }); if (id) { el.classList.add('is-flash'); setTimeout(() => el.classList.remove('is-flash'), 1600); } }

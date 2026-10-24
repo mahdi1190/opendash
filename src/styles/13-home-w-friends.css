@@ -1,0 +1,9 @@
+/* ============= HOME WIDGET: Friends around (12-home-w-friends.js, 2.18) ============= */
+.hwfr-b { display: flex; flex-direction: column; gap: var(--space-1); }
+.hwfr-n { font-size: var(--text-lg); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); }
+.hwfr-s { font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hwfr-avs { display: flex; gap: var(--space-1); margin: var(--space-1) 0; }
+.hwfr-av { display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; }
+.hwfr-av:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hwfr-av-sample { width: 28px; height: 28px; border-radius: 50%; background: var(--bg-emphasis); }
+.hwfr-act { align-self: flex-start; margin-top: var(--space-1); }

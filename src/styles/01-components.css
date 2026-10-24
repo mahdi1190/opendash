@@ -21,8 +21,11 @@
 .i { width: 16px; height: 16px; flex: none; stroke-width: 2;   /* the approved mockups render Lucide at 2 (their sprite sets it on each symbol) */ vertical-align: -3px; overflow: visible; }
 .i-xs { width: 12px; height: 12px; vertical-align: -1px; }
 .i-sm { width: 14px; height: 14px; vertical-align: -2px; }
+.i-md { width: 16px; height: 16px; }   /* the default size, named: says the size was chosen */
 .i-lg { width: 18px; height: 18px; }
 .i-xl { width: 20px; height: 20px; }
+/* Art and hero icons only (a badge, an empty card's picture); UI icons use the five sizes above. */
+.i-hero { width: var(--icon-hero); height: var(--icon-hero); vertical-align: middle; }
 .i-bold { stroke-width: 2; }
 
 /* ---------- buttons ---------- */
@@ -49,8 +52,12 @@
 .btn-danger:hover, .btn.danger:hover { background: var(--danger-soft); }
 .btn-danger-solid { background: var(--danger); color: #fff; border-color: var(--danger); }
 .btn-danger-solid:hover { background: color-mix(in oklab, var(--danger) 88%, black); }
-.btn-sm { height: var(--control-h-sm); font-size: var(--text-xs); padding: 0 var(--space-2); gap: var(--space-1); }
+/* Two sizes: .btn and .btn-sm. .btn-xs is the old name for .btn-sm (a component may still tune it). */
+.btn-sm, .btn-xs { height: var(--control-h-sm); font-size: var(--text-xs); padding: 0 var(--space-2); gap: var(--space-1); }
+/* .btn-lg: hero buttons only (the Home greeting, the weekly review's start). */
 .btn-lg { height: var(--control-h-lg); padding: 0 var(--space-4); }
+/* uiButton({wait: true}) while its job runs. */
+.btn.is-busy, .btn-icon.is-busy, .btn-link.is-busy { cursor: progress; opacity: 0.7; }
 .btn-block { width: 100%; }
 .btn-icon {
   display: inline-grid; place-items: center; flex: none;
@@ -60,8 +67,9 @@
 }
 .btn-icon:hover, .btn-icon[aria-expanded="true"] { background: var(--bg-muted); color: var(--fg); }
 .btn-icon.is-on { color: var(--accent-ink); background: var(--accent-soft); }
-.btn-icon.btn-sm { width: var(--control-h-sm); height: var(--control-h-sm); }
+.btn-icon.btn-sm, .btn-icon.btn-xs { width: var(--control-h-sm); height: var(--control-h-sm); }
 .btn-link { background: none; border: 0; padding: 0; color: var(--accent-ink); font: inherit; font-weight: var(--weight-medium); cursor: pointer; }
+.btn-link:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-xs); }
 .btn-link:hover { text-decoration: underline; }
 .btn-group { display: inline-flex; align-items: center; gap: var(--space-2); }
 
@@ -240,8 +248,13 @@ button.chip:hover { background: var(--bg-muted); color: var(--fg); }
 /* A card that is a button or link lifts a little under the pointer (2.16). */
 a.card:hover, button.card:hover, .card.is-clickable:hover { box-shadow: var(--shadow-hover); border-color: var(--border-strong); }
 .card-pad { padding: var(--space-4) var(--space-5); }
+/* The card header (cardHead() / cardHeadHtml() in 11-ui-kit.js): [icon] Title [count] .... [actions] [More].
+   Written once here; a module's own class adds only colour or layout. */
 .card-h { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-subtle); }
-.card-h h3 { margin: 0; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.card-h h3 { margin: 0; min-width: 0; font-size: var(--text-sm); line-height: var(--lh-sm); font-weight: var(--weight-semibold); }
+.card-h > .i { color: var(--fg-subtle); }
+.card-h .n { font-size: var(--text-xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.card-h > .spacer { flex: 1 1 auto; }
 .card-b { padding: var(--space-3) var(--space-4); }
 .callout {
   display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius-md);
@@ -269,10 +282,20 @@ a.card:hover, button.card:hover, .card.is-clickable:hover { box-shadow: var(--sh
 .ph h1 { margin: 0; font-size: var(--text-xl); line-height: var(--lh-xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); }
 .ph .ph-sub { color: var(--fg-subtle); font-size: var(--text-sm); }
 .ph .ph-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+/* A section's header inside a page (secHead() / secHeadHtml() in 11-ui-kit.js; .section-h is the older name). */
 .section-h { display: flex; align-items: center; gap: var(--space-2); height: 32px; margin: var(--space-5) 0 var(--space-2); }
-.section-h h2 { margin: 0; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
-.section-h .n { font-size: var(--text-xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.sec-h { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1) var(--space-2); min-height: 32px; margin: var(--space-5) 0 var(--space-2); min-width: 0; }
+.sec-h:first-child { margin-top: 0; }
+.sec-h > .i { color: var(--fg-subtle); }
+.section-h h2, .sec-h h2 { margin: 0; font-size: var(--text-sm); line-height: var(--lh-sm); font-weight: var(--weight-semibold); }
+.section-h .n, .sec-h .n { font-size: var(--text-xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.sec-h .sec-sub { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-subtle); min-width: 0; }
+.sec-h > .spacer { flex: 1 1 auto; }
 .section-h .act { margin-left: auto; }
+
+/* An empty list inside a card or dialog (emptyLine() in 11-ui-kit.js); pages use .empty-state. */
+.empty-line { margin: 0; padding: var(--space-2) 0; font-size: var(--text-sm); line-height: var(--lh-sm); color: var(--fg-subtle); }
+.empty-line > .btn-link { margin-left: var(--space-1); }
 
 /* ---------- popovers + menus (openPopover / openMenu in 11-ui-kit.js) ---------- */
 .pop {
@@ -306,9 +329,12 @@ a.card:hover, button.card:hover, .card.is-clickable:hover { box-shadow: var(--sh
 /* ---------- modal (new style; showModal() keeps .modal-overlay/.modal-card) ---------- */
 .scrim { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(1.5px); z-index: var(--z-modal); animation: ui-fade-in var(--m-base) var(--m-ease-out) both; }
 @keyframes ui-fade-in { from { opacity: 0; } }
+/* Four widths (openDialog size sm 440 | md 560 | lg 760 | xl 1100; a pixel width snaps to one), every
+   one 8vh from the top. .is-fixed (openDialog fixed: true): a fixed height, so the header and the
+   buttons never move between steps, tabs or cards; the body scrolls inside. */
 .modal {
-  position: fixed; z-index: var(--z-modal); left: 50%; top: 10vh; transform: translateX(-50%);
-  width: min(560px, calc(100vw - 32px)); max-height: 80vh;
+  position: fixed; z-index: var(--z-modal); left: 50%; top: 8vh; transform: translateX(-50%);
+  width: min(var(--modal-md), calc(100vw - 32px)); max-height: 86vh;
   background: var(--surface-raised); border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); overflow: hidden;
   display: flex; flex-direction: column; animation: ui-modal-in var(--m-slow) var(--m-ease-out) both;
 }
@@ -320,6 +346,8 @@ a.card:hover, button.card:hover, .card.is-clickable:hover { box-shadow: var(--sh
 .modal-h h2 { margin: 0; font-size: var(--text-md); font-weight: var(--weight-semibold); flex: 1; }
 .modal-b { padding: var(--space-5); overflow: auto; flex: 1; min-height: 0; }
 .modal-f { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); min-height: 56px; padding: 0 var(--space-5); border-top: 1px solid var(--border); background: var(--bg-subtle); flex: none; }
+.modal.is-fixed { height: min(var(--modal-h, 680px), 86vh); }
+.modal.is-fixed > .modal-b { overflow: auto; overscroll-behavior: contain; }
 
 /* ---------- drawer (right sheet; openDrawer in 11-ui-kit.js) ---------- */
 .drawer {
@@ -398,3 +426,26 @@ body:has(.tc.is-max) .toast-host { bottom: 80px; }
 
 /* ---------- skeletons: see .skeleton in motion.css ---------- */
 .skeleton-row { height: 36px; margin: 6px 0; }
+
+/* ---------- a card's status line, More / Advanced folds and one main action ----------
+   setStatusLine / setStatusPaint, setFold, setAction in 11-ui-kit.js (SIMPLIFY_PLAN.md section 3).
+   Tones: ok green, busy blue and pulsing, idle / off grey (calm), warn amber, err red. */
+.set-status { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) 0; font-size: var(--text-sm); line-height: var(--lh-sm); min-width: 0; }
+.set-status-dot { flex: none; align-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--fg-subtle); }
+.set-status-off .set-status-dot { background: var(--fg-disabled); }
+.set-status-ok .set-status-dot { background: var(--success); }
+.set-status-busy .set-status-dot { background: var(--info); animation: set-status-pulse 1.4s ease-in-out infinite; }
+.set-status-warn .set-status-dot { background: var(--warning); }
+.set-status-err .set-status-dot { background: var(--danger); }
+.set-status-w { font-weight: var(--weight-semibold); color: var(--fg); }
+.set-status-d { color: var(--fg-subtle); min-width: 0; }
+@keyframes set-status-pulse { 50% { opacity: .35; } }
+html[data-motion="reduced"] .set-status-busy .set-status-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) { .set-status-busy .set-status-dot { animation: none; } }
+.set-more { border-top: 1px solid var(--border-subtle); }
+.set-more > summary { cursor: pointer; padding: var(--space-2) 0; color: var(--fg-subtle); font-size: var(--text-sm); font-weight: var(--weight-medium); border-radius: var(--radius-xs); }
+.set-more > summary:hover, .set-more[open] > summary { color: var(--fg); }
+.set-more > summary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.set-more-b { padding-bottom: var(--space-2); min-width: 0; }
+.set-more-b > .set-row:first-child { border-top: 0; }
+.set-action { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3) 0 var(--space-1); }

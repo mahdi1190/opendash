@@ -243,12 +243,10 @@ registerSidebarBlock('tasks', {
   id: 'smart-lists', order: 15, label: 'Smart lists',
   render(el, ctx) {
     const lists = smartListsAll();
+    // None saved yet: no heading (2.18: empty sections hide; "New smart list" waits under More views and in the palette).
+    if (!lists.length) return false;
     el.appendChild(sbSection({ title: 'Smart lists', collapsible: 'smart-lists', actions: [{ icon: 'plus', label: 'New smart list', run: () => openSmartListEditor(null) }] }));
     if (sbIsCollapsed('smart-lists')) return;
-    if (!lists.length) {
-      el.appendChild(sbNavItem({ label: 'Save a filter as a list', icon: 'list-plus', className: 'nav-more', active: false, title: 'Any filter, grouping and view as one click here', onClick: () => openSmartListEditor(null) }));
-      return;
-    }
     const open = ctx.counts.open;
     sbOrderedList(el, {
       key: 'smart-lists', noun: 'Smart lists', defaults: SB_SL_DEFAULTS,

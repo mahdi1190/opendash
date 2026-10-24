@@ -492,6 +492,10 @@ function liveSyncStart() {
   _liveES.addEventListener('friends', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof friendsOnEvent === 'function') friendsOnEvent(d); });
   // ── fun ── waves, gifts, reactions, duo days, event knocks (99f-fun-1core.js)
   _liveES.addEventListener('fun', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof funOnEvent === 'function') funOnEvent(d); });
+  // ── garden-social ── friends visited your garden, a friend's garden arrived (94-garden-social-1core.js)
+  _liveES.addEventListener('garden', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof gardenSocialOnEvent === 'function') gardenSocialOnEvent(d); });
+  // ── you ── (integrate 2.18) a friend's visit to your card was counted: the visits line updates (97-profile-1core.js)
+  _liveES.addEventListener('profile', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof profileOnEvent === 'function') profileOnEvent(d); });
   // ── perms ── what a friend shares arrived, or something went to a friend (98-perms-1core.js); a synced copy from another device
   for (const ev of ['friends-shared', 'friends-share', 'synced-files']) _liveES.addEventListener(ev, (e) => { let d = null; try { d = JSON.parse(e.data); } catch (x) { return; } if (typeof permsOnServerEvent === 'function') permsOnServerEvent(ev, d); });
   // ── end perms ──

@@ -54,8 +54,9 @@ function kbHelpGroups() {
       ['Close / clear', ['Esc']], ['Dismiss a notification', ['Esc']], ['This sheet', ['?']],
     ]],
     ['Go to', [
-      ['Home', ['G', 'H']], ['Today', ['G', 'T']], ['Upcoming', ['G', 'U']], ['All tasks', ['G', 'A']], ['Logbook', ['G', 'L']],
-      ['Calendar', ['G', 'C']], ['Finances', ['G', 'F']], ['People', ['G', 'P']], ['Settings', ['G', 'S']], ['Bin', ['G', 'B']],
+      ['All pages', ['G', 'G']], ['Home', ['G', 'H']], ['Today', ['G', 'T']], ['Upcoming', ['G', 'U']], ['All tasks', ['G', 'A']], ['Logbook', ['G', 'O']],
+      ['Calendar', ['G', 'C']], ['Money', ['G', 'F']], ['Life', ['G', 'L']], ['People', ['G', 'P']], ['Settings', ['G', 'S']], ['Bin', ['G', 'B']],
+      ['Pinned pages', ['Alt', '1–9']],
     ]],
     ['Tasks', [
       ['Move between tasks', ['J', 'K']], ['Extend selection', ['Shift', '↑']], ['Open task', ['Enter']],

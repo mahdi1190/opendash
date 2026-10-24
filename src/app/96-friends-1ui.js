@@ -27,18 +27,19 @@ function _frIdOf(v) { const m = /^friends:([0-9a-f]{16})$/.exec(String(v || ''))
 registerSection('friends', {
   match: v => v === 'friends' || /^friends:[0-9a-f]{16}$/.test(String(v || '')),
   title: () => 'Friends',
-  crumb: v => { const id = _frIdOf(v); if (!id) return []; const f = friendsGet(id); return [f ? friendName(f) : 'Friend']; },
-  group: 'home', layout: 'page', hashable: true, taskControls: false,
+  crumb: v => { const id = _frIdOf(v); if (!id) return []; const f = friendsGet(id); return [{ label: 'Friends', view: 'friends' }, f ? friendName(f) : 'Friend']; },
+  group: 'life', layout: 'page', hashable: true, taskControls: false,   // Life > Friends since 2.18 (NAVIGATION_PLAN.md 2.2)
   mount(container, view) { _frMount(container, view || state.view); },
   unmount() { _frUI.entry = ''; _frUI.root = null; },
 });
-registerSidebarBlock('home', {
-  id: 'friends-nav', order: 14, label: 'Friends', hiddenByDefault: true,   // the corner is the way in (2.17.1); Customise sidebar shows it
-  render(el) {
-    const d = _fr.data;
-    const waiting = d && d.friends ? d.friends.filter(f => f.status === 'incoming' || (f.status === 'requested' && f.step === 'check')).length : 0;
-    el.appendChild(sbNavItem({ label: 'Friends', icon: 'users', view: 'friends', active: /^friends(:|$)/.test(String(state.view || '')), badge: waiting ? String(waiting) : '', title: waiting ? `${waiting} waiting for you` : 'Your friends' }));
-  },
+// Life's first tab (2.18): the sidebar row, the tab strip, All pages and the corner hub read this. The Home row it
+// replaces ('friends-nav', hidden by default in 2.17.1) is gone; a friend's page offers the shared 'Back to'.
+registerPage({
+  id: 'friends', view: 'friends', match: v => v === 'friends' || /^friends:[0-9a-f]{16}$/.test(String(v || '')),
+  label: 'Friends', icon: 'users', area: 'life', tab: true, order: 10, since: '2.17', discover: true,
+  desc: 'Your friends, cheers, and things to do together',
+  keywords: 'friends social hangout cheer cheers streak level feed invite gifts stickers together',
+  badge: () => { const d = _fr.data; const n = d && d.friends ? d.friends.filter(f => f.status === 'incoming' || (f.status === 'requested' && f.step === 'check')).length : 0; return n ? String(n) : ''; },
 });
 registerCommand({ id: 'friends-open', label: 'Friends', icon: 'users', group: 'Go to', keywords: 'friends social hangout cheer streak level', run: () => setView('friends') });
 registerCommand({ id: 'friends-add', label: 'Add a friend', icon: 'user-plus', keywords: 'friend invite code add connect link', run: () => friendsAddDialog() });
@@ -673,8 +674,6 @@ function _frDetail(id) {
 }
 function _frFriendPage(root, id) {
   const f = friendsGet(id);
-  const back = _frBtn('Friends', { icon: 'chevron-left', sm: true, kind: 'btn-ghost', cls: 'fr-back', run: () => setView('friends') });
-  root.appendChild(back);
   if (!f || f.status === 'removing' || f.status === 'blocked') {
     const e = _frEl('div', 'card fr-empty');
     e.innerHTML = icon('user-x', 'i-lg');

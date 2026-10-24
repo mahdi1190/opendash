@@ -218,7 +218,8 @@ registerSettingsGroup({
     const rows = [['App', `${d.app.version} · port ${d.app.port} · up ${d.app.uptimeMin} min`], ['Node', d.app.node], ['System', d.app.platform],
       ['Data folder', d.data.folder], ['State', d.data.stateExists ? `${d.data.stateSizeKb} KB · ${d.data.taskCount ?? '?'} tasks` : 'none yet'],
       ['Finances', d.data.financeAvailable ? 'set up' : 'not set up'], ['Migrations', (d.data.migrations || []).join(', ') || 'none'],
-      ['AI queue', d.queue ? `${d.queue.running} running · ${d.queue.waiting} waiting · ${d.queue.failed} failed since start` : '-']];
+      ['AI queue', d.queue ? `${d.queue.running} running · ${d.queue.waiting} waiting · ${d.queue.failed} failed since start` : '-'],
+      ['Achievements', typeof achLintSummary === 'function' ? achLintSummary() : '-']];   // ── achievements ── loaded and skipped (71-ach-0dsl.js)
     dl.innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
     el.appendChild(dl);
     const ct = document.createElement('table'); ct.className = 'table set-table';

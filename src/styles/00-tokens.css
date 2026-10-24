@@ -47,6 +47,12 @@
   --row-h-comfy: 52px;
   --control-h-sm: 24px; --control-h: 28px; --control-h-lg: 32px;
   --content-max: 1080px;
+  /* dialogs: the four widths (openDialog size sm|md|lg|xl; DIALOG_SIZES in 11-ui-kit.js has the
+     same numbers) and the height of a fixed one (openDialog fixed: true; o.height sets it) */
+  --modal-sm: 440px; --modal-md: 560px; --modal-lg: 760px; --modal-xl: 1100px;
+  --modal-h: 680px;
+  /* icons: .i-xs 12, .i-sm 14, .i / .i-md 16, .i-lg 18, .i-xl 20; art and hero icons only: */
+  --icon-hero: 28px;
 
   /* ---------- radii ---------- */
   --radius-xs: 5px; --radius-sm: 7px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px; --radius-2xl: 24px; --radius-full: 999px;

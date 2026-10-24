@@ -326,11 +326,20 @@ function _settingsGroupFromView(v) {
   const id = m ? m[1] : SETTINGS_DEFAULT_GROUP;
   return SETTINGS_GROUPS.find(g => g.id === id) || SETTINGS_GROUPS.find(g => g.id === SETTINGS_DEFAULT_GROUP) || SETTINGS_GROUPS[0];
 }
+// Pages (the registry, 14-shell.js): Settings, the animation gallery and Diagnostics; Profile (settings:me) is
+// listed under Life > You (15-nav-life.js). The Settings page owns every other settings:<group>.
+const _SET_OWN_PAGES = new Set(['settings:me', 'settings:animations', 'settings:diagnostics']);
+registerPage({ id: 'animations', view: 'settings:animations', match: v => v === 'settings:animations', label: 'Animation gallery', icon: 'film', area: 'system', order: 60, family: 'settings',
+  desc: 'Every scene, reward and recap, to watch and choose', keywords: 'animations scenes gallery library rewards recaps motion' });
+registerPage({ id: 'diagnostics', view: 'settings:diagnostics', match: v => v === 'settings:diagnostics', label: 'Diagnostics', icon: 'stethoscope', area: 'system', order: 70, family: 'settings',
+  desc: 'Problems, versions and what the app is doing', keywords: 'diagnostics problems errors version logs health debug' });
+registerPage({ id: 'settings', view: 'settings', match: v => v === 'settings' || (/^settings:[a-z-]+$/.test(v) && !_SET_OWN_PAGES.has(v)), label: 'Settings', icon: 'settings', area: 'system', order: 10, ownTabs: true, family: 'settings',
+  desc: 'Every setting: sync, relay, privacy, updates and more', keywords: 'settings preferences options configuration sync relay privacy updates' });
 registerSection('settings', {
   group: 'system',
   match: v => v === 'settings' || /^settings:[a-z-]+$/.test(v),
   title: () => 'Settings',
-  crumb: (v) => { const g = _settingsGroupFromView(v); return g && v !== 'settings' ? ['Settings', g.title] : ['Settings']; },
+  crumb: (v) => { const g = _settingsGroupFromView(v); return g && v !== 'settings' ? [{ label: 'Settings', view: 'settings' }, g.title] : ['Settings']; },
   mount(container, view) {
     const sub = document.getElementById('view-subtitle'); if (sub) sub.textContent = '';
     const cur = _settingsGroupFromView(view || state.view);

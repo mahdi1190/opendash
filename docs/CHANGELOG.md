@@ -10,6 +10,53 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.18.0] - 2026-10-24
+
+A new home for the people and the fun parts of OpenDash: **Life**. Your friends, a garden you can grow and share, a pet to look after, a much bigger wardrobe, and a calmer Tasks sidebar. Nothing you already have is taken away, and your old garden carries over.
+
+### Life, and a way to find every page
+
+- **A new area called Life** holds Friends, Garden, Pets, Achievements, Memories and Places side by side, with a tab strip to move between them. Friends, Achievements, Memories and Places moved here, and everything still works the way it did.
+- **All pages** is one searchable grid of every page in the app. Press **G** then **G** to open it, or pick it from the sidebar. New pages get a small dot until you have looked at them.
+- **A calmer Tasks sidebar.** Four views up front and the rest under *More views*, and sections with nothing in them stay out of the way.
+- **Home** cards open their pages when you click the title, and there are new Life cards for friends who are around and for quests and streaks.
+- **A Friends button in the corner**, next to you, so your friends are one click away. The corner shows your name and opens your own hub, with a quick way into Life.
+- Shortcuts: **G** then **L** opens Life and **G** then **G** opens All pages.
+
+### The garden
+
+- **Grow a real garden** with 131 plants (flowers, herbs, vegetables, fruit, succulents, trees and pond plants), 74 decorations, different areas and tiles to lay out, and tools to tend and decorate with. Plants grow while you are away, need water, and react to the weather and the light of the hour.
+- **A shop, a basket and a harvest.** Pick what is ready, sell it, make bouquets and ribbons, and spend what you earn on new seeds and decorations. *Sell everything* is one tap with one Undo.
+- **The almanac** records everything you have grown and found. **Seasons and events** change what is in bloom, and **29 visitors** (birds, butterflies, hedgehogs and more) drop in with small lives of their own.
+- **Daily tasks and quests** give you a gentle reason to look in, never a chore.
+- **Photo mode** takes a picture of your garden at its best, and the **time-lapse** replays how it has grown.
+- **Your old garden carried over.** What you grew in earlier versions is still there, in its new home.
+- **Visit your friends' gardens.** Wander through a friend's garden, leave a note in their guestbook, water a plant, and share a bed with a friend that you tend together. There is a gallery of the gardens around you, and you choose in Settings who can see yours.
+
+### Pets
+
+- **Adopt a pet from 18 species**, each drawn by hand, in different coats, markings and accessories.
+- **Look after it.** Feed treats, teach tricks, play together, dress it up and read its journal. Its mood shows on its face.
+- Your pet appears on the Home page, beside you in the garden, and on your profile, and your friends can see it too.
+
+### A much bigger wardrobe, and your profile
+
+- **Far more clothes and ways to customise your avatar**, with clearer tiles in the builder. Coats now sit over dresses, and gilets and hi-vis jackets fit the way you would expect.
+- **Saved outfits**, a *Surprise me* button and quick expressions.
+- **Banners, nameplates and titles** make your profile card yours. Pick a favourite emoji and what you are up to right now.
+- **A bigger profile card** with your banner, nameplate and title. Settings > Profile > *Your card* shows how it looks to others. Friends' visits to your card are only counted, never listed.
+
+### Achievements, redesigned
+
+- **The Achievements page has a new look**, with a wall of everything you can earn, your history and the rewards that come with each one. Unlocked rewards go to the right place by themselves.
+- Achievements are meant to be earned, so they are not easy. **500 new achievements come in 2.18.1.**
+
+### Good to know
+
+- **Garden, Pets and friends' gardens work best when your friends update too.** A friend still on an older version will not see your garden or pet, and you will not see theirs, until they update.
+- Your garden, pet and outfits stay with you and sync between your computers like the rest of your data.
+- The rest of the tidying-up of pages, Expenses and the 500 new achievements are coming in 2.18.1.
+
 ## [2.17.1] - 2026-10-24
 
 Your relay now works on every one of your computers by itself, and sync goes through it first, so your changes no longer wait for OneDrive. The Sync page is much simpler, your avatar in the top-left corner opens your own little hub, and friends and your relay are safer too.

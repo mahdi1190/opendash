@@ -1,6 +1,6 @@
 /* ============================================================
    TOGETHER: the hub (#view=together), a space's pages
-   (#view=together:<id>[:tasks|board|plan|money|quests|dates|people|feed]),
+   (#view=together:<id>[:tasks|board|plan|money|quests|dates|people|feed|garden]),
    a shared task's drawer, new spaces and invitations, and sharing one of
    your own tasks with a friend (task menu "Share with a friend…": it goes
    to their Inbox as "From <you>" to Accept or Decline, and waits in your
@@ -10,6 +10,7 @@ const TG_TABS = [
   ['tasks', 'Tasks', 'list-checks'], ['board', 'Board', 'columns-3'], ['plan', 'Plan together', 'notebook-pen'],
   ['money', 'Split costs', 'receipt'], ['quests', 'Quests', 'target'], ['dates', 'Dates', 'calendar-heart'],
   ['people', 'People', 'users'], ['feed', 'Feed', 'newspaper'],
+  ['garden', 'Shared bed', 'sprout'],   // ── garden-social ── (2.18) the co-op bed: 94-garden-social-3bed.js (shown when it is there)
 ];
 
 /* ---------- the hub ---------- */
@@ -220,6 +221,7 @@ function tgRenderSpace(root, id, tab) {
   // Tabs.
   const tabs = tgEl('div', 'seg tg-tabs'); tabs.setAttribute('role', 'tablist');
   for (const [k, label, ic] of TG_TABS) {
+    if (k === 'garden' && typeof gardenSocialSpaceBed !== 'function') continue;
     const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab');
     b.innerHTML = icon(ic) + `<span>${esc(label)}</span>`;
     const on = k === tab;
@@ -241,6 +243,7 @@ function tgRenderSpace(root, id, tab) {
   else if (tab === 'dates' && typeof tgRenderDates === 'function') tgRenderDates(body, sp, ro);
   else if (tab === 'people' && typeof tgRenderPeople === 'function') tgRenderPeople(body, sp, ro);
   else if (tab === 'feed' && typeof tgRenderFeed === 'function') tgRenderFeed(body, sp, ro);
+  else if (tab === 'garden' && typeof gardenSocialSpaceBed === 'function') gardenSocialSpaceBed(body, sp, ro);   // ── garden-social ──
   else tgRenderTasks(body, sp, ro);
   if (typeof funSpaceDecor === 'function') { try { funSpaceDecor(root, sp); } catch (e) { console.error('[together] fun theme', e); } }   // agent 'fun': the space theme (friendship level rewards)
 }

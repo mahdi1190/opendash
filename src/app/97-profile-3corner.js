@@ -1,10 +1,16 @@
 /* ============================================================
    THE CORNER IS YOU (2.17.1). The sidebar's top-left workspace button
    (#ws-btn in src/body.html) shows your avatar and display name once you
-   have a profile, with your status emoji and a small friends badge (the
-   friend requests waiting, else a green dot while a friend is around).
-   Until then it shows the workspace icon and name as before (14-shell.js
-   setBrandMark), with the same badge. The favicon is left alone.
+   have a profile, with your status emoji. Until then it shows the workspace
+   icon and name as before (14-shell.js setBrandMark). The favicon is left alone.
+
+   2.18 (agent 'you'): the corner is a little bigger (a 34 px avatar, your name
+   in your nameplate style, and a small line under it: your status, else your
+   title, else your level), and a FRIENDS BUTTON sits right next to you
+   (#ws-friends, made here): one click to the Friends tab, the friend requests
+   waiting as a count, else a green dot while a friend is around. It is a real
+   button (Tab, Enter / Space, a label with the counts, aria-current on
+   Friends) and in the icon rail it sits under your avatar.
 
    Clicking it opens the hub: your compact card (Edit profile, Set status
    with the quick statuses inline), Friends (who is around, Open Friends,
@@ -14,8 +20,8 @@
    2.17 top-bar chip; the Friends sidebar item is hidden by default
    (Customise sidebar brings it back).
 
-     profileCornerPaint()        repaint the corner (renderShell, profileSet, friends data and presence);
-                                 true when it drew your avatar (the shell then leaves the mark alone)
+     profileCornerPaint()        repaint the corner and its Friends button (renderShell, profileSet, friends
+                                 data and presence); true when it drew your avatar (the shell then leaves the mark alone)
      profileCornerHasYou()       is there a profile to show: you changed something, or said the starting avatar is fine
      profileHubOpen(anchor?, o)  the hub -> true when it opened; o.status: open on the quick statuses
                                  (profileOpenPop and the palette's "Set your status" come here). With the
@@ -53,6 +59,86 @@ function _pfcFriends() {
 }
 
 /* ---------- the corner itself ---------- */
+/**
+ * The Friends button next to you (2.18, user request 24 Oct: "on you there should be a friends button next
+ * to you"): one click to the Friends tab, with the requests waiting as a count and a green dot while a friend
+ * is around. Made here (not in body.html) so a build without the profile has no dead button. A real button:
+ * Tab reaches it after the corner, Enter / Space opens Friends, its label says the counts, and it shows
+ * aria-current while you are on Friends. In the icon rail it sits under your avatar.
+ */
+function _pfcFriendsBtn(btn) {
+  let fb = document.getElementById('ws-friends');
+  if (fb && fb.isConnected) return fb;
+  const head = btn.parentNode;
+  if (!head) return null;
+  fb = _pfcEl('button', 'sb-fr-btn'); fb.id = 'ws-friends'; fb.type = 'button';
+  fb.innerHTML = icon('users');
+  fb.setAttribute('aria-label', 'Friends');
+  fb.setAttribute('data-tip', 'Friends');
+  fb.onclick = (e) => {
+    e.stopPropagation();
+    if (typeof _shellCloseDrawer === 'function') _shellCloseDrawer();
+    if (String((typeof state !== 'undefined' && state && state.view) || '') === 'friends') {   // already there: back to the top, nothing else
+      const m = document.getElementById('main');
+      if (m && m.scrollTop > 0) m.scrollTo({ top: 0, behavior: _pfMotionOk() ? 'smooth' : 'auto' });
+      return;
+    }
+    if (typeof setView === 'function') setView('friends');
+  };
+  head.insertBefore(fb, btn.nextSibling);
+  return fb;
+}
+function _pfcFriendsBtnPaint(btn, fr, view) {
+  const fb = _pfcFriendsBtn(btn);
+  if (!fb) return;
+  const requests = fr ? fr.requests : 0, around = fr ? fr.around.length : 0, here = /^friends(:|$)/.test(view);
+  const key = [requests, around, here, fr ? fr.friends : -1].join('|');
+  if (fb.dataset.k === key) return;
+  fb.dataset.k = key;
+  if (here) fb.setAttribute('aria-current', 'page'); else fb.removeAttribute('aria-current');
+  let n = fb.querySelector(':scope > .sb-fr-n'), dot = fb.querySelector(':scope > .sb-fr-dot');
+  if (requests) {
+    if (!n) { n = _pfcEl('span', 'sb-fr-n'); n.setAttribute('aria-hidden', 'true'); fb.appendChild(n); }
+    n.textContent = requests > 9 ? '9+' : String(requests);
+  } else if (n) n.remove();
+  if (around && !requests) { if (!dot) { dot = _pfcEl('span', 'sb-fr-dot'); dot.setAttribute('aria-hidden', 'true'); fb.appendChild(dot); } }
+  else if (dot) dot.remove();
+  const bits = [];
+  if (requests) bits.push(_pfcPlural(requests, 'friend request') + ' waiting');
+  if (around) bits.push(_pfcPlural(around, 'friend') + ' around now');
+  fb.setAttribute('aria-label', 'Friends' + (bits.length ? ': ' + bits.join(', ') : ''));
+  fb.setAttribute('data-tip', bits.length ? 'Friends · ' + bits.join(' · ') : 'Friends');
+}
+/* integrate 2.18: your pet (agent 'pets', 97-pets-1core.js) curls up at the avatar's foot in the corner, asleep at night like
+   everywhere else. Still (no idle motion in the sidebar), decorative (the corner button already says who you are), gone
+   with the Fun level Off or the pet put away. */
+function _pfcPetKey() {
+  try {
+    if (typeof petHas !== 'function' || !petHas() || (typeof _ptFun === 'function' && _ptFun() === 'off')) return '';
+    const g = petGet(), m = typeof petMood === 'function' ? petMood() || {} : {};
+    return JSON.stringify([g.look, g.name, m.key || '', m.pose || '']);
+  } catch (e) { return ''; }
+}
+function _pfcPetPaint(me, you) {
+  let pe = me.querySelector(':scope > .sb-ws-pet');
+  const key = you ? _pfcPetKey() : '';
+  if (!key) { if (pe) pe.remove(); return; }
+  const el = typeof petEl === 'function' ? petEl('me', 22, { motion: false }) : null;
+  if (!el) { if (pe) pe.remove(); return; }
+  if (!pe) { pe = _pfcEl('span', 'sb-ws-pet'); pe.setAttribute('aria-hidden', 'true'); me.appendChild(pe); }
+  el.removeAttribute('role'); el.removeAttribute('aria-label');
+  pe.replaceChildren(el);
+  pe.setAttribute('data-tip', typeof petName === 'function' ? petName() : 'Your pet');
+}
+if (typeof document !== 'undefined') document.addEventListener('opendash:pet', () => { try { _pf.chipKey = ''; _pfChipPaint(); } catch (e) { /* the next paint */ } });
+/** The small line under your name in the corner: your status, else your title, else your level (with the game on), else nothing. */
+function _pfcSubLine(p, st) {
+  if (st) return [st.emoji, st.text].filter(Boolean).join(' ');
+  const t = typeof profileTitleOf === 'function' ? profileTitleOf(p) : null;
+  if (t) return t.label;
+  const live = typeof gameOn !== 'function' || gameOn() ? profileLive() : {};
+  return live.level ? `Level ${live.level}${typeof gameTitleOf === 'function' ? ' · ' + gameTitleOf(live.level) : ''}` : '';
+}
 function profileCornerPaint() {
   if (typeof document === 'undefined') return false;
   const btn = document.getElementById('ws-btn'), me = document.getElementById('ws-me'), mark = document.getElementById('brand-mark');
@@ -60,14 +146,16 @@ function profileCornerPaint() {
   const you = profileCornerHasYou();
   const fr = _pfcFriends(), requests = fr ? fr.requests : 0, around = fr ? fr.around.length : 0;
   const view = String((typeof state !== 'undefined' && state && state.view) || '');
-  btn.classList.toggle('is-here', /^friends(:|$)/.test(view) || view === 'settings:me');   // the Friends item is hidden: the corner shows where you are
+  btn.classList.toggle('is-here', view === 'settings:me');   // Friends has its own button beside you (2.18)
+  try { _pfcFriendsBtnPaint(btn, fr, view); } catch (e) { console.error('[corner] friends button', e); }
   let p = null, st = null, mood = null, key;
   if (you) {
     p = profileGet(); st = profileStatusNow(p); mood = profileMood();
     const live = profileLive(), h = live.hour;
     const sky = h >= 21 || h < 5 ? 'night' : h >= 17 || h < 7 ? 'golden' : 'day';   // the 'sky' background's light (97-profile-0kit.js)
-    key = JSON.stringify([1, p.avatar, p.theme, st, mood, live.level, Math.round((live.levelPct || 0) * 50), live.streak, live.season, sky, profileDisplayName(p), requests, around]);
-  } else key = JSON.stringify([0, typeof userName === 'function' ? userName() : '', requests, around]);
+    key = JSON.stringify([2, p.avatar, p.theme, p.look, st, mood, live.level, Math.round((live.levelPct || 0) * 50), live.streak, live.season, sky, profileDisplayName(p),
+      typeof gameOn === 'function' ? gameOn() : 1, _pfcPetKey()]);
+  } else key = JSON.stringify([0, typeof userName === 'function' ? userName() : '']);
   if (key === _pf.chipKey && me.dataset.painted) return you;
   _pf.chipKey = key; me.dataset.painted = '1';
 
@@ -77,29 +165,34 @@ function profileCornerPaint() {
   let av = me.querySelector(':scope > .sb-ws-av');
   if (you) {
     if (!av) { av = _pfcEl('span', 'sb-ws-av'); me.insertBefore(av, mark.nextSibling); }
-    av.replaceChildren(profileAvatarEl(null, 28, { mood }));
+    av.replaceChildren(profileAvatarEl(null, 34, { mood }));
   } else if (av) av.remove();
   me.classList.toggle('has-avatar', you);
+  btn.classList.toggle('has-you', you);
   // your status emoji (your own text, still set as text)
   let se = me.querySelector(':scope > .sb-ws-st');
   if (st && st.emoji) { if (!se) { se = _pfcEl('span', 'sb-ws-st'); me.appendChild(se); } se.textContent = st.emoji; }
   else if (se) se.remove();
-  // friends: a count while requests wait, else a green dot while someone is around (kept, so it pops in once)
-  let fb = me.querySelector(':scope > .sb-ws-fr');
-  if (requests || around) {
-    if (!fb) { fb = _pfcEl('span', 'sb-ws-fr'); me.appendChild(fb); }
-    fb.classList.toggle('is-count', !!requests);
-    fb.textContent = requests ? (requests > 9 ? '9+' : String(requests)) : '';
-  } else if (fb) fb.remove();
-  // the name and what the button says
+  const oldFr = me.querySelector(':scope > .sb-ws-fr'); if (oldFr) oldFr.remove();   // the 2.17.1 badge on the avatar is the Friends button's now
+  try { _pfcPetPaint(me, you); } catch (e) { console.error('[corner] pet', e); }
+  // the name, clearly, with a small line under it (your status, else your title or level)
+  const bn = document.getElementById('brand-name');
+  let txt = btn.querySelector(':scope > .sb-ws-txt');
+  if (bn && !txt && bn.parentNode === btn) { txt = _pfcEl('span', 'sb-ws-txt'); btn.insertBefore(txt, bn); txt.appendChild(bn); }
   const name = you ? profileDisplayName(p) : ((typeof userName === 'function' && userName()) || 'OpenDash');
-  if (you) { const bn = document.getElementById('brand-name'); if (bn && bn.textContent !== name) bn.textContent = name; }
-  const bits = [];
-  if (st) bits.push([st.emoji, st.text].filter(Boolean).join(' '));
-  if (requests) bits.push(_pfcPlural(requests, 'friend request') + ' waiting');
-  if (around) bits.push(_pfcPlural(around, 'friend') + ' around');
-  btn.setAttribute('aria-label', `${name}: your profile, friends and workspace menu${bits.length ? '. ' + bits.join('. ') : ''}`);
-  btn.title = [name].concat(bits).join(' · ');
+  if (you && bn && bn.textContent !== name) bn.textContent = name;
+  if (txt) {
+    let sub = txt.querySelector(':scope > .sb-ws-sub');
+    const line = you ? _pfcSubLine(p, st) : '';
+    if (line) { if (!sub) { sub = _pfcEl('span', 'sb-ws-sub'); txt.appendChild(sub); } sub.textContent = line; }
+    else if (sub) sub.remove();
+  }
+  if (bn) {
+    const np = you && typeof profileNameplateApply === 'function' ? profileNameplateApply : null;
+    if (np) np(bn, p, { small: true }); else { bn.removeAttribute('style'); bn.className = 'sb-ws-name'; }
+  }
+  btn.setAttribute('aria-label', `${name}: your profile, quick status and workspace menu${st ? '. ' + [st.emoji, st.text].filter(Boolean).join(' ') : ''}`);
+  btn.title = [name].concat(st ? [[st.emoji, st.text].filter(Boolean).join(' ')] : []).join(' · ');
   return you;
 }
 
@@ -146,7 +239,7 @@ function profileHubOpen(anchor, o) {
   if (a._popClose) { a._popClose(); if (!o.status) return true; }   // a second click closes it; "Set your status" opens it again on the statuses
   _pfc.statusOpen = !!o.status;
   openPopover(a, (el, close) => _pfcBuild(el, close), {
-    className: 'pfc-pop', width: 304, align: a === ws ? 'start' : 'end', role: 'dialog', focus: false,
+    className: 'pfc-pop', width: 336, align: a === ws ? 'start' : 'end', role: 'dialog', focus: false,
     // Focus goes back to the corner when the hub closes with it inside (an item, a status); a dialog an item opens returns there too.
     onClose: () => { const f = document.activeElement; if ((!f || f === document.body) && _pfcVisible(a)) { try { a.focus({ preventScroll: true }); } catch (e) { /* gone */ } } },
   });
@@ -164,6 +257,8 @@ function _pfcBuild(el, close) {
   el.appendChild(_pfcCard(close, toggle));
   el.appendChild(status);
   _pfcStatusPaint(status, close);
+  // Life one click away (2.18, NAVIGATION_PLAN.md 2.5): Open Life and an icon per Life tab (15-nav-life.js).
+  if (typeof lifeHubEl === 'function') { try { const life = lifeHubEl(close); if (life) el.appendChild(life); } catch (e) { console.error('[corner] life', e); } }
 
   el.appendChild(_pfcEl('div', 'pop-sep'));
   const friends = _pfcEl('div', 'pfc-friends');
@@ -190,23 +285,8 @@ function _pfcBuild(el, close) {
 }
 function _pfcFocus(b) { if (b) setTimeout(() => { try { b.focus({ preventScroll: true }); } catch (e) { /* gone */ } }, 0); }
 
-/** Your compact card: avatar, name, status, level and streak (with the game on), Edit profile and Set status. */
+/** Your card, bigger since 2.18 (the same card friends see, compact: banner, avatar, name in your nameplate, title, status, level), with Edit profile and Set status. */
 function _pfcCard(close, toggle) {
-  const p = profileGet(), st = profileStatusNow(p);
-  const card = _pfcEl('div', 'pfc-me');
-  card.style.setProperty('--pf-c', _pfThemeHex(p.theme));
-  card.appendChild(profileAvatarEl(null, 44, { motion: true }));
-  const txt = _pfcEl('div', 'pfc-me-txt');
-  txt.appendChild(_pfcEl('div', 'pfc-me-name', profileDisplayName(p)));
-  txt.appendChild(_pfcEl('div', 'pfc-me-st' + (st ? '' : ' is-empty'), st ? [st.emoji, st.text].filter(Boolean).join(' ') : 'No status'));
-  const live = typeof gameOn !== 'function' || gameOn() ? profileLive() : {};
-  if (live.level) {
-    const g = _pfcEl('div', 'pfc-me-lv');
-    g.innerHTML = icon('trophy', 'i-xs');
-    g.appendChild(_pfcEl('span', null, `Level ${live.level}${typeof gameTitleOf === 'function' ? ' ' + gameTitleOf(live.level) : ''}${live.streak ? ` · ${live.streak}-day streak` : ''}`));
-    txt.appendChild(g);
-  }
-  card.appendChild(txt);
   const acts = _pfcEl('div', 'pfc-me-acts pfc-row');
   const btn = (label, ic, run) => {
     const b = _pfcEl('button', 'btn btn-secondary btn-sm'); b.type = 'button';
@@ -218,8 +298,10 @@ function _pfcCard(close, toggle) {
   const set = btn('Set status', 'circle-user', toggle);
   set.setAttribute('aria-expanded', String(_pfc.statusOpen)); set.setAttribute('aria-controls', 'pfc-status');
   acts.append(btn('Edit profile', 'user-round-pen', () => { close(); setView('settings:me'); }), set);
-  card.appendChild(acts);
-  return card;
+  const wrap = _pfcEl('div', 'pfc-me');
+  wrap.appendChild(profileCardEl(null, { compact: true, visits: true }));
+  wrap.appendChild(acts);
+  return wrap;
 }
 
 /** The quick statuses (the 2.17 chip's popover, inline): each clears tonight, with Undo. */
@@ -337,4 +419,19 @@ function _pfcKeys(e, root) {
   const n = rows.length, next = rows[(rows.indexOf(row) + (k === 'ArrowDown' ? 1 : -1) + n) % n];
   if (next.tagName === 'BUTTON') return go(next);
   return go(next.querySelector('button[aria-pressed="true"]:not(:disabled)') || all.find(b => rowOf(b) === next));
+}
+
+/* ---------- the sidebar hidden (Ctrl+\): you and Friends move to the top of the More menu (2.18) ---------- */
+function _pfcSidebarHidden() {
+  try {
+    if (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) return false;   // the drawer: the corner shows when it opens
+    return !!(typeof state !== 'undefined' && state && state.sidebarCollapsed);
+  } catch (e) { return false; }
+}
+if (typeof registerMoreItem === 'function') {
+  registerMoreItem({ id: 'you-profile', label: 'You: card, status and friends', icon: 'circle-user', order: -20, where: ['more'], hidden: () => !_pfcSidebarHidden(),
+    run: () => { const m = document.getElementById('more-btn'); setTimeout(() => profileHubOpen(m), 0); } });
+  registerMoreItem({ id: 'you-friends', label: 'Friends', icon: 'users', order: -10, where: ['more'], hidden: () => !_pfcSidebarHidden(),
+    hint: () => { const fr = _pfcFriends(); return fr && fr.requests ? _pfcPlural(fr.requests, 'request') : fr && fr.around.length ? fr.around.length + ' online' : ''; },
+    run: () => setView('friends') });
 }

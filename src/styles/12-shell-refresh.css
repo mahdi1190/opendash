@@ -67,3 +67,37 @@
 @keyframes wn-flash { 0% { outline-color: transparent; } 20%, 70% { outline-color: var(--accent); } 100% { outline-color: color-mix(in oklab, var(--accent) 0%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .wn-flash { animation: none; } }
 html[data-motion="reduced"] .wn-flash { animation: none; }
+
+/* ---------- 2.18: the area's tabs (level 1) and a page's sections (level 2), in the page header ----------
+   (14-shell.js areaTabsEl; UX_BLUEPRINT.md 3: never more than two levels). Calm: no motion beyond colour. */
+.view-header > .area-strips { flex: 1 0 100%; order: 10; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.area-tabs { display: flex; gap: 2px; padding: 3px; background: var(--bg-emphasis); border-radius: var(--radius-md); overflow-x: auto; scrollbar-width: none; max-width: 100%; align-self: flex-start; }
+[data-theme="dark"] .area-tabs { background: var(--bg-muted); }
+.area-tabs::-webkit-scrollbar { display: none; }
+.area-tab { position: relative; display: inline-flex; align-items: center; gap: var(--space-1-5); height: 28px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-sm); background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); white-space: nowrap; cursor: pointer; transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out); }
+.area-tab .i { color: var(--fg-subtle); }
+.area-tab:hover { color: var(--fg); }
+.area-tab:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.area-tab.on { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-sm); cursor: default; }
+[data-theme="dark"] .area-tab.on { background: var(--bg-emphasis); }
+.area-tab.on .i { color: var(--accent); }
+.area-tab.is-off:not(.on) { color: var(--fg-subtle); }
+.area-tab-n { font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
+.area-tab.on .area-tab-n { color: var(--accent-ink); }
+.area-tab .nav-new { margin-left: 0; }
+.area-secs { display: flex; gap: var(--space-1); flex-wrap: wrap; }
+.area-sec { display: inline-flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border: 1px solid var(--border-subtle); border-radius: 999px; background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out); }
+.area-sec:hover { color: var(--fg); border-color: var(--border); }
+.area-sec:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.area-sec.on { background: var(--accent-soft); border-color: transparent; color: var(--accent-ink); cursor: default; }
+@media (max-width: 900px) { .area-tab > span:not(.area-tab-n):not(.nav-new) { display: none; } .area-tab.on > span:not(.area-tab-n):not(.nav-new) { display: inline; } }
+
+/* '‹ Back to …': a page reached from a link inside another (NAVIGATION_PLAN.md 2.10) */
+.view-header > .view-back-row { flex: 1 0 100%; order: -1; display: flex; margin: 0 0 calc(-1 * var(--space-2)) calc(-1 * var(--space-2)); }
+.view-back-row > .btn { color: var(--fg-muted); }
+.view-back-row > .btn:hover { color: var(--fg); }
+
+/* A page that is switched off: one calm row with Turn on (15-nav-life.js; UX_BLUEPRINT.md 2: never a grid of locks) */
+.view-header > .view-off-row { flex: 1 0 100%; order: 11; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border-subtle); color: var(--fg-muted); font-size: var(--text-sm); }
+.view-off-row > .i { color: var(--fg-subtle); flex: none; }
+.view-off-row > span { flex: 1; min-width: 0; }

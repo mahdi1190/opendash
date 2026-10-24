@@ -18,6 +18,7 @@
                                          when they share no avatar. who: a friend view (window.Friends), 'me' or
                                          null (you). size: px height (24..400). o: {walk: true} a gentle walk cycle
                                          (never under reduced motion). The Friends tab's hangout shows these.
+                                         2.18: their pet sits (or walks) beside them (97-pets-3scene.js); o.pet false: alone.
      window.friendsSceneFigureEl         the same
      friendsScenesOn() / friendsScenesSet(on)   friends may walk through your scenes (this computer; on by default)
      fscFigureObj(avatar)                the scene object id of an outfit ('person.fv-<hash>', defined once per
@@ -29,9 +30,11 @@
    ============================================================ */
 const _fsc = { objs: 0, ids: new Map(), store: null, n: 0 };
 const _FSC_STORE_KEY = 'opendash.friendsScenes.v1';
-/** The avatar parts that dress the full figure (lib/friends/postcards.mjs POSTCARD_OUTFIT_PARTS: keep in step). */
-const FSC_OUTFIT_PARTS = Object.freeze(['skin', 'hair', 'hairCol', 'top', 'topCol', 'top2Col', 'bottom', 'bottomCol', 'shoes', 'shoesCol',
-  'build', 'hat', 'hatCol', 'scarf', 'scarfCol', 'scarf2Col', 'bag', 'bagCol']);
+/** The avatar parts that dress the full figure (lib/friends/postcards.mjs POSTCARD_OUTFIT_PARTS: keep in step).
+ *  2.18 (agent 'wardrobe'): the kit's own list, PF_FIGURE_PARTS (97-profile-0kit-6looks.js): outerwear, dresses,
+ *  patterns, jewellery, glasses, ties, watches and more ride along. */
+const FSC_OUTFIT_PARTS = typeof PF_FIGURE_PARTS !== 'undefined' && Array.isArray(PF_FIGURE_PARTS) ? PF_FIGURE_PARTS
+  : Object.freeze(['skin', 'hair', 'hairCol', 'top', 'topCol', 'top2Col', 'bottom', 'bottomCol', 'shoes', 'shoesCol', 'build', 'hat', 'hatCol', 'scarf', 'scarfCol', 'scarf2Col', 'bag', 'bagCol']);
 const FSC_AROUND = Object.freeze(['online', 'focusing', 'travelling']);
 const _FSC_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -91,11 +94,13 @@ function _fscName(who) {
   const n = typeof friendName === 'function' ? friendName(who) : (who && (who.nick || who.name)) || 'Your friend';
   return typeof profileText === 'function' ? profileText(n, 40) || 'Your friend' : String(n).slice(0, 40);
 }
-/** The figure's part ids of an avatar: what the postcard's outfit carries. */
+/** The figure's part ids of an avatar: what the postcard's outfit carries. 2.18: a part at its default is left out
+ *  (a missing part IS the default on every side), so the postcard stays small however many parts the kit has. */
 function fscOutfitOf(avatar) {
   const a = typeof profileAvatarNormalize === 'function' ? profileAvatarNormalize(avatar) : (avatar || {});
+  const dflt = typeof profileAvatarDefault === 'function' ? profileAvatarDefault() : {};
   const o = {};
-  for (const k of FSC_OUTFIT_PARTS) if (typeof a[k] === 'string' && _FSC_ID_RE.test(a[k])) o[k] = a[k];
+  for (const k of FSC_OUTFIT_PARTS) if (typeof a[k] === 'string' && _FSC_ID_RE.test(a[k]) && (a[k] !== dflt[k] || k === 'skin' || k === 'hair')) o[k] = a[k];
   return o;
 }
 /** Confirmed friends who are around now and share an avatar (presence is the friends engine's: Friends.presence). */
@@ -122,6 +127,8 @@ function friendsSceneFigureEl(who, size, o) {
     el.setAttribute('role', 'img');
     el.setAttribute('aria-label', _fscIsMe(who) ? 'You, as you look in the scenes' : _fscName(who) + ', as they look in the scenes');
     el.innerHTML = svg;   // built from the kit's allow-listed ids, numbers and path data only (97-profile-0kit.js profileFigureSvg)
+    // ── pets ── (2.18, agent 'pets'): their pet beside them (97-pets-3scene.js; o.pet === false: alone)
+    if (o.pet !== false && typeof petFigureCompanion === 'function') { try { petFigureCompanion(el, who, h, o); } catch (e) { /* the pet is a nicety */ } }
     return el;
   } catch (e) { console.error('[friends scenes] figure', e); return null; }
 }
@@ -148,12 +155,15 @@ function fscFigureObj(avatar) {
     const extra = {}, slots = PP.palette().base;
     if (typeof PF_CLOTH === 'object') for (const [k, v] of Object.entries(PF_CLOTH)) if (!slots[k] && v && /^#[0-9a-f]{6}$/i.test(v.hex)) extra[k] = PP.tone4(v.hex);
     if (fig.hairHex && /^#[0-9a-f]{6}$/i.test(fig.hairHex)) extra.hr0 = PP.tone4(fig.hairHex);
+    // 2.18 (agent 'wardrobe'): the kit's own slots (pfTop, pfBot, pfShoe, pfMetal..., sk0 for a skin tone the scene palette lacks)
+    if (fig.slots && typeof fig.slots === 'object') for (const [k, v] of Object.entries(fig.slots)) if (/^[A-Za-z0-9_-]{1,16}$/.test(k) && /^#[0-9a-f]{6}$/i.test(v)) extra[k] = PP.tone4(v);
     const opts = Object.assign({}, fig.o, { arms: 'walk', legs: 'walk' });
+    const dressed = typeof profileAvatarNormalize === 'function' ? profileAvatarNormalize(out) : null;
     PP.define({
       id, category: 'person', size: [29, 64], variants: 2, seasonal: false, flippable: true, parts: ['legB', 'body', 'legA', 'armA'],
       palette: PP.palette(extra), night: PP.NIGHT, detailPx: true, real: { h: 1.72, l: 0.5, w: 0.36 }, weight: 0,
       tags: ['people', 'friend-visit'], credit: 'a friend in their own outfit (Friends, 2.17): the shared people builder',
-      build(v) { return _fscFigureParts(PP, opts, v === 1); },
+      build(v) { return _fscFigureParts(PP, opts, v === 1, dressed); },
     });
     _fsc.objs++;
     _fsc.ids.set(key, id);
@@ -161,11 +171,13 @@ function fscFigureObj(avatar) {
   } catch (e) { console.error('[friends scenes] figure object', e); return null; }
 }
 /** The parts of the figure: walking (the near arm free to swing) or waving (the near arm raised, the far one at rest). */
-function _fscFigureParts(PP, o, wave) {
+function _fscFigureParts(PP, o, wave, avatar) {
   // the far arm keeps the walkers' pose in both (no jump when they stop to wave); the near arm hangs free, or is raised
   const base = PP.figure(o), shN = base.shoulders.near;
   const arms = { far: 'forward', near: { hand: wave ? [shN[0] + 5.2, shN[1] - 14.2] : [shN[0] + 1.6, shN[1] + 18.4] } };
-  const f = PP.figure(Object.assign({}, o, { arms }));
+  let f = PP.figure(Object.assign({}, o, { arms }));
+  // 2.18 (agent 'wardrobe'): what the people builder has no option for (outerwear over the top, jewellery, hats, shoes...)
+  if (avatar && typeof profileFigureDress === 'function') { try { f = profileFigureDress(avatar, f, { PP }); } catch (e) { console.error('[friends scenes] dress', e); } }
   const body = f.body.slice(), parts = { legB: f.legB, body, legA: f.legA };
   parts.armA = body.splice(f.at.nearArm[0], f.at.nearArm[1] - f.at.nearArm[0]);
   const sh = f.shoulders.near.slice();

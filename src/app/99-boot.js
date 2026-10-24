@@ -102,6 +102,7 @@ bootStatePersistence().then(() => {
   if (typeof clockBoot === 'function') clockBoot();           // the time-zone sensor, banner and server sync (87-clock-ui.js)
   // AI chats: a reply this tab was writing before a reload is marked interrupted on every computer; the Ask button's unread dot (72-assistant.js).
   if (typeof _asstOnAdopt === 'function') { try { _asstOnAdopt(); } catch (e) { /* the panel does it when opened */ } }
+  if (typeof gameFactsBoot === 'function') setTimeout(gameFactsBoot, 3000);   // ── achievements ── today's 'open' tick and the periodic checks (92-game-4facts.js)
   if (typeof memoriesBoot === 'function') setTimeout(memoriesBoot, 2500);   // ── memories ── tonight's journal, postcards, letters that arrived (93-memories-core.js)
 });
 

@@ -234,7 +234,7 @@ function tgAfterLoad(prev) { if (typeof tgNotice === 'function') tgNotice(prev);
 
 /* ---------- edits (optimistic, with Undo) ---------- */
 function _tgClone(x) { return x === undefined ? undefined : JSON.parse(JSON.stringify(x)); }
-const _TG_LISTS = new Set(['items', 'columns', 'countdowns', 'expenses', 'quests', 'challenges', 'feed', 'wishlist', 'goals', 'plan']);
+const _TG_LISTS = new Set(['items', 'columns', 'countdowns', 'expenses', 'quests', 'challenges', 'feed', 'wishlist', 'goals', 'plan', 'bed']);   // 'bed': ── garden-social ── the co-op bed (2.18)
 const _TG_SUBLISTS = new Set(['subtasks', 'comments']);
 /** The same as lib/friends/spaces.mjs applyPatch: ops on a copy of a space value. */
 function tgApplyPatch(value, ops) {
@@ -498,12 +498,20 @@ function tgIsMine(it) {
 function tgOpenCount(sp) { return (sp.value.items || []).filter(it => it.status !== 'done').length; }
 
 /* ---------- the sidebar ---------- */
+registerPage({
+  id: 'together', view: 'together', match: v => v === 'together' || String(v).startsWith('together:'),
+  label: 'Together', icon: 'handshake', area: 'tasks', order: 100, since: '2.17', discover: true,
+  desc: 'Shared lists, boards and trips with friends',
+  keywords: 'together shared space spaces list board trip house party friends plan split costs',
+});
 registerSidebarBlock('tasks', {
   id: 'together', order: 17, label: 'Together',
   render(el) {
     if (!tgOn()) return;
     const sps = tgSpaces();
     const inv = tgInvites().length + tgRequests().length;
+    // Nothing shared yet: no heading (2.18: empty sections hide; Friends > Shared spaces and All pages reach it).
+    if (!sps.length && !inv && !/^together(:|$)/.test(String(state.view || ''))) return false;
     el.appendChild(sbSection({ title: 'Together', collapsible: 'together', actions: [{ icon: 'plus', label: 'New shared space', run: () => tgNewSpaceDialog() }] }));
     if (sbIsCollapsed('together')) return;
     el.appendChild(sbNavItem({ label: 'Friends & spaces', icon: 'users', view: 'together', badge: inv ? String(inv) : '', title: inv ? `${inv} waiting for you` : 'Shared lists, boards, parties and trips' }));
@@ -515,6 +523,54 @@ registerSidebarBlock('tasks', {
     }
   },
 });
+/* Friends > Shared spaces (2.18, NAVIGATION_PLAN.md 2.2): Together lives in Tasks (its spaces are task lists) and is
+   reachable from the Friends hangout too: your spaces, each opening together:<id>, and one way to make one. */
+if (typeof window !== 'undefined' && window.Friends && typeof window.Friends.registerPanel === 'function') {
+  window.Friends.registerPanel({
+    id: 'shared-spaces', order: 8, where: 'hangout', title: 'Shared spaces', icon: 'handshake',
+    render(el, d) {
+      if (!tgOn()) return false;
+      if (!tgHas()) { if (!_tg.loading && typeof tgLoad === 'function') tgLoad(); return false; }
+      const sps = tgSpaces().filter(sp => !tgSpacePref(sp.id, 'hidden'));
+      const inv = tgInvites().length;
+      const friends = d && Array.isArray(d.friends) ? d.friends.filter(f => f && f.status === 'friend').length : 0;
+      if (!sps.length && !inv && !friends) return false;
+      const list = document.createElement('div'); list.className = 'tg-fr-spaces';
+      for (const sp of sps.slice(0, 6)) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'tg-fr-space';
+        b.innerHTML = icon(_tgIconOf(sp), 'i-sm');
+        const name = document.createElement('span'); name.className = 'tg-fr-space-n'; name.textContent = tgSpaceName(sp);
+        const n = tgOpenCount(sp);
+        const meta = document.createElement('span'); meta.className = 'muted num'; meta.textContent = n ? n + ' open' : TG_KIND_LABEL[tgKindOf(sp)];
+        b.append(name, meta);
+        b.onclick = () => setView('together:' + sp.id);
+        list.appendChild(b);
+      }
+      if (inv) {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'tg-fr-space is-invite';
+        b.innerHTML = icon('mail', 'i-sm');
+        const t = document.createElement('span'); t.className = 'tg-fr-space-n'; t.textContent = inv === 1 ? 'An invitation is waiting' : inv + ' invitations are waiting';
+        b.appendChild(t);
+        b.onclick = () => setView('together');
+        list.appendChild(b);
+      }
+      if (!sps.length && !inv) { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'A list, a board or a trip that you and your friends edit together. It lives in Tasks.'; el.appendChild(p); }
+      el.appendChild(list);
+      const acts = document.createElement('div'); acts.className = 'tg-fr-acts';
+      const mk = document.createElement('button'); mk.type = 'button'; mk.className = 'btn btn-secondary btn-sm';
+      mk.innerHTML = icon('plus', 'i-sm') + '<span>New shared space</span>';
+      mk.onclick = () => { if (typeof tgNewSpaceDialog === 'function') tgNewSpaceDialog(); else setView('together'); };
+      acts.appendChild(mk);
+      if (sps.length) {
+        const all = document.createElement('button'); all.type = 'button'; all.className = 'btn btn-ghost btn-sm';
+        all.innerHTML = '<span>All shared spaces</span>' + icon('chevron-right', 'i-sm');
+        all.onclick = () => setView('together');
+        acts.appendChild(all);
+      }
+      el.appendChild(acts);
+    },
+  });
+}
 function _tgIconOf(sp) {
   const ic = sp && sp.value && sp.value.meta && sp.value.meta.icon;
   return ic && /^[a-z0-9-]{1,32}$/.test(ic) ? ic : TG_ICON_DEFAULT(tgKindOf(sp));
@@ -525,7 +581,16 @@ function TG_ICON_DEFAULT(kind) { return TG_KIND_ICON[kind] || 'list-checks'; }
 registerSection('together', {
   match: v => v === 'together' || v.startsWith('together:'),
   title: v => { if (v === 'together') return 'Together'; const sp = tgSpace(String(v).split(':')[1]); return sp ? tgSpaceName(sp) : 'Shared space'; },
-  crumb: v => { const parts = String(v).split(':'); return parts.length > 2 ? [parts[2]] : []; },
+  // Tasks > Together > (space) > Plan together: every part but the last opens (2.18, NAVIGATION_PLAN.md 2.10).
+  crumb: v => {
+    const parts = String(v).split(':');
+    if (parts.length < 2) return [];
+    const sp = tgSpace(parts[1]), name = sp ? tgSpaceName(sp) : 'Shared space';
+    if (parts.length < 3) return [{ label: 'Together', view: 'together' }, name];
+    let tab = parts[2];
+    try { const t = TG_TABS.find(x => x[0] === parts[2]); if (t) tab = t[1]; } catch (e) { /* the raw name */ }
+    return [{ label: 'Together', view: 'together' }, { label: name, view: 'together:' + parts[1] }, tab];
+  },
   group: 'tasks', layout: 'wide', hashable: true,
   keepRoot(main) { const r = main.querySelector('.tg-root'); return !!(_tg.keep && r && r.dataset.view === state.view); },
   mount(container, view) {

@@ -80,6 +80,10 @@ function calTitleParts() {
   return ['Agenda', 'from ' + f.toLocaleDateString(L, { day: 'numeric', month: 'short' })];
 }
 
+registerPage({ id: 'calendar', view: 'calendar', match: v => v === 'calendar' || String(v).startsWith('calendar:'), label: 'Calendar', icon: 'calendar-days', area: 'calendar', order: 10, ownTabs: true,
+  desc: 'Your events and due dates: month, week, day, agenda', keywords: 'calendar events meetings schedule month week day agenda',
+  sections: _CAL_MODES.map(([k, l]) => ['calendar:' + k, l]),
+  available: () => !(APP_CONFIG.features && APP_CONFIG.features.calendar === false) });
 registerSection('calendar', {
   group: 'calendar',
   match: v => v === 'calendar' || v.startsWith('calendar:'),

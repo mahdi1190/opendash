@@ -28,7 +28,8 @@ let _paletteClose = null;
 const PALETTE_GROUP_ORDER = ['Assistant', 'This task', 'Tasks', 'Go to', 'People', 'Tags', 'Files', 'Commands'];
 const _PAL_SCOPES = [['', 'Everything', 'search'], ['>', 'Commands', 'zap'], ['#', 'Tags', 'hash'], ['@', 'People', 'at-sign'], ['?', 'Ask', 'sparkles']];
 // The "G then a letter" jumps (90-wiring.js), shown as hints.
-const _PAL_G = { home: 'G H', today: 'G T', week: 'G U', all: 'G A', calendar: 'G C', finance: 'G F', people: 'G P', settings: 'G S', bin: 'G B', completed: 'G L' };
+// 2.18: G then L is Life, the Logbook moved to G then O, G then G opens All pages (NAVIGATION_PLAN.md 2.1).
+const _PAL_G = { home: 'G H', today: 'G T', week: 'G U', all: 'G A', calendar: 'G C', finance: 'G F', life: 'G L', people: 'G P', settings: 'G S', bin: 'G B', completed: 'G O' };
 
 // What you opened from here last (this browser): shown first when the box is empty.
 const _PAL_RECENT_KEY = 'dashboard-palette-recent';
@@ -136,11 +137,16 @@ function _palSources(mode) {
       const v = typeof t.view === 'function' ? t.view() : t.view;
       add({ group: 'Go to', icon: t.icon, label: t.label, keywords: 'section', kbd: _PAL_G[t.id === 'tasks' ? 'today' : t.id], run: () => setView(v) });
     }
-    const views = [['today', 'Today', 'sun'], ['week', 'Upcoming', 'calendar-range'], ['tomorrow', 'Tomorrow', 'sunrise'],
-      ['all', 'All tasks', 'layers'], ['no-date', 'No date', 'circle-dashed'], ['completed', 'Logbook', 'circle-check'],
-      ['wins', 'Wins', 'trophy'], ['triage', 'Email triage', 'mail'], ['people', 'People', 'users'], ['tags', 'Tags', 'tags'],
-      ['bin', 'Bin', 'trash-2'], ['settings', 'Settings', 'settings'], ['connections', 'Connections', 'plug']];
-    for (const [v, label, ic] of views) add({ group: 'Go to', icon: ic, label, hint: 'View', kbd: _PAL_G[v], run: () => setView(v) });
+    // Every page in the registry (14-shell.js registerPage, 2.18), with its one-line description: the list
+    // All pages shows (16-pages.js), so a page registered anywhere is found here too.
+    // Task views first, so an empty box still starts with Inbox, Today and Upcoming after the areas.
+    const _palAreaRank = { tasks: 0, life: 1, home: 2, calendar: 3, money: 4, system: 5 };
+    const _palPages = (typeof pagesAll === 'function' ? pagesAll() : []).map((p, i) => ({ p, i })).sort((a, b) => ((_palAreaRank[a.p.area] ?? 9) - (_palAreaRank[b.p.area] ?? 9)) || a.i - b.i).map(x => x.p);
+    for (const p of _palPages) {
+      const v = pageView(p);
+      add({ group: 'Go to', icon: p.icon, label: pageLabel(p), keywords: [p.keywords, (SHELL_AREAS.find(a => a[0] === p.area) || [0, ''])[1]].join(' '), hint: pageDesc(p) || 'Page', kbd: _PAL_G[v],
+        run: () => (typeof pagesOpen === 'function' ? pagesOpen(p) : setView(v)) });
+    }
     for (const [k, s] of Object.entries(STREAMS)) {
       if (s.archived) continue;
       const n = counts.byStream[k] || 0;
@@ -449,6 +455,7 @@ function openCommandPalette(initial) {
     close(true);
     _palRecentPush(f.it);
     const fn = beside && f.it.runBeside ? f.it.runBeside : f.it.run;
+    if (typeof navVia === 'function') navVia('chrome');   // a jump from here is not a link inside a page: no 'Back to'
     try { const r = fn && fn(); if (r && typeof r.catch === 'function') r.catch(e => console.error('[palette]', e)); } catch (e) { console.error('[palette]', e); }
   }
   function close(ran) {

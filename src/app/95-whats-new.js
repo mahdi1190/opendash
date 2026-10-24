@@ -1,7 +1,11 @@
 /* ============================================================
-   WHAT'S NEW IN 2.17 (tour) + QUICK START (first run). Owner: Shell/Design.
+   WHAT'S NEW IN 2.18 (tour) + QUICK START (first run). Owner: Shell/Design.
+   2.18 (one list for the whole release; docs/dev/NAVIGATION_PLAN.md 2.11): the new groups
+   come first (Life, the garden, gardens with friends, pets, your card and wardrobe,
+   achievements, then the tidier app); 2.17's and 2.16's follow, labelled with their
+   version. An entry for a part that is not on this build has present() false.
 
-   A data-driven registry: one entry per 2.16 feature. The dialog lists them by
+   A data-driven registry: one entry per new feature. The dialog lists them by
    group; each has a "Show me" that opens the feature (a palette command), or
    goes to its view and puts a spotlight on its element. "Take the tour" walks
    the entries one by one with the spotlight. Features live in other modules
@@ -15,8 +19,8 @@
      can mark its own control with that attribute), then each of sel.
      registerWhatsNew(entry) adds or replaces one (by id) from a feature module.
 
-   Shown once, automatically, after updating to 2.16 (not to a brand-new user):
-   state.seen.once['whatsNew:2.16'] (synced, 06-core-seen.js), so a computer that
+   Shown once, automatically, after updating to 2.18 (not to a brand-new user):
+   state.seen.once['whatsNew:2.18'] (synced, 06-core-seen.js), so a computer that
    saw it does not show it on the other. Reopen: More / workspace menu > What's
    new, or the palette ("What's new"). Waits while the opening, a story, the
    brief, a dialog or the welcome set-up is on screen.
@@ -33,16 +37,23 @@
      openQuickStart()          the first-run card
    Styles: src/styles/95-whats-new.css. Reduced motion: no glides, no pulse.
    ============================================================ */
-const WHATS_NEW_VERSION = '2.17';
-const _WN_SEEN = 'whatsNew:2.17';
+const WHATS_NEW_VERSION = '2.18';
+const _WN_SEEN = 'whatsNew:2.18';
 const _WN_QS_KEY = 'dashboard-quickstart';
 
 // The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
-  ['friends', 'Friends', 'users'],
-  ['together', 'Do things together', 'handshake'],
-  ['you', 'You and your character', 'user-round'],
-  ['relay', 'Your private relay', 'shield-check'],
+  ['life', 'Life, the fifth area', 'heart'],
+  ['garden', 'A garden to play in', 'sprout'],
+  ['neighbours', 'Gardens with friends', 'flower-2'],
+  ['pets', 'Pets', 'paw-print'],
+  ['card', 'Your card and wardrobe', 'shirt'],
+  ['ach18', 'Achievements', 'award'],
+  ['tidy', 'Easier to find', 'layout-grid'],
+  ['friends', 'Friends (2.17)', 'users'],
+  ['together', 'Do things together (2.17)', 'handshake'],
+  ['you', 'You and your character (2.17)', 'user-round'],
+  ['relay', 'Your private relay (2.17)', 'shield-check'],
   ['plan', 'Plan your days (2.16)', 'calendar-range'],
   ['boards', 'Boards and lists (2.16)', 'kanban'],
   ['capture', 'Capture in a flash (2.16)', 'zap'],
@@ -50,13 +61,117 @@ const WHATS_NEW_GROUPS = Object.freeze([
   ['fun', 'Fun and motivation (2.16)', 'party-popper'],
   ['money', 'Money (2.16)', 'wallet'],
 ]);
-const _WN_CURRENT_GROUPS = ['friends', 'together', 'you', 'relay'];
+const _WN_CURRENT_GROUPS = ['life', 'garden', 'neighbours', 'pets', 'card', 'ach18', 'tidy'];
+function _wnHasPage(id) { try { const p = typeof pageById === 'function' ? pageById(id) : null; return !!(p && pageAvailable(p)); } catch (e) { return false; } }
+const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets');
 
 const WHATS_NEW = [
-  // ---- 2.17: friends ----
+  // ---- 2.18: Life, the fifth area (NAVIGATION_PLAN.md 2.11) ----
+  { id: 'life-area', group: 'life', icon: 'heart', title: 'Life: the fun side, in one place',
+    text: 'A fifth area beside Home, Tasks, Calendar and Money. Life holds Friends, Garden, Pets, Achievements, Memories and Places, with a tab for each at the top of the page. G then L opens it.',
+    sel: ['#section-switcher [data-tile="life"]'] },
+  { id: 'open-life', group: 'life', icon: 'user-round', title: 'Open Life from your avatar',
+    text: 'Your avatar in the top-left corner has Open Life, and a shortcut to each part of it.',
+    sel: ['#ws-btn'] },
+  { id: 'friends-button', group: 'life', icon: 'users', title: 'A Friends button next to you',
+    text: 'One click from the top-left corner to your friends, with a number when someone is waiting for you and a green dot when a friend is around.',
+    sel: ['#ws-friends', '#ws-btn'] },
+  { id: 'life-cards', group: 'life', icon: 'layout-grid', title: 'Life on Home, if you like',
+    text: 'Small cards for your garden, your pet, your quests and streaks, and the friends around now, each opening its part of Life. Add them in one step (Undo puts Home back).',
+    cmd: ['home-add-life-cards'] },
+
+  // ---- 2.18: the garden ----
+  { id: 'garden', group: 'garden', icon: 'sprout', title: 'Your garden is now a game',
+    text: 'Plant seeds, water, feed, trim and harvest. Plants grow with the tasks you finish, your focus minutes and real time, and nothing ever wilts: a thirsty plant just grows a little slower. It lives in Life.',
+    view: ['garden'], sel: ['#sidebar [data-view="garden"]', '#main-body'], present: _wnGarden },
+  { id: 'garden-plants', group: 'garden', icon: 'flower-2', title: '131 plants, 74 decorations, 29 visitors',
+    text: 'Flowers, herbs, veg, fruit, trees, succulents, pond plants and exotic ones, each drawn for every stage and season. Add benches, lights, fences, a beehive or a wishing well, and birds, bees, frogs and hedgehogs drop by when your garden suits them.',
+    cmd: ['garden-almanac'], present: _wnGarden },
+  { id: 'garden-areas', group: 'garden', icon: 'map', title: 'Six areas to open',
+    text: 'Start in the front garden, then open the veg patch, the orchard, the pond, the greenhouse and the flower meadow as your garden levels up.',
+    view: ['garden'], present: _wnGarden },
+  { id: 'garden-shop', group: 'garden', icon: 'store', title: 'Shop, market and bouquets',
+    text: 'Earn coins from what you finish, buy seeds and decorations, sell your harvest at the market, and tie your flowers into bouquets.',
+    cmd: ['garden-shop'], present: _wnGarden },
+  { id: 'garden-goals', group: 'garden', icon: 'list-checks', title: 'Daily jobs, weekly quests and ribbons',
+    text: 'A few small garden jobs each day, quests each week, ribbons for milestones, and seasonal events through the year. All optional, all calm.',
+    view: ['garden'], present: _wnGarden },
+  { id: 'garden-home', group: 'garden', icon: 'house', title: 'Your garden on Home',
+    text: 'The Home garden card is now a live window in three sizes, with one-click Pick and Water.',
+    view: ['home'], sel: ['.hg-w[data-wid="garden"]'], present: _wnGarden },
+  { id: 'garden-photo', group: 'garden', icon: 'camera', title: 'Photos and a time-lapse',
+    text: 'Save a picture of your garden, or watch it grow from the first seed.',
+    cmd: ['garden-photo', 'garden-timelapse'], present: _wnGarden },
+
+  // ---- 2.18: gardens with friends ----
+  { id: 'garden-visit', group: 'neighbours', icon: 'footprints', title: 'Visit your friends’ gardens',
+    text: 'Walk round a friend’s garden in your own outfit (your pet comes too), water a plant a day for them, leave a heart or a parcel from your bag, and sign their guestbook.',
+    note: 'Your garden goes only to friends you share it with (a Garden switch for each friend), as plants and numbers, never your tasks.',
+    cmd: ['garden-friends'], present: _wnGarden },
+  { id: 'garden-guestbook', group: 'neighbours', icon: 'feather', title: 'Visitors, parcels and your guestbook',
+    text: 'See who watered your plants, unwrap the parcels friends left, and read your guestbook in the Garden’s Friends tab. Hide a line in one click, with Undo.',
+    view: ['garden:friends'], present: _wnGarden },
+  { id: 'garden-bed', group: 'neighbours', icon: 'handshake', title: 'A shared bed in Together spaces',
+    text: 'Plant a raised bed together in a shared space. The more of you tend a plant, the sooner it blooms.',
+    view: ['together'], present: _wnGarden },
+
+  // ---- 2.18: pets ----
+  { id: 'pets', group: 'pets', icon: 'paw-print', title: 'Adopt a pet',
+    text: 'Cats, eight kinds of dog, rabbits, a fox, an owl, a hedgehog, an axolotl and more, with a dragon, a unicorn and a phoenix to unlock. Its mood follows your day, and it is never sad. It lives in Life.',
+    cmd: ['pet-open'], view: ['pet'], sel: ['#sidebar [data-view="pet"]'], present: _wnPets },
+  { id: 'pet-care', group: 'pets', icon: 'cookie', title: 'Treats, pats and tricks',
+    text: 'Finished tasks and focus sessions earn treats. Feed and pat your pet, teach it tricks as you level up, and keep its milestones in a journal.',
+    cmd: ['pet-open'], present: _wnPets },
+  { id: 'pet-wardrobe', group: 'pets', icon: 'shirt', title: 'Dress up your pet',
+    text: 'Collars, bandanas, bows, hats and glasses in 18 colours, with seasonal hats to collect.',
+    cmd: ['pet-wardrobe'], present: _wnPets },
+  { id: 'pet-everywhere', group: 'pets', icon: 'heart', title: 'Your pet comes along',
+    text: 'It sits on your card and in the corner, wanders round your garden, walks beside you when you visit a friend, and friends’ pets trot through your scenes with them.',
+    note: 'Friends see your pet only while you share it (on the pet page).',
+    cmd: ['pet-open'], present: _wnPets },
+
+  // ---- 2.18: your card and wardrobe (Life › You) ----
+  { id: 'card-banner', group: 'card', icon: 'image', title: 'A bigger card, with a banner',
+    text: 'Choose from 39 banners (gradients, patterns in your colours, seasonal and gently animated ones, or one of the app’s own scenes), and show your name large in the nameplate style you like.',
+    cmd: ['profile-card'], present: () => typeof profileCardEl === 'function' },
+  { id: 'profile-extras', group: 'card', icon: 'award', title: 'Titles, favourite emoji and what you are into',
+    text: 'Wear a title you have earned, show up to six favourite emoji and a “currently” line (listening to, reading, growing...), and pick a tint. Your card counts friends’ visits, never who. Life › You › Profile.',
+    view: ['settings:me'], sel: ['[data-whats-new~="profile-extras"]', '#pf-look'], present: () => typeof profileCardEl === 'function' },
+  { id: 'wardrobe', group: 'card', icon: 'shirt', title: 'A much bigger wardrobe, saved outfits and Surprise me',
+    text: 'About 70 things to pick: 33 hairstyles with dyes, 24 tops in 17 fabric patterns, coats, dresses, shoes, jewellery, make-up and face paint, more hats and glasses, and quick expressions. Keep up to six named outfits, or let Surprise me dress you. Life › You › Wardrobe.',
+    view: ['settings:me'], sel: ['[data-whats-new~="wardrobe"]', '#pf-builder'], present: () => typeof profileWardrobeEl === 'function' },
+
+  // ---- 2.18: achievements (ACHIEVEMENTS_500.md 2.5; the 500 more come in 2.18.1) ----
+  { id: 'ach-page', group: 'ach18', icon: 'award', title: 'A page for your achievements',
+    text: 'Search them, filter by what is in progress, earned or unlocks something, and fold them by category. Next up suggests the three nearest, each with one button to go and do it, and secrets show only a clue. Life › Achievements.',
+    view: ['game:wall'], sel: ['[data-whats-new~="ach-page"]', '#gm-wall'], present: () => typeof gameWallMount === 'function' },
+  { id: 'ach-xp', group: 'ach18', icon: 'trophy', title: 'Achievements pay XP',
+    text: 'Each achievement now earns XP once, more for the rarer ones. What you had already earned before this update is shown once, in one calm summary on the page.',
+    cmd: ['game-wall'], present: () => typeof gameWallMount === 'function' },
+
+  // ---- 2.18: easier to find (NAVIGATION_PLAN.md 2.11) ----
+  { id: 'all-pages', group: 'tidy', icon: 'layout-grid', title: 'All pages, in one place',
+    text: 'Every page with a one-line description, searchable: the grid button by the search box, the foot of every sidebar, or G twice. Shift+Enter pins one to your sidebar.',
+    cmd: ['pages-open'], sel: ['#pages-btn'] },
+  { id: 'calm-tasks', group: 'tidy', icon: 'list', title: 'Fewer rows in Tasks',
+    text: 'Inbox, Today, Upcoming and All tasks up front. The rest wait under More views, and Waiting, Email triage and Do now come up by themselves while they need you. Customise sidebar sets each one: Shown, In More or Hidden.',
+    view: ['today'], sel: ['#sidebar [data-block="task-views"] .nav-more'] },
+  { id: 'card-links', group: 'tidy', icon: 'external-link', title: 'Card titles open their page',
+    text: 'Click a Home card’s title to open the page behind it: This week opens Upcoming, Money opens Money, and so on.',
+    view: ['home'], sel: ['.hg-w .hw-title-link'] },
+  { id: 'crumbs', group: 'tidy', icon: 'chevron-right', title: 'A path you can click, and Back',
+    text: 'Every part of the path at the top of the page opens, like Life › Places › Trips. A page you reached from a link inside another one offers Back to where you were.',
+    sel: ['#crumb'] },
+  { id: 'new-dots', group: 'tidy', icon: 'circle-dot', title: 'A quiet dot on what is new',
+    text: 'A small dot marks a page you have not opened yet, at most three at a time. It goes as soon as you visit, on all your devices.',
+    sel: ['#section-switcher .sw-tile:has(.sw-new:not([hidden]))', '#sidebar .nav-new'] },
+  { id: 'new-keys', group: 'tidy', icon: 'keyboard', title: 'Keys for the new places',
+    text: 'G then L opens Life, G then G All pages, and G then F is Money. The Logbook moved to G then O.' },
+
+  // ---- 2.17: friends (labelled, after 2.18) ----
   { id: 'friends-tab', group: 'friends', icon: 'users', title: 'The Friends tab',
-    text: 'Your friends in one lively place: their avatars, who is online, levels and streaks, and a feed of level-ups, finished quests and cheers. Click your avatar in the top-left corner, then Open Friends.',
-    view: ['friends'], sel: ['#ws-btn', '#main-body'] },
+    text: 'Your friends in one lively place: their avatars, who is online, levels and streaks, and a feed of level-ups, finished quests and cheers. It is the first tab in Life (G then L), and your avatar’s menu opens it too.',
+    view: ['friends'], sel: ['#sidebar [data-view="friends"]', '#ws-btn', '#main-body'] },
   { id: 'friends-start', group: 'friends', icon: 'sparkles', title: 'Getting started with friends',
     text: 'Three friendly steps: make your character, get a relay (connect your own free Cloudflare, or paste a friend’s invite), and invite someone.',
     cmd: ['friends-onboard'] },
@@ -90,7 +205,7 @@ const WHATS_NEW = [
 
   // ---- 2.17: you ----
   { id: 'corner', group: 'you', icon: 'user-round', title: 'The corner is you',
-    text: 'Your avatar and name sit in the top-left corner, with your status and a dot when friends are around (a number when someone is waiting for you). Click it for your card, a quick status, your friends, your relay and sync, and the workspace menu.',
+    text: 'Your avatar and name sit in the top-left corner, with your status (and, since 2.18, a Friends button beside you). Click it for your card, a quick status, your friends, your relay and sync, and the workspace menu.',
     sel: ['#ws-btn'] },
   { id: 'profile', group: 'you', icon: 'user-round', title: 'Your profile and character',
     text: 'Build your avatar: hair, face, outfit, hats, glasses and more, with seasonal items to collect and unlocks as you level up. It reacts to your day, too.',
@@ -160,8 +275,8 @@ const WHATS_NEW = [
     cmd: ['do-now'], view: ['now'] },
 
   // ---- places and memories ----
-  { id: 'locations', group: 'places', icon: 'map-pin', title: 'Locations, with your full history',
-    text: 'A new Locations tab shows the places you have been, with firsts, badges and spending by country, and the history is kept for good, so you can look back years from now.',
+  { id: 'locations', group: 'places', icon: 'map-pin', title: 'Places, with your full history',
+    text: 'Places (in Life) shows where you have been, with firsts, badges and spending by country, and your trips. The history is kept for good, so you can look back years from now.',
     note: 'Private by design: your location history stays in your own data folder (it reaches your other devices only end-to-end encrypted), and you can switch it off or delete it any time.',
     view: ['locations'], sel: ['.loc-hero', '#sidebar [data-view="locations"]', '#main-body'] },
   { id: 'journal', group: 'places', icon: 'notebook-pen', title: 'A daily journal',
@@ -185,23 +300,23 @@ const WHATS_NEW = [
 
   // ---- fun ----
   { id: 'xp', group: 'fun', icon: 'trophy', title: 'XP, levels and streaks',
-    text: 'Finishing things now earns XP. Level up, keep your streaks going, take on quests, and unlock achievements and personal records.',
-    cmd: ['game-open'], view: ['game'], sel: ['.gm-chip', '.hg-w[data-wid="game"]'] },
+    text: 'Finishing things earns XP. Level up, keep your streaks going, take on quests, and unlock achievements and personal records: Life › Achievements, or the level chip in the top bar.',
+    cmd: ['game-open'], view: ['game'], sel: ['#sidebar [data-view="game"]', '.gm-chip', '.hg-w[data-wid="game"]'] },
   { id: 'focus-timer', group: 'fun', icon: 'timer', title: 'Focus timer',
     text: 'Start a focus timer on any task and watch the minutes add up. Stop it to log the time, or log it and tick the task off in one go.',
     cmd: ['game-focus-next', 'game-focus-this'] },
   { id: 'boss', group: 'fun', icon: 'crown', title: 'Boss tasks',
     text: 'Big, scary tasks become bosses you wear down one step at a time. Each subtask you finish lands a hit.',
-    view: ['game'], sel: ['.gm-bosses', '.gm-boss'] },
+    view: ['game:bosses'], sel: ['.gm-bosses', '.gm-boss'] },
   { id: 'fun-level', group: 'fun', icon: 'party-popper', title: 'Choose your Fun level',
     text: 'Off, Subtle or Full: decide how much celebration you want, and change it whenever you like.',
     view: ['settings:game'], sel: ['[data-whats-new~="fun-level"]'] },
   { id: 'living-home', group: 'fun', icon: 'sun', title: 'A living Home scene',
     text: 'Home’s animation of the day now follows how your day is going: calm, lively or buzzing, with fireworks on a great day.',
     view: ['home'], sel: ['.hg-w[data-wid="animday"]'] },
-  { id: 'garden', group: 'fun', icon: 'sprout', title: 'Your garden',
+  { id: 'garden-card', group: 'fun', icon: 'sprout', title: 'Your garden',
     text: 'Every task you finish helps something grow. Look after it and watch it bloom through the seasons.',
-    view: ['home'], sel: ['.hg-w[data-wid="garden"]'] },
+    view: ['home'], sel: ['.hg-w[data-wid="garden"]'], present: () => !_wnHasPage('garden') },
   { id: 'fun-facts', group: 'fun', icon: 'lightbulb', title: 'Fun facts',
     text: 'A small, surprising fact about your own days to brighten the morning.',
     view: ['home'], sel: ['.hg-w[data-wid="funfact"]'] },
@@ -214,7 +329,7 @@ const WHATS_NEW = [
 
   // ---- money ----
   { id: 'money', group: 'money', icon: 'wallet', title: 'The new My money page',
-    text: '25 widgets to arrange as you like, ready-made presets, spending by country, a travel passport, a payday countdown, no-spend days, and “What if I cut…?” to see what a change would save you.',
+    text: '25 widgets to arrange as you like, ready-made presets, spending by country, a travel passport, a payday countdown, no-spend days, and “What if I cut…?” to see what a change would save you. (Since 2.18 the switcher calls it Money.)',
     view: ['finance'], sel: ['.fvb-layout', '.fvb-cust', '#main-body'] },
 ];
 
@@ -382,9 +497,9 @@ function openWhatsNew(o) {
     body: (b, close) => {
       b.classList.add('wn-body');
       const hero = document.createElement('div'); hero.className = 'wn-hero';
-      hero.innerHTML = `<div class="wn-hero-art" aria-hidden="true">${icon('users')}</div>`
-        + `<div class="wn-hero-txt"><div class="wn-hero-k">OpenDash ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Bring your friends in</h3>`
-        + `<p class="wn-hero-s">Friends, a character that is all you, shared spaces and co-op play, and your own private relay. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, plus everything from 2.16 below.</p></div>`
+      hero.innerHTML = `<div class="wn-hero-art" aria-hidden="true">${icon('sprout')}</div>`
+        + `<div class="wn-hero-txt"><div class="wn-hero-k">OpenDash ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Make it yours, and watch it grow</h3>`
+        + `<p class="wn-hero-s">Life, a fifth area for the fun side: a garden you can really play in, friends’ gardens to visit, a pet of your own, a bigger card and wardrobe, and a new Achievements page. Plus a tidier app with All pages. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, and everything from 2.17 and 2.16 below.</p></div>`
         + '<div class="wn-hero-acts"></div>';
       const ha = hero.querySelector('.wn-hero-acts');
       const tour = document.createElement('button'); tour.type = 'button'; tour.className = 'btn btn-primary';

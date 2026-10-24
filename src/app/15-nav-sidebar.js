@@ -27,10 +27,13 @@ function setView(v) {
   const from = state.view;
   const person = typeof v === 'string' && v.startsWith('person:');
   if (from === v && !(person && state.selectedTaskId)) {
+    if (typeof _navViaNext !== 'undefined') _navViaNext = '';
     closePopovers();
     if (window.Motion && Motion.scrollTopIfScrolled) Motion.scrollTopIfScrolled(document.getElementById('main'));
     return;
   }
+  // Where you came from (14-shell.js): a page opened from a link inside another offers '‹ Back to …'.
+  if (typeof navNoteMove === 'function') navNoteMove(from, v);
   // The person panel only renders when no task is selected, so going to a
   // person must close any open task panel (otherwise the person never shows).
   if (person) state.selectedTaskId = null;
@@ -68,8 +71,29 @@ function _syncViewHash() {
 }
 window.addEventListener('hashchange', () => {
   const v = _viewFromHash();
-  if (v && v !== state.view) setView(v);
+  if (v && v !== state.view) { navVia('chrome'); setView(v); }
 });
+
+/* ---------- the core pages (the registry: 14-shell.js registerPage; NAVIGATION_PLAN.md 2.6) ----------
+   Sections register their own page next to registerSection (Achievements, Memories, Places, Friends,
+   Together, Waiting, Tags, People, Files, Calendar, Money, Settings, Connections); these are the views
+   with no section of their own. Descriptions: one line, 60 characters at most. */
+registerPage({ id: 'home', view: 'home', match: v => v === 'home', label: 'Home', icon: 'house', area: 'home', order: 10, family: 'home', desc: 'Your day: the story, your cards and the daily note', keywords: 'today dashboard start my day widgets cards brief morning' });
+registerPage({ id: 'home-evening', view: 'home:evening', match: v => v === 'home:evening', label: 'Finish the day', icon: 'sunset', area: 'home', order: 20, family: 'home', desc: 'An evening recap and your top 3 for tomorrow', keywords: 'evening recap wrap up roll over tomorrow top 3' });
+registerPage({ id: 'home-week', view: 'home:week', match: v => v === 'home:week', label: 'Weekly review', icon: 'calendar-range', area: 'home', order: 30, family: 'home', desc: 'A calm look back at your week, and a plan for the next', keywords: 'week review outcomes plan retrospective' });
+registerPage({ id: 'home-history', view: 'home:history', match: v => v === 'home:history', label: 'History', icon: 'history', area: 'home', order: 40, family: 'home', desc: 'Your past reviews and recaps', keywords: 'past reviews briefs recaps mornings evenings' });
+registerPage({ id: 'inbox', view: 'inbox', match: v => v === 'inbox', label: 'Inbox', icon: 'inbox', area: 'tasks', order: 10, desc: 'Quick captures, waiting to be sorted', keywords: 'capture sort new unsorted' });
+registerPage({ id: 'today', view: 'today', match: v => v === 'today', label: 'Today', icon: 'sun', area: 'tasks', order: 20, desc: 'What is due or planned for today', keywords: 'tasks due now overdue' });
+registerPage({ id: 'week', view: 'week', match: v => v === 'week', label: 'Upcoming', icon: 'calendar-range', area: 'tasks', order: 30, desc: 'The next days, day by day', keywords: 'this week next days soon upcoming' });
+registerPage({ id: 'all', view: 'all', match: v => v === 'all', label: 'All tasks', icon: 'layers', area: 'tasks', order: 40, desc: 'Everything still open', keywords: 'every open list search' });
+registerPage({ id: 'now', view: 'now', match: v => v === 'now', label: 'Do now', icon: 'target', area: 'tasks', order: 60, desc: 'What fits where you are, your energy and your time', keywords: 'context energy minutes what can i do now' });
+registerPage({ id: 'tomorrow', view: 'tomorrow', match: v => v === 'tomorrow', label: 'Tomorrow', icon: 'sunrise', area: 'tasks', order: 65, desc: 'What is due tomorrow', keywords: 'next day' });
+registerPage({ id: 'no-date', view: 'no-date', match: v => v === 'no-date', label: 'No date', icon: 'circle-dashed', area: 'tasks', order: 70, desc: 'Open tasks without a due date', keywords: 'undated no due' });
+registerPage({ id: 'someday', view: 'tag:someday', match: v => v === 'tag:someday', label: 'Someday', icon: 'archive', area: 'tasks', order: 75, desc: 'Parked: not now, not forgotten', keywords: 'someday maybe later parked' });
+registerPage({ id: 'completed', view: 'completed', match: v => v === 'completed', label: 'Logbook', icon: 'circle-check', area: 'tasks', order: 80, desc: 'Everything you have finished', keywords: 'done completed finished log history' });
+registerPage({ id: 'wins', view: 'wins', match: v => v === 'wins', label: 'Wins', icon: 'trophy', area: 'tasks', order: 85, desc: 'Your wins log', keywords: 'wins log good things achievements' });
+registerPage({ id: 'triage', view: 'triage', match: v => v === 'triage', label: 'Email triage', icon: 'mail', area: 'tasks', order: 90, desc: 'Turn emails into tasks', keywords: 'email mail inbox suggestions triage' });
+registerPage({ id: 'bin', view: 'bin', match: v => v === 'bin', label: 'Bin', icon: 'trash-2', area: 'system', order: 80, desc: 'Deleted tasks and notes, ready to restore', keywords: 'trash deleted restore' });
 
 /** The Waiting list ('waiting', tasks with waitingOn, grouped by person) comes from the review area: its row shows only when the view exists. */
 function sbWaitingViewExists() {
@@ -118,6 +142,7 @@ function renderSidebar() {
   if (!sb) return;
   const keepScroll = sb.scrollTop;
   sb.innerHTML = '';
+  if (typeof _sbFreshShown !== 'undefined') _sbFreshShown = 0;   // at most three new-page dots per sidebar (sbNavItem)
   const group = shellGroupFor(state.view);
   const g = group === 'system' ? _shellLastGroup : group;
   const counts = sidebarCounts();
@@ -145,42 +170,79 @@ function renderSidebar() {
   if (window.Motion) Motion.decorateSidebar(sb);
 }
 
-/* ---------- Tasks (and Home): smart lists ---------- */
+/* ---------- Tasks: the views, calmer (2.18, NAVIGATION_PLAN.md 2.4) ----------
+   User request, 24 Oct: "the tasks list shows locations, someday etc, it's a bit overwhelming".
+   Up front: Inbox, Today, Upcoming, All tasks. Promoted while they need you: Waiting (anything
+   waiting), Email triage (suggestions pending), Do now (a place, energy or time chosen), and the
+   view you are on. Everything else folds under More views (Do now, No date, Waiting, Someday,
+   Logbook, Wins, Email triage, Files and links), open or folded as you left it
+   (state.collapsedSidebar['views-more'] === false: open).
+   Each row is Shown, In More or Hidden (Customise sidebar, 15-nav-custom.js sbViewPlacement):
+   sidebarLayout.more lists the folded ones once you choose; before that a user who had arranged
+   or hidden Views rows keeps exactly their list shown, and the fold applies to rows they never
+   placed. Home's sidebar holds only Home (and the Plan rows, 78-brief-hooks.js). */
+const SB_VIEWS_FRONT = Object.freeze(['inbox', 'today', 'week', 'all']);
+function sbViewsMoreOpen() { return !!(state.collapsedSidebar && state.collapsedSidebar['views-more'] === false); }
+function _sbViewsMoreToggle() {
+  state.collapsedSidebar = state.collapsedSidebar && typeof state.collapsedSidebar === 'object' ? state.collapsedSidebar : {};
+  state.collapsedSidebar['views-more'] = sbViewsMoreOpen() ? true : false;
+  saveUI(); renderSidebar();
+}
+/** The Views rows with their counts (the identity of each row: _sbViewRows in 15-nav-custom.js). */
+function sbTaskViewRows(c) {
+  const pendingSugs = ((state.emailTriage && state.emailTriage.suggestions) || []).filter(s => s.status === 'pending').length;
+  const extra = {
+    inbox: { count: c.inbox || '', title: c.inbox ? `${c.inbox} to sort` : 'Quick capture lands here' },   // 24-quick-capture.js
+    today: { count: c.today || '', countAlert: c.overdue > 0, title: c.overdue ? `${c.overdue} overdue` : '' },
+    now: { count: c.now || '', title: 'What can I do now?', need: typeof doNowActive === 'function' && doNowActive() },   // 24-do-now.js
+    week: { count: c.week || '' },
+    all: { count: c.all || '' },
+    'no-date': { count: c['no-date'] || '' },
+    waiting: { count: c.waiting || '', title: c.waiting ? `${c.waiting} waiting on someone` : 'Tasks waiting on someone', need: c.waiting > 0 },
+    'tag:someday': { count: c.someday || '', title: 'Tagged #someday: not now, not forgotten' },
+    triage: { count: pendingSugs || '', need: pendingSugs > 0 },
+    files: { count: (typeof resList === 'function' ? resList().length : 0) || '' },
+  };
+  const rows = typeof _sbViewRows === 'function' ? _sbViewRows() : SB_VIEWS_FRONT.map(v => ({ view: v, label: viewTitle(v), icon: 'circle' }));
+  return rows.map(r => Object.assign({ label: r.label, icon: r.icon, view: r.view }, extra[r.view] || {}));
+}
 registerSidebarBlock(['home', 'tasks'], {
   id: 'task-views', order: 10,
   render(el, ctx) {
-    const c = ctx.counts;
-    const pendingSugs = ((state.emailTriage && state.emailTriage.suggestions) || []).filter(s => s.status === 'pending').length;
-    if (ctx.group === 'home') el.appendChild(sbNavItem({ label: 'Home', icon: 'house', view: 'home' }));
-    const rows = [
-      // Inbox: what Quick capture caught, until it is sorted (24-quick-capture.js).
-      { label: 'Inbox', icon: 'inbox', view: 'inbox', count: c.inbox || '', title: c.inbox ? `${c.inbox} to sort` : 'Quick capture lands here' },
-      { label: 'Today', icon: 'sun', view: 'today', count: c.today || '', countAlert: c.overdue > 0, title: c.overdue ? `${c.overdue} overdue` : '' },
-      // What fits where you are, your energy and the time you have (24-do-now.js).
-      { label: 'Do now', icon: 'target', view: 'now', count: c.now || '', title: 'What can I do now?' },
-      { label: 'Upcoming', icon: 'calendar-range', view: 'week', count: c.week || '' },
-      { label: 'All tasks', icon: 'layers', view: 'all', count: c.all || '' },
-      { label: 'No date', icon: 'circle-dashed', view: 'no-date', count: c['no-date'] || '' },
-      // Waiting on others and Someday (the review area's lists; Waiting shows once its view exists).
-      ...(sbWaitingViewExists() ? [{ label: 'Waiting', icon: 'hourglass', view: 'waiting', count: c.waiting || '', title: c.waiting ? `${c.waiting} waiting on someone` : 'Tasks waiting on someone' }] : []),
-      { label: 'Someday', icon: 'archive', view: 'tag:someday', count: c.someday || '', title: 'Tagged #someday: not now, not forgotten' },
-      { label: 'Logbook', icon: 'circle-check', view: 'completed' },
-      { label: 'Wins', icon: 'trophy', view: 'wins' },
-      // Locations and the Game page (other areas' views): only when they exist (and the Game only while Fun is on).
-      ...(sbViewExists('locations') ? [{ label: 'Locations', icon: 'map-pin', view: 'locations' }] : []),
-      ...(sbGameRowOn() ? [{ label: 'Game', icon: 'gamepad-2', view: 'game', title: 'Levels, streaks, quests and records' }] : []),
-      { label: 'Email triage', icon: 'mail', view: 'triage', count: pendingSugs || '' },
-    ];
-    // Home's sidebar holds only Home and the Review items: the task views
-    // belong to the Tasks tab, so clicking one there never switches tabs.
-    const list = ctx.group === 'home' ? [] : rows;
-    // Today, No date and Logbook also take a dragged task (30-task-row.js sbTaskDrop).
-    for (const r of list) el.appendChild(typeof sbTaskDrop === 'function' ? sbTaskDrop(sbNavItem(r), r.view) : sbNavItem(r));
+    if (ctx.group === 'home') { el.appendChild(sbNavItem({ label: 'Home', icon: 'house', view: 'home' })); return; }
+    const L = typeof sbLayout === 'function' ? sbLayout() : null;
+    const place = (v) => (L && typeof sbViewPlacement === 'function' ? sbViewPlacement(v, L) : (SB_VIEWS_FRONT.includes(v) ? 'shown' : 'more'));
+    const chosen = (v) => !!(L && Array.isArray(L.more) && L.more.includes(v));
+    const front = [], more = [];
+    for (const r of sbTaskViewRows(ctx.counts)) {
+      const p = place(r.view);
+      if (p === 'hidden' && state.view !== r.view) continue;
+      // Promoted: it needs you (and you did not put it in More yourself), or you are on it.
+      if (p === 'shown' || p === 'hidden' || state.view === r.view || (r.need && !chosen(r.view))) front.push(r); else more.push(r);
+    }
+    const row = (r) => (typeof sbTaskDrop === 'function' ? sbTaskDrop(sbNavItem(r), r.view) : sbNavItem(r));   // Today, No date and Logbook take a dragged task (30-task-row.js)
+    for (const r of front) el.appendChild(row(r));
+    const lists = typeof smartListsAll === 'function' ? smartListsAll().length : 1;
+    const boards = typeof boardSavedList === 'function' ? boardSavedList().length : 1;
+    if (!more.length && lists && boards) return;
+    const open = sbViewsMoreOpen();
+    const fold = sbNavItem({ label: open ? 'Fewer views' : 'More views', icon: open ? 'chevron-up' : 'chevron-right', className: 'nav-more sb-views-more', active: false,
+      title: open ? '' : more.map(r => r.label).join(', '), onClick: _sbViewsMoreToggle });
+    fold.setAttribute('aria-expanded', open ? 'true' : 'false');
+    el.appendChild(fold);
+    if (!open) return;
+    const box = document.createElement('div'); box.className = 'sb-views-more-list';
+    for (const r of more) box.appendChild(row(r));
+    // Nothing saved yet: the Smart lists and Boards headings stay away, and their first one starts here.
+    if (!lists) box.appendChild(sbNavItem({ label: 'New smart list', icon: 'list-plus', className: 'nav-more', active: false, title: 'Any filter, grouping and view as one click', onClick: () => openSmartListEditor(null) }));
+    if (!boards && typeof boardNewDialog === 'function') box.appendChild(sbNavItem({ label: 'New board', icon: 'square-kanban', className: 'nav-more', active: false, title: 'Columns your way: by status, priority, person, due date or your own', onClick: () => boardNewDialog() }));
+    el.appendChild(box);
   },
 });
 
-/* ---------- Tasks: saved boards (owner: Boards; the block itself is boardsSidebarBlock in 33-board-ui.js) ---------- */
-registerSidebarBlock('tasks', { id: 'boards', order: 15, render: (el, ctx) => (typeof boardsSidebarBlock === 'function' ? boardsSidebarBlock(el, ctx) : false) });
+/* ---------- Tasks: saved boards (owner: Boards; the block itself is boardsSidebarBlock in 33-board-ui.js) ----------
+   No saved board yet: no heading (2.18: empty sections hide; "New board" waits under More views and in the palette). */
+registerSidebarBlock('tasks', { id: 'boards', order: 15, render: (el, ctx) => (typeof boardsSidebarBlock === 'function' && (typeof boardSavedList !== 'function' || boardSavedList().length || String(state.view || '').startsWith('taskboard:')) ? boardsSidebarBlock(el, ctx) : false) });
 
 /* ---------- Tasks: streams (empty ones folded away) ---------- */
 // The Streams heading's +: Settings > Streams with the 'Add a stream' field focused.
@@ -416,7 +478,7 @@ registerSidebarBlock('finance', {
     const list = FV && typeof FV.sections === 'function' ? FV.sections() : [];
     if (!list.length) return false;
     const cur = FV && typeof FV.section === 'function' ? FV.section() : null;
-    el.appendChild(sbSection({ title: 'Finances' }));
+    el.appendChild(sbSection({ title: 'Money' }));
     for (const s of list) {
       el.appendChild(sbNavItem({
         label: s.label, icon: _FIN_SECTION_ICONS[s.id] || 'circle', active: state.view === 'finance' && cur === s.id,

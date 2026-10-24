@@ -156,3 +156,14 @@
 .contact-item:hover { background: var(--hover); }
 .contact-item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .contact-item .role { font-size: 10px; color: var(--text-dim); }
+
+/* 2.18: a quiet new-page dot after a row's label (at most three at once, sbNavItem), a quiet hint
+   word ('Lv 14', 'in 9d'), and the same dot on a tile whose area has a new page (NAVIGATION_PLAN.md 2.9). */
+.nav-new { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-left: var(--space-1); box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 18%, transparent); }
+.nav-item .nav-new + .count, .nav-item .nav-new + .badge { margin-left: auto; }
+.nav-item .nav-hint { color: var(--fg-subtle); }
+.sw-tile .sw-new { position: absolute; top: 6px; right: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+.sw-tile .sw-new[hidden] { display: none; }
+/* A Life page whose feature is switched off (Fun Off: Achievements, Garden, Pets): quieter, still there. */
+.nav-item.is-off .label { color: var(--fg-subtle); }
+.sb-all-pages { margin-top: var(--space-2); }

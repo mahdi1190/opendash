@@ -8,8 +8,20 @@
    the badges you show, favourite places, and what friends see. Plus the
    palette commands. The state and the API are 97-profile-1core.js; the
    corner (your avatar on the sidebar's workspace button) is 97-profile-3corner.js.
+
+   2.18 (agent 'you'): YOUR CARD (#pf-look, between About you and the avatar):
+   a live preview of the bigger card with Surprise me, Undo / Redo (Ctrl+Z) and
+   Back to the plain look, and four tabs: Banner (39 banners in five groups,
+   two colour rows for patterns, a searchable list of the app's own scenes),
+   Nameplate (font, weight, colour, effect: each option shows your name),
+   Title (unlocked ones first, the rest say how to open them) and Extras (the
+   card tint, up to six favourite emoji, a 'currently' line). Locked options
+   say how to open them; the tables are 97-profile-0look.js. The Friends tab
+   gets your card on the hangout and each friend's card on their page
+   (Friends.registerPanel); opening a friend's card adds one to their
+   visitors count, once a day (counts only; Settings > Profile can stop it).
    ============================================================ */
-const _pfUI = { tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null };
+const _pfUI = { tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null, lookTab: 'banner', lookUndo: [], lookRedo: [], sceneQ: '', sceneN: 40, curK: '', thumbs: new Map() };
 const _PF_FACE_CROP = new Set(['eyes', 'eyeCol', 'brows', 'mouth', 'facial', 'marks']);
 const _PF_HEAD_CROP = new Set(['hair', 'hat', 'glasses', 'headphones']);
 const _PF_UNTIL = [['0', "Don't clear"], ['1h', 'In an hour'], ['4h', 'In 4 hours'], ['today', 'Tonight'], ['week', 'In a week']];
@@ -39,16 +51,18 @@ if (typeof registerSettingsGroup === 'function') {
 function _pfSettings(el) {
   const top = _pfEl('div', 'pf-set-top');
   const cardHost = _pfEl('div', 'pf-set-card');
-  const paintCard = () => { cardHost.replaceChildren(profileCardEl(null)); };
+  const paintCard = () => { cardHost.replaceChildren(profileCardEl(null, { visits: true })); };
   paintCard();
   const side = _pfEl('div', 'pf-set-side');
-  side.append(_pfEl('p', 'set-h', 'This is your card: in the top-left corner, in your profile, and what your friends see. Click your avatar in the corner to set a quick status or see your friends.'));
-  const ed = _pfBtn('Customise your avatar', 'wand-sparkles', () => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); }, 'btn-primary');
-  side.appendChild(ed);
+  side.append(_pfEl('p', 'set-h', 'This is your card: in the top-left corner, in your profile, and what your friends see. Click your avatar in the corner to set a quick status; the Friends button beside it opens Friends.'));
+  const ed = _pfBtn('Customise your card', 'wand-sparkles', () => { const b = document.getElementById('pf-look'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); }, 'btn-primary');
+  const av = _pfBtn('Customise your avatar', 'user-round-pen', () => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); });
+  side.append(ed, av);
   top.append(cardHost, side);
   el.appendChild(top);
   const changed = () => { paintCard(); };
   el.appendChild(_pfAboutCard(changed));
+  el.appendChild(_pfLookCard(changed));
   el.appendChild(_pfBuilderCard(changed));
   el.appendChild(_pfBadgesCard(changed));
   el.appendChild(_pfPlacesCard(changed));
@@ -148,6 +162,389 @@ function _pfWhen(ms) {
   try { return 'at ' + new Date(ms).toLocaleString((APP_CONFIG && APP_CONFIG.locale) || undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: Clock.zone() }); } catch (e) { return 'later'; }
 }
 
+/* ---------- your card's look (2.18, agent 'you'): banner, nameplate, title, extras ---------- */
+const _PF_LOOK_TABS = Object.freeze([['banner', 'Banner', 'image'], ['name', 'Nameplate', 'type'], ['title', 'Title', 'award'], ['extras', 'Extras', 'sparkles']]);
+function _pfLookCard(changed) {
+  const { card, body } = _settingsCard('Your card', 'A banner behind it, your name in your own style, a title you earned, your favourite emoji and what you are into. Friends see it too.');
+  card.id = 'pf-look';
+  const wrap = _pfEl('div', 'pf-l'); wrap.tabIndex = -1;
+  const stage = _pfEl('div', 'pf-l-stage'), panel = _pfEl('div', 'pf-l-panel');
+  wrap.append(stage, panel);
+  body.appendChild(wrap);
+  const cur = () => profileGet().look;
+  const apply = (patch, o) => {
+    const before = cur();
+    const next = profileLookNormalize(Object.assign({}, before, patch, patch.np ? { np: Object.assign({}, before.np, patch.np) } : {}, patch.cur ? { cur: Object.assign({}, before.cur, patch.cur) } : {}));
+    if (JSON.stringify(before) === JSON.stringify(next)) return;
+    _pfUI.lookUndo.push(JSON.stringify(before)); if (_pfUI.lookUndo.length > 60) _pfUI.lookUndo.shift();
+    _pfUI.lookRedo = [];
+    profileSet({ look: next });
+    paintStage(); if (!(o && o.keepPanel)) paintPanel(); changed();
+  };
+  const step = (from, to) => {
+    if (!from.length) return;
+    to.push(JSON.stringify(cur()));
+    profileSet({ look: JSON.parse(from.pop()) });
+    paintStage(); paintPanel(); changed();
+  };
+  const undo = () => step(_pfUI.lookUndo, _pfUI.lookRedo), redo = () => step(_pfUI.lookRedo, _pfUI.lookUndo);
+  wrap.addEventListener('keydown', (e) => {
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (!(e.ctrlKey || e.metaKey)) return;
+    const k = String(e.key).toLowerCase();
+    if (k === 'z' && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); undo(); }
+    else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); e.stopPropagation(); redo(); }
+  });
+  const locked = (why, label) => { toast(`${label}: ${why.charAt(0).toLowerCase() + why.slice(1)}.`, { icon: 'lock' }); };
+  /** A surprise: a random unlocked banner, nameplate and title (your colour and extras stay). */
+  const surprise = () => {
+    const ctx = profileLookCtx(), pick = (list, kind) => { const ok = list.filter(x => !profileLookLockOf(kind, x.id, ctx)); return ok.length ? ok[Math.floor(Math.random() * ok.length)].id : list[0].id; };
+    const banners = PF_BANNERS.filter(b => b.id !== 'scene' && !profileLookLockOf('banner', b.id, ctx));
+    const titles = PF_TITLES.filter(t => !profileLookLockOf('title', t.id, ctx));
+    apply({ banner: banners.length ? banners[Math.floor(Math.random() * banners.length)].id : 'theme',
+      np: { font: pick(PF_NP_FONTS, 'font'), weight: PF_NP_WEIGHTS[1 + Math.floor(Math.random() * 3)].id, col: pick(PF_NP_COLS, 'col'), fx: pick(PF_NP_FX, 'fx') },
+      title: titles.length && Math.random() < 0.8 ? titles[Math.floor(Math.random() * titles.length)].id : '' });
+    const pv = stage.querySelector('.pf-l-card');
+    if (pv && _pfMotionOk()) { pv.classList.remove('is-roll'); void pv.offsetWidth; pv.classList.add('is-roll'); }
+  };
+
+  const paintStage = () => {
+    stage.replaceChildren();
+    const pv = _pfEl('div', 'pf-l-card');
+    pv.appendChild(profileCardEl(null, { visits: true }));
+    stage.appendChild(pv);
+    const acts = _pfEl('div', 'pf-b-acts');
+    const sb = _pfBtn('Surprise me', 'wand-sparkles', surprise);
+    sb.setAttribute('data-tip', 'A random banner, nameplate and title from what you have unlocked');
+    const ub = _pfBtn('', 'undo-2', undo, 'btn-ghost'); ub.setAttribute('aria-label', 'Undo'); ub.setAttribute('data-tip', 'Undo'); ub.setAttribute('data-kbd', 'Ctrl+Z'); ub.disabled = !_pfUI.lookUndo.length;
+    const rb = _pfBtn('', 'redo-2', redo, 'btn-ghost'); rb.setAttribute('aria-label', 'Redo'); rb.setAttribute('data-tip', 'Redo'); rb.setAttribute('data-kbd', 'Ctrl+Shift+Z'); rb.disabled = !_pfUI.lookRedo.length;
+    const reset = _pfBtn('', 'rotate-ccw', () => {
+      const before = cur();
+      if (JSON.stringify(before) === JSON.stringify(profileLookNormalize(null))) return;
+      apply(profileLookDefault());
+      toast('Your card is back to the plain look.', { icon: 'rotate-ccw', action: { label: 'Undo', run: () => { profileSet({ look: before }); paintStage(); paintPanel(); changed(); } } });
+    }, 'btn-ghost');
+    reset.setAttribute('aria-label', 'Back to the plain look'); reset.setAttribute('data-tip', 'Back to the plain look');
+    acts.append(sb, ub, rb, reset);
+    stage.appendChild(acts);
+    const next = _pfLookNext();
+    if (next) stage.appendChild(_pfEl('div', 'set-h pf-b-next', next));
+  };
+  const paintPanel = () => {
+    const keep = panel.querySelector('.pf-l-scroll') ? panel.querySelector('.pf-l-scroll').scrollTop : 0;
+    panel.replaceChildren();
+    const tabs = _pfEl('div', 'seg pf-b-tabs'); tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', 'Parts of your card');
+    tabs.setAttribute('data-whats-new', 'profile-extras');   // What's new 2.18: banner, nameplate, title and extras (95-whats-new.js)
+    for (const [id, label, ic] of _PF_LOOK_TABS) {
+      const b = _pfEl('button'); b.type = 'button'; b.setAttribute('role', 'tab');
+      b.innerHTML = icon(ic) + `<span>${esc(label)}</span>`;
+      b.setAttribute('aria-selected', _pfUI.lookTab === id ? 'true' : 'false'); b.setAttribute('aria-pressed', _pfUI.lookTab === id ? 'true' : 'false');
+      b.onclick = () => { if (_pfUI.lookTab !== id) { _pfUI.lookTab = id; paintPanel(); } };
+      tabs.appendChild(b);
+    }
+    panel.appendChild(tabs);
+    const sc = _pfEl('div', 'pf-l-scroll');
+    const ctx = profileLookCtx(), look = cur(), p = profileGet();
+    if (_pfUI.lookTab === 'banner') _pfLookBanner(sc, look, p, ctx, apply, locked);
+    else if (_pfUI.lookTab === 'name') _pfLookName(sc, look, p, ctx, apply, locked);
+    else if (_pfUI.lookTab === 'title') _pfLookTitle(sc, look, ctx, apply, locked);
+    else _pfLookExtras(sc, look, apply);
+    panel.appendChild(sc);
+    if (keep) sc.scrollTop = keep;
+  };
+  paintStage(); paintPanel();
+  return card;
+}
+/** "Next, at level 8: the Embers banner and the Poster font." (with the game on this page) */
+function _pfLookNext() {
+  const ctx = profileLookCtx();
+  if (!ctx.game) return '';
+  let lv = Infinity;
+  const at = [];
+  const scan = (list, what) => { for (const o of list) { if (!o.level || o.level <= ctx.levelMax) continue; if (o.level < lv) { lv = o.level; at.length = 0; } if (o.level === lv) at.push(what(o)); } };
+  scan(PF_BANNERS, o => `the ${o.label} banner`); scan(PF_NP_FONTS, o => `the ${o.label} font`); scan(PF_NP_COLS, o => `${o.label} lettering`); scan(PF_NP_FX, o => `the ${o.label} effect`); scan(PF_TITLES, o => `the title “${o.label}”`);
+  if (!isFinite(lv)) return 'Every level unlock for your card is yours.';
+  const list = at.length > 1 ? at.slice(0, -1).join(', ') + ' and ' + at[at.length - 1] : at[0];
+  return `Next, at level ${lv}: ${list}.`;
+}
+/** One option button with a lock (its label in the tooltip and for screen readers). */
+function _pfLookOpt(cls, label, on, why, run, locked) {
+  const b = _pfEl('button', cls); b.type = 'button';
+  b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  b.setAttribute('aria-label', label + (why ? ' (locked: ' + why + ')' : ''));
+  b.setAttribute('data-tip', why ? `${label}: ${why}` : label);
+  if (why) { b.classList.add('is-locked'); b.setAttribute('aria-disabled', 'true'); }
+  b.onclick = () => { if (why) { locked(why, label); return; } if (!on) run(); };
+  return b;
+}
+const _pfLock = () => `<span class="pf-lock">${icon('lock', 'i-xs')}</span>`;
+function _pfLookSection(host, label, extra) {
+  const sec = _pfEl('div', 'pf-b-part');
+  const h = _pfEl('div', 'pf-b-part-h'); h.appendChild(_pfEl('span', null, label));
+  if (extra) h.appendChild(extra);
+  sec.appendChild(h);
+  host.appendChild(sec);
+  return sec;
+}
+/** Two colour rows for patterns: the kit's palette, your own colour, and Auto (your card colour / the pattern's own). */
+function _pfLookColours(host, look, apply) {
+  const row = (label, key, autoLabel) => {
+    const sec = _pfLookSection(host, label);
+    const r = _pfEl('div', 'pf-sws');
+    const val = look[key];
+    const auto = _pfEl('button', 'pf-sw pf-sw-auto'); auto.type = 'button';
+    auto.setAttribute('aria-label', autoLabel); auto.setAttribute('data-tip', autoLabel); auto.setAttribute('aria-pressed', val ? 'false' : 'true');
+    auto.innerHTML = icon('wand-sparkles', 'i-xs');
+    auto.onclick = () => { if (val) apply({ [key]: '' }); };
+    r.appendChild(auto);
+    for (const [id, sw] of Object.entries(PF_SWATCHES)) {
+      const b = _pfEl('button', 'pf-sw'); b.type = 'button'; b.style.setProperty('--sw', sw.hex);
+      b.setAttribute('aria-label', sw.label); b.setAttribute('data-tip', sw.label); b.setAttribute('aria-pressed', val === id ? 'true' : 'false');
+      b.onclick = () => { if (val !== id) apply({ [key]: id }); };
+      r.appendChild(b);
+    }
+    const c = _pfEl('input', 'pf-sw-custom'); c.type = 'color'; c.setAttribute('aria-label', 'Your own colour'); c.setAttribute('data-tip', 'Your own colour');
+    c.value = /^#[0-9a-f]{6}$/i.test(String(val)) ? val : '#5b5bd6';
+    if (/^#[0-9a-f]{6}$/i.test(String(val))) c.classList.add('on');
+    c.onchange = () => { const v = String(c.value).toLowerCase(); if (/^#[0-9a-f]{6}$/.test(v)) apply({ [key]: v }); };
+    r.appendChild(c);
+    sec.appendChild(r);
+  };
+  row('Main colour', 'bannerCol', 'Auto: your card colour');
+  row('Second colour', 'bannerCol2', 'Auto: the pattern’s own');
+}
+function _pfLookBanner(host, look, p, ctx, apply, locked) {
+  const th = _pfThemeHex(p.theme), def = pfBanner(look.banner);
+  // what the chosen banner needs comes first (its colours, or the scene list), then every banner by group
+  if (def && def.uses === 'cols') _pfLookColours(host, look, apply);
+  if (def && def.uses === 'scene') _pfLookScenes(host, look, apply);
+  if (def && def.uses === 'fixed') host.appendChild(_pfEl('div', 'set-h', `${def.label} brings its own colours. Patterns use yours.`));
+  for (const [gid, glabel, gic] of PF_BANNER_GROUPS) {
+    const list = PF_BANNERS.filter(b => b.group === gid);
+    const tag = gid === 'animated' ? _pfEl('span', 'pf-b-tag', 'moves gently; still with reduced motion or Fun off') : gid === 'season' ? _pfEl('span', 'pf-b-tag', 'collected in season, yours for good') : gid === 'pattern' ? _pfEl('span', 'pf-b-tag', 'in your colours') : null;
+    const sec = _pfLookSection(host, glabel, tag);
+    sec.querySelector('.pf-b-part-h').insertAdjacentHTML('afterbegin', icon(gic, 'i-xs'));
+    const grid = _pfEl('div', 'pf-l-bans');
+    for (const b of list) {
+      const why = profileLookLockOf('banner', b.id, ctx), on = look.banner === b.id;
+      const btn = _pfLookOpt('pf-l-ban', b.label, on, why, () => apply(b.id === 'scene' && !look.scene ? { banner: b.id, scene: _pfFirstScene() } : { banner: b.id }), locked);
+      const art = _pfEl('span', 'pf-l-ban-art');
+      if (b.id === 'scene') {
+        const it = typeof _pfSceneItem === 'function' ? _pfSceneItem(look.scene) : null;
+        art.innerHTML = profileBannerSvg(Object.assign({}, look, { banner: 'theme' }), { theme: th, uid: _pfUid() }) + `<span class="pf-l-ban-ic">${icon('image', 'i-md')}</span>`;
+        if (it) art.title = it.label;
+      } else art.innerHTML = _pfBannerThumb(look, b.id, th);   // tables only; the thumbnails stay still
+      btn.appendChild(art);
+      btn.appendChild(_pfEl('span', 'pf-b-opt-l', b.label));
+      if (why) btn.insertAdjacentHTML('beforeend', _pfLock());
+      grid.appendChild(btn);
+    }
+    sec.appendChild(grid);
+  }
+}
+/** A banner thumbnail, kept while its colours stay the same (each is in the page once: the panel is replaced whole). */
+function _pfBannerThumb(look, id, th) {
+  const key = [id, look.bannerCol, look.bannerCol2, th].join('|');
+  let svg = _pfUI.thumbs.get(key);
+  if (!svg) {
+    svg = profileBannerSvg(Object.assign({}, look, { banner: id }), { theme: th, uid: 'pft' + _pfUI.thumbs.size.toString(36) + id.replace(/[^a-z0-9]/g, ''), motion: false });
+    if (_pfUI.thumbs.size > 240) _pfUI.thumbs.clear();
+    _pfUI.thumbs.set(key, svg);
+  }
+  return svg;
+}
+/** The full scenes of the app's own list (the banner can show one, by id). */
+function _pfAllScenes() {
+  if (typeof animItems !== 'function') return [];
+  try { return animItems().filter(it => it && it.full && typeof it.ref === 'string' && /^[A-Za-z0-9_-]{1,64}\/[A-Za-z0-9_-]{1,64}$/.test(it.ref)); } catch (e) { return []; }
+}
+/** A scene to start with (it changes with the day, so it is not always the same one). */
+function _pfFirstScene() {
+  const all = _pfAllScenes();
+  if (!all.length) return '';
+  return all[(Math.floor(Date.now() / 864e5)) % all.length].ref;   // clock-ok: a day number to vary the starting scene
+}
+/** One of the app's own scenes as the banner: searchable, by name (only full scenes; drawn still, by id). */
+function _pfLookScenes(host, look, apply) {
+  const all = _pfAllScenes();
+  const sec = _pfLookSection(host, 'Your scene');
+  if (!all.length) { sec.appendChild(_pfEl('div', 'set-h', 'The scenes are still loading, or this dashboard has none yet. Your colour shows meanwhile.')); return; }
+  const chosen = all.find(it => it.ref === look.scene) || null;
+  sec.appendChild(_pfEl('div', 'set-h', chosen ? `Showing ${chosen.label}. Friends see it if their OpenDash has it too; otherwise your colour.` : 'Pick a scene. Friends see it if their OpenDash has it too; otherwise your colour.'));
+  const q = _pfEl('input', 'control control-sm set-input pf-l-q'); q.type = 'search'; q.placeholder = `Search ${all.length} scenes`; q.setAttribute('aria-label', 'Search the scenes');
+  q.value = _pfUI.sceneQ || '';
+  const list = _pfEl('div', 'pf-l-scenes'); list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', 'Scenes');
+  const paint = () => {
+    list.replaceChildren();
+    const s = q.value.trim().toLowerCase();
+    const hits = all.filter(it => !s || String(it.label || '').toLowerCase().includes(s) || String(it.ref).toLowerCase().includes(s));
+    const shown = hits.slice(0, _pfUI.sceneN);
+    for (const it of shown) {
+      const on = it.ref === look.scene;
+      const b = _pfEl('button', 'chip chip-lg pf-l-scene', it.label || it.ref); b.type = 'button';
+      b.setAttribute('role', 'option'); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      b.onclick = () => { if (!on) apply({ banner: 'scene', scene: it.ref }); };
+      list.appendChild(b);
+    }
+    if (!hits.length) list.appendChild(_pfEl('span', 'set-h', 'No scene matches that. Try another word.'));
+    else if (hits.length > shown.length) {
+      const more = _pfBtn(`Show more (${hits.length - shown.length})`, 'chevron-down', () => { _pfUI.sceneN += 40; paint(); }, 'btn-ghost');
+      list.appendChild(more);
+    }
+  };
+  q.oninput = _pfDebounce(() => { _pfUI.sceneQ = q.value; _pfUI.sceneN = 40; paint(); }, 150);
+  sec.append(q, list);
+  paint();
+}
+function _pfLookName(host, look, p, ctx, apply, locked) {
+  const name = profileDisplayName(p), th = _pfThemeHex(p.theme);
+  const sample = (np, cls) => { const s = _pfEl('span', cls || 'pf-l-np-s', name); profileNameplateApply(s, { look: Object.assign({}, look, { np: Object.assign({}, look.np, np) }), theme: p.theme }, { theme: th }); return s; };
+  // fonts: your name in each
+  const fs = _pfLookSection(host, 'Font', _pfEl('span', 'pf-b-tag', 'from this computer: nothing is downloaded'));
+  const fg = _pfEl('div', 'pf-l-fonts');
+  for (const f of PF_NP_FONTS) {
+    const why = profileLookLockOf('font', f.id, ctx), on = look.np.font === f.id;
+    const b = _pfLookOpt('pf-l-font', f.label, on, why, () => apply({ np: { font: f.id } }), locked);
+    b.appendChild(sample({ font: f.id, fx: 'none' }));
+    b.appendChild(_pfEl('span', 'pf-b-opt-l', f.label));
+    if (why) b.insertAdjacentHTML('beforeend', _pfLock());
+    fg.appendChild(b);
+  }
+  fs.appendChild(fg);
+  // weight
+  const ws = _pfLookSection(host, 'Weight');
+  ws.appendChild(_settingsSeg(PF_NP_WEIGHTS.map(w => [w.id, w.label]), look.np.weight, (k) => apply({ np: { weight: k } })));
+  // colour: ink, your colour, the palette, gradients
+  const cs = _pfLookSection(host, 'Colour');
+  const cg = _pfEl('div', 'pf-sws pf-l-cols');
+  for (const c of PF_NP_COLS) {
+    const why = profileLookLockOf('col', c.id, ctx), on = look.np.col === c.id;
+    const b = _pfLookOpt('pf-sw' + (c.grad ? ' is-grad' : ''), c.label, on, why, () => apply({ np: { col: c.id } }), locked);
+    const hex = c.id === 'ink' ? '' : c.id === 'theme' ? th : c.swatch ? (PF_SWATCHES[c.swatch] || {}).hex : '';
+    if (c.grad) b.style.setProperty('--sw', `linear-gradient(135deg, ${c.grad.join(', ')})`);
+    else if (hex) b.style.setProperty('--sw', hex);
+    else b.classList.add('is-ink');
+    if (c.id === 'theme') b.classList.add('is-theme');
+    if (why) b.insertAdjacentHTML('beforeend', _pfLock());
+    cg.appendChild(b);
+  }
+  cs.appendChild(cg);
+  // effects: your name with each
+  const xs = _pfLookSection(host, 'Effect');
+  const xg = _pfEl('div', 'pf-l-fxs');
+  for (const x of PF_NP_FX) {
+    const why = profileLookLockOf('fx', x.id, ctx), on = look.np.fx === x.id;
+    const b = _pfLookOpt('pf-l-fx', x.label, on, why, () => apply({ np: { fx: x.id } }), locked);
+    b.appendChild(sample({ fx: x.id }, 'pf-l-np-s is-fx'));
+    b.appendChild(_pfEl('span', 'pf-b-opt-l', x.label));
+    if (why) b.insertAdjacentHTML('beforeend', _pfLock());
+    xg.appendChild(b);
+  }
+  xs.appendChild(xg);
+}
+function _pfLookTitle(host, look, ctx, apply, locked) {
+  const open = PF_TITLES.filter(t => !profileLookLockOf('title', t.id, ctx)).length;
+  const sec = _pfLookSection(host, 'Your title', _pfEl('span', 'pf-b-tag', `${open} of ${PF_TITLES.length} unlocked`));
+  sec.appendChild(_pfEl('div', 'set-h', 'Shown under your name, to you and your friends. More come from achievements, levels, your garden and friends.'));
+  const grid = _pfEl('div', 'pf-l-titles');
+  const none = _pfLookOpt('pf-l-title', 'No title', !look.title, '', () => apply({ title: '' }), locked);
+  none.innerHTML = icon('minus', 'i-xs') + '<span>No title</span>';
+  grid.appendChild(none);
+  const list = PF_TITLES.slice().sort((a, b) => (profileLookLockOf('title', a.id, ctx) ? 1 : 0) - (profileLookLockOf('title', b.id, ctx) ? 1 : 0));
+  for (const t of list) {
+    const why = profileLookLockOf('title', t.id, ctx), on = look.title === t.id;
+    const b = _pfLookOpt('pf-l-title', t.label, on, why, () => apply({ title: t.id }), locked);
+    b.innerHTML = icon(/^[a-z0-9-]+$/.test(t.icon || '') ? t.icon : 'award', 'i-xs');
+    b.appendChild(_pfEl('span', null, t.label));
+    if (why) b.insertAdjacentHTML('beforeend', _pfLock());
+    grid.appendChild(b);
+  }
+  sec.appendChild(grid);
+}
+function _pfLookExtras(host, look, apply) {
+  // the tint
+  const ts = _pfLookSection(host, 'Card tint');
+  ts.appendChild(_settingsSeg(PF_TINTS.map(([id, label]) => [id, label]), look.tint, (k) => apply({ tint: k })));
+  ts.appendChild(_pfEl('div', 'set-h', 'How much your card colour (About you) tints the card. Night is a dark card in any theme.'));
+  // favourite emoji
+  const fs = _pfLookSection(host, 'Favourite emoji', _pfEl('span', 'pf-b-tag', `${look.favs.length} of ${PF_LOOK_MAX.favs}`));
+  const mine = _pfEl('div', 'pf-l-favs-mine');
+  if (look.favs.length) {
+    look.favs.forEach((e, i) => {
+      const b = _pfEl('button', 'pf-fav pf-l-fav-on', e); b.type = 'button';
+      b.setAttribute('aria-label', `Remove ${e}`); b.setAttribute('data-tip', 'Remove');
+      b.onclick = () => { const l = look.favs.slice(); l.splice(i, 1); apply({ favs: l }); };
+      mine.appendChild(b);
+    });
+  } else mine.appendChild(_pfEl('span', 'set-h', 'None yet. Pick up to six below: they show as a little row on your card.'));
+  fs.appendChild(mine);
+  for (const [label, list] of PF_FAV_EMOJI) {
+    const g = _pfEl('div', 'pf-l-emo');
+    g.setAttribute('role', 'group'); g.setAttribute('aria-label', label);
+    g.appendChild(_pfEl('span', 'pf-l-emo-h', label));
+    for (const e of list) {
+      const on = look.favs.includes(e);
+      const b = _pfEl('button', 'pf-pop-emo', e); b.type = 'button';
+      b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.setAttribute('aria-label', e);
+      b.onclick = () => {
+        const l = look.favs.slice(), i = l.indexOf(e);
+        if (i >= 0) l.splice(i, 1);
+        else { if (l.length >= PF_LOOK_MAX.favs) { toast('Six at most: take one off first.', { icon: 'heart' }); return; } l.push(e); }
+        apply({ favs: l });
+      };
+      g.appendChild(b);
+    }
+    fs.appendChild(g);
+  }
+  // 'currently'
+  const cs = _pfLookSection(host, 'Currently');
+  const line = _pfEl('div', 'pf-st-line');
+  const kind = _settingsSelect([['', 'Nothing right now']].concat(PF_CURRENTLY.map(([id, label, , em]) => [id, `${em} ${label}…`])), look.cur.k || '', (k) => {
+    if (!k) { apply({ cur: { k: '', t: '' } }); return; }
+    if (look.cur.t) apply({ cur: { k } }); else { _pfUI.curK = k; t.disabled = false; t.focus(); }
+  });
+  kind.setAttribute('aria-label', 'What you are doing');
+  const t = _pfEl('input', 'control control-sm pf-st-text'); t.maxLength = PF_LOOK_MAX.currently; t.value = look.cur.t || '';
+  t.placeholder = 'e.g. a podcast about bees'; t.setAttribute('aria-label', 'Currently');
+  t.disabled = !look.cur.k && !_pfUI.curK;
+  const save = _pfDebounce(() => { const v = profileText(t.value, PF_LOOK_MAX.currently); const k = look.cur.k || _pfUI.curK || 'listening'; apply(v ? { cur: { k, t: v } } : { cur: { k: '', t: '' } }, { keepPanel: true }); }, 500);
+  t.oninput = save;
+  line.append(kind, t);
+  cs.appendChild(line);
+  cs.appendChild(_pfEl('div', 'set-h', `One line, ${PF_LOOK_MAX.currently} characters at most, plain text.`));
+}
+
+/* ---------- the Friends tab (2.18): your card on the hangout, a friend's card on their page ---------- */
+function _pfFriendsPanels() {
+  const F = typeof window !== 'undefined' ? window.Friends : null;
+  if (!F || typeof F.registerPanel !== 'function') return;
+  try {
+    F.registerPanel({ id: 'profile-you', order: 3, where: 'hangout', title: 'Your card', icon: 'circle-user', render: (sec) => {
+      const row = _pfEl('div', 'pf-fr-you');
+      row.appendChild(profileCardEl(null, { visits: true }));
+      const side = _pfEl('div', 'pf-fr-you-side');
+      side.appendChild(_pfEl('p', 'muted', 'This is the card your friends see when they open your page: your banner, name style, title and favourite emoji.'));
+      side.appendChild(_pfBtn('Customise your card', 'wand-sparkles', () => _pfOpenLook(), 'btn-primary'));
+      side.appendChild(_pfBtn('Preview what friends see', 'eye', () => openDialog({ title: 'What your friends see', width: 460, body: (el) => { el.appendChild(profileCardEl(null, { preview: true })); } })));
+      row.appendChild(side);
+      sec.appendChild(row);
+    } });
+    F.registerPanel({ id: 'profile-card', order: 2, where: 'friend', title: 'Their card', icon: 'circle-user', render: (sec, f) => {
+      if (!f || f.status !== 'friend') return false;
+      const w = _pfEl('div', 'pf-fr-card');
+      w.appendChild(profileCardEl(f));
+      sec.appendChild(w);
+      profileVisitFriend(f);   // +1 on their visitors count, once a day (Settings > Profile can turn it off)
+    } });
+  } catch (e) { console.error('[profile] friends panels', e); }
+}
+function _pfOpenLook() {
+  setView('settings:me');
+  setTimeout(() => { const b = document.getElementById('pf-look'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); }, 60);
+}
+_pfFriendsPanels();
+
 /* ---------- the character builder ---------- */
 function _pfBuilderCard(changed) {
   const { card, body } = _settingsCard('Your avatar', 'Pick each part. Some open up as you level up, earn achievements or when their season comes round, and stay yours.');
@@ -228,7 +625,10 @@ function _pfBuilderCard(changed) {
       b.onclick = () => { if (_pfUI.tab !== id) { _pfUI.tab = id; paintPanel(); } };
       tabs.appendChild(b);
     }
+    // 2.18 (agent 'wardrobe', 97-profile-4wardrobe.js): saved outfits and 'Surprise me' above the tabs, a tab's extras (quick expressions) below
+    if (typeof profileWardrobeEl === 'function') { const w = profileWardrobeEl({ get: cur, apply, tab: _pfUI.tab }); if (w) panel.insertBefore(w, panel.firstChild); }
     panel.appendChild(tabs);
+    if (typeof profileWardrobeTabEl === 'function') { const w = profileWardrobeTabEl(_pfUI.tab, { get: cur, apply }); if (w) panel.appendChild(w); }
     const list = _pfEl('div', 'pf-b-parts');
     for (const part of PF_PARTS) {
       if (part.tab !== _pfUI.tab) continue;
@@ -237,15 +637,18 @@ function _pfBuilderCard(changed) {
       const h = _pfEl('div', 'pf-b-part-h'); h.appendChild(_pfEl('span', null, part.label));
       if (part.figure) h.appendChild(_pfEl('span', 'pf-b-tag', 'full figure'));
       sec.appendChild(h);
-      const opts = _pfEl('div', part.colour ? 'pf-b-cols' : part.figure ? 'pf-b-chips' : 'pf-b-opts');
+      const kitArt = typeof pfOptionArt === 'function';   // 2.18: the kit draws every tile (close-ups, the figure's legs and feet)
+      const opts = _pfEl('div', part.colour ? 'pf-b-cols' : part.figure && !kitArt ? 'pf-b-chips' : 'pf-b-opts');
       for (const o of pfOptions(part.k)) {
         const why = profileLockOf(part.k, o.id, ctx), on = a[part.k] === o.id;
-        const b = _pfEl('button', part.colour ? 'pf-sw' : part.figure ? 'chip chip-lg pf-b-chip' : 'pf-b-opt'); b.type = 'button';
+        const art = kitArt && !part.colour ? pfOptionArt(part.k, o.id, a, { size: 56, uid: _pfUid(), theme, live }) : '';
+        const b = _pfEl('button', part.colour ? 'pf-sw' : part.figure && !kitArt ? 'chip chip-lg pf-b-chip' : 'pf-b-opt'); b.type = 'button';
         b.setAttribute('aria-pressed', on ? 'true' : 'false');
         b.setAttribute('aria-label', o.label + (why ? ' (locked: ' + why + ')' : ''));
         b.setAttribute('data-tip', why ? `${o.label}: ${why}` : o.label);
         if (why) { b.classList.add('is-locked'); b.setAttribute('aria-disabled', 'true'); }
         if (part.colour) b.style.setProperty('--sw', o.hex);
+        else if (kitArt) b.innerHTML = art + `<span class="pf-b-opt-l">${esc(o.label)}</span>`;   // the kit's own markup: allow-listed ids and numbers only
         else if (part.figure) b.textContent = o.label;
         else {
           const crop = _PF_FACE_CROP.has(part.k) ? 'face' : _PF_HEAD_CROP.has(part.k) ? 'head' : '';
@@ -277,12 +680,14 @@ function _pfBuilderCard(changed) {
 }
 /** Colour rows that mean nothing for the part chosen are left out (no stripe colour on a plain scarf...). */
 function _pfHidePart(k, a) {
+  if (typeof pfPartHidden === 'function') return pfPartHidden(k, a);   // 2.18: the kit knows its parts (97-profile-0kit-6looks.js)
   return (k === 'glassesCol' && (a.glasses === 'none' || a.glasses === 'heart')) || (k === 'hatCol' && ['none', 'crown', 'grad', 'witch', 'santa', 'flowers'].includes(a.hat))
     || (k === 'headphonesCol' && a.headphones === 'none') || (k === 'scarfCol' && a.scarf === 'none') || (k === 'scarf2Col' && a.scarf !== 'striped')
     || (k === 'bagCol' && a.bag === 'none') || (k === 'eyeCol' && !['round', 'wide'].includes(a.eyes)) || (k === 'topCol' && a.top === 'lab');
 }
 /** Sensible company: a hat that hides headphones' band is fine, but a headscarf goes without headphones. */
 function _pfPairs(k, id, a) {
+  if (typeof pfPairs === 'function') return pfPairs(k, id, a);   // 2.18: the kit knows its parts (97-profile-0kit-6looks.js)
   if (k === 'hat' && id === 'headscarf' && a.headphones !== 'none') return { headphones: 'none' };
   if (k === 'headphones' && id !== 'none' && a.hat === 'headscarf') return { hat: 'none' };
   return {};
@@ -411,8 +816,9 @@ function _pfFriendsCard() {
   const paint = () => {
     body.replaceChildren();
     const sh = profileGet().share;
-    body.appendChild(_settingsRow('What goes', 'Your display name, pronouns, bio, status, what you are working on, the card colour, your avatar and the badges you show. Nothing else from your dashboard.', null));
+    body.appendChild(_settingsRow('What goes', 'Your display name, pronouns, bio, status, what you are working on, the card colour, your avatar, your card’s look (banner, nameplate, title, favourite emoji, what you are currently into) and the badges you show. Nothing else from your dashboard.', null));
     body.appendChild(_settingsRow('Favourite places', 'Off unless you switch it on. Names only.', _settingsSwitch(!!sh.places, 'Share favourite places with friends', (on) => { profileSet({ share: { places: on } }); paint(); })));
+    body.appendChild(_settingsRow('Count my visits', 'When you open a friend’s card, their visitors count goes up by one (once a day). They only ever see a number, never who.', _settingsSwitch(sh.visits !== false, 'Count my visits to friends’ cards', (on) => { profileSet({ share: { visits: on } }); paint(); })));
     const acts = _pfEl('div', 'pf-b-acts');
     acts.appendChild(_pfBtn(_pfUI.preview ? 'Hide the preview' : 'Preview what friends see', 'eye', () => { _pfUI.preview = !_pfUI.preview; paint(); }));
     if (F) acts.appendChild(_pfBtn('Send it now', 'send', async (e, b) => { b.disabled = true; const ok = await profileShareNow(true); b.disabled = false; toast(ok ? 'Your card is on its way to your friends.' : 'Not sent yet: Friends is not ready. It goes as soon as it is.', { icon: ok ? 'send' : 'cloud-off', kind: ok ? 'ok' : undefined }); }));
@@ -427,6 +833,7 @@ function _pfFriendsCard() {
 /* ---------- the command palette ---------- */
 if (typeof registerCommand === 'function') {
   registerCommand({ id: 'profile-open', group: 'Go to', label: 'Profile: your card and avatar', icon: 'user-round', keywords: 'profile me avatar character name bio pronouns status badges places card', run: () => setView('settings:me') });
+  registerCommand({ id: 'profile-card', label: 'Customise your card: banner, nameplate, title', icon: 'image', keywords: 'profile card banner background header nameplate font name style title emoji currently tint', run: () => _pfOpenLook() });
   registerCommand({ id: 'profile-avatar', label: 'Customise your avatar', icon: 'wand-sparkles', keywords: 'avatar character builder customise hair outfit hat glasses face', run: () => { setView('settings:me'); setTimeout(() => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ block: 'start' }); }, 60); } });
   registerCommand({ id: 'profile-status', label: 'Set your status', icon: 'circle-user', keywords: 'status away busy focusing holiday travelling emoji', run: () => profileOpenPop() });
   registerCommand({ id: 'profile-status-clear', label: 'Clear your status', icon: 'x', keywords: 'status clear', when: () => !!profileStatusNow(), run: () => { profileSet({ status: { emoji: '', text: '', until: 0 } }); toast('Status cleared.', { icon: 'circle-user' }); } });
