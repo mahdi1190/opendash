@@ -130,6 +130,7 @@ function _calTickNow() {
 function _calPaintChrome() { if (typeof renderSidebar === 'function') renderSidebar(); }
 
 function _calBuild() {
+  { const fp = typeof fdCalendarPage === 'function' ? fdCalendarPage() : null; if (fp) return fp; }   // a friend's shared calendar, read-only (96-friends-3data.js)
   const ev = _calOpenEventId ? calEventById(_calOpenEventId) : null;
   if (_calOpenEventId && !ev) _calOpenEventId = null;
   const main = document.createElement('div'); main.className = 'cal-main';
@@ -184,6 +185,7 @@ function _calHeader() {
   // The view switcher is the pill tabs every page uses (11-ui-kit.js subTabs), not a segmented control of its own.
   h.querySelector('[data-cal-tabs]').replaceWith(subTabs({ tabs: _CAL_MODES.map(([k, l]) => ({ id: k, label: l })), active: calMode(), label: 'Calendar view', onChange: (id) => calSetMode(id) }));
   h.querySelector('[data-filter]').onclick = (e) => calFilterMenu(e.currentTarget);
+  if (typeof fdCalHeaderExtras === 'function') fdCalHeaderExtras(h.querySelector('.cal-h-r'));   // Whose + Show friends' events (96-friends-3data.js)
   const upd = h.querySelector('[data-cal-update]');
   if (upd) upd.onclick = () => { if (!CalStore.running()) CalStore.update({ force: true }); };
   const clr = h.querySelector('[data-clear-stream]');

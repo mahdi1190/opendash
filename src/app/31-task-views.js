@@ -39,6 +39,7 @@ let _qaSuggest = { items: [], index: 0 };
 /** Render the current task view into main. Called by _renderMainBody. */
 function renderTaskView(main, subEl) {
   const view = state.view;
+  if (typeof fdWhoseFriend === 'function' && _FD_TASK_VIEWS.includes(view) && fdWhoseFriend('tasks')) { subEl.textContent = ''; fdTasksPage(main); return; }   // a friend's shared tasks, read-only (96-friends-3data.js)
   if (state.viewMode === 'calendar') { state.viewMode = 'timeline'; saveUI(); }   // 2.16: the week timeline replaced the Calendar mode (31-views-switcher.js)
   if (_tvLastView !== view) {
     if (view === 'today' || view === 'week') state.weekBarOffset = 0;

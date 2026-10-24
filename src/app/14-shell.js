@@ -830,6 +830,7 @@ function renderPageHeaderControls() {
   try { _navBackPaint(); } catch (e) { console.error('[shell] back', e); }
   try { _viewActionsPaint(); } catch (e) { console.error('[shell] header actions', e); }
   try { _areaTabsPaint(); } catch (e) { console.error('[shell] area tabs', e); }
+  try { fdWhosePaint(); } catch (e) { console.error('[shell] whose', e); }   // Mine / a friend, on Tasks and Money (96-friends-3data.js)
   try { headerSubTabsSweep(); } catch (e) { console.error('[shell] sub tabs', e); }   // tabs a page put in the header leave with it (11-ui-kit.js)
   if (typeof _lifeOffPaint === 'function') { try { _lifeOffPaint(); } catch (e) { console.error('[shell] off note', e); } }   // 15-nav-life.js
 }
