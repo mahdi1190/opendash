@@ -233,12 +233,12 @@ function _asstOpRowsHtml(p) {
     // Its own buttons: the person editor (prefilled) for a new person, a tick to apply it now, Skip.
     let acts = '';
     if (live && !applied.has(i) && !undone.has(i) && !handled.has(i)) {
-      if (skipped.has(i)) acts = `<button type="button" class="btn btn-ghost btn-xs" data-row-act="unskip" data-tip="Offer it again">${icon('undo-2', 'i-sm')}<span>Restore</span></button>`;
+      if (skipped.has(i)) acts = `<button type="button" class="btn btn-ghost btn-sm" data-row-act="unskip" data-tip="Offer it again">${icon('undo-2', 'i-sm')}<span>Restore</span></button>`;
       else {
         const draft = _asstPersonDraft(p, op);
-        acts = (draft ? `<button type="button" class="btn btn-secondary btn-xs" data-row-act="edit" data-tip="Open the person editor, filled in">${icon('user-plus', 'i-sm')}<span>Add ${esc(draft.name.split(/\s+/)[0])}…</span></button>` : '')
-          + `<button type="button" class="btn btn-ghost btn-icon btn-xs" data-row-act="apply" aria-label="${escAttr('Apply this: ' + label)}" data-tip="Apply this one">${icon('check', 'i-sm')}</button>`
-          + `<button type="button" class="btn btn-ghost btn-icon btn-xs" data-row-act="skip" aria-label="${escAttr('Skip this: ' + label)}" data-tip="Skip">${icon('x', 'i-sm')}</button>`;
+        acts = (draft ? `<button type="button" class="btn btn-secondary btn-sm" data-row-act="edit" data-tip="Open the person editor, filled in">${icon('user-plus', 'i-sm')}<span>Add ${esc(draft.name.split(/\s+/)[0])}…</span></button>` : '')
+          + `<button type="button" class="btn-icon btn-sm" data-row-act="apply" aria-label="${escAttr('Apply this: ' + label)}" data-tip="Apply this one">${icon('check', 'i-sm')}</button>`
+          + `<button type="button" class="btn-icon btn-sm" data-row-act="skip" aria-label="${escAttr('Skip this: ' + label)}" data-tip="Skip">${icon('x', 'i-sm')}</button>`;
       }
     }
     return `<div class="asst-pv-row" data-sel-id="${escAttr(String(i))}" data-label="${escAttr(label)}"><div class="asst-pv-body">${_asstProposalHtml({ preview: [op] })}</div>`
@@ -362,11 +362,7 @@ function _asstProposalCard(msg, p) {
     ${p.error ? `<div class="callout danger">${icon('circle-alert', 'i-sm')}<span>${esc(p.error)}</span></div>` : ''}
     <div class="asst-prop-f"></div>`;
   const f = card.querySelector('.asst-prop-f');
-  const btn = (label, cls, ic, run) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls;
-    b.innerHTML = (ic ? icon(ic) : '') + `<span>${esc(label)}</span>`;
-    b.onclick = run; f.appendChild(b); return b;
-  };
+  const btn = (label, kind, ic, run) => f.appendChild(uiButton({ label, kind, icon: ic || undefined, size: 'sm', bubble: true, run }));   // the kit's button (kind 'btn-primary' works too)
   // Parts applied one at a time: an Undo for each.
   const parts = (p.parts || []).filter(x => x.state === 'applied' && x.undo);
   const partUndos = () => parts.filter(x => _asstUndoHere(x)).forEach((x) => btn(parts.length > 1 || selectable ? `Undo ${x.idx.length} applied` : 'Undo', 'btn-secondary', 'undo-2', () => _asstUndoPart(msg, p, x)));
@@ -497,7 +493,7 @@ async function _asstApply(msg, p) {
       if (p.state === 'pending') p.notice = 'Some of these were already applied on another of your computers. Check the rest, then apply again.';
     } else {
       // Nothing was applied (a batch is all-or-nothing). The ticks stay, so Apply tries again.
-      p.state = 'error'; p.error = netErrorMessage(e, 'Could not apply.');
+      p.state = 'error'; p.error = _asstWhy('apply it', e);
       _asstMarkOpErrors(p, e);
     }
   } finally {
@@ -540,7 +536,7 @@ function _asstConfirmSubset(p, dry) {
     if (dry.needsConfirm) why.push(_asstConfirmText({ reasons: dry.reasons }));
     if ((dry.added || []).length) why.push(`It includes ${dry.added.length} change${dry.added.length === 1 ? '' : 's'} the ticked ones need.`);
     openDialog({
-      title: `Apply ${k} change${k === 1 ? '' : 's'}?`, width: 480,
+      title: `Apply ${k} change${k === 1 ? '' : 's'}?`, size: 'sm',
       body: (el) => {
         const t = document.createElement('p'); t.className = 'muted'; t.textContent = why.join(' ') + ' You can undo it afterwards.';
         const pv = document.createElement('div'); pv.className = 'asst-pv asst-pv-dialog card'; pv.innerHTML = _asstProposalHtml({ preview: dry.preview || [] });
@@ -603,7 +599,7 @@ async function _asstApplySome(msg, p, ids) {
       p.notice = 'Your tasks changed while this was being applied, so nothing was applied. Check the changes, then apply again.';
       await _asstRefreshProposal(p);
     } else {
-      p.error = netErrorMessage(e, 'Could not apply.');
+      p.error = _asstWhy('apply it', e);
       _asstMarkOpErrors(p, e);
     }
   } finally {
@@ -611,13 +607,20 @@ async function _asstApplySome(msg, p, ids) {
   }
   _asstSave(); _asstPaint();
 }
-/** The undo history is on the computer that applied it: say so instead of failing quietly. */
+/** "Couldn’t apply it: <plain reason>." (UI_CLEANUP_PLAN.md 3.8) for a proposal card's own error line. */
+function _asstWhy(what, e) { return `Couldn’t ${what}: ${netErrorReason(e)}.`; }
+/** The undo history is on the computer that applied it: say so calmly instead of failing quietly. */
 function _asstUndoError(e, x) {
   if (e && e.code === 'NOT_FOUND') {
     const on = x && x.appliedOn && x.appliedOn.name;
     return `This was applied ${on ? 'on ' + on : 'on another computer'}: undo it there, or change it back here.`;
   }
-  return netErrorMessage(e, 'Could not undo');
+  return _asstWhy('undo it', e);
+}
+/** An undo that failed: the calm line when it lives on another computer, else "Couldn’t undo it" with Try again. */
+function _asstUndoToast(e, x, retry) {
+  if (e && e.code === 'NOT_FOUND') return toast(_asstUndoError(e, x), { icon: 'info' });
+  return toastError('undo it', e, retry);
 }
 async function _asstUndoPart(msg, p, part, force) {
   p = _asstPLive(p); part = _asstPartLive(p, part);
@@ -636,7 +639,7 @@ async function _asstUndoPart(msg, p, part, force) {
       if (ok) return _asstUndoPart(msg, p, part, true);
       return;
     }
-    toast(_asstUndoError(e, part), { kind: 'err' });
+    _asstUndoToast(e, part, () => _asstUndoPart(msg, p, part, force));
   }
   _asstSave(); _asstPaint();
 }
@@ -654,7 +657,7 @@ async function _asstUndo(msg, p, force) {
       if (ok) return _asstUndo(msg, p, true);
       return;
     }
-    toast(_asstUndoError(e, p), { kind: 'err' });
+    _asstUndoToast(e, p, () => _asstUndo(msg, p, force));
   }
   _asstSave(); _asstPaint();
 }

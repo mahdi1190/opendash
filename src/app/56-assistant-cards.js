@@ -2,13 +2,13 @@
    and Connections. Browser availability is distinct from local tool access. */
 const ASSISTANT_OPTIONS = Object.freeze([
   { id: 'claude', name: 'Claude', mark: 'claude', browser: 'https://claude.ai', docs: 'https://code.claude.com/docs/en/setup',
-    text: 'Link Claude finds or installs Claude Code, signs you in, and adds OpenDash tools to enable dashboard AI. Desktop and Cloudflare are not required. Open connected Claude optionally starts a browser session through Remote Control.' },
+    text: 'Finds or installs Claude Code, signs you in and adds OpenDash’s tools.' },
   { id: 'codex', name: 'ChatGPT / Codex', mark: 'chatgpt', browser: 'https://chatgpt.com', docs: 'https://learn.chatgpt.com/docs/extend/mcp?surface=cli',
-    text: 'Connect local Codex to work with your tasks using OpenDash tools. The assistant inside this dashboard currently uses Claude.' },
+    text: 'Lets Codex use your tasks. OpenDash’s own AI still uses Claude.' },
   { id: 'grok', name: 'Grok', mark: 'grok', browser: 'https://grok.com', docs: 'https://docs.x.ai/grok/connectors/custom-mcp-tunneling',
-    text: 'Open Grok in your browser. This local dashboard is not yet available as a browser connector.' },
+    text: 'Opens Grok in your browser; it can’t see OpenDash yet.' },
   { id: 'gemini', name: 'Gemini', mark: 'gemini', browser: 'https://gemini.google.com', docs: 'https://geminicli.com/docs/tools/mcp-server/',
-    text: 'Connect local Gemini CLI to your OpenDash tools. The Gemini website is separate; the assistant inside this dashboard currently uses Claude.' },
+    text: 'Lets Gemini CLI use your tasks. OpenDash’s own AI still uses Claude.' },
 ]);
 let _assistantBusy = null;
 let _localClaudeUi = null;
@@ -16,7 +16,7 @@ function localClaudeProgress(all) {
   const flow = _localClaudeUi || all.localClaude;
   return flow && (flow.busy || flow.phase === 'error' || flow.phase === 'browser-error' || flow.phase === 'browser-opened') ? flow : null;
 }
-function localClaudePhaseLabel(flow) { return ({ checking: 'Looking for Claude', installing: 'Installing Claude', 'awaiting-login': 'Finish browser sign-in', 'adding-tools': 'Adding OpenDash tools', verifying: 'Verifying connection', 'awaiting-approval': 'Approve the local terminal prompts', 'opening-browser': 'Opening Claude browser', 'browser-opened': 'Dashboard connected · finish browser setup', 'browser-error': 'Local tools connected · browser needs attention', error: 'Setup needs attention' })[flow.phase] || 'Connecting Claude'; }
+function localClaudePhaseLabel(flow) { return ({ checking: 'Looking for Claude', installing: 'Installing Claude', 'awaiting-login': 'Finish browser sign-in', 'adding-tools': 'Adding OpenDash’s tools', verifying: 'Checking the connection', 'awaiting-approval': 'Approve the terminal prompts', 'opening-browser': 'Opening Claude in your browser', 'browser-opened': 'Finish browser setup', 'browser-error': 'The browser session didn’t open', error: 'Setup didn’t finish' })[flow.phase] || 'Connecting Claude'; }
 function localClaudeBrowserUrl(flow) {
   if (!flow || typeof flow.browserUrl !== 'string') return null;
   try {
@@ -30,23 +30,46 @@ function localClaudePopup() {
   try { const popup = window.open('about:blank', '_blank'); if (popup) popup.opener = null; return popup; } catch { return null; }
 }
 function assistantBrowserButton(provider, all, repaint) {
-  if (provider.id !== 'claude') return _connBtn(`Open ${provider.id === 'codex' ? 'ChatGPT' : provider.name}`, 'external-link', 'btn-secondary', () => window.open(provider.browser, '_blank', 'noopener'));
+  if (provider.id !== 'claude') return uiButton({ label: `Open ${provider.id === 'codex' ? 'ChatGPT' : provider.name}`, icon: 'external-link', kind: 'secondary', size: 'sm', run: () => window.open(provider.browser, '_blank', 'noopener') });
   const url = localClaudeBrowserUrl(_localClaudeUi || all.localClaude);
-  const button = _connBtn('Open connected Claude', 'external-link', 'btn-secondary', () => url ? window.open(url, '_blank', 'noopener') : assistantConnect('claude', repaint, 'browser'));
+  const button = uiButton({ label: 'Open connected Claude', icon: 'external-link', kind: 'secondary', size: 'sm', run: () => url ? window.open(url, '_blank', 'noopener') : assistantConnect('claude', repaint, 'browser') });
   button.disabled = !!_assistantBusy; return button;
 }
 
-function assistantConnectionState(id, all) {
+/**
+ * An assistant's one status (SIMPLIFY_PLAN.md 5.6): Not set up, Setting up (with the step), Connected,
+ * Needs you (with the one thing to do) or Usage limit reached (grey: back when it resets).
+ * -> {tone, word, detail} for setStatusLine.
+ */
+function assistantStatus(id, all) {
+  all = all || {};
   const facts = all.assistants || {};
   if (id === 'claude') {
-    const flow = localClaudeProgress(all); if (flow) return localClaudePhaseLabel(flow);
+    const flow = localClaudeProgress(all);
+    if (flow) {
+      if (flow.busy) return { tone: 'busy', word: 'Setting up', detail: localClaudePhaseLabel(flow) };
+      if (flow.phase === 'browser-opened') return { tone: 'ok', word: 'Connected', detail: localClaudePhaseLabel(flow) };
+      return { tone: 'warn', word: 'Needs you', detail: localClaudePhaseLabel(flow) };
+    }
     const installed = (all.mcp && all.mcp.installed || {}).claudeCode === 'installed';
-    return all.claude && all.claude.state === 'ok' && installed ? 'Connected' : installed ? 'Tools added · sign in' : 'Ready to set up';
+    if (!installed) return { tone: 'off', word: 'Not set up' };
+    const st = all.claude && all.claude.state;
+    if (st === 'ok') return { tone: 'ok', word: 'Connected' };
+    if (st === 'limited') return { tone: 'idle', word: 'Usage limit reached', detail: 'back when it resets' };
+    if (st === 'error') return { tone: 'warn', word: 'Needs you', detail: 'Press Check again' };
+    if (st === 'auth' || st === 'setup') return { tone: 'warn', word: 'Needs you', detail: 'Sign in' };
+    return { tone: 'busy', word: 'Setting up', detail: 'Checking' };
   }
-  if (id === 'codex') return !facts.codex ? 'Checking installation…' : facts.codex.configured ? 'Tools configured' : facts.codex.installed ? 'Ready to connect' : 'Install Codex first';
-  if (id === 'gemini') return !facts.gemini ? 'Checking installation…' : facts.gemini.configured ? 'Tools configured' : facts.gemini.installed ? 'Ready to connect' : 'Install Gemini CLI first';
-  return 'Browser connector unavailable';
+  if (id === 'codex' || id === 'gemini') {
+    const f = facts[id], name = id === 'codex' ? 'Codex' : 'Gemini CLI';
+    if (!f) return { tone: 'busy', word: 'Setting up', detail: 'Looking for ' + name };
+    if (f.conflict) return { tone: 'warn', word: 'Needs you', detail: 'Review the existing settings' };
+    if (f.configured) return { tone: 'ok', word: 'Connected' };
+    return { tone: 'off', word: 'Not set up', detail: f.installed ? 'Ready to connect' : 'Install ' + name + ' first' };
+  }
+  return { tone: 'off', word: 'Not set up', detail: 'Browser only' };
 }
+function assistantConnectionState(id, all) { const s = assistantStatus(id, all); return s.detail ? `${s.word} · ${s.detail}` : s.word; }
 
 async function assistantConnect(id, repaint, action = 'link') {
   if (_assistantBusy) return;
@@ -67,7 +90,7 @@ async function assistantConnect(id, repaint, action = 'link') {
         if (popup && !popup.closed) { try { popup.location.replace(url); handedOff = true; } catch {} }
         const message = _localClaudeUi.browserReady ? (handedOff ? 'Connected Claude is open in your browser.' : 'Press Open connected Claude to open the browser session.') : (_localClaudeUi.message || 'Finish terminal confirmations, then select OpenDash in Claude Code in your browser.');
         toast(handedOff ? message : message + ' Press Open connected Claude if the browser did not open.', { kind: 'ok', timeout: 10000 });
-      } else toast('Claude and its local OpenDash tools are connected. Dashboard AI is ready.', { kind: 'ok' });
+      } else toast('Claude connected. AI features are on', { kind: 'ok' });
       await connRefresh({ force: true });
     } else {
       const r = await fetch('/api/connections/assistant-connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
@@ -75,55 +98,100 @@ async function assistantConnect(id, repaint, action = 'link') {
       toast(j.message, { kind: 'ok', timeout: 7000 });
       await connRefresh({ force: true });
     }
-  } catch (e) { toast(e.message || 'Could not connect this assistant.', { kind: 'err' }); }
+  } catch (e) { toastError('connect ' + ((ASSISTANT_OPTIONS.find(p => p.id === id) || {}).name || 'this assistant'), e, () => assistantConnect(id, repaint, action)); }
   finally { if (popup && !handedOff) { try { popup.close(); } catch {} } _assistantBusy = null; repaint(); }
 }
 
+/**
+ * The body of an assistant's setup drawer (SIMPLIFY_PLAN.md 5.6): one sentence, the official guide and the
+ * browser button; the longer explanation folds under "How it works". Shared by the welcome and Connections.
+ */
+function assistantGuideFill(el, id, all, repaint) {
+  const provider = ASSISTANT_OPTIONS.find(p => p.id === id);
+  const facts = all.assistants && all.assistants[id];
+  const configured = !!(facts && facts.configured);
+  if (facts && facts.conflict) el.appendChild(_connEl('p', 'callout warn conn-msg', 'An existing configuration needs review. OpenDash leaves it unchanged.'));
+  if (id === 'claude') {
+    const help = _connHelp(CONNECTION_INFO[0], { state: 'setup', status: 'not-installed' }, { cli: { installed: false } });
+    if (help) el.appendChild(help);
+    el.appendChild(_connEl('p', 'conn-note', 'Press Link Claude. It finds Claude Code (or installs it), signs you in and adds OpenDash’s tools.'));
+  } else if (id === 'codex') {
+    el.appendChild(_connEl('p', 'conn-text', configured ? 'OpenDash’s tools are in Codex. Open Codex and sign in if asked, and restart open sessions to load them.' : 'Install and sign in to Codex with its official guide, then come back and press Connect Codex.'));
+  } else if (id === 'gemini') {
+    el.appendChild(_connEl('p', 'conn-text', configured ? 'OpenDash’s tools are in Gemini CLI. Open it and sign in if asked.' : 'Install and sign in to Gemini CLI, then come back and press Connect Gemini CLI.'));
+  }
+  const acts = _connEl('div', 'assistant-actions');
+  acts.appendChild(uiButton({ label: 'Official connection guide', icon: 'external-link', kind: 'secondary', size: 'sm', run: () => window.open(provider.docs, '_blank', 'noopener') }));
+  acts.appendChild(assistantBrowserButton(provider, all, repaint));
+  el.appendChild(acts);
+  setFold(el, 'conn-ai-' + id + '-how', 'How it works', ({ body }) => {
+    if (id === 'claude') {
+      body.appendChild(_connEl('p', 'conn-note', 'Open connected Claude starts a browser session through Remote Control: approve its terminal prompts and keep this computer running. Claude chats on claude.ai are a separate connection.'));
+      body.appendChild(_connEl('p', 'conn-note', 'Claude Code needs a supported subscription or provider account. ' + (all.assistants && all.assistants.claudeDesktop && all.assistants.claudeDesktop.detected ? 'Claude Desktop was found; it is optional.' : 'Claude Desktop is optional.')));
+    } else if (id === 'gemini') {
+      body.appendChild(_connEl('p', 'conn-note', 'OpenDash adds its tools to your user settings and never skips Gemini’s own confirmations or folder permissions. The Gemini website is a separate connection.'));
+    } else if (id === 'codex') {
+      body.appendChild(_connEl('p', 'conn-note', 'ChatGPT in a browser doesn’t read Codex on this computer.'));
+    } else {
+      body.appendChild(_connEl('p', 'conn-note', 'Opening the website doesn’t connect your local OpenDash tools.'));
+    }
+  });
+}
 function assistantConnectionGuide(id) {
   const provider = ASSISTANT_OPTIONS.find(p => p.id === id);
-  openDrawer({ title: `Connect ${provider.name}`, width: 560, body: (el) => {
-    if (id === 'claude') {
-      const help = _connHelp(CONNECTION_INFO[0], { state: 'setup', status: 'not-installed' }, { cli: { installed: false } });
-      if (help) el.appendChild(help);
-      el.appendChild(_connEl('p', 'conn-note', 'Link Claude first looks for an existing installation and sign-in. It installs the official native app only when missing and adds OpenDash tools as part of the same flow. Claude Code needs a supported subscription or provider account.'));
-    } else if (id === 'codex') {
-      el.appendChild(_connEl('p', 'conn-text', 'Install and sign in to Codex using the official setup guide, then return and press Connect Codex. ChatGPT in a browser does not read local Codex connections.'));
-    } else if (id === 'gemini') {
-      el.appendChild(_connEl('p', 'conn-text', 'Install and sign in to Gemini CLI, then return and press Connect Gemini CLI. OpenDash registers its tools in your user settings without bypassing Gemini tool confirmations or folder permissions. The Gemini website does not use this local connection.'));
-    }
-    el.appendChild(_connEl('p', 'conn-text', id === 'claude' ? 'Link Claude enables dashboard AI. Open connected Claude optionally starts an official Remote Control browser session; approve its terminal prompts and keep this computer running. Ordinary Claude chats use a separate connection.' : 'Opening the ordinary website does not connect your local dashboard tools.'));
-    el.appendChild(_connBtn('Official connection guide', 'external-link', 'btn-secondary', () => window.open(provider.docs, '_blank', 'noopener')));
-    el.appendChild(assistantBrowserButton(provider, Connections.all() || {}, () => renderMain()));
-  } });
+  openDrawer({ title: `Connect ${provider.name}`, width: 560, body: (el) => assistantGuideFill(el, id, Connections.all() || {}, () => renderMain()) });
+}
+
+/** One assistant card (Connections and the welcome): status first, one sentence, one button; the rest under More. */
+function assistantCardBuild(provider, all, repaint, o) {
+  o = o || {};
+  const status = assistantStatus(provider.id, all);
+  const card = _connEl('section', 'card conn-card assistant-card' + (o.cls ? ' ' + o.cls : '')); card.dataset.conn = provider.id;
+  const head = _connEl('div', 'conn-head');
+  const mark = _connEl('span', 'conn-ic assistant-mark' + (provider.id === 'claude' && o.claudeMark ? ' claude' : ''));
+  if (provider.id === 'claude' && o.claudeMark) mark.innerHTML = _connMark('claude');
+  else { const img = document.createElement('img'); img.src = ASSISTANT_MARKS[provider.mark]; img.alt = ''; img.width = 28; img.height = 28; mark.appendChild(img); }
+  const titles = _connEl('div', 'conn-titles'); titles.append(_connEl(o.h3 ? 'h3' : 'div', 'conn-name', provider.name));
+  if (provider.id !== 'grok') titles.appendChild(_connEl('div', 'conn-sub', 'On this computer'));
+  head.append(mark, titles); card.appendChild(head);
+  // Not set up here but Claude works on another of your computers: AI works here through it.
+  const viaClaude = o.via && provider.id === 'claude' && status.word === 'Not set up' && typeof connVia === 'function' ? connVia('claude') : null;
+  card.appendChild(setStatusLine(status.tone, status.word, viaClaude ? `Uses Claude on ${viaClaude}` : status.detail));
+  card.appendChild(_connEl('p', 'conn-text', provider.text));
+  if (provider.id === 'claude') { const flow = localClaudeProgress(all); if (flow && flow.message) card.appendChild(_connEl('p', 'conn-note', flow.message)); }
+  const local = provider.id !== 'grok';
+  const installed = provider.id === 'claude' ? all.cli && all.cli.installed : all.assistants && all.assistants[provider.id] && all.assistants[provider.id].installed;
+  const localName = provider.id === 'codex' ? 'Codex' : provider.id === 'gemini' ? 'Gemini CLI' : 'Claude';
+  const working = status.word === 'Connected';
+  const guide = () => (o.guide ? o.guide(provider.id) : assistantConnectionGuide(provider.id));
+  const row = _connEl('div', 'set-action'); card.appendChild(row);
+  if (local) {
+    const checking = provider.id !== 'claude' && !(all.assistants && all.assistants[provider.id]);
+    const flow = provider.id === 'claude' && localClaudeProgress(all);
+    const label = flow && flow.busy ? localClaudePhaseLabel(flow) + '…' : _assistantBusy === provider.id ? 'Connecting…' : checking ? 'Checking…'
+      : provider.id === 'claude' ? (viaClaude ? 'Also set up on this computer' : working ? 'Check again' : 'Link Claude')
+        : working ? 'Check again' : installed ? `Connect ${localName}` : `Set up ${localName}`;
+    const b = uiButton({ label, icon: working ? 'refresh-cw' : 'plug', kind: working || viaClaude ? 'secondary' : 'primary', size: 'sm', run: async () => {
+      if (provider.id === 'claude' && !working) assistantConnect(provider.id, repaint);
+      else if (provider.id === 'claude') { await connCheck('claude'); repaint(); }
+      else if (working) { await connRefresh({ force: true }); repaint(); }
+      else if (installed) assistantConnect(provider.id, repaint);
+      else guide();
+    } });
+    b.disabled = !!_assistantBusy || checking; row.appendChild(b);
+  } else row.appendChild(assistantBrowserButton(provider, all, repaint));
+  setFold(card, 'conn-ai-' + provider.id + '-more', 'More', ({ body }) => {
+    const acts = _connEl('div', 'assistant-actions');
+    if (local) acts.appendChild(assistantBrowserButton(provider, all, repaint));
+    acts.appendChild(uiButton({ label: 'Options', icon: 'settings', kind: 'ghost', size: 'sm', run: () => provider.id === 'claude' ? _connMcpDrawer() : guide() }));
+    body.appendChild(acts);
+    if (provider.id === 'claude') body.appendChild(_connEl('p', 'conn-note', all.assistants && all.assistants.claudeDesktop && all.assistants.claudeDesktop.detected ? 'Claude Desktop was found; it is optional.' : 'Claude Desktop is optional.'));
+  });
+  return card;
 }
 
 function assistantConnectionCards(all, repaint = () => renderMain(), compact = false) {
   const grid = _connEl('div', 'conn-grid assistant-grid' + (compact ? ' assistant-grid-compact' : ''));
-  for (const provider of ASSISTANT_OPTIONS) {
-    const card = _connEl('section', 'card conn-card assistant-card'); card.dataset.conn = provider.id;
-    const head = _connEl('div', 'conn-head');
-    const mark = _connEl('span', 'conn-ic assistant-mark');
-    const img = document.createElement('img'); img.src = ASSISTANT_MARKS[provider.mark]; img.alt = ''; img.width = 28; img.height = 28; mark.appendChild(img);
-    const titles = _connEl('div', 'conn-titles'); titles.append(_connEl('div', 'conn-name', provider.name), _connEl('div', 'conn-sub', provider.id === 'grok' ? 'Browser access' : 'OpenDash tools included'));
-    const short = { claude: 'Enable dashboard AI with local Claude. Browser sessions are optional; no Desktop or Cloudflare.', codex: 'Local Codex tools; the dashboard assistant still uses Claude.', grok: 'Browser access only; your local OpenDash tools are not connected.', gemini: 'Local Gemini CLI tools; the dashboard assistant still uses Claude.' };
-    head.append(mark, titles); card.append(head, _connEl('p', 'conn-text', compact ? short[provider.id] : provider.text));
-    const status = assistantConnectionState(provider.id, all);
-    card.appendChild(_connEl('span', 'assistant-state', status));
-    if (!compact && provider.id === 'claude' && all.assistants) card.appendChild(_connEl('p', 'conn-note', all.assistants.claudeDesktop.detected ? 'Claude Desktop or its settings detected; it is optional.' : 'Claude Desktop is not required.'));
-    const actions = _connEl('div', 'assistant-actions');
-    const local = provider.id !== 'grok';
-    const installed = provider.id === 'claude' ? all.cli && all.cli.installed : all.assistants && all.assistants[provider.id] && all.assistants[provider.id].installed;
-    const localName = provider.id === 'codex' ? 'Codex' : provider.id === 'gemini' ? 'Gemini CLI' : 'Claude';
-    if (local) {
-      const flow = provider.id === 'claude' && localClaudeProgress(all);
-      const b = _connBtn(flow && flow.busy ? localClaudePhaseLabel(flow) + '…' : _assistantBusy === provider.id ? 'Connecting…' : provider.id === 'claude' ? 'Link Claude' : installed ? `Connect ${localName}` : `Set up ${localName}`, 'plug', 'btn-primary', () => provider.id === 'claude' || installed ? assistantConnect(provider.id, repaint) : assistantConnectionGuide(provider.id));
-      b.disabled = !!_assistantBusy; actions.appendChild(b);
-    }
-    actions.appendChild(assistantBrowserButton(provider, all, repaint));
-    actions.appendChild(_connBtn('Options', 'settings', 'btn-ghost', () => provider.id === 'claude' ? _connMcpDrawer() : assistantConnectionGuide(provider.id)));
-    if (provider.id === 'claude') { const flow = localClaudeProgress(all); if (flow && flow.message) card.appendChild(_connEl('p', 'conn-note', flow.message)); }
-    card.appendChild(actions);
-    grid.appendChild(card);
-  }
+  for (const provider of ASSISTANT_OPTIONS) grid.appendChild(assistantCardBuild(provider, all, repaint, {}));
   return grid;
 }

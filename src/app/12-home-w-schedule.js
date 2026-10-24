@@ -107,13 +107,12 @@ function _hsRender(el, ctx) {
 
 /* ---------- header ---------- */
 function _hsHead(cal, m) {
-  const h = document.createElement('div'); h.className = 'card-h hs-h';
   const n = m.eventCount ? `${m.eventCount} event${m.eventCount === 1 ? '' : 's'}`
     : m.timed.length ? `${m.timed.length} timed task${m.timed.length === 1 ? '' : 's'}` : '';
-  h.innerHTML = `${icon('calendar-days')}<h3>Today’s schedule</h3>${n ? `<span class="n">${esc(n)}</span>` : ''}<span class="spacer"></span>`;
+  const h = cardHead({ icon: 'calendar-days', title: 'Today’s schedule', count: n, cls: 'hs-h' });
   if (cal.ok && (cal.stale || cal.running) && cal.label) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'hs-upd' + (cal.running ? ' is-running' : ''); b.dataset.act = 'refresh';
-    b.innerHTML = icon('refresh-cw') + `<span>${esc(cal.running ? 'Updating…' : cal.label)}</span>`;
+    b.innerHTML = icon('refresh-cw', 'i-xs') + `<span>${esc(cal.running ? 'Updating…' : cal.label)}</span>`;
     b.setAttribute('data-tip', cal.running ? 'Reading your calendars' : 'Read the calendar again');
     b.setAttribute('aria-label', cal.running ? 'Updating the calendar' : `${cal.label}. Read the calendar again`);
     h.appendChild(b);
@@ -210,7 +209,7 @@ function _hsItemHtml(r, m) {
   const meta = task ? (x.planned ? '<span class="hs-plan">Planned</span>' : '') + (x.stream ? `<span>${esc(x.stream)}</span>` : '') : _hsMetaHtml(x);
   const right = r.next && m.nextIn !== null ? `<span class="hs-in"><i class="hs-pulse" aria-hidden="true"></i><span data-in>${esc(_hsInText(m.nextIn))}</span></span>`
     : r.state === 'now' ? '<span class="hs-nowpill">Now</span>'
-    : r.state === 'past' ? `<span class="hs-done" aria-hidden="true">${icon('check')}</span>` : '';
+    : r.state === 'past' ? `<span class="hs-done" aria-hidden="true">${icon('check', 'i-xs')}</span>` : '';
   const say = `${homeHM(x.start)}${end ? ' to ' + end : ''}, ${x.title}${x.location ? ', ' + x.location : ''}${r.next && m.nextIn !== null ? ', ' + _hsInText(m.nextIn) : r.state === 'now' ? ', happening now' : r.state === 'past' ? ', finished' : ''}${task ? (x.planned ? ', planned time for a task' : ', task') : ''}`;
   const ids = task ? `data-id="${escAttr(x.id)}" data-task="${escAttr(x.id)}"` : `data-ev="${escAttr(x.id)}" data-scene-key="${escAttr(x.key)}"`;
   const color = homeCalColor(x.color, task ? 'var(--fg-subtle)' : 'var(--sw-blue)');

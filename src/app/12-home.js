@@ -546,7 +546,7 @@ function _homePaintWidget(frame, def, w, entering) {
   try { r = def.render(body, ctx); }
   catch (e) {
     console.error(`[home] widget "${def.id}" failed`, e);
-    body.innerHTML = `<div class="card home-card is-off"><div class="card-b"><div class="home-empty">${icon('circle-alert')}<div><b>${esc(def.title)} could not load</b><span>The rest of Home is fine. Reload the page; if it keeps happening, check the console.</span></div></div></div></div>`;
+    body.innerHTML = `<div class="card home-card is-off"><div class="card-b"><div class="home-empty">${icon('circle-alert')}<div><b>${esc(def.title)} couldn’t load</b><span>The rest of Home is fine. Reload the page.</span></div></div></div></div>`;
     r = true;
   }
   const empty = r === false || !body.firstElementChild;
@@ -555,7 +555,7 @@ function _homePaintWidget(frame, def, w, entering) {
   // The card's title opens its page (2.18, NAVIGATION_PLAN.md 2.8; 16-pages.js), not while customising.
   if (!empty && !_homeEditing && !ctx.preview && typeof homeCardTitleLink === 'function') { try { homeCardTitleLink(frame, def, ctx); } catch (e) { console.error(`[home] title link "${def.id}"`, e); } }
   // Hidden for now (nothing to show): while customising it keeps its slot and says when it appears.
-  if (empty && _homeEditing) body.innerHTML = `<div class="hg-placeholder">${icon(def.icon)}<span><b>${esc(def.title)}</b> ${esc(def.emptyHint || 'Nothing to show right now')}</span></div>`;
+  if (empty && _homeEditing) body.innerHTML = `<div class="hg-placeholder">${icon(def.icon, 'i-lg')}<span><b>${esc(def.title)}</b> ${esc(def.emptyHint || 'Nothing to show right now')}</span></div>`;
   if (typeof _homeEditChrome === 'function') _homeEditChrome(frame, def, w);
   // The once-per-entry entrance is homeGridEntrance (called by mount), not per widget.
 }
@@ -621,12 +621,9 @@ function _homeCtx(rec, first) {
 /** The greyed "connect / no data yet" state inside a widget. */
 function _homeOffState(rec, o) {
   const wrap = document.createElement('div'); wrap.className = 'home-empty';
-  wrap.innerHTML = `${icon(o.icon || rec.def.icon || 'plug')}<div><b>${esc(o.title || 'Not connected')}</b>${o.text ? `<span>${esc(o.text)}</span>` : ''}</div>`;
+  wrap.innerHTML = `${icon(o.icon || rec.def.icon || 'plug', 'i-lg')}<div><b>${esc(o.title || 'Not connected')}</b>${o.text ? `<span>${esc(o.text)}</span>` : ''}</div>`;
   if (o.action && typeof o.action.run === 'function') {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm';
-    b.innerHTML = icon(o.action.icon || 'plug') + `<span>${esc(o.action.label || 'Connect')}</span>`;
-    b.onclick = () => o.action.run();
-    wrap.appendChild(b);
+    wrap.appendChild(uiButton({ label: o.action.label || 'Connect', icon: o.action.icon || 'plug', size: 'sm', bubble: true, run: () => o.action.run() }));
   }
   rec.frame.classList.add('is-off');
   return wrap;
@@ -642,7 +639,7 @@ function homeOpenTask(id, fromEl) {
 function _homeDragPill(el) {
   const it = getItem(el && el.dataset.id);
   if (!it) return '';
-  return `<span class="hw-p ${escAttr(effPriority(it))}"></span><span class="sp-t">${esc(effTitle(it))}</span><span class="sp-k">${icon('calendar')}Drop on a day</span>`;
+  return `<span class="hw-p ${escAttr(effPriority(it))}"></span><span class="sp-t">${esc(effTitle(it))}</span><span class="sp-k">${icon('calendar', 'i-xs')}Drop on a day</span>`;
 }
 
 /* ---------- task actions shared by the widgets (in place where we can, so it stays fluid) ---------- */

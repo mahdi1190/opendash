@@ -5,9 +5,9 @@
    "No relay yet" card while it shows (CSS :has, 96-friends-onboard.css).
 
      1. Make your character   opens the profile builder (Settings > Profile)
-     2. Get a relay           Connect Cloudflare (free, about 2 minutes:
+     2. Set up your relay     Set up my relay (free, about 2 minutes:
                               relaySettingsOpen({start: true}), 58-settings-relay.js)
-                              or Paste a friend's invite (friendsAddDialog('paste'))
+                              or Paste an invite (friendsAddDialog('paste'))
      3. Invite a friend       a single-use link, copied as it is or inside a
                               ready message (POST /api/friends/invite)
 
@@ -19,6 +19,9 @@
    This browser only (localStorage 'dashboard-friends-onboard'): {closed,
    avatarOk, doneAt}. Nothing here reads or shows friend text: the panel is
    about you. Every string is set with textContent; markup is static or icon().
+   2.18 (UI_CLEANUP_PLAN.md C6): the steps share one height (the tallest step's)
+   and each step's buttons sit at its foot, so a step changing never moves the
+   page below (96-friends-onboard.css); buttons are uiButton, copies copyText.
    ============================================================ */
 const _FRO_KEY = 'dashboard-friends-onboard';
 const FRIENDS_GUIDE_URL = 'https://github.com/mahdi1190/opendash/blob/main/docs/FRIENDS_GUIDE.md';
@@ -67,13 +70,6 @@ function _froVisible(d, p, s) {
 
 /* ---------- the panel ---------- */
 function _froEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
-function _froBtn(label, o) {
-  if (typeof _frBtn === 'function') return _frBtn(label, o);
-  const b = _froEl('button', 'btn ' + ((o && o.kind) || 'btn-secondary') + (o && o.sm ? ' btn-sm' : ''));
-  b.type = 'button'; if (o && o.icon) b.innerHTML = icon(o.icon); b.appendChild(_froEl('span', null, label));
-  if (o && o.run) b.onclick = (e) => { e.stopPropagation(); o.run(e, b); };
-  return b;
-}
 function _froDone(text) {
   const e = _froEl('div', 'fro-done');
   e.innerHTML = icon('circle-check', 'i-sm');
@@ -104,7 +100,7 @@ function _froConnect() {
   if (typeof relaySettingsOpen === 'function') relaySettingsOpen({ start: true });
   else setView('settings:relay');
 }
-/** Connect Cloudflare on this computer right now (Settings > Your relay keeps it in _rlSt), or null. */
+/** Setting up your relay on this computer right now (Settings > Your relay keeps it in _rlSt), or null. */
 function _froConnectJob() {
   try { return typeof _rlSt !== 'undefined' && _rlSt && _rlSt.connect ? _rlSt.connect : null; } catch (e) { return null; }
 }
@@ -114,11 +110,6 @@ function _froInviteMessage(inv) {
     + 'In OpenDash, open Friends > Add a friend > Paste an invite, and paste this link:\n' + inv.link + '\n\n'
     + `It works once${when ? ' and ends on ' + when : ''}. We'll both see a short code to check before we're connected.\n\n`
     + "Don't have OpenDash yet? It's free: https://github.com/mahdi1190/opendash";
-}
-async function _froCopy(text, what) {
-  if (typeof _frCopy === 'function') return _frCopy(text, what);
-  try { await navigator.clipboard.writeText(String(text)); toast(`${what} copied`, { kind: 'ok', icon: 'copy' }); }
-  catch (e) { toast('Copying is blocked here: select the text and copy it yourself.', { kind: 'err' }); }
 }
 /** Step 3: make a single-use invite (with relay access when it is your own relay) and offer it two ways. */
 function _froInviteBox(acts, d, again) {
@@ -132,33 +123,33 @@ function _froInviteBox(acts, d, again) {
     inp.onfocus = () => inp.select();
     const row = _froEl('div', 'fro-acts');
     row.append(
-      _froBtn('Copy link', { icon: 'copy', kind: 'btn-primary', sm: true, run: () => _froCopy(inv.link, 'Invite link') }),
-      _froBtn('Copy a ready message', { icon: 'mail', sm: true, run: () => _froCopy(_froInviteMessage(inv), 'Message') }),
+      uiButton({ label: 'Copy link', icon: 'copy', kind: 'primary', size: 'sm', run: () => copyText(inv.link, 'invite link') }),
+      uiButton({ label: 'Copy a ready message', icon: 'mail', size: 'sm', run: () => copyText(_froInviteMessage(inv), 'message') }),
     );
-    if (navigator.share) row.appendChild(_froBtn('Share', { icon: 'send', sm: true, run: () => navigator.share({ title: 'Join me on OpenDash', text: _froInviteMessage(inv) }).catch(() => {}) }));
-    row.appendChild(_froBtn('Cancel this invite', { kind: 'btn-ghost', sm: true, run: (e, b) => _frDo(b, async () => {
+    if (navigator.share) row.appendChild(uiButton({ label: 'Share', icon: 'send', size: 'sm', run: () => navigator.share({ title: 'Join me on OpenDash', text: _froInviteMessage(inv) }).catch(() => {}) }));
+    row.appendChild(uiButton({ label: 'Cancel this invite', kind: 'ghost', size: 'sm', run: (e, b) => _frDo(b, async () => {
       await _frApi('/api/friends/invite/cancel', { id: inv.id });
       _fro.invite = null; paint();
       await friendsLoad(true).catch(() => {}); _froRepaint();
-    }, 'Invite cancelled: the link no longer works') }));
+    }, 'Invite cancelled: the link no longer works', 'cancel the invite') }));
     const when = inv.exp ? new Date(Number(inv.exp)).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : '';
     out.append(inp, row, _froEl('p', 'fro-sub muted', `Send it to one person. It works once${when ? ', until ' + when : ''}, and you approve them after you both check a short code.`));
   };
   const relay = d.relay && d.relay.home;
   if (!_fro.invite) {
-    acts.appendChild(_froBtn(again ? 'Make another invite' : 'Make an invite link', { icon: 'link', kind: again ? 'btn-secondary' : 'btn-primary', run: (e, b) => _frDo(b, async () => {
+    acts.appendChild(uiButton({ label: again ? 'Make another invite' : 'Make an invite link', icon: 'link', kind: again ? 'secondary' : 'primary', run: (e, b) => _frDo(b, async () => {
       // Your own relay: they may use it for friends (not for their own sync: that is a choice in Add a friend).
       const r = await _frApi('/api/friends/invite', { ttlDays: 7, relayScopes: relay && relay.role === 'owner' ? ['message'] : null });
       const link = String(r.link || r.text || '');
-      if (!link) throw new Error('The invite could not be made. Try again.');
+      if (!link) throw new Error('The invite didn’t come back. Try again.');
       _fro.invite = { id: String(r.id || ''), link, exp: Number(r.exp) || 0 };
       paint();
       if (acts.isConnected) acts.querySelectorAll('.fro-make').forEach(x => x.remove());
       friendsLoad(true).then(_froRepaint).catch(() => {});
       return r;
-    }) }));
+    }, null, 'make the invite link') }));
     acts.lastChild.classList.add('fro-make');
-    acts.appendChild(_froBtn('More ways to add', { kind: 'btn-ghost', sm: true, run: () => friendsAddDialog('invite') }));
+    acts.appendChild(uiButton({ label: 'More ways to add', kind: 'ghost', size: 'sm', run: () => friendsAddDialog('invite') }));
   }
   paint();
   return out;
@@ -174,7 +165,7 @@ function _froRender(sec, d) {
   // header
   const head = _froEl('div', 'fro-h');
   const ic = _froEl('span', 'fro-ic');
-  ic.innerHTML = icon(s.all ? 'party-popper' : 'sparkles');
+  ic.innerHTML = icon(s.all ? 'party-popper' : 'sparkles', 'i-hero');
   const t = _froEl('div', 'fro-ht');
   t.appendChild(_froEl('span', 'overline', 'Getting started'));
   t.appendChild(_froEl('h2', null, s.all ? "You're all set" : 'Welcome to Friends'));
@@ -182,9 +173,8 @@ function _froRender(sec, d) {
     ? 'Your character is ready, your relay is connected, and your first invite is out. When they paste it, you will both see a short code: check it matches, then approve.'
     : 'Three small steps to your first friend. Everything between friends is end-to-end encrypted, and you choose what each friend can see.'));
   const ha = _froEl('div', 'fro-hacts');
-  ha.appendChild(_froBtn('How friends work', { icon: 'circle-help', kind: 'btn-ghost', sm: true, run: () => friendsHelpOpen() }));
-  const x = _froBtn('', { icon: 'x', kind: 'btn-ghost', sm: true, aria: s.all ? 'Close' : 'Close getting started', run: () => friendsOnboardClose() });
-  x.classList.add('btn-icon');
+  ha.appendChild(uiButton({ label: 'How friends work', icon: 'circle-help', kind: 'ghost', size: 'sm', run: () => friendsHelpOpen() }));
+  const x = uiButton({ icon: 'x', kind: 'ghost', size: 'sm', aria: s.all ? 'Close' : 'Close getting started', run: () => friendsOnboardClose() });
   ha.appendChild(x);
   head.append(ic, t, ha);
   sec.appendChild(head);
@@ -205,29 +195,26 @@ function _froRender(sec, d) {
   if (typeof profileAvatarEl === 'function') {
     try { const av = profileAvatarEl(null, { size: 40 }); if (av && av.nodeType === 1) { av.classList.add('fro-av'); a.li.insertBefore(av, a.body.nextSibling); } } catch (e) { /* no avatar */ }
   }
-  a.acts.appendChild(_froBtn(s.avatar ? 'Change it' : 'Open the builder', { icon: 'wand-sparkles', kind: s.avatar ? 'btn-ghost' : 'btn-primary', sm: s.avatar, run: _froOpenBuilder }));
-  if (!s.avatar) a.acts.appendChild(_froBtn('It looks fine as it is', { kind: 'btn-ghost', sm: true, run: () => { _froSave({ avatarOk: true }); _froRepaint(); } }));
+  a.acts.appendChild(uiButton({ label: s.avatar ? 'Change it' : 'Open the builder', icon: 'wand-sparkles', kind: s.avatar ? 'ghost' : 'primary', size: (s.avatar) ? 'sm' : 'md', run: _froOpenBuilder }));
+  if (!s.avatar) a.acts.appendChild(uiButton({ label: 'It looks fine as it is', kind: 'ghost', size: 'sm', run: () => { _froSave({ avatarOk: true }); _froRepaint(); } }));
   ol.appendChild(a.li);
   // 2. relay
   const job = _froConnectJob();
-  const host = s.relay ? String(d.relay.home.host || '') : '';
-  const b = _froStep(2, s.relay, active === 2, 'Get a relay', s.relay
-    ? (d.relay.home.role === 'owner' ? `Your own relay on Cloudflare (${host}).` : `You use a friend's relay (${host}).`)
-    : "Friends' messages travel, sealed, through a small private relay. Use your own (free on Cloudflare), or join a friend's with their invite.");
+  const b = _froStep(2, s.relay, active === 2, 'Set up your relay', s.relay
+    ? (d.relay.home.role === 'owner' ? 'Your own relay.' : 'A friend’s relay.')
+    : 'Set up your relay (free, about 2 minutes) or join a friend’s.');
   if (!s.relay) {
     if (job && job.state === 'running') {
       const w = _froEl('div', 'fro-wait');
       w.innerHTML = icon('loader-circle', 'i-sm fr-spin');
-      w.appendChild(_froEl('span', null, 'Connecting to Cloudflare…'));
-      b.acts.append(w, _froBtn('Open', { sm: true, run: () => setView('settings:relay') }));
+      w.appendChild(_froEl('span', null, 'Setting up your relay…'));
+      b.acts.append(w, uiButton({ label: 'Open', size: 'sm', run: () => setView('settings:relay') }));
     } else {
-      if (job && job.state === 'error' && job.error) b.body.insertBefore(_froEl('p', 'fro-sub fro-err', `Connect Cloudflare stopped: ${job.error.message}`), b.acts);
-      const cf = _froBtn('Connect Cloudflare', { icon: 'cloud', kind: active === 2 ? 'btn-primary' : 'btn-secondary', run: _froConnect });
-      cf.appendChild(_froEl('span', 'fro-hint', 'free, about 2 minutes'));
-      b.acts.append(cf, _froBtn("Paste a friend's invite", { icon: 'clipboard', run: () => friendsAddDialog('paste') }));
+      if (job && job.state === 'error' && job.error) b.body.insertBefore(_froEl('p', 'fro-sub fro-err', `Setting up your relay stopped: ${job.error.message}`), b.acts);
+      b.acts.append(uiButton({ label: 'Set up my relay', icon: 'cloud', kind: active === 2 ? 'primary' : 'secondary', run: _froConnect }),
+        uiButton({ label: 'Paste an invite', icon: 'clipboard', run: () => friendsAddDialog('paste') }));
     }
-    if (d.relay && d.relay.support === false) b.body.insertBefore(_froEl('p', 'fro-sub muted', "This version of OpenDash doesn't include relay support yet: it arrives with the relay update."), b.acts);
-  } else b.acts.appendChild(_froBtn('Relay settings', { kind: 'btn-ghost', sm: true, run: () => setView('settings:relay') }));
+  } else b.acts.appendChild(uiButton({ label: 'Your relay', kind: 'ghost', size: 'sm', run: () => setView('settings:relay') }));
   ol.appendChild(b.li);
   // 3. invite
   const c = _froStep(3, s.invite, active === 3, 'Invite a friend', !s.relay ? 'After step 2: invites travel through your relay.'
@@ -236,7 +223,7 @@ function _froRender(sec, d) {
     : 'Send one person a link, as it is or in a ready message.');
   if (s.relay) {
     const box = _froInviteBox(c.acts, d, s.invite);
-    c.body.appendChild(box);
+    c.body.insertBefore(box, c.acts);   // the step's buttons stay at its foot
   } else c.li.classList.add('is-waiting');
   ol.appendChild(c.li);
   sec.appendChild(ol);
@@ -258,7 +245,7 @@ function friendsOnboardClose() {
   _fro.forcedAt = 0;
   _froSave({ closed: true });
   _froRepaint();
-  if (!was) toast('Getting started is closed. It stays in the command palette: "Friends: getting started".', { icon: 'sparkles', action: { label: 'Undo', run: () => { _froSave({ closed: false }); _froRepaint(); } } });
+  if (!was) toast('Getting started is closed. It stays under More and in the command palette.', { icon: 'sparkles', action: { label: 'Undo', run: () => { _froSave({ closed: false }); _froRepaint(); } } });
 }
 /** Open the welcome again (the palette): it shows even when every step is done. */
 function friendsOnboardOpen() {
@@ -276,7 +263,7 @@ document.addEventListener('opendash:profile', () => { if (/^friends$/.test(Strin
 /* ---------- How friends work (plain language; the full guide: docs/FRIENDS_GUIDE.md) ---------- */
 const _FRO_HELP = Object.freeze([
   ['eye', 'What friends can see', 'At first only your profile (name, character, bio) and your game progress (level, streaks). Tasks, calendar, money, places and your journal stay off until you turn them on for a friend you mark Trusted. On a friend\'s page, Preview shows exactly what would go to them.'],
-  ['cloud', 'The relay', "Friends' messages travel through a small private relay: your own on your Cloudflare account (free), or a friend's that you join with their invite. It only ever holds sealed, encrypted messages it cannot read. Only you, your devices and the people you invite can use yours."],
+  ['cloud', 'The relay', "Friends' messages travel through a small private relay: your own on your Cloudflare account (free), or a friend's that you join with their invite. It only ever holds encrypted messages it can't read. Only you, your computers and the people you invite can use yours."],
   ['user-plus', 'Adding someone', 'Send an invite link (it works once and ends by itself), or swap friend codes if you share a relay. You both see the same 6-digit code: check it matches (in person, a call or a message) before you approve. A forwarded link alone is not enough.'],
   ['shield-check', 'Privacy', "Everything between friends is end-to-end encrypted. Your sign-ins, keys, email, Claude, connectors and accounts are never shared. Nothing a friend sends reaches Claude or changes your tasks unless you click."],
   ['user-minus', 'Removing someone', "Remove or Block them on their page (with Undo). Their access to your relay ends, your copy of what they shared is deleted, and their app is asked to delete what you shared."],
@@ -284,13 +271,13 @@ const _FRO_HELP = Object.freeze([
 ]);
 function friendsHelpOpen() {
   openDialog({
-    title: 'How friends work', width: 560, resizeKey: 'friends-help',
+    title: 'How friends work', size: 'md', resizeKey: 'friends-help',
     body(el, close) {
       el.classList.add('fro-help');
       const ul = _froEl('ul', 'fro-help-list');
       for (const [ic, title, text] of _FRO_HELP) {
         const li = _froEl('li');
-        const i = _froEl('span', 'fro-help-ic'); i.innerHTML = icon(ic);
+        const i = _froEl('span', 'fro-help-ic'); i.innerHTML = icon(ic, 'i-lg');
         const t = _froEl('div');
         t.append(_froEl('b', null, title), _froEl('p', 'muted', text));
         li.append(i, t);

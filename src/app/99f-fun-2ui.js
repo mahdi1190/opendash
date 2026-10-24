@@ -47,7 +47,7 @@ function _funWaitEl(after) {
   const retry = () => { _fun.err = null; _fun.stopped = false; funLoad(true).then(after, after); };
   if (_fun.err || _fun.stopped) {
     if (_fun.err) { el.classList.add('is-err'); el.innerHTML = icon('circle-alert', 'i-sm'); }
-    el.appendChild(_funEl('span', _fun.err ? null : 'muted', _fun.err ? `Fun with friends could not load: ${netErrorMessage(_fun.err)}` : 'Stopped. Nothing is loading.'));
+    el.appendChild(_funEl('span', _fun.err ? null : 'muted', _fun.err ? `Couldn’t load Fun with friends: ${netErrorReason(_fun.err)}.` : 'Stopped. Nothing is loading.'));
     el.appendChild(_funBtn('Try again', { sm: true, icon: 'refresh-cw', run: (e, b) => { b.disabled = true; retry(); } }));
     return el;
   }
@@ -154,7 +154,8 @@ function funGiftDialog(f, pre) {
   const st = { to: f && f.id ? f.id : list[0].id, t: (pre && pre.t) || 'sticker', item: (pre && pre.item) || '', wrap: ev ? ev.def.wrap : 'red', line: ev ? ev.def.line : 'because' };
   const owned = _funOwnedCosmetics();
   openDialog({
-    title: 'Send a gift', width: 580,
+    title: 'Send a gift', size: 'md', fixed: true,   // it repaints as you choose: the dialog keeps its size
+    
     body(el, close) {
       el.classList.add('fun-giftdlg');
       const paint = () => {
@@ -337,7 +338,7 @@ function funStickerBook() {
   const book = (_fun.data && _fun.data.book) || {};
   const got = Object.keys(book).length;
   openDialog({
-    title: 'Your sticker book', width: 560,
+    title: 'Your sticker book', size: 'md',
     body(el) {
       el.classList.add('fun-book');
       el.appendChild(_funEl('p', 'muted', got ? `${got} of ${FUN_STICKERS.length} collected. Stickers come from friends' gifts; a seasonal one you have can be sent on any time.` : 'No stickers yet. Friends send them as gifts: open one and it lands here. You can send them stickers too.'));
@@ -370,7 +371,7 @@ function funAnswerDialog(f) {
   const ev = funEventNow();
   if (!ev || !f) return;
   openDialog({
-    title: `${ev.def.knock.label}! ${ev.def.knock.e}`, width: 440,
+    title: `${ev.def.knock.label}! ${ev.def.knock.e}`, size: 'sm',
     body(el, close) {
       el.classList.add('fun-answer');
       el.appendChild(_funEl('p', null, `${_funName(f)} ${ev.def.knock.did}. How do you answer?`));
@@ -453,10 +454,10 @@ function _funRecapCard(r, title) {
 }
 function funRecapOpen(which) {
   const go = (d) => {
-    if (!d || !d.recap) { toast('The recap could not load just now.', { kind: 'err', retry: () => funRecapOpen(which) }); return; }
+    if (!d || !d.recap) { toastError('load the recap', new Error('try again in a moment'), () => funRecapOpen(which)); return; }
     const last = which === 'last' || (which !== 'week' && Clock.parts(Clock.now()).dow === 1);
     const r = last ? d.recap.last : d.recap.week;
-    openDialog({ title: last ? 'Last week with friends' : 'Your week with friends', width: 560, body(el) { el.appendChild(_funRecapCard(r, last ? 'Last week with friends' : 'Your week with friends')); } });
+    openDialog({ title: last ? 'Last week with friends' : 'Your week with friends', size: 'md', body(el) { el.appendChild(_funRecapCard(r, last ? 'Last week with friends' : 'Your week with friends')); } });
     if (!last && d.prefs && d.prefs.recapSeen !== d.week.from) _funApi('/api/fun/prefs', { recapSeen: d.week.from }).catch(() => {});
     if (r && r.any) _funAward('friend-recap', last ? r.from : d.week.from, 5, 'Weekly recap', true);
   };

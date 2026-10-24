@@ -2,7 +2,7 @@
 .ctx-menu {
   position: fixed; z-index: var(--z-dropdown);
   background: var(--surface-raised); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
-  padding: 4px; min-width: 220px; display: none;
+  padding: var(--space-1); min-width: 220px; display: none;
 }
 [data-theme="dark"] .ctx-menu { border-color: transparent; }
 .ctx-menu.open { display: block; }
@@ -15,23 +15,23 @@
 .ctx-item:hover { background: var(--bg-muted); }
 .ctx-item.danger, .ctx-item.danger .ctx-ic { color: var(--danger-ink); }
 .ctx-item.danger:hover { background: var(--danger-soft); }
-.ctx-sep { height: 1px; background: var(--border); margin: 4px -4px; }
+.ctx-sep { height: 1px; background: var(--border); margin: var(--space-1) calc(-1 * var(--space-1)); }
 
-/* showModal(html): the legacy modal, restyled to the v2 dialog look.
-   New code can use openDialog() (11-ui-kit.js). */
+/* showModal(html): the legacy modal, restyled to the v2 dialog look (8vh from the top and the md width,
+   like openDialog). Nothing in the app opens it any more; new code uses openDialog() (11-ui-kit.js). */
 .modal-overlay {
   position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(1.5px);
-  display: none; align-items: flex-start; justify-content: center; padding-top: 10vh; z-index: var(--z-modal);
+  display: none; align-items: flex-start; justify-content: center; padding-top: 8vh; z-index: var(--z-modal);
 }
 .modal-overlay.open { display: flex; }
 .modal-card {
   background: var(--surface-raised); border-radius: var(--radius-lg); padding: var(--space-5);
-  max-width: 600px; width: calc(100% - 32px); box-shadow: var(--shadow-xl);
-  max-height: 80vh; overflow-y: auto; color: var(--fg);
+  max-width: var(--modal-md); width: calc(100% - 32px); box-shadow: var(--shadow-xl);
+  max-height: 86vh; overflow-y: auto; color: var(--fg);
 }
 .modal-card h3 { font-size: var(--text-md); font-weight: var(--weight-semibold); margin-bottom: var(--space-3); }
 .modal-card p { font-size: var(--text-sm); color: var(--fg-muted); margin-bottom: var(--space-3); line-height: var(--lh-sm); }
-.modal-card code { font-size: 12px; background: var(--bg-muted); padding: 1px 4px; border-radius: var(--radius-xs); }
+.modal-card code { font-size: var(--text-xs); background: var(--bg-muted); padding: 1px var(--space-1); border-radius: var(--radius-xs); }   /* 1px: a hairline */
 .modal-card textarea {
   width: 100%; min-height: 110px; padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border); border-radius: var(--radius-md); line-height: var(--lh-sm);
@@ -45,12 +45,26 @@
 }
 .modal-card .modal-actions .btn.danger { margin-right: auto; }
 
+/* Bulk add tasks and Task templates (75-modals.js, on openDialog) */
+.bulk-hint { margin: 0 0 var(--space-3); font-size: var(--text-sm); }
+.bulk-hint code { font-size: var(--text-xs); background: var(--bg-muted); padding: 1px var(--space-1); border-radius: var(--radius-xs); }   /* 1px: a hairline */
+.bulk-text { width: 100%; min-height: 140px; resize: vertical; }
+.tmpl-intro { margin: 0 0 var(--space-2); font-size: var(--text-sm); }
+.tmpl-row { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) 0; border-top: 1px solid var(--border-subtle); }
+.tmpl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.tmpl-name { font-weight: var(--weight-semibold); }
+.tmpl-title { font-size: var(--text-xs); color: var(--fg-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tmpl-opts { display: flex; gap: var(--space-1-5); flex-wrap: wrap; align-items: center; font-size: var(--text-xs); }
+.tmpl-due { display: inline-flex; gap: var(--space-1); align-items: center; color: var(--fg-muted); }
+.tmpl-days { width: 56px; font-variant-numeric: tabular-nums; }
+.tmpl-acts { display: flex; gap: var(--space-1); flex: none; }
+
 /* Task chat */
 .chat-area { background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-2); max-height: 320px; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-1-5); }
-.chat-msg { padding: 6px 10px; border-radius: var(--radius-md); font-size: var(--text-sm); line-height: var(--lh-sm); word-wrap: break-word; max-width: 85%; }
+.chat-msg { padding: var(--space-1-5) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); line-height: var(--lh-sm); word-wrap: break-word; max-width: 85%; }
 .chat-msg.user { background: var(--accent); color: var(--fg-on-accent); align-self: flex-end; }
 .chat-msg.claude { background: var(--surface); border: 1px solid var(--border); align-self: flex-start; white-space: pre-wrap; color: var(--fg); }
-.chat-msg .meta { font-size: var(--text-2xs); opacity: 0.7; margin-top: 2px; }
+.chat-msg .meta { font-size: var(--text-2xs); opacity: 0.7; margin-top: var(--space-0-5); }
 /* Claude writing a reply: spinner, live wait time, Stop (70-ai.js). An error's fix buttons. */
 .chat-msg.chat-wait { display: flex; align-items: center; gap: var(--space-1-5); white-space: normal; color: var(--fg-muted); }
 .chat-msg.chat-wait .btn { margin-left: auto; }

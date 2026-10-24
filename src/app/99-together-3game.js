@@ -477,7 +477,7 @@ function tgQuestDialog(spaceId) {
   const wk = _tgWeek();
   let title, kind, target, to;
   openDialog({
-    title: 'New team quest', width: 460,
+    title: 'New team quest', size: 'sm',
     body: (el) => {
       const f = (label, inp) => { const l = tgEl('label', 'field'); l.append(tgEl('span', 'field-label', label), inp); el.appendChild(l); };
       title = document.createElement('input'); title.className = 'control'; title.maxLength = 120; title.placeholder = 'Clear 30 shared tasks this week'; title.setAttribute('autofocus', ''); f('Quest', title);
@@ -498,7 +498,7 @@ function tgGoalDialog(spaceId) {
   const v = tgVal(spaceId);
   let title, buddy;
   openDialog({
-    title: 'A goal with a buddy', width: 460,
+    title: 'A goal with a buddy', size: 'sm',
     body: (el) => {
       const f = (label, inp) => { const l = tgEl('label', 'field'); l.append(tgEl('span', 'field-label', label), inp); el.appendChild(l); };
       title = document.createElement('input'); title.className = 'control'; title.maxLength = 200; title.placeholder = 'Write 500 words a day'; title.setAttribute('autofocus', ''); f('Goal', title);

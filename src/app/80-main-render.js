@@ -70,7 +70,10 @@ function _renderMainBody(main) {
     try { sec.mount(main, state.view); }
     catch (e) {
       console.error(`[section ${sec.name}] mount failed`, e);
-      main.innerHTML = '<div class="empty-state"><div class="msg">This view hit an error. Reload the page; if it keeps happening, check the console.</div></div>';
+      // One calm empty state with the next step (UI_CLEANUP_PLAN.md 3.6): what went wrong, and a way out.
+      main.innerHTML = '';
+      mountEmptyState(main, { icon: 'triangle-alert', title: 'This page couldn’t open', text: 'Reload to try again. Nothing you saved is lost.',
+        actions: [{ label: 'Reload', icon: 'refresh-cw', primary: true, run: () => location.reload() }, { label: 'Go to Home', icon: 'house', run: () => { navVia('chrome'); setView('home'); } }] });
     }
     return;
   }

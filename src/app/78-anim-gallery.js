@@ -73,13 +73,7 @@ function animThemeApply() {
 }
 
 /* ---------- the gallery (Settings > Animations) ---------- */
-function _agBtn(ic, label, on, fn) {
-  const b = document.createElement('button'); b.type = 'button';
-  b.className = 'btn btn-ghost btn-sm btn-icon ag-act' + (on ? ' is-on' : '');
-  b.setAttribute('aria-label', label); b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.setAttribute('data-tip', label);
-  b.innerHTML = icon(ic, 'i-sm'); b.onclick = (e) => { e.stopPropagation(); fn(); };
-  return b;
-}
+function _agBtn(ic, label, on, fn) { return uiButton({ icon: ic, kind: 'ghost', size: 'sm', cls: 'ag-act' + (on ? ' is-on' : ''), aria: label, tip: label, pressed: !!on, run: () => fn() }); }
 function _agToggle(list, ref) { return list.includes(ref) ? list.filter(x => x !== ref) : [...list, ref]; }
 function _agSlotLabel(id) { const s = ANIM_SLOTS.find(x => x.id === id); return s ? s.label : id; }
 
@@ -88,7 +82,7 @@ function animGalleryRender(el) {
   const reduced = !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced());
   const root = document.createElement('section'); root.className = 'apg'; root.setAttribute('aria-label', 'Animation gallery');
   const total = animItems({}).length;
-  root.innerHTML = `<div class="anim-gallery-h"><h3>Animation gallery</h3><span class="muted">${esc(total)} animations in ${esc(animPacks().length)} pack${animPacks().length === 1 ? '' : 's'}</span></div>`;
+  root.appendChild(secHead({ title: 'Animation gallery', sub: `${total} animations in ${animPacks().length} pack${animPacks().length === 1 ? '' : 's'}` }));
   const preferences = document.createElement('details'); preferences.className = 'apg-preferences'; preferences.open = _agUI.prefs;
   preferences.innerHTML = '<summary>Daily look &amp; pack settings</summary>';
   preferences.ontoggle = () => { _agUI.prefs = preferences.open; };
@@ -173,7 +167,7 @@ function animGalleryRender(el) {
   // Search spans the whole catalogue by default, including retained old-technique drawings.
   const catalogue = animGalleryCatalogue(animItems({}));
   const originals = catalogue.length - total;
-  if (originals) root.querySelector('.anim-gallery-h .muted').textContent = `${total} animations in ${animPacks().length} packs · ${originals} retained originals`;
+  if (originals) root.querySelector('.sec-h .sec-sub').textContent = `${total} animations in ${animPacks().length} packs · ${originals} retained originals`;
   const byRef = new Map(catalogue.map(it => [it.ref, it]));
   const search = document.createElement('div'); search.className = 'apg-search';
   search.innerHTML = `<label for="apg-search">Find a location or animation</label><span class="apg-search-input"><span class="apg-search-icon">${icon('search', 'i-sm')}</span></span><p class="apg-search-hint" id="apg-search-hint">Try Fleet Pond, Tokyo, Texas or a landmark. Search covers every pack; choose a result to see its views and seasons.</p>`;
@@ -201,7 +195,7 @@ function animGalleryRender(el) {
   const techniqueHint = document.createElement('p'); techniqueHint.className = 'apg-search-hint'; techniqueHint.textContent = 'New technique: scene engine. Old technique: original SVG drawing. Saved originals appear alongside their upgrades.';
   const results = document.createElement('div'); results.className = 'apg-results-head';
   const count = document.createElement('span'); count.setAttribute('role', 'status'); count.setAttribute('aria-atomic', 'true');
-  const clear = document.createElement('button'); clear.type = 'button'; clear.className = 'btn btn-ghost btn-sm'; clear.textContent = 'Clear filters'; clear.onclick = reset;
+  const clear = uiButton({ label: 'Clear filters', kind: 'ghost', size: 'sm', run: reset });
   results.append(count, clear);
   const places = document.createElement('div'); places.className = 'apg-places'; places.setAttribute('role', 'group'); places.setAttribute('aria-label', 'Matching locations');
   const stage = document.createElement('div'); stage.className = 'apg-stage'; stage.setAttribute('aria-label', 'Selected animation preview');
@@ -300,15 +294,12 @@ function animGalleryRender(el) {
       const note = document.createElement('span'); note.className = 'muted'; note.textContent = 'Retained original artwork. Favourites and blocks apply to both techniques; pins use the current version.'; stageMeta.appendChild(note);
     }
     const acts = document.createElement('div'); acts.className = 'apg-stage-acts';
-    const replay = document.createElement('button'); replay.type = 'button'; replay.className = 'btn btn-secondary btn-sm'; replay.innerHTML = icon('sparkles', 'i-sm') + '<span>Play again</span>';
-    replay.onclick = () => showStage(it, true);
+    const replay = uiButton({ label: 'Play again', icon: 'sparkles', size: 'sm', run: () => showStage(it, true) });
     acts.appendChild(replay);
     if (typeof friendsPostcardButton === 'function') { const pc = friendsPostcardButton(it); if (pc) acts.appendChild(pc); }   // Friends (99s-friends-scenes-2postcards.js)
     // The scene editor (78-scene-editor.js, V2 23.4): a developer tool, shown only when its dev route answers.
     if (it.composed && typeof sceneEditorAvailable === 'function') {
-      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn btn-secondary btn-sm'; edit.hidden = true;
-      edit.innerHTML = icon('pencil', 'i-sm') + '<span>Edit scene</span>';
-      edit.onclick = () => sceneEditorOpen(it.ref, { label: it.label, returnFocus: edit });
+      const edit = uiButton({ label: 'Edit scene', icon: 'pencil', size: 'sm', run: () => sceneEditorOpen(it.ref, { label: it.label, returnFocus: edit }) }); edit.hidden = true;
       acts.appendChild(edit);
       sceneEditorAvailable().then(ok => { if (ok && edit.isConnected) edit.hidden = false; });
     }
@@ -319,8 +310,7 @@ function animGalleryRender(el) {
       if (cr.length) { const c = document.createElement('span'); c.className = 'muted apg-credits'; c.textContent = cr.join(' · '); stageMeta.appendChild(c); }
     }
     if (it.slot === 'theme-switch') {
-      const tryIt = document.createElement('button'); tryIt.type = 'button'; tryIt.className = 'btn btn-secondary btn-sm'; tryIt.innerHTML = icon(state.theme === 'dark' ? 'sun' : 'moon', 'i-sm') + '<span>Try it</span>';
-      tryIt.onclick = () => { _shellThemeSwapVariant = it.ref; state.theme = state.theme === 'dark' ? 'light' : 'dark'; saveUI(); render(); };
+      const tryIt = uiButton({ label: 'Try it', icon: state.theme === 'dark' ? 'sun' : 'moon', size: 'sm', run: () => { _shellThemeSwapVariant = it.ref; state.theme = state.theme === 'dark' ? 'light' : 'dark'; saveUI(); render(); } });
       acts.appendChild(tryIt);
     }
     stageMeta.appendChild(acts);
@@ -350,9 +340,7 @@ function animGalleryRender(el) {
     const range = document.createElement('span'); range.className = 'muted'; range.setAttribute('aria-live', 'polite');
     range.textContent = `${items.length ? page.start + 1 : 0}–${page.end} of ${items.length} scenes`;
     for (const [label, delta] of [['Previous', -1], ['Next', 1]]) {
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'btn btn-secondary btn-sm'; button.textContent = label;
-      button.disabled = delta < 0 ? page.page === 0 : page.page === page.pages - 1;
-      button.onclick = () => { _agUI.page += delta; paint(); grid.querySelector('.apg-preview-button')?.focus(); };
+      const button = uiButton({ label, size: 'sm', disabled: delta < 0 ? page.page === 0 : page.page === page.pages - 1, run: () => { _agUI.page += delta; paint(); grid.querySelector('.apg-preview-button')?.focus(); } });
       paging.appendChild(button);
     }
     paging.insertBefore(range, paging.lastChild);
@@ -407,7 +395,7 @@ function animGalleryRender(el) {
     if (!items.length) {
       const empty = document.createElement('div'); empty.className = 'apg-empty';
       empty.innerHTML = '<h4>No matching animations</h4><p>Try a nearby town, county, country or landmark, or clear the filters to browse every pack. Some locations have no artwork yet.</p>';
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.textContent = 'Browse all animations'; b.onclick = reset; empty.appendChild(b); grid.appendChild(empty);
+      empty.appendChild(uiButton({ label: 'Browse all animations', size: 'sm', run: reset })); grid.appendChild(empty);
     }
     showStage(byRef.get(_agUI.sel));
   }

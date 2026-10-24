@@ -11,20 +11,14 @@ const _ptUI = { entry: '', undo: [], redo: [], pose: 'sit', adoptSpecies: '', bu
 const PET_TABS = Object.freeze([['together', 'Together', 'heart'], ['wardrobe', 'Wardrobe', 'shirt'], ['journal', 'Journal', 'notebook-pen']]);
 function _ptTab(v) { const m = /^pet:([a-z]+)$/.exec(String(v || '')); return m && PET_TABS.some(t => t[0] === m[1]) ? m[1] : 'together'; }
 function _ptEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
+/** The pet page's button: a thin adapter over the kit's uiButton (run(button, event); cls 'btn-primary' | 'btn-ghost'; no label = an icon button). */
 function _ptBtn(label, ic, run, cls) {
-  const b = _ptEl('button', 'btn ' + (cls || 'btn-secondary') + ' btn-sm'); b.type = 'button';
-  b.innerHTML = ic ? icon(ic, 'i-sm') : '';
-  b.appendChild(_ptEl('span', null, label));
-  b.onclick = (e) => { e.stopPropagation(); run(b, e); };
-  return b;
+  return uiButton({ label, icon: ic, kind: String(cls || 'btn-secondary').replace(/^btn-/, ''), size: 'sm', run: (e, b) => run(b, e) });
 }
+/** A section of the page: the kit's section header, then its content. */
 function _ptSec(title, ic, extra) {
   const s = _ptEl('section', 'pt-sec');
-  const h = _ptEl('div', 'pt-sec-h');
-  h.innerHTML = icon(ic, 'i-sm');
-  h.appendChild(_ptEl('h2', null, title));
-  if (extra) { h.appendChild(_ptEl('span', 'spacer')); h.appendChild(extra); }
-  s.appendChild(h);
+  s.appendChild(secHead({ title, icon: ic, actions: extra ? [extra] : [] }));
   return s;
 }
 function _ptAge(born) {
@@ -78,10 +72,7 @@ function _ptMount(container, view) {
   } catch (e) {
     console.error('[pets] page', e);
     root.replaceChildren();
-    const n = _ptEl('div', 'pt-empty'); n.innerHTML = icon('circle-alert', 'i-lg');
-    const t = _ptEl('div'); t.appendChild(_ptEl('b', null, 'Your pet could not load just now')); t.appendChild(_ptEl('span', null, 'Nothing is lost. Try again, or reload the page.'));
-    n.appendChild(t); n.appendChild(_ptBtn('Try again', 'refresh-cw', () => { if (typeof render === 'function') render(); }));
-    root.appendChild(n);
+    mountEmptyState(root, { icon: 'circle-alert', compact: true, title: 'Your pet couldn’t load just now', text: 'Nothing is lost.', actions: [{ label: 'Try again', icon: 'refresh-cw', primary: true, run: () => { if (typeof render === 'function') render(); } }] });
   }
   container.appendChild(root);
 }
@@ -97,9 +88,8 @@ function _ptRefresh() { if (typeof render === 'function') render(); }
 /* ---------- adopting (the empty state) ---------- */
 function _ptAdopt(root) {
   const head = _ptEl('div', 'pt-adopt-h');
-  head.appendChild(_ptEl('div', 'overline', 'A companion'));
-  head.appendChild(_ptEl('h1', null, 'Adopt a pet'));
-  head.appendChild(_ptEl('p', 'muted', 'It sits by your name, wanders your garden, trots beside you in the scenes and cheers you on. Finishing things earns it treats; streaks and levels teach it tricks. It is never sad because of you: on a quiet day it just naps.'));
+  // The shared header draws the title (UX_BLUEPRINT.md 3): one sentence here, then the choice.
+  head.appendChild(_ptEl('p', 'muted', 'Pick a companion: finishing things earns it treats, streaks teach it tricks, and it is never sad because of you (on a quiet day it just naps).'));
   root.appendChild(head);
   const ctx = petUnlockCtx();
   const grid = _ptEl('div', 'pt-adopt-grid');
@@ -118,7 +108,7 @@ function _ptAdopt(root) {
     else card.onclick = () => {
       const nm = petRandomName(sp.id, _ptHash(sp.id + Date.now()));   // clock-ok: a seed for a name idea
       petAdopt(Object.assign({}, look, { name: nm }));
-      toast(`${nm} the ${sp.label.toLowerCase()} came home. Three treats are waiting in the jar.`, { icon: 'heart', timeout: 8000, action: { label: 'Rename', run: () => { setView('pet:wardrobe'); setTimeout(() => { const i = document.querySelector('.pt-name-in'); if (i) i.focus(); }, 80); } } });
+      toast(`${nm} the ${sp.label.toLowerCase()} came home: three treats are waiting in the jar`, { icon: 'heart', timeout: 8000, action: { label: 'Rename', run: () => { setView('pet:wardrobe'); setTimeout(() => { const i = document.querySelector('.pt-name-in'); if (i) i.focus(); }, 80); } } });
       setView('pet');
     };
     grid.appendChild(card);
@@ -178,7 +168,6 @@ function _ptTogether(root, g) {
     const mood = petMood() || {}, t = petTreats();
     side.replaceChildren();
     side.appendChild(_ptEl('div', 'overline', [sp.label, g.look.breed && sp.breeds ? (sp.breeds.find(b => b.id === g.look.breed) || {}).label : ''].filter(Boolean).join(' · ')));
-    side.appendChild(_ptEl('h1', 'pt-hero-name', petName(g)));
     side.appendChild(_ptEl('p', 'pt-hero-mood', mood.line || ''));
     side.appendChild(_ptEl('p', 'muted pt-hero-age', _ptAge(g.born)));
     const acts = _ptEl('div', 'pt-acts');
@@ -243,7 +232,7 @@ function _ptTeachNow(stage, t, after) {
   if (!r.ok) { toast(r.msg, { icon: 'graduation-cap' }); return; }
   if (r.already) return;
   _ptPerform(stage, t.id, true);
-  toast(`${petName(g)} learned ${t.label.toLowerCase()}!`, { icon: 'graduation-cap', action: { label: 'Undo', run: () => { petUnteach(t.id); if (after) after(); } } });
+  toast(`${petName(g)} learned ${t.label.toLowerCase()}`, { icon: 'graduation-cap', action: { label: 'Undo', run: () => { petUnteach(t.id); if (after) after(); } } });
   if (after) after();
 }
 const _PT_TRICK_MS = { sit: 900, paw: 1400, spin: 1100, speak: 1600, roll: 1300, jump: 1100, dance: 2000, bow: 1400, moon: 2200, flip: 1300 };
@@ -281,7 +270,7 @@ function _ptPrefsSec(g) {
   s.appendChild(rows);
   const away = _ptBtn('Put ' + petName(g) + ' away for now', 'moon', () => {
     petSet({ on: false });
-    toast(`${petName(g)} is resting out of sight. Nothing is lost.`, { icon: 'moon', action: { label: 'Undo', run: () => { petSet({ on: true }); _ptRefresh(); } } });
+    toast(`${petName(g)} is resting out of sight`, { icon: 'moon', action: { label: 'Undo', run: () => { petSet({ on: true }); _ptRefresh(); } } });
     _ptRefresh();
   }, 'btn-ghost');
   if (g.on) s.appendChild(away);
@@ -321,7 +310,7 @@ function _ptWardrobe(root, g) {
     inp.value = v;
     if (v === before) return;
     petSet({ name: v });
-    toast(v ? `Hello, ${v}!` : 'The name is cleared.', { icon: 'tag', action: { label: 'Undo', run: () => { petSet({ name: before }); inp.value = before; } } });
+    toast(v ? `Hello, ${v}!` : 'Name cleared', { icon: 'tag', action: { label: 'Undo', run: () => { petSet({ name: before }); inp.value = before; } } });
   };
   nameRow.appendChild(inp);
   const dice = _ptBtn('', 'wand-sparkles', () => { inp.value = petRandomName(petGet().look.species, Math.floor(Math.random() * 1e6)); inp.onchange(); }, 'btn-ghost');
@@ -457,12 +446,12 @@ function _ptTile(lock, on, label, art) {
 function _ptJournalTab(root, g) {
   const s = _ptSec('Journal', 'notebook-pen');
   const list = petJournal();
-  s.appendChild(list.length ? _ptJournalList(list, g) : _ptEl('p', 'muted', 'Milestones you share land here: treats, tricks, streaks, levels, weeks together.'));
+  s.appendChild(list.length ? _ptJournalList(list, g) : emptyLine('Milestones land here: treats, tricks, streaks, levels, weeks together.'));
   root.appendChild(s);
 }
 function _ptJournalList(list, g) {
   const ul = _ptEl('ol', 'pt-journal');
-  if (!list.length) { const li = _ptEl('li', 'pt-j-empty muted', `Days with ${petName(g)} will write themselves here.`); ul.appendChild(li); return ul; }
+  if (!list.length) return emptyLine(`Days with ${petName(g)} will write themselves here.`);
   for (const e of list) {
     const li = _ptEl('li', 'pt-j');
     const ic = _ptEl('span', 'pt-j-ic'); ic.innerHTML = icon(e.icon, 'i-sm'); li.appendChild(ic);
@@ -571,7 +560,7 @@ function _ptHangoutPanel(el) {
     b.ondblclick = () => { if (Friends.open) Friends.open(f.id); };
     row.appendChild(b);
   }
-  if (!list.length) row.appendChild(_ptEl('p', 'muted pt-hang-none', "When your friends adopt pets, they gather here."));
+  if (!list.length) row.appendChild(emptyLine('When your friends adopt pets, they gather here.'));
   el.appendChild(row);
   return true;
 }
@@ -597,7 +586,7 @@ if (typeof gardenFunNavAdd === 'function') {
 if (typeof registerCommand === 'function') {
   registerCommand({ id: 'pet-open', label: 'Your pet', icon: 'paw-print', group: 'Go to', keywords: 'pet companion cat dog animal tamagotchi buddy', run: () => setView('pet') });
   registerCommand({ id: 'pet-wardrobe', label: "Pet: dress up your pet", icon: 'shirt', keywords: 'pet wardrobe hat collar accessories customise colour breed', run: () => setView('pet:wardrobe') });
-  registerCommand({ id: 'pet-treat', label: 'Pet: give a treat', icon: 'cookie', keywords: 'pet feed treat snack', run: () => { const r = petFeed(); toast(r.msg || 'Adopt a pet first.', { icon: 'cookie', action: r.ok ? null : { label: 'Open', run: () => setView('pet') } }); } });
-  registerCommand({ id: 'pet-pat', label: 'Pet: give a pat', icon: 'heart', keywords: 'pet pat stroke cuddle', run: () => { const r = petPat(); toast(r.ok ? `${petName()} leans in happily.` : 'Adopt a pet first.', { icon: 'heart' }); } });
+  registerCommand({ id: 'pet-treat', label: 'Pet: give a treat', icon: 'cookie', keywords: 'pet feed treat snack', run: () => { const r = petFeed(); toast(r.msg || 'Adopt a pet first', { icon: 'cookie', action: r.ok ? null : { label: 'Open', run: () => setView('pet') } }); } });
+  registerCommand({ id: 'pet-pat', label: 'Pet: give a pat', icon: 'heart', keywords: 'pet pat stroke cuddle', run: () => { const r = petPat(); toast(r.ok ? `${petName()} leans in happily` : 'Adopt a pet first', { icon: 'heart' }); } });
   registerCommand({ id: 'pet-journal', label: "Pet: journal", icon: 'notebook-pen', keywords: 'pet journal milestones', run: () => setView('pet:journal') });
 }

@@ -67,7 +67,7 @@ registerSection('garden-visit', {
   match: v => /^garden:visit:[0-9a-f]{16}$/.test(String(v || '')),
   title: () => 'Garden',
   crumb: v => { const id = _gsvIdOf(v); return [id ? `${gardenSocialName(id)}'s garden` : "A friend's garden"]; },
-  group: 'home', layout: 'page', hashable: true, taskControls: false, icon: 'sprout',
+  group: 'home', layout: 'bare', hashable: true, taskControls: false, icon: 'sprout',
   mount(container, view) { _gsvMount(container, view || state.view); },
   unmount() { clearTimeout(_gsv.visitT); _gsv.root = null; _gsv.view = ''; },
 });
@@ -80,7 +80,7 @@ function _gsvMount(container, view) {
   const entering = _gsv.entered !== view;
   _gsv.entered = view; _gsv.view = view; _gsv.fid = fid;
   if (entering) _gsv.mode = 'look';
-  const root = _gsvEl('div', 'gd-page gsv-page' + (entering ? ' is-enter' : '') + (_gscFun() === 'off' ? ' is-funoff' : ''));
+  const root = _gsvEl('div', 'gd-page gd-full gsv-page gsv-full' + (entering ? ' is-enter' : '') + (_gscFun() === 'off' ? ' is-funoff' : ''));
   container.appendChild(root);
   _gsv.root = root;
   const sub = document.getElementById('view-subtitle');
@@ -129,12 +129,13 @@ function _gsvPaint() {
     return;
   }
   if (!c.garden) { root.appendChild(_gsvNotShared(f)); return; }
-  const main = _gsvEl('div', 'gd-main gsv-main');
-  const left = _gsvEl('div', 'gd-left');
-  left.appendChild(_gsvToolbar(f, c));
+  const main = _gsvEl('div', 'gd-game gsv-game');
+  main.appendChild(_gsvToolbar(f, c));
+  const left = _gsvEl('div', 'gd-col gsv-col');
   left.appendChild(_gsvStageBox(f, c));
   main.appendChild(left);
   const side = _gsvEl('aside', 'gd-side gsv-side');
+  { const how = _gsvEl('section', 'card gsv-how'); how.appendChild(_gsvEl('b', null, `You are visiting ${_gscFirst(fid)}`)); how.appendChild(_gsvEl('p', 'muted', 'Look around, hover a plant to read about it. Pick Water and click a thirsty plant to help it grow. You can also give a heart, react, leave a gift or write in the guestbook. Nothing here is ever required.')); side.appendChild(how); }
   side.appendChild(_gsvToday(f, c));
   side.appendChild(_gsvGrowing(c.garden.snap));
   side.appendChild(_gsvBook(f, c));

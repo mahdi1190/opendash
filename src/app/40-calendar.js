@@ -140,10 +140,8 @@ function createGoogleDataStore(o) {
     if (job.state === 'ok') {
       if (job.forced) toast(`${o.label} updated` + (job.result && Number.isFinite(job.result.count) ? ` · ${job.result.count} ${o.noun}` : ''), { kind: 'ok', icon: 'refresh-cw' });
     } else if (job.state === 'error' && (job.forced || _GD_AUTH_CODES.has(job.code))) {
-      toast(job.error || `${o.label} could not be updated.`, {
-        kind: 'err', timeout: 8000,
-        action: _GD_AUTH_CODES.has(job.code) ? { label: 'Open Connections', run: () => setView('connections') } : { label: 'Try again', run: () => update({ force: true }) },
-      });
+      toastError(`update ${String(o.label).toLowerCase()}`, new Error(job.error || 'something went wrong'),
+        _GD_AUTH_CODES.has(job.code) ? { label: 'Open Connections', run: () => setView('connections') } : () => update({ force: true }));
     }
   }
   async function update(opts) {
@@ -174,8 +172,7 @@ function createGoogleDataStore(o) {
       if (opts.quiet) return { error: true, message: typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The update could not start.') : (e && e.message) || 'The update could not start.' };
       if (opts.force !== false) {
         // A network failure reads as "the server isn't running"; either way the toast offers the next step.
-        const msg = typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The update could not start.') : (e && e.message) || 'The update could not start.';
-        toast(msg, { kind: 'err', timeout: 8000, action: { label: 'Try again', run: () => update(Object.assign({}, opts, { force: true })) } });
+        toastError(`update ${String(o.label).toLowerCase()}`, e, () => update(Object.assign({}, opts, { force: true })));
       }
       return { error: true };
     }

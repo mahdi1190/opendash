@@ -1,6 +1,6 @@
 /* ============================================================
    FRIENDS IN YOUR SCENES (2.17, agent 'scenes'): POSTCARDS.
-   "Send a postcard" from a scene's menu: a scene from the app's own list, its time of day, season and weather,
+   "Send a scene card" from a scene's menu: a scene from the app's own list, its time of day, season and weather,
    a caption (140 characters at most) and your figure's outfit go to a friend as the friends kind 'postcard'
    (lib/friends/postcards.mjs: the strict schema, loaded by server/routes/postcards.mjs). ONLY IDS AND PLAIN TEXT
    CROSS THE WIRE: the friend's OpenDash looks the scene up in ITS OWN list and draws it with its own scene engine
@@ -11,13 +11,13 @@
      the scene's menu      right-click (or long-press, or the Menu key / Shift+F10 on a focused scene card) any scene
                            big enough to see, or its ⋯ button that shows on hover: Send a postcard…, Friends walk by
                            now (when one is around), and the "Friends can walk through your scenes" switch
-     the gallery           a "Send a postcard" button on the Animations gallery's stage (friendsPostcardButton)
-     the palette           'Send a postcard to a friend'
-     the Friends feed      a postcard card under its line, both ways (the describer's `el`: 96-friends-1ui.js shows
+     the gallery           a "Send a scene card" button on the Animations gallery's stage (friendsPostcardButton)
+     the palette           'Send a scene card to a friend'
+     the Friends feed      a scene-card under its line, both ways (the describer's `el`: 96-friends-1ui.js shows
                            it); the sender posts with friendsFeedPost({kind: 'postcard', to, body}) so the line is
                            the sender's too
-     a friend's page       the Postcards album (Friends.registerPanel({where: 'friend'})): every postcard between you
-     arriving              a toast: "Sam sent you a postcard from Fleet Pond" with Open
+     a friend's page       the Scene cards album (Friends.registerPanel({where: 'friend'})): every scene card between you
+     arriving              a toast: "Sam sent you a scene card from Fleet Pond" with Open
    Sending is never a confirm: the postcard goes after a few seconds with Undo in the toast; a slow send shows Cancel;
    a failure says why in one line with Try again; a friend who is offline gets it when they are back (said calmly).
 
@@ -185,7 +185,7 @@ function _fpcFeedCard(e, f, where) {
 function _fpcDescribe(e, f) {
   const b = _fpcClean(e && e.b), it = b ? _fpcItem(b.pack + '/' + b.item) : null, where = it ? it.label : 'a scene';
   const mine = e.dir === 'out' || e.dir === 'local';
-  const text = mine ? `You sent ${_fpcNames(Array.isArray(e.to) ? e.to : e.f ? [e.f] : []) || 'a friend'} a postcard from ${where}` : `${f ? _fscName(f) : 'A friend'} sent you a postcard from ${where}`;
+  const text = mine ? `You sent ${_fpcNames(Array.isArray(e.to) ? e.to : e.f ? [e.f] : []) || 'a friend'} a scene card from ${where}` : `${f ? _fscName(f) : 'A friend'} sent you a scene card from ${where}`;
   return { icon: 'mail', text, tone: 'warm', el: b ? _fpcFeedCard(e, f, 'f') : null };
 }
 
@@ -199,7 +199,7 @@ function _fpcAlbum(sec, f) {
   const send = _fscEl('button', 'btn btn-secondary btn-sm');
   send.type = 'button';
   send.innerHTML = icon('mail', 'i-sm');
-  send.appendChild(_fscEl('span', null, `Send ${name} a postcard`));
+  send.appendChild(_fscEl('span', null, `Send ${name} a scene card`));
   send.onclick = () => friendsPostcardCompose({ to: id });
   top.appendChild(send);
   sec.appendChild(top);
@@ -212,7 +212,7 @@ function _fpcAlbum(sec, f) {
     if (!entries.length) {
       const em = _fscEl('div', 'fpc-empty');
       em.innerHTML = icon('mail', 'i-lg');
-      em.appendChild(_fscEl('span', null, `No postcards yet. Send ${name} one from any scene: right-click it, or use the ⋯ button on it, then Send a postcard.`));
+      em.appendChild(_fscEl('span', null, `No scene cards yet. Send ${name} one from any scene: right-click it, or use the ⋯ button on it, then Send a scene card.`));
       box.appendChild(em);
       return;
     }
@@ -238,15 +238,15 @@ function _fpcAlbum(sec, f) {
       if (!box.isConnected || st.entries) return;
       box.textContent = '';
       const er = _fscEl('div', 'fpc-empty is-err');
-      er.appendChild(_fscEl('span', null, `The postcards could not load: ${typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'try again.'}`));
+      er.appendChild(_fscEl('span', null, `Couldn’t load scene cards: ${typeof netErrorReason === 'function' ? netErrorReason(e) : 'try again'}.`));
       const again = _fscEl('button', 'btn btn-ghost btn-sm', 'Try again');
       again.type = 'button';
-      again.onclick = () => { box.textContent = ''; box.appendChild(_fscEl('span', 'muted fpc-small', 'Loading postcards…')); load(); };
+      again.onclick = () => { box.textContent = ''; box.appendChild(_fscEl('span', 'muted fpc-small', 'Loading scene cards…')); load(); };
       er.appendChild(again);
       box.appendChild(er);
     }).finally(() => { st.busy = false; });
   };
-  if (st.entries) paint(st.entries); else box.appendChild(_fscEl('span', 'muted fpc-small', 'Loading postcards…'));
+  if (st.entries) paint(st.entries); else box.appendChild(_fscEl('span', 'muted fpc-small', 'Loading scene cards…'));
   if (!st.busy && (!st.entries || Date.now() - (st.at || 0) > 8000)) load();   // clock-ok: a cache age
   return true;
 }
@@ -321,7 +321,7 @@ function friendsPostcardCompose(o) {
     if (now) run(); else previewT = setTimeout(run, 280);
   };
   openDialog({
-    title: 'Send a postcard', width: 600, resizeKey: 'friends-postcard',
+    title: 'Send a scene card', size: 'md', resizeKey: 'friends-postcard',
     body: (el) => {
       el.classList.add('fpc-compose');
       previewBox = _fscEl('div', 'fpc-preview');
@@ -331,7 +331,7 @@ function friendsPostcardCompose(o) {
       toRow.appendChild(_fscEl('span', 'fpc-f-l', 'To'));
       if (!friends.length) {
         const em = _fscEl('div', 'fpc-empty');
-        em.appendChild(_fscEl('span', null, 'Postcards go to friends. Add a friend first, then send them one from any scene.'));
+        em.appendChild(_fscEl('span', null, 'Scene cards go to friends. Add a friend first, then send them one from any scene.'));
         if (typeof friendsAddDialog === 'function') {
           const add = _fscEl('button', 'btn btn-secondary btn-sm', 'Add a friend');
           add.type = 'button';
@@ -379,7 +379,7 @@ function friendsPostcardCompose(o) {
       wxRow.appendChild(sel);
       el.appendChild(wxRow);
       const note = _fscEl('p', 'muted fpc-small fpc-note');
-      note.textContent = 'Only the scene’s name, the time, season and weather, your message and your outfit’s ids are sent. Their OpenDash draws the scene itself, with you on the stamp.';
+      note.textContent = 'Only the scene’s name, the weather, your message and your outfit are sent; their OpenDash draws it.';
       el.appendChild(note);
       hint = _fscEl('span', 'fpc-hint muted fpc-small');
       el.appendChild(hint);
@@ -407,7 +407,7 @@ function _fpcPost(event, signal, keepalive) {
 }
 function _fpcSend(body, ids, it) {
   const names = _fpcNames(ids) || 'your friend', where = it ? it.label : 'a scene';
-  const event = { kind: 'postcard', to: ids, body, text: `A postcard from ${where}`.slice(0, 200), icon: 'mail' };
+  const event = { kind: 'postcard', to: ids, body, text: `A scene card from ${where}`.slice(0, 200), icon: 'mail' };
   let state = 'wait', undoClose = null, timer = 0;
   const go = (bg) => {
     if (state !== 'wait') return;
@@ -418,7 +418,7 @@ function _fpcSend(body, ids, it) {
     if (bg) { _fpcPost(event, null, true).catch(() => {}); return; }
     const ac = typeof AbortController === 'function' ? new AbortController() : null;
     let busy = null, cancelled = false;
-    const bt = setTimeout(() => { busy = toast(`Sending your postcard to ${names}…`, { busy: true, icon: 'mail', action: { label: 'Cancel', run: () => { cancelled = true; if (ac) ac.abort(); } } }); }, 900);
+    const bt = setTimeout(() => { busy = toast(`Sending your scene card to ${names}…`, { busy: true, icon: 'mail', action: { label: 'Cancel', run: () => { cancelled = true; if (ac) ac.abort(); } } }); }, 900);
     _fpcPost(event, ac ? ac.signal : undefined).then((r) => {
       clearTimeout(bt); if (busy) busy();
       state = 'done';
@@ -426,20 +426,20 @@ function _fpcSend(body, ids, it) {
       _fpc.album.clear();
       const sent = Number(r && r.sent) || 0, queued = Number(r && r.queued) || 0, skipped = Number(r && r.skipped) || 0;
       if (!sent && !queued) {
-        toast(`Not sent: ${names} can't get postcards from you right now. Check what they can see on their page.`, Object.assign({ kind: 'warn', icon: 'mail' }, ids.length === 1 ? { action: { label: 'Open their page', run: () => setView('friends:' + ids[0]) } } : {}));
+        toast(`Not sent: ${names} can't get scene cards from you right now. Check what they can see on their page.`, Object.assign({ kind: 'warn', icon: 'mail' }, ids.length === 1 ? { action: { label: 'Open their page', run: () => setView('friends:' + ids[0]) } } : {}));
       } else if (!sent) {
-        toast(`${names} ${ids.length === 1 ? 'is' : 'are'} offline. Your postcard waits and goes when they're back.`, { icon: 'moon' });
+        toast(`${names} ${ids.length === 1 ? 'is' : 'are'} offline. Your scene card waits and goes when they're back.`, { icon: 'moon' });
       } else {
-        toast(skipped || queued ? `Postcard sent to ${sent} of ${ids.length}. ${queued ? 'The rest goes when they’re back.' : ''}`.trim() : `Postcard sent to ${names}.`, { kind: 'ok', icon: 'mail' });
+        toast(skipped || queued ? `Scene card sent to ${sent} of ${ids.length}. ${queued ? 'The rest goes when they’re back.' : ''}`.trim() : `Scene card sent to ${names}`, { kind: 'ok', icon: 'mail' });
       }
     }).catch((e) => {
       clearTimeout(bt); if (busy) busy();
       state = 'wait';
-      if (cancelled || (e && e.name === 'AbortError')) { state = 'done'; toast('Cancelled. The postcard was not sent.', { icon: 'x' }); return; }
-      toast(`Postcard not sent: ${typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'the connection failed'}`, { kind: 'err', retry: () => go(false) });
+      if (cancelled || (e && e.name === 'AbortError')) { state = 'done'; toast('Cancelled. The scene card was not sent.', { icon: 'x' }); return; }
+      toastError('send your scene card', e, () => go(false));
     });
   };
-  undoClose = toast(`Postcard to ${names} goes in a moment.`, { icon: 'mail', timeout: 5000, action: { label: 'Undo', run: () => { if (state !== 'wait') return; state = 'undone'; clearTimeout(timer); _fpc.pending.delete(go); toast('Kept back. Nothing was sent.', { icon: 'mail' }); } } });
+  undoClose = toast(`Scene card to ${names} goes in a moment.`, { icon: 'mail', timeout: 5000, action: { label: 'Undo', run: () => { if (state !== 'wait') return; state = 'undone'; clearTimeout(timer); _fpc.pending.delete(go); toast('Kept back. Nothing was sent.', { icon: 'mail' }); } } });
   timer = setTimeout(() => go(false), 4000);
   _fpc.pending.add(go);
 }
@@ -464,7 +464,7 @@ function friendsSceneMenu(anchor, host) {
   const around = fscFriendsAround().length && _fscMotionOk() && typeof friendsScenesWalkBy === 'function';
   const items = [
     { heading: it.label },
-    { icon: 'mail', label: 'Send a postcard…', run: () => friendsPostcardCompose({ ref: it.ref, host }) },
+    { icon: 'mail', label: 'Send a scene card…', run: () => friendsPostcardCompose({ ref: it.ref, host }) },
     { icon: 'users', label: 'A friend walks by now', hidden: !around, run: () => friendsScenesWalkBy() },
     'sep',
     { icon: 'users', label: 'Friends can walk through your scenes', checked: friendsScenesOn(), run: () => {
@@ -491,7 +491,7 @@ function _fpcBtn() {
   b.hidden = true;
   b.setAttribute('aria-label', 'Scene menu: send a postcard');
   b.setAttribute('aria-haspopup', 'menu');
-  b.setAttribute('data-tip', 'Send a postcard…');
+  b.setAttribute('data-tip', 'Send a scene card…');
   b.innerHTML = icon('ellipsis');
   b.onclick = (e) => { e.stopPropagation(); if (_fpc.btnHost && _fpc.btnHost.isConnected) friendsSceneMenu(b, _fpc.btnHost); };
   b.addEventListener('pointerleave', (e) => { if (!(e.relatedTarget && _fpc.btnHost && _fpc.btnHost.contains(e.relatedTarget))) _fpcBtnHideSoon(); });
@@ -568,16 +568,16 @@ function friendsPostcardButton(it) {
   const F = window.Friends;
   if (!F) return;
   try { F.describe('postcard', (e, f) => _fpcDescribe(e, f)); } catch (e) { console.error('[postcards] describe', e); }
-  try { F.registerPanel({ id: 'postcards', where: 'friend', order: 45, title: 'Postcards', icon: 'mail', render: (sec, f) => _fpcAlbum(sec, f) }); } catch (e) { console.error('[postcards] panel', e); }
+  try { F.registerPanel({ id: 'postcards', where: 'friend', order: 45, title: 'Scene cards', icon: 'mail', render: (sec, f) => _fpcAlbum(sec, f) }); } catch (e) { console.error('[postcards] panel', e); }
   try {
     F.on('postcard', (m, f) => {
       if (!m || m.revoked || !f || !f.id) return;
       const b = _fpcClean(m.b), it = b ? _fpcItem(b.pack + '/' + b.item) : null;
       _fpc.album.delete(f.id);
-      toast(`${_fscName(f)} sent you a postcard from ${it ? it.label : 'a scene'}`, { icon: 'mail', action: { label: 'Open', run: () => setView('friends:' + f.id) } });
+      toast(`${_fscName(f)} sent you a scene card from ${it ? it.label : 'a scene'}`, { icon: 'mail', action: { label: 'Open', run: () => setView('friends:' + f.id) } });
     });
   } catch (e) { console.error('[postcards] arrivals', e); }
   if (typeof registerCommand === 'function') {
-    registerCommand({ id: 'friends-postcard', label: 'Send a postcard to a friend', icon: 'mail', keywords: 'postcard friends scene send share view wish you were here', run: () => friendsPostcardCompose({}) });
+    registerCommand({ id: 'friends-postcard', label: 'Send a scene card to a friend', icon: 'mail', keywords: 'postcard friends scene send share view wish you were here', run: () => friendsPostcardCompose({}) });
   }
 })();

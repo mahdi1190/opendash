@@ -1,3 +1,4 @@
+/* Tokens: spacing, type and radius use var(--space-*), var(--text-*), var(--radius-*); a raw 1px hairline or 2px optical nudge is intentional. */
 /* ============================================================
    CUSTOMISE (28-customise.js): stream / tag markers in every shape, the
    right-click menu, the customise popover and the rename-in-place field.
@@ -20,7 +21,7 @@
 .nav-item .dot.mk.mk-sym > .i, .nav-item.active .dot.mk.mk-sym > .i, .avatar > .i { color: inherit; }
 .dot.mk.mk-sym.mk-diamond > .i { width: calc(var(--mk-s) * 0.56); height: calc(var(--mk-s) * 0.56); }
 .dot.mk.mk-sym > .mk-e { font-size: calc(var(--mk-s) * 0.78); line-height: 1; }
-.dot.mk.mk-sym.mk-rounded { border-radius: 4px; }
+.dot.mk.mk-sym.mk-rounded { border-radius: var(--radius-xs); }
 .dot.mk.mk-sym.mk-square { border-radius: 2px; }
 .dot.mk.mk-sym.mk-diamond { width: calc(var(--mk-s) * 0.8); height: calc(var(--mk-s) * 0.8); border-radius: 2px; transform: rotate(45deg); }
 .dot.mk.mk-sym.mk-diamond > * { transform: rotate(-45deg); }
@@ -65,7 +66,7 @@
 .set-color.cz-swatch > .dot.mk-sym { --mk-s: 17px; }
 
 /* The calendar's one-stream chip (right-click a stream > Show in calendar); x shows every stream */
-.cal-stream-only { gap: 6px; }
+.cal-stream-only { gap: var(--space-1-5); }
 .cal-stream-only .x { border: 0; background: none; padding: 0; margin-right: -2px; display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: var(--radius-full); }
 .cal-stream-only .x:hover { background: var(--bg-muted); }
 
@@ -86,7 +87,7 @@
 .cz-pv-row > .dot.mk-pill:not(.mk-sym) { width: 16px; }
 .cz-pv-chip { margin-left: auto; }
 .cz-h { font-size: var(--text-2xs); font-weight: var(--weight-semibold); color: var(--fg-subtle); text-transform: uppercase; letter-spacing: var(--tracking-caps); margin-top: var(--space-1); }
-.cz-swatches { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+.cz-swatches { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--space-1); }
 .cz-sw { aspect-ratio: 1; width: 100%; border: 0; padding: 0; border-radius: 50%; background: var(--c); cursor: pointer; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08); }
 .cz-sw.on { box-shadow: 0 0 0 2px var(--surface-raised, var(--surface)), 0 0 0 4px var(--c); cursor: default; }
 .cz-sw:focus-visible, .cz-shape:focus-visible, .cz-grid button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
@@ -94,7 +95,7 @@
 .cz-custom input[type="color"] { width: 28px; height: 24px; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); background: none; cursor: pointer; flex: none; }
 .cz-hex { width: 96px; font-family: var(--font-mono); }
 .cz-nocolor { margin-left: auto; }
-.cz-shapes { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.cz-shapes { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--space-1); }
 .cz-shape { height: 30px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); background: var(--surface); display: grid; place-items: center; cursor: pointer; }
 .cz-shape:hover { background: var(--bg-muted); }
 .cz-shape.on { border-color: color-mix(in oklab, var(--c, var(--accent)) 55%, transparent); background: color-mix(in oklab, var(--c, var(--accent)) 10%, var(--surface)); cursor: default; }
@@ -103,14 +104,14 @@
 .cz-symbar { display: flex; gap: var(--space-2); align-items: center; }
 .cz-tabs { flex: none; }
 .cz-q { flex: 1; min-width: 0; }
-.cz-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; max-height: 196px; overflow: auto; padding: 2px; margin: -2px; overscroll-behavior: contain; }
+.cz-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--space-1); max-height: 196px; overflow: auto; padding: 2px; margin: -2px; overscroll-behavior: contain; }
 .cz-grid button { aspect-ratio: 1; border: 1px solid transparent; border-radius: var(--radius-sm); background: none; color: var(--fg-muted); display: grid; place-items: center; cursor: pointer; padding: 0; }
 .cz-grid button .i { width: 16px; height: 16px; }
-.cz-grid button > span { font-size: 17px; line-height: 1; }
+.cz-grid button > span { font-size: var(--text-lg); line-height: 1; }
 .cz-grid button:hover { background: var(--bg-muted); color: var(--fg); }
 .cz-grid button.on { background: color-mix(in oklab, var(--c) 14%, transparent); color: var(--c); border-color: color-mix(in oklab, var(--c) 40%, transparent); cursor: default; }
 .cz-grid button.cz-none { color: var(--fg-subtle); }
-.cz-empty { grid-column: 1 / -1; padding: var(--space-3) var(--space-1); font-size: var(--text-xs); }
+.cz-grid > .empty-line { grid-column: 1 / -1; padding: var(--space-3) var(--space-1); }
 
 /* ---------- rename in place ---------- */
 .cz-rename { z-index: var(--z-dropdown); height: 26px; box-shadow: var(--shadow-md); background: var(--surface-raised, var(--surface)); }

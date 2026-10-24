@@ -59,7 +59,7 @@ function imapConnectFlow(o) {
       box.appendChild(hint);
       if (st.error) box.appendChild(errorBox(st.error));
       const actions = _connEl('div', 'assistant-actions');
-      const go = _connBtn(st.busy ? 'Checking…' : 'Next', st.busy ? null : 'arrow-right', 'btn-primary', () => { st.email = input.value; lookup(); });
+      const go = uiButton({ label: st.busy ? 'Checking…' : 'Next', icon: st.busy ? null : 'arrow-right', kind: 'primary', size: 'sm', run: () => { st.email = input.value; lookup(); } });
       go.disabled = st.busy;
       input.oninput = () => { st.email = input.value; const c = imapEmailCheck(input.value); if (c.hint && input.value.includes('@') && input.value.split('@')[1].includes('.')) hint.textContent = c.hint; };
       input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!go.disabled) go.click(); } };
@@ -72,14 +72,14 @@ function imapConnectFlow(o) {
       const s = st.screen;
       box.append(_connEl('h3', 'conn-name', s.title), _connEl('p', 'conn-text', s.text));
       const actions = _connEl('div', 'assistant-actions');
-      actions.appendChild(_connBtn(s.button, 'log-in', 'btn-primary', () => {
+      actions.appendChild(uiButton({ label: s.button, icon: 'log-in', kind: 'primary', size: 'sm', run: () => {
         const d = (typeof accList === 'function' && accList()) || {};
         const avail = d.providers && d.providers[s.provider] && d.providers[s.provider].available !== false;
         closeFn();
         if (avail && typeof accOpenSignIn === 'function') { accOpenSignIn({ provider: s.provider, email: st.email }); if (typeof accWaiting === 'function') openDrawer({ title: 'Signing in', width: 480, body: (el2, close2) => el2.appendChild(accWaiting(s.provider === 'google' ? 'Google' : 'Microsoft', close2)) }); }
         else if (typeof accAdd === 'function') accAdd(s.provider);
-      }));
-      actions.appendChild(_connBtn('Use another address', null, 'btn-ghost', () => { st.step = 'email'; st.error = null; paint(); }));
+      } }));
+      actions.appendChild(uiButton({ label: 'Use another address', kind: 'ghost', size: 'sm', run: () => { st.step = 'email'; st.error = null; paint(); } }));
       box.appendChild(actions);
     }
 
@@ -92,16 +92,16 @@ function imapConnectFlow(o) {
         cal.appendChild(_connEl('p', 'src-lead', `Add your ${s.calendar.name || 'calendar'} now`));
         cal.appendChild(_connSteps(s.calendar.steps));
         const row = _connEl('div', 'assistant-actions');
-        row.appendChild(_connBtn('Add a calendar link', 'link', 'btn-primary', () => {
+        row.appendChild(uiButton({ label: 'Add a calendar link', icon: 'link', kind: 'primary', size: 'sm', run: () => {
           closeFn();
           if (typeof srcAddFlow === 'function') srcAddFlow({ ical: true, label: s.calendar.name || 'Calendar', icalHelp: { steps: s.calendar.steps, url: s.calendar.url, button: s.calendar.button, note: s.calendar.note } });
-        }));
-        if (s.calendar.url) row.appendChild(_connBtn(s.calendar.button || 'Open your calendar', 'external-link', 'btn-ghost', () => window.open(s.calendar.url, '_blank', 'noopener,noreferrer')));
+        } }));
+        if (s.calendar.url) row.appendChild(uiButton({ label: s.calendar.button || 'Open your calendar', icon: 'external-link', kind: 'ghost', size: 'sm', run: () => window.open(s.calendar.url, '_blank', 'noopener,noreferrer') }));
         cal.appendChild(row);
         box.appendChild(cal);
       }
       const actions = _connEl('div', 'assistant-actions');
-      actions.appendChild(_connBtn('Use another address', null, 'btn-ghost', () => { st.step = 'email'; st.error = null; paint(); }));
+      actions.appendChild(uiButton({ label: 'Use another address', kind: 'ghost', size: 'sm', run: () => { st.step = 'email'; st.error = null; paint(); } }));
       box.appendChild(actions);
     }
 
@@ -120,7 +120,7 @@ function imapConnectFlow(o) {
       const steps = _connEl('div', 'imap-steps' + (st.error && st.error.showSteps ? ' is-attention' : ''));
       steps.appendChild(_connEl('p', 'src-lead', s.bridge ? 'Set up Proton Mail Bridge' : `Make an app password at ${s.name}`));
       steps.appendChild(_connSteps(s.steps));
-      if (s.open) steps.appendChild(_connBtn(s.open.label, 'external-link', 'btn-secondary', () => window.open(s.open.url, '_blank', 'noopener,noreferrer')));
+      if (s.open) steps.appendChild(uiButton({ label: s.open.label, icon: 'external-link', kind: 'secondary', size: 'sm', run: () => window.open(s.open.url, '_blank', 'noopener,noreferrer') }));
       for (const t of s.tips) { const n = _connEl('p', 'conn-note imap-tip'); n.innerHTML = icon('info', 'i-xs'); n.appendChild(_connEl('span', null, t)); steps.appendChild(n); }
       box.appendChild(steps);
 
@@ -172,11 +172,11 @@ function imapConnectFlow(o) {
       promise.appendChild(_connEl('span', null, 'OpenDash only reads your mail. It never sends, changes or deletes anything, and the password is kept on this computer only.'));
       box.appendChild(promise);
       const actions = _connEl('div', 'assistant-actions');
-      const test = _connBtn(st.busy ? `Checking with ${s.name}…` : 'Test connection', st.busy ? null : 'plug', 'btn-primary', connect);
+      const test = uiButton({ label: st.busy ? `Checking with ${s.name}…` : 'Test connection', icon: st.busy ? null : 'plug', kind: 'primary', size: 'sm', run: (e, b) => connect(b) });
       if (st.busy) test.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>');
       test.disabled = st.busy || !String(st.form.password).trim();
       actions.appendChild(test);
-      if (!account) actions.appendChild(_connBtn('Back', null, 'btn-ghost', () => { st.step = 'email'; st.error = null; paint(); }));
+      if (!account) actions.appendChild(uiButton({ label: 'Back', kind: 'ghost', size: 'sm', run: () => { st.step = 'email'; st.error = null; paint(); } }));
       box.appendChild(actions);
       if (st.busy) box.appendChild(_connEl('p', 'conn-note', 'This takes a few seconds.'));
       paintHint();
@@ -221,16 +221,16 @@ function imapConnectFlow(o) {
         cal.appendChild(_connEl('p', 'conn-note', 'Your calendar comes in through a private calendar link. Here is where to find it:'));
         cal.appendChild(_connSteps(v.calendar.steps));
         const row = _connEl('div', 'assistant-actions');
-        row.appendChild(_connBtn('Add a calendar link', 'link', 'btn-secondary', () => {
+        row.appendChild(uiButton({ label: 'Add a calendar link', icon: 'link', kind: 'secondary', size: 'sm', run: () => {
           closeFn();
           if (typeof srcAddFlow === 'function') srcAddFlow({ ical: true, label: v.calendar.label, icalHelp: { steps: v.calendar.steps, url: v.calendar.url, button: v.calendar.button, note: v.calendar.note } });
-        }));
-        if (v.calendar.url) row.appendChild(_connBtn(v.calendar.button || 'Open your calendar', 'external-link', 'btn-ghost', () => window.open(v.calendar.url, '_blank', 'noopener,noreferrer')));
+        } }));
+        if (v.calendar.url) row.appendChild(uiButton({ label: v.calendar.button || 'Open your calendar', icon: 'external-link', kind: 'ghost', size: 'sm', run: () => window.open(v.calendar.url, '_blank', 'noopener,noreferrer') }));
         cal.appendChild(row);
       } else if (v.calendar.text) cal.appendChild(_connEl('p', 'conn-note', v.calendar.text));
       box.appendChild(cal);
       const actions = _connEl('div', 'assistant-actions');
-      actions.appendChild(_connBtn('Done', 'check', 'btn-primary', closeFn));
+      actions.appendChild(uiButton({ label: 'Done', icon: 'check', kind: 'primary', size: 'sm', run: (e, b) => closeFn(b) }));
       box.appendChild(actions);
     }
 

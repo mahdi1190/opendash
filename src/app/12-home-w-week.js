@@ -83,15 +83,16 @@ function _hwkRender(el, ctx) {
 
   const card = document.createElement('section');
   card.className = 'card home-card hwk' + (full ? ' is-full' : '') + (empty ? ' is-empty' : '');
-  card.innerHTML = `<div class="card-h">${icon('calendar-range')}<h3>This week</h3><span class="n">${esc('next 7 days' + (dueN ? ` · ${dueN} due` : ''))}</span><span class="spacer"></span>`
-    + `<button type="button" class="btn btn-ghost btn-sm" data-act="upcoming"><span>Upcoming</span>${icon('arrow-right')}</button></div><div class="card-b hwk-b"></div>`;
+  card.appendChild(cardHead({ icon: 'calendar-range', title: 'This week', count: 'next 7 days' + (dueN ? ` · ${dueN} due` : ''),
+    actions: [{ label: 'Upcoming', icon: 'arrow-right', data: { act: 'upcoming' } }] }));
+  card.insertAdjacentHTML('beforeend', '<div class="card-b hwk-b"></div>');
   el.appendChild(card);
   const body = card.querySelector('.hwk-b');
   const scroll = document.createElement('div'); scroll.className = 'hwk-scroll';
   const strip = document.createElement('div'); strip.className = 'hw-week';
   scroll.appendChild(strip); body.appendChild(scroll);
   for (const d of week) strip.insertAdjacentHTML('beforeend', _hwkDayHtml(d, { maxDue, maxEv, cal, empty }));
-  if (empty) body.insertAdjacentHTML('beforeend', `<p class="hwk-hint">${icon('info', 'i-xs')}<span>Deadlines and countdowns for the next seven days land here. Drag a Focus task onto a day to move it.</span></p>`);
+  if (empty) body.insertAdjacentHTML('beforeend', `<p class="hwk-hint">${icon('info', 'i-sm')}<span>Deadlines and countdowns for the next seven days land here. Drag a Focus task onto a day to move it.</span></p>`);
   homeGrowEntering(card, 'week', ctx.firstPaint);
 
   card.addEventListener('click', (e) => {
@@ -134,12 +135,12 @@ function _hwkDayHtml(d, o) {
   const dueTasks = d.due.filter(x => x.kind !== 'bday').length;
   const shown = d.due.slice(0, o.maxDue), more = d.due.length - shown.length;
   const items = shown.map(x => {
-    if (x.kind === 'cd') return `<div class="hw-cd" role="button" tabindex="0" data-cd="${escAttr(x.id)}" title="${escAttr(x.label + ' · countdown')}">${icon('flag')}<span>${esc(x.label)}</span></div>`;
+    if (x.kind === 'cd') return `<div class="hw-cd" role="button" tabindex="0" data-cd="${escAttr(x.id)}" title="${escAttr(x.label + ' · countdown')}">${icon('flag', 'i-xs')}<span>${esc(x.label)}</span></div>`;
     if (x.kind === 'bday') return `<div class="hw-bd anim-hover-host" role="button" tabindex="0" data-bday="${escAttr(x.id || '')}" title="${escAttr(x.title)}">${homeScene(x.type, { size: 'dense', hover: true })}<span>${esc(x.title)}</span></div>`;
     return `<div class="hw-item p-${escAttr(x.prio)}" role="button" tabindex="0" data-id="${escAttr(x.id)}" data-flip="${escAttr('wk:' + x.id)}" title="${escAttr(x.title + (x.time ? ' · ' + x.time : '') + (x.stream ? ' · ' + x.stream : ''))}">`
       + `<i class="hw-sd" style="--c:${escAttr(homeCalColor(x.color, 'var(--fg-subtle)'))}" aria-hidden="true"></i><span class="hw-it">${esc(x.title)}</span></div>`;
   }).join('');
-  const over = d.overdue ? `<button type="button" class="hw-over" data-act="overdue">${icon('circle-alert')}<span>${esc(d.overdue)} overdue</span></button>` : '';
+  const over = d.overdue ? `<button type="button" class="hw-over" data-act="overdue">${icon('circle-alert', 'i-xs')}<span>${esc(d.overdue)} overdue</span></button>` : '';
   const moreBtn = more > 0 ? `<button type="button" class="hw-more" data-act="day" data-day="${escAttr(d.iso)}">+${more} more</button>` : '';
   const evRows = [...d.allDay.map(e => ({ t: 'all day', e })), ...d.events.map(e => ({ t: homeHM(e.start), e }))];
   const evShown = evRows.slice(0, o.maxEv), evMore = evRows.length - evShown.length;
@@ -151,8 +152,8 @@ function _hwkDayHtml(d, o) {
   const aria = `${d.k === 0 ? 'Today, ' : ''}${wd} ${d.dn}: ${dueTasks} due${d.events.length ? `, ${d.events.length} event${d.events.length === 1 ? '' : 's'}` : ''}`;
   return `<div class="hw-day${d.today ? ' today' : ''}${d.weekend ? ' weekend' : ''}" data-drop-date="${escAttr(d.iso)}" tabindex="0" role="group" aria-label="${escAttr(aria)}"${d.today ? ' aria-current="date"' : ''}>`
     + `<div class="hw-h"><span class="hw-wd">${esc(d.k === 0 ? 'Today' : wd)}</span><b class="hw-dn num">${esc(d.dn)}</b>${dueTasks ? `<span class="hw-n num">${esc(dueTasks)}</span>` : ''}`
-    + `<button type="button" class="hw-add" data-act="add" data-day="${escAttr(d.iso)}" aria-label="${escAttr('Add a task on ' + label)}" data-tip="Add a task">${icon('plus')}</button></div>`
+    + `<button type="button" class="hw-add" data-act="add" data-day="${escAttr(d.iso)}" aria-label="${escAttr('Add a task on ' + label)}" data-tip="Add a task">${icon('plus', 'i-sm')}</button></div>`
     + load + `<div class="hw-items">${over}${items}${moreBtn}</div>`
-    + `<div class="hw-drop" aria-hidden="true">${icon('calendar-check')}<span>Move to ${esc(label)}</span></div>`
+    + `<div class="hw-drop" aria-hidden="true">${icon('calendar-check', 'i-xs')}<span>Move to ${esc(label)}</span></div>`
     + evs + '</div>';
 }

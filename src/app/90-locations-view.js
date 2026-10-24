@@ -84,12 +84,12 @@ function _locvTiles(f) {
     ['clock', _locvNum(f.zonesCrossed), f.zonesCrossed === 1 ? 'time zone crossed' : 'time zones crossed'],
     ['circle-check', _locvNum(f.tasks.abroad), 'tasks done abroad'],
   ];
-  return `<div class="loc-tiles">${tiles.map(([ic, n, l]) => `<div class="loc-tile">${icon(ic)}<b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
+  return `<div class="loc-tiles">${tiles.map(([ic, n, l]) => `<div class="loc-tile">${icon(ic, 'i-lg')}<b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
 }
 function _locvBadges(f) {
   if (!f.badges.length) return '';
   const list = f.badges.slice().reverse();
-  return `<section class="loc-sec loc-badges" data-m-key="badges"><h3 class="overline">Badges · ${f.badges.length}</h3><div class="loc-badge-row">${list.map(b => `<span class="loc-badge" data-kind="${esc(b.kind)}" data-tip="${esc(b.text + ' ' + _locvDate(b.at, true))}">${icon(b.icon || 'award')}<span>${esc(b.title)}</span></span>`).join('')}</div></section>`;
+  return `<section class="loc-sec loc-badges" data-m-key="badges">${secHeadHtml({ title: 'Badges', count: f.badges.length })}<div class="loc-badge-row">${list.map(b => `<span class="loc-badge" data-kind="${esc(b.kind)}" data-tip="${esc(b.text + ' ' + _locvDate(b.at, true))}">${icon(b.icon || 'award', 'i-sm')}<span>${esc(b.title)}</span></span>`).join('')}</div></section>`;
 }
 const _LOCV_FILTERS = [['all', 'All'], ['abroad', 'Abroad'], ['firsts', 'Firsts'], ['done', 'Got things done']];
 function _locvTimeline(f) {
@@ -103,22 +103,23 @@ function _locvTimeline(f) {
     if (y !== year) { year = y; html += `<li class="loc-tl-year" aria-hidden="true">${esc(y)}</li>`; }
     const src = _LOCV_SRC[v.src] || _LOCV_SRC.import;
     const chips = [];
-    if (v.firstCountry) chips.push(`<span class="chip chip-accent">${icon('flag')}<span>First time in ${esc(v.country || v.cc)}</span></span>`);
-    else if (v.firstCity) chips.push(`<span class="chip chip-solid">${icon('sparkles')}<span>First visit</span></span>`);
-    if (v.began) chips.push(`<span class="chip chip-solid">${icon('history')}<span>Where your history begins</span></span>`);
-    if (v.done) chips.push(`<span class="chip">${icon('circle-check')}<span>${_locvNum(v.done)} done</span></span>`);
-    if (v.wx && (Number.isFinite(v.wx.hi) || Number.isFinite(v.wx.lo))) chips.push(`<span class="chip" title="Weather while you were there">${icon('sun')}<span>${esc([_locvTemp(v.wx.hi), _locvTemp(v.wx.lo)].filter(Boolean).join(' / '))}${v.wx.label ? ' ' + esc(v.wx.label) : ''}</span></span>`);
+    if (v.firstCountry) chips.push(`<span class="chip chip-accent">${icon('flag', 'i-xs')}<span>First time in ${esc(v.country || v.cc)}</span></span>`);
+    else if (v.firstCity) chips.push(`<span class="chip chip-solid">${icon('sparkles', 'i-xs')}<span>First visit</span></span>`);
+    if (v.began) chips.push(`<span class="chip chip-solid">${icon('history', 'i-xs')}<span>Where your history begins</span></span>`);
+    if (v.done) chips.push(`<span class="chip">${icon('circle-check', 'i-xs')}<span>${_locvNum(v.done)} done</span></span>`);
+    if (v.wx && (Number.isFinite(v.wx.hi) || Number.isFinite(v.wx.lo))) chips.push(`<span class="chip" title="Weather while you were there">${icon('sun', 'i-xs')}<span>${esc([_locvTemp(v.wx.hi), _locvTemp(v.wx.lo)].filter(Boolean).join(' / '))}${v.wx.label ? ' ' + esc(v.wx.label) : ''}</span></span>`);
     const sub = [v.city && v.region ? v.region : '', v.city && v.country ? v.country : ''].filter(Boolean).join(', ');
     const now = v === f.visits[f.visits.length - 1];
     html += `<li class="loc-tl-item${now ? ' is-now' : ''}"><span class="loc-tl-dot" aria-hidden="true"></span>
       <div class="loc-tl-main"><div class="loc-tl-t">${_locvFlag(v.cc)}<b>${esc(_locvName(v))}</b>${sub ? `<span class="muted">${esc(sub)}</span>` : ''}</div>
-      <div class="loc-tl-when"><span>${esc(now ? 'Since ' + _locvDate(v.from) : _locvRange(v.from, v.to))}</span><span class="muted">· ${esc(_locvDur(v.ms))}</span><span class="loc-src" data-tip="${esc(src[1])}">${icon(src[0])}</span></div>
+      <div class="loc-tl-when"><span>${esc(now ? 'Since ' + _locvDate(v.from) : _locvRange(v.from, v.to))}</span><span class="muted">· ${esc(_locvDur(v.ms))}</span><span class="loc-src" data-tip="${esc(src[1])}">${icon(src[0], 'i-xs')}</span></div>
       ${chips.length ? `<div class="loc-tl-chips">${chips.join('')}</div>` : ''}</div></li>`;
   }
   const more = vs.length > shown.length ? `<button type="button" class="btn btn-ghost btn-sm loc-more" data-act="more">Show ${Math.min(50, vs.length - shown.length)} more</button>` : '';
-  const chips = `<div class="loc-filters" role="tablist" aria-label="Show">${_LOCV_FILTERS.map(([k, l]) => `<button type="button" role="tab" class="chip${_locvFilter === k ? ' chip-accent' : ''}" data-act="filter" data-k="${k}" aria-selected="${_locvFilter === k}">${esc(l)}</button>`).join('')}</div>`;
-  const empty = vs.length ? '' : `<p class="muted loc-tl-empty">${_locvFilter === 'abroad' ? 'No time abroad logged yet. Somewhere new soon?' : _locvFilter === 'firsts' ? 'Your firsts will show here.' : 'Tasks you finish show here with the place you finished them.'}</p>`;
-  return `<section class="loc-sec card" data-m-key="timeline"><div class="loc-sec-h"><h3 class="overline">Travel timeline</h3><span class="muted">${_locvNum(vs.length)} ${vs.length === 1 ? 'stay' : 'stays'}</span></div>${chips}${empty}<ol class="loc-tl">${html}</ol>${more}</section>`;
+  // A filter, not a row of tabs (Places' sections are the page's second level): one small select.
+  const chips = `<div class="loc-filters"><select class="control control-sm" data-act="filter" aria-label="Show">${_LOCV_FILTERS.map(([k, l]) => `<option value="${k}"${_locvFilter === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select></div>`;
+  const empty = vs.length ? '' : `<p class="empty-line">${_locvFilter === 'abroad' ? 'No time abroad logged yet. Somewhere new soon?' : _locvFilter === 'firsts' ? 'Your firsts will show here.' : 'Tasks you finish show here with the place you finished them.'}</p>`;
+  return `<section class="loc-sec card" data-m-key="timeline">${secHeadHtml({ title: 'Travel timeline', count: `${_locvNum(vs.length)} ${vs.length === 1 ? 'stay' : 'stays'}` })}${chips}${empty}<ol class="loc-tl">${html}</ol>${more}</section>`;
 }
 function _locvPassport(f) {
   if (!f.countries.length) return '';
@@ -128,13 +129,13 @@ function _locvPassport(f) {
       <div class="loc-stamp-b"><b>${esc(c.country || c.cc)}</b>${c.home ? '<span class="chip chip-solid">Home</span>' : ''}
         <span class="muted">First ${esc(_locvDate(c.first, true))}${c.visits > 1 ? ` · ${c.visits} visits` : ''}</span></div>
       <div class="loc-stamp-n"><span>${_locvNum(c.nDays)} ${c.nDays === 1 ? 'day' : 'days'}</span>${c.nCities ? `<span class="muted">${c.nCities} ${c.nCities === 1 ? 'place' : 'places'}</span>` : ''}${c.done ? `<span class="muted">${_locvNum(c.done)} done</span>` : ''}${spend && spend.has(c.cc) ? `<span class="muted" data-tip="Spent there (from Finances)">${esc(_locvMoney(spend.get(c.cc), _locvSpend.currency))}</span>` : ''}</div></li>`).join('');
-  return `<section class="loc-sec card" data-m-key="passport"><div class="loc-sec-h"><h3 class="overline">Passport</h3>${spend ? '<span class="muted">with spend from Finances</span>' : ''}</div><ul class="loc-stamps">${rows}</ul></section>`;
+  return `<section class="loc-sec card" data-m-key="passport">${secHeadHtml({ title: 'Passport', sub: spend ? 'with spend from Finances' : '' })}<ul class="loc-stamps">${rows}</ul></section>`;
 }
 function _locvPlaces(f) {
   const top = f.cities.slice().sort((a, b) => b.nDays - a.nDays || b.ms - a.ms).slice(0, 8);
   if (!top.length) return '';
   const max = Math.max(...top.map(c => c.nDays), 1);
-  return `<section class="loc-sec card" data-m-key="places"><div class="loc-sec-h"><h3 class="overline">Your places</h3></div><ul class="loc-bars">${top.map(c => `<li><span class="loc-bar-l">${_locvFlag(c.cc)}<span>${esc(c.city)}</span></span><span class="loc-bar"><i style="width:${Math.max(3, Math.round(c.nDays / max * 100))}%"></i></span><span class="loc-bar-n">${_locvNum(c.nDays)} d${c.done ? ` · ${_locvNum(c.done)} done` : ''}</span></li>`).join('')}</ul></section>`;
+  return `<section class="loc-sec card" data-m-key="places">${secHeadHtml({ title: 'Your places' })}<ul class="loc-bars">${top.map(c => `<li><span class="loc-bar-l">${_locvFlag(c.cc)}<span>${esc(c.city)}</span></span><span class="loc-bar"><i style="width:${Math.max(3, Math.round(c.nDays / max * 100))}%"></i></span><span class="loc-bar-n">${_locvNum(c.nDays)} d${c.done ? ` · ${_locvNum(c.done)} done` : ''}</span></li>`).join('')}</ul></section>`;
 }
 function _locvFacts(f) {
   const facts = [];
@@ -150,11 +151,11 @@ function _locvFacts(f) {
   const lateTop = [...f.tasks.late.entries()].sort((a, b) => b[1] - a[1])[0];
   if (lateTop && lateTop[1] >= 2) { const c = f.cities.find(x => x.key === lateTop[0]); if (c) add('moon', 'Late nights in ' + c.city, `${lateTop[1]} tasks finished after 11 pm there.`); }
   if (!facts.length) return '';
-  return `<section class="loc-sec card" data-m-key="facts"><div class="loc-sec-h"><h3 class="overline">Fun facts</h3></div><ul class="loc-facts">${facts.join('')}</ul></section>`;
+  return `<section class="loc-sec card" data-m-key="facts">${secHeadHtml({ title: 'Fun facts' })}<ul class="loc-facts">${facts.join('')}</ul></section>`;
 }
 function _locvYears(f) {
   if (f.years.length < 1) return '';
-  return `<section class="loc-sec card" data-m-key="years"><div class="loc-sec-h"><h3 class="overline">Year by year</h3></div><ul class="loc-years">${f.years.map(y => `<li><b>${esc(y.year)}</b><span>${y.countries} ${y.countries === 1 ? 'country' : 'countries'}</span><span>${y.cities} ${y.cities === 1 ? 'place' : 'places'}</span><span class="muted">${_locvNum(y.km)} km</span></li>`).join('')}</ul></section>`;
+  return `<section class="loc-sec card" data-m-key="years">${secHeadHtml({ title: 'Year by year' })}<ul class="loc-years">${f.years.map(y => `<li><b>${esc(y.year)}</b><span>${y.countries} ${y.countries === 1 ? 'country' : 'countries'}</span><span>${y.cities} ${y.cities === 1 ? 'place' : 'places'}</span><span class="muted">${_locvNum(y.km)} km</span></li>`).join('')}</ul></section>`;
 }
 
 /** A short travel story to paste anywhere ("Copy my travel story"). */
@@ -174,10 +175,10 @@ async function locWhereWasI() {
   const v = await promptDialog({ title: 'Where was I on…', label: 'A date (YYYY-MM-DD)', placeholder: 'e.g. 2026-05-01', confirmLabel: 'Find' });
   if (!v) return;
   const t = Date.parse(String(v).trim() + 'T12:00:00');
-  if (!Number.isFinite(t)) { toast('That is not a date I can read. Try YYYY-MM-DD.', { kind: 'err' }); return; }
+  if (!Number.isFinite(t)) { toast('That isn’t a date I can read: try YYYY-MM-DD.', { kind: 'err' }); return; }
   const s = Locations.where(t);
-  if (!s) { toast('Your location history does not reach back to ' + _locvDate(t, true) + '.', { icon: 'map-pin' }); return; }
-  toast(`On ${_locvDate(t, true)} you were in ${s.city || s.place || s.country}${s.city && s.country ? ', ' + s.country : ''}.`, { icon: 'map-pin', timeout: 9000, action: { label: 'Locations', run: () => setView('locations') } });
+  if (!s) { toast('Your location history doesn’t reach back to ' + _locvDate(t, true), { icon: 'map-pin' }); return; }
+  toast(`On ${_locvDate(t, true)} you were in ${s.city || s.place || s.country}${s.city && s.country ? ', ' + s.country : ''}`, { icon: 'map-pin', timeout: 9000, action: { label: 'Locations', run: () => setView('locations') } });
 }
 /* Places, Life's sixth tab (2.18): Overview (this page, 'locations') and Trips ('trips', a trip is 'trip:<id>'). */
 function _locvNextTripHint() {
@@ -230,25 +231,23 @@ function _locvMount(container) {
         <div class="loc-hero-place">${_locvFlag(cur.cc)}<b>${esc(_locvName(cur))}</b></div>
         ${sub ? `<div class="muted">${esc(sub)}</div>` : ''}
         <div class="loc-hero-meta muted">Since ${esc(_locvDate(cur.from, true))}${f.began ? ` · history since ${esc(_locvDate(f.began, true))}` : ''}</div>
-        <div class="loc-hero-act"><button type="button" class="btn btn-secondary btn-sm" data-act="story">${icon('copy')}<span>Copy my travel story</span></button><button type="button" class="btn btn-ghost btn-sm" data-act="where">${icon('history')}<span>Where was I on…</span></button></div>
       </div>
       ${map ? `<div class="loc-hero-map">${map}</div>` : ''}
     </section>
     ${_locvTiles(f)}
     ${_locvBadges(f)}
     <div class="loc-cols"><div class="loc-col">${_locvTimeline(f)}</div><div class="loc-col">${_locvFacts(f)}${_locvPassport(f)}${_locvPlaces(f)}${_locvYears(f)}</div></div>
-    <p class="loc-foot muted">${icon('lock')} <span>${esc(LOC_NOTICE)}</span> <button type="button" class="btn-link" data-act="settings">Location history settings</button></p>`;
+    <p class="loc-foot muted">${icon('lock', 'i-sm')} <span>${esc(LOC_NOTICE)}</span> <button type="button" class="btn-link" data-act="settings">Location history settings</button></p>`;
   page.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
     if (!b) return;
     if (b.dataset.act === 'more') { _locvMore += 50; render(); }
-    else if (b.dataset.act === 'filter') { if (_locvFilter === b.dataset.k) return; _locvFilter = b.dataset.k; _locvMore = 30; render(); }
-    else if (b.dataset.act === 'where') locWhereWasI();
-    else if (b.dataset.act === 'story') {
-      const text = _locvStory(locationsFacts());
-      if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast('Copied your travel story', { kind: 'ok', icon: 'copy' }), () => toast('Could not copy it', { kind: 'err' }));
-    }
     else if (b.dataset.act === 'settings') setView('settings:locations');
+  });
+  page.addEventListener('change', (e) => {
+    const b = e.target.closest('[data-act="filter"]');
+    if (!b || _locvFilter === b.value) return;
+    _locvFilter = b.value; _locvMore = 30; render();
   });
   container.appendChild(page);
   if (typeof memPostcardAlbumEl === 'function') container.appendChild(memPostcardAlbumEl({ compact: true }));   // postcards (93-memories-ui.js)
@@ -260,8 +259,15 @@ function _locvMount(container) {
   }
   _locvEntered = true;
 }
+/** The page header's actions: nothing is primary here; the two small tools and the settings sit under More. */
+function _locvCopyStory() { return copyText(_locvStory(locationsFacts()), 'your travel story'); }
 registerSection('locations', {
   title: () => 'Places',
+  headerActions: () => ({ more: [
+    { label: 'Copy my travel story', icon: 'copy', run: _locvCopyStory },
+    { label: 'Where was I on…', icon: 'history', run: () => locWhereWasI() },
+    { label: 'Location history settings', icon: 'settings', run: () => setView('settings:locations') },
+  ] }),
   group: 'life', hashable: true, layout: 'page',   // Life > Places since 2.18 (NAVIGATION_PLAN.md 2.2); the view id stays 'locations'
   mount(container) { _locvMount(container); if (!_loc.data && !_loc.loading) locLogLoad().then(() => { if (state.view === 'locations') render(); }); },
   unmount() { _locvEntered = false; _locvMore = 30; _locvFilter = 'all'; },

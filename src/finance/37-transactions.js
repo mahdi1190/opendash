@@ -186,7 +186,8 @@
           h('i', { class: 'cd', style: { background: catColor(x.c) } }), h('span', { class: 'c', text: x.c }),
           // "Payment" says nothing (the bank gave no method), so it is left out.
           kind !== 'payment' ? [h('span', { class: 'sep', text: '·' }), VK.badge(kind, { size: 'sm' })] : null,
-          showAcct ? h('span', { class: 'ac', text: M.acctNames[x.acct] || x.acct || '' }) : null)),
+          showAcct ? h('span', { class: 'ac', text: M.acctNames[x.acct] || x.acct || '' }) : null,
+          x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txChip ? window.Expenses.txChip(x) : null)),   // an expense, or the "Expense?" hint
       h('span', { class: 'fv-txr-am' + (x.a > 0 ? ' in' : ''), text: x.a > 0 ? sgbp2(x.a) : gbp2(x.a) }));
     row._x = x;
     return row;
@@ -288,6 +289,7 @@
         h('div', { class: 'fv-txx-acts' },
           h('button', { type: 'button', class: 'fv-btn', onclick: () => setMerchant(filt ? '' : G.primary(key)) }, ic(filt ? 'x' : 'filter'), filt ? 'Clear merchant filter' : 'Only this merchant'),
           h('button', { type: 'button', class: 'fv-btn', onclick: () => openDay(x.n) }, ic('calendar'), 'This day'),
+          x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txAction ? window.Expenses.txAction(x) : null,   // Expenses (src/app/66-expenses-2widget.js)
           x.how === 'override' ? h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => categorise(x.m, null, x.c, 'override') }, ic('rotate-ccw'), 'Remove my rule') : null,
           h('button', { type: 'button', class: 'fv-btn ghost fv-txx-all', onclick: () => openMerchant(x.m) }, `All at ${label}`, ic('arrow-right')))));
     return det;

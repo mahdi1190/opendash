@@ -53,7 +53,7 @@ function _homeHeadActions() {
   let b = document.getElementById('tb-home-customise');
   if (!b) {
     b = document.createElement('button'); b.type = 'button'; b.id = 'tb-home-customise'; b.className = 'tb-home-cust home-customise';
-    b.innerHTML = icon('layout-grid') + '<span>Customise</span>';
+    b.innerHTML = icon('layout-grid', 'i-sm') + '<span>Customise</span>';
     b.setAttribute('data-tip', 'Move, resize, hide and add Home widgets');
     b.setAttribute('aria-label', 'Customise Home');
     b.onclick = () => { if (!_homeEditing) homeEditStart(); };   // re-selecting does nothing
@@ -70,10 +70,7 @@ function _homeHeadActionsRemove() {
 /** The quiet foot of the board: "Customise Home" (like the iOS Today view). */
 function _homeFoot() {
   const f = document.createElement('div'); f.className = 'home-foot-bar';
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm home-foot-cust';
-  b.innerHTML = icon('layout-grid') + '<span>Customise Home</span>';
-  b.onclick = () => homeEditStart();
-  f.appendChild(b);
+  f.appendChild(uiButton({ label: 'Customise Home', icon: 'layout-grid', size: 'sm', cls: 'home-foot-cust', run: () => homeEditStart() }));
   return f;
 }
 
@@ -108,7 +105,7 @@ function homeEditStart(o) {
 function _homeLongPress(grid) {
   grid.addEventListener('pointerdown', (e) => {
     if (_homeEditing || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
-    const head = e.target.closest('.hg-body .card-h, .hg-body .hf-h');
+    const head = e.target.closest('.hg-body .card-h');
     if (!head || e.target.closest('button, a, input, select, textarea, [role="button"], [contenteditable="true"]')) return;
     const frame = head.closest('.hg-w[data-wid]');
     if (!frame) return;
@@ -164,22 +161,16 @@ document.addEventListener('keydown', (e) => {
 function _homeEditBar() {
   const bar = document.createElement('div'); bar.className = 'home-editbar'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Customise Home');
   const hiddenN = homeLayout().widgets.filter(w => w.hidden && homeWidgetAvailable(homeWidgetDef(w.id))).length;
-  bar.innerHTML = `<div class="heb-t">${icon('layout-grid')}<div><b>Customising Home</b><span>Drag to move · drag an edge to resize · <kbd class="kbd">−</kbd> hides · arrows move, <kbd class="kbd">Shift</kbd>+arrows resize</span></div></div><span class="spacer"></span>`;
-  const mk = (cls, ic, label, run, extra) => {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls;
-    b.innerHTML = icon(ic) + `<span>${esc(label)}</span>` + (extra || '');
-    b.setAttribute('aria-label', label);
-    b.onclick = (e) => run(e.currentTarget);
-    bar.appendChild(b); return b;
-  };
-  const add = mk('btn-secondary heb-add', 'plus', 'Add widget', (el) => _homeOpenGallery(el), hiddenN ? `<span class="badge badge-accent num">${esc(hiddenN)}</span>` : '');
-  add.dataset.act = 'add'; add.setAttribute('aria-haspopup', 'dialog');
+  bar.innerHTML = `<div class="heb-t">${icon('layout-grid', 'i-lg')}<div><b>Customising Home</b><span>Drag to move · drag an edge to resize · <kbd class="kbd">−</kbd> hides · arrows move, <kbd class="kbd">Shift</kbd>+arrows resize</span></div></div><span class="spacer"></span>`;
+  const mk = (o) => { const b = uiButton(Object.assign({ size: 'sm', kind: 'ghost', bubble: true }, o)); bar.appendChild(b); return b; };
+  const add = mk({ label: 'Add widget', icon: 'plus', kind: 'secondary', cls: 'heb-add', aria: 'Add widget', data: { act: 'add' }, run: (e, el) => _homeOpenGallery(el) });
+  if (hiddenN) add.insertAdjacentHTML('beforeend', `<span class="badge badge-accent num">${esc(hiddenN)}</span>`);
+  add.setAttribute('aria-haspopup', 'dialog');
   // Ready-made boards: Focused, Balanced, Everything, Fun (12-home-presets.js).
-  if (typeof homePresetsMenu === 'function') { const lp = mk('btn-ghost heb-presets', 'layers', 'Layouts', (el) => homePresetsMenu(el)); lp.setAttribute('aria-haspopup', 'menu'); lp.setAttribute('data-tip', 'Start from a ready-made layout'); }
-  const u = mk('btn-ghost heb-undo', 'undo-2', 'Undo', () => homeEditUndo());
-  u.disabled = !_homeEditUndo.length; u.setAttribute('data-tip', 'Undo the last change to the layout');
-  mk('btn-ghost heb-reset', 'rotate-ccw', 'Reset', () => homeResetLayout()).disabled = !homeState().layout;
-  mk('btn-primary heb-done', 'check', 'Done', () => homeEditDone()).setAttribute('data-kbd', 'Esc');
+  if (typeof homePresetsMenu === 'function') mk({ label: 'Layouts', icon: 'layers', cls: 'heb-presets', tip: 'Start from a ready-made layout', run: (e, el) => homePresetsMenu(el) }).setAttribute('aria-haspopup', 'menu');
+  mk({ label: 'Undo', icon: 'undo-2', cls: 'heb-undo', tip: 'Undo the last change to the layout', disabled: !_homeEditUndo.length, run: () => homeEditUndo() });
+  mk({ label: 'Reset', icon: 'rotate-ccw', cls: 'heb-reset', disabled: !homeState().layout, run: () => homeResetLayout() });
+  mk({ label: 'Done', icon: 'check', kind: 'primary', cls: 'heb-done', kbd: 'Esc', run: () => homeEditDone() });
   if (_homeEditFresh) {
     requestAnimationFrame(() => {
       const home = bar.closest('.home');
@@ -204,10 +195,10 @@ function _homeEditChrome(frame, def, w) {
   frame.style.setProperty('--wq', String(Math.max(0, pos) % 7));
   const x = document.createElement('button'); x.type = 'button'; x.className = 'hg-x'; x.dataset.act = 'hide';
   // A second copy of a widget is removed (with its settings; Undo), not hidden.
-  x.innerHTML = icon('minus'); x.setAttribute('aria-label', `${def.copy > 1 ? 'Remove' : 'Hide'} ${def.title}`); x.setAttribute('data-tip', def.copy > 1 ? 'Remove this copy' : 'Hide');
+  x.innerHTML = icon('minus', 'i-sm'); x.setAttribute('aria-label', `${def.copy > 1 ? 'Remove' : 'Hide'} ${def.title}`); x.setAttribute('data-tip', def.copy > 1 ? 'Remove this copy' : 'Hide');
   x.onclick = (e) => { e.stopPropagation(); homeWidgetHide(def.id); };
   frame.appendChild(x);
-  frame.insertAdjacentHTML('beforeend', `<span class="hg-grip" aria-hidden="true">${icon('grip-vertical')}</span>`);
+  frame.insertAdjacentHTML('beforeend', `<span class="hg-grip" aria-hidden="true">${icon('grip-vertical', 'i-sm')}</span>`);
   const c = document.createElement('div'); c.className = 'hg-chrome';
   if (def.sizes.length > 1) {
     const seg = document.createElement('span'); seg.className = 'seg hg-sizes'; seg.setAttribute('role', 'radiogroup'); seg.setAttribute('aria-label', `${def.title} size`);
@@ -225,9 +216,7 @@ function _homeEditChrome(frame, def, w) {
     c.appendChild(seg);
   }
   if (typeof def.settings === 'function') {
-    const g = document.createElement('button'); g.type = 'button'; g.className = 'btn-icon btn-sm'; g.dataset.act = 'settings';
-    g.innerHTML = icon('sliders-horizontal'); g.setAttribute('aria-label', `${def.title} settings`); g.setAttribute('data-tip', 'Settings');
-    c.appendChild(g);
+    c.appendChild(uiButton({ icon: 'sliders-horizontal', iconCls: 'i-sm', size: 'sm', aria: `${def.title} settings`, tip: 'Settings', data: { act: 'settings' } }));
   }
   c.onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
@@ -433,22 +422,22 @@ function _homeOpenGallery(anchor, pick, fitCols) {
   let size = fitSize(sel);             // the size picked in the segment (null = current or default)
   let changed = false;
   openDialog({
-    title: 'Add a widget', width: 940, resizable: false,
+    // A filter and a list: a fixed height, so filtering never moves the buttons (UI_CLEANUP_PLAN.md 1.3).
+    title: 'Add a widget', size: 'xl', fixed: true, className: 'hgal-modal', resizable: false,
     onClose: () => { if (!changed && typeof state !== 'undefined' && state.view === 'home') render(); },
     body: (el, close) => {
       el.classList.add('hgal-b');
-      el.closest('.modal').classList.add('hgal-modal');
       const side = document.createElement('div'); side.className = 'hgal-side';
       const q = document.createElement('input'); q.type = 'search'; q.className = 'input input-sm hgal-q';
       q.placeholder = 'Search widgets'; q.setAttribute('aria-label', 'Search widgets'); q.autocomplete = 'off';
       const list = document.createElement('div'); list.className = 'hgal-list'; list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', 'Widgets');
-      const none = document.createElement('p'); none.className = 'hgal-none'; none.textContent = 'No widget matches'; none.hidden = true;
+      const none = emptyLine('No widget matches. Try another word, such as money or calendar.'); none.classList.add('hgal-none'); none.hidden = true;
       none.setAttribute('role', 'status');
       side.append(q, list, none);
       const pane = document.createElement('div'); pane.className = 'hgal-pane';
       el.append(side, pane);
       const badge = (def, here) => {
-        if (here) { const n = shownN(def.id); return `<span class="hgal-on">${icon('check')}On Home${n > 1 ? ` ×${n}` : ''}</span>`; }
+        if (here) { const n = shownN(def.id); return `<span class="hgal-on">${icon('check', 'i-xs')}On Home${n > 1 ? ` ×${n}` : ''}</span>`; }
         return homeWidgetIsNew(def) ? '<span class="hgal-new">New</span>' : '<span class="hgal-tag">Add</span>';
       };
       const heading = (cls, label) => { const h = document.createElement('div'); h.className = cls; h.textContent = label; list.appendChild(h); return h; };
@@ -533,26 +522,12 @@ function _homeOpenGallery(anchor, pick, fitCols) {
         pane.appendChild(stage);
         _homePreview(stage, def, sz);
         const foot = document.createElement('div'); foot.className = 'hgal-foot';
-        const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-primary';
-        if (!here) {
-          go.innerHTML = icon('plus') + '<span>Add to Home</span>';
-          go.onclick = () => { changed = true; close(); homeWidgetShow(def.id, sz); };
-        } else if (sz !== cur) {
-          go.innerHTML = icon('check') + `<span>Make it ${esc(_HG_SIZE_LONG[sz].split(' · ')[0])}</span>`;
-          go.onclick = () => { changed = true; close(); homeWidgetResize(def.id, sz); };
-        } else {
-          go.className = 'btn btn-secondary'; go.disabled = true;
-          go.innerHTML = icon('check') + '<span>On Home</span>';
-        }
-        foot.appendChild(go);
+        foot.appendChild(!here ? uiButton({ label: 'Add to Home', icon: 'plus', kind: 'primary', run: () => { changed = true; close(); homeWidgetShow(def.id, sz); } })
+          : sz !== cur ? uiButton({ label: `Make it ${_HG_SIZE_LONG[sz].split(' · ')[0]}`, icon: 'check', kind: 'primary', run: () => { changed = true; close(); homeWidgetResize(def.id, sz); } })
+          : uiButton({ label: 'On Home', icon: 'check', disabled: true }));
         // A widget that allows copies (runway, smart list): another one, with its own settings.
         const n = shownN(def.id);
-        if (here && def.multi > 1 && n < def.multi) {
-          const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-secondary hgal-another';
-          more.innerHTML = icon('plus') + '<span>Add another</span>';
-          more.onclick = () => { changed = true; close(); homeWidgetAddCopy(def.id, sz); };
-          foot.appendChild(more);
-        }
+        if (here && def.multi > 1 && n < def.multi) foot.appendChild(uiButton({ label: 'Add another', icon: 'plus', cls: 'hgal-another', run: () => { changed = true; close(); homeWidgetAddCopy(def.id, sz); } }));
         const note = document.createElement('p'); note.className = 'hgal-note';
         note.textContent = here
           ? (def.multi > 1 ? `On your Home${n > 1 ? ` ${n} times` : ''}. You can have up to ${def.multi}, each with its own settings.` : 'Already on your Home. Pick another size to change it, or hide it with its − button.')
@@ -582,7 +557,7 @@ function _homePreview(stage, def, size) {
   };
   let ok = false;
   try { ok = def.render(body, ctx) !== false && !!body.firstElementChild; } catch (e) { console.error(`[home] preview of "${def.id}" failed`, e); }
-  if (!ok) body.innerHTML = `<div class="hg-placeholder">${icon(def.icon)}<span><b>${esc(def.title)}</b> ${esc(def.emptyHint || 'Nothing to show right now')}</span></div>`;
+  if (!ok) body.innerHTML = `<div class="hg-placeholder">${icon(def.icon, 'i-lg')}<span><b>${esc(def.title)}</b> ${esc(def.emptyHint || 'Nothing to show right now')}</span></div>`;
   const fit = () => {
     const avail = stage.clientWidth - 24;                  // inside the stage's 12 px padding
     const s = Math.min(1, avail > 0 ? avail / w : 1);

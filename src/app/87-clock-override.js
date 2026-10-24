@@ -97,7 +97,7 @@ async function _coSet(next, o) {
   o = o || {};
   const before = Object.assign({ follow: 'system' }, _coTime());
   const why = _coCheck(next);
-  if (why) { if (!o.quiet) toast(why, { kind: 'err' }); return { ok: false, message: why, before }; }
+  if (why) { if (!o.quiet) toastError('change the time', why); return { ok: false, message: why, before }; }
   const after = _coNorm(next);
   if (_coSame(before, after)) { _coProposal = null; return { ok: true, same: true, before, after: before }; }
   let j;
@@ -108,7 +108,7 @@ async function _coSet(next, o) {
     if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
   } catch (e) {
     const message = typeof netErrorMessage === 'function' ? netErrorMessage(e, 'the OpenDash server is not running') : String((e && e.message) || e);
-    if (!o.quiet) toast('Not saved: ' + message, { kind: 'err' });
+    if (!o.quiet) toastError('save the time', message, () => _coSet(next, o));
     return { ok: false, message, before };
   }
   _coProposal = null;

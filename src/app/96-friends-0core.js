@@ -23,8 +23,11 @@
    friendsFeedPost({kind, text, icon, to?, body?, friend?, group?})  agent 'together'
    profileAvatarEl(friend, {size})       agent 'profile' defines it: the avatar element
    friendsNameForRelayKey(edPub)         a relay member's key -> friend's name, 'You' or null (Settings > Your relay)
-   friendsRenewKeysDialog({device?})     renew your friend keys (FRIENDS.md section 15; 96-friends-1ui.js)
+   friendsRenewKeysDialog({device?})     Lock out a lost computer: new friend keys (FRIENDS.md section 15; 96-friends-1ui.js)
    friendsOfferLockOut(deviceName)       after a device is removed from sync: "Lock it out" (Sync may call it)
+   friendsPresenceShare(on, state?)      Online status on / off for everyone (Privacy's "Turn it on")
+   friendsSetName(name)                  the name friends see (Profile's "Your name" keeps it in step)
+   frShellHeadOn(id) / frShellHeadMark(id)   the shared header draws this page's actions (see below)
    document 'opendash:identity-rotated'  {oldEd, newEd, role, source}: your keys were renewed (here or on another device)
 
    Every string from a friend is untrusted: this file and 96-friends-1ui.js
@@ -38,6 +41,14 @@ const _fr = {
   presenceLive: new Map(), seenCelebrate: new Set(), opened: false,
 };
 _fr.ready = new Promise((r) => { _fr.readyResolve = r; });
+
+/* The page template's header actions (UX_BLUEPRINT.md 3; 14-shell.js draws a section's headerActions(view):
+   one primary action and a More menu). Friends and Together declare theirs; the shell asking for them is
+   what tells the page that the header draws them, so until then the page keeps its own buttons and no
+   control is ever lost (SIMPLIFY_PLAN.md P9). */
+const _frShellHead = new Set();
+function frShellHeadMark(id) { _frShellHead.add(String(id)); }
+function frShellHeadOn(id) { return _frShellHead.has(String(id)); }
 
 async function _frApi(path, body, opts) {
   const o = opts || {};
@@ -121,7 +132,7 @@ function friendsOnEvent(d) {
   if (d.type === 'identity-rotated') {
     const k = (v) => (typeof v === 'string' && /^[A-Za-z0-9_-]{43}$/.test(v) ? v : null);
     try { document.dispatchEvent(new CustomEvent('opendash:identity-rotated', { detail: { oldEd: k(d.oldEd), newEd: k(d.newEd), role: ['owner', 'member', 'none'].includes(d.role) ? d.role : null, source: d.source === 'sync' ? 'sync' : 'here' } })); } catch (e) { /* old browser */ }
-    if (d.source === 'sync') toast('Your friend keys were renewed on another device. This one uses the new keys now.', { icon: 'key-round' });
+    if (d.source === 'sync') toast('You renewed your friend security on another computer. This one is up to date.', { icon: 'key-round' });
   }
   if (d.type === 'presence' && typeof d.id === 'string') {
     _fr.presenceLive.set(d.id, { s: String(d.s || 'offline'), at: Date.now() });
@@ -147,6 +158,24 @@ function _frPaintPresence(id, s) {
 function friendsGet(id) { return ((_fr.data && _fr.data.friends) || []).find(f => f.id === id) || null; }
 
 /* ---------- the API ---------- */
+/** Online status on or off for everyone, keeping how you show (Friends > settings, Privacy's "Turn it on": L15). -> Promise */
+function friendsPresenceShare(on, state) {
+  const cur = (_fr.data && _fr.data.me && _fr.data.me.prefs && _fr.data.me.prefs.presence) || {};
+  const st = ['auto', 'online', 'focusing', 'travelling', 'away'].includes(state) ? state : (cur.state || 'auto');
+  return _frApi('/api/friends/me', { presence: { share: !!on, state: st } }).then(async (r) => {
+    _fr.pres.last = '';
+    await friendsLoad(true);
+    _frPresenceTick(); _frRepaint();
+    return r;
+  });
+}
+/** The name friends see (/api/friends/me {name}); Profile's "Your name" keeps it in step (L11). -> Promise | null before Friends is set up */
+function friendsSetName(name) {
+  if (!_fr.data || !_fr.data.me || !_fr.data.me.id) return null;
+  const n = String(name || '').trim().slice(0, 60);
+  if (!n || n === _fr.data.me.name) return Promise.resolve(null);
+  return _frApi('/api/friends/me', { name: n }).then((r) => { friendsLoad(true).then(() => _frRepaint()).catch(() => {}); return r; });
+}
 function friendsFeedPost(event) { return _frApi('/api/friends/feed', { event: event || {} }).then((r) => { _frReloadSoon(100); return r; }); }
 function friendsCheer(id, emoji) {
   return _frApi('/api/friends/send', { to: id, kind: 'cheer', body: { emoji: emoji || '👏' } })

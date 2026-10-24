@@ -34,7 +34,10 @@ async function accAct(a, path, body, done) {
   try {
     const r = await _srcApi(path, { method: 'POST', body: { id: a.id, ...(body || {}) } });
     if (done) done(r);
-  } catch (e) { toast(e.message || netErrorMessage(e), { kind: 'err' }); }
+  } catch (e) {
+    const what = /sync$/.test(path) ? 'update ' + a.email : /remove$/.test(path) ? 'remove ' + a.email : /pause$/.test(path) ? 'change ' + a.email : /fetch-here$/.test(path) ? 'read ' + a.email + ' on this computer' : 'do that';
+    toastError(what, e, () => accAct(a, path, body, done));
+  }
   delete AccountsStore.busy[a.id];
   await accLoad();
   if (typeof SourcesStore !== 'undefined') SourcesStore.refresh({ cached: true });
@@ -61,7 +64,7 @@ async function accCheckSignIn() {
   const fresh = accNewlyConnected(before, d && d.accounts);
   if (fresh) {
     _accSignInAt = 0;
-    toast(`${fresh.email} is connected. Mail and calendar are on their way.`, { kind: 'ok', timeout: 6000 });
+    toast(`${fresh.email} connected. Mail and calendar are on their way`, { kind: 'ok', timeout: 6000 });
     if (typeof _drawerClose === 'function' && _drawerClose) _drawerClose();
     if (typeof SourcesStore !== 'undefined') SourcesStore.refresh({ cached: true });
     accReloadData();
@@ -89,8 +92,8 @@ function accAdd(provider) {
   if (provider === 'other') return accOtherEmail();
   // Google has its own card (56-accounts-google.js): the ticks, the unverified-app explanation, its own app.
   // Not switched on in this copy (the button is greyed out; this answers a search or a shortcut).
-  if (provider === 'google' && !(p.google && p.google.available)) return accComingSoon('Google accounts', 'Adding a Google account with one click is coming soon. Until then, Gmail can come in through + Other email with an app password, or through Claude: choose Add connection at the top of this page.');
-  if (provider === 'microsoft' && p.microsoft && p.microsoft.available === false) return accComingSoon('Microsoft accounts', 'Adding Outlook, Hotmail and Microsoft 365 accounts with one click is coming soon. Your Outlook calendar can come in now through a calendar link: choose Add a calendar link.');
+  if (provider === 'google' && !(p.google && p.google.available)) return accComingSoon('Google accounts', 'One-click Google is coming soon. For now: Other email (app password), or through Claude.');
+  if (provider === 'microsoft' && p.microsoft && p.microsoft.available === false) return accComingSoon('Microsoft accounts', 'One-click Microsoft is coming soon. For now, your Outlook calendar can come in through a calendar link.');
   if (provider === 'google' && window.AccountProviders && AccountProviders.google) return AccountProviders.google.signIn({ info: p.google || null });
   openDrawer({ title: provider === 'google' ? 'Add a Google account' : 'Add a Microsoft account', width: 520, body: (el, close) => {
     const name = provider === 'google' ? 'Google' : 'Microsoft';
@@ -120,12 +123,12 @@ function accAdd(provider) {
     note.appendChild(_connEl('span', null, 'OpenDash only reads. It never sends, changes or deletes your mail or events, and your password stays with ' + name + '.'));
     el.appendChild(note);
     const actions = _connEl('div', 'assistant-actions');
-    const go = _connBtn('Continue to ' + name, 'log-in', 'btn-primary', () => {
+    const go = uiButton({ label: 'Continue to ' + name, icon: 'log-in', kind: 'primary', size: 'sm', run: () => {
       const email = accCleanEmail(input.value);
       if (!email) { input.focus(); return; }
       accOpenSignIn({ provider, email, kind: kind || undefined });
       el.replaceChildren(accWaiting(name, close));
-    });
+    } });
     input.oninput = paintHint;
     input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (!go.disabled) go.click(); } };
     actions.appendChild(go); el.appendChild(actions);
@@ -148,7 +151,7 @@ function accWaiting(name, close) {
     const gone = Date.now() - since;
     if (!accSignInPending(since)) {
       clearInterval(timer); sp.remove();
-      line.textContent = 'This sign-in expired (it works for 10 minutes). Press Open the sign-in again to start a fresh one: nothing is lost.';
+      line.textContent = 'This sign-in ran out. Open it again; nothing is lost.';
       return;
     }
     const s = Math.floor(gone / 1000);
@@ -162,16 +165,16 @@ function accWaiting(name, close) {
   const timer = setInterval(tick, 1000); tick();
   const actions = _connEl('div', 'assistant-actions');
   actions.append(
-    _connBtn('I have finished', 'check', 'btn-primary', async (b) => {
+    uiButton({ label: 'I have finished', icon: 'check', kind: 'primary', size: 'sm', run: async (e, b) => {
       b.disabled = true;
       const ok = await accCheckSignIn();
       b.disabled = false;
       if (ok) { clearInterval(timer); return; }
       // Not there yet: say so, with what to do, instead of closing as if it worked.
       say(accSignInProblem() || (AccountsStore.error ? 'OpenDash could not check just now: ' + AccountsStore.error : `OpenDash has not received the sign-in yet. If the ${name} tab is still open, finish there. If it showed an error or you closed it, press Open the sign-in again.`), true);
-    }),
-    _connBtn('Open the sign-in again', 'external-link', 'btn-secondary', () => { if (_accSignInOpts) { accOpenSignIn(_accSignInOpts); clearInterval(timer); box.replaceWith(accWaiting(name, close)); } }),
-    _connBtn('Cancel', null, 'btn-ghost', () => { clearInterval(timer); _accSignInAt = 0; close(); }));
+    } }),
+    uiButton({ label: 'Open the sign-in again', icon: 'external-link', kind: 'secondary', size: 'sm', run: () => { if (_accSignInOpts) { accOpenSignIn(_accSignInOpts); clearInterval(timer); box.replaceWith(accWaiting(name, close)); } } }),
+    uiButton({ label: 'Cancel', kind: 'ghost', size: 'sm', run: () => { clearInterval(timer); _accSignInAt = 0; close(); } }));
   box.appendChild(actions);
   return box;
 }
@@ -185,15 +188,15 @@ function accAdvancedMicrosoft(ms, close, open) {
   input.setAttribute('aria-label', 'Application (client) ID');
   det.appendChild(input);
   const row = _connEl('div', 'assistant-actions');
-  row.appendChild(_connBtn('Use this app', 'check', 'btn-secondary', async (b) => {
+  row.appendChild(uiButton({ label: 'Use this app', icon: 'check', kind: 'secondary', size: 'sm', run: async (e, b) => {
     b.disabled = true;
-    try { await _srcApi('/api/accounts/microsoft-app', { method: 'PUT', body: { clientId: input.value.trim() } }); toast('Saved. New Microsoft sign-ins use your app.', { kind: 'ok' }); await accLoad(); close(); }
-    catch (e) { toast(e.message, { kind: 'err' }); b.disabled = false; }
-  }));
-  if (ms && ms.custom) row.appendChild(_connBtn('Go back to the built-in app', null, 'btn-ghost', async () => {
+    try { await _srcApi('/api/accounts/microsoft-app', { method: 'PUT', body: { clientId: input.value.trim() } }); toast('Saved. New Microsoft sign-ins use your app', { kind: 'ok' }); await accLoad(); close(); }
+    catch (e) { toastError('save the Microsoft app', e); b.disabled = false; }
+  } }));
+  if (ms && ms.custom) row.appendChild(uiButton({ label: 'Go back to the built-in app', kind: 'ghost', size: 'sm', run: async () => {
     try { await _srcApi('/api/accounts/microsoft-app', { method: 'PUT', body: { clientId: null } }); await accLoad(); close(); }
-    catch (e) { toast(e.message, { kind: 'err' }); }
-  }));
+    catch (e) { toastError('switch to the built-in app', e); }
+  } }));
   det.appendChild(row);
   return det;
 }
@@ -229,7 +232,7 @@ function accOtherEmail() {
     card.append(_connEl('h3', 'conn-name', 'Coming soon: Yahoo, iCloud and others with an app password'),
       _connEl('p', 'conn-text', 'An app password is a special password your email provider makes just for apps like OpenDash. When this arrives, OpenDash will show you where to get one, step by step.'),
       _connEl('p', 'conn-note', 'Already have a calendar link from iCloud, Yahoo or another calendar? You can add it now.'));
-    card.appendChild(_connBtn('Add a calendar link', 'link', 'btn-secondary', () => { close(); accAddCalendarLink(); }));
+    card.appendChild(uiButton({ label: 'Add a calendar link', icon: 'link', kind: 'secondary', size: 'sm', run: () => { close(); accAddCalendarLink(); } }));
     el.appendChild(card);
   } });
 }
@@ -244,9 +247,9 @@ async function accApproval(a) {
     el.appendChild(_connEl('p', 'conn-text', `Your work account belongs to ${org}. It only lets apps in after an administrator says yes. This is normal for work accounts and only needs doing once.`));
     if (!help || !help.consentUrl) { el.appendChild(_connEl('p', 'conn-note', 'Ask your IT team to approve OpenDash for read-only mail and calendar.')); return; }
     el.appendChild(_connSteps([
-      [_connEl('strong', null, 'If you look after Microsoft 365 yourself:'), _connBtn('Approve OpenDash', 'external-link', 'btn-primary', () => window.open(help.consentUrl, '_blank', 'noopener'))],
-      [_connEl('strong', null, 'If not, send this to your IT team:'), _connBtn('Email my IT team', 'send', 'btn-secondary', () => { window.location.href = help.mailto; }), _connCopyBtn(help.body || help.mailto, 'Copy the message')],
-      [_connEl('span', null, 'When it has been approved:'), _connBtn('Try again', 'log-in', 'btn-secondary', () => { close(); accOpenSignIn({ provider: a.provider, accountId: a.id }); })],
+      [_connEl('strong', null, 'If you look after Microsoft 365 yourself:'), uiButton({ label: 'Approve OpenDash', icon: 'external-link', kind: 'primary', size: 'sm', run: () => window.open(help.consentUrl, '_blank', 'noopener') })],
+      [_connEl('strong', null, 'If not, send this to your IT team:'), uiButton({ label: 'Email my IT team', icon: 'send', kind: 'secondary', size: 'sm', run: () => { window.location.href = help.mailto; } }), _connCopyBtn(help.body || help.mailto, 'Copy the message')],
+      [_connEl('span', null, 'When it has been approved:'), uiButton({ label: 'Try again', icon: 'log-in', kind: 'secondary', size: 'sm', run: () => { close(); accOpenSignIn({ provider: a.provider, accountId: a.id }); } })],
     ]));
     el.appendChild(_connEl('p', 'conn-note', 'OpenDash asks only to read your profile, mail and calendar. It cannot send, change or delete anything.'));
   } });
@@ -286,7 +289,7 @@ function accCard(a) {
   const when = _connEl('span', 'cp-synced'); when.innerHTML = icon('clock', 'i-xs'); when.appendChild(_connEl('span', null, accSyncedText(a)));
   const acts = _connEl('div', 'acc-actions');
   const run = (id) => {
-    if (id === 'sync') return accAct(a, '/api/accounts/sync', {}, (r) => { const bad = (r.results || []).find(x => !x.ok); toast(bad ? `${a.email} did not update: ${bad.error || 'the check failed.'}` : 'Checked. Everything is up to date.', bad ? { kind: 'err', timeout: 12000, action: { label: 'Try again', run: () => run('sync') } } : { kind: 'ok' }); accReloadData(); });
+    if (id === 'sync') return accAct(a, '/api/accounts/sync', {}, (r) => { const bad = (r.results || []).find(x => !x.ok); toast(bad ? `Couldn’t update ${a.email}: ${String(bad.error || 'the check failed').replace(/[.\s]+$/, '')}.` : 'Up to date', bad ? { kind: 'err', timeout: 12000, action: { label: 'Try again', run: () => run('sync') } } : { kind: 'ok' }); accReloadData(); });
     if (id === 'sign-in' && a.provider === 'google' && window.AccountProviders && AccountProviders.google) return AccountProviders.google.signIn({ email: a.email, accountId: a.id, features: a.features });
     if (id === 'sign-in') return a.provider === 'imap' ? imapConnectFlow({ account: a }) : accOpenSignIn({ provider: a.provider, accountId: a.id });
     if (id === 'approval') return accApproval(a);
@@ -294,9 +297,9 @@ function accCard(a) {
     // Refused without a sign-in here ("Sign in on this computer to take over"); else this computer reads it from now on.
     if (id === 'fetch-here') return accAct(a, '/api/accounts/fetch-here', {}, (r) => { toast(r.message, { kind: r.ok ? 'ok' : 'info', timeout: 6000 }); if (r.ok) accReloadData(); });
   };
-  for (const s of view.secondary) { const b = _connBtn(s.label, null, 'btn-ghost', () => run(s.id)); b.disabled = busy; acts.appendChild(b); }
+  for (const s of view.secondary) { const b = uiButton({ label: s.label, kind: 'ghost', size: 'sm', run: () => run(s.id) }); b.disabled = busy; acts.appendChild(b); }
   if (view.primary) {
-    const b = _connBtn(busy ? 'Working…' : view.primary.label, busy ? null : view.primary.id === 'sync' ? 'refresh-cw' : view.primary.id === 'sign-in' ? 'log-in' : null, 'btn-secondary', () => run(view.primary.id));
+    const b = uiButton({ label: busy ? 'Working…' : view.primary.label, icon: busy ? null : view.primary.id === 'sync' ? 'refresh-cw' : view.primary.id === 'sign-in' ? 'log-in' : null, kind: 'secondary', size: 'sm', run: () => run(view.primary.id) });
     if (busy) { b.disabled = true; b.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
     acts.appendChild(b);
   }
@@ -309,7 +312,7 @@ function accCard(a) {
       ...(a.status !== 'needs-admin-approval' && a.here && a.here.fetcher ? [{ label: 'Sign in again', icon: 'log-in', run: () => run('sign-in') }] : []),
       { label: 'Remove…', icon: 'trash-2', danger: true, run: async () => {
         const ok = await confirmDialog({ title: 'Remove this account?', text: `OpenDash stops reading ${a.email} and forgets the mail and events it saved from it. Your account itself is not changed.`, confirmLabel: 'Remove', danger: true });
-        if (ok) accAct(a, '/api/accounts/remove', {}, () => toast(`${a.email} was removed.`, { kind: 'ok' }));
+        if (ok) accAct(a, '/api/accounts/remove', {}, () => toast(`${a.email} removed`, { kind: 'ok' }));
       } },
     ];
     openMenu(more, items);
@@ -320,15 +323,12 @@ function accCard(a) {
   return card;
 }
 
-/** The "Your email and calendar accounts" block of the Connections page. */
+/** The "Email and calendar" block of the Connections page. */
 function accountsSection() {
   if (!AccountsStore.data && !AccountsStore.loading && !AccountsStore.error) accLoad();
   const d = accList();
   const section = _connEl('section', 'cp-connections acc-section'); section.dataset.conn = 'accounts';
-  const head = _connEl('div', 'cp-section-head');
-  const title = _connEl('div'); title.append(_connEl('h2', null, 'Your email and calendar accounts'), _connEl('p', null, 'Add as many as you like: personal and work, side by side.'));
-  const note = _connEl('span', 'cp-readonly'); note.innerHTML = icon('lock', 'i-xs'); note.appendChild(_connEl('span', null, 'Read-only'));
-  head.append(title, note); section.appendChild(head);
+  section.appendChild(secHead({ title: 'Email and calendar', sub: 'Read-only. Personal and work side by side.' }));
   const adds = _connEl('div', 'acc-adds');
   for (const b of accAddButtons(d && d.providers)) adds.appendChild(accAddButton(b, b.id === 'other' ? 'btn-ghost' : 'btn-secondary'));
   const ics = _connEl('button', 'btn btn-ghost acc-add acc-add-link'); ics.type = 'button'; ics.innerHTML = icon('link', 'i-xs'); ics.appendChild(_connEl('span', null, 'Add a calendar link'));
@@ -338,14 +338,12 @@ function accountsSection() {
   const grid = _connEl('div', 'cp-source-grid acc-grid');
   const list = accSort((d && d.accounts) || []);
   if (!d) {
-    const p = _connEl('p', 'cp-loading', AccountsStore.error ? 'Your accounts did not load: ' + AccountsStore.error + ' ' : 'Loading your accounts…');
-    if (AccountsStore.error) p.appendChild(_connBtn('Try again', 'refresh-cw', 'btn-ghost', () => { AccountsStore.error = null; renderMain(); accLoad(); }));
-    grid.appendChild(p);
+    grid.appendChild(AccountsStore.error
+      ? emptyLine('Couldn’t load your accounts: ' + String(AccountsStore.error).replace(/[.\s]+$/, '') + '.', { label: 'Try again', icon: 'refresh-cw', run: () => { AccountsStore.error = null; renderMain(); accLoad(); } })
+      : _connEl('p', 'cp-loading', 'Loading your accounts…'));
   }
   else if (!list.length) {
-    const empty = _connEl('div', 'cp-empty acc-empty');
-    empty.append(_connEl('h3', null, 'No accounts yet'), _connEl('p', null, 'Add your first one above. OpenDash only reads: it never sends, changes or deletes anything.'));
-    grid.appendChild(empty);
+    grid.appendChild(emptyLine('No accounts yet.'));
   } else for (const a of list) grid.appendChild(accCard(a));
   section.appendChild(grid);
   return section;

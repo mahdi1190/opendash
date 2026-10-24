@@ -99,8 +99,8 @@ function connViaText(name) {
   const via = connVia(name) || (name === 'claude' && typeof AI_VIA !== 'undefined' && AI_VIA) || null;
   if (!via) return '';
   const base = name === 'claude' ? `Uses Claude on ${via}` : name === 'calendar' ? `Calendar from ${via}` : name === 'gmail' ? `Email from ${via}` : name === 'bank' ? `Finance from ${via}` : '';
-  // Honest when it is off: what it made still shows; asking it waits until it is on (or set it up here).
-  return base && !connViaOnline(name) ? `${base} (off right now: what it made still shows)` : base;
+  // Honest when it is away: what it made still shows; asking it waits until it is on (or set it up here).
+  return base && !connViaOnline(name) ? `${via} is asleep: showing what it made last` : base;
 }
 /** True while we have no answer yet for `name` (first load of a fresh browser). */
 function _connUnknown(name) {
@@ -323,7 +323,7 @@ async function connCheck(id) {
     }
   } catch (e) {
     const name = (CONN_NAMES[id] && CONN_NAMES[id].label) || 'the connection';
-    toast(`Could not check ${name}: ${typeof netErrorMessage === 'function' ? netErrorMessage(e, 'the check failed.') : (e && e.message) || 'the check failed.'}`, { kind: 'err', timeout: 10000, action: { label: 'Try again', run: () => connCheck(id) } });
+    toastError('check ' + name, e, () => connCheck(id));
   }
   return connRefresh({ force: true });
 }

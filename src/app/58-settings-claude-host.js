@@ -27,7 +27,7 @@ function claudeHostLine(st) {
 function claudeHostModeLabel(mode, st) {
   const h = st && st.host ? st.host : null;
   const name = h ? (h.me ? 'this computer' : h.name) : 'the main computer';
-  if (mode === 'local') return 'This computer only' + (st && !st.here ? ' (Claude is not set up here)' : '');
+  if (mode === 'local') return 'This computer only';
   if (mode === 'host-only') return 'Only ' + name;
   return h && h.me ? 'This computer (it runs Claude jobs)' : name.charAt(0).toUpperCase() + name.slice(1) + ' first, then this one';
 }
@@ -47,7 +47,7 @@ async function _chPost(body, okMsg) {
     if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
     _chSt = j;
     if (okMsg) toast(okMsg, { kind: 'ok' });
-  } catch (e) { toast(e.message, { kind: 'err' }); }
+  } catch (e) { toastError('save that', e, () => _chPost(body, okMsg)); }
   _chBusy = false;
   if (state.view === 'settings:sync') renderMain();
 }
@@ -75,7 +75,7 @@ function settingsClaudeHostCard(el) {
       line.className = 'sync-status sync-' + n.tone; line.textContent = n.text;
     }).catch(() => {});
   }, 10000);
-  if (!s.sync) { c.body.appendChild(p('Turn on Sync across my devices (above) to use Claude from your other computers.')); return; }
+  if (!s.sync) return;   // the whole row needs sync, which is on whenever it is shown
   // Run Claude on (this computer's own choice)
   const mode = document.createElement('select'); mode.className = 'control control-sm'; mode.disabled = _chBusy;
   mode.setAttribute('aria-label', 'Run Claude on');

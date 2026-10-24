@@ -4,7 +4,8 @@ let _connReturningSignIn = null, _connVerifyingSignIn = false;
 function connCloudSignIn(source, legacyId) {
   _connReturningSignIn = { source, legacyId, at: Date.now() };
   window.open('https://claude.ai/customize/connectors', '_blank', 'noopener,noreferrer');
-  toast('Sign in to the connector in Claude. OpenDash will verify it when you return.', { icon: 'external-link' });
+  const name = (source && source.label) || (legacyId && typeof CONN_NAMES !== 'undefined' && CONN_NAMES[legacyId] && CONN_NAMES[legacyId].label) || 'it';
+  toast(`Sign in to ${name} in Claude’s window. OpenDash checks when you come back.`, { icon: 'external-link' });
 }
 async function connVerifySignInReturn() {
   const pending = _connReturningSignIn;
@@ -18,11 +19,11 @@ async function connVerifySignInReturn() {
       // Use the normal read-only update, not just the MCP transport status.
       await _srcSync(pending.source, { quiet: true });
       const fresh = SourcesStore.data && SourcesStore.data.sources.find(s => s.id === pending.source.id);
-      if (fresh && fresh.health && fresh.health.state === 'ok' && fresh.lastSync && Date.parse(fresh.lastSync) >= pending.at) toast('Connection verified and data updated.', { kind: 'ok' });
+      if (fresh && fresh.health && fresh.health.state === 'ok' && fresh.lastSync && Date.parse(fresh.lastSync) >= pending.at) toast('Connected and updated', { kind: 'ok' });
       else {
         // Say what went wrong (the source's own message) and offer the next step, not "check the message".
         const why = fresh && ((fresh.lastError && Date.parse(fresh.lastError.at || '') >= pending.at && fresh.lastError.message) || (fresh.health && fresh.health.message));
-        toast('You are back from signing in, but the data update did not work' + (why ? ': ' + String(why).replace(/^Last sync failed:\s*/i, '') : '.'), { kind: 'err', timeout: 12000,
+        toast('You’re signed in, but the update didn’t work' + (why ? ': ' + String(why).replace(/^Last (sync|update) failed:\s*/i, '') : '.'), { kind: 'err', timeout: 12000,
           action: fresh ? { label: 'Try again', run: () => _srcSync(fresh) } : undefined });
       }
     } else if (pending.legacyId) await connCheck(pending.legacyId);

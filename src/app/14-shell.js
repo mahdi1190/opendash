@@ -255,9 +255,7 @@ function _navBackPaint() {
   if (!t) { if (row) row.remove(); return; }
   if (!row) {
     row = document.createElement('div'); row.id = 'view-back'; row.className = 'view-back-row';
-    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-ghost btn-sm';
-    btn.onclick = () => { const x = navBackTarget(); _navBack = null; if (x) { navVia('chrome'); setView(x.view); } };
-    row.appendChild(btn);
+    row.appendChild(uiButton({ kind: 'ghost', size: 'sm', run: () => { const x = navBackTarget(); _navBack = null; if (x) { navVia('chrome'); setView(x.view); } } }));
     head.insertBefore(row, head.firstChild);
   }
   const b = row.firstElementChild;
@@ -439,7 +437,7 @@ function openNewTask(prefill, o) {
   if (typeof openQuickAddDialog === 'function') return openQuickAddDialog(prefill);   // 23-quick-add-dialog.js
   let go = null;
   openDialog({
-    title: 'New task', width: 560,
+    title: 'New task', size: 'md',
     body: (el, close) => {
       const wrap = document.createElement('div'); wrap.className = 'vstack';
       const box = document.createElement('label'); box.className = 'input';
@@ -662,7 +660,7 @@ window.addEventListener('resize', () => { if (typeof state !== 'undefined') _fit
    page that lists sections and does not draw its own tabs (Achievements, Places). Both live in the
    page header (#view-tabs), so they stay put while the page below changes, and repaint only when
    something on them changes. Re-selecting the current tab or section only scrolls back to the top. */
-const _AREA_STRIP = new Set(['life']);
+const _AREA_STRIP = new Set(['life', 'money']);   // money: Money and Expenses (66-expenses-1page.js)
 function areaTabsModel(view) {
   const v = String(view || '');
   const pg = pageFor(v);
@@ -737,6 +735,84 @@ function _areaTabsPaint() {
   if (had >= 0) { const b = el.querySelectorAll('button')[had]; if (b) b.focus({ preventScroll: true }); }
 }
 
+/* ---------- the page header contract (UI_CLEANUP_PLAN.md 3.3, UX_BLUEPRINT.md 3) ----------
+   One primary action per page, the rest behind More, drawn by the shared header (#view-actions):
+
+     registerSection('x', { ..., headerActions(view) { return {
+       primary: {label, icon, run(e, btn), tip?, kbd?, disabled?},       one small primary button (a promise from
+                                                                          run keeps it busy until it settles)
+       icons:   [{icon, label, run(e, btn), pressed?}],                   at most 2 icon buttons beside More
+       more:    [{label, icon, run, danger?, hint?, kbd?, checked?, disabled?} | 'sep' | {heading}],
+     }; } })
+
+   A view with no section of its own (Bin, Wins, a person, Money) says the same through
+   registerHeaderActions(match(view) -> bool, fn(view)). Task list views keep their own controls
+   (filter, layout, Display, New task), so the contract is not drawn there. Everything here is
+   escaped (uiButton, openMenu); the header repaints only when its labels change, so focus stays. */
+const _HEADER_ACTIONS = [];
+function registerHeaderActions(match, fn) {
+  if (typeof fn !== 'function') throw new Error('registerHeaderActions needs a function');
+  const m = typeof match === 'function' ? match : (v) => v === match;
+  _HEADER_ACTIONS.push({ match: m, fn });
+}
+/** The header's actions for a view: {primary, icons, more} (checked and trimmed), or null. */
+function headerActionsFor(view) {
+  const v = String(view || '');
+  const sec = typeof sectionFor === 'function' ? sectionFor(v) : null;
+  let src = sec && typeof sec.headerActions === 'function' ? sec.headerActions : null;
+  if (!src) { const h = _HEADER_ACTIONS.find(x => { try { return x.match(v); } catch (e) { return false; } }); if (h) src = h.fn; }
+  if (!src) return null;
+  let a = null;
+  try { a = src(v) || null; } catch (e) { console.error('[shell] header actions', e); a = null; }
+  if (!a || typeof a !== 'object') return null;
+  const txt = (x) => { try { return String((typeof x === 'function' ? x() : x) || ''); } catch (e) { return ''; } };
+  const p = a.primary && typeof a.primary.run === 'function' && txt(a.primary.label) ? Object.assign({}, a.primary, { label: txt(a.primary.label) }) : null;
+  const icons = (Array.isArray(a.icons) ? a.icons : []).filter(x => x && x.icon && typeof x.run === 'function').slice(0, 2);   // at most 2 (UX_BLUEPRINT.md 3)
+  const more = [];
+  for (const x of (Array.isArray(a.more) ? a.more : [])) {
+    if (x === 'sep') { if (more.length && more[more.length - 1] !== 'sep') more.push('sep'); continue; }
+    if (x && x.heading) { more.push(x); continue; }
+    if (x && typeof x.run === 'function' && txt(x.label)) more.push(x);
+  }
+  while (more.length && (more[more.length - 1] === 'sep' || more[more.length - 1].heading)) more.pop();
+  if (!p && !icons.length && !more.length) return null;
+  return { primary: p, icons, more };
+}
+let _viewActionsModel = null;   // the actions on screen now (clicks read the newest, so a stale closure never runs)
+function _viewActionsPaint() {
+  const head = document.getElementById('view-header');
+  if (!head) return;
+  let host = document.getElementById('view-actions');
+  const sec = typeof sectionFor === 'function' ? sectionFor(state.view) : null;
+  const taskControls = sec ? !!sec.taskControls : (typeof isTaskView === 'function' && isTaskView(state.view));
+  const m = taskControls ? null : headerActionsFor(state.view);
+  _viewActionsModel = m;
+  if (!m) { if (host) { host.hidden = true; host.replaceChildren(); delete host.dataset.k; } return; }
+  if (!host) { host = document.createElement('div'); host.id = 'view-actions'; host.className = 'view-actions'; head.appendChild(host); }
+  const pressed = (x) => (typeof x.pressed === 'function' ? !!x.pressed() : x.pressed);
+  const key = JSON.stringify([state.view, m.primary && [m.primary.label, m.primary.icon, !!m.primary.disabled, m.primary.tip || ''],
+    m.icons.map(x => [x.icon, String(x.label || ''), pressed(x)]), m.more.length]);
+  host.hidden = false;
+  if (host.dataset.k === key) return;   // nothing changed: the buttons (and focus) stay
+  const had = host.contains(document.activeElement) ? [...host.querySelectorAll('button')].indexOf(document.activeElement) : -1;
+  host.dataset.k = key;
+  host.replaceChildren();
+  if (m.primary) {
+    host.appendChild(uiButton({ label: m.primary.label, icon: m.primary.icon, kind: 'primary', size: 'sm', tip: m.primary.tip, kbd: m.primary.kbd, disabled: !!m.primary.disabled, wait: true, cls: 'view-act-primary',
+      run: (e, btn) => { const cur = _viewActionsModel && _viewActionsModel.primary; return cur ? cur.run(e, btn) : undefined; } }));
+  }
+  m.icons.forEach((x, i) => {
+    const pr = pressed(x);
+    host.appendChild(uiButton({ icon: x.icon, aria: String(x.label || ''), tip: String(x.label || ''), size: 'sm', pressed: pr === undefined ? undefined : pr, cls: 'view-act-ic',
+      run: (e, btn) => { const cur = _viewActionsModel && _viewActionsModel.icons[i]; return cur ? cur.run(e, btn) : undefined; } }));
+  });
+  if (m.more.length) {
+    host.appendChild(uiButton({ icon: 'ellipsis', aria: 'More', tip: 'More', size: 'sm', cls: 'view-act-more',
+      run: (e, btn) => { const cur = _viewActionsModel; if (cur && cur.more.length) openMenu(btn, cur.more, { align: 'end' }); } }));
+  }
+  if (had >= 0) { const b = host.querySelectorAll('button')[had]; if (b) b.focus({ preventScroll: true }); }
+}
+
 function renderPageHeaderControls() {
   const sec = typeof sectionFor === 'function' ? sectionFor(state.view) : null;
   const main = document.getElementById('main');
@@ -748,6 +824,7 @@ function renderPageHeaderControls() {
   const sel = document.getElementById('display-btn');
   if (sel) sel.hidden = ['review', 'calendar', 'timeline', 'matrix'].includes(state.viewMode);
   try { _navBackPaint(); } catch (e) { console.error('[shell] back', e); }
+  try { _viewActionsPaint(); } catch (e) { console.error('[shell] header actions', e); }
   try { _areaTabsPaint(); } catch (e) { console.error('[shell] area tabs', e); }
   if (typeof _lifeOffPaint === 'function') { try { _lifeOffPaint(); } catch (e) { console.error('[shell] off note', e); } }   // 15-nav-life.js
 }

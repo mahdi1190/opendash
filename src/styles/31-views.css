@@ -1,3 +1,4 @@
+/* Tokens: spacing, type and radius use var(--space-*), var(--text-*), var(--radius-*); a raw 1px hairline or 2px optical nudge is intentional. */
 /* =====================================================================
    TASK VIEWS 2.16 (31-views-*.js): list row fields, daily capacity, the
    week timeline and the priority matrix. Board styles are 25-kanban.css.
@@ -11,17 +12,27 @@
 /* ---------- list fields (Display > Show on rows) ---------- */
 [data-vf-hide~="due"] .task .t-right > .due-stamp { display: none; }
 [data-vf-hide~="stream"] .task .t-streamdot { display: none; }
+[data-vf-hide~="streamLabel"] .task .t-streamdot [data-cz-label] { display: none; }
 [data-vf-hide~="tags"] .task .t-tags { display: none; }
 [data-vf-hide~="people"] .task .t-people { display: none; }
 [data-vf-hide~="subtasks"] .task .sub-count { display: none; }
 [data-vf-hide~="estimate"] .task .t-est { display: none; }
 [data-vf-hide~="details"] .task :is(.note-count, .t-files, .t-meet, .t-recur) { display: none; }
+[data-vf-hide~="context"] .task :is(.t-ctx, .t-energy) { display: none; }
+/* "Planned for today" is a status chip (it changes what you do): it stays; other planned days fold. */
+[data-vf-hide~="planned"] .task .t-planned:not(.is-today) { display: none; }
+[data-vf-hide~="pin"] .task .t-pin { display: none; }
+.vw-fields { margin-bottom: var(--space-3); }
+/* the one tip on the Display button (Rows are calmer now) */
+.pop.vw-tip { padding: var(--space-3); }
+.vw-tip-t { margin: 0 0 var(--space-2); font-size: var(--text-sm); }
+.vw-tip-acts { display: flex; justify-content: flex-end; gap: var(--space-2); }
 .vw-presets { display: flex; gap: var(--space-1); margin-top: var(--space-1-5); }
 .vw-presets .btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); cursor: default; }
 .seg-wrap { flex-wrap: wrap; }
 
 /* ---------- daily capacity ---------- */
-.vw-cap { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; }
+.vw-cap { display: inline-flex; align-items: center; gap: var(--space-1-5); font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; }
 .vw-cap-bar { position: relative; width: 38px; height: 4px; border-radius: var(--radius-full); background: var(--bg-emphasis); overflow: hidden; flex: none; }
 .vw-cap-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--success); transition: width var(--m-base, 220ms) var(--m-ease-out, ease-out); }
 .vw-cap.is-tight .vw-cap-bar > i { background: var(--warning); }
@@ -29,7 +40,7 @@
 .vw-cap.is-over { color: var(--danger-ink); font-weight: var(--weight-medium); }
 .vw-cap.is-tight { color: var(--warning-ink); }
 .vw-cap.is-empty .vw-cap-bar > i { width: 0 !important; }
-.vw-cap-t { display: inline-flex; align-items: center; gap: 3px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.vw-cap-t { display: inline-flex; align-items: center; gap: var(--space-1); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .vw-cap-t .i { width: 12px; height: 12px; }
 .vw-cap-of { color: var(--fg-subtle); font-weight: var(--weight-regular); }
 .vw-cap.is-over .vw-cap-of { color: inherit; opacity: 0.8; }
@@ -45,8 +56,8 @@
 .vw-cap-note b { font-weight: var(--weight-semibold); }
 .vw-muted { color: var(--fg-subtle); font-size: var(--text-xs); margin: 0 var(--space-2) var(--space-2); line-height: var(--lh-xs); }
 .vw-bal-list { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow: auto; margin: 0 0 var(--space-2); }
-.vw-bal-row { display: flex; flex-direction: column; gap: 1px; padding: 6px var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); cursor: pointer; }
+.vw-bal-row { display: flex; flex-direction: column; gap: 1px; padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); cursor: pointer; }
 .vw-bal-row:hover { background: var(--bg-muted); }
 .vw-bal-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.vw-bal-m { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--fg-subtle); }
+.vw-bal-m { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--text-xs); color: var(--fg-subtle); }
 .vw-bal-m .i { width: 12px; height: 12px; }

@@ -61,7 +61,7 @@ const Travel = {
     if (_truOn()) { if (!o.quiet) Travel.openSettings(); return true; }
     if (typeof settingsSaveConfig !== 'function' || !(await settingsSaveConfig({ travel: { on: true } }, false))) return false;
     _truAfterChange();
-    toast('Travel features on: local time, weather and tips when you travel', { kind: 'ok', icon: 'plane', timeout: 9000,
+    toast('Travel features on', { kind: 'ok', icon: 'plane', timeout: 9000,
       action: { label: 'Undo', run: async () => { if (await settingsSaveConfig({ travel: { on: false } }, false)) _truAfterChange(); } } });
     if (!seenOnce('travelAddCard') && typeof homeWidgetShow === 'function') {
       seenMarkOnce('travelAddCard');
@@ -231,10 +231,10 @@ function _truOptInMaybe() {
   el.querySelector('.clk-s').textContent = card.text;
   const acts = el.querySelector('.clk-acts');
   const close = () => { el.classList.add('is-out'); setTimeout(() => el.remove(), _truReduced() ? 0 : 220); };
-  const mk = (label, cls, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = label; b.addEventListener('click', run); acts.appendChild(b); return b; };
-  mk('Turn on', 'btn-primary', async () => { close(); await Travel.turnOn(); });
-  mk('Not now', 'btn-ghost', () => { seenSet('travelOptin', card.key, Clock.today()); close(); });
-  mk('Never', 'btn-ghost', async () => { close(); if (await Travel.save({ prompt: false })) toast('Travel won’t ask again. Settings > Travel & time turns it on.', { kind: 'ok', icon: 'plane' }); });
+  const mk = (label, kind, run) => { const b = uiButton({ label, kind, size: 'sm', run }); acts.appendChild(b); return b; };
+  mk('Turn on', 'primary', async () => { close(); await Travel.turnOn(); });
+  mk('Not now', 'ghost', () => { seenSet('travelOptin', card.key, Clock.today()); close(); });
+  mk('Never', 'ghost', async () => { close(); if (await Travel.save({ prompt: false })) toast('Travel won’t ask again: Settings > Travel & time turns it on', { kind: 'ok', icon: 'plane' }); });
   const content = document.getElementById('content');
   if (content && content.parentNode) content.parentNode.insertBefore(el, content);
   else { el.classList.add('is-floating'); document.body.appendChild(el); }
@@ -362,12 +362,10 @@ function trEvcProposal(ev, ed, where, extra) {
   };
   paint();
   const bar = document.createElement('div'); bar.className = 'tr-evc-prop-f';
-  const save = document.createElement('button'); save.type = 'button'; save.className = 'btn btn-primary btn-sm'; save.textContent = 'Save';
-  const cancel = document.createElement('button'); cancel.type = 'button'; cancel.className = 'btn btn-ghost btn-sm'; cancel.textContent = 'Cancel';
+  const save = uiButton({ label: 'Save', kind: 'primary', size: 'sm', run: () => { _truProp = null; evcUpdate(ev, evcPatchDiff({ when: orig }, { when: w })); } });
+  const cancel = uiButton({ label: 'Cancel', kind: 'ghost', size: 'sm', run: () => { _truProp = null; if (typeof tcRefresh === 'function') tcRefresh(); else render(); } });
   const hint = document.createElement('span'); hint.className = 'subtle tr-evc-prop-hint';
   hint.textContent = (ev.attendees || []).some(a => a && !a.self && !a.resource) ? 'Saving asks whether to email the guests.' : 'Change anything, then Save.';
-  save.addEventListener('click', () => { _truProp = null; evcUpdate(ev, evcPatchDiff({ when: orig }, { when: w })); });
-  cancel.addEventListener('click', () => { _truProp = null; if (typeof tcRefresh === 'function') tcRefresh(); else render(); });
   bar.append(save, cancel, hint);
   box.appendChild(bar);
   if (!P.swept) { P.swept = true; requestAnimationFrame(() => sgPrefillSweep(box, { fields: [box] })); }

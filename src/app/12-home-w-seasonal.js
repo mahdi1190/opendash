@@ -27,7 +27,7 @@ function _hseRender(el, ctx) {
   if (s.kind === 'advent') {
     if (memFunLevel() === 'off' && !ctx.preview) return false;
     const done = Object.keys(memState().advent[String(s.year)] || {}).length;
-    card.innerHTML = `<div class="card-h">${icon('gift')}<h3>Advent</h3><span class="n"></span><span class="spacer"></span></div><div class="card-b hse-b"><div class="hse-doors" role="list"></div></div>`;
+    card.innerHTML = `${cardHeadHtml({ icon: 'gift', title: 'Advent', cls: '', count: ' ' })}<div class="card-b hse-b"><div class="hse-doors" role="list"></div></div>`;
     card.querySelector('.n').textContent = `${done} of ${s.day} opened`;
     const w = document.createElement('button'); w.type = 'button'; w.className = 'btn btn-ghost btn-sm'; w.innerHTML = `${icon('party-popper', 'i-sm')}<span></span>`;
     w.lastChild.textContent = `Your ${s.year} Wrapped`; w.onclick = () => memWrappedOpen(s.year);
@@ -46,7 +46,7 @@ function _hseRender(el, ctx) {
     }
   } else {
     const goals = memGoals(s.year), prev = memGoals(s.year - 1);
-    card.innerHTML = `<div class="card-h">${icon('target')}<h3></h3><span class="spacer"></span></div><div class="card-b hse-b"></div>`;
+    card.innerHTML = `${cardHeadHtml({ icon: 'target', title: '' })}<div class="card-b hse-b"></div>`;
     card.querySelector('h3').textContent = `Hello, ${s.year}`;
     const body = card.querySelector('.hse-b');
     const lead = document.createElement('p'); lead.className = 'hse-lead';

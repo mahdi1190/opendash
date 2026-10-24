@@ -157,10 +157,10 @@ function _prAgo(ms) {
 }
 /** The way a computer is reached now, in the Sync page's words: direct, via your relay, via OneDrive. */
 function _prWay(d) {
-  if (d.path === 'live') return 'direct';
+  if (d.path === 'live' || d.path === 'direct') return 'direct';
+  if (d.path === 'relay') return 'via your relay';
   if (d.path === 'folder') {
     const st = typeof _syncSt !== 'undefined' ? _syncSt : null;
-    if (st && typeof syncViaRelay === 'function' && syncViaRelay(st)) return 'via your relay';
     const cloud = st && typeof syncCloudName === 'function' ? syncCloudName(st) : null;
     return 'via ' + (cloud || 'your cloud folder');
   }
@@ -168,13 +168,13 @@ function _prWay(d) {
 }
 function _prDeviceHtml(d) {
   const st = d.checking ? 'checking' : d.state;
-  const chip = d.checking ? 'Checking…' : d.reachable && d.state !== 'outdated' && d.behind > 0 ? 'Catching up' : (_PR_CHIP[d.state] || d.state);
+  const chip = d.checking ? 'Checking…' : d.reachable && d.state !== 'outdated' && d.behind > 0 ? 'Catching up' + (d.pct != null ? ' ' + d.pct + '%' : '') : (_PR_CHIP[d.state] || d.state);
   const bits = [];
   if (d.version) bits.push('OpenDash ' + d.version);
   const way = _prWay(d);
   if (way) bits.push(way);
   if (!d.reachable && Number.isFinite(d.ago)) bits.push('seen ' + _prAgo(d.ago + Math.max(0, Date.now() - _pr.at)));
-  if (d.behind) bits.push(d.behind + ' change' + (d.behind === 1 ? '' : 's') + ' to go');
+  if (d.behind && d.pct == null) bits.push(d.behind + ' change' + (d.behind === 1 ? '' : 's') + ' to go');
   return `<div class="pr-dev pr-${esc(st)}" role="listitem">
     <span class="pr-dev-ic">${icon(d.checking ? 'loader-circle' : (_PR_ICON[d.state] || 'laptop'))}</span>
     <span class="pr-dev-main"><span class="pr-dev-name">${esc(d.name)}</span><span class="pr-dev-text">${esc(d.text || '')}</span>${bits.length ? `<span class="pr-dev-meta">${esc(bits.join(' · '))}</span>` : ''}</span>

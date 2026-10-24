@@ -185,7 +185,7 @@ function _hinHead(ctx, size, o) {
 }
 function _hinTriage() { if (state.view !== 'triage') setView('triage'); }
 /** The busy icon's class (a CSS class, not an icon name). */
-function _hinSpin(on) { return on ? 'spin' : ''; }
+function _hinSpin(on) { return (on ? 'spin ' : '') + 'i-sm'; }
 
 function _hinSkeleton(size) {
   const box = document.createElement('div'); box.className = 'hin-skel'; box.setAttribute('aria-busy', 'true'); box.setAttribute('aria-label', 'Loading your inbox');
@@ -209,7 +209,7 @@ function _hinCalm(ctx, prefs, fetchedAt) {
   // Data over a day old only says what it knew then (Update is in the header).
   const old = !!fetchedAt && !ctx.preview && Date.now() - (Date.parse(fetchedAt) || Date.now()) > 86400000;
   const head = prefs.knownOnly ? (old ? 'Nobody you know was waiting for a reply' : 'Nobody you know is waiting for a reply') : (old ? 'Nothing needed a reply' : 'Nothing needs a reply');
-  box.innerHTML = `${art || `<span class="hin-calm-ic">${icon('check-check')}</span>`}<div><b>${head}</b><span>${esc(sub)}</span></div>`;
+  box.innerHTML = `${art || `<span class="hin-calm-ic">${icon('check-check', 'i-lg')}</span>`}<div><b>${head}</b><span>${esc(sub)}</span></div>`;
   if (ctx.firstPaint && !ctx.preview) hglAnim(box, [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 360, delay: 180 });
   return box;
 }
@@ -239,7 +239,7 @@ function _hinFoot(ctx, model, fetchedAt, draftsOk) {
   f.innerHTML = `${icon(draftsOk ? 'shield-check' : 'info')}<span class="hin-foot-t">${esc([age, draftsOk ? 'replies are drafts, never sent' : ''].filter(Boolean).join(' · ') || 'Nothing is sent from here')}</span>`;
   if (model.more > 0) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm hin-more';
-    b.innerHTML = `<span>+${model.more} more</span>${icon('arrow-right')}`;
+    b.innerHTML = `<span>+${model.more} more</span>${icon('arrow-right', 'i-sm')}`;
     b.title = 'The rest in Email triage';
     if (!ctx.preview) b.onclick = () => _hinTriage();
     f.appendChild(b);
@@ -259,7 +259,7 @@ function _hinAvatar(r, size) {
   return `<span class="avatar hin-av-x" style="--size:${size}px;--c:var(--sw-slate)" aria-hidden="true">${esc(avatarInitials(r.name || r.email || '?'))}</span>`;
 }
 function _hinBtn(cls, html, aria, tip) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html;
+  const b = hglBtn(cls); b.innerHTML = html;
   if (aria) b.setAttribute('aria-label', aria);
   if (tip) b.setAttribute('data-tip', tip);
   return b;
@@ -278,14 +278,14 @@ function _hinRow(r, ctx, draftsOk) {
   const txt = document.createElement('a'); txt.className = 'hin-txt'; txt.tabIndex = -1;
   if (link) { txt.href = safeUrl(link); txt.target = '_blank'; txt.rel = 'noopener noreferrer'; txt.title = 'Open in Gmail'; }
   txt.innerHTML = `<span class="hin-l1"><b class="hin-from"></b>${r.count > 1 ? `<span class="hin-cnt" title="${r.count} messages">${r.count}</span>` : ''}`
-    + `${r.important ? `<span class="hin-imp" title="Marked important">${icon('flag')}<span class="sr-only">important</span></span>` : ''}<span class="hin-age">${esc(age)}</span></span>`
+    + `${r.important ? `<span class="hin-imp" title="Marked important">${icon('flag', 'i-xs')}<span class="sr-only">important</span></span>` : ''}<span class="hin-age">${esc(age)}</span></span>`
     + '<span class="hin-subj"></span>';
   txt.querySelector('.hin-from').textContent = r.name || r.email || 'Someone';
   txt.querySelector('.hin-subj').textContent = subject;
   if (drafted) {
     const d = document.createElement(drafted.url ? 'a' : 'span'); d.className = 'hin-drafted';
     if (drafted.url) { d.href = safeUrl(drafted.url); d.target = '_blank'; d.rel = 'noopener noreferrer'; d.tabIndex = -1; d.title = 'Open the draft in Gmail'; }
-    d.innerHTML = icon('mail-check') + '<span>Draft in Gmail</span>';
+    d.innerHTML = icon('mail-check', 'i-xs') + '<span>Draft in Gmail</span>';
     txt.appendChild(d);
   }
   li.insertAdjacentHTML('afterbegin', `<span class="hin-av">${_hinAvatar(r, 28)}</span>`);
@@ -294,7 +294,7 @@ function _hinRow(r, ctx, draftsOk) {
   const acts = document.createElement('div'); acts.className = 'hin-acts';
   const sec = document.createElement('div'); sec.className = 'hin-sec';
   const first = r.first || 'them';
-  const reply = _hinBtn('btn btn-ghost btn-sm btn-icon hin-reply', icon('pencil'), drafted ? `Reply to ${first}: drafted in Gmail` : `Draft a reply to ${first}`,
+  const reply = _hinBtn('btn btn-ghost btn-sm btn-icon hin-reply', icon('pencil', 'i-sm'), drafted ? `Reply to ${first}: drafted in Gmail` : `Draft a reply to ${first}`,
     drafted ? 'Drafted in Gmail' : (draftsOk ? 'Draft a reply (saved in Gmail, not sent)' : 'Reply in your mail app'));
   if (drafted) { reply.setAttribute('aria-pressed', 'true'); reply.classList.add('is-done'); }
   reply.onclick = () => _hinReply(r, reply, li);
@@ -302,25 +302,25 @@ function _hinRow(r, ctx, draftsOk) {
   const pair = document.createElement('span'); pair.className = 'hin-pair';
   pair.appendChild(reply);
   if (draftsOk && !drafted) {
-    const rq = _hinBtn('btn btn-ghost btn-sm btn-icon hin-ok hin-reply-ok', icon('check'), `Save a reply draft to ${first} now`, 'Reply draft now · Undo');
+    const rq = _hinBtn('btn btn-ghost btn-sm btn-icon hin-ok hin-reply-ok', icon('check', 'i-sm'), `Save a reply draft to ${first} now`, 'Reply draft now · Undo');
     rq.onclick = () => _hinReplyNow(r, rq);
     pair.appendChild(rq);
     pair.classList.add('has-ok');
   }
   sec.appendChild(pair);
-  const done = _hinBtn('btn btn-ghost btn-sm hin-done' + (drafted ? '' : ' btn-icon'), icon('archive') + (drafted ? '<span>Mark handled</span>' : ''),
+  const done = _hinBtn('btn btn-ghost btn-sm hin-done' + (drafted ? '' : ' btn-icon'), icon('archive', 'i-sm') + (drafted ? '<span>Mark handled</span>' : ''),
     drafted ? `Mark ${subject} as handled` : `Nothing to do: ${subject}`, drafted ? 'Mark as handled · X' : 'Nothing to do · X');
   done.onclick = () => _hinDone(r, done, li);
   sec.appendChild(done);
   if (link) {
     const g = document.createElement('a'); g.className = 'btn btn-ghost btn-sm btn-icon hin-gmail'; g.href = safeUrl(link); g.target = '_blank'; g.rel = 'noopener noreferrer';
-    g.setAttribute('aria-label', 'Open in Gmail'); g.setAttribute('data-tip', 'Open in Gmail · Enter'); g.innerHTML = icon('external-link');
+    g.setAttribute('aria-label', 'Open in Gmail'); g.setAttribute('data-tip', 'Open in Gmail · Enter'); g.innerHTML = icon('external-link', 'i-sm');
     sec.appendChild(g);
   }
   const pri = document.createElement('div'); pri.className = 'hin-pri';
-  const task = _hinBtn('btn btn-secondary btn-sm hin-task', icon('circle-plus') + '<span>Task</span>', `Make a task: reply to ${first} about ${subject}`, 'Opens the new task, filled in · T');
+  const task = _hinBtn('btn btn-secondary btn-sm hin-task', icon('circle-plus', 'i-sm') + '<span>Task</span>', `Make a task: reply to ${first} about ${subject}`, 'Opens the new task, filled in · T');
   task.onclick = () => _hinTaskOpen(r, task, li);
-  const tq = _hinBtn('btn btn-secondary btn-sm btn-icon hin-ok hin-task-ok', icon('check'), `Add the task "Reply to ${first}" now`, 'Add it now · Undo');
+  const tq = _hinBtn('btn btn-secondary btn-sm btn-icon hin-ok hin-task-ok', icon('check', 'i-sm'), `Add the task "Reply to ${first}" now`, 'Add it now · Undo');
   tq.onclick = () => _hinTaskNow(r, tq, li);
   pri.append(task, tq);
   acts.append(sec, pri);
@@ -497,7 +497,7 @@ function _hinRepaint() {
 function _hinSugs(ctx, sugs) {
   const sec = document.createElement('section'); sec.className = 'hin-sugs'; sec.setAttribute('aria-label', 'Tasks Claude suggests from your email');
   const busy = !ctx.preview && typeof _emSuggesting !== 'undefined' && !!_emSuggesting;
-  sec.innerHTML = `<div class="hin-sugs-h"><span class="hgl-ovl">${icon('sparkles')}<span>Suggested tasks</span></span>${sugs.length ? `<span class="hin-sugs-n">${sugs.length}</span>` : ''}<span class="spacer"></span></div>`;
+  sec.appendChild(secHead({ icon: 'sparkles', title: 'Suggested tasks', count: sugs.length || '', cls: 'hin-sugs-h' }));
   // While Claude reads (as on the Inbox page): "Reading… 0:12 · Stop"; the click stops the run (the
   // server cancels it too) and nothing is added.
   const canStop = busy && typeof aiStopSuggesting === 'function';
@@ -564,9 +564,9 @@ function _hinSugRow(s, ctx) {
   row.querySelector('.hin-sug-tt').textContent = s.title || '(untitled)';
   row.querySelector('.hin-sug-m').textContent = meta || (s.detail || '');
   const a = row.querySelector('.hin-sug-a');
-  const add = _hinBtn('btn btn-secondary btn-sm hin-sug-add', icon('circle-plus') + '<span>Add</span>', `Add "${s.title}": opens the new task, filled in`, 'Opens the new task, filled in');
-  const ok = _hinBtn('btn btn-secondary btn-sm btn-icon hin-ok hin-sug-ok', icon('check'), `Add "${s.title}" now`, 'Add it now · Undo');
-  const no = _hinBtn('btn btn-ghost btn-sm btn-icon hin-sug-x', icon('x'), `Dismiss "${s.title}"`, 'Dismiss');
+  const add = _hinBtn('btn btn-secondary btn-sm hin-sug-add', icon('circle-plus', 'i-sm') + '<span>Add</span>', `Add "${s.title}": opens the new task, filled in`, 'Opens the new task, filled in');
+  const ok = _hinBtn('btn btn-secondary btn-sm btn-icon hin-ok hin-sug-ok', icon('check', 'i-sm'), `Add "${s.title}" now`, 'Add it now · Undo');
+  const no = _hinBtn('btn btn-ghost btn-sm btn-icon hin-sug-x', icon('x', 'i-sm'), `Dismiss "${s.title}"`, 'Dismiss');
   if (!ctx.preview) {
     add.onclick = () => _hinSugOpen(s, add, row, email);
     ok.onclick = () => homeAction(ok, () => _hinLeave(row).then(() => {

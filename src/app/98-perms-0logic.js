@@ -69,7 +69,7 @@ const PERMS_SCOPES = Object.freeze([
   Object.freeze({ id: 'garden', label: 'Garden', icon: 'sprout', kind: 'garden', by: 'garden', def: 'on', sensitive: false,
     modes: Object.freeze([['off', 'Hidden'], ['on', 'Plants and decorations']]) }),
   // ── end garden-social ──
-  Object.freeze({ id: 'presence', label: 'Presence', icon: 'wifi', kind: 'presence', by: 'engine', def: 'off', sensitive: true,
+  Object.freeze({ id: 'presence', label: 'Online status', icon: 'wifi', kind: 'presence', by: 'engine', def: 'off', sensitive: true,
     modes: Object.freeze([['off', 'Hidden'], ['on', 'Online, focusing, travelling']]) }),
   Object.freeze({ id: 'tasks', label: 'Tasks', icon: 'square-check', kind: 'share:tasks', by: 'perms', def: 'none', sensitive: true,
     modes: Object.freeze([['none', 'None'], ['shared', 'Only tasks I share'], ['chosen', 'Chosen streams or tags'], ['all', 'All my tasks']]) }),

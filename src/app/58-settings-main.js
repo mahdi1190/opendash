@@ -18,7 +18,7 @@ function _mcLoad(force) {
 function settingsMainComputerCard(el) {
   _mcLoad(false);
   const s = _mcSt;
-  const c = _settingsCard('Main computer', 'One computer runs the automatic jobs (bank updates, AI summaries, calendar and email), so nothing runs twice. Anything you click still runs where you click.');
+  const c = _settingsCard('Main computer', 'Checks mail, calendar and bank, and runs Claude jobs. Another takes over when it sleeps.');
   el.appendChild(c.card);
   if (!s) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Loading…' })); return; }
   if (s.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: "OpenDash isn't answering." })); return; }
@@ -29,11 +29,7 @@ function settingsMainComputerCard(el) {
   for (const d of s.computers || []) {
     const li = document.createElement('li');
     const isMain = s.main && s.main.id === d.id;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + (isMain ? 'btn-primary' : 'btn-secondary');
-    b.innerHTML = icon(isMain ? 'crown' : 'monitor') + `<span>${esc(d.name || 'a computer')}</span>`;
-    b.setAttribute('aria-pressed', isMain ? 'true' : 'false');
-    b.disabled = !d.id;
-    b.onclick = () => _mcSet(d.me ? 'this' : d.id);
+    const b = uiButton({ label: d.name || 'A computer', icon: isMain ? 'crown' : 'monitor', kind: isMain ? 'primary' : 'secondary', size: 'sm', pressed: isMain, disabled: !d.id, bubble: true, run: () => _mcSet(d.me ? 'this' : d.id) });
     const meta = document.createElement('span'); meta.className = 'mv-me';
     meta.textContent = d.me ? 'this computer' : d.lastSeen ? 'seen ' + (typeof _sdWhen === 'function' ? _sdWhen(new Date(d.lastSeen).toISOString()) : '') : d.lastSeenMs != null ? `seen ${Math.round(d.lastSeenMs / 60000)} min ago` : '';
     li.append(b, meta);
@@ -41,7 +37,7 @@ function settingsMainComputerCard(el) {
   }
   c.body.appendChild(ul);
   if ((s.computers || []).length < 2) c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Only this computer so far.' }));
-  if (s.main && s.mode === 'local') c.body.appendChild(_settingsRow('No main computer', 'Every computer runs its own jobs again.', (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.textContent = 'Clear'; b.onclick = () => _mcSet(null); return b; })()));
+  if (s.main && s.mode === 'local') c.body.appendChild(_settingsRow('No main computer', 'Every computer runs its own jobs again.', uiButton({ label: 'Clear', kind: 'ghost', size: 'sm', bubble: true, run: () => _mcSet(null) })));
   const jobs = document.createElement('dl'); jobs.className = 'kv set-kv';
   jobs.innerHTML = (s.jobs || []).map(j => `<dt>${esc(j.label)}</dt><dd>${esc(j.here ? 'here' : 'runs on ' + j.runsOn)}</dd>`).join('');
   c.body.appendChild(jobs);
@@ -64,6 +60,6 @@ async function _mcSet(id) {
     if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
     _mcSt = j;
     toast(j.main ? `${j.main.name} is the main computer` : 'Every computer runs its own jobs', { kind: 'ok' });
-  } catch (e) { toast(e.message, { kind: 'err' }); }
+  } catch (e) { toastError('change the main computer', e, () => _mcSet(id)); }
   if (state.view === 'settings:sync') renderMain();
 }

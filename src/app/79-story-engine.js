@@ -1184,19 +1184,21 @@ function _stFillVoices(sel) {
   for (const v of list) { const o = document.createElement('option'); o.value = v.name; o.textContent = `${v.name}${v.local ? '' : ' (online)'}`; sel.appendChild(o); }
   sel.value = list.some(v => v.name === cur) ? cur : '';
 }
-function storySettingsRows(el) {
+/** Brief and stories > the story rows. moreRows(body) adds the page's own More rows (78-brief-hooks.js). */
+function storySettingsRows(el, moreRows) {
   const p = storyPrefs();
   // Settings re-renders after each save, so the Story / Page buttons, the switch
   // and the sliders show what was saved (they did not change on screen before).
   const save = (patch, msg) => settingsSaveConfig({ brief: { story: patch } }, msg === undefined ? 'Saved' : msg).then(ok => { if (ok && _story.narrator) storyNarrator(); if (ok) render(); return ok; });
   const h = document.createElement('h3'); h.className = 'set-subhead'; h.textContent = 'Story and narration';
   el.appendChild(h);
-  el.appendChild(_settingsRow('The first visit of the day opens as', 'Story: full screen with a Play button (your day in three sentences, read out, with scenes and the people you will see). Page: Home, with Play my morning at the top.', _settingsSeg([['story', 'Story'], ['page', 'Page']], p.autoOpen ? 'story' : 'page', (k) => save({ autoOpen: k === 'story' }))));
-  el.appendChild(_settingsRow('Read it out', 'Read stories using the narration voice below. Captions are always on screen; M mutes while it plays. The browser voice keeps stories moving when ElevenLabs is unavailable or its limit is reached.', _settingsSwitch(p.voice, 'Read it out', (on) => { _stSaveUi({ muted: !on }); save({ voice: on }); })));
+  el.appendChild(_settingsRow('The first visit of the day opens as', 'A full-screen story, or Home with Play at the top.', _settingsSeg([['story', 'Story'], ['page', 'Page']], p.autoOpen ? 'story' : 'page', (k) => save({ autoOpen: k === 'story' }))));
+  setFold(el, 'brief-voice-more', 'Voice', ({ body: el }) => {
+  el.appendChild(_settingsRow('Read it out', 'Captions are always on; M mutes.', _settingsSwitch(p.voice, 'Read it out', (on) => { _stSaveUi({ muted: !on }); save({ voice: on }); })));
   const sel = document.createElement('select'); sel.className = 'control control-sm'; sel.setAttribute('data-story-voices', ''); sel.setAttribute('aria-label', 'Voice');
   _stFillVoices(sel);
   sel.addEventListener('change', () => save({ voiceName: sel.value }));
-  el.appendChild(_settingsRow('Browser voice', 'Also used as the fallback. Local voices keep text on this computer; a voice marked (online) sends text to the browser maker’s speech service. Automatic prefers a natural British voice.', sel));
+  el.appendChild(_settingsRow('Browser voice', 'Voices marked (online) send the text to the browser maker.', sel));
   const slider = (label, key, min, max, step, fmt) => {
     const wrap = document.createElement('div'); wrap.className = 'st-set-slider';
     const r = document.createElement('input'); r.type = 'range'; r.min = String(min); r.max = String(max); r.step = String(step); r.value = String(p[key]); r.setAttribute('aria-label', label);
@@ -1210,16 +1212,23 @@ function storySettingsRows(el) {
   el.appendChild(_settingsRow('Pitch', null, slider('Pitch', 'pitch', 0.6, 1.4, 0.05, (v) => v.toFixed(2))));
   el.appendChild(_settingsRow('Volume', null, slider('Volume', 'volume', 0, 1, 0.05, (v) => Math.round(v * 100) + '%')));
   el.appendChild(_settingsRow('Story speed', 'How quickly the moments move on (also in the player).', _settingsSeg(STORY_SPEEDS.map(s => [String(s), s + '×']), String(p.speed), (k) => { _stSaveUi({ speed: Number(k) }); save({ speed: Number(k) }); })));
-  if (typeof SETTINGS_MODELS !== 'undefined') el.appendChild(_settingsRow('Model for the story script', 'Claude writes natural narration from your day, with tone, pacing and pauses. A built-in script plays until it is ready.', _settingsSelect(SETTINGS_MODELS, p.model, (v) => save({ model: v }))));
-  const test = document.createElement('button'); test.type = 'button'; test.className = 'btn btn-secondary btn-sm';
-  test.innerHTML = _stIcon('play') + '<span>Test the voice</span>';
-  test.addEventListener('click', () => {
+  el.appendChild(settingsModelNote('Story script', p.model));   // the model is picked in Settings > AI (L13)
+  const test = uiButton({ label: 'Test the voice', icon: 'play', size: 'sm', run: () => {
     const nar = storyCreateNarrator({ synth: _stSynth(), Utterance: window.SpeechSynthesisUtterance || null, prefs: { voiceName: p.voiceName, rate: p.rate, pitch: p.pitch, volume: p.volume } });
-    if (!nar.canSpeak()) { toast('No English voice is installed on this computer, so stories show captions only.', { kind: 'err' }); return; }
+    if (!nar.canSpeak()) { toast('No English voice is installed on this computer, so stories show captions only'); return; }
     nar.prime();
     nar.speak(`Good morning${userName() ? ', ' + userName() : ''}. Here is your day in three sentences.`, { speed: 1 });
-  });
-  if (typeof storyWeekSettingsRows === 'function') storyWeekSettingsRows(el);   // 79-story-weekly.js
+  } });
   el.appendChild(_settingsRow('Try the browser voice', null, test));
-  if (typeof renderStoryVoiceSettings === 'function') renderStoryVoiceSettings(el);
+  });
+  // More: the page's own rows (the AI day adviser) and how the weekly review opens (79-story-weekly.js).
+  setFold(el, 'brief-main-more', 'More', ({ body }) => {
+    if (typeof moreRows === 'function') moreRows(body);
+    if (typeof storyWeekSettingsRows === 'function') storyWeekSettingsRows(body);
+  });
+  if (typeof renderStoryVoiceSettings === 'function') setFold(el, 'brief-narration-adv', 'Advanced', ({ body }) => renderStoryVoiceSettings(body), { advanced: true });
+}
+
+function storyModelRow() {
+  return _settingsRow('Story script', null, _settingsSelect(SETTINGS_MODELS, storyPrefs().model, v => settingsSaveConfig({ brief: { story: { model: v } } })));
 }

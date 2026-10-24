@@ -54,7 +54,7 @@ function _ssColorPop(anchor, cur, onPick) {
 
 registerSettingsGroup({
   id: 'streams', title: 'Streams', icon: 'layers', order: 30,
-  description: 'The areas your tasks belong to. Rename, recolour, reorder or archive them; archived streams keep their tasks.',
+  description: 'The areas your tasks belong to.',
   render(el) {
     const list = (Array.isArray(state.streams) && state.streams.length ? state.streams.slice() : Object.entries(STREAMS).map(([id, s], i) => ({ id, label: s.label, color: s.color, order: s.order ?? i, archived: !!s.archived })))
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -84,20 +84,20 @@ registerSettingsGroup({
       name.onblur = () => {
         const v = name.value.trim();
         if (!v || v === s.label) { name.value = s.label; return; }
-        if (_ssList().some(y => y.id !== s.id && y.label.toLowerCase() === v.toLowerCase())) { toast('Another stream already has that name.', { kind: 'err' }); name.value = s.label; return; }
+        if (_ssList().some(y => y.id !== s.id && y.label.toLowerCase() === v.toLowerCase())) { toastError('rename the stream', 'another stream already has that name'); name.value = s.label; return; }
         const x = _ssList().find(y => y.id === s.id); if (x) { x.label = v; _ssCommit('Renamed'); }
       };
       const cnt = document.createElement('span'); cnt.className = 'set-count num'; const oc = _ssOpenCount(s.id); cnt.textContent = oc ? `${oc} open` : 'empty';
       const acts = document.createElement('span'); acts.className = 'set-acts';
-      const mk = (ic, tip, run, dis) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-icon btn-sm'; b.innerHTML = icon(ic); b.setAttribute('aria-label', tip); b.setAttribute('data-tip', tip); if (dis) b.disabled = true; b.onclick = run; return b; };
       if (!s.archived) {
-        acts.append(mk('arrow-up', 'Move up', () => move(s.id, -1), i === 0), mk('arrow-down', 'Move down', () => move(s.id, 1), i === n - 1));
-        acts.append(mk('archive', 'Archive', () => {
-          if (_ssList().filter(y => !y.archived).length <= 1) { toast('Keep at least one stream.', { kind: 'err' }); return; }
+        acts.append(uiButton({ icon: 'arrow-up', size: 'sm', tip: 'Move up', disabled: i === 0, run: () => move(s.id, -1) }),
+          uiButton({ icon: 'arrow-down', size: 'sm', tip: 'Move down', disabled: i === n - 1, run: () => move(s.id, 1) }));
+        acts.append(uiButton({ icon: 'archive', size: 'sm', tip: 'Archive', run: () => {
+          if (_ssList().filter(y => !y.archived).length <= 1) { toastError('archive the stream', 'keep at least one stream'); return; }
           const x = _ssList().find(y => y.id === s.id); if (x) { x.archived = true; _ssCommit(`Archived ${x.label}`); }
-        }));
+        } }));
       } else {
-        acts.append(mk('rotate-ccw', 'Unarchive', () => { const x = _ssList().find(y => y.id === s.id); if (x) { x.archived = false; _ssCommit(`${x.label} is back`); } }));
+        acts.append(uiButton({ icon: 'rotate-ccw', size: 'sm', tip: 'Unarchive', run: () => { const x = _ssList().find(y => y.id === s.id); if (x) { x.archived = false; _ssCommit(`${x.label} is back`); } } }));
       }
       r.append(sw, name, cnt, acts);
       return r;
@@ -105,15 +105,15 @@ registerSettingsGroup({
     active.forEach((s, i) => box.appendChild(row(s, i, active.length)));
     // add
     const add = document.createElement('form'); add.className = 'set-item set-add';
-    const plus = document.createElement('span'); plus.className = 'set-color set-color-new'; plus.innerHTML = icon('plus');
+    const plus = document.createElement('span'); plus.className = 'set-color set-color-new'; plus.innerHTML = icon('plus', 'i-sm');
     const inp = document.createElement('input'); inp.className = 'set-inline'; inp.placeholder = 'Add a stream'; inp.maxLength = 40; inp.setAttribute('aria-label', 'New stream name');
-    const go = document.createElement('button'); go.type = 'submit'; go.className = 'btn btn-secondary btn-sm'; go.textContent = 'Add';
+    const go = uiButton({ label: 'Add', size: 'sm', type: 'submit', bubble: true });
     add.append(plus, inp, go);
     add.onsubmit = (e) => {
       e.preventDefault();
       const label = inp.value.trim(); if (!label) { inp.focus(); return; }
       const L = _ssList();
-      if (L.some(y => y.label.toLowerCase() === label.toLowerCase())) { toast('A stream with that name exists already.', { kind: 'err' }); return; }
+      if (L.some(y => y.label.toLowerCase() === label.toLowerCase())) { toastError('add the stream', 'a stream with that name exists already'); return; }
       let id = _ssSlug(label); for (let k = 2; L.some(y => y.id === id); k++) id = `${_ssSlug(label)}-${k}`;
       L.push({ id, label, color: STREAM_SWATCHES[L.length % STREAM_SWATCHES.length], order: L.reduce((m, y) => Math.max(m, y.order ?? 0), -1) + 1, archived: false });
       _ssCommit(`Added ${label}`);
@@ -130,7 +130,7 @@ registerSettingsGroup({
       el.appendChild(det);
     }
     const opts = active.map(s => [s.id, s.label]);
-    el.appendChild(_settingsRow('New tasks go to', 'When a view does not imply a stream (for example Today).', _settingsSelect(opts, defaultStreamId(), (v) => {
+    el.appendChild(_settingsRow('New tasks go to', 'When the view doesn’t pick one.', _settingsSelect(opts, defaultStreamId(), (v) => {
       state.defaultStream = v; saveData(); toast('Saved', { kind: 'ok' });
     })));
   },
@@ -146,7 +146,7 @@ const TPL_DUE = [['', 'No date'], ['0', 'Today'], ['1', 'Tomorrow'], ['2', 'In 2
 const TPL_PRIO = [['p0', 'No priority'], ['p1', 'High'], ['p2', 'Medium'], ['p3', 'Low']];
 registerSettingsGroup({
   id: 'templates', title: 'Templates', icon: 'layout-template', order: 40,
-  description: 'One-click starters shown under quick add. A template fills in the title, stream, tags, priority and date.',
+  description: 'One-click starters under quick add.',
   render(el) {
     const L = Array.isArray(state.quickTemplates) ? state.quickTemplates : TEMPLATES;
     const box = document.createElement('div'); box.className = 'set-tpls';
@@ -159,8 +159,8 @@ registerSettingsGroup({
       const streamOpts = Object.entries(STREAMS).filter(([, s]) => !s.archived).map(([id, s]) => [id, s.label]);
       const tags = document.createElement('input'); tags.className = 'control control-sm'; tags.value = (t.tags || []).join(', '); tags.placeholder = 'email, follow-up';
       tags.onchange = () => upd('tags', tags.value.split(',').map(x => x.trim().replace(/^#/, '').toLowerCase()).filter(Boolean).slice(0, 10));
-      const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-icon btn-sm set-tpl-del'; del.innerHTML = icon('trash-2'); del.setAttribute('aria-label', 'Delete template'); del.setAttribute('data-tip', 'Delete');
-      del.onclick = () => { const list = _tplList(); const gone = list.splice(i, 1)[0]; commit(); render(); toast(`Deleted “${gone ? gone.label : ''}”`, { action: { label: 'Undo', run: () => undo() } }); };
+      const del = uiButton({ icon: 'trash-2', size: 'sm', cls: 'set-tpl-del', tip: 'Delete', aria: 'Delete template',
+        run: () => { const list = _tplList(); const gone = list.splice(i, 1)[0]; commit(); render(); toast(`Deleted “${gone ? gone.label : ''}”`, { action: { label: 'Undo', run: () => undo() } }); } });
       card.append(
         field('Name', txt(t.label, 40, 'Button label', 'label'), 'f-name'),
         field('Task title', txt(t.title, 200, 'e.g. Email re: ', 'title'), 'f-title'),
@@ -174,14 +174,10 @@ registerSettingsGroup({
     });
     if (!L.length) mountEmptyState(box, { icon: 'layout-template', title: 'No templates yet', text: 'Add one for things you type often.', compact: true });
     el.appendChild(box);
-    const addB = document.createElement('button'); addB.type = 'button'; addB.className = 'btn btn-secondary btn-sm set-tpl-add';
-    addB.innerHTML = icon('plus') + '<span>Add template</span>';
-    addB.onclick = () => { _tplList().push({ label: 'New template', title: '', stream: defaultStreamId(), tags: [], priority: 'p0' }); commit(); render(); };
-    el.appendChild(addB);
+    el.appendChild(uiButton({ label: 'Add template', icon: 'plus', size: 'sm', cls: 'set-tpl-add',
+      run: () => { _tplList().push({ label: 'New template', title: '', stream: defaultStreamId(), tags: [], priority: 'p0' }); commit(); render(); } }));
     const n = Array.isArray(state.taskTemplates) ? state.taskTemplates.length : 0;
-    const saved = document.createElement('button'); saved.type = 'button'; saved.className = 'btn btn-ghost btn-sm';
-    saved.innerHTML = icon('clipboard-list') + `<span>Saved task templates (${n})</span>`;
-    saved.onclick = () => openTemplatesModal();
+    const saved = uiButton({ label: `Saved task templates (${n})`, icon: 'clipboard-list', kind: 'ghost', size: 'sm', run: () => openTemplatesModal() });
     el.appendChild(_settingsRow('Full task templates', 'Whole tasks with subtasks and notes, saved from a task’s menu.', saved));
   },
 });

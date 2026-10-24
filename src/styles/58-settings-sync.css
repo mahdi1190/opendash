@@ -1,6 +1,4 @@
 /* Settings > Sync (src/app/58-settings-sync.js) */
-.sync-folder { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; max-width: 100%; }
-.sync-folder select { max-width: 100%; }
 .sync-other { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .sync-other[hidden] { display: none; }
 .sync-other input { flex: 1 1 16rem; min-width: 0; }
@@ -13,7 +11,7 @@
 .sync-preview { white-space: pre-line; max-height: 12rem; overflow: auto; }
 /* End-to-end encrypted sync: recovery code, pairing, devices, QR */
 .sync-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
-.sync-code, .sync-pair, .sync-add { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: var(--radius-md, 8px); margin: var(--space-2) 0; }
+.sync-code, .sync-pair, .sync-add { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: var(--radius-md); margin: var(--space-2) 0; }
 .sync-code-t, .sync-pair-t { font-weight: 600; }
 .sync-code-v { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1.15rem; letter-spacing: .06em; user-select: all; }
 .sync-code-input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; text-transform: uppercase; letter-spacing: .04em; }
@@ -22,14 +20,14 @@
 .sync-dev { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); align-items: center; }
 .sync-dev-info { min-width: 0; }
 .sync-dev-name { font-weight: 500; }
-.sync-qr svg { display: block; max-width: 100%; height: auto; border-radius: 4px; }
+.sync-qr svg { display: block; max-width: 100%; height: auto; border-radius: var(--radius-xs); }
 .sync-print-sheet { display: none; }
 @media print {
   body.sync-printing > *:not(.sync-print-sheet) { display: none !important; }
   body.sync-printing > .sync-print-sheet { display: block; padding: 2cm; color: #000; background: #fff; }
 }
 /* The 4-letter join code ("Add a computer"): big, spaced, with its countdown */
-.sync-join { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: var(--radius-md, 8px); margin: var(--space-2) 0; align-items: flex-start; }
+.sync-join { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: var(--radius-md); margin: var(--space-2) 0; align-items: flex-start; }
 .sync-join-code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 3rem; font-weight: 700; letter-spacing: .3em; line-height: 1.1; user-select: all; }
 .sync-join-left { color: var(--text-muted, inherit); font-variant-numeric: tabular-nums; }
 .sync-join-input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1.5rem; letter-spacing: .3em; text-transform: uppercase; width: 8.5em; text-align: center; }
@@ -44,14 +42,12 @@
 .sync-other-ways > summary { cursor: pointer; padding: var(--space-1) 0; color: var(--text-muted, inherit); }
 .sync-other-ways[open] > summary { margin-bottom: var(--space-2); }
 /* Every wait has a way out: "Working… Cancel", and a failure with Try again */
-.sync-wait { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md, 8px); background: var(--bg-subtle, rgba(127,127,127,.08)); margin-bottom: var(--space-2); }
+.sync-wait { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-subtle, rgba(127,127,127,.08)); margin-bottom: var(--space-2); }
 .sync-fail { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .sync-fail > span { flex: 1 1 14rem; }
 .sync-live-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .sync-what { margin: var(--space-2) 0 0; }
 /* "Add a computer", up front */
-.sync-add-hero { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--accent, rgba(127,127,127,.35)); border-radius: var(--radius-md, 8px); margin: var(--space-2) 0; }
-.sync-add-hero-t { flex: 1 1 16rem; min-width: 0; }
 /* Tabs: Sync | Health | What changed | Review (58-settings-sync-health.js) */
 .sync-tabs { margin-bottom: var(--space-3); flex-wrap: wrap; }
 /* Health */
@@ -62,11 +58,11 @@
 .sh-head.sh-err .dot { background: var(--danger, #c0392b); }
 .sh-head-t { font-weight: 600; flex: 1 1 auto; }
 .sh-list { display: flex; flex-direction: column; gap: var(--space-2); }
-.sh-check { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md, 8px); border: 1px solid var(--border, rgba(127,127,127,.25)); }
+.sh-check { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--border, rgba(127,127,127,.25)); }
 .sh-check.sh-err { border-color: var(--danger, #c0392b); }
 .sh-check.sh-warn { border-color: var(--warning, #b7791f); }
 .sh-check.sh-ok { border-color: transparent; background: var(--bg-subtle, rgba(127,127,127,.06)); }
-.sh-ic { flex: none; padding-top: 2px; }
+.sh-ic { flex: none; padding-top: var(--space-0-5); }
 .sh-err .sh-ic { color: var(--danger, #c0392b); }
 .sh-warn .sh-ic { color: var(--warning, #b7791f); }
 .sh-ok .sh-ic { color: var(--success, #2f9e5b); }
@@ -74,8 +70,8 @@
 .sh-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: var(--space-1); }
 .sh-title { font-weight: 500; }
 .sh-steps { margin: 0; padding-left: 1.3em; color: var(--text-muted, inherit); }
-.sh-steps li { margin: 2px 0; }
-.sh-bar { height: 6px; border-radius: 3px; background: var(--bg-emphasis, rgba(127,127,127,.2)); overflow: hidden; max-width: 24rem; }
+.sh-steps li { margin: var(--space-0-5) 0; }
+.sh-bar { height: 6px; border-radius: var(--radius-xs); background: var(--bg-emphasis, rgba(127,127,127,.2)); overflow: hidden; max-width: 24rem; }
 .sh-bar > span { display: block; height: 100%; background: var(--accent); transition: width .4s ease; }
 .sh-at { margin-top: var(--space-2); }
 /* What changed */
@@ -84,42 +80,31 @@
 .sh-feed-t { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .sh-feed-head { font-weight: 500; }
 .sh-feed-what { color: var(--text-muted, inherit); }
-.sh-live { font-size: .75em; padding: 0 6px; border-radius: 8px; background: var(--bg-emphasis, rgba(127,127,127,.2)); }
+.sh-live { font-size: .75em; padding: 0 var(--space-1-5); border-radius: var(--radius-sm); background: var(--bg-emphasis, rgba(127,127,127,.2)); }
 /* Review */
 .sh-review { display: flex; flex-direction: column; gap: var(--space-3); }
-.sh-rev { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: var(--radius-md, 8px); }
+.sh-rev { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: var(--radius-md); }
 .sh-rev-t { font-weight: 500; }
 .sh-rev-sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: var(--space-2); }
-.sh-rev-side { padding: var(--space-2); border-radius: 6px; background: var(--bg-subtle, rgba(127,127,127,.06)); min-width: 0; }
+.sh-rev-side { padding: var(--space-2); border-radius: var(--radius-sm); background: var(--bg-subtle, rgba(127,127,127,.06)); min-width: 0; }
 .sh-rev-side.is-kept { outline: 1px solid var(--accent); }
 .sh-rev-by { font-size: .85em; color: var(--text-muted, inherit); }
 .sh-rev-v { overflow-wrap: anywhere; }
 /* The sync dot's panel (56-presence.js): the newest changes and Health */
-.pr-feed { display: flex; flex-direction: column; gap: 6px; padding: 8px 0; border-top: 1px solid var(--border, rgba(127,127,127,.25)); }
+.pr-feed { display: flex; flex-direction: column; gap: var(--space-1-5); padding: var(--space-2) 0; border-top: 1px solid var(--border, rgba(127,127,127,.25)); }
 .pr-feed-row { display: flex; flex-direction: column; font-size: .9em; }
 .pr-feed-head { font-weight: 500; }
 .pr-feed-what { color: var(--text-muted, inherit); }
 .pr-feed .btn { align-self: flex-start; }
-.pr-health { padding: 6px 0; }
+.pr-health { padding: var(--space-1-5) 0; }
 @media (prefers-reduced-motion: reduce) { .sh-bar > span { transition: none; } }
 /* The Sync card (2.17.1, docs/dev/SIMPLIFY_PLAN.md section 4): the status line, the path line, one row per computer; the rest folded */
-.sync-st { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) 0; }
-.sync-st-dot { flex: none; align-self: center; width: 9px; height: 9px; border-radius: 50%; background: var(--text-muted, #888); }
-.sync-st-ok .sync-st-dot { background: var(--success, var(--accent)); }
-.sync-st-busy .sync-st-dot { background: var(--accent); animation: sync-st-pulse 1.4s ease-in-out infinite; }
-.sync-st-warn .sync-st-dot { background: var(--warning, #b7791f); }
-.sync-st-err .sync-st-dot { background: var(--danger, #c0392b); }
-.sync-st-w { font-weight: 600; }
-.sync-st-d { color: var(--text-muted, inherit); }
-@keyframes sync-st-pulse { 50% { opacity: .35; } }
-html[data-motion="reduced"] .sync-st-busy .sync-st-dot { animation: none; }
-@media (prefers-reduced-motion: reduce) { .sync-st-busy .sync-st-dot { animation: none; } }
 .sync-face { display: flex; flex-direction: column; gap: var(--space-1); padding-bottom: var(--space-2); }
-.sync-face > .sync-st { font-size: 1.05rem; }
+.sync-face > .set-status { font-size: 1.05rem; }
 .sync-path { color: var(--text-muted, inherit); }
 .sync-path[hidden] { display: none; }
 .sync-peers { display: flex; flex-direction: column; margin-top: var(--space-2); }
-.sync-peer { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto minmax(7rem, 1fr) auto minmax(6rem, 1fr); gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-1); border-top: 1px solid var(--border, rgba(127,127,127,.18)); border-radius: 4px; }
+.sync-peer { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto minmax(7rem, 1fr) auto minmax(6rem, 1fr); gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-1); border-top: 1px solid var(--border, rgba(127,127,127,.18)); border-radius: var(--radius-xs); }
 .sync-peer:hover { background: var(--bg-subtle, rgba(127,127,127,.06)); }
 .sync-peer:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .sync-peer-ic { display: inline-flex; color: var(--text-muted, inherit); }
@@ -133,14 +118,10 @@ html[data-motion="reduced"] .sync-st-busy .sync-st-dot { animation: none; }
 .sync-peer-warn .sync-peer-chip, .sync-peer-warn .sync-peer-ic { color: var(--warning, #b7791f); }
 .sync-peer-me .sync-peer-chip { color: inherit; }
 @media (max-width: 560px) { .sync-peer { grid-template-columns: auto 1fr auto; } .sync-peer-d { grid-column: 2 / 4; } }
-.sync-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md, 8px); background: var(--bg-subtle, rgba(127,127,127,.08)); margin: var(--space-2) 0; }
+.sync-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--bg-subtle, rgba(127,127,127,.08)); margin: var(--space-2) 0; }
 .sync-note-t { flex: 1 1 16rem; min-width: 0; }
 .sync-face-acts { margin: var(--space-2) 0; }
-.sync-fold { margin-top: var(--space-1); border-top: 1px solid var(--border, rgba(127,127,127,.25)); }
-.sync-fold > summary { cursor: pointer; padding: var(--space-2) 0; color: var(--text-muted, inherit); font-weight: 500; }
-.sync-fold[open] > summary { color: inherit; margin-bottom: var(--space-1); }
-.sync-fold-body > .card { margin: var(--space-2) 0; }
 .sync-sub { font-weight: 600; margin: var(--space-3) 0 var(--space-1); }
-.sync-job, .sync-fact { padding: 2px 0; }
+.sync-job, .sync-fact { padding: var(--space-0-5) 0; }
 /* Check-up: the problems first, the rest folded */
 .sh-fold > summary { cursor: pointer; padding: var(--space-2) 0; color: var(--text-muted, inherit); }

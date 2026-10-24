@@ -172,7 +172,7 @@ function _howRender(el, ctx) {
   }
   if (emails.length) {
     const sec = document.createElement('div'); sec.className = 'how-mail'; sec.dataset.flip = 'ow-mail';
-    sec.innerHTML = `<div class="hgl-ovl how-ovl">${icon('mail')}<span>Emails waiting on you</span></div>`;
+    sec.innerHTML = `<div class="hgl-ovl how-ovl">${icon('mail', 'i-xs')}<span>Emails waiting on you</span></div>`;
     const list = document.createElement('ul'); list.className = 'how-list';
     for (const r of emails) list.appendChild(_howMailRow(r, ctx, model));
     sec.appendChild(list);
@@ -183,7 +183,7 @@ function _howRender(el, ctx) {
   if (!_howDraftsOn() && !model.preview) foot.querySelector('span').textContent = 'Oldest first · Write opens your mail app, never sends';
   if (_howAll ? (rows.length > cap || group) : hidden > 0) {
     const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-ghost btn-sm how-more';
-    more.innerHTML = `<span>${_howAll ? 'Show less' : `+${hidden} more`}</span>${icon(_howAll ? 'chevron-up' : 'chevron-down')}`;
+    more.innerHTML = `<span>${_howAll ? 'Show less' : `+${hidden} more`}</span>${icon(_howAll ? 'chevron-up' : 'chevron-down', 'i-sm')}`;
     more.setAttribute('aria-expanded', _howAll ? 'true' : 'false');
     more.onclick = () => { _howAll = !_howAll; if (ctx.rerender) ctx.rerender(); };
     foot.appendChild(more);
@@ -219,7 +219,7 @@ function _howWhoText(r, model) {
   return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(' and ');
 }
 function _howAvatar(p, size) {
-  if (!p) return `<span class="how-org">${icon('user')}</span>`;
+  if (!p) return `<span class="how-org">${icon('user', 'i-sm')}</span>`;
   // The People avatar: the user's chosen colour or symbol, an org's building.
   return typeof avatarHtml === 'function' ? avatarHtml(p, size || 28) : homeAvatar(p, size || 28);
 }
@@ -245,7 +245,7 @@ function _howRow(r, ctx, model, o) {
   // Today: pressed once it is planned for today (a re-click does nothing).
   const planned = !model.preview && item && item.plannedFor === today;
   const t = document.createElement('button'); t.type = 'button'; t.className = 'hgl-mini how-today' + (planned ? ' is-on' : '');
-  t.innerHTML = icon('sun') + '<span>Today</span>';
+  t.innerHTML = icon('sun', 'i-sm') + '<span>Today</span>';
   t.setAttribute('aria-pressed', planned ? 'true' : 'false');
   t.setAttribute('aria-label', planned ? `Planned for today: ${r.title}` : `Do today: ${r.title}`);
   t.setAttribute('data-tip', planned ? 'Planned for today' : 'Do today (T)');
@@ -279,13 +279,13 @@ function _howWriteBtns(o, model) {
   if (drafted) { w.setAttribute('aria-pressed', 'true'); w.dataset.done = '1'; }
   wrap.appendChild(w);
   if (model.preview) {
-    wrap.insertAdjacentHTML('beforeend', `<button type="button" class="hgl-mini how-ok" aria-label="Save the draft as it is">${icon('check')}</button>`);
+    wrap.insertAdjacentHTML('beforeend', `<button type="button" class="hgl-mini how-ok" aria-label="Save the draft as it is">${icon('check', 'i-sm')}</button>`);
     return wrap;
   }
   w.onclick = (e) => { e.stopPropagation(); if (w.dataset.done === '1') return; _howWrite(o, w); };
   if (drafts && !drafted) {
     const q = document.createElement('button'); q.type = 'button'; q.className = 'hgl-mini how-ok';
-    q.innerHTML = icon('check');
+    q.innerHTML = icon('check', 'i-sm');
     q.setAttribute('aria-label', `Save the draft to ${hglFirst(p)} as it is (Undo deletes it)`);
     q.setAttribute('data-tip', 'Save the draft as it is · Undo');
     q.onclick = (e) => { e.stopPropagation(); _howWriteQuick(o, q); };
@@ -411,7 +411,7 @@ function _howGroup(g, ctx, model, take) {
     // The cap cut this person short: say so where it happened (opens the whole list).
     const li = document.createElement('li'); li.className = 'how-gmore';
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
-    b.innerHTML = `<span>+${rest} more for ${esc(p && p.kind !== 'org' ? hglFirst(p) : name)}</span>${icon('chevron-down')}`;
+    b.innerHTML = `<span>+${rest} more for ${esc(p && p.kind !== 'org' ? hglFirst(p) : name)}</span>${icon('chevron-down', 'i-sm')}`;
     b.setAttribute('aria-expanded', 'false');
     if (!model.preview) b.onclick = () => { _howAll = true; if (ctx.rerender) ctx.rerender(); };
     li.appendChild(b); list.appendChild(li);
@@ -444,13 +444,13 @@ function _howMailRow(r, ctx, model) {
   wrap.appendChild(b);
   if (drafts && !drafted) {
     const q = document.createElement('button'); q.type = 'button'; q.className = 'hgl-mini how-ok';
-    q.innerHTML = icon('check'); q.setAttribute('aria-label', `Save the reply to ${who} as it is (Undo deletes it)`); q.setAttribute('data-tip', 'Save the draft as it is · Undo');
+    q.innerHTML = icon('check', 'i-sm'); q.setAttribute('aria-label', `Save the reply to ${who} as it is (Undo deletes it)`); q.setAttribute('data-tip', 'Save the draft as it is · Undo');
     if (!model.preview) q.onclick = (e) => { e.stopPropagation(); _howReplyQuick(r, key, q); };
     wrap.appendChild(q);
   }
   acts.appendChild(wrap);
   const h = document.createElement('button'); h.type = 'button'; h.className = 'hgl-mini how-handled';
-  h.innerHTML = icon('check-check') + '<span>Handled</span>';
+  h.innerHTML = icon('check-check', 'i-sm') + '<span>Handled</span>';
   h.setAttribute('aria-label', `Nothing to do: mark the email from ${who} handled`); h.setAttribute('data-tip', 'Nothing to do (X)');
   if (!model.preview) h.onclick = (e) => { e.stopPropagation(); _howHandled(r, li); };
   acts.appendChild(h);

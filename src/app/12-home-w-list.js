@@ -206,7 +206,7 @@ function _hlsMoreFoot(body, ctx, view, n, cap, more) {
   const foot = document.createElement('div'); foot.className = 'hls-foot';
   const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm hls-more';
   if (view.size === 's') {
-    b.innerHTML = `<span>+${n - cap} more</span>${icon('arrow-right')}`;
+    b.innerHTML = `<span>+${n - cap} more</span>${icon('arrow-right', 'i-sm')}`;
     b.title = 'Show this search in Tasks';
     b.onclick = () => _hlsOpenInTasks(view.raw);
   } else {
@@ -260,7 +260,7 @@ function _hlsGrouped(body, ctx, view) {
     const lead = by === 'stream' && g.key !== 's:' ? streamMarkHtml(g.key.slice(2))
       : by === 'person' && g.key !== 'p:' ? homeAvatar(getPerson(g.key.slice(2)), 18)
       : `<span class="hls-gdot hls-gdot--${escAttr(g.key.slice(2) || 'none')}" aria-hidden="true"></span>`;
-    sec.innerHTML = `<h4 class="hls-gh"><button type="button" class="hls-gb" aria-expanded="${fold ? 'false' : 'true'}" aria-controls="${escAttr(lid)}" data-fk="${escAttr('hls-g:' + view.inst + ':' + g.key)}">${icon('chevron-down', 'i-hls-chev')}${lead}<span class="hls-gl">${esc(g.label)}</span><span class="hls-gn">${g.ids.length}</span></button></h4>`;
+    sec.innerHTML = `<h4 class="hls-gh"><button type="button" class="hls-gb" aria-expanded="${fold ? 'false' : 'true'}" aria-controls="${escAttr(lid)}" data-fk="${escAttr('hls-g:' + view.inst + ':' + g.key)}">${icon('chevron-down', 'i-sm i-hls-chev')}${lead}<span class="hls-gl">${esc(g.label)}</span><span class="hls-gn">${g.ids.length}</span></button></h4>`;
     const ul = _hlsList(ids.map(id => byId.get(id)), { noStream: by === 'stream' });
     ul.id = lid;
     if (ids.length < g.ids.length) {
@@ -295,7 +295,7 @@ function _hlsToggleGroup(ctx, inst, key, lid, fold) {
 function _hlsDoneList(body, view) {
   const done = view.m.done;
   const wrap = document.createElement('div'); wrap.className = 'hls-done';
-  wrap.innerHTML = `<div class="hls-done-h">${icon('circle-check')}<span>Done today</span><span class="hls-gn">${done.length}</span></div>`;
+  wrap.innerHTML = `<div class="hls-done-h">${icon('circle-check', 'i-sm')}<span>Done today</span><span class="hls-gn">${done.length}</span></div>`;
   const shown = done.slice(-3);
   wrap.appendChild(_hlsList(shown.map(_hlsVM), { compact: true }));
   body.appendChild(wrap);
@@ -312,7 +312,7 @@ function _hlsEmpty(body, ctx, view) {
     if (view.size !== 's') _hlsDoneList(body, view);
     return;
   }
-  box.innerHTML = `<span class="hls-emp-ic">${icon('search-x')}</span><h4>Nothing matches <code>${esc(view.raw)}</code></h4><p>${esc(view.m.parsed.implied ? 'No open task fits this search right now.' : 'No task fits this search right now.')}</p>`;
+  box.innerHTML = `<span class="hls-emp-ic">${icon('search-x', 'i-xl')}</span><h4>Nothing matches <code>${esc(view.raw)}</code></h4><p>${esc(view.m.parsed.implied ? 'No open task fits this search right now.' : 'No task fits this search right now.')}</p>`;
   const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.dataset.act = 'edit';
   b.innerHTML = icon('pencil') + '<span>Edit</span>';
   b.setAttribute('aria-haspopup', 'dialog');
@@ -475,9 +475,9 @@ function _hlsAddRow(host, ctx, view) {
   const d = _hlsDefaults(view.m.parsed);
   const box = document.createElement('div'); box.className = 'hls-add';
   const text = _hlsDraft.get(view.inst) || '';
-  box.innerHTML = `<div class="hls-add-r"><label class="hls-add-in">${icon('plus')}<input type="text" class="hls-add-input" maxlength="300" autocomplete="off" spellcheck="false" data-fk="${escAttr('hls-add:' + view.inst)}" placeholder="${escAttr(_hlsAddHint(view, d))}" aria-label="${escAttr('Add a task to ' + view.title)}" aria-keyshortcuts="Enter Alt+Enter"></label>`
+  box.innerHTML = `<div class="hls-add-r"><label class="hls-add-in">${icon('plus', 'i-sm')}<input type="text" class="hls-add-input" maxlength="300" autocomplete="off" spellcheck="false" data-fk="${escAttr('hls-add:' + view.inst)}" placeholder="${escAttr(_hlsAddHint(view, d))}" aria-label="${escAttr('Add a task to ' + view.title)}" aria-keyshortcuts="Enter Alt+Enter"></label>`
     + `<button type="button" class="btn-icon btn-sm hls-add-ok" data-act="add-now" aria-label="Add it as typed" data-tip="Add as typed" data-kbd="Enter">${icon('check')}</button>`
-    + `<button type="button" class="btn btn-ghost btn-sm hls-add-open" data-act="add-open" aria-label="${escAttr('Open a new task for ' + view.title + ', filled in')}" data-tip="Open it filled in, then Save" data-kbd="Alt+Enter">${icon('file-pen-line')}<span>Add…</span></button></div>`
+    + `<button type="button" class="btn btn-ghost btn-sm hls-add-open" data-act="add-open" aria-label="${escAttr('Open a new task for ' + view.title + ', filled in')}" data-tip="Open it filled in, then Save" data-kbd="Alt+Enter">${icon('file-pen-line', 'i-sm')}<span>Add…</span></button></div>`
     + '<div class="hls-add-chips" aria-live="polite"></div>';
   const inp = box.querySelector('input'), ok = box.querySelector('.hls-add-ok'), chips = box.querySelector('.hls-add-chips');
   const paint = () => {
@@ -547,19 +547,19 @@ function _hlsAddOpen(view, text, from) {
 /* ---------- setting up: presets (main = the editor, prefilled; the check = apply now) ---------- */
 function _hlsSetupCard(body, ctx) {
   const box = document.createElement('div'); box.className = 'hls-setup';
-  box.innerHTML = `<span class="hls-emp-ic">${icon('list-filter')}</span><h4>What should this list show?</h4><p>Pick a starting point; you can change it before it shows.</p>`;
+  box.innerHTML = `<span class="hls-emp-ic">${icon('list-filter', 'i-xl')}</span><h4>What should this list show?</h4><p>Pick a starting point; you can change it before it shows.</p>`;
   const grid = document.createElement('div'); grid.className = 'hls-presets'; grid.setAttribute('role', 'group'); grid.setAttribute('aria-label', 'Presets');
   for (const p of HOME_LIST_PRESETS) {
     const chip = document.createElement('span'); chip.className = 'hls-pre'; chip.dataset.pre = p.id;
     const main = document.createElement('button'); main.type = 'button'; main.className = 'hls-pre-b';
-    main.innerHTML = icon(p.icon) + `<span>${esc(p.label)}</span>`;
+    main.innerHTML = icon(p.icon, 'i-sm') + `<span>${esc(p.label)}</span>`;
     main.setAttribute('aria-haspopup', 'dialog');
     main.title = p.query ? `Open the list editor with ${p.query}` : 'Open the list editor';
     main.onclick = () => _hlsEditor(main, ctx, p.query ? { query: p.query } : { pick: p.pick });
     chip.appendChild(main);
     if (p.query) {
       const q = document.createElement('button'); q.type = 'button'; q.className = 'hls-pre-ok'; q.dataset.act = 'apply';
-      q.innerHTML = icon('check');
+      q.innerHTML = icon('check', 'i-sm');
       q.setAttribute('aria-label', `Show ${p.label} now`); q.setAttribute('data-tip', 'Use it as it is');
       q.onclick = (e) => {
         e.stopPropagation();
@@ -623,7 +623,7 @@ function _hlsEditor(anchor, ctx, seed) {
   };
   openPopover(anchor, (el, close) => {
     el.classList.add('hg-set', 'hls-ed');
-    el.innerHTML = `<div class="hg-set-h">${icon('list-filter')}<b>${esc(cur.query ? 'Edit list' : 'New list')}</b></div>
+    el.innerHTML = `${cardHeadHtml({ icon: 'list-filter', title: cur.query ? 'Edit list' : 'New list', cls: 'hg-set-h' })}
       <label class="hls-ed-f"><span>Show tasks matching</span><input type="text" class="input input-sm" data-k="query" maxlength="300" autocomplete="off" spellcheck="false" placeholder="#tag @person stream:x due:week p1" aria-describedby="hls-ed-hint"></label>
       <div class="hls-ed-pre" role="group" aria-label="Presets"></div>
       <div class="hls-ed-pick" hidden></div>
@@ -743,7 +743,7 @@ function _hlsPreview(card, ctx, size) {
     const wrap = document.createElement('div'); wrap.className = 'hls-groups';
     for (const g of groups) {
       const sec = document.createElement('section'); sec.className = 'hls-grp';
-      sec.innerHTML = `<h4 class="hls-gh"><span class="hls-gb">${icon('chevron-down', 'i-hls-chev')}<span class="hls-gdot hls-gdot--${escAttr(g.key.slice(2))}" aria-hidden="true"></span><span class="hls-gl">${esc(g.label)}</span><span class="hls-gn">${g.ids.length}</span></span></h4>`;
+      sec.innerHTML = `<h4 class="hls-gh"><span class="hls-gb">${icon('chevron-down', 'i-sm i-hls-chev')}<span class="hls-gdot hls-gdot--${escAttr(g.key.slice(2))}" aria-hidden="true"></span><span class="hls-gl">${esc(g.label)}</span><span class="hls-gn">${g.ids.length}</span></span></h4>`;
       sec.appendChild(_hlsList(g.ids.map(id => byId.get(id)), {}));
       wrap.appendChild(sec);
     }
@@ -753,7 +753,7 @@ function _hlsPreview(card, ctx, size) {
   body.appendChild(_hlsList(size === 's' ? s.rows.slice(0, 3) : s.rows, { compact: size === 's' }));
   if (size === 'm') {
     const add = document.createElement('div'); add.className = 'hls-add';
-    add.innerHTML = `<div class="hls-add-r"><label class="hls-add-in">${icon('plus')}<input type="text" class="hls-add-input" tabindex="-1" placeholder="Add to Due this week (give it a day: fri)" aria-label="Add a task"></label></div>`;
+    add.innerHTML = `<div class="hls-add-r"><label class="hls-add-in">${icon('plus', 'i-sm')}<input type="text" class="hls-add-input" tabindex="-1" placeholder="Add to Due this week (give it a day: fri)" aria-label="Add a task"></label></div>`;
     body.appendChild(add);
   }
   return true;

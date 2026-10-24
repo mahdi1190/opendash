@@ -174,8 +174,10 @@ function memPostcardAlbumEl(o) {
   const el = document.createElement('div');
   el.className = 'mpc-album' + (o.compact ? ' is-compact' : '');
   const list = memPostcards().slice(0, o.limit || 200);
-  if (!list.length) {
-    el.innerHTML = `<div class="mem-empty">${icon('map', 'i-lg')}<div><b>No postcards yet</b><span>Your first visit to a new country makes one: a picture of the place and the trip's stats. Trips come from your calendar and time zone (Settings &gt; Travel).</span></div></div>`;
+  if (!list.length) {   // a section's teaching empty state (UI_CLEANUP_PLAN.md 3.6); not a grid
+    el.className = 'mpc-album-empty';
+    mountEmptyState(el, { icon: 'map', compact: true, title: 'No postcards yet', text: 'Your first visit to a new country makes one. Trips come from your calendar and time zone (Settings > Travel & time).',
+      actions: [{ label: 'Travel & time', icon: 'globe', run: () => setView('settings:time') }] });
     return el;
   }
   el.innerHTML = list.map(p => memPostcardHtml(p, o)).join('');
@@ -187,7 +189,7 @@ function memPostcardNote(cc) {
   if (!p) return;
   let ta;
   openDialog({
-    title: `Postcard from ${p.name}`, width: 460,
+    title: `Postcard from ${p.name}`, size: 'sm',
     body: (el) => {
       ta = document.createElement('textarea'); ta.className = 'control mem-ta'; ta.rows = 4; ta.maxLength = 300; ta.placeholder = 'Wish you were here… What do you want to remember about this trip?'; ta.value = p.note || '';
       el.appendChild(ta);
@@ -208,7 +210,7 @@ function _memCapsuleChoices() {
 function memCapsuleWrite(prefill) {
   let ta, date, pick = _memCapsuleChoices()[2][1];
   openDialog({
-    title: 'A note to your future self', width: 520, resizeKey: 'mem-capsule',
+    title: 'A note to your future self', size: 'md', resizeKey: 'mem-capsule',
     body: (el) => {
       el.classList.add('mem-cap-form');
       const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'It stays sealed until the day you choose, then arrives on Home like a letter. It syncs to your other computers, sealed.'; el.appendChild(p);
@@ -252,7 +254,7 @@ function memCapsuleReveal(id) {
   memCapsuleOpen(id);
   const written = Clock.parts(c.created).iso;
   openDialog({
-    title: 'A letter from past you', width: 560, resizeKey: 'mem-capsule-open',
+    title: 'A letter from past you', size: 'md', resizeKey: 'mem-capsule-open',
     body: (el) => {
       el.classList.add('mem-letter-b');
       el.innerHTML = `<div class="mem-env${first ? ' is-opening' : ' is-open'}" aria-hidden="true"><div class="mem-env-back"></div><div class="mem-env-paper"></div><div class="mem-env-front"></div><div class="mem-env-flap"></div></div>`
@@ -268,7 +270,7 @@ function memCapsuleReveal(id) {
 function memCapsuleListEl() {
   const el = document.createElement('div'); el.className = 'mem-caps';
   const list = memCapsules().slice().sort((a, b) => (a.opened ? 1 : 0) - (b.opened ? 1 : 0) || a.opens.localeCompare(b.opens));
-  if (!list.length) { el.innerHTML = `<div class="mem-empty">${icon('mail', 'i-lg')}<div><b>No time capsules yet</b><span>Write a note to your future self. It opens on the day you choose.</span></div></div>`; return el; }
+  if (!list.length) { mountEmptyState(el, { icon: 'mail', compact: true, title: 'No time capsules yet', text: 'Write a note to your future self. It opens on the day you choose.', actions: [{ label: 'Write a time capsule', icon: 'mail', primary: true, run: () => memCapsuleWrite() }] }); return el; }
   const today = todayStr();
   for (const c of list) {
     const ready = c.opens <= today, row = document.createElement('div');
@@ -277,10 +279,9 @@ function memCapsuleListEl() {
     row.innerHTML = `<span class="mem-cap-ic">${icon(c.opened ? 'mail' : ready ? 'sparkles' : 'lock', 'i-md')}</span><div class="mem-cap-t"><b></b><span class="subtle"></span></div><span class="spacer"></span>`;
     row.querySelector('b').textContent = c.opened ? (c.text.split('\n')[0].slice(0, 80) || 'A letter') : ready ? 'Ready to open' : `Opens ${_memFmt(c.opens, { day: 'numeric', month: 'long', year: 'numeric' })}`;
     row.querySelector('.subtle').textContent = `Written ${_memFmt(Clock.parts(c.created).iso, { day: 'numeric', month: 'short', year: 'numeric' })}` + (c.opened ? ' · opened' : ready ? '' : ` · ${_memPlural(left, 'day')} to go`);
-    if (c.opened || ready) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + (ready && !c.opened ? 'btn-primary' : 'btn-secondary') + ' btn-sm'; b.textContent = c.opened ? 'Read' : 'Open'; b.onclick = () => memCapsuleReveal(c.id); row.appendChild(b); }
-    const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-icon'; del.setAttribute('aria-label', 'Delete this capsule'); del.innerHTML = icon('trash-2', 'i-sm');
-    del.onclick = async () => { const ok = typeof confirmDialog === 'function' ? await confirmDialog({ title: 'Delete this time capsule?', text: c.opened ? 'The letter goes for good.' : 'It has not been opened yet. It goes for good, unread.', confirmLabel: 'Delete', danger: true }) : true; if (ok) { memCapsuleDelete(c.id); render(); } };
-    row.appendChild(del);
+    if (c.opened || ready) row.appendChild(uiButton({ label: c.opened ? 'Read' : 'Open', kind: ready && !c.opened ? 'primary' : 'secondary', size: 'sm', run: () => memCapsuleReveal(c.id) }));
+    row.appendChild(uiButton({ icon: 'trash-2', iconCls: 'i-sm', aria: 'Delete this capsule',
+      run: async () => { const ok = typeof confirmDialog === 'function' ? await confirmDialog({ title: 'Delete this time capsule?', text: c.opened ? 'The letter goes for good.' : 'It has not been opened yet. It goes for good, unread.', confirmLabel: 'Delete', danger: true }) : true; if (ok) { memCapsuleDelete(c.id); render(); } } }));
     el.appendChild(row);
   }
   return el;
@@ -341,15 +342,16 @@ function memDayBodyEl(iso, o) {
       ul.appendChild(li);
     }
     el.appendChild(ul);
-  } else el.insertAdjacentHTML('beforeend', `<p class="subtle mem-day-none">${esc(iso > todayStr() ? 'This day has not happened yet.' : 'No tasks finished this day.')}</p>`);
+  } else el.appendChild(emptyLine(iso > todayStr() ? 'This day hasn’t happened yet.' : 'No tasks finished this day.'));
   return el;
 }
 function memDayDialog(iso) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return;
   openDialog({
-    title: _memFmtLong(iso), width: 560, resizeKey: 'mem-day',
+    title: _memFmtLong(iso), size: 'md', resizeKey: 'mem-day',
     body: (el, close) => { el.appendChild(memDayBodyEl(iso, { close })); },
-    actions: [{ label: 'Open the journal', run: () => { setView('memories:journal'); } }, { label: 'Close', primary: true }],
+    // The line and the mood save as you go, so the dialog ends with Done (UI_CLEANUP_PLAN.md 3.4).
+    actions: [{ label: 'Open the journal', run: () => { setView('memories:journal'); } }, { label: 'Done', primary: true }],
   });
 }
 
@@ -358,7 +360,7 @@ function memGoalsDialog(year) {
   const cur = memGoals(year), prev = memGoals(year - 1);
   const inputs = [];
   openDialog({
-    title: `Your goals for ${year}`, width: 540, resizeKey: 'mem-goals',
+    title: `Your goals for ${year}`, size: 'md', resizeKey: 'mem-goals',
     body: (el) => {
       el.classList.add('mem-goals-form');
       if (prev.length) {
@@ -379,14 +381,14 @@ function memGoalsDialog(year) {
         inputs.push(inp); el.appendChild(inp);
       }
     },
-    actions: [{ label: 'Later' }, { label: 'Save my goals', primary: true, run: () => { memGoalsSet(year, inputs.map(i => i.value)); render(); toast(`Your ${year} goals are saved`, { kind: 'ok', icon: 'target' }); if (memFunLevel() !== 'off') memBurst(); } }],
+    actions: [{ label: 'Cancel' }, { label: 'Save my goals', primary: true, run: () => { memGoalsSet(year, inputs.map(i => i.value)); render(); toast(`Saved your ${year} goals`, { kind: 'ok', icon: 'target' }); if (memFunLevel() !== 'off') memBurst(); } }],
   });
 }
 function memAdventDoor(year, day) {
   const text = MEM_ADVENT[(day - 1) % MEM_ADVENT.length];
   const done = memAdventDone(year, day);
   openDialog({
-    title: `Advent, day ${day}`, width: 440,
+    title: `Advent, day ${day}`, size: 'sm',
     body: (el) => { el.innerHTML = `<div class="mem-adv-open">${icon('gift', 'i-lg')}<p></p><span class="subtle">A small kind thing for today. No pressure: tick it when it is done, or skip it.</span></div>`; el.querySelector('p').textContent = text; },
     actions: [
       { label: 'Add to today', run: () => { const id = addCustomTask(text, todayStr(), 'p0', [], null, 'none', {}); if (id) toast('Added to today', { kind: 'ok', icon: 'plus', action: { label: 'Open', run: () => openTask(id) } }); } },

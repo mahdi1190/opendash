@@ -189,6 +189,8 @@ function _slBaseLabel(base) {
   if (hit) return hit[1];
   return viewTitle(b);
 }
+// The list whose filter chips are all shown (UX_BLUEPRINT.md 3: at most 3 chips in a row, then +N).
+let _slChipsOpen = null;
 function _slStrip(sl) {
   const strip = document.createElement('div'); strip.className = 'sl-strip';
   const lead = document.createElement('span'); lead.className = 'sl-strip-lead'; lead.innerHTML = icon(sl.icon || 'list-filter', 'i-sm') + '<span>Smart list</span>';
@@ -196,7 +198,10 @@ function _slStrip(sl) {
   const chips = document.createElement('span'); chips.className = 'sl-chips';
   const base = _slBase(sl);
   if (base !== 'all') { const c = document.createElement('span'); c.className = 'chip chip-solid sl-chip'; c.innerHTML = icon('layers', 'i-xs') + `<span>${esc(_slBaseLabel(base))}</span>`; c.title = 'Starts from this list'; chips.appendChild(c); }
-  for (const c of smartListChips(sl.q)) {
+  const allChips = smartListChips(sl.q);
+  const room = Math.max(0, (base !== 'all' ? 2 : 3));
+  const showAll = _slChipsOpen === sl.id || allChips.length <= room + 1;
+  for (const c of showAll ? allChips : allChips.slice(0, room)) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip sl-chip qa-tok' + (c.cls ? ' ' + c.cls : '');
     b.innerHTML = (c.stream ? `<span class="dot" style="--c:${escAttr(safeColor(STREAMS[c.stream].color))}"></span>` : icon(c.icon, 'i-xs')) + `<span>${esc(c.label)}</span>` + icon('x', 'i-xs x');
     b.title = 'Take this off the filter (Undo puts it back)';
@@ -208,13 +213,19 @@ function _slStrip(sl) {
     };
     chips.appendChild(b);
   }
+  if (!showAll) {
+    const n = allChips.length - room;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip sl-chip sl-chip-more';   // a chip, like its neighbours
+    b.textContent = '+' + n;
+    b.setAttribute('aria-label', `Show ${n} more filter${n === 1 ? '' : 's'}`);
+    b.setAttribute('data-tip', allChips.slice(room).map(c => c.label).join(', '));
+    b.onclick = () => { _slChipsOpen = sl.id; render(); };
+    chips.appendChild(b);
+  }
   if (!chips.childNodes.length) { const c = document.createElement('span'); c.className = 'subtle'; c.textContent = 'Every open task'; chips.appendChild(c); }
   strip.appendChild(chips);
-  const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn btn-ghost btn-sm';
-  edit.innerHTML = icon('pencil') + '<span>Edit</span>'; edit.onclick = () => openSmartListEditor(sl.id);
-  const more = document.createElement('button'); more.type = 'button'; more.className = 'btn-icon btn-sm'; more.setAttribute('aria-label', 'More'); more.setAttribute('data-tip', 'More');
-  more.innerHTML = icon('ellipsis');
-  more.onclick = (e) => openMenu(e.currentTarget, smartListMenuItems(sl.id), { align: 'end', width: 220 });
+  const edit = uiButton({ label: 'Edit', icon: 'pencil', kind: 'ghost', size: 'sm', run: () => openSmartListEditor(sl.id) });
+  const more = uiButton({ icon: 'ellipsis', size: 'sm', aria: 'More', run: (e, btn) => openMenu(btn, smartListMenuItems(sl.id), { align: 'end', width: 220 }) });
   strip.append(edit, more);
   return strip;
 }
@@ -227,7 +238,7 @@ function smartListMenuItems(id) {
     { label: 'Edit…', icon: 'pencil', run: () => openSmartListEditor(id) },
     { label: 'Duplicate', icon: 'copy', run: () => smartListDuplicate(id) },
     ...(typeof sbTogglePin === 'function' ? [{ label: pinned ? 'Unpin from the top' : 'Pin to the top', icon: pinned ? 'pin-off' : 'pin', run: () => sbTogglePin(v) }] : []),
-    { label: 'Copy link', icon: 'link', run: () => { const u = location.origin + location.pathname + '#view=' + v; try { navigator.clipboard.writeText(u); toast('Link copied', { kind: 'ok' }); } catch (e) { toast(u); } } },
+    { label: 'Copy link', icon: 'link', run: () => copyText(location.origin + location.pathname + '#view=' + v, 'link') },
     'sep',
     { label: 'Delete list', icon: 'trash-2', danger: true, run: () => smartListDelete(id) },
   ];
@@ -329,7 +340,8 @@ function openSmartListEditor(id, preset) {
     paintPreview();
   };
   const close = openDialog({
-    title: sl ? 'Edit smart list' : 'New smart list', width: 620, resizeKey: 'smart-list',
+    // Filters and a live preview: a fixed height, so the buttons stay put while it changes (UI_CLEANUP_PLAN.md 1.3).
+    title: sl ? 'Edit smart list' : 'New smart list', size: 'md', fixed: true, resizeKey: 'smart-list',
     body: (el) => {
       el.classList.add('sl-ed');
       if (!sl && !(preset && (preset.q || preset.base !== undefined && preset.base !== 'all'))) {
@@ -485,16 +497,11 @@ function smartListFromView(view) {
     name: q ? '' : extra ? 'Do now' : view.startsWith('stream:') || view.startsWith('tag:') || view.startsWith('person:') ? viewTitle(view) : '' });
 }
 function smartListSaveButton() {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
-  b.innerHTML = icon('list-plus') + '<span>Save as smart list</span>';
-  b.onclick = () => smartListFromView(state.view);
-  return b;
+  return uiButton({ label: 'Save as smart list', icon: 'list-plus', kind: 'ghost', size: 'sm', run: () => smartListFromView(state.view) });
 }
 /** The Display menu's button (32-tasks-ui.js). */
 function smartListDisplayButton(view) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-block sl-display-save';
   const onList = String(view).startsWith('list:');
-  b.innerHTML = icon(onList ? 'pencil' : 'list-plus') + `<span>${onList ? 'Edit this smart list' : 'Save as smart list…'}</span>`;
-  b.onclick = () => { closePopovers(); if (onList) openSmartListEditor(view.slice(5)); else smartListFromView(view); };
-  return b;
+  return uiButton({ label: onList ? 'Edit this smart list' : 'Save as smart list…', icon: onList ? 'pencil' : 'list-plus', cls: 'btn-block sl-display-save',
+    run: () => { closePopovers(); if (onList) openSmartListEditor(view.slice(5)); else smartListFromView(view); } });
 }

@@ -152,7 +152,7 @@ function _ptCollectSeasonal(silent) {
   if (!got.length) return [];
   if (typeof saveUI === 'function') saveUI();
   if (!silent && typeof toast === 'function' && _ptFun() !== 'off') {
-    toast(`New for ${petName()} this season: ${got.join(', ')}. Yours to keep.`, { icon: 'paw-print', timeout: 9000, action: { label: 'Try it on', run: () => { if (typeof setView === 'function') setView('pet:wardrobe'); } } });
+    toast(`New for ${petName()} this season: ${got.join(', ')}, yours to keep`, { icon: 'paw-print', timeout: 9000, action: { label: 'Try it on', run: () => { if (typeof setView === 'function') setView('pet:wardrobe'); } } });
   }
   return got;
 }
@@ -226,10 +226,10 @@ function petTreats() {
 }
 function petFeed() {
   const g = petGet();
-  if (!g.look) return { ok: false, msg: 'Adopt a companion first.' };
+  if (!g.look) return { ok: false, msg: 'Adopt a companion first' };
   const t = petTreats(), today = _ptToday(), n = petName(g), label = petTreatLabel(g.look);
-  if (t.todayFed >= PET_FEED_CAP) return { ok: false, full: true, msg: `${n} is full and very content. Treats keep for tomorrow.` };
-  if (t.have < 1) return { ok: false, msg: `No treats in the jar yet. Finishing a task earns one${typeof gameOn === 'function' && gameOn() ? ', a focus session two' : ''}.` };
+  if (t.todayFed >= PET_FEED_CAP) return { ok: false, full: true, msg: `${n} is full and very content: treats keep for tomorrow` };
+  if (t.have < 1) return { ok: false, msg: `No treats in the jar yet. Finishing a task earns one${typeof gameOn === 'function' && gameOn() ? ', a focus session two' : ''}` };
   const p = _ptS(), total = Object.values(p.fed).reduce((a, x) => a + (Number(x) || 0), 0) + 1;
   petSet({ fed: { [today]: t.todayFed + 1 } }, { quiet: true });
   _pt.lastCare = Date.now(); _pt.reactUntil = Date.now() + 2600; _pt.memo = null;   // clock-ok: UI timing
@@ -267,11 +267,11 @@ function petTricks() {
 }
 function petTeach(id) {
   const t = petTricks().find(x => x.id === id);
-  if (!t) return { ok: false, msg: 'There is no such trick.' };
+  if (!t) return { ok: false, msg: 'There is no such trick' };
   if (t.taught && id !== 'sit') return { ok: true, already: true };
-  if (t.lock) return { ok: false, msg: `${t.label} unlocks with ${t.lock.replace(/^Reach /, '').replace(/^A /, 'a ')}.` };
+  if (t.lock) return { ok: false, msg: `${t.label} unlocks with ${t.lock.replace(/^Reach /, '').replace(/^A /, 'a ')}` };
   const have = petTreats().have;
-  if (have < t.cost) return { ok: false, msg: `${t.label} takes ${t.cost} treats to teach. There ${have === 1 ? 'is' : 'are'} ${have} in the jar.` };
+  if (have < t.cost) return { ok: false, msg: `${t.label} takes ${t.cost} treats to teach. There ${have === 1 ? 'is' : 'are'} ${have} in the jar` };
   petSet({ tricks: { [id]: _ptToday() } }, { quiet: true });
   _ptNote('trick-' + id);
   if (petTricks().every(x => x.taught)) _ptNote('tricks-all');

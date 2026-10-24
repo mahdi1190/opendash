@@ -7,15 +7,15 @@
 
 /* ---------- a friend walking through a scene: the overlay over the canvas ---------- */
 .fsv-ov { position: absolute; inset: 0; z-index: 2; pointer-events: none; overflow: hidden; contain: layout paint; }
-.fsv-hit { position: absolute; left: 0; top: 0; width: 20px; height: 40px; pointer-events: auto; cursor: default; border-radius: 40% 40% 8px 8px; -webkit-tap-highlight-color: transparent; }
-.fsv-tag { position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: 5px; max-width: 160px; padding: 2px 8px 2px 6px;
+.fsv-hit { position: absolute; left: 0; top: 0; width: 20px; height: 40px; pointer-events: auto; cursor: default; border-radius: 40% 40% var(--radius-sm) var(--radius-sm); -webkit-tap-highlight-color: transparent; }
+.fsv-tag { position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: var(--space-1); max-width: 160px; padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-1-5);
   border-radius: var(--radius-full); background: color-mix(in srgb, var(--surface) 92%, transparent); color: var(--fg); box-shadow: var(--shadow-sm);
   font-size: var(--text-2xs); line-height: var(--lh-2xs); font-weight: var(--weight-semibold); white-space: nowrap; pointer-events: none;
   opacity: 0; transition: opacity 0.2s ease; }
 .fsv-tag-n { overflow: hidden; text-overflow: ellipsis; }
 .fsv-tag-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
 .fsv-ov.is-tag .fsv-tag { opacity: 1; }
-.fsv-emote { position: absolute; left: 0; top: 0; font-size: 18px; line-height: 1; pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
+.fsv-emote { position: absolute; left: 0; top: 0; font-size: var(--text-xl); line-height: 1; pointer-events: none; opacity: 0; transition: opacity 0.2s ease;
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.25)); }
 .fsv-ov.is-wave .fsv-emote { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .fsv-tag, .fsv-emote { transition: none; } }
@@ -35,12 +35,12 @@
 .fpc-back { position: relative; display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); }
 .fpc-back::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
   background: repeating-linear-gradient(-45deg, #d6453d 0 6px, transparent 6px 12px, #2f5fb3 12px 18px, transparent 18px 24px); opacity: 0.55; }
-.fpc-words { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.fpc-words { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
 .fpc-msg { margin: 0; color: var(--fg); font-size: var(--text-md); line-height: var(--lh-md); overflow-wrap: anywhere; font-style: italic; }
 .fpc-msg.is-empty { color: var(--fg-muted); }
 .fpc-meta { color: var(--fg-muted); font-size: var(--text-2xs); line-height: var(--lh-2xs); overflow-wrap: anywhere; }
-.fpc-stamp { flex: none; display: inline-flex; align-items: flex-end; justify-content: center; width: 44px; height: 54px; padding: 3px; margin-top: -26px;
-  border: 2px dashed color-mix(in srgb, var(--fg-muted) 45%, transparent); border-radius: 3px; background: var(--surface); color: var(--fg-muted);
+.fpc-stamp { flex: none; display: inline-flex; align-items: flex-end; justify-content: center; width: 44px; height: 54px; padding: var(--space-0-5); margin-top: -26px;
+  border: 2px dashed color-mix(in srgb, var(--fg-muted) 45%, transparent); border-radius: var(--radius-xs); background: var(--surface); color: var(--fg-muted);
   box-shadow: var(--shadow-xs); transform: rotate(3deg); }
 .fpc-stamp .fsc-fig { height: 46px; }
 .fpc.is-compact .fpc-back { padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3); }
@@ -63,8 +63,8 @@
 .fpc-preview .fpc { max-width: 420px; margin: 0 auto; }
 .fpc-f-l { flex: none; min-width: 92px; color: var(--fg-muted); font-size: var(--text-xs); line-height: var(--lh-xs); font-weight: var(--weight-medium); }
 .fpc-to, .fpc-cap, .fpc-seg-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.fpc-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
-.fpc-chip { display: inline-flex; align-items: center; gap: 6px; max-width: 200px; padding: 3px 10px 3px 4px; border: 1px solid var(--border); border-radius: var(--radius-full);
+.fpc-chips { display: flex; flex-wrap: wrap; gap: var(--space-1-5); flex: 1; min-width: 0; }
+.fpc-chip { display: inline-flex; align-items: center; gap: var(--space-1-5); max-width: 200px; padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-1); border: 1px solid var(--border); border-radius: var(--radius-full);
   background: var(--surface); color: var(--fg); font: inherit; font-size: var(--text-sm); cursor: pointer; }
 .fpc-chip > span:not(.fpc-chip-dot) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fpc-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
@@ -72,8 +72,8 @@
 .fpc-chip-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
 .fpc-cap .control { flex: 1; min-width: 180px; }
 .fpc-count { font-size: var(--text-2xs); }
-.fpc-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border-radius: var(--radius-sm); background: var(--bg-subtle); }
-.fpc-seg-b { padding: 3px 10px; border: 0; border-radius: calc(var(--radius-sm) - 2px); background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.fpc-seg { display: inline-flex; flex-wrap: wrap; gap: var(--space-0-5); padding: var(--space-0-5); border-radius: var(--radius-sm); background: var(--bg-subtle); }
+.fpc-seg-b { padding: var(--space-0-5) var(--space-2); border: 0; border-radius: calc(var(--radius-sm) - 2px); background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-sm); cursor: pointer; }
 .fpc-seg-b[aria-pressed="true"] { background: var(--surface); color: var(--fg); box-shadow: var(--shadow-xs); }
 .fpc-wx { width: auto; min-width: 160px; }
 .fpc-note { margin: 0; }
@@ -89,10 +89,10 @@
 .fpc-anchor { position: fixed; width: 1px; height: 1px; pointer-events: none; }
 
 /* ---------- the hangout: full figures, with the avatar as a small badge at their side (96-friends-1ui.js hook) ---------- */
-.fr-bubble.has-fig { position: relative; gap: 4px; }
+.fr-bubble.has-fig { position: relative; gap: var(--space-1); }
 .fr-bubble.has-fig > .fsc-fig { --fsc-h: 60px; transition: transform 0.2s ease; }
 .fr-bubble.has-fig:hover > .fsc-fig, .fr-bubble.has-fig:focus-visible > .fsc-fig { transform: translateY(-3px); }
-.fr-bubble.has-fig .fr-avw { --size: 24px !important; position: absolute; top: 40px; left: calc(50% + 8px); padding: 1.5px; }
+.fr-bubble.has-fig .fr-avw { --size: 24px !important; position: absolute; top: 40px; left: calc(50% + 8px); padding: var(--space-0-5); }
 .fr-bubble.has-fig .fr-avw .pf-av, .fr-bubble.has-fig .fr-avw .fr-av { --pf-size: 24px !important; --size: 24px !important; }
 .fr-bubble.has-fig .fr-dot { min-width: 7px; min-height: 7px; right: -1px; bottom: -1px; }
 .fr-bubble.has-fig:hover .fr-avw, .fr-bubble.has-fig:focus-visible .fr-avw { transform: none; }

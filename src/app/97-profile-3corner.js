@@ -197,14 +197,20 @@ function profileCornerPaint() {
 }
 
 /* ---------- one-word states for the relay and sync ---------- */
-function _pfcRelayWord(fr) { return fr ? (fr.relay ? 'Connected' : 'Not set up') : (_pfc.frErr ? 'Unknown' : ''); }
+/** Your relay in one word (glossary): On, Not set up, or Resting (today's free allowance is used up: calm, it comes back). */
+function _pfcRelayWord(fr) {
+  if (!fr) return _pfc.frErr ? 'Unknown' : '';
+  if (!fr.relay) return 'Not set up';
+  const R = _pfc.sync && _pfc.sync.relay;
+  return R && R.on && R.state === 'quota' ? 'Resting' : 'On';
+}
+/** Sync in one word. Settings > Sync's own status line when it is there (syncSummary -> {tone, word, detail}), else these. */
 function _pfcSyncWord(st) {
   if (!st) return '';
-  // Settings > Sync's own status word when it is there (docs/dev/SIMPLIFY_PLAN.md: syncSummary), else these.
   if (typeof syncSummary === 'function') { try { const w = syncSummary(st, typeof _syncPres === 'function' ? _syncPres() : null, typeof _shHealth !== 'undefined' ? _shHealth : null, Date.now(), null).word; if (w) return w; } catch (e) { /* the words below */ } }   // clock-ok: a status word
   if (!st.enabled) return 'Off';
-  if (st.state === 'error') return 'Paused';
-  if (st.state === 'locked' || st.state === 'waiting') return 'Waiting';
+  if (st.state === 'error') return 'Needs you';
+  if (st.state === 'locked' || st.state === 'waiting') return 'Setting up';
   if (st.mode === 'shadow') return 'Previewing';
   return 'On';
 }
@@ -288,13 +294,7 @@ function _pfcFocus(b) { if (b) setTimeout(() => { try { b.focus({ preventScroll:
 /** Your card, bigger since 2.18 (the same card friends see, compact: banner, avatar, name in your nameplate, title, status, level), with Edit profile and Set status. */
 function _pfcCard(close, toggle) {
   const acts = _pfcEl('div', 'pfc-me-acts pfc-row');
-  const btn = (label, ic, run) => {
-    const b = _pfcEl('button', 'btn btn-secondary btn-sm'); b.type = 'button';
-    b.innerHTML = icon(ic, 'i-sm');
-    b.appendChild(_pfcEl('span', null, label));
-    b.onclick = (e) => { e.stopPropagation(); run(b); };
-    return b;
-  };
+  const btn = (label, ic, run) => uiButton({ label, icon: ic, size: 'sm', run: (e, b) => run(b) });
   const set = btn('Set status', 'circle-user', toggle);
   set.setAttribute('aria-expanded', String(_pfc.statusOpen)); set.setAttribute('aria-controls', 'pfc-status');
   acts.append(btn('Edit profile', 'user-round-pen', () => { close(); setView('settings:me'); }), set);
@@ -323,7 +323,7 @@ function _pfcStatusPaint(host, close) {
       const before = Object.assign({}, profileGet().status);
       profileSet({ status: { emoji: e, text: t, until: _pfEndOfDay() } });
       close();
-      toast(`Status: ${e} ${t}, until tonight.`, { icon: 'circle-user', action: { label: 'Undo', run: () => profileSet({ status: before }) } });
+      toast(`Status: ${e} ${t}, until tonight`, { icon: 'circle-user', action: { label: 'Undo', run: () => profileSet({ status: before }) } });
     };
     row.appendChild(b);
   }
@@ -333,7 +333,7 @@ function _pfcStatusPaint(host, close) {
     items.push({ icon: 'x', label: 'Clear status', run: () => {
       const before = Object.assign({}, profileGet().status);
       profileSet({ status: { emoji: '', text: '', until: 0 } });
-      toast('Status cleared.', { icon: 'circle-user', action: { label: 'Undo', run: () => profileSet({ status: before }) } });
+      toast('Status cleared', { icon: 'circle-user', action: { label: 'Undo', run: () => profileSet({ status: before }) } });
     } });
   }
   items.push({ icon: 'pencil', label: 'Write your own…', run: () => setView('settings:me') });
@@ -349,7 +349,7 @@ function _pfcFriendsPaint(host, close, again) {
   const fr = _pfcFriends();
   if (!fr) {
     if (_pfc.frErr) {
-      host.appendChild(_pfcEl('div', 'pfc-note', 'Friends could not load. ' + (typeof netErrorMessage === 'function' ? netErrorMessage(_pfc.frErr) : '')));
+      host.appendChild(_pfcEl('div', 'pfc-note', 'Couldn’t load Friends: ' + (typeof netErrorReason === 'function' ? netErrorReason(_pfc.frErr) : 'try again') + '.'));
       const m = _pfcEl('div', 'pfc-menu'); m.setAttribute('role', 'menu'); m.setAttribute('aria-label', 'Friends');
       buildMenuItems(m, [{ icon: 'refresh-cw', label: 'Try again', keepOpen: true, run: () => {
         _pfc.frErr = null; again();

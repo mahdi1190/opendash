@@ -82,8 +82,8 @@ function gameFocusStop(o) {
       _gm.key = '';
       const after = gameOn() && gameStats() ? gameStats().xp.total : 0;
       const xp = Math.max(0, after - before);
-      toast(`Logged ${_gmFmtMs(ms)} on “${t ? effTitle(t) : 'the task'}”${xp && gameOn() ? ` · +${xp} XP` : ''}${capped ? ' (kept to 4 hours)' : ''}.`, { icon: 'timer', action: { label: 'Undo', run: () => { delete _gmG().focus[id]; _gmSave(); } } });
-    } else toast('Focus timer stopped. Under a minute, so nothing was logged.', { icon: 'timer' });
+      toast(`Logged ${_gmFmtMs(ms)} on “${t ? effTitle(t) : 'the task'}”${xp && gameOn() ? ` · +${xp} XP` : ''}${capped ? ' (kept to 4 hours)' : ''}`, { icon: 'timer', action: { label: 'Undo', run: () => { delete _gmG().focus[id]; _gmSave(); } } });
+    } else toast('Focus timer stopped: under a minute, so nothing was logged', { icon: 'timer' });
   }
   if (o.done && t && statusOf(r.t) !== 'done') toggleDone(r.t);
   _gmCheckSoon();

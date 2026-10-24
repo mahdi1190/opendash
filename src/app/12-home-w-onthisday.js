@@ -58,7 +58,7 @@ function _hotdRender(el, ctx) {
 
   const card = document.createElement('section');
   card.className = 'card home-card hotd hotd-sz-' + size;
-  card.innerHTML = `<div class="card-h">${icon('history')}<h3>On this day</h3><span class="n"></span><span class="spacer"></span></div><div class="card-b hotd-b"></div>`;
+  card.innerHTML = `${cardHeadHtml({ icon: 'history', title: 'On this day', cls: '', count: ' ' })}<div class="card-b hotd-b"></div>`;
   card.querySelector('.n').textContent = _memFmt(today, { day: 'numeric', month: 'long' });
   const head = card.querySelector('.card-h');
   const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-ghost btn-sm'; go.innerHTML = `<span>Memories</span>${icon('arrow-right')}`;

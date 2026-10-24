@@ -23,8 +23,7 @@ function _mvLoad(force) {
 }
 function _mvEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function _mvBtn(label, ic, cls, run) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + (cls || 'btn-secondary') + ' btn-sm';
-  b.innerHTML = (ic ? icon(ic) : '') + `<span>${esc(label)}</span>`; b.onclick = () => run(b); return b;
+  return uiButton({ label, icon: ic, kind: cls || 'secondary', size: 'sm', run: (e, b) => run(b) });
 }
 function _mvDate(iso) { try { return new Date(iso).toLocaleDateString(APP_CONFIG.locale || undefined, { day: 'numeric', month: 'long', year: 'numeric', timeZone: Clock.zone() }); } catch (e) { return iso; } }
 const _mvBase = (p) => String(p || '').split(/[\\/]/).filter(Boolean).pop() || '';
@@ -42,14 +41,15 @@ function settingsMoveCard(el) {
     c.card.classList.add('mv-card', 'mv-warn');
     const g = _mvEl('div', 'btn-group set-btns');
     g.append(_mvBtn('Finish the move', 'arrow-right', 'btn-primary', () => _mvStartJob('/api/relocate/resume', {}, m.to)),
-      _mvBtn('Stop it', 'x', 'btn-ghost', async () => { try { await _mvJson('/api/relocate/cancel', {}); toast('Stopped. Your data was not changed.', { kind: 'ok' }); } catch (e) { toast(e.message, { kind: 'err' }); } _mvLoad(true); }));
+      _mvBtn('Stop it', 'x', 'btn-ghost', async () => { try { await _mvJson('/api/relocate/cancel', {}); toast('Stopped. Your data was not changed', { kind: 'ok' }); } catch (e) { toastError('stop it', e); } _mvLoad(true); }));
     c.body.appendChild(g); el.appendChild(c.card); return;
   }
   if (i.canUndo && m) {
     const kept = m.renamed && Object.values(m.renamed)[0];
-    const c = _settingsCard('Your data was moved', `On ${_mvDate(m.switchedAt || m.createdAt)}, from ${m.from.data} to ${m.to.data}.`);
+    const c = _settingsCard('Your data was moved');
     c.card.classList.add('mv-card');
-    c.body.appendChild(_mvEl('p', 'set-h', kept ? `The old folder is kept, unchanged, as "${_mvBase(kept)}". Delete it yourself when you are sure everything works.` : 'The old folder is renamed and kept the next time OpenDash starts.'));
+    c.body.appendChild(setStatusLine('ok', 'Moved', _mvDate(m.switchedAt || m.createdAt)));
+    c.body.appendChild(_mvEl('p', 'set-h', kept ? `The old folder is kept as "${_mvBase(kept)}"; delete it when you're sure.` : 'The old folder is renamed and kept the next time OpenDash starts.'));
     const todo = (m.refs || []).filter(r => ['manual', 'failed', 'skipped'].includes(r.status));
     if (todo.length) {
       c.body.appendChild(_mvEl('div', 'set-t', 'Still to do by hand'));
@@ -57,16 +57,18 @@ function settingsMoveCard(el) {
       for (const r of todo) { const li = _mvEl('li'); li.append(_mvEl('div', 'mv-l', r.label), _mvEl('pre', 'mv-pre', r.manual || r.error || '')); ul.appendChild(li); }
       c.body.appendChild(ul);
     }
-    c.body.appendChild(_mvBtn('Undo move…', 'rotate-ccw', 'btn-secondary', () => _mvUndoDialog()));
+    setFold(c, 'data-moved-more', 'More', ({ body }) => body.appendChild(_mvBtn('Undo move…', 'rotate-ccw', 'btn-secondary', () => _mvUndoDialog())));
     el.appendChild(c.card);
   }
   if (i.synced && i.synced.data) {
-    const c = _settingsCard(`Your data is in ${i.synced.data}`, `${i.synced.data} copies files between computers, but it cannot merge changes made on two of them, so edits can be lost. Move the data to a folder that belongs to this computer only. Every file is checked, nothing is deleted, and you can undo it.`);
+    const c = _settingsCard(`Your data is in ${i.synced.data}`);
     c.card.classList.add('mv-card', 'mv-warn');
-    c.body.appendChild(_mvBtn(`Move my data out of ${i.synced.data}…`, 'hard-drive', 'btn-primary', () => _mvDialog()));
+    c.body.appendChild(setStatusLine('warn', 'Needs you', `Your data folder is inside ${i.synced.data}, so edits made on two computers can be lost`));
+    setAction(c, `Move it out of ${i.synced.data}…`, () => _mvDialog(), { icon: 'hard-drive' });
+    setFold(c, 'data-synced-more', 'More', ({ body }) => body.appendChild(_mvEl('p', 'set-h', 'Every file is checked, nothing is deleted, and you can undo it.')));
     el.appendChild(c.card);
   } else if (!i.open) {
-    el.appendChild(_settingsRow('Move the data folder', 'Move your data to another folder on this computer. Every file is checked, start-up and assistant settings are updated, and the old folder is kept.', _mvBtn('Move…', 'hard-drive', 'btn-ghost', () => _mvDialog())));
+    el.appendChild(_settingsRow('Move the data folder', 'Every file is checked and the old folder is kept.', _mvBtn('Move…', 'hard-drive', 'btn-ghost', () => _mvDialog())));
   }
 }
 
@@ -151,7 +153,7 @@ function _mvDialog() {
   const i = _mvInfo || {};
   let to = (i.suggested && i.suggested.data) || '', toApp = (i.suggested && i.suggested.app) || '', moveApp = !!i.recommendApp, plan = null, busy = false;
   openDialog({
-    title: i.synced && i.synced.data ? `Move my data out of ${i.synced.data}` : 'Move the data folder', width: 720, resizeKey: 'relocate',
+    title: i.synced && i.synced.data ? `Move my data out of ${i.synced.data}` : 'Move the data folder', size: 'lg', fixed: true, resizeKey: 'relocate',
     body: (b, close) => {
       const say = (t) => { b.innerHTML = ''; b.appendChild(_mvEl('p', '', t)); const g = _mvEl('div', 'btn-group mv-actions'); g.appendChild(_mvBtn('Close', null, 'btn-secondary', close)); b.appendChild(g); };
       const paintWhere = () => {
@@ -178,7 +180,7 @@ function _mvDialog() {
       const check = async (btn) => {
         if (busy) return; busy = true; if (btn) btn.disabled = true;
         try { plan = await _mvJson('/api/relocate/plan', { to, ...(moveApp ? { moveApp: true, toApp } : { moveApp: false }) }); paintPlan(); }
-        catch (e) { toast(e.message, { kind: 'err' }); if (btn) btn.disabled = false; }
+        catch (e) { toastError('check that folder', e, () => check(btn)); if (btn) btn.disabled = false; }
         busy = false;
       };
       const paintPlan = () => {
@@ -215,7 +217,7 @@ function _mvDialog() {
           await _mvJson('/api/relocate/start', { planId: plan.id, to, ...(moveApp ? { moveApp: true, toApp } : { moveApp: false }) });
         } catch (e) {
           busy = false; btn.disabled = false;
-          if (e.body && e.body.plan) { plan = e.body.plan; paintPlan(); toast(e.message, { kind: 'warn' }); } else toast(e.message, { kind: 'err' });
+          if (e.body && e.body.plan) { plan = e.body.plan; paintPlan(); toast(e.message, { kind: 'warn' }); } else toastError('move your data', e);
           return;
         }
         b.innerHTML = '';
@@ -239,7 +241,7 @@ function _mvDialog() {
 
 function _mvUndoDialog() {
   openDialog({
-    title: 'Undo the move', width: 640, resizeKey: 'relocate-undo',
+    title: 'Undo the move', size: 'lg', fixed: true, resizeKey: 'relocate-undo',
     body: (b, close) => {
       b.appendChild(_mvEl('p', 'set-h', 'Checking…'));
       _mvJson('/api/relocate/undo-plan', {}).then((u) => {

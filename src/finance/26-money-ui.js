@@ -367,7 +367,7 @@
       E.safeL.lastChild.textContent = 'Spent a day so far';
       E.safeU.textContent = 'a day';
       mbTick(E.safeV, B.spent / Math.max(1, cyc.day + 1), gbp, anim ? 380 : 0);
-      E.safeNote.textContent = 'No balance from your bank yet, so safe to spend can’t be worked out. A bank sync adds it (a CSV import brings transactions only).';
+      E.safeNote.textContent = 'No balance from your bank yet, so safe to spend can’t be worked out. A bank update adds it (a CSV brings transactions only).';
     }
     // The period as a track: today's position, the bills before payday as dots, payday at the end.
     const p = (cyc.day + 0.5) / cyc.len * 100;

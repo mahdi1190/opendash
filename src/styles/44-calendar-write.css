@@ -1,3 +1,4 @@
+/* Tokens: spacing, type and radius use var(--space-*), var(--text-*), var(--radius-*); a raw 1px hairline or 2px optical nudge is intentional. */
 /* ============================================================
    CALENDAR WRITE (src/app/44-calendar-write.js): the saving chip, the
    recurring-scope and guest dialogs, and .calw-pending for event blocks

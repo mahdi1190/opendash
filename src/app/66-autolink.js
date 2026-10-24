@@ -115,7 +115,7 @@ async function alActions(ops, o) {
     return j;
   } catch (e) {
     if (o.rethrow) throw e;   // a select list shows it inline, with Try again and the ticks kept
-    toast(netErrorMessage(e, 'That did not work'), { kind: 'err' });
+    toastError('update the suggestions', e, () => alActions(ops, o));
     return null;
   }
 }
@@ -125,7 +125,7 @@ async function alUndo(token) {
     if (typeof _asstAdopt === 'function') await _asstAdopt(u.version);
     render();
     toast('Undone', { kind: 'ok', icon: 'undo-2' });
-  } catch (e) { toast(e.message || 'Could not undo', { kind: 'err' }); }
+  } catch (e) { toastError('undo that', e); }
 }
 function alAccept(ids, o) {
   const list = alData().suggestions.filter(sg => ids.includes(sg.id));
@@ -176,7 +176,7 @@ function _alWatch() {
     if (s && (s.running || s.queued)) { _alPollTimer = setTimeout(tick, 1500); return; }
     if (s && s.lastRun && s.lastRun.at !== was) {
       const r = s.lastRun;
-      if (r.error) toast(`Auto-link stopped: ${r.error.message || r.error.code}`, { kind: 'err' });
+      if (r.error) toastError('finish auto-linking', r.error.message || r.error.code || 'it stopped early', () => alRunNow());
       else toast(`Auto-link: ${r.suggestions} suggestion${r.suggestions === 1 ? '' : 's'} waiting${r.autoApplied ? `, ${r.autoApplied} attached` : ''}`, { kind: 'ok', icon: 'wand-sparkles',
         action: r.autoApplied && r.undo ? { label: 'Undo', run: () => alUndo(r.undo) } : { label: 'Review', run: () => alOpenReview() } });
       if (typeof liveSyncCheck === 'function') liveSyncCheck();
@@ -191,7 +191,7 @@ async function alRunNow(o) {
     await _alPost('/api/autolink/run', o.taskId ? { taskId: o.taskId } : o.index ? { index: true } : {});
     toast(o.taskId ? 'Looking for links for this task…' : o.index ? 'Indexing your workspace folders…' : 'Auto-linking…', { icon: 'wand-sparkles' });
     _alWatch();
-  } catch (e) { toast(e.message || 'The OpenDash server is not running.', { kind: 'err' }); }
+  } catch (e) { toastError('start auto-linking', e, () => alRunNow(o)); }
 }
 function alOpenReview() { _alFilesTab = 'suggested'; if (state.view === 'files') renderMain(); else setView('files'); }
 
@@ -550,7 +550,7 @@ async function _alSaveSettings(patch, msg) {
     if (msg !== false) toast(msg || 'Saved', { kind: 'ok' });
     alStatus(true).then(() => _alPaintSettings());
     return s;
-  } catch (e) { toast(e.message || 'Could not save', { kind: 'err' }); return null; }
+  } catch (e) { toastError('save the setting', e, () => _alSaveSettings(patch, msg)); return null; }
 }
 function _alAgo(iso) {
   const t = Date.parse(iso || '');
@@ -579,7 +579,16 @@ function _alStatusBox(el) {
       : `Last run ${_alAgo(r.at)}: ${r.tasks} task${r.tasks === 1 ? '' : 's'}, ${r.suggestions} waiting, ${r.judged || 0} checked by Claude${r.judgeSkipped && r.judgeSkipped !== 'off' ? ` (judge ${r.judgeSkipped === 'claude' ? 'needs Claude' : r.judgeSkipped === 'rate-limit' ? 'paused: hourly limit' : 'skipped'})` : ''}, ${r.autoApplied || 0} attached automatically`);
   }
   if (s.nextRunAt && s.settings && s.settings.enabled) lines.push(`Next automatic run: ${alWhen(s.nextRunAt)}`);
-  for (const l of lines) { const d = document.createElement('div'); d.textContent = l; el.appendChild(d); }
+  // Status first (P1): one line, then the two things to do. The detail lines sit under More.
+  const enabled = !!(s.settings && s.settings.enabled);
+  const n = r && !r.error ? Number(r.suggestions || 0) : 0;
+  const bits = [];
+  if (n) bits.push(`${n} link${n === 1 ? '' : 's'} to review`);
+  if (r && !r.error) bits.push(`last run ${_alAgo(r.at)}`);
+  el.appendChild(s.running ? setStatusLine('busy', 'Working')
+    : r && r.error ? setStatusLine('warn', 'Stopped', r.error.message || r.error.code)
+      : enabled ? setStatusLine('ok', 'On', bits.join(' · ') || 'Waiting for the first run')
+        : setStatusLine('off', 'Off', 'Turn on auto-linking below'));
   if (s.running) {
     const p = document.createElement('div'); p.className = 'al-prog';
     const phase = { index: 'Indexing', 'cloud-check': 'Checking OneDrive files', candidates: 'Finding candidates', judge: 'Checking with Claude' }[s.running.phase] || 'Working';
@@ -590,11 +599,16 @@ function _alStatusBox(el) {
   if (s.lastAuto && s.lastAuto.undo) {
     const a = document.createElement('div'); a.className = 'al-auto';
     a.innerHTML = `<span>Attached ${esc(s.lastAuto.count)} automatically ${esc(_alAgo(s.lastAuto.at))}.</span>`;
-    const u = document.createElement('button'); u.type = 'button'; u.className = 'btn-link'; u.textContent = 'Undo';
-    u.onclick = () => alUndo(s.lastAuto.undo);
-    a.appendChild(u);
+    a.appendChild(uiButton({ label: 'Undo', kind: 'link', run: () => alUndo(s.lastAuto.undo) }));
     el.appendChild(a);
   }
+  const btns = document.createElement('div'); btns.className = 'hstack al-runbtns';
+  btns.append(uiButton({ label: 'Auto-link now', icon: 'wand-sparkles', kind: 'primary', size: 'sm', run: () => alRunNow() }),
+    uiButton({ label: 'Review links', icon: 'chevron-right', kind: 'ghost', size: 'sm', run: () => alOpenReview() }));
+  el.appendChild(btns);
+  setFold(el, 'autolink-status-more', 'More', ({ body }) => {
+    for (const l of lines) { const d = document.createElement('div'); d.className = 'set-h'; d.textContent = l; body.appendChild(d); }
+  });
 }
 function _alPaintSettings() { if (_alSettingsEl && document.body.contains(_alSettingsEl)) _alSettingsRender(_alSettingsEl); }
 function _alSettingsRender(el) {
@@ -611,43 +625,34 @@ function _alSettingsRender(el) {
         if (st) { _alSettingsAsked = false; _alPaintSettings(); return; }
         if (++tries < 6) { setTimeout(ask, 800); return; }   // the page may still be connecting to its server
         _alSettingsAsked = false;
-        if (_alSettingsEl) _alSettingsEl.innerHTML = '<div class="callout warn">Auto-linking needs the OpenDash server (start it with start-opendash).</div>';
+        if (_alSettingsEl) _alSettingsEl.replaceChildren(emptyLine('Auto-linking needs OpenDash running on this computer. Start it with start-opendash.', { label: 'Try again', run: () => _alPaintSettings() }));
       });
       setTimeout(ask, 0);
     }
     return;
   }
   const cfg = s.settings || {};
-  el.appendChild(_settingsRow('Auto-linking', 'At start, every few hours and after you edit a task, look for the folders, GitHub repos, meetings, emails, people and tasks each open task relates to.',
+  el.appendChild(_settingsRow('Auto-linking', 'Finds folders, repos, meetings, emails and people for your open tasks.',
     _settingsSwitch(!!cfg.enabled, 'Auto-linking', (v) => _alSaveSettings({ enabled: v }, v ? 'Auto-linking is on' : 'Auto-linking is off'))));
   const thr = _settingsSelect([[0.95, '95%'], [0.9, '90%'], [0.85, '85%'], [0.8, '80%']].map(([v, l]) => [String(v), l]), String(cfg.threshold), (v) => _alSaveSettings({ threshold: Number(v) }));
   const autoBox = document.createElement('div'); autoBox.className = 'hstack';
   autoBox.append(_settingsSwitch(!!cfg.autoApply, 'Auto-attach confident links', (v) => _alSaveSettings({ autoApply: v })), thr);
-  el.appendChild(_settingsRow('Auto-attach confident links', `Links Claude rates at or above this are attached for you (at most ${cfg.maxAutoPerTask || 2} folders or repos per task); the rest wait in Suggested. Every automatic change can be undone.`, autoBox));
-  const judgeBox = document.createElement('div'); judgeBox.className = 'hstack';
-  const jsw = _settingsSwitch(!!(cfg.judge && cfg.judge.enabled), 'Check suggestions with Claude', (v) => _alSaveSettings({ judge: { enabled: v } }));
-  jsw.setAttribute('data-requires', 'claude');
-  judgeBox.append(jsw, _settingsSelect([['claude-haiku-4-5', 'Haiku 4.5'], ['claude-sonnet-5', 'Sonnet 5']], cfg.judge ? cfg.judge.model : 'claude-haiku-4-5', (v) => _alSaveSettings({ judge: { model: v } })));
-  el.appendChild(_settingsRow('Check with Claude', `Names, paths, why and short excerpts only (nothing from names-only folders); at most ${cfg.judge ? cfg.judge.maxCallsPerHour : 12} calls an hour.`, judgeBox));
-  el.appendChild(_settingsRow('Run every', 'While the dashboard is open.', _settingsSelect([['2', '2 hours'], ['4', '4 hours'], ['8', '8 hours'], ['12', '12 hours'], ['24', 'day']], String(cfg.intervalHours || 4), (v) => _alSaveSettings({ intervalHours: Number(v) }))));
+  el.appendChild(_settingsRow('Auto-attach confident links', 'Attaches links Claude is at least this sure of. Everything can be undone.', autoBox));
 
   // Workspace folders
   const fh = document.createElement('div'); fh.className = 'set-subh';
-  fh.innerHTML = `<h3>Workspace folders</h3><span class="subtle">Indexed by name, size and date, plus a short excerpt of text files. Nothing is changed in them.</span>`;
+  fh.innerHTML = '<h3>Workspace folders</h3><span class="subtle">OpenDash reads names and short excerpts. It never changes them.</span>';
   el.appendChild(fh);
   const fl = document.createElement('div'); fl.className = 'al-folders card';
   const roots = (s.index && s.index.roots) || [];
-  if (!(cfg.folders || []).length) fl.innerHTML = '<div class="subtle al-empty">No folders yet. Add the places your projects live: a Documents folder, git repositories, OneDrive.</div>';
+  if (!(cfg.folders || []).length) fl.appendChild(emptyLine('Folders you add show up here. Try a Documents folder, git repositories or OneDrive.'));
   for (const f of cfg.folders || []) {
     const st = roots.find(r => String(r.path).toLowerCase() === String(f.path).toLowerCase());
     const row = document.createElement('div'); row.className = 'al-folder';
     row.innerHTML = `<span class="res-ic k-folder">${icon('folder')}</span><span class="al-txt"><span class="al-label truncate"></span><span class="al-where"></span></span>`;
     row.querySelector('.al-label').textContent = f.path;
     row.querySelector('.al-where').textContent = [st ? (st.error ? (st.error === 'MISSING' ? 'Not found on this computer' : st.error) : `${Number(st.files).toLocaleString()} files`) : 'Not indexed yet', f.depth != null ? `depth ${f.depth}` : '', f.container ? 'only its subfolders are suggested' : '', st && st.truncated ? 'stopped at a limit' : '', st && st.cloudUnknown ? 'OneDrive check failed: contents not read' : ''].filter(Boolean).join(' · ');
-    const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn-icon btn-sm'; rm.innerHTML = icon('x');
-    rm.setAttribute('aria-label', `Remove ${f.path}`); rm.setAttribute('data-tip', 'Remove');
-    rm.onclick = () => _alSaveSettings({ folders: cfg.folders.filter(x => x.path !== f.path) }, 'Folder removed');
-    row.appendChild(rm);
+    row.appendChild(uiButton({ icon: 'x', size: 'sm', aria: 'Remove ' + f.path, tip: 'Remove', run: () => _alSaveSettings({ folders: cfg.folders.filter(x => x.path !== f.path) }, 'Folder removed') }));
     fl.appendChild(row);
   }
   el.appendChild(fl);
@@ -656,19 +661,17 @@ function _alSettingsRender(el) {
   inp.setAttribute('aria-label', 'Folder to add');
   const addPath = (p) => {
     const d = typeof rsrcDetect === 'function' ? rsrcDetect(p) : null;
-    if (!d || d.kind !== 'folder') { toast('That is not an absolute folder path', { kind: 'err' }); return; }
+    if (!d || d.kind !== 'folder') { toastError('add the folder', 'that isn’t a full folder path'); return; }
     _alSaveSettings({ folders: [...(cfg.folders || []), { path: d.target }] }, 'Folder added: indexing starts');
   };
   inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter' && inp.value.trim()) { e.preventDefault(); addPath(inp.value.trim()); } };
-  const addB = document.createElement('button'); addB.type = 'button'; addB.className = 'btn btn-secondary btn-sm'; addB.innerHTML = icon('plus') + '<span>Add</span>';
-  addB.onclick = () => { if (inp.value.trim()) addPath(inp.value.trim()); };
-  const browse = document.createElement('button'); browse.type = 'button'; browse.className = 'btn btn-ghost btn-sm'; browse.innerHTML = icon('folder-open') + '<span>Browse…</span>';
-  browse.onclick = async () => {
+  const addB = uiButton({ label: 'Add', icon: 'plus', size: 'sm', run: () => { if (inp.value.trim()) addPath(inp.value.trim()); } });
+  const browse = uiButton({ label: 'Browse…', icon: 'folder-open', kind: 'ghost', size: 'sm', wait: true, run: async () => {
     try {
       const r = await _alPost('/api/resources/pick', { mode: 'folder' });
       if (r && r.paths && r.paths[0]) addPath(r.paths[0]);
-    } catch (e) { toast(e.code === 'NO_PICKER' ? 'Paste the folder path instead' : (e.message || 'The picker did not open'), { kind: e.code === 'NO_PICKER' ? undefined : 'err' }); }
-  };
+    } catch (e) { if (e.code === 'NO_PICKER') toast('Paste the folder path instead'); else toastError('open the folder picker', e); }
+  } });
   add.append(inp, addB, browse);
   el.appendChild(add);
   // Likely folders
@@ -683,7 +686,7 @@ function _alSettingsRender(el) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'chip al-sugf';
       b.innerHTML = icon(f.why === 'Git repository' ? 'folder-git-2' : 'folder', 'i-xs') + '<span class="truncate"></span>' + icon('plus', 'i-xs');
       b.querySelector('.truncate').textContent = f.path;
-      b.title = `${f.why}: add it`;
+      b.setAttribute('data-tip', (f.why || 'Folder') + ': add it');
       b.onclick = () => _alSaveSettings({ folders: [...(cfg.folders || []), { path: f.path, ...(f.depth != null ? { depth: f.depth } : {}), ...(f.container ? { container: true } : {}) }] }, 'Folder added: indexing starts');
       sugBox.appendChild(b);
     }
@@ -693,48 +696,45 @@ function _alSettingsRender(el) {
 
   // Names only
   const nh = document.createElement('div'); nh.className = 'set-subh';
-  nh.innerHTML = '<h3>Names only</h3><span class="subtle">Folders whose files are listed by name only: their contents are never opened or sent to Claude. Always: client_data, secrets, .env, private.</span>';
+  nh.innerHTML = '<h3>Never read</h3><span class="subtle">Listed by name only, never opened. Always: secrets, .env, private, client_data.</span>';
   el.appendChild(nh);
   const nl = document.createElement('div'); nl.className = 'chips al-names';
   for (const n of cfg.namesOnly || []) {
     const c = document.createElement('span'); c.className = 'chip';
     c.innerHTML = icon('lock', 'i-xs') + '<span class="truncate"></span>';
     c.querySelector('.truncate').textContent = n;
-    const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm'; x.innerHTML = icon('x', 'i-xs'); x.setAttribute('aria-label', `Remove ${n}`);
-    x.onclick = () => _alSaveSettings({ namesOnly: cfg.namesOnly.filter(v => v !== n) });
-    c.appendChild(x);
+    c.appendChild(uiButton({ icon: 'x', iconCls: 'i-xs', size: 'sm', aria: `Remove ${n}`, run: () => _alSaveSettings({ namesOnly: cfg.namesOnly.filter(v => v !== n) }) }));
     nl.appendChild(c);
   }
   el.appendChild(nl);
   const nadd = document.createElement('div'); nadd.className = 'al-add hstack';
   const ninp = document.createElement('input'); ninp.className = 'control control-sm grow'; ninp.placeholder = 'A folder name (e.g. confidential) or a full path';
-  ninp.setAttribute('aria-label', 'Names-only folder to add');
-  const nAdd = () => { const v = ninp.value.trim(); if (!v) return; _alSaveSettings({ namesOnly: [...(cfg.namesOnly || []), v] }, 'Added: its contents will not be read'); };
+  ninp.setAttribute('aria-label', 'Folder never to read');
+  const nAdd = () => { const v = ninp.value.trim(); if (!v) return; _alSaveSettings({ namesOnly: [...(cfg.namesOnly || []), v] }, 'Added: it will never be read'); };
   ninp.onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); nAdd(); } };
-  const nb = document.createElement('button'); nb.type = 'button'; nb.className = 'btn btn-secondary btn-sm'; nb.innerHTML = icon('plus') + '<span>Add</span>'; nb.onclick = nAdd;
+  const nb = uiButton({ label: 'Add', icon: 'plus', size: 'sm', run: nAdd });
   nadd.append(ninp, nb);
   el.appendChild(nadd);
 
-  // Status + run
-  const sh = document.createElement('div'); sh.className = 'set-subh'; sh.innerHTML = '<h3>Status</h3>';
-  el.appendChild(sh);
+  // Advanced: the Claude check, how often it runs, and Index now (built now so search finds them).
+  setFold(el, 'autolink-main-adv', 'Advanced', ({ body }) => {
+    const jsw = _settingsSwitch(!!(cfg.judge && cfg.judge.enabled), 'Check suggestions with Claude', (v) => _alSaveSettings({ judge: { enabled: v } }));
+    jsw.setAttribute('data-requires', 'claude');
+    // The model is picked in Settings > AI > Models for each job (L13).
+    body.appendChild(settingsRowNote(_settingsRow('Check with Claude', 'Claude sees names and short excerpts, never “Never read” folders.', jsw), settingsModelNote('Checking links', (cfg.judge && cfg.judge.model) || 'claude-haiku-4-5')));
+    body.appendChild(_settingsRow('Run every', 'While the dashboard is open.', _settingsSelect([['2', '2 hours'], ['4', '4 hours'], ['8', '8 hours'], ['12', '12 hours'], ['24', 'day']], String(cfg.intervalHours || 4), (v) => _alSaveSettings({ intervalHours: Number(v) }))));
+    body.appendChild(_settingsRow('Index now', 'Reads your folders again.', uiButton({ label: 'Index now', icon: 'refresh-cw', size: 'sm', run: () => alRunNow({ index: true }) })));
+  }, { advanced: true });
+
+  // Status first (P1): the box goes to the top of the page.
   const box = document.createElement('div'); box.className = 'al-status card'; box.setAttribute('aria-live', 'polite');
   _alStatusBox(box);
-  el.appendChild(box);
-  const btns = document.createElement('div'); btns.className = 'hstack al-runbtns';
-  const ib = document.createElement('button'); ib.type = 'button'; ib.className = 'btn btn-secondary btn-sm'; ib.innerHTML = icon('refresh-cw') + '<span>Index now</span>';
-  ib.onclick = () => alRunNow({ index: true });
-  const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'btn btn-primary btn-sm'; rb.innerHTML = icon('wand-sparkles') + '<span>Auto-link now</span>';
-  rb.onclick = () => alRunNow();
-  const rv = document.createElement('button'); rv.type = 'button'; rv.className = 'btn btn-ghost btn-sm'; rv.innerHTML = '<span>Review suggestions</span>' + icon('chevron-right');
-  rv.onclick = () => alOpenReview();
-  btns.append(ib, rb, rv);
-  el.appendChild(btns);
+  el.prepend(box);
   if (s.running || s.queued) _alWatch();
 }
 registerSettingsGroup({
   id: 'autolink', title: 'Files & auto-link', icon: 'wand-sparkles', order: 45,
-  description: 'Workspace folders to search, what is never read, and how links are suggested and attached.',
+  description: 'Folders OpenDash may search, and how it links them to tasks.',
   render(el) { _alSettingsRender(el); },
 });
 
@@ -747,4 +747,11 @@ registerCommand({
 });
 function alTaskMenuItem(id) {
   return { label: 'Find related links', icon: 'wand-sparkles', run: () => alRunNow({ taskId: id }) };
+}
+
+function alJudgeModelRow() {
+  const select = _settingsSelect([['claude-haiku-4-5', 'Haiku 4.5'], ['claude-sonnet-5', 'Sonnet 5']], 'claude-haiku-4-5', v => _alSaveSettings({ judge: { model: v } }));
+  select.disabled = true;
+  alStatus().then(st => { if (st && st.settings) { select.value = st.settings.judge?.model || 'claude-haiku-4-5'; select.disabled = false; } });
+  return _settingsRow('Checking links', 'Checks suggested links before attaching them.', select);
 }

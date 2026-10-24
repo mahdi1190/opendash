@@ -56,7 +56,7 @@ async function _clkPutConfig(patch, okMsg) {
     if (okMsg) toast(okMsg, { kind: 'ok' });
     return true;
   } catch (e) {
-    toast('Not saved: ' + netErrorMessage(e, 'the OpenDash server is not running'), { kind: 'err' });
+    toastError('save the time settings', e, () => _clkPutConfig(patch, okMsg));
     return false;
   }
 }
@@ -229,7 +229,7 @@ function _clkZoneBanner(ev, boot, force) {
       if (a) acts.appendChild(a);
     }
   }
-  const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm clk-x'; x.setAttribute('aria-label', 'Dismiss');
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm clk-x'; x.setAttribute('aria-label', 'Close');
   x.innerHTML = icon('x');
   x.addEventListener('click', () => _clkBannerClose());
   acts.appendChild(x);
@@ -290,7 +290,7 @@ function _clkUtcCard() {
     el.querySelector('.clk-s').textContent = 'This page keeps the computer’s clock until it can show another zone; set Windows to your time zone to change it here too.';
     acts.textContent = '';
     const a = _clkWinLink(); if (a) acts.appendChild(a);
-    const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm clk-x'; x.setAttribute('aria-label', 'Dismiss'); x.innerHTML = icon('x');
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon btn-sm clk-x'; x.setAttribute('aria-label', 'Close'); x.innerHTML = icon('x');
     x.addEventListener('click', () => _clkBannerClose());
     acts.appendChild(x);
   });
@@ -300,7 +300,7 @@ function _clkUtcCard() {
   requestAnimationFrame(() => el.classList.add('on'));
 }
 
-/* ---------- Settings rows (Name & region; Travel & time may reuse them) ---------- */
+/* ---------- Settings rows (Region & language; Travel & time may reuse them) ---------- */
 function _clkZoneText(z) {
   const off = Clock.offset(Clock.now(), z);
   const a = Math.abs(off), h = Math.floor(a / 60), m = a % 60;
@@ -347,8 +347,7 @@ function clockSettingsRows(el, opts) {
     box.appendChild(opt('zone', 'Always:', zSel, !ready));
     if (!ready) zSel.disabled = true;
     if (typeof clockFollowTripOption === 'function') clockFollowTripOption(box, after);   // a trip's zone, a prefilled choice (87-clock-override.js)
-    const hint = ready ? '“Today”, due dates, the calendar and greetings use this. Money stays on home time.'
-      : '“Today”, due dates and the calendar follow this computer’s clock. Coming soon: the dashboard can’t yet show a time other than the computer’s.';
+    const hint = 'Used for “today”, due dates and the calendar.';
     const row = _settingsRow('Dashboard time', hint, box);
     row.classList.add('set-row-stack', 'clk-row');
     el.appendChild(row);
@@ -358,7 +357,7 @@ function clockSettingsRows(el, opts) {
       if (await _clkPutConfig({ timezone: v }, 'Home time zone saved')) after();
     }, 'set-tz');
     sel.setAttribute('aria-label', 'Home time zone');
-    el.appendChild(_settingsRow('Home time zone', 'Where you live: money days and “home” use it. While you travel, the dashboard follows this computer. Changes apply at once.', sel));
+    el.appendChild(_settingsRow('Home time zone', 'Where you live. While you travel, OpenDash follows this computer.', sel));
   }
   if (o.clock) {
     const c12 = APP_CONFIG.time && APP_CONFIG.time.clock12;

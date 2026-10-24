@@ -132,8 +132,56 @@ an `@alive=true` with a larger `h` (a restore).
 
 Two writes to one register are **concurrent** when they come from different
 devices and the later one's `s` does not include the earlier one's `n`
-(`s[earlier.device] < earlier.n`). Concurrent losers are reported to the user
-(conflicts); this never changes the result.
+(`s[earlier.device] < earlier.n`). Concurrent losers of the person's own
+content are reported to the user (conflicts, section 4.1); this never changes
+the result.
+
+<!-- ── 2.17.2 ── -->
+### 4.1 Which clashes are reported (2.17.2)
+
+Only the person's own content can ever become an item in Settings > Sync >
+Review. Every synced key and file has a clash rule (`conflictsOf` in
+`lib/sync/manifest.mjs`):
+
+| Rule | What | Keys and files |
+|---|---|---|
+| `review` | the person's own content: a real clash is listed | `custom`, `statuses`, `notes`, `pinned`, `deleted`, `bin`, `taskTemplates`, `quickTemplates`, `people`, `peopleNotes`, `peopleIgnoredNames`, `peopleIgnoredEmails`, `peopleAutoLink`, `streams`, `countdowns`, `resources`, `tagRegistry`, `tags`, `pinnedTags`, `taskBoards`, `smartLists`, `sidebarLayout`, `taskContexts`, `defaultStream`, `archiveDays`, `home`, `daynotes`, `eventMeta`, `calendarSettings`, `weeklyReviews`, `reviews`, `travel`, `memories`, `friendPerms`; files `profile.json`, `finance-share/edits.json`, `animations/mine.json`, `index/settings.json`, `source-prefs.json` (marked `conflicts: 'review'`) |
+| `quiet` | a preference (`'pref'`, section 9.1): the later choice wins | `theme`, `density`, `calPrefs`, `homeUI`, `game`, `profile`, `together` and the other preferences |
+| `silent` | housekeeping the app writes itself | `completionLog`, `taskActivity`, the order lists `customOrder`, `sidebarOrder`, `boardOrder`, `emailTriage`, `suggest`, `taskChat`, `assistantChat`, `chatMeta` (marked `'silent'`); every file not marked `review`: `requests.json` (the remote-jobs queue), `roles.json`, `accounts.json`, the calendar, mail and finance snapshots a fetcher publishes, AI results and caches, `inbox/drafts.json`, `blobs/index.json`, `state/proposals.json`, the location log and every `friends/` file (friends' data, relays, feed, share log, spaces, fun) |
+
+A silent register merges exactly like any other (per register, later change
+wins); only the report is left out. A deleted item stays deleted: an edit
+made without seeing the delete never writes `@alive`, so a job another
+computer removed is not brought back by a late status or heartbeat; only an
+explicit restore (`@alive=true` with a larger `h`) brings anything back. A file without the flag is silent, so a new
+synced file never asks the person anything until it is marked as theirs.
+
+The Review list is this computer's own `conflicts.jsonl`, with the ids
+already reviewed in `conflicts-done.json`. The first time 2.17.2 or later
+reads them it dismisses, once, every listed clash that these rules would not
+record (housekeeping, or an edit that came before the delete, section 4.2),
+exactly like "Keep" in the list (what won stays; nothing changes), and writes
+`swept: 1` there so it never runs again. Each computer does this for its own
+list as it updates.
+
+### 4.2 Edit against delete (2.17.2)
+
+On the person's own content, an edit inside an item another computer deleted
+is listed only when the edit really came after the delete without knowing of
+it: the edit's `h` is larger than the `@alive=false` register's, and the edit
+did not see the delete (`edit.s[deleter] < delete.n`). An older edit that the
+deleting computer had simply not seen yet is not listed: the delete was the
+later choice. Either way the delete wins until "Bring it back" writes
+`@alive=true` again, with the edit. A clash is checked once, when the later
+of the two registers first arrives; a register merged before never records
+one again (section 10).
+
+The Review list says it in words: "On Mahdi Work you changed the task "Book
+flights" after this computer deleted it." with **Keep it deleted** and
+**Bring it back**; a same-field clash: "You changed the task "Book flights"
+(due date) on this computer and on Mahdi Work at the same time. Mahdi Work's
+change is kept now." with Keep mine / Keep Mahdi Work's.
+<!-- ── end 2.17.2 ── -->
 
 ## 5. Positions
 
@@ -547,6 +595,11 @@ the manifest and `SYNC_SPEC`):
   every other device's snapshot and logs once more (a quiet REPLAY: lines
   already taken are taken again, clashes are not reported again), and a device
   that sees another one's `app` change writes a fresh snapshot at once.
+  Since 2.17.2 a register this device has merged before (its own, or a change
+  number it already counts as seen in `frontier`/`ahead`) never records a
+  clash of any kind when it is read again, whatever brings it (the replay, a
+  re-read, that fresh snapshot): a clash is checked once, when the second of
+  the two writes first arrives.
 - Version 2 (section 11) uses exactly this rule: a version-1 reader stops at
   the first encrypted line and says so; it never skips or guesses.
 

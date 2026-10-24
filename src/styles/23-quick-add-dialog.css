@@ -1,3 +1,4 @@
+/* Tokens: spacing, type and radius use var(--space-*), var(--text-*), var(--radius-*); a raw 1px hairline or 2px optical nudge is intentional. */
 /* ============= QUICK ADD DIALOG (23-quick-add-dialog.js) ============= */
 .qad { position: relative; display: flex; flex-direction: column; gap: var(--space-3); }
 .qad-box {
@@ -14,8 +15,8 @@
 }
 .qad-input::placeholder { color: var(--fg-subtle); }
 .qad-chips { display: flex; flex-wrap: wrap; gap: var(--space-1-5); min-height: 22px; align-items: center; }
-.qad .qa-tok { height: 22px; max-width: 220px; gap: 5px; background: var(--surface); }
-.qad .qa-tok .i { width: 12px; height: 12px; color: var(--fg-subtle); }
+.qad .qa-tok { height: 22px; max-width: 220px; gap: var(--space-1-5); background: var(--surface); }
+.qad .qa-tok .i { color: var(--fg-subtle); }   /* i-xs in the markup */
 .qad .qa-tok .dot { width: 7px; height: 7px; }
 .qad .qa-tok.qa-date, .qad .qa-tok.qa-time { color: var(--accent-ink); border-color: var(--accent-soft-2); background: var(--accent-soft); }
 .qad .qa-tok.qa-date .i, .qad .qa-tok.qa-time .i { color: var(--accent); }
@@ -23,7 +24,7 @@
 .qad .qa-tok.qa-priority .i { color: var(--pc); }
 .qad .qa-tok.is-new { border-style: dashed; }
 .qad .qa-tok.implied { border-style: dashed; color: var(--fg-subtle); background: transparent; }
-.qad button.qa-tok .qad-x { display: inline-flex; color: var(--fg-disabled); margin-right: -2px; }
+.qad button.qa-tok .qad-x { display: inline-flex; color: var(--fg-disabled); margin-right: calc(var(--space-0-5) * -1); }
 .qad button.qa-tok:hover .qad-x { color: var(--fg); }
 .qad-lines {
   display: flex; flex-direction: column; border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
@@ -33,14 +34,13 @@
 .qad-line:last-child { border-bottom: 0; }
 .qad-line .check { flex: none; }
 .qad-line-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-sm); }
-.qad-line-c { display: inline-flex; gap: 4px; flex: none; max-width: 55%; overflow: hidden; }
+.qad-line-c { display: inline-flex; gap: var(--space-1); flex: none; max-width: 55%; overflow: hidden; }
 .qad-line.is-empty .qad-line-t { color: var(--fg-subtle); font-style: italic; }
 .qad-more { padding: var(--space-2) var(--space-3); font-size: var(--text-xs); }
 .qad-help { display: flex; flex-wrap: wrap; gap: var(--space-1-5) var(--space-3); color: var(--fg-subtle); font-size: var(--text-xs); }
-.qad-help span { display: inline-flex; align-items: center; gap: 4px; }
-.qad-help .i { width: 12px; height: 12px; }
+.qad-help span { display: inline-flex; align-items: center; gap: var(--space-1); }
 .qad-foot { display: flex; gap: var(--space-4); font-size: var(--text-xs); }
-.qad-foot span { display: inline-flex; align-items: center; gap: 4px; }
+.qad-foot span { display: inline-flex; align-items: center; gap: var(--space-1); }
 .qad-suggest { position: absolute; z-index: 2; min-width: 240px; max-width: 360px; }
 .qad-suggest .pop-item.on { background: var(--bg-emphasis); }
 .qad-suggest .avatar { flex: none; }

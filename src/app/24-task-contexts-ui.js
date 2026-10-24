@@ -92,7 +92,7 @@ function openContextManager() {
     body.appendChild(add);
   };
   openDialog({
-    title: 'Contexts', width: 480, resizeKey: 'contexts',
+    title: 'Contexts', size: 'sm', resizeKey: 'contexts',
     body: (el) => { el.classList.add('ctxm'); body = el; paint(); },
     actions: [
       { label: 'Back to the defaults', run: () => { list = TASK_CONTEXT_DEFAULTS.map(c => ({ id: c.id, label: c.label, icon: c.icon, aliases: c.aliases.slice() })); paint(); return false; } },

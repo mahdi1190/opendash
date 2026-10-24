@@ -62,14 +62,15 @@ function _trvList(container, snap, trips) {
     ['Past', trips.filter(t => !t.candidate && ['home', 'past'].includes(t.status)).reverse()],
   ];
   if (!trips.length) {
-    mountEmptyState(page, { icon: 'map', title: 'No trips yet', text: 'Flights and trains in your calendar, trips and hotel stays, time abroad on this computer and card payments abroad show here.' });
+    mountEmptyState(page, { icon: 'map', title: 'No trips yet', text: 'Flights and trains in your calendar, trips and hotel stays, time abroad on this computer and card payments abroad show here.',
+      actions: [{ label: 'Open the calendar', icon: 'calendar', run: () => setView('calendar') }] });
     container.appendChild(page);
     return;
   }
   for (const [title, list] of groups) {
     if (!list.length) continue;
     const sec = document.createElement('section'); sec.className = 'tr-trips-g';
-    sec.innerHTML = `<h3 class="overline">${esc(title)}</h3>`;
+    sec.innerHTML = secHeadHtml({ title, count: list.length });
     const ul = document.createElement('div'); ul.className = 'tr-trips-list'; ul.setAttribute('role', 'list');
     for (const t of list) {
       const r = document.createElement('button'); r.type = 'button'; r.className = 'tr-trip-row'; r.setAttribute('role', 'listitem');
@@ -115,7 +116,7 @@ function _trvTimeline(t, snap) {
   const events = typeof CalStore !== 'undefined' && CalStore.data && Array.isArray(CalStore.data.events) ? CalStore.data.events : [];
   const days = trUiTimeline(t, { events, tasks, zone: snap.zone, homeZone: (snap.home || {}).zone, now: Clock.now(), scene: _trvScene });
   const box = document.createElement('section'); box.className = 'tr-tl'; box.dataset.mKey = `trip:${t.id}:days`;
-  box.innerHTML = `<h3 class="overline">Day by day${t.dest && t.dest.zone ? ` <span class="subtle">· ${esc(Clock.label(t.dest.zone))} time</span>` : ''}</h3>`;
+  box.innerHTML = secHeadHtml({ title: 'Day by day', sub: t.dest && t.dest.zone ? `${Clock.label(t.dest.zone)} time` : '' });
   for (const d of days) {
     const day = document.createElement('div'); day.className = 'tr-tl-day' + (d.today ? ' is-today' : ''); day.dataset.mKey = `trip:${t.id}:day:${d.date}`;
     if (d.today) day.setAttribute('aria-current', 'date');
@@ -138,9 +139,9 @@ function _trvTimeline(t, snap) {
 }
 function _trvMoney(t, snap) {
   const box = document.createElement('section'); box.className = 'tr-money'; box.dataset.mKey = `trip:${t.id}:money`;
-  box.innerHTML = '<h3 class="overline">Spending</h3>';
+  box.innerHTML = secHeadHtml({ title: 'Spending' });
   const cfg = typeof TravelStore !== 'undefined' ? TravelStore.config() : { sources: {} };
-  if (!cfg.sources || cfg.sources.bank === false) { box.insertAdjacentHTML('beforeend', '<p class="subtle">Card payments abroad are switched off in Settings > Travel & time.</p>'); return box; }
+  if (!cfg.sources || cfg.sources.bank === false) { box.insertAdjacentHTML('beforeend', '<p class="empty-line">Card payments abroad are switched off in Settings > Travel & time.</p>'); return box; }
   const c = _trvSpend.get(t.id);
   if (!c || (!c.busy && Date.now() - c.at > 10 * 60000)) {
     _trvSpend.set(t.id, { at: Date.now(), data: c ? c.data : null, busy: true });
@@ -150,7 +151,7 @@ function _trvMoney(t, snap) {
   if (!cur || (cur.busy && !cur.data)) { box.insertAdjacentHTML('beforeend', '<div class="skeleton tr-money-sk"></div>'); return box; }
   const homeCcy = (snap.home && snap.home.ccy) || (APP_CONFIG && APP_CONFIG.currency) || 'GBP';
   const s = trUiSpend(cur.data || {}, homeCcy);
-  if (!s.any) { box.insertAdjacentHTML('beforeend', '<p class="subtle">No card payments for this trip yet. They arrive 1–3 days after you pay.</p>'); return box; }
+  if (!s.any) { box.insertAdjacentHTML('beforeend', '<p class="empty-line">No card payments for this trip yet. They arrive 1–3 days after you pay.</p>'); return box; }
   const fmt = (v, ccy) => { try { return new Intl.NumberFormat(APP_CONFIG.locale || undefined, { style: 'currency', currency: ccy, maximumFractionDigits: ['JPY', 'KRW', 'ISK', 'HUF'].includes(ccy) ? 0 : 2 }).format(v); } catch (e) { return `${ccy} ${Math.round(v)}`; } };
   const tiles = document.createElement('div'); tiles.className = 'tr-money-tiles';
   const tile = (num, ccy, lbl, key) => `<div class="tr-mtile" data-m-key="trip:${escAttr(t.id)}:money:${escAttr(key)}"><b class="num hg-amt" data-count="${escAttr(String(num))}" data-ccy="${escAttr(ccy)}">${esc(fmt(num, ccy))}</b><span class="subtle">${esc(lbl)}</span></div>`;
@@ -173,30 +174,41 @@ function _trvHolidays(t) {
   const list = trUiTripHolidays(t, years.flatMap(y => TravelStore.holidays(t.dest.cc, Number(y)) || []));
   if (!list.length) return null;
   const box = document.createElement('section'); box.className = 'tr-hols'; box.dataset.mKey = `trip:${t.id}:holidays`;
-  box.innerHTML = '<h3 class="overline">Public holidays there</h3>' + list.map(h => `<div class="tr-hol">${icon('calendar-days', 'i-sm')}<b>${esc(trUiDate(h.date))}</b><span>${esc(h.name)}</span>${h.estimated ? '<span class="subtle">date may move by a day</span>' : ''}</div>`).join('');
+  box.innerHTML = secHeadHtml({ title: 'Public holidays there' }) + list.map(h => `<div class="tr-hol">${icon('calendar-days', 'i-sm')}<b>${esc(trUiDate(h.date))}</b><span>${esc(h.name)}</span>${h.estimated ? '<span class="subtle">date may move by a day</span>' : ''}</div>`).join('');
   return box;
 }
-function _trvActions(t) {
-  const bar = document.createElement('div'); bar.className = 'tr-acts'; bar.dataset.mKey = `trip:${t.id}:actions`;
-  const mk = (label, ic, run, cls) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + (cls || 'btn-secondary'); b.innerHTML = icon(ic, 'i-sm') + `<span>${esc(label)}</span>`; b.addEventListener('click', run); bar.appendChild(b); return b; };
-  if (t.candidate && !t.confirmed) mk('This is a trip', 'check', () => { TravelStore.confirm(t.id); toast('Saved as a trip', { kind: 'ok', icon: 'map', action: { label: 'Undo', run: () => undo() } }); render(); }, 'btn-primary');
-  mk('Rename', 'pencil', async () => {
-    const v = await promptDialog({ title: 'Rename trip', label: 'Name', value: t.label || '', placeholder: 'e.g. Conference week', confirmLabel: 'Rename' });
-    if (v == null) return;
-    TravelStore.rename(t.id, v); render();
-  });
-  mk('Add event', 'calendar-plus', () => {
-    const day = t.from > Clock.today() ? t.from : Clock.today();
-    const at = (min) => (typeof sgLocalISO === 'function' ? sgLocalISO(day, min) : new Date(Clock.at(day, min)).toISOString());
-    openEvent(null, { create: { title: '', start: at(10 * 60), end: at(11 * 60), location: (t.dest && t.dest.label) || '' } });
-  });
-  mk('Add task', 'list-todo', () => tcOpenCreate({ title: '', tags: ['trip'].concat(t.slug ? [t.slug] : []), date: t.from > Clock.today() ? clockAddDays(t.from, -1) : null }));
-  const more = mk('', 'ellipsis', () => openMenu(more, [
-    { label: 'Not a trip', icon: 'x', run: async () => { const before = state.travel ? JSON.parse(JSON.stringify(state.travel)) : undefined; await TravelStore.notTrip(t.id, { quiet: true }); setView('trips'); toast('Not a trip: it will not be suggested again.', { kind: 'ok', icon: 'map-pin', action: { label: 'Undo', run: () => { state.travel = before; saveData(); TravelStore.changed(); render(); } } }); } },
-    { label: 'Forget this trip…', icon: 'trash-2', danger: true, run: () => trForgetTripAsk(t.id, { after: () => setView('trips') }) },
-  ], { align: 'end', width: 220 }), 'btn-ghost');
-  more.setAttribute('aria-label', 'More');
-  return bar;
+/* The trip's actions live in the page header (UX_BLUEPRINT.md 3): one main action, the rest under More. */
+async function _trvRename(t) {
+  const v = await promptDialog({ title: 'Rename trip', label: 'Name', value: t.label || '', placeholder: 'e.g. Conference week', confirmLabel: 'Rename' });
+  if (v == null) return;
+  TravelStore.rename(t.id, v); render();
+}
+function _trvAddEvent(t) {
+  const day = t.from > Clock.today() ? t.from : Clock.today();
+  const at = (min) => (typeof sgLocalISO === 'function' ? sgLocalISO(day, min) : new Date(Clock.at(day, min)).toISOString());
+  openEvent(null, { create: { title: '', start: at(10 * 60), end: at(11 * 60), location: (t.dest && t.dest.label) || '' } });
+}
+function _trvAddTask(t) { tcOpenCreate({ title: '', tags: ['trip'].concat(t.slug ? [t.slug] : []), date: t.from > Clock.today() ? clockAddDays(t.from, -1) : null }); }
+async function _trvNotTrip(t) {
+  const before = state.travel ? JSON.parse(JSON.stringify(state.travel)) : undefined;
+  await TravelStore.notTrip(t.id, { quiet: true });
+  setView('trips');
+  toast('Not a trip: it won’t be suggested again', { kind: 'ok', icon: 'map-pin', action: { label: 'Undo', run: () => { state.travel = before; saveData(); TravelStore.changed(); render(); } } });
+}
+function _trvConfirm(t) { TravelStore.confirm(t.id); toast('Saved as a trip', { kind: 'ok', icon: 'map', action: { label: 'Undo', run: () => undo() } }); render(); }
+function _trvHeaderActions(view) {
+  const v = String(view || state.view || '');
+  if (!/^trip:/.test(v)) return {};
+  const t = _trvFind(v.slice(5)).trip;
+  if (!t) return {};
+  const maybe = t.candidate && !t.confirmed;
+  const primary = maybe ? { label: 'This is a trip', icon: 'check', run: () => _trvConfirm(t) } : { label: 'Add event', icon: 'calendar-plus', run: () => _trvAddEvent(t) };
+  const more = [{ label: 'Rename', icon: 'pencil', run: () => _trvRename(t) }];
+  if (maybe) more.unshift({ label: 'Add event', icon: 'calendar-plus', run: () => _trvAddEvent(t) });
+  more.push({ label: 'Add task', icon: 'list-todo', run: () => _trvAddTask(t) },
+    { label: 'Not a trip', icon: 'x', run: () => _trvNotTrip(t) },
+    { label: 'Forget this trip…', icon: 'trash-2', danger: true, run: () => trForgetTripAsk(t.id, { after: () => setView('trips') }) });
+  return { primary, more };
 }
 function _trvTrip(container, id) {
   const { snap, trip: t, trips } = _trvFind(id);
@@ -235,7 +247,6 @@ function _trvTrip(container, id) {
   body.appendChild(head);
   const clocks = _trvClocks(t, snap);
   if (clocks) body.insertAdjacentHTML('beforeend', clocks);
-  body.appendChild(_trvActions(t));
   const cols = document.createElement('div'); cols.className = 'tr-trip-cols';
   const left = document.createElement('div'); left.className = 'tr-trip-l';
   left.appendChild(_trvTimeline(t, snap));
@@ -259,6 +270,7 @@ registerSection('trips', {
   // Life > Places > Trips > (trip) since 2.18 (NAVIGATION_PLAN.md 2.2, 2.10)
   crumb: (v) => (v === 'trips' ? [{ label: 'Places', view: 'locations' }, 'Trips'] : [{ label: 'Places', view: 'locations' }, { label: 'Trips', view: 'trips' }, (_trvFind(v.slice(5)).trip || {}).label || 'Trip']),
   group: 'life', hashable: true, layout: 'page',
+  headerActions: _trvHeaderActions,
   mount(container, view) {
     const v = view || state.view;
     if (v === 'trips') { const { snap, trips } = _trvTrips(); _trvList(container, snap, trips); }

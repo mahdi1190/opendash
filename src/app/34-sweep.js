@@ -54,7 +54,8 @@ function rfSweepOpen() {
   const onKey = (e) => _rfSweepKey(e);
   window.addEventListener('keydown', onKey, true);
   _rfSw.close = openDialog({
-    title: 'Today → Tomorrow', width: 720, resizable: false,
+    // Fixed (UI_CLEANUP_PLAN.md 1.3): the list scrolls as tasks are decided; the key legend stays at the bottom.
+    title: 'Today → Tomorrow', size: 'lg', fixed: true, className: 'rf-sw', resizable: false,
     body: (b) => { _rfSw.root = b; b.classList.add('rf-sw-b'); b.tabIndex = -1; _rfSweepPaint(); setTimeout(() => { try { b.focus({ preventScroll: true }); } catch (e) {} }, 10); },
     onClose: () => { window.removeEventListener('keydown', onKey, true); _rfSw.close = null; _rfSw.root = null; },
   });
@@ -70,9 +71,8 @@ function _rfSweepPaint() {
   const head = document.createElement('div'); head.className = 'rf-sw-head';
   head.innerHTML = `<div class="rf-sw-score"><b class="num">${esc(doneToday)}</b><span>done today</span></div><div class="rf-sw-score"><b class="num">${esc(left.length)}</b><span>left to decide</span></div><span class="spacer"></span>`;
   if (left.length > 1) {
-    const all = document.createElement('button'); all.type = 'button'; all.className = 'btn btn-secondary btn-sm';
-    all.innerHTML = icon('sunrise', 'i-sm') + `<span>All ${esc(left.length)} to tomorrow</span><kbd class="kbd">A</kbd>`;
-    all.onclick = () => _rfSweepAll();
+    const all = uiButton({ label: `All ${left.length} to tomorrow`, icon: 'sunrise', iconCls: 'i-sm', size: 'sm', run: () => _rfSweepAll() });
+    all.insertAdjacentHTML('beforeend', '<kbd class="kbd">A</kbd>');
     head.appendChild(all);
   }
   b.appendChild(head);
@@ -82,8 +82,8 @@ function _rfSweepPaint() {
     const moved = Object.values(_rfSw.dec).filter(k => k === 'tomorrow').length;
     end.innerHTML = `<div class="rf-end-hero">${art}</div><h2>${ids.length ? 'Today is wrapped up' : 'Nothing left over today'}</h2><p class="muted">${ids.length ? `${esc(moved)} moved to tomorrow. ` : ''}Tomorrow starts clean. Enjoy your evening.</p>`;
     if (ids.length) end.insertAdjacentHTML('beforeend', rfCountsHtml(Object.values(_rfSw.dec).reduce((c, k) => (c[k] = (c[k] || 0) + 1, c), {})));
-    const close = document.createElement('button'); close.type = 'button'; close.className = 'btn btn-primary'; close.innerHTML = '<span>Done</span><kbd class="kbd">Enter</kbd>';
-    close.onclick = () => _rfSw.close && _rfSw.close();
+    const close = uiButton({ label: 'Done', kind: 'primary', run: () => _rfSw.close && _rfSw.close() });
+    close.insertAdjacentHTML('beforeend', '<kbd class="kbd">Enter</kbd>');
     end.appendChild(close);
     b.appendChild(end);
     if (ids.length && typeof animBurst === 'function') try { animBurst(end.querySelector('.rf-end-hero'), 'celebration'); } catch (e) {}
@@ -200,11 +200,11 @@ function rfPlanWeekOpen(o) {
   const onKey = (e) => _rfPlanKey(e);
   window.addEventListener('keydown', onKey, true);
   _rfPw.close = openDialog({
-    title: 'Plan my week', width: 1100, resizable: false,
+    // Fixed and tall (UI_CLEANUP_PLAN.md 1.3): each day column scrolls inside as tasks are placed.
+    title: 'Plan my week', size: 'xl', fixed: true, height: '90vh', className: 'rf-pw', resizable: false,
     body: (b) => { _rfPw.root = b; b.classList.add('rf-pw-b'); b.tabIndex = -1; _rfPlanPaint(); setTimeout(() => { try { b.focus({ preventScroll: true }); } catch (e) {} }, 10); },
     onClose: () => { window.removeEventListener('keydown', onKey, true); _rfPw.close = null; _rfPw.root = null; },
   });
-  const dlg = _rfPw.root && _rfPw.root.closest('.modal'); if (dlg) dlg.classList.add('rf-pw');
 }
 function _rfPlanDays() {
   const out = [];
@@ -225,11 +225,10 @@ function _rfPlanPaint() {
   const wk = document.createElement('label'); wk.className = 'rf-pw-wk';
   wk.innerHTML = `<input type="checkbox"${rfPlanWeekends() ? ' checked' : ''}><span>Weekends</span>`;
   wk.querySelector('input').onchange = (e) => { setTaskViewPref('plan', { weekends: e.target.checked || null }); _rfPlanPaint(); };
-  const nav = (dir) => { const b2 = document.createElement('button'); b2.type = 'button'; b2.className = 'btn-icon btn-sm'; b2.setAttribute('aria-label', dir < 0 ? 'Earlier' : 'Later'); b2.innerHTML = icon(dir < 0 ? 'chevron-left' : 'chevron-right', 'i-sm'); b2.disabled = dir < 0 && _rfPw.from <= todayStr(); b2.onclick = () => { const nx = _isoPlus(dir * 7, _rfPw.from); _rfPw.from = nx < todayStr() ? todayStr() : nx; _rfPlanPaint(); }; return b2; };
-  const auto = document.createElement('button'); auto.type = 'button'; auto.className = 'btn btn-primary btn-sm';
-  auto.innerHTML = icon('wand-sparkles', 'i-sm') + `<span>Auto-plan ${esc(cands.length)}</span><kbd class="kbd">A</kbd>`;
-  auto.disabled = !cands.length;
-  auto.onclick = () => _rfPlanAuto();
+  const nav = (dir) => uiButton({ icon: dir < 0 ? 'chevron-left' : 'chevron-right', iconCls: 'i-sm', size: 'sm', aria: dir < 0 ? 'Earlier' : 'Later', disabled: dir < 0 && _rfPw.from <= todayStr(),
+    run: () => { const nx = _isoPlus(dir * 7, _rfPw.from); _rfPw.from = nx < todayStr() ? todayStr() : nx; _rfPlanPaint(); } });
+  const auto = uiButton({ label: `Auto-plan ${cands.length}`, icon: 'wand-sparkles', iconCls: 'i-sm', kind: 'primary', size: 'sm', disabled: !cands.length, run: () => _rfPlanAuto() });
+  auto.insertAdjacentHTML('beforeend', '<kbd class="kbd">A</kbd>');
   bar.innerHTML = `<b class="rf-pw-range">${esc(_rfShort(days[0]))} – ${esc(_rfShort(days[6]))}</b>`;
   bar.prepend(nav(-1)); bar.appendChild(nav(1));
   bar.append(Object.assign(document.createElement('span'), { className: 'spacer' }), sel, wk, auto);
@@ -262,7 +261,7 @@ function _rfPlanPaint() {
       + `<div class="rf-cap-bar" title="${escAttr(`${_rfHours(L.meet)} of meetings + ${_rfHours(L.work)} of work, against ${rfCapacityHours()} h`)}"><i class="m" style="--pct:${mp}%"></i><i class="w" style="--pct:${wp}%"></i></div>`
       + `<div class="rf-cap-s">${L.free >= 0 ? `${esc(_rfHours(L.free))} free` : `${esc(_rfHours(-L.free))} over`}${L.events ? `<span class="muted"> · ${esc(L.events)} meeting${L.events === 1 ? '' : 's'}</span>` : ''}</div>`;
     const list = document.createElement('ul'); list.className = 'rf-pw-dl';
-    for (const t of L.tasks.slice(0, 12)) {
+    for (const t of L.tasks) {                                   // the column scrolls, so every task shows
       const li = document.createElement('li'); li.className = 'rf-pw-chip' + (t.plannedFor === iso ? ' planned' : ' due');
       li.innerHTML = `${typeof streamMarkHtml === 'function' ? streamMarkHtml(effStream(t)) : ''}<span></span>`;
       li.querySelector('span:last-child').textContent = effTitle(t);
@@ -274,7 +273,6 @@ function _rfPlanPaint() {
       }
       list.appendChild(li);
     }
-    if (L.tasks.length > 12) list.insertAdjacentHTML('beforeend', `<li class="muted rf-pw-more">+${L.tasks.length - 12} more</li>`);
     col.appendChild(list);
     col.ondragover = (e) => { if ([...e.dataTransfer.types].includes('text/x-rf-task')) { e.preventDefault(); col.classList.add('drag-over'); } };
     col.ondragleave = (e) => { if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over'); };

@@ -93,7 +93,7 @@ function _nbRerender() {
   else if (typeof homeRerenderWidget === 'function') homeRerenderWidget('notebook');
 }
 function _nbBtn(cls, html, o) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html;
+  const b = hglBtn(cls); b.innerHTML = html;
   o = o || {};
   if (o.label) b.setAttribute('aria-label', o.label);
   if (o.tip) b.setAttribute('data-tip', o.tip);
@@ -135,8 +135,7 @@ function _nbRender(el, ctx) {
 }
 
 function _nbHead(ctx, size, date, today) {
-  const h = document.createElement('div'); h.className = 'card-h nb-h';
-  h.innerHTML = `${icon('notebook-pen')}<h3>Daily note</h3>`;
+  const h = cardHead({ icon: 'notebook-pen', title: 'Daily note', cls: 'nb-h' });
   if (size === 's') {
     const d = document.createElement('span'); d.className = 'nb-h-day'; d.textContent = _nbShort(today);
     h.appendChild(d);
@@ -181,7 +180,7 @@ function _nbSmall(body, ctx, today) {
     if (typeof draftSet === 'function') { if (inp.value.trim()) draftSet('nb:write', { text: inp.value, day: todayStr() }); else if (typeof draftDel === 'function') draftDel('nb:write'); }
   };
   inp.onkeydown = (e) => { if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); form.requestSubmit ? form.requestSubmit() : form.onsubmit(e); } };
-  const go = _nbBtn('btn btn-secondary btn-sm nb-write-go', `${icon('corner-down-left')}<span>Write</span>`, { tip: 'Adds the line with the time' });
+  const go = _nbBtn('btn btn-secondary btn-sm nb-write-go', `${icon('corner-down-left', 'i-sm')}<span>Write</span>`, { tip: 'Adds the line with the time' });
   go.type = 'submit';
   form.append(inp, go);
   form.onsubmit = (e) => {
@@ -216,15 +215,15 @@ function _nbPaintLast(box, day, animate) {
 /* ---------- M and up: the editor ---------- */
 function _nbEditor(main, ctx, date, today) {
   const bar = document.createElement('div'); bar.className = 'nb-bar';
-  const ins = _nbBtn('btn btn-ghost btn-sm nb-ins', `${icon('clock')}<span>Insert time</span>`, { act: 'time', label: 'Insert time', tip: 'Insert time (Alt+T)', run: () => _nbInsertTime() });
+  const ins = _nbBtn('btn btn-ghost btn-sm nb-ins', `${icon('clock', 'i-sm')}<span>Insert time</span>`, { act: 'time', label: 'Insert time', tip: 'Insert time (Alt+T)', run: () => _nbInsertTime() });
   ins.addEventListener('mousedown', (e) => e.preventDefault());       // the editor keeps focus (no blur, no extra save)
   if (_nb.preview) ins.disabled = true;
-  const pv = _nbBtn('btn btn-ghost btn-sm nb-pv' + (_nb.preview ? ' is-on' : ''), `${icon('eye')}<span>Preview</span>`, {
+  const pv = _nbBtn('btn btn-ghost btn-sm nb-pv' + (_nb.preview ? ' is-on' : ''), `${icon('eye', 'i-sm')}<span>Preview</span>`, {
     act: 'preview', label: 'Preview', tip: _nb.preview ? 'Back to editing' : 'See it formatted; checkbox lines can become tasks',
     run: () => { _nbFlush('preview'); _nb.preview = !_nb.preview; _nb.focused = false; _nbRerender(); },
   });
   pv.setAttribute('aria-pressed', _nb.preview ? 'true' : 'false');
-  const cp = _nbBtn('btn btn-ghost btn-sm nb-copy', `${icon('copy')}<span>Copy day</span>`, { act: 'copy', label: 'Copy day', tip: "Copy the day's markdown" });
+  const cp = _nbBtn('btn btn-ghost btn-sm nb-copy', `${icon('copy', 'i-sm')}<span>Copy day</span>`, { act: 'copy', label: 'Copy day', tip: "Copy the day's markdown" });
   cp.onclick = () => _nbCopy(cp, date);
   const st = document.createElement('span'); st.className = 'nb-status';
   bar.append(ins, pv, cp, st);
@@ -383,18 +382,18 @@ function _nbFail(msg) {
   // Announced (role=alert); a successful save is not.
   // The words stay in the editor; Copy puts them somewhere safe meanwhile.
   const text = _nb.ta ? _nb.ta.value : '';
-  toast(`Daily note not saved: ${_nb.failed}`, { kind: 'err', timeout: 9000, action: text && navigator.clipboard ? { label: 'Copy the text', run: () => navigator.clipboard.writeText(text).then(() => toast('Copied', { kind: 'ok', icon: 'copy' }), () => toast('Could not copy the note', { kind: 'err' })) } : undefined });
+  toastError('save the daily note', _nb.failed, text ? { label: 'Copy the text', run: () => copyText(text, 'Note') } : undefined);
 }
 function _nbPaintStatus(fresh) {
   const st = _nb.statusEl;
   if (!st || !st.isConnected) return;
   st.classList.remove('is-fresh', 'is-err', 'is-stale');
-  if (_nb.failed) { st.classList.add('is-err'); st.innerHTML = `${icon('circle-alert')}<span>Not saved</span>`; st.title = _nb.failed; return; }
+  if (_nb.failed) { st.classList.add('is-err'); st.innerHTML = `${icon('circle-alert', 'i-xs')}<span>Not saved</span>`; st.title = _nb.failed; return; }
   st.title = '';
   if (!_nb.savedAt) { st.textContent = ''; return; }
   const d = Clock.parts(new Date(_nb.savedAt).getTime());   // the time on the page's clock
   const off = typeof _serverAvailable !== 'undefined' && !_serverAvailable;
-  st.innerHTML = `${icon('check')}<span>Saved ${esc(dnHM(d.h * 60 + d.mi))}${off ? ' in this browser' : ''}</span>`;
+  st.innerHTML = `${icon('check', 'i-xs')}<span>Saved ${esc(dnHM(d.h * 60 + d.mi))}${off ? ' in this browser' : ''}</span>`;
   if (fresh) { void st.offsetWidth; st.classList.add('is-fresh'); }
   if (_nb.dirty) st.classList.add('is-stale');
 }
@@ -449,11 +448,11 @@ async function _nbCopy(btn, date) {
   const md = _nb.ta && _nb.taDate === date ? _nb.ta.value : daynoteMd(date);
   if (!md.trim()) { toast('Nothing written on this day yet', {}); return; }
   try {
-    await navigator.clipboard.writeText(md);
-    btn.innerHTML = `${icon('check')}<span>Copied</span>`; btn.classList.add('is-done');
+    if (!await copyText(md, 'Note')) return;
+    btn.innerHTML = `${icon('check', 'i-sm')}<span>Copied</span>`; btn.classList.add('is-done');
     if (typeof homeAnnounce === 'function') homeAnnounce('Copied the note');
-    setTimeout(() => { if (btn.isConnected) { btn.innerHTML = `${icon('copy')}<span>Copy day</span>`; btn.classList.remove('is-done'); } }, 1600);
-  } catch (e) { toast('Could not copy the note', { kind: 'err' }); }
+    setTimeout(() => { if (btn.isConnected) { btn.innerHTML = `${icon('copy', 'i-sm')}<span>Copy day</span>`; btn.classList.remove('is-done'); } }, 1600);
+  } catch (e) { toastError('copy the note', e); }
 }
 
 /* ---------- day navigation (writes nothing) ---------- */
@@ -519,12 +518,12 @@ function _nbTodoRow(date, t) {
     row.setAttribute('data-row', key); row.tabIndex = 0;
     row.setAttribute('aria-label', `${title}. Enter: make a task from it. X: add it as a task now.`);
     const acts = document.createElement('span'); acts.className = 'nb-todo-acts';
-    const mk = _nbBtn('btn btn-secondary btn-sm nb-make', `${icon('circle-plus')}<span>Make task</span>`, {
+    const mk = _nbBtn('btn btn-secondary btn-sm nb-make', `${icon('circle-plus', 'i-sm')}<span>Make task</span>`, {
       act: 'make', tip: 'Opens a new task filled in with this line; Save adds it',
     });
     mk.setAttribute('aria-label', `Make a task from: ${title}`);
     mk.onclick = () => _nbMakeTask(date, t, mk, row);
-    const ok = _nbBtn('btn-icon btn-sm nb-quick', icon('check'), { act: 'quick', label: `Add as a task now: ${title}`, tip: 'Add it now (Undo in the message)' });
+    const ok = _nbBtn('btn-icon btn-sm nb-quick', icon('check', 'i-sm'), { act: 'quick', label: `Add as a task now: ${title}`, tip: 'Add it now (Undo in the message)' });
     ok.onclick = () => _nbQuickTask(date, t, ok);
     acts.append(mk, ok);
     row.appendChild(acts);
@@ -593,14 +592,14 @@ function _nbSide(ctx, date, today) {
   // Yesterday (folded): the day before the one shown.
   const y = dnAddDays(date, -1), ymd = daynoteMd(y);
   const det = document.createElement('details'); det.className = 'nb-sec nb-sec-y'; det.open = _nb.yOpen;
-  det.innerHTML = `<summary>${icon('chevron-right', _NB_CHEV)}<span class="nb-sec-h">${esc(date === today ? 'Yesterday' : 'The day before')}</span><span class="nb-sec-d">${esc(_nbShort(y))}${ymd.trim() ? '' : ' · nothing written'}</span></summary>`;
+  det.innerHTML = `<summary>${icon('chevron-right', _NB_CHEV)}<span class="nb-sec-t">${esc(date === today ? 'Yesterday' : 'The day before')}</span><span class="nb-sec-d">${esc(_nbShort(y))}${ymd.trim() ? '' : ' · nothing written'}</span></summary>`;
   const yb = document.createElement('div'); yb.className = 'nb-sec-b';
   if (ymd.trim()) {
     const md = document.createElement('div'); md.className = 'md nb-md nb-md-sm';
     md.innerHTML = renderMarkdown(dnNorm(ymd).split('\n').slice(0, 40).join('\n'));
     yb.appendChild(md);
   } else yb.innerHTML = '<p class="nb-none">Nothing was written that day.</p>';
-  yb.appendChild(_nbBtn('btn btn-ghost btn-sm nb-goto', `<span>Go to ${esc(_nbShort(y))}</span>${icon('arrow-right')}`, { act: 'goto-y', run: () => _nbGo(y) }));
+  yb.appendChild(_nbBtn('btn btn-ghost btn-sm nb-goto', `<span>Go to ${esc(_nbShort(y))}</span>${icon('arrow-right', 'i-sm')}`, { act: 'goto-y', run: () => _nbGo(y) }));
   det.appendChild(yb);
   det.addEventListener('toggle', () => { _nb.yOpen = det.open; });
   side.appendChild(det);
@@ -610,7 +609,7 @@ function _nbSide(ctx, date, today) {
     const items = [['A month ago', o.month], ['A year ago', o.year]].filter(([, d]) => daynoteMd(d).trim());
     if (items.length) {
       const sec = document.createElement('section'); sec.className = 'nb-sec nb-sec-otd';
-      sec.innerHTML = `<h4 class="nb-sec-h">${icon('history')}<span>On this day</span></h4>`;
+      sec.innerHTML = secHeadHtml({ icon: 'history', title: 'On this day', cls: 'nb-sec-h' });
       for (const [label, d] of items) {
         const lines = dnNorm(daynoteMd(d)).split('\n').map(dnShow).filter(Boolean).slice(0, 2);
         const b = _nbBtn('nb-otd', `<span class="nb-otd-k">${esc(label)} · ${esc(_nbShort(d))}</span>${lines.map(l => `<span class="nb-otd-t">${esc(l)}</span>`).join('')}`, { act: 'otd', run: () => _nbGo(d) });
@@ -631,7 +630,7 @@ function _nbPaintSideTasks(sec, date, today) {
   date = date || _nb.date || todayStr(); today = today || todayStr();
   const tasks = dnTasks(daynoteMd(date));
   const open = tasks.filter(t => !t.done).length;
-  sec.innerHTML = `<h4 class="nb-sec-h">${icon('list-todo')}<span>${esc(date === today ? "Tasks in today's note" : 'Tasks in this note')}</span>${open ? `<span class="nb-sec-n">${open}</span>` : ''}</h4>`;
+  sec.innerHTML = secHeadHtml({ icon: 'list-todo', title: date === today ? "Tasks in today's note" : 'Tasks in this note', count: open || '', cls: 'nb-sec-h' });
   if (!tasks.length) {
     const p = document.createElement('p'); p.className = 'nb-none';
     p.innerHTML = 'Start a line with <code>- [ ]</code> and it can become a task.';
@@ -667,7 +666,7 @@ function _nbFullTop(ctx, date, today) {
   requestAnimationFrame(() => { const cur = strip.querySelector('.is-current'); if (cur && strip.scrollWidth > strip.clientWidth) strip.scrollLeft = Math.max(0, cur.offsetLeft - strip.clientWidth / 2); });
   const search = document.createElement('div'); search.className = 'nb-search';
   const field = document.createElement('label'); field.className = 'input input-sm nb-search-f';
-  field.innerHTML = icon('search');
+  field.innerHTML = icon('search', 'i-sm');
   const inp = document.createElement('input'); inp.type = 'search'; inp.className = 'nb-search-in';
   inp.dataset.fk = 'nb-search'; inp.placeholder = 'Search every note'; inp.setAttribute('aria-label', 'Search every daily note');
   inp.value = _nb.q; inp.maxLength = 200;
@@ -730,7 +729,7 @@ function _nbSettings(anchor, ctx) {
   openPopover(anchor, (el) => {
     el.classList.add('hg-set', 'nb-set');
     const p = homePrefs(ctx);
-    el.innerHTML = `<div class="hg-set-h">${icon('notebook-pen')}<b>Daily note settings</b></div>`;
+    el.innerHTML = `${cardHeadHtml({ icon: 'notebook-pen', title: 'Daily note settings', cls: 'hg-set-h' })}`;
     const row = document.createElement('div'); row.className = 'hg-set-row';
     row.innerHTML = '<div class="hg-set-l"><span>On this day</span><small>Large: the same date last month and last year</small></div>';
     const sw = document.createElement('button'); sw.type = 'button'; sw.className = 'switch' + (p.onThisDay !== false ? ' on' : '');
@@ -754,7 +753,7 @@ function _nbSettings(anchor, ctx) {
     };
     ta.onchange = save;
     const acts = document.createElement('div'); acts.className = 'nb-set-acts';
-    const use = _nbBtn('btn btn-ghost btn-sm', `${icon('copy')}<span>Use today's note</span>`, { run: () => { const md = daynoteMd(todayStr()); if (!md.trim()) { msg.textContent = 'Nothing written today yet'; return; } ta.value = md.slice(0, 2000); save(); } });
+    const use = _nbBtn('btn btn-ghost btn-sm', `${icon('copy', 'i-sm')}<span>Use today's note</span>`, { run: () => { const md = daynoteMd(todayStr()); if (!md.trim()) { msg.textContent = 'Nothing written today yet'; return; } ta.value = md.slice(0, 2000); save(); } });
     const msg = document.createElement('span'); msg.className = 'nb-set-msg'; msg.setAttribute('role', 'status');
     acts.append(use, msg);
     t.append(ta, acts);
@@ -767,12 +766,13 @@ function _nbRenderSample(el, ctx, size) {
   const md = String((typeof homeSample === 'function' && homeSample('note')) || '- 09:10 Tried the new outline.\n- [ ] Ask Sam about the figures');
   const today = todayStr();
   const card = document.createElement('section'); card.className = `card home-card nb nb--${size} is-sample`;
-  card.innerHTML = `<div class="card-h nb-h">${icon('notebook-pen')}<h3>Daily note</h3><span class="nb-h-day">${esc(size === 's' ? _nbShort(today) : 'Today · ' + _nbShort(today))}</span><span class="spacer"></span></div>`;
+  card.innerHTML = cardHeadHtml({ icon: 'notebook-pen', title: 'Daily note', cls: 'nb-h' });
+  card.querySelector('.spacer').insertAdjacentHTML('beforebegin', `<span class="nb-h-day">${esc(size === 's' ? _nbShort(today) : 'Today · ' + _nbShort(today))}</span>`);
   const body = document.createElement('div'); body.className = 'card-b nb-b';
   card.appendChild(body); el.appendChild(card);
   if (size === 's') {
     body.innerHTML = `<div class="nb-last"><span class="nb-last-k">Last line</span><span class="nb-last-t">${esc(dnShow(dnLastLine(md.split('\n').filter(l => !/\[ \]/.test(l)).join('\n'))))}</span></div>`
-      + `<div class="nb-write"><input class="control nb-write-in" disabled placeholder="${escAttr(dnPlaceholder({ hour: Clock.parts().h, rel: 0 }))}" aria-label="Write (preview)"><span class="btn btn-secondary btn-sm nb-write-go" aria-hidden="true">${icon('corner-down-left')}<span>Write</span></span></div>`;
+      + `<div class="nb-write"><input class="control nb-write-in" disabled placeholder="${escAttr(dnPlaceholder({ hour: Clock.parts().h, rel: 0 }))}" aria-label="Write (preview)"><span class="btn btn-secondary btn-sm nb-write-go" aria-hidden="true">${icon('corner-down-left', 'i-sm')}<span>Write</span></span></div>`;
     return true;
   }
   const grid = document.createElement('div'); grid.className = 'nb-grid'; body.appendChild(grid);
@@ -783,7 +783,7 @@ function _nbRenderSample(el, ctx, size) {
   if (size === 'l' || size === 'full') {
     const side = document.createElement('aside'); side.className = 'nb-side';
     const todos = dnTasks(md).map(t => `<div class="nb-todo">${icon('square', _NB_TODO_IC)}<span class="nb-todo-t">${esc(dnTaskTitle(t.text))}</span><span class="nb-todo-acts"><span class="btn btn-secondary btn-sm nb-make" aria-hidden="true">${icon('circle-plus')}<span>Make task</span></span></span></div>`).join('');
-    side.innerHTML = `<section class="nb-sec"><h4 class="nb-sec-h">${icon('list-todo')}<span>Tasks in today's note</span></h4>${todos}</section>`;
+    side.innerHTML = `<section class="nb-sec">${secHeadHtml({ icon: 'list-todo', title: "Tasks in today's note", cls: 'nb-sec-h' })}${todos}</section>`;
     grid.appendChild(side);
   }
   return true;

@@ -623,6 +623,10 @@ function renderDetail() {
   // One click back to the centre card (and the card has "Open in side panel").
   // "Open in the centre" also switches the next opens back to the card for this session (61-task-card.js).
   if (typeof openTask === 'function') hb('scan', 'Open in the centre', () => { if (typeof switchItemMode === 'function') switchItemMode('card'); openTask(id, { mode: 'card', from: dp }); }, 'dp-to-card');
+  if (typeof tgShareTaskDialog === 'function' && typeof tgOn === 'function' && tgOn() && !(item.shared && item.shared.space)) {
+    const canShare = typeof tgChannel === 'function' && tgChannel() && tgFriends().length;
+    hb('user-plus', canShare ? 'Share with a friend…' : 'Share with a friend: add a friend first', () => { if (canShare) tgShareTaskDialog(id); else if (typeof friendsAddDialog === 'function') friendsAddDialog(); else setView('friends'); });
+  }
   hb('ellipsis', 'More', (a) => openTaskMenu(a, id), '', '.');
   hb('x', 'Close', () => closeDetail(), '', 'Esc');
   dp.insertBefore(hdr, hero);   // header, then the scene band, then the body
@@ -632,6 +636,7 @@ function renderDetail() {
   body.appendChild(tdDescSection(id, view, rerender, keep));
   body.appendChild(_buildSubtaskSection(item, getSubtasks(id)));
   const rel = tdRelatedSection(id); if (rel) body.appendChild(rel);
+  const xps = typeof expTaskSection === 'function' ? expTaskSection(id) : null; if (xps) body.appendChild(xps);   // its expense (66-expenses-2widget.js)
   body.appendChild(tdNotesSection(id));
   body.appendChild(tdActivitySection(id, view, () => renderDetail()));
   body.appendChild(tdChatSection(id));
@@ -687,7 +692,7 @@ function _openRescheduleDialog(id) {
   const item = getItem(id); if (!item) return;
   let dateIn, reasonIn;
   openDialog({
-    title: 'Reschedule', width: 420, resizeKey: 'reschedule',
+    title: 'Reschedule', size: 'sm', resizeKey: 'reschedule',
     body: (el) => {
       el.innerHTML = '';
       const f1 = document.createElement('label'); f1.className = 'field';

@@ -13,20 +13,40 @@ const TG_TABS = [
   ['garden', 'Shared bed', 'sprout'],   // ── garden-social ── (2.18) the co-op bed: 94-garden-social-3bed.js (shown when it is there)
 ];
 
+
+/** The shared page header's actions (14-shell.js headerActions): the hub's, or the open space's. */
+function tgHeaderActions(view) {
+  const parts = String(view || '').split(':');
+  if (parts.length < 2) {
+    const off = !tgChannel();
+    const anchor = () => document.querySelector('#view-actions .view-act-more') || document.getElementById('view-actions');
+    return {
+      primary: { label: 'New space', icon: 'plus', disabled: off, run: () => tgNewSpaceDialog() },
+      icons: [
+        { icon: 'refresh-cw', label: 'Check with friends now', run: async () => { const r = await tgPost('/api/together/hello', {}); if (r) toast(r.asked ? `Asked ${r.asked} time${r.asked === 1 ? '' : 's'}: anything missing arrives in a moment` : 'Nothing to check yet', { icon: 'refresh-cw' }); tgLoadSoon(1500); } },
+        { icon: 'settings', label: 'Together settings', run: (e, b) => tgSettingsMenu(b) },
+      ],
+      more: [
+        { label: 'Find a time', icon: 'calendar-clock', disabled: off, run: () => tgFindTimeDialog({}) },
+        { label: 'Focus together', icon: 'timer', disabled: off, run: () => tgFocusTogetherMenu(anchor()) },
+      ],
+    };
+  }
+  const sp = tgSpace(parts[1]);
+  if (!sp || sp.status === 'invited' || !sp.value) return null;
+  const owner = sp.value.meta && sp.value.meta.owner === tgMe() && sp.status === 'joined';
+  return {
+    primary: owner ? { label: 'Invite', icon: 'user-plus', run: () => tgInviteDialog(sp.id) } : null,
+    icons: [{ icon: 'ellipsis', label: 'Space menu', run: (e, b) => tgSpaceMenu(b, sp) }],
+    more: [{ label: 'Find a time', icon: 'calendar-clock', run: () => tgFindTimeDialog({ space: sp.id }) }],
+  };
+}
+
 /* ---------- the hub ---------- */
 function tgRenderHub(root) {
   const sub = document.getElementById('view-subtitle');
   if (sub) sub.textContent = tgChannel() ? `${tgSpaces().length} shared space${tgSpaces().length === 1 ? '' : 's'}` : '';
-  const bar = tgEl('div', 'tg-bar');
-  bar.append(
-    tgBtn('New space', { primary: true, icon: 'plus', run: () => tgNewSpaceDialog(), disabled: !tgChannel() }),
-    tgBtn('Find a time', { icon: 'calendar-clock', run: () => tgFindTimeDialog({}), disabled: !tgChannel() }),
-    tgBtn('Focus together', { icon: 'timer', run: (e, b) => tgFocusTogetherMenu(b), disabled: !tgChannel() }),
-  );
-  const sp = tgEl('span', 'spacer'); bar.appendChild(sp);
-  bar.appendChild(tgIconBtn('refresh-cw', 'Check with friends now', async () => { const r = await tgPost('/api/together/hello', {}); if (r) toast(r.asked ? `Asked ${r.asked} time${r.asked === 1 ? '' : 's'}: anything missing arrives in a moment` : 'Nothing to check yet', { icon: 'refresh-cw' }); tgLoadSoon(1500); }));
-  bar.appendChild(tgIconBtn('settings', 'Together settings', (e, b) => tgSettingsMenu(b)));
-  root.appendChild(bar);
+  // New space, Find a time, Focus together, the refresh and the settings live in the shared page header (tgHeaderActions below).
   if (!tgHas() || _tg.data.failed) { root.appendChild(tgWaitEl('your spaces')); return; }
   if (!tgChannel()) {
     const box = tgEl('div', 'tg-card tg-intro');
@@ -213,10 +233,7 @@ function tgRenderSpace(root, id, tab) {
   people.title = tgMembers(v).map(f => tgName(f, v)).join(', ');
   head.appendChild(people);
   if (sp.status !== 'joined') head.appendChild(tgEl('span', 'tg-chip', sp.status === 'removed' ? 'You were removed' : 'You left'));
-  head.appendChild(tgEl('span', 'spacer'));
-  if (v.meta.owner === tgMe() && sp.status === 'joined') head.appendChild(tgBtn('Invite', { icon: 'user-plus', run: () => tgInviteDialog(id) }));
-  head.appendChild(tgBtn('Find a time', { icon: 'calendar-clock', run: () => tgFindTimeDialog({ space: id }) }));
-  head.appendChild(tgIconBtn('ellipsis', 'Space menu', (e, b) => tgSpaceMenu(b, sp)));
+  // Invite, Find a time and the space menu live in the shared page header (tgHeaderActions).
   root.appendChild(head);
   // Tabs.
   const tabs = tgEl('div', 'seg tg-tabs'); tabs.setAttribute('role', 'tablist');
@@ -530,7 +547,7 @@ function tgOpenItem(spaceId, itemId) {
   const ro = sp.status !== 'joined';
   _tgDrawer = { space: spaceId, item: itemId, close: null };
   _tgDrawer.close = openDrawer({
-    title: tgSpaceName(sp), width: 460,
+    title: tgSpaceName(sp), size: 'sm',
     body: (el) => { _tgDrawer.el = el; const it = (sp.value.items || []).find(x => x.id === itemId); _tgDrawer.sig = JSON.stringify(it || null) + '|' + sp.status; tgPaintItem(el, spaceId, itemId, ro); },
     onClose: () => { _tgDrawer = null; },
   });
@@ -660,7 +677,7 @@ function tgFriendPicker(el, chosen, opts) {
   opts = opts || {};
   const wrap = tgEl('div', 'tg-pick');
   const fr = tgFriends().filter(f => !(opts.exclude || []).includes(f.id));
-  if (!fr.length) { wrap.appendChild(tgEl('p', 'muted tg-sm', 'No friends to pick yet: add one in Friends.')); el.appendChild(wrap); return; }
+  if (!fr.length) { wrap.appendChild(emptyLine('No friends to pick yet.', { label: 'Add a friend', icon: 'user-plus', run: () => { if (typeof friendsAddDialog === 'function') friendsAddDialog(); else setView('friends'); } })); el.appendChild(wrap); return; }
   for (const f of fr) {
     const l = tgEl('label', 'tg-pick-row');
     const c = document.createElement('input'); c.type = opts.single ? 'radio' : 'checkbox'; c.name = 'tg-pick'; c.checked = chosen.has(f.id);
@@ -678,7 +695,7 @@ function tgNewSpaceDialog(preset) {
   const chosen = new Set(preset.members || []);
   let kind = preset.kind || 'list', name = null, startIn = null, endIn = null, placeIn = null;
   openDialog({
-    title: 'New shared space', width: 520,
+    title: 'New shared space', size: 'md',
     body: (el) => {
       const kinds = tgEl('div', 'tg-kinds');
       for (const k of ['list', 'board', 'party', 'trip', 'house']) {
@@ -736,7 +753,7 @@ function tgInviteDialog(spaceId) {
   const v = tgVal(spaceId); if (!v) return;
   const chosen = new Set();
   openDialog({
-    title: 'Invite friends', width: 440,
+    title: 'Invite friends', size: 'sm',
     body: (el) => { tgFriendPicker(el, chosen, { exclude: Object.keys(v.members || {}).filter(f => tgIsMember(v, f)) }); },
     actions: [
       { label: 'Cancel' },
@@ -753,8 +770,10 @@ function tgInviteDialog(spaceId) {
 /* ---------- your own task, shared with a friend ---------- */
 /** Task menu items (32-tasks-ui.js). */
 function togetherTaskMenuItems(id) {
-  if (!tgOn() || !tgChannel() || !tgFriends().length) return [];
+  if (!tgOn()) return [];
   const t = getItem(id); if (!t) return [];
+  // No friend yet: offer the way to get one instead of hiding the entry.
+  if (!tgChannel() || !tgFriends().length) return [{ label: 'Share with a friend: add a friend…', icon: 'user-plus', run: () => { if (typeof friendsAddDialog === 'function') friendsAddDialog(); else setView('friends'); } }];
   if (t.shared && t.shared.space) return [{ label: 'Open shared copy', icon: 'users', run: () => { setView('together:' + t.shared.space); setTimeout(() => tgOpenItem(t.shared.space, t.shared.item), 50); } }];
   return [{ label: 'Share with a friend…', icon: 'user-plus', run: () => tgShareTaskDialog(id) }];
 }
@@ -762,9 +781,40 @@ function togetherTaskMenuItems(id) {
 function tgPairWith(fid) {
   return tgSpaces().find(s => tgKindOf(s) === 'pair' && tgIsMember(s.value, fid) && tgMembers(s.value).length === 2) || null;
 }
-function tgShareTaskDialog(taskId) {
+/** Pick one of your open tasks, then the share dialog with this friend chosen (friend pages and cards). */
+function tgPickTaskToShare(fid) {
+  if (!tgChannel() || !tgFriends().length) { if (typeof friendsAddDialog === 'function') friendsAddDialog(); else setView('friends'); return; }
+  let q = null, list = null;
+  const paint = () => {
+    list.innerHTML = '';
+    const needle = (q.value || '').trim().toLowerCase();
+    const rows = getAllItems().filter(t => statusOf(t.id) !== 'done' && !(t.shared && t.shared.space) && (!needle || String(effTitle(t)).toLowerCase().includes(needle)))
+      .sort((a, b) => String(effDate(a) || '9999').localeCompare(String(effDate(b) || '9999'))).slice(0, 40);
+    if (!rows.length) { list.appendChild(tgEl('p', 'muted tg-sm', needle ? 'No open task matches.' : 'You have no open tasks to share.')); return; }
+    for (const t of rows) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'tg-fr-space';
+      const n = document.createElement('span'); n.className = 'tg-fr-space-n'; n.textContent = effTitle(t);
+      const d = document.createElement('span'); d.className = 'muted num'; d.textContent = effDate(t) || '';
+      b.append(n, d);
+      b.onclick = () => { tgShareTaskDialog(t.id, fid); };
+      list.appendChild(b);
+    }
+  };
+  openDialog({
+    title: fid ? `Share a task with ${tgFirst(fid)}` : 'Share a task', size: 'sm',
+    body: (el) => {
+      q = document.createElement('input'); q.className = 'control'; q.placeholder = 'Search your tasks…'; q.setAttribute('autofocus', '');
+      q.oninput = paint;
+      list = tgEl('div', 'tg-fr-spaces');
+      el.append(q, list);
+      paint();
+    },
+    actions: [{ label: 'Cancel' }],
+  });
+}
+function tgShareTaskDialog(taskId, presetFriend) {
   const t = getItem(taskId); if (!t) return;
-  const chosen = new Set();
+  const chosen = new Set(presetFriend ? [presetFriend] : []);
   let spaceSel = null, askBox = null, notesBox = null;
   const fill = () => {
     if (!spaceSel) return;
@@ -777,7 +827,7 @@ function tgShareTaskDialog(taskId) {
     for (const s of tgSpaces()) if (s !== pair && tgIsMember(s.value, f)) spaceSel.appendChild(new Option(tgSpaceName(s), s.id));
   };
   openDialog({
-    title: 'Share with a friend', width: 480,
+    title: 'Share with a friend', size: 'sm',
     body: (el) => {
       el.appendChild(tgEl('div', 'tg-quote', effTitle(t)));
       el.appendChild(tgEl('div', 'field-label', 'With'));
@@ -822,7 +872,9 @@ async function tgShareTask(taskId, fid, spaceChoice, o) {
   if (o.ask && typeof RF_DO !== 'undefined' && RF_DO.wait) RF_DO.wait(t, { person: tgPersonFor(fid) });
   saveData(); render();
   const mark = typeof undoMark === 'function' ? undoMark() : null;
-  toast(o.ask ? `Asked ${tgFirst(fid)}: it waits in your Waiting list` : `Shared with ${tgFirst(fid)}`, { icon: 'user-plus', action: { label: 'Undo', run: () => { if (mark && typeof undoMarked === 'function') undoMarked(mark); tgEdit(spaceId, [{ op: 'del', path: ['items', itemId] }], { undo: false }); } } });
+  toast(o.ask ? `Asked ${tgFirst(fid)}: it waits in your Waiting list` : `Shared with ${tgFirst(fid)}`, { icon: 'user-plus',
+    action: { label: 'Undo', run: () => { if (mark && typeof undoMarked === 'function') undoMarked(mark); tgEdit(spaceId, [{ op: 'del', path: ['items', itemId] }], { undo: false }); } },
+    action2: { label: 'Open it', run: () => { setView('together:' + spaceId); setTimeout(() => tgOpenItem(spaceId, itemId), 50); } } });
 }
 /**
  * Your People record for a friend, when you already have one (linked by friendId, or the same name).

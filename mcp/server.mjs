@@ -41,6 +41,8 @@ const { createWriteGate, othersLive } = await import('../lib/hosts.mjs');
 const { redirectDataDir } = await import('../lib/relocate/record.mjs');
 const { INSTRUCTIONS, PROPOSE_ADDENDUM, PROMPTS } = await import('./instructions.mjs');
 const { installInfo, installText } = await import('./install.mjs');
+const EX = await import('../lib/expenses.mjs');
+const { loadConfig } = await import('../lib/datadir.mjs');
 
 export const PROTOCOL_VERSIONS = Object.freeze(['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']);
 const VERSION = (() => { try { return JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8')).version || '0'; } catch { return '0'; } })();
@@ -144,6 +146,72 @@ const api = {
   describe: () => getEmbedded().describe(),
 };
 
+// ─── Expenses (lib/expenses.mjs; private, kept in <data>/expenses) ─────────────
+// Not part of the actions layer: they work on the expenses file under its own lock, with their own undo steps.
+const EXPENSE_TOOLS = [
+  { name: 'list_expenses', read: true, title: 'list expenses',
+    description: "The user's expenses (money they spent for someone else, to be paid back): to-claim, submitted, paid, with the total owed and per-payer totals. Use it before create_expense to avoid duplicates.",
+    inputSchema: { type: 'object', additionalProperties: false, properties: { status: { type: 'string', enum: ['to-claim', 'submitted', 'paid', 'open'], description: "'open' = not paid yet" }, payer: { type: 'string', maxLength: 80 }, limit: { type: 'integer', minimum: 1, maximum: 200 } } } },
+  { name: 'create_expense', title: 'create expense',
+    description: "File an expense from a pasted order or receipt: title, amount, date (YYYY-MM-DD), merchant and payer (who should pay it back, e.g. the employer or a client). If the payer is not clear from what the user said, ASK THE USER; never guess it. Receipts are attached by the user in the dashboard, or with attach_expense_receipt. Use dryRun:true to preview.",
+    inputSchema: { type: 'object', additionalProperties: false, required: ['title', 'amount', 'date'], properties: { title: { type: 'string', maxLength: 140 }, amount: { type: 'number', exclusiveMinimum: 0, description: 'in the home currency (GBP unless the dashboard says otherwise)' }, date: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' }, merchant: { type: 'string', maxLength: 60 }, payer: { type: 'string', maxLength: 80, description: 'who pays it back (ask the user if unsure)' }, category: { type: 'string', maxLength: 40 }, note: { type: 'string', maxLength: 600 }, vat: { type: 'number', minimum: 0 }, dryRun: { type: 'boolean' } } } },
+  { name: 'attach_expense_receipt', title: 'attach expense receipt',
+    description: "Attach a receipt REFERENCE to an expense: the receipt email's id, subject, sender and date (and its https mail link if you have one). The email text is never copied. The user adds receipt files in the dashboard. Use dryRun:true to preview.",
+    inputSchema: { type: 'object', additionalProperties: false, required: ['id', 'emailId'], properties: { id: { type: 'string', description: 'expense id from list_expenses' }, emailId: { type: 'string', maxLength: 120 }, subject: { type: 'string', maxLength: 160 }, from: { type: 'string', maxLength: 120 }, date: { type: 'string', maxLength: 40 }, link: { type: 'string', maxLength: 300 }, dryRun: { type: 'boolean' } } } },
+  { name: 'mark_expense_submitted', title: 'mark expense submitted',
+    description: "Record that the user has SENT the claim for these expenses to the payer (it does not send anything). Only when the user says they submitted it. Ask for the payer when the expenses have none. Use dryRun:true to preview.",
+    inputSchema: { type: 'object', additionalProperties: false, required: ['ids'], properties: { ids: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 50 }, payer: { type: 'string', maxLength: 80 }, date: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'the day it was sent (default today)' }, method: { type: 'string', enum: ['email', 'portal', 'in-person', 'other'] }, dryRun: { type: 'boolean' } } } },
+  { name: 'undo_expense_change', title: 'undo expense change',
+    description: 'Undo an expense change by its undo token (from create_expense, attach_expense_receipt or mark_expense_submitted).',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['token'], properties: { token: { type: 'string', maxLength: 40 } } } },
+];
+async function expenseHome() {
+  const cfg = await loadConfig(DATA_DIR).catch(() => ({}));
+  let today; try { today = new Intl.DateTimeFormat('en-CA', { timeZone: cfg.timezone || undefined }).format(new Date()); } catch { today = new Date().toISOString().slice(0, 10); }
+  return { today, home: /^[A-Z]{3}$/.test(cfg.currency || '') ? cfg.currency : 'GBP' };
+}
+async function expenseTool(name, a) {
+  const { today, home } = await expenseHome();
+  const fail = (m) => { throw new ActionError('EXPENSE_ERROR', m); };
+  if (name === 'list_expenses') {
+    const S = await EX.readStore(DATA_DIR, { home });
+    const v = EX.publicView(S, today);
+    let items = v.items.filter(e => (a.status === 'open' ? e.status !== 'paid' : !a.status || e.status === a.status));
+    if (a.payer) items = items.filter(e => EX.payerKey(e.payer) === EX.payerKey(a.payer));
+    return { today, currency: home, owed: v.summary.total, owedCount: v.summary.count, payers: v.summary.payers.map(p => ({ payer: p.payer, total: p.total, count: p.count })),
+      expenses: items.slice(0, a.limit || 50).map(e => ({ id: e.id, title: e.title, amount: e.amount, date: e.date, payer: e.payer, status: e.status, receipts: e.receipts.length, claimId: e.claimId || null, paidAt: e.paidAt || null })) };
+  }
+  if (name === 'undo_expense_change') { const r = await EX.undoChange(DATA_DIR, String(a.token || ''), { home }); if (!r.ok) fail(r.error); return { ok: true, undone: r.label }; }
+  if (name === 'create_expense') {
+    const e = EX.cleanExpense({ title: a.title, amount: a.amount, date: a.date, merchant: a.merchant, payer: a.payer, category: a.category, note: a.note, vat: a.vat, source: { type: 'mcp' } }, { home, today });
+    if (!e) fail('An expense needs a title, an amount above zero and a date (YYYY-MM-DD).');
+    if (a.dryRun === true) return { dryRun: true, wouldCreate: { title: e.title, amount: e.amount, currency: e.currency, date: e.date, payer: e.payer || null }, ask: e.payer ? undefined : 'Ask the user who should pay this back.' };
+    const r = await EX.createExpense(DATA_DIR, e, { today, home });
+    if (r.error) fail(r.error);
+    return { ok: true, id: r.id, undo: r.undo, expense: { title: e.title, amount: e.amount, date: e.date, payer: e.payer || null, status: 'to-claim' }, note: 'The user sees it under Money > Expenses. Receipts are added there.' };
+  }
+  if (name === 'attach_expense_receipt') {
+    const mail = { id: a.emailId, subject: a.subject, from: a.from, date: a.date, link: a.link };
+    if (a.dryRun === true) return { dryRun: true, wouldAttach: { expense: a.id, email: a.subject || a.emailId } };
+    const r = await EX.addMailReceipt(DATA_DIR, String(a.id), mail, { home });
+    if (r.error) fail(r.error);
+    return { ok: true, ...(r.undo ? { undo: r.undo } : {}), already: r.already || undefined };
+  }
+  if (name === 'mark_expense_submitted') {
+    const S = await EX.readStore(DATA_DIR, { home });
+    const list = (a.ids || []).map(id => S.items[id]);
+    if (list.some(e => !e)) fail('One of those ids is not an expense (see list_expenses).');
+    const open = list.filter(e => e.status === 'to-claim');
+    if (!open.length) fail('Those expenses are already submitted or paid.');
+    const payer = a.payer || open[0].payer;
+    if (!payer) fail('Ask the user who the claim was sent to, then call again with payer.');
+    if (a.dryRun === true) return { dryRun: true, wouldSubmit: open.map(e => ({ id: e.id, title: e.title, amount: e.amount })), payer, total: EX.sumOf(open), date: a.date || today };
+    const r = await EX.submitClaim(DATA_DIR, open.map(e => e.id), { payer, method: a.method || 'other', date: a.date, today, home });
+    if (r.error) fail(r.error);
+    return { ok: true, claimId: r.claimId, undo: r.undo, submitted: r.ids.length };
+  }
+  return undefined;
+}
 // ─── Tools ─────────────────────────────────────────────────────────────────
 const OP_NAMES = OPS.map(o => o.name);
 const opItem = {
@@ -167,6 +235,7 @@ const ann = (title, readOnly, destructive = false) => ({ title, readOnlyHint: re
 
 function toolList() {
   const tools = [];
+  for (const t of EXPENSE_TOOLS) if (t.read || MODE !== 'propose') tools.push({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: ann(t.title, !!t.read) });
   for (const q of QUERIES) if (MODE !== 'propose' || q.assistant !== false) tools.push({ name: q.tool, title: q.tool.replace(/_/g, ' '), description: q.description, inputSchema: publicSchema(q.schema), annotations: ann(q.tool, true) });
   tools.push({
     name: 'describe_operations', title: 'describe operations',
@@ -225,6 +294,11 @@ async function callTool(name, args) {
         return ok(o);
       }
       return ok({ ops: d.ops.map(o => ({ name: o.name, description: o.description, ...(o.needsDryRun ? { needsDryRun: true } : {}), fields: o.schema.properties, required: o.schema.required })), rules: d.rules });
+    }
+    const ex = EXPENSE_TOOLS.find(x => x.name === name);
+    if (ex) {
+      if (MODE === 'propose' && !ex.read) throw new ActionError('PROPOSE_ONLY', 'this connection can only read expenses');
+      return ok(await expenseTool(name, args));
     }
     const q = QUERY_BY_TOOL.get(name);
     if (q && (MODE !== 'propose' || q.assistant !== false)) return ok(await api.query(q.name, args));   // assistant:false (get_daynotes): not for the in-app assistant

@@ -17,20 +17,20 @@
 
 .pr-pop { padding: var(--space-2); }
 .pr-head { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-1) var(--space-1) var(--space-2); }
-.pr-head .dot { margin-top: 6px; --c: var(--fg-disabled); }
+.pr-head .dot { margin-top: var(--space-1-5); --c: var(--fg-disabled); }
 .pr-head.pr-ok .dot { --c: var(--success); }
 .pr-head.pr-attention .dot { --c: var(--warning); }
 .pr-head.pr-busy .dot { --c: var(--accent); }
 .pr-head b { display: block; font-weight: var(--weight-medium); }
-.pr-tip { display: block; color: var(--fg-muted); font-size: var(--text-xs); margin-top: 2px; white-space: normal; }
+.pr-tip { display: block; color: var(--fg-muted); font-size: var(--text-xs); margin-top: var(--space-0-5); white-space: normal; }
 .pr-note {
   display: flex; gap: var(--space-2); align-items: center; margin: 0 0 var(--space-2); padding: var(--space-2);
   border-radius: var(--radius-sm); background: var(--warning-soft); color: var(--fg); font-size: var(--text-xs);
 }
 .pr-note > .i { color: var(--warning-ink); flex: none; }
 .pr-note > span { flex: 1; min-width: 0; }
-.pr-list { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border); padding-top: var(--space-2); }
-.pr-dev { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-1-5, 6px) var(--space-1); border-radius: var(--radius-sm); }
+.pr-list { display: flex; flex-direction: column; gap: var(--space-0-5); border-top: 1px solid var(--border); padding-top: var(--space-2); }
+.pr-dev { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-1-5, var(--space-1-5)) var(--space-1); border-radius: var(--radius-sm); }
 .pr-dev-ic { flex: none; color: var(--fg-subtle); padding-top: 1px; }
 .pr-dev.pr-open .pr-dev-ic, .pr-dev.pr-running .pr-dev-ic { color: var(--success); }
 .pr-dev.pr-outdated .pr-dev-ic { color: var(--warning-ink); }
@@ -40,7 +40,7 @@
 .pr-dev-text { color: var(--fg-muted); font-size: var(--text-xs); }
 .pr-dev-meta { color: var(--fg-subtle); font-size: var(--text-xs); }
 .pr-chip {
-  flex: none; font-size: var(--text-xs); padding: 1px 8px; border-radius: var(--radius-full); background: var(--bg-muted); color: var(--fg-muted);
+  flex: none; font-size: var(--text-xs); padding: 1px var(--space-2); border-radius: var(--radius-full); background: var(--bg-muted); color: var(--fg-muted);
 }
 .pr-dev.pr-open .pr-chip, .pr-dev.pr-running .pr-chip { background: var(--success-soft, var(--bg-muted)); color: var(--success-ink, var(--fg)); }
 .pr-dev.pr-outdated .pr-chip { background: var(--warning-soft); color: var(--warning-ink); }

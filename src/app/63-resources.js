@@ -68,7 +68,7 @@ function resAddItems(items, links, opts) {
   const ls = (links || []).filter(Boolean).map(l => ({ type: l.type, id: l.id }));
   for (const it of items) {
     let r;
-    try { r = rsrcNormalize({ ...it, links: ls, ...(pin ? { pinned: true } : {}) }); } catch (e) { toast(e.message || 'That cannot be attached', { kind: 'err' }); continue; }
+    try { r = rsrcNormalize({ ...it, links: ls, ...(pin ? { pinned: true } : {}) }); } catch (e) { toastError('attach it', e.message || 'That cannot be attached'); continue; }
     const same = rsrcFindSame(list, r.kind, r.target);
     if (same) {
       same.links = Array.isArray(same.links) ? same.links : [];
@@ -203,20 +203,11 @@ function resFmtDate(ms) {
 }
 
 /* ---------- actions ---------- */
-async function resCopyText(text, msg) {
-  const t = String(text == null ? '' : text);
-  try { await navigator.clipboard.writeText(t); }
-  catch (e) {
-    const ta = document.createElement('textarea'); ta.value = t; ta.setAttribute('readonly', ''); ta.className = 'sr-only';
-    document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); } catch (x) { /* nothing else to try */ }
-    ta.remove();
-  }
-  toast(msg || 'Copied', { kind: 'ok', icon: 'copy' });
-}
+async function resCopyText(text, msg) { return copyText(text); }
+
 function resOpenUrl(r) {
   const u = safeUrl(r && r.target);
-  if (!u) { toast('That link cannot be opened', { kind: 'err' }); return; }
+  if (!u) { toastError('open the link', 'That link cannot be opened'); return; }
   window.open(u, '_blank', 'noopener,noreferrer');
 }
 async function resOpen(id, opts) {
@@ -231,10 +222,10 @@ async function resOpen(id, opts) {
   } catch (e) {
     if (e.code === 'MISSING') {
       _resStatus[id] = { exists: false, at: Date.now() }; _resPaintStatus(id);
-      toast(`${rsrcDisplayLabel(r)} is not on this computer any more`, { kind: 'err', action: { label: 'Fix path', run: () => resEditTarget(id) } });
+      toastError('open it', `${rsrcDisplayLabel(r)} is not on this computer any more`, { label: 'Fix path', run: () => resEditTarget(id) });
     } else if (e.code === 'PROGRAM') {
-      toast(e.message, { kind: 'err', action: { label: 'Reveal', run: () => resOpen(id, { reveal: true, sub: opts.sub }) } });
-    } else toast(e.message || 'Could not open it', { kind: 'err' });
+      toastError('open it', e.message, { label: 'Reveal', run: () => resOpen(id, { reveal: true, sub: opts.sub }) });
+    } else toastError('open it', e.message || 'Could not open it');
   }
 }
 /** Explore a folder, open a file or link, show a snippet. */
@@ -270,7 +261,7 @@ async function resEditTarget(id) {
   const v = await promptDialog({ title: RSRC_PATH_KINDS.includes(r.kind) ? 'Change the path' : 'Change the link', label: RSRC_PATH_KINDS.includes(r.kind) ? 'The new absolute path' : 'The new link', value: r.target, confirmLabel: 'Save' });
   if (!v) return;
   const d = rsrcDetect(v);
-  if (!d || RSRC_PATH_KINDS.includes(d.kind) !== RSRC_PATH_KINDS.includes(r.kind)) { toast(RSRC_PATH_KINDS.includes(r.kind) ? 'That is not an absolute local path' : 'That is not an http(s) link', { kind: 'err' }); return; }
+  if (!d || RSRC_PATH_KINDS.includes(d.kind) !== RSRC_PATH_KINDS.includes(r.kind)) { toastError('save the new location', RSRC_PATH_KINDS.includes(r.kind) ? 'That is not an absolute local path' : 'That is not an http(s) link'); return; }
   resUpdate(id, { target: d.target, kind: d.kind });
   delete _resStatus[id];
   resRefreshStatus([id], true);
@@ -395,11 +386,11 @@ async function resLoadGithub(id, refresh) {
   const r = resGet(id); if (!r) return;
   const integ = await resIntegrations();
   if (!integ || !integ.github || integ.github.state !== 'ok') {
-    const why = integ && integ.github && integ.github.state === 'auth' ? 'GitHub needs signing in again' : 'Connect the GitHub MCP server first';
-    toast(why, { kind: 'err', action: { label: 'Connections', run: () => setView('connections') } });
+    const why = integ && integ.github && integ.github.state === 'auth' ? 'GitHub needs signing in again' : 'the GitHub connection isn’t set up yet';
+    toastError('load GitHub items', why, { label: 'Connections', run: () => setView('connections') });
     return;
   }
-  if (typeof connHas === 'function' && !connHas('claude')) { toast('Connect Claude first', { kind: 'err', action: { label: 'Connections', run: () => setView('connections') } }); return; }
+  if (typeof connHas === 'function' && !connHas('claude')) { toastError('load GitHub items', 'Claude isn’t connected yet', { label: 'Connections', run: () => setView('connections') }); return; }
   _resGh[id] = { loading: true, data: _resGh[id] && _resGh[id].data };
   render();
   try {
@@ -472,11 +463,11 @@ function resBlock(link, opts) {
   const take = (text) => {
     const parsed = rsrcParseMany(text);
     if (!parsed.items.length) {
-      if (text.trim()) toast(parsed.rejected.length > 1 || /\n/.test(text) ? 'Nothing there looks like a path or a link. For text, use Attach > Snippet.' : 'That is not an absolute path or an http(s) link', { kind: 'err' });
+      if (text.trim()) toastError('attach it', parsed.rejected.length > 1 || /\n/.test(text) ? 'Nothing there looks like a path or a link. For text, use Attach > Snippet.' : 'That is not an absolute path or an http(s) link');
       return false;
     }
     resAddItems(parsed.items, [link]);
-    if (parsed.rejected.length) toast(`${parsed.rejected.length} line${parsed.rejected.length === 1 ? ' was' : 's were'} not a path or link`, { kind: 'err' });
+    if (parsed.rejected.length) toastError('attach every line', `${parsed.rejected.length} line${parsed.rejected.length === 1 ? ' was' : 's were'} not a path or link`);
     return true;
   };
   inp.addEventListener('paste', (e) => {
@@ -519,13 +510,13 @@ async function resBrowse(mode, links, opts) {
     resAddItems(out.paths.map(p => ({ kind: mode, target: p })), links, opts);
   } catch (e) {
     t();
-    if (e.code === 'NO_PICKER') { toast('No file picker here: paste the path instead', { kind: 'err' }); openAttachDialog({ links, pinned: !!(opts && opts.pinned) }); return; }
-    toast(e.message || 'The picker failed', { kind: 'err' });
+    if (e.code === 'NO_PICKER') { toastError('open the file picker', 'there is no file picker here, so paste the path instead'); openAttachDialog({ links, pinned: !!(opts && opts.pinned) }); return; }
+    toastError('open the file picker', e.message || 'The picker failed');
   }
 }
 function resPickExisting(link) {
   openDialog({
-    title: 'Attach something already saved', width: 520,
+    title: 'Attach something already saved', size: 'md', fixed: true,
     body: (el, close) => {
       const f = document.createElement('label'); f.className = 'input';
       f.innerHTML = icon('search');
@@ -551,7 +542,7 @@ function resPickExisting(link) {
 function resAttachMore(id) {
   const r = resGet(id); if (!r) return;
   openDialog({
-    title: `Attach "${rsrcDisplayLabel(r)}" to…`, width: 520,
+    title: `Attach "${rsrcDisplayLabel(r)}" to…`, size: 'md', fixed: true,
     body: (el, close) => {
       const f = document.createElement('label'); f.className = 'input';
       f.innerHTML = icon('search');
@@ -597,7 +588,7 @@ function openAttachDialog(o) {
   let prefill = typeof o.text === 'string' ? o.text : '';
   const where = links.length ? links.map(_resLinkLabel).join(', ') : pin ? 'Launchpad on Home (pinned)' : 'Files & links (not attached to anything yet)';
   openDialog({
-    title: pin ? 'Pin to Launchpad' : 'Attach', width: 600,
+    title: pin ? 'Pin to Launchpad' : 'Attach', size: 'md', fixed: true,
     body: (el, close) => {
       const sub = document.createElement('p'); sub.className = 'muted res-dlg-to';
       sub.innerHTML = `${icon('paperclip', 'i-sm')}<span>To: <strong>${esc(where)}</strong></span>`;
@@ -684,12 +675,12 @@ function openAttachDialog(o) {
       { label: pin ? 'Pin' : 'Attach', primary: true, icon: pin ? 'pin' : 'paperclip', run: () => {
         if (mode === 'paste') {
           const p = rsrcParseMany(ta ? ta.value : '');
-          if (!p.items.length) { toast('Paste at least one absolute path or http(s) link', { kind: 'err' }); return false; }
+          if (!p.items.length) { toastError('attach it', 'Paste at least one absolute path or http(s) link'); return false; }
           resAddItems(p.items, links, pin);
           return true;
         }
         if (mode === 'snippet') {
-          if (!sText || !sText.value.trim()) { toast('Paste the snippet text first', { kind: 'err' }); return false; }
+          if (!sText || !sText.value.trim()) { toastError('save the snippet', 'Paste the snippet text first'); return false; }
           resAddItems([{ kind: 'snippet', target: sText.value, label: sLabel.value, lang: sLang.value }], links, pin);
           return true;
         }
@@ -705,8 +696,7 @@ function _resDrivePane(el, links, close, pin) {
   if (st !== 'ok') {
     const c = document.createElement('div'); c.className = 'callout' + (st === 'auth' ? ' warn' : '');
     c.innerHTML = icon('hard-drive') + `<div class="grow">${st === 'auth' ? 'Google Drive needs signing in again (claude.ai, Settings, Connectors).' : st === 'unknown' ? 'Checking whether Google Drive is connected…' : 'Google Drive is not connected.'} You can still paste a Drive link in "Paths &amp; links".</div>`;
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm'; b.textContent = 'Connections';
-    b.onclick = () => { close(); setView('connections'); };
+    const b = uiButton({ label: 'Connections', size: 'sm', run: () => { close(); setView('connections'); } });
     c.appendChild(b);
     el.appendChild(c);
     if (st === 'unknown') resIntegrations(true).then(() => { if (el.isConnected) { el.innerHTML = ''; _resDrivePane(el, links, close, pin); } });
@@ -716,7 +706,7 @@ function _resDrivePane(el, links, close, pin) {
   const box = document.createElement('label'); box.className = 'input grow'; box.innerHTML = icon('search');
   const q = document.createElement('input'); q.placeholder = 'Search Drive (read-only)'; q.setAttribute('aria-label', 'Search Google Drive');
   box.appendChild(q);
-  const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-secondary'; go.textContent = 'Search';
+  const go = uiButton({ label: 'Search', run: () => run() });
   go.setAttribute('data-requires', 'claude');
   f.append(box, go);
   el.appendChild(f);
@@ -727,7 +717,7 @@ function _resDrivePane(el, links, close, pin) {
     try {
       const j = await _resApi('/api/resources/drive-search', { q: q.value.trim() });
       out.innerHTML = '';
-      if (!j.files.length) { out.innerHTML = '<div class="subtle res-empty">Nothing found.</div>'; return; }
+      if (!j.files.length) { out.replaceChildren(emptyLine('Nothing found in Drive for that.')); return; }
       for (const fl of j.files) {
         const r = { kind: 'drive', target: fl.url, label: fl.title };
         const b = document.createElement('button'); b.type = 'button'; b.className = 'res-pick';
@@ -735,9 +725,8 @@ function _resDrivePane(el, links, close, pin) {
         b.onclick = () => { resAddItems([r], links, pin); close(); };
         out.appendChild(b);
       }
-    } catch (e) { out.innerHTML = ''; const c = document.createElement('div'); c.className = 'callout warn'; c.textContent = e.message || 'Drive could not be searched'; out.appendChild(c); }
+    } catch (e) { out.replaceChildren(emptyLine('Couldn’t search Drive: ' + netErrorReason(e, 'it could not be reached') + '.', { label: 'Try again', run: run })); }
   };
-  go.onclick = run;
   q.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); run(); } };
   setTimeout(() => q.focus(), 0);
 }
@@ -751,7 +740,7 @@ function openExplorePanel(id, o) {
   _resExplore = { id, sub: o.sub || '', link: o.link || null, sort: 'name', q: '', data: null, loading: true, error: null };
   let bodyEl = null;
   openDrawer({
-    title: rsrcDisplayLabel(r), width: 680, resizeId: 'explore',
+    title: rsrcDisplayLabel(r), size: 'lg', fixed: true, resizeId: 'explore',
     body: (el) => { bodyEl = el; el.classList.add('res-ex'); _resExplorePaint(el); },
     footer: (f) => {
       f.classList.add('res-ex-f');
@@ -892,7 +881,8 @@ function resStreamStrip(streamId) {
 /* ---------- global Files & links view ---------- */
 registerSection('files', {
   group: 'tasks',
-  title: () => 'Files & links',
+  title: () => 'Files and links',
+  headerActions: () => ({ primary: { label: 'Attach', icon: 'paperclip', run: () => openAttachDialog({ links: [] }) } }),
   crumb: () => ['Files & links'],
   hashable: true,
   mount(container) {
@@ -916,10 +906,7 @@ registerSection('files', {
       b.onclick = () => { _resFilesKind = k; renderMain(); };
       seg.appendChild(b);
     }
-    const add = document.createElement('button'); add.type = 'button'; add.className = 'btn btn-primary btn-sm';
-    add.innerHTML = icon('paperclip') + '<span>Attach…</span>';
-    add.onclick = () => openAttachDialog({ links: [] });
-    bar.append(fl, seg, add);
+    bar.append(fl, seg);
     page.appendChild(bar);
     const listEl = document.createElement('div'); listEl.className = 'res-page-list card';
     page.appendChild(listEl);
@@ -961,7 +948,7 @@ function resOpenFolderDialog() {
   const folders = resList().filter(r => r.kind === 'folder');
   if (!folders.length) { toast('No folders saved yet: attach one first', { action: { label: 'Attach…', run: () => openAttachDialog({ links: [] }) } }); return; }
   openDialog({
-    title: 'Open folder', width: 520,
+    title: 'Open folder', size: 'md', fixed: true,
     body: (el, close) => {
       const f = document.createElement('label'); f.className = 'input'; f.innerHTML = icon('search');
       const q = document.createElement('input'); q.placeholder = 'Filter folders'; q.setAttribute('autofocus', ''); q.setAttribute('aria-label', 'Filter folders');

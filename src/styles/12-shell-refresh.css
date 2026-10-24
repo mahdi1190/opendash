@@ -8,6 +8,12 @@
    transitions only, and they go to zero with reduced motion (motion.css).
    ===================================================================== */
 
+/* The five icon sizes as values, for a rule that must size an icon inside a component (the same numbers as
+   .i-xs 12, .i-sm 14, .i / .i-md 16, .i-lg 18, .i-xl 20 in 01-components.css). Shell, sync and settings files use
+   these instead of raw pixels; art and hero icons use --icon-hero (00-tokens.css). A 1px or 1.5px value in the
+   shell files is a hairline or an optical nudge. */
+:root { --i-xs: 12px; --i-sm: 14px; --i-md: 16px; --i-lg: 18px; --i-xl: 20px; }
+
 /* ---------- sidebar: a soft wash, the current page in the accent ---------- */
 .app-sidebar { background: var(--sidebar-bg); }
 .nav-item { transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out); }
@@ -32,10 +38,14 @@
 
 /* ---------- page headers ---------- */
 .view-title, .ph h1 { letter-spacing: var(--tracking-tighter); }
+/* The page header contract (14-shell.js headerActions): one primary action, at most two icon buttons, More. */
+.view-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); flex-wrap: nowrap; }
+.view-actions[hidden] { display: none; }
+.view-actions .view-act-primary { white-space: nowrap; }
 .section-h h2, .card-h h3 { letter-spacing: var(--tracking-tight); }
 
 /* ---------- menus, dialogs, drawers, toasts ---------- */
-.pop { padding: 5px; }
+.pop { padding: var(--space-1-5); }
 .pop-item { transition: background-color var(--m-instant) linear; }
 .pop-item:hover > .i, .pop-item:focus-visible > .i { color: var(--fg-muted); }
 .pop-item.danger:hover > .i { color: var(--danger-ink); }
@@ -71,7 +81,7 @@ html[data-motion="reduced"] .wn-flash { animation: none; }
 /* ---------- 2.18: the area's tabs (level 1) and a page's sections (level 2), in the page header ----------
    (14-shell.js areaTabsEl; UX_BLUEPRINT.md 3: never more than two levels). Calm: no motion beyond colour. */
 .view-header > .area-strips { flex: 1 0 100%; order: 10; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
-.area-tabs { display: flex; gap: 2px; padding: 3px; background: var(--bg-emphasis); border-radius: var(--radius-md); overflow-x: auto; scrollbar-width: none; max-width: 100%; align-self: flex-start; }
+.area-tabs { display: flex; gap: var(--space-0-5); padding: var(--space-1); background: var(--bg-emphasis); border-radius: var(--radius-md); overflow-x: auto; scrollbar-width: none; max-width: 100%; align-self: flex-start; }
 [data-theme="dark"] .area-tabs { background: var(--bg-muted); }
 .area-tabs::-webkit-scrollbar { display: none; }
 .area-tab { position: relative; display: inline-flex; align-items: center; gap: var(--space-1-5); height: 28px; padding: 0 var(--space-3); border: 0; border-radius: var(--radius-sm); background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); white-space: nowrap; cursor: pointer; transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out); }
@@ -86,7 +96,7 @@ html[data-motion="reduced"] .wn-flash { animation: none; }
 .area-tab.on .area-tab-n { color: var(--accent-ink); }
 .area-tab .nav-new { margin-left: 0; }
 .area-secs { display: flex; gap: var(--space-1); flex-wrap: wrap; }
-.area-sec { display: inline-flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border: 1px solid var(--border-subtle); border-radius: 999px; background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out); }
+.area-sec { display: inline-flex; align-items: center; gap: var(--space-1); height: 24px; padding: 0 var(--space-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-full); background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-xs); font-weight: var(--weight-medium); cursor: pointer; transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out); }
 .area-sec:hover { color: var(--fg); border-color: var(--border); }
 .area-sec:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .area-sec.on { background: var(--accent-soft); border-color: transparent; color: var(--accent-ink); cursor: default; }

@@ -76,8 +76,15 @@ function _sgIconHtml(card, size) {
   if (card.scene && typeof animSceneHtml === 'function' && size !== 'row') return animSceneHtml(card.scene, { size: size === 'chip' ? 'xs' : 'sm', hover: true });
   return icon(card.icon || 'lightbulb');
 }
+/** A suggestion card's button: a kit button (uiButton) when it is a .btn, a plain one for chips and bare icon buttons. */
 function _sgBtn(cls, html, aria) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = cls; b.innerHTML = html;
+  const t = String(cls).split(/\s+/);
+  let b;
+  if (t.includes('btn')) {
+    b = uiButton({ kind: t.includes('btn-primary') ? 'primary' : t.includes('btn-secondary') ? 'secondary' : 'ghost', size: t.includes('btn-sm') ? 'sm' : undefined,
+      cls: t.filter(x => !/^btn(-primary|-secondary|-ghost|-sm)?$/.test(x)).join(' ') });
+  } else { b = document.createElement('button'); b.type = 'button'; b.className = cls; }
+  b.innerHTML = html;
   if (aria) b.setAttribute('aria-label', aria);
   return b;
 }
@@ -166,9 +173,9 @@ async function _sgDo(card, action, o) {
 }
 function _sgCardError(card, msg, el, retry) {
   const host = el && el.isConnected ? el : document.querySelector(`.sg-card[data-sg-key="${CSS.escape(card.key)}"]`);
-  if (!host) { toast(msg, { kind: 'err', ...(retry ? { action: { label: 'Try again', run: retry } } : {}) }); return; }
+  if (!host) { toastError('use this suggestion', msg, retry); return; }
   const box = host.querySelector('.sg-err');
-  if (!box) { toast(msg, { kind: 'err' }); return; }
+  if (!box) { toastError('use this suggestion', msg); return; }
   box.hidden = false;
   box.innerHTML = `${icon('circle-alert', 'i-xs')}<span>${esc(msg)}</span>`;
   if (retry) { const b = _sgBtn('btn btn-ghost btn-sm', 'Try again'); b.onclick = () => { box.hidden = true; retry(); }; box.appendChild(b); }
@@ -312,7 +319,7 @@ async function _sgSetLength(rec, mins) {
   const end = rec.start + mins;
   const r = await w.update(rec.eventId, { end: sgLocalISO(rec.date, end) }, { quiet: true, silent: true });
   if (r && r.ok) { rec.end = end; rec.line = String(rec.line || '').replace(/\d\d:\d\d–\d\d:\d\d/, `${sgHM(rec.start)}–${sgHM(end)}`); _sgRepaintReceipt(rec.key); _sgArmFold(rec); }
-  else toast((r && r.message) || 'The length was not changed.', { kind: 'err' });
+  else toastError('change the length', (r && r.message) || 'it was not changed');
 }
 async function _sgSwapTask(rec, taskId) {
   const w = window.CalWrite;
@@ -322,7 +329,7 @@ async function _sgSwapTask(rec, taskId) {
   const ctx = sgSnapshot();
   const desc = sgBlockDescription(t ? sgTask(ctx, t.id) || { title: effTitle(t) } : null);
   const r = await w.update(rec.eventId, { title, description: desc }, { quiet: true, silent: true });
-  if (!r || !r.ok) { toast((r && r.message) || 'Not changed.', { kind: 'err' }); return; }
+  if (!r || !r.ok) { toastError('swap the task', (r && r.message) || 'it was not changed'); return; }
   // The old link and plan go back (its token); the new ones are a new batch with its own token.
   const old = rec.group.steps.filter(s => s.kind === 'ops');
   for (const s of old.reverse()) await sgUndoOps(s.token);
@@ -557,12 +564,12 @@ if (typeof registerHomeSuggestProvider === 'function') {
 /* ---------- Settings > Suggestions ---------- */
 registerSettingsGroup({
   id: 'suggestions', title: 'Suggestions', icon: 'lightbulb', order: 45,
-  description: 'Ideas that do the thing when you click them: the button opens the normal editor filled in, for you to adjust and save; the small ✓ does it at once, with Undo. Nothing is ever sent, paid or deleted.',
+  description: 'One-click ideas. Nothing is sent, paid or deleted without you.',
   render(el) {
     const mem = sgMemNorm(state.suggest);
     const today = _sgToday2();
     const save = (fn, msg) => { sgMemWrite(fn, null); if (msg) toast(msg, { kind: 'ok' }); render(); };
-    el.appendChild(_settingsRow('Show suggestions', 'On Home, in the Today hero, the morning story and Today’s schedule.', _settingsSwitch(!mem.off, 'Show suggestions', (on) => save(m => sgMemSetOff(m, !on), on ? 'Suggestions on' : 'Suggestions off'))));
+    el.appendChild(_settingsRow('Show suggestions', 'On Home and in the morning story.', _settingsSwitch(!mem.off, 'Show suggestions', (on) => save(m => sgMemSetOff(m, !on), on ? 'Suggestions on' : 'Suggestions off'))));
     let nowHint = '';
     try {   // how many qualify right now, and why fewer (so the count does not look ignored)
       const cur = sgCurrent();
@@ -571,13 +578,8 @@ registerSettingsGroup({
     } catch (e) { /* the hint is optional */ }
     el.appendChild(_settingsRow('How many on Home', 'The Suggestions card shows at most this many at a time.' + nowHint,
       _settingsSelect([['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']], String(mem.homeMax), (v) => save(m => sgMemSetHomeMax(m, Number(v))))));
-    const wk = sgWork(sgWorkHoursRaw());
-    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const days = wk.days.join(',') === '1,2,3,4,5' ? 'Mon–Fri' : wk.days.map(d => names[d]).join(', ');
-    const wh = document.createElement('button'); wh.type = 'button'; wh.className = 'btn btn-ghost btn-sm';
-    wh.innerHTML = `<span>${esc(`${days} ${sgHM(wk.start)}–${sgHM(wk.end)}`)}</span>` + icon('arrow-right');
-    wh.onclick = () => setView('settings:profile');
-    el.appendChild(_settingsRow('Working hours', 'Time suggestions on Home and in the stories stay inside these. Today’s schedule always offers its buttons.', wh));
+    el.appendChild(planSettingsWorkHoursLink());
+    setFold(el, 'suggestions-rules-more', 'Which ideas', ({ body: el }) => {
     for (const area of SG_AREAS) {
       const rules = sgRules().filter(r => r.area === area);
       if (!rules.length) continue;
@@ -590,21 +592,22 @@ registerSettingsGroup({
         el.appendChild(_settingsRow(r.title, hint, _settingsSwitch(on, r.title, (v) => save(m => sgMemRule(m, r.id, v ? (r.defaultOn === false ? 'force-on' : 'on') : 'off', today)), mem.off)));
       }
     }
+    });
+    setFold(el, 'suggestions-counts-adv', 'Advanced', ({ body: el }) => {
     const nMuted = sgMemCount(mem, today);
-    const reset = document.createElement('button'); reset.type = 'button'; reset.className = 'btn btn-secondary btn-sm';
-    reset.innerHTML = icon('rotate-ccw') + '<span>Reset</span>'; reset.disabled = !nMuted && !Object.keys(mem.fewer).length;
-    reset.onclick = () => save(m => sgMemReset(m), 'Hidden suggestions can show again');
+    const reset = uiButton({ label: 'Reset', icon: 'rotate-ccw', size: 'sm', disabled: !nMuted && !Object.keys(mem.fewer).length,
+      run: () => save(m => sgMemReset(m), 'Hidden suggestions can show again') });
     el.appendChild(_settingsRow(`Muted and dismissed: ${nMuted}`, '“Not now”, “Not for this one” and “Fewer like this” so far.', reset));
     const st = sgStatsNorm(state.suggestStats);
     const rows = sgRules().map(r => [r, st.rules[r.id] || {}]).filter(([, s]) => s.shown || s.acted || s.dismissed);
     const counts = document.createElement('div'); counts.className = 'sg-counts';
     counts.innerHTML = rows.length
       ? `<table class="table"><thead><tr><th>Suggestion</th><th class="num">Shown</th><th class="num">Used</th><th class="num">Dismissed</th></tr></thead><tbody>${rows.map(([r, s]) => `<tr><td>${esc(r.title)}</td><td class="num">${Number(s.shown) || 0}</td><td class="num">${Number(s.acted) || 0}</td><td class="num">${Number(s.dismissed) || 0}</td></tr>`).join('')}</tbody></table>`
-      : '<p class="muted">Nothing counted yet.</p>';
-    const rc = document.createElement('button'); rc.type = 'button'; rc.className = 'btn btn-ghost btn-sm'; rc.textContent = 'Reset counts';
-    rc.onclick = () => { state.suggestStats = sgStatsReset(); saveUI(); render(); };
+      : '<p class="empty-line"><span>Counts appear here once you use or skip a suggestion.</span></p>';
+    const rc = uiButton({ label: 'Reset counts', kind: 'ghost', size: 'sm', run: () => { state.suggestStats = sgStatsReset(); saveUI(); render(); } });
     const wrap = document.createElement('div'); wrap.className = 'vstack'; wrap.append(counts, rc);
-    el.appendChild(_settingsRow('Counts', 'Kept on this computer only; they help rank suggestions you use above ones you skip.', wrap));
+    el.appendChild(_settingsRow('Counts', 'Kept on this computer to rank the suggestions you use.', wrap));
+    }, { advanced: true });
   },
 });
 /** One line on what its buttons do (a rule may say it itself: `safetyHint`). */

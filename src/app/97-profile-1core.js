@@ -69,7 +69,8 @@ function profileGet() {
     status: { emoji: profileEmojiOk(p.status.emoji) ? p.status.emoji : '', text: profileText(p.status.text, PF_MAX.status), until: Number(p.status.until) || 0 },
     avatar: profileAvatarNormalize(p.avatar), badges: Array.isArray(p.badges) ? p.badges.slice(0, PF_MAX.badges) : null,
     places: Array.isArray(p.places) ? p.places.slice(0, PF_MAX.places) : [], share: Object.assign({ places: false, visits: true }, p.share),
-    react: p.react !== false, collected: Object.assign({}, p.collected), look: _pfLookOf(p), updatedAt: Number(p.updatedAt) || 0 };
+    react: p.react !== false, collected: Object.assign({}, p.collected), look: _pfLookOf(p), updatedAt: Number(p.updatedAt) || 0,
+    friendName: profileText(p.friendName, PF_MAX.name), friendNameOn: typeof p.friendNameOn === 'boolean' ? p.friendNameOn : null };
 }
 function _pfEmit() { try { document.dispatchEvent(new CustomEvent('opendash:profile', { detail: { profile: profileGet() } })); } catch (e) { /* old browser */ } }
 function profileSet(patch, o) {
@@ -87,7 +88,7 @@ function profileSet(patch, o) {
       if (v.np && typeof v.np === 'object') next.np = Object.assign({}, cur.np, v.np);
       if (v.cur && typeof v.cur === 'object') next.cur = Object.assign({}, cur.cur, v.cur);
       p.look = typeof profileLookNormalize === 'function' ? profileLookNormalize(next) : next;
-    } else if (['name', 'pronouns', 'bio', 'working', 'theme', 'badges', 'places', 'react'].includes(k)) p[k] = v;
+    } else if (['name', 'pronouns', 'bio', 'working', 'theme', 'badges', 'places', 'react', 'friendName', 'friendNameOn'].includes(k)) p[k] = v;
     else if (_pfExt().has(k)) p[k] = v;   // another agent's field (profileExtend): its wire() and sanitize() check it
   }
   p.updatedAt = Date.now();   // clock-ok: a real time stamp (what friends sort by)
@@ -102,6 +103,34 @@ function profileSet(patch, o) {
 function profileDisplayName(p) {
   p = p || profileGet();
   return p.name || (typeof userName === 'function' && userName()) || 'You';
+}
+/**
+ * The name friends see (SIMPLIFY_PLAN.md L11): your name, unless "Show friends a different name" is on.
+ * An older friends name that differs from your name (set under Friends before 2.18) is kept as that different name.
+ */
+function profileFriendsName(p) {
+  p = p || profileGet();
+  return p.friendNameOn === true && p.friendName ? p.friendName : profileDisplayName(p);
+}
+/** Called when Settings > Profile opens, before any edit: keep a friends name that already differs from yours as the "different name". */
+function profileFriendNameDecide() {
+  try {
+    const p = profileGet();
+    if (p.friendNameOn !== null) return;
+    const F = _pfFriends(), me = F && typeof F.me === 'function' ? F.me() : null;
+    if (!me || typeof me.name !== 'string') return;   // Friends is not ready: decide next time
+    const cur = profileText(me.name, PF_MAX.name);
+    if (cur && cur !== profileDisplayName(p)) profileSet({ friendNameOn: true, friendName: cur }, { quiet: true });
+    else profileSet({ friendNameOn: false }, { quiet: true });
+  } catch (e) { /* never in the way */ }
+}
+/** Friends' name follows your name (or the different one). Not decided yet counts as following. */
+function profileFriendNameSync() {
+  try {
+    if (typeof friendsSetName !== 'function') return;
+    const r = friendsSetName(profileFriendsName());
+    if (r && typeof r.catch === 'function') r.catch(() => {});
+  } catch (e) { /* never in the way: the name goes with the next change */ }
 }
 function profileStatusNow(p) {
   const st = (p || profileGet()).status || {};
@@ -265,7 +294,7 @@ function profileAvatarEl(who, size, o) {
 var _pfExtStore;   // eslint-disable-line no-var
 function _pfExt() { return _pfExtStore || (_pfExtStore = new Map()); }
 function _pfExtReserved() { return ['v', 'name', 'pronouns', 'bio', 'working', 'theme', 'status', 'avatar', 'badges', 'places', 'share', 'react', 'collected', 'look',
-  'sentSig', 'updatedAt', 'emoji', 'until', 'color', 'city', 'at', 'game', 'ext', '__proto__', 'constructor', 'prototype']; }
+  'friendName', 'friendNameOn', 'sentSig', 'updatedAt', 'emoji', 'until', 'color', 'city', 'at', 'game', 'ext', '__proto__', 'constructor', 'prototype']; }
 /**
  * profileExtend({key, wire, sanitize, card, order}) -> true | false (a bad or taken key).
  *   key        the field, /^[a-z][A-Za-z0-9]{1,23}$/ (state.profile[key] on this side, body[key] on the wire)
@@ -565,7 +594,8 @@ function _pfGameShare() {
 function profilePayload() {
   const p = _pfState();
   const src = Object.assign({}, p, { badges: profileShowcase(profileGet()) });
-  // No display name set here: the name chosen for friends (Friends settings, "Your name for friends"), then Name & region.
+  if (p.friendNameOn === true && p.friendName) src.name = profileText(p.friendName, PF_MAX.name);   // "Show friends a different name"
+  // No name set here: the name friends already know you by, then Settings' name (Profile > Your name).
   let forFriends = '';
   try { const F = _pfFriends(), m = F && typeof F.me === 'function' ? F.me() : null; forFriends = m && typeof m.name === 'string' ? m.name : ''; } catch (e) { forFriends = ''; }
   const body = profileWire(src, { fallbackName: forFriends || (typeof userName === 'function' ? userName() : ''), badgeOk: (id) => !!profileBadgeInfo(id) });

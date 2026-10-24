@@ -7,10 +7,9 @@
    Scenes use the --scene-* tokens (animSceneHtml sizes). Reduced motion: no transitions. */
 
 .hin { container: hin / inline-size; display: flex; flex-direction: column; min-height: 100%; }
-.hin > .card-b { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-height: 0; padding: var(--space-1) var(--space-3) var(--space-3); }
-.hin .hgl-h { gap: 6px; }
-.hin .hin-upd { height: 26px; padding: 0 8px; gap: 5px; font-size: 12px; color: var(--fg-muted); flex: none; }
-.hin .hin-upd .i { width: 13px; height: 13px; }
+.hin > .card-b { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; padding: var(--space-1) var(--space-3) var(--space-3); }
+.hin .hgl-h { gap: var(--space-1-5); }
+.hin .hin-upd { height: 26px; padding: 0 var(--space-2); gap: var(--space-1); font-size: var(--text-xs); color: var(--fg-muted); flex: none; }
 .hin .hgl-h .hg-gear { flex: none; }
 .hin-main { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 
@@ -18,50 +17,47 @@
 .hin--split > .card-b { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; }
 .hin-b > .hg-suggest { grid-column: 1 / -1; }
 @container hin (min-width: 700px) {
-  .hin--split > .card-b { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); column-gap: 14px; align-items: start; }
+  .hin--split > .card-b { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); column-gap: var(--space-3); align-items: start; }
 }
 @container hin (min-width: 1000px) {
-  .hin--split > .card-b { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); column-gap: 18px; }
+  .hin--split > .card-b { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); column-gap: var(--space-4); }
 }
 @container hin (min-width: 700px) {
   .hin--split.hin--calm > .card-b { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); }   /* nothing to answer: room for the suggestions */
 }
 
 /* ----- rows ----- */
-.hin-list { list-style: none; margin: 0 calc(-1 * var(--space-2)); padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.hin-list { list-style: none; margin: 0 calc(-1 * var(--space-2)); padding: 0; display: flex; flex-direction: column; gap: 1px /* hairline */; }
 .hin-row {
-  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px;
-  min-height: 48px; padding: 6px var(--space-2); border-radius: 10px; cursor: default;
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-2);
+  min-height: 48px; padding: var(--space-1-5) var(--space-2); border-radius: var(--radius-md); cursor: default;
 }
 .hin-av { display: flex; align-self: center; }
 .hin-av .avatar { flex: none; }
-.hin-txt { min-width: 0; display: flex; flex-direction: column; gap: 1px; color: inherit; text-decoration: none; cursor: pointer; border-radius: 6px; }
+.hin-txt { min-width: 0; display: flex; flex-direction: column; gap: 1px /* hairline */; color: inherit; text-decoration: none; cursor: pointer; border-radius: var(--radius-xs); }
 .hin-txt:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.hin-l1 { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: var(--text-sm); line-height: 18px; }
+.hin-l1 { display: flex; align-items: center; gap: var(--space-1-5); min-width: 0; font-size: var(--text-sm); line-height: 18px; }
 .hin-from { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--weight-medium); color: var(--fg); }
 .hin-row.is-unread .hin-from { font-weight: var(--weight-semibold); }
-.hin-row.is-unread .hin-l1::before { content: ''; flex: none; width: 6px; height: 6px; margin-right: -1px; border-radius: 50%; background: var(--accent); }
-.hin-cnt { flex: none; padding: 0 5px; border-radius: 6px; background: var(--bg-muted); color: var(--fg-subtle); font-size: 11px; line-height: 16px; font-variant-numeric: tabular-nums; }
+.hin-row.is-unread .hin-l1::before { content: ''; flex: none; width: 6px; height: 6px; margin-right: -1px /* nudge */; border-radius: 50%; background: var(--accent); }
+.hin-cnt { flex: none; padding: 0 var(--space-1); border-radius: var(--radius-xs); background: var(--bg-muted); color: var(--fg-subtle); font-size: var(--text-2xs); line-height: 16px; font-variant-numeric: tabular-nums; }
 .hin-imp { display: inline-flex; flex: none; color: var(--warning-ink); }
-.hin-imp .i { width: 12px; height: 12px; }
-.hin-age { flex: none; margin-left: auto; padding-left: 6px; font-size: 12px; color: var(--fg-subtle); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.hin-subj { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; line-height: 17px; color: var(--fg-muted); }
+.hin-age { flex: none; margin-left: auto; padding-left: var(--space-1-5); font-size: var(--text-xs); color: var(--fg-subtle); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hin-subj { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); line-height: 17px; color: var(--fg-muted); }
 .hin-row.is-unread .hin-subj { color: var(--fg); }
 .hin-txt:hover .hin-subj { text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--fg-muted) 45%, transparent); text-underline-offset: 2px; }
 .hin-drafted {
-  display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 3px; padding: 1px 7px 1px 5px; border-radius: 999px;
-  background: var(--success-soft); color: var(--success-ink); font-size: 11px; line-height: 16px; font-weight: var(--weight-medium); text-decoration: none;
+  display: inline-flex; align-items: center; gap: var(--space-1); align-self: flex-start; margin-top: var(--space-0-5); padding: 1px var(--space-1-5) 1px var(--space-1) /* nudge */; border-radius: var(--radius-full);
+  background: var(--success-soft); color: var(--success-ink); font-size: var(--text-2xs); line-height: 16px; font-weight: var(--weight-medium); text-decoration: none;
 }
-.hin-drafted .i { width: 12px; height: 12px; }
 
 /* actions: the main pair (Task + ✓) always shows; the rest on hover and on focus */
-.hin-acts { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.hin-sec { display: none; align-items: center; gap: 1px; }
+.hin-acts { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.hin-sec { display: none; align-items: center; gap: 1px /* hairline */; }
 .hin-row:hover .hin-sec, .hin-row:focus-within .hin-sec, .hin-row[aria-current="true"] .hin-sec { display: flex; }
 .hin-pri { display: flex; align-items: center; }
-.hin-pri .hin-task { gap: 5px; padding: 0 9px 0 7px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.hin-pri .hin-task .i { width: 14px; height: 14px; }
-.hin-pri .hin-task-ok { margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.hin-pri .hin-task { gap: var(--space-1); padding: 0 var(--space-2) 0 var(--space-1-5); border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.hin-pri .hin-task-ok { margin-left: -1px /* nudge */; border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .hin .hin-ok { width: var(--control-h-sm, 26px); padding: 0; justify-content: center; }
 .hin .hin-ok .i { color: var(--success-ink); }
 /* the ✓ joined to its main button: the same secondary look (.btn-icon would make it ghost) */
@@ -69,35 +65,34 @@
 .hin .hin-pri .hin-task-ok:hover, .hin .hin-sug-ok:hover { background: var(--bg-muted); }
 .hin-sec .btn-icon { width: 28px; padding: 0; justify-content: center; color: var(--fg-muted); }
 .hin-sec .btn-icon:hover { color: var(--fg); }
-.hin-sec .hin-done:not(.btn-icon) { gap: 5px; padding: 0 8px; font-size: 12px; color: var(--fg-muted); }
+.hin-sec .hin-done:not(.btn-icon) { gap: var(--space-1); padding: 0 var(--space-2); font-size: var(--text-xs); color: var(--fg-muted); }
 .hin-pair { display: inline-flex; align-items: center; border-radius: var(--radius-sm); }
-.hin-pair.has-ok { box-shadow: inset 0 0 0 1px var(--border); margin-right: 3px; }
+.hin-pair.has-ok { box-shadow: inset 0 0 0 1px var(--border); margin-right: var(--space-0-5); }
 .hin-pair.has-ok .btn { border-radius: 0; }
 .hin-pair.has-ok .btn:first-child { border-top-left-radius: var(--radius-sm); border-bottom-left-radius: var(--radius-sm); }
 .hin-pair.has-ok .btn:last-child { border-top-right-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); box-shadow: inset 1px 0 0 var(--border); }
 .hin-reply.is-done .i { color: var(--success-ink); }
 .hin-reply.is-done { cursor: default; }
-.hin-row .btn .i { width: 14px; height: 14px; }
 @media (hover: none) { .hin-sec { display: flex; } }
 
 /* a narrow card: the actions go under the text, all of them visible */
 @container hin (max-width: 460px) {
-  .hin-row { grid-template-columns: auto minmax(0, 1fr); row-gap: 6px; align-items: start; }
-  .hin-av { align-self: start; padding-top: 2px; }
+  .hin-row { grid-template-columns: auto minmax(0, 1fr); row-gap: var(--space-1-5); align-items: start; }
+  .hin-av { align-self: start; padding-top: var(--space-0-5); }
   .hin-acts { grid-column: 2; flex-wrap: wrap; }
-  .hin-pri { order: -1; margin-right: 4px; }
+  .hin-pri { order: -1; margin-right: var(--space-1); }
   .hin-sec { display: flex; }
 }
 
 /* ----- S: the count ----- */
-.hin-sum { display: flex; flex-direction: column; gap: 3px; padding: 2px 0 4px; min-width: 0; }
-.hin-big-l { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.hin-big { font-size: 34px; line-height: 38px; font-weight: var(--weight-semibold); letter-spacing: -0.035em; color: var(--fg); font-variant-numeric: tabular-nums; }
-.hin-unit { font-size: 13px; color: var(--fg-muted); white-space: nowrap; }
-.hin-known { font-size: 12px; line-height: 17px; color: var(--fg-muted); }
+.hin-sum { display: flex; flex-direction: column; gap: var(--space-0-5); padding: var(--space-0-5) 0 var(--space-1); min-width: 0; }
+.hin-big-l { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.hin-big { font-size: var(--text-3xl); line-height: 38px; font-weight: var(--weight-semibold); letter-spacing: -0.035em; color: var(--fg); font-variant-numeric: tabular-nums; }
+.hin-unit { font-size: var(--text-sm); color: var(--fg-muted); white-space: nowrap; }
+.hin-known { font-size: var(--text-xs); line-height: 17px; color: var(--fg-muted); }
 .hin-oldest {
-  display: inline-flex; align-items: center; gap: 7px; align-self: flex-start; max-width: 100%; margin-top: 8px; padding: 3px 10px 3px 3px;
-  border-radius: 999px; background: var(--bg-muted); color: var(--fg); font-size: 12px; line-height: 18px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: var(--space-1-5); align-self: flex-start; max-width: 100%; margin-top: var(--space-2); padding: var(--space-0-5) var(--space-2) var(--space-0-5) var(--space-0-5);
+  border-radius: var(--radius-full); background: var(--bg-muted); color: var(--fg); font-size: var(--text-xs); line-height: 18px; text-decoration: none;
   transition: background-color var(--m-fast, 120ms) ease-out;
 }
 .hin-oldest[href]:hover { background: color-mix(in oklab, var(--fg) 9%, var(--bg-muted)); }
@@ -107,58 +102,50 @@
 .hin-oldest-t b { font-weight: var(--weight-medium); }
 
 /* ----- calm, empty, loading ----- */
-.hin-calm { display: flex; align-items: center; gap: 12px; padding: 12px 2px 6px; min-width: 0; }
+.hin-calm { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-0-5) var(--space-1-5); min-width: 0; }
 .hin-calm > div { display: flex; flex-direction: column; min-width: 0; }
-.hin-calm b { font-size: 13px; line-height: 18px; font-weight: var(--weight-semibold); color: var(--fg); }
-.hin-calm span { font-size: 12px; line-height: 17px; color: var(--fg-subtle); }
-.hin-calm-ic { width: var(--scene-sm, 38px); height: var(--scene-sm, 38px); flex: none; display: grid; place-items: center; border-radius: 12px; background: var(--success-soft); color: var(--success-ink); }
-.hin-calm-ic .i { width: 18px; height: 18px; }
+.hin-calm b { font-size: var(--text-sm); line-height: 18px; font-weight: var(--weight-semibold); color: var(--fg); }
+.hin-calm span { font-size: var(--text-xs); line-height: 17px; color: var(--fg-subtle); }
+.hin-calm-ic { width: var(--scene-sm, 38px); height: var(--scene-sm, 38px); flex: none; display: grid; place-items: center; border-radius: var(--radius-md); background: var(--success-soft); color: var(--success-ink); }
 .hin .hgl-emp.hin-nomail { min-height: 150px; }
 .hin .home-empty.hin-off { flex: 1; }
-.hin-skel { display: flex; flex-direction: column; gap: 10px; padding: 6px 0; }
-.hin-sk-row { display: flex; align-items: center; gap: 10px; }
+.hin-skel { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1-5) 0; }
+.hin-sk-row { display: flex; align-items: center; gap: var(--space-2); }
 .hin-sk-av { width: 28px; height: 28px !important; border-radius: 50%; flex: none; }
-.hin-sk-tx { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
+.hin-sk-tx { display: flex; flex-direction: column; gap: var(--space-1-5); flex: 1; min-width: 0; }
 .hin-sk-tx .skeleton { height: 10px; }
 
 /* ----- the foot ----- */
-.hin-foot { gap: 6px; min-width: 0; }
+.hin-foot { gap: var(--space-1-5); min-width: 0; }
 .hin-foot-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hin-foot .hin-more { margin-left: auto; height: 24px; padding: 0 6px; gap: 3px; font-size: 12px; color: var(--fg-muted); flex: none; }
-.hin-foot .hin-more .i { width: 13px; height: 13px; }
+.hin-foot .hin-more { margin-left: auto; height: 24px; padding: 0 var(--space-1-5); gap: var(--space-0-5); font-size: var(--text-xs); color: var(--fg-muted); flex: none; }
 
 /* ----- L / full: Claude's suggestions ----- */
-.hin-sugs { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 8px; border-radius: 12px; background: var(--bg-subtle); border: 1px solid var(--border-subtle); }
-.hin-sugs-h { display: flex; align-items: center; gap: 6px; min-height: 26px; }
-.hin-sugs-h .hgl-ovl { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-.hin-sugs-h .hgl-ovl .i { width: 13px; height: 13px; }
-.hin-sugs-n { font-size: 12px; color: var(--fg-subtle); font-variant-numeric: tabular-nums; }
-.hin-sugs-h .spacer { flex: 1; }
-.hin .hin-suggest { height: 26px; padding: 0 8px; gap: 5px; font-size: 12px; color: var(--fg-muted); }
-.hin .hin-suggest .i { width: 13px; height: 13px; }
-.hin-sugs-none { margin: 2px 0 4px; font-size: 12px; line-height: 18px; color: var(--fg-muted); }
+.hin-sugs { min-width: 0; display: flex; flex-direction: column; gap: var(--space-1-5); padding: var(--space-2) var(--space-2) var(--space-2); border-radius: var(--radius-md); background: var(--bg-subtle); border: 1px solid var(--border-subtle); }
+.hin-sugs-h.sec-h { margin: 0; min-height: var(--control-h-sm); }   /* secHead inside the suggestions panel */
+.hin .hin-suggest { height: 26px; padding: 0 var(--space-2); gap: var(--space-1); font-size: var(--text-xs); color: var(--fg-muted); }
+.hin-sugs-none { margin: var(--space-0-5) 0 var(--space-1); font-size: var(--text-xs); line-height: 18px; color: var(--fg-muted); }
 /* Suggest tasks while Claude reads: "Reading… 0:12 · Stop" (12-home-w-inbox.js _hinSugs). */
 .hin .hin-suggest.is-busy { color: var(--fg); }
 .hin .hin-suggest .hin-since { font-variant-numeric: tabular-nums; color: var(--fg-subtle); }
 .hin .hin-suggest .hin-stop { color: var(--accent-ink, var(--accent)); font-weight: var(--weight-medium); }
-.hin-sugs-err { display: flex; align-items: center; gap: 6px; margin: 2px 0 4px; font-size: 12px; line-height: 18px; color: var(--fg-muted); }
+.hin-sugs-err { display: flex; align-items: center; gap: var(--space-1-5); margin: var(--space-0-5) 0 var(--space-1); font-size: var(--text-xs); line-height: 18px; color: var(--fg-muted); }
 .hin-sugs-err > .i { color: var(--danger); flex: none; }
 .hin-sugs-err > span { flex: 1; min-width: 0; }
-.hin-sugs .sel-bar { margin: 0 0 2px; }
-.hin-sug-list { display: flex; flex-direction: column; gap: 2px; }
-.hin-sug { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 6px; border-radius: 8px; }
+.hin-sugs .sel-bar { margin: 0 0 var(--space-0-5); }
+.hin-sug-list { display: flex; flex-direction: column; gap: var(--space-0-5); }
+.hin-sug { display: flex; align-items: center; gap: var(--space-2); min-width: 0; padding: var(--space-1-5); border-radius: var(--radius-sm); }
 .hin-sug:hover { background: color-mix(in oklab, var(--fg) 4%, transparent); }
 .hin-sug[aria-current="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent); }
-.hin-sug-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-.hin-sug-t { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13px; line-height: 18px; color: var(--fg); }
+.hin-sug-b { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px /* hairline */; }
+.hin-sug-t { display: flex; align-items: center; gap: var(--space-1-5); min-width: 0; font-size: var(--text-sm); line-height: 18px; color: var(--fg); }
 .hin-sug-tt { min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
-.hin-sug-t .hw-p { align-self: flex-start; margin-top: 6px; }
-.hin-sug-s { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: 12px; line-height: 16px; color: var(--fg-subtle); }
+.hin-sug-t .hw-p { align-self: flex-start; margin-top: var(--space-1-5); }
+.hin-sug-s { display: flex; align-items: center; gap: var(--space-1); min-width: 0; font-size: var(--text-xs); line-height: 16px; color: var(--fg-subtle); }
 .hin-sug-m { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hin-sug-a { display: flex; align-items: center; gap: 2px; flex: none; }
-.hin-sug-a .hin-sug-add { gap: 4px; padding: 0 8px 0 6px; border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.hin-sug-a .hin-sug-ok { margin-left: -3px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
-.hin-sug-a .btn .i { width: 13px; height: 13px; }
+.hin-sug-a { display: flex; align-items: center; gap: var(--space-0-5); flex: none; }
+.hin-sug-a .hin-sug-add { gap: var(--space-1); padding: 0 var(--space-2) 0 var(--space-1-5); border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.hin-sug-a .hin-sug-ok { margin-left: calc(-1 * var(--space-0-5)); border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .hin-sug-x { width: 26px; padding: 0; justify-content: center; color: var(--fg-subtle); }
 @container hin (max-width: 460px) {
   .hin-sug { flex-wrap: wrap; }

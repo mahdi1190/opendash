@@ -10,6 +10,40 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.18.1] - 2026-10-24
+
+A playable garden, a way to keep track of money you are owed back, and a calmer app. Nothing you already have is taken away.
+
+### The garden is now a game
+
+- **The garden fills the window.** There are tools to plant, water and trim, a short tour and a guide, so it is easy to start.
+- **Coins come from your time.** You earn them from focus time and from time logged on tasks, with a daily cap so it stays gentle. Prices are roughly two to three times what they were, and everything you own is kept.
+
+### Expenses
+
+- **Label a payment as an expense, or add one by hand.** Keep receipts with it, and build a claim pack when you want to be paid back.
+- **OpenDash notices when you are paid.** An **Owed to you** card on Home shows what is still outstanding, and an expense can link to a task.
+- **Claude can help** with your expenses through new tools.
+
+### Together
+
+- **Share a task with a friend**, or start a shared list, from a friend's page.
+
+### Money and sync
+
+- Sync no longer asks you to review its own housekeeping.
+- Pending card payments show with a **Pending** label.
+- The "days old" message follows each bank's last sync and names the bank.
+- Accounts with identical names now show their payment counts, so you can tell them apart.
+
+### A calmer app
+
+- Dialogs keep their size, and task rows show less (Display > Show on rows brings anything back).
+- Settings, sync, connections, Home and Life each show one status line, with **More** or **Advanced** for the rest.
+- Relay and asleep status are clearer, and a number of wording fixes.
+
+The 500 new achievements are coming in a later update.
+
 ## [2.18.0] - 2026-10-24
 
 A new home for the people and the fun parts of OpenDash: **Life**. Your friends, a garden you can grow and share, a pet to look after, a much bigger wardrobe, and a calmer Tasks sidebar. Nothing you already have is taken away, and your old garden carries over.

@@ -3,6 +3,15 @@
 let _googleHealthBusy = false;
 let _googleHealthConsentCleanup = null;
 
+/** Is there anything to show on the page? Not available yet (unconfigured) goes under Advanced instead. */
+function googleHealthActive(all) {
+  const h = (all && all.googleHealth) || {};
+  return !!(h.connected || h.needsAuth || h.error || h.configured);
+}
+/**
+ * Google Health card (SIMPLIFY_PLAN.md 5.6): status first (Not available yet / Ready to connect /
+ * Connected / Needs you), one sentence, one action; the stats and setup sit under More.
+ */
 function googleHealthConnectionCard(all) {
   const health = all.googleHealth || {};
   const card = _connEl('section', 'card conn-card google-health-card');
@@ -11,32 +20,35 @@ function googleHealthConnectionCard(all) {
   const mark = _connEl('span', 'conn-ic'); mark.innerHTML = icon('heart'); mark.setAttribute('aria-hidden', 'true');
   const names = _connEl('div', 'conn-titles');
   names.append(_connEl('div', 'conn-name', 'Google Health'), _connEl('div', 'conn-sub', 'Google Health & Fitbit · read-only'));
-  const label = health.needsAuth ? 'Needs sign-in' : health.connected ? 'Connected' : health.configured ? 'Ready to connect' : 'Setup needed';
-  head.append(mark, names, _connEl('span', 'status ' + (health.needsAuth || health.error ? 'warn' : health.connected ? 'ok' : 'off'), label));
-  card.append(head, _connEl('p', 'conn-text', 'Connect your activity and sleep to OpenDash. Google handles sign-in and consent; your synced data stays in your local data folder.'));
-  if (health.lastSync) {
-    card.appendChild(_connEl('p', 'conn-note', 'Last synced ' + _connAgo(health.lastSync) + '.'));
-    const snapshot = health.snapshot;
+  head.append(mark, names); card.appendChild(head);
+  const errText = health.error ? (typeof health.error === 'string' ? health.error : health.error.message || 'Open setup to reconnect') : '';
+  card.appendChild(health.needsAuth ? setStatusLine('warn', 'Needs you', 'Sign in again')
+    : health.error ? setStatusLine('warn', 'Needs you', errText)
+      : health.connected ? setStatusLine('ok', 'Connected', health.lastSync ? 'Updated ' + _connAgo(health.lastSync) : '')
+        : health.configured ? setStatusLine('idle', 'Ready to connect')
+          : setStatusLine('off', 'Not available yet', 'Google only lets approved projects connect'));
+  card.appendChild(_connEl('p', 'conn-text', 'Activity and sleep, read-only.'));
+  const row = _connEl('div', 'set-action'); card.appendChild(row);
+  if (health.connected && !health.needsAuth) {
+    const upd = uiButton({ label: _googleHealthBusy ? 'Updating…' : 'Update now', icon: 'refresh-cw', kind: 'primary', size: 'sm', run: () => googleHealthSync() });
+    upd.disabled = _googleHealthBusy; row.appendChild(upd);
+  } else row.appendChild(uiButton({ label: health.configured ? (health.needsAuth ? 'Sign in again' : 'Connect Google Health') : 'Set up Google Health', icon: 'arrow-right', kind: health.configured ? 'primary' : 'secondary', size: 'sm', run: () => health.configured ? googleHealthSignIn() : googleHealthConnectionSetup() }));
+  setFold(card, 'conn-ghealth-more', 'More', ({ body }) => {
+    const snapshot = health.lastSync && health.snapshot;
     if (snapshot) {
       const stats = _connEl('div', 'google-health-stats');
       if (Array.isArray(snapshot.steps)) stats.appendChild(_connEl('span', 'chip', snapshot.steps.length + ' activity day' + (snapshot.steps.length === 1 ? '' : 's')));
       if (Array.isArray(snapshot.sleep)) stats.appendChild(_connEl('span', 'chip', snapshot.sleep.length + ' sleep record' + (snapshot.sleep.length === 1 ? '' : 's')));
-      card.appendChild(stats);
-      for (const warning of snapshot.warnings || []) card.appendChild(_connEl('p', 'conn-note', warning));
+      body.appendChild(stats);
+      for (const warning of snapshot.warnings || []) body.appendChild(_connEl('p', 'conn-note', warning));
     }
-  }
-  if (health.error) {
-    const error = _connEl('p', 'conn-note', typeof health.error === 'string' ? health.error : health.error.message || 'Google Health needs attention. Open setup to reconnect.');
-    error.setAttribute('role', 'alert'); card.appendChild(error);
-  }
-  if (!health.configured) card.appendChild(_connEl('p', 'conn-note', 'One-time Google Cloud setup required. Google currently limits access to approved projects.'));
-  const actions = _connEl('div', 'assistant-actions');
-  if (health.connected) {
-    const sync = _connBtn(_googleHealthBusy ? 'Syncing…' : 'Sync now', 'refresh-cw', 'btn-primary', () => googleHealthSync());
-    sync.disabled = _googleHealthBusy; actions.appendChild(sync);
-  }
-  actions.appendChild(_connBtn(health.connected ? 'Manage Google Health' : health.configured ? 'Connect Google Health' : 'Set up Google Health', 'arrow-right', 'btn-secondary', () => health.configured && !health.connected ? googleHealthSignIn() : googleHealthConnectionSetup()));
-  card.appendChild(actions); return card;
+    if (!health.configured) body.appendChild(_connEl('p', 'conn-note', 'Needs a one-time Google Cloud setup. Google currently limits access to approved projects.'));
+    body.appendChild(_connEl('p', 'conn-note', 'Google handles sign-in and consent. What it brings in stays in your data folder.'));
+    const acts = _connEl('div', 'assistant-actions');
+    acts.appendChild(uiButton({ label: health.connected ? 'Manage Google Health' : 'Setup steps', icon: 'settings', kind: 'ghost', size: 'sm', run: () => googleHealthConnectionSetup() }));
+    body.appendChild(acts);
+  });
+  return card;
 }
 
 function _googleHealthStopConsentWatch() {
@@ -79,7 +91,7 @@ function googleHealthSignIn() {
     if (popup) { popup.opener = null; popup.location.replace(location.origin + '/api/google-health/connect'); return; }
   } catch (e) { if (popup) try { popup.close(); } catch (_) { /* already closed */ } }
   cleanup();
-  toast('The sign-in tab did not open. You can sign in here instead.', { kind: 'info', timeout: 8000,
+  toast('The sign-in tab didn’t open. You can sign in here instead', { kind: 'info', timeout: 8000,
     action: { label: 'Sign in here', run: () => location.assign('/api/google-health/connect') } });
 }
 
@@ -89,8 +101,8 @@ async function googleHealthSync() {
   if (state.view === 'connections') renderMain();
   try {
     const result = await _srcApi('/api/google-health/sync', { method: 'POST', body: {} });
-    toast(result.snapshot && result.snapshot.warnings && result.snapshot.warnings.length ? 'Google Health synced with some missing data. See the connection for details.' : 'Google Health synced.', { kind: 'ok' });
-  } catch (e) { toast('Google Health did not sync: ' + netErrorMessage(e), { kind: 'err', timeout: 12000, action: { label: 'Try again', run: () => googleHealthSync() } }); }
+    toast(result.snapshot && result.snapshot.warnings && result.snapshot.warnings.length ? 'Google Health updated, with some data missing. See the card for details' : 'Google Health updated', { kind: 'ok' });
+  } catch (e) { toastError('update Google Health', e, () => googleHealthSync()); }
   finally { _googleHealthBusy = false; await connRefresh({ force: true }); if (state.view === 'connections') renderMain(); }
 }
 
@@ -103,25 +115,25 @@ function googleHealthConnectionSetup() {
     catch (e) {
       if (!alive) return;
       const p = _connEl('p', 'conn-note', 'The Google Health status did not load: ' + netErrorMessage(e) + ' ');
-      p.appendChild(_connBtn('Try again', 'refresh-cw', 'btn-ghost', () => { close(); googleHealthConnectionSetup(); }));
+      p.appendChild(uiButton({ label: 'Try again', icon: 'refresh-cw', kind: 'ghost', size: 'sm', run: () => { close(); googleHealthConnectionSetup(); } }));
       el.appendChild(p);
       return;
     }
     if (!alive) return;
     const notice = _connEl('p', 'callout info conn-msg', 'Google currently pauses access for new projects. An approved Google Cloud project is needed to finish connecting.');
     el.appendChild(notice);
-    el.appendChild(_connBtn('Google Health setup guide', 'external-link', 'btn-ghost', () => window.open('https://developers.google.com/health/setup', '_blank', 'noopener')));
+    el.appendChild(uiButton({ label: 'Google Health setup guide', icon: 'external-link', kind: 'ghost', size: 'sm', run: () => window.open('https://developers.google.com/health/setup', '_blank', 'noopener') }));
     if (health.error) { const error = _connEl('p', 'conn-note', typeof health.error === 'string' ? health.error : health.error.message || 'Please reconnect Google Health.'); error.setAttribute('role', 'alert'); el.appendChild(error); }
     if (health.configured) {
       const actions = _connEl('div', 'assistant-actions');
-      actions.appendChild(_connBtn(health.connected ? 'Reconnect Google Health' : 'Sign in with Google', 'log-in', 'btn-primary', googleHealthSignIn));
-      if (health.connected || health.needsAuth || health.lastSync) actions.appendChild(_connBtn('Disconnect Google Health', 'unplug', 'btn-secondary', async b => {
+      actions.appendChild(uiButton({ label: health.connected ? 'Reconnect Google Health' : 'Sign in with Google', icon: 'log-in', kind: 'primary', size: 'sm', run: (e, b) => googleHealthSignIn(b) }));
+      if (health.connected || health.needsAuth || health.lastSync) actions.appendChild(uiButton({ label: 'Disconnect Google Health', icon: 'unplug', kind: 'secondary', size: 'sm', run: async (e, b) => {
         b.disabled = true;
-        try { await _srcApi('/api/google-health/disconnect', { method: 'POST', body: {} }); _googleHealthStopConsentWatch(); await connRefresh({ force: true }); close(); toast('Google Health disconnected.', { kind: 'ok' }); }
-        catch (e) { if (alive) b.disabled = false; toast(e.message, { kind: 'err' }); }
-      }));
-      el.append(actions, _connEl('p', 'conn-note', 'Return here after sign-in, then choose Sync now to read your recent activity and sleep. You can allow either or both permissions on Google’s consent screen.'));
-      if (health.lastSync) el.appendChild(_connEl('p', 'conn-note', 'Last synced ' + _connAgo(health.lastSync) + '.'));
+        try { await _srcApi('/api/google-health/disconnect', { method: 'POST', body: {} }); _googleHealthStopConsentWatch(); await connRefresh({ force: true }); close(); toast('Google Health disconnected', { kind: 'ok' }); }
+        catch (e) { if (alive) b.disabled = false; toastError('disconnect Google Health', e); }
+      } }));
+      el.append(actions, _connEl('p', 'conn-note', 'Return here after sign-in, then choose Update now to read your recent activity and sleep. You can allow either or both permissions on Google’s consent screen.'));
+      if (health.lastSync) el.appendChild(_connEl('p', 'conn-note', 'Last updated ' + _connAgo(health.lastSync) + '.'));
     }
     const details = _connEl('details', 'google-health-setup'); details.open = !health.configured;
     details.appendChild(_connEl('summary', null, health.configured ? 'Replace Google Cloud setup' : 'One-time Google Cloud setup'));
@@ -138,7 +150,7 @@ function googleHealthConnectionSetup() {
     const input = _connEl('input', 'control'); input.type = 'file'; input.accept = '.json,application/json';
     field.appendChild(input); details.appendChild(field);
     const feedback = _connEl('p', 'conn-note'); feedback.setAttribute('role', 'status'); feedback.setAttribute('aria-live', 'polite'); details.appendChild(feedback);
-    const save = _connBtn('Save Google Health setup', 'check', 'btn-primary', async b => {
+    const save = uiButton({ label: 'Save Google Health setup', icon: 'check', kind: 'primary', size: 'sm', run: async (e, b) => {
       const file = input.files && input.files[0];
       if (!file) { feedback.textContent = 'Choose the credentials JSON you downloaded from Google Cloud.'; input.focus(); return; }
       b.disabled = true; input.disabled = true; feedback.textContent = 'Saving setup…';
@@ -150,9 +162,9 @@ function googleHealthConnectionSetup() {
         _googleHealthStopConsentWatch();
         await connRefresh({ force: true });
         if (alive) { close(); googleHealthConnectionSetup(); }
-        toast('Google Health setup saved. Sign in with Google to connect.', { kind: 'ok' });
+        toast('Google Health setup saved. Sign in with Google to connect', { kind: 'ok' });
       } catch (e) { if (alive) { feedback.textContent = e.message; b.disabled = false; input.disabled = false; } }
-    });
+    } });
     details.appendChild(save); el.appendChild(details);
   } });
 }

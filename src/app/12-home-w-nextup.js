@@ -255,11 +255,10 @@ function _nuArmTick(ctx) {
 
 /* ---------- the card ---------- */
 function _nuHead(vm, ctx, cal) {
-  const h = document.createElement('div'); h.className = 'card-h nu-h';
-  h.innerHTML = `${icon('presentation')}<h3>Meeting prep</h3>${vm && vm.others ? `<span class="n">${esc(vm.others === 1 ? 'with 1 person' : `with ${vm.others} people`)}</span>` : ''}<span class="spacer"></span>`;
+  const h = cardHead({ icon: 'presentation', title: 'Meeting prep', count: vm && vm.others ? `with ${vm.others} people` : '', cls: 'nu-h' });
   if (cal && cal.ok && (cal.stale || cal.running) && cal.label) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'nu-upd' + (cal.running ? ' is-running' : ''); b.dataset.act = 'refresh';
-    b.innerHTML = icon('refresh-cw') + `<span>${esc(cal.running ? 'Updating…' : cal.label)}</span>`;
+    b.innerHTML = icon('refresh-cw', 'i-xs') + `<span>${esc(cal.running ? 'Updating…' : cal.label)}</span>`;
     b.setAttribute('data-tip', cal.running ? 'Reading your calendars' : 'Read the calendar again');
     b.setAttribute('aria-label', cal.running ? 'Updating the calendar' : `${cal.label}. Read the calendar again`);
     h.appendChild(b);
@@ -372,8 +371,8 @@ function _nuRows(vm) {
     li.innerHTML = _nuAvatar(r, 24) + `<div class="nu-row-b"><div class="nu-row-n">${nameHtml}${tags}</div><div class="nu-row-l">${line}</div></div>`;
     if (r.unknown && r.email && !r.declined) {
       const split = document.createElement('span'); split.className = 'nu-split';
-      split.innerHTML = `<button type="button" class="btn btn-secondary btn-xs nu-add-p" data-act="person-add" data-key="${escAttr(r.key)}" data-tip="Opens Add person, filled in">${icon('user-plus', 'i-xs')}<span>Add person</span></button>`
-        + `<button type="button" class="btn btn-secondary btn-xs nu-ok" data-act="person-add-now" data-key="${escAttr(r.key)}" aria-label="Add ${escAttr(r.name)} to People now" data-tip="Add now · Undo">${icon('check')}</button>`;
+      split.innerHTML = `<button type="button" class="btn btn-secondary btn-xs nu-add-p" data-act="person-add" data-key="${escAttr(r.key)}" data-tip="Opens Add person, filled in">${icon('user-plus', 'i-sm')}<span>Add person</span></button>`
+        + `<button type="button" class="btn btn-secondary btn-xs nu-ok" data-act="person-add-now" data-key="${escAttr(r.key)}" aria-label="Add ${escAttr(r.name)} to People now" data-tip="Add now · Undo">${icon('check', 'i-sm')}</button>`;
       li.appendChild(split);
     }
     ul.appendChild(li);
@@ -396,7 +395,7 @@ function _nuNotes(vm, size) {
     : '';
   box.innerHTML = head + body;
   const lab = document.createElement('label'); lab.className = 'nu-add';
-  lab.innerHTML = `${icon('plus', 'i-xs')}<span class="sr-only">Add an agenda point to ${esc(vm.title)}</span>`;
+  lab.innerHTML = `${icon('plus', 'i-sm')}<span class="sr-only">Add an agenda point to ${esc(vm.title)}</span>`;
   const inp = document.createElement('input'); inp.type = 'text'; inp.className = 'nu-add-i'; inp.dataset.fk = 'nu-agenda'; inp.maxLength = 300;
   inp.placeholder = pv.lines.length ? 'Add an agenda point' : 'Add the first agenda point';
   inp.setAttribute('enterkeyhint', 'done');
@@ -411,7 +410,7 @@ function _nuTasks(vm) {
   const ul = document.createElement('ul'); ul.className = 'nu-tasks';
   for (const t of vm.tasks.slice(0, 6)) {
     const li = document.createElement('li'); li.className = 'nu-task hgl-row' + (t.done ? ' is-done' : ''); li.dataset.id = t.id; li.dataset.flip = 'nu:t:' + t.id;
-    li.innerHTML = `<button type="button" class="nu-cbx${t.done ? ' on' : ''}" role="checkbox" aria-checked="${t.done ? 'true' : 'false'}" data-act="tick" data-id="${escAttr(t.id)}" aria-label="${escAttr((t.done ? 'Not done: ' : 'Done: ') + t.title)}">${icon('check')}</button>`
+    li.innerHTML = `<button type="button" class="nu-cbx${t.done ? ' on' : ''}" role="checkbox" aria-checked="${t.done ? 'true' : 'false'}" data-act="tick" data-id="${escAttr(t.id)}" aria-label="${escAttr((t.done ? 'Not done: ' : 'Done: ') + t.title)}">${icon('check', 'i-xs')}</button>`
       + `<button type="button" class="nu-task-t" data-act="task" data-id="${escAttr(t.id)}">${esc(t.title)}</button>`
       + (t.due ? `<span class="nu-due">${esc(typeof dueLabel === 'function' ? dueLabel(t.due) : t.due)}</span>` : '');
     ul.appendChild(li);
@@ -435,7 +434,7 @@ function _nuFilesEl(files) {
   for (const f of files) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip nu-file'; b.dataset.act = 'file'; b.dataset.rid = f.r.id; b.dataset.id = f.taskId;
     const label = typeof rsrcDisplayLabel === 'function' ? rsrcDisplayLabel(f.r) : (f.r.label || f.r.target || '');
-    b.innerHTML = (typeof _resIconHtml === 'function' ? _resIconHtml(f.r) : icon('file')) + `<span>${esc(label)}</span>`;
+    b.innerHTML = (typeof _resIconHtml === 'function' ? _resIconHtml(f.r) : icon('file', 'i-sm')) + `<span>${esc(label)}</span>`;
     b.title = label;
     row.appendChild(b);
   }
@@ -462,7 +461,7 @@ function _nuMailsEl(emails) {
     const li = document.createElement('li');
     const link = typeof _emLink === 'function' ? _emLink(e.m) : '';
     const when = typeof _emDate === 'function' ? _emDate(e.m.date) : '';
-    li.innerHTML = `<button type="button" class="nu-mail" data-act="mail" data-link="${escAttr(link)}"${link ? '' : ' disabled'}>${icon('mail', 'i-xs')}`
+    li.innerHTML = `<button type="button" class="nu-mail" data-act="mail" data-link="${escAttr(link)}"${link ? '' : ' disabled'}>${icon('mail', 'i-sm')}`
       + `<span class="nu-mail-s">${esc(e.m.subject || '(no subject)')}</span><span class="nu-mail-w">${esc(e.who)}${when ? ' · ' + esc(when) : ''}</span></button>`;
     ul.appendChild(li);
   }

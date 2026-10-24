@@ -273,12 +273,10 @@ function calEventParts(ev, o) {
   const rel = calEventTasks(ev);
   const tsec = document.createElement('div'); tsec.className = 'ev-sec';
   tsec.innerHTML = `Related tasks <span>${rel.linked.length + rel.suggested.length || ''}</span>`;
-  const addBtn = document.createElement('button'); addBtn.type = 'button'; addBtn.className = 'btn btn-ghost btn-xs ev-sec-act';
-  addBtn.innerHTML = icon('plus', 'i-xs') + '<span>Add</span>';
-  addBtn.onclick = () => openMenu(addBtn, [
+  const addBtn = uiButton({ label: 'Add', icon: 'plus', iconCls: 'i-sm', kind: 'ghost', size: 'sm', cls: 'ev-sec-act', bubble: true, run: () => openMenu(addBtn, [
     { label: 'New task for this event', icon: 'circle-plus', run: () => calTaskFromEvent(ev) },
     { label: 'Link an existing task…', icon: 'link', run: () => calLinkTaskPicker(addBtn, ev) },
-  ], { align: 'end' });
+  ], { align: 'end' }) });
   tsec.appendChild(addBtn);
   out.tasks.push(tsec);
   const tl = document.createElement('div'); tl.className = 'ev-tasks';
@@ -314,11 +312,8 @@ function calEventParts(ev, o) {
   // --- agenda & notes ---
   const nsec = document.createElement('div'); nsec.className = 'ev-sec';
   nsec.textContent = 'Agenda & notes';
-  const draft = document.createElement('button'); draft.type = 'button'; draft.className = 'btn btn-ghost btn-xs ev-sec-act ai-only';
-  draft.setAttribute('data-requires', 'claude');
-  draft.innerHTML = icon('sparkles', 'i-xs') + '<span>Draft</span>';
-  draft.setAttribute('data-tip', 'Draft an agenda from your open tasks with these people');
-  draft.onclick = () => calDraftAgenda(ev, draft);
+  const draft = uiButton({ label: 'Draft', icon: 'sparkles', iconCls: 'i-sm', kind: 'ghost', size: 'sm', cls: 'ev-sec-act ai-only', data: { requires: 'claude' },
+    tip: 'Draft an agenda from your open tasks with these people', bubble: true, run: (e, b) => calDraftAgenda(ev, b) });
   nsec.appendChild(draft);
   const ta = document.createElement('textarea'); ta.className = 'ev-notes'; ta.rows = 2;
   ta.dataset.fk = 'ev-notes'; ta.setAttribute('aria-label', 'Agenda and notes');
@@ -434,8 +429,7 @@ async function calDraftAgenda(ev, btn) {
     m.notesBy = people.length ? `Drafted from your open tasks with ${people.slice(0, 2).join(' and ')}${people.length > 2 ? ' and others' : ''}` : 'Drafted from the linked tasks';
     saveData(); render();
   } catch (e) {
-    const msg = typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The agenda could not be drafted.') : (e && e.message) || 'The agenda could not be drafted.';
-    toast(msg, { kind: 'err', timeout: 8000, action: { label: 'Try again', run: () => { const b = btn.isConnected ? btn : document.querySelector('.ev-sec-act[data-requires="claude"]') || btn; calDraftAgenda(calEventById(ev.id) || ev, b); } } });
+    toastError('draft the agenda', e, () => { const b = btn.isConnected ? btn : document.querySelector('.ev-sec-act[data-requires="claude"]') || btn; calDraftAgenda(calEventById(ev.id) || ev, b); });
   } finally { btn.disabled = false; btn.classList.remove('is-busy'); if (lbl && lbl.isConnected && lbl.textContent === 'Drafting…') lbl.textContent = was; }
 }
 
@@ -464,7 +458,7 @@ function calNewTaskDialog(o) {
     return true;
   };
   openDialog({
-    title: o.eventId ? 'New task for this event' : 'New task', width: 520,
+    title: o.eventId ? 'New task for this event' : 'New task', size: 'md',
     body: (el) => {
       el.classList.add('cal-newtask');
       const box = document.createElement('label'); box.className = 'input input-lg';

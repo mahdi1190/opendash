@@ -38,10 +38,7 @@ function _ssDuration(s) {
   return Math.floor(h / 24) + ' days';
 }
 function _ssBtn(label, ic, cls, run) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + (cls || 'btn-secondary') + ' btn-sm';
-  b.innerHTML = (ic ? icon(ic) : '') + `<span>${esc(label)}</span>`;
-  b.onclick = () => run(b);
-  return b;
+  return uiButton({ label, icon: ic, kind: cls || 'secondary', size: 'sm', run: (e, b) => run(b) });
 }
 
 /* ---------- restart ---------- */
@@ -75,7 +72,7 @@ async function _ssFlush() {
 async function srvRestart(opts) {
   const rebuild = !!(opts && opts.rebuild);
   if (_ssRestarting) return false;
-  if (typeof srvIsOffline === 'function' && srvIsOffline()) { toast('The server is not running: use Start server in the banner.', { kind: 'err' }); return false; }
+  if (typeof srvIsOffline === 'function' && srvIsOffline()) { toast('OpenDash isn’t running. Use Start on the banner.', { kind: 'err' }); return false; }
   _ssRestarting = true;
   const label = (opts && opts.label) || (rebuild ? 'Rebuilding and restarting…' : 'Restarting the server…');
   _ssOverlay(label, 'Saving your changes first');
@@ -92,7 +89,7 @@ async function srvRestart(opts) {
       step(); tick = setInterval(step, 1000);
     }
     try { r = await (post ? _ssPost(opts.post[0], opts.post[1]) : _ssPost('/api/server/restart', { rebuild })); }
-    catch (e) { _ssOverlayOff(); toast((post ? '' : 'Could not restart: ') + _srvErrText(e), { kind: 'err', timeout: 10000, retry: () => srvRestart(opts) }); return false; }
+    catch (e) { _ssOverlayOff(); toastError(post ? 'finish the update' : 'restart OpenDash', e, () => srvRestart(opts)); return false; }
     finally { if (tick) clearInterval(tick); }
     if (typeof _srvLink !== 'undefined') _srvLink.state = 'restarting';
     const oldPid = (r && r.pid) || (before && before.pid);
@@ -111,7 +108,7 @@ async function srvRestart(opts) {
       _ssOverlayOff();
       if (typeof _srvLink !== 'undefined') _srvLink.state = 'unknown';
       if (typeof srvGoOffline === 'function') srvGoOffline('restart');
-      toast(`The server did not come back within ${Math.round(budget / 1000)} s.`, { kind: 'err', action: { label: 'How to start it', run: () => srvShowStartHelp() }, timeout: 10000 });
+      toast(`OpenDash didn’t come back within ${Math.round(budget / 1000)} s.`, { kind: 'err', action: { label: 'How to start it', run: () => srvShowStartHelp() }, timeout: 10000 });
       return false;
     }
     if (typeof _srvLink !== 'undefined') _srvLink.state = 'online';
@@ -119,7 +116,7 @@ async function srvRestart(opts) {
     const failed = h.lastRebuild && h.lastRebuild.ok === false;
     if (failed) {
       _ssOverlayOff();
-      toast(`The rebuild failed (${h.lastRebuild.step || 'build'} step), so the previous version was restarted.`, { kind: 'err', action: { label: 'Open log', run: () => srvOpenLog() }, timeout: 12000 });
+      toast('The update didn’t build, so the previous version is running again.', { kind: 'err', action: { label: 'Open log', run: () => srvOpenLog() }, timeout: 12000 });
     }
     if (!failed && (versionChanged || srvBuildChanged(h))) {
       _ssOverlay('Loading the new version…', '');
@@ -139,13 +136,13 @@ async function srvRestart(opts) {
 
 async function srvStop() {
   const ok = await confirmDialog({
-    title: 'Stop the OpenDash server?',
-    text: 'This page stops saving to your data folder until the server is started again (your changes are kept in this browser meanwhile). Start it again with start-opendash in the app folder (or your OpenDash shortcut)' + (srvStartScheme() ? ', or Start server in the banner.' : '.'),
-    confirmLabel: 'Stop server', danger: true,
+    title: 'Stop OpenDash?',
+    text: 'Changes wait in this browser until it starts again (your OpenDash shortcut' + (srvStartScheme() ? ', or Start on the banner).' : ').'),
+    confirmLabel: 'Stop OpenDash', danger: true,
   });
   if (!ok) return;
   try { await _ssFlush(); await _ssPost('/api/server/stop', {}); }
-  catch (e) { toast('Could not stop it: ' + _srvErrText(e), { kind: 'err' }); return; }
+  catch (e) { toastError('stop OpenDash', e, () => srvStop()); return; }
   setTimeout(() => { if (typeof srvGoOffline === 'function') srvGoOffline('stopped'); }, 800);
 }
 
@@ -163,7 +160,7 @@ async function srvOpenLog() {
     } catch (e) { pre.textContent = 'Could not read the log: ' + _srvErrText(e); }
   };
   openDialog({
-    title: 'Server log (last 200 lines)', width: 900,
+    title: 'Server log (last 200 lines)', size: 'xl', fixed: true,
     body: (el) => {
       info = document.createElement('div'); info.className = 'set-h srv-log-file';
       pre = document.createElement('pre'); pre.className = 'srv-log'; pre.tabIndex = 0;
@@ -172,7 +169,7 @@ async function srvOpenLog() {
       load();
     },
     actions: [
-      { label: 'Copy', icon: 'copy', run: () => { navigator.clipboard.writeText(pre ? pre.textContent : '').then(() => toast('Copied', { kind: 'ok' }), () => toast('Could not copy.', { kind: 'err' })); return false; } },
+      { label: 'Copy', icon: 'copy', run: () => { copyText(pre ? pre.textContent : '', 'log'); return false; } },
       { label: 'Refresh', icon: 'refresh-cw', run: () => { load(); return false; } },
       'spacer',
       { label: 'Close', primary: true },
@@ -199,66 +196,70 @@ async function _ssToggle(feature, on) {
     _ssInteg = st;
     if (st && st.supported) srvRememberScheme(st.protocol && st.protocol.enabled && st.protocol.current ? st.scheme : null);
     const now = st && st[feature] && st[feature].enabled;
-    if (now !== on) toast('Windows did not keep the change. Check the log.', { kind: 'err' });
-    else toast(feature === 'autostart' ? (on ? 'OpenDash will start when you log in' : 'It will no longer start when you log in') : (on ? 'Start server button enabled' : 'Start server button removed'), { kind: 'ok' });
+    if (now !== on) toast('Windows didn’t keep the change. Check the log.', { kind: 'err', action: { label: 'Open log', run: () => srvOpenLog() } });
+    else toast(feature === 'autostart' ? (on ? 'OpenDash will start when you log in' : 'It will no longer start when you log in') : (on ? 'Start button turned on' : 'Start button turned off'), { kind: 'ok' });
   } catch (e) {
-    toast('Not changed: ' + _srvErrText(e), { kind: 'err' });
+    toastError('change that', e, () => _ssToggle(feature, on));
     _ssInteg = null;
   } finally { _ssIntegBusy = ''; _ssRefresh(); }
 }
 
 function _ssStatusCard(el) {
   const s = _ssStatus;
-  const card = _settingsCard('This server', 'The program that saves your data and talks to Claude. It runs on this computer only.');
-  if (!s) {
-    for (let i = 0; i < 3; i++) { const sk = document.createElement('div'); sk.className = 'skeleton skeleton-row'; card.body.appendChild(sk); }
-  } else if (s.error) {
-    const c = document.createElement('div'); c.className = 'callout warn set-callout';
-    c.innerHTML = icon('cloud-off') + `<span>${esc('The server is not answering: ' + s.error)}</span>`;
-    card.body.appendChild(c);
-  } else {
-    const dl = document.createElement('dl'); dl.className = 'kv set-kv srv-kv';
-    const stop = s.lastStopReason;
-    const rows = [
-      ['Status', s.supervised ? 'Running, kept running by the supervisor (restarts it if it crashes)' : 'Running on its own (started with node serve.mjs: not restarted if it crashes)'],
-      ['Running since', `${_ssWhen(s.startedAt)} (${_ssDuration(s.uptime)})`],
-      ['Process id', String(s.pid)],
-      ['Port', String(s.port)],
-      ['Version', `${s.version || '?'}${s.build ? ' · build ' + s.build : ''}`],
-      ['Data folder', s.dataDir || ''],
-      ['Restarts', s.restartCount ? String(s.restartCount) + ' since it was started' : 'none since it was started'],
-      ['Last stop', stop ? `${stop.reason}${stop.at ? ' (' + _ssWhen(stop.at) + ')' : ''}` : 'nothing logged before this start'],
-    ];
-    if (s.lastRebuild) rows.push(['Last rebuild', s.lastRebuild.ok ? `done ${_ssWhen(s.lastRebuild.at)}` : `failed at the ${s.lastRebuild.step} step: ${s.lastRebuild.message || ''}`]);
-    dl.innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
-    card.body.appendChild(dl);
-  }
-  const btns = document.createElement('div'); btns.className = 'btn-group set-btns';
+  const card = _settingsCard('OpenDash on this computer');
   const dis = !s || !!s.error || s.canRestart === false;
-  const rs = _ssBtn('Restart server', 'refresh-cw', 'btn-secondary', () => srvRestart({ rebuild: false }));
-  const rb = _ssBtn('Rebuild & restart', 'hammer', 'btn-secondary', () => srvRestart({ rebuild: true }));
-  rs.disabled = rb.disabled = dis;
-  rs.setAttribute('data-tip', 'Stops and starts the server. Open tabs reconnect by themselves.');
-  rb.setAttribute('data-tip', 'Runs the data migrations and rebuilds the app from its source first. Use after updating the app.');
-  const lg = _ssBtn('Open log', 'file-text', 'btn-ghost', () => srvOpenLog());
-  const st = _ssBtn('Stop server…', 'circle-x', 'btn-ghost', () => srvStop());
-  st.disabled = dis;
-  btns.append(rs, rb, lg, st);
-  card.body.appendChild(btns);
+  const failedBuild = s && !s.error && s.lastRebuild && s.lastRebuild.ok === false;
+  if (!s) card.body.appendChild(setStatusLine('idle', 'Checking', ''));
+  else if (s.error) card.body.appendChild(setStatusLine('warn', 'Not answering', s.error));
+  else if (failedBuild) card.body.appendChild(setStatusLine('warn', 'Needs you', "The last update didn't build"));
+  else card.body.appendChild(setStatusLine('ok', 'Running', `since ${_ssWhen(s.startedAt)} · ` + (s.supervised ? 'restarts by itself if it stops' : "won't restart by itself (started by hand)")));
+  if (!s) for (let i = 0; i < 2; i++) { const sk = document.createElement('div'); sk.className = 'skeleton skeleton-row'; card.body.appendChild(sk); }
+  else if (!s.error) card.body.appendChild(_settingsRow('Version', '', Object.assign(document.createElement('span'), { textContent: s.version || '?' })));
+  const rs = setAction(card, 'Restart', () => srvRestart({ rebuild: false }), { icon: 'refresh-cw', kind: 'secondary', disabled: dis, tip: 'Open tabs reconnect by themselves.' });
+  if (failedBuild) setAction(card, 'Open log', () => srvOpenLog(), { icon: 'file-text', kind: 'primary' });
+  setFold(card, 'server-card-more', 'More', ({ body }) => {
+    if (s && !s.error) {
+      const dl = document.createElement('dl'); dl.className = 'kv set-kv srv-kv';
+      const stop = s.lastStopReason;
+      const rows = [
+        ['Running since', `${_ssWhen(s.startedAt)} (${_ssDuration(s.uptime)})`],
+        ['Process id', String(s.pid)],
+        ['Port', String(s.port)],
+        ['Build', s.build ? String(s.build) : ''],
+        ['Data folder', s.dataDir || ''],
+        ['Restarts', s.restartCount ? String(s.restartCount) + ' since it was started' : 'none since it was started'],
+        ['Last stop', stop ? `${stop.reason}${stop.at ? ' (' + _ssWhen(stop.at) + ')' : ''}` : 'nothing logged before this start'],
+      ].filter(r => r[1]);
+      if (s.lastRebuild) rows.push(['Last update', s.lastRebuild.ok ? `done ${_ssWhen(s.lastRebuild.at)}` : `failed at the ${s.lastRebuild.step} step: ${s.lastRebuild.message || ''}`]);
+      dl.innerHTML = rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+      body.appendChild(_settingsRow('Details', '', dl));
+    }
+    const g = document.createElement('div'); g.className = 'btn-group set-btns';
+    const st = _ssBtn('Stop…', 'circle-x', 'btn-ghost', () => srvStop());
+    st.disabled = dis;
+    g.append(_ssBtn('Open log', 'file-text', 'btn-ghost', () => srvOpenLog()), st);
+    body.appendChild(g);
+  });
+  setFold(card, 'server-card-adv', 'Advanced', ({ body }) => {
+    const rb = _ssBtn('Rebuild & restart', 'hammer', 'btn-secondary', () => srvRestart({ rebuild: true }));
+    rb.disabled = dis;
+    rb.setAttribute('data-tip', 'Use after updating the app by hand.');
+    body.appendChild(_settingsRow('Rebuild & restart', 'Use after updating the app by hand.', rb));
+  }, { advanced: true });
   el.appendChild(card.card);
 }
 
 function _ssStartCard(el) {
   const ig = _ssInteg;
-  const card = _settingsCard('Starting the server', 'The server has to be running for OpenDash to save. These are off unless you turn them on, and turning them off removes them again.');
+  const card = _settingsCard('Starting OpenDash');
   if (!ig) { const sk = document.createElement('div'); sk.className = 'skeleton skeleton-row'; card.body.appendChild(sk); el.appendChild(card.card); return; }
   if (ig.error) {
-    const p = document.createElement('p'); p.className = 'set-h'; p.textContent = 'Could not check: ' + ig.error;
+    const p = document.createElement('p'); p.className = 'set-h'; p.textContent = 'Couldn’t check: ' + ig.error;
     card.body.appendChild(p); el.appendChild(card.card); return;
   }
   if (!ig.supported) {
     const c = document.createElement('div'); c.className = 'callout set-callout';
-    c.innerHTML = icon('info') + '<span>Starting automatically and the Start server button are Windows features. On this computer, do it by hand:</span>';
+    c.innerHTML = icon('info') + '<span>Starting automatically and the Start button are Windows features. On this computer, do it by hand:</span>';
     card.body.appendChild(c);
     const m = ig.manual || {};
     for (const [t, v] of [['Start it', m.start], ['Start when you log in', m.autostart]]) {
@@ -279,8 +280,8 @@ function _ssStartCard(el) {
   const hintFor = (f) => {
     const x = ig[f] || {};
     const base = f === 'autostart'
-      ? 'Adds OpenDash to your Windows start-up apps (for your account only). It starts with no window; stop it here with Stop server.'
-      : `Lets the “server isn’t running” banner start it (a ${ig.scheme}:// link for your account only). It always runs this app’s start-opendash with no window and ignores anything in the link.`;
+      ? 'Starts OpenDash, with no window, when you sign in to Windows.'
+      : 'Lets the banner start OpenDash for you.';
     if (_ssIntegBusy === f) return 'Asking Windows…';
     if (x.enabled && !x.current) return base + (!/start-hidden\.mjs/i.test(x.command || '') ? ' Now: on, but with an old launcher that no longer works. Turn it off and on again to fix it.' : ' Now: on, but set up for another copy or folder of the app. Turn it off and on again to point it here.');
     if (f === 'autostart' && x.enabled && x.approved === false) return base + ' Now: on, but switched off in Task Manager › Startup apps. Turn it off and on again here to re-enable it.';
@@ -288,12 +289,12 @@ function _ssStartCard(el) {
   };
   const sw1 = _settingsSwitch(!!(ig.autostart && ig.autostart.enabled), 'Start automatically when I log in', (on) => _ssToggle('autostart', on), !!_ssIntegBusy);
   card.body.appendChild(_settingsRow('Start automatically when I log in', hintFor('autostart'), sw1));
-  const sw2 = _settingsSwitch(!!(ig.protocol && ig.protocol.enabled), 'Enable the Start server button', (on) => _ssToggle('protocol', on), !!_ssIntegBusy);
-  card.body.appendChild(_settingsRow('Enable the Start server button', hintFor('protocol'), sw2));
+  const sw2 = _settingsSwitch(!!(ig.protocol && ig.protocol.enabled), 'Start button on the “not running” banner', (on) => _ssToggle('protocol', on), !!_ssIntegBusy);
+  card.body.appendChild(_settingsRow('Start button on the “not running” banner', hintFor('protocol'), sw2));
   if (ig.hiddenHost === false) {
     const p = document.createElement('p'); p.className = 'set-h';
-    p.textContent = 'This Windows has no hidden console host (conhost.exe), so a console window flashes up briefly when the server is started this way.';
-    card.body.appendChild(p);
+    p.textContent = 'A window may flash up briefly when it starts.';
+    setFold(card, 'server-start-more', 'More', ({ body }) => body.appendChild(p));
   }
   const re = _ssBtn('Check again', 'refresh-cw', 'btn-ghost', () => { _ssInteg = null; _ssLoad(); _ssRefresh(); });
   card.body.appendChild(re);
@@ -301,11 +302,11 @@ function _ssStartCard(el) {
 }
 
 function _ssOfflineCard(el) {
-  const card = _settingsCard('Offline page', 'When the server is not running, this browser shows OpenDash with a “server isn’t running” banner and a Start server button, instead of an error page. The copy it keeps is only the app page itself (with basic settings such as your name and time zone), never your tasks or other data.');
+  const card = _settingsCard('Offline page');
   const supported = typeof navigator !== 'undefined' && 'serviceWorker' in navigator && window.isSecureContext;
   const on = srvSwEnabled();
-  const hint = !supported ? 'This browser does not support it here.' : (on ? (srvSwActive() ? 'On, and ready.' : 'On. Ready after the next page load.') : 'Off in this browser.') + ' Developers: add ?nosw to the address to turn it off.';
-  card.body.appendChild(_settingsRow('Show an offline page', hint, _settingsSwitch(on && supported, 'Show an offline page', async (v) => {
+  const hint = !supported ? 'This browser does not support it here.' : (on ? (srvSwActive() ? 'On, and ready.' : 'On. Ready after the next page load.') : 'Off in this browser.');
+  card.body.appendChild(_settingsRow('Show an offline page', 'When OpenDash isn’t running, this browser shows a page with a Start button instead of an error. ' + hint, _settingsSwitch(on && supported, 'Show an offline page', async (v) => {
     await srvSetSwEnabled(v); toast(v ? 'Offline page on' : 'Offline page off', { kind: 'ok' }); _ssRefresh();
   }, !supported)));
   el.appendChild(card.card);
@@ -313,7 +314,14 @@ function _ssOfflineCard(el) {
 
 registerSettingsGroup({
   id: 'server', title: 'Server', icon: 'hard-drive', order: 92,
-  description: 'The OpenDash local server: restart it, read its log, and choose how it starts.',
+  description: 'Restart OpenDash and choose how it starts.',
+  search: [
+    { label: 'OpenDash on this computer', target: 'OpenDash on this computer', description: 'Status, version, restart, open the log or stop it.', keywords: 'this server restart rebuild stop log port process uptime backend' },
+    { label: 'Start automatically when I log in', target: 'Start automatically when I log in', description: 'Start OpenDash when you sign in to Windows.', keywords: 'autostart startup login windows' },
+    { label: 'Start button on the “not running” banner', target: 'Start button on the “not running” banner', description: 'Let the banner start OpenDash for you.', keywords: 'enable start server button protocol offline banner' },
+    { label: 'Offline page', target: 'Show an offline page', description: 'Show a page with a Start button when OpenDash isn’t running.', keywords: 'show an offline page service worker cache nosw developers' },
+    { label: 'Rebuild & restart', target: 'Rebuild & restart', description: 'Use after updating the app by hand.', keywords: 'rebuild build migrate update restart server' },
+  ],
   render(el) {
     _ssLoad();
     _ssStatusCard(el);
@@ -322,7 +330,7 @@ registerSettingsGroup({
   },
 });
 
-registerCommand({ id: 'server-restart', label: 'Restart server', icon: 'refresh-cw', keywords: 'server restart reboot reload reconnect backend', run: () => srvRestart({ rebuild: false }) });
-registerCommand({ id: 'server-rebuild', label: 'Rebuild & restart server', icon: 'hammer', keywords: 'server rebuild build update restart migrate', run: () => srvRestart({ rebuild: true }) });
-registerCommand({ id: 'server-log', label: 'Open server log', icon: 'file-text', keywords: 'server log errors debug', run: () => srvOpenLog() });
+registerCommand({ id: 'server-restart', label: 'Restart OpenDash', icon: 'refresh-cw', keywords: 'server restart reboot reload reconnect backend', run: () => srvRestart({ rebuild: false }) });
+registerCommand({ id: 'server-rebuild', label: 'Rebuild & restart OpenDash', icon: 'hammer', keywords: 'server rebuild build update restart migrate', run: () => srvRestart({ rebuild: true }) });
+registerCommand({ id: 'server-log', label: 'Open the OpenDash log', icon: 'file-text', keywords: 'server log errors debug', run: () => srvOpenLog() });
 registerCommand({ id: 'open-server-settings', label: 'Server', icon: 'hard-drive', group: 'Go to', keywords: 'server restart start log login startup', run: () => setView('settings:server') });

@@ -26,13 +26,14 @@ function _gmShortDay(iso) { try { return new Date(iso + 'T12:00:00Z').toLocaleDa
 function _gmRingSvg(pct, cls) {
   return `<svg class="${cls || 'gm-ring'}" viewBox="0 0 36 36" aria-hidden="true"><circle class="gm-ring-bg" cx="18" cy="18" r="15.5"/><circle class="gm-ring-fg" cx="18" cy="18" r="15.5" pathLength="100" style="stroke-dasharray:${Math.round(pct * 100)} 100"/></svg>`;
 }
-function _gmBtn(label, ic, run, cls) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + (cls || 'btn-secondary');
-  b.innerHTML = (ic ? icon(ic, 'i-sm') : '') + `<span>${esc(label)}</span>`;
-  b.onclick = (e) => run(e.currentTarget);
-  return b;
+/** The three Fun levels, each with what it means as its tooltip (SIMPLIFY_PLAN.md 5.13). */
+const _GM_FUN_TIPS = { off: 'No chip, moments or sounds. The focus timer stays.', subtle: 'A small chip and quiet toasts.', full: 'Floating XP, combos and confetti moments.' };
+function _gmFunSeg() {
+  const seg = _settingsSeg(_GM_FUN, gameFun(), (k) => { if (k !== gameFun()) gamePrefSet({ fun: k }); });
+  seg.setAttribute('data-whats-new', 'fun-level');   // What's new points here (95-whats-new.js)
+  [...seg.querySelectorAll('button')].forEach((b, i) => { const k = _GM_FUN[i] && _GM_FUN[i][0]; if (k && _GM_FUN_TIPS[k]) b.setAttribute('data-tip', _GM_FUN_TIPS[k]); });
+  return seg;
 }
-function _gmFunSeg() { const seg = _settingsSeg(_GM_FUN, gameFun(), (k) => { if (k !== gameFun()) gamePrefSet({ fun: k }); }); seg.setAttribute('data-whats-new', 'fun-level'); return seg; }   // What's new points here (95-whats-new.js)
 
 /* ---------- top bar: the level chip and the streak flame ---------- */
 function _gmChipRender(el) {
@@ -76,7 +77,7 @@ function _gmHomeRender(el, ctx) {
   const card = document.createElement('div'); card.className = 'card gm-home gm-home-' + (ctx.size || 's');
   if (!gameOn()) {
     card.innerHTML = `<div class="gm-home-off"><span class="muted">The game is off.</span></div>`;
-    card.querySelector('.gm-home-off').appendChild(_gmBtn('Turn it on', 'sparkles', () => gamePrefSet({ fun: 'subtle' }), 'btn-ghost'));
+    card.querySelector('.gm-home-off').appendChild(uiButton({ label: 'Turn it on', icon: 'sparkles', kind: 'ghost', size: 'sm', run: () => gamePrefSet({ fun: 'subtle' }) }));
     el.appendChild(card); return true;
   }
   const s = gameStats(); if (!s) return false;
@@ -135,8 +136,8 @@ function gameTaskCardSlot(id) {
   if (!done) {
     const f = box.querySelector('.gm-slot-focus') || box.appendChild(Object.assign(document.createElement('div'), { className: 'gm-slot-focus' }));
     const b = mine
-      ? _gmBtn(r.p ? 'Resume timer' : 'Stop and log', r.p ? '' : 'square', () => { if (r.p) gameFocusResume(); else gameFocusStop({}); if (typeof tcRefresh === 'function') tcRefresh(); })
-      : _gmBtn('Focus timer', 'timer', () => { gameFocusStart(id); if (typeof tcRefresh === 'function') tcRefresh(); });
+      ? uiButton({ label: r.p ? 'Resume timer' : 'Stop and log', icon: r.p ? '' : 'square', size: 'sm', run: () => { if (r.p) gameFocusResume(); else gameFocusStop({}); if (typeof tcRefresh === 'function') tcRefresh(); } })
+      : uiButton({ label: 'Focus timer', icon: 'timer', size: 'sm', run: () => { gameFocusStart(id); if (typeof tcRefresh === 'function') tcRefresh(); } });
     f.prepend(b);
   }
   return box.childNodes.length ? box : null;
@@ -144,11 +145,9 @@ function gameTaskCardSlot(id) {
 /** The card's footer button (61-task-card.js): start or stop the timer on this task. */
 function gameFocusFootBtn(id) {
   const r = gameFocusRun(), mine = r && r.t === id;
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm btn-ghost'; b.dataset.fk = 'tc-focus';
-  b.innerHTML = icon('timer') + `<span>${mine ? 'Stop timer' : 'Focus'}</span>`;
-  b.setAttribute('data-tip', mine ? 'Stop the focus timer and log the time' : 'Time this task with the focus timer');
-  b.onclick = () => { if (mine) gameFocusStop({}); else gameFocusStart(id); if (typeof tcRefresh === 'function') tcRefresh(); };
-  return b;
+  return uiButton({ label: mine ? 'Stop timer' : 'Focus', icon: 'timer', kind: 'ghost', size: 'sm', data: { fk: 'tc-focus' }, bubble: true,
+    tip: mine ? 'Stop the focus timer and log the time' : 'Time this task with the focus timer',
+    run: () => { if (mine) gameFocusStop({}); else gameFocusStart(id); if (typeof tcRefresh === 'function') tcRefresh(); } });
 }
 
 /* ---------- the Achievements page (#view=game, game:<section>; Life > Achievements since 2.18) ---------- */
@@ -161,6 +160,12 @@ if (typeof registerSection === 'function') {
     crumb: v => (_gmPart(v) === 'today' ? [] : [{ label: 'Achievements', view: 'game' }, (GM_PAGE_SECTIONS.find(x => x[0] === v) || [0, ''])[1]]),
     group: 'life', layout: 'page', hashable: true, taskControls: false,
     mount(container, view) { _gmPage(container, view || state.view); },
+    // The page header (UX_BLUEPRINT.md 3): no primary action; how it works, its settings and the library under More.
+    headerActions: () => ({ more: [
+      { label: 'How XP works', icon: 'sparkles', run: () => setView('game:unlocks') },
+      { label: 'Game settings', icon: 'settings', run: () => setView('settings:game') },
+      { label: 'Animation library', icon: 'layout-grid', run: () => setView('settings:animations') },
+    ] }),
     unmount() { _gmUI.entered = false; try { if (typeof _acw !== 'undefined') { _acw.root = null; _acw.body = null; } } catch (e) { /* no Achievements page on this build */ } },
   });
 }
@@ -175,9 +180,10 @@ if (typeof registerPage === 'function') {
     badge: () => { try { const s = gameOn() ? gameStats() : null; return s ? 'Lv ' + s.level.level : ''; } catch (e) { return ''; } },
   });
 }
+/** A section of the page: the kit's section header (secHead, UI_CLEANUP_PLAN.md 3.2), then its content. */
 function _gmSec(title, sub, id) {
   const sec = document.createElement('section'); sec.className = 'gm-sec'; if (id) sec.id = id;
-  sec.innerHTML = `<div class="gm-sec-h"><h2>${esc(title)}</h2>${sub ? `<span class="muted">${esc(sub)}</span>` : ''}</div>`;
+  sec.appendChild(secHead({ title, sub }));
   return sec;
 }
 function _gmPage(container, view) {
@@ -188,7 +194,7 @@ function _gmPage(container, view) {
   // The shared header draws the title and the sections (UX_BLUEPRINT.md 3); with Fun Off it shows one calm
   // Turn on (15-nav-life.js), and the numbers below keep counting quietly. The Fun level: Unlockables, Settings > Game.
   const sub = document.getElementById('view-subtitle');
-  if (sub) sub.textContent = 'Worked out on this device from what you do. Nothing is ever taken away.';
+  if (sub) sub.textContent = 'Worked out from what you do. Nothing is ever taken away.';
   // Life › Achievements › Achievements is the Achievements page (92-game-5wall.js, ACHIEVEMENTS_500.md 2.5): this
   // section mounts it for 'game:wall' (its own 'game:wall' section registers later and is only the fallback).
   if (part === 'wall' && typeof gameWallMount === 'function') { container.appendChild(root); gameWallMount(root); return; }
@@ -275,8 +281,8 @@ function _gmQuestSec(s) {
       + `<div class="gm-quest-t"><b>${x.kind === 'stream' && typeof streamMarkHtml === 'function' ? streamMarkHtml(x.stream) + ' ' : ''}${esc(x.label)}</b>`
       + `<span class="gm-qbar" role="progressbar" aria-valuemin="0" aria-valuemax="${x.target}" aria-valuenow="${x.n}" aria-label="${escAttr(x.label)}"><i style="--pct:${pct}%"></i></span>`
       + `<span class="muted num">${x.kind === 'focus' ? `${x.n} of ${x.target} minutes` : `${x.n} of ${x.target}`}${x.done ? ' · done' : ''}</span></div>`;
-    if (x.kind === 'review' && !x.done) card.appendChild(_gmBtn('Review now', 'calendar-range', () => setView('home:week'), 'btn-ghost'));
-    if (x.kind === 'overdue' && !x.done) card.appendChild(_gmBtn('Open Today', 'alarm-clock', () => setView('today'), 'btn-ghost'));
+    if (x.kind === 'review' && !x.done) card.appendChild(uiButton({ label: 'Review now', icon: 'calendar-range', kind: 'ghost', size: 'sm', run: () => setView('home:week') }));
+    if (x.kind === 'overdue' && !x.done) card.appendChild(uiButton({ label: 'Open Today', icon: 'alarm-clock', kind: 'ghost', size: 'sm', run: () => setView('today') }));
     grid.appendChild(card);
   }
   if (q.allDone) { const p = document.createElement('div'); p.className = 'gm-perfect'; p.innerHTML = `${icon('star', 'i-sm')}<span>A perfect week: every quest done.</span>`; sec.appendChild(p); }
@@ -285,7 +291,7 @@ function _gmQuestSec(s) {
 }
 function _gmRecordsSec(s) {
   const r = s.records;
-  const sec = _gmSec('Personal records', 'Your bests, from everything on this device.');
+  const sec = _gmSec('Personal records', 'Your bests so far.');
   const grid = document.createElement('div'); grid.className = 'gm-grid gm-records';
   const rows = [
     ['zap', 'Most tasks in a day', r.dayMost && `${r.dayMost.v}`, r.dayMost && _gmShortDay(r.dayMost.d)],
@@ -311,10 +317,14 @@ function _gmFocusSec(s) {
   row.innerHTML = `<div class="gm-hero-n"><div><b class="num">${_gmFmtMs(f.todayMs || 0)}</b><span class="muted">today</span></div><div><b class="num">${_gmFmtMs(f.weekMs || 0)}</b><span class="muted">this week</span></div><div><b class="num">${f.sessions.toLocaleString()}</b><span class="muted">sessions</span></div><div><b class="num">${Math.floor(f.totalMs / 3600000).toLocaleString()} h</b><span class="muted">in all</span></div></div>`;
   const run = gameFocusRun();
   const next = run ? null : gameFocusNextTask();
-  if (run) row.appendChild(_gmBtn('Stop and log', 'square', () => gameFocusStop({})));
-  else if (next) row.appendChild(_gmBtn(`Focus on “${effTitle(getItem(next)).slice(0, 40)}”`, 'timer', () => gameFocusStart(next), 'btn-primary'));
+  if (run) row.appendChild(uiButton({ label: 'Stop and log', icon: 'square', size: 'sm', run: () => gameFocusStop({}) }));
+  else if (next) row.appendChild(uiButton({ label: `Focus on “${effTitle(getItem(next)).slice(0, 40)}”`, icon: 'timer', kind: 'primary', size: 'sm', run: () => gameFocusStart(next) }));
   sec.appendChild(row);
   const kinds = Object.entries(s.estimates.byKind).filter(([, r]) => r.n >= 3).sort((a, b) => b[1].n - a[1].n).slice(0, 6);
+  if (!kinds.length) {   // an empty list inside the section: one muted line (UI_CLEANUP_PLAN.md 3.6)
+    sec.appendChild(emptyLine(s.estimates.overall ? `So far you take about ${s.estimates.overall.ratio}x your estimates. Three timed tasks of a kind (a tag, or else a stream) give a line here.` : 'Nothing learned yet: give a task an estimate, time it, and finish it.'));
+    return sec;
+  }
   const ul = document.createElement('ul'); ul.className = 'gm-learn';
   for (const [k, r] of kinds) {
     const line = gameEstimateLine(k, r) || `Your estimates on ${k} are about right`;
@@ -322,7 +332,6 @@ function _gmFocusSec(s) {
     li.innerHTML = `<span class="gm-ratio num${r.ratio > 1.15 ? ' is-over' : r.ratio < 0.85 ? ' is-under' : ''}">${r.ratio}x</span><span>${esc(line)}.</span><small class="muted">${_gmPlural(r.n, 'timed task')}</small>`;
     ul.appendChild(li);
   }
-  if (!kinds.length) ul.innerHTML = `<li class="muted">${esc(s.estimates.overall ? `So far you take about ${s.estimates.overall.ratio}x your estimates. Three timed tasks of a kind (a tag, or else a stream) give a line here.` : 'Nothing learned yet: give a task an estimate, time it, and finish it.')}</li>`;
   sec.appendChild(ul);
   return sec;
 }
@@ -337,8 +346,9 @@ function _gmBossSec(s) {
     b.onclick = () => openTask(t.id, { from: b });
     list.appendChild(b);
   }
-  if (!open.length) list.innerHTML = '<p class="muted">No boss tasks open. Break a big task into three or more subtasks to make one.</p>';
-  sec.appendChild(list);
+  // Empty: the section's teaching empty state (UI_CLEANUP_PLAN.md 3.6): what appears here, and the one action toward it.
+  if (!open.length) mountEmptyState(sec, { icon: 'crown', compact: true, title: 'No boss tasks open', text: `Break a big task into ${GAME_RULES.bossMin} or more subtasks to make one.`, actions: [{ label: 'Open All tasks', icon: 'list-checks', run: () => setView('all') }] });
+  else sec.appendChild(list);
   return sec;
 }
 /** The achievements on the Game page: the count, Next up and a link to the whole page (92-game-5wall.js). */
@@ -376,7 +386,7 @@ function _gmUnlockSec(s) {
       row.appendChild(f);
     }
     sec.appendChild(row);
-    sec.appendChild(_gmBtn('Open the animation library', 'layout-grid', () => setView('settings:animations'), 'btn-ghost'));
+    sec.appendChild(uiButton({ label: 'Open the animation library', icon: 'layout-grid', kind: 'ghost', size: 'sm', run: () => setView('settings:animations') }));
   }
   return sec;
 }
@@ -402,15 +412,15 @@ function _gmRulesSec() {
 if (typeof registerSettingsGroup === 'function') {
   registerSettingsGroup({
     id: 'game', title: 'Game', icon: 'trophy', order: 57,
-    description: 'XP and levels, streaks, weekly quests, achievements, the focus timer and how much of it you see.',
+    description: 'Levels, streaks, quests and the focus timer.',
     render(el) {
       const g = _gmG();
-      el.appendChild(_settingsRow('Fun level', 'Off: no chip, moments or sounds (the focus timer stays). Subtle: a small chip and quiet toasts. Full: floating XP, combos, confetti moments.', _gmFunSeg()));
-      el.appendChild(_settingsRow('Sounds', 'A short chime for level ups, boss tasks, quests and milestones. Off unless you switch it on.', _settingsSwitch(!!g.prefs.sounds, 'Sounds', (on) => { gamePrefSet({ sounds: on }); if (on) setTimeout(() => gameSound('level'), 50); })));
+      el.appendChild(_settingsRow('Fun level', 'How much of the game you see.', _gmFunSeg()));
+      el.appendChild(_settingsRow('Sounds', 'A short chime for level ups and milestones.', _settingsSwitch(!!g.prefs.sounds, 'Sounds', (on) => { gamePrefSet({ sounds: on }); if (on) setTimeout(() => gameSound('level'), 50); })));
       const s = gameStats();
       const acc = _settingsSelect(GAME_ACCENTS.filter(a => !s || (typeof gameAccentOpen === 'function' ? gameAccentOpen(a) : a.level <= s.level.max)).map(a => [a.id, a.label]), String(g.prefs.accent || ''), (v) => gamePrefSet({ accent: v }));
       el.appendChild(_settingsRow('Accent colour', `More open up as you level up (${GAME_ACCENTS.length - 1} in all).`, acc));
-      el.appendChild(_settingsRow('Your level, quests and achievements', s ? `Level ${s.level.level} ${s.level.title}, ${s.xp.total.toLocaleString()} XP.` : '', _gmBtn('Open Achievements', 'trophy', () => setView('game'))));
+      el.appendChild(_settingsRow('Your level, quests and achievements', s ? `Level ${s.level.level} ${s.level.title}, ${s.xp.total.toLocaleString()} XP.` : '', uiButton({ label: 'Open Achievements', icon: 'trophy', size: 'sm', run: () => setView('game') })));
     },
   });
 }
@@ -420,10 +430,10 @@ if (typeof registerCommand === 'function') {
   registerCommand({ id: 'game-open', group: 'Go to', label: 'Achievements: level, streaks and quests', icon: 'trophy', keywords: 'game xp level streak quests achievements records wall boss unlock', run: () => setView('game') });
   registerCommand({ id: 'game-wall', label: 'Achievements: search, Next up and every achievement', icon: 'award', keywords: 'achievements wall badges trophies game secrets rarity unlocks titles', run: () => gameOpenWall() });
   registerCommand({ id: 'game-focus-this', group: 'This task', label: 'Focus timer on this task', icon: 'timer', keywords: 'focus timer time track stopwatch pomodoro log', when: () => { const id = typeof tcCurrentTaskId === 'function' ? tcCurrentTaskId() : null; return !!id && !(gameFocusRun() && gameFocusRun().t === id); }, run: () => gameFocusStart(tcCurrentTaskId()) });
-  registerCommand({ id: 'game-focus-next', label: 'Focus timer on the next task', icon: 'timer', keywords: 'focus timer time track stopwatch start', when: () => !gameFocusRun() && !!gameFocusNextTask(), run: () => { const id = gameFocusNextTask(); if (id) { gameFocusStart(id); toast(`Focus timer on “${effTitle(getItem(id))}”.`, { icon: 'timer' }); } } });
+  registerCommand({ id: 'game-focus-next', label: 'Focus timer on the next task', icon: 'timer', keywords: 'focus timer time track stopwatch start', when: () => !gameFocusRun() && !!gameFocusNextTask(), run: () => { const id = gameFocusNextTask(); if (id) { gameFocusStart(id); toast(`Focus timer on “${effTitle(getItem(id))}”`, { icon: 'timer' }); } } });
   registerCommand({ id: 'game-focus-stop', label: 'Stop the focus timer and log the time', icon: 'square', keywords: 'focus timer stop log', when: () => !!gameFocusRun(), run: () => gameFocusStop({}) });
   registerCommand({ id: 'game-focus-done', label: 'Focus timer: log it and mark the task done', icon: 'circle-check', keywords: 'focus timer done complete', when: () => !!gameFocusRun(), run: () => gameFocusStop({ done: true }) });
   registerCommand({ id: 'game-focus-pause', label: 'Pause or resume the focus timer', icon: 'timer', keywords: 'focus timer pause resume', when: () => !!gameFocusRun(), run: () => { const r = gameFocusRun(); if (r && r.p) gameFocusResume(); else gameFocusPause(); } });
-  for (const [k, label] of _GM_FUN) registerCommand({ id: 'game-fun-' + k, label: `Fun level: ${label}`, icon: 'sparkles', keywords: 'game fun level gamification off subtle full', when: () => gameFun() !== k, run: () => { gamePrefSet({ fun: k }); toast(`Fun level: ${label}.`, { icon: 'sparkles' }); } });
-  registerCommand({ id: 'game-sounds', label: 'Game sounds on or off', icon: 'music', keywords: 'game sounds chime audio milestone', run: () => { const on = !_gmG().prefs.sounds; gamePrefSet({ sounds: on }); toast(on ? 'Game sounds on.' : 'Game sounds off.', { icon: 'music' }); if (on) gameSound('quest'); } });
+  for (const [k, label] of _GM_FUN) registerCommand({ id: 'game-fun-' + k, label: `Fun level: ${label}`, icon: 'sparkles', keywords: 'game fun level gamification off subtle full', when: () => gameFun() !== k, run: () => { gamePrefSet({ fun: k }); toast(`Fun level: ${label}`, { icon: 'sparkles' }); } });
+  registerCommand({ id: 'game-sounds', label: 'Game sounds on or off', icon: 'music', keywords: 'game sounds chime audio milestone', run: () => { const on = !_gmG().prefs.sounds; gamePrefSet({ sounds: on }); toast(on ? 'Game sounds on' : 'Game sounds off', { icon: 'music' }); if (on) gameSound('quest'); } });
 }

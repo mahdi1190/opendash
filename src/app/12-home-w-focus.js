@@ -94,7 +94,8 @@ function _hfRender(root, ctx) {
   body.appendChild(list);
   _hfDoneList(body, done, ctx);
   const hint = document.createElement('div'); hint.className = 'hf-hint'; hint.dataset.flip = 'hf-hint';
-  hint.innerHTML = `Click to open · <kbd class="kbd">X</kbd> done · <kbd class="kbd">[</kbd><kbd class="kbd">]</kbd> date · <kbd class="kbd">Alt</kbd><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> order · drag onto a day to reschedule`;
+  hint.textContent = `${done.length} done`;
+  hint.dataset.tip = 'Click to open · X done · [ ] date · Alt ↑ ↓ order · drag onto a day to reschedule';
   body.appendChild(hint);
   if (typeof _lastRenderedTaskIds !== 'undefined') _lastRenderedTaskIds = focus.map(f => f.i.id);   // the centre card's previous / next
   ctx.enterNew(list.children, (c) => c.dataset.id);   // a task that just joined Focus slides in
@@ -111,24 +112,17 @@ function _hfRender(root, ctx) {
 }
 
 function _hfHead(nOpen, total, nDone) {
-  const h = document.createElement('header'); h.className = 'hf-h';
   const count = homeFocusCountLabel(nOpen, total, homeFocusConfig().count);
-  h.innerHTML = `${icon('target')}<h3>Focus</h3><span class="n">${esc([count, nDone ? `${nDone} done` : ''].filter(Boolean).join(' · '))}</span><span class="spacer"></span>`;
+  const h = cardHead({ icon: 'target', title: 'Focus', cls: 'hf-h', count: [count, nDone ? `${nDone} done` : ''].filter(Boolean).join(' · ') || ' ' });
   const act = document.createElement('span'); act.className = 'hf-h-act';
-  const all = document.createElement('button'); all.type = 'button'; all.className = 'btn btn-ghost btn-sm hf-collapse-all'; all.hidden = true;
-  all.innerHTML = icon('minimize-2') + '<span>Collapse all</span>';
-  all.onclick = () => homeFocusCollapseAll();
-  const tune = document.createElement('button'); tune.type = 'button'; tune.className = 'btn btn-ghost btn-sm hf-tune';
-  tune.innerHTML = '<span>Tune</span>' + icon('sliders-horizontal');
+  const all = uiButton({ label: 'Collapse all', icon: 'minimize-2', iconCls: 'i-sm', kind: 'ghost', size: 'sm', cls: 'hf-collapse-all', run: () => homeFocusCollapseAll() });
+  all.hidden = true;
+  const tune = uiButton({ label: 'Tune', kind: 'ghost', size: 'sm', cls: 'hf-tune', run: (e, b) => _homeTunePopover(b) });
+  tune.insertAdjacentHTML('beforeend', icon('sliders-horizontal', 'i-sm'));
   tune.setAttribute('aria-haspopup', 'dialog');
-  tune.onclick = () => _homeTunePopover(tune);
-  const add = document.createElement('button'); add.type = 'button'; add.className = 'btn-icon btn-sm hf-new';
-  add.innerHTML = icon('plus'); add.setAttribute('aria-label', 'New task'); add.setAttribute('data-tip', 'New task');
-  add.onclick = () => openNewTask('', { from: add });
+  const add = uiButton({ icon: 'plus', iconCls: 'i-sm', size: 'sm', cls: 'hf-new', aria: 'New task', tip: 'New task', run: (e, b) => openNewTask('', { from: b }) });
   // A focus block with a scene that grows as it runs (78-anim-moments.js)
-  const blk = document.createElement('button'); blk.type = 'button'; blk.className = 'btn-icon btn-sm hf-block';
-  blk.innerHTML = icon('timer'); blk.setAttribute('aria-label', 'Start a 25-minute focus block'); blk.setAttribute('data-tip', 'Focus block (25 min)');
-  blk.onclick = () => { if (typeof animFocusStart === 'function') animFocusStart(25); };
+  const blk = uiButton({ icon: 'timer', iconCls: 'i-sm', size: 'sm', cls: 'hf-block', aria: 'Start a 25-minute focus block', tip: 'Focus block (25 min)', run: () => { if (typeof animFocusStart === 'function') animFocusStart(25); } });
   if (typeof animFocusStart !== 'function') blk.hidden = true;
   act.append(all, tune, blk, add);
   h.appendChild(act);
@@ -193,7 +187,7 @@ function _hfWhyHtml(item, why) {
   whyShown = whyShown.filter(w => w.k === 'pinned').concat(whyShown.filter(w => w.k !== 'pinned'));
   const sep = '<span class="sep" aria-hidden="true">·</span>';
   const est = Number(item.estimate) > 0 ? `${sep}<span class="hf-why w-est">~${esc(_hfMinutes(Number(item.estimate)))}</span>` : '';
-  return `${whyShown.slice(0, 2).map(w => `${sep}<span class="hf-why w-${escAttr(w.k)}">${w.k === 'pinned' ? icon('pin') : ''}${esc(w.t)}</span>`).join('')}${est}`;
+  return `${whyShown.slice(0, 2).map(w => `${sep}<span class="hf-why w-${escAttr(w.k)}">${w.k === 'pinned' ? icon('pin', 'i-xs') : ''}${esc(w.t)}</span>`).join('')}${est}`;
 }
 function _hfMinutes(m) {
   m = Math.round(Number(m) || 0);
@@ -316,7 +310,7 @@ function _hfDoneList(body, done, ctx) {
     r.setAttribute('role', 'listitem'); r.dataset.id = d.item.id; r.dataset.flip = 'hfd:' + d.item.id;
     const t = Clock.parts(Number(d.at));
     const hm = homeHM(t.h * 60 + t.mi);
-    r.innerHTML = `<span class="hf-done-ck" aria-hidden="true">${icon('check')}</span><button type="button" class="hf-done-t" data-tip="Open">${esc(effTitle(d.item))}</button><small>${esc(hm)}</small>`;
+    r.innerHTML = `<span class="hf-done-ck" aria-hidden="true">${icon('check', 'i-xs')}</span><button type="button" class="hf-done-t" data-tip="Open">${esc(effTitle(d.item))}</button><small>${esc(hm)}</small>`;
     r.querySelector('button').onclick = () => homeOpenTask(d.item.id, r);
     wrap.appendChild(r);
   }
@@ -368,7 +362,7 @@ function _hfEmpty(body, ctx, total) {
   if (ctx) ctx.enterNew(list.children, (r) => 'pull:' + r.dataset.id);
 }
 function _hfEmpScene(type) {
-  return typeof animSceneHtml === 'function' ? animSceneHtml(type, { size: 'lg' }) : `<span class="hf-emp-ic">${icon('circle-check')}</span>`;
+  return typeof animSceneHtml === 'function' ? animSceneHtml(type, { size: 'lg' }) : `<span class="hf-emp-ic">${icon('circle-check', 'i-xl')}</span>`;
 }
 function _hfEmptyNew(body) {
   const qa = document.createElement('label'); qa.className = 'hf-qa';
@@ -393,7 +387,7 @@ function _hfEmptyNew(body) {
   ghosts.innerHTML = [[46, 28], [38, 22]].map(([a, b], i) => `<div class="hf-ghost" style="opacity:${i ? 0.6 : 1}"><span class="sq"></span><span class="ln"><i style="width:${a}%"></i><i style="width:${b}%"></i></span></div>`).join('');
   body.appendChild(ghosts);
   const p = document.createElement('p'); p.className = 'hf-emp-note';
-  p.textContent = 'Tasks you pin, start, mark high priority or give a date in the next few days land here, a handful at a time. Click one to see its subtasks without leaving Home.';
+  p.textContent = 'Pinned, started, urgent and soon-due tasks land here.';
   body.appendChild(p);
 }
 /** Up to n open tasks worth doing today on a clear day: the nearest due, a quick one, the most important. */

@@ -1,4 +1,6 @@
-# The garden (2.18)
+# The garden (2.18, redesigned in 2.18.1)
+
+2.18.1 (owner feedback: confusing, small, odd economy): see GARDEN_UX.md for the diagnosis and GARDEN_CHANGES_2181.md for the list. The page layout (section 9) and the economy (section 6) below are the 2.18.1 ones.
 
 User request, 24 Oct 2026: "see other people's gardens, make the garden feature way way better with far more
 things, make the garden feature like a game so more interactable etc, more plants, more everything, we are
@@ -192,22 +194,37 @@ reed, papyrus. Exotic: bird-paradise, flytrap, pitcher, passion, hibiscus, banan
 - The old oak (`special: 'heart'`) grows with everything you ever finished, exactly like the 2.16 tree:
   10, 50, 150, 400, 1,000 and 2,500 tasks make it bigger (`variant` 0..6).
 
-## 6. Economy
+## 6. Economy (2.18.1: coins come from time, not clicks)
 
-- Coins, earned from the data from `since` on (worked out, never stored): 4 a task (at most 10 tasks a day),
-  1 per 10 focus minutes (at most 18), a streak bonus (the streak's length, at most 10, on days you finished
-  something), 25 per weekly game quest done; at most 70 a day from these. Plus daily garden tasks, weekly
-  garden quests, ribbons and the market (selling).
-- Water: the can holds 10 a day (+4 / +4 / +6 with better cans, +n per water butt or pump, at most two of
-  each), +2 for every task you finish today (at most +10); rain fills it. One water per thirsty plant.
-- Seeds: the shop (unlocked by garden level, season and event), 1 free packet per 3 tasks finished in a day
-  (at most 2 a day), quests and ribbons, cuttings, the wishing well, rare seeds from achievements
-  (`unlock.ach`: granted once when earned, then sold), seasons and events.
-- Garden XP: planting 2, harvesting 3, a trim 2, a bouquet 5, every discovery 10, daily tasks, quests and
-  ribbons. Level L needs 25 L (L - 1) in total. Garden moments also give game XP through `gameAward({kind:
-  'garden'})` (5 each, the game's own cap of 3 a day).
-- Selling: the market buys crops at `yield.sell` (+20% during Harvest home), bouquets at their `bonus` + the
-  stems, decorations back at half price.
+Rules in `94-garden-0econ.js` (PURE; `GARDEN_ECON`, `gardenEconDay(input)`), applied per day by `gardenWallet`:
+
+- **Focus minutes** (focus-timer sessions of at least 5 minutes): 0.2 coin a minute (12 an hour) for the first 120 minutes of
+  the day, 0.1 (6 an hour) for the next 120, nothing after 4 hours.
+- **A finished task** pays a bonus for the time it took: 1 coin per 6 minutes of basis, at most 15 a task, at most 45 a
+  day. Basis = the minutes logged on the task by the timer, counting the estimate only up to 1.5 x the logged time
+  (inflating an estimate does not help), at most 90. With no time logged: half of the estimate, the estimate counted up to
+  30 minutes (so at most 2 coins).
+- Nothing for: a task finished within 5 minutes of being created, a task already counted (a one-off task pays once, ever;
+  a repeating one once a day), a task with no estimate and no time, a focus session under 5 minutes.
+- A streak bonus (days that earned something, at most 5) and a **hard cap of 120 coins a day** from time. Weekly game quests
+  still add 25 each, outside the cap.
+- **Water**: the can holds 10 a day (+4 / +4 / +6 with better cans, water butts and pumps); each rewarded task adds 1 and
+  each 25 credited minutes adds 1 (at most +10); rain fills it. **Free seed packets**: one per 50 credited minutes of
+  work, 2 a day at most (credited = focus minutes + a task's basis minutes).
+- Garden daily tasks pay half of their 2.18.0 coins (they are clicks); weekly quests, ribbons and the market are as before.
+  The market still pays `yield.sell` for crops; with seed prices 2-3x higher, selling is no longer a way to farm coins.
+- **Prices**: `_gdUp` in the catalogue raises every seed, decoration and tool price: up to 6 coins x2 (a first daisy is 6),
+  7-40 x2.5, above 40 x3. Levels and unlock rules are unchanged.
+- **Migration**: the wallet is still derived. `seen.econ2` (set once, synced) is the first day of the new rules; earlier days
+  keep the 2.18.0 formula (4 a task, 1 per 10 focus minutes, streak, 70 a day), so no balance changes; on that first day
+  nobody earns less than the old rules gave (the larger of the two counts). Existing coins, water, seeds, plants and
+  decorations load unchanged; only future earning and prices change.
+- **Explainable**: the wallet carries `econToday` (`gardenEconDay` of today with a `log` of reasons); the panel and the Home
+  card show 'Today: 42 coins from 1h40 focused (cap 120)' (`gardenEconLine`), and the guide lists the rules.
+- Garden XP: planting 2, harvesting 3, a trim 2, a bouquet 5, every discovery 10, daily tasks, quests and ribbons. Level L
+  needs 25 L (L - 1) in total. Garden moments also give game XP through `gameAward({kind: 'garden'})`.
+- Selling: the market buys crops at `yield.sell` (+20% during Harvest home), bouquets at their `bonus` + the stems,
+  decorations back at half price. A harvest is now sometimes golden (6%, seeded: double).
 
 ## 7. APIs for other agents
 
@@ -256,17 +273,26 @@ a calm note; both turn into the real garden by themselves.
 
 ## 9. The page and the Home card
 
-- `#view=garden`: the header (level and XP, coins, water left, fertiliser), Today in the garden (the three
-  daily tasks, the week's three quests, a weather note), the stage and its side (the inspector, who is
-  visiting), and the tray under the stage.
-  - Modes: View (calm: no grid, no tools; click to read), Tend (Hand picks what is ripe and collects from
-    the compost bin, the hive and the wishing well; Water; Plant; Feed; Trim; Dig up), Decorate (place from
-    your bag, drag anything to move it, R turns, S restyles, Delete puts it back in your bag).
-  - Sweeps: drag the watering can or a seed along the beds; the whole sweep is one Undo.
-  - Trays: click a seed or decoration to pick it, or drag it onto the garden.
-  - Keyboard (the stage is focusable): arrows move a cell cursor, Enter uses the tool, 1-6 tools, W water
-    all, H harvest all, Esc clears; Ctrl+Z on any garden tab undoes the last garden change.
-  - Quick actions: Water all, Harvest all, Undo, Photo mode, Time-lapse.
+- `#view=garden` (layout `bare`, class `gd-full`): the whole window.
+  - **HUD** (top): level and XP bar, coins, water left, seeds, fertiliser (when you have some), season / time / weather,
+    the next daily goal ('Water 3 plants 0/3'), and the page tabs (Garden, Shop, Almanac, Basket, Friends) with Help (?).
+    Every chip has a one-sentence tip.
+  - **Toolbar** (left, big labelled buttons, keys 1-7): Plant, Water, Harvest (picks what is ripe, click anything to read
+    about it), Fertilise, Trim, Dig up, Decorate; then Water all, Pick all, Shop, Almanac, Friends, Undo, Photo, Time-lapse.
+    The active tool is highlighted and the cursor changes; a hover shows the tile and a sentence about what the tool will
+    do (`_gdpToolSay`); hovering a plant shows a card with a growth ring (`gardenHoverCard`).
+  - **Stage**: the garden scaled to the window (`fit: meet`). Drag a seed from the tray onto a tile (ghost preview), or click
+    the seed then a tile; with Water or Plant, drag across tiles (one Undo). The panel button (top right) hides the side panel.
+  - **Tray** (under the stage): your seeds (decorations while Decorate is the tool), with empty states that say what to do.
+  - **Side panel**: 'What to do next' (one step, a ring on the target), Coins today (the cap bar and a 'where it came from'
+    list), Goals (daily garden tasks and weekly quests), the inspector (or what the current tool does), who is visiting.
+  - **Feedback** (`94-garden-6game.js`): floating '+2 XP', splash and darker soil when watered, a pop when a plant grows,
+    harvested items fly into the basket, 'A hedgehog visited!' notes, a level-up card that names the new area, golden
+    harvests. Nothing moves with reduced motion or the Fun level Off (the toasts still say it).
+  - **First run**: a skippable 6-step tour (`seen.tour`; replay from Help), a free seed if you have none (`seen.tourSeed`),
+    and the Garden guide (Help): how plants grow, what makes coins, water and seeds, the tools, visitors, levels.
+  - Keyboard (the stage is focusable): arrows move a cell cursor, Enter uses the tool, 1-7 tools, W water all, H harvest all,
+    Esc clears; Ctrl+Z on any garden tab undoes the last garden change.
 - `garden:shop` (Seeds with today's deal and an "In season" filter, Decorations, Tools, Market),
   `garden:almanac` (Plants, Visitors, Decorations with silhouettes and hints; Ribbons with their rewards),
   `garden:basket` (bouquets from cut flowers, selling, your bag).

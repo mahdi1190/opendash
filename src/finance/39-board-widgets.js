@@ -36,7 +36,7 @@
       const B = X.brief(); const box = bdBox(cd);
       if (!B || !B.balance) {
         cd.setSub('');
-        box.append(h('p', { class: 'fvb-note', text: 'Safe to spend needs your balances. Sync bank, or connect a bank that shares its balances.' }),
+        box.append(h('p', { class: 'fvb-note', text: 'Safe to spend needs your balances. Update your bank, or connect one that shares balances.' }),
           h('button', { type: 'button', class: 'btn btn-secondary btn-sm', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : null) }, ic('landmark'), h('span', { text: 'Connections' })));
         return;
       }
@@ -303,7 +303,7 @@
       const box = bdBox(cd);
       let list = (Array.isArray(X.M.a.balances) ? X.M.a.balances : []).filter(b => b && Number.isFinite(+b.balance));
       if (bwOpt(w, 'pots') === 'hide') list = list.filter(b => b.kind !== 'pot');
-      if (!list.length) { cd.setSub(''); box.append(h('p', { class: 'fvb-note', text: 'No balances yet. They arrive with a bank sync (Sync bank) from banks that share them.' })); return; }
+      if (!list.length) { cd.setSub(''); box.append(h('p', { class: 'fvb-note', text: 'No balances yet. They arrive with a bank update.' })); return; }
       const byName = bwOpt(w, 'sort') === 'name';
       list = list.slice().sort((a, b) => (byName ? String(a.name || a.acct).localeCompare(String(b.name || b.acct)) : b.balance - a.balance));
       const total = sum(list, b => +b.balance);
@@ -331,7 +331,7 @@
       const end = X.M.anchor;
       const from = span === 'All' ? -Infinity : span === '1Y' ? addMonths(end, -12) : span === '3M' ? addMonths(end, -3) : addMonths(end, -6);
       const pts = hist.filter(p => dnum(p.date) >= from).map(p => [dnum(p.date) * DAY_MS, round2(+p.total)]);
-      if (pts.length < 2) { cd.setSub(''); cd.setEmpty('Your balance history builds up with each bank sync: come back after a few.'); box.append(h('span')); return; }
+      if (pts.length < 2) { cd.setSub(''); cd.setEmpty('Builds up with each bank update.'); box.append(h('span')); return; }
       const now = pts[pts.length - 1][1], first = pts[0][1], d = now - first;
       cd.setSub(`Since ${fDayY(Math.round(pts[0][0] / DAY_MS))}`);
       box.append(h('div', { class: 'fvb-nw' }, amt(gbp(now), 'fvb-big-v'), h('span', { class: 'fvb-big-w' }, bdDelta(d, d >= 0))));
@@ -535,7 +535,9 @@
     update(cd, w, X) {
       const ctx = X.ctxOf(w); const box = bdBox(cd); const M = X.M;
       const kind = bwOpt(w, 'kind'), n = Number(bwOpt(w, 'n')) || 10;
-      const rows = (kind === 'spend' ? ctx.cur.spend : kind === 'income' ? ctx.cur.income : ctx.cur.all.filter(t => F.xfer || t.kind !== 'transfer')).slice().sort((a, b) => b.n - a.n || a.i - b.i);
+      // Card payments the bank has not settled yet come first, labelled Pending (they vanish once settled).
+      const pend = (M.pending || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t) && (kind === 'spend' || kind === 'income' ? t.kind === kind : true));
+      const rows = pend.concat((kind === 'spend' ? ctx.cur.spend : kind === 'income' ? ctx.cur.income : ctx.cur.all.filter(t => F.xfer || t.kind !== 'transfer')).slice().sort((a, b) => b.n - a.n || a.i - b.i));
       cd.setSub(bdPeriodSub(ctx, w) + (F.cats.length || F.country || F.merchant || F.accts.length ? ' · with your filters' : ''));
       if (!rows.length) { box.append(h('p', { class: 'fvb-note', text: 'No payments in these dates with these filters.' })); return; }
       PL.ensure(M);
@@ -546,6 +548,12 @@
         const abroad = t.pc && t.pc !== M._plHome && t.pc !== 'HOME';
         const subs = [X.size(w) === 's' ? fDay(t.n) : '', t.c, abroad ? PL.label(t.pc) : ''].filter(Boolean).join(' · ');
         const local = abroad && t.plc && t.pla > 0 && t.plc !== CUR ? fmtCcy(t.pla, t.plc) : '';
+        if (t.pending) {
+          ul.append(h('li', null, h('div', { class: 'fv-row fsym-host' }, C1.tileEl(t.m, 'Uncategorised', 'sm'),
+            h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, X.size(w) === 's' ? fDay(t.n) + ' · ' : '', h('b', { text: 'Pending' }), ' · not settled yet')),
+            h('span', { class: 'fv-cc-v' }, amt(t.kind === 'income' ? '+' + gbp2(t.inc) : gbp2(t.s), 'fv-row-v' + (t.kind === 'income' ? ' in' : ''))))));
+          continue;
+        }
         ul.append(h('li', null, h('button', { type: 'button', class: 'fv-row fsym-host', onclick: () => openMerchant(t.m) }, C1.tileEl(t.m, t.c, 'sm'),
           h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, abroad ? h('span', { class: 'fvb-txflag', html: PL.flag(t.pc) }) : null, subs)),
           h('span', { class: 'fv-cc-v' }, amt(t.kind === 'income' ? '+' + gbp2(t.inc) : t.kind === 'spend' ? gbp2(t.s) : gbp2(t.a), 'fv-row-v' + (t.kind === 'income' ? ' in' : '')), local ? h('small', { class: 'fv-amt', text: local }) : null))));
@@ -623,7 +631,7 @@
       } else if (bals.length) { have = sum(bals, b => +b.balance); what = 'all your balances'; }
       const name = bwOpt(w, 'name') || 'Savings goal';
       if (bwOpt(w, 'name')) cd.el.querySelector('.fv-card-t h3').textContent = name;
-      if (have == null) { cd.setSub(''); box.append(h('p', { class: 'fvb-note', text: acct && acct !== 'all' && acct !== 'kept' ? 'That account has no balance here any more. Pick another in the settings.' : 'A goal needs balances: they arrive with a bank sync. Or set it to count what you kept this year.' })); return; }
+      if (have == null) { cd.setSub(''); box.append(h('p', { class: 'fvb-note', text: acct && acct !== 'all' && acct !== 'kept' ? 'That account has no balance here any more. Pick another in the settings.' : 'A goal needs balances: they arrive with a bank update. Or set it to count what you kept this year.' })); return; }
       const frac = clamp(have / target, 0, 1);
       cd.setSub(`Counting ${what}`);
       const ring = h('div', { class: 'fvb-goal' + (frac >= 1 ? ' done' : ''), style: { '--f': (frac * 100).toFixed(1) } },

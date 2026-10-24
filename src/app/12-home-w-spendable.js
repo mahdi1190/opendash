@@ -94,7 +94,7 @@ function _hspRender(el, ctx) {
   }
   if (!g && (res.status === 'error' || res.offline)) {
     body.appendChild(hglEmpty({ icon: 'circle-alert', title: 'Couldn’t read Finances',
-      text: res.offline ? 'The OpenDash server isn’t running. Your data is safe.' : (res.error || 'The OpenDash server didn’t answer. Your data is safe.'),
+      text: res.offline ? 'OpenDash isn’t answering. Your data is safe.' : (res.error || 'OpenDash isn’t answering. Your data is safe.'),
       actions: [{ label: 'Retry', icon: 'refresh-cw', run: () => { homeDataRefresh(_HSP_DATA); } }] }));
     return true;
   }
@@ -102,9 +102,7 @@ function _hspRender(el, ctx) {
     for (const b of card.querySelectorAll('.hsp-eye, .hsp-sync')) b.remove();   // nothing to hide or sync yet: Open Finances is the way in
     // Another device reads the bank (lib/finance-share.mjs) and has not sent anything yet: name it.
     const rm = res.data && res.data.remote && res.data.remote.name ? res.data.remote : null;
-    const off = ctx.off({ icon: 'wallet', title: 'Payday & safe to spend',
-      text: rm ? (rm.trial ? `Finance from ${rm.name}. To see it here, turn on "Use changes from my other computers" in Settings > Sync.` : `Finance from ${rm.name} · waiting for its first update. What you can spend each day shows here once ${rm.name} has updated.`) : 'Import a statement or connect a bank to see what you can spend each day until payday.',
-      action: { label: 'Open Finances', icon: 'wallet', run: () => _hspOpen('overview') } });
+    const off = ctx.off(rm ? hglRemoteBank(rm, { title: 'Payday & safe to spend', reload: () => homeDataRefresh(_HSP_DATA), open: () => _hspOpen('overview') }) : { icon: 'wallet', title: 'Payday & safe to spend', text: 'Import a statement or connect a bank to see what you can spend each day until payday.', action: { label: 'Open Finances', icon: 'wallet', run: () => _hspOpen('overview') } });
     off.classList.add('hgl-off', 'hsp-off');
     const art = hglScene('finance', { size: 'lg', hover: true });
     if (art) off.insertAdjacentHTML('afterbegin', art);
@@ -127,12 +125,11 @@ function _hspRender(el, ctx) {
 }
 
 function _hspHead(ctx) {
-  const h = document.createElement('div'); h.className = 'card-h hgl-h hsp-h';
+  const h = cardHead({ icon: 'piggy-bank', title: 'Safe to spend', cls: 'hgl-h hsp-h' });
   const hidden = homeAmountsHidden();
   const busy = !!(_hsp.sync && _hsp.sync.running);
-  h.innerHTML = `${icon('piggy-bank')}<h3>Safe to spend</h3><span class="spacer"></span>`
-    + `<button type="button" class="btn-icon btn-sm hsp-hb hsp-eye" data-act="eye" aria-pressed="${hidden ? 'true' : 'false'}" aria-label="Hide amounts" data-tip="${hidden ? 'Show amounts' : 'Hide amounts'}">${icon(hidden ? 'eye-off' : 'eye')}</button>`
-    + `<button type="button" class="btn-icon btn-sm hsp-hb hsp-sync${busy ? ' is-busy' : ''}" data-act="sync" aria-label="${busy ? 'Syncing bank data' : 'Sync bank data'}"${busy ? ' aria-busy="true"' : ''} data-tip="${busy ? 'Syncing…' : 'Sync bank data (read-only)'}" data-requires-soft="bank">${icon('refresh-cw')}</button>`;
+  h.insertAdjacentHTML('beforeend', `<button type="button" class="btn-icon btn-sm hsp-hb hsp-eye" data-act="eye" aria-pressed="${hidden ? 'true' : 'false'}" aria-label="Hide amounts" data-tip="${hidden ? 'Show amounts' : 'Hide amounts'}">${icon(hidden ? 'eye-off' : 'eye')}</button>`
+    + `<button type="button" class="btn-icon btn-sm hsp-hb hsp-sync${busy ? ' is-busy' : ''}" data-act="sync" aria-label="${busy ? 'Syncing bank data' : 'Sync bank data'}"${busy ? ' aria-busy="true"' : ''} data-tip="${busy ? 'Syncing…' : 'Sync bank data (read-only)'}" data-requires-soft="bank">${icon('refresh-cw')}</button>`);
   if (ctx.preview) { for (const b of h.querySelectorAll('button')) { b.tabIndex = -1; b.disabled = true; } return h; }
   h.querySelector('.hsp-eye').onclick = (e) => { e.stopPropagation(); homeSetAmountsHidden(!homeAmountsHidden()); };
   h.querySelector('.hsp-sync').onclick = (e) => { e.stopPropagation(); _hspSyncStart(); };
@@ -147,15 +144,15 @@ function _hspBodyHtml(m, size, f, prefs, hidden) {
   // The header says "Safe to spend"; the number says what it is in its own unit.
   const big = `<span class="hsp-big num"><span class="hsp-n${m.hero.kind === 'none' ? ' hsp-days' : ''}">${m.hero.kind === 'none' ? esc(String(m.hero.days)) : A(m.hero.value)}</span><span class="hsp-u">${esc(m.hero.unit)}</span></span>`;
   const when = m.hero.kind === 'none' && m.paydayDate ? `${m.month ? 'New month on' : 'Payday on'} ${hspShortDate(m.paydayDate, _hspCfg('locale'), true)}` : m.paydayText;
-  const sub = `<span class="hsp-sub">${icon(m.month ? 'calendar-check' : 'banknote')}<span>${esc(when)}</span></span>`;
+  const sub = `<span class="hsp-sub">${icon(m.month ? 'calendar-check' : 'banknote', 'i-sm')}<span>${esc(when)}</span></span>`;
   const note = m.hero.kind === 'safe' && !m.hero.spare ? `<span class="hsp-note">Nothing spare after bills and the ${A(m.cushion)} cushion</span>`
-    : m.hero.kind === 'bills' ? '<span class="hsp-note">No balance yet: sync or import to see safe to spend</span>'
+    : m.hero.kind === 'bills' ? '<span class="hsp-note">No balance yet: update your bank or import a statement.</span>'
       : m.hero.kind === 'none' && size === 's' ? '<span class="hsp-note">No bills before then</span>' : '';
   const hero = `<button type="button" class="hsp-hero" data-go="overview" aria-label="${escAttr(say.hero + ' Open Finances, Overview.')}">${big}${sub}${note}</button>`;
   const left = size !== 's' && m.left != null && m.left > 0
     ? `<div class="hsp-left"><span class="sr-only">${esc(say.left)}</span><span aria-hidden="true"><b class="num">${A(Math.max(0, m.left))}</b> left after bills<span class="hsp-kb"> · ${A(m.cushion)} kept back</span></span></div>` : '';
   const low = size === 'l' && m.low
-    ? `<div class="hsp-low"><span class="sr-only">${esc(say.low)}</span>${icon('arrow-down')}<span aria-hidden="true">Lowest <b class="num">${A(m.low.amount)}</b> on ${esc(m.low.when)}</span><small aria-hidden="true">if nothing else is spent</small></div>` : '';
+    ? `<div class="hsp-low"><span class="sr-only">${esc(say.low)}</span>${icon('arrow-down', 'i-sm')}<span aria-hidden="true">Lowest <b class="num">${A(m.low.amount)}</b> on ${esc(m.low.when)}</span><small aria-hidden="true">if nothing else is spent</small></div>` : '';
   const stale = m.stale ? _hspStaleHtml(m.stale) : '';
   if (size === 's') return `<div class="hsp-wrap">${hero}${stale}</div>`;
   const colA = `<div class="hsp-col hsp-a">${hero}${left}${low}</div>`;
@@ -166,14 +163,14 @@ function _hspBodyHtml(m, size, f, prefs, hidden) {
 
 function _hspStaleHtml(st) {
   const busy = !!(_hsp.sync && _hsp.sync.running);
-  return `<div class="hsp-stale">${icon('history')}<span>${esc(st.text)}</span><span aria-hidden="true">·</span><button type="button" class="hsp-link" data-act="sync" data-requires-soft="bank"${busy ? ' aria-busy="true"' : ''}>${busy ? 'Syncing…' : 'Sync'}</button></div>`;
+  return `<div class="hsp-stale">${icon('history', 'i-sm')}<span>${esc(st.text)}</span><span aria-hidden="true">·</span><button type="button" class="hsp-link" data-act="sync" data-requires-soft="bank"${busy ? ' aria-busy="true"' : ''}>${busy ? 'Syncing…' : 'Sync'}</button></div>`;
 }
 
 function _hspBillsHtml(m, f, A) {
   const head = `<div class="hsp-bh"><span class="ovl">Before ${esc(m.until)}</span>${m.billCount ? `<span class="hsp-bt num">${A(m.billsTotal, true)}</span>` : ''}</div>`;
   if (!m.bills.length) {
     const nx = m.next ? `<span class="hsp-nx">Next: ${esc(m.next.name)} ${A(m.next.amount, true)} on ${esc(m.next.day)}</span>` : '';
-    return `${head}<p class="hsp-none">${icon('circle-check')}<span>No bills before ${esc(m.until)}.${nx ? ' ' : ''}</span>${nx}</p>`;
+    return `${head}<p class="hsp-none">${icon('circle-check', 'i-sm')}<span>No bills before ${esc(m.until)}.${nx ? ' ' : ''}</span>${nx}</p>`;
   }
   const rows = m.bills.map(b => {
     const label = `${b.name}, ${homeAmountsHidden() ? 'hidden' : f.money2(b.amount)}, ${b.due ? 'due now' : b.day}. Open in Finances, Recurring.`;
@@ -182,13 +179,13 @@ function _hspBillsHtml(m, f, A) {
       + `<span class="n"><span class="nm">${esc(b.name)}</span><small${b.due ? ' class="due"' : ''}>${esc(b.day)}</small></span>`
       + `<span class="a num">${A(b.amount, true)}</span></button></li>`;
   }).join('');
-  const more = m.more ? `<button type="button" class="hsp-more" data-go="recurring">${esc(`+${m.more} more`)}${icon('chevron-right')}</button>` : '';
+  const more = m.more ? `<button type="button" class="hsp-more" data-go="recurring">${esc(`+${m.more} more`)}${icon('chevron-right', 'i-sm')}</button>` : '';
   return `${head}<ul class="hsp-bl" aria-label="Bills before ${escAttr(m.until)}">${rows}</ul>${more}`;
 }
 
 function _hspBalanceHtml(m, f, A, say, prefs) {
   const b = m.balance;
-  const ch = b.change == null ? '' : `<span class="hsp-ch ${b.change >= 0 ? 'up' : 'down'}">${icon(b.change >= 0 ? 'arrow-up' : 'arrow-down')}${homeAmtHtml(f.delta(b.change))}<small>in 30 days</small></span>`;
+  const ch = b.change == null ? '' : `<span class="hsp-ch ${b.change >= 0 ? 'up' : 'down'}">${icon(b.change >= 0 ? 'arrow-up' : 'arrow-down', 'i-xs')}${homeAmtHtml(f.delta(b.change))}<small>in 30 days</small></span>`;
   const head = `<button type="button" class="hsp-balh" data-go="cashflow" aria-label="${escAttr(`Balance ${homeAmountsHidden() ? 'hidden' : f.money(b.total)}. Open Finances, Cash flow.`)}"><span class="ovl">Balance</span><span class="hsp-bv num">${A(b.total)}</span>${ch}</button>`;
   const sp = hspSpark(m.series, 300, 56);
   let plot = '';

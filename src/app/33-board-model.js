@@ -30,7 +30,8 @@ const BOARD_FIELDS = [
   ['subtasks', 'Checklist progress', 'list-checks'], ['people', 'People', 'users'], ['tags', 'Tags', 'hash'],
   ['estimate', 'Estimate', 'timer'], ['notes', 'Notes count', 'message-square'], ['age', 'Quiet for a while', 'hourglass'],
 ];
-const BOARD_DEFAULT_FIELDS = ['stream', 'due', 'subtasks', 'people', 'tags', 'estimate', 'age'];
+// Calm cards (UI_CLEANUP_PLAN.md 2.2): stream, priority and due; saved boards keep their own fields (_bdEnsure only fills a missing list).
+const BOARD_DEFAULT_FIELDS = ['stream', 'priority', 'due'];
 const BOARD_COLOR_BY = [['stream', 'Stream colour'], ['priority', 'Priority colour'], ['none', 'No colour']];
 const BOARD_STATUS_COLS = [['todo', 'To do'], ['doing', 'In progress'], ['done', 'Done']];
 const BOARD_PRIO_COLS = [['p1', 'High'], ['p2', 'Medium'], ['p3', 'Low'], ['p0', 'No priority']];

@@ -314,11 +314,9 @@ function taskMenuItems(id) {
     typeof alTaskMenuItem === 'function' ? alTaskMenuItem(id) : null,   // Find related links (66-autolink.js)
     { label: isPinned(id) ? 'Unpin' : 'Pin to top', icon: isPinned(id) ? 'pin-off' : 'pin', run: () => togglePin(id) },
     { label: 'Duplicate', icon: 'copy', run: () => cloneTask(id) },
-    // Said only once it worked; a refusal (no clipboard permission) says what to do instead.
-    { label: 'Copy title', icon: 'clipboard-list', run: () => {
-      const fail = () => toast("Couldn't copy: the browser blocked the clipboard. Open the task and copy the title from there.", { kind: 'err' });
-      try { navigator.clipboard.writeText(effTitle(item)).then(() => toast('Title copied', { kind: 'ok' }), fail); } catch (e) { fail(); }
-    } },
+    // Said only once it worked; a refusal says what to do instead (copyText, 11-ui-kit.js).
+    { label: 'Copy title', icon: 'clipboard-list', run: () => copyText(effTitle(item), 'title') },
+    typeof expTaskMenuItem === 'function' ? expTaskMenuItem(id) : null,   // Expenses (66-expenses-2widget.js)
     { label: 'Save as template', icon: 'layout-template', run: () => saveTaskAsTemplate(id) },
     'sep',
     { label: 'Move to bin', icon: 'trash-2', kbd: 'Del', danger: true, run: () => deleteTask(id) },

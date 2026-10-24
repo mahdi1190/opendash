@@ -25,7 +25,7 @@ registerHomeWidget({
   },
 });
 
-function _hgdKey(m) { return [m.wallet.coins, m.ripe, m.thirsty, m.water.left, m.rain.now ? 1 : 0, m.visitors.map(v => v.id).join(','), m.tod, m.plants.length, m.decor.length, m.level.level, _gd.rev].join('|'); }
+function _hgdKey(m) { return [m.wallet.coins, m.wallet.econToday.coins, m.ripe, m.thirsty, m.water.left, m.rain.now ? 1 : 0, m.visitors.map(v => v.id).join(','), m.tod, m.plants.length, m.decor.length, m.level.level, _gd.rev].join('|'); }
 function _hgdCrop(size) { return size === 'l' ? 'all' : size === 'm' ? 'wide' : 'bed'; }
 function _hgdRender(el, ctx) {
   if (memFunLevel() === 'off' && !ctx.preview) return false;
@@ -37,7 +37,7 @@ function _hgdRender(el, ctx) {
   const card = document.createElement('section');
   card.className = 'card home-card hgd hgd-live hgd-sz-' + size;
   card.dataset.size = size;
-  card.innerHTML = `<div class="card-h">${icon('sprout')}<h3>Your garden</h3><span class="n"></span></div><div class="card-b hgd-b"><button type="button" class="hgd-art" aria-label="Open your garden"></button><div class="hgd-foot"><p class="hgd-msg"></p><div class="hgd-acts"></div></div></div>`;
+  card.innerHTML = `<div class="card-h">${icon('sprout')}<h3>Your garden</h3><span class="n"></span></div><div class="card-b hgd-b"><button type="button" class="hgd-art" aria-label="Open your garden"></button><div class="hgd-stats"></div><div class="hgd-foot"><p class="hgd-msg"></p><div class="hgd-acts"></div></div></div>`;
   card.querySelector('.hgd-art').onclick = () => setView('garden');
   el.appendChild(card);
   _hgdFill(card, m, size, !!ctx.preview);
@@ -57,6 +57,13 @@ function _hgdFill(card, m, size, preview) {
   } else { const svg = gardenSvgMount(art, parts); if (!preview) _hgd.node = svg; }
   if (!preview) { _hgd.parts = parts; _hgd.size = size; }
   card.querySelector('.hgd-msg').textContent = _hgdMsg(m);
+  const stats = card.querySelector('.hgd-stats');
+  if (stats) {
+    const e = m.wallet.econToday, nT = m.plants.filter(p => p.thirsty && p.def.thirst).length;
+    const chip = (ic, text, tip) => `<span class="hgd-st" data-tip="${esc(tip)}">${icon(ic, 'i-sm')}<b>${esc(text)}</b></span>`;
+    stats.innerHTML = chip('coins', `${e.coins} today`, gardenEconLine(e)) + chip('droplet', m.rain.now ? 'rain' : `${m.water.left} water`, 'Waterings left in the can today')
+      + (m.ripe ? chip('shopping-basket', `${m.ripe} ripe`, 'Ready to pick') : nT && !m.rain.now ? chip('droplets', `${nT} thirsty`, 'Plants that would like a drink') : chip('sprout', `${m.plants.length} plants`, 'Plants in your garden'));
+  }
   const acts = card.querySelector('.hgd-acts');
   acts.textContent = '';
   const btn = (label, ic, tip, run, primary) => {
@@ -69,14 +76,16 @@ function _hgdFill(card, m, size, preview) {
   const thirsty = m.plants.filter(p => p.thirsty && p.def.thirst).length;
   if (m.ripe) btn(`Pick ${m.ripe}`, 'shopping-basket', `Pick everything ripe (${m.ripe})`, () => gardenHarvestAll(), true);
   if (thirsty && !m.rain.now) btn(`Water ${thirsty}`, 'droplets', m.water.left ? `Water the thirsty plants (${thirsty})` : 'The can is empty: it refills tomorrow', () => gardenWaterAll(), !m.ripe);
-  if (!m.ripe && !(thirsty && !m.rain.now)) btn('Open', 'arrow-right', 'Open your garden', () => { setView('garden'); return { ok: true }; });
+  btn('Open garden', 'arrow-right', 'Open your garden', () => { setView('garden'); return { ok: true }; }, !m.ripe && !(thirsty && !m.rain.now));
   if (!preview && m.visitors.length && document.visibilityState === 'visible') setTimeout(() => { if (typeof gardenNoteVisitors === 'function') gardenNoteVisitors(m.visitors); }, 2500);
 }
 function _hgdMsg(m) {
   const v = m.visitors[0];
   const thirsty = m.plants.filter(p => p.thirsty && p.def.thirst).length;
   const bits = [];
-  if (m.rain.now) bits.push('Rain is watering the garden for you.');
+  let nx = null; try { nx = typeof gardenNextStep === 'function' ? gardenNextStep(m) : null; } catch (e) { nx = null; }
+  if (nx && !m.rain.now) bits.push(nx.title + '.');
+  else if (m.rain.now) bits.push('Rain is watering the garden for you.');
   else if (m.ripe) bits.push(`${m.ripe} ready to pick.`);
   else if (thirsty) bits.push(`${thirsty === 1 ? 'One plant would' : thirsty + ' plants would'} love a drink.`);
   if (v) bits.push(`${/^[aeiou]/i.test(v.def.name) ? 'An' : 'A'} ${v.def.name.toLowerCase().replace(/^next door’s/, 'neighbour’s')} is visiting.`);

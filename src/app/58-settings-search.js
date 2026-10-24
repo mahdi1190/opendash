@@ -1,24 +1,28 @@
 /* Search metadata never renders an unopened group: those renderers can fetch
    data, start watchers, or consume a proposed change. New groups can provide
    search: [{ label, description, keywords, target, selector }] at registration.
-   Row/card labels are tagged by the shared helpers for reliable navigation. */
+   Row/card labels are tagged by the shared helpers for reliable navigation.
+   2.18 (SIMPLIFY_PLAN.md 6): Sync, Data, Diagnostics, Server and Updates carry
+   their own search: arrays at registration, so they have no keys here. A row
+   that moved into a More / Advanced fold keeps its entry (search opens the fold),
+   and a renamed row keeps its old words as keywords. */
 const SETTINGS_SEARCH_CATALOG = {
+  // Region & language (was Name & region): the Name row moved to Profile, the Icon to Appearance.
   profile: [
-    ['Name', 'Your first name, greetings and the app title.'],
-    ['Icon', 'Choose the workspace icon, initial or emoji.', 'logo brand sidebar'],
     ['Your email addresses', 'The addresses used to recognise your own calendars.'],
     ['Currency', 'The currency used in Finances.', 'money dollars pounds euros USD GBP EUR'],
     ['Language and date format', 'Language, region and how dates are written.', 'locale English Deutsch Français Español'],
     ['Time zone', 'Dashboard time, home time zone and clock settings.'],
     ['Week starts on', 'Choose Monday, Sunday or Saturday for calendars.'],
-    ['Working hours', 'Your work days and the hours used for planning.', 'schedule availability free time focus'],
+    ['Working hours', 'Your work days and the hours used for planning (set in Settings > Home).', 'schedule availability free time focus'],
     ['Your location', 'Device location or a chosen town for weather and nearby art.', 'city weather GPS geolocation manual automatic permissions'],
   ],
   appearance: [
     ['Theme', 'Light, dark or automatic colour theme.'],
     ['Task rows', 'Comfortable or compact task row spacing.', 'density'],
     ['Reduce motion', 'Keep interface animations to a minimum.', 'accessibility'],
-    ['Default theme for new devices', 'The light or dark theme a new browser starts with.'],
+    ['App icon', 'Choose the workspace icon, initial or emoji.', 'icon logo brand sidebar browser tab'],
+    ['Theme for a new browser', 'The light or dark theme a new browser starts with.', 'default theme for new devices'],
   ],
   tasks: [
     ['Open tasks and events in', 'Choose the centre card or side panel.'],
@@ -41,18 +45,20 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Working hours', 'The hours used by free time, focus and planning widgets.'],
   ],
   autolink: [
-    ['Auto-linking', 'Find the folders, repositories, meetings, emails and people related to tasks.'],
+    ['Auto-linking', 'Find the folders, repositories, meetings, emails and people related to tasks.', 'status last run'],
     ['Auto-attach confident links', 'Automatically attach links above your confidence threshold.'],
     ['Check with Claude', 'Have Claude check suggested links.'],
-    ['Run every', 'How often auto-linking runs while the dashboard is open.', 'interval hours'],
+    ['Run every', 'How often auto-linking runs while OpenDash is open.', 'interval hours'],
     { label: 'Workspace folders', description: 'Add or browse folders to index for related files.', selector: '.al-add' },
-    { label: 'Names only', description: 'Folders whose contents are never read or sent to Claude.', keywords: 'privacy secrets confidential exclusions', selector: '.al-names + .al-add' },
-    { label: 'Index and review links', description: 'Index now, auto-link now, or review suggestions.', selector: '.al-runbtns' },
+    { label: 'Never read', description: 'Folders whose contents are never read or sent to Claude.', keywords: 'names only privacy secrets confidential exclusions', selector: '.al-names + .al-add' },
+    { label: 'Auto-link now', description: 'Run auto-linking now, or review the suggested links.', keywords: 'review suggestions run', selector: '.al-runbtns' },
+    ['Index now', 'Index your workspace folders again now.', 'index rebuild refresh status'],
   ],
   suggestions: [
     ['Show suggestions', 'Ideas on Home, Today and the morning story.'],
     ['How many on Home', 'The maximum number of suggestions on Home.'],
-    ['Working hours', 'Keep time suggestions inside your working hours.'],
+    ['Working hours', 'Keep time suggestions inside your working hours (set in Settings > Home).'],
+    ['Which ideas', 'Turn each kind of suggestion on or off.', 'rules switches areas'],
     ['Muted and dismissed', 'Reset suggestions hidden by Not now or Fewer like this.', 'reset hidden'],
     ['Counts', 'View or reset suggestion usage counts.'],
   ],
@@ -64,32 +70,39 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Meetings', 'Show your time, home time and other people’s time.'],
     ['Travel features', 'Notice trips and show local time, weather and tips.'],
     ['Notice trips from', 'Time zone, calendar flights, card payments and browser location.'],
+    ['Use this browser’s location', 'Notice trips from this browser’s location; only the nearest city is kept.', 'browser location geolocation'],
     ['Moments', 'Arrival, departure and welcome-home cards.'],
     ['Weather where you are', 'Weather for your current city.'],
     ['Public holidays', 'Home country, region, calendar holidays and days off.'],
     ['Exchange rates', 'Use card payment rates or online exchange rates.'],
     ['Jet-lag tips', 'Timing tips after long flights.'],
-    ['Let Claude see trips', 'Share the city and trip dates with Claude and MCP clients.', 'AI privacy'],
+    ['Let Claude see trips', 'Share your city and trip dates with Claude and your AI apps.', 'AI privacy MCP clients'],
     ['Keep past trips', 'How long to keep past trip decisions.', 'history retention'],
-    ['Trips', 'Open or forget trips and clear travel history.', 'delete forget all'],
+    ['Trips', 'Open or forget a trip.', 'delete forget'],
+    ['Forget all travel history', 'Clear trips and time-zone history, and turn travel off.', 'delete forget all reset clear'],
   ],
   ai: [
     ['Assistant', 'Claude model for conversations and task chat.', 'Haiku Sonnet Opus'],
     ['Quick jobs', 'Claude model for suggestions, linking and tidy-ups.', 'Haiku Sonnet Opus'],
     ['Thinking effort', 'Low, medium or high reasoning effort.'],
     ['Tone and style', 'Extra instructions for every AI request.', 'prompt spelling concise'],
+    ['Models for each job', 'Choose the Claude model for each job that has its own.', 'Haiku Sonnet Opus model for summaries story script'],
+    ['Money brief', 'The Claude model that words the money brief and story.', 'money wording finances Haiku Sonnet Opus'],
+    ['Morning summary', 'The Claude model for the day in three sentences.', 'model for summaries brief Haiku Sonnet Opus'],
+    ['Story script', 'The Claude model that writes the story narration.', 'model for the story script inflections Haiku Sonnet Opus'],
+    ['Checking links', 'The Claude model that checks suggested links.', 'auto-link judge Haiku Sonnet'],
+    ['Scene suggestions', 'The model that suggests scenes for event titles.', 'animations unmatched titles Haiku'],
   ],
   brief: [
     ['Open on the first visit of the day', 'Bring Home forward with the daily greeting.', 'morning automatic opening'],
     ['Day in three sentences', 'A short daily summary written by Claude.', 'AI summary'],
-    ['Model for summaries', 'Choose the Claude model for stories.', 'Haiku Sonnet Opus'],
     ['Offer “Finish the day” from', 'The hour to suggest the evening recap.', 'evening schedule'],
     ['Temperatures', 'Use Celsius or Fahrenheit.', 'weather units metric imperial'],
     ['AI day adviser', 'Review your day each morning, afternoon and evening.'],
     ['Try it', 'Preview Home, the morning story or Finish the day.'],
     ['Read it out', 'Read morning stories, evening recaps and weekly reviews aloud.', 'narration speech audio mute'],
     ['Browser voice', 'Choose the free voice and ElevenLabs fallback.', 'speech Windows local voice'],
-    ['Model for the story script', 'Claude writes natural narration with tone, pacing and pauses.', 'inflections script Haiku Sonnet Opus'],
+    ['Weekly review opens as', 'The full-screen story or the step-by-step page.', 'week story page'],
     ['Narration voice', 'Use the free browser voice or connect ElevenLabs.', 'speech eleven labs audio API key'],
     ['ElevenLabs voice', 'Connect your account and choose an eligible voice.', 'voice ID API key custom'],
     ['ElevenLabs connection', 'Save or remove the API key for your account.', 'eleven labs API key account connect'],
@@ -121,60 +134,20 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Show notifications', 'Allow desktop notifications in this browser.', 'permission reminders'],
     ['Morning summary', 'Daily count of tasks due today and overdue.', 'digest'],
     ['Before calendar events', 'How many minutes before events to remind you.', '5 10 15 30 lead time'],
-    ['Test', 'Send a test desktop notification.'],
-  ],
-  data: [
-    ['Data folder', 'Where your files live on this computer.'],
-    ['Backups', 'Back up now, download or restore a saved copy.', 'automatic recovery'],
-    ['Export and import', 'Move data to another computer or export JSON and Markdown.', 'zip tasks'],
-    ['Share the app', 'Export a clean copy of the app for someone else.'],
-    ['Reset app data', 'Start over after backing up the data folder.', 'delete erase clear'],
-  ],
-  server: [
-    ['This server', 'Server status, version, restart, rebuild, stop or open the log.', 'port process uptime'],
-    ['Start automatically when I log in', 'Start OpenDash when you sign in to Windows.', 'autostart startup'],
-    ['Enable the Start server button', 'Let the offline banner start the server.'],
-    ['Show an offline page', 'Keep the app page available when the server is stopped.', 'service worker cache'],
-  ],
-  sync: [
-    ['Sync across my devices', 'Keep tasks, notes and people the same on your computers through a cloud folder.', 'onedrive google drive dropbox cloud laptop multi-device'],
-    ['Folder', 'The cloud folder that carries the changes between computers.', 'onedrive dropbox google drive path'],
-    ['Use changes from my other computers', 'Trial mode first: see what would change before anything is applied.', 'shadow trial apply preview'],
-    ['Status', 'When it last synced and which other computers were seen.', 'last seen devices'],
-    ['This computer is called', 'How your other computers show this one.', 'device name'],
-    ['Check the folder now', 'Look for changes from your other computers now.', 'sync now refresh'],
-    ['Is this your first computer with OpenDash?', 'Set up sync on your first computer, or add this one to it.', 'join setup start encrypted'],
-    ['Devices', 'Every computer and phone that syncs: rename one, or remove one you no longer have.', 'remove lost stolen rename phone laptop'],
-    ['Add a computer or phone', 'Approve a new computer with 6 numbers, or show a code for a phone.', 'pair approve qr scan'],
-    ['Recovery code', 'Add a computer without the other one, or make a new code.', 'lost code key encryption'],
-    ['Main computer for each account', 'Which computer checks each mail and calendar account.', 'fetch fetcher gmail outlook'],
-    ['Not encrypted yet', 'Encrypt sync that started before encryption.', 'encrypt lock privacy'],
-    ['Live connection', 'Changes show on your other computer within a second when they can reach each other.', 'live instant realtime wifi lan internet connected'],
-    ['Let my other computers reach this one over the internet', 'Ask your router to open a door for OpenDash (UPnP).', 'router port upnp firewall nat'],
-    ['Main computer', 'Which computer checks your accounts when more than one is on.', 'main primary home laptop first fetch'],
-    ['Live sync', 'Turn the direct connection between your computers on or off.', 'live direct peer'],
+    { label: 'Send a test', description: 'Send a test desktop notification.', keywords: 'test', target: 'Show notifications' },
   ],
   advanced: [
     ['Your own sign-in apps', 'For IT teams and developers: your own Microsoft or Google app for signing in.', 'client id application entra azure google cloud oauth developer it'],
     ['Advanced: use your own Microsoft app', 'Enter the application (client) ID of your own Microsoft Entra app.', 'outlook hotmail office 365 client id'],
     ['Advanced: use your own Google app', 'Enter the client ID and secret of your own Google app.', 'gmail google workspace client id secret json'],
   ],
-  updates: [
-    ['OpenDash version', 'Check for updates and install a newer release.', 'upgrade GitHub'],
-    ['Check once a day', 'Choose whether to check for updates automatically.'],
-    ['This copy', 'How this app copy was installed and updated.', 'zip git'],
-  ],
-  diagnostics: [
-    { label: 'Copy diagnostics', description: 'Copy system, app, connection and queue details for troubleshooting.', keywords: 'debug problems Node migrations', selector: '.set-btns' },
-    { label: 'Recent server log', description: 'Read recent server messages.', keywords: 'errors debug', selector: '.set-log' },
-  ],
   about: [
-    { label: 'App and licences', description: 'Version, project, documentation and third-party licences.', keywords: 'MIT Inter Lucide ECharts GeoNames copyright open source', selector: '.kv' },
+    { label: 'App and licences', description: 'Version, project, documentation and third-party licences.', keywords: 'MIT Inter Lucide ECharts GeoNames Open-Meteo weather copyright open source', selector: '.kv' },
   ],
 };
 let _settingsSearchText = '';
 let _settingsSearchPending = null;
-const _settingsTravelOnly = new Set(['Notice trips from', 'Moments', 'Weather where you are', 'Public holidays', 'Exchange rates', 'Jet-lag tips', 'Let Claude see trips', 'Keep past trips', 'Trips']);
+const _settingsTravelOnly = new Set(['Notice trips from', 'Use this browser’s location', 'Moments', 'Weather where you are', 'Public holidays', 'Exchange rates', 'Jet-lag tips', 'Let Claude see trips', 'Keep past trips', 'Trips', 'Forget all travel history']);
 
 function settingsSearchQuery() { return _settingsSearchText.trim(); }
 function settingsSearchClear() { _settingsSearchText = ''; _settingsSearchPending = null; }

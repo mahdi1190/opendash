@@ -3,13 +3,13 @@
 .apg { min-width: 0; gap: var(--space-5); }
 .apg > * { min-width: 0; }
 .apg .anim-gallery-h { flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
-.apg .anim-gallery-h h3 { font-size: var(--text-lg, 18px); }
+.apg .anim-gallery-h h3 { font-size: var(--text-lg); }
 .apg .anim-gallery-h > .muted { font-size: var(--text-sm); }
 
 .apg-search { display: grid; gap: var(--space-2); }
 .apg-search > label, .apg-field > span { color: var(--fg); font-size: var(--text-sm); font-weight: var(--weight-medium); }
 .apg-search-input { position: relative; display: flex; align-items: center; min-width: 0; }
-.apg-search-input input { width: 100%; min-width: 0; min-height: 48px; padding: var(--space-3) var(--space-4) var(--space-3) 44px; border-radius: var(--radius-lg); font-size: var(--text-md, 14px); background: var(--surface); }
+.apg-search-input input { width: 100%; min-width: 0; min-height: 48px; padding: var(--space-3) var(--space-4) var(--space-3) var(--space-10); border-radius: var(--radius-lg); font-size: var(--text-md); background: var(--surface); }
 .apg-search-input input::placeholder { color: var(--fg-subtle); opacity: 1; }
 .apg-search-icon { position: absolute; left: var(--space-4); display: flex; align-items: center; color: var(--fg-muted); pointer-events: none; }
 .apg-search-icon .i { width: 18px; height: 18px; }
@@ -82,7 +82,7 @@
 .apg-grid .apg-item figcaption b { font-size: var(--text-sm); line-height: 1.4; overflow-wrap: anywhere; }
 .apg-grid .apg-item figcaption > span { color: var(--fg-muted); font-size: var(--text-xs); line-height: 1.4; }
 .apg-card-badges { margin-top: auto; }
-.apg-card-badges .apg-badge { font-size: var(--text-2xs, 11px); }
+.apg-card-badges .apg-badge { font-size: var(--text-2xs); }
 .apg-grid .apg-item.is-today::after { display: none; }
 .apg-item.is-blocked .apg-card-art { opacity: 0.4; }
 .apg-grid .apg-acts { position: static; display: flex; flex-direction: row; flex-wrap: wrap; align-self: flex-end; gap: var(--space-2); margin-top: auto; opacity: 1; }
@@ -91,7 +91,7 @@
 
 .apg-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-8) var(--space-5); border: 1px dashed var(--border); border-radius: var(--radius-lg); background: var(--surface); text-align: center; }
 .apg-empty h4, .apg-empty p { margin: 0; }
-.apg-empty h4, .apg-empty > b { color: var(--fg); font-size: var(--text-md, 14px); }
+.apg-empty h4, .apg-empty > b { color: var(--fg); font-size: var(--text-md); }
 .apg-empty p { max-width: 42ch; color: var(--fg-muted); font-size: var(--text-sm); line-height: 1.5; }
 .apg-empty .btn { min-height: 36px; }
 .apg-paging { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--space-3); }
@@ -106,7 +106,7 @@
 
 @media (max-width: 600px) {
   .apg { gap: var(--space-4); }
-  .apg-search-input input { font-size: 16px; }
+  .apg-search-input input { font-size: var(--text-lg); }
   .apg-browser-bar { gap: var(--space-3) var(--space-2); }
   .apg-field { flex-basis: calc(50% - var(--space-2)); }
   .apg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }

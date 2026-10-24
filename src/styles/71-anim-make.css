@@ -7,21 +7,21 @@
 /* ---------- make your own ---------- */
 .am-intro { margin: 0 0 10px; }
 .am-desc { width: 100%; resize: vertical; min-height: 64px; }
-.am-slot { margin-top: 4px; }
-.am-status { min-height: 1.4em; margin: 8px 0; font-size: var(--fs-sm, 13px); }
-.am-preview { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; padding: 12px; border: 1px solid var(--border-subtle); border-radius: var(--r-lg, 12px); background: var(--surface-2, var(--surface)); }
+.am-slot { margin-top: var(--space-1); }
+.am-status { min-height: 1.4em; margin: var(--space-2) 0; font-size: var(--fs-sm, var(--text-sm)); }
+.am-preview { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; padding: var(--space-3); border: 1px solid var(--border-subtle); border-radius: var(--r-lg, var(--radius-md)); background: var(--surface-2, var(--surface)); }
 .am-prev-art { display: grid; justify-items: center; gap: 4px; font-size: var(--fs-xs, 12px); }
-.am-prev-meta { display: grid; gap: 4px; min-width: 140px; flex: 1; align-content: start; }
-.am-acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
-.apg-mine { margin: 14px 0; }
-.apg-mine-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.am-prev-meta { display: grid; gap: var(--space-1); min-width: 140px; flex: 1; align-content: start; }
+.am-acts { display: flex; gap: var(--space-2); justify-content: flex-end; margin-top: var(--space-2); }
+.apg-mine { margin: var(--space-3) 0; }
+.apg-mine-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .apg-mine-item { position: relative; }
-.apg-mine-off { margin: 6px 0 0; font-size: var(--fs-xs, 12px); }
+.apg-mine-off { margin: var(--space-1-5) 0 0; font-size: var(--fs-xs, var(--text-xs)); }
 
 /* ---------- the world pack on the arrival card ---------- */
-.trm-world { position: absolute; right: 14px; bottom: 12px; display: flex; align-items: flex-end; gap: 6px; pointer-events: none; z-index: 2; }
+.trm-world { position: absolute; right: 14px; bottom: 12px; display: flex; align-items: flex-end; gap: var(--space-1-5); pointer-events: none; z-index: 2; }
 .trm-world .anim-scene { box-shadow: 0 6px 18px rgb(0 0 0 / 0.18); }
-.trm-world .trm-world-el { margin-bottom: 4px; }
+.trm-world .trm-world-el { margin-bottom: var(--space-1); }
 @media (max-width: 600px) { .trm-world .trm-world-sig { --as-size: var(--scene-lg, 64px); } }
 
 /* ---------- focus mode: the rest of the page dims while a focus block runs ---------- */

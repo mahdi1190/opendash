@@ -177,7 +177,7 @@ function recapExportDialog(R) {
   if (!R) return;
   const o = { names: false, money: false };
   openDialog({
-    title: 'Save a summary card', width: 520, resizeKey: 'recap-card',
+    title: 'Save a summary card', size: 'md', resizeKey: 'recap-card',
     body: (el) => {
       const p = document.createElement('p'); p.className = 'muted';
       p.textContent = 'Counts only, unless you tick more below. The image is made here and saved to this computer; nothing is uploaded.';
@@ -202,7 +202,7 @@ function recapSavePng(R, o) {
   const c = recapCardCanvas(R, o);
   const name = `opendash-${String(R.range.key).replace(/[^0-9-]/g, '')}.png`;
   c.toBlob((blob) => {
-    if (!blob) { toast('The card could not be made in this browser.', { kind: 'err' }); return; }
+    if (!blob) { toastError('make the card', null); return; }
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);

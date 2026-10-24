@@ -308,18 +308,26 @@ function _funRecapNudge(d) {
 
 /* ---------- hooks: the friend card, a friend's page, the feed, a shared space ---------- */
 function _funEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
+/** A button: a thin wrapper over uiButton (11-ui-kit.js). o: {kind, sm, cls, icon, e (an emoji before the label), tip, aria, disabled, run};
+    raw: true is a custom-styled control (an emoji pick, a badge) that keeps only o.cls. */
 function _funBtn(label, o) {
   o = o || {};
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = o.raw ? (o.cls || '') : 'btn ' + (o.kind || 'btn-secondary') + (o.sm ? ' btn-sm' : '') + (o.cls ? ' ' + o.cls : '');
-  if (o.icon) b.innerHTML = icon(o.icon);
-  if (o.e) b.appendChild(_funEl('span', 'fun-e', o.e));
-  if (label) b.appendChild(_funEl('span', null, label));
-  if (o.tip) b.setAttribute('data-tip', o.tip);
-  if (o.aria) b.setAttribute('aria-label', o.aria);
-  if (o.disabled) b.disabled = true;
-  if (o.run) b.onclick = (e) => { e.stopPropagation(); o.run(e, b); };
+  let b;
+  if (o.raw) {
+    b = document.createElement('button');
+    b.type = 'button';
+    b.className = o.cls || '';
+    if (o.icon) b.innerHTML = icon(o.icon);
+    if (o.e) b.appendChild(_funEl('span', 'fun-e', o.e));
+    if (label) b.appendChild(_funEl('span', null, label));
+    if (o.tip) b.setAttribute('data-tip', o.tip);
+    if (o.aria) b.setAttribute('aria-label', o.aria);
+    if (o.disabled) b.disabled = true;
+    if (o.run) b.onclick = (e) => { e.stopPropagation(); o.run(e, b); };
+    return b;
+  }
+  b = uiButton({ label, icon: o.icon, kind: String(o.kind || 'secondary').replace(/^btn-/, ''), size: o.sm ? 'sm' : 'md', cls: o.cls, tip: o.tip, aria: o.aria, disabled: o.disabled, run: o.run });
+  if (o.e) { const em = _funEl('span', 'fun-e', o.e); const lab = b.querySelector(':scope > span'); if (lab) b.insertBefore(em, lab); else b.appendChild(em); }
   return b;
 }
 function _funDuoChip(x, f, big) {

@@ -116,17 +116,15 @@ function tgEl(tag, cls, text) {
   if (text != null) el.textContent = String(text);
   return el;
 }
+/** A button: a thin wrapper over uiButton (11-ui-kit.js). o: {primary, ghost, sm (default true), cls (extra classes; btn-* words pick the kind), icon, tip, aria, disabled, run}.
+    Kept as a global because the garden's visit page (94-garden-social-3bed.js) calls it. */
 function tgBtn(label, o) {
   o = o || {};
-  const b = document.createElement('button'); b.type = 'button';
-  b.className = o.cls || ('btn ' + (o.primary ? 'btn-primary' : o.ghost ? 'btn-ghost' : 'btn-secondary') + (o.sm !== false ? ' btn-sm' : ''));
-  if (o.icon) b.insertAdjacentHTML('beforeend', icon(o.icon));
-  if (label) b.appendChild(tgEl('span', '', label));
-  if (o.tip) b.setAttribute('data-tip', o.tip);
-  if (o.aria) b.setAttribute('aria-label', o.aria);
-  if (o.disabled) b.disabled = true;
-  if (o.run) b.onclick = (e) => { e.stopPropagation(); o.run(e, b); };
-  return b;
+  const cls = String(o.cls || '');
+  const m = /\bbtn-(primary|ghost|danger|secondary)\b/.exec(cls);
+  return uiButton({ label, icon: o.icon, kind: m ? m[1] : o.primary ? 'primary' : o.ghost ? 'ghost' : 'secondary', size: o.sm === false ? 'md' : 'sm',
+    cls: cls.split(/\s+/).filter(c => c && !/^btn(-(primary|ghost|danger|secondary|sm|icon))?$/.test(c)).join(' '),
+    tip: o.tip, aria: o.aria, disabled: o.disabled, run: o.run });
 }
 function tgIconBtn(ic, label, run, cls) { return tgBtn('', { cls: 'btn-icon btn-sm' + (cls ? ' ' + cls : ''), icon: ic, aria: label, tip: label, run }); }
 /** A text input that keeps what was typed (and its focus) across re-renders. */
@@ -473,9 +471,9 @@ function tgSendKind(to, kind, body) {
   return _tgFetch('/api/together/send', { to: list, kind, body }).then((r) => {
     // a stop (Settings > Privacy) holds these too: say so instead of looking sent
     const stopped = typeof permsGet === 'function' && (permsGet().stopped || list.every(id => permsFor(id).stopped));
-    if (r && !r.sent && !r.queued && stopped) toast('Not sent: sharing is stopped. Choose Share again in Settings > Privacy, then send it again.', { kind: 'warn', icon: 'eye-off' });
+    if (r && !r.sent && !r.queued && stopped) toast('Not sent: you stopped sharing.', { kind: 'warn', icon: 'eye-off', action: { label: 'Share again', run: () => { if (typeof permsResumeAll === 'function') permsResumeAll(); } } });
     return r;
-  }).catch((e) => { toast(`Not sent (${_tgWhy(e)}).`, { kind: 'err', retry: () => tgSendKind(to, kind, body) }); return null; });
+  }).catch((e) => { toastError('send it', e, () => tgSendKind(to, kind, body)); return null; });
 }
 
 /* ---------- counts ---------- */
@@ -534,7 +532,7 @@ if (typeof window !== 'undefined' && window.Friends && typeof window.Friends.reg
       const sps = tgSpaces().filter(sp => !tgSpacePref(sp.id, 'hidden'));
       const inv = tgInvites().length;
       const friends = d && Array.isArray(d.friends) ? d.friends.filter(f => f && f.status === 'friend').length : 0;
-      if (!sps.length && !inv && !friends) return false;
+      if (!sps.length && !inv && !friends) return false;   // with a friend it always shows, with New shared space
       const list = document.createElement('div'); list.className = 'tg-fr-spaces';
       for (const sp of sps.slice(0, 6)) {
         const b = document.createElement('button'); b.type = 'button'; b.className = 'tg-fr-space';
@@ -592,6 +590,7 @@ registerSection('together', {
     return [{ label: 'Together', view: 'together' }, { label: name, view: 'together:' + parts[1] }, tab];
   },
   group: 'tasks', layout: 'wide', hashable: true,
+  headerActions: (view) => (typeof tgHeaderActions === 'function' ? tgHeaderActions(view) : null),
   keepRoot(main) { const r = main.querySelector('.tg-root'); return !!(_tg.keep && r && r.dataset.view === state.view); },
   mount(container, view) {
     if (_tg.keep && container.querySelector('.tg-root')) return;

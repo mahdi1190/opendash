@@ -15,7 +15,7 @@
    or esc(). Nothing here sends or stores a password or token.
    ============================================================ */
 const SRC_CAPS = [
-  { id: 'bank', name: 'Banks and wallets', one: 'bank', icon: 'landmark', unlocks: 'Bank sync in Finances', hint: 'Monzo, Plasma One, other UK and EU banks, Aureli through Claude, or a CSV export.' },
+  { id: 'bank', name: 'Banks and wallets', one: 'bank', icon: 'landmark', unlocks: 'Bank updates in Finances', hint: 'Monzo, Plasma One, other UK and EU banks, Aureli through Claude, or a CSV export.' },
   { id: 'calendar', name: 'Calendars', one: 'calendar', icon: 'calendar-days', unlocks: 'Events next to your tasks', hint: 'Events from Google, Outlook or any calendar with an iCal link.' },
   { id: 'email', name: 'Email', one: 'mailbox', icon: 'mail', unlocks: 'Email triage, mail on people', hint: 'Recent subjects, senders and previews. Never full messages; nothing is ever sent.' },
 ];
@@ -122,7 +122,7 @@ function _srcRow(s) {
     row.appendChild(_connEl('div', 'src-note', h.message));
   }
   const syncWarning = _srcSyncWarning(s);
-  if (syncWarning && s.enabled !== false && !s.demo) row.appendChild(_connEl('div', 'src-note', 'Previous sync failed: ' + syncWarning + ' Retry sync to update your data.'));
+  if (syncWarning && s.enabled !== false && !s.demo) row.appendChild(_connEl('div', 'src-note', 'Last update failed: ' + syncWarning + ' Try updating it again.'));
 
   // Accounts / calendars / mailboxes, each with its own switch.
   if (s.accounts && s.accounts.length) {
@@ -132,7 +132,7 @@ function _srcRow(s) {
       const chip = document.createElement('button'); chip.type = 'button';
       chip.className = 'src-acc' + (a.enabled === false ? ' off' : '');
       chip.setAttribute('role', 'switch'); chip.setAttribute('aria-checked', a.enabled === false ? 'false' : 'true');
-      chip.setAttribute('data-tip', (a.enabled === false ? 'Switched off: not read. ' : 'Read on every sync. ') + 'Click to switch ' + (a.enabled === false ? 'on' : 'off') + '.');
+      chip.setAttribute('data-tip', (a.enabled === false ? 'Switched off: not read. ' : 'Read on every update. ') + 'Click to switch ' + (a.enabled === false ? 'on' : 'off') + '.');
       const dot = _connEl('span', 'dot c-' + (SRC_SWATCHES.includes(a.colour) ? a.colour : s.colour || 'slate'));
       chip.append(dot, _connEl('span', null, a.name || a.id));
       chip.onclick = () => _srcSetAccount(s, a, a.enabled === false);
@@ -143,16 +143,16 @@ function _srcRow(s) {
   }
 
   const foot = _connEl('div', 'src-foot');
-  const when = s.kind === 'csv' ? 'Import a CSV in Finances any time' : s.demo ? 'Demo data · never synced' : s.lastSync ? `Synced ${_srcAgo(s.lastSync)}` : 'Not synced yet';
+  const when = s.kind === 'csv' ? 'Import a CSV in Finances any time' : s.demo ? 'Example data · never updated' : s.lastSync ? `Updated ${_srcAgo(s.lastSync)}` : 'Not updated yet';
   foot.appendChild(_connEl('span', 'conn-when', when));
   if (s.kind !== 'csv') {
     const busy = !!SourcesStore.busy[s.id];
-    const b = _connBtn(busy ? 'Syncing…' : syncWarning ? 'Retry sync' : 'Sync now', busy ? null : 'refresh-cw', 'btn-ghost', () => _srcSync(s));
+    const b = uiButton({ label: busy ? 'Updating…' : syncWarning ? 'Try again' : 'Update now', icon: busy ? null : 'refresh-cw', kind: 'ghost', size: 'sm', run: () => _srcSync(s) });
     if (busy) { b.disabled = true; b.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
     if (!s.enabled || h.state === 'off' || s.demo) b.disabled = true;
     foot.appendChild(b);
   } else {
-    foot.appendChild(_connBtn('Open Finances', 'arrow-right', 'btn-ghost', () => setView('finance')));
+    foot.appendChild(uiButton({ label: 'Open Finances', icon: 'arrow-right', kind: 'ghost', size: 'sm', run: () => setView('finance') }));
   }
   row.appendChild(foot);
   return row;
@@ -160,19 +160,19 @@ function _srcRow(s) {
 
 function _srcFixHelp(s) {
   const box = _connEl('div', 'conn-help src-help');
-  if (['microsoft', 'google'].includes(s.kind)) { box.appendChild(_connBtn('Sign in again', 'log-in', 'btn-primary', () => (s.account ? accOpenSignIn({ provider: s.kind, accountId: s.account }) : accAdd(s.kind)))); return box; }
+  if (['microsoft', 'google'].includes(s.kind)) { box.appendChild(uiButton({ label: 'Sign in again', icon: 'log-in', kind: 'primary', size: 'sm', run: () => (s.account ? accOpenSignIn({ provider: s.kind, accountId: s.account }) : accAdd(s.kind)) })); return box; }
   const claudeAi = /^claude\.ai /.test(s.server || '');
   if (claudeAi) {
     box.appendChild(_connSteps([
-      _connBtn('Open claude.ai connectors', 'external-link', 'btn-primary', () => window.open(CONNECTORS_URL, '_blank', 'noopener')),
+      uiButton({ label: 'Open claude.ai connectors', icon: 'external-link', kind: 'primary', size: 'sm', run: () => window.open(CONNECTORS_URL, '_blank', 'noopener') }),
       `Find ${String(s.server).replace(/^claude\.ai /, '')} and choose Reconnect (or Connect), then sign in.`,
-      'Come back here and click Sync now.',
+      'Come back here and click Update now.',
     ]));
   } else {
     box.appendChild(_connSteps([
-      _connBtn('Open terminal', 'terminal', 'btn-primary', (b) => _connOpenTerminal(b)),
+      uiButton({ label: 'Open terminal', icon: 'terminal', kind: 'primary', size: 'sm', run: (e, b) => _connOpenTerminal(b) }),
       `In the Claude window, type /mcp and choose ${s.server || 'the server'} to sign in again.`,
-      'Come back here and click Sync now.',
+      'Come back here and click Update now.',
     ]));
   }
   return box;
@@ -197,7 +197,7 @@ function _srcMenu(anchor, s) {
     const ok = await confirmDialog({ title: `Remove ${s.label}?`, text: 'The dashboard stops reading it. Data it already brought in stays, and you can add it again any time.', confirmLabel: 'Remove', danger: true });
     if (!ok) return;
     try { await _srcApi('/api/sources/' + encodeURIComponent(s.id), { method: 'DELETE' }); toast(`${s.label} removed`, { kind: 'ok' }); }
-    catch (e) { toast(e.message, { kind: 'err' }); }
+    catch (e) { toastError('remove ' + s.label, e); }
     SourcesStore.refresh(); _srcAfterChange(s.capability);
   } });
   openMenu(anchor, items, { align: 'end' });
@@ -219,7 +219,7 @@ async function _srcUpdate(s, patch, msg) {
   try {
     await _srcApi('/api/sources/' + encodeURIComponent(s.id), { method: 'PUT', body: patch });
     if (msg) toast(msg, { kind: 'ok' });
-  } catch (e) { toast(e.message, { kind: 'err' }); }
+  } catch (e) { toastError('save that change', e, () => _srcUpdate(s, patch, msg)); }
   await SourcesStore.refresh();
   _srcAfterChange(s.capability);
 }
@@ -246,9 +246,9 @@ function _srcSyncOutcome(id, since) {
   const okAt = Date.parse(s.lastSync || '') || 0;
   if (errAt >= since - 5000 && errAt >= okAt) {
     const reconnect = _srcNeedsReconnect(s);
-    toast(`${s.label} did not sync: ${String(s.lastError.message || 'the update failed.').replace(/^Last sync failed:\s*/i, '')}`, { kind: 'err', timeout: 12000,
+    toast(`${s.label} didn’t update: ${String(s.lastError.message || 'the update failed.').replace(/^Last (sync|update) failed:\s*/i, '')}`, { kind: 'err', timeout: 12000,
       action: reconnect ? { label: 'Reconnect', run: () => _connPageSourceHelp(s) } : { label: 'Try again', run: () => _srcSync(s) } });
-  } else if (okAt >= since - 5000) toast(`${s.label} is up to date.`, { kind: 'ok' });
+  } else if (okAt >= since - 5000) toast(`${s.label} is up to date`, { kind: 'ok' });
 }
 async function _srcSync(s, opts) {
   SourcesStore.busy[s.id] = true; renderMain();
@@ -258,7 +258,7 @@ async function _srcSync(s, opts) {
     const j = await _srcApi('/api/sources/' + encodeURIComponent(s.id) + '/sync', { method: 'POST', body: {}, okStatuses: [409] });
     if (j.job && j.capability === 'calendar' && typeof CalStore !== 'undefined') { CalStore.st.job = j.job; CalStore.poll(); }
     else if (j.job && j.capability === 'email' && typeof InboxStore !== 'undefined') { InboxStore.st.job = j.job; InboxStore.poll(); }
-    toast(j.error || `Syncing ${s.label}…`, { icon: 'refresh-cw' });
+    toast(j.error || `Updating ${s.label}…`, { icon: 'refresh-cw' });
     started = !j.error;
     // Watch the job, then show the result on the card.
     const t0 = Date.now();
@@ -271,7 +271,7 @@ async function _srcSync(s, opts) {
       misses = 0;
       if (!st.job || st.job.state !== 'running') break;
     }
-  } catch (e) { toast(`${s.label} did not sync: ${netErrorMessage(e)}`, { kind: 'err', timeout: 10000, action: { label: 'Try again', run: () => _srcSync(s) } }); }
+  } catch (e) { toastError('update ' + s.label, e, () => _srcSync(s)); }
   delete SourcesStore.busy[s.id];
   await SourcesStore.refresh();
   _srcAfterChange(s.capability);
@@ -281,9 +281,9 @@ async function _srcTestExisting(s) {
   SourcesStore.busy[s.id] = true; renderMain();
   try {
     const r = await _srcApi('/api/sources/test', { method: 'POST', body: { source: { id: s.id } } });
-    if (r.ok) toast(r.count == null ? `${s.label}: connector tools are ready. Sync now to read and update your data.` : `${s.label} works: ${r.count} item${r.count === 1 ? '' : 's'} in a short read-only test. This did not sync your data.`, { kind: 'ok' });
+    if (r.ok) toast(r.count == null ? `${s.label} is ready. Update now to bring in your data.` : `${s.label} works: ${r.count} item${r.count === 1 ? '' : 's'} in a short read-only test. Nothing was brought in.`, { kind: 'ok' });
     else toast(r.error || 'The test failed.', { kind: 'err', timeout: 8000 });
-  } catch (e) { toast(e.message, { kind: 'err' }); }
+  } catch (e) { toastError('test ' + s.label, e, () => _srcTestExisting(s)); }
   delete SourcesStore.busy[s.id];
   await SourcesStore.refresh({ cached: true });
   if (state.view === 'connections') renderMain();
@@ -296,8 +296,8 @@ function srcSection(all) {
   wrap.dataset.conn = 'sources';
   const h = _connEl('div', 'src-section-h');
   const ht = _connEl('div', 'src-section-t');
-  ht.append(_connEl('h2', null, 'Data sources'), _connEl('p', null, 'Banks, calendars and mailboxes the dashboard reads from. Add as many as you like; each one only ever reads.'));
-  const addSrc = _connBtn('Add a source', 'plus', 'btn-primary', () => srcAddFlow({}));
+  ht.append(_connEl('h2', null, 'Data sources'), _connEl('p', null, 'Banks, calendars and mailboxes the dashboard reads from. Add as many as you like; each one only reads.'));
+  const addSrc = uiButton({ label: 'Add a source', icon: 'plus', kind: 'primary', size: 'sm', run: () => srcAddFlow({}) });
   addSrc.classList.remove('btn-sm'); // a page-level action: same size as "Add person" / "New task"
   h.append(ht, addSrc);
   wrap.appendChild(h);
@@ -316,7 +316,7 @@ function srcSection(all) {
     const ic = _connEl('span', 'conn-ic' + (capInfo.available ? ' on' : '')); ic.innerHTML = icon(cap.icon);
     const gt = _connEl('div', 'conn-titles');
     gt.append(_connEl('div', 'conn-name', cap.name), _connEl('div', 'conn-sub', capInfo.available ? `Working · ${cap.unlocks}` : cap.unlocks));
-    const add = _connBtn('Add', 'plus', 'btn-ghost', () => srcAddFlow({ capability: cap.id }));
+    const add = uiButton({ label: 'Add', icon: 'plus', kind: 'ghost', size: 'sm', run: () => srcAddFlow({ capability: cap.id }) });
     add.setAttribute('aria-label', 'Add a ' + cap.one);
     gh.append(ic, gt, add);
     g.appendChild(gh);
@@ -324,7 +324,7 @@ function srcSection(all) {
     if (!rows.length) {
       const e = _connEl('div', 'src-empty');
       e.appendChild(_connEl('span', null, cap.hint));
-      e.appendChild(_connBtn('Add a ' + cap.one, 'plus', 'btn-secondary', () => srcAddFlow({ capability: cap.id })));
+      e.appendChild(uiButton({ label: 'Add a ' + cap.one, icon: 'plus', kind: 'secondary', size: 'sm', run: () => srcAddFlow({ capability: cap.id }) }));
       g.appendChild(e);
     } else for (const s of rows) g.appendChild(_srcRow(s));
     grid.appendChild(g);
@@ -343,13 +343,13 @@ function srcServersCard() {
   const ic = _connEl('span', 'conn-ic'); ic.innerHTML = icon('database');
   const t = _connEl('div', 'conn-titles');
   const at = d.discovery && d.discovery.at;
-  t.append(_connEl('div', 'conn-name', 'MCP servers in your Claude'), _connEl('div', 'conn-sub', at ? `From claude mcp list · checked ${_connAgo(at)}` : 'From claude mcp list'));
+  t.append(_connEl('div', 'conn-name', 'Claude’s own connections'), _connEl('div', 'conn-sub', at ? `Checked ${_connAgo(at)}` : 'Not checked yet'));
   const busy = !!SourcesStore.busy._servers;
-  const b = _connBtn(busy ? 'Checking…' : 'Check servers', busy ? null : 'refresh-cw', 'btn-ghost', async () => {
+  const b = uiButton({ label: busy ? 'Checking…' : 'Check again', icon: busy ? null : 'refresh-cw', kind: 'ghost', size: 'sm', run: async () => {
     SourcesStore.busy._servers = true; renderMain();
     await SourcesStore.refresh({ refresh: true });
     delete SourcesStore.busy._servers; renderMain();
-  });
+  } });
   if (busy) { b.disabled = true; b.insertAdjacentHTML('afterbegin', '<span class="spinner"></span>'); }
   h.append(ic, t, b);
   card.appendChild(h);
@@ -360,7 +360,7 @@ function srcServersCard() {
     return card;
   }
   const servers = Array.isArray(d.servers) ? d.servers : [];
-  if (!servers.length) { card.appendChild(_connEl('p', 'conn-note', 'No MCP servers yet. Connect one on claude.ai (Settings > Connectors) or with claude mcp add, then check again.')); return card; }
+  if (!servers.length) { card.appendChild(_connEl('p', 'conn-note', 'None yet. Add one on claude.ai (Settings > Connectors), then check again.')); return card; }
   const used = new Map(((d.sources) || []).filter(s => s.kind === 'mcp').map(s => [s.server + '|' + s.capability, s]));
   const list = _connEl('div', 'src-srv-list');
   for (const sv of servers) {
@@ -375,7 +375,7 @@ function srcServersCard() {
     const mine = SRC_CAPS.map(c => used.get(sv.name + '|' + c.id)).filter(Boolean);
     if (mine.length) r.appendChild(_connEl('span', 'chip chip-accent', 'In use: ' + mine.map(s => s.label).join(', ')));
     else if (sv.usable) {
-      const u = _connBtn('Use as a source', 'plus', 'btn-ghost', () => srcAddFlow({ server: sv.name, capability: sv.capability || null }));
+      const u = uiButton({ label: 'Use as a source', icon: 'plus', kind: 'ghost', size: 'sm', run: () => srcAddFlow({ server: sv.name, capability: sv.capability || null }) });
       r.appendChild(u);
     } else {
       const n = _connEl('span', 'src-note', 'Not usable here');
@@ -477,14 +477,14 @@ function srcAddFlow(o) {
         toast(`${f.edit.label} updated`, { kind: 'ok' });
       } else {
         const r = await _srcApi('/api/sources', { method: 'POST', body: { source: draft() } });
-        toast(`${r.source.label} added. Syncing now…`, { kind: 'ok' });
+        toast(`${r.source.label} added. Updating now…`, { kind: 'ok' });
         f.saved = r.source;
       }
       closeFn && closeFn();
       await SourcesStore.refresh();
       if (f.saved) { const s = (SourcesStore.data.sources || []).find(x => x.id === f.saved.id); if (s) _srcSync(s); }
       else _srcAfterChange(f.capability);
-    } catch (e) { f.saving = false; toast(e.message, { kind: 'err', timeout: 8000 }); paint(); }
+    } catch (e) { f.saving = false; toastError('save ' + (f.edit ? f.edit.label : 'this connection'), e); paint(); }
   }
 
   function stepper() {
@@ -511,9 +511,9 @@ function srcAddFlow(o) {
     if (!bodyEl) return;
     bodyEl.innerHTML = ''; footEl.innerHTML = '';
     bodyEl.appendChild(stepper());
-    const back = (step) => { const b = _connBtn('Back', 'arrow-left', 'btn-ghost', () => go(step)); footEl.appendChild(b); };
+    const back = (step) => { const b = uiButton({ label: 'Back', icon: 'arrow-left', kind: 'ghost', size: 'sm', run: () => go(step) }); footEl.appendChild(b); };
     const spacer = () => footEl.appendChild(_connEl('span', 'spacer'));
-    const next = (label, run, disabled) => { const b = _connBtn(label, null, 'btn-primary', run); b.disabled = !!disabled; footEl.appendChild(b); return b; };
+    const next = (label, run, disabled) => { const b = uiButton({ label: label, kind: 'primary', size: 'sm', run: (e, b) => run(b) }); b.disabled = !!disabled; footEl.appendChild(b); return b; };
 
     if (f.step === 'what') {
       bodyEl.appendChild(_connEl('p', 'src-lead', 'What should the dashboard read?'));
@@ -537,14 +537,14 @@ function srcAddFlow(o) {
       if (['calendar', 'email'].includes(f.capability)) g.appendChild(choice('mail', 'Outlook / Microsoft 365', 'Personal Outlook/Hotmail or work and school accounts. Sign in with Microsoft, read-only.', false, () => { closeFn && closeFn(); accAdd('microsoft'); }));
       for (const sv of ranked) {
         const badge = _connEl('span', 'src-srv-dot st-' + ({ ok: 'ok', auth: 'auth', error: 'error' }[sv.status] || 'unknown'));
-        const sub = used.has(sv.name) ? 'Already a source' : !sv.usable ? 'Only user-scope servers can be used' : sv.status === 'auth' ? 'Needs sign-in in Claude first' : sv.status === 'error' ? 'Not working in Claude right now' : (sv.capability === f.capability ? 'Looks like a ' + cap.one + ' · ' : '') + (sv.kind === 'claude.ai' ? 'claude.ai connector' : 'MCP server');
+        const sub = used.has(sv.name) ? 'Already a source' : !sv.usable ? 'Only connections set up for you (not for one folder) work here' : sv.status === 'auth' ? 'Needs sign-in in Claude first' : sv.status === 'error' ? 'Not working in Claude right now' : (sv.capability === f.capability ? 'Looks like a ' + cap.one + ' · ' : '') + (sv.kind === 'claude.ai' ? 'claude.ai connector' : 'Claude connection');
         g.appendChild(choice(sv.kind === 'claude.ai' ? 'cloud' : 'database', sv.name, sub, f.server === sv.name && f.kind === 'mcp',
           () => { if (f.server !== sv.name) { f.tools = null; f.toolsErr = null; f.test = null; } f.kind = 'mcp'; f.server = sv.name; f.selected = new Set(); go('tools'); }, { disabled: used.has(sv.name) || !sv.usable, badge }));
       }
       if (f.capability === 'calendar') g.appendChild(choice('globe', 'An iCal link', 'Any calendar that can be shared as a link (.ics, webcal://). No AI involved.', f.kind === 'ical', () => { f.kind = 'ical'; go('url'); }));
       if (f.capability === 'bank') g.appendChild(choice('file-up', 'CSV exports', 'Download a CSV from your bank’s website and import it in Finances. Always available.', false, () => { closeFn && closeFn(); setView('finance'); }));
       bodyEl.appendChild(g);
-      if (!servers.length) bodyEl.appendChild(_connEl('p', 'conn-note', 'No MCP servers were found in your Claude. Connect one on claude.ai (Settings > Connectors) or with claude mcp add, then click Check servers on Connections.'));
+      if (!servers.length) bodyEl.appendChild(_connEl('p', 'conn-note', 'None found in your Claude. Add one on claude.ai (Settings > Connectors), then click Check on Connections.'));
       back('what'); spacer();
       return;
     }
@@ -556,7 +556,7 @@ function srcAddFlow(o) {
       bodyEl.appendChild(_connEl('p', 'conn-note', 'Only tools that read are ticked. Tools that could change, send or delete anything are locked: the dashboard never allows them.'));
       if (f.toolsErr) {
         const m = _connEl('div', 'callout danger conn-msg'); m.innerHTML = icon('circle-alert'); m.appendChild(_connEl('span', null, f.toolsErr)); bodyEl.appendChild(m);
-        bodyEl.appendChild(_connBtn('Try again', 'refresh-cw', 'btn-secondary', () => loadTools()));
+        bodyEl.appendChild(uiButton({ label: 'Try again', icon: 'refresh-cw', kind: 'secondary', size: 'sm', run: () => loadTools() }));
       } else if (!f.tools) {
         const l = _connEl('div', 'src-loading'); l.innerHTML = '<span class="spinner"></span>'; l.appendChild(_connEl('span', null, 'Asking the server for its tools…')); bodyEl.appendChild(l);
       } else {
@@ -593,7 +593,7 @@ function srcAddFlow(o) {
       return;
     }
     if (f.step === 'url') {
-      bodyEl.appendChild(_connEl('p', 'src-lead', 'Paste the calendar’s iCal link'));
+      bodyEl.appendChild(_connEl('p', 'src-lead', 'Paste your calendar’s link'));
       const fld = _connEl('label', 'field');
       fld.appendChild(_connEl('span', 'field-label', 'Link (https:// or webcal://)'));
       const inp = document.createElement('input'); inp.className = 'control'; inp.type = 'url'; inp.placeholder = 'https://…/calendar.ics'; inp.value = f.url; inp.setAttribute('autofocus', '');
@@ -601,7 +601,7 @@ function srcAddFlow(o) {
       fld.appendChild(inp);
       if (f.icalHelp) {
         bodyEl.appendChild(_connSteps(f.icalHelp.steps));
-        if (f.icalHelp.url) bodyEl.appendChild(_connBtn(f.icalHelp.button || 'Open your calendar', 'external-link', 'btn-ghost', () => window.open(f.icalHelp.url, '_blank', 'noopener,noreferrer')));
+        if (f.icalHelp.url) bodyEl.appendChild(uiButton({ label: f.icalHelp.button || 'Open your calendar', icon: 'external-link', kind: 'ghost', size: 'sm', run: () => window.open(f.icalHelp.url, '_blank', 'noopener,noreferrer') }));
       }
       fld.appendChild(_connEl('span', 'field-hint', f.edit ? 'The current link is kept on this computer only; paste a new one to replace it.' : f.icalHelp ? (f.icalHelp.note || 'The link stays on this computer.') : 'In Google Calendar: Settings > your calendar > "Secret address in iCal format". In Outlook: Settings > Shared calendars > Publish. The link stays on this computer.'));
       bodyEl.appendChild(fld);
@@ -641,7 +641,7 @@ function srcAddFlow(o) {
         l.appendChild(_connEl('span', null, (f.kind === 'ical' ? 'Reading the calendar… ' : 'Claude is reading a few days of data with the tools you chose. This can take a minute. ')));
         if (typeof aiSinceEl === 'function' && f.testAt) l.appendChild(aiSinceEl(f.testAt));
         // Stop: the request ends and the server stops the Claude run behind it.
-        l.appendChild(_connBtn('Stop', null, 'btn-ghost', () => { if (f.testCtrl) f.testCtrl.abort(); }));
+        l.appendChild(uiButton({ label: 'Stop', kind: 'ghost', size: 'sm', run: () => { if (f.testCtrl) f.testCtrl.abort(); } }));
         bodyEl.appendChild(l);
       } else if (f.test && f.test.ok) {
         const ok = _connEl('div', 'callout success conn-msg src-msg'); ok.innerHTML = icon('circle-check');
@@ -656,12 +656,12 @@ function srcAddFlow(o) {
       } else if (f.test) {
         const m = _connEl('div', 'callout danger conn-msg src-msg'); m.innerHTML = icon('circle-alert'); m.appendChild(_connEl('span', null, f.test.error || 'The test failed.'));
         bodyEl.appendChild(m);
-        bodyEl.appendChild(_connBtn('Test again', 'refresh-cw', 'btn-secondary', () => runTest()));
+        bodyEl.appendChild(uiButton({ label: 'Test again', icon: 'refresh-cw', kind: 'secondary', size: 'sm', run: () => runTest() }));
       }
       back(f.edit ? (f.kind === 'ical' ? 'url' : 'tools') : 'name'); spacer();
-      const s = next(f.saving ? 'Saving…' : f.edit ? 'Save changes' : 'Save and sync', () => save(), f.testing || f.saving || !(f.test && f.test.ok));
+      const s = next(f.saving ? 'Saving…' : f.edit ? 'Save changes' : 'Save and update', () => save(), f.testing || f.saving || !(f.test && f.test.ok));
       if (f.test && !f.test.ok && !f.testing) {
-        const anyway = _connBtn('Save anyway', null, 'btn-secondary', () => save());
+        const anyway = uiButton({ label: 'Save anyway', kind: 'secondary', size: 'sm', run: () => save() });
         footEl.insertBefore(anyway, s);
       }
     }
@@ -670,17 +670,17 @@ function srcAddFlow(o) {
     footEl.innerHTML = '';
     const spacer = _connEl('span', 'spacer');
     if (f.step === 'tools') {
-      if (!f.edit) footEl.appendChild(_connBtn('Back', 'arrow-left', 'btn-ghost', () => go(o.server ? 'what' : 'from')));
+      if (!f.edit) footEl.appendChild(uiButton({ label: 'Back', icon: 'arrow-left', kind: 'ghost', size: 'sm', run: () => go(o.server ? 'what' : 'from') }));
       footEl.appendChild(spacer);
       const n = f.selected.size;
       footEl.appendChild(_connEl('span', 'src-count', n ? `${n} tool${n === 1 ? '' : 's'} chosen` : 'Choose at least one'));
-      const b = _connBtn(f.edit ? 'Test it' : 'Next', null, 'btn-primary', () => { if (f.edit) { go('test'); runTest(); } else go('name'); });
+      const b = uiButton({ label: f.edit ? 'Test it' : 'Next', kind: 'primary', size: 'sm', run: () => { if (f.edit) { go('test'); runTest(); } else go('name'); } });
       b.disabled = !n || !f.tools; footEl.appendChild(b);
     } else if (f.step === 'url') {
-      if (!f.edit) footEl.appendChild(_connBtn('Back', 'arrow-left', 'btn-ghost', () => go('from')));
+      if (!f.edit) footEl.appendChild(uiButton({ label: 'Back', icon: 'arrow-left', kind: 'ghost', size: 'sm', run: () => go('from') }));
       footEl.appendChild(spacer);
       const okUrl = /^(https|webcals?):\/\/[^\s]+$/i.test(f.url);
-      const b = _connBtn(f.edit ? 'Test it' : 'Next', null, 'btn-primary', () => { if (f.edit) { go('test'); runTest(); } else go('name'); });
+      const b = uiButton({ label: f.edit ? 'Test it' : 'Next', kind: 'primary', size: 'sm', run: () => { if (f.edit) { go('test'); runTest(); } else go('name'); } });
       b.disabled = !okUrl; footEl.appendChild(b);
     }
   }

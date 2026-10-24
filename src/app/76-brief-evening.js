@@ -259,7 +259,7 @@ function _evPick(m) {
     const toggle = () => {
       const cur = (_ev.picked || []).slice();
       const k = cur.indexOf(c.i.id);
-      if (k >= 0) cur.splice(k, 1); else if (cur.length < 3) cur.push(c.i.id); else { toast('Three is the limit: untick one first.', {}); return; }
+      if (k >= 0) cur.splice(k, 1); else if (cur.length < 3) cur.push(c.i.id); else { toast('Three is the limit: untick one first', {}); return; }
       _ev.picked = cur; _evRepaint();
     };
     li.onclick = toggle; li.onkeydown = (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } };

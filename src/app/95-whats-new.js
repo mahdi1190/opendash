@@ -37,19 +37,20 @@
      openQuickStart()          the first-run card
    Styles: src/styles/95-whats-new.css. Reduced motion: no glides, no pulse.
    ============================================================ */
-const WHATS_NEW_VERSION = '2.18';
-const _WN_SEEN = 'whatsNew:2.18';
+const WHATS_NEW_VERSION = '2.18.1';
+const _WN_SEEN = 'whatsNew:2.18.1';
 const _WN_QS_KEY = 'dashboard-quickstart';
 
 // The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
-  ['life', 'Life, the fifth area', 'heart'],
-  ['garden', 'A garden to play in', 'sprout'],
-  ['neighbours', 'Gardens with friends', 'flower-2'],
-  ['pets', 'Pets', 'paw-print'],
-  ['card', 'Your card and wardrobe', 'shirt'],
-  ['ach18', 'Achievements', 'award'],
-  ['tidy', 'Easier to find', 'layout-grid'],
+  ['n2181', 'New in 2.18.1', 'sparkles'],
+  ['life', 'Life, the fifth area (2.18)', 'heart'],
+  ['garden', 'A garden to play in (2.18)', 'sprout'],
+  ['neighbours', 'Gardens with friends (2.18)', 'flower-2'],
+  ['pets', 'Pets (2.18)', 'paw-print'],
+  ['card', 'Your card and wardrobe (2.18)', 'shirt'],
+  ['ach18', 'Achievements (2.18)', 'award'],
+  ['tidy', 'Easier to find (2.18)', 'layout-grid'],
   ['friends', 'Friends (2.17)', 'users'],
   ['together', 'Do things together (2.17)', 'handshake'],
   ['you', 'You and your character (2.17)', 'user-round'],
@@ -61,11 +62,25 @@ const WHATS_NEW_GROUPS = Object.freeze([
   ['fun', 'Fun and motivation (2.16)', 'party-popper'],
   ['money', 'Money (2.16)', 'wallet'],
 ]);
-const _WN_CURRENT_GROUPS = ['life', 'garden', 'neighbours', 'pets', 'card', 'ach18', 'tidy'];
+const _WN_CURRENT_GROUPS = ['n2181'];
 function _wnHasPage(id) { try { const p = typeof pageById === 'function' ? pageById(id) : null; return !!(p && pageAvailable(p)); } catch (e) { return false; } }
 const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets');
 
 const WHATS_NEW = [
+  // ---- 2.18.1 ----
+  { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',
+    text: 'The garden now fills the window, with tools to plant, water and trim, a short tour and a guide. You earn coins from focus time and time logged on tasks (with a daily cap), and everything you own is kept.',
+    view: ['garden'], sel: ['#main-body'], present: _wnGarden },
+  { id: 'expenses', group: 'n2181', icon: 'receipt', title: 'Expenses: what you are owed back',
+    text: 'Label a payment as an expense or add one by hand, keep receipts, build a claim pack, and see when you have been paid back. Owed to you shows on Home, and Claude can help too.',
+    view: ['expenses'], sel: ['#sidebar [data-view="expenses"]', '#main-body'], present: () => _wnHasPage('expenses') },
+  { id: 'share-task', group: 'n2181', icon: 'handshake', title: 'Share a task with a friend',
+    text: 'Share a task, or start a shared list, from the task menu or a friend’s page.',
+    view: ['friends'], sel: ['#sidebar [data-view="friends"]', '#main-body'] },
+  { id: 'calmer-app', group: 'n2181', icon: 'layout-grid', title: 'A calmer app',
+    text: 'Task rows show less, dialogs keep their size, and settings, sync, connections, Home and Life each have one status line, with More or Advanced for the rest.',
+    note: 'Display › Show on rows brings any detail back.' },
+
   // ---- 2.18: Life, the fifth area (NAVIGATION_PLAN.md 2.11) ----
   { id: 'life-area', group: 'life', icon: 'heart', title: 'Life: the fun side, in one place',
     text: 'A fifth area beside Home, Tasks, Calendar and Money. Life holds Friends, Garden, Pets, Achievements, Memories and Places, with a tab for each at the top of the page. G then L opens it.',
@@ -167,13 +182,21 @@ const WHATS_NEW = [
     sel: ['#section-switcher .sw-tile:has(.sw-new:not([hidden]))', '#sidebar .nav-new'] },
   { id: 'new-keys', group: 'tidy', icon: 'keyboard', title: 'Keys for the new places',
     text: 'G then L opens Life, G then G All pages, and G then F is Money. The Logbook moved to G then O.' },
+  // UI_CLEANUP_PLAN.md C3 (the calm rows) and SIMPLIFY_PLAN.md (the cards): added here, because WHATS_NEW is a
+  // const that earlier files cannot reach at load time (registerWhatsNew is for later modules).
+  { id: 'calm-rows', group: 'tidy', icon: 'list', title: 'Calmer task rows',
+    text: 'Rows show the title, due date, priority and stream; Display › Show on rows brings anything back.',
+    view: ['today'], sel: ['#display-btn'] },
+  { id: 'simpler-cards', group: 'tidy', icon: 'sliders-horizontal', title: 'Simpler settings cards',
+    text: 'Each settings card starts with one status line, like “Up to date”, and keeps the rest under More and Advanced. Settings search still finds every row and opens its fold.',
+    view: ['settings:sync', 'settings'], sel: ['#main-body .set-status', '#main-body .sync-st', '#main-body'] },
 
   // ---- 2.17: friends (labelled, after 2.18) ----
   { id: 'friends-tab', group: 'friends', icon: 'users', title: 'The Friends tab',
     text: 'Your friends in one lively place: their avatars, who is online, levels and streaks, and a feed of level-ups, finished quests and cheers. It is the first tab in Life (G then L), and your avatar’s menu opens it too.',
     view: ['friends'], sel: ['#sidebar [data-view="friends"]', '#ws-btn', '#main-body'] },
   { id: 'friends-start', group: 'friends', icon: 'sparkles', title: 'Getting started with friends',
-    text: 'Three friendly steps: make your character, get a relay (connect your own free Cloudflare, or paste a friend’s invite), and invite someone.',
+    text: 'Three friendly steps: make your character, get a relay (set up your own for free, or paste a friend’s invite), and invite someone.',
     cmd: ['friends-onboard'] },
   { id: 'friends-add', group: 'friends', icon: 'user-plus', title: 'Invites and friend codes',
     text: 'Send a one-time invite link (or show its QR code), or swap friend codes with people already on your relay. You both check a short code before anything is shared.',
@@ -216,11 +239,11 @@ const WHATS_NEW = [
 
   // ---- 2.17: relay ----
   { id: 'relay', group: 'relay', icon: 'shield-check', title: 'Your own private relay',
-    text: 'Connect your free Cloudflare account in one click and get a private relay that only you, your devices and the friends you invite can use.',
+    text: 'Set up my relay takes one click and a free Cloudflare account, and gives you a private relay that only you, your computers and the friends you invite can use.',
     note: 'The relay never sees your data: everything on it is end-to-end encrypted.',
     view: ['settings:relay'], sel: ['#main-body'] },
   { id: 'relay-sync', group: 'relay', icon: 'refresh-cw', title: 'Sync your devices without OneDrive',
-    text: 'Your computers can now sync through your relay, live, with no shared folder. Add a new computer with a join link and a 4-letter code.',
+    text: 'Your computers can now sync through your relay, within a second, with no shared folder. Add a new computer with a link and a 4-letter code.',
     view: ['settings:sync'], sel: ['#main-body'] },
 
   // ---- 2.16: plan ----
@@ -403,7 +426,7 @@ function whatsNewSpotlight(el, o) {
     + (o.note ? `<div class="wn-tip-note">${icon('lock', 'i-xs')}<span>${esc(o.note)}</span></div>` : '')
     + '<div class="wn-tip-acts"></div>';
   const acts = tip.querySelector('.wn-tip-acts');
-  const btn = (label, cls, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = label; b.onclick = run; acts.appendChild(b); return b; };
+  const btn = (label, kind, run) => acts.appendChild(uiButton({ label, kind, size: 'sm', run }));
   const prev = document.activeElement;
   let done = false;
   function close(silent) {
@@ -417,9 +440,9 @@ function whatsNewSpotlight(el, o) {
     if (!silent && prev && prev.focus && prev.isConnected) try { prev.focus({ preventScroll: true }); } catch (x) { /* gone */ }
   }
   const end = () => { close(); if (o.onEnd) o.onEnd(); };
-  if (o.action) btn(o.action.label, 'btn-secondary', () => { close(true); o.action.run(); });
-  if (o.next) { btn(o.skipLabel || 'End tour', 'btn-ghost', end); btn(o.nextLabel || 'Next', 'btn-primary', () => { close(true); o.next(); }); }
-  else btn(o.doneLabel || 'Got it', 'btn-primary', end);
+  if (o.action) btn(o.action.label, 'secondary', () => { close(true); o.action.run(); });
+  if (o.next) { btn(o.skipLabel || 'End tour', 'ghost', end); btn(o.nextLabel || 'Next', 'primary', () => { close(true); o.next(); }); }
+  else btn(o.doneLabel || 'Got it', 'primary', end);
   function place() {
     if (!el.isConnected) { end(); return; }
     const r = el.getBoundingClientRect(), pad = 6, vw = window.innerWidth, vh = window.innerHeight;
@@ -466,7 +489,7 @@ async function whatsNewShowMe(id) {
 function whatsNewTour() {
   const steps = _wnVisible().filter(e => _WN_CURRENT_GROUPS.includes(e.group) && (_wnView(e) || (e.sel || []).length));
   let i = 0, shown = 0;
-  const finish = () => toast(shown ? 'That’s the tour. Find it again under Help › What’s new.' : 'Nothing to point at on this page yet. The list in What’s new has everything.', { kind: 'info', icon: 'sparkles' });
+  const finish = () => toast(shown ? 'That’s the tour. Find it again in the More menu › What’s new.' : 'Nothing to point at on this page yet. The list in What’s new has everything.', { kind: 'info', icon: 'sparkles' });
   const next = async () => {
     while (i < steps.length) {
       const e = steps[i++];
@@ -493,7 +516,8 @@ function openWhatsNew(o) {
   if (_wnSpotClose) _wnSpotClose(true);
   const list = _wnVisible();
   openDialog({
-    title: `What’s new in OpenDash ${WHATS_NEW_VERSION}`, width: 780, resizeKey: 'whats-new',
+    // Groups and jump chips: a fixed height, so the list scrolls and the buttons stay put (UI_CLEANUP_PLAN.md 1.3).
+    title: `What’s new in OpenDash ${WHATS_NEW_VERSION}`, size: 'lg', fixed: true, resizeKey: 'whats-new',
     body: (b, close) => {
       b.classList.add('wn-body');
       const hero = document.createElement('div'); hero.className = 'wn-hero';
@@ -502,14 +526,13 @@ function openWhatsNew(o) {
         + `<p class="wn-hero-s">Life, a fifth area for the fun side: a garden you can really play in, friends’ gardens to visit, a pet of your own, a bigger card and wardrobe, and a new Achievements page. Plus a tidier app with All pages. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, and everything from 2.17 and 2.16 below.</p></div>`
         + '<div class="wn-hero-acts"></div>';
       const ha = hero.querySelector('.wn-hero-acts');
-      const tour = document.createElement('button'); tour.type = 'button'; tour.className = 'btn btn-primary';
-      tour.innerHTML = icon('compass') + '<span>Take the tour</span>';
-      tour.onclick = () => { close(); setTimeout(whatsNewTour, 60); };
-      ha.appendChild(tour);
+      ha.appendChild(uiButton({ label: 'Take the tour', icon: 'compass', kind: 'primary', run: () => { close(); setTimeout(whatsNewTour, 60); } }));
       b.appendChild(hero);
-      // Jump chips: one per group.
+      // Jump chips: the first three groups, then +N with the rest (UX_BLUEPRINT.md 3: at most 3 chips in a row).
       const chips = document.createElement('div'); chips.className = 'wn-jump'; chips.setAttribute('role', 'navigation'); chips.setAttribute('aria-label', 'Groups');
       b.appendChild(chips);
+      const jumps = [];   // [{label, icon, sec}] in order
+      const jumpTo = (sec) => { try { sec.scrollIntoView({ block: 'start', behavior: _wnReduced() ? 'auto' : 'smooth' }); } catch (x) { /* old browser */ } };
       for (const [g, label, ic] of WHATS_NEW_GROUPS) {
         const items = list.filter(e => e.group === g);
         if (!items.length) continue;
@@ -521,20 +544,29 @@ function openWhatsNew(o) {
           card.innerHTML = `<span class="wn-ic">${icon(e.icon || 'sparkles')}</span><div class="wn-txt"><div class="wn-t">${esc(e.title)}</div><div class="wn-s">${esc(e.text)}</div>`
             + (e.note ? `<div class="wn-note">${icon('lock', 'i-xs')}<span>${esc(e.note)}</span></div>` : '') + '</div>';
           if (_wnCanShow(e)) {
-            const go = document.createElement('button'); go.type = 'button'; go.className = 'btn btn-sm btn-secondary wn-go';
-            go.innerHTML = '<span>Show me</span>' + icon('arrow-right', 'i-sm');
-            go.setAttribute('aria-label', 'Show me: ' + e.title);
-            go.onclick = () => { close(); setTimeout(() => whatsNewShowMe(e), 60); };
+            const go = uiButton({ label: 'Show me', kind: 'secondary', size: 'sm', cls: 'wn-go', aria: 'Show me: ' + e.title, run: () => { close(); setTimeout(() => whatsNewShowMe(e), 60); } });
+            go.insertAdjacentHTML('beforeend', icon('arrow-right', 'i-sm'));
             card.querySelector('.wn-txt').appendChild(go);
           }
           grid.appendChild(card);
         }
         sec.appendChild(grid);
         b.appendChild(sec);
+        jumps.push({ label, icon: ic, sec });
+      }
+      const chip = (label, ic, run) => {
         const c = document.createElement('button'); c.type = 'button'; c.className = 'chip wn-chip';
-        c.innerHTML = icon(ic, 'i-xs') + `<span>${esc(label)}</span>`;
-        c.onclick = () => { try { sec.scrollIntoView({ block: 'start', behavior: _wnReduced() ? 'auto' : 'smooth' }); } catch (x) { /* old browser */ } };
+        c.innerHTML = (ic ? icon(ic, 'i-xs') : '') + `<span>${esc(label)}</span>`;
+        c.onclick = (ev) => run(ev, c);
         chips.appendChild(c);
+        return c;
+      };
+      const room = jumps.length > 4 ? 3 : jumps.length;
+      for (const j of jumps.slice(0, room)) chip(j.label, j.icon, () => jumpTo(j.sec));
+      if (jumps.length > room) {
+        const rest = jumps.slice(room);
+        const m = chip('+' + rest.length, '', (ev, c) => openMenu(c, rest.map(j => ({ label: j.label, icon: j.icon, run: () => jumpTo(j.sec) })), { align: 'start' }));
+        m.setAttribute('aria-label', `${rest.length} more groups`); m.setAttribute('aria-haspopup', 'menu');
       }
       const foot = document.createElement('p'); foot.className = 'wn-foot';
       foot.textContent = 'Open this again any time from the menu (What’s new) or the command palette.';
@@ -563,17 +595,17 @@ function openQuickStart() {
   function paint() {
     const s = QUICK_START[step];
     card.innerHTML = `<div class="wn-qs-top"><span class="wn-qs-k">Quick start · ${step + 1} of ${QUICK_START.length}</span>`
-      + `<button type="button" class="btn-icon btn-sm wn-qs-x" aria-label="Skip the quick start">${icon('x', 'i-sm')}</button></div>`
+      + '</div>'
       + `<div class="wn-qs-main"><span class="wn-ic">${icon(s.icon)}</span><div><div class="wn-qs-t" id="wn-qs-t">${esc(s.title)}</div><div class="wn-qs-s">${esc(s.text)}</div></div></div>`
       + `<div class="wn-qs-dots" aria-hidden="true">${QUICK_START.map((x, i) => `<i class="${i === step ? 'on' : i < step ? 'done' : ''}"></i>`).join('')}</div>`
       + '<div class="wn-qs-acts"></div>';
-    card.querySelector('.wn-qs-x').onclick = close;
+    card.querySelector('.wn-qs-top').appendChild(uiButton({ icon: 'x', iconCls: 'i-sm', size: 'sm', cls: 'wn-qs-x', aria: 'Skip the quick start', run: close }));
     const acts = card.querySelector('.wn-qs-acts');
-    const btn = (label, cls, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.textContent = label; b.onclick = run; acts.appendChild(b); return b; };
-    btn(s.act, 'btn-secondary', () => { try { s.run(); } catch (x) { console.error('[quick-start]', x); } });
+    const btn = (label, kind, run) => acts.appendChild(uiButton({ label, kind, size: 'sm', run }));
+    btn(s.act, 'secondary', () => { try { s.run(); } catch (x) { console.error('[quick-start]', x); } });
     const sp = document.createElement('span'); sp.className = 'spacer'; acts.appendChild(sp);
-    if (step < QUICK_START.length - 1) btn('Next', 'btn-primary', () => { step++; paint(); card.querySelector('.btn-primary').focus(); });
-    else btn('Done', 'btn-primary', close);
+    if (step < QUICK_START.length - 1) btn('Next', 'primary', () => { step++; paint(); card.querySelector('.btn-primary').focus(); });
+    else btn('Done', 'primary', close);
   }
   paint();
   document.body.appendChild(card);

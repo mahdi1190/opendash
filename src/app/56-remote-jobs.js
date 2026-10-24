@@ -61,7 +61,7 @@ async function remoteWait(remote, opts) {
         x = await r.json();
         if (!r.ok) throw new Error((x && x.error) || ('HTTP ' + r.status));
       } catch (e) {
-        if (Date.now() - t0 > 20 * 60000) return _rjResponse(504, { error: 'No answer from ' + (remote.runsOn || 'your other computer') + '.', code: 'NO_ANSWER' });
+        if (Date.now() - t0 > 20 * 60000) return _rjNoAnswer(remote);
         continue;
       }
       tell(x);
@@ -70,10 +70,23 @@ async function remoteWait(remote, opts) {
       if (['error', 'cancelled', 'expired'].includes(x.status)) {
         // It went away while asked (lib/sync/presence.mjs): a calm line, not an error (toast() shows it calmly).
         if (x.calm && typeof presenceCalm === 'function') presenceCalm(x.message);
-        return _rjResponse(x.state === 'offline' ? 503 : 502, { error: x.message || 'It did not work.', code: (x.error && x.error.code) || String(x.status).toUpperCase(), runsOn: x.runsOn || null, ...(x.calm ? { calm: true } : {}) });
+        const who = x.runsOn || remote.runsOn || 'Your other computer';
+        return _rjResponse(x.state === 'offline' ? 503 : 502, { error: x.calm ? (x.message || 'It runs this when it wakes.') : who + " couldn't do it: " + String(x.message || 'it did not work').replace(/\.+$/, '') + '.', code: (x.error && x.error.code) || String(x.status).toUpperCase(), runsOn: x.runsOn || null, ...(x.calm ? { calm: true } : {}) });
       }
     }
   } finally { close(); }
+}
+/** 20 minutes without an answer: if that computer is asleep or off, the calm line (never an error); else "{name} couldn't do it". */
+function _rjNoAnswer(remote) {
+  const name = remote.runsOn || 'Your other computer';
+  const devs = (typeof _pr !== 'undefined' && _pr && _pr.view && Array.isArray(_pr.view.devices)) ? _pr.view.devices : [];
+  const d = devs.find(x => x && x.name === name);
+  if (d && !d.reachable && !d.checking) {
+    const msg = name + ' is ' + (d.base === 'off' ? 'off' : 'asleep') + '. It runs this when it wakes.';
+    if (typeof presenceCalm === 'function') presenceCalm(msg);
+    return _rjResponse(503, { error: msg, code: 'NO_ANSWER', calm: true, runsOn: name });
+  }
+  return _rjResponse(504, { error: name + " couldn't do it: no answer yet.", code: 'NO_ANSWER', runsOn: name });
 }
 function remoteWake() { for (const fn of [..._rjWaiters.values()]) { try { fn(); } catch (e) { /* fine */ } } }
 
@@ -87,9 +100,11 @@ function syncedFilesChanged(rels) {
   try { if (typeof CalStore !== 'undefined' && CalStore && CalStore.st && CalStore.st.loaded && (any('calendar/') || prefs)) CalStore.load(true); } catch (e) { /* not loaded yet */ }
   try { if (typeof InboxStore !== 'undefined' && InboxStore && InboxStore.st && InboxStore.st.loaded && (any('inbox/') || any('email/') || prefs)) InboxStore.load(true); } catch (e) { /* not loaded yet */ }
   if (list.includes('brief/day-advice.json') && typeof homeAdvisorRefresh === 'function') homeAdvisorRefresh();
-  if (any('finance-share/') && typeof financeSharedChanged === 'function') financeSharedChanged();   // finances from the computer that reads the bank (65-finance-view.js)
+  if (any('finance-share/') && typeof financeSharedChanged === 'function') financeSharedChanged();
+  if (any('finance-share/') && typeof expFinanceUpdated === 'function') expFinanceUpdated();   // paid back? (66-expenses-0core.js)   // finances from the computer that reads the bank (65-finance-view.js)
   // A person's picture arrived from another computer (lib/sync/blobs.mjs): shown in place of the initials (50-people.js).
   if (any('people/images/') && typeof pplPicturesArrived === 'function') pplPicturesArrived(list);
+  if (any('expenses/') && typeof expensesFilesChanged === 'function') expensesFilesChanged(list);   // expenses and receipts from another computer (66-expenses-0core.js)
   if (list.includes('friends/spaces.json') && typeof togetherFilesChanged === 'function') togetherFilesChanged();   // shared spaces from another of your computers (99-together-0core.js)
   _rjFilesRefresh(list, any);
   if ((list.includes('profile.json') || any('briefs/') || prefs) && typeof render === 'function') { try { render(); } catch (e) { /* fine */ } }

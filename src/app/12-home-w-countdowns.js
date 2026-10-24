@@ -89,14 +89,15 @@ function _hcdRender(el, ctx) {
   if (!list.length) {
     if (!ctx.editing) return false;
     const box = document.createElement('section'); box.className = 'card home-card hcd';
-    box.innerHTML = `<div class="card-h">${icon('timer')}<h3>Countdowns</h3></div><div class="card-b"><div class="hs-emp">${homeScene('deadline', { size: 'lg' })}<h4>Add a date to count down to</h4><p>A deadline, a trip or a launch: it shows here and in the top bar.</p></div></div>`;
+    box.innerHTML = `${cardHeadHtml({ icon: 'timer', title: 'Countdowns', cls: '' })}<div class="card-b"><div class="hs-emp">${homeScene('deadline', { size: 'lg' })}<h4>Add a date to count down to</h4><p>A deadline, a trip or a launch: it shows here and in the top bar.</p></div></div>`;
     el.appendChild(box);
     return true;
   }
   const card = document.createElement('section');
   card.className = 'card home-card hcd is-' + (ctx.size === 'm' ? 'grid' : 'list');
-  card.innerHTML = `<div class="card-h">${icon('timer')}<h3>Countdowns</h3><span class="n num">${esc(list.length)}</span><span class="spacer"></span>`
-    + (canEdit ? `<button type="button" class="btn btn-ghost btn-sm" data-act="edit"><span>Edit</span>${icon('pencil')}</button>` : '') + `</div><div class="card-b hcd-b"></div>`;
+  card.appendChild(cardHead({ icon: 'timer', title: 'Countdowns', count: list.length,
+    actions: canEdit ? [{ label: 'Edit', icon: 'pencil', data: { act: 'edit' } }] : [] }));
+  card.insertAdjacentHTML('beforeend', '<div class="card-b hcd-b"></div>');
   el.appendChild(card);
   const body = card.querySelector('.hcd-b');
   if (ctx.size === 'm') {

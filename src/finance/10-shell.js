@@ -24,9 +24,9 @@
         const retry = h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { R.err = null; paint(); load(); } }, ic('rotate-ccw'), h('span', { text: 'Try again' }));
         // @p2 one clear sentence: the server-down message already says what to do (no "..again.. The Finances view needs").
         const why = String(R.err || 'Something went wrong').replace(/[.\s]+$/, '');
-        root.append(emptyState({ icon: R.errDown ? 'unplug' : 'circle-alert', title: "Couldn't load your finances", text: R.errDown ? `${why}.` : `${why}. The Finances view needs the OpenDash server: start it with start-opendash.`, actions: [retry] }));
+        root.append(emptyState({ icon: R.errDown ? 'unplug' : 'circle-alert', title: "Couldn't load your finances", text: R.errDown ? `${why}.` : `${why}. If OpenDash isn’t running, start it, then come back.`, actions: [retry] }));
       } else if (mode === 'unavailable') {
-        root.append(emptyState({ icon: 'wallet', title: 'Finances are not set up', text: 'OpenDash has no finance folder configured. It normally lives in the data folder; check the finance folder setting, then restart OpenDash.' }));
+        root.append(emptyState({ icon: 'wallet', title: 'Finances are not set up', text: 'Finances isn’t set up on this computer.', actions: [h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('plug'), h('span', { text: 'Connections > Money' }))] }));
       } else if (mode === 'empty') {
         root.append(buildTop());
         root.append(buildWelcome());
@@ -61,13 +61,15 @@
     if (rm && rm.name && !rm.trial) {
       const ask = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => startUpdate({}) }, ic('refresh-cw'), h('span', { text: `Ask ${rm.name} to update` }));
       return welcomeScene(emptyState({ icon: 'wallet', cls: 'fv-welcome', title: `Finance from ${rm.name}`,
-        text: `${rm.name} reads your bank. Your finances show here, the same as there, after its next update${rm.online ? '.' : ' (it is off right now).'}`, actions: [ask] }));
+        text: `Your bank is read on ${rm.name}. It shows here after its next update${rm.online ? '.' : ' (it is off right now).'}`, actions: [ask] }));
     }
     const imp = h('button', { class: 'btn btn-primary', type: 'button', onclick: () => pickCsv() }, ic('upload'), h('span', { text: 'Import a CSV' }));
-    const sync = h('button', { class: 'btn btn-secondary', type: 'button', 'data-requires': 'bank', 'data-requires-hint': 'Syncing needs the bank connection. Importing a CSV export works without it.', onclick: () => startUpdate({}) }, ic('landmark'), h('span', { text: 'Sync from your bank' }));
+    const sync = h('button', { class: 'btn btn-secondary', type: 'button', 'data-requires': 'bank', 'data-requires-hint': 'Updating needs the bank connection. A CSV import works without it.', onclick: () => startUpdate({}) }, ic('landmark'), h('span', { text: 'Update from your bank' }));
     // Trial mode: another device reads the bank, but its finances only come here once this one takes changes.
+    // Preview mode only (Sync > Preview changes first is on): "Use it" turns it off, with Undo (SIMPLIFY_PLAN.md L17).
     const trial = rm && rm.name && rm.trial ? h('div', { class: 'fv-welcome-note' }, ic('landmark'),
-      h('span', { text: `${rm.name} reads your bank. To see its finances here, turn on "Use changes from my other computers" in Settings > Sync.` })) : null;
+      h('span', { text: `${rm.name} reads your bank. Preview changes first is on in Sync, so it isn’t used here yet.` }),
+      h('button', { class: 'btn-link', type: 'button', text: 'Use it', onclick: () => useSyncChanges() })) : null;
     const pending = meta.inboxPending ? h('div', { class: 'fv-welcome-note' }, ic('file-up'),
       h('span', { text: `${meta.inboxPending} CSV file${meta.inboxPending === 1 ? ' is' : 's are'} waiting in the finance inbox folder.` }),
       h('button', { class: 'btn-link', type: 'button', text: 'Import now', onclick: () => startUpdate({ bank: false }) })) : null;
@@ -77,9 +79,19 @@
         ['chart-column', 'Explore', 'Spending, categories, merchants, recurring payments and budgets, all on this computer.']]
         .map(([i, t, d]) => h('li', null, h('span', { class: 'fv-step-ic' }, ic(i)), h('b', { text: t }), h('span', { text: d }))));
     const el = emptyState({ icon: 'wallet', cls: 'fv-welcome', title: 'Bring in your transactions',
-      text: 'Import a CSV export from your bank, or connect your bank to sync it automatically (read-only). Your data stays in your data folder.',
+      text: 'Import a CSV from your bank, or connect your bank (read-only).',
       actions: [imp, sync, h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('landmark'), h('span', { text: 'Connect a bank or wallet' }))], after: h('div', null, trial, pending, steps) });
     return welcomeScene(el);
+  }
+  // Sync's "Preview changes first" off on this computer (POST /api/sync/settings {apply: true}), with Undo.
+  async function useSyncChanges() {
+    const post = async (apply) => {
+      const r = await fetch('/api/sync/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apply }) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error((j && j.error && (j.error.message || j.error)) || 'HTTP ' + r.status); }
+    };
+    try { await post(true); } catch (e) { toastErr('turn off Preview changes first', e, () => useSyncChanges()); return; }
+    toast('Preview changes first turned off', { kind: 'ok', icon: 'check', action: 'Undo', onAction: async () => { try { await post(false); load(true); } catch (e) { toastErr('undo that', e); } } });
+    load(true);
   }
   // One calm animated scene (a coin dropping into a jar) instead of a static icon.
   function welcomeScene(el) {
@@ -101,8 +113,8 @@
     H.file.addEventListener('change', () => { const files = [...H.file.files]; H.file.value = ''; if (files.length) importFiles(files); });
     H.imp = h('button', { class: 'btn btn-secondary', type: 'button', 'data-tip': 'Import a CSV export from your bank (works offline)', onclick: () => pickCsv() }, ic('upload'), h('span', { class: 'lbl', text: 'Import CSV' }));
     // The arrows spin while it syncs, then turn into a tick for a moment (syncDone in 04-data.js).
-    H.sync = h('button', { class: 'btn btn-primary fv-sync-main', type: 'button', 'data-requires': 'bank', 'data-requires-hint': 'Syncing needs the bank connection. Importing a CSV export from your bank still works.', onclick: () => startUpdate({}) },
-      h('span', { class: 'fv-sync-icons', 'aria-hidden': 'true' }, ic('refresh-cw', 'fv-sync-ic'), ic('check', 'fv-sync-ok')), h('span', { class: 'lbl', text: 'Sync bank' }));
+    H.sync = h('button', { class: 'btn btn-primary fv-sync-main', type: 'button', 'data-requires': 'bank', 'data-requires-hint': 'Updating needs the bank connection. A CSV import works without it.', onclick: () => startUpdate({}) },
+      h('span', { class: 'fv-sync-icons', 'aria-hidden': 'true' }, ic('refresh-cw', 'fv-sync-ic'), ic('check', 'fv-sync-ok')), h('span', { class: 'lbl', text: 'Update bank' }));
     H.caret = h('button', { class: 'btn btn-primary fv-sync-caret', type: 'button', 'aria-label': 'More update options', 'aria-haspopup': 'menu', onclick: (e) => openUpdateMenu(e.currentTarget) }, ic('chevron-down'));
     H.el = h('div', { class: 'fv-head-actions' }, H.file, H.imp, h('div', { class: 'fv-sync' }, H.sync, H.caret));
     return H;
@@ -110,11 +122,11 @@
   function openUpdateMenu(anchor) {
     const meta = (R.data && R.data.meta) || {};
     const items = [
-      { label: 'Sync new transactions', icon: 'refresh-cw', className: 'fv-req-bank', run: () => startUpdate({}) },
-      { label: 'Full refresh', icon: 'history', hint: 'slower', className: 'fv-req-bank', title: 'Re-reads the whole history your bank holds, so bank categories and balances refresh too', run: () => startUpdate({ full: true }) },
+      { label: 'Update new transactions', icon: 'refresh-cw', className: 'fv-req-bank', run: () => startUpdate({}) },
+      { label: 'Full refresh', icon: 'history', hint: 'slower', className: 'fv-req-bank', title: 'Reads your whole bank history again', run: () => startUpdate({ full: true }) },
       'sep',
       { label: 'Import a CSV…', icon: 'upload', run: () => pickCsv() },
-      { label: 'Rebuild from inbox', icon: 'rotate-ccw', hint: meta.inboxPending ? `${meta.inboxPending} waiting` : '', title: 'Import any CSVs in the finance inbox folder and rebuild the analysis (no bank)', run: () => startUpdate({ bank: false }) },
+      { label: 'Import from the Finances folder', icon: 'rotate-ccw', hint: meta.inboxPending ? `${meta.inboxPending} waiting` : '', title: 'Imports new CSV files from the Finances folder', run: () => startUpdate({ bank: false }) },
       { label: 'Export all transactions', icon: 'download', title: 'Every transaction as a CSV file', run: () => exportAll() },
     ];
     if (typeof window.openPopover === 'function' && typeof window.buildMenuItems === 'function') {
@@ -132,14 +144,15 @@
     if (!R.head) buildHead();
     const H = R.head;
     if (vh && show && H.el.parentElement !== vh) vh.append(H.el);
-    H.el.hidden = !show;
+    // The shared page header draws these actions when it can (65-finance-view.js registerHeaderActions); else this row.
+    H.el.hidden = !show || typeof window.headerActionsFor === 'function';
     // Freshness, as the page subtitle ("Finances  Data to Fri 2 Oct · 234 transactions").
     const sub = document.getElementById('view-subtitle');
     if (sub) {
       sub.textContent = '';
       const a = R.model ? R.model.a : null;
       if (a && R.mode === 'ready') {
-        const days = Number(a.stale_days) || 0;
+        const days = staleness(a).days;
         const meta = (R.data && R.data.meta) || {};
         const fresh = R.syncDoneAt && Date.now() - R.syncDoneAt < 2500;   // new data just landed: the dot rings twice
         // Finances another device reads ("Finance from Home laptop · updated 5 min ago · data to ...";
@@ -183,7 +196,7 @@
     H.sync.disabled = running; H.caret.disabled = running; H.imp.disabled = running || !!rm;
     H.sync.classList.toggle('busy', running);
     H.sync.classList.toggle('done', !!done);
-    H.sync.querySelector('.lbl').textContent = R.importing ? 'Importing…' : R.remoteJob ? 'Asking…' : running ? 'Syncing…' : done ? 'Up to date' : 'Sync bank';
+    H.sync.querySelector('.lbl').textContent = R.importing ? 'Importing…' : R.remoteJob ? 'Asking…' : running ? 'Updating…' : done ? 'Up to date' : 'Update bank';
   }
   function exportAll() {
     const a = h('a', { href: '/api/finance/export', download: '' });
@@ -246,6 +259,27 @@
     });
   }
 
+  /**
+   * How old the data is. A connected bank is judged by when it last fetched (analysis.fetches, counted from
+   * now so it keeps ticking between rebuilds): a quiet account is not stale. CSV-only setups use stale_days.
+   */
+  function staleness(a) {
+    const f = Array.isArray(a && a.fetches) ? a.fetches : [];
+    if (!f.length) return { days: Number(a && a.stale_days) || 0, late: [] };
+    const rows = f.map(x => { const t = Date.parse(x && x.at || ''); return { label: String(x.label || 'Your bank'), t: t || 0, days: t ? Math.max(0, Math.floor((Date.now() - t) / 864e5)) : null }; });
+    const late = rows.filter(x => x.days == null || x.days > 4);
+    return { days: Math.max(0, ...rows.map(x => x.days || 0), rows.some(x => x.days == null) ? Number(a.stale_days) || 0 : 0), late };
+  }
+  /** "Tuesday" within the last week, else "12 Oct". */
+  function sinceText(t) {
+    const d = new Date(t);
+    return Date.now() - t < 6 * 864e5 ? d.toLocaleDateString(LOC, { weekday: 'long' }) : d.toLocaleDateString(LOC, { day: 'numeric', month: 'short' });
+  }
+  function lateText(late) {
+    const bit = x => x.t ? `${x.label} since ${sinceText(x.t)}` : `${x.label} yet`;
+    return late.length === 1 ? (late[0].t ? `${late[0].label} hasn't synced since ${sinceText(late[0].t)}.` : `${late[0].label} hasn't synced yet.`)
+      : late.map(bit).join(', ').replace(/, ([^,]*)$/, ' and $1').replace(/^/, 'Not synced: ') + '.';
+  }
   function buildTop() {
     const E = R.els;
     E.progress = h('div', { class: 'fv-progress', 'aria-live': 'polite', hidden: true });
@@ -258,17 +292,19 @@
     E.banner.innerHTML = '';
     let msg = null;
     if (a) {
-      const days = Number(a.stale_days) || 0;
+      const st = staleness(a), days = st.days;
       const rm = R.data && R.data.meta && R.data.meta.remote && R.data.meta.remote.name && !R.data.meta.remote.trial ? R.data.meta.remote : null;
       msg = a.sample ? ['info', 'Sample data.', 'These figures are made up to show the layout. Import a CSV from your bank to see your own.']
-        : days > 4 && rm ? ['triangle-alert', `Your data is ${days} days old.`, `Sync bank asks ${rm.name} to update it${rm.online ? '' : ' when it is on'}.`]
-          : days > 4 ? ['triangle-alert', `Your data is ${days} days old.`, bankOk() ? 'Sync your bank, or import a recent CSV export.' : 'Import a recent CSV export from your bank, or connect your bank to sync it.'] : null;
+        : days > 4 && rm ? ['triangle-alert', st.late.length ? lateText(st.late) : `Your data is ${days} days old.`, `Update bank asks ${rm.name} to update it${rm.online ? '' : ' when it is on'}.`]
+          : st.late.length && bankOk() ? ['triangle-alert', lateText(st.late), '', h('button', { class: 'btn-link', type: 'button', text: 'Update now', onclick: () => startUpdate({}) })]
+            : days > 4 && !(a.fetches && a.fetches.length) ? ['triangle-alert', `Your data is ${days} days old.`, bankOk() ? 'Sync your bank, or import a recent CSV export.' : 'Import a recent CSV export from your bank, or connect your bank to sync it.']
+              : st.late.length ? ['triangle-alert', lateText(st.late), 'Import a recent CSV export, or check the connection under Connections.'] : null;
     }
     // A direct bank connection that needs (or soon needs) a new sign-in (56-fin-connect.js).
     if (!msg && a && !a.sample && typeof window.finConnectReauthNotice === 'function') { try { const n = window.finConnectReauthNotice(); if (n) msg = ['triangle-alert', n[1], n[2]]; } catch (e) { /* no notice */ } }
     E.banner.hidden = !msg;
     E.banner.className = 'callout fv-banner' + (msg && msg[0] === 'triangle-alert' ? ' warn' : '');
-    if (msg) E.banner.append(ic(msg[0]), h('div', null, h('b', { text: msg[1] }), ' ' + msg[2]));
+    if (msg) E.banner.append(ic(msg[0]), h('div', null, h('b', { text: msg[1] }), msg[2] ? ' ' + msg[2] : '', msg[3] ? h('span', null, ' ', msg[3]) : null));
   }
   const STEPS = [['starting', 'Start'], ['bank', 'Bank'], ['csv', 'Save'], ['spend', 'Analyse']];
   function callout(kind, iconName, title, rest, closable) {

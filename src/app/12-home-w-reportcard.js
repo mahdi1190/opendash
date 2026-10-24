@@ -27,7 +27,7 @@ function _hrcRender(el, ctx) {
   const v = _HRC_VERDICT[r.verdict] || _HRC_VERDICT.steady;
   const card = document.createElement('section');
   card.className = 'card home-card hrc hrc-' + r.verdict + ' hrc-sz-' + size;
-  card.innerHTML = `<div class="card-h">${icon('award')}<h3>Week report</h3><span class="n"></span></div><div class="card-b hrc-b"><div class="hrc-head"><span class="hrc-badge">${icon(v[2], 'i-md')}</span><span><b></b><span class="subtle"></span></span></div></div>`;
+  card.innerHTML = `${cardHeadHtml({ icon: 'award', title: 'Week report', cls: '', count: ' ' })}<div class="card-b hrc-b"><div class="hrc-head"><span class="hrc-badge">${icon(v[2], 'i-md')}</span><span><b></b><span class="subtle"></span></span></div></div>`;
   card.querySelector('.n').textContent = `${_memFmt(r.from, { day: 'numeric', month: 'short' })} – ${_memFmt(r.to, { day: 'numeric', month: 'short' })}`;
   card.querySelector('.hrc-head b').textContent = v[0];
   card.querySelector('.hrc-head .subtle').textContent = v[1];

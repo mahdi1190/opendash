@@ -28,7 +28,8 @@ function buildTaskCtxMenu(taskId) {
 }
 
 /* ============================================================
-   GENERIC MODAL
+   GENERIC MODAL (legacy: nothing in the app calls it any more; the
+   dialogs below and in 86-live-sync.js use openDialog, 11-ui-kit.js)
    ============================================================ */
 function showModal(html, onOpen) {
   const card = document.getElementById('modal-card');
@@ -101,7 +102,7 @@ function showKbHelp() {
   card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true'); card.setAttribute('aria-labelledby', 'kb-title');
   card.innerHTML = `<div class="kb-head"><h3 id="kb-title">Keyboard shortcuts</h3>`
     + `<label class="input input-sm kb-find">${icon('search')}<input type="search" id="kb-find" placeholder="Find a shortcut" aria-label="Find a shortcut" autocomplete="off" spellcheck="false" /></label>`
-    + `<button type="button" class="btn-icon" id="kb-close" aria-label="Close">${icon('x')}</button></div>`
+    + '</div>'
     + `<div class="kb-cols">${groups.map(([g, rows]) => `<section><h4>${esc(g)}</h4>${rows.map(([l, k]) => `<div class="kb-row" data-find="${escAttr((g + ' ' + l + ' ' + k.join(' ')).toLowerCase())}"><span>${esc(l)}</span>${keys(k)}</div>`).join('')}</section>`).join('')}</div>`
     + `<p class="kb-none muted" hidden>No shortcut matches. Try a word like “undo”, “today” or “sidebar”.</p>`;
   const find = card.querySelector('#kb-find');
@@ -119,7 +120,7 @@ function showKbHelp() {
     if (e.key === 'Escape' && find.value) { e.preventDefault(); e.stopPropagation(); find.value = ''; find.oninput(); }
     else if (e.key === '?' && !find.value) { e.preventDefault(); closeKbHelp(); }   // '?' again closes the sheet
   };
-  card.querySelector('#kb-close').onclick = closeKbHelp;
+  card.querySelector('.kb-head').appendChild(uiButton({ icon: 'x', aria: 'Close', data: { kbClose: '1' }, run: closeKbHelp }));
   ov.onclick = (e) => { if (e.target === ov) closeKbHelp(); };
   _kbPrevFocus = document.activeElement;
   ov.classList.add('open');
@@ -129,30 +130,35 @@ function showKbHelp() {
 /* ============================================================
    BULK IMPORT
    ============================================================ */
+/** More › Bulk add tasks: one task per line, quick-add words on each (the kit's dialog, size md). */
 function openBulkImport() {
-  showModal(`
-    <h3>Bulk import tasks</h3>
-    <p>Paste a list — one task per line. Quick-add syntax works on each line: <code>email Sam tomorrow #email !p2</code></p>
-    <textarea id="bulk-text" placeholder="email Sam about the report tomorrow !p1\nwrite the cover letter #writing\nfix the build by friday !p2"></textarea>
-    <div class="modal-actions">
-      <button class="btn secondary" id="bulk-cancel">Cancel</button>
-      <button class="btn primary" id="bulk-import">Import as tasks</button>
-    </div>
-  `, (card) => {
-    card.querySelector('#bulk-cancel').onclick = closeModal;
-    card.querySelector('#bulk-import').onclick = () => {
-      const text = card.querySelector('#bulk-text').value;
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      let count = 0;
-      for (const line of lines) {
-        const parsed = parseQuickAdd(line);
-        if (parsed.title) { addParsedTask(parsed, quickAddDefaults(state.view)); count++; }
-      }
-      closeModal();
-      showToast(`✓ imported ${count} task${count===1?'':'s'}`, false);
-    };
+  let ta = null;
+  openDialog({
+    title: 'Bulk add tasks', size: 'md',
+    body: (el) => {
+      const p = document.createElement('p'); p.className = 'muted bulk-hint';
+      p.append('One task per line. Quick add works on each line, like ');
+      const c = document.createElement('code'); c.textContent = 'email Sam tomorrow #email !p2'; p.append(c, '.');
+      ta = document.createElement('textarea'); ta.className = 'control bulk-text'; ta.id = 'bulk-text'; ta.rows = 7;
+      ta.placeholder = 'email Sam about the report tomorrow !p1\nwrite the cover letter #writing\nfix the build by friday !p2';
+      ta.setAttribute('aria-label', 'Tasks, one per line'); ta.setAttribute('autofocus', '');
+      el.append(p, ta);
+    },
+    actions: [
+      { label: 'Cancel' },
+      { label: 'Add tasks', primary: true, run: () => {
+        const lines = String(ta ? ta.value : '').split('\n').map(l => l.trim()).filter(Boolean);
+        let count = 0;
+        for (const line of lines) {
+          const parsed = parseQuickAdd(line);
+          if (parsed.title) { addParsedTask(parsed, quickAddDefaults(state.view)); count++; }
+        }
+        if (!count) { if (ta) ta.focus(); toast('Nothing to add yet: type one task per line.', { icon: 'clipboard-list' }); return false; }
+        toast(`Added ${count} task${count === 1 ? '' : 's'}`, { kind: 'ok' });
+        return true;
+      } },
+    ],
   });
-  setTimeout(() => document.getElementById('bulk-text')?.focus(), 100);
 }
 
 /* ============================================================
@@ -171,7 +177,7 @@ async function saveTaskAsTemplate(taskId) {
     subtasks: effSubtasks(item).map(s => ({ title: s.title, done: false })), recurrence: effRecurrence(item), people: [...(item.people || [])],
   });
   saveData();
-  toast(`Template “${name}” saved. Find it under Templates in the quick add`, { kind: 'ok', icon: 'layout-template', action: { label: 'Manage', run: () => openTemplatesModal() } });
+  toast(`Template “${name}” saved`, { kind: 'ok', icon: 'layout-template', action: { label: 'Manage', run: () => openTemplatesModal() } });
 }
 function applyTemplate(tmplId) {
   const t = state.taskTemplates.find(x => x.id === tmplId); if (!t) return;
@@ -202,65 +208,64 @@ function deleteTemplate(tmplId) {
   state.taskTemplates = state.taskTemplates.filter(t => t.id !== tmplId);
   saveData();
 }
+/** More › Templates: edit each template where it stands (saved as you go, so the button is Done);
+ *  Use makes a task, Delete goes at once with Undo. The kit's dialog, size md, fixed (a list). */
+let _tmplRepaint = null;
 function openTemplatesModal() {
-  const escAttr = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-  const tmplsHtml = state.taskTemplates.length === 0 ?
-    `<p style="color:var(--text-dim);font-style:italic">No templates yet. Right-click any task → Save as template.</p>` :
-    state.taskTemplates.map(t => {
-      const streamOpts = Object.entries(STREAMS).map(([k, v]) => `<option value="${escAttr(k)}"${k === t.stream ? ' selected' : ''}>${esc(v.label)}</option>`).join('');
-      const prioOpts = ['p1','p2','p3','p0'].map(p => `<option value="${p}"${p === t.priority ? ' selected' : ''}>${PRIORITIES[p].label}</option>`).join('');
-      return `
-      <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px dashed var(--border)">
-        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
-          <input data-act="rename" data-id="${escAttr(t.id)}" value="${escAttr(t.name)}" style="font-weight:600;font-size:13px;border:1px solid var(--border);border-radius:4px;padding:4px 6px;background:var(--bg);color:var(--text)" />
-          <div style="font-size:11px;color:var(--text-muted)">title: ${escAttr(t.title)}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px">
-            <select data-act="set-stream" data-id="${escAttr(t.id)}" style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg);color:var(--text)">${streamOpts}</select>
-            <select data-act="set-prio" data-id="${escAttr(t.id)}" style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg);color:var(--text)">${prioOpts}</select>
-            <label style="display:flex;gap:4px;align-items:center;color:var(--text-muted)">due in
-              <input data-act="set-days" data-id="${escAttr(t.id)}" type="number" min="0" max="365" value="${typeof t.daysAhead === 'number' ? t.daysAhead : ''}" placeholder="–" style="width:54px;font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:var(--bg);color:var(--text);font-variant-numeric:tabular-nums" />
-              days
-            </label>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-          <button class="btn primary" data-act="apply" data-id="${escAttr(t.id)}">+ Use</button>
-          <button class="btn danger" data-act="del" data-id="${escAttr(t.id)}" title="Delete template">×</button>
-        </div>
-      </div>
-    `;
-    }).join('');
-  showModal(`
-    <h3>Task templates</h3>
-    <p>Reusable templates for quick task creation. Edit fields inline; "due in N days" applies on Use.</p>
-    ${tmplsHtml}
-    <div class="modal-actions"><button class="btn secondary" id="tmpl-close">Close</button></div>
-  `, (card) => {
-    card.querySelector('#tmpl-close').onclick = closeModal;
-    card.querySelectorAll('[data-act="apply"]').forEach(b => b.onclick = () => { applyTemplate(b.dataset.id); closeModal(); });
-    // Delete at once; the toast's Undo brings it back (and repaints this list if it is still open).
-    card.querySelectorAll('[data-act="del"]').forEach(b => b.onclick = () => {
-      const t = state.taskTemplates.find(x => x.id === b.dataset.id);
-      deleteTemplate(b.dataset.id); closeModal(); openTemplatesModal();
-      const mark = typeof undoMark === 'function' ? undoMark() : null;
-      toast(`Deleted the template “${t ? t.name : ''}”`, { icon: 'trash-2', action: { label: 'Undo', run: () => {
-        if (mark) undoMarked(mark); else undo();
-        const ov = document.getElementById('modal-overlay'); if (ov && ov.classList.contains('open')) openTemplatesModal();
-      } } });
-    });
-    card.querySelectorAll('[data-act="rename"]').forEach(inp => {
-      let timer;
-      inp.oninput = () => { clearTimeout(timer); timer = setTimeout(() => updateTemplate(inp.dataset.id, 'name', inp.value), 300); };
-    });
-    card.querySelectorAll('[data-act="set-stream"]').forEach(sel => sel.onchange = () => updateTemplate(sel.dataset.id, 'stream', sel.value));
-    card.querySelectorAll('[data-act="set-prio"]').forEach(sel => sel.onchange = () => updateTemplate(sel.dataset.id, 'priority', sel.value));
-    card.querySelectorAll('[data-act="set-days"]').forEach(inp => {
-      inp.onchange = () => {
-        const n = inp.value === '' ? null : Number(inp.value);
-        updateTemplate(inp.dataset.id, 'daysAhead', n);
-      };
-    });
+  if (_tmplRepaint) { _tmplRepaint(); return; }
+  let host = null;
+  const paint = () => {
+    if (!host) return;
+    const keep = host.scrollTop;
+    host.replaceChildren();
+    const intro = document.createElement('p'); intro.className = 'muted tmpl-intro';
+    intro.textContent = 'Edit a template here; “Due in” counts from the day you use it.';
+    host.appendChild(intro);
+    const list = state.taskTemplates || [];
+    if (!list.length) { host.appendChild(emptyLine('No templates yet. Right-click a task and choose Save as template.')); return; }
+    for (const t of list) {
+      const row = document.createElement('div'); row.className = 'tmpl-row';
+      const main = document.createElement('div'); main.className = 'tmpl-main';
+      const name = document.createElement('input'); name.className = 'control control-sm tmpl-name'; name.value = t.name || ''; name.setAttribute('aria-label', 'Template name');
+      let timer = null;
+      name.oninput = () => { clearTimeout(timer); timer = setTimeout(() => updateTemplate(t.id, 'name', name.value), 300); };
+      const title = document.createElement('div'); title.className = 'tmpl-title'; title.textContent = 'Task: ' + (t.title || '');
+      const opts = document.createElement('div'); opts.className = 'tmpl-opts';
+      const stream = document.createElement('select'); stream.className = 'control control-sm'; stream.setAttribute('aria-label', 'Stream');
+      for (const [k, v] of Object.entries(STREAMS)) { const o = document.createElement('option'); o.value = k; o.textContent = v.label; if (k === t.stream) o.selected = true; stream.appendChild(o); }
+      stream.onchange = () => updateTemplate(t.id, 'stream', stream.value);
+      const prio = document.createElement('select'); prio.className = 'control control-sm'; prio.setAttribute('aria-label', 'Priority');
+      for (const p of ['p1', 'p2', 'p3', 'p0']) { const o = document.createElement('option'); o.value = p; o.textContent = PRIORITIES[p].label; if (p === t.priority) o.selected = true; prio.appendChild(o); }
+      prio.onchange = () => updateTemplate(t.id, 'priority', prio.value);
+      const due = document.createElement('label'); due.className = 'tmpl-due';
+      const days = document.createElement('input'); days.type = 'number'; days.min = '0'; days.max = '365'; days.className = 'control control-sm tmpl-days';
+      days.value = typeof t.daysAhead === 'number' ? String(t.daysAhead) : ''; days.placeholder = '–';
+      days.onchange = () => updateTemplate(t.id, 'daysAhead', days.value === '' ? null : Number(days.value));
+      due.append('Due in', days, 'days');
+      opts.append(stream, prio, due);
+      main.append(name, title, opts);
+      const acts = document.createElement('div'); acts.className = 'tmpl-acts';
+      acts.append(
+        uiButton({ label: 'Use', icon: 'plus', kind: 'secondary', size: 'sm', run: () => { applyTemplate(t.id); if (_tmplClose) _tmplClose(); } }),
+        uiButton({ icon: 'trash-2', size: 'sm', aria: 'Delete the template ' + (t.name || ''), run: () => {
+          deleteTemplate(t.id);
+          const mark = typeof undoMark === 'function' ? undoMark() : null;   // Undo brings back this one, even after other edits
+          paint();
+          toast(`Deleted the template “${t.name || ''}”`, { icon: 'trash-2', action: { label: 'Undo', run: () => { if (mark) undoMarked(mark); else undo(); if (_tmplRepaint) _tmplRepaint(); } } });
+        } }));
+      row.append(main, acts);
+      host.appendChild(row);
+    }
+    host.scrollTop = keep;
+  };
+  let _tmplClose = null;
+  _tmplClose = openDialog({
+    title: 'Task templates', size: 'md', fixed: true, resizeKey: 'templates',
+    body: (el) => { el.classList.add('tmpl-body'); host = el; paint(); },
+    actions: [{ label: 'Done', primary: true }],
+    onClose: () => { _tmplRepaint = null; },
   });
+  _tmplRepaint = paint;
 }
 
 /* ============================================================
@@ -277,28 +282,30 @@ function maybeShowReviewPrompt() {
   if (Date.now() - (state.lastReviewPrompt || 0) < 5 * 86400000) return;
   showWeeklyReviewModal();
 }
+/** The old weekly prompt (only without the guided review of 77/78-brief-*.js): three questions. */
 function showWeeklyReviewModal() {
-  showModal(`
-    <h3>Weekly review</h3>
-    <p>Quick reflection — answer what you can, skip what you can't.</p>
-    <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700">What's the ONE thing for this week?</label>
-    <textarea id="rv-one" rows="2" style="margin-bottom:10px"></textarea>
-    <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700">What's blocking you right now?</label>
-    <textarea id="rv-blocked" rows="2" style="margin-bottom:10px"></textarea>
-    <label style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700">What went well last week?</label>
-    <textarea id="rv-wins" rows="2"></textarea>
-    <div class="modal-actions">
-      <button class="btn secondary" id="rv-skip">Skip this week</button>
-      <button class="btn primary" id="rv-save">Save</button>
-    </div>
-  `, (card) => {
-    card.querySelector('#rv-skip').onclick = () => { state.lastReviewPrompt = Date.now(); saveUI(); closeModal(); };
-    card.querySelector('#rv-save').onclick = () => {
-      state.weeklyReviews.push({ ts: Date.now(), weekOf: todayStr(), oneThing: card.querySelector('#rv-one').value, blocked: card.querySelector('#rv-blocked').value, wins: card.querySelector('#rv-wins').value });
-      state.lastReviewPrompt = Date.now();
-      saveData(); closeModal();
-      showToast('✓ review saved', false);
-    };
+  const fields = {};
+  openDialog({
+    title: 'Weekly review', size: 'md',
+    body: (el) => {
+      const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Answer what you can and skip the rest.';
+      el.appendChild(p);
+      for (const [k, q] of [['one', 'What’s the one thing for this week?'], ['blocked', 'What’s in your way right now?'], ['wins', 'What went well last week?']]) {
+        const f = document.createElement('label'); f.className = 'field';
+        const l = document.createElement('span'); l.className = 'field-label'; l.textContent = q;
+        const ta = document.createElement('textarea'); ta.className = 'control'; ta.rows = 2;
+        fields[k] = ta; f.append(l, ta); el.appendChild(f);
+      }
+    },
+    actions: [
+      { label: 'Not now', run: () => { state.lastReviewPrompt = Date.now(); saveUI(); } },
+      { label: 'Save', primary: true, run: () => {
+        state.weeklyReviews.push({ ts: Date.now(), weekOf: todayStr(), oneThing: fields.one.value, blocked: fields.blocked.value, wins: fields.wins.value });
+        state.lastReviewPrompt = Date.now();
+        saveData();
+        toast('Review saved', { kind: 'ok' });
+      } },
+    ],
   });
 }
 

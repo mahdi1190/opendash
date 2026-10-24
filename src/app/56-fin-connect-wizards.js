@@ -117,15 +117,16 @@ async function _finRefreshAll() {
   _srcAfterChange('bank');
 }
 
+const FIN_FLOW_WIDTH = 560;
 const FIN_FLOWS = {
-  plasma: { title: 'Add Plasma One', width: 520, steps: [{ id: 'address', title: 'Paste your address', render: _finPlasmaStep }] },
-  monzo: { title: 'Connect Monzo', width: 580, steps: [
+  plasma: { title: 'Add Plasma One', steps: [{ id: 'address', title: 'Paste your address', render: _finPlasmaStep }] },
+  monzo: { title: 'Connect Monzo', steps: [
     { id: 'client', title: 'Make your Monzo key', render: _finMonzoClient },
     { id: 'connect', title: 'Connect', render: _finMonzoConnect },
     { id: 'approve', title: 'Approve in your Monzo app', render: _finMonzoApprove, noBack: true },
     { id: 'done', title: 'Done', render: _finDoneStep, noBack: true },
   ] },
-  'enable-banking': { title: 'Connect your bank', width: 600, steps: [
+  'enable-banking': { title: 'Connect your bank', steps: [
     { id: 'lookup', title: 'Is my bank supported?', render: _finEbLookup },
     { id: 'app', title: 'Create your free Enable Banking app', render: _finEbApp },
     { id: 'bank', title: 'Choose your bank', render: _finEbBank },
@@ -170,7 +171,7 @@ function finOpenFlow(id, opts) {
   }
   if (opts.step && flow.steps.some(s => s.id === opts.step) && id !== 'enable-banking') w.step = opts.step;
   openDrawer({
-    title: flow.title, width: flow.width, resizeId: 'fin-flow',
+    title: flow.title, width: FIN_FLOW_WIDTH, resizeId: 'fin-flow',   // one width for every provider
     onClose: () => { if (_finWizCtx && _finWizCtx.id === id) { _finWizCtx.stop(); _finWizCtx = null; } delete w.clientSecret; delete w.pem; },
     body: (el, close) => {
       el.classList.add('fc-sheet');
@@ -209,12 +210,12 @@ function _finPaintSheet(ctx) {
     el: foot,
     back: idx > 0 && !step.noBack ? () => ctx.go(flow.steps[idx - 1].id) : null,
     buttons: [],
-    add(label, ic, cls, run, o) { const b = _connBtn(label, ic, cls, run); b.classList.remove('btn-sm'); if (o && o.disabled) b.disabled = true; if (o && o.act) b.dataset.act = o.act; this.buttons.push(b); return b; },
+    add(label, ic, cls, run, o) { const b = uiButton({ label: label, icon: ic, kind: cls, size: 'sm', run: (e, b) => run(b) }); b.classList.remove('btn-sm'); if (o && o.disabled) b.disabled = true; if (o && o.act) b.dataset.act = o.act; this.buttons.push(b); return b; },
   };
   step.render(ctx, body);
-  if (ctx.foot.back) foot.appendChild(_connBtn('Back', 'arrow-left', 'btn-ghost', ctx.foot.back));
+  if (ctx.foot.back) foot.appendChild(uiButton({ label: 'Back', icon: 'arrow-left', kind: 'ghost', size: 'sm', run: (e, b) => ctx.foot.back(b) }));
   foot.appendChild(_finEl('span', 'spacer'));
-  if (!ctx.foot.noCancel) foot.appendChild(_connBtn(step.id === 'done' ? 'Close' : 'Cancel', null, 'btn-ghost', () => ctx.close()));
+  if (!ctx.foot.noCancel) foot.appendChild(uiButton({ label: step.id === 'done' ? 'Close' : 'Cancel', kind: 'ghost', size: 'sm', run: () => ctx.close() }));
   for (const b of ctx.foot.buttons) foot.appendChild(b);
   el.appendChild(foot);
   if (w.focusTitle) { w.focusTitle = false; requestAnimationFrame(() => h.focus({ preventScroll: true })); }
@@ -229,10 +230,10 @@ function _finPlasmaStep(ctx, body) {
   const input = _finEl('input', 'fc-input fc-mono'); input.type = 'text'; input.value = w.address || '';
   input.placeholder = '0x…'; input.autocomplete = 'off'; input.spellcheck = false; input.setAttribute('autocapitalize', 'off');
   input.setAttribute('aria-label', 'Plasma wallet address'); input.dataset.autofocus = '1'; input.dataset.keep = '1';
-  const paste = _connBtn('Paste', 'clipboard', 'btn-secondary', async () => {
+  const paste = uiButton({ label: 'Paste', icon: 'clipboard', kind: 'secondary', size: 'sm', run: async () => {
     try { const t = await navigator.clipboard.readText(); input.value = t; onInput(); }
-    catch (e) { toast('Your browser did not allow reading the clipboard. Press Ctrl+V in the box instead.', { kind: 'err' }); input.focus(); }
-  });
+    catch (e) { toast('Couldn’t read the clipboard: press Ctrl+V in the box instead.', { kind: 'err' }); input.focus(); }
+  } });
   paste.classList.remove('btn-sm');
   row.append(input, paste);
   body.appendChild(row);
@@ -252,7 +253,7 @@ function _finPlasmaStep(ctx, body) {
       const j = await finApi('plasma', { method: 'POST', body: { address: chk.address, label: (w.label || '').trim() || undefined } });
       ctx.close();
       delete _finWiz.plasma;
-      toast(`${(j.source && j.source.label) || 'Plasma One'} added. Bringing in its history…`, { kind: 'ok', timeout: 7000, action: { label: 'Open Finances', run: () => setView('finance') } });
+      toast(`${(j.source && j.source.label) || 'Plasma One'} added. Bringing in its history`, { kind: 'ok', timeout: 7000, action: { label: 'Open Finances', run: () => setView('finance') } });
       await _finRefreshAll();
     } catch (e) {
       w.adding = false; add.disabled = false; const sp = add.querySelector('.spinner'); if (sp) sp.remove();
@@ -332,7 +333,7 @@ function _finMonzoClient(ctx, body) {
     return;
   }
   body.appendChild(_finEl('p', 'fc-lead', 'Monzo lets you read your own account with a free developer “client”. You make it once; it takes about two minutes.'));
-  const open = _connBtn('Open Monzo developers', 'external-link', 'btn-secondary', () => window.open('https://developers.monzo.com/', '_blank', 'noopener,noreferrer'));
+  const open = uiButton({ label: 'Open Monzo developers', icon: 'external-link', kind: 'secondary', size: 'sm', run: () => window.open('https://developers.monzo.com/', '_blank', 'noopener,noreferrer') });
   open.classList.remove('btn-sm');
   body.appendChild(_finSteps([
     [open, _finEl('span', 'fc-mute', 'Sign in with your email. Monzo emails you a link and asks you to approve in the app.')],
@@ -404,7 +405,7 @@ function _finMonzoConnect(ctx, body) {
   const start = () => {
     if (!w.sourceId) { ctx.go('client'); return; }
     const tab = window.open(FIN_API + 'monzo/connect?source=' + encodeURIComponent(w.sourceId), '_blank');
-    if (!tab) toast('Your browser blocked the new tab. Allow pop-ups for OpenDash and press Connect Monzo again.', { kind: 'err', timeout: 8000 });
+    if (!tab) toast('Your browser blocked the new tab. Allow pop-ups for OpenDash and press Connect Monzo again', { kind: 'err', timeout: 8000 });
     // A first Connect clears an answer left from an earlier try; "Open Monzo again" never does
     // (that sign-in may have just finished) and keeps the start time the answer is checked against.
     if (!w.connectAt) { _finMonzoStop(w); w.connectAt = Date.now(); }
@@ -611,12 +612,12 @@ function _finEbLookup(ctx, body) {
     const countryName = (FIN_EB_COUNTRIES.find(c => c[0] === w.country) || [, w.country])[1];
     if (/monzo|plasma/.test(query)) {
       const id = /monzo/.test(query) ? 'monzo' : 'plasma';
-      out.appendChild(_finCallout('info', 'arrow-right', `${finProviderInfo(id).name} has its own, simpler connection.`, _connBtn('Use the ' + finProviderInfo(id).name + ' connection', 'arrow-right', 'btn-secondary', () => { ctx.close(); finOpenFlow(id); })));
+      out.appendChild(_finCallout('info', 'arrow-right', `${finProviderInfo(id).name} has its own, simpler connection.`, uiButton({ label: 'Use the ' + finProviderInfo(id).name + ' connection', icon: 'arrow-right', kind: 'secondary', size: 'sm', run: () => { ctx.close(); finOpenFlow(id); } })));
       setup.disabled = true; return;
     }
     if (info.source === 'none' || !info.banks.length) {
       out.appendChild(_finCallout('warn', 'info', `We could not confirm which banks in ${countryName} Enable Banking covers yet: their full list needs your own free app. Set it up to check the live list (about 5 minutes), or import a CSV instead.`,
-        _connBtn('Import a CSV instead', 'upload', 'btn-ghost', () => { ctx.close(); finImportCsv(); })));
+        uiButton({ label: 'Import a CSV instead', icon: 'upload', kind: 'ghost', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
       setup.disabled = false; setup.lastChild.textContent = entry.configured ? 'Continue' : 'Set up and check';
       return;
     }
@@ -627,7 +628,7 @@ function _finEbLookup(ctx, body) {
     const hits = info.banks.filter(b => String(b.name).toLowerCase().includes(query)).slice(0, 8);
     if (!hits.length) {
       out.appendChild(_finCallout('warn', 'circle-alert', `“${w.query.trim()}” is not available through Enable Banking${info.source === 'snapshot' ? ' in the list we have' : ''}. Use CSV import instead.`,
-        _connBtn('Import a CSV', 'upload', 'btn-secondary', () => { ctx.close(); finImportCsv(); })));
+        uiButton({ label: 'Import a CSV', icon: 'upload', kind: 'secondary', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
       setup.disabled = !entry.configured; return;
     }
     const list = _finEl('div', 'fc-banks');
@@ -666,8 +667,8 @@ function _finEbApp(ctx, body) {
       body.appendChild(_finSteps(['In the Enable Banking Control Panel, open your OpenDash app.', 'Press Activate by linking accounts, and link the bank you want.', 'Come back here and press Check again.']));
       ctx.foot.add('Check again', 'refresh-cw', 'btn-primary', async (b) => {
         b.disabled = true;
-        try { w.app = await finApi('eb/app'); } catch (e) { b.disabled = false; toast('Could not check the app: ' + e.message, { kind: 'err', timeout: 8000 }); }
-        if (w.app && w.app.active) toast('Your Enable Banking app is active.', { kind: 'ok' });
+        try { w.app = await finApi('eb/app'); } catch (e) { b.disabled = false; toastError('check the app', e); }
+        if (w.app && w.app.active) toast('Your Enable Banking app is active', { kind: 'ok' });
         ctx.paint();
       }, { act: 'eb-check' });
     } else ctx.foot.add('Continue', 'arrow-right', 'btn-primary', () => ctx.go('bank'), { act: 'eb-continue' });
@@ -677,7 +678,7 @@ function _finEbApp(ctx, body) {
   }
   const red = _finEbRedirect();
   body.appendChild(_finEl('p', 'fc-lead', 'Enable Banking is free for your own accounts. You make one app, once; then each bank takes about a minute.'));
-  const open = _connBtn('Open Enable Banking', 'external-link', 'btn-secondary', () => window.open('https://enablebanking.com/sign-in/', '_blank', 'noopener,noreferrer'));
+  const open = uiButton({ label: 'Open Enable Banking', icon: 'external-link', kind: 'secondary', size: 'sm', run: () => window.open('https://enablebanking.com/sign-in/', '_blank', 'noopener,noreferrer') });
   open.classList.remove('btn-sm');
   body.appendChild(_finSteps([[open, _finEl('span', 'fc-mute', 'Sign up with your email (free).')], 'Go to API applications, press Add, and fill it in:']));
   const fields = _finEl('div', 'fc-copylist');
@@ -749,7 +750,7 @@ function _finEbBank(ctx, body) {
     try {
       const j = await finApi('eb/banks?country=' + encodeURIComponent(w.country));
       w.banks = (j.banks || []).map(b => Object.assign({ country: w.country }, b)); w.banksFor = w.country;
-    } catch (e) { w.banks = null; w.banksFor = null; out.replaceChildren(_finCallout('err', 'circle-alert', 'The bank list did not load: ' + e.message, _connBtn('Try again', 'refresh-cw', 'btn-secondary', () => load()))); return; }
+    } catch (e) { w.banks = null; w.banksFor = null; out.replaceChildren(_finCallout('err', 'circle-alert', 'The bank list did not load: ' + e.message, uiButton({ label: 'Try again', icon: 'refresh-cw', kind: 'secondary', size: 'sm', run: () => load() }))); return; }
     paint();
   };
   const paint = () => {
@@ -757,7 +758,7 @@ function _finEbBank(ctx, body) {
     out.replaceChildren(); psu.replaceChildren();
     const query = (w.query || '').trim().toLowerCase();
     const hits = w.banks.filter(b => !query || String(b.name).toLowerCase().includes(query)).slice(0, 60);
-    if (!hits.length) out.appendChild(_finCallout('warn', 'circle-alert', `No bank called “${w.query.trim()}” in this country through Enable Banking. Use CSV import instead.`, _connBtn('Import a CSV', 'upload', 'btn-secondary', () => { ctx.close(); finImportCsv(); })));
+    if (!hits.length) out.appendChild(_finCallout('warn', 'circle-alert', `No bank called “${w.query.trim()}” in this country through Enable Banking. Use CSV import instead.`, uiButton({ label: 'Import a CSV', icon: 'upload', kind: 'secondary', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
     for (const b of hits) out.appendChild(_finBankRow(b, (pick) => { w.bank = pick; w.psuType = (pick.psuTypes || ['personal'])[0]; next.disabled = false; paint(); }, w.bank && w.bank.name === b.name && w.bank.country === b.country));
     if (w.bank && w.banks.some(b => b.name === w.bank.name)) {
       w.bank = w.banks.find(b => b.name === w.bank.name);

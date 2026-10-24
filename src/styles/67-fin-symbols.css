@@ -87,8 +87,8 @@
 }
 [data-theme="dark"] .fsym-cat { background: color-mix(in oklab, var(--c, var(--accent)) 17%, var(--surface)); --fs-mute: color-mix(in oklab, var(--fg-subtle) 70%, var(--surface)); }
 .fsym-cat.is-plain { background: none; }
-.fsym-cat.sz-xs { border-radius: 6px; }
-.fsym-cat.sz-sm { border-radius: 8px; }
+.fsym-cat.sz-xs { border-radius: var(--radius-xs); }
+.fsym-cat.sz-sm { border-radius: var(--radius-sm); }
 .fsym-cat.is-selected { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--c, var(--accent)); }
 .fsym-cat svg { width: 82%; height: 82%; overflow: hidden; display: block; }
 .fsym-cat.sz-xs svg { width: 94%; height: 94%; }
@@ -264,7 +264,7 @@
 /* The kind colour comes from the shared .c-<swatch> class (01-components.css); slate when there is none. */
 .fsym-tx {
   display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px 0 6px; border-radius: var(--radius-full, 999px);
-  font-family: var(--font-sans); font-size: 11px; font-weight: var(--weight-medium, 550); line-height: 1; white-space: nowrap; letter-spacing: 0.005em;
+  font-family: var(--font-sans); font-size: var(--text-2xs); font-weight: var(--weight-medium, 550); line-height: 1; white-space: nowrap; letter-spacing: 0.005em;
   color: color-mix(in oklab, var(--c, var(--sw-slate)) 46%, var(--fg));
   background: color-mix(in oklab, var(--c, var(--sw-slate)) 10%, var(--surface));
   box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c, var(--sw-slate)) 24%, transparent);
@@ -272,9 +272,9 @@
 }
 [data-theme="dark"] .fsym-tx { background: color-mix(in oklab, var(--c, var(--sw-slate)) 15%, var(--surface)); color: color-mix(in oklab, var(--c, var(--sw-slate)) 50%, var(--fg)); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--c, var(--sw-slate)) 30%, transparent); }
 .fsym-tx .fsym-mini { width: 13px; height: 13px; flex: none; stroke-width: 2.2; color: color-mix(in oklab, var(--c, var(--sw-slate)) 84%, var(--fg)); }
-.fsym-tx.sz-sm { height: 18px; font-size: 10.5px; padding: 0 7px 0 5px; }
+.fsym-tx.sz-sm { height: 18px; font-size: var(--text-2xs); padding: 0 7px 0 5px; }
 .fsym-tx.sz-sm .fsym-mini { width: 12px; height: 12px; }
-.fsym-tx.sz-lg { height: 26px; font-size: 12.5px; gap: 6px; padding: 0 11px 0 8px; }
+.fsym-tx.sz-lg { height: 26px; font-size: var(--text-xs); gap: 6px; padding: 0 11px 0 8px; }
 .fsym-tx.sz-lg .fsym-mini { width: 16px; height: 16px; }
 .fsym-tx.is-compact { width: 22px; height: 22px; padding: 0; justify-content: center; }
 .fsym-tx.is-compact.sz-sm { width: 18px; height: 18px; }
@@ -326,11 +326,11 @@ html.anim-paused :is(.fsym, .fsym *, .fsym *::after) { animation-play-state: pau
 .fsg-cat { position: relative; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 10px 14px; border-radius: var(--radius-lg, 12px); border: 1px solid var(--border-subtle); background: var(--surface); }
 .fsg-cat figcaption { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
 .fsg-cat figcaption b { font-size: var(--text-sm, 13px); font-weight: var(--weight-medium, 550); }
-.fsg-cat figcaption span { font-size: 11px; color: var(--fg-subtle); }
+.fsg-cat figcaption span { font-size: var(--text-2xs); color: var(--fg-subtle); }
 .fsg-mini { position: absolute; top: 10px; right: 10px; width: 16px; height: 16px; color: var(--c); opacity: 0.8; }
 .fsg-sizes { display: flex; flex-wrap: wrap; gap: var(--space-5, 20px); align-items: flex-end; }
 .fsg-sizes > div { display: flex; align-items: center; gap: 10px; }
-.fsg-sizes > div > span, .fsg-kinds > div > span { font-size: 11px; color: var(--fg-subtle); }
+.fsg-sizes > div > span, .fsg-kinds > div > span { font-size: var(--text-2xs); color: var(--fg-subtle); }
 .fsg-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 10px 20px; }
 .fsg-kinds > div { display: flex; align-items: center; gap: 10px; }
 .fsg-kinds > div > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -340,16 +340,16 @@ html.anim-paused :is(.fsym, .fsym *, .fsym *::after) { animation-play-state: pau
 .fsg-rows li:hover { background: var(--bg-subtle, var(--bg-muted)); }
 .fsg-rm { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .fsg-rm b { font-size: var(--text-sm, 13px); font-weight: var(--weight-medium, 550); }
-.fsg-rm > span { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--fg-subtle); }
+.fsg-rm > span { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-2xs); color: var(--fg-subtle); }
 .fsg-ra { font-variant-numeric: tabular-nums; font-size: var(--text-sm, 13px); font-weight: var(--weight-medium, 550); min-width: 84px; text-align: right; }
 .fsg-ra.in { color: var(--success-ink, var(--fg)); }
 .fsg-odd { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 8px 24px; }
 .fsg-odd li { display: flex; align-items: center; gap: 10px; font-size: var(--text-sm, 13px); min-width: 0; }
-.fsg-odd code { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
-.fsg-odd .muted { color: var(--fg-subtle); font-size: 11.5px; margin-left: auto; }
+.fsg-odd code { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.fsg-odd .muted { color: var(--fg-subtle); font-size: var(--text-2xs); margin-left: auto; }
 .fsg-ms { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 14px 8px; }
 .fsg-ms figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 2px; }
-.fsg-ms figcaption { font-size: 11px; color: var(--fg-muted); text-align: center; line-height: 1.25; }
+.fsg-ms figcaption { font-size: var(--text-2xs); color: var(--fg-muted); text-align: center; line-height: 1.25; }
 .fsg-rm b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @container main (max-width: 560px) {
   .fsg-kinds, .fsg-odd { grid-template-columns: minmax(0, 1fr); }
