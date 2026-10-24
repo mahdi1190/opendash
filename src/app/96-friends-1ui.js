@@ -37,7 +37,7 @@ registerSection('friends', {
   match: v => _FR_VIEW_RE.test(String(v || '')),
   title: () => 'Friends',
   crumb: v => { const id = _frIdOf(v); if (!id) return []; const f = friendsGet(id); return [{ label: 'Friends', view: 'friends' }, f ? friendName(f) : 'Friend']; },
-  group: 'life', layout: 'wide', hashable: true, taskControls: false,   // Life > Friends since 2.18 (NAVIGATION_PLAN.md 2.2)
+  group: 'life', layout: 'page', hashable: true, taskControls: false,   // Life > Friends since 2.18 (NAVIGATION_PLAN.md 2.2)
   mount(container, view) { _frMount(container, view || state.view); },
   unmount() { _frUI.entry = ''; _frUI.root = null; },
   // The page template (UX_BLUEPRINT.md 3): one primary action in the shared header, the rest under its More.
@@ -417,10 +417,12 @@ function _frSettingsSec(d, o) {
   const open = !!(o && o.open);   // the Settings tab shows it open; elsewhere it would be a fold
   const det = _frEl(open ? 'section' : 'details', 'fr-sec fr-settings' + (open ? ' is-open' : ''));
   det.id = 'fr-settings';
-  const sum = _frEl(open ? 'div' : 'summary', 'fr-sec-h');
-  sum.innerHTML = icon('settings', 'i-sm');
-  sum.appendChild(_frEl('h2', null, 'Friends settings and privacy'));
-  det.appendChild(sum);
+  if (!open) {   // on the Settings tab the tab says it; elsewhere a fold needs its summary
+    const sum = _frEl('summary', 'fr-sec-h');
+    sum.innerHTML = icon('settings', 'i-sm');
+    sum.appendChild(_frEl('h2', null, 'Friends settings and privacy'));
+    det.appendChild(sum);
+  }
   const body = _frEl('div', 'fr-set-b');
   // your name: one name for greetings, your card and friends (L11); it is changed on Profile
   const toProfile = uiButton({ label: 'Change on your Profile', size: 'sm', icon: 'user-round-pen', run: () => _frOpenProfileName() });
@@ -453,11 +455,6 @@ function _frSettingsSec(d, o) {
     b.appendChild(_settingsRow('Connect directly on the same Wi-Fi', 'Shares this computer’s local address with friends.' + (d.direct && d.direct.on ? '' : ' Off on this computer for now.'), sw));
     if (d.me && d.me.id) b.appendChild(_settingsRow('Lost a computer?', 'Lock it out so it can’t act as you.', _frKeysEl(d)));
   }, { advanced: true });
-  const note = _frEl('div', 'fr-privacy');
-  note.innerHTML = icon('lock', 'i-xs');
-  note.appendChild(_frEl('span', null, 'Encrypted end to end. Friends see your card and game progress, plus anything you share in Settings > Privacy.'));
-  note.appendChild(uiButton({ label: 'What friends can see', kind: 'link', run: () => setView('settings:privacy') }));
-  body.appendChild(note);
   det.appendChild(body);
   return det;
 }
@@ -490,49 +487,30 @@ function _frDetail(id) {
   }
   return _frUI.detail.get(id) || null;
 }
-function _frFriendGame(f) {
-  const sec = _frSec(`${friendName(f)}'s game`, 'gamepad-2');
-  const g = f.game;
-  if (!g || !g.level) { sec.appendChild(emptyLine(`${friendName(f)} isn't sharing game progress with you.`)); return sec; }
-  const row = _frEl('div', 'fr-game');
-  const lv = _frEl('div', 'fr-game-lv');
-  const rw = _frEl('span', 'fr-ringw is-game');
-  rw.innerHTML = _frRingSvg(1);
-  rw.appendChild(_frEl('b', 'num', String(g.level)));
-  lv.appendChild(rw);
-  const lt = _frEl('div');
-  lt.appendChild(_frEl('span', 'overline', `Level ${g.level}`));
-  lt.appendChild(_frEl('b', null, g.title || 'Player'));
-  lv.appendChild(lt);
-  row.appendChild(lv);
-  const stats = _frEl('div', 'fr-game-n');
-  const add = (n, l, ic) => { const s = _frEl('div', 'fr-stat'); if (ic) { const i = _frEl('span'); i.innerHTML = icon(ic, 'i-xs'); s.appendChild(i); } s.appendChild(_frEl('b', 'num', Number(n || 0).toLocaleString())); s.appendChild(_frEl('span', 'muted', l)); stats.appendChild(s); };
-  add(g.streak, 'day streak', 'flame');
-  if (g.best) add(g.best, 'best streak');
-  if (g.xpWeek != null) add(g.xpWeek, 'XP this week');
-  if (g.quests != null) add(g.quests, 'quests done', 'target');
-  if (g.focusMin) add(Math.round(g.focusMin / 60), 'hours focused', 'timer');
-  row.appendChild(stats);
-  sec.appendChild(row);
-  return sec;
-}
-function _frFriendProfile(f, det) {
-  const sec = _frSec('What they share with you', 'user-check');
-  const p = f.profile || {};
+/** What a friend shares with you, in ONE block: their game (one line of numbers), bio, city, and anything else they publish. null when there is nothing. */
+function _frFriendAbout(f, det) {
+  const sec = _frSec(`About ${friendName(f)}`, 'user-check');
+  const p = f.profile || {}, g = f.game;
   let any = false;
   const line = (label, value) => { if (!value) return; any = true; const r = _frEl('div', 'fr-share'); r.append(_frEl('span', 'muted', label), _frEl('span', null, value)); sec.appendChild(r); };
   if (p.bio) { any = true; sec.appendChild(_frEl('p', 'fr-bio', p.bio)); }
   line('Pronouns', p.pronouns);
   line('City', p.city);
-  if (f.game && f.game.level) line('Game', `Level ${f.game.level}${f.game.streak ? `, ${f.game.streak}-day streak` : ''}`);
+  if (g && g.level) {
+    const bits = [`Level ${g.level}${g.title ? ' ' + g.title : ''}`];
+    if (g.streak) bits.push(`${g.streak}-day streak`);
+    if (g.xpWeek != null) bits.push(`${Number(g.xpWeek).toLocaleString()} XP this week`);
+    if (g.quests != null) bits.push(`${g.quests} quests done`);
+    if (g.focusMin) bits.push(`${Math.round(g.focusMin / 60)} h focused`);
+    line('Game', bits.join(' · '));
+  }
   const shared = det && det.shared ? det.shared : {};
   for (const [k, v] of Object.entries(shared)) {
     if (k === 'profile' || k === 'share:game' || !k.startsWith('share:')) continue;
-    const b = v && v.b && typeof v.b === 'object' ? v.b : {};
-    line(k.slice(6).replace(/[-_]/g, ' '), typeof b.text === 'string' && b.text ? b.text : `Updated ${_frAgo(v.at)}`);
+    const bd = v && v.b && typeof v.b === 'object' ? v.b : {};
+    line(k.slice(6).replace(/[-_]/g, ' '), typeof bd.text === 'string' && bd.text ? bd.text : `Updated ${_frAgo(v.at)}`);
   }
-  if (!any) sec.appendChild(emptyLine('Just their name for now.'));
-  return sec;
+  return any ? sec : null;
 }
 function _frRemove(f, block) {
   _frDo(null, async () => {

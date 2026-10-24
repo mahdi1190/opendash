@@ -77,6 +77,9 @@ const WHATS_NEW = [
     sel: ['#sidebar', '#main-body'] },
   { id: 'live-updates', group: 'n219', icon: 'refresh-cw', title: 'Changes show up by themselves',
     text: 'When the AI assistant adds an expense, or another computer of yours changes something, the page updates without a refresh.' },
+  { id: 'centred-calm', group: 'n219', icon: 'layout-grid', title: '2.19.1: every page centred, and calmer',
+    text: 'Every page sits in the middle of the window with the same margins. Home groups its cards under Today, Coming up and Money and life; Tasks keep their header to a title, New task and More; the calendar has its view tabs and its day panel beside it. The rest waits under More, in Add widget, or behind Show more.',
+    view: ['home'], sel: ['#main-body'] },
 
   // ---- 2.18.1 ----
   { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',
@@ -197,7 +200,7 @@ const WHATS_NEW = [
   // const that earlier files cannot reach at load time (registerWhatsNew is for later modules).
   { id: 'calm-rows', group: 'tidy', icon: 'list', title: 'Calmer task rows',
     text: 'Rows show the title, due date, priority and stream; Display › Show on rows brings anything back.',
-    view: ['today'], sel: ['#display-btn'] },
+    view: ['today'], sel: ['#rf-head', '#display-btn'] },
   { id: 'simpler-cards', group: 'tidy', icon: 'sliders-horizontal', title: 'Simpler settings cards',
     text: 'Each settings card starts with one status line, like “Up to date”, and keeps the rest under More and Advanced. Settings search still finds every row and opens its fold.',
     view: ['settings:sync', 'settings'], sel: ['#main-body .set-status', '#main-body .sync-st', '#main-body'] },
@@ -266,7 +269,7 @@ const WHATS_NEW = [
     cmd: ['view-mode-matrix'], view: ['all'], sel: ['.view-mode-toggle .mode[data-mode="matrix"]', '.view-mode-toggle'] },
   { id: 'row-fields', group: 'plan', icon: 'sliders-horizontal', title: 'Choose what each row shows',
     text: 'Pick the details a task row shows, such as due date, people, tags or estimate, and keep the rest out of the way (Display › Show on rows).',
-    view: ['all'], sel: ['#display-btn'] },
+    view: ['all'], sel: ['#rf-head', '#display-btn'] },
   { id: 'weekly-review', group: 'plan', icon: 'list-checks', title: 'A guided weekly review',
     text: 'A calm, step-by-step look back at your week and a gentle plan for the next one. Ten minutes, and you start Monday clear.',
     cmd: ['rf-weekly-review'], view: ['home'], sel: ['.hg-w[data-wid="review"]'] },

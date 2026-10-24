@@ -85,12 +85,16 @@
 /* Task-style pages are centred: --content-max is the page INCLUDING its 40px side
    padding (the mockups' .page), so the text column is 1000px. Home keeps the full
    1080 for its two columns; full-width sections opt out with .main.wide */
-.main > .view-header, .main > #main-body { max-width: calc(var(--content-max) - 2 * var(--space-10)); margin-left: auto; margin-right: auto; }
-.main:has(> #main-body > .home) > .view-header, .main:has(> #main-body > .home) > #main-body { max-width: var(--content-max); }
-.main { padding: var(--space-6) var(--space-10) var(--space-16); }
-.main.wide { padding: var(--space-5) var(--space-6) var(--space-8); }
-.main.wide > .view-header, .main.wide > #main-body { max-width: none; }
-.main.bare { padding: 0; }
+.main { --page-w: var(--page-max); padding: var(--space-6) var(--page-gutter) var(--space-16); }
+.main > .view-header, .main > #main-body { width: 100%; max-width: var(--page-w); margin-left: auto; margin-right: auto; }
+/* 2.19.1: ONE width and ONE gutter for every page, centred at any window width. The header and the page body
+   always share --page-w, so a title never sits left of a centred column. A page that really wants more room
+   says layout 'wide' (a tags board); a page of plain rows (Settings) is narrower. Page CSS never sets its own
+   max-width or margin: auto on its root. */
+.main.wide { --page-w: var(--page-max-wide); }
+.main:has(> #main-body > .settings),
+.main:has(#main-body .pg-layout.no-side:not(.md-detail *, .pg-main *, .pg-side *, .card *)) { --page-w: var(--page-max-narrow); }   /* a one-column page is a narrower page, header and all */
+.main.bare { padding: 0; --page-w: none; }
 .main.bare > .view-header { display: none; }
 .main.bare > #main-body { max-width: none; height: 100%; }
 

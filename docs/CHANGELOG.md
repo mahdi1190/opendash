@@ -10,6 +10,18 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.19.1] - 2026-10-24
+
+Every page now sits in the middle of the window, and there is less on each of them. Nothing is gone: what you do less often moved under More, a tab, Add widget or Show more.
+
+- Every page is centred with the same margins, so nothing hangs to one side any more.
+- Less clutter everywhere: repeated buttons, helper lines, duplicate counts and boxes around boxes are gone, and related details sit together.
+- Tidier Achievements, Memories, Places, Pets, Profile and shared spaces.
+- A calmer Home: your day and its schedule first, then what is coming up, then money and life, each under its own heading. Other cards wait in Add widget, and a row never leaves a gap beside a short card.
+- Home's top shows only what helps: a greeting, a couple of ideas, and one button for the AI day review.
+- Clearer Tasks: the header is the title, Add task, the view switcher and More (weekly review, clean up and Display live there). Long groups show a few tasks at a time with Show more, group headings stay in view as you scroll, and the Tags and People lists in the sidebar start folded.
+- Clearer Calendar: the views are tabs, the filter and New sit beside them, and the day or event you pick shows in the panel at the side.
+
 ## [2.19.0] - 2026-10-24
 
 A tidier OpenDash. Nothing you have is taken away; it is shown in a calmer order.

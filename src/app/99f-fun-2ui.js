@@ -695,7 +695,7 @@ function funRegisterPanels() {
   const ev = funEventNow();
   Friends.registerPanel({ id: 'fun-event', order: 8, where: 'hangout', title: ev ? ev.def.label : 'Friend event', icon: ev ? ev.def.icon : 'sparkles', render: (el) => _funEventPanel(el) });
   Friends.registerPanel({ id: 'fun-play', order: 12, where: 'hangout', title: 'Gifts and quests', icon: 'gift', render: (el) => _funPlayPanel(el) });
-  Friends.registerPanel({ id: 'fun-you-two', order: 5, where: 'friend', zone: 'main', title: 'You two', icon: 'flame', render: (el, f) => { if (!f || f.status !== 'friend') return false; _funYouTwo(el, f); } });
+  Friends.registerPanel({ id: 'fun-you-two', order: 5, where: 'friend', zone: 'fold', title: 'You two', icon: 'flame', render: (el, f) => { if (!f || f.status !== 'friend') return false; _funYouTwo(el, f); } });
 }
 
 /* ---------- motion (nothing with reduced motion or the Fun level Off) ---------- */

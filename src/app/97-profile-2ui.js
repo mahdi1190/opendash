@@ -21,7 +21,7 @@
    (Friends.registerPanel); opening a friend's card adds one to their
    visitors count, once a day (counts only; Settings > Profile can stop it).
    ============================================================ */
-const _pfUI = { tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null, lookTab: 'banner', lookUndo: [], lookRedo: [], sceneQ: '', sceneN: 40, curK: '', thumbs: new Map() };
+const _pfUI = { sec: 'card', tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null, lookTab: 'banner', lookUndo: [], lookRedo: [], sceneQ: '', sceneN: 40, curK: '', thumbs: new Map() };
 const _PF_FACE_CROP = new Set(['eyes', 'eyeCol', 'brows', 'mouth', 'facial', 'marks']);
 const _PF_HEAD_CROP = new Set(['hair', 'hat', 'glasses', 'headphones']);
 const _PF_UNTIL = [['0', "Don't clear"], ['1h', 'In an hour'], ['4h', 'In 4 hours'], ['today', 'Tonight'], ['week', 'In a week']];
@@ -46,26 +46,32 @@ if (typeof registerSettingsGroup === 'function') {
     render(el) { _pfSettings(el); },
   });
 }
+/** Profile's three pages (2.19.1): the card, the avatar with its wardrobe, and what friends see. Shows one and repaints. */
+const _PF_SECS = Object.freeze([['card', 'Card', 'id-card'], ['avatar', 'Avatar and wardrobe', 'shirt'], ['sharing', 'Sharing', 'share-2']]);
+function _pfShowSec(sec) {
+  _pfUI.sec = _PF_SECS.some(x => x[0] === sec) ? sec : 'card';
+  if (typeof state !== 'undefined' && state.view === 'settings:me') render(); else setView('settings:me');
+}
 function _pfSettings(el) {
   if (typeof profileFriendNameDecide === 'function') profileFriendNameDecide();   // before any edit: a friends name that differs from yours is kept as the different name
-  const top = _pfEl('div', 'pf-set-top');
-  const cardHost = _pfEl('div', 'pf-set-card');
-  const paintCard = () => { cardHost.replaceChildren(profileCardEl(null, { visits: true })); };
-  paintCard();
-  const side = _pfEl('div', 'pf-set-side');
-  side.append(_pfEl('p', 'set-h', 'Your card. Friends see it too.'));
-  const ed = uiButton({ label: 'Customise your card', icon: 'wand-sparkles', kind: 'primary', size: 'sm', run: () => { const b = document.getElementById('pf-look'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); } });
-  const av = uiButton({ label: 'Customise your avatar', icon: 'user-round-pen', size: 'sm', run: () => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); } });
-  side.append(ed, av);
-  top.append(cardHost, side);
-  el.appendChild(top);
+  const sec = _PF_SECS.some(x => x[0] === _pfUI.sec) ? _pfUI.sec : 'card';
+  // the tabs are the page header's pills (a fallback inside the page if the header is not there)
+  const tabsEl = subTabs({ label: 'Profile', active: sec, onChange: (id) => _pfShowSec(id), tabs: _PF_SECS.map(([id, label, ic]) => ({ id, label, icon: ic })) });
+  if (!headerSubTabs(tabsEl, /^settings:me$/)) el.appendChild(tabsEl);
+  let cardHost = null;
+  const paintCard = () => { if (cardHost) cardHost.replaceChildren(profileCardEl(null, { visits: true })); };
   const changed = () => { paintCard(); };
-  el.appendChild(_pfAboutCard(changed));
-  el.appendChild(_pfLookCard(changed));
-  el.appendChild(_pfBuilderCard(changed));
-  el.appendChild(_pfBadgesCard(changed));
-  el.appendChild(_pfPlacesCard(changed));
-  el.appendChild(_pfFriendsCard());
+  const zone = (...els) => (h) => { h.append(...els); };
+  if (sec === 'card') {
+    // your card stays in view beside the forms that change it
+    cardHost = _pfEl('div', 'pf-set-card');
+    paintCard();
+    el.appendChild(pageLayout({ main: zone(_pfAboutCard(changed), _pfLookCard(changed)), side: zone(cardHost), sideWidth: 380, sticky: true, cls: 'pf-layout' }));   // the avatar is a tab; the look is the card beside it: no hint and no second way there
+  } else if (sec === 'avatar') {
+    el.appendChild(pageLayout({ main: _pfBuilderCard(changed), cls: 'pf-layout pf-wide' }));
+  } else {
+    el.appendChild(pageLayout({ main: zone(_pfBadgesCard(changed), _pfPlacesCard(changed)), side: _pfFriendsCard(), sideWidth: 380, cls: 'pf-layout' }));
+  }
 }
 
 /* ---------- About you ---------- */
@@ -81,7 +87,7 @@ function _pfAboutCard(changed) {
   };
   // One name (SIMPLIFY_PLAN.md L11): greetings, the app title, your card and, unless you say otherwise, friends.
   const nm = input('name', PF_MAX.name, 'Your name', 'Your name', null, _pfNameSaved);
-  body.appendChild(_settingsRow('Your name', 'In greetings, the app title and your card.', nm));
+  body.appendChild(_settingsRow('Your name', '', nm));
   const pr = input('pronouns', PF_MAX.pronouns, 'Optional', 'Pronouns', ['she/her', 'he/him', 'they/them', 'she/they', 'he/they', 'any pronouns']);
   const prRow = _settingsRow('Pronouns', null, pr); prRow.appendChild(pr._dl);
   body.appendChild(prRow);
@@ -98,9 +104,9 @@ function _pfAboutCard(changed) {
   let doing = [];
   try { doing = (state.custom || []).filter(t => t && t.id && statusOf(t.id) !== 'done' && (statusOf(t.id) === 'doing' || (state.pinned && state.pinned[t.id]))).slice(0, 8).map(t => profileText(effTitle(t), PF_MAX.working)).filter(Boolean); } catch (e) { doing = []; }
   const wk = input('working', PF_MAX.working, 'e.g. Chapter 4', "What you're working on", doing);
-  const wkRow = _settingsRow("What I'm working on", doing.length ? 'Type it, or pick one of the tasks you are doing.' : 'One line.', wk); wkRow.appendChild(wk._dl);
+  const wkRow = _settingsRow("What I'm working on", '', wk); wkRow.appendChild(wk._dl);
   body.appendChild(wkRow);
-  body.appendChild(_settingsRow('Card colour', 'Your card and ring.', _pfSwatchRow(p.theme, (v) => { profileSet({ theme: v }); changed(); }, true)));
+  body.appendChild(_settingsRow('Card colour', '', _pfSwatchRow(p.theme, (v) => { profileSet({ theme: v }); changed(); }, true)));
   // More: the occasional choices (rows are built now, so Settings search finds them and opens the fold)
   setFold({ card, body }, 'profile-about-more', 'More', ({ body: more }) => {
     more.appendChild(_pfFriendNameRow(changed));
@@ -568,7 +574,7 @@ function _pfFriendsPanels() {
   } catch (e) { console.error('[profile] friends panels', e); }
 }
 function _pfOpenLook() {
-  setView('settings:me');
+  _pfShowSec('card');
   setTimeout(() => { const b = document.getElementById('pf-look'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); }, 60);
 }
 _pfFriendsPanels();
@@ -871,7 +877,7 @@ function _pfFriendsCard() {
 if (typeof registerCommand === 'function') {
   registerCommand({ id: 'profile-open', group: 'Go to', label: 'Profile: your card and avatar', icon: 'user-round', keywords: 'profile me avatar character name bio pronouns status badges places card', run: () => setView('settings:me') });
   registerCommand({ id: 'profile-card', label: 'Customise your card: banner, nameplate, title', icon: 'image', keywords: 'profile card banner background header nameplate font name style title emoji currently tint', run: () => _pfOpenLook() });
-  registerCommand({ id: 'profile-avatar', label: 'Customise your avatar', icon: 'wand-sparkles', keywords: 'avatar character builder customise hair outfit hat glasses face', run: () => { setView('settings:me'); setTimeout(() => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ block: 'start' }); }, 60); } });
+  registerCommand({ id: 'profile-avatar', label: 'Customise your avatar', icon: 'wand-sparkles', keywords: 'avatar character builder customise hair outfit hat glasses face', run: () => { _pfShowSec('avatar'); setTimeout(() => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ block: 'start' }); }, 60); } });
   registerCommand({ id: 'profile-status', label: 'Set your status', icon: 'circle-user', keywords: 'status away busy focusing holiday travelling emoji', run: () => profileOpenPop() });
   registerCommand({ id: 'profile-status-clear', label: 'Clear your status', icon: 'x', keywords: 'status clear', when: () => !!profileStatusNow(), run: () => { profileSet({ status: { emoji: '', text: '', until: 0 } }); toast('Status cleared', { icon: 'circle-user' }); } });
   registerCommand({ id: 'profile-random', label: 'Randomise your avatar', icon: 'wand-sparkles', keywords: 'avatar random surprise shuffle new look', run: () => {

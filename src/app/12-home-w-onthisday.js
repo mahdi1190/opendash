@@ -12,7 +12,7 @@
    ============================================================ */
 registerHomeWidget({
   id: 'onthisday', title: 'On this day', icon: 'history', group: 'fun', order: 255, fresh: true,
-  sizes: ['s', 'm', 'l'], defaultSize: 'm',
+  sizes: ['s', 'm', 'l'], defaultSize: 'm', defaultHidden: true,
   description: 'A year ago and a month ago: what you finished, where you were, who you were with. Letters from past you arrive here',
   emptyHint: 'Appears when there is something to look back on',
   aliases: ['on this day', 'memories', 'a year ago', 'a month ago', 'look back', 'time capsule', 'journal', 'birthdays', 'throwback'],

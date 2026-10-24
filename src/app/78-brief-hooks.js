@@ -81,11 +81,8 @@ registerSidebarBlock('home', {
   render(el, ctx) {
     // Home's other tabs (77-brief-review.js); Home itself (the Today tab) is the item above. Since 2.18 the heading
     // is Plan (the block id stays, so a rename or a move the user made stays) and Plan my week runs the planner.
-    el.appendChild(sbSection({ title: 'Plan' }));
-    el.appendChild(sbNavItem({ label: 'Finish the day', icon: 'sunset', view: 'home:evening', badge: _eveningNow() && !_eveningSavedToday() ? 'now' : '' }));
-    el.appendChild(sbNavItem({ label: 'Weekly review', icon: 'calendar-range', view: 'home:week' }));
+    // 2.19.1: Finish the day, Weekly review and History are the tabs at the top of Home (and in All pages and the palette): not listed here twice.
     if (typeof rfPlanWeekOpen === 'function') el.appendChild(sbNavItem({ label: 'Plan my week', icon: 'calendar-days', active: false, title: 'Spread your tasks across the week (Shift+P)', onClick: () => rfPlanWeekOpen() }));
-    el.appendChild(sbNavItem({ label: 'History', icon: 'history', view: 'home:history' }));
   },
 });
 registerCommand({ id: 'brief-start', label: 'Start my day', icon: 'sunrise', group: 'Go to', keywords: 'home morning brief today weather welcome plan day story', run: () => (typeof storyStartMyDay === 'function' ? storyStartMyDay() : briefOpen({ welcome: false })) });

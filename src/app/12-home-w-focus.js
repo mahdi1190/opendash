@@ -33,7 +33,7 @@
 registerHomeWidget({
   id: 'focus', title: 'Focus', icon: 'target', order: 20,
   description: 'Your most important tasks right now, with their subtasks',
-  sizes: ['m', 'l', 'full'], defaultSize: 'l',
+  sizes: ['m', 'l', 'full'], defaultSize: 'm',
   render(el, ctx) { _hfRender(el, ctx); },
   settings(anchor) { _homeTunePopover(anchor); },
 });

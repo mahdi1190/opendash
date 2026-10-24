@@ -130,10 +130,8 @@ function _calTickNow() {
 function _calPaintChrome() { if (typeof renderSidebar === 'function') renderSidebar(); }
 
 function _calBuild() {
-  const wrap = document.createElement('div');
   const ev = _calOpenEventId ? calEventById(_calOpenEventId) : null;
   if (_calOpenEventId && !ev) _calOpenEventId = null;
-  wrap.className = 'cal-wrap' + (ev ? ' with-panel' : '') + ' mode-' + calMode();
   const main = document.createElement('div'); main.className = 'cal-main';
   main.appendChild(_calHeader());
   const body = document.createElement('div'); body.className = 'cal-body';
@@ -164,9 +162,8 @@ function _calBuild() {
     const opt = { includeDone: !!calPrefs().showDone };
     body.appendChild(calAgendaList(Object.assign({}, o, { from: calFocus(), days: 42, entries: (iso) => calEntriesOn(iso, opt) })));
   }
-  wrap.appendChild(main);
-  wrap.appendChild(ev ? calEventPanel(ev) : calRail());
-  return wrap;
+  // The grid and, beside it, the focused day's agenda or the open event's panel (11-ui-kit.js pageLayout; 2.19.1).
+  return pageLayout({ main, side: ev ? calEventPanel(ev) : calRail(), cls: 'cal-wrap' + (ev ? ' with-panel' : '') + ' mode-' + calMode() });
 }
 
 function _calHeader() {
@@ -178,13 +175,14 @@ function _calHeader() {
     + `<button type="button" class="btn btn-icon" data-step="-1" aria-label="Previous" data-tip="Previous" data-kbd="K">${icon('chevron-left')}</button>`
     + `<button type="button" class="btn btn-icon" data-step="1" aria-label="Next" data-tip="Next" data-kbd="J">${icon('chevron-right')}</button>`
     + `<h1>${esc(a)} <span>${esc(b)}</span></h1>`
-    + `<div class="cal-h-r">${_calFreshHtml()}<div class="seg" role="tablist" aria-label="Calendar view">${_CAL_MODES.map(([k, l]) => `<button type="button" role="tab" data-mode="${k}" class="${calMode() === k ? 'on' : ''}" aria-selected="${calMode() === k}" data-tip="${escAttr(l)} view" data-kbd="${l[0]}">${esc(l)}</button>`).join('')}</div>`
+    + `<div class="cal-h-r">${_calFreshHtml()}<span data-cal-tabs></span>`
     + _calStreamChip()
-    + `<button type="button" class="btn btn-secondary" data-filter>${icon('list-filter', 'i-sm')}<span>Filter</span>${_calFilterCount() ? `<span class="badge">${_calFilterCount()}</span>` : ''}</button>`
+    + `<button type="button" class="btn btn-ghost" data-filter>${icon('list-filter', 'i-sm')}<span>Filter</span>${_calFilterCount() ? `<span class="badge">${_calFilterCount()}</span>` : ''}</button>`
     + `<button type="button" class="btn btn-primary" data-new>${icon('plus', 'i-sm')}<span>New</span></button></div>`;
   h.querySelectorAll('[data-step]').forEach(btn => { btn.onclick = () => calStep(Number(btn.dataset.step)); });
   h.querySelector('[data-today]').onclick = () => { _calGridScroll = null; calSetFocus(todayStr()); };
-  h.querySelectorAll('[data-mode]').forEach(btn => { btn.onclick = () => calSetMode(btn.dataset.mode); });
+  // The view switcher is the pill tabs every page uses (11-ui-kit.js subTabs), not a segmented control of its own.
+  h.querySelector('[data-cal-tabs]').replaceWith(subTabs({ tabs: _CAL_MODES.map(([k, l]) => ({ id: k, label: l })), active: calMode(), label: 'Calendar view', onChange: (id) => calSetMode(id) }));
   h.querySelector('[data-filter]').onclick = (e) => calFilterMenu(e.currentTarget);
   const upd = h.querySelector('[data-cal-update]');
   if (upd) upd.onclick = () => { if (!CalStore.running()) CalStore.update({ force: true }); };
@@ -222,7 +220,7 @@ function _calFreshState() {
 }
 function _calFreshHtml() {
   const f = _calFreshState();
-  if (!f) return '';
+  if (!f || !(f.running || f.failed || f.stale)) return '';   // 2.19.1: "Updated 4 min ago" is in the sidebar's card; the header speaks up only when it needs you
   return `<button type="button" class="btn btn-ghost cal-fresh${f.failed ? ' is-err' : ''}${f.stale ? ' is-stale' : ''}" data-cal-update${f.running ? ' aria-busy="true"' : ''} data-tip="${escAttr(f.tip)}" aria-label="${escAttr(f.label + '. ' + f.tip)}">`
     + `${icon(f.failed ? 'circle-alert' : 'refresh-cw', 'i-sm' + (f.running ? ' spin' : ''))}<span>${esc(f.label)}</span></button>`;
 }
@@ -448,16 +446,16 @@ registerSidebarBlock('calendar', {
       }
       for (const c of g.cals) _calSidebarRow(row, c, multi);
     }
-    row({ label: 'Task due dates', c: 'var(--sw-indigo)', src: 'OpenDash', off: !!hidden.tasks, toggle: () => { if (hidden.tasks) delete hidden.tasks; else hidden.tasks = true; saveUI(); render(); } });
-    row({ label: 'Planned time', c: 'var(--accent)', src: 'OpenDash', off: !!hidden.plans, toggle: () => { if (hidden.plans) delete hidden.plans; else hidden.plans = true; saveUI(); render(); } });   // planned slots (20-task-plan.js)
-    row({ label: 'Countdowns', c: 'var(--sw-amber)', src: 'OpenDash', off: !!hidden.countdowns, toggle: () => { if (hidden.countdowns) delete hidden.countdowns; else hidden.countdowns = true; saveUI(); render(); } });
+    row({ label: 'Task due dates', c: 'var(--sw-indigo)', src: '', off: !!hidden.tasks, toggle: () => { if (hidden.tasks) delete hidden.tasks; else hidden.tasks = true; saveUI(); render(); } });
+    row({ label: 'Planned time', c: 'var(--accent)', src: '', off: !!hidden.plans, toggle: () => { if (hidden.plans) delete hidden.plans; else hidden.plans = true; saveUI(); render(); } });   // planned slots (20-task-plan.js)
+    row({ label: 'Countdowns', c: 'var(--sw-amber)', src: '', off: !!hidden.countdowns, toggle: () => { if (hidden.countdowns) delete hidden.countdowns; else hidden.countdowns = true; saveUI(); render(); } });
   },
 });
 /** One calendar row in the sidebar. The source's name is the group heading when there are several sources. */
 function _calSidebarRow(row, c, grouped) {
   const why = c.hidden && !c.defaultOn && !Object.prototype.hasOwnProperty.call(calPrefs().hidden, 'cal:' + c.id) ? 'Someone else’s calendar: off until you switch it on.' : '';
   row({
-    label: c.name, c: `var(--sw-${c.color})`, src: c.error ? 'Not read' : grouped ? (c.count ? String(c.count) : '') : (c.sourceLabel || 'Google'), off: c.hidden,
+    label: c.name, c: `var(--sw-${c.color})`, src: c.error ? 'Not read' : grouped && c.count ? String(c.count) : '',   // 2.19.1: the source's name is not repeated on every row off: c.hidden,
     title: [c.googleName && c.name !== c.googleName ? `In ${c.sourceLabel || 'Google'}: ${c.googleName}` : '', c.description, why, c.error ? 'This calendar could not be read in the last update.' : `${c.count} event${c.count === 1 ? '' : 's'} in the last update`].filter(Boolean).join('\n'),
     toggle: () => calSetCalendarHidden(c.id, !c.hidden),
     menu: (anchor) => calCalendarMenu(anchor, c),

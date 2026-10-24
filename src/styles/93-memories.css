@@ -444,3 +444,20 @@ html[data-motion="reduced"] .mwr-bars i.is-now b { width: 100%; }
 .mwr-actions .btn-secondary { background: rgb(255 255 255 / .14); color: #fff; border-color: transparent; }
 .mwr-actions .btn-primary { background: #fff; color: #3b2a8a; border-color: transparent; }
 @media (max-width: 640px) { .mwr-slide { padding: 76px 18px 28px; } .mem-entry { grid-template-columns: 52px 1fr; } .mem-bar { grid-template-columns: 90px 1fr auto; } }
+
+/* 2.19.1: Memories tabs are a main column and a side column; long lists a page at a time */
+
+.mem-layout > .pg-main, .mem-layout > .pg-side { display: flex; flex-direction: column; gap: var(--space-4); }
+.mem-layout > .pg-side .mem-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.mem-jmain, .mem-ymain, .mem-pmain, .mem-mmain, .mem-yside, .mem-pside, .mem-mside { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.mem-side-card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.mem-side-card p { margin: 0; font-size: var(--text-sm); }
+.mem-side-n b { font-size: var(--text-xl); font-weight: var(--weight-semibold); }
+.mem-side-a { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.mem-entries > .pg-list-b { display: flex; flex-direction: column; gap: var(--space-2); }
+.mem-entries .pg-list-more, .mpc-album-list .pg-list-more, .mem-tl-pg .pg-list-more { display: flex; justify-content: center; padding-top: var(--space-3); }
+.mpc-album-list > .pg-list-b { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: var(--space-4); }
+.mem-cap-d { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-5); }
+.mem-cap-d h2 { margin: 0; font-size: var(--text-lg); }
+.mem-cap-d p { margin: 0; }
+.mem-cap-a { display: flex; gap: var(--space-2); flex-wrap: wrap; }

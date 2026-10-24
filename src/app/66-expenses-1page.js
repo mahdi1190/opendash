@@ -14,7 +14,7 @@ registerPage({
   badge: () => { const o = EXP.data && EXP.data.summary; return o && o.toClaimCount && expPrefs().reminders ? o.toClaimCount : ''; },
 });
 registerSection('expenses', {
-  group: 'finance', hashable: true, match: v => v === 'expenses', title: () => 'Expenses', crumb: () => [], layout: 'wide',
+  group: 'finance', hashable: true, match: v => v === 'expenses', title: () => 'Expenses', crumb: () => [], layout: 'page',
   mount(container) { _xpMount(container); },
   unmount() { EXP.picked = new Set(); },
 });
@@ -76,21 +76,16 @@ function _xChip(label, ic, cls, run) {
 function _xpBand(d, sum) {
   const band = _xe('div', 'xp-band');
   band.innerHTML = `<div class="xp-owed"><span class="xp-big num">${esc(expMoney(sum.total))}</span><span class="xp-sub">${sum.count ? `owed to you${sum.oldestDays > 1 ? ` · oldest ${esc(String(sum.oldestDays))} days` : ''}` : 'Nothing owed. All paid back.'}</span></div>`;
-  const n = { all: d.items.length, 'to-claim': 0, submitted: 0, paid: 0 };
-  for (const e of d.items) n[e.status]++;
   const chips = _xe('div', 'xp-chips');
   const seg = _xe('div', 'xp-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Status');
-  for (const [k, l] of [['all', 'All'], ['to-claim', 'To claim'], ['submitted', 'Waiting'], ['paid', 'Paid']]) seg.appendChild(_xChip(`${l} ${n[k]}`, '', 'xp-chip' + (EXP.status === k ? ' on' : ''), () => { EXP.status = k; render(); }));
+  for (const [k, l] of [['all', 'All'], ['to-claim', 'To claim'], ['submitted', 'Waiting'], ['paid', 'Paid']]) seg.appendChild(_xChip(l, '', 'xp-chip' + (EXP.status === k ? ' on' : ''), () => { EXP.status = k; render(); }));
   chips.appendChild(seg);
-  if (d.payers.length > 1) {
+  if (d.payers.length > 1) {   // 2.19.1: one select for who, not a chip per payer with its total again
     const pc = _xe('div', 'xp-payers');
-    for (const p of sum.payers.slice(0, 4)) pc.appendChild(_xChip(`${p.payer} · ${expMoney(p.total)}`, 'user', 'xp-chip' + (EXP.payer === p.key ? ' on' : ''), () => { EXP.payer = EXP.payer === p.key ? '' : p.key; render(); }));
-    if (d.payers.length > 4 || sum.payers.length < d.payers.length) {
-      const sel = _xe('select', 'xp-in xp-payer-sel'); sel.setAttribute('aria-label', 'Payer');
-      sel.innerHTML = '<option value="">Everyone</option>' + d.payers.map(p => `<option value="${escAttr(p.key)}"${EXP.payer === p.key ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
-      sel.onchange = () => { EXP.payer = sel.value; render(); };
-      pc.appendChild(sel);
-    }
+    const sel = _xe('select', 'xp-in xp-payer-sel'); sel.setAttribute('aria-label', 'Payer');
+    sel.innerHTML = '<option value="">Everyone</option>' + d.payers.map(p => `<option value="${escAttr(p.key)}"${EXP.payer === p.key ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+    sel.onchange = () => { EXP.payer = sel.value; render(); };
+    pc.appendChild(sel);
     chips.appendChild(pc);
   }
   band.appendChild(chips);
@@ -156,8 +151,7 @@ function _xpDetail(e) {
   head.append(_xe('h2', 'xp-d-t', esc(e.title)), _xe('div', 'xp-d-am num', esc(expMoney(e.amount, e.currency)) + (e.foreign ? `<small>${esc(e.foreign.amount.toFixed(2) + ' ' + e.foreign.currency)}</small>` : '')));
   box.appendChild(head);
   const meta = _xe('div', 'xp-m');
-  const chips = [`<span class="xp-tag st-${e.status}">${icon(XP_STATUS[e.status][1], 'i-xs')}${esc(XP_STATUS[e.status][0])}</span>`];
-  chips.push(`<span>${esc(_xpDate(e.date))}</span>`);
+  const chips = [`<span>${esc(_xpDate(e.date))}</span>`];   // the status is the list's heading and icon: not said a third time
   chips.push(e.payer ? `<span>${esc(e.payer)}</span>` : '<span class="xp-warn">no payer yet</span>');
   if (e.merchant) chips.push(`<span>${esc(e.merchant)}</span>`);
   if (e.category) chips.push(`<span>${esc(e.category)}</span>`);
@@ -175,8 +169,8 @@ function _xpDetail(e) {
   box.appendChild(meta);
   if (e.note) box.appendChild(_xe('p', 'xp-d-note', esc(e.note)));
   const acts = _xe('div', 'xp-d-acts');
-  if (e.status === 'to-claim') acts.appendChild(uiButton({ label: 'Submit', icon: 'send', kind: 'primary', size: 'sm', run: () => expSubmitDialog([e.id]) }));
-  else if (e.status === 'submitted') acts.appendChild(uiButton({ label: 'Mark as paid', icon: 'circle-check', kind: 'primary', size: 'sm', run: () => expMarkPaid([e.id]) }));
+  if (e.status === 'to-claim') acts.appendChild(uiButton({ label: 'Submit', icon: 'send', size: 'sm', run: () => expSubmitDialog([e.id]) }));
+  else if (e.status === 'submitted') acts.appendChild(uiButton({ label: 'Mark as paid', icon: 'circle-check', size: 'sm', run: () => expMarkPaid([e.id]) }));
   acts.append(uiButton({ label: 'Edit', icon: 'pencil', size: 'sm', run: () => expAddDialog({ edit: e.id }) }),
     uiButton({ icon: 'ellipsis', tip: 'More', aria: 'More for ' + e.title, size: 'sm', run: (ev, b) => _xpRowMenu(e, b) }));
   box.appendChild(acts);

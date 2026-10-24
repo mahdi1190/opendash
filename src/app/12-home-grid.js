@@ -209,7 +209,50 @@ function homeGridPack(grid) {
   if (!grid || !grid.isConnected) return false;
   grid.classList.add('is-packed');
   _hgWidth = grid.clientWidth;
+  _hgSections(grid);
+  _hgFill(grid);
   return false;
+}
+/* The labelled sections (2.19.1): Today, Coming up, Money and life. A widget belongs to the section its place in the
+   default order falls in (so the default board is always whole runs); a label shows above the first widget of each
+   run, never while customising, and not at all on a board the owner has mixed up (a section twice) or with one section. */
+const HOME_SECTIONS = Object.freeze([['today', 'Today', 40], ['plan', 'Coming up', 205], ['life', 'Money and life', Infinity]]);
+function homeSectionOf(def) {
+  const o = Number(def && def.order);
+  for (const s of HOME_SECTIONS) if (!(o >= s[2])) return s[0];
+  return 'life';
+}
+function _hgSections(grid) {
+  for (const h of grid.querySelectorAll(':scope > .hg-sec')) h.remove();
+  if (_homeEditing) return;
+  const runs = [];
+  for (const f of grid.querySelectorAll(':scope > .hg-w[data-sec]')) {
+    if (f.hidden) continue;
+    if (!runs.length || runs[runs.length - 1].sec !== f.dataset.sec) runs.push({ sec: f.dataset.sec, first: f });
+  }
+  if (runs.length < 2 || new Set(runs.map(r => r.sec)).size !== runs.length) return;
+  for (const r of runs) {
+    const h = secHead({ title: (HOME_SECTIONS.find(x => x[0] === r.sec) || [0, 'More'])[1], cls: 'hg-sec' });
+    grid.insertBefore(h, r.first);
+  }
+}
+/* A row that does not add up to 12 columns (a widget with nothing to show today, a narrow window) hands its free
+   columns to its last card, so there is never a gap beside a short card. */
+function _hgFill(grid) {
+  const kids = [...grid.children];
+  for (const k of kids) if (k.classList && k.classList.contains('hg-w')) k.style.removeProperty('grid-column');
+  if (_homeEditing) return;
+  let used = 0, last = null, lastSpan = 0;
+  const close = () => { if (last && used < 12) last.style.gridColumn = 'span ' + (lastSpan + 12 - used); used = 0; last = null; };
+  for (const k of kids) {
+    if (k.hidden) continue;
+    if (!k.classList.contains('hg-w')) { close(); continue; }   // a section label ends the row
+    const span = Math.min(12, parseInt(getComputedStyle(k).getPropertyValue('--hg-span'), 10) || 12);
+    if (used + span > 12) close();
+    used += span; last = k; lastSpan = span;
+    if (used >= 12) { used = 0; last = null; }
+  }
+  close();
 }
 /** After a whole re-render: glide from the last settled layout (or just remember this one). */
 function homeGridSettle(grid, glide) {
@@ -242,6 +285,7 @@ function _hgOnResize(grid) {
   if (performance.now() < _hgBusyUntil) return;               // the busy timer comes back
   const resized = Math.abs(grid.clientWidth - _hgWidth) > 1;
   _hgWidth = grid.clientWidth;
+  if (resized) _hgFill(grid);                                  // the spans change at the narrow breakpoints
   _hgLast = resized || !_hgLast ? homeFlipCapture(grid) : homeFlipPlay(grid, _hgLast);
 }
 function homeGridObserve(grid) {

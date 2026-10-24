@@ -366,3 +366,17 @@ body.has-selection .task .drag-handle { display: none; }
   position: fixed; top: -200px; left: -200px; padding: var(--space-1) var(--space-2); border-radius: var(--radius-full);
   background: var(--accent); color: #fff; font-size: var(--text-xs); font-weight: var(--weight-semibold); white-space: nowrap;
 }
+
+/* ----- 2.19.1: calmer task pages. Fewer boxes and lines: the headings and the space between them do the grouping. ----- */
+/* the header is title, filter, layout, New task, More: Display and the review tools sit in More (34-review-flow.js) */
+#display-btn, .view-mode-toggle .mode[data-mode="review"] { display: none; }
+.today-sum { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); margin-bottom: var(--space-3); }
+.today-sum > :not(.ts-prog):not(.ts-week-tog) { flex: 1 1 100%; min-width: 0; }
+.ts-week-tog { color: var(--fg-muted); }
+/* a group's heading stays in view while its tasks scroll under it; a hairline only once it is stuck is not needed, the background is enough */
+.task-group { margin-bottom: var(--space-4); }
+.tg-h { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 0; height: 34px; }
+.tg-b.pg-list .pg-list-more:not(:empty) { padding: var(--space-1) 0 0 var(--space-2); }
+/* the quick-add keeps only its field; Templates and the Q hint appear when it has focus or the pointer */
+.quick-add .qa-tmpl, .quick-add > kbd { opacity: 0; transition: opacity var(--m-fast) var(--m-ease-out); }
+.quick-add:hover .qa-tmpl, .quick-add:focus-within .qa-tmpl, .quick-add:hover > kbd, .quick-add:focus-within > kbd { opacity: 1; }

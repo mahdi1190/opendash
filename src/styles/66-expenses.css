@@ -1,5 +1,5 @@
 /* Expenses (2.18.1): Money > Expenses, the Owed to you widget, the task panel chip, Finances' Expense button. */
-.xp { max-width: 1280px; margin: 0 auto; padding: 0 0 var(--space-8); display: flex; flex-direction: column; gap: var(--space-3); }
+.xp { padding: 0 0 var(--space-8); display: flex; flex-direction: column; gap: var(--space-3); }
 .xp-loading, .xp-none, .xp-hint { color: var(--fg-muted); font-size: var(--text-sm); padding: 6px 2px; }
 .xp-band { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: space-between; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .xp-chips { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }

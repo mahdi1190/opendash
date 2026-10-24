@@ -46,7 +46,19 @@ function _trvScene(x) {
 }
 
 /* ---------- the list ---------- */
-function _trvList(container, snap, trips) {
+function _trvGroups(trips) {
+  return [
+    ['Now', trips.filter(t => !t.candidate && ['away', 'returning'].includes(t.status))],
+    ['Coming up', trips.filter(t => !t.candidate && ['planned', 'departing'].includes(t.status))],
+    ['Maybe trips', trips.filter(t => t.candidate && !t.confirmed)],
+    ['Past', trips.filter(t => !t.candidate && ['home', 'past'].includes(t.status)).reverse()],
+  ];
+}
+/** The trip the Trips page opens on: what is on now, else what is coming, else the latest. */
+function _trvDefault(trips) { for (const [, l] of _trvGroups(trips)) if (l.length) return l[0]; return null; }
+let _trvListTop = 0;
+/** Trips (2.19.1): your trips on the left, the picked one on the right. #view=trips opens the first; #view=trip:<id> a given one. */
+function _trvMaster(container, snap, trips, selId) {
   const page = document.createElement('div'); page.className = 'tr-trips';
   const on = typeof Travel !== 'undefined' && Travel.on();
   if (!on) {
@@ -55,41 +67,40 @@ function _trvList(container, snap, trips) {
     container.appendChild(page);
     return;
   }
-  const groups = [
-    ['Now', trips.filter(t => !t.candidate && ['away', 'returning'].includes(t.status))],
-    ['Coming up', trips.filter(t => !t.candidate && ['planned', 'departing'].includes(t.status))],
-    ['Maybe trips', trips.filter(t => t.candidate && !t.confirmed)],
-    ['Past', trips.filter(t => !t.candidate && ['home', 'past'].includes(t.status)).reverse()],
-  ];
   if (!trips.length) {
     mountEmptyState(page, { icon: 'map', title: 'No trips yet', text: 'Flights and trains in your calendar, trips and hotel stays, time abroad on this computer and card payments abroad show here.',
       actions: [{ label: 'Open the calendar', icon: 'calendar', run: () => setView('calendar') }] });
     container.appendChild(page);
     return;
   }
-  for (const [title, list] of groups) {
-    if (!list.length) continue;
-    const sec = document.createElement('section'); sec.className = 'tr-trips-g';
-    sec.innerHTML = secHeadHtml({ title, count: list.length });
-    const ul = document.createElement('div'); ul.className = 'tr-trips-list'; ul.setAttribute('role', 'list');
-    for (const t of list) {
-      const r = document.createElement('button'); r.type = 'button'; r.className = 'tr-trip-row'; r.setAttribute('role', 'listitem');
-      r.dataset.mKey = 'trips:' + t.id; r.dataset.id = t.id;
-      r.innerHTML = `<span class="tr-trip-mot">${_trvMotif(t)}</span><span class="tr-trip-main"><span class="tr-trip-t">${typeof trFlagHtml === 'function' && t.dest ? trFlagHtml(t.dest.cc) : ''}<b></b></span><span class="tr-trip-s subtle"></span></span><span class="badge badge-soft tr-trip-st"></span>`;
-      r.querySelector('b').textContent = t.label || 'Somewhere';
-      r.querySelector('.tr-trip-s').textContent = `${trUiRange(t.from, t.to)}${t.nights ? ' · ' + t.nights + (t.nights === 1 ? ' night' : ' nights') : ''}${t.candidate ? ' · seen in ' + (t.sources.includes('bank') ? 'card payments' : 'your calendar') : ''}`;
-      r.querySelector('.tr-trip-st').textContent = t.candidate ? 'Maybe' : _trvStatusText(t, snap.today);
-      r.addEventListener('click', () => setView('trip:' + t.id));
-      ul.appendChild(r);
-    }
-    sec.appendChild(ul);
-    page.appendChild(sec);
+  const t = selId ? _trvFind(selId).trip : _trvDefault(trips);
+  if (!t) {
+    mountEmptyState(page, { icon: 'map-pin', title: 'That trip is gone', text: 'It was forgotten, marked as not a trip, or its events have changed.', actions: [{ label: 'All trips', primary: true, run: () => setView('trips') }] });
+    container.appendChild(page);
+    return;
   }
-  container.appendChild(page);
-  if (_trvEntered !== 'trips' && !(typeof _truReduced === 'function' && _truReduced())) {
-    [...page.querySelectorAll('.tr-trip-row')].slice(0, 8).forEach((n, i) => n.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 300, delay: i * 40, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' }));
-  }
-  _trvEntered = 'trips';
+  const md = masterDetail({
+    label: 'Your trips', listWidth: 280,
+    list: (host) => {
+      for (const [title, list] of _trvGroups(trips)) {
+        if (!list.length) continue;
+        host.appendChild(secHead({ title, count: list.length }));
+        for (const x of list) {
+          let avatar = null;
+          if (typeof trFlagHtml === 'function' && x.dest && x.dest.cc) { avatar = document.createElement('span'); avatar.innerHTML = trFlagHtml(x.dest.cc); }
+          host.appendChild(mdRow({ avatar: avatar || undefined, icon: avatar ? undefined : 'map-pin', title: x.label || 'Somewhere', active: x.id === t.id,
+            sub: `${trUiRange(x.from, x.to)}${x.nights ? ' · ' + x.nights + (x.nights === 1 ? ' night' : ' nights') : ''} · ${x.candidate ? 'Maybe' : _trvStatusText(x, snap.today)}`,
+            run: () => setView('trip:' + x.id) }));
+        }
+      }
+    },
+    detail: () => _trvTripDetail(t, snap),
+  });
+  container.appendChild(md);
+  md.mdList.scrollTop = _trvListTop || 0;
+  md.mdList.addEventListener('scroll', () => { _trvListTop = md.mdList.scrollTop; }, { passive: true });
+  const row = md.mdList.querySelector('.md-row.on');
+  if (row && row.offsetTop + row.offsetHeight > md.mdList.clientHeight + md.mdList.scrollTop) md.mdList.scrollTop = Math.max(0, row.offsetTop - 60);
 }
 
 /* ---------- one trip ---------- */
@@ -198,8 +209,8 @@ async function _trvNotTrip(t) {
 function _trvConfirm(t) { TravelStore.confirm(t.id); toast('Saved as a trip', { kind: 'ok', icon: 'map', action: { label: 'Undo', run: () => undo() } }); render(); }
 function _trvHeaderActions(view) {
   const v = String(view || state.view || '');
-  if (!/^trip:/.test(v)) return {};
-  const t = _trvFind(v.slice(5)).trip;
+  if (v !== 'trips' && !/^trip:/.test(v)) return {};
+  const t = v === 'trips' ? _trvDefault(_trvTrips().trips) : _trvFind(v.slice(5)).trip;
   if (!t) return {};
   const maybe = t.candidate && !t.confirmed;
   const primary = maybe ? { label: 'This is a trip', icon: 'check', run: () => _trvConfirm(t) } : { label: 'Add event', icon: 'calendar-plus', run: () => _trvAddEvent(t) };
@@ -210,33 +221,8 @@ function _trvHeaderActions(view) {
     { label: 'Forget this trip…', icon: 'trash-2', danger: true, run: () => trForgetTripAsk(t.id, { after: () => setView('trips') }) });
   return { primary, more };
 }
-function _trvTrip(container, id) {
-  const { snap, trip: t, trips } = _trvFind(id);
+function _trvTripDetail(t, snap) {
   const page = document.createElement('div'); page.className = 'tr-trip';
-  if (!t) {
-    mountEmptyState(page, { icon: 'map-pin', title: 'That trip is gone', text: 'It was forgotten, marked as not a trip, or its events have changed.', actions: [{ label: 'All trips', primary: true, run: () => setView('trips') }] });
-    container.appendChild(page);
-    return;
-  }
-  // Sub-nav (chrome): the other trips; the current one does nothing when clicked again.
-  const near = trips.filter(x => !x.candidate || x.id === t.id).slice(-6);
-  if (near.length > 1) {
-    const nav = document.createElement('nav'); nav.className = 'tr-subnav'; nav.setAttribute('aria-label', 'Trips'); nav.setAttribute('data-m-chrome', '');
-    const all = document.createElement('button'); all.type = 'button'; all.className = 'chip'; all.innerHTML = icon('arrow-left', 'i-xs') + '<span>All trips</span>';
-    all.addEventListener('click', () => setView('trips'));
-    nav.appendChild(all);
-    for (const x of near) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (x.id === t.id ? ' chip-accent' : '');
-      if (x.id === t.id) { b.setAttribute('aria-current', 'page'); b.style.cursor = 'default'; }
-      b.innerHTML = (typeof trFlagHtml === 'function' && x.dest ? trFlagHtml(x.dest.cc) : '') + `<span>${esc(x.label || 'Trip')}</span>`;
-      b.addEventListener('click', () => {
-        if (x.id === t.id) { const m = document.getElementById('main'); if (m && m.scrollTop > 0) m.scrollTo({ top: 0, behavior: _truReduced() ? 'auto' : 'smooth' }); return; }
-        setView('trip:' + x.id);
-      });
-      nav.appendChild(b);
-    }
-    page.appendChild(nav);
-  }
   const body = document.createElement('div'); body.className = 'tr-trip-body'; body.setAttribute('data-m-region', '');
   const head = document.createElement('header'); head.className = 'tr-trip-h'; head.dataset.mKey = `trip:${t.id}:head`;
   head.innerHTML = `<div class="tr-trip-hm">${_trvMotif(t)}</div><div class="tr-trip-hb"><div class="tr-trip-ht">${typeof trFlagHtml === 'function' && t.dest ? trFlagHtml(t.dest.cc, { sheen: _trvEntered !== 'trip:' + t.id }) : ''}<h2></h2><span class="badge badge-soft"></span></div><div class="subtle tr-trip-hs"></div>${_trvThanks(t)}</div>`;
@@ -256,12 +242,15 @@ function _trvTrip(container, id) {
   cols.append(left, right);
   body.appendChild(cols);
   page.appendChild(body);
-  container.appendChild(page);
   // Once per trip entered: the body rises; re-renders (saves, live sync, spending arriving) do nothing.
-  if (_trvEntered !== 'trip:' + t.id && !_truReduced()) {
-    [...body.querySelectorAll(':scope > [data-m-key], .tr-trip-cols > div > section')].slice(0, 8).forEach((n, i) => n.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 320, delay: i * 50, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' }));
-  }
+  const enter = _trvEntered !== 'trip:' + t.id;
   _trvEntered = 'trip:' + t.id;
+  requestAnimationFrame(() => {
+    if (enter && !_truReduced()) {
+      [...body.querySelectorAll(':scope > [data-m-key], .tr-trip-cols > div > section')].slice(0, 8).forEach((n, i) => n.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 320, delay: i * 50, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' }));
+    }
+  });
+  return page;
 }
 
 registerSection('trips', {
@@ -273,8 +262,8 @@ registerSection('trips', {
   headerActions: _trvHeaderActions,
   mount(container, view) {
     const v = view || state.view;
-    if (v === 'trips') { const { snap, trips } = _trvTrips(); _trvList(container, snap, trips); }
-    else _trvTrip(container, v.slice(5));
+    const { snap, trips } = _trvTrips();
+    _trvMaster(container, snap, trips, v === 'trips' ? '' : v.slice(5));
   },
   unmount() { _trvEntered = ''; },
 });

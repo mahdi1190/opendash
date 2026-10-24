@@ -325,3 +325,8 @@ button.tg-where:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .tg-sum-t { flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; }
 .tg-sum-t h2 { margin: 0; font-size: var(--text-lg); line-height: var(--lh-lg); overflow-wrap: anywhere; }
 .tg-md-new .md-row-ic { color: var(--accent); }
+
+/* 2.19.1: a space's pages are in the page header; its content sits beside who is here */
+
+.tg-side-card { display: flex; flex-direction: column; gap: 2px; padding: var(--space-3); }
+.tg-side-card > .sec-h { margin: 0 0 var(--space-1); }

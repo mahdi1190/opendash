@@ -376,16 +376,20 @@ function funFriendHero(el, f) {
   const acts = el.querySelector('.fr-fhero-a');
   if (acts) {
     const more = acts.lastElementChild;
-    const add = (b) => acts.insertBefore(b, more);
-    add(_funBtn('Wave', { e: '👋', run: (e, b) => funWave(f, 'wave', { anchor: b }) }));
-    add(_funBtn('High five', { e: '🙌', run: (e, b) => funWave(f, 'high5', { anchor: b }) }));
-    add(_funBtn('Gift', { icon: 'gift', run: () => { if (typeof funGiftDialog === 'function') funGiftDialog(f); } }));
+    // 2.19.1: Wave, High five, Gift, the event's knock and Thinking of you are ONE button with a menu (they were five)
     const ev = funEventNow();
-    if (ev) add(_funBtn(ev.def.knock.label, { e: ev.def.knock.e, cls: 'fun-knockbtn', run: (e, b) => funKnock(f, 'knock', { anchor: b }) }));
-    add(_funBtn('', { kind: 'btn-ghost', e: '💭', tip: `Let ${_funFirst(f)} know you're thinking of them (once a day)`, aria: 'Thinking of you', disabled: x.used && x.used.nudge >= 1, run: (e, b) => funWave(f, 'nudge', { anchor: b }) }));
+    const items = [
+      { label: 'Wave', icon: '👋', run: () => funWave(f, 'wave', { anchor: hi }) },
+      { label: 'High five', icon: '🙌', run: () => funWave(f, 'high5', { anchor: hi }) },
+      { label: 'Gift', icon: 'gift', run: () => { if (typeof funGiftDialog === 'function') funGiftDialog(f); } },
+    ];
+    if (ev) items.push({ label: ev.def.knock.label, icon: ev.def.knock.e, run: () => funKnock(f, 'knock', { anchor: hi }) });
+    items.push({ label: 'Thinking of you', icon: '💭', hint: 'once a day', title: `Let ${_funFirst(f)} know you're thinking of them`, disabled: !!(x.used && x.used.nudge >= 1), run: () => funWave(f, 'nudge', { anchor: hi }) });
+    const hi = uiButton({ label: 'Say hi', icon: 'smile-plus', size: 'sm', run: (e, btn) => openMenu(btn, items, { align: 'start' }) });
+    acts.insertBefore(hi, more);
   }
   const rt = el.querySelector('.fr-fring-t');
-  const chip = _funDuoChip(x, f, true);
+  const chip = _funDuoChip(x, f, !!(x.duo && x.duo.cur));   // no chip for a streak of nothing
   if (rt && chip) rt.appendChild(chip);
 }
 function funFeedItem(li, e, f) {

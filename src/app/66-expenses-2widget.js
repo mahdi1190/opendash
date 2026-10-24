@@ -3,10 +3,10 @@
    task panel and "Make this an expense" in the task menu, and Finances' Expense button and "Expense?" hint.
    ============================================================ */
 registerHomeWidget({
-  id: 'owed', title: 'Owed to you', icon: 'receipt', order: 175, group: 'money', page: 'expenses',
+  id: 'owed', title: 'Owed to you', icon: 'receipt', order: 224, group: 'money', page: 'expenses',
   description: 'What you have spent for others and are waiting to be paid back',
   emptyHint: 'Appears when an expense is waiting to be paid back (Money > Expenses)',
-  sizes: ['s', 'm'], defaultSize: 's', defaultHidden: false, gate: 'finance',
+  sizes: ['s', 'm'], defaultSize: 's', defaultHidden: true, gate: 'finance',
   aliases: ['expenses', 'owed', 'reimbursement', 'claims', 'paid back'],
   render(el, ctx) { return _xwRender(el, ctx || {}); },
 });

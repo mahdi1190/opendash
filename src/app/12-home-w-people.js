@@ -18,10 +18,10 @@
 let _hbpCalAsked = false;
 
 registerHomeWidget({
-  id: 'people', title: 'People today', icon: 'users', order: 70,
+  id: 'people', title: 'People today', icon: 'users', order: 214,
   description: 'Who you will see today, why it matters, and who is waiting on you',
   emptyHint: 'Appears when you have people, with today’s meetings',
-  sizes: ['s', 'm'], defaultSize: 's',
+  sizes: ['s', 'm'], defaultSize: 'm',
   render(el, ctx) { return _hbpRender(el, ctx || {}); },
 });
 

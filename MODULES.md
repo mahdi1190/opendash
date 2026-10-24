@@ -473,7 +473,10 @@ module helpers move onto it as their files are touched (batches C2 to C8, B1 to 
 become one long stack of cards. They size by the page's own width (`#main` is a container query), so a
 half-width window and a phone stack them.
 - `pageLayout({main, side, sideWidth, cls})`: two zones, a readable main column and a sticky side column
-  (`.pgMain`, `.pgSide`); no `side` = one column, 860 px.
+  (`.pgMain`, `.pgSide`); no `side` = one column.
+- Page width (2.19.1, 05-layout.css): every page is centred in the main area at `--page-w` (1200 px; layout `'wide'` 1440;
+  a page that is only a one-column `pageLayout`, or Settings, 960) with the same `--page-gutter`; the page header and
+  body share it. Page CSS never sets its own `max-width` or `margin: auto` on its root.
 - `masterDetail({list, detail, empty, listWidth, label})` + `mdRow({title, sub, icon|avatar, badge, active, run})`:
   the list of things on the left, the selected one on the right; `el.mdSet(node)` swaps the right side only.
   Narrow: the list becomes a scrolling strip above the detail.
@@ -485,6 +488,17 @@ half-width window and a phone stack them.
 - Live refresh: `server/file-watch.mjs` emits `/api/events` `{type: 'files', names: [...]}` when expenses, garden,
   friends, together, profile or finance files change on disk (the assistant's MCP process, another computer's
   sync); `src/app/86-live-sync.js` calls `liveRefresh(name, fn)` handlers registered by each page.
+- Home (2.19.1, 12-home-grid.js): the default board is Today (focus m + schedule m), Coming up (week l + waiting s) and Money and
+  life (people m + finance m); the rest waits in Add widget (`defaultHidden`; mirrored in `lib/home-topbar.mjs`). A widget's
+  section comes from its `order` (below 40 Today, below 205 Coming up, else Money and life), so the default board is whole runs;
+  `homeGridPack` draws a label above each run (not while customising, not on a board with a section twice) and hands the free
+  columns of an incomplete row to its last card (`_hgFill`), so a short card never has a gap beside it. The hero shows only what
+  helps: no tagline, no "Up to date" strip, the Day so far card only with text, two ideas, and one "Think through my day" button.
+- Tasks (2.19.1): the header is title, filter, layout switch, New task and one More (`#rf-head`, 34-review-flow.js: the review
+  tools, then Display); a task group is `pagedList` (12 rows, Show more) under a sticky heading; Tags and People in the sidebar
+  start folded (`SB_FOLDED_AT_FIRST`, 14-shell.js). A board's Showing / Columns / Rows / Cards are one Layout menu.
+- Calendar (2.19.1): the grid and the day's rail or the event's panel are a `pageLayout` (`.cal-wrap.pg-layout`); the views are
+  `subTabs`; the "Updated" button shows only when an update is running, failed or stale.
 - One rule for getting around (2.19): the area switcher (tiles), the area's sidebar (its PAGES, never a page's own
   sections), tabs in the page header (a page's sections: `headerSubTabs`; Money's five tabs are `GROUPS` in
   `src/finance/00-core.js`, the ten finance sections sit under them with a small chooser in `12-bar.js`), and Back.

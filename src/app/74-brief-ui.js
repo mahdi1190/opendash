@@ -590,22 +590,9 @@ function _bfPaintProgress() {
   const any = Object.keys(res).length;
   host.className = 'bf-progress' + (running ? ' running' : '') + (!any ? ' empty' : '');
   if (!any) { host.innerHTML = ''; return; }
-  // Finished without trouble: one quiet line ("Up to date · 08:40"), not a row of chips.
+  // Finished without trouble: nothing at all (2.19.1; "Refresh today" is in the top bar, what is not connected is in Connections).
   const bad = steps.filter(s => res[s.id] && ['error', 'timeout'].includes(res[s.id].status));
-  if (!running && !bad.length) {
-    const off = steps.filter(s => res[s.id] && res[s.id].status === 'skipped' && res[s.id].reason !== 'off').map(s => s.label);
-    const away = steps.filter(s => res[s.id] && res[s.id].status === 'elsewhere');
-    const at = _bf.refreshedAt ? new Date(_bf.refreshedAt) : null;
-    host.className = 'bf-progress is-done';
-    host.innerHTML = `<span class="bf-uptodate">${icon('circle-check', 'i-sm')}<span>Up to date${at ? ` · ${esc(_calTimeLabel(_calHM(_bfMin(at))))}` : ''}</span></span>`
-      + (off.length ? `<span class="bf-off" title="Connect them in Connections">${esc(off.join(', '))} not connected</span>` : '')
-      + (away.length ? `<span class="bf-off" title="Settings > Sync > Main computer">${esc(away.map(s => s.label).join(', '))}: ${esc(away[0].id && res[away[0].id].reason || '')}</span>` : '') + '<span class="spacer"></span>';
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm';
-    b.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Refresh</span>';
-    b.onclick = () => briefRefresh(true);
-    host.appendChild(b);
-    return;
-  }
+  if (!running && !bad.length) { host.className = 'bf-progress empty'; host.innerHTML = ''; return; }
   host.innerHTML = steps.map(s => {
     const r = res[s.id] || { status: 'pending' };
     const st = r.status;
@@ -654,22 +641,24 @@ function _bfPaintAi(card, typeIt) {
   const t = card.querySelector('.bf-ai-t');
   if (typeof homeUseCurrentSummary === 'function' && homeUseCurrentSummary()) {
     card.hidden = false;
+    card.removeAttribute('data-requires'); card.removeAttribute('data-requires-soft');   // the day so far is written here, it needs no Claude
     const heading = card.querySelector('.overline');
     if (heading) heading.textContent = 'Day so far';
     card.classList.remove('is-off');
     t.textContent = homeCurrentSummary(); t.classList.remove('muted');
     const button = card.querySelector('.bf-ai-re');
-    if (button) { button.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Refresh today</span>'; button.onclick = homeRefreshToday; }
+    if (button) button.hidden = true;                    // Refresh today is in the top bar (2.19.1)
     return;
   }
   const heading = card.querySelector('.overline');
   if (heading) heading.textContent = 'Your day in three sentences';
   const button = card.querySelector('.bf-ai-re');
-  if (button) { button.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Regenerate</span>'; button.onclick = () => _bfLoadSummary(briefModel(), true); }
+  if (button) { button.hidden = false; button.innerHTML = icon('refresh-cw', 'i-sm') + '<span>Regenerate</span>'; button.onclick = () => _bfLoadSummary(briefModel(), true); }
   const s = _bf.summary.brief;
   const loading = _bf.summaryLoading.brief;
   const ai = typeof connHas === 'function' ? connHas('claude') : AI_AVAILABLE;
   card.classList.toggle('is-off', !ai);
+  card.hidden = !ai && !(s && s.date === todayStr() && s.text);   // no Claude and nothing written: no "connect" box on Home (2.19.1)
   if (s && s.date === todayStr() && s.text) {
     if (typeIt) briefTypeText(t, s.text); else t.textContent = s.text;
     t.classList.remove('muted');

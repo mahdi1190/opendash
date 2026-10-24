@@ -24,12 +24,14 @@ function _bdToolbar(L) {
   const b = L.board;
   const bar = document.createElement('div'); bar.className = 'board-bar';
   bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Board');
-  if (!L.perView) bar.appendChild(_bdBarBtn({ icon: 'list-filter', label: 'Showing', value: _bdFilterLabel(b), menu: true, run: (el) => _bdFilterMenu(L, el) }));
+  // 2.19.1: Showing, Columns, Rows and Cards are one Layout menu (each still opens its own list), not four buttons.
   const g = BOARD_GROUPS.find(x => x[0] === b.group) || BOARD_GROUPS[0];
-  bar.appendChild(_bdBarBtn({ icon: g[2], label: 'Columns', value: g[1], menu: true, run: (el) => _bdGroupMenu(L, el) }));
-  const ln = BOARD_LANES.find(x => x[0] === b.lanes) || BOARD_LANES[0];
-  bar.appendChild(_bdBarBtn({ icon: 'table-2', label: 'Rows', value: b.lanes === 'none' ? 'None' : ln[1], menu: true, run: (el) => _bdLaneMenu(L, el) }));
-  bar.appendChild(_bdBarBtn({ icon: 'layout-template', label: 'Cards', menu: true, run: (el) => _bdCardsMenu(L, el) }));
+  bar.appendChild(_bdBarBtn({ icon: 'layout-template', label: 'Layout', value: g[1], menu: true, tip: 'What the board shows, its columns, rows and cards', run: (el) => openMenu(el, [
+    ...(!L.perView ? [{ label: 'Showing', hint: _bdFilterLabel(b), icon: 'list-filter', run: () => _bdFilterMenu(L, el) }] : []),
+    { label: 'Columns', hint: g[1], icon: g[2], run: () => _bdGroupMenu(L, el) },
+    { label: 'Rows', hint: b.lanes === 'none' ? 'None' : (BOARD_LANES.find(x => x[0] === b.lanes) || BOARD_LANES[0])[1], icon: 'table-2', run: () => _bdLaneMenu(L, el) },
+    { label: 'Cards', icon: 'layout-template', run: () => _bdCardsMenu(L, el) },
+  ], { align: 'start', width: 250 }) }));
   if (L.hidden.length) bar.appendChild(_bdBarBtn({ icon: 'eye-off', value: `${L.hidden.length} hidden`, menu: true, tip: 'Hidden columns', run: (el) => _bdHiddenMenu(L, el) }));
   const sp = document.createElement('span'); sp.className = 'grow'; bar.appendChild(sp);
   // How far along the board is (when it has a Done column).
@@ -44,10 +46,11 @@ function _bdToolbar(L) {
   if (b.group === 'custom' || b.group === 'tag' || b.group === 'person') {
     bar.appendChild(_bdBarBtn({ icon: 'plus', label: 'Column', aria: 'Add a column', menu: b.group !== 'custom', run: (el) => (b.group === 'custom' ? boardEditColumn(L, null) : _bdAddKeyColumnMenu(L, el)) }));
   }
-  const keys = _bdBarBtn({ icon: 'keyboard', aria: 'Board keys', tip: '← → columns · Alt+arrows move a card · M move to…', run: () => toast('Board keys: ← → move between columns · Alt+← → move the card · Alt+↑ ↓ reorder it · M opens Move to…', { icon: 'keyboard', timeout: 7000 }) });
-  bar.appendChild(keys);
-  if (L.perView) bar.appendChild(_bdBarBtn({ icon: 'square-kanban', label: 'Save as board', tip: 'Keep this board in the sidebar under Boards', run: () => boardSaveFromView(L) }));
-  else bar.appendChild(_bdBarBtn({ icon: 'ellipsis', aria: 'Board options', tip: 'Board options', run: (el) => _bdBoardMenu(L, el) }));
+  const keysItem = { label: 'Board keys', icon: 'keyboard', run: () => toast('Board keys: ← → move between columns · Alt+← → move the card · Alt+↑ ↓ reorder it · M opens Move to…', { icon: 'keyboard', timeout: 7000 }) };
+  bar.appendChild(_bdBarBtn({ icon: 'ellipsis', aria: 'More', tip: 'More: save, rename, keys', run: (el) => {
+    if (L.perView) openMenu(el, [{ label: 'Save as board', icon: 'square-kanban', hint: 'in the sidebar under Boards', run: () => boardSaveFromView(L) }, keysItem], { align: 'end', width: 250 });
+    else _bdBoardMenu(L, el, [keysItem]);
+  } }));
   return bar;
 }
 
@@ -155,7 +158,7 @@ function _bdFilterMenu(L, el) {
   items.push('sep', { label: 'Show recently done', icon: 'circle-check', checked: !(b.filter && b.filter.done === 'hide'), run: () => boardUpdate(b, d => { d.filter = Object.assign({}, d.filter || {}, { done: d.filter && d.filter.done === 'hide' ? 'recent' : 'hide' }); }) });
   openMenu(el, items, { width: 260 });
 }
-function _bdBoardMenu(L, el) {
+function _bdBoardMenu(L, el, extra) {
   const b = L.board, list = boardSavedList(), i = list.findIndex(x => x.id === b.id);
   openMenu(el, [
     { heading: b.name || 'Board' },
@@ -165,6 +168,7 @@ function _bdBoardMenu(L, el) {
     { label: 'Move up in the sidebar', icon: 'arrow-up', disabled: i <= 0, run: () => _bdMoveBoard(b.id, -1) },
     { label: 'Move down in the sidebar', icon: 'arrow-down', disabled: i < 0 || i >= list.length - 1, run: () => _bdMoveBoard(b.id, 1) },
     'sep',
+    ...(extra && extra.length ? [...extra, 'sep'] : []),
     { label: 'Delete board', icon: 'trash-2', danger: true, hint: 'tasks stay', run: () => boardDelete(b.id) },
   ], { align: 'end', width: 250 });
 }

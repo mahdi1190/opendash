@@ -291,11 +291,10 @@ function _acwRenderBody() {
   const F = _acwF(), un = F.unlocked;
   body.innerHTML = '';
   if (!_acwFiltered()) {
-    const nx = gameWallNextUp(3, F);
-    if (nx.length) body.appendChild(_acwNextSec(nx));
-    const al = _acwAlmost(F, un);
-    if (al) body.appendChild(al);
-    body.appendChild(_acwShelves(F, un));
+    // the shelves beside what is closest (2.19.1): Next up and the almost-there list stay in view while you open shelves
+    const nx = gameWallNextUp(3, F), al = _acwAlmost(F, un);
+    body.appendChild(pageLayout({ main: _acwShelves(F, un), cls: 'aw-layout', sideWidth: 340,
+      side: (nx.length || al) ? (h) => { if (nx.length) h.appendChild(_acwNextSec(nx)); if (al) h.appendChild(al); } : null }));
   } else body.appendChild(_acwResults(F, un));
   const notes = document.createElement('p'); notes.className = 'aw-notes muted';
   notes.textContent = 'Money and Places achievements are private: they never show on your profile unless you pick them. Nothing earned is ever taken away.';
@@ -415,10 +414,7 @@ function _acwResults(F, un) {
   wrap.appendChild(secHead({ title: `${_acwNum(match.length)} achievement${match.length === 1 ? '' : 's'}`,
     actions: [{ label: 'Clear', icon: 'x', run: () => { _acw.q = ''; _acw.status.clear(); _acw.extra.clear(); _acw.shelf = 'all'; _acw.sort = 'closest'; _acwRerender(); } }] }));
   const items = _acwSortList(match.map(d => ({ def: d, members: null })), F, un);
-  const grid = document.createElement('div'); grid.className = 'aw-grid';
-  for (const x of items.slice(0, _acw.limit)) grid.appendChild(_acwCard(x.def, F, un, null));
-  wrap.appendChild(grid);
-  if (items.length > _acw.limit) wrap.appendChild(uiButton({ label: `Show ${_acwNum(Math.min(120, items.length - _acw.limit))} more`, kind: 'ghost', size: 'sm', run: () => { _acw.limit += 120; _acwRenderBody(); } }));
+  wrap.appendChild(pagedList({ items, pageSize: 24, cls: 'aw-grid-list', render: (x) => _acwCard(x.def, F, un, null) }));
   return wrap;
 }
 

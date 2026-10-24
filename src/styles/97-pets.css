@@ -109,7 +109,7 @@
 html[data-theme="dark"] .pt-stage-sky { filter: brightness(0.82) saturate(0.9); }
 
 /* ---------- the page ---------- */
-.pt-page { display: flex; flex-direction: column; gap: var(--space-4); max-width: 1080px; }
+.pt-page { display: flex; flex-direction: column; gap: var(--space-4); }
 .pt-page.is-enter > * { animation: pt-rise .45s cubic-bezier(.2, .9, .3, 1) both; }
 .pt-page.is-enter > *:nth-child(2) { animation-delay: 50ms; } .pt-page.is-enter > *:nth-child(3) { animation-delay: 100ms; } .pt-page.is-enter > *:nth-child(n+4) { animation-delay: 150ms; }
 @keyframes pt-rise { from { opacity: 0; transform: translateY(8px); } }
@@ -266,3 +266,12 @@ html[data-motion="reduced"] .pt-adopt-card, html[data-motion="reduced"] .pt-tile
   .pt-svg *, .pt-g *, .pt-el, .ptg-move, .ptg-face, .pt-page.is-enter > * { animation: none !important; }
   .pt-heart, .pt-fly-treat { display: none; }
 }
+
+/* 2.19.1: Together is your pet on the left, its care on the right */
+
+.pt-layout { grid-template-columns: var(--pg-side, 340px) minmax(0, 1fr); }
+.pt-layout > .pg-side { order: -1; }
+.pt-layout .pt-hero { grid-template-columns: minmax(0, 1fr); }
+.pt-stack { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; }
+.pt-journal-pg .pg-list-more { display: flex; justify-content: center; padding-top: var(--space-2); }
+@container main (max-width: 760px) { .pt-layout { grid-template-columns: minmax(0, 1fr); } .pt-layout > .pg-side { order: 0; } }

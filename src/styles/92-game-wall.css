@@ -1,5 +1,5 @@
 /* The Achievements page (92-game-5wall.js, 2.18 B0): status first, folded categories, cards by rarity. */
-.aw { display: flex; flex-direction: column; gap: var(--space-4); max-width: var(--content-max, 1180px); }
+.aw { display: flex; flex-direction: column; gap: var(--space-4); }
 .aw-r-common { --rc: var(--sw-slate); } .aw-r-uncommon { --rc: var(--sw-green); } .aw-r-rare { --rc: var(--sw-blue); }
 .aw-r-epic { --rc: var(--sw-violet); } .aw-r-legendary { --rc: var(--sw-amber); }
 
@@ -128,3 +128,9 @@
 @media (prefers-reduced-motion: reduce) { .aw-card.is-flash { animation: none; } .aw-chev { transition: none; } }
 [data-motion="reduced"] .aw-card.is-flash { animation: none; }
 [data-motion="reduced"] .aw-chev { transition: none; }
+
+/* 2.19.1: the wall's shelves beside Next up, and results a page at a time */
+.aw-grid-list > .pg-list-b { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-2); }
+.aw-layout { max-width: none; }
+.aw-layout > .pg-side .aw-next-grid { grid-template-columns: minmax(0, 1fr); }
+.aw-results .pg-list-more { display: flex; justify-content: center; padding-top: var(--space-3); }

@@ -40,7 +40,7 @@
 registerHomeWidget({
   id: 'schedule', title: 'Today’s schedule', icon: 'calendar-days', order: 30,
   description: 'Today’s events with their scenes, a line for now, free gaps and what is next',
-  sizes: ['s', 'm', 'l'], defaultSize: 's',                              // S sits beside Focus (L): the day at a glance
+  sizes: ['s', 'm', 'l'], defaultSize: 'm',                              // M sits beside Focus (M): the day at a glance
   render(el, ctx) { return _hsRender(el, ctx); },
   unmount() { clearTimeout(_hsTimer); _hsTimer = 0; },
 });

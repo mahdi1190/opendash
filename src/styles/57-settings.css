@@ -2,7 +2,7 @@
    Desktop-app layout: a sticky list of groups on the left, one group at a
    time on the right. Rows are label + hint on the left, control on the right. */
 .settings { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--space-8); align-items: start; padding-bottom: var(--space-12); }
-.set-search { grid-column: 1 / -1; width: 100%; max-width: 952px; position: relative; margin-bottom: calc(-1 * var(--space-3)); }
+.set-search { grid-column: 1 / -1; width: 100%; position: relative; margin-bottom: calc(-1 * var(--space-3)); }
 .set-search-field { display: flex; align-items: center; gap: var(--space-2); min-height: 40px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--fg-subtle); }
 .set-search-field:focus-within { border-color: var(--accent); box-shadow: var(--focus-ring); }
 .set-search-input { flex: 1; min-width: 0; height: 38px; padding: 0 var(--space-8) 0 0; border: 0; background: transparent; color: var(--fg); font: inherit; font-size: var(--text-sm); outline: none; }
@@ -38,7 +38,7 @@
 .set-nav-item .set-nav-out { color: var(--fg-disabled); }
 .set-nav-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
-.set-main { min-width: 0; max-width: 720px; display: flex; flex-direction: column; gap: var(--space-4); }
+.set-main { min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
 .set-page-h h2 { margin: 0; font-size: var(--text-lg); line-height: var(--lh-lg); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); }
 .set-page-h p { margin: var(--space-0-5) 0 0; font-size: var(--text-sm); line-height: var(--lh-sm); color: var(--fg-subtle); }
 .set-group { display: flex; flex-direction: column; gap: var(--space-4); }
@@ -155,3 +155,14 @@
   .set-tpl { grid-template-columns: 1fr 1fr; }
   .set-tpl .f-name, .set-tpl .f-title, .set-tpl .f-tags { grid-column: 1 / -1; }
 }
+
+/* 2.19.1: Settings on whitespace, not boxes. A group's cards are sections divided by one hairline (the same
+   page width and gutters as every page: 05-layout.css); only the danger zone keeps its frame. */
+.set-card.card { background: none; border: 0; border-radius: 0; box-shadow: none; overflow: visible; }
+.set-card.card + .set-card.card { padding-top: var(--space-4); border-top: 1px solid var(--border-subtle); }
+.set-card .set-head { padding: 0; }
+.set-card .set-body { padding: var(--space-2) 0 0; }
+.set-card.set-danger { border: 1px solid color-mix(in oklab, var(--danger) 30%, var(--border)); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); }
+.set-card.set-danger .set-head { padding: 0; }
+.set-main { gap: var(--space-5); }
+.set-page-h p { display: none; }   /* the group's title says what it is; its one-line description stays in search */

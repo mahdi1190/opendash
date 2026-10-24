@@ -20,7 +20,7 @@
 registerHomeWidget({
   id: 'countdowns', title: 'Countdowns', icon: 'timer', order: 75,       // (Waiting on has the hourglass)
   description: 'The dates you are counting down to, as big numbers. Edit them in the top bar',
-  sizes: ['s', 'm'], defaultSize: 's',
+  sizes: ['s', 'm'], defaultSize: 's', defaultHidden: true,   // the top bar already counts them down
   available: () => typeof tbList === 'function' && typeof tbCompute === 'function',
   render(el, ctx) { return _hcdRender(el, ctx); },
 });

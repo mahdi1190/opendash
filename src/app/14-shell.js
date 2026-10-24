@@ -338,7 +338,7 @@ function sbSection(o) {
     t.setAttribute('role', 'button'); t.tabIndex = 0;
     const toggle = () => {
       state.collapsedSidebar = state.collapsedSidebar && typeof state.collapsedSidebar === 'object' ? state.collapsedSidebar : {};
-      state.collapsedSidebar[o.collapsible] = !state.collapsedSidebar[o.collapsible];
+      state.collapsedSidebar[o.collapsible] = !sbIsCollapsed(o.collapsible);
       saveUI(); renderSidebar();
     };
     t.onclick = toggle;
@@ -359,8 +359,12 @@ function sbSection(o) {
   }
   return h;
 }
+/** Tags and People start folded (2.19.1: the Tasks sidebar is the views and the streams; open a fold once and it stays open). */
+const SB_FOLDED_AT_FIRST = Object.freeze(['tags', 'people', 'cal-countdowns']);
 function sbIsCollapsed(key) {
-  return !!(state.collapsedSidebar && typeof state.collapsedSidebar === 'object' && state.collapsedSidebar[key]);
+  const c = state.collapsedSidebar && typeof state.collapsedSidebar === 'object' ? state.collapsedSidebar : null;
+  if (c && c[key] !== undefined) return !!c[key];
+  return SB_FOLDED_AT_FIRST.includes(key);
 }
 
 /* ---------- top-bar widgets ---------- */
@@ -817,7 +821,7 @@ function renderPageHeaderControls() {
   const sec = typeof sectionFor === 'function' ? sectionFor(state.view) : null;
   const main = document.getElementById('main');
   if (main) {
-    const layout = sec && sec.layout ? sec.layout : (state.view === 'finance' ? 'wide' : 'page');
+    const layout = sec && sec.layout ? sec.layout : 'page';
     main.classList.toggle('wide', layout === 'wide');
     main.classList.toggle('bare', layout === 'bare');
   }

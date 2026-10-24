@@ -48,17 +48,11 @@ function _ptMount(container, view) {
   const g = petGet();
   const root = _ptEl('div', 'pt-page pt-tab-' + tab + (entering ? ' is-enter' : ''));
   try {
-    if (!g.has) { if (sub) sub.textContent = 'A little companion that grows with what you do'; _ptAdopt(root); container.appendChild(root); return; }
+    if (!g.has) { headerSubTabs(null); if (sub) sub.textContent = 'A little companion that grows with what you do'; _ptAdopt(root); container.appendChild(root); return; }
     if (sub) sub.textContent = (petMood() || {}).line || '';
-    const tabs = _ptEl('div', 'pt-tabs'); tabs.setAttribute('role', 'tablist');
-    for (const [id, label, ic] of PET_TABS) {
-      const b = _ptEl('button', 'pt-tabbtn'); b.type = 'button'; b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', id === tab ? 'true' : 'false');
-      b.innerHTML = icon(ic, 'i-sm'); b.appendChild(_ptEl('span', null, label));
-      b.onclick = () => { if (id === tab) { const m = document.getElementById('main'); if (m && m.scrollTop > 0) m.scrollTo({ top: 0, behavior: 'smooth' }); return; } setView(id === 'together' ? 'pet' : 'pet:' + id); };
-      tabs.appendChild(b);
-    }
-    root.appendChild(tabs);
+    // 2.19.1: Together (your pet, its care, tricks and journal) and Wardrobe are the page header's pills; the journal is part of Together now
+    headerSubTabs(subTabs({ label: 'Your pet', active: tab === 'wardrobe' ? 'wardrobe' : 'together', onChange: (id) => setView(id === 'together' ? 'pet' : 'pet:' + id),
+      tabs: [['together', 'Together', 'heart'], ['wardrobe', 'Wardrobe', 'shirt']].map(([id, label, ic]) => ({ id, label, icon: ic })) }), /^pet(:|$)/);
     if (!g.on) root.appendChild(_ptAwayNote(g));
     if (_ptFun() === 'off') {
       const n = _ptEl('div', 'card pt-note'); n.innerHTML = icon('circle-x', 'i-sm');
@@ -66,15 +60,15 @@ function _ptMount(container, view) {
       n.appendChild(_ptBtn('Change the Fun level', 'party-popper', () => setView('game'), 'btn-ghost'));
       root.appendChild(n);
     }
-    if (tab === 'together') _ptTogether(root, g);
-    else if (tab === 'wardrobe') _ptWardrobe(root, g);
-    else _ptJournalTab(root, g);
+    if (tab === 'wardrobe') _ptWardrobe(root, g);
+    else _ptTogether(root, g);
   } catch (e) {
     console.error('[pets] page', e);
     root.replaceChildren();
     mountEmptyState(root, { icon: 'circle-alert', compact: true, title: 'Your pet couldn’t load just now', text: 'Nothing is lost.', actions: [{ label: 'Try again', icon: 'refresh-cw', primary: true, run: () => { if (typeof render === 'function') render(); } }] });
   }
   container.appendChild(root);
+  if (tab === 'journal') requestAnimationFrame(() => { const e = root.querySelector('.pt-journal-sec'); if (e) e.scrollIntoView({ block: 'start' }); });   // #view=pet:journal: Together, at the journal
 }
 function _ptAwayNote(g) {
   const n = _ptEl('div', 'card pt-note');
@@ -175,16 +169,12 @@ function _ptTogether(root, g) {
     const feed = _ptBtn(t.have ? `Give a treat (${t.have})` : 'Give a treat', 'cookie', () => _ptFeedNow(stage, () => { paintSide(); paintTricks(); }), 'btn-primary');
     acts.appendChild(feed);
     side.appendChild(acts);
-    const jar = _ptEl('div', 'pt-jar');
-    const ic = _ptEl('span', 'pt-jar-ic'); ic.innerHTML = petTreatSvg((sp.treat || 'cookie'), 26); jar.appendChild(ic);
-    const jt = _ptEl('div');
-    jt.appendChild(_ptEl('b', null, `${t.have} ${t.have === 1 ? 'treat' : 'treats'} in the jar`));
-    jt.appendChild(_ptEl('span', 'muted', t.todayEarned ? `+${t.todayEarned} earned today · ${t.todayFed} given today` : (typeof gameOn === 'function' && gameOn() ? 'Each task you finish earns a treat (up to five a day); a focus session of 10 minutes earns two.' : 'Three treats a day while the game is off.')));
-    jar.appendChild(jt);
-    side.appendChild(jar);
+    // the treat count is on the button; one quiet line says what earns more (the jar block said the count again)
+    side.appendChild(_ptEl('p', 'muted pt-hero-age', t.todayEarned ? `+${t.todayEarned} earned today · ${t.todayFed} given today` : (typeof gameOn === 'function' && gameOn() ? 'Each task you finish earns a treat (up to five a day).' : 'Three treats a day while the game is off.')));
   };
   paintSide();
-  root.appendChild(hero);
+  // 2.19.1: your pet on the left (it stays in view), its tricks, journal and settings on the right
+  const main = _ptEl('div', 'pt-stack');
 
   // tricks
   const tricksSec = _ptSec('Tricks', 'sparkles');
@@ -205,15 +195,18 @@ function _ptTogether(root, g) {
     }
   };
   paintTricks();
-  root.appendChild(tricksSec);
+  main.appendChild(tricksSec);
 
-  // the latest from the journal
-  const jSec = _ptSec('Lately', 'notebook-pen', _ptBtn('Open the journal', 'arrow-right', () => setView('pet:journal'), 'btn-ghost'));
-  jSec.appendChild(_ptJournalList(petJournal().slice(0, 4), g));
-  root.appendChild(jSec);
+  // the journal, a page at a time
+  const jSec = _ptSec('Journal', 'notebook-pen'); jSec.classList.add('pt-journal-sec');
+  const jl = petJournal();
+  if (jl.length) { const pl = pagedList({ items: jl, pageSize: 8, tag: 'ol', cls: 'pt-journal-pg', render: _ptJournalItem }); pl.firstChild.classList.add('pt-journal'); jSec.appendChild(pl); }
+  else jSec.appendChild(emptyLine('Milestones land here: treats, tricks, streaks, levels, weeks together.'));
+  main.appendChild(jSec);
 
   // with you: friends and scenes
-  root.appendChild(_ptPrefsSec(g));
+  main.appendChild(_ptPrefsSec(g));
+  root.appendChild(pageLayout({ main, side: hero, sideWidth: 340, sticky: true, cls: 'pt-layout' }));
 }
 function _ptFeedNow(stage, after) {
   const g = petGet(), r = petFeed();
@@ -443,24 +436,20 @@ function _ptTile(lock, on, label, art) {
 }
 
 /* ---------- the journal ---------- */
-function _ptJournalTab(root, g) {
-  const s = _ptSec('Journal', 'notebook-pen');
-  const list = petJournal();
-  s.appendChild(list.length ? _ptJournalList(list, g) : emptyLine('Milestones land here: treats, tricks, streaks, levels, weeks together.'));
-  root.appendChild(s);
+/** One journal line: an icon, the line, and when. */
+function _ptJournalItem(e) {
+  const li = _ptEl('li', 'pt-j');
+  const ic = _ptEl('span', 'pt-j-ic'); ic.innerHTML = icon(e.icon, 'i-sm'); li.appendChild(ic);
+  li.appendChild(_ptEl('span', 'pt-j-t', e.line));
+  let when = e.d;
+  try { when = new Date(e.d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: e.d.slice(0, 4) === _ptToday().slice(0, 4) ? undefined : 'numeric' }); } catch (err) { /* the iso date */ }
+  li.appendChild(_ptEl('span', 'pt-j-d muted', when));
+  return li;
 }
 function _ptJournalList(list, g) {
   const ul = _ptEl('ol', 'pt-journal');
   if (!list.length) return emptyLine(`Days with ${petName(g)} will write themselves here.`);
-  for (const e of list) {
-    const li = _ptEl('li', 'pt-j');
-    const ic = _ptEl('span', 'pt-j-ic'); ic.innerHTML = icon(e.icon, 'i-sm'); li.appendChild(ic);
-    li.appendChild(_ptEl('span', 'pt-j-t', e.line));
-    let when = e.d;
-    try { when = new Date(e.d + 'T12:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: e.d.slice(0, 4) === _ptToday().slice(0, 4) ? undefined : 'numeric' }); } catch (err) { /* the iso date */ }
-    li.appendChild(_ptEl('span', 'pt-j-d muted', when));
-    ul.appendChild(li);
-  }
+  for (const e of list) ul.appendChild(_ptJournalItem(e));
   return ul;
 }
 

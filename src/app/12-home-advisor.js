@@ -33,28 +33,42 @@ function homeAdviceIdeas() {
     return !busy.some(e=>!e.allDay&&!e.bg&&!e.free&&start<e.end&&end>e.start);
   });
 }
+/** "Think through my day": the button that sits in the Ideas for today header (null without Claude). Its label follows the review. */
+function homeAdvisorButton() {
+  if(!(typeof connHas==='function'&&connHas('claude')))return null;
+  const button=document.createElement('button');button.type='button';button.className='btn btn-ghost btn-sm hd-think';
+  _homeAdvisorLabel(button);
+  return button;
+}
+function _homeAdvisorLabel(button) {
+  button.disabled=!!_homeAdviceBusy;
+  button.textContent=_homeAdviceBusy?'Thinking through your day…':homeAdviceCurrent()?'Think again':'Think through my day';
+  button.onclick=()=>homeAdvisorReview(false);
+}
+/** The review's own card shows only while it has something to say (working, an answer, a problem): an empty box is not drawn. */
 function homeAdvisorPaint() {
   const root=typeof _hdRoot==='function'?_hdRoot():null;
   if(root) {
-    let host=root.querySelector('.hd-advisor');
-    if(!host){host=document.createElement('section');host.className='card hd-advisor';root.appendChild(host);}
-    host.innerHTML='<div class="bf-ai-h">'+icon('sparkles')+'<span class="overline">AI day adviser</span><span class="spacer"></span></div><p class="hd-advisor-status muted" role="status"></p><div class="hd-advisor-ideas"></div>';
-    const button=document.createElement('button');button.type='button';button.className='btn btn-secondary btn-sm';button.disabled=!!_homeAdviceBusy;
-    button.textContent=_homeAdviceBusy?'Thinking through your day…':'Think through my day';button.onclick=()=>homeAdvisorReview(false);host.querySelector('.bf-ai-h').appendChild(button);
-    if(_homeAdviceBusy){const stop=document.createElement('button');stop.type='button';stop.className='btn btn-ghost btn-sm hd-advisor-stop';stop.textContent='Cancel';stop.setAttribute('data-tip','Stop waiting for the review');stop.onclick=homeAdvisorCancel;host.querySelector('.bf-ai-h').appendChild(stop);}
-    const available=typeof connHas==='function'&&connHas('claude');
+    for(const b of root.querySelectorAll('.hd-think'))_homeAdvisorLabel(b);
     const a=homeAdviceCurrent();
-    host.querySelector('.hd-advisor-status').textContent=_homeAdviceBusy?'Reviewing your tasks, deadlines, calendar and recent progress.':a?'AI review · '+new Date(a.at).toLocaleTimeString(APP_CONFIG.locale||undefined,{hour:'2-digit',minute:'2-digit',timeZone:Clock.zone()})+' · '+a.model+(a.by&&typeof Connections!=='undefined'&&Connections.viaText('claude')?' · on '+a.by:''):available?'Reasons across your day and proposes up to three next steps. '+(typeof connViaText==='function'&&connViaText('claude')?connViaText('claude')+'.':'Uses your selected AI chat model.'):'Connect Claude in Connections to use the day adviser.';
-    if(_homeAdviceError&&!_homeAdviceBusy)host.querySelector('.hd-advisor-status').textContent=_homeAdviceError+' The normal suggestions remain available.';
-    else if(_homeAdviceStopped&&!_homeAdviceBusy&&!a)host.querySelector('.hd-advisor-status').textContent='Stopped. The normal suggestions remain available; ask again whenever you like.';
-    if(!available){button.disabled=true;button.onclick=null;}
-    const row=host.querySelector('.hd-advisor-ideas');
-    for(const idea of homeAdviceIdeas()) {
-      const el=document.createElement('article');el.className='hd-idea';
-      el.innerHTML=`<b>${esc(idea.title)}</b><p>${esc(idea.reason)}</p><p><strong>Next step:</strong> ${esc(idea.nextStep)}</p>`+(idea.start?`<span class="muted">Suggested window: ${esc(idea.start)}–${esc(idea.end)}</span>`:'');
-      const open=document.createElement('button');open.type='button';open.className='btn btn-ghost btn-sm';open.textContent='Open task';
-      open.onclick=()=>{if(getItem(idea.taskId)&&statusOf(idea.taskId)!=='done')homeOpenTask(idea.taskId,open);else homeAdvisorPaint();};
-      el.appendChild(open);row.appendChild(el);
+    let host=root.querySelector('.hd-advisor');
+    if(!_homeAdviceBusy&&!a&&!_homeAdviceError&&!_homeAdviceStopped){if(host)host.remove();}
+    else{
+      if(!host){host=document.createElement('section');host.className='hd-advisor';root.appendChild(host);}
+      host.innerHTML='<div class="bf-ai-h">'+icon('sparkles')+'<span class="overline">AI day review</span><span class="spacer"></span></div><p class="hd-advisor-status muted" role="status"></p><div class="hd-advisor-ideas"></div>';
+      if(_homeAdviceBusy){const stop=document.createElement('button');stop.type='button';stop.className='btn btn-ghost btn-sm hd-advisor-stop';stop.textContent='Cancel';stop.setAttribute('data-tip','Stop waiting for the review');stop.onclick=homeAdvisorCancel;host.querySelector('.bf-ai-h').appendChild(stop);}
+      const st=host.querySelector('.hd-advisor-status');
+      st.textContent=_homeAdviceBusy?'Reviewing your tasks, deadlines, calendar and recent progress.':a?'Updated '+new Date(a.at).toLocaleTimeString(APP_CONFIG.locale||undefined,{hour:'2-digit',minute:'2-digit'}):'';
+      if(_homeAdviceError&&!_homeAdviceBusy)st.textContent=_homeAdviceError+' The normal suggestions remain available.';
+      else if(_homeAdviceStopped&&!_homeAdviceBusy&&!a)st.textContent='Stopped. The normal suggestions remain available; ask again whenever you like.';
+      const row=host.querySelector('.hd-advisor-ideas');
+      for(const idea of homeAdviceIdeas()) {
+        const el=document.createElement('article');el.className='hd-idea';
+        el.innerHTML=`<b>${esc(idea.title)}</b><p>${esc(idea.reason)}</p><p><strong>Next step:</strong> ${esc(idea.nextStep)}</p>`+(idea.start?`<span class="muted">Suggested window: ${esc(idea.start)}–${esc(idea.end)}</span>`:'');
+        const open=document.createElement('button');open.type='button';open.className='btn btn-ghost btn-sm';open.textContent='Open task';
+        open.onclick=()=>{if(getItem(idea.taskId)&&statusOf(idea.taskId)!=='done')homeOpenTask(idea.taskId,open);else homeAdvisorPaint();};
+        el.appendChild(open);row.appendChild(el);
+      }
     }
   }
   if(typeof _bfPaintAi==='function')_bfPaintAi(null,false);

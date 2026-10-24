@@ -520,6 +520,7 @@ function _homeFrame(def, w) {
   f.className = 'hg-w';
   f.dataset.wid = def.id;                                // a copy's own id ('runway~2'); data-base = the widget
   f.dataset.base = def.baseId || def.id;
+  f.dataset.sec = homeSectionOf(def);                    // Today / Coming up / Money and life (12-home-grid.js)
   f.dataset.size = w.size;
   if (w.h) { f.dataset.h = String(w.h); f.style.setProperty('--hg-h', String(w.h)); }
   f.dataset.flip = 'w:' + def.id;
