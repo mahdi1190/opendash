@@ -34,10 +34,14 @@ function _achSave(s) {
 }
 function achUnlockedIds() { return Object.keys(achState().unlocked).filter(id => !!achDef(id)); }
 function achFactsNow() {
-  return achFacts({ log: (typeof state !== 'undefined' && state && state.completionLog) || {}, dayOf: (ts) => Clock.parts(ts).iso, notes: achState().notes });
+  let extra = null;
+  try { extra = typeof gameAchFacts === 'function' ? gameAchFacts() : null; } catch (e) { extra = null; }   // 2.16: the game's facts (92-game-1core.js)
+  return achFacts({ log: (typeof state !== 'undefined' && state && state.completionLog) || {}, dayOf: (ts) => Clock.parts(ts).iso, notes: achState().notes, extra });
 }
 function achNote(kind) {
   if (!ACH_NOTES.includes(kind) || typeof state === 'undefined' || !state) return;
+  // 2.16: every inbox zero and focus block also ticks its streak (92-game-1core.js), not just the first
+  if (typeof gameStreakTick === 'function') { try { if (kind === 'inbox-zero') gameStreakTick('inbox'); else if (kind === 'focus') gameStreakTick('focus'); } catch (e) { /* never in the way */ } }
   const s = achState();
   if (s.notes[kind]) return;
   s.notes[kind] = todayStr();
@@ -48,6 +52,7 @@ function achNote(kind) {
 function achTaskDone(item, due) {
   const today = todayStr();
   if (due && due < today && clockDaysBetween(due, today) >= (typeof ANIM_BOSS_DAYS === 'number' ? ANIM_BOSS_DAYS : 7)) achNote('boss');
+  if (typeof gameTaskDone === 'function') gameTaskDone(item);   // 2.16: XP, the bonus task, boss tasks, quests (92-game-1core.js)
   achCheckSoon(1400);
 }
 function achCheckSoon(ms) { clearTimeout(_ach.timer); _ach.timer = setTimeout(() => { try { achCheck(); } catch (e) { /* never in the way */ } }, ms == null ? 1500 : ms); }
@@ -74,6 +79,8 @@ function _achRewardLabel(d) {
 /** The unlock moment: one quiet toast; with motion on, the reward's art for a moment. */
 function achUnlockMoment(ids) {
   if (!ids || !ids.length) return;
+  // 2.16: the game plays it (the Fun level: Off is silent, level unlocks ride on the level-up moment)
+  if (typeof gameAchMoment === 'function') { try { gameAchMoment(ids); return; } catch (e) { /* fall back to the toast */ } }
   const open = { label: 'See them', run: () => achOpenPanel() };
   if (ids.length > 1) { toast(`${ids.length} achievements unlocked, each with something new in your animation library.`, { icon: 'award', action: open }); return; }
   const d = achDef(ids[0]);
@@ -93,9 +100,16 @@ function achPanelRender(el) {
   const s = achState(), facts = achFactsNow();
   const root = document.createElement('section'); root.className = 'ach'; root.id = 'ach-panel'; root.setAttribute('aria-label', 'Achievements');
   const n = ACH_DEFS.filter(d => s.unlocked[d.id]).length;
-  root.innerHTML = `<div class="anim-gallery-h"><h3>Achievements</h3><span class="muted">${n} of ${ACH_DEFS.length} · each one unlocks something for your library. Nothing is ever lost.</span></div>`;
+  // 2.16: here only the ones that unlock something for the library; every achievement is on the Game page's wall
+  const withReward = ACH_DEFS.filter(d => d.reward);
+  root.innerHTML = `<div class="anim-gallery-h"><h3>Achievements</h3><span class="muted">${n} of ${ACH_DEFS.length} earned · these ${withReward.length} unlock something for your library. Nothing is ever lost.</span></div>`;
+  if (typeof gameOpenWall === 'function') {
+    const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'btn btn-secondary btn-sm'; wb.innerHTML = icon('trophy', 'i-sm') + '<span>Open the achievements wall</span>';
+    wb.onclick = () => gameOpenWall();
+    root.appendChild(wb);
+  }
   const grid = document.createElement('div'); grid.className = 'ach-grid';
-  for (const d of ACH_DEFS) {
+  for (const d of withReward) {
     const got = s.unlocked[d.id], p = achProgress(d, facts);
     const card = document.createElement('div'); card.className = 'ach-card' + (got ? ' is-got' : '');
     const r = d.reward || {};

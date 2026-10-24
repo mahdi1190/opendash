@@ -48,6 +48,9 @@ const UI_STATE_KEYS = [
   'suggestStats',   // Suggestions: local counts (68-suggest-*.js), never sent anywhere
   'achievements',   // Achievements: the unlocks (78-achievements.js); never an undo step
   'sidebarLists',   // Sidebar Streams / Tags / People: sort and how many show (15-nav-order.js); the custom order is data (sidebarOrder)
+  // ── game ── (2.16: levels, streaks, quests, the focus timer, records: 92-game-*.js); never an undo step
+  'game',
+  // ── end game ──
   // ── local ── (2.16: what this page kept in localStorage, now in the state: 06-core-seen.js)
   'seen', 'uiPrefs', 'drafts',
   // ── end local ──
@@ -62,6 +65,9 @@ const SHARED_UI_KEYS = [
   'homeUI', 'achievements', 'sidebarLists',
   // 2.16: the rest of the layout follows you too (one change here, the same change there)
   'viewMode', 'focus', 'sidebarCollapsed', 'paneSizes', 'lastReviewPrompt', 'suggestStats',
+  // ── game ── your level, streaks and quests follow you too (92-game-*.js)
+  'game',
+  // ── end game ──
   // ── local ── seen flags, per-browser preferences and drafts follow you too (06-core-seen.js)
   'seen', 'uiPrefs', 'drafts',
   // ── end local ──
@@ -127,7 +133,9 @@ let _prevSnapshot = null;
 // The AI chats (70-ai-chats.js) are data that never makes an undo step and is
 // never rolled back by one: undoing a task edit must not take back a message,
 // a reply from another computer or a proposal's Applied.
-const _NO_UNDO_KEYS = new Set(['taskChat', 'assistantChat', 'chatMeta', 'chatArchive']);
+const _NO_UNDO_KEYS = new Set(['taskChat', 'assistantChat', 'chatMeta', 'chatArchive',
+  'memories',   // ── memories ── the journal, time capsules, postcards (93-memories-core.js): written in the evening by themselves, never rolled back
+]);
 function _dataSnapshot() {
   const o = {};
   for (const k of Object.keys(state)) if (!_NON_DATA_KEYS.has(k) && !_NO_UNDO_KEYS.has(k)) o[k] = state[k];

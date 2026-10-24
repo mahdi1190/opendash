@@ -478,6 +478,7 @@ function _pplPanel(el, p) {
   } else row('history', 'Last contact', f.last ? esc(_pplAgo(f.last)) : '<span class="subtle">Not yet</span>');
   if (p.phone) row('phone', 'Phone', `<a href="tel:${escAttr(String(p.phone).replace(/[^\d+]/g, ''))}">${esc(p.phone)}</a>`);
   if (typeof trPersonTzHtml === 'function' && pplKind(p) !== 'org') row('globe', 'Time zone', trPersonTzHtml(p));   // their time (travel spec 5.2)
+  if (typeof memPersonRows === 'function' && pplKind(p) === 'person') for (const [ic, label, html] of memPersonRows(p)) row(ic, label, html);   // ── memories ── birthday, in touch (93-memories-ui.js)
   if (safeUrl(p.linkedin)) row('link', 'LinkedIn', `<a href="${escAttr(safeUrl(p.linkedin))}" target="_blank" rel="noopener noreferrer">Profile</a>`);
   s1.appendChild(dl);
   const hint = document.createElement('div'); hint.className = 'subtle ppl-hint';
@@ -705,6 +706,7 @@ function openPersonEditor(id, prefill, o) {
       two2.append(field('Phone', inp('phone', '+44 …', v.phone)), field('LinkedIn', inp('linkedin', 'https://linkedin.com/in/…', v.linkedin)));
       el.appendChild(two2);
       if (typeof trPersonTzField === 'function') el.appendChild(trPersonTzField(v, F, field));   // 69-travel-ui.js
+      if (typeof memPersonBirthdayField === 'function' && (v.kind || 'person') === 'person') el.appendChild(memPersonBirthdayField(v, F, field));   // ── memories ── 93-memories-ui.js
       const err = document.createElement('div'); err.className = 'field-error'; err.hidden = true; F._err = err;
       el.appendChild(err);
       // Quick add: Enter in any box saves (Add person / Save), as Ctrl+Enter does.
@@ -722,6 +724,7 @@ function openPersonEditor(id, prefill, o) {
           name: F.name.value, kind: F.kind.value, role: F.role.value, org: F.org.value, group: F.group.value,
           emails: F.emails.value, aliases: F.aliases.value, streams: [...F.streams], phone: F.phone.value, linkedin: F.linkedin.value,
           ...(F.tz ? { tz: F.tz.value } : {}),
+          ...(F.birthday ? { birthday: F.birthday.value } : {}),   // ── memories ──
         };
         const dup = !p && (state.people || []).find(x => pplFold(x.name) === pplFold(fields.name.trim()));
         if (dup && !F._dupOk) { F._dupOk = true; F._err.hidden = false; F._err.textContent = `${dup.name} is already in People. Click again to add another person with the same name.`; return false; }

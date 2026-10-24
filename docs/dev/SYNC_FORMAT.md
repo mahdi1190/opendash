@@ -145,7 +145,7 @@ items whose order changed (the longest run already in order keeps its
 positions), choosing values strictly between the neighbours.
 
 Order lists that are plain arrays of ids (`customOrder`, `sidebarOrder`
-entries, `home.focusOrder`, tag lists) are whole values: the later list wins.
+entries, `boardOrder` entries, `home.focusOrder`, tag lists) are whole values: the later list wins.
 
 ## 6. Change logs (`ops-*.jsonl`)
 
@@ -356,6 +356,7 @@ manifest).
 | `sidebarLists` | per list, per field | sidebar list sort and length |
 | `animPrefs` | per field; `overrides` per event, `look` per field | scene rules, per-event overrides and the animation look |
 | `achievements` | per field; `unlocked` and `notes` per entry | unlocks: nothing earned is lost |
+| `game` (2.16, `// ── game ──`) | per field; `awards`, `ticks`, `focus`, `records`, `quests` and `seen.milestones` per entry; `run` and each quest list one value | the game (src/app/92-game-*.js): XP, streaks, records and quest progress are computed on each device from the data; only awards for moments the data cannot show, streak ticks, focus sessions, the running timer, the week's quests and moments already shown are kept, so nothing earned is lost and two devices add up |
 | `viewMode` | one value | list, board or review mode of the task views (2.16) |
 | `focus` | one value | Focus mode: on until you turn it off or open the sidebar (2.16) |
 | `sidebarCollapsed` | one value | the sidebar folded or open (2.16) |
@@ -456,6 +457,15 @@ only part of which follows the person (`PERSON_PART`): `travel` without
 is chosen for the weather (`locationMode` manual), applying `manualLocation`
 sets this computer's `location` to it too.
 
+### 9.2a Boards (2.16)
+
+`taskBoards` (saved boards and each task view's board: items by id, their
+custom `columns` by id, `col` and `laneFold` entry by entry) and `boardOrder`
+(`'<boardId>|<colKey>'` -> the card order of that column, one whole list
+each) sync like data: a board made, renamed or reordered on one computer is
+there on the others. They are not the retired brainstorm `boards` key, which
+is still dropped on import.
+
 ### 9.3 AI chats and proposals
 
 Every AI conversation syncs (`src/app/70-ai-chats.js`; the `chats` blocks of
@@ -467,6 +477,7 @@ the manifest and `SYNC_SPEC`):
 | `assistantChat` | `messages` by id, each message's `proposals` by id, per field | the assistant panel's one conversation; a proposal card's state (`pending`, `applied`, `dismissed`, `undone`), applied/skipped parts, `appliedOn: {id, name}` |
 | `chatMeta` | per chat (`task:<id>`, `assistant`), per field; `older` per computer | `clearedAt`, `readAt` (read on one computer is read on all), `older: {deviceId: {n, name}}` |
 | `chatArchive` | never synced | this computer's older messages of a long chat |
+| `memories` (2.16) | a record: `journal` per day (per field), `capsules` by id, `postcards` per country, `goals` per year (`list` by id), `advent` per year and door | Memories (src/app/93-memories-core.js): the daily journal, time capsules, postcards, New Year goals, advent doors; a data key without undo steps |
 | `file:state/proposals.json` | shared; `proposals` by id, `applied` and `createdIds` per entry | `{version: 1, proposals: [{id, at, status, ops, preview, previewHash, summary, applied: {opIndex: true}, createdIds, ...}]}` (`server/actions/journal.mjs`) |
 
 - **Messages** get an id when they are made and carry their time; every

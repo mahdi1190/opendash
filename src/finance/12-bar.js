@@ -1,8 +1,10 @@
   // @part 12-bar.js · OWNER: C3 (sticky bar: tabs, presets, timeline, filters, pills; setSection, paintTabs)
   // The sidebar's icons (15-nav-sidebar.js _FIN_SECTION_ICONS), so the tab strip and the sidebar agree.
-  const SECTION_ICONS = { overview: 'gauge', spending: 'chart-column', categories: 'layout-grid', merchants: 'building-2', cashflow: 'arrow-up-down', recurring: 'repeat', budgets: 'piggy-bank', transactions: 'receipt' };
+  const SECTION_ICONS = { board: 'layout-template', countries: 'globe', overview: 'gauge', spending: 'chart-column', categories: 'layout-grid', merchants: 'building-2', cashflow: 'arrow-up-down', recurring: 'repeat', budgets: 'piggy-bank', transactions: 'receipt' };
   // The current tab's glyph does one small motion when it becomes current (transform only).
   const TAB_MOTION = {
+    board: [{ transform: 'scale(0.75) rotate(-8deg)' }, { transform: 'scale(1.1)', offset: 0.55 }, { transform: 'none' }],
+    countries: [{ transform: 'rotate(-60deg)' }, { transform: 'rotate(12deg)', offset: 0.6 }, { transform: 'none' }],
     overview: [{ transform: 'rotate(-34deg)' }, { transform: 'rotate(9deg)', offset: 0.55 }, { transform: 'none' }],
     spending: [{ transform: 'scaleY(0.35)' }, { transform: 'scaleY(1.1)', offset: 0.6 }, { transform: 'none' }],
     categories: [{ transform: 'scale(0.7)' }, { transform: 'scale(1.14)', offset: 0.55 }, { transform: 'none' }],
@@ -48,7 +50,7 @@
     E.pills = h('div', { class: 'fv-pills', 'aria-live': 'polite', hidden: true });
     E.pillMap = new Map();
     E.pillClear = h('span', { class: 'fv-pills-end' },
-      h('button', { type: 'button', class: 'fv-link', text: 'Clear all', onclick: () => { F.cats = []; F.accts = []; F.merchant = ''; F.q = ''; F.amt = null; changed(); } }),
+      h('button', { type: 'button', class: 'fv-link', text: 'Clear all', onclick: () => { F.cats = []; F.accts = []; F.merchant = ''; F.q = ''; F.amt = null; F.country = ''; changed(); } }),
       h('kbd', { class: 'fv-esc-hint', title: 'Esc clears the selection', text: 'Esc' }));
     E.pills.append(E.pillClear);
     // "Updating…" while a refresh is on its way (the old render stays, dimmed).
@@ -149,7 +151,7 @@
     E.more.inert = !F.more;   // @p2 a closed panel (0 high, transparent) keeps its ~20 controls out of the Tab order
     if (!E.more.id) { E.more.id = 'fv-more'; E.moreBtn.setAttribute('aria-controls', 'fv-more'); }
     E.moreBtn.classList.toggle('on', !!F.more);
-    const nActive = F.cats.length + F.accts.length + (F.merchant ? 1 : 0) + (F.q ? 1 : 0) + (F.amt ? 1 : 0);
+    const nActive = F.cats.length + F.accts.length + (F.merchant ? 1 : 0) + (F.q ? 1 : 0) + (F.amt ? 1 : 0) + (F.country ? 1 : 0);
     const badge = E.moreBtn.querySelector('.fv-badge'); badge.hidden = !nActive; badge.textContent = nActive;
     // Category chips (spending categories with any spend, plus selected ones)
     const allT = {}; M.tx.forEach(t => { if (t.kind === 'spend') allT[t.c] = (allT[t.c] || 0) + t.s; });
@@ -184,6 +186,8 @@
     // pop on every repaint); new ones pop in, removed ones shrink away.
     const want = [];
     if (F.merchant) want.push({ k: 'm:' + F.merchant, label: F.merchant, icon: 'building-2', x: () => setMerchant(''), sel: true });
+    if (F.trip) { const tr = R.model ? PL.trips(R.model).find(x => x.id === F.trip) : null; want.push({ k: 't:' + F.trip, label: 'Trip: ' + (tr ? tr.label : 'dates'), icon: 'plane', x: () => setTrip(null), sel: true }); }
+    if (F.country) want.push({ k: 'cc:' + F.country, label: 'In ' + PL.label(F.country === 'HOME' ? '' : F.country), icon: 'globe', x: () => setCountry(''), sel: true });
     F.cats.forEach(c => want.push({ k: 'c:' + c, label: c, color: catColor(c), x: () => toggleCat(c), sel: true }));
     F.accts.forEach(ac => want.push({ k: 'a:' + ac, label: 'Account: ' + (M.acctNames[ac] || ac), x: () => { F.accts = F.accts.filter(x => x !== ac); changed(); } }));
     if (F.q) want.push({ k: 'q', label: `“${F.q}”`, icon: 'search', x: () => { F.q = ''; E.search.value = ''; changed(); } });
@@ -223,7 +227,7 @@
   }
 
   function setSection(id, opts) {
-    if (!SECTIONS.some(s => s[0] === id)) id = 'overview';
+    if (!SECTIONS.some(s => s[0] === id)) id = 'board';
     // @new-begin re-selecting the section you are on is a no-op (CLAUDE.md interaction conventions)
     // No rebuild, no replayed animation; if scrolled down, glide back to the top (phone tab bar).
     if (id === F.section && id === R.sectionId && R.mode === 'ready' && !(opts && opts.force)) {
@@ -352,6 +356,7 @@
     // A section's own selection first (S.onEsc returns true when it cleared something).
     if (typeof S.onEsc === 'function') { try { if (S.onEsc()) return true; } catch (e) { /* fall through */ } }
     if (F.merchant) { setMerchant(''); return true; }
+    if (F.country) { setCountry(''); return true; }
     if (F.cats.length) { setCats([]); return true; }
     return false;
   }

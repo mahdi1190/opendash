@@ -38,7 +38,7 @@ input, textarea, select { font-feature-settings: var(--font-features); }
 a { color: var(--accent-ink); }
 code, pre, kbd { font-family: var(--font-mono); }
 ::selection { background: var(--accent-soft-2); }
-:focus-visible { outline: 2px solid color-mix(in oklab, var(--accent) 55%, transparent); outline-offset: 2px; }
+:focus-visible { outline: 2px solid color-mix(in oklab, var(--accent) 72%, transparent); outline-offset: 2px; }
 [hidden] { display: none !important; }
 
 /* Thin, quiet scrollbars */

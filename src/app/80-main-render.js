@@ -36,7 +36,7 @@ function renderMain() {
 }
 // Views that list tasks (and so use List/Board/Calendar/Review, Sort, Group).
 function isTaskView(v) {
-  return ['today', 'tomorrow', 'week', 'all', 'no-date', 'completed'].includes(v) || /^(stream|tag|day):/.test(v);
+  return ['today', 'tomorrow', 'week', 'all', 'no-date', 'completed', 'now', 'inbox'].includes(v) || /^(stream|tag|day|list):/.test(v);   // now, inbox, list:<id>: 15-nav-smart-lists.js
 }
 let _mountedSection = null;
 function _renderMainBody(main) {

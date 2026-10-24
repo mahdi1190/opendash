@@ -54,3 +54,7 @@ html[data-motion="full"] .ob-card { animation: ob-in var(--m-slow, 260ms) var(--
   .ob-body { padding: var(--space-5); }
   .ob-grid, .ob-choices { grid-template-columns: 1fr; }
 }
+
+/* 2.16: a soft accent wash at the top, and the step in words beside the dots */
+.ob-card { background: linear-gradient(180deg, color-mix(in oklab, var(--accent) 8%, var(--surface)) 0, var(--surface) 180px); }
+.ob-step { flex: none; font-size: var(--text-xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; }

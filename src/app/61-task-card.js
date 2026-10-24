@@ -243,6 +243,10 @@ function tcDraftResolve(d, parse) {
     recurrence: parsed.recurrence && parsed.recurrence !== 'none' ? parsed.recurrence : (d.recurrence || 'none'),
     estimate: parsed.estimate || d.estimate || null,
     detail: d.detail || '',
+    // @phone / low energy typed in the title (20-task-contexts.js), and names in it the user left unlinked.
+    contexts: uniq([...(d.contexts || []), ...(parsed.contexts || [])]),
+    energy: parsed.energy || d.energy || null,
+    peopleExcluded: uniq(parsed.peopleExcluded || []),
   };
 }
 /* ---------- small DOM helpers ---------- */
@@ -585,6 +589,7 @@ function _tcTaskView(inner, cur, keep) {
   main.appendChild(tdChatSection(id));
   const side = document.createElement('aside'); side.className = 'tc-side'; side.setAttribute('aria-label', 'Properties');
   if (!done && typeof sgTaskCardSlot === 'function') { const sg = sgTaskCardSlot(id); if (sg) side.appendChild(sg); }   // S2: block time for it, on top (68-suggest-time-ui.js)
+  if (typeof gameTaskCardSlot === 'function') { const gm = gameTaskCardSlot(id); if (gm) side.appendChild(gm); }   // focus timer, boss bar, XP (92-game-3ui.js)
   side.appendChild(tdProps(id, { card: true }));
   const meet = _tcMeetings(id); if (meet) side.appendChild(meet);
   side.appendChild(_tcMeta(id));
@@ -605,6 +610,7 @@ function _tcTaskView(inner, cur, keep) {
   if (!done) {
     fb('alarm-clock', 'Snooze', 'btn-ghost', 'tc-snooze', (a) => _tcSnoozeMenu(a, id), 'Push the due date');
     fb('layers', 'Move', 'btn-ghost', 'tc-move', (a) => openStreamMenu(a, id), 'Move to another stream');
+    if (typeof gameFocusFootBtn === 'function') foot.appendChild(gameFocusFootBtn(id));   // the focus timer (92-game-3ui.js)
   }
   const keys = document.createElement('span'); keys.className = 'tc-keys';
   keys.innerHTML = `${nav.n > 1 ? '<span><kbd class="kbd">↑</kbd><kbd class="kbd">↓</kbd> next</span>' : ''}<span><kbd class="kbd">Ctrl</kbd><kbd class="kbd">↵</kbd> ${done ? 'reopen' : 'done'}</span>`;
@@ -1124,6 +1130,7 @@ function _tcCreateSave(close) {
   const make = () => {
     const nid = addCustomTask(r.title, r.dueDate, r.priority, r.tags, r.stream, r.recurrence, {
       dueTime: r.dueTime, estimate: r.estimate, people: r.people, newPeople: r.newPeople, detail: r.detail,
+      contexts: r.contexts, energy: r.energy, peopleExcluded: r.peopleExcluded,
       // A suggestion's checklist (travel spec 5.6 request 5).
       ...(Array.isArray(d.subtasks) && d.subtasks.some(s => String(s).trim()) ? { subtasks: d.subtasks.map(s => String(s).trim()).filter(Boolean) } : {}),
     });

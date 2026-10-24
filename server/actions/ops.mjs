@@ -27,6 +27,7 @@ import { BRIEF_OPS } from './ops-brief.mjs';
 import { RESOURCE_OPS } from './ops-resources.mjs';
 import { AUTOLINK_OPS, bindAutolinkOps } from './ops-autolink.mjs';
 import { DAYNOTE_OPS } from './ops-daynotes.mjs';
+import { WAITING_OPS } from './ops-waiting.mjs';
 import { tglRenameRefs } from '../../lib/people-tags.mjs';
 
 // ─── Schema building blocks ────────────────────────────────────────────────
@@ -803,6 +804,7 @@ export const OPS = [
   ...BRIEF_OPS,                                    // ops-brief.mjs (Review: save a weekly review / evening recap)
   ...AUTOLINK_OPS,                                 // ops-autolink.mjs (auto-linking: suggest, rate, apply, reject, relate)
   ...DAYNOTE_OPS,                                  // ops-daynotes.mjs (Home's Daily note: save a day's markdown)
+  ...WAITING_OPS,                                  // ops-waiting.mjs (Review: waiting on people, blocked by other tasks)
 ];
 extendPeopleOps(OPS);                              // ops-people.mjs (People + tag registry)
 // ops-home.mjs (top bar + Home): replaces countdown.* with the 2.0 widget versions, adds the rest.

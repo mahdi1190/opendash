@@ -89,6 +89,7 @@
     F.cats = F.cats.filter(c => R.model.categories.includes(c));
     F.accts = F.accts.filter(a => R.model.accts.includes(a));
     paintTop(); paintUpdate(); paintFilters(ctx); paintKpis(ctx);
+    if (R.root) R.root.classList.toggle('fv-amts-hidden', bdHidden());   // Hide amounts (Home's switch; 39-board-widgets.js)
     if (R.sectionId !== F.section) buildSection(F.section);
     updateSection(ctx);
     paintTabs(false);

@@ -183,12 +183,16 @@ function tdTitleInput(id, cls) {
     const cur = getItem(id); if (!cur) return;
     const v = titleIn.value.replace(/\s*\n\s*/g, ' ').trim();
     if (!v) { titleIn.value = effTitle(cur); fit(); return; }
-    if (v !== effTitle(cur)) { setOverride(id, 'title', v); render(); }
+    if (v !== effTitle(cur)) {
+      // Typed the quick way ("… fri !p1 @phone"): set those too, one undo step (22-quick-add.js).
+      if (typeof qaApplyTitleEdit === 'function' && qaApplyTitleEdit(id, v, titleIn._qaIgnore)) return;
+      setOverride(id, 'title', v); render();
+    }
   };
-  titleIn.oninput = fit;
+  titleIn.oninput = () => { fit(); if (typeof qaTitlePreview === 'function') qaTitlePreview(titleIn, effTitle(getItem(id) || item)); };
   titleIn.onkeydown = (e) => {
     if (e.key === 'Enter' && !(e.ctrlKey || e.metaKey)) { e.preventDefault(); titleIn.blur(); }
-    if (e.key === 'Escape') { e.stopPropagation(); titleIn.value = effTitle(getItem(id) || item); titleIn.blur(); }
+    if (e.key === 'Escape') { e.stopPropagation(); titleIn.value = effTitle(getItem(id) || item); titleIn._qaIgnore = []; if (typeof qaTitlePreview === 'function') qaTitlePreview(titleIn, titleIn.value); titleIn.blur(); }
   };
   titleIn.onblur = saveTitle;
   requestAnimationFrame(fit);
@@ -290,6 +294,8 @@ function tdProps(id, o) {
     inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } };
     prop('Estimate', 'timer', inp, 'estimate');
   }
+  // Context (@computer, @phone ...) and energy (24-task-contexts-ui.js)
+  if (typeof ctxTaskProp === 'function') prop('Context', 'map-pin', ctxTaskProp(id), 'context');
   return props;
 }
 /** People linked to the task: chips (open, create profile, unlink) + Add. */

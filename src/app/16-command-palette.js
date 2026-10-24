@@ -356,7 +356,9 @@ function _palResults(raw) {
         searchQuery = q; renderMain();
       } });
     }
-    push('Commands', { icon: 'plus', label: `New task “${q}”`, run: () => openNewTask(q) });
+    // The quick way: what the text sets shows as the hint; "Add now" adds it at once, "Capture" files it in the Inbox (23-quick-add-dialog.js).
+    if (typeof qaPaletteRows === 'function') for (const r of qaPaletteRows(q)) push('Commands', r);
+    else push('Commands', { icon: 'plus', label: `New task “${q}”`, run: () => openNewTask(q) });
     // Looks like a name ("Sam Lee": capitalised words) and nobody has it yet: add them in one step
     // (the person form opens filled in). With @ it is offered for any text (below).
     if (typeof addNewPerson === 'function' && /^\p{Lu}[\p{L}'.-]*(\s+\p{Lu}[\p{L}'.-]*){0,3}$/u.test(q) && !(state.people || []).some(p => p && String(p.name || '').toLowerCase() === ql)) {

@@ -178,6 +178,11 @@ function _pplApply(p, f) {
   if (f.streams !== undefined) p.streams = _pplCleanList(f.streams, false).filter(s => STREAMS[s]);
   if (f.color !== undefined && safeColor(f.color, '') ) p.color = f.color;
   for (const k of ['inactive', 'pinned']) if (f[k] !== undefined) { if (f[k]) p[k] = true; else delete p[k]; }
+  if (f.birthday !== undefined) {   // ── memories ── an optional birthday, 'MM-DD' or 'YYYY-MM-DD' (93-memories-core.js memBirthdayCheck); '' removes it
+    const b = typeof memBirthdayCheck === 'function' ? memBirthdayCheck(f.birthday) : { ok: true, value: String(f.birthday || '').trim() };
+    if (!b.ok) return b.message;
+    if (b.value) p.birthday = b.value; else delete p.birthday;
+  }
   if (f.tz !== undefined) {   // their IANA time zone (travel spec 5.2); '' removes it
     const z = typeof trPersonTzCheck === 'function' ? trPersonTzCheck(f.tz) : { ok: true, zone: String(f.tz || '').trim() };
     if (!z.ok) return z.message;

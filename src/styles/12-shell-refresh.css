@@ -1,0 +1,69 @@
+/* =====================================================================
+   SHELL REFRESH (2.16, "a fresh dashboard"). The look of the frame every page
+   sits in: top bar, sidebar, page headers, menus, dialogs, toasts and the
+   focus ring. Loads after the shell files (05-layout, 10-sidebar, 11-topbar,
+   12-command-palette) and before every feature file, so a feature's own rules
+   still win. Values come from the tokens (00-tokens.css: --accent-2,
+   --accent-grad, --sidebar-bg, --shadow-hover, --press-scale...). Motion is
+   transitions only, and they go to zero with reduced motion (motion.css).
+   ===================================================================== */
+
+/* ---------- sidebar: a soft wash, the current page in the accent ---------- */
+.app-sidebar { background: var(--sidebar-bg); }
+.nav-item { transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out); }
+.nav-item:hover .i { color: var(--fg-muted); }
+.nav-item.active { background: var(--accent-soft); color: var(--accent-ink); }
+.nav-item.active .i, .nav-item.active:hover .i { color: var(--accent); }
+.nav-item.active .count { color: var(--accent-ink); }
+.sb-scroll .nav-indicator { background: var(--accent-soft); }
+.sb-scroll.m-has-indicator .nav-item.active { color: var(--accent-ink); }
+.nav-sec { letter-spacing: 0.01em; }
+.sw-tile.on { box-shadow: var(--shadow-sm), inset 0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent); }
+.sb-search { transition: border-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), box-shadow var(--m-fast) var(--m-ease-out); }
+.sb-search:hover { box-shadow: var(--shadow-sm); }
+
+/* ---------- top bar: lighter rule, a faint lift over the page ---------- */
+.topbar { border-bottom-color: var(--border-subtle); box-shadow: 0 1px 2px -1px rgba(24, 24, 48, 0.07); }
+[data-theme="dark"] .topbar { border-bottom-color: var(--border); box-shadow: none; }
+.crumb b { font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); }
+.tb-actions { border-left-color: var(--border-subtle); }
+.cdw { transition: border-color var(--m-fast) var(--m-ease-out), background-color var(--m-fast) var(--m-ease-out), box-shadow var(--m-fast) var(--m-ease-out); }
+.cdw:hover { box-shadow: var(--shadow-hover); }
+
+/* ---------- page headers ---------- */
+.view-title, .ph h1 { letter-spacing: var(--tracking-tighter); }
+.section-h h2, .card-h h3 { letter-spacing: var(--tracking-tight); }
+
+/* ---------- menus, dialogs, drawers, toasts ---------- */
+.pop { padding: 5px; }
+.pop-item { transition: background-color var(--m-instant) linear; }
+.pop-item:hover > .i, .pop-item:focus-visible > .i { color: var(--fg-muted); }
+.pop-item.danger:hover > .i { color: var(--danger-ink); }
+.modal { border-radius: var(--radius-xl); }
+.modal-h h2, .drawer-h h2 { letter-spacing: var(--tracking-tight); }
+.modal-f { background: color-mix(in oklab, var(--bg-subtle) 70%, var(--surface-raised)); }
+.toast { border-radius: var(--radius-lg); }
+.tip { border-radius: var(--radius-sm); }
+
+/* ---------- tabs and segmented controls ---------- */
+.tab { transition: color var(--m-fast) var(--m-ease-out); }
+.tab.on::after, .tab[aria-selected="true"]::after { background: var(--accent-grad); }
+.seg { border-radius: var(--radius-md); }
+.seg button { transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), box-shadow var(--m-fast) var(--m-ease-out); }
+
+/* ---------- task checks: a soft halo under the pointer ---------- */
+.check { transition: box-shadow var(--m-fast) var(--m-ease-out), background-color var(--m-fast) var(--m-ease-out); }
+.check:hover:not(.done) { box-shadow: 0 0 0 3px color-mix(in oklab, var(--pc) 18%, transparent); }
+
+/* ---------- badges and chips ---------- */
+.badge-accent { background: var(--accent-grad); }
+.chip-accent { box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 18%, transparent); }
+
+/* ---------- scrollbars ---------- */
+::-webkit-scrollbar-thumb:hover { background-color: var(--fg-disabled); }
+
+/* ---------- a spotlight ring other modules can reuse (95-whats-new.js) ---------- */
+.wn-flash { outline: 2px solid var(--accent) !important; outline-offset: 3px; border-radius: var(--radius-sm); animation: wn-flash 1.6s var(--m-ease-out) 1 both; }
+@keyframes wn-flash { 0% { outline-color: transparent; } 20%, 70% { outline-color: var(--accent); } 100% { outline-color: color-mix(in oklab, var(--accent) 0%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .wn-flash { animation: none; } }
+html[data-motion="reduced"] .wn-flash { animation: none; }

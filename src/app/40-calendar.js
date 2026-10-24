@@ -246,7 +246,7 @@ const CalStore = createGoogleDataStore({
       _calWasRunning = run;
       render();
     }
-    else if (why === 'load' && (state.view === 'today' || state.view === 'home' || state.view.startsWith('person:') || (state.viewMode === 'calendar' && isTaskView(state.view)))) renderMain();
+    else if (why === 'load' && (state.view === 'today' || state.view === 'home' || state.view.startsWith('person:') || state.view === 'week' || (state.viewMode === 'timeline' && isTaskView(state.view)))) renderMain();   // 2.16: the timeline and Upcoming's capacity read events
   },
 });
 function calPrefs() {

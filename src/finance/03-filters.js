@@ -11,6 +11,10 @@
       case 'YTD': from = monthStart(Math.floor(monthIdx(end) / 12) * 12); break;
       case '1Y': from = addMonths(end, -12) + 1; break;
       case 'All': from = min; break;
+      // My money's quick filters: this calendar week (the configured first day), this month, last month.
+      case 'TW': { const sun = /^sun/i.test(String(CFG.weekStart || 'Mon')); from = sun ? end - ((dow(end) + 1) % 7) : weekStart(end); break; }
+      case 'TM': from = monthStart(monthIdx(end)); break;
+      case 'LM': from = monthStart(monthIdx(end) - 1); to = monthEnd(monthIdx(end) - 1); break;
       default:
         from = validIso(F.from) ? dnum(F.from) : min;
         to = validIso(F.to) ? dnum(F.to) : end;
@@ -22,6 +26,9 @@
     skip = skip || {};
     const q = (F.q || '').trim().toLowerCase();
     const cats = F.cats, accts = F.accts, amt = F.amt, merch = F.merchant;
+    // A country (Spending by country, 25-place-model.js): every row is kept to the ones paid there.
+    const country = !skip.country && F.country ? F.country : '';
+    if (country && R.model) PL.ensure(R.model);
     // @new-begin merchant name variants (C2): "TESCO STORES 3345" and "Tesco" are one merchant (25-vendor-kit.js)
     const mset = merch && !skip.merchant ? VK.groups().setOf(merch) : null;
     // @new-end
@@ -31,6 +38,7 @@
       if (!skip.q && q && !(t.m.toLowerCase().includes(q) || t.memo.toLowerCase().includes(q) || t.c.toLowerCase().includes(q))) return false;
       if (!skip.amt && amt && (t.abs < amt[0] - 0.004 || t.abs > amt[1] + 0.004)) return false;
       if (!skip.cats && cats.length && t.kind === 'spend' && !cats.includes(t.c)) return false;
+      if (country && t.pc !== country) return false;
       return true;
     };
   }
@@ -110,7 +118,7 @@
   function autoGran(len) { return len <= 45 ? 'day' : len <= 220 ? 'week' : 'month'; }
   function setPreset(p) {
     pushRangeHistory();
-    F.preset = p; F.from = F.to = null;
+    F.preset = p; F.from = F.to = null; F.trip = '';
     F.gran = autoGran(getRange().len);
     changed();
   }
@@ -118,6 +126,7 @@
     const M = R.model; a = clamp(Math.round(a), M.minN, M.anchor); b = clamp(Math.round(b), a, M.anchor);
     if (!(opts && opts.noHistory)) pushRangeHistory();
     F.preset = 'custom'; F.from = diso(a); F.to = diso(b);
+    if (!(opts && opts.trip)) F.trip = '';
     if (!(opts && opts.keepGran)) F.gran = autoGran(b - a + 1);
     changed();
   }
@@ -132,6 +141,15 @@
   }
   function setCats(list) { F.cats = list.slice(); changed(); }
   function setMerchant(m) { F.merchant = m || ''; R.page = 0; changed(); }
+  /** Only payments made in one country ('' = everywhere). Re-picking the current one does nothing. */
+  function setCountry(cc) { cc = cc || ''; if (cc === F.country) return; F.country = cc; R.page = 0; changed(); }
+  /** A trip's dates as the range (its id names the chip); null goes back to the range before it. */
+  function setTrip(trip) {
+    if (!trip) { if (F.trip) { F.trip = ''; if (R.rangeHistory.length) rangeBack(); else setPreset('3M'); } return; }
+    if (F.trip === trip.id) return;
+    setCustomRange(dnum(trip.from), dnum(trip.to || trip.from), { trip: true });
+    F.trip = trip.id; saveF();
+  }
   function setAmt(lo, hi) {
     const M = R.model;
     if (lo <= 0.004 && hi >= M.maxAmt - 0.004) F.amt = null; else F.amt = [round2(lo), round2(hi)];
@@ -139,7 +157,7 @@
   }
   function resetFilters() {
     pushRangeHistory();
-    Object.assign(F, { preset: '3M', from: null, to: null, cats: [], accts: [], merchant: '', q: '', amt: null, inc: true, xfer: false, compare: false });
+    Object.assign(F, { preset: '3M', from: null, to: null, cats: [], accts: [], merchant: '', q: '', amt: null, inc: true, xfer: false, compare: false, country: '', trip: '' });
     F.gran = autoGran(getRange().len);
     R.page = 0; changed();
   }

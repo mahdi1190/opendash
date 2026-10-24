@@ -13,7 +13,11 @@
      #word   a stream if it names one, otherwise a tag
      +word   stream
      @name   link a person (a new name creates them)
-     ~2h     estimate (~30m, ~1.5h)
+     @phone  a context when the word names one (@computer @phone @errands @home @office,
+             or your own: 20-task-contexts.js); @low / @high, "low energy", energy:low = energy
+     ~2h     estimate (~30m, ~1.5h, ~45)
+     Names   a person named in the title ("email Sam") is linked when the task is
+             made (pplAutoLink); the preview shows them, and a click leaves them out.
    parseQuickAdd(text, {ignore}) also returns `tokens` for the live preview;
    `ignore` holds raw token texts the user clicked off ("keep as text").
    ============================================================ */
@@ -172,7 +176,7 @@ function parseQuickAdd(input, opts) {
   opts = opts || {};
   const ignore = new Set([...(opts.ignore || [])].map(s => String(s).toLowerCase()));
   const today = _qaToday(opts.now);
-  const out = { title: '', dueDate: null, dueTime: null, priority: 'p0', tags: [], stream: null, people: [], newPeople: [], recurrence: null, estimate: null, tokens: [] };
+  const out = { title: '', dueDate: null, dueTime: null, priority: 'p0', tags: [], stream: null, people: [], newPeople: [], recurrence: null, estimate: null, contexts: [], energy: null, peopleExcluded: [], mentions: [], tokens: [] };
   const tok = (kind, raw, label, extra) => out.tokens.push(Object.assign({ kind, raw, label }, extra || {}));
   const skip = (raw) => ignore.has(String(raw).toLowerCase());
   let words = String(input || '').trim().split(/\s+/).filter(Boolean);
@@ -194,6 +198,12 @@ function parseQuickAdd(input, opts) {
     }
     if ((m = /^@([\p{L}\p{N}._'-]+)$/u.exec(w)) && !skip(w) && !/^\d/.test(m[1])) {
       const name = m[1].replace(/[.,;]$/, '');
+      // @low / @high: energy; @phone, @errands ...: a context (a person whose id is exactly the word still wins).
+      const en = typeof ctxEnergyMatch === 'function' ? ctxEnergyMatch(name) : null;
+      if (en) { if (!out.energy) { out.energy = en; tok('energy', w, TASK_ENERGY[en].label, { icon: TASK_ENERGY[en].icon }); } continue; }
+      const cx = typeof ctxMatch === 'function' ? ctxMatch(name) : null;
+      const exactPerson = ((typeof state !== 'undefined' && state.people) || []).some(p => p.id === name.toLowerCase());
+      if (cx && !exactPerson) { if (!out.contexts.includes(cx.id)) out.contexts.push(cx.id); tok('context', w, '@' + cx.label, { icon: cx.icon, hint: `Context: ${cx.label}. Click to keep “${w}” as text.` }); continue; }
       const p = _qaPerson(name);
       if (p) { if (!out.people.includes(p.id)) out.people.push(p.id); tok('person', w, p.name, { personId: p.id }); }
       else {
@@ -204,6 +214,14 @@ function parseQuickAdd(input, opts) {
       continue;
     }
     if ((m = /^!p?([1-3])$/i.exec(w)) && !skip(w)) { out.priority = 'p' + m[1]; tok('priority', w, 'P' + m[1]); continue; }
+    // Energy: energy:low, "low energy" / "high energy" (two words), low-energy.
+    if (!out.energy && typeof ctxEnergyMatch === 'function') {
+      const two = i + 1 < words.length && /^(low|high)$/i.test(w) && /^energy[.,;]?$/i.test(words[i + 1]) ? w + ' ' + words[i + 1] : null;
+      if (two && !skip(two)) { const en = w.toLowerCase(); out.energy = en; tok('energy', two, TASK_ENERGY[en].label, { icon: TASK_ENERGY[en].icon }); i++; continue; }
+      if (/^(energy:(low|high)|(low|high)-energy)$/i.test(w) && !skip(w)) { const en = ctxEnergyMatch(w); out.energy = en; tok('energy', w, TASK_ENERGY[en].label, { icon: TASK_ENERGY[en].icon }); continue; }
+    }
+    // ~45 (minutes) as well as ~45m / ~1.5h
+    if ((m = /^~(\d{1,3})$/.exec(w)) && !skip(w) && Number(m[1]) > 0) { out.estimate = Number(m[1]); tok('estimate', w, fmtEstimate(Number(m[1]))); continue; }
     if ((m = /^~(\d+(?:\.\d+)?)(m|min|mins|h|hr|hrs)$/i.exec(w)) && !skip(w)) {
       const n = Number(m[1]); const mins = /^h/i.test(m[2]) ? Math.round(n * 60) : Math.round(n);
       if (mins > 0 && mins <= 100 * 60) { out.estimate = mins; tok('estimate', w, fmtEstimate(mins)); continue; }
@@ -252,6 +270,18 @@ function parseQuickAdd(input, opts) {
   // A time without a date means today.
   if (out.dueTime && !out.dueDate) out.dueDate = fmtDate(today);
   out.title = words.join(' ').replace(/\s+/g, ' ').trim();
+  // People the title names ("email Sam"): linked when the task is made (pplAutoLink); shown here, a click leaves them out.
+  if (out.title && opts.mentions !== false && typeof pplAutoLink === 'function' && typeof pplIndex === 'function' && typeof state !== 'undefined' && state.peopleAutoLink !== false) {
+    let add = [];
+    try { add = pplAutoLink(state, { title: out.title, people: out.people.slice(), peopleExcluded: [] }, pplIndex()); } catch (e) { add = []; }
+    for (const pid of add) {
+      const raw = 'person:' + pid;
+      if (skip(raw)) { out.peopleExcluded.push(pid); continue; }
+      const p = typeof getPerson === 'function' ? getPerson(pid) : null;
+      out.mentions.push(pid);
+      tok('person', raw, (p && p.name) || pid, { personId: pid, mention: true, hint: `${(p && p.name) || pid} is named in the title, so they are linked. Click to leave them out.` });
+    }
+  }
   if (!out.title && String(input || '').trim()) {
     // Everything was a keyword ("tomorrow"): keep the text as the title instead.
     return parseQuickAdd(input, Object.assign({}, opts, { ignore: [...ignore, ...out.tokens.map(t => t.raw)] }));
@@ -270,6 +300,8 @@ function fmtEstimate(mins) {
 /** What a new task gets by default in a view, so it stays visible where it was added. */
 function quickAddDefaults(view) {
   view = view || state.view;
+  // Smart lists, Do now and the Inbox say what a task added there gets (15-nav-smart-lists.js).
+  if (typeof extraViewDefaults === 'function') { const x = extraViewDefaults(view); if (x) return x; }
   if (view === 'today' || view === 'week') return { dueDate: todayStr() };
   if (view === 'tomorrow') return { dueDate: tomorrowStr() };
   if (view.startsWith('day:')) return { dueDate: view.slice(4) };
@@ -318,6 +350,11 @@ function addCustomTask(title, dueDate, priority, tags, stream, recurrence, extra
   if (extra.dueTime && item.dueDate) item.dueTime = extra.dueTime;
   if (extra.estimate) item.estimate = extra.estimate;
   if (extra.plannedFor) item.plannedFor = extra.plannedFor;
+  // Contexts and energy (20-task-contexts.js), the Inbox (24-quick-capture.js), names in the title left unlinked.
+  if (Array.isArray(extra.contexts) && extra.contexts.length) item.contexts = [...new Set(extra.contexts.filter(c => typeof c === 'string' && c))].slice(0, 12);
+  if (extra.energy === 'low' || extra.energy === 'high') item.energy = extra.energy;
+  if (extra.inbox) item.inbox = true;
+  if (Array.isArray(extra.peopleExcluded) && extra.peopleExcluded.length) item.peopleExcluded = [...new Set(extra.peopleExcluded)];
   if (typeof pplAutoLinkOnCreate === 'function') pplAutoLinkOnCreate(item);   // People: link names in the title (50-people.js)
   state.custom.push(item);
   if (extra.status && extra.status !== 'todo') state.statuses[item.id] = extra.status;
@@ -334,7 +371,9 @@ function addParsedTask(parsed, defaults) {
   const people = [...new Set([...(d.people || []), ...(parsed.people || [])])];
   return addCustomTask(parsed.title, parsed.dueDate || d.dueDate || null, parsed.priority !== 'p0' ? parsed.priority : (d.priority || 'p0'),
     tags, parsed.stream || d.stream || null, parsed.recurrence || 'none',
-    { dueTime: parsed.dueTime, people, newPeople: parsed.newPeople, estimate: parsed.estimate, plannedFor: d.plannedFor, status: d.status });
+    { dueTime: parsed.dueTime, people, newPeople: parsed.newPeople, estimate: parsed.estimate || d.estimate || null, plannedFor: d.plannedFor, status: d.status,
+      contexts: [...new Set([...(d.contexts || []), ...(parsed.contexts || [])])], energy: parsed.energy || d.energy || null,
+      inbox: !!d.inbox, peopleExcluded: parsed.peopleExcluded || [] });
 }
 /** Parse + create in one go (dialogs, bulk add). Returns the id or null. */
 function addTaskFromText(text, defaults) {
@@ -349,4 +388,62 @@ function homeViewForTask(item) {
   if (d === null) return 'no-date';
   if (d <= 7) return 'week';
   return 'all';
+}
+
+/* ---------- the quick way in an existing task's title (60-task-detail.js tdTitleInput) ----------
+   "Email Sam" edited to "Email Sam fri 3pm !p1 @phone" sets the due date, time,
+   priority and context and keeps the title "Email Sam". Words that were already
+   in the old title stay text (a title such as "Plan for Friday" does not move the
+   date when you fix a typo). The chips under the title show what will be set; a
+   click keeps that word as text. One undo step. */
+function qaTitleParse(text, oldTitle, ignore) {
+  const old = new Set(String(oldTitle || '').toLowerCase().split(/\s+/).filter(Boolean));
+  let ign = [...(ignore || [])];
+  for (let pass = 0; pass < 4; pass++) {
+    const p = parseQuickAdd(text, { ignore: ign, mentions: false });
+    const stale = p.tokens.filter(t => String(t.raw).split(/\s+/).every(w => old.has(w.toLowerCase())));
+    if (!stale.length) return p;
+    ign = ign.concat(stale.map(t => t.raw));
+  }
+  return parseQuickAdd(text, { ignore: ign, mentions: false });
+}
+/** The chip row under a title being edited (made once, next to the textarea). */
+function qaTitlePreview(ta, oldTitle) {
+  let row = ta.nextElementSibling && ta.nextElementSibling.classList.contains('qa-title-chips') ? ta.nextElementSibling : null;
+  const v = ta.value.replace(/\s*\n\s*/g, ' ').trim();
+  const p = v && v !== String(oldTitle || '').trim() ? qaTitleParse(v, oldTitle, ta._qaIgnore) : null;
+  if (!p || !p.tokens.length || !p.title) { if (row) row.remove(); return; }
+  if (!row) {
+    row = document.createElement('div'); row.className = 'qa-preview qa-title-chips'; row.setAttribute('aria-live', 'polite');
+    row.addEventListener('mousedown', (e) => e.preventDefault());
+    row.addEventListener('click', (e) => { const c = e.target.closest('[data-raw]'); if (!c) return; (ta._qaIgnore = ta._qaIgnore || []).push(c.getAttribute('data-raw')); qaTitlePreview(ta, oldTitle); ta.focus(); });
+    ta.insertAdjacentElement('afterend', row);
+  }
+  row.innerHTML = (typeof _qadChips === 'function' ? _qadChips(p, true) : '') + `<span class="qa-enter"><kbd class="kbd">Enter</kbd> to set</span>`;
+}
+/** Save an edited title the quick way. Returns true when it set anything besides the title. */
+function qaApplyTitleEdit(id, text, ignore) {
+  const item = getItem(id); if (!item) return false;
+  const oldTitle = effTitle(item);
+  const p = qaTitleParse(text, oldTitle, ignore);
+  if (!p.tokens.length || !p.title) return false;
+  const did = [];
+  if (p.title !== oldTitle) { logActivity(id, 'title', { from: oldTitle, to: p.title }); item.title = p.title; }
+  if (p.dueDate && p.dueDate !== (item.dueDate || null)) { logActivity(id, 'date', { from: item.dueDate || null, to: p.dueDate, reason: 'title' }); item.dueDate = p.dueDate; did.push(_qaFmtDay(new Date(p.dueDate + 'T00:00:00'))); }
+  if (p.dueTime && p.dueTime !== item.dueTime) { logActivity(id, 'dueTime', { from: item.dueTime || null, to: p.dueTime }); item.dueTime = p.dueTime; did.push(p.dueTime); }
+  if (p.priority && p.priority !== 'p0' && p.priority !== effPriority(item)) { logActivity(id, 'priority', { from: effPriority(item), to: p.priority }); item.priority = p.priority; did.push(p.priority.toUpperCase()); }
+  if (p.stream && p.stream !== item.stream) { logActivity(id, 'stream', { from: item.stream, to: p.stream }); item.stream = p.stream; did.push(STREAMS[p.stream] ? STREAMS[p.stream].label : p.stream); }
+  if (p.recurrence && p.recurrence !== (item.recurrence || 'none')) { logActivity(id, 'recurrence', { from: item.recurrence || 'none', to: p.recurrence }); item.recurrence = p.recurrence; did.push(recurrenceLabel(p.recurrence)); }
+  if (p.estimate && p.estimate !== item.estimate) { logActivity(id, 'estimate', { from: item.estimate || null, to: p.estimate }); item.estimate = p.estimate; did.push(fmtEstimate(p.estimate)); }
+  const tags = effTags(item), addTags = p.tags.filter(t => !tags.includes(t));
+  if (addTags.length) { logActivity(id, 'tags', { added: addTags, removed: [] }); item.tags = [...tags, ...addTags]; did.push(addTags.map(t => '#' + t).join(' ')); }
+  const people = Array.isArray(item.people) ? item.people.slice() : [];
+  for (const n of p.newPeople || []) { const pid = ensurePersonByName(n); if (pid) p.people.push(pid); }
+  const addPeople = [...new Set(p.people)].filter(x => !people.includes(x));
+  if (addPeople.length) { logActivity(id, 'people', { added: addPeople, removed: [] }); item.people = [...people, ...addPeople]; did.push(addPeople.map(x => (getPerson(x) || {}).name || x).join(', ')); }
+  if (p.contexts.length) { const cx = effContexts(item), add = p.contexts.filter(c => !cx.includes(c)); if (add.length) { logActivity(id, 'contexts', { added: add, removed: [] }); item.contexts = [...cx, ...add]; did.push(add.map(c => '@' + ctxLabel(c)).join(' ')); } }
+  if (p.energy && p.energy !== effEnergy(item)) { logActivity(id, 'energy', { from: effEnergy(item), to: p.energy }); item.energy = p.energy; did.push(TASK_ENERGY[p.energy].label); }
+  saveData(); render();
+  toast(did.length ? `Set ${did.join(' · ')}` : 'Renamed', { kind: 'ok', icon: 'sparkles', action: { label: 'Undo', run: () => undo() } });
+  return true;
 }
