@@ -11,6 +11,12 @@
                  the devices (name, kind, last seen, This computer, Rename,
                  Remove this device, main computer for each account), add a
                  phone (QR code), a new recovery code, the trial switch.
+   Through your relay (lib/sync/relay.mjs; Settings > Your relay sets it up):
+   when one is connected, "Sync through your relay (recommended)" is the
+   default and a folder is the alternative; a computer that syncs through a
+   folder gets "Sync through your relay too" (both at once). A new computer
+   joins with a LINK from the other one (<relay>/j#ODJ1....) plus the 4
+   letters; the existing one still asks "Approve <name>?".
    Changes from the other computer arrive through live sync (86-live-sync.js
    shows "Updated by Work laptop"). The helpers syncAgo / syncStatusLine /
    syncDeviceLines / syncScreen / syncPairView / syncKindLabel /
@@ -30,6 +36,8 @@ let _syncOtherOpen = false;  // "Other ways" unfolded
 let _syncJoinDismissed = null;   // the finished join-code panel the user closed (its expiresAt)
 let _syncJoinTick = null;    // the join code's countdown (text only, every second)
 let _syncLastJoinCode = null;   // the 4 letters typed last (Try again sends them again at once)
+let _syncVia = null;            // the setup's way: 'relay' | 'folder' (first computer), 'link' | 'folder' (joining)
+let _syncLastJoinLink = null;   // the join link pasted last (Try again sends it again)
 
 /** "just now", "12 s ago", "2 min ago", "3 h ago", "2 days ago". */
 function syncAgo(ms, nowMs) {
@@ -175,6 +183,28 @@ function syncPairView(p) {
   }
 }
 
+/** A relay this person can sync through, known on this computer (not just the link of a join). */
+function syncRelayReady(st) { const R = st && st.relay; return !!(R && R.available && R.usable && R.source !== 'link'); }
+/** The relay's line for Settings > Sync: {tone, text} or null when this computer does not sync through it. */
+function syncRelayLine(st) {
+  const R = st && st.relay;
+  if (!R || !R.on || !(R.transport === 'relay' || R.transport === 'both')) return null;
+  const host = R.host || 'your relay';
+  const out = R.outbox && R.outbox.bytes > 0 ? ' Changes made here wait on this computer and go as soon as it can.' : '';
+  switch (R.state) {
+    case 'live': return { tone: 'ok', text: 'Connected to your relay (' + host + '): changes arrive within a second.' };
+    case 'polling': return { tone: 'idle', text: 'Your relay (' + host + '): checking for changes every minute.' };
+    case 'connecting': case undefined: return { tone: 'idle', text: 'Connecting to your relay (' + host + ')…' };
+    case 'offline': return { tone: 'warn', text: 'Your relay cannot be reached right now.' + out };
+    case 'rate': return { tone: 'warn', text: 'Your relay asked OpenDash to slow down for a moment.' + out };
+    case 'busy': return { tone: 'warn', text: "Your relay is resting until midnight UTC (Cloudflare's free daily limit)." + out };
+    case 'quota': return { tone: 'err', text: "Your relay's storage for sync is full: Health > Compact now makes room." };
+    case 'denied': return { tone: 'err', text: R.hasKey ? 'Your relay refused this computer: see Health.' : 'This computer does not have the key to your relay yet: type a code from a computer that uses it (below).' };
+    default: return { tone: 'warn', text: 'Your relay gave an answer OpenDash did not expect; it tries again by itself.' };
+  }
+}
+/** The calm line when no relay is connected. */
+function syncNoRelayLine() { return 'Connect your own Cloudflare (free) in Settings > Your relay, or ask a friend who has one for an invite. Until then, sync works through a folder and directly between your computers on the same network.'; }
 /** One line: what syncs and what never does. */
 function syncWhatSyncs() { return 'What syncs: your tasks, notes, people, streams, countdowns, Home, settings and layout. Never: sign-ins, passwords, bank connections or keys.'; }
 /** The folder row's one line: the personal OneDrive is picked for you, and why. */
@@ -203,20 +233,25 @@ function syncJoinCodeView(j) {
   if (j.role === 'offer') {
     switch (j.step) {
       case 'waiting': return { title: 'Type this code on the new computer', code: j.code, countdown: true, text: 'On the new computer: OpenDash > Settings > Sync > "No, I already use OpenDash", then type these 4 letters. The code works once.' + (j.wrong ? ' ' + j.wrong + ' wrong ' + (j.wrong === 1 ? 'try' : 'tries') + ' so far: after 3 it stops working.' : ''), actions: [['new', 'New code'], ['cancel', 'Cancel']] };
+      case 'approve': return j.member
+        ? { title: 'Give ' + other + ' the key to your relay?', text: Other + ' already syncs with this computer and typed the code to sync through your relay too. Only approve if you are doing that now.', actions: [['approve', 'Approve', true], ['decline', 'Not mine']] }
+        : { title: 'Approve ' + other + '?', text: Other + ' typed the code. Only approve if it is your ' + syncKindLabel(j.kind).toLowerCase() + ' and you are adding it now: it then gets your synced data.', actions: [['approve', 'Approve', true], ['decline', 'Not mine']] };
       case 'sent': return { title: 'Adding ' + other, text: Other + ' finishes by itself in a moment.', actions: [['cancel', 'Cancel']] };
-      case 'done': return { title: 'Done', text: Other + ' now syncs too.', actions: [['close', 'OK', true]] };
+      case 'done': return { title: 'Done', text: Other + (j.member ? ' now has the key to your relay.' : ' now syncs too.'), actions: [['close', 'OK', true]] };
+      case 'declined': return { title: 'Not approved', text: 'Nothing was shared.', actions: [['new', 'Make a new code', true], ['close', 'Close']] };
       case 'burned': return { title: 'This code no longer works', text: 'It was typed wrongly 3 times, so it was stopped for safety. Nothing was shared.', actions: [['new', 'Make a new code', true], ['close', 'Close']] };
-      case 'clash': return { title: 'Two computers tried to use this code', text: 'For safety, neither was added. Start again, with only the new computer.', actions: [['new', 'Start again', true], ['close', 'Close']] };
+      case 'clash': return { title: 'Someone else tried this link', text: 'Two devices used the same code or link, so for safety neither was added. Start again, with only the new computer.', actions: [['new', 'Start again', true], ['close', 'Close']] };
       case 'expired': return { title: 'The code ran out', text: 'Nothing was shared. Make a new one when the new computer is ready.', actions: [['new', 'Make a new code', true], ['close', 'Close']] };
       default: return { title: 'Stopped', text: 'Nothing was shared.', actions: [['new', 'Make a new code', true], ['close', 'Close']] };
     }
   }
   switch (j.step) {
-    case 'looking': return { title: 'Looking for your other computer', countdown: true, text: 'Your cloud drive is bringing its code. This usually takes a few seconds, sometimes a minute. Try again looks once more straight away.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
-    case 'sent': return { title: 'Checking the code', countdown: true, text: 'Your other computer checks it, then sends this one the key. A few seconds, sometimes a minute.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
+    case 'looking': return { title: 'Looking for your other computer', countdown: true, text: 'Its code is on its way (through your relay or cloud drive). This usually takes a few seconds, sometimes a minute. Try again looks once more straight away.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
+    case 'sent': return { title: 'Checking the code', countdown: true, text: 'Your other computer checks it and asks you to approve this computer there. Then it sends the key.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
+    case 'declined': return { title: 'Not approved', text: 'Your other computer said no, so nothing was shared. Make a new code there to try again.', actions: [['close', 'Close']] };
     case 'done': return { title: 'Done', text: 'This computer now syncs with your other computer.', actions: [] };
     case 'wrong': return { title: 'That code is not right', text: 'Check the 4 letters on your other computer and type them again below.', actions: [['close', 'Close']] };
-    case 'clash': return { title: 'Two computers tried to use this code', text: 'For safety, neither was added. Make a new code on your other computer and type it below.', actions: [['close', 'Close']] };
+    case 'clash': return { title: 'Someone else tried this link', text: 'Two devices used the same code or link, so for safety neither was added. Start again: make a new code on your other computer.', actions: [['close', 'Close']] };
     case 'taken': return { title: 'That code was already used', text: 'Each code works once. Make a new one on your other computer and type it below.', actions: [['close', 'Close']] };
     case 'expired': return { title: 'This took too long', text: 'Make a new code on your other computer and type it below.', actions: [['close', 'Close']] };
     default: return { title: 'Stopped', text: 'Nothing was shared. You can type a code again below.', actions: [['retry', 'Try again'], ['close', 'Close']] };
@@ -417,19 +452,73 @@ function _syncJoinPanel(card, j) {
     }
   }
   box.appendChild(_syncEl('p', 'set-h', v.text));
+  _syncLinkBox(box, j);
   if (v.actions.length) {
     const row = _syncEl('div', 'sync-actions');
     for (const [id, label, primary] of v.actions) {
       row.appendChild(_syncBtn(label, () => {
         if (id === 'cancel') _syncPost('/api/sync/code/cancel');
+        else if (id === 'approve' || id === 'decline') _syncPost('/api/sync/code/approve', { yes: id === 'approve' }, id === 'approve' ? 'Approved' : null);
         else if (id === 'new') { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); }                 // a fresh code now; the old one stops
         else if (id === 'close') { _syncJoinDismissed = j.expiresAt; _syncPost('/api/sync/code/cancel'); }       // a finished one goes at once, on the server too
-        else if (id === 'retry') { if (_syncLastJoinCode) _syncPost('/api/sync/code/join', { code: _syncLastJoinCode }); else { const inp = document.querySelector('.sync-join-input'); if (inp) inp.focus(); } }
+        else if (id === 'retry') { if (_syncLastJoinCode) _syncPost('/api/sync/code/join', Object.assign({ code: _syncLastJoinCode }, _syncLastJoinLink && j.role === 'join' ? { link: _syncLastJoinLink } : {})); else { const inp = document.querySelector('.sync-join-input'); if (inp) inp.focus(); } }
       }, primary));
     }
     box.appendChild(row);
   }
   card.body.appendChild(box);
+}
+/**
+ * The join link under the code on the computer that shows it (sync through your relay):
+ * Copy, "send it to yourself", and its own 2-minute countdown.
+ */
+function _syncLinkBox(box, j) {
+  const R = _syncSt && _syncSt.relay;
+  const L = R && R.link && R.link.role === 'host' ? R.link : null;
+  if (!L || !j || j.role !== 'offer' || !['waiting', 'approve'].includes(j.step)) return;
+  const wrap = _syncEl('div', 'sync-link');
+  if (L.state === 'open' && L.link) {
+    wrap.appendChild(_syncEl('div', 'sync-pair-t', 'No shared folder on the new computer? Use this link'));
+    const row = _syncEl('div', 'sync-other');
+    const inp = _syncEl('input', 'control control-sm sync-link-input'); inp.readOnly = true; inp.value = L.link; inp.setAttribute('aria-label', 'Join link');
+    inp.onfocus = () => { try { inp.select(); } catch (e) { /* fine */ } };
+    const copy = _syncBtn('Copy', async () => {
+      try { await navigator.clipboard.writeText(L.link); toast('Link copied', { kind: 'ok' }); }
+      catch (e) { inp.focus(); inp.select(); toast('Select the link and copy it (Ctrl+C)', { kind: 'info' }); }
+    }, true);
+    row.append(inp, copy);
+    wrap.appendChild(row);
+    const left = _syncEl('div', 'sync-join-left', syncTimeLeft(L.expiresAt, Date.now()));
+    left.dataset.exp = String(L.expiresAt);
+    wrap.appendChild(left);
+    wrap.appendChild(_syncEl('p', 'set-h', 'Send it to yourself (an email or a chat to yourself), open it on the new computer: OpenDash > Settings > Sync > "No, I already use OpenDash" > paste the link, then type the 4 letters. It works for 2 minutes, for one computer.'));
+  } else if (L.state === 'expired') {
+    wrap.appendChild(_syncEl('p', 'set-h', 'The join link ran out (it works for 2 minutes). The 4 letters above still work through a shared folder; for a new computer without one, make a new code.'));
+  } else if (L.state === 'clash') {
+    wrap.appendChild(_syncEl('p', 'sync-status sync-warn', 'Someone else tried this link: start again.'));
+  }
+  if (wrap.childNodes.length) box.appendChild(wrap);
+}
+/** "Paste the join link" + the 4 letters: a new computer with no shared folder (sync through your relay). */
+function _syncLinkJoin(card) {
+  const wrap = _syncEl('div', 'sync-link-join');
+  const link = _syncEl('input', 'control control-sm sync-link-input'); link.placeholder = 'https://…/j#ODJ1.…'; link.maxLength = 400; link.autocomplete = 'off'; link.spellcheck = false;
+  link.setAttribute('aria-label', 'The join link from your other computer');
+  if (_syncLastJoinLink) link.value = _syncLastJoinLink;
+  const code = _syncEl('input', 'control sync-join-input'); code.maxLength = 9; code.autocomplete = 'off'; code.spellcheck = false; code.placeholder = 'ABCD';
+  code.setAttribute('aria-label', 'The 4-letter code');
+  const go = () => {
+    const l = link.value.trim(), c = code.value.trim();
+    if (!l) { link.focus(); return; }
+    if (!c) { code.focus(); return; }
+    _syncLastJoinLink = l; _syncLastJoinCode = c;
+    _syncPost('/api/sync/code/join', { code: c, link: l });
+  };
+  link.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); code.focus(); } };
+  code.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
+  const row = _syncEl('div', 'sync-other'); row.append(code, _syncBtn('Join', go, true));
+  wrap.append(link, row);
+  card.body.appendChild(_settingsRow('Join with a link', 'On your other computer: Settings > Sync > Add a computer. Paste the link it shows (send it to yourself), then type its 4 letters. No shared folder needed.', wrap));
 }
 /** "Type the 4-letter code from your other computer" (the new computer's default way in). */
 function _syncJoinInput(card) {
@@ -477,20 +566,45 @@ function _syncStart(card, st) {
   );
   card.body.appendChild(_settingsRow('Is this your first computer with OpenDash?', 'Choose "No" if OpenDash already syncs on another computer of yours.', q));
   card.body.appendChild(_syncEl('p', 'set-h sync-what', syncWhatSyncs()));
+  if (!syncRelayReady(st)) card.body.appendChild(_syncEl('p', 'set-h sync-relay-none', syncNoRelayLine()));
 }
 
 function _syncSetup(card, st, first) {
-  const folder = _syncFolderControl(st);
-  card.body.appendChild(_settingsRow('Folder', syncFolderHint(st, first), folder));
+  const relayOk = syncRelayReady(st);
+  const R = (st && st.relay) || {};
+  // The way: through your relay (recommended when one is connected) or a folder; a new computer: a link or a folder.
+  const ways = first ? (relayOk ? ['relay', 'folder'] : ['folder']) : ['link', 'folder'];
+  if (!_syncVia || !ways.includes(_syncVia)) _syncVia = ways[0];
+  if (ways.length > 1) {
+    const seg = _syncEl('div', 'sync-actions sync-ways');
+    const label = { relay: 'Sync through your relay (recommended)', link: 'With a link from my other computer', folder: 'Through a folder (OneDrive, Google Drive, Dropbox)' };
+    for (const w of ways) {
+      const b = _syncBtn(label[w], () => { _syncVia = w; _syncRefresh(); }, _syncVia === w);
+      b.setAttribute('aria-pressed', _syncVia === w ? 'true' : 'false');
+      seg.appendChild(b);
+    }
+    card.body.appendChild(_settingsRow(first ? 'How should your computers sync?' : 'How does your other computer sync?', first
+      ? 'Your relay' + (R.host ? ' (' + R.host + ')' : '') + ' carries your changes locked: it cannot read them, and no cloud app has to be running. A folder works too.'
+      : 'Choose "With a link" if your other computer syncs through your relay, or has no shared folder.', seg));
+  }
+  if (!first && !relayOk && _syncVia === 'folder') card.body.appendChild(_syncEl('p', 'set-h sync-relay-none', syncNoRelayLine()));
+  if (!first && _syncVia === 'link') {
+    _syncLinkJoin(card);
+    card.body.appendChild(_settingsRow('Back', '', _syncBtn('Back', () => { _syncFlow = null; _syncVia = null; _syncRefresh(); })));
+    return;
+  }
+  const viaRelay = first && _syncVia === 'relay';
+  const folder = viaRelay ? null : _syncFolderControl(st);
+  if (folder) card.body.appendChild(_settingsRow('Folder', syncFolderHint(st, first), folder));
   const name = _syncEl('input', 'control control-sm'); name.maxLength = 60;
   name.value = (st && st.deviceName) || ''; name.placeholder = 'Work laptop';
   card.body.appendChild(_settingsRow('This computer is called', 'How your other computers show this one.', name));
   const row = _syncEl('div', 'sync-actions');
   row.append(
-    _syncBtn('Back', () => { _syncFlow = null; _syncRefresh(); }),
+    _syncBtn('Back', () => { _syncFlow = null; _syncVia = null; _syncRefresh(); }),
     _syncBtn(first ? 'Turn on sync' : 'Find my sync', async () => {
-      const f = folder._value();
-      const body = Object.assign({ apply: true }, f ? { folder: f } : {}, name.value.trim() ? { deviceName: name.value.trim() } : {});
+      const f = folder ? folder._value() : null;
+      const body = Object.assign({ apply: true }, f ? { folder: f } : {}, viaRelay ? { relay: true } : {}, name.value.trim() ? { deviceName: name.value.trim() } : {});
       const j = await _syncPost(first ? '/api/sync/setup' : '/api/sync/join', body, first ? 'Sync is on' : null);
       if (j) _syncFlow = null;
       _syncRefresh();
@@ -510,7 +624,7 @@ function _syncJoining(card, st) {
   if (jc) _syncJoinPanel(card, jc);
   if (jc && (jc.step === 'looking' || jc.step === 'sent')) { stop(); return; }
   if (p) _syncPairPanel(card, p);
-  _syncJoinInput(card);
+  if (st.relay && st.relay.on && !st.folder) _syncLinkJoin(card); else _syncJoinInput(card);
   _syncOtherWays(card, (box) => {
     box.body.appendChild(_settingsRow('Approve on your other computer', 'Your other computer shows 6 numbers; you check this one shows the same.', _syncBtn('Ask my other computer', () => _syncPost('/api/sync/pair/start'))));
     _syncRecoveryRow(box, 'Type your recovery code', 'The long code you wrote down or printed when you turned sync on: for when your other computer is not around.');
@@ -609,6 +723,32 @@ function _syncLive(card, st) {
   card.body.appendChild(_settingsRow('Live sync', L.on ? 'On.' : 'Off: changes travel through your cloud folder only.', _settingsSwitch(!!L.on, 'Live sync', (v) => _syncPost('/api/sync/live', { enabled: v }, v ? 'Live sync is on' : 'Live sync is off'), _syncBusy)));
 }
 
+/** How this computer syncs: your relay, a folder, or both; the one-click "too", and "Stop using OneDrive". */
+function _syncTransport(card, st) {
+  const R = st.relay || {};
+  const relayOk = syncRelayReady(st);
+  const cloud = st.folder ? (st.cloud || 'the folder') : null;
+  const line = syncRelayLine(st);
+  if (R.transport === 'folder' || (!R.on && st.folder)) {
+    if (relayOk) card.body.appendChild(_settingsRow('Sync through your relay too (recommended)', 'Your relay' + (R.host ? ' (' + R.host + ')' : '') + ' carries your changes locked, within a second, and does not need ' + cloud + ' to be running. ' + cloud + ' keeps working alongside.', _syncBtn('Use my relay too', () => _syncSave({ relay: true }, 'This computer syncs through your relay too'), true)));
+    else card.body.appendChild(_settingsRow('Your relay', syncNoRelayLine(), null));
+    return;
+  }
+  if (!R.on) return;
+  const box = _syncEl('div', 'sync-relay');
+  if (line) box.appendChild(_syncEl('div', 'sync-status sync-' + line.tone, line.text));
+  else if (!R.available) box.appendChild(_syncEl('div', 'sync-status sync-warn', 'Your relay is not set up on this computer yet. ' + syncNoRelayLine()));
+  const title = R.transport === 'both' ? 'Syncing through your relay and ' + cloud : 'Syncing through your relay';
+  card.body.appendChild(_settingsRow(title, R.transport === 'both' ? 'Both at once: a change goes whichever way is quicker, and each one is used once.' : 'No shared folder needed. Your relay only ever holds locked data.', box));
+  if (R.state === 'denied' && !R.hasKey) _syncJoinInput(card);
+  if (R.transport === 'both') {
+    card.body.appendChild(_settingsRow('Stop using ' + cloud, 'This computer then syncs through your relay only. Your other computers that use only ' + cloud + ' should use the relay too first.', _syncBtn('Stop using ' + cloud, async () => {
+      const ok = await confirmDialog({ title: 'Stop using ' + cloud + '?', text: 'This computer keeps syncing through your relay. Its files stay in ' + cloud + ' (nothing is deleted). A computer that syncs only through ' + cloud + ' stops getting this one\'s changes until it uses your relay too.', confirmLabel: 'Stop using ' + cloud });
+      if (ok) _syncSave({ folder: false }, 'This computer syncs through your relay only');
+    })));
+  }
+}
+
 function _syncAddPanel(card) {
   const box = _syncEl('div', 'sync-add');
   box.appendChild(_syncEl('p', 'set-h', 'Without the 4-letter code: on the other computer, open OpenDash, go to Settings > Sync, choose "No, I already use OpenDash", then "Other ways" > "Ask my other computer". This computer will then ask you to check it.'));
@@ -623,7 +763,7 @@ function _syncAddPanel(card) {
 
 function _syncCard(el) {
   const st = _syncSt;
-  const card = _settingsCard('Sync across my devices', 'Keeps your tasks, notes, people, streams and countdowns the same on your computers, through a cloud folder you already have (OneDrive, Google Drive or Dropbox). Everything is locked before it leaves this computer: the cloud cannot read it. No account and no OpenDash server. Sign-ins, bank connections and keys never leave this computer.');
+  const card = _settingsCard('Sync across my devices', 'Keeps your tasks, notes, people, streams and countdowns the same on your computers, through your own relay or a cloud folder you already have (OneDrive, Google Drive or Dropbox). Everything is locked before it leaves this computer: neither can read it. No account. Sign-ins, bank connections and keys never leave this computer.');
   const line = document.createElement('div'); line.className = 'sync-status'; line.setAttribute('role', 'status');
   const paint = () => {
     const s = syncStatusLine(_syncSt, Date.now());
@@ -661,7 +801,8 @@ function _syncCard(el) {
     if (st.e2e && st.e2e.pairing && st.e2e.pairing.role === 'join') _syncPairPanel(card, st.e2e.pairing);
     // Removed: the code (or approving) brings it back as a new device.
     if (!(jc && (jc.step === 'looking' || jc.step === 'sent'))) _syncJoinInput(card);
-    _syncOtherWays(card, (box) => {
+    // A computer that already syncs takes keys only from your other computers (the code above).
+    if (!(st.e2e && st.e2e.ready)) _syncOtherWays(card, (box) => {
       _syncRecoveryRow(box, 'Type your recovery code', 'The long code you wrote down or printed when you turned sync on.');
       if (st.e2e && st.e2e.found && st.e2e.found.groups) box.body.appendChild(_settingsRow('Approve on your other computer', '', _syncBtn('Ask my other computer', () => _syncPost('/api/sync/pair/start'))));
     });
@@ -678,10 +819,13 @@ function _syncCard(el) {
       // The usual way to add a computer, up front: one button, one line.
       const hero = _syncEl('div', 'sync-add-hero');
       const txt = _syncEl('div', 'sync-add-hero-t');
-      txt.append(_syncEl('div', 'sync-pair-t', 'Add a computer'), _syncEl('div', 'set-h', 'Shows 4 letters to type on the new computer (Settings > Sync > "No, I already use OpenDash"). Works once, for 10 minutes.'));
+      txt.append(_syncEl('div', 'sync-pair-t', 'Add a computer'), _syncEl('div', 'set-h', st.relay && st.relay.on && (st.relay.transport === 'relay' || st.relay.transport === 'both')
+        ? 'Shows 4 letters and a link for the new computer (Settings > Sync > "No, I already use OpenDash"). You approve it here before anything is shared.'
+        : 'Shows 4 letters to type on the new computer (Settings > Sync > "No, I already use OpenDash"). You approve it here before anything is shared.'));
       hero.append(txt, _syncBtn('Add a computer', () => { _syncJoinDismissed = null; _syncPost('/api/sync/code/start'); }, true));
       card.body.appendChild(hero);
     }
+    _syncTransport(card, st);
     _syncDevices(card, st);
     syncChangesRow(card, st);
     _syncLive(card, st);
@@ -716,11 +860,12 @@ function _syncCard(el) {
       name.onchange = () => _syncSave({ deviceName: name.value.trim() }, 'Name saved');
       card.body.appendChild(_settingsRow('This computer is called', 'How your other computers show this one.', name));
     }
-    card.body.appendChild(_settingsRow('Folder', 'OpenDash keeps an "OpenDash Sync" folder inside it. Each computer writes only its own files there.', _syncFolderControl(st)));
+    if (st.folder || !(st.relay && st.relay.on)) card.body.appendChild(_settingsRow('Folder', 'OpenDash keeps an "OpenDash Sync" folder inside it. Each computer writes only its own files there.', _syncFolderControl(st)));
+    else card.body.appendChild(_settingsRow('Also sync through a folder (optional)', 'For a computer of yours that does not use the relay yet: OneDrive, Google Drive or Dropbox.', _syncFolderControl(st)));
     const now = document.createElement('button'); now.type = 'button'; now.className = 'btn btn-secondary btn-sm'; now.textContent = 'Sync now';
     now.disabled = _syncBusy;
     now.onclick = async () => { try { _syncSt = await _syncJson('/api/sync/now', {}); } catch (e) { _syncErr = netErrorMessage(e); } _syncRefresh(); };
-    card.body.appendChild(_settingsRow('Check the folder now', 'It also checks by itself every few seconds.', now));
+    card.body.appendChild(_settingsRow(st.folder ? 'Check the folder now' : 'Check now', 'It also checks by itself every few seconds.', now));
     // People's pictures and story audio (lib/sync/blobs.mjs), one line: 'Pictures and audio: 34 MB of 200 MB'.
     if (st.blobs && st.blobs.text) card.body.appendChild(_settingsRow(st.blobs.text, '', null));
     if (st.conflicts && st.conflicts.count) {
@@ -747,9 +892,9 @@ function _syncCard(el) {
   _syncTicker = setInterval(() => {
     if (!document.body.contains(line) && !document.body.contains(card.card)) { clearInterval(_syncTicker); _syncTicker = null; return; }
     _syncJson('/api/sync/status').then((s) => {
-      const before = JSON.stringify([syncScreen(_syncSt, _syncFlow), _syncSt && _syncSt.state, _syncFeedKey(_syncSt), _syncSt && _syncSt.e2e && _syncSt.e2e.pairing, _syncSt && _syncSt.e2e && _syncSt.e2e.joinCode, _syncSt && _syncSt.e2e && _syncSt.e2e.requests, _syncSt && _syncSt.devices && _syncSt.devices.map(d => d.name)]);
+      const before = JSON.stringify([syncScreen(_syncSt, _syncFlow), _syncSt && _syncSt.state, _syncFeedKey(_syncSt), _syncSt && _syncSt.e2e && _syncSt.e2e.pairing, _syncSt && _syncSt.e2e && _syncSt.e2e.joinCode, _syncSt && _syncSt.e2e && _syncSt.e2e.requests, _syncSt && _syncSt.devices && _syncSt.devices.map(d => d.name), _syncSt && _syncSt.relay && [_syncSt.relay.state, _syncSt.relay.transport, _syncSt.relay.available, _syncSt.relay.link && _syncSt.relay.link.state]]);
       _syncSt = s;
-      const after = JSON.stringify([syncScreen(s, _syncFlow), s.state, _syncFeedKey(s), s.e2e && s.e2e.pairing, s.e2e && s.e2e.joinCode, s.e2e && s.e2e.requests, s.devices && s.devices.map(d => d.name)]);
+      const after = JSON.stringify([syncScreen(s, _syncFlow), s.state, _syncFeedKey(s), s.e2e && s.e2e.pairing, s.e2e && s.e2e.joinCode, s.e2e && s.e2e.requests, s.devices && s.devices.map(d => d.name), s.relay && [s.relay.state, s.relay.transport, s.relay.available, s.relay.link && s.relay.link.state]]);
       if (before !== after && !_syncBusy) _syncRefresh(); else paint();
     }).catch(() => paint());
   }, 3000);
@@ -757,7 +902,7 @@ function _syncCard(el) {
 
 registerSettingsGroup({
   id: 'sync', title: 'Sync', icon: 'refresh-cw', order: 91,
-  description: 'Keep your data the same on your computers through OneDrive, Google Drive or Dropbox, end-to-end encrypted.',
+  description: 'Keep your data the same on your computers through your own relay, or OneDrive, Google Drive or Dropbox, end-to-end encrypted.',
   render(el) {
     if (!_syncSt && !_syncErr) syncLoad();
     // Sync | Health | What changed | Review (58-settings-sync-health.js), once sync is on.

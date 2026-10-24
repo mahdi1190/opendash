@@ -51,9 +51,15 @@ const UI_STATE_KEYS = [
   // ── game ── (2.16: levels, streaks, quests, the focus timer, records: 92-game-*.js); never an undo step
   'game',
   // ── end game ──
+  // ── profile ── (2.17: your profile and avatar, 97-profile-*.js); never an undo step (the builder has its own)
+  'profile',
+  // ── end profile ──
   // ── local ── (2.16: what this page kept in localStorage, now in the state: 06-core-seen.js)
   'seen', 'uiPrefs', 'drafts',
   // ── end local ──
+  // ── together ── (2.17: shared spaces with friends, 99-together-*.js); never an undo step
+  'together',
+  // ── end together ──
 ];
 // UI keys that are PREFERENCES (theme, density, sort, the calendars you hide...):
 // they follow you to your other computers (folder sync) and to every tab (live
@@ -68,9 +74,15 @@ const SHARED_UI_KEYS = [
   // ── game ── your level, streaks and quests follow you too (92-game-*.js)
   'game',
   // ── end game ──
+  // ── profile ── your profile and avatar follow you too (97-profile-*.js)
+  'profile',
+  // ── end profile ──
   // ── local ── seen flags, per-browser preferences and drafts follow you too (06-core-seen.js)
   'seen', 'uiPrefs', 'drafts',
   // ── end local ──
+  // ── together ── your Together choices follow you too (99-together-*.js)
+  'together',
+  // ── end together ──
 ];
 const BOOKKEEPING_KEYS = ['_lastSave', '_saveCount', '_localDirty'];
 const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);

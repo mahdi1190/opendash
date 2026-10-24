@@ -91,7 +91,7 @@ async function settingsSaveConfig(patch, okMsg) {
   }
 }
 
-/* ---------- Profile & region ---------- */
+/* ---------- Name & region ---------- */
 const SETTINGS_CURRENCIES = ['GBP', 'EUR', 'USD', 'CAD', 'AUD', 'NZD', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'JPY', 'INR', 'SGD', 'HKD', 'ZAR', 'BRL', 'MXN', 'AED'];
 const SETTINGS_LOCALES = [['en-GB', 'English (UK)'], ['en-US', 'English (US)'], ['en-IE', 'English (Ireland)'], ['en-AU', 'English (Australia)'], ['en-CA', 'English (Canada)'],
   ['en-IN', 'English (India)'], ['de-DE', 'Deutsch'], ['fr-FR', 'Français'], ['es-ES', 'Español'], ['it-IT', 'Italiano'], ['nl-NL', 'Nederlands'],
@@ -114,7 +114,7 @@ function settingsZoneNote(cfgTz, here) {
   return { mismatch: true, text: `This computer is on ${here}. Pages show its clock, but the stories, the assistant and updates use ${cfgTz}.` };
 }
 registerSettingsGroup({
-  id: 'profile', title: 'Profile & region', icon: 'circle-user', order: 10,
+  id: 'profile', title: 'Name & region', icon: 'circle-user', order: 10,
   description: 'Your name and how dates and money are shown. Stored in config.json in your data folder.',
   render(el) {
     const cfg = APP_CONFIG;
@@ -319,10 +319,12 @@ registerSettingsGroup({
 });
 
 /* ---------- the page ---------- */
+/** The page plain #view=settings opens on: Name & region, as in 2.16 (Profile, 97-profile-2ui.js, may list first). */
+const SETTINGS_DEFAULT_GROUP = 'profile';
 function _settingsGroupFromView(v) {
   const m = /^settings:([a-z-]+)$/.exec(String(v || ''));
-  const id = m ? m[1] : null;
-  return SETTINGS_GROUPS.find(g => g.id === id) || SETTINGS_GROUPS[0];
+  const id = m ? m[1] : SETTINGS_DEFAULT_GROUP;
+  return SETTINGS_GROUPS.find(g => g.id === id) || SETTINGS_GROUPS.find(g => g.id === SETTINGS_DEFAULT_GROUP) || SETTINGS_GROUPS[0];
 }
 registerSection('settings', {
   group: 'system',

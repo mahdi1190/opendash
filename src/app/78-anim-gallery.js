@@ -303,6 +303,7 @@ function animGalleryRender(el) {
     const replay = document.createElement('button'); replay.type = 'button'; replay.className = 'btn btn-secondary btn-sm'; replay.innerHTML = icon('sparkles', 'i-sm') + '<span>Play again</span>';
     replay.onclick = () => showStage(it, true);
     acts.appendChild(replay);
+    if (typeof friendsPostcardButton === 'function') { const pc = friendsPostcardButton(it); if (pc) acts.appendChild(pc); }   // Friends (99s-friends-scenes-2postcards.js)
     // The scene editor (78-scene-editor.js, V2 23.4): a developer tool, shown only when its dev route answers.
     if (it.composed && typeof sceneEditorAvailable === 'function') {
       const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'btn btn-secondary btn-sm'; edit.hidden = true;

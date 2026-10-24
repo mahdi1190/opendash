@@ -799,6 +799,7 @@ function calMonthGrid(o) {
     const entries = o.entries(iso);
     cell.innerHTML = `<button type="button" class="dn" aria-label="${escAttr(full)}">${esc(label)}</button>` + entries.map(e => calChipHtml(e)).join('');
     cell._entries = entries;
+    if (typeof togetherMonthCell === 'function') togetherMonthCell(cell, iso);   // friends' faint busy bars (99-together-2layers.js)
     grid.appendChild(cell);
     calMakeDropTarget(cell, () => ({ date: iso }));
   }

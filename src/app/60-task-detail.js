@@ -378,9 +378,13 @@ function tdDescSection(id, view, rerender, keep) {
 }
 /** Related: files & links (63-resources.js), meetings, emails, people, tasks, suggestions (66-autolink.js). */
 function tdRelatedSection(id) {
-  if (typeof autolinkRelatedSection === 'function') return autolinkRelatedSection(id);
-  if (typeof resBlock === 'function') return resBlock({ type: 'task', id });
-  return null;
+  const rel = typeof autolinkRelatedSection === 'function' ? autolinkRelatedSection(id) : typeof resBlock === 'function' ? resBlock({ type: 'task', id }) : null;
+  // Shared with a friend: their answer and the comments (99-together-1space.js).
+  const tg = typeof togetherTaskSection === 'function' ? togetherTaskSection(id) : null;
+  if (!tg) return rel;
+  if (!rel) return tg;
+  const f = document.createDocumentFragment(); f.append(tg, rel);
+  return f;
 }
 function tdNotesSection(id) {
   const notes = getNotes(id);

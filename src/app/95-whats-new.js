@@ -1,5 +1,5 @@
 /* ============================================================
-   WHAT'S NEW IN 2.16 (tour) + QUICK START (first run). Owner: Shell/Design.
+   WHAT'S NEW IN 2.17 (tour) + QUICK START (first run). Owner: Shell/Design.
 
    A data-driven registry: one entry per 2.16 feature. The dialog lists them by
    group; each has a "Show me" that opens the feature (a palette command), or
@@ -33,21 +33,79 @@
      openQuickStart()          the first-run card
    Styles: src/styles/95-whats-new.css. Reduced motion: no glides, no pulse.
    ============================================================ */
-const WHATS_NEW_VERSION = '2.16';
-const _WN_SEEN = 'whatsNew:2.16';
+const WHATS_NEW_VERSION = '2.17';
+const _WN_SEEN = 'whatsNew:2.17';
 const _WN_QS_KEY = 'dashboard-quickstart';
 
+// The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
-  ['plan', 'Plan your days', 'calendar-range'],
-  ['boards', 'Boards and lists', 'kanban'],
-  ['capture', 'Capture in a flash', 'zap'],
-  ['places', 'Places and memories', 'map-pin'],
-  ['fun', 'Fun and motivation', 'party-popper'],
-  ['money', 'Money', 'wallet'],
+  ['friends', 'Friends', 'users'],
+  ['together', 'Do things together', 'handshake'],
+  ['you', 'You and your character', 'user-round'],
+  ['relay', 'Your private relay', 'shield-check'],
+  ['plan', 'Plan your days (2.16)', 'calendar-range'],
+  ['boards', 'Boards and lists (2.16)', 'kanban'],
+  ['capture', 'Capture in a flash (2.16)', 'zap'],
+  ['places', 'Places and memories (2.16)', 'map-pin'],
+  ['fun', 'Fun and motivation (2.16)', 'party-popper'],
+  ['money', 'Money (2.16)', 'wallet'],
 ]);
+const _WN_CURRENT_GROUPS = ['friends', 'together', 'you', 'relay'];
 
 const WHATS_NEW = [
-  // ---- plan ----
+  // ---- 2.17: friends ----
+  { id: 'friends-tab', group: 'friends', icon: 'users', title: 'The Friends tab',
+    text: 'Your friends in one lively place: their avatars, who is online, levels and streaks, and a feed of level-ups, finished quests and cheers.',
+    view: ['friends'], sel: ['#sidebar [data-view="friends"]', '#main-body'] },
+  { id: 'friends-start', group: 'friends', icon: 'sparkles', title: 'Getting started with friends',
+    text: 'Three friendly steps: make your character, get a relay (connect your own free Cloudflare, or paste a friend’s invite), and invite someone.',
+    cmd: ['friends-onboard'] },
+  { id: 'friends-add', group: 'friends', icon: 'user-plus', title: 'Invites and friend codes',
+    text: 'Send a one-time invite link (or show its QR code), or swap friend codes with people already on your relay. You both check a short code before anything is shared.',
+    cmd: ['friends-add'] },
+  { id: 'friends-privacy', group: 'friends', icon: 'eye-off', title: 'You choose what each friend sees',
+    text: 'Profile and game progress by default, nothing else. Per friend, choose tasks, calendar (busy only, titles or full), money, places and memories, for as long as you like, and see exactly what they get.',
+    note: 'Shares are built and filtered on your computer and sent end-to-end encrypted. Stop sharing everything is one click, with Undo.',
+    cmd: ['perms-privacy'] },
+  { id: 'friends-scenes', group: 'friends', icon: 'party-popper', title: 'Friends in your scenes',
+    text: 'When friends are online they sometimes stroll through your scene in their own outfits and wave. Send each other postcards from any scene, too.',
+    cmd: ['friends-postcard'] },
+  { id: 'friends-fun', group: 'friends', icon: 'gift', title: 'Gifts, waves and your week together',
+    text: 'Send stickers and gifts with an unwrap moment, wave, react to wins, and get a Sunday recap of your week with friends. Trick or treat is on for Halloween.',
+    cmd: ['fun-gift', 'fun-recap'] },
+
+  // ---- 2.17: together ----
+  { id: 'together-spaces', group: 'together', icon: 'handshake', title: 'Shared lists, boards and trips',
+    text: 'Make a space with friends for a trip, a shared house or a project. Everyone edits the same tasks, board, plan and dates, live when you are both online.',
+    view: ['together'], sel: ['#sidebar [data-view="together"]', '#main-body'] },
+  { id: 'together-assign', group: 'together', icon: 'send', title: 'Hand a task to a friend',
+    text: 'Share or assign a task: it lands in their dashboard to accept, and in your Waiting list until it is done.',
+    cmd: ['perms-share-task'] },
+  { id: 'together-plan', group: 'together', icon: 'calendar-heart', title: 'Plan together and Find a time',
+    text: 'A shared planning board with live cursors, and Find a time to pick slots that suit everyone, across time zones.',
+    view: ['together'] },
+  { id: 'together-game', group: 'together', icon: 'flame', title: 'Play together',
+    text: 'Co-op tasks with shared XP, team quests, duo streaks, friendly challenges, cheers, focus together and friendship levels that unlock rewards.',
+    view: ['friends'] },
+
+  // ---- 2.17: you ----
+  { id: 'profile', group: 'you', icon: 'user-round', title: 'Your profile and character',
+    text: 'Build your avatar: hair, face, outfit, hats, glasses and more, with seasonal items to collect and unlocks as you level up. It reacts to your day, too.',
+    cmd: ['profile-avatar'] },
+  { id: 'status', group: 'you', icon: 'circle-user', title: 'A status for your friends',
+    text: 'Set a status like focusing or on holiday, with an emoji and an end time. It clears itself.',
+    cmd: ['profile-status'] },
+
+  // ---- 2.17: relay ----
+  { id: 'relay', group: 'relay', icon: 'shield-check', title: 'Your own private relay',
+    text: 'Connect your free Cloudflare account in one click and get a private relay that only you, your devices and the friends you invite can use.',
+    note: 'The relay never sees your data: everything on it is end-to-end encrypted.',
+    view: ['settings:relay'], sel: ['#main-body'] },
+  { id: 'relay-sync', group: 'relay', icon: 'refresh-cw', title: 'Sync your devices without OneDrive',
+    text: 'Your computers can now sync through your relay, live, with no shared folder. Add a new computer with a join link and a 4-letter code.',
+    view: ['settings:sync'], sel: ['#main-body'] },
+
+  // ---- 2.16: plan ----
   { id: 'week-timeline', group: 'plan', icon: 'calendar-range', title: 'Your week as a timeline',
     text: 'See the whole week laid out in one timeline. It sits where the Calendar link used to be, so planning is one click from any list.',
     cmd: ['view-mode-timeline'], view: ['week'], sel: ['.view-mode-toggle .mode[data-mode="timeline"]', '.view-mode-toggle'] },
@@ -288,7 +346,7 @@ async function whatsNewShowMe(id) {
 
 /* ---------- the tour: entries with a view or an element, one at a time ---------- */
 function whatsNewTour() {
-  const steps = _wnVisible().filter(e => _wnView(e) || (e.sel || []).length);
+  const steps = _wnVisible().filter(e => _WN_CURRENT_GROUPS.includes(e.group) && (_wnView(e) || (e.sel || []).length));
   let i = 0, shown = 0;
   const finish = () => toast(shown ? 'That’s the tour. Find it again under Help › What’s new.' : 'Nothing to point at on this page yet. The list in What’s new has everything.', { kind: 'info', icon: 'sparkles' });
   const next = async () => {
@@ -321,9 +379,9 @@ function openWhatsNew(o) {
     body: (b, close) => {
       b.classList.add('wn-body');
       const hero = document.createElement('div'); hero.className = 'wn-hero';
-      hero.innerHTML = `<div class="wn-hero-art" aria-hidden="true">${icon('party-popper')}</div>`
-        + `<div class="wn-hero-txt"><div class="wn-hero-k">OpenDash ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">A fresh dashboard</h3>`
-        + `<p class="wn-hero-s">A new look, smarter ways to plan, places and memories, and a lot more fun. ${esc(String(list.length))} new things, all yours to explore.</p></div>`
+      hero.innerHTML = `<div class="wn-hero-art" aria-hidden="true">${icon('users')}</div>`
+        + `<div class="wn-hero-txt"><div class="wn-hero-k">OpenDash ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Bring your friends in</h3>`
+        + `<p class="wn-hero-s">Friends, a character that is all you, shared spaces and co-op play, and your own private relay. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, plus everything from 2.16 below.</p></div>`
         + '<div class="wn-hero-acts"></div>';
       const ha = hero.querySelector('.wn-hero-acts');
       const tour = document.createElement('button'); tour.type = 'button'; tour.className = 'btn btn-primary';
@@ -416,7 +474,7 @@ function _wnAuto(tries) {
   try { qs = localStorage.getItem(_WN_QS_KEY) === '1'; if (qs) localStorage.removeItem(_WN_QS_KEY); } catch (x) { qs = false; }
   const firstRun = !APP_CONFIG.onboardedAt && typeof getAllItems === 'function' && !getAllItems().length;
   if (qs || firstRun) {
-    if (!seenOnce(_WN_SEEN)) seenMarkOnce(_WN_SEEN);   // a new user starts on 2.16: nothing to call new
+    if (!seenOnce(_WN_SEEN)) seenMarkOnce(_WN_SEEN);   // a new user starts on this release: nothing to call new
     if (qs) openQuickStart();
     return;
   }
@@ -430,5 +488,5 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
 /* ---------- reopen: the menu and the palette ---------- */
 registerMoreItem({ id: 'whats-new', label: 'What’s new', icon: 'gift', order: 425, where: ['more', 'workspace'], hint: () => WHATS_NEW_VERSION, run: () => openWhatsNew() });
 registerCommand({ id: 'whats-new', label: `What’s new in ${WHATS_NEW_VERSION}`, icon: 'gift', keywords: 'whats new release notes changes tour features update help', run: () => openWhatsNew() });
-registerCommand({ id: 'whats-new-tour', label: 'Take the 2.16 tour', icon: 'compass', keywords: 'whats new tour walkthrough features help spotlight', run: () => whatsNewTour() });
+registerCommand({ id: 'whats-new-tour', label: `Take the ${WHATS_NEW_VERSION} tour`, icon: 'compass', keywords: 'whats new tour walkthrough features help spotlight', run: () => whatsNewTour() });
 registerCommand({ id: 'quick-start', label: 'Quick start tips', icon: 'rocket', keywords: 'help getting started onboarding tips first', run: () => openQuickStart() });

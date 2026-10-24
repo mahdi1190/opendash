@@ -105,6 +105,7 @@ function renderListView(container, o) {
     // Follow-ups due (Today) and the stale clean-up (All, No date): 34-waiting.js / 34-cleanup.js.
     const rfBanner = typeof rfListBanners === 'function' ? rfListBanners(view) : null;
     if (rfBanner) list.appendChild(rfBanner);
+    if (typeof togetherListExtras === 'function') togetherListExtras(list, view, 'top');   // "From Sam": friends' requests (99-together-2layers.js)
     // A stream's Files & links (63-resources.js): its folder, repo, decks...
     if (view.startsWith('stream:') && typeof resStreamStrip === 'function') list.appendChild(resStreamStrip(view.slice(7)));
   } else {
@@ -119,6 +120,7 @@ function renderListView(container, o) {
 
   if (!open.length && !closed.length) {
     _mountTaskEmpty(list, view, searching);
+    if (!searching && typeof togetherListExtras === 'function') togetherListExtras(list, view, 'end');   // shared with you, friends' layer (99-together-2layers.js)
     if (view === 'completed' && renderTaskView._olderCount) list.appendChild(_logbookMore());
     _afterQuickAddRender();
     return;
@@ -148,6 +150,7 @@ function renderListView(container, o) {
   }
   if (hiddenNow.length) list.appendChild(_todayHiddenNote(hiddenNow));
   if (!open.length && view !== 'completed' && !searching) _mountTaskEmpty(list, view, false, true);
+  if (!searching && typeof togetherListExtras === 'function') togetherListExtras(list, view, 'end');   // shared with you, friends' layer (99-together-2layers.js)
   if (closed.length) {
     list.appendChild(_renderGroup(view, {
       key: 'closed', label: 'Completed', items: closed,

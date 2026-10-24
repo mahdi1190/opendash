@@ -10,6 +10,86 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.17.0] - 2026-10-24
+
+Friends! Add the people you like who also use OpenDash, cheer each other on and do things together, through a small private relay that only you, your devices and the people you invite can use. Nothing private is shared until you say so.
+
+### The Friends tab
+
+- **Friends in the sidebar:** your friends, what they have been up to, and a hangout where everyone's character stands together.
+- **A warm welcome** walks you through three steps with a progress bar: make your character, get a relay, invite a friend. Ctrl+K, *Friends: getting started* brings it back.
+- **How friends work** (Ctrl+K) is a one-page summary, and the full plain guide in `docs/FRIENDS_GUIDE.md` has the whole story.
+
+### Your profile and character
+
+- **A profile card:** display name, pronouns, a status, a short bio, what you are working on, and its colour. Fill in only what you like.
+- **The character builder** (Settings > Profile): make your own little person. It shows on your top bar and next to your name for friends.
+- **Choose what your card shows:** the badges and favourite places you want friends to see.
+
+### Invites and friend codes
+
+- **Invite links** work once and end by themselves (after 1, 7 or 30 days). They are short, come with a QR code, and *Copy a ready message* writes a friendly note that says what to do with it.
+- **Friend codes** like `ALEX-7K2QX9` for people on the same relay. *New code* makes a fresh one and the old one stops at once.
+- **A 6-digit code to check** before you are connected: you both see it, so a forwarded or stolen link is not enough on its own.
+
+### What each friend can see
+
+- **Nothing private until you say so.** A new friend sees only your profile and your game progress.
+- **Per-friend choices:** *What Sam can see* on a friend's page turns on tasks, calendar, money, places or memories for that one friend, once you mark them a **Trusted friend**. Each can be on only for a while (until a day, or during a trip).
+- **Preview what Sam sees** shows exactly what would go to them.
+- **Stop sharing** with one friend, or **Stop sharing everything** (Settings > Privacy), stops it at once, Together and postcards included.
+- **Being around** ("here now", focusing, travelling, away) stays off until you turn on *Show friends when I'm around*, and never says where you are.
+
+### Together
+
+- **Shared spaces:** a list, a board, a party, a trip or a shared house that you and your friends edit together, with Undo.
+- **Plan together:** a shared board of notes, task ideas, times to vote on and places, with everyone's pointer live when you are on it at the same time.
+- **Find a time** across everyone's time zones: the three best times, then one click to plan it, booked once everyone can make it.
+- **Friends in your views:** their busy times in your month and timeline (only if they share them), shared countdowns on your top bar, and *Shared with you* rows in Today.
+- **Assign to a friend** and **Share to a space** from any task. Nothing a friend sends changes your own tasks until you choose Accept, Join or Mark done.
+- **Split costs** for a trip or a shared house (only the amounts you type in; your Finances are never read), shared birthdays, and wishlists where a friend can quietly say "I'll get this".
+
+### Playing together
+
+- **Co-op tasks** with shared XP and a joint celebration when they are done.
+- **Team quests** with a party streak, **friendly challenges** with trophies, an optional weekly leaderboard, and **accountability goals** with a buddy.
+- **Focus together:** see when friends are focusing too.
+- **Waves, high-fives, nudges and cheers** in one tap, plus reactions and stickers.
+- **Duo streaks** and **friendship levels** that unlock new high-fives, themes, stickers and gift wraps as you go.
+- **Friendship quests**, three fresh ones each week for every friend.
+
+### Little surprises
+
+- **Friends in your scenes:** a friend who is around can stroll through the scene you are watching, in their own outfit. You can switch it off.
+- **Postcards** from any scene, sent to one friend or a few, collected in an album.
+- **Gifts:** wrap a sticker, an emote or a seasonal outfit item for a friend, with a gift tag, and let them unwrap it.
+- **Seasonal friend events,** starting with **Trick or treat** for Halloween.
+- **A friends recap** and milestones, celebrated once.
+
+### Your private relay and Connect Cloudflare
+
+- **Your own relay** on your own Cloudflare account, on the free plan. It only ever holds sealed messages it cannot read, and it lets a friend's message reach you even when your computer is off.
+- **Connect Cloudflare** (Settings > Your relay) sets it up in about two minutes: sign in, click Allow, and watch each step tick off. Every step has **Cancel** and **Try again**, and each problem says what happened and what to do next.
+- **Use a friend's relay** instead, from their invite. You don't need your own.
+- **Who can use it:** your devices, the people you invited (by the name you know them by), pending invites with when they end, and today's use of the free allowance as bars. *Revoke*, *Remove* and *Disconnect relay* all come with Undo.
+- **Nothing is ever upgraded or paid for:** if a free limit is reached, the relay rests until midnight UTC and messages wait.
+
+### Device sync through your relay
+
+- **Sync your devices through it too** (Settings > Sync): your own computers stay in step within a second, with no shared folder needed (a folder still works).
+- **Join with a link:** add a computer with a link and approve it on the one you already have.
+- **Relay health** in Settings > Sync shows how it is going.
+
+### Security and privacy
+
+- **End-to-end encrypted:** everything between you and a friend is sealed on your computer and opened only on theirs. When you are both online on the same network, messages go straight between your computers, and your router is never opened for it.
+- **Only you and your invitees:** every request to your relay must be signed by you, one of your devices or someone you invited. Your relay keeps no logs.
+- **Friends are always untrusted:** what a friend sends is checked against strict lists and size limits, shown as plain text only, and never reaches Claude, the assistant, MCP tools, People or any automatic action. OpenDash never loads a picture or link a friend sent.
+- **Keys stay yours:** your private keys and sign-ins are never shown, logged or shared, and travel to your other devices only inside your encrypted pairing.
+- **Renew my keys:** after you remove a lost or stolen device, renewing your keys moves your friends to new ones and locks the old ones out.
+- **Remove or Block** a friend (with Undo) ends their access to your relay, deletes what they shared with you and asks their app to delete what you shared.
+- **Plain limits:** deleting on someone else's device is a request their app carries out, and it cannot stop a screenshot, so only share what you are happy for them to have seen. `docs/PRIVACY.md` (Friends) lists exactly what each level sends.
+
 ## [2.16.0] - 2026-10-24
 
 The big positive overhaul: new ways to plan, boards and lists your way, places and memories, a game, a new My money page and a fresh look.

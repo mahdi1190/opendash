@@ -1,0 +1,65 @@
+# The OpenDash relay on Cloudflare Workers Free (docs/dev/RELAY_PROTOCOL.md).
+# Settings > Your relay > Connect Cloudflare writes its own copy of this into
+# the data folder (lib/relay/deploy.mjs) and deploys it for you. By hand:
+#
+#   npx wrangler login
+#   npx wrangler deploy --config cloudflare/wrangler.toml --name opendash-relay-<id> --var OWNER_KEY:<identity public key>
+#
+# No secrets here: OWNER_KEY is the owner's PUBLIC identity key (a plain var).
+# This is not the public Claude MCP relay (cloudflare/relay-worker.mjs).
+
+name = "opendash-relay"
+main = "worker.mjs"
+compatibility_date = "2026-10-01"
+workers_dev = true
+preview_urls = false
+logpush = false
+upload_source_maps = false
+
+[observability]
+enabled = false
+
+[[durable_objects.bindings]]
+name = "SPACES"
+class_name = "RelaySpace"
+
+[[migrations]]
+tag = "relay-v1"
+new_sqlite_classes = ["RelaySpace"]
+
+# Per-minute limits per Cloudflare location (section 8.1). Optional: without
+# them the Worker uses an in-memory limiter.
+[[ratelimits]]
+name = "RL_IP"
+namespace_id = "41731"
+  [ratelimits.simple]
+  limit = 300
+  period = 60
+
+[[ratelimits]]
+name = "RL_KEY"
+namespace_id = "41732"
+  [ratelimits.simple]
+  limit = 240
+  period = 60
+
+[[ratelimits]]
+name = "RL_ANON"
+namespace_id = "41733"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "RL_LOOKUP"
+namespace_id = "41734"
+  [ratelimits.simple]
+  limit = 20
+  period = 60
+
+[[ratelimits]]
+name = "RL_LOOKUP_IP"
+namespace_id = "41735"
+  [ratelimits.simple]
+  limit = 10
+  period = 60

@@ -357,6 +357,7 @@ manifest).
 | `animPrefs` | per field; `overrides` per event, `look` per field | scene rules, per-event overrides and the animation look |
 | `achievements` | per field; `unlocked` and `notes` per entry | unlocks: nothing earned is lost |
 | `game` (2.16, `// ── game ──`) | per field; `awards`, `ticks`, `focus`, `records`, `quests` and `seen.milestones` per entry; `run` and each quest list one value | the game (src/app/92-game-*.js): XP, streaks, records and quest progress are computed on each device from the data; only awards for moments the data cannot show, streak ticks, focus sessions, the running timer, the week's quests and moments already shown are kept, so nothing earned is lost and two devices add up |
+| `profile` (2.17, `// ── profile ──`) | per field; `status`, `avatar` and `share` per field, `collected` per entry; `badges` and `places` one value each | your profile and avatar (src/app/97-profile-*.js): display name, pronouns, bio, status, what you are working on, the card colour, every avatar part, the badges and favourite places you show, what friends may see, seasonal avatar items collected. Friends get their copy through the friends layer, not through this sync |
 | `viewMode` | one value | list, board or review mode of the task views (2.16) |
 | `focus` | one value | Focus mode: on until you turn it off or open the sidebar (2.16) |
 | `sidebarCollapsed` | one value | the sidebar folded or open (2.16) |
@@ -478,6 +479,7 @@ the manifest and `SYNC_SPEC`):
 | `chatMeta` | per chat (`task:<id>`, `assistant`), per field; `older` per computer | `clearedAt`, `readAt` (read on one computer is read on all), `older: {deviceId: {n, name}}` |
 | `chatArchive` | never synced | this computer's older messages of a long chat |
 | `memories` (2.16) | a record: `journal` per day (per field), `capsules` by id, `postcards` per country, `goals` per year (`list` by id), `advent` per year and door | Memories (src/app/93-memories-core.js): the daily journal, time capsules, postcards, New Year goals, advent doors; a data key without undo steps |
+| `together` (2.17, `// ── together ──`) | a record: `prefs` per field, `spaces` per space (per field), `seen` per entry | your Together choices (src/app/99-together-*.js): friend layers, the leaderboard, per-space stream and mute, moments already celebrated. The spaces themselves are `file:friends/spaces.json` (shared, e2e only): `spaces` per space, `regs` per register (`[h, v]`, the newest friends' clock wins: FILE_RULES `newest`, depth 5), `me` per field |
 | `file:state/proposals.json` | shared; `proposals` by id, `applied` and `createdIds` per entry | `{version: 1, proposals: [{id, at, status, ops, preview, previewHash, summary, applied: {opIndex: true}, createdIds, ...}]}` (`server/actions/journal.mjs`) |
 
 - **Messages** get an id when they are made and carry their time; every
@@ -621,6 +623,18 @@ Members keep only the public half (`rec` of a key; never in the folder) and
 wrap every new key to it. A joining device tries every `rec` wrap and takes
 the newest keyring it opens; one that is older than the newest key the members
 announce is refused (an old, replaced code). The code is shown once and never stored.
+
+A `rec` wrap is signed by no member: a removed device still knows the recovery
+public key and can wrap a made-up keyring to it. So the chosen keyring must open
+the `roster` of EVERY keys.json of the group in the folder (only a holder of a
+key can seal one), else the code is not used ("add this computer with a join
+code"); a computer that is already a ready member never takes a recovery copy
+(it asks for a join code); and keyring extras from a recovery copy are kept as
+unconfirmed (FRIENDS.md section 2). Join code to a computer that already syncs:
+the approver sets `member: true` in the payload only when it knows that computer
+as a member; then the keyring is merged. Without it, whatever the computer held
+for the group is dropped and the approver's keyring taken instead, so a copy that
+did not come from the person's devices is never merged or wrapped to.
 
 ### 11.5 Pairing ("Approve on your other computer")
 

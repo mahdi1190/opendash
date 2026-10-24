@@ -2707,6 +2707,24 @@
       "path": "tests/world-valley.test.mjs",
       "line_sha256": "829a15d5bc5952a0108498da10ad25256fafeb60224e589f6f7987131ecc54bf",
       "why": "a colour word in scene and style descriptions (reviewed 23 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/97-profile-0kit.js",
+      "line_sha256": "43b51ba1f9c2bd2d34e13e4e38daf1113ea88276d360e4885057c38b26dde45d",
+      "why": "a colour word in the avatar kit (hair and eye colours) (reviewed 24 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/97-profile-0kit.js",
+      "line_sha256": "7e7c8b0c8a435fbddfd816e54ce5d77bec447e30cbd342c09535381e8260166d",
+      "why": "a colour word in the avatar kit (hair and eye colours) (reviewed 24 Oct 2026)"
+    },
+    {
+      "rule": "private-term",
+      "path": "src/app/97-profile-0kit.js",
+      "line_sha256": "c0afedcd0cc88412286bf834bcb61c00236e6a343a21f89c0468cfc31f03bfec",
+      "why": "a colour word in the avatar kit (hair and eye colours) (reviewed 24 Oct 2026)"
     }
   ]
 }

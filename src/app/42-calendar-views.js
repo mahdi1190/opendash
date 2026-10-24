@@ -155,6 +155,7 @@ function calTimeGrid(o) {
     cell.innerHTML = show.map(e => `<button type="button" class="wv-due${e.done ? ' done' : ''}" data-kind="task" data-id="${escAttr(e.id)}" draggable="true" title="${escAttr('Due: ' + e.title + ' · drag onto a time to plan it')}"><span class="mini-check ${escAttr(e.prio)}"></span><span>${esc(e.title)}</span></button>`).join('')
       + (tasks.length > show.length ? `<button type="button" class="wv-due more" data-more="${iso}">${tasks.length - show.length} more</button>` : '');
     cell._tasks = tasks;
+    if (typeof togetherCalDueCell === 'function') togetherCalDueCell(cell, iso);   // shared tasks and countdowns (99-together-2layers.js)
     calMakeDropTarget(cell, () => ({ date: iso, time: null }));
     due.appendChild(cell);
   }
@@ -264,6 +265,7 @@ function calTimeGrid(o) {
       line.innerHTML = '<i></i>' + (typeof animWeekSkyOrb === 'function' ? animWeekSkyOrb(nowMin, iso) : '');
       col.appendChild(line);
     }
+    if (typeof togetherCalColumn === 'function') togetherCalColumn(col, iso, CAL_HOUR_PX);   // friends' busy times, faint (99-together-2layers.js)
     _calWireColumn(col, iso);
     body.appendChild(col);
   }

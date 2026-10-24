@@ -33,6 +33,14 @@
 .sync-join-code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 3rem; font-weight: 700; letter-spacing: .3em; line-height: 1.1; user-select: all; }
 .sync-join-left { color: var(--text-muted, inherit); font-variant-numeric: tabular-nums; }
 .sync-join-input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1.5rem; letter-spacing: .3em; text-transform: uppercase; width: 8.5em; text-align: center; }
+/* Sync through your relay: the way to sync, the join link, the relay's line */
+.sync-ways .btn { white-space: normal; text-align: left; }
+.sync-link { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; padding-top: var(--space-2); border-top: 1px solid var(--border, rgba(127,127,127,.25)); }
+.sync-link-input { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: .85rem; }
+.sync-link-join { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; max-width: 100%; }
+.sync-link-join > .sync-link-input { width: 100%; }
+.sync-relay { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.sync-relay-none { color: var(--text-muted, inherit); margin: var(--space-2) 0 0; }
 .sync-other-ways > summary { cursor: pointer; padding: var(--space-1) 0; color: var(--text-muted, inherit); }
 .sync-other-ways[open] > summary { margin-bottom: var(--space-2); }
 /* Every wait has a way out: "Working… Cancel", and a failure with Try again */

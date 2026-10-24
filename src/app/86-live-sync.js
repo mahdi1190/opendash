@@ -484,8 +484,17 @@ function liveSyncStart() {
   _liveES.addEventListener('time', () => { if (typeof Clock !== 'undefined') Clock.check(); });
   // Another of your devices published something (its calendar, an answer to a request, an AI result): 56-remote-jobs.js.
   _liveES.addEventListener('synced-files', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof syncedFilesChanged === 'function') syncedFilesChanged(d.rels); });
+  // ── together ── shared spaces with friends (99-together-0core.js)
+  _liveES.addEventListener('together', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof togetherOnEvent === 'function') togetherOnEvent(d); });
   // Another device went asleep, off or came back (lib/sync/presence.mjs): the top bar's sync dot (56-presence.js).
   _liveES.addEventListener('presence', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof presenceOnEvent === 'function') presenceOnEvent(d); });
+  // ── friends ── a friend's message, presence or a change to your friends (96-friends-0core.js)
+  _liveES.addEventListener('friends', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof friendsOnEvent === 'function') friendsOnEvent(d); });
+  // ── fun ── waves, gifts, reactions, duo days, event knocks (99f-fun-1core.js)
+  _liveES.addEventListener('fun', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && typeof funOnEvent === 'function') funOnEvent(d); });
+  // ── perms ── what a friend shares arrived, or something went to a friend (98-perms-1core.js); a synced copy from another device
+  for (const ev of ['friends-shared', 'friends-share', 'synced-files']) _liveES.addEventListener(ev, (e) => { let d = null; try { d = JSON.parse(e.data); } catch (x) { return; } if (typeof permsOnServerEvent === 'function') permsOnServerEvent(ev, d); });
+  // ── end perms ──
   // After a reconnect the hello carries the current version: catch up on anything missed.
   _liveES.addEventListener('hello', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && d.version) _liveOnRemote({ version: d.version, source: 'external' }); });
 }

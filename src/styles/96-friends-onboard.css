@@ -1,0 +1,61 @@
+/* ============================================================
+   FRIENDS: getting started and "How friends work" (src/app/96-friends-onboard.js).
+   Transform/opacity motion only; reduced motion keeps it still.
+   ============================================================ */
+/* While the welcome shows, its step 2 replaces the plain "No relay yet" card. */
+.fr-page:has(> .fro) > .fr-norelay { display: none; }
+
+.fr-sec.fro { gap: 14px; padding: 20px 22px; border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle));
+  background: radial-gradient(110% 130% at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%), var(--surface);
+  animation: fro-in .35s ease-out both; }
+.fro.is-all { border-color: color-mix(in srgb, var(--success) 40%, var(--border-subtle)); }
+.fro-h { display: flex; align-items: flex-start; gap: 14px; }
+.fro-ic { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent-ink); }
+.fro.is-all .fro-ic { background: var(--success-soft); color: var(--success-ink); }
+.fro-ic svg { width: 22px; height: 22px; }
+.fro-ht { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fro-ht h2 { margin: 0; font-size: var(--text-xl); letter-spacing: var(--tracking-tight); }
+.fro-ht p { margin: 2px 0 0; max-width: 64ch; }
+.fro-hacts { display: flex; gap: 4px; align-items: center; flex: none; }
+
+.fro-prog { display: flex; align-items: center; gap: 10px; }
+.fro-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--border-subtle); overflow: hidden; }
+.fro-fill { display: block; height: 100%; border-radius: 3px; background: var(--accent); transition: width .5s ease; }
+.fro.is-all .fro-fill { background: var(--success); }
+.fro-n { font-size: var(--text-xs); white-space: nowrap; }
+
+.fro-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fro-step { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); background: var(--surface); transition: border-color .2s ease, background-color .2s ease; }
+.fro-step.is-active { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 5%, var(--surface)); box-shadow: var(--shadow-xs); }
+.fro-step.is-done .fro-t b { color: var(--fg-muted); }
+.fro-step.is-waiting { opacity: .7; }
+.fro-num { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; flex: none; font-weight: 650; font-size: var(--text-sm);
+  background: var(--bg-muted); color: var(--fg-muted); }
+.fro-step.is-active .fro-num { background: var(--accent); color: var(--fg-on-accent); }
+.fro-step.is-done .fro-num { background: var(--success-soft); color: var(--success-ink); }
+.fro-num svg { width: 15px; height: 15px; }
+.fro-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.fro-t { display: flex; align-items: center; gap: 8px; }
+.fro-t b { font-size: var(--text-md); }
+.fro-sub { margin: 0; font-size: var(--text-sm); max-width: 62ch; }
+.fro-err { color: var(--danger-ink); }
+.fro-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fro-hint { font-weight: 400; opacity: .8; font-size: var(--text-xs); margin-left: 6px; }
+.fro-av { flex: none; align-self: center; }
+.fro-wait { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-muted); font-size: var(--text-sm); }
+.fro-invite { display: flex; flex-direction: column; gap: 8px; }
+.fro-invite:empty { display: none; }
+.fro-link { width: 100%; max-width: 34rem; font-family: var(--font-mono); font-size: var(--text-xs); }
+
+/* How friends work */
+.fro-help-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.fro-help-list li { display: flex; gap: 12px; align-items: flex-start; }
+.fro-help-list b { display: block; margin-bottom: 2px; }
+.fro-help-list p { margin: 0; font-size: var(--text-sm); }
+.fro-help-ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent-ink); }
+.fro-help-ic svg { width: 17px; height: 17px; }
+.fro-help-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 16px; font-size: var(--text-sm); }
+
+@keyframes fro-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .fr-sec.fro { animation: none; } .fro-fill, .fro-step { transition: none; } }
+@media (max-width: 640px) { .fr-sec.fro { padding: 16px; } .fro-h { flex-wrap: wrap; } .fro-av { display: none; } }

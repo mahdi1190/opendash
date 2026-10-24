@@ -5,7 +5,9 @@
 //                                 accounts:[{id, label, fetcher}], e2e:{on, ready, reason, pairing,
 //                                 requests, offer, found, ...}, skew:{text}, lastSyncAt, conflicts,
 //                                 blobs:{on, used, budget, text: 'Pictures and audio: 34 MB of 200 MB'}, ...}
-//   POST /api/sync/settings   {enabled?, apply?, folder?, deviceName?} -> the status
+//   POST /api/sync/settings   {enabled?, apply?, folder?, deviceName?, relay?} -> the status
+//                             relay: sync through your relay too (lib/sync/relay.mjs); folder:false
+//                             stops using the folder (only with the relay on)
 //                             apply (default off) = write other computers' changes into this
 //                             data; off = shadow mode: collect them and report what would change
 //                             (400 {error, code} for a folder that is missing, inside the
@@ -30,7 +32,17 @@
 //   POST /api/sync/code/start        "Add a computer": a 4-letter join code on this computer
 //                                    (status e2e.joinCode {role:'offer', code, step, expiresAt}); 10 minutes, single use
 //   POST /api/sync/code/cancel       stop the code on screen (or the code being tried on a new computer)
-//   POST /api/sync/code/join         {code}         the new computer types the 4 letters
+//   POST /api/sync/code/join         {code, link?}  the new computer types the 4 letters (with a join
+//                                    link <relay>/j#ODJ1.<secret>: no folder needed; a computer that
+//                                    already syncs gets the key to your relay this way)
+//   POST /api/sync/relay/check       look for your relay again now (friends/relays.json) -> the status
+//
+// Sync through your relay (lib/sync/relay.mjs, docs/dev/RELAY_PROTOCOL.md): the status carries
+// `relay` {available, host, on, transport: folder|relay|both, state: live|polling|connecting|offline|
+// rate|busy|quota|denied, outbox, link: {link, expiresAt, state} while a join link is open}. Keys
+// and certificates are never in an answer.
+//   POST /api/sync/code/approve      {yes}          "Approve <name>?" on the computer showing the code:
+//                                    the keys go only after yes (no: the code stops)
 //   POST /api/sync/offer             a one-time QR offer for a phone -> {offer: {text, expiresAt}}
 //   POST /api/sync/offer/join        {text}         join with what the QR code says
 //   POST /api/sync/devices/rename    {id, name}
@@ -78,6 +90,7 @@ import { SOURCE_PREFS_REL } from '../../lib/source-prefs.mjs';
 import { applySourcePrefs } from '../../lib/sources.mjs';
 import { DEFAULT_CONFIG } from '../../lib/datadir.mjs';
 import { attachPresence } from '../../lib/sync-presence.mjs';
+import { RELAYS_REL } from '../../lib/sync/relay-node.mjs';
 
 export default function register(app) {
   const { store, log, paths, repoRoot, version } = app.ctx;
@@ -102,6 +115,8 @@ export default function register(app) {
     }
     // Your choices on sources (names, colours, on/off: lib/source-prefs.mjs) changed on another computer: into this sources.json.
     if (rels.includes(SOURCE_PREFS_REL)) applySourcePrefs(paths.root, { log }).catch((e) => log('warn', `sync: source choices could not be used (${e && (e.code || e.message)})`));
+    // Your relay came from another computer (friends/relays.json): sync through it here too, if chosen.
+    if (rels.includes(RELAYS_REL)) engine.relayChanged().catch(() => {});
     if (!rels.includes('accounts.json')) return;
     accounts().reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
   });
@@ -157,6 +172,8 @@ export default function register(app) {
       const b = await c.body();
       const patch = {};
       for (const k of ['enabled', 'apply', 'folder', 'deviceName']) if (b && b[k] !== undefined) patch[k] = b[k];
+      if (b && typeof b.relay === 'boolean') patch.relay = b.relay;
+      if (patch.folder !== undefined && patch.folder !== false && typeof patch.folder !== 'string') delete patch.folder;
       try { return await engine.configure(patch); }
       catch (e) { if (e.status === 400) return c.json(400, { error: e.message, code: e.code }); throw e; }
     },
@@ -173,7 +190,7 @@ export default function register(app) {
       catch (e) { if (e && e.status === 400) return c.json(400, { error: e.message, code: e.code }); throw e; }
     },
   });
-  const where = (b) => ({ folder: str(b.folder, 1000), deviceName: str(b.deviceName, 60), ...(typeof b.apply === 'boolean' ? { apply: b.apply } : {}) });
+  const where = (b) => ({ folder: str(b.folder, 1000), deviceName: str(b.deviceName, 60), ...(typeof b.apply === 'boolean' ? { apply: b.apply } : {}), ...(b.relay === true ? { relay: true } : {}) });
   post('/api/sync/setup', (b) => engine.setupFirst(where(b)));
   post('/api/sync/join', (b) => engine.joinExisting(where(b)));
   post('/api/sync/encrypt', () => engine.encrypt());
@@ -185,7 +202,9 @@ export default function register(app) {
   post('/api/sync/pair/cancel', () => engine.pairCancel());
   post('/api/sync/code/start', () => engine.codeStart());
   post('/api/sync/code/cancel', () => engine.codeCancel());
-  post('/api/sync/code/join', (b) => engine.codeJoin(str(b.code, 40) || ''));
+  post('/api/sync/code/join', (b) => engine.codeJoin(str(b.code, 40) || '', { link: str(b.link, 400) || null }));
+  post('/api/sync/relay/check', () => engine.relayChanged());
+  post('/api/sync/code/approve', (b) => engine.codeApprove(b.yes === true));
   post('/api/sync/offer', () => engine.makeOffer());
   post('/api/sync/offer/join', (b) => engine.joinWithOffer(str(b.text, 300) || ''));
   post('/api/sync/devices/rename', (b) => engine.renameDevice(str(b.id, 40), str(b.name, 60)));

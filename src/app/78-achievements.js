@@ -36,6 +36,7 @@ function achUnlockedIds() { return Object.keys(achState().unlocked).filter(id =>
 function achFactsNow() {
   let extra = null;
   try { extra = typeof gameAchFacts === 'function' ? gameAchFacts() : null; } catch (e) { extra = null; }   // 2.16: the game's facts (92-game-1core.js)
+  try { const fx = typeof funAchFacts === 'function' ? funAchFacts() : null; if (fx) extra = Object.assign({}, extra || {}, fx); } catch (e) { /* 2.17: friends' facts are a bonus (99f-fun-1core.js) */ }
   return achFacts({ log: (typeof state !== 'undefined' && state && state.completionLog) || {}, dayOf: (ts) => Clock.parts(ts).iso, notes: achState().notes, extra });
 }
 function achNote(kind) {

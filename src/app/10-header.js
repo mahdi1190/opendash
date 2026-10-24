@@ -370,6 +370,8 @@ function _tbRenderStrip() {
     cdEl.appendChild(b);
     shown.push(w);
   }
+  // Shared countdowns pinned from Together (data-tg, not data-id: never dragged or saved here).
+  if (typeof togetherTopbarWidgets === 'function') { try { togetherTopbarWidgets(cdEl); } catch (e) { console.error('[topbar] together', e); } }
   const more = document.createElement('button');
   more.type = 'button'; more.className = 'cdw-more'; more.hidden = true;
   more.setAttribute('aria-label', 'More widgets');
@@ -473,7 +475,7 @@ function _tbFitOverflow() {
   const more = cdEl.querySelector('.cdw-more');
   if (!more) return;
   more.hidden = true;
-  const items = [...cdEl.querySelectorAll('.cdw[data-id]')];
+  const items = [...cdEl.querySelectorAll('.cdw[data-id], .cdw[data-tg]')];   // pinned shared countdowns come last: they go first
   items.forEach(n => { n.style.display = ''; });
   // The strip is right-aligned, so overflow happens on the left where
   // scrollWidth cannot see it: add up what is shown instead.
@@ -505,6 +507,7 @@ function _tbOverflowMenu(anchor) {
       b.onclick = () => { close(); _tbActivate(w); };
       el.appendChild(b);
     }
+    if (typeof togetherTopbarOverflow === 'function') togetherTopbarOverflow(el, close);   // hidden pinned shared countdowns
     const c = document.createElement('button'); c.type = 'button'; c.className = 'btn btn-ghost btn-sm';
     c.innerHTML = icon('sliders-horizontal') + '<span>Customise top bar</span>';
     c.onclick = () => { close(); openTopbarCustomiser({}); };

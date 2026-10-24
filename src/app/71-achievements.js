@@ -91,6 +91,17 @@ const ACH_DEFS = Object.freeze([
   { id: 'xp-day-300', group: 'levels', label: 'On fire', hint: 'Earn 300 XP in one day.', icon: 'flame', fact: 'xpDay', of: 300 },
   { id: 'year-one', group: 'milestones', label: 'One year with OpenDash', hint: 'Use OpenDash for a year.', icon: 'party-popper', fact: 'daysWithUs', of: 365 },
   { id: 'year-two', group: 'milestones', label: 'Two years with OpenDash', hint: 'Use OpenDash for two years.', icon: 'gift', fact: 'daysWithUs', of: 730 },
+  /* 2.17: friends (99f-fun-1core.js funAchFacts gives the facts below, counts only; without it they stay at 0) */
+  { id: 'coop-first', group: 'friends', label: 'Better together', hint: 'Finish your first co-op task with a friend.', icon: 'handshake', fact: 'coopDone', of: 1 },
+  { id: 'cheer-10', group: 'friends', label: 'Cheerleader', hint: 'Cheer friends on 10 times.', icon: 'heart', fact: 'cheersSent', of: 10 },
+  { id: 'duo-7', group: 'friends', label: 'Dynamic duo', hint: 'Keep a 7-day duo streak: you and a friend both finish something every day.', icon: 'flame', fact: 'duoBest', of: 7 },
+  { id: 'duo-30', group: 'friends', label: 'Inseparable', hint: 'Keep a 30-day duo streak with a friend.', icon: 'flame', fact: 'duoBest', of: 30 },
+  { id: 'plan-sundays-3', group: 'friends', label: 'Sunday planners', hint: 'Plan together with friends on 3 Sundays.', icon: 'calendar-heart', fact: 'planSundays', of: 3 },
+  { id: 'gift-first', group: 'friends', label: 'Gift giver', hint: 'Send a friend a gift.', icon: 'gift', fact: 'giftsSent', of: 1 },
+  { id: 'high5-double', group: 'friends', label: 'Perfect timing', hint: 'High-five a friend who high-fived you, within ten minutes.', icon: 'zap', fact: 'high5Double', of: 1 },
+  { id: 'fquest-5', group: 'friends', label: 'Questing pals', hint: 'Finish 5 friendship quests.', icon: 'target', fact: 'friendQuests', of: 5 },
+  { id: 'stickers-10', group: 'friends', label: 'Sticker collector', hint: 'Collect 10 different stickers from friends.', icon: 'book-open', fact: 'stickersDistinct', of: 10 },
+  { id: 'candy-25', group: 'friends', label: 'Sweet tooth', hint: 'Collect 25 in one seasonal friend event (sweets, snowflakes or petals).', icon: 'cookie', fact: 'candyBest', of: 25 },
 ]);
 /* The achievements wall's groups, in order (92-game-3ui.js). */
 const ACH_GROUPS = Object.freeze([
@@ -100,6 +111,7 @@ const ACH_GROUPS = Object.freeze([
   { id: 'people', label: 'People', icon: 'users' }, { id: 'places', label: 'Places', icon: 'map-pin' },
   { id: 'money', label: 'Money', icon: 'wallet' }, { id: 'levels', label: 'Levels', icon: 'star' },
   { id: 'milestones', label: 'Milestones', icon: 'party-popper' },
+  { id: 'friends', label: 'Friends', icon: 'users' },
 ]);
 const ACH_NOTES = Object.freeze(['focus', 'boss', 'under-budget', 'inbox-zero']);
 function achDef(id) { return ACH_DEFS.find(d => d.id === id) || null; }
