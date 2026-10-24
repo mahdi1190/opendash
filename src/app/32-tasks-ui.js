@@ -304,6 +304,7 @@ function taskMenuItems(id) {
     { label: 'Move to stream…', icon: 'layers', run: () => openStreamMenu(anchor(), id) },
     { label: 'People…', icon: 'users', run: () => openPeoplePicker(anchor(), id) },
     ...(typeof rfTaskMenuItems === 'function' ? rfTaskMenuItems(id, anchor) : []),   // Waiting on… / Blocked by… / Someday (34-blocked.js)
+    ...(typeof togetherTaskMenuItems === 'function' ? togetherTaskMenuItems(id, anchor) : []),   // Share with a friend… (99-together-1space.js)
     'sep',
     { label: 'Open', icon: 'maximize-2', kbd: 'Enter', run: () => (typeof openTask === 'function' ? openTask(id) : selectTask(id)) },
     // The switch, as on the card / panel buttons: it holds for the rest of the session (61-task-card.js).

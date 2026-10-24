@@ -98,7 +98,7 @@ async function _sgUndoStep(s) {
   if (s.kind === 'draft') return window.GmailDraft && typeof window.GmailDraft.remove === 'function' ? window.GmailDraft.remove(s.id) : { ok: false, message: 'Delete the draft in Gmail.' };
   if (s.kind === 'mem') { state.suggest = s.before; saveData(); render(); return { ok: true }; }
   if (s.kind === 'travel') { state.travel = s.before; saveData(); if (typeof TravelStore !== 'undefined') TravelStore.changed(); render(); return { ok: true }; }
-  if (s.kind === 'time') return typeof ClockOverride !== 'undefined' ? ClockOverride.set(s.before, { quiet: true }) : { ok: false, message: 'Change it back in Settings > Profile & region.' };
+  if (s.kind === 'time') return typeof ClockOverride !== 'undefined' ? ClockOverride.set(s.before, { quiet: true }) : { ok: false, message: 'Change it back in Settings > Name & region.' };
   return { ok: true };
 }
 

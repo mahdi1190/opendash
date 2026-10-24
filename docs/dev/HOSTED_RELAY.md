@@ -1,5 +1,12 @@
 # Shared browser Claude relay
 
+Not to be confused with the PERSONAL relay each person can run on their own
+Cloudflare account for sync and friends (docs/dev/RELAY_PROTOCOL.md,
+`cloudflare/worker.mjs`): that one deploys with wrangler (Settings > Your
+relay > Connect Cloudflare, or `npx wrangler deploy --config cloudflare/wrangler.toml`),
+is private to its owner and the people they invite, and never includes this
+MCP relay. `tools/deploy-relay.mjs` below is only for this MCP relay.
+
 This is an optional advanced connection, not the default Claude setup. The
 default Link Claude flow uses local Claude Code with browser sign-in and has
 no relay hosting cost. No public relay origin is included until its public

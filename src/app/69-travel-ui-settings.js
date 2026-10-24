@@ -256,7 +256,7 @@ registerSettingsGroup({
   description: 'Which time the dashboard shows, your home time zone, and travel features (off until you turn them on).',
   render(el) { _trsBuild(el); },
 });
-/** Profile & region keeps a link to the time rows (6.4). */
+/** Name & region keeps a link to the time rows (6.4). */
 function trSettingsProfileLink() {
   const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm';
   b.innerHTML = icon('globe', 'i-sm') + '<span>Travel & time</span>' + icon('arrow-right', 'i-xs');

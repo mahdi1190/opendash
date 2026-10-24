@@ -300,7 +300,7 @@ function _clkUtcCard() {
   requestAnimationFrame(() => el.classList.add('on'));
 }
 
-/* ---------- Settings rows (Profile & region; Travel & time may reuse them) ---------- */
+/* ---------- Settings rows (Name & region; Travel & time may reuse them) ---------- */
 function _clkZoneText(z) {
   const off = Clock.offset(Clock.now(), z);
   const a = Math.abs(off), h = Math.floor(a / 60), m = a % 60;

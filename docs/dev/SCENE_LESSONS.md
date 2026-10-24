@@ -691,3 +691,9 @@ the crowd rule's knot cells (fewer than on the ghost-pass tip) and a family that
 | Pinned drawings were drawn at a third of their size, then fixed by hand in a shared engine table | No real size: the class guess | h = drawn height x anchor depth / f into the generated `79-world-zdata-sizes.js` (`worldSizeAutoDefine`); the formula reproduces the four hand entries to 0.04 m |
 | The five enrich sessions ran the full gate 30 times (5 to 9 each) to find tram overlaps, bus cuts and static faults that do not change between cells | A gate cell is one of 3 builds and lane / rail vehicles are where their lane and timetable put them, but only the 15 x 360 s gate could say so | `world preflight` first (1-3 s a scene: the gate's own rules on the 3 season worlds plus exact route sweeps); the full gate once before a commit |
 Not fixed: overlapping v2 building parts (sheffield-centre-4: 108 footprints, up to 26 m deep into each other; v3 has no building parts), v2 footprints over a pavement's walking line or the water, and seated scenery figures judged `giant` in most city drafts; 20 of 33 drafts keep their old file because one column got worse.
+
+## AG. Friends walking through a scene (24 Oct, 2.17 agent 'scenes': `99s-friends-scenes-1visit.js`)
+| Mistake | Why it happened | Rule |
+|---|---|---|
+| (avoided) A friend's figure could have been picked by a scene's crowd or a flow | Figures defined at runtime (`person.fv-<hash>`, one per outfit) join the same object registry the scenes and flows pick from | A figure defined at runtime carries weight 0 and no kit or role tags, so nothing but its own visit ever uses it |
+| The wave bubble covered the name tag | Both were placed above the head | The bubble goes beside the raised hand; the tag stays above the head |

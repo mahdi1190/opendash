@@ -18,6 +18,7 @@ the welcome screen.
 - [Files & links and auto-linking](#files--links-and-auto-linking)
 - [Morning brief, Finish the day and the weekly review](#morning-brief-finish-the-day-and-the-weekly-review)
 - [The assistant](#the-assistant)
+- [Friends](#friends)
 - [Settings, backups and sharing](#settings-backups-and-sharing)
 - [The server](#the-server)
 - [Keyboard shortcuts](#keyboard-shortcuts)
@@ -187,7 +188,7 @@ to add several tasks at once.
 - The sidebar lists your calendars; switch each on or off, rename or recolour
   it (in OpenDash only).
 - Calendars that belong to other people start switched off once your email
-  addresses are in Settings > Profile & region. If you switch one on, it shows
+  addresses are in Settings > Name & region. If you switch one on, it shows
   in the Calendar only: Home, the brief and the stories keep to your own day
   (your calendars and the events you are invited to, without the ones you
   declined).
@@ -319,7 +320,7 @@ weekly-review day.
 - Settings > Animations controls the scenes and celebrations, and Settings >
   Appearance > *Reduce motion* (or your system's setting) keeps everything
   still.
-- **Weather** needs a town in Settings > Profile & region (or Settings >
+- **Weather** needs a town in Settings > Name & region (or Settings >
   Morning brief). It comes from Open-Meteo (no account); see
   [PRIVACY.md](PRIVACY.md).
 
@@ -339,13 +340,34 @@ Acme to next Monday", "Add a task to email Sam on Thursday, high priority".
 - Per-task chat (in a task's detail), email triage suggestions and the short
   summaries in the brief use Claude too.
 
+## Friends
+
+Add people who also use OpenDash: cheer each other on, compare levels and
+streaks, and do things together. Open **Friends** in the sidebar; until you
+have a friend, a short welcome walks you through three steps (Ctrl+K,
+*Friends: getting started* brings it back):
+
+1. **Make your character** (Settings > Profile).
+2. **Get a relay**: *Connect Cloudflare* (free, about 2 minutes: your browser
+   opens Cloudflare's sign-in, you click Allow) or *Paste a friend's invite*.
+   Settings > **Your relay** shows who can use it, pending invites, and the
+   free allowance used today; *Disconnect relay* has an Undo.
+3. **Invite a friend**: a single-use link, copied as it is or inside a ready
+   message. You both check a 6-digit code before you are connected.
+
+Friends see only your profile and game progress until you choose more, per
+friend (*What Sam can see* on their page). Everything between friends is
+end-to-end encrypted. *How friends work* (Ctrl+K) is a one-page summary; the
+full plain guide is [FRIENDS_GUIDE.md](FRIENDS_GUIDE.md).
+
 ## Settings, backups and sharing
 
 Open **Settings** from the sidebar footer (or Ctrl+K, "settings").
 
 | Group | What is there |
 |---|---|
-| Profile & region | name, your email addresses, time zone, date format, currency, week start, working hours, weather town |
+| Profile | your card: display name, pronouns, status, bio, what you are working on, its colour; the character builder (your avatar, shown on the top bar); the badges and favourite places you show; what friends see |
+| Name & region | name, your email addresses, time zone, date format, currency, week start, working hours, weather town |
 | Home | Customise, the brief and suggestions panels, Hide amounts, working hours |
 | Suggestions | on or off, how many on Home, a switch per kind of suggestion, reset |
 | Appearance | theme, task row size, reduce motion |
@@ -355,6 +377,7 @@ Open **Settings** from the sidebar footer (or Ctrl+K, "settings").
 | Files & auto-link | workspace folders and the auto-linker |
 | Morning brief, Animations | brief and story options, scenes |
 | Data | the data folder, backups and restore, export and import, a clean copy of the app, reset |
+| Your relay | your private relay on Cloudflare for Friends and sync: Connect Cloudflare, who can use it, invites, usage, Disconnect ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#your-relay)) |
 | Server | status, restart, log, start-up options, the offline page |
 | Diagnostics | a report to copy into a bug report, with personal details removed |
 | About | the version and licence |

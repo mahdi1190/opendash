@@ -91,6 +91,23 @@ runs the job where you are.
 *Export all data (.zip)* on the old one, install OpenDash on the new one,
 *Import data*. Connections are set up again on the new computer.
 
+**What can friends see?**
+Only your profile (name, character, bio) and game progress, until you turn
+more on for one friend you mark *Trusted*. Messages between friends are
+end-to-end encrypted, and nothing a friend sends reaches Claude or changes
+your tasks. See [FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#what-friends-can-see).
+
+**Do Friends need a server or an account?**
+A small private relay: your own on your Cloudflare account (free; Settings >
+Your relay > *Connect Cloudflare*, about 2 minutes), or a friend's that you
+join with their invite. It only holds sealed messages it cannot read. See
+[FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#your-relay).
+
+**Can I take back what I shared with a friend?**
+*Stop sharing with Sam*, *Remove friend* or *Block* stops it at once and asks
+their app to delete its copy. That deletion cannot be forced on their device,
+so only share what you are happy for them to have seen.
+
 ## Claude and connections
 
 **Do I need Claude?**
@@ -122,6 +139,12 @@ change your tasks from a chat. See [MCP.md](MCP.md).
 Press Q and type, for example `Send Alex the slides fri 3pm #work !p1`. See
 [USAGE.md](USAGE.md#quick-add).
 
+**Connect Cloudflare stopped with an error. What now?**
+Each stop says what happened and what to do, with *Try again*. The common
+ones (Node.js missing, the sign-in not allowed, no workers.dev subdomain,
+several accounts) are explained in
+[FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#if-something-goes-wrong).
+
 **Can I undo?**
 Yes: Ctrl+Z (Cmd+Z on a Mac), the Undo button on notifications, or restore a
 backup. Deleted tasks go to the Bin first.
@@ -135,7 +158,7 @@ Choose *Load demo data* in the welcome. Everything in it is invented.
 **Which time zone does it use?**
 Your computer's: a new data folder starts on it, and the page always shows your
 computer's clock. "Today" for the stories, the assistant and calendar and bank
-updates comes from Settings > Profile & region > *Time zone*. If your computer
+updates comes from Settings > Name & region > *Time zone*. If your computer
 is somewhere else (a trip, a data folder copied from another machine), that
 row says so and offers *Use* with your computer's zone in one click. Calendar
 events keep their own time zones and show at your local time, including on the

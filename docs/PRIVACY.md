@@ -24,6 +24,10 @@ or the folder you chose with `--data-dir`, or the one Settings > Data > *Move my
 | Calendar and email | `calendar/`, `inbox/`, `email/` | read-only snapshots: event details; email subjects, senders, dates and short snippets |
 | Data sources | `sources.json`, `connections.json` | which sources and accounts you added, connection status, iCal addresses |
 | Where you've been (Location history, on unless you turn it off) | `locations/log.json` | one entry per stay or move: when, the place, town, region and country, a position rounded to about 1 km, the time zone, where it came from (your browser's location if you chose *Device location*, the place you picked, your computer's time zone, or a trip) and which of your devices saw it; where tasks were completed; your location badges. Never your IP address. Kept until you delete it (see [Location history](#location-history)) |
+| What friends can see (Friends) | `friendPerms` in `state/dashboard-state.json` | for each friend: trusted or not, stopped or not, and per scope the level, the chosen tasks, streams, tags or memories and how long |
+| What friends share with you | `friends/received/<friend>.json` | read-only, per friend: the tasks, calendar, money, places or memories they chose to share, at their level |
+| Sharing activity (audit log) | `friends/share-log.json` | what went to which friend and when: scope, level, number of items, size, when they confirmed it. No copy of the data |
+| Diff base for friends | this computer's private folder: `friends/share-base.json` | short fingerprints of the items last sent to each friend, so the next update can be small. No data |
 | Briefs and stories | `briefs/` | cached weather, AI summaries and story scripts, daily brief snapshots |
 | ElevenLabs narration | key and usage: this computer's private folder (see below); audio: `cache/narration/` | optional API key and account status, saved voice audio and local usage counts; excluded from exports |
 | Auto-linking | `index/` | names, sizes and dates of files in the workspace folders you chose, short excerpts (never from "names only" folders) |
@@ -67,6 +71,66 @@ OpenDash does not encrypt the data folder. Use your operating system's disk
 encryption if the computer is shared or portable, and keep the folder out of
 public places (shared drives, public repositories).
 
+## Friends
+
+With Friends (2.17) you can add people who also use OpenDash. **You choose,
+for each friend, what they can see**, and nothing else ever leaves your
+computer for them. A friend's page has a *What they can see* panel; Settings >
+*Privacy* shows every friend at once.
+
+- **Off unless you turn it on.** A new friend sees your **profile** (your name,
+  and the bio, emoji, colour, pronouns and city you set) and your **game
+  progress** (level, title, XP, streaks, quests and focus minutes). Everything
+  else starts off.
+- **Trusted friends only.** Anything beyond profile and game progress can only
+  go to a friend you have marked *Trusted friend*. Turning that off stops it all
+  again, and their app is asked to delete what it had.
+- **What each level sends** (only these fields; everything else, including task
+  notes and descriptions, attachments, people's names and email addresses,
+  account names and numbers, transactions and join links, is never sent):
+
+| Scope | Levels | What the friend gets |
+|---|---|---|
+| Tasks | none / only tasks I share / chosen streams or tags / all | title, due date and time, status, priority, stream name and colour, tags, steps done, the day it was done (open tasks, and ones done in the last two weeks) |
+| Calendar | none / busy or free / times and titles / full details | busy or free: the day and start and end times only (also as exact moments, with your time zone, so a friend elsewhere sees them on their own clock). Titles: plus the title. Full: plus the place (left out when it holds a join link, a meeting code or an address), which calendar, and how many people are invited (never who). The next eight weeks |
+| Money | none / a summary / full | summary: a few words ("On budget this month") and a percentage, never an amount. Full: this month's and this week's spending by category, budgets, income, regular payments and the total in your accounts |
+| Locations | none / countries / cities / exact | countries or cities you have been to, by day, and the one you are in now (no positions, no times). Exact: where you are now to about 1 km, and where you stayed in the last two weeks |
+| Memories & journal | none / only what I choose | the journal days, postcards, time capsules (a sealed one only says when it opens) and goals you tick |
+| Presence | off / on | online, focusing, travelling or away, never where; it also needs *Share when I'm online* in the Friends tab |
+
+- **Risky levels ask first.** Money *Full totals* and Locations *Exact places*
+  show a warning before they are turned on, and stay marked while they are on.
+- **For a while.** Any scope can be shared *until a day*, *during a trip* or
+  *between two days*. When the time is over nothing more is sent and their copy
+  is deleted.
+- **See exactly what they see.** *Preview what Sam sees* shows what would go to
+  that friend right now, made by the same code that sends it, including the data
+  exactly as sent.
+- **Stop at once.** *Stop sharing with Sam* on their page, or *Stop sharing
+  everything* in Settings > Privacy (also in the command palette): nothing more
+  goes out (Together spaces, cheers, challenges, postcards and your computer's
+  addresses for direct links pause too), and after 15 seconds (your chance to
+  Undo) every friend's app is asked to delete its copy. Your choices are kept for *Share again*.
+  Removing or blocking a friend clears your choices for them: if they come
+  back, they start again with profile and game progress only.
+- **How it travels.** Each friend's packet is built on your computer, from your
+  own data, by your choices, and sent end-to-end encrypted to that friend alone
+  (docs/dev/FRIENDS.md). Changes go out a few seconds after you make them, as
+  small updates. Deletion on a friend's device is a request their app carries
+  out; it cannot be forced, so only share what you are happy for them to have
+  seen.
+- **The audit log.** Settings > Privacy > *Sharing activity*, and a line under
+  each scope ("Sam last received your calendar 2 h ago"), say what went to whom
+  and when. The log (`friends/share-log.json`) keeps no copy of the data.
+- **What friends share with you** is kept read-only in `friends/received/` in
+  your data folder, checked against the same strict rules when it arrives and
+  every time it is read, shown as plain text only, and never shown to Claude, the
+  assistant, MCP clients or any action. It disappears when they stop sharing or
+  their share ends, and *Remove from this computer* deletes it.
+- **Your own devices.** Your choices (`friendPerms` in the state) sync to your
+  other computers like the rest of your settings; what friends share with you and
+  the audit log sync only with end-to-end encrypted sync.
+
 ## When does anything leave your computer?
 
 Only in these cases, and only when you switch the feature on:
@@ -86,6 +150,8 @@ Only in these cases, and only when you switch the feature on:
 | **Moving the data folder** (Settings > Data > Move) | nothing: the copy is made on this computer. After showing you each change, it updates the settings of your own programs that point at OpenDash: Claude Code (through its own `claude mcp` command), Claude Desktop's settings file, Codex and Gemini CLI (through their commands), Windows start-up entries, shortcuts, and Claude scheduled-task files that name the folder. Only those entries | no one |
 | **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; your preferences (theme, density, sort and grouping, which calendars you hide, per-view and Home card options); the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or where you are in the app and this screen's panel sizes | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, **end-to-end encrypted**: each change is locked (AES-256-GCM) on your computer before it is written, with a key only your devices hold, so your cloud provider stores files it cannot read. It can see how many devices sync, when they write and roughly how much; a new computer waiting to be approved shows its name there until it is approved. The key never goes into the folder; your recovery code is shown once and kept by you. Each of your computers reads the folder from there; nothing goes to OpenDash. Until you also turn on *Use changes from my other computers*, nothing received is applied |
 | **Live sync** (with encrypted sync on; Settings > Sync > Live connection) | the same encrypted changes as above, sent straight to your other paired computers the moment they are made, over a connection that only your own paired devices can open (each proves it holds its device key) and that is encrypted again end to end; which job each computer runs. Each computer's addresses (its home or office network address, and the public address its router opened) are kept inside the encrypted part of its file in the sync folder | your other computers only, directly, on your network or over the internet. To be reachable from outside, OpenDash asks your home router (UPnP / NAT-PMP) to forward one port to it (turn off *Let my other computers reach this one over the internet* to leave the router alone); anyone on the internet can then knock on that port, but nothing answers without your device key. On your own network it sends a short announcement every 30 seconds that only your devices can read. No OpenDash server, no relay |
+| **Friends** (when you add one; Settings > Privacy) | to each friend only what you chose for them (see [Friends](#friends)): by default your profile and game progress; tasks, calendar, money, places, memories and presence only to a friend you marked trusted, at the level you picked | that friend's OpenDash, end-to-end encrypted, through the private relay or a direct link (docs/dev/FRIENDS.md) |
+| **Your relay** (Settings > Your relay > *Connect Cloudflare*, only when you click it) | the relay's code and your PUBLIC identity key, uploaded to your own Cloudflare account by Cloudflare's tool (wrangler, downloaded from npm the first time). Afterwards: sealed sync records and friends' messages it cannot open, and signed requests (your public key, a time, a signature) | your own Cloudflare account. Your Cloudflare sign-in stays with wrangler on this computer: OpenDash never reads, stores or logs it, and keeps wrangler's output in memory only. The relay logs nothing and Cloudflare's observability is turned off ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#privacy-what-travels-and-who-can-see-it)) |
 
 Nothing else. In particular:
 

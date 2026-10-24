@@ -243,6 +243,7 @@ function _vwLane(d, col, cls, lane, view, done) {
   const l = document.createElement('div'); l.className = 'vt-lane' + cls; l.style.gridColumn = col; l.style.gridRow = '2'; l.dataset.date = d;
   l.setAttribute('role', 'list'); l.setAttribute('aria-label', _dayLabel(d, { weekday: 'long', day: 'numeric', month: 'long' }));
   for (const it of lane) l.appendChild(_vwCard(it, view));
+  if (typeof togetherTimelineLane === 'function') togetherTimelineLane(l, d, view);   // shared tasks, friends' layer (99-together-2layers.js)
   // A cleared day says so (today: a small cheer).
   if (!lane.length && done && d <= todayStr()) l.insertAdjacentHTML('beforeend', `<div class="vt-cleared">${icon(d === todayStr() ? 'party-popper' : 'circle-check', 'i-sm')}<span>${d === todayStr() ? 'All done today' : 'All done'}</span></div>`);
   if (d >= todayStr()) _vwDropZone(l, (ids) => viewsMoveToDay(ids, d, { reason: 'Moved on the week timeline' }));
@@ -266,6 +267,7 @@ function _vwTime(d, col, cls, blocks, evs, g) {
     el.innerHTML = `<span>${esc(_planHM(e.start))} ${esc(e.title)}</span>`;
     t.appendChild(el);
   }
+  if (typeof togetherTimelineTime === 'function') togetherTimelineTime(t, d, base, g);   // friends' busy times, faint (99-together-2layers.js)
   // Time blocks, side by side where they overlap.
   const sorted = blocks.slice().sort((a, b) => a.slot.start - b.slot.start || b.slot.end - a.slot.end);
   let cluster = [], clusterEnd = -1;
