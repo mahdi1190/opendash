@@ -31,16 +31,18 @@
   height: var(--control-h); padding: 0 var(--space-3); border-radius: var(--radius-sm);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium); line-height: 1; white-space: nowrap;
   border: 1px solid transparent; background: transparent; color: var(--fg); cursor: pointer; text-decoration: none;
-  transition: background-color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), box-shadow var(--m-fast) var(--m-ease-out);
+  transition: background-color var(--m-fast) var(--m-ease-out), border-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), box-shadow var(--m-fast) var(--m-ease-out), scale var(--m-fast) var(--m-ease-out);
 }
 .btn:focus-visible, .btn-icon:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* 2.16: a small press (none with reduced motion: --press-scale is 1 there). */
+.btn:where(:active:not(:disabled):not([aria-disabled="true"])), .btn-icon:where(:active:not(:disabled)) { scale: var(--press-scale, 1); }
 .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
 .btn .i { color: currentColor; }
 /* variants; the legacy two-class names (.btn.primary etc.) map onto them */
-.btn-primary, .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--fg-on-accent); box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255,255,255,0.12); }
-.btn-primary:hover, .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); opacity: 1; }
+.btn-primary, .btn.primary { background: var(--accent) linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0)); border-color: var(--accent); color: var(--fg-on-accent); box-shadow: var(--shadow-xs), inset 0 1px 0 rgba(255,255,255,0.16); }
+.btn-primary:hover, .btn.primary:hover { background: var(--accent-hover) linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0)); border-color: var(--accent-hover); opacity: 1; box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255,255,255,0.16); }
 .btn-secondary, .btn.secondary { background: var(--surface); border-color: var(--border); color: var(--fg); box-shadow: var(--shadow-xs); }
-.btn-secondary:hover, .btn.secondary:hover { background: var(--bg-muted); }
+.btn-secondary:hover, .btn.secondary:hover { background: var(--bg-muted); border-color: var(--border-strong); }
 .btn-ghost { color: var(--fg-muted); }
 .btn-ghost:hover { background: var(--bg-muted); color: var(--fg); }
 .btn-danger, .btn.danger { color: var(--danger-ink); background: transparent; border-color: color-mix(in oklab, var(--danger) 35%, var(--border)); }
@@ -54,7 +56,7 @@
   display: inline-grid; place-items: center; flex: none;
   width: var(--control-h); height: var(--control-h); padding: 0; border-radius: var(--radius-sm);
   border: 1px solid transparent; background: transparent; color: var(--fg-muted); cursor: pointer;
-  transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out);
+  transition: background-color var(--m-fast) var(--m-ease-out), color var(--m-fast) var(--m-ease-out), scale var(--m-fast) var(--m-ease-out);
 }
 .btn-icon:hover, .btn-icon[aria-expanded="true"] { background: var(--bg-muted); color: var(--fg); }
 .btn-icon.is-on { color: var(--accent-ink); background: var(--accent-soft); }
@@ -82,6 +84,7 @@
 .input input { border: 0; outline: 0; background: none; flex: 1; min-width: 0; font: inherit; font-size: var(--text-sm); color: var(--fg); height: 100%; padding: 0; }
 .input input::placeholder { color: var(--fg-subtle); }
 .input input::-webkit-search-cancel-button { display: none; }
+.input:hover { border-color: var(--border-strong); }
 .input:focus-within, .input.is-focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
 .input .i { color: var(--fg-subtle); }
 .input-sm { height: var(--control-h); padding: 0 var(--space-2); }
@@ -97,6 +100,7 @@ select.control {
   background-image: linear-gradient(45deg, transparent 50%, var(--fg-subtle) 50%), linear-gradient(135deg, var(--fg-subtle) 50%, transparent 50%);
   background-position: calc(100% - 14px) 50%, calc(100% - 10px) 50%; background-size: 4px 4px; background-repeat: no-repeat;
 }
+.control:hover:not(:disabled) { border-color: var(--border-strong); }
 .control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-2); }
 .control::placeholder { color: var(--fg-subtle); }
 .control-sm { height: var(--control-h); font-size: var(--text-xs); }
@@ -129,7 +133,7 @@ select.control {
 /* switch: <button class="switch" role="switch" aria-checked="true"> or .switch.on */
 .switch { position: relative; width: 28px; height: 16px; border-radius: var(--radius-full); background: var(--border-strong); flex: none; border: 0; padding: 0; cursor: pointer; transition: background-color var(--m-base) var(--m-ease-out); }
 .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-xs); transition: transform var(--m-base) var(--m-ease-out); }
-.switch.on, .switch[aria-checked="true"] { background: var(--accent); }
+.switch.on, .switch[aria-checked="true"] { background: var(--accent); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04); }
 .switch.on::after, .switch[aria-checked="true"]::after { transform: translateX(12px); }
 .switch:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .switch:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -232,7 +236,9 @@ button.chip:hover { background: var(--bg-muted); color: var(--fg); }
 .tab .badge { margin-left: 2px; }
 
 /* ---------- cards, callouts, tables, key/value ---------- */
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-xs); transition: box-shadow var(--m-base) var(--m-ease-out), border-color var(--m-base) var(--m-ease-out); }
+/* A card that is a button or link lifts a little under the pointer (2.16). */
+a.card:hover, button.card:hover, .card.is-clickable:hover { box-shadow: var(--shadow-hover); border-color: var(--border-strong); }
 .card-pad { padding: var(--space-4) var(--space-5); }
 .card-h { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border-subtle); }
 .card-h h3 { margin: 0; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
@@ -379,13 +385,15 @@ body:has(.tc.is-max) .toast-host { bottom: 80px; }
 /* ---------- empty state ---------- */
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-1); padding: var(--space-16) var(--space-5); color: var(--fg-muted); }
 .empty-state .es-icon, .empty-state .big {
-  width: 40px; height: 40px; border-radius: 50%; background: var(--bg-muted); color: var(--fg-subtle);
-  display: grid; place-items: center; margin-bottom: var(--space-2); font-size: 18px; opacity: 1;
+  width: 48px; height: 48px; border-radius: var(--radius-lg); background: var(--accent-grad-soft); color: var(--accent-ink);
+  display: grid; place-items: center; margin-bottom: var(--space-3); font-size: 20px; opacity: 1;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 16%, transparent), var(--shadow-xs);
 }
-.empty-state .es-icon .i { width: 20px; height: 20px; }
-.empty-state .es-title { font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--fg); }
+.empty-state .es-icon.es-art { background: none; box-shadow: none; border-radius: 0; width: auto; height: auto; color: inherit; }
+.empty-state .es-icon .i { width: 22px; height: 22px; }
+.empty-state .es-title { font-size: var(--text-lg); line-height: var(--lh-lg); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); color: var(--fg); }
 .empty-state .es-text, .empty-state .msg { font-size: var(--text-sm); color: var(--fg-muted); max-width: 420px; }
-.empty-state .es-actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); }
+.empty-state .es-actions { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; justify-content: center; }
 .empty-state.compact { padding: var(--space-8) var(--space-4); }
 
 /* ---------- skeletons: see .skeleton in motion.css ---------- */

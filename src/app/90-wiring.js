@@ -25,7 +25,7 @@ searchInput.addEventListener('keydown', (e) => {
 
 document.querySelectorAll('.view-mode-toggle .mode').forEach(b => {
   // "Calendar" is the Calendar section (week view, tasks in the due lane), not a list layout.
-  b.onclick = () => { if (b.dataset.goto) { setView(b.dataset.goto); return; } state.viewMode = b.dataset.mode; saveUI(); render(); };
+  b.onclick = () => { if (b.dataset.goto) { setView(b.dataset.goto); return; } if (typeof viewsSetMode === 'function') { viewsSetMode(b.dataset.mode); return; } state.viewMode = b.dataset.mode; saveUI(); render(); };
 });
 
 // "Display" popover: sort, group, density, expand - one place instead of three buttons.
@@ -172,7 +172,7 @@ function setupRubberBand() {
   let startX, startY, rb, started, additive, items = [];
   const ROWS = '.task[data-id], .kanban-card[data-id]';
   main.addEventListener('mousedown', (e) => {
-    if (!['list', 'kanban'].includes(state.viewMode || 'list') || !isTaskView(state.view)) return;
+    if ((!['list', 'kanban', 'matrix'].includes(state.viewMode || 'list') || !isTaskView(state.view)) && !main.querySelector('.kanban[data-board]')) return;   // saved boards too (33-board.js)
     if (e.button !== 0) return;
     if (e.target.closest('.task, .kanban-card, button, input, select, textarea, .multi-handle, a, .quick-add, .templates-row, .progress-row, .week-bar, .calendar-events, .cal-events, .empty-state, .qa-wrap, .today-sum, .week-strip, .tg-h, .cal-sched, .search-note, .subtasks-inline, .kanban-add, .tg-hidden, [contenteditable="true"]')) return;
     startX = e.clientX; startY = e.clientY;

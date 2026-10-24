@@ -23,11 +23,16 @@
   const LS_KEY = 'dash-finance-ui-v1';
   const DAY_MS = 864e5;
   const FONT = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';   // Inter is embedded by build.mjs
+  // 'board' = My money (2.16): the page you put together yourself (39-board*.js); 'countries' =
+  // Spending by country (38-countries.js).
   const SECTIONS = [
-    ['overview', 'Overview'], ['spending', 'Spending'], ['categories', 'Categories'], ['merchants', 'Merchants'],
-    ['cashflow', 'Cash flow'], ['recurring', 'Recurring'], ['budgets', 'Budgets'], ['transactions', 'Transactions'],
+    ['board', 'My money'], ['overview', 'Overview'], ['spending', 'Spending'], ['categories', 'Categories'], ['merchants', 'Merchants'],
+    ['countries', 'Countries'], ['cashflow', 'Cash flow'], ['recurring', 'Recurring'], ['budgets', 'Budgets'], ['transactions', 'Transactions'],
   ];
   const PRESETS = ['1W', '1M', '3M', '6M', 'YTD', '1Y', 'All'];
+  // Calendar periods My money's quick filters pick (this week, this month, last month): valid
+  // ranges everywhere, but not buttons in the bar's preset strip.
+  const QUICK_PRESETS = ['TW', 'TM', 'LM'];
   const GRANS = [['day', 'Day'], ['week', 'Week'], ['month', 'Month']];
   // Categorical slots, drawn from the design system's swatches (--sw-*) and
   // run through the dataviz validator against --surface in each theme
@@ -190,8 +195,9 @@
 
   // ── Persistent UI state ───────────────────────────────────────────────
   const DEFAULT_F = {
-    section: 'overview', preset: '3M', from: null, to: null, gran: 'week',
+    section: 'board', preset: '3M', from: null, to: null, gran: 'week',
     cats: [], accts: [], merchant: '', q: '', amt: null, inc: true, xfer: false, compare: false, more: false,
+    country: '', trip: '', board: null, boardTripRows: true, boardSeen: false, ccScope: 'all', billNotes: {},
     catMode: 'donut', stackMode: 'abs', merchSort: 'spend', histMode: 'count', pageSize: 25,
     sort: { key: 'd', dir: -1 }, mSort: { key: 'total', dir: -1 }, budgetCat: '', slots: {}, localBudgets: null,
   };
@@ -200,14 +206,28 @@
   // uiPrefGet / uiPrefSet). Where you are in the view (the section, the date range, the filters, the
   // budget picked), the category colour slots (worked out from your spending) and budgets kept in the
   // browser stay in this browser's LS_KEY. No amount, merchant or name goes into the state.
-  const SHARED_F = ['inc', 'xfer', 'compare', 'catMode', 'stackMode', 'merchSort', 'histMode', 'pageSize', 'sort', 'mSort'];
+  // board: My money's layout (its widgets, their sizes, order and settings, the preset; 25-board-model.js);
+  // boardTripRows: payments with no other sign of where count in the trip's country.
+  const SHARED_F = ['inc', 'xfer', 'compare', 'catMode', 'stackMode', 'merchSort', 'histMode', 'pageSize', 'sort', 'mSort', 'board', 'boardTripRows', 'ccScope', 'billNotes'];
   const sameJ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   function sharedF() {
     try { const v = typeof uiPrefGet === 'function' ? uiPrefGet('finance') : null; return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch (e) { return null; }
   }
   function cleanF(f) {
-    if (!SECTIONS.some(x => x[0] === f.section)) f.section = 'overview';
-    if (!PRESETS.includes(f.preset) && f.preset !== 'custom') f.preset = '3M';
+    if (!SECTIONS.some(x => x[0] === f.section)) f.section = 'board';
+    if (!PRESETS.includes(f.preset) && !QUICK_PRESETS.includes(f.preset) && f.preset !== 'custom') f.preset = '3M';
+    f.country = typeof f.country === 'string' && /^(?:[A-Z]{2}|EZ|HOME|X:[A-Z]{3})$/.test(f.country) ? f.country : '';
+    f.trip = typeof f.trip === 'string' && f.trip.length <= 120 ? f.trip : '';
+    // The layout is checked in full where it is used (25-board-model.js boardClean); here only its shape.
+    if (f.board != null && !(f.board && typeof f.board === 'object' && Array.isArray(f.board.w))) f.board = null;
+    if (typeof f.boardTripRows !== 'boolean') f.boardTripRows = true;
+    // Cancel reminders on subscriptions: {merchant hash: {d: 'YYYY-MM-DD' | '', t: note}} (39-board-widgets.js).
+    if (!f.billNotes || typeof f.billNotes !== 'object' || Array.isArray(f.billNotes)) f.billNotes = {};
+    else {
+      const bn = {};
+      for (const [k, v] of Object.entries(f.billNotes).slice(0, 200)) if (/^m[0-9a-z]{1,8}$/.test(k) && v && typeof v === 'object') bn[k] = { d: validIso(v.d) ? String(v.d).slice(0, 10) : '', t: String(v.t || '').slice(0, 80) };
+      f.billNotes = bn;
+    }
     if (!GRANS.some(g => g[0] === f.gran)) f.gran = 'week';
     for (const k of ['cats', 'accts']) if (!Array.isArray(f[k])) f[k] = [];
     if (!(Array.isArray(f.amt) && f.amt.length === 2 && f.amt.every(Number.isFinite))) f.amt = null;
@@ -216,7 +236,7 @@
     if (!f.mSort || typeof f.mSort !== 'object') f.mSort = { key: 'total', dir: -1 };
     if (!f.slots || typeof f.slots !== 'object') f.slots = {};
     for (const k of ['inc', 'xfer', 'compare']) if (typeof f[k] !== 'boolean') f[k] = DEFAULT_F[k];
-    for (const k of ['catMode', 'stackMode', 'merchSort', 'histMode']) if (typeof f[k] !== 'string' || !f[k] || f[k].length > 24) f[k] = DEFAULT_F[k];
+    for (const k of ['catMode', 'stackMode', 'merchSort', 'histMode', 'ccScope']) if (typeof f[k] !== 'string' || !f[k] || f[k].length > 24) f[k] = DEFAULT_F[k];
     f.merchant = typeof f.merchant === 'string' ? f.merchant : '';
     f.q = typeof f.q === 'string' ? f.q : '';
     return f;
@@ -275,6 +295,8 @@
     // The filter panel lives in the sticky bar; reopening it on every visit
     // would cover a third of the screen while scrolling. Start collapsed.
     f.more = false;
+    // 2.16: My money is new; the first visit after the update opens on it once (this browser).
+    if (!s.boardSeen) { f.section = 'board'; f.boardSeen = true; }
     return f;
   }
   let F = loadF();

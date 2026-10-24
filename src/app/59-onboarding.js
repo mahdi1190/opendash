@@ -92,6 +92,8 @@ function openOnboarding() {
     }
     close();
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* ignore */ }
+    // 2.16: after the reload, a short skippable quick start (three tips; 95-whats-new.js).
+    try { localStorage.setItem('dashboard-quickstart', '1'); } catch (e) { /* no quick start then */ }
     // Land on Home, as promised: Home's morning greeting (and its full-screen story)
     // opens by itself from tomorrow, not on top of the set-up just finished.
     seenMarkPending('brief', todayStr());   // into the state the reload loads (06-core-seen.js outbox)
@@ -111,10 +113,12 @@ function openOnboarding() {
     const mark = el('button', 'brand-mark ob-mark ob-mark-btn'); mark.type = 'button'; setBrandMark(mark, d.userName);
     mark.title = 'Change the icon'; mark.setAttribute('aria-label', 'Change the workspace icon');
     mark.onclick = () => openAppIconPicker(mark, { name: d.userName.trim(), onPick: () => { delete mark.dataset.mark; setBrandMark(mark, d.userName); } });
-    const dots = el('div', 'ob-dots');
+    const dots = el('div', 'ob-dots'); dots.setAttribute('aria-hidden', 'true');
     for (let i = 0; i < 4; i++) { const s = el('span', 'ob-dot' + (i === step ? ' on' : i < step ? ' done' : '')); dots.appendChild(s); }
-    const skip = el('button', 'btn btn-ghost btn-sm ob-skip', 'Skip set-up'); skip.type = 'button'; skip.onclick = () => finish(true);
-    top.append(mark, dots, skip);
+    const stepLbl = el('span', 'ob-step', `Step ${step + 1} of 4`);
+    const skip = el('button', 'btn btn-ghost btn-sm ob-skip', 'Skip for now'); skip.type = 'button'; skip.onclick = () => finish(true);
+    skip.setAttribute('data-tip', 'Start with the defaults. Everything is in Settings later.');
+    top.append(mark, dots, stepLbl, skip);
     card.appendChild(top);
     const body = el('div', 'ob-body');
     const h = el('h1', 'ob-title'); h.id = 'ob-title';
@@ -122,7 +126,7 @@ function openOnboarding() {
     body.append(h, p);
     if (step === 0) {
       h.textContent = 'Welcome to OpenDash';
-      p.textContent = 'Tasks, calendar and finances in one calm place. It runs on this computer and keeps everything in one data folder. Set-up takes a minute.';
+      p.textContent = 'Your tasks, calendar, money and memories in one calm place. It runs on this computer and keeps everything in your own data folder. Four quick questions, about a minute, and you can skip any of them.';
       const inp = el('input', 'control'); inp.id = 'ob-name'; inp.maxLength = 60; inp.placeholder = 'e.g. Sam'; inp.value = d.userName; inp.autocomplete = 'given-name';
       inp.oninput = () => { d.userName = inp.value; setBrandMark(mark, inp.value); };
       body.appendChild(field('What should we call you?', inp, 'Optional. Used in greetings and the app title.'));
@@ -162,7 +166,7 @@ function openOnboarding() {
       })));
     } else {
       h.textContent = 'Ready when you are';
-      p.textContent = 'Start with a clean slate, or look around with made-up example data first.';
+      p.textContent = 'Start with a clean slate, or look around with made-up example data first. Right after this, three quick tips show you around.';
       const list = el('div', 'ob-choices ob-choices-2');
       const opt = (val, title, text, ic) => {
         const b = el('button', 'ob-choice' + (d.demo === val ? ' on' : '')); b.type = 'button'; b.setAttribute('aria-pressed', d.demo === val ? 'true' : 'false');
@@ -190,7 +194,7 @@ function openOnboarding() {
     if (step > 0) { const b = el('button', 'btn btn-ghost', 'Back'); b.type = 'button'; b.onclick = back; foot.appendChild(b); }
     foot.appendChild(el('span', 'spacer'));
     const go = el('button', 'btn btn-primary btn-lg'); go.type = 'button';
-    go.innerHTML = `<span>${step < 3 ? 'Continue' : (d.demo ? 'Load demo and open' : 'Get started')}</span>` + icon('arrow-right');
+    go.innerHTML = `<span>${step === 0 ? 'Let’s go' : step < 3 ? 'Continue' : (d.demo ? 'Load demo and open' : 'Get started')}</span>` + icon('arrow-right');
     go.onclick = next;
     foot.appendChild(go);
     card.appendChild(foot);

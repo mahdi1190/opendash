@@ -1,0 +1,31 @@
+/* @part 38-countries.css · NEW (2.16) · OWNER: FUX (Countries: the head line, flag + bar lists; shared with My money's widget) */
+.fv-cc-head { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+.fv-cc-hl { display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
+.fv-cc-hic { width: 36px; height: 36px; flex: none; display: grid; place-items: center; border-radius: var(--radius-lg); background: var(--accent-soft); color: var(--accent-ink); }
+.fv-cc-hic .i { width: 18px; height: 18px; }
+.fv-cc-ht { display: grid; gap: 2px; min-width: 0; }
+.fv-cc-hbig { font-size: var(--text-sm); color: var(--fg); }
+.fv-cc-hv { font-size: var(--text-xl); line-height: var(--lh-xl); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-tight); font-variant-numeric: tabular-nums; }
+.fv-cc-hs { font-size: var(--text-xs); color: var(--fg-subtle); }
+.fv-cc-hflags { display: flex; gap: 6px; flex-wrap: wrap; --tr-flag-h: 18px; }
+.fv-cc-hflags .tr-flag { --tr-flag-h: 18px; border-radius: 3px; }
+
+/* the flag + bar list */
+.fv-cc-list { gap: 2px; }
+.fv-cc-row { align-items: center; min-height: 48px; }
+.fv-cc-list.compact .fv-cc-row { min-height: 38px; }
+.fv-cc-row.is-current { background: var(--accent-soft); cursor: default; box-shadow: inset 3px 0 0 var(--accent); }
+.fv-cc-row.is-current:hover { background: var(--accent-soft); }
+.fv-cc-flag { flex: none; width: 30px; display: inline-grid; place-items: center; }
+.fv-cc-flag .tr-flag { --tr-flag-h: 18px; border-radius: 3px; }
+.fv-cc-list.compact .fv-cc-flag .tr-flag { --tr-flag-h: 15px; }
+.fv-cc-top { display: flex; align-items: baseline; gap: var(--space-2); min-width: 0; }
+.fv-cc-top .fv-row-t { flex: 1 1 auto; min-width: 0; }
+.fv-cc-pct { font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; flex: none; }
+.fv-cc-bar { display: block; height: 6px; border-radius: var(--radius-full); background: var(--bg-muted); overflow: hidden; margin: 3px 0 1px; }
+.fv-cc-list.compact .fv-cc-bar { height: 4px; }
+.fv-cc-bar i { display: block; height: 100%; border-radius: inherit; background: var(--c, var(--accent)); transform-origin: left; animation: fv-grow .6s var(--fv-ease) both; animation-delay: calc(var(--i, 0) * 40ms); }
+.fv-cc-v { display: grid; justify-items: end; gap: 1px; flex: none; min-width: 72px; }
+.fv-cc-v small { font-size: var(--text-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+[data-motion="reduced"] .fv-cc-bar i { animation: none; }
+@media (prefers-reduced-motion: reduce) { .fv-cc-bar i { animation: none; } }

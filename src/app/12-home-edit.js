@@ -174,6 +174,8 @@ function _homeEditBar() {
   };
   const add = mk('btn-secondary heb-add', 'plus', 'Add widget', (el) => _homeOpenGallery(el), hiddenN ? `<span class="badge badge-accent num">${esc(hiddenN)}</span>` : '');
   add.dataset.act = 'add'; add.setAttribute('aria-haspopup', 'dialog');
+  // Ready-made boards: Focused, Balanced, Everything, Fun (12-home-presets.js).
+  if (typeof homePresetsMenu === 'function') { const lp = mk('btn-ghost heb-presets', 'layers', 'Layouts', (el) => homePresetsMenu(el)); lp.setAttribute('aria-haspopup', 'menu'); lp.setAttribute('data-tip', 'Start from a ready-made layout'); }
   const u = mk('btn-ghost heb-undo', 'undo-2', 'Undo', () => homeEditUndo());
   u.disabled = !_homeEditUndo.length; u.setAttribute('data-tip', 'Undo the last change to the layout');
   mk('btn-ghost heb-reset', 'rotate-ccw', 'Reset', () => homeResetLayout()).disabled = !homeState().layout;

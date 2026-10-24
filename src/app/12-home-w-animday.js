@@ -81,6 +81,7 @@ function _hwaRender(el, ctx) {
     txt.appendChild(foot);
   }
   card.append(art, txt);
+  if (typeof memMoodDecorate === 'function') memMoodDecorate(card, ctx);   // ── memories ── the scene follows your day: busier, quieter, fireworks on a streak (93-memories-ui.js)
   el.appendChild(card);
   if (keep && keep.live && typeof animSceneResume === 'function') animSceneResume(art);
   return true;

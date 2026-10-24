@@ -402,6 +402,22 @@ service per data folder, like `microsoftFor`), and the glue:
   `decline_reason` or empty `settled`; EB `PDNG`); non-home currency
   converted (3.5) with the original kept in the memo
   (`"... (<amount> USD @ <rate>)"`).
+- **Where it was paid** (2.16, Spending by country; `lib/finance/place.mjs`):
+  a provider's Tx may carry `place: {cc, city, lc, la, ol}` (merchant country,
+  alpha-2 or alpha-3 converted; town; the currency it was paid in when it is
+  not the account's, and the amount in it; an online shop). Only what the
+  provider says: Monzo `merchant.address.country/city`, `merchant.online`,
+  `local_amount/local_currency`; EB the counterparty's `postal_address.country/
+  town_name` and `exchange_rate.instructed_amount`; Aureli whatever country or
+  original-currency fields its tool result has (none are documented, so
+  usually none); Plasma none (a wallet's USD is not where you were). The
+  bank-sync CSV gets the columns Country, City, Local amount, Local currency,
+  Online; the pipeline keeps them per row key in `_system/tx_places.json`
+  (like `bank_categories.json`: a full re-fetch fills older rows in) and
+  analysis.json transactions carry `cc`, `city`, `lc`, `la`, `ol`. A bank's own
+  CSV export with "Local amount" / "Local currency" columns (Monzo's has them)
+  counts too. The page adds memos, currencies and trips
+  (`src/finance/25-place-model.js`).
 - **Provider specifics**:
   - Monzo: memo = `merchant.name` else `counterparty.name` else
     `description`; pot moves (`description` starting `pot_` or

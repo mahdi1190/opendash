@@ -46,7 +46,7 @@ function setView(v) {
 
 // Hash routing: '#view=<name>' (e.g. #view=finance, #view=stream:<id>)
 // selects a view on load / hash edit; renderMain keeps the hash in sync.
-const _HASH_VIEWS = new Set(['home', 'today', 'tomorrow', 'week', 'all', 'no-date', 'completed', 'wins', 'triage', 'finance', 'bin']);
+const _HASH_VIEWS = new Set(['home', 'today', 'tomorrow', 'week', 'all', 'no-date', 'completed', 'wins', 'triage', 'finance', 'bin', 'now', 'inbox']);
 // hash: optional, defaults to the current location.hash.
 function _viewFromHash(hash) {
   const m = /^#view=(.+)$/.exec(hash == null ? (location.hash || '') : hash);
@@ -55,6 +55,8 @@ function _viewFromHash(hash) {
   if (_HASH_VIEWS.has(v)) return v;
   { const sec = sectionFor(v); if (sec && sec.hashable) return v; }   // registerSection() views
   if (/^stream:/.test(v)) return STREAMS[v.slice(7)] ? v : null;
+  if (v === 'waiting') return sbWaitingViewExists() ? v : null;   // the Waiting list (review area), once it is there
+  if (/^list:/.test(v)) return typeof smartListById === 'function' && smartListById(v.slice(5)) ? v : null;   // smart lists (15-nav-smart-lists.js)
   if (/^day:\d{4}-\d{2}-\d{2}$/.test(v) || /^tag:./.test(v)) return v;
   if (/^person:/.test(v)) return (state.people || []).some(p => p.id === v.slice(7)) ? v : null;
   return null;
@@ -69,6 +71,20 @@ window.addEventListener('hashchange', () => {
   if (v && v !== state.view) setView(v);
 });
 
+/** The Waiting list ('waiting', tasks with waitingOn, grouped by person) comes from the review area: its row shows only when the view exists. */
+function sbWaitingViewExists() {
+  try { return !!((typeof sectionFor === 'function' && sectionFor('waiting')) || (typeof isTaskView === 'function' && isTaskView('waiting'))); } catch (e) { return false; }
+}
+/** A view another area adds (Locations, the Game page): its row shows only once the view is there. */
+function sbViewExists(v) {
+  try { return !!((typeof sectionFor === 'function' && sectionFor(v)) || (typeof isTaskView === 'function' && isTaskView(v))); } catch (e) { return false; }
+}
+/** The Game page's row: there, and the Fun level is not Off (window.OpenDashGame from the game area; without it, shown). */
+function sbGameRowOn() {
+  if (!sbViewExists('game')) return false;
+  try { const g = window.OpenDashGame; return !g || typeof g.on !== 'function' || g.on() !== false; } catch (e) { return true; }
+}
+function _sbIsWaiting(i) { if (typeof rfIsWaitingAny === 'function') return rfIsWaitingAny(i); const w = i && i.waitingOn; return !!w && (!Array.isArray(w) || w.length > 0); }   // the Waiting list's own rule (34-review-core.js)
 /** Open-task counts the sidebar shows (computed once per render). */
 function sidebarCounts() {
   const all = getAllItems();
@@ -83,6 +99,10 @@ function sidebarCounts() {
     all: open.length,
     'no-date': open.filter(i => effDate(i) === null).length,
     completed: all.filter(i => statusOf(i.id) === 'done' && !isArchived(i)).length,
+    inbox: open.filter(i => i.inbox).length,                              // 24-quick-capture.js
+    waiting: open.filter(_sbIsWaiting).length,                            // task.waitingOn (the review area's Waiting list)
+    someday: open.filter(i => effTags(i).includes('someday')).length,     // the tag someday
+    now: typeof doNowActive === 'function' && doNowActive() ? open.filter(i => doNowScope(i)).length : 0,   // 24-do-now.js (a count once a choice is made)
     streams: {}, tags: {},
   };
   for (const i of open) {
@@ -102,14 +122,20 @@ function renderSidebar() {
   const g = group === 'system' ? _shellLastGroup : group;
   const counts = sidebarCounts();
   const ctx = { view: state.view, group: g, counts, navItem: sbNavItem, section: sbSection };
-  for (const b of SIDEBAR_BLOCKS) {
-    if (!b.groups.includes(g)) continue;
+  // The user's layout (15-nav-custom.js): section order and hidden sections per tab, renamed headings, hidden rows.
+  const blocks = typeof sbLayoutBlocks === 'function' ? sbLayoutBlocks(SIDEBAR_BLOCKS.filter(b => b.groups.includes(g)), g) : SIDEBAR_BLOCKS.filter(b => b.groups.includes(g));
+  for (const b of blocks) {
     const el = document.createElement('div');
     el.className = 'sb-block'; el.dataset.block = b.id;
     let r;
     try { r = b.render(el, ctx); } catch (e) { console.error('[sidebar block ' + b.id + ']', e); r = false; }
-    if (r !== false && el.childNodes.length) sb.appendChild(el);
+    if (r !== false && el.childNodes.length) {
+      if (typeof sbLayoutDecorate === 'function') { try { sbLayoutDecorate(el, b.id); } catch (e) { console.error('[sidebar layout]', e); } }
+      sb.appendChild(el);
+    }
   }
+  if (typeof sbLayoutFooter === 'function') sbLayoutFooter(sb, g);
+  if (typeof sbLayoutDrag === 'function') sbLayoutDrag(sb);   // drag a heading to move its section
   // Motion adds a "Reduce motion" footer to a sidebar that has none; that
   // switch lives in the More menu and Settings now.
   const stub = document.createElement('div'); stub.className = 'sidebar-footer'; stub.hidden = true;
@@ -127,12 +153,22 @@ registerSidebarBlock(['home', 'tasks'], {
     const pendingSugs = ((state.emailTriage && state.emailTriage.suggestions) || []).filter(s => s.status === 'pending').length;
     if (ctx.group === 'home') el.appendChild(sbNavItem({ label: 'Home', icon: 'house', view: 'home' }));
     const rows = [
+      // Inbox: what Quick capture caught, until it is sorted (24-quick-capture.js).
+      { label: 'Inbox', icon: 'inbox', view: 'inbox', count: c.inbox || '', title: c.inbox ? `${c.inbox} to sort` : 'Quick capture lands here' },
       { label: 'Today', icon: 'sun', view: 'today', count: c.today || '', countAlert: c.overdue > 0, title: c.overdue ? `${c.overdue} overdue` : '' },
+      // What fits where you are, your energy and the time you have (24-do-now.js).
+      { label: 'Do now', icon: 'target', view: 'now', count: c.now || '', title: 'What can I do now?' },
       { label: 'Upcoming', icon: 'calendar-range', view: 'week', count: c.week || '' },
       { label: 'All tasks', icon: 'layers', view: 'all', count: c.all || '' },
       { label: 'No date', icon: 'circle-dashed', view: 'no-date', count: c['no-date'] || '' },
+      // Waiting on others and Someday (the review area's lists; Waiting shows once its view exists).
+      ...(sbWaitingViewExists() ? [{ label: 'Waiting', icon: 'hourglass', view: 'waiting', count: c.waiting || '', title: c.waiting ? `${c.waiting} waiting on someone` : 'Tasks waiting on someone' }] : []),
+      { label: 'Someday', icon: 'archive', view: 'tag:someday', count: c.someday || '', title: 'Tagged #someday: not now, not forgotten' },
       { label: 'Logbook', icon: 'circle-check', view: 'completed' },
       { label: 'Wins', icon: 'trophy', view: 'wins' },
+      // Locations and the Game page (other areas' views): only when they exist (and the Game only while Fun is on).
+      ...(sbViewExists('locations') ? [{ label: 'Locations', icon: 'map-pin', view: 'locations' }] : []),
+      ...(sbGameRowOn() ? [{ label: 'Game', icon: 'gamepad-2', view: 'game', title: 'Levels, streaks, quests and records' }] : []),
       { label: 'Email triage', icon: 'mail', view: 'triage', count: pendingSugs || '' },
     ];
     // Home's sidebar holds only Home and the Review items: the task views
@@ -142,6 +178,9 @@ registerSidebarBlock(['home', 'tasks'], {
     for (const r of list) el.appendChild(typeof sbTaskDrop === 'function' ? sbTaskDrop(sbNavItem(r), r.view) : sbNavItem(r));
   },
 });
+
+/* ---------- Tasks: saved boards (owner: Boards; the block itself is boardsSidebarBlock in 33-board-ui.js) ---------- */
+registerSidebarBlock('tasks', { id: 'boards', order: 15, render: (el, ctx) => (typeof boardsSidebarBlock === 'function' ? boardsSidebarBlock(el, ctx) : false) });
 
 /* ---------- Tasks: streams (empty ones folded away) ---------- */
 // The Streams heading's +: Settings > Streams with the 'Add a stream' field focused.
@@ -369,7 +408,7 @@ registerSidebarBlock('calendar', {
 });
 
 /* ---------- Finances: its sections ---------- */
-const _FIN_SECTION_ICONS = { overview: 'gauge', spending: 'chart-column', categories: 'layout-grid', merchants: 'building-2', cashflow: 'arrow-up-down', recurring: 'repeat', budgets: 'piggy-bank', transactions: 'receipt' };
+const _FIN_SECTION_ICONS = { board: 'layout-template', countries: 'globe', overview: 'gauge', spending: 'chart-column', categories: 'layout-grid', merchants: 'building-2', cashflow: 'arrow-up-down', recurring: 'repeat', budgets: 'piggy-bank', transactions: 'receipt' };
 registerSidebarBlock('finance', {
   id: 'finance-sections', order: 10,
   render(el) {

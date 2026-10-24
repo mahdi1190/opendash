@@ -232,6 +232,23 @@ function tglRenameRefs(s, from, to) {
     if (!Object.prototype.hasOwnProperty.call(p, tv)) p[tv] = p[fv];
     delete p[fv]; out.push('taskViewPrefs');
   }
+  // Smart lists (#from / tag:from in a filter, a tag:from base) and sidebar pins (15-nav-smart-lists.js, 15-nav-custom.js).
+  if (Array.isArray(s.smartLists)) {
+    const re = new RegExp('(^|\\s)(-?)(#|tag:)' + from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=\\s|$)', 'gi');
+    let hit = false;
+    s.smartLists = s.smartLists.map(sl => {
+      if (!sl || typeof sl !== 'object') return sl;
+      const q = typeof sl.q === 'string' ? sl.q.replace(re, (m0, a, neg, mark) => a + neg + mark + to) : sl.q;
+      const base = sl.base === fv ? tv : sl.base;
+      if (q === sl.q && base === sl.base) return sl;
+      hit = true; return Object.assign({}, sl, { q, base });
+    });
+    if (hit) out.push('smartLists');
+  }
+  if (s.sidebarLayout && Array.isArray(s.sidebarLayout.pins) && s.sidebarLayout.pins.includes(fv)) {
+    s.sidebarLayout = Object.assign({}, s.sidebarLayout, { pins: [...new Set(s.sidebarLayout.pins.map(v => (v === fv ? tv : v)))] });
+    out.push('sidebarLayout');
+  }
   for (const e of Array.isArray(s.tagRegistry) ? s.tagRegistry : []) {
     if (!e || typeof e !== 'object' || !Array.isArray(e.aliases) || !e.aliases.includes(from)) continue;
     e.aliases = _tglMapList(e.aliases, a => (a === from ? to : a)).filter(a => a !== (e.id || e.name || e.tag));

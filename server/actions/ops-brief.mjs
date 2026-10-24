@@ -8,7 +8,8 @@
 //
 // state.reviews = [{ id, kind: 'week'|'evening', date, savedAt, source,
 //   outcomes: [{area, items:[...]}], wins: [...], slipped: [{taskId?, title, reason}],
-//   done: [{taskId?, title}], rolled: n, top3: [taskId], notes, summary, stats: {...} }]
+//   done: [{taskId?, title}], rolled: n, top3: [taskId], notes, summary, stats: {...},
+//   triage: {reviewed, kept, moved, waiting, someday, done, dropped, binned, nudged, minutes} }]
 // (at most 400 kept, oldest dropped first).
 
 import { ActionError, cleanLine, cleanText, isIsoDate, dateError, truncate } from './model.mjs';
@@ -34,6 +35,8 @@ const SCHEMA = obj({
     perStream: { type: 'array', maxItems: 30, items: obj({ stream: STR(80), n: { type: 'integer', minimum: 0, maximum: 100000 } }, ['stream', 'n']) },
     spent: { type: ['number', 'null'] }, spentAvg: { type: ['number', 'null'] },
   }),
+  // The guided weekly review (src/app/34-review-flow.js): what the one-task-at-a-time pass decided.
+  triage: obj(Object.fromEntries(['reviewed', 'kept', 'moved', 'waiting', 'someday', 'done', 'dropped', 'binned', 'nudged', 'minutes'].map(k => [k, { type: 'integer', minimum: 0, maximum: 100000 }]))),
 }, ['kind', 'date']);
 
 const clean = (p) => {
@@ -47,6 +50,7 @@ const clean = (p) => {
   if (p.notes !== undefined) out.notes = cleanText(p.notes, 4000);
   if (p.summary !== undefined) out.summary = cleanText(p.summary, 1200);
   if (p.stats) out.stats = JSON.parse(JSON.stringify(p.stats));
+  if (p.triage) out.triage = JSON.parse(JSON.stringify(p.triage));
   return out;
 };
 

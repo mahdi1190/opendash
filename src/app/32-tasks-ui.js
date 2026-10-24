@@ -303,6 +303,7 @@ function taskMenuItems(id) {
     { label: 'Priority…', icon: 'flag', kbd: 'P', run: () => openPriorityMenu(anchor(), id) },
     { label: 'Move to stream…', icon: 'layers', run: () => openStreamMenu(anchor(), id) },
     { label: 'People…', icon: 'users', run: () => openPeoplePicker(anchor(), id) },
+    ...(typeof rfTaskMenuItems === 'function' ? rfTaskMenuItems(id, anchor) : []),   // Waiting on… / Blocked by… / Someday (34-blocked.js)
     'sep',
     { label: 'Open', icon: 'maximize-2', kbd: 'Enter', run: () => (typeof openTask === 'function' ? openTask(id) : selectTask(id)) },
     // The switch, as on the card / panel buttons: it holds for the rest of the session (61-task-card.js).
@@ -427,6 +428,7 @@ function openTaskDisplayPopover(anchor) {
         el.appendChild(f);
       }
       row('Rows', [['normal', 'Comfortable'], ['compact', 'Compact']], state.density === 'compact' ? 'compact' : 'normal', v => { state.density = v; saveUI(); });
+      if (typeof viewsListFieldsField === 'function' && (state.viewMode || 'list') === 'list') viewsListFieldsField(el, paint);   // which fields rows show (31-views-switcher.js)
       const any = _lastRenderedTaskIds.some(id => getSubtasks(id).length);
       if (any) {
         const exp = document.createElement('button'); exp.type = 'button'; exp.className = 'btn btn-secondary btn-block';
@@ -435,6 +437,8 @@ function openTaskDisplayPopover(anchor) {
         exp.onclick = () => { if (open) _expandedTaskIds.clear(); else for (const id of _lastRenderedTaskIds) if (getSubtasks(id).length) _expandedTaskIds.add(id); render(); paint(); };
         el.appendChild(exp);
       }
+      // "Save as smart list…" (or "Edit this smart list" on one): 15-nav-smart-lists.js
+      if (typeof smartListDisplayButton === 'function' && view !== 'completed') el.appendChild(smartListDisplayButton(view));
     };
     paint();
   }, { width: 320, align: 'end' });
@@ -506,22 +510,9 @@ function renderBulkBar() {
   btn('Stream', 'layers', (a) => openStreamMenu(a, null, (k) => {
     const list = ids(); batchTasks(list, id => { const it = getItem(id); if (it.stream !== k) { logActivity(id, 'stream', { from: it.stream, to: k }); it.stream = k; } }); done(`${list.length} moved to ${STREAMS[k]?.label || k}`);
   }));
-  btn('Tag', 'hash', async () => {
-    const v = await promptDialog({ title: `Tags for ${n} tasks`, label: 'Add with +tag, remove with -tag (comma separated)', placeholder: '+review, -old' });
-    if (!v) return;
-    const ops = v.split(',').map(s => s.trim()).filter(Boolean);
-    const list = ids();
-    batchTasks(list, id => {
-      const it = getItem(id); let tags = effTags(it).slice();
-      for (const op of ops) {
-        const t = op.replace(/^[+-]/, '').replace(/^#/, '').trim().toLowerCase(); if (!t) continue;
-        if (op.startsWith('-')) tags = tags.filter(x => x !== t); else if (!tags.includes(t)) tags.push(t);
-      }
-      const before = effTags(it);
-      if (before.join('\u0000') !== tags.join('\u0000')) { logActivity(id, 'tags', { added: tags.filter(x => !before.includes(x)), removed: before.filter(x => !tags.includes(x)) }); it.tags = tags; }
-    });
-    done(`Tags updated on ${list.length}`);
-  });
+  // Tags: a picker with every tag (on all / some / none of the selected), one undo step (24-bulk-tags.js).
+  btn('Tag', 'hash', (a) => openBulkTagPicker(a, ids()), '', 'Add or remove tags', '#');
+  btn('Context', 'map-pin', (a) => openBulkContextMenu(a, ids()), '', 'Context and energy', '@');
   btn('Pin', 'pin', () => { const list = ids(); const allPinned = list.every(id => isPinned(id)); batchTasks(list, id => { if (allPinned) delete state.pinned[id]; else state.pinned[id] = true; }); done(allPinned ? 'Unpinned' : 'Pinned'); }, '', 'Pin or unpin');
   btn('', 'trash-2', () => bulkBin(ids()), 'danger', 'Move to bin', 'Del');
   btn('', 'x', () => { multiSelect.ids.clear(); render(); }, 'ghost', 'Clear selection', 'Esc');
@@ -555,16 +546,18 @@ document.addEventListener('keydown', (e) => {
   // A visible menu, dialog, drawer or palette owns the keyboard (hidden suggestion lists do not count).
   if ([...document.querySelectorAll('.cmd, .modal, .drawer, .pop')].some(n => n.getClientRects().length > 0) || document.getElementById('kb-overlay')?.classList.contains('open')) return;
   if (typeof _gPending !== 'undefined' && _gPending && Date.now() - _gPending < 1200) return;   // "g t" etc. belong to the shell
-  if (typeof state === 'undefined' || !(isTaskView(state.view) || state.selectedTaskId)) return;
+  if (typeof state === 'undefined' || !(isTaskView(state.view) || state.selectedTaskId || String(state.view).startsWith('taskboard:'))) return;   // saved boards: 33-board-ui.js
   const k = e.key;
   // In Calendar (a task open in the detail pane) t/j/k/m/w/d/a belong to the calendar (41-calendar-section.js).
   if (/^calendar/.test(String(state.view)) && /^[tjkmwda]$/i.test(k)) return;
   if (k === 'j' || k === 'k') { e.preventDefault(); _moveTaskCursor(k === 'j' ? 1 : -1); return; }
   // Tasks ticked for bulk actions: X, T, D, 1-4 and Del act on all of them (as the bulk bar does).
   const sel = [...multiSelect.ids].filter(x => getItem(x));
-  if (sel.length && /^(x|t|d|[1-4]|Delete|Backspace)$/.test(k)) {
+  if (sel.length && /^(x|t|d|#|@|[1-4]|Delete|Backspace)$/.test(k)) {
     e.preventDefault();
-    if (k === 'x') bulkComplete(sel);
+    if (k === '#') openBulkTagPicker(document.querySelector('#bulk-bar [data-tip="Add or remove tags"]') || document.getElementById('main-body'), sel);   // 24-bulk-tags.js
+    else if (k === '@') openBulkContextMenu(document.querySelector('#bulk-bar [data-tip="Context and energy"]') || document.getElementById('main-body'), sel);
+    else if (k === 'x') bulkComplete(sel);
     else if (k === 't') bulkPlanToday(sel);
     else if (k === 'd') bulkDueDatePopover(document.querySelector('#bulk-bar [data-kbd="D"]') || document.getElementById('main-body'), sel);
     else if (k === 'Delete' || k === 'Backspace') bulkBin(sel);

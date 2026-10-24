@@ -228,8 +228,10 @@ function pcPersonView(inner, cur, keep) {
   const side = document.createElement('aside'); side.className = 'tc-side pc-side'; side.setAttribute('aria-label', 'About ' + p.name);
 
   // Open tasks: what I owe them / what they owe me (waiting on them).
-  const owe = f.open.filter(i => !pplIsWaiting(i)).sort(typeof _pplByDue === 'function' ? _pplByDue : () => 0);
-  const wait = f.open.filter(i => pplIsWaiting(i)).sort(typeof _pplByDue === 'function' ? _pplByDue : () => 0);
+  // Waiting on them: the waiting flags too (W on a task, 34-waiting.js), and not what waits on someone else.
+  const split = typeof rfPersonOwe === 'function' ? rfPersonOwe(p.id, f.open) : { owe: f.open.filter(i => !pplIsWaiting(i)), theyOwe: f.open.filter(i => pplIsWaiting(i)) };
+  const owe = split.owe.sort(typeof _pplByDue === 'function' ? _pplByDue : () => 0);
+  const wait = split.theyOwe.sort(typeof _pplByDue === 'function' ? _pplByDue : () => 0);
   const done = f.tasks.filter(i => statusOf(i.id) === 'done').sort((a, b) => (closedAt(b) || 0) - (closedAt(a) || 0));
   const tx = document.createElement('div'); tx.className = 'pc-sh-x';
   if (done.length) {
@@ -250,8 +252,10 @@ function pcPersonView(inner, cur, keep) {
     ts.appendChild(g);
     return items.length > shown.length;
   };
-  const more1 = list('I owe them', owe, `Nothing you owe ${first} right now.`, 'is-owe');
-  const more2 = list('Waiting on them', wait, `You are not waiting on ${first}.`, 'is-wait');
+  const more1 = list('You owe them', owe, `Nothing you owe ${first} right now.`, 'is-owe');
+  const more2 = list('They owe you', wait, `${first} owes you nothing right now.`, 'is-wait');
+  const nudge = typeof rfPersonNudgeButton === 'function' ? rfPersonNudgeButton(p.id, wait) : null;
+  if (nudge) { const th = ts.querySelector('.pc-tgroup.is-wait .pc-th'); if (th) th.appendChild(nudge); }
   if (more1 || more2 || _pcAllTasks) {
     const va = document.createElement('button'); va.type = 'button'; va.className = 'btn btn-ghost btn-sm pc-viewall'; va.dataset.fk = 'pc-viewall';
     va.textContent = _pcAllTasks ? 'Show fewer' : 'View all open tasks';

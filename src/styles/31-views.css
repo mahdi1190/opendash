@@ -1,0 +1,52 @@
+/* =====================================================================
+   TASK VIEWS 2.16 (31-views-*.js): list row fields, daily capacity, the
+   week timeline and the priority matrix. Board styles are 25-kanban.css.
+   ===================================================================== */
+
+/* ---------- entrance: once per view + layout ---------- */
+.vw-mode.vw-enter { animation: vw-in var(--m-base, 220ms) var(--m-ease-out, ease-out) both; }
+@keyframes vw-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .vw-mode.vw-enter { animation: none; } }
+
+/* ---------- list fields (Display > Show on rows) ---------- */
+[data-vf-hide~="due"] .task .t-right > .due-stamp { display: none; }
+[data-vf-hide~="stream"] .task .t-streamdot { display: none; }
+[data-vf-hide~="tags"] .task .t-tags { display: none; }
+[data-vf-hide~="people"] .task .t-people { display: none; }
+[data-vf-hide~="subtasks"] .task .sub-count { display: none; }
+[data-vf-hide~="estimate"] .task .t-est { display: none; }
+[data-vf-hide~="details"] .task :is(.note-count, .t-files, .t-meet, .t-recur) { display: none; }
+.vw-presets { display: flex; gap: var(--space-1); margin-top: var(--space-1-5); }
+.vw-presets .btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); cursor: default; }
+.seg-wrap { flex-wrap: wrap; }
+
+/* ---------- daily capacity ---------- */
+.vw-cap { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-2xs); color: var(--fg-subtle); font-variant-numeric: tabular-nums; white-space: nowrap; min-width: 0; }
+.vw-cap-bar { position: relative; width: 38px; height: 4px; border-radius: var(--radius-full); background: var(--bg-emphasis); overflow: hidden; flex: none; }
+.vw-cap-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--success); transition: width var(--m-base, 220ms) var(--m-ease-out, ease-out); }
+.vw-cap.is-tight .vw-cap-bar > i { background: var(--warning); }
+.vw-cap.is-over .vw-cap-bar > i { background: var(--danger); }
+.vw-cap.is-over { color: var(--danger-ink); font-weight: var(--weight-medium); }
+.vw-cap.is-tight { color: var(--warning-ink); }
+.vw-cap.is-empty .vw-cap-bar > i { width: 0 !important; }
+.vw-cap-t { display: inline-flex; align-items: center; gap: 3px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.vw-cap-t .i { width: 12px; height: 12px; }
+.vw-cap-of { color: var(--fg-subtle); font-weight: var(--weight-regular); }
+.vw-cap.is-over .vw-cap-of { color: inherit; opacity: 0.8; }
+.tg-h .vw-cap-h { margin-left: auto; }
+.ws-day .vw-over-dot { position: absolute; top: 4px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px var(--surface); }
+.ws-day.vw-tight .load i { background: var(--warning); }
+.vw-cap-note {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: 0 0 var(--space-3); padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md); background: var(--warning-soft); color: var(--warning-ink); font-size: var(--text-xs);
+}
+.vw-cap-note > .i { width: 16px; height: 16px; flex: none; }
+.vw-cap-note-t { flex: 1 1 260px; min-width: 0; }
+.vw-cap-note b { font-weight: var(--weight-semibold); }
+.vw-muted { color: var(--fg-subtle); font-size: var(--text-xs); margin: 0 var(--space-2) var(--space-2); line-height: var(--lh-xs); }
+.vw-bal-list { display: flex; flex-direction: column; gap: 2px; max-height: 320px; overflow: auto; margin: 0 0 var(--space-2); }
+.vw-bal-row { display: flex; flex-direction: column; gap: 1px; padding: 6px var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-sm); cursor: pointer; }
+.vw-bal-row:hover { background: var(--bg-muted); }
+.vw-bal-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vw-bal-m { display: inline-flex; align-items: center; gap: 4px; font-size: var(--text-xs); color: var(--fg-subtle); }
+.vw-bal-m .i { width: 12px; height: 12px; }

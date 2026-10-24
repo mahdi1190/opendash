@@ -1,10 +1,11 @@
 /* ============================================================
-   TASK VIEWS (owner: Tasks): the List and Board layouts of every task view,
+   TASK VIEWS (owner: Tasks): the List layout of every task view (the Board is 33-board*.js),
    the Today summary (progress ring + week strip you can drop tasks on),
    grouped lists with folding, the quick-add box with live preview.
    80-main-render.js hands task views to renderTaskView(main, subtitleEl).
    ============================================================ */
 function viewTitle(v) {
+  { const x = typeof extraViewTitle === 'function' ? extraViewTitle(v) : null; if (x) return x; }   // smart lists, Do now, Inbox (15-nav-smart-lists.js)
   if (v === 'today')     return 'Today';
   if (v === 'tomorrow')  return 'Tomorrow';
   if (v === 'week')      return 'Upcoming';
@@ -37,7 +38,7 @@ let _qaSuggest = { items: [], index: 0 };
 /** Render the current task view into main. Called by _renderMainBody. */
 function renderTaskView(main, subEl) {
   const view = state.view;
-  if (state.viewMode === 'calendar') { state.viewMode = 'list'; saveUI(); }   // retired: Calendar is its own section now
+  if (state.viewMode === 'calendar') { state.viewMode = 'timeline'; saveUI(); }   // 2.16: the week timeline replaced the Calendar mode (31-views-switcher.js)
   if (_tvLastView !== view) {
     if (view === 'today' || view === 'week') state.weekBarOffset = 0;
     state._snappedFor = null;   // a newly opened day view snaps its week into view once
@@ -45,7 +46,8 @@ function renderTaskView(main, subEl) {
     _tvLastView = view;
   }
   _lastRenderedTaskIds = [];
-  if (state.viewMode === 'review') { subEl.textContent = ''; renderReviewView(main); return; }
+  if (typeof rfHeaderButton === 'function') rfHeaderButton();   // Weekly review + the review tools (34-review-flow.js)
+  if (state.viewMode === 'review') { subEl.textContent = ''; if (typeof rfReviewHub === 'function') main.appendChild(rfReviewHub()); renderReviewView(main); return; }
 
   const all = getAllItems();
   let open, closed;
@@ -74,6 +76,7 @@ function renderTaskView(main, subEl) {
   else if (view === 'completed') subEl.textContent = `${open.length} in the last ${_logbookDays} days`;
   else subEl.textContent = open.length ? `${open.length} open` : '';
 
+  if (typeof viewsRenderMode === 'function' && viewsRenderMode(main, { open, closed, view, searching, sort })) return;   // Timeline / Matrix (31-views-*.js)
   if (state.viewMode === 'kanban') return renderKanban(main, { open, closed, view });
   renderListView(main, { open, closed, view, searching, sort });
 }
@@ -82,12 +85,16 @@ function renderTaskView(main, subEl) {
 function renderListView(container, o) {
   const { open, closed, view, searching } = o;
   const list = document.createElement('div'); list.className = 'task-view';
+  if (typeof viewsApplyListFields === 'function') viewsApplyListFields(list);   // the fields rows show (31-views-switcher.js)
   container.appendChild(list);
 
   if (!searching) {
+    // A smart list's filter, Do now's choices, the Inbox's actions (15-nav-smart-lists.js).
+    { const strip = typeof taskViewHeaderStrip === 'function' ? taskViewHeaderStrip(view) : null; if (strip) list.appendChild(strip); }
     if (view === 'today') list.appendChild(_renderTodaySummary());
     else if (view === 'week' || view === 'tomorrow' || view.startsWith('day:')) list.appendChild(_renderWeekStrip({ standalone: true }));
     if (view === 'today' || view === 'week' || view === 'tomorrow' || view.startsWith('day:')) list.appendChild(_renderTodayJump(view));
+    if (view === 'week' && typeof viewsCapacityNote === 'function') { const n = viewsCapacityNote(); if (n) list.appendChild(n); }   // overloaded days (31-views-capacity.js)
     if (view === 'today' && typeof renderCalendarEvents === 'function') {
       try {
         const cal = renderCalendarEvents();   // the Calendar area's strip (pills + "Open calendar")
@@ -95,6 +102,9 @@ function renderListView(container, o) {
       } catch (e) { console.error('[tasks] calendar strip', e); }
     }
     if (view !== 'completed') list.appendChild(_renderQuickAdd(view));
+    // Follow-ups due (Today) and the stale clean-up (All, No date): 34-waiting.js / 34-cleanup.js.
+    const rfBanner = typeof rfListBanners === 'function' ? rfListBanners(view) : null;
+    if (rfBanner) list.appendChild(rfBanner);
     // A stream's Files & links (63-resources.js): its folder, repo, decks...
     if (view.startsWith('stream:') && typeof resStreamStrip === 'function') list.appendChild(resStreamStrip(view.slice(7)));
   } else {
@@ -102,6 +112,7 @@ function renderListView(container, o) {
     note.innerHTML = icon('search') + `<span>Searching every task for “${esc(searchQuery)}”.</span>`;
     const clr = document.createElement('button'); clr.type = 'button'; clr.className = 'btn btn-ghost btn-sm'; clr.textContent = 'Clear';
     clr.onclick = () => { const s = document.getElementById('search-input'); if (s) s.value = ''; searchQuery = ''; renderMain(); };
+    if (typeof smartListSaveButton === 'function') note.appendChild(smartListSaveButton());   // "Save as smart list" (15-nav-smart-lists.js)
     note.appendChild(clr);
     list.appendChild(note);
   }
@@ -160,7 +171,7 @@ function _mountTaskEmpty(list, view, searching, inline) {
       actions: [{ label: 'Clear search', run: () => { const s = document.getElementById('search-input'); if (s) s.value = ''; searchQuery = ''; renderMain(); } }] });
     return;
   }
-  const o = view === 'today'
+  const o = (typeof extraViewEmpty === 'function' && extraViewEmpty(view, inline)) || (view === 'today'
     ? { icon: 'sun', title: inline ? 'Nothing left for today' : 'All clear for today', text: 'Nothing is due or planned. Plan tasks for today with the sun button in a task, or add one above.', actions: [{ label: 'See what’s coming up', icon: 'calendar-range', run: () => setView('week') }] }
     : view === 'completed'
     ? { icon: 'circle-check', title: 'Nothing completed lately', text: 'Finished tasks collect here, newest first.' }
@@ -177,7 +188,7 @@ function _mountTaskEmpty(list, view, searching, inline) {
     ? { icon: 'users', title: `Nothing open with ${viewTitle(view)}`, text: 'Add a task above and they are linked to it, or type @name in any task.' }
     : view === 'all'
     ? { icon: 'sparkles', title: 'No open tasks', text: 'Add one above (try “email Sam fri !p1”), or press Q from anywhere.' }
-    : { icon: 'sparkles', title: 'Nothing here', text: 'Add a task above, or press Q from anywhere.' };
+    : { icon: 'sparkles', title: 'Nothing here', text: 'Add a task above, or press Q from anywhere.' });
   o.compact = true;
   mountEmptyState(list, o);
 }
@@ -202,7 +213,7 @@ function _renderGroup(view, g) {
       h.appendChild(b);
     }
     // Drop a task on a day header (Upcoming) to move it to that day.
-    if (/^\d{4}-\d{2}-\d{2}$/.test(g.key)) _makeDayDropTarget(h, g.key);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(g.key)) { _makeDayDropTarget(h, g.key); if (view === 'week' && typeof viewsCapacityDecorate === 'function') viewsCapacityDecorate(h, g.key, { kind: 'header' }); }
     if (g.section) _todaySectionHeader(h, g.key);
     grp.appendChild(h);
   }
@@ -420,6 +431,7 @@ function _renderWeekStrip(o) {
     cell.title = d.toLocaleDateString(_locale(), { weekday: 'long', day: 'numeric', month: 'long' }) + (n ? ` · ${n} open` : '') + ' · drop a task here to move it';
     cell.onclick = () => setView(ds === today ? 'today' : 'day:' + ds);
     _makeDayDropTarget(cell, ds);
+    if (typeof viewsCapacityDecorate === 'function') viewsCapacityDecorate(cell, ds, { kind: 'strip' });   // tasks vs free hours (31-views-capacity.js)
     days.appendChild(cell);
   }
   wb.appendChild(days);
@@ -564,13 +576,13 @@ function _afterQuickAddRender() {
     _paintQaPreview(box.querySelector('.qa-preview'), inp, state.view);
   }
 }
-const _QA_TOKEN_ICON = { date: 'calendar', time: 'clock', priority: 'flag', tag: 'hash', stream: 'circle', person: 'at-sign', repeat: 'repeat', estimate: 'timer' };
+const _QA_TOKEN_ICON = { date: 'calendar', time: 'clock', priority: 'flag', tag: 'hash', stream: 'circle', person: 'at-sign', repeat: 'repeat', estimate: 'timer', context: 'map-pin', energy: 'zap' };
 function _paintQaPreview(prev, inp, view) {
   if (!prev) return;
   prev.innerHTML = '';
   const txt = inp.value.trim();
   if (!txt) {
-    if (_qaFocused) prev.innerHTML = `<span class="qa-help">${esc('fri · next mon · 15 oct · 3pm · every week · !p1 · #stream or #tag · @person · ~2h')}</span>`;
+    if (_qaFocused) prev.innerHTML = `<span class="qa-help">${esc('fri · next mon · 15 oct · 3pm · every week · !p1 · #stream or #tag · @person · @phone · low energy · ~2h')}</span>`;
     return;
   }
   const parsed = parseQuickAdd(inp.value, { ignore: _qaIgnore });
@@ -578,9 +590,9 @@ function _paintQaPreview(prev, inp, view) {
   for (const t of parsed.tokens) {
     const chip = document.createElement('button'); chip.type = 'button';
     chip.className = 'chip qa-tok qa-' + t.kind + (t.isNew ? ' is-new' : '') + (t.kind === 'priority' && /^p[1-3]$/i.test(t.label) ? ' qa-' + t.label.toLowerCase() : '');
-    const lead = t.kind === 'stream' ? `<span class="dot" style="--c:${escAttr(safeColor(t.color, 'var(--fg-subtle)'))}"></span>` : icon(_QA_TOKEN_ICON[t.kind] || 'circle', 'i-xs');
+    const lead = t.kind === 'stream' ? `<span class="dot" style="--c:${escAttr(safeColor(t.color, 'var(--fg-subtle)'))}"></span>` : icon(t.icon || _QA_TOKEN_ICON[t.kind] || 'circle', 'i-xs');
     chip.innerHTML = lead + `<span>${esc(t.label)}</span>` + icon('x', 'i-xs x');
-    chip.title = `Read “${t.raw}” as ${t.kind}. Click to keep it as text.`;
+    chip.title = t.hint || `Read “${t.raw}” as ${t.kind}. Click to keep it as text.`;
     chip.onmousedown = (e) => e.preventDefault();
     chip.onclick = () => { _qaIgnore.push(t.raw); _paintQaPreview(prev, inp, view); inp.focus(); };
     prev.appendChild(chip);
@@ -591,6 +603,9 @@ function _paintQaPreview(prev, inp, view) {
   if (!parsed.stream && dflt.stream && STREAMS[dflt.stream]) implied.push(`<span class="dot" style="--c:${escAttr(safeColor(STREAMS[dflt.stream].color))}"></span><span>${esc(STREAMS[dflt.stream].label)}</span>`);
   for (const t of (dflt.tags || [])) if (!parsed.tags.includes(t)) implied.push(icon('hash', 'i-xs') + `<span>${esc(t)}</span>`);
   for (const pid of (dflt.people || [])) { const p = getPerson(pid); if (p && !parsed.people.includes(pid)) implied.push(icon('at-sign', 'i-xs') + `<span>${esc(p.name)}</span>`); }
+  for (const c of (dflt.contexts || [])) if (!(parsed.contexts || []).includes(c) && typeof ctxLabel === 'function') implied.push(icon(ctxIcon(c), 'i-xs') + `<span>@${esc(ctxLabel(c))}</span>`);
+  if (dflt.energy && !parsed.energy && typeof TASK_ENERGY !== 'undefined' && TASK_ENERGY[dflt.energy]) implied.push(icon(TASK_ENERGY[dflt.energy].icon, 'i-xs') + `<span>${esc(TASK_ENERGY[dflt.energy].label)}</span>`);
+  if (dflt.inbox) implied.push(icon('inbox', 'i-xs') + '<span>Inbox</span>');
   for (const h of implied) { const s = document.createElement('span'); s.className = 'chip qa-tok implied'; s.innerHTML = h; s.title = 'From this list'; prev.appendChild(s); }
   const hint = document.createElement('span'); hint.className = 'qa-enter'; hint.innerHTML = '<kbd class="kbd">Enter</kbd> to add';
   prev.appendChild(hint);
@@ -620,6 +635,11 @@ function _paintQaSuggest(sug, inp) {
       for (const [t, n] of tags) items.push({ kind: 'tag', insert: '#' + t, label: '#' + t, hint: String(n) });
     }
   } else {
+    // Contexts and energy that match what is typed (20-task-contexts.js), then people.
+    if (w.text && typeof ctxList === 'function') {
+      for (const c of ctxList()) if (c.id.startsWith(w.text) || c.label.toLowerCase().startsWith(w.text) || c.aliases.some(a => a.startsWith(w.text))) items.push({ kind: 'context', insert: '@' + c.id, label: '@' + c.label, icon: c.icon, hint: 'context' });
+      for (const k of ['low', 'high']) if (k.startsWith(w.text)) items.push({ kind: 'energy', insert: '@' + k, label: TASK_ENERGY[k].label, icon: TASK_ENERGY[k].icon, hint: 'energy' });
+    }
     for (const p of (state.people || [])) {
       if (p.self) continue;
       const first = String(p.name || '').split(/\s+/)[0].toLowerCase();
@@ -627,7 +647,7 @@ function _paintQaSuggest(sug, inp) {
       if (!w.text || hay.some(h => h.startsWith(w.text) || h.split(/\s+/).some(x => x.startsWith(w.text)))) items.push({ kind: 'person', insert: '@' + (first || p.id), label: p.name, color: p.color, hint: p.role || '' });
     }
     items = items.slice(0, 7);
-    if (w.text && !items.length) items.push({ kind: 'new', insert: '@' + w.text, label: `Create “${w.text}”`, hint: 'new person' });
+    if (w.text && !items.some(x => x.kind === 'person' || x.kind === 'context')) items.push({ kind: 'new', insert: '@' + w.text, label: `Create “${w.text}”`, hint: 'new person' });
   }
   items = items.slice(0, 8);
   _qaSuggest = { items, index: Math.min(_qaSuggest.index, Math.max(0, items.length - 1)) };
@@ -639,7 +659,7 @@ function _paintQaSuggest(sug, inp) {
     b.setAttribute('role', 'option');
     const lead = s.kind === 'stream' ? `<span class="dot" style="--c:${escAttr(safeColor(s.color))}"></span>`
       : s.kind === 'person' ? `<span class="avatar avatar-16" style="--c:${escAttr(safeColor(s.color, 'var(--sw-slate)'))}">${esc(avatarInitials(s.label))}</span>`
-      : icon(s.kind === 'new' ? 'user-plus' : 'hash');
+      : icon(s.icon || (s.kind === 'new' ? 'user-plus' : 'hash'));
     b.innerHTML = lead + `<span class="lbl">${esc(s.label)}</span>${s.hint ? `<span class="hint">${esc(s.hint)}</span>` : ''}`;
     b.onmousedown = (e) => { e.preventDefault(); _qaAcceptSuggestion(inp, s); _paintQaPreview(inp.closest('.qa-wrap').querySelector('.qa-preview'), inp, state.view); _paintQaSuggest(sug, inp); };
     sug.appendChild(b);
@@ -673,155 +693,4 @@ function _openTemplatesPopover(anchor, view) {
   if (!items.length) items.push({ label: 'No templates yet', disabled: true });
   items.push('sep', { label: 'Manage templates…', icon: 'settings', run: () => openTemplatesModal() });
   openMenu(anchor, items, { align: 'end', width: 280 });
-}
-
-/* ---------- board (kanban) ---------- */
-function renderKanban(container, o) {
-  const { closed, view } = o;
-  // Pinned first in each column, as in the list ("Pin to top"); the sort order applies within each half.
-  const open = o.open.filter(i => isPinned(i.id)).concat(o.open.filter(i => !isPinned(i.id)));
-  const cols = [
-    { key: 'todo', label: 'To do', items: open.filter(i => statusOf(i.id) === 'todo') },
-    { key: 'doing', label: 'In progress', items: open.filter(i => statusOf(i.id) === 'doing') },
-    { key: 'done', label: view === 'today' ? 'Done today' : 'Done', items: closed },
-  ];
-  const wrap = document.createElement('div'); wrap.className = 'kanban';
-  for (const col of cols) {
-    const c = document.createElement('section'); c.className = 'kanban-col';
-    c.dataset.status = col.key;
-    const h = document.createElement('h3'); h.innerHTML = `${esc(col.label)}<span>${col.items.length}</span>`;
-    c.appendChild(h);
-    c.addEventListener('dragover', e => { if (!isTaskDrag(e)) return; e.preventDefault(); c.classList.add('dragover'); });
-    c.addEventListener('dragleave', (e) => { if (!c.contains(e.relatedTarget)) c.classList.remove('dragover'); });
-    c.addEventListener('drop', e => {
-      c.classList.remove('dragover');
-      const ids = draggedTaskIds(e); if (!ids.length) return;
-      e.preventDefault();
-      if (ids.length > 1) {   // a dragged selection: all of them into this column, one undo step
-        const move = ids.filter(x => statusOf(x) !== col.key);
-        if (!move.length) return;
-        if (col.key === 'done') { bulkComplete(move); return; }
-        batchTasks(move, x => setStatus(x, col.key, { noSave: true }));
-        toast(`${move.length} moved to ${col.label}`, { kind: 'ok', icon: col.key === 'doing' ? 'circle-dot' : 'circle', action: { label: 'Undo', run: () => undo() } });
-        return;
-      }
-      const id = ids[0];
-      const cur = statusOf(id);
-      if (col.key === cur) return;
-      if (col.key === 'done') toggleDone(id);   // its own toast + Undo
-      else {
-        setStatus(id, col.key);
-        toast(cur === 'done' ? 'Reopened' : `Moved to ${col.label}`, { icon: col.key === 'doing' ? 'circle-dot' : 'circle', action: { label: 'Undo', run: () => undo() } });
-      }
-    });
-    const list = document.createElement('div'); list.className = 'kanban-list';
-    // Today's board: To do in the same sections as the list (order and hidden ones from the view's preferences).
-    if (view === 'today' && col.key === 'todo' && groupForView('today') === 'auto') {
-      const by = {};
-      for (const it of col.items) { const k = todaySectionOf(it); (by[k] = by[k] || []).push(it); }
-      let hiddenN = 0;
-      for (const k of todaySectionOrder()) {
-        const items = by[k]; if (!items || !items.length) continue;
-        if (todaySectionHidden(k)) { hiddenN += items.length; continue; }
-        const def = todaySectionDef(k);
-        const sh = document.createElement('div'); sh.className = 'kc-sec' + (k === 'overdue' ? ' danger' : '');
-        sh.innerHTML = `${icon(def.icon, 'i-xs')}<span>${esc(def.label)}</span><span class="n">${items.length}</span>`;
-        list.appendChild(sh);
-        for (const it of items) { list.appendChild(_renderKanbanCard(it)); _lastRenderedTaskIds.push(it.id); }
-      }
-      if (hiddenN) {
-        const hn = document.createElement('button'); hn.type = 'button'; hn.className = 'btn btn-ghost btn-sm kc-sec-hidden';
-        hn.textContent = `${hiddenN} in hidden sections · Show`;
-        hn.onclick = () => { setTaskViewPref('today', { hiddenSections: null }); render(); };
-        list.appendChild(hn);
-      }
-    } else {
-      for (const it of col.items) {
-        list.appendChild(_renderKanbanCard(it));
-        if (col.key !== 'done') _lastRenderedTaskIds.push(it.id);
-      }
-    }
-    if (!col.items.length) { const e = document.createElement('div'); e.className = 'kanban-empty'; e.textContent = col.key === 'done' ? 'Drop here to complete' : col.key === 'doing' ? 'Drop a task here to start it' : 'Nothing to do. Add one below'; list.appendChild(e); }
-    c.appendChild(list);
-    if (col.key !== 'done') {
-      const add = document.createElement('input'); add.className = 'kanban-add'; add.placeholder = '+ Add a task';
-      add.dataset.fk = 'kanban-add:' + col.key;
-      add.setAttribute('aria-label', `Add a task to ${col.label}`);
-      add.title = 'Enter to add · quick-add words work: fri, !p1, #tag, @person';
-      add.onkeydown = (e) => {
-        if (e.key === 'Escape') { e.stopPropagation(); add.value = ''; add.blur(); return; }
-        if (e.key !== 'Enter' || !add.value.trim()) return;
-        e.preventDefault();
-        const parsed = parseQuickAdd(add.value);
-        _keepFocus('kanban-add:' + col.key);
-        addParsedTask(parsed, Object.assign(quickAddDefaults(view), { status: col.key }));
-      };
-      c.appendChild(add);
-    }
-    wrap.appendChild(c);
-  }
-  container.appendChild(wrap);
-}
-function _renderKanbanCard(it) {
-  const status = statusOf(it.id);
-  const card = document.createElement('div');
-  card.className = 'kanban-card' + (state.selectedTaskId === it.id ? ' selected' : '') + (status === 'done' ? ' done' : '') + (isWontDo(it) ? ' wontdo' : '') + (_lastSelectedTaskId === it.id ? ' kb-cursor' : '') + (multiSelect.ids.has(it.id) ? ' multi-selected' : '');
-  card.dataset.id = it.id;
-  card.draggable = true;
-  card.ondragstart = e => _startTaskDrag(e, it, card);
-  card.ondragend = () => _endTaskDrag(card);
-  const top = document.createElement('div'); top.className = 'kc-top';
-  // The same checkbox as a list row: click = done, Shift+click = in progress, Alt+click = won't do.
-  const wont = isWontDo(it);
-  const cb = document.createElement('button'); cb.type = 'button';
-  cb.className = 'checkbox ' + effPriority(it) + (status === 'doing' ? ' doing' : '') + (status === 'done' ? (wont ? ' wontdo' : ' done') : '');
-  cb.setAttribute('role', 'checkbox');
-  cb.setAttribute('aria-checked', status === 'done' ? 'true' : status === 'doing' ? 'mixed' : 'false');
-  cb.setAttribute('aria-label', (status === 'done' ? 'Reopen: ' : 'Complete: ') + effTitle(it));
-  cb.title = status === 'done' ? (wont ? "Won't do · click to reopen" : 'Done · click to reopen') : `${PRIORITIES[effPriority(it)]?.label || ''} · click to complete · Shift+click: in progress · Alt+click: won't do`;
-  if (wont) cb.innerHTML = icon('minus', 'i-xs');
-  cb.onclick = (e) => {
-    e.stopPropagation();
-    if (e.shiftKey && status !== 'done') { toggleDoing(it.id); return; }
-    if (e.altKey && status !== 'done') { markWontDo(it.id); return; }
-    toggleDone(it.id);
-  };
-  const ttl = document.createElement('div'); ttl.className = 'ttl'; ttl.textContent = effTitle(it);
-  top.append(cb, ttl);
-  if (isPinned(it.id) && status !== 'done') {   // the pin marker (Unpin: right-click > Unpin)
-    card.classList.add('pinned');
-    const pm = document.createElement('span'); pm.className = 'kc-pin'; pm.setAttribute('aria-label', 'Pinned'); pm.dataset.tip = 'Pinned to the top';
-    pm.innerHTML = icon('pin', 'i-xs'); top.appendChild(pm);
-  }
-  card.appendChild(top);
-  const meta = document.createElement('div'); meta.className = 'meta';
-  const stream = effStream(it);
-  const sb = document.createElement('span'); sb.className = 'stream';
-  sb.style.setProperty('--c', safeColor(STREAMS[stream]?.color, '#868a94'));
-  sb.innerHTML = `${streamMarkHtml(stream, { inherit: true })}<span data-cz-label>${esc(STREAMS[stream]?.label || stream || '')}</span>`;
-  if (STREAMS[stream]) czMark(sb, 'stream', stream);   // marker + right-click menu (28-customise.js)
-  meta.appendChild(sb);
-  const subs = getSubtasks(it.id);
-  if (subs.length) { const s = document.createElement('span'); s.className = 'm'; s.innerHTML = icon('list-checks') + `<span>${subs.filter(x => x.done).length}/${subs.length}</span>`; meta.appendChild(s); }
-  const sp = document.createElement('span'); sp.className = 'grow'; meta.appendChild(sp);
-  const av = _taskAvatarsHtml(it, 2);
-  if (av.html) { const a = document.createElement('span'); a.className = 'avatars'; a.innerHTML = av.html; a.title = av.title; meta.appendChild(a); }
-  if (effDate(it) && status !== 'done') { const ds = document.createElement('span'); ds.className = 'due-stamp ' + _rowDueClass(it); ds.textContent = rowDueLabel(it); meta.appendChild(ds); }
-  card.appendChild(meta);
-  const tags = effTags(it);
-  if (tags.length) {
-    const chips = document.createElement('div'); chips.className = 'chips kc-tags';
-    for (const t of tags.slice(0, 2)) { const c = document.createElement('span'); c.className = 'chip'; c.innerHTML = `<span data-cz-label>${esc(t)}</span>`; czTagChip(c, t); chips.appendChild(c); }
-    if (tags.length > 2) { const c = document.createElement('span'); c.className = 'chip chip-more'; c.textContent = '+' + (tags.length - 2); chips.appendChild(c); }
-    card.appendChild(chips);
-  }
-  // As in the list: Ctrl/Cmd+click ticks it for the bulk bar; a plain click opens it (centre card or side panel).
-  card.onclick = (e) => {
-    if (e.shiftKey && _selectRangeTo(it.id)) return;   // Shift+click: everything from the last one clicked (30-task-row.js)
-    _lastSelectedTaskId = it.id;
-    if (e.ctrlKey || e.metaKey) { _toggleMulti(it.id); return; }
-    openTask(it.id, { from: card });
-  };
-  card.oncontextmenu = (e) => { e.preventDefault(); _lastSelectedTaskId = it.id; openTaskMenu({ x: e.clientX, y: e.clientY }, it.id); };
-  return card;
 }

@@ -34,6 +34,8 @@ function _closedOn(item) { const ts = closedAt(item); return ts ? Clock.parts(Nu
 /** Does the task belong to the view, ignoring whether it is open or done? */
 function inViewScope(item, view, today) {
   today = today || todayStr();
+  // Smart lists (list:<id>), Do now ('now') and the Inbox ('inbox'): 15-nav-smart-lists.js.
+  if (view === 'now' || view === 'inbox' || view.startsWith('list:')) return typeof extraViewScope === 'function' ? !!extraViewScope(item, view, today) : false;
   const due = effDate(item);
   const plan = item.plannedFor || null;
   if (view === 'today') return (!!due && due <= today) || (!!plan && plan <= today) || statusOf(item.id) === 'doing';
@@ -52,6 +54,8 @@ function matchesView(item, view) {
   const done = statusOf(item.id) === 'done';
   if (view === 'completed') return done;
   if (done) return false;
+  // Waiting on someone, blocked, or parked for someday: out of the active lists (34-review-core.js).
+  if (typeof rfLeavesView === 'function' && rfLeavesView(item, view)) return false;
   return inViewScope(item, view);
 }
 /** Recently closed tasks shown in a view's collapsed "Completed" group. */
@@ -72,17 +76,31 @@ function taskViewCount(view) {
 }
 
 /* ---------- search ---------- */
-// Operators: #tag  @person  p1..p3 / !p1  is:done|open|doing|wontdo|pinned|planned
-//            due:today|overdue|tomorrow|week|none  stream:<id or label>  -word (exclude)
+// Operators: #tag  @person  p1..p3 / !p1  is:done|open|doing|wontdo|pinned|planned|inbox|waiting|blocked|someday
+//            due:today|overdue|tomorrow|week|month|none  stream:<id or label>  -word (exclude)
+//            tag:<tag>  @phone / ctx:<context> (ctx:none)  energy:low|high|none
+//            est:<=15 / est:<1h / est:>2h / est:none (the estimate, minutes unless h)
 let _searchCacheQ = null, _searchCache = null;
 function parseTaskSearch(q) {
   if (q === _searchCacheQ) return _searchCache;
-  const out = { words: [], not: [], tags: [], people: [], prio: null, is: [], due: null, stream: null, raw: q || '' };
+  const out = { words: [], not: [], tags: [], people: [], prio: null, is: [], due: null, stream: null, ctx: [], energy: null, est: null, raw: q || '' };
   for (const tok of String(q || '').trim().split(/\s+/).filter(Boolean)) {
     const low = tok.toLowerCase();
     let m;
-    if ((m = /^#(.+)$/.exec(low))) out.tags.push(m[1]);
-    else if ((m = /^@(.+)$/.exec(low))) out.people.push(m[1]);
+    if ((m = /^#(.+)$/.exec(low)) || (m = /^tag:(.+)$/.exec(low))) out.tags.push(m[1]);
+    else if ((m = /^(?:ctx|context):(.+)$/.exec(low))) out.ctx.push(m[1]);
+    else if ((m = /^energy:(low|high|none)$/.exec(low))) out.energy = m[1];
+    else if ((m = /^(?:est|estimate|time):(none|(<=|>=|<|>|=)?(\d+(?:\.\d+)?)(m|min|mins|h|hr|hrs)?)$/.exec(low))) {
+      out.est = m[1] === 'none' ? { none: true } : { op: m[2] || '<=', mins: Math.round(Number(m[3]) * (/^h/.test(m[4] || '') ? 60 : 1)) };
+    }
+    else if ((m = /^@(.+)$/.exec(low))) {
+      // @phone: a context when it names one and nobody has that id; otherwise a person.
+      const cx = typeof ctxMatch === 'function' ? ctxMatch(m[1]) : null;
+      const en = typeof ctxEnergyMatch === 'function' ? ctxEnergyMatch(m[1]) : null;
+      if (en) out.energy = en;
+      else if (cx && !(state.people || []).some(p => p.id === m[1])) out.ctx.push(cx.id);
+      else out.people.push(m[1]);
+    }
     else if ((m = /^!?p([0-3])$/.exec(low))) out.prio = 'p' + m[1];
     else if ((m = /^is:(\w+)$/.exec(low))) out.is.push(m[1]);
     else if ((m = /^due:(\w+)$/.exec(low))) out.due = m[1];
@@ -123,7 +141,7 @@ function matchesSearch(item, q) {
     if (st !== s.stream && !lbl.startsWith(s.stream)) return false;
   }
   const status = statusOf(item.id);
-  for (const k of s.is) {
+  for (const k of s.is || []) {
     if (k === 'done' && !(status === 'done' && !isWontDo(item))) return false;
     if (k === 'open' && status === 'done') return false;
     if (k === 'doing' && status !== 'doing') return false;
@@ -131,11 +149,38 @@ function matchesSearch(item, q) {
     if (k === 'pinned' && !isPinned(item.id)) return false;
     if (k === 'planned' && !item.plannedFor) return false;
     if (k === 'repeating' && effRecurrence(item) === 'none') return false;
+    if (k === 'waiting' && !(typeof rfIsWaitingAny === 'function' && rfIsWaitingAny(item))) return false;   // 34-review-core.js
+    if (k === 'blocked' && !(typeof rfIsBlocked === 'function' && rfIsBlocked(item))) return false;
+    if (k === 'someday' && !(typeof rfIsSomeday === 'function' && rfIsSomeday(item))) return false;
+    if (k === 'inbox' && !item.inbox) return false;
+  }
+  // ctx / energy / est may be missing from a parse made elsewhere (Home's list card copies the fields it knows).
+  if (Array.isArray(s.ctx) && s.ctx.length && typeof effContexts === 'function') {
+    const have = effContexts(item);
+    for (const c of s.ctx) {
+      if (c === 'none') { if (have.length) return false; continue; }
+      const k = typeof ctxMatch === 'function' ? ctxMatch(c) : null;
+      if (!have.includes(k ? k.id : c)) return false;
+    }
+  }
+  if (s.energy && typeof effEnergy === 'function') {
+    const e = effEnergy(item);
+    if (s.energy === 'none' ? !!e : e !== s.energy) return false;
+  }
+  if (s.est) {
+    const v = Number(item.estimate) || 0;
+    if (s.est.none) { if (v) return false; }
+    else {
+      if (!v) return false;
+      const n = s.est.mins, op = s.est.op;
+      if (!(op === '<' ? v < n : op === '>' ? v > n : op === '>=' ? v >= n : op === '=' ? v === n : v <= n)) return false;
+    }
   }
   if (s.due) {
     const d = daysUntil(effDate(item));
     const ok = s.due === 'none' ? d === null : s.due === 'today' ? d === 0 : s.due === 'overdue' ? (d !== null && d < 0)
-      : s.due === 'tomorrow' ? d === 1 : s.due === 'week' ? (d !== null && d >= 0 && d <= 7) : true;
+      : s.due === 'tomorrow' ? d === 1 : s.due === 'week' ? (d !== null && d >= 0 && d <= 7) : s.due === 'month' ? (d !== null && d >= 0 && d <= 31)
+      : s.due === 'soon' ? (d !== null && d <= 3) : true;
     if (!ok) return false;
   }
   if (s.words.length || s.not.length) {
@@ -150,11 +195,15 @@ function matchesSearch(item, q) {
 function _prefKey(view) { return String(view || '').startsWith('day:') ? 'day' : String(view || ''); }
 function taskViewPrefs(view) {
   const all = state.taskViewPrefs && typeof state.taskViewPrefs === 'object' ? state.taskViewPrefs : {};
-  return all[_prefKey(view)] || {};
+  const k = _prefKey(view);
+  // A smart list keeps its own sort and grouping (synced with the list: 15-nav-smart-lists.js).
+  if (k.startsWith('list:') && typeof smartListViewPrefs === 'function') return Object.assign({}, all[k] || {}, smartListViewPrefs(k.slice(5)));
+  return all[k] || {};
 }
 function setTaskViewPref(view, patch) {
   if (!state.taskViewPrefs || typeof state.taskViewPrefs !== 'object') state.taskViewPrefs = {};
   const k = _prefKey(view);
+  if (k.startsWith('list:') && typeof smartListTakePrefs === 'function') { patch = smartListTakePrefs(k.slice(5), patch); if (!patch) return; }
   const cur = Object.assign({}, state.taskViewPrefs[k] || {}, patch);
   for (const key of Object.keys(cur)) if (cur[key] === undefined || cur[key] === null) delete cur[key];
   state.taskViewPrefs[k] = cur;

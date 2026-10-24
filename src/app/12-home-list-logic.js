@@ -41,6 +41,7 @@ function homeListParse(query, parse) {
   const out = {
     words: [...(base.words || [])], not: [...(base.not || [])], tags: [...(base.tags || [])], people: [...(base.people || [])],
     prio: base.prio || null, is: [...(base.is || [])], due: base.due || null, stream: base.stream || null, raw: q,
+    ctx: [...(base.ctx || [])], energy: base.energy || null, est: base.est || null,   // @phone, energy:low, est:<=15 (21-task-query.js)
   };
   out.wantsClosed = out.is.some(k => _HLS_CLOSED.includes(k));
   out.implied = !out.wantsClosed && !out.is.includes('open');

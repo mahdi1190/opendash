@@ -85,6 +85,7 @@ function sbNavItem(o) {
   el.type = 'button';
   const active = o.active !== undefined ? o.active : (o.view && state.view === o.view);
   el.className = 'nav-item' + (active ? ' active' : '') + (o.className ? ' ' + o.className : '') + (o.disabled ? ' is-disabled' : '');
+  if (o.view) el.dataset.view = o.view;   // the customised sidebar hides, orders and pins rows by view (15-nav-custom.js)
   if (active) el.setAttribute('aria-current', 'page');
   let lead = '';
   if (o.avatarHtml) lead = o.avatarHtml;
@@ -410,7 +411,7 @@ function renderPageHeaderControls() {
     main.classList.toggle('bare', layout === 'bare');
   }
   const sel = document.getElementById('display-btn');
-  if (sel) sel.hidden = state.viewMode === 'review' || state.viewMode === 'calendar';
+  if (sel) sel.hidden = ['review', 'calendar', 'timeline', 'matrix'].includes(state.viewMode);
 }
 
 /** The OpenDash logo as an image URL: the SVG favicon build.mjs inlines ('' without one). */

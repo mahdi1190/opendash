@@ -55,9 +55,9 @@ function _qadAnnounce(ids, undoSteps) {
   });
 }
 
-const _QAD_ICON = { date: 'calendar', time: 'clock', priority: 'flag', tag: 'hash', stream: 'circle', person: 'at-sign', repeat: 'repeat', estimate: 'timer' };
+const _QAD_ICON = { date: 'calendar', time: 'clock', priority: 'flag', tag: 'hash', stream: 'circle', person: 'at-sign', repeat: 'repeat', estimate: 'timer', context: 'map-pin', energy: 'zap' };
 /** Chip markup for a parse result (escaped). removable: the chip's x keeps the word as text. */
-const _QAD_ORDER = ['date', 'time', 'repeat', 'priority', 'stream', 'tag', 'person', 'estimate'];
+const _QAD_ORDER = ['date', 'time', 'repeat', 'priority', 'stream', 'tag', 'person', 'context', 'energy', 'estimate'];
 /** Tags already in use (or registered): a tag outside this set is shown as new, to keep tags tidy. */
 function _qadKnownTags() {
   const s = new Set();
@@ -74,11 +74,11 @@ function _qadChips(parsed, removable, known) {
   return toks.map((t) => {
     const lead = t.kind === 'stream'
       ? `<span class="dot" style="--c:${escAttr(safeColor(t.color, 'var(--fg-subtle)'))}"></span>`
-      : icon(_QAD_ICON[t.kind] || 'circle', 'i-xs');
+      : icon(t.icon || _QAD_ICON[t.kind] || 'circle', 'i-xs');
     const x = removable ? `<span class="qad-x" aria-hidden="true">${icon('x', 'i-xs')}</span>` : '';
     const tag = removable ? 'button' : 'span';
     return `<${tag}${removable ? ' type="button"' : ''} class="chip qa-tok qa-${escAttr(t.kind)}${t.isNew ? ' is-new' : ''}${t.kind === 'priority' && /^p[1-3]$/i.test(t.label) ? ' qa-' + t.label.toLowerCase() : ''}"`
-      + (removable ? ` data-raw="${escAttr(t.raw)}" title="${escAttr('Read “' + t.raw + '” as ' + t.kind + '. Click to keep it as text.')}"` : '')
+      + (removable ? ` data-raw="${escAttr(t.raw)}" title="${escAttr(t.hint || ('Read “' + t.raw + '” as ' + t.kind + '. Click to keep it as text.'))}"` : '')
       + `>${lead}<span>${esc(t.label)}</span>${x}</${tag}>`;
   }).join('');
 }
@@ -89,6 +89,9 @@ function _qadImplied(parsed, defaults) {
   if (!parsed.stream && d.stream && STREAMS[d.stream]) out.push(`<span class="dot" style="--c:${escAttr(safeColor(STREAMS[d.stream].color))}"></span><span>${esc(STREAMS[d.stream].label)}</span>`);
   for (const t of (d.tags || [])) if (!(parsed.tags || []).includes(t)) out.push(icon('hash', 'i-xs') + `<span>${esc(t)}</span>`);
   for (const pid of (d.people || [])) { const p = getPerson(pid); if (p && !(parsed.people || []).includes(pid)) out.push(icon('at-sign', 'i-xs') + `<span>${esc(p.name)}</span>`); }
+  for (const c of (d.contexts || [])) if (!(parsed.contexts || []).includes(c) && typeof ctxLabel === 'function') out.push(icon(ctxIcon(c), 'i-xs') + `<span>@${esc(ctxLabel(c))}</span>`);
+  if (d.energy && !parsed.energy && typeof TASK_ENERGY !== 'undefined' && TASK_ENERGY[d.energy]) out.push(icon(TASK_ENERGY[d.energy].icon, 'i-xs') + `<span>${esc(TASK_ENERGY[d.energy].label)}</span>`);
+  if (d.inbox) out.push(icon('inbox', 'i-xs') + '<span>Inbox</span>');
   return out.map(h => `<span class="chip qa-tok implied" title="From this list">${h}</span>`).join('');
 }
 
@@ -131,7 +134,7 @@ function openQuickAddDialog(prefill, o) {
       const lines = document.createElement('div'); lines.className = 'qad-lines'; lines.hidden = true;
       sug = document.createElement('div'); sug.className = 'qa-suggest pop qad-suggest'; sug.hidden = true; sug.setAttribute('role', 'listbox');
       const help = document.createElement('div'); help.className = 'qad-help';
-      help.innerHTML = [['calendar', 'fri · next mon · 15 oct'], ['clock', '3pm'], ['flag', '!p1'], ['hash', '#stream or #tag'], ['at-sign', '@person'], ['timer', '~2h'], ['repeat', 'every week']]
+      help.innerHTML = [['calendar', 'fri · next mon · 15 oct'], ['clock', '3pm'], ['flag', '!p1'], ['hash', '#stream or #tag'], ['at-sign', '@person'], ['map-pin', '@phone'], ['leaf', 'low energy'], ['timer', '~2h'], ['repeat', 'every week']]
         .map(([ic, t]) => `<span>${icon(ic, 'i-xs')}${esc(t)}</span>`).join('');
       const foot = document.createElement('div'); foot.className = 'qad-foot subtle';
       foot.innerHTML = `<span><kbd class="kbd">Enter</kbd> add</span><span><kbd class="kbd">Shift</kbd><kbd class="kbd">Enter</kbd> new line</span><span><kbd class="kbd">Tab</kbd> accept suggestion</span>`;
@@ -183,7 +186,7 @@ function openQuickAddDialog(prefill, o) {
           b.setAttribute('role', 'option');
           const lead = s.kind === 'stream' ? `<span class="ic"><span class="dot" style="--c:${escAttr(safeColor(s.color))}"></span></span>`
             : s.kind === 'person' ? `<span class="avatar avatar-16" style="--c:${escAttr(safeColor(s.color, 'var(--sw-slate)'))}">${esc(avatarInitials(s.label))}</span>`
-              : icon(s.kind === 'new' ? 'user-plus' : 'hash');
+              : icon(s.icon || (s.kind === 'new' ? 'user-plus' : 'hash'));
           b.innerHTML = lead + `<span class="lbl">${esc(s.label)}</span>${s.hint ? `<span class="hint">${esc(s.hint)}</span>` : ''}`;
           b.addEventListener('mousedown', (e) => { e.preventDefault(); accept(s); paint(); paintSug(); });
           sug.appendChild(b);
@@ -267,6 +270,11 @@ function _qadSuggestions(sigil, q, raw) {
       .forEach(([t, n]) => items.push({ kind: 'tag', insert: '#' + t, label: '#' + t, hint: `${n} open` }));
   }
   if (sigil === '@') {
+    // Contexts and energy first when they match what is typed (20-task-contexts.js).
+    if (typeof ctxList === 'function') {
+      for (const c of ctxList()) if (q && (starts(c.label) || starts(c.id) || c.aliases.some(starts))) items.push({ kind: 'context', insert: '@' + c.id, label: '@' + c.label, icon: c.icon, hint: 'Context' });
+      for (const k of ['low', 'high']) if (q && k.startsWith(q)) items.push({ kind: 'energy', insert: '@' + k, label: TASK_ENERGY[k].label, icon: TASK_ENERGY[k].icon, hint: 'Energy' });
+    }
     const firstCount = {};
     for (const p of state.people || []) { const f = String(p.name || '').trim().split(/\s+/)[0].toLowerCase(); firstCount[f] = (firstCount[f] || 0) + 1; }
     for (const p of state.people || []) {
@@ -276,7 +284,7 @@ function _qadSuggestions(sigil, q, raw) {
       const token = firstCount[parts[0].toLowerCase()] > 1 ? parts.join('_') : parts[0];
       items.push({ kind: 'person', insert: '@' + token, label: p.name, color: p.color, hint: p.role || '' });
     }
-    if (q && !items.length) { const nm = raw || q; items.push({ kind: 'new', insert: '@' + nm, label: `Add “${nm}” as a new person`, hint: '' }); }
+    if (q && !items.some(x => x.kind === 'person' || x.kind === 'context')) { const nm = raw || q; items.push({ kind: 'new', insert: '@' + nm, label: `Add “${nm}” as a new person`, hint: '' }); }
   }
   return items.slice(0, 8);
 }
@@ -306,3 +314,32 @@ document.addEventListener('paste', (e) => {
 }, true);
 
 registerMoreItem({ id: 'bulk-add', label: 'Add several tasks…', icon: 'clipboard-list', order: 20, run: () => openQuickAddDialog('', { multi: true }) });
+
+/* ---------- the palette: type a task the quick way ----------
+   "email Sam tomorrow 3pm p1 #email @computer ~30m" in the palette offers:
+     New task “email Sam”    (hint: Tomorrow · 15:00 · P1 · #email · @Computer · 30m) opens the card / dialog
+     Add now                 adds it at once (Undo in the toast)
+     Capture to Inbox        the same, filed in the Inbox (24-quick-capture.js) */
+function qaParseSummary(parsed) {
+  const order = _QAD_ORDER;
+  return [...(parsed.tokens || [])].sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind)).map(t => t.label).join(' · ');
+}
+function qaPaletteRows(q) {
+  const parsed = parseQuickAdd(q);
+  const title = parsed.title || q;
+  const sum = parsed.tokens && parsed.tokens.length ? qaParseSummary(parsed) : '';
+  const short = title.length > 48 ? title.slice(0, 47) + '…' : title;
+  const rows = [{ icon: 'plus', label: `New task “${short}”`, hint: sum, run: () => openNewTask(q) }];
+  if (sum) {
+    const view = typeof isTaskView === 'function' && isTaskView(state.view) ? state.view : '';
+    rows.push({ icon: 'zap', label: `Add now: “${short}”`, hint: sum, run: () => {
+      const id = addParsedTask(parsed, view ? quickAddDefaults(view) : {});
+      if (id) _qadAnnounce([id], 1);
+    } });
+  }
+  if (typeof openQuickCapture === 'function') rows.push({ icon: 'inbox', label: `Capture to Inbox: “${short}”`, hint: sum, run: () => {
+    const id = addParsedTask(parsed, { inbox: true });
+    if (id) toast('In the Inbox', { kind: 'ok', icon: 'inbox', action: { label: 'Undo', run: () => undo() } });
+  } });
+  return rows;
+}

@@ -22,6 +22,7 @@ registerHomeWidget({
 
 /** The asked date (local ISO) of a task: when it was created; null when unknown. */
 function _hbwAsked(i) {
+  if (i && i.waitingSince) return i.waitingSince;                // when it started waiting (34-waiting.js)
   const c = i && i.createdAt;
   if (!c) return null;
   const d = typeof c === 'number' ? new Date(c) : new Date(String(c));

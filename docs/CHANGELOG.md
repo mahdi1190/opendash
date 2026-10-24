@@ -10,6 +10,79 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.16.0] - 2026-10-24
+
+The big positive overhaul: new ways to plan, boards and lists your way, places and memories, a game, a new My money page and a fresh look.
+
+### Tasks views & timeline
+
+- **One layout switcher** on every task list: List, Board, Timeline, Matrix and Review. V and Shift+V flip between them.
+- **Week timeline:** drag tasks onto days and free time; it replaces the old Calendar link.
+- **Priority matrix:** urgent and important in four boxes; M moves a task to another box.
+- **Choose what rows show** (Display > Show on rows): dates, people, tags, estimate and more.
+- **Daily capacity:** see when a day holds more than you can do.
+
+### Boards
+
+- **Columns by anything:** status, priority, stream, tag, person, due date, or your own.
+- **Swimlanes, richer cards and soft limits** (a full column turns amber; nothing is blocked).
+- **Card order you set** stays put, and the column menu moves, hides, adds and edits columns.
+- **Saved boards** in the sidebar, one click away.
+
+### Review & planning
+
+- **Guided weekly review**, one task at a time.
+- **Today → Tomorrow sweep** (Shift+T): one key per leftover task.
+- **Plan my week:** a suggested plan around your meetings.
+- **Waiting on people:** a Waiting list grouped by person, with nudges to follow up.
+- **Blocked by:** blocked tasks step out of Today until the way is clear.
+- **Clean-up helper** for stale, duplicate and dateless tasks, and a Review card on Home.
+
+### Smart lists, sidebar & quick add
+
+- **Smart lists:** save any filter as its own list.
+- **A sidebar that's yours:** reorder, hide, rename and pin; Waiting, Someday, Locations and Game rows.
+- **Contexts and energy** (@phone, @computer, low or high), and **What can I do now?**
+- **Quick capture anywhere** into a new **Inbox**; quick add understands estimates and contexts too.
+- **New search operators:** ctx:, energy:, est:, due:month, is:inbox, is:waiting, is:blocked, is:someday.
+
+### My money
+
+- **My money:** a board of 25 widgets you can arrange, with Simple, Detailed and Start from scratch layouts and a live-preview gallery. The layout follows you to every device.
+- **Spending by country:** flags, local currencies, trips and cities, worked out from where each payment was made.
+- **Quick filters** (this week, month, trip, country, category) across the whole page, and an everyday strip.
+- **Fun widgets:** no-spend days, savings goal, best weeks, spare change, travel passport, payday countdown, What if I cut…?
+- **Cancel reminders** on subscriptions, and **Hide amounts**.
+
+### Locations
+
+- **A Locations tab:** where you are, a map of everywhere, countries and places, firsts, a timeline, a passport with spend per country, fun facts and badges.
+- **Location history kept for good** in your own data folder, synced only end-to-end encrypted. Switch it off, export it or delete it in Settings > Location history.
+- **Where was I on…?** for any date, and Copy my travel story.
+
+### Game
+
+- **XP, levels and streaks** for finishing things, with a level chip in the top bar.
+- **Weekly quests, personal records, achievements** and a Game page.
+- **Boss tasks:** big tasks with subtasks you wear down one hit at a time.
+- **Focus timer** on any task.
+- **Fun level:** Off, Subtle or Full (Settings > Game). Sounds are optional.
+
+### Memories
+
+- **Wrapped:** your year in OpenDash, full screen and story-like. Play my year opens it.
+- **A daily journal** with a mood and an optional Polish with Claude.
+- **On this day**, **Your year** heatmap, a **garden** that grows, a **week report** and **fun facts** on Home.
+- **Postcards** from your first visit to each country (also on the Locations tab), and **time capsules** for future you.
+- **Birthdays and friendship streaks**, **seasonal moments** (advent, New Year goals), and an animation of the day that follows your mood.
+
+### A fresh look & What's new tour
+
+- **A visual refresh** across the app: new tokens, components and shell.
+- **Home layout presets:** Focused, Balanced, Everything and Fun.
+- **What's new in 2.16:** every new feature with a Show me, plus a guided tour with spotlights.
+- **A friendlier first run**, followed by Quick start tips.
+
 ## [2.15.2] - 2026-10-24
 
 ### Added

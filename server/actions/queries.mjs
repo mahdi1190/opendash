@@ -84,6 +84,9 @@ export function compactTask(q, t, pm = peopleMap(q.s)) {
   if (t.plannedFor) o.plannedFor = t.plannedFor;
   if (t.plannedFor && t.plannedTime) { o.plannedTime = t.plannedTime; if (t.plannedMinutes) o.plannedMinutes = t.plannedMinutes; }
   if (t.estimate) o.estimateMinutes = t.estimate;
+  // Review fields (ops-waiting.mjs): who it waits on and since when, the tasks it waits for.
+  if (t.waitingOn || t.waiting === true) { o.waitingOn = t.waitingOn ? (pm.get(t.waitingOn) ? pm.get(t.waitingOn).name : t.waitingOn) : 'someone'; if (t.waitingSince) o.waitingSince = t.waitingSince; }
+  if (Array.isArray(t.blockedBy) && t.blockedBy.length) o.blockedBy = t.blockedBy;
   if (o.status === 'done' && t.resolution === 'wontdo' && (t.resolvedAt || 0) >= ((((s.completionLog || {})[t.id]) || []).slice(-1)[0] || 0)) o.resolution = 'wontdo';
   return o;
 }
@@ -307,6 +310,8 @@ export const QUERIES = [
         tags: t.tags || [],
         people: linkedPeople(s, t).map(pid => ({ id: pid, name: pm.get(pid) ? pm.get(pid).name : null, ...((t.people || []).includes(pid) ? {} : { via: 'tag' }) })),
         recurrence: t.recurrence || 'none', pinned: !!(s.pinned && s.pinned[id]),
+        ...(t.waitingOn || t.waiting === true ? { waitingOn: t.waitingOn ? { id: t.waitingOn, name: pm.get(t.waitingOn) ? pm.get(t.waitingOn).name : null } : 'someone', waitingSince: t.waitingSince || null } : {}),
+        ...(Array.isArray(t.blockedBy) && t.blockedBy.length ? { blockedBy: t.blockedBy.map(bid => { const b = (s.custom || []).find(x => x.id === bid); return { id: bid, title: b ? b.title : null, done: ((s.statuses || {})[bid] || 'todo') === 'done' }; }) } : {}),
         detail: t.detail || '',
         subtasks: (t.subtasks || []).map(x => ({ id: x.id, title: x.title, done: !!x.done })),
         // Times on the user's own clock (config.timezone), like every other date here.

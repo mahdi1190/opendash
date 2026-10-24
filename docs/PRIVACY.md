@@ -23,6 +23,7 @@ or the folder you chose with `--data-dir`, or the one Settings > Data > *Move my
 | Finances | `finance/` | the bank CSV files you imported or synced, categories, budgets, the analysis |
 | Calendar and email | `calendar/`, `inbox/`, `email/` | read-only snapshots: event details; email subjects, senders, dates and short snippets |
 | Data sources | `sources.json`, `connections.json` | which sources and accounts you added, connection status, iCal addresses |
+| Where you've been (Location history, on unless you turn it off) | `locations/log.json` | one entry per stay or move: when, the place, town, region and country, a position rounded to about 1 km, the time zone, where it came from (your browser's location if you chose *Device location*, the place you picked, your computer's time zone, or a trip) and which of your devices saw it; where tasks were completed; your location badges. Never your IP address. Kept until you delete it (see [Location history](#location-history)) |
 | Briefs and stories | `briefs/` | cached weather, AI summaries and story scripts, daily brief snapshots |
 | ElevenLabs narration | key and usage: this computer's private folder (see below); audio: `cache/narration/` | optional API key and account status, saved voice audio and local usage counts; excluded from exports |
 | Auto-linking | `index/` | names, sizes and dates of files in the workspace folders you chose, short excerpts (never from "names only" folders) |
@@ -36,8 +37,31 @@ or the folder you chose with `--data-dir`, or the one Settings > Data > *Move my
 | Sign-ins and keys | **this computer's private folder, not the data folder**: `%LOCALAPPDATA%\OpenDash\<id>\secrets` (Windows), `~/Library/Application Support/OpenDash/<id>/secrets` (macOS), `~/.local/state/opendash/<id>/secrets` (Linux) | Google and Microsoft sign-ins, Google Health, ElevenLabs, the remote MCP and relay pairings, and under `fin/` your Monzo client and sign-in, your Enable Banking application key and bank sessions, your Plasma One address (only if you set those up; deleted when you disconnect). They never travel with the data folder |
 
 Your browser keeps interface preferences, a fallback copy of unsaved edits
-while the server is down, and an offline copy of the app page (with your
-public settings, such as your name; never your tasks).
+while the server is down, an offline copy of the app page (with your
+public settings, such as your name; never your tasks), and a short-term copy
+of recent places (up to 90 days) that the welcome scenes use.
+
+## Location history
+
+OpenDash keeps a history of where you've been so it can show you fun facts. It
+stays in your dashboard and on your own devices, and never goes anywhere else.
+
+- **What:** stays and moves (see the table above), in `locations/log.json` in
+  your data folder. Until 2.16 the recent places stayed in the browser only;
+  now they are kept in your dashboard, so the Locations tab can show countries
+  and cities you have visited, firsts, time zones crossed, distance travelled,
+  days away, tasks completed per place and badges.
+- **Where it goes:** nowhere outside your dashboard. With *Sync across my
+  devices* and end-to-end encryption on, your own devices share it (encrypted
+  before it reaches the sync folder); without encryption it is not synced at
+  all. It is never sent to Claude, Open-Meteo or anyone else, and no IP address
+  lookup is ever made.
+- **How long:** forever. It is never pruned automatically.
+- **Your control:** Settings > *Location history* has the on/off switch (on by
+  default; when off nothing new is added, and the browser's short-term copy
+  stops too), *Export JSON* / *Export CSV*, and *Delete my location history*,
+  which removes it here and on your synced devices. *Forget this trip*
+  (Travel) also removes the location entries of those days.
 
 OpenDash does not encrypt the data folder. Use your operating system's disk
 encryption if the computer is shared or portable, and keep the folder out of

@@ -15,6 +15,10 @@
         acct: r.acct ? String(r.acct) : '', memo: r.memo ? String(r.memo) : '', how: r.how ? String(r.how) : '',
         bc: r.bc ? String(r.bc) : null, k: r.k ? String(r.k) : 'i' + idx, kind,
         s: kind === 'spend' ? -amt : 0, inc: kind === 'income' && amt > 0 ? amt : 0, abs: Math.abs(amt),
+        // @fux-begin where it was paid (lib/finance/place.mjs; 25-place-model.js reads these)
+        cc: typeof r.cc === 'string' && /^[A-Z]{2}$/.test(r.cc) ? r.cc : '', city: typeof r.city === 'string' ? r.city.slice(0, 40) : '',
+        lc: typeof r.lc === 'string' && /^[A-Z]{3}$/.test(r.lc) && Number(r.la) > 0 ? r.lc : '', la: Number(r.la) > 0 ? Number(r.la) : 0, ol: r.ol ? 1 : 0,
+        // @fux-end
       });
     });
     tx.sort((p, q) => q.n - p.n || p.i - q.i);

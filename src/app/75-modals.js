@@ -79,6 +79,8 @@ function kbHelpGroups() {
     ]],
     // The calendar's keys, Google Calendar's (45-calendar-grid-logic.js)
     ...(typeof cglKeyHelp === 'function' ? [['Calendar', cglKeyHelp()]] : []),
+    // Task layouts: Timeline and Matrix (31-views-switcher.js)
+    ...(typeof viewsKeyHelp === 'function' ? [['Task layouts', viewsKeyHelp()]] : []),
   ];
 }
 function kbHelpOpen() { const ov = document.getElementById('kb-overlay'); return !!(ov && ov.classList.contains('open')); }

@@ -269,6 +269,7 @@ const TravelStore = {
       try {
         await fetch('/api/time/history', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ from: t.from, to: t.to || today }) });
       } catch (e) { /* the server may be down: the decision is saved anyway */ }
+      if (typeof locLogForgetRange === 'function') locLogForgetRange(t.from, t.to || today);   // the location log forgets those days too (90-locations.js)
       if (t.dest && t.dest.cityId) _trlCache.weather.delete(t.dest.cityId);
       for (const s of t.stops || []) if (s && s.cityId) _trlCache.weather.delete(s.cityId);
       _trlCache.changesAt = 0;

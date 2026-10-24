@@ -316,7 +316,9 @@ function renderTaskRow(item, opts) {
   if (meet) m('t-meet', 'video', meet.title, 'Linked meeting: ' + meet.title + (meet.when ? ' · ' + meet.when : ''));
   if (recurrence && recurrence !== 'none') m('t-recur', 'repeat', _rowRecurLabel(recurrence, effDate(item)), recurrenceLabel(recurrence));
   if (item.estimate) m('t-est', 'timer', fmtEstimate(item.estimate), 'Estimate');
+  if (typeof ctxRowMeta === 'function') ctxRowMeta(item, m);   // @context and energy (24-task-contexts-ui.js)
   if (pinned) m('t-pin', 'pin', '', 'Pinned');
+  if (typeof rfRowDecorate === 'function') rfRowDecorate(item, el, m);   // waiting / blocked chips and dimming (34-blocked.js)
   if (wont) m('t-wont', 'circle-x', "Won't do");
   else if (status === 'done' && opts.showClosed) {
     const ts = closedAt(item);

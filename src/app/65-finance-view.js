@@ -2,7 +2,7 @@
    FINANCES SECTION (#view=finance). Owner: Finance.
    The view itself lives in src/finance/ (ordered parts that build.mjs joins
    into one IIFE, window.FinanceView; see MODULES.md): page-header
-   actions (Import CSV, Sync bank), sticky filters, KPIs and eight sections
+   actions (Import CSV, Sync bank), sticky filters, KPIs, My money (your own board) and nine more sections
    of linked ECharts charts. Data comes from /api/finance (analysis.json in
    the finance folder of the data dir) and is held in memory only; nothing
    financial is stored in dashboard state.

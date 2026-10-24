@@ -237,6 +237,11 @@ sync off or plain sync: each computer has its own finances, as before.
   arrays, repeated words as numbers), so a new payment rewrites only its month
   and a recategorised merchant only the months it is in. Unchanged content is
   not written again. A text that looks like a credential is blanked first.
+  Where each payment was made (2.16: the merchant's country and town, the
+  local currency and amount, online shop) travels in the same rows (`pl`,
+  words of the month's list), so Spending by country is the same on every
+  device; the Finances page's own layout (My money's widgets, presets and
+  settings) is a synced preference (`state.uiPrefs.finance.board`).
 - **Shown** on the others, read only: `GET /api/finance` (and the glance, the
   money brief, the story, the export) answer from that copy with
   `meta.remote = {name, online, updatedAt}`. Finances' subtitle says

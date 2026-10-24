@@ -10,6 +10,13 @@
    (none|daily|weekdays|weekly|biweekly|monthly), repeatDay (month anchor),
    estimate (minutes), createdAt, createdVia, resolution ('wontdo'),
    resolvedAt.
+   Waiting and blocked (owner: Review, 34-waiting.js / 34-blocked.js; all optional,
+   no migration: a task without them is simply active):
+     waitingOn 'personId' (the person the task waits on; also linked in people[]),
+     waiting true (waiting on no one in particular; older data), waitingSince
+     'YYYY-MM-DD', waitingNudgedAt 'YYYY-MM-DD' (the last follow-up nudge),
+     blockedBy ['taskId'] (open tasks it depends on: it stays out of Today and
+     dimmed until they are done). Someday = the tag 'someday' (34-review-core.js).
    Status lives in state.statuses[id]: todo | doing | done. "Won't do" is
    done + resolution:'wontdo' so every "is it open?" check elsewhere (server,
    MCP, other sections) keeps working. It never enters completionLog, so wins,
@@ -105,6 +112,7 @@ function setStatus(id, s, opts) {
     if (!opts.wontDo) {
       state.completionLog[id] = state.completionLog[id] || [];
       state.completionLog[id].push(now);
+      if (typeof locLogCompletion === 'function') locLogCompletion(id, now);   // where it was done (90-locations.js)
     }
     result.rolledTo = _rollRecurring(item, { skipped: !!opts.wontDo });
   } else if (s === 'done') {
@@ -117,6 +125,7 @@ function setStatus(id, s, opts) {
       if (prev !== 'done' || wasWont) {
         state.completionLog[id] = state.completionLog[id] || [];
         state.completionLog[id].push(now);
+        if (typeof locLogCompletion === 'function') locLogCompletion(id, now);   // where it was done (90-locations.js)
         logActivity(id, 'status', { from: wasWont ? 'wontdo' : prev, to: 'done' });
       }
       delete item.resolution; delete item.resolvedAt;
@@ -127,6 +136,7 @@ function setStatus(id, s, opts) {
     state.statuses[id] = s;
     delete item.resolution; delete item.resolvedAt;
   }
+  if (s === 'done' && prev !== 'done' && typeof rfOnClosed === 'function') rfOnClosed(id);   // tasks it blocked light up (34-blocked.js)
   if (!opts.noSave) { saveData(); render(); }
   return result;
 }
@@ -187,6 +197,7 @@ function logActivity(taskId, type, details) {
     ts: Date.now(), type, source: 'ui',
     ...(details || {})
   });
+  if (typeof inboxOnActivity === 'function') inboxOnActivity(taskId, type);   // a captured task given a home leaves the Inbox (24-quick-capture.js)
 }
 function setDateWithReason(id, date, reason) {
   const item = getItem(id); if (!item) return;
@@ -303,7 +314,9 @@ function updateSubtaskTitle(taskId, stId, title) {
 function toggleSubtask(taskId, stId) {
   const cur = getSubtasks(taskId).slice();
   const i = cur.findIndex(x => x.id === stId); if (i < 0) return;
-  cur[i] = { ...cur[i], done: !cur[i].done }; setOverride(taskId, 'subtasks', cur); render();
+  cur[i] = { ...cur[i], done: !cur[i].done }; setOverride(taskId, 'subtasks', cur);
+  if (typeof gameSubtaskToggled === 'function') gameSubtaskToggled(taskId, cur, cur[i]);   // the boss bar (92-game-1core.js)
+  render();
 }
 function deleteSubtask(taskId, stId) {
   const cur = getSubtasks(taskId).filter(x => x.id !== stId);

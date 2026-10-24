@@ -209,6 +209,7 @@ function czOpenMenu(el, at) {
   const kind = el.dataset.cz, id = el.dataset.czId;
   const items = kind === 'stream' ? czStreamItems(id, el, at) : kind === 'tag' ? czTagItems(id, el, at) : czPersonItems(id, el, at);
   if (!items) return;
+  { const pin = typeof sbPinMenuItems === 'function' ? sbPinMenuItems(kind, id) : null; if (pin) items.push(...pin); }   // pin to the sidebar top (15-nav-custom.js)
   closePopovers();
   _czOpenAt(at || el, (pop, close) => buildMenuItems(pop, items, close), { role: 'menu', width: 252, className: 'cz-menu' });
 }

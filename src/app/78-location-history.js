@@ -1,11 +1,16 @@
-/* Per-browser history; no server upload, precise route or inferred closed-app
- * tracking. Fresh device observations drive durations; manual choices stay separate. */
+/* Per-browser short-term history (90 days) for the welcome scenes; no precise route or
+ * inferred closed-app tracking. Fresh device observations drive durations; manual choices
+ * stay separate. Since 2.16 each observation also goes to the permanent location log in the
+ * data folder (90-locations.js locLogObserve: stays in the dashboard and the user's own
+ * synced devices), and the switch in Settings > Location history stops both. */
 let _locationHistoryMemory = null;
 function dashboardLocationHistory() {
   try { _locationHistoryMemory=JSON.parse(localStorage.getItem('dashboard-location-history') || 'null') || _locationHistoryMemory; } catch (e) { /* private mode */ }
   return _locationHistoryMemory || {version:1,visits:[],observations:[]};
 }
 function dashboardLocationObserve(location, source) {
+  if (typeof locLogOn === 'function' && !locLogOn()) return dashboardLocationHistory();   // location history off (Settings > Location history)
+  if (typeof locLogObserve === 'function') locLogObserve(location, source);   // the permanent log (90-locations.js)
   if (!location.countryCode && typeof ukCountyNearest==='function' && ukCountyNearest(location.lat,location.lon)) location={...location,countryCode:'GB'};
   _locationHistoryMemory=locationHistoryObserveState(dashboardLocationHistory(),location,source,Date.now());
   try { localStorage.setItem('dashboard-location-history',JSON.stringify(_locationHistoryMemory)); } catch (e) { /* bounded in-memory fallback */ }
@@ -29,7 +34,7 @@ function dashboardLocationHistoryPanel() {
     box.replaceChildren();
     const history=dashboardLocationHistory(), visits=history.visits.slice(-6).reverse();
     const note=document.createElement('p');note.className='muted';
-    note.textContent='Local history: '+history.visits.length+' visits/selections. Device presence is sampled; departures and time between fixes are estimates. Retained for up to 90 days.';box.appendChild(note);
+    note.textContent='Local history: '+history.visits.length+' visits/selections. Device presence is sampled; departures and time between fixes are estimates. Retained for up to 90 days here; your permanent history is in Settings > Location history.';box.appendChild(note);
     const date=at=>Number.isFinite(at)?new Date(at).toLocaleString():'Unknown'; // clock-ok: observed real timestamps, not simulated clock
     const duration=ms=>Math.round(ms/60000)+' min';
     for(const v of visits){

@@ -125,9 +125,11 @@ storyRegisterKind('recap', {
 });
 function recapOpen(period, ref) {
   const p = period === 'month' ? 'month' : 'year';
+  // 2.16: the year is Wrapped now (93-memories-wrapped.js); this story stays for the month.
+  if (p === 'year' && typeof memWrappedOpen === 'function') return memWrappedOpen(+String(ref || '').slice(0, 4) || undefined);
   return storyOpen('recap', { autoplay: true, period: p, ref, variant: p + ':' + (ref || '') });
 }
-registerCommand({ id: 'story-recap-year', label: 'Play my year in OpenDash', icon: 'sparkles', group: 'Go to', keywords: 'year in review recap wrapped story annual summary achievements', run: () => recapOpen('year', todayStr().slice(0, 4)) });
+registerCommand({ id: 'story-recap-year', label: 'Play my year in OpenDash', icon: 'sparkles', group: 'Go to', keywords: 'year in review recap wrapped story annual summary achievements', when: () => typeof memWrappedOpen !== 'function', run: () => recapOpen('year', todayStr().slice(0, 4)) });
 registerCommand({ id: 'story-recap-month', label: 'Play my month in OpenDash', icon: 'calendar-days', group: 'Go to', keywords: 'month in review recap wrapped story monthly summary', run: () => recapOpen('month', todayStr().slice(0, 7)) });
 
 /* ---------- the summary card (a PNG, only on an explicit click) ---------- */
