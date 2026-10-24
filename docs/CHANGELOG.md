@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.18.3] - 2026-10-24
+
+- Fixes the AI assistant after 2.18.2: a second safety check was rejecting its tool list, so it could not answer at all. It works again and can file expenses.
+
 ## [2.18.2] - 2026-10-24
 
 - The AI assistant can now file expenses for you: tell it about a purchase (or paste an order) and it adds the expense, with an Undo, and can attach a receipt or mark claims as submitted.
