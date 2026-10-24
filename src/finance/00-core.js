@@ -208,7 +208,7 @@
   const DEFAULT_F = {
     section: 'board', preset: '3M', from: null, to: null, gran: 'week',
     cats: [], accts: [], merchant: '', q: '', amt: null, inc: true, xfer: false, compare: false, more: false,
-    country: '', trip: '', board: null, boardTripRows: true, boardSeen: false, ccScope: 'all', billNotes: {},
+    country: '', trip: '', board: null, boardTripRows: true, heroOff: false, boardSeen: false, ccScope: 'all', billNotes: {},
     catMode: 'donut', stackMode: 'abs', merchSort: 'spend', histMode: 'count', pageSize: 25,
     sort: { key: 'd', dir: -1 }, mSort: { key: 'total', dir: -1 }, budgetCat: '', slots: {}, localBudgets: null,
   };
@@ -219,7 +219,7 @@
   // browser stay in this browser's LS_KEY. No amount, merchant or name goes into the state.
   // board: My money's layout (its widgets, their sizes, order and settings, the preset; 25-board-model.js);
   // boardTripRows: payments with no other sign of where count in the trip's country.
-  const SHARED_F = ['inc', 'xfer', 'compare', 'catMode', 'stackMode', 'merchSort', 'histMode', 'pageSize', 'sort', 'mSort', 'board', 'boardTripRows', 'ccScope', 'billNotes'];
+  const SHARED_F = ['inc', 'xfer', 'compare', 'catMode', 'stackMode', 'merchSort', 'histMode', 'pageSize', 'sort', 'mSort', 'board', 'boardTripRows', 'heroOff', 'ccScope', 'billNotes'];
   const sameJ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   function sharedF() {
     try { const v = typeof uiPrefGet === 'function' ? uiPrefGet('finance') : null; return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch (e) { return null; }
@@ -232,6 +232,7 @@
     // The layout is checked in full where it is used (25-board-model.js boardClean); here only its shape.
     if (f.board != null && !(f.board && typeof f.board === 'object' && Array.isArray(f.board.w))) f.board = null;
     if (typeof f.boardTripRows !== 'boolean') f.boardTripRows = true;
+    f.heroOff = f.heroOff === true;   // 2.19.5: My money's welcome banner is hidden (More brings it back)
     // Cancel reminders on subscriptions: {merchant hash: {d: 'YYYY-MM-DD' | '', t: note}} (39-board-widgets.js).
     if (!f.billNotes || typeof f.billNotes !== 'object' || Array.isArray(f.billNotes)) f.billNotes = {};
     else {

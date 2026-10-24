@@ -53,7 +53,7 @@ function homePresetPlan(id) {
   for (const d of catalog) if ((p.groups || []).includes(d.group)) add(d.id, d.defaultSize);
   return out;
 }
-function _hpShown() { return homeLayout().widgets.filter(w => !w.hidden && homeWidgetAvailable(homeWidgetDef(w.id))).map(w => ({ id: w.id, size: w.size })); }
+function _hpShown() { return homeLayout().widgets.filter(w => !w.hidden && homeWidgetAvailable(homeWidgetDef(w.id))).map(w => ({ id: w.id, size: w.size, ...(w.c ? { c: w.c } : {}) })); }   // a custom width is no longer the preset
 function homePresetCurrent() {
   try {
     const now = JSON.stringify(_hpShown());

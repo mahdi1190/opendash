@@ -14,13 +14,30 @@
 .home-grid {
   --hg-gap: var(--space-4);                       /* the space between widgets, both ways */
   position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--hg-gap); grid-auto-rows: auto; grid-auto-flow: row; align-items: stretch;
+  gap: var(--hg-gap); grid-auto-rows: auto; grid-auto-flow: row dense; align-items: stretch;
 }
+/* 2.19.5: dense packing (a widget that fits a gap further up takes it) except under the section labels, which end a row. */
+.home-grid.has-secs { grid-auto-flow: row; }
 .hg-w { grid-column: span var(--hg-span, 12); min-width: 0; position: relative; display: flex; flex-direction: column; }
 .hg-w[data-size="s"] { --hg-span: 4; }
 .hg-w[data-size="m"] { --hg-span: 6; }
 .hg-w[data-size="l"] { --hg-span: 8; }
 .hg-w[data-size="full"] { --hg-span: 12; }
+/* 2.19.5 free width: data-c is any 1-12 columns (Customise: drag an edge), over the size's columns. */
+.hg-w[data-c="1"] { --hg-span: 1; }
+.hg-w[data-c="2"] { --hg-span: 2; }
+.hg-w[data-c="3"] { --hg-span: 3; }
+.hg-w[data-c="4"] { --hg-span: 4; }
+.hg-w[data-c="5"] { --hg-span: 5; }
+.hg-w[data-c="6"] { --hg-span: 6; }
+.hg-w[data-c="7"] { --hg-span: 7; }
+.hg-w[data-c="8"] { --hg-span: 8; }
+.hg-w[data-c="9"] { --hg-span: 9; }
+.hg-w[data-c="10"] { --hg-span: 10; }
+.hg-w[data-c="11"] { --hg-span: 11; }
+.hg-w[data-c="12"] { --hg-span: 12; }
+/* Every widget measures itself: a card's header and padding follow its real width (the rules at the foot of this file). */
+.hg-w { container: hgw / inline-size; }
 .hg-body { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; }
 /* A widget given a height (Customise: its bottom edge, 12-home-gridedit.js): h rows of 40 px. Its
    content no longer sizes it (contain: size), so the shelf is as tall as the tallest of it and its
@@ -138,10 +155,12 @@ html[data-motion="reduced"] .tb-home-cust .i.spin { animation: none; }
 @container main (max-width: 940px) {
   .hg-w[data-size="s"], .hg-w[data-size="m"] { --hg-span: 6; }
   .hg-w[data-size="l"] { --hg-span: 12; }
+  .hg-w:is([data-c="1"], [data-c="2"], [data-c="3"], [data-c="4"], [data-c="5"], [data-c="6"]) { --hg-span: 6; }      /* a free width: up to half stays half, wider is whole */
+  .hg-w:is([data-c="7"], [data-c="8"], [data-c="9"], [data-c="10"], [data-c="11"], [data-c="12"]) { --hg-span: 12; }
 }
 @container main (max-width: 600px) {
   .hg-w { --hg-span: 12; }
-  .hg-w[data-size] { --hg-span: 12; }
+  .hg-w[data-size], .hg-w[data-c] { --hg-span: 12; }
   .hg-w[data-h] { contain: none; min-height: 0; }            /* phones: one column, as tall as the content */
   .hg-w[data-h] > .hg-body { overflow: visible; }
 }
@@ -157,3 +176,22 @@ html[data-motion="reduced"] .tb-home-cust .i.spin { animation: none; }
 .home-grid > .sec-h.hg-sec { grid-column: 1 / -1; margin: var(--space-4) 0 calc(-1 * var(--space-2)); padding: 0 var(--space-1); }
 .home-grid > .sec-h.hg-sec:first-child { margin-top: 0; }
 .home-grid > .sec-h.hg-sec h2 { font-size: var(--text-xs); font-weight: var(--weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-subtle); }
+
+/* 2.19.5: a widget can be any width, so a card adapts to the width it really has (the frame is the container "hgw"):
+   compact below 300 px (tighter, header buttons shrink to their icons), tiny below 200 px, roomy from 720 px. */
+@container hgw (max-width: 300px) {
+  .home-card .card-h { padding-left: var(--space-3); gap: var(--space-1); }
+  .home-card .card-h .n { display: none; }
+  .home-card .card-h .btn:has(> .i) > span { display: none; }
+  .home-card .card-b { padding-left: var(--space-3); padding-right: var(--space-3); }
+  .home-card { overflow-wrap: anywhere; }
+}
+@container hgw (max-width: 200px) {
+  .home-card .card-h > .i { display: none; }
+  .home-card .card-h h3 { font-size: var(--text-xs); }
+  .home-card .card-b { padding-left: var(--space-2); padding-right: var(--space-2); }
+}
+@container hgw (min-width: 720px) {
+  .home-card .card-h { padding-left: var(--space-5); }
+  .home-card .card-b { padding-left: var(--space-5); padding-right: var(--space-5); }
+}

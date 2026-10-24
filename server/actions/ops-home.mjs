@@ -348,7 +348,7 @@ export const HOME_OPS = [
           if (!def.sizes.includes(c.size)) {
             throw new ActionError('BAD_VALUE', `${def.title} can be ${def.sizes.map(x => `${x} (${HOME_SIZE_NAMES[x]})`).join(', ')}; not ${c.size}`, { field: `widgets[${i}].size`, valid: [...def.sizes] });
           }
-          w.size = c.size;
+          w.size = c.size; delete w.c;         // a size set by name drops a free width
         }
         if (c.hidden !== undefined) w.hidden = c.hidden;
         if (!moves.length) return;
@@ -475,7 +475,7 @@ export const HOME_OPS = [
       else if (show === false && !w.hidden) { w.hidden = true; ch.push({ entity: 'home', id: 'layout:' + id, label, field: 'hidden', from: false, to: true }); }
       if (p.size !== undefined) {
         if (!def.sizes.includes(p.size)) throw new ActionError('BAD_VALUE', `${def.title} can be ${def.sizes.map(x => `${x} (${HOME_SIZE_NAMES[x]})`).join(', ')}; not ${p.size}`, { field: 'size', valid: [...def.sizes] });
-        if (w.size !== p.size) { ch.push({ entity: 'home', id: 'layout:' + id, label, field: 'size', from: w.size, to: p.size }); w.size = p.size; }
+        if (w.size !== p.size) { ch.push({ entity: 'home', id: 'layout:' + id, label, field: 'size', from: w.size, to: p.size }); w.size = p.size; delete w.c; }
       }
       const after = normalizeHomeLayout({ widgets: list }, HOME_WIDGETS, wp).widgets;
       if (JSON.stringify(after) !== JSON.stringify(before)) home.layout = { version: HOME_LAYOUT_VERSION, widgets: after };

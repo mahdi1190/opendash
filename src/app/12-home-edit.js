@@ -12,12 +12,12 @@
 
    Moving and resizing with the pointer (drag a widget; drag its right edge,
    bottom edge or corner) is the grid editor, 12-home-gridedit.js.
-   Keyboard, with a widget focused (Tab walks between them):
+   Keyboard, with a widget focused (Tab walks between them; 12-home-board.js boardEditKey):
      Left / Right                  move it one place earlier / later
      Up / Down                     move it to the shelf above / below
-     Shift+Left / Shift+Right      narrower / wider (its sizes)
+     Shift+Left / Shift+Right      one column narrower / wider (any width 1-12)
      Shift+Up / Shift+Down         one row shorter / taller; 0 = fits its content
-     + / -, or 1-4                 bigger / smaller, or Small/Medium/Large/Full
+     + / -, or 1-4                 the next preset bigger / smaller, or Small/Medium/Large/Full
      Delete or Backspace           hide it (back from Add widget)
      Esc                           done
    Changes are spoken through a polite live region (homeAnnounce).
@@ -159,18 +159,22 @@ document.addEventListener('keydown', (e) => {
    rises in and the widgets' controls pop in once (.is-edit-enter); re-renders while
    customising (a move, a resize) do not replay that. */
 function _homeEditBar() {
-  const bar = document.createElement('div'); bar.className = 'home-editbar'; bar.setAttribute('role', 'toolbar'); bar.setAttribute('aria-label', 'Customise Home');
   const hiddenN = homeLayout().widgets.filter(w => w.hidden && homeWidgetAvailable(homeWidgetDef(w.id))).length;
-  bar.innerHTML = `<div class="heb-t">${icon('layout-grid', 'i-lg')}<div><b>Customising Home</b><span>Drag to move · drag an edge to resize · <kbd class="kbd">−</kbd> hides · arrows move, <kbd class="kbd">Shift</kbd>+arrows resize</span></div></div><span class="spacer"></span>`;
-  const mk = (o) => { const b = uiButton(Object.assign({ size: 'sm', kind: 'ghost', bubble: true }, o)); bar.appendChild(b); return b; };
-  const add = mk({ label: 'Add widget', icon: 'plus', kind: 'secondary', cls: 'heb-add', aria: 'Add widget', data: { act: 'add' }, run: (e, el) => _homeOpenGallery(el) });
-  if (hiddenN) add.insertAdjacentHTML('beforeend', `<span class="badge badge-accent num">${esc(hiddenN)}</span>`);
-  add.setAttribute('aria-haspopup', 'dialog');
-  // Ready-made boards: Focused, Balanced, Everything, Fun (12-home-presets.js).
-  if (typeof homePresetsMenu === 'function') mk({ label: 'Layouts', icon: 'layers', cls: 'heb-presets', tip: 'Start from a ready-made layout', run: (e, el) => homePresetsMenu(el) }).setAttribute('aria-haspopup', 'menu');
-  mk({ label: 'Undo', icon: 'undo-2', cls: 'heb-undo', tip: 'Undo the last change to the layout', disabled: !_homeEditUndo.length, run: () => homeEditUndo() });
-  mk({ label: 'Reset', icon: 'rotate-ccw', cls: 'heb-reset', disabled: !homeState().layout, run: () => homeResetLayout() });
-  mk({ label: 'Done', icon: 'check', kind: 'primary', cls: 'heb-done', kbd: 'Esc', run: () => homeEditDone() });
+  const { bar, btn } = boardEditBar({
+    title: 'Customising Home', aria: 'Customise Home', icon: 'layout-grid',
+    hint: 'Drag to move · drag an edge or corner to resize to any size · <kbd class="kbd">−</kbd> hides · arrows move, <kbd class="kbd">Shift</kbd>+arrows resize',
+    buttons: [
+      { key: 'add', label: 'Add widget', icon: 'plus', kind: 'secondary', cls: 'heb-add', aria: 'Add widget', data: { act: 'add' }, run: (e, el) => _homeOpenGallery(el) },
+      // Ready-made boards: Focused, Balanced, Everything, Fun (12-home-presets.js).
+      typeof homePresetsMenu === 'function' ? { key: 'presets', label: 'Layouts', icon: 'layers', cls: 'heb-presets', tip: 'Start from a ready-made layout', run: (e, el) => homePresetsMenu(el) } : null,
+      { key: 'undo', label: 'Undo', icon: 'undo-2', cls: 'heb-undo', tip: 'Undo the last change to the layout', disabled: !_homeEditUndo.length, run: () => homeEditUndo() },
+      { key: 'reset', label: 'Reset', icon: 'rotate-ccw', cls: 'heb-reset', aria: 'Reset layout', tip: 'Back to the default layout', disabled: !homeState().layout, run: () => homeResetLayout() },
+      { key: 'done', label: 'Done', icon: 'check', kind: 'primary', cls: 'heb-done', kbd: 'Esc', run: () => homeEditDone() },
+    ],
+  });
+  if (hiddenN) btn.add.insertAdjacentHTML('beforeend', `<span class="badge badge-accent num">${esc(hiddenN)}</span>`);
+  btn.add.setAttribute('aria-haspopup', 'dialog');
+  if (btn.presets) btn.presets.setAttribute('aria-haspopup', 'menu');
   if (_homeEditFresh) {
     requestAnimationFrame(() => {
       const home = bar.closest('.home');
@@ -187,46 +191,23 @@ function _homeEditBar() {
 function _homeEditChrome(frame, def, w) {
   for (const o of frame.querySelectorAll(':scope > .hg-chrome, :scope > .hg-x, :scope > .hg-grip, :scope > .hg-rs')) o.remove();
   if (!_homeEditing) { frame.removeAttribute('tabindex'); frame.onkeydown = null; frame.style.removeProperty('--wq'); return; }
-  frame.tabIndex = 0;
-  frame.setAttribute('aria-roledescription', 'widget');
-  frame.setAttribute('aria-label', `${def.title}, ${HOME_SIZE_LABEL[w.size] || w.size}`);
-  // The wiggle's phase, so neighbours never sway in step (13-home-edit.css).
-  const pos = frame.parentElement ? [...frame.parentElement.children].indexOf(frame) : 0;
-  frame.style.setProperty('--wq', String(Math.max(0, pos) % 7));
-  const x = document.createElement('button'); x.type = 'button'; x.className = 'hg-x'; x.dataset.act = 'hide';
-  // A second copy of a widget is removed (with its settings; Undo), not hidden.
-  x.innerHTML = icon('minus', 'i-sm'); x.setAttribute('aria-label', `${def.copy > 1 ? 'Remove' : 'Hide'} ${def.title}`); x.setAttribute('data-tip', def.copy > 1 ? 'Remove this copy' : 'Hide');
-  x.onclick = (e) => { e.stopPropagation(); homeWidgetHide(def.id); };
-  frame.appendChild(x);
-  frame.insertAdjacentHTML('beforeend', `<span class="hg-grip" aria-hidden="true">${icon('grip-vertical', 'i-sm')}</span>`);
-  const c = document.createElement('div'); c.className = 'hg-chrome';
-  if (def.sizes.length > 1) {
-    const seg = document.createElement('span'); seg.className = 'seg hg-sizes'; seg.setAttribute('role', 'radiogroup'); seg.setAttribute('aria-label', `${def.title} size`);
-    for (const s of def.sizes) {
-      const b = document.createElement('button'); b.type = 'button'; b.dataset.size = s;
-      b.textContent = s === 'full' ? 'Full' : s.toUpperCase();
-      b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', s === w.size ? 'true' : 'false');
-      b.setAttribute('aria-label', HOME_SIZE_LABEL[s]); b.setAttribute('data-tip', `${_HG_SIZE_LONG[s]} (${HOME_SIZES.indexOf(s) + 1})`);
-      if (s === w.size) b.classList.add('on');
-      // Hovering a size shows the footprint it would take (a dashed ghost on the board).
-      b.onmouseenter = () => { if (s !== w.size) _homeSizeGhost(frame, s); };
-      b.onmouseleave = () => _homeSizeGhost(frame, null);
-      seg.appendChild(b);
-    }
-    c.appendChild(seg);
-  }
-  if (typeof def.settings === 'function') {
-    c.appendChild(uiButton({ icon: 'sliders-horizontal', iconCls: 'i-sm', size: 'sm', aria: `${def.title} settings`, tip: 'Settings', data: { act: 'settings' } }));
-  }
-  c.onclick = (e) => {
-    const b = e.target.closest('button'); if (!b) return;
-    e.stopPropagation();
-    if (b.dataset.size) { if (b.dataset.size !== w.size) homeWidgetResize(def.id, b.dataset.size); }   // the current size: nothing
-    else if (b.dataset.act === 'settings') { const rec = _homeW.get(def.id); def.settings(b, rec ? _homeCtx(rec, false) : { id: def.id, def }); }
-  };
-  if (c.firstChild) frame.appendChild(c);
-  _homeResizeHandles(frame, def);
-  frame.onkeydown = (e) => _homeEditKey(e, def.id, frame);
+  const A = homeBoardAdapter();
+  boardChrome(frame, {
+    title: def.title,
+    aria: `${def.title}, ${w.c ? `${w.c} of 12 columns` : (HOME_SIZE_LABEL[w.size] || w.size)}`,
+    // A second copy of a widget is removed (with its settings; Undo), not hidden.
+    removeLabel: `${def.copy > 1 ? 'Remove' : 'Hide'} ${def.title}`, removeTip: def.copy > 1 ? 'Remove this copy' : 'Hide',
+    onRemove: () => homeWidgetHide(def.id),
+    // The presets; a custom width lights none of them.
+    sizes: def.sizes.map(s => ({ key: s, text: s === 'full' ? 'Full' : s.toUpperCase(), aria: HOME_SIZE_LABEL[s], tip: `${_HG_SIZE_LONG[s]} (${HOME_SIZES.indexOf(s) + 1})` })),
+    cur: w.c ? null : w.size,
+    onSize: (s) => homeWidgetResize(def.id, s),
+    // Hovering a size shows the footprint it would take (a dashed ghost on the board).
+    onHover: (s) => _homeSizeGhost(frame, s),
+    settings: typeof def.settings === 'function' ? (b) => { const rec = _homeW.get(def.id); def.settings(b, rec ? _homeCtx(rec, false) : { id: def.id, def }); } : null,
+    settingsAria: `${def.title} settings`,
+    onKey: (e) => boardEditKey(A, e, def.id, frame),
+  });
 }
 /** The dashed outline of the footprint `size` would take, from the widget's top-left (null = remove). */
 function _homeSizeGhost(frame, size) {
@@ -239,78 +220,29 @@ function _homeSizeGhost(frame, size) {
   const cols = 12, gap = parseFloat(cs.columnGap) || 16;
   const colW = (grid.clientWidth - (cols - 1) * gap) / cols;
   // The columns that size takes on this screen (narrow screens map sizes to halves and wholes).
-  const was = frame.dataset.size;
-  frame.dataset.size = size;
+  const was = frame.dataset.size, wasC = frame.dataset.c;
+  frame.dataset.size = size; delete frame.dataset.c;
   const span = Math.min(cols, parseInt(getComputedStyle(frame).getPropertyValue('--hg-span'), 10) || HOME_SIZE_COLS[size]);
-  frame.dataset.size = was;
+  frame.dataset.size = was; if (wasC) frame.dataset.c = wasC;
   const g = document.createElement('div'); g.className = 'hg-size-ghost'; g.setAttribute('aria-hidden', 'true');
   g.style.width = Math.round(span * colW + (span - 1) * gap) + 'px';
   g.innerHTML = `<span>${esc(_HG_SIZE_LONG[size])}</span>`;
   frame.appendChild(g);
 }
-function _homeEditKey(e, id, frame) {
-  if (e.target !== frame) return;
-  const k = e.key;
-  if (/^Arrow(Up|Down|Left|Right)$/.test(k) && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    const fwd = k === 'ArrowDown' || k === 'ArrowRight' ? 1 : -1, vert = k === 'ArrowUp' || k === 'ArrowDown';
-    if (e.shiftKey) { if (vert) homeWidgetHeightStep(id, fwd); else homeWidgetStep(id, fwd); }   // resize
-    else if (vert) homeWidgetMoveRow(id, fwd);                                                    // move a shelf
-    else homeWidgetMove(id, fwd);                                                                 // move a place
-  }
-  else if (k === '0' && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); homeWidgetHeight(id, null); }
-  else if (k === '+' || k === '=') { e.preventDefault(); homeWidgetStep(id, 1); }
-  else if (k === '-' || k === '_') { e.preventDefault(); homeWidgetStep(id, -1); }
-  else if (/^[1-4]$/.test(k) && !e.altKey && !e.ctrlKey && !e.metaKey) {
-    // 1-4 = Small, Medium, Large, Full (only the sizes this widget has)
-    e.preventDefault();
-    const size = HOME_SIZES[Number(k) - 1], def = homeWidgetDef(id);
-    if (!def || !def.sizes.includes(size)) { if (def) homeAnnounce(`${def.title} has no ${HOME_SIZE_LABEL[size]} size`); return; }
-    homeWidgetResize(id, size);
-  }
-  else if (k === 'Delete' || k === 'Backspace') { e.preventDefault(); homeWidgetHide(id); }
-  else if ((k === 'a' || k === 'A') && !e.altKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); _homeOpenGallery(); }
-}
 /**
- * While customising, the columns a row leaves empty show as a dashed "+" slot that opens
- * Add widget for widgets that fit (HOME_SPEC.md 2). A slot fills exactly the hole the row
- * already has, so nothing moves. Wide screens only (on narrow ones every row is whole).
+ * While customising, the columns a row leaves empty show as a dashed "+" slot that opens Add widget (HOME_SPEC.md 2),
+ * and the widget it adds takes exactly that space. A slot fills exactly the hole the packing leaves, so nothing moves
+ * (12-home-board.js boardGapSlots). Wide screens only (on narrow ones every row is whole).
  */
 /**
- * Where the rows of a 12-column board leave columns empty (pure). spans: the columns
- * each widget takes, in order. -> [{at, cols}]: `cols` free columns before widget `at`
- * (at = spans.length: after the last one). Same rule as the CSS grid's row flow.
+ * Where a 12-column board that packs densely leaves columns empty (pure). spans: the columns each widget takes, in
+ * order. -> [{at, cols}]: `cols` free columns at the end of the row whose last widget is before `at`.
  */
 function homeShelfGaps(spans) {
-  const out = [];
-  let used = 0;
-  spans.forEach((s, i) => {
-    const span = Math.max(1, Math.min(12, Number(s) || 12));
-    if (used + span > 12) { out.push({ at: i, cols: 12 - used }); used = 0; }
-    used = (used + span) % 12;
-  });
-  if (used) out.push({ at: spans.length, cols: 12 - used });
-  return out;
+  return boardGaps(spans, true).map(g => ({ at: g.after + 1, cols: g.cols }));
 }
 function _homeGapSlots(grid) {
-  for (const x of grid.querySelectorAll(':scope > .hg-slot')) x.remove();
-  const frames = [...grid.querySelectorAll(':scope > .hg-w[data-wid]')].filter(f => !f.hidden);
-  const spans = frames.map(f => Math.min(12, parseInt(getComputedStyle(f).getPropertyValue('--hg-span'), 10) || 12));
-  const add = (before, cols) => {
-    if (cols < HOME_SIZE_COLS.s) {                         // no widget fits: just show the space, quietly
-      const d = document.createElement('div'); d.className = 'hg-slot is-narrow'; d.setAttribute('aria-hidden', 'true');
-      d.style.gridColumn = `span ${cols}`;
-      grid.insertBefore(d, before);
-      return;
-    }
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'hg-slot';
-    b.style.gridColumn = `span ${cols}`;
-    b.innerHTML = icon('plus') + '<span>Add a widget here</span>';
-    b.setAttribute('aria-label', `Add a widget in the free space (${cols} of 12 columns)`);
-    b.onclick = (e) => { e.stopPropagation(); _homeOpenGallery(null, null, cols); };
-    grid.insertBefore(b, before);
-  };
-  for (const g of homeShelfGaps(spans)) add(frames[g.at] || null, g.cols);
+  boardGapSlots(grid, { isFrame: (k) => k.classList.contains('hg-w') && !!k.dataset.wid, onAdd: (cols) => _homeOpenGallery(null, null, cols) });
 }
 /** After a re-render in edit mode: drag to reorder, and focus back on the widget being moved. */
 function _homeEditAfterMount(grid) {
@@ -357,7 +289,7 @@ function homeWidgetResize(id, size) {
   const def = homeWidgetDef(id);
   if (!def || !def.sizes.includes(size)) return;
   _homeEditFocusId = id;
-  const next = homeLayout().widgets.map(w => (w.id === id ? Object.assign({}, w, { size }) : w));
+  const next = homeLayout().widgets.map(w => { if (w.id !== id) return w; const o = Object.assign({}, w, { size }); delete o.c; return o; });   // a preset drops a custom width
   if (!homeSaveLayout(next, { say: `${def.title}: ${HOME_SIZE_LABEL[size]}` })) homeAnnounce(`${def.title} is already ${HOME_SIZE_LABEL[size]}`);
 }
 function homeWidgetStep(id, dir) {
@@ -382,8 +314,8 @@ function homeWidgetHide(id) {
   const a = f && window.Motion ? Motion.animate(f, [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.94)' }], { duration: 180, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' }) : null;
   if (a) a.finished.then(save, save); else save();
 }
-/** Show a hidden widget again (optionally at a size): it goes at the end of the board. */
-function homeWidgetShow(id, size) {
+/** Show a hidden widget again (optionally at a size, or a width in columns): it goes at the end of the board (and packs into the first gap that fits). */
+function homeWidgetShow(id, size, cols) {
   const def = homeWidgetDef(id);
   if (!def) return;
   _homeAdded = id; _homeEditFocusId = id;
@@ -391,7 +323,10 @@ function homeWidgetShow(id, size) {
   // Added widgets go at the end of the board (where homeGridArrive scrolls to them).
   const all = homeLayout().widgets, me = all.find(w => w.id === id);
   if (!me) return;
-  const next = all.filter(w => w.id !== id).concat([Object.assign({}, me, { hidden: false }, size && def.sizes.includes(size) ? { size } : {})]);
+  const shown = Object.assign({}, me, { hidden: false });
+  if (size && def.sizes.includes(size)) { shown.size = size; delete shown.c; }
+  if (cols && cols !== HOME_SIZE_COLS[shown.size]) shown.c = cols;
+  const next = all.filter(w => w.id !== id).concat([shown]);
   homeSaveLayout(next, { say: `${def.title} added` });
 }
 
@@ -412,7 +347,7 @@ function _homeOpenGallery(anchor, pick, fitCols) {
   const shownN = (id) => homeLayout().widgets.filter(w => !w.hidden && homeBaseId(w.id) === id).length;   // copies too
   const isOn = (id) => shownN(id) > 0;
   // From a free slot: the widgets with a size that fits it come first (in each group), at that size.
-  const fitSize = (def) => (fitCols ? def.sizes.filter(s => HOME_SIZE_COLS[s] <= fitCols).pop() || null : null);
+  const fitSize = (def) => (fitCols ? def.sizes.filter(s => HOME_SIZE_COLS[s] <= fitCols).pop() || def.sizes[0] : null);
   const byFit = (a, b) => (fitCols ? (fitSize(a) ? 0 : 1) - (fitSize(b) ? 0 : 1) : 0);
   const notOn = cat.filter(d => !isOn(d.id)), on = cat.filter(d => isOn(d.id));
   const groups = HOME_GROUPS.map(([g, label]) => [label, notOn.filter(d => d.group === g).sort(byFit)]).filter(x => x[1].length);
@@ -420,6 +355,7 @@ function _homeOpenGallery(anchor, pick, fitCols) {
   let sel = (pick && cat.find(d => d.id === pick)) || (fitCols && ordered.find(d => fitSize(d))) || ordered[0] || on[0];
   if (!sel) return;
   let size = fitSize(sel);             // the size picked in the segment (null = current or default)
+  const sizeC = (def) => (fitCols && size && size === fitSize(def) && !isOn(def.id) ? fitCols : undefined);   // from a free slot: take exactly the slot's columns unless another size was picked
   let changed = false;
   openDialog({
     // A filter and a list: a fixed height, so filtering never moves the buttons (UI_CLEANUP_PLAN.md 1.3).
@@ -522,7 +458,7 @@ function _homeOpenGallery(anchor, pick, fitCols) {
         pane.appendChild(stage);
         _homePreview(stage, def, sz);
         const foot = document.createElement('div'); foot.className = 'hgal-foot';
-        foot.appendChild(!here ? uiButton({ label: 'Add to Home', icon: 'plus', kind: 'primary', run: () => { changed = true; close(); homeWidgetShow(def.id, sz); } })
+        foot.appendChild(!here ? uiButton({ label: 'Add to Home', icon: 'plus', kind: 'primary', run: () => { changed = true; close(); homeWidgetShow(def.id, sz, sizeC(def)); } })
           : sz !== cur ? uiButton({ label: `Make it ${_HG_SIZE_LONG[sz].split(' · ')[0]}`, icon: 'check', kind: 'primary', run: () => { changed = true; close(); homeWidgetResize(def.id, sz); } })
           : uiButton({ label: 'On Home', icon: 'check', disabled: true }));
         // A widget that allows copies (runway, smart list): another one, with its own settings.

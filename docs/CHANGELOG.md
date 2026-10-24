@@ -10,7 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
-## [2.19.4] - 2026-10-24
+## [2.19.5] - 2026-10-24
+
+Home and Money are boards you can arrange any way you like, and Money's welcome and story are back.
+
+- Resize any widget on Home and Money to any size, and drag it anywhere. Gaps fill themselves, so the page never has holes.
+- Money uses the same board as Home: the same Customise, the same drag and resize, and your existing Home and Money arrangements carry over as they were.
+- Money has its welcome banner again: a greeting over the sky, what is safe to spend today, and a big "Play money story" button. A "Money brief" button sits beside it. The little cross hides the banner, and More brings it back.
+- Home's pages (Today, Evening, Week, History) and Money's (Overview, Spending, Cash flow, Budgets, Transactions, Expenses) are in the sidebar as well as along the top, and the one you are on is lit in both places.
+
 
 A calmer top bar, a tidier Money, and a few things that now say what they do.
 

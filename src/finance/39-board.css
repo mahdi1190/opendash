@@ -242,6 +242,12 @@ html.anim-paused .fvb-streak .i { animation-play-state: paused; }
 .fv.fv-amts-hidden .fv-row:focus-visible .fv-amt, .fv.fv-amts-hidden .fvb-tile:hover .fv-amt, .fv.fv-amts-hidden .fvb-tile:focus-visible .fv-amt,
 .fv.fv-amts-hidden .fv-legend-row:hover .v, .fv.fv-amts-hidden .fv-stat:hover b { filter: none; }
 
+/* ---------- the welcome banner (2.19.5: Home's hero, 12-home-head.js heroBannerEl) ---------- */
+.fvb-hero { grid-column: span 12; min-width: 0; }
+.fvb-hero[hidden] { display: none; }
+.fv.fv-amts-hidden .fvb-hero .bf-key b, .fv.fv-amts-hidden .fvb-hero .bf-key-sub, .fv.fv-amts-hidden .fvb-hero .bf-headline b { filter: blur(6px); transition: filter var(--fv-fast) var(--fv-ease); }
+.fv.fv-amts-hidden .fvb-hero .bf-key:hover b, .fv.fv-amts-hidden .fvb-hero .bf-key-sub:hover, .fv.fv-amts-hidden .fvb-hero .bf-headline:hover b { filter: none; }
+
 /* ---------- narrow ---------- */
 @container fvbody (max-width: 900px) {
   .fvb-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -258,7 +264,7 @@ html.anim-paused .fvb-streak .i { animation-play-state: paused; }
   .fvb-big-v { font-size: 26px; line-height: 32px; }
   .fvb-editbar .heb-t span { display: none; }
 }
-@media print { .fvb-tools, .fvb-quick, .fvb-set, .fvb-intro { display: none !important; } }
+@media print { .fvb-tools, .fvb-quick, .fvb-set, .fvb-intro, .fvb-hero { display: none !important; } }
 
 /* ---------- extras: the travel passport, spare change, what if, payday ---------- */
 .fvb-stamps { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: var(--space-2-5, 10px); padding: 4px 2px; }
@@ -308,3 +314,25 @@ html.anim-paused .fvb-streak .i { animation-play-state: paused; }
 .fvb-t-budgets .fv-row, .fvb-t-bills .fv-row { min-height: 52px; }
 .fvb-t-budgets .fvb-more, .fvb-t-bills .fvb-more { margin-top: auto; padding-top: var(--space-2); }
 .fvb-w .fv-card-b { flex: 1 1 auto; }
+
+/* ---------- 2.19.5: free sizing (the board engine of Home, 12-home-board.js) ----------
+   A widget is any 1-12 columns wide and any number of rows tall (a data-h widget is that tall at least; what does
+   not fit scrolls inside, charts grow to fill). The grid packs densely so a widget that fits a gap further up takes it. */
+.fvb-grid { grid-auto-flow: row dense; }
+.fvb-w { container: fvw / inline-size; }
+.fvb-w[data-h] { contain: size; min-height: calc(var(--hg-h, 6) * 40px); }
+.fvb-w[data-h] > .fv-card-b { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+/* A widget with its own height: its chart takes the room (the chart kit follows the size). */
+@container fvbody (min-width: 641px) { .fvb-w[data-h] > .fv-card-b > .fv-chart { flex: 1 1 0; height: auto !important; min-height: 96px; } }
+@container fvbody (max-width: 640px) { .fvb-w[data-h] { contain: none; min-height: 0; } .fvb-w[data-h] > .fv-card-b { overflow: visible; } }
+/* The card follows the width it really has: tight below 300 px, tiny below 200 px. */
+.fvb-w:is([data-c="1"], [data-c="2"], [data-c="3"]) { padding: var(--space-3); }
+@container fvw (max-width: 300px) {
+  .fv-card-h { gap: var(--space-1); margin-bottom: var(--space-1-5); }
+  .fv-card-s { display: none; }
+  .fv-card-b { overflow-wrap: anywhere; }
+}
+@container fvw (max-width: 200px) {
+  .fvb-ic { display: none; }
+  .fv-card-t h3 { font-size: var(--text-xs); }
+}

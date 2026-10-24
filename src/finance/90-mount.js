@@ -86,6 +86,9 @@
     sections: () => SECTIONS.map(([id, label]) => ({ id, label })),
     groups: () => GROUPS.map(([id, label, icon, secs]) => ({ id, label, icon, sections: secs.slice() })),
     section: () => F.section,
+    // 2.19.5: the sidebar lists the five tabs too: the tab you are on, and a way to open one (the section last used in it).
+    group: () => groupOf(F.section),
+    openGroup: (id) => { const g = GROUPS.find(x => x[0] === id); if (g) setSection((R.groupLast && R.groupLast[id]) || g[3][0]); },
     sectionLabel: () => (SECTIONS.find(s => s[0] === F.section) || [])[1] || '',
     setSection: (id) => setSection(id),
     // Select a merchant (the bar's chip clears it): Home's Payday & safe to spend opens a bill in Recurring with it.

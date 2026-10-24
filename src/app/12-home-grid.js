@@ -2,9 +2,10 @@
    HOME GRID: how the widgets sit and move. Owner: Home foundation.
 
    Layout: .home-grid is a 12-column CSS grid of "shelves": widgets fill rows
-   in their saved order and size, the widgets on a row stretch to the same
-   height (13-home-core.css), so where a widget sits never depends on today's
-   content (HOME_SPEC.md 1-2). A ResizeObserver glides the rest when a
+   in their saved order and size (any width 1-12 columns, 2.19.5), packed densely so a
+   widget that fits a gap further up takes it (grid-auto-flow: dense; 12-home-board.js),
+   the widgets on a row stretch to the same height (13-home-core.css), so where a
+   widget sits never depends on today's content (HOME_SPEC.md 1-2). A ResizeObserver glides the rest when a
    widget's content changes (calendar or finances arriving) without a flip.
    A frame whose height changes (its content, or a neighbour on its shelf)
    glides its box height, so the rows below ride along.
@@ -224,6 +225,7 @@ function homeSectionOf(def) {
 }
 function _hgSections(grid) {
   for (const h of grid.querySelectorAll(':scope > .hg-sec')) h.remove();
+  grid.classList.remove('has-secs');
   if (_homeEditing) return;
   const runs = [];
   for (const f of grid.querySelectorAll(':scope > .hg-w[data-sec]')) {
@@ -235,24 +237,13 @@ function _hgSections(grid) {
     const h = secHead({ title: (HOME_SECTIONS.find(x => x[0] === r.sec) || [0, 'More'])[1], cls: 'hg-sec' });
     grid.insertBefore(h, r.first);
   }
+  grid.classList.add('has-secs');       // labelled sections follow on in order (no dense packing across a label)
 }
-/* A row that does not add up to 12 columns (a widget with nothing to show today, a narrow window) hands its free
-   columns to its last card, so there is never a gap beside a short card. */
+/* A row that does not add up to 12 columns (a widget with nothing to show today, a narrow window, a free width) hands its free
+   columns to its last card, so there is never a gap beside a short card (boardFillGaps, 12-home-board.js). */
 function _hgFill(grid) {
-  const kids = [...grid.children];
-  for (const k of kids) if (k.classList && k.classList.contains('hg-w')) k.style.removeProperty('grid-column');
-  if (_homeEditing) return;
-  let used = 0, last = null, lastSpan = 0;
-  const close = () => { if (last && used < 12) last.style.gridColumn = 'span ' + (lastSpan + 12 - used); used = 0; last = null; };
-  for (const k of kids) {
-    if (k.hidden) continue;
-    if (!k.classList.contains('hg-w')) { close(); continue; }   // a section label ends the row
-    const span = Math.min(12, parseInt(getComputedStyle(k).getPropertyValue('--hg-span'), 10) || 12);
-    if (used + span > 12) close();
-    used += span; last = k; lastSpan = span;
-    if (used >= 12) { used = 0; last = null; }
-  }
-  close();
+  if (_homeEditing) { for (const k of grid.children) if (k.classList && k.classList.contains('hg-w')) k.style.removeProperty('grid-column'); return; }
+  boardFillGaps(grid, k => k.classList.contains('hg-w'), !grid.classList.contains('has-secs'));   // a section label ends the row
 }
 /** After a whole re-render: glide from the last settled layout (or just remember this one). */
 function homeGridSettle(grid, glide) {
@@ -285,7 +276,7 @@ function _hgOnResize(grid) {
   if (performance.now() < _hgBusyUntil) return;               // the busy timer comes back
   const resized = Math.abs(grid.clientWidth - _hgWidth) > 1;
   _hgWidth = grid.clientWidth;
-  if (resized) _hgFill(grid);                                  // the spans change at the narrow breakpoints
+  if (resized) { _hgFill(grid); if (_homeEditing) _homeGapSlots(grid); }   // the spans change at the narrow breakpoints
   _hgLast = resized || !_hgLast ? homeFlipCapture(grid) : homeFlipPlay(grid, _hgLast);
 }
 function homeGridObserve(grid) {
