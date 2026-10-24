@@ -81,8 +81,6 @@ function _locvTiles(f) {
     ['map-pin', _locvNum(f.cities.length), f.cities.length === 1 ? 'place' : 'places'],
     ['plane', _locvNum(f.daysAbroad), f.daysAbroad === 1 ? 'day abroad' : 'days abroad'],
     ['compass', _locvNum(f.km) + ' km', 'travelled'],
-    ['clock', _locvNum(f.zonesCrossed), f.zonesCrossed === 1 ? 'time zone crossed' : 'time zones crossed'],
-    ['circle-check', _locvNum(f.tasks.abroad), 'tasks done abroad'],
   ];
   return `<div class="loc-tiles">${tiles.map(([ic, n, l]) => `<div class="loc-tile">${icon(ic, 'i-lg')}<b>${esc(n)}</b><span>${esc(l)}</span></div>`).join('')}</div>`;
 }
@@ -146,6 +144,7 @@ function _locvFacts(f) {
   if (f.furthest && f.furthest.km >= 50) add('compass', 'Furthest from home: ' + f.furthest.city, `${_locvNum(f.furthest.km)} km away, ${_locvDate(f.furthest.at, true)}.`);
   if (f.longestAway >= 2) add('plane', 'Longest time away', `${f.longestAway} days in a row abroad.`);
   if (f.hoursShifted) add('clock', 'Clock changes', `${_locvNum(f.hoursShifted)} hours of jet lag earned across ${f.zones.length} time zones.`);
+  if (f.tasks.abroad) add('circle-check', 'Done abroad', `${_locvNum(f.tasks.abroad)} task${f.tasks.abroad === 1 ? '' : 's'} finished while away, across ${_locvNum(f.zonesCrossed)} time zone${f.zonesCrossed === 1 ? '' : 's'}.`);
   if (f.continents.length > 1) add('globe', f.continents.length + ' continents', f.continents.join(', ') + '.');
   for (const o of f.onThisDay.slice(0, 3)) add('history', o.years === 1 ? 'A year ago today' : o.years + ' years ago today', 'You were in ' + (o.city || o.place || o.country) + (o.city && o.country ? ', ' + o.country : '') + '.');
   const lateTop = [...f.tasks.late.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -192,14 +191,14 @@ function _locvNextTripHint() {
   } catch (e) { return ''; }
 }
 registerPage({
-  id: 'places', view: 'locations', match: v => v === 'locations' || v === 'trips' || /^trip:[a-z0-9-]{3,60}$/i.test(String(v || '')),
+  id: 'places', view: 'locations', match: v => v === 'locations' || v === 'locations:places' || v === 'trips' || /^trip:[a-z0-9-]{3,60}$/i.test(String(v || '')),
   label: 'Places', icon: 'map-pin', area: 'life', tab: true, order: 60, since: '2.16', discover: true,
   desc: 'Where you have been, and your trips',
   keywords: 'places locations countries cities visited travel map badges firsts passport trips holiday where was i',
   sections: () => {
     const on = typeof _truOn === 'function' && _truOn();
     const v = String(state.view || '');
-    return [['locations', 'Overview']].concat(on || v === 'trips' || v.startsWith('trip:') ? [{ view: 'trips', label: 'Trips', match: x => x === 'trips' || /^trip:/.test(x) }] : []);
+    return [['locations', 'Overview'], ['locations:places', 'Places']].concat(on || v === 'trips' || v.startsWith('trip:') ? [{ view: 'trips', label: 'Trips', match: x => x === 'trips' || /^trip:/.test(x) }] : []);
   },
   badge: _locvNextTripHint,
 });
@@ -221,23 +220,33 @@ function _locvMount(container) {
     container.appendChild(page);
     return;
   }
+  const part = String(state.view || '') === 'locations:places' ? 'places' : 'overview';
   const cur = f.visits[f.visits.length - 1];
   const sub = [cur.city && cur.region, cur.city && cur.country].filter(Boolean).join(', ');
   const map = _locvMap(f);
-  page.innerHTML = `
+  const zone = (html) => (html ? (h) => { h.innerHTML = html; } : null);
+  if (part === 'places') {
+    // Places tab: the passport and the postcards, beside the places you stayed longest and the years
+    const main = (h) => {
+      h.innerHTML = _locvPassport(f);
+      if (typeof memPostcardAlbumEl === 'function') { const sec = document.createElement('section'); sec.className = 'loc-sec'; sec.appendChild(secHead({ title: 'Postcards' })); sec.appendChild(memPostcardAlbumEl({ compact: true })); h.appendChild(sec); }   // postcards (93-memories-ui.js)
+    };
+    page.appendChild(pageLayout({ main, side: zone(_locvPlaces(f) + _locvYears(f)), sideWidth: 340, cls: 'loc-layout' }));
+  } else {
+    // Overview: where you are, the numbers, then the timeline beside your badges and fun facts
+    page.innerHTML = `
     <section class="loc-hero card${map ? '' : ' no-map'}" data-m-key="hero">
       <div class="loc-hero-t">
         <span class="overline">You are in</span>
         <div class="loc-hero-place">${_locvFlag(cur.cc)}<b>${esc(_locvName(cur))}</b></div>
         ${sub ? `<div class="muted">${esc(sub)}</div>` : ''}
-        <div class="loc-hero-meta muted">Since ${esc(_locvDate(cur.from, true))}${f.began ? ` · history since ${esc(_locvDate(f.began, true))}` : ''}</div>
+        <div class="loc-hero-meta muted">Since ${esc(_locvDate(cur.from, true))}</div>
       </div>
       ${map ? `<div class="loc-hero-map">${map}</div>` : ''}
     </section>
-    ${_locvTiles(f)}
-    ${_locvBadges(f)}
-    <div class="loc-cols"><div class="loc-col">${_locvTimeline(f)}</div><div class="loc-col">${_locvFacts(f)}${_locvPassport(f)}${_locvPlaces(f)}${_locvYears(f)}</div></div>
-    <p class="loc-foot muted">${icon('lock', 'i-sm')} <span>${esc(LOC_NOTICE)}</span> <button type="button" class="btn-link" data-act="settings">Location history settings</button></p>`;
+    ${_locvTiles(f)}`;
+    page.appendChild(pageLayout({ main: zone(_locvTimeline(f)), side: zone(_locvBadges(f) + _locvFacts(f)), sideWidth: 340, cls: 'loc-layout' }));
+  }
   page.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
     if (!b) return;
@@ -250,8 +259,7 @@ function _locvMount(container) {
     _locvFilter = b.value; _locvMore = 30; render();
   });
   container.appendChild(page);
-  if (typeof memPostcardAlbumEl === 'function') container.appendChild(memPostcardAlbumEl({ compact: true }));   // postcards (93-memories-ui.js)
-  if (_locvSpend === undefined) { _locvSpend = null; Locations.spend().then(s => { if (s) { _locvSpend = s; if (state.view === 'locations') render(); } }); }
+  if (_locvSpend === undefined) { _locvSpend = null; Locations.spend().then(s => { if (s) { _locvSpend = s; if (/^locations/.test(String(state.view))) render(); } }); }
   if (!_locvEntered && !(window.Motion && Motion.prefersReduced && Motion.prefersReduced()) && document.documentElement.getAttribute('data-motion-level') !== 'off') {
     [...page.querySelectorAll('.loc-hero, .loc-tile, .loc-badges, .loc-sec.card')].slice(0, 14).forEach((n, i) => n.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 320, delay: i * 35, easing: 'cubic-bezier(0.2, 0, 0, 1)', fill: 'backwards' }));
     const route = page.querySelector('.loc-map .route');
@@ -262,13 +270,15 @@ function _locvMount(container) {
 /** The page header's actions: nothing is primary here; the two small tools and the settings sit under More. */
 function _locvCopyStory() { return copyText(_locvStory(locationsFacts()), 'your travel story'); }
 registerSection('locations', {
+  match: v => v === 'locations' || v === 'locations:places',
   title: () => 'Places',
+  crumb: v => (v === 'locations:places' ? [{ label: 'Places', view: 'locations' }, 'Places'] : []),
   headerActions: () => ({ more: [
     { label: 'Copy my travel story', icon: 'copy', run: _locvCopyStory },
     { label: 'Where was I on…', icon: 'history', run: () => locWhereWasI() },
     { label: 'Location history settings', icon: 'settings', run: () => setView('settings:locations') },
   ] }),
   group: 'life', hashable: true, layout: 'page',   // Life > Places since 2.18 (NAVIGATION_PLAN.md 2.2); the view id stays 'locations'
-  mount(container) { _locvMount(container); if (!_loc.data && !_loc.loading) locLogLoad().then(() => { if (state.view === 'locations') render(); }); },
+  mount(container) { _locvMount(container); if (!_loc.data && !_loc.loading) locLogLoad().then(() => { if (/^locations/.test(String(state.view))) render(); }); },
   unmount() { _locvEntered = false; _locvMore = 30; _locvFilter = 'all'; },
 });

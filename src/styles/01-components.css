@@ -452,13 +452,13 @@ html[data-motion="reduced"] .set-status-busy .set-status-dot { animation: none; 
 
 /* ---------- 2.19 layout primitives (11-ui-kit.js: pageLayout, masterDetail, mdRow, subTabs, pagedList) ----------
    They size by the page's own width (#main is a container), so a narrow window and a phone stack them. */
-.pg-layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--pg-side, 320px); gap: var(--space-5); align-items: start; max-width: 1280px; margin: 0 auto; }
-.pg-layout.no-side { grid-template-columns: minmax(0, 1fr); max-width: 860px; }
+.pg-layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--pg-side, 320px); gap: var(--space-5); align-items: start; }
+.pg-layout.no-side { grid-template-columns: minmax(0, 1fr); }
 .pg-main, .pg-side, .md-list, .md-detail { min-width: 0; }
 .pg-side { display: flex; flex-direction: column; gap: var(--space-3); }
 .pg-layout.is-sticky > .pg-side { position: sticky; top: var(--space-2); }   /* only for a short side column */
-.md { display: grid; grid-template-columns: var(--md-list, 272px) minmax(0, 1fr); gap: var(--space-4); align-items: start; max-width: 1280px; margin: 0 auto; }
-.md-list { position: sticky; top: var(--space-2); display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 160px); overflow-y: auto; padding: var(--space-1); background: var(--bg-subtle); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); scrollbar-width: thin; }
+.md { display: grid; grid-template-columns: var(--md-list, 272px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.md-list { position: sticky; top: var(--space-2); display: flex; flex-direction: column; gap: 2px; max-height: calc(100vh - 160px); overflow-y: auto; padding: 0; background: none; border: 0; scrollbar-width: thin; }   /* a list of rows needs no box: the active row is the mark */
 .md-list > .sec-h { margin: var(--space-2) var(--space-2) var(--space-0-5); min-height: 24px; }
 .md-list > .sec-h:first-child { margin-top: var(--space-1); }
 .md-detail { display: flex; flex-direction: column; gap: var(--space-3); }

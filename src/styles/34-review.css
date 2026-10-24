@@ -6,14 +6,10 @@
    ============================================================ */
 
 /* ---------- the header button ---------- */
-.rf-head { display: inline-flex; align-items: stretch; }
-.rf-head .btn { position: relative; }
-.rf-head-main { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.rf-head-more { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; padding-left: var(--space-1-5); padding-right: var(--space-1-5); }
+.rf-head { position: relative; }
 .rf-head-dot { display: none; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
 .rf-head.is-due .rf-head-dot { display: block; animation: rf-pulse 2.4s var(--m-ease-out, ease-out) infinite; }
 @keyframes rf-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.35); } }
-@media (max-width: 760px) { .rf-head-main span { display: none; } }
 
 /* ---------- task rows: waiting, blocked, unblocked ---------- */
 .task.rf-blocked .t-title { color: var(--fg-muted); }

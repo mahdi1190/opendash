@@ -13,7 +13,7 @@
    the entrance plays once per entry.
    ============================================================ */
 const MEM_TABS = [['journal', 'Journal', 'notebook-pen'], ['year', 'Your year', 'calendar-days'], ['capsules', 'Time capsules', 'mail'], ['postcards', 'Postcards', 'map'], ['people', 'People', 'heart'], ['milestones', 'Milestones', 'trophy']];
-let _mpEntry = '', _mpYear = 0, _mpJournalN = 30;
+let _mpEntry = '', _mpYear = 0, _mpJournalN = 0, _mpCapSel = '';
 function _mpTab(v) { const m = /^memories:([a-z]+)$/.exec(String(v || '')); const t = m ? m[1] : 'journal'; return MEM_TABS.some(x => x[0] === t) ? t : 'journal'; }
 function _mpTabLabel(t) { const x = MEM_TABS.find(y => y[0] === t); return x ? x[1] : 'Journal'; }
 
@@ -58,20 +58,12 @@ function _mpMount(container, view) {
   const entering = _mpEntry !== view;
   _mpEntry = view;
   const sub = document.getElementById('view-subtitle');
-  if (sub) sub.textContent = 'What your days add up to, kept on your computers.';
+  if (sub) sub.textContent = tab === 'journal' ? ((n) => `${n.toLocaleString()} day${n === 1 ? '' : 's'} kept`)(memJournalList().length) : tab === 'postcards' ? ((n) => n ? `${n} ${n === 1 ? 'country' : 'countries'} so far` : '')(memPostcards().length) : '';   // a count, not a sentence about what the page is
   const root = document.createElement('div');
   root.className = 'mem-page mem-tab-' + tab + (entering ? ' is-enter' : '');
-  const tabs = document.createElement('div'); tabs.className = 'mem-tabs'; tabs.setAttribute('role', 'tablist');
-  for (const [id, label, ic] of MEM_TABS) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'mem-tab'; b.setAttribute('role', 'tab');
-    b.setAttribute('aria-selected', id === tab ? 'true' : 'false');
-    let badge = '';
-    if (id === 'capsules') { const n = memCapsulesDue().length; if (n) badge = `<span class="badge badge-danger">${n}</span>`; }
-    b.innerHTML = `${icon(ic, 'i-sm')}<span>${esc(label)}</span>${badge}`;
-    b.onclick = () => { if (id === tab) { const m = document.getElementById('main'); if (m && m.scrollTop > 0) m.scrollTo({ top: 0, behavior: 'smooth' }); return; } setView(id === 'journal' ? 'memories' : 'memories:' + id); };
-    tabs.appendChild(b);
-  }
-  root.appendChild(tabs);
+  // 2.19.1: the tabs are the page header's pills (subTabs / headerSubTabs), not a strip inside the page
+  headerSubTabs(subTabs({ label: 'Memories', active: tab, onChange: (id) => setView(id === 'journal' ? 'memories' : 'memories:' + id),
+    tabs: MEM_TABS.map(([id, label, ic]) => ({ id, label, icon: ic, badge: id === 'capsules' ? memCapsulesDue().length : 0 })) }), /^memories(:|$)/);
   const body = document.createElement('div'); body.className = 'mem-body';
   root.appendChild(body);
   container.appendChild(root);
@@ -135,12 +127,11 @@ function _mpEntryEl(iso, j, o) {
   el.append(date, main);
   return el;
 }
-function _mpJournal(body) {
+function _mpJournal(outer) {
+  const body = document.createElement('div'); body.className = 'mem-jmain';
+  outer.appendChild(pageLayout({ main: body, cls: 'mem-layout' }));   // the count is the header's subtitle; Rediscover and Time capsule are in its More
   const today = todayStr();
   const list = memJournalList();
-  const head = document.createElement('div'); head.className = 'mem-intro';
-  head.innerHTML = `<p>Each evening OpenDash writes a few lines about your day from what you did, where and with whom. Add your own line and how the day felt. It is all kept, forever.</p>`;
-  body.appendChild(head);   // Rediscover a day: the header's More (and Ctrl+K)
   const tj = (list.find(r => r[0] === today) || [])[1];
   if (tj) body.appendChild(_mpEntryEl(today, tj, { tonight: true }));
   else {
@@ -151,15 +142,33 @@ function _mpJournal(body) {
   }
   const past = list.filter(r => r[0] !== today);
   if (!past.length) { mountEmptyState(body, { icon: 'notebook-pen', compact: true, title: 'Your journal starts tonight', text: 'Finish a task or two; this evening the day writes itself here.', actions: [{ label: 'Open Today', icon: 'sun', run: () => setView('today') }] }); return; }
-  let month = '';
-  const wrap = document.createElement('div'); wrap.className = 'mem-entries';
-  for (const [iso, j] of past.slice(0, _mpJournalN)) {
+  const items = []; let month = '';
+  for (const [iso, j] of past) {
     const m = iso.slice(0, 7);
-    if (m !== month) { month = m; const h = document.createElement('h3'); h.className = 'mem-month'; h.textContent = _memFmt(iso, { month: 'long', year: 'numeric' }); wrap.appendChild(h); }
-    wrap.appendChild(_mpEntryEl(iso, j));
+    if (m !== month) { month = m; items.push({ head: _memFmt(iso, { month: 'long', year: 'numeric' }) }); }
+    items.push({ iso, j });
   }
-  body.appendChild(wrap);
-  if (past.length > _mpJournalN) body.appendChild(uiButton({ label: `Show older (${past.length - _mpJournalN})`, icon: 'chevron-down', kind: 'ghost', size: 'sm', cls: 'mem-more', run: () => { _mpJournalN += 60; render(); } }));
+  // a page at a time; a repaint (polishing an entry) keeps how many were open
+  body.appendChild(pagedList({ items, pageSize: 20, start: _mpJournalN, onShown: (n) => { _mpJournalN = n; }, cls: 'mem-entries', render: (x) => {
+    if (x.head) { const h = document.createElement('h3'); h.className = 'mem-month'; h.textContent = x.head; return h; }
+    return _mpEntryEl(x.iso, x.j);
+  } }));
+}
+
+/** The journal's side column: what it is, how many days it holds, and the two things you can do from here. */
+function _mpJournalSide(list) {
+  return (h) => {
+    const card = document.createElement('section'); card.className = 'card mem-side-card';
+    const n = document.createElement('p'); n.className = 'mem-side-n';
+    n.innerHTML = `<b class="num">${list.length.toLocaleString()}</b> <span class="muted">day${list.length === 1 ? '' : 's'} kept</span>`;
+    const p = document.createElement('p'); p.className = 'muted';
+    p.textContent = 'Each evening OpenDash writes a few lines about your day from what you did, where and with whom. Add your own line and how the day felt. It is all kept, forever.';
+    const row = document.createElement('div'); row.className = 'mem-side-a';
+    row.append(uiButton({ label: 'Rediscover a day', icon: 'sparkles', kind: 'ghost', size: 'sm', run: _mpRediscover }),
+      uiButton({ label: 'Write a time capsule', icon: 'mail', kind: 'ghost', size: 'sm', run: () => memCapsuleWrite() }));
+    card.append(n, p, row);
+    h.appendChild(card);
+  };
 }
 
 /* ---------- year ---------- */
@@ -169,7 +178,10 @@ function _mpYears() {
   for (const d of Object.keys(memState().journal)) ys.add(d.slice(0, 4));
   return [...ys].sort().reverse();
 }
-function _mpYearTab(body) {
+function _mpYearTab(outer) {
+  const body = document.createElement('div'); body.className = 'mem-ymain';
+  const side = document.createElement('div'); side.className = 'mem-yside';
+  outer.appendChild(pageLayout({ main: body, side, sideWidth: 300, cls: 'mem-layout' }));
   const years = _mpYears();
   const y = String(_mpYear && years.includes(String(_mpYear)) ? _mpYear : years[0]);
   const Y = memYearStats(+y);
@@ -186,7 +198,7 @@ function _mpYearTab(body) {
   const tile = (n, label, ic) => `<div class="mem-tile">${icon(ic, 'i-sm')}<b>${esc(String(n))}</b><span>${esc(label)}</span></div>`;
   tiles.innerHTML = tile(Y.total, 'tasks finished', 'check') + tile(Y.activeDays, 'active days', 'calendar-check') + tile(Y.streak.days, 'best streak (days)', 'flame')
     + tile(Y.busiest.n || 0, Y.busiest.iso ? 'on ' + _memFmt(Y.busiest.iso, { day: 'numeric', month: 'short' }) + ', your busiest day' : 'your busiest day', 'trophy');
-  body.appendChild(tiles);
+  side.appendChild(tiles);
   const hs = _mpSection(Y.partial ? `${y} so far` : y, 'calendar-days', Object.assign(document.createElement('span'), { innerHTML: memHeatmapLegendHtml() }));
   const sc = document.createElement('div'); sc.className = 'hhm-scroll'; sc.appendChild(memHeatmapEl({ year: +y, cell: 12 }));
   hs.appendChild(sc); body.appendChild(hs);
@@ -206,33 +218,65 @@ function _mpYearTab(body) {
   grid.innerHTML = s;
   grid.addEventListener('click', (e) => { const b = e.target.closest('[data-d]'); if (b) memDayDialog(b.dataset.d); });
   px.appendChild(grid);
-  px.insertAdjacentHTML('beforeend', `<p class="mem-px-legend subtle">${MEM_MOODS.map(([v, l]) => `<i class="mem-dot mem-mood-${v}"></i>${esc(l)}`).join(' ')} · set a day's mood in the journal or by clicking a square</p>`);
+  px.insertAdjacentHTML('beforeend', `<p class="mem-px-legend subtle">${MEM_MOODS.map(([v, l]) => `<i class="mem-dot mem-mood-${v}"></i>${esc(l)}`).join(' ')}</p>`);
   body.appendChild(px);
   if (Y.streams.length) {
     const st = _mpSection('Where your effort went', 'layers');
     const max = Y.streams[0].n;
     for (const x of Y.streams) st.insertAdjacentHTML('beforeend', `<div class="mem-bar"><span class="mem-bar-l">${typeof streamMarkHtml === 'function' ? streamMarkHtml(x.id) : ''}${esc(x.label)}</span><span class="mem-bar-t"><i style="width:${(x.n / max * 100).toFixed(1)}%;--c:${escAttr(safeColor(x.color || 'var(--accent)'))}"></i></span><b>${x.n}</b></div>`);
-    body.appendChild(st);
+    side.appendChild(st);
   }
 }
 
 /* ---------- capsules, postcards ---------- */
-function _mpCapsules(body) {
-  const intro = document.createElement('div'); intro.className = 'mem-intro';
-  intro.innerHTML = '<p>Write a note to your future self. It stays sealed until the day you choose, then arrives on Home like a letter.</p>';
-  body.appendChild(intro);   // Write a time capsule: the header's main action on this tab
-  body.appendChild(memCapsuleListEl());
+function _mpCapsules(outer) {
+  const all = memCapsules().slice().sort((a, b) => (a.opened ? 1 : 0) - (b.opened ? 1 : 0) || a.opens.localeCompare(b.opens));
+  if (!all.length) { outer.appendChild(memCapsuleListEl()); return; }   // its teaching empty state (Write a time capsule: the header's main action)
+  const today = todayStr();
+  const fmt = (iso) => _memFmt(iso, { day: 'numeric', month: 'long', year: 'numeric' });
+  const title = (c) => (c.opened ? (c.text.split('\n')[0].slice(0, 60) || 'A letter') : c.opens <= today ? 'Ready to open' : 'Opens ' + fmt(c.opens));
+  const sel = () => all.find(c => c.id === _mpCapSel) || all[0];
+  const detail = (c) => {
+    const ready = c.opens <= today, left = _memBetween(today, c.opens);
+    const card = document.createElement('section'); card.className = 'card mem-cap-d';
+    const h = document.createElement('h2'); h.textContent = title(c);
+    const meta = document.createElement('p'); meta.className = 'muted';
+    meta.textContent = 'Written ' + fmt(Clock.parts(c.created).iso) + (c.opened ? ' · opened' : ready ? ' · ready' : ` · sealed, ${_memPlural(left, 'day')} to go`);
+    card.append(h, meta);
+    if (c.opened) { const t = document.createElement('div'); t.className = 'mem-letter-text'; t.textContent = c.text; card.appendChild(t); }
+    else if (!ready) { const t = document.createElement('p'); t.className = 'subtle'; t.textContent = 'Sealed until ' + fmt(c.opens) + '. It arrives on Home like a letter.'; card.appendChild(t); }
+    const act = document.createElement('div'); act.className = 'mem-cap-a';
+    if (c.opened || ready) act.appendChild(uiButton({ label: c.opened ? 'Read as a letter' : 'Open it', icon: 'mail', kind: ready && !c.opened ? 'primary' : 'secondary', size: 'sm', run: () => memCapsuleReveal(c.id) }));
+    act.appendChild(uiButton({ label: 'Delete', icon: 'trash-2', kind: 'ghost', size: 'sm', run: async () => {
+      const ok = typeof confirmDialog === 'function' ? await confirmDialog({ title: 'Delete this time capsule?', text: c.opened ? 'The letter goes for good.' : 'It has not been opened yet. It goes for good, unread.', confirmLabel: 'Delete', danger: true }) : true;
+      if (ok) { memCapsuleDelete(c.id); _mpCapSel = ''; render(); }
+    } }));
+    card.appendChild(act);
+    return card;
+  };
+  let md = null;
+  const paint = () => {
+    const cur = sel();
+    md.mdList.replaceChildren(...all.map(c => mdRow({ title: title(c), icon: c.opened ? 'mail' : c.opens <= today ? 'sparkles' : 'lock', active: c === cur,
+      sub: 'Written ' + _memFmt(Clock.parts(c.created).iso, { day: 'numeric', month: 'short', year: 'numeric' }), run: () => { _mpCapSel = c.id; paint(); } })));
+    md.mdSet(detail(cur));
+  };
+  md = masterDetail({ listWidth: 300, label: 'Time capsules' });
+  paint();
+  outer.appendChild(md);
 }
-function _mpPostcards(body) {
-  const intro = document.createElement('div'); intro.className = 'mem-intro';
-  const n = memPostcards().length;
-  intro.innerHTML = `<p>${esc(n ? `${_memPlural(n, 'country', 'countries')} so far. Click a postcard to turn it over and write on it.` : 'Every first visit to a new country sends you a postcard.')}</p>`;
-  body.appendChild(intro);   // Places: the header's More
-  body.appendChild(memPostcardAlbumEl());
+function _mpPostcards(outer) {
+  const list = memPostcards();
+  if (!list.length) { outer.appendChild(memPostcardAlbumEl()); return; }   // its teaching empty state
+  const album = pagedList({ items: list, pageSize: 12, cls: 'mpc-album-list', render: (p) => { const t = document.createElement('template'); t.innerHTML = memPostcardHtml(p); return t.content.firstElementChild; } });
+  _memPostcardWire(album);
+  outer.appendChild(pageLayout({ main: album, cls: 'mem-layout' }));   // the count is the header's subtitle; Open Places is in its More
 }
 
 /* ---------- people ---------- */
-function _mpPeople(body) {
+function _mpPeople(outer) {
+  const body = document.createElement('div'); body.className = 'mem-pmain';
+  const side = document.createElement('div'); side.className = 'mem-pside';
   const soon = memBirthdaysSoon(60);
   const bs = _mpSection('Birthdays coming up', 'cake');
   if (!soon.length) bs.appendChild((state.people || []).some(p => p && p.birthday) ? emptyLine('None in the next two months.')
@@ -273,32 +317,39 @@ function _mpPeople(body) {
       r.appendChild(uiButton({ label: 'Say hello', icon: 'send', kind: 'ghost', size: 'sm', run: () => (typeof openQuickAddDialog === 'function' ? openQuickAddDialog(`Say hello to @${x.p.id} `) : openPerson(x.p.id)) }));
       qs.appendChild(r);
     }
-    body.appendChild(qs);
+    side.appendChild(qs);
   }
+  outer.appendChild(pageLayout({ main: body, side: side.childNodes.length ? side : null, sideWidth: 320, cls: 'mem-layout' }));
 }
 
 /* ---------- milestones ---------- */
-function _mpMilestones(body) {
+function _mpMilestones(outer) {
+  const body = document.createElement('div'); body.className = 'mem-mmain';
+  const side = document.createElement('div'); side.className = 'mem-mside';
+  outer.appendChild(pageLayout({ main: body, side, sideWidth: 300, cls: 'mem-layout' }));
   const ms = memMilestones();
   const ls = memLongestStreak();
   const tiles = document.createElement('div'); tiles.className = 'mem-tiles';
   const all = memIndex().all;
   const tile = (n, label, ic) => `<div class="mem-tile">${icon(ic, 'i-sm')}<b>${esc(String(n))}</b><span>${esc(label)}</span></div>`;
   tiles.innerHTML = tile(all.length, 'tasks finished, ever', 'check') + tile(ls.days, 'your longest streak', 'flame') + tile(memPostcards().length, 'countries visited', 'map') + tile(memCapsules().filter(c => c.opened).length, 'letters opened', 'mail');
-  body.appendChild(tiles);
+  side.appendChild(tiles);
   const sec = _mpSection('Your milestones', 'trophy');
   if (!ms.length) sec.appendChild(emptyLine('Your first finished task starts the timeline.'));
-  const ol = document.createElement('ol'); ol.className = 'mem-tl';
   const next = MEM_MILESTONE_STEPS.find(n => n > all.length);
-  for (const m of ms.slice().reverse()) {
+  const items = ms.slice().reverse().map(m => ({ m }));
+  if (next) items.unshift({ next });
+  const ol = pagedList({ items, pageSize: 15, tag: 'ol', cls: 'mem-tl-pg', render: (x) => {
     const li = document.createElement('li');
+    if (x.next) { li.className = 'is-next'; li.innerHTML = `<span class="mem-tl-n">#${x.next}</span><span class="mem-tl-t"><b>Next up</b><span class="subtle">${esc(_memPlural(x.next - all.length, 'task') + ' to go')}</span></span>`; return li; }
+    const m = x.m;
     li.innerHTML = `<span class="mem-tl-n">${m.n === 1 ? 'First' : '#' + m.n}</span><span class="mem-tl-t"><b></b><span class="subtle"></span></span>`;
     li.querySelector('b').textContent = m.title;
     li.querySelector('.subtle').textContent = _memFmtLong(m.iso);
     li.tabIndex = 0; li.onclick = () => memDayDialog(m.iso); li.onkeydown = (e) => { if (e.key === 'Enter') li.click(); };
-    ol.appendChild(li);
-  }
-  if (next) { const li = document.createElement('li'); li.className = 'is-next'; li.innerHTML = `<span class="mem-tl-n">#${next}</span><span class="mem-tl-t"><b>Next up</b><span class="subtle">${esc(_memPlural(next - all.length, 'task') + ' to go')}</span></span>`; ol.prepend(li); }
+    return li;
+  } });
+  ol.firstChild.classList.add('mem-tl');
   sec.appendChild(ol);
   body.appendChild(sec);
   if (ls.days >= 2) body.insertAdjacentHTML('beforeend', `<p class="subtle mem-pad">${esc(`Longest streak: ${ls.days} days, ${_memFmt(ls.from, { day: 'numeric', month: 'short', year: 'numeric' })} to ${_memFmt(ls.to, { day: 'numeric', month: 'short', year: 'numeric' })}.`)}</p>`);

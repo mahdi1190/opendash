@@ -4,7 +4,7 @@
    activity feed, a friend's page, Add a friend, the celebration burst.
    Transform/opacity motion only; reduced motion keeps everything still.
    ============================================================ */
-.fr-page { display: flex; flex-direction: column; gap: var(--space-3); max-width: 1280px; margin: 0 auto; padding: 0 0 var(--space-8); }
+.fr-page { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 0 var(--space-8); }
 .fr-small { font-size: var(--text-xs); }
 .fr-page .spacer { flex: 1; }
 .fr-spin { animation: fr-spin 1s linear infinite; }
@@ -214,3 +214,9 @@
 .pg-side .fr-game-n { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-1-5); }
 .pg-side .fr-stat { padding: var(--space-1-5); }
 .pg-side .fr-stat b { font-size: var(--text-md); }
+
+/* 2.19.1: fewer boxes. The picked friend's top is a plain header (whitespace and one hairline), folds are hairlines, not cards. */
+.fr-fhero { padding: var(--space-1) 0 var(--space-3); border: 0; border-bottom: 1px solid var(--border-subtle); border-radius: 0; box-shadow: none; background: none; }
+.fr-fhero.fun-th { padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); }
+.fr-fold { border: 0; border-top: 1px solid var(--border-subtle); border-radius: 0; background: none; }
+.fr-fold > summary { padding: var(--space-2) 0; border-radius: 0; }

@@ -457,7 +457,9 @@ registerSidebarBlock('calendar', {
     // Only dated, shown widgets (the top bar also holds live ones: tasks, next event, clock).
     const list = (typeof tbList === 'function' ? tbList() : (Array.isArray(state.countdowns) ? state.countdowns : [])).filter(c => c.date && c.visible !== false);
     if (!list.length) return false;
-    el.appendChild(sbSection({ title: 'Countdowns' }));
+    // 2.19.1: folded at first, the top bar already counts them down (the Calendars list below still shows or hides them on the grid)
+    el.appendChild(sbSection({ title: 'Countdowns', collapsible: 'cal-countdowns' }));
+    if (sbIsCollapsed('cal-countdowns')) return;
     const fold = list.length > SB_COUNTDOWN_LIMIT + 1;
     for (const c of fold && !_sbAllCountdowns ? list.slice(0, SB_COUNTDOWN_LIMIT) : list) {
       const d = daysUntil(c.date);

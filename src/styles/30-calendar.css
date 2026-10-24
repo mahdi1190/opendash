@@ -192,3 +192,11 @@ html[data-motion="reduced"] .cal-sync .spin, html[data-motion="reduced"] .cal-co
   .cal-wrap.mode-month .mc .ce.more { display: none; }
   .cal-wrap.mode-month > .cal-rail { display: block; border-left: 0; border-top: 1px solid var(--border); overflow: visible; }
 }
+
+/* ----- 2.19.1: the calendar is a pageLayout (the grid, and beside it the day's agenda or the event's panel); the view switcher
+   is the shared pill tabs. The wrappers pass the full height through, so the grid and the rail behave as before. ----- */
+.cal-wrap.pg-layout { gap: 0; align-items: stretch; }
+.cal-wrap > .pg-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.cal-wrap > .pg-main > .cal-main { flex: 1 1 auto; }
+.cal-wrap > .pg-side { display: block; min-width: 0; min-height: 0; gap: 0; overflow: hidden; }
+.cal-wrap > .pg-side > * { height: 100%; box-sizing: border-box; }

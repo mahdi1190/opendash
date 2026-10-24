@@ -63,7 +63,7 @@ function _hdRepaintIdeas() {
   if (old && next) old.replaceWith(next); else if (old) old.remove(); else if (next) root.appendChild(next);
 }
 function homeHeadIdeas() {
-  const max = 3;
+  const max = 2;
   // The suggestions engine (68-suggest-ui.js): its cards for the brief and the hero, drawn by its
   // own card (primary = the normal editor prefilled; ✓ = as it is, with Undo).
   const cardEl = typeof sgCardEl === 'function' ? sgCardEl : typeof sgCard === 'function' ? sgCard : null;
@@ -79,19 +79,22 @@ function homeHeadIdeas() {
     }
   } catch (e) { cards = null; }
   const wrap = document.createElement('section'); wrap.className = 'hd-ideas';
-  wrap.innerHTML = `<header class="hd-ideas-h">${icon('lightbulb', 'i-sm')}<h2 class="overline">Ideas for today</h2></header>`;
+  wrap.innerHTML = `<header class="hd-ideas-h">${icon('lightbulb', 'i-sm')}<h2 class="overline">Ideas for today</h2><span class="spacer"></span></header>`;
+  // The day adviser (12-home-advisor.js) starts from here: one button, not a card of its own until it has something to say.
+  const think = typeof homeAdvisorButton === 'function' ? homeAdvisorButton() : null;
+  if (think) wrap.firstChild.appendChild(think);
   const row = document.createElement('div'); row.className = 'hd-idea-row';
   if (cards) {
     row.classList.add('is-engine');
-    for (const c of cards) { try { const el = cardEl(c, { surface: 'brief', size: 'card' }); if (el) row.appendChild(el); } catch (e) { console.error('[home ideas] card', e); } }
+    for (const c of cards) { try { const el = cardEl(c, { surface: 'brief', size: 'row' }); if (el) row.appendChild(el); } catch (e) { console.error('[home ideas] card', e); } }
   } else {
     const p = _hdStoryData();
     const list = p && Array.isArray(p.data.suggestions) ? p.data.suggestions : [];
     for (const s of list.slice(0, max)) { const el = _hdIdea(s, p); if (el) row.appendChild(el); }
   }
-  if (!row.firstChild) return null;
+  if (!row.firstChild && !think) return null;
   [...row.children].forEach((c, i) => c.style.setProperty('--i', i));
-  wrap.appendChild(row);
+  if (row.firstChild) wrap.appendChild(row);
   return wrap;
 }
 const _HD_IDEA_ICON = { gap: 'calendar-plus', 'follow-up': 'users', prep: 'list-checks', weather: 'umbrella', overdue: 'circle-alert', focus: 'target', roll: 'arrow-right', tomorrow: 'sunrise', top: 'flag', capacity: 'calendar-range', pattern: 'lightbulb', deadline: 'hourglass', chase: 'hourglass' };

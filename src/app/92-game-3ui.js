@@ -151,7 +151,7 @@ function gameFocusFootBtn(id) {
 }
 
 /* ---------- the Achievements page (#view=game, game:<section>; Life > Achievements since 2.18) ---------- */
-const GM_PAGE_SECTIONS = Object.freeze([['game', 'Today', 'sun'], ['game:wall', 'Achievements', 'award'], ['game:records', 'Records and focus', 'timer'], ['game:bosses', 'Bosses', 'crown'], ['game:unlocks', 'Unlockables', 'sparkles']]);
+const GM_PAGE_SECTIONS = Object.freeze([['game', 'Overview', 'sun'], ['game:wall', 'Achievements', 'award'], ['game:records', 'Records', 'timer'], ['game:bosses', 'Bosses', 'crown'], ['game:unlocks', 'Unlocks', 'sparkles']]);
 function _gmPart(v) { const m = /^game:([a-z]+)$/.exec(String(v || '')); return m && GM_PAGE_SECTIONS.some(x => x[0] === 'game:' + m[1]) ? m[1] : 'today'; }
 if (typeof registerSection === 'function') {
   registerSection('game', {
@@ -181,9 +181,11 @@ if (typeof registerPage === 'function') {
   });
 }
 /** A section of the page: the kit's section header (secHead, UI_CLEANUP_PLAN.md 3.2), then its content. */
-function _gmSec(title, sub, id) {
+function _gmSec(title, sub, id, tip) {   // tip: the how-it-works sentence, on hover, not on the page (2.19.1)
   const sec = document.createElement('section'); sec.className = 'gm-sec'; if (id) sec.id = id;
-  sec.appendChild(secHead({ title, sub }));
+  const hd = secHead({ title, sub });
+  if (tip) { const h2 = hd.querySelector('h2'); if (h2) h2.title = tip; }
+  sec.appendChild(hd);
   return sec;
 }
 function _gmPage(container, view) {
@@ -194,17 +196,19 @@ function _gmPage(container, view) {
   // The shared header draws the title and the sections (UX_BLUEPRINT.md 3); with Fun Off it shows one calm
   // Turn on (15-nav-life.js), and the numbers below keep counting quietly. The Fun level: Unlockables, Settings > Game.
   const sub = document.getElementById('view-subtitle');
-  if (sub) sub.textContent = 'Worked out from what you do. Nothing is ever taken away.';
+  if (sub) sub.textContent = '';   // 2.19.1: no helper line under the title
   // Life › Achievements › Achievements is the Achievements page (92-game-5wall.js, ACHIEVEMENTS_500.md 2.5): this
   // section mounts it for 'game:wall' (its own 'game:wall' section registers later and is only the fallback).
   if (part === 'wall' && typeof gameWallMount === 'function') { container.appendChild(root); gameWallMount(root); return; }
   if (!s) { container.appendChild(root); return; }
   // Today: the hero, streaks and quests, then the Next up strip (the nearest achievements one glance from the quests).
-  if (part === 'today') root.append(_gmHero(s), _gmStreaksSec(s), _gmQuestSec(s), _gmWallSec(s));
+  // 2.19.1: each tab is a main column and a side column (pageLayout); the header's tabs are the page's sections.
+  const zone = (...els) => (host) => { host.append(...els); };
+  if (part === 'today') root.append(_gmHero(s), pageLayout({ main: zone(_gmQuestSec(s), _gmStreaksSec(s)), side: _gmWallSec(s), sideWidth: 340, cls: 'gm-layout' }));
   else if (part === 'wall') root.append(_gmWallSec(s));
-  else if (part === 'records') root.append(_gmRecordsSec(s), _gmFocusSec(s));
-  else if (part === 'bosses') root.append(_gmBossSec(s));
-  else root.append(_gmUnlockSec(s), _gmRulesSec());
+  else if (part === 'records') root.append(pageLayout({ main: _gmRecordsSec(s), side: _gmFocusSec(s), sideWidth: 340, cls: 'gm-layout' }));
+  else if (part === 'bosses') root.append(pageLayout({ main: _gmBossSec(s) }));
+  else root.append(pageLayout({ main: _gmUnlockSec(s), side: _gmRulesSec(), sideWidth: 340, cls: 'gm-layout' }));
   container.appendChild(root);
   if (!_gmUI.entered) {
     _gmUI.entered = true;
@@ -221,7 +225,7 @@ function _gmHero(s) {
   el.innerHTML = `<span class="gm-lv gm-lv-xl">${_gmRingSvg(lv.pct)}<b class="num">${lv.level}</b></span>`
     + `<div class="gm-hero-t"><span class="overline">Level ${lv.level}</span><h2>${esc(lv.title)}</h2>`
     + `<div class="gm-xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="${lv.need}" aria-valuenow="${lv.into}" aria-label="XP to the next level"><i style="--pct:${(lv.pct * 100).toFixed(1)}%"></i></div>`
-    + `<span class="muted num">${lv.into.toLocaleString()} of ${lv.need.toLocaleString()} XP to level ${lv.level + 1} · next: ${esc(nextT)}${na ? ' · ' + esc(na) : ''}</span></div>`
+    + `<span class="muted num">${lv.into.toLocaleString()} of ${lv.need.toLocaleString()} XP to level ${lv.level + 1}${lv.next ? ' · ' + esc(nextT) : ''}</span></div>`
     + `<div class="gm-hero-n"><div><b class="num gm-hero-xp">${s.xp.total.toLocaleString()}</b><span class="muted">XP in all</span></div><div><b class="num">+${s.xp.today.toLocaleString()}</b><span class="muted">today</span></div><div><b class="num">+${s.xp.week.toLocaleString()}</b><span class="muted">this week</span></div></div>`;
   const bt = s.bonus ? getItem(s.bonus) : null;
   if (bt) {
@@ -245,7 +249,7 @@ function _gmDots(set, frozen, today, unit) {
   return `<span class="gm-dots" aria-hidden="true">${out.join('')}</span>`;
 }
 function _gmStreaksSec(s) {
-  const sec = _gmSec('Streaks', 'A missed day is covered by a streak freeze: one to start with, one more for every 7 days in a row (2 at most).');
+  const sec = _gmSec('Streaks', '', null, 'A missed day is covered by a streak freeze: one to start with, one more for every 7 days in a row (2 at most).');
   const grid = document.createElement('div'); grid.className = 'gm-grid gm-streaks';
   const g = _gmG(), sets = {
     done: new Set(Object.keys(s.done.byDay)), inbox: new Set([...Object.keys(g.ticks.inbox || {}), ...Object.keys(typeof seenAll === 'function' ? seenAll('inboxZero') || {} : {})]),
@@ -291,7 +295,7 @@ function _gmQuestSec(s) {
 }
 function _gmRecordsSec(s) {
   const r = s.records;
-  const sec = _gmSec('Personal records', 'Your bests so far.');
+  const sec = _gmSec('Personal records');
   const grid = document.createElement('div'); grid.className = 'gm-grid gm-records';
   const rows = [
     ['zap', 'Most tasks in a day', r.dayMost && `${r.dayMost.v}`, r.dayMost && _gmShortDay(r.dayMost.d)],
@@ -312,7 +316,7 @@ function _gmRecordsSec(s) {
 }
 function _gmFocusSec(s) {
   const f = s.focus;
-  const sec = _gmSec('Focus and estimates', 'Time a task with the focus timer (the task card, or Ctrl+K "focus") and it learns how long things really take.');
+  const sec = _gmSec('Focus and estimates', '', null, 'Time a task with the focus timer (the task card, or Ctrl+K "focus") and it learns how long things really take.');
   const row = document.createElement('div'); row.className = 'gm-focus-row';
   row.innerHTML = `<div class="gm-hero-n"><div><b class="num">${_gmFmtMs(f.todayMs || 0)}</b><span class="muted">today</span></div><div><b class="num">${_gmFmtMs(f.weekMs || 0)}</b><span class="muted">this week</span></div><div><b class="num">${f.sessions.toLocaleString()}</b><span class="muted">sessions</span></div><div><b class="num">${Math.floor(f.totalMs / 3600000).toLocaleString()} h</b><span class="muted">in all</span></div></div>`;
   const run = gameFocusRun();
@@ -337,15 +341,15 @@ function _gmFocusSec(s) {
 }
 function _gmBossSec(s) {
   const open = s.bosses.open.map(getItem).filter(Boolean);
-  const sec = _gmSec('Boss tasks', `A task with ${GAME_RULES.bossMin} or more subtasks is a boss: every subtask ticked is a hit. ${_gmPlural(s.bosses.defeated.length, 'boss')} defeated so far.`);
+  const sec = _gmSec('Boss tasks', s.bosses.defeated.length ? `${s.bosses.defeated.length} defeated` : '', null, `A task with ${GAME_RULES.bossMin} or more subtasks is a boss: every subtask ticked is a hit.`);
   if (!gameOn()) return sec;
-  const list = document.createElement('div'); list.className = 'gm-grid gm-bosses';
-  for (const t of open.slice(0, 9)) {
+  // every open boss, a page at a time (it used to stop at nine)
+  const list = pagedList({ items: open, pageSize: 12, cls: 'gm-grid-list gm-bosses', render: (t) => {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'card gm-boss-card';
     b.innerHTML = `<b>${esc(effTitle(t))}</b>${gameBossBarHtml(t)}`;
     b.onclick = () => openTask(t.id, { from: b });
-    list.appendChild(b);
-  }
+    return b;
+  } });
   // Empty: the section's teaching empty state (UI_CLEANUP_PLAN.md 3.6): what appears here, and the one action toward it.
   if (!open.length) mountEmptyState(sec, { icon: 'crown', compact: true, title: 'No boss tasks open', text: `Break a big task into ${GAME_RULES.bossMin} or more subtasks to make one.`, actions: [{ label: 'Open All tasks', icon: 'list-checks', run: () => setView('all') }] });
   else sec.appendChild(list);
@@ -355,11 +359,11 @@ function _gmBossSec(s) {
 function _gmWallSec(s) {
   if (typeof gameWallSummary === 'function') { try { return gameWallSummary(s); } catch (e) { console.error('[ach] summary', e); } }
   const a = achState(), got = ACH_DEFS.filter(d => a.unlocked[d.id]).length;
-  return _gmSec('Achievements', `${got} of ${ACH_DEFS.length} earned. Each stays earned for good.`, 'gm-ach');
+  return _gmSec('Achievements', `${got} of ${ACH_DEFS.length} earned`, 'gm-ach', 'Each one stays earned for good.');
 }
 function _gmUnlockSec(s) {
   const max = s.level.max, g = _gmG();
-  const sec = _gmSec('Unlockables', 'Cosmetic only: accent colours and animations for your library, opened by levelling up.');
+  const sec = _gmSec('Unlockables', '', null, 'Cosmetic only: accent colours and animations for your library, opened by levelling up.');
   const sw = document.createElement('div'); sw.className = 'gm-accents'; sw.setAttribute('role', 'radiogroup'); sw.setAttribute('aria-label', 'Accent colour');
   const cur = String(g.prefs.accent || '');
   for (const a of GAME_ACCENTS) {

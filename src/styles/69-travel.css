@@ -167,3 +167,6 @@
 .tr-money-sk { height: 64px; border-radius: var(--radius-lg); }
 .tr-hol { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-1) 0; font-size: var(--text-sm); }
 .tr-hol .icon { align-self: center; color: var(--fg-muted); }
+
+/* 2.19.1: Trips are a list beside the picked trip */
+.md-detail > .tr-trip { min-width: 0; }

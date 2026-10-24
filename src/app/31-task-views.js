@@ -24,6 +24,7 @@ function viewTitle(v) {
 }
 
 let _tvLastView = null;
+const _tgShown = new Map();       // 'view|group' -> rows drawn (Show more): a repaint keeps the list as long as it was
 let _logbookDays = 30;            // Logbook shows this many days, "Show older" adds more
 let _qaDraft = '', _qaFocused = false, _qaIgnore = [], _qaCaret = null, _qaDraftRead = false;
 /** Keep the quick-add text (state.drafts 'qa:inline'); empty forgets it. */
@@ -43,6 +44,7 @@ function renderTaskView(main, subEl) {
     if (view === 'today' || view === 'week') state.weekBarOffset = 0;
     state._snappedFor = null;   // a newly opened day view snaps its week into view once
     if (view !== 'completed') _logbookDays = 30;
+    _tgShown.clear();
     _tvLastView = view;
   }
   _lastRenderedTaskIds = [];
@@ -93,7 +95,8 @@ function renderListView(container, o) {
     { const strip = typeof taskViewHeaderStrip === 'function' ? taskViewHeaderStrip(view) : null; if (strip) list.appendChild(strip); }
     if (view === 'today') list.appendChild(_renderTodaySummary());
     else if (view === 'week' || view === 'tomorrow' || view.startsWith('day:')) list.appendChild(_renderWeekStrip({ standalone: true }));
-    if (view === 'today' || view === 'week' || view === 'tomorrow' || view.startsWith('day:')) list.appendChild(_renderTodayJump(view));
+    // The big "Today" button shows only when you are somewhere else (2.19.1: it was a row that said "Today" on Today).
+    if ((view === 'week' || view === 'tomorrow' || view.startsWith('day:')) || (view === 'today' && (state.weekBarOffset || 0))) list.appendChild(_renderTodayJump(view));
     if (view === 'week' && typeof viewsCapacityNote === 'function') { const n = viewsCapacityNote(); if (n) list.appendChild(n); }   // overloaded days (31-views-capacity.js)
     if (view === 'today' && typeof renderCalendarEvents === 'function') {
       try {
@@ -221,11 +224,17 @@ function _renderGroup(view, g) {
     grp.appendChild(h);
   }
   if (collapsed) { grp.classList.add('collapsed'); return grp; }
-  const body = document.createElement('div'); body.className = 'tg-b'; body.setAttribute('role', 'list');
-  for (const it of g.items) {
-    body.appendChild(renderTaskRow(it, { showClosed: g.showClosed || view === 'completed', hideStream: view.startsWith('stream:') }));
-    if (statusOf(it.id) !== 'done' || view === 'completed') _lastRenderedTaskIds.push(it.id);
-  }
+  // A long group shows its first rows and "Show more (n)" (2.19.1, pagedList); a repaint keeps what was opened.
+  const pgKey = view + '|' + g.key;
+  const body = pagedList({
+    items: g.items, pageSize: 12, cls: 'tg-b', start: _tgShown.get(pgKey) || 0, onShown: (n) => _tgShown.set(pgKey, n),
+    render: (it) => {
+      const row = renderTaskRow(it, { showClosed: g.showClosed || view === 'completed', hideStream: view.startsWith('stream:') });
+      if (statusOf(it.id) !== 'done' || view === 'completed') _lastRenderedTaskIds.push(it.id);
+      return row;
+    },
+  });
+  body.querySelector('.pg-list-b').setAttribute('role', 'list');
   grp.appendChild(body);
   return grp;
 }
@@ -341,6 +350,7 @@ function _renderTodayJump(view) {
 }
 
 /* ---------- Today summary: ring + week strip ---------- */
+let _tsWeekOpen = false;
 function _renderTodaySummary() {
   const p = todayProgress();
   const wrap = document.createElement('div'); wrap.className = 'today-sum';
@@ -359,7 +369,13 @@ function _renderTodaySummary() {
   txt.innerHTML = `<b>${p.total ? `${p.done} of ${p.total} done` : 'Nothing planned yet'}</b><span>${flame}${esc(bits.join(' · ') || (p.total && p.done === p.total ? 'All done. Nice.' : 'Due today, planned and in progress'))}</span>`;
   left.append(ring, txt);
   wrap.appendChild(left);
-  wrap.appendChild(_renderWeekStrip({}));
+  // The week strip (jump to a day, drop a task on one) is folded behind one quiet button (2.19.1).
+  const tog = document.createElement('button'); tog.type = 'button'; tog.className = 'btn btn-ghost btn-sm ts-week-tog';
+  tog.setAttribute('aria-expanded', _tsWeekOpen ? 'true' : 'false');
+  tog.innerHTML = icon('calendar-range', 'i-sm') + '<span>' + (_tsWeekOpen ? 'Hide week' : 'Week') + '</span>';
+  tog.onclick = () => { _tsWeekOpen = !_tsWeekOpen; render(); };
+  wrap.appendChild(tog);
+  if (_tsWeekOpen || (state.weekBarOffset || 0)) wrap.appendChild(_renderWeekStrip({}));
   return wrap;
 }
 

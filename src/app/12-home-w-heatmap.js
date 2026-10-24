@@ -7,7 +7,7 @@
    ============================================================ */
 registerHomeWidget({
   id: 'heatmap', title: 'Your year', icon: 'calendar-days', group: 'tasks', order: 260, fresh: true,
-  sizes: ['m', 'l', 'full'], defaultSize: 'full',
+  sizes: ['m', 'l', 'full'], defaultSize: 'full', defaultHidden: true,
   description: 'Every day you finished something, as a year of squares, with your streak and Wrapped',
   emptyHint: 'Appears once you have finished a task',
   aliases: ['heatmap', 'contributions', 'year', 'streak', 'calendar heatmap', 'activity graph', 'wrapped', 'year in review'],

@@ -339,3 +339,7 @@ html[data-motion="reduced"] .pf-l-ban, html[data-motion="reduced"] .pf-l-font, h
 /* "Show friends a different name": the switch and, when it is on, the name beside it */
 .pf-fn { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .pf-fn .set-input { max-width: 220px; }
+
+/* 2.19.1: Profile is three pages (Card, Avatar and wardrobe, Sharing), each a main column and a side column */
+.pf-layout > .pg-main, .pf-layout > .pg-side { display: flex; flex-direction: column; gap: var(--space-4); }
+.pf-layout > .pg-side .pf-set-card { display: flex; justify-content: center; }

@@ -589,7 +589,7 @@ registerSection('together', {
     try { const t = TG_TABS.find(x => x[0] === parts[2]); if (t) tab = t[1]; } catch (e) { /* the raw name */ }
     return [{ label: 'Together', view: 'together' }, { label: name, view: 'together:' + parts[1] }, tab];
   },
-  group: 'tasks', layout: 'wide', hashable: true,
+  group: 'tasks', layout: 'page', hashable: true,
   headerActions: (view) => (typeof tgHeaderActions === 'function' ? tgHeaderActions(view) : null),
   keepRoot(main) { const r = main.querySelector('.tg-root'); return !!(_tg.keep && r && r.dataset.view === state.view); },
   mount(container, view) {

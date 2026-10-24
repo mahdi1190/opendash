@@ -163,7 +163,7 @@
   function bdPreset(name) {
     const style = name === 'simple' ? 'simple' : 'detailed';
     const w = (BD_PRESETS[name] || BD_PRESETS.simple)().map(([t, s, o], i) => ({ i: t + '-' + i, t, s, o: o || {} }));
-    return { v: 1, preset: BD_PRESETS[name] ? name : 'simple', style, strip: true, w };
+    return { v: 1, preset: BD_PRESETS[name] ? name : 'simple', style, strip: false, w };   // 2.19.1: the strip repeated the widgets below it; it is one menu tick away (Everyday strip)
   }
   /** A saved layout made safe: known widgets, known sizes and choices, unique ids, at most 40. null = none saved. */
   function boardClean(b) {

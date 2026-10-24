@@ -228,3 +228,10 @@ body:has(#ap-focus) .gm-timer { bottom: 76px; }
 }
 [data-motion="reduced"] .gm-float, [data-motion="reduced"] .gm-moment, [data-motion="reduced"] .gm-chip.is-pulse .gm-lv, [data-motion="reduced"] .gm-chip.is-pulse .gm-flame,
 [data-motion="reduced"] .gm-boss.is-hit .gm-boss-fill, [data-motion="reduced"] .gm-boss.is-hit .gm-boss-bar, [data-motion="reduced"] .gm-ach.is-flash { animation: none; }
+
+/* 2.19.1: the Achievements tabs are a main column and a side column */
+.gm-layout { max-width: none; }
+.gm-layout > .pg-main { display: flex; flex-direction: column; gap: var(--space-5); }
+.gm-layout > .pg-side .gm-grid, .gm-layout > .pg-side .aw-next-grid { grid-template-columns: minmax(0, 1fr); }
+.gm-grid-list > .pg-list-b { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-2); }
+.gm-grid-list .pg-list-more { display: flex; justify-content: center; padding-top: var(--space-3); }

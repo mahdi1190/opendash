@@ -13,7 +13,7 @@
 const _hgd = { node: null, parts: null, size: '' };
 registerHomeWidget({
   id: 'garden', title: 'Your garden', icon: 'sprout', group: 'fun', order: 265, fresh: true,
-  sizes: ['s', 'm', 'l'], defaultSize: 's',
+  sizes: ['s', 'm', 'l'], defaultSize: 's', defaultHidden: true,
   description: 'A live window into your garden: water and pick in one click. Every finished task helps it grow',
   emptyHint: 'Hidden while the Fun level is Off',
   aliases: ['garden', 'plants', 'grow', 'flowers', 'streak', 'harvest', 'water'],   // 'pet', 'companion' and 'tamagotchi' are the pet's card now (2.18)

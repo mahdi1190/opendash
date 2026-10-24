@@ -138,10 +138,10 @@ function _frFriendDetail(f) {
   _frPanelsFor(main, 'friend', 'main', f);
   main.appendChild(_frFeedSec(f.id));
   _frPanelsFor(main, 'friend', 'fold', f);
-  side.appendChild(_frFriendGame(f));
-  side.appendChild(_frFriendProfile(f, det));
+  const about = _frFriendAbout(f, det);   // their game and what they share, ONE block (and none when there is nothing to say)
+  if (about) side.appendChild(about);
   _frPanelsFor(side, 'friend', 'side', f);
-  wrap.appendChild(pageLayout({ main, side, sideWidth: 280, cls: 'fr-dlayout' }));
+  wrap.appendChild(pageLayout({ main, side: side.childNodes.length ? side : null, sideWidth: 280, cls: 'fr-dlayout' }));
   return wrap;
 }
 function _frFriendMore(f) {
@@ -167,7 +167,7 @@ function _frFriendHero(f) {
   pl.setAttribute('data-fr-presence', f.id);
   pl.setAttribute('data-p', f.presence || 'offline');
   pl.appendChild(_frEl('span', 'fr-pres-dot'));
-  pl.appendChild(_frEl('span', null, pr[0] + (f.direct ? ' · connected directly' : '')));
+  pl.appendChild(_frEl('span', null, pr[0]));
   line.appendChild(pl);
   const days = fs.milestone && fs.milestone.days ? fs.milestone.days : 0;
   if (f.nick && f.name && f.nick !== f.name) line.appendChild(_frEl('span', 'muted', f.name));
@@ -181,7 +181,7 @@ function _frFriendHero(f) {
     t.appendChild(b);
     const key = f.id + '|' + m.today.label;
     if (!_frUI.burstSeen.has(key)) { _frUI.burstSeen.add(key); setTimeout(() => _frBurst(b), 400); }
-  } else if (m.next && m.next.inDays <= 30) {
+  } else if (m.next && m.next.inDays <= 7) {
     t.appendChild(_frEl('span', 'fr-next muted', `${m.next.label} in ${m.next.inDays} day${m.next.inDays === 1 ? '' : 's'}`));
   }
   el.appendChild(t);
@@ -194,16 +194,17 @@ function _frFriendHero(f) {
   const rt = _frEl('div', 'fr-fring-t');
   rt.appendChild(_frEl('b', null, fs.title));
   rt.appendChild(_frEl('span', 'muted fr-small num', `${fs.into} of ${fs.need} XP to level ${fs.level + 1}`));
-  const st = _frEl('span', 'fr-flame');
-  st.innerHTML = icon('flame', 'i-xs');
-  st.appendChild(_frEl('span', null, fs.streak ? `${fs.streak} day${fs.streak === 1 ? '' : 's'} in touch` : 'Start a streak today'));
-  if (fs.best > fs.streak) st.appendChild(_frEl('span', 'muted', ` · best ${fs.best}`));
-  rt.appendChild(st);
+  if (fs.streak) {   // a streak line only once there is one (nothing to say about an empty streak)
+    const st = _frEl('span', 'fr-flame');
+    st.innerHTML = icon('flame', 'i-xs');
+    st.appendChild(_frEl('span', null, `${fs.streak} day${fs.streak === 1 ? '' : 's'} in touch`));
+    rt.appendChild(st);
+  }
   ring.appendChild(rt);
   el.appendChild(ring);
   // actions: Cheer first, the fun module adds Wave / High five / Gift before More (funFriendHero), More last
   const acts = _frEl('div', 'fr-fhero-a');
-  acts.appendChild(uiButton({ label: 'Cheer', icon: 'heart', kind: 'primary', size: 'sm', run: (e, b) => _frCheerMenu(b, f) }));
+  acts.appendChild(uiButton({ label: 'Cheer', icon: 'heart', size: 'sm', run: (e, b) => _frCheerMenu(b, f) }));
   acts.appendChild(uiButton({ icon: 'ellipsis', kind: 'ghost', size: 'sm', aria: 'More', tip: 'More', run: (e, b) => openMenu(b, _frFriendMore(f), { align: 'end' }) }));
   el.appendChild(acts);
   if (typeof funFriendHero === 'function') { try { funFriendHero(el, f); } catch (e) { console.error('[friends] fun hero', e); } }   // agent 'fun': wave, high five, gift
@@ -236,8 +237,8 @@ function _frFeedLine(e) {
 }
 /** The feed of everyone (friendId null) or of one friend: ten lines, Show more, then older ones from the server. */
 function _frFeedSec(friendId) {
-  const more = uiButton({ icon: 'refresh-cw', size: 'sm', kind: 'ghost', tip: 'Check for new messages now', aria: 'Check now', run: (e, b) => _frCheckNow(b) });
-  const sec = _frSec(friendId ? 'Activity' : "What's happening", 'sparkles', more);
+  const sec = _frSec(friendId ? 'Activity' : "What's happening", 'sparkles');   // checking for news is in the header's More
+  if (!friendId) { const h = sec.querySelector(':scope > .sec-h'); if (h) h.remove(); }   // the Feed tab already says Feed
   const key = friendId || '*';
   let c = _frUI.feedC.get(key);
   if (!c) { c = { entries: null, at: 0, shown: 0, busy: false }; _frUI.feedC.set(key, c); }
@@ -248,7 +249,7 @@ function _frFeedSec(friendId) {
     render: _frFeedLine,
     empty: (host) => {
       if (!loaded) { host.appendChild(emptyLine('Loading…')); return; }
-      host.appendChild(f ? emptyLine('Nothing between you yet. Send a cheer to start your streak.', { label: 'Send a cheer', icon: 'heart', run: (e, b) => _frCheerMenu(b || _frHeadAnchor(), f) })
+      host.appendChild(f ? emptyLine('Nothing between you yet.')
         : emptyLine('Nothing yet. Cheers, level-ups, streaks and finished quests show up here.'));
     },
     loadMore: async () => {

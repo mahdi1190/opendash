@@ -76,8 +76,7 @@
     E.tools.append(
       h('button', { type: 'button', class: 'btn btn-ghost btn-sm fvb-layout', 'aria-haspopup': 'menu', title: 'Presets, plain words and the everyday strip', onclick: e => bdLayoutMenu(e.currentTarget) },
         ic('layout-template'), h('span', { text: name }), ic('chevron-down')),
-      h('button', { type: 'button', class: 'btn btn-secondary btn-sm fvb-cust', 'aria-pressed': BDR.editing ? 'true' : 'false', onclick: () => bdEdit(!BDR.editing) },
-        ic(BDR.editing ? 'check' : 'pencil'), h('span', { text: BDR.editing ? 'Done' : 'Customise' })),
+      ...(BDR.editing ? [h('button', { type: 'button', class: 'btn btn-secondary btn-sm fvb-cust', 'aria-pressed': 'true', onclick: () => bdEdit(false) }, ic('check'), h('span', { text: 'Done' }))] : []),   // Customise… is in the layout menu
       h('button', { type: 'button', class: 'btn-icon btn-sm fvb-eye' + (bdHidden() ? ' on' : ''), 'aria-pressed': bdHidden() ? 'true' : 'false',
         'aria-label': bdHidden() ? 'Show amounts' : 'Hide amounts', title: bdHidden() ? 'Show amounts' : 'Hide amounts (hover one to see it; Home follows)', onclick: () => bdToggleAmounts() }, ic(bdHidden() ? 'eye-off' : 'eye')));
   }
@@ -170,7 +169,7 @@
   /* ---------- the first visit: pick a starting point ---------- */
   function bdPaintIntro(X) {
     const el = BDR.el.intro;
-    const show = !boardClean(F.board) && !BDR.editing;
+    const show = false;   // 2.19.1: no banner on top of the page. The layout menu (Simple, Detailed, Start from scratch) and Customise… are in the tools row.
     el.hidden = !show;
     if (!show) { el.innerHTML = ''; return; }
     if (el.childElementCount) return;
@@ -199,20 +198,21 @@
     const days = []; for (let n = today - 28; n < today; n++) if (n >= M.minN) days.push(0);
     for (const t of M.tx) if (t.kind === 'spend' && t.n >= today - 28 && t.n < today && t.n >= M.minN) days[t.n - Math.max(today - 28, M.minN)] += t.s;
     const usual = days.length >= 7 ? median(days) : null;
+    const hasW = (t) => X.L.w.some(w => w.t === t);   // a tile the page already has as a widget is not shown twice
     el.append(bdTile('receipt', 'Spent today', gbp(spentToday),
       nToday ? `${nToday} payment${nToday === 1 ? '' : 's'}` + (pendSum > 0 ? ` · ${gbp2(pendSum)} pending` : '') + (usual != null ? ` · a usual day ${gbp(usual)}` : '') : (usual != null ? `Nothing yet · a usual day ${gbp(usual)}` : 'Nothing yet'),
       spentToday > 0 && usual != null && spentToday > usual * 1.5 ? 'warn' : '', () => setCustomRange(today, Math.max(today, Math.min(anchor, today)))));
     // Safe to spend until payday.
     const B = X.brief();
-    if (B && B.balance) {
+    if (hasW('safe')) { /* the Safe to spend widget says it */ } else if (B && B.balance) {
       const left = round2(B.balance.total - B.billsTotal - B.cushion);
       const per = round2(Math.max(0, left) / Math.max(1, B.cycle.daysLeft));
       el.append(bdTile('wallet', B.mode === 'cycle' ? 'Safe to spend until payday' : 'Safe to spend this month', gbp(per) + ' a day',
         `${gbp(Math.max(0, left))} in ${B.cycle.daysLeft} day${B.cycle.daysLeft === 1 ? '' : 's'}` + (B.mode === 'cycle' ? ` · payday ${fDayW(B.cycle.next)}` : ''), left < 0 ? 'bad' : '', () => setSection('overview')));
     } else el.append(bdTile('wallet', 'Safe to spend', '—', 'Needs your balances: Update bank', 'mute', () => setSection('overview')));
     // The next bill.
-    const next = MBM.billsBetween(M.recurring, anchor, anchor + 32)[0];
-    if (next) {
+    const next = hasW('bills') ? null : MBM.billsBetween(M.recurring, anchor, anchor + 32)[0];
+    if (hasW('bills')) { /* the Bills widget says it */ } else if (next) {
       const note = bdNote(next.m);
       el.append(bdTile('repeat', 'Next bill', gbp2(next.amount), `${next.m} · ${dayWord(next.n, anchor).toLowerCase() === 'today' ? 'due today' : dayWord(next.n, anchor)}` + (note ? ' · reminder set' : ''), next.n - anchor <= 1 ? 'warn' : '', () => { F.merchant = next.m; saveF(); setSection('recurring'); }));
     } else el.append(bdTile('repeat', 'Next bill', '—', 'Nothing due in the next month', 'mute', () => setSection('recurring')));

@@ -193,18 +193,22 @@ function rfHeaderButton() {
   if (!host) return;
   let g = document.getElementById('rf-head');
   if (!g) {
-    g = document.createElement('div'); g.id = 'rf-head'; g.className = 'rf-head';
-    const main = uiButton({ label: 'Weekly review', icon: 'calendar-check', cls: 'rf-head-main', tip: 'One task at a time: keep, move, wait, drop', kbd: 'Shift+R', run: () => rfReviewStart() });
-    main.insertAdjacentHTML('beforeend', '<i class="rf-head-dot" aria-hidden="true"></i>');
-    const more = document.createElement('button'); more.type = 'button'; more.className = 'btn btn-secondary rf-head-more'; more.setAttribute('aria-label', 'More review tools'); more.setAttribute('aria-haspopup', 'menu');
-    more.innerHTML = icon('chevron-down', 'i-sm');
-    more.onclick = () => openMenu(more, rfToolsMenu(), { align: 'end', width: 270 });
-    g.append(main, more);
-    const before = document.getElementById('display-btn');
-    if (before && before.parentNode === host) host.insertBefore(g, before); else host.appendChild(g);
+    // 2.19.1: one More button in place of the Weekly review split button and the Display button.
+    g = uiButton({ icon: 'ellipsis', aria: 'More', tip: 'More: weekly review, clean up, display', cls: 'rf-head',
+      run: (e, btn) => openMenu(btn, _tvMoreMenu(btn), { align: 'end', width: 290 }) });
+    g.id = 'rf-head';
+    g.insertAdjacentHTML('beforeend', '<i class="rf-head-dot" aria-hidden="true"></i>');
+    host.appendChild(g);
   }
   // A dot when the review is due (Friday to Sunday, not saved yet).
   g.classList.toggle('is-due', rfReviewDueNow());
+}
+/** The task header's More menu: the review tools, then how the list is shown (the Display popover). */
+function _tvMoreMenu(anchor) {
+  const items = rfToolsMenu();
+  const disp = document.getElementById('display-btn');
+  if (disp && !disp.hidden) items.push('sep', { label: 'Display', hint: 'Sort, group, rows', icon: 'sliders-horizontal', run: () => openTaskDisplayPopover(anchor) });
+  return items;
 }
 function rfToolsMenu() {
   const left = typeof rfSweepTasks === 'function' ? rfSweepTasks().length : 0;

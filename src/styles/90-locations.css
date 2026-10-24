@@ -103,3 +103,7 @@ html[data-motion-level="off"] .loc-map .here-ring { animation: none; opacity: 0;
 .loc-set-info p { margin: 0 0 var(--space-1); font-size: var(--text-sm); }
 .loc-set-info p.muted { font-size: var(--text-xs); }
 .loc-set-act { display: flex; flex-wrap: wrap; gap: var(--space-1-5); }
+
+/* 2.19.1: Places tabs are a main column and a side column */
+.loc-layout { max-width: none; }
+.loc-layout > .pg-main, .loc-layout > .pg-side { display: flex; flex-direction: column; gap: var(--space-4); }

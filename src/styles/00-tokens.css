@@ -47,6 +47,8 @@
   --row-h-comfy: 52px;
   --control-h-sm: 24px; --control-h: 28px; --control-h-lg: 32px;
   --content-max: 1080px;
+  /* one page width and one gutter for every page (05-layout.css): the header and the body share it, centred */
+  --page-max: 1200px; --page-max-wide: 1440px; --page-max-narrow: 960px; --page-gutter: var(--space-8);
   /* dialogs: the four widths (openDialog size sm|md|lg|xl; DIALOG_SIZES in 11-ui-kit.js has the
      same numbers) and the height of a fixed one (openDialog fixed: true; o.height sets it) */
   --modal-sm: 440px; --modal-md: 560px; --modal-lg: 760px; --modal-xl: 1100px;

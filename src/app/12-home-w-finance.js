@@ -27,9 +27,9 @@
 let _hbFin = { at: 0, loading: false, status: null, glance: null, err: null, key: '' };
 
 registerHomeWidget({
-  id: 'finance', title: 'Money', icon: 'wallet', order: 60, gate: 'finance',
+  id: 'finance', title: 'Money', icon: 'wallet', order: 222, gate: 'finance',
   description: 'Spent today, this week and this month against what is usual, with the latest payments',
-  sizes: ['s', 'm', 'l'], defaultSize: 's',
+  sizes: ['s', 'm', 'l'], defaultSize: 'm',
   render(el, ctx) { return _hbFinRender(el, ctx || {}); },
 });
 

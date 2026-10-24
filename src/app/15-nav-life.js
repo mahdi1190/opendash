@@ -81,7 +81,7 @@ registerPage({
 /** Settings › Profile, scrolled to the wardrobe (the wardrobe module marks it data-whats-new~="wardrobe"). */
 function lifeOpenWardrobe() {
   try { seenSet('pages', 'wardrobe', todayStr()); } catch (e) { /* the dot clears next time */ }
-  if (state.view !== 'settings:me') setView('settings:me');
+  if (typeof _pfShowSec === 'function') _pfShowSec('avatar'); else if (state.view !== 'settings:me') setView('settings:me');   // the wardrobe is on the Avatar tab
   let n = 0;
   const find = () => {
     const el = document.querySelector('[data-whats-new~="wardrobe"], .pfw-strip, .pfw');

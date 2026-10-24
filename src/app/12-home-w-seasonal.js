@@ -10,8 +10,8 @@
    CSS: 93-memories.css (.hse-*).
    ============================================================ */
 registerHomeWidget({
-  id: 'seasonal', title: 'Season', icon: 'gift', group: 'fun', order: 28,
-  sizes: ['m', 'l', 'full'], defaultSize: 'l',
+  id: 'seasonal', title: 'Season', icon: 'gift', group: 'fun', order: 12,
+  sizes: ['m', 'l', 'full'], defaultSize: 'full',
   description: 'In December an advent calendar of small kind tasks; at New Year, your goals ritual',
   emptyHint: 'Appears in December and at New Year',
   aliases: ['advent', 'advent calendar', 'christmas', 'new year', 'goals', 'resolutions', 'season', 'seasonal'],

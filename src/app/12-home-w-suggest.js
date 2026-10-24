@@ -14,7 +14,7 @@ registerHomeWidget({
   id: 'suggest', title: 'Suggestions', icon: 'lightbulb', order: 35, group: 'tasks',
   description: 'Ideas that do the thing: block a free stretch, plan, follow up. One click opens it ready to adjust; ✓ does it now',
   emptyHint: 'Appears when there is something worth doing',
-  sizes: ['s', 'm', 'l', 'full'], defaultSize: 'full', fresh: true,
+  sizes: ['s', 'm', 'l', 'full'], defaultSize: 'full', fresh: true, defaultHidden: true,   // Ideas for today (under the hero) says the same; this one waits in Add widget
   aliases: ['suggestions', 'ideas', 'recommendations', 'what should i do', 'next steps', 'nudges'],
   render(el, ctx) { return typeof sgHomeWidgetRender === 'function' ? sgHomeWidgetRender(el, ctx) : false; },
 });
