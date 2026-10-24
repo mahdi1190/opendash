@@ -6,7 +6,7 @@
      - shown once as a toast that stays a little longer, with Got it (once for
        the person: seen.once 'syncVersionShown:...');
      - listed at the top of the sync dot's panel (56-presence.js), with
-       Dismiss, and the dot is amber ("Needs attention") until it is dismissed;
+       Dismiss, and the dot is amber ("Needs you") until it is dismissed;
      - dismissed for the person, not the browser: the synced seen flags
        (06-core-seen.js seen.once 'syncVersion:<device>:<version>'), so the
        other computer does not show it again. A newer version there that is

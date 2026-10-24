@@ -102,8 +102,17 @@ function permsSetScope(friendId, scope, patch, o) {
 function permsSetTrusted(friendId, on) {
   if (!permsFriendIdOk(friendId)) return false;
   const name = permsFriendName(friendId);
-  const next = permsWithFriend(permsGet(), friendId, { trusted: !!on }, _pmNow());
-  return _pmSave(next, on ? `${name} is a trusted friend: you can now share more with them` : `${name} is no longer trusted: only profile and game progress go to them`, { icon: on ? 'shield-check' : 'eye-off' });
+  const cur = permsGet();
+  // A change of trust turns every sensitive level back to off (98-perms-0logic.js permsWithFriend): say which, with Undo.
+  const was = cur.friends[friendId] && cur.friends[friendId].trusted === !!on ? [] : permsTrustResets(cur, friendId);
+  const next = permsWithFriend(cur, friendId, { trusted: !!on }, _pmNow());
+  const kept = was.length ? ` What you chose before stays off (${_pmScopeList(was)}): choose it again to share it.` : '';
+  return _pmSave(next, on ? `${name} is a trusted friend: you can now share more with them.${kept}` : `${name} is no longer trusted: only profile and game progress go to them`, { icon: on ? 'shield-check' : 'eye-off' });
+}
+/** 'money and locations' from scope ids. */
+function _pmScopeList(ids) {
+  const l = ids.map(id => { const d = permsScope(id); return d ? d.label.toLowerCase() : id; });
+  return l.length > 1 ? l.slice(0, -1).join(', ') + ' and ' + l[l.length - 1] : l.join('');
 }
 function permsStopFriend(friendId) {
   if (!permsFriendIdOk(friendId)) return false;
@@ -194,7 +203,7 @@ function _pmEngineShared(friendId, key) {
   const v = f && f[key];
   return v && typeof v === 'object' ? (v.b && typeof v.b === 'object' ? v.b : v) : null;
 }
-/** "Share when I'm online" in the Friends tab (presence also needs it). */
+/** "Show friends when I'm around" in the Friends tab (presence also needs it). */
 function permsPresenceSwitchOn() {
   const F = _pmFriendsApi();
   try { const me = F && typeof F.me === 'function' ? F.me() : null; return !!(me && me.prefs && me.prefs.presence && me.prefs.presence.share); } catch (e) { return false; }

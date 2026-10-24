@@ -369,8 +369,11 @@ async function _pmChooseLevel(friendId, scope, mode, after) {
   }
   if (def.sensitive && permsIsOn(mode) && !f.trusted) {
     // Choosing the level IS the choice: mark them trusted too, with Undo (nothing goes for a few seconds).
+    // Only THIS level goes on: levels chosen for them before stay off (permsWithFriend), and the message says which.
+    const was = permsTrustResets(permsGet(), friendId).filter(s => s !== scope);
     const next = permsWithScope(permsWithFriend(permsGet(), friendId, { trusted: true }, _pmNow()), friendId, scope, { mode }, _pmNow());
-    _pmSave(next, `${name} is a trusted friend now, and sees your ${def.label.toLowerCase()}: ${_pmModeLabel(scope, mode).toLowerCase()}`, { icon: 'shield-check', undoMsg: `Back as it was: ${name} is not trusted` });
+    const kept = was.length ? ` What you chose before stays off (${_pmScopeList(was)}).` : '';
+    _pmSave(next, `${name} is a trusted friend now, and sees your ${def.label.toLowerCase()}: ${_pmModeLabel(scope, mode).toLowerCase()}.${kept}`, { icon: 'shield-check', undoMsg: `Back as it was: ${name} is not trusted` });
   } else {
     permsSetScope(friendId, scope, { mode });
   }
@@ -432,7 +435,7 @@ function _pmScopeRow(friendId, def, f, eff, name, refresh) {
     x.appendChild(_pmBtn(w ? 'Shared ' + w : 'Shared until you change it', 'hourglass', () => _pmPickWindow(friendId, def.id, refresh), 'btn-ghost pm-win'));
     left.appendChild(x);
   }
-  if (def.id === 'presence' && e.on && !permsPresenceSwitchOn()) left.appendChild(_pmEl('p', 'pm-audit muted', 'Also turn on “Share when I’m online” in the Friends tab: until then nobody sees it.'));
+  if (def.id === 'presence' && e.on && !permsPresenceSwitchOn()) left.appendChild(_pmEl('p', 'pm-audit muted', 'Also turn on “Show friends when I’m around” in the Friends tab: until then nobody sees it.'));
   const risk = e.on ? permsRisky(def.id, c.mode) : '';
   if (risk) { const r = _pmEl('p', 'pm-risk'); r.appendChild(_pmIcon('triangle-alert')); r.appendChild(_pmEl('span', '', risk)); left.appendChild(r); }
   if (def.by === 'perms') { const a = permsAuditLine(friendId, def.id, name); if (a) left.appendChild(_pmEl('p', 'pm-audit muted', a)); }
@@ -533,7 +536,7 @@ function permsPreviewOpen(friendId) {
             }
           } else if (r.sent) {
             sec.appendChild(permsRenderData(r.scope, r.mode, r.sent));
-            sec.appendChild(_pmEl('p', 'muted', r.needsSwitch ? 'Nothing goes yet: “Share when I’m online” is off in the Friends tab.' : `Sent by the Friends tab${r.sentAt ? ', last updated ' + _pmAgo(r.sentAt) : ''}.`));
+            sec.appendChild(_pmEl('p', 'muted', r.needsSwitch ? 'Nothing goes yet: “Show friends when I’m around” is off in the Friends tab.' : `Sent by the Friends tab${r.sentAt ? ', last updated ' + _pmAgo(r.sentAt) : ''}.`));
           } else {
             sec.appendChild(_pmEl('p', 'muted', permsLevelText(r.scope, r.mode, name) + ' The Friends tab sends it.'));
           }

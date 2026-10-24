@@ -1,7 +1,10 @@
 /* ============================================================
    FRIENDS: the Friends tab (owner: Friends; docs/dev/FRIENDS.md).
    #view=friends (the hangout) and #view=friends:<id> (a friend's page).
-   Group 'home' (the sidebar's Friends item, after Memories).
+   Group 'home'. The way in is the corner (your avatar on the sidebar's
+   workspace button, 97-profile-3corner.js, 2.17.1); the sidebar's Friends
+   item (after Memories) is hidden by default and comes back from
+   Customise sidebar (Home > Friends).
 
      hangout      everyone's avatars with live presence, requests waiting
                   (approve with the check code), friend cards (their level,
@@ -30,10 +33,10 @@ registerSection('friends', {
   unmount() { _frUI.entry = ''; _frUI.root = null; },
 });
 registerSidebarBlock('home', {
-  id: 'friends-nav', order: 14,
+  id: 'friends-nav', order: 14, label: 'Friends', hiddenByDefault: true,   // the corner is the way in (2.17.1); Customise sidebar shows it
   render(el) {
     const d = _fr.data;
-    const waiting = d && d.friends ? d.friends.filter(f => f.status === 'incoming').length : 0;
+    const waiting = d && d.friends ? d.friends.filter(f => f.status === 'incoming' || (f.status === 'requested' && f.step === 'check')).length : 0;
     el.appendChild(sbNavItem({ label: 'Friends', icon: 'users', view: 'friends', active: /^friends(:|$)/.test(String(state.view || '')), badge: waiting ? String(waiting) : '', title: waiting ? `${waiting} waiting for you` : 'Your friends' }));
   },
 });
@@ -321,7 +324,7 @@ function _frNoRelay(d) {
 
 /* ---------- requests: approve with the check code ---------- */
 function _frPendingSec(list) {
-  const sec = _frSec(list.some(f => f.status === 'incoming') ? 'Waiting for you' : 'Requests', 'user-check');
+  const sec = _frSec(list.some(f => f.status === 'incoming' || f.step === 'check') ? 'Waiting for you' : 'Requests', 'user-check');
   for (const f of list) sec.appendChild(_frPendCard(f));
   return sec;
 }
@@ -331,7 +334,7 @@ function _frCodeEl(code) {
   return c;
 }
 function _frPendCard(f) {
-  const el = _frEl('div', 'card fr-pend' + (f.status === 'incoming' && f.step === 'check' ? ' is-check' : ''));
+  const el = _frEl('div', 'card fr-pend' + (f.step === 'check' ? ' is-check' : ''));
   el.appendChild(_frAvatarWrap(f, 44, { presence: false }));
   const body = _frEl('div', 'fr-pend-b');
   const name = friendName(f);
@@ -353,9 +356,16 @@ function _frPendCard(f) {
     acts.appendChild(_frBtn('Decline', { sm: true, kind: 'btn-ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/decline', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Declined. They are not told why.') }));
     acts.appendChild(_frBtn('', { icon: 'lock', sm: true, kind: 'btn-ghost', tip: 'Block: they can never reach you again', aria: 'Block', run: () => _frRemove(f, true) }));
   } else {
-    if (f.step === 'approve') {
+    if (f.step === 'check') {
+      // Added by code: this side compares the code too (a relay could have answered for someone else).
+      body.appendChild(_frEl('b', null, f.theyApproved ? `${name} approved: check the code to finish` : `Check the code with ${name}`));
+      body.appendChild(_frEl('span', null, `Check that ${name} sees this same code, in person, on a call or in a message you trust:`));
+      body.appendChild(_frCodeEl(f.code));
+      acts.appendChild(_frBtn('The codes match', { icon: 'check', kind: 'btn-primary', run: (e, b) => _frDo(b, async () => { const r = await _frApi('/api/friends/confirm', { id: f.id }); if (r && r.friend && r.friend.status === 'friend') _frBurst(b); await friendsLoad(true); _frRepaint(); }) }));
+      acts.appendChild(_frBtn('The codes are different', { sm: true, run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try adding each other again.') }));
+    } else if (f.step === 'approve') {
       body.appendChild(_frEl('b', null, `Waiting for ${name} to approve`));
-      body.appendChild(_frEl('span', null, 'Tell them your code. They approve once it matches the code on their screen:'));
+      body.appendChild(_frEl('span', null, f.how === 'code' ? 'You checked the code. They approve once it matches the code on their screen:' : 'Tell them your code. They approve once it matches the code on their screen:'));
       body.appendChild(_frCodeEl(f.code));
       acts.appendChild(_frBtn('The codes are different', { sm: true, run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try again with a new invite.') }));
     } else {
@@ -643,7 +653,7 @@ function _frSettingsSec(d) {
   }
   const note = _frEl('p', 'fr-privacy');
   note.innerHTML = icon('lock', 'i-xs');
-  note.appendChild(_frEl('span', null, "Everything between friends is end-to-end encrypted: your relay only sees scrambled messages and random mailbox ids. Friends only get what you share with them (your name, game progress, cheers): never your tasks, mail, calendar, money, Claude or accounts."));
+  note.appendChild(_frEl('span', null, 'Encrypted end to end: your relay can\'t read anything. Each friend sees your card and game progress, plus only what you choose for them in Settings > Privacy.'));
   body.appendChild(note);
   det.appendChild(body);
   return det;

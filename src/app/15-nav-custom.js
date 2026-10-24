@@ -8,6 +8,9 @@
    state.sidebarLayout = {
      order:  {<tab>: [blockId]}      section order per tab (home, tasks, calendar, finance)
      hidden: {'<tab>/<blockId>': true, 'item:<view>': true}
+                                     a block registered with hiddenByDefault: true (the Friends item,
+                                     2.17.1: the corner is the way in) is hidden until the user shows
+                                     it, saved as '<tab>/<blockId>': false
      names:  {<blockId>: 'Name'}     renamed section headings
      items:  {<blockId>: [view]}     row order inside a section (Views)
      pins:   [view]                  pinned to the top ('list:<id>', 'stream:<id>', 'today', a board view ...)
@@ -18,6 +21,7 @@
      sbIsPinned(view) / sbTogglePin(view, o) / sbUnpin(view, o)
      registerSidebarPinKind(prefix, resolve(view, ctx) -> {label, icon|avatarHtml, count, onClick} | null)
                                     another module's pinnable things (saved boards: prefix 'board')
+     sbBlockHidden(L, tab, block)   is a block hidden (the user's choice, else its default)
      openSidebarCustomiser()        the Customise sidebar dialog
      sbResetLayout()
    Keys: Alt+1..9 opens the first nine pins.
@@ -42,11 +46,28 @@ function sbLayoutEdit(fn, o) {
   o = o || {};
   const L = JSON.parse(JSON.stringify(sbLayout()));
   fn(L);
-  for (const k of ['order', 'hidden', 'names', 'items']) for (const [kk, v] of Object.entries(L[k])) if (v === null || v === undefined || v === false || v === '' || (Array.isArray(v) && !v.length)) delete L[k][kk];
+  for (const k of ['order', 'hidden', 'names', 'items']) for (const [kk, v] of Object.entries(L[k])) if (v === null || v === undefined || (v === false && !(k === 'hidden' && _sbHiddenByDefault(kk))) || v === '' || (Array.isArray(v) && !v.length)) delete L[k][kk];
   state.sidebarLayout = L;
   if (o.noSave) return;
   saveData();
   renderSidebar();
+}
+/** A block that starts hidden (registerSidebarBlock {hiddenByDefault: true}), from its '<tab>/<blockId>' key. */
+function _sbHiddenByDefault(key) {
+  const i = String(key).indexOf('/');
+  if (i < 0) return false;
+  const id = String(key).slice(i + 1), b = SIDEBAR_BLOCKS.find(x => x.id === id);
+  return !!(b && b.hiddenByDefault);
+}
+/** Is a block hidden on a tab: the user's choice when there is one, else the block's own default. */
+function sbBlockHidden(L, tab, b) {
+  const k = tab + '/' + b.id;
+  return Object.prototype.hasOwnProperty.call(L.hidden, k) ? L.hidden[k] === true : !!b.hiddenByDefault;
+}
+/** Hide or show a block (inside sbLayoutEdit): back at its default, the key goes (so Reset and new devices agree). */
+function _sbSetBlockHidden(L, tab, b, hide) {
+  const k = tab + '/' + b.id;
+  if (!!hide === !!b.hiddenByDefault) delete L.hidden[k]; else L.hidden[k] = !!hide;
 }
 function _sbLabelOf(b) { return _sbBlockTitles[b.id] || b.label || b.title || _SB_BLOCK_LABELS[b.id] || String(b.id).replace(/[-_]+/g, ' ').replace(/^\w/, c => c.toUpperCase()); }
 function sbBlockName(id) { const n = sbLayout().names[id]; return typeof n === 'string' && n.trim() ? n.trim() : null; }
@@ -64,7 +85,7 @@ function sbLayoutBlocks(blocks, tab, o) {
     let j = i - 1; while (j >= 0 && !out.includes(blocks[j])) j--;
     if (j < 0) out.splice(front++, 0, b); else out.splice(out.indexOf(blocks[j]) + 1, 0, b);
   });
-  return o && o.all ? out : out.filter(b => !L.hidden[tab + '/' + b.id]);
+  return o && o.all ? out : out.filter(b => !sbBlockHidden(L, tab, b));
 }
 /** After a block drew itself: its heading's new name, hidden rows, the row order. */
 function sbLayoutDecorate(el, blockId) {
@@ -107,7 +128,8 @@ function sbLayoutDrag(sb) {
 /** The note at the foot of the sidebar when something is hidden (plain, so nothing is lost from sight). */
 function sbLayoutFooter(sb, tab) {
   const L = sbLayout();
-  const n = Object.keys(L.hidden).filter(k => k.startsWith(tab + '/') || (k.startsWith('item:') && tab === 'tasks')).length;
+  // Blocks hidden by default (the Friends item: the corner is the way in) are not counted; the user's own choices are.
+  const n = Object.keys(L.hidden).filter(k => L.hidden[k] === true && (k.startsWith(tab + '/') || (k.startsWith('item:') && tab === 'tasks'))).length;
   if (!n) return;
   const b = sbNavItem({ label: `${n} hidden · Customise`, icon: 'eye-off', className: 'nav-more sb-hidden-note', active: false, onClick: () => openSidebarCustomiser(tab) });
   sb.appendChild(b);
@@ -192,8 +214,9 @@ function sbMoveBlock(tab, id, delta) {
   sbLayoutEdit(L => { L.order[tab] = blocks; });
 }
 function sbHideBlock(tab, id, hide) {
-  sbLayoutEdit(L => { if (hide) L.hidden[tab + '/' + id] = true; else delete L.hidden[tab + '/' + id]; });
-  if (hide) toast(`${sbBlockName(id) || _sbBlockTitles[id] || _SB_BLOCK_LABELS[id] || 'Section'} hidden`, { icon: 'eye-off', action: { label: 'Undo', run: () => undo() } });
+  const b = SIDEBAR_BLOCKS.find(x => x.id === id) || { id };
+  sbLayoutEdit(L => { _sbSetBlockHidden(L, tab, b, hide); });
+  if (hide) toast(`${sbBlockName(id) || _sbLabelOf(b) || 'Section'} hidden`, { icon: 'eye-off', action: { label: 'Undo', run: () => undo() } });
 }
 function sbHideItem(view, hide, label) {
   sbLayoutEdit(L => { if (hide) L.hidden['item:' + view] = true; else delete L.hidden['item:' + view]; });
@@ -291,7 +314,7 @@ function openSidebarCustomiser(tab) {
     const list = document.createElement('div'); list.className = 'sbc-list'; list.setAttribute('role', 'list'); list.setAttribute('aria-label', 'Sections: drag, or Alt+Up and Alt+Down, to move');
     const blocks = sbLayoutBlocks(SIDEBAR_BLOCKS.filter(b => b.groups.includes(tab)), tab, { all: true });
     for (const b of blocks) {
-      const hidden = !!L.hidden[tab + '/' + b.id];
+      const hidden = sbBlockHidden(L, tab, b);
       const row = document.createElement('div'); row.className = 'sbc-row' + (hidden ? ' is-hidden' : ''); row.dataset.id = b.id; row.tabIndex = 0; row.setAttribute('role', 'listitem');
       const dflt = _sbLabelOf(b);
       row.innerHTML = `<span class="sbc-grip">${icon('grip-vertical', 'i-sm')}</span>`;
@@ -301,7 +324,7 @@ function openSidebarCustomiser(tab) {
       name.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); name.blur(); } };
       const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'btn-icon btn-sm sbc-eye';
       eye.innerHTML = icon(hidden ? 'eye-off' : 'eye'); eye.setAttribute('aria-label', hidden ? `Show ${dflt}` : `Hide ${dflt}`); eye.setAttribute('data-tip', hidden ? 'Hidden: click to show' : 'Shown: click to hide');
-      eye.onclick = () => { sbLayoutEdit(Lx => { if (hidden) delete Lx.hidden[tab + '/' + b.id]; else Lx.hidden[tab + '/' + b.id] = true; }); paint(); };
+      eye.onclick = () => { sbLayoutEdit(Lx => { _sbSetBlockHidden(Lx, tab, b, !hidden); }); paint(); };
       row.append(name, eye);
       row.addEventListener('keydown', (e) => {
         if (e.target === name) return;

@@ -112,7 +112,9 @@ closes (`tampered`).
 
 | `t` | Fields | Meaning |
 |---|---|---|
-| `hi` | `v`, `seen`, `seq`, `couldNotReachYou?` | sent by both on opening: `seen` = the sender's contiguous frontier of the other's change numbers |
+| `hi` | `v`, `seen`, `seq`, `couldNotReachYou?`, `fid?` | sent by both on opening: `seen` = the sender's contiguous frontier of the other's change numbers; `fid` (2.17.1) = the id of the person's friends identity on the sender ('' none), so the other side offers the key to the relay (`kx`) if the sender lacks it |
+| `part` | `v`, `data` | (2.17.1) the person's relay record as the sender has it: the registers of `friends/relays.json` (home relay, which is home, the choice to sync through it), serialized like a snapshot (SYNC_FORMAT.md section 7), sent on opening. The receiver merges them like any registers (only paths in that file), so a computer of the person has their relay at once, whatever its backlog |
+| `kx` | `v`, `x`, `fid` | (2.17.1) the keyring extras a member's keys.json rewrap carries (purpose `member`: the friends identity, which certifies a device to the relay), sent to a peer whose `hi` showed it lacks them (or holds another), and to open links when the identity first appears on the sender. Taken exactly as from keys.json (`e2e.takeLiveExtras`); never logged |
 | `recs` | `items: [{file, rec}]` | the sender's own sealed log records (SYNC_FORMAT.md 11.2) with their log file name (part of the AES-GCM associated data); answers `hi` with what the other missed, then every new record as it is written; at most about 1 MiB per frame |
 | `seen` | `n` | how far the sender now has the other's records |
 | `lease` | `claims` | main-computer claims (section 7) |
@@ -127,6 +129,9 @@ again and stayed away for 30 seconds means the other device went away
 fire more than 30 seconds late) dials every member at once, announces itself
 on the network and renews its router port (`live.wake()`), so the others see
 it back within seconds.
+
+`part` and `kx` are taken only from an authenticated member of the group
+over this end-to-end encrypted link; an older version ignores both.
 
 A receiver takes `recs` only with `rec.dev` equal to the authenticated
 peer, and passes them to the engine (`deliverLive`), which applies exactly
@@ -177,8 +182,13 @@ announcement only makes members dial the replayer, whose handshake fails.
 
 ## 7. Port mapping (being reachable from outside)
 
-With "Let my other computers reach this one over the internet" on (the
-default), a device asks its router to forward its port:
+With "Let my other computers reach this one over the internet" on, a device
+asks its router to forward its port. The default (2.17.1): on only while the
+computer's sync does NOT go through the person's relay (`engine.usesRelay()`);
+with a relay in use nothing is opened on the router, and a mapping made
+before is removed. Once the person sets the switch themselves
+(`internetSet` in `live.json`; an older `internet: false` counts as their
+choice) that choice is kept either way:
 
 1. UPnP IGD: SSDP `M-SEARCH` to 239.255.255.250:1900 for
    `InternetGatewayDevice:1` and `:2`, the device description over HTTP,
@@ -233,7 +243,7 @@ before.
 
 ## 9. Status (Settings > Sync)
 
-`GET /api/sync/status` carries `live`: `{on, state, why, internet, port,
+`GET /api/sync/status` carries `live`: `{on, state, why, internet (in effect now), internetSet, relay (sync goes through the relay), port,
 listening, reach: {state, method, external}, firewall, peers: [{id, name,
 state: live|connecting|not-live, path: lan|internet, reason}], roles:
 [{role, label, deviceId, name, me, acting}], prefs}`; `reason` is one of

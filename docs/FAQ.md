@@ -99,7 +99,7 @@ your tasks. See [FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#what-friends-can-see).
 
 **Do Friends need a server or an account?**
 A small private relay: your own on your Cloudflare account (free; Settings >
-Your relay > *Connect Cloudflare*, about 2 minutes), or a friend's that you
+Your relay > *Set up my relay*, about 2 minutes), or a friend's that you
 join with their invite. It only holds sealed messages it cannot read. See
 [FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#your-relay).
 
@@ -139,7 +139,7 @@ change your tasks from a chat. See [MCP.md](MCP.md).
 Press Q and type, for example `Send Alex the slides fri 3pm #work !p1`. See
 [USAGE.md](USAGE.md#quick-add).
 
-**Connect Cloudflare stopped with an error. What now?**
+**Setting up my relay stopped with an error. What now?**
 Each stop says what happened and what to do, with *Try again*. The common
 ones (Node.js missing, the sign-in not allowed, no workers.dev subdomain,
 several accounts) are explained in

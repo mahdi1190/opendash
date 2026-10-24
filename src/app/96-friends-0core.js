@@ -142,6 +142,7 @@ function friendsOnEvent(d) {
 }
 function _frPaintPresence(id, s) {
   for (const el of document.querySelectorAll(`[data-fr-presence="${CSS.escape(id)}"]`)) el.setAttribute('data-p', s);
+  if (typeof profileCornerPaint === 'function') { try { profileCornerPaint(); } catch (e) { /* never in the way */ } }   // the corner's "friends around" dot
 }
 function friendsGet(id) { return ((_fr.data && _fr.data.friends) || []).find(f => f.id === id) || null; }
 

@@ -40,6 +40,8 @@
      permsEffective(perms, friendId, {status, today})
                                       {scope: {mode, on, reason?, until?, from?, label?}}: what may go out NOW
      permsWithScope(perms, friendId, scope, patch, now) / permsWithFriend(perms, friendId, patch, now)   new copies
+                                      (a change of `trusted` turns every sensitive scope back to off: 2.17.1)
+     permsTrustResets(perms, friendId)  the sensitive scopes on for them now (what a change of trust turns off)
      permsRisky(scope, mode)          the warning for money 'full' and location 'exact', else ''
      permsLevelText(scope, mode, name)  what that level shows, in words
      PERMS_SCHEMA / permsClean(scope, mode, data)   the strict allow-list: only listed fields, typed,
@@ -192,11 +194,25 @@ function permsWithFriend(perms, friendId, patch, now) {
   const p = _pmClone(permsNormalize(perms));
   if (!permsFriendIdOk(friendId)) return p;
   const f = _pmEntry(p, friendId);
-  if (patch && _pmOwn(patch, 'trusted')) f.trusted = patch.trusted === true;
+  if (patch && _pmOwn(patch, 'trusted')) {
+    const t = patch.trusted === true;
+    // 2.17.1: trust going on or off never brings back levels chosen before. Every sensitive scope that
+    // was on goes back to off (its windows and picks stay), so marking someone trusted turns on only
+    // what is chosen with it (patch.scopes below, or permsWithScope right after) and its own warning.
+    if (t !== (f.trusted === true)) for (const s of permsTrustResets(p, friendId)) f.scopes[s] = Object.assign({}, f.scopes[s], { mode: permsScope(s).def });
+    f.trusted = t;
+  }
   if (patch && _pmOwn(patch, 'stopped')) f.stopped = Number(patch.stopped) > 0 ? Number(patch.stopped) : 0;
   if (patch && _pmObj(patch.scopes)) for (const s of PERMS_SCOPE_IDS) if (_pmOwn(patch.scopes, s)) f.scopes[s] = _pmScopeCfg(s, patch.scopes[s]);
   f.at = Number(now) || f.at || 0;
   return permsNormalize(p);
+}
+
+/** The sensitive scopes set to a level for this friend now: what a change of trust turns back to off. */
+function permsTrustResets(perms, friendId) {
+  const f = permsFriendIdOk(friendId) && _pmObj(perms) && _pmObj(perms.friends) ? perms.friends[friendId] : null;
+  const sc = f && _pmObj(f.scopes) ? f.scopes : {};
+  return PERMS_SCOPES.filter(d => d.sensitive && _pmObj(sc[d.id]) && permsIsOn(sc[d.id].mode)).map(d => d.id);
 }
 
 /* ---------- words ---------- */

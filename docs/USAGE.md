@@ -343,17 +343,24 @@ Acme to next Monday", "Add a task to email Sam on Thursday, high priority".
 ## Friends
 
 Add people who also use OpenDash: cheer each other on, compare levels and
-streaks, and do things together. Open **Friends** in the sidebar; until you
-have a friend, a short welcome walks you through three steps (Ctrl+K,
-*Friends: getting started* brings it back):
+streaks, and do things together. Click your avatar in the sidebar's top-left
+corner, then **Open Friends**; until you have a friend, a short welcome walks
+you through three steps (Ctrl+K, *Friends: getting started* brings it back):
 
 1. **Make your character** (Settings > Profile).
-2. **Get a relay**: *Connect Cloudflare* (free, about 2 minutes: your browser
+2. **Get a relay**: *Set up my relay* (free, about 2 minutes: your browser
    opens Cloudflare's sign-in, you click Allow) or *Paste a friend's invite*.
    Settings > **Your relay** shows who can use it, pending invites, and the
-   free allowance used today; *Disconnect relay* has an Undo.
+   free allowance used today; *Stop using this relay* (Advanced) has an Undo.
 3. **Invite a friend**: a single-use link, copied as it is or inside a ready
    message. You both check a 6-digit code before you are connected.
+
+The corner is you: your avatar, your status, a green dot when a friend is
+around and a number when a request is waiting. Its menu has your card (*Edit
+profile*, *Set status*), the friends who are around, *Open Friends*, *Add a
+friend*, *What my friends can see*, *Your relay* and *Sync* (each with its
+state), then the usual workspace items. To have Friends in the sidebar too,
+use *Customise sidebar* (Home > Friends).
 
 Friends see only your profile and game progress until you choose more, per
 friend (*What Sam can see* on their page). Everything between friends is
@@ -366,7 +373,7 @@ Open **Settings** from the sidebar footer (or Ctrl+K, "settings").
 
 | Group | What is there |
 |---|---|
-| Profile | your card: display name, pronouns, status, bio, what you are working on, its colour; the character builder (your avatar, shown on the top bar); the badges and favourite places you show; what friends see |
+| Profile | your card: display name, pronouns, status, bio, what you are working on, its colour; the character builder (your avatar, shown in the sidebar's top-left corner); the badges and favourite places you show; what friends see |
 | Name & region | name, your email addresses, time zone, date format, currency, week start, working hours, weather town |
 | Home | Customise, the brief and suggestions panels, Hide amounts, working hours |
 | Suggestions | on or off, how many on Home, a switch per kind of suggestion, reset |
@@ -377,7 +384,7 @@ Open **Settings** from the sidebar footer (or Ctrl+K, "settings").
 | Files & auto-link | workspace folders and the auto-linker |
 | Morning brief, Animations | brief and story options, scenes |
 | Data | the data folder, backups and restore, export and import, a clean copy of the app, reset |
-| Your relay | your private relay on Cloudflare for Friends and sync: Connect Cloudflare, who can use it, invites, usage, Disconnect ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#your-relay)) |
+| Your relay | your private relay on Cloudflare for Friends and sync: Set up my relay, who can use it, invites, today's free allowance, Update my relay and Stop using this relay (under Advanced) ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#your-relay)) |
 | Server | status, restart, log, start-up options, the offline page |
 | Diagnostics | a report to copy into a bug report, with personal details removed |
 | About | the version and licence |

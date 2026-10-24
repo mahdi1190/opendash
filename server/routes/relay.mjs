@@ -15,6 +15,8 @@
 //   POST /api/relay/disconnect         stop using it on every device (the Worker stays on Cloudflare) -> {undo}
 //   POST /api/relay/reconnect          Undo of disconnect (within a minute)
 //   POST /api/relay/use-invite         {invite}: use a friend's relay instead
+//   POST /api/relay/sync               device sync may use the home relay (a friend's relay joined from Friends
+//                                      is used for sync only after this choice)
 //   POST /api/relay/local              {origin}: a relay on THIS computer (tools/relay-local.mjs) as your own;
 //                                      registered only with OPENDASH_RELAY_ALLOW_LOCAL=1 (development, self-hosting)
 //
@@ -52,6 +54,7 @@ export default function register(app) {
   app.route({ path: '/api/relay/disconnect', method: 'POST', handler: wrap(() => svc.disconnect()) });
   app.route({ path: '/api/relay/reconnect', method: 'POST', handler: wrap(() => svc.reconnect()) });
   app.route({ path: '/api/relay/use-invite', method: 'POST', handler: wrap(async (c) => { const b = await body(c); return svc.useInvite(b.invite); }) });
+  app.route({ path: '/api/relay/sync', method: 'POST', handler: wrap(() => svc.useForSync()) });
   // Development and self-hosting only (RELAY_PROTOCOL.md section 12): nothing but the environment turns it on.
   if (relayLocalAllowed()) app.route({ path: '/api/relay/local', method: 'POST', handler: wrap(async (c) => { const b = await body(c); return svc.useLocal(typeof b.origin === 'string' ? b.origin.slice(0, 200) : ''); }) });
 }

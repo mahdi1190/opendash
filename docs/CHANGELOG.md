@@ -10,6 +10,60 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.17.1] - 2026-10-24
+
+Your relay now works on every one of your computers by itself, and sync goes through it first, so your changes no longer wait for OneDrive. The Sync page is much simpler, your avatar in the top-left corner opens your own little hub, and friends and your relay are safer too.
+
+**Please do it in this order:**
+
+1. **Update every computer first** (Settings > Updates on each one).
+2. **Then, on one of them**, open Settings > Your relay > Advanced and click **Update my relay** once, so your relay gets the new protections too. It keeps its address, its members and your computers.
+
+Why the order matters: an updated relay asks for proof of your current sync key, which a computer still on 2.17.0 can't give, so that computer would be turned away by your relay until it is updated.
+
+### Your relay on every computer
+
+- **Your relay carries over by itself.** Connect it on one computer and your other computers pick it up on their own, together with the key to it: straight over the link between your computers when they are both on, or through your sync folder. A computer that was still on an older version when you connected your relay catches up as soon as it is updated.
+- **The setting follows you too.** Choose to sync through your relay on one computer and your others switch to it as soon as they have the key (your own relay does this from the start). Settings > Sync says so once, with Undo. Turning it off on one computer changes only that computer.
+- **Your relay first, OneDrive as a backup.** Changes from your other computers come through your relay within a second. Your sync folder keeps a backup copy, and OpenDash reads it only for anything the relay doesn't have yet or while the relay can't be reached, then switches back by itself. No more waiting for OneDrive, and a file OneDrive is still downloading never holds sync up.
+- **Clear status on every computer.** A computer that doesn't use your relay yet says so, with **Use my relay too** or one plain line about what is missing and how to fix it. OpenDash never suggests setting up a second relay when you already have one.
+- **Get your relay right away:** Settings > Sync > Advanced > *Get your relay from your other computer now*. Paste the link from Add a computer on your other computer and type its 4 letters. This computer keeps everything it has and only gets the key to your relay.
+
+### A simpler Sync page
+
+- **One card, status first.** Settings > Sync opens on one line that says how things are (*Up to date*, *Catching up*, *Needs you*), then how your changes travel ("Same Wi-Fi: direct · Elsewhere: your relay · OneDrive: backup"), and one line for each of your computers: *Up to date*, *Catching up 40%*, *Asleep*, *Off* or *Needs an update*. Click a computer to rename or remove it.
+- **A sleeping laptop is not a problem any more.** When your other computer is asleep or switched off, Sync says so calmly ("Work laptop is asleep and catches up when it wakes"), never "cannot be reached" or a router message.
+- **Your router is left alone.** While your relay carries your changes, OpenDash no longer asks your router to open a door, and the router and internet-provider messages are gone. (If you had turned that switch on yourself, your choice is kept.)
+- **Everything else is still there, folded away.** *More* has your computers and phones, the main computer (one choice for mail, calendar, bank and Claude), adding a phone, the recovery code and Sync now. *Advanced* has the ways to sync, Preview changes first, which computer does what, and details for support.
+- **Check-up** (it used to be called Health) shows only what needs you, each with its button; everything that is fine is folded underneath.
+- **Your relay** reads the same way: one line that says whether it's on, **Set up my relay** when you don't have one, and **Update my relay** and **Stop using this relay** under Advanced. Your computers are listed by name.
+
+### The corner is you
+
+- **Your avatar and name sit in the sidebar's top-left corner**, with your status and a dot when friends are around (a number when someone is waiting for you).
+- **Click it for your own hub:** your card, a quick status, your friends, your relay and Sync, and the usual workspace menu.
+- **The Friends item in the sidebar is hidden** now that the corner is the way in; Customise sidebar shows it again if you like it.
+
+### Clearer wording
+
+- The Friends privacy note now says what really happens: each friend sees your card and game progress, plus only what you choose for them in Settings > Privacy.
+- Settings > Privacy names the right switch for your online status: *Show friends when I'm around* in the Friends tab.
+- Location history now says your places stay on your devices unless you choose to share them with a friend.
+
+### Fixed
+
+- **Catching up no longer gets stuck.** After a computer joined again with the recovery code, it could stay stuck at, say, 28%, send everything again on every connection and make some edits look like clashes. It repairs itself the first time it starts. A change that goes missing on the way is now fetched again by itself, and Settings > Sync shows *Catching up 40%* next to that computer.
+
+### Safer friends and relay
+
+- **Adding someone with a friend code:** you both check the 6-digit code now (*The codes match* or *The codes are different*), not only the person who approves.
+- **Changing how much you trust a friend** turns off everything private you shared with them before. The message says what stayed off, so you choose again on purpose, and Undo puts it back.
+- **Places shared for a trip or between two days** now send only places from those days, and nothing at all if there are none.
+- **Your profile card** shows only game badges (tasks, streaks, focus, quests, levels and the like) until you pick your own. Money, places, habits and people badges stay private unless you choose them.
+- **A friend code or short link you replace or remove** can't be taken over by someone else.
+- **A friend's relay** carries your device sync only when you choose it in Settings > Your relay, and disconnecting your own relay never moves you onto a friend's without asking. If you already sync through a friend's relay, click **Use it for sync** there once.
+- **Your relay is harder to misuse:** OpenDash refuses relay addresses written as bare numbers (they can point inside your own network), strangers get less time and fewer places to wait so they can't crowd out your devices, and changing sync's key on the relay needs proof of the current key.
+
 ## [2.17.0] - 2026-10-24
 
 Friends! Add the people you like who also use OpenDash, cheer each other on and do things together, through a small private relay that only you, your devices and the people you invite can use. Nothing private is shared until you say so.

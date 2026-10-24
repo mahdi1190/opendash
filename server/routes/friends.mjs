@@ -18,7 +18,8 @@
 //   POST /api/friends/add        {code} | {invite}  -> {ok, friend}
 //   POST /api/friends/invite     {ttlDays?, relayScopes?}  -> {ok, id, text, link, exp, relayScopes}
 //   POST /api/friends/invite/cancel {id}
-//   POST /api/friends/approve | decline | mismatch | cancel   {id}
+//   POST /api/friends/approve | confirm | decline | mismatch | cancel   {id}
+//                                 confirm: the requester's "The codes match" (added by code)
 //   POST /api/friends/remove     {id, block?} -> {ok, undoUntil}
 //   POST /api/friends/remove/undo {id} | /api/friends/unblock {id}
 //   POST /api/friends/send       {to, kind, body, group?} -> {ok, id, sent, queued, skipped}
@@ -131,7 +132,7 @@ export default function register(app) {
     return engine.createInvite({ ttlDays: Number(b.ttlDays) || 7, relayScopes: Array.isArray(b.relayScopes) ? b.relayScopes.map(x => str(x, 20)).filter(Boolean).slice(0, 4) : null });
   });
   route('/api/friends/invite/cancel', 'POST', async (c) => engine.cancelInvite(str((await body(c)).id, 20)));
-  for (const act of ['approve', 'decline', 'mismatch', 'cancel', 'unblock']) {
+  for (const act of ['approve', 'confirm', 'decline', 'mismatch', 'cancel', 'unblock']) {
     route(`/api/friends/${act}`, 'POST', async (c) => {
       const r = await engine[act](str((await body(c)).id, 20));
       return r && r.id ? { friend: r } : (r || {});

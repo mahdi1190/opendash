@@ -1,5 +1,5 @@
 /* ============================================================
-   SETTINGS > Sync > "Claude": where Claude work runs (owner: Sync).
+   SETTINGS > Sync > Advanced > "Runs Claude jobs": where Claude work runs (owner: Sync).
    Server: server/routes/claude-host.mjs (lib/remote-jobs.mjs,
    lib/sync/claude-host.mjs). settingsClaudeHostCard(el) is called by
    58-settings-sync.js.
@@ -20,16 +20,16 @@ function claudeHostLine(st) {
   const r = st.route || {};
   const text = r.text || 'Claude: using this computer';
   if (r.run === 'off' || (r.run === 'other' && !st.here)) return { tone: 'warn', text };
-  if (r.why === 'host-off') return { tone: 'warn', text };
+  if (r.why === 'host-off') return { tone: 'idle', text };   // asleep or off is normal: grey, never amber (L20)
   return { tone: 'ok', text };
 }
 /** The words of each "Run Claude on" choice. */
 function claudeHostModeLabel(mode, st) {
   const h = st && st.host ? st.host : null;
-  const name = h ? (h.me ? 'this computer' : h.name) : 'the Claude host';
+  const name = h ? (h.me ? 'this computer' : h.name) : 'the main computer';
   if (mode === 'local') return 'This computer only' + (st && !st.here ? ' (Claude is not set up here)' : '');
   if (mode === 'host-only') return 'Only ' + name;
-  return h && h.me ? 'This computer (it is the Claude host)' : name.charAt(0).toUpperCase() + name.slice(1) + ' first, then this computer';
+  return h && h.me ? 'This computer (it runs Claude jobs)' : name.charAt(0).toUpperCase() + name.slice(1) + ' first, then this one';
 }
 
 function _chLoad(force) {
@@ -55,11 +55,11 @@ async function _chPost(body, okMsg) {
 function settingsClaudeHostCard(el) {
   _chLoad(false);
   const s = _chSt;
-  const c = _settingsCard('Claude', 'AI summaries, the day adviser, task chat, email suggestions and story scripts, and the calendar, email and bank read through Claude\'s connectors, all run on one computer: the Claude host. While it is on, your other computers use it, even if they have Claude too. When it is off, this computer uses its own Claude.');
+  const c = _settingsCard('Runs Claude jobs', 'The main computer while it\'s on; otherwise this one.');
   el.appendChild(c.card);
   const p = (text) => Object.assign(document.createElement('p'), { className: 'set-h', textContent: text });
   if (!s) { c.body.appendChild(p('Loading…')); return; }
-  if (s.error) { c.body.appendChild(p('The OpenDash server is not running.')); return; }
+  if (s.error) { c.body.appendChild(p("OpenDash isn't answering.")); return; }
   const line = document.createElement('div'); line.setAttribute('role', 'status');
   const l = claudeHostLine(s);
   line.className = 'sync-status sync-' + l.tone; line.textContent = l.text;
@@ -86,15 +86,15 @@ function settingsClaudeHostCard(el) {
   }
   mode.value = s.mode || 'host-first';
   mode.onchange = () => _chPost({ mode: mode.value }, 'Saved');
-  c.body.appendChild(_settingsRow('Run Claude on', 'Only for this computer. With the first choice, OpenDash waits a few seconds for the Claude host to answer, then uses this computer.', mode));
+  c.body.appendChild(_settingsRow('Run Claude on', 'For this computer only.', mode));
   // Claude host (the same for every device)
   const hosts = s.hosts || [];
   const pick = document.createElement('select'); pick.className = 'control control-sm'; pick.disabled = _chBusy;
-  pick.setAttribute('aria-label', 'Claude host');
+  pick.setAttribute('aria-label', 'Claude computer');
   const same = document.createElement('option'); same.value = 'main'; same.textContent = 'Same as the main computer' + (s.main ? ' (' + s.main + ')' : ''); pick.appendChild(same);
-  for (const h of hosts) { const o = document.createElement('option'); o.value = h.id; o.textContent = h.name + (h.online ? '' : ' (off)'); pick.appendChild(o); }
+  for (const h of hosts) { const o = document.createElement('option'); o.value = h.id; o.textContent = h.name + (h.online ? '' : ' (asleep)'); pick.appendChild(o); }
   const cur = s.chosen ? hosts.find(h => h.host) : null;
   pick.value = cur ? cur.id : 'main';
-  pick.onchange = () => _chPost({ host: pick.value }, pick.value === 'main' ? 'The main computer is the Claude host' : 'Saved: that computer is the Claude host');
-  c.body.appendChild(_settingsRow('Claude host', hosts.length ? 'The computer with Claude and the claude.ai connectors (Calendar, Gmail, Bank). Every computer uses it while it is on.' : 'No computer with Claude is known yet. Set up Claude in Connections on the computer that should answer.', pick));
+  pick.onchange = () => _chPost({ host: pick.value }, pick.value === 'main' ? 'The main computer runs Claude jobs' : 'Saved: that computer runs Claude jobs');
+  c.body.appendChild(_settingsRow('Claude computer', hosts.length ? '' : 'Set up Claude in Connections on the computer that should do it.', pick));
 }

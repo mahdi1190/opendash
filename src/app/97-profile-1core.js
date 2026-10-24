@@ -9,7 +9,8 @@
      {v: 1, name, pronouns, bio, working, theme (swatch id | '#rrggbb'),
       status: {emoji, text, until (ms, 0 = until cleared)},
       avatar: {skin, eyes, ... one id per part (PF_PARTS)},
-      badges: [achievement id] | null (null: the newest three earned),
+      badges: [achievement id] | null (null: the newest three earned from tasks, streaks, focus,
+              bosses, quests, levels, milestones and friends: never money or places),
       places: [{label, cc}] (names only), share: {places: false},
       react: true (the avatar reacts to your day), collected: {'hat:witch': day},
       sentSig (what friends last got), updatedAt}
@@ -19,7 +20,7 @@
      profileSet(patch, o)           merge (avatar and status per field), save, repaint, share soon. o.quiet: no render
      profileDisplayName(p?)         the name to show: the profile's, else Settings' name, else 'You'
      profileStatusNow(p?)           {emoji, text, until} | null (an expired status is none)
-     profileShowcase(p?)            the badge ids shown (chosen, else the newest three earned)
+     profileShowcase(p?)            the badge ids shown (chosen, else the newest three earned that are not private)
      profileBadgeInfo(id)           {id, label, icon, hint} from the achievements | null
      profileUnlockCtx()             the context profileLockOf reads (game level, achievements, collected, today, birthday)
      profileMood()                  what the face does today: {mouth, eyes, extra} (empty when react is off)
@@ -106,11 +107,19 @@ function _pfEarned() {
     return Object.keys(un).filter(id => profileBadgeInfo(id)).sort((a, b) => String(un[b]).localeCompare(String(un[a])) || a.localeCompare(b)).map(id => ({ id, day: un[id] }));
   } catch (e) { return []; }
 }
+/* The groups the automatic showcase may draw from (2.17.1). Never money, places, health-like or
+   memories badges: a friend learns nothing private from the default. A group not listed here
+   (a new one) stays out of it too. A badge you pick yourself ("My pick") always shows. */
+const PF_SHOWCASE_AUTO_GROUPS = Object.freeze(['tasks', 'streaks', 'focus', 'bosses', 'quests', 'levels', 'milestones', 'friends']);
+function _pfAutoBadgeOk(id) {
+  const d = typeof achDef === 'function' ? achDef(id) : null;
+  return !!(d && PF_SHOWCASE_AUTO_GROUPS.includes(d.group));
+}
 function profileShowcase(p) {
   p = p || profileGet();
   const earned = new Set(_pfEarned().map(x => x.id));
   if (Array.isArray(p.badges)) return p.badges.filter(id => earned.has(id)).slice(0, PF_MAX.badges);
-  return _pfEarned().slice(0, 3).map(x => x.id);
+  return _pfEarned().filter(x => _pfAutoBadgeOk(x.id)).slice(0, 3).map(x => x.id);
 }
 function _pfStats() { try { return typeof gameStats === 'function' ? gameStats() : null; } catch (e) { return null; } }
 function _pfToday() { try { return Clock.today(); } catch (e) { return new Date().toISOString().slice(0, 10); } }   // clock-ok: fallback only
@@ -307,56 +316,16 @@ async function profileShareNow(force) {
 }
 function _pfShareSoon() { clearTimeout(_pf.shareT); _pf.shareT = setTimeout(() => { profileShareNow(false).catch(() => {}); }, 3000); }
 
-/* ---------- the top-bar chip (in #tb-actions, after More) ---------- */
+/* ---------- the corner (2.17.1): the top-bar chip moved to the sidebar's workspace button (97-profile-3corner.js) ---------- */
+/** Repaint the corner: your avatar, status emoji and friends badge (the 2.17 chip's job; the name stays for the callers above). */
 function _pfChipPaint() {
-  const host = typeof document !== 'undefined' ? document.getElementById('tb-actions') : null;
-  if (!host) return;
-  let b = document.getElementById('tb-profile');
-  if (!b) {
-    b = document.createElement('button'); b.type = 'button'; b.id = 'tb-profile'; b.className = 'pf-chip';
-    b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false');
-    b.onclick = () => profileOpenPop(b);
-    host.appendChild(b);
-  }
-  const p = profileGet(), st = profileStatusNow(p), mood = profileMood(), live = profileLive();
-  const key = JSON.stringify([p.avatar, p.theme, st, mood, live.level, Math.round((live.levelPct || 0) * 50), live.streak, live.hour >= 21 || live.hour < 5, live.season, p.name]);
-  if (key === _pf.chipKey && b.firstChild) return;
-  _pf.chipKey = key;
-  b.replaceChildren(profileAvatarEl(null, 28, { mood }));
-  if (st && st.emoji) { const e = document.createElement('span'); e.className = 'pf-chip-st'; e.textContent = st.emoji; b.appendChild(e); }
-  const tip = profileDisplayName(p) + (st ? ' · ' + [st.emoji, st.text].filter(Boolean).join(' ') : '');
-  b.setAttribute('aria-label', 'Your profile: ' + tip);
-  b.setAttribute('data-tip', tip);
+  if (typeof profileCornerPaint !== 'function') return;
+  try { profileCornerPaint(); } catch (e) { console.error('[profile corner]', e); }
 }
-if (typeof registerTopbarWidget === 'function') {
-  registerTopbarWidget({ id: 'profile', order: 99, render() { try { _pfChipPaint(); } catch (e) { console.error('[profile chip]', e); } return false; } });
-}
-/** The chip's popover: your card, a quick status, and the way to the builder. */
+/** Set a quick status: the corner's hub opens on the quick statuses (anchor: optional; falls back to Settings > Profile). */
 function profileOpenPop(anchor) {
-  anchor = anchor || document.getElementById('tb-profile');
-  if (!anchor || typeof openPopover !== 'function') { if (typeof setView === 'function') setView('settings:me'); return; }
-  openPopover(anchor, (el, close) => {
-    el.appendChild(profileCardEl(null, { compact: true }));
-    const lab = document.createElement('div'); lab.className = 'pop-label'; lab.textContent = 'Status'; el.appendChild(lab);
-    const row = document.createElement('div'); row.className = 'pf-pop-st';
-    const cur = profileStatusNow();
-    for (const [e, t] of PF_STATUS_PRESETS) {
-      const b = document.createElement('button'); b.type = 'button'; b.className = 'pf-pop-emo';
-      b.textContent = e; b.setAttribute('aria-label', t); b.setAttribute('data-tip', t);
-      if (cur && cur.emoji === e && cur.text === t) b.setAttribute('aria-pressed', 'true');
-      b.onclick = () => { profileSet({ status: { emoji: e, text: t, until: _pfEndOfDay() } }); close(); toast(`Status: ${e} ${t}, until tonight.`, { icon: 'circle-user' }); };
-      row.appendChild(b);
-    }
-    el.appendChild(row);
-    const items = [
-      ...(cur ? [{ icon: 'x', label: 'Clear status', run: () => profileSet({ status: { emoji: '', text: '', until: 0 } }) }] : []),
-      'sep',
-      { icon: 'user-round-pen', label: 'Edit profile', run: () => setView('settings:me') },
-      { icon: 'wand-sparkles', label: 'Customise your avatar', run: () => { setView('settings:me'); setTimeout(() => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); }, 60); } },
-    ];
-    const menu = document.createElement('div'); el.appendChild(menu);
-    buildMenuItems(menu, items, close);
-  }, { className: 'pf-pop', width: 300, align: 'end' });
+  if (typeof profileHubOpen === 'function' && profileHubOpen(anchor, { status: true })) return;
+  if (typeof setView === 'function') setView('settings:me');
 }
 function _pfEndOfDay() {
   try { const t = Clock.parts(Clock.now()); return Clock.now() + (24 * 60 - 1 - t.min) * 60000 + (59 - (t.s || 0)) * 1000; } catch (e) { const d = new Date(); d.setHours(23, 59, 59, 0); return d.getTime(); }   // clock-ok: fallback only

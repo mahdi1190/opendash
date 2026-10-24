@@ -1,10 +1,11 @@
 /* ============================================================
    THE WORKSPACE ICON. Owner: Shell.
-   The mark next to the workspace name (sidebar), on the set-up card and in
-   the browser tab. Automatic by default (14-shell.js setBrandMark: nearby
-   animated artwork, then the user's initial or the OpenDash logo); the user can
-   click the mark (or "Change icon…" in the workspace menu, or Settings >
-   Profile) and pick an icon, an emoji, the logo, the initial, or go back to
+   The mark next to the workspace name (sidebar, until you have a profile:
+   then the corner shows your avatar, 97-profile-3corner.js), on the set-up
+   card and in the browser tab. Automatic by default (14-shell.js setBrandMark:
+   nearby animated artwork, then the user's initial or the OpenDash logo); the
+   user can pick ("Change icon…" in the corner's menu, the palette, or Settings >
+   Profile) an icon, an emoji, the logo, the initial, or go back to
    automatic. Saved as config.appIcon (lib/datadir.mjs normAppIcon).
    User request, 4 Oct: the icon was always chosen automatically.
 
@@ -155,15 +156,7 @@ function openAppIconPicker(anchor, opts) {
   }, { width: 316, className: 'cz-popover', align: 'start' });
 }
 
-// Click the mark itself to change it (the rest of the button still opens the workspace menu).
-document.addEventListener('click', (e) => {
-  const mk = e.target && e.target.closest && e.target.closest('#brand-mark');
-  if (!mk) return;
-  const app = document.getElementById('app');
-  if (app && app.classList.contains('sb-rail')) return;   // the rail: the mark is the whole button
-  e.preventDefault(); e.stopPropagation();
-  openAppIconPicker(document.getElementById('ws-btn') || mk);
-}, true);
-
+// 2.17.1: clicking the corner (mark included) opens your profile hub (97-profile-3corner.js); the icon is changed
+// from "Change icon…" in it (the workspace items), the palette or Settings.
 registerMoreItem({ id: 'app-icon', label: 'Change icon…', icon: 'palette', order: 405, where: ['workspace'], run: () => openAppIconPicker(document.getElementById('ws-btn')) });
 registerCommand({ id: 'change-app-icon', label: 'Change the workspace icon', icon: 'palette', keywords: 'logo emoji avatar brand mark icon', run: () => openAppIconPicker(document.getElementById('ws-btn')) });
