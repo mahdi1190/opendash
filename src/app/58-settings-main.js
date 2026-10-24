@@ -1,5 +1,5 @@
 /* ============================================================
-   SETTINGS > Sync > "Main computer": which computer runs the automatic
+   SETTINGS > Sync > More > "Main computer" (and, with sync off, its own card): which computer runs the automatic
    background jobs (bank updates, AI summaries and reviews, story scripts,
    calendar and email updates). Owner: Connections/Settings.
    Server: server/routes/main-computer.mjs (lib/main-computer.mjs).
@@ -18,12 +18,12 @@ function _mcLoad(force) {
 function settingsMainComputerCard(el) {
   _mcLoad(false);
   const s = _mcSt;
-  const c = _settingsCard('Main computer', 'One computer runs the automatic jobs, so your bank is not asked twice and Claude does not write the same summary on two computers. On the others they show "Runs on <name>". Anything you start with a click still runs where you click.');
+  const c = _settingsCard('Main computer', 'One computer runs the automatic jobs (bank updates, AI summaries, calendar and email), so nothing runs twice. Anything you click still runs where you click.');
   el.appendChild(c.card);
   if (!s) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Loading…' })); return; }
-  if (s.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'The OpenDash server is not running.' })); return; }
+  if (s.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: "OpenDash isn't answering." })); return; }
   const line = document.createElement('p'); line.className = 'set-h';
-  line.textContent = !s.main ? 'No main computer is chosen: every computer runs its own jobs.' : s.isMain ? `This computer (${s.me.name}) is the main computer.` : `Runs on ${s.main.name}. This computer (${s.me.name}) leaves the automatic jobs to it.`;
+  line.textContent = !s.main ? 'Every computer runs its own automatic jobs.' : s.isMain ? `This computer (${s.me.name}) runs the automatic jobs.` : `${s.main.name} runs the automatic jobs; this computer leaves them to it.`;
   c.body.appendChild(line);
   const ul = document.createElement('ul'); ul.className = 'mv-devices';
   for (const d of s.computers || []) {
@@ -40,11 +40,21 @@ function settingsMainComputerCard(el) {
     ul.appendChild(li);
   }
   c.body.appendChild(ul);
-  if ((s.computers || []).length < 2) c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Only this computer is known so far. Others appear once OpenDash has run on them with sync on.' }));
+  if ((s.computers || []).length < 2) c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Only this computer so far.' }));
   if (s.main && s.mode === 'local') c.body.appendChild(_settingsRow('No main computer', 'Every computer runs its own jobs again.', (() => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.textContent = 'Clear'; b.onclick = () => _mcSet(null); return b; })()));
   const jobs = document.createElement('dl'); jobs.className = 'kv set-kv';
   jobs.innerHTML = (s.jobs || []).map(j => `<dt>${esc(j.label)}</dt><dd>${esc(j.here ? 'here' : 'runs on ' + j.runsOn)}</dd>`).join('');
   c.body.appendChild(jobs);
+}
+
+/** Advanced > Which computer does what (2.17.1): the automatic jobs and where each runs (Settings > Sync > More picks the main computer). */
+function settingsMainComputerJobs(el) {
+  _mcLoad(false);
+  const s = _mcSt;
+  if (!s || s.error || !(s.jobs || []).length) return;
+  const jobs = document.createElement('dl'); jobs.className = 'kv set-kv';
+  jobs.innerHTML = (s.jobs || []).map(j => `<dt>${esc(j.label)}</dt><dd>${esc(j.here ? 'this computer' : j.runsOn)}</dd>`).join('');
+  el.appendChild(_settingsRow('Automatic jobs', '', jobs));
 }
 
 async function _mcSet(id) {

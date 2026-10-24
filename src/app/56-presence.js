@@ -105,22 +105,22 @@ function _prPulse() {
 
 /* ---------- the top bar's sync dot (#presence-btn) and its panel ----------
    Hidden while sync is off. Its tones (lib/sync/presence.mjs summarize):
-     ok         green  "In sync · Mac online"
-     off        grey   "Mac off · 3 changes waiting"  (nothing is wrong: it catches up later)
-     attention  amber  "Needs attention"              sync has a problem, or a version notice
+     ok         green  "Up to date"
+     off        grey   "Mac asleep"                   (nothing is wrong: it catches up when it wakes)
+     attention  amber  "Needs you"                    something only you can fix, or a version notice
                                                       not dismissed yet; the click opens the details
-     busy       spins  "Sending…"                     changes on their way over a live link
+     busy       spins  "Syncing…"                     changes on their way over a direct link
    A click opens the panel: every device with its state, last seen, version and
    the way it is reached (live on the same network / over the internet, or the
    sync folder). */
 const _PR_ICON = { open: 'laptop', running: 'laptop', outdated: 'laptop', asleep: 'moon', off: 'cloud-off' };
-const _PR_CHIP = { open: 'Online', running: 'Online', outdated: 'Older version', asleep: 'Asleep', off: 'Off' };
+const _PR_CHIP = { open: 'Up to date', running: 'Up to date', outdated: 'Needs an update', asleep: 'Asleep', off: 'Off' };
 /** Version notices not dismissed yet (56-presence-notice.js), or []. */
 function _prNotices(v) { return typeof presenceFreshNotices === 'function' ? presenceFreshNotices(v) : []; }
 function _prSummary(v) {
   const s = Object.assign({ tone: 'none', text: '', tip: '' }, v && v.summary);
   const fresh = _prNotices(v);
-  if (fresh.length && s.tone !== 'attention') return { tone: 'attention', text: 'Needs attention', tip: fresh[0].text };
+  if (fresh.length && s.tone !== 'attention') return { tone: 'attention', text: 'Needs you', tip: fresh[0].text };
   return s;
 }
 function presenceRender() {
@@ -132,14 +132,14 @@ function presenceRender() {
   // "Sending…" only once it lasts a moment: a change that arrives within a second never flickers the dot.
   if (s.tone === 'busy') {
     if (!_pr.busyAt) { _pr.busyAt = Date.now(); setTimeout(presenceRender, 900); }
-    if (Date.now() - _pr.busyAt < 800) s = _pr.lastShown || { tone: 'ok', text: 'In sync', tip: '' };
+    if (Date.now() - _pr.busyAt < 800) s = _pr.lastShown || { tone: 'ok', text: 'Up to date', tip: '' };
   } else _pr.busyAt = 0;
   _pr.lastShown = s.tone === 'busy' ? _pr.lastShown : s;
   b.hidden = false;
   for (const k of ['ok', 'off', 'attention', 'busy']) b.classList.toggle('pr-' + k, s.tone === k);
   const lbl = b.querySelector('.sync-lbl');
   if (lbl && lbl.textContent !== s.text) lbl.textContent = s.text;
-  b.setAttribute('aria-label', 'Your devices: ' + s.text + (s.tip ? '. ' + s.tip : ''));
+  b.setAttribute('aria-label', 'Your computers: ' + s.text + (s.tip ? '. ' + s.tip : ''));
   b.setAttribute('data-tip', s.tip || s.text);
   if (!b._prWired) { b._prWired = true; b.onclick = () => presenceOpenPanel(b); }
   if (b._prPaint) b._prPaint();
@@ -155,20 +155,26 @@ function _prAgo(ms) {
   const d = Math.round(h / 24);
   return d <= 1 ? 'yesterday' : d + ' days ago';
 }
+/** The way a computer is reached now, in the Sync page's words: direct, via your relay, via OneDrive. */
 function _prWay(d) {
-  if (d.path === 'live') return d.via === 'lan' ? 'Live, same network' : d.via === 'internet' ? 'Live, over the internet' : 'Live';
-  if (d.path === 'folder') return 'Through the sync folder';
+  if (d.path === 'live') return 'direct';
+  if (d.path === 'folder') {
+    const st = typeof _syncSt !== 'undefined' ? _syncSt : null;
+    if (st && typeof syncViaRelay === 'function' && syncViaRelay(st)) return 'via your relay';
+    const cloud = st && typeof syncCloudName === 'function' ? syncCloudName(st) : null;
+    return 'via ' + (cloud || 'your cloud folder');
+  }
   return '';
 }
 function _prDeviceHtml(d) {
   const st = d.checking ? 'checking' : d.state;
-  const chip = d.checking ? 'Checking…' : (_PR_CHIP[d.state] || d.state);
+  const chip = d.checking ? 'Checking…' : d.reachable && d.state !== 'outdated' && d.behind > 0 ? 'Catching up' : (_PR_CHIP[d.state] || d.state);
   const bits = [];
   if (d.version) bits.push('OpenDash ' + d.version);
   const way = _prWay(d);
   if (way) bits.push(way);
-  if (!d.reachable && Number.isFinite(d.ago)) bits.push('last seen ' + _prAgo(d.ago + Math.max(0, Date.now() - _pr.at)));
-  if (d.behind) bits.push(d.behind + ' change' + (d.behind === 1 ? '' : 's') + ' waiting');
+  if (!d.reachable && Number.isFinite(d.ago)) bits.push('seen ' + _prAgo(d.ago + Math.max(0, Date.now() - _pr.at)));
+  if (d.behind) bits.push(d.behind + ' change' + (d.behind === 1 ? '' : 's') + ' to go');
   return `<div class="pr-dev pr-${esc(st)}" role="listitem">
     <span class="pr-dev-ic">${icon(d.checking ? 'loader-circle' : (_PR_ICON[d.state] || 'laptop'))}</span>
     <span class="pr-dev-main"><span class="pr-dev-name">${esc(d.name)}</span><span class="pr-dev-text">${esc(d.text || '')}</span>${bits.length ? `<span class="pr-dev-meta">${esc(bits.join(' · '))}</span>` : ''}</span>
@@ -189,12 +195,12 @@ function presenceOpenPanel(anchor) {
       el.innerHTML = `
         <div class="pr-head pr-${esc(s.tone)}"><span class="dot"></span><span><b>${esc(s.text || 'Sync')}</b>${s.tip ? `<span class="pr-tip">${esc(s.tip)}</span>` : ''}</span></div>
         ${notes.map(n => `<div class="pr-note" data-id="${escAttr(n.id)}">${icon('info')}<span>${esc(n.text)}</span><button type="button" class="btn btn-ghost btn-sm" data-act="dismiss">Dismiss</button></div>`).join('')}
-        <div class="pr-list" role="list" aria-label="Your devices">${devs.length ? devs.map(_prDeviceHtml).join('') : '<div class="pr-empty mute">No other device has joined yet.</div>'}</div>
+        <div class="pr-list" role="list" aria-label="Your computers">${devs.length ? devs.map(_prDeviceHtml).join('') : '<div class="pr-empty mute">No other computer yet.</div>'}</div>
         ${me ? `<div class="pr-me mute">${icon('monitor')}<span>This computer: ${esc(me.name || 'This computer')}${me.version ? ' · OpenDash ' + esc(me.version) : ''}</span></div>` : ''}
         ${typeof syncPanelExtrasHtml === 'function' ? syncPanelExtrasHtml(s.tone === 'attention') : ''}
         <div class="pr-foot"><button type="button" class="btn btn-secondary btn-sm" data-act="settings">Sync settings</button></div>`;
       el.querySelector('[data-act="settings"]').onclick = () => { close(); if (typeof setView === 'function') setView('settings:sync'); };
-      // What changed, and Health ("Needs attention" opens it): 58-settings-sync-health.js
+      // What changed, and Check-up ("Needs you" opens it): 58-settings-sync-health.js
       if (typeof syncPanelExtrasWire === 'function') syncPanelExtrasWire(el, close);
       el.querySelectorAll('.pr-note [data-act="dismiss"]').forEach(btn => { btn.onclick = () => { if (typeof presenceDismissNotice === 'function') presenceDismissNotice(btn.closest('.pr-note').getAttribute('data-id')); paint(); presenceRender(); }; });
     };

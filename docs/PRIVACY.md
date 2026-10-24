@@ -47,8 +47,9 @@ of recent places (up to 90 days) that the welcome scenes use.
 
 ## Location history
 
-OpenDash keeps a history of where you've been so it can show you fun facts. It
-stays in your dashboard and on your own devices, and never goes anywhere else.
+OpenDash keeps a private history of where you've been, for fun facts. It stays
+in your dashboard and on your own devices unless you choose to share places with
+a friend (Settings > Privacy, per friend).
 
 - **What:** stays and moves (see the table above), in `locations/log.json` in
   your data folder. Until 2.16 the recent places stayed in the browser only;
@@ -96,13 +97,19 @@ computer for them. A friend's page has a *What they can see* panel; Settings >
 | Money | none / a summary / full | summary: a few words ("On budget this month") and a percentage, never an amount. Full: this month's and this week's spending by category, budgets, income, regular payments and the total in your accounts |
 | Locations | none / countries / cities / exact | countries or cities you have been to, by day, and the one you are in now (no positions, no times). Exact: where you are now to about 1 km, and where you stayed in the last two weeks |
 | Memories & journal | none / only what I choose | the journal days, postcards, time capsules (a sealed one only says when it opens) and goals you tick |
-| Presence | off / on | online, focusing, travelling or away, never where; it also needs *Share when I'm online* in the Friends tab |
+| Presence | off / on | online, focusing, travelling or away, never where; it also needs *Show friends when I'm around* in the Friends tab |
 
 - **Risky levels ask first.** Money *Full totals* and Locations *Exact places*
   show a warning before they are turned on, and stay marked while they are on.
+- **Trust never brings old choices back.** Turning *Trusted friend* off or on
+  turns their tasks, calendar, money, locations, memories and presence back to
+  off; marking someone trusted turns on only the level you choose with it (the
+  message says which earlier choices stay off, with Undo).
 - **For a while.** Any scope can be shared *until a day*, *during a trip* or
   *between two days*. When the time is over nothing more is sent and their copy
-  is deleted.
+  is deleted. Locations shared *during a trip* or *between two days* carry only
+  what happened inside those days: nothing from before the first day (no home or
+  work stays, no older countries or cities).
 - **See exactly what they see.** *Preview what Sam sees* shows what would go to
   that friend right now, made by the same code that sends it, including the data
   exactly as sent.
@@ -149,7 +156,7 @@ Only in these cases, and only when you switch the feature on:
 | **Daily encrypted copy** (off by default; Settings > Data) | once a day, your settings, tasks and notes, calendar and email snapshots and finances (no sign-ins, keys, logs or caches), **encrypted on this computer** with a key made from your passphrase | the folder you chose, by default `OneDrive\OpenDash Backups`: your cloud provider stores scrambled bytes, plus the date, this computer's name and the app version in plain text. Nothing goes to OpenDash. Without the passphrase nobody can open the copies, including you |
 | **Moving the data folder** (Settings > Data > Move) | nothing: the copy is made on this computer. After showing you each change, it updates the settings of your own programs that point at OpenDash: Claude Code (through its own `claude mcp` command), Claude Desktop's settings file, Codex and Gemini CLI (through their commands), Windows start-up entries, shortcuts, and Claude scheduled-task files that name the folder. Only those entries | no one |
 | **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; your preferences (theme, density, sort and grouping, which calendars you hide, per-view and Home card options); the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or where you are in the app and this screen's panel sizes | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, **end-to-end encrypted**: each change is locked (AES-256-GCM) on your computer before it is written, with a key only your devices hold, so your cloud provider stores files it cannot read. It can see how many devices sync, when they write and roughly how much; a new computer waiting to be approved shows its name there until it is approved. The key never goes into the folder; your recovery code is shown once and kept by you. Each of your computers reads the folder from there; nothing goes to OpenDash. Until you also turn on *Use changes from my other computers*, nothing received is applied |
-| **Live sync** (with encrypted sync on; Settings > Sync > Live connection) | the same encrypted changes as above, sent straight to your other paired computers the moment they are made, over a connection that only your own paired devices can open (each proves it holds its device key) and that is encrypted again end to end; which job each computer runs. Each computer's addresses (its home or office network address, and the public address its router opened) are kept inside the encrypted part of its file in the sync folder | your other computers only, directly, on your network or over the internet. To be reachable from outside, OpenDash asks your home router (UPnP / NAT-PMP) to forward one port to it (turn off *Let my other computers reach this one over the internet* to leave the router alone); anyone on the internet can then knock on that port, but nothing answers without your device key. On your own network it sends a short announcement every 30 seconds that only your devices can read. No OpenDash server, no relay |
+| **Live sync** (with encrypted sync on; Settings > Sync > Advanced > Direct links) | the same encrypted changes as above, sent straight to your other paired computers the moment they are made, over a connection that only your own paired devices can open (each proves it holds its device key) and that is encrypted again end to end; which job each computer runs. Each computer's addresses (its home or office network address, and the public address its router opened) are kept inside the encrypted part of its file in the sync folder | your other computers only, directly, on your network or over the internet. To be reachable from outside, OpenDash asks your home router (UPnP / NAT-PMP) to forward one port to it, but only while your relay does not carry your sync: with your relay in use the router is left alone unless you turn *Let my other computers reach this one over the internet* on (Settings > Sync > Advanced), and turning it off always leaves the router alone; anyone on the internet can then knock on that port, but nothing answers without your device key. On your own network it sends a short announcement every 30 seconds that only your devices can read. No OpenDash server, no relay |
 | **Friends** (when you add one; Settings > Privacy) | to each friend only what you chose for them (see [Friends](#friends)): by default your profile and game progress; tasks, calendar, money, places, memories and presence only to a friend you marked trusted, at the level you picked | that friend's OpenDash, end-to-end encrypted, through the private relay or a direct link (docs/dev/FRIENDS.md) |
 | **Your relay** (Settings > Your relay > *Connect Cloudflare*, only when you click it) | the relay's code and your PUBLIC identity key, uploaded to your own Cloudflare account by Cloudflare's tool (wrangler, downloaded from npm the first time). Afterwards: sealed sync records and friends' messages it cannot open, and signed requests (your public key, a time, a signature) | your own Cloudflare account. Your Cloudflare sign-in stays with wrangler on this computer: OpenDash never reads, stores or logs it, and keeps wrangler's output in memory only. The relay logs nothing and Cloudflare's observability is turned off ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#privacy-what-travels-and-who-can-see-it)) |
 

@@ -168,6 +168,19 @@ One JSON object per line, `\n`-terminated:
   file unchanged, skip it.
 - Readers check every write against the schema and the credential filters
   and drop the ones that fail (the rest of the line still applies).
+- How far a reader has a device's changes is its FRONTIER: every change
+  number up to it is here, with no gap; numbers that arrived past a gap wait
+  in `ahead`. A snapshot's `seq` (and its `seen`) raise the frontier, and the
+  frontier then takes in the run already waiting right after it (2.17.1:
+  before, a frontier raised by a snapshot's seq stayed there while the lines
+  after it waited for good; a reader repairs such a stalled count when it
+  starts). The frontier is what a device publishes as `seen` (device.json,
+  live `hi` / `seen`) and what its edits carry in `s`.
+- A HOLE (change n+1 missing while later ones are here) that stays 10
+  minutes makes the reader read that device's snapshot and logs again from
+  the start: lines already here are skipped by their number in the clear
+  (nothing is decrypted twice), the missing one is merged. Again after 30
+  minutes, doubling up to 6 hours, while the hole stays (2.17.1).
 
 ## 7. `snapshot.json` and `device.json`
 
@@ -199,6 +212,16 @@ which the accounts code records too; a device without one uses its
 `deviceId`. Readers that find no `fetcherId` take the `deviceId`. `instance`
 changes when a device's identity is copied to another installation; a device
 that finds its own folder with another instance takes a new id.
+
+The person's relay (2.17.1, encrypted sync only, inside `enc`): `rly: {o, r}`
+(the origin of the relay this device's `friends/relays.json` names and its
+role, so another computer of the person knows they have one even before the
+record arrives), and `part`: the registers of that record (`friends/relays.json`
+`@alive`, `v`, `home`, `relays.<home>` and `sync`, serialized like a
+snapshot's `data`, at most 16 KB). A reader merges `part` like any registers
+(each keeps the clock time it was written at, so a later Disconnect still
+wins), without waiting for the logs; it accepts only paths in
+`friends/relays.json`. Readers that do not know them ignore both.
 
 Presence (2.16, `lib/sync/presence.mjs`; with encrypted sync both are inside
 `enc`): `page: {open, at}` says whether a dashboard page is open on the
@@ -517,7 +540,12 @@ the manifest and `SYNC_SPEC`):
   encrypted group, to add this computer to it).
 - A change to anything in sections 1-8 that an older reader would misread
   needs a new `v`. A new synced key or field does not: an older reader drops
-  writes outside its schema (section 6) and catches up once updated (9.2).
+  writes outside its schema (section 6) and catches up once updated. Since
+  2.17.1 that catching up is explicit (before, the dropped writes were counted
+  as seen and never read again): a device whose own version changed reads
+  every other device's snapshot and logs once more (a quiet REPLAY: lines
+  already taken are taken again, clashes are not reported again), and a device
+  that sees another one's `app` change writes a fresh snapshot at once.
 - Version 2 (section 11) uses exactly this rule: a version-1 reader stops at
   the first encrypted line and says so; it never skips or guesses.
 

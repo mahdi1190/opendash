@@ -5,9 +5,11 @@
 //                                 accounts:[{id, label, fetcher}], e2e:{on, ready, reason, pairing,
 //                                 requests, offer, found, ...}, skew:{text}, lastSyncAt, conflicts,
 //                                 blobs:{on, used, budget, text: 'Pictures and audio: 34 MB of 200 MB'}, ...}
-//   POST /api/sync/settings   {enabled?, apply?, folder?, deviceName?, relay?} -> the status
-//                             relay: sync through your relay too (lib/sync/relay.mjs); folder:false
-//                             stops using the folder (only with the relay on)
+//   POST /api/sync/settings   {enabled?, apply?, folder?, deviceName?, relay?, relayNotice?} -> the status
+//                             relay: sync through your relay too (lib/sync/relay.mjs); true is the
+//                             person's choice for all their computers (friends/relays.json sync.on),
+//                             false is this computer only; folder:false stops using the folder (only
+//                             with the relay on); relayNotice:false closes "now syncs through your relay"
 //                             apply (default off) = write other computers' changes into this
 //                             data; off = shadow mode: collect them and report what would change
 //                             (400 {error, code} for a folder that is missing, inside the
@@ -173,6 +175,7 @@ export default function register(app) {
       const patch = {};
       for (const k of ['enabled', 'apply', 'folder', 'deviceName']) if (b && b[k] !== undefined) patch[k] = b[k];
       if (b && typeof b.relay === 'boolean') patch.relay = b.relay;
+      if (b && b.relayNotice === false) patch.relayNotice = false;     // close "now syncs through your relay too"
       if (patch.folder !== undefined && patch.folder !== false && typeof patch.folder !== 'string') delete patch.folder;
       try { return await engine.configure(patch); }
       catch (e) { if (e.status === 400) return c.json(400, { error: e.message, code: e.code }); throw e; }

@@ -1,7 +1,7 @@
 /* ============================================================
-   PROFILE (2.17): src/app/97-profile-*.js. The avatar, the top-bar chip and
-   its popover, the profile card, Settings > Profile and the character
-   builder. Transform/opacity motion only; reduced motion keeps it still.
+   PROFILE (2.17): src/app/97-profile-*.js. The avatar, the corner (your
+   avatar on the sidebar's workspace button, 2.17.1) and its hub, the
+   profile card, Settings > Profile and the character builder. Transform/opacity motion only; reduced motion keeps it still.
    ============================================================ */
 
 /* ---------- the avatar ---------- */
@@ -11,19 +11,57 @@
 .pf-av-init { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: inherit;
   background: var(--pf-c, var(--accent)); color: #fff; font-weight: var(--weight-semibold); font-size: calc(var(--pf-size) * 0.4); line-height: 1; letter-spacing: 0.02em; }
 
-/* ---------- the top-bar chip ---------- */
-.pf-chip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; margin-left: 2px;
-  border: 0; border-radius: 50%; background: none; cursor: pointer; flex: none; transition: transform 0.15s ease; }
-.pf-chip:hover { transform: translateY(-1px); }
-.pf-chip:hover .pf-av { box-shadow: 0 0 0 2px var(--border); }
-.pf-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.pf-chip[aria-expanded="true"] .pf-av { box-shadow: 0 0 0 2px var(--accent); }
-.pf-chip-st { position: absolute; right: -4px; bottom: -3px; min-width: 16px; height: 16px; padding: 0 1px; border-radius: 50%; background: var(--surface);
-  box-shadow: var(--shadow-xs); font-size: 11px; line-height: 16px; text-align: center; pointer-events: none; }
-html[data-motion="reduced"] .pf-chip { transition: none; }
-html[data-motion="reduced"] .pf-chip:hover { transform: none; }
+/* ---------- the corner (2.17.1): you on the sidebar's workspace button (97-profile-3corner.js) ---------- */
+.sb-ws-me { position: relative; display: inline-grid; place-items: center; flex: none; width: var(--scene-xs, 28px); height: var(--scene-xs, 28px);
+  transition: transform var(--m-fast, 0.12s) var(--m-ease-out, ease-out); }
+.sb-ws-av { display: inline-flex; border-radius: 50%; }
+.sb-ws-av:has(> .pf-av.is-sq) { border-radius: 26%; }   /* the hover ring follows a squircle avatar */
+.sb-ws:hover .sb-ws-av { box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent); }
+.sb-ws:active .sb-ws-me { transform: scale(0.94); }
+.sb-ws[aria-expanded="true"] { background: var(--bg-muted); }
+.sb-ws[aria-expanded="true"] .sb-ws-av { box-shadow: 0 0 0 2px var(--accent); }
+.sb-ws.is-here { background: color-mix(in oklab, var(--accent) 9%, transparent); }
+.sb-ws.is-here:hover { background: color-mix(in oklab, var(--accent) 14%, transparent); }
+/* your status emoji, bottom right (as on the old chip) */
+.sb-ws-st { position: absolute; right: -5px; bottom: -4px; min-width: 15px; height: 15px; padding: 0 1px; border-radius: 50%; background: var(--surface);
+  box-shadow: var(--shadow-xs); font-size: 10px; line-height: 15px; text-align: center; pointer-events: none; }
+/* friends: a green dot while someone is around, a count while requests wait (top right) */
+.sb-ws-fr { position: absolute; top: -2px; right: -3px; width: 9px; height: 9px; border-radius: 50%; background: var(--success, #2f9e44);
+  box-shadow: 0 0 0 2px var(--bg-subtle); pointer-events: none; animation: pfc-badge-in 0.22s var(--m-ease-out, ease-out) both; }
+.sb-ws-fr.is-count { top: -5px; right: -7px; width: auto; min-width: 15px; height: 15px; padding: 0 4px; border-radius: var(--radius-full);
+  background: var(--accent); color: var(--fg-on-accent, #fff); font-size: 9.5px; font-weight: var(--weight-semibold); line-height: 15px; text-align: center; font-variant-numeric: tabular-nums; }
+@keyframes pfc-badge-in { from { transform: scale(0.3); opacity: 0; } }
+html[data-motion="reduced"] .sb-ws-me { transition: none; }
+html[data-motion="reduced"] .sb-ws:active .sb-ws-me { transform: none; }
+html[data-motion="reduced"] .sb-ws-fr { animation: none; }
+@media (prefers-reduced-motion: reduce) { .sb-ws-me { transition: none; } .sb-ws:active .sb-ws-me { transform: none; } .sb-ws-fr { animation: none; } }
 
-/* ---------- the popover ---------- */
+/* ---------- the hub (the corner's popover) ---------- */
+.pfc-me { --pf-c: var(--accent); display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: var(--space-3); row-gap: var(--space-2);
+  margin: -4px -4px 2px; padding: var(--space-3) var(--space-3) var(--space-2); border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pf-c) 18%, transparent), transparent 75%); }
+.pfc-me > .pf-av { box-shadow: 0 0 0 2px var(--surface-raised, var(--surface)); }
+.pfc-me-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pfc-me-name { font-size: var(--text-sm); font-weight: var(--weight-semibold); color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pfc-me-st { font-size: var(--text-xs); color: var(--fg); overflow-wrap: anywhere; }
+.pfc-me-st.is-empty { color: var(--fg-subtle); }
+.pfc-me-lv { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: var(--text-xs); color: var(--fg-muted); }
+.pfc-me-lv .i { flex: none; color: var(--pf-c); }
+.pfc-me-acts { grid-column: 1 / -1; display: flex; gap: var(--space-2); }
+.pfc-me-acts > .btn { flex: 1 1 0; justify-content: center; min-width: 0; }
+.pfc-me-acts > .btn[aria-expanded="true"] { background: var(--accent-soft); border-color: transparent; color: var(--accent-ink); }
+.pfc-status .pf-pop-st { padding: 2px var(--space-1) 2px; }
+.pfc-note { padding: 2px var(--space-2) 6px; font-size: var(--text-xs); color: var(--fg-subtle); overflow-wrap: anywhere; }
+.pfc-around { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 2px var(--space-2) 6px; }
+.pfc-fr { display: inline-flex; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer; transition: transform var(--m-fast, 0.12s) var(--m-ease-out, ease-out); }
+.pfc-fr:hover { transform: translateY(-1px); }
+.pfc-fr:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pfc-more { padding-left: 2px; font-size: var(--text-xs); color: var(--fg-subtle); }
+.pfc-has-req .hint { color: var(--accent-ink); font-weight: var(--weight-medium); }
+html[data-motion="reduced"] .pfc-fr { transition: none; }
+html[data-motion="reduced"] .pfc-fr:hover { transform: none; }
+
+/* ---------- the quick statuses (in the hub) ---------- */
 .pf-pop { padding: var(--space-2); }
 .pf-pop .pf-card { border: 0; box-shadow: none; margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) var(--space-2); border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
 .pf-pop-st { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 var(--space-1) var(--space-2); }

@@ -1,7 +1,7 @@
 /* ============================================================
-   SETTINGS > SYNC > HEALTH, WHAT CHANGED, REVIEW (owner: Sync)
-   Tabs at the top of Settings > Sync (syncTabsBar): Sync | Health | What
-   changed | Review. Server: GET /api/sync/health (lib/sync/health.mjs: the
+   SETTINGS > SYNC > CHECK-UP (the old Health), WHAT CHANGED, REVIEW (owner: Sync)
+   Tabs at the top of Settings > Sync (syncTabsBar): Sync | What changed |
+   Check-up | Review. Server: GET /api/sync/health (lib/sync/health.mjs: the
    checklist, each problem with ONE fix), POST /api/sync/fix (the fix buttons,
    lib/sync/node-health.mjs), GET /api/sync/changes ("What changed",
    lib/sync/changes.mjs), GET /api/sync/conflicts + POST /api/sync/conflicts/resolve
@@ -19,6 +19,7 @@ let _shChanges = null, _shReview = null;
 let _shBusy = null;              // {key, abort}: the one request in flight on these pages
 let _shTicker = null;
 let _syncFocusJoin = false;      // Health's "Type the 4-letter code": focus the code box on the Sync tab
+let _shRestOpen = false;         // Check-up's "Everything else is fine" unfolded
 
 /** "3 changes from MacBook Pro · 2 min ago" (the first part of a feed line). */
 function syncFeedHead(e, nowMs) {
@@ -77,7 +78,7 @@ async function syncReviewLoad() {
   return _shReview;
 }
 
-/** Open Settings > Sync > Health (the sync dot's "Needs attention"). */
+/** Open Settings > Sync > Check-up (the sync dot's "Needs you"). */
 function syncOpenHealth() { _syncTab = 'health'; syncHealthLoad(false); if (state.view === 'settings:sync') renderMain(); else setView('settings:sync'); }
 function syncOpenChanges() { _syncTab = 'changes'; syncChangesLoad().then(_syncRefresh); if (state.view === 'settings:sync') renderMain(); else setView('settings:sync'); }
 
@@ -87,7 +88,8 @@ function syncTabsBar(el, st) {
   const h = _shHealth;
   const att = h && h.attention ? ' (' + h.attention + ')' : '';
   const open = (st.health && st.health.conflictsOpen) || 0;
-  const tabs = [['setup', 'Sync', 'refresh-cw'], ['health', 'Health' + att, h && h.overall === 'err' ? 'circle-alert' : 'stethoscope'], ['changes', 'What changed', 'history']];
+  // Sync · What changed · Check-up (n) · Review (n); the count is only what needs you (needsUser).
+  const tabs = [['setup', 'Sync', 'refresh-cw'], ['changes', 'What changed', 'history'], ['health', 'Check-up' + att, h && h.overall === 'err' ? 'circle-alert' : 'stethoscope']];
   if (open) tabs.push(['review', 'Review (' + open + ')', 'git-merge']);
   else if (_syncTab === 'review') tabs.push(['review', 'Review', 'git-merge']);
   const seg = _settingsSeg(tabs, _syncTab, (k) => {
@@ -111,6 +113,7 @@ async function syncRunFix(fix) {
   if (fix.view) {
     if (fix.view === 'updates') { setView('settings:updates'); return; }
     _syncTab = fix.view === 'review' ? 'review' : 'setup';
+    if (fix.view === 'sync' && typeof _syncFolds !== 'undefined') _syncFolds.advanced = true;
     if (fix.view === 'join') _syncFocusJoin = true;
     if (fix.view === 'review') syncReviewLoad();
     _syncRefresh();
@@ -126,7 +129,8 @@ async function syncRunFix(fix) {
   else if (fix.action === 'remove-device') { url = '/api/sync/devices/remove'; body = { id: fix.id }; done = 'Removed. Your other devices now use a new key.'; }
   else if (fix.action === 'apply-on') { url = '/api/sync/settings'; body = { apply: true }; done = 'Changes from your other computers will be used'; }
   else if (fix.action === 'sync-off') { url = '/api/sync/settings'; body = { enabled: false }; done = 'Sync is off on this computer. Nothing was deleted.'; }
-  else if (fix.action === 'relay-on') { url = '/api/sync/settings'; body = { relay: true }; done = 'This computer syncs through your relay too'; }
+  else if (fix.action === 'relay-on') { url = '/api/sync/settings'; body = { relay: true }; done = 'This computer syncs through your relay now'; }
+  else if (fix.action === 'relay-check') { url = '/api/sync/relay/check'; body = {}; done = 'Looked for your relay again'; }
   else if (fix.folder) body.folder = fix.folder;
   _shHealthErr = '';
   _syncRefresh();
@@ -183,7 +187,7 @@ function _shCheckEl(c) {
   return box;
 }
 function syncHealthPage(el) {
-  const card = _settingsCard('Health', 'Every way syncing can go wrong, checked on this computer. Each problem has one fix.');
+  const card = _settingsCard('Check-up', 'Problems that need you, each with one fix.');
   const h = _shHealth;
   const head = _syncEl('div', 'sh-head sh-' + (h ? h.overall : 'idle'));
   head.setAttribute('role', 'status');
@@ -203,10 +207,19 @@ function syncHealthPage(el) {
     card.body.appendChild(e);
   }
   if (h && Array.isArray(h.checks)) {
-    const list = _syncEl('div', 'sh-list'); list.setAttribute('role', 'list');
-    for (const c of h.checks) { const x = _shCheckEl(c); x.setAttribute('role', 'listitem'); list.appendChild(x); }
-    card.body.appendChild(list);
-    if (_shHealthAt) card.body.appendChild(_syncEl('div', 'set-h sh-at', 'Checked ' + syncAgo(_shHealthAt, Date.now()) + '. This computer\'s own checks (network, firewall, cloud app) are repeated when you click Check again.'));
+    // 2.17.1: what needs you first (and anything still moving, with its bar); everything else folded.
+    const first = h.checks.filter(c => c.tone === 'err' || c.tone === 'warn' || (c.progress && c.progress.total > 0));
+    const rest = h.checks.filter(c => !first.includes(c));
+    const listOf = (cs) => { const list = _syncEl('div', 'sh-list'); list.setAttribute('role', 'list'); for (const c of cs) { const x = _shCheckEl(c); x.setAttribute('role', 'listitem'); list.appendChild(x); } return list; };
+    if (first.length) card.body.appendChild(listOf(first));
+    if (rest.length) {
+      const det = document.createElement('details'); det.className = 'sh-fold';
+      det.open = !!_shRestOpen; det.ontoggle = () => { _shRestOpen = det.open; };
+      det.appendChild(_syncEl('summary', null, 'Everything else is fine (' + rest.length + ')'));
+      det.appendChild(listOf(rest));
+      card.body.appendChild(det);
+    }
+    if (_shHealthAt) card.body.appendChild(_syncEl('div', 'set-h sh-at', 'Checked ' + syncAgo(_shHealthAt, Date.now()) + '.'));
   }
   el.appendChild(card.card);
   if (!h && !_shBusy && Date.now() - _shHealthTried > 10000) syncHealthLoad(false);
@@ -243,7 +256,7 @@ function _shFeedList(entries, max) {
   return list;
 }
 function syncChangesPage(el) {
-  const card = _settingsCard('What changed', 'What your other computers changed here, newest first (the last 100). Kept on this computer only.');
+  const card = _settingsCard('What changed', 'What your other computers changed here, newest first.');
   if (_shChanges === null) { card.body.appendChild(_syncEl('div', 'set-h', 'Reading…')); syncChangesLoad().then(_syncRefresh); }
   else if (!_shChanges.length) card.body.appendChild(_syncEl('div', 'set-h', 'Nothing from your other computers yet. Their changes show here as they arrive.'));
   else card.body.appendChild(_shFeedList(_shChanges, 100));
@@ -278,11 +291,11 @@ async function _shResolve(c, keep) {
   syncReviewLoad();
 }
 function syncReviewPage(el) {
-  const card = _settingsCard('Review', 'The same thing was changed on two computers while they could not see each other. The later change was kept; choose here if you want the other one.');
+  const card = _settingsCard('Review', 'Changed on two computers at once. The later change was kept; pick the other here.');
   const r = _shReview;
   if (!r) { card.body.appendChild(_syncEl('div', 'set-h', 'Reading…')); syncReviewLoad(); }
   else if (r.error) card.body.appendChild(_syncEl('div', 'sync-status sync-err', r.error));
-  else if (!r.items.length) card.body.appendChild(_syncEl('div', 'set-h', 'Nothing to review: no clashes are waiting.'));
+  else if (!r.items.length) card.body.appendChild(_syncEl('div', 'set-h', 'Nothing to review.'));
   else {
     const list = _syncEl('div', 'sh-review'); list.setAttribute('role', 'list');
     for (const c of r.items) {
@@ -318,7 +331,7 @@ function syncPanelExtrasHtml(attention) {
   const now = Date.now();
   const lines = entries.map(e => `<div class="pr-feed-row"><span class="pr-feed-head">${esc(syncFeedHead(e, now))}</span>${e.text ? `<span class="pr-feed-what">${esc(e.text)}</span>` : ''}</div>`).join('');
   return `${lines ? `<div class="pr-feed" aria-label="What changed">${lines}<button type="button" class="btn btn-ghost btn-sm" data-act="changes">What changed</button></div>` : ''}`
-    + `<div class="pr-health"><button type="button" class="btn ${attention ? 'btn-primary' : 'btn-secondary'} btn-sm" data-act="health">${attention ? 'Needs attention: open Health' : 'Sync health'}</button></div>`;
+    + `<div class="pr-health"><button type="button" class="btn ${attention ? 'btn-primary' : 'btn-secondary'} btn-sm" data-act="health">Check-up</button></div>`;
 }
 /** Wire the buttons syncPanelExtrasHtml made (close: the panel's own close). */
 function syncPanelExtrasWire(el, close) {

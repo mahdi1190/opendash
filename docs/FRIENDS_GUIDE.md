@@ -20,13 +20,20 @@ sharing level sends is in [PRIVACY.md](PRIVACY.md#friends).
 
 ## Getting started
 
-Open **Friends** in the sidebar. Until you have a friend, a short welcome
-walks you through three steps, with a progress bar:
+Click your avatar in the sidebar's top-left corner (until you have a
+profile it shows your workspace icon) and choose **Open Friends**. The
+same menu has *Set status*, *Add a friend*, *What my friends can see*, *Your
+relay* and *Sync*; a green dot on your avatar means a friend is around, and
+a number means someone is waiting for you. (Want Friends in the sidebar as
+well? *Customise sidebar*, Home > Friends.)
+
+Until you have a friend, a short welcome walks you through three steps,
+with a progress bar:
 
 1. **Make your character.** Opens the character builder (Settings >
    Profile). Friends see your character next to your name. If you like the
    starting one, choose *It looks fine as it is*.
-2. **Get a relay.** Choose *Connect Cloudflare* (free, about 2 minutes) or
+2. **Get a relay.** Choose *Set up my relay* (free, about 2 minutes) or
    *Paste a friend's invite* to use a friend's relay. See
    [Your relay](#your-relay).
 3. **Invite a friend.** *Make an invite link*, then *Copy link* or *Copy a
@@ -51,9 +58,9 @@ computer is off.
 The relay only ever holds **sealed (end-to-end encrypted) messages**. It
 cannot read them, and it never learns names or what you send.
 
-### Connect Cloudflare, step by step
+### Set up my relay, step by step
 
-Settings > **Your relay** > **Connect Cloudflare** (or step 2 of the
+Settings > **Your relay** > **Set up my relay** (or step 2 of the
 welcome). It takes about two minutes. You will see each step tick off:
 
 1. **Get Cloudflare's tool.** OpenDash uses Cloudflare's own tool,
@@ -75,11 +82,12 @@ welcome). It takes about two minutes. You will see each step tick off:
 **Try again** starts again straight away.
 
 When it is done you will see **You're connected!** with two next steps:
-**Invite a friend**, and **Sync your devices through it too** (your own
+**Invite a friend**, and **Sync all your devices through it** (your own
 devices then sync through the relay within a second, without needing a shared
-folder; Settings > Sync).
+folder; your other computers switch to it by themselves as soon as they have
+its key, and your folder keeps a backup copy; Settings > Sync).
 
-**Deploy again** (when you already have a relay) puts the newest relay code on
+**Update my relay** (Your relay > Advanced, when you already have one) puts the newest relay code on
 Cloudflare under the **same address**. Your members, invites and devices are
 kept.
 
@@ -137,7 +145,7 @@ Nothing is ever upgraded or paid for automatically.
 
 ### Disconnecting
 
-**Disconnect relay** stops all your devices using it at once (Undo for a
+**Stop using this relay** (Your relay > Advanced) stops all your devices using it at once (Undo for a
 minute): they no longer fetch friends' messages from it, and device sync stops
 going through it (your network and sync folder keep working). The relay itself
 keeps running in your Cloudflare account, with its members, until you delete
@@ -247,9 +255,9 @@ and OpenDash never upgrades it.
 **Can a stranger use my relay?** No. Every request must be signed by you, one
 of your devices, or someone you invited.
 
-**I have several computers. Do I connect Cloudflare on each?** No. Connect it
+**I have several computers. Do I set up my relay on each?** No. Set it up
 once; the relay is saved for all your devices (through your encrypted sync).
-Any of them can *Deploy again* later.
+Any of them can *Update my relay* later.
 
 **Can I move my relay to another Cloudflare account?** Yes: *Sign in with
 another account* when it asks, or disconnect and connect again. Friends on the

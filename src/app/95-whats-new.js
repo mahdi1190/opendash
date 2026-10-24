@@ -55,8 +55,8 @@ const _WN_CURRENT_GROUPS = ['friends', 'together', 'you', 'relay'];
 const WHATS_NEW = [
   // ---- 2.17: friends ----
   { id: 'friends-tab', group: 'friends', icon: 'users', title: 'The Friends tab',
-    text: 'Your friends in one lively place: their avatars, who is online, levels and streaks, and a feed of level-ups, finished quests and cheers.',
-    view: ['friends'], sel: ['#sidebar [data-view="friends"]', '#main-body'] },
+    text: 'Your friends in one lively place: their avatars, who is online, levels and streaks, and a feed of level-ups, finished quests and cheers. Click your avatar in the top-left corner, then Open Friends.',
+    view: ['friends'], sel: ['#ws-btn', '#main-body'] },
   { id: 'friends-start', group: 'friends', icon: 'sparkles', title: 'Getting started with friends',
     text: 'Three friendly steps: make your character, get a relay (connect your own free Cloudflare, or paste a friend’s invite), and invite someone.',
     cmd: ['friends-onboard'] },
@@ -89,12 +89,15 @@ const WHATS_NEW = [
     view: ['friends'] },
 
   // ---- 2.17: you ----
+  { id: 'corner', group: 'you', icon: 'user-round', title: 'The corner is you',
+    text: 'Your avatar and name sit in the top-left corner, with your status and a dot when friends are around (a number when someone is waiting for you). Click it for your card, a quick status, your friends, your relay and sync, and the workspace menu.',
+    sel: ['#ws-btn'] },
   { id: 'profile', group: 'you', icon: 'user-round', title: 'Your profile and character',
     text: 'Build your avatar: hair, face, outfit, hats, glasses and more, with seasonal items to collect and unlocks as you level up. It reacts to your day, too.',
     cmd: ['profile-avatar'] },
   { id: 'status', group: 'you', icon: 'circle-user', title: 'A status for your friends',
-    text: 'Set a status like focusing or on holiday, with an emoji and an end time. It clears itself.',
-    cmd: ['profile-status'] },
+    text: 'Set a status like focusing or on holiday, with an emoji and an end time. It clears itself. Click your avatar in the top-left corner, then Set status.',
+    cmd: ['profile-status'], sel: ['#ws-btn'] },
 
   // ---- 2.17: relay ----
   { id: 'relay', group: 'relay', icon: 'shield-check', title: 'Your own private relay',

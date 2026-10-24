@@ -52,9 +52,9 @@ Secrets that must follow the person but are not the identity (drop tokens friend
 
 ## 3. Relays (private)
 
-A relay belongs to ONE person: its owner key (an identity's `ed.pub`) is set when it is deployed (Settings > Your relay > Connect Cloudflare, agent 'relay'). Only the owner's devices and the people the owner has ADDED may use it. No relay origin is built into the app.
+A relay belongs to ONE person: its owner key (an identity's `ed.pub`) is set when it is deployed (Settings > Your relay > Set up my relay, agent 'relay'). Only the owner's devices and the people the owner has ADDED may use it. No relay origin is built into the app.
 
-- **Home relay**: where a person receives messages. Their own, or a friend's relay they joined through an invite. Records in `<data>/friends/relays.json` (synced): `{relays: {<key>: {origin, role: 'owner'|'member', scopes: ['message', 'sync'?], mbox, at, tokenSealed?}}, home: <key>}`. `store.mjs`: `listRelays()`, `homeRelay()`, `setRelay({origin, role, scopes, mbox, token?}, {home})`, `removeRelay(origin)`; agent 'relay' calls `setRelay(..., {home: true})` when a deployment completes.
+- **Home relay**: where a person receives messages. Their own, or a friend's relay they joined through an invite. Records in `<data>/friends/relays.json` (synced): `{relays: {<key>: {origin, role: 'owner'|'member', scopes: ['message', 'sync'?], mbox, at, tokenSealed?, sync?: true}}, home: <key>|null, sync?: {on, at}}`. Two different `sync` fields (2.17.1): a relay record's `sync: true` says the person chose that (member) relay for device sync at all; the top-level `sync: {on, at}` is the person's choice to sync ALL their devices through the home relay ("Sync through your relay" on any computer; off on one computer stays that computer's own setting). `store.mjs`: `listRelays()`, `homeRelay()`, `setRelay({origin, role, scopes, mbox, token?, sync?}, {home})`, `removeRelay(origin)`; agent 'relay' calls `setRelay(..., {home: true})` when a deployment completes. **Device sync (2.17.1)** uses the HOME relay only (`lib/sync/relay-node.mjs` `readRelayInfo`): one the person owns, or a member relay with the `sync` scope that they chose for sync in Settings > Your relay (record `sync: true`: *Use a friend's relay instead*, or *Use it for sync*, `POST /api/relay/sync`). A friend's invite that grants `sync` never moves device sync by itself, and removing the home relay (*Disconnect relay*) leaves NO home relay: sync stays on the folder and the network, friends' messages wait, and the page offers the choice. Without a top-level `sync` choice, the person's own relay (role owner) is used for sync by default, the folder kept as a backup. The record reaches the person's other computers at once, in each device's sealed device.json and on a live link (docs/dev/SYNC_FORMAT.md section 7, LIVE_SYNC.md `part`).
 - **Mailbox**: a random id on the home relay (`mbox`, 16 to 64 of `[A-Za-z0-9_-]`). The owner's devices pull it, signing with the identity.
 - **Drop token**: a capability to post into one mailbox, minted by the mailbox's owner on their home relay and given to ONE friend (inside the encrypted handshake, or in an invite). Messages to X always go to X's home relay with the drop token X gave you. Revoked on remove or block.
 - **Friends on different relays** simply hold each other's drop tokens. Friend codes only resolve inside one relay.
@@ -110,13 +110,16 @@ R -> A  friend:request  {card_R, commit = H(nR, card_R), how: code|invite, inv?,
 A -> R  friend:hello    {nonce: nA}            automatic: no secrets, no drop token yet
 R -> A  friend:reveal   {nonce: nR}            A checks the commit; both show code(card_R, card_A, nR, nA)
 A       compares the code with R (in person, a call, a message) and approves
-A -> R  friend:approve  {drop: A's drop}       both are friends
+A -> R  friend:approve  {drop: A's drop}       A: friends. R: friends too, except added BY CODE (below)
+R       added by code: compares the same code and says "The codes match" (confirm) before or after A approves
         friend:decline / friend:mismatch       A said no, or either said the codes differ
 ```
 
+- **Added by code, both sides compare (2.17.1).** A friend code is looked up on a relay, so a relay operator could answer with someone else's card. R therefore confirms the code too: an approval that arrives before R's "The codes match" waits on R's record (`flow.approved`), and what A sends meanwhile is held in memory and handled once R confirms (dropped if R says the codes differ). R's "The codes are different" after A approved ends A's side too (`friend:mismatch` to a friend A approved by code: A forgets them and keeps a `declined` record, `why: codes-differed`). An invite carries A's card itself, so R does not confirm there. `POST /api/friends/confirm {id}` (`engine.confirm`).
+
 - R commits to its nonce before it sees A's, so nobody in the middle (the relay included) can choose keys that make both codes equal (one chance in a million).
 - `code = 6 digits of SHA-256(JSON ["opendash-friend-sas-v1", R.id, R.x, R.ed, A.id, A.x, A.ed, nR, nA])`, shown as `482 913`.
-- A's screen: "Sam wants to connect. Check that Sam sees 482 913." Approve / Decline / Block. R's screen: "Waiting for Alex to approve. Tell them your code: 482 913", with Cancel and "The codes are different".
+- A's screen: "Sam wants to connect. Check that Sam sees 482 913." Approve / Decline / Block. R's screen, added by code: "Check that Alex sees this same code: 482 913" with "The codes match", "The codes are different" and Cancel; then "Waiting for Alex to approve". Added with an invite: "Waiting for Alex to approve. Tell them your code: 482 913", with Cancel and "The codes are different".
 - Both asked at once: the side with the larger id answers as A; the other keeps waiting as R.
 - A request from a blocked id, a used or expired invite, or a second request for a pending one is dropped quietly.
 
@@ -236,7 +239,7 @@ Identity rotation (section 15): `rotateIdentity() -> rotation view`, `rotation()
 | `POST /api/friends/add` | `{code}` or `{invite}` (a short link, a long link or the long text) | `{ok, friend}` |
 | `POST /api/friends/invite` | `{ttlDays?, relayScopes?: ['message','sync']}` | `{ok, id, text, link, longLink, short, shortWhy, message, exp, relayScopes}` (`link`: the short link when `short`, else the long one; `text`: the long invite text; `message`: ready to send) |
 | `POST /api/friends/invite/cancel` | `{id}` | `{ok}` |
-| `POST /api/friends/approve` `/decline` `/mismatch` `/cancel` | `{id}` | `{ok, friend}` |
+| `POST /api/friends/approve` `/confirm` `/decline` `/mismatch` `/cancel` | `{id}` | `{ok, friend}` (`confirm`: the requester's "The codes match", added by code) |
 | `POST /api/friends/remove` | `{id, block?}` | `{ok, undoUntil}` |
 | `POST /api/friends/remove/undo` `/unblock` | `{id}` | `{ok, friend}` |
 | `POST /api/friends/send` | `{to, kind, body, group?}`, or `{to: id\|[ids]\|'*', kind, revoke: true}` | `{ok, id, sent, queued}` (a live kind: `{ok, id, sent, queued: 0, skipped, offline, live: true}`) |
@@ -251,7 +254,7 @@ Identity rotation (section 15): `rotateIdentity() -> rotation view`, `rotation()
 
 Errors are `400 {error, code}` with a plain sentence the page shows as it is.
 
-A friend `view` never carries private keys, tokens or nonces: `{id, ed, name, nick, status, role, how, step, code, addedAt, friendsAt, presence, relayHost, perms, profile, game, friendship, relayAsk, renewed}` (`ed`: their PUBLIC identity key, to match relay members; `me.ed` is yours); `step` is `sent` / `answering` / `check` / `approve` while the handshake runs, `code` the confirmation code once both sides have it.
+A friend `view` never carries private keys, tokens or nonces: `{id, ed, name, nick, status, role, how, step, code, theyApproved, addedAt, friendsAt, presence, relayHost, perms, profile, game, friendship, relayAsk, renewed}` (`ed`: their PUBLIC identity key, to match relay members; `me.ed` is yours); `step` is `sent` / `answering` / `check` / `approve` while the handshake runs (`check` on either side: compare the code now; the requester has it only when added by code), `code` the confirmation code once both sides have it, `theyApproved` (requester) their approval waits for your "The codes match".
 
 ### Page
 

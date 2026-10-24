@@ -46,6 +46,12 @@ keeps an origin:
 {"relays": {"<key>": {"origin": "https://opendash-relay-k3x9q2.example.workers.dev", "role": "owner", "scopes": ["message", "sync"], "mbox": "<mailbox id>", "at": 1792771200000}}, "home": "<key>"}
 ```
 
+Device sync uses the home relay ONLY: one the person owns, or a member relay
+with the `sync` scope whose record says `"sync": true` (the person chose it for
+sync in Settings > Your relay). A friend's invite that grants `sync` never moves
+sync by itself, and removing the home relay leaves none (sync stays on the folder
+and the network until the person chooses).
+
 The Worker name of a relay this person deployed is read back from its
 workers.dev origin (`workerOfOrigin()` in lib/relay/deploy.mjs), so any of
 their devices can deploy it again under the same address. What only the
@@ -255,6 +261,16 @@ per hour. Redeeming with a key that already holds a grant adds the scopes.
 
 ## 5. Device sync
 
+A computer may sync through the relay alone, or through the relay and a
+cloud folder at once (`both`, lib/sync/relay.mjs). In `both` the relay comes
+FIRST (2.17.1): while it can be read (key here, enrolled, index read, no
+back-off), other devices' logs, snapshots, keys.json and blobs are read from
+it; the folder copy (the same bytes, so the same offsets) is read only for
+what the relay does not hold yet, or while the relay is down, and the relay
+is taken back as soon as it answers (an unreachable relay is retried within
+5 minutes). A computer always writes its own files to the folder first (the
+backup), then uploads them.
+
 ### 5.1 Groups
 
 `gid = b64u(SHA-256(UTF-8("opendash-relay-group-v1\n" + group)))`, `group`
@@ -276,8 +292,15 @@ The relay keeps `SHA-256(UTF-8(cap))` and `{kid, n}` only.
   this device key; a `dev` already bound to another key moves to this one
   only with the cap. A revoked `dev` never comes back (removal is permanent:
   rejoin under a new id). -> `{"gid","dev","s","floor"}`.
-- `POST /v1/g/<gid>/cap` `{"kid","n","cap"}`: an enrolled device, whenever the
-  current sync key changes (`n` must not go down).
+- `POST /v1/g/<gid>/cap` `{"kid","n","cap","prev"}`: an enrolled device, whenever the
+  current sync key changes. `prev` is the cap the relay holds NOW (proof that
+  the device holds that key too): without it, or with another, `403 forbidden`
+  `{why: "cap", cap: {kid, n}}`, so an enrolled device that lacks the current key
+  (removed from sync, or stolen and left behind by a key change) cannot overwrite
+  it and lock the other devices out. `n` must not go down (`409 stale`, with the
+  same `cap`). A client that gets either reads the group's `cap` back and keeps
+  it (never assumes its own went through); it moves it later, when it holds that
+  key (keys come through sync).
 - `POST /v1/g/<gid>/revoke` `{"dev"}`: an enrolled device removes another (with
   a removal in the keyring). Its key loses access at once, its sockets close.
 - `DELETE /v1/g/<gid>/d/<dev>`: the files of a REVOKED device, or of an older
@@ -492,6 +515,11 @@ KiB). Members only.
 - `DELETE /v1/codes/<key>` (its identity).
 - `GET /v1/codes/<key>` -> `{"blob"}` or `404`. At most 20 lookups a minute per
   key and 10 per IP, misses included.
+- A released key (a new code, a `DELETE`, the member purged) stays RESERVED for
+  the identity that held it for 90 days (a tombstone `{iid, gone}`; at most 64
+  per member, the oldest go first): `GET` answers `404`, another identity's `PUT`
+  answers `409 taken`, its own may take it back. So a code someone used before
+  never opens another person's card. Tombstones are swept daily after 90 days.
 
 ### 7.6 Presence (opt-in, coarse)
 
@@ -507,7 +535,7 @@ KiB). Members only.
 Sockets authenticate by signed challenge, right after the upgrade:
 
 1. Relay: `{"t":"challenge","c":"<32 random bytes, b64u>","now":ms}`.
-2. Client, within 10 seconds:
+2. Client, within 5 seconds:
    `{"t":"auth","key","cert"?,"sig","dev"?}`, `sig` = Ed25519 over
    `"OPENDASH-RELAY-WS-1\n" + host + "\n" + path + "\n" + c`
    (`answerChallenge()` in lib/relay/auth.mjs).
@@ -516,7 +544,11 @@ Sockets authenticate by signed challenge, right after the upgrade:
    (code 4401 / 4403).
 
 Nothing is sent to a socket before `ready`. At most 8 sockets per identity per
-space and 64 per space; at most 8 not yet authenticated. Clients send `ping`
+space and 64 per space. A socket not yet authenticated (anyone holding a card
+or a link can open one) is closed after 5 seconds; at most 4 per address (the
+hashed IP bucket) per space; and a full space closes the oldest one of another
+address to make room, so only authenticated sockets can fill it and strangers
+cannot keep the owner's devices out. Clients send `ping`
 every 50 seconds (answered `pong` without waking the object), reconnect with
 back-off, and poll (`changes`, `items`) every 60 seconds (5 minutes when
 idle) while sockets fail.
@@ -536,6 +568,9 @@ so it cannot open what it keeps.
   per IP and the anonymous limits) -> `{"blob", "exp"}`, `404` when unknown, `410 gone` once expired.
 - `DELETE /v1/inv/<key>` (its identity): the inviter deletes it once the invite is used, cancelled or
   expired. Expired ones are swept daily, and with a member's grant when it is purged.
+- A deleted, expired or purged link key stays reserved for its identity for 90 days, exactly as a
+  friend code's key (7.5): `404` (or `410` just after expiry) to everyone, `409 taken` to another
+  identity's `PUT`.
 
 A relay from before this section answers `404` to the `PUT`; the app then hands out the long link.
 
@@ -656,7 +691,9 @@ records, `friends/relays.json`, `lib/friends/relay-client.mjs`), device sync
 Settings > Your relay (`lib/relay/deploy.mjs`).
 
 - Accepted: `https://<name>[:port]`, where `<name>` is a DNS name: no IP
-  literal, no `localhost`, `.local`, `.localdomain`, `.internal`, `.lan`,
+  literal in any form (`127.0.0.1`, and the short, hex, octal and decimal
+  forms such as `127.1`, `10.1.1`, `0x7f.1`, `192.168.1`: a name whose last
+  label, or every label, is digits or `0x` hex is refused), no `localhost`, `.local`, `.localdomain`, `.internal`, `.lan`,
   `.home.arpa` and the like; no path, query, fragment or user info.
   Normalised to lower case, without a trailing slash or `:443`.
 - A name that RESOLVES to a private, loopback, link-local or other non-global

@@ -63,7 +63,11 @@ function openDisplayPopover(anchor) {
 document.getElementById('display-btn').onclick = (e) => openTaskDisplayPopover(e.currentTarget);   // per-view sort/group: 32-tasks-ui.js
 document.getElementById('new-task-btn').onclick = (e) => openNewTask('', { from: e.currentTarget });   // centre card in create mode
 document.getElementById('more-btn').onclick = (e) => openMenu(e.currentTarget, shellMenuItems('more'), { align: 'end', width: 260 });
-document.getElementById('ws-btn').onclick = (e) => openMenu(e.currentTarget, shellMenuItems('workspace'), { align: 'start', width: 240 });
+// The corner: your profile hub (97-profile-3corner.js: your card, friends, relay, sync, then the workspace menu).
+document.getElementById('ws-btn').onclick = (e) => {
+  if (typeof profileHubOpen === 'function' && profileHubOpen(e.currentTarget)) return;
+  openMenu(e.currentTarget, shellMenuItems('workspace'), { align: 'start', width: 240 });
+};
 document.getElementById('palette-btn').onclick = () => openCommandPalette();
 document.getElementById('sidebar-toggle').onclick = () => _shellToggleSidebar();
 document.getElementById('drawer-btn').onclick = () => {

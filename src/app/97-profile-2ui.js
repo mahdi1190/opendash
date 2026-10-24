@@ -6,7 +6,8 @@
    locks that say how to open them, Randomise, Undo and Redo, the sizes the
    avatar is seen at, and you in the scenes: your outfit on the scene figure),
    the badges you show, favourite places, and what friends see. Plus the
-   palette commands. The state, the chip and the API are 97-profile-1core.js.
+   palette commands. The state and the API are 97-profile-1core.js; the
+   corner (your avatar on the sidebar's workspace button) is 97-profile-3corner.js.
    ============================================================ */
 const _pfUI = { tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null };
 const _PF_FACE_CROP = new Set(['eyes', 'eyeCol', 'brows', 'mouth', 'facial', 'marks']);
@@ -41,7 +42,7 @@ function _pfSettings(el) {
   const paintCard = () => { cardHost.replaceChildren(profileCardEl(null)); };
   paintCard();
   const side = _pfEl('div', 'pf-set-side');
-  side.append(_pfEl('p', 'set-h', 'This is your card: on the top bar, in your profile, and what your friends see. Click your avatar on the top bar to set a quick status.'));
+  side.append(_pfEl('p', 'set-h', 'This is your card: in the top-left corner, in your profile, and what your friends see. Click your avatar in the corner to set a quick status or see your friends.'));
   const ed = _pfBtn('Customise your avatar', 'wand-sparkles', () => { const b = document.getElementById('pf-builder'); if (b) b.scrollIntoView({ behavior: _pfMotionOk() ? 'smooth' : 'auto', block: 'start' }); }, 'btn-primary');
   side.appendChild(ed);
   top.append(cardHost, side);
@@ -305,7 +306,7 @@ function _pfNextUnlocks() {
 
 /* ---------- badges ---------- */
 function _pfBadgesCard(changed) {
-  const { card, body } = _settingsCard('Badges you show', 'Pick up to six of the achievements you have earned, or let your card show the newest three.');
+  const { card, body } = _settingsCard('Badges you show', 'Pick up to six of the achievements you have earned, or let your card show the newest three (never money or places badges: pick those yourself if you want them shown).');
   const paint = () => {
     body.replaceChildren();
     const earned = _pfEarned(), p = profileGet();

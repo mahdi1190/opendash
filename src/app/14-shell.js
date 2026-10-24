@@ -12,6 +12,8 @@
      registerSidebarBlock(groups, {id, order, render(el, ctx)})  sidebar content
          groups: a group id or an array; same id replaces. render() may return
          false to hide the block. ctx: {view, group, navItem(o), section(o)}.
+         label: its name in Customise sidebar; hiddenByDefault: true starts it
+         hidden until the user shows it there (15-nav-custom.js sbBlockHidden).
      sbNavItem(o) / sbSection(o)    build sidebar rows (see below)
      registerTopbarWidget({id, order, render(el)})                top-bar strip
      registerMoreItem({id, label, icon, order, where, run, checked, hidden, hint, kbd})
@@ -518,11 +520,17 @@ function renderShell() {
     tt.setAttribute('data-tip', dark ? 'Light mode' : 'Dark mode');
     tt.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
   }
-  // The workspace button shows just the name (as in the approved mockups); the window title keeps appTitle().
-  const name = userName() || 'OpenDash';
-  const bn = document.getElementById('brand-name'); if (bn && bn.textContent !== name) bn.textContent = name;
+  // The corner is you (97-profile-3corner.js): your avatar and display name once you have a profile, with your status
+  // and a friends badge. Until then the workspace button shows just the name (as in the approved mockups) and the
+  // workspace icon. The window title keeps appTitle(); the favicon keeps the app icon (applyAppIconFavicon).
+  let you = false;
+  if (typeof profileCornerPaint === 'function') { try { you = profileCornerPaint(); } catch (e) { console.error('[corner]', e); } }
+  if (!you) {
+    const name = userName() || 'OpenDash';
+    const bn = document.getElementById('brand-name'); if (bn && bn.textContent !== name) bn.textContent = name;
+    setBrandMark(document.getElementById('brand-mark'), userName());
+  }
   if (_SHELL_IS_MAC) { const k = document.querySelector('#palette-btn .kbd'); if (k && k.textContent !== '⌘') k.textContent = '⌘'; }
-  setBrandMark(document.getElementById('brand-mark'), userName());
   if (typeof applyAppIconFavicon === 'function') applyAppIconFavicon();
   renderSwitcher();
   renderCrumb();

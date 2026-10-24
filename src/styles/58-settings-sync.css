@@ -102,3 +102,45 @@
 .pr-feed .btn { align-self: flex-start; }
 .pr-health { padding: 6px 0; }
 @media (prefers-reduced-motion: reduce) { .sh-bar > span { transition: none; } }
+/* The Sync card (2.17.1, docs/dev/SIMPLIFY_PLAN.md section 4): the status line, the path line, one row per computer; the rest folded */
+.sync-st { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1) 0; }
+.sync-st-dot { flex: none; align-self: center; width: 9px; height: 9px; border-radius: 50%; background: var(--text-muted, #888); }
+.sync-st-ok .sync-st-dot { background: var(--success, var(--accent)); }
+.sync-st-busy .sync-st-dot { background: var(--accent); animation: sync-st-pulse 1.4s ease-in-out infinite; }
+.sync-st-warn .sync-st-dot { background: var(--warning, #b7791f); }
+.sync-st-err .sync-st-dot { background: var(--danger, #c0392b); }
+.sync-st-w { font-weight: 600; }
+.sync-st-d { color: var(--text-muted, inherit); }
+@keyframes sync-st-pulse { 50% { opacity: .35; } }
+html[data-motion="reduced"] .sync-st-busy .sync-st-dot { animation: none; }
+@media (prefers-reduced-motion: reduce) { .sync-st-busy .sync-st-dot { animation: none; } }
+.sync-face { display: flex; flex-direction: column; gap: var(--space-1); padding-bottom: var(--space-2); }
+.sync-face > .sync-st { font-size: 1.05rem; }
+.sync-path { color: var(--text-muted, inherit); }
+.sync-path[hidden] { display: none; }
+.sync-peers { display: flex; flex-direction: column; margin-top: var(--space-2); }
+.sync-peer { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto minmax(7rem, 1fr) auto minmax(6rem, 1fr); gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-1); border-top: 1px solid var(--border, rgba(127,127,127,.18)); border-radius: 4px; }
+.sync-peer:hover { background: var(--bg-subtle, rgba(127,127,127,.06)); }
+.sync-peer:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sync-peer-ic { display: inline-flex; color: var(--text-muted, inherit); }
+.sync-peer-n { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.sync-peer-chip { font-size: .85em; font-weight: 500; white-space: nowrap; }
+.sync-peer-chip:empty { display: none; }
+.sync-peer-d { color: var(--text-muted, inherit); min-width: 0; }
+.sync-peer-ok .sync-peer-chip { color: var(--success, var(--accent)); }
+.sync-peer-busy .sync-peer-chip { color: var(--accent); }
+.sync-peer-idle .sync-peer-chip { color: var(--text-muted, inherit); }
+.sync-peer-warn .sync-peer-chip, .sync-peer-warn .sync-peer-ic { color: var(--warning, #b7791f); }
+.sync-peer-me .sync-peer-chip { color: inherit; }
+@media (max-width: 560px) { .sync-peer { grid-template-columns: auto 1fr auto; } .sync-peer-d { grid-column: 2 / 4; } }
+.sync-note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md, 8px); background: var(--bg-subtle, rgba(127,127,127,.08)); margin: var(--space-2) 0; }
+.sync-note-t { flex: 1 1 16rem; min-width: 0; }
+.sync-face-acts { margin: var(--space-2) 0; }
+.sync-fold { margin-top: var(--space-1); border-top: 1px solid var(--border, rgba(127,127,127,.25)); }
+.sync-fold > summary { cursor: pointer; padding: var(--space-2) 0; color: var(--text-muted, inherit); font-weight: 500; }
+.sync-fold[open] > summary { color: inherit; margin-bottom: var(--space-1); }
+.sync-fold-body > .card { margin: var(--space-2) 0; }
+.sync-sub { font-weight: 600; margin: var(--space-3) 0 var(--space-1); }
+.sync-job, .sync-fact { padding: 2px 0; }
+/* Check-up: the problems first, the rest folded */
+.sh-fold > summary { cursor: pointer; padding: var(--space-2) 0; color: var(--text-muted, inherit); }
