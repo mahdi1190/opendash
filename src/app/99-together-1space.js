@@ -14,6 +14,319 @@ const TG_TABS = [
 ];
 
 
+/** The shared page header's actions (14-shell.js headerActions): the hub's, or the open space's. */
+function tgHeaderActions(view) {
+  const parts = String(view || '').split(':');
+  if (parts.length < 2) {
+    const off = !tgChannel();
+    const anchor = () => document.querySelector('#view-actions .view-act-more') || document.getElementById('view-actions');
+    return {
+      primary: { label: 'New space', icon: 'plus', disabled: off, run: () => tgNewSpaceDialog() },
+      icons: [
+        { icon: 'refresh-cw', label: 'Check with friends now', run: async () => { const r = await tgPost('/api/together/hello', {}); if (r) toast(r.asked ? `Asked ${r.asked} time${r.asked === 1 ? '' : 's'}: anything missing arrives in a moment` : 'Nothing to check yet', { icon: 'refresh-cw' }); tgLoadSoon(1500); } },
+        { icon: 'settings', label: 'Together settings', run: (e, b) => tgSettingsMenu(b) },
+      ],
+      more: [
+        { label: 'Find a time', icon: 'calendar-clock', disabled: off, run: () => tgFindTimeDialog({}) },
+        { label: 'Focus together', icon: 'timer', disabled: off, run: () => tgFocusTogetherMenu(anchor()) },
+      ],
+    };
+  }
+  const sp = tgSpace(parts[1]);
+  if (!sp || sp.status === 'invited' || !sp.value) return null;
+  const owner = sp.value.meta && sp.value.meta.owner === tgMe() && sp.status === 'joined';
+  return {
+    primary: owner ? { label: 'Invite', icon: 'user-plus', run: () => tgInviteDialog(sp.id) } : null,
+    icons: [{ icon: 'ellipsis', label: 'Space menu', run: (e, b) => tgSpaceMenu(b, sp) }],
+    more: [{ label: 'Find a time', icon: 'calendar-clock', run: () => tgFindTimeDialog({ space: sp.id }) }],
+  };
+}
+
+/* ---------- the hub ---------- */
+function tgRenderHub(root) {
+  const sub = document.getElementById('view-subtitle');
+  if (sub) sub.textContent = tgChannel() ? `${tgSpaces().length} shared space${tgSpaces().length === 1 ? '' : 's'}` : '';
+  // New space, Find a time, Focus together, the refresh and the settings live in the shared page header (tgHeaderActions below).
+  root.appendChild(tgSpacesPane({}));
+}
+/**
+ * Your shared spaces as a list and the one you picked beside it (2.19, lean UI): who is waiting for you first, then
+ * the spaces (masterDetail), then what spans them (coming up, challenges, the ones you left). The hub
+ * (#view=together) shows it and so does Friends > Shared (o.embedded). Picking a space swaps the right side only.
+ */
+function tgSpacesPane(o) {
+  o = o || {};
+  const pane = tgEl('div', 'tg-pane');
+  if (!tgHas() || _tg.data.failed) { pane.appendChild(tgWaitEl('your spaces')); return pane; }
+  if (!tgChannel()) {
+    const box = tgEl('div', 'tg-card tg-intro');
+    box.innerHTML = `<div class="tg-intro-ic">${icon('users')}</div>`;
+    const t = tgEl('div', 'tg-intro-t');
+    t.append(tgEl('h3', '', 'Do things together with friends'),
+      tgEl('p', 'muted', 'Shared lists and boards, tasks you hand to each other, trips, split costs, quests and challenges. First add a friend: everything between you is end-to-end encrypted, and nothing a friend sends ever changes your own tasks without your say-so.'));
+    const go = tgBtn(o.embedded ? 'Add a friend' : 'Open Friends', { primary: true, icon: 'user-plus', run: () => {
+      if (o.embedded && typeof friendsAddDialog === 'function') friendsAddDialog();
+      else if (typeof sectionFor === 'function' && sectionFor('friends')) setView('friends');
+      else toast('Friends is not on this computer yet: update OpenDash (Settings > Updates).', { kind: 'warn' });
+    } });
+    t.appendChild(go);
+    box.appendChild(t);
+    pane.appendChild(box);
+  }
+  // Invitations and requests first: they wait for you.
+  const inv = tgInvites(), req = tgRequests();
+  if (inv.length || req.length) {
+    const sec = tgSection(pane, 'Waiting for you', 'inbox', inv.length + req.length);
+    for (const s of inv) sec.appendChild(tgInviteCard(s));
+    for (const r of req) sec.appendChild(tgRequestRow(r.sp, r.it));
+  }
+  if (typeof tgFocusStrip === 'function') { const f = tgFocusStrip(); if (f) pane.appendChild(f); }
+  const sps = tgSpaces();
+  if (!sps.length) {
+    const sec = tgSection(pane, 'Your spaces', 'layout-grid', 0);
+    sec.appendChild(tgEl('p', 'muted tg-pad', tgChannel() ? 'No shared spaces yet. Make one: a shopping list with your housemates, a board for a project, a party with quests, a trip.' : 'Your shared spaces will show here.'));
+    if (tgChannel()) {
+      const ideas = tgEl('div', 'tg-ideas');
+      for (const [kind, name] of [['list', 'Groceries'], ['board', 'House jobs'], ['trip', 'Weekend away'], ['party', 'Study buddies'], ['house', 'Our flat']]) {
+        ideas.appendChild(tgBtn(name, { icon: TG_KIND_ICON[kind], run: () => tgNewSpaceDialog({ kind, name }) }));
+      }
+      sec.appendChild(ideas);
+    }
+  } else {
+    let cur = sps.find(x => x.id === _tg.sel) || sps[0];
+    _tg.sel = cur.id;
+    const rows = new Map();
+    const pick = (id) => {
+      const sp = sps.find(x => x.id === id);
+      if (!sp || sp.id === cur.id) return;
+      cur = sp; _tg.sel = id;
+      for (const [rid, b] of rows) { b.classList.toggle('on', rid === id); if (rid === id) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); }
+      md.mdSet(tgSpaceSummary(sp));
+    };
+    const md = masterDetail({
+      label: 'Shared spaces', listWidth: 256,
+      list: (host) => {
+        for (const sp of sps) {
+          const open = tgOpenCount(sp);
+          const b = mdRow({ icon: _tgIconOf(sp), title: tgSpaceName(sp), sub: TG_KIND_LABEL[tgKindOf(sp)] + ' · ' + tgMembers(sp.value).length + ' people', badge: open || '', active: sp.id === cur.id, run: () => pick(sp.id) });
+          rows.set(sp.id, b);
+          host.appendChild(b);
+        }
+        host.appendChild(mdRow({ icon: 'plus', title: 'New shared space', cls: 'tg-md-new', run: () => tgNewSpaceDialog() }));
+      },
+      detail: () => tgSpaceSummary(cur),
+    });
+    pane.appendChild(md);
+  }
+  if (typeof tgHubLife === 'function') tgHubLife(pane);     // coming up: countdowns, trips, birthdays (4life)
+  if (typeof tgHubGame === 'function') tgHubGame(pane);     // challenges, trophies, leaderboard (3game)
+  const left = tgAllSpaces().filter(s => s.status === 'left' || s.status === 'declined' || s.status === 'removed');
+  if (left.length) {
+    const ls = tgSection(pane, 'Left or declined', 'archive', left.length, true);
+    for (const s of left) {
+      const row = tgEl('div', 'tg-row tg-row-flat');
+      row.append(tgEl('span', 'tg-row-t', tgSpaceName(s)), tgEl('span', 'muted tg-sm', s.status === 'removed' ? 'Removed by its owner' : s.status === 'declined' ? 'Declined' : 'Left'));
+      row.appendChild(tgBtn('Forget it here', { ghost: true, icon: 'trash-2', run: () => tgForget(s.id) }));
+      ls.appendChild(row);
+    }
+  }
+  return pane;
+}
+/** The picked space at a glance: who, what is open (tick it off here), one line to add to it, and Open for the whole space. */
+function tgSpaceSummary(sp) {
+  const v = sp.value, kind = tgKindOf(sp), id = sp.id;
+  const box = tgEl('div', 'tg-sum');
+  const head = tgEl('div', 'tg-sum-h');
+  head.insertAdjacentHTML('beforeend', `<span class="tg-sc-ic">${icon(_tgIconOf(sp))}</span>`);
+  const nm = tgEl('div', 'tg-sum-t');
+  nm.append(tgEl('h2', '', tgSpaceName(sp)), tgEl('span', 'muted tg-sm', TG_KIND_LABEL[kind]));
+  head.appendChild(nm);
+  head.appendChild(tgAvatarStack(tgMembers(v).filter(x => x !== tgMe()), v, 5));
+  const acts = tgEl('div', 'tg-acts');
+  acts.append(tgBtn('Open', { primary: true, icon: 'arrow-right', run: () => setView('together:' + id) }),
+    tgIconBtn('ellipsis', 'Space menu', (e, b) => tgSpaceMenu(b, sp)));
+  head.appendChild(acts);
+  box.appendChild(head);
+  const streak = typeof tgPartyStreak === 'function' ? tgPartyStreak(v) : 0;
+  const next = typeof tgNextDate === 'function' ? tgNextDate(v) : null;
+  if (streak > 1 || next) {
+    const f = tgEl('div', 'tg-sc-foot');
+    if (streak > 1) { const st = tgEl('span', 'tg-chip tg-chip-fire'); st.insertAdjacentHTML('beforeend', icon('flame', 'i-xs')); st.appendChild(tgEl('span', '', `${streak}-day party streak`)); f.appendChild(st); }
+    if (next) { const n = tgEl('span', 'tg-chip'); n.insertAdjacentHTML('beforeend', icon('calendar', 'i-xs')); n.appendChild(tgEl('span', '', next)); f.appendChild(n); }
+    box.appendChild(f);
+  }
+  const add = tgEl('div', 'tg-add');
+  add.insertAdjacentHTML('beforeend', icon('plus'));
+  add.appendChild(tgInput('add:' + id, { placeholder: 'Add to the list for everyone… (Enter)', max: 300, aria: 'New shared task', onEnter: (val, el) => { const t = String(val || '').trim(); if (!t) return; tgClearDraft('add:' + id); el.value = ''; tgAddItem(id, { title: t }); } }));
+  box.appendChild(add);
+  const open = tgItemsOf(v).filter(it => it.status !== 'done');
+  const list = tgEl('div', 'tg-list'); list.setAttribute('role', 'list');
+  if (!open.length) list.appendChild(tgEl('p', 'muted tg-pad', (v.items || []).length ? 'All done here.' : 'Nothing here yet. Add the first thing above.'));
+  for (const it of open.slice(0, 6)) list.appendChild(tgItemRow(sp, it, false));
+  box.appendChild(list);
+  if (open.length > 6) box.appendChild(tgBtn(`${open.length - 6} more in ${tgSpaceName(sp)}`, { ghost: true, icon: 'arrow-right', run: () => setView('together:' + id) }));
+  return box;
+}
+function tgSection(root, title, ic, count, folded) {
+  const box = tgEl('section', 'tg-sec' + (folded ? ' is-folded' : ''));
+  const h = tgEl('h3', 'tg-sec-h');
+  h.insertAdjacentHTML('beforeend', icon(ic || 'circle-dot'));
+  h.appendChild(tgEl('span', '', title));
+  if (count) h.appendChild(tgEl('span', 'count', String(count)));
+  if (folded) { h.setAttribute('role', 'button'); h.tabIndex = 0; h.onclick = () => box.classList.toggle('is-folded'); }
+  box.appendChild(h);
+  const body = tgEl('div', 'tg-sec-b');
+  box.appendChild(body);
+  root.appendChild(box);
+  return body;
+}
+function tgInviteCard(s) {
+  const v = s.value, by = s.invitedBy || (v.meta && v.meta.owner);
+  const card = tgEl('div', 'tg-card tg-invite');
+  card.appendChild(tgAvatarEl(by, 'lg', v));
+  const t = tgEl('div', 'tg-invite-t');
+  const line = tgEl('div');
+  line.append(tgEl('b', '', tgName(by, v)), document.createTextNode(' invited you to '), tgEl('b', '', tgSpaceName(s)));
+  t.appendChild(line);
+  const others = tgMembers(v).filter(f => f !== tgMe() && f !== by);
+  const asks = (v.items || []).filter(it => it.assignee === tgMe() && it.status !== 'done');
+  t.appendChild(tgEl('div', 'muted tg-sm', `${TG_KIND_LABEL[tgKindOf(s)]}${others.length ? ' · with ' + others.map(f => tgFirst(f, v)).join(', ') : ''}${asks.length ? ` · asks you to do ${asks.length === 1 ? '1 thing' : asks.length + ' things'}` : ''}`));
+  for (const it of asks.slice(0, 3)) { const q = tgEl('div', 'tg-quote', it.title || '(no title)'); t.appendChild(q); }
+  card.appendChild(t);
+  const acts = tgEl('div', 'tg-acts');
+  acts.append(
+    tgBtn('Join', { primary: true, icon: 'check', run: () => tgJoin(s.id) }),
+    tgBtn('Decline', { ghost: true, run: () => tgDecline(s.id) }),
+  );
+  card.appendChild(acts);
+  return card;
+}
+async function tgJoin(id) {
+  const r = await tgPost('/api/together/status', { space: id, status: 'joined' });
+  if (!r) return;
+  await tgLoad();
+  const sp = tgSpace(id);
+  if (sp) { tgEdit(id, tgFeedOps(id, 'join', 'joined'), { undo: false }); toast(`You joined ${tgSpaceName(sp)}`, { kind: 'ok', action: { label: 'Open', run: () => setView('together:' + id) } }); }
+}
+async function tgDecline(id) {
+  const sp = tgSpace(id);
+  const r = await tgPost('/api/together/status', { space: id, status: 'declined' });
+  if (r) { toast(`Declined${sp ? ' ' + tgSpaceName(sp) : ''}. They see that you said no.`, { icon: 'x', action: { label: 'Join after all', run: () => tgJoin(id) } }); tgLoad(); }
+}
+/** "From Sam": a task a friend asked you to do. Accept puts it in your Today / Inbox (as a shared row, never in your own tasks). */
+function tgRequestRow(sp, it) {
+  const v = sp.value;
+  const row = tgEl('div', 'tg-row tg-req');
+  row.appendChild(tgAvatarEl(it.by, 'sm', v));
+  const t = tgEl('button', 'tg-row-t'); t.type = 'button';
+  t.appendChild(tgEl('span', 'tg-from', 'From ' + tgFirst(it.by, v)));
+  t.appendChild(tgEl('span', '', it.title || '(no title)'));
+  t.onclick = () => tgOpenItem(sp.id, it.id);
+  row.appendChild(t);
+  if (it.due) row.appendChild(tgDueChip(it.due));
+  row.appendChild(tgEl('span', 'muted tg-sm', tgSpaceName(sp)));
+  const acts = tgEl('div', 'tg-acts');
+  acts.append(tgBtn('Accept', { primary: true, icon: 'check', run: () => tgAck(sp.id, it.id, 'accepted') }), tgBtn('Decline', { ghost: true, run: () => tgAck(sp.id, it.id, 'declined') }));
+  row.appendChild(acts);
+  return row;
+}
+function tgAck(spaceId, itemId, ans) {
+  const me = tgMe(), v = tgVal(spaceId); if (!v) return;
+  const it = (v.items || []).find(x => x.id === itemId); if (!it) return;
+  const ops = [{ op: 'set', path: ['items', itemId, 'ack', me], value: ans }];
+  if (ans === 'accepted') ops.push(...tgFeedOps(spaceId, 'note', 'took on: ' + String(it.title || '').slice(0, 150), itemId));
+  tgEdit(spaceId, ops, { toast: ans === 'accepted' ? `Accepted: it's on your list` : `Declined: ${tgFirst(it.by, v)} sees that`, icon: ans === 'accepted' ? 'check' : 'x' });
+}
+function tgDueChip(due) {
+  const c = tgEl('span', 'tg-chip tg-due' + (due < todayStr() ? ' is-late' : due === todayStr() ? ' is-today' : ''));
+  c.insertAdjacentHTML('beforeend', icon('calendar', 'i-xs'));
+  c.appendChild(tgEl('span', '', typeof dueLabel === 'function' ? dueLabel(due) : due));
+  return c;
+}
+function tgSettingsMenu(anchor) {
+  const t = (k, label, hint) => ({ label, hint, checked: !!tgPref(k), run: () => tgSetPref(k, !tgPref(k)) });
+  openMenu(anchor, [
+    { heading: 'Show friends' },
+    t('layers', "Friends' shared tasks in my lists and timeline", 'faint, never mixed with yours'),
+    t('calendar', "Friends' busy times in my calendar", 'only what they share with you'),
+    { heading: 'Game' },
+    t('leaderboard', 'Weekly leaderboard among friends', 'only friends who share their game'),
+    t('cheers', 'Cheers and high-fives'),
+    t('focusTell', "Tell friends in my spaces when I'm focusing"),
+  ], { align: 'end', width: 320 });
+}
+
+/* ---------- a space ---------- */
+function tgRenderSpace(root, id, tab) {
+  const sp = tgSpace(id);
+  if (!sp) {
+    if (!tgHas() || _tg.loading || (_tg.data && _tg.data.failed)) { root.appendChild(tgWaitEl('this space')); return; }
+    mountEmptyState(root, { icon: 'users', title: 'This space is not here', text: 'It may have been forgotten on this computer, or you have not joined it yet.', actions: [{ label: 'All spaces', icon: 'arrow-left', run: () => setView('together') }] });
+    return;
+  }
+  if (sp.status === 'invited') { root.appendChild(tgInviteCard(sp)); return; }
+  const v = sp.value;
+  const kind = tgKindOf(sp);
+  if (!tab) tab = kind === 'board' ? 'board' : kind === 'party' ? 'quests' : 'tasks';
+  const sub = document.getElementById('view-subtitle');
+  if (sub) sub.textContent = `${TG_KIND_LABEL[kind]} · ${tgMembers(v).length} people`;
+  // Header: members, invite, the space menu.
+  const head = tgEl('div', 'tg-bar tg-space-head');
+  const people = tgEl('button', 'tg-people'); people.type = 'button';
+  people.appendChild(tgAvatarStack(tgMembers(v), v, 7));
+  people.onclick = () => setView(`together:${id}:people`);
+  people.title = tgMembers(v).map(f => tgName(f, v)).join(', ');
+  head.appendChild(people);
+  if (sp.status !== 'joined') head.appendChild(tgEl('span', 'tg-chip', sp.status === 'removed' ? 'You were removed' : 'You left'));
+  // Invite, Find a time and the space menu live in the shared page header (tgHeaderActions).
+  root.appendChild(head);
+  // Tabs (2.19.1): five in the page header, the rest under More (and in the side column); the open one is always shown
+  const allTabs = TG_TABS.filter(([k]) => k !== 'garden' || typeof gardenSocialSpaceBed === 'function');
+  const shown = allTabs.slice(0, 5), rest = allTabs.slice(5);
+  const cur = allTabs.find(([k]) => k === tab);
+  if (cur && !shown.includes(cur)) { shown.push(cur); rest.splice(rest.indexOf(cur), 1); }
+  const goTab = (k) => setView(`together:${id}:${k}`);
+  headerSubTabs(subTabs({ label: 'This space', active: tab,
+    tabs: shown.map(([k, label, ic]) => ({ id: k, label, icon: ic })).concat(rest.length ? [{ id: '__more', label: 'More', icon: 'ellipsis' }] : []),
+    onChange: (k) => {
+      if (k !== '__more') { goTab(k); return; }
+      const b = document.querySelector('#view-subtabs [data-tab="__more"]');
+      openMenu(b || document.getElementById('view-subtabs'), rest.map(([kk, label, ic]) => ({ label, icon: ic, run: () => goTab(kk) })));
+    } }), /^together:/);
+  const body = tgEl('div', 'tg-body');
+  // the board, the plan and the bed want the whole width; the others sit beside who is here and the other pages
+  const wide = tab === 'board' || tab === 'plan' || tab === 'garden' || tab === 'people';
+  root.appendChild(wide ? body : pageLayout({ main: body, side: tgSpaceSide(v, rest.filter(x => x[0] !== 'people'), goTab), sideWidth: 300, cls: 'tg-layout' }));
+  if (tab !== 'plan' && typeof tgPlanLeave === 'function') tgPlanLeave();   // left the Plan together board for another tab
+  const ro = sp.status !== 'joined';
+  if (tab === 'tasks') tgRenderTasks(body, sp, ro);
+  else if (tab === 'board') tgRenderBoard(body, sp, ro);
+  else if (tab === 'plan' && typeof tgRenderPlan === 'function') tgRenderPlan(body, sp, ro);
+  else if (tab === 'money' && typeof tgRenderMoney === 'function') tgRenderMoney(body, sp, ro);
+  else if (tab === 'quests' && typeof tgRenderQuests === 'function') tgRenderQuests(body, sp, ro);
+  else if (tab === 'dates' && typeof tgRenderDates === 'function') tgRenderDates(body, sp, ro);
+  else if (tab === 'people' && typeof tgRenderPeople === 'function') tgRenderPeople(body, sp, ro);
+  else if (tab === 'feed' && typeof tgRenderFeed === 'function') tgRenderFeed(body, sp, ro);
+  else if (tab === 'garden' && typeof gardenSocialSpaceBed === 'function') gardenSocialSpaceBed(body, sp, ro);   // ── garden-social ──
+  else tgRenderTasks(body, sp, ro);
+  if (typeof funSpaceDecor === 'function') { try { funSpaceDecor(root, sp); } catch (e) { console.error('[together] fun theme', e); } }   // agent 'fun': the space theme (friendship level rewards)
+}
+/** The side column of a space: who is in it, and the pages that are not in the header's row. */
+function tgSpaceSide(v, rest, goTab) {
+  return (host) => {
+    const people = tgEl('section', 'card tg-side-card');
+    people.appendChild(secHead({ title: 'People', count: tgMembers(v).length }));
+    for (const f of tgMembers(v).slice(0, 6)) people.appendChild(mdRow({ avatar: tgAvatarEl(f, 'sm', v), title: tgName(f, v), run: () => goTab('people') }));
+    if (tgMembers(v).length > 6) people.appendChild(uiButton({ label: 'All people', kind: 'ghost', size: 'sm', run: () => goTab('people') }));
+    host.appendChild(people);
+    if (rest.length) {
+      const more = tgEl('section', 'card tg-side-card');
+      more.appendChild(secHead({ title: 'More in this space' }));
+      for (const [k, label, ic] of rest) more.appendChild(mdRow({ icon: ic, title: label, run: () => goTab(k) }));
+      host.appendChild(more);
+    }
+  };
+}
 function tgSpaceMenu(anchor, sp) {
   const id = sp.id, v = sp.value, owner = v.meta.owner === tgMe();
   const hidden = !!tgSpacePref(id, 'hidden');

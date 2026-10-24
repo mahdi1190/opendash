@@ -10,6 +10,10 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.19.2] - 2026-10-24
+
+- Fixes a crash ("tgDueChip is not defined") in task lists and shared spaces after 2.19.1: part of the shared-spaces code had been removed by mistake during the tidy-up. Shared lists, the Together hub and space pages work again.
+
 ## [2.19.1] - 2026-10-24
 
 Every page now sits in the middle of the window, and there is less on each of them. Nothing is gone: what you do less often moved under More, a tab, Add widget or Show more.
