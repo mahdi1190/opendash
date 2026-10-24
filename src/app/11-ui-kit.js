@@ -10,13 +10,29 @@
      openMenu(anchor, items, opts)        -> close(); items: {label,icon,hint,kbd,checked,
                                              danger,disabled,run} | 'sep' | {heading}
      closePopovers()
-     openDialog({title, body(el,close)|html, actions:[...], width, onClose}) -> close()
+     openDialog({title, body(el,close)|html, actions:[...], size:'sm'|'md'|'lg'|'xl', fixed,
+                 height, width, className, onClose}) -> close()
      confirmDialog({title,text,confirmLabel,danger}) -> Promise<boolean>
      promptDialog({title,label,value,placeholder,confirmLabel}) -> Promise<string|null>
      openDrawer({title, body(el,close), footer(el,close), width, onClose}) -> close()
      toast(msg, {kind:'ok'|'err'|'info', icon, action:{label,run}, timeout})
      avatarInitials(name)
      Tooltips: any element with data-tip="text" (and optional data-kbd="Ctrl+K").
+
+   The 2.18 kit (docs/dev/UI_CLEANUP_PLAN.md C1 + docs/dev/SIMPLIFY_PLAN.md section 3; one
+   kit, use these instead of a private helper):
+     uiButton({label, icon, kind, size, run(e,btn), tip, kbd, aria, cls, disabled, pressed,
+               data, wait, bubble}) -> <button>        the one button builder
+     cardHead({icon, title, count, page, actions, more}) -> .card-h;  cardHeadHtml(o) -> markup
+     cardTitleLink(h, view, label)        a header's title opens its page
+     secHead({title, sub, count, icon, actions, more}) -> .sec-h;  secHeadHtml(o) -> markup
+     emptyLine(text, {label, run, icon}?) -> .empty-line   an empty list inside a card or dialog
+     toastError(what, e, retry|{label,run})   "Couldn’t <what>: <reason>." + Try again
+     copyText(text, what, {quiet}) -> Promise<boolean>     one wording for copied / couldn’t copy
+     setStatusLine(tone, word, detail) -> .set-status      the status line a card starts with
+     setStatusPaint(el, tone, word, detail)                repaint it in place
+     setFold(host, key, label, fill({body, card}), {advanced}) -> <details>   More / Advanced
+     setAction(host, label, run, {icon, kind, disabled, tip, wait}) -> <button>   the one main button
    Everything that takes text escapes it or sets textContent.
    ============================================================ */
 
@@ -57,12 +73,7 @@ function mountEmptyState(container, o) {
   const el = t.content.firstChild;
   const acts = el.querySelector('.es-actions');
   for (const a of (o.actions || [])) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'btn ' + (a.primary ? 'btn-primary' : 'btn-secondary');
-    b.innerHTML = (a.icon ? icon(a.icon) : '') + `<span>${esc(a.label)}</span>`;
-    b.onclick = (e) => { e.stopPropagation(); a.run && a.run(); };
-    acts.appendChild(b);
+    acts.appendChild(uiButton({ label: a.label, icon: a.icon, kind: a.primary ? 'primary' : 'secondary', run: () => { if (a.run) a.run(); } }));
   }
   if (!acts.children.length) acts.remove();
   container.appendChild(el);
@@ -175,16 +186,36 @@ function openMenu(anchor, items, opts) {
 
 /* ---------- dialogs ---------- */
 let _dialogClose = null;
+/** The four dialog widths in px (the same numbers as --modal-sm|md|lg|xl in 00-tokens.css). */
+const DIALOG_SIZES = Object.freeze({ sm: 440, md: 560, lg: 760, xl: 1100 });
+/** A width (a number of px, or 'NNNpx') -> its size name: <= 480 sm, <= 640 md, <= 800 lg, else xl. Anything else: null. */
+function dialogSizeFor(w) {
+  const n = typeof w === 'number' ? w : (/^\s*\d+(?:\.\d+)?\s*(?:px)?\s*$/.test(String(w == null ? '' : w)) ? parseFloat(w) : NaN);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n <= 480 ? 'sm' : n <= 640 ? 'md' : n <= 800 ? 'lg' : 'xl';
+}
 /**
  * A modal dialog (new style). body(el, close) fills the body, or pass html
- * (already-escaped markup). actions: [{label, primary, danger, run(close) -> false keeps open}].
+ * (already-escaped markup). actions: [{label, icon, primary, danger, tip, disabled, run(close) -> false keeps open}].
+ *   size: 'sm' 440 | 'md' 560 (the default) | 'lg' 760 | 'xl' 1100 px, never wider than the window less 32.
+ *     o.width still works: a pixel width snaps to the nearest size (<= 480 sm, <= 640 md, <= 800 lg,
+ *     else xl), so every dialog is one of four widths; another unit ('90vw') is used as it is.
+ *   fixed: true - a fixed height (min(--modal-h, 86vh); o.height sets --modal-h, e.g. 760 or '90vh'):
+ *     the header and the buttons never move; the body scrolls. For anything with steps, tabs,
+ *     filters or a deck. A simple form or confirm leaves it off and sizes to its content.
+ *   className: extra classes on the .modal. Every dialog sits 8vh from the top.
  */
 function openDialog(o) {
   o = o || {};
   if (_dialogClose) _dialogClose();
   const scrim = document.createElement('div'); scrim.className = 'scrim';
-  const dlg = document.createElement('div'); dlg.className = 'modal'; dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true');
-  if (o.width) dlg.style.width = `min(${typeof o.width === 'number' ? o.width + 'px' : o.width}, calc(100vw - 32px))`;
+  const dlg = document.createElement('div'); dlg.setAttribute('role', 'dialog'); dlg.setAttribute('aria-modal', 'true');
+  const size = Object.prototype.hasOwnProperty.call(DIALOG_SIZES, o.size) ? o.size : dialogSizeFor(o.width);
+  dlg.className = 'modal' + (size ? ' modal-' + size : '') + (o.fixed ? ' is-fixed' : '') + (o.className ? ' ' + String(o.className) : '');
+  // No size and no width: the CSS width (560, or a module's own .modal.x rule).
+  if (size) dlg.style.width = `min(var(--modal-${size}, ${DIALOG_SIZES[size]}px), calc(100vw - 32px))`;
+  else if (o.width) dlg.style.width = `min(${typeof o.width === 'number' ? o.width + 'px' : o.width}, calc(100vw - 32px))`;
+  if (o.height != null && o.height !== '') dlg.style.setProperty('--modal-h', typeof o.height === 'number' ? o.height + 'px' : String(o.height));
   const h = document.createElement('div'); h.className = 'modal-h';
   const h2 = document.createElement('h2'); h2.textContent = o.title || ''; h.appendChild(h2);
   const x = document.createElement('button'); x.type = 'button'; x.className = 'btn-icon'; x.setAttribute('aria-label', 'Close'); x.innerHTML = icon('x');
@@ -223,18 +254,17 @@ function openDialog(o) {
     const f = document.createElement('div'); f.className = 'modal-f';
     for (const a of o.actions) {
       if (a === 'spacer') { const s = document.createElement('span'); s.className = 'spacer'; f.appendChild(s); continue; }
-      const btn = document.createElement('button'); btn.type = 'button';
-      btn.className = 'btn ' + (a.primary ? 'btn-primary' : a.danger ? 'btn-danger' : 'btn-secondary');
-      btn.innerHTML = (a.icon ? icon(a.icon) : '') + `<span>${esc(a.label)}</span>`;
-      btn.onclick = () => { const r = a.run ? a.run(close) : undefined; if (r !== false) close(); };
-      f.appendChild(btn);
+      if (!a) continue;
+      f.appendChild(uiButton({ label: a.label, icon: a.icon, kind: a.primary ? 'primary' : a.danger ? 'danger' : 'secondary', tip: a.tip, disabled: a.disabled, cls: a.cls, bubble: true,
+        run: () => { const r = a.run ? a.run(close) : undefined; if (r !== false) close(); } }));
     }
     dlg.appendChild(f);
   }
   document.body.append(scrim, dlg);
-  // Drag the edges to resize; remembered per dialog type (o.resizeKey, else its default width): 13-splitter.js.
+  // Drag the edges to resize; remembered per dialog type (o.resizeKey, else the width it asked for, so sizes
+  // remembered before the snap still apply): 13-splitter.js.
   if (typeof makeResizable === 'function' && o.resizable !== false) {
-    makeResizable(dlg, { key: 'dialog:' + (o.resizeKey || ('w' + (o.width || 560))), center: 'x', edges: ['e', 'w', 's', 'se', 'sw'],
+    makeResizable(dlg, { key: 'dialog:' + (o.resizeKey || ('w' + (o.width || (size ? DIALOG_SIZES[size] : 560)))), center: 'x', edges: ['e', 'w', 's', 'se', 'sw'],
       min: { w: 320, h: 160 }, max: () => ({ h: Math.round(window.innerHeight * 0.9) - 16 }) });
   }
   document.addEventListener('keydown', onKey, true);
@@ -384,7 +414,7 @@ function toast(msg, o) {
   const text = String(msg == null ? '' : msg);
   let action = o.action && o.action.label ? o.action : null;
   if (!action && typeof o.retry === 'function' && !o.calm) action = { label: 'Try again', run: o.retry };   // calm lines have no Try again
-  if (!action && kind === 'err' && typeof srvShowStartHelp === 'function' && typeof NET_DOWN_MESSAGE !== 'undefined' && text.includes(NET_DOWN_MESSAGE)) action = { label: 'How to start it', run: () => srvShowStartHelp() };
+  if (!action && kind === 'err' && typeof srvShowStartHelp === 'function' && typeof NET_DOWN_REASON !== 'undefined' && text.includes(NET_DOWN_REASON)) action = { label: 'How to start it', run: () => srvShowStartHelp() };
   if (action && _toastIsPlainUndo(action) && typeof undoMark === 'function') {
     // Taken after this tick, so a save made just after the toast call is the step it undoes.
     let mark = null;
@@ -530,3 +560,265 @@ document.addEventListener('mouseover', (e) => {
 document.addEventListener('mousedown', _hideTip, true);
 document.addEventListener('keydown', _hideTip, true);
 window.addEventListener('blur', _hideTip);
+
+/* ============================================================
+   THE 2.18 KIT: one set of building blocks for buttons, headers, empty
+   lines, error toasts, copying, and a card's status line, folds and one
+   main action (docs/dev/UI_CLEANUP_PLAN.md C1, docs/dev/SIMPLIFY_PLAN.md
+   section 3). Styles: 01-components.css. New code uses these; the private
+   helpers in the modules move onto them as their files are touched.
+   ============================================================ */
+
+/* ---------- buttons ---------- */
+const _BTN_KINDS = Object.freeze({ primary: 'btn-primary', secondary: 'btn-secondary', ghost: 'btn-ghost', danger: 'btn-danger', 'danger-solid': 'btn-danger-solid' });
+/**
+ * The one button builder -> <button type="button">.
+ *   label, icon         text (escaped) and a sprite icon; no label = an icon button (.btn-icon)
+ *                       named by `aria` / `tip`
+ *   kind                'primary' | 'secondary' (default) | 'ghost' | 'danger' | 'danger-solid' |
+ *                       'link' (an inline text link); 'btn-primary' etc. work too.
+ *                       One primary per surface (UX_BLUEPRINT.md 3).
+ *   size                'md' (default) | 'sm' | 'lg' (hero buttons only); 'xs' is 'sm'
+ *   run(e, btn)         on click. The click stops at the button (a row or card under it does not
+ *                       get it); bubble: true lets it through.
+ *   wait: true          while the promise run returns is pending the button is disabled and
+ *                       busy, so a second click does nothing
+ *   tip, kbd, aria      tooltip (data-tip), its key (data-kbd), aria-label
+ *   cls, iconCls, disabled, pressed (aria-pressed), data ({key: value} -> data-*), type ('submit')
+ */
+function uiButton(o) {
+  o = o || {};
+  const b = document.createElement('button');
+  b.type = o.type === 'submit' ? 'submit' : 'button';
+  const label = o.label == null ? '' : String(o.label);
+  const size = o.size === 'xs' ? 'sm' : o.size;
+  const kind = String(o.kind || 'secondary').replace(/^btn-/, '');
+  if (!label && o.icon) b.className = 'btn-icon' + (size === 'sm' ? ' btn-sm' : '');
+  else if (kind === 'link') b.className = 'btn-link';
+  else b.className = 'btn ' + (_BTN_KINDS[kind] || 'btn-secondary') + (size === 'sm' ? ' btn-sm' : size === 'lg' ? ' btn-lg' : '');
+  if (o.cls) b.className += ' ' + String(o.cls);
+  b.innerHTML = (o.icon ? icon(o.icon, o.iconCls) : '') + (label ? `<span>${esc(label)}</span>` : '');
+  const aria = o.aria || (label ? '' : o.tip);
+  const tip = o.tip || (label ? '' : o.aria);
+  if (aria) b.setAttribute('aria-label', String(aria));
+  if (tip) b.setAttribute('data-tip', String(tip));
+  if (o.kbd) b.setAttribute('data-kbd', String(o.kbd));
+  if (o.pressed !== undefined) b.setAttribute('aria-pressed', o.pressed ? 'true' : 'false');
+  if (o.disabled) b.disabled = true;
+  if (o.data) for (const k of Object.keys(o.data)) if (o.data[k] != null) b.dataset[k] = String(o.data[k]);
+  if (typeof o.run === 'function') {
+    b.onclick = (e) => {
+      if (!o.bubble) e.stopPropagation();
+      if (b.getAttribute('aria-busy') === 'true') return;
+      const r = o.run(e, b);
+      if (!o.wait || !r || typeof r.then !== 'function') return;
+      b.disabled = true; b.setAttribute('aria-busy', 'true'); b.classList.add('is-busy');
+      const done = () => { b.disabled = !!o.disabled; b.removeAttribute('aria-busy'); b.classList.remove('is-busy'); };
+      r.then(done, (err) => { done(); console.error('[button]', err); });
+    };
+  }
+  return b;
+}
+/** Header actions: elements as they are, option objects through uiButton (ghost, small), `more` as a menu. */
+function _headActions(h, o) {
+  for (const a of (o.actions || [])) {
+    if (!a) continue;
+    h.appendChild(a.nodeType ? a : uiButton(Object.assign({ kind: 'ghost', size: 'sm' }, a)));
+  }
+  const more = (o.more || []).filter(Boolean);
+  if (more.length) h.appendChild(uiButton({ icon: 'ellipsis', size: 'sm', aria: o.moreLabel || 'More', cls: 'head-more', run: (e, btn) => openMenu(btn, more) }));
+}
+
+/* ---------- card and section headers ---------- */
+/**
+ * A card's header (.card-h): [icon] Title [count] ............ [actions] [More].
+ * The same markup Home cards use, so the grid's title link (NAVIGATION_PLAN.md 2.8),
+ * edit mode (actions hide) and the idle icon nod all work with it.
+ *   cardHeadHtml({icon, title, count, cls}) -> markup, for innerHTML templates
+ *   cardHead({icon, title, count, cls, page, actions, more, moreLabel}) -> element
+ *     page: a view; the title opens it (a chevron on hover and focus); Home cards can
+ *       leave it to registerHomeWidget({page})
+ *     actions: [element | uiButton options (default ghost, small)]: one main action at most
+ *     more: openMenu items behind a "More" button, for everything else
+ */
+function cardHeadHtml(o) {
+  o = o || {};
+  const n = o.count != null && o.count !== '' ? `<span class="n num">${esc(o.count)}</span>` : '';
+  return `<div class="card-h${o.cls ? ' ' + esc(o.cls) : ''}">${o.icon ? icon(o.icon) : ''}<h3>${esc(o.title || '')}</h3>${n}<span class="spacer"></span></div>`;
+}
+function cardHead(o) {
+  o = o || {};
+  const t = document.createElement('template'); t.innerHTML = cardHeadHtml(o);
+  const h = t.content.firstChild;
+  if (o.page) cardTitleLink(h.querySelector('h3'), o.page);
+  _headActions(h, o);
+  return h;
+}
+/**
+ * Turn a header's title (an h3, or any element) into a button that opens `view`, with a chevron
+ * on hover and focus. Opening the page you are on does nothing. False when it is a link already.
+ * label: the page's name for the tooltip (default: the page registry's, else the view's title).
+ */
+function cardTitleLink(h, view, label) {
+  if (!h || !view || (h.closest && h.closest('button, a')) || h.querySelector('.hw-title-link')) return false;
+  if (!label) {
+    try {
+      const p = typeof pageFor === 'function' ? pageFor(view) : null;
+      label = p && typeof pageLabel === 'function' ? pageLabel(p) : (typeof viewTitle === 'function' ? viewTitle(view) : '');
+    } catch (e) { label = ''; }
+    label = String(label || view);
+  }
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'hw-title-link';
+  while (h.firstChild) b.appendChild(h.firstChild);
+  const text = b.textContent.trim();
+  b.insertAdjacentHTML('beforeend', icon('chevron-right', 'i-xs hw-title-chev'));
+  b.setAttribute('aria-label', text && text !== label ? `${text}: open ${label}` : `Open ${label}`);
+  b.setAttribute('data-tip', 'Open ' + label);
+  b.onclick = (e) => { e.stopPropagation(); if (state.view !== view) setView(view); };
+  h.appendChild(b);
+  return true;
+}
+/**
+ * A section's header inside a page (.sec-h, an h2: the page title is the shared header's).
+ *   secHeadHtml({title, sub, count, icon, cls}) -> markup
+ *   secHead({title, sub, count, icon, cls, actions, more, moreLabel}) -> element
+ *     sub: one short line beside the title; actions and more as in cardHead
+ */
+function secHeadHtml(o) {
+  o = o || {};
+  const n = o.count != null && o.count !== '' ? `<span class="n num">${esc(o.count)}</span>` : '';
+  const sub = o.sub ? `<span class="sec-sub">${esc(o.sub)}</span>` : '';
+  return `<div class="sec-h${o.cls ? ' ' + esc(o.cls) : ''}">${o.icon ? icon(o.icon) : ''}<h2>${esc(o.title || '')}</h2>${n}${sub}<span class="spacer"></span></div>`;
+}
+function secHead(o) {
+  o = o || {};
+  const t = document.createElement('template'); t.innerHTML = secHeadHtml(o);
+  const h = t.content.firstChild;
+  _headActions(h, o);
+  return h;
+}
+
+/* ---------- empty lines ---------- */
+/**
+ * An empty list inside a card or dialog: one muted line, and an optional link that fills it.
+ * (A page or a whole section uses mountEmptyState: art or icon, one sentence, one action.)
+ * Say what will appear here, never "No data". emptyLine(text, {label, run, icon}?) -> <p>
+ */
+function emptyLine(text, action) {
+  const p = document.createElement('p'); p.className = 'empty-line';
+  const s = document.createElement('span'); s.textContent = String(text == null ? '' : text);
+  p.appendChild(s);
+  if (action && action.label && typeof action.run === 'function') p.appendChild(uiButton({ label: action.label, icon: action.icon, kind: 'link', run: action.run }));
+  return p;
+}
+
+/* ---------- error toasts and copying ---------- */
+/**
+ * The error toast: "Couldn’t <what>: <plain reason>." with one action, Try again (retry is a
+ * function) or the next step (retry is {label, run}). `what` is what failed, as a verb phrase:
+ * 'save the note', 'copy the link'. With no button, a server-down error gets "How to start it",
+ * and a line that only says another computer is asleep shows calmly (toast()). Returns close().
+ */
+function toastError(what, e, retry) {
+  const w = String(what || '').trim();
+  let text;
+  if (w) { const r = netErrorReason(e); text = `Couldn’t ${w}: ${r}${/[.!?]$/.test(r) ? '' : '.'}`; }
+  else text = netErrorMessage(e);
+  const o = { kind: 'err' };
+  if (typeof retry === 'function') o.retry = retry;
+  else if (retry && retry.label && typeof retry.run === 'function') o.action = { label: retry.label, run: retry.run };
+  if (e && e.stack && !netIsDown(e)) console.warn('[' + (w || 'error') + ']', e);
+  return toast(text, o);
+}
+/** 'link' -> 'the link'; 'your code' and 'the address' stay as they are. */
+function _copyWhat(w) { return /^(the|your|my|this|that|these|those|a|an|its|their)\b/i.test(w) ? w : 'the ' + w; }
+/** Copy with no clipboard API (an old browser, or a page that is not allowed to): a hidden text box. */
+function _copyFallback(s) {
+  let ok = false;
+  const ta = document.createElement('textarea');
+  ta.value = s; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+  const prev = document.activeElement;
+  document.body.appendChild(ta);
+  try { ta.select(); ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  ta.remove();
+  if (prev && prev.focus) try { prev.focus({ preventScroll: true }); } catch (e) {}
+  return !!ok;
+}
+/**
+ * Copy text, with one wording everywhere: "Copied" / "Link copied", or
+ * "Couldn’t copy the link: select it and press Ctrl+C." `what` is a noun ('link', 'invite link',
+ * 'your code'). quiet: no toast when it worked (the button says Copied itself). -> Promise<boolean>
+ */
+async function copyText(text, what, opts) {
+  const o = opts || {};
+  const s = String(text == null ? '' : text);
+  const w = String(what || '').trim();
+  let ok = false;
+  try { if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') { await navigator.clipboard.writeText(s); ok = true; } } catch (e) { ok = false; }
+  if (!ok) ok = _copyFallback(s);
+  if (ok) { if (!o.quiet) toast(w ? w.charAt(0).toUpperCase() + w.slice(1) + ' copied' : 'Copied', { kind: 'ok', icon: 'copy' }); }
+  else toast(`Couldn’t copy${w ? ' ' + _copyWhat(w) : ''}: select it and press ${_TOAST_MOD}+C.`, { kind: 'err' });
+  return ok;
+}
+
+/* ---------- a card's status line, folds and one main action (SIMPLIFY_PLAN.md section 3) ----------
+   A card with a state: the card (a _settingsCard in Settings, a .card elsewhere), then
+     host.body.appendChild(setStatusLine(tone, word, detail))   first
+     the face rows (daily things)
+     setAction(host, label, run)                                 the one main button
+     setFold(host, '<group>-<card>-more', 'More', fill)          occasional things
+     setFold(host, '<group>-<card>-adv', 'Advanced', fill, {advanced: true})   rare or technical
+   Tones: ok (green), busy (blue, pulsing), idle and off (grey, calm), warn (amber: the user must
+   act), err (red: broken, the user must act). Words come from the glossary (SIMPLIFY_PLAN.md 2):
+   Up to date, Syncing, Catching up 40%, Setting up, Previewing, Asleep, Off, On, Not set up,
+   Paused, Needs an update, Needs you. Asleep, offline and first runs are grey, never amber.
+   (setStatus(id, s) is the task status setter in 20-task-model.js, hence setStatusLine.) */
+const SET_TONES = Object.freeze(['ok', 'busy', 'idle', 'off', 'warn', 'err']);
+const _setFoldOpen = new Map();   // fold key -> open, for this session
+/** Repaint a status line in place: a dot, one word, at most one short detail. Returns el. */
+function setStatusPaint(el, tone, word, detail) {
+  el.className = 'set-status set-status-' + (SET_TONES.includes(tone) ? tone : 'idle');
+  el.replaceChildren();
+  const dot = document.createElement('span'); dot.className = 'set-status-dot'; dot.setAttribute('aria-hidden', 'true');
+  const w = document.createElement('b'); w.className = 'set-status-w'; w.textContent = String(word || '');
+  el.append(dot, w);
+  if (detail) { const d = document.createElement('span'); d.className = 'set-status-d'; d.textContent = '· ' + String(detail); el.appendChild(d); }
+  return el;
+}
+/** The status line a card starts with -> <div class="set-status" role="status">. */
+function setStatusLine(tone, word, detail) {
+  const el = document.createElement('div');
+  el.setAttribute('role', 'status');
+  return setStatusPaint(el, tone, word, detail);
+}
+/**
+ * A More / Advanced fold (a <details>) appended to host (a {card, body} or an element).
+ * fill({body, card}) adds rows to body exactly like a _settingsCard. Rows are built at once,
+ * so Settings search finds them and opens the fold. Folds start closed and remember being
+ * open for the session (by key: '<group>-<card>-more' / '-adv', so two cards never share one).
+ * A fold that fill left empty is not shown. -> the <details>
+ */
+function setFold(host, key, label, fill, opts) {
+  const o = opts || {};
+  const det = document.createElement('details');
+  det.className = 'set-more' + (o.advanced ? ' set-adv' : '');
+  det.dataset.fold = String(key || '');
+  det.open = _setFoldOpen.get(det.dataset.fold) === true;
+  det.ontoggle = () => { _setFoldOpen.set(det.dataset.fold, det.open); };
+  const sum = document.createElement('summary');
+  sum.textContent = label || (o.advanced ? 'Advanced' : 'More');
+  const body = document.createElement('div'); body.className = 'set-more-b';
+  det.append(sum, body);
+  if (typeof fill === 'function') fill({ body, card: det });
+  if (typeof fill !== 'function' || body.childNodes.length) (host.body || host).appendChild(det);
+  return det;
+}
+/** The card's one main button, on its own row (uiButton; kind 'primary' unless given). -> the button */
+function setAction(host, label, run, opts) {
+  const o = opts || {};
+  const row = document.createElement('div'); row.className = 'set-action';
+  const b = uiButton({ label, icon: o.icon, kind: o.kind || 'primary', size: 'sm', run, disabled: o.disabled, tip: o.tip, wait: o.wait, bubble: true });
+  row.appendChild(b);
+  (host.body || host).appendChild(row);
+  return b;
+}

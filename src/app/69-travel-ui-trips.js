@@ -256,8 +256,9 @@ function _trvTrip(container, id) {
 registerSection('trips', {
   match: v => v === 'trips' || /^trip:[a-z0-9-]{3,60}$/i.test(v),
   title: () => 'Trips',      // the trip's own name is its header (and the crumb)
-  crumb: (v) => (v === 'trips' ? ['Trips'] : ['Trips', (_trvFind(v.slice(5)).trip || {}).label || 'Trip']),
-  group: 'home', hashable: true, layout: 'page',
+  // Life > Places > Trips > (trip) since 2.18 (NAVIGATION_PLAN.md 2.2, 2.10)
+  crumb: (v) => (v === 'trips' ? [{ label: 'Places', view: 'locations' }, 'Trips'] : [{ label: 'Places', view: 'locations' }, { label: 'Trips', view: 'trips' }, (_trvFind(v.slice(5)).trip || {}).label || 'Trip']),
+  group: 'life', hashable: true, layout: 'page',
   mount(container, view) {
     const v = view || state.view;
     if (v === 'trips') { const { snap, trips } = _trvTrips(); _trvList(container, snap, trips); }

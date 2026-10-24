@@ -85,7 +85,24 @@ var FUN_COSMETICS = _funRows([
   { id: 'hat-santa', k: 'hat', item: 'santa', e: '🎅', label: 'Santa hat', season: 'december' },
   { id: 'top-festive', k: 'top', item: 'festive', e: '🧶', label: 'Festive jumper', season: 'festive' },
   { id: 'hat-flowers', k: 'hat', item: 'flowers', e: '💐', label: 'Flower crown', season: 'spring' },
+  // integrate 2.18: the wardrobe's seasonal pieces (97-profile-0kit-*.js, agent 'wardrobe') can be gifted too. A friend
+  // still on 2.17 does not know these ids and drops the gift quietly, like any newer gift.
+  { id: 'hat-horns', k: 'hat', item: 'horns', e: '😈', label: 'Little horns', season: 'halloween' },
+  { id: 'paint-skull', k: 'paint', item: 'skull', e: '💀', label: 'Sugar skull face paint', season: 'halloween' },
+  { id: 'paint-pumpkin', k: 'paint', item: 'pumpkin', e: '🎃', label: 'Pumpkin face paint', season: 'halloween' },
+  { id: 'pattern-bats', k: 'pattern', item: 'bats', e: '🦇', label: 'Bat print top', season: 'halloween' },
+  { id: 'paint-snowflake', k: 'paint', item: 'snowflake', e: '❄️', label: 'Snowflake face paint', season: 'december' },
+  { id: 'pattern-snow', k: 'pattern', item: 'snow', e: '⛄', label: 'Snowflake print top', season: 'december' },
+  { id: 'hat-antlers', k: 'hat', item: 'antlers', e: '🦌', label: 'Antlers', season: 'festive' },
+  { id: 'hat-bunny', k: 'hat', item: 'bunny', e: '🐰', label: 'Bunny ears', season: 'spring' },
+  { id: 'paint-flowers', k: 'paint', item: 'flowers', e: '🌼', label: 'Spring flowers face paint', season: 'spring' },
+  { id: 'pattern-tropical', k: 'pattern', item: 'tropical', e: '🌴', label: 'Tropical print top', season: 'summer' },
+  { id: 'necklace-shell', k: 'necklace', item: 'shell', e: '🐚', label: 'Shell necklace', season: 'summer' },
+  { id: 'hat-party', k: 'hat', item: 'party', e: '🥳', label: 'Party hat', season: 'birthday' },
 ]);
+// When each season's items come (the cosmetics' `season`, as 97-profile-0kit.js PF_SEASONS says it)
+var _FUN_SEASON_WHEN = _funF({ halloween: 'around Halloween', december: 'in December', festive: 'from December to early January', spring: 'in spring',
+  summer: 'in summer', birthday: 'in the week of your birthday' });
 var FUN_WRAPS = _funRows([
   { id: 'red', label: 'Red ribbon' }, { id: 'blue', label: 'Blue stars' }, { id: 'green', label: 'Green stripes' }, { id: 'gold', label: 'Gold foil', level: 3 },
   { id: 'pumpkin', label: 'Pumpkin paper', event: 'halloween' }, { id: 'snow', label: 'Snowflakes', event: 'winter' }, { id: 'petal', label: 'Petals', event: 'spring' },
@@ -267,7 +284,7 @@ function funCanSend(t, id, ctx) {
   ctx = ctx || {};
   if (t === 'cosmetic') {
     if (ctx.owned && ctx.owned[id]) return '';
-    return 'Collect it first (it comes ' + (r.season === 'halloween' ? 'around Halloween' : r.season === 'spring' ? 'in spring' : 'in December') + ')';
+    return 'Collect it first (it comes ' + (_FUN_SEASON_WHEN[r.season] || 'with its season') + ')';
   }
   if (r.event) {
     if (ctx.event === r.event) return '';

@@ -40,6 +40,10 @@
                                        Transactions, on any computer (src/finance/37-transactions.js; shortened opaque row keys)
      aiEmail                           {messageId: time}: an email Claude was shown for task suggestions
                                        (55-email-google.js), so no computer sends it again (kept 60 days)
+     pages                             {pageId: 'YYYY-MM-DD'}: the day a page (the registry, 14-shell.js
+                                       registerPage) was first opened: clears its new-page dot on every
+                                       device; the achievements' page marks read it too (2.18). The
+                                       once flags pagesUpgrade:2.18 / pagesFresh:2.18 say who gets dots
    Day entries older than three weeks and timed entries past their age are
    pruned; a group itself is never removed (a removed map would hide what
    another computer adds to it at the same time).

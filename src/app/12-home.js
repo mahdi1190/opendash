@@ -39,6 +39,9 @@
        available() { ... },         optional: false = not offered right now
        render(el, ctx) { ... },     fill el (empty) on EVERY Home render; return false
                                     when there is nothing to show (hidden outside edit mode)
+       page: 'today',               optional (2.18): the page behind the card, a view or ctx => view; its
+                                    title (.card-h > h3, or an element marked data-hw-title) then opens it.
+                                    Left out: the default map in 16-pages.js (HOME_WIDGET_PAGES); null: no link
        settings(anchor, ctx) {...}, optional: a gear on the widget in edit mode
        unmount() { ... },           optional: Home is being left (stop timers, drop caches)
      });
@@ -549,6 +552,8 @@ function _homePaintWidget(frame, def, w, entering) {
   const empty = r === false || !body.firstElementChild;
   frame.classList.toggle('is-empty', empty);
   frame.hidden = empty && !_homeEditing;
+  // The card's title opens its page (2.18, NAVIGATION_PLAN.md 2.8; 16-pages.js), not while customising.
+  if (!empty && !_homeEditing && !ctx.preview && typeof homeCardTitleLink === 'function') { try { homeCardTitleLink(frame, def, ctx); } catch (e) { console.error(`[home] title link "${def.id}"`, e); } }
   // Hidden for now (nothing to show): while customising it keeps its slot and says when it appears.
   if (empty && _homeEditing) body.innerHTML = `<div class="hg-placeholder">${icon(def.icon)}<span><b>${esc(def.title)}</b> ${esc(def.emptyHint || 'Nothing to show right now')}</span></div>`;
   if (typeof _homeEditChrome === 'function') _homeEditChrome(frame, def, w);

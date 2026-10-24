@@ -54,12 +54,21 @@ const UI_STATE_KEYS = [
   // ── profile ── (2.17: your profile and avatar, 97-profile-*.js); never an undo step (the builder has its own)
   'profile',
   // ── end profile ──
+  // ── wardrobe ── (2.18: your saved outfits, 97-profile-4wardrobe.js); never an undo step (Undo is in the toast)
+  'wardrobe',
+  // ── end wardrobe ──
+  // ── pets ── (2.18: your companion pet, 97-pets-*.js); never an undo step
+  'pet',
+  // ── end pets ──
   // ── local ── (2.16: what this page kept in localStorage, now in the state: 06-core-seen.js)
   'seen', 'uiPrefs', 'drafts',
   // ── end local ──
   // ── together ── (2.17: shared spaces with friends, 99-together-*.js); never an undo step
   'together',
   // ── end together ──
+  // ── garden ── (2.18: the garden game, 94-garden-*.js); never an undo step (the garden has its own Undo)
+  'garden',
+  // ── end garden ──
 ];
 // UI keys that are PREFERENCES (theme, density, sort, the calendars you hide...):
 // they follow you to your other computers (folder sync) and to every tab (live
@@ -77,12 +86,21 @@ const SHARED_UI_KEYS = [
   // ── profile ── your profile and avatar follow you too (97-profile-*.js)
   'profile',
   // ── end profile ──
+  // ── wardrobe ── your saved outfits follow you too (97-profile-4wardrobe.js)
+  'wardrobe',
+  // ── end wardrobe ──
+  // ── pets ── your pet follows you too (97-pets-*.js)
+  'pet',
+  // ── end pets ──
   // ── local ── seen flags, per-browser preferences and drafts follow you too (06-core-seen.js)
   'seen', 'uiPrefs', 'drafts',
   // ── end local ──
   // ── together ── your Together choices follow you too (99-together-*.js)
   'together',
   // ── end together ──
+  // ── garden ── your garden follows you too (94-garden-*.js)
+  'garden',
+  // ── end garden ──
 ];
 const BOOKKEEPING_KEYS = ['_lastSave', '_saveCount', '_localDirty'];
 const _NON_DATA_KEYS = new Set([...UI_STATE_KEYS, ...BOOKKEEPING_KEYS]);

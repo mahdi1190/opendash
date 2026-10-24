@@ -7,8 +7,18 @@
      main     = page header (#view-header) + #main-body, detail pane.
 
    Shell API (all declared here, safe to call from any module):
-     registerTile({id, label, icon, order, view, feature})      section tiles
-     shellGroupFor(view)        -> 'home'|'tasks'|'calendar'|'finance'|'system'
+     registerTile({id, label, icon, order, view, feature, badge})   section tiles: Home, Tasks,
+                                Calendar, Money (id 'finance'), Life (2.18, 15-nav-life.js)
+     shellGroupFor(view)        -> 'home'|'tasks'|'calendar'|'finance'|'life'|'system'
+                                (the page registry's area first, then the section's group,
+                                which may be a function of the view)
+     registerPage(def) / pageFor(view) / pagesAll() / pagesMarkSeen(view) / pagesFresh()
+                                the ONE list of pages (2.18, NAVIGATION_PLAN.md 2.6): the Life
+                                sidebar and tab strip, All pages, the palette's Go to, the new-page
+                                dots, the crumbs and Home's card links all read it (below)
+     areaTabsEl(view)           the slim level-1 strip (an area's tab pages) and the level-2 one
+                                (the page's sections), drawn above a page (80-main-render.js)
+     navBackTarget()            '‹ Back to …' for a page reached from a link inside another
      registerSidebarBlock(groups, {id, order, render(el, ctx)})  sidebar content
          groups: a group id or an array; same id replaces. render() may return
          false to hide the block. ctx: {view, group, navItem(o), section(o)}.
@@ -24,7 +34,8 @@
      renderShell()                  repaint the chrome (called by render())
    Sections themselves register with registerSection() (00-core-config.js);
    add `group: 'calendar'` (etc.) so the right tile lights up and `crumb(view)`
-   for a custom breadcrumb.
+   for a custom breadcrumb. crumb() returns parts after the area: strings, or
+   {label, view} (or {label, run}) for parts you can click (every part but the last).
    ============================================================ */
 
 /* ---------- section tiles ---------- */
@@ -41,22 +52,33 @@ function _tileEnabled(t) {
   const f = APP_CONFIG.features || {};
   return f[t.feature] !== false;
 }
-// The last task view this session visited (the Tasks tile returns to it).
+// The last task view this session visited (the Tasks tile returns to it); the Life tile likewise (15-nav-life.js).
 let _shellLastTaskView = 'today';
+let _shellLastLifeView = '';
 let _shellLastGroup = 'home';
 
 registerTile({ id: 'home', label: 'Home', icon: 'house', order: 10, view: 'home' });
 registerTile({ id: 'tasks', label: 'Tasks', icon: 'list-todo', order: 20, view: () => _shellLastTaskView || 'today' });
 registerTile({ id: 'calendar', label: 'Calendar', icon: 'calendar-days', order: 30, view: 'calendar', feature: 'calendar' });
-registerTile({ id: 'finance', label: 'Finances', icon: 'wallet', order: 40, view: 'finance', feature: 'finance' });
+// 'Money' since 2.18 (it fits five tiles; NAVIGATION_PLAN.md 2.1): the id, view and feature stay 'finance'.
+registerTile({ id: 'finance', label: 'Money', icon: 'wallet', order: 40, view: 'finance', feature: 'finance' });
+// The fifth area (2.18): Friends, Garden, Pets, Achievements, Memories and Places (15-nav-life.js).
+registerTile({ id: 'life', label: 'Life', icon: 'heart', order: 50,
+  view: () => (typeof lifeTileView === 'function' ? lifeTileView() : 'memories'),
+  badge: () => (typeof lifeBadge === 'function' ? lifeBadge() : null) });
 
 const _TASK_GROUP_VIEWS = new Set(['today', 'tomorrow', 'week', 'all', 'no-date', 'completed', 'wins', 'triage']);
 const _SYSTEM_VIEWS = new Set(['bin']);
-/** Which tile a view belongs to. */
+/** Which tile a view belongs to: its page's area (the registry below), else its section's group, else the old rules. */
 function shellGroupFor(view) {
   const v = String(view || '');
+  const pg = pageFor(v);
+  if (pg && pg.area && !pg.keepGroup) return areaGroup(pg.area);
   const sec = typeof sectionFor === 'function' ? sectionFor(v) : null;
-  if (sec && sec.group) return sec.group;
+  if (sec && sec.group) {
+    if (typeof sec.group !== 'function') return sec.group;
+    try { return sec.group(v) || 'system'; } catch (e) { return 'system'; }
+  }
   if (v === 'finance') return 'finance';
   if (v === 'home') return 'home';
   if (v === 'calendar' || v.startsWith('calendar:')) return 'calendar';
@@ -64,12 +86,196 @@ function shellGroupFor(view) {
   if (_TASK_GROUP_VIEWS.has(v) || /^(stream|tag|day|person):/.test(v)) return 'tasks';
   return sec ? 'system' : 'tasks';
 }
-const _SHELL_GROUP_LABEL = { home: 'Home', tasks: 'Tasks', calendar: 'Calendar', finance: 'Finances', system: '' };
+const _SHELL_GROUP_LABEL = { home: 'Home', tasks: 'Tasks', calendar: 'Calendar', finance: 'Money', life: 'Life', system: '' };
+
+/* ---------- the pages registry (2.18, docs/dev/NAVIGATION_PLAN.md 2.6) ----------
+   One list of every page. The Life sidebar and its tab strip, All pages (16-pages.js), the
+   palette's Go to, the new-page dots, the crumbs and Home's card links read it.
+
+   registerPage({
+     id: 'game',                    stable page id (the seen flags and achievements use it)
+     view: 'game',                  the view it opens (or () => view)
+     match: v => ...,               the views it owns (default: the view itself, and '<view>:<anything>')
+     label: 'Achievements', icon: 'trophy',
+     desc: 'one line, 60 characters at most',
+     area: 'life',                  home | tasks | calendar | money | life | system
+     tab: true,                     one of its area's level-1 tabs (Life's six)
+     sections: [['game', 'Today'], ['game:wall', 'Achievements'], ...] or () => [...]
+                                    its level-2 control; an entry may be {label, view} or {label, run}
+     ownTabs: true,                 the page draws its own level-2 tabs (the shell's strip leaves them out)
+     keepGroup: true,               listed under its area, but its section's group decides the tile
+                                    (Profile: Life › You in All pages, Settings › Profile on screen)
+     family: 'home',                pages that are tabs of one screen (Home's four, Settings' groups):
+                                    moving between them is not a link, so no 'Back to'
+     keywords: 'search words', since: '2.18', discover: true,   the new-page dot (pagesFresh)
+     available: () => true,         false: not on this build (hidden everywhere: Garden before 2.18)
+     off: () => null | {label, action: {label, run}},   switched off: one calm "Turn on"
+     badge: () => '',               a count, or a short hint ('Lv 14', 'in 9d'); only what needs you
+     order: 40,
+   })
+   pageById(id), pageFor(view), pageView(page), pageLabel(page), pageAvailable(page), pagesAll(o),
+   pagesInArea(area, {tabs}), pageSectionsOf(page), areaGroup(area) / groupArea(group),
+   pagesMarkSeen(view), pageIsFresh(page), pagesFresh(), pagesMarkAllSeen()
+   Seen pages: state.seen.pages {pageId: 'YYYY-MM-DD'} (06-core-seen.js; synced per entry). */
+const SHELL_AREAS = Object.freeze([['home', 'Home', 'house'], ['tasks', 'Tasks', 'list-todo'], ['calendar', 'Calendar', 'calendar-days'], ['money', 'Money', 'wallet'], ['life', 'Life', 'heart'], ['system', 'Settings and help', 'settings']]);
+/** The Money area is the 'finance' tile and sidebar group (their ids are kept, so saved layouts stay). */
+function areaGroup(area) { return area === 'money' ? 'finance' : String(area || 'system'); }
+function groupArea(group) { return group === 'finance' ? 'money' : String(group || 'system'); }
+const SHELL_PAGES = [];
+const _pageForMemo = new Map();
+function _areaIndex(a) { const i = SHELL_AREAS.findIndex(x => x[0] === a); return i < 0 ? SHELL_AREAS.length : i; }
+function registerPage(def) {
+  if (!def || !def.id) throw new Error('registerPage needs an id');
+  const view = def.view || def.id;
+  const p = Object.assign({ order: 50, icon: 'circle', area: 'system', label: def.id, desc: '', keywords: '' }, def, { view });
+  if (typeof p.match !== 'function') {
+    const v0 = typeof view === 'string' ? view : null;
+    p.match = (v) => v0 !== null && (v === v0 || v.startsWith(v0 + ':'));
+  }
+  const i = SHELL_PAGES.findIndex(x => x.id === p.id);
+  if (i >= 0) SHELL_PAGES[i] = p; else SHELL_PAGES.push(p);
+  SHELL_PAGES.sort((a, b) => (_areaIndex(a.area) - _areaIndex(b.area)) || (a.order - b.order));
+  _pageForMemo.clear();
+  return p;
+}
+function pageById(id) { return SHELL_PAGES.find(p => p.id === id) || null; }
+/** The page a view belongs to (available or not), or null. */
+function pageFor(view) {
+  const v = String(view || '');
+  if (_pageForMemo.has(v)) return _pageForMemo.get(v);
+  let hit = null;
+  for (const p of SHELL_PAGES) { try { if (p.match(v)) { hit = p; break; } } catch (e) { /* a page's own rule */ } }
+  if (_pageForMemo.size > 500) _pageForMemo.clear();
+  _pageForMemo.set(v, hit);
+  return hit;
+}
+function pageView(p) { if (!p) return ''; try { return String((typeof p.view === 'function' ? p.view() : p.view) || p.id); } catch (e) { return p.id; } }
+function pageLabel(p) { if (!p) return ''; try { return String((typeof p.label === 'function' ? p.label() : p.label) || p.id); } catch (e) { return p.id; } }
+function pageDesc(p) { if (!p) return ''; try { return String((typeof p.desc === 'function' ? p.desc() : p.desc) || ''); } catch (e) { return ''; } }
+function pageAvailable(p) { if (!p) return false; if (typeof p.available !== 'function') return true; try { return p.available() !== false; } catch (e) { return false; } }
+function pageOff(p) { if (!p || typeof p.off !== 'function') return null; try { return p.off() || null; } catch (e) { return null; } }
+function pageBadge(p) { if (!p || typeof p.badge !== 'function') return ''; try { const b = p.badge(); return b === 0 || b == null ? '' : String(b); } catch (e) { return ''; } }
+/** The available pages in area order (o.all: the unavailable ones too). */
+function pagesAll(o) { return o && o.all ? SHELL_PAGES.slice() : SHELL_PAGES.filter(pageAvailable); }
+/** An area's pages (o.tabs: only its level-1 tabs). */
+function pagesInArea(area, o) { return pagesAll().filter(p => p.area === area && (!o || !o.tabs || p.tab)); }
+/** A page's sections as [{view, label, run, icon}] (its level-2 control). */
+function pageSectionsOf(p) {
+  if (!p || !p.sections) return [];
+  let list = p.sections;
+  if (typeof list === 'function') { try { list = list() || []; } catch (e) { list = []; } }
+  return (Array.isArray(list) ? list : []).map(s => (Array.isArray(s) ? { view: s[0], label: s[1], icon: s[2] } : s)).filter(s => s && s.label && (s.view || typeof s.run === 'function'));
+}
+
+/* ---------- new-page dots (NAVIGATION_PLAN.md 2.9) ----------
+   A page has a dot until it is first opened, for a user who had OpenDash before the registry
+   (seen.once 'pagesUpgrade:2.18', decided once and synced, so every device agrees) when it is
+   newer than that (since) or was hard to find (discover). A brand-new user ('pagesFresh:2.18')
+   gets dots only for pages newer than their start. */
+const PAGES_BASE = '2.18';
+function _pagesVer(v) { const m = /^(\d+)\.(\d+)/.exec(String(v || '')); return m ? Number(m[1]) * 1000 + Number(m[2]) : 0; }
+/** 'upgrade' | 'fresh' | '' (not decided yet: the state file is still loading). */
+function pagesBaseline() {
+  if (typeof seenOnce !== 'function') return '';
+  if (seenOnce('pagesUpgrade:' + PAGES_BASE)) return 'upgrade';
+  if (seenOnce('pagesFresh:' + PAGES_BASE)) return 'fresh';
+  if (typeof _uiSharedBooted !== 'undefined' && !_uiSharedBooted) return '';
+  let had = false;
+  try {
+    const t = todayStr(), [y, m, d] = t.split('-').map(Number);
+    const start = new Date(y, m - 1, d).getTime();   // clock-ok: the start of today, local
+    const old = (ms) => typeof ms === 'number' && ms < start;
+    had = !!(APP_CONFIG.onboardedAt && String(APP_CONFIG.onboardedAt).slice(0, 10) < t)
+      || (typeof getAllItems === 'function' && getAllItems().some(i => i && (!i.createdAt || old(i.createdAt))))
+      || Object.values(state.completionLog || {}).some(a => Array.isArray(a) && a.some(old));
+  } catch (e) { had = false; }
+  try {
+    seenMarkOnce((had ? 'pagesUpgrade:' : 'pagesFresh:') + PAGES_BASE);
+    // A brand-new user starts with Tags folded (UX_BLUEPRINT.md 2: show today, reveal the rest).
+    if (!had) { state.collapsedSidebar = state.collapsedSidebar && typeof state.collapsedSidebar === 'object' ? state.collapsedSidebar : {}; if (state.collapsedSidebar.tags === undefined) { state.collapsedSidebar.tags = true; saveUI(); } }
+  } catch (e) { /* the next render decides */ }
+  return had ? 'upgrade' : 'fresh';
+}
+function pageIsFresh(p) {
+  if (!p || !pageAvailable(p) || typeof seenGet !== 'function') return false;
+  if (seenGet('pages', p.id)) return false;
+  const base = pagesBaseline();
+  if (!base) return false;
+  const since = _pagesVer(p.since), b = _pagesVer(PAGES_BASE);
+  return base === 'upgrade' ? (since >= b || !!p.discover) : since > b;
+}
+function pagesFresh() { return pagesAll().filter(pageIsFresh); }
+/** Opening a page clears its dot (renderShell calls this for every view shown). */
+function pagesMarkSeen(view) {
+  const p = pageFor(view);
+  if (!p || typeof seenGet !== 'function' || seenGet('pages', p.id)) return false;
+  return seenSet('pages', p.id, todayStr());
+}
+function pagesMarkAllSeen() {
+  const ids = pagesFresh().map(p => p.id);
+  if (ids.length && typeof seenSetMany === 'function') seenSetMany('pages', ids, todayStr());
+  return ids.length;
+}
+
+/* ---------- where you came from: '‹ Back to …' (NAVIGATION_PLAN.md 2.10) ----------
+   The sidebar, the tiles, the tab strips, the crumbs, the palette, All pages and the G keys say
+   navVia('chrome') before they move; any other setView (a link inside a page) is a link, and the
+   page it opens offers the way back. Memory only, this tab only, the last 20 views. */
+let _navViaNext = '';
+const _navTrail = [];
+let _navBack = null;   // {from, to}
+function navVia(kind) { _navViaNext = kind || 'chrome'; }
+/** setView tells us about every move (15-nav-sidebar.js). */
+function navNoteMove(from, to) {
+  const via = _navViaNext; _navViaNext = '';
+  if (from && from !== to) { _navTrail.push(from); if (_navTrail.length > 20) _navTrail.shift(); }
+  if (via || !from || from === to) { if (via) _navBack = null; return; }
+  // A move inside one page (a tab, a section, or a page of the same family) keeps the way back to where you came from.
+  const pf = pageFor(from), pt = pageFor(to);
+  if (pf && pt && (pf === pt || (pf.family && pf.family === pt.family))) { if (_navBack && _navBack.to === from) _navBack = { from: _navBack.from, to }; return; }
+  _navBack = { from, to };
+}
+/** {view, label} to go back to, or null. */
+function navBackTarget() {
+  if (!_navBack || _navBack.to !== state.view) return null;
+  const v = _navBack.from;
+  let label = '';
+  const p = pageFor(v);
+  const sec = typeof sectionFor === 'function' ? sectionFor(v) : null;
+  try { label = sec ? String(sec.title(v) || '') : (typeof viewTitle === 'function' ? viewTitle(v) : ''); } catch (e) { label = ''; }
+  if (!label && p) label = pageLabel(p);
+  if (v === 'home') label = 'Home';
+  return label ? { view: v, label } : null;
+}
+function _navBackPaint() {
+  const head = document.getElementById('view-header');
+  if (!head) return;
+  let row = document.getElementById('view-back');
+  const t = navBackTarget();
+  if (!t) { if (row) row.remove(); return; }
+  if (!row) {
+    row = document.createElement('div'); row.id = 'view-back'; row.className = 'view-back-row';
+    const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-ghost btn-sm';
+    btn.onclick = () => { const x = navBackTarget(); _navBack = null; if (x) { navVia('chrome'); setView(x.view); } };
+    row.appendChild(btn);
+    head.insertBefore(row, head.firstChild);
+  }
+  const b = row.firstElementChild;
+  const key = t.view + '|' + t.label;
+  if (b.dataset.k === key) return;
+  b.dataset.k = key;
+  b.innerHTML = icon('chevron-left', 'i-sm') + `<span>Back to ${esc(t.label)}</span>`;
+  b.setAttribute('aria-label', 'Back to ' + t.label);
+}
 
 /* ---------- sidebar blocks ---------- */
 const SIDEBAR_BLOCKS = [];
+// Blocks whose pages moved into Life (2.18): another module's Home rows for the garden ('fun-nav', which also
+// held the Game row) and the pet ('pet-nav') are not drawn; the Life sidebar lists those pages (15-nav-life.js).
+const SIDEBAR_RETIRED = new Set(['fun-nav', 'pet-nav']);
 function registerSidebarBlock(groups, def) {
   if (!def || !def.id || typeof def.render !== 'function') throw new Error('registerSidebarBlock needs {id, render}');
+  if (SIDEBAR_RETIRED.has(def.id)) return;
   const g = Array.isArray(groups) ? groups.slice() : [groups];
   const i = SIDEBAR_BLOCKS.findIndex(b => b.id === def.id);
   const b = Object.assign({ order: 50 }, def, { groups: g });
@@ -79,9 +285,12 @@ function registerSidebarBlock(groups, def) {
 
 /**
  * A sidebar row. o: {label, icon, dot (CSS colour), avatarHtml (trusted
- * markup from avatarHtml()), count, countAlert, badge, view, active,
- * onClick, title, className, disabled}
+ * markup from avatarHtml()), count, countAlert, badge, hint (a quiet word after the
+ * label: 'Lv 14', 'in 9d'), view, active, onClick, title, className, disabled,
+ * fresh (the new-page dot: true / false; left out, the page registry decides for o.view)}
+ * At most three new-page dots show in the sidebar at once (UX_BLUEPRINT.md 3).
  */
+let _sbFreshShown = 0;   // dots drawn in this sidebar render (renderSidebar resets it)
 function sbNavItem(o) {
   const el = document.createElement('button');
   el.type = 'button';
@@ -95,7 +304,12 @@ function sbNavItem(o) {
   else if (o.icon) lead = `<span class="ic">${icon(o.icon)}</span>`;
   const count = (o.count === 0 || o.count) && o.count !== '' ? `<span class="count${o.countAlert ? ' alert' : ''}">${esc(o.count)}</span>` : '';
   const badge = o.badge ? `<span class="badge badge-danger">${esc(o.badge)}</span>` : '';
-  el.innerHTML = `${lead}<span class="label">${esc(o.label)}</span>${badge}${count}`;
+  const hint = o.hint ? `<span class="count nav-hint">${esc(o.hint)}</span>` : '';
+  let fresh = o.fresh;
+  if (fresh === undefined && o.view && !active) { const p = pageFor(o.view); fresh = !!(p && pageView(p) === o.view && pageIsFresh(p)); }
+  fresh = !!fresh && _sbFreshShown < 3;
+  if (fresh) _sbFreshShown++;
+  el.innerHTML = `${lead}<span class="label">${esc(o.label)}</span>${fresh ? '<span class="nav-new" role="img" aria-label="new"></span>' : ''}${badge}${hint}${count}`;
   if (o.title) el.title = o.title;
   // Icon rail (the sidebar dragged narrow, 13-splitter.js): the label shows as a tooltip.
   else if (state.paneSizes && state.paneSizes.sidebarRail) el.setAttribute('data-tip', String(o.label || ''));
@@ -104,8 +318,10 @@ function sbNavItem(o) {
     if (o.disabled) return;
     // Re-selecting the view you are on is a no-op (CLAUDE.md "Interaction conventions").
     if (!o.onClick && o.view && state.view === o.view) { const m = document.getElementById('main'); if (m && m.scrollTop > 0) m.scrollTo({ top: 0, behavior: (window.Motion && Motion.prefersReduced()) ? 'auto' : 'smooth' }); _shellCloseDrawer(); return; }
+    navVia('chrome');
     if (o.onClick) o.onClick(e);
     else if (o.view) setView(o.view);
+    _navViaNext = '';
     _shellCloseDrawer();
   };
   return el;
@@ -259,7 +475,21 @@ function _shellCrumbs() {
   const group = shellGroupFor(v);
   const sec = typeof sectionFor === 'function' ? sectionFor(v) : null;
   if (sec && typeof sec.crumb === 'function') {
-    try { const c = sec.crumb(v); if (Array.isArray(c)) return { group, parts: c }; } catch (e) { /* fall through */ }
+    try {
+      const c = sec.crumb(v);
+      if (Array.isArray(c)) {
+        // The page always shows after its area (Life › Friends, not just Life), and a page's own tab says which
+        // page it is in (Life › Garden › Shop): sections written before the registry get this for free.
+        let parts = c.slice();
+        const pg = pageFor(v);
+        if (pg && group !== 'home' && group !== 'system' && pageLabel(pg) !== (_SHELL_GROUP_LABEL[group] || '')) {
+          const f = parts[0], fl = f && typeof f === 'object' ? f.label : f;
+          if (!parts.length) parts = [pageLabel(pg)];
+          else if (fl !== pageLabel(pg) && v !== pageView(pg)) parts.unshift({ label: pageLabel(pg), view: pageView(pg) });
+        }
+        return { group, parts };
+      }
+    } catch (e) { /* fall through */ }
   }
   const title = sec ? String(sec.title(v) || '') : (typeof viewTitle === 'function' ? viewTitle(v) : v);
   if (group === 'home') return { group, parts: [] };
@@ -270,15 +500,22 @@ function _shellCrumbs() {
     return { group, parts: sub ? [sub] : [] };
   }
   if (group === 'system') return { group, parts: [title] };
+  // A page's section (Achievements › Records, Places › Trips): the page, then the section.
+  const pg = pageFor(v), secs = pg ? pageSectionsOf(pg) : [];
+  const here = secs.find(s => s.view === v);
+  if (pg && here && pageView(pg) !== v) return { group, parts: [{ label: pageLabel(pg), view: pageView(pg) }, here.label] };
   return { group, parts: title && title !== _SHELL_GROUP_LABEL[group] ? [title] : [] };
 }
 const _SHELL_IS_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
-const _GROUP_ICON = { home: 'house', tasks: 'list-todo', calendar: 'calendar-days', finance: 'wallet', system: 'settings' };
+const _GROUP_ICON = { home: 'house', tasks: 'list-todo', calendar: 'calendar-days', finance: 'wallet', life: 'heart', system: 'settings' };
 
+/** A crumb part: a string, or {label, view} / {label, run} (clickable unless it is the last). */
+function _crumbPart(p) { return p && typeof p === 'object' ? { label: String(p.label || ''), view: p.view || '', run: typeof p.run === 'function' ? p.run : null } : { label: String(p == null ? '' : p), view: '', run: null }; }
 function renderCrumb() {
   const el = document.getElementById('crumb');
   if (!el) return;
-  const { group, parts } = _shellCrumbs();
+  const c = _shellCrumbs(), group = c.group;
+  const parts = c.parts.map(_crumbPart).filter(p => p.label);
   const glabel = _SHELL_GROUP_LABEL[group] || '';
   let html = icon(_GROUP_ICON[group] || 'circle');
   if (glabel) {
@@ -286,11 +523,19 @@ function renderCrumb() {
   }
   parts.forEach((p, i) => {
     if (glabel || i > 0) html += icon('chevron-right', 'i-xs sep');
-    html += i === parts.length - 1 ? `<b>${esc(p)}</b>` : `<span>${esc(p)}</span>`;
+    if (i === parts.length - 1) html += `<b>${esc(p.label)}</b>`;
+    else if ((p.view && p.view !== state.view) || p.run) html += `<button type="button" data-crumb-i="${i}">${esc(p.label)}</button>`;
+    else html += `<span>${esc(p.label)}</span>`;
   });
+  if (el.dataset.html === html) return;   // nothing changed: keep the buttons (and focus) as they are
+  el.dataset.html = html;
   el.innerHTML = html;
   const gb = el.querySelector('[data-crumb-group]');
-  if (gb) gb.onclick = () => { const t = SHELL_TILES.find(x => x.id === group); if (t) setView(typeof t.view === 'function' ? t.view() : t.view); };
+  if (gb) gb.onclick = () => { const t = SHELL_TILES.find(x => x.id === group); if (t) { navVia('chrome'); setView(typeof t.view === 'function' ? t.view() : t.view); } };
+  for (const b of el.querySelectorAll('[data-crumb-i]')) {
+    const p = parts[Number(b.dataset.crumbI)];
+    b.onclick = () => { if (!p) return; navVia('chrome'); if (p.run) { p.run(); _navViaNext = ''; } else setView(p.view); };
+  }
 }
 
 function renderSwitcher() {
@@ -306,11 +551,12 @@ function renderSwitcher() {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'sw-tile'; b.dataset.tile = t.id;
       b.setAttribute('role', 'tab');
-      b.innerHTML = icon(t.icon) + `<span>${esc(t.label)}</span><span class="sw-badge" hidden></span>`;
+      b.innerHTML = icon(t.icon) + `<span>${esc(t.label)}</span><span class="sw-badge" hidden></span><span class="sw-new" hidden></span>`;
       b.onclick = () => {
         const v = typeof t.view === 'function' ? t.view() : t.view;
         // Re-selecting the view you are on is a no-op, at most a smooth scroll back to the top (CLAUDE.md).
         if (state.view === v) { const m = document.getElementById('main'); if (m && m.scrollTop > 0) m.scrollTo({ top: 0, behavior: (window.Motion && Motion.prefersReduced()) ? 'auto' : 'smooth' }); _shellCloseDrawer(); return; }
+        navVia('chrome');
         setView(v);
         _shellCloseDrawer();
       };
@@ -318,6 +564,8 @@ function renderSwitcher() {
     }
     sw.dataset.key = key;
   }
+  // A quiet dot on a tile while one of its pages is new (the Life tile above all), unless it shows a number.
+  const freshAreas = new Set(pagesFresh().map(p => areaGroup(p.area)));
   for (const b of sw.querySelectorAll('.sw-tile')) {
     const on = b.dataset.tile === group;
     b.classList.toggle('on', on);
@@ -328,6 +576,10 @@ function renderSwitcher() {
     try { n = t && typeof t.badge === 'function' ? t.badge() : null; } catch (e) { n = null; }
     badge.hidden = !(n || n === 0) || n === 0;
     if (!badge.hidden) badge.textContent = String(n);
+    const dot = b.querySelector('.sw-new');
+    const fresh = !on && badge.hidden && freshAreas.has(b.dataset.tile);
+    if (dot) dot.hidden = !fresh;
+    b.setAttribute('aria-label', t ? t.label + (!badge.hidden ? `, ${n} waiting` : '') + (fresh ? ', new pages' : '') : '');
   }
 }
 
@@ -404,6 +656,87 @@ function _fitTopbarWidgets() {
 }
 window.addEventListener('resize', () => { if (typeof state !== 'undefined') _fitTopbarWidgets(); });
 
+/* ---------- the area's tabs (level 1) and the page's sections (level 2) ----------
+   UX_BLUEPRINT.md 3: never more than two levels. Level 1 is drawn for the Life area (its six pages:
+   it keeps Life navigable with the sidebar folded, in Focus mode and on phones); level 2 for a
+   page that lists sections and does not draw its own tabs (Achievements, Places). Both live in the
+   page header (#view-tabs), so they stay put while the page below changes, and repaint only when
+   something on them changes. Re-selecting the current tab or section only scrolls back to the top. */
+const _AREA_STRIP = new Set(['life']);
+function areaTabsModel(view) {
+  const v = String(view || '');
+  const pg = pageFor(v);
+  const area = pg ? pg.area : groupArea(shellGroupFor(v));
+  const tabs = _AREA_STRIP.has(area) && pg && pg.tab ? pagesInArea(area, { tabs: true }) : [];
+  const secs = pg && !pg.ownTabs ? pageSectionsOf(pg) : [];
+  let cur = secs.find(s => s.view === v) || secs.find(s => typeof s.match === 'function' && (() => { try { return s.match(v); } catch (e) { return false; } })());
+  if (!cur && secs.length && pageView(pg) === v) cur = secs[0];
+  let dots = 0;   // at most three new-page dots at once, here as in the sidebar (UX_BLUEPRINT.md 3)
+  return {
+    area,
+    tabs: tabs.length >= 2 ? tabs.map(p => ({ p, id: p.id, label: pageLabel(p), icon: p.icon, view: pageView(p), on: p === pg, badge: pageBadge(p), fresh: p !== pg && dots < 3 && pageIsFresh(p) && ++dots > 0, off: !!pageOff(p) })) : [],
+    secs: secs.length >= 2 ? secs.map(s => ({ s, label: s.label, view: s.view || '', icon: s.icon || '', on: s === cur })) : [],
+  };
+}
+function areaTabsEl(view) {
+  const m = areaTabsModel(view);
+  if (!m.tabs.length && !m.secs.length) return null;
+  const wrap = document.createElement('div'); wrap.className = 'area-strips';
+  const roving = (bar, sel) => bar.addEventListener('keydown', (e) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    const all = [...bar.querySelectorAll(sel)];
+    const i = all.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const j = e.key === 'Home' ? 0 : e.key === 'End' ? all.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length;
+    all[j].focus();
+  });
+  const toTop = () => { const mm = document.getElementById('main'); if (mm && mm.scrollTop > 0) mm.scrollTo({ top: 0, behavior: (window.Motion && Motion.prefersReduced()) ? 'auto' : 'smooth' }); };
+  if (m.tabs.length) {
+    const bar = document.createElement('div'); bar.className = 'area-tabs'; bar.setAttribute('role', 'tablist');
+    bar.setAttribute('aria-label', (SHELL_AREAS.find(a => a[0] === m.area) || [0, 'Pages'])[1]);
+    for (const t of m.tabs) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'area-tab' + (t.on ? ' on' : '') + (t.off ? ' is-off' : '');
+      b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', t.on ? 'true' : 'false'); b.tabIndex = t.on ? 0 : -1;
+      b.dataset.view = t.view; b.dataset.page = t.id;
+      b.innerHTML = icon(t.icon, 'i-sm') + `<span>${esc(t.label)}</span>`
+        + (t.badge ? `<span class="area-tab-n">${esc(t.badge)}</span>` : '')
+        + (t.fresh ? '<span class="nav-new" role="img" aria-label="new"></span>' : '');
+      b.onclick = () => { if (t.on && pageFor(state.view) === t.p) { toTop(); return; } navVia('chrome'); setView(t.view); };
+      bar.appendChild(b);
+    }
+    roving(bar, '.area-tab');
+    wrap.appendChild(bar);
+  }
+  if (m.secs.length) {
+    const bar = document.createElement('div'); bar.className = 'area-secs'; bar.setAttribute('role', 'tablist'); bar.setAttribute('aria-label', 'Sections');
+    for (const s of m.secs) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'area-sec' + (s.on ? ' on' : '');
+      b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', s.on ? 'true' : 'false'); b.tabIndex = s.on ? 0 : -1;
+      if (s.view) b.dataset.view = s.view;
+      b.innerHTML = (s.icon ? icon(s.icon, 'i-xs') : '') + `<span>${esc(s.label)}</span>`;
+      b.onclick = () => { if (s.on) { toTop(); return; } navVia('chrome'); if (typeof s.s.run === 'function') { s.s.run(); _navViaNext = ''; } else setView(s.view); };
+      bar.appendChild(b);
+    }
+    roving(bar, '.area-sec');
+    wrap.appendChild(bar);
+  }
+  wrap.dataset.k = JSON.stringify([m.tabs.map(t => [t.id, t.label, t.on, t.badge, t.fresh, t.off]), m.secs.map(s => [s.label, s.view, s.on])]);
+  return wrap;
+}
+function _areaTabsPaint() {
+  const head = document.getElementById('view-header');
+  if (!head) return;
+  const host = document.getElementById('view-tabs');
+  const el = areaTabsEl(state.view);
+  if (!el) { if (host) host.remove(); return; }
+  if (host && host.dataset.k === el.dataset.k) return;   // nothing changed: no repaint, focus stays
+  const had = host && host.contains(document.activeElement) ? [...host.querySelectorAll('button')].indexOf(document.activeElement) : -1;
+  el.id = 'view-tabs';
+  if (host) host.replaceWith(el); else head.appendChild(el);
+  if (had >= 0) { const b = el.querySelectorAll('button')[had]; if (b) b.focus({ preventScroll: true }); }
+}
+
 function renderPageHeaderControls() {
   const sec = typeof sectionFor === 'function' ? sectionFor(state.view) : null;
   const main = document.getElementById('main');
@@ -414,6 +747,9 @@ function renderPageHeaderControls() {
   }
   const sel = document.getElementById('display-btn');
   if (sel) sel.hidden = ['review', 'calendar', 'timeline', 'matrix'].includes(state.viewMode);
+  try { _navBackPaint(); } catch (e) { console.error('[shell] back', e); }
+  try { _areaTabsPaint(); } catch (e) { console.error('[shell] area tabs', e); }
+  if (typeof _lifeOffPaint === 'function') { try { _lifeOffPaint(); } catch (e) { console.error('[shell] off note', e); } }   // 15-nav-life.js
 }
 
 /** The OpenDash logo as an image URL: the SVG favicon build.mjs inlines ('' without one). */
@@ -511,6 +847,8 @@ function renderShell() {
   const group = shellGroupFor(state.view);
   if (group !== 'system') _shellLastGroup = group;
   if (group === 'tasks' && typeof isTaskView === 'function' && isTaskView(state.view)) _shellLastTaskView = state.view;
+  if (group === 'life' && typeof lifeRemember === 'function') lifeRemember(state.view);   // the Life tile goes back here (15-nav-life.js)
+  try { pagesMarkSeen(state.view); } catch (e) { /* the dot clears next time */ }
   const tt = document.getElementById('theme-toggle');
   if (tt) {
     const dark = state.theme === 'dark';

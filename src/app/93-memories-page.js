@@ -8,7 +8,8 @@
      postcards   the album of first visits (agent locations' tab mounts the same album)
      people      birthdays coming up, friendship streaks, people it has been a while with
      milestones  your 1st, 10th, 100th... task finished, your best streak, firsts
-   Group 'home' (the sidebar's Memories item, under Review). Tabs: re-selecting is a no-op;
+   Life > Memories since 2.18 (docs/dev/NAVIGATION_PLAN.md 2.2): the page is one of Life's tabs; its
+   own six tabs are the level-2 control under Life's strip. Tabs: re-selecting is a no-op;
    the entrance plays once per entry.
    ============================================================ */
 const MEM_TABS = [['journal', 'Journal', 'notebook-pen'], ['year', 'Your year', 'calendar-days'], ['capsules', 'Time capsules', 'mail'], ['postcards', 'Postcards', 'map'], ['people', 'People', 'heart'], ['milestones', 'Milestones', 'trophy']];
@@ -19,17 +20,18 @@ function _mpTabLabel(t) { const x = MEM_TABS.find(y => y[0] === t); return x ? x
 registerSection('memories', {
   match: v => v === 'memories' || /^memories:[a-z]+$/.test(v),
   title: () => 'Memories',
-  crumb: v => (_mpTab(v) === 'journal' ? [] : [_mpTabLabel(_mpTab(v))]),
-  group: 'home', layout: 'page', hashable: true, taskControls: false,
+  crumb: v => (_mpTab(v) === 'journal' ? [] : [{ label: 'Memories', view: 'memories' }, _mpTabLabel(_mpTab(v))]),
+  group: 'life', layout: 'page', hashable: true, taskControls: false,
   mount(container, view) { _mpMount(container, view || state.view); },
   unmount() { _mpEntry = ''; },
 });
-registerSidebarBlock('home', {
-  id: 'memories-nav', order: 13,
-  render(el) {
-    const due = typeof memCapsulesDue === 'function' ? memCapsulesDue().length : 0;
-    el.appendChild(sbNavItem({ label: 'Memories', icon: 'book-open', view: 'memories', active: /^memories(:|$)/.test(String(state.view)), badge: due ? String(due) : '', title: due ? 'A letter from past you has arrived' : '' }));
-  },
+registerPage({
+  id: 'memories', view: 'memories', match: v => v === 'memories' || /^memories:[a-z]+$/.test(String(v || '')),
+  label: 'Memories', icon: 'book-open', area: 'life', tab: true, order: 50, since: '2.16', discover: true, ownTabs: true,
+  desc: 'Journal, your year, capsules, postcards and milestones',
+  keywords: 'memories journal diary year heatmap wrapped time capsule letter postcards birthdays people milestones firsts',
+  sections: MEM_TABS.map(([id, label]) => [id === 'journal' ? 'memories' : 'memories:' + id, label]),
+  badge: () => { const n = typeof memCapsulesDue === 'function' ? memCapsulesDue().length : 0; return n ? String(n) : ''; },
 });
 registerCommand({ id: 'mem-wrapped', label: 'Your year in OpenDash (Wrapped)', icon: 'party-popper', group: 'Go to', keywords: 'wrapped year review recap stats spotify annual memories', run: () => memWrappedOpen() });
 registerCommand({ id: 'mem-journal', label: 'Journal', icon: 'notebook-pen', group: 'Go to', keywords: 'memories diary journal day line mood', run: () => setView('memories') });

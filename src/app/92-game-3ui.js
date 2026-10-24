@@ -1,9 +1,14 @@
 /* ============================================================
    GAME, what you see (2.16): the level chip and streak flame in the top bar,
-   the Home card "Level and streaks", the Game page (#view=game: level, streaks,
-   quests, records, focus and estimates, boss tasks, the achievements wall,
-   unlockables), Settings > Game (the Fun level, sounds, accent), the command
-   palette, and the task card's Game panel (focus timer, boss bar, XP).
+   the Home card "Quests and streaks", the Achievements page (Life > Achievements
+   since 2.18, docs/dev/NAVIGATION_PLAN.md 2.2; the view ids stay game and game:<section>):
+     game          Today: level, the bonus task, streaks, this week's quests
+     game:wall     Achievements: the wall
+     game:records  Records and focus: personal records, focus and estimates
+     game:bosses   Bosses: boss tasks
+     game:unlocks  Unlockables: accents, animations, and how XP works
+   Settings > Game (the Fun level, sounds, accent), the command palette, and the
+   task card's Game panel (focus timer, boss bar, XP).
    Every piece respects the Fun level (gameFun(): Off / Subtle / Full);
    the focus timer and the time logged stay at every level.
    ============================================================ */
@@ -41,7 +46,7 @@ function _gmChipRender(el) {
   const key = [lv.level, Math.round(lv.pct * 100), st.current, st.todayDone, st.freezes, gameFun(), s.xp.today].join('|');
   if (el.dataset.k === key && el.firstChild) return true;
   el.dataset.k = key;
-  el.innerHTML = `<button type="button" class="gm-chip" aria-label="${escAttr(tip + '. Open the Game page')}" data-tip="${escAttr(tip)}">`
+  el.innerHTML = `<button type="button" class="gm-chip" aria-label="${escAttr(tip + '. Open Achievements')}" data-tip="${escAttr(tip)}">`
     + `<span class="gm-lv">${_gmRingSvg(lv.pct)}<b class="num">${lv.level}</b></span>`
     + (flame ? `<span class="gm-flame${st.todayDone ? '' : ' is-open'}${st.current >= 30 ? ' is-blaze' : st.current >= 7 ? ' is-hot' : ''}">${icon('flame', 'i-sm')}<b class="num">${st.current}</b>${st.frozen.length ? icon('snowflake', 'i-xs gm-frost') : ''}</span>` : '')
     + (gameFun() === 'full' && s.xp.today ? `<span class="gm-chip-xp num">+${s.xp.today}</span>` : '')
@@ -59,7 +64,7 @@ if (typeof registerTopbarWidget === 'function') {
 /* ---------- Home: "Level and streaks" ---------- */
 if (typeof registerHomeWidget === 'function') {
   registerHomeWidget({
-    id: 'game', title: 'Level and streaks', icon: 'trophy', group: 'fun', sizes: ['s', 'm'], defaultSize: 's',
+    id: 'game', title: 'Quests and streaks', icon: 'trophy', group: 'fun', sizes: ['s', 'm'], defaultSize: 's', page: 'game',
     order: 268, defaultHidden: true,
     description: 'Your level, XP today, your streak and this week\'s quests',
     aliases: ['game', 'level', 'xp', 'streak', 'quests', 'achievements'],
@@ -146,12 +151,28 @@ function gameFocusFootBtn(id) {
   return b;
 }
 
-/* ---------- the Game page (#view=game) ---------- */
+/* ---------- the Achievements page (#view=game, game:<section>; Life > Achievements since 2.18) ---------- */
+const GM_PAGE_SECTIONS = Object.freeze([['game', 'Today', 'sun'], ['game:wall', 'Achievements', 'award'], ['game:records', 'Records and focus', 'timer'], ['game:bosses', 'Bosses', 'crown'], ['game:unlocks', 'Unlockables', 'sparkles']]);
+function _gmPart(v) { const m = /^game:([a-z]+)$/.exec(String(v || '')); return m && GM_PAGE_SECTIONS.some(x => x[0] === 'game:' + m[1]) ? m[1] : 'today'; }
 if (typeof registerSection === 'function') {
   registerSection('game', {
-    title: () => 'Game',
-    mount(container) { _gmPage(container); },
-    unmount() { _gmUI.entered = false; },
+    match: v => v === 'game' || /^game:(wall|records|bosses|unlocks)$/.test(String(v || '')),
+    title: () => 'Achievements',
+    crumb: v => (_gmPart(v) === 'today' ? [] : [{ label: 'Achievements', view: 'game' }, (GM_PAGE_SECTIONS.find(x => x[0] === v) || [0, ''])[1]]),
+    group: 'life', layout: 'page', hashable: true, taskControls: false,
+    mount(container, view) { _gmPage(container, view || state.view); },
+    unmount() { _gmUI.entered = false; try { if (typeof _acw !== 'undefined') { _acw.root = null; _acw.body = null; } } catch (e) { /* no Achievements page on this build */ } },
+  });
+}
+if (typeof registerPage === 'function') {
+  registerPage({
+    id: 'game', view: 'game', match: v => v === 'game' || /^game:[a-z]+$/.test(String(v || '')),
+    label: 'Achievements', icon: 'trophy', area: 'life', tab: true, order: 40, since: '2.16', discover: true,
+    desc: 'Your level, streaks, quests and achievements',
+    keywords: 'game xp level streak streaks quests achievements records focus bosses wall badges unlockables trophies',
+    sections: GM_PAGE_SECTIONS.map(x => [x[0], x[1]]),
+    off: () => (typeof lifeFunOffState === 'function' ? lifeFunOffState() : null),
+    badge: () => { try { const s = gameOn() ? gameStats() : null; return s ? 'Lv ' + s.level.level : ''; } catch (e) { return ''; } },
   });
 }
 function _gmSec(title, sub, id) {
@@ -159,21 +180,25 @@ function _gmSec(title, sub, id) {
   sec.innerHTML = `<div class="gm-sec-h"><h2>${esc(title)}</h2>${sub ? `<span class="muted">${esc(sub)}</span>` : ''}</div>`;
   return sec;
 }
-function _gmPage(container) {
+function _gmPage(container, view) {
   _gmFinLoad(false);
   const s = gameStats();
-  const root = document.createElement('div'); root.className = 'gm-page';
-  const head = document.createElement('div'); head.className = 'wk-head gm-head';
-  head.innerHTML = '<div><div class="overline">You</div><h1>Game</h1><p class="muted">Levels, streaks, quests and achievements, worked out on this device from what you do. Nothing is ever taken away.</p></div>';
-  const hc = document.createElement('div'); hc.className = 'gm-head-c'; hc.appendChild(_gmFunSeg()); head.appendChild(hc);
-  root.appendChild(head);
+  const part = _gmPart(view);
+  const root = document.createElement('div'); root.className = 'gm-page gm-part-' + part;
+  // The shared header draws the title and the sections (UX_BLUEPRINT.md 3); with Fun Off it shows one calm
+  // Turn on (15-nav-life.js), and the numbers below keep counting quietly. The Fun level: Unlockables, Settings > Game.
+  const sub = document.getElementById('view-subtitle');
+  if (sub) sub.textContent = 'Worked out on this device from what you do. Nothing is ever taken away.';
+  // Life › Achievements › Achievements is the Achievements page (92-game-5wall.js, ACHIEVEMENTS_500.md 2.5): this
+  // section mounts it for 'game:wall' (its own 'game:wall' section registers later and is only the fallback).
+  if (part === 'wall' && typeof gameWallMount === 'function') { container.appendChild(root); gameWallMount(root); return; }
   if (!s) { container.appendChild(root); return; }
-  if (!gameOn()) {
-    const off = document.createElement('div'); off.className = 'card gm-offnote';
-    off.innerHTML = `${icon('circle-x', 'i-sm')}<span>The game is off: no chip, no moments, no sounds. The numbers below keep counting quietly.</span>`;
-    root.appendChild(off);
-  }
-  root.append(_gmHero(s), _gmStreaksSec(s), _gmQuestSec(s), _gmRecordsSec(s), _gmFocusSec(s), _gmBossSec(s), _gmWallSec(s), _gmUnlockSec(s), _gmRulesSec());
+  // Today: the hero, streaks and quests, then the Next up strip (the nearest achievements one glance from the quests).
+  if (part === 'today') root.append(_gmHero(s), _gmStreaksSec(s), _gmQuestSec(s), _gmWallSec(s));
+  else if (part === 'wall') root.append(_gmWallSec(s));
+  else if (part === 'records') root.append(_gmRecordsSec(s), _gmFocusSec(s));
+  else if (part === 'bosses') root.append(_gmBossSec(s));
+  else root.append(_gmUnlockSec(s), _gmRulesSec());
   container.appendChild(root);
   if (!_gmUI.entered) {
     _gmUI.entered = true;
@@ -316,33 +341,11 @@ function _gmBossSec(s) {
   sec.appendChild(list);
   return sec;
 }
+/** The achievements on the Game page: the count, Next up and a link to the whole page (92-game-5wall.js). */
 function _gmWallSec(s) {
-  const a = achState(), facts = achFactsNow();
-  const got = ACH_DEFS.filter(d => a.unlocked[d.id]).length;
-  const sec = _gmSec('Achievements', `${got} of ${ACH_DEFS.length} earned. Each stays earned for good.`, 'gm-wall');
-  for (const gr of ACH_GROUPS) {
-    const defs = ACH_DEFS.filter(d => (d.group || 'tasks') === gr.id);
-    if (!defs.length) continue;
-    const n = defs.filter(d => a.unlocked[d.id]).length;
-    const note = gr.id === 'places' && (typeof locationsFacts !== 'function' || (window.Locations && typeof window.Locations.on === 'function' && !window.Locations.on())) ? ' · shows once location history is on' : gr.id === 'money' && !s.finance ? ' · needs Finances' : '';
-    const h = document.createElement('div'); h.className = 'gm-wall-h';
-    h.innerHTML = `${icon(gr.icon, 'i-sm')}<b>${esc(gr.label)}</b><span class="muted num">${n} of ${defs.length}${esc(note)}</span>`;
-    sec.appendChild(h);
-    const grid = document.createElement('div'); grid.className = 'gm-wall';
-    for (const d of defs) {
-      const when = a.unlocked[d.id], p = achProgress(d, facts);
-      const rw = d.reward && typeof _achRewardLabel === 'function' ? _achRewardLabel(d) : '';
-      const c = document.createElement('div'); c.className = 'gm-ach' + (when ? ' is-got' : ''); c.dataset.ach = d.id;
-      c.setAttribute('data-tip', d.hint + (rw ? ` Unlocks ${rw}.` : ''));
-      c.innerHTML = `<span class="gm-ach-ic">${icon(when ? d.icon : 'lock', 'i-sm')}</span><b>${esc(d.label)}</b>`
-        + (when ? `<small class="muted">${esc(_gmShortDay(when))}</small>`
-          : d.of > 1 ? `<span class="gm-qbar"><i style="--pct:${Math.round(100 * p.n / d.of)}%"></i></span><small class="muted num">${p.n.toLocaleString()} / ${d.of.toLocaleString()}</small>` : `<small class="muted">${esc(d.hint)}</small>`)
-        + (rw ? `<span class="gm-ach-rw" aria-hidden="true">${icon('gift', 'i-xs')}</span>` : '');
-      grid.appendChild(c);
-    }
-    sec.appendChild(grid);
-  }
-  return sec;
+  if (typeof gameWallSummary === 'function') { try { return gameWallSummary(s); } catch (e) { console.error('[ach] summary', e); } }
+  const a = achState(), got = ACH_DEFS.filter(d => a.unlocked[d.id]).length;
+  return _gmSec('Achievements', `${got} of ${ACH_DEFS.length} earned. Each stays earned for good.`, 'gm-ach');
 }
 function _gmUnlockSec(s) {
   const max = s.level.max, g = _gmG();
@@ -350,13 +353,14 @@ function _gmUnlockSec(s) {
   const sw = document.createElement('div'); sw.className = 'gm-accents'; sw.setAttribute('role', 'radiogroup'); sw.setAttribute('aria-label', 'Accent colour');
   const cur = String(g.prefs.accent || '');
   for (const a of GAME_ACCENTS) {
-    const open = a.level <= max;
+    const open = typeof gameAccentOpen === 'function' ? gameAccentOpen(a) : a.level <= max;
     const b = document.createElement('button'); b.type = 'button'; b.className = 'gm-acc' + (open ? '' : ' is-locked'); b.setAttribute('role', 'radio');
     b.setAttribute('aria-checked', cur === a.id ? 'true' : 'false');
     if (cur === a.id) b.setAttribute('aria-current', 'true');
     b.style.setProperty('--sw', a.sw);
-    b.setAttribute('data-tip', open ? a.label : `${a.label}: level ${a.level}`);
-    b.innerHTML = `<i></i><span>${esc(a.label)}</span>${open ? '' : `<small class="num">${icon('lock', 'i-xs')} ${a.level}</small>`}`;
+    const lockAch = !open && typeof achUnlockOf === 'function' ? achDef(a.ach || achUnlockOf('accent', a.id)) : null;
+    b.setAttribute('data-tip', open ? a.label : lockAch ? `${a.label}: earn “${lockAch.secret ? '???' : lockAch.name}”` : `${a.label}: level ${a.level}`);
+    b.innerHTML = `<i></i><span>${esc(a.label)}</span>${open ? '' : `<small class="num">${icon('lock', 'i-xs')} ${lockAch ? '' : a.level}</small>`}`;
     if (open) b.onclick = () => { if (cur !== a.id) gamePrefSet({ accent: a.id }); };
     else b.disabled = true;
     sw.appendChild(b);
@@ -404,17 +408,17 @@ if (typeof registerSettingsGroup === 'function') {
       el.appendChild(_settingsRow('Fun level', 'Off: no chip, moments or sounds (the focus timer stays). Subtle: a small chip and quiet toasts. Full: floating XP, combos, confetti moments.', _gmFunSeg()));
       el.appendChild(_settingsRow('Sounds', 'A short chime for level ups, boss tasks, quests and milestones. Off unless you switch it on.', _settingsSwitch(!!g.prefs.sounds, 'Sounds', (on) => { gamePrefSet({ sounds: on }); if (on) setTimeout(() => gameSound('level'), 50); })));
       const s = gameStats();
-      const acc = _settingsSelect(GAME_ACCENTS.filter(a => !s || a.level <= s.level.max).map(a => [a.id, a.label]), String(g.prefs.accent || ''), (v) => gamePrefSet({ accent: v }));
+      const acc = _settingsSelect(GAME_ACCENTS.filter(a => !s || (typeof gameAccentOpen === 'function' ? gameAccentOpen(a) : a.level <= s.level.max)).map(a => [a.id, a.label]), String(g.prefs.accent || ''), (v) => gamePrefSet({ accent: v }));
       el.appendChild(_settingsRow('Accent colour', `More open up as you level up (${GAME_ACCENTS.length - 1} in all).`, acc));
-      el.appendChild(_settingsRow('Your level, quests and achievements', s ? `Level ${s.level.level} ${s.level.title}, ${s.xp.total.toLocaleString()} XP.` : '', _gmBtn('Open the Game page', 'trophy', () => setView('game'))));
+      el.appendChild(_settingsRow('Your level, quests and achievements', s ? `Level ${s.level.level} ${s.level.title}, ${s.xp.total.toLocaleString()} XP.` : '', _gmBtn('Open Achievements', 'trophy', () => setView('game'))));
     },
   });
 }
 
 /* ---------- the command palette ---------- */
 if (typeof registerCommand === 'function') {
-  registerCommand({ id: 'game-open', group: 'Go to', label: 'Game: level, streaks, quests and achievements', icon: 'trophy', keywords: 'game xp level streak quests achievements records wall boss unlock', run: () => setView('game') });
-  registerCommand({ id: 'game-wall', label: 'Open the achievements wall', icon: 'award', keywords: 'achievements wall badges trophies game', run: () => gameOpenWall() });
+  registerCommand({ id: 'game-open', group: 'Go to', label: 'Achievements: level, streaks and quests', icon: 'trophy', keywords: 'game xp level streak quests achievements records wall boss unlock', run: () => setView('game') });
+  registerCommand({ id: 'game-wall', label: 'Achievements: search, Next up and every achievement', icon: 'award', keywords: 'achievements wall badges trophies game secrets rarity unlocks titles', run: () => gameOpenWall() });
   registerCommand({ id: 'game-focus-this', group: 'This task', label: 'Focus timer on this task', icon: 'timer', keywords: 'focus timer time track stopwatch pomodoro log', when: () => { const id = typeof tcCurrentTaskId === 'function' ? tcCurrentTaskId() : null; return !!id && !(gameFocusRun() && gameFocusRun().t === id); }, run: () => gameFocusStart(tcCurrentTaskId()) });
   registerCommand({ id: 'game-focus-next', label: 'Focus timer on the next task', icon: 'timer', keywords: 'focus timer time track stopwatch start', when: () => !gameFocusRun() && !!gameFocusNextTask(), run: () => { const id = gameFocusNextTask(); if (id) { gameFocusStart(id); toast(`Focus timer on “${effTitle(getItem(id))}”.`, { icon: 'timer' }); } } });
   registerCommand({ id: 'game-focus-stop', label: 'Stop the focus timer and log the time', icon: 'square', keywords: 'focus timer stop log', when: () => !!gameFocusRun(), run: () => gameFocusStop({}) });

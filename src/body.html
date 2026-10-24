@@ -64,11 +64,14 @@
       </button>
       <button class="btn-icon" id="sidebar-toggle" type="button" data-tip="Hide sidebar" data-kbd="Ctrl+\" aria-label="Hide sidebar"><svg class="i" aria-hidden="true"><use href="#i-panel-left"/></svg></button>
     </div>
-    <button class="sb-search" id="palette-btn" type="button" aria-label="Search or jump to (Ctrl+K)">
-      <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
-      <span class="lbl">Search or jump to…</span>
-      <span class="kbd-group"><kbd class="kbd">Ctrl</kbd><kbd class="kbd">K</kbd></span>
-    </button>
+    <div class="sb-search-row">
+      <button class="sb-search" id="palette-btn" type="button" aria-label="Search or jump to (Ctrl+K)">
+        <svg class="i" aria-hidden="true"><use href="#i-search"/></svg>
+        <span class="lbl">Search or jump to…</span>
+        <span class="kbd-group"><kbd class="kbd">Ctrl</kbd><kbd class="kbd">K</kbd></span>
+      </button>
+      <button class="sb-pages" id="pages-btn" type="button" aria-label="All pages (G then G)" aria-keyshortcuts="G G" data-tip="All pages" data-kbd="G G"><svg class="i" aria-hidden="true"><use href="#i-layout-grid"/></svg></button>
+    </div>
     <div class="switcher" id="section-switcher" role="tablist" aria-label="Sections"></div>
     <nav class="sidebar sb-scroll" id="sidebar" aria-label="Section navigation"></nav>
     <div class="sb-foot" id="sb-foot"></div>

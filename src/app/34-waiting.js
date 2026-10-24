@@ -50,8 +50,11 @@ function rfWaitingGroups() {
 
 registerSection('waiting', {
   title: () => 'Waiting',
+  group: 'tasks',   // Tasks > Waiting (2.18: it had no group, so the crumb showed a Settings gear)
   mount(main) { rfRenderWaiting(main); },
 });
+registerPage({ id: 'waiting', view: 'waiting', match: v => v === 'waiting', label: 'Waiting', icon: 'hourglass', area: 'tasks', order: 50, since: '2.16',
+  desc: 'Tasks waiting on someone, by person', keywords: 'waiting on people chase follow up delegated owe' });
 function rfRenderWaiting(main) {
   const groups = rfWaitingGroups();
   const total = groups.reduce((t, g) => t + g.items.length, 0);

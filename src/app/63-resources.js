@@ -942,13 +942,10 @@ registerSection('files', {
   },
 });
 
-registerSidebarBlock('tasks', {
-  id: 'files', order: 12,
-  render(el) {
-    const n = resList().length;
-    el.appendChild(sbNavItem({ label: 'Files & links', icon: 'paperclip', view: 'files', count: n || '' }));
-  },
-});
+registerPage({ id: 'files', view: 'files', match: v => v === 'files', label: 'Files and links', icon: 'paperclip', area: 'tasks', order: 95,
+  desc: 'Saved files, folders and links', keywords: 'files links resources attachments folders documents' });
+// Since 2.18 Files and links is a row under the Tasks sidebar's More views (15-nav-sidebar.js), not a block of its own.
+// A user who had hidden this block ('tasks/files') keeps the row hidden there.
 
 /* ---------- palette: Attach…, Open folder…, and resources by name ---------- */
 registerCommand({

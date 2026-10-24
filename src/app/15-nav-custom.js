@@ -6,7 +6,7 @@
    one undo step, and "Reset sidebar" puts the default back (with Undo).
 
    state.sidebarLayout = {
-     order:  {<tab>: [blockId]}      section order per tab (home, tasks, calendar, finance)
+     order:  {<tab>: [blockId]}      section order per tab (home, tasks, calendar, finance, life)
      hidden: {'<tab>/<blockId>': true, 'item:<view>': true}
                                      a block registered with hiddenByDefault: true (the Friends item,
                                      2.17.1: the corner is the way in) is hidden until the user shows
@@ -14,6 +14,8 @@
      names:  {<blockId>: 'Name'}     renamed section headings
      items:  {<blockId>: [view]}     row order inside a section (Views)
      pins:   [view]                  pinned to the top ('list:<id>', 'stream:<id>', 'today', a board view ...)
+     more:   [view]                  2.18: the Views rows folded under More views, once the user chose (Shown /
+                                     In More / Hidden); absent: the defaults (sbViewPlacement). One whole list.
    }
    renderSidebar (15-nav-sidebar.js) asks sbLayoutBlocks() which blocks to
    draw and in what order, then sbLayoutDecorate() renames, hides and orders
@@ -22,6 +24,8 @@
      registerSidebarPinKind(prefix, resolve(view, ctx) -> {label, icon|avatarHtml, count, onClick} | null)
                                     another module's pinnable things (saved boards: prefix 'board')
      sbBlockHidden(L, tab, block)   is a block hidden (the user's choice, else its default)
+     sbViewPlacement(view, L?)      a Views row: 'shown' | 'more' | 'hidden' (15-nav-sidebar.js draws it)
+     sbSetViewPlacement(view, p)    set it (one undo step)
      openSidebarCustomiser()        the Customise sidebar dialog
      sbResetLayout()
    Keys: Alt+1..9 opens the first nine pins.
@@ -32,14 +36,15 @@ function registerSidebarPinKind(prefix, resolve) {
   const i = _SB_PIN_KINDS.findIndex(k => k.prefix === prefix);
   if (i >= 0) _SB_PIN_KINDS[i] = { prefix, resolve }; else _SB_PIN_KINDS.push({ prefix, resolve });
 }
-const _SB_BLOCK_LABELS = { 'pinned': 'Pinned', boards: 'Boards', 'task-views': 'Views', 'smart-lists': 'Smart lists', streams: 'Streams', tags: 'Tags', people: 'People', minical: 'Month', calendars: 'Calendars', 'cal-countdowns': 'Countdowns', 'finance-sections': 'Finances' };
+const _SB_BLOCK_LABELS = { 'pinned': 'Pinned', boards: 'Boards', 'task-views': 'Views', 'smart-lists': 'Smart lists', streams: 'Streams', tags: 'Tags', people: 'People', minical: 'Month', calendars: 'Calendars', 'cal-countdowns': 'Countdowns', 'finance-sections': 'Money', 'life-tabs': 'Life', 'life-you': 'You', 'all-pages': 'All pages', 'review-nav': 'Plan' };
 const _sbBlockTitles = {};   // the heading each block drew last (before a rename)
-const _SB_TABS = [['home', 'Home'], ['tasks', 'Tasks'], ['calendar', 'Calendar'], ['finance', 'Finances']];
+const _SB_TABS = [['home', 'Home'], ['tasks', 'Tasks'], ['calendar', 'Calendar'], ['finance', 'Money'], ['life', 'Life']];
 
 function sbLayout() {
   const L = state.sidebarLayout && typeof state.sidebarLayout === 'object' ? state.sidebarLayout : {};
   const obj = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
-  return { order: obj(L.order), hidden: obj(L.hidden), names: obj(L.names), items: obj(L.items), pins: Array.isArray(L.pins) ? L.pins.filter(v => typeof v === 'string' && v) : [] };
+  return { order: obj(L.order), hidden: obj(L.hidden), names: obj(L.names), items: obj(L.items), pins: Array.isArray(L.pins) ? L.pins.filter(v => typeof v === 'string' && v) : [],
+    more: Array.isArray(L.more) ? L.more.filter(v => typeof v === 'string' && v) : null };
 }
 /** Change the layout (one undo step) and redraw the sidebar. */
 function sbLayoutEdit(fn, o) {
@@ -47,6 +52,7 @@ function sbLayoutEdit(fn, o) {
   const L = JSON.parse(JSON.stringify(sbLayout()));
   fn(L);
   for (const k of ['order', 'hidden', 'names', 'items']) for (const [kk, v] of Object.entries(L[k])) if (v === null || v === undefined || (v === false && !(k === 'hidden' && _sbHiddenByDefault(kk))) || v === '' || (Array.isArray(v) && !v.length)) delete L[k][kk];
+  if (!Array.isArray(L.more)) delete L.more;   // an empty list stays: "nothing in More" is a choice
   state.sidebarLayout = L;
   if (o.noSave) return;
   saveData();
@@ -122,7 +128,8 @@ function sbLayoutDrag(sb) {
   }
   const tv = sb.querySelector(':scope > .sb-block[data-block="task-views"]');
   if (tv && tv.querySelectorAll(':scope > .nav-item[data-view]').length > 1) {
-    makeSortable(tv, { items: '.nav-item[data-view]', idOf: n => n.dataset.view, onReorder: (ids) => sbLayoutEdit(L => { L.items['task-views'] = ids; }) });
+    // Dragging the rows up front keeps what is folded where it is (the placement becomes the user's own).
+    makeSortable(tv, { items: '.nav-item[data-view]', idOf: n => n.dataset.view, onReorder: (ids) => sbLayoutEdit(L => { _sbViewsFreeze(L); L.items['task-views'] = sbMergeOrder(ids, L.items['task-views']); }) });
   }
 }
 /** The note at the foot of the sidebar when something is hidden (plain, so nothing is lost from sight). */
@@ -144,7 +151,7 @@ function sbTogglePin(view, o) {
   if (!o.quiet) toast(was ? 'Unpinned' : 'Pinned to the top of the sidebar', { icon: was ? 'pin-off' : 'pin', action: { label: 'Undo', run: () => undo() } });
 }
 function sbUnpin(view, o) { if (sbIsPinned(view)) sbLayoutEdit(L => { L.pins = L.pins.filter(v => v !== view); }, o); }
-const _SB_VIEW_ICONS = { game: 'gamepad-2', locations: 'map-pin', waiting: 'hourglass', 'tag:someday': 'archive', today: 'sun', week: 'calendar-range', all: 'layers', 'no-date': 'circle-dashed', completed: 'circle-check', wins: 'trophy', triage: 'mail', now: 'target', inbox: 'inbox', home: 'house', calendar: 'calendar-days', finance: 'wallet', people: 'users', tags: 'tags' };
+const _SB_VIEW_ICONS = { game: 'trophy', locations: 'map-pin', trips: 'map', friends: 'users', garden: 'sprout', pet: 'paw-print', memories: 'book-open', together: 'handshake', files: 'paperclip', waiting: 'hourglass', 'tag:someday': 'archive', today: 'sun', week: 'calendar-range', all: 'layers', 'no-date': 'circle-dashed', completed: 'circle-check', wins: 'trophy', triage: 'mail', now: 'target', inbox: 'inbox', home: 'house', calendar: 'calendar-days', finance: 'wallet', people: 'users', tags: 'tags' };
 /** What a pinned view shows: {label, icon | avatarHtml, count, onClick} or null when it is gone. */
 function sbPinInfo(view, ctx) {
   const c = (ctx && ctx.counts) || null;
@@ -167,7 +174,7 @@ function sbPinInfo(view, ctx) {
   const cnt = c && (view === 'waiting' ? c.waiting : view === 'today' ? c.today : view === 'week' ? c.week : view === 'all' ? c.all : view === 'no-date' ? c['no-date'] : view === 'inbox' ? c.inbox : view === 'now' ? c.now : '');
   return { label: viewTitle(view), icon: _SB_VIEW_ICONS[view] || 'circle', count: cnt || '' };
 }
-registerSidebarBlock(['home', 'tasks', 'calendar'], {
+registerSidebarBlock(['home', 'tasks', 'calendar', 'life'], {
   id: 'pinned', order: 5, label: 'Pinned',
   render(el, ctx) {
     const pins = sbLayout().pins;
@@ -335,40 +342,58 @@ function openSidebarCustomiser(tab) {
     }
     body.appendChild(list);
     if (typeof makeSortable === 'function') makeSortable(list, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { Lx.order[tab] = ids; }); paint(); } });
-    // Rows of the Views section (Tasks)
+    // Rows of the Views section (Tasks): each Shown, In More (under More views) or Hidden (2.18).
     if (tab === 'tasks') {
       const rows = _sbViewRows();
       const h2 = document.createElement('div'); h2.className = 'field-label sbc-h'; h2.textContent = 'Views'; body.appendChild(h2);
+      const note = document.createElement('div'); note.className = 'sbc-note subtle';
+      const front = rows.filter(r => sbViewPlacement(r.view, L) === 'shown').length;
+      note.textContent = 'Shown rows sit up front; In More ones wait under More views (Waiting, Email triage and Do now still come up front while they need you).';
+      if (front > 6) {
+        const calm = document.createElement('button'); calm.type = 'button'; calm.className = 'btn btn-ghost btn-sm';
+        calm.textContent = 'Fold the extras';
+        calm.setAttribute('data-tip', 'Inbox, Today, Upcoming and All tasks up front; the rest under More views');
+        calm.onclick = () => { sbViewsCalmDefault(); paint(); };
+        note.appendChild(calm);
+      }
+      body.appendChild(note);
       const vl = document.createElement('div'); vl.className = 'sbc-list'; vl.setAttribute('role', 'list');
       const order = Array.isArray(L.items['task-views']) ? L.items['task-views'] : [];
       const pos = new Map(order.map((v, i) => [v, i]));
       const sorted = rows.map((r, i) => ({ r, i })).sort((a, b) => ((pos.has(a.r.view) ? pos.get(a.r.view) : 1e3 + a.i) - (pos.has(b.r.view) ? pos.get(b.r.view) : 1e3 + b.i))).map(x => x.r);
+      const PLACES = [['shown', 'Shown'], ['more', 'In More'], ['hidden', 'Hidden']];
       for (const r of sorted) {
-        const hidden = !!L.hidden['item:' + r.view];
-        const row = document.createElement('div'); row.className = 'sbc-row' + (hidden ? ' is-hidden' : ''); row.dataset.id = r.view; row.tabIndex = 0; row.setAttribute('role', 'listitem');
+        const at = sbViewPlacement(r.view, L);
+        const row = document.createElement('div'); row.className = 'sbc-row' + (at === 'hidden' ? ' is-hidden' : '') + (at === 'more' ? ' is-more' : ''); row.dataset.id = r.view; row.tabIndex = 0; row.setAttribute('role', 'listitem');
         row.innerHTML = `<span class="sbc-grip">${icon('grip-vertical', 'i-sm')}</span><span class="sbc-ic">${icon(r.icon, 'i-sm')}</span><span class="sbc-lbl">${esc(r.label)}</span>`;
-        const eye = document.createElement('button'); eye.type = 'button'; eye.className = 'btn-icon btn-sm sbc-eye';
-        eye.innerHTML = icon(hidden ? 'eye-off' : 'eye'); eye.setAttribute('aria-label', hidden ? `Show ${r.label}` : `Hide ${r.label}`);
-        eye.onclick = () => { sbLayoutEdit(Lx => { if (hidden) delete Lx.hidden['item:' + r.view]; else Lx.hidden['item:' + r.view] = true; }); paint(); };
+        const seg = document.createElement('div'); seg.className = 'seg seg-sm sbc-place'; seg.setAttribute('role', 'radiogroup'); seg.setAttribute('aria-label', `Where ${r.label} goes`);
+        for (const [k, t] of PLACES) {
+          const b = document.createElement('button'); b.type = 'button'; b.textContent = t;
+          b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', at === k ? 'true' : 'false'); b.setAttribute('aria-pressed', at === k ? 'true' : 'false');
+          b.onclick = () => { if (at !== k) { sbSetViewPlacement(r.view, k); paint(); } };
+          seg.appendChild(b);
+        }
         const pin = document.createElement('button'); pin.type = 'button'; pin.className = 'btn-icon btn-sm sbc-pin' + (sbIsPinned(r.view) ? ' on' : '');
         pin.innerHTML = icon('pin'); pin.setAttribute('aria-label', sbIsPinned(r.view) ? `Unpin ${r.label}` : `Pin ${r.label}`); pin.setAttribute('aria-pressed', sbIsPinned(r.view) ? 'true' : 'false');
         pin.onclick = () => { sbTogglePin(r.view, { quiet: true }); paint(); };
-        row.append(pin, eye);
+        row.append(pin, seg);
         row.addEventListener('keydown', (e) => {
+          if (e.target !== row) return;
           if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
             e.preventDefault();
             const ids = sorted.map(x => x.view); const i = ids.indexOf(r.view), j = i + (e.key === 'ArrowUp' ? -1 : 1);
             if (j < 0 || j >= ids.length) return;
             ids.splice(i, 1); ids.splice(j, 0, r.view);
-            sbLayoutEdit(Lx => { Lx.items['task-views'] = ids; }); paint();
+            sbLayoutEdit(Lx => { _sbViewsFreeze(Lx); Lx.items['task-views'] = ids; }); paint();
             const again = body.querySelectorAll(`.sbc-row[data-id="${CSS.escape(r.view)}"]`); if (again[0]) again[0].focus();
           }
-          if (e.key === ' ') { e.preventDefault(); eye.click(); }
+          // Space steps through Shown, In More and Hidden
+          if (e.key === ' ') { e.preventDefault(); const i = PLACES.findIndex(p => p[0] === at); sbSetViewPlacement(r.view, PLACES[(i + 1) % PLACES.length][0]); paint(); const again = body.querySelector(`.sbc-row[data-id="${CSS.escape(r.view)}"]`); if (again) again.focus(); }
         });
         vl.appendChild(row);
       }
       body.appendChild(vl);
-      if (typeof makeSortable === 'function') makeSortable(vl, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { Lx.items['task-views'] = ids; }); paint(); } });
+      if (typeof makeSortable === 'function') makeSortable(vl, { items: '.sbc-row', idOf: n => n.dataset.id, onReorder: (ids) => { sbLayoutEdit(Lx => { _sbViewsFreeze(Lx); Lx.items['task-views'] = ids; }); paint(); } });
     }
     // Pins
     const h3 = document.createElement('div'); h3.className = 'field-label sbc-h'; h3.textContent = 'Pinned to the top'; body.appendChild(h3);
@@ -393,7 +418,7 @@ function openSidebarCustomiser(tab) {
     body.scrollTop = keepScroll;
   };
   openDialog({
-    title: 'Customise sidebar', width: 520, resizeKey: 'sidebar-custom',
+    title: 'Customise sidebar', width: 560, resizeKey: 'sidebar-custom',
     body: (el) => { el.classList.add('sbc'); body = el; paint(); },
     actions: [
       { label: 'Reset sidebar', icon: 'rotate-ccw', run: () => { sbResetLayout(); paint(); return false; } },
@@ -402,10 +427,57 @@ function openSidebarCustomiser(tab) {
     ],
   });
 }
-/** The fixed rows of the Tasks views section (15-nav-sidebar.js draws them). */
+/** The fixed rows of the Tasks views section (15-nav-sidebar.js draws them; Files and links joined them in 2.18). */
 function _sbViewRows() {
-  return [['inbox', 'Inbox', 'inbox'], ['today', 'Today', 'sun'], ['now', 'Do now', 'target'], ['week', 'Upcoming', 'calendar-range'], ['all', 'All tasks', 'layers'], ['no-date', 'No date', 'circle-dashed'], ...(typeof sbWaitingViewExists === 'function' && sbWaitingViewExists() ? [['waiting', 'Waiting', 'hourglass']] : []), ['tag:someday', 'Someday', 'archive'], ['completed', 'Logbook', 'circle-check'], ['wins', 'Wins', 'trophy'], ...(typeof sbViewExists === 'function' && sbViewExists('locations') ? [['locations', 'Locations', 'map-pin']] : []), ...(typeof sbGameRowOn === 'function' && sbGameRowOn() ? [['game', 'Game', 'gamepad-2']] : []), ['triage', 'Email triage', 'mail']]
+  return [['inbox', 'Inbox', 'inbox'], ['today', 'Today', 'sun'], ['now', 'Do now', 'target'], ['week', 'Upcoming', 'calendar-range'], ['all', 'All tasks', 'layers'], ['no-date', 'No date', 'circle-dashed'], ...(typeof sbWaitingViewExists === 'function' && sbWaitingViewExists() ? [['waiting', 'Waiting', 'hourglass']] : []), ['tag:someday', 'Someday', 'archive'], ['completed', 'Logbook', 'circle-check'], ['wins', 'Wins', 'trophy'], ['triage', 'Email triage', 'mail'], ...(typeof sectionFor === 'function' && sectionFor('files') ? [['files', 'Files and links', 'paperclip']] : [])]
     .map(([view, label, ic]) => ({ view, label, icon: ic }));
+}
+/* ---------- Views rows: Shown, In More, Hidden (2.18, NAVIGATION_PLAN.md 2.4) ---------- */
+const _SB_VIEWS_FRONT = ['inbox', 'today', 'week', 'all'];
+// The rows before 2.18: a user who had arranged or hidden any of them keeps exactly their list shown.
+const _SB_VIEWS_OLD = ['inbox', 'today', 'now', 'week', 'all', 'no-date', 'waiting', 'tag:someday', 'completed', 'wins', 'triage'];
+function sbViewPlacement(view, L) {
+  L = L || sbLayout();
+  if (L.hidden['item:' + view] === true) return 'hidden';
+  if (view === 'files' && L.hidden['tasks/files'] === true) return 'hidden';   // the old Files and links block, hidden
+  const order = Array.isArray(L.items['task-views']) ? L.items['task-views'] : [];
+  if (Array.isArray(L.more)) {
+    if (L.more.includes(view)) return 'more';
+    if (order.includes(view)) return 'shown';
+    return _SB_VIEWS_FRONT.includes(view) ? 'shown' : 'more';   // a row new since the choice: its default
+  }
+  const legacy = order.length > 0 || Object.keys(L.hidden).some(k => L.hidden[k] === true && k.startsWith('item:') && _SB_VIEWS_OLD.includes(k.slice(5)));
+  if (legacy && _SB_VIEWS_OLD.includes(view) && (!order.length || order.includes(view))) return 'shown';
+  return _SB_VIEWS_FRONT.includes(view) ? 'shown' : 'more';
+}
+/** Turn the defaults into the user's own list (inside sbLayoutEdit): the rows keep where they are now. */
+function _sbViewsFreeze(L) {
+  if (Array.isArray(L.more)) return;
+  const rows = _sbViewRows().map(r => r.view);
+  L.more = rows.filter(v => sbViewPlacement(v, L) === 'more');
+  const order = Array.isArray(L.items['task-views']) ? L.items['task-views'].filter(v => rows.includes(v)) : [];
+  for (const v of rows) if (!order.includes(v)) order.push(v);
+  L.items['task-views'] = order;
+}
+function sbSetViewPlacement(view, place) {
+  sbLayoutEdit(L => {
+    _sbViewsFreeze(L);
+    if (place === 'hidden') { L.hidden['item:' + view] = true; return; }
+    delete L.hidden['item:' + view];
+    if (view === 'files') delete L.hidden['tasks/files'];
+    L.more = place === 'more' ? [...new Set([...L.more, view])] : L.more.filter(v => v !== view);
+  });
+}
+/** The calm default again for the Views rows (Inbox, Today, Upcoming, All tasks up front), keeping what is hidden and the order. */
+function sbViewsCalmDefault() {
+  sbLayoutEdit(L => {
+    const rows = _sbViewRows().map(r => r.view);
+    L.more = rows.filter(v => !_SB_VIEWS_FRONT.includes(v));
+    const order = Array.isArray(L.items['task-views']) ? L.items['task-views'].filter(v => rows.includes(v)) : [];
+    for (const v of rows) if (!order.includes(v)) order.push(v);
+    L.items['task-views'] = order;
+  });
+  toast('Fewer views up front: the rest are under More views', { icon: 'list', action: { label: 'Undo', run: () => undo() } });
 }
 function _sbPinChoices() {
   const out = [];

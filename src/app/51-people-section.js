@@ -95,13 +95,16 @@ registerSection('people', {
   layout: 'bare',
   match: v => v === 'people' || (/^person:./.test(v) && !!getPerson(v.slice(7))),
   title: v => { if (v.startsWith('person:')) { const p = getPerson(v.slice(7)); return p ? p.name : 'Person'; } return 'People'; },
-  crumb: v => { if (v.startsWith('person:')) { const p = getPerson(v.slice(7)); return ['People', p ? p.name : v.slice(7)]; } return ['People']; },
+  crumb: v => { if (v.startsWith('person:')) { const p = getPerson(v.slice(7)); return [{ label: 'People', view: 'people' }, p ? p.name : v.slice(7)]; } return ['People']; },
   mount(container, view) {
     const entering = !_pplEntered; _pplEntered = true;
     renderPeoplePage(container, view.startsWith('person:') ? view.slice(7) : null, { entering });
   },
   unmount() { _pplEntered = false; },
 });
+
+registerPage({ id: 'people', view: 'people', match: v => v === 'people' || /^person:./.test(String(v || '')), label: 'People', icon: 'users', area: 'tasks', order: 120,
+  desc: 'Everyone you work with, and what you owe them', keywords: 'people contacts person owe waiting birthdays' });
 
 function renderPeoplePage(container, selId, o) {
   o = o || {};

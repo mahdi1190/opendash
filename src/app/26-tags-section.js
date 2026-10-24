@@ -411,6 +411,9 @@ registerSection('tags', {
   unmount() { _tmRepaint = null; },
 });
 
+registerPage({ id: 'tags', view: 'tags', match: v => v === 'tags', label: 'Tags', icon: 'tags', area: 'tasks', order: 110,
+  desc: 'Every tag: rename, merge, colour and clean up', keywords: 'tags labels hashtags manage merge rename clean up' });
+
 /* ---------- sidebar: pinned + top tags, then "All N tags" ---------- */
 registerSidebarBlock('tasks', {
   id: 'tags', order: 30,

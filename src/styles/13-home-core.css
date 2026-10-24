@@ -148,3 +148,10 @@ html[data-motion="reduced"] .tb-home-cust .i.spin { animation: none; }
   .hg-w[data-h] { contain: none; min-height: 0; }            /* phones: one column, as tall as the content */
   .hg-w[data-h] > .hg-body { overflow: visible; }
 }
+
+/* 2.18: a card's title opens its page (16-pages.js homeCardTitleLink; NAVIGATION_PLAN.md 2.8): the chevron shows on hover and focus */
+.hw-title-link { display: inline-flex; align-items: center; gap: var(--space-1); max-width: 100%; margin: 0 calc(-1 * var(--space-1)); padding: 0 var(--space-1); border: 0; border-radius: var(--radius-xs); background: none; color: inherit; font: inherit; letter-spacing: inherit; cursor: pointer; text-align: left; }
+.hw-title-link:hover { background: var(--bg-muted); }
+.hw-title-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hw-title-link .hw-title-chev { color: var(--fg-subtle); opacity: 0; transition: opacity var(--m-fast) var(--m-ease-out); }
+.hw-title-link:hover .hw-title-chev, .hw-title-link:focus-visible .hw-title-chev { opacity: 1; }

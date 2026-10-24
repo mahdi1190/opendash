@@ -39,8 +39,30 @@
      profileFlag(cc)                'GB' -> the flag emoji
      profileAvatarSvg(a, o)         the avatar as an <svg> string. o {size, uid, theme, live: {hour, season, level, levelPct,
                                     streak}, mood: {mouth, eyes, brows, extra: 'sparkle'|'zzz'|'party'}, motion, crop: 'face'|'head'}
-     profileFigureOpts(a)           the scenePeople.figure() options for the avatar's outfit
-     profileFigureSvg(a, o)         the full figure as an <svg> string ('' without the scene library); o {walk, size}
+     profileFigureOpts(a)           the scenePeople.figure() options for the avatar's outfit (+ slots: extra palette colours)
+     profileFigureSvg(a, o)         the full figure as an <svg> string ('' without the scene library); o {walk, size, crop}
+
+   THE WARDROBE (2.18, agent 'wardrobe'). User request: "way way more clothes customisable options". The kit is
+   split so each file stays readable; every file is PURE like this one and sorts BEFORE it (build.mjs sorts by
+   name and '-' < '.'), so they hold function declarations and literal tables only (nothing of this file is
+   touched at load). lib/profile-avatar.mjs loads all of them, in the same order.
+     97-profile-0kit-1face.js     new eyes, brows, mouths, facial hair, cheeks; liner, lips, face paint, beauty marks,
+                                  earrings, nose and other piercings
+     97-profile-0kit-2hair.js     16 more hair styles, and dyes (highlights, ombre, tips, streak, split, peekaboo)
+     97-profile-0kit-3wear.js     more tops, fabric patterns, outerwear, dresses and jumpsuits, the dungarees' bib,
+                                  necklaces, ties, pins and the bag's straps on the bust
+     97-profile-0kit-4acc.js      more glasses, hats, headphones and scarves
+     97-profile-0kit-5figure.js   what the full scene figure wears: the mapping to scenePeople.figure() and the
+                                  extra pieces drawn on it (hats, jewellery, glasses, beards, hems, heels...)
+     97-profile-0kit-6looks.js    outfits (the parts of a look), the 'Surprise me' themes, quick expressions and
+                                  the builder's helpers:
+       PF_OUTFIT_PARTS, PF_FIGURE_PARTS, PF_LOOK_THEMES, PF_EXPRESSIONS
+       profileOutfitOf(a), profileOutfitWear(a, look), profileOutfitThemed(theme, rnd, ok, a), profileLookThemes(today)
+       pfPartHidden(k, a)   a colour row that means nothing now (no pattern colour without a pattern...)
+       pfPairs(k, id, a)    what changes with a pick (a leather jacket comes in black the first time...)
+       pfOptionArt(k, id, a, o)   the builder's tile for one option (a face, head or chest close-up, or the figure's legs or feet)
+   An avatar stays a flat object of allow-listed ids: an old saved avatar (2.17) has none of the new fields and
+   gets their defaults, which are all 'none' or a colour nobody sees until a part uses it, so it looks the same.
    ============================================================ */
 const PF_MAX = Object.freeze({ name: 40, pronouns: 24, bio: 160, status: 60, working: 80, place: 40, places: 5, badges: 6 });
 const _PF_HEX = /^#[0-9a-f]{6}$/i;
@@ -52,14 +74,28 @@ const _pfSP = typeof scenePeople !== 'undefined' && scenePeople ? scenePeople : 
 const _pfCap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /* ---------- colours: the scene people's palettes, plus a few that open up with levels ---------- */
-const PF_SKIN = Object.freeze(Object.fromEntries(((_pfSP && _pfSP.SKIN) || ['#f2cdb0', '#e2b08c', '#c98f68', '#a46c4a', '#7c5038', '#5a3a2a'])
-  .map((hex, i) => ['s' + i, Object.freeze({ label: 'Tone ' + (i + 1), hex })])));
+// s0..s5 are the scene people's six; s6..s11 (2.18) fill in between and at both ends. Listed light to deep.
+const PF_SKIN = Object.freeze((() => {
+  const base = (_pfSP && _pfSP.SKIN) || ['#f2cdb0', '#e2b08c', '#c98f68', '#a46c4a', '#7c5038', '#5a3a2a'];
+  const all = base.map((hex, i) => ['s' + i, hex]).concat([['s6', '#f9e2d2'], ['s7', '#eec9a0'], ['s8', '#d2a273'], ['s9', '#b47e52'], ['s10', '#8c5836'], ['s11', '#3e261a']]);
+  const lum = (h) => { const c = _pfHx(h); return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]; };
+  all.sort((x, y) => lum(y[1]) - lum(x[1]));
+  return Object.fromEntries(all.map(([id, hex], i) => [id, Object.freeze({ label: 'Tone ' + (i + 1), hex })]));
+})());
 const _PF_HAIR_NAMES = ['Black', 'Dark brown', 'Brown', 'Light brown', 'Blonde', 'Grey', 'Silver', 'Auburn'];
 const PF_HAIR = Object.freeze(Object.assign(Object.fromEntries(((_pfSP && _pfSP.HAIR) || ['#2a211c', '#4a3324', '#7a5434', '#b88c56', '#dcc490', '#8e8c8a', '#d4d2ce', '#7a3420'])
   .map((hex, i) => ['h' + i, Object.freeze({ label: _PF_HAIR_NAMES[i] || 'Hair ' + (i + 1), hex })])), {
+  // 2.18: three more natural shades, free
+  copper: Object.freeze({ label: 'Copper', hex: '#b5562b' }),
+  strawberry: Object.freeze({ label: 'Strawberry blonde', hex: '#d39a68' }),
+  platinum: Object.freeze({ label: 'Platinum', hex: '#ebe4d2' }),
+  ruby: Object.freeze({ label: 'Ruby', hex: '#b02a3e', level: 4 }),
   pink: Object.freeze({ label: 'Pink', hex: '#e58fb5', level: 6 }),
+  teal: Object.freeze({ label: 'Teal', hex: '#2a9a98', level: 8 }),
   blue: Object.freeze({ label: 'Blue', hex: '#4f7fd9', level: 10 }),
+  lavender: Object.freeze({ label: 'Lavender', hex: '#b39ae0', level: 12 }),
   purple: Object.freeze({ label: 'Purple', hex: '#8a5cc7', level: 15 }),
+  sunset: Object.freeze({ label: 'Sunset orange', hex: '#f0843a', level: 18 }),
   green: Object.freeze({ label: 'Green', hex: '#3fae7a', level: 20 }),
 }));
 const PF_CLOTH = Object.freeze(Object.assign(Object.fromEntries(Object.entries((_pfSP && _pfSP.CLOTH) || {
@@ -68,10 +104,24 @@ const PF_CLOTH = Object.freeze(Object.assign(Object.fromEntries(Object.entries((
   pink: '#d88aa0', mustard: '#c89a32', yellow: '#e2c23a', cream: '#ece4d0', white: '#f2f0ea', grey: '#8a8c90', charcoal: '#3a3c42',
   black: '#232328', tweed: '#7a6a52', plum: '#5a3a5e',
 }).filter(([k]) => k !== 'sole').map(([k, hex]) => [k, Object.freeze({ label: _pfCap(k), hex })])), {
+  // 2.18: more cloth colours, free (the figure paints them through its own slots: profileFigureOpts)
+  oatmeal: Object.freeze({ label: 'Oatmeal', hex: '#d9ccb2' }),
+  sage: Object.freeze({ label: 'Sage', hex: '#9cb59a' }),
+  emerald: Object.freeze({ label: 'Emerald', hex: '#2a8a5c' }),
+  turquoise: Object.freeze({ label: 'Turquoise', hex: '#3cb4b4' }),
+  lightdenim: Object.freeze({ label: 'Light denim', hex: '#86a2c4' }),
+  cobalt: Object.freeze({ label: 'Cobalt', hex: '#2f55b0' }),
+  lemon: Object.freeze({ label: 'Lemon', hex: '#f2e27a' }),
+  peach: Object.freeze({ label: 'Peach', hex: '#f2b38f' }),
+  blush: Object.freeze({ label: 'Blush', hex: '#f0c4c8' }),
+  chocolate: Object.freeze({ label: 'Chocolate', hex: '#5a3a28' }),
   mint: Object.freeze({ label: 'Mint', hex: '#7fcfae', level: 3 }),
+  magenta: Object.freeze({ label: 'Magenta', hex: '#c8357a', level: 6 }),
   lilac: Object.freeze({ label: 'Lilac', hex: '#a98bd6', level: 8 }),
   tangerine: Object.freeze({ label: 'Tangerine', hex: '#f08a3c', level: 12 }),
   electric: Object.freeze({ label: 'Electric blue', hex: '#3b6cf6', level: 15 }),
+  neon: Object.freeze({ label: 'Neon lime', hex: '#b8e835', level: 18 }),
+  silver: Object.freeze({ label: 'Silver', hex: '#c4c9d1', level: 25 }),
   gold: Object.freeze({ label: 'Gold', hex: '#d4a72c', level: 40 }),
 }));
 /** Backgrounds and the profile's own colour. */
@@ -80,9 +130,14 @@ const PF_SWATCHES = Object.freeze(Object.fromEntries([
   ['yellow', '#f4d35e'], ['amber', '#f2a541'], ['orange', '#f08a3c'], ['red', '#e5534b'], ['pink', '#f08fb3'], ['violet', '#8b5cf6'],
   ['plum', '#7a4a8c'], ['slate', '#64748b'], ['cream', '#f3ead8'], ['charcoal', '#2f3238'],
 ].map(([k, hex]) => [k, Object.freeze({ label: _pfCap(k), hex })])));
-const PF_EYE_COLS = Object.freeze(Object.fromEntries([['brown', '#5a3a24'], ['hazel', '#8a6a2e'], ['green', '#4f7a4a'], ['blue', '#4a74a8'], ['grey', '#7a8590'], ['dark', '#2a2124']]
-  .map(([k, hex]) => [k, Object.freeze({ label: _pfCap(k), hex })])));
-const _PF_COLOUR_TABLES = { skin: PF_SKIN, hair: PF_HAIR, cloth: PF_CLOTH, swatch: PF_SWATCHES, eye: PF_EYE_COLS };
+const PF_EYE_COLS = Object.freeze(Object.fromEntries([['brown', '#5a3a24'], ['hazel', '#8a6a2e'], ['green', '#4f7a4a'], ['blue', '#4a74a8'], ['grey', '#7a8590'], ['dark', '#2a2124'],
+  ['amber', '#a8701e'], ['lightblue', '#7fa8d6', 'Light blue'], ['teal', '#2f8a8a'], ['greygreen', '#6a7f6a', 'Grey-green'], ['black', '#1a1416'],
+  ['violet', '#7a5aa8', '', 8], ['gold', '#c8a02a', '', 25]]
+  .map(([k, hex, label, level]) => [k, Object.freeze(Object.assign({ label: label || _pfCap(k), hex }, level ? { level } : {}))])));
+/** Jewellery, watches, buckles and the zips of a few jackets (2.18). */
+const PF_METAL = Object.freeze(Object.fromEntries([['gold', '#d9b04a', 'Gold'], ['silver', '#c3c8d0', 'Silver'], ['rose', '#dd9c88', 'Rose gold'], ['copper', '#c27a4a', 'Copper'], ['black', '#2c2a30', 'Black']]
+  .map(([k, hex, label]) => [k, Object.freeze({ label, hex })])));
+const _PF_COLOUR_TABLES = { skin: PF_SKIN, hair: PF_HAIR, cloth: PF_CLOTH, swatch: PF_SWATCHES, eye: PF_EYE_COLS, metal: PF_METAL };
 
 /* ---------- seasons (seasonal items: once collected in season they are yours for good) ---------- */
 const PF_SEASONS = Object.freeze({
@@ -106,43 +161,113 @@ function profileSeasonOn(key, iso, birthday) {
 }
 
 /* ---------- parts ---------- */
-const PF_TABS = Object.freeze([['face', 'Face', 'user-round'], ['hair', 'Hair', 'sparkles'], ['outfit', 'Outfit', 'shirt'], ['extras', 'Extras', 'glasses'], ['scene', 'Background', 'image']]);
+const PF_TABS = Object.freeze([['face', 'Face', 'user-round'], ['details', 'Details', 'sparkle'], ['hair', 'Hair', 'sparkles'], ['outfit', 'Tops', 'shirt'],
+  ['layers', 'Layers', 'layers'], ['lower', 'Bottoms', 'ruler'], ['jewel', 'Jewellery', 'gem'], ['extras', 'Accessories', 'glasses'], ['scene', 'Background', 'image']]);
 const _pfO = (list) => Object.freeze(list.map(([id, label, x]) => Object.freeze(Object.assign({ id, label }, x || {}))));
+// Parts with `figure` show on the full scene figure only (the builder tags them); parts whose first option is 'none' are
+// optional (Randomise leaves most of them off). Every new option of 2.18 is drawn in the 0kit-* files (see the header).
 const PF_PARTS = Object.freeze([
   { k: 'skin', tab: 'face', label: 'Skin', colour: 'skin' },
-  { k: 'eyes', tab: 'face', label: 'Eyes', opts: _pfO([['dot', 'Dots'], ['round', 'Round'], ['happy', 'Happy'], ['wide', 'Wide'], ['lashes', 'Lashes'], ['sleepy', 'Sleepy'], ['wink', 'Wink'],
+  { k: 'eyes', tab: 'face', label: 'Eyes', opts: _pfO([['dot', 'Dots'], ['round', 'Round'], ['almond', 'Almond'], ['happy', 'Happy'], ['closed', 'Content'], ['wide', 'Wide'], ['glance', 'Side glance'],
+    ['focused', 'Focused'], ['lashes', 'Lashes'], ['sleepy', 'Sleepy'], ['wink', 'Wink'], ['sparkle', 'Sparkly', { level: 4 }],
     ['stars', 'Starry', { level: 20 }], ['hearts', 'Hearts', { ach: 'streak-30' }]]) },
   { k: 'eyeCol', tab: 'face', label: 'Eye colour', colour: 'eye' },
-  { k: 'brows', tab: 'face', label: 'Brows', opts: _pfO([['soft', 'Soft'], ['straight', 'Straight'], ['arched', 'Arched'], ['thick', 'Thick'], ['raised', 'Raised'], ['angled', 'Determined'], ['none', 'None']]) },
-  { k: 'mouth', tab: 'face', label: 'Mouth', opts: _pfO([['smile', 'Smile'], ['grin', 'Grin'], ['neutral', 'Calm'], ['smirk', 'Smirk'], ['open', 'Oh'], ['tongue', 'Cheeky', { level: 5 }]]) },
-  { k: 'facial', tab: 'face', label: 'Facial hair', opts: _pfO([['none', 'None'], ['stubble', 'Stubble'], ['moustache', 'Moustache'], ['goatee', 'Goatee'], ['beard', 'Short beard'], ['full', 'Full beard'], ['handlebar', 'Handlebar', { level: 10 }]]) },
-  { k: 'marks', tab: 'face', label: 'Cheeks', opts: _pfO([['none', 'Plain'], ['blush', 'Blush'], ['freckles', 'Freckles'], ['both', 'Both']]) },
-  { k: 'hair', tab: 'hair', label: 'Style', opts: _pfO([['short', 'Short'], ['crop', 'Crop'], ['side', 'Side part'], ['fringe', 'Fringe'], ['spiky', 'Spiky'], ['curly', 'Curly'], ['afro', 'Afro'],
-    ['bob', 'Bob'], ['long', 'Long'], ['wavy', 'Wavy'], ['pony', 'Ponytail'], ['bun', 'Bun'], ['braids', 'Braids'], ['buzz', 'Buzz cut'], ['bald', 'Bald'],
+  { k: 'brows', tab: 'face', label: 'Brows', opts: _pfO([['soft', 'Soft'], ['straight', 'Straight'], ['arched', 'Arched'], ['thick', 'Thick'], ['bushy', 'Bushy'], ['thin', 'Thin'],
+    ['raised', 'Raised'], ['curious', 'Curious'], ['angled', 'Determined'], ['slit', 'Brow slit'], ['none', 'None']]) },
+  { k: 'mouth', tab: 'face', label: 'Mouth', opts: _pfO([['smile', 'Smile'], ['small', 'Soft smile'], ['grin', 'Grin'], ['beam', 'Beaming'], ['laugh', 'Laugh'], ['teeth', 'Toothy'],
+    ['gap', 'Gap-tooth'], ['neutral', 'Calm'], ['smirk', 'Smirk'], ['cat', 'Cat smile'], ['open', 'Oh'], ['kiss', 'Kiss'],
+    ['whistle', 'Whistling', { level: 7 }], ['tongue', 'Cheeky', { level: 5 }]]) },
+  { k: 'facial', tab: 'face', label: 'Facial hair', opts: _pfO([['none', 'None'], ['stubble', 'Stubble'], ['moustache', 'Moustache'], ['pencil', 'Pencil moustache'], ['chevron', 'Chevron'],
+    ['goatee', 'Goatee'], ['soul', 'Soul patch'], ['anchor', 'Anchor'], ['chin', 'Chinstrap'], ['chops', 'Sideburns'], ['beard', 'Short beard'], ['full', 'Full beard'],
+    ['handlebar', 'Handlebar', { level: 10 }], ['long', 'Long beard', { level: 15 }], ['braided', 'Braided beard', { level: 25 }]]) },
+  { k: 'marks', tab: 'face', label: 'Cheeks', opts: _pfO([['none', 'Plain'], ['blush', 'Blush'], ['rosy', 'Rosy'], ['sunkissed', 'Sun-kissed'], ['freckles', 'Freckles'], ['lots', 'Lots of freckles'],
+    ['both', 'Blush and freckles'], ['dimples', 'Dimples'], ['hearts', 'Heart blush', { level: 9 }]]) },
+  // ── details (2.18) ──
+  { k: 'liner', tab: 'details', label: 'Liner and lashes', opts: _pfO([['none', 'None'], ['winged', 'Winged'], ['lashes', 'Lashes'], ['smoky', 'Smoky'], ['dots', 'Dotted'],
+    ['glitter', 'Glitter', { level: 8 }], ['graphic', 'Graphic', { level: 14 }]]) },
+  { k: 'lips', tab: 'details', label: 'Lips', opts: _pfO([['none', 'Natural'], ['gloss', 'Gloss'], ['nude', 'Nude'], ['rose', 'Rose'], ['coral', 'Coral'], ['red', 'Red'], ['berry', 'Berry'],
+    ['plum', 'Plum'], ['black', 'Black', { level: 10 }]]) },
+  { k: 'paint', tab: 'details', label: 'Face paint', opts: _pfO([['none', 'None'], ['whiskers', 'Whiskers'], ['heart', 'Heart'], ['star', 'Star'], ['rainbow', 'Rainbow'], ['stripes', 'Game day'],
+    ['glitter', 'Glitter'], ['bolt', 'Lightning', { level: 6 }], ['butterfly', 'Butterfly', { level: 11 }], ['tiger', 'Tiger', { level: 18 }],
+    ['flowers', 'Spring flowers', { season: 'spring' }], ['skull', 'Sugar skull', { season: 'halloween' }], ['pumpkin', 'Pumpkin', { season: 'halloween' }],
+    ['snowflake', 'Snowflake', { season: 'december' }]]) },
+  { k: 'beauty', tab: 'details', label: 'Beauty mark', opts: _pfO([['none', 'None'], ['cheek', 'Cheek'], ['lip', 'Above the lip'], ['eye', 'By the eye'], ['chin', 'Chin']]) },
+  { k: 'hair', tab: 'hair', label: 'Style', opts: _pfO([['short', 'Short'], ['crop', 'Crop'], ['side', 'Side part'], ['fringe', 'Fringe'], ['curtains', 'Curtains'], ['quiff', 'Quiff'],
+    ['slick', 'Slicked back'], ['undercut', 'Undercut'], ['spiky', 'Spiky'], ['pixie', 'Pixie'], ['curly', 'Curly'], ['afro', 'Afro'], ['hightop', 'High top'],
+    ['puffs', 'Afro puffs'], ['cornrows', 'Cornrows'], ['locs', 'Locs'], ['boxbraids', 'Box braids'], ['bob', 'Bob'], ['shag', 'Shag'], ['mullet', 'Mullet'],
+    ['long', 'Long'], ['wavy', 'Wavy'], ['sweep', 'Side-swept'], ['halfup', 'Half up'], ['pony', 'Ponytail'], ['pigtails', 'Pigtails'], ['bun', 'Bun'],
+    ['topknot', 'Top knot'], ['braids', 'Braids'], ['buzz', 'Buzz cut'], ['bald', 'Bald'],
     ['buns', 'Space buns', { level: 6 }], ['mohawk', 'Mohawk', { level: 12 }]]) },
   { k: 'hairCol', tab: 'hair', label: 'Colour', colour: 'hair' },
-  { k: 'top', tab: 'outfit', label: 'Top', opts: _pfO([['tee', 'T-shirt'], ['shirt', 'Shirt'], ['blouse', 'Blouse'], ['jumper', 'Jumper'], ['cardigan', 'Cardigan'], ['hoodie', 'Hoodie'],
-    ['jacket', 'Jacket'], ['coat', 'Coat'], ['parka', 'Parka'], ['lab', 'Lab coat', { level: 10 }], ['festive', 'Festive jumper', { season: 'festive' }]]) },
+  { k: 'dye', tab: 'hair', label: 'Dye', opts: _pfO([['none', 'None'], ['highlights', 'Highlights'], ['ombre', 'Ombré'], ['tips', 'Dipped tips'], ['streak', 'Streak'],
+    ['peekaboo', 'Peekaboo'], ['split', 'Split dye', { level: 5 }]]) },
+  { k: 'dyeCol', tab: 'hair', label: 'Dye colour', colour: 'hair' },
+  { k: 'top', tab: 'outfit', label: 'Top', opts: _pfO([['tee', 'T-shirt'], ['vneck', 'V-neck'], ['henley', 'Henley'], ['polo', 'Polo'], ['shirt', 'Shirt'], ['blouse', 'Blouse'],
+    ['ruffle', 'Ruffle blouse'], ['tank', 'Vest top'], ['bardot', 'Off-shoulder'], ['sweat', 'Sweatshirt'], ['jumper', 'Jumper'], ['turtle', 'Roll neck'],
+    ['cardigan', 'Cardigan'], ['hoodie', 'Hoodie'], ['rugby', 'Rugby shirt'], ['jersey', 'Sports jersey'], ['kurta', 'Kurta'], ['kimono', 'Kimono'],
+    ['jacket', 'Jacket'], ['coat', 'Coat'], ['parka', 'Parka'], ['sailor', 'Sailor top', { level: 10 }], ['lab', 'Lab coat', { level: 10 }],
+    ['festive', 'Festive jumper', { season: 'festive' }]]) },
   { k: 'topCol', tab: 'outfit', label: 'Top colour', colour: 'cloth' },
   { k: 'top2Col', tab: 'outfit', label: 'Inner layer and trim', colour: 'cloth' },
-  { k: 'bottom', tab: 'outfit', label: 'Bottoms', opts: _pfO([['jeans', 'Jeans'], ['trousers', 'Trousers'], ['joggers', 'Joggers'], ['shorts', 'Shorts'], ['skirt', 'Skirt'], ['midi', 'Midi skirt']]), figure: true },
-  { k: 'bottomCol', tab: 'outfit', label: 'Bottoms colour', colour: 'cloth', figure: true },
-  { k: 'shoes', tab: 'outfit', label: 'Shoes', opts: _pfO([['trainer', 'Trainers'], ['shoe', 'Shoes'], ['boot', 'Boots'], ['sandal', 'Sandals']]), figure: true },
-  { k: 'shoesCol', tab: 'outfit', label: 'Shoes colour', colour: 'cloth', figure: true },
-  { k: 'build', tab: 'outfit', label: 'Build', opts: _pfO([['average', 'Average'], ['slim', 'Slim'], ['broad', 'Broad'], ['stout', 'Stout']]), figure: true },
-  { k: 'glasses', tab: 'extras', label: 'Glasses', opts: _pfO([['none', 'None'], ['round', 'Round'], ['square', 'Square'], ['cat', 'Cat-eye'], ['sun', 'Sunglasses'], ['heart', 'Heart shades', { level: 16 }], ['monocle', 'Monocle', { level: 30 }]]) },
+  { k: 'pattern', tab: 'outfit', label: 'Pattern', opts: _pfO([['none', 'Plain'], ['stripes', 'Stripes'], ['pinstripe', 'Pinstripe'], ['gingham', 'Gingham'], ['tartan', 'Tartan'],
+    ['polka', 'Polka dots'], ['floral', 'Floral'], ['stars', 'Stars'], ['hearts', 'Hearts'], ['zigzag', 'Zigzag'], ['block', 'Colour block'], ['raglan', 'Two-tone'],
+    ['tiedye', 'Tie-dye', { level: 3 }], ['camo', 'Camo', { level: 5 }], ['leopard', 'Leopard', { level: 7 }],
+    ['tropical', 'Tropical', { season: 'summer' }], ['bats', 'Bats', { season: 'halloween' }], ['snow', 'Snowflakes', { season: 'december' }]]) },
+  { k: 'patCol', tab: 'outfit', label: 'Pattern colour', colour: 'cloth' },
+  // ── layers (2.18): a jacket or coat over the top, or a dress or jumpsuit instead of it ──
+  { k: 'outer', tab: 'layers', label: 'Outerwear', opts: _pfO([['none', 'None'], ['denim', 'Denim jacket'], ['leather', 'Leather jacket'], ['blazer', 'Blazer'], ['bomber', 'Bomber'],
+    ['fleece', 'Fleece'], ['puffer', 'Puffer'], ['gilet', 'Gilet'], ['raincoat', 'Raincoat'], ['trench', 'Trench coat'], ['robe', 'Dressing gown'],
+    ['apron', 'Apron', { level: 4 }], ['hivis', 'Hi-vis vest', { level: 6 }], ['varsity', 'Varsity jacket', { level: 8 }], ['cape', 'Cape', { level: 22 }]]) },
+  { k: 'outerCol', tab: 'layers', label: 'Outerwear colour', colour: 'cloth' },
+  { k: 'dress', tab: 'layers', label: 'Dress or jumpsuit', opts: _pfO([['none', 'None'], ['sundress', 'Sundress'], ['tea', 'Tea dress'], ['wrap', 'Wrap dress'], ['shirtdress', 'Shirt dress'],
+    ['slip', 'Slip dress'], ['knit', 'Jumper dress'], ['pinafore', 'Pinafore'], ['jumpsuit', 'Jumpsuit'], ['gown', 'Party gown', { level: 30 }]]) },
+  { k: 'dressCol', tab: 'layers', label: 'Dress colour', colour: 'cloth' },
+  { k: 'bottom', tab: 'lower', label: 'Bottoms', opts: _pfO([['jeans', 'Jeans'], ['trousers', 'Trousers'], ['chinos', 'Chinos'], ['cargo', 'Cargo trousers'], ['wide', 'Wide-leg'],
+    ['joggers', 'Joggers'], ['leggings', 'Leggings'], ['shorts', 'Shorts'], ['skirt', 'Skirt'], ['pleated', 'Pleated skirt'], ['midi', 'Midi skirt'], ['dungarees', 'Dungarees']]), figure: true },
+  { k: 'bottomCol', tab: 'lower', label: 'Bottoms colour', colour: 'cloth', figure: true },
+  { k: 'shoes', tab: 'lower', label: 'Shoes', opts: _pfO([['trainer', 'Trainers'], ['hightops', 'High-tops'], ['platforms', 'Platforms'], ['shoe', 'Shoes'], ['loafers', 'Loafers'],
+    ['flats', 'Ballet flats'], ['heels', 'Heels'], ['boot', 'Boots'], ['chelsea', 'Chelsea boots'], ['hiking', 'Hiking boots'], ['wellies', 'Wellies'], ['sandal', 'Sandals'],
+    ['slippers', 'Slippers']]), figure: true },
+  { k: 'shoesCol', tab: 'lower', label: 'Shoes colour', colour: 'cloth', figure: true },
+  { k: 'build', tab: 'lower', label: 'Build', opts: _pfO([['average', 'Average'], ['slim', 'Slim'], ['broad', 'Broad'], ['stout', 'Stout']]), figure: true },
+  // ── jewellery (2.18) ──
+  { k: 'earrings', tab: 'jewel', label: 'Earrings', opts: _pfO([['none', 'None'], ['studs', 'Studs'], ['hoops', 'Hoops'], ['bighoops', 'Big hoops'], ['pearls', 'Pearls'], ['drops', 'Drops'],
+    ['stars', 'Stars'], ['moons', 'Moons'], ['cuff', 'Ear cuff'], ['feathers', 'Feathers', { level: 5 }], ['cherries', 'Cherries', { level: 9 }]]) },
+  { k: 'necklace', tab: 'jewel', label: 'Necklace', opts: _pfO([['none', 'None'], ['chain', 'Chain'], ['pendant', 'Heart pendant'], ['locket', 'Locket'], ['pearls', 'Pearls'],
+    ['choker', 'Choker'], ['beads', 'Beads'], ['layered', 'Layered'], ['shell', 'Shells', { season: 'summer' }], ['medal', 'Gold medal', { ach: 'done-250' }]]) },
+  { k: 'nose', tab: 'jewel', label: 'Nose', opts: _pfO([['none', 'None'], ['stud', 'Nose stud'], ['hoop', 'Nose ring'], ['septum', 'Septum']]) },
+  { k: 'piercing', tab: 'jewel', label: 'Piercings', opts: _pfO([['none', 'None'], ['brow', 'Eyebrow'], ['lip', 'Lip ring'], ['ear', 'Ear bar'], ['browlip', 'Brow and lip']]) },
+  { k: 'metal', tab: 'jewel', label: 'Metal', colour: 'metal' },
+  { k: 'watch', tab: 'jewel', label: 'Watch', opts: _pfO([['none', 'None'], ['classic', 'Classic'], ['smart', 'Smart watch'], ['sport', 'Sports watch'], ['bangle', 'Bangles']]), figure: true },
+  { k: 'pin', tab: 'jewel', label: 'Pin badge', opts: _pfO([['none', 'None'], ['star', 'Star'], ['heart', 'Heart'], ['rainbow', 'Rainbow'], ['flower', 'Flower'], ['leaf', 'Leaf'],
+    ['planet', 'Planet'], ['coffee', 'Coffee'], ['smiley', 'Smiley'], ['bolt', 'Bolt'], ['bee', 'Bee'],
+    ['sun', 'Sunrise', { ach: 'early-bird' }], ['owl', 'Owl', { ach: 'night-owl' }], ['flame', 'Flame', { ach: 'streak-7' }]]) },
+  { k: 'glasses', tab: 'extras', label: 'Glasses', opts: _pfO([['none', 'None'], ['round', 'Round'], ['square', 'Square'], ['rect', 'Narrow'], ['wire', 'Wire rims'], ['browline', 'Browline'],
+    ['cat', 'Cat-eye'], ['oversized', 'Oversized'], ['aviator', 'Aviators'], ['half', 'Half-moons'], ['sun', 'Sunglasses'], ['aviatorsun', 'Aviator shades'],
+    ['roundsun', 'Round sunnies'], ['mirror', 'Mirrored shades'], ['sport', 'Sport shades'], ['3d', '3D glasses', { level: 9 }],
+    ['heart', 'Heart shades', { level: 16 }], ['starsun', 'Star shades', { level: 22 }], ['monocle', 'Monocle', { level: 30 }]]) },
   { k: 'glassesCol', tab: 'extras', label: 'Frame colour', colour: 'cloth' },
-  { k: 'hat', tab: 'extras', label: 'Hat', opts: _pfO([['none', 'None'], ['beanie', 'Beanie'], ['cap', 'Cap'], ['flatcap', 'Flat cap'], ['sunhat', 'Sun hat'], ['headscarf', 'Headscarf'],
-    ['grad', 'Graduation cap', { ach: 'done-100' }], ['wizard', 'Wizard hat', { level: 25 }], ['crown', 'Crown', { level: 40 }],
-    ['witch', 'Witch hat', { season: 'halloween' }], ['santa', 'Santa hat', { season: 'december' }], ['flowers', 'Flower crown', { season: 'spring' }], ['party', 'Party hat', { season: 'birthday' }]]) },
+  { k: 'hat', tab: 'extras', label: 'Hat', opts: _pfO([['none', 'None'], ['beanie', 'Beanie'], ['slouch', 'Slouchy beanie'], ['bearbeanie', 'Bear beanie'], ['cap', 'Cap'], ['backcap', 'Cap, backwards'],
+    ['bucket', 'Bucket hat'], ['beret', 'Beret'], ['flatcap', 'Flat cap'], ['fedora', 'Fedora'], ['sunhat', 'Sun hat'], ['cowboy', 'Cowboy hat'], ['visor', 'Visor'],
+    ['headband', 'Headband'], ['bandana', 'Bandana'], ['trapper', 'Trapper hat'], ['headscarf', 'Headscarf'], ['turban', 'Turban'],
+    ['grad', 'Graduation cap', { ach: 'done-100' }], ['halo', 'Halo', { ach: 'streak-60' }], ['chef', 'Chef’s hat', { level: 12 }], ['tophat', 'Top hat', { level: 18 }],
+    ['wizard', 'Wizard hat', { level: 25 }], ['crown', 'Crown', { level: 40 }],
+    ['witch', 'Witch hat', { season: 'halloween' }], ['horns', 'Little horns', { season: 'halloween' }], ['santa', 'Santa hat', { season: 'december' }],
+    ['antlers', 'Antlers', { season: 'festive' }], ['flowers', 'Flower crown', { season: 'spring' }], ['bunny', 'Bunny ears', { season: 'spring' }],
+    ['party', 'Party hat', { season: 'birthday' }]]) },
   { k: 'hatCol', tab: 'extras', label: 'Hat colour', colour: 'cloth' },
-  { k: 'headphones', tab: 'extras', label: 'Headphones', opts: _pfO([['none', 'None'], ['over', 'Headphones'], ['cat', 'Cat ears', { level: 12 }]]) },
+  { k: 'headphones', tab: 'extras', label: 'Headphones', opts: _pfO([['none', 'None'], ['over', 'Headphones'], ['buds', 'Earbuds'], ['gaming', 'Headset'], ['muffs', 'Ear muffs'],
+    ['cat', 'Cat ears', { level: 12 }]]) },
   { k: 'headphonesCol', tab: 'extras', label: 'Headphones colour', colour: 'cloth' },
-  { k: 'scarf', tab: 'extras', label: 'Scarf', opts: _pfO([['none', 'None'], ['plain', 'Plain'], ['striped', 'Striped']]) },
+  { k: 'scarf', tab: 'extras', label: 'Scarf', opts: _pfO([['none', 'None'], ['plain', 'Plain'], ['striped', 'Striped'], ['chunky', 'Chunky knit'], ['tartan', 'Tartan'], ['silk', 'Silk scarf'],
+    ['bandana', 'Neckerchief'], ['rainbow', 'Rainbow', { level: 7 }]]) },
   { k: 'scarfCol', tab: 'extras', label: 'Scarf colour', colour: 'cloth' },
   { k: 'scarf2Col', tab: 'extras', label: 'Stripe colour', colour: 'cloth' },
-  { k: 'bag', tab: 'extras', label: 'Bag', opts: _pfO([['none', 'None'], ['crossbody', 'Crossbody'], ['shoulder', 'Shoulder bag'], ['backpack', 'Backpack']]), figure: true },
-  { k: 'bagCol', tab: 'extras', label: 'Bag colour', colour: 'cloth', figure: true },
+  { k: 'tie', tab: 'extras', label: 'Tie', opts: _pfO([['none', 'None'], ['tie', 'Tie'], ['skinny', 'Skinny tie'], ['bow', 'Bow tie'], ['lanyard', 'Lanyard']]) },
+  { k: 'tieCol', tab: 'extras', label: 'Tie colour', colour: 'cloth' },
+  { k: 'bag', tab: 'extras', label: 'Bag', opts: _pfO([['none', 'None'], ['crossbody', 'Crossbody'], ['shoulder', 'Shoulder bag'], ['backpack', 'Backpack'], ['tote', 'Tote'],
+    ['messenger', 'Messenger'], ['satchel', 'Satchel'], ['bumbag', 'Bum bag']]) },
+  { k: 'bagCol', tab: 'extras', label: 'Bag colour', colour: 'cloth' },
   { k: 'bg', tab: 'scene', label: 'Background', opts: _pfO([['soft', 'Soft glow'], ['solid', 'Plain'], ['sunburst', 'Sunburst'], ['dots', 'Dots'], ['stripes', 'Stripes'],
     ['sky', 'Live sky'], ['season', 'The season'], ['confetti', 'Confetti', { level: 5 }], ['stars', 'Night stars', { level: 15 }]]) },
   { k: 'bgCol', tab: 'scene', label: 'Background colour', colour: 'swatch', hex: true },
@@ -173,7 +298,14 @@ const PF_DEFAULT = Object.freeze({
   glasses: 'none', glassesCol: 'black', hat: 'none', hatCol: 'red', headphones: 'none', headphonesCol: 'charcoal',
   scarf: 'none', scarfCol: 'mustard', scarf2Col: 'cream', bag: 'none', bagCol: 'tan',
   bg: 'soft', bgCol: 'indigo', frame: 'ring', shape: 'circle',
+  // 2.18 (the wardrobe): all off, so an avatar saved before looks exactly the same
+  liner: 'none', lips: 'none', paint: 'none', beauty: 'none', dye: 'none', dyeCol: 'h4', pattern: 'none', patCol: 'white',
+  outer: 'none', outerCol: 'denim', dress: 'none', dressCol: 'sage', earrings: 'none', necklace: 'none', nose: 'none', piercing: 'none',
+  metal: 'gold', watch: 'none', pin: 'none', tie: 'none', tieCol: 'burgundy',
 });
+/** What a too-long profile body leaves out first (profileWire): the smallest 2.18 details, then the bigger pieces. */
+const _PF_WIRE_DROP = Object.freeze(['pin', 'beauty', 'piercing', 'nose', 'watch', 'tie', 'tieCol', 'liner', 'lips', 'paint', 'metal', 'dyeCol', 'dye',
+  'patCol', 'pattern', 'necklace', 'earrings', 'dressCol', 'dress', 'outerCol', 'outer']);
 function profileAvatarDefault() { return Object.assign({}, PF_DEFAULT); }
 /** Every field an allow-listed value; anything else (unknown ids, markup, URLs, other types) becomes the default. */
 function profileAvatarNormalize(a) {
@@ -199,10 +331,15 @@ function profileAvatarRandom(rnd, ok, keep) {
   const a = {};
   for (const p of PF_PARTS) a[p.k] = pick(p.k);
   Object.assign(a, { facial: pick('facial', 0.25), glasses: pick('glasses', 0.3), hat: pick('hat', 0.25), headphones: pick('headphones', 0.12),
-    scarf: pick('scarf', 0.2), bag: pick('bag', 0.35), marks: pick('marks', 0.6) });
+    scarf: pick('scarf', 0.2), bag: pick('bag', 0.35), marks: pick('marks', 0.6),
+    // 2.18: the new optional parts, mostly off (a random look is a look, not a costume)
+    liner: pick('liner', 0.15), lips: pick('lips', 0.15), paint: pick('paint', 0.05), beauty: pick('beauty', 0.12), dye: pick('dye', 0.1),
+    pattern: pick('pattern', 0.22), outer: pick('outer', 0.3), dress: pick('dress', 0.12), earrings: pick('earrings', 0.3), necklace: pick('necklace', 0.2),
+    nose: pick('nose', 0.06), piercing: pick('piercing', 0.04), watch: pick('watch', 0.35), pin: pick('pin', 0.12), tie: pick('tie', 0.06) });
   // colours that sit well together: bottoms and the inner layer differ from the top; a natural hair colour most of the time
   for (let i = 0; i < 4 && a.bottomCol === a.topCol; i++) a.bottomCol = pick('bottomCol');
   for (let i = 0; i < 4 && a.top2Col === a.topCol; i++) a.top2Col = pick('top2Col');
+  for (let i = 0; i < 4 && (a.outerCol === a.topCol || a.patCol === a.topCol); i++) { a.outerCol = pick('outerCol'); a.patCol = pick('patCol'); }
   if (rnd() < 0.8) { const nat = pfOptions('hairCol').filter(o => !o.level); a.hairCol = nat[Math.floor(rnd() * nat.length)].id; }
   if (rnd() < 0.7) a.frame = 'ring';
   if (keep && typeof keep === 'object') for (const k of Object.keys(keep)) if (_pfHas(k, keep[k])) a[k] = keep[k];
@@ -300,11 +437,27 @@ function profileWire(pr, o) {
   if ((c.status.emoji || c.status.text) && c.status.until) b.until = c.status.until;
   if (c.working) b.working = c.working;
   if (hex(c.theme)) b.color = hex(c.theme);
-  if (pr && pr.avatar) { const av = profileAvatarNormalize(pr.avatar); av.bgCol = hex(av.bgCol) || PF_SWATCHES.indigo.hex; b.avatar = av; }
+  if (pr && pr.avatar) {
+    // 2.18: only the parts that differ from the default travel (a missing part IS the default on every side, 2.17
+    // included), so the body stays far under the profile kind's size cap (4096) however many parts the kit has
+    const av = profileAvatarNormalize(pr.avatar), out = {};
+    av.bgCol = hex(av.bgCol) || PF_SWATCHES.indigo.hex;
+    for (const k of Object.keys(av)) if (av[k] !== PF_DEFAULT[k] || k === 'bgCol') out[k] = av[k];
+    b.avatar = out;
+  }
   if (c.badges.length) b.badges = c.badges;
   if (sh.places === true && c.places.length) { b.places = c.places; b.city = c.places[0].label; }
   const at = Math.floor(Number(pr && (pr.updatedAt || pr.at)) || 0);
   if (at > 0 && at < 1e14) b.at = at;
+  // the cap is on the JSON (lib/friends/core.mjs checkBody): in the very worst case (every text field full of
+  // four-byte characters) the newest avatar parts go first, then places, so the card always gets through
+  const PF_WIRE_MAX = 3900;
+  while (JSON.stringify(b).length > PF_WIRE_MAX) {
+    const k = b.avatar ? _PF_WIRE_DROP.find(x => Object.prototype.hasOwnProperty.call(b.avatar, x)) : null;
+    if (k) delete b.avatar[k];
+    else if (b.places && b.places.length) { b.places.pop(); if (!b.places.length) { delete b.places; delete b.city; } }
+    else break;
+  }
   return b;
 }
 /** A country code as its flag ('GB' -> the two regional indicators), '' for anything else. */
@@ -422,7 +575,7 @@ function _pfHairBack(st, hc) {
     case 'pony': return _pfP('M66 27 C80 27 82.5 42 77.5 58 C75.5 64 70 67.5 68.2 63.6 C72.6 52 72.8 39 65 33 Z', hc[0]) + _pfP('M70 34 C75 40 75 50 71.4 60 C73 50 72.6 42 70 34 Z', hc[1], 0.6) + _pfC(67, 29.6, 2.2, '#e0475e');
     case 'bun': return _pfC(50, 15, 8.6, hc[0]) + _pfS('M44.6 12 Q50 8 55.4 12', hc[2], 1.2, 0.6) + _pfS('M44.4 21.4 Q50 23.6 55.6 21.4', '#e0475e', 2);
     case 'buns': return _pfC(34.6, 18.4, 7.2, hc[0]) + _pfC(65.4, 18.4, 7.2, hc[0]) + _pfS('M30.6 15.6 Q34.6 12.6 38.6 15.6', hc[2], 1, 0.6) + _pfS(_pfMirror('M30.6 15.6 Q34.6 12.6 38.6 15.6'), hc[2], 1, 0.6);
-    default: return '';
+    default: return _pfHairBackMore(st, hc);   // 2.18 styles (97-profile-0kit-2hair.js)
   }
 }
 function _pfHairStrands(st, hc) {
@@ -433,12 +586,13 @@ function _pfHairStrands(st, hc) {
     for (let i = 0; i < 6; i++) { s += _pfE(33, 58 + i * 5.4, 3.3, 3.1, hc[0]) + _pfE(67, 58 + i * 5.4, 3.3, 3.1, hc[0]); s += _pfS(`M30.4 ${_pfN(58 + i * 5.4)} Q33 ${_pfN(60.6 + i * 5.4)} 35.6 ${_pfN(58 + i * 5.4)}`, hc[1], 0.7, 0.7) + _pfS(`M64.4 ${_pfN(58 + i * 5.4)} Q67 ${_pfN(60.6 + i * 5.4)} 69.6 ${_pfN(58 + i * 5.4)}`, hc[1], 0.7, 0.7); }
     return s + _pfC(33, 91.4, 1.7, '#e0475e') + _pfC(67, 91.4, 1.7, '#e0475e');
   }
-  return '';
+  return _pfHairStrandsMore(st, hc);   // 2.18 styles
 }
 const _PF_CAP = 'M30.4 46 C28.5 27 38 18.5 50 18.5 C62 18.5 71.5 27 69.6 46 C68.4 40 66.5 34.5 62 31.5 C57 33.5 46 33 38.5 31 C34 34.5 31.6 40 30.4 46 Z';
 const _PF_PARTED = 'M30.4 46 C28.5 27 38 18.5 50 18.5 C62 18.5 71.5 27 69.6 46 C68.6 37 63 29.6 51 27.2 L50 28.6 L49 27.2 C37 29.6 31.4 37 30.4 46 Z';
 const _PF_SLEEK = 'M30.6 44 C29 26.4 38.4 18.4 50 18.4 C61.6 18.4 71 26.4 69.4 44 C68 35.6 61 29.6 50 29.6 C39 29.6 32 35.6 30.6 44 Z';
 function _pfHairFront(st, hc, small) {
+  if (_PF_HAIR_MORE.has(st)) return _pfHairFrontMore(st, hc, small);   // 2.18 styles
   const hi = (d, w) => (small ? '' : _pfS(d, hc[2], w || 1.4, 0.55));
   switch (st) {
     case 'bald': return small ? '' : _pfS('M38.4 27 Q44 23.2 50 23.6', '#ffffff', 2.2, 0.25);
@@ -465,6 +619,8 @@ function _pfHairFront(st, hc, small) {
 }
 
 /* the top: what sits behind the neck (hoods, fur), the body, the neckline */
+/** The shoulders and chest every top is cut from (a pattern is clipped to it). */
+const PF_BODY_D = 'M8 100 C8 86 19 78.5 35 75.6 Q50 80.5 65 75.6 C81 78.5 92 86 92 100 Z';
 function _pfTopBack(kind, tc) {
   if (kind === 'hoodie') return _pfP('M27.5 80 Q26 64 38 61 L62 61 Q74 64 72.5 80 Q50 73 27.5 80 Z', tc[1]) + _pfP('M33 77 Q34 67 42 65 L58 65 Q66 67 67 77 Q50 72.5 33 77 Z', tc[3], 0.5);
   if (kind === 'parka') {
@@ -473,11 +629,14 @@ function _pfTopBack(kind, tc) {
     for (const [x, y] of [[29, 76], [30, 70], [33.5, 65.5], [38.5, 62.8], [44, 61.8], [50, 61.5], [56, 61.8], [61.5, 62.8], [66.5, 65.5], [70, 70], [71, 76]]) s += _pfC(x, y, 3, fur);
     return s + _pfP('M34 77.6 Q35 69 42 66.4 L58 66.4 Q65 69 66 77.6 Q50 73 34 77.6 Z', '#b8a888', 0.55);
   }
-  return '';
+  return _pfTopBackMore(kind, tc);   // 2.18 tops (97-profile-0kit-3wear.js)
 }
-function _pfTop(kind, tc, t2, small) {
+/** The top. x (2.18): {sk (the skin tones: necklines that show skin), pat (silhouette d) -> the fabric pattern clipped to it} */
+function _pfTop(kind, tc, t2, small, x) {
+  x = x || {};
+  if (_PF_TOPS_MORE.has(kind)) return _pfTopMore(kind, tc, t2, small, x);   // 2.18 tops (97-profile-0kit-3wear.js)
   const det = (s) => (small ? '' : s);
-  let s = _pfP('M8 100 C8 86 19 78.5 35 75.6 Q50 80.5 65 75.6 C81 78.5 92 86 92 100 Z', tc[0])
+  let s = _pfP(PF_BODY_D, tc[0]) + (x.pat ? x.pat(PF_BODY_D) : '')
     + _pfP('M12 100 C12 88 21 80.5 33 77.6 C26 82 22 90 22 100 Z', tc[2], 0.5) + _pfP('M88 100 C88 88 79 80.5 67 77.6 C74 82 78 90 78 100 Z', tc[1], 0.5)
     + det(_pfS('M24 100 L26.4 86', tc[1], 1, 0.5) + _pfS('M76 100 L73.6 86', tc[1], 1, 0.5));
   const crew = (w) => _pfS('M36.5 76.2 Q50 82.2 63.5 76.2', tc[1], w);
@@ -512,7 +671,7 @@ function _pfTop(kind, tc, t2, small) {
   }
 }
 function _pfScarf(kind, sc, s2, small) {
-  if (kind !== 'plain' && kind !== 'striped') return '';
+  if (kind !== 'plain' && kind !== 'striped') return _pfScarfMore(kind, sc, s2, small);   // 2.18 (97-profile-0kit-4acc.js)
   let s = _pfP('M35.4 73.6 Q50 81.4 64.6 73.6 L65.6 80.6 Q50 89.4 34.4 80.6 Z', sc[0]) + _pfS('M35 80 Q50 88.4 65 80', sc[1], 1.2, 0.7)
     + _pfP('M55.4 82.4 L58.6 99 L66 97.6 L62.2 80.6 Z', sc[1]) + _pfP('M57 83 L59.6 97.6 L61.6 97.2 L59.4 82.2 Z', sc[2], 0.4);
   if (kind === 'striped') s += _pfS('M35 77.2 Q50 85 65 77.2', s2[0], 2) + _pfS('M56.8 88 L63.6 87', s2[0], 2) + _pfS('M57.8 93.6 L64.8 92.6', s2[0], 2);
@@ -522,6 +681,7 @@ function _pfScarf(kind, sc, s2, small) {
 
 /* the face */
 function _pfEye(cx, kind, side, eyeHex, small) {
+  if (_PF_EYES_MORE.has(kind)) return _pfEyeMore(cx, kind, side, eyeHex, small);   // 2.18 (97-profile-0kit-1face.js)
   const y = 46, o = side < 0 ? -1 : 1;
   const dot = () => _pfC(cx, y, 2.5, _PF_INK) + (small ? '' : _pfC(cx + 0.8, y - 0.9, 0.75, '#ffffff', 0.9));
   const happy = () => _pfS(`M${_pfN(cx - 3.4)} ${y + 1} Q${_pfN(cx)} ${y - 3.2} ${_pfN(cx + 3.4)} ${y + 1}`, _PF_INK, 1.7);
@@ -541,12 +701,16 @@ function _pfEye(cx, kind, side, eyeHex, small) {
 }
 function _pfBrows(kind, col) {
   if (kind === 'none') return '';
+  if (_PF_BROWS_MORE.has(kind)) return _pfBrowsMore(kind, col);   // 2.18
   const yb = kind === 'raised' ? 37.4 : 39.6;
   const d = { straight: `M38.4 ${yb} L45.6 ${yb}`, arched: `M38.2 ${_pfN(yb + 1.2)} Q41.2 ${_pfN(yb - 2.8)} 45.8 ${yb}`, angled: `M38.4 ${_pfN(yb - 1)} L45.6 ${_pfN(yb + 1)}` }[kind]
     || `M38.4 ${_pfN(yb + 0.6)} Q42 ${_pfN(yb - 1.6)} 45.6 ${_pfN(yb + 0.2)}`;
   return _pfBothS(d, col, kind === 'thick' ? 2.8 : kind === 'straight' ? 1.7 : kind === 'angled' ? 1.8 : 1.5);
 }
-function _pfMouth(kind) {
+/** The mouth; lip (2.18): a lip colour id (PF_LIPS) or '' / 'none'. */
+function _pfMouth(kind, lip) {
+  if (lip && lip !== 'none') return _pfMouthLips(kind, lip);   // 2.18: the mouth in a lip colour (97-profile-0kit-1face.js)
+  if (_PF_MOUTHS_MORE.has(kind)) return _pfMouthMore(kind, _PF_MOUTH);
   const grin = () => _pfP('M44 56.8 Q50 65 56 56.8 Q50 58.2 44 56.8 Z', _PF_MOUTH) + _pfP('M45.6 57.6 Q50 58.8 54.4 57.6 L54 58.8 Q50 60 46 58.8 Z', '#ffffff');
   switch (kind) {
     case 'grin': return grin();
@@ -559,6 +723,7 @@ function _pfMouth(kind) {
 }
 const _PF_MOUSTACHE = 'M43.4 56.4 Q46.4 52.6 50 54.6 Q53.6 52.6 56.6 56.4 Q53.2 55.4 50 56.2 Q46.8 55.4 43.4 56.4 Z';
 function _pfFacialBase(kind, hc) {
+  if (_PF_FACIAL_MORE.has(kind)) return _pfFacialBaseMore(kind, hc);   // 2.18
   switch (kind) {
     case 'stubble': return _pfP('M32.4 50 C33.4 60 41 66.2 50 66.2 C59 66.2 66.6 60 67.6 50 C64.6 58.4 57.6 62.6 50 62.6 C42.4 62.6 35.4 58.4 32.4 50 Z', hc[0], 0.22)
       + _pfP('M44.6 55.6 Q50 53.6 55.4 55.6 L55 57 Q50 55.6 45 57 Z', hc[0], 0.22);
@@ -571,6 +736,7 @@ function _pfFacialBase(kind, hc) {
   }
 }
 function _pfFacialTop(kind, hc) {
+  if (_PF_FACIAL_MORE.has(kind)) return _pfFacialTopMore(kind, hc);   // 2.18
   if (kind === 'moustache' || kind === 'beard' || kind === 'full' || kind === 'goatee') return _pfP(_PF_MOUSTACHE, hc[0]);
   if (kind === 'handlebar') return _pfP(_PF_MOUSTACHE, hc[0]) + _pfBothS('M43.6 56.2 Q40.4 56.8 40.8 53.6', hc[0], 1.4);
   return '';
@@ -578,6 +744,7 @@ function _pfFacialTop(kind, hc) {
 
 /* extras */
 function _pfGlasses(kind, gc) {
+  if (_PF_GLASSES_MORE.has(kind)) return _pfGlassesMore(kind, gc);   // 2.18 (97-profile-0kit-4acc.js)
   const lens = '#ffffff';
   const bridge = _pfS('M47.4 45.2 Q50 43.6 52.6 45.2', gc, 1.3), arms = _pfBothS('M36.4 45 L31.2 44', gc, 1.3);
   const ring = (cx) => `<circle cx="${cx}" cy="46" r="5.6" fill="${lens}" fill-opacity="0.16" stroke="${gc}" stroke-width="1.5"/>`;
@@ -592,6 +759,7 @@ function _pfGlasses(kind, gc) {
   }
 }
 function _pfHat(kind, t, small) {
+  if (_PF_HATS_MORE.has(kind)) return _pfHatMore(kind, t, small);   // 2.18 (97-profile-0kit-4acc.js)
   const det = (s) => (small ? '' : s);
   switch (kind) {
     case 'beanie': {
@@ -633,7 +801,7 @@ function _pfHat(kind, t, small) {
   }
 }
 function _pfHeadphones(kind, pc) {
-  if (kind !== 'over' && kind !== 'cat') return '';
+  if (kind !== 'over' && kind !== 'cat') return _pfHeadphonesMore(kind, pc);   // 2.18 (97-profile-0kit-4acc.js)
   let s = _pfS('M29.6 44 C27.4 14 72.6 14 70.4 44', pc[0], 3.4) + _pfS('M31 38 C30 18 70 18 69 38', pc[2], 0.9, 0.5);
   if (kind === 'cat') s += _pfBoth('M34.4 25.8 L35.8 15.2 L43.4 21.4 Z', pc[0]) + _pfBoth('M36.2 22.6 L37 18.4 L40.6 21.2 Z', '#f6a5c0');
   s += `<rect x="25" y="39" width="8.4" height="14.4" rx="3.4" fill="${pc[0]}"/><rect x="66.6" y="39" width="8.4" height="14.4" rx="3.4" fill="${pc[0]}"/>`
@@ -684,11 +852,17 @@ function _pfFrame(a, live, theme, small) {
   }
 }
 
+/** The builder's close-ups (no frame): o.crop -> the viewBox. */
+const _PF_CROPS = Object.freeze({ face: '27 26 46 46', head: '12 0 76 76', chest: '27 55 46 46', ears: '22 30 56 56', bust: '4 6 92 92', upper: '20 40 60 60' });
 /**
  * The avatar as an <svg> string (every value comes from the tables: see the header).
  * o: {size (px, default 64), uid (unique per drawing on a page: gradients and the clip), theme (the frame colour,
  *     a swatch id or hex), live: {hour, season, level, levelPct, streak}, mood: {mouth, eyes, brows, extra},
- *     motion (blink: false when reduced motion is on), cls}
+ *     motion (blink: false when reduced motion is on), cls, crop: 'face' | 'head' | 'chest' | 'ears' | 'bust' | 'upper' (a close-up, no frame)}
+ * Layers, back to front: the background; hoods and collars behind the neck; the back of the hair; the neck; the top
+ * (or the dress) with its pattern; the dungarees' bib, necklace, tie; outerwear; pin; bag straps; hair over the
+ * shoulders; scarf; ears and earrings; the face (cheeks, marks, paint, make-up, eyes, brows, mouth, piercings);
+ * the hair over the face; glasses, hat, headphones; the mood's extras; the frame.
  */
 function profileAvatarSvg(a0, o) {
   o = o || {};
@@ -703,83 +877,94 @@ function profileAvatarSvg(a0, o) {
   const eyeHex = _pfHexOf('eye', a.eyeCol, '#5a3a24');
   const scarfOn = a.hat === 'headscarf';
   const hatT = pfTone(_pfHexOf('cloth', a.hatCol, '#b83a30'));
-  const shape = a.shape === 'squircle' ? '<rect width="100" height="100" rx="26"/>' : '<circle cx="50" cy="50" r="50"/>';
+  // 2.18: the wardrobe's layers and colours
+  const hc2 = pfTone(_pfHexOf('hair', a.dyeCol, '#dcc490')), mt = pfTone(_pfHexOf('metal', a.metal, '#d9b04a'));
+  const dressOn = a.dress !== 'none', overTop = a.dress === 'pinafore';
+  const dc = pfTone(_pfHexOf('cloth', a.dressCol, '#9cb59a')), oc = pfTone(_pfHexOf('cloth', a.outerCol, '#3e5a80'));
+  const pc = pfTone(_pfHexOf('cloth', a.patCol, '#f2f0ea')), bc = pfTone(_pfHexOf('cloth', a.bottomCol, '#3e5a80'));
+  const crop = Object.prototype.hasOwnProperty.call(_PF_CROPS, o.crop) ? _PF_CROPS[o.crop] : '';
+  let nPat = 0;
+  const patOn = (base) => (a.pattern === 'none' ? null : (silD) => _pfPattern(a.pattern, pc, base, uid + 'p' + (nPat++), silD, small));
+  const dye = a.dye !== 'none' && !scarfOn && a.hair !== 'bald' ? (layer, draw) => _pfDye(a.dye, layer, a.hair, draw, uid + 'd' + layer, hc, hc2) : () => '';
+  const shape = crop ? '<rect x="-20" y="-20" width="140" height="140"/>' : a.shape === 'squircle' ? '<rect width="100" height="100" rx="26"/>' : '<circle cx="50" cy="50" r="50"/>';
   let s = `<defs><clipPath id="${uid}c">${shape}</clipPath></defs><g clip-path="url(#${uid}c)">` + _pfBg(a, live, uid, small);
   // behind the neck
-  s += _pfTopBack(a.top, tc);
+  if (!dressOn || overTop) s += _pfTopBack(a.top, tc);
+  s += _pfOuterBack(a.outer, oc, t2);
   if (scarfOn) s += _pfP('M26.6 46 C24.6 21.6 37 12.4 50 12.4 C63 12.4 75.4 21.6 73.4 46 C74.6 61 69 74.6 60 79 L40 79 C31 74.6 25.4 61 26.6 46 Z', hatT[1]);
-  else s += _pfHairBack(a.hair, hc);
+  else s += _pfHairBack(a.hair, hc) + dye('back', (t) => _pfHairBack(a.hair, t));
   // neck and body
   s += _pfP('M43.5 58 L43.5 77 Q50 80 56.5 77 L56.5 58 Z', _pfMix(sk[0], sk[1], 0.55)) + _pfP('M43.5 60 Q50 66 56.5 60 L56.5 63.4 Q50 69.4 43.5 63.4 Z', sk[3], 0.22);
-  s += _pfTop(a.top, a.top === 'lab' ? pfTone('#f4f4f2') : tc, t2, small);
+  if (!dressOn || overTop) s += _pfTop(a.top, a.top === 'lab' ? pfTone('#f4f4f2') : tc, t2, small, { sk, pat: dressOn ? null : patOn(tc), id: uid + 't' });
+  if (dressOn) s += _pfDress(a.dress, dc, t2, sk, small, { pat: patOn(dc) });
+  if (a.bottom === 'dungarees' && !dressOn) s += _pfBib(bc, mt, small);
+  s += _pfNecklace(a.necklace, mt, small, { roll: (!dressOn && a.top === 'turtle') || a.dress === 'knit' });
+  s += _pfTie(a.tie, pfTone(_pfHexOf('cloth', a.tieCol, '#7a2e3a')), small);
+  s += _pfOuter(a.outer, oc, t2, mt, small);
+  s += _pfPin(a.pin, small, a.outer !== 'none');
+  s += _pfBagStraps(a.bag, pfTone(_pfHexOf('cloth', a.bagCol, '#9a6a40')), mt, small);
   if (scarfOn) s += _pfP('M37 62 Q50 72 63 62 L67 80 Q50 88.6 33 80 Z', hatT[0]) + _pfS('M36 74 Q50 82 64 74', hatT[1], 1, 0.7);
-  else s += _pfHairStrands(a.hair, hc);
+  else s += _pfHairStrands(a.hair, hc) + dye('strands', (t) => _pfHairStrands(a.hair, t));
   s += _pfScarf(a.scarf, pfTone(_pfHexOf('cloth', a.scarfCol, '#c89a32')), pfTone(_pfHexOf('cloth', a.scarf2Col, '#ece4d0')), small);
   // the head
-  if (!scarfOn) s += _pfE(31.6, 47, 3.8, 5.4, sk[0]) + _pfE(68.4, 47, 3.8, 5.4, sk[0]) + (small ? '' : _pfBothS('M31.2 44.5 Q29.6 47 31.4 49.6', sk[3], 0.9, 0.4));
+  if (!scarfOn) s += _pfE(31.6, 47, 3.8, 5.4, sk[0]) + _pfE(68.4, 47, 3.8, 5.4, sk[0]) + (small ? '' : _pfBothS('M31.2 44.5 Q29.6 47 31.4 49.6', sk[3], 0.9, 0.4))
+    + _pfEarrings(a.earrings, mt, small) + (a.piercing === 'ear' ? _pfPiercing('ear', mt, small) : '');
   s += _pfP('M50 22 C61.5 22 69.4 30.5 69.4 43.5 C69.4 56.5 61 66.2 50 66.2 C39 66.2 30.6 56.5 30.6 43.5 C30.6 30.5 38.5 22 50 22 Z', sk[0])
     + _pfP('M63 28 C69.6 35 70.6 52 60.6 63.2 C65.6 53.6 66.8 40.6 63 28 Z', sk[1], 0.35) + (small ? '' : _pfE(41, 31, 6, 3.2, sk[2], 0.45));
-  if (a.marks === 'blush' || a.marks === 'both') s += _pfE(38.6, 55.2, 4, 2.3, '#f08080', 0.32) + _pfE(61.4, 55.2, 4, 2.3, '#f08080', 0.32);
-  if (!small && (a.marks === 'freckles' || a.marks === 'both')) for (const [x, y] of [[38.2, 51.4], [40.6, 52.8], [42.8, 51.2], [39.8, 54.4]]) s += _pfC(x, y, 0.65, sk[3], 0.45) + _pfC(100 - x, y, 0.65, sk[3], 0.45);
+  s += _pfCheeks(a.marks, sk, small) + _pfBeauty(a.beauty, small);
   s += _pfS('M50.6 47.6 Q48.2 52.8 50.8 54', sk[3], 1.3, 0.5);
-  s += _pfFacialBase(a.facial, hc);
+  s += _pfPaint(a.paint, sk, small) + _pfFacialBase(a.facial, hc) + _pfLiner(a.liner, false, small);
   let eyesSvg = _pfEye(42, eyes, -1, eyeHex, small) + _pfEye(58, eyes, 1, eyeHex, small);
-  if (o.motion && !small && size >= 44 && ['dot', 'round', 'wide', 'lashes'].includes(eyes)) {
+  if (o.motion && !small && size >= 44 && ['dot', 'round', 'wide', 'lashes', 'almond', 'glance', 'sparkle'].includes(eyes)) {
     const dur = 4.6 + ((uid.length * 7) % 30) / 10;
     eyesSvg = `<g transform="translate(0 46)"><g><animateTransform attributeName="transform" type="scale" values="1 1;1 1;1 0.12;1 1" keyTimes="0;0.95;0.975;1" dur="${_pfN(dur)}s" repeatCount="indefinite"/><g transform="translate(0 -46)">${eyesSvg}</g></g></g>`;
   }
-  s += eyesSvg + _pfBrows(brows, _pfMix(hc[0], '#000000', a.hair === 'bald' && a.hairCol === 'h6' ? 0.5 : 0.35));
-  s += _pfMouth(mouth) + _pfFacialTop(a.facial, hc);
+  s += eyesSvg + _pfLiner(a.liner, true, small) + _pfBrows(brows, _pfMix(hc[0], '#000000', a.hair === 'bald' && a.hairCol === 'h6' ? 0.5 : 0.35));
+  s += _pfMouth(mouth, a.lips) + _pfFacialTop(a.facial, hc);
+  s += _pfNose(a.nose, mt, small) + (a.piercing !== 'ear' ? _pfPiercing(a.piercing, mt, small) : '');
   // over the face
   if (scarfOn) s += _pfP('M31.4 41 C31 27 40 20.4 50 20.4 C60 20.4 69 27 68.6 41 C66 33 59 28.8 50 28.8 C41 28.8 34 33 31.4 41 Z', hatT[0]) + (small ? '' : _pfS('M33.6 36 Q50 25.6 66.4 36', hatT[1], 0.9, 0.6));
-  else s += _pfHairFront(a.hair, hc, small);
+  else s += _pfHairFront(a.hair, hc, small) + dye('front', (t) => _pfHairFront(a.hair, t, small));
   s += _pfGlasses(a.glasses, _pfHexOf('cloth', a.glassesCol, '#232328'));
   if (!scarfOn) s += _pfHat(a.hat, hatT, small);
   s += _pfHeadphones(a.headphones, pfTone(_pfHexOf('cloth', a.headphonesCol, '#3a3c42')));
   if (!small && mood.extra === 'party' && (a.hat === 'none')) s += _pfHat('party', pfTone(_pfHexOf('swatch', 'pink', '#f08fb3')), small);
   if (!small && mood.extra === 'sparkle') s += _pfP(_pfSpark(77, 22, 4.4), '#f6d35e') + _pfP(_pfSpark(24, 30, 2.8), '#f6d35e', 0.9) + _pfP(_pfSpark(82, 34, 2), '#ffffff', 0.9);
   if (!small && mood.extra === 'zzz') s += _pfS('M70 20 L75.4 20 L70 25.4 L75.4 25.4', '#ffffff', 1.5, 0.9) + _pfS('M78 11 L81.6 11 L78 14.6 L81.6 14.6', '#ffffff', 1.2, 0.75);
-  const crop = o.crop === 'face' ? '27 26 46 46' : o.crop === 'head' ? '12 0 76 76' : '';   // the builder's close-ups (no frame)
   s += '</g>' + (crop ? '' : _pfFrame(a, live, o.theme, small));
   return `<svg class="${String(o.cls || 'pf-av-svg').replace(/[^a-z0-9 _-]/gi, '')}" viewBox="${crop || '0 0 100 100'}" width="${size}" height="${size}" aria-hidden="true" focusable="false">${s}</svg>`;
 }
 
-/* ---------- the full figure: a scene person in your outfit (scenePeople.figure) ---------- */
-const _PF_FIG_HAIR = { bald: 'bald', buzz: 'crop', crop: 'crop', mohawk: 'crop', short: 'short', side: 'short', spiky: 'short', fringe: 'short',
-  curly: 'curly', afro: 'curly', bob: 'long', long: 'long', wavy: 'long', braids: 'long', pony: 'pony', bun: 'bun', buns: 'bun' };
-const _PF_FIG_TOP = { tee: 'tee', shirt: 'shirt', blouse: 'blouse', jumper: 'jumper', festive: 'jumper', cardigan: 'cardigan', hoodie: 'hoodie', jacket: 'jacket', coat: 'coat', parka: 'parka', lab: 'coat' };
-const _PF_FIG_HAT = { beanie: 'beanie', cap: 'cap', flatcap: 'flatcap', sunhat: 'sunhat', headscarf: 'beanie', santa: 'beanie' };
-/** The figure() options of scenePeople for this avatar (hair colours outside the scene palette ride on slot hr0). */
+/* ---------- the full figure: a scene person in your outfit (scenePeople.figure; the mapping is 97-profile-0kit-5figure.js) ---------- */
+/**
+ * The figure() options of scenePeople for this avatar: {o, hairHex, slots}. slots {name: '#rrggbb'}: the palette slots
+ * the options and the extra pieces paint with (pfTop, pfBot, pfShoe..., and sk0 / hr0 for a skin or hair colour the
+ * scene palette does not have). hairHex stays for older callers (it is slots.hr0).
+ */
 function profileFigureOpts(a0) {
   const a = profileAvatarNormalize(a0);
-  const hi = /^h(\d)$/.exec(a.hairCol);
-  const o = {
-    build: a.build, skin: Number(a.skin.slice(1)) || 0,
-    hair: { style: _PF_FIG_HAIR[a.hair] || 'short', col: hi ? Number(hi[1]) : 0 },
-    top: { kind: _PF_FIG_TOP[a.top] || 'tee', col: a.top === 'lab' ? 'white' : a.topCol, col2: a.top2Col },
-    bottom: { kind: a.bottom === 'midi' ? 'skirt' : a.bottom, col: a.bottomCol, len: a.bottom === 'midi' ? 'midi' : 'knee' },
-    shoes: { kind: a.shoes, col: a.shoesCol },
-    arms: 'walk', legs: 'walk',
-  };
-  const hat = _PF_FIG_HAT[a.hat];
-  if (hat) o.hat = { kind: hat, col: a.hat === 'santa' ? 'red' : a.hatCol, pom: a.hat === 'beanie' || a.hat === 'santa' ? 'cream' : undefined };
-  if (a.scarf !== 'none') o.scarf = { col: a.scarfCol, col2: a.scarf === 'striped' ? a.scarf2Col : a.scarfCol };
-  if (a.bag !== 'none') o.bag = { kind: a.bag, col: a.bagCol };
-  return { o, hairHex: hi ? null : _pfHexOf('hair', a.hairCol, '#2a211c') };
+  const r = _pfFigOpts(a);
+  return { o: r.o, hairHex: r.hairHex, slots: r.slots };
 }
-/** The full figure as an <svg> string, '' when the scene library is not on this page. o {size (px height), walk (animate)}. */
+/** The figure's close-ups for the builder's tiles (viewBox). */
+const _PF_FIG_CROPS = Object.freeze({ legs: '-15 -40 30 42', feet: '-6.5 -13 15 15', wrist: '-13 -38 13 13', head: '-9 -70 18 18', torso: '-13 -66 26 37' });
+/**
+ * The full figure as an <svg> string, '' when the scene library is not on this page.
+ * o {size (px height), walk (animate), crop: 'legs' | 'feet' | 'wrist' | 'head' | 'torso' (a close-up for the builder), uid}
+ */
 function profileFigureSvg(a0, o) {
   o = o || {};
   if (!_pfSP || typeof _pfSP.figure !== 'function') return '';
+  const a = profileAvatarNormalize(a0);
   let parts;
-  const f = profileFigureOpts(a0);
-  try { parts = _pfSP.figure(f.o); } catch (e) { return ''; }
-  // the palette: the scene people's slots, the kit's extra cloth colours, and a hair colour of its own when it is not a scene one
+  const f = profileFigureOpts(a);
+  try { parts = profileFigureDress(a, _pfSP.figure(f.o), { PP: _pfSP }); } catch (e) { return ''; }
+  // the palette: the kit's own slots first, then the scene people's, the kit's extra cloth colours, the sole and the ink
   const pal = {};
   const slot = (name) => {
     if (pal[name]) return pal[name];
     let v = null;
-    if (name === 'hr0' && f.hairHex) v = pfTone(f.hairHex);
+    if (Object.prototype.hasOwnProperty.call(f.slots, name) && _PF_HEX.test(f.slots[name])) v = pfTone(f.slots[name]);
     else if (/^sk\d$/.test(name)) v = pfTone(_pfHexOf('skin', 's' + name.slice(2), '#e2b08c'));
     else if (/^hr\d$/.test(name)) v = pfTone(_pfHexOf('hair', 'h' + name.slice(2), '#4a3324'));
     else if (Object.prototype.hasOwnProperty.call(PF_CLOTH, name)) v = pfTone(PF_CLOTH[name].hex);
@@ -796,7 +981,17 @@ function profileFigureSvg(a0, o) {
     const t = slot(m[1]);
     return t[Math.min(3, Number(m[2] || 0))];
   };
-  const small = (Number(o.size) || 120) < 60;
+  const h = Math.max(24, Math.min(600, Math.round(Number(o.size) || 120)));
+  const crop = Object.prototype.hasOwnProperty.call(_PF_FIG_CROPS, o.crop) ? _PF_FIG_CROPS[o.crop] : '';
+  const small = !crop && h < 60;
+  const uid = String(o.uid || 'pff').replace(/[^A-Za-z0-9_-]/g, '') || 'pff';
+  let nPat = 0;
+  const pc = pfTone(_pfHexOf('cloth', a.patCol, '#f2f0ea'));
+  const patOn = a.pattern !== 'none' && !small;
+  const dressed = a.dress !== 'none' && a.dress !== 'pinafore';
+  const patBase = pfTone(dressed ? _pfHexOf('cloth', a.dressCol, '#9cb59a') : _pfHexOf('cloth', a.topCol, '#2f3d5c'));
+  const outerTop = Object.prototype.hasOwnProperty.call(_PF_FIG_OUTER, a.outer);   // a coat or jacket is the figure's top: no pattern on it
+  const patTargets = new Set(dressed ? ['@pfDress.0'] : outerTop ? [] : ['@pfTop.0']);
   const draw = (list) => (Array.isArray(list) ? list : []).map(sh => {
     if (!sh) return '';
     const x = Array.isArray(sh) ? { f: sh[0], d: sh[1], op: sh[2] } : sh;
@@ -807,13 +1002,17 @@ function profileFigureSvg(a0, o) {
     if (stroke) at += ` stroke="${stroke}" stroke-width="${_pfN(Number(x.w) || 1)}" stroke-linecap="${x.cap === 'butt' ? 'butt' : 'round'}"`;
     if (x.op != null && Number(x.op) !== 1 && Number.isFinite(Number(x.op))) at += ` opacity="${_pfN(Number(x.op))}"`;
     if (Array.isArray(x.m) && x.m.length === 6 && x.m.every(Number.isFinite)) at += ` transform="matrix(${x.m.map(_pfN).join(' ')})"`;
-    return at + '/>';
+    at += '/>';
+    // the fabric pattern on the main garment (the torso, and a dress's skirt)
+    if (patOn && !x.s && patTargets.has(x.f)) at += _pfFigPattern(a.pattern, x.d, uid + 'fp' + (nPat++), pc, patBase);
+    return at;
   }).join('');
   const piv = '0 ' + _pfN(Number(_pfSP.HIP) || -31.5);
-  const swing = (from, to) => (o.walk ? `<animateTransform attributeName="transform" type="rotate" values="${from} ${piv};${to} ${piv};${from} ${piv}" dur="0.9s" repeatCount="indefinite"/>` : '');
-  const bob = o.walk ? '<animateTransform attributeName="transform" type="translate" values="0 0;0 -1.3;0 0;0 -1.3;0 0" dur="0.9s" repeatCount="indefinite"/>' : '';
-  const h = Math.max(40, Math.min(600, Math.round(Number(o.size) || 120)));
-  return `<svg class="pf-fig-svg" viewBox="-22 -70 44 74" width="${Math.round(h * 44 / 74)}" height="${h}" aria-hidden="true" focusable="false">`
-    + `<ellipse cx="0" cy="0.6" rx="11" ry="1.8" fill="#000000" opacity="0.14"/>`
+  const walk = !!o.walk && !crop;
+  const swing = (from, to) => (walk ? `<animateTransform attributeName="transform" type="rotate" values="${from} ${piv};${to} ${piv};${from} ${piv}" dur="0.9s" repeatCount="indefinite"/>` : '');
+  const bob = walk ? '<animateTransform attributeName="transform" type="translate" values="0 0;0 -1.3;0 0;0 -1.3;0 0" dur="0.9s" repeatCount="indefinite"/>' : '';
+  const vb = crop || '-22 -70 44 74', w = crop ? h : Math.round(h * 44 / 74);
+  return `<svg class="pf-fig-svg" viewBox="${vb}" width="${w}" height="${h}" aria-hidden="true" focusable="false">`
+    + (crop ? '' : `<ellipse cx="0" cy="0.6" rx="11" ry="1.8" fill="#000000" opacity="0.14"/>`)
     + `<g>${swing(18, -18)}${draw(parts.legB)}</g><g>${bob}${draw(parts.body)}</g><g>${swing(-18, 18)}${draw(parts.legA)}</g></svg>`;
 }

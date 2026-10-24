@@ -69,6 +69,7 @@ document.getElementById('ws-btn').onclick = (e) => {
   openMenu(e.currentTarget, shellMenuItems('workspace'), { align: 'start', width: 240 });
 };
 document.getElementById('palette-btn').onclick = () => openCommandPalette();
+{ const pb = document.getElementById('pages-btn'); if (pb) pb.onclick = () => openAllPages(); }   // All pages (16-pages.js), 2.18
 document.getElementById('sidebar-toggle').onclick = () => _shellToggleSidebar();
 document.getElementById('drawer-btn').onclick = () => {
   if (window.matchMedia('(max-width: 900px)').matches) document.getElementById('app').classList.toggle('drawer-open');
@@ -221,13 +222,14 @@ function setupRubberBand() {
 }
 
 // "G then a key" jumps (like Linear/GitHub): g h Home, g t Tasks, g c Calendar,
-// g f Finances, g p People, g s Settings, g u Upcoming, g a All tasks.
+// g f Money, g l Life, g p People, g s Settings, g u Upcoming, g a All tasks, g o the Logbook,
+// g b the Bin, and g g All pages (2.18: L is Life now, the Logbook moved to O; NAVIGATION_PLAN.md 2.1).
 let _gPending = 0;
-const _G_KEYS = { h: 'home', t: 'today', u: 'week', a: 'all', c: 'calendar', f: 'finance', p: 'people', s: 'settings', b: 'bin', l: 'completed' };
+const _G_KEYS = { h: 'home', t: 'today', u: 'week', a: 'all', c: 'calendar', f: 'finance', l: () => (typeof lifeTileView === 'function' ? lifeTileView() : 'memories'), p: 'people', s: 'settings', b: 'bin', o: 'completed' };
 
 document.addEventListener('keydown', e => {
   const inField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable;
-  const overlayOpen = !!document.querySelector('.cmd, .modal, .drawer');
+  const overlayOpen = !!document.querySelector('.cmd, .modal, .drawer, .ap');
   if (e.key === 'Escape') {
     closeCtxMenu();
     // :not([hidden]) - the quick-add suggestion list is a .pop that stays in the DOM while hidden.
@@ -296,10 +298,12 @@ document.addEventListener('keydown', e => {
   if (e.key === '?') { e.preventDefault(); showKbHelp(); return; }
   if (e.key === 'q' || e.key === 'Q') { e.preventDefault(); openNewTask('', { quick: true }); return; }   // the inline box when there is one
   if (e.key === '/') { e.preventDefault(); if (isTaskView(state.view)) { searchInput.focus(); searchInput.select(); } else openCommandPalette(); return; }
-  if (e.key === 'g') { _gPending = Date.now(); return; }
+  if (e.key === 'g' && !(_gPending && Date.now() - _gPending < 1200)) { _gPending = Date.now(); return; }
   if (_gPending && Date.now() - _gPending < 1200) {
     _gPending = 0;
-    const v = _G_KEYS[e.key.toLowerCase()];
-    if (v) { e.preventDefault(); setView(v); }
+    if (e.key.toLowerCase() === 'g') { e.preventDefault(); if (typeof openAllPages === 'function') openAllPages(); return; }   // G then G: All pages (16-pages.js)
+    const k = _G_KEYS[e.key.toLowerCase()];
+    const v = typeof k === 'function' ? k() : k;
+    if (v) { e.preventDefault(); if (typeof navVia === 'function') navVia('chrome'); setView(v); }
   }
 });

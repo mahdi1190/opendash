@@ -231,6 +231,15 @@ function permsRenderData(scope, mode, data) {
       ['Quests', data.quests != null ? String(data.quests) : ''], ['Focus', data.focusMin != null ? data.focusMin + ' min' : '']]));
     return box;
   }
+  // ── garden-social ── (2.18) the garden snapshot: counts and words, never the rows themselves
+  if (scope === 'garden') {
+    const snap = typeof gardenSnapshotClean === 'function' ? gardenSnapshotClean(data) : null;
+    if (!snap) { box.appendChild(_pmEl('p', 'muted', 'Nothing yet: it goes once your garden has grown a little.')); return box; }
+    const areas = snap.areas.map(a => (typeof gardenArea === 'function' && gardenArea(a) ? gardenArea(a).name : a)).join(', ');
+    box.appendChild(_pmKv([['Level', String(snap.lv)], ['Season', snap.season], ['Plants', String(snap.plants.length)], ['Decorations', String(snap.decor.length)], ['Areas', areas]]));
+    return box;
+  }
+  // ── end garden-social ──
   if (scope === 'presence') {
     box.appendChild(_pmEl('p', '', data.s || data.state || ''));
     return box;

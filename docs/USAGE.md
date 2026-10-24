@@ -26,9 +26,28 @@ the welcome screen.
 ## Getting around
 
 - The **tiles** at the top of the sidebar switch between **Home**, **Tasks**,
-  **Calendar** and **Finances**. The sidebar below them changes with the area:
-  under Home it holds Home and the **Review** pages; the task views, streams,
-  tags and people are under Tasks.
+  **Calendar**, **Money** and **Life**. The sidebar below them changes with the
+  area: under Home it holds Home and the **Plan** pages (Finish the day,
+  Weekly review, Plan my week, History); the task views, streams, tags and
+  people are under Tasks.
+- **Tasks** shows Inbox, Today, Upcoming and All tasks up front. The other
+  views (Do now, No date, Waiting, Someday, Logbook, Wins, Email triage, Files
+  and links) wait under **More views**; Waiting, Email triage and Do now come
+  up by themselves while they need you. *Customise sidebar* sets each one to
+  Shown, In More or Hidden.
+- **Life** holds the fun side of OpenDash: **Friends**, **Garden**, **Pets**,
+  **Achievements** (your level, streaks, quests and the achievements wall),
+  **Memories** and **Places** (where you have been, and your trips), with a tab
+  for each at the top of every Life page. Under **You** in its sidebar: your
+  profile, the wardrobe and your status. Your avatar's menu has **Open Life**
+  and an icon for each part.
+- **All pages** (the grid button next to the search box, the last row of
+  every sidebar, or G then G) lists every page with a one-line description:
+  type to find one, Enter opens it, Shift+Enter pins it to the sidebar.
+- A small dot marks a page you have not opened yet; it goes when you visit.
+  The path at the top of the page (Life › Places › Trips) is clickable, and a
+  page you reached from a link inside another one offers **Back to** where you
+  were. Home cards' titles open the page behind them.
 - The **top bar** shows where you are, your countdowns and widgets, and
   whether everything is saved.
 - **Ctrl+K** (Cmd+K on a Mac) opens the **command palette**: type to jump to a
@@ -274,7 +293,7 @@ rewrite gets totals and the next few bills only. See [PRIVACY.md](PRIVACY.md).
 
 ## Morning brief, Finish the day and the weekly review
 
-Each of the three is a page under **Review** in the sidebar (Morning brief,
+Each of the three is a page under **Plan** in Home's sidebar (Morning brief,
 Finish the day, Weekly review, History), and each can also play as a
 full-screen **story**: your day in a few sentences as big type that lights up
 word by word while it is read aloud, with scenes for your events, the people
@@ -343,8 +362,9 @@ Acme to next Monday", "Add a task to email Sam on Thursday, high priority".
 ## Friends
 
 Add people who also use OpenDash: cheer each other on, compare levels and
-streaks, and do things together. Click your avatar in the sidebar's top-left
-corner, then **Open Friends**; until you have a friend, a short welcome walks
+streaks, and do things together. Friends is the first tab in **Life** (or
+click your avatar in the sidebar's top-left corner, then **Open Friends**);
+until you have a friend, a short welcome walks
 you through three steps (Ctrl+K, *Friends: getting started* brings it back):
 
 1. **Make your character** (Settings > Profile).
@@ -359,8 +379,8 @@ The corner is you: your avatar, your status, a green dot when a friend is
 around and a number when a request is waiting. Its menu has your card (*Edit
 profile*, *Set status*), the friends who are around, *Open Friends*, *Add a
 friend*, *What my friends can see*, *Your relay* and *Sync* (each with its
-state), then the usual workspace items. To have Friends in the sidebar too,
-use *Customise sidebar* (Home > Friends).
+state), then the usual workspace items. Your shared spaces (Together, in
+Tasks) are listed on the Friends page too.
 
 Friends see only your profile and game progress until you choose more, per
 friend (*What Sam can see* on their page). Everything between friends is
@@ -419,7 +439,9 @@ Press **?** (or the keyboard button in the top bar) for the shortcuts sheet.
 | Q | new task (quick add) |
 | / | filter the current list (elsewhere it opens the palette) |
 | Ctrl+J | the assistant |
-| G then H / T / U / A / C / F / P / S / B / L | go to Home, Today, Upcoming, All tasks, Calendar, Finances, People, Settings, Bin, Logbook |
+| G then H / T / U / A / C / F / L / P / S / B / O | go to Home, Today, Upcoming, All tasks, Calendar, Money, Life, People, Settings, Bin, Logbook |
+| G then G | All pages |
+| Alt+1 to 9 | your pinned pages |
 | Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) | undo / redo |
 | Ctrl+\ | show or hide the sidebar |
 | Ctrl+Shift+D | switch between light and dark |

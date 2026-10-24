@@ -458,21 +458,7 @@ function trNavFocus(key) {
   requestAnimationFrame(go);
 }
 
-/* ---------- sidebar: Trips on Home ---------- */
-registerSidebarBlock('home', {
-  id: 'trips', order: 14,
-  render(el, ctx) {
-    if (!_truOn() || typeof TravelStore === 'undefined') return false;
-    const snap = _truSnap();
-    if (!snap || !Array.isArray(snap.trips)) return false;
-    const list = snap.trips.filter(t => !t.candidate && ['planned', 'departing', 'away', 'returning', 'home'].includes(t.status) && clockDaysBetween(snap.today, t.from) <= 30).slice(0, 4);
-    if (!list.length) return false;
-    el.appendChild(sbSection({ title: 'Trips' }));
-    for (const t of list) {
-      const view = 'trip:' + t.id;
-      el.appendChild(sbNavItem({ label: `${t.label || 'Trip'} · ${trUiTripWhen(t, snap.today).replace(t.label + ' ', '')}`, avatarHtml: `<span class="ic">${_truFlag(t.dest && t.dest.cc) || icon('map-pin')}</span>`, view, active: ctx.view === view }));
-    }
-  },
-});
+/* Trips live in Life > Places > Trips since 2.18 (NAVIGATION_PLAN.md 2.3): the Home sidebar's upcoming-trips rows
+   are gone; Places shows the next trip as its hint ('in 9d') and the Home Trip card links there. */
 registerCommand({ id: 'travel-trips', label: 'Trips', icon: 'map', group: 'Go to', keywords: 'travel trip holiday abroad flights journeys', run: () => Travel.openTrips(), when: () => _truOn() });
 registerCommand({ id: 'travel-settings', label: 'Travel & time settings', icon: 'globe', group: 'Settings', keywords: 'time zone travel trips home time second clock holidays jet lag', run: () => Travel.openSettings() });

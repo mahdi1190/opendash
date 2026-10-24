@@ -69,10 +69,14 @@ function renderFinanceView(container) {
   }
 }
 
+registerPage({ id: 'money', view: 'finance', match: v => v === 'finance', label: 'Money', icon: 'wallet', area: 'money', order: 10, ownTabs: true,
+  desc: 'Spending, budgets, transactions and your money story', keywords: 'money finances finance bank spending budgets transactions recurring cash flow merchants categories',
+  sections: () => { const FV = window.FinanceView; let l = []; try { l = FV && typeof FV.sections === 'function' ? FV.sections() : []; } catch (e) { l = []; } return l.map(s => ({ label: s.label, run: () => { if (state.view !== 'finance') setView('finance'); try { FV.setSection(s.id); } catch (e) { console.error('[finance] setSection', e); } if (typeof renderSidebar === 'function') renderSidebar(); } })); },
+  available: () => !(APP_CONFIG.features && APP_CONFIG.features.finance === false) });
 registerSection('finance', {
   group: 'finance',
   match: v => v === 'finance',
-  title: () => 'Finances',
+  title: () => 'Money',   // 'Finances' until 2.18 (NAVIGATION_PLAN.md 2.1)
   crumb: () => {
     let sub = '';
     try { sub = (window.FinanceView && FinanceView.sectionLabel()) || ''; } catch (e) { /* not loaded yet */ }

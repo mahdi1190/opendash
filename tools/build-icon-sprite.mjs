@@ -59,6 +59,10 @@ export const ICONS = [
   'square-code', 'folder-x',
   // Travel & time, People card, suggestions (69-travel-*.js, 54-people-card.js, 68-suggest-*.js)
   'user-round-pen', 'map-pin-off', 'list-plus', 'calendar-off', 'square-check', 'user-round',
+  // Garden, gardens with friends (2.18: 94-garden-*.js; added from lucide 1.8.0's icon data by the 2.18 integration)
+  'armchair', 'binoculars', 'bird', 'carrot', 'cherry', 'clover', 'droplet', 'droplets', 'feather', 'fence', 'flower',
+  'footprints', 'hand', 'lamp', 'library', 'paintbrush', 'pause', 'play', 'rotate-cw', 'scissors', 'shopping-bag',
+  'shopping-basket', 'shovel', 'smile', 'smile-plus', 'store', 'warehouse', 'wheat',
 ];
 
 function build(fromDir, names) {

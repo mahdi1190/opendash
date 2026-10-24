@@ -65,6 +65,10 @@ const PERMS_SCOPES = Object.freeze([
     modes: Object.freeze([['off', 'Hidden'], ['on', 'Shown']]) }),
   Object.freeze({ id: 'game', label: 'Game progress', icon: 'trophy', kind: 'share:game', by: 'engine', def: 'on', sensitive: false,
     modes: Object.freeze([['off', 'Hidden'], ['on', 'Level and streak']]) }),
+  // ── garden-social ── (2.18: the garden snapshot, kind 'garden', published by the page: 94-garden-social-1core.js)
+  Object.freeze({ id: 'garden', label: 'Garden', icon: 'sprout', kind: 'garden', by: 'garden', def: 'on', sensitive: false,
+    modes: Object.freeze([['off', 'Hidden'], ['on', 'Plants and decorations']]) }),
+  // ── end garden-social ──
   Object.freeze({ id: 'presence', label: 'Presence', icon: 'wifi', kind: 'presence', by: 'engine', def: 'off', sensitive: true,
     modes: Object.freeze([['off', 'Hidden'], ['on', 'Online, focusing, travelling']]) }),
   Object.freeze({ id: 'tasks', label: 'Tasks', icon: 'square-check', kind: 'share:tasks', by: 'perms', def: 'none', sensitive: true,
@@ -224,6 +228,7 @@ function permsRisky(scope, mode) {
 const _PM_LEVEL_TEXT = Object.freeze({
   'profile:on': 'your name, and the bio, emoji, colour, pronouns and city you set in your profile',
   'game:on': 'your level, title, XP, XP this week, streak, best streak, quests and focus minutes',
+  'garden:on': 'your garden as it grows: which plants and decorations, where they stand, how grown they are, its level and the season (never your tasks or anything you wrote); they can visit it, water a plant, leave a heart or a gift and sign your guestbook',
   'presence:on': 'whether you are online, focusing, travelling or away (never where)',
   'tasks:shared': 'only the tasks you share with them one by one: title, due date, status, priority, stream, tags and subtask progress',
   'tasks:chosen': 'tasks in the streams or with the tags you choose: title, due date, status, priority, stream, tags and subtask progress',

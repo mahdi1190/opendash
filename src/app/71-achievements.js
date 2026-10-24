@@ -1,18 +1,25 @@
 /* ============================================================
-   ACHIEVEMENTS AND RECAPS, the pure part (v2.2 wave 5). No DOM, no page
-   globals at load: Node loads it (tests/achievements.test.mjs) as the page does.
-     ACH_DEFS                    the achievements {id, label, hint, icon, of, fact, reward}
-                                 reward: {item: 'pack/item'} (an animation from the
-                                 "rewards" pack) or {theme: 'gold'} (a theme)
+   ACHIEVEMENTS AND RECAPS, the pure part (v2.2 wave 5; 2.18 B0: the engine is
+   71-ach-0dsl.js). No DOM, no page globals at load: Node loads it
+   (tools/ach-dayone.mjs) as the page does.
+     ACH_DEFS                    every achievement: the core 78 below, then every pack
+                                 (registerAchievementPack, 71-ach-0dsl.js). A LIVE list:
+                                 a pack registered later (a 2.18 module) appears in it.
+                                 Each is normalised {id, cat, shelf, name, desc, when, rarity,
+                                 xp, icon, series, tier, unlock, secret, clue, season, needs,
+                                 private, go, pack} plus the old names (label, hint, group,
+                                 fact, of) and, for the core, reward: {item: 'pack/item'}
+                                 (an animation from the "rewards" pack) or {theme: 'gold'}
+     ACH_CORE_CAT / ACH_CORE_RARITY   the core 78's category and rarity (docs/dev/ACHIEVEMENTS_500.md 3.32)
      achDef(id)
-     achFacts({log, dayOf, notes, extra})   the facts the rules read: done (completions),
-                                 bestStreak (the longest run of days with one done),
-                                 the noted moments {focus, boss, under-budget, inbox-zero}, and
-                                 (2.16) the game's facts in extra (92-game-1core.js gameAchFacts)
-     ACH_GROUPS                  the achievements wall's groups (each def has a group)
-     achProgress(def, facts)     {n, of, done}
+     achFacts({log, dayOf, notes, extra})   the old flat facts (done, bestStreak, the noted
+                                 moments, the game's facts in extra); kept for old callers
+     ACH_GROUPS                  the old wall's groups (kept for older readers; the wall uses ACH_CATS)
+     achProgress(def, facts)     {n, of, done}; facts: a view (71-ach-1facts.js achFactsView) or a flat object
      achEarned(facts, unlocked)  ids newly earned (not yet in unlocked), in ACH_DEFS order
-     achRewardFor(id) / achLockedBy(ref)   what an achievement unlocks / who unlocks an item
+     achRewardFor(id) / achLockedBy(ref)   what an achievement unlocks / who unlocks an animation
+     achUnlockOf(kind, id)       the achievement whose unlock is '<kind>:<id>' (title, banner, plate, wear,
+                                 seed, decor, treat, accent, anim) or null: the owning module's lock check
      recapRange(period, ref, today)   {period, from, to, label, key} for 'year' ('YYYY') or
                                  'month' ('YYYY-MM'); to never runs past today
      recapBuild(input, range)    the recap's aggregates (counts only; names stay ids)
@@ -21,7 +28,7 @@
    Rules: gentle. Nothing is ever lost (an unlock stays unlocked), nothing counts
    down, nothing is said about a missed day.
    ============================================================ */
-const ACH_DEFS = Object.freeze([
+const _ACH_CORE = [
   { id: 'done-100', group: 'tasks', label: 'A hundred done', hint: 'Finish 100 tasks.', icon: 'circle-check', fact: 'done', of: 100, reward: { item: 'rewards/cel-laurel' } },
   { id: 'done-500', group: 'tasks', label: 'Five hundred done', hint: 'Finish 500 tasks.', icon: 'list-checks', fact: 'done', of: 500, reward: { item: 'rewards/open-fanfare' } },
   { id: 'done-1000', group: 'tasks', label: 'A thousand done', hint: 'Finish 1,000 tasks.', icon: 'trophy', fact: 'done', of: 1000, reward: { item: 'rewards/sym-constellation' } },
@@ -102,8 +109,27 @@ const ACH_DEFS = Object.freeze([
   { id: 'fquest-5', group: 'friends', label: 'Questing pals', hint: 'Finish 5 friendship quests.', icon: 'target', fact: 'friendQuests', of: 5 },
   { id: 'stickers-10', group: 'friends', label: 'Sticker collector', hint: 'Collect 10 different stickers from friends.', icon: 'book-open', fact: 'stickersDistinct', of: 10 },
   { id: 'candy-25', group: 'friends', label: 'Sweet tooth', hint: 'Collect 25 in one seasonal friend event (sweets, snowflakes or petals).', icon: 'cookie', fact: 'candyBest', of: 25 },
-]);
-/* The achievements wall's groups, in order (92-game-3ui.js). */
+];
+// The core 78 in the 2.18 categories (docs/dev/ACHIEVEMENTS_500.md 3.32) and their rarity, by effort.
+const ACH_CORE_CAT = Object.freeze(Object.assign({},
+  ...['first-done', 'done-10', 'done-50', 'done-100', 'done-250', 'done-500', 'done-1000', 'done-2500', 'done-5000', 'day-10', 'day-20', 'all-rounder'].map(id => ({ [id]: 'finishing' })),
+  ...['p1-25', 'p1-100', 'boss'].map(id => ({ [id]: 'priorities' })), { 'on-estimate': 'estimating' },
+  ...['review-1', 'review-4', 'review-12'].map(id => ({ [id]: 'reviews' })), ...['inbox-zero', 'inbox-10'].map(id => ({ [id]: 'capture' })),
+  ...['first-focus', 'focus-10', 'focus-hours-10', 'focus-hours-100', 'deep-work'].map(id => ({ [id]: 'focus' })),
+  ...['habit-30', 'habit-200'].map(id => ({ [id]: 'habits' })),
+  ...['streak-3', 'streak-7', 'streak-14', 'streak-30', 'streak-60', 'streak-100', 'streak-365', 'frost', 'comeback', 'early-bird', 'night-owl', 'weekend-25', 'year-one', 'year-two'].map(id => ({ [id]: 'rhythm' })),
+  { 'notes-7': 'journal' }, ...['under-budget', 'no-spend-3', 'no-spend-7', 'no-spend-30'].map(id => ({ [id]: 'money' })),
+  ...['places-5', 'places-25', 'cities-10', 'countries-3'].map(id => ({ [id]: 'places' })), ...['people-10', 'people-50'].map(id => ({ [id]: 'people' })),
+  ...['coop-first', 'cheer-10', 'duo-7', 'duo-30', 'plan-sundays-3', 'gift-first', 'high5-double', 'fquest-5', 'stickers-10', 'candy-25'].map(id => ({ [id]: 'friends' })),
+  ...['boss-task', 'boss-10', 'boss-big', 'quest-1', 'quest-25', 'quest-perfect', 'quest-perfect-4', 'level-5', 'level-10', 'level-15', 'level-20', 'level-30', 'level-40', 'level-50', 'xp-day-300'].map(id => ({ [id]: 'game' }))));
+const ACH_CORE_RARITY = Object.freeze(Object.assign({},
+  ...['first-done', 'done-10', 'done-50', 'streak-3', 'streak-7', 'frost', 'comeback', 'first-focus', 'focus-10', 'boss-task', 'quest-1', 'no-spend-3', 'places-5', 'habit-30', 'inbox-zero', 'review-1', 'notes-7', 'level-5', 'coop-first', 'cheer-10', 'gift-first'].map(id => ({ [id]: 'common' })),
+  ...['done-100', 'done-250', 'streak-14', 'day-10', 'p1-25', 'early-bird', 'night-owl', 'weekend-25', 'all-rounder', 'focus-hours-10', 'deep-work', 'boss', 'boss-10', 'quest-perfect', 'no-spend-7', 'no-spend-30', 'under-budget', 'places-25', 'cities-10', 'countries-3', 'people-10', 'people-50', 'habit-200', 'inbox-10', 'review-4', 'level-10', 'level-15', 'duo-7', 'plan-sundays-3', 'high5-double', 'fquest-5', 'stickers-10', 'candy-25'].map(id => ({ [id]: 'uncommon' })),
+  ...['done-500', 'done-1000', 'streak-30', 'streak-60', 'day-20', 'p1-100', 'on-estimate', 'boss-big', 'quest-25', 'quest-perfect-4', 'review-12', 'level-20', 'xp-day-300', 'duo-30'].map(id => ({ [id]: 'rare' })),
+  ...['done-2500', 'streak-100', 'focus-hours-100', 'level-30', 'level-40', 'year-one'].map(id => ({ [id]: 'epic' })),
+  ...['done-5000', 'streak-365', 'level-50', 'year-two'].map(id => ({ [id]: 'legendary' }))));
+const ACH_DEFS = _achBindCore(_ACH_CORE.map(d => Object.assign({}, d, { cat: ACH_CORE_CAT[d.id] || 'meta', rarity: ACH_CORE_RARITY[d.id] || 'common' })));
+/* The old wall's groups, in order (kept for older readers; the 2.18 wall uses ACH_CATS). */
 const ACH_GROUPS = Object.freeze([
   { id: 'tasks', label: 'Tasks', icon: 'circle-check' }, { id: 'streaks', label: 'Streaks', icon: 'flame' },
   { id: 'focus', label: 'Focus', icon: 'timer' }, { id: 'bosses', label: 'Bosses', icon: 'crown' },
@@ -114,9 +140,11 @@ const ACH_GROUPS = Object.freeze([
   { id: 'friends', label: 'Friends', icon: 'users' },
 ]);
 const ACH_NOTES = Object.freeze(['focus', 'boss', 'under-budget', 'inbox-zero']);
-function achDef(id) { return ACH_DEFS.find(d => d.id === id) || null; }
-function achRewardFor(id) { const d = achDef(id); return d ? d.reward : null; }
-function achLockedBy(ref) { const d = ACH_DEFS.find(x => x.reward && x.reward.item === ref); return d ? d.id : null; }
+function achDef(id) { return _ACH.byId.get(String(id)) || null; }
+function achRewardFor(id) { const d = achDef(id); return d ? d.reward || null : null; }
+function achLockedBy(ref) { const d = ACH_DEFS.find(x => (x.reward && x.reward.item === ref) || x.unlock === 'anim:' + ref); return d ? d.id : null; }
+/** Which achievement unlocks '<kind>:<id>' (the owning module's lock check), or null. */
+function achUnlockOf(kind, id) { const u = String(kind) + ':' + String(id); const d = ACH_DEFS.find(x => x.unlock === u); return d ? d.id : null; }
 
 function _achIsoAdd(iso, n) { const t = Date.parse(iso + 'T12:00:00Z') + n * 86400000; return new Date(t).toISOString().slice(0, 10); }   // clock-ok: UTC date maths on ISO days
 /** The longest run of consecutive days in a list (or Set) of ISO days. */
@@ -148,13 +176,21 @@ function achFacts(o) {
   if (o.extra && typeof o.extra === 'object') for (const [k, v] of Object.entries(o.extra)) { const n = Number(v); if (isFinite(n)) f[k] = Math.max(Number(f[k]) || 0, n); }
   return f;
 }
+/** A flat {fact: number} object as a facts view (a view is passed through). */
+function achFactsAsView(f) {
+  if (f && typeof f.n === 'function') return f;
+  const o = f && typeof f === 'object' ? f : {};
+  return { n: (k) => Number(o[k]) || 0, s: () => null, m: () => null, ctx: {}, unlocked: {}, hist: {} };
+}
 function achProgress(def, facts) {
-  const n = Math.max(0, Number((facts || {})[def.fact]) || 0);
-  return { n: Math.min(n, def.of), of: def.of, done: n >= def.of };
+  if (!def) return { n: 0, of: 1, done: false };
+  const r = achEval(def.when || { n: def.fact, gte: def.of }, achFactsAsView(facts));
+  return { n: r.n, of: r.of, done: r.done };
 }
 function achEarned(facts, unlocked) {
   const have = unlocked && typeof unlocked === 'object' ? unlocked : {};
-  return ACH_DEFS.filter(d => !have[d.id] && achProgress(d, facts).done).map(d => d.id);
+  const F = achFactsAsView(facts);
+  return ACH_DEFS.filter(d => !have[d.id] && achProgress(d, F).done).map(d => d.id);
 }
 
 /* ---------- recaps ---------- */

@@ -179,6 +179,29 @@ async function locWhereWasI() {
   if (!s) { toast('Your location history does not reach back to ' + _locvDate(t, true) + '.', { icon: 'map-pin' }); return; }
   toast(`On ${_locvDate(t, true)} you were in ${s.city || s.place || s.country}${s.city && s.country ? ', ' + s.country : ''}.`, { icon: 'map-pin', timeout: 9000, action: { label: 'Locations', run: () => setView('locations') } });
 }
+/* Places, Life's sixth tab (2.18): Overview (this page, 'locations') and Trips ('trips', a trip is 'trip:<id>'). */
+function _locvNextTripHint() {
+  try {
+    if (typeof _truOn !== 'function' || !_truOn() || typeof _truSnap !== 'function') return '';
+    const snap = _truSnap();
+    if (!snap || !Array.isArray(snap.trips)) return '';
+    if (snap.trips.some(t => !t.candidate && t.status === 'away')) return 'away';
+    const d = snap.trips.filter(t => !t.candidate && ['planned', 'departing'].includes(t.status)).map(t => clockDaysBetween(snap.today, t.from)).filter(n => n >= 0 && n <= 30).sort((a, b) => a - b)[0];
+    return d === undefined ? '' : d === 0 ? 'today' : 'in ' + d + 'd';
+  } catch (e) { return ''; }
+}
+registerPage({
+  id: 'places', view: 'locations', match: v => v === 'locations' || v === 'trips' || /^trip:[a-z0-9-]{3,60}$/i.test(String(v || '')),
+  label: 'Places', icon: 'map-pin', area: 'life', tab: true, order: 60, since: '2.16', discover: true,
+  desc: 'Where you have been, and your trips',
+  keywords: 'places locations countries cities visited travel map badges firsts passport trips holiday where was i',
+  sections: () => {
+    const on = typeof _truOn === 'function' && _truOn();
+    const v = String(state.view || '');
+    return [['locations', 'Overview']].concat(on || v === 'trips' || v.startsWith('trip:') ? [{ view: 'trips', label: 'Trips', match: x => x === 'trips' || /^trip:/.test(x) }] : []);
+  },
+  badge: _locvNextTripHint,
+});
 registerCommand({ id: 'locations-where', label: 'Where was I on…?', icon: 'map-pin', group: 'Go to', keywords: 'location history date day place travel were was i', run: () => locWhereWasI() });
 
 /* ---------- the page ---------- */
@@ -238,8 +261,8 @@ function _locvMount(container) {
   _locvEntered = true;
 }
 registerSection('locations', {
-  title: () => 'Locations',
-  group: 'tasks', hashable: true, layout: 'page',
+  title: () => 'Places',
+  group: 'life', hashable: true, layout: 'page',   // Life > Places since 2.18 (NAVIGATION_PLAN.md 2.2); the view id stays 'locations'
   mount(container) { _locvMount(container); if (!_loc.data && !_loc.loading) locLogLoad().then(() => { if (state.view === 'locations') render(); }); },
   unmount() { _locvEntered = false; _locvMore = 30; _locvFilter = 'all'; },
 });

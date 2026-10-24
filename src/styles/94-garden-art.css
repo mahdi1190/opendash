@@ -1,0 +1,65 @@
+/* ============================================================
+   GARDEN ART motion extras (2.18, agent 'garden-art'; the art is 94-garden-art-*.js).
+   The art contract's motion is the engine's gda-* classes (94-garden.css: sway,
+   flutter, glow, ripple, flicker, spin, bob, blink). These are the few idles the
+   contract has no class for: things hanging from the top (a swing seat, a hammock,
+   wind chimes, a hanging basket), bees round a hive, and the visitors' own small
+   movements (a bird's hop and peck, a tail's wag, a hedgehog's shuffle, a snail's
+   creep, a bee's buzz, an owl's blink), and the weather over the whole garden (rain and
+   snow loops, sun rays, drifting petals, leaves and mist).
+   Cheap and calm: transforms and opacity only, slow loops, a seeded negative
+   animation-delay in each element's style so a garden is never in step.
+   Still with everything else in the scene: the engine's rules stop every animation
+   inside .gd-svg under reduced motion, the Fun level Off (.is-still, .is-funoff) and
+   a hidden tab (html.anim-paused); the rules at the end repeat that for any other
+   place these fragments are shown.
+   ============================================================ */
+.gart [class*="gart-"] { transform-box: fill-box; }
+
+/* hanging things swing from their top */
+.gart-swing { transform-origin: 50% 0%; animation: gart-swing 3.6s ease-in-out infinite alternate; }
+@keyframes gart-swing { from { transform: rotate(-2.4deg); } to { transform: rotate(2.4deg); } }
+
+/* visitors' idles */
+.gart-buzz { animation: gart-buzz 4.6s ease-in-out infinite; }
+@keyframes gart-buzz { 0%, 100% { transform: translate(0, 0); } 20% { transform: translate(3px, -2px); } 40% { transform: translate(5px, 1px); } 60% { transform: translate(2px, -3px); } 80% { transform: translate(-2px, -1px); } }
+.gart-hop { transform-origin: 50% 100%; animation: gart-hop 4.2s ease-out infinite; }
+@keyframes gart-hop { 0%, 64%, 100% { transform: translate(0, 0); } 70% { transform: translate(1px, -4px); } 76% { transform: translate(2px, 0); } 82% { transform: translate(3px, -2.4px); } 88% { transform: translate(4px, 0); } }
+.gart-peck { transform-origin: 30% 90%; animation: gart-peck 3.4s ease-in-out infinite; }
+@keyframes gart-peck { 0%, 70%, 100% { transform: rotate(0); } 76% { transform: rotate(22deg); } 82% { transform: rotate(4deg); } 88% { transform: rotate(20deg); } }
+.gart-wag { transform-origin: 0% 100%; animation: gart-wag 1.8s ease-in-out infinite alternate; }
+@keyframes gart-wag { from { transform: rotate(-9deg); } to { transform: rotate(11deg); } }
+.gart-shuffle { animation: gart-shuffle 7s ease-in-out infinite alternate; }
+@keyframes gart-shuffle { 0%, 20% { transform: translate(0, 0); } 45% { transform: translate(3px, -.4px); } 55% { transform: translate(4px, 0); } 80%, 100% { transform: translate(7px, -.3px); } }
+.gart-creep { animation: gart-creep 12s ease-in-out infinite alternate; }
+@keyframes gart-creep { from { transform: translate(0, 0); } to { transform: translate(5px, 0); } }
+.gart-breathe { transform-origin: 50% 100%; animation: gart-breathe 3.8s ease-in-out infinite alternate; }
+@keyframes gart-breathe { from { transform: scale(1, 1); } to { transform: scale(1.02, 1.045); } }
+.gart-ear { transform-origin: 50% 100%; animation: gart-ear 5s ease-in-out infinite; }
+@keyframes gart-ear { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-8deg); } 90% { transform: rotate(2deg); } }
+
+.gart-step { transform-origin: 50% 0%; animation: gart-step .6s ease-in-out infinite alternate; }
+@keyframes gart-step { from { transform: rotate(-12deg); } to { transform: rotate(12deg); } }
+.gart-blink { transform-origin: 50% 50%; animation: gart-blink 5.2s linear infinite; }
+@keyframes gart-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.1); } }
+.gart-flick { transform-origin: 0% 50%; animation: gart-flick 2.6s ease-in-out infinite; }
+@keyframes gart-flick { 0%, 80%, 100% { transform: rotate(0); } 86% { transform: rotate(-14deg); } 92% { transform: rotate(6deg); } }
+
+/* weather and light over the whole garden (94-garden-art-e-sky.js): seamless loops that slide by one period */
+.gart-fall { animation: gart-fall 0.8s linear infinite; }
+@keyframes gart-fall { from { transform: translate(0, 0); } to { transform: translate(var(--gx, 0px), var(--gp, 80px)); } }
+.gart-snowf { animation: gart-snowf 10s linear infinite; }
+@keyframes gart-snowf { 0% { transform: translate(0, 0); } 25% { transform: translate(3px, calc(var(--gp, 120px) * .25)); } 50% { transform: translate(0, calc(var(--gp, 120px) * .5)); } 75% { transform: translate(-3px, calc(var(--gp, 120px) * .75)); } 100% { transform: translate(0, var(--gp, 120px)); } }
+.gart-rays { animation: gart-rays 9s ease-in-out infinite alternate; }
+@keyframes gart-rays { from { opacity: .45; } to { opacity: 1; } }
+.gart-glimmer { animation: gart-rays 4.4s ease-in-out infinite alternate; }
+.gart-leaf { transform-box: fill-box; transform-origin: 50% 50%; animation: gart-leaf 16s ease-in-out infinite; }
+@keyframes gart-leaf { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 8% { opacity: 1; } 50% { transform: translate(calc(var(--gx, 0px) * .5 + 12px), calc(var(--gy, 400px) * .5)) rotate(170deg); } 92% { opacity: 1; } 100% { transform: translate(var(--gx, 0px), var(--gy, 400px)) rotate(330deg); opacity: 0; } }
+.gart-drift { animation: gart-drift 40s ease-in-out infinite alternate; }
+@keyframes gart-drift { from { transform: translate(-30px, 0); } to { transform: translate(30px, 0); } }
+
+/* still: anywhere else these fragments are shown, the same rules as the garden's */
+.is-still .gart *, .is-funoff .gart *, .is-still .gart-wx *, .is-funoff .gart-wx * { animation: none !important; }
+html.anim-paused .gart *, html.anim-paused .gart-wx * { animation-play-state: paused !important; }
+html[data-motion="reduced"] .gart *, html[data-motion="reduced"] .gart-wx * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .gart *, .gart-wx * { animation: none !important; } }

@@ -468,6 +468,8 @@ function _connPageAssistantSection(all) {
   return section;
 }
 
+registerPage({ id: 'connections', view: 'connections', match: v => v === 'connections', label: 'Connections', icon: 'plug', area: 'system', order: 20,
+  desc: 'Accounts and sign-ins: calendar, mail, bank, Claude', keywords: 'connections accounts sign in google microsoft outlook gmail bank claude connect' });
 registerSection('connections', {
   group: 'system',
   title: () => 'Connections',
