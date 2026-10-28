@@ -89,6 +89,9 @@ const WHATS_NEW = [
   { id: 'boards-anywhere', group: 'n219', icon: 'layout-grid', title: '2.19.5: arrange Home and Money your way',
     text: 'Resize any widget to any size and drag it anywhere on Home and Money; gaps fill themselves. Money has its welcome banner and Play money story back, and both pages are in the sidebar as well as the tabs.',
     view: ['finance', 'home'], sel: ['#sidebar', '#main-body'] },
+  { id: 'expense-report', group: 'n219', icon: 'file-text', title: '2.19.6: make an expense report',
+    text: 'On Expenses, tick what you spent for work and press Make expense report. OpenDash fills in the expense form as a PDF, zips the receipts, saves both in Documents and opens the folder.',
+    view: ['expenses'], sel: ['#main-body'], present: () => _wnHasPage('expenses') },
 
   // ---- 2.18.1 ----
   { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',

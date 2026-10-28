@@ -18,6 +18,10 @@
 //   POST /api/expenses/answer           {ask, yes} -> {ok, data, undo?}
 //   POST /api/expenses/pack             {ids, claimId?, format: 'zip'|'html'|'csv'|'text'} -> the file (text: JSON {text})
 //   GET  /api/expenses/year?year=       the yearly summary
+//   POST /api/expenses/report/plan      {ids} -> {rows: [{id, date, description, col, label, amount, hasReceipt}], columns, name, signature: {set}, missing}
+//   POST /api/expenses/report           {ids, cols?: {id: column}, advances?, payer?} -> {ok, dir, count, receipts, missing}: PDF + Receipts.zip in Documents/Expense reports/, folder opened
+//   POST /api/expenses/report/open      {dir} (only a folder made by report) -> opens it in the file manager
+//   GET  /api/expenses/signature[?info=1]; POST /api/expenses/signature {data}; POST /api/expenses/signature/remove   (your signature for the report; private, never shared)
 //   POST /api/expenses/undo             {undo} -> {ok, label, data}
 //
 // Same protections as every /api route. The log gets counts only, never titles, amounts or payers.
@@ -25,6 +29,9 @@
 import { HttpError } from '../http.mjs';
 import { createZip } from '../../lib/zip.mjs';
 import * as X from '../../lib/expenses.mjs';
+import * as R from '../../lib/expense-report.mjs';
+import { join, resolve, sep } from 'node:path';
+import { existsSync } from 'node:fs';
 
 const FETCH_WAIT_MS = 4000;
 
@@ -137,6 +144,40 @@ export default function register(app) {
   app.route({ path: '/api/expenses/year', method: 'GET', methodError: 'GET only', quiet: true, handler: async (c) => {
     const y = Number(c.query.get('year')) || Number(todayOf(c).slice(0, 4));
     return { ok: true, summary: X.yearSummary(await X.readStore(dataDir, { home: home() }), y) };
+  } });
+  // ── the expense report (2.19.6) ──
+  const goodIds = (b) => ids(b).filter(id => X.ID_RE.test(id));
+  post('report/plan', async (c, b) => {
+    const S = await X.readStore(dataDir, { home: home() });
+    const list = goodIds(b).map(id => S.items[id]).filter(Boolean);
+    if (!list.length) throw new HttpError(400, 'Choose at least one expense.');
+    const cfg = typeof getConfig === 'function' ? getConfig() || {} : {};
+    return { ok: true, rows: R.reportRows(list), columns: R.COLUMN_KEYS.map(k => [k, R.COLUMN_LABELS[k]]), name: typeof cfg.userName === 'string' ? cfg.userName : (typeof cfg.name === 'string' ? cfg.name : ''), signature: await R.signatureInfo(dataDir), payer: list[0].payer || '' };
+  });
+  post('report', async (c, b) => {
+    const S = await X.readStore(dataDir, { home: home() });
+    const cfg = typeof getConfig === 'function' ? getConfig() || {} : {};
+    const cols = {}; if (b && b.cols && typeof b.cols === 'object') for (const [id, v] of Object.entries(b.cols).slice(0, 200)) if (X.ID_RE.test(id) && R.COLUMN_KEYS.includes(v)) cols[id] = v;
+    const name = typeof (b && b.name) === 'string' ? b.name : (typeof cfg.userName === 'string' ? cfg.userName : (typeof cfg.name === 'string' ? cfg.name : ''));
+    const r = await R.makeReport(dataDir, S, { ids: goodIds(b), cols, advances: b && b.advances, name, payer: typeof (b && b.payer) === 'string' ? b.payer : '', today: todayOf(c), currency: home() });
+    if (r.error) fail(r);
+    log('info', `expenses: a report of ${r.count} made`);
+    R.openFolder(r.dir);
+    return { ok: true, dir: r.dir, count: r.count, receipts: r.receipts, missing: r.missing };
+  });
+  post('report/open', async (c, b) => {
+    const root = resolve(join(R.documentsDir(), 'Expense reports')), dir = resolve(String(b && b.dir || ''));
+    if (!dir.startsWith(root + sep) || !existsSync(dir)) throw new HttpError(400, 'That folder is not one of your expense reports.');
+    return { ok: R.openFolder(dir) };
+  });
+  post('signature', async (c, b) => { const r = await R.setSignature(dataDir, b && b.data); if (r.error) fail(r); return { ok: true, signature: { set: true, ext: r.ext } }; }, 4 * 1024 * 1024);
+  post('signature/remove', async () => ({ ok: true, ...(await R.removeSignature(dataDir)), signature: { set: false } }));
+  app.route({ path: '/api/expenses/signature', method: 'GET', methodError: 'GET only', quiet: true, handler: async (c) => {
+    if (c.query.get('info')) return { ok: true, signature: await R.signatureInfo(dataDir) };
+    const f = await R.readSignature(dataDir);
+    if (!f) return c.json(404, { error: 'No signature yet.' });
+    c.send(200, f.buf, f.mime, { 'Cache-Control': 'private, no-store', 'Content-Disposition': 'inline', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; img-src 'self' data:; sandbox" });
+    return undefined;
   } });
   app.route({ prefix: '/api/expenses/', method: '*', handler: (c) => c.json(404, { error: 'unknown expenses route' }) });
 }

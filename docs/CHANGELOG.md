@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.19.6] - 2026-10-28
+
+Make an expense report from the Expenses page.
+
+- Tick the expenses and press Make expense report. OpenDash fills in the expense form (A4 landscape PDF: name, pay period, one row per expense in the right column, totals, advances) and zips the receipts, named to match the rows. Both go in Documents/Expense reports/ in a new folder, which opens for you. The columns are chosen automatically; click a column name to change one.
+- The expenses are marked as submitted, with one Undo.
+- New: Your signature (More menu on Expenses). Add a PNG or JPEG once and it goes on the Claimant line. It stays in your data folder and is never shared.
+
 ## [2.19.5] - 2026-10-24
 
 Home and Money are boards you can arrange any way you like, and Money's welcome and story are back.
