@@ -113,6 +113,7 @@ function _xpListInto(host, all, sel, pick) {
     if (st === 'to-claim') {
       const pickd = () => [...EXP.picked].filter(id => list.some(e => e.id === id));
       const btn = uiButton({ label: 'Submit all', icon: 'send', kind: 'ghost', size: 'sm', run: () => { const p = pickd(); expSubmitDialog(p.length ? p : list.map(e => e.id)); } });
+      h.appendChild(uiButton({ label: 'Make expense report', icon: 'file-text', kind: 'ghost', size: 'sm', tip: 'A filled-in expense form (PDF) and a zip of the receipts, saved in Documents', run: () => { const p = pickd(); expReportDialog(p.length ? p : list.map(e => e.id)); } }));
       h.appendChild(btn);
       h._upd = () => { const p = pickd(); const s = btn.querySelector('span:not(.i)') || btn; s.textContent = p.length ? `Submit ${p.length}` : 'Submit all'; };
       h._upd();
@@ -218,6 +219,7 @@ function _xpMoreItems() {
     'sep',
     { label: 'Payers and deadlines…', icon: 'users', run: () => expPayersDialog() },
     { label: 'Check for payments now', icon: 'refresh-cw', run: () => { EXP.scanAt = 0; expScan(true).then(() => toast(EXP.asks.length ? 'There is one thing to confirm' : 'Looked: nothing new arrived', { icon: 'search' })); } },
+    { label: 'Your signature…', icon: 'pen-line', run: () => expSignatureDialog() },
     { label: 'Download all as CSV', icon: 'download', run: () => expPack({ ids: expItems().map(e => e.id).slice(0, 200) }, 'csv') },
     { label: 'Paid back this year…', icon: 'calendar-check', run: () => expYearDialog() },
   ];
@@ -349,6 +351,124 @@ function expSubmitDialog(ids) {
       const j = await expSubmit(ids, { payer: payer.value, method: method.value, date: date.value });
       if (!j) return false; EXP.picked = new Set(); return undefined;
     } }],
+  });
+}
+
+/* ---------- the expense report (2.19.6) ---------- */
+async function expSignatureRead(file) {
+  if (file.size > 2 * 1024 * 1024) { toast('That picture is over 2 MB. Try a smaller one.', { kind: 'err' }); return null; }
+  try { return await expReadFile(file); } catch (e) { toast(e.message, { kind: 'err' }); return null; }
+}
+/** Your signature for the report: upload a PNG or JPEG, see it, replace or remove it. Kept in your data folder, never shared. */
+function expSignatureDialog(after) {
+  let box;
+  const paint = async () => {
+    let set = false; try { set = (await expApi('/signature?info=1')).signature.set; } catch (e) { /* none */ }
+    box.innerHTML = '';
+    if (set) {
+      const img = _xe('img', 'xp-sig'); img.alt = 'Your signature'; img.src = '/api/expenses/signature?t=' + Date.now();
+      img.style.cssText = 'max-width:100%;max-height:120px;background:#fff;border:1px solid var(--border);border-radius:8px;padding:8px';
+      box.appendChild(img);
+    } else box.appendChild(_xe('p', 'xp-fh', 'No signature yet. The report leaves the line blank.'));
+    const acts = _xe('div', 'xp-pack');
+    acts.append(uiButton({ label: set ? 'Replace' : 'Add a signature', icon: 'upload', size: 'sm', run: () => {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg';
+      inp.onchange = async () => {
+        const f = inp.files[0]; if (!f) return;
+        const data = await expSignatureRead(f); if (!data) return;
+        try { await expApi('/signature', { data }); toast('Signature saved', { icon: 'pen-line' }); if (typeof after === 'function') after(); } catch (e) { toast(netErrorMessage(e), { kind: 'err' }); }
+        paint();
+      };
+      inp.click();
+    } }));
+    if (set) acts.append(uiButton({ label: 'Remove', icon: 'trash-2', size: 'sm', run: async () => {
+      try { await expApi('/signature/remove', {}); toast('Signature removed', { icon: 'trash-2' }); if (typeof after === 'function') after(); } catch (e) { toast(netErrorMessage(e), { kind: 'err' }); }
+      paint();
+    } }));
+    box.appendChild(acts);
+  };
+  openDialog({
+    title: 'Your signature', size: 'sm',
+    body(el) {
+      el.className += ' xp-form';
+      el.appendChild(_xe('p', 'xp-fh', 'A PNG or JPEG picture of your signature (2 MB at most). It goes on the Claimant line of the expense report. It stays in your data folder and is never shared with friends.'));
+      box = _xe('div', 'xp-form'); el.appendChild(box); paint();
+    },
+    actions: [{ label: 'Done', primary: true }],
+  });
+}
+const _XR_COLS = [['hotel', 'Hotel'], ['transport', 'Transport'], ['fuel', 'Fuel'], ['meals', 'Meals'], ['phone', 'Phone'], ['entertainment', 'Entertainment'], ['misc', 'Misc.']];
+/** Make expense report: each row is placed in a column of the form for you (a small click on the column name changes one); Generate does the rest. */
+async function expReportDialog(ids) {
+  const list = ids.map(expItem).filter(Boolean);
+  if (!list.length) { toast('Nothing to put in a report.'); return; }
+  let plan;
+  try { plan = await expApi('/report/plan', { ids }); } catch (e) { if (typeof toastError === 'function') toastError('get the report ready', e); else toast(netErrorMessage(e), { kind: 'err' }); return; }
+  const cols = {};
+  const total = list.reduce((s, e) => s + e.amount, 0);
+  const noReceipt = plan.rows.filter(r => !r.hasReceipt);
+  const payer = _xInput('text', plan.payer || '', 'Who the report is for', { autocomplete: 'off' });
+  const name = _xInput('text', plan.name || '', 'Your name');
+  const adv = _xInput('number', '0.00', '0.00', { min: '0', step: '0.01' });
+  let body, sigNote;
+  const sigPaint = () => {
+    expApi('/signature?info=1').then((j) => {
+      sigNote.innerHTML = '';
+      sigNote.appendChild(_xe('span', 'xp-fh', j.signature.set ? 'Your signature will be on the form.' : 'You have not added your signature, so that line will be blank.'));
+      if (!j.signature.set) sigNote.appendChild(uiButton({ label: 'Add a signature', icon: 'pen-line', size: 'sm', run: () => expSignatureDialog(sigPaint) }));
+    }).catch(() => {});
+  };
+  const colName = (r) => (_XR_COLS.find(c => c[0] === (cols[r.id] || r.col)) || _XR_COLS[6])[1];
+  const colCell = (r) => {
+    const b = _xe('button', 'btn-link', esc(colName(r)));
+    b.type = 'button'; b.title = 'Change the column (optional)';
+    b.onclick = () => {
+      const sel = _xe('select', 'xp-in');
+      sel.innerHTML = _XR_COLS.map(c => `<option value="${c[0]}"${c[0] === (cols[r.id] || r.col) ? ' selected' : ''}>${esc(c[1])}</option>`).join('');
+      sel.onchange = () => { cols[r.id] = sel.value; sel.onblur = null; sel.replaceWith(colCell(r)); };
+      sel.onblur = () => { sel.replaceWith(colCell(r)); };
+      b.replaceWith(sel); sel.focus();
+    };
+    return b;
+  };
+  const saved = (res) => {
+    body.innerHTML = '';
+    body.appendChild(_xe('div', 'xp-remind', `${icon('circle-check')}<span>Saved to ${esc(res.dir)}</span>`));
+    body.appendChild(_xe('p', 'xp-fh', `${res.count} expense${res.count === 1 ? '' : 's'} on the form${res.receipts ? ', ' + res.receipts + ' receipt' + (res.receipts === 1 ? '' : 's') + ' in Receipts.zip' : ', no receipts to zip'}. The folder should have opened. Print or send the PDF yourself.`));
+    const acts = _xe('div', 'xp-pack');
+    acts.append(uiButton({ label: 'Open folder', icon: 'folder-open', kind: 'primary', size: 'sm', run: () => expApi('/report/open', { dir: res.dir }).catch(e => toast(netErrorMessage(e), { kind: 'err' })) }));
+    body.appendChild(acts);
+  };
+  openDialog({
+    title: `Make expense report · ${list.length} expense${list.length === 1 ? '' : 's'} · ${expMoney(total)}`, size: 'lg',
+    body(el) {
+      el.className += ' xp-form';
+      body = el;
+      const rows = _xe('div', 'xp-sumlist'); rows.style.maxHeight = '260px';
+      for (const r of plan.rows) {
+        const d = _xe('div', '');
+        const left = _xe('span', '', `${esc(r.date.slice(8, 10) + '/' + r.date.slice(5, 7))} · ${esc(r.description)} · `);
+        left.appendChild(colCell(r));
+        d.appendChild(left); d.appendChild(_xe('b', 'num', esc(expMoney(r.amount))));
+        rows.appendChild(d);
+      }
+      el.appendChild(rows);
+      el.appendChild(_xe('p', 'xp-fh', 'Each row goes in the column that fits it best. Click a column name only if you want to change one.'));
+      if (noReceipt.length) el.appendChild(_xe('div', 'xp-remind', `${icon('triangle-alert')}<span>No receipt for: ${noReceipt.map(r => esc(r.description)).join(', ')}. You can still make the report.</span>`));
+      const two = _xe('div', 'xp-two'); two.append(_xField('Name on the form', name), _xField('Advances (£)', adv)); el.appendChild(two);
+      el.appendChild(_xField('For (names the folder)', payer));
+      sigNote = _xe('div', 'xp-pack'); el.appendChild(sigNote); sigPaint();
+      const go = uiButton({ label: 'Generate', icon: 'file-text', kind: 'primary', wait: true, run: async () => {
+        let res;
+        try { res = await expApi('/report', { ids, cols, advances: Number(adv.value) || 0, payer: payer.value, name: name.value }); }
+        catch (e) { if (typeof toastError === 'function') toastError('make the report', e); else toast(netErrorMessage(e), { kind: 'err' }); return; }
+        saved(res);
+        const open = ids.map(expItem).filter(e => e && e.status === 'to-claim').map(e => e.id);
+        if (open.length) { await expSubmit(open, { payer: payer.value || undefined, method: 'other' }); EXP.picked = new Set(); }
+      } });
+      const bar = _xe('div', 'xp-pack'); bar.appendChild(go); el.appendChild(bar);
+    },
+    actions: [{ label: 'Close' }],
   });
 }
 
