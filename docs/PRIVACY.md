@@ -10,6 +10,52 @@ Claude: if Claude Code is already installed and signed in on this computer,
 OpenDash finds it by itself and some Claude features run by default (see
 [What is sent to Claude, and when](#what-is-sent-to-claude-and-when)).
 
+## Private by design, secure by default
+
+- **No OpenDash cloud.** There is no OpenDash server, account, analytics or
+  telemetry. Nothing is sent to the project or its maintainers, ever.
+- **The page talks only to your own computer.** The local server listens on
+  `127.0.0.1` only. It checks every request's Host, Origin and Sec-Fetch
+  headers, so a website open in your browser can't read from it or send it
+  changes. The page runs under a strict Content Security Policy: no inline
+  scripts except the app's own (pinned by hash), no framing, no connections
+  except to the local server.
+- **Sync and friends are end-to-end encrypted** before anything leaves your
+  computer, with standard primitives: AES-256-GCM for data, X25519 for key
+  agreement, Ed25519 for signatures and HKDF-SHA-256 to derive keys. The relay
+  and your cloud folder store sealed data they cannot read.
+- **You host the relay**, on your own free Cloudflare account. Every request
+  to it is signed, and only your own devices and the friends you approve can
+  use it.
+- **Each device signs its sync records.** Removing a device rotates the sync
+  key, makes a new recovery code and offers to renew your Friends keys, so a
+  lost or stolen computer can't read anything new or rewrite your history.
+- **Updates are signed.** OpenDash downloads updates only from this project's
+  GitHub releases and checks an Ed25519 signature (its public key is built
+  in) and the SHA-256 of the zip. Unsigned and older releases are refused.
+- **The assistant can't act behind your back.** It runs through your own
+  Claude Code with no shell and no file tools, reads through a fixed list of
+  OpenDash tools, and proposes changes that you apply with a click (filing an
+  expense you asked for is the one direct change, and it has Undo).
+- **Untrusted content stays text.** Email subjects and snippets, calendar
+  invitations, bank memos, invites and everything friends send are escaped
+  before they reach the page. Email HTML is turned into plain text and never
+  rendered.
+- **Reviewed before launch.** Six independent AI security reviewers each took
+  one area end to end (the local server, encryption and sync, the relay and
+  friends, untrusted content, the AI tools, and the release pipeline). It was
+  a structured review with proof scripts, not a paid human audit or a
+  certification. Its findings were fixed in 2.20.0; details are in
+  [SECURITY.md](../.github/SECURITY.md#the-review-before-launch).
+
+**Limits to know about.** The Windows installer is not code-signed yet, so
+SmartScreen warns once; each release lists SHA-256 checksums to compare. The
+sign-ins and keys on your computer are files that your own user account can
+read (they are not yet wrapped by Windows DPAPI or the macOS Keychain), and
+the data folder itself is not encrypted: use your system's disk encryption.
+Your relay runs on Cloudflare's free tier, so anyone who floods it can pause it
+until midnight UTC; it does not expose data.
+
 ## Cloud and sync: optional, in three levels
 
 You never need the cloud to use OpenDash. If you want your data on more than
@@ -23,6 +69,10 @@ one device, or want friends, you choose how far it goes:
 
 There is no OpenDash cloud in any of this. Nothing ever goes to the OpenDash
 project, its maintainers or any server they run.
+
+**For the most privacy**, host your own relay rather than using a friend's,
+or stay local and use your relay only between your own devices. Your relay's
+operator is you.
 
 ### Level 1: local only
 
@@ -245,7 +295,7 @@ Only in these cases, and only when you switch the feature on:
 | **Moving the data folder** (Settings > Data > Move) | nothing: the copy is made on this computer. After showing you each change, it updates the settings of your own programs that point at OpenDash: Claude Code (through its own `claude mcp` command), Claude Desktop's settings file, Codex and Gemini CLI (through their commands), Windows start-up entries, shortcuts, and Claude scheduled-task files that name the folder. Only those entries | no one |
 | **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; your preferences (theme, density, sort and grouping, which calendars you hide, per-view and Home card options); the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or where you are in the app and this screen's panel sizes | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, **end-to-end encrypted**: each change is locked (AES-256-GCM) on your computer before it is written, with a key only your devices hold, so your cloud provider stores files it cannot read. It can see how many devices sync, when they write and roughly how much; a new computer waiting to be approved shows its name there until it is approved. The key never goes into the folder; your recovery code is shown once and kept by you. With your relay set up, the same sealed records go first through **your own relay** on your Cloudflare account, and the folder keeps a backup copy ([level 2](#level-2-your-own-devices)). Nothing goes to OpenDash. Until you also turn on *Use changes from my other computers*, nothing received is applied |
 | **Live sync** (with encrypted sync on; Settings > Sync > Advanced > Direct links) | the same encrypted changes as above, sent straight to your other paired computers the moment they are made, over a connection that only your own paired devices can open (each proves it holds its device key) and that is encrypted again end to end; which job each computer runs. Each computer's addresses (its home or office network address, and the public address its router opened) are kept inside the encrypted part of its file in the sync folder | your other computers only, directly, on your network or over the internet. To be reachable from outside, OpenDash asks your home router (UPnP / NAT-PMP) to forward one port to it, but only while your relay does not carry your sync: with your relay in use the router is left alone unless you turn *Let my other computers reach this one over the internet* on (Settings > Sync > Advanced), and turning it off always leaves the router alone; anyone on the internet can then knock on that port, but nothing answers without your device key. On your own network it sends a short announcement every 30 seconds that only your devices can read. No OpenDash server, no relay |
-| **Updates** (when you press *Check for updates* in Settings > Updates, or once a day if you turn on *Check for updates once a day*; off by default) | GET requests only: the list of releases, and when you choose to update, the release zip and its `SHA256SUMS.txt`. Nothing about you or your data | GitHub (`api.github.com` and the project's release downloads) |
+| **Updates** (when you press *Check for updates* in Settings > Updates, or once a day if you turn on *Check for updates once a day*; off by default) | GET requests only: the list of releases, and when you choose to update, the release zip, its `SHA256SUMS.txt` and that file's Ed25519 signature, checked before anything is installed. Nothing about you or your data | GitHub (`api.github.com` and the project's release downloads) |
 | **Friends** (when you add one; Settings > Privacy) | to each friend only what you chose for them (see [Friends](#friends)): by default your profile and game progress; tasks, calendar, money, places, memories and presence only to a friend you marked trusted, at the level you picked | that friend's OpenDash, end-to-end encrypted, through the private relay or a direct link (docs/dev/FRIENDS.md) |
 | **Your relay** (Settings > Your relay > *Connect Cloudflare*, only when you click it) | the relay's code and your PUBLIC identity key, uploaded to your own Cloudflare account by Cloudflare's tool (wrangler, downloaded from npm the first time). Afterwards: sealed sync records and friends' messages it cannot open, and signed requests (your public key, a time, a signature) | your own Cloudflare account. Your Cloudflare sign-in stays with wrangler on this computer: OpenDash never reads, stores or logs it, and keeps wrangler's output in memory only. The relay logs nothing and Cloudflare's observability is turned off ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#privacy-what-travels-and-who-can-see-it)) |
 

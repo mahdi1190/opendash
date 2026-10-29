@@ -4,11 +4,73 @@ OpenDash runs on your own computer and holds personal information: tasks,
 people, calendar entries, email snippets and money. Security reports are taken
 seriously and are always welcome.
 
+## At a glance
+
+- **Local-first.** No OpenDash server, no account, no analytics, no
+  telemetry. Your data is one folder on your computer.
+- **A local server that stays local.** It listens on `127.0.0.1` only, checks
+  the Host, Origin and Sec-Fetch headers of every request, and serves a strict
+  Content Security Policy with no inline scripts except the app's own, pinned
+  by hash.
+- **End-to-end encryption** for sync and friends, built on standard
+  primitives from Web Crypto and Node: AES-256-GCM, X25519, Ed25519 and
+  HKDF-SHA-256. The relay carries sealed data it cannot read.
+- **Your own relay.** It runs on your own Cloudflare account. Every request to
+  it is signed, and only your devices and the people you approve can use it.
+- **Device-signed sync.** Each device signs its own records. Removing a device
+  rotates the sync key and makes a new recovery code.
+- **Signed updates** (Ed25519), downloaded only from this project's GitHub
+  releases.
+- **A contained assistant.** No shell, no file tools, a fixed allow-list of
+  OpenDash tools, and changes proposed for you to apply.
+- **Untrusted content is escaped**: emails, invitations, bank memos, invites
+  and friends' data.
+
+## The review before launch
+
+Before the public launch, OpenDash 2.19.7 was reviewed end to end in six
+areas: the local server and its API, encryption and sync, the relay and
+friends, untrusted content (the page and the parsers), the AI surfaces, and
+the supply chain and release pipeline (including a scan of every commit in
+the history for secrets and personal data).
+
+The reviewers were six independent AI security reviewers (Claude agents, each
+with one area, read access to the code and a sandbox with demo data for proof
+scripts). It was a structured, evidence-based review, **not a paid audit by a
+human security firm**, and OpenDash holds no certification.
+
+Every finding was fixed in **2.20.0** (see the
+[changelog](../docs/CHANGELOG.md)), except the two listed under
+[Known limitations](#known-limitations) (installer code signing and
+operating-system protection of local secrets). The main fixes:
+
+- a `.env` file in a synced data folder can no longer choose programs, the
+  update feed or Node options;
+- updates are signed, and a planted update record cannot roll the app back;
+- the markdown link renderer was rebuilt, and the page's policy no longer
+  allows inline scripts;
+- privileged local routes need a key that changes at every start;
+- removing a friend always revokes their relay access, retried until
+  confirmed; an invite gives only limited access until you approve the friend;
+  old friend messages can't be replayed;
+- sync records are signed by each device, and removing a device makes a new
+  recovery code;
+- iCal feeds and bank memos can no longer stall the server.
+
+The reviewers also recorded what held up. Among the parts they checked and
+found sound: the bind address and the DNS-rebinding, CSRF and clickjacking
+defences; path handling for every file the server reads; the encryption
+primitives, the binding of each record to its device, file and position, and
+the pairing and join-code protocols; request signing and invite handling on
+the relay; the default-deny sharing rules for friends; the escaping of about
+two thousand places where text reaches the page; the AI runner's disabled
+tools and double-checked allow-lists; and the release workflows.
+
 ## Supported versions
 
 | Version | Supported |
 |---|---|
-| The latest release (2.19.x) | Yes |
+| The latest release (2.20.x) | Yes |
 | Anything older | No: please update first |
 
 Security fixes are released as a new version. To update, use Settings >
@@ -104,8 +166,11 @@ safeguards below follow from that, and are enforced in the code (mainly
 - **JSON only.** Request bodies must be `application/json` (`415` otherwise),
   so a plain HTML form on another site cannot post to it. Bodies have size
   limits (`413`), and stale writes are refused (`409`).
-- **Strict responses.** A Content-Security-Policy (`default-src 'self'`,
-  `connect-src 'self'`, `object-src 'none'`, `base-uri 'none'`,
+- **Strict responses.** A Content-Security-Policy (`default-src 'self'`;
+  `script-src 'self'` plus the SHA-256 hash of each of the app's own inline
+  scripts, so no other inline script, `on*=` handler or `javascript:` link can
+  run; `connect-src 'self'`; images only from the page and two known avatar
+  and bank-logo hosts; `object-src 'none'`, `base-uri 'none'`,
   `frame-ancestors 'self'`), `X-Frame-Options: SAMEORIGIN`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
   `Cache-Control: no-store`.
@@ -210,6 +275,29 @@ safeguards below follow from that, and are enforced in the code (mainly
   seconds, and remove exactly what they added when switched off. They are not
   offered on macOS or Linux.
 
+### Encryption, sync and friends
+
+- **Primitives.** AES-256-GCM with random 96-bit nonces, X25519 key agreement,
+  Ed25519 signatures and HKDF-SHA-256 with a separate label for each purpose,
+  all from the platform's Web Crypto and Node's `crypto`. No home-made
+  ciphers. All keys, nonces and codes come from `crypto.getRandomValues`.
+- **Sync.** Each record is encrypted with a key only your devices hold, bound
+  to its group, device, file and position, and signed by the device that
+  wrote it. A new device gets the key only after you approve it (a 4-letter
+  join code or the same six digits on both screens). Removing a device
+  rotates the key, makes a new recovery code and offers to renew your Friends
+  keys; the removed device can't read new data or rewrite old records.
+- **The relay** (on your own Cloudflare account) stores and forwards sealed
+  data. Every request is signed with Ed25519 over the host, method, path, time,
+  a nonce and the body's hash; unsigned and unknown callers are refused before
+  any stored state is touched. Only you, your devices and friends you approve
+  can use it. It learns metadata (that devices exist, when they write and how
+  much), never content.
+- **Friends.** Each friendship starts with a signed card and a 6-digit code
+  you both check, and you approve it. Messages are sealed per friend, and old
+  ones can't be replayed. What you share is built on your computer from named
+  fields only, default deny, per friend.
+
 ### Synced data folders, updates and the remote connector
 
 The data folder may sit in OneDrive, Dropbox or Google Drive, so OpenDash
@@ -230,7 +318,10 @@ yours.
   called `claude` or `claude.exe`, outside the data folder (links are followed
   to check where they really lead). Scripts and network paths are refused.
 - **Updates.** The update check only asks GitHub, and files are only
-  downloaded from this project's GitHub release addresses. The last check is
+  downloaded from this project's GitHub release addresses. Each release's
+  checksum file is signed with the project's Ed25519 release key; the public
+  half is built into the app, and an unsigned or wrongly signed release is
+  refused. The zip must then match its SHA-256. The last check is
   stored in the data folder, so before installing, OpenDash asks GitHub again
   and installs only the release GitHub names now: a planted file cannot make
   it install an older version.
@@ -262,9 +353,18 @@ yours.
   computer you share with people you do not trust.
 - Browser extensions that can read `localhost` pages can see what the page
   shows.
-- The Content-Security-Policy allows inline scripts and styles because the app
-  is a single self-contained file; all user and external text is escaped, and
-  a test forbids inline event handlers.
+- The Content-Security-Policy still allows inline *styles*, because the app is
+  a single self-contained file. Inline scripts are not allowed (only the app's
+  own, by hash), and all user and external text is escaped.
+- **The Windows installer is not code-signed yet**, so SmartScreen warns the
+  first time. Each release publishes `SHA256SUMS-installer.txt` (signed, like
+  the update files) to check your download against.
+- **Secrets on your computer are plain files.** Sign-ins, bank keys and the
+  sync and friends private keys live in this computer's private OpenDash
+  folder, outside the data folder and never synced. They are not yet wrapped
+  by the operating system (Windows DPAPI, macOS Keychain), so any program
+  running as your account, or a copy of your user profile, can read them. Use
+  disk encryption.
 - Avatar images you set by URL are loaded by your browser from that address.
 - Your friends relay (if you deployed one) has a public address: anyone can
   send it requests and use up its daily free-tier allowance (Cloudflare
