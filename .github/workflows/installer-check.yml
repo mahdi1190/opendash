@@ -4,6 +4,8 @@ name: Installer check
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths: ['installer/**', 'tools/launch.*', '.github/workflows/installer-check.yml']
 
 permissions:
   contents: read
