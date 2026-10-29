@@ -26,7 +26,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { HttpError, MIME } from '../http.mjs';
-import { ensureLocalToken, tokenMatches, TOKEN_HEADER } from '../actions/auth.mjs';
+import { ensureLocalToken, tokenMatches, TOKEN_HEADER, pageKeyMatches } from '../actions/auth.mjs';
 import { runtimeInfo, checkRestartAllowed, claimLifecycle, requestLifecycle, lifecycleAvailable, lifecyclePending, readLogLines } from '../lifecycle.mjs';
 import { createOsIntegration, OsIntegrationError, SCHEME } from '../../lib/os-integration.mjs';
 import { createShortcut, ShortcutError } from '../../lib/shortcuts.mjs';
@@ -42,7 +42,11 @@ export default function register(app) {
   const getToken = async () => (token = token || await ensureLocalToken(dataDir));
   const launchFile = join(dataDir, 'launch.json');
 
-  /** The page itself or a local program with the token; 401 otherwise. */
+  /**
+   * The page itself (same origin AND this server's page key, server/actions/auth.mjs)
+   * or a local program with the token; 401 otherwise. An Origin header alone is not
+   * enough: any program on this computer can send one.
+   */
   async function requireLocalCaller(c) {
     const presented = c.req.headers[TOKEN_HEADER];
     if (presented !== undefined) {
@@ -51,7 +55,10 @@ export default function register(app) {
     }
     const origin = c.req.headers.origin;
     const ours = origin === `http://localhost:${c.port}` || origin === `http://127.0.0.1:${c.port}`;
-    if (ours || c.req.headers['sec-fetch-site'] === 'same-origin') return 'browser';
+    if (ours || c.req.headers['sec-fetch-site'] === 'same-origin') {
+      if (pageKeyMatches(c.req, c.pageKey)) return 'browser';
+      throw new HttpError(401, 'this tab is out of date (OpenDash restarted): reload the page and try again');
+    }
     throw new HttpError(401, 'this needs the dashboard page itself, or a local program sending X-Dashboard-Token (the contents of <data>/local-token)');
   }
 

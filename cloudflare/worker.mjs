@@ -12,7 +12,7 @@
 //
 // This is NOT the public Claude MCP relay (cloudflare/relay-worker.mjs).
 
-import { front, createSpace, maxBody, readCapped, memLimiter, ipBucket, SPACE_RE, RATES } from '../lib/relay/core.mjs';
+import { front, createSpace, maxBody, readCapped, memLimiter, memberGate, ipBucket, SPACE_RE, RATES } from '../lib/relay/core.mjs';
 import { errorReply, reply, RelayError } from '../lib/relay/base.mjs';
 import { sha256b64u } from '../lib/relay/auth.mjs';
 
@@ -27,6 +27,15 @@ async function limit(env, bucket, key) {
   return fallback(bucket, key);
 }
 const toResponse = (r) => new Response(r.body ?? null, { status: r.status, headers: r.headers });
+// Who may sign members-only requests, per isolate (core.mjs memberGate): a key that is neither the owner
+// nor a member is refused here, before any Durable Object is asked (RELAY_PROTOCOL.md 8.1).
+let gate = null;
+async function regMembers(env) {
+  const stub = env.SPACES.get(env.SPACES.idFromName('reg'));
+  const r = await stub.fetch('https://relay.internal/internal/members', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-OD-Space': 'reg', 'X-OD-Internal': '1' }, body: '{}' });
+  if (!r.ok) throw new RelayError(r.status, 'relay_error');
+  return r.json();
+}
 
 export default {
   async fetch(request, env) {
@@ -34,7 +43,8 @@ export default {
     try {
       const u = new URL(request.url);
       const ip = await sha256b64u('opendash-relay-ip\n' + ipBucket(request.headers.get('CF-Connecting-IP') || 'unknown'));
-      const io = { now: () => Date.now(), ownerKey: env.OWNER_KEY, limit: (b, k) => limit(env, b, k) };
+      if (!gate) { const e0 = env; gate = memberGate(() => regMembers(e0)); }
+      const io = { now: () => Date.now(), ownerKey: env.OWNER_KEY, limit: (b, k) => limit(env, b, k), known: gate };
       const upgrade = (request.headers.get('upgrade') || '').toLowerCase() === 'websocket';
       // Unsigned requests stop here, before any Durable Object is looked up (or created).
       const f = await front(request.method, u.pathname, ip, io, { host: u.host, query: u.search.slice(1), headers: request.headers, upgrade });
@@ -44,7 +54,9 @@ export default {
       headers.set('X-OD-Space', f.route.space);
       headers.set('X-OD-IP', ip);
       const stub = env.SPACES.get(env.SPACES.idFromName(f.route.space));
-      return await stub.fetch(new Request(request, { headers }));
+      const res = await stub.fetch(new Request(request, { headers }));
+      if (res.status === 200 && u.pathname === '/v1/invites/redeem') gate.add(request.headers.get('x-od-key'));
+      return res;
     } catch (e) { return toResponse(errorReply(e, now)); }
   },
 };

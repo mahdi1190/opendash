@@ -7,6 +7,9 @@
 //   HttpError              throw new HttpError(400, 'why') from a handler
 //   esc                    HTML-escape for the few server-rendered pages
 //   injectConfig           put the public config into index.html
+//   cspFor / inlineScriptHashes   the CSP, with the page's inline scripts by hash
+
+import { createHash } from 'node:crypto';
 
 export const MIME = Object.freeze({
   '.html': 'text/html; charset=utf-8',
@@ -23,20 +26,50 @@ export const DEFAULT_MAX_BODY = 64 * 1024 * 1024;   // state is ~1 MB; this is s
 export const SMALL_BODY = 64 * 1024;                // settings, finance edits, AI prompts are capped separately
 
 // Everything runs on the user's machine; nothing may embed it, and the page may
-// only talk to this server. (Inline scripts/styles are how the single-file app
-// is built; images may come from https for people's avatars.)
-const CSP = [
+// only talk to this server. Inline scripts run only when their sha256 is in the
+// header (cspFor hashes the page's own script blocks), so markup that slips into
+// the page can never run script: no 'unsafe-inline', no on*= handlers, no
+// javascript: URLs. Styles stay inline (the single-file app is built that way).
+// Remote pictures: Gravatar (opt-in per person) and bank logos from Enable
+// Banking; any other host is refused and the avatar falls back to initials.
+const CSP_PARTS = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  null,   // script-src, per page
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
+  "img-src 'self' data: blob: https://gravatar.com https://*.gravatar.com https://enablebanking.com https://*.enablebanking.com",
   "font-src 'self' data:",
   "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'none'",
   "form-action 'self'",
   "frame-ancestors 'self'",
-].join('; ');
+];
+const JS_TYPES = /^(|module|(text|application)\/(x-)?(java|ecma)script)$/i;
+/** The sha256 sources of every inline script a browser would run in this HTML. */
+export function inlineScriptHashes(html) {
+  const out = new Set();
+  for (const m of String(html || '').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+    const t = /\btype\s*=\s*["']?([^"'\s>]*)/i.exec(m[1]);
+    if (!JS_TYPES.test(t ? t[1].trim() : '') || /\bsrc\s*=/i.test(m[1])) continue;
+    // The HTML parser turns CR LF and lone CR into LF before the browser hashes the text.
+    const body = m[2].replace(/\r\n?/g, '\n');
+    out.add(`'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`);
+  }
+  return [...out];
+}
+let _cspMemo = { key: null, value: '' };
+/** The Content-Security-Policy for a response body (HTML gets its own inline-script hashes). */
+export function cspFor(html) {
+  if (!html) return CSP;
+  // index.html is several MB: reuse the last result while the page is the same (the config is a JSON block, never run).
+  const key = String(html).replace(/<script id="dashboard-config" type="application\/json">[\s\S]*?<\/script>/, '');
+  if (_cspMemo.key === key) return _cspMemo.value;
+  const hashes = inlineScriptHashes(key);
+  const value = CSP_PARTS.map(p => p ?? ["script-src 'self'", ...hashes].join(' ')).join('; ');
+  _cspMemo = { key, value };
+  return value;
+}
+const CSP = CSP_PARTS.map(p => p ?? "script-src 'self'").join('; ');
 
 export class HttpError extends Error {
   constructor(status, message, extra) {
@@ -54,7 +87,7 @@ export function send(res, code, body, type = 'text/plain; charset=utf-8', header
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'SAMEORIGIN',
     'Referrer-Policy': 'no-referrer',
-    'Content-Security-Policy': CSP,
+    'Content-Security-Policy': typeof body === 'string' && /^text\/html/i.test(type) && /<script/i.test(body) ? cspFor(body) : CSP,
     ...headers,
   });
   res.end(body);

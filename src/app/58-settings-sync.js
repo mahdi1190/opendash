@@ -549,10 +549,42 @@ function _syncFolderControl(st) {
   return wrap;
 }
 
+/**
+ * "Remove <device>" (2.19.8): one step. Removing also makes a new recovery code (the removed device
+ * knew the old one's public half), shown at once with "save your new recovery code"; and, ticked by
+ * default when Friends is set up, new Friends keys too (96-friends-1ui.js reads renewFriends).
+ */
+let _syncCodeNew = false;    // the code shown is a new one (after a removal): the old one no longer works
+function _syncRemoveDialog(id, name) {
+  const fr = typeof _fr !== 'undefined' && _fr && _fr.data && _fr.data.me && _fr.data.me.id;
+  let box = null;
+  openDialog({
+    title: 'Remove ' + name + '?', width: 460,
+    body(el) {
+      el.appendChild(_syncEl('p', 'muted', 'It stops getting your changes and keeps what it has. Your other computers get a new sync key.'));
+      el.appendChild(_syncEl('p', 'muted', 'You also get a new recovery code, shown next. Save it: the old one stops working.'));
+      if (fr) {
+        const lab = document.createElement('label'); lab.className = 'conn-tick';
+        box = document.createElement('input'); box.type = 'checkbox'; box.checked = true;
+        lab.append(box, _syncEl('span', null, 'Also renew my Friends keys, so it can’t act as me with my friends (recommended if it was lost or stolen)'));
+        el.appendChild(lab);
+      }
+    },
+    actions: [
+      { label: 'Cancel' },
+      { label: 'Remove', danger: true, run: () => {
+        _syncCodeNew = true;
+        _syncPost('/api/sync/devices/remove', { id, renewFriends: !!(box && box.checked) }, 'Removed ' + name + '. Save your new recovery code below.');
+      } },
+    ],
+  });
+}
+
 /** The recovery code, once: write it down or print it. */
 function _syncCodePanel(card) {
   const box = _syncEl('div', 'sync-code');
-  box.appendChild(_syncEl('div', 'sync-code-t', 'Your recovery code'));
+  box.appendChild(_syncEl('div', 'sync-code-t', _syncCodeNew ? 'Save your new recovery code' : 'Your recovery code'));
+  if (_syncCodeNew) box.appendChild(_syncEl('p', 'set-h', 'You removed a device, so your old recovery code no longer works. This new one replaces it.'));
   const c = _syncEl('div', 'sync-code-v');
   for (const l of syncCodeLines(_syncCode)) c.appendChild(_syncEl('div', null, l));
   box.appendChild(c);
@@ -570,7 +602,7 @@ function _syncCodePanel(card) {
       window.print();
       setTimeout(done, 60000);
     }),
-    _syncBtn("I've written it down", () => { _syncCode = null; _syncRefresh(); }, true),
+    _syncBtn("I've written it down", () => { _syncCode = null; _syncCodeNew = false; _syncRefresh(); }, true),
   );
   box.appendChild(row);
   card.body.appendChild(box);
@@ -956,10 +988,7 @@ function _syncDevices(box, st) {
       if (n) _syncPost('/api/sync/devices/rename', { id: d.id, name: n }, 'Name saved');
     }));
     if (!d.me && st.e2e && st.e2e.on) {
-      acts.appendChild(_syncBtn('Remove…', async () => {
-        const ok = await confirmDialog({ title: 'Remove ' + name + '?', text: 'It stops getting your changes and keeps what it has.', confirmLabel: 'Remove', danger: true });
-        if (ok) _syncPost('/api/sync/devices/remove', { id: d.id }, 'Removed ' + name);
-      }));
+      acts.appendChild(_syncBtn('Remove…', () => _syncRemoveDialog(d.id, name)));
     }
     row.append(info, acts);
     list.appendChild(row);

@@ -109,10 +109,43 @@ function netErrorReason(e, fallback) {
       return Object.assign({}, init || {}, { headers: h });
     } catch (err) { return init; }
   };
+  // The page key (server/actions/auth.mjs): made at every server start and put into
+  // this page's config. Changes and server controls need it, so a local program that
+  // only fakes our Origin header is refused. After a restart the key is new: on a 401
+  // the page reads the new key from a fresh copy of the page once and tries again.
+  let pageKey = (typeof APP_CONFIG !== 'undefined' && APP_CONFIG && typeof APP_CONFIG.pageKey === 'string') ? APP_CONFIG.pageKey : '';
+  const withKey = (input, init) => {
+    if (!pageKey || typeof Headers !== 'function') return init;
+    try {
+      const h = new Headers((init && init.headers) || (typeof Request === 'function' && input instanceof Request ? input.headers : undefined));
+      h.set('X-Dashboard-Page', pageKey);
+      return Object.assign({}, init || {}, { headers: h });
+    } catch (err) { return init; }
+  };
+  let keyLoad = null;
+  const freshKey = () => keyLoad || (keyLoad = orig.call(window, '/', { cache: 'no-store', credentials: 'same-origin' })
+    .then(r => (r.ok ? r.text() : ''))
+    .then((html) => {
+      const m = /<script id="dashboard-config" type="application\/json">([\s\S]*?)<\/script>/.exec(html || '');
+      const k = m ? (JSON.parse(m[1]) || {}).pageKey : '';
+      return typeof k === 'string' ? k : '';
+    })
+    .catch(() => '')
+    .finally(() => { setTimeout(() => { keyLoad = null; }, 2000); }));
+  const resendable = (input, init) => typeof input === 'string' && (!init || init.body == null || typeof init.body === 'string');
   const wrapped = function netFetch(input, init) {
     const mine = ours(input);
-    if (mine) init = withZone(input, init);
-    return orig.call(window, input, init).then((r) => { if (mine) flip(false); return r; }, (e) => {
+    if (mine) init = withKey(input, withZone(input, init));
+    const sent = pageKey;
+    return orig.call(window, input, init).then((r) => {
+      if (mine) flip(false);
+      if (!mine || r.status !== 401 || !resendable(input, init)) return r;
+      return freshKey().then((k) => {
+        if (!k || k === sent) return r;
+        pageKey = k;
+        return orig.call(window, input, withKey(input, init));
+      });
+    }, (e) => {
       if (!mine || !netIsDown(e)) throw e;
       flip(true);
       const err = new TypeError(NET_DOWN_MESSAGE);

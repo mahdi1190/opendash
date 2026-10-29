@@ -21,10 +21,12 @@ Bank/email/calendar connectors are separate account authorizations.
    `http://127.0.0.1:4911`. Tunnel only the gateway port, never the dashboard port.
    A named tunnel gives a permanent address. A temporary random tunnel changes
    its address and requires reconnecting the connector.
-3. In Claude → Settings → Connectors → Add custom connector, use the displayed
-   `https://<hostname>/mcp` URL. Claude discovers OAuth automatically.
-4. Match the sign-in page's code with the request in your local OpenDash
-   Connections page, and approve. The sign-in tab continues automatically.
+3. Click **Connect Claude** in OpenDash. New connections are accepted for ten
+   minutes after that, and never otherwise. In Claude → Settings → Connectors →
+   Add custom connector, use the displayed `https://<hostname>/mcp` URL. Claude
+   discovers OAuth automatically.
+4. Type the code shown on the sign-in page into the request in your local
+   OpenDash Connections page, and approve. The sign-in tab continues automatically.
 5. Ask Claude to describe today's dashboard tasks to verify the connection.
 
 For a locally managed tunnel, Cloudflare's commands are:
@@ -53,7 +55,20 @@ one-hour access tokens, and rotating thirty-day refresh tokens. Tokens are
 stored as hashes in the data folder's `secrets/remote-mcp-auth.json`. Local
 approval uses the ordinary dashboard's Host/origin checks. Public routes never
 accept the dashboard's local token. Revoke browser access invalidates all
-remote grants and pending approvals.
+remote grants, pending approvals and registered clients.
+
+Because the gateway is reachable from the internet:
+- client registration and new sign-ins are refused unless Connect Claude was
+  pressed in the last ten minutes (refreshing an existing connection still works);
+- approving needs the code from your own sign-in tab, typed in OpenDash (a request
+  someone else started shows its code only to them); the request shows the client
+  name, where it sends the sign-in and the caller's IP/country;
+- rate limits are per caller IP (Cloudflare's `CF-Connecting-IP`), unused clients
+  are dropped after an hour, and a full client list drops its oldest unused one;
+- a remote client can call only read tools and `propose_changes`: expense writes
+  and every apply/undo tool are refused, in the gateway and in the MCP child
+  (`--mode propose --no-expense-writes`);
+- checking a token or a waiting sign-in tab never rewrites the secret store.
 
 The gateway binds only to loopback. It serves MCP and OAuth discovery/consent;
 it never proxies dashboard pages or `/api/` routes. It has bounded registration,

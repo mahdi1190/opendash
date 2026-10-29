@@ -115,7 +115,7 @@ function _connHelp(c, e, all) {
       // The unusual cases fold away (SIMPLIFY_PLAN.md 5.6): npm, and Claude in an odd place.
       setFold(box, 'conn-claude-unusual', 'Something unusual?', ({ body }) => {
         body.appendChild(_connEl('p', 'conn-note', 'Using npm instead? npm install -g @anthropic-ai/claude-code.'));
-        body.appendChild(_connEl('p', 'conn-note', 'Claude installed somewhere unusual? Put CLAUDE_CLI_PATH=<path to claude> in a .env file in your data folder.'));
+        body.appendChild(_connEl('p', 'conn-note', 'Claude installed somewhere unusual? Put CLAUDE_CLI_PATH=<full path to claude> in a .env file in the OpenDash app folder, or in the OpenDash folder in your local app data (never in the data folder).'));
       });
     } else if (st === 'auth' || st === 'error' || st === 'unknown') {
       box.appendChild(_connEl('div', 'conn-help-t', st === 'auth' ? 'Sign in to Claude' : 'Connect Claude'));

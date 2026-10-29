@@ -10,7 +10,8 @@
 // Checking is a GET to the project's GitHub releases and nothing else is sent
 // (lib/updater.mjs has the details). Applying needs the page itself or the
 // local token, and a server that can restart itself (start-opendash / serve.mjs).
-// One apply at a time; the version must be the one the last check found, and newer.
+// One apply at a time; the version must be the one the last check found, and newer,
+// and GitHub is asked again at apply time (the stored check file is never trusted alone).
 
 import { HttpError } from '../http.mjs';
 import { lifecycleAvailable, checkRestartAllowed } from '../lifecycle.mjs';
@@ -70,17 +71,26 @@ export default function register(app) {
       if (!ok.ok) throw new HttpError(ok.status, ok.message);
       if (busy) throw new HttpError(409, 'an update is already being installed');
       const state = await readUpdateState(dataDir);
-      const release = state.latest;
-      if (!release || release.version !== b.version) throw new HttpError(409, 'check for updates first: that is not the latest version found');
-      if (compareVersions(release.version, ctx.version) !== 1) throw new HttpError(409, 'this version is already installed');
+      if (!state.latest || state.latest.version !== b.version) throw new HttpError(409, 'check for updates first: that is not the latest version found');
       busy = true;
       let updated;
       try {
+        // update-check.json sits in the (possibly synced) data folder: ask GitHub again and
+        // install only the release it names now, so a planted file cannot pick an old one.
+        let release;
+        try { release = await checkLatest(); }
+        catch (e) { throw new HttpError(502, `Not updated: could not confirm the release with GitHub (${e.message}). Try again in a moment.`); }
+        if (release.version !== b.version) {
+          await writeUpdateState(dataDir, { checkedAt: new Date().toISOString(), latest: release, error: null }).catch(() => {});
+          throw new HttpError(409, `GitHub now lists ${release.version} as the latest version: check for updates again.`);
+        }
+        if (compareVersions(release.version, ctx.version) !== 1) throw new HttpError(409, 'this version is already installed');
         log('note', `installing update ${ctx.version} -> ${release.version} (${installKind(ctx.repoRoot)})`);
         updated = installKind(ctx.repoRoot) === 'git'
           ? await applyGitUpdate({ repoRoot: ctx.repoRoot, release, current: ctx.version })
           : await applyZipUpdate({ repoRoot: ctx.repoRoot, dataDir, release, current: ctx.version });
       } catch (e) {
+        if (e instanceof HttpError) throw e;
         log('error', `update failed: ${e.message}`);
         throw new HttpError(502, `Not updated: ${e.message}`);
       } finally { busy = false; }

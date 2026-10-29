@@ -20,7 +20,7 @@
 import { createServer } from 'node:http';
 import { readFile, readdir } from 'node:fs/promises';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -30,7 +30,8 @@ import {
   REPO_ROOT, argValue, resolveDataDir, dataPaths, ensureDataDir, loadConfig, saveConfig, publicConfig, legacyStatus, DEFAULT_CONFIG,
 } from '../lib/datadir.mjs';
 import { writeProfile } from '../lib/profile.mjs';
-import { setRunnerLogger, setCliPath } from '../lib/claude-runner.mjs';
+import { setRunnerLogger, setCliPath, setCliDataRoot } from '../lib/claude-runner.mjs';
+import { loadEnvFiles } from '../lib/env-files.mjs';
 import { aiStatus, setDefaultModel } from '../lib/ai.mjs';
 import { initGoogle } from '../lib/google.mjs';
 import { secretStore } from '../lib/secret-store.mjs';
@@ -85,11 +86,12 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   const paths = await ensureDataDir(dataDir);
-  // Optional environment overrides (e.g. CLAUDE_CLI_PATH, PYTHON): <data>/.env,
-  // then <repo>/.env. Variables already set in the environment win.
-  for (const f of [join(paths.root, '.env'), join(REPO_ROOT, '.env')]) {
-    if (existsSync(f)) { try { process.loadEnvFile(f); } catch (e) { console.error(`  could not read ${f}: ${e.message}`); } }
-  }
+  // Optional environment overrides (lib/env-files.mjs): this computer's own
+  // .env and <app>/.env set anything (e.g. CLAUDE_CLI_PATH, PYTHON); the data
+  // folder's .env (it may be synced) only sets harmless sign-in app IDs.
+  // Variables already set in the environment win.
+  loadEnvFiles({ dataDir: paths.root, appDir: REPO_ROOT, log: (m) => console.error(`  ${m}`) });
+  setCliDataRoot(paths.root);   // CLAUDE_CLI_PATH may never point into the data folder
   setCliPath(null);   // re-resolve the claude executable with the loaded environment
   const stateDir = argValue(argv, '--state-dir') ? resolve(argValue(argv, '--state-dir')) : paths.stateDir;
   const log = createLogger(paths.serverLog);
@@ -148,6 +150,8 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   const ctx = {
+    // A new key at every start, put into the page it serves (server/actions/auth.mjs PAGE_KEY_HEADER).
+    pageKey: randomBytes(32).toString('base64url'),
     port, dataDir, paths: { ...paths, stateDir }, repoRoot: REPO_ROOT, financeDir, log, store, version, lifecycle: life, buildId, track,
     hosts: { presence, gate: hostGate, others: othersNow }, moveGate,
     getConfig: () => config,
@@ -175,7 +179,7 @@ export async function main(argv = process.argv.slice(2)) {
         const file = join(REPO_ROOT, 'index.html');
         if (!existsSync(file)) return send(res, 500, 'index.html is missing: run node build.mjs');
         // build: which index.html this page is (Settings > Server reloads the page after a rebuild).
-        const html = injectConfig(await readFile(file, 'utf8'), { ...publicConfig(config), build: buildId() });
+        const html = injectConfig(await readFile(file, 'utf8'), { ...publicConfig(config), build: buildId(), pageKey: ctx.pageKey });
         // X-Dashboard-App: the offline-page worker (src/sw.js) keeps only a page with this mark.
         return send(res, 200, req.method === 'HEAD' ? '' : html, MIME['.html'], { 'X-Dashboard-App': 'dashboard' });
       }
