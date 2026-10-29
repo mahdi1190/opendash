@@ -10,6 +10,8 @@
 //                propose: read tools + propose_changes only; it can never apply anything
 //                (the in-app assistant uses this, so text from email, calendar or bank
 //                data can never change the dashboard without the user's click)
+//   --no-expense-writes  only list_expenses of the expense tools (the remote claude.ai
+//                gateway, mcp/remote-server.mjs, passes it: a remote client only reads and proposes)
 //   --print-install   print the install commands for this machine and exit
 //
 // Transport to the data: while the dashboard server runs (found through
@@ -21,8 +23,8 @@
 //
 // stdout carries protocol messages only. Logs go to stderr and <data>/logs/mcp.log.
 
-import { readFileSync, lstatSync } from 'node:fs';
-import { join, isAbsolute, basename, extname, relative } from 'node:path';
+import { readFileSync, lstatSync, readlinkSync, realpathSync } from 'node:fs';
+import { join, isAbsolute, basename, extname, relative, resolve as resolvePath } from 'node:path';
 import { randomBytes } from 'node:crypto';
 
 // Nothing but JSON-RPC may reach stdout: route stray console output to stderr
@@ -50,6 +52,7 @@ const VERSION = (() => { try { return JSON.parse(readFileSync(join(REPO_ROOT, 'p
 const argv = process.argv.slice(2);
 const MODE = argValue(argv, '--mode') || 'full';
 if (!['full', 'propose'].includes(MODE)) { process.stderr.write(`--mode must be full or propose (got ${MODE})\n`); process.exit(2); }
+const EXPENSE_WRITES = !argv.includes('--no-expense-writes');
 const DATA_DIR = resolveDataDir({ argv });
 const FORCED_PORT = Number(argValue(argv, '--port')) || null;
 const paths = dataPaths(DATA_DIR);
@@ -168,6 +171,14 @@ const EXPENSE_TOOLS = [
     description: 'Undo an expense change by its undo token (from create_expense, attach_expense_receipt or mark_expense_submitted).',
     inputSchema: { type: 'object', additionalProperties: false, required: ['token'], properties: { token: { type: 'string', maxLength: 40 } } } },
 ];
+/** An absolute path on a local disk: never UNC (\\host\share, \\host@80\dav, //host), device (\\?\, \\.\, \??\) or alternate-data-stream path. */
+function localFilePath(p) {
+  if (typeof p !== 'string' || !p || /[\u0000-\u001f]/.test(p) || !isAbsolute(p)) return false;
+  if (/^[\\/]{2}/.test(p)) return false;
+  if (process.platform === 'win32') return /^[A-Za-z]:[\\/]/.test(p) && !p.slice(2).includes(':');
+  return p.startsWith('/');
+}
+function insideData(p) { const rel = relative(DATA_DIR, p); return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel)); }
 async function expenseHome() {
   const cfg = await loadConfig(DATA_DIR).catch(() => ({}));
   let today; try { today = new Intl.DateTimeFormat('en-CA', { timeZone: cfg.timezone || undefined }).format(new Date()); } catch { today = new Date().toISOString().slice(0, 10); }
@@ -202,14 +213,24 @@ async function expenseTool(name, a) {
   }
   if (name === 'attach_expense_file') {
     const p = String(a.path || '');
-    if (!isAbsolute(p) || p.length > 500) fail('Give the full path of the file (for example C:\Users\...\receipt.pdf).');
+    if (!localFilePath(p) || p.length > 500) fail('Give the full path of a file on this computer (for example C:\\Users\\...\\receipt.pdf). Network and device paths are not accepted.');
     if (!/.(pdf|png|jpe?g|webp|gif)$/i.test(extname(p))) fail('Receipts can be a PDF or a picture (PNG, JPEG, WebP or GIF).');
-    const inData = relative(DATA_DIR, p); if (inData && !inData.startsWith('..') && !isAbsolute(inData)) fail('That file is already inside the dashboard.');
-    let st; try { st = lstatSync(p); } catch { fail('I could not find that file. Check the path with the user.'); }
-    if (!st.isFile() || st.isSymbolicLink()) fail('That path is not a regular file.');
+    if (insideData(p)) fail('That file is already inside the dashboard.');
+    // A preview touches nothing on disk (not even a stat: a path can make Windows contact another computer).
+    if (a.dryRun === true) return { dryRun: true, wouldAttach: { expense: a.id, file: basename(p) } };
+    let real;
+    try {
+      const l = lstatSync(p);
+      if (l.isSymbolicLink() && !localFilePath(resolvePath(p, '..', readlinkSync(p)))) fail('That file is a link to a network location.');
+      real = realpathSync(p);
+    } catch (e) { if (e instanceof ActionError) throw e; fail('I could not find that file. Check the path with the user.'); }
+    if (!localFilePath(real)) fail('That file is a link to a network location.');
+    if (!/.(pdf|png|jpe?g|webp|gif)$/i.test(extname(real))) fail('Receipts can be a PDF or a picture (PNG, JPEG, WebP or GIF).');
+    if (insideData(real)) fail('That file is already inside the dashboard.');
+    let st; try { st = lstatSync(real); } catch { fail('I could not find that file. Check the path with the user.'); }
+    if (!st.isFile()) fail('That path is not a regular file.');
     if (st.size > 5 * 1024 * 1024) fail('That file is over 5 MB.');
-    if (a.dryRun === true) return { dryRun: true, wouldAttach: { expense: a.id, file: basename(p), bytes: st.size } };
-    const buf = readFileSync(p);
+    const buf = readFileSync(real);
     const r = await EX.addReceipt(DATA_DIR, String(a.id), { name: basename(p), data: buf.toString('base64') }, { home });
     if (r.error) fail(r.error);
     return { ok: true, ref: r.ref, already: r.already || undefined, ...(r.undo ? { undo: r.undo } : {}), note: 'The receipt is on the expense under Money > Expenses.' };
@@ -252,7 +273,7 @@ const ann = (title, readOnly, destructive = false) => ({ title, readOnlyHint: re
 
 function toolList() {
   const tools = [];
-  for (const t of EXPENSE_TOOLS) tools.push({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: ann(t.title, !!t.read) });
+  for (const t of EXPENSE_TOOLS) if (t.read || EXPENSE_WRITES) tools.push({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: ann(t.title, !!t.read) });
   for (const q of QUERIES) if (MODE !== 'propose' || q.assistant !== false) tools.push({ name: q.tool, title: q.tool.replace(/_/g, ' '), description: q.description, inputSchema: publicSchema(q.schema), annotations: ann(q.tool, true) });
   tools.push({
     name: 'describe_operations', title: 'describe operations',
@@ -314,6 +335,7 @@ async function callTool(name, args) {
     }
     const ex = EXPENSE_TOOLS.find(x => x.name === name);
     if (ex) {
+      if (!ex.read && !EXPENSE_WRITES) throw new ActionError('PROPOSE_ONLY', 'this connection can only read expenses', { hint: 'the user adds expenses in the dashboard' });
       return ok(await expenseTool(name, args));
     }
     const q = QUERY_BY_TOOL.get(name);

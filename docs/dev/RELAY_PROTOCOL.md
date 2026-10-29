@@ -169,7 +169,7 @@ for the relay.
 | owner device | device key + certificate from `OWNER_KEY` | everything except admin |
 | member | identity key with an active grant (4.1) | its grant's scopes |
 | member device | device key + certificate from a member identity | its identity's scopes |
-| anonymous | any other valid signature | ONLY: redeem an invite (4.2), post into a mailbox or read its presence with a drop token (7.3, 7.5), read a short invite link's sealed invite (7.8), a join slot that a member device opened (6), `GET /v1/health` |
+| anonymous | any other valid signature | ONLY: redeem an invite (4.2), post into a mailbox with a drop token (7.3; presence is the owner's only), read a short invite link's sealed invite (7.8), a join slot that a member device opened (6), `GET /v1/health` |
 
 The owner has both scopes. Anyone else gets
 `403 {"error":"not_member","message":"This relay is private. Ask its owner for an invite."}`;
@@ -239,6 +239,19 @@ most 30). Answer: `{"role":"member","iid","scopes","quota","exp","mbox"}`
 (`mbox`: the member's mailbox, made now, when the scopes have `message`).
 Wrong, used or expired tokens all answer `410 gone`. At most 5 tries per IP
 per hour. Redeeming with a key that already holds a grant adds the scopes.
+
+**Held until approval.** Holding the link proves nothing about who holds it, so
+an invite (unless minted with `"pending": false`) lets its redeemer in
+*pending*: what they already had as a confirmed member, else `message` only
+with `LIMITS.quota.pending` (1 MiB), 1,000 rows a day, no friend-code lookups,
+running out after 30 days. The answer adds `"pending": {"scopes"}` (what the
+invite allows later). When the owner approves the friend request that came
+through the invite, the app sends `PUT /v1/admin/members/<iid>`
+`{"key", "pending": false}`: the grant becomes what the invite allowed (404
+when there is no grant). The owner's upkeep does the same for any pending
+member who is a confirmed friend (an approval made on an older app). Revoking a
+member (`DELETE /v1/admin/members/<iid>`) also tells the spaces they use
+(internal op `revoke`): cached grants are dropped and their open sockets close.
 
 ### 4.3 Admin (signed by `OWNER_KEY` only)
 
@@ -581,7 +594,7 @@ A relay from before this section answers `404` to the `PUT`; the app then hands 
 | What | Cap |
 |---|---|
 | Request body | 64 KiB; log append 2 MiB; snapshot 16 MiB; blob 5 MiB + 1 KiB; mailbox post 64 KiB; directory blob 4 KiB; short invite link blob 4 KiB; join document 8 KiB |
-| Rate | per IP 300 requests a minute (IPv6: per /64); per signing key 240 a minute, and a member's keys (identity and every device) 240 together; anonymous paths (redeem, post, presence, join, health) 20 a minute per IP; invite redemptions 5 per IP per hour; directory lookups 20 a minute per identity, 10 per IP |
+| Rate | per IP 300 requests a minute (IPv6: per /64); per signing key 240 a minute, and a member's keys (identity and every device) 240 together; anonymous paths (redeem, post, join, health) 20 a minute per IP; a signed request for a members-only path from a key that is neither the owner nor a member is refused at the front door (`403 not_member`), before any space (Durable Object) is touched: the Worker keeps the member list per isolate for 60 s and looks it up again on a miss at most every 5 s (`429` with `Retry-After: 5` meanwhile); invite redemptions 5 per IP per hour; directory lookups 20 a minute per identity, 10 per IP |
 | Rows written | a member: 10,000 a day (UTC), all their devices and spaces together; the owner: no cap. Counted after each request: the member's own writes, posts into their mailbox, writes in a join slot they opened; deletes count too. The registry keeps the count (`w/<iid>`, in the members snapshot); past it a write gets `429 rate_limit` with `Retry-After` until midnight UTC, reads still work |
 | Storage per member | owner 1 GiB; a member with `sync` 128 MiB; `message` only 16 MiB; the owner can change each member's |
 | Relay | 4 GiB in all (Workers Free has 5 GB); 200 members; 50 open invites |
@@ -629,11 +642,11 @@ upgraded or paid for automatically.
 ## 9. Deploying
 
 **In the app** (Settings > Your relay > Connect Cloudflare): runs
-`npx --yes wrangler@latest login` (the browser opens; the person clicks
+`npx --yes wrangler@<WRANGLER_VERSION> login` (the browser opens; the person clicks
 Allow), writes a wrangler config into this computer's device folder (`relay/wrangler.toml`:
 Worker `opendash-relay-<6 random [a-z0-9]>`, workers.dev, the Durable Object
 binding and its `new_sqlite_classes` migration, `OWNER_KEY` = the person's
-identity public key, observability off), runs `npx --yes wrangler@latest deploy`,
+identity public key, observability off), runs `npx --yes wrangler@<WRANGLER_VERSION> deploy` (one pinned release, lib/relay/deploy.mjs),
 checks `GET /v1/health` and `GET /v1/me` (owner), and saves the origin as the
 home relay (section 1). Wrangler keeps the Cloudflare sign-in in its own store;
 OpenDash never reads, copies or logs it.

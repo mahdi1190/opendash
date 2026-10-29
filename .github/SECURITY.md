@@ -90,8 +90,10 @@ safeguards below follow from that, and are enforced in the code (mainly
   `Sec-Fetch-Site` headers; a request from another site gets `403`. This
   blocks cross-site request forgery, and stops other sites from starting work
   through a read (a Claude run, a Google or weather fetch) or timing the
-  answers. The one exception is the Google sign-in callback, which Google's
-  redirect has to reach; it only accepts a sign-in this server started.
+  answers. The only exceptions are the sign-in return addresses (Google,
+  Microsoft, banks) that a provider's redirect has to reach; each accepts only
+  a sign-in this server started, with PKCE. The old Google callback without
+  PKCE has been removed.
 - **JSON only.** Request bodies must be `application/json` (`415` otherwise),
   so a plain HTML form on another site cannot post to it. Bodies have size
   limits (`413`), and stale writes are refused (`409`).
@@ -112,9 +114,15 @@ safeguards below follow from that, and are enforced in the code (mainly
   running, `tools/actions-cli.mjs`, your scripts) must send it in the
   `X-Dashboard-Token` header to use `/api/actions`, `/api/query`,
   `/api/events`, `/api/mcp-info` and the server-control routes; otherwise `401`.
-  It is compared in constant time. It guards against mistakes and stray
-  scripts, not against another program on the computer: such a program can
-  send the page's own `Origin` header instead (see Known limitations).
+  It is compared in constant time.
+- **The page key.** At every start the server makes a new random key and puts
+  it into the page it serves. The page sends it with each request. Changes
+  through `/api/actions` and the server controls (restart, stop, log, Windows
+  integrations, shortcuts, installing an update) need that key or the local
+  token: a matching `Origin` or `Sec-Fetch-Site` header on its own, which any
+  local program can fake, is refused. After a restart an open tab picks up the
+  new key by itself. This stops lazy or careless local programs; a program
+  that loads the page itself can still read the key (see Known limitations).
 - It also signs the confirm tokens that bulk and destructive changes need after
   a dry run.
 - Treat it like a password. Anyone who can read your data folder could also
@@ -193,6 +201,44 @@ safeguards below follow from that, and are enforced in the code (mainly
   seconds, and remove exactly what they added when switched off. They are not
   offered on macOS or Linux.
 
+### Synced data folders, updates and the remote connector
+
+The data folder may sit in OneDrive, Dropbox or Google Drive, so OpenDash
+assumes that someone who can write that folder (a shared folder, a stolen
+cloud account, another computer) must still not be able to run programs on
+yours.
+
+- **`.env` files.** A `.env` file in the data folder may only set the sign-in
+  app IDs (`OPENDASH_GOOGLE_CLIENT_ID`, `OPENDASH_GOOGLE_CLIENT_SECRET`,
+  `OPENDASH_MICROSOFT_CLIENT_ID`). Anything that chooses a program, a feed or
+  code (`CLAUDE_CLI_PATH`, `PATH`, `PYTHON`, `NODE_OPTIONS`,
+  `DASHBOARD_UPDATE_FEED` and the rest) is ignored there, with a note in the
+  server log. Put such settings in a `.env` in the app folder or in this
+  computer's own OpenDash folder (Windows `%LOCALAPPDATA%\OpenDash\.env`, macOS
+  `~/Library/Application Support/OpenDash/.env`, Linux
+  `~/.local/state/opendash/.env`), which are never synced.
+- **The Claude program.** `CLAUDE_CLI_PATH` must be the full path of a file
+  called `claude` or `claude.exe`, outside the data folder (links are followed
+  to check where they really lead). Scripts and network paths are refused.
+- **Updates.** The update check only asks GitHub, and files are only
+  downloaded from this project's GitHub release addresses. The last check is
+  stored in the data folder, so before installing, OpenDash asks GitHub again
+  and installs only the release GitHub names now: a planted file cannot make
+  it install an older version.
+- **The in-app assistant and expenses.** The assistant on this computer may
+  file expenses and attach receipt files, as before. A receipt path must be a
+  file on a local disk: network (`\\host\share`, `//host`) and device
+  (`\\?\`, `\\.\`) paths are refused, links are followed to their real
+  target, and a preview never touches the disk.
+- **The remote connector (Claude in your browser).** The public gateway only
+  lets claude.ai read and propose changes; it can never write expenses or
+  apply anything. New connections are accepted only within ten minutes of
+  pressing **Connect Claude** in OpenDash. To approve one, you type the code
+  shown in your own sign-in tab, and the request shows where it sends the
+  sign-in and where it came from, so a request someone else started cannot be
+  approved by mistake. Limits are per caller, unused registrations expire, and
+  **Revoke browser access** removes every token and registered client.
+
 ### Known limitations
 
 - OpenDash does not encrypt the data folder. Use your operating system's disk
@@ -202,8 +248,8 @@ safeguards below follow from that, and are enforced in the code (mainly
 - `127.0.0.1` keeps OpenDash off the network, but not away from **other
   accounts on the same computer**: anyone signed in to it at the same time
   (another user, a remote session, an SSH login) can reach the port and read
-  or change what the page can. Only the actions, query, events and
-  server-control routes ask for the local token. Do not run OpenDash on a
+  or change what the page can. The page key (above) only raises the bar: a
+  program that loads the page can read it. Do not run OpenDash on a
   computer you share with people you do not trust.
 - Browser extensions that can read `localhost` pages can see what the page
   shows.
@@ -211,6 +257,12 @@ safeguards below follow from that, and are enforced in the code (mainly
   is a single self-contained file; all user and external text is escaped, and
   a test forbids inline event handlers.
 - Avatar images you set by URL are loaded by your browser from that address.
+- Your friends relay (if you deployed one) has a public address: anyone can
+  send it requests and use up its daily free-tier allowance (Cloudflare
+  Workers Free), so it rests until midnight UTC. Unsigned requests, and
+  requests signed by keys that are not the owner or a member, are refused
+  before any stored data is touched, and each address is rate limited; data is
+  never exposed or charged for. See docs/FRIENDS_GUIDE.md, "The free allowance".
 
 ## Keeping your install safe
 

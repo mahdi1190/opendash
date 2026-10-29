@@ -339,23 +339,33 @@ function openTaskMenu(at, id) {
 // only), bullet / numbered / task lists, quotes, rules. Nothing else gets through.
 function renderMarkdown(src) {
   const lines = String(src || '').replace(/\r\n?/g, '\n').split('\n');
+  // One pass over the RAW text: code spans and links become placeholders first,
+  // the rest is escaped, emphasis runs on tag-free text only, and the pieces go
+  // back in last. No regex ever runs over HTML built here, so a URL can't land
+  // inside another tag's attribute. URLs can't hold quotes, <, > or whitespace.
+  const MD_LINK = /`([^`]+)`|\[([^\]]+)\]\(((?:https?:\/\/|mailto:)[^)\s"'<>`]+)\)|(^|[\s(])(https?:\/\/[^\s"'<>`)]*[^\s"'<>`).,;:!?])/gi;
+  const ANCHOR = (href, html) => `<a href="${escAttr(href)}" target="_blank" rel="noopener noreferrer">${html}</a>`;
+  const emph = (t) => {
+    // Content classes exclude '<' (escaped text has none), so every tag added wraps plain text: always well-nested.
+    t = t.replace(/\*\*([^*<]+)\*\*/g, '<strong>$1</strong>').replace(/__([^_<]+)__/g, '<strong>$1</strong>');
+    t = t.replace(/(^|[^*\w])\*([^*\s<][^*<]*?)\*(?!\w)/g, '$1<em>$2</em>').replace(/(^|[^_\w])_([^_\s<][^_<]*?)_(?!\w)/g, '$1<em>$2</em>');
+    return t.replace(/~~([^~<]+)~~/g, '<del>$1</del>');
+  };
   const inline = (s) => {
-    let t = esc(s);
-    const codes = [];
-    t = t.replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return `\u0000${codes.length - 1}\u0000`; });
-    t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, label, url) => {
-      const u = safeUrl(url.replace(/&amp;/g, '&')) || (/^mailto:/i.test(url) ? url : '');
-      return u ? `<a href="${escAttr(u)}" target="_blank" rel="noopener noreferrer">${label}</a>` : m;
+    const parts = [];
+    const hold = (html) => { parts.push(html); return `\u0001${parts.length - 1}\u0001`; };
+    let t = String(s).replace(/[\u0000\u0001]/g, '');
+    t = t.replace(MD_LINK, (m, code, label, url, pre, bare) => {
+      if (code != null) return hold(`<code>${esc(code)}</code>`);
+      if (label != null) {
+        const u = /^mailto:/i.test(url) ? url : safeUrl(url);
+        return u ? hold(ANCHOR(u, emph(esc(label)))) : m;
+      }
+      const u = safeUrl(bare);
+      return u ? pre + hold(ANCHOR(u, esc(bare))) : m;
     });
-    t = t.replace(/(^|[\s(])((?:https?:\/\/)[^\s<)]+[^\s<).,;:!?'"])/g, (m, pre, url) => {
-      const u = safeUrl(url.replace(/&amp;/g, '&'));
-      return u ? `${pre}<a href="${escAttr(u)}" target="_blank" rel="noopener noreferrer">${url}</a>` : m;
-    });
-    t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/__([^_]+)__/g, '<strong>$1</strong>');
-    t = t.replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1<em>$2</em>').replace(/(^|[^_\w])_([^_\s][^_]*?)_(?!\w)/g, '$1<em>$2</em>');
-    t = t.replace(/~~([^~]+)~~/g, '<del>$1</del>');
-    t = t.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codes[Number(i)]}</code>`);
-    return t;
+    t = emph(esc(t));
+    return t.replace(/\u0001(\d+)\u0001/g, (_, i) => parts[Number(i)] || '');
   };
   const out = [];
   let list = null, para = [];

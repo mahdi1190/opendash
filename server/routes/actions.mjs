@@ -26,7 +26,7 @@ import { hostname } from 'node:os';
 import { createActions } from '../actions/index.mjs';
 import { QUERY_BY_NAME, QUERY_BY_TOOL } from '../actions/queries.mjs';
 import { ActionError, SOURCES } from '../actions/model.mjs';
-import { ensureLocalToken, tokenMatches, TOKEN_HEADER, writeRuntime, removeRuntime, removeRuntimeSync } from '../actions/auth.mjs';
+import { ensureLocalToken, tokenMatches, TOKEN_HEADER, pageKeyMatches, writeRuntime, removeRuntime, removeRuntimeSync } from '../actions/auth.mjs';
 import { createLiveSync } from '../live-sync.mjs';
 import { createFileWatch } from '../file-watch.mjs';
 import { installInfo } from '../../mcp/install.mjs';
@@ -69,6 +69,12 @@ export default function register(app) {
     const origin = c.req.headers.origin;
     const sfs = c.req.headers['sec-fetch-site'];
     const ours = origin === `http://localhost:${c.port}` || origin === `http://127.0.0.1:${c.port}`;
+    // A change from the page also needs the page key (server/actions/auth.mjs): a local
+    // program can send our Origin, but only the page served by this server has the key.
+    if (write && (ours || sfs === 'same-origin')) {
+      if (pageKeyMatches(c.req, c.pageKey)) return 'browser';
+      throw new ActionError('UNAUTHORIZED', 'this tab is out of date (OpenDash restarted): reload the page and try again');
+    }
     if (ours || sfs === 'same-origin') return 'browser';
     // A read typed into the address bar (Sec-Fetch-Site: none) is the user's own navigation.
     if (!write && sfs === 'none') return 'browser';

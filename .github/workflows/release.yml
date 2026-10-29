@@ -1,7 +1,9 @@
 # Release: pushing a tag vX.Y.Z (or vX.Y.Z-pre) builds the clean export,
 # scans it, packages it, proves the zip builds (no test suite: removed 23 Oct 2026), and
-# publishes a GitHub release with the zip, SHA256SUMS.txt and the changelog
-# section as notes. How to cut a release: docs/dev/RELEASING.md.
+# publishes a GitHub release with the zip, SHA256SUMS.txt, its Ed25519
+# signature SHA256SUMS.txt.sig (secret RELEASE_SIGNING_KEY; the in-app updater
+# refuses an unsigned release from 2.19.8 on) and the changelog section as
+# notes. How to cut a release: docs/dev/RELEASING.md.
 name: Release
 
 on:
@@ -71,6 +73,13 @@ jobs:
           --client-ids
           --no-tests
 
+      - name: Sign the checksums
+        env:
+          # The Ed25519 private key (PKCS#8 PEM). Missing or not matching the public key pinned in
+          # lib/updater.mjs: the release stops here (the app would refuse it anyway).
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: node tools/release-sign.mjs "$RUNNER_TEMP/dist/SHA256SUMS.txt"
+
       - name: Build provenance
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
@@ -87,6 +96,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             "$RUNNER_TEMP/dist/opendash-v$VERSION.zip" \
             "$RUNNER_TEMP/dist/SHA256SUMS.txt" \
+            "$RUNNER_TEMP/dist/SHA256SUMS.txt.sig" \
             --repo "$GITHUB_REPOSITORY" \
             --title "OpenDash v$VERSION" \
             --notes-file "$RUNNER_TEMP/dist/release-notes.md" \
@@ -108,15 +118,22 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
       - name: Build the installer from the published zip
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
         shell: pwsh
         run: |
           $version = $env:GITHUB_REF_NAME.TrimStart('v')
           $dl = Join-Path $env:RUNNER_TEMP 'dl'
-          gh release download $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY --dir $dl --pattern "opendash-v$version.zip" --pattern 'SHA256SUMS.txt'
+          gh release download $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY --dir $dl --pattern "opendash-v$version.zip" --pattern 'SHA256SUMS.txt' --pattern 'SHA256SUMS.txt.sig'
           if ($LASTEXITCODE -ne 0) { throw 'could not download the release zip' }
+          node tools/release-sign.mjs --verify (Join-Path $dl 'SHA256SUMS.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'the release checksums are not signed by the release key' }
           $want = ((Get-Content (Join-Path $dl 'SHA256SUMS.txt') | Select-Object -First 1) -split '\s+')[0].ToLower()
           $got = (Get-FileHash (Join-Path $dl "opendash-v$version.zip") -Algorithm SHA256).Hash.ToLower()
           if ($want -ne $got) { throw "zip checksum mismatch: $want vs $got" }
@@ -127,5 +144,7 @@ jobs:
           $exe = "OpenDash-Setup-$version.exe"
           $hash = (Get-FileHash (Join-Path $out $exe) -Algorithm SHA256).Hash.ToLower()
           Set-Content -Path (Join-Path $out 'SHA256SUMS-installer.txt') -Value "$hash  $exe" -Encoding ascii
-          gh release upload $env:GITHUB_REF_NAME (Join-Path $out $exe) (Join-Path $out 'SHA256SUMS-installer.txt') --repo $env:GITHUB_REPOSITORY --clobber
+          node tools/release-sign.mjs (Join-Path $out 'SHA256SUMS-installer.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'could not sign the installer checksum' }
+          gh release upload $env:GITHUB_REF_NAME (Join-Path $out $exe) (Join-Path $out 'SHA256SUMS-installer.txt') (Join-Path $out 'SHA256SUMS-installer.txt.sig') --repo $env:GITHUB_REPOSITORY --clobber
           if ($LASTEXITCODE -ne 0) { throw 'could not upload the installer' }

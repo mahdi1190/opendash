@@ -117,7 +117,10 @@ If it still fails, the relay can be deployed by hand:
 Paste their invite in **Friends > Add a friend > Paste an invite** (this also
 adds them as a friend), or in Settings > Your relay > *Use a friend's relay
 instead* (relay only). Their invite says what it allows: messaging you only,
-or also syncing your own devices through their relay.
+or also syncing your own devices through their relay. Until they approve your
+friend request, their relay lets you only message (with a small allowance);
+what the invite allows starts once they approve. So a forwarded or leaked
+invite link never gives a stranger room on anyone's relay.
 
 ### Who can use your relay
 
@@ -130,7 +133,12 @@ Settings > Your relay > **Who can use it** lists:
   (*Can message you*, or also *sync their devices*), and how much of their
   storage they use. *Revoke* takes their access away at once, with Undo; a
   revoked member can still be restored for 7 days, then their data on the
-  relay is deleted.
+  relay is deleted. While you are friends their access is renewed by itself
+  whenever your OpenDash runs (if it is not opened for about six months, it
+  runs out and they need a new invite); someone an invite let in who is no longer your friend
+  loses it after two months at the latest. Removing a friend, or a friend
+  removing you, takes their access away; if your relay can't be reached at
+  that moment, OpenDash keeps trying until it can.
 - **Pending invites**, with when each one ends, and *Cancel invite*. An
   invite works once and ends by itself.
 
@@ -142,6 +150,18 @@ part of that. The **Usage** card shows today's use as bars. If a limit is
 reached, the relay rests until midnight UTC: your devices keep syncing over
 your own network and your sync folder, and messages wait and are sent later.
 Nothing is ever upgraded or paid for automatically.
+
+Anyone who knows your relay's address (it is in every invite link) can send it
+requests, and every request counts towards the day's allowance, even one the
+relay refuses. Requests that are not signed, or are signed by a key that is not
+you or one of your members, are refused at the door, before they touch any
+stored data, so a stranger costs the relay as little as possible; the relay
+also limits each address to a few hundred requests a minute. A determined
+stranger with many addresses can still use up a day's free requests: the relay
+then rests until midnight UTC, as above. Nothing is lost or exposed, and
+nothing is charged. If that happens often, a custom domain for the relay lets a
+free Cloudflare rate-limiting rule stop such traffic before it reaches the
+relay.
 
 ### Disconnecting
 
@@ -221,7 +241,8 @@ The full list of fields each level sends is in
 On their page: **Remove friend** or **Block** (both with Undo for a few
 seconds).
 
-- They can no longer message you, and their access to your relay ends.
+- They can no longer message you, and their access to your relay ends
+  (also when *they* remove *you*).
 - Your copy of what they shared with you is deleted.
 - Their app is asked to delete what you shared with them.
 - **Block** also stops them sending you new requests.

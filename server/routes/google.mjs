@@ -4,8 +4,6 @@
 //   GET  /api/google/status       -> {configured, connected, account, snapshot:{inbox, calendar}, usable}
 //   GET  /api/google/connect      -> 302 to Connections (Google accounts are added there now:
 //                                    + Add Google account, /api/accounts); never a new single connection
-//   GET  /api/google/callback     <- Google redirects here with ?code= (the only /api/ route
-//                                    another site may navigate to; its state is checked)
 //   POST /api/google/disconnect   -> {ok}
 //   GET  /api/google/inbox?days=N -> {emails, source:'live'|'snapshot', fetchedAt?}
 //   GET  /api/google/person?email=-> {threads}
@@ -17,12 +15,12 @@
 
 import { existsSync } from 'node:fs';
 import {
-  googleStatus, exchangeCode, takeOauthState, recentEmails, personEmails, todayEvents, disconnect,
+  googleStatus, recentEmails, personEmails, todayEvents, disconnect,
 } from '../../lib/google.mjs';
 import { readJson } from '../../lib/fsutil.mjs';
 import { inboxFiles } from '../../lib/inbox.mjs';
 import { calendarFiles } from '../../lib/calendar.mjs';
-import { esc, HttpError } from '../http.mjs';
+import { HttpError } from '../http.mjs';
 
 export default function register(app) {
   const { paths, log } = app.ctx;
@@ -74,33 +72,6 @@ export default function register(app) {
     handler: async (c) => {
       c.res.writeHead(302, { Location: '/#view=connections', 'Cache-Control': 'no-store' });
       c.res.end();
-    },
-  });
-
-  app.route({
-    // Google's redirect is a navigation from another site: the one /api/ route that
-    // takes one (server/router.mjs). The state check below is what protects it.
-    path: '/api/google/callback', method: 'GET', crossSite: true,
-    handler: async (c) => {
-      const html = (title, body, code = 200) => c.send(code,
-        `<!doctype html><meta charset="utf-8"><title>${esc(title)}</title>`
-        + `<body style="font:16px system-ui;padding:3rem;max-width:34rem">${body}</body>`, 'text/html; charset=utf-8');
-      const code = c.query.get('code');
-      const err = c.query.get('error');
-      if (err) return html('Error', `<p>Google returned an error: ${esc(err)}. You can close this tab.</p>`, 400);
-      if (!code) return html('Error', '<p>No authorisation code returned. You can close this tab.</p>', 400);
-      // Only a sign-in this server started (Connect button) is accepted.
-      if (!takeOauthState(c.query.get('state'))) {
-        return html('Error', '<p>This sign-in link was not started from OpenDash, or it has expired. Open OpenDash and click Connect again.</p>', 400);
-      }
-      try {
-        const t = await exchangeCode(code, `http://localhost:${c.port}/api/google/callback`);
-        log('note', 'google connected');
-        return html('Connected', `<h2>Google connected</h2><p>Signed in as <b>${esc(t.account || 'your account')}</b>.</p>`
-          + '<p>Close this tab and go back to OpenDash. Email and calendar will be live after a refresh.</p>');
-      } catch (e) {
-        return html('Could not connect', `<h2>Could not connect</h2><pre>${esc(e.message)}</pre>`, 400);
-      }
     },
   });
 
