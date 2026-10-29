@@ -1,199 +1,364 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/brand/lockup-dark.svg">
-    <img alt="OpenDash" src="assets/brand/lockup.svg" height="64">
+    <img alt="OpenDash" src="assets/brand/lockup.svg" height="72">
   </picture>
 </p>
 
-<p align="center"><strong>Plan your day. Keep your data.</strong><br>
-A calm, local-first dashboard for your tasks, calendar, money and people, running on your own computer.</p>
+<h3 align="center">Plan your day. Keep your data.</h3>
+
+<p align="center">
+A calm, local-first dashboard for your tasks, calendar, money and friends.<br>
+It runs on your own computer. No account, no OpenDash server, no telemetry.
+</p>
 
 <p align="center">
   <a href="https://github.com/mahdi1190/opendash/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/mahdi1190/opendash?sort=semver&label=release&color=5b5bd6"></a>
-  <a href="https://github.com/mahdi1190/opendash/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mahdi1190/opendash/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="Licence: MIT" src="https://img.shields.io/badge/licence-MIT-5b5bd6"></a>
-  <a href="https://nodejs.org"><img alt="Node.js 20 or newer" src="https://img.shields.io/badge/node-%E2%89%A5%2020-339933?logo=nodedotjs&logoColor=white"></a>
-  <a href="package.json"><img alt="Zero dependencies" src="https://img.shields.io/badge/dependencies-0-2b9a5a"></a>
+  <img alt="Windows, macOS and Linux" src="https://img.shields.io/badge/runs%20on-Windows%20%7C%20macOS%20%7C%20Linux-2b2b55">
+  <img alt="No telemetry" src="https://img.shields.io/badge/telemetry-none-2b9a5a">
 </p>
 
 <p align="center">
-  <a href="https://github.com/mahdi1190/opendash/releases/latest"><strong>Download</strong></a> ·
-  <a href="#quick-start">Quick start</a> ·
-  <a href="#features">Features</a> ·
+  <a href="https://github.com/mahdi1190/opendash/releases/latest"><img alt="Download for Windows" src="https://img.shields.io/badge/Download%20for%20Windows-installer-5b5bd6?style=for-the-badge" height="44"></a>
+</p>
+
+<p align="center">
+  <sub><b>macOS and Linux:</b> download <code>opendash-v&lt;version&gt;.zip</code> from the same
+  <a href="https://github.com/mahdi1190/opendash/releases/latest">release page</a>, unzip it and run
+  <code>sh start-opendash.sh</code> (needs Node.js 20 or newer).<br>
+  <a href="https://mahdi1190.github.io/opendash/">Website</a> ·
+  <a href="#install">Install</a> ·
+  <a href="#private-by-design-secure-by-default">Security</a> ·
   <a href="docs/README.md">Documentation</a> ·
-  <a href="docs/PRIVACY.md">Privacy</a> ·
-  <a href="docs/CHANGELOG.md">Changelog</a>
+  <a href="docs/CHANGELOG.md">Changelog</a></sub>
 </p>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/home-dark.png">
-    <img alt="OpenDash Home: good morning, today in a sentence, the first Focus task and ideas for today (demo data)" src="docs/screenshots/home-light.png" width="900">
-  </picture>
+  <img alt="Customising Home: dragging the edge of a card to resize it while the others reflow (demo data)" src="docs/media/home-board.gif" width="900">
 </p>
 
-OpenDash puts your tasks, calendar, money and people on one page, with a short
-morning brief to start the day. No account, no cloud, no npm packages: a small
-Node.js server on your computer and one folder of data that is yours.
+OpenDash puts your day on one page: what is due, what is next, where the money
+went and who you are waiting on. It is a small Node.js server on your own
+computer and one folder of data that belongs to you. The cloud is optional, and
+when you use it, it is yours too.
 
-> Every screenshot shows invented demo data, the same kind you can load from
-> the welcome screen to look around.
+> Every screenshot and GIF shows invented demo data (the user is "Alex"; the
+> friends are made up). You can load the same data from the welcome screen.
 
-## Features
+## A tour
 
-### Home and the morning brief
-
-Today in a few sentences, the tasks that matter now (**Focus**), your schedule
-and its free stretches, the weather, countdowns and ideas for the day.
-**Play my morning** opens the day as a full-screen story, read aloud;
-**Finish the day** and the **Weekly review** close the loop.
-
-Stories use free browser speech by default. In **Settings > Home and stories**,
-you can connect your own **ElevenLabs** API key, choose an eligible voice, and
-use economical Flash narration or expressive Eleven v3. The selected voice
-narrates every spoken moment by default; the optional highlights setting uses
-the browser voice for supporting moments to save allowance. Claude writes the
-script with tone, pacing and pause cues when connected. Saved audio replays
-without generating it again; a monthly character cap and browser fallback
-keep stories working when the allowance runs out. Clips prepare before the
-intro starts, with progress on the opening screen; the playing story keeps
-its prepared words, and a later Claude rewrite is offered for replay.
-ElevenLabs receives the
-words you choose to narrate. Its free plan has voice and noncommercial-use
-restrictions; your own account's allowance applies.
-
-### Tasks
-
-Streams, priorities, tags, subtasks, people, repeats, estimates and a planned
-day separate from the due date. List or board views, quick add in plain words
-(<kbd>Q</kbd>: `Send Alex the slides fri 3pm #work !p1 ~1h`), search with
-operators, a Bin, and undo everywhere.
+### Home
 
 <table>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/task-card-dark.png">
-        <img alt="A task open in the centre card, with subtasks and details (demo data)" src="docs/screenshots/task-card-light.png">
-      </picture>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/calendar-week-dark.png">
-        <img alt="The calendar week view with events and due tasks (demo data)" src="docs/screenshots/calendar-week-light.png">
-      </picture>
-    </td>
-  </tr>
+<tr>
+<td width="62%">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/home-today-dark.png">
+  <img alt="Home: a morning card with today's meetings and tasks, the day so far in a sentence, ideas for today and the Focus list (demo data)" src="docs/media/home-today.png">
+</picture>
+</td>
+<td>
+<b>Your day at a glance.</b> A morning card, the day so far in one sentence,
+the next meeting, ideas for today and your cards. <b>Play my morning</b> opens
+the day as a short story, read aloud if you like.
+<br><br>
+<b>A board you arrange.</b> Resize any card by dragging its edge; the others
+make room. <b>Plan my week</b> drops tasks onto days with the free hours shown.
+</td>
+</tr>
 </table>
+
+<details>
+<summary>More of Home: Plan my week and the weekly review</summary>
+<br>
+<img alt="Plan my week: a list of tasks to plan beside seven day columns showing free hours (demo data)" src="docs/media/home-plan-week.png" width="49%">
+<img alt="The weekly review story's start screen with Play and Read it out (demo data)" src="docs/media/home-week-review.png" width="49%">
+</details>
+
+### Tasks and quick add
+
+<table>
+<tr>
+<td width="50%"><img alt="Quick add: pressing Q, typing a sentence with a date, stream, priority and estimate, and the chips appearing (demo data)" src="docs/media/quick-add.gif"></td>
+<td width="50%"><img alt="A task card with subtasks, a time suggestion and a focus timer (demo data)" src="docs/media/task-card.png"></td>
+</tr>
+<tr>
+<td>
+<b>Type it the way you would say it.</b> Press <kbd>Q</kbd> and write
+<code>Send Alex the slides fri 3pm #work !p1 ~1h</code>. The date, stream,
+priority and estimate become chips before you press Enter.
+</td>
+<td>
+<b>One card per task.</b> Subtasks, notes, people, repeats, an estimate, a
+planned day apart from the due date, and a focus timer. Undo works everywhere,
+and deleted tasks wait in the Bin.
+</td>
+</tr>
+</table>
+
+<details>
+<summary>All tasks</summary>
+<br>
+<img alt="The All tasks list, grouped and filterable (demo data)" src="docs/media/tasks-all.png">
+</details>
 
 ### Calendar
 
-Month, week, day and agenda views with tasks, planned blocks and countdowns
-beside your events. Drag a task onto the week to plan it. Events come from
-Google Calendar through Claude, a read-only calendar source, or a plain iCal
-link with no AI involved.
-
-### Finances
-
-**Connections > Money** brings every bank and wallet into one place:
-**Aureli** (via Claude), **Plasma One** (a public wallet address),
-**Monzo** directly, other UK and EU banks through **Enable Banking**, or a
-**CSV** export with no connection at all. Every connector is read-only by
-construction and credentials never leave your computer. Then the money brief
-tells you what is safe to spend, with spending, categories, cash flow,
-recurring payments and budgets behind it.
-
 <table>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/connections-money-dark.png">
-        <img alt="Connections > Money: Aureli, Plasma One, Monzo and Enable Banking side by side (demo data)" src="docs/screenshots/connections-money-light.png">
-      </picture>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/finance-overview-dark.png">
-        <img alt="The Finances overview: the money brief with safe to spend (sample data)" src="docs/screenshots/finance-overview-light.png">
-      </picture>
-    </td>
-  </tr>
+<tr>
+<td width="62%"><img alt="The calendar week view with events and due tasks side by side (demo data)" src="docs/media/calendar-week.png"></td>
+<td>
+<b>Events and due dates together.</b> Month, week, day and agenda views, with
+your tasks and planned blocks beside your meetings. Drag a task onto the week
+to plan it. Events come from your Google or Microsoft accounts, or from any
+iCal link.
+</td>
+</tr>
 </table>
 
-### Stories and animations with the live sky
+<details>
+<summary>The month view</summary>
+<br>
+<img alt="The calendar month view (demo data)" src="docs/media/calendar-month.png">
+</details>
 
-Openings and scenes for places around the world, drawn on a fast canvas
-engine, that follow the real sky where you are: sun, moon, season and weather.
-**Settings > Animations** has a searchable gallery with previews for dawn, day,
-dusk and night. Motion can be reduced or switched off.
-
-### The assistant and MCP
-
-Press <kbd>Ctrl</kbd>+<kbd>J</kbd> and ask in plain words. The optional Claude
-assistant **proposes** changes with a preview; nothing changes until you press
-**Apply**, and everything can be undone. OpenDash also ships its own
-[MCP server](docs/MCP.md), so Claude Code, T3 Code or Claude Desktop can work
-with your tasks, people and countdowns, with the safety rails enforced by
-OpenDash.
+### Money, the Money brief and the story
 
 <table>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/animations-dark.png">
-        <img alt="Settings > Animations: the Dallas skyline at dusk with time-of-day previews" src="docs/screenshots/animations-light.png">
-      </picture>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/assistant-dark.png">
-        <img alt="The assistant panel beside Home, with suggested questions (demo data)" src="docs/screenshots/assistant-light.png">
-      </picture>
-    </td>
-  </tr>
+<tr>
+<td width="62%">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/money-overview-dark.png">
+  <img alt="The Money board: safe to spend today, upcoming bills and subscriptions, and budgets (demo data)" src="docs/media/money-overview.png">
+</picture>
+</td>
+<td>
+<b>What is safe to spend today</b>, your bills and subscriptions, and budgets
+with a pace marker and a forecast. Import a bank CSV with no connection at
+all, or connect a bank read-only.
+<br><br>
+<b>Your money in three sentences.</b> The Money brief says how the month is
+going, and reads it aloud if you like.
+</td>
+</tr>
+<tr>
+<td><img alt="The money story playing: short animated scenes about the month (demo data)" src="docs/media/money-story.gif"></td>
+<td><b>A short animated story of your month</b>: where it went, what changed and
+what is coming up. Press <b>Play story</b> on the brief.</td>
+</tr>
 </table>
 
-Also: People with *I owe them* and *waiting on them*, files and links attached
-to tasks with auto-linking, a customisable Home, light and dark themes, and
-<kbd>Ctrl</kbd>+<kbd>K</kbd> for everything. The full tour is in
-[docs/USAGE.md](docs/USAGE.md).
+<details>
+<summary>The Money brief, spending and budgets</summary>
+<br>
+<img alt="The Money brief in three sentences with Read aloud and Play story (demo data)" src="docs/media/money-brief.png">
+<img alt="Spending: a donut by category and trends (demo data)" src="docs/media/money-spending.png" width="49%">
+<img alt="Budgets with rings, a pace marker and a forecast (demo data)" src="docs/media/money-budgets.png" width="49%">
+</details>
 
-## Local-first and private
+### Expenses and expense reports
 
-- **Your data stays on your computer**, as plain files in one folder, with
-  automatic backups. The server only listens on `127.0.0.1`.
-- **No account, no cloud, no analytics, no telemetry.** Nothing is ever sent to
-  the OpenDash project.
-- **The network is only used by features you switch on**, and only to reach
-  the service that feature names (Claude, a bank, an iCal link, the weather).
-- **Works offline**: tasks, the calendar view, Finances with CSV, people, the
-  brief and the stories all work without a connection.
+<table>
+<tr>
+<td width="50%"><img alt="Expenses: to claim, waiting and paid, with one expense open (demo data)" src="docs/media/expenses.png"></td>
+<td width="50%"><img alt="The Make expense report dialog (demo data)" src="docs/media/expense-report.png"></td>
+</tr>
+<tr>
+<td><b>Money you spent for someone else, until it is paid back.</b> Mark a
+purchase as an expense, drop in the receipt, and see what you are owed on
+Home. When the money arrives, OpenDash matches it and marks the claim paid.</td>
+<td><b>One click to a filled-in expense form.</b> Tick the expenses and press
+<b>Make expense report</b>: a PDF with your name, the rows, totals and your
+signature, plus the receipts zipped and named to match.</td>
+</tr>
+</table>
 
-[docs/PRIVACY.md](docs/PRIVACY.md) lists exactly what is stored where and when
-anything leaves your computer. Security problems: please report them
-privately, as described in [SECURITY.md](.github/SECURITY.md).
+### The assistant
 
-## Quick start
+<table>
+<tr>
+<td width="62%"><img alt="The assistant panel with a made-up conversation and a proposed change waiting for Apply (demo data; nothing was sent to Claude)" src="docs/media/assistant.png"></td>
+<td>
+<b>Ask in plain words.</b> "Move everything for Acme to next Monday." The
+assistant looks things up and <b>proposes</b> the change; nothing happens
+until you press <b>Apply</b>, and every change can be undone.
+<br><br>
+It is optional and runs through <b>your own</b> Claude Code, on your own
+plan. It has no shell and no file tools.
+</td>
+</tr>
+</table>
 
-You need [Node.js](https://nodejs.org) 20 or newer (the LTS version).
+### Friends and shared spaces
 
-1. **Download** `opendash-v<version>.zip` from the
-   [latest release](https://github.com/mahdi1190/opendash/releases/latest)
-   and unzip it.
-2. **Run** `start-opendash.bat` (Windows, double-click) or
-   `sh start-opendash.sh` (macOS and Linux).
-3. **Open** <http://localhost:4173> (the launcher opens it for you), then
-   follow the short welcome, or choose **Load demo data** to look around.
+<table>
+<tr>
+<td width="50%"><img alt="Friends: a list with presence and a friend's profile card (demo data; the friends are made up)" src="docs/media/friends.png"></td>
+<td width="50%"><img alt="Making a shared list with two friends and adding items (demo data)" src="docs/media/together.gif"></td>
+</tr>
+<tr>
+<td><b>Friends, privately.</b> See who is around, cheer each other on and
+compare streaks. A new friend sees only your profile, game progress and
+garden; you choose anything more, per friend.</td>
+<td><b>Do things together.</b> Shared lists, boards, parties and trips with the
+friends you pick. Everything between friends is end-to-end encrypted.</td>
+</tr>
+</table>
 
-Keep the launcher window open while you use OpenDash. Options, per-system steps
-and uninstalling are in the [install guide](docs/INSTALL.md).
+### Garden, pets, wardrobe and achievements
 
-## Updates
+<table>
+<tr>
+<td width="50%"><img alt="The garden game: the plot, tools and goals (demo data)" src="docs/media/garden.png"></td>
+<td width="50%"><img alt="The garden's Shop, Almanac and Basket tabs (demo data)" src="docs/media/garden-tour.gif"></td>
+</tr>
+<tr>
+<td colspan="2"><b>A garden you can really play in.</b> Plant, water, harvest
+and decorate, with seasons, a shop and an almanac. Coins come from focus time,
+so a good day of work grows something. Friends can visit and water a plant.</td>
+</tr>
+<tr>
+<td><img alt="Patting a pet, giving a treat and doing a trick (demo data)" src="docs/media/pet-treat.gif"></td>
+<td><img alt="The avatar builder with outfits (demo data)" src="docs/media/wardrobe.png"></td>
+</tr>
+<tr>
+<td><b>A companion that grows with what you do.</b> Adopt a pet from 18
+species, teach it tricks and read its journal.</td>
+<td><b>Dress your character.</b> Clothes, saved outfits, expressions and
+<i>Surprise me</i>.</td>
+</tr>
+</table>
 
-**Settings > Updates > Check for updates** asks GitHub for the newest release
-(nothing about you is sent), shows what is new, and **Update** installs it: the
-zip is verified against its published SHA-256, the replaced files are backed
-up and the server restarts. A once-a-day check is available and off by default.
+<details>
+<summary>Achievements and pets</summary>
+<br>
+<img alt="Level, quests, streaks and achievements (demo data)" src="docs/media/achievements.png" width="49%">
+<img alt="A pet's page with tricks and a journal (demo data)" src="docs/media/pets.png" width="49%">
+</details>
+
+The fun level can be Off, Subtle or Full (Settings > Game).
+
+### Places and Memories
+
+<table>
+<tr>
+<td width="50%"><img alt="Places: an overview and a travel timeline (demo data)" src="docs/media/places.png"></td>
+<td width="50%"><img alt="The Memories journal (demo data)" src="docs/media/memories.png"></td>
+</tr>
+<tr>
+<td><b>Where you have been.</b> Countries and cities, firsts, trips and a
+passport with spending per country. The history stays on your own
+devices.</td>
+<td><b>A private journal written for you each day</b>, with a mood,
+<i>On this day</i>, time capsules, postcards and <i>Play my year</i>.</td>
+</tr>
+</table>
+
+### The command palette and What's new
+
+<table>
+<tr>
+<td width="50%"><img alt="The Ctrl+K command palette: typing money and arrowing through the results (demo data)" src="docs/media/palette.gif"></td>
+<td width="50%"><img alt="The What's new tour spotlighting the Money brief (demo data)" src="docs/media/whats-new.png"></td>
+</tr>
+<tr>
+<td><b>Jump anywhere or run anything with <kbd>Ctrl</kbd>+<kbd>K</kbd>.</b>
+Pages, commands, tasks, people and every setting, by a few letters.</td>
+<td><b>A guided tour of each release.</b> After an update, What's new points
+at the new things in place.</td>
+</tr>
+</table>
+
+## Private by design, secure by default
+
+OpenDash holds personal things: tasks, people, calendars and money. It is built
+so that they stay yours.
+
+- **Local-first.** Your data is one folder on your computer. There is no
+  OpenDash server, no account, no analytics and no telemetry. Nothing is ever
+  sent to the project.
+- **The local server stays local.** It listens only on `127.0.0.1`, and
+  checks every request's Host, Origin and Sec-Fetch headers, so websites you
+  visit can't reach it or trick it into acting. A strict
+  Content Security Policy allows no inline scripts except the app's own,
+  pinned by hash.
+- **End-to-end encrypted sync and friends**, with standard primitives:
+  AES-256-GCM, X25519, Ed25519 and HKDF. The relay passes sealed messages it
+  can't read.
+- **You host the relay.** It runs on your own free Cloudflare account, and only
+  your devices and people you approve can use it. Every request is signed.
+- **Your devices sign their records.** Removing a device rotates the keys and
+  makes a new recovery code, so a lost laptop can't read new data or rewrite
+  old data.
+- **Signed updates.** Updates come only from this project's GitHub releases
+  and must carry a valid Ed25519 signature. Unsigned or older releases are
+  refused.
+- **An assistant on a short lead.** It has no shell and no file tools. It
+  proposes changes and you approve them. (The one thing it may do directly is
+  file an expense you asked for, and that has Undo.)
+- **Untrusted text stays text.** Emails, calendar invites, bank memos, invites
+  and friends' data are escaped before they reach the page. When the AI reads
+  them, they are data, and they can't change anything without your click.
+- **Reviewed before launch.** Before this release, six independent AI security
+  reviewers each examined one area end to end: the local server, encryption
+  and sync, the relay and friends, untrusted content, the AI tools and the
+  release pipeline. It was a structured review, not a paid human audit. Every
+  finding was fixed in [2.20.0](docs/CHANGELOG.md), apart from the first two
+  limits below, which need a signing certificate and OS key storage.
+
+**The honest limits.** The Windows installer is not code-signed yet, so
+SmartScreen warns once (each release publishes SHA-256 checksums to check it
+against). Sign-ins and keys on your computer are files that your own Windows
+account can read, as with most desktop apps; use disk encryption. Your relay
+runs on Cloudflare's free tier, so a flood of requests can pause it until
+midnight UTC (it never exposes data).
+
+The details: [docs/PRIVACY.md](docs/PRIVACY.md) (what is stored, where, and
+when anything leaves your computer) and [SECURITY.md](.github/SECURITY.md)
+(the threat model and how to report a problem privately).
+
+## Cloud is optional
+
+You never need the cloud. You choose how far your data goes.
+
+| Level | What it means | Who can read your data |
+|---|---|---|
+| **1. Local only** (the default) | Everything stays in one folder on this computer. | You |
+| **2. Your own devices** | Your computers stay in step through a relay **you** host on **your own** free Cloudflare account (one click in Settings > Your relay). A OneDrive, Google Drive or Dropbox folder can hold an encrypted backup copy. | You, on your own devices |
+| **3. Friends** | Friends connect to you, you both check a 6-digit code, and you approve them. They can use your relay or host their own. Each friend sees only what you choose for them. | You, and each friend only what you picked |
+
+For the most privacy, host your own relay, or stay local and use the relay only
+between your own devices. There is no OpenDash cloud at any level.
+
+<p align="center">
+<img alt="Settings > Sync: off, with 'your data stays on this computer' (demo data)" src="docs/media/settings-sync.png" width="49%">
+<img alt="Settings > Your relay: Set up my relay on your own Cloudflare account (demo data)" src="docs/media/settings-relay.png" width="49%">
+</p>
+
+## Install
+
+**Windows (recommended):** download `OpenDash-Setup-<version>.exe` from the
+[latest release](https://github.com/mahdi1190/opendash/releases/latest) and run
+it. It needs no administrator rights and includes Node.js. SmartScreen may say
+"Windows protected your PC": choose **More info**, then **Run anyway**, after
+checking the file against `SHA256SUMS-installer.txt` on the release.
+
+**macOS, Linux, or Windows without the installer:**
+
+1. Install [Node.js](https://nodejs.org) 20 or newer (the LTS version).
+2. Download `opendash-v<version>.zip` from the
+   [latest release](https://github.com/mahdi1190/opendash/releases/latest) and
+   unzip it.
+3. Run `sh start-opendash.sh` (macOS and Linux) or double-click
+   `start-opendash.bat` (Windows).
+4. Your browser opens <http://localhost:4173>. Follow the short welcome, or
+   choose **Load demo data** to look around.
+
+**Updates** are built in: Settings > Updates checks GitHub when you ask,
+verifies the signature and checksum, backs up the replaced files and restarts.
+Your data folder is never touched. Full steps are in the
+[install guide](docs/INSTALL.md).
 
 ## Documentation
 
@@ -201,30 +366,20 @@ up and the server restarts. A once-a-day check is available and off by default.
 |---|---|
 | [Install](docs/INSTALL.md) | Windows, macOS and Linux, options, updating, uninstalling |
 | [Using OpenDash](docs/USAGE.md) | a tour of every area, quick add and keyboard shortcuts |
-| [Connections](docs/CONNECTIONS.md) | Claude Code, Gmail, Google Calendar, banks, iCal links |
+| [Friends guide](docs/FRIENDS_GUIDE.md) | your relay, invites, what friends can see |
+| [Connections](docs/CONNECTIONS.md) | Claude Code, email and calendar accounts, banks, iCal links |
 | [MCP server](docs/MCP.md) | using OpenDash from Claude Code, T3 Code or Claude Desktop |
 | [Privacy](docs/PRIVACY.md) | what is stored where, and when anything leaves your computer |
+| [Security](.github/SECURITY.md) | the threat model, the safeguards and how to report a problem |
 | [FAQ](docs/FAQ.md) | common questions |
 | [Architecture](docs/ARCHITECTURE.md) | how the code is organised, for contributors |
+| [Roadmap](docs/ROADMAP.md) | what comes next |
 | [Changelog](docs/CHANGELOG.md) | what changed in each release |
 
-## Roadmap
-
-Local-first stays the default; anything involving the cloud, accounts or other
-devices will be optional, opt-in and end-to-end encrypted. Coming up: more
-animation packs and moments across the app, and later **OpenDash Everywhere**,
-a phone app with encrypted sync between your devices. The plan is in
-[docs/ROADMAP.md](docs/ROADMAP.md); ideas are welcome in
+Bug reports, ideas and pull requests are welcome: see the
+[contributing guide](.github/CONTRIBUTING.md), and please use demo data in
+every screenshot and report. Questions go to
 [Discussions](https://github.com/mahdi1190/opendash/discussions).
-
-## Contributing
-
-Bug reports, ideas, documentation fixes and pull requests are all welcome.
-Start with the [contributing guide](.github/CONTRIBUTING.md) (there is nothing
-to install) and the [code of conduct](.github/CODE_OF_CONDUCT.md), and please
-use demo data in every screenshot and bug report. Questions go to
-[Discussions](https://github.com/mahdi1190/opendash/discussions); see
-[SUPPORT.md](.github/SUPPORT.md).
 
 ## Licence
 

@@ -4,30 +4,49 @@ OpenDash runs on your own computer: a small local server (Node.js) and a page
 in your browser at <http://localhost:4173>. There is no account, no database
 and no `npm install`. Your data stays in one folder on your computer.
 
-## Windows: the quick way
+## Windows: the installer (recommended)
 
-Download **`OpenDash-Setup-<version>.exe`** from the
-[Releases page](https://github.com/mahdi1190/opendash/releases/latest) and run
-it. That is all: it includes everything OpenDash needs (you do not install
-Node.js), asks for no administrator rights, and adds an **OpenDash** shortcut
-to the Start menu (and, if you tick it, the desktop). The shortcut starts
-OpenDash with no window if it is not running, then opens it in your browser.
+<!-- media: the Windows installer's options page (desktop shortcut, start when I sign in) -->
 
-- It installs to `%LOCALAPPDATA%\Programs\OpenDash`. Your data lives
-  separately in `%LOCALAPPDATA%\OpenDash\data`, so updating, reinstalling or
-  uninstalling never touches it (the uninstaller asks, and the default is to
-  keep it).
-- In-app updates (Settings > Updates) keep working.
-- **The installer is not code-signed yet**, so Windows SmartScreen may show
-  "Windows protected your PC". Click **More info**, then **Run anyway**. You
-  can check the download against `SHA256SUMS-installer.txt` on the release.
-- The AI assistant is optional and separate: install Claude Code yourself from
-  Anthropic's page (see [CONNECTIONS.md](CONNECTIONS.md)); the installer does
-  not install it.
+1. Download **`OpenDash-Setup-<version>.exe`** from the
+   [Releases page](https://github.com/mahdi1190/opendash/releases/latest).
+2. Run it. If Windows SmartScreen says **"Windows protected your PC"**, click
+   **More info**, then **Run anyway**. The installer is not code-signed yet,
+   so Windows does not recognise it; that is the only reason for the warning.
+   To be sure your copy is the real one, compare it with
+   `SHA256SUMS-installer.txt` on the release
+   (`Get-FileHash .\OpenDash-Setup-<version>.exe -Algorithm SHA256`).
+3. Tick what you would like (both are off unless you tick them):
+   - **Create a desktop shortcut**;
+   - **Start OpenDash when I sign in** (it starts with no window and does not
+     open the browser).
+4. Finish, with **Open OpenDash now** ticked. Your browser opens
+   <http://localhost:4173> and the [first run](#the-first-run) begins.
 
-The rest of this page is the zip route, which also works on macOS and Linux.
-On any computer, Settings > Server > Starting OpenDash can add a desktop
-shortcut (and, on Windows, a Start menu entry) for a zip install.
+What it does, and does not do:
+
+| | |
+|---|---|
+| Administrator rights | none: it installs for your Windows account only |
+| Node.js | included (a pinned copy in the app's `runtime\` folder); you do not install anything else |
+| The app | `%LOCALAPPDATA%\Programs\OpenDash` |
+| Your data | `%LOCALAPPDATA%\OpenDash\data`, kept apart from the app, so updating or reinstalling never touches it |
+| Start menu | **OpenDash** (starts it with no window if it is not running, then opens it in your browser) and **Stop OpenDash** |
+| Updates | Settings > Updates, as for any copy ([Updating](#updating)) |
+| Uninstalling | Windows Settings > Apps > Installed apps > OpenDash > *Uninstall*. It asks **"Also delete my data?"**; the default, *No*, keeps your data for a later reinstall |
+| Claude Code | not installed: the AI features are optional, see [CONNECTIONS.md](CONNECTIONS.md#claude-claude-code-on-this-computer) |
+
+One thing still needs a separate Node.js: setting up **your own relay** for
+Friends and sync (Settings > Your relay > *Set up my relay*) runs Cloudflare's
+tool through `npx`, which the installer does not include. Install the LTS
+version from <https://nodejs.org> first if you want your own relay. Using a
+friend's relay needs nothing extra.
+
+Already using the zip version on this computer? See
+[Moving to the installer version](#moving-to-the-installer-version).
+
+The rest of this page is the zip route, which works on Windows, macOS and
+Linux.
 
 - [What you need](#what-you-need)
 - [Windows](#windows)
@@ -37,6 +56,7 @@ shortcut (and, on Windows, a Start menu entry) for a zip install.
 - [Launcher options](#launcher-options)
 - [Where your data lives](#where-your-data-lives)
 - [Updating to a new release](#updating)
+- [Moving to the installer version](#moving-to-the-installer-version)
 - [Uninstalling](#uninstalling)
 - [If something goes wrong](#if-something-goes-wrong)
 
@@ -44,7 +64,7 @@ shortcut (and, on Windows, a Start menu entry) for a zip install.
 
 | What | Needed for | Where to get it |
 |---|---|---|
-| **Node.js 20 or newer** | everything | <https://nodejs.org> (choose the LTS version) |
+| **Node.js 20 or newer** | everything (the Windows installer includes it) | <https://nodejs.org> (choose the LTS version) |
 | A modern browser | everything | Chrome, Edge, Firefox or Safari |
 | **Claude Code** (optional) | the assistant, smart suggestions, Gmail, Calendar and bank sync | see [CONNECTIONS.md](CONNECTIONS.md) |
 
@@ -113,9 +133,10 @@ attestation. With the GitHub CLI you can check it:
    <http://localhost:4173>. Keep the window open while you use OpenDash; closing
    it (or pressing Ctrl+C) stops OpenDash.
 
-5. **Optional shortcut**: right-click `start-opendash.bat`, choose
-   *Show more options* > *Send to* > *Desktop (create shortcut)*, and rename the
-   shortcut "OpenDash".
+5. **Optional shortcut**: in OpenDash, open **Settings > Server >
+   Starting OpenDash** and press **Add a desktop shortcut** or **Add to Start
+   menu**. The shortcut starts OpenDash with no window if it is not running,
+   then opens it in your browser, so you do not need the console window.
 
 To start OpenDash automatically when you log in, without a window, turn on
 *Start automatically when I log in* in **Settings > Server** (off by default,
@@ -156,8 +177,10 @@ for your account only, no administrator rights needed).
    Running it with `sh` works even if the file lost its "executable" flag. To
    use `./start-opendash.sh` instead, run `chmod +x start-opendash.sh` once.
 
-To start it at login, **Settings > Server** shows how to add a Login Item or a
-LaunchAgent that runs `start-opendash.sh --no-open`.
+**Settings > Server > Starting OpenDash > Add a desktop shortcut** puts an
+`OpenDash.command` on your desktop that starts OpenDash (if it is not running)
+and opens it. To start it at login, the same page shows how to add a Login
+Item or a LaunchAgent that runs `start-opendash.sh --no-open`.
 
 ## Linux
 
@@ -190,7 +213,9 @@ LaunchAgent that runs `start-opendash.sh --no-open`.
    OpenDash opens <http://localhost:4173> with `xdg-open`. On a machine without
    a desktop browser, add `--no-open` and open the address yourself.
 
-To start it at login, **Settings > Server** shows how to add an entry to
+**Settings > Server > Starting OpenDash > Add a desktop shortcut** adds an
+OpenDash entry to your applications menu (and to `~/Desktop`, if you have
+one). To start it at login, the same page shows how to add an entry to
 `~/.config/autostart` or a systemd user service that runs
 `start-opendash.sh --no-open`.
 
@@ -215,7 +240,7 @@ The first time, a short welcome asks for:
    finds it by itself ([PRIVACY.md](PRIVACY.md#what-is-sent-to-claude-and-when)).
 
 Then you land on **Home**; from the next day the Morning brief opens by itself
-on your first visit (Settings > Morning brief turns that off). Press <kbd>Q</kbd>
+on your first visit (Settings > Brief and stories turns that off). Press <kbd>Q</kbd>
 to add your first task. Everything can be changed later in **Settings**. If you
 like, open **Connections** to connect Claude, your calendar, email or bank
 ([CONNECTIONS.md](CONNECTIONS.md)). OpenDash works fully without them.
@@ -263,7 +288,8 @@ starts the server under a small supervisor that restarts it if it crashes.
 ## Where your data lives
 
 Everything that is yours lives in **one data folder**: `data/` next to the
-app, unless you chose another one. The app's own files never contain your data,
+app for a zip install, `%LOCALAPPDATA%\OpenDash\data` for the Windows
+installer, or the folder you chose. The app's own files never contain your data,
 so you can replace them freely.
 
 | What | Where |
@@ -394,6 +420,25 @@ still runs on the computer you clicked.
 Your data is never inside the app's code, so updating means: new app files,
 same data folder.
 
+### The easy way: Settings > Updates
+
+**Settings > Updates > Check for updates** asks GitHub for the newest release.
+If there is one, it shows what is new and **Update and restart**: OpenDash
+downloads the release zip, checks it against the release's `SHA256SUMS.txt`,
+copies the files it replaces into `data/update-backup/<old version>/`, then
+rebuilds and restarts, showing each step. If the new version does not build,
+the previous one runs again. Your data folder, sign-ins and (installer)
+`runtime\` folder are never touched.
+
+*Check for updates once a day* (off by default) lets the page check by itself.
+Checking is the only time OpenDash contacts GitHub, and it only downloads; it
+never sends anything about you.
+
+**Installer users** can also run a newer `OpenDash-Setup-<version>.exe` over
+the old one: it stops OpenDash, replaces the app and keeps your data.
+
+### By hand (zip installs)
+
 1. **Optional**: Settings > Data > *Export all data (.zip)* for an extra copy.
 2. **Stop OpenDash**: Settings > Server > *Stop server*, or close its window.
 3. **Windows only**: if you turned on *Start automatically when I log in* or
@@ -437,7 +482,43 @@ The copy leaves out the backup folders (`backups/`, `state/backups/` and the
 finance backups) and the logs, so those start empty. Copies are kept for the
 last 5 upgrades.
 
+## Moving to the installer version
+
+If you have been using the zip version on Windows and want the installer,
+bring your data across like this:
+
+1. In the zip version, **Settings > Data > Export all data (.zip)** for a
+   spare copy.
+2. In the zip version's **Settings > Server**, turn off *Start automatically
+   when I log in* and *Enable the Start server button*, then **Stop server**.
+   (Both copies use port 4173, so only one can run at a time.)
+3. Run **`OpenDash-Setup-<version>.exe`**, but untick *Open OpenDash now* on
+   the last page. If it did open, choose **Stop OpenDash** in the Start menu.
+4. Copy **everything inside** the zip version's `data` folder into
+   `%LOCALAPPDATA%\OpenDash\data` (paste that into File Explorer's address
+   bar), replacing what the installer put there. If you used `--data-dir` or
+   moved your data out of OneDrive, copy from that folder instead.
+5. Start **OpenDash** from the Start menu. Your tasks, settings and history
+   are there. Your sign-ins stay on this computer (they were never in the data
+   folder), so connections normally keep working; if one asks you to sign in
+   again, do so.
+6. If you use the OpenDash MCP server, open Connections > OpenDash MCP: it
+   says when your Claude still points at the old app folder and shows the
+   command to fix it ([MCP.md](MCP.md)).
+7. Once everything works, delete the old zip folder.
+
+Instead of step 4 you can use **Settings > Data > Import data** in the new
+copy, with the zip you exported in step 1.
+
 ## Uninstalling
+
+**Installed with `OpenDash-Setup`?** Use Windows Settings > Apps > Installed
+apps > OpenDash > *Uninstall*. It stops OpenDash, removes the app, the Start
+menu entries and the sign-in start, and asks **"Also delete my data?"**: *No*
+(the default) keeps `%LOCALAPPDATA%\OpenDash\data` for a later reinstall,
+*Yes* deletes it for good. Steps 3 and 6 below still apply.
+
+**A zip install:**
 
 1. **Optional**: Settings > Data > *Export all data (.zip)* if you want to keep
    your data.
@@ -468,6 +549,7 @@ last 5 upgrades.
 
 | Problem | What to do |
 |---|---|
+| "Windows protected your PC" when you run the installer | the installer is not code-signed yet: click **More info**, then **Run anyway** ([above](#windows-the-installer-recommended)) |
 | "Node.js is not installed" or "needs Node.js 20 or newer" | install the current LTS from <https://nodejs.org>, then open a new terminal window |
 | "Port 4173 is in use by something that is not OpenDash" | another program uses the port (if it is OpenDash itself, the launcher just opens it): start with `--port 4174`, as in [Launcher options](#launcher-options) |
 | The page says the server isn't running | start it with the launcher; Settings > Server > *Open log* (or `data/logs/server.log`) says why it stopped |

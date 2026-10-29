@@ -28,6 +28,8 @@ the page and at most once an hour; *Check again* runs one now.
 ```
  OpenDash (this computer)
    │
+   ├── email and calendar accounts (Microsoft, Google, other email by app
+   │     password) ── read directly by OpenDash, no AI involved, read-only
    ├── Claude Code CLI ("claude"), signed in to YOUR Claude account
    │     ├── the assistant, summaries, suggestions (no tools by default)
    │     └── MCP connectors you set up in Claude: Gmail, Google Calendar,
@@ -39,9 +41,11 @@ the page and at most once an hour; *Check again* runs one now.
    └── bank CSV files ── imported directly, no connection needed
 ```
 
-OpenDash never asks for, sees or stores a password for Claude, Google or your
-bank. Sign-in happens on claude.ai, in Claude's own window or on your bank's
-own page. The direct bank connections are the one place OpenDash keeps a
+OpenDash never asks for, sees or stores a password for Claude, Microsoft,
+Google or your bank. Sign-in happens on claude.ai, in Claude's own window, on
+Microsoft's or Google's own page, or on your bank's own page. (For *Other
+email*, you make an app password just for OpenDash; it stays on this
+computer.) The direct bank connections are the one place OpenDash keeps a
 credential: the Monzo client and sign-in you create, or your Enable Banking key
 file. They stay on this computer, in its private folder outside the data
 folder (`secrets/fin/` there, see [INSTALL.md](INSTALL.md)), are never shown
@@ -57,6 +61,8 @@ accounts you already have, as many as you like, side by side: a personal
 Hotmail, a personal Gmail and a work Outlook, for example.
 
 At the top of **Connections**, under *Your email and calendar accounts*:
+
+<!-- media: Connections, "Your email and calendar accounts" with a Microsoft and a Google account connected -->
 
 > **Coming soon in some copies.** The one-click Microsoft and Google buttons
 > need an app registration that the copy of OpenDash ships with. When a copy
@@ -161,7 +167,8 @@ terminal as proof that the browser session is connected.
 
 If the automatic setup needs attention, the manual fallback is:
 
-1. **Install Claude Code**:
+1. **Install Claude Code** by following Anthropic's official setup page,
+   <https://code.claude.com/docs/en/setup>. In short:
 
    - Windows (PowerShell):
 
@@ -351,7 +358,7 @@ you like, each with its own accounts:
 
 Each source, calendar, mailbox or bank account can be switched off on its own.
 Calendars that belong to other people (named after an address that is not one
-of yours) start hidden; add your own addresses in Settings > Profile >
+of yours) start hidden; add your own addresses in Settings > Region & language >
 *Your email addresses* so your calendars are recognised. If you show one, its
 events appear in the Calendar only; Home, the brief and the stories keep to
 your own calendars and the events you are invited to.

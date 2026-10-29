@@ -1,9 +1,11 @@
 # Friends: a plain guide
 
-Friends (OpenDash 2.17) lets you add people who also use OpenDash, cheer each
-other on, see each other's levels and streaks, and do things together. This
-guide explains, without jargon, what friends can see, how messages travel,
-how to remove someone, and what OpenDash cannot promise.
+Friends lets you add people who also use OpenDash, cheer each other on, see
+each other's levels and streaks, share as much or as little as you like, and
+do things together: shared lists, gardens, pets and more. Friends lives in
+**Life** (the fifth area, beside Home, Tasks, Calendar and Money). This guide
+explains, without jargon, what friends can see, how messages travel, how to
+remove someone, and what OpenDash cannot promise.
 
 The technical design is in [docs/dev/FRIENDS.md](dev/FRIENDS.md) and
 [docs/dev/RELAY_PROTOCOL.md](dev/RELAY_PROTOCOL.md). Exactly which fields each
@@ -13,6 +15,9 @@ sharing level sends is in [PRIVACY.md](PRIVACY.md#friends).
 - [Your relay](#your-relay)
 - [Adding a friend](#adding-a-friend)
 - [What friends can see](#what-friends-can-see)
+- [Seeing what friends share with you](#seeing-what-friends-share-with-you)
+- [Doing things together](#doing-things-together)
+- [Your card, wardrobe, garden and pet](#your-card-wardrobe-garden-and-pet)
 - [Privacy: what travels, and who can see it](#privacy-what-travels-and-who-can-see-it)
 - [Removing or blocking someone](#removing-or-blocking-someone)
 - [What cannot be forced](#what-cannot-be-forced)
@@ -20,8 +25,9 @@ sharing level sends is in [PRIVACY.md](PRIVACY.md#friends).
 
 ## Getting started
 
-Click your avatar in the sidebar's top-left corner (until you have a
-profile it shows your workspace icon) and choose **Open Friends**. The
+Open **Life > Friends**, or click your avatar in the sidebar's top-left
+corner (until you have a profile it shows your workspace icon) and choose
+**Open Friends**. The
 same menu has *Set status*, *Add a friend*, *What my friends can see*, *Your
 relay* and *Sync*; a green dot on your avatar means a friend is around, and
 a number means someone is waiting for you. (Want Friends in the sidebar as
@@ -30,8 +36,8 @@ well? *Customise sidebar*, Home > Friends.)
 Until you have a friend, a short welcome walks you through three steps,
 with a progress bar:
 
-1. **Make your character.** Opens the character builder (Settings >
-   Profile). Friends see your character next to your name. If you like the
+1. **Make your character.** Opens the character builder (Life > Profile >
+   *Avatar and wardrobe*). Friends see your character next to your name. If you like the
    starting one, choose *It looks fine as it is*.
 2. **Get a relay.** Choose *Set up my relay* (free, about 2 minutes) or
    *Paste a friend's invite* to use a friend's relay. See
@@ -66,7 +72,9 @@ welcome). It takes about two minutes. You will see each step tick off:
 1. **Get Cloudflare's tool.** OpenDash uses Cloudflare's own tool,
    *wrangler*. The first time, it is downloaded ("Downloading Cloudflare's
    tool (first time only)…"); later it starts in seconds. It needs Node.js 20
-   or newer, which OpenDash already uses.
+   or newer with `npx`. A zip install already has it. The **Windows
+   installer** includes only Node.js itself, without `npx`, so install the LTS
+   version from nodejs.org once before you set up your own relay.
 2. **Sign in to Cloudflare.** A Cloudflare page opens in your browser:
    **click Allow**. No account yet? Create a free one on that page first. If
    no page opened, the step shows a link to open it. OpenDash never sees your
@@ -194,9 +202,14 @@ would not match. If the codes differ, choose *The codes are different*.
 
 **Nothing private until you say so.** A new friend sees only:
 
-- your **profile**: your name, your character, and the bio, emoji, colour,
-  pronouns and city you chose to fill in;
-- your **game progress**: level, title, XP, streaks, quests and focus minutes.
+- your **profile**: your name, your character and outfit, your card's banner,
+  nameplate and title, your pet, and the bio, emoji, colour, pronouns and city
+  you chose to fill in;
+- your **game progress**: level, title, XP, streaks, quests and focus minutes;
+- your **garden**: the plants and decorations and how they are growing (never
+  your tasks or anything you wrote).
+
+Each of these three can be set to *Hidden* for any friend.
 
 Everything else (tasks, calendar, money, places, memories and journal,
 whether you are online) starts **off**, for every friend. On a friend's page,
@@ -212,6 +225,67 @@ or what you are doing.
 
 The full list of fields each level sends is in
 [PRIVACY.md](PRIVACY.md#friends).
+
+## Seeing what friends share with you
+
+<!-- media: Friends > Shared with me, a friend's tasks shown read-only -->
+
+When a friend shares something with you, you can browse it much like your own
+data, **read-only**:
+
+- **Friends > Shared with me**: pick a friend on the left, then their
+  **Tasks**, **Calendar**, **Money**, **Places** or **Memories**. Only the
+  areas they chose to share appear. Each page says whose it is.
+- **The Mine switch**: Tasks, Calendar and Money have a small *Mine* switch in
+  the header. Pick a friend who shares that area to look at theirs, then *Back
+  to mine*.
+- **Alongside your own**: *Show friends' tasks* (Tasks) and *Show friends'
+  events* (Calendar) mix what they share into your views; Money can show a
+  *Friends' money* summary when someone shares money with you.
+- **View their data** on a friend's page opens the same place.
+
+New shares appear by themselves. Nothing a friend shares can change your own
+tasks, calendar or money, and it never reaches Claude, the assistant or MCP
+tools. When they stop sharing, it disappears.
+
+## Doing things together
+
+- **Share a task** with a friend, or **start a shared list**, from the task's
+  menu or the friend's page. *Assign to a friend* and *Share to a space* are
+  on every task. Nothing a friend sends changes your tasks until you choose
+  *Accept*, *Join* or *Mark done*.
+- **Shared spaces** (Together): a list, a board, a party, a trip or a shared
+  house that you and your friends edit together, with Undo. *Plan together*
+  adds a shared board of notes, task ideas, times to vote on and places.
+- **Find a time** across everyone's time zones, and book it once everyone can
+  make it.
+- **Split costs** for a trip or a shared house: only the amounts you type in
+  (your Money pages are never read), plus shared birthdays and wishlists.
+- **Play together**: co-op tasks, team quests, friendly challenges, focus
+  together, duo streaks and friendship levels, waves, high-fives and cheers,
+  postcards from scenes, and gifts.
+
+## Your card, wardrobe, garden and pet
+
+<!-- media: Life > Profile, the profile card with banner, nameplate and pet -->
+
+- **Your profile card** (Life > Profile > *Card*): display name, pronouns, a
+  status, a short bio, what you are working on, a banner, a nameplate and a
+  title, and the badges and favourite places you choose to show. Your card
+  stays in view beside the forms, so you see it as friends will; the
+  *Sharing* tab is about what friends see. Friends' visits to your card are
+  only counted, never listed.
+- **The wardrobe** (Life > Profile > *Avatar and wardrobe*): clothes,
+  hairstyles, accessories and expressions for your character, saved outfits
+  and *Surprise me*.
+- **Your garden** (Life > Garden) is shown to friends by default. They can
+  visit it, water a plant, leave a heart or a gift and sign your guestbook,
+  and you can share a bed with a friend and tend it together. There is a
+  gallery of your friends' gardens. To hide yours from one friend, set
+  *Garden* to *Hidden* on their *What they can see* panel. Garden and pet
+  visits work best when your friends are on 2.18 or newer.
+- **Your pet** (Life > Pets) appears on your profile card, so friends see it
+  too.
 
 ## Privacy: what travels, and who can see it
 
