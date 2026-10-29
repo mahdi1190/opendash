@@ -92,6 +92,9 @@ const WHATS_NEW = [
   { id: 'expense-report', group: 'n219', icon: 'file-text', title: '2.19.6: make an expense report',
     text: 'On Expenses, tick what you spent for work and press Make expense report. OpenDash fills in the expense form as a PDF, zips the receipts, saves both in Documents and opens the folder.',
     view: ['expenses'], sel: ['#main-body'], present: () => _wnHasPage('expenses') },
+  { id: 'desktop-shortcut', group: 'n219', icon: 'plus', title: '2.19.7: an OpenDash icon on your desktop',
+    text: 'Settings > Server can add an OpenDash shortcut to your desktop (and the Start menu on Windows) that starts OpenDash if needed and opens it. Windows also has a one-click installer now.',
+    view: ['settings'], sel: ['#main-body'] },
 
   // ---- 2.18.1 ----
   { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',

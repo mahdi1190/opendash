@@ -249,6 +249,22 @@ function _ssStatusCard(el) {
   el.appendChild(card.card);
 }
 
+async function _ssShortcut(where) {
+  try {
+    const r = await _ssPost('/api/server/shortcut', { where });
+    toast(where === 'startmenu' ? 'Added OpenDash to the Start menu' : 'Added an OpenDash shortcut to your desktop', { kind: 'ok' });
+    return r;
+  } catch (e) { toastError('add that shortcut', e, () => _ssShortcut(where)); }
+}
+
+/* "Add a desktop shortcut" (and, on Windows, "Add to Start menu"): opens OpenDash, starting it first if needed. */
+function _ssShortcutRow(card, ig) {
+  const g = document.createElement('div'); g.className = 'btn-group set-btns';
+  g.appendChild(_ssBtn('Add a desktop shortcut', 'plus', 'btn-secondary', () => _ssShortcut('desktop')));
+  if (ig && ig.platform === 'win32') g.appendChild(_ssBtn('Add to Start menu', 'plus', 'btn-secondary', () => _ssShortcut('startmenu')));
+  card.body.appendChild(_settingsRow('Shortcut', 'An OpenDash icon that starts it with no window if it isn’t running, then opens it in your browser.', g));
+}
+
 function _ssStartCard(el) {
   const ig = _ssInteg;
   const card = _settingsCard('Starting OpenDash');
@@ -261,6 +277,7 @@ function _ssStartCard(el) {
     const c = document.createElement('div'); c.className = 'callout set-callout';
     c.innerHTML = icon('info') + '<span>Starting automatically and the Start button are Windows features. On this computer, do it by hand:</span>';
     card.body.appendChild(c);
+    _ssShortcutRow(card, ig);
     const m = ig.manual || {};
     for (const [t, v] of [['Start it', m.start], ['Start when you log in', m.autostart]]) {
       if (!v) continue;
@@ -296,6 +313,7 @@ function _ssStartCard(el) {
     p.textContent = 'A window may flash up briefly when it starts.';
     setFold(card, 'server-start-more', 'More', ({ body }) => body.appendChild(p));
   }
+  _ssShortcutRow(card, ig);
   const re = _ssBtn('Check again', 'refresh-cw', 'btn-ghost', () => { _ssInteg = null; _ssLoad(); _ssRefresh(); });
   card.body.appendChild(re);
   el.appendChild(card.card);

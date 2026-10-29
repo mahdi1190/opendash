@@ -92,3 +92,40 @@ jobs:
             --notes-file "$RUNNER_TEMP/dist/release-notes.md" \
             --verify-tag \
             "${latest[@]}"
+
+  # The one-click Windows installer: wraps the release zip that the job above
+  # just published (so it has the same files and client IDs) plus a pinned,
+  # checksum-verified portable Node.js. The zip and its SHA256SUMS.txt are not
+  # touched (the in-app updater reads them); the installer's checksum goes in
+  # its own SHA256SUMS-installer.txt.
+  installer:
+    name: Windows installer for ${{ github.ref_name }}
+    needs: release
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Build the installer from the published zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          $dl = Join-Path $env:RUNNER_TEMP 'dl'
+          gh release download $env:GITHUB_REF_NAME --repo $env:GITHUB_REPOSITORY --dir $dl --pattern "opendash-v$version.zip" --pattern 'SHA256SUMS.txt'
+          if ($LASTEXITCODE -ne 0) { throw 'could not download the release zip' }
+          $want = ((Get-Content (Join-Path $dl 'SHA256SUMS.txt') | Select-Object -First 1) -split '\s+')[0].ToLower()
+          $got = (Get-FileHash (Join-Path $dl "opendash-v$version.zip") -Algorithm SHA256).Hash.ToLower()
+          if ($want -ne $got) { throw "zip checksum mismatch: $want vs $got" }
+          $src = Join-Path $env:RUNNER_TEMP 'src'
+          Expand-Archive (Join-Path $dl "opendash-v$version.zip") -DestinationPath $src
+          $out = Join-Path $env:RUNNER_TEMP 'installer-out'
+          & installer/build-installer.ps1 -SourceDir (Join-Path $src "opendash-v$version") -Version $version -OutDir $out
+          $exe = "OpenDash-Setup-$version.exe"
+          $hash = (Get-FileHash (Join-Path $out $exe) -Algorithm SHA256).Hash.ToLower()
+          Set-Content -Path (Join-Path $out 'SHA256SUMS-installer.txt') -Value "$hash  $exe" -Encoding ascii
+          gh release upload $env:GITHUB_REF_NAME (Join-Path $out $exe) (Join-Path $out 'SHA256SUMS-installer.txt') --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'could not upload the installer' }
