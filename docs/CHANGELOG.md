@@ -10,6 +10,39 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.20.0]
+
+A security release, after a full review of the local server, encryption and
+sync, the relay and friends, untrusted content, the AI tools and the release
+path. Details in `.github/SECURITY.md`.
+
+### Security
+- The data folder's `.env` can no longer choose programs, the update feed or
+  Node options; only the sign-in app IDs are read from it. `CLAUDE_CLI_PATH`
+  must be a real Claude binary outside the data folder.
+- Updates come only from this project's GitHub releases and are now signed
+  (Ed25519 over the checksum files, public key built in); unsigned releases are
+  refused. A planted update record cannot roll the app back.
+- Task, note and calendar descriptions: the markdown link renderer is rebuilt
+  so crafted links can't inject HTML; the page's security policy no longer
+  allows inline scripts (hashes only) and images only from known hosts.
+- Privileged local routes need a per-start page key; the remote Claude
+  connector accepts new clients only right after you press Connect, with typed
+  approval codes, per-IP limits, and Revoke all clearing every client. The
+  remote gateway is read and propose only; expense file attachments refuse
+  network paths.
+- Friends and relay: removing or blocking a friend (or them removing you)
+  always revokes relay access, retried until confirmed; invite links give only
+  limited message access until you approve the friend; unsigned and unknown
+  callers are refused before any stored state; old friend messages can't be
+  replayed; the self-hosted relay checks its own host; wrangler is pinned.
+  Redeploy your relay (Settings > Your relay) to get the relay-side fixes.
+- Sync: removing a device makes a new recovery code and offers to renew your
+  Friends keys; each device signs its records, so a removed device can't
+  rewrite history; timestamps far in the future are refused.
+- iCal feeds and bank memos can no longer stall the server; the installer's
+  Node.js is 22.23.4.
+
 ## [2.19.7]
 
 ### Added

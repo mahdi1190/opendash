@@ -19,6 +19,7 @@ there is nothing to install.
 | `tools/release-package.mjs` | zips an export, writes `SHA256SUMS.txt` and the release notes, then unzips the result into a fresh folder and builds and tests it |
 | `tools/release-client-ids.mjs` | the built-in Microsoft and Google app registrations: read from the environment, written into the zip only (`release-package --client-ids`) |
 | `tools/release-rules.mjs` | the allowlist and the never-publish rules that the three tools share |
+| `tools/release-sign.mjs` | signs `SHA256SUMS.txt` (and the installer's checksum file) with the Ed25519 release key from the `RELEASE_SIGNING_KEY` secret; refuses a key that does not match the public key pinned in `lib/updater.mjs` |
 | `tools/release-trace.mjs` | records which files a build reads, so the export can prove nothing the build needs was left out |
 | `tools/release-offline.mjs` | switches the network off for one Node process, to check that tests skip cleanly offline |
 
@@ -52,8 +53,11 @@ there is nothing to install.
 5. The **Release** workflow (`.github/workflows/release.yml`) picks up the
    tag. It scans the repository, exports, scans the export, packages it,
    unzips and tests the zip, records build provenance and publishes the GitHub
-   release with three files: `opendash-vX.Y.Z.zip`, `SHA256SUMS.txt` and the
-   notes. A tag with a suffix (`v1.3.0-rc.1`) becomes a pre-release, and may
+   release with `opendash-vX.Y.Z.zip`, `SHA256SUMS.txt`, its signature
+   `SHA256SUMS.txt.sig` and the notes. The signature needs the repository
+   secret `RELEASE_SIGNING_KEY` (the Ed25519 private key, PKCS#8 PEM); without
+   it the workflow stops before publishing. From 2.19.8 on the in-app updater
+   installs only releases whose checksums carry a valid signature. A tag with a suffix (`v1.3.0-rc.1`) becomes a pre-release, and may
    go without a changelog section.
 
 If the workflow fails, nothing is published. Fix the problem, delete the tag

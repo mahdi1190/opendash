@@ -23,6 +23,18 @@ import { atomicWrite, withLock, readJson } from '../../lib/fsutil.mjs';
 import { readHostId } from '../../lib/devicedir.mjs';
 
 export const TOKEN_HEADER = 'x-dashboard-token';
+// The page's own key: a random value made at every server start and put into
+// the page it serves (index.html config, pageKey). The page sends it on every
+// request (src/app/02-core-net.js); privileged routes (changes through
+// /api/actions, restart, stop, log, integrations, shortcuts, update apply)
+// need it or the local token. An Origin or Sec-Fetch-Site header alone, which
+// any local program can send, is no longer enough there.
+export const PAGE_KEY_HEADER = 'x-dashboard-page';
+/** Does the request carry this server's page key? */
+export function pageKeyMatches(req, key) {
+  const v = req && req.headers ? req.headers[PAGE_KEY_HEADER] : undefined;
+  return typeof v === 'string' && tokenMatches(v.trim(), key);
+}
 export const tokenPath = (dataDir) => join(dataDir, 'local-token');
 export const runtimePath = (dataDir) => join(dataDir, 'runtime.json');
 

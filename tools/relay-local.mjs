@@ -2,6 +2,11 @@
 // Run the OpenDash relay on this computer (docs/dev/RELAY_PROTOCOL.md section 9):
 //
 //   node tools/relay-local.mjs --port 4199 --owner-key <identity public key> [--data <dir>] [--host 127.0.0.1] [--shared-ip]
+//                              [--public-host relay.example.com]...
+//
+// --public-host: a host name the relay is reached by (behind an HTTPS reverse proxy that passes the
+// Host header on). Requests are signed for their host, and the relay answers only to its own names:
+// loopback, the --host address (with 0.0.0.0, this computer's addresses) and each --public-host.
 //
 // --shared-ip: several OpenDash instances on THIS computer use the relay (development: two "computers"
 // and a friend in throwaway data folders). They all reach it from one address, so the per-address
@@ -28,14 +33,15 @@ const host = arg('host', '127.0.0.1');
 const ownerKey = arg('owner-key', process.env.OPENDASH_RELAY_OWNER_KEY || '');
 const dataDir = resolve(arg('data', join(homedir(), '.opendash-relay')));
 const sharedIp = argv.includes('--shared-ip');
+const publicHosts = argv.flatMap((a, i) => (a === '--public-host' && argv[i + 1] && !argv[i + 1].startsWith('--') ? [argv[i + 1]] : []));
 const rates = sharedIp ? { ...RATES, ip: RATES.ip * 20, anon: RATES.anon * 20, lookupIp: RATES.lookupIp * 20 } : RATES;
 
 if (argv.includes('--help') || !KEY_RE.test(ownerKey) || !Number.isInteger(port) || port < 1 || port > 65535) {
-  console.error('Usage: node tools/relay-local.mjs --port 4199 --owner-key <identity public key, 43 base64url characters> [--data <dir>] [--host 127.0.0.1] [--shared-ip]');
+  console.error('Usage: node tools/relay-local.mjs --port 4199 --owner-key <identity public key, 43 base64url characters> [--data <dir>] [--host 127.0.0.1] [--shared-ip] [--public-host <name>]');
   process.exit(argv.includes('--help') ? 0 : 2);
 }
 try {
-  const relay = await startRelayServer({ port, host, ownerKey, dataDir, rates });
+  const relay = await startRelayServer({ port, host, ownerKey, dataDir, rates, publicHosts });
   console.log(`OpenDash relay on http://${host}:${port} (owner ${await iidOf(ownerKey)}, data in ${dataDir}${sharedIp ? ', per-address limits raised for instances sharing this computer' : ''})`);
   const stop = () => { relay.close().then(() => process.exit(0)); setTimeout(() => process.exit(0), 3000).unref(); };
   process.on('SIGINT', stop);

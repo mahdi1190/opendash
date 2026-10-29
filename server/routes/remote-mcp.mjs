@@ -21,7 +21,8 @@ export default function register(app) {
   app.route({ path: '/api/connections/remote-mcp', method: 'GET', handler: async () => {
     const cfg = await config();
     if (!cfg) return { configured: false, running: false, requests: [] };
-    return { configured: true, publicOrigin: cfg.publicOrigin, endpoint: cfg.publicOrigin + '/mcp', port: cfg.port, running: await running(cfg), requests: await createRemoteAuth({ dataDir, publicOrigin: cfg.publicOrigin }).pending() };
+    const auth = createRemoteAuth({ dataDir, publicOrigin: cfg.publicOrigin });
+    return { configured: true, publicOrigin: cfg.publicOrigin, endpoint: cfg.publicOrigin + '/mcp', port: cfg.port, running: await running(cfg), requests: await auth.pending(), connectUntil: (await auth.connectState()).connectUntil };
   } });
   app.route({ path: '/api/connections/remote-mcp/configure', method: 'POST', handler: async c => {
     const b = await c.body(); let origin;
@@ -46,9 +47,17 @@ export default function register(app) {
     }
     throw new HttpError(502, 'The remote gateway could not start. Check whether port 4911 is in use.');
   } });
+  // Connect: new Claude connections are accepted for ten minutes after this (lib/remote-mcp-auth.mjs).
+  app.route({ path: '/api/connections/remote-mcp/connect', method: 'POST', handler: async c => {
+    await c.body({ allowEmpty: true }); const { auth } = await authFor(); return auth.openConnectWindow();
+  } });
   app.route({ path: '/api/connections/remote-mcp/approve', method: 'POST', handler: async c => {
     const b = await c.body(), { auth } = await authFor();
-    try { return await auth.approve(String(b.id || '')); } catch { throw new HttpError(400, 'This connection request expired. Start again in Claude.'); }
+    try { return await auth.approve(String(b.id || ''), String(b.code || '')); }
+    catch (e) {
+      if (e.error === 'code_mismatch') throw new HttpError(400, 'That code does not match this request. Type the code shown in your own Claude sign-in tab. If you did not start a connection just now, do not approve it.');
+      throw new HttpError(400, 'This connection request expired. Start again in Claude.');
+    }
   } });
   app.route({ path: '/api/connections/remote-mcp/revoke', method: 'POST', handler: async c => {
     await c.body({ allowEmpty: true }); const { auth } = await authFor(); return auth.revokeAll();

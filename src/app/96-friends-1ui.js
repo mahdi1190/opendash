@@ -889,7 +889,14 @@ window.friendsRenewKeysDialog = friendsRenewKeysDialog;
       try { const st = typeof _syncSt !== 'undefined' && _syncSt; const dev = st && (st.devices || []).find(x => x.id === (body && body.id)); name = dev ? String(dev.name || '') : ''; } catch (e) { name = ''; }
     }
     const r = await orig.apply(this, arguments);
-    if (r && url === '/api/sync/devices/remove') friendsLoad(true).then(() => friendsOfferLockOut(name)).catch(() => {});
+    if (r && url === '/api/sync/devices/remove') {
+      // 2.19.8: the removal dialog asks (ticked by default); older callers without the choice get the offer.
+      const renew = body && body.renewFriends;
+      if (renew === true) {
+        _frApi('/api/friends/rotate', {}).then(() => { toast('Friends keys renewed. Your friends are being told now: Friends shows how it goes.', { icon: 'key-round', kind: 'ok' }); return friendsLoad(true); })
+          .catch(() => { toast('Your Friends keys could not be renewed just now.', { icon: 'key-round', action: { label: 'Try again', run: () => friendsRenewKeysDialog({ device: name || 'that computer' }) } }); });
+      } else if (renew !== false) friendsLoad(true).then(() => friendsOfferLockOut(name)).catch(() => {});
+    }
     return r;
   };
 })();

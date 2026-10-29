@@ -95,6 +95,9 @@ const WHATS_NEW = [
   { id: 'desktop-shortcut', group: 'n219', icon: 'plus', title: '2.19.7: an OpenDash icon on your desktop',
     text: 'Settings > Server can add an OpenDash shortcut to your desktop (and the Start menu on Windows) that starts OpenDash if needed and opens it. Windows also has a one-click installer now.',
     view: ['settings'], sel: ['#main-body'] },
+  { id: 'security-2200', group: 'n219', icon: 'shield-check', title: '2.20.0: a full security check',
+    text: 'OpenDash was reviewed end to end and hardened: signed updates, safer links in descriptions, friends removed for good when you remove them, and a new recovery code whenever you remove a device. If you use your own relay, redeploy it once in Settings > Your relay.',
+    view: ['settings'], sel: ['#main-body'] },
 
   // ---- 2.18.1 ----
   { id: 'garden-fullscreen', group: 'n2181', icon: 'sprout', title: 'A garden you can play in, full window',

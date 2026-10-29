@@ -7,10 +7,17 @@ import { pathToFileURL } from 'node:url';
 import { REPO_ROOT, resolveDataDir, argValue } from '../lib/datadir.mjs';
 import { secretStore } from '../lib/secret-store.mjs';
 import { createRemoteAuth, remoteOrigin } from '../lib/remote-mcp-auth.mjs';
+import { QUERY_BY_TOOL } from '../server/actions/queries.mjs';
+
+// What a remote client may call: the read tools and propose_changes, nothing that writes.
+// (The child also runs with --mode propose --no-expense-writes; this is the second lock.)
+const REMOTE_EXTRA_TOOLS = new Set(['describe_operations', 'list_expenses', 'propose_changes']);
+export const remoteToolAllowed = name => typeof name === 'string' && (REMOTE_EXTRA_TOOLS.has(name) || QUERY_BY_TOOL.has(name));
+const RATE_WINDOW_MS = 60000, RATE_PER_IP = 240, OAUTH_PER_IP = 20, RATE_TABLE_MAX = 5000;
 
 export function bridgeMcp(dataDir, message) {
   return new Promise((resolveResult, reject) => {
-    const child = spawn(process.execPath, [join(REPO_ROOT, 'mcp', 'server.mjs'), '--data-dir', dataDir, '--mode', 'propose'], { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [join(REPO_ROOT, 'mcp', 'server.mjs'), '--data-dir', dataDir, '--mode', 'propose', '--no-expense-writes'], { shell: false, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
     let buf = '', settled = false;
     const finish = (err, value) => { if (settled) return; settled = true; clearTimeout(timer); child.stdin.end(); child.kill(); err ? reject(err) : resolveResult(value); };
     const timer = setTimeout(() => finish(new Error('MCP timed out')), 30000);
@@ -22,7 +29,12 @@ export function bridgeMcp(dataDir, message) {
       let i;
       while ((i = buf.indexOf('\n')) >= 0) {
         const line = buf.slice(0, i); buf = buf.slice(i + 1);
-        try { const response = JSON.parse(line); if (response.id === message.id) finish(null, response); } catch { finish(new Error('Invalid MCP response')); }
+        try {
+          const response = JSON.parse(line);
+          if (response.id !== message.id) continue;
+          if (message.method === 'tools/list' && Array.isArray(response.result?.tools)) response.result.tools = response.result.tools.filter(t => remoteToolAllowed(t && t.name));
+          finish(null, response);
+        } catch { finish(new Error('Invalid MCP response')); }
       }
     });
     child.stdin.on('error', e => finish(e));
@@ -31,12 +43,27 @@ export function bridgeMcp(dataDir, message) {
 }
 export function createRemoteServer({ dataDir, publicOrigin, now, rpc = message => bridgeMcp(dataDir, message) }) {
   const auth = createRemoteAuth({ dataDir, publicOrigin, now });
-  let active = 0, windowAt = Date.now(), calls = 0;
+  let active = 0;
+  // Per caller (Cloudflare's CF-Connecting-IP, else the socket), so one noisy caller cannot lock the owner out.
+  const rates = new Map();
+  const limited = (ip, key, max) => {
+    const t = Date.now(), id = key + ' ' + ip;
+    let r = rates.get(id);
+    if (!r || t - r.at > RATE_WINDOW_MS) {
+      if (rates.size >= RATE_TABLE_MAX) for (const [k, v] of rates) if (t - v.at > RATE_WINDOW_MS) rates.delete(k);
+      if (rates.size >= RATE_TABLE_MAX) rates.clear();
+      r = { at: t, n: 0 }; rates.set(id, r);
+    }
+    return ++r.n > max;
+  };
+  const closedPage = `<!doctype html><meta charset="utf-8"><title>Connect OpenDash</title><body style="font:18px system-ui;max-width:36rem;margin:4rem auto;padding:1rem"><h1>Press Connect in OpenDash first</h1><p>For your safety, this OpenDash only accepts a new Claude connection for ten minutes after you press <b>Connect Claude</b> in Connections on the computer running your dashboard.</p><p>Press it there, then start the connection in Claude again.</p>`;
   const server = createServer(async (req, res) => {
     const send = (status, body, type = 'application/json', extra = {}) => { res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'", ...extra }); res.end(type === 'application/json' ? JSON.stringify(body) : body); };
     try {
-      if (Date.now() - windowAt > 60000) { windowAt = Date.now(); calls = 0; }
-      if (++calls > 240) return send(429, { error: 'rate_limit' });
+      const ip = String(req.headers['cf-connecting-ip'] || req.socket.remoteAddress || '').slice(0, 64);
+      if (limited(ip, 'all', RATE_PER_IP)) return send(429, { error: 'rate_limit' });
+      const rawPath = String(req.url || '').split('?')[0];
+      if ((rawPath === '/oauth/register' || rawPath === '/oauth/authorize') && limited(ip, 'oauth', OAUTH_PER_IP)) return send(429, { error: 'rate_limit' });
       const host = req.headers.host || '';
       if (host !== new URL(auth.origin).host && !/^127\.0\.0\.1:\d+$/.test(host) && !/^localhost:\d+$/.test(host)) return send(421, { error: 'invalid_host' });
       if (req.headers.origin && ![auth.origin, 'https://claude.ai'].includes(req.headers.origin)) return send(403, { error: 'invalid_origin' });
@@ -55,13 +82,15 @@ export function createRemoteServer({ dataDir, publicOrigin, now, rpc = message =
       if (post && path === '/oauth/token') return send(200, await auth.token(await body(false)));
       if (post && path === '/oauth/revoke') { const b = await body(false); await auth.revoke(b.token); return send(200, {}); }
       if (get && path === '/oauth/authorize') {
-        const r = await auth.authorize(Object.fromEntries(url.searchParams));
+        let r;
+        try { r = await auth.authorize(Object.fromEntries(url.searchParams), { ip, country: req.headers['cf-ipcountry'] }); }
+        catch (e) { if (e.error === 'connect_closed') return send(403, closedPage, 'text/html; charset=utf-8'); throw e; }
         return send(302, '', 'text/plain', { Location: '/oauth/continue?ticket=' + encodeURIComponent(r.ticket) });
       }
       if (get && path === '/oauth/continue') {
         const r = await auth.continue(url.searchParams.get('ticket'));
         if (r.redirect) return send(302, '', 'text/plain', { Location: r.redirect });
-        return send(200, `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="3"><title>Connect OpenDash</title><body style="font:18px system-ui;max-width:36rem;margin:4rem auto;padding:1rem"><h1>Approve in your local OpenDash</h1><p>Open Connections on the computer running your dashboard. Match this code and approve Claude’s access:</p><p style="font-size:2rem">${r.displayCode}</p><p>Claude can read dashboard context and propose changes. Changes still need your approval in OpenDash.</p><p>This page continues automatically after you approve. The request expires after ten minutes.</p>`, 'text/html; charset=utf-8');
+        return send(200, `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="3"><title>Connect OpenDash</title><body style="font:18px system-ui;max-width:36rem;margin:4rem auto;padding:1rem"><h1>Approve in your local OpenDash</h1><p>Open Connections on the computer running your dashboard and type this code there to approve Claude’s access:</p><p style="font-size:2rem">${r.displayCode}</p><p>Claude can read dashboard context and propose changes. Changes still need your approval in OpenDash.</p><p>This page continues automatically after you approve. The request expires after ten minutes.</p>`, 'text/html; charset=utf-8');
       }
       if (path !== '/mcp') return send(404, { error: 'not_found' });
       const grant = await auth.verify(/^Bearer ([A-Za-z0-9_-]+)$/.exec(req.headers.authorization || '')?.[1]);
@@ -71,6 +100,7 @@ export function createRemoteServer({ dataDir, publicOrigin, now, rpc = message =
       if (!msg || Array.isArray(msg) || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string' || (msg.id !== undefined && typeof msg.id !== 'number' && typeof msg.id !== 'string')) return send(400, { error: 'invalid_request' });
       if (msg.id === undefined && msg.method.startsWith('notifications/')) return send(202, '', 'text/plain');
       if (msg.id === undefined) return send(400, { error: 'request_id_required' });
+      if (msg.method === 'tools/call' && !remoteToolAllowed(msg.params?.name)) return send(200, { jsonrpc: '2.0', id: msg.id, result: { content: [{ type: 'text', text: 'Error PROPOSE_ONLY: this connection can only read and propose changes' }], isError: true } });
       if (msg.method === 'tools/call' && msg.params?.name === 'propose_changes' && !grant.scope.split(' ').includes('opendash:propose')) return send(403, { error: 'insufficient_scope' });
       if (!grant.scope.split(' ').includes('opendash:read')) return send(403, { error: 'insufficient_scope' });
       if (active >= 4) return send(429, { error: 'busy' });

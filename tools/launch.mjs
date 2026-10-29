@@ -30,11 +30,11 @@ export function parseArgs(argv) {
   return o;
 }
 
-function http(port, method, path) {
+function http(port, method, path, token = null) {
   return new Promise((res) => {
     const req = request({
       host: '127.0.0.1', port, path, method, timeout: 2000,
-      headers: { Host: `localhost:${port}`, Origin: `http://localhost:${port}`, 'Content-Length': method === 'POST' ? 2 : 0, 'Content-Type': 'application/json' },
+      headers: { Host: `localhost:${port}`, Origin: `http://localhost:${port}`, 'Content-Length': method === 'POST' ? 2 : 0, 'Content-Type': 'application/json', ...(token ? { 'X-Dashboard-Token': token } : {}) },
     }, (r) => {
       let body = '';
       r.setEncoding('utf8');
@@ -59,12 +59,34 @@ function openBrowser(url) {
   try { spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true, shell: false }).on('error', () => {}).unref(); } catch { /* no browser to open */ }
 }
 
+/** The local token of the data folder served on o.port, or null. */
+async function tokenForPort(o) {
+  try {
+    const { resolveDataDir } = await import('../lib/datadir.mjs');
+    const { readLocalToken, runtimePath } = await import('../server/actions/auth.mjs');
+    const { readFileSync } = await import('node:fs');
+    const cands = [];
+    if (o.dataDir) cands.push(['--data-dir', o.dataDir]);
+    cands.push([]);
+    if (process.platform === 'win32' && process.env.LOCALAPPDATA) cands.push(['--data-dir', join(process.env.LOCALAPPDATA, 'OpenDash', 'data')]);
+    for (const argv of cands) {
+      const dir = resolveDataDir({ argv });
+      try { if (JSON.parse(readFileSync(runtimePath(dir), 'utf8')).port !== o.port) continue; } catch { continue; }
+      const t = readLocalToken(dir);
+      if (t) return t;
+    }
+  } catch { /* no token: the stop request is refused and the caller carries on */ }
+  return null;
+}
+
 export async function main(argv) {
   const o = parseArgs(argv);
   const url = `http://localhost:${o.port}`;
   if (o.stop) {
     if (!(await isUp(o.port))) return 0;
-    await http(o.port, 'POST', '/api/server/stop');
+    // Stopping needs the local token (an Origin header alone is refused): find the data
+    // folder whose runtime.json names this port (the installer passes no --data-dir).
+    await http(o.port, 'POST', '/api/server/stop', await tokenForPort(o));
     for (let i = 0; i < 40 && await isUp(o.port); i++) await sleep(250);
     return 0;
   }
