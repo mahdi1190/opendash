@@ -11,7 +11,8 @@
 //   GET  /api/server/log?lines=200 -> {file, lines:[...]}   (the last lines of <data>/logs/server.log)
 //   GET  /api/server/integration   -> what Windows has registered right now (queried, never assumed)
 //   POST /api/server/integration   {feature: 'autostart'|'protocol', enabled: boolean} -> the same, re-queried
-//   GET  /sw.js                    the offline page's service worker (src/sw.js, versioned by the build)
+//   POST /api/server/shortcut      {where: 'desktop'|'startmenu'} -> {ok, path}  (an OpenDash shortcut that starts it if needed)
+//   GET  /sw.js                 the offline page's service worker (src/sw.js, versioned by the build)
 //
 // Restart, stop, the log and the integration switches (GET too: it runs
 // reg.exe) need the page itself (same origin: Origin / Sec-Fetch-Site) or a
@@ -28,6 +29,7 @@ import { HttpError, MIME } from '../http.mjs';
 import { ensureLocalToken, tokenMatches, TOKEN_HEADER } from '../actions/auth.mjs';
 import { runtimeInfo, checkRestartAllowed, claimLifecycle, requestLifecycle, lifecycleAvailable, lifecyclePending, readLogLines } from '../lifecycle.mjs';
 import { createOsIntegration, OsIntegrationError, SCHEME } from '../../lib/os-integration.mjs';
+import { createShortcut, ShortcutError } from '../../lib/shortcuts.mjs';
 import { writeJson, readJson } from '../../lib/fsutil.mjs';
 
 const SW_FILE = 'src/sw.js';
@@ -173,6 +175,23 @@ export default function register(app) {
         if (e instanceof OsIntegrationError) throw new HttpError(e.status, e.message, { code: e.code });
         throw e;
       } finally { busy = false; }
+    },
+  });
+
+  // Settings > Server: "Add a desktop shortcut" / "Add to Start menu" (lib/shortcuts.mjs).
+  app.route({
+    path: '/api/server/shortcut', method: 'POST', methodError: 'POST only',
+    handler: async (c) => {
+      await requireLocalCaller(c);
+      const b = await c.body();
+      try {
+        const r = await createShortcut({ where: b.where, repoRoot: ctx.repoRoot, port: ctx.port, dataDir });
+        log('note', `shortcut added (${r.where})`);
+        return r;
+      } catch (e) {
+        if (e instanceof ShortcutError) throw new HttpError(e.status, e.message);
+        throw e;
+      }
     },
   });
 

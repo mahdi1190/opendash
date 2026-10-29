@@ -1,0 +1,38 @@
+# Builds the Windows installer from any branch, as a downloadable artifact, so
+# it can be tried before a release is tagged. Run it from the Actions tab.
+name: Installer check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    name: Build the Windows installer
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 22
+
+      - name: Export the release tree and build the installer
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $src = Join-Path $env:RUNNER_TEMP 'opendash'
+          node tools/release-export.mjs --out $src
+          if ($LASTEXITCODE -ne 0) { throw 'export failed' }
+          & installer/build-installer.ps1 -SourceDir $src -Version $version -OutDir (Join-Path $env:RUNNER_TEMP 'installer-out')
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: OpenDash-Setup
+          path: ${{ runner.temp }}/installer-out/OpenDash-Setup-*.exe
+          if-no-files-found: error

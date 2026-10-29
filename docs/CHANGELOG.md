@@ -10,6 +10,23 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.19.7]
+
+### Added
+- A one-click Windows installer, `OpenDash-Setup-<version>.exe`: no admin
+  prompt, no Node.js to install (a pinned portable Node.js is bundled in
+  `runtime\`), data kept in `%LOCALAPPDATA%\OpenDash\data` outside the app,
+  Start menu "OpenDash" and "Stop OpenDash", optional desktop shortcut and
+  start-at-sign-in. Not code-signed yet (SmartScreen warns once). Built by the
+  release workflow; `installer-check.yml` builds one from any branch.
+- Settings > Server: "Add a desktop shortcut" (Windows, macOS, Linux) and "Add
+  to Start menu" (Windows). The shortcut starts OpenDash with no window if it
+  is not running, waits, then opens the browser (`tools/launch.mjs`).
+
+### Changed
+- `start-opendash.bat` uses `runtime\node.exe` when present; in-app updates
+  never touch `runtime\`.
+
 ## [2.19.6] - 2026-10-28
 
 Make an expense report from the Expenses page.

@@ -4,6 +4,31 @@ OpenDash runs on your own computer: a small local server (Node.js) and a page
 in your browser at <http://localhost:4173>. There is no account, no database
 and no `npm install`. Your data stays in one folder on your computer.
 
+## Windows: the quick way
+
+Download **`OpenDash-Setup-<version>.exe`** from the
+[Releases page](https://github.com/mahdi1190/opendash/releases/latest) and run
+it. That is all: it includes everything OpenDash needs (you do not install
+Node.js), asks for no administrator rights, and adds an **OpenDash** shortcut
+to the Start menu (and, if you tick it, the desktop). The shortcut starts
+OpenDash with no window if it is not running, then opens it in your browser.
+
+- It installs to `%LOCALAPPDATA%\Programs\OpenDash`. Your data lives
+  separately in `%LOCALAPPDATA%\OpenDash\data`, so updating, reinstalling or
+  uninstalling never touches it (the uninstaller asks, and the default is to
+  keep it).
+- In-app updates (Settings > Updates) keep working.
+- **The installer is not code-signed yet**, so Windows SmartScreen may show
+  "Windows protected your PC". Click **More info**, then **Run anyway**. You
+  can check the download against `SHA256SUMS-installer.txt` on the release.
+- The AI assistant is optional and separate: install Claude Code yourself from
+  Anthropic's page (see [CONNECTIONS.md](CONNECTIONS.md)); the installer does
+  not install it.
+
+The rest of this page is the zip route, which also works on macOS and Linux.
+On any computer, Settings > Server > Starting OpenDash can add a desktop
+shortcut (and, on Windows, a Start menu entry) for a zip install.
+
 - [What you need](#what-you-need)
 - [Windows](#windows)
 - [macOS](#macos)

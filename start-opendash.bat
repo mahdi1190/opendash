@@ -11,6 +11,12 @@ setlocal
 title OpenDash
 cd /d "%~dp0"
 
+REM The Windows installer ships its own Node.js in runtime\node.exe: use it when
+REM it is there, else the Node.js on the PATH.
+set "NODE=node"
+if exist "%~dp0runtime\node.exe" set "NODE=%~dp0runtime\node.exe"
+
+if /i not "%NODE%"=="node" goto :have_node
 where node >nul 2>nul
 if errorlevel 1 (
   echo.
@@ -21,11 +27,12 @@ if errorlevel 1 (
   exit /b 1
 )
 
+:have_node
 REM --- Node 20 or newer ------------------------------------------------------
-node -e "process.exit(Number(process.versions.node.split('.')[0]) >= 20 ? 0 : 1)"
+"%NODE%" -e "process.exit(Number(process.versions.node.split('.')[0]) >= 20 ? 0 : 1)"
 if errorlevel 1 (
   echo.
-  for /f "delims=" %%v in ('node -v') do echo   OpenDash needs Node.js 20 or newer. You have %%v.
+  "%NODE%" -e "console.log('  OpenDash needs Node.js 20 or newer. You have ' + process.version + '.')"
   echo   Install the LTS version from https://nodejs.org and run this again.
   echo.
   if not defined DASHBOARD_NO_PAUSE pause
@@ -35,7 +42,7 @@ if errorlevel 1 (
 REM --- Upgrade the data folder if this version of the app needs it ---------
 REM (backs up the data folder first; the one-time copy of an old state\ folder
 REM  is never done automatically - it prints the command to run instead)
-node tools\migrate.mjs --auto %*
+"%NODE%" tools\migrate.mjs --auto %*
 if errorlevel 2 (
   echo.
   echo   OpenDash was NOT started. Run the command above once, then start again.
@@ -53,7 +60,7 @@ if errorlevel 1 (
 )
 
 REM --- Rebuild index.html from src\ ---------------------------------------
-node build.mjs
+"%NODE%" build.mjs
 if errorlevel 1 (
   echo.
   echo   BUILD FAILED - see the error above.
@@ -69,7 +76,7 @@ echo   Close this window ^(or press Ctrl+C^) to stop it. If it crashes it is
 echo   started again; Settings ^> Server can restart it.
 echo.
 
-node tools\supervisor.mjs %*
+"%NODE%" tools\supervisor.mjs %*
 
 REM Only hold the window open on a real failure. Exit code 0 covers a normal
 REM Ctrl+C / close / Stop server and the "already running, opened it" case;
