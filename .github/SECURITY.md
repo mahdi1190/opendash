@@ -8,11 +8,12 @@ seriously and are always welcome.
 
 | Version | Supported |
 |---|---|
-| 2.0.x (the latest release) | Yes |
-| Anything older | No (there were no earlier public releases) |
+| The latest release (2.19.x) | Yes |
+| Anything older | No: please update first |
 
-Security fixes are released as a new version. To update, replace the app
-folder and keep your data folder (see [docs/INSTALL.md](../docs/INSTALL.md#updating)).
+Security fixes are released as a new version. To update, use Settings >
+Updates, run the newer Windows installer, or replace the app folder and keep
+your data folder (see [docs/INSTALL.md](../docs/INSTALL.md#updating)).
 
 ## Reporting a vulnerability
 
@@ -55,7 +56,13 @@ In scope:
   outside its profile, or to make external text change data without your click;
 - the iCal fetcher, data import and export, the Files & links opener and
   folder browser, the service worker, the supervisor and the Windows start-up
-  switches.
+  switches;
+- device sync and its encryption (`lib/sync/`), the relay and its protocol
+  (`lib/relay/`, `cloudflare/worker.mjs`, docs/dev/RELAY_PROTOCOL.md), and
+  Friends (`lib/friends/`): for example a relay or a friend that can read,
+  forge or change what it carries, or a friend's packet that reaches Claude
+  or an action;
+- the updater (`lib/updater.mjs`) and the Windows installer (`installer/`).
 
 Out of scope:
 
@@ -122,7 +129,9 @@ safeguards below follow from that, and are enforced in the code (mainly
 
 ### Your data and the network
 
-- **No telemetry.** No analytics, tracking, crash reporting or update checks.
+- **No telemetry.** No analytics, tracking or crash reporting. Update checks
+  happen only when you ask (or once a day if you turn that on), and are plain
+  GET requests to GitHub releases.
 - **Data stays local**, in one data folder (`data/` by default). Logs contain
   no task text, email content, names or money: request methods and URL paths,
   status codes, timings and counts, plus the data folder's location when the

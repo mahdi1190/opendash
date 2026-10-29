@@ -20,7 +20,14 @@ or your bank).
 Yes. Everything except the connected features works without a network.
 
 **Which systems does it run on?**
-Windows, macOS and Linux, with Node.js 20 or newer and a modern browser.
+Windows, macOS and Linux, in a modern browser. On Windows the installer
+includes everything; the zip version (any system) needs Node.js 20 or newer.
+See [INSTALL.md](INSTALL.md).
+
+**Windows says "Windows protected your PC" when I run the installer.**
+That is SmartScreen. The installer is not code-signed yet, so Windows does
+not recognise it. Click **More info**, then **Run anyway**. To check your
+copy, compare it with `SHA256SUMS-installer.txt` on the release page.
 
 **Can I use it on my phone?**
 Not yet. The page adapts to narrow windows and touch screens, but the server
@@ -33,17 +40,34 @@ supported. A supported way to do this is on the
 
 ## Data and privacy
 
+**Is the cloud required?**
+No. OpenDash works fully on one computer, and that is how it starts. Syncing
+your own devices and Friends are optional extras, and both run through a
+relay you host on your own (free) Cloudflare account, or a friend's, never
+an OpenDash server. See
+[Cloud and sync](PRIVACY.md#cloud-and-sync-optional-in-three-levels).
+
+**Does anyone else see my data?**
+Not unless you choose. There is no OpenDash company server, account or
+telemetry, so the project never sees anything. Sync between your own devices
+is end-to-end encrypted: your relay and your cloud folder only hold scrambled
+records. A friend sees your profile, game progress and garden, and only what
+else you turn on for that one friend. Claude sees what a Claude feature needs, through
+your own Claude Code (below). Details in [PRIVACY.md](PRIVACY.md).
+
 **Where is my data?**
-In one folder, `data/` next to the app unless you chose another with
+In one folder: `%LOCALAPPDATA%\OpenDash\data` with the Windows installer,
+`data/` next to the app for a zip install, or the folder you chose with
 `--data-dir`. See [INSTALL.md](INSTALL.md#where-your-data-lives).
 
 **Is anything sent anywhere?**
 Only for features you switch on, and only to the service the feature names
 (Claude through your own Claude Code, the connectors you added, an iCal host,
-Open-Meteo for weather). No analytics or telemetry. One exception: if Claude
+Open-Meteo for weather, GitHub when you check for updates). No analytics or
+telemetry. One exception: if Claude
 Code is already installed and signed in on your computer, OpenDash uses it
 without being asked (a tiny test prompt at start-up, and the Morning brief's
-daily summary and story scripts; Settings > Morning brief > *AI summary* turns
+daily summary and story scripts; Settings > Brief and stories > *AI summary* turns
 those off). Details in [PRIVACY.md](PRIVACY.md).
 
 **Is my data encrypted?**
@@ -87,13 +111,21 @@ story scripts, calendar and email updates. That way your bank is not asked
 twice and Claude does not do the same work on two computers. A click still
 runs the job where you are.
 
+**I used the zip version. How do I move my data to the installer version?**
+Stop the zip version (and turn off its start-up switches in Settings >
+Server), install, stop the new copy, copy everything inside the old `data`
+folder into `%LOCALAPPDATA%\OpenDash\data`, then start OpenDash from the
+Start menu. Step by step:
+[INSTALL.md](INSTALL.md#moving-to-the-installer-version).
+
 **How do I move to a new computer?**
 *Export all data (.zip)* on the old one, install OpenDash on the new one,
 *Import data*. Connections are set up again on the new computer.
 
 **What can friends see?**
-Only your profile (name, character, bio) and game progress, until you turn
-more on for one friend you mark *Trusted*. Messages between friends are
+Your profile (name, character, bio, pet), game progress and garden, and
+nothing more until you turn it on for one friend you mark *Trusted*. Each of
+those three can be hidden per friend too. Messages between friends are
 end-to-end encrypted, and nothing a friend sends reaches Claude or changes
 your tasks. See [FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#what-friends-can-see).
 
@@ -158,7 +190,7 @@ Choose *Load demo data* in the welcome. Everything in it is invented.
 **Which time zone does it use?**
 Your computer's: a new data folder starts on it, and the page always shows your
 computer's clock. "Today" for the stories, the assistant and calendar and bank
-updates comes from Settings > Name & region > *Time zone*. If your computer
+updates comes from Settings > Region & language > *Time zone*. If your computer
 is somewhere else (a trip, a data folder copied from another machine), that
 row says so and offers *Use* with your computer's zone in one click. Calendar
 events keep their own time zones and show at your local time, including on the
@@ -177,12 +209,19 @@ it on another port from a terminal in the app folder: `.\start-opendash.bat
 (see [launcher options](INSTALL.md#launcher-options)).
 
 **Can it start when I log in?**
-On Windows, turn on *Start automatically when I log in* in Settings > Server.
-On macOS and Linux, Settings > Server shows how to add a login item.
+With the Windows installer, tick *Start OpenDash when I sign in* while
+installing. With a zip install on Windows, turn on *Start automatically when I
+log in* in Settings > Server. On macOS and Linux, Settings > Server shows how
+to add a login item.
 
-**How do I update?**
-Unzip the new release into a new folder, move your `data` folder across, and
-start it. See [INSTALL.md](INSTALL.md#updating).
+**How do updates work?**
+Settings > Updates > *Check for updates* asks GitHub's releases page whether
+there is a newer version; *Update and restart* downloads it, checks its
+checksum, keeps a copy of the files it replaces, and restarts. Your data is
+never touched. Checking only downloads; nothing about you is sent. It checks
+only when you ask, unless you turn on *Check for updates once a day*. With the
+installer you can also run the newer `OpenDash-Setup` over the old one. See
+[INSTALL.md](INSTALL.md#updating).
 
 ## Contributing
 
