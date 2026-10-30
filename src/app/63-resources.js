@@ -910,6 +910,14 @@ registerSection('files', {
     page.appendChild(bar);
     const listEl = document.createElement('div'); listEl.className = 'res-page-list card';
     page.appendChild(listEl);
+    // Several at once: pin or remove, one Undo for the lot (11-ui-pick.js).
+    bar.appendChild(multiPick(listEl, { key: 'files', rows: '.res-row', idOf: (r) => r.dataset.rid, noun: ['file or link', 'files and links'],
+      nameOf: (r) => (r.querySelector('.res-name') || {}).textContent || '',
+      exists: (id) => !!resGet(id),
+      actions: () => [
+        { label: 'Pin', icon: 'pin', tip: 'Pin or unpin', run: (ids) => { const l = ids.map(resGet).filter(Boolean); const on = l.some(r => !r.pinned); for (const r of l) { if (on) r.pinned = true; else delete r.pinned; } saveData(); render(); toast(on ? `${l.length} pinned` : `${l.length} unpinned`, { kind: 'ok', icon: 'pin', action: { label: 'Undo', run: () => undo() } }); } },
+        { label: 'Remove', icon: 'trash-2', danger: true, tip: 'Remove from the dashboard (the originals are untouched)', run: (ids) => { const want = new Set(ids); state.resources = resList().filter(r => !(r && want.has(r.id))); saveData(); render(); toast(`${want.size} removed from the dashboard (the originals are untouched)`, { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } }); } },
+      ] }).button());
     const paint = () => {
       listEl.innerHTML = '';
       const rows = rsrcFilter(all, { q: _resFilesQuery, kind: _resFilesKind || undefined })

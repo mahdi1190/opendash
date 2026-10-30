@@ -151,8 +151,21 @@ function _mpJournal(outer) {
   // a page at a time; a repaint (polishing an entry) keeps how many were open
   body.appendChild(pagedList({ items, pageSize: 20, start: _mpJournalN, onShown: (n) => { _mpJournalN = n; }, cls: 'mem-entries', render: (x) => {
     if (x.head) { const h = document.createElement('h3'); h.className = 'mem-month'; h.textContent = x.head; return h; }
-    return _mpEntryEl(x.iso, x.j);
+    const el = _mpEntryEl(x.iso, x.j);
+    el.dataset.pickId = x.iso;
+    return el;
   } }));
+  // Several at once: copy them (entries write themselves each evening, so there is nothing to delete; 11-ui-pick.js).
+  const tools = document.createElement('div'); tools.className = 'pk-list-tools';
+  const pgList = body.querySelector('.mem-entries');
+  tools.appendChild(multiPick(pgList, { key: 'mem-journal', rows: '.mem-entry[data-pick-id]', noun: ['entry', 'entries'],
+    nameOf: (r) => r.dataset.pickId,
+    actions: () => [{ label: 'Copy', icon: 'copy', run: (ids) => {
+      const m = memState();
+      const text = ids.slice().sort().map(iso => { const j = m.journal[iso] || {}; return `${_memFmtLong(iso)}\n${j.polished || j.text || ''}${j.line ? '\n“' + j.line + '”' : ''}`; }).join('\n\n');
+      return copyText(text, ids.length + ' entries');
+    } }] }).button());
+  pgList.parentNode.insertBefore(tools, pgList);
 }
 
 /** The journal's side column: what it is, how many days it holds, and the two things you can do from here. */
@@ -257,13 +270,24 @@ function _mpCapsules(outer) {
   let md = null;
   const paint = () => {
     const cur = sel();
-    md.mdList.replaceChildren(...all.map(c => mdRow({ title: title(c), icon: c.opened ? 'mail' : c.opens <= today ? 'sparkles' : 'lock', active: c === cur,
-      sub: 'Written ' + _memFmt(Clock.parts(c.created).iso, { day: 'numeric', month: 'short', year: 'numeric' }), run: () => { _mpCapSel = c.id; paint(); } })));
+    md.mdList.replaceChildren(tools, ...all.map(c => { const r = mdRow({ pickable: true, title: title(c), icon: c.opened ? 'mail' : c.opens <= today ? 'sparkles' : 'lock', active: c === cur,
+      sub: 'Written ' + _memFmt(Clock.parts(c.created).iso, { day: 'numeric', month: 'short', year: 'numeric' }), run: () => { _mpCapSel = c.id; paint(); } }); r.dataset.pickId = c.id; return r; }));
     md.mdSet(detail(cur));
   };
+  const tools = document.createElement('div'); tools.className = 'pk-list-tools';
   md = masterDetail({ listWidth: 300, label: 'Time capsules' });
   paint();
   outer.appendChild(md);
+  // Several at once: delete, one Undo for the lot (memories are outside the undo snapshots, so it puts them back itself).
+  tools.appendChild(multiPick(md.mdList, { key: 'mem-capsules', rows: '.md-row', noun: ['time capsule', 'time capsules'],
+    nameOf: (r) => (r.querySelector('.md-row-n') || {}).textContent || '',
+    exists: (id) => memCapsules().some(c => c.id === id),
+    actions: () => [{ label: 'Delete', icon: 'trash-2', danger: true, run: (ids) => {
+      const m = memState(), want = new Set(ids), before = m.capsules.slice();
+      m.capsules = before.filter(c => !(c && want.has(c.id)));
+      memSave(); _mpCapSel = ''; render();
+      toast(`${want.size} time capsule${want.size === 1 ? '' : 's'} deleted`, { icon: 'trash-2', action: { label: 'Undo', run: () => { memState().capsules = before; memSave(); render(); toast('Time capsules back', { kind: 'ok', icon: 'undo-2' }); } } });
+    } }] }).button());
 }
 function _mpPostcards(outer) {
   const list = memPostcards();

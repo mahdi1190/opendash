@@ -110,16 +110,21 @@
   }
 
   // ── Building the brief (once per real entry) ──────────────────────────
-  function mbBuild(g) {
+  // 2.21: the hero can be built by itself: Money's main page opens on it (39-board.js), with o.link for "See the full brief".
+  // Only one hero is live at a time (MB.el); building one stops whatever the last one was doing.
+  function mbBuildHero(g, o) {
+    o = o || {};
     mbReadStop();
     const E = MB.el = {};
     MB.entering = !!R.entering && !MK.reduced();   // the first visit this session (18-sections.js R.entering); re-visits render settled
     MB.moodShown = null; MB.sayText = ''; MB.aiChecked = '';
     clearTimeout(MB.enterT);
+    if (MB.io) MB.io.disconnect();
+    MB.io = null; MB.seen = new Map(); MB.ticks = []; MB.kpiWait = false;
     // Hero
     E.sky = h('div', { class: 'fv-mb-sky', 'aria-hidden': 'true' });
     E.over = h('span', { class: 'fv-mb-over' });
-    E.modeSeg = seg([['cycle', 'Pay cycle', 'From payday to payday'], ['month', 'Month', 'The calendar month']], F.mbMode === 'month' ? 'month' : 'cycle', v => { F.mbMode = v; saveF(); mbPaint(R.ctx, false); mbChartUpdate(); }, 'Period', 'fv-mb-seg');
+    E.modeSeg = seg([['cycle', 'Pay cycle', 'From payday to payday'], ['month', 'Month', 'The calendar month']], F.mbMode === 'month' ? 'month' : 'cycle', v => { F.mbMode = v; saveF(); if (R.sectionId === 'board') bdApply({ instant: true }); else { mbPaint(R.ctx, false); mbChartUpdate(); } }, 'Period', 'fv-mb-seg');
     E.greet = h('h2', { class: 'fv-mb-greet' });
     E.moodChip = h('span', { class: 'fv-mb-moodchip' }, h('i', { class: 'dot', 'aria-hidden': 'true' }), h('span'));
     E.moodTxt = h('span', { class: 'fv-mb-moodtxt' });
@@ -128,6 +133,7 @@
     E.readBtn = h('button', { type: 'button', class: 'fv-mb-btn glass', 'aria-pressed': 'false', onclick: () => mbReadToggle() }, mbIcon('vol'), h('span', { text: 'Read aloud' }));
     E.aiBtn = h('button', { type: 'button', class: 'fv-mb-btn ghost', hidden: true, title: 'Ask Claude to word these three sentences (only totals and the next bills are sent; every number is checked)', onclick: () => mbAiLoad(true, false) }, ic('wand-sparkles'), h('span', { text: 'Rewrite with Claude' }));
     E.hint = h('span', { class: 'fv-mb-hint', text: 'Words light up as they are read' });
+    E.fullLink = o.link ? h('button', { type: 'button', class: 'fv-link fv-mb-full', title: 'The days to payday, what is moving and what is coming up', onclick: () => setSection('overview') }, h('span', { text: 'See the full brief' }), ic('arrow-right', 'i-sm')) : null;
     // Play story: the money story (28-money-story.js): this month so far, or last month on the 1st to the 3rd.
     E.storyBtn = h('button', { type: 'button', class: 'fv-mb-btn inv', hidden: !msCanPlay(), title: 'Your month in money as a short story, read aloud', onclick: () => msOpen({}) }, msPlayEl(), h('span', { text: 'Play story' }));
     E.safe = h('aside', { class: 'fv-mb-safe', 'aria-label': 'Safe to spend' });
@@ -140,7 +146,7 @@
           h('div', { class: 'fv-mb-moodline' }, E.moodChip, E.moodTxt),
           h('div', { class: 'fv-mb-say-h' }, h('span', { class: 'fv-mb-overline', text: 'Your money in three sentences' }), h('span', { class: 'fv-mb-pips', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')), E.src),
           E.say,
-          h('div', { class: 'fv-mb-actions' }, E.readBtn, E.storyBtn, E.aiBtn, E.hint)),
+          h('div', { class: 'fv-mb-actions' }, E.readBtn, E.storyBtn, E.aiBtn, E.hint, E.fullLink)),
         E.safe));
     E.hero.addEventListener('keydown', e => {
       if (e.key === 'Escape' && MB.read) { e.stopPropagation(); mbReadStop(); return; }
@@ -153,6 +159,14 @@
       mbPick(ent.classList.contains('t-merchant') ? 'm' : 'c', ent.getAttribute('data-ref'));
     });
     g.append(E.hero);
+    MK.pauseOffscreen(E.hero);
+    // The entrance runs once; after it, every repaint is in place.
+    if (MB.entering) MB.enterT = setTimeout(() => { MB.entering = false; if (E.hero.isConnected) E.hero.classList.remove('is-entering'); }, 3600);
+    MK.once(E.hero, 'iv');   // the brief runs its own entrance; the shell's card-by-card rise (MK.inView) skips it
+    return E;
+  }
+  function mbBuild(g) {
+    const E = mbBuildHero(g);
     // KPI tiles
     E.kpis = h('div', { class: 'fv-mb-kpis' });
     E.k = {};
@@ -171,8 +185,8 @@
     S.paceLegend = h('div', { class: 'fv-mb-legend' });
     S.pace.body.insertBefore(S.paceLegend, S.pace.chart);
     // Movers + Coming up
-    S.mv = card(g, { title: 'Top movers', span: 7, md: 12, cls: 'fv-mb-mv', foot: true });
-    S.mvSeg = seg([['c', 'Categories'], ['m', 'Merchants']], MB.mvKind, v => { MB.mvKind = v; S.mvSeg.set(v); mbPaintMovers(MB.B, false); }, 'Movers by');
+    S.mv = card(g, { title: 'What changed most', span: 7, md: 12, cls: 'fv-mb-mv', foot: true });
+    S.mvSeg = seg([['c', 'Categories'], ['m', 'Shops']], MB.mvKind, v => { MB.mvKind = v; S.mvSeg.set(v); mbPaintMovers(MB.B, false); }, 'Movers by');
     S.mv.tools.append(S.mvSeg.el);
     S.mvList = h('div', { class: 'fv-mb-mvlist', role: 'list' }); S.mv.body.append(S.mvList);
     S.mv.foot.append(ic('info', 'i-sm'), h('span', { class: 'fv-grow', text: 'Rent, bills and money to people are left out: they don’t move with your habits.' }),
@@ -185,15 +199,10 @@
     // Insights
     E.ins = h('div', { class: 'fv-mb-ins' });
     g.append(E.ins);
-    MK.pauseOffscreen(E.hero); MK.pauseOffscreen(S.bills.el);
-    // The entrance runs once; after it, every repaint is in place.
-    if (MB.entering) MB.enterT = setTimeout(() => { MB.entering = false; if (E.hero.isConnected) E.hero.classList.remove('is-entering'); }, 3600);
-    // The brief runs its own entrance; the shell's card-by-card rise (MK.inView) skips these.
-    for (const el of [E.hero, E.kpis, E.ins]) MK.once(el, 'iv');
+    MK.pauseOffscreen(S.bills.el);
+    for (const el of [E.kpis, E.ins]) MK.once(el, 'iv');
     // Below the hero, each part plays its entrance when it first scrolls into
     // view (the hero chart draws in then too); until then its pieces wait unseen.
-    if (MB.io) MB.io.disconnect();
-    MB.io = null; MB.seen = new Map(); MB.ticks = []; MB.kpiWait = false;
     if (MB.entering && typeof IntersectionObserver !== 'undefined') {
       MB.io = new IntersectionObserver(es => {
         for (const en of es) {
@@ -214,20 +223,33 @@
 
   // ── Painting (first paint and every update, in place) ─────────────────
   function mbPaint(ctx, first, force) {
-    const E = MB.el; if (!E || !E.hero.isConnected) return;
+    const E = MB.el; if (!E || !E.hero || !E.hero.isConnected) return;
     const B = mbData(); if (!B) return;
     const anim = first && MB.entering && !MK.reduced();
+    mbPaintHidden();
     // Filters, saves and theme changes leave the brief's numbers as they are:
     // only the selection highlight moves (no DOM churn, nothing replays).
     if (!first && !force && MB.paintedB === B) { mbPaintSel(); return; }
     MB.paintedB = B;
     mbPaintHero(B, anim);
-    mbPaintKpis(B, anim);
+    if (E.k) mbPaintKpis(B, anim);   // (the hero on Money's main page has none of the rest)
     mbPaintMovers(B, anim);
     mbPaintBills(B, anim);
-    mbPaintInsights(B, anim);
+    if (E.ins) mbPaintInsights(B, anim);
     mbPaintSel();
     if (first || MB.aiChecked !== B.key + B.mode) mbAiLoad(false, false);
+  }
+  // Hide amounts covers speech too: what cannot be blurred is not read out (Read aloud and Play story wait, and say why).
+  function mbPaintHidden() {
+    const E = MB.el; if (!E || !E.readBtn) return;
+    const off = bdHidden();
+    if (off && MB.read) mbReadStop();
+    const why = 'Amounts are hidden, so this is off. Show amounts to hear it.';
+    E.readBtn.disabled = off; E.readBtn.title = off ? why : '';
+    E.storyBtn.disabled = off; E.storyBtn.title = off ? why : 'Your month in money as a short story, read aloud';
+    E.hint.hidden = off;
+    if (off) E.say.setAttribute('aria-label', 'Your money in three sentences. Amounts are hidden.');
+    else if (MB.sayText) E.say.setAttribute('aria-label', MB.sayText);
   }
   function mbHello() {
     const hr = typeof Clock !== 'undefined' ? Clock.parts(Clock.now()).h : new Date(Date.now()).getHours();   // clock-ok: the greeting's hour where the user is (Clock, P10)
@@ -269,7 +291,7 @@
     const left = isCycle ? `${cyc.daysLeft} day${cyc.daysLeft === 1 ? '' : 's'} to payday` : `${cyc.daysLeft} day${cyc.daysLeft === 1 ? '' : 's'} left in ${fd(cyc.start, { month: 'long' })}`;
     if (!B.mood.known) E.moodTxt.textContent = `No usual pace yet: that needs one full ${isCycle ? 'pay cycle' : 'month'} of history. ${left.replace(/^./, c => c.toUpperCase())}.`;
     else if (Math.abs(B.mood.diff) < 1) E.moodTxt.textContent = `Right on your usual pace, with ${left}.`;
-    else E.moodTxt.textContent = `${gbp(Math.abs(B.mood.diff))} ${B.mood.diff < 0 ? 'under' : 'over'} your usual pace, with ${left}.`;
+    else { E.moodTxt.textContent = ''; E.moodTxt.append(h('span', { class: 'fv-amt', text: gbp(Math.abs(B.mood.diff)) }), ` ${B.mood.diff < 0 ? 'under' : 'over'} your usual pace, with ${left}.`); }
     // The three sentences (the template now; Claude's wording when there is a checked one).
     const sents = MB.ai && MB.ai.key === B.key && MB.ai.mode === B.mode ? MB.ai.sentences : B.sentences;
     mbRenderSay(sents, anim);
@@ -326,8 +348,10 @@
         if (e.type === 'merchant' || e.type === 'category') { el.setAttribute('role', 'button'); el.tabIndex = 0; el.setAttribute('data-ref', e.ref); el.title = e.type === 'merchant' ? 'Show ' + e.ref : 'Select ' + e.ref; }
       });
     });
-    E.say.setAttribute('aria-label', sents.map(s => s.text).join(' '));
+    // Every amount in the sentences blurs with Hide amounts, tagged by the model or not (Claude's wording).
+    E.say.querySelectorAll('.st-w').forEach(w => { if (/[^\w\s,.'’()-]\s?\d|\d[\d,.]*\s?[A-Z]{3}\b/.test(w.textContent || '')) w.classList.add('fv-amt'); });
     MB.sayText = sents.map(s => s.text).join(' ');
+    mbPaintHidden();
     // A later change (the AI wording, a new period) crossfades instead of replaying the words.
     if (!fresh && !anim && !MK.reduced() && typeof E.say.animate === 'function') E.say.animate([{ opacity: 0.25 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' });
   }
@@ -362,7 +386,7 @@
       E.safeL.lastChild.textContent = 'Safe to spend';
       E.safeU.textContent = 'a day';
       mbTick(E.safeV, s.perDay, gbp, anim ? 380 : 0);
-      E.safeNote.innerHTML = `for the <b>${esc(String(cyc.daysLeft))} day${cyc.daysLeft === 1 ? '' : 's'}</b> ${isCycle ? 'to payday' : 'left in ' + esc(fd(cyc.start, { month: 'long' }))}, after <b>${esc(gbp(B.billsTotal))}</b> of bills and a <b>${esc(gbp(s.cushion))}</b> cushion.`;
+      E.safeNote.innerHTML = `for the <b class="d">${esc(String(cyc.daysLeft))} day${cyc.daysLeft === 1 ? '' : 's'}</b> ${isCycle ? 'to payday' : 'left in ' + esc(fd(cyc.start, { month: 'long' }))}, after <b>${esc(gbp(B.billsTotal))}</b> of bills and a <b>${esc(gbp(s.cushion))}</b> cushion.`;
     } else {
       E.safeL.lastChild.textContent = 'Spent a day so far';
       E.safeU.textContent = 'a day';
@@ -421,7 +445,7 @@
     K.in.d.innerHTML = `<span>${esc(B.inCount ? `${B.inCount} payment${B.inCount === 1 ? '' : 's'} ${isCycle ? 'since ' + fDay(cyc.start) : 'this month'}` : 'Nothing in yet')}</span>`;
     K.in.viz.innerHTML = B.inPer.length > 1 ? mbBars(B.inPer.map(x => x.v), { title: i => `${fDay(B.inPer[i].start)}: ${gbp(B.inPer[i].v)}${i === B.inPer.length - 1 ? ' so far' : ''}` }) : '';
     // 3. Net
-    label('net', isCycle ? 'Net this cycle' : 'Net this month');
+    label('net', isCycle ? 'Left over this cycle' : 'Left over this month');
     mbTick(K.net.v, B.net, x => (x > 0.5 ? '+' : '') + gbp(x), dl(2), anim);
     K.net.d.innerHTML = `<span>in ${esc(gbp(B.moneyIn))} · out ${esc(gbp(B.spent))}</span>`;
     K.net.viz.innerHTML = mbSpark(B.netCurve, { color: 'var(--fg-subtle)', a0: 0.12, i: 2 });
@@ -456,9 +480,9 @@
     const kind = MB.mvKind === 'm' ? 'm' : 'c';
     const list = (kind === 'm' ? B.moversM : B.movers).filter(x => Math.abs(x.delta) >= 1).slice(0, 6);
     const cyc = B.cycle;
-    S.mv.setSub(B.pace ? `Against your usual by day ${cyc.day + 1} of the ${cyc.mode === 'cycle' ? 'cycle' : 'month'} · median of ${B.pace.n} earlier ${cyc.mode === 'cycle' ? 'cycle' : 'month'}${B.pace.n === 1 ? '' : 's'}` : '');
+    S.mv.setSub(B.pace ? `Against what is usual by day ${cyc.day + 1} of the ${cyc.mode === 'cycle' ? 'cycle' : 'month'}` : '');
     S.mvList.innerHTML = '';
-    if (!list.length) { S.mv.setEmpty(B.pace ? 'Nothing is moving much: spending is close to usual everywhere.' : `Movers need one full ${cyc.mode === 'cycle' ? 'pay cycle' : 'month'} of history to compare with.`); return; }
+    if (!list.length) { S.mv.setEmpty(B.pace ? 'Nothing is moving much: spending is close to usual everywhere.' : `This needs one full ${cyc.mode === 'cycle' ? 'pay cycle' : 'month'} of history to compare with.`); return; }
     S.mv.setEmpty(null);
     const mx = Math.max(...list.map(x => Math.abs(x.delta)), 1);
     list.forEach((x, i) => {
@@ -578,7 +602,7 @@
   async function mbAiLoad(generate, regenerate) {
     const B = MB.B; if (!B || !mbAiAllowed() || MB.aiBusy) { if (B) MB.aiChecked = B.key + B.mode; return; }
     MB.aiChecked = B.key + B.mode;
-    if (generate) { MB.aiBusy = true; mbPaintSrc(B); }
+    if (generate) { MB.aiBusy = true; if (MB.el) mbPaintSrc(B); }
     try {
       const q = `/api/finance/brief?mode=${encodeURIComponent(B.mode)}${generate ? '&ai=1' : ''}${regenerate ? '&regenerate=1' : ''}`;
       const r = await api(q);
@@ -614,7 +638,7 @@
   }
   function mbReadToggle() { if (MB.read) mbReadStop(); else mbReadStart(); }
   function mbReadStart() {
-    const E = MB.el; if (!E) return;
+    const E = MB.el; if (!E || bdHidden()) return;
     const sns = [...E.say.querySelectorAll('.fv-mb-sn')];
     if (!sns.length) return;
     const V = mbVoice();

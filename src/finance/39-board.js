@@ -19,7 +19,8 @@
     const E = BDR.el = {};
     BDR.grid = g; g.classList.add('fvb-grid');
     BDR.tmp = h('div');
-    E.hero = h('div', { class: 'fvb-hero', style: { '--span': 12, '--span-md': 12 }, hidden: true });   // 2.19.5: the welcome banner (Home's hero)
+    E.hero = h('div', { class: 'fvb-hero', style: { '--span': 12, '--span-md': 12 }, hidden: true });   // 2.21: the Money brief's hero (26-money-ui.js)
+    MK.once(E.hero, 'iv');   // it runs its own entrance
     E.top = h('div', { class: 'fvb-top', style: { '--span': 12, '--span-md': 12 } });
     E.quick = h('div', { class: 'fvb-quick', role: 'toolbar', 'aria-label': 'Quick filters' });
     E.tools = h('div', { class: 'fvb-tools' });
@@ -28,6 +29,8 @@
     E.strip = h('div', { class: 'fvb-strip', style: { '--span': 12, '--span-md': 12 }, role: 'group', 'aria-label': 'Today at a glance' });
     E.empty = h('div', { class: 'fvb-empty', style: { '--span': 12, '--span-md': 12 }, hidden: true });
     g.append(E.hero, E.top, E.intro, E.strip, E.empty);
+    MB.painted = false;
+    if (F.briefOff !== true) mbBuildHero(E.hero, { link: true });
     BDR.frames = new Map();
     if (typeof ResizeObserver === 'function') {
       let w0 = 0;
@@ -76,42 +79,17 @@
     finally { Object.assign(F, keep); }
   }
 
-  /* ---------- the welcome banner (2.19.5): Home's hero on Money ----------
-     The greeting over the sky, the one line that matters (what is safe to spend today), a big Play money story
-     button and a Money brief button. It can be hidden (the x; More brings it back: F.heroOff, synced). It is
-     rebuilt only when its words change, so the sky does not restart on every update. */
-  function bdHeroOff(off) { F.heroOff = !!off; saveF(); if (R.ctx && R.sectionId === 'board') { R.noAnim = true; try { UPDATE.board(R.ctx); } finally { R.noAnim = false; } } }
+  /* ---------- the Money brief on top (2.21) ----------
+     Money opens on the brief's own hero: the greeting, three sentences, Read aloud, Play story, safe to spend. No close
+     button: More hides it (F.briefOff, synced). It follows the pay cycle or the month, not the page's filters. */
+  function bdBriefOff(off) { F.briefOff = !!off; saveF(); if (R.ctx && R.sectionId === 'board') { R.noAnim = true; try { UPDATE.board(R.ctx); } finally { R.noAnim = false; } } }
   function bdPaintHero(X) {
-    const el = BDR.el.hero;
-    const off = F.heroOff === true || typeof heroBannerEl !== 'function';
+    const el = BDR.el.hero, off = F.briefOff === true;
     el.hidden = off;
-    if (off) { el.replaceChildren(); el._key = ''; return; }
-    const M = X.M, B = X.brief();
-    let lead = '', line = 'Your money, in one place.', sub = '', cap = null;
-    if (B && B.balance) {
-      const left = round2(B.balance.total - B.billsTotal - B.cushion);
-      const days = Math.max(1, B.cycle.daysLeft);
-      if (left < 0) { lead = gbp(-left); line = B.mode === 'cycle' ? 'short for your bills and cushion until payday' : 'short for your bills and cushion this month'; }
-      else { lead = gbp(round2(left / days)); line = 'safe to spend today'; }
-      sub = left < 0 ? 'Go gently until money comes in.' : (days > 1 ? `${gbp(left)} over the next ${days} days` + (B.mode === 'cycle' ? ' · ' : ' · this month') : '') + (B.mode === 'cycle' ? `${days > 1 ? '' : 'Last day before '}payday ${fDayW(B.cycle.next)}` : '');
-    } else if (M) { line = 'Update your bank to see what is safe to spend today.'; }
-    try {
-      const next = M ? MBM.billsBetween(M.recurring, M.anchor, M.anchor + 32)[0] : null;
-      cap = next ? { why: 'Next bill', title: `${next.m} ${gbp2(next.amount)}` } : { why: 'Next bill', title: 'Nothing due this month' };
-    } catch (e) { cap = null; }
-    let date = ''; try { date = fd(localToday(), { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { date = ''; }
-    let greet = 'Your money';
-    try { if (typeof _bfGreeting === 'function' && typeof Clock !== 'undefined') greet = _bfGreeting({ nowD: new Date(Clock.now()) }); } catch (e) { /* the plain title stays */ }
-    const canPlay = (() => { try { return msCanPlay(); } catch (e) { return false; } })();
-    const key = JSON.stringify([date, greet, lead, line, sub, cap, canPlay]);
-    if (el._key === key && el.firstChild) return;
-    el._key = key;
-    el.replaceChildren(heroBannerEl({
-      date, greet, lead, line, sub, scene: 'finance', caption: cap,
-      play: canPlay ? { label: 'Play money story', aria: 'Play money story: your month in money, full screen and read aloud', run: () => msOpen({}) } : null,
-      alt: { label: 'Money brief', icon: 'sparkles', title: 'Your money in three sentences, the days to payday and what is worth a look', run: () => setSection('overview') },
-      onHide: () => bdHeroOff(true),
-    }));
+    if (off) { if (el.firstChild) { mbReadStop(); el.replaceChildren(); MB.el = null; MB.painted = false; } return; }
+    if (!el.firstChild) { mbBuildHero(el, { link: true }); MB.painted = false; }
+    try { const first = !MB.painted; MB.painted = true; mbPaint(X.ctx, first); }
+    catch (e) { console.error('[finance] money brief failed', e); }
   }
 
   /* ---------- tools: the layout menu, Customise, Hide amounts ---------- */
@@ -122,7 +100,7 @@
     E.tools.append(
       ...(bdHidden() ? [h('button', { type: 'button', class: 'btn btn-ghost btn-sm fvb-eye on', 'aria-pressed': 'true', title: 'Show amounts', onclick: () => bdToggleAmounts() }, ic('eye-off'), h('span', { text: 'Amounts hidden' }))] : []),
       ...(BDR.editing ? [h('button', { type: 'button', class: 'btn btn-secondary btn-sm fvb-cust', 'aria-pressed': 'true', onclick: () => bdEdit(false) }, ic('check'), h('span', { text: 'Done' }))] : []),   // Customise… is in the More menu
-      h('button', { type: 'button', class: 'btn btn-ghost btn-sm fvb-layout', 'aria-haspopup': 'menu', title: 'Layout, plain words, hide amounts and the Money brief', onclick: e => bdLayoutMenu(e.currentTarget) },
+      h('button', { type: 'button', class: 'btn btn-ghost btn-sm fvb-layout', 'aria-haspopup': 'menu', title: 'The full brief, layout, plain words and hide amounts', onclick: e => bdLayoutMenu(e.currentTarget) },
         ic('ellipsis'), h('span', { text: 'More' })));
   }
   function bdToggleAmounts() {
@@ -130,6 +108,7 @@
     homeSetAmountsHidden(!bdHidden());
     if (R.ctx && R.sectionId === 'board') { R.noAnim = true; try { UPDATE.board(R.ctx); } finally { R.noAnim = false; } }
     else if (R.root) R.root.classList.toggle('fv-amts-hidden', bdHidden());
+    mbPaintHidden();
   }
   function bdLayoutMenu(anchor) {
     const L = boardGet();
@@ -139,9 +118,9 @@
       next.strip = L.strip;
       boardSave(next, `${BD_PRESET_INFO[name].label} layout`, { icon: BD_PRESET_INFO[name].icon });
     };
-    const items = [{ label: 'Money brief', icon: 'sparkles', hint: 'in three sentences', title: 'Your money in three sentences, the days to payday and what is worth a look', run: () => setSection('overview') },
-      { label: 'Play money story', icon: 'play', title: 'Your month in money as a short story, read aloud', run: () => msOpen({}) },
-      { label: F.heroOff ? 'Show the welcome banner' : 'Hide the welcome banner', icon: 'image', title: 'The greeting with what is safe to spend today', run: () => bdHeroOff(!F.heroOff) },
+    const items = [{ label: 'See the full brief', icon: 'sparkles', title: 'The days to payday, what is moving and what is coming up', run: () => setSection('overview') },
+      { label: 'Play money story', icon: 'play', title: 'Your month in money as a short story, read aloud', disabled: bdHidden(), run: () => msOpen({}) },
+      { label: F.briefOff ? 'Show the brief' : 'Hide the brief', icon: F.briefOff ? 'eye' : 'eye-off', title: 'Your money in three sentences, at the top of this page', run: () => bdBriefOff(!F.briefOff) },
       'sep', { heading: 'Start from' }];
     for (const k of ['simple', 'detailed', 'scratch']) items.push({ label: BD_PRESET_INFO[k].label, icon: BD_PRESET_INFO[k].icon, title: BD_PRESET_INFO[k].desc, checked: L.preset === k, run: () => pick(k) });
     items.push('sep',
@@ -183,7 +162,7 @@
     if (F.accts.length) menus.append(bdPill(ic('landmark'), F.accts.length === 1 ? (M.acctNames[F.accts[0]] || 'Account') : `${F.accts.length} accounts`, () => { F.accts = []; changed(); }));
     if (F.q) menus.append(bdPill(ic('search'), `“${F.q}”`, () => { F.q = ''; changed(); }));
     if (F.amt) menus.append(bdPill(ic('coins'), `${gbp(F.amt[0])} – ${F.amt[1] >= M.maxAmt - 0.01 ? 'any' : gbp(F.amt[1])}`, () => { F.amt = null; changed(); }));
-    if (nAct > 1) menus.append(h('button', { type: 'button', class: 'fv-link fvb-clear', text: 'Clear', onclick: () => { const t2 = F.trip; F.cats = []; F.accts = []; F.merchant = ''; F.q = ''; F.amt = null; F.country = ''; if (t2) setTrip(null); else changed(); } }));
+    if (nAct > 1) menus.append(h('button', { type: 'button', class: 'fv-link fvb-clear', text: 'Clear', onclick: () => clearFilters() }));
     if (menus.childElementCount) box.append(menus);
   }
   /** The Filters popover: a trip, a country and a category, as three plain lists. */

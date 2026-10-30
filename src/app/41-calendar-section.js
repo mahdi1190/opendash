@@ -161,7 +161,19 @@ function _calBuild() {
     if (typeof calGridEditTime === 'function') calGridEditTime(tg);
   } else {
     const opt = { includeDone: !!calPrefs().showDone };
-    body.appendChild(calAgendaList(Object.assign({}, o, { from: calFocus(), days: 42, entries: (iso) => calEntriesOn(iso, opt) })));
+    const agenda = calAgendaList(Object.assign({}, o, { from: calFocus(), days: 42, entries: (iso) => calEntriesOn(iso, opt) }));
+    body.appendChild(agenda);
+    // Several tasks at once (events belong to their calendar: open one to change it; 11-ui-pick.js).
+    const tools = document.createElement('div'); tools.className = 'pk-list-tools';
+    tools.appendChild(multiPick(agenda, { key: 'cal-agenda', rows: '.agd-row[data-kind="task"]', idOf: (r) => r.dataset.id, noun: ['task', 'tasks'],
+      nameOf: (r) => { const it = getItem(r.dataset.id); return it ? effTitle(it) : ''; },
+      exists: (id) => !!getItem(id),
+      actions: () => [
+        { label: 'Complete', icon: 'circle-check', run: (ids) => bulkComplete(ids) },
+        { label: 'Reschedule', icon: 'calendar', keep: true, run: (ids, a, ms) => openDueDatePopover(a, { allowClear: true, title: `Due date for ${ids.length} task${ids.length === 1 ? '' : 's'}`, onPick: (d) => { ms.clear(true); bulkSetDue(ids.filter(id => getItem(id)), d); } }) },
+        { label: 'Bin', icon: 'trash-2', danger: true, run: (ids) => bulkBin(ids) },
+      ] }).button());
+    agenda.insertBefore(tools, agenda.firstChild);
   }
   // The grid and, beside it, the focused day's agenda or the open event's panel (11-ui-kit.js pageLayout; 2.19.1).
   return pageLayout({ main, side: ev ? calEventPanel(ev) : calRail(), cls: 'cal-wrap' + (ev ? ' with-panel' : '') + ' mode-' + calMode() });

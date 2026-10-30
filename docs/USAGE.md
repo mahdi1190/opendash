@@ -183,7 +183,9 @@ task, connect a calendar, or load demo data to look around.
 - **Repeating tasks** move to their next date when you complete them.
   *Won't do* closes a task without counting it as done.
 - Select several tasks for **bulk** changes: Ctrl+click (Cmd+click on a Mac)
-  adds one, Shift+click a range, Shift+Up/Down extends the selection.
+  adds one, Shift+click a range, Shift+Up/Down extends the selection. Expenses,
+  transactions, budgets, the Bin, files and more work the same way (press
+  **Select**, or tick a row), and each batch has **one Undo**.
 - **Undo** (Ctrl+Z) and redo work everywhere. Deleted tasks go to the **Bin**,
   where you can restore them.
 - Right-click a task (in a list, on a board, in the calendar or in Focus on
@@ -422,9 +424,13 @@ For money you spend on someone else's behalf (your employer, a client, a friend)
 what you want in plain words: "What is due this week?", "Move everything for
 Acme to next Monday", "Add a task to email Sam on Thursday, high priority".
 
-- The assistant looks things up itself and **proposes** changes. Nothing
-  changes until you press **Apply**; with several changes you can tick only
-  the ones you want. Every applied change can be undone.
+- The assistant looks things up itself and can do nearly everything in the
+  dashboard, with **Undo**. Ordinary changes are **proposed**: nothing happens
+  until you press **Apply**, and with several you can tick only the ones you
+  want. Low-risk ones (your garden, pet, profile, Home layout) it just does.
+  For anything sensitive (friends, your computers, your relay, sign-ins, money
+  rules, changes to existing expenses, updates) it always asks for your
+  approval on screen.
 - Text inside emails, calendar invitations, bank data or notes can never
   change your data on its own.
 - Per-task chat (in a task's detail), email triage suggestions and the short
@@ -467,7 +473,8 @@ you through three steps (Ctrl+K, *Friends: getting started* brings it back):
    Settings > **Your relay** shows who can use it, pending invites, and the
    free allowance used today; *Stop using this relay* (Advanced) has an Undo.
 3. **Invite a friend**: a single-use link, copied as it is or inside a ready
-   message. You both check a 6-digit code before you are connected.
+   message, or press **Show my friend code** and read the 4 letters to them.
+   You both check the same pictures before you are connected.
 
 The corner is you: your avatar, your status, a green dot when a friend is
 around and a number when a request is waiting. Its menu has your card (*Edit
@@ -520,7 +527,7 @@ Open **Settings** from the sidebar footer (or Ctrl+K, "settings").
 | Game | the fun level and sounds |
 | Notifications | a morning summary and reminders before events, while OpenDash is open in a tab |
 | Data | the data folder, backups and restore, export and import, the daily encrypted copy, moving your data, a clean copy of the app, reset |
-| Sync | your other computers, how changes travel, the main computer, the recovery code ([PRIVACY.md](PRIVACY.md#level-2-your-own-devices)) |
+| Sync | your other computers, how changes travel, the main computer, adding a computer with a 4-letter code, the optional 10-word backup sheet ([PRIVACY.md](PRIVACY.md#level-2-your-own-devices)) |
 | Your relay | your private relay on Cloudflare for Friends and sync: Set up my relay, who can use it, invites, today's free allowance, Update my relay and Stop using this relay (under Advanced) ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#your-relay)) |
 | Server | status, restart, log, start-up options, desktop and Start menu shortcuts, the offline page |
 | Updates | *Check for updates*, *Check for updates once a day*, *What's new* |

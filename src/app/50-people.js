@@ -218,7 +218,7 @@ function updatePersonFields(id, patch) {
 /** Old API (single field). */
 function updatePerson(id, field, value) { return updatePersonFields(id, { [field]: value }); }
 /** Fold one person into another: links, aliases, emails, streams, notes. Returns the number of tasks relinked. */
-function mergePeople(fromId, intoId) {
+function mergePeople(fromId, intoId, opts) {
   const a = getPerson(fromId), b = getPerson(intoId);
   if (!a || !b || a.id === b.id || a.self) return 0;
   const emails = pplPersonEmails(b);
@@ -232,6 +232,7 @@ function mergePeople(fromId, intoId) {
   if (notes.length) b.notes = notes;
   for (const k of ['role', 'org', 'group', 'phone', 'linkedin', 'avatarUrl', 'photo', 'cover']) if (!b[k] && a[k]) b[k] = a[k];
   delete b.stub;
+  if (typeof gameCount === 'function') gameCount('people-merge');   // achievements (71-ach-src-b4-people.js)
   let moved = 0;
   const fix = (t) => {
     let hit = false;
@@ -245,10 +246,10 @@ function mergePeople(fromId, intoId) {
   for (const t of state.custom || []) if (t && fix(t)) { moved++; logActivity(t.id, 'people', { text: `${a.name} merged into ${b.name}` }); }
   for (const bt of (state.bin && state.bin.tasks) || []) if (bt && bt.customData) fix(bt.customData);
   state.people = _pplList().filter(p => p.id !== a.id);
-  saveData();
+  if (!(opts && opts.noSave)) saveData();
   return moved;
 }
-function deletePersonById(id) {
+function deletePersonById(id, opts) {
   const p = getPerson(id); if (!p || p.self) return 0;
   let n = 0;
   for (const t of state.custom || []) {
@@ -257,7 +258,7 @@ function deletePersonById(id) {
     if (Array.isArray(t.peopleExcluded) && t.peopleExcluded.includes(id)) { t.peopleExcluded = t.peopleExcluded.filter(x => x !== id); if (!t.peopleExcluded.length) delete t.peopleExcluded; }
   }
   state.people = _pplList().filter(x => x.id !== id);
-  saveData();
+  if (!(opts && opts.noSave)) saveData();
   return n;
 }
 function addPersonNote(id, text) {
@@ -287,7 +288,7 @@ function linkSuggestedPeople(list) {
     logActivity(t.id, 'people', { text: `Linked ${p.name} (named in the ${x.where || 'task'})` });
     n++;
   }
-  if (n) saveData();
+  if (n) { saveData(); if (typeof gameCount === 'function') gameCount('link-accept', n); }   // achievements: suggested links accepted
   return n;
 }
 

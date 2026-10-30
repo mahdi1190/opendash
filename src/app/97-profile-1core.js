@@ -78,8 +78,17 @@ function profileSet(patch, o) {
   const p = _pfState();
   if (!patch || typeof patch !== 'object') return profileGet();
   for (const [k, v] of Object.entries(patch)) {
-    if (k === 'avatar' && v && typeof v === 'object') p.avatar = profileAvatarNormalize(Object.assign({}, p.avatar, v));
-    else if (k === 'status' && v && typeof v === 'object') p.status = Object.assign({}, p.status, v);
+    if (k === 'avatar' && v && typeof v === 'object') {
+      p.avatar = profileAvatarNormalize(Object.assign({}, p.avatar, v));
+      try {   // achievements: the seasons of one year you changed your look in
+        if (typeof gameMark === 'function' && typeof todayStr === 'function') { const d = todayStr(), m = Number(d.slice(5, 7)); gameMark('look-season', d.slice(0, 4) + '-' + (m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter')); }
+      } catch (e) { /* never in the way */ }
+    }
+    else if (k === 'status' && v && typeof v === 'object') {
+      p.status = Object.assign({}, p.status, v);
+      try { if (typeof gameStreakTick === 'function' && (p.status.text || p.status.emoji)) gameStreakTick('status'); } catch (e) { /* achievements: days a status was set */ }
+      try { if (typeof gameStreakTick === 'function' && /^On a break$/i.test(String(p.status.text || '').trim())) gameStreakTick('status-break'); } catch (e) { /* achievements: days the break status was set */ }
+    }
     else if (k === 'share' && v && typeof v === 'object') p.share = Object.assign({}, p.share, v);
     else if (k === 'collected' && v && typeof v === 'object') p.collected = Object.assign({}, p.collected, v);
     else if (k === 'look' && v && typeof v === 'object' && !Array.isArray(v)) {   // field by field (the nameplate and 'currently' too), then cleaned
@@ -88,6 +97,9 @@ function profileSet(patch, o) {
       if (v.np && typeof v.np === 'object') next.np = Object.assign({}, cur.np, v.np);
       if (v.cur && typeof v.cur === 'object') next.cur = Object.assign({}, cur.cur, v.cur);
       p.look = typeof profileLookNormalize === 'function' ? profileLookNormalize(next) : next;
+      try {   // achievements: which banners, nameplates and titles you have worn (ids from the app's own tables)
+        if (typeof gameMark === 'function') { const L = p.look || {}; if (L.banner) gameMark('you-banner', L.banner); if (L.np && L.np.font) gameMark('you-nameplate', L.np.font); if (L.title) gameMark('you-title', L.title); }
+      } catch (e) { /* never in the way */ }
     } else if (['name', 'pronouns', 'bio', 'working', 'theme', 'badges', 'places', 'react', 'friendName', 'friendNameOn'].includes(k)) p[k] = v;
     else if (_pfExt().has(k)) p[k] = v;   // another agent's field (profileExtend): its wire() and sanitize() check it
   }

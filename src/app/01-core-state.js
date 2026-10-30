@@ -333,6 +333,7 @@ function downloadBackup(silent) {
   state._lastBackup = Date.now();
   saveUI();
   if (!silent) showToast('✓ backed up — saved to Downloads', false);
+  if (!silent && typeof gameMark === 'function') gameMark('backup-month', todayStr().slice(0, 7));   // achievements: a month with a backup you took
 }
 let _autoBackupTimer = null;
 function maybeAutoBackup() {

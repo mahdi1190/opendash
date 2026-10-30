@@ -12,13 +12,17 @@
 //   resource:<id>   one Files & links entry (state.resources)
 //   autolink:<id>   one task's auto-link suggestions + rejected/applied memory (state.autolink)
 //   daynote:<date>  one day of Home's Daily note (state.daynotes[date]; ops-daynotes.mjs)
+//   garden:<map>:<id>  one entry of the garden (state.garden[map][id]; the same paths the page's Undo records)
+//   gamepref:<name>    one game preference (state.game.prefs[name]; the Fun level)
 
 import { clone, same } from './model.mjs';
 
 const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k);
 // Whole top-level keys the calendar/email ops snapshot as one entity ('key:<name>').
 const CALENDAR_KEYS = new Set(['calendarSettings', 'emailTriage', 'reviews',   // + ops-brief.mjs (state.reviews)
-  'pinnedTags', 'quickTemplates', 'taskTemplates', 'viewFilter']);              // + tag rename/merge/delete (ops.mjs retagElsewhere)
+  'pinnedTags', 'quickTemplates', 'taskTemplates', 'viewFilter',                // + tag rename/merge/delete (ops.mjs retagElsewhere)
+  'profile', 'wardrobe', 'pet', 'theme', 'autoTheme', 'density',                 // + ops-agent.mjs
+  'friendPerms']);                                                               // + ops-sensitive.mjs
 const val = (o, k) => (has(o, k) ? clone(o[k]) : null);
 
 function registryKey(s) { return has(s, 'tagRegistry') ? 'tagRegistry' : has(s, 'tags') ? 'tags' : 'tagRegistry'; }
@@ -87,6 +91,8 @@ export function snapshot(s, key) {
   if (kind === 'autolink') return autolinkSnap(s, id);                    // ops-autolink.mjs: one task's suggestions + memory
   if (kind === 'daynote') return { value: val(s.daynotes, id) };         // ops-daynotes.mjs: one day's note
   if (kind === 'key' && CALENDAR_KEYS.has(id)) return { value: val(s, id) };   // ops-calendar.mjs: a whole top-level key
+  if (kind === 'garden') { const [map, ...r] = id.split(':'); return { value: val(s.garden && s.garden[map], r.join(':')) }; }   // ops-agent.mjs
+  if (kind === 'gamepref') return { value: val(s.game && s.game.prefs, id) };   // ops-agent.mjs
   throw new Error('unknown entity ' + key);
 }
 
@@ -94,6 +100,8 @@ export function snapshot(s, key) {
 export function comparable(key, snap, forUndo = false) {
   if (!snap || typeof snap !== 'object' || Array.isArray(snap)) return snap;
   if (forUndo && String(key).startsWith('autolink:')) return { rejected: snap.rejected, applied: snap.applied };   // suggestions churn (see autolinkRestore)
+  // The page stamps these by itself after a change (what friends last got, when): not an edit that an undo would overwrite.
+  if (forUndo && (key === 'key:profile' || key === 'key:pet') && snap.value && typeof snap.value === 'object') { const { sentSig, updatedAt, ...v } = snap.value; return { value: v }; }
   const { index, ...rest } = snap;
   return rest;
 }
@@ -159,6 +167,17 @@ export function restore(s, key, snap) {
   if (kind === 'eventMeta') { setOrDelete(s, 'eventMeta', id, snap.value); return; }   // ops-calendar.mjs
   if (kind === 'autolink') { autolinkRestore(s, id, snap); return; }                    // ops-autolink.mjs
   if (kind === 'daynote') { setOrDelete(s, 'daynotes', id, snap.value); return; }       // ops-daynotes.mjs
+  if (kind === 'garden') {                                               // ops-agent.mjs
+    const [map, ...r] = id.split(':');
+    s.garden = s.garden && typeof s.garden === 'object' ? s.garden : {};
+    setOrDelete(s.garden, map, r.join(':'), snap.value);
+    return;
+  }
+  if (kind === 'gamepref') {                                             // ops-agent.mjs
+    s.game = s.game && typeof s.game === 'object' ? s.game : {};
+    setOrDelete(s.game, 'prefs', id, snap.value);
+    return;
+  }
   if (kind === 'key' && CALENDAR_KEYS.has(id)) {
     if (snap.value === null) delete s[id];
     else s[id] = clone(snap.value);

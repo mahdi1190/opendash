@@ -1,5 +1,4 @@
-/* ============================================================
-   EXPENSES, the page (Money > Expenses, #view=expenses) and its dialogs. Owner: Expenses (2.18.1).
+/* =====================================================   EXPENSES, the page (Money > Expenses, #view=expenses) and its dialogs. Owner: Expenses (2.18.1).
    Template: UX_BLUEPRINT.md section 3. One primary action (Add an expense), everything else in More.
    Sections: To claim, Submitted (by claim), Paid. Status first, then the next step.
    ============================================================ */
@@ -8,13 +7,13 @@ const XP_STATUS = { 'to-claim': ['To claim', 'clock'], submitted: ['Submitted', 
 
 /* ---------- the page ---------- */
 registerPage({
-  id: 'expenses', view: 'expenses', match: v => v === 'expenses', label: 'Expenses', icon: 'receipt', area: 'money', tab: true, order: 20, since: '2.18',
+  id: 'expenses', view: 'expenses', match: v => v === 'expenses', label: 'Expenses', icon: 'coins', area: 'money', tab: true, order: 20, since: '2.18',
   desc: 'What you are owed back, receipts and claims', keywords: 'expenses expense claim reimburse receipt owed paid back employer client mileage',
   available: () => !(APP_CONFIG.features && APP_CONFIG.features.finance === false),
   badge: () => { const o = EXP.data && EXP.data.summary; return o && o.toClaimCount && expPrefs().reminders ? o.toClaimCount : ''; },
 });
 registerSection('expenses', {
-  group: 'finance', hashable: true, match: v => v === 'expenses', title: () => 'Expenses', crumb: () => [], layout: 'page',
+  group: 'finance', hashable: true, match: v => v === 'expenses', title: () => 'Money', crumb: () => [], layout: 'page',   // 2.21: a tab of Money: the title and the tabs stay put, the tab says where you are
   mount(container) { _xpMount(container); },
   unmount() { EXP.picked = new Set(); },
 });
@@ -22,12 +21,22 @@ registerSidebarBlock('finance', {
   id: 'money-expenses', order: 20, label: 'Expenses',
   render(el) {
     const o = expOwed();
-    el.appendChild(sbNavItem({ label: 'Expenses', icon: 'receipt', view: 'expenses', active: state.view === 'expenses', count: o && o.toClaimCount && expPrefs().reminders ? String(o.toClaimCount) : '', title: 'What you are owed back, receipts and claims' }));
+    el.appendChild(sbNavItem({ label: 'Expenses', icon: 'coins', view: 'expenses', active: state.view === 'expenses', count: o && o.toClaimCount && expPrefs().reminders ? String(o.toClaimCount) : '', title: 'What you are owed back, receipts and claims' }));
     if (!EXP.loaded) expLoad();
   },
 });
 
+/** Money's tabs in the page header, the same row as on Money (the Finances code loads a moment after the first paint). */
+let _xpTabsTries = 0;
+function _xpMoneyTabs() {
+  if (state.view !== 'expenses') return;
+  const FV = window.FinanceView;
+  if (FV && typeof FV.groupTabs === 'function') { _xpTabsTries = 0; headerSubTabs(FV.groupTabs('expenses'), FV.tabsFor()); return; }
+  if (_xpTabsTries++ < 40) setTimeout(_xpMoneyTabs, 50);
+}
 function _xpMount(container) {
+  _xpMoneyTabs();
+  const sub = document.getElementById('view-subtitle'); if (sub) { sub.textContent = ''; const t = _xe('span', 'fv-fresh'); t.textContent = 'What you are owed back, receipts and claims'; sub.appendChild(t); }   // (the same line box as Money's: nothing moves)
   const root = _xe('div', 'xp'); container.appendChild(root);
   if (!EXP.loaded) { root.innerHTML = '<div class="xp-loading"><span class="spinner" aria-hidden="true"></span> Loading your expenses…</div>'; expLoad(); return; }
   if (EXP.error && !EXP.data) { mountEmptyState(root, { icon: 'circle-alert', title: 'Expenses did not load', text: EXP.error, actions: [{ label: 'Try again', primary: true, run: () => { EXP.loaded = false; render(); } }] }); return; }
@@ -38,6 +47,7 @@ function _xpMount(container) {
     mountEmptyState(box, { icon: 'receipt', title: 'Get paid back, without the chasing',
       text: 'Mark a payment as an expense to start: open Money > Transactions and press Expense on the purchase, or add one by hand. Keep the receipt, send the claim, and OpenDash notices when the money arrives.',
       actions: [{ label: 'Add an expense', icon: 'plus', primary: true, run: () => expAddDialog({}) }, { label: 'Open transactions', icon: 'arrow-right', run: () => { setView('finance'); try { window.FinanceView.setSection('transactions'); } catch (e) { /* later */ } } }] });
+    const rp0 = _xpReports(d); if (rp0) root.appendChild(rp0);
     return;
   }
   // The owed summary on top: the total, the status and payer filters in one band (2.19: lean).
@@ -53,13 +63,38 @@ function _xpMount(container) {
   const all = _xpFiltered();
   const sel = all.find(e => e.id === EXP.sel) || all[0] || null;
   EXP.sel = sel ? sel.id : '';
+  const tools = _xe('div', 'xp-list-tools');
   const md = masterDetail({
     label: 'Expenses', listWidth: 340, cls: 'xp-md',
-    list: (host) => _xpListInto(host, all, sel, (e) => _xpSelect(md, e)),
+    list: (host) => _xpListInto(host, all, sel, (e) => _xpSelect(md, e), tools),
     detail: sel ? _xpDetail(sel) : null,
     empty: () => { const b = _xe('div', 'xp-none', 'Nothing matches. <button class="btn-link" type="button">Clear the filters</button>'); b.querySelector('button').onclick = () => { EXP.q = ''; EXP.payer = ''; EXP.status = 'all'; render(); }; return b; },
   });
   root.appendChild(md);
+  tools.appendChild(_xpPick(md, all).button());
+  const rp = _xpReports(d); if (rp) root.appendChild(rp);
+}
+/** Reports you have made, newest first: open the folder, undo (back to To claim) or delete. Undo works at any time, also after a restart. */
+function _xpReports(d) {
+  const list = d.reports || [];
+  if (!list.length) return null;
+  const sec = _xe('section', 'xp-reports');
+  sec.appendChild(secHead({ title: 'Reports', count: list.length }));
+  sec.appendChild(pagedList({ items: list, pageSize: 5, render: (r) => _xpReportRow(r) }));
+  return sec;
+}
+function _xpReportRow(r) {
+  const row = _xe('div', 'xp-rp' + (r.undoneAt ? ' is-undone' : ''));
+  const n = r.count || (r.ids || []).length;
+  row.appendChild(_xe('span', 'xp-rp-d num', esc(_xpDate(r.at))));
+  row.appendChild(_xe('span', 'xp-rp-t', `<b>${esc(r.payer || 'Expense report')}</b><small>${n} expense${n === 1 ? '' : 's'}${r.undoneAt ? ' · undone, back in To claim' : ''}</small>`));
+  row.appendChild(_xe('span', 'xp-rp-am num', esc(expMoney(r.total))));
+  const acts = _xe('span', 'xp-rp-a');
+  acts.appendChild(uiButton({ label: 'Open folder', icon: 'folder-open', kind: 'ghost', size: 'sm', run: () => expReportOpen(r.id) }));
+  if (!r.undoneAt) acts.appendChild(uiButton({ label: 'Undo', icon: 'undo-2', kind: 'ghost', size: 'sm', tip: 'Put its expenses back in To claim. The folder stays until you delete it.', run: () => expReportUndo(r.id) }));
+  acts.appendChild(uiButton({ icon: 'trash-2', kind: 'ghost', size: 'sm', tip: 'Delete report', aria: 'Delete report', run: () => expReportDelete(r) }));
+  row.appendChild(acts);
+  return row;
 }
 /** "12 Oct" (and the year when it is not this one). */
 function _xpDate(iso) {
@@ -97,12 +132,36 @@ function _xpFiltered() {
     && (!q || expNorm(`${e.title} ${e.payer} ${e.merchant || ''} ${e.category || ''} ${e.note || ''}`).includes(q)));
 }
 /** The list column: search, then To claim / Waiting / Paid, each a page at a time (paid ones fold to 8). */
-function _xpListInto(host, all, sel, pick) {
+/** Several at once, across To claim, Waiting and Paid: what each can do next, one Undo for the batch (11-ui-pick.js). */
+function _xpPick(md, all) {
+  const inList = new Set(all.map(e => e.id));
+  const upd = () => { for (const h of md.mdList.querySelectorAll('.sec-h')) if (h._upd) h._upd(); };
+  return multiPick(md.mdList, { key: 'expenses', rows: '.md-row', set: () => EXP.picked, noun: ['expense', 'expenses'],
+    nameOf: (r) => (r.querySelector('.md-row-n') || {}).textContent || '',
+    exists: (id) => inList.has(id) && !!expItem(id),
+    allIds: () => all.map(e => e.id),
+    onChange: upd,
+    actions: (ids) => {
+      const of = (st) => ids.filter(id => { const e = expItem(id); return e && e.status === st; });
+      const claim = of('to-claim'), sent = of('submitted'), paid = of('paid');
+      const nOf = (list, word) => (list.length === ids.length ? word : `${word} (${list.length})`);
+      return [
+        claim.length ? { label: nOf(claim, 'Mark as sent'), icon: 'send', keep: true, run: () => expSubmitDialog(claim) } : null,
+        sent.length ? { label: nOf(sent, 'Not sent after all'), icon: 'rotate-ccw', run: async () => { const j = await expDo('/unsubmit', { ids: sent }, { done: `${sent.length} moved back to to claim`, what: 'change that' }); return j ? undefined : false; } } : null,
+        sent.length ? { label: nOf(sent, 'Mark as paid'), icon: 'circle-check', run: async () => { const j = await expMarkPaid(sent); return j ? undefined : false; } } : null,
+        paid.length ? { label: nOf(paid, 'Not paid'), icon: 'rotate-ccw', run: async () => { const j = await expDo('/unpaid', { ids: paid }, { done: `${paid.length} moved back`, what: 'change that' }); return j ? undefined : false; } } : null,
+        { label: 'Make expense report', icon: 'file-text', tip: 'A filled-in expense form (PDF) and a zip of the receipts, saved in Documents', keep: true, run: (l) => expReportDialog(l) },
+        { label: 'Delete', icon: 'trash-2', danger: true, run: async (l) => { const j = await expDelete(l); return j ? undefined : false; } },
+      ];
+    } });
+}
+function _xpListInto(host, all, sel, pick, tools) {
   const q = _xe('label', 'input input-sm xp-search', icon('search') + '<input type="search" placeholder="Search expenses" aria-label="Search expenses">');
   const qi = q.querySelector('input'); qi.value = EXP.q;
   let qt = 0;
   qi.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { EXP.q = qi.value; const at = qi.selectionStart; render(); const again = document.querySelector('.xp-search input'); if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (e) { /* fine */ } } }, 260); });
-  host.appendChild(q);
+  tools.appendChild(q);
+  host.appendChild(tools);
   const groups = [['to-claim', 'To claim', 'Add the receipt, then send the claim.'], ['submitted', 'Waiting', 'Sent and waiting to be paid back. OpenDash looks for the payment.'], ['paid', 'Paid', '']];
   for (const [st, title, hint] of groups) {
     const list = all.filter(e => e.status === st);
@@ -121,21 +180,16 @@ function _xpListInto(host, all, sel, pick) {
     host.appendChild(h);
     const at = sel ? list.findIndex(e => e.id === sel.id) : -1;
     host.appendChild(pagedList({ items: list, pageSize: st === 'paid' && !EXP.q && EXP.status !== 'paid' ? 8 : 15, start: at + 1,
-      render: (e) => _xpListRow(e, sel && e.id === sel.id, pick, h) }));
+      render: (e) => _xpListRow(e, sel && e.id === sel.id, pick) }));
   }
 }
-function _xpListRow(e, active, pick, head) {
-  let lead;
-  if (e.status === 'to-claim') {
-    lead = _xe('input', 'xp-cb'); lead.type = 'checkbox'; lead.checked = EXP.picked.has(e.id); lead.setAttribute('aria-label', 'Select ' + e.title);
-    lead.onclick = (ev) => ev.stopPropagation();
-    lead.onchange = () => { if (lead.checked) EXP.picked.add(e.id); else EXP.picked.delete(e.id); if (head && head._upd) head._upd(); };
-  } else lead = _xe('span', 'xp-st st-' + e.status, icon(XP_STATUS[e.status][1]));
+function _xpListRow(e, active, pick) {
+  const lead = _xe('span', 'xp-st st-' + e.status, icon(XP_STATUS[e.status][1]));
   const rc = e.receipts.length;
   const when = _xpDate(e.date);
   const sub = [when, e.payer || 'no payer yet', e.status === 'to-claim' && !rc ? 'no receipt' : ''].filter(Boolean).join(' · ');
-  const row = mdRow({ title: e.title, sub, avatar: lead, badge: expMoney(e.amount, e.currency), active, tip: `${e.title}, ${expMoney(e.amount, e.currency)}`, run: () => pick(e) });
-  row.dataset.id = e.id;
+  const row = mdRow({ pickable: true, title: e.title, sub, avatar: lead, badge: expMoney(e.amount, e.currency), active, tip: `${e.title}, ${expMoney(e.amount, e.currency)}`, run: () => pick(e) });
+  row.dataset.id = e.id; row.dataset.pickId = e.id;
   expAcceptFiles(row, () => e.id);
   return row;
 }
@@ -219,7 +273,7 @@ function _xpMoreItems() {
     'sep',
     { label: 'Payers and deadlines…', icon: 'users', run: () => expPayersDialog() },
     { label: 'Check for payments now', icon: 'refresh-cw', run: () => { EXP.scanAt = 0; expScan(true).then(() => toast(EXP.asks.length ? 'There is one thing to confirm' : 'Looked: nothing new arrived', { icon: 'search' })); } },
-    { label: 'Your signature…', icon: 'pen-line', run: () => expSignatureDialog() },
+    { label: 'Your signature…', icon: 'pencil', run: () => expSignatureDialog() },
     { label: 'Download all as CSV', icon: 'download', run: () => expPack({ ids: expItems().map(e => e.id).slice(0, 200) }, 'csv') },
     { label: 'Paid back this year…', icon: 'calendar-check', run: () => expYearDialog() },
   ];
@@ -376,7 +430,7 @@ function expSignatureDialog(after) {
       inp.onchange = async () => {
         const f = inp.files[0]; if (!f) return;
         const data = await expSignatureRead(f); if (!data) return;
-        try { await expApi('/signature', { data }); toast('Signature saved', { icon: 'pen-line' }); if (typeof after === 'function') after(); } catch (e) { toast(netErrorMessage(e), { kind: 'err' }); }
+        try { await expApi('/signature', { data }); toast('Signature saved', { icon: 'pencil' }); if (typeof after === 'function') after(); } catch (e) { toast(netErrorMessage(e), { kind: 'err' }); }
         paint();
       };
       inp.click();
@@ -398,7 +452,7 @@ function expSignatureDialog(after) {
   });
 }
 const _XR_COLS = [['hotel', 'Hotel'], ['transport', 'Transport'], ['fuel', 'Fuel'], ['meals', 'Meals'], ['phone', 'Phone'], ['entertainment', 'Entertainment'], ['misc', 'Misc.']];
-/** Make expense report: each row is placed in a column of the form for you (a small click on the column name changes one); Generate does the rest. */
+/** Make expense report: the check screen. Each row is placed in a column of the form for you (a small click on the column name changes one); nothing is signed by surprise. */
 async function expReportDialog(ids) {
   const list = ids.map(expItem).filter(Boolean);
   if (!list.length) { toast('Nothing to put in a report.'); return; }
@@ -407,15 +461,27 @@ async function expReportDialog(ids) {
   const cols = {};
   const total = list.reduce((s, e) => s + e.amount, 0);
   const noReceipt = plan.rows.filter(r => !r.hasReceipt);
+  const forms = Math.ceil(plan.rows.length / (plan.perPage || 11));
   const payer = _xInput('text', plan.payer || '', 'Who the report is for', { autocomplete: 'off' });
   const name = _xInput('text', plan.name || '', 'Your name');
   const adv = _xInput('number', '0.00', '0.00', { min: '0', step: '0.01' });
-  let body, sigNote;
+  let body, sigNote, unsigned = false;
+  // A saved signature is shown here, with a tick to leave it off. Without one the line stays blank to sign by hand.
   const sigPaint = () => {
     expApi('/signature?info=1').then((j) => {
       sigNote.innerHTML = '';
-      sigNote.appendChild(_xe('span', 'xp-fh', j.signature.set ? 'Your signature will be on the form.' : 'You have not added your signature, so that line will be blank.'));
-      if (!j.signature.set) sigNote.appendChild(uiButton({ label: 'Add a signature', icon: 'pen-line', size: 'sm', run: () => expSignatureDialog(sigPaint) }));
+      if (j.signature.set) {
+        const img = _xe('img', 'xp-sig-img' + (unsigned ? ' off' : '')); img.alt = 'Your signature'; img.src = '/api/expenses/signature?t=' + Date.now();
+        const tick = _xe('label', 'xp-sig-tick'); const cb = _xe('input'); cb.type = 'checkbox'; cb.checked = unsigned;
+        const note = _xe('span', 'xp-fh', '');
+        const say = () => { note.textContent = unsigned ? 'The signature and date lines will be blank.' : 'This signature and today’s date go on the Claimant line.'; };
+        cb.onchange = () => { unsigned = cb.checked; img.classList.toggle('off', unsigned); say(); };
+        tick.append(cb, _xe('span', '', 'Leave unsigned'));
+        say();
+        sigNote.append(img, note, tick, uiButton({ label: 'Change', icon: 'pencil', size: 'sm', kind: 'ghost', run: () => expSignatureDialog(sigPaint) }));
+      } else {
+        sigNote.append(_xe('span', 'xp-fh', 'No signature saved, so the line stays blank for you to sign by hand.'), uiButton({ label: 'Add a signature', icon: 'pencil', size: 'sm', kind: 'ghost', run: () => expSignatureDialog(sigPaint) }));
+      }
     }).catch(() => {});
   };
   const colName = (r) => (_XR_COLS.find(c => c[0] === (cols[r.id] || r.col)) || _XR_COLS[6])[1];
@@ -431,12 +497,23 @@ async function expReportDialog(ids) {
     };
     return b;
   };
+  const openBtn = (id) => uiButton({ label: 'Open folder', icon: 'folder-open', kind: 'primary', size: 'sm', run: () => expReportOpen(id) });
+  const undone = (res, n) => {
+    body.innerHTML = '';
+    body.appendChild(_xe('div', 'xp-remind', `${icon('undo-2')}<span>Undone. ${n} expense${n === 1 ? ' is' : 's are'} back in To claim.</span>`));
+    body.appendChild(_xe('p', 'xp-fh', `The report is still in ${esc(res.dir)} until you delete it.`));
+    const acts = _xe('div', 'xp-pack');
+    acts.append(openBtn(res.report.id), uiButton({ label: 'Delete report', icon: 'trash-2', size: 'sm', run: async () => { if (await expReportDelete(res.report)) { body.innerHTML = ''; body.appendChild(_xe('div', 'xp-remind', `${icon('circle-check')}<span>Report deleted. You can close this.</span>`)); } } }));
+    body.appendChild(acts);
+  };
+  const undo = async (res) => { const j = await expReportUndo(res.report.id); if (j && body.isConnected) undone(res, j.changed || 0); };
   const saved = (res) => {
     body.innerHTML = '';
     body.appendChild(_xe('div', 'xp-remind', `${icon('circle-check')}<span>Saved to ${esc(res.dir)}</span>`));
-    body.appendChild(_xe('p', 'xp-fh', `${res.count} expense${res.count === 1 ? '' : 's'} on the form${res.receipts ? ', ' + res.receipts + ' receipt' + (res.receipts === 1 ? '' : 's') + ' in Receipts.zip' : ', no receipts to zip'}. The folder should have opened. Print or send the PDF yourself.`));
+    const moved = (res.moved || []).length;
+    body.appendChild(_xe('p', 'xp-fh', `${res.count} expense${res.count === 1 ? '' : 's'} on the form${res.receipts ? ', ' + res.receipts + ' receipt' + (res.receipts === 1 ? '' : 's') + ' in Receipts.zip' : ', no receipts to zip'}.${moved ? ` ${moved === 1 ? 'It has' : 'They have'} moved to Waiting.` : ''} The folder should have opened. Print or send the PDF yourself.`));
     const acts = _xe('div', 'xp-pack');
-    acts.append(uiButton({ label: 'Open folder', icon: 'folder-open', kind: 'primary', size: 'sm', run: () => expApi('/report/open', { dir: res.dir }).catch(e => toast(netErrorMessage(e), { kind: 'err' })) }));
+    acts.append(openBtn(res.report.id), uiButton({ label: 'Undo this report', icon: 'undo-2', size: 'sm', tip: 'Made it by accident? All its expenses go back to To claim.', run: () => undo(res) }));
     body.appendChild(acts);
   };
   openDialog({
@@ -454,17 +531,21 @@ async function expReportDialog(ids) {
       }
       el.appendChild(rows);
       el.appendChild(_xe('p', 'xp-fh', 'Each row goes in the column that fits it best. Click a column name only if you want to change one.'));
+      if (forms > 1) el.appendChild(_xe('div', 'xp-remind', `${icon('info')}<span>The form holds ${plan.perPage || 11} expenses, so this makes ${forms} forms, each with its own total. Together they come to ${esc(expMoney(total))}.</span>`));
       if (noReceipt.length) el.appendChild(_xe('div', 'xp-remind', `${icon('triangle-alert')}<span>No receipt for: ${noReceipt.map(r => esc(r.description)).join(', ')}. You can still make the report.</span>`));
-      const two = _xe('div', 'xp-two'); two.append(_xField('Name on the form', name), _xField('Advances (£)', adv)); el.appendChild(two);
-      el.appendChild(_xField('For (names the folder)', payer));
-      sigNote = _xe('div', 'xp-pack'); el.appendChild(sigNote); sigPaint();
-      const go = uiButton({ label: 'Generate', icon: 'file-text', kind: 'primary', wait: true, run: async () => {
+      const two = _xe('div', 'xp-two'); two.append(_xField('Name on the form', name), _xField('Advances (£)', adv, 'Money you were given up front, if any')); el.appendChild(two);
+      el.appendChild(_xField('Who it is for', payer, 'Also names the folder'));
+      sigNote = _xe('div', 'xp-sigrow'); el.appendChild(sigNote); sigPaint();
+      const go = uiButton({ label: 'Make report', icon: 'file-text', kind: 'primary', wait: true, run: async () => {
         let res;
-        try { res = await expApi('/report', { ids, cols, advances: Number(adv.value) || 0, payer: payer.value, name: name.value }); }
+        try { res = await expApi('/report', { ids, cols, advances: Number(adv.value) || 0, payer: payer.value, name: name.value, unsigned }); }
         catch (e) { if (typeof toastError === 'function') toastError('make the report', e); else toast(netErrorMessage(e), { kind: 'err' }); return; }
+        const before = (res.moved || []).map(expItem).filter(Boolean);
+        expSet(res.data); EXP.picked = new Set();
+        expSubmitTasks(before, { payer: payer.value });
         saved(res);
-        const open = ids.map(expItem).filter(e => e && e.status === 'to-claim').map(e => e.id);
-        if (open.length) { await expSubmit(open, { payer: payer.value || undefined, method: 'other' }); EXP.picked = new Set(); }
+        toast(`Report saved · ${res.count} expense${res.count === 1 ? '' : 's'} · ${expMoney(res.total)}`, { icon: 'file-text', timeout: 15000, action: { label: 'Undo this report', run: () => undo(res) } });
+        expRepaint();
       } });
       const bar = _xe('div', 'xp-pack'); bar.appendChild(go); el.appendChild(bar);
     },

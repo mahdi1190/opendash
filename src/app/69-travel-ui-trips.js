@@ -88,15 +88,29 @@ function _trvMaster(container, snap, trips, selId) {
         for (const x of list) {
           let avatar = null;
           if (typeof trFlagHtml === 'function' && x.dest && x.dest.cc) { avatar = document.createElement('span'); avatar.innerHTML = trFlagHtml(x.dest.cc); }
-          host.appendChild(mdRow({ avatar: avatar || undefined, icon: avatar ? undefined : 'map-pin', title: x.label || 'Somewhere', active: x.id === t.id,
+          const row = mdRow({ pickable: true, avatar: avatar || undefined, icon: avatar ? undefined : 'map-pin', title: x.label || 'Somewhere', active: x.id === t.id,
             sub: `${trUiRange(x.from, x.to)}${x.nights ? ' · ' + x.nights + (x.nights === 1 ? ' night' : ' nights') : ''} · ${x.candidate ? 'Maybe' : _trvStatusText(x, snap.today)}`,
-            run: () => setView('trip:' + x.id) }));
+            run: () => setView('trip:' + x.id) });
+          row.dataset.pickId = x.id;
+          host.appendChild(row);
         }
       }
     },
     detail: () => _trvTripDetail(t, snap),
   });
   container.appendChild(md);
+  // Several at once: not trips, one Undo for the lot (11-ui-pick.js).
+  const tools = document.createElement('div'); tools.className = 'pk-list-tools';
+  const pick = multiPick(md.mdList, { key: 'trips', rows: '.md-row', noun: ['trip', 'trips'],
+    nameOf: (r) => (r.querySelector('.md-row-n') || {}).textContent || '',
+    actions: () => [{ label: 'Not trips', icon: 'x', tip: 'These were not trips (your calendar, tasks and payments stay as they are)', run: async (ids) => {
+      const before = state.travel ? JSON.parse(JSON.stringify(state.travel)) : undefined;
+      for (const id of ids) await TravelStore.notTrip(id, { quiet: true });
+      render();
+      toast(`${ids.length} marked as not a trip`, { kind: 'ok', icon: 'x', timeout: 9000, action: { label: 'Undo', run: () => { state.travel = before; saveData(); TravelStore.changed(); render(); toast('Trips back', { kind: 'ok', icon: 'undo-2' }); } } });
+    } }] });
+  tools.appendChild(pick.button());
+  md.mdList.insertBefore(tools, md.mdList.firstChild);
   md.mdList.scrollTop = _trvListTop || 0;
   md.mdList.addEventListener('scroll', () => { _trvListTop = md.mdList.scrollTop; }, { passive: true });
   const row = md.mdList.querySelector('.md-row.on');

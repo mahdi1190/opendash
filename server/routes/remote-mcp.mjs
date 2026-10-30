@@ -55,7 +55,8 @@ export default function register(app) {
     const b = await c.body(), { auth } = await authFor();
     try { return await auth.approve(String(b.id || ''), String(b.code || '')); }
     catch (e) {
-      if (e.error === 'code_mismatch') throw new HttpError(400, 'That code does not match this request. Type the code shown in your own Claude sign-in tab. If you did not start a connection just now, do not approve it.');
+      if (e.error === 'code_mismatch') throw new HttpError(400, `Those letters don't match. Look at your own Claude sign-in tab and type the 4 letters it shows${e.left ? ` (${e.left} ${e.left === 1 ? 'try' : 'tries'} left)` : ''}. If you didn't start a connection just now, don't approve it.`);
+      if (e.error === 'code_burned') throw new HttpError(400, 'Three wrong codes, so connecting was stopped to keep you safe. Press Connect Claude to start again.');
       throw new HttpError(400, 'This connection request expired. Start again in Claude.');
     }
   } });

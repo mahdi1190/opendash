@@ -36,7 +36,7 @@
   function mbPaceChart(cd, B, switched) {
     const t = tk(), cyc = B.cycle, isCycle = cyc.mode === 'cycle', P = B.pace, n = cyc.len, D = cyc.day;
     cd.el.querySelector('h3').textContent = isCycle ? 'Spending since payday' : 'Spending this month';
-    cd.setSub(P ? `Day ${D + 1} of ${n} · “usual” is the median of your last ${P.n} ${isCycle ? 'pay cycle' : 'month'}${P.n === 1 ? '' : 's'}` : `Day ${D + 1} of ${n} · the usual pace appears after one full ${isCycle ? 'pay cycle' : 'month'}`);
+    cd.setSub(P ? `Day ${D + 1} of ${n} · “usual” is your last ${P.n === 1 ? '' : P.n + ' '}${isCycle ? 'pay cycle' : 'month'}${P.n === 1 ? '' : 's'}` : `Day ${D + 1} of ${n} · the usual pace appears after one full ${isCycle ? 'pay cycle' : 'month'}`);
     const unit = isCycle ? 'This cycle' : 'This month';
     S.paceLegend.innerHTML = `<span><i class="k" style="--c:var(--accent)"></i>${unit}</span>`
       + (P ? '<span><i class="k dash"></i>Usual pace</span><span><i class="k band"></i>Usual range</span><span><i class="k dot" style="--c:var(--accent)"></i>If the rest goes as usual</span>' : '');

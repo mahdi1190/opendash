@@ -37,13 +37,14 @@
      openQuickStart()          the first-run card
    Styles: src/styles/95-whats-new.css. Reduced motion: no glides, no pulse.
    ============================================================ */
-const WHATS_NEW_VERSION = '2.19';
-const _WN_SEEN = 'whatsNew:2.19';
+const WHATS_NEW_VERSION = '2.21';
+const _WN_SEEN = 'whatsNew:2.21';
 const _WN_QS_KEY = 'dashboard-quickstart';
 
 // The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
-  ['n219', 'New in 2.19', 'sparkles'],
+  ['n221', 'New in 2.21', 'sparkles'],
+  ['n219', 'Tidier and calmer (2.19)', 'layout-grid'],
   ['n2181', 'Expenses and the garden (2.18.1)', 'receipt'],
   ['life', 'Life, the fifth area (2.18)', 'heart'],
   ['garden', 'A garden to play in (2.18)', 'sprout'],
@@ -63,11 +64,22 @@ const WHATS_NEW_GROUPS = Object.freeze([
   ['fun', 'Fun and motivation (2.16)', 'party-popper'],
   ['money', 'Money (2.16)', 'wallet'],
 ]);
-const _WN_CURRENT_GROUPS = ['n219'];
+const _WN_CURRENT_GROUPS = ['n221'];
 function _wnHasPage(id) { try { const p = typeof pageById === 'function' ? pageById(id) : null; return !!(p && pageAvailable(p)); } catch (e) { return false; } }
 const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets');
 
 const WHATS_NEW = [
+  // ---- 2.21 ----
+  { id: 'select-many', group: 'n221', icon: 'list-checks', title: '2.21: select many things at once',
+    text: 'Tick a few tasks, expenses or transactions (or press Select), change them all in one go, and one Undo puts them all back. The expense report is now laid out exactly like the paper form, and you can undo a report you made by mistake.',
+    view: ['all'], sel: ['#main-body'] },
+  { id: 'assistant-more', group: 'n221', icon: 'message-circle', title: '2.21: the assistant can do much more',
+    text: 'Ask it to do nearly anything in the dashboard, and every change can be undone. Anything sensitive, like friends, your computers, your relay, sign-ins or money rules, always asks for your approval first.',
+    view: ['settings'], sel: ['#main-body'] },
+  { id: 'simple-codes', group: 'n221', icon: 'key-round', title: '2.21: simple 4-letter codes',
+    text: 'To add a computer, choose Join my other computer and type 4 letters, then check both screens show the same picture. Friends use a 4-letter friend code too. If you use your own relay, redeploy it once in Settings > Your relay so live friend codes work.',
+    view: ['settings'], sel: ['#main-body'] },
+
   // ---- 2.19 ----
   { id: 'lean-pages', group: 'n219', icon: 'layout-grid', title: 'Tidier Friends and Money',
     text: 'Friends and Expenses are a list with the one you pick beside it. Money has tabs at the top (Overview, Spending, Cash flow, Budgets, Transactions) instead of one long page.',
@@ -554,8 +566,8 @@ function openWhatsNew(o) {
       b.classList.add('wn-body');
       const hero = document.createElement('div'); hero.className = 'wn-hero';
       hero.innerHTML = `<div class="wn-hero-art" aria-hidden="true">${icon('sprout')}</div>`
-        + `<div class="wn-hero-txt"><div class="wn-hero-k">OpenDash ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Make it yours, and watch it grow</h3>`
-        + `<p class="wn-hero-s">Life, a fifth area for the fun side: a garden you can really play in, friends’ gardens to visit, a pet of your own, a bigger card and wardrobe, and a new Achievements page. Plus a tidier app with All pages. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, and everything from 2.17 and 2.16 below.</p></div>`
+        + `<div class="wn-hero-txt"><div class="wn-hero-k">OpenDash ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Do more at once, and with less typing</h3>`
+        + `<p class="wn-hero-s">Select many things at once with one Undo, an assistant that can do much more, simple 4-letter codes for your computers and friends, and 497 hard achievements. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, and everything from earlier releases below.</p></div>`
         + '<div class="wn-hero-acts"></div>';
       const ha = hero.querySelector('.wn-hero-acts');
       ha.appendChild(uiButton({ label: 'Take the tour', icon: 'compass', kind: 'primary', run: () => { close(); setTimeout(whatsNewTour, 60); } }));

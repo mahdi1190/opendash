@@ -351,7 +351,10 @@ If your data folder is inside OneDrive (or Dropbox, Google Drive, iCloud
 Drive), Settings > Data shows **Your data is in OneDrive** with one button:
 **Move my data out of OneDrive**. It moves the data to a folder that belongs to
 this computer only. Your computers then stay in step through **Settings > Sync**
-instead of through OneDrive.
+instead of through OneDrive. To add a computer there, choose *No, join my other
+computer* and type the 4-letter code the first one shows (check both screens
+show the same picture). An optional 10-word emergency backup sheet is only for
+the day you lose every computer.
 
 1. **Choose the place.** The suggested one is right for almost everyone:
    `%LOCALAPPDATA%\OpenDash\Data` on Windows,

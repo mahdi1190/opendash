@@ -133,7 +133,20 @@ function sidebarCounts() {
     const s = effStream(i); c.streams[s] = (c.streams[s] || 0) + 1;
     for (const t of effTags(i)) c.tags[t] = (c.tags[t] || 0) + 1;
   }
+  _sbAchWatch(c);
   return c;
+}
+/** Achievements (71-ach-pack-plan.js): remember last time's numbers and tick when a list went from 1+ (or 5+) to nothing. */
+let _sbAchLast = null;
+function _sbAchWatch(c) {
+  try {
+    const prev = _sbAchLast, day = todayStr();
+    _sbAchLast = { day, overdue: c.overdue, today: c.today, noDate: c['no-date'], done: c.completed };
+    if (!prev || prev.day !== day || typeof gameStreakTick !== 'function') return;
+    if (prev.overdue >= 1 && c.overdue === 0) gameStreakTick('overdue-clear');
+    if (prev.noDate >= 5 && c['no-date'] === 0) gameStreakTick('nodate-zero');
+    if (prev.today >= 5 && c.today === 0 && c.completed > prev.done) gameStreakTick('today-clear');
+  } catch (e) { /* never in the way */ }
 }
 
 function renderSidebar() {
@@ -510,7 +523,7 @@ registerSidebarBlock('finance', {
     try { groups = typeof FV.groups === 'function' ? FV.groups() : []; if (state.view === 'finance' && typeof FV.group === 'function') cur = FV.group(); } catch (e) { groups = []; }
     if (!groups.length) { el.appendChild(sbNavItem({ label: 'Money', icon: 'wallet', view: 'finance', active: state.view === 'finance', title: 'Overview, spending, cash flow, budgets and transactions' })); return; }
     for (const g of groups) {
-      el.appendChild(sbNavItem({ label: g.label, icon: g.icon, active: state.view === 'finance' && cur === g.id, fresh: false, title: g.id === 'overview' ? 'My money, the Money brief and the money story' : '',
+      el.appendChild(sbNavItem({ label: g.label, icon: g.icon, active: state.view === 'finance' && cur === g.id, fresh: false, title: g.id === 'overview' ? 'Your Money brief, your widgets and the money story' : '',
         onClick: () => { if (state.view !== 'finance') setView('finance'); try { FV.openGroup(g.id); } catch (e) { console.error('[finance] openGroup', e); } if (typeof renderSidebar === 'function') renderSidebar(); } }));
     }
   },

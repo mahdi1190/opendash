@@ -28,15 +28,17 @@ OpenDash finds it by itself and some Claude features run by default (see
   to it is signed, and only your own devices and the friends you approve can
   use it.
 - **Each device signs its sync records.** Removing a device rotates the sync
-  key, makes a new recovery code and offers to renew your Friends keys, so a
-  lost or stolen computer can't read anything new or rewrite your history.
+  key and locks it out of Friends automatically, so a lost or stolen computer
+  can't read anything new or rewrite your history.
 - **Updates are signed.** OpenDash downloads updates only from this project's
   GitHub releases and checks an Ed25519 signature (its public key is built
   in) and the SHA-256 of the zip. Unsigned and older releases are refused.
 - **The assistant can't act behind your back.** It runs through your own
-  Claude Code with no shell and no file tools, reads through a fixed list of
-  OpenDash tools, and proposes changes that you apply with a click (filing an
-  expense you asked for is the one direct change, and it has Undo).
+  Claude Code with no shell and no file tools, and works through a fixed list
+  of OpenDash tools. It can do nearly everything in the dashboard, and each
+  change has Undo. Anything sensitive (friends, your computers, your relay,
+  sign-ins, money rules, changes to existing expenses, updates) is only ever a
+  proposal that you approve on screen.
 - **Untrusted content stays text.** Email subjects and snippets, calendar
   invitations, bank memos, invites and everything friends send are escaped
   before they reach the page. Email HTML is turned into plain text and never
@@ -104,10 +106,13 @@ travel in three ways, fastest first:
 **Everything is end-to-end encrypted before it leaves your computer.** Each
 computer writes only its own change log, and every record in it is locked
 (AES-256-GCM) with a sync key that only your devices hold. Your devices pass
-that key to each other only after you approve the new one (a 4-letter join
-code, or the same six digits on both screens). Removing a device makes a new
-key that the removed device never gets. Your recovery code is shown once, for
-you to keep.
+that key to each other only after you approve the new one: on the new
+computer you choose "Join my other computer" and type a 4-letter code that
+the old one shows (live for ten minutes, works once), and you check that both
+screens show the same picture. Removing a device makes a new key that the
+removed device never gets. Optionally, you can print a 10-word emergency
+backup sheet; it is only needed if you ever lose every computer, and it stays
+your secret (OpenDash never sends it anywhere).
 
 **What your relay (and Cloudflare) can see:** that your devices exist and
 their public keys, their internet addresses, when each one writes and how
@@ -134,8 +139,10 @@ share with you, and your sharing log.
 
 ### Level 3: friends
 
-Friends connect to **you** first: you send an invite (or a friend code), they
-accept, you both check the same 6-digit code, and **you approve them**. A new
+Friends connect to **you** first: you send an invite link, or press **Show my
+friend code** (4 letters, live for ten minutes, works once, and needs a relay
+you both use), they accept, you both check the same pictures, and **you press
+Accept**. A new
 friend sees only your profile, game progress and garden; anything more (tasks,
 calendar, money, places, memories) is off until you mark them a trusted
 friend and choose it, per friend. Every message is end-to-end encrypted
@@ -293,7 +300,7 @@ Only in these cases, and only when you switch the feature on:
 | **Links you open** | whatever your browser sends when you open a web link | that site |
 | **Daily encrypted copy** (off by default; Settings > Data) | once a day, your settings, tasks and notes, calendar and email snapshots and finances (no sign-ins, keys, logs or caches), **encrypted on this computer** with a key made from your passphrase | the folder you chose, by default `OneDrive\OpenDash Backups`: your cloud provider stores scrambled bytes, plus the date, this computer's name and the app version in plain text. Nothing goes to OpenDash. Without the passphrase nobody can open the copies, including you |
 | **Moving the data folder** (Settings > Data > Move) | nothing: the copy is made on this computer. After showing you each change, it updates the settings of your own programs that point at OpenDash: Claude Code (through its own `claude mcp` command), Claude Desktop's settings file, Codex and Gemini CLI (through their commands), Windows start-up entries, shortcuts, and Claude scheduled-task files that name the folder. Only those entries | no one |
-| **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; your preferences (theme, density, sort and grouping, which calendars you hide, per-view and Home card options); the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or where you are in the app and this screen's panel sizes | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, **end-to-end encrypted**: each change is locked (AES-256-GCM) on your computer before it is written, with a key only your devices hold, so your cloud provider stores files it cannot read. It can see how many devices sync, when they write and roughly how much; a new computer waiting to be approved shows its name there until it is approved. The key never goes into the folder; your recovery code is shown once and kept by you. With your relay set up, the same sealed records go first through **your own relay** on your Cloudflare account, and the folder keeps a backup copy ([level 2](#level-2-your-own-devices)). Nothing goes to OpenDash. Until you also turn on *Use changes from my other computers*, nothing received is applied |
+| **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; your preferences (theme, density, sort and grouping, which calendars you hide, per-view and Home card options); the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or where you are in the app and this screen's panel sizes | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, **end-to-end encrypted**: each change is locked (AES-256-GCM) on your computer before it is written, with a key only your devices hold, so your cloud provider stores files it cannot read. It can see how many devices sync, when they write and roughly how much; a new computer waiting to be approved shows its name there until it is approved. The key never goes into the folder; an optional 10-word emergency backup sheet, if you make one, is shown once and kept by you. With your relay set up, the same sealed records go first through **your own relay** on your Cloudflare account, and the folder keeps a backup copy ([level 2](#level-2-your-own-devices)). Nothing goes to OpenDash. Until you also turn on *Use changes from my other computers*, nothing received is applied |
 | **Live sync** (with encrypted sync on; Settings > Sync > Advanced > Direct links) | the same encrypted changes as above, sent straight to your other paired computers the moment they are made, over a connection that only your own paired devices can open (each proves it holds its device key) and that is encrypted again end to end; which job each computer runs. Each computer's addresses (its home or office network address, and the public address its router opened) are kept inside the encrypted part of its file in the sync folder | your other computers only, directly, on your network or over the internet. To be reachable from outside, OpenDash asks your home router (UPnP / NAT-PMP) to forward one port to it, but only while your relay does not carry your sync: with your relay in use the router is left alone unless you turn *Let my other computers reach this one over the internet* on (Settings > Sync > Advanced), and turning it off always leaves the router alone; anyone on the internet can then knock on that port, but nothing answers without your device key. On your own network it sends a short announcement every 30 seconds that only your devices can read. No OpenDash server, no relay |
 | **Updates** (when you press *Check for updates* in Settings > Updates, or once a day if you turn on *Check for updates once a day*; off by default) | GET requests only: the list of releases, and when you choose to update, the release zip, its `SHA256SUMS.txt` and that file's Ed25519 signature, checked before anything is installed. Nothing about you or your data | GitHub (`api.github.com` and the project's release downloads) |
 | **Friends** (when you add one; Settings > Privacy) | to each friend only what you chose for them (see [Friends](#friends)): by default your profile and game progress; tasks, calendar, money, places, memories and presence only to a friend you marked trusted, at the level you picked | that friend's OpenDash, end-to-end encrypted, through the private relay or a direct link (docs/dev/FRIENDS.md) |
@@ -330,8 +337,9 @@ Nothing else. In particular:
   sends task titles with candidate folder and file names and short excerpts
   (never from "names only" folders, never whole files).
 - **The assistant looks things up itself** through OpenDash's MCP server in
-  propose mode, so it reads only what it needs to answer, and it cannot change
-  anything without your click.
+  propose mode, so it reads only what it needs to answer. Sensitive changes
+  (friends, devices, relay, sign-ins, money rules, updates) need your approval
+  on screen; the rest can be undone.
 - **Direct bank and wallet connections** (Monzo, Plasma One, Enable Banking)
   are read by OpenDash itself, with no AI involved: your transactions go
   straight from Monzo, Enable Banking or the public Plasma blockchain (through

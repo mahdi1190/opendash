@@ -15,6 +15,7 @@
 //   POST /api/friends/feed       {event}     -> {ok, entry | id...}  (friendsFeedPost)
 //   POST /api/friends/me         {name?, presence?:{share?, state?}, direct?} -> {ok, prefs}
 //   POST /api/friends/code/rotate            -> {ok, code}
+//   POST /api/friends/live       {cancel?}  -> {live: {code, expiresAt} | null}  (the 4-letter live code)
 //   POST /api/friends/add        {code} | {invite}  -> {ok, friend}
 //   POST /api/friends/invite     {ttlDays?, relayScopes?}  -> {ok, id, text, link, exp, relayScopes}
 //   POST /api/friends/invite/cancel {id}
@@ -118,6 +119,8 @@ export default function register(app) {
     return { prefs: await engine.setMe({ name: str(b.name, 60), presence: b.presence && typeof b.presence === 'object' ? { share: b.presence.share, state: str(b.presence.state, 20) } : undefined, direct: typeof b.direct === 'boolean' ? b.direct : undefined }) };
   });
   route('/api/friends/code/rotate', 'POST', () => engine.rotateCode());
+  // 2.20.1: "Show my friend code" (4 letters, 10 minutes, once) -> {code, expiresAt}; {cancel: true} ends it.
+  route('/api/friends/live', 'POST', async (c) => ((await body(c)).cancel === true ? (await engine.cancelLiveCode(), { live: null }) : { live: await engine.showLiveCode() }));
   route('/api/friends/add', 'POST', async (c) => {
     const b = await body(c);
     const invite = str(b.invite, 8000) || null;

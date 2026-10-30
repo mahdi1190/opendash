@@ -493,15 +493,17 @@
       cd.setSub(B.mode === 'cycle' ? 'This pay cycle' : 'This month');
       const ai = MB.ai && MB.ai.key === B.key && MB.ai.mode === B.mode ? MB.ai : null;
       const sents = ai ? ai.sentences : B.sentences;
-      box.append(h('div', { class: 'fvb-say' }, sents.map(s => h('p', { text: s.text }))));
+      const onTop = F.briefOff !== true;   // 2.21: the hero at the top of the page already says the three sentences
+      if (onTop) box.append(h('p', { class: 'fvb-note', text: 'Your three sentences are at the top of this page.' }));
+      else box.append(h('div', { class: 'fvb-say' }, sents.map(s => h('p', { text: s.text }))));
       if (bwOpt(w, 'cards') === 'on' && Array.isArray(B.insights) && B.insights.length && X.size(w) !== 's') {
         const ul = h('ul', { class: 'fvb-ins' });
         for (const x of B.insights.slice(0, 3)) ul.append(h('li', { class: 'tone-' + (x.tone || 'info') }, ic(x.tone === 'warn' ? 'triangle-alert' : x.tone === 'good' ? 'circle-check' : 'info'), h('div', null, h('b', { text: x.title }), x.sub ? h('span', { text: x.sub }) : null)));
         box.append(ul);
       }
       const acts = h('div', { class: 'fvb-acts' }, h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => setSection('overview') }, h('span', { text: 'Open the brief' }), ic('chevron-right')));
-      if (!ai && typeof mbAiAllowed === 'function' && mbAiAllowed()) acts.append(bdAiButton(cd, w, X, B));
-      if (ai) acts.append(h('span', { class: 'fvb-src mute' }, ic('sparkles'), ' Worded by Claude, numbers checked'));
+      if (!onTop && !ai && typeof mbAiAllowed === 'function' && mbAiAllowed()) acts.append(bdAiButton(cd, w, X, B));
+      if (!onTop && ai) acts.append(h('span', { class: 'fvb-src mute' }, ic('sparkles'), ' Worded by Claude, numbers checked'));
       box.append(acts);
     },
   };

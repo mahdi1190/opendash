@@ -107,7 +107,7 @@ function _frTabFriends(root, view, d) {
   }
   if (!friends.length) {
     if (!d.relay || !d.relay.home) { root.appendChild(_frNoRelay(d)); return; }
-    mountEmptyState(root, { icon: 'users', compact: true, title: 'Bring your people', text: 'Send someone an invite link, or add them with their friend code if they use your relay. You can cheer each other on and do quests together.',
+    mountEmptyState(root, { icon: 'users', compact: true, title: 'Bring your people', text: 'Send someone an invite link, or show them your 4-letter friend code. You can cheer each other on and do quests together.',
       actions: [{ label: 'Add a friend', icon: 'user-plus', primary: true, run: () => friendsAddDialog() }] });
     return;
   }
@@ -119,12 +119,29 @@ function _frTabFriends(root, view, d) {
       for (const x of friends) {
         const fx = typeof funFor === 'function' && typeof funOn === 'function' && funOn() ? funFor(x.id) : null;
         const costume = typeof funFriendInCostume === 'function' && fx && funFriendInCostume(x) ? ' 🧙' : '';
-        host.appendChild(mdRow({ avatar: _frAvatarWrap(x, 30), title: friendName(x) + costume, sub: _frRowSub(x), badge: fx && fx.gifts ? '🎁' + (fx.gifts > 1 ? fx.gifts : '') : '', active: x.id === f.id, tip: `${friendName(x)}'s page`, run: () => { if (x.id !== f.id) setView('friends:' + x.id); } }));
+        const row = mdRow({ pickable: true, avatar: _frAvatarWrap(x, 30), title: friendName(x) + costume, sub: _frRowSub(x), badge: fx && fx.gifts ? '🎁' + (fx.gifts > 1 ? fx.gifts : '') : '', active: x.id === f.id, tip: `${friendName(x)}'s page`, run: () => { if (x.id !== f.id) setView('friends:' + x.id); } });
+        row.dataset.pickId = x.id;
+        host.appendChild(row);
       }
     },
     detail: () => _frFriendDetail(f),
   });
   root.appendChild(md);
+  // Several at once: a cheer each. It goes out at once, so there is nothing to undo (11-ui-pick.js).
+  if (friends.length > 1) {
+    const tools = document.createElement('div'); tools.className = 'pk-list-tools';
+    const pick = multiPick(md.mdList, { key: 'friends', rows: '.md-row', noun: ['friend', 'friends'],
+      nameOf: (r) => (r.querySelector('.md-row-n') || {}).textContent || '',
+      exists: (id) => friends.some(x => x.id === id),
+      actions: () => [{ label: 'Send a cheer', icon: 'heart', run: async (ids) => {
+        let ok = 0, err = null;
+        for (const id of ids) { try { await friendsCheer(id); ok++; } catch (e) { err = e; } }
+        if (ok) toast(`Cheered ${ok} friend${ok === 1 ? '' : 's'}`, { kind: 'ok', icon: 'heart' });
+        if (err) { toastError(ok ? 'cheer everyone' : 'send the cheers', err); return false; }
+      } }] });
+    tools.appendChild(pick.button());
+    md.mdList.insertBefore(tools, md.mdList.firstChild);
+  }
   md.mdList.scrollTop = _frUI.listTop || 0;
   md.mdList.addEventListener('scroll', () => { _frUI.listTop = md.mdList.scrollTop; }, { passive: true });
   const on = md.mdList.querySelector('.md-row.on');
@@ -299,7 +316,7 @@ function _frTabRequests(root, view, d) {
       const declined = all.filter(f => f.status === 'declined');
       if (declined.length) stack.appendChild(_frDeclinedSec(declined));
       if (!attn.length && !pend.length && !declined.length) {
-        mountEmptyState(stack, { icon: 'user-check', compact: true, title: 'Nobody is waiting', text: 'Requests you send and requests from friends show here, with the check code to compare.',
+        mountEmptyState(stack, { icon: 'user-check', compact: true, title: 'Nobody is waiting', text: 'Requests you send and requests from friends show here, with the pictures to compare.',
           actions: [{ label: 'Add a friend', icon: 'user-plus', primary: true, run: () => friendsAddDialog() }] });
       }
     },

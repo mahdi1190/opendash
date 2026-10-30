@@ -208,6 +208,8 @@ function pagesFresh() { return pagesAll().filter(pageIsFresh); }
 /** Opening a page clears its dot (renderShell calls this for every view shown). */
 function pagesMarkSeen(view) {
   const p = pageFor(view);
+  if (p && typeof gameMark === 'function') gameMark('view', p.id);   // achievements (71-ach-src-b2-work.js): pages opened, ever
+  if (typeof gameMark === 'function' && /^settings:[a-z-]+$/.test(String(view || ''))) gameMark('settings-group', String(view).slice(9));   // and Settings groups
   if (!p || typeof seenGet !== 'function' || seenGet('pages', p.id)) return false;
   return seenSet('pages', p.id, todayStr());
 }
@@ -239,6 +241,7 @@ function navNoteMove(from, to) {
 function navBackTarget() {
   if (!_navBack || _navBack.to !== state.view) return null;
   const v = _navBack.from;
+  if (/^(finance|expenses)$/.test(v) && /^(finance|expenses)$/.test(String(state.view))) return null;   // both Money: its tabs are the way back, and nothing moves
   let label = '';
   const p = pageFor(v);
   const sec = typeof sectionFor === 'function' ? sectionFor(v) : null;
@@ -671,7 +674,7 @@ window.addEventListener('resize', () => { if (typeof state !== 'undefined') _fit
    page that lists sections and does not draw its own tabs (Achievements, Places). Both live in the
    page header (#view-tabs), so they stay put while the page below changes, and repaint only when
    something on them changes. Re-selecting the current tab or section only scrolls back to the top. */
-const _AREA_STRIP = new Set(['life', 'money']);   // money: Money and Expenses (66-expenses-1page.js)
+const _AREA_STRIP = new Set(['life']);   // (2.21: Expenses is one of Money's own tabs now, 12-bar.js)
 function areaTabsModel(view) {
   const v = String(view || '');
   const pg = pageFor(v);

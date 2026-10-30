@@ -10,6 +10,51 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.21.0]
+
+Selecting many things at once, a much more capable assistant, 497 hard
+achievements, an exact expense form, and simple 4-letter codes everywhere.
+
+### Added
+- **Select many at once, with one Undo.** Tick several tasks, expenses,
+  transactions, budgets, Bin items, files, people or trips (or press
+  **Select**), change them together, and one Undo puts the whole batch back.
+- **Expenses are a tab in Money**, and the Money page now opens on a short
+  brief of where you stand. Plainer words, a one-click category change, a
+  Clear filters button and no dead ends on the way.
+- **The expense report matches the paper form exactly**, and every report you
+  make is listed with **Undo this report**, which puts its expenses back in
+  To claim (it still works after a restart).
+- **The assistant can do nearly everything in the dashboard**, with Undo: the
+  whole dashboard is now open to Claude Code and the in-app assistant (garden,
+  pet, profile, settings, Home layout, daily notes, people, tags, files,
+  countdowns, expenses and more). Anything sensitive (friends, your computers,
+  your relay, sign-ins, money rules, existing expenses, updates) is always a
+  proposal you approve on screen, or needs a dry run and a confirm token when
+  you use your own MCP client.
+- **497 hard achievements** (419 new), spread over months of steady use, each
+  one earned for something you really did. The visit-every-page secret is in
+  too.
+- **Join my other computer**: adding a computer is now a 4-letter code (shown
+  as `KQ MX`) and a matching picture on both screens. The code is live for
+  ten minutes, works once, and three wrong tries close it.
+- **Show my friend code**: 4 letters, live for ten minutes, works once. Your
+  friend types it, you see who it is, check the pictures and press Accept.
+  Invite links still work. It needs a relay you both use.
+- **An optional emergency backup sheet** of 10 words, offered once and under
+  Settings > Sync. You only need it if you ever lose every computer.
+
+### Changed
+- The recovery code is gone. Old 32-character codes still work if you kept one.
+- The Claude connector code you type to approve a new connection is now 4
+  letters, and three wrong codes close the Connect window.
+- Removing a computer locks it out of Friends automatically, from the server,
+  without asking, and renews the backup sheet's secret (if you made a sheet,
+  you are asked to print a new one).
+- If you use your own relay, **redeploy it once** (Settings > Your relay >
+  Advanced > Update my relay) so live friend codes work. Until you do, friend
+  codes are not offered and invite links still work.
+
 ## [2.20.0]
 
 A security release, after a full review of the local server, encryption and

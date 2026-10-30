@@ -19,12 +19,21 @@ const _QCAP_SORTS = new Set(['date', 'plan', 'stream', 'priority', 'tags', 'cont
 function inboxOnActivity(taskId, type) {
   if (!_QCAP_SORTS.has(type)) return;
   const it = getItem(taskId);
-  if (it && it.inbox) { delete it.inbox; _qcapMaybeZero(); }
+  if (it && it.inbox) {
+    delete it.inbox;
+    try {   // achievements (71-ach-src-b2-work.js): sorted out of the Inbox, and sorted within an hour of catching it
+      if (typeof gameCount === 'function') { gameCount('inbox-sorted'); if (Number(it.createdAt) > 0 && Date.now() - Number(it.createdAt) < 3600000) gameCount('inbox-sorted-fast'); }
+    } catch (e) { /* never in the way */ }
+    _qcapMaybeZero();
+  }
 }
 let _qcapZeroAt = 0;
 function _qcapMaybeZero() {
   setTimeout(() => {
     const left = getAllItems().filter(i => i.inbox && statusOf(i.id) !== 'done').length;
+    try {   // achievements: the Inbox emptied after 3 or more captures today
+      if (!left && typeof gameStreakTick === 'function') { const td = todayStr(); if (getAllItems().filter(i => i.createdVia === 'capture' && Number(i.createdAt) > 0 && Clock.parts(Number(i.createdAt)).iso === td).length >= 3) gameStreakTick('inbox-empty'); }
+    } catch (e) { /* never in the way */ }
     if (!left && state.view === 'inbox' && Date.now() - _qcapZeroAt > 60000) { _qcapZeroAt = Date.now(); toast('Inbox zero. Everything has a home.', { icon: 'party-popper', kind: 'ok' }); }
   }, 0);
 }

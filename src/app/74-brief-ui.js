@@ -738,6 +738,7 @@ function _bfIntro(root, m) {
 /* ---------- seen + snapshot ---------- */
 function _bfMarkSeen() {
   seenMarkDay('brief', todayStr());   // synced: the other computer does not open it again today (06-core-seen.js)
+  if (typeof gameStreakTick === 'function') gameStreakTick('brief');   // achievements (71-ach-pack-plan.js): seen days are pruned, ticks are kept
   _bfSaveSnapshot(false);
 }
 let _bfSnapTimer = null;

@@ -53,8 +53,9 @@ function hostedRelayCard(compact = false) {
   card.appendChild(actions);
   if (s.error) card.appendChild(_connEl('p', 'conn-note', s.error));
   for (const r of s.requests || []) {
-    const row = _connEl('div', 'callout info'); row.append(_connEl('p', null, 'Match this code with the Claude sign-in tab:'), _connEl('strong', null, r.displayCode), _connEl('p', null, 'Allows reads and suggestions only. Approve only the sign-in you started.'));
-    row.appendChild(uiButton({ label: 'Approve matching code', icon: 'check', kind: 'primary', size: 'sm', run: (e, b) => { b.disabled = true; hostedRelayAction('approve', { id: r.id, code: r.displayCode }).finally(() => { b.disabled = false; }); } })); card.appendChild(row);
+    const row = _connEl('div', 'callout info'); const shown = String(r.displayCode || ''), big = _connEl('strong', 'conn-short-code', shown.length === 4 ? shown.slice(0, 2) + ' ' + shown.slice(2) : shown);
+    row.append(_connEl('p', null, 'Does your Claude sign-in tab show these same letters?'), big, _connEl('p', null, 'Claude can then read your dashboard and suggest changes. Say yes only to a sign-in you started just now.'));
+    row.appendChild(uiButton({ label: 'Yes, the same', icon: 'check', kind: 'primary', size: 'sm', run: (e, b) => { b.disabled = true; hostedRelayAction('approve', { id: r.id, code: r.displayCode }).finally(() => { b.disabled = false; }); } })); card.appendChild(row);
   }
   setFold(card, 'conn-hosted-more', 'More', ({ body }) => {
     body.appendChild(_connEl('p', 'conn-note', compact ? 'Sign in and approve in your browser; keep OpenDash running.' : 'Press Link Claude, sign in in your browser and approve OpenDash. We fill in the details for you; match the approval code here to finish. Keep OpenDash running.'));

@@ -57,7 +57,16 @@ function rfSweepOpen() {
     // Fixed (UI_CLEANUP_PLAN.md 1.3): the list scrolls as tasks are decided; the key legend stays at the bottom.
     title: 'Today → Tomorrow', size: 'lg', fixed: true, className: 'rf-sw', resizable: false,
     body: (b) => { _rfSw.root = b; b.classList.add('rf-sw-b'); b.tabIndex = -1; _rfSweepPaint(); setTimeout(() => { try { b.focus({ preventScroll: true }); } catch (e) {} }, 10); },
-    onClose: () => { window.removeEventListener('keydown', onKey, true); _rfSw.close = null; _rfSw.root = null; },
+    onClose: () => {
+      window.removeEventListener('keydown', onKey, true); _rfSw.close = null; _rfSw.root = null;
+      // achievements (71-ach-pack-plan.js): a sweep with 1+ decision, and one that left nothing in Today
+      try {
+        if (Object.keys(_rfSw.dec).length) {
+          if (typeof gameStreakTick === 'function') gameStreakTick('sweep');
+          if (typeof gameCount === 'function' && !rfSweepTasks().length) gameCount('sweep-cleared');
+        }
+      } catch (e) { /* never in the way */ }
+    },
   });
 }
 function _rfSweepPaint() {
@@ -178,7 +187,7 @@ function _rfSweepKey(e) {
 }
 
 /* ---------- Plan my week ---------- */
-const _rfPw = { from: '', at: 0, ids: [], hist: [], close: null, root: null };
+const _rfPw = { from: '', at: 0, ids: [], hist: [], close: null, root: null, planned: 0 };
 /** Worth planning: open, not waiting or someday, no plan inside the week, and due within two weeks, overdue, or important. */
 function _rfPlanCands(from) {
   const to = _isoPlus(6, from), soon = _isoPlus(13, from);
@@ -196,14 +205,24 @@ function rfPlanWeekOpen(o) {
   // This week when there is still most of it ahead, else next week.
   const ws = fmtDate(_qaWeekStart(_qaToday()));
   const fromDef = daysUntil(_isoPlus(4, ws)) >= 0 ? todayStr() : rfNextWeek();
-  Object.assign(_rfPw, { from: o.from && o.from >= todayStr() ? o.from : (o.from ? todayStr() : fromDef), at: 0, hist: [] });
+  Object.assign(_rfPw, { from: o.from && o.from >= todayStr() ? o.from : (o.from ? todayStr() : fromDef), at: 0, hist: [], planned: 0 });
   const onKey = (e) => _rfPlanKey(e);
   window.addEventListener('keydown', onKey, true);
   _rfPw.close = openDialog({
     // Fixed and tall (UI_CLEANUP_PLAN.md 1.3): each day column scrolls inside as tasks are placed.
     title: 'Plan my week', size: 'xl', fixed: true, height: '90vh', className: 'rf-pw', resizable: false,
     body: (b) => { _rfPw.root = b; b.classList.add('rf-pw-b'); b.tabIndex = -1; _rfPlanPaint(); setTimeout(() => { try { b.focus({ preventScroll: true }); } catch (e) {} }, 10); },
-    onClose: () => { window.removeEventListener('keydown', onKey, true); _rfPw.close = null; _rfPw.root = null; },
+    onClose: () => {
+      window.removeEventListener('keydown', onKey, true); _rfPw.close = null; _rfPw.root = null;
+      // achievements (71-ach-pack-plan.js): Plan my week saved with 1+ task planned, and a week that fits its days
+      try {
+        if (_rfPw.planned > 0 && typeof gameStreakTick === 'function') {
+          gameStreakTick('plan-week');
+          const over = _rfPlanDays().some(iso => iso >= todayStr() && (rfPlanWeekends() || !_rfIsWeekend(iso)) && rfDayLoad(iso).load > 1);
+          if (!over) gameStreakTick('plan-fit', _rfPw.from);
+        }
+      } catch (e) { /* never in the way */ }
+    },
   });
 }
 function _rfPlanDays() {
@@ -290,7 +309,7 @@ function _rfPlanPaint() {
 function _rfPlanPut(id, iso) {
   const i = getItem(id); if (!i) return;
   const m = rfDo('plan', id, { date: iso });
-  if (m) _rfPw.hist.push(m);
+  if (m) { _rfPw.hist.push(m); _rfPw.planned++; }
   const d = effDate(i);
   if (d && iso > d) toast(`Planned after its deadline (${dueLabel(d)})`, { icon: 'triangle-alert' });
   _rfPlanPaint();
@@ -319,7 +338,7 @@ function _rfPlanAuto() {
   }
   if (!pairs.length) { toast(skipped ? 'No room left this week: every day is full' : 'Nothing to plan', { icon: 'calendar-days' }); return; }
   const m = rfDoMany(pairs);
-  _rfPw.hist.push(m);
+  _rfPw.hist.push(m); _rfPw.planned += pairs.length;
   const nDays = new Set(pairs.map(p => p[2].date)).size;
   rfToast(`Planned ${pairs.length} task${pairs.length === 1 ? '' : 's'} over ${nDays} day${nDays === 1 ? '' : 's'}${skipped ? ` · ${skipped} left (no room or blocked)` : ''}`, m, 'wand-sparkles');
   _rfPlanPaint();

@@ -388,6 +388,7 @@ function _palResults(raw) {
 
 function openCommandPalette(initial) {
   if (_paletteClose) { _paletteClose(); return; }
+  if (typeof gameStreakTick === 'function') gameStreakTick('palette');   // achievements (71-ach-src-b2-work.js): days the palette was used
   closePopovers();
   const scrim = document.createElement('div'); scrim.className = 'scrim cmd-scrim';
   const box = document.createElement('div'); box.className = 'cmd'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Command palette');

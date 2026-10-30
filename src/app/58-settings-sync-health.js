@@ -126,7 +126,7 @@ async function syncRunFix(fix) {
   let url = '/api/sync/fix', body = { fix: fix.action }, done = null;
   if (fix.action === 'live-retry') { url = '/api/sync/live'; body = { retry: fix.id || 'all' }; done = 'Trying again now'; }
   else if (fix.action === 'live-hold') { url = '/api/sync/live'; body = { hold: fix.id }; done = 'Stopped trying: changes go through the sync folder'; }
-  else if (fix.action === 'remove-device') { url = '/api/sync/devices/remove'; body = { id: fix.id }; done = 'Removed. Your other devices now use a new key.'; }
+  else if (fix.action === 'remove-device') { url = '/api/sync/devices/remove'; body = { id: fix.id }; done = 'Removed. Your other computers carry on as usual.'; }
   else if (fix.action === 'apply-on') { url = '/api/sync/settings'; body = { apply: true }; done = 'Changes from your other computers will be used'; }
   else if (fix.action === 'sync-off') { url = '/api/sync/settings'; body = { enabled: false }; done = 'Sync is off on this computer. Nothing was deleted.'; }
   else if (fix.action === 'relay-on') { url = '/api/sync/settings'; body = { relay: true }; done = 'This computer syncs through your relay now'; }
@@ -290,6 +290,17 @@ async function _shResolve(c, keep) {
   } catch (e) { toast(_shErrText(e), { kind: 'err' }); }
   syncReviewLoad();
 }
+async function _shResolveMany(ids, keep) {
+  try {
+    const j = await _shFetch('/api/sync/conflicts/resolve-many', { ids, keep }, 'review:many', 60000);
+    if (j && j.enabled !== undefined) { const { ok, done, stale, failed, ...s } = j; _syncSt = s; }
+    const n = (j && j.done) || 0, st = (j && j.stale) || 0, bad = (j && j.failed) || [];
+    if (n) toast(keep === 'kept' ? `${n} kept as they are` : `${n} changed to the other version, everywhere`, { kind: 'ok' });
+    if (st) toast(`${st} had changed again since: nothing to do for ${st === 1 ? 'that one' : 'those'}.`, { icon: 'info' });
+    if (bad.length) toast(`${bad.length} could not be changed: ${bad[0]}`, { kind: 'err' });
+  } catch (e) { toast(_shErrText(e), { kind: 'err' }); return syncReviewLoad().then(() => false); }
+  return syncReviewLoad();
+}
 function syncReviewPage(el) {
   const card = _settingsCard('Review', 'Something of yours changed on two computers at once. The later change was kept; pick the other one here if you want it.');
   const r = _shReview;
@@ -299,7 +310,7 @@ function syncReviewPage(el) {
   else {
     const list = _syncEl('div', 'sh-review'); list.setAttribute('role', 'list');
     for (const c of r.items) {
-      const row = _syncEl('div', 'sh-rev'); row.setAttribute('role', 'listitem');
+      const row = _syncEl('div', 'sh-rev'); row.setAttribute('role', 'listitem'); row.dataset.pickId = c.id;
       // 2.17.2: the server's plain sentence ("On Mahdi Work you changed the task "X" after this computer deleted it.")
       const what = c.text || ((c.what ? c.what.charAt(0).toUpperCase() + c.what.slice(1) : 'Item') + (c.name ? ' "' + c.name + '"' : '') + (c.field ? ' · ' + c.field : ''));
       row.appendChild(_syncEl('div', 'sh-rev-t', what));
@@ -320,6 +331,18 @@ function syncReviewPage(el) {
       list.appendChild(row);
     }
     card.body.appendChild(list);
+    // Several at once, one request (POST /api/sync/conflicts/resolve-many). 11-ui-pick.js.
+    if (r.items.length > 1) {
+      const tools = _syncEl('div', 'pk-list-tools');
+      tools.appendChild(multiPick(list, { key: 'sync-review', rows: '.sh-rev', noun: ['edit', 'edits'],
+        nameOf: (x) => (x.querySelector('.sh-rev-t') || {}).textContent || '',
+        exists: (id) => !!(_shReview && _shReview.items && _shReview.items.some(c => c.id === id)),
+        actions: () => [
+          { label: 'Keep as they are', icon: 'check', run: (ids) => _shResolveMany(ids, 'kept') },
+          { label: 'Use the other version', icon: 'git-merge', tip: 'Use the version that was not kept, on every computer', run: (ids) => _shResolveMany(ids, 'lost') },
+        ] }).button());
+      card.body.insertBefore(tools, list);
+    }
     if (r.open > r.items.length) card.body.appendChild(_syncEl('div', 'set-h', (r.open - r.items.length) + ' more after these.'));
   }
   el.appendChild(card.card);

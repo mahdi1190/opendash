@@ -1,6 +1,7 @@
   // @part 35-recurring.js · OWNER: C2 (Recurring section: summary, month calendar, next 30/60 days, all payments, charge history)
   // ----- Recurring -----
   BUILD.recurring = g => {
+    try { if (typeof window.gameMark === 'function') window.gameMark('fin-recurring', new Date().toISOString().slice(0, 7)); } catch (e) { /* achievements: months the recurring payments were looked through */ }   // clock-ok: a month key
     S.rsum = h('section', { class: 'fv-card fv-rc-sum', style: { '--span': 12 }, 'aria-label': 'Recurring payments in total' });
     g.append(S.rsum);
     S.rcMonth = null; S.rcFirst = true;
@@ -61,7 +62,7 @@
   function rcSummary(el, M, recs, act, due30) {
     if (!el._f) {
       const it = (l) => { const b = h('b'); const s = h('span', { class: 's' }); return { el: h('div', { class: 'fv-rc-it' }, h('span', { class: 'l', text: l }), b, s), b, s }; };
-      el._f = { mo: it('Committed each month'), yr: it('A year'), due: it('Due in 30 days'), stop: it('Stopped'), tags: h('div', { class: 'fv-rc-tags' }) };
+      el._f = { mo: it('Regular bills a month'), yr: it('A year'), due: it('Due in 30 days'), stop: it('Stopped'), tags: h('div', { class: 'fv-rc-tags' }) };
       const f = el._f;
       el.append(f.mo.el, h('i', { class: 'fv-rc-sep', 'aria-hidden': 'true' }), f.yr.el, h('i', { class: 'fv-rc-sep', 'aria-hidden': 'true' }), f.due.el, h('i', { class: 'fv-rc-sep', 'aria-hidden': 'true' }), f.stop.el, f.tags);
     }
@@ -70,7 +71,7 @@
     MK.tick(f.mo.b, round2(monthly), gbp); f.mo.s.textContent = `${act.length} active`;
     MK.tick(f.yr.b, round2(monthly * 12), gbp); f.yr.s.textContent = 'at today’s prices';
     MK.tick(f.due.b, round2(sum(due30, r => r.typical)), gbp); f.due.s.textContent = `${due30.length} payment${due30.length === 1 ? '' : 's'}`;
-    MK.tick(f.stop.b, recs.length - act.length, v => nf0.format(Math.round(v))); f.stop.s.textContent = 'no charge for 2+ cycles';
+    MK.tick(f.stop.b, recs.length - act.length, v => nf0.format(Math.round(v))); f.stop.s.textContent = 'no payment lately';
     const ups = act.filter(r => { const c = VL.priceChange(r, M.anchor, 70); return c && c.up; }).length;
     const fresh = act.filter(r => VL.isNew(r, M.anchor, 70)).length;
     f.tags.textContent = '';
@@ -144,7 +145,7 @@
     if (old) old.replaceWith(grid); else cd.body.prepend(grid);
     cd.setEmpty(null);
     if (dir && typeof grid.animate === 'function' && !MK.reduced()) grid.animate([{ opacity: 0, transform: `translateX(${dir * 14}px)` }, { opacity: 1, transform: 'none' }], { duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
-    if (!recs.length) cd.setEmpty(M.recurring.length ? 'No recurring payments match these filters.' : 'No recurring payments found yet. They appear after two or three regular charges from the same merchant.');
+    if (!recs.length) cd.setEmpty(M.recurring.length ? 'No regular bills match these filters.' : 'No regular bills found yet. They appear after two or three regular charges from the same merchant.');
   }
 
   // ── Next 30 / 60 days ─────────────────────────────────────────────────
@@ -182,7 +183,7 @@
     const M = ctx.M; const anchor = M.anchor;
     const recs = rcFiltered(M);
     cd.body.querySelectorAll('.fv-rl').forEach(x => x.remove());
-    if (!recs.length) { cd.setSub(''); cd.setEmpty(M.recurring.length ? 'No recurring payments match these filters.' : 'None detected yet.'); return; }
+    if (!recs.length) { cd.setSub(''); cd.setEmpty(M.recurring.length ? 'No regular bills match these filters.' : 'None detected yet.'); return; }
     cd.setEmpty(null);
     const srt = R.rcSort || 'cost';
     cd.setSub(`${recs.length} found · ${srt === 'cost' ? 'by cost · the bar is the yearly cost' : srt === 'next' ? 'by the next charge' : 'by name'}${recs.some(r => r.source !== 'detected') ? ' · from regular charges and the import history' : ' · from regular charges'}`);
@@ -229,7 +230,7 @@
       tooltip: FX.tooltip({ trigger: 'item', formatter: p => { const d = p.data || {}; const r = show[d.ri]; if (!r) return ''; return vkTip(vkName(r.m), r.m, r.cat, [
         { c: catColor(r.cat), v: gbp2(d.amt), k: d.exp ? 'expected ' + fDayW(d.n) : fDayW(d.n) + ' ' + String(dobj(d.n).getUTCFullYear()), box: !d.exp },
         d.diff ? { v: (d.diff > 0 ? '+' : '−') + gbp2(Math.abs(d.diff)).replace('−', ''), k: 'vs the charge before' } : null,
-        { v: `${r.freq} · ${gbp2(r.monthly)} a month`, k: '', muted: true }], 'Click for the merchant'); } }),
+        { v: `${r.freq} · ${gbp2(r.monthly)} a month`, k: '', muted: true }], 'Click for details'); } }),
       xAxis: FX.xTime({ line: true, extra: { min: diso(lo), max: diso(hi), splitLine: { show: true, lineStyle: { color: t.grid, type: [3, 4] } } } }),
       yAxis: { type: 'category', data: names, inverse: true, axisLine: { show: false }, axisTick: { show: false }, axisLabel: rt.axisLabel(gut), splitLine: { show: true, lineStyle: { color: t.grid } } },
       // @p1: open on the past plus the next few weeks (an annual charge's next date a year out left

@@ -49,6 +49,7 @@ function financeSharedChanged() {
   try { if (state.view === 'connections' && typeof FinConnectStore !== 'undefined') FinConnectStore.load({ force: true }); } catch (e) { /* not loaded yet */ }
 }
 function renderFinanceView(container) {
+  try { if (typeof gameStreakTick === 'function') gameStreakTick('fin-visit'); } catch (e) { /* achievements (71-ach-src-b3-life.js): weeks Finances was opened */ }
   const FV = window.FinanceView;
   if (FV && typeof FV.mount === 'function') {
     _finWaitTries = 0;

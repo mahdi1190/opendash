@@ -37,6 +37,7 @@ async function expLoad(force) {
 function expRepaint() {
   try {
     if (state.view === 'expenses' || state.view === 'home' || state.selectedTaskId) { if (typeof render === 'function') render(); }
+    else if (state.view === 'finance' && window.FinanceView && typeof FinanceView.repaintTabs === 'function') FinanceView.repaintTabs();   // the count on Money's Expenses tab
   } catch (e) { console.error('[expenses] repaint', e); }
 }
 /**
@@ -148,6 +149,13 @@ async function expSubmit(ids, o) {
   const list = ids.map(expItem).filter(Boolean);
   const j = await expDo('/submit', { ids, payer: o.payer, method: o.method || 'other', date: o.date, note: o.note }, { quiet: true, what: 'mark that as submitted' });
   if (!j) return null;
+  const back = expSubmitTasks(list, o);
+  toast(`Marked ${list.length} as submitted · ${expMoney(j.claim.total)}`, { icon: 'send', action: { label: 'Undo', run: () => expUndo(j.undo, back) } });
+  return j;
+}
+/** Expenses went to submitted: their "Submit" tasks are done, their "Check it was paid" tasks count from now. -> a function that puts that back. */
+function expSubmitTasks(list, o) {
+  o = o || {};
   const closed = [], moved = [];
   for (const e of list) {
     if (e.tasks && e.tasks.submit && getItem(e.tasks.submit) && statusOf(e.tasks.submit) !== 'done') { closed.push(e.tasks.submit); expCloseTask(e.tasks.submit, true); }
@@ -155,9 +163,7 @@ async function expSubmit(ids, o) {
     if (ck) { moved.push([ck.id, ck.dueDate]); ck.dueDate = expAddDays(o.date || todayStr(), (expPayer(o.payer || e.payer) && expPayer(o.payer || e.payer).checkDays) || expPrefs().checkDays || 14); }
   }
   if (moved.length && typeof saveData === 'function') saveData();
-  toast(`Marked ${list.length} as submitted · ${expMoney(j.claim.total)}`, { icon: 'send', action: { label: 'Undo', run: () => expUndo(j.undo, () => {
-    closed.forEach(id => expCloseTask(id, false)); moved.forEach(([id, d]) => { const t = getItem(id); if (t) t.dueDate = d; }); if (typeof saveData === 'function') saveData(); }) } });
-  return j;
+  return () => { closed.forEach(id => expCloseTask(id, false)); moved.forEach(([id, d]) => { const t = getItem(id); if (t) t.dueDate = d; }); if (typeof saveData === 'function') saveData(); };
 }
 /** After money arrived: the Check tasks of those expenses are done. */
 function expCompleteChecks(ids) {
@@ -182,6 +188,32 @@ async function expDelete(ids) {
     const last = (state.bin && state.bin.tasks) || []; for (const id of taskIds) { const b = last.find(x => x.id === id); if (b && typeof restoreTask === 'function') restoreTask(b.binTs, { quiet: true }); } }) } });
   return j;
 }
+
+/* ---------- expense reports (2.21: undo in one go, at any time, even after a restart) ---------- */
+/** Undo a report: its expenses go back to To claim. Its folder stays until Delete report. */
+async function expReportUndo(id) {
+  const j = await expDo('/report/undo', { id }, { quiet: true, what: 'undo the report' });
+  if (!j) return null;
+  const reopened = [];
+  for (const eid of j.ids || []) {
+    const e = expItem(eid); if (!e || !e.tasks) continue;
+    for (const t of [e.tasks.submit, e.tasks.check]) if (t && getItem(t) && statusOf(t) === 'done') { expCloseTask(t, false); reopened.push(t); }
+  }
+  const n = j.changed || 0;
+  toast(n ? `${n} expense${n === 1 ? ' is' : 's are'} back in To claim` : 'Report undone', { icon: 'undo-2', timeout: 9000, action: j.undo ? { label: 'Undo', run: () => expUndo(j.undo, () => reopened.forEach(t => expCloseTask(t, true))) } : undefined });
+  return j;
+}
+/** Delete a report for good, after asking: its PDF and zip go from the computer. The expenses stay as they are. */
+async function expReportDelete(r) {
+  const yes = await confirmDialog({ title: 'Delete this report?',
+    text: `This deletes the PDF and the receipts zip from your computer, and it cannot be undone. Your expenses stay as they are.${r.undoneAt ? '' : ' If you only made it by accident, choose Undo instead.'}`,
+    confirmLabel: 'Delete report', cancelLabel: 'Keep it', danger: true });
+  if (!yes) return null;
+  const j = await expDo('/report/delete', { id: r.id }, { quiet: true, what: 'delete the report' });
+  if (j) toast(j.gone ? 'Taken off the list. The folder was not on this computer.' : j.kept ? 'Report deleted. Other files you put in its folder are still there.' : 'Report deleted', { icon: 'trash-2' });
+  return j;
+}
+function expReportOpen(id) { return expApi('/report/open', { id }).catch(e => toast(e.message || netErrorMessage(e), { kind: 'err' })); }
 
 /* ---------- receipts ---------- */
 function expReadFile(file) {
@@ -278,11 +310,47 @@ window.Expenses = {
   load: expLoad, get data() { return EXP.data; }, owed: expOwed, open: expOpen,
   add: (prefill) => (typeof expAddDialog === 'function' ? expAddDialog(prefill) : null),
   fromTransaction: (tx) => (typeof expAddDialog === 'function' ? expAddDialog(expPrefillFromTx(tx)) : null),
+  fromTransactions: expFromTransactions,
   fromTask: (id) => (typeof expAddDialog === 'function' ? expAddDialog(expPrefillFromTask(id)) : null),
   txAction: (tx) => (typeof expTxButton === 'function' ? expTxButton(tx) : null),
   txChip: (tx) => (typeof expTxChip === 'function' ? expTxChip(tx) : null),
   financeUpdated: expFinanceUpdated, forTask: expForTask,
 };
+/** Mark several transactions as expenses: one question (who pays you back), one request, one Undo (POST /create-batch). */
+function expFromTransactions(rows, after) {
+  const fresh = rows.filter(x => x && x.a < 0 && !expForTx(x));
+  if (!fresh.length) { toast('Those are expenses already, or are not payments out.'); return; }
+  let payer;
+  openDialog({
+    title: `Expense ${fresh.length} payment${fresh.length === 1 ? '' : 's'}`, size: 'sm',
+    body(el) {
+      el.className += ' xp-form';
+      const w = document.createElement('label'); w.className = 'xp-f';
+      const l = document.createElement('span'); l.className = 'xp-fl'; l.textContent = 'Who pays you back?';
+      payer = document.createElement('input'); payer.className = 'xp-in'; payer.type = 'text'; payer.placeholder = 'e.g. your employer'; payer.autocomplete = 'off';
+      if (EXP.data && EXP.data.payers.length) payer.value = EXP.data.payers[0].name;
+      w.append(l, payer); el.appendChild(w);
+      if (fresh.length < rows.length) { const n = document.createElement('p'); n.className = 'xp-fh'; n.textContent = `${rows.length - fresh.length} of what you selected ${rows.length - fresh.length === 1 ? 'is' : 'are'} left out: already an expense, or money in.`; el.appendChild(n); }
+      setTimeout(() => payer.focus(), 30);
+    },
+    actions: [{ label: 'Cancel' }, { label: 'Add expenses', primary: true, icon: 'check', run: async () => {
+      if (!payer.value.trim()) { payer.focus(); toast('Say who pays you back.', { kind: 'err' }); return false; }
+      const who = payer.value.trim();
+      const expenses = fresh.map(x => Object.assign(expPrefillFromTx(x), { payer: who }));
+      // The two tasks of each, when that setting is on: made first, so they go in with the one request.
+      const made = [];
+      if (expPrefs().autoTasks) for (const f of expenses) { const m = expMakeTasks(f); if (m && m.submit) { made.push(m.submit, m.check); f.tasks = { submit: m.submit, check: m.check }; f.taskIds = [m.submit, m.check].filter(Boolean); } }
+      const dropTasks = () => { for (const id of made) if (id && getItem(id)) deleteTask(id, { noSave: true }); if (made.length) { saveData(); render(); } };
+      const j = await expDo('/create-batch', { expenses }, { quiet: true, what: 'add the expenses' });
+      if (!j) { dropTasks(); return false; }
+      const n = (j.ids || []).length;
+      toast(`Added ${n} expense${n === 1 ? '' : 's'} to claim from ${who}`, { icon: 'receipt', timeout: 7000, action: { label: 'Undo', run: () => expUndo(j.undo, dropTasks) } });
+      expRepaint();
+      if (typeof after === 'function') after();
+      return undefined;
+    } }],
+  });
+}
 function expPrefillFromTx(tx) {
   return { title: tx.m || 'Expense', merchant: tx.m || '', amount: Math.abs(Number(tx.a)), date: tx.d, source: { type: 'tx', txKey: expTxKey(tx), k: tx.k }, note: '' };
 }
