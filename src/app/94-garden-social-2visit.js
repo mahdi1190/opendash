@@ -137,6 +137,7 @@ function _gsvPaint() {
   const side = _gsvEl('aside', 'gd-side gsv-side');
   { const how = _gsvEl('section', 'card gsv-how'); how.appendChild(_gsvEl('b', null, `You are visiting ${_gscFirst(fid)}`)); how.appendChild(_gsvEl('p', 'muted', 'Look around, hover a plant to read about it. Pick Water and click a thirsty plant to help it grow. You can also give a heart, react, leave a gift or write in the guestbook. Nothing here is ever required.')); side.appendChild(how); }
   side.appendChild(_gsvToday(f, c));
+  { const cc = typeof gardenCatchVisitCard === 'function' ? gardenCatchVisitCard(f, c.garden.snap) : null; if (cc) side.appendChild(cc); }   // 2.22: their showcase
   side.appendChild(_gsvGrowing(c.garden.snap));
   side.appendChild(_gsvBook(f, c));
   main.appendChild(side);
@@ -428,12 +429,13 @@ function _gsvReactMenu(f, anchor) {
 function _gsvGiftables() {
   let w = null;
   try { w = typeof gardenWallet === 'function' && typeof gardenReady === 'function' && gardenReady() ? gardenWallet() : null; } catch (e) { w = null; }
-  const out = { seed: [], decor: [] };
+  const out = { seed: [], decor: [], fish: [], bug: [] };
   if (!w) return out;
   for (const [k, n] of Object.entries(w.items || {})) {
     if (!(n > 0)) continue;
     const i = k.indexOf(':'), kind = k.slice(0, i), id = k.slice(i + 1);
     if ((kind === 'seed' || kind === 'decor') && gsocGiftOk(kind, id)) out[kind].push({ id, n: Math.floor(n), def: kind === 'seed' ? gardenPlant(id) : gardenDecor(id) });
+    else if ((kind === 'fish' || kind === 'bug') && gsocGiftOk(kind, id)) { const fp = kind === 'fish' ? gardenFishParse(k) : null; out[kind].push({ id, n: Math.floor(n), def: kind === 'fish' ? gardenFishDef(fp.id) : gardenBugDef(id), q: fp ? fp.q : 0 }); }
   }
   const rank = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
   out.seed.sort((a, b) => (rank[a.def.rarity] ?? 5) - (rank[b.def.rarity] ?? 5) || a.def.name.localeCompare(b.def.name));
@@ -445,7 +447,7 @@ function _gsvGiftMenu(f, anchor) {
   openPopover(anchor, (el, close) => {
     el.classList.add('gsv-pop', 'gsv-gifts');
     el.appendChild(_gsvEl('div', 'pop-label', `A parcel for ${_gscFirst(f.id)}`));
-    if (!g.seed.length && !g.decor.length) {
+    if (!g.seed.length && !g.decor.length && !g.fish.length && !g.bug.length) {
       el.appendChild(_gsvEl('p', 'gsv-pop-p muted', 'Your bag is empty for now. Seeds and decorations from the shop (or your harvest) can be given.'));
       el.appendChild(_gsvBtn('Open the shop', { icon: 'store', run: () => { close(); setView('garden:shop'); } }));
       return;
@@ -453,14 +455,16 @@ function _gsvGiftMenu(f, anchor) {
     const list = _gsvEl('div', 'gsv-gift-list');
     const add = (k, it) => {
       const b = _gsvEl('button', 'gsv-gift'); b.type = 'button';
-      const ic = _gsvEl('span', 'gsv-gift-ic'); ic.innerHTML = gardenIconSvg(it.id, { kind: k === 'seed' ? 'seed' : 'decor', px: 34 }); b.appendChild(ic);
-      const t = _gsvEl('span', 'gsv-gift-t'); t.appendChild(_gsvEl('b', null, it.def.name)); t.appendChild(_gsvEl('span', 'muted', k === 'seed' ? `seed · ${it.def.rarity}` : 'decoration')); b.appendChild(t);
+      const ic = _gsvEl('span', 'gsv-gift-ic'); ic.innerHTML = k === 'fish' || k === 'bug' ? gardenCatchSvg(k, k === 'fish' ? it.def.id : it.id, 34, { uid: 'gv' + k + it.id }) : gardenIconSvg(it.id, { kind: k === 'seed' ? 'seed' : 'decor', px: 34 }); b.appendChild(ic);
+      const t = _gsvEl('span', 'gsv-gift-t'); t.appendChild(_gsvEl('b', null, it.def.name + (it.q ? ' ' + gardenQuality(it.q).stars : ''))); t.appendChild(_gsvEl('span', 'muted', k === 'seed' ? `seed · ${it.def.rarity}` : k === 'fish' ? `fish · ${it.def.rarity}` : k === 'bug' ? `bug · ${it.def.rarity}` : 'decoration')); b.appendChild(t);
       b.appendChild(_gsvEl('span', 'gsv-gift-n', '×' + it.n));
-      b.onclick = () => { close(); gardenSocialGive(f.id, k, it.id); setTimeout(() => _gsvRefreshSide(f), 7000); };
+      b.onclick = () => { close(); gardenSocialGive(f.id, k, k === 'fish' ? it.def.id + '-' + it.q : it.id); setTimeout(() => _gsvRefreshSide(f), 7000); };
       list.appendChild(b);
     };
     if (g.seed.length) { list.appendChild(_gsvEl('div', 'gsv-gift-h', 'Seeds')); for (const it of g.seed.slice(0, 40)) add('seed', it); }
     if (g.decor.length) { list.appendChild(_gsvEl('div', 'gsv-gift-h', 'Decorations')); for (const it of g.decor.slice(0, 40)) add('decor', it); }
+    if (g.fish.length) { list.appendChild(_gsvEl('div', 'gsv-gift-h', 'Fish')); for (const it of g.fish.slice(0, 40)) add('fish', it); }
+    if (g.bug.length) { list.appendChild(_gsvEl('div', 'gsv-gift-h', 'Bugs')); for (const it of g.bug.slice(0, 40)) add('bug', it); }
     el.appendChild(list);
     el.appendChild(_gsvEl('p', 'gsv-pop-p muted gsv-small', 'It leaves your bag. A few seconds to Undo before it goes.'));
   }, { align: 'end', width: 320 });

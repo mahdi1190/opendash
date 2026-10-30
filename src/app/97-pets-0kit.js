@@ -131,7 +131,8 @@ const PET_ACC = Object.freeze({
   bandana: _ptO([['none', 'None'], ['plain', 'Bandana'], ['dots', 'Polka dots'], ['stripes', 'Stripes', { level: 4 }]]),
   bow: _ptO([['none', 'None'], ['bow', 'Bow'], ['big', 'Big bow', { level: 6 }], ['flower', 'Flower', { season: 'spring' }], ['daisy', 'Daisy']]),
   hat: _ptO([['none', 'None'], ['beanie', 'Beanie'], ['party', 'Party hat'], ['tophat', 'Top hat', { level: 8 }], ['wizard', 'Wizard hat', { level: 12 }], ['crown', 'Crown', { level: 25 }],
-    ['witch', 'Witch hat', { season: 'halloween' }], ['santa', 'Santa hat', { season: 'december' }], ['pumpkin', 'Pumpkin', { season: 'halloween' }], ['flowers', 'Flower crown', { season: 'spring' }]]),
+    ['witch', 'Witch hat', { season: 'halloween' }], ['santa', 'Santa hat', { season: 'december' }], ['pumpkin', 'Pumpkin', { season: 'halloween' }], ['flowers', 'Flower crown', { season: 'spring' }],
+    ['anglerhat', 'Angler’s hat', { ribbon: 'angler' }], ['explorer', 'Explorer’s hat', { ribbon: 'bug-catcher' }]]),   // 2.22: garden ribbons
   glasses: _ptO([['none', 'None'], ['round', 'Round glasses'], ['sun', 'Sunglasses'], ['heart', 'Heart shades', { level: 16 }], ['monocle', 'Monocle', { level: 30 }]]),
 });
 const PET_ACC_COLS = Object.freeze(Object.fromEntries([
@@ -258,6 +259,7 @@ function petLockOf(field, id, ctx, species) {
     if (ctx.collected && ctx.collected[field + ':' + id]) return '';
     return petSeasonOn(o.season, ctx.today || '') ? '' : 'Seasonal: comes ' + PET_SEASONS[o.season].label;
   }
+  if (o.ribbon && ctx.ribbons && !ctx.ribbons.has(o.ribbon)) return 'Earn the garden ribbon “' + ((ctx.ribbonLabel && ctx.ribbonLabel(o.ribbon)) || o.ribbon) + '”';   // 2.22
   if (!ctx.game) return '';   // no game on this page: nothing to unlock
   if (o.level && (Number(ctx.levelMax) || 1) < o.level) return 'Reach level ' + o.level;
   if (o.streak && (Number(ctx.bestStreak) || 0) < o.streak) return 'A ' + o.streak + '-day streak';

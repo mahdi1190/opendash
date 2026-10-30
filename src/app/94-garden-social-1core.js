@@ -82,6 +82,8 @@ function gardenSocialName(id) {
 function _gscFirst(id) { return String(gardenSocialName(id)).split(/\s+/)[0] || 'Your friend'; }
 function _gscPlantName(id, lower) { const p = typeof gardenPlant === 'function' ? gardenPlant(id) : null; const n = p ? p.name : 'plant'; return lower ? n.toLowerCase().replace(/^the /, '') : n; }
 function _gscItemName(k, id) {
+  if (k === 'fish') { const m = /^([a-z0-9-]+)-([0-3])$/.exec(String(id)), d = m && gardenFishDef(m[1]); return d ? `${d.name.toLowerCase()}${m[2] > 0 ? ' ' + gardenQuality(Number(m[2])).stars : ''}` : 'fish'; }
+  if (k === 'bug') { const d = gardenBugDef(id); return d ? d.name.toLowerCase() : 'bug'; }
   if (k === 'seed') { const p = gardenPlant(id); return p ? `${p.name.toLowerCase().replace(/^the /, '')} seed` : 'seed'; }
   const d = gardenDecor(id); return d ? d.name.toLowerCase() : 'decoration';
 }
@@ -258,15 +260,16 @@ function gardenSocialUnwrap(id) {
     if (!gsocGiftOk(a.k, a.item)) { toast('This parcel holds something your OpenDash does not know yet: update OpenDash to open it.', { icon: 'gift' }); return false; }
     g.led['gg.' + id] = { d: _gscToday(), k: 'gg', i: { [a.k + ':' + a.item]: 1 }, n: 1 };
     if (a.k === 'decor' && !g.disc[a.item]) g.disc[a.item] = _gscToday();
+    if ((a.k === 'fish' || a.k === 'bug') && typeof gardenCatchReceived === 'function') gardenCatchReceived(a.k, a.item);   // 2.22: it goes in your book too
     _gscSaveGarden();
   }
   d.pending = (d.pending || []).filter(x => x.id !== id);
   for (const x of d.inbox || []) if (x.id === id) x.applied = x.applied || Date.now();   // clock-ok: a local mark until the next load
   _gscApi('/api/garden-social/applied', { ids: [id] }).then(() => _gscReloadSoon(300)).catch(() => {});
   const what = _gscA(_gscItemName(a.k, a.item));
-  const plant = a.k === 'seed';
+  const plant = a.k === 'seed', catchy = a.k === 'fish' || a.k === 'bug';
   toast(`From ${_gscFirst(a.f)}: ${what}. It is in your bag.`, { icon: 'gift', kind: 'ok', timeout: 7000,
-    action: { label: plant ? 'Plant it' : 'Place it', run: () => { try { const p = g.prefs || (g.prefs = {}); if (plant) { p.mode = 'tend'; p.tool = 'seed'; p.seed = a.item; } else p.mode = 'decorate'; if (typeof saveUI === 'function') saveUI(); } catch (e) { /* prefs are a nicety */ } setView('garden'); } } });
+    action: catchy ? { label: 'See it', run: () => gardenCatchOpen('bag') } : { label: plant ? 'Plant it' : 'Place it', run: () => { try { const p = g.prefs || (g.prefs = {}); if (plant) { p.mode = 'tend'; p.tool = 'seed'; p.seed = a.item; } else p.mode = 'decorate'; if (typeof saveUI === 'function') saveUI(); } catch (e) { /* prefs are a nicety */ } setView('garden'); } } });
   if (_gscFun() === 'full' && typeof _gdpBurst === 'function' && /^garden/.test(String(state.view || ''))) { try { _gdpBurst('ribbon'); } catch (e) { /* a flourish */ } }
   _gscRepaintSoon();
   return true;

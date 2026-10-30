@@ -23,6 +23,7 @@
 // /api/events: {type: 'act'|'snap'|'sent'|'applied'|'changed', from?, to?, id?, t?, ...ids only}.
 
 import { createGardenSocial } from '../../lib/friends/garden.mjs';
+import '../../lib/profile-catch.mjs';   // 2.22: the optional 'catch' field of the friends profile (your showcase on your card)
 
 export default function register(app) {
   const ctx = app.ctx;

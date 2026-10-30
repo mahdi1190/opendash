@@ -33,6 +33,8 @@ export const ICONS = [
   'notebook-pen', 'lightbulb', 'archive', 'gift', 'mountain', 'baby', 'stethoscope', 'presentation', 'award', 'landmark',
   'scroll-text', 'pin', 'layout-grid', 'clipboard-list', 'copy', 'merge', 'sparkle', 'circle', 'git-merge', 'tags',
   'chart-column', 'receipt', 'piggy-bank', 'circle-alert', 'move', 'type', 'monitor', 'house', 'circle-user', 'log-out',
+  // garden 2.22: fishing, bug catching and the camera
+  'fish', 'zoom-in', 'zoom-out', 'maximize', 'locate-fixed',
   // app shell additions
   'plug', 'plug-zap', 'unplug', 'bot', 'message-circle', 'send', 'lock', 'lock-open', 'sun-moon', 'maximize-2',
   'minimize-2', 'scan', 'menu', 'chevron-up', 'filter', 'arrow-left', 'shield-check', 'key-round', 'square-check-big',

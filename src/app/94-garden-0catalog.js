@@ -63,7 +63,9 @@ function _gdF(o) { return Object.freeze(o); }
 function _gdRows(list) { return Object.freeze(list.map(r => Object.freeze(r))); }
 
 /* ---------- the world ---------- */
-const GARDEN_WORLD = _gdF({ cols: 20, rows: 11, cellW: 48, cellH: 30, sky: 150, unit: 64 });
+/* 2.22: the garden grew. The first 20 x 11 cells are exactly where they were (every saved x, y stays valid); the Wild
+   woods run down the east side (x 20..27) and the Lake lies along the south (y 11..17) with its pier and tackle shop. */
+const GARDEN_WORLD = _gdF({ cols: 28, rows: 18, cellW: 48, cellH: 30, sky: 150, unit: 64, oldCols: 20, oldRows: 11 });
 
 const GARDEN_RARITY = _gdF({
   common: _gdF({ label: 'Common', col: '#7c8b6f', weight: 60 }),
@@ -284,8 +286,9 @@ const GARDEN_DECOR_CATS = _gdF({
   light: _gdF({ label: 'Lights', icon: 'lamp' }), structure: _gdF({ label: 'Structures', icon: 'warehouse' }),
   wildlife: _gdF({ label: 'Wildlife homes', icon: 'bird' }), ornament: _gdF({ label: 'Ornaments', icon: 'sparkles' }),
   planter: _gdF({ label: 'Pots and planters', icon: 'flower-2' }), seasonal: _gdF({ label: 'Seasonal', icon: 'calendar-heart' }),
+  angling: _gdF({ label: 'Angling and bugs', icon: 'fish' }),
 });
-const GARDEN_DECOR_CAT_ORDER = _gdF(['path', 'fence', 'seat', 'water', 'light', 'structure', 'wildlife', 'ornament', 'planter', 'seasonal']);
+const GARDEN_DECOR_CAT_ORDER = _gdF(['path', 'fence', 'seat', 'water', 'light', 'structure', 'wildlife', 'angling', 'ornament', 'planter', 'seasonal']);
 const GARDEN_DECOR = _gdRows([
   /* paths (ground layer) */
   _gD('stepping-stones', 'Stepping stones', 'path', { layer: 'ground', price: 2, look: { c: '#b9b2a4', c2: '#8f877a', h: 0 }, blurb: 'Hop from one to the next.' }),
@@ -344,6 +347,12 @@ const GARDEN_DECOR = _gdRows([
   _gD('hedgehog-house', 'Hedgehog house', 'wildlife', { price: 35, lv: 5, look: { c: '#7a5636', c2: '#c9a26a', h: 0.45 }, effect: { kind: 'hedgehog' }, attracts: ['hedgehog'], blurb: 'A snug dome for a prickly guest.' }),
   _gD('beehive', 'Beehive', 'wildlife', { price: 90, lv: 6, look: { c: '#f4f1ea', c2: '#e8c33a', h: 0.9 }, effect: { kind: 'hive' }, attracts: ['honeybee'], blurb: 'Honey every two days while three flowers bloom.' }),
   _gD('compost-bin', 'Compost bin', 'wildlife', { price: 40, lv: 3, look: { c: '#3f5a3a', c2: '#6f5232', h: 0.8 }, effect: { kind: 'compost' }, attracts: ['blackbird'], blurb: 'Peelings in, fertiliser out: one a day.' }),
+  /* 2.22: angling and bug catching: these show what you have caught (94-garden-fish-1world.js) */
+  _gD('aquarium', 'Aquarium', 'angling', { w: 2, price: 90, lv: 2, look: { c: '#7fb8d8', c2: '#4a8ab0', h: 1.1 }, effect: { kind: 'show', what: 'fish' }, blurb: 'Your best catches, swimming. Friends see it when they visit.' }),
+  _gD('bug-case', 'Bug case', 'angling', { price: 60, lv: 2, look: { c: '#a87c4f', c2: '#efe3c4', h: 1.0 }, effect: { kind: 'show', what: 'bugs' }, blurb: 'Nine of your bugs, pinned under glass.' }),
+  _gD('trophy-board', 'Trophy board', 'angling', { w: 2, price: 75, lv: 3, look: { c: '#8a5a34', c2: '#e8c24a', h: 1.0 }, effect: { kind: 'show', what: 'trophy' }, blurb: 'Your three biggest fish, mounted with brass plates.' }),
+  _gD('fish-weathervane', 'Fish weathervane', 'angling', { price: 40, lv: 3, look: { c: '#7a8288', c2: '#e8a83a', h: 1.4 }, blurb: 'Always points at the best fishing.' }),
+  _gD('bait-bucket', 'Bait bucket', 'angling', { price: 12, lv: 1, look: { c: '#7a8288', c2: '#2f6a98', h: 0.5 }, blurb: 'A bucket with a minnow that is not going anywhere.' }),
   /* ornaments */
   _gD('gnome', 'Garden gnome', 'ornament', { price: 25, lv: 2, look: { c: '#d83a3a', c2: '#3f6fa8', h: 0.6 }, v: 4, effect: { kind: 'luck' }, blurb: 'Waving, fishing, napping or reading. Gnomes bring luck.' }),
   _gD('scarecrow', 'Scarecrow', 'ornament', { price: 40, lv: 3, look: { c: '#c9a26a', c2: '#3f6fa8', h: 1.5 }, effect: { kind: 'scare', r: 2 }, blurb: 'Guards the veg patch: a little extra at harvest nearby.' }),
@@ -428,6 +437,9 @@ const GARDEN_TILES = _gdRows([
   { id: 'pond-edge', name: 'Pond edge', c: '#9aa88a', c2: '#7a8a6a', winter: '#b0b8a6', autumn: '#9a9a7a' },
   { id: 'glasshouse', name: 'Greenhouse floor', c: '#c9b8a0', c2: '#b0a088', winter: '#c9b8a0', autumn: '#c9b8a0' },
   { id: 'wild-ground', name: 'Wild ground', c: '#9aa86a', c2: '#88965a', winter: '#aab096', autumn: '#a8a466' },
+  { id: 'sand', name: 'Lake shore', c: '#e3d3a2', c2: '#cdbb86', winter: '#d9d4c0', autumn: '#dccb98' },
+  { id: 'lake-water', name: 'Lake water', c: '#4f93be', c2: '#3a7aa6', winter: '#9fc4dc', autumn: '#4a85a8' },
+  { id: 'forest', name: 'Woodland floor', c: '#6f9a4a', c2: '#5a8239', winter: '#9aa68a', autumn: '#a08a46' },
 ]);
 const _GD_TILE = new Map(GARDEN_TILES.map(t => [t.id, t]));
 
@@ -442,6 +454,27 @@ const GARDEN_AREAS = _gdRows([
   { id: 'pond', name: 'Pond', lv: 7, x: 14, y: 0, w: 6, h: 4, tile: 'pond-edge', water: _gdF({ x: 15, y: 1, w: 4, h: 2 }), cats: _gdF(['water', 'flower', 'wild', 'tree']), icon: 'waves', blurb: 'Water lilies, reeds and a frog or two.' },
   { id: 'greenhouse', name: 'Greenhouse', lv: 9, x: 14, y: 4, w: 6, h: 5, tile: 'glasshouse', cats: _gdF(['exotic', 'succulent', 'veg', 'flower', 'herb', 'fruit', 'tree']), always: 1, icon: 'warehouse', blurb: 'Always summer inside: exotics, succulents and anything out of season.' },
   { id: 'meadow', name: 'Flower meadow', lv: 12, x: 7, y: 0, w: 7, h: 4, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree']), icon: 'flower', blurb: 'Let it go wild: poppies, clover and the rarest orchid.' },
+  // 2.22: the Wild woods (east) are the bug-catchers' corner; the Lake (south) is where you fish, from the shore or the pier.
+  { id: 'woods', name: 'Wild woods', lv: 4, x: 20, y: 0, w: 8, h: 11, tile: 'forest', cats: _gdF(['tree', 'wild', 'fruit', 'herb']), icon: 'trees', bugs: 1, blurb: 'Tall trees, logs and mushrooms: the best place to catch bugs.' },
+  { id: 'lake', name: 'The lake', lv: 1, x: 0, y: 11, w: 28, h: 7, tile: 'sand', water: _gdF({ x: 0, y: 13, w: 28, h: 5 }), cats: _gdF([]), icon: 'fish', fishing: 1, blurb: 'Cast a line from the shore or the pier. Deeper water, better fish.' },
+]);
+/* Fixed things in the world (not in your bag, not movable): the pier you walk out on, the tackle shop. x, y, w, h in cells.
+   walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there. */
+const GARDEN_PROPS = _gdRows([
+  { id: 'pier', name: 'The pier', x: 12, y: 12, w: 2, h: 5, walk: 1, blurb: 'Walk out over the water: the fish are bigger past the end of it.' },
+  // 2.22: the menus are in the world. Walk up and click a building (you go to its door and it opens): act is the page it opens,
+  // kind the way it is drawn, tall how many rows its art stands above its footprint (that is where a click counts).
+  { id: 'market-stall', name: 'Market stall', x: 1, y: 11, w: 2, h: 1, door: _gdF({ x: 2, y: 12 }), act: 'basket', kind: 'stall', tall: 2, blurb: 'Sell what you have picked, and make bouquets.' },
+  { id: 'garden-shop', name: 'Garden shop', x: 6, y: 11, w: 3, h: 1, door: _gdF({ x: 7, y: 12 }), act: 'shop', kind: 'shop', tall: 2.8, blurb: 'Seeds, decorations and tools.' },
+  { id: 'notice-board', name: 'Notice board', x: 9, y: 11, w: 2, h: 1, door: _gdF({ x: 10, y: 12 }), act: 'almanac', kind: 'board', tall: 1.9, blurb: 'Everything you have found, and your ribbons.' },
+  { id: 'field-journal', name: 'Field journal', x: 11, y: 11, w: 1, h: 1, door: _gdF({ x: 11, y: 12 }), act: 'journal', kind: 'lectern', tall: 1.4, blurb: 'Your fish book, bug book and showcase.' },
+  { id: 'camera-tripod', name: 'Camera', x: 15, y: 11, w: 1, h: 1, door: _gdF({ x: 15, y: 12 }), act: 'photo', kind: 'tripod', tall: 1.6, blurb: 'Take a picture of your garden.' },
+  { id: 'tackle-shop', name: 'Tackle shop', x: 17, y: 11, w: 3, h: 1, door: _gdF({ x: 18, y: 12 }), act: 'tackle', kind: 'tackle', tall: 3, blurb: 'Rods, nets, bait and the fish market.' },
+  { id: 'post-box', name: 'Post box', x: 20, y: 11, w: 1, h: 1, door: _gdF({ x: 20, y: 12 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
+  { id: 'sundial', name: 'Sundial', x: 26, y: 11, w: 1, h: 1, door: _gdF({ x: 26, y: 12 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
+  { id: 'jetty-post', name: 'Mooring post', x: 4, y: 12, w: 1, h: 1, walk: 0, blurb: 'A rope, a post and a very patient rowing boat.' },
+  { id: 'reed-bank', name: 'Reeds', x: 22, y: 12, w: 3, h: 1, walk: 0, blurb: 'Dragonflies like it here.' },
+  { id: 'forest-edge', name: 'The forest', x: 27, y: 0, w: 1, h: 11, walk: 0, blurb: 'Too thick to walk through.' },
 ]);
 const GARDEN_LAWN = _gdF({ id: 'lawn', name: 'Lawn', lv: 1, tile: 'grass', cats: _gdF([]), icon: 'fence', blurb: 'Room for paths, seats and everything else.' });
 const _GD_AREA = new Map(GARDEN_AREAS.map(a => [a.id, a]));
@@ -497,10 +530,24 @@ const GARDEN_RIBBONS = _gdRows([
   { id: 'night-garden', label: 'Night garden', hint: 'Spot 3 visitors that only come out at night.', icon: 'moon', fact: 'nightVisitors', of: 3, reward: { c: 50, i: { 'seed:glowcap': 2 } } },
   { id: 'four-seasons', label: 'Four seasons', hint: 'Tend your garden in all four seasons.', icon: 'calendar-range', fact: 'seasons', of: 4, reward: { c: 120, i: { 'seed:sakura': 1 } } },
   { id: 'decorator', label: 'Decorator', hint: 'Place 12 decorations.', icon: 'paintbrush', fact: 'decorPlaced', of: 12, reward: { c: 50, i: { 'decor:gazing-ball': 1 } } },
-  { id: 'every-corner', label: 'Every corner', hint: 'Open every area of the garden.', icon: 'map', fact: 'areas', of: 6, reward: { c: 200, i: { 'decor:fountain': 1 } } },
+  { id: 'every-corner', label: 'Every corner', hint: 'Open every area of the garden.', icon: 'map', fact: 'areas', of: 8, reward: { c: 200, i: { 'decor:fountain': 1 } } },
   { id: 'daily-gardener', label: 'Daily gardener', hint: 'Finish 30 daily garden tasks.', icon: 'calendar-check', fact: 'dailyDone', of: 30, reward: { c: 80, i: { 'tool:golden-shears': 1 } } },
   { id: 'market-stall', label: 'Market stall', hint: 'Sell 50 things at the market.', icon: 'coins', fact: 'sold', of: 50, reward: { c: 60 } },
   { id: 'lucky', label: 'Lucky find', hint: 'Find a four-leaf clover.', icon: 'clover', fact: 'clover', of: 1, reward: { c: 77 } },
+  // 2.22: fishing and bug catching (facts from gardenCatchFacts, 94-garden-fish-2core.js)
+  { id: 'first-catch', label: 'First catch', hint: 'Land your first fish.', icon: 'fish', fact: 'fished', of: 1, reward: { c: 15, i: { 'bait:dough': 5 } } },
+  { id: 'angler', label: 'Angler', hint: 'Catch 25 fish.', icon: 'fish', fact: 'fished', of: 25, reward: { c: 50, i: { 'bait:maggot': 5 } } },
+  { id: 'fish-log-10', label: 'Fish log', hint: 'Catch 10 kinds of fish.', icon: 'book-open', fact: 'fishSpecies', of: 10, reward: { c: 70, i: { 'bait:glow-lure': 3 } } },
+  { id: 'rare-catch', label: 'Rare catch', hint: 'Catch 3 rare fish.', icon: 'sparkles', fact: 'rareFish', of: 3, reward: { c: 90, i: { 'bait:golden-fly': 2 } } },
+  { id: 'big-one', label: 'The big one', hint: 'Land a fish a metre long.', icon: 'ruler', fact: 'bigFish', of: 1, reward: { c: 80, i: { 'decor:trophy-board': 1 } } },
+  { id: 'master-angler', label: 'Master angler', hint: 'Catch 28 kinds of fish. The golden rod is yours.', icon: 'crown', fact: 'fishSpecies', of: 28, reward: { c: 250, i: { 'gear:rod-5': 1 } } },
+  { id: 'first-bug', label: 'First bug', hint: 'Net your first bug.', icon: 'bug', fact: 'netted', of: 1, reward: { c: 15, i: { 'decor:bug-case': 1 } } },
+  { id: 'bug-catcher', label: 'Bug catcher', hint: 'Net 25 bugs.', icon: 'bug', fact: 'netted', of: 25, reward: { c: 50, i: { 'decor:bug-hotel': 1 } } },
+  { id: 'butterfly-book', label: 'Bug book', hint: 'Net 12 kinds of bug.', icon: 'book-open', fact: 'bugSpecies', of: 12, reward: { c: 70, i: { 'seed:*rare': 1 } } },
+  { id: 'entomologist', label: 'Entomologist', hint: 'Net 24 kinds of bug. The golden net is yours.', icon: 'crown', fact: 'bugSpecies', of: 24, reward: { c: 250, i: { 'gear:net-4': 1 } } },
+  { id: 'market-trader', label: 'Market trader', hint: 'Fill 10 orders on the board.', icon: 'handshake', fact: 'ordersDone', of: 10, reward: { c: 80, i: { 'decor:fish-weathervane': 1 } } },
+  { id: 'show-off', label: 'Show-off', hint: 'Put 6 catches in your showcase.', icon: 'trophy', fact: 'showcased', of: 6, reward: { c: 60 } },
+  { id: 'fish-for-friends', label: 'Fish for friends', hint: 'Give 5 catches to friends.', icon: 'gift', fact: 'catchGifts', of: 5, reward: { c: 70, i: { 'bait:dough': 10 } } },
   // ── garden-social ── (2.18) gardens with friends: the facts come from gardenSocialFacts() (94-garden-social-1core.js)
   { id: 'garden-tourist', label: 'Garden tourist', hint: "Visit friends' gardens on 7 different days.", icon: 'footprints', fact: 'gardenVisits', of: 7, reward: { c: 40, i: { 'seed:sweet-pea': 2 } } },
   { id: 'good-neighbour', label: 'Good neighbour', hint: "Water 10 plants in friends' gardens.", icon: 'droplets', fact: 'friendWaters', of: 10, reward: { c: 50, i: { 'decor:old-watering-can': 1 } } },
@@ -529,6 +576,10 @@ const GARDEN_DAILY = _gdRows([
   { id: 'decorate-1', label: 'Place or move a decoration', n: 1, fact: 'decorated', c: 8, x: 6, icon: 'armchair', lv: 2 },
   { id: 'bouquet-1', label: 'Make a bouquet', n: 1, fact: 'bouquets', c: 15, x: 12, icon: 'flower', lv: 4 },
   { id: 'sell-3', label: 'Sell {n} things at the market', n: 3, fact: 'sold', c: 10, x: 8, icon: 'coins', lv: 3 },
+  { id: 'fish-1', label: 'Catch a fish', n: 1, fact: 'fished', c: 10, x: 8, icon: 'fish' },
+  { id: 'fish-3', label: 'Catch {n} fish', n: 3, fact: 'fished', c: 16, x: 12, icon: 'fish', lv: 3 },
+  { id: 'bug-1', label: 'Net a bug', n: 1, fact: 'netted', c: 10, x: 8, icon: 'bug' },
+  { id: 'bug-3', label: 'Net {n} bugs', n: 3, fact: 'netted', c: 16, x: 12, icon: 'bug', lv: 3 },
 ]);
 const GARDEN_QUESTS = _gdRows([
   { id: 'q-harvest-15', label: 'Harvest {n} times this week', n: 15, fact: 'harvests', c: 70, x: 50, icon: 'shopping-basket', i: { 'seed:*rare': 1 } },
@@ -540,6 +591,8 @@ const GARDEN_QUESTS = _gdRows([
   { id: 'q-water-days-5', label: 'Water the garden on {n} days', n: 5, fact: 'waterDays', c: 60, x: 45, icon: 'droplets' },
   { id: 'q-sell-20', label: 'Sell {n} things at the market', n: 20, fact: 'sold', c: 50, x: 40, icon: 'coins', lv: 3 },
   { id: 'q-daily-10', label: 'Finish {n} daily garden tasks', n: 10, fact: 'dailyDone', c: 70, x: 50, icon: 'calendar-check', i: { 'seed:*rare': 1 } },
+  { id: 'q-fish-12', label: 'Catch {n} fish this week', n: 12, fact: 'fished', c: 60, x: 45, icon: 'fish', i: { 'bait:maggot': 5 } },
+  { id: 'q-bug-10', label: 'Net {n} bugs this week', n: 10, fact: 'netted', c: 60, x: 45, icon: 'bug', i: { 'bait:dough': 5 } },
 ]);
 
 /* ---------- seasonal garden events (month-day windows; Trick or treat matches agent fun's FUN_EVENTS) ---------- */
@@ -629,12 +682,34 @@ function gardenAreaAt(x, y, level) {
   for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (level || 1) >= a.lv ? a.id : 'locked:' + a.id;
   return 'lawn';
 }
-function gardenIsWater(x, y) { const w = gardenArea('pond').water; return x >= w.x && x < w.x + w.w && y >= w.y && y < w.y + w.h; }
+/** Is this cell open water (the pond's or the lake's)? A pier stands over water but is not water to walk on. */
+function gardenIsWater(x, y) {
+  for (const a of GARDEN_AREAS) { const w = a.water; if (w && x >= w.x && x < w.x + w.w && y >= w.y && y < w.y + w.h) return !gardenPropWalk(x, y); }
+  return false;
+}
+/** Which water a cell is: '' (not water), 'pond', or the lake's depth: 'shallow', 'mid', 'deep' (by rows from the shore). */
+function gardenWaterZone(x, y) {
+  for (const a of GARDEN_AREAS) {
+    const w = a.water; if (!w || x < w.x || x >= w.x + w.w || y < w.y || y >= w.y + w.h) continue;
+    if (a.id === 'pond') return 'pond';
+    const d = y - w.y;
+    return d <= 1 ? 'shallow' : d <= 3 ? 'mid' : 'deep';
+  }
+  return '';
+}
+/** The fixed prop covering a cell (the pier, the tackle shop...), or null. */
+function gardenPropAt(x, y) {
+  for (const p of GARDEN_PROPS) if (x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h) return p;
+  return null;
+}
+/** Walkable prop cell (the pier boards)? */
+function gardenPropWalk(x, y) { const p = gardenPropAt(x, y); return !!(p && p.walk); }
 /** Can this plant (or decoration) go at x, y (its top-left cell) at this level? '' = yes, else why not (one short line). */
 function gardenCellOk(def, x, y, level, kind) {
   const W = GARDEN_WORLD;
   const fw = kind === 'decor' ? def.w || 1 : def.fp || 1, fh = kind === 'decor' ? def.h || 1 : def.fp || 1;
   if (x < 0 || y < 0 || x + fw > W.cols || y + fh > W.rows) return 'Off the edge of the garden';
+  for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) { const pr = gardenPropAt(x + dx, y + dy); if (pr) return `${pr.name} is there`; }
   let area = null;
   for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) {
     const a = gardenAreaAt(x + dx, y + dy, level);
@@ -723,7 +798,7 @@ const GARDEN_SNAPSHOT_MAX = _gdF({ plants: 400, decor: 300, bytes: 24000 });
 function gardenSnapshotClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const W = GARDEN_WORLD, int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null; };
-  const out = { v: 1, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
+  const out = { v: 1, cv: int(raw.cv, 0, 9) || 0, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 10)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {
     if (!Array.isArray(p) || !_GD_PLANT.has(p[0])) continue;
@@ -737,5 +812,7 @@ function gardenSnapshotClean(raw) {
     if (x === null || y === null) continue;
     out.decor.push([d[0], x, y, int(d[3], 0, 3) || 0, int(d[4], 0, 7) || 0]);
   }
+  // 2.22: the showcase (the tank and the bug case): ids from the fish and bug tables, sizes in bounds (94-garden-fish-0catalog.js)
+  if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   return out;
 }

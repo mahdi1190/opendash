@@ -24,7 +24,7 @@
    ============================================================ */
 const _GDR = { cache: new Map(), seq: 0 };
 const GARDEN_CROPS = Object.freeze({
-  all: Object.freeze({ x: 0, y: 0, w: 960, h: 480 }),
+  all: Object.freeze({ x: 0, y: 0, w: GARDEN_WORLD.cols * GARDEN_WORLD.cellW, h: GARDEN_WORLD.sky + GARDEN_WORLD.rows * GARDEN_WORLD.cellH }),   // 2.22: 1344 x 690 (it was 960 x 480)
   wide: Object.freeze({ x: 120, y: 112, w: 720, h: 360 }),
   bed: Object.freeze({ x: 236, y: 168, w: 496, h: 252 }),
 });
@@ -112,6 +112,8 @@ function _gdrGround(sc, o) {
       continue;
     }
     const col = _gdrTileCol(a.tile, season);
+    if (a.id === 'lake') { s += gardenLakeGround(sc, o); continue; }   // 2.22
+    if (a.id === 'woods') { s += gardenWoodsGround(sc, o, true); continue; }
     if (a.id === 'pond') {
       s += `<rect x="${x0 + 2}" y="${y0 + 2}" width="${w - 4}" height="${h - 4}" rx="14" fill="${col}"/>`;
       const wa = a.water, wx = wa.x * cw, wy = base + wa.y * ch, ww = wa.w * cw, wh = wa.h * ch;
@@ -128,6 +130,7 @@ function _gdrGround(sc, o) {
     if (a.id === 'orchard' || a.id === 'meadow') { const rnd = gardenRand('tufts|' + a.id); for (let i = 0; i < a.w * a.h * 1.5; i++) { const tx = x0 + 8 + rnd() * (w - 16), ty = y0 + 8 + rnd() * (h - 12); s += `<path d="M${_gdrN(tx)} ${_gdrN(ty)}l-2 -6M${_gdrN(tx)} ${_gdrN(ty)}l2 -6" stroke="${_gdaShade(col, -0.16)}" stroke-width="1.2"/>`; if (a.id === 'meadow' && i % 3 === 0 && season !== 'winter') s += `<circle cx="${_gdrN(tx + 3)}" cy="${_gdrN(ty - 7)}" r="1.6" fill="${['#f7d417', '#fbfbf6', '#e05a8a', '#8aa0e8'][i % 4]}"/>`; if (a.id === 'orchard' && season === 'autumn' && i % 4 === 0) s += `<ellipse cx="${_gdrN(tx)}" cy="${_gdrN(ty)}" rx="3" ry="1.6" fill="${['#d9671c', '#e8a23a', '#c0392b'][i % 3]}"/>`; } }
     if (a.id === 'greenhouse') { for (let gx = 0; gx < a.w; gx++) for (let gy = 0; gy < a.h; gy++) if ((gx + gy) % 2) s += `<rect x="${x0 + gx * cw + 3}" y="${y0 + gy * ch + 3}" width="${cw - 6}" height="${ch - 6}" fill="${_gdaShade(col, -0.06)}"/>`; s += `<path d="M${x0} ${y0 + 2}V${y0 - 30}L${x0 + w / 2} ${y0 - 50}L${x0 + w} ${y0 - 30}V${y0 + 2}Z" fill="#dff0f6" fill-opacity="0.28" stroke="#f4f8f6" stroke-width="2.4" stroke-linejoin="round"/>`; for (let gx = 1; gx < a.w; gx++) { const lx = x0 + gx * cw, top = y0 - 30 - 20 * (1 - Math.abs(gx / a.w - 0.5) * 2); s += `<path d="M${lx} ${_gdrN(top)}V${y0 + 2}" stroke="#f4f8f6" stroke-opacity="0.8" stroke-width="1.4"/>`; } s += `<path d="M${x0} ${y0 - 30}H${x0 + w}" stroke="#f4f8f6" stroke-opacity="0.8" stroke-width="1.4"/>`; }
   }
+  s += gardenPierGround(sc, o);   // 2.22: the pier, over the lake
   if (season === 'winter' && sc.rain && sc.rain.snow) { const rnd = gardenRand('snowground'); for (let i = 0; i < 60; i++) s += `<ellipse cx="${_gdrN(rnd() * W.cols * cw)}" cy="${_gdrN(base + rnd() * W.rows * ch)}" rx="${_gdrN(10 + rnd() * 24)}" ry="${_gdrN(3 + rnd() * 5)}" fill="#ffffff" fill-opacity="0.8"/>`; }
   return s;
 }
@@ -140,15 +143,16 @@ function _gdrItem(kind, it, sc, o) {
   else { def = gardenDecor(it.id); if (!def) return ''; fw = def.w || 1; fh = def.h || 1; }
   const ground = kind === 'decor' && def.layer === 'ground';
   const ax = (it.x + fw / 2) * cw, ay = base + (it.y + fh) * ch - (ground ? 0 : 4);
+  const showy = kind === 'decor' && def.effect && def.effect.kind === 'show';   // 2.22: the aquarium, the case and the board draw what you caught
   const frag = _gdArt(it.id, kind === 'plant'
     ? { kind, stage: it.stage, season: sc.season, variant: it.variant, size: o.size, t: it.t || 0, tod: sc.tod, thirsty: it.thirsty, overgrown: it.overgrown, ripe: it.ripe, glow: !!def.glow, heart: it.heart }
-    : { kind, season: sc.season, variant: it.v || 0, v: it.v || 0, size: o.size, t: it.t || 0, tod: sc.tod, r: it.r || 0 });
+    : { kind, season: sc.season, variant: it.v || 0, v: it.v || 0, size: o.size, t: it.t || 0, tod: sc.tod, r: it.r || 0, show: showy ? sc.show || null : null, shw: showy ? sc.showSig || '' : '' });
   if (!frag) return '';
   const tr = ground ? `translate(${_gdrN(ax)} ${_gdrN(ay)}) scale(${_gdrN(cw / 64 * fw / fw)} ${_gdrN(ch / 40)})` : `translate(${_gdrN(ax)} ${_gdrN(ay)}) scale(0.75)`;
   const uid = it.uid ? ` data-uid="${escAttr(it.uid)}"` : '';
   const cls = 'gd-it gd-' + kind + (it.thirsty ? ' is-thirsty' : '') + (it.ripe ? ' is-ripe' : '') + (it.overgrown ? ' is-wild' : '');
   const sig = gardenHash(cls + tr + frag).toString(36);
-  return `<g class="${cls}"${uid} data-sig="${sig}" data-x="${it.x}" data-y="${it.y}" transform="${tr}">${frag}</g>`;
+  return `<g class="${cls}"${uid} data-sig="${sig}" data-x="${it.x}" data-y="${it.y}" data-z="${it.y + fh}" transform="${tr}">${frag}</g>`;
 }
 function _gdrVisitor(v, sc, o) {
   const W = GARDEN_WORLD, def = gardenVisitor(v.id); if (!def) return '';
@@ -157,10 +161,11 @@ function _gdrVisitor(v, sc, o) {
   const k = insect ? 1.3 : def.kind === 'bird' ? 1.05 : 1;
   const frag = _gdArt(v.id, { kind: 'visitor', size: o.size, t: v.t || 0, tod: sc.tod, season: sc.season });
   const mot = o.still ? '' : ' gdv-' + (v.motion || 'sit');
-  return `<g class="gd-vis${mot}" data-vid="${escAttr(v.id)}" data-sig="${gardenHash(v.id + px + ',' + py + mot).toString(36)}" transform="translate(${_gdrN(px)} ${_gdrN(py)})"><g class="gdv-in" style="--dl:-${_gdrN((v.t || 0) * 9)}s;--d:${_gdrN(6 + (v.t || 0) * 6)}s"><g transform="scale(${k}) ${v.flip ? 'scale(-1 1)' : ''}">${frag}</g></g></g>`;
+  return `<g class="gd-vis${mot}" data-vid="${escAttr(v.id)}" data-z="${_gdrN(v.y)}" data-sig="${gardenHash(v.id + px + ',' + py + mot).toString(36)}" transform="translate(${_gdrN(px)} ${_gdrN(py)})"><g class="gdv-in" style="--dl:-${_gdrN((v.t || 0) * 9)}s;--d:${_gdrN(6 + (v.t || 0) * 6)}s"><g transform="scale(${k}) ${v.flip ? 'scale(-1 1)' : ''}">${frag}</g></g></g>`;
 }
 function _gdrPets(sc, o) {
   if (typeof window === 'undefined' || typeof window.petGardenSprite !== 'function') return '';
+  if (o.interactive && !o.photo && !o.friend) return '';   // 2.22: on your own page your pet walks with you (94-garden-world-0walk.js)
   let list = null;
   // integrate 2.18: o.friend (a friend view, gardenRender's option) brings THEIR pet into their garden (agent pets)
   const ctx = { season: sc.season, tod: sc.tod, size: o.size, readOnly: !!o.readOnly, rain: !!(sc.rain && sc.rain.now) };
@@ -228,6 +233,7 @@ function gardenSceneParts(sc, o) {
   const ground = [], objs = [], lights = [];
   for (const d of sc.decor || []) { const def = gardenDecor(d.id); if (!def) continue; (def.layer === 'ground' ? ground : objs).push({ kind: 'decor', it: d, def, z: d.y + (def.h || 1), x: d.x }); }
   for (const p of sc.plants || []) { const def = gardenPlant(p.id); if (!def) continue; objs.push({ kind: 'plant', it: p, def, z: p.y + (def.fp || 1), x: p.x }); }
+  if (!o.noProps && typeof gardenWorldProps === 'function') for (const pr of gardenWorldProps(sc, o)) objs.push({ kind: 'prop', html: pr.html, z: pr.z, x: pr.x });   // 2.22: the tackle shop, the boat, the reeds, the forest
   objs.sort((a, b) => a.z - b.z || a.x - b.x || (a.kind === 'decor') - (b.kind === 'decor'));
   layers.push(['paths', '<g class="gd-paths">' + ground.map(g => _gdrItem('decor', g.it, sc, o)).join('') + '</g>']);
   // visitors go with the row they stand in, so whatever is in front of them is drawn after them
@@ -237,12 +243,13 @@ function gardenSceneParts(sc, o) {
   let vi = 0;
   for (const ob of objs) {
     while (vi < vis.length && vis[vi].y <= ob.z - 0.05) push(_gdrVisitor(vis[vi++], sc, o));
-    push(_gdrItem(ob.kind, ob.it, sc, o));
+    push(ob.kind === 'prop' ? ob.html : _gdrItem(ob.kind, ob.it, sc, o));
     if (ob.kind === 'decor' && ob.def.effect && ob.def.effect.kind === 'light') lights.push({ x: (ob.it.x + (ob.def.w || 1) / 2) * W.cellW, y: W.sky + (ob.it.y + (ob.def.h || 1)) * W.cellH - 64 * (ob.def.look.h || 0.6) * 0.6, r: 70 * Math.max(1, ob.def.w || 1) });
     if (ob.kind === 'plant' && ob.def.glow && ob.it.stage >= 3) lights.push({ x: (ob.it.x + (ob.def.fp || 1) / 2) * W.cellW, y: W.sky + (ob.it.y + (ob.def.fp || 1)) * W.cellH - 64 * (ob.def.look.h || 0.6) * 0.5, r: 48 });
   }
   while (vi < vis.length) push(_gdrVisitor(vis[vi++], sc, o));
   layers.push(['objects', null]);
+  layers.push(['actors', '<g class="gd-actors"></g>']);   // 2.22: bugs, the line and the bobber, drawn by the page's own loop
   layers.push(['pets', `<g class="gd-pets">${_gdrPets(sc, o)}</g>`]);
   layers.push(['weather', _gdrWeather(sc, o)]);
   layers.push(['night', `<g class="gd-nightlayer">${_gdrNight(sc, o, lights)}</g>`]);
@@ -267,12 +274,15 @@ function _gdrGridLines() {
 }
 
 /* ---------- scenes from your garden or a snapshot ---------- */
+function _gdrShowOf() { try { return typeof gardenShowEntries === 'function' ? gardenShowEntries() : null; } catch (e) { return null; } }
+function _gdrShowSig() { try { return typeof gardenShowSig === 'function' ? gardenShowSig(_gdrShowOf()) : ''; } catch (e) { return ''; } }
 function gardenSceneFromModel(m) {
   const p = Clock.parts(m.now);
   return {
     plants: m.plants.map(x => ({ id: x.def.id, uid: x.uid, x: x.x, y: x.y, stage: x.stage, variant: x.variant, thirsty: x.thirsty, overgrown: x.overgrown, ripe: x.ripe, t: x.t, heart: x.heart })),
     decor: m.decor.map(d => ({ id: d.def.id, uid: d.uid, x: d.x, y: d.y, r: d.r, v: d.v, t: (gardenHash(d.uid) % 100) / 100 })),
     areas: m.areas, season: m.season, tod: m.tod, rain: m.rain, visitors: m.visitors, lv: m.level.level, hour: Math.round((p.h + p.mi / 60) * 4) / 4, day: m.today,
+    show: _gdrShowOf(), showSig: _gdrShowSig(),
   };
 }
 /** A friend's (or anyone's) snapshot as a scene: their garden, your sky (your clock, their season). */
@@ -291,7 +301,9 @@ function _gdrSceneFromSnapshot(snap, o) {
     if (snap.areas.includes('pond')) { const w = gardenArea('pond').water; visitors.push({ id: tod === 'night' ? 'newt' : 'frog', x: w.x + 0.5 + rnd() * (w.w - 1), y: w.y + 1, motion: 'hop', t: rnd() }); }
     if (snap.decor.some(d => ['bird-bath', 'bird-feeder', 'bird-box'].includes(d[0]))) { const d = snap.decor.find(q => ['bird-bath', 'bird-feeder', 'bird-box'].includes(q[0])); visitors.push({ id: 'robin', x: d[1] + 0.5, y: d[2] + 0.8, lift: 0.7, motion: 'hop', t: rnd() }); }
   }
-  return { plants, decor, areas: snap.areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day };
+  // 2.22: a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4
+  const areas = snap.areas.slice(); if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
+  return { plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '' };
 }
 /**
  * Draw anyone's garden into el, read-only. snapshot: from gardenSnapshot() or a friend (cleaned here).
