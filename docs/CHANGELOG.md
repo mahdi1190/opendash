@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+- Pets can be customised with words. Pets > Wardrobe: your own colours for the
+  coat, the belly and pattern, the eyes and every accessory (a "Custom" swatch);
+  **Restyle with AI** (describe a change, see it before and after, Apply, Undo);
+  and **My designs**: the assistant draws a wig, hat, glasses, scarf or cape for
+  your pet ("Design with AI"), you see it on your pet first, and you can
+  recolour it, nudge its fit for your species, rename it, share it as a code
+  (and import one) or delete it (with Undo). Designs fit every species through
+  the head circle and the collar line.
+- Friends see the accessories your pet wears (a new friends message, `pet:items`,
+  checked again on arrival; an older app just shows the plain pet), and Pets >
+  With you can turn friends' accessories off.
+- Nothing from a friend ever goes to Claude. The sentence you type, your pet's
+  look and (when you ask for a change) your own previous drawing go to your
+  Claude, only when you press the button. See `docs/PRIVACY.md`.
+
 ## [2.21.0]
 
 Selecting many things at once, a much more capable assistant, 497 hard

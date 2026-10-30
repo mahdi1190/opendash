@@ -101,7 +101,7 @@ function _ptQuad(pet, pose, mood, X, k) {
     parts, order,
     piv: { tail: tr0, head: [g.hx - g.hr * 0.1, g.hy + g.hr * 0.85], eyes: H.eyesPiv || [g.hx, g.hy], paw: pose === 'sit' ? [g.legsN[0][0], g.legsN[0][1]] : pose === 'walk' ? [g.legsN[1][0], g.legsN[1][1]] : [g.hx, g.G],
       legsN: pose === 'walk' ? [g.legsN[0][0], g.legsN[0][1]] : g.hipPiv, legsF: g.hipPiv, body: [50, 90] },
-    acc: { neck: H.neck === false ? null : Object.assign({}, g.collar, H.neck || {}), top: H.top, eyes: H.eyesAt, ear: H.ear },
+    acc: { neck: H.neck === false ? null : Object.assign({}, g.collar, H.neck || {}), top: H.top, eyes: H.eyesAt, ear: H.ear, hc: H.hc },
     top: Math.min(g.hy - g.hr * 1.4, 20), legsAt: pose === 'walk' ? g.legsN.concat(g.legsF) : null,
   };
 }
@@ -177,7 +177,7 @@ function _ptCat(pet, pose, mood, X) {
       front.push(_pF(_pP`M${nx - r * 0.11} ${ny - r * 0.05}L${nx + r * 0.11} ${ny - r * 0.05}Q${nx} ${ny + r * 0.12} ${nx - r * 0.11} ${ny - r * 0.05}z`, points ? '#5a3a3a' : X.nose || '#e48a9a'));
       front.push(..._ptMouth(nx, ny + r * 0.16, r * 0.14, c.mood, { w: true }));
       front.push(..._ptWhiskers(nx, ny + r * 0.06, r, _ptLum(t[0]) < 0.35 ? '#f2eee8' : _ptMix(t[3], '#ffffff', 0.15), 0.7));
-      return { back, head, eyes, front, eyesAt, top: [x + r * 0.05, y - r * 0.82, r * 1.25, 4], ear: [x - r * 0.62, y - r * 0.86, r * 0.26] };
+      return { back, head, eyes, front, eyesAt, hc: [x, y, r], top: [x + r * 0.05, y - r * 0.82, r * 1.25, 4], ear: [x - r * 0.62, y - r * 0.86, r * 0.26] };
     },
   });
 }
@@ -265,7 +265,7 @@ function _ptDog(pet, pose, mood, X) {
       front.push(_pL(_pP`M${nx} ${ny + r * 0.16}L${nx} ${ny + r * 0.28}`, '#4a2a2e', r * 0.05, 0.8));
       if (mo === 'open') front.push(_pF(_pP`M${nx - r * 0.24} ${ny + r * 0.26}Q${nx} ${ny + r * 0.7} ${nx + r * 0.24} ${ny + r * 0.26}Q${nx} ${ny + r * 0.36} ${nx - r * 0.24} ${ny + r * 0.26}z`, '#5a2430'), _pF(_pE(nx + r * 0.02, ny + r * 0.5, r * 0.13, r * 0.14), '#f07a8c'));
       else front.push(..._ptMouth(nx, ny + r * 0.3, r * 0.2, c.mood, { w: true }));
-      return { back, head, eyes, front, eyesAt, top: [x + r * 0.02, y - r * 0.84, r * 1.22, 3], ear: B.ear === 'flop' || B.ear === 'long' ? [x - r * 0.72, y - r * 0.62, r * 0.25] : [x - r * 0.6, y - r * 0.85, r * 0.25] };
+      return { back, head, eyes, front, eyesAt, hc: [x, y, r], top: [x + r * 0.02, y - r * 0.84, r * 1.22, 3], ear: B.ear === 'flop' || B.ear === 'long' ? [x - r * 0.72, y - r * 0.62, r * 0.25] : [x - r * 0.6, y - r * 0.85, r * 0.25] };
     },
   });
 }
@@ -298,7 +298,7 @@ function _ptFox(pet, pose, mood, X) {
       const nx = x + r * 0.1, ny = y + r * 0.55;
       front.push(_pF(_pE(nx, ny, r * 0.14, r * 0.1), '#2b2326'), _pF(_pE(nx - r * 0.04, ny - r * 0.04, r * 0.05, r * 0.03), '#ffffff', 0.55));
       front.push(..._ptMouth(nx, ny + r * 0.2, r * 0.17, c.mood, { w: true }));
-      return { back, head, eyes, front, eyesAt, top: [x + r * 0.02, y - r * 0.85, r * 1.2, 3], ear: [x - r * 0.62, y - r * 0.84, r * 0.24] };
+      return { back, head, eyes, front, eyesAt, hc: [x, y, r], top: [x + r * 0.02, y - r * 0.85, r * 1.2, 3], ear: [x - r * 0.62, y - r * 0.84, r * 0.24] };
     },
   });
 }
@@ -326,7 +326,7 @@ function _ptRedPanda(pet, pose, mood, X) {
       const eyes = _ptEyes(eyesAt[0], eyesAt[1], eyesAt[2], eyesAt[3], c.mood, X);
       const nx = x + r * 0.08, ny = y + r * 0.42;
       front.push(_pF(_pE(nx, ny, r * 0.15, r * 0.1), '#2b2326'), ..._ptMouth(nx, ny + r * 0.18, r * 0.16, c.mood, { w: true }));
-      return { back, head, eyes, front, eyesAt, top: [x + r * 0.02, y - r * 0.8, r * 1.2, 3], ear: [x - r * 0.68, y - r * 0.76, r * 0.24] };
+      return { back, head, eyes, front, eyesAt, hc: [x, y, r], top: [x + r * 0.02, y - r * 0.8, r * 1.2, 3], ear: [x - r * 0.68, y - r * 0.76, r * 0.24] };
     },
   });
 }
@@ -368,7 +368,7 @@ function _ptDragon(pet, pose, mood, X) {
       front.push(..._ptBlush(eyesAt[0] - r * 0.1, eyesAt[1] + r * 0.1, y + r * 0.3, r * 0.15, 0.3));
       front.push(..._ptMouth(x + r * 0.14, y + r * 0.66, r * 0.2, c.mood));
       if (c.mood.extra === 'sparkle' || c.mood.mouth === 'open') front.push(_pF(_pC(x + r * 1.35, y + r * 0.5, r * 0.18), '#e8e4ec', 0.75), _pF(_pC(x + r * 1.62, y + r * 0.34, r * 0.13), '#e8e4ec', 0.6), _pF(_pC(x + r * 1.82, y + r * 0.2, r * 0.09), '#e8e4ec', 0.45));
-      return { back, head, eyes, front, eyesAt, top: [x + r * 0.02, y - r * 0.86, r * 1.2, 3], ear: [x - r * 0.6, y - r * 0.82, r * 0.24] };
+      return { back, head, eyes, front, eyesAt, hc: [x, y, r], top: [x + r * 0.02, y - r * 0.86, r * 1.2, 3], ear: [x - r * 0.6, y - r * 0.82, r * 0.24] };
     },
   });
   return geo;
@@ -408,7 +408,7 @@ function _ptUnicorn(pet, pose, mood, X) {
       for (const ex of [eyesAt[0], eyesAt[1]]) eyes.push(_pL(_pP`M${ex - r * 0.18} ${eyesAt[2] - r * 0.2}l${-r * 0.08} ${-r * 0.08}M${ex + r * 0.02} ${eyesAt[2] - r * 0.25}l${0} ${-r * 0.1}`, _PTK_INK, r * 0.05, c.mood.eyes === 'closed' || c.mood.eyes === 'happy' ? 0 : 0.8));
       front.push(..._ptBlush(eyesAt[0] - r * 0.12, eyesAt[1] + r * 0.1, y + r * 0.3, r * 0.16, 0.35));
       front.push(..._ptMouth(x + r * 0.12, y + r * 0.74, r * 0.16, c.mood));
-      return { back, head, eyes, front, eyesAt, top: [x - r * 0.28, y - r * 0.82, r * 1.15, -6], ear: [x + r * 0.62, y - r * 0.82, r * 0.24] };
+      return { back, head, eyes, front, eyesAt, hc: [x, y, r], top: [x - r * 0.28, y - r * 0.82, r * 1.15, -6], ear: [x + r * 0.62, y - r * 0.82, r * 0.24] };
     },
   });
 }
@@ -468,7 +468,7 @@ function _ptRabbit(pet, pose, mood, X) {
   if (mood.mouth === 'open') front.push(_pF(_pE(nx, ny + r * 0.3, r * 0.08, r * 0.07), '#6a2a34'));
   parts.head.push(...back, ...head, ...front);
   return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv: Object.assign({ head: [x, y + r * 0.8], eyes: [x, eyesAt[2]], body: [44, 90] }, piv),
-    acc: { neck: { x: x - r * 0.02, y: y + r * 0.84, w: r * 1.0, rot: pose === 'sleep' ? 60 : 0 }, top: lop ? [x, y - r * 0.82, r * 1.2, 3] : [x, y - r * 0.82, r * 1.0, 3], eyes: eyesAt, ear: [x - r * 0.15, y - r * 0.95, r * 0.24] }, top: y - r * 2.6 };
+    acc: { hc: [x, y, r], neck: { x: x - r * 0.02, y: y + r * 0.84, w: r * 1.0, rot: pose === 'sleep' ? 60 : 0 }, top: lop ? [x, y - r * 0.82, r * 1.2, 3] : [x, y - r * 0.82, r * 1.0, 3], eyes: eyesAt, ear: [x - r * 0.15, y - r * 0.95, r * 0.24] }, top: y - r * 2.6 };
 }
 
 /* ---------- small round ones: the hamster, the guinea pig, the hedgehog ---------- */
@@ -507,7 +507,7 @@ function _ptSmall(pet, pose, mood, X) {
     if (!sleep) parts.paw.push(_pF(_pE(x + r * 0.6, 88.8, 3, 1.8), face[1]));
     top = [cx - 2, cy - ry * 1.05, 24, -6]; neck = { x: x - r * 0.35, y: y + r * 0.62, w: r * 1.1, rot: -30 };
     return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv: { head: [x - r * 0.5, y + r * 0.5], eyes: [x + r * 0.5, eyesAt[2]], body: [44, 90], paw: [x, 88], legsN: [44, 80], legsF: [44, 80], tail: [cx - rx, cy] },
-      acc: { neck, top, eyes: eyesAt, ear: [x - r * 0.4, y - r * 0.55, r * 0.26] }, top: cy - ry * 1.2 };
+      acc: { hc: [x, y, r], neck, top, eyes: eyesAt, ear: [x - r * 0.4, y - r * 0.55, r * 0.26] }, top: cy - ry * 1.2 };
   }
   // the hamster and the guinea pig: a soft loaf with a face
   const gp = sp === 'guinea';
@@ -542,7 +542,7 @@ function _ptSmall(pet, pose, mood, X) {
   if (!gp && (mood.extra === 'hearts' || mood.mouth === 'open')) head.push(_pF(_pE(x - r * 0.62, y + r * 0.45, r * 0.5, r * 0.4), X.b[0]), _pF(_pE(x + r * 0.78, y + r * 0.45, r * 0.5, r * 0.4), X.b[0]));
   parts.head.push(...back, ...head);
   return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv: { head: [x, y + r * 0.8], eyes: [x, eyesAt[2]], body: [cx, 90], paw: [cx + 8, cy + 2], legsN: [cx, 84], legsF: [cx, 84], tail: [cx - rx, cy] },
-    acc: { neck: { x: x - r * 0.04, y: y + r * 0.82, w: r * 1.1, rot: gp || walk || sleep ? -20 : 0 }, top: [x + r * 0.02, y - r * 0.78, r * 1.15, 3], eyes: eyesAt, ear: [x - r * 0.6, y - r * 0.72, r * 0.24] }, top: y - r * 1.4 };
+    acc: { hc: [x, y, r], neck: { x: x - r * 0.04, y: y + r * 0.82, w: r * 1.1, rot: gp || walk || sleep ? -20 : 0 }, top: [x + r * 0.02, y - r * 0.78, r * 1.15, 3], eyes: eyesAt, ear: [x - r * 0.6, y - r * 0.72, r * 0.24] }, top: y - r * 1.4 };
 }
 
 /* ---------- birds: the owl, the parrot, the duck, the phoenix ---------- */
@@ -640,7 +640,7 @@ function _ptBird(pet, pose, mood, X) {
     top = [x, y - r * 0.85, r * 1.15, 3]; neck = { x, y: y + r * 0.86, w: r * 1.0, rot: 0 }; ear = [x - r * 0.62, y - r * 0.7, r * 0.24];
     piv = { head: [x, y + r * 0.85], eyes: [x, eyesAt[2]], paw: [cx - rx * 0.4, cy - ry * 0.4], legsN: [50, 84], legsF: [50, 84], tail: [cx - 6, cy + ry * 0.4], body: [50, 90] };
   }
-  return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv, acc: { neck, top, eyes: eyesAt, ear }, top: Math.min(y - r * 1.6, 30), bird: true };
+  return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv, acc: { hc: [x, y, r], neck, top, eyes: eyesAt, ear }, top: Math.min(y - r * 1.6, 30), bird: true };
 }
 const _ptOwlFoot = (x, y, col) => [0, 1, 2].map(i => _pL(_pP`M${x} ${y - 3}L${x - 2 + i * 2} ${y}`, col, 1.6));
 const _ptPerchFoot = (x, y, col) => [_pL(_pP`M${x} ${y - 5}L${x} ${y - 1}`, col, 1.6), _pL(_pP`M${x - 2.4} ${y}L${x + 2.4} ${y}`, col, 1.6)];
@@ -676,7 +676,7 @@ function _ptTortoise(pet, pose, mood, X) {
   head.push(_pF(_pC(x - r * 0.0, y + r * 0.22, r * 0.04), skin[3], 0.6), _pF(_pC(x + r * 0.18, y + r * 0.22, r * 0.04), skin[3], 0.6));
   parts.head.push(...head);
   return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv: { head: [x - r * 0.6, y + r * 0.6], eyes: [x, eyesAt[2]], paw: [cx + 10, cy + 8], legsN: [cx, cy + 8], legsF: [cx, cy + 8], tail: [cx - rx, cy + 8], body: [cx, 90] },
-    acc: { neck: { x: x - r * 0.3, y: y + r * 0.82, w: r * 1.0, rot: -20 }, top: [x, y - r * 0.82, r * 1.05, 4], eyes: eyesAt, ear: [x - r * 0.62, y - r * 0.7, r * 0.26] }, top: cy - ry * 1.3 };
+    acc: { hc: [x, y, r], neck: { x: x - r * 0.3, y: y + r * 0.82, w: r * 1.0, rot: -20 }, top: [x, y - r * 0.82, r * 1.05, 4], eyes: eyesAt, ear: [x - r * 0.62, y - r * 0.7, r * 0.26] }, top: cy - ry * 1.3 };
 }
 
 /* ---------- the axolotl ---------- */
@@ -708,7 +708,7 @@ function _ptAxolotl(pet, pose, mood, X) {
   head.push(...mo);
   parts.head.push(...head);
   return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv: { head: [x - r * 0.4, y + r * 0.6], eyes: [x, eyesAt[2]], paw: [cx + 9, by + 4], legsN: [cx, by + 4], legsF: [cx, by + 4], tail: [cx - 12, by], body: [cx, 90] },
-    acc: { neck: { x: x - r * 0.4, y: y + r * 0.72, w: r * 0.9, rot: -15 }, top: [x, y - r * 0.68, r * 1.15, 3], eyes: eyesAt, ear: [x + r * 0.55, y - r * 0.6, r * 0.24] }, top: y - r * 1.4 };
+    acc: { hc: [x, y, r], neck: { x: x - r * 0.4, y: y + r * 0.72, w: r * 0.9, rot: -15 }, top: [x, y - r * 0.68, r * 1.15, 3], eyes: eyesAt, ear: [x + r * 0.55, y - r * 0.6, r * 0.24] }, top: y - r * 1.4 };
 }
 
 /* ---------- the frog ---------- */
@@ -741,7 +741,7 @@ function _ptFrog(pet, pose, mood, X) {
   head.push(_pF(_pC(x - r * 0.08, y - r * 0.08, r * 0.04), a[3], 0.7), _pF(_pC(x + r * 0.16, y - r * 0.08, r * 0.04), a[3], 0.7));
   parts.head.push(...head);
   return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv: { head: [x, y + r * 0.7], eyes: [x, eyesAt[2]], paw: [cx + 9, cy + 3], legsN: [cx - 8, cy + 4], legsF: [cx - 8, cy + 4], tail: [cx, cy], body: [cx, 90] },
-    acc: { neck: { x, y: y + r * 0.7, w: r * 1.3, rot: 0 }, top: [x + r * 0.02, y - r * 0.82, r * 1.0, 2], eyes: eyesAt, ear: [x - r * 0.95, y - r * 0.6, r * 0.24] }, top: y - r * 1.2 };
+    acc: { hc: [x, y, r], neck: { x, y: y + r * 0.7, w: r * 1.3, rot: 0 }, top: [x + r * 0.02, y - r * 0.82, r * 1.0, 2], eyes: eyesAt, ear: [x - r * 0.95, y - r * 0.6, r * 0.24] }, top: y - r * 1.2 };
 }
 
 /* ---------- the robot (rare) ---------- */
@@ -780,7 +780,7 @@ function _ptRobot(pet, pose, mood, X) {
   else head.push(_pL(_pP`M${x - 2.4} ${y + 5}Q${x} ${y + 7} ${x + 2.4} ${y + 5}`, glow, 0.9));
   parts.head.push(...head);
   return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv: { head: [x, y + h / 2], eyes: [x, eyesAt[2]], paw: [cx + 14, cy - 4], legsN: [cx - 3, 84.6], legsF: [cx + 8, 85], tail: [cx, cy], body: [cx, 90] },
-    acc: { neck: { x: x - 1, y: y + h / 2 + 1.6, w: 18, rot: 0 }, top: [x, y - h / 2 + 1, w * 0.7, 0], eyes: [eyesAt[0], eyesAt[1], eyesAt[2], 2.6], ear: [x - w / 2 + 2, y - h / 2 + 2, 4] }, top: y - h / 2 - 12, robot: true };
+    acc: { hc: [x, y, (w + h) / 4], neck: { x: x - 1, y: y + h / 2 + 1.6, w: 18, rot: 0 }, top: [x, y - h / 2 + 1, w * 0.7, 0], eyes: [eyesAt[0], eyesAt[1], eyesAt[2], 2.6], ear: [x - w / 2 + 2, y - h / 2 + 2, 4] }, top: y - h / 2 - 12, robot: true };
 }
 
 /* ---------- the registry ---------- */

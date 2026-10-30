@@ -89,7 +89,7 @@ function _ptEmit() { try { document.dispatchEvent(new CustomEvent('opendash:pet'
 function petGet() {
   const p = _ptS();
   const look = p.look && typeof p.look === 'object' ? petNormalize(Object.assign({}, p.look, { name: p.name })) : null;
-  return { has: !!look, look, name: look ? (look.name || '') : '', born: typeof p.born === 'string' ? p.born : '', on: p.on !== false, share: p.share !== false, scenes: p.scenes !== false,
+  return { has: !!look, look, name: look ? (look.name || '') : '', born: typeof p.born === 'string' ? p.born : '', on: p.on !== false, share: p.share !== false, scenes: p.scenes !== false, friendItems: p.friendItems !== false,
     fed: Object.assign({}, p.fed), petted: Object.assign({}, p.petted), tricks: Object.assign({}, p.tricks), collected: Object.assign({}, p.collected), updatedAt: Number(p.updatedAt) || 0 };
 }
 function petHas() { const g = petGet(); return g.has && g.on; }
@@ -102,7 +102,7 @@ function petSet(patch, o) {
   for (const [k, v] of Object.entries(patch)) {
     if (k === 'look') p.look = v && typeof v === 'object' ? (() => { const n = petNormalize(Object.assign({}, p.look || {}, v)); delete n.name; return n; })() : null;
     else if (k === 'name') p.name = petText(v, PET_MAX.name);
-    else if (['on', 'share', 'scenes'].includes(k)) p[k] = v !== false;
+    else if (['on', 'share', 'scenes', 'friendItems'].includes(k)) p[k] = v !== false;
     else if (['fed', 'petted', 'tricks', 'journal', 'collected'].includes(k) && v && typeof v === 'object') p[k] = Object.assign({}, p[k], v);
     else if (k === 'born' && /^\d{4}-\d{2}-\d{2}$/.test(String(v))) p.born = v;
   }
@@ -334,17 +334,65 @@ function _ptMilestones() {
 }
 
 /* ---------- drawing for others: you, a friend, a pet object ---------- */
+/* ---------- custom accessories (2.22): the designs, by owner ('me' or a friend's id) ---------- */
+const _pit = { mine: new Map(), friends: new Map() };
+/** Replace an owner's designs. list: designs from anywhere (each is checked by petItemClean here). Returns how many were kept. */
+function petItemsSet(owner, list) {
+  const m = new Map();
+  for (const raw of Array.isArray(list) ? list : []) {
+    const r = petItemClean(raw);
+    if (r.ok) m.set(r.item.id, r.item);
+    if (m.size >= 24) break;
+  }
+  if (owner === 'me') _pit.mine = m;
+  else if (typeof owner === 'string' && owner) { if (m.size) _pit.friends.set(owner, m); else _pit.friends.delete(owner); }
+  _pt.memo = null;
+  _ptEmit();
+  if (owner === 'me') _ptShareSoon();   // a worn design may have changed colour or fit: friends get the new drawing (nothing is sent if nothing changed)
+  return m.size;
+}
+/** Your saved designs (clean copies of the records, newest last). */
+function petItemsList() { return [..._pit.mine.values()]; }
+function petItemGet(id) { return _pit.mine.get(id) || null; }
+const _ptFmemo = new WeakMap();
+/**
+ * The designs a friend's pet wears, from their view (window.Friends: view.petItems, the body of their 'pet:items'): a Map id -> clean
+ * design (every one checked again by petItemClean), or null when there are none or you chose not to show friends' accessories.
+ */
+function _ptFriendMap(view) {
+  const b = view && view.petItems;
+  if (!b || typeof b !== 'object' || !Array.isArray(b.items) || _ptS().friendItems === false) return null;
+  let m = _ptFmemo.get(b);
+  if (!m) {
+    m = new Map();
+    for (const raw of b.items.slice(0, 3)) { const r = petItemClean(raw); if (r.ok) m.set(r.item.id, r.item); }
+    _ptFmemo.set(b, m);
+  }
+  return m.size ? m : null;
+}
+/**
+ * A look with the designs it wears attached (look.items, for the drawing). owner: 'me' (your saved designs), a friend's view
+ * (window.Friends: what they sent), or a Map of designs. The look is not changed.
+ */
+function petWithItems(look, owner) {
+  if (!look) return look;
+  const map = owner === 'me' ? _pit.mine : owner instanceof Map ? owner : owner && typeof owner === 'object' ? _ptFriendMap(owner) : _pit.friends.get(owner);
+  if (!map || !map.size) return look;
+  let items = null;
+  for (const f of _PT_ITEM_FIELDS) { const id = look[f]; if (id && map.has(id)) (items = items || {})[f] = map.get(id); }
+  return items ? Object.assign({}, look, { items }) : look;
+}
 function _ptWho(who) {
   if (who == null || who === 'me' || (who && typeof who === 'object' && who.self === true)) {
     const g = petGet();
-    return { me: true, look: g.look && g.on ? g.look : null, name: g.name, g };
+    return { me: true, look: g.look && g.on ? petWithItems(g.look, 'me') : null, name: g.name, g };
   }
   if (typeof who !== 'object') return { look: null };
   let raw = null, owner = '';
   if (who.profile && typeof who.profile === 'object') { raw = who.profile.pet; owner = typeof friendName === 'function' ? friendName(who) : (who.nick || who.name || ''); }
   else if (who.pet && typeof who.pet === 'object') raw = who.pet;
   else if (typeof who.species === 'string') raw = who;
-  const look = petSanitize(raw);
+  const clean = petSanitize(raw), look = clean && who.profile ? petWithItems(clean, who) : clean;
   return { friend: !!who.profile, look, name: look ? look.name : '', owner: petText(owner, 40), game: who.game || null };
 }
 function _ptFriendMood(w) {
@@ -469,9 +517,37 @@ function petPayload() {
   if (w && p.scenes === false) w.walks = false;   // it stays home when you visit a friend's scene
   return w;
 }
+/**
+ * The 'pet:items' body (lib/friends/pet-items.mjs): the designs your pet wears now, each with the fit chosen for its species and
+ * without your description. d (today) makes the body differ once a day, so a friend whose profile sharing came back gets it again.
+ */
+function petItemsPayload() {
+  const p = _ptS(), items = [];
+  if (p.look && p.on !== false && p.share !== false) {
+    for (const f of _PT_ITEM_FIELDS) { const it = p.look[f] ? _pit.mine.get(p.look[f]) : null; if (it) items.push(petItemFriendWire(it, p.look.species)); }
+  }
+  return { v: 1, d: _ptToday(), items };
+}
+/** Publish what your pet wears. Nothing goes out for someone who has never worn a design; an empty list goes once when they stop. */
+async function petItemsShareNow() {
+  const F = typeof window !== 'undefined' && window.Friends && typeof window.Friends.publish === 'function' ? window.Friends : null;
+  if (!F) return false;
+  const body = petItemsPayload(), p = _ptS();
+  if (!body.items.length && !p.itemsSent) return true;
+  try { if (F.ready && typeof F.ready.then === 'function') await F.ready; } catch (e) { return false; }
+  try {
+    await F.publish('pet:items', body);
+    const q = _ptS(true); q.itemsSent = body.items.length > 0;
+    if (typeof saveUI === 'function') saveUI();
+    return true;
+  } catch (e) { return false; }   // an app or server without the kind: friends see the plain pet
+}
 function _ptShareSoon() {
   clearTimeout(_pt.shareT);
-  _pt.shareT = setTimeout(() => { try { if (typeof profileShareNow === 'function') profileShareNow(false).catch(() => {}); } catch (e) { /* no profile */ } }, 3500);
+  _pt.shareT = setTimeout(() => {
+    try { if (typeof profileShareNow === 'function') profileShareNow(false).catch(() => {}); } catch (e) { /* no profile */ }
+    petItemsShareNow().catch(() => {});
+  }, 3500);
 }
 
 /* ---------- the profile card (agent 'you's profileExtend, 97-profile-1core.js): the pet beside the avatar ---------- */
@@ -485,7 +561,8 @@ function _ptMineOnCard() {
 function _ptCardPet(card, view, o) {
   const look = view && view.profile && view.profile.ext ? view.profile.ext.pet : null;
   if (!look || !card || (view.me && _ptFun() === 'off')) return;
-  const b = petCardBadge(view.me ? 'me' : look, { size: o && o.compact ? 46 : 64, label: !(o && o.compact) });
+  // a friend's card: their pet with the accessories they sent (the view carries their id and 'pet:items')
+  const b = petCardBadge(view.me ? 'me' : { profile: { pet: look }, id: view.fid || '', name: view.name || '', petItems: view.petItems || null }, { size: o && o.compact ? 46 : 64, label: !(o && o.compact) });
   if (!b) return;
   b.classList.add('pt-card-pet');
   const av = card.querySelector('.pf-card-av');
@@ -501,6 +578,7 @@ if (typeof profileExtend === 'function') {
 function _ptBoot() {
   if (_pt.booted) return; _pt.booted = true;
   try { _ptCollectSeasonal(false); _ptMilestones(); } catch (e) { console.error('[pets]', e); }
+  petItemsShareNow().catch(() => {});   // once a day at most reaches anyone (the body carries today's date)
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => setTimeout(_ptBoot, 5000), { once: true });

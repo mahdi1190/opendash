@@ -29,11 +29,12 @@ const _pts = { objs: 0, ids: new Map(), info: new Map(), pets: new Map(), warm: 
 const PTS = Object.freeze({ lead: 0.55, side: 0.45, minH: 0.18, flyAlt: 0.85, maxObjs: 16 });
 
 /* ---------- the pet as a scene object ---------- */
-function _ptsKey(look) { return PET_FIELDS.map(f => look[f] || '').join('|'); }
+/** What makes two pets draw differently: every field, and the drawing of each custom accessory worn (look.items, 2.22). */
+function _ptsKey(look) { return PET_FIELDS.map(f => look[f] || '').join('|') + '|' + _PT_ITEM_FIELDS.map(f => petItemSig(look.items && look.items[f])).join(','); }
 function petSceneObj(look0) {
   try {
     if (typeof sceneObjDefine !== 'function' || typeof sceneObj !== 'function') return null;
-    const look = petNormalize(look0), key = _ptsKey(look);
+    const look = Object.assign(petNormalize(look0), look0 && look0.items ? { items: look0.items } : {}), key = _ptsKey(look);
     if (_pts.ids.has(key)) return _pts.ids.get(key);
     const id = 'animal.pv-' + _ptHash(key).toString(36);
     if (sceneObj(id)) { _pts.ids.set(key, id); return id; }
@@ -76,7 +77,7 @@ function _ptsFriendPet(friendId) {
     const f = F && typeof F.get === 'function' ? F.get(friendId) : null;
     const raw = f && f.profile && typeof f.profile === 'object' ? f.profile.pet : null;
     if (!raw || typeof raw !== 'object' || raw.walks === false) return null;
-    return petSanitize(raw);
+    return petWithItems(petSanitize(raw), f);
   } catch (e) { return null; }
 }
 /**

@@ -259,6 +259,7 @@ function _ptPrefsSec(g) {
     rows.appendChild(r);
   };
   row('Friends see ' + petName(g), 'On your profile card and when you visit their scenes: the species, colours, accessories and name, nothing else. Off keeps them to yourself: they still sit on your own card, but not on the one friends see.', g.share, (v) => petSet({ share: v }));
+  row('Show friends\' custom accessories', 'The wigs, hats and scarves friends designed for their pets. Off draws their pets plain, as they were before.', g.friendItems, (v) => { petSet({ friendItems: v }); _ptRefresh(); });
   row('Walks with you in the scenes', 'Trots beside your figure in the Friends hangout, and beside you when you visit a friend\'s scene.', g.scenes, (v) => petSet({ scenes: v }));
   s.appendChild(rows);
   const away = _ptBtn('Put ' + petName(g) + ' away for now', 'moon', () => {
@@ -281,6 +282,23 @@ function _ptLookSet(patch, keepRedo) {
   const name = after.name; delete after.name;
   petSet({ look: after });
   return true;
+}
+/**
+ * A "your own colour" swatch: a round label around a native colour input (opens the browser's picker). cur is the field's
+ * current id (a custom colour shows as picked), seed the colour the picker starts on, pick(id) gets 'x' + six hex digits.
+ * It commits on `change` (when the picker closes), so one pick is one undo step.
+ */
+function _ptCustomSwatch(label, cur, pick, extra, seed) {
+  const hex = petHexOf(cur), on = !!hex;
+  const sw = _ptEl('label', 'pt-sw pt-sw-custom' + (on ? ' is-on' : '') + (extra ? ' ' + extra : ''));
+  sw.style.setProperty('--a', hex || '#ffffff'); sw.style.setProperty('--b', hex || '#ffffff');
+  sw.setAttribute('data-tip', on ? `${label}: your own` : `${label}: pick your own`);
+  const inp = _ptEl('input', 'pt-color-in'); inp.type = 'color';
+  inp.value = hex || (/^#[0-9a-f]{6}$/i.test(String(seed || '')) ? String(seed).toLowerCase() : '#7a4ccc');
+  inp.setAttribute('aria-label', `${label}: pick your own colour`);
+  inp.onchange = () => { const v = String(inp.value || '').toLowerCase(); if (/^#[0-9a-f]{6}$/.test(v)) pick('x' + v.slice(1)); };
+  sw.appendChild(inp);
+  return sw;
 }
 function _ptWardrobe(root, g) {
   const wrap = _ptEl('div', 'pt-ward');
@@ -310,12 +328,16 @@ function _ptWardrobe(root, g) {
   dice.setAttribute('aria-label', 'Suggest a name'); dice.setAttribute('data-tip', 'Suggest a name');
   nameRow.appendChild(dice);
   prev.appendChild(nameRow);
+  // 2.22: describe a change in words (97-pets-4ai.js); greyed out without Claude like every AI feature
+  const aiRow = _ptEl('div', 'pt-ward-ai');
+  aiRow.appendChild(uiButton({ label: 'Restyle with AI', icon: 'sparkles', kind: 'secondary', size: 'sm', cls: 'ai-only', data: { requires: 'claude' }, run: () => petAiOpen() }));
+  prev.appendChild(aiRow);
   const tools = _ptEl('div', 'pt-ward-tools');
   const undoB = _ptBtn('Undo', 'undo-2', () => { const x = _ptUI.undo.pop(); if (!x) return; _ptUI.redo.push(_ptLook()); delete x.name; petSet({ look: x }); paintAll(); }, 'btn-ghost');
   const redoB = _ptBtn('Redo', 'redo-2', () => { const x = _ptUI.redo.pop(); if (!x) return; _ptUI.undo.push(_ptLook()); delete x.name; petSet({ look: x }); paintAll(); }, 'btn-ghost');
   const rand = _ptBtn('Surprise me', 'wand-sparkles', () => {
     const ctx = petUnlockCtx(), cur = _ptLook();
-    _ptLookSet(petRandom(Math.random, (f, id, s) => !petLockOf(f, id, ctx, s), { species: cur.species }));
+    _ptLookSet(petRandom(Math.random, (f, id, s) => !petLockOf(f, id, ctx, s), { species: cur.species, itemHead: cur.itemHead, itemFace: cur.itemFace, itemNeck: cur.itemNeck }));
     paintAll();
   });
   tools.append(rand, undoB, redoB);
@@ -370,7 +392,19 @@ function _ptWardrobe(root, g) {
       b.onclick = () => { if (!on) pick('coat', c.id); };
       sw.appendChild(b);
     }
+    const coatNow = sp.coats.find(c => c.id === look.coat);
+    sw.appendChild(_ptCustomSwatch('Coat colour', look.coat, (id) => pick('coat', id), 'pt-sw-coat', coatNow ? coatNow.a : ''));
     cSec.appendChild(sw);
+    // fine-tune: the second (belly, muzzle) and third (pattern) colours, which are worked out from the coat unless you set them
+    const fine = _ptEl('div', 'pt-swatches pt-fine');
+    fine.appendChild(_ptEl('span', 'muted', 'Fine-tune'));
+    const fineOf = look.coatB || look.coatC ? null : (coatNow || sp.coats[0]);
+    fine.appendChild(_ptEl('span', 'muted pt-fine-l', 'Belly'));
+    fine.appendChild(_ptCustomSwatch('Belly and muzzle colour', look.coatB, (id) => pick('coatB', id), '', fineOf ? fineOf.b : ''));
+    fine.appendChild(_ptEl('span', 'muted pt-fine-l', 'Pattern'));
+    fine.appendChild(_ptCustomSwatch('Pattern colour', look.coatC, (id) => pick('coatC', id), '', fineOf ? fineOf.c : ''));
+    if (look.coatB || look.coatC) fine.appendChild(_ptBtn('Reset', 'rotate-ccw', () => { if (_ptLookSet({ coatB: '', coatC: '' })) paintAll(); }, 'btn-ghost'));
+    cSec.appendChild(fine);
     const mg = _ptEl('div', 'pt-tiles');
     for (const m of sp.marks) {
       const on = m.id === look.marks;
@@ -389,6 +423,7 @@ function _ptWardrobe(root, g) {
       if (lock) b.disabled = true; else b.onclick = () => { if (!on) pick('eyes', id); };
       eg.appendChild(b);
     }
+    eg.appendChild(_ptCustomSwatch('Eye colour', look.eyes, (id) => pick('eyes', id), 'pt-sw-eye', petAutoEye(look) || '#2a2124'));
     cSec.appendChild(eg);
     opts.appendChild(cSec);
     // accessories
@@ -416,14 +451,19 @@ function _ptWardrobe(root, g) {
           if (lock) b.disabled = true; else b.onclick = () => { if (!on) pick(cf, id); };
           row.appendChild(b);
         }
+        row.appendChild(_ptCustomSwatch(`${label} colour`, look[cf], (id) => pick(cf, id), '', (PET_ACC_COLS[look[cf]] || {}).hex || ''));
         sub.appendChild(row);
       }
       aSec.appendChild(sub);
     }
     opts.appendChild(aSec);
+    // 2.22: accessories the assistant drew for your pet (97-pets-4ai.js)
+    if (typeof petDesignsSection === 'function') opts.appendChild(petDesignsSection(paintAll));
     const m = document.getElementById('main'); if (m && keepScroll) m.scrollTop = keepScroll;
   };
   paintAll();
+  // your designs may have been added on another computer: look again, and repaint when the list is here
+  if (typeof petItemsLoad === 'function') petItemsLoad().then((ok) => { if (ok && opts.isConnected) paintOpts(); });
 }
 /** An option tile: its preview, its name, a lock when it is not yours yet. art is markup from petSvg (allow-listed ids only). */
 function _ptTile(lock, on, label, art) {
@@ -575,6 +615,8 @@ if (typeof gardenFunNavAdd === 'function') {
 if (typeof registerCommand === 'function') {
   registerCommand({ id: 'pet-open', label: 'Your pet', icon: 'paw-print', group: 'Go to', keywords: 'pet companion cat dog animal tamagotchi buddy', run: () => setView('pet') });
   registerCommand({ id: 'pet-wardrobe', label: "Pet: dress up your pet", icon: 'shirt', keywords: 'pet wardrobe hat collar accessories customise colour breed', run: () => setView('pet:wardrobe') });
+  registerCommand({ id: 'pet-ai', label: 'Pet: restyle with AI', icon: 'sparkles', keywords: 'pet ai restyle describe colour change look assistant', run: () => { setView('pet:wardrobe'); setTimeout(() => petAiOpen(), 200); } });
+  registerCommand({ id: 'pet-design', label: 'Pet: design an accessory with AI', icon: 'wand-sparkles', keywords: 'pet ai design accessory wig hat glasses scarf cape draw', run: () => { setView('pet:wardrobe'); setTimeout(() => petAiDesignOpen(), 200); } });
   registerCommand({ id: 'pet-treat', label: 'Pet: give a treat', icon: 'cookie', keywords: 'pet feed treat snack', run: () => { const r = petFeed(); toast(r.msg || 'Adopt a pet first', { icon: 'cookie', action: r.ok ? null : { label: 'Open', run: () => setView('pet') } }); } });
   registerCommand({ id: 'pet-pat', label: 'Pet: give a pat', icon: 'heart', keywords: 'pet pat stroke cuddle', run: () => { const r = petPat(); toast(r.ok ? `${petName()} leans in happily` : 'Adopt a pet first', { icon: 'heart' }); } });
   registerCommand({ id: 'pet-journal', label: "Pet: journal", icon: 'notebook-pen', keywords: 'pet journal milestones', run: () => setView('pet:journal') });
