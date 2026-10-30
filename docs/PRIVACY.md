@@ -163,6 +163,7 @@ or the folder you chose with `--data-dir`, or the one Settings > Data > *Move my
 | Backups | `state/backups/`, `backups/` | copies of the above, made automatically |
 | Finances | `finance/` | the bank CSV files you imported or synced, categories, budgets, the analysis |
 | Calendar and email | `calendar/`, `inbox/`, `email/` | read-only snapshots: event details; email subjects, senders, dates and short snippets |
+| Your pet's accessories (Pets > Wardrobe > My designs) | `pets/items.json` | up to 12 accessories you made for your pet: the drawing (shapes and colours), a name, and the sentence you described it with. Synced between your own computers if sync is on. Friends get the drawing and its name, never your sentence |
 | Data sources | `sources.json`, `connections.json` | which sources and accounts you added, connection status, iCal addresses |
 | Where you've been (Location history, on unless you turn it off) | `locations/log.json` | one entry per stay or move: when, the place, town, region and country, a position rounded to about 1 km, the time zone, where it came from (your browser's location if you chose *Device location*, the place you picked, your computer's time zone, or a trip) and which of your devices saw it; where tasks were completed; your location badges. Never your IP address. Kept until you delete it (see [Location history](#location-history)) |
 | What friends can see (Friends) | `friendPerms` in `state/dashboard-state.json` | for each friend: trusted or not, stopped or not, and per scope the level, the chosen tasks, streams, tags or memories and how long |
@@ -227,6 +228,10 @@ computer for them. A friend's page has a *What they can see* panel; Settings >
   **garden** (which plants and decorations, where they stand and how grown
   they are; never your tasks or anything you wrote). Each of these three can
   be set to *Hidden* per friend. Everything else starts off.
+- **Your pet.** If you have adopted a pet and share it (Pets > With you), friends
+  who can see your profile also see its look and name, and the accessories you
+  made for it (the drawing and its name, never the sentence you described it with).
+  A friend can switch accessories made by friends off for themselves.
 - **Trusted friends only.** Anything beyond profile, game progress and garden can only
   go to a friend you have marked *Trusted friend*. Turning that off stops it all
   again, and their app is asked to delete what it had.
@@ -332,6 +337,13 @@ Nothing else. In particular:
   *AI summary* turns them off, and the built-in script plays instead. The
   auto-link judge only runs once you turn on auto-linking and choose folders.
   Each feature can be switched off in Settings.
+- **Pets: Restyle with AI and Design with AI** (Pets > Wardrobe, only when you
+  press them) send Claude the sentence you typed and your pet's look (Restyle: the
+  species, colours and accessories) or just its species (Design), never its name or
+  anything else of yours. Changing a
+  design you just drew also sends that drawing and what you want changed. Each
+  answer is checked on your computer, shown to you first and only saved if you
+  say so. Friends' accessories are only ever drawn; they never go to Claude.
 - **Only what that feature needs.** Task chat sends that task and your
   conversation; the morning summary sends today's facts; the auto-link judge
   sends task titles with candidate folder and file names and short excerpts

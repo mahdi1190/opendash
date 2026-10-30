@@ -24,6 +24,10 @@
      petTreatSvg(kind, size)        a treat (fish, bone, carrot, seed, leaf, berry, strawberry, pellet, bamboo, pea, millet,
                                     chilli, sunberry, apple, battery, cookie) as an <svg> string
      petAutoEye(pet)                the species' own eye colour for 'auto'
+     petItemShapes(item, a, species) / petItemMatrix(slot, a, fit)   a custom accessory's shapes on the pet's anchors (2.22)
+
+   A pet drawn with custom accessories is a pet object with `items`: {itemHead: design, itemFace: design, itemNeck: design}
+   (the page resolves the ids in the look to designs: 97-pets-1core.js petWithItems). Without `items` the ids draw nothing.
    ============================================================ */
 const _PTK_INK = '#2a2124', _PTK_PINK = '#f29aab', _PTK_BLUSH = '#f4808f';
 const _ptR = (v) => { const r = Math.round(v * 10) / 10; return r === 0 ? 0 : r; };
@@ -76,12 +80,24 @@ function petAutoEye(pet) {
   if (sp === 'axolotl' && co === 'white') return '#e86a8a';
   return _PT_AUTO_EYE[sp] || '';
 }
+/**
+ * The coat as the drawing reads it: {id, a (main), b (second: belly, muzzle), c (third: pattern), n (nose or bill)}. A custom
+ * main colour (petHexOf) gets a belly 55% towards white and a pattern 40% towards the ink; coatB / coatC override either one,
+ * on a named coat too. The nose or bill colour stays the species' own.
+ */
+function _ptCoatOf(sp, pet) {
+  const hit = sp.coats.find(c => c.id === pet.coat) || null;
+  const a = petHexOf(pet.coat), b = petHexOf(pet.coatB), c = petHexOf(pet.coatC);
+  if (hit && !b && !c) return hit;
+  const base = hit || sp.coats[0], main = a || base.a;
+  return { id: hit ? hit.id : String(pet.coat), label: 'Custom', a: main, b: b || (a ? _ptMix(a, '#ffffff', 0.55) : base.b), c: c || (a ? _ptMix(a, '#1a1420', 0.4) : base.c), n: base.n };
+}
 function _ptPal(pet) {
   const sp = petSpecies(pet.species) || PET_SPECIES[0];
-  const coat = sp.coats.find(c => c.id === pet.coat) || sp.coats[0];
-  const accHex = (k) => (PET_ACC_COLS[pet[k]] || PET_ACC_COLS.red).hex;
-  const ey = PET_EYES[pet.eyes] || PET_EYES.auto;
-  const eye = pet.eyes && pet.eyes !== 'auto' ? ey.hex : petAutoEye(pet), eye2 = pet.eyes === 'odd' ? ey.hex2 : eye;
+  const coat = _ptCoatOf(sp, pet);
+  const accHex = (k) => petHexOf(pet[k]) || (PET_ACC_COLS[pet[k]] || PET_ACC_COLS.red).hex;
+  const eyeHex = petHexOf(pet.eyes), ey = PET_EYES[pet.eyes] || PET_EYES.auto;
+  const eye = eyeHex || (pet.eyes && pet.eyes !== 'auto' ? ey.hex : petAutoEye(pet)), eye2 = pet.eyes === 'odd' ? ey.hex2 : eye;
   return { sp, coat, a: _ptTone(coat.a), b: _ptTone(coat.b), c: _ptTone(coat.c), nose: coat.n || '', eye, eye2,
     rainbow: (k) => pet[k] === 'rainbow', acc: { collar: _ptTone(accHex('collarCol')), bandana: _ptTone(accHex('bandanaCol')), bow: _ptTone(accHex('bowCol')), hat: _ptTone(accHex('hatCol')), glasses: accHex('glassesCol') } };
 }
@@ -264,10 +280,71 @@ function _ptHat(pet, X, top) {
     default: return out;
   }
 }
-/** The accessories on a pet: {neck, head} shapes. a: anchors {neck: {x, y, w, rot}, top: [x, y, w, tilt], eyes: [x1, x2, y, r], ear: [x, y, s]}. */
-function _ptAccs(pet, X, a) {
+/* ---------- custom accessories (2.22): a design's shapes, placed on the head circle or the neck ---------- */
+const _ptAffMul = (A, B) => [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3], A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]];
+const _ptAffRot = (deg) => { const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r); return [c, s, -s, c, 0, 0]; };
+/**
+ * The matrix that carries a design's frame onto the pet. head / face: the head circle (a.hc = [x, y, r]: the design's circle of
+ * radius 50 becomes the pet's head, tilted like the head); neck: the collar line (a.neck = {x, y, w, rot}, 100 = its width).
+ * fit {dx, dy, s, rot} is the person's nudge, in the design's own units. null when the species has no such anchor.
+ */
+function petItemMatrix(slot, a, fit) {
+  fit = fit || { dx: 0, dy: 0, s: 1, rot: 0 };
+  let ox, oy, k, tilt = 0;
+  if (slot === 'neck') { const n = a && a.neck; if (!n) return null; ox = n.x; oy = n.y; k = n.w / 100; tilt = n.rot || 0; }
+  else { const h = a && a.hc; if (!h) return null; ox = h[0]; oy = h[1]; k = h[2] / 50; tilt = (a.top && a.top[3]) || 0; }
+  let M = [1, 0, 0, 1, ox, oy];
+  M = _ptAffMul(M, _ptAffRot(tilt));
+  M = _ptAffMul(M, [1, 0, 0, 1, fit.dx * k, fit.dy * k]);
+  M = _ptAffMul(M, _ptAffRot(fit.rot));
+  return _ptAffMul(M, [fit.s * k, 0, 0, fit.s * k, 0, 0]);
+}
+/** A canonical path (absolute M L C Q Z) carried through a matrix, to the drawing's own one-decimal numbers. The transform is baked into the numbers, so nothing downstream (the page's svg, the scene sprites) needs to know it. */
+function _ptXformPath(p, M) {
+  const segs = petItemPathSegs(p);
+  if (!segs) return '';
+  return segs.map(s => {
+    let o = s[0];
+    for (let k = 1; k < s.length; k += 2) o += (k > 1 ? ' ' : '') + _ptR(M[0] * s[k] + M[2] * s[k + 1] + M[4]) + ' ' + _ptR(M[1] * s[k] + M[3] * s[k + 1] + M[5]);
+    return o;
+  }).join('');
+}
+/** One worn design as drawing shapes {f, s, w, d, op, cap} (colours from its own slots, toned like every colour of the kit). */
+function petItemShapes(item, a, species) {
+  if (!item) return [];
+  const M = petItemMatrix(item.slot, a, petItemFitOf(item, species));
+  if (!M) return [];
+  const tones = item.cols.map(_ptTone), k = Math.sqrt(Math.abs(M[0] * M[3] - M[1] * M[2]));
+  const col = (ref) => (ref === 'w' ? '#ffffff' : ref === 'i' ? _PTK_INK : (tones[Number(ref[1]) - 1] || tones[0])[ref.length > 2 ? 'sld'.indexOf(ref[2]) + 1 : 0]);
+  const out = [];
+  for (const s of item.shapes) {
+    const d = _ptXformPath(s.p, M);
+    if (d) out.push({ f: s.f ? col(s.f) : null, s: s.s ? col(s.s) : null, w: _ptR((s.w || 0) * k), d, op: s.o == null ? 1 : s.o, cap: 'round', m: null });
+  }
+  return out;
+}
+/** The designs a pet wears right now: {itemHead, itemFace, itemNeck} -> clean designs, from pet0.items {field: design} (the page resolves ids to designs). Only a design whose id is the one worn counts. */
+function _ptWornItems(pet, src) {
+  const items = src && src.items && typeof src.items === 'object' ? src.items : null;
+  if (!items) return null;
+  let out = null;
+  for (const f of _PT_ITEM_FIELDS) {
+    const it = pet[f] && items[f] ? petItemTrusted(items[f]) : null;
+    if (it && it.id === pet[f]) (out = out || {})[f] = it;
+  }
+  return out;
+}
+function _ptItemAcc(pet, worn, a) {
+  const out = { neck: [], head: [] };
+  if (!worn) return out;
+  for (const [field, list] of [['itemNeck', out.neck], ['itemHead', out.head], ['itemFace', out.head]]) if (worn[field]) list.push(...petItemShapes(worn[field], a, pet.species));
+  return out;
+}
+/** The accessories on a pet: {neck, head} shapes. a: anchors {neck: {x, y, w, rot}, top: [x, y, w, tilt], eyes: [x1, x2, y, r], ear: [x, y, s], hc: [x, y, r] (the head circle)}. worn: the custom designs (see _ptWornItems). */
+function _ptAccs(pet, X, a, worn) {
   const rb = (sh, key) => (X.rainbow(key) ? _ptRainbow(sh) : sh);
-  return { neck: rb(_ptCollar(pet, X, a.neck), 'collarCol').concat(rb(_ptBandana(pet, X, a.neck), 'bandanaCol')), head: rb(_ptBow(pet, X, a.ear), 'bowCol').concat(rb(_ptHat(pet, X, a.top), 'hatCol')).concat(_ptGlasses(pet, X, a.eyes)) };
+  const it = _ptItemAcc(pet, worn, a);
+  return { neck: rb(_ptCollar(pet, X, a.neck), 'collarCol').concat(rb(_ptBandana(pet, X, a.neck), 'bandanaCol'), it.neck), head: rb(_ptBow(pet, X, a.ear), 'bowCol').concat(rb(_ptHat(pet, X, a.top), 'hatCol')).concat(_ptGlasses(pet, X, a.eyes), it.head) };
 }
 /** Rainbow accessories: the base-coloured shapes take the rainbow in turn. */
 function _ptRainbow(list) {
@@ -288,7 +365,7 @@ function petArt(pet0, pose, mood) {
   const fn = (typeof _PT_ART !== 'undefined' && _PT_ART[pet.species]) || null;
   if (!fn) return null;
   const A = fn(pet, pose, mood, X);
-  const acc = _ptAccs(pet, X, A.acc || {});
+  const acc = _ptAccs(pet, X, A.acc || {}, _ptWornItems(pet, pet0));
   if (pose !== 'sleep') A.parts.neck.push(...acc.neck);   // curled up, the chin hides the collar
   A.parts.acc = acc.head;
   if (!A.order.includes('acc')) A.order.splice(A.order.indexOf('eyes') + 1, 0, 'acc');

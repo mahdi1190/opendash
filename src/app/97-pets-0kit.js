@@ -19,6 +19,9 @@
      PET_EYES                       eye colours {id: {label, hex, hex2?, level?}} ('auto': the species' own)
      PET_TRICKS                     [{id, label, icon, lock: {level|streak}, cost}] (taught with treats)
      PET_FIELDS                     the fields of a pet, in order
+     petHexOf(id)                   '#rrggbb' for a custom-colour id ('x' + 6 lower-case hex digits, e.g. x3b74d6), else ''
+     PET_STYLE_FIELDS               the fields an AI restyle may change (lib/pet-ai.mjs, 97-pets-4ai.js)
+     itemHead / itemFace / itemNeck the ids of the custom accessories worn (designs: 97-pets-0kititems.js)
      petDefault(species?)           a starting pet
      petNormalize(p)                a clean pet: every field an allow-listed id (unknown -> the default), the name plain text
      petRandom(rnd, ok)             a random pet; ok(field, id) says whether an option may be picked (unlocks)
@@ -170,10 +173,24 @@ function petSeasonOn(key, iso) {
 }
 
 /* ---------- the pet object ---------- */
-const PET_FIELDS = Object.freeze(['species', 'breed', 'coat', 'marks', 'eyes', 'collar', 'collarCol', 'bandana', 'bandanaCol', 'bow', 'bowCol', 'hat', 'hatCol', 'glasses', 'glassesCol']);
+const PET_FIELDS = Object.freeze(['species', 'breed', 'coat', 'marks', 'eyes', 'collar', 'collarCol', 'bandana', 'bandanaCol', 'bow', 'bowCol', 'hat', 'hatCol', 'glasses', 'glassesCol', 'coatB', 'coatC', 'itemHead', 'itemFace', 'itemNeck']);
+/* Custom accessories (2.22): the three item fields hold the id of a design ('pi-' + 6 to 12 lower-case letters or digits) or ''.
+   The design itself is data too (97-pets-0kititems.js: petItemClean) and travels separately; an id with no design behind it
+   draws nothing. */
+const _PT_ITEM_ID = /^pi-[a-z0-9]{6,12}$/;
+const _PT_ITEM_FIELDS = Object.freeze(['itemHead', 'itemFace', 'itemNeck']);
 const _PT_ACC_COL_OF = Object.freeze({ collarCol: 'collar', bandanaCol: 'bandana', bowCol: 'bow', hatCol: 'hat', glassesCol: 'glasses' });
 const _PT_DEF_ACC = Object.freeze({ collar: 'plain', collarCol: 'red', bandana: 'none', bandanaCol: 'blue', bow: 'none', bowCol: 'pink', hat: 'none', hatCol: 'teal', glasses: 'none', glassesCol: 'black' });
 /** The options of a field for a species: [{id, label, hex?, level?, season?, streak?}]. */
+/* Custom colours (2.22): a colour field may hold 'x' + six lower-case hex digits instead of a table id. It is still an id by
+   the friends schema's rules (letters and digits), so the wire needs no new shape, and an app without this rule maps it to the
+   field's default (a plain colour, never an error). coatB / coatC override the coat's second (belly, muzzle) and third (pattern)
+   colours; empty means "derived from the coat". */
+const _PT_HEXID = /^x[0-9a-f]{6}$/;
+const _PT_HEX_FIELDS = Object.freeze(['coat', 'coatB', 'coatC', 'eyes', 'collarCol', 'bandanaCol', 'bowCol', 'hatCol', 'glassesCol']);
+function petHexOf(id) { return typeof id === 'string' && _PT_HEXID.test(id) ? '#' + id.slice(1) : ''; }
+/** The fields an AI restyle may change (everything but the species and the name). Keep in step with lib/claude-runner.mjs PET_STYLE_FIELDS. */
+const PET_STYLE_FIELDS = Object.freeze(['breed', 'coat', 'coatB', 'coatC', 'marks', 'eyes', 'collar', 'collarCol', 'bandana', 'bandanaCol', 'bow', 'bowCol', 'hat', 'hatCol', 'glasses', 'glassesCol']);
 function petOptions(field, species) {
   const sp = petSpecies(species) || PET_SPECIES[0];
   switch (field) {
@@ -188,10 +205,15 @@ function petOptions(field, species) {
       return [];
   }
 }
-function _ptHas(field, id, species) { return typeof id === 'string' && _PT_ID.test(id) && petOptions(field, species).some(o => o.id === id); }
+function _ptHas(field, id, species) {
+  if (typeof id === 'string' && _PT_ITEM_FIELDS.includes(field)) return _PT_ITEM_ID.test(id);
+  if (typeof id !== 'string' || !_PT_ID.test(id)) return false;
+  if (_PT_HEXID.test(id) && _PT_HEX_FIELDS.includes(field)) return true;
+  return petOptions(field, species).some(o => o.id === id);
+}
 function petDefault(species) {
   const sp = petSpecies(species) || PET_SPECIES[0];
-  return Object.assign({ species: sp.id, breed: sp.breeds ? sp.breeds[0].id : '', coat: sp.coats[0].id, marks: sp.marks[0].id, eyes: 'auto' }, _PT_DEF_ACC);
+  return Object.assign({ species: sp.id, breed: sp.breeds ? sp.breeds[0].id : '', coat: sp.coats[0].id, coatB: '', coatC: '', itemHead: '', itemFace: '', itemNeck: '', marks: sp.marks[0].id, eyes: 'auto' }, _PT_DEF_ACC);
 }
 /** Every field an allow-listed id (unknown -> the species' default), the name plain text. Anything else is dropped. */
 function petNormalize(p0) {
@@ -229,6 +251,7 @@ function petRandom(rnd, ok, keep) {
 /** '' when the option can be picked, else why not (the game's level and best streak ever: unlocks are never taken away). */
 function petLockOf(field, id, ctx, species) {
   const o = petOptions(field, species).find(x => x.id === id);
+  if (_PT_HEXID.test(String(id)) && _PT_HEX_FIELDS.includes(field)) return '';   // a colour you picked yourself is never locked
   if (!o) return 'Not available';
   ctx = ctx || {};
   if (o.season) {

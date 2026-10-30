@@ -266,7 +266,7 @@ function _pfWho(who) {
     c.look = _pfLookOf(raw);   // 2.18: ids mapped through the look tables (an old friend without one gets the default)
     c.ext = _pfExtValues(raw, false);
     const nick = who.profile ? profileText(who.nick || who.name, PF_MAX.name) : '';
-    return { friend: true, avatar: raw.avatar ? c.avatar : null, theme: c.theme, name: nick || c.name, profile: c, game: c.game };
+    return { friend: true, fid: who.id || '', petItems: who.petItems || null, avatar: raw.avatar ? c.avatar : null, theme: c.theme, name: nick || c.name, profile: c, game: c.game };
   }
   // a friend view (window.Friends) that has not sent a profile yet: initials, never People's avatar (their id is not a person's)
   if (Object.prototype.hasOwnProperty.call(who, 'profile') || Object.prototype.hasOwnProperty.call(who, 'friendship')) {

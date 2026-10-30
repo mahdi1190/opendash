@@ -4,5 +4,6 @@
 // the state (state.pet, a synced UI key) and goes to friends inside your profile (profileExtend, 97-pets-1core.js).
 
 import '../../lib/profile-pets.mjs';
+import '../../lib/friends/pet-items.mjs';   // 2.19: the kind 'pet:items' (the accessories your pet wears, for friends)
 
 export default function register() { /* nothing to register */ }
