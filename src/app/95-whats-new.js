@@ -70,6 +70,8 @@ const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets')
 
 const WHATS_NEW = [
   // ---- 2.21 ----
+  { id: 'your-data', group: 'n221', icon: 'database', title: '2.22.1: choose which banks count',
+    text: 'Money > Your data shows where every payment comes from. Untick a bank, see the difference, and everything counts only what is ticked. Nothing is deleted.', view: ['finance'] },
   { id: 'select-many', group: 'n221', icon: 'list-checks', title: '2.21: select many things at once',
     text: 'Tick a few tasks, expenses or transactions (or press Select), change them all in one go, and one Undo puts them all back. The expense report is now laid out exactly like the paper form, and you can undo a report you made by mistake.',
     view: ['all'], sel: ['#main-body'] },

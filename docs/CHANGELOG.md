@@ -10,6 +10,41 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.22.1]
+
+Your money, from only the banks you still use.
+
+### Added
+- **Money > Your data**: one row per bank account or imported file, with where
+  it comes from, its dates and number of payments, and a plain status (Updating,
+  Stopped updating, One-off file, Needs you to reconnect) with the next step.
+  Untick "Count this in my money" and press **Update my money**: Money, the
+  brief, the story, budgets, Home, expenses matching, the assistant and sharing
+  with friends then count only what is ticked. You see the difference first
+  (payments, this month's spending, money in, your balance), and one Undo puts
+  it back exactly. Unticking never deletes.
+- **Start fresh**: "Which banks do you still use?" unticks everything else in one go.
+- **Moving banks**: "Only count up to a date", and "Stop counting from the day
+  Monzo starts", keep old history in your long-term trends without counting
+  anything twice; that account's balance leaves your totals.
+- **The same payments, twice**: two sources that share most of their payments
+  are shown plainly, with a one-click choice of which to keep.
+- **Delete this data for good**: says what goes, offers its payments as a CSV
+  first, saves a safety copy for 30 days, and can disconnect the bank too. A
+  connected account that was deleted does not come back unless you bring it back.
+- A calm note when a salary or a bill was only seen on something you unticked.
+
+### Changed
+- A payment between your own accounts stays a transfer when one of the two is
+  left out, so a Barclays-to-Monzo move never looks like income. Money in that
+  was only called income because it was positive is now a transfer whenever it
+  matches money out of another of your accounts.
+- "Update bank" no longer reads a bank whose accounts are all unticked, and that
+  bank no longer counts towards "your data is out of date".
+- A left-out account's balance leaves the totals, net worth and safe to spend
+  (it used to stay in them after being hidden in Connections).
+- Your ticks and dates follow you to your other computers.
+
 ## [2.22.0] - 2026-10-30
 
 The garden becomes a world you walk in, with fishing and bug catching, and pets you can customise with words.
