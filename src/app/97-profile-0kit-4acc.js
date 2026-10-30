@@ -11,7 +11,7 @@
    ============================================================ */
 const _PF_GLASSES_MORE = new Set(['rect', 'wire', 'browline', 'oversized', 'aviator', 'half', 'aviatorsun', 'roundsun', 'mirror', 'sport', '3d', 'starsun']);
 const _PF_HATS_MORE = new Set(['slouch', 'bearbeanie', 'backcap', 'bucket', 'beret', 'fedora', 'cowboy', 'visor', 'headband', 'bandana', 'trapper', 'turban',
-  'halo', 'chef', 'tophat', 'horns', 'antlers', 'bunny', 'anglerhat', 'pith']);
+  'halo', 'chef', 'tophat', 'horns', 'antlers', 'bunny', 'anglerhat', 'pith', 'flowercrown', 'strawhat', 'leafwreath', 'wildcirclet', 'beekeeper']);
 const _PF_AVIATOR_D = 'M35.6 42.4 Q42 41 48 42.6 Q48.6 47.8 45 50.6 Q41 52.4 37.6 50 Q35 47.4 35.6 42.4 Z';
 
 /* ---------- glasses ---------- */
@@ -58,6 +58,14 @@ function _pfHatMore(kind, t, small) {
       + _pfC(57.6, 32, 0.55, '#14120e') + det(_pfS('M40 31.4 L43.4 24.6 M43.6 31 L46.6 24.4', '#e8503a', 1.3) + _pfC(43.4, 24.2, 0.9, '#fbfbf2') + _pfC(46.6, 24, 0.9, '#fbfbf2'));
     case 'pith': return _pfE(50, 38, 31, 5.4, t[0]) + _pfP('M30.4 37 C30 22 39 13.4 50 13.4 C61 13.4 70 22 69.6 37 Q50 32.6 30.4 37 Z', t[0]) + _pfP('M58 14.4 C66 17 70 26 69.6 37 L65 36 C65.4 27 63 19 58 14.4 Z', t[1], 0.5)
       + _pfP('M30.4 33.4 Q50 28.6 69.6 33.4 L69.8 37 Q50 32.4 30.2 37 Z', t[3]) + det(_pfC(50, 17.4, 1.3, t[1]) + _pfS('M37 21 Q50 15 63 21', t[2], 0.8, 0.45)) + _pfS('M20 39.6 Q50 43.6 80 39.6', t[1], 0.8, 0.5);
+    // 2.23: made at the crafting bench (fixed colours: they are what they were made from)
+    case 'flowercrown': case 'wildcirclet': case 'leafwreath': {
+      let s = _pfS('M29 35.600 Q50 24.400 71 35.600', kind === 'leafwreath' ? '#4f8a3a' : '#5a8a48', 1.800);
+      const cols = kind === 'flowercrown' ? ['#ffffff', '#ffffff'] : kind === 'wildcirclet' ? ['#f6d35e', '#f6a5c0', '#b39ce6'] : ['#6a9a4a', '#7fb25a', '#4f8a3a'];
+      for (let i = 0; i < 7; i++) { const u = i / 6, x = 29.500 + 41 * u, y = 35.600 - Math.sin(u * Math.PI) * 8.400; if (kind === 'leafwreath') s += _pfE(x, y, 4, 2.200, cols[i % 3], 1, -30 + 60 * u); else { s += _pfC(x, y, 4.100, '#c8bc98', 0.55); for (let q = 0; q < 5; q++) { const a = q * 1.2566 + i * 0.5; s += _pfC(x + Math.cos(a) * 2.400, y + Math.sin(a) * 2.400, 1.800, cols[i % cols.length]); } s += _pfC(x, y, 1.300, '#f2b33d'); } }
+      return s; }
+    case 'strawhat': return _pfE(50, 34.400, 30, 6, '#e0c068') + _pfP('M31 34 C30 20 39 13.600 50 13.600 C61 13.600 70 20 69 34 Q50 39.600 31 34 Z', '#e8cc7a') + _pfP('M31 30 Q50 35.600 69 30 L69 34 Q50 39.600 31 34 Z', '#c8483a') + det(_pfS('M24 34 Q50 40 76 34 M36 22 Q50 16.400 64 22 M34 27 Q50 22 66 27', '#b89a50', 0.600, 0.7));
+    case 'beekeeper': return _pfE(50, 33.600, 28, 5.400, '#f0e8d0') + _pfP('M33 33 C33 20 41 15 50 15 C59 15 67 20 67 33 Q50 37.600 33 33 Z', '#f6efdc') + det(_pfS('M25 34 L27 58 M75 34 L73 58 M27 58 Q50 64 73 58 M34 36 L35 61 M43 37 L43.400 62.400 M57 37 L56.600 62.400 M66 36 L65 61 M26 43 Q50 49 74 43 M26.500 50 Q50 56 73.500 50', '#6a6458', 0.450, 0.55));
     case 'bucket': return _pfP('M33.2 34 C33.2 19.4 41 14.4 50 14.4 C59 14.4 66.8 19.4 66.8 34 Z', t[0]) + _pfP('M58 15.6 C64 18 66.8 24 66.8 34 L62.6 34 C62.8 26 61.4 20 58 15.6 Z', t[1], 0.45)
       + _pfP('M24.4 41.6 Q26.6 33.4 33.2 32.8 L66.8 32.8 Q73.4 33.4 75.6 41.6 Q50 37.6 24.4 41.6 Z', t[0]) + _pfP('M24.4 41.6 Q50 37.6 75.6 41.6 L75.2 40 Q50 36 24.8 40 Z', t[1], 0.6)
       + det(_pfS('M27.6 39 Q50 35.2 72.4 39', t[3], 0.5, 0.5) + _pfS('M33.6 30.6 Q50 28.6 66.4 30.6', t[3], 0.5, 0.5) + _pfS('M34 26.6 Q50 24.6 66 26.6', t[3], 0.5, 0.4));
@@ -120,6 +128,8 @@ function _pfHeadphonesMore(kind, pc) {
 
 /* ---------- scarves ---------- */
 function _pfScarfMore(kind, sc, s2, small) {
+  if (kind === 'gardenscarf') return _pfP('M35.400 73.600 Q50 81.400 64.600 73.600 L65.600 80.600 Q50 89.400 34.400 80.600 Z', '#4f8a5a') + _pfS('M35 80 Q50 88.400 65 80', '#3a6a44', 1.200, 0.7) + _pfP('M55.400 82.400 L58.600 99 L66 97.600 L62.200 80.600 Z', '#3f7a4a') + _pfE(60.800, 90, 2.600, 1.500, '#a6d870', 1, -30);
+  if (kind === 'daisychain') { let s = _pfS('M35.400 75 Q50 86 64.600 75', '#5a8a48', 0.900); for (let i = 0; i < 9; i++) { const u = i / 8, x = 35.400 + 29.200 * u, y = 75 + Math.sin(u * Math.PI) * 7; s += _pfC(x, y, 2.700, '#c8bc98', 0.55); for (let q = 0; q < 5; q++) { const a = q * 1.2566; s += _pfC(x + Math.cos(a) * 1.500, y + Math.sin(a) * 1.500, 1.100, '#ffffff'); } s += _pfC(x, y, 0.800, '#f2b33d'); } return s; }
   const wrap = 'M35.4 73.6 Q50 81.4 64.6 73.6 L65.6 80.6 Q50 89.4 34.4 80.6 Z', end = 'M55.4 82.4 L58.6 99 L66 97.6 L62.2 80.6 Z';
   switch (kind) {
     case 'chunky': {

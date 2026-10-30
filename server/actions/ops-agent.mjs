@@ -48,14 +48,16 @@ const GARDEN_ACTIONS = {
   style_decor: (e, p) => e.gardenStyleDecor(p.id),
   put_away_decor: (e, p) => e.gardenRemoveDecor(p.id),
   buy: (e, p) => e.gardenBuy(p.item, p.n),
+  buy_land: (e, p) => e.gardenBuyLand(p.item),
   sell: (e, p) => e.gardenSell(p.item, p.n),
   bouquet: (e, p) => e.gardenMakeBouquet((p.stems || []).map(id => ({ id }))),
   collect: (e, p) => e.gardenCollect(p.id),
+  craft: (e, p) => e.gardenCraft(p.recipe),
 };
 const GARDEN_NEEDS = {
   plant: ['plant', 'x', 'y'], water: ['id'], feed: ['id'], prune: ['id'], harvest: ['id'], dig_up: ['id'], move_plant: ['id', 'x', 'y'],
   place_decor: ['item', 'x', 'y'], move_decor: ['id', 'x', 'y'], turn_decor: ['id'], style_decor: ['id'], put_away_decor: ['id'],
-  buy: ['item'], sell: ['item'], bouquet: ['stems'], collect: ['id'],
+  buy: ['item'], buy_land: ['item'], sell: ['item'], bouquet: ['stems'], collect: ['id'], craft: ['recipe'],
 };
 const gardenTally = (w) => ({ coins: w.coins, level: w.level && w.level.level, items: w.items });
 
@@ -199,9 +201,50 @@ function runPet(ctx, p) {
     needPet();
     if (!p.trick) throw new ActionError('INVALID_PARAMS', `pet ${p.action} needs trick`, { field: 'trick' });
     if (p.action === 'teach') { const r = plain(e.petTeach(p.trick)); if (!r.ok) throw refused(r.msg); msg = `Taught a trick: ${p.trick}`; } else { e.petUnteach(p.trick); msg = `Took back a trick: ${p.trick}`; }
+  } else if (p.action === 'learn') {
+    // 2.23: the trick book, by the page's own rules: treats and coins that are really yours, nothing that has to be earned
+    needPet();
+    if (!p.trick) throw new ActionError('INVALID_PARAMS', 'pet learn needs trick', { field: 'trick' });
+    const r = plain(e.petBookBuy(p.trick, p.pay));
+    if (!r.ok) throw refused(`Not yet: ${r.msg || r.why}`);
+    msg = `Learnt a trick: ${p.trick}`;
+  } else if (p.action === 'perform') {
+    needPet();
+    if (!p.trick) throw new ActionError('INVALID_PARAMS', 'pet perform needs trick', { field: 'trick' });
+    const r = plain(e.petPerformCue(p.trick));
+    if (!r.ok) throw refused(r.why === 'locked' ? 'Your pet has not learnt that yet: see get_profile {part:"pet"}.' : 'There is no such trick.');
+    msg = `Asked for a trick: ${p.trick}`;
+  } else if (p.action === 'wear_crafted' || p.action === 'take_off_crafted') {
+    needPet();
+    if (!p.item) throw new ActionError('INVALID_PARAMS', `pet ${p.action} needs item`, { field: 'item' });
+    const rid = p.item.replace(/^craft:/, ''), rec = plain(e.gardenRecipe(rid));
+    if (!rec || !rec.make || !rec.make.pet) throw refused('That is not something a pet can wear.');
+    if (p.action === 'wear_crafted' && !plain(e.gardenCraftOwned(rid))) throw refused('Make it at the crafting bench first.');
+    const f = e.petCraftFieldOf(rec.make.pet);
+    e.petSet({ look: { [f]: p.action === 'wear_crafted' ? rec.make.pet : '' } }, { quiet: true });
+    msg = p.action === 'wear_crafted' ? `Wearing: ${rec.name}` : `Took off: ${rec.name}`;
+  } else if (p.action === 'choose' || p.action === 'unlock' || p.action === 'pack') {
+    // 2.23: the collection, by the page's own rules: spending needs what you have earned, and a pet not yet earned stays locked
+    needPet();
+    if (!p.species) throw new ActionError('INVALID_PARAMS', `pet ${p.action} needs species`, { field: 'species' });
+    const r = plain(p.action === 'choose' ? e.petChoose(p.species) : p.action === 'unlock' ? e.petUnlock(p.species) : e.petPackToggle(p.species));
+    if (!r.ok) throw refused(`Not yet: ${r.why}`);
+    msg = p.action === 'choose' ? `Now with you: ${p.species}` : p.action === 'unlock' ? `${p.species} joined the collection` : r.out ? `${p.species} is out in the garden` : `${p.species} came in`;
+  } else if (p.action === 'play') {
+    needPet();
+    const r = plain(e.petPlay());
+    if (!r.ok) throw refused();
+    msg = 'A game together';
+  } else if (p.action === 'buy') {
+    needPet();
+    if (!p.item) throw new ActionError('INVALID_PARAMS', 'pet buy needs item', { field: 'item' });
+    const r = plain(p.item.startsWith('lure:') ? e.petLureBuy(p.item.slice(5)) : e.petBuy(p.item));
+    if (!r.ok) throw refused(`Not yet: ${r.why}`);
+    msg = `Bought ${p.item}`;
   } else if (p.action === 'dress') {
     needPet();
     if (!p.look) throw new ActionError('INVALID_PARAMS', 'pet dress needs look', { field: 'look' });
+    if (p.look.species && plain(e.petLockOf('species', p.look.species, plain(e.petUnlockCtx()))) && !plain(e.petOwnsSpecies(p.look.species))) throw refused('That pet has not been earned yet: see get_profile {part:"pet"}.');
     e.petSet({ look: p.look }, { quiet: true });   // the page's petNormalize keeps only ids from the kit's tables
     msg = 'A new look';
   } else if (p.action === 'name') {
@@ -253,7 +296,7 @@ function runSetting(ctx, p) {
 export const AGENT_OPS = [
   {
     name: 'garden.play', tool: 'garden',
-    description: "Play in the user's garden with the app's own rules: action plant {plant, x, y}, water {id}, water_all, feed {id}, prune {id}, harvest {id}, harvest_all, dig_up {id}, move_plant {id, x, y}, place_decor {item: decoration id, x, y, r?}, move_decor {id, x, y}, turn_decor {id}, style_decor {id}, put_away_decor {id}, buy {item: 'seed:<plant>', 'decor:<id>' or a tool id, n?}, sell {item: 'crop:<plant>', 'bq:<id>', 'decor:<id>' or 'honey', n?}, bouquet {stems: [plant ids]}, collect {id: compost bin, beehive or wishing well}. Coins only come from focus time, finished tasks and selling: nothing here can make them, and a refused action says why. get_garden shows ids, the bag and the shop. Returns what changed and an undo token (undo_change).",
+    description: "Play in the user's garden with the app's own rules: action plant {plant, x, y}, water {id}, water_all, feed {id}, prune {id}, harvest {id}, harvest_all, dig_up {id}, move_plant {id, x, y}, place_decor {item: decoration id, x, y, r?}, move_decor {id, x, y}, turn_decor {id}, style_decor {id}, put_away_decor {id}, buy {item: 'seed:<plant>', 'decor:<id>' or a tool id, n?}, buy_land {item: the land's id, from get_garden's land list}, sell {item: 'crop:<plant>', 'bq:<id>', 'decor:<id>' or 'honey', n?}, bouquet {stems: [plant ids]}, collect {id: compost bin, beehive or wishing well}, craft {recipe: a recipe id from get_garden {view:'recipes'}: uses up what it needs from the basket and bag, and makes a hat, a pet accessory, a decoration or treats; it cannot make coins}. Coins only come from focus time, finished tasks and selling: nothing here can make them, and a refused action says why. get_garden shows ids, the bag and the shop. Returns what changed and an undo token (undo_change).",
     schema: obj({
       action: { type: 'string', enum: Object.keys(GARDEN_ACTIONS) },
       plant: { ...ID, description: 'plant id (a seed in the bag)' },
@@ -262,6 +305,7 @@ export const AGENT_OPS = [
       x: CELL, y: CELL, r: { type: 'integer', minimum: 0, maximum: 3 },
       n: { type: 'integer', minimum: 1, maximum: 20, description: 'how many (default 1)' },
       stems: { type: 'array', items: ID, minItems: 1, maxItems: 24 },
+      recipe: { ...ID, description: "for craft: a recipe id (get_garden {view:'recipes'})" },
     }, ['action']),
     run: runGarden,
   },
@@ -285,8 +329,8 @@ export const AGENT_OPS = [
   },
   {
     name: 'pet.care', tool: 'pet',
-    description: "The user's companion pet with the app's own rules (treats are earned by finishing tasks and focus; nothing here makes them): action feed, pat, teach {trick}, unteach {trick}, dress {look: {part: id}}, put_away, bring_out, adopt {look?}, name {name}. A pet is never sad or hungry. Friends can see its name, so naming goes through propose_changes for the in-app assistant. Returns an undo token (undo_change).",
-    schema: obj({ action: { type: 'string', enum: ['feed', 'pat', 'teach', 'unteach', 'dress', 'put_away', 'bring_out', 'adopt', 'name'] }, trick: ID, name: { type: 'string', maxLength: 24 }, look: { type: 'object', additionalProperties: { type: 'string', maxLength: 40, pattern: '^[A-Za-z0-9_#-]+$' }, maxProperties: 30 } }, ['action']),
+    description: "The user's companion pet with the app's own rules (treats are earned by finishing tasks and focus; nothing here makes them): action feed, pat, play, teach {trick}, unteach {trick}, dress {look: {part: id}}, put_away, bring_out, adopt {look?}, name {name}, choose {species} (make an earned pet your companion), unlock {species} (claim it or pay its treats or coins), pack {species} (let it out in the garden or bring it in), buy {item: 'toy:yarn' | 'bed:basket' | 'hat:chef' | 'lure:apple'}, learn {trick, pay?: 'treats' | 'coins'} (buy a trick from the trick book), perform {trick} (it does a trick it knows, in the open app), wear_crafted {item: a recipe id} and take_off_crafted {item} (what you made for it at the bench). A pet is never sad or hungry. Friends can see its name, so naming goes through propose_changes for the in-app assistant. Returns an undo token (undo_change).",
+    schema: obj({ action: { type: 'string', enum: ['feed', 'pat', 'play', 'teach', 'unteach', 'dress', 'put_away', 'bring_out', 'adopt', 'name', 'choose', 'unlock', 'pack', 'buy', 'learn', 'perform', 'wear_crafted', 'take_off_crafted'] }, trick: ID, pay: { type: 'string', enum: ['treats', 'coins'] }, species: ID, item: { type: 'string', maxLength: 40, pattern: '^(?:[a-zA-Z]+:)?[a-z0-9-]+$' }, name: { type: 'string', maxLength: 24 }, look: { type: 'object', additionalProperties: { type: 'string', maxLength: 40, pattern: '^[A-Za-z0-9_#-]+$' }, maxProperties: 30 } }, ['action']),
     assistantRefuse: petRefuse,
     run: runPet,
   },

@@ -43,7 +43,8 @@ const _WN_QS_KEY = 'dashboard-quickstart';
 
 // The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
-  ['n221', 'New in 2.21', 'sparkles'],
+  ['n224', 'The garden, overhauled (2.24)', 'sprout'],
+  ['n221', 'Money, codes and more (2.21 to 2.23)', 'sparkles'],
   ['n219', 'Tidier and calmer (2.19)', 'layout-grid'],
   ['n2181', 'Expenses and the garden (2.18.1)', 'receipt'],
   ['life', 'Life, the fifth area (2.18)', 'heart'],
@@ -64,12 +65,19 @@ const WHATS_NEW_GROUPS = Object.freeze([
   ['fun', 'Fun and motivation (2.16)', 'party-popper'],
   ['money', 'Money (2.16)', 'wallet'],
 ]);
-const _WN_CURRENT_GROUPS = ['n221'];
+const _WN_CURRENT_GROUPS = ['n224'];
 function _wnHasPage(id) { try { const p = typeof pageById === 'function' ? pageById(id) : null; return !!(p && pageAvailable(p)); } catch (e) { return false; } }
 const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets');
 
 const WHATS_NEW = [
   // ---- 2.21 ----
+  // ---- 2.24 ----
+  { id: 'garden-world', group: 'n224', icon: 'sprout', title: 'A garden you play inside',
+    text: 'The garden fills the window. Click and walk, and the obvious thing happens when you reach it. It is much bigger, redrawn, and your gardener is your own avatar.',
+    view: ['all'], sel: ['#main-body'] },
+  { id: 'garden-pets-tricks', group: 'n224', icon: 'paw-print', title: '62 pets, crafting and tricks',
+    text: 'Earn pets by playing, craft things from what you grow, teach tricks, and find the rare spectacles. Small creatures visit and land on what you placed.',
+    view: ['all'], sel: ['#main-body'] },
   { id: 'owed-two', group: 'n221', icon: 'handshake', title: '2.23.3: splits that repeat, and receipts',
     text: 'Rent or a bill can split with the same people every time. Read a receipt and tap who had what, send a friend their part, add a pay-me link, and split in another currency.',
     view: ['finance'], sel: ['#main-body'] },
@@ -676,7 +684,7 @@ function openQuickStart() {
 /* ---------- once, after updating (or the quick start after the welcome) ---------- */
 function _wnBusy() {
   return document.hidden || !!document.querySelector('.ap-opening:not(.anim-scene), .modal, .story, .bf-overlay, .ob-card, .anew-card, .wn-ring, .scrim')
-    || document.documentElement.classList.contains('story-open');
+    || document.documentElement.classList.contains('story-open') || (document.documentElement.classList.contains('gd-immersive') || document.documentElement.classList.contains('gsv-immersive'));   // not over the garden
 }
 function _wnAuto(tries) {
   if (typeof _uiSharedBooted !== 'undefined' && !_uiSharedBooted) { if (tries > 0) setTimeout(() => _wnAuto(tries - 1), 1000); return; }   // the state file first: it holds the seen flag

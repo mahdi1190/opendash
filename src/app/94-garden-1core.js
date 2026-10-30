@@ -345,7 +345,7 @@ function _gdPlantState(pl, def, ctx) {
 /* ---------- the wallet: coins, XP, items (everything summed, nothing double) ---------- */
 function _gdAddItems(into, items, k) { if (!items) return; for (const [id, n] of Object.entries(items)) { const v = Number(n) || 0; if (v) into[id] = (into[id] || 0) + v * (k || 1); } }
 const _GD_N_KINDS = { p: 'planted', h: 'harvests', q: 'bouquets', s: 'sold', f: 'fed', r: 'pruned', b: 'bought', w: 'wishes', cp: 'collected', hy: 'collected',
-  fc: 'fished', bc: 'netted', od: 'traded', gv: 'gifted' };   // 2.22: fish caught, bugs netted, orders filled, catches given
+  fc: 'fished', bc: 'netted', od: 'traded', gv: 'gifted', cr: 'crafted' };   // 2.22: fish caught, bugs netted, orders filled, catches given
 function _gdSeedPool(pred) { return GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && pred(p)).map(p => p.id); }
 /** A reward's items with its wildcards resolved ('seed:*' a common seed, 'seed:*rare' an uncommon or rare one), seeded. */
 function _gdResolve(items, seed) {
@@ -387,7 +387,7 @@ function gardenWallet() {
   const g = _gdG(), A = _gdAct();
   const key = _gd.rev + '|' + _gd.actKey + '|' + Object.keys(g.led).length;
   if (_gd.wallet && _gd.walletKey === key) return _gd.wallet;
-  const items = {}, n = { planted: 0, harvests: 0, bouquets: 0, sold: 0, fed: 0, pruned: 0, bought: 0, wishes: 0, collected: 0, daily: 0, quests: 0, fished: 0, netted: 0, traded: 0, gifted: 0 };
+  const items = {}, n = { planted: 0, harvests: 0, bouquets: 0, sold: 0, fed: 0, pruned: 0, bought: 0, wishes: 0, collected: 0, daily: 0, quests: 0, fished: 0, netted: 0, traded: 0, gifted: 0, crafted: 0 };
   let coins = 0, xp = 0, earned = 0, today = _gdToday();
   // earned from the data since the garden began (2.18.0 rules before the econ2 day, the time-based rules from it)
   let econToday = null;
@@ -454,7 +454,12 @@ function gardenWaterInfo(model) {
 }
 
 /* ---------- the model ---------- */
-function _gdAreasOpen(level) { return GARDEN_AREAS.filter(a => level >= a.lv).map(a => a.id); }
+function _gdAreasOpen(level) {
+  // 2.23: land you bought is yours for good (its row is in your ledger as an item, 'land:<id>', so it syncs and banks like everything else)
+  const owned = GARDEN_AREAS.filter(a => a.buy && gardenHas('land:' + a.id) > 0).map(a => a.id);
+  gardenLandSet(owned);
+  return GARDEN_AREAS.filter(a => (a.buy ? owned.includes(a.id) : level >= a.lv)).map(a => a.id);
+}
 function gardenModel(nowArg) {
   const g = _gdG();
   if (!g.since) gardenEnsure();
@@ -571,6 +576,7 @@ function gardenSnapshot() {
     const decor = m.decor.slice(0, GARDEN_SNAPSHOT_MAX.decor).map(d => [d.def.id, d.x, d.y, d.r, d.v]);
     const out = { v: 1, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
     try { const sh = typeof gardenShowWire === 'function' ? gardenShowWire() : null; if (sh) out.sh = sh; } catch (e) { /* the showcase is optional */ }   // 2.22: the tank and the case
+    try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
     return out;
   } catch (e) { console.error('[garden]', e); return null; }
 }
@@ -608,7 +614,9 @@ function gardenDailyTasks(mArg) {
 }
 function gardenWeekQuests(mArg) {
   const g = _gdG(), m = mArg || gardenModel(), wk = _gdWeekFrom(m.today);
-  return _gdTaskRows(gardenPickQuests(wk, m.level.level), _gdDayFacts(g, m, wk, m.today), g.wq[wk], wk);
+  // 2.23: one more for the time of year, as well as the week's three
+  const seasonal = GARDEN_QUESTS.filter(q => q.season === m.season);
+  return _gdTaskRows(gardenPickQuests(wk, m.level.level).concat(seasonal), _gdDayFacts(g, m, wk, m.today), g.wq[wk], wk);
 }
 function gardenFacts(mArg) {
   const g = _gdG(), m = mArg || gardenModel(), w = m.wallet;
@@ -621,7 +629,7 @@ function gardenFacts(mArg) {
   return {
     ...(soc || {}),
     ...(cat || {}),
-    planted: w.n.planted, harvests: w.n.harvests, bouquets: w.n.bouquets, sold: w.n.sold, dailyDone: w.n.daily,
+    planted: w.n.planted, harvests: w.n.harvests, bouquets: w.n.bouquets, sold: w.n.sold, dailyDone: w.n.daily, crafted: w.n.crafted || 0,
     plantsFound: disc.filter(id => gardenPlant(id)).length, visitorsFound: vis.length,
     pondLife: ['frog', 'dragonfly', 'mallard'].filter(id => g.disc[id]).length,
     nightVisitors: vis.filter(id => !gardenVisitor(id).when.tod.includes('day')).length,
@@ -672,7 +680,7 @@ function gardenTick() {
     if ((Number(g.seen.level) || 1) < lv) {
       const was = Number(g.seen.level) || 1; g.seen.level = lv; changed = true;
       moments.push({ kind: 'level', text: `Garden level ${lv}: ${gardenLevelOf(gardenWallet().xp).title}`, icon: 'sprout', level: lv });
-      for (const a of GARDEN_AREAS) if (a.lv > was && a.lv <= lv) moments.push({ kind: 'area', text: `The ${a.name.toLowerCase()} ${/s$/.test(a.name) ? 'are' : 'is'} open`, icon: a.icon, area: a.id });
+      for (const a of GARDEN_AREAS) if (!a.buy && a.lv > was && a.lv <= lv) moments.push({ kind: 'area', text: `The ${a.name.toLowerCase()} ${/s$/.test(a.name) ? 'are' : 'is'} open`, icon: a.icon, area: a.id });
     }
     // tidy: keep a week of per-day maps, fold old ledger entries by month
     if (g.seen.tidy !== today) { g.seen.tidy = today; changed = _gdTidy(g, today) || changed; }
@@ -735,7 +743,8 @@ function _gdMoment(x) {
   setTimeout(() => {
     try {
       const away = state.view !== 'garden' && !String(state.view || '').startsWith('garden:');
-      if (typeof toast === 'function') toast(x.text, { icon: x.icon || 'sprout', kind: x.kind === 'level' || x.kind === 'ribbon' ? 'ok' : '', action: away ? { label: 'Open the garden', run: () => setView(x.kind === 'ribbon' ? 'garden:almanac' : 'garden') } : undefined });
+      if (_gdOnPage() && typeof _gdgNote === 'function') _gdgNote(String(x.text).split('. ')[0], icon(x.icon || 'sprout'));   // in the garden, a note in the sky, not a toast
+      else if (typeof toast === 'function') toast(x.text, { icon: x.icon || 'sprout', kind: x.kind === 'level' || x.kind === 'ribbon' ? 'ok' : '', action: away ? { label: 'Open the garden', run: () => setView(x.kind === 'ribbon' ? 'garden:almanac' : 'garden') } : undefined });
       if (fun === 'full' && (x.kind === 'level' || x.kind === 'ribbon') && typeof _gdpBurst === 'function') _gdpBurst(x.kind);
     } catch (e) { /* the toast host is gone */ }
   }, wait);
@@ -759,7 +768,7 @@ function gardenUndo() {
   // newest first, so a path marked twice ends at its oldest value
   for (const [k, id, old] of u.mark.slice().reverse()) { if (!g[k]) g[k] = {}; if (old === undefined) delete g[k][id]; else g[k][id] = old; }
   _gdSave();
-  if (typeof toast === 'function') toast(`Undone: ${u.label}`, { icon: 'undo-2' });
+  if (typeof toast === 'function' && !_gdOnPage()) toast(`Undone: ${u.label}`, { icon: 'undo-2' });
   return true;
 }
 function _gdDone(msg, label, mark, o) {
@@ -767,13 +776,15 @@ function _gdDone(msg, label, mark, o) {
   _gdPushUndo(label, mark);
   _gdSave();
   gardenTickSoon();
-  if (msg && !o.quiet && typeof toast === 'function') {
+  // 2.23: on the garden itself the world answers (a sparkle, a number) and the Undo pill stays by the hotbar; a toast is for the palette and Home
+  if (msg && !o.quiet && typeof toast === 'function' && !_gdOnPage()) {
     const u = _gd.undo[_gd.undo.length - 1];
     toast(msg, { icon: o.icon || 'sprout', timeout: 5000, action: { label: 'Undo', run: () => { if (_gd.undo[_gd.undo.length - 1] === u) gardenUndo(); else if (typeof toast === 'function') toast('That has moved on: other garden changes came after it.', { icon: 'undo-2' }); } } });
   }
   return { ok: true, msg };
 }
 function _gdNo(msg) { return { ok: false, msg }; }
+function _gdOnPage() { return typeof _gdp !== 'undefined' && !!_gdp.root && _gdp.root.isConnected && state.view === 'garden'; }
 function _gdLed(k, body) { const key = k + '.' + _gdToday() + '.' + _gdUid(''); _gdG().led[key] = Object.assign({ d: _gdToday(), k }, body); return key; }
 
 /* ---------- actions ---------- */
@@ -1003,7 +1014,7 @@ function gardenPriceOf(item, mArg) {
     const deal = gardenDailyDeal(m.today);
     return { price: deal === p.id ? Math.max(1, Math.round(base / 2)) : base, why, deal: deal === p.id };
   }
-  if (kind === 'decor') { const d = gardenDecor(id); if (!d) return { price: null, why: 'Unknown' }; return { price: d.price, why: gardenLockOf(d, uc) }; }
+  if (kind === 'decor') { const d = gardenDecor(id); if (!d) return { price: null, why: 'Unknown' }; if (d.craft) return { price: null, why: 'Made at the crafting bench' }; return { price: d.price, why: gardenLockOf(d, uc) }; }
   const t = gardenTool(id); if (!t) return { price: null, why: 'Unknown' };
   if (t.kind !== 'consumable' && _gdOwnsTool(t.id)) return { price: null, why: 'Yours already' };
   if (t.needs && !_gdOwnsTool(t.needs)) return { price: t.price, why: 'Needs the ' + gardenTool(t.needs).name.toLowerCase() };
@@ -1013,6 +1024,25 @@ function gardenPriceOf(item, mArg) {
 function gardenDailyDeal(iso) {
   const pool = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && p.rarity !== 'common');
   return pool[gardenHash('gd-deal|' + iso) % pool.length].id;
+}
+/** A piece of land for sale: {def, owned, cost, lvOk, afford}, or null. */
+function gardenLandInfo(id, m) {
+  const def = gardenArea(id); if (!def || !def.buy) return null;
+  m = m || gardenModel();
+  const owned = gardenHas('land:' + id) > 0;
+  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv, afford: m.wallet.coins >= def.buy };
+}
+/** Buy a piece of land with coins. One Undo; what grows on it stays where it is. */
+function gardenBuyLand(id) {
+  const info = gardenLandInfo(id); if (!info) return _gdNo('That land is not for sale');
+  if (info.owned) return _gdNo('That land is already yours');
+  if (!info.lvOk) return _gdNo(`${info.def.name} opens at garden level ${info.def.lv}`);
+  const m = gardenModel();
+  if (!info.afford) return _gdNo(`That costs ${info.cost} coins: you have ${m.wallet.coins}`);
+  const lk = 'b.' + m.today + '.' + _gdUid(''), mark = _gdMark([['led', lk]]);
+  _gdG().led[lk] = { d: m.today, k: 'b', c: -info.cost, i: { ['land:' + id]: 1 }, n: 1 };
+  _gdEmit('land', { id, x: info.def.x, y: info.def.y, w: info.def.w, h: info.def.h });
+  return _gdDone(`${info.def.name} is yours`, `buying ${info.def.name.toLowerCase()}`, mark, { icon: 'trees' });
 }
 function gardenBuy(item, n) {
   n = Math.max(1, Math.min(20, Math.floor(Number(n) || 1)));
@@ -1037,6 +1067,7 @@ function gardenBuy(item, n) {
 /** What the market pays for one of an item (0 = it does not buy it). */
 function gardenSellPrice(item, mArg) {
   const m = mArg || gardenModel(), [kind, id] = String(item).split(':');
+  if (kind === 'craft') return typeof gardenCraftSellPrice === 'function' ? gardenCraftSellPrice(id, m) : 0;
   const boost = m.events.includes('harvest-home') ? 1.2 : 1;
   if (kind === 'crop') { const p = gardenPlant(id); return p && p.yield ? Math.max(1, Math.round(p.yield.sell * boost)) : 0; }
   if (kind === 'bq') { const b = GARDEN_BOUQUETS.find(x => x.id === id); return b ? Math.round((b.bonus + b.n * 3) * boost) : 0; }
@@ -1046,6 +1077,7 @@ function gardenSellPrice(item, mArg) {
 }
 function gardenSell(item, n, o) {
   o = o || {};
+  if (String(item).startsWith('craft:') && typeof gardenCraftSell === 'function') return gardenCraftSell(item, n, o);   // 2.23: a little, and not much of it (94-garden-craft-0rules.js)
   const have = gardenHas(item);
   n = Math.max(1, Math.min(have, Math.floor(Number(n) || 1)));
   if (have < 1) return _gdNo('Nothing to sell');

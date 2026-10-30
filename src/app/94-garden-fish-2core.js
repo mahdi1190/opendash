@@ -142,6 +142,7 @@ function _gcWindow(now) { return Math.floor(now / 1200000); }   // 20 minutes: t
  * The bugs about right now (not yet caught): [{key, id, x, y (cells), hab}]. Seeded by the 20-minute window, so a reload shows
  * the same ones; a caught one stays gone until the window turns over. Where they live follows what you have grown.
  */
+const GARDEN_BUGS_MAX = 8;   // about at once in the whole garden: enough to go looking for, not a swarm
 function gardenBugsNow(mArg) {
   const m = mArg || gardenModel(), g = _gdG(), W = GARDEN_WORLD;
   if (gardenFun() === 'off') return [];
@@ -152,14 +153,14 @@ function gardenBugsNow(mArg) {
   const lights = m.decor.filter(d => d.def.effect && d.def.effect.kind === 'light');
   const hotels = m.decor.filter(d => d.def.effect && d.def.effect.kind === 'bugs').length;
   const woods = m.areas.includes('woods'), wet = !!m.rain.now;
-  const free = (x, y) => !m.occ.has(x + ',' + y) && !gardenPropAt(x, y) && !gardenIsWater(x, y);
+  const free = (x, y) => !m.occ.has(x + ',' + y) && !gardenPropAt(x, y) && !gardenIsWater(x, y), onFlower = new Set();
   const spot = (hab) => {
     const pick = (list) => list[Math.floor(rnd() * list.length)];
     switch (hab) {
-      case 'flower': { if (!blooms.length) return null; const p = pick(blooms); return { x: p.x + 0.5 + (rnd() - 0.5) * 0.5, y: p.y + 0.6 }; }
+      case 'flower': { if (!blooms.length) return null; const p = pick(blooms); if (onFlower.has(p.uid)) return null; onFlower.add(p.uid); return { x: p.x + 0.5 + (rnd() - 0.5) * 0.5, y: p.y + 0.6 }; }   // one to a flower: a single daisy with three bees on it is a crowd
       case 'tree': { if (!trees.length) return null; const p = pick(trees); return { x: p.x + 0.9, y: p.y + 1.2 }; }
       case 'light': { if (lights.length) { const d = pick(lights); return { x: d.x + 0.5, y: d.y + 0.5 }; } return woods ? spot('woods') : null; }
-      case 'water': { const lake = rnd() < 0.7 || !m.areas.includes('pond'); return lake ? { x: 1 + rnd() * (W.cols - 2), y: 13.2 + rnd() * 0.5 } : { x: 15 + rnd() * 4, y: 1.4 + rnd() }; }
+      case 'water': { const lake = rnd() < 0.7 || !m.areas.includes('pond'); return lake ? { x: 1 + rnd() * (W.coreCols - 2), y: 13.2 + rnd() * 0.5 } : { x: 15 + rnd() * 4, y: 1.4 + rnd() }; }
       case 'woods': { if (!woods) return null; for (let i = 0; i < 12; i++) { const x = 20 + Math.floor(rnd() * 8), y = Math.floor(rnd() * 11); if (free(x, y)) return { x: x + 0.5, y: y + 0.5 }; } return null; }
       case 'ground': { for (let i = 0; i < 16; i++) { const x = Math.floor(rnd() * W.cols), y = Math.floor(rnd() * 13); const a = gardenAreaAt(x, y, m.level.level); if (!a.startsWith('locked:') && free(x, y)) return { x: x + 0.5, y: y + 0.5 }; } return null; }
       default: { for (let i = 0; i < 16; i++) { const x = Math.floor(rnd() * W.cols), y = 7 + Math.floor(rnd() * 5); if (free(x, y) && gardenAreaAt(x, y, m.level.level) === 'lawn') return { x: x + 0.5, y: y + 0.5 }; } return null; }   // lawn
@@ -167,7 +168,7 @@ function gardenBugsNow(mArg) {
   };
   const pool = GARDEN_BUGS.filter(b => b.lv <= m.level.level && b.tod.includes(m.tod) && (!b.seasons.length || b.seasons.includes(m.season)) && (b.rain ? wet : !wet || b.hab.includes('light')) && !(m.season === 'winter'));
   if (!pool.length) return [];
-  const n = Math.max(3, Math.min(13, 3 + Math.floor(blooms.length / 4) + (woods ? 3 : 0) + hotels * 2 + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
+  const n = Math.max(2, Math.min(GARDEN_BUGS_MAX, 2 + Math.floor(blooms.length / 6) + (woods ? 2 : 0) + hotels * 2 + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
   const weights = pool.map(b => (GARDEN_RARITY[b.rarity] || GARDEN_RARITY.common).weight);
   const out = [];
   for (let i = 0; i < n * 3 && out.length < n; i++) {

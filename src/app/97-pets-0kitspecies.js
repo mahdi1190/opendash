@@ -53,11 +53,11 @@ function _ptQuadGeo(pose, k) {
 function _ptQuad(pet, pose, mood, X, k) {
   const g = _ptQuadGeo(pose, k), fur = k.fur || X.a, legT = k.legT || fur, pawCol = k.pawCol || null;
   const ctx = { pet, pose, mood, X, g, k, fur };
-  const parts = { legsF: [], tail: [], body: [], legsN: [], paw: [], neck: [], head: [], eyes: [], fx: [] };
+  const parts = { wingB: [], legsF: [], legsG: [], tail: [], body: [], legsN: [], paw: [], wingN: [], neck: [], ears: [], head: [], eyes: [], fx: [] };
   const lw = g.lw;
   const farT = [_ptMix(legT[0], legT[1], 0.75), legT[3], _ptMix(legT[2], legT[1], 0.5), legT[3]];
   if (pose === 'walk') {
-    for (const [x0, y0, x1, y1] of g.legsF) parts.legsF.push(..._ptLeg(x0, y0, x1, y1, lw * 0.92, farT, pawCol ? _ptMix(pawCol, '#000000', 0.12) : null, k.sock ? _ptMix(k.sock, '#000000', 0.15) : null));
+    g.legsF.forEach(([x0, y0, x1, y1], i) => (i ? parts.legsG : parts.legsF).push(..._ptLeg(x0, y0, x1, y1, lw * 0.92, farT, pawCol ? _ptMix(pawCol, '#000000', 0.12) : null, k.sock ? _ptMix(k.sock, '#000000', 0.15) : null)));   // far hind, far front: each steps on its own
     const [cx, cy, rx, ry] = g.body;
     parts.body.push(_pF(_pE(g.haunch[0], g.haunch[1], g.haunch[2], g.haunch[3]), fur[0]));
     parts.body.push(..._ptBlob(cx, cy, rx, ry, fur));
@@ -92,15 +92,16 @@ function _ptQuad(pet, pose, mood, X, k) {
   const tail = k.tail ? k.tail(ctx) : [];
   parts.tail.push(...tail);
   const H = k.head(ctx);
-  parts.head.push(...(H.back || []), ...(H.head || []));
+  parts.ears.push(...(H.back || []));   // the ears move on their own (a twitch, a bounce)
+  parts.head.push(...(H.head || []));
   parts.eyes.push(...(H.eyes || []));
   parts.head.push(...(H.front || []));
-  const order = pose === 'sit' && k.tailFront ? ['legsF', 'body', 'legsN', 'paw', 'tail', 'neck', 'head', 'eyes', 'fx'] : ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'];
+  const order = pose === 'sit' && k.tailFront ? ['wingB', 'legsF', 'body', 'legsN', 'paw', 'tail', 'wingN', 'neck', 'ears', 'head', 'eyes', 'fx'] : ['wingB', 'legsF', 'legsG', 'tail', 'body', 'legsN', 'paw', 'wingN', 'neck', 'ears', 'head', 'eyes', 'fx'];
   const tr0 = k.tailPiv ? k.tailPiv(ctx) : g.tailRoot;
   return {
     parts, order,
     piv: { tail: tr0, head: [g.hx - g.hr * 0.1, g.hy + g.hr * 0.85], eyes: H.eyesPiv || [g.hx, g.hy], paw: pose === 'sit' ? [g.legsN[0][0], g.legsN[0][1]] : pose === 'walk' ? [g.legsN[1][0], g.legsN[1][1]] : [g.hx, g.G],
-      legsN: pose === 'walk' ? [g.legsN[0][0], g.legsN[0][1]] : g.hipPiv, legsF: g.hipPiv, body: [50, 90] },
+      legsN: pose === 'walk' ? [g.legsN[0][0], g.legsN[0][1]] : g.hipPiv, legsF: pose === 'walk' ? [g.legsF[0][0], g.legsF[0][1]] : g.hipPiv, legsG: pose === 'walk' ? [g.legsF[1][0], g.legsF[1][1]] : null, ears: [g.hx, g.hy - g.hr * 0.55], wingB: k.wingAt ? k.wingAt(ctx) : null, wingN: k.wingAt ? k.wingAt(ctx) : null, body: [50, 90] },
     acc: { neck: H.neck === false ? null : Object.assign({}, g.collar, H.neck || {}), top: H.top, eyes: H.eyesAt, ear: H.ear, hc: H.hc },
     top: Math.min(g.hy - g.hr * 1.4, 20), legsAt: pose === 'walk' ? g.legsN.concat(g.legsF) : null,
   };
@@ -331,11 +332,13 @@ function _ptRedPanda(pet, pose, mood, X) {
   });
 }
 
+/** Where a folded wing joins the body. */
+const _ptWingAt = (c) => (c.pose === 'sit' ? [c.g.torso[0] - 4, c.g.torso[1] - 10] : [c.g.body[0] - 2, c.g.body[1] - c.g.body[3] * 0.9]);
 /* ---------- the dragon (rare) ---------- */
 function _ptDragon(pet, pose, mood, X) {
   const fur = X.a, belly = X.b, m = pet.marks, wing = _ptTone(_ptMix(X.a[0], X.c[0], 0.5));
   const geo = _ptQuad(pet, pose, mood, X, {
-    hr: 15.5, bl: 1.05, bh: 1.06, leg: 0.82, sit: 0.98, legW: 6.6, belly: belly[0],
+    hr: 15.5, bl: 1.05, bh: 1.06, leg: 0.82, sit: 0.98, legW: 6.6, belly: belly[0], wingAt: _ptWingAt,
     tail(c) {
       const [x, y] = c.g.tailRoot, sit = c.pose === 'sit', sl = c.pose === 'sleep';
       const d = sit ? _pP`M${x + 4} ${y - 1}Q${x - 8} ${y + 3} ${x - 13} ${y - 4}Q${x - 16} ${y - 10} ${x - 12} ${y - 14}` : sl ? _pP`M${x + 3} ${y - 1}Q${x - 6} ${y + 8} ${x + 12} ${y + 9}Q${x + 26} ${y + 9} ${x + 36} ${y + 7}` : _pP`M${x + 4} ${y}Q${x - 8} ${y + 2} ${x - 15} ${y - 6}Q${x - 18} ${y - 11} ${x - 15} ${y - 15}`;
@@ -344,12 +347,12 @@ function _ptDragon(pet, pose, mood, X) {
       return [_pL(d, fur[0], 6.4), _pL(d, fur[2], 1.8, 0.4), _pF(_pP`M${tip[0]} ${tip[1] - 5}L${tip[0] + 4} ${tip[1] + 1}L${tip[0]} ${tip[1] + 4}L${tip[0] - 4} ${tip[1] + 1}z`, X.c[0], 1, _ptRot(ang + 70, tip[0], tip[1]))];
     },
     marks(c) {
-      const g = c.g, out = { body: [], legsF: [] };
+      const g = c.g, out = { body: [], wingB: [], wingN: [] };
       // the wings: folded on the back, a little membrane fan
       const wx = c.pose === 'sit' ? g.torso[0] - 4 : g.body[0] - 2, wy = c.pose === 'sit' ? g.torso[1] - 10 : g.body[1] - g.body[3] * 0.9;
       const wingD = (s) => _pP`M${wx} ${wy}Q${wx - 6 * s} ${wy - 14 * s} ${wx - 16 * s} ${wy - 16 * s}Q${wx - 13 * s} ${wy - 9 * s} ${wx - 17 * s} ${wy - 6 * s}Q${wx - 11 * s} ${wy - 3 * s} ${wx - 13 * s} ${wy + 1 * s}Q${wx - 6 * s} ${wy + 2} ${wx} ${wy}z`;
-      out.legsF.push(_pF(wingD(1.05), wing[1]));
-      out.body.push(_pF(wingD(0.95), wing[0]), _pL(_pP`M${wx} ${wy}L${wx - 15} ${wy - 15}M${wx} ${wy}L${wx - 15} ${wy - 6}`, wing[3], 0.8, 0.5));
+      out.wingB.push(_pF(wingD(1.05), wing[1]));
+      out.wingN.push(_pF(wingD(0.95), wing[0]), _pL(_pP`M${wx} ${wy}L${wx - 15} ${wy - 15}M${wx} ${wy}L${wx - 15} ${wy - 6}`, wing[3], 0.8, 0.5));
       // spikes along the back
       if (c.pose === 'walk') { const [cx, cy, rx, ry] = g.body; for (let i = 0; i < 4; i++) { const sx = cx - rx * 0.7 + i * rx * 0.42, sy = cy - ry * 0.98 + Math.abs(i - 1.5) * 0.9; out.body.push(_pF(_pP`M${sx - 2.4} ${sy + 1}L${sx} ${sy - 3.6}L${sx + 2.4} ${sy + 1}z`, X.c[0])); } }
       if (m === 'spots') { const r0 = c.pose === 'sit' ? [g.haunch[0], g.haunch[1], g.haunch[2], g.haunch[3]] : g.body; for (const [u, v] of [[-0.4, -0.3], [0.1, -0.5], [0.45, -0.2], [-0.1, 0.1]]) out.body.push(_pF(_pC(r0[0] + u * r0[2], r0[1] + v * r0[3], 1.5), X.c[0], 0.8)); }
@@ -466,8 +469,8 @@ function _ptRabbit(pet, pose, mood, X) {
   front.push(..._ptBlush(eyesAt[0] - r * 0.1, eyesAt[1] + r * 0.1, y + r * 0.34, r * 0.17, 0.32));
   front.push(_pF(_pP`M${nx - r * 0.09} ${ny - r * 0.04}L${nx + r * 0.09} ${ny - r * 0.04}L${nx} ${ny + r * 0.07}z`, X.nose || '#ef8fa0'), _pL(_pP`M${nx} ${ny + r * 0.06}L${nx} ${ny + r * 0.16}M${nx} ${ny + r * 0.16}q${-r * 0.1} ${r * 0.08} ${-r * 0.16} ${0}M${nx} ${ny + r * 0.16}q${r * 0.1} ${r * 0.08} ${r * 0.16} ${0}`, '#6a3a40', r * 0.05, 0.85));
   if (mood.mouth === 'open') front.push(_pF(_pE(nx, ny + r * 0.3, r * 0.08, r * 0.07), '#6a2a34'));
-  parts.head.push(...back, ...head, ...front);
-  return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'fx'], piv: Object.assign({ head: [x, y + r * 0.8], eyes: [x, eyesAt[2]], body: [44, 90] }, piv),
+  parts.ears = back; parts.head.push(...head, ...front);
+  return { parts, order: ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'ears', 'head', 'eyes', 'fx'], piv: Object.assign({ head: [x, y + r * 0.8], eyes: [x, eyesAt[2]], ears: [x, y - r * 0.7], body: [44, 90] }, piv),
     acc: { hc: [x, y, r], neck: { x: x - r * 0.02, y: y + r * 0.84, w: r * 1.0, rot: pose === 'sleep' ? 60 : 0 }, top: lop ? [x, y - r * 0.82, r * 1.2, 3] : [x, y - r * 0.82, r * 1.0, 3], eyes: eyesAt, ear: [x - r * 0.15, y - r * 0.95, r * 0.24] }, top: y - r * 2.6 };
 }
 

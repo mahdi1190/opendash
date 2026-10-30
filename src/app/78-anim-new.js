@@ -79,7 +79,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   window.addEventListener('load', () => {
     let tries = 0;
     const tick = () => {
-      const busy = document.hidden || document.querySelector('.ap-opening:not(.anim-scene), .modal, .story, .bf-overlay') || document.documentElement.classList.contains('story-open');
+      const busy = document.hidden || document.querySelector('.ap-opening:not(.anim-scene), .modal, .story, .bf-overlay') || document.documentElement.classList.contains('story-open') || (document.documentElement.classList.contains('gd-immersive') || document.documentElement.classList.contains('gsv-immersive'));   // not over the garden: it waits until you leave
       if (busy) { if (++tries < 40) setTimeout(tick, 3000); return; }
       animNewCardShow(false);
     };

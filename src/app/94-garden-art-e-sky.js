@@ -41,6 +41,40 @@ function _gartSnowLayer(r, o, n, P, R, op, dur) {
   return `<g class="gart-snowf" style="--gp:${P}px;animation-duration:${dur}s;animation-delay:-${f1(r() * dur)}s">${A.P('#ffffff', d, op)}</g>`;
 }
 
+/**
+ * The garden's small residents, whether or not they count as visitors: butterflies and bees over what is in flower, dragonflies over
+ * water, a bird or two crossing the sky by day, moths at dusk. Each is a few nodes; there are never more than about ten.
+ */
+function _gartAmbient(o) {
+  const A = GART, f1 = A.f1, r = A.rng(A.hash('amb|' + o.seed + '|' + o.season)), W = GARDEN_WORLD;
+  if (o.size === 's') return '';
+  const blooms = (o.plants || []).filter(p => p.stage >= 3).slice(0, 80);
+  const at = (p, lift) => [(p.x + 0.5) * W.cellW, W.sky + (p.y + 0.6) * W.cellH - lift];
+  let s = '';
+  const fly = (x, y, rad, d, inner) => `<g transform="translate(${f1(x)} ${f1(y)})"><g class="gart-amb" style="--r:${f1(rad)}px;--d:${f1(d)}s;--dl:-${f1(r() * d)}s">${inner}</g></g>`;
+  const wings = (c, c2) => `<g class="gart-wing"><path fill="${c}" stroke="${A.dk(c, 0.55)}" stroke-width="0.4" d="M0 0C-2 -5 -7 -6 -7.4 -2.6C-7.6 -0.6 -4 0.4 0 0zM0 0C-3 1 -5.6 2 -4.8 4C-3.8 5.2 -1 3.4 0 0z"/>${A.P(c2, A.circ(-4.6, -2.8, 1))}</g><g class="gart-wing is-r"><path fill="${c}" stroke="${A.dk(c, 0.55)}" stroke-width="0.4" d="M0 0C2 -5 7 -6 7.4 -2.6C7.6 -0.6 4 0.4 0 0zM0 0C3 1 5.6 2 4.8 4C3.8 5.2 1 3.4 0 0z"/>${A.P(c2, A.circ(4.6, -2.8, 1))}</g><path fill="#3a2c24" d="M-0.5 -2.6h1l.2 5.2h-1.4z"/>`;
+  const warm = o.season === 'spring' || o.season === 'summer' || o.season === 'autumn';
+  if (o.tod === 'day' && warm && blooms.length) {
+    const bcols = o.season === 'autumn' ? [['#d9671c', '#fbe0a0'], ['#8a4a24', '#f4c47a']] : [['#fbf7ee', '#3a3a3a'], ['#f2a832', '#3a2410'], ['#8ab4f0', '#fff0c0'], ['#e87a98', '#fff0c0']];
+    const nb = Math.min(4, 1 + Math.floor(blooms.length / 8));
+    for (let i = 0; i < nb; i++) { const [x, y] = at(blooms[Math.floor(r() * blooms.length)], 26), c = bcols[i % bcols.length]; s += fly(x, y, 30 + r() * 26, 15 + r() * 10, wings(c[0], c[1])); }
+    const nq = Math.min(4, Math.floor(blooms.length / 6));
+    for (let i = 0; i < nq; i++) { const [x, y] = at(blooms[Math.floor(r() * blooms.length)], 18); s += fly(x, y, 12 + r() * 10, 6 + r() * 5, `<g class="gart-wing is-fast"><path fill="#ffffff" fill-opacity="0.8" d="M0 -1.2C-1 -4 -4.4 -4 -4.4 -2C-4.4 -1 -2 -0.8 0 -1.2z"/></g><g class="gart-wing is-r is-fast"><path fill="#ffffff" fill-opacity="0.8" d="M0 -1.2C1 -4 4.4 -4 4.4 -2C4.4 -1 2 -0.8 0 -1.2z"/></g><path fill="#f2b81e" stroke="#6a4a10" stroke-width="0.35" d="${A.ell(0, 0, 2.6, 1.9)}"/><path fill="#2c2018" d="M-1 -1.8h0.9v3.6h-0.9zM0.8 -1.7h0.8v3.4h-0.8z"/>`); }
+  }
+  if ((o.tod === 'day' || o.tod === 'dusk') && warm && (o.areas || []).includes('lake')) {
+    const a = gardenArea('lake');
+    if (a && a.water) for (let i = 0; i < 2; i++) { const x = r() * W.cols * W.cellW, y = W.sky + (a.water.y + 0.4 + r()) * W.cellH - 18; s += fly(x, y, 34 + r() * 30, 11 + r() * 7, `<g class="gart-wing is-fast"><path fill="#cfe8f4" fill-opacity="0.75" d="M0 0L-9 -1.6Q-9.4 0.4 0 0z"/></g><g class="gart-wing is-r is-fast"><path fill="#cfe8f4" fill-opacity="0.75" d="M0 0L9 -1.6Q9.4 0.4 0 0z"/></g><path fill="#2a78a8" stroke="#123a58" stroke-width="0.35" d="M-0.7 -2.6Q0 -3.4 0.7 -2.6L0.4 7Q0 7.6 -0.4 7z"/>`); }
+  }
+  if (o.tod === 'dusk' && (o.plants || []).length) for (let i = 0; i < 2; i++) { const [x, y] = at(o.plants[Math.floor(r() * o.plants.length)], 30); s += fly(x, y, 26 + r() * 20, 9 + r() * 6, wings('#c8b89a', '#6a5a44')); }
+  if (o.tod === 'day' && o.season !== 'winter') {
+    // now and then a small flock crosses the sky
+    const y = 24 + r() * 50, dir = r() < 0.5, w = W.cols * W.cellW;
+    let b = ''; for (let i = 0; i < 4; i++) { const bx = (i % 2 ? -1 : 1) * i * 7, by = i * 4 + (i % 2) * 2; b += `<path fill="none" stroke="#3a4656" stroke-width="1.1" stroke-linecap="round" d="M${bx - 4} ${by - 1}q2 -2 4 0q2 -2 4 0"/>`; }
+    s += `<g transform="translate(${dir ? -60 : w + 60} ${f1(y)})"><g class="gart-fly" style="--gx:${dir ? w + 120 : -w - 120}px;--gy:${f1((r() - 0.5) * 30)}px;--d:${f1(90 + r() * 60)}s;--dl:-${f1(r() * 100)}s">${b}</g></g>`;
+  }
+  return s ? `<g class="gart-wx gart-wx-life" aria-hidden="true">${s}</g>` : '';
+}
+
 function gartWeather(kind, o) {
   const A = GART, f1 = A.f1, rr = A.rr;
   o = Object.assign({ w: 960, h: 480, top: 150, size: 'm', season: 'summer', tod: 'day', seed: '' }, o || {});
@@ -49,12 +83,13 @@ function gartWeather(kind, o) {
     const rain = o.rain || {};
     if (rain.snow) return gartWeather('snow', o);
     if (rain.now) return gartWeather('rain', o);
-    if (o.tod === 'night') return o.season === 'summer' ? gartWeather('fireflies', o) : '';
-    if (o.tod === 'dawn' && (o.season === 'autumn' || o.season === 'winter')) return gartWeather('mist', o);
-    if (o.season === 'spring' && o.tod === 'day') return gartWeather('petals', o);
-    if (o.season === 'autumn' && o.tod !== 'dusk') return gartWeather('leaves', o);
-    if (o.season === 'summer' && (o.tod === 'day' || o.tod === 'dawn')) return gartWeather('sun', o);
-    return '';
+    const am = _gartAmbient(o);
+    if (o.tod === 'night') return (o.season === 'summer' || o.season === 'spring' ? gartWeather('fireflies', o) : '') + am;
+    if (o.tod === 'dawn' && (o.season === 'autumn' || o.season === 'winter')) return gartWeather('mist', o) + am;
+    if (o.season === 'spring' && o.tod === 'day') return gartWeather('petals', o) + am;
+    if (o.season === 'autumn' && o.tod !== 'dusk') return gartWeather('leaves', o) + am;
+    if (o.season === 'summer' && (o.tod === 'day' || o.tod === 'dawn')) return gartWeather('sun', o) + am;
+    return am;
   }
   let s = '';
   if (kind === 'rain') {
@@ -73,14 +108,10 @@ function gartWeather(kind, o) {
     return `<g class="gart-wx gart-wx-snow" aria-hidden="true">${s}</g>`;
   }
   if (kind === 'sun') {
-    // long soft rays falling from the upper left, gently brightening and fading
-    let rays = '';
-    const ox = -o.w * 0.05, oy = -o.h * 0.1;
-    for (let i = 0; i < _gartWxN(o, 3, 5, 6); i++) { const a = 0.5 + i * 0.16 + r() * 0.06, w2 = 0.025 + r() * 0.03, L = o.h * 1.6; rays += A.poly([[ox, oy], [ox + Math.sin(a - w2) * L, oy + Math.cos(a - w2) * L], [ox + Math.sin(a + w2) * L, oy + Math.cos(a + w2) * L]]); }
-    s = `<g class="gart-rays" style="animation-delay:-${f1(r() * 9)}s">${A.P('#fff4c4', rays, 0.1)}</g>`;
+    // motes of light drifting in the sun (long rays were tried: hard-edged wedges across the lake, so no)
     let motes = '';
     for (let i = 0; i < _gartWxN(o, 4, 9, 12); i++) motes += A.circ(r() * o.w * 0.7, o.top - 40 + r() * (o.h - o.top), 1 + r());
-    return `<g class="gart-wx gart-wx-sun" aria-hidden="true">${s}<g class="gart-glimmer">${A.P('#fffbe0', motes, 0.7)}</g></g>`;
+    return `<g class="gart-wx gart-wx-sun" aria-hidden="true"><g class="gart-glimmer">${A.P('#fffbe0', motes, 0.7)}</g></g>`;
   }
   if (kind === 'petals' || kind === 'leaves') {
     const cols = kind === 'petals' ? ['#f8c6d6', '#fbe3ec', '#ffffff'] : ['#d9671c', '#e8a23a', '#c0392b', '#b8862a'];

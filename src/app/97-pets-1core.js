@@ -127,7 +127,7 @@ function petAdopt(look) {
   return petGet();
 }
 function petRandomName(species, seed) {
-  const own = _PT_SPECIES_NAMES[species] || [];
+  const own = (petSpecies(species) || {}).names || _PT_SPECIES_NAMES[species] || [];
   const all = own.concat(PET_NAMES);
   return all[(seed == null ? Math.floor(Math.random() * 1e9) : seed) % all.length];
 }
@@ -136,7 +136,7 @@ function petRandomName(species, seed) {
 function petUnlockCtx() {
   const s = _ptStats(), g = typeof state !== 'undefined' && state && state.game && state.game.seen ? state.game.seen : {};
   const best = s && s.streaks && s.streaks.done ? Math.max(Number(s.streaks.done.best) || 0, Number(s.streaks.done.current) || 0) : 0;
-  return { game: !!s, levelMax: Math.max(1, Number(g.levelMax) || 1, s ? Number(s.level.max) || s.level.level : 1), bestStreak: best, collected: _ptS().collected, today: _ptToday() };
+  return { game: !!s, levelMax: Math.max(1, Number(g.levelMax) || 1, s ? Number(s.level.max) || s.level.level : 1), bestStreak: best, collected: _ptS().collected, today: _ptToday(), unl: _ptS().unl || {}, bought: _ptS().buy || {}, bondBest: typeof _ptcBondBest === 'function' ? _ptcBondBest(_ptS()) : 1 };
 }
 function petLocked(field, id, species) { try { return petLockOf(field, id, petUnlockCtx(), species || (_ptS().look || {}).species); } catch (e) { return ''; } }
 /** Seasonal accessories: in season they are collected, and stay yours for good. */
@@ -218,7 +218,9 @@ function petTreats() {
     earned += 3 * Math.max(0, _ptDays(p.born, today) + 1);
     out.todayEarned = 3;
   }
+  // 2.23: treats from the garden, and what the collection spends (97-pets-1collect.js)
   let spent = 0;
+  if (typeof _ptcTreatLedger === 'function') { const L = _ptcTreatLedger(p); earned += L.earned; spent += L.spent; out.todayEarned += L.today; out.gardenToday = L.today; }
   for (const n of Object.values(p.fed)) spent += Math.max(0, Number(n) || 0);
   for (const id of Object.keys(p.tricks)) { const t = petTrick(id); if (t) spent += t.cost || 0; }
   out.earned = earned; out.spent = spent; out.have = Math.max(0, earned - spent);
@@ -235,8 +237,9 @@ function petFeed() {
   _pt.lastCare = Date.now(); _pt.reactUntil = Date.now() + 2600; _pt.memo = null;   // clock-ok: UI timing
   for (const k of [1, 10, 50, 100, 250, 500, 1000]) if (total === k) _ptNote('treat-' + k, { n: k });
   _ptCareAward(g);
+  const bondUp = typeof petBondGive === 'function' ? petBondGive('treat') : 0;
   _ptEmit();
-  return { ok: true, treat: (petSpecies(g.look.species) || {}).treat || 'cookie', msg: [`${n} loved the ${label}!`, `Nom nom. ${n} says thank you.`, `${n} munched the ${label} happily.`][total % 3] };
+  return { ok: true, bondUp, treat: (petSpecies(g.look.species) || {}).treat || 'cookie', msg: [`${n} loved the ${label}!`, `Nom nom. ${n} says thank you.`, `${n} munched the ${label} happily.`][total % 3] };
 }
 function petPat() {
   const g = petGet();
@@ -249,7 +252,9 @@ function petPat() {
   if ((_ptHour() >= 22 || _ptHour() < 6)) petWake(45000);
   for (const k of [1, 10, 100, 500, 1000]) if (total === k) _ptNote('pat-' + k, { n: k });
   _ptCareAward(g);
-  return { ok: true, n };
+  const bondUp = typeof petBondGive === 'function' ? petBondGive('pat') : 0;
+  if (typeof saveUI === 'function' && bondUp) saveUI();
+  return { ok: true, n, bondUp };
 }
 /** A little XP once a day for time with your pet (the game's own cap applies). */
 function _ptCareAward(g) {
@@ -309,11 +314,13 @@ function _ptJournalLine(key, e, n, look) {
   switch (k) {
     case 'treat': return { icon: 'cookie', line: num === 1 ? `${n}'s first treat: a ${petTreatLabel(look)}.` : `${num} treats shared with ${n}.` };
     case 'pat': return { icon: 'heart', line: num === 1 ? `The first pat. ${n} approves.` : `${num.toLocaleString()} pats for ${n}.` };
-    case 'trick': { const t = petTrick(rest); return { icon: t ? t.icon : 'sparkles', line: `${n} learned ${t ? t.label.toLowerCase() : 'a trick'}!` }; }
+    case 'trick': { const t = petTrick(rest) || (typeof petBookRow === 'function' && petBookRow(rest) ? { icon: 'wand-sparkles', label: petBookRow(rest).name } : null); return { icon: t ? t.icon : 'sparkles', line: `${n} learned ${t ? t.label.toLowerCase() : 'a trick'}!` }; }
     case 'level': return { icon: 'trophy', line: `${n} was there when you reached level ${num}.` };
     case 'streak': return { icon: 'zap', line: `A ${num}-day streak, with ${n} cheering you on.` };
     case 'together': return { icon: 'calendar-heart', line: num >= 365 ? `${Math.round(num / 365) === 1 ? 'A whole year' : Math.round(num / 365) + ' years'} together with ${n}.` : num >= 30 ? `${Math.round(num / 30) === 1 ? 'A month' : Math.round(num / 30) + ' months'} together with ${n}.` : `${num === 7 ? 'A week' : num + ' days'} together with ${n}.` };
     case 'season': return { icon: 'gift', line: `${n} got something new for the season.` };
+    case 'met': { const s = petSpecies(rest); return { icon: 'paw-print', line: s ? `${s.label} joined your collection.` : 'A new friend joined your collection.' }; }
+    case 'bond': { const [sid, lv] = rest.split('-'), s = petSpecies(sid); return { icon: 'heart', line: `${s ? s.label : 'A pet'} reached friend level ${lv}.` }; }
     default: return { icon: 'paw-print', line: `A good day with ${n}.` };
   }
 }
@@ -419,10 +426,19 @@ function petEl(who, size, o) {
     el.style.setProperty('--pt-size', sz + 'px');
     el.setAttribute('role', 'img');
     el.setAttribute('aria-label', _ptLabel(w));
-    el.innerHTML = petSvg(w.look, { size: sz, pose, mood, motion: o.motion !== false && fun !== 'off' && _ptMotionOk(), crop: o.crop });   // built from allow-listed ids and numbers only (97-pets-0kit*.js)
+    const moves = o.motion !== false && fun !== 'off' && _ptMotionOk();
+    el.innerHTML = petSvg(w.look, { size: sz, pose, mood, motion: moves, crop: o.crop });   // built from allow-listed ids and numbers only (97-pets-0kit*.js)
     el._petPose = pose;
+    if (moves) { if (sz < 40) el.classList.add('pt-lite'); _ptWatch(el); }
     return el;
   } catch (e) { console.error('[pets] petEl', e); return null; }
+}
+/* 2.23: a drawn pet rests while it is off screen (one observer for them all). */
+let _ptIO = null;
+function _ptWatch(el) {
+  if (typeof IntersectionObserver !== 'function') return;
+  if (!_ptIO) _ptIO = new IntersectionObserver((es) => { for (const e of es) { e.target.classList.toggle('pt-off', !e.isIntersecting); if (!e.target.isConnected) _ptIO.unobserve(e.target); } }, { rootMargin: '40px' });
+  _ptIO.observe(el);
 }
 function petCardBadge(who, o) {
   try {
@@ -480,8 +496,21 @@ function _ptGardenList(ctx) {
   const motion = _ptMotionOk();
   const mood = w.me ? (petMood() || {}) : _ptFriendMood(w);
   const pose = ctx.tod === 'night' || mood.pose === 'sleep' ? 'sleep' : ctx.rain || !motion ? 'sit' : 'walk';
-  const svg = petSvgGroup(w.look, { h: 46, pose, mood: pose === 'sleep' ? { eyes: 'closed' } : mood, cls: motion ? 'pt-live pt-fun-' + _ptFun() : '' });
-  return svg ? [{ id: 'pet-' + w.look.species, svg, w: 1, walk: pose === 'walk', mood: pose === 'sleep' ? 'sleepy' : mood.key || 'content' }] : null;
+  const one = (look, i) => {
+    const h = 26 + 20 * Math.min(1, Number((petSpecies(look.species) || {}).h) || 0.3);
+    const asleep = pose === 'sleep', p2 = !asleep && i % 2 ? 'sit' : pose;   // not all in step: some walk, some sit
+    const svg = petSvgGroup(look, { h, pose: p2, mood: asleep ? { eyes: 'closed' } : mood, cls: motion ? 'pt-live pt-fun-' + _ptFun() : '' });
+    return svg ? { id: 'pet-' + look.species, svg, w: 1, walk: p2 === 'walk', mood: asleep ? 'sleepy' : mood.key || 'content' } : null;
+  };
+  const others = ctx.friend ? _ptFriendPack(ctx.friend) : (typeof petPackLooks === 'function' ? petPackLooks() : []);
+  const list = [w.look, ...others].map(one).filter(Boolean);
+  return list.length ? list : null;
+}
+/** The other pets a friend has out in their garden (their 'pet:pack'), each cleaned like any pet of a friend. */
+function _ptFriendPack(view) {
+  const b = view && view.petPack;
+  if (!b || typeof b !== 'object' || !Array.isArray(b.pets)) return [];
+  return b.pets.slice(0, 3).map(petSanitize).filter(Boolean);
 }
 /** THE GARDEN'S API (see the header). An SVG <g> string; '' when there is no pet to show. */
 function petGardenSprite(who, opts) {
@@ -542,11 +571,22 @@ async function petItemsShareNow() {
     return true;
   } catch (e) { return false; }   // an app or server without the kind: friends see the plain pet
 }
+/** Publish the others you let out in your garden, so a friend's visit shows them too (an older friend ignores the kind). */
+async function petPackShareNow() {
+  const F = typeof window !== 'undefined' && window.Friends && typeof window.Friends.publish === 'function' ? window.Friends : null;
+  if (!F || typeof petPackLooks !== 'function') return false;
+  const p = _ptS(), share = p.look && p.on !== false && p.share !== false;
+  const pets = share ? petPackLooks().map(l => petWire(l)).filter(Boolean) : [];
+  const sig = JSON.stringify(pets);
+  if (sig === (p.packSent || '[]')) return true;
+  try { if (F.ready && typeof F.ready.then === 'function') await F.ready; await F.publish('pet:pack', { v: 1, pets }); const q = _ptS(true); q.packSent = sig; if (typeof saveUI === 'function') saveUI(); return true; } catch (e) { return false; }
+}
 function _ptShareSoon() {
   clearTimeout(_pt.shareT);
   _pt.shareT = setTimeout(() => {
     try { if (typeof profileShareNow === 'function') profileShareNow(false).catch(() => {}); } catch (e) { /* no profile */ }
     petItemsShareNow().catch(() => {});
+    petPackShareNow().catch(() => {});
   }, 3500);
 }
 

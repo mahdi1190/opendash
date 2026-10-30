@@ -28,10 +28,11 @@
    gartWeather(kind, o) and gartLighting(tod, o), the overlays over a whole garden (94-garden-art-e-sky.js;
    the renderer asks for them through two guarded hooks), window.GardenArt {art, ids, has, weather, lighting}.
 
-   FILES. 0core (this: helpers, palette, registry, the contract), 1kit (the plant kit), 2flowers / 3flowers /
-   5flowers / 6wild (flowers, wildflowers, herbs), 4trees, 7veg (veg and fruit), 8more (succulents, the pond,
-   exotics), 9ground (tiles and paths), a-decor / b-decor (decorations), c-visitors, d-items (crops, seed packets,
-   tools, bouquets), e-sky (weather and light); motion extras in src/styles/94-garden-art.css.
+   FILES. 0core (this: helpers, palette, registry, the contract), 1kit (the plant kit), j-bloom (flowers and most
+   fruit and veg: one builder, a row per form), 4trees, 6wild (fern, leafy herbs), 7veg (the sprawling veg), 8more
+   (succulents, the pond, exotics), 9ground (tiles and paths), a-decor / b-decor / k-decor (decorations), i-kit (parts),
+   c-visitors, d-items (crops, seed packets, tools, bouquets), e-sky (weather and light), f-world, g-player, h-life;
+   motion extras in src/styles/94-garden-art.css.
    ============================================================ */
 const GART = (function () {
   const f1 = v => Math.round(v * 10) / 10;
@@ -157,7 +158,7 @@ const GART = (function () {
   /** A negative animation delay from the seed, so a bed never moves in step. */
   const T = (r, d0, d1) => `animation-delay:-${f1(rr(r, d0 == null ? 0 : d0, d1 == null ? 4 : d1))}s`;
   /** A contact shadow: one flat, faint ellipse. */
-  const shadow = (rx, ry, o) => `<ellipse cx="0" cy="0" rx="${f1(rx)}" ry="${f1(ry || rx * 0.22)}" fill="#2a2418"${op(0.16 * (o == null ? 1 : o))}/>`;
+  const shadow = (rx, ry, o) => { const k = o == null ? 1 : o, h = ry || rx * 0.22; return `<ellipse cx="${f1(rx * 0.14)}" cy="${f1(h * 0.2)}" rx="${f1(rx * 1.16)}" ry="${f1(h * 1.24)}" fill="#26303a"${op(0.09 * k)}/><ellipse cx="${f1(rx * 0.07)}" cy="0" rx="${f1(rx * 0.8)}" ry="${f1(h * 0.78)}" fill="#26303a"${op(0.15 * k)}/>`; };
   return Object.freeze({ f1, D, hash, rng, rr, pick, hx, mix, dk, lt, hsl, fromHsl, shift, tone3, leaf4, at, circ, ell, rect, rrect, poly, line, leaf, halfLeaf, petal, stem, blob, star, twigs, limb, P, S, G, T, shadow, op, HEX });
 })();
 
@@ -223,6 +224,8 @@ function _gartFind(kind, id, cat) {
   if (_GART_DEF[k + ':' + id]) return _GART_DEF[k + ':' + id];
   if (k === 'plant' && cat && cat.look && _GART_DEF['form:' + cat.look.form]) return _GART_DEF['form:' + cat.look.form];
   if (k === 'crop') return (cat && cat.look && _GART_DEF['cropform:' + cat.look.form]) || _GART_DEF['crop:_any'] || null;
+  // 2.23: a catalogue row drawn from kit parts needs no drawing of its own (94-garden-art-i-kit.js)
+  if ((k === 'plant' || k === 'decor' || k === 'visitor') && cat && cat.look && Array.isArray(cat.look.parts)) return _GART_DEF['kit:parts'] || null;
   return null;
 }
 function gartHas(kind, id) { return !!_gartFind(kind, id, _gartCat(kind, id)); }
@@ -281,7 +284,8 @@ function _gartFit(def, o) {
   if (def.fit === 'none') return 1;
   if (o.kind === 'plant') {
     const fp = (o.cat && o.cat.fp) || def.fp || 1, h = (o.look && o.look.h) || def.h || (b[1] / U);
-    return Math.min(U * h / b[1], (U * fp + 18) / b[0]);
+    // 2.23: nothing is drawn smaller than about two thirds of a cell: a low plant must still read on the lawn from across the garden
+    return Math.min(U * Math.max(h, 0.62) / b[1], (U * fp + 18) / b[0]);
   }
   // decorations, visitors and tiles are drawn in art units already; 'unit' scales a drawing into one 64-unit cell
   return def.fit === 'unit' ? Math.min((U - 8) / b[0], (U - 8) / b[1]) : 1;
@@ -307,7 +311,33 @@ function _gartWeeds(o, r, w) {
 /** Ripe: two small sparkles (the engine may add its own badge). */
 function _gartRipe(r, w, h) {
   const A = GART, sp = (x, y, s) => `M${A.f1(x)} ${A.f1(y - s)}l${A.f1(s * 0.28)} ${A.f1(s * 0.72)} ${A.f1(s * 0.72)} ${A.f1(s * 0.28)} ${A.f1(-s * 0.72)} ${A.f1(s * 0.28)} ${A.f1(-s * 0.28)} ${A.f1(s * 0.72)} ${A.f1(-s * 0.28)} ${A.f1(-s * 0.72)} ${A.f1(-s * 0.72)} ${A.f1(-s * 0.28)} ${A.f1(s * 0.72)} ${A.f1(-s * 0.28)}z`;
-  return `<g class="gda-blink" style="${A.T(r, 0, 2)}">${A.P('#fff3b0', sp(-w * 0.55, -h * 0.8, 4) + sp(w * 0.5, -h * 0.55, 3))}</g>`;
+  return `<g class="gda-blink" style="${A.T(r, 0, 2)}">${A.P('#fff3b0', sp(w * 0.5, -h * 0.72, 2.6))}</g>`;
+}
+/* ---------- the storybook finish (2.23, docs/dev/GARDEN.md section 14): one line and one scale for everything ---------- */
+const _GART_INK = new Map();
+/** The line colour of a fill: the same hue, much deeper, a touch more saturated (coloured ink, never black). */
+function _gartInkOf(c) {
+  let v = _GART_INK.get(c);
+  if (!v) { const [h, s, l] = GART.hsl(c); v = GART.fromHsl(h + (h > 40 && h < 200 ? 8 : -8), Math.min(1, s * 0.9 + 0.08), Math.max(0.16, l * 0.64)); _GART_INK.set(c, v); }
+  return v;
+}
+/** Solid shapes get a line in a deeper tone of their own colour. Washes (anything with opacity) and specks stay bare. */
+function _gartInk(s) {
+  return s.replace(/<path fill="(#[0-9a-fA-F]{6})" d="([^"]*)"\/>/g, (m, c, d) => {
+    if (d.length < 26) return m;
+    const a = /^M[^a]*a(\d*\.?\d+) /.exec(d);
+    if (a && +a[1] < 1.5) return m;
+    return `<path fill="${c}" stroke="${_gartInkOf(c)}" d="${d}"/>`;
+  });
+}
+/** How much bigger a young plant is drawn than its own stage's drawing: a sprout must read on a lawn from across the garden. */
+const _GART_YOUNG = Object.freeze([1, 1.55, 1.32, 1.1, 1]);
+/** A young plant's patch of dug earth: dark, crumbly and soft-edged, so the green has something to stand out from. */
+function _gartPatch(r, w) {
+  const A = GART, S = GART_PAL.soil, h = Math.max(3, w * 0.3);
+  let cr = '';
+  for (let i = 0; i < 4; i++) cr += A.ell(A.rr(r, -w * 0.62, w * 0.62), A.rr(r, -h * 0.4, h * 0.45), 0.9, 0.6);
+  return A.P(S[0], A.ell(0.5, 0.3, w * 1.02, h * 1.02), 0.3) + A.P(S[1], A.ell(0, 0, w * 0.86, h * 0.8), 0.92) + A.P(S[2], A.ell(-w * 0.2, -h * 0.2, w * 0.42, h * 0.32), 0.42) + A.P(S[3], cr, 0.7);
 }
 /**
  * THE CONTRACT. gardenArt(id, o) -> '<g>…</g>' in art units (anchor: the bottom centre of the footprint), or ''.
@@ -333,8 +363,19 @@ function gardenArt(id, o) {
       if (opts.overgrown && opts.stage > 1) s += _gartWeeds(opts, fr, bw * 0.9);
       if (opts.ripe && opts.stage >= 3 && !opts.silhouette) s += _gartRipe(fr, bw, bh * (opts.stage === 4 ? 0.9 : 0.6));
     }
+    let kk = k;
+    if (kind === 'plant' && !opts.silhouette && opts.stage > 0 && opts.stage < 4) {
+      if (opts.look.form !== 'climber') kk = k * _GART_YOUNG[opts.stage];   // a climber's frame is already its full height
+      if (opts.stage < 3 && !(opts.cat && opts.cat.cat === 'water')) s = _gartPatch(fr, Math.min(def.box[0] * 0.42, 15 / kk)) + s;
+    }
+    // 2.23: no decoration is all thin line: fine strokes (cords, rails, wires) get a little more weight
+    if (kind === 'decor' && !(opts.cat && opts.cat.layer === 'ground')) s = s.replace(/ stroke-width="(0?\.\d+|1(?:\.\d+)?|2)"/g, (m, w) => ` stroke-width="${Math.round(+w * 13) / 10}"`);
     if (opts.silhouette) s = _gartSilhouette(s, '#5d6658');
-    const sc = Math.abs(k - 1) < 0.005 ? '' : ` transform="scale(${Math.round(k * 1000) / 1000})"`;
+    else if (kind !== 'tile' && kind !== 'seed' && !(opts.cat && opts.cat.layer === 'ground')) {
+      // the line stays the same weight on screen, whatever the drawing's own scale; it is painted behind the fill, so small shapes keep their size
+      s = `<g stroke-width="${Math.round(0.95 / kk * 100) / 100}" stroke-linejoin="round" paint-order="stroke">${_gartInk(s)}</g>`;
+    }
+    const sc = Math.abs(kk - 1) < 0.005 ? '' : ` transform="scale(${Math.round(kk * 1000) / 1000})"`;
     // path data needs no space before a minus sign: about a tenth off every fragment (a garden draws hundreds)
     s = s.replace(/ d="([^"]*)"/g, (m, d) => ` d="${d.replace(/ -/g, '-')}"`);
     return `<g class="gart gart-${kind}"${sc}>${s}</g>`;

@@ -52,7 +52,7 @@ function _gdcBag(el, m, bag) {
   const mk = gardenMarketInfo(m), E = GARDEN_CATCH_ECON;
   const info = gardenCastsInfo(m);
   const head = _gdpEl('section', 'card gdc-market');
-  head.innerHTML = `<div class="gdc-market-h">${icon('coins')}<b>The market</b><span class="muted">Fish and bugs sell for their price. It only wants so much a day at full price; past that it pays a fifth, so nothing is wasted and nothing is a farm.</span></div>`;
+  head.innerHTML = `<div class="gdc-market-h">${icon('coins')}<b>The market</b><span class="muted" data-tip="Full price up to a limit each day, then a fifth"></span></div>`;
   const meters = _gdpEl('div', 'gdc-meters');
   const meter = (label, left, cap) => { const d = _gdpEl('div', 'gdc-meter'); d.innerHTML = `<span>${esc(label)}</span><span class="gdc-bar"><i style="width:${Math.round((cap - left) / cap * 100)}%"></i></span><b>${cap - left} of ${cap} coins</b>`; return d; };
   meters.appendChild(meter('Fish today', mk.fishLeft, mk.fishCap)); meters.appendChild(meter('Bugs today', mk.bugsLeft, mk.bugCap));
@@ -67,7 +67,7 @@ function _gdcBag(el, m, bag) {
   // the order board
   const orders = gardenOrdersNow(m);
   const board = _gdpEl('section', 'card gdc-orders');
-  board.innerHTML = `<div class="gdc-market-h">${icon('handshake')}<b>Order board</b><span class="muted">Three requests a day, paid in coins and goods. They do not use up the market.</span></div>`;
+  board.innerHTML = `<div class="gdc-market-h">${icon('handshake')}<b>Order board</b></div>`;
   const list = _gdpEl('div', 'gdc-order-list');
   for (const o of orders) {
     const row = _gdpEl('div', 'gdc-order' + (o.done ? ' is-done' : ''));
@@ -84,8 +84,7 @@ function _gdcBag(el, m, bag) {
   // the bag
   if (!bag.nFish && !bag.nBugs) {
     const e = _gdpEl('div', 'card gdc-empty');
-    e.innerHTML = `${icon('fish')}<div><b>Nothing in your bag yet</b><p class="muted">Click the lake to cast a line, or click a bug to creep up on it with your net. The tackle shop on the shore sells better gear.</p></div>`;
-    e.appendChild(_gdpBtn('Back to the garden', { icon: 'sprout', run: () => gardenGoPage('garden') }));
+    e.innerHTML = `${icon('fish')}<div><b>Nothing in your bag yet</b></div>`;
     el.appendChild(e); return;
   }
   const grid = _gdpEl('div', 'gd-grid gdc-grid');

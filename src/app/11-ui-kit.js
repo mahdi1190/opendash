@@ -404,6 +404,9 @@ function _toastIsPlainUndo(a) {
   if (typeof undo === 'function' && a.run === undo) return true;
   return /^(?:\(\)|_)\s*=>\s*\{?\s*undo\(\)\s*;?\s*\}?$/.test(String(a.run).trim());
 }
+const _toastHeld = [];
+/** You left the garden: the notes that waited for you, the newest few. */
+function toastHeldFlush() { const list = _toastHeld.splice(0).slice(-3); list.forEach(([m, o], i) => setTimeout(() => toast(m, o), 500 + i * 300)); }
 /** Close the newest toast (Esc). False when none is showing. */
 function toastDismissNewest() {
   const list = [..._toastLive].filter(c => !c.leaving);
@@ -438,6 +441,11 @@ function toast(msg, o) {
   // A running wait: it ends when its job does (close()), not on a timer.
   const busy = kind !== 'err' && kind !== 'ok' && !!(o.busy || (action && _TOAST_STOP_RE.test(String(action.label))));
   const key = kind + '|' + (o.icon || '') + '|' + text;
+  // the garden fills the window and answers with pictures: a passing note from the rest of the app waits until you leave it. Errors, waits and Undo still show; garden code passes `now`.
+  if (!o.now && !busy && kind !== 'err' && !(action && /^undo$/i.test(String(action.label))) && typeof document !== 'undefined' && document.documentElement.classList.contains('gd-immersive')) {
+    if (_toastHeld.length < 5 && !_toastHeld.some(h => h[0] === text)) _toastHeld.push([msg, o]);
+    return Object.assign(() => {}, { update: () => {} });
+  }
   const ms = _toastMs(text, Object.assign({}, o, { action }), kind, busy);
 
   // The same message is already showing: count it instead of stacking another (never two waits in one).

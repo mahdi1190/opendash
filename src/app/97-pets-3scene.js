@@ -40,7 +40,7 @@ function petSceneObj(look0) {
     if (sceneObj(id)) { _pts.ids.set(key, id); return id; }
     if (_pts.objs >= PTS.maxObjs) return null;
     const sp = petSpecies(look.species) || PET_SPECIES[0];
-    const order = ['legsF', 'tail', 'body', 'legsN', 'paw', 'neck', 'head', 'eyes', 'acc'];
+    const order = ['wingB', 'legsF', 'legsG', 'tail', 'body', 'legsN', 'paw', 'wingN', 'neck', 'ears', 'head', 'eyes', 'acc'];
     const info = { 0: null, 1: null };
     const build = (v) => {
       const A = petArt(look, v === 1 ? 'sit' : 'walk', { eyes: 'open', mouth: 'smile' });
@@ -105,7 +105,7 @@ function _ptsWarm(P, env, V) {
   const run = () => {
     try {
       const I = _pts.info.get(P.obj), d = Math.max(1, V.d - PTS.side), s = env.cam.f / d * I.H / I.info[0].artH;
-      for (const part of ['legsF', 'rest:legsF,legsN,paw', 'legsN', 'paw', 'rest:paw']) _ptsSprite(env, P, 0, s, d, part);
+      for (const part of ['legsF', 'legsG', 'rest:legsF,legsG,legsN,paw', 'legsN', 'paw', 'rest:paw']) _ptsSprite(env, P, 0, s, d, part);
       _ptsSprite(env, P, 1, s, d, '*');
     } catch (e) { /* drawn lazily then */ }
     P.ready = true;
@@ -172,7 +172,8 @@ function _ptsDraw(env, P, a, ctx) {
     const sway = a.gait === 'waddle' ? _scAbout(0, 0, 5 * go * w, 1, 1, 0, 0) : _SC_ID;
     const Mb = _scMul(M, sway); Mb[5] -= vs * a.s * (a.gait === 'hop' ? 0 : 1.1 * Math.abs(w) * go);
     put(_ptsSprite(env, P, 0, a.s, a.d, 'legsF'), _scMul(Mb, about(pv.legsF, -deg * 0.7)));
-    put(_ptsSprite(env, P, 0, a.s, a.d, 'rest:legsF,legsN,paw'), Mb);
+    put(_ptsSprite(env, P, 0, a.s, a.d, 'legsG'), _scMul(Mb, about(pv.legsG, deg * 0.7)));
+    put(_ptsSprite(env, P, 0, a.s, a.d, 'rest:legsF,legsG,legsN,paw'), Mb);
     put(_ptsSprite(env, P, 0, a.s, a.d, 'legsN'), _scMul(Mb, about(pv.legsN, deg)));
     put(_ptsSprite(env, P, 0, a.s, a.d, 'paw'), _scMul(Mb, about(pv.paw, -deg)));
   }
