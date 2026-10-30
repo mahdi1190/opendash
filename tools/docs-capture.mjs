@@ -44,6 +44,8 @@ async function open(view, theme = 'light') {
 }
 /** Dismiss first-run notices (they are remembered in the sandbox) and keep toasts and the animation card out of shots. */
 async function calm() {
+  // Docs and website pictures show OpenDash's own symbols, never company logos (Settings > Money look).
+  await ev("(() => { try { state.homeUI = Object.assign({}, state.homeUI, { noLogos: true }); if (typeof render === 'function') render(); } catch (e) { /* not loaded yet */ } })()");
   for (let i = 0; i < 3; i++) {
     await ev(`(() => { for (const b of document.querySelectorAll('.modal button, .scrim button, .anew-card button, .toast button')) { const t = (b.innerText || b.getAttribute('aria-label') || '').trim(); if (/^(sounds good|not now|got it|skip|close|dismiss|ok)$/i.test(t) || /^close$/i.test(b.getAttribute('aria-label') || '')) b.click(); } })()`);
     await sleep(500);

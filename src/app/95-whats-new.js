@@ -70,6 +70,9 @@ const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets')
 
 const WHATS_NEW = [
   // ---- 2.21 ----
+  { id: 'money-alive', group: 'n221', icon: 'sparkles', title: '2.23.2: Money comes to life',
+    text: 'Logos and little pictures on your payments, faces for family and friends, story scenes for your spending, and Your year in money. Turn logos or the fun down in Settings.',
+    view: ['finance'], sel: ['#main-body'] },
   { id: 'money-plan', group: 'n221', icon: 'calculator', title: '2.23.1: your money plan and your tax year',
     text: 'Budgets asks a few questions and works out your take-home, matches your bills to the bank and has a What if? to play with. The new Tax tab shows what to keep aside, what you can claim, your deadlines and a walkthrough for filing.',
     view: ['finance'], sel: ['#main-body'] },

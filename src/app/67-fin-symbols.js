@@ -20,9 +20,11 @@
    Runtime: activate(root, {max}) lets at most `max` looping icons on screen
    run (IntersectionObserver); hidden tab -> html.fsym-paused.
 
-   No logos: every glyph is an original drawing; brands get a colour and a
-   monogram only. Nothing is fetched. Motion is CSS (transform/opacity),
-   static under reduced motion and paused while the tab is hidden.
+   Vendors: 67-fin-symbols-db.js (the table), -dblogos.js (bundled logos, see assets/brands/SOURCES.json),
+   -kit.js (original pictograms). A vendor shows its logo if it has one and "Show company logos" is on
+   (state.homeUI.noLogos), else its pictogram, palette and monogram. Nothing is fetched, ever: a lookup would
+   tell a third party where the person shops. Motion is CSS (transform/opacity), static under reduced
+   motion and paused while the tab is hidden; logos themselves are never animated or recoloured.
    ============================================================ */
 (function (root) {
   'use strict';
@@ -712,12 +714,27 @@
   ];
 
   /* Card processors and wallets that put their name in front of the shop's. */
-  const PROCESSOR = /^(?:SQ|SUMUP|SUM UP|SMP|ZETTLE|ZTL|IZ|IZETTLE|PAYPAL|PP|CRV|CURVE|TZP|SP|WL|TST|CKO|PADDLE|PADDLE NET|FS|DNH|GOCARDLESS|STRIPE|STR|LS|YOYO|HANDEPAY|DOJO|PAYZONE|EPOS|SAGEPAY|OPAYO|WORLDPAY|ICP|NYX|VIRGIN WALLET|APPLE PAY|GOOGLE PAY|GPAY)\s*[*_#]\s*/i;
+  const PROCESSOR = /^(?:BKG|TM|SPO|PY|PAY|GGL|SQU|EVO|NAYAX|SQ|SUMUP|SUM UP|SMP|ZETTLE|ZTL|IZ|IZETTLE|PAYPAL|PP|CRV|CURVE|TZP|SP|WL|TST|CKO|PADDLE|PADDLE NET|FS|DNH|GOCARDLESS|STRIPE|STR|LS|YOYO|HANDEPAY|DOJO|PAYZONE|EPOS|SAGEPAY|OPAYO|WORLDPAY|ICP|NYX|VIRGIN WALLET|APPLE PAY|GOOGLE PAY|GPAY)\s*[*_#]\s*/i;
   const TRAILER = /\s+ON\s+\d{1,2}\s+[A-Z]{3}(\s+\d{2,4})?\b.*$/i;
+  // How banks write the same payment: the method in front of the name (HSBC "VIS", Santander "CARD PAYMENT TO"),
+  // and after it the amount, card number, date, time, reference or store number. Cut at the first of these.
+  const LEAD = /^(?:CARD PAYMENT TO|CARD PAYMENT|CONTACTLESS PAYMENT(?: TO)?|PAYMENT TO|BILL PAYMENT(?: VIA FASTER PAYMENT)?(?: TO)?|FASTER PAYMENTS?(?: RECEIPT)?(?: TO| FROM)?|DIRECT DEBIT(?: PAYMENT)?(?: TO)?|STANDING ORDER(?: TO)?|DEBIT CARD(?: PAYMENT)?(?: TO)?|PURCHASE(?: AT)?|VIS|VISA|POS|DEB)\s+(?=\S)/;
+  const CUT = [
+    /,\s*\d[\d,.]*\s*[A-Z]{3}\b.*$/,                     // ",12.34 GBP, RATE 1.00/GBP ON 23-10-2023"
+    /\s+(?:CD|CARD)\s+\d{4}\b.*$/i,                       // "CD 1234"
+    /\s+[*Xx]{2,}\s?\d{2,4}\b.*$/,                        // "****1234", "XXXX 1234"
+    /\s+\d{4,6}\*+\d{2,4}\b.*$/,                         // "492181******1234"
+    /\s+\d{2}[A-Z]{3}\d{2}\b.*$/i,                        // "29OCT23"
+    /\s+\d{1,2}[\/-]\d{1,2}(?:[\/-]\d{2,4})?(?:\s.*)?$/,  // "29/10", "29-10-2023 14:02"
+    /\s+\d{1,2}:\d{2}(?::\d{2})?\b.*$/,                   // "14:02"
+    /\s+REF(?:ERENCE)?[:. ].*$/i,                         // "REF 8841"
+    /\s+(?:STORE|BRANCH|SHOP|UNIT|NO\.?)\s*#?\d+\b.*$/i,   // "STORE 345"
+    /\s+#\s?\d+\b.*$/,                                    // "#345"
+  ];
   // Bank type codes at the end of a memo. Ones that are also ordinary words (So, Dr, Bp...) only go when written in capitals.
   const CODE_SET = new Set(['BCC', 'CPM', 'CLP', 'BGC', 'DDR', 'DD', 'STO', 'SO', 'FPI', 'FPO', 'FT', 'TFR', 'BP', 'CPT', 'POS', 'VIS', 'DEB', 'CHG', 'ATM', 'CRE', 'CR', 'DR']);
   const SAFE_CODES = new Set(['BCC', 'CPM', 'CLP', 'BGC', 'DDR', 'FPI', 'FPO', 'TFR', 'CPT', 'FT', 'STO', 'ATM', 'CRE']);
-  const LEGAL = new Set(['LTD', 'LIMITED', 'PLC', 'LLP', 'INC', 'CORP', 'GB', 'GBR', 'UK']);
+  const LEGAL = new Set(['LTD', 'LIMITED', 'PLC', 'LLP', 'INC', 'CORP', 'GB', 'GBR', 'UK', '826']);
   const DOMAIN = /^(?:www\.)?(.+?)\.(?:co\.uk|org\.uk|ac\.uk|com|net|org|io|uk|co|app|ai)$/i;
 
   /** The cleaned name: processor prefix, card trailer, codes and store numbers gone. -> {match (upper, for patterns), display} */
@@ -729,6 +746,9 @@
       s = s.slice(m[0].length);
     }
     s = s.replace(TRAILER, '');
+    const lead = LEAD.exec(s);
+    if (lead && /^[^a-z]*$/.test(lead[0])) { s = s.slice(lead[0].length); const m2 = PROCESSOR.exec(s); if (m2 && s.slice(m2[0].length).trim()) s = s.slice(m2[0].length); }
+    if (/[\d*,#:]|\bREF/.test(s)) for (const re of CUT) { const t = s.replace(re, ''); if (t.trim()) s = t; }
     for (let i = 0; i < 2; i++) {
       const m = /\s+([A-Za-z]{2,3})$/.exec(s);
       const up = m && m[1].toUpperCase();
@@ -743,11 +763,74 @@
     while (toks.length > 1) {
       const last = toks[toks.length - 1], up = last.toUpperCase();
       const code = /\d/.test(last) && /[a-z]/i.test(last) && last.length >= 5 && (last.match(/\d/g) || []).length >= 2;
-      if (LEGAL.has(up) || /^\d{4,}$/.test(last) || code) toks.pop();
+      if (LEGAL.has(up) || /^\d{3,}$/.test(last) || code) toks.pop();
       else break;
     }
     return { match, display: toks.join(' ') };
   }
+  /* ---------- the vendor table (67-fin-symbols-db.js): parsed once, on first use; lookups don't scan it ---------- */
+  // A hue per scene for vendors with no colour of their own: the same kind of shop looks related, each still its own.
+  const SCENE_HUE = { groceries: 145, 'eating-out': 30, coffee: 55, drinks: 70, takeaway: 32, transport: 255, car: 248, fuel: 190, housing: 275, home: 62, utilities: 88, phone: 215, subscriptions: 300, shopping: 350, health: 18, 'personal-care': 345, fitness: 42, travel: 235, entertainment: 312, gaming: 285, gifts: 2, education: 265, savings: 155, income: 150, transfers: 250, people: 200, fees: 25, cash: 140, insurance: 240, tax: 250, debt: 20, family: 355, pets: 75, work: 260, other: 280 };
+  const _sceneColor = (scene, key) => {
+    const h = fnv(String(key));
+    const hue = ((SCENE_HUE[scene] == null ? 280 : SCENE_HUE[scene]) + (h % 56) - 28 + 360) % 360, chroma = 0.1 + ((h >>> 8) % 4) * 0.012;
+    for (let L = 0.54 - ((h >>> 12) % 3) * 0.04; L > 0.28; L -= 0.02) { const hex = oklchHex(L, chroma, hue); if (contrast(hex, INK_LIGHT) >= 4.6) return hex; }
+    return '#4b5563';
+  };
+  const _aliasForm = (t) => String(t).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/['\u2019]/g, '').replace(/[^A-Z0-9& ]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b([A-Z]) & ([A-Z])\b/g, '$1&$2');
+  let _db = null;
+  function _dbGet() {
+    if (_db) return _db;
+    const d = { exact: new Map(), idx: new Map(), squash: new Map(), byName: new Map(), list: [] };
+    const src = typeof FSYM_VENDOR_DB === 'string' ? FSYM_VENDOR_DB : '';
+    const aliases = [];
+    const put = (al, e) => {
+      if (!al) return;
+      if (!d.exact.has(al)) d.exact.set(al, e);
+      if (e.x) return;   // an everyday word or name: the whole memo must say it
+      const t = al.split(' ');
+      let a = d.idx.get(t[0]); if (!a) d.idx.set(t[0], a = []);
+      a.push({ t, e });
+      if (t.length > 1) { const sq = t.join(''); if (sq.length >= 6 && !d.squash.has(sq)) d.squash.set(sq, e); }
+    };
+    for (const line of src.split('\n')) {
+      if (!line) continue;
+      const p = line.split('|');
+      const fl = p[8] || '';
+      const e = { n: p[0], s: p[2] || 'other', p: p[3] || '', c: p[4] ? '#' + p[4] : '', a: p[5] ? '#' + p[5] : '', m: p[6] || '', l: p[7] || '', t: fl.includes('t'), x: fl.includes('x'), w: fl.includes('w'), i: fl.includes('i') };
+      d.list.push(e);
+      d.byName.set(p[0].toLowerCase(), e);
+      put(_aliasForm(p[0]), e);
+      if (p[1]) aliases.push([p[1], e]);
+    }
+    // Other names come second, so one vendor's other name never takes another vendor's own name.
+    for (const [list, e] of aliases) for (const al of list.split(';')) put(al, e);
+    for (const a of d.idx.values()) if (a.length > 1) a.sort((x, y) => y.t.length - x.t.length);
+    return (_db = d);
+  }
+  /** Whole memo, or a name of two or more words anywhere in it. Runs before the patterns: "Shell Energy" is not "Shell". */
+  function _dbMatchLong(form) {
+    const d = _dbGet();
+    if (!d.list.length) return null;
+    const whole = d.exact.get(form);
+    if (whole) return whole;
+    const t = form.split(' ');
+    for (let i = 0; i < t.length; i++) {
+      const c = d.idx.get(t[i]);
+      if (c) for (const a of c) { if (a.t.length < 2) break; if (i + a.t.length <= t.length && a.t.every((w, j) => w === t[i + j])) return a.e; }
+    }
+    return null;
+  }
+  /** One-word names count only at the start of the memo ("Greggs 1234 Leeds", never "Blue Greggs Lane"); also names run together. */
+  function _dbMatchFirst(form) {
+    const d = _dbGet();
+    if (!d.list.length) return null;
+    const t = form.split(' ');
+    const c = d.idx.get(t[0]);
+    if (c) for (const a of c) if (a.t.length === 1) return a.e;
+    return d.squash.get(t[0]) || (t[1] ? d.squash.get(t[0] + t[1]) : null) || null;
+  }
+
   const SMALL = new Set(['of', 'for', 'and', 'the', 'at', 'in', 'on', 'by', 'to', 'de', 'la', 'le', 'du', 'da', 'del', 'a']);
   /** Display case for an ALL-CAPS (or all lower-case) name; mixed-case names keep their case. */
   function smartTitle(s) {
@@ -762,6 +845,14 @@
     }).join(' ');
   }
   const PERSON_CATS = /^(payments? to people|friends ?(&|and) ?family|people)$/i;
+  // Kinds of spending a shop can honestly be filed under either way (Boots under Health or Personal care).
+  const _nearFam = (a, b) => a === b || (a === 'health' && b === 'personal-care') || (a === 'personal-care' && b === 'health') || (a === 'shopping' && b === 'home') || (a === 'home' && b === 'shopping') || (a === 'groceries' && b === 'eating-out') || (a === 'eating-out' && b === 'groceries');
+  // Words banks put after a shop's name that say nothing against it being that shop.
+  const SHOP_WORDS = new Set(['STORE', 'STORES', 'SUPERSTORE', 'SUPERSTORES', 'SMKT', 'SMKTS', 'S', 'MKT', 'MKTS', 'SUPERMARKET', 'SUPERMARKETS', 'EXPRESS', 'EXTRA', 'METRO', 'LOCAL', 'PFS', 'PETROL', 'FUEL', 'CAFE', 'RETAIL', 'ONLINE', 'COM', 'CO', 'UK', 'GB', 'THE', 'LTD', 'PLC', 'LIMITED', 'GROUP', 'SERVICES', 'PAYMENTS', 'ORDER', 'ORDERS', 'TOPUP', 'TOP', 'UP', 'AUTO', 'PAYMENT', 'BILL', 'MOBILE', 'APP']);
+  /** "BOOTS AND SADDLES PUB" has two or more words after the first that aren't a shop's usual words: it may not be Boots. */
+  // Brands that are also everyday words need only one such word ("THREE TUNS", "SKY BAR").
+  const WORD_BRANDS = new Set(['THREE', 'NEXT', 'NORTHERN', 'SOUTHERN', 'LIME', 'SHELL', 'BOOTS', 'GULF', 'JET', 'SKY', 'ICELAND', 'SPAR', 'NOW', 'WISE', 'CHASE', 'VUE', 'APPLE', 'GATWICK', 'HEATHROW']);
+  const _weakShape = (form) => { const w = form.split(' '); return w.slice(1).filter(x => /^[A-Z&]{2,}$/.test(x) && !SHOP_WORDS.has(x)).length >= (WORD_BRANDS.has(w[0]) ? 1 : 2); };
   const _infoCache = new Map();
   /** Everything about a merchant name (pure, cached). */
   function merchantInfo(name, category) {
@@ -769,18 +860,33 @@
     const ck = (person ? 'p|' : 'm|') + String(name == null ? '' : name);
     if (_infoCache.has(ck)) return _infoCache.get(ck);
     const cl = _clean(name);
-    let hit = null;
+    let hit = null, row = null, weak = false;
     // A payment to a person is never a brand ("Leon Smith" is not a café).
-    if (!person && cl.match) for (const e of MERCHANTS) if (e[1].test(cl.match)) { hit = e; break; }
+    if (!person && cl.match) {
+      const form = _aliasForm(cl.match);
+      row = _dbMatchLong(form);
+      if (!row) weak = _weakShape(form);
+      if (!row) {
+        for (const e of MERCHANTS) if (e[1].test(cl.match)) { hit = e; break; }
+        if (hit) row = _dbGet().byName.get(hit[0].toLowerCase()) || null;
+        else row = _dbMatchFirst(form);
+      } else {
+        // The table's row wins, keeping the older entry's colour when that name is one of them.
+        hit = MERCHANTS.find(e => e[0] === row.n) || null;
+      }
+    }
     let info;
-    if (hit) {
-      const [n, , color, scene, mono, ink] = hit;
-      info = { name: n, key: n.toLowerCase(), known: true, color, ink: ink || inkFor(color), mono: mono || _firstChar(n), scene };
+    if (hit || row) {
+      const n = hit ? hit[0] : row.n, scene = hit ? hit[3] : row.s;
+      const color = (row && row.c) || (hit && hit[2]) || _sceneColor(scene, n);
+      const ink = (hit && hit[5]) || inkFor(color);
+      info = { name: n, key: n.toLowerCase(), known: true, color, ink, mono: (row && row.m) || (hit && hit[4]) || _monogram(n, false), scene: _SCENE.has(scene) ? scene : 'other',
+        pic: (row && row.p) || '', accent: (row && row.a) || '', logo: (row && row.l) || '', top: !!(row && row.t), wide: !!(row && row.w), chip: (row && row.m) || '', weak };
     } else {
       const disp = smartTitle(cl.display || String(name == null ? '' : name).trim()) || 'Unknown';
       const key = disp.toLowerCase();
       const color = hashColor(key);
-      info = { name: disp, key, known: false, color, ink: INK_LIGHT, mono: _monogram(disp, person), scene: null };
+      info = { name: disp, key, known: false, color, ink: INK_LIGHT, mono: _monogram(disp, person), scene: null, pic: '', accent: '', logo: '', top: false, wide: false, chip: '' };
     }
     if (_infoCache.size > 5000) _infoCache.clear();
     _infoCache.set(ck, info);
@@ -940,26 +1046,118 @@
    * o: {size xs|sm|md|lg|xl (md), live: 'hover' (default) | false, enter: pop in once (o.i = stagger index),
    *     badge (default: not at xs), label (true = the name, or a string; default decorative), selected, dim, cls}
    */
+  /* ---------- logos, pictograms, the person's own pictures ---------- */
+  const _picCache = new Map();
+  /** The pictogram's markup, or '' when there is none of that name. */
+  function pictSvg(key, cls) {
+    const body = typeof FSYM_PICTS === 'object' && FSYM_PICTS ? FSYM_PICTS[key] : '';
+    if (!body) return '';
+    if (!_picCache.has(key)) _picCache.set(key, `viewBox="0 0 32 32" aria-hidden="true" focusable="false">${body}</svg>`);
+    return `<svg class="fsym-pic${cls ? ' ' + cls : ''}" ${_picCache.get(key)}`;
+  }
+  /** "Show company logos" (Settings): on unless switched off, here and on every computer of theirs. */
+  function logosOn() {
+    try { if (typeof state !== 'undefined' && state && state.homeUI && state.homeUI.noLogos) return false; } catch (e) { /* no page */ }
+    return true;
+  }
+  const _logoTable = () => (typeof FSYM_LOGOS === 'object' && FSYM_LOGOS ? FSYM_LOGOS : null);
+  const _logoSvg = (L, ink) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${L[1]}"${L[0] === 'm' || L[0] === 'g' ? ` fill="${ink}"` : ''}>${L[0] === 'm' ? `<path d="${L[2]}"/>` : L[2]}</svg>`;
+  const _logoUrls = new Map();
+  /**
+   * A logo as an image address. Inside an image an SVG cannot run anything or load anything, and it cannot
+   * touch the page's styles or ids; the address is short and the browser draws each logo once however many rows show it.
+   */
+  function logoSrc(slug, ink, dataUrl) {
+    const T = _logoTable(), L = T && Object.prototype.hasOwnProperty.call(T, slug) ? T[slug] : null;
+    if (!L) return '';
+    if (L[0] === 'r') return L[2];
+    const k = slug + '|' + (L[0] === 'c' ? '' : ink) + (dataUrl ? '|d' : '');
+    if (_logoUrls.has(k)) return _logoUrls.get(k);
+    const svg = _logoSvg(L, ink);
+    let u = '';
+    if (!dataUrl && typeof Blob === 'function' && typeof URL === 'function' && typeof URL.createObjectURL === 'function' && typeof document !== 'undefined') {
+      try { u = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); } catch (e) { u = ''; }
+    }
+    if (!u) u = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    _logoUrls.set(k, u);
+    return u;
+  }
+  const _logoKind = (slug) => { const T = _logoTable(); const L = T && Object.prototype.hasOwnProperty.call(T, slug) ? T[slug] : null; return L ? L[0] : ''; };
+  // The person's own pictures for merchants (from their computer; kept in their data folder): merchant key -> address.
+  const _own = new Map();
+  function setOwnImages(map) { _own.clear(); for (const [k, v] of Object.entries(map || {})) if (typeof v === 'string' && /^\/api\/finance\/vendor-image\/vi-[0-9a-f]{16}\.(png|jpg|webp)$/.test(v)) _own.set(k, v); _symVersion++; }
+  let _symVersion = 0;
+  /** Bumped when a setting or picture changes what tiles look like (the page repaints on it). */
+  const symbolsVersion = () => _symVersion + (logosOn() ? 0 : 1000000);
+  const ownImage = (name, category) => _own.get(merchantInfo(name, category).key) || '';
+  /** How the tile's face is drawn at this size: {kind: 'own'|'logo'|'pic'|'mono', html, cls}. */
+  function _face(info, size, o) {
+    const own = o.noOwn ? '' : _own.get(info.key);
+    if (own) return { kind: 'own', cls: ' is-own', html: `<img class="fsym-own" src="${esc(own)}" alt="" draggable="false" loading="lazy">` };
+    const big = size === 'lg' || size === 'xl' || size === 'hero';
+    if (info.logo && logosOn() && o.logo !== false && (big || !info.wide)) {
+      const k = _logoKind(info.logo);
+      const src = k ? logoSrc(info.logo, info.ink) : '';
+      if (src) return { kind: 'logo', cls: k === 'c' || k === 'r' ? ' is-logo' + (info.wide ? ' is-wide' : '') : '', html: `<img class="fsym-logo" src="${esc(src)}" alt="" draggable="false">` };
+    }
+    const pic = info.pic ? pictSvg(info.pic) : '';
+    if (pic) {
+      const chip = info.chip && (size === 'md' || big) ? `<span class="fsym-chip">${esc(info.chip)}</span>` : '';
+      return { kind: 'pic', cls: '', html: pic + chip };
+    }
+    return { kind: 'mono', cls: '', html: `<span class="fsym-mono" data-n="${[...info.mono].length}">${esc(info.mono)}</span>` };
+  }
+  // Top vendors' tiles get a touch of their second colour, chosen once per vendor.
+  const TREAT = ['band', 'corner', 'rings'];
+  /* Flags people will meet on a payment abroad: [direction, colours]. Any other country shows its two letters. */
+  const FLAGS = { FR: 'v|#0055a4|#fff|#ef4135', IT: 'v|#008c45|#fff|#cd212a', IE: 'v|#169b62|#fff|#ff883e', BE: 'v|#000|#fae042|#ed2939', DE: 'h|#000|#dd0000|#ffce00', NL: 'h|#ae1c28|#fff|#21468b', ES: 'h|#aa151b|#f1bf00|#aa151b', AT: 'h|#ed2939|#fff|#ed2939', PL: 'h|#fff|#fff|#dc143c', HU: 'h|#ce2939|#fff|#477050', BG: 'h|#fff|#00966e|#d62612', RO: 'v|#002b7f|#fcd116|#ce1126', LU: 'h|#ed2939|#fff|#00a1de', EE: 'h|#0072ce|#000|#fff', LT: 'h|#fdb913|#006a44|#c1272d', UA: 'h|#005bbb|#005bbb|#ffd500', RU: 'h|#fff|#0039a6|#d52b1e', IN: 'h|#ff9933|#fff|#138808', AE: 'h|#00732f|#fff|#000', TH: 'h|#a51931|#2d2a4a|#a51931', JP: 'c|#fff|#bc002d', CH: 'p|#d52b1e|#fff', DK: 'n|#c60c30|#fff', SE: 'n|#006aa7|#fecc00', NO: 'n|#ba0c2f|#fff', FI: 'n|#fff|#003580', GR: 's|#0d5eaf|#fff', US: 's|#b22234|#fff', PT: 'v|#046a38|#da291c|#da291c', TR: 'c|#e30a17|#fff', CA: 'v|#d80621|#fff|#d80621', AU: 's|#00247d|#fff' };
+  function flagHtml(cc) {
+    const code = String(cc || '').toUpperCase(); const F = FLAGS[code];
+    // "EZ" is the place model's "somewhere that pays in euros".
+    if (!F) return `<span class="fsym-cc">${esc(code === 'EZ' ? 'EU' : code.slice(0, 2))}</span>`;
+    const p = F.split('|'); const t = p[0];
+    const body = t === 'v' ? `<rect width="8" height="24" fill="${p[1]}"/><rect x="8" width="8" height="24" fill="${p[2]}"/><rect x="16" width="8" height="24" fill="${p[3]}"/>`
+      : t === 'h' ? `<rect width="24" height="8" fill="${p[1]}"/><rect y="8" width="24" height="8" fill="${p[2]}"/><rect y="16" width="24" height="8" fill="${p[3]}"/>`
+        : t === 'c' ? `<rect width="24" height="24" fill="${p[1]}"/><circle cx="12" cy="12" r="6" fill="${p[2]}"/>`
+          : t === 'p' ? `<rect width="24" height="24" fill="${p[1]}"/><path d="M10 5h4v5h5v4h-5v5h-4v-5H5v-4h5z" fill="${p[2]}"/>`
+            : t === 'n' ? `<rect width="24" height="24" fill="${p[1]}"/><path d="M6 0h4v10h14v4H10v10H6V14H0v-4h6z" fill="${p[2]}"/>`
+              : `<rect width="24" height="24" fill="${p[1]}"/><path d="M0 4h24v3H0zM0 11h24v3H0zM0 18h24v3H0z" fill="${p[2]}"/>`;
+    return `<svg class="fsym-flag" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
+  }
   function merchantSymbol(name, category, o) {
     o = o || {};
-    const info = merchantInfo(name, category);
+    let info = merchantInfo(name, category);
     const size = sizeOf(o.size, 'md');
     const catScene = category ? categoryScene(category, o.bc) : null;
     // The curated glyph is more specific (coffee rather than eating out) unless the user filed it elsewhere.
     const scene = info.scene && (!catScene || _SCENE.get(info.scene).fam === _SCENE.get(catScene).fam) ? info.scene : (catScene || info.scene || 'other');
     const sc = _SCENE.get(scene) || _SCENE.get('other');
-    const badge = o.badge != null ? !!o.badge : size !== 'xs';
+    if (info.known && info.weak && catScene && catScene !== 'uncategorised' && catScene !== 'other' && !_nearFam(_SCENE.get(info.scene).fam, _SCENE.get(catScene).fam)) {
+      const plain = merchantInfo(name, 'Payments to people');
+      info = Object.assign({}, plain, { known: false, mono: _monogram(plain.name, false) });
+    }
+    const face = _face(info, size, o);
+    // A pictogram already says what kind of place it is; a logo or a monogram gets the little badge.
+    const badge = o.badge != null ? !!o.badge : (size !== 'xs' && face.kind !== 'pic');
     const cls = ['fsym', 'fsym-m', 'sz-' + size];
     if (o.live !== false) cls.push('fsym-hover');
+    if (o.live === 'view' && face.kind === 'pic') cls.push('fsym-loop', 'is-once');
     if (o.enter) cls.push('fsym-enter');
+    if (face.kind === 'logo') cls.push('has-logo');
     if (o.selected) cls.push('is-selected');
     if (o.dim) cls.push('is-dim');
     const label = o.label === true ? info.name + (category ? ', ' + category : '') : (typeof o.label === 'string' ? o.label : '');
     const a11y = label ? ` role="img" aria-label="${esc(label)}"` : ' aria-hidden="true"';
-    const style = `--mc:${info.color};--mi:${info.ink}` + (o.i != null ? `;--i:${Math.max(0, Math.min(40, Number(o.i) || 0))}` : '');
-    return `<span class="${_cls(cls.join(' '), o)}" style="${style}" data-mkey="${esc(info.key)}"${a11y}>`
-      + `<span class="fsym-face"><span class="fsym-mono" data-n="${[...info.mono].length}">${esc(info.mono)}</span></span>`
-      + (badge ? `<span class="fsym-badge c-${sc.colour}">${miniSvg(scene)}</span>` : '') + '</span>';
+    const accent = info.accent && info.accent.toLowerCase() !== info.ink.toLowerCase() ? info.accent : '';
+    const style = `--mc:${info.color};--mi:${info.ink}` + (accent ? `;--ma:${accent}` : '') + (o.i != null ? `;--i:${Math.max(0, Math.min(40, Number(o.i) || 0))}` : '');
+    const treat = face.kind === 'pic' && info.top && accent ? ` data-t="${TREAT[fnv(info.key) % TREAT.length]}"` : '';
+    // The corner badge: what the caller asks (how it was paid, the country), else the kind of place.
+    const k = o.kind && _KIND.get(o.kind);
+    const corner = o.cc ? `<span class="fsym-badge is-flag" title="${esc(o.ccLabel || 'Paid abroad')}">${flagHtml(o.cc)}</span>`
+      : k ? `<span class="fsym-badge is-kind c-${k.colour}" title="${esc(k.title)}"><svg class="fsym-mini" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${k.mini}</svg></span>`
+        : badge ? `<span class="fsym-badge c-${sc.colour}">${miniSvg(scene)}</span>` : '';
+    return `<span class="${_cls(cls.join(' '), o)}" style="${style}" data-mkey="${esc(info.key)}"${treat}${a11y}>`
+      + `<span class="fsym-face${face.cls}">${face.html}</span>${corner}${o.egg || ''}</span>`;
   }
   /**
    * An animated category icon. o: {size (md), live: 'hover' (default: moves while it or a .fsym-host
@@ -1002,10 +1200,132 @@
       : `<span class="${_cls(cls.join(' '), o)}" title="${esc(k.title)}" data-kind="${kind}">${svg}<span class="fsym-tx-l">${esc(text)}</span></span>`;
   }
 
+  /* ---------- who and what: the tile for one transaction ---------- */
+  const KIND_TILES = {
+    'own-transfer': { pic: 'own', color: '#475569', label: 'Between your own accounts' },
+    income: { pic: 'salary', color: '#15803d', label: 'Money in' },
+    refund: { pic: 'refund', color: '#0f766e', label: 'Refund' },
+    atm: { pic: 'atm', color: '#b45309', label: 'Cash machine' },
+    fee: { pic: 'receipt', color: '#64748b', label: 'Bank fee' },
+    interest: { pic: 'interest', color: '#a16207', label: 'Interest' },
+  };
+  const WHO_MARK = {
+    family: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="fx" d="M12 21S3 15.5 3 9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-9 12-9 12z"/></svg>',
+    friend: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path class="fx" d="M2 14a1.6 1.6 0 0 1 1.6-1.6h1.8c1.4 0 2.8.4 4 1.1l1.4.9h4a1.7 1.7 0 0 1 1.6 2.5l4.3-2.2a1.8 1.8 0 0 1 1.7 3.1l-5.6 3.6a5 5 0 0 1-2.7.8H7.2l-1.8-.6H3.6A1.6 1.6 0 0 1 2 20z"/><circle class="fx" cx="14" cy="6.4" r="3.6"/></svg>',
+  };
+  /** A person's tile. p: {name, avatarHtml (trusted markup, optional), family (bool)}. */
+  function whoSymbol(p, o) {
+    o = o || {};
+    const size = sizeOf(o.size, 'md');
+    const fam = !!p.family;
+    const inits = _monogram(smartTitle(String(p.name || '?')), true);
+    const label = (fam ? 'Family: ' : '') + String(p.name || 'A person');
+    return `<span class="${_cls(`fsym fsym-who ${fam ? 'is-family' : 'is-friend'} sz-${size}${o.live !== false ? ' fsym-hover' : ''}`, o)}" role="img" aria-label="${esc(label)}" title="${esc(label)}">`
+      + `<span class="fsym-who-av">${p.avatarHtml || esc(inits)}</span><span class="fsym-who-mark">${fam ? WHO_MARK.family : WHO_MARK.friend}</span>${o.egg || ''}</span>`;
+  }
+  /**
+   * The tile for a transaction, chosen by who or what it is.
+   * tx: {m, c, a, memo, bc, how}. o: size, live, enter, i, egg; kind (else txKind), recurring;
+   * person {name, avatarHtml, family} when it matched someone in People; cc + ccLabel when paid abroad.
+   * A shop keeps its own logo or pictogram: a Direct Debit or a refund only changes the corner badge.
+   */
+  function txSymbol(tx, o) {
+    tx = tx || {}; o = o || {};
+    const kind = o.kind || txKind(tx, o);
+    const cat = tx.c != null ? tx.c : tx.category;
+    if (o.person) return whoSymbol(o.person, o);
+    const info = merchantInfo(tx.m, cat);
+    const tile = KIND_TILES[kind];
+    if (kind === 'transfer-in' || kind === 'transfer-out') {
+      if (CAT_RX.people.test(_norm(cat)) || PERSON_CATS.test(_norm(cat))) return whoSymbol({ name: info.name }, o);
+    }
+    if (tile && !(info.known && (kind === 'refund' || kind === 'income'))) {
+      const size = sizeOf(o.size, 'md');
+      const live = kind === 'income' && o.live !== false && !o.still ? ' fsym-loop is-once' : '';
+      return `<span class="${_cls(`fsym fsym-m sz-${size}${o.live !== false ? ' fsym-hover' : ''}${live}${o.enter ? ' fsym-enter' : ''}`, o)}" style="--mc:${tile.color};--mi:#fff;--ma:${kind === 'income' ? '#fde68a' : '#ffffff'}${o.i != null ? `;--i:${Math.max(0, Math.min(40, Number(o.i) || 0))}` : ''}" role="img" aria-label="${esc(tile.label)}" title="${esc(tile.label)}">`
+        + `<span class="fsym-face">${pictSvg(tile.pic)}</span>${o.egg || ''}</span>`;
+    }
+    // Only the ways of paying worth a second look change the corner; a plain card payment keeps the usual one.
+    const corner = { logo: o.logo, kind: '' };
+    if (o.cc) { corner.cc = o.cc; corner.ccLabel = o.ccLabel; }
+    else if (kind === 'direct-debit' || kind === 'standing-order' || kind === 'subscription' || kind === 'refund') corner.kind = kind;
+    return merchantSymbol(tx.m, cat, Object.assign({ bc: tx.bc }, o, corner));
+  }
+  /**
+   * A tile as one self-contained image address, for charts (ECharts draws images, not markup). '' for a name
+   * with nothing to draw but its monogram: the caller draws that with the page's font.
+   */
+  function tileDataUrl(name, category, px) {
+    const info = merchantInfo(name, category);
+    px = px || 44;
+    const rad = 32 * 0.28;
+    const colorsOf = { f: info.ink, x: info.color, a: info.accent || info.ink };
+    const flat = (markup) => markup.replace(/class="([^"]*)"/g, (m, c) => {
+      const t = c.split(/\s+/);
+      const v = t.find(x => x === 'f' || x === 'x' || x === 'a');
+      if (v) return `fill="${colorsOf[v]}"`;
+      const l = t.find(x => /^(l|la|la2|lx|lm)$/.test(x));
+      if (!l) return '';
+      const col = l === 'lx' ? info.color : (l === 'la' || l === 'la2') ? (info.accent || info.ink) : info.ink;
+      return `fill="none" stroke="${col}" stroke-width="${t.includes('th') ? 3 : 2.4}" stroke-linecap="round" stroke-linejoin="round"`;
+    });
+    let inner = '', bg = info.color;
+    if (info.logo && logosOn()) {
+      const T = _logoTable(), L = T && Object.prototype.hasOwnProperty.call(T, info.logo) ? T[info.logo] : null;
+      if (L && L[0] !== 'r' && !info.wide) {
+        if (L[0] === 'c') bg = '#ffffff';
+        const pad = L[0] === 'c' ? 3 : 5;
+        inner = `<svg x="${pad}" y="${pad}" width="${32 - 2 * pad}" height="${32 - 2 * pad}" viewBox="${L[1]}"${L[0] === 'c' ? '' : ` fill="${info.ink}"`}>${L[0] === 'm' ? `<path d="${L[2]}"/>` : L[2]}</svg>`;
+      }
+    }
+    if (!inner) {
+      const body = info.pic && typeof FSYM_PICTS === 'object' && FSYM_PICTS ? FSYM_PICTS[info.pic] : '';
+      if (!body) return '';
+      inner = `<svg x="4.5" y="4.5" width="23" height="23" viewBox="0 0 32 32">${flat(body)}</svg>`;
+    }
+    return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 32 32"><rect width="32" height="32" rx="${rad}" fill="${bg}"/>${inner}</svg>`);
+  }
+
+  const _textCache = new Map();
+  /**
+   * A vendor named in free text (a task title): a name of two or more words anywhere, a top vendor's one-word
+   * name too. Only when the sentence is about paying something, so "Next steps" is never a shop. -> info | null
+   */
+  const MONEY_WORDS = /\b(pay|paid|bill|bills|renew|renewal|cancel|refund|invoice|subscription|direct debit|top up|topup|statement|meter|account with|switch)\b/i;
+  function vendorInText(text) {
+    const t = String(text == null ? '' : text);
+    if (!t || !MONEY_WORDS.test(t)) return null;
+    if (_textCache.has(t)) return _textCache.get(t);
+    let out = null;
+    const form = _aliasForm(t);
+    const long = _dbMatchLong(form);
+    if (long) out = merchantInfo(long.n);
+    else {
+      // A one-word name only as a capitalised word that isn't the first ("Cancel Netflix"; never "Next, pay rent").
+      const d = _dbGet();
+      const words = t.split(/\s+/);
+      for (let i = 1; i < words.length; i++) {
+        if (!/^[A-Z]/.test(words[i])) continue;
+        const c = d.idx.get(_aliasForm(words[i]));
+        const hit = c && c.find(a => a.t.length === 1 && a.e.t);
+        if (hit) { out = merchantInfo(hit.e.n); break; }
+      }
+    }
+    if (_textCache.size > 800) _textCache.clear();
+    _textCache.set(t, out);
+    return out;
+  }
+
   /* ---------- runtime: only the looping icons on screen run, at most `max` ---------- */
   let _io = null;
   const _seen = new Set();
   let _max = 12;
+  /** The Fun level sets how many tiles may move by themselves (hover always works): Full 6, Subtle 2, Off none. */
+  function _tileBudget() {
+    let f = 'subtle';
+    try { if (typeof gameFun === 'function') f = gameFun(); } catch (e) { /* no page */ }
+    return f === 'full' ? 6 : f === 'off' ? 0 : 2;
+  }
   function activate(scope, o) {
     if (!scope || typeof scope.querySelectorAll !== 'function') return;
     _max = (o && o.max) || _max;
@@ -1014,7 +1334,11 @@
     if (!_io) _io = new IntersectionObserver((entries) => {
       for (const e of entries) { if (e.isIntersecting) _seen.add(e.target); else { _seen.delete(e.target); e.target.classList.remove('is-live'); } }
       for (const el of [..._seen]) if (!el.isConnected) { _seen.delete(el); try { _io.unobserve(el); } catch (err) { /* gone */ } }
-      [..._seen].sort((p, q) => ((p.compareDocumentPosition(q) & 4) ? -1 : 1)).forEach((el, i) => el.classList.toggle('is-live', i < _max));
+      let cats = 0, tiles = 0; const maxT = _tileBudget();
+      [..._seen].sort((p, q) => ((p.compareDocumentPosition(q) & 4) ? -1 : 1)).forEach((el) => {
+        if (el.classList.contains('fsym-m')) el.classList.toggle('is-live', tiles++ < maxT);
+        else el.classList.toggle('is-live', cats++ < _max);
+      });
     }, { threshold: 0.1 });
     els.forEach(e => { e.classList.remove('is-live'); _io.observe(e); });
   }
@@ -1025,6 +1349,9 @@
   const api = {
     version: 1,
     merchantSymbol, merchantCanonical, merchantKey, merchantInfo, merchantColor, merchantMonogram,
+    txSymbol, whoSymbol, vendorInText, pictSvg, flagHtml, logosOn, logoSrc, tileDataUrl, setOwnImages, ownImage, symbolsVersion,
+    pictKeys: () => (typeof FSYM_PICTS === 'object' && FSYM_PICTS ? Object.keys(FSYM_PICTS) : []),
+    vendors: () => _dbGet().list.map(e => ({ name: e.n, scene: e.s, pic: e.p, logo: e.l, top: e.t, wide: e.w, intl: e.i, exactOnly: e.x })),
     categoryIcon, categoryScene, categoryGlyph, sceneLabel, txTypeBadge, txKind, txKindInfo,
     activate, contrast, inkFor, hashColor,
     scenes: () => SCENES.map(s => ({ key: s.key, label: s.label, fam: s.fam, colour: s.colour })),
@@ -1053,7 +1380,7 @@ function finSymbolsGallery(container) {
   const e = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const enter = !_fsGalleryEntered; _fsGalleryEntered = true;
   const loop = _fsGalleryLoop;
-  const scenes = FS.scenes(), kinds = FS.kinds(), merchants = FS.merchants();
+  const scenes = FS.scenes(), kinds = FS.kinds(), merchants = FS.merchants(), vendors = FS.vendors();
   const catMap = FS.categoryMap();
   const usedBy = (key) => Object.keys(catMap).filter(k => k && catMap[k] === key).slice(0, 4).join(', ');
   const fams = scenes.map(s => s.key).filter(k => merchants.some(m => m.scene === k));
@@ -1078,7 +1405,7 @@ function finSymbolsGallery(container) {
   const money = (v) => { try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.currency) || 'GBP' }).format(v); } catch (err) { return v.toFixed(2); } };
   let i = 0;
   container.innerHTML = `<div class="fsg${enter ? ' is-enter' : ''}">
-    <header class="fsg-h"><div><p>${merchants.length} merchants, ${scenes.length} category scenes, ${kinds.length} transaction types. Original glyphs and brand-ish colours only (no logos); nothing is fetched. Hover anything.</p></div>
+    <header class="fsg-h"><div><p>${vendors.length} vendors, ${scenes.length} category scenes, ${kinds.length} transaction types. Nothing is fetched. Hover anything.</p></div>
       <label class="fsg-loop"><input type="checkbox"${loop ? ' checked' : ''}> Loop category scenes</label></header>
     <section><h3>Category scenes</h3><div class="fsg-cats">${scenes.map(s => `<figure class="fsg-cat fsym-host">${FS.categoryIcon(s.label, { scene: s.key, size: 'xl', live: loop ? 'loop' : 'hover' })}<figcaption><b>${e(s.label)}</b><span>${e(usedBy(s.key))}</span></figcaption><span class="fsg-mini c-${s.colour}">${FS.categoryGlyph(s.label, { scene: s.key })}</span></figure>`).join('')}</div></section>
     <section><h3>Sizes</h3><div class="fsg-sizes">${['xs', 'sm', 'md', 'lg', 'xl'].map(z => `<div>${FS.merchantSymbol('Tesco', 'Groceries', { size: z })}${FS.merchantSymbol('Bean There Coffee', 'Eating out', { size: z })}${FS.categoryIcon('Travel', { size: z })}<span>${z}</span></div>`).join('')}
@@ -1086,6 +1413,8 @@ function finSymbolsGallery(container) {
     <section><h3>Transaction types</h3><div class="fsg-kinds">${kinds.map(k => `<div class="fsym-host">${FS.txTypeBadge(k.kind, { size: 'lg' })}${FS.txTypeBadge(k.kind)}${FS.txTypeBadge(k.kind, { compact: true })}<span>${e(k.title)}</span></div>`).join('')}</div></section>
     <section><h3>In a list</h3><ul class="fsg-rows">${rows.map(r => `<li class="fsym-host">${FS.merchantSymbol(r.m, r.c, { size: 'md', bc: r.bc, enter, i: i++ })}<span class="fsg-rm"><b>${e(r.m)}</b><span>${FS.categoryIcon(r.c, { size: 'xs', bc: r.bc, plain: true })}${e(r.c)}</span></span>${FS.txTypeBadge(r)}<span class="fsg-ra${r.a > 0 ? ' in' : ''}">${e(money(r.a))}</span></li>`).join('')}</ul></section>
     <section><h3>Cleaning and monograms</h3><ul class="fsg-odd">${odd.map(([n, c]) => `<li>${FS.merchantSymbol(n, c, { size: 'sm' })}<code>${e(n)}</code><span>&rarr;</span><b>${e(FS.merchantCanonical(n))}</b><span class="muted">${e(c)}</span></li>`).join('')}</ul></section>
+    <section><h3>Pictograms (${FS.pictKeys().length}, our own drawings)</h3><div class="fsg-picts">${FS.pictKeys().map(k => `<figure class="fsym-host" style="--mc:#334155;--mi:#fff;--ma:#fbbf24"><span class="fsym fsym-m sz-lg fsym-hover"><span class="fsym-face">${FS.pictSvg(k)}</span></span><figcaption>${e(k)}</figcaption></figure>`).join('')}</div></section>
+    <section><h3>Vendors with a logo (${vendors.filter(v => v.logo).length} of ${vendors.length})</h3><p class="fsg-notice">Logos are trademarks of their owners, used only to identify who a payment went to; no endorsement implied. "Show company logos" in Settings switches them to our own symbols.</p><div class="fsg-logoall">${vendors.filter(v => v.logo && !v.intl).slice(0, 400).map(v => `<figure class="fsym-host">${FS.merchantSymbol(v.name, null, { size: 'md' })}<figcaption>${e(v.name)}</figcaption></figure>`).join('')}</div></section>
     <section><h3>Merchants</h3>${fams.map(f => `<h4>${FS.categoryIcon(FS.sceneLabel(f), { scene: f, size: 'sm' })}${e(FS.sceneLabel(f))}</h4><div class="fsg-ms">${merchants.filter(m => m.scene === f).map(m => `<figure class="fsym-host">${FS.merchantSymbol(m.name, null, { size: 'lg', enter, i: Math.min(30, i++) })}<figcaption>${e(m.name)}</figcaption></figure>`).join('')}</div>`).join('')}</section>
   </div>`;
   const cb = container.querySelector('.fsg-loop input');

@@ -16,8 +16,30 @@ derived from OpenStreetMap and hill outlines derived from open elevation data
 | GeoNames cities15000 and countryInfo, a subset | 2026-10 | The travel features' city and country tables (`src/app/69-travel-data.js`) | Creative Commons Attribution 4.0 (`CC-BY-4.0`) | below |
 | IANA time zone database (zone.tab, backward links) | 2025 | Time zone to country and city | Public domain | below |
 | OurAirports airports, a subset | 2026-10 | Airport codes to cities | Public domain | below |
+| name-suggestion-index, a reduced table | 8.0.20260918 | Vendor names in Money (`src/app/67-fin-symbols-db.js`) | BSD 3-Clause (`BSD-3-Clause`) | below |
+| Simple Icons and Wikimedia Commons logos, a selection | 2026-10 | Company logos in Money; each with its own source and status (`assets/brands/SOURCES.json`) | See "Company names and logos" | below |
 | OpenStreetMap data, projected into scene layouts | per scene (`scene.source.osm.fetched`) | The layouts of scenes marked as containing OpenStreetMap data | Open Database License 1.0 (`ODbL-1.0`) | below |
 | Terrain Tiles (AWS Open Data) and OS Terrain 50 heights, sampled into hill outlines | per scene (`scene.source.terrain`) | Ridges, skylines and relief of scenes with `scene.source.terrain` | per source, below | below |
+
+## Company names and logos (Money)
+
+<!-- vendors:begin -->
+Logos are trademarks of their owners, used only to identify who a payment went to; no endorsement implied.
+
+Freeflo's MIT licence does not cover these marks. They are bundled in `src/app/67-fin-symbols-dblogos.js` and nothing about a vendor is ever fetched at runtime. `assets/brands/SOURCES.json` records every logo: its source address, its licence or status, the date it was collected and any brand guidelines listed for it. To take a logo out, delete the vendor's logo field in `src/app/67-fin-symbols-db.js` (or its line in the logos file): the vendor falls back to Freeflo's own pictogram and colours. Settings > Money look > Show company logos switches them all off.
+
+- **Vendor names and other names**: name-suggestion-index 8.0.20260918 (BSD 3-Clause, Copyright 2026, name-suggestion-index contributors; https://github.com/osmlab/name-suggestion-index), reduced to one generated table at development time by `tools/build-vendor-db.mjs`. Redistribution and use in source and binary forms, with or without modification, are permitted provided that the copyright notice, this list of conditions and the following disclaimer are retained; the name of the copyright holder may not be used to endorse products derived from this data without permission. THE DATA IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
+- **101 one-colour marks**: Simple Icons 16.36.0 (the collection is CC0-1.0; https://github.com/simple-icons/simple-icons). Its disclaimer says this does not mean every icon is CC0, so each icon's own licence is recorded, and icons under NC, ND, GPL-family or custom terms were left out.
+- **161 logos**: Wikimedia Commons, found through Wikidata (CC0 data). Each file's page gave a public-domain or CC0 status, except the 6 listed below, which carry a free licence that asks for a credit. Commons judges "public domain" mostly under US law, for text and simple shapes; that may differ in other countries, and a trademark is a separate right in any case.
+  - Premier Inn: CC BY-SA 4.0, VAnttinen, https://commons.wikimedia.org/wiki/File:PREM0001_4C_ROUNDEL_RIGHT_GERMANY_trans@2x.png
+  - Subway: CC BY-SA 4.0, 292Jacob, https://commons.wikimedia.org/wiki/File:Subway_icon.svg
+  - Channel 4: CC BY-SA 4.0, LCampC4, https://commons.wikimedia.org/wiki/File:Channel_4_Logo_2023.svg
+  - GoCompare: CC BY-SA 4.0, Rlloydgocompare, https://commons.wikimedia.org/wiki/File:GoCompare_Primary_Linear_GREEN.svg
+  - Save the Children: CC BY-SA 4.0, „Save the Children Deutschland e.V., Pressestelle“ (Diskussion), https://commons.wikimedia.org/wiki/File:Save_the_Children_logo_(cropped).svg
+  - Squarespace: CC BY 4.0, Font Awesome, https://commons.wikimedia.org/wiki/File:Font_Awesome_5_brands_squarespace.svg
+
+The pictograms, scenes and easter-egg drawings in Money are original to Freeflo (`src/app/67-fin-symbols-kit.js`, `src/finance/28-money-scenes.js`, `src/finance/29-money-eggs.js`).
+<!-- vendors:end -->
 
 ## Apache ECharts
 

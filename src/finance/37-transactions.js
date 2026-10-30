@@ -131,6 +131,7 @@
     txPickAttach();
     S.txDays = new Map(S.txByDate ? VL.dayGroups(rows).map(d => [d.n, d]) : []);
     S.txNew = txNewSet(M);
+    if (S.txNew && S.txNew.size && !M._faPrinted) { M._faPrinted = true; faReceipt(S.txCtl, S.txNew.size); }   // new payments: a tiny receipt prints
     S.txEnter = first;
     S.txList.innerHTML = ''; S.txGroupEl = null;
     S.txList.classList.toggle('flat', !S.txByDate);
@@ -187,6 +188,7 @@
     if (start > 0) MK.inView(S.txList, { sel: ':scope > .fv-dg', step: 40, max: 240, distance: 10 });
     else S.txList.querySelectorAll(':scope > .fv-dg').forEach(el => MK.once(el, 'iv'));
     S.txMore.hidden = end >= rows.length;
+    { const fs = FSY(); if (fs && fs.activate) fs.activate(S.txList); }   // tiles on screen may move a little; the Fun level sets how many
     S.txMore.textContent = end >= rows.length ? '' : `${nf0.format(rows.length - end)} more`;
   }
   function txRow(x, G, showAcct, withDate) {
@@ -197,7 +199,7 @@
     const name = G.label(G.keyOf(x.m));
     const row = h('div', { class: 'fv-txr fsym-host' + (x.kind !== 'spend' ? ' alt' : '') + (isNew ? ' is-new' : '') + (sel ? ' is-current' : ''), role: 'listitem', tabindex: '0', 'aria-expanded': 'false', 'data-k': x.k,
       'aria-label': `${name}, ${sgbp2(x.a)}, ${fDayW(x.n)}${isNew ? ', new' : ''}` },
-      VK.tile(x.m, x.c, { size: 'md', bc: x.bc }),
+      VK.txTile(x, { size: 'md', bc: x.bc, live: 'view' }),
       h('div', { class: 'fv-txr-main' },
         h('div', { class: 'nm' }, h('span', { class: 'n', text: name }), isNew ? h('span', { class: 'fv-new-dot', title: 'New since your last visit' }, 'New') : null),
         h('div', { class: 'meta' },
@@ -367,6 +369,9 @@
           window.Owed && window.Owed.txRefund ? window.Owed.txRefund(x) : null,
           window.Owed && window.Owed.txNote ? window.Owed.txNote(x) : null,
           x.how === 'override' ? h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => categorise(x.m, null, x.c, 'override') }, ic('rotate-ccw'), 'Use the automatic category') : null,
+          !VK.who(x) ? (FSY() && FSY().ownImage(x.m, x.c)
+            ? h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => VK.removeOwnImage(x.m, x.c) }, ic('x'), 'Remove my picture')
+            : h('button', { type: 'button', class: 'fv-btn ghost', title: 'Pick a picture from this computer. It stays on this computer.', onclick: () => VK.pickOwnImage(x.m, x.c) }, ic('image'), 'Use my own picture')) : null,
           h('button', { type: 'button', class: 'fv-btn ghost fv-txx-all', onclick: () => openMerchant(x.m) }, `All at ${label}`, ic('arrow-right')))));
     return det;
   }

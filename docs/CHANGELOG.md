@@ -10,6 +10,23 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.23.2]
+
+Money comes to life.
+
+### Added
+- Logos or little pictures on every payment: about 2,400 shops and services, with 262 company logos bundled in the app. Nothing is downloaded while you use it, so nobody learns where you shop. "Show company logos" is in Settings > Money look, and you can pick your own picture for a shop; it stays on that computer.
+- Family and friends show their face, and salary, refunds, cash, fees and interest each look different. Direct Debits, subscriptions and payments abroad get a small corner badge.
+- Small animations on hover: the train crosses, the coffee steams.
+- Story scenes for your spending: a tube train with your total on its side, a scooter, a trolley, payday. "Your year in money" from the command search, the end of the money story or at New Year.
+- A payday note, jars for your categories, a sky that follows your month and a little receipt when new payments arrive, plus a few kind easter eggs. The Fun setting dials all of it down.
+
+### Changed
+- Better reading of bank references: shops behind wallets like Curve and Zettle are recognised, so a category you set on an old merged name such as "CRV" stops applying, and more spellings of one shop now merge.
+- The money story won't open while amounts are hidden.
+
+Logos are trademarks of their owners, used only to identify who a payment went to; no endorsement implied.
+
 ## [2.23.1]
 
 Your money plan and your tax year.
