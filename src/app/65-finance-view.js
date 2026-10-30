@@ -29,8 +29,8 @@ function financeRemoteLine(rm) {
   const state = rm.state || (rm.online ? 'open' : 'off');
   const away = state === 'off' || state === 'asleep' || state === 'outdated' ? state : '';
   if (!away) return { text: `Finance from ${rm.name}` + (ago ? ` · updated ${ago}` : ''), tip: `${rm.name} reads your bank; this is the same as there`, away: '' };
-  const why = { off: "it's off", asleep: "it's asleep", outdated: 'it needs an OpenDash update' }[away];
-  const tip = away === 'outdated' ? `${rm.name} runs an older OpenDash. This is what it last sent; update OpenDash there to keep it coming.`
+  const why = { off: "it's off", asleep: "it's asleep", outdated: 'it needs a Freeflo update' }[away];
+  const tip = away === 'outdated' ? `${rm.name} runs an older Freeflo. This is what it last sent; update Freeflo there to keep it coming.`
     : `${rm.name} is ${away === 'off' ? 'off' : 'asleep'} right now. This is what it last sent; it updates by itself when ${rm.name} is on again.`;
   return { text: `Finance from ${rm.name}` + (ago ? ` · last update ${ago}` : '') + ` (${why})`, tip, away };
 }

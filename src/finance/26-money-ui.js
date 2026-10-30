@@ -636,7 +636,7 @@
       MB.ai = { key: B.key, mode: B.mode, sentences: v.sentences, model: ai.model || '' };
       mbPaint(R.ctx, false, true);
     } catch (e) {
-      if (generate) toast('Could not reach the OpenDash server.', { bad: true });
+      if (generate) toast('Could not reach the Freeflo server.', { bad: true });
     } finally {
       if (generate) { MB.aiBusy = false; if (MB.B === B && MB.el) mbPaintSrc(B); }
     }

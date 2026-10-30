@@ -667,7 +667,7 @@ function _bfPaintAi(card, typeIt) {
   } else {
     // Never a "Writing…" that nothing is writing: say why there is no summary.
     const why = s && s.error ? s.error
-      : typeof _serverAvailable !== 'undefined' && _serverAvailable === false ? 'The OpenDash server is not running, so there is no summary yet.'
+      : typeof _serverAvailable !== 'undefined' && _serverAvailable === false ? 'The Freeflo server is not running, so there is no summary yet.'
       : typeof briefPrefs === 'function' && !briefPrefs().ai ? 'The AI summary is off in Settings.'
       : 'Writing your summary…';
     t.textContent = ai ? why : 'Connect Claude to get a short summary of your day here.';

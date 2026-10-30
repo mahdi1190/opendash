@@ -26,21 +26,21 @@
        an offline banner (built by the server-control work in 86-live-sync).
    The helpers above the wrapper are pure (no DOM).
    ============================================================ */
-const NET_DOWN_REASON = 'OpenDash isn’t running';
-const NET_DOWN_MESSAGE = NET_DOWN_REASON + '. Start it with start-opendash in the app folder (or your OpenDash shortcut), then try again.';
+const NET_DOWN_REASON = 'Freeflo isn’t running';
+const NET_DOWN_MESSAGE = NET_DOWN_REASON + '. Start it with start-opendash in the app folder (or your Freeflo shortcut), then try again.';
 // Chrome/Edge: "Failed to fetch"; Firefox: "NetworkError when attempting to fetch resource."; Safari: "Load failed".
 const _NET_DOWN_RE = /failed to fetch|networkerror|network error|load failed|network request failed|err_connection|econnrefused/i;
 // What the page's fetch helpers throw for a bad status with no message of its own: 'HTTP 500', 'GET 404', 'health 503'.
 const _NET_STATUS_RE = /^(?:HTTP|GET|POST|PUT|PATCH|DELETE|health)\s*(\d{3})$/i;
 /** Plain words for a bare status (null: no plain words for it; the caller's fallback is used). */
 function _netStatusWords(code) {
-  if (code === 408 || code === 504) return 'OpenDash didn’t answer in time. Try again.';
-  if (code === 429) return 'OpenDash is busy. Try again in a moment.';
-  if (code >= 500) return 'OpenDash isn’t answering. Try again in a moment.';
-  if (code === 404) return 'That isn’t available. If OpenDash was just updated, restart it.';
+  if (code === 408 || code === 504) return 'Freeflo didn’t answer in time. Try again.';
+  if (code === 429) return 'Freeflo is busy. Try again in a moment.';
+  if (code >= 500) return 'Freeflo isn’t answering. Try again in a moment.';
+  if (code === 404) return 'That isn’t available. If Freeflo was just updated, restart it.';
   if (code === 409) return 'Something else changed it first. Try again.';
   if (code === 413) return 'It’s too big to save.';
-  if (code === 401 || code === 403) return 'OpenDash didn’t accept it from this tab. Reload the page and try again.';
+  if (code === 401 || code === 403) return 'Freeflo didn’t accept it from this tab. Reload the page and try again.';
   return null;
 }
 
@@ -58,7 +58,7 @@ function netIsDown(e) {
  */
 function netErrorMessage(e, fallback) {
   if (netIsDown(e)) return NET_DOWN_MESSAGE;
-  if (e && typeof e === 'object' && e.name === 'TimeoutError') return 'OpenDash didn’t answer in time. Try again.';
+  if (e && typeof e === 'object' && e.name === 'TimeoutError') return 'Freeflo didn’t answer in time. Try again.';
   const m = String((typeof e === 'string' ? e : (e && e.message)) || '').trim();
   if (e && typeof e === 'object' && e.name === 'AbortError' && (!m || /\babort/i.test(m))) return 'It was stopped.';
   const st = _NET_STATUS_RE.exec(m);

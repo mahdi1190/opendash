@@ -195,7 +195,7 @@
     else pay = null;
     // Read with no one to ask (a file in the Finances folder), or most of it reads as money in: worth a look.
     const check = r.origin === 'file' && (c.guess || c.mostlyIn)
-      ? h('p', { class: 'cd-pay' }, c.mostlyIn ? 'Most of this card reads as money in, which is unusual. ' : 'OpenDash read this file by itself. ',
+      ? h('p', { class: 'cd-pay' }, c.mostlyIn ? 'Most of this card reads as money in, which is unusual. ' : 'Freeflo read this file by itself. ',
         h('button', { type: 'button', class: 'fv-link', text: 'Money in and out are the wrong way round', onclick: () => cdFlip(r) }))
       : null;
     return h('div', { class: 'cd-block' },
@@ -209,7 +209,7 @@
     const days = today - dnum(r.to);
     if (days < CD_LATE_DAYS) return null;
     return h('div', { class: 'cd-late' },
-      h('p', {}, ic('clock'), h('span', { text: `This card comes from a file, so OpenDash knows it up to ${ydDate(r.to, days > 300)}. Anything you bought since isn’t counted yet.` })),
+      h('p', {}, ic('clock'), h('span', { text: `This card comes from a file, so Freeflo knows it up to ${ydDate(r.to, days > 300)}. Anything you bought since isn’t counted yet.` })),
       h('details', { class: 'cd-how' }, h('summary', { text: 'How to get a new file' }), cdSteps()),
       h('button', { type: 'button', class: 'btn btn-secondary btn-sm', onclick: () => cdPickFile() }, ic('upload'), h('span', { text: 'Import a newer file' })));
   }
@@ -274,7 +274,7 @@
               h('ol', { class: 'cd-steps' },
                 h('li', { text: 'Set up Enable Banking once (about 10 minutes, free).' }),
                 h('li', { text: 'Search for your card there.' }),
-                h('li', { text: 'Sign in on your card’s own site. OpenDash can only read, never pay.' })),
+                h('li', { text: 'Sign in on your card’s own site. Freeflo can only read, never pay.' })),
               connect)),
           h('div', { class: 'modal-f' }, h('button', { type: 'button', class: 'btn btn-secondary', text: 'Close', onclick: () => close() })));
       },

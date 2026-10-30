@@ -21,7 +21,7 @@ function owdExpectDialog(pre) {
       el.append(_xField('What', title), _xField('From', from));
       const row = _xe('div', 'xp-row2'); row.append(_xField('Amount', amount), _xField('Should arrive by', due)); el.appendChild(row);
       el.append(_xField('It is', kind), _xField('Note', note));
-      el.appendChild(_xe('p', 'xp-fh', 'OpenDash watches your bank for it, and tells you when it is late.'));
+      el.appendChild(_xe('p', 'xp-fh', 'Freeflo watches your bank for it, and tells you when it is late.'));
       setTimeout(() => title.focus(), 40);
     },
     actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, icon: 'check', run: async () => {
@@ -79,7 +79,7 @@ function owdRemindDialog(refs) {
         box.appendChild(acts);
         el.appendChild(box);
       }
-      el.appendChild(_xe('p', 'xp-fh', 'OpenDash never sends this by itself. You choose how to send it.'));
+      el.appendChild(_xe('p', 'xp-fh', 'Freeflo never sends this by itself. You choose how to send it.'));
     },
     actions: [{ label: 'Done', primary: true }],
   });
@@ -191,7 +191,7 @@ function owdTxNote(tx) {
 /** Sent something back? Watch for the refund: it comes off this payment when it arrives. */
 function owdTxRefund(tx) {
   if (!tx || !(Number(tx.a) < 0) || tx.kind !== 'spend' || owdForTx(tx)) return null;
-  return uiButton({ label: 'Expecting a refund', icon: 'wallet', cls: 'fv-btn ghost', tip: 'OpenDash watches for it and tells you if it is late', run: () => owdExpectDialog({ title: `Refund: ${tx.m}`, from: tx.m, total: Math.abs(Number(tx.a)), date: tx.d, expectKind: 'refund', source: { type: 'tx', txKey: expTxKey(tx), k: tx.k } }) });
+  return uiButton({ label: 'Expecting a refund', icon: 'wallet', cls: 'fv-btn ghost', tip: 'Freeflo watches for it and tells you if it is late', run: () => owdExpectDialog({ title: `Refund: ${tx.m}`, from: tx.m, total: Math.abs(Number(tx.a)), date: tx.d, expectKind: 'refund', source: { type: 'tx', txKey: expTxKey(tx), k: tx.k } }) });
 }
 function owdTxButton(tx) {
   if (!tx) return null;

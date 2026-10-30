@@ -458,8 +458,8 @@ registerSidebarBlock('calendar', {
     el.appendChild(sbSection({ title: 'Calendars' }));
     const rows = [
       { label: 'Google Calendar', c: 'var(--sw-blue)', src: GOOGLE_CONNECTED ? (GOOGLE_LIVE ? 'Live' : 'Snapshot') : 'Not connected', off: !GOOGLE_CONNECTED },
-      { label: 'Task due dates', c: 'var(--sw-indigo)', src: 'OpenDash' },
-      { label: 'Countdowns', c: 'var(--sw-amber)', src: 'OpenDash' },
+      { label: 'Task due dates', c: 'var(--sw-indigo)', src: 'Freeflo' },
+      { label: 'Countdowns', c: 'var(--sw-amber)', src: 'Freeflo' },
     ];
     for (const r of rows) {
       const row = document.createElement('div'); row.className = 'calrow';

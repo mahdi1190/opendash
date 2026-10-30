@@ -67,7 +67,7 @@ function tgSpacesPane(o) {
     const go = tgBtn(o.embedded ? 'Add a friend' : 'Open Friends', { primary: true, icon: 'user-plus', run: () => {
       if (o.embedded && typeof friendsAddDialog === 'function') friendsAddDialog();
       else if (typeof sectionFor === 'function' && sectionFor('friends')) setView('friends');
-      else toast('Friends is not on this computer yet: update OpenDash (Settings > Updates).', { kind: 'warn' });
+      else toast('Friends is not on this computer yet: update Freeflo (Settings > Updates).', { kind: 'warn' });
     } });
     t.appendChild(go);
     box.appendChild(t);

@@ -55,10 +55,10 @@ function swCacheable(res) {
 /** The page for "no server and no copy yet" (no script: plain links). */
 function swOfflineHtml() {
   return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
-    + '<title>OpenDash - server not running</title><style>body{font:15px/1.5 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f7f7f8;color:#1c1c1f}'
+    + '<title>Freeflo - server not running</title><style>body{font:15px/1.5 system-ui,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#f7f7f8;color:#1c1c1f}'
     + 'main{max-width:440px;padding:32px;border:1px solid #e3e3e6;border-radius:12px;background:#fff}h1{font-size:18px;margin:0 0 8px}p{margin:0 0 16px;color:#55555c}a{color:#3554d1}'
     + '@media (prefers-color-scheme: dark){body{background:#151517;color:#ececef}main{background:#1d1d20;border-color:#2c2c31}p{color:#a5a5ad}a{color:#8ea2ff}}</style></head>'
-    + '<body><main><h1>The OpenDash server isn\'t running.</h1><p>Start it with your OpenDash shortcut (start-opendash in the app folder), then try again.</p>'
+    + '<body><main><h1>The Freeflo server isn\'t running.</h1><p>Start it with your Freeflo shortcut (start-opendash in the app folder), then try again.</p>'
     + '<p><a href="/">Retry</a></p></main></body></html>';
 }
 

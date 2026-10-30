@@ -6,7 +6,8 @@
 //           <script id="dashboard-config" type="application/json">{}</script>
 //                (serve.mjs swaps the {} for the public part of data/config.json)
 //   <body>  vendor/icons/lucide-sprite.svg (hidden <symbol>s for icon())
-//           src/body.html
+//           src/body.html   (<!--@freeflo-orb--> becomes <script> src/brand/freeflo-orb.js </script>: the opening
+//                picks today's orb at parse time, before the app's own scripts run)
 //           <script type="application/octet-stream" data-scene-raster="<key>"> raster object images (assets/objects,
 //                base64; never run, decoded lazily when a scene draws them: tools/lib/raster-assets.mjs)
 //           <script> vendor libraries </script>           one block each
@@ -63,9 +64,12 @@ export const FONT_FILES = [
   { family: 'Inter', file: 'vendor/fonts/InterVariable-latin.woff2', weight: '100 900', style: 'normal' },
 ];
 export const ICON_SPRITE = 'vendor/icons/lucide-sprite.svg';
-// The OpenDash favicon (assets/brand/): the SVG, plus the .ico for browsers
+// The Freeflo favicon (assets/brand/): the SVG, plus the .ico for browsers
 // without SVG icons, both as data: URLs. The page reuses the SVG one for the
 // logo in the sidebar and the welcome (setBrandMark in src/app/14-shell.js).
+// The Freeflo orb (the logo, src/brand/freeflo-orb.js): inlined where body.html has ORB_MARKER.
+export const ORB_JS = 'src/brand/freeflo-orb.js';
+export const ORB_MARKER = '<!--@freeflo-orb-->';
 export const FAVICON_FILES = [
   { file: 'assets/brand/favicon.ico', type: 'image/x-icon', attrs: 'sizes="32x32"' },
   { file: 'assets/brand/favicon.svg', type: 'image/svg+xml', attrs: 'type="image/svg+xml"' },
@@ -129,6 +133,7 @@ export function collectSources(root = HERE) {
     appJs: app.text,
     css: [fontFaceCss(root) + styles.text, ...readExtras(root, EXTRA_CSS, '.css')].join('\n'),
     sprite: iconSprite(root),
+    orbJs: existsSync(join(root, ORB_JS)) ? readFileSync(join(root, ORB_JS), 'utf8') : '',
     body: readFileSync(join(root, 'src', 'body.html'), 'utf8'),
     raster: rasterAssetBlocks(root),
     beforeJs: readExtras(root, EXTRA_JS_BEFORE, '.js'),
@@ -143,7 +148,7 @@ export function buildHtml(root = HERE) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpenDash</title>
+<title>Freeflo</title>
 ${faviconLinks(root)}
 ${CONFIG_TAG}
 <style>
@@ -151,7 +156,7 @@ ${s.css}
 </style>
 </head>
 <body>
-${s.sprite}${s.body}${s.raster}${s.beforeJs.map(scriptBlock).join('')}<script>
+${s.sprite}${s.body.replace(ORB_MARKER, () => (s.orbJs ? scriptBlock(s.orbJs) : ''))}${s.raster}${s.beforeJs.map(scriptBlock).join('')}<script>
 ${s.appJs.replace(/<\/script/gi, '<\\/script')}
 </script>
 ${s.afterJs.map(scriptBlock).join('')}</body>
@@ -163,7 +168,7 @@ ${s.afterJs.map(scriptBlock).join('')}</body>
 export function syntaxCheck(root = HERE) {
   const s = collectSources(root);
   const dir = mkdtempSync(join(tmpdir(), 'dash-syntax-'));
-  const blocks = [['src/app/*.js (bundle)', s.appJs],
+  const blocks = [['src/app/*.js (bundle)', s.appJs], ...(s.orbJs ? [[ORB_JS, s.orbJs]] : []),
     ...EXTRA_JS_AFTER.map(r => [r.endsWith('/') ? r + '*.js (one IIFE)' : r, readExtra(root, r, '.js')]).filter(b => b[1] != null)];
   const failures = [];
   try {

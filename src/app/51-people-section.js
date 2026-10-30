@@ -644,7 +644,7 @@ function _pplMailInto(box, p) {
     fetchPersonEmails(p.id).then(() => {
       if (!box.isConnected) return;
       if (_pplMail[p.id]) _pplMailInto(box, p);
-      else msg('mail', 'Recent email shows here when OpenDash is running.');
+      else msg('mail', 'Recent email shows here when Freeflo is running.');
     }, () => {});
     return;
   }

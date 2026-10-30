@@ -59,7 +59,7 @@ function _owMount(container) {
   if (!d.things.length) {
     const box = _xe('div', 'xp-empty'); root.appendChild(box);
     mountEmptyState(box, { icon: 'handshake', title: 'Paid for everyone? Get it back without the chasing',
-      text: 'Split a payment between people, and OpenDash looks in your bank for the money coming back and asks you to confirm it.',
+      text: 'Split a payment between people, and Freeflo looks in your bank for the money coming back and asks you to confirm it.',
       actions: [{ label: 'Split a payment', icon: 'plus', primary: true, run: () => owdSplitDialog({}) }] });
     for (const n of _owOffers()) root.appendChild(n);
     return;
@@ -200,7 +200,7 @@ function _owLine(t, l, showWho) {
   const row = _xe('div', 'owd-line st-' + l.status);
   row.dataset.ref = t.id + '|' + l.key; row.dataset.pickId = row.dataset.ref;
   const main = showWho ? esc(l.name) : esc(t.title);
-  const friend = showWho && owdFriend(l.name) ? '<span class="owd-friend" title="Also on OpenDash. Nothing is sent to them.">On OpenDash</span>' : '';
+  const friend = showWho && owdFriend(l.name) ? '<span class="owd-friend" title="Also on Freeflo. Nothing is sent to them.">On Freeflo</span>' : '';
   const dirWord = t.kind === 'iowe' ? (showWho ? 'you owe' : `you owe ${esc(owdFirstName(l.name))}`) : t.kind === 'expect' ? 'expecting' : '';
   const viaWord = l.via && l.via.length ? `paid by ${esc(l.via.map(owdFirstName).join(', '))}` : '';
   const sub = [showWho ? '' : esc(_xpDate(t.date)), dirWord, viaWord, l.paid > 0 && l.left > 0 ? `${owdMoney(l.paid)} of ${owdMoney(l.owes)} paid` : '', l.old ? `<span class="owd-old">${esc(owdAgo(l.age))}</span>` : '', l.remindedAt ? `reminded ${esc(_xpDate(l.remindedAt))}` : '', t.late ? '<span class="owd-old">late</span>' : ''].filter(Boolean).join(' · ');
@@ -247,7 +247,7 @@ function _owByPerson(host, d) {
   if (!people.length) { host.appendChild(_xe('div', 'xp-none', q ? 'Nothing matches.' : 'Everyone has paid. Nothing to chase.')); }
   for (const p of people) {
     const card = _xe('section', 'owd-card');
-    const friend = owdFriend(p.name) ? '<span class="owd-friend" title="Also on OpenDash. Nothing is sent to them.">On OpenDash</span>' : '';
+    const friend = owdFriend(p.name) ? '<span class="owd-friend" title="Also on Freeflo. Nothing is sent to them.">On Freeflo</span>' : '';
     const words = [];
     if (p.owes > 0) words.push(`owes you ${owdAmt(p.owes)}`);
     if (p.iowe > 0) words.push(`you owe ${owdAmt(p.iowe)}`);

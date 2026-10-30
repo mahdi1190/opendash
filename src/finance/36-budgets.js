@@ -185,7 +185,7 @@
       S.hEmpty.innerHTML = '';
       const scene = window.FinSymbols && window.FinSymbols.categoryIcon ? h('span', { class: 'fv-bud-empty-ic', html: window.FinSymbols.categoryIcon('Savings', { size: 'xl', live: MK.reduced() ? false : 'loop' }) }) : h('span', { class: 'fv-bud-empty-ic' }, ic('piggy-bank'));
       S.hEmpty.append(scene, h('h3', { text: 'Set a budget' }),
-        h('p', { text: 'Choose a monthly amount for a category or two. OpenDash shows how each one is going and warns you before you go over.' }),
+        h('p', { text: 'Choose a monthly amount for a category or two. Freeflo shows how each one is going and warns you before you go over.' }),
         h('div', { class: 'fv-bud-empty-act' },
           h('button', { type: 'button', class: 'fv-btn primary', onclick: () => { budSuggest(); budGoEditor(); } }, ic('sparkles'), h('span', { text: 'Suggest amounts for me' })),
           h('button', { type: 'button', class: 'fv-btn', onclick: () => budGoEditor() }, ic('pencil'), h('span', { text: 'Set them myself' }))));
@@ -465,8 +465,8 @@
         const put = async (b, base) => { const r = await api('/api/finance/budgets', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgets: b, base }) }); if (r.ok && r.body && r.body.budgets) { R.budgets = cleanBudgets(r.body.budgets); R.budgetDraft = null; if (R.sectionId === 'budgets') UPDATE.budgets(R.ctx); return true; } toast('Could not change the budgets: ' + ((r.body && r.body.error) || 'HTTP ' + r.status), { bad: true }); return false; };
         try {
           if (!(await put(next, was))) return false;
-          toast(`${cats.length} budget${cats.length === 1 ? '' : 's'} removed`, { action: 'Undo', onAction: () => { put(was, next).then(ok => { if (ok) toast('Undone'); }).catch(() => toast('Could not reach the OpenDash server', { bad: true })); } });
-        } catch (e) { toast('Could not reach the OpenDash server', { bad: true }); return false; }
+          toast(`${cats.length} budget${cats.length === 1 ? '' : 's'} removed`, { action: 'Undo', onAction: () => { put(was, next).then(ok => { if (ok) toast('Undone'); }).catch(() => toast('Could not reach the Freeflo server', { bad: true })); } });
+        } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); return false; }
       } }] });
     if (S.bBar && !S.bBar.querySelector('.pk-select-btn')) S.bBar.appendChild(S.bPick.button({ cls: 'fv-btn ghost' }));
   }
@@ -479,9 +479,9 @@
       // (one another device set meanwhile is kept; lib/finance-share.mjs).
       const r = await api('/api/finance/budgets', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgets: b, base: cleanBudgets(R.budgets || {}) }) });
       if (r.ok && r.body && r.body.budgets) { R.budgets = cleanBudgets(r.body.budgets); R.budgetsLocal = false; R.budgetDraft = null; toast('Budgets saved'); }
-      else if (r.status === 404 || r.status === 405) { R.budgets = b; F.localBudgets = b; saveF(); R.budgetsLocal = true; R.budgetDraft = null; toast('Saved in this browser (restart the OpenDash server to store budgets in the finance folder)'); }
+      else if (r.status === 404 || r.status === 405) { R.budgets = b; F.localBudgets = b; saveF(); R.budgetsLocal = true; R.budgetDraft = null; toast('Saved in this browser (restart the Freeflo server to store budgets in the finance folder)'); }
       else toast('Could not save budgets: ' + (r.body.error || 'HTTP ' + r.status), { bad: true });
-    } catch (e) { toast('Could not reach the OpenDash server', { bad: true }); }
+    } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); }
     R.budgetsBusy = false;
     if (R.sectionId === 'budgets') UPDATE.budgets(R.ctx);
     if (R.ctx && R.sectionId === 'categories' && typeof catTable === 'function' && S.table) catTable(S.table, R.ctx);

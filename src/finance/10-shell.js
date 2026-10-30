@@ -24,7 +24,7 @@
         const retry = h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { R.err = null; paint(); load(); } }, ic('rotate-ccw'), h('span', { text: 'Try again' }));
         // @p2 one clear sentence: the server-down message already says what to do (no "..again.. The Finances view needs").
         const why = String(R.err || 'Something went wrong').replace(/[.\s]+$/, '');
-        root.append(emptyState({ icon: R.errDown ? 'unplug' : 'circle-alert', title: "Couldn't load your finances", text: R.errDown ? `${why}.` : `${why}. If OpenDash isn’t running, start it, then come back.`, actions: [retry] }));
+        root.append(emptyState({ icon: R.errDown ? 'unplug' : 'circle-alert', title: "Couldn't load your finances", text: R.errDown ? `${why}.` : `${why}. If Freeflo isn’t running, start it, then come back.`, actions: [retry] }));
       } else if (mode === 'unavailable') {
         root.append(emptyState({ icon: 'wallet', title: 'Finances are not set up', text: 'Finances isn’t set up on this computer.', actions: [h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('plug'), h('span', { text: 'Connections > Money' }))] }));
       } else if (mode === 'empty') {
@@ -250,7 +250,7 @@
         if (r.body.card && r.body.card.isNew) newCard = r.body.card;
         for (const e of r.body.errors || []) errs.push(e);
       }
-    } catch (e) { errs.push('Could not reach the OpenDash server. Is it still running?'); }
+    } catch (e) { errs.push('Could not reach the Freeflo server. Is it still running?'); }
     R.importing = false;
     if (last && last.analysis) {
       R.lastImport = { at: new Date(Date.now()).toISOString(), added, rows, errs };   // an instant
@@ -362,7 +362,7 @@
       return;
     }
     if (running && R.lostServer) {   // @p2 the server stopped answering mid-sync (04-data.js startPolling)
-      callout('warn', 'unplug', "Lost touch with the OpenDash server.", h('span', { text: " The sync may still be running. This updates by itself when the server answers again; if OpenDash was closed, start it again (the OpenDash shortcut)." }));
+      callout('warn', 'unplug', "Lost touch with the Freeflo server.", h('span', { text: " The sync may still be running. This updates by itself when the server answers again; if Freeflo was closed, start it again (the Freeflo shortcut)." }));
       return;
     }
     if (running) {

@@ -16,14 +16,14 @@
    a saved client secret is never sent back, only whether there is one. */
 
 const GOOGLE_PERMISSIONS = Object.freeze([
-  { id: 'mail', label: 'Read your email', text: 'Who wrote, the subject and Google’s short preview, for Email triage and People. OpenDash never sends, deletes, labels or archives anything.' },
-  { id: 'calendar', label: 'See your calendars', text: 'Your events next to your tasks. OpenDash never changes them.' },
+  { id: 'mail', label: 'Read your email', text: 'Who wrote, the subject and Google’s short preview, for Email triage and People. Freeflo never sends, deletes, labels or archives anything.' },
+  { id: 'calendar', label: 'See your calendars', text: 'Your events next to your tasks. Freeflo never changes them.' },
 ]);
 const _GOOGLE_EMAIL_RE = /^[^\s@<>()",;:\\[\]]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
 
 /** The words for Google's warning screen, for the built-in app or the user's own. */
 function googleUnverifiedSteps(custom) {
-  const name = custom ? 'the name you gave your Google app' : 'OpenDash';
+  const name = custom ? 'the name you gave your Google app' : 'Freeflo';
   return [
     'Choose your Google account (or type the address).',
     'Google shows “Google hasn’t verified this app”. Click Advanced, at the bottom left.',
@@ -44,7 +44,7 @@ function googleSignInCard(el, { email = '', features = null, custom = false, rec
   if (reconnect) input.readOnly = true; else input.setAttribute('autofocus', '');
   field.appendChild(input); el.appendChild(field);
   // 2. What OpenDash may read: two separate ticks
-  el.appendChild(_connEl('h3', 'conn-name', 'What OpenDash may read'));
+  el.appendChild(_connEl('h3', 'conn-name', 'What Freeflo may read'));
   const ticks = {};
   for (const p of GOOGLE_PERMISSIONS) {
     const row = _connEl('label', 'conn-tick');
@@ -53,7 +53,7 @@ function googleSignInCard(el, { email = '', features = null, custom = false, rec
     words.append(_connEl('b', '', p.label), _connEl('span', 'conn-note', p.text));
     row.append(box, words); el.appendChild(row); ticks[p.id] = box;
   }
-  el.appendChild(_connEl('p', 'conn-note', 'Read-only. Your mail and events go straight from Google to this computer; there is no OpenDash server in between.'));
+  el.appendChild(_connEl('p', 'conn-note', 'Read-only. Your mail and events go straight from Google to this computer; there is no Freeflo server in between.'));
   // 3. Google's warning screen, before it appears
   const warn = _connEl('section', 'conn-card google-unverified');
   warn.setAttribute('role', 'note');
@@ -84,7 +84,7 @@ async function _googleBegin({ email, accountId, features }, popup) {
   try {
     const r = await _srcApi('/api/accounts/begin', { method: 'POST', body: { provider: 'google', email, features, ...(accountId ? { accountId } : {}) } });
     const url = String(r && r.url || '');
-    if (!/^https:\/\/accounts\.google\.com\//.test(url)) throw new Error('OpenDash could not start the Google sign-in. Try again.');
+    if (!/^https:\/\/accounts\.google\.com\//.test(url)) throw new Error('Freeflo could not start the Google sign-in. Try again.');
     if (popup) { popup.opener = null; popup.location.replace(url); toast('Finish in the Google tab, then come back here', { icon: 'external-link' }); return true; }
     toast('The sign-in tab didn’t open. You can sign in in this tab instead', { kind: 'info', timeout: 8000, action: { label: 'Sign in here', run: () => location.assign(url) } });
     return true;
@@ -145,7 +145,7 @@ function googleSetupNeeded(info = {}) {
   return new Promise((resolve) => {
     openDrawer({ title: 'Add a Google account', width: 560, onClose: () => resolve(null), body: (el) => {
       el.appendChild(_connEl('h3', 'conn-name', 'Coming soon'));
-      el.appendChild(_connEl('p', 'conn-text', 'Adding a Google account with one click is coming soon in this copy of OpenDash.'));
+      el.appendChild(_connEl('p', 'conn-text', 'Adding a Google account with one click is coming soon in this copy of Freeflo.'));
       el.appendChild(_connEl('p', 'conn-note', 'Until then, Gmail can come in through + Other email with an app password, or through Claude: choose Add connection at the top of this page. People who look after IT can use their own Google app in Settings > Advanced.'));
     } });
   });
@@ -162,12 +162,12 @@ function googleAdvancedFold(el, google = {}, { onChange } = {}) {
   const body = _connEl('div', 'cp-advanced-body');
   body.appendChild(_connEl('p', 'conn-note', google.custom
     ? `Google sign-ins on this computer use your own Google app (${google.clientIdHint || 'saved'}${google.hasSecret ? ', with its secret' : ', no secret'}).`
-    : google.builtIn ? 'Google sign-ins use the app built into this copy of OpenDash. Most people never need to change this.'
-      : 'This copy of OpenDash has no built-in Google app. Make your own once (about 10 minutes), then paste its client ID and secret here.'));
+    : google.builtIn ? 'Google sign-ins use the app built into this copy of Freeflo. Most people never need to change this.'
+      : 'This copy of Freeflo has no built-in Google app. Make your own once (about 10 minutes), then paste its client ID and secret here.'));
   body.appendChild(_connSteps([
     'At console.cloud.google.com, create a project.',
     'APIs & Services > Library: enable the Gmail API and the Google Calendar API.',
-    'Google Auth Platform > Branding: app name (for example OpenDash) and your email. Audience: External, then Publish app, so sign-ins do not stop after 7 days.',
+    'Google Auth Platform > Branding: app name (for example Freeflo) and your email. Audience: External, then Publish app, so sign-ins do not stop after 7 days.',
     'Data access: add .../auth/calendar.readonly and .../auth/gmail.readonly.',
     'Clients > Create client > Desktop app. Copy the client ID and the client secret (or download the JSON and paste it).',
   ]));

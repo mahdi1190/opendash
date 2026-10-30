@@ -26,7 +26,7 @@
    name, label and message from a server or a bank is set as text or esc().
    ============================================================ */
 const FIN_API = '/api/fin-connect/';
-const FIN_READONLY_TIP = 'OpenDash can only read. It can never move money.';
+const FIN_READONLY_TIP = 'Freeflo can only read. It can never move money.';
 
 /* ---------- provider descriptors ---------- */
 // facts: the same five, in the same order, on every card. more: the honest
@@ -42,7 +42,7 @@ const FIN_PROVIDERS = [
       need: 'Claude Code signed in on this computer, and an Aureli login.',
       time: 'About 3 minutes',
     },
-    more: 'Aureli is a bank connector inside claude.ai. OpenDash asks your own Claude to read it with read-only tools, then keeps the transactions in your data folder. Check Aureli’s current pricing and bank list on their sign-in page; OpenDash does not see your Aureli login.',
+    more: 'Aureli is a bank connector inside claude.ai. Freeflo asks your own Claude to read it with read-only tools, then keeps the transactions in your data folder. Check Aureli’s current pricing and bank list on their sign-in page; Freeflo does not see your Aureli login.',
     action: 'Connect in Claude' },
   { id: 'plasma', group: 'direct', name: 'Plasma One', sub: 'Stablecoin wallet · public Plasma blockchain', mark: 'plasma', flow: 'plasma',
     keywords: 'plasma one wallet usdt usdt0 stablecoin crypto rain card blockchain 0x',
@@ -51,10 +51,10 @@ const FIN_PROVIDERS = [
       covers: 'Your Plasma One USDT balance and transfers in and out, read from the public Plasma blockchain.',
       cost: 'Free.',
       limits: 'Card purchases show as “Plasma One payment” without the shop name, and some may be combined. Converted from USD at each day’s rate.',
-      need: 'Your Plasma wallet address (starts with 0x). Never your recovery phrase: OpenDash refuses it.',
+      need: 'Your Plasma wallet address (starts with 0x). Never your recovery phrase: Freeflo refuses it.',
       time: '10 seconds',
     },
-    more: 'A wallet address is public, so this connection can only read: there is nothing to sign in to and nothing that could move money. OpenDash keeps the address on this computer only (never in your data folder) and reads transfers from a public block explorer. Card payments are settled by the card issuer, so a shop name is not on the blockchain.',
+    more: 'A wallet address is public, so this connection can only read: there is nothing to sign in to and nothing that could move money. Freeflo keeps the address on this computer only (never in your data folder) and reads transfers from a public block explorer. Card payments are settled by the card issuer, so a shop name is not on the blockchain.',
     action: 'Paste address' },
   { id: 'monzo', group: 'direct', name: 'Monzo', sub: 'Monzo’s personal developer API', mark: 'monzo', flow: 'monzo',
     keywords: 'monzo bank current joint pots uk',
@@ -66,7 +66,7 @@ const FIN_PROVIDERS = [
       need: 'Your Monzo app, and a free Monzo developer client (we walk you through it).',
       time: 'About 4 minutes',
     },
-    more: 'You make a small “client” on Monzo’s developer site; its ID and secret are saved only on this computer (never in your data folder, so a second computer connects again) and are never shown again. Monzo then asks you to approve OpenDash in the app. OpenDash only calls Monzo’s read endpoints: it cannot move money, move money into or out of pots, or post to your feed.',
+    more: 'You make a small “client” on Monzo’s developer site; its ID and secret are saved only on this computer (never in your data folder, so a second computer connects again) and are never shown again. Monzo then asks you to approve Freeflo in the app. Freeflo only calls Monzo’s read endpoints: it cannot move money, move money into or out of pots, or post to your feed.',
     action: 'Connect Monzo' },
   { id: 'enable-banking', group: 'direct', name: 'Other UK and EU banks', sub: 'Via Enable Banking (open banking)', mark: 'enable-banking', flow: 'enable-banking',
     keywords: 'enable banking open banking psd2 bank eu uk europe barclays lloyds hsbc natwest santander revolut starling nationwide halifax',
@@ -152,7 +152,7 @@ function finAddressCheck(text) {
   const s = raw.trim();
   if (!s) return { state: 'empty' };
   const secret = finLooksSecret(s);
-  if (secret) return { state: 'secret', secret, message: 'That looks like your secret recovery phrase or key. Never paste it anywhere. OpenDash only needs your public address.' };
+  if (secret) return { state: 'secret', secret, message: 'That looks like your secret recovery phrase or key. Never paste it anywhere. Freeflo only needs your public address.' };
   if (/^0x[0-9a-fA-F]{40}$/.test(s)) return { state: 'ok', address: s };
   if (/^0x[0-9a-fA-F]{0,39}$/.test(s)) return { state: 'partial', message: 'Keep going: an address is 0x followed by 40 letters and numbers.' };
   if (/\.eth$/i.test(s)) return { state: 'invalid', message: 'Paste the 0x address itself, not a name.' };
@@ -346,7 +346,7 @@ const FinConnectStore = {
           this.remote = a && !Array.isArray(a) && a.remote && typeof a.remote === 'object' ? a.remote : null;
           this.missing = !p; this.error = null; this.at = Date.now();
         }
-      } catch (e) { if (gen === this.gen) this.error = (e && e.message) || 'OpenDash isn’t answering'; }
+      } catch (e) { if (gen === this.gen) this.error = (e && e.message) || 'Freeflo isn’t answering'; }
       if (gen === this.gen) { this.loading = null; if (state.view === 'connections') renderMain(); }
       return this;
     })();
@@ -364,21 +364,21 @@ async function finApi(path, opts) {
       headers: opts.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
     });
-  } catch (e) { throw Object.assign(new Error('OpenDash isn’t running. Start it and try again'), { code: 'NETWORK' }); }
+  } catch (e) { throw Object.assign(new Error('Freeflo isn’t running. Start it and try again'), { code: 'NETWORK' }); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
-    const fallback = r.status === 404 ? 'Restart OpenDash to finish updating' : finErrorText(j.code) || 'OpenDash isn’t answering. Try again in a moment';
+    const fallback = r.status === 404 ? 'Restart Freeflo to finish updating' : finErrorText(j.code) || 'Freeflo isn’t answering. Try again in a moment';
     throw Object.assign(new Error(j.error || fallback), { code: j.code, status: r.status });
   }
   return j;
 }
 const FIN_ERRORS = {
   NOT_CONFIGURED: 'This connection is not set up yet.', AUTH: 'Sign in again to keep this connection working.',
-  CONSENT_EXPIRED: 'Your bank’s permission ended. Sign in again to renew it.', NOT_APPROVED: 'Approve OpenDash in your Monzo app first.',
+  CONSENT_EXPIRED: 'Your bank’s permission ended. Sign in again to renew it.', NOT_APPROVED: 'Approve Freeflo in your Monzo app first.',
   RATE_LIMITED: 'The provider asked us to slow down. Try again in a few minutes.', NETWORK: 'Couldn’t reach the provider. Check your internet connection.',
   BAD_RESPONSE: 'The provider sent something unexpected. Try again later.', POLICY: 'That request was blocked: finance connections can only read.',
   NOT_SUPPORTED: 'That bank is not available through Enable Banking. Import a CSV instead.',
-  SECRET_REFUSED: 'That looks like your secret recovery phrase or key. Never paste it anywhere. OpenDash only needs your public address.',
+  SECRET_REFUSED: 'That looks like your secret recovery phrase or key. Never paste it anywhere. Freeflo only needs your public address.',
 };
 function finErrorText(code) { return FIN_ERRORS[code] || ''; }
 
@@ -559,8 +559,8 @@ function finDisconnect(group) {
     body: (el, close) => {
       el.classList.add('fc-sheet', 'fc-disconnect');
       el.appendChild(_finEl('p', 'fc-lead', s.kind === 'direct'
-        ? `Your past transactions stay in Finances. OpenDash deletes its saved sign-in for ${label} from this computer${group.provider === 'monzo' || group.provider === 'enable-banking' ? ' and tells the provider to end it' : ''}.`
-        : `Your past transactions stay in Finances. OpenDash stops reading ${label}; your sign-in on claude.ai is not changed.`));
+        ? `Your past transactions stay in Finances. Freeflo deletes its saved sign-in for ${label} from this computer${group.provider === 'monzo' || group.provider === 'enable-banking' ? ' and tells the provider to end it' : ''}.`
+        : `Your past transactions stay in Finances. Freeflo stops reading ${label}; your sign-in on claude.ai is not changed.`));
       const opts = _finEl('div', 'fc-radio-group'); opts.setAttribute('role', 'radiogroup');
       const paint = () => {
         opts.replaceChildren();
@@ -1124,7 +1124,7 @@ function finMoneyBlock() {
   const section = _finEl('section', 'cp-money' + (_finEntered ? '' : ' fc-enter'));
   _finEntered = true;
   section.dataset.conn = 'money'; section.id = 'money';
-  section.appendChild(secHead({ title: 'Money', sub: 'Read-only. OpenDash can never move money.' }));
+  section.appendChild(secHead({ title: 'Money', sub: 'Read-only. Freeflo can never move money.' }));
   if (FinConnectStore.error) {
     const err = _finEl('div', 'cp-fetch-error'); err.setAttribute('role', 'alert');
     err.append(_finEl('span', null, 'Couldn’t load the money connections: ' + String(FinConnectStore.error).replace(/[.\s]+$/, '') + '.'), uiButton({ label: 'Try again', icon: 'refresh-cw', kind: 'secondary', size: 'sm', run: () => FinConnectStore.load({ force: true }) }));

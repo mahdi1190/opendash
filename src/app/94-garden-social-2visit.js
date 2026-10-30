@@ -292,7 +292,7 @@ function _gsvStageBox(f, c) {
     const holder = _gsvEl('div');
     const r = gardenRender(holder, snap, { readOnly: true, visitor: { name: gardenSocialName(f) }, size: 'm', crop: 'all', friend: f });   // integrate 2.18: f brings their pet (agent pets)
     fig = holder.firstElementChild;
-    if (!r || !fig) { box.appendChild(_gsvCalm('sprout', 'This garden could not be drawn', 'It may come from a newer OpenDash: update to see everything in it.')); return box; }
+    if (!r || !fig) { box.appendChild(_gsvCalm('sprout', 'This garden could not be drawn', 'It may come from a newer Freeflo: update to see everything in it.')); return box; }
     for (const k of [..._gsv.stage.keys()]) if (k.startsWith(f.id + '|')) _gsv.stage.delete(k);
     if (_gsv.stage.size > 6) _gsv.stage.clear();
     _gsv.stage.set(key, fig);

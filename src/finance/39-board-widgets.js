@@ -542,7 +542,7 @@
         BWR.insights.update(cd, w, X);
       } catch (e) {
         if (e && e.name === 'AbortError') { BWR.insights.update(cd, w, X); return; }
-        const msg = (e && e.message && !/fetch/i.test(e.message)) ? e.message : 'Could not reach the OpenDash server. Is it running?';
+        const msg = (e && e.message && !/fetch/i.test(e.message)) ? e.message : 'Could not reach the Freeflo server. Is it running?';
         wrap.innerHTML = ''; wrap.append(h('span', { class: 'fvb-err', text: msg }), h('button', { type: 'button', class: 'btn-link', text: 'Try again', onclick: () => BWR.insights.update(cd, w, X) }));
       }
     };

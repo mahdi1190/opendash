@@ -64,7 +64,7 @@ function _rcMoneyFmt(v) {
   const ccy = (APP_CONFIG && APP_CONFIG.currency) || 'GBP';
   try { return new Intl.NumberFormat((APP_CONFIG && APP_CONFIG.locale) || undefined, { style: 'currency', currency: ccy, maximumFractionDigits: 0 }).format(v); } catch (e) { return `${ccy} ${Math.round(v)}`; }
 }
-function _rcTitle(range) { return range.period === 'year' ? `Your ${range.label} in OpenDash` : `${range.month} in OpenDash`; }
+function _rcTitle(range) { return range.period === 'year' ? `Your ${range.label} in Freeflo` : `${range.month} in Freeflo`; }
 
 async function _rcLoad(o) {
   o = o || {};
@@ -119,7 +119,7 @@ storyRegisterBeatType('recap-close', (f, b, ctx) => {
   if (acts) acts.prepend(x);
 });
 storyRegisterKind('recap', {
-  label: 'Year in OpenDash', view: 'home', dark: true,
+  label: 'Year in Freeflo', view: 'home', dark: true,
   load: (o) => _rcLoad(o),
   details() { if (typeof achOpenPanel === 'function') achOpenPanel(); },
 });
@@ -130,8 +130,8 @@ function recapOpen(period, ref) {
   if (p === 'month' && /^\d{4}-\d{2}$/.test(String(ref || '')) && typeof gameMark === 'function') gameMark('recap-month', String(ref));   // achievements (71-ach-pack-plan.js)
   return storyOpen('recap', { autoplay: true, period: p, ref, variant: p + ':' + (ref || '') });
 }
-registerCommand({ id: 'story-recap-year', label: 'Play my year in OpenDash', icon: 'sparkles', group: 'Go to', keywords: 'year in review recap wrapped story annual summary achievements', when: () => typeof memWrappedOpen !== 'function', run: () => recapOpen('year', todayStr().slice(0, 4)) });
-registerCommand({ id: 'story-recap-month', label: 'Play my month in OpenDash', icon: 'calendar-days', group: 'Go to', keywords: 'month in review recap wrapped story monthly summary', run: () => recapOpen('month', todayStr().slice(0, 7)) });
+registerCommand({ id: 'story-recap-year', label: 'Play my year in Freeflo', icon: 'sparkles', group: 'Go to', keywords: 'year in review recap wrapped story annual summary achievements', when: () => typeof memWrappedOpen !== 'function', run: () => recapOpen('year', todayStr().slice(0, 4)) });
+registerCommand({ id: 'story-recap-month', label: 'Play my month in Freeflo', icon: 'calendar-days', group: 'Go to', keywords: 'month in review recap wrapped story monthly summary', run: () => recapOpen('month', todayStr().slice(0, 7)) });
 
 /* ---------- the summary card (a PNG, only on an explicit click) ---------- */
 function recapCardCanvas(R, o) {
@@ -150,7 +150,7 @@ function recapCardCanvas(R, o) {
   g.textBaseline = 'alphabetic';
   g.fillStyle = 'rgba(255,255,255,0.7)'; g.font = font(600, 34); g.fillText('OPENDASH', 80, 130);
   g.fillStyle = '#fff'; g.font = font(800, 92); g.fillText(R.range.period === 'year' ? `My ${R.range.label}` : R.range.month, 80, 240);
-  g.font = font(500, 44); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillText(R.range.period === 'year' ? 'in OpenDash' : `${R.range.label.slice(-4)} in OpenDash`, 80, 304);
+  g.font = font(500, 44); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillText(R.range.period === 'year' ? 'in Freeflo' : `${R.range.label.slice(-4)} in Freeflo`, 80, 304);
   const tiles = [[R.tasksDone, R.tasksDone === 1 ? 'task done' : 'tasks done'], [R.activeDays, 'active days'], [R.bestStreak, 'best streak (days)'], [R.meetings, 'meetings'], [R.achievements.length, 'achievements'], [R.busiestWeekday ? R.busiestWeekday.name.slice(0, 3) : '–', 'busiest weekday']];
   tiles.forEach(([v, label], i) => {
     const x = 80 + (i % 2) * 470, y = 380 + Math.floor(i / 2) * 200;
@@ -169,7 +169,7 @@ function recapCardCanvas(R, o) {
     line('Met most', R.topPeople.map(p => _rcFirst(p.id)).join(' · '));
   }
   if (o.money && R.money) line('Money', [`${_rcMoneyFmt(R.money.spent)} spent`, R.money.income ? `${_rcMoneyFmt(R.money.income)} in` : ''].filter(Boolean).join(' · '));
-  g.fillStyle = 'rgba(255,255,255,0.5)'; g.font = font(500, 26); g.fillText('Made with OpenDash, from data on my own device', 80, H - 70);
+  g.fillStyle = 'rgba(255,255,255,0.5)'; g.font = font(500, 26); g.fillText('Made with Freeflo, from data on my own device', 80, H - 70);
   return c;
 }
 function _rcRound(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }

@@ -332,7 +332,7 @@ function _frPendCard(f) {
     } else {
       const w = _frEl('span', 'fr-wait');
       w.innerHTML = icon('loader-circle', 'i-sm fr-spin');
-      w.appendChild(_frEl('span', null, `Getting the pictures to check… ${name}'s OpenDash needs to be on.`));
+      w.appendChild(_frEl('span', null, `Getting the pictures to check… ${name}'s Freeflo needs to be on.`));
       body.appendChild(w);
     }
     acts.appendChild(uiButton({ label: 'Decline', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/decline', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Declined. They are not told why.', 'decline') }));
@@ -646,7 +646,7 @@ function _frAddInvite(pane, d, close) {
  */
 function _frInviteOut(out, r, d, close) {
   const link = String(r.link || r.text || '');
-  const message = String(r.message || `Join me on OpenDash: ${link}`);
+  const message = String(r.message || `Join me on Freeflo: ${link}`);
   const wrap = _frEl('div', 'fr-invite-out');
   if (r.short && typeof syncQrSvg === 'function') {
     try {
@@ -667,7 +667,7 @@ function _frInviteOut(out, r, d, close) {
   const a = _frEl('div', 'fr-add-acts');
   a.appendChild(uiButton({ label: 'Copy link', icon: 'copy', kind: 'primary', run: () => copyText(link, 'invite link') }));
   a.appendChild(uiButton({ label: 'Copy message', icon: 'message-circle', run: () => copyText(message, 'message') }));
-  if (navigator.share) a.appendChild(uiButton({ label: 'Share', icon: 'send', run: () => navigator.share({ title: 'Join me on OpenDash', text: message }).catch(() => {}) }));
+  if (navigator.share) a.appendChild(uiButton({ label: 'Share', icon: 'send', run: () => navigator.share({ title: 'Join me on Freeflo', text: message }).catch(() => {}) }));
   side.appendChild(a);
   const msg = _frEl('div', 'fr-invite-msg');
   msg.appendChild(_frEl('span', 'overline', 'Ready to send'));
@@ -720,13 +720,13 @@ function _frAddCode(pane, d, close) {
     clearInterval(_frLiveTick);
     _frLiveTick = setInterval(() => { if (!document.body.contains(left) || !tick()) { clearInterval(_frLiveTick); _frLiveTick = null; } }, 1000);
     mine.appendChild(left);
-    mine.appendChild(_frEl('p', 'fr-small', 'Read these 4 letters to your friend. They type them in their OpenDash: Friends > Add a friend > Friend code. It works once. Then you check it is them and press Accept.'));
+    mine.appendChild(_frEl('p', 'fr-small', 'Read these 4 letters to your friend. They type them in their Freeflo: Friends > Add a friend > Friend code. It works once. Then you check it is them and press Accept.'));
     const a = _frEl('div', 'fr-add-acts');
     a.appendChild(uiButton({ label: 'New code', icon: 'refresh-cw', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/live', {}); await friendsLoad(true); redo(); }, null, 'make a new code') }));
     a.appendChild(uiButton({ label: 'Cancel', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/live', { cancel: true }); await friendsLoad(true); redo(); }, null, 'stop the code') }));
     mine.appendChild(a);
   } else {
-    mine.appendChild(_frEl('p', 'fr-small', 'Your friend is with you, or on the phone? Show them a 4-letter code to type in their OpenDash.'));
+    mine.appendChild(_frEl('p', 'fr-small', 'Your friend is with you, or on the phone? Show them a 4-letter code to type in their Freeflo.'));
     mine.appendChild(uiButton({ label: 'Show my friend code', icon: 'key-round', kind: 'primary', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/live', {}); await friendsLoad(true); redo(); }, null, 'show your friend code') }));
   }
   pane.appendChild(mine);
@@ -825,7 +825,7 @@ function _frKeysEl(d) {
     return box;
   }
   const n = r.friends || 0;
-  const progress = n ? `${r.moved} of ${n} friend${n === 1 ? ' has' : 's have'} moved over${r.moved < n ? '; the rest follow when their OpenDash is next on' : ''}.` : '';
+  const progress = n ? `${r.moved} of ${n} friend${n === 1 ? ' has' : 's have'} moved over${r.moved < n ? '; the rest follow when their Freeflo is next on' : ''}.` : '';
   if (r.step === 'done') box.appendChild(_frLine('check', `Locked out ${_frAgo(r.doneAt || r.at)}. ${progress}`.trim()));
   else if (r.waiting === 'relay-update') { box.appendChild(_frLine('key-round', `Locked out here. ${progress}`.trim())); box.appendChild(_frRelayRotateEl()); }
   else if (r.waiting === 'relay-owner') box.appendChild(_frLine('hourglass', `Locked out here. ${progress} Waiting for your relay's owner to let the change in; until then the lost computer can still use that relay.`.replace(/\s+/g, ' ')));
@@ -893,12 +893,12 @@ function friendsRenewKeysDialog(o) {
       const ul = _frEl('ul', 'fr-renew-list');
       const li = (t) => ul.appendChild(_frEl('li', null, t));
       li('New keys are made on this computer. Your other computers get them through sync; a computer you removed from sync does not.');
-      if (friends) li(`Each friend's OpenDash moves you over by itself (${friends} friend${friends === 1 ? '' : 's'}). Your friendships, history and what you share stay as they are.`);
+      if (friends) li(`Each friend's Freeflo moves you over by itself (${friends} friend${friends === 1 ? '' : 's'}). Your friendships, history and what you share stay as they are.`);
       if (pending) li('Requests still in progress and open invite links stop working: send new ones afterwards.');
       if (d.me.code) li('Your friend code changes.');
       if (home && home.role === 'owner') li('Your relay is updated so it trusts only the new keys (same address; Cloudflare may ask you to sign in).');
       else if (home) li("Your relay belongs to a friend: they get a button to let your new keys in. Until they press it, the lost computer can still use it.");
-      li("What it can't do: if the lost computer does this first, friends who hear from it first could be fooled. A friend's OpenDash then pauses your friendship; if a friend tells you that, send them a fresh invite.");
+      li("What it can't do: if the lost computer does this first, friends who hear from it first could be fooled. A friend's Freeflo then pauses your friendship; if a friend tells you that, send them a fresh invite.");
       det.appendChild(ul);
       el.appendChild(det);
       const acts = _frEl('div', 'fr-add-acts');

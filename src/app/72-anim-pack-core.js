@@ -99,5 +99,5 @@
   add({ id: 'theme-dusk', slot: 'theme-switch', label: 'Dusk falls', colour: 'violet', tags: ['wipe', 'evening'], mood: 'calm', intensity: 'subtle', vt: { kind: 'wipe', ms: 560 }, svg: () => morph(false, DUSK), reduced: () => morph(true, DUSK) });
   add({ id: 'theme-fade', slot: 'theme-switch', label: 'Crossfade', colour: 'slate', tags: ['fade'], mood: 'neutral', intensity: 'subtle', vt: { kind: 'fade', ms: 320 }, svg: () => morph(false), reduced: () => morph(true) });
 
-  animRegisterPack({ id: 'core', name: 'Core', core: true, version: '2.2.0', description: 'The animations built into OpenDash.', items });
+  animRegisterPack({ id: 'core', name: 'Core', core: true, version: '2.2.0', description: 'The animations built into Freeflo.', items });
 })();

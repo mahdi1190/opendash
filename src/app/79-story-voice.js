@@ -64,10 +64,10 @@ function renderStoryVoiceSettings(el) {
   const limitWrap = make('div', 'stv-inline');
   const limit = input('Monthly character limit', 'number'); limit.min = '0'; limit.max = '1000000'; limit.step = '500'; limit.inputMode = 'numeric'; limit.setAttribute('aria-describedby', id + '-limit-note');
   const saveLimit = button('Save limit'); limitWrap.append(limit, saveLimit);
-  const limitRow = row('Monthly character limit', 'At this limit OpenDash uses the browser voice. 0 means saved audio only.', limitWrap, cloud); limitRow.querySelector('.set-h').id = id + '-limit-note';
+  const limitRow = row('Monthly character limit', 'At this limit Freeflo uses the browser voice. 0 means saved audio only.', limitWrap, cloud); limitRow.querySelector('.set-h').id = id + '-limit-note';
   const usage = make('div', 'stv-usage');
   const usageText = make('p', 'stv-usage-text');
-  const meter = make('progress', 'stv-meter'); meter.max = 18000; meter.value = 0; meter.setAttribute('aria-label', 'OpenDash monthly generated speech characters');
+  const meter = make('progress', 'stv-meter'); meter.max = 18000; meter.value = 0; meter.setAttribute('aria-label', 'Freeflo monthly generated speech characters');
   const accountText = make('p', 'stv-note'); usage.append(usageText, meter, accountText);
   row('This month', 'Generated characters, counted each calendar month.', usage, cloud);
 
@@ -125,7 +125,7 @@ function renderStoryVoiceSettings(el) {
     try {
       const r = await fetch(url, Object.assign({ signal: ac.signal }, patch === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) }));
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || ('OpenDash could not finish this request (' + r.status + ').'));
+      if (!r.ok) throw new Error(j.error || ('Freeflo could not finish this request (' + r.status + ').'));
       return j;
     } catch (e) { if (e.name === 'AbortError') throw new Error('The voice service took too long. Try again.'); throw e; }
     finally { clearTimeout(timer); }
@@ -142,7 +142,7 @@ function renderStoryVoiceSettings(el) {
     const focusBefore = document.activeElement;
     busy = true; message(progress); update();
     try { const result = await work(); if (section.isConnected) message(result === undefined ? 'Saved.' : result); return true; }
-    catch (e) { if (section.isConnected) message((e && e.message) || 'The OpenDash server is unavailable. Your browser voice is still available.', true); return false; }
+    catch (e) { if (section.isConnected) message((e && e.message) || 'The Freeflo server is unavailable. Your browser voice is still available.', true); return false; }
     finally {
       busy = false; update();
       if (section.isConnected && controls.includes(focusBefore) && !focusBefore.disabled && !focusBefore.hidden && (!document.activeElement || document.activeElement === document.body)) focusBefore.focus();
@@ -185,7 +185,7 @@ function renderStoryVoiceSettings(el) {
     stopPreview();
     const reply = await request('/api/narration/speech', { text: 'Good morning. A little space to plan, a few things that matter, and a good place to begin.', delivery: { tone: 'warm', pace: 'slow', pauseMs: 300 }, kind: 'intro', preview: true });
     if (reply.usage) status.usage = reply.usage;
-    if (!reply.url || !/^\/api\/narration\/audio\?id=[a-f0-9]{64}$/.test(reply.url)) throw new Error('OpenDash did not return a playable voice preview.');
+    if (!reply.url || !/^\/api\/narration\/audio\?id=[a-f0-9]{64}$/.test(reply.url)) throw new Error('Freeflo did not return a playable voice preview.');
     audio.src = reply.url; audio.hidden = false; previewAudio = audio;
     if (!section.isConnected) return '';
     try { await audio.play(); if (!section.isConnected) { stopPreview(); return ''; } stop.hidden = false; } catch (e) { return 'Preview ready. Press Play in the audio controls below.'; }

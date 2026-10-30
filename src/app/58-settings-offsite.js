@@ -35,7 +35,7 @@ function settingsOffsiteCard(el) {
   const c = _settingsCard('Daily encrypted copy');
   el.appendChild(c.card);
   if (!i) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Loading…' })); return; }
-  if (i.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'OpenDash isn’t answering.' })); return; }
+  if (i.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Freeflo isn’t answering.' })); return; }
   const when = (iso) => (typeof _sdWhen === 'function' ? _sdWhen(iso) : iso);
   if (!i.enabled) {
     c.body.appendChild(setStatusLine('off', 'Off', ''));

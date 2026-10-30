@@ -1,6 +1,6 @@
 # Architecture
 
-An overview of how OpenDash is put together, for contributors. The complete,
+An overview of how Freeflo is put together, for contributors. The complete,
 file-by-file map with every helper and rule is `MODULES.md` in the repository
 root; this page is the short version. When the two disagree, `MODULES.md`
 wins: it is updated with every change to the code.
@@ -92,7 +92,7 @@ wins: it is updated with every change to the code.
 - `mcp/server.mjs` speaks JSON-RPC over stdio with no dependencies. Its tools
   are generated from the actions layer, so a new operation becomes a tool
   automatically.
-- While OpenDash runs it calls the server over HTTP with the local token;
+- While Freeflo runs it calls the server over HTTP with the local token;
   otherwise it runs the actions layer embedded on the data folder, under the
   same lock.
 - `--mode propose` exposes read tools plus `propose_changes` only; the in-app

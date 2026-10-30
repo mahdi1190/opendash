@@ -326,7 +326,7 @@ function _frTabRequests(root, view, d) {
 /* ---------- Shared: spaces, gardens, pets ---------- */
 function _frTabShared(root, view, d) {
   if (typeof tgSpacesPane === 'function' && typeof tgOn === 'function' && tgOn()) root.appendChild(tgSpacesPane({ embedded: true }));
-  else root.appendChild(emptyLine('Shared lists and boards are not on this computer yet. Update OpenDash to use them.'));
+  else root.appendChild(emptyLine('Shared lists and boards are not on this computer yet. Update Freeflo to use them.'));
   const rest = _frEl('div', 'fr-stack fr-shared-rest');
   _frPanelsFor(rest, 'hangout', 'shared', d);
   if (rest.childNodes.length) root.appendChild(rest);

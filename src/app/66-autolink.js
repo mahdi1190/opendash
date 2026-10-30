@@ -625,7 +625,7 @@ function _alSettingsRender(el) {
         if (st) { _alSettingsAsked = false; _alPaintSettings(); return; }
         if (++tries < 6) { setTimeout(ask, 800); return; }   // the page may still be connecting to its server
         _alSettingsAsked = false;
-        if (_alSettingsEl) _alSettingsEl.replaceChildren(emptyLine('Auto-linking needs OpenDash running on this computer. Start it with start-opendash.', { label: 'Try again', run: () => _alPaintSettings() }));
+        if (_alSettingsEl) _alSettingsEl.replaceChildren(emptyLine('Auto-linking needs Freeflo running on this computer. Start it with start-opendash.', { label: 'Try again', run: () => _alPaintSettings() }));
       });
       setTimeout(ask, 0);
     }
@@ -641,7 +641,7 @@ function _alSettingsRender(el) {
 
   // Workspace folders
   const fh = document.createElement('div'); fh.className = 'set-subh';
-  fh.innerHTML = '<h3>Workspace folders</h3><span class="subtle">OpenDash reads names and short excerpts. It never changes them.</span>';
+  fh.innerHTML = '<h3>Workspace folders</h3><span class="subtle">Freeflo reads names and short excerpts. It never changes them.</span>';
   el.appendChild(fh);
   const fl = document.createElement('div'); fl.className = 'al-folders card';
   const roots = (s.index && s.index.roots) || [];
@@ -734,7 +734,7 @@ function _alSettingsRender(el) {
 }
 registerSettingsGroup({
   id: 'autolink', title: 'Files & auto-link', icon: 'wand-sparkles', order: 45,
-  description: 'Folders OpenDash may search, and how it links them to tasks.',
+  description: 'Folders Freeflo may search, and how it links them to tasks.',
   render(el) { _alSettingsRender(el); },
 });
 

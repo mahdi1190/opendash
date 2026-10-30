@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
-<title>OpenDash: plan your day, keep your data</title>
+<title>Freeflo: plan your day, keep your data</title>
 <meta name="description" content="A calm, local-first dashboard for your tasks, calendar, money, expenses and friends, on your own computer. No account, no telemetry, end-to-end encrypted sync through a relay you host. Free and open source.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f6f6fb" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121228" media="(prefers-color-scheme: dark)">
-<meta property="og:title" content="OpenDash: plan your day, keep your data">
+<meta property="og:title" content="Freeflo: plan your day, keep your data">
 <meta property="og:description" content="A calm, local-first dashboard on your own computer. Private by design, secure by default.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://mahdi1190.github.io/opendash/">
@@ -23,10 +23,10 @@
 
 <header class="bar">
   <div class="wrap bar-in">
-    <a class="brand" href="./" aria-label="OpenDash home">
+    <a class="brand" href="./" aria-label="Freeflo home">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="img/lockup-dark.svg">
-        <img src="img/lockup.svg" alt="OpenDash" width="155" height="32">
+        <img src="img/lockup.svg" alt="Freeflo" width="136" height="32">
       </picture>
     </a>
     <nav aria-label="Sections">
@@ -45,7 +45,7 @@
   <div class="wrap hero-in">
     <div class="hero-copy">
       <h1 id="hero-title">Plan your day.<br>Keep your data.</h1>
-      <p class="lead">OpenDash is a calm dashboard for your tasks, calendar, money and friends. It runs on your own computer. No account, no OpenDash server, no telemetry.</p>
+      <p class="lead">Freeflo is a calm dashboard for your tasks, calendar, money and friends. It runs on your own computer. No account, no Freeflo server, no telemetry.</p>
       <div class="cta">
         <a class="btn" href="https://github.com/mahdi1190/opendash/releases/latest">Download for Windows</a>
         <a class="btn quiet" href="https://github.com/mahdi1190/opendash/blob/main/docs/INSTALL.md#which-file-to-download">macOS and Linux (zip)</a>
@@ -67,13 +67,13 @@
   <figure class="wrap hero-shot">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="img/home-today-dark.png">
-      <img src="img/home-today.png" alt="OpenDash Home: a morning card with today's meetings and tasks, the day so far in one sentence, and ideas for today (demo data)" width="1440" height="900" fetchpriority="high">
+      <img src="img/home-today.png" alt="Freeflo Home: a morning card with today's meetings and tasks, the day so far in one sentence, and ideas for today (demo data)" width="1440" height="900" fetchpriority="high">
     </picture>
   </figure>
 </section>
 
 <div id="day" class="day">
-  <p class="wrap note">A day with OpenDash, from first coffee to lights out. Every picture shows invented demo data.</p>
+  <p class="wrap note">A day with Freeflo, from first coffee to lights out. Every picture shows invented demo data.</p>
 
   <section class="hour dawn" aria-labelledby="h-home">
     <div class="wrap hour-in">
@@ -244,10 +244,10 @@
       <div class="hour-body">
         <div class="lede">
           <h2 id="h-security">Private by design, secure by default</h2>
-          <p>Your tasks, people, calendar and money are personal. OpenDash is built so they stay yours, and each claim below is backed by the code.</p>
+          <p>Your tasks, people, calendar and money are personal. Freeflo is built so they stay yours, and each claim below is backed by the code.</p>
         </div>
         <dl class="claims">
-          <div><dt>Local-first</dt><dd>Your data is one folder on your computer. There is no OpenDash server, no account, no analytics and no telemetry.</dd></div>
+          <div><dt>Local-first</dt><dd>Your data is one folder on your computer. There is no Freeflo server, no account, no analytics and no telemetry.</dd></div>
           <div><dt>A local server that stays local</dt><dd>It listens only on 127.0.0.1 and checks each request's Host and Origin, so websites you visit can't reach it. A strict Content Security Policy allows no inline scripts but the app's own.</dd></div>
           <div><dt>End-to-end encrypted</dt><dd>Sync and friends use standard primitives: AES-256-GCM, X25519, Ed25519 and HKDF. The relay carries sealed data it can't read.</dd></div>
           <div><dt>Your relay, your rules</dt><dd>You host the relay on your own free Cloudflare account. Every request is signed, and only your devices and people you approve can use it.</dd></div>
@@ -277,7 +277,7 @@
       <div class="hour-body">
         <div class="lede">
           <h2 id="h-cloud">Cloud is optional</h2>
-          <p>You never need it. You decide how far your data goes, one level at a time. There is no OpenDash cloud at any level.</p>
+          <p>You never need it. You decide how far your data goes, one level at a time. There is no Freeflo cloud at any level.</p>
         </div>
         <ol class="levels">
           <li>
@@ -322,7 +322,7 @@
         <div class="faq">
           <details>
             <summary>Is it really free?</summary>
-            <p>Yes. OpenDash is open source under the MIT licence. The optional AI features use your own Claude plan through Claude Code, and the optional relay fits in Cloudflare's free plan.</p>
+            <p>Yes. Freeflo is open source under the MIT licence. The optional AI features use your own Claude plan through Claude Code, and the optional relay fits in Cloudflare's free plan.</p>
           </details>
           <details>
             <summary>Do I need the internet or an account?</summary>
@@ -333,8 +333,8 @@
             <p>The installer is not code-signed yet, so SmartScreen does not recognise it. Choose More info, then Run anyway, after comparing the file with the SHA-256 checksum on the release page.</p>
           </details>
           <details>
-            <summary>Can the OpenDash project see my data?</summary>
-            <p>No. There is no OpenDash server. Sync and friends go through a relay on your own Cloudflare account, end-to-end encrypted.</p>
+            <summary>Can the Freeflo project see my data?</summary>
+            <p>No. There is no Freeflo server. Sync and friends go through a relay on your own Cloudflare account, end-to-end encrypted.</p>
           </details>
           <details>
             <summary>Does it work on a Mac or Linux?</summary>
@@ -364,7 +364,7 @@
 
 <footer class="foot">
     <div class="wrap foot-in">
-      <p>OpenDash is free and open source under the MIT licence.</p>
+      <p>Freeflo is free and open source under the MIT licence.</p>
       <ul>
         <li><a href="https://github.com/mahdi1190/opendash">Source</a></li>
         <li><a href="https://github.com/mahdi1190/opendash/tree/main/docs">Documentation</a></li>

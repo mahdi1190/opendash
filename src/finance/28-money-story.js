@@ -83,7 +83,7 @@
     const again = o && o.regenerate;
     const q = `/api/finance/story?period=${S.period}&ref=${diso(S.start)}${again ? (p.script && p.script.source === 'ai' ? '&regenerate=1' : '&ai=1') : ''}`;
     let r;
-    try { r = await api(q); } catch (e) { if (again) throw new Error(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'Could not reach the OpenDash server.'); return null; }
+    try { r = await api(q); } catch (e) { if (again) throw new Error(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'Could not reach the Freeflo server.'); return null; }
     if (!r.ok) { if (again) throw new Error(r.body.error || 'Claude could not reword the story just now.'); return null; }
     const ai = r.body.ai;
     if (!ai || !ai.lines || r.body.key !== S.key) return null;

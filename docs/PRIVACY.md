@@ -1,18 +1,18 @@
 # Privacy
 
-OpenDash is built so that your information stays on your computer. This page
+Freeflo is built so that your information stays on your computer. This page
 lists what is stored, where, and exactly when anything leaves your computer.
 
-**In short:** there is no OpenDash company server, no account, no analytics
-and no telemetry. OpenDash only uses the network for features you switch on,
+**In short:** there is no Freeflo company server, no account, no analytics
+and no telemetry. Freeflo only uses the network for features you switch on,
 and then only to reach the service that feature names. The one exception is
 Claude: if Claude Code is already installed and signed in on this computer,
-OpenDash finds it by itself and some Claude features run by default (see
+Freeflo finds it by itself and some Claude features run by default (see
 [What is sent to Claude, and when](#what-is-sent-to-claude-and-when)).
 
 ## Private by design, secure by default
 
-- **No OpenDash cloud.** There is no OpenDash server, account, analytics or
+- **No Freeflo cloud.** There is no Freeflo server, account, analytics or
   telemetry. Nothing is sent to the project or its maintainers, ever.
 - **The page talks only to your own computer.** The local server listens on
   `127.0.0.1` only. It checks every request's Host, Origin and Sec-Fetch
@@ -30,12 +30,12 @@ OpenDash finds it by itself and some Claude features run by default (see
 - **Each device signs its sync records.** Removing a device rotates the sync
   key and locks it out of Friends automatically, so a lost or stolen computer
   can't read anything new or rewrite your history.
-- **Updates are signed.** OpenDash downloads updates only from this project's
+- **Updates are signed.** Freeflo downloads updates only from this project's
   GitHub releases and checks an Ed25519 signature (its public key is built
   in) and the SHA-256 of the zip. Unsigned and older releases are refused.
 - **The assistant can't act behind your back.** It runs through your own
   Claude Code with no shell and no file tools, and works through a fixed list
-  of OpenDash tools. It can do nearly everything in the dashboard, and each
+  of Freeflo tools. It can do nearly everything in the dashboard, and each
   change has Undo. Anything sensitive (friends, your computers, your relay,
   sign-ins, money rules, changes to existing expenses, updates) is only ever a
   proposal that you approve on screen.
@@ -60,7 +60,7 @@ until midnight UTC; it does not expose data.
 
 ## Cloud and sync: optional, in three levels
 
-You never need the cloud to use OpenDash. If you want your data on more than
+You never need the cloud to use Freeflo. If you want your data on more than
 one device, or want friends, you choose how far it goes:
 
 | Level | What it means | Who can read your data |
@@ -69,7 +69,7 @@ one device, or want friends, you choose how far it goes:
 | **2. Your own devices** (Settings > Sync, Settings > Your relay) | your computers stay in step through a relay **you** host on **your own** Cloudflare account, with a OneDrive, Google Drive or Dropbox folder as a backup | you, on your own devices |
 | **3. Friends** (Life > Friends) | people you approve see only what you choose for each of them | you, and each friend only what you picked for them |
 
-There is no OpenDash cloud in any of this. Nothing ever goes to the OpenDash
+There is no Freeflo cloud in any of this. Nothing ever goes to the Freeflo
 project, its maintainers or any server they run.
 
 **For the most privacy**, host your own relay rather than using a friend's,
@@ -78,7 +78,7 @@ operator is you.
 
 ### Level 1: local only
 
-This is how OpenDash starts. Your tasks, notes, calendar and email snapshots,
+This is how Freeflo starts. Your tasks, notes, calendar and email snapshots,
 finances and settings live in one folder on your computer
 ([below](#what-is-stored-and-where)). The page talks only to the small
 server on the same computer (`127.0.0.1`). Nothing leaves it unless you
@@ -112,7 +112,7 @@ the old one shows (live for ten minutes, works once), and you check that both
 screens show the same picture. Removing a device makes a new key that the
 removed device never gets. Optionally, you can print a 10-word emergency
 backup sheet; it is only needed if you ever lose every computer, and it stays
-your secret (OpenDash never sends it anywhere).
+your secret (Freeflo never sends it anywhere).
 
 **What your relay (and Cloudflare) can see:** that your devices exist and
 their public keys, their internet addresses, when each one writes and how
@@ -120,9 +120,9 @@ much, how many devices you have, and whether one is online. **What it cannot
 see:** anything you wrote, names, the sync key or anything that would open the
 records. It cannot change a record without your devices noticing; at worst it
 could drop or delay one, and the folder backup covers that. The relay keeps no
-logs, and OpenDash turns Cloudflare's observability off; but it is your
-Cloudflare account, so you control that, not OpenDash. Your Cloudflare sign-in
-stays with Cloudflare's own tool (*wrangler*) on your computer; OpenDash never
+logs, and Freeflo turns Cloudflare's observability off; but it is your
+Cloudflare account, so you control that, not Freeflo. Your Cloudflare sign-in
+stays with Cloudflare's own tool (*wrangler*) on your computer; Freeflo never
 reads or stores it.
 
 **What your cloud folder provider can see:** encrypted files, how many
@@ -178,7 +178,7 @@ or the folder you chose with `--data-dir`, or the one Settings > Data > *Move my
 | Sync across my devices (if on) | outside the data folder: `%LOCALAPPDATA%/OpenDash/sync/` (Windows), `~/Library/Application Support/OpenDash/sync/` (macOS), `~/.local/state/opendash/sync/` (Linux) | this computer's sync identity, what it last synced, clashes between computers, the trial-mode report. The sync keys and this computer's private key are with the other sign-ins and keys, in this computer's private folder (below) |
 | Open computers | `hosts/`, `data-id.json` | one small file per computer that has the folder open (a random id, the computer's name, the app version, when it last checked in), and the folder's random id |
 | Main computer (if you chose one) | `roles.json` | the random id and name of the computer that runs the automatic background jobs (and of any computer that runs one of them instead) |
-| A move of the data folder (Settings > Data > Move) | outside the data folder, in this computer's OpenDash folder (`%LOCALAPPDATA%\OpenDash\relocation.json` and `moves\` on Windows; `~/Library/Application Support/OpenDash/` on macOS; `~/.local/state/opendash/` on Linux) | the old and new folders, the files copied with their checksums, and each setting the move changed with its old and new value (so Undo can put it back), including the text of Claude scheduled-task files it edited. Never sent anywhere |
+| A move of the data folder (Settings > Data > Move) | outside the data folder, in this computer's Freeflo folder (`%LOCALAPPDATA%\OpenDash\relocation.json` and `moves\` on Windows; `~/Library/Application Support/OpenDash/` on macOS; `~/.local/state/opendash/` on Linux) | the old and new folders, the files copied with their checksums, and each setting the move changed with its old and new value (so Undo can put it back), including the text of Claude scheduled-task files it edited. Never sent anywhere |
 | The daily encrypted copy (if on) | settings and the key made from your passphrase: this computer's private folder (next row). The copies: the folder you chose, by default `OneDrive\OpenDash Backups` | the passphrase itself is never stored. Each copy holds what *Export all data* holds, encrypted (AES-256-GCM) before it is written |
 | Sign-ins and keys | **this computer's private folder, not the data folder**: `%LOCALAPPDATA%\OpenDash\<id>\secrets` (Windows), `~/Library/Application Support/OpenDash/<id>/secrets` (macOS), `~/.local/state/opendash/<id>/secrets` (Linux) | Google and Microsoft sign-ins, Google Health, ElevenLabs, the remote MCP and relay pairings, and under `fin/` your Monzo client and sign-in, your Enable Banking application key and bank sessions, your Plasma One address (only if you set those up; deleted when you disconnect). They never travel with the data folder |
 
@@ -189,7 +189,7 @@ of recent places (up to 90 days) that the welcome scenes use.
 
 ## Location history
 
-OpenDash keeps a private history of where you've been, for fun facts. It stays
+Freeflo keeps a private history of where you've been, for fun facts. It stays
 in your dashboard and on your own devices unless you choose to share places with
 a friend (Settings > Privacy, per friend).
 
@@ -210,13 +210,13 @@ a friend (Settings > Privacy, per friend).
   which removes it here and on your synced devices. *Forget this trip*
   (Travel) also removes the location entries of those days.
 
-OpenDash does not encrypt the data folder. Use your operating system's disk
+Freeflo does not encrypt the data folder. Use your operating system's disk
 encryption if the computer is shared or portable, and keep the folder out of
 public places (shared drives, public repositories).
 
 ## Friends
 
-With Friends (2.17) you can add people who also use OpenDash. **You choose,
+With Friends (2.17) you can add people who also use Freeflo. **You choose,
 for each friend, what they can see**, and nothing else ever leaves your
 computer for them. A friend's page has a *What they can see* panel; Settings >
 *Privacy* shows every friend at once.
@@ -303,27 +303,27 @@ Only in these cases, and only when you switch the feature on:
 | **Read aloud** (stories and the money brief), only with an online voice | the text being read | your browser's speech service. Voices built into your computer keep everything local; voices marked *(online)* in Settings > Brief and stories > *Voice* (for example some "Natural" voices in Microsoft Edge, or Chrome's Google voices) send the text to the browser maker |
 | **Avatars** (if you set an image address on a person) | a normal image request | the site in that address |
 | **Links you open** | whatever your browser sends when you open a web link | that site |
-| **Daily encrypted copy** (off by default; Settings > Data) | once a day, your settings, tasks and notes, calendar and email snapshots and finances (no sign-ins, keys, logs or caches), **encrypted on this computer** with a key made from your passphrase | the folder you chose, by default `OneDrive\OpenDash Backups`: your cloud provider stores scrambled bytes, plus the date, this computer's name and the app version in plain text. Nothing goes to OpenDash. Without the passphrase nobody can open the copies, including you |
-| **Moving the data folder** (Settings > Data > Move) | nothing: the copy is made on this computer. After showing you each change, it updates the settings of your own programs that point at OpenDash: Claude Code (through its own `claude mcp` command), Claude Desktop's settings file, Codex and Gemini CLI (through their commands), Windows start-up entries, shortcuts, and Claude scheduled-task files that name the folder. Only those entries | no one |
-| **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; your preferences (theme, density, sort and grouping, which calendars you hide, per-view and Home card options); the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or where you are in the app and this screen's panel sizes | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, **end-to-end encrypted**: each change is locked (AES-256-GCM) on your computer before it is written, with a key only your devices hold, so your cloud provider stores files it cannot read. It can see how many devices sync, when they write and roughly how much; a new computer waiting to be approved shows its name there until it is approved. The key never goes into the folder; an optional 10-word emergency backup sheet, if you make one, is shown once and kept by you. With your relay set up, the same sealed records go first through **your own relay** on your Cloudflare account, and the folder keeps a backup copy ([level 2](#level-2-your-own-devices)). Nothing goes to OpenDash. Until you also turn on *Use changes from my other computers*, nothing received is applied |
-| **Live sync** (with encrypted sync on; Settings > Sync > Advanced > Direct links) | the same encrypted changes as above, sent straight to your other paired computers the moment they are made, over a connection that only your own paired devices can open (each proves it holds its device key) and that is encrypted again end to end; which job each computer runs. Each computer's addresses (its home or office network address, and the public address its router opened) are kept inside the encrypted part of its file in the sync folder | your other computers only, directly, on your network or over the internet. To be reachable from outside, OpenDash asks your home router (UPnP / NAT-PMP) to forward one port to it, but only while your relay does not carry your sync: with your relay in use the router is left alone unless you turn *Let my other computers reach this one over the internet* on (Settings > Sync > Advanced), and turning it off always leaves the router alone; anyone on the internet can then knock on that port, but nothing answers without your device key. On your own network it sends a short announcement every 30 seconds that only your devices can read. No OpenDash server, no relay |
+| **Daily encrypted copy** (off by default; Settings > Data) | once a day, your settings, tasks and notes, calendar and email snapshots and finances (no sign-ins, keys, logs or caches), **encrypted on this computer** with a key made from your passphrase | the folder you chose, by default `OneDrive\OpenDash Backups`: your cloud provider stores scrambled bytes, plus the date, this computer's name and the app version in plain text. Nothing goes to Freeflo. Without the passphrase nobody can open the copies, including you |
+| **Moving the data folder** (Settings > Data > Move) | nothing: the copy is made on this computer. After showing you each change, it updates the settings of your own programs that point at Freeflo: Claude Code (through its own `claude mcp` command), Claude Desktop's settings file, Codex and Gemini CLI (through their commands), Windows start-up entries, shortcuts, and Claude scheduled-task files that name the folder. Only those entries | no one |
+| **Sync across my devices** (off by default; Settings > Sync) | your tasks, notes, people, streams, countdowns, Home layout and reviews, field by field; your preferences (theme, density, sort and grouping, which calendars you hide, per-view and Home card options); the list of connected accounts (never their sign-ins); the mail and calendar snapshots of accounts this computer fetches. Never: sign-ins, bank keys, tokens, `config.json`, `connections.json`, `sources.json`, or where you are in the app and this screen's panel sizes | an `OpenDash Sync` folder inside the OneDrive, Google Drive or Dropbox folder you choose, **end-to-end encrypted**: each change is locked (AES-256-GCM) on your computer before it is written, with a key only your devices hold, so your cloud provider stores files it cannot read. It can see how many devices sync, when they write and roughly how much; a new computer waiting to be approved shows its name there until it is approved. The key never goes into the folder; an optional 10-word emergency backup sheet, if you make one, is shown once and kept by you. With your relay set up, the same sealed records go first through **your own relay** on your Cloudflare account, and the folder keeps a backup copy ([level 2](#level-2-your-own-devices)). Nothing goes to Freeflo. Until you also turn on *Use changes from my other computers*, nothing received is applied |
+| **Live sync** (with encrypted sync on; Settings > Sync > Advanced > Direct links) | the same encrypted changes as above, sent straight to your other paired computers the moment they are made, over a connection that only your own paired devices can open (each proves it holds its device key) and that is encrypted again end to end; which job each computer runs. Each computer's addresses (its home or office network address, and the public address its router opened) are kept inside the encrypted part of its file in the sync folder | your other computers only, directly, on your network or over the internet. To be reachable from outside, Freeflo asks your home router (UPnP / NAT-PMP) to forward one port to it, but only while your relay does not carry your sync: with your relay in use the router is left alone unless you turn *Let my other computers reach this one over the internet* on (Settings > Sync > Advanced), and turning it off always leaves the router alone; anyone on the internet can then knock on that port, but nothing answers without your device key. On your own network it sends a short announcement every 30 seconds that only your devices can read. No Freeflo server, no relay |
 | **Updates** (when you press *Check for updates* in Settings > Updates, or once a day if you turn on *Check for updates once a day*; off by default) | GET requests only: the list of releases, and when you choose to update, the release zip, its `SHA256SUMS.txt` and that file's Ed25519 signature, checked before anything is installed. Nothing about you or your data | GitHub (`api.github.com` and the project's release downloads) |
-| **Friends** (when you add one; Settings > Privacy) | to each friend only what you chose for them (see [Friends](#friends)): by default your profile and game progress; tasks, calendar, money, places, memories and presence only to a friend you marked trusted, at the level you picked | that friend's OpenDash, end-to-end encrypted, through the private relay or a direct link (docs/dev/FRIENDS.md) |
-| **Your relay** (Settings > Your relay > *Connect Cloudflare*, only when you click it) | the relay's code and your PUBLIC identity key, uploaded to your own Cloudflare account by Cloudflare's tool (wrangler, downloaded from npm the first time). Afterwards: sealed sync records and friends' messages it cannot open, and signed requests (your public key, a time, a signature) | your own Cloudflare account. Your Cloudflare sign-in stays with wrangler on this computer: OpenDash never reads, stores or logs it, and keeps wrangler's output in memory only. The relay logs nothing and Cloudflare's observability is turned off ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#privacy-what-travels-and-who-can-see-it)) |
+| **Friends** (when you add one; Settings > Privacy) | to each friend only what you chose for them (see [Friends](#friends)): by default your profile and game progress; tasks, calendar, money, places, memories and presence only to a friend you marked trusted, at the level you picked | that friend's Freeflo, end-to-end encrypted, through the private relay or a direct link (docs/dev/FRIENDS.md) |
+| **Your relay** (Settings > Your relay > *Connect Cloudflare*, only when you click it) | the relay's code and your PUBLIC identity key, uploaded to your own Cloudflare account by Cloudflare's tool (wrangler, downloaded from npm the first time). Afterwards: sealed sync records and friends' messages it cannot open, and signed requests (your public key, a time, a signature) | your own Cloudflare account. Your Cloudflare sign-in stays with wrangler on this computer: Freeflo never reads, stores or logs it, and keeps wrangler's output in memory only. The relay logs nothing and Cloudflare's observability is turned off ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#privacy-what-travels-and-who-can-see-it)) |
 
 Nothing else. In particular:
 
 - no analytics, crash reports or usage statistics, and no update checks
   unless you ask for them;
-- OpenDash's server listens on `127.0.0.1` only, so other computers cannot
+- Freeflo's server listens on `127.0.0.1` only, so other computers cannot
   reach your dashboard. (With *Live sync* on, a separate sync port answers
   your own paired computers only; see the table above.)
-- your data is never sent to the OpenDash project or its maintainers.
+- your data is never sent to the Freeflo project or its maintainers.
 
 ## What is sent to Claude, and when
 
 - **"Connected" means Claude Code is installed and signed in on this
-  computer.** OpenDash finds it by itself: when the server starts (and again
+  computer.** Freeflo finds it by itself: when the server starts (and again
   at most every 30 minutes when a feature needs to know) it sends Claude Code
   one tiny test prompt ("Reply with exactly: OK"), with none of your data, on
   the fast model and your own plan. It also runs `claude mcp list` to see which
@@ -348,14 +348,14 @@ Nothing else. In particular:
   conversation; the morning summary sends today's facts; the auto-link judge
   sends task titles with candidate folder and file names and short excerpts
   (never from "names only" folders, never whole files).
-- **The assistant looks things up itself** through OpenDash's MCP server in
+- **The assistant looks things up itself** through Freeflo's MCP server in
   propose mode, so it reads only what it needs to answer. Sensitive changes
   (friends, devices, relay, sign-ins, money rules, updates) need your approval
   on screen; the rest can be undone.
 - **Direct bank and wallet connections** (Monzo, Plasma One, Enable Banking)
-  are read by OpenDash itself, with no AI involved: your transactions go
+  are read by Freeflo itself, with no AI involved: your transactions go
   straight from Monzo, Enable Banking or the public Plasma blockchain (through
-  Routescan's API) to your data folder. To convert other currencies, OpenDash
+  Routescan's API) to your data folder. To convert other currencies, Freeflo
   asks the public Frankfurter service for the day's exchange rate (only the
   currencies and dates, never amounts).
 - **Bank data through Claude**: sync asks Claude to call your bank connector's read-only
@@ -367,13 +367,13 @@ Nothing else. In particular:
   usual pace and the names and amounts of the next few bills (never a
   transaction list, a memo, an account or a balance).
 - Claude Code processes these requests under your own account and Anthropic's
-  terms and privacy policy. OpenDash never sees your Claude sign-in.
+  terms and privacy policy. Freeflo never sees your Claude sign-in.
 
-## Your own Claude using OpenDash (MCP)
+## Your own Claude using Freeflo (MCP)
 
-If you register OpenDash's MCP server with Claude Code, T3 Code or Claude
+If you register Freeflo's MCP server with Claude Code, T3 Code or Claude
 Desktop, the conversations you have there can include anything you ask Claude
-to look up in OpenDash. That is between you and your Claude client; OpenDash
+to look up in Freeflo. That is between you and your Claude client; Freeflo
 only answers the tool calls. See [MCP.md](MCP.md) for permissions.
 
 ## Sharing and support

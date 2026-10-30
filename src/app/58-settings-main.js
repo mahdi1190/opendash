@@ -21,7 +21,7 @@ function settingsMainComputerCard(el) {
   const c = _settingsCard('Main computer', 'Checks mail, calendar and bank, and runs Claude jobs. Another takes over when it sleeps.');
   el.appendChild(c.card);
   if (!s) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Loading…' })); return; }
-  if (s.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: "OpenDash isn't answering." })); return; }
+  if (s.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: "Freeflo isn't answering." })); return; }
   const line = document.createElement('p'); line.className = 'set-h';
   line.textContent = !s.main ? 'Every computer runs its own automatic jobs.' : s.isMain ? `This computer (${s.me.name}) runs the automatic jobs.` : `${s.main.name} runs the automatic jobs; this computer leaves them to it.`;
   c.body.appendChild(line);

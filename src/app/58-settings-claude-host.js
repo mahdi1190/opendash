@@ -59,7 +59,7 @@ function settingsClaudeHostCard(el) {
   el.appendChild(c.card);
   const p = (text) => Object.assign(document.createElement('p'), { className: 'set-h', textContent: text });
   if (!s) { c.body.appendChild(p('Loading…')); return; }
-  if (s.error) { c.body.appendChild(p("OpenDash isn't answering.")); return; }
+  if (s.error) { c.body.appendChild(p("Freeflo isn't answering.")); return; }
   const line = document.createElement('div'); line.setAttribute('role', 'status');
   const l = claudeHostLine(s);
   line.className = 'sync-status sync-' + l.tone; line.textContent = l.text;

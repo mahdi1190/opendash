@@ -47,7 +47,7 @@ async function animMineLoad() {
   } catch (e) { return false; }
 }
 function _amWhy(e) {
-  if (typeof netIsDown === 'function' && netIsDown(e)) return 'The OpenDash server isn\'t running, so the assistant cannot draw. Start it, then try again.';
+  if (typeof netIsDown === 'function' && netIsDown(e)) return 'The Freeflo server isn\'t running, so the assistant cannot draw. Start it, then try again.';
   if (e && e.status === 503) return 'Claude isn\'t connected, so the assistant cannot draw right now. Connect it in Connections, then try again.';
   if (e && e.code === 'GATE') return 'The drawing did not pass the safety and quality checks' + (e.errors && e.errors.length ? ` (${e.errors.slice(0, 2).join('; ')})` : '') + '. Try again, or describe it differently.';
   return typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The assistant could not draw that. Try again.') : 'The assistant could not draw that. Try again.';
@@ -159,7 +159,7 @@ function animMineSection(onChange) {
   box.appendChild(row);
   if (!_amLoaded) {
     const p = document.createElement('p'); p.className = 'muted apg-mine-off';
-    p.textContent = 'Saved animations load from the OpenDash server; they appear here once it answers.';
+    p.textContent = 'Saved animations load from the Freeflo server; they appear here once it answers.';
     box.appendChild(p);
   }
   return box;

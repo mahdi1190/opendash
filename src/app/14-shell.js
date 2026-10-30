@@ -616,10 +616,10 @@ function renderSaveStatus() {
   const offline = _serverAvailable && ((typeof srvIsOffline === 'function' && srvIsOffline()) || (window.DashboardNet && DashboardNet.down) || /isn.t running|not running/i.test(err));
   if (!_serverAvailable) {
     kind = 'local'; text = 'Local only';
-    tip = 'Saved in this browser only. Start OpenDash with start-opendash to save to your data folder.';
+    tip = 'Saved in this browser only. Start Freeflo with start-opendash to save to your data folder.';
   } else if (offline) {
     kind = 'offline'; text = 'Offline · changes kept';
-    tip = 'The OpenDash server isn’t running. Your changes are kept in this browser and saved as soon as it is back. Click to check again.';
+    tip = 'The Freeflo server isn’t running. Your changes are kept in this browser and saved as soon as it is back. Click to check again.';
   } else if (/paused/i.test(err)) {
     kind = 'paused'; text = 'Paused · changes kept';
     tip = err.charAt(0).toUpperCase() + err.slice(1) + '. Your changes are kept in this browser and saved when it resumes.';
@@ -845,8 +845,9 @@ function renderPageHeaderControls() {
   if (typeof _lifeOffPaint === 'function') { try { _lifeOffPaint(); } catch (e) { console.error('[shell] off note', e); } }   // 15-nav-life.js
 }
 
-/** The OpenDash logo as an image URL: the SVG favicon build.mjs inlines ('' without one). */
+/** The Freeflo orb for today (the season's, or the holiday's) as an image URL; the built-in SVG favicon without the brand module ('' without either). */
 function brandLogoSrc() {
+  if (typeof FreefloBrand !== 'undefined') return FreefloBrand.favicon();
   if (typeof _appIconOrigHref !== 'undefined' && _appIconOrigHref && _appIconOrigHref.svg) return _appIconOrigHref.svg;
   const l = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
   return (l && l.getAttribute('href')) || '';
@@ -887,11 +888,13 @@ function setBrandMark(el, name, pref) {
   }
   el.classList.toggle('has-sym', false);
   const src = (kind === 'logo' || (!n && kind !== 'initial')) ? brandLogoSrc() : '';
-  const key = src ? 'logo' : (n || 'O').slice(0, 1).toUpperCase();
+  const orb = !!src && typeof FreefloBrand !== 'undefined';
+  const key = src ? 'logo' + (orb ? ':' + FreefloBrand.current().id : '') : (n || 'F').slice(0, 1).toUpperCase();
   if (el.dataset.mark === key) return;
   el.dataset.mark = key;
   el.classList.toggle('has-logo', !!src);
   if (!src) { el.textContent = key; return; }
+  if (orb) { el.innerHTML = FreefloBrand.orb({ cls: 'brand-logo' }); return; }   // the live orb: its liquid moves (src/brand/freeflo-orb.js)
   const img = document.createElement('img'); img.className = 'brand-logo'; img.alt = ''; img.src = src;
   el.replaceChildren(img);
 }
@@ -957,7 +960,7 @@ function renderShell() {
   let you = false;
   if (typeof profileCornerPaint === 'function') { try { you = profileCornerPaint(); } catch (e) { console.error('[corner]', e); } }
   if (!you) {
-    const name = userName() || 'OpenDash';
+    const name = userName() || 'Freeflo';
     const bn = document.getElementById('brand-name'); if (bn && bn.textContent !== name) bn.textContent = name;
     setBrandMark(document.getElementById('brand-mark'), userName());
   }

@@ -23,7 +23,7 @@ registerSettingsGroup({
   id: 'home', title: 'Home', icon: 'house', order: 44,
   description: 'What Home shows and when you work.',
   render(el) {
-    if (typeof homeLayout !== 'function') { el.appendChild(emptyLine('Home isn’t part of this copy of OpenDash.')); return; }
+    if (typeof homeLayout !== 'function') { el.appendChild(emptyLine('Home isn’t part of this copy of Freeflo.')); return; }
     const shown = homeLayout().widgets.filter(w => !w.hidden && homeWidgetAvailable(homeWidgetDef(w.id))).length;
     const more = homeWidgetCatalog().filter(d => homeWidgetAvailable(d) && !_setHomeShown(d.id)).length;
     const btns = document.createElement('div'); btns.className = 'set-btns';

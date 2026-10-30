@@ -257,7 +257,7 @@ function gardenSocialUnwrap(id) {
   if (typeof gardenReady !== 'function' || !gardenReady() || !gardenEnsure()) { toast('Your garden is still waking up: try again in a moment.', { icon: 'sprout' }); return false; }
   const g = typeof _gdG === 'function' ? _gdG() : state.garden;
   if (!g.led['gg.' + id]) {
-    if (!gsocGiftOk(a.k, a.item)) { toast('This parcel holds something your OpenDash does not know yet: update OpenDash to open it.', { icon: 'gift' }); return false; }
+    if (!gsocGiftOk(a.k, a.item)) { toast('This parcel holds something your Freeflo does not know yet: update Freeflo to open it.', { icon: 'gift' }); return false; }
     g.led['gg.' + id] = { d: _gscToday(), k: 'gg', i: { [a.k + ':' + a.item]: 1 }, n: 1 };
     if (a.k === 'decor' && !g.disc[a.item]) g.disc[a.item] = _gscToday();
     if ((a.k === 'fish' || a.k === 'bug') && typeof gardenCatchReceived === 'function') gardenCatchReceived(a.k, a.item);   // 2.22: it goes in your book too
@@ -360,7 +360,7 @@ function gardenSocialShares(friendId) {
   return true;
 }
 function gardenSocialSetShare(friendId, on) {
-  if (typeof permsSetScope !== 'function') { toast('Sharing choices live in Friends: update OpenDash to change them here.', { icon: 'info' }); return; }
+  if (typeof permsSetScope !== 'function') { toast('Sharing choices live in Friends: update Freeflo to change them here.', { icon: 'info' }); return; }
   permsSetScope(friendId, 'garden', { mode: on ? 'on' : 'off' });
   if (on) _gscPublishSoon(3000);
 }

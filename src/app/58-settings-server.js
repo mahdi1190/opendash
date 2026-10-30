@@ -72,7 +72,7 @@ async function _ssFlush() {
 async function srvRestart(opts) {
   const rebuild = !!(opts && opts.rebuild);
   if (_ssRestarting) return false;
-  if (typeof srvIsOffline === 'function' && srvIsOffline()) { toast('OpenDash isn’t running. Use Start on the banner.', { kind: 'err' }); return false; }
+  if (typeof srvIsOffline === 'function' && srvIsOffline()) { toast('Freeflo isn’t running. Use Start on the banner.', { kind: 'err' }); return false; }
   _ssRestarting = true;
   const label = (opts && opts.label) || (rebuild ? 'Rebuilding and restarting…' : 'Restarting the server…');
   _ssOverlay(label, 'Saving your changes first');
@@ -89,7 +89,7 @@ async function srvRestart(opts) {
       step(); tick = setInterval(step, 1000);
     }
     try { r = await (post ? _ssPost(opts.post[0], opts.post[1]) : _ssPost('/api/server/restart', { rebuild })); }
-    catch (e) { _ssOverlayOff(); toastError(post ? 'finish the update' : 'restart OpenDash', e, () => srvRestart(opts)); return false; }
+    catch (e) { _ssOverlayOff(); toastError(post ? 'finish the update' : 'restart Freeflo', e, () => srvRestart(opts)); return false; }
     finally { if (tick) clearInterval(tick); }
     if (typeof _srvLink !== 'undefined') _srvLink.state = 'restarting';
     const oldPid = (r && r.pid) || (before && before.pid);
@@ -108,7 +108,7 @@ async function srvRestart(opts) {
       _ssOverlayOff();
       if (typeof _srvLink !== 'undefined') _srvLink.state = 'unknown';
       if (typeof srvGoOffline === 'function') srvGoOffline('restart');
-      toast(`OpenDash didn’t come back within ${Math.round(budget / 1000)} s.`, { kind: 'err', action: { label: 'How to start it', run: () => srvShowStartHelp() }, timeout: 10000 });
+      toast(`Freeflo didn’t come back within ${Math.round(budget / 1000)} s.`, { kind: 'err', action: { label: 'How to start it', run: () => srvShowStartHelp() }, timeout: 10000 });
       return false;
     }
     if (typeof _srvLink !== 'undefined') _srvLink.state = 'online';
@@ -136,13 +136,13 @@ async function srvRestart(opts) {
 
 async function srvStop() {
   const ok = await confirmDialog({
-    title: 'Stop OpenDash?',
-    text: 'Changes wait in this browser until it starts again (your OpenDash shortcut' + (srvStartScheme() ? ', or Start on the banner).' : ').'),
-    confirmLabel: 'Stop OpenDash', danger: true,
+    title: 'Stop Freeflo?',
+    text: 'Changes wait in this browser until it starts again (your Freeflo shortcut' + (srvStartScheme() ? ', or Start on the banner).' : ').'),
+    confirmLabel: 'Stop Freeflo', danger: true,
   });
   if (!ok) return;
   try { await _ssFlush(); await _ssPost('/api/server/stop', {}); }
-  catch (e) { toastError('stop OpenDash', e, () => srvStop()); return; }
+  catch (e) { toastError('stop Freeflo', e, () => srvStop()); return; }
   setTimeout(() => { if (typeof srvGoOffline === 'function') srvGoOffline('stopped'); }, 800);
 }
 
@@ -197,7 +197,7 @@ async function _ssToggle(feature, on) {
     if (st && st.supported) srvRememberScheme(st.protocol && st.protocol.enabled && st.protocol.current ? st.scheme : null);
     const now = st && st[feature] && st[feature].enabled;
     if (now !== on) toast('Windows didn’t keep the change. Check the log.', { kind: 'err', action: { label: 'Open log', run: () => srvOpenLog() } });
-    else toast(feature === 'autostart' ? (on ? 'OpenDash will start when you log in' : 'It will no longer start when you log in') : (on ? 'Start button turned on' : 'Start button turned off'), { kind: 'ok' });
+    else toast(feature === 'autostart' ? (on ? 'Freeflo will start when you log in' : 'It will no longer start when you log in') : (on ? 'Start button turned on' : 'Start button turned off'), { kind: 'ok' });
   } catch (e) {
     toastError('change that', e, () => _ssToggle(feature, on));
     _ssInteg = null;
@@ -206,7 +206,7 @@ async function _ssToggle(feature, on) {
 
 function _ssStatusCard(el) {
   const s = _ssStatus;
-  const card = _settingsCard('OpenDash on this computer');
+  const card = _settingsCard('Freeflo on this computer');
   const dis = !s || !!s.error || s.canRestart === false;
   const failedBuild = s && !s.error && s.lastRebuild && s.lastRebuild.ok === false;
   if (!s) card.body.appendChild(setStatusLine('idle', 'Checking', ''));
@@ -252,7 +252,7 @@ function _ssStatusCard(el) {
 async function _ssShortcut(where) {
   try {
     const r = await _ssPost('/api/server/shortcut', { where });
-    toast(where === 'startmenu' ? 'Added OpenDash to the Start menu' : 'Added an OpenDash shortcut to your desktop', { kind: 'ok' });
+    toast(where === 'startmenu' ? 'Added Freeflo to the Start menu' : 'Added a Freeflo shortcut to your desktop', { kind: 'ok' });
     return r;
   } catch (e) { toastError('add that shortcut', e, () => _ssShortcut(where)); }
 }
@@ -262,12 +262,12 @@ function _ssShortcutRow(card, ig) {
   const g = document.createElement('div'); g.className = 'btn-group set-btns';
   g.appendChild(_ssBtn('Add a desktop shortcut', 'plus', 'btn-secondary', () => _ssShortcut('desktop')));
   if (ig && ig.platform === 'win32') g.appendChild(_ssBtn('Add to Start menu', 'plus', 'btn-secondary', () => _ssShortcut('startmenu')));
-  card.body.appendChild(_settingsRow('Shortcut', 'An OpenDash icon that starts it with no window if it isn’t running, then opens it in your browser.', g));
+  card.body.appendChild(_settingsRow('Shortcut', 'A Freeflo icon that starts it with no window if it isn’t running, then opens it in your browser.', g));
 }
 
 function _ssStartCard(el) {
   const ig = _ssInteg;
-  const card = _settingsCard('Starting OpenDash');
+  const card = _settingsCard('Starting Freeflo');
   if (!ig) { const sk = document.createElement('div'); sk.className = 'skeleton skeleton-row'; card.body.appendChild(sk); el.appendChild(card.card); return; }
   if (ig.error) {
     const p = document.createElement('p'); p.className = 'set-h'; p.textContent = 'Couldn’t check: ' + ig.error;
@@ -297,8 +297,8 @@ function _ssStartCard(el) {
   const hintFor = (f) => {
     const x = ig[f] || {};
     const base = f === 'autostart'
-      ? 'Starts OpenDash, with no window, when you sign in to Windows.'
-      : 'Lets the banner start OpenDash for you.';
+      ? 'Starts Freeflo, with no window, when you sign in to Windows.'
+      : 'Lets the banner start Freeflo for you.';
     if (_ssIntegBusy === f) return 'Asking Windows…';
     if (x.enabled && !x.current) return base + (!/start-hidden\.mjs/i.test(x.command || '') ? ' Now: on, but with an old launcher that no longer works. Turn it off and on again to fix it.' : ' Now: on, but set up for another copy or folder of the app. Turn it off and on again to point it here.');
     if (f === 'autostart' && x.enabled && x.approved === false) return base + ' Now: on, but switched off in Task Manager › Startup apps. Turn it off and on again here to re-enable it.';
@@ -324,7 +324,7 @@ function _ssOfflineCard(el) {
   const supported = typeof navigator !== 'undefined' && 'serviceWorker' in navigator && window.isSecureContext;
   const on = srvSwEnabled();
   const hint = !supported ? 'This browser does not support it here.' : (on ? (srvSwActive() ? 'On, and ready.' : 'On. Ready after the next page load.') : 'Off in this browser.');
-  card.body.appendChild(_settingsRow('Show an offline page', 'When OpenDash isn’t running, this browser shows a page with a Start button instead of an error. ' + hint, _settingsSwitch(on && supported, 'Show an offline page', async (v) => {
+  card.body.appendChild(_settingsRow('Show an offline page', 'When Freeflo isn’t running, this browser shows a page with a Start button instead of an error. ' + hint, _settingsSwitch(on && supported, 'Show an offline page', async (v) => {
     await srvSetSwEnabled(v); toast(v ? 'Offline page on' : 'Offline page off', { kind: 'ok' }); _ssRefresh();
   }, !supported)));
   el.appendChild(card.card);
@@ -332,12 +332,12 @@ function _ssOfflineCard(el) {
 
 registerSettingsGroup({
   id: 'server', title: 'Server', icon: 'hard-drive', order: 92,
-  description: 'Restart OpenDash and choose how it starts.',
+  description: 'Restart Freeflo and choose how it starts.',
   search: [
-    { label: 'OpenDash on this computer', target: 'OpenDash on this computer', description: 'Status, version, restart, open the log or stop it.', keywords: 'this server restart rebuild stop log port process uptime backend' },
-    { label: 'Start automatically when I log in', target: 'Start automatically when I log in', description: 'Start OpenDash when you sign in to Windows.', keywords: 'autostart startup login windows' },
-    { label: 'Start button on the “not running” banner', target: 'Start button on the “not running” banner', description: 'Let the banner start OpenDash for you.', keywords: 'enable start server button protocol offline banner' },
-    { label: 'Offline page', target: 'Show an offline page', description: 'Show a page with a Start button when OpenDash isn’t running.', keywords: 'show an offline page service worker cache nosw developers' },
+    { label: 'Freeflo on this computer', target: 'Freeflo on this computer', description: 'Status, version, restart, open the log or stop it.', keywords: 'this server restart rebuild stop log port process uptime backend' },
+    { label: 'Start automatically when I log in', target: 'Start automatically when I log in', description: 'Start Freeflo when you sign in to Windows.', keywords: 'autostart startup login windows' },
+    { label: 'Start button on the “not running” banner', target: 'Start button on the “not running” banner', description: 'Let the banner start Freeflo for you.', keywords: 'enable start server button protocol offline banner' },
+    { label: 'Offline page', target: 'Show an offline page', description: 'Show a page with a Start button when Freeflo isn’t running.', keywords: 'show an offline page service worker cache nosw developers' },
     { label: 'Rebuild & restart', target: 'Rebuild & restart', description: 'Use after updating the app by hand.', keywords: 'rebuild build migrate update restart server' },
   ],
   render(el) {
@@ -348,7 +348,7 @@ registerSettingsGroup({
   },
 });
 
-registerCommand({ id: 'server-restart', label: 'Restart OpenDash', icon: 'refresh-cw', keywords: 'server restart reboot reload reconnect backend', run: () => srvRestart({ rebuild: false }) });
-registerCommand({ id: 'server-rebuild', label: 'Rebuild & restart OpenDash', icon: 'hammer', keywords: 'server rebuild build update restart migrate', run: () => srvRestart({ rebuild: true }) });
-registerCommand({ id: 'server-log', label: 'Open the OpenDash log', icon: 'file-text', keywords: 'server log errors debug', run: () => srvOpenLog() });
+registerCommand({ id: 'server-restart', label: 'Restart Freeflo', icon: 'refresh-cw', keywords: 'server restart reboot reload reconnect backend', run: () => srvRestart({ rebuild: false }) });
+registerCommand({ id: 'server-rebuild', label: 'Rebuild & restart Freeflo', icon: 'hammer', keywords: 'server rebuild build update restart migrate', run: () => srvRestart({ rebuild: true }) });
+registerCommand({ id: 'server-log', label: 'Open the Freeflo log', icon: 'file-text', keywords: 'server log errors debug', run: () => srvOpenLog() });
 registerCommand({ id: 'open-server-settings', label: 'Server', icon: 'hard-drive', group: 'Go to', keywords: 'server restart start log login startup', run: () => setView('settings:server') });

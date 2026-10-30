@@ -274,7 +274,7 @@ registerSettingsGroup({
   render(el) {
     const p = briefPrefs();
     const save = (patch, msg) => settingsSaveConfig({ brief: patch }, msg).then(ok => { if (ok) render(); });
-    el.appendChild(_settingsRow('Open on the first visit of the day', 'Home greets you the first time you open OpenDash each day.', _settingsSwitch(p.autoOpen, 'Open automatically', (on) => save({ autoOpen: on }, on ? 'Home will greet you each morning' : 'Home will wait for you'))));
+    el.appendChild(_settingsRow('Open on the first visit of the day', 'Home greets you the first time you open Freeflo each day.', _settingsSwitch(p.autoOpen, 'Open automatically', (on) => save({ autoOpen: on }, on ? 'Home will greet you each morning' : 'Home will wait for you'))));
     // The model for the summary is picked in Settings > AI > Models for each job (L13).
     el.appendChild(settingsRowNote(_settingsRow('Day in three sentences', 'A short summary by Claude, once a day.', _settingsSwitch(p.ai, 'AI summary', (on) => save({ ai: on }))), settingsModelNote('Morning summary', p.model)));
     el.appendChild(_settingsRow('Offer “Finish the day” from', 'Home and the top bar suggest the evening recap from this hour.', _settingsSelect(['15', '16', '17', '18', '19', '20', '21'].map(x => [x, x + ':00']), String(p.eveningHour), (v) => save({ eveningHour: Number(v) }))));
@@ -327,7 +327,7 @@ registerSettingsGroup({
     if (typeof animOpeningModeSync === 'function') {
       const seg = _settingsSeg([['every', 'Every load'], ['daily', 'First load of the day'], ['off', 'Off']], animOpeningMode(),
         (k) => { animLookSave({ opening: k }); animOpeningModeSync(); render(); });
-      el.appendChild(_settingsRow('Opening', 'A short welcome when OpenDash opens. Click or press a key to skip.', seg));
+      el.appendChild(_settingsRow('Opening', 'A short welcome when Freeflo opens. Click or press a key to skip.', seg));
     }
     el.appendChild(_settingsRow('Animations', sys ? 'Reduced motion is on (system or Appearance), so scenes stay still whatever this says.' : 'Weather, scenes and moving text. Everything stays still when this is off.', _settingsSwitch(p.animations, 'Animations', (on) => save({ animations: on }))));
     el.appendChild(_settingsRow('Celebrate completed tasks', 'A tiny animation where you clicked, for a second. Never for bulk changes.', _settingsSwitch(p.celebrate, 'Celebrations', (on) => save({ celebrate: on }))));

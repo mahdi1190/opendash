@@ -125,7 +125,7 @@ function openOnboarding() {
     const p = el('p', 'ob-lead');
     body.append(h, p);
     if (step === 0) {
-      h.textContent = 'Welcome to OpenDash';
+      h.textContent = 'Welcome to Freeflo';
       p.textContent = 'Your tasks, calendar, money and memories in one calm place, on this computer. Four quick questions; skip any.';
       const inp = el('input', 'control'); inp.id = 'ob-name'; inp.maxLength = 60; inp.placeholder = 'e.g. Sam'; inp.value = d.userName; inp.autocomplete = 'given-name';
       inp.oninput = () => { d.userName = inp.value; setBrandMark(mark, inp.value); };

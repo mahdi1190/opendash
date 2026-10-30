@@ -95,7 +95,7 @@
     updateSection(ctx);
     paintTabs(false);
     const meta = (R.data && R.data.meta) || {};
-    R.els.foot.textContent = 'Everything here is worked out on this computer from your own files. Change a category in Transactions and OpenDash remembers it.';
+    R.els.foot.textContent = 'Everything here is worked out on this computer from your own files. Change a category in Transactions and Freeflo remembers it.';
     if (R.drawer) refreshDrawer();
   }
   const BUILD = {}, UPDATE = {};

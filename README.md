@@ -1,15 +1,17 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/brand/lockup-dark.svg">
-    <img alt="OpenDash" src="assets/brand/lockup.svg" height="72">
+    <img alt="Freeflo" src="assets/brand/lockup.svg" height="72">
   </picture>
 </p>
 
 <h3 align="center">Plan your day. Keep your data.</h3>
 
+<p align="center"><sub>Freeflo was called OpenDash until 2.23. The repository, folders and commands still say <code>opendash</code>.</sub></p>
+
 <p align="center">
 A calm, local-first dashboard for your tasks, calendar, money and friends.<br>
-It runs on your own computer. No account, no OpenDash server, no telemetry.
+It runs on your own computer. No account, no Freeflo server, no telemetry.
 </p>
 
 <p align="center">
@@ -38,7 +40,7 @@ It runs on your own computer. No account, no OpenDash server, no telemetry.
   <img alt="Customising Home: dragging the edge of a card to resize it while the others reflow (demo data)" src="docs/media/home-board.gif" width="900">
 </p>
 
-OpenDash puts your day on one page: what is due, what is next, where the money
+Freeflo puts your day on one page: what is due, what is next, where the money
 went and who you are waiting on. It is a small Node.js server on your own
 computer and one folder of data that belongs to you. The cloud is optional, and
 when you use it, it is yours too.
@@ -170,7 +172,7 @@ what is coming up. Press <b>Play story</b> on the brief.</td>
 <tr>
 <td><b>Money you spent for someone else, until it is paid back.</b> Mark a
 purchase as an expense, drop in the receipt, and see what you are owed on
-Home. When the money arrives, OpenDash matches it and marks the claim paid.</td>
+Home. When the money arrives, Freeflo matches it and marks the claim paid.</td>
 <td><b>One click to a filled-in expense form.</b> Tick the expenses and press
 <b>Make expense report</b>: a PDF laid out exactly like the paper expense form
 (your name, one row per expense in the right column, totals and your
@@ -280,11 +282,11 @@ at the new things in place.</td>
 
 ## Private by design, secure by default
 
-OpenDash holds personal things: tasks, people, calendars and money. It is built
+Freeflo holds personal things: tasks, people, calendars and money. It is built
 so that they stay yours.
 
 - **Local-first.** Your data is one folder on your computer. There is no
-  OpenDash server, no account, no analytics and no telemetry. Nothing is ever
+  Freeflo server, no account, no analytics and no telemetry. Nothing is ever
   sent to the project.
 - **The local server stays local.** It listens only on `127.0.0.1`, and
   checks every request's Host, Origin and Sec-Fetch headers, so websites you
@@ -338,7 +340,7 @@ You never need the cloud. You choose how far your data goes.
 | **3. Friends** | Friends connect to you with an invite link or a 4-letter friend code (live for 10 minutes, works once), you both check the same pictures, and you press Accept. They can use your relay or host their own. Each friend sees only what you choose for them. | You, and each friend only what you picked |
 
 For the most privacy, host your own relay, or stay local and use the relay only
-between your own devices. There is no OpenDash cloud at any level.
+between your own devices. There is no Freeflo cloud at any level.
 
 <p align="center">
 <img alt="Settings > Sync: off, with 'your data stays on this computer' (demo data)" src="docs/media/settings-sync.png" width="49%">
@@ -374,10 +376,10 @@ Your data folder is never touched. Full steps are in the
 | Guide | What is in it |
 |---|---|
 | [Install](docs/INSTALL.md) | Windows, macOS and Linux, options, updating, uninstalling |
-| [Using OpenDash](docs/USAGE.md) | a tour of every area, quick add and keyboard shortcuts |
+| [Using Freeflo](docs/USAGE.md) | a tour of every area, quick add and keyboard shortcuts |
 | [Friends guide](docs/FRIENDS_GUIDE.md) | your relay, invites, what friends can see |
 | [Connections](docs/CONNECTIONS.md) | Claude Code, email and calendar accounts, banks, iCal links |
-| [MCP server](docs/MCP.md) | using OpenDash from Claude Code, T3 Code or Claude Desktop |
+| [MCP server](docs/MCP.md) | using Freeflo from Claude Code, T3 Code or Claude Desktop |
 | [Privacy](docs/PRIVACY.md) | what is stored where, and when anything leaves your computer |
 | [Security](.github/SECURITY.md) | the threat model, the safeguards and how to report a problem |
 | [FAQ](docs/FAQ.md) | common questions |
@@ -392,6 +394,6 @@ every screenshot and report. Questions go to
 
 ## Licence
 
-OpenDash is free and open source under the [MIT licence](LICENSE). The bundled
+Freeflo is free and open source under the [MIT licence](LICENSE). The bundled
 font (Inter), icons (Lucide) and charting library (Apache ECharts) keep their
 own licences: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

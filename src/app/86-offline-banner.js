@@ -55,7 +55,7 @@ function srvRememberScheme(scheme) {
 function _srvErrText(e) {
   const m = String((e && e.message) || e || '');
   const down = typeof netIsDown === 'function' ? netIsDown(e) : /failed to fetch|networkerror|load failed|network request failed/i.test(m);
-  if (down) return 'OpenDash isn\'t running';
+  if (down) return 'Freeflo isn\'t running';
   if (typeof netErrorMessage === 'function') return netErrorMessage(e, 'something went wrong');
   return m || 'something went wrong';
 }
@@ -94,7 +94,7 @@ function srvConnectionOk() {
 function srvGoOffline(why) {
   if (_srvLink.state === 'offline') return;
   _srvLink.state = 'offline'; _srvLink.since = Date.now(); _srvLink.tries = 0;
-  if (typeof _serverLastError !== 'undefined') _serverLastError = 'the OpenDash server isn\'t running';
+  if (typeof _serverLastError !== 'undefined') _serverLastError = 'the Freeflo server isn\'t running';
   if (typeof renderSaveStatus === 'function') renderSaveStatus();
   // Settings > Server must not go on saying "Running" under the banner.
   if (typeof srvSettingsInvalidate === 'function') srvSettingsInvalidate();
@@ -135,7 +135,7 @@ async function srvBackOnline(h) {
   if (typeof srvSettingsInvalidate === 'function') srvSettingsInvalidate();   // Settings > Server shows the new process
   const ok = await srvResync(h);
   if (h && srvBuildChanged(h)) { srvReloadForNewBuild(); return; }
-  if (ok) _srvToast('OpenDash is back', { kind: 'ok' });
+  if (ok) _srvToast('Freeflo is back', { kind: 'ok' });
 }
 
 /** Did the server come back with a different app than this page? */
@@ -149,7 +149,7 @@ function srvReloadForNewBuild() {
   try { last = Number(sessionStorage.getItem(_SRV_RELOAD_KEY)) || 0; } catch (e) { last = 0; }
   const dirty = typeof state !== 'undefined' && state && (state._localDirty || (typeof _persistTimer !== 'undefined' && _persistTimer));
   if (dirty || Date.now() - last < 60000) {
-    _srvToast('OpenDash was updated. Reload to use the new version.', { action: { label: 'Reload', run: () => location.reload() }, timeout: 12000 });
+    _srvToast('Freeflo was updated. Reload to use the new version.', { action: { label: 'Reload', run: () => location.reload() }, timeout: 12000 });
     return;
   }
   try { sessionStorage.setItem(_SRV_RELOAD_KEY, String(Date.now())); } catch (e) { /* fine */ }
@@ -219,7 +219,7 @@ function _srvBannerEl() {
   el.className = 'srv-banner'; el.id = 'srv-banner';
   el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
   el.innerHTML = `<span class="srv-ic">${icon('cloud-off')}</span>`
-    + '<div class="srv-msg"><div class="srv-title">OpenDash isn’t running.</div><div class="srv-sub"></div></div>'
+    + '<div class="srv-msg"><div class="srv-title">Freeflo isn’t running.</div><div class="srv-sub"></div></div>'
     + '<div class="srv-acts"></div>';
   // In the flow between the top bar and the page (pushes it down, covers nothing);
   // floating at the top when the shell is not there.
@@ -279,11 +279,11 @@ function _srvHideBanner() {
 function srvShowStartHelp() {
   const plat = _srvPlatform();
   openDialog({
-    title: 'Start OpenDash', size: 'sm',
+    title: 'Start Freeflo', size: 'sm',
     body: (el) => {
       const p = document.createElement('p');
       p.textContent = plat === 'windows'
-        ? 'Double-click your OpenDash shortcut. This page reconnects by itself.'
+        ? 'Double-click your Freeflo shortcut. This page reconnects by itself.'
         : 'Run sh start-opendash.sh from the app folder in a terminal. This page reconnects by itself once it is running.';
       el.appendChild(p);
       const h = document.createElement('p'); h.className = 'muted';
@@ -311,7 +311,7 @@ function _srvWriteFailed(input) {
   if (path === STATE_API || path.startsWith('/api/server/') || path === '/api/events') return;
   if (Date.now() - _srvLink.lastWriteToast < 5000) return;
   _srvLink.lastWriteToast = Date.now();
-  _srvToast('Not saved: OpenDash isn’t running. Start it, then try again.', { kind: 'err', timeout: 7000 });
+  _srvToast('Not saved: Freeflo isn’t running. Start it, then try again.', { kind: 'err', timeout: 7000 });
 }
 if (typeof window !== 'undefined' && window.DashboardNet && typeof window.DashboardNet.onChange === 'function') {
   // 02-core-net.js already watches every request (and gives callers its clear
