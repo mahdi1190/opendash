@@ -259,6 +259,42 @@ takes.
 | **Monzo** | your Monzo current and joint accounts, pots (balances only) and transactions with shop names and Monzo's categories | free | the Monzo app and a free Monzo developer client |
 | **Other UK and EU banks** (Enable Banking) | the banks Enable Banking supports in your country | free for your own accounts | a free Enable Banking application and its key file |
 | **Import a CSV** | any bank that lets you download a statement | free | a CSV export |
+| **A credit card** | any card: connected if Enable Banking lists it, otherwise from a file | free | your card's website login |
+
+### Credit cards
+
+American Express and most card companies have no personal connection like
+Monzo's. *Add a credit card* (here, or in Money > Your data) shows both ways on
+one screen:
+
+- **Import a file.** Works for every card. Sign in on the card's website, find
+  your statements or activity, choose Download or Export, then CSV, and bring
+  the file in.
+- **Connect it, if your card is listed.** Through Enable Banking. Which cards it
+  lists changes, and many are not listed. Freeflo checks the live list once
+  Enable Banking is set up and says plainly when yours is not.
+
+Once a card is here:
+
+- **What you buy** counts as spending on the day you buy it. **Money back** takes
+  spending down. It is never income.
+- **Your payment to the card** counts as moving your own money on both sides: not
+  spending, and not income. Freeflo knows the usual names (AMEX, American
+  Express, Barclaycard, MBNA, Capital One and others) even if your rules are old.
+- **A card it can't see.** If your bank shows payments to a card that isn't here,
+  they still don't count as spending, and you see *You pay a card we can't see:
+  add it to see what you bought*.
+- **What you owe** is kept apart from the money you can spend. A connected card
+  takes it from your bank (Freeflo shows the size of the debt, whichever sign
+  the bank uses). For a file, type it once, or Freeflo reads it from the file if
+  the file says; new files keep it up to date.
+- **Safe to spend** keeps back the next payment if you pay from your current
+  account. Choose *In full*, *The minimum* or *A fixed amount*, and the day it is
+  due. Bills charged to the card are left out of the bills before payday, because
+  they only leave your account as part of that payment.
+- **Your data** lists it with a *Credit card* label, its tick and its date
+  cut-off, like any other source. A card from a file gets a calm reminder after
+  two weeks, with the steps for a new file.
 
 ### Plasma One (one click)
 
@@ -390,6 +426,18 @@ from your bank's website and use **Import CSV** in Finances (or drop the file
 on the page). Exports with Date, Amount (or Money in / Money out) and
 Description columns work; overlapping exports are fine, duplicates are
 skipped.
+
+**Credit card files.** Card exports often list purchases as positive and
+payments as negative, the opposite of a bank file. Freeflo spots a likely card
+file (by its columns, its name, its "payment received" rows, or most of its shops
+reading as money in) and shows what it read before importing: *We read these as
+money you spent: Tesco £12.40. Is that right?* One tap flips them, and the choice
+is remembered for that card. Column names are matched loosely (Date, Description
+or Merchant, Amount or Billing amount, Debit and Credit, "CR" after an amount), so
+the exact layout doesn't matter. If you got it wrong later, Money > Your data has
+*Money in and out are the wrong way round* in the card's More menu, with Undo.
+A file dropped straight into the Finances folder can't ask: it uses your last
+choice, or Freeflo's best reading when the signs of a card are strong.
 
 ## GitHub and Google Drive in Files & links
 

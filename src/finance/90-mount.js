@@ -100,6 +100,8 @@
     setMerchant: (m) => { m = typeof m === 'string' ? m : ''; if (m !== F.merchant) setMerchant(m); },
     // Connections > Money's "Import a CSV" opens the same file picker (inside the user's click).
     importCsv: () => pickCsv(),
+    // Connections > Money's Credit card card opens the same screen as Your data (45-cards.js).
+    addCard: () => cdAddCard(),
     // The shared page header (14-shell.js headerActions contract) draws these: one primary, the rest under More.
     update: (opts) => startUpdate(opts || {}),
     exportAll: () => exportAll(),

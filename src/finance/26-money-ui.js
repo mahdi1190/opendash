@@ -38,7 +38,7 @@
     const M = R.model; if (!M) return null;
     const mode = F.mbMode === 'month' ? 'month' : 'cycle';
     if (MB.B && MB.model === M && MB.mode === mode) return MB.B;
-    MB.input = { tx: M.tx, anchor: M.anchor, minN: M.minN, balances: M.a.balances, history: M.a.balance_history, recurring: M.recurring };
+    MB.input = { tx: M.tx, anchor: M.anchor, minN: M.minN, balances: M.a.balances, history: M.a.balance_history, recurring: M.recurring, cards: M.a.cards };
     MB.B = MBM.compute(MB.input, { mode, fmt: mbFmt() });
     MB.model = M; MB.mode = mode;
     return MB.B;
@@ -379,14 +379,16 @@
       E.trackL = h('div', { class: 'fv-mb-cycl' });
       E.split = h('div', { class: 'fv-mb-split' });
       E.safeL = h('div', { class: 'fv-mb-lbl' }, ic('wallet', 'i-sm'), h('span', { text: 'Safe to spend' }));
-      E.safe.append(E.safeL, h('div', { class: 'fv-mb-big' }, E.safeV, E.safeU), E.safeNote, E.track, E.trackL, E.split);
+      E.owe = h('div', { class: 'fv-mb-owe', hidden: true });
+      E.safe.append(E.safeL, h('div', { class: 'fv-mb-big' }, E.safeV, E.safeU), E.safeNote, E.track, E.trackL, E.split, E.owe);
       E.safeBuilt = true;
     }
     if (s) {
       E.safeL.lastChild.textContent = 'Safe to spend';
       E.safeU.textContent = 'a day';
       mbTick(E.safeV, s.perDay, gbp, anim ? 380 : 0);
-      E.safeNote.innerHTML = `for the <b class="d">${esc(String(cyc.daysLeft))} day${cyc.daysLeft === 1 ? '' : 's'}</b> ${isCycle ? 'to payday' : 'left in ' + esc(fd(cyc.start, { month: 'long' }))}, after <b>${esc(gbp(B.billsTotal))}</b> of bills and a <b>${esc(gbp(s.cushion))}</b> cushion.`;
+      const cardIn = B.bills.some(b => b.card);
+      E.safeNote.innerHTML = `for the <b class="d">${esc(String(cyc.daysLeft))} day${cyc.daysLeft === 1 ? '' : 's'}</b> ${isCycle ? 'to payday' : 'left in ' + esc(fd(cyc.start, { month: 'long' }))}, after <b>${esc(gbp(B.billsTotal))}</b> of bills${cardIn ? ' and card payments' : ''} and a <b>${esc(gbp(s.cushion))}</b> cushion.`;
     } else {
       E.safeL.lastChild.textContent = 'Spent a day so far';
       E.safeU.textContent = 'a day';
@@ -406,6 +408,23 @@
     E.split.innerHTML = s
       ? `<div><span>Free until ${isCycle ? 'payday' : 'month end'}</span><b class="num">${esc(gbp(s.left))}</b></div><div><span>Balance now</span><b class="num">${esc(gbp2(B.balance.total))}</b></div>`
       : `<div><span>Spent ${isCycle ? 'since payday' : 'this month'}</span><b class="num">${esc(gbp(B.spent))}</b></div><div><span>Bills before ${isCycle ? 'payday' : 'month end'}</span><b class="num">${esc(gbp(B.billsTotal))}</b></div>`;
+    mbPaintOwe(B);
+  }
+  // What is owed on credit cards, kept apart from the money above; or a card we can only see being paid.
+  function mbPaintOwe(B) {
+    const E = MB.el; if (!E.owe) return;
+    const unseen = R.model && R.model.a.card_unseen;
+    const open = () => setSection('data');
+    if (B.owed != null) {
+      E.owe.replaceChildren(ic('credit-card'), h('span', {}, 'You owe ', h('b', { class: 'num fv-amt', text: gbp2(B.owed) }), B.cards.length === 1 ? ` on ${B.cards[0].name}` : ` on ${B.cards.length} credit cards`, ', kept apart from this. ', h('button', { type: 'button', text: 'See it', onclick: open })));
+      E.owe.hidden = false;
+    } else if (B.cards.length) {
+      E.owe.replaceChildren(ic('credit-card'), h('span', {}, 'What you owe on your card isn’t here yet. ', h('button', { type: 'button', text: 'Add it', onclick: open })));
+      E.owe.hidden = false;
+    } else if (unseen && unseen.count) {
+      E.owe.replaceChildren(ic('credit-card'), h('span', {}, 'You pay a card we can’t see: add it to see what you bought. ', h('button', { type: 'button', text: 'Add a credit card', onclick: () => cdAddCard() })));
+      E.owe.hidden = false;
+    } else { E.owe.hidden = true; E.owe.replaceChildren(); }
   }
   // The ticker (MK.tick): from the last value shown; on entry it waits for its
   // tile to land (queue: the KPI row, which waits until it is first seen).
@@ -556,7 +575,7 @@
       const days = b.due ? 'due now' : b.n === A + 1 ? 'tomorrow' : `in ${b.n - A} days`;
       el.innerHTML = `<span class="dt num">${esc(fd(b.n, { weekday: 'short', day: 'numeric' }))}</span><span class="tile">${mbTile(b.m, b.c, { size: 'sm', live: 'hover' })}</span>`
         + `<span class="nm"><b>${esc(mbName(b.m))}</b><small>${esc(days)}</small></span><span class="bd">${mbBadge(b.m)}</span><span class="am num">${esc(gbp2(b.amount))}</span>`;
-      const open = () => openMerchant(b.m);
+      const open = () => (b.card ? setSection('data') : openMerchant(b.m));
       el.addEventListener('click', open);
       el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
       return el;

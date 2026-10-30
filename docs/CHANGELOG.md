@@ -37,6 +37,18 @@ OpenDash is now **Freeflo**, with a new logo that follows the seasons and turns 
   window text says Freeflo.
 - Screenshots on the website still show the old name until they are retaken.
 
+## [2.22.3]
+
+Credit cards, like an Amex.
+
+### Added
+- Add a credit card from Connections or Money > Your data: connect it if your card is listed, or import a file from the card's website.
+- Card files are checked before import: you see a few rows ("We read these as money you spent") and can flip the direction with one tap. The choice is remembered, and Your data can change it later with Undo.
+- What you owe on a card shows apart from your money. Safe to spend, the brief and Home keep back the next card payment.
+
+### Fixed
+- A payment to a card no longer counts as spending or income, including for a card you have not added yet (a note says "You pay a card we can't see"). AMEX payments counted as spending before. Refunds reduce spending.
+
 ## [2.22.2] - 2026-10-30
 
 The garden: a rowing boat to your friends’ gardens, press and hold to walk, and clicks that always do something.

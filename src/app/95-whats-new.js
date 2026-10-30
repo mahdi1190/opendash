@@ -70,6 +70,9 @@ const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets')
 
 const WHATS_NEW = [
   // ---- 2.21 ----
+  { id: 'credit-cards', group: 'n221', icon: 'credit-card', title: '2.22.3: add your credit card',
+    text: 'Add a card like an Amex from Money > Your data. What you owe shows apart from your money, safe to spend keeps back the next payment, and paying the card no longer counts as spending.',
+    view: ['finance'], sel: ['#main-body'] },
   { id: 'your-data', group: 'n221', icon: 'database', title: '2.22.1: choose which banks count',
     text: 'Money > Your data shows where every payment comes from. Untick a bank, see the difference, and everything counts only what is ticked. Nothing is deleted.', view: ['finance'] },
   { id: 'select-many', group: 'n221', icon: 'list-checks', title: '2.21: select many things at once',

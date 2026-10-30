@@ -1322,6 +1322,15 @@ Files: `lib/finance.mjs`, `lib/finance/*`, `server/routes/finance.mjs`,
 - **No connection needed**: `POST /api/finance/import` (a CSV the user picks or
   drops on the page), `GET /api/finance/export` (every transaction as CSV;
   cells that would start a formula are quoted), recategorise, budgets.
+- **Credit cards** (`lib/finance/cards.mjs`, rules at its top; page `src/finance/45-cards.js`):
+  an upload that looks like a card comes back as `{needsCardCheck, preview}` and is only imported
+  with the person's answer, in the store's direction under one account key (`card-<name>`).
+  `_system/cards.json` keeps names, the flip, the typed balance and how it is paid. `markCardRows`
+  runs before the transfer match (payments are transfers on both sides, refunds take spending down),
+  `analysis.cards` holds what is owed (never in `analysis.balances`), `analysis.card_unseen` is
+  "You pay a card we can't see". `MBM.compute` treats the next payment as a bill and drops bills
+  charged to a card from the bills before payday. `cardDebts(analysis)` (also `MBM.cardDebts`) is
+  the hook for the money plan's debts.
 - **View**: design-system tokens only (`tests/finance-ui.test.mjs` fails on a raw
   colour, an emoji, a hard-coded currency symbol or locale). Charts read the
   same tokens (`tk()` in finance/00-core.js); the 7-slot categorical palette is built

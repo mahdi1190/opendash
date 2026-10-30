@@ -222,23 +222,32 @@
     if (R.importing) return;
     R.importing = true; R.startErr = null; paintSyncBtn(); paintUpdate();
     const before = txKeySet(R.model) || new Set();
-    let added = 0, rows = 0, last = null; const errs = [];
+    let added = 0, rows = 0, last = null, newCard = null; const errs = [], left = [];
     try {
       for (const f of files) {
         if (!/\.csv$/i.test(f.name)) { errs.push(`${f.name}: only .csv files can be imported`); continue; }
         if (f.size > 5 * 1024 * 1024) { errs.push(`${f.name}: larger than 5 MB`); continue; }
         const data = b64(await f.arrayBuffer());
-        let r = await api('/api/finance/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, data }) });
+        const send = (extra) => api('/api/finance/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, data, ...extra }) });
+        let r = await send({});
+        // It looks like a credit card: which way round are its amounts? Nothing is imported until the person says (45-cards.js).
+        let card;
+        if (r.ok && r.body.needsCardCheck) {
+          card = await cdFileCheck(f.name, r.body.preview);
+          if (card === null) { left.push(f.name); continue; }
+          r = await send({ card });
+        }
         // The file looks like an account already synced: importing it would count it twice. Ask.
         if (r.status === 409 && r.body.code === 'LOOKS_LIKE_DUPLICATE') {
           const go = typeof confirmDialog === 'function'
             ? await confirmDialog({ title: 'Import ' + f.name + ' anyway?', text: r.body.error, confirmLabel: 'Import anyway', danger: true })
             : window.confirm(r.body.error);
           if (!go) { errs.push(`${f.name}: not imported (it looks like an account that is already here)`); continue; }
-          r = await api('/api/finance/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, data, force: true }) });
+          r = await send({ force: true, ...(card !== undefined ? { card } : {}) });
         }
         if (!r.ok) { errs.push(`${f.name}: ${r.body.error || 'HTTP ' + r.status}`); continue; }
         added += Number(r.body.imported) || 0; rows += Number(r.body.rows) || 0; last = r.body;
+        if (r.body.card && r.body.card.isNew) newCard = r.body.card;
         for (const e of r.body.errors || []) errs.push(e);
       }
     } catch (e) { errs.push('Could not reach the Freeflo server. Is it still running?'); }
@@ -253,6 +262,9 @@
     paintUpdate();
     if (last) syncToast(syncDiff(before, R.model ? R.model.tx : []), added, 'import');
     else if (errs.length) toast(errs[0], { bad: true });
+    else if (left.length) toast('Left out. Nothing was imported.', { icon: 'circle-check' });
+    YD.loadedFor = 0;
+    if (newCard) cdOweDialog({ key: newCard.key, name: newCard.name, owed: newCard.balance ? newCard.balance.amount : null, asOf: newCard.balance ? newCard.balance.date : null, from: newCard.balance ? newCard.balance.from : null, pay: newCard.pay, typed: newCard.balance }, { after: true });
   }
   // Drop a CSV anywhere on the Finances page.
   function wireDrop(root) {

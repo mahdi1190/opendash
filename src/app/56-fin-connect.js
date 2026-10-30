@@ -93,16 +93,31 @@ const FIN_PROVIDERS = [
     more: 'The file is read on this computer. Duplicates are skipped, so overlapping date ranges are fine.',
     action: 'Import a CSV' },
 ];
+// Credit cards have no group of their own in sources: a card is an account from Enable Banking, or a file.
+FIN_PROVIDERS.push({ id: 'credit-card', group: 'cards', name: 'A credit card', sub: 'Amex, Barclaycard and others', mark: 'card', flow: 'card',
+  keywords: 'credit card amex american express barclaycard mbna capital one vanquis store card',
+  line: 'Connect it if it is listed, or import a file from its website',
+  facts: {
+    covers: 'Any credit card. Connecting works only for cards Enable Banking lists; a file works for every card.',
+    cost: 'Free.',
+    limits: 'A file is only as new as the last one you imported. A connected card asks you to sign in again every few months.',
+    need: 'Your card’s website login. To connect, a free Enable Banking account too.',
+    time: 'About 2 minutes with a file, 10 to connect',
+  },
+  more: 'What you buy counts as spending on the day you buy it. Your payment to the card counts as moving your own money, not spending. What you owe stays apart from the money you can spend.',
+  action: 'Add a credit card' });
 const FIN_FACT_ROWS = [['covers', 'Covers', 'layers'], ['cost', 'Cost', 'coins'], ['limits', 'Limits', 'gauge'], ['need', 'You’ll need', 'list-checks'], ['time', 'Time', 'clock']];
 const FIN_GROUPS = [
   { id: 'claude', title: 'Via Claude', sub: 'Uses your Claude account and the claude.ai Bank connector.' },
   { id: 'direct', title: 'Direct connections', sub: 'No Claude needed and no AI in the loop: faster, and free.' },
   { id: 'file', title: 'Import a file', sub: 'Works with every bank, with no connection at all.' },
+  { id: 'cards', title: 'Credit cards', sub: 'Connect one if it is listed, or import a file.' },
 ];
-const FIN_KIND_LABEL = { current: 'Current', joint: 'Joint', pot: 'Pot', savings: 'Savings', wallet: 'Wallet', card: 'Card', credit: 'Credit card' };
+const FIN_KIND_LABEL = { current: 'Current', joint: 'Joint', pot: 'Pot', savings: 'Savings', wallet: 'Wallet', card: 'Credit card', credit: 'Credit card' };
 
 /* ---------- drawn marks (simple shapes, not copied logos) ---------- */
 const FIN_MARKS = {
+  card: '<svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#2e4a7d"/><rect x="6" y="9" width="16" height="11" rx="2" fill="#eef3fb"/><rect x="6" y="11.6" width="16" height="2.4" fill="#2e4a7d"/><rect x="8.4" y="16.2" width="4.6" height="1.6" rx=".8" fill="#2e4a7d"/></svg>',
   aureli: '<svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#a8762a"/><circle cx="14" cy="14" r="8.2" fill="none" stroke="#fde9b8" stroke-width="1.6" opacity=".55"/><path d="M9.2 19.4 14 8.4l4.8 11M11 15.6h6" fill="none" stroke="#fff8e6" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   plasma: '<svg viewBox="0 0 28 28" aria-hidden="true"><defs><radialGradient id="fc-pl" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#d9fff1"/><stop offset=".45" stop-color="#3fd4a2"/><stop offset="1" stop-color="#0c6b52"/></radialGradient></defs><rect width="28" height="28" rx="8" fill="#0f1714"/><circle cx="14" cy="14" r="7.4" fill="url(#fc-pl)"/><ellipse cx="14" cy="14" rx="10.6" ry="3.6" fill="none" stroke="#7ff0c8" stroke-width="1.1" opacity=".55" transform="rotate(-24 14 14)"/></svg>',
   monzo: '<svg viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="8" fill="#ff5a47"/><path d="M7.6 19.6V9.2l6.4 6.6 6.4-6.6v10.4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -229,6 +244,7 @@ function finChooserMatch(query, banks) {
   if (found.length) cards.add('enable-banking');
   const ebNone = !highlight && q.length >= 3 && !found.length;
   if (ebNone) { cards.add('enable-banking'); cards.add('csv'); }
+  if (/card|amex|american express|barclaycard|mbna|capital one/.test(q)) cards.add('credit-card');
   return { query: q, cards, highlight, banks: found, ebNone };
 }
 /**
@@ -405,6 +421,7 @@ function _finBankList(country) {
 function finStartProvider(id, opts) {
   opts = opts || {};
   if (id === 'csv') { finImportCsv(); return; }
+  if (id === 'credit-card') { if (window.FinanceView && typeof FinanceView.addCard === 'function') FinanceView.addCard(); return; }
   if (id === 'aureli') { _finConnectAureli(); return; }
   if (typeof finOpenFlow === 'function') finOpenFlow(id, opts);
 }
@@ -1007,7 +1024,7 @@ function _finProviderCard(p, groups, match, wide) {
   lock.setAttribute('data-tip', p.id === 'csv' ? 'The file is read on this computer.' : FIN_READONLY_TIP);
   left.appendChild(lock);
   foot.appendChild(left);
-  let label = p.action, ic = p.id === 'csv' ? 'upload' : p.id === 'plasma' ? 'clipboard' : p.id === 'enable-banking' ? 'search' : 'plus';
+  let label = p.action, ic = p.id === 'csv' ? 'upload' : p.id === 'plasma' ? 'clipboard' : p.id === 'enable-banking' ? 'search' : p.id === 'credit-card' ? 'credit-card' : 'plus';
   if (p.id === 'aureli') {
     const src = _finAureliSource();
     if (src) { label = status && status.kind === 'ok' ? 'Connected' : 'Reconnect'; ic = status && status.kind === 'ok' ? 'check' : 'log-in'; }

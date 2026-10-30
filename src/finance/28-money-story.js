@@ -63,7 +63,7 @@
   // opts: {period: 'month' | 'week', ref: 'YYYY-MM-DD' | day number}; no period = this month (last month on the 1st-3rd).
   function msStory(opts, M) {
     opts = opts || {}; M = M || R.model;
-    const input = { tx: M.tx, anchor: M.anchor, minN: M.minN, balances: M.a.balances, history: M.a.balance_history, recurring: M.recurring };
+    const input = { tx: M.tx, anchor: M.anchor, minN: M.minN, balances: M.a.balances, history: M.a.balance_history, recurring: M.recurring, cards: M.a.cards };
     const def = MSM.defaultPeriod(M.anchor);
     const period = opts.period === 'week' || opts.period === 'month' ? opts.period : def.period;
     const ref = typeof opts.ref === 'string' && validIso(opts.ref) ? dnum(opts.ref) : Number.isFinite(opts.ref) ? opts.ref : (opts.period ? M.anchor : def.ref);

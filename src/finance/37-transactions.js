@@ -341,7 +341,7 @@
     const nM = all.length && monthIdx(Math.min(...all.map(y => y.n))) <= endMi - 11 ? 12 : 6;
     const mons = new Array(nM).fill(0);
     for (const y of all) { const k = monthIdx(y.n) - (endMi - nM + 1); if (k >= 0 && k < nM) mons[k] += y.s; }
-    const how = { override: 'your choice', rule: 'its name', bank: 'the bank’s category', default: 'the default', unmatched: 'no match yet', 'own-transfer': 'a matching payment into another of your accounts' }[x.how] || (x.how || 'the import');
+    const how = { override: 'your choice', rule: 'its name', bank: 'the bank’s category', default: 'the default', unmatched: 'no match yet', 'own-transfer': 'a matching payment into another of your accounts', 'card-payment': 'a payment to a credit card, already counted when you bought things', refund: 'money back on a credit card' }[x.how] || (x.how || 'the import');
     const counts = x.oa ? 'Money from your other account (not income or spending)' : x.kind === 'spend' ? 'Spending' : x.kind === 'income' ? 'Money in' : 'A transfer (not spending)';
     const filt = isSelMerchant(x.m);
     const det = h('div', { class: 'fv-txx', role: 'region', 'aria-label': 'Details' },

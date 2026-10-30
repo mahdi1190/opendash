@@ -7,7 +7,7 @@
 
 <h3 align="center">Plan your day. Keep your data.</h3>
 
-<p align="center"><sub>Freeflo was called OpenDash until 2.23. The repository, folders and commands still say <code>opendash</code>.</sub></p>
+<p align="center"><sub>Freeflo was called Freeflo until 2.23. The repository, folders and commands still say <code>opendash</code>.</sub></p>
 
 <p align="center">
 A calm, local-first dashboard for your tasks, calendar, money and friends.<br>

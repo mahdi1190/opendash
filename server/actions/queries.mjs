@@ -469,6 +469,7 @@ export const QUERIES = [
         flagsCount: Array.isArray(a.flags) ? a.flags.length : 0,
         uncategorisedMerchants: Array.isArray(a.uncategorised_merchants) ? a.uncategorised_merchants.length : 0,
         balances: bal.length ? { accounts: bal.length, total: num(bal.filter(b => !b.currency || b.currency === cur).reduce((t, b) => t + (Number(b.balance) || 0), 0)) } : null,
+        creditCardsOwed: Array.isArray(a.cards) && a.cards.some(c => Number.isFinite(c && c.owed)) ? num(a.cards.reduce((t, c) => t + (Number(c && c.owed) || 0), 0)) : null,
       };
     },
   },
