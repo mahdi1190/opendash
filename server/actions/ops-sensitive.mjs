@@ -34,6 +34,26 @@ function friendOf(ctx, id, { friendsOnly = true } = {}) {
   return { id, name };
 }
 
+// ─── The Tax tab ───────────────────────────────────────────────────────────
+/** The card says exactly what changes: the action in words, and each value as it will be saved. */
+function runTax(ctx, p) {
+  const c = p.change || {};
+  const words = {
+    'source.add': 'Add an income source', 'source.update': 'Change an income source', 'source.remove': 'Remove an income source', 'payment.add': 'Add a payment from a client', 'payment.remove': 'Remove a payment',
+    'claim.add': 'Claim a work cost', 'claim.update': 'Change a claim', 'claim.remove': 'Remove a claim', 'simplified.set': 'Set mileage or working from home', 'extras.set': 'Set figures for the tax year', 'gain.add': 'Add a sale of shares or crypto', 'gain.remove': 'Remove a sale',
+    'item.add': 'Add to your money plan', 'item.update': 'Change something in your money plan', 'item.remove': 'Remove something from your money plan', 'memory.add': 'Remember this about your money', 'memory.update': 'Change a note about your money', 'memory.remove': 'Forget a note about your money',
+    'pref.set': 'Change a tax setting', 'filed.record': 'Record your tax return', 'year.confirm': 'Confirm your sources for the year',
+  };
+  const say = words[c.action];
+  if (!say) throw new ActionError('BAD_VALUE', 'that is not a change the Tax tab knows', { field: 'change.action', valid: Object.keys(words) });
+  const flat = [];
+  const NAMES = { what: 'What', name: 'Name', amount: 'Amount', date: 'Date', client: 'From', note: 'Note', pct: 'Work share %', cat: 'Kind', annual: 'Pay a year', taxCode: 'Tax code', start: 'First day', end: 'Last day', per: 'Every', text: 'Note', source: 'Where it came from', type: 'Kind', proceeds: 'Sold for', cost: 'Cost', total: 'Total', paid: 'Paid' };
+  const walk = (o, pre) => { for (const [k, v] of Object.entries(o || {})) { if (k === 'action' || k === 'item' || k === 'tx' || k === 'id') continue; if (v && typeof v === 'object' && !Array.isArray(v)) walk(v, `${pre}${k}.`); else if (v !== null && v !== undefined && v !== '') flat.push(line(NAMES[k] || k, truncate(String(v), 120), `${pre}${k}`)); } };
+  walk(c, '');
+  ctx.effect({ op: 'tax.change', change: c, year: p.taxYear });
+  return { summary: say, changes: flat.length ? flat.slice(0, 20) : [line(say, 'Yes')] };
+}
+
 // ─── Friends ───────────────────────────────────────────────────────────────
 const WAVES = { wave: 'a wave', high5: 'a high five', nudge: 'a nudge', thanks: 'a thank you' };
 const GARDEN_ACTS = { garden_visit: ['visit', 'Visit'], garden_water: ['water', 'Water a plant in'], garden_gift: ['gift', 'Leave a gift in'], garden_like: ['like', 'Leave a heart in'], garden_sign: ['sign', 'Sign the guestbook in'] };
@@ -251,6 +271,12 @@ export const SENSITIVE_OPS = [
     description: "Bulk expense changes. The user approves it first. action delete, mark_paid {date?}, mark_unpaid, unsubmit, with ids from list_expenses. The result has an undo token for undo_expense_change.",
     schema: obj({ action: { type: 'string', enum: ['delete', 'mark_paid', 'mark_unpaid', 'unsubmit'] }, ids: { type: 'array', items: { type: 'string', maxLength: 60 }, minItems: 1, maxItems: 50 }, date: DAY }, ['action', 'ids']),
     run: runExpense,
+  },
+  {
+    name: 'tax.change', tool: 'tax_document_change', danger: true,
+    description: "A change to the Tax tab, money plan or money memory taken from a file, an email, a calendar entry or pasted text, or a fact the user did not ask you to remember. The user approves it on one card first. change: the same as tax_change. taxYear: default the current one.",
+    schema: obj({ change: { type: 'object', required: ['action'], description: 'action and its fields, as tax_change' }, taxYear: { type: 'string', pattern: '^\\d{4}-\\d{2}$' } }, ['change']),
+    run: runTax,
   },
   {
     name: 'update.install', tool: 'install_update', danger: true,

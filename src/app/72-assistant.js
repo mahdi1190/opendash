@@ -794,6 +794,11 @@ function _asstOnEvent(id, acc, ev) {
       m.proposals = [...(m.proposals || []), Object.assign({}, ev.proposal, { state: 'pending' })];
       _asstSave();
     }
+  } else if (ev.type === 'whatif' && Array.isArray(ev.parts)) {
+    // The assistant's scenario: open What if? once, and leave a button on the message for later.
+    const m = _asstMsgById(id);
+    if (m) { m.whatif = ev.parts; _asstSave(); }
+    try { if (window.FinanceView && window.FinanceView.openWhatIf) window.FinanceView.openWhatIf(ev.parts); } catch (e) { console.error('[assistant] what if', e); }
   } else if (ev.type === 'done') { acc.text = ev.text || ''; acc.via = ev.via; }
   else if (ev.type === 'error') acc.error = { code: ev.code, message: ev.error };
   _asst.live.set(id, live);
@@ -818,6 +823,7 @@ function _asstBuild() {
     <div class="asst-gate" hidden></div>
     <div class="asst-compose">
       <div class="asst-box">
+        <button type="button" class="btn btn-ghost btn-icon asst-attach" aria-label="Attach a payslip" title="Attach a payslip (PDF or photo)">${icon('paperclip')}</button>
         <textarea class="asst-input" rows="1" placeholder="Ask about your tasks, or say what to change…" aria-label="Message the assistant"></textarea>
         <button type="button" class="btn btn-primary btn-icon asst-send" aria-label="Send">${icon('arrow-up')}</button>
       </div>
@@ -825,6 +831,16 @@ function _asstBuild() {
     </div>`;
   const ta = el.querySelector('.asst-input');
   const send = el.querySelector('.asst-send');
+  // A payslip: the Tax tab says what is sent and asks before anything goes (37-tax-filing.js); the chat never reads files.
+  const takeSlip = (file) => { if (file && window.FinanceView && window.FinanceView.taxPayslip) window.FinanceView.taxPayslip(file); };
+  el.querySelector('.asst-attach').addEventListener('click', () => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/pdf,image/*'; inp.hidden = true;
+    inp.addEventListener('change', () => { takeSlip(inp.files && inp.files[0]); inp.remove(); });
+    document.body.appendChild(inp); inp.click();
+  });
+  const box = el.querySelector('.asst-compose');
+  box.addEventListener('dragover', (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files')) e.preventDefault(); });
+  box.addEventListener('drop', (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) { e.preventDefault(); takeSlip(f); } });
   const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; send.disabled = !_asst.busy && !ta.value.trim(); };
   ta.addEventListener('input', grow);
   ta.addEventListener('keydown', (e) => {
@@ -905,6 +921,11 @@ function _asstBubble(m, i) {
   }
   row.innerHTML = html;
   for (const p of (m.proposals || [])) row.appendChild(_asstProposalCard(m, p));
+  if (Array.isArray(m.whatif) && m.whatif.length) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm asst-whatif'; b.innerHTML = icon('git-branch') + '<span>Open this in What if?</span>';
+    b.addEventListener('click', () => { try { window.FinanceView.openWhatIf(m.whatif); } catch (e) { console.error('[assistant] what if', e); } });
+    row.appendChild(b);
+  }
   if (!m.pending && !m.error && (m.model || m.ms)) {
     const meta = document.createElement('div'); meta.className = 'asst-meta';
     const on = chatWriterName(m);   // answered on another computer

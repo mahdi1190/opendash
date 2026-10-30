@@ -195,7 +195,27 @@
     }
     // mode 'cycle' needs a salary; otherwise the calendar month. Previous
     // cycles must start inside the data (a part cycle would read as "low").
-    function cycleOf(anchor, mode, sal, minN) {
+    function cycleOf(anchor, mode, sal, minN, planDays) {
+      // The plan's real paydays (lib/finance/pay-dates.mjs): the money that arrived wins, the plan says when the next one is.
+      if (mode === 'cycle' && planDays && planDays.length) {
+        const paid = sal ? sal.days.filter(d => d <= anchor) : [];
+        const lastPaid = paid.length ? paid[paid.length - 1] : null;
+        const past = planDays.filter(d => d <= anchor);
+        const expected = past.length ? past[past.length - 1] : null;
+        if (expected != null || lastPaid != null) {
+          // Expected a few days ago and not here yet: the cycle has not turned ("any day now").
+          const late = expected != null && lastPaid != null && lastPaid < expected - 5;
+          const start = lastPaid != null && (expected == null || late || lastPaid >= expected - 5) ? lastPaid : expected;
+          const coming = planDays.find(d => d > anchor);
+          const next = late ? anchor + 1 : coming != null ? coming : anchor + 30;
+          const all = (paid.length >= 2 ? paid : past).filter(d => d >= minN);
+          const prev = [];
+          for (let i = 0; i < all.length - 1; i++) if (all[i + 1] <= start) prev.push({ start: all[i], next: all[i + 1] });
+          const planned = finish({ mode: 'cycle', start, next, prev: prev.slice(-MAX_CYCLES) }, anchor);
+          if (late) planned.late = true;
+          return planned;
+        }
+      }
       if (mode === 'cycle' && sal) {
         const past = sal.days.filter(d => d <= anchor);
         const start = past[past.length - 1];
@@ -440,8 +460,11 @@
       const fmt = opts.fmt ? withSeps(opts.fmt) : makeFmt();
       const tx = input.tx || [], anchor = input.anchor, minN = input.minN;
       const sal = salary(tx, anchor);
-      const mode = opts.mode === 'month' || !sal ? 'month' : 'cycle';
-      const cyc = cycleOf(anchor, mode, sal, minN);
+      // opts.plan (Your money plan, lib/finance/money-plan.mjs): real paydays, and bills the bank has not shown yet.
+      const planDays = opts.plan && Array.isArray(opts.plan.paydays) && opts.plan.paydays.length ? opts.plan.paydays.slice().sort((p, q) => p - q) : null;
+      const planHasCycle = !!planDays && planDays.some(d => d <= anchor);
+      const mode = opts.mode === 'month' || (!sal && !planHasCycle) ? 'month' : 'cycle';
+      const cyc = cycleOf(anchor, mode, sal, minN, planDays);
       const cur = curve(tx, cyc.start, cyc.len, cyc.day);
       const spent = cur.length ? cur[cur.length - 1] : 0;
       const pace = bands(tx, cyc);
@@ -471,9 +494,12 @@
       const homeRecs = homeBills(recs, tx, cards);
       const cardPays = cardBills(cards, anchor);
       const billOrder = (p, q) => p.n - q.n || q.amount - p.amount || (p.m < q.m ? -1 : 1);
-      const before = billsBetween(homeRecs, anchor, cyc.next).concat(cardPays.filter(b => b.n < cyc.next)).sort(billOrder);
+      // Your money plan's bills join them.
+      const planBills = opts.plan && Array.isArray(opts.plan.bills) ? opts.plan.bills : [];
+      const planIn = (to) => planBills.filter(b => b.n >= anchor && b.n < to).map(b => ({ m: b.m, c: b.c, n: b.n, due: false, amount: b.amount, freq: b.freq || 'Planned' }));
+      const before = billsBetween(homeRecs, anchor, cyc.next).concat(cardPays.filter(b => b.n < cyc.next), planIn(cyc.next)).sort(billOrder);
       const billsTotal = r2(sumBy(before, b => b.amount));
-      const upcoming = billsBetween(homeRecs, anchor, anchor + 31).concat(cardPays.filter(b => b.n < anchor + 31)).sort(billOrder);
+      const upcoming = billsBetween(homeRecs, anchor, anchor + 31).concat(cardPays.filter(b => b.n < anchor + 31), planIn(anchor + 31)).sort(billOrder);
       const cushion = Number.isFinite(opts.cushion) ? opts.cushion : CUSHION;
       const safe = bal ? (() => {
         const left = r2(bal.total - billsTotal - cushion);
@@ -492,7 +518,7 @@
       const cats = [...catNow.entries()].filter(e => e[1] > 0.004).sort((p, q) => q[1] - p[1]).map(([c, v]) => ({ c, v: r2(v) }));
       const phase = cyc.day <= 4 ? 'Fresh start' : cyc.daysLeft <= 6 ? 'Home stretch' : cyc.mode === 'month' ? 'Mid-month' : 'Mid-cycle';
       const B = {
-        anchor, minN, mode, auto: sal ? 'cycle' : 'month', hasSalary: !!sal, salaryDom: sal ? sal.dom : null, salaryAmount: sal ? sal.amount : null, paydays: sal ? sal.days.slice() : [], cycle: cyc, phase,
+        anchor, minN, mode, auto: sal || planHasCycle ? 'cycle' : 'month', hasSalary: !!sal || planHasCycle, salaryDom: sal ? sal.dom : null, salaryAmount: sal ? sal.amount : null, paydays: sal ? sal.days.slice() : [], cycle: cyc, phase,
         curve: cur, pace, spent, usual, usualEnd, projected, mood,
         moneyIn, inCount, net: r2(moneyIn - spent), netCurve, inPer,
         balance: bal, balSeries: series, bal30,

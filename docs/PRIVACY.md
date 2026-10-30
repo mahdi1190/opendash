@@ -161,7 +161,9 @@ or the folder you chose with `--data-dir`, or the one Settings > Data > *Move my
 | Settings | `config.json` | your name, email addresses you entered, region, theme, feature and AI choices, weather town |
 | Your work | `state/dashboard-state.json` | tasks, notes, people, tags, streams, countdowns, reviews, links to files |
 | Backups | `state/backups/`, `backups/` | copies of the above, made automatically |
-| Finances | `finance/` | the bank CSV files you imported or synced, categories, budgets, the analysis |
+| Finances | `finance/` | the bank CSV files you imported or synced, categories, budgets, the analysis, your money plan and tax year figures (`_system/tax.json`) |
+| Tax documents | `tax-documents/` | payslips and papers you keep against a tax year, on this computer only |
+| UTR and National Insurance number | the secret store (`secrets/tax/`) | on this computer only. Never sent to Claude or friends, never synced, in a return pack only if you tick that box. Freeflo never asks for a Government Gateway password. |
 | Calendar and email | `calendar/`, `inbox/`, `email/` | read-only snapshots: event details; email subjects, senders, dates and short snippets |
 | Your pet's accessories (Pets > Wardrobe > My designs) | `pets/items.json` | up to 12 accessories you made for your pet: the drawing (shapes and colours), a name, and the sentence you described it with. Synced between your own computers if sync is on. Friends get the drawing and its name, never your sentence |
 | Data sources | `sources.json`, `connections.json` | which sources and accounts you added, connection status, iCal addresses |

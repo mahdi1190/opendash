@@ -70,6 +70,9 @@ const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets')
 
 const WHATS_NEW = [
   // ---- 2.21 ----
+  { id: 'money-plan', group: 'n221', icon: 'calculator', title: '2.23.1: your money plan and your tax year',
+    text: 'Budgets asks a few questions and works out your take-home, matches your bills to the bank and has a What if? to play with. The new Tax tab shows what to keep aside, what you can claim, your deadlines and a walkthrough for filing.',
+    view: ['finance'], sel: ['#main-body'] },
   { id: 'owed-to-me', group: 'n221', icon: 'handshake', title: '2.22.4: split a payment, see who has paid',
     text: 'Money > Owed to me. Click a payment, Split this, pick people, and your bank is checked for who has paid you back. Someone paying for two people is handled too, and what they pay back comes off your spending.',
     view: ['finance'], sel: ['#main-body'] },

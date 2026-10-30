@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.23.1]
+
+Your money plan and your tax year.
+
+### Added
+- **Your money plan**, on the Budgets tab. A questionnaire you can leave and come back to asks your country first ("Somewhere else" skips UK tax) and "now, later or not at all" for each bill. It works out your take-home by year, month and payslip from 2026/27 figures on gov.uk: tax, NI, student loans, pensions, several jobs and self-employed income.
+- Every planned item is matched to your bank, with start and end dates, pause and remove, each with Undo. A "Worth a look" list flags short pay, dearer bills and missing rent. Also Coming up, a bills calendar, debts with payoff dates, goals, yearly bills and net worth.
+- Paydays and bills use real dates, allowing for weekends and UK bank holidays. Your pay cycle and safe to spend follow the plan.
+- **What if?**: scenarios and sliders beside today's figures, to combine, save and compare. Nothing changes until "Make this my plan", which has Undo.
+- **Tax**, a new tab in Money for UK users. Your tax year line by line, how much to keep aside (it comes out of safe to spend), whether payments on account apply, deadlines as real tasks each year, a March review, "Do I need to file?", a finder for expenses you can claim, and a File my return walkthrough with Copy buttons, a PDF, CSV and receipts pack. Freeflo estimates and prepares; you submit on gov.uk yourself.
+- Tell it your situation by pasting text, or give it a payslip PDF. It reads them with Claude only when you press the button, shows everything for you to confirm, and hides your UTR and NI number. A "What Freeflo knows about my money" page, documents by tax year, and job and moving checklists.
+- The assistant can explain your tax and plan using your real numbers, make small changes with Undo, and open a What if?. Anything taken from a file, email or pasted text asks you first. It never sees your UTR or NI number.
+
+### Changed
+- The trading allowance is not used for income from your employer or a connected person, and the screen says which of the allowance or your costs is used and why.
 ## [2.23.0] - 2026-10-30
 
 OpenDash is now **Freeflo**, with a new logo that follows the seasons and turns into the holidays.

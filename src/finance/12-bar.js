@@ -293,7 +293,7 @@
     try { toCheck = typeof OWD !== 'undefined' ? OWD.suggestions.length : 0; } catch (e) { toCheck = 0; }
     return subTabs({
       label: 'Money', active,
-      tabs: GROUPS.map(([id, label, icon]) => ({ id, label, icon, badge: id === 'expenses' ? owed : id === 'owed' ? toCheck : 0 })),
+      tabs: GROUPS.filter(g => g[0] !== 'tax' || !(MPL.plan && MPL.plan.country === 'other')).map(([id, label, icon]) => ({ id, label, icon, badge: id === 'expenses' ? owed : id === 'owed' ? toCheck : 0 })),
       onChange: (id) => openGroup(id),
     });
   }
