@@ -5,7 +5,7 @@
 // a plan edited in a shared space. The state file already has its own watcher (live-sync.mjs); this
 // one covers the files that live next to it:
 //
-//   expenses/*.json     Expenses (lib/expenses.mjs)
+//   expenses/*.json     Expenses (lib/expenses.mjs), Owed to me (lib/owed.mjs)
 //   friends/*.json      Friends, Together (spaces.json), the shared garden (garden.json), your game and fun
 //   profile.json        your card and look
 //   finance/*.json      the finance analysis (and the read-only copy another computer sends: finance-share/)
@@ -20,7 +20,7 @@ import { join, resolve } from 'node:path';
 
 const DIRS = ['expenses', 'friends', 'finance', 'finance-share'];
 const ROOT_FILES = ['profile.json'];
-const IGNORE = new Set(['local.json', 'share-log.json', 'spaces-clock.json', 'journal.json', 'profile-visits.json']);
+const IGNORE = new Set(['local.json', 'share-log.json', 'spaces-clock.json', 'journal.json', 'owed-journal.json', 'profile-visits.json']);
 const POLL_MS = 5000;
 const DEBOUNCE_MS = 250;
 const MAX_FILES = 400;

@@ -268,6 +268,19 @@
       text.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
     }, { align: 'end', width: 300 });
   }
+  // Owed to me (src/app/66-owed-*.js): the total, who owes most, and the way to start a split.
+  BWR.owed = {
+    update(cd, w, X) {
+      const box = bdBox(cd), O = window.Owed;
+      const s = O && O.summary ? O.summary() : null;
+      if (O && !s && O.load) O.load();
+      box.append(bdBig(gbp((s && s.owedToMe) || 0), 'owed to you'));
+      if (s && s.iOweCount) box.append(h('p', { class: 'fvb-line mute' }, 'You owe ', amt(gbp(s.iOwe))));
+      const line = O && O.briefLine ? O.briefLine({ askOnly: true }) : null;
+      if (line) box.append(line);
+      box.append(h('div', { class: 'fvb-acts' }, h('button', { type: 'button', class: 'fv-btn', onclick: () => O && O.split({}) }, ic('plus'), h('span', { text: 'Split a payment' })), h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => setView('owed') }, h('span', { text: 'See who' }), ic('chevron-right'))));
+    },
+  };
   BWR.bills = {
     update(cd, w, X) {
       const M = X.M; const box = bdBox(cd);

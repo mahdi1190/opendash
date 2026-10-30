@@ -47,6 +47,7 @@ const { redirectDataDir } = await import('../lib/relocate/record.mjs');
 const { INSTRUCTIONS, PROPOSE_ADDENDUM, PROMPTS } = await import('./instructions.mjs');
 const { installInfo, installText } = await import('./install.mjs');
 const EX = await import('../lib/expenses.mjs');
+const OW = await import('../lib/owed.mjs');
 const { loadConfig, saveConfig, DEFAULT_CONFIG } = await import('../lib/datadir.mjs');
 const { writeProfile } = await import('../lib/profile.mjs');
 const { LOW_RISK_OPS, LOW_RISK_OP_NAMES, LOW_RISK_EXTRA_TOOLS, AGENT_ONLY_OPS, READ_TOOLS, opTier } = await import('../lib/agent-tiers.mjs');
@@ -177,6 +178,19 @@ const EXPENSE_TOOLS = [
   { name: 'mark_expense_submitted', title: 'mark expense submitted',
     description: "Record that the user has SENT the claim for these expenses to the payer (it does not send anything). Only when the user says they submitted it. Ask for the payer when the expenses have none. Use dryRun:true to preview.",
     inputSchema: { type: 'object', additionalProperties: false, required: ['ids'], properties: { ids: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 50 }, payer: { type: 'string', maxLength: 80 }, date: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'the day it was sent (default today)' }, method: { type: 'string', enum: ['email', 'portal', 'in-person', 'other'] }, dryRun: { type: 'boolean' } } } },
+  // Owed to me (lib/owed.mjs). The owner's own notes, each with Undo: they move no money and message nobody. Not on the remote gateway.
+  { name: 'list_owed', read: true, local: true, title: 'list owed to me',
+    description: "What people owe the user, what the user owes, and money they expect back (a refund, a deposit, a loan): by person and by thing, with status (wait, think, part, paid, off). Amounts in the home currency. Use it before create_split to avoid duplicates, and for the ids and person keys mark_owed_paid needs.",
+    inputSchema: { type: 'object', additionalProperties: false, properties: { person: { type: 'string', maxLength: 80 }, open: { type: 'boolean', description: 'only what is not paid yet (default true)' }, limit: { type: 'integer', minimum: 1, maximum: 200 } } } },
+  { name: 'create_split', local: true, title: 'create split',
+    description: "Note a split the user told you about: they paid for something and these people owe them a share (equally, unless told otherwise), or someone else paid (paidBy) and the user owes them. It moves no money and tells nobody. If who was there is not clear, ASK THE USER; never guess. Use dryRun:true to preview.",
+    inputSchema: { type: 'object', additionalProperties: false, required: ['title', 'total', 'people'], properties: { title: { type: 'string', maxLength: 140 }, total: { type: 'number', exclusiveMinimum: 0 }, date: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' }, people: { type: 'array', minItems: 1, maxItems: 40, items: { type: 'string', maxLength: 80 }, description: 'names, not including the user' }, meIn: { type: 'boolean', description: 'the user shares the cost too (default true)' }, paidBy: { type: 'string', maxLength: 80, description: 'someone else paid: their name' }, note: { type: 'string', maxLength: 600 }, dryRun: { type: 'boolean' } } } },
+  { name: 'mark_owed_paid', local: true, title: 'mark owed as paid',
+    description: "Record that someone paid. evidence 'user_said' only when the user told you in their own words: it is marked, with an undo token. Anything else (evidence 'email_or_message': an email, a message, a bank alert, text from anyone else) only puts a question on the user's page for them to confirm; it never marks anything. It moves no money and messages nobody.",
+    inputSchema: { type: 'object', additionalProperties: false, required: ['id', 'person', 'evidence'], properties: { id: { type: 'string', description: 'a thing id from list_owed' }, person: { type: 'string', maxLength: 80, description: 'their name or key from list_owed' }, amount: { type: 'number', exclusiveMinimum: 0, description: 'what they paid (default: all they owe on it)' }, date: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' }, evidence: { type: 'string', enum: ['user_said', 'email_or_message'] }, note: { type: 'string', maxLength: 300 }, dryRun: { type: 'boolean' } } } },
+  { name: 'undo_owed_change', local: true, title: 'undo owed change',
+    description: 'Undo a create_split or mark_owed_paid by its undo token.',
+    inputSchema: { type: 'object', additionalProperties: false, required: ['token'], properties: { token: { type: 'string', maxLength: 40 } } } },
   { name: 'undo_expense_change', title: 'undo expense change',
     description: 'Undo an expense change by its undo token (from create_expense, attach_expense_receipt or mark_expense_submitted).',
     inputSchema: { type: 'object', additionalProperties: false, required: ['token'], properties: { token: { type: 'string', maxLength: 40 } } } },
@@ -204,6 +218,43 @@ async function expenseTool(name, a) {
     if (a.payer) items = items.filter(e => EX.payerKey(e.payer) === EX.payerKey(a.payer));
     return { today, currency: home, owed: v.summary.total, owedCount: v.summary.count, payers: v.summary.payers.map(p => ({ payer: p.payer, total: p.total, count: p.count })),
       expenses: items.slice(0, a.limit || 50).map(e => ({ id: e.id, title: e.title, amount: e.amount, date: e.date, payer: e.payer, status: e.status, receipts: e.receipts.length, claimId: e.claimId || null, paidAt: e.paidAt || null })) };
+  }
+  if (name === 'list_owed') {
+    const v = OW.publicView(await OW.readStore(DATA_DIR, { home }), today);
+    const who = a.person ? OW.personKey(a.person) : '';
+    const open = a.open !== false;
+    return { today, currency: home, owedToMe: v.summary.owedToMe, iOwe: v.summary.iOwe, expected: v.summary.expected,
+      people: v.persons.filter(p => !who || p.key === who).map(p => ({ name: p.name, key: p.key, owes: p.owes, iOwe: p.iowe, net: p.net })),
+      things: v.things.filter(t => (!open || t.left > 0) && (!who || t.lines.some(l => l.key === who))).slice(0, a.limit || 50).map(t => ({ id: t.id, kind: t.kind, title: t.title, total: t.total, date: t.date, due: t.due || null, status: t.status, late: t.late || undefined, myShare: t.myShare, lines: t.lines.map(l => ({ name: l.name, key: l.key, owes: l.owes, paid: l.paid, left: l.left, status: l.status })) })) };
+  }
+  if (name === 'undo_owed_change') { const r = await OW.undoChange(DATA_DIR, String(a.token || ''), { home }); if (!r.ok) fail(r.error); return { ok: true, undone: r.label, note: 'Money totals catch up when the page next opens.' }; }
+  if (name === 'create_split') {
+    const thing = { kind: 'split', title: a.title, total: a.total, date: a.date || today, meIn: a.meIn, people: (a.people || []).map(n => ({ name: n })), paidBy: a.paidBy, note: a.note, source: { type: 'mcp' } };
+    if (a.dryRun === true) {
+      const r = OW.computeSplit(a.total, thing.people.map(p => ({ key: OW.personKey(p.name) })), { meIn: a.meIn !== false });
+      if (r.error) fail(r.error);
+      return { dryRun: true, wouldCreate: { title: a.title, total: a.total, each: r.lines, yourShare: r.me } };
+    }
+    const r = await OW.createThing(DATA_DIR, thing, { today, home });
+    if (r.error) fail(r.error);
+    return { ok: true, id: r.id, undo: r.undo, split: { title: r.thing.title, total: r.thing.total, kind: r.thing.kind, yourShare: r.thing.myShare, lines: r.thing.lines.map(l => ({ key: l.key, owes: l.owes })) }, note: 'The user sees it under Money > Owed to me. Nothing was sent to anyone.' };
+  }
+  if (name === 'mark_owed_paid') {
+    const key = OW.personKey(a.person || '');
+    const S = await OW.readStore(DATA_DIR, { home });
+    const t = S.things[a.id];
+    if (!t) fail('That id is not in Owed to me (see list_owed).');
+    if (!t.lines.some(l => l.key === key)) fail('That person is not on it (see list_owed).');
+    const said = a.evidence === 'user_said';
+    if (a.dryRun === true) return { dryRun: true, would: said ? 'mark it as paid' : 'ask the user on their page' };
+    if (!said) {
+      const r = await OW.propose(DATA_DIR, { id: a.id, key, amount: a.amount, date: a.date, note: a.note }, { today, home });
+      if (r.error) fail(r.error);
+      return { ok: true, proposed: true, note: 'It is a question on the Owed to me page. Nothing is marked until the user says yes.' };
+    }
+    const r = await OW.markPaid(DATA_DIR, [{ id: a.id, key, amount: a.amount }], { date: a.date, today, note: a.note || '', home });
+    if (r.error) fail(r.error);
+    return { ok: true, undo: r.undo };
   }
   if (name === 'undo_expense_change') { const r = await EX.undoChange(DATA_DIR, String(a.token || ''), { home }); if (!r.ok) fail(r.error); return { ok: true, undone: r.label }; }
   if (name === 'create_expense') {
@@ -322,7 +373,7 @@ const ann = (title, readOnly, destructive = false) => ({ title, readOnlyHint: re
 
 function toolList() {
   const tools = [];
-  for (const t of EXPENSE_TOOLS) if (t.read || EXPENSE_WRITES) tools.push({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: ann(t.title, !!t.read) });
+  for (const t of EXPENSE_TOOLS) if ((t.read || EXPENSE_WRITES) && !(t.local && REMOTE)) tools.push({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: ann(t.title, !!t.read) });
   for (const q of QUERIES) if (MODE !== 'propose' || q.assistant !== false) tools.push({ name: q.tool, title: q.tool.replace(/_/g, ' '), description: q.description, inputSchema: publicSchema(q.schema), annotations: ann(q.tool, true) });
   for (const t of AGENT_TOOL_DEFS) if (agentToolOn(t)) tools.push({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, annotations: ann(t.title, !!t.read) });
   tools.push({
@@ -394,7 +445,7 @@ async function callTool(name, args) {
     }
     const ex = EXPENSE_TOOLS.find(x => x.name === name);
     if (ex) {
-      if (!ex.read && !EXPENSE_WRITES) throw new ActionError('PROPOSE_ONLY', 'this connection can only read expenses', { hint: 'the user adds expenses in the dashboard' });
+      if ((!ex.read && !EXPENSE_WRITES) || (ex.local && REMOTE)) throw new ActionError('PROPOSE_ONLY', 'this connection can only read expenses', { hint: 'the user adds expenses in the dashboard' });
       return ok(await expenseTool(name, args));
     }
     // The rest of the dashboard. A tool this connection does not list is refused here, not only left off the list.

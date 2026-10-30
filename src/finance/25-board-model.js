@@ -97,6 +97,8 @@
       desc: 'Days in a row without day-to-day spending, your best run this year and how many this month. Bills and transfers never break it.',
       opts: [{ k: 'bills', label: 'Bills and subscriptions', choices: [['ignore', "Don't break it"], ['count', 'Break it']], def: 'ignore' },
         { k: 'small', label: 'Small buys under', choices: [[0, 'All count'], [2, '2'], [5, '5']], def: 0, money: true }] },
+    { t: 'owed', title: 'Owed to me', icon: 'handshake', group: 'everyday', size: 's', sizes: ['s', 'm', 'l'], now: true,
+      desc: 'What people owe you and whether the bank shows they paid. Split a payment from here.', opts: [] },
     { t: 'goal', title: 'Savings goal', icon: 'target', group: 'fun', size: 's', sizes: ['s', 'm', 'l'], now: true,
       desc: 'A target for a pot, an account or everything you have, how far along you are and what it takes each month.',
       opts: [{ k: 'name', label: 'Name', input: 'text', def: '' }, { k: 'target', label: 'Target', input: 'money', def: 1000 },

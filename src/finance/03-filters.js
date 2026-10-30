@@ -25,6 +25,7 @@
   function pred(skip) {
     skip = skip || {};
     const q = (F.q || '').trim().toLowerCase();
+    const qAmt = /^[£$€]?\d+(?:\.\d{1,2})?$/.test(q) ? Number(q.replace(/^[£$€]/, '')) : null;
     const cats = F.cats, accts = F.accts, amt = F.amt, merch = F.merchant;
     // A country (Spending by country, 25-place-model.js): every row is kept to the ones paid there.
     const country = !skip.country && F.country ? F.country : '';
@@ -35,7 +36,7 @@
     return t => {
       if (!skip.acct && accts.length && !accts.includes(t.acct)) return false;
       if (!skip.merchant && merch && t.m !== merch && !(mset && mset.has(t.m))) return false;
-      if (!skip.q && q && !(t.m.toLowerCase().includes(q) || t.memo.toLowerCase().includes(q) || t.c.toLowerCase().includes(q))) return false;
+      if (!skip.q && q && !(t.m.toLowerCase().includes(q) || t.memo.toLowerCase().includes(q) || t.c.toLowerCase().includes(q) || (qAmt != null && Math.abs(t.abs - qAmt) < 0.005) || (window.Owed && window.Owed.noteHas(t.k, q)))) return false;   // an amount ("40", "£40.00") or your note finds it too
       if (!skip.amt && amt && (t.abs < amt[0] - 0.004 || t.abs > amt[1] + 0.004)) return false;
       if (!skip.cats && cats.length && t.kind === 'spend' && !cats.includes(t.c)) return false;
       if (country && t.pc !== country) return false;

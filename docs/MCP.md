@@ -153,7 +153,7 @@ returns every operation with its exact JSON Schema and its
 | Garden | `get_garden` (overview with ids, bag, shop, quests) |
 | You | `get_profile` (card and status, avatar options, outfits, pet), `get_game` (level, streaks, quests, achievements), `get_memories` (milestones, week, year, facts, goals, countries; the journal and capsules are not offered to the in-app assistant) |
 | Settings | `get_settings` (each setting `set_setting` can change, its value and what it can be) |
-| Money and travel | `get_money` (budgets, a year of expenses), `get_travel` (trip decisions, countries; never exact locations) |
+| Money and travel | `get_money` (budgets, a year of expenses), `list_owed` (who owes you what, what you owe, money you expect back; not on the remote connection), `get_travel` (trip decisions, countries; never exact locations) |
 | Stories | `get_stories` (the day's script) |
 | Friends | `list_friends` (who, by id; what each can see; shared spaces; postcards; gardens). Never anything a friend wrote |
 | App | `get_app_status` (sync, connections, updates). Never a key, code or link |
@@ -178,10 +178,12 @@ returns every operation with its exact JSON Schema and its
 | Settings | `set_setting` (one ordinary setting), `undo_change` (undoes a garden, profile, pet, layout, note or setting change) |
 | Friends (sensitive) | `friends_act` (waves, cheers, postcards, garden visits, add, approve, decline, remove, block), `friends_share` (what a friend can see), `together_act` (shared spaces) |
 | Devices, relay, connections (sensitive) | `devices_act` (add, remove), `relay_act` (connect, update, disconnect), `connection_act` (start a sign-in, disconnect) |
+| Owed to me | `create_split` (who owes what, when you tell it), `mark_owed_paid` (when you say someone paid; from an email or a message it only asks you on the page), `undo_owed_change`. They move no money and tell nobody. Not on the remote connection |
 | Money and updates (sensitive) | `money_change` (category rules, budgets), `expense_change` (bulk paid, unsubmit, delete), `install_update` |
 
 There are no tools that write to Google, your email or your bank. The only
-finance writes are `money_change`, and they are sensitive.
+finance writes are `money_change`, which are sensitive, and the notes in Owed to
+me, which move no money.
 
 ## Prompts and resources
 
@@ -225,7 +227,7 @@ assistant without a proposal.
 | Tier | What | In-app assistant | Full mode |
 |---|---|---|---|
 | **Read** | everything under [Read](#read) | free | free |
-| **Low-risk, with Undo** | `garden`, `pet`, `set_wardrobe`, `set_profile`, `set_setting`, `undo_change`, `set_home_layout`, `reset_home_layout`, `set_home_widget`, `set_home_focus`, `save_daynote` | runs directly | runs directly |
+| **Low-risk, with Undo** | `garden`, `pet`, `set_wardrobe`, `set_profile`, `set_setting`, `undo_change`, `set_home_layout`, `reset_home_layout`, `set_home_widget`, `set_home_focus`, `save_daynote`, `create_split`, `mark_owed_paid`, `undo_owed_change` (with `create_expense` and the other expense tools, these keep their own undo steps) | runs directly | runs directly |
 | **Sensitive** | `friends_act`, `friends_share`, `together_act`, `devices_act`, `relay_act`, `connection_act`, `money_change`, `expense_change`, `install_update` | never directly: a proposal you approve on screen | only with a dry run and its confirm token |
 
 Other changes (tasks, people, tags and so on) stay as they were: proposals in

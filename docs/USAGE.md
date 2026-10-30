@@ -18,6 +18,7 @@ the welcome screen.
 - [Files & links and auto-linking](#files--links-and-auto-linking)
 - [Morning brief, Finish the day and the weekly review](#morning-brief-finish-the-day-and-the-weekly-review)
 - [Expenses](#expenses)
+- [Owed to me](#owed-to-me)
 - [The assistant](#the-assistant)
 - [Life: garden, pets, achievements, memories, places and your profile](#life-garden-pets-achievements-memories-places-and-your-profile)
 - [Friends](#friends)
@@ -401,6 +402,19 @@ weekly-review day.
   [PRIVACY.md](PRIVACY.md).
 
 ![The morning story](screenshots/story-morning-light.png)
+
+## Owed to me
+
+For when you paid and friends owe you a share. Find it under **Money > Owed to me**.
+
+- **Split a payment**: press **Split this** on a payment in Transactions, or **Split a payment** to write one in. Pick people, and it divides equally, with you included. It can also use exact amounts, shares, percentages or extras for one person. Pennies that don't divide fall to you.
+- **See who has paid**: by person, by thing with a progress bar, or by trip with who pays whom. The oldest come first.
+- **The bank**: Freeflo looks at money coming in for the amount, the name and the date, and asks: "We think Sam paid". **Yes** marks it and remembers the wording, **Not this** never asks again. It marks nothing by itself unless you turn that on. Money into an account unticked in Your data is not looked at.
+- **Your spending**: money paid back stops counting as income and comes off the original payment, so the bowling you paid £40 for counts as your £8. You can turn this off in the page's menu.
+- **One person paying for others**: if Sam sends £16 when each person owes £8, Freeflo asks who else it was for. Press **Choose…** (or **Who paid this?** on any money in) to tick people and things, change any amount, and say what happens to the rest: credit with that person, a gift, or not related. Payments out work the same way against what you owe, and can be attached to a split or an expense. **Change** on a payment lets you take it back or give it a new answer later.
+- **Remind**: a friendly message you can edit and send yourself. Freeflo never sends it.
+- **Also**: what you owe when someone else paid, money you expect back (a refund, a deposit, a loan) with a date, and settling up with one person.
+- **Private**: it syncs only between your own computers with encrypted sync, and is never shared with friends.
 
 ## Expenses
 

@@ -249,6 +249,7 @@ function _xpRowMenu(e, anchor) {
   if (e.status === 'submitted') items.push({ label: 'Not sent after all', icon: 'rotate-ccw', run: () => expDo('/unsubmit', { ids: [e.id] }, { done: 'Moved back to to claim', what: 'change that' }) });
   const linked = (e.taskIds || []).map(id => getItem(id)).filter(Boolean);
   for (const t of linked.slice(0, 2)) items.push({ label: 'Open task: ' + effTitle(t).slice(0, 28), icon: 'list-todo', run: () => (typeof openTask === 'function' ? openTask(t.id) : selectTask(t.id)) });
+  if (typeof owdSplitDialog === 'function' && e.status !== 'paid') items.push({ label: 'Move to Owed to me', icon: 'handshake', hint: 'Friends pay you back, not work', run: () => owdSplitDialog({ fromExpense: e }) });
   items.push('sep', { label: 'Delete', icon: 'trash-2', danger: true, run: () => expDelete([e.id]) });
   openMenu(anchor, items, { align: 'end', width: 230 });
 }

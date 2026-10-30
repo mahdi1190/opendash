@@ -285,22 +285,24 @@
     headerSubTabs(groupTabsEl(groupOf(F.section)), MONEY_TABS_FOR);
   }
   // The same tabs on Money and on Expenses (its page asks for them: FinanceView.groupTabs), so the row stays put between them.
-  const MONEY_TABS_FOR = /^(finance|expenses)$/;
+  const MONEY_TABS_FOR = /^(finance|expenses|owed)$/;
   function groupTabsEl(active) {
     let owed = 0;
     try { const o = typeof expOwed === 'function' ? expOwed() : null; owed = o && o.toClaimCount && expPrefs().reminders ? o.toClaimCount : 0; } catch (e) { owed = 0; }
+    let toCheck = 0;
+    try { toCheck = typeof OWD !== 'undefined' ? OWD.suggestions.length : 0; } catch (e) { toCheck = 0; }
     return subTabs({
       label: 'Money', active,
-      tabs: GROUPS.map(([id, label, icon]) => ({ id, label, icon, badge: id === 'expenses' ? owed : 0 })),
+      tabs: GROUPS.map(([id, label, icon]) => ({ id, label, icon, badge: id === 'expenses' ? owed : id === 'owed' ? toCheck : 0 })),
       onChange: (id) => openGroup(id),
     });
   }
   /** A Money tab: Expenses is its own page; the others open the section last used in them. */
   function openGroup(id) {
     const g = GROUPS.find(x => x[0] === id); if (!g) return;
-    if (id !== 'expenses') R.groupLast = R.groupLast || {};
+    if (id !== 'expenses' && id !== 'owed') R.groupLast = R.groupLast || {};
     if (typeof navVia === 'function') navVia('chrome');   // the tabs are there: no "Back to" row as well
-    if (id === 'expenses') { setView('expenses'); return; }
+    if (id === 'expenses' || id === 'owed') { setView(id); return; }
     if (typeof state !== 'undefined' && state.view !== 'finance') setView('finance');
     setSection(R.groupLast[id] || g[3][0]);
   }
