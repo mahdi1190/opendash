@@ -6,7 +6,7 @@ registerPage({
   id: 'owed', view: 'owed', match: v => v === 'owed', label: 'Owed to me', icon: 'handshake', area: 'money', tab: true, order: 21, discover: true,
   desc: 'Split a payment, see who has paid you back, and what you owe', keywords: 'owed split splitwise share bill friend pay back paid iou refund deposit loan expecting settle up remind',
   available: () => !(APP_CONFIG.features && APP_CONFIG.features.finance === false),
-  badge: () => (OWD.suggestions.length || ''),
+  badge: () => (OWD.suggestions.length + owdInboxOpen() || ''),
 });
 registerSection('owed', {
   group: 'finance', hashable: true, match: v => v === 'owed', title: () => 'Money', crumb: () => [], layout: 'page',
@@ -16,7 +16,7 @@ registerSection('owed', {
 registerSidebarBlock('finance', {
   id: 'money-owed', order: 21, label: 'Owed to me',
   render(el) {
-    el.appendChild(sbNavItem({ label: 'Owed to me', icon: 'handshake', view: 'owed', active: state.view === 'owed', count: OWD.suggestions.length ? String(OWD.suggestions.length) : '', title: 'Split a payment, see who has paid you back' }));
+    el.appendChild(sbNavItem({ label: 'Owed to me', icon: 'handshake', view: 'owed', active: state.view === 'owed', count: OWD.suggestions.length + owdInboxOpen() ? String(OWD.suggestions.length + owdInboxOpen()) : '', title: 'Split a payment, see who has paid you back' }));
     if (!OWD.loaded) owdLoad();
   },
 });
@@ -28,15 +28,17 @@ function _owMoreItems() {
   const p = owdPrefs();
   const flip = (k, on, off) => owdDo('/prefs', { patch: { [k]: !p[k] } }, { done: p[k] ? off : on, icon: 'circle-check' });
   return [
+    { label: 'Split a receipt', icon: 'receipt', hint: 'Read a photo, then tap who had what', run: () => owdReceiptStart({}) },
     { label: 'Someone else paid', icon: 'users', hint: 'Keep track of what you owe them', run: () => owdSplitDialog({ someoneElse: true }) },
     { label: 'Expecting money', icon: 'wallet', hint: 'A refund, a deposit, a loan, a claim', run: () => owdExpectDialog({}) },
+    { label: 'A split that repeats', icon: 'repeat', hint: 'Rent and bills: splits by itself each time', run: () => owdRepeatDialog({}) },
     'sep',
     { label: 'Check the bank now', icon: 'refresh-cw', run: () => { OWD.scanAt = 0; owdScan(true).then(() => toast(OWD.connected === false ? 'No bank data yet. Connect a bank or import a statement in Money.' : OWD.suggestions.length ? `${OWD.suggestions.length} to check` : 'Looked: nothing new has arrived', { icon: 'search' })); } },
     { label: 'Take paid-back money off my spending', icon: 'wallet', checked: p.netSpending, hint: 'Bowling counts as your £8, not £40', run: () => flip('netSpending', 'Paid-back money now comes off your spending', 'Spending now shows what left your account in full') },
     { label: 'Mark sure matches as paid by itself', icon: 'circle-check', checked: p.autoMark, hint: 'Only an exact amount with their name. You can Undo', run: () => flip('autoMark', 'Sure matches will be marked as paid, with Undo', 'Every match will ask you first') },
     { label: 'Offer “Split this?” on big payments', icon: 'lightbulb', checked: p.offers, run: () => flip('offers', 'Offers are on', 'Offers are off') },
     { label: 'Add a “Chase” task for each person', icon: 'list-checks', checked: p.chaseTasks, hint: `After ${p.chaseDays || 7} days`, run: () => flip('chaseTasks', 'New splits get a Chase task', 'No more Chase tasks') },
-    { label: 'Bank details for reminders…', icon: 'landmark', run: () => owdBankDialog() },
+    { label: 'How people pay you…', icon: 'link', hint: p.payLink || p.bankDetails ? (p.sendBank ? 'In your reminders' : 'Saved, not in your reminders') : 'A pay-me link or your bank details', run: () => owdBankDialog() },
     'sep',
     { label: 'Download as CSV', icon: 'download', run: () => { const a = document.createElement('a'); a.href = '/api/owed/export.csv'; a.download = 'owed-to-me.csv'; document.body.appendChild(a); a.click(); a.remove(); } },
     { label: 'Copy the summary as a message', icon: 'copy', run: () => copyText(owdSummaryText(), 'Summary') },
@@ -55,20 +57,26 @@ function _owMount(container) {
   if (!OWD.loaded) { root.innerHTML = '<div class="xp-loading"><span class="spinner" aria-hidden="true"></span> Loading…</div>'; owdLoad(); return; }
   if (OWD.error && !OWD.data) { mountEmptyState(root, { icon: 'circle-alert', title: 'This did not load', text: OWD.error, actions: [{ label: 'Try again', primary: true, run: () => { OWD.loaded = false; render(); } }] }); return; }
   owdScan(false);
+  // Only a look: it makes no friends identity (96-friends-0core.js). Then "Share with Sam" can be offered.
+  if (typeof friendsLoad === 'function' && !OWD.friendsAsked) { OWD.friendsAsked = true; friendsLoad(false).then(() => { if (state.view === 'owed' && owdFriends().length) render(); }).catch(() => {}); }
   const d = OWD.data;
-  if (!d.things.length) {
+  for (const n of _owFromFriends(d)) root.appendChild(n);
+  if (!d.things.length && !(d.repeats || []).length) {
     const box = _xe('div', 'xp-empty'); root.appendChild(box);
     mountEmptyState(box, { icon: 'handshake', title: 'Paid for everyone? Get it back without the chasing',
       text: 'Split a payment between people, and Freeflo looks in your bank for the money coming back and asks you to confirm it.',
-      actions: [{ label: 'Split a payment', icon: 'plus', primary: true, run: () => owdSplitDialog({}) }] });
+      actions: [{ label: 'Split a payment', icon: 'plus', primary: true, run: () => owdSplitDialog({}) }, { label: 'Rent or a bill that repeats', icon: 'repeat', run: () => owdRepeatDialog({}) }] });
     for (const n of _owOffers()) root.appendChild(n);
     return;
   }
   root.appendChild(_owBand(d));
   for (const n of _owQuestions()) root.appendChild(n);
+  for (const n of _owNudges(d)) root.appendChild(n);
   for (const n of _owOffers()) root.appendChild(n);
+  for (const n of _owHints(d)) root.appendChild(n);
   const note = _owNetNote(d); if (note) root.appendChild(note);
   if (OWD.leftOut.length) root.appendChild(_xe('div', 'xp-remind', `${icon('info')}<span>Money into ${esc(OWD.leftOut.join(', '))} is not checked, because ${OWD.leftOut.length === 1 ? 'it is' : 'they are'} left out in Your data.</span>`));
+  const rep = _owRepeatsCard(d); if (rep) root.appendChild(rep);
   const tools = _xe('div', 'xp-tools owd-tools');
   const seg = _xe('div', 'xp-seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Show');
   const views = [['people', 'By person'], ['things', 'By thing']]; if (d.trips.length) views.push(['trips', 'Trips and events']);
@@ -95,7 +103,8 @@ function _owBand(d) {
   const more = _xe('div', 'owd-sums');
   if (s.iOweCount) more.appendChild(_xe('div', 'owd-sum', `<b class="num">${owdAmt(s.iOwe)}</b><span>you owe</span>`));
   if (s.expectedCount) more.appendChild(_xe('div', 'owd-sum' + (s.late ? ' is-late' : ''), `<b class="num">${owdAmt(s.expected)}</b><span>${s.late ? `expected, ${s.late} late` : 'expected back'}</span>`));
-  if (s.paidBack) more.appendChild(_xe('div', 'owd-sum', `<b class="num">${owdAmt(s.paidBack)}</b><span>paid back so far</span>`));
+  if (d.insights && d.insights.backMonth > 0) more.appendChild(_xe('div', 'owd-sum', `<b class="num">${owdAmt(d.insights.backMonth)}</b><span>back this month</span>`));
+  else if (s.paidBack) more.appendChild(_xe('div', 'owd-sum', `<b class="num">${owdAmt(s.paidBack)}</b><span>paid back so far</span>`));
   band.appendChild(more);
   return band;
 }
@@ -106,7 +115,9 @@ function _owQuestions() {
   for (const [id, p] of propos.slice(0, 2)) {
     const t = owdThing(p.id); if (!t) continue;
     const c = _xe('div', 'xp-ask card owd-ask');
-    c.innerHTML = `${icon('circle-help')}<span class="xp-ask-t">The assistant thinks ${esc(owdFirstName(owdPersonName(p.key)))} paid ${owdAmt(p.amount)} for ${esc(t.title)}${p.note ? `: <em>${esc(p.note)}</em>` : ''}</span>`;
+    c.innerHTML = p.via === 'friend'
+      ? `${icon('circle-help')}<span class="xp-ask-t">${esc(owdFirstName(owdPersonName(p.key)))} says they’ve paid ${owdAmt(p.amount)} for ${esc(t.title)}. Has it arrived?<small>They tapped “I’ve paid” on Freeflo.</small></span>`
+      : `${icon('circle-help')}<span class="xp-ask-t">The assistant thinks ${esc(owdFirstName(owdPersonName(p.key)))} paid ${owdAmt(p.amount)} for ${esc(t.title)}${p.note ? `: <em>${esc(p.note)}</em>` : ''}</span>`;
     c.append(uiButton({ label: 'Yes', kind: 'primary', size: 'sm', run: () => owdDo('/proposal', { id, yes: true }, { done: 'Marked as paid', icon: 'circle-check', what: 'save your answer' }) }), uiButton({ label: 'Not this', size: 'sm', run: () => owdDo('/proposal', { id, yes: false }, { quiet: true, what: 'save your answer' }) }));
     out.push(c);
   }
@@ -200,10 +211,10 @@ function _owLine(t, l, showWho) {
   const row = _xe('div', 'owd-line st-' + l.status);
   row.dataset.ref = t.id + '|' + l.key; row.dataset.pickId = row.dataset.ref;
   const main = showWho ? esc(l.name) : esc(t.title);
-  const friend = showWho && owdFriend(l.name) ? '<span class="owd-friend" title="Also on Freeflo. Nothing is sent to them.">On Freeflo</span>' : '';
+  const friend = showWho && owdFriend(l.name) ? '<span class="owd-friend" title="Also on Freeflo. Nothing is sent unless you share it.">On Freeflo</span>' : '';
   const dirWord = t.kind === 'iowe' ? (showWho ? 'you owe' : `you owe ${esc(owdFirstName(l.name))}`) : t.kind === 'expect' ? 'expecting' : '';
   const viaWord = l.via && l.via.length ? `paid by ${esc(l.via.map(owdFirstName).join(', '))}` : '';
-  const sub = [showWho ? '' : esc(_xpDate(t.date)), dirWord, viaWord, l.paid > 0 && l.left > 0 ? `${owdMoney(l.paid)} of ${owdMoney(l.owes)} paid` : '', l.old ? `<span class="owd-old">${esc(owdAgo(l.age))}</span>` : '', l.remindedAt ? `reminded ${esc(_xpDate(l.remindedAt))}` : '', t.late ? '<span class="owd-old">late</span>' : ''].filter(Boolean).join(' · ');
+  const sub = [showWho ? '' : esc(_xpDate(t.date)), t.fx && l.fx ? esc(owdMoney(l.fx, t.fx.cur)) : '', l.what ? esc(l.what) : '', dirWord, viaWord, l.paid > 0 && l.left > 0 ? `${owdMoney(l.paid)} of ${owdMoney(l.owes)} paid` : '', l.old ? `<span class="owd-old">${esc(owdAgo(l.age))}</span>` : '', l.remindedAt ? `reminded ${esc(_xpDate(l.remindedAt))}` : '', owdShareOf(t, l) ? 'shared on Freeflo' : '', t.late ? '<span class="owd-old">late</span>' : ''].filter(Boolean).join(' · ');
   row.innerHTML = `<span class="owd-line-m"><span class="owd-line-t">${main}${friend}</span>${sub ? `<small>${sub}</small>` : ''}</span>${_owStatusChip(l.status)}<b class="num owd-line-am">${owdAmt(l.status === 'paid' ? l.owes : l.status === 'off' ? l.owes : l.left)}</b>`;
   row.appendChild(uiButton({ icon: 'ellipsis', size: 'sm', kind: 'ghost', tip: 'More', aria: `More for ${l.name}, ${t.title}`, run: (ev, b) => _owLineMenu(t, l, b) }));
   return row;
@@ -216,6 +227,11 @@ function _owLineMenu(t, l, anchor) {
     items.push({ label: t.kind === 'iowe' ? 'I paid it' : 'Mark as paid', icon: 'circle-check', run: () => owdDo('/paid', { refs: ref }, { done: 'Marked as paid', icon: 'circle-check', what: 'mark that as paid' }) });
     items.push({ label: 'Part paid…', icon: 'circle-dot', run: () => owdPartDialog(t, l) });
     if (t.kind !== 'iowe') items.push({ label: `Remind ${owdFirstName(l.name)}…`, icon: 'mail', run: () => owdRemindDialog(ref) });
+    if (t.kind === 'split') {
+      const sh = owdShareOf(t, l);
+      if (sh) items.push({ label: `Stop sharing with ${owdFirstName(l.name)}`, icon: 'undo-2', hint: 'It leaves their Freeflo too', run: () => owdDo('/share/stop', { ref: sh.ref }, { done: 'Taken back', icon: 'undo-2', what: 'take that back' }) });
+      else if (owdFriends().length) items.push({ label: `Share with ${owdFirstName(l.name)} on Freeflo…`, icon: 'send', hint: 'Only their part. You see it first', run: () => owdShareDialog(t, l) });
+    }
     if (t.kind !== 'iowe') items.push({ label: 'Write it off', icon: 'x', run: () => owdDo('/write-off', { refs: ref }, { done: `Written off ${owdMoney(l.left)}`, what: 'write that off' }) });
   }
   if (l.paid > 0 || l.off) items.push({ label: 'Not paid after all', icon: 'rotate-ccw', hint: l.payments.some(p => p.how === 'bank') ? 'The bank payment can be matched again' : '', run: () => owdDo('/unpaid', { refs: ref }, { done: 'Moved back', what: 'change that' }) });
@@ -236,6 +252,7 @@ function _owThingMenu(t, anchor) {
   const items = [{ label: 'Edit', icon: 'pencil', run: () => (t.kind === 'expect' ? owdExpectDialog({ edit: t.id }) : owdSplitDialog({ edit: t.id })) }];
   if (open.length) items.push({ label: 'Everyone has paid', icon: 'circle-check', run: () => owdDo('/paid', { refs: open }, { done: 'Marked as paid', icon: 'circle-check', what: 'mark that as paid' }) });
   if (open.length && t.kind !== 'iowe') items.push({ label: 'Remind everyone…', icon: 'mail', run: () => owdRemindDialog(open) });
+  if (t.receiptRef) items.push({ label: 'See the receipt', icon: 'receipt', run: () => { const a = document.createElement('a'); a.href = '/api/expenses/receipt/' + encodeURIComponent(t.receiptRef); a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); } });
   if (t.source && t.source.k && t.kind !== 'iowe') items.push({ label: 'Unlink the bank payment', icon: 'landmark', hint: 'What comes back stops coming off it', run: () => owdDo('/unlink', { id: t.id }, { done: 'Unlinked', what: 'unlink that' }) });
   if (t.kind === 'split') items.push({ label: 'Move to Expenses', icon: 'receipt', hint: 'Work pays you back, not friends', run: () => owdToExpense(t) });
   items.push('sep', { label: 'Delete', icon: 'trash-2', danger: true, run: () => owdDeleteThing(t) });
@@ -247,7 +264,7 @@ function _owByPerson(host, d) {
   if (!people.length) { host.appendChild(_xe('div', 'xp-none', q ? 'Nothing matches.' : 'Everyone has paid. Nothing to chase.')); }
   for (const p of people) {
     const card = _xe('section', 'owd-card');
-    const friend = owdFriend(p.name) ? '<span class="owd-friend" title="Also on Freeflo. Nothing is sent to them.">On Freeflo</span>' : '';
+    const friend = owdFriend(p.name) ? '<span class="owd-friend" title="Also on Freeflo. Nothing is sent unless you share it.">On Freeflo</span>' : '';
     const words = [];
     if (p.owes > 0) words.push(`owes you ${owdAmt(p.owes)}`);
     if (p.iowe > 0) words.push(`you owe ${owdAmt(p.iowe)}`);
@@ -273,7 +290,7 @@ function _owThingCard(t) {
   const head = _xe('div', 'owd-card-h');
   const pct = t.count ? Math.round(t.done / t.count * 100) : 0;
   const word = t.kind === 'iowe' ? `You owe ${esc(owdFirstName(t.lines[0].name))} ${owdAmt(t.lines[0].left)}` : t.kind === 'expect' ? `${t.late ? `Due ${esc(_xpDate(t.due))}, late` : t.due ? `Due ${esc(_xpDate(t.due))}` : 'Expecting'}` : `${t.done} of ${t.count} paid`;
-  const sub = [esc(_xpDate(t.date)), t.merchant && t.merchant !== t.title ? esc(t.merchant) : '', t.kind === 'split' ? `your share ${owdAmt(t.myShare)}` : ''].filter(Boolean).join(' · ');
+  const sub = [esc(_xpDate(t.date)), t.merchant && t.merchant !== t.title ? esc(t.merchant) : '', t.kind === 'split' ? `your share ${owdAmt(t.myShare)}` : '', t.fx ? `${esc(owdMoney(t.fx.amount, t.fx.cur))} at ${esc(owdMoney(1).replace(/[\d.,\s]+/g, ''))}1 = ${esc(owdMoney(t.fx.rate, t.fx.cur))}` : '', t.repeatId ? 'repeats' : ''].filter(Boolean).join(' · ');
   head.innerHTML = `<span class="owd-card-m"><b>${esc(t.title)}</b><small>${sub}</small></span><b class="num owd-card-am">${owdAmt(t.total)}</b>`;
   head.appendChild(uiButton({ icon: 'ellipsis', size: 'sm', kind: 'ghost', tip: 'More', aria: `More for ${t.title}`, run: (ev, b) => _owThingMenu(t, b) }));
   card.appendChild(head);
@@ -328,6 +345,7 @@ function _owTrips(host, d) {
     head.innerHTML = `<span class="owd-card-m"><b>${esc(tr.name)}</b><small>${tr.count} payment${tr.count === 1 ? '' : 's'}</small></span><b class="num owd-card-am">${owdAmt(tr.total)}</b>`;
     const text = () => [`${tr.name}: ${owdMoney(tr.total)}`, ...tr.moves.map(m => `${m.fromName} ${m.from === '_me' ? 'pay' : 'pays'} ${m.toName} ${owdMoney(m.amount)}`)].join('\n');
     head.appendChild(uiButton({ label: 'Copy', icon: 'copy', size: 'sm', kind: 'ghost', tip: 'Copy who pays whom as a message', run: () => copyText(text(), 'Who pays whom') }));
+    head.appendChild(uiButton({ label: 'Picture', icon: 'image', size: 'sm', kind: 'ghost', tip: 'A settle-up card to send', run: () => owdTripCardDialog(tr) }));
     head.appendChild(uiButton({ label: 'Add a payment', icon: 'plus', size: 'sm', kind: 'ghost', run: () => owdSplitDialog({ tripName: tr.name }) }));
     card.appendChild(head);
     const list = _xe('div', 'owd-lines');

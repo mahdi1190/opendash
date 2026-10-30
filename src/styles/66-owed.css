@@ -149,3 +149,70 @@
   .owd-offer-t { flex-basis: calc(100% - 30px); }
   .owd-offer .btn { min-height: 36px; }
 }
+
+/* Repeating splits (66-owed-5repeat.js) */
+.owd-picker { display: flex; flex-direction: column; gap: 6px; }
+.owd-rep .owd-card-h small { font-size: var(--text-xs); }
+.owd-rep-row.is-off .owd-line-t { color: var(--fg-muted); }
+.owd-rep-row .owd-line-t { white-space: normal; }
+.owd-rep-last { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 3px; }
+.owd-rep-last .xp-tag { font-size: var(--text-2xs, 11px); }
+.owd-rep-pd { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border-subtle); }
+.owd-rep-pn { flex: 1 1 90px; font-size: var(--text-sm); padding-bottom: 8px; }
+.owd-nudge { flex-wrap: wrap; }
+@media (max-width: 640px) { .owd-rep-pd .xp-f { flex: 1 1 120px; } }
+
+/* Shared with a friend on Freeflo (66-owed-6friends.js) */
+.owd-share-card { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-subtle); }
+.owd-share-t { font-size: var(--text-sm); }
+.owd-share-n { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--fg-muted); font-size: var(--text-sm); }
+.owd-share-n b { color: var(--fg); font-size: var(--text-lg); font-weight: 600; }
+.owd-from { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 14px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.owd-from-t { flex: 1; min-width: 160px; display: flex; flex-direction: column; gap: 1px; overflow-wrap: anywhere; }
+.owd-from-t small { color: var(--fg-muted); font-size: var(--text-xs); }
+.owd-from-am { font-weight: 600; white-space: nowrap; }
+.owd-from-am small { color: var(--fg-muted); font-weight: 450; }
+.owd-from.is-closed { opacity: .75; }
+
+/* Paid in another currency (66-owed-2split.js) */
+.owd-fx { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.owd-fx-open { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.owd-fx-open:hover { color: var(--fg); text-decoration: underline; }
+.owd-fx-row, .owd-fx-out, .owd-fx-note { display: none; }
+.owd-fx.is-on .owd-fx-open { display: none; }
+.owd-fx.is-on .owd-fx-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+.owd-fx.is-on .owd-fx-out { display: inline; font-size: var(--text-sm); font-weight: 600; }
+.owd-fx.is-on .owd-fx-note { display: inline; color: var(--fg-muted); font-size: var(--text-xs); flex: 1 1 200px; }
+.owd-fx-w { color: var(--fg-muted); font-size: var(--text-sm); }
+input.owd-fx-cur { width: 76px; text-transform: uppercase; }
+input.owd-fx-rate { width: 110px; }
+.owd-fx-off { display: inline-grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--fg-muted); cursor: pointer; }
+.owd-fx-off:hover { background: var(--bg-subtle); color: var(--fg); }
+
+/* A receipt (66-owed-7receipt.js) */
+.owd-rc-ask { display: flex; flex-direction: column; gap: 10px; }
+.owd-rc-thumb { max-width: 100%; max-height: 220px; object-fit: contain; align-self: center; border-radius: 8px; border: 1px solid var(--border-subtle); }
+.owd-rc-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.owd-rc-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 6px 10px; border-radius: 8px; background: var(--bg-subtle); font-size: var(--text-sm); }
+.owd-rc-note.warn { color: var(--warning); }
+.owd-rc-h { font-size: var(--text-sm); }
+.owd-rc-list { display: flex; flex-direction: column; border: 1px solid var(--border-subtle); border-radius: 10px; }
+.owd-rc-list > .xp-fh { padding: 8px 10px; margin: 0; }
+.owd-rc-row { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); }
+.owd-rc-row:last-child { border-bottom: 0; }
+.owd-rc-top { display: flex; align-items: center; gap: 6px; }
+input.owd-rc-n { flex: 1; min-width: 0; }
+input.owd-rc-p { width: 92px; flex: none; text-align: right; }
+.owd-rc-who { display: flex; flex-wrap: wrap; gap: 4px; }
+.owd-rc-chip, .owd-rc-all { font-size: var(--text-xs); }
+.owd-rc-extras { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.owd-rc-curs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+.owd-rc-rate { display: none; align-items: center; gap: 6px; }
+.owd-rc-fx.is-on .owd-rc-rate { display: inline-flex; }
+.owd-rc-fx .owd-fx-note { display: inline; color: var(--fg-muted); font-size: var(--text-xs); flex: 1 1 200px; }
+.owd-rc-sum { display: flex; flex-direction: column; gap: 6px; }
+
+/* The small delights (66-owed-8extras.js) */
+.owd-hintline { color: var(--fg); }
+.owd-hintline svg { color: var(--accent-ink, var(--accent)); flex: none; }
+img.owd-tripcard { display: block; width: 100%; height: auto; border-radius: 12px; margin-bottom: 10px; }

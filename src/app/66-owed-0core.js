@@ -1,11 +1,15 @@
 /* ============================================================
    OWED TO ME, the core. You paid for bowling: split it, see who owes what, and OpenDash watches the bank for the
-   money and asks ("We think Sam paid"). It never marks anything by itself unless you turn that on, and never sends anyone
-   anything. Also: what you owe, money you expect back, trips, settling up.
+   money and asks ("We think Sam paid"). It never marks anything by itself unless you turn that on, and sends nothing unless
+   you press Send (66-owed-6friends.js). Also: what you owe, money you expect back, trips, settling up.
    Server side: lib/owed.mjs + server/routes/owed.mjs (<data>/expenses/owed.json, private, synced end-to-end only).
    Files: 66-owed-0core.js (this: data, API, the sum, hooks), 66-owed-1page.js (Money > Owed to me),
    66-owed-2split.js (the split screen), 66-owed-3more.js (reminders, settling up, money expected, the widget),
-   66-owed-4pay.js (what one bank payment was for: in any amounts, for anyone, changed later).
+   66-owed-4pay.js (what one bank payment was for: in any amounts, for anyone, changed later),
+   66-owed-5repeat.js (rent and bills: a regular payment that splits by itself),
+   66-owed-6friends.js (one person's part, shared with them on Freeflo, on your press),
+   66-owed-7receipt.js (a receipt: read it or type it in, tap who had what),
+   66-owed-8extras.js (quiet notes from your own splits, and the settle-up card as a picture).
 
      window.Owed = { load, summary(), open(), split(prefill), fromTransactions(rows, after), txAction(tx), txChip(tx),
                      financeUpdated(), briefLine() }
@@ -70,6 +74,7 @@ async function owdScan(force) {
   OWD.scanAt = Date.now();
   let j; try { j = await owdApi('/scan', {}); } catch (e) { return; }
   owdSet(j);
+  owdRepeatsMade(j);
   if (j.auto && j.auto.length) {
     const a = j.auto[0];
     toast(j.auto.length === 1 ? `${owdMoney(a.amount)} from ${a.name} arrived: marked as paid` : `${j.auto.length} payments arrived and were marked as paid`, { icon: 'circle-check', timeout: 12000, action: j.undo ? { label: 'Undo', run: () => owdUndo(j.undo) } : undefined });
@@ -84,13 +89,13 @@ function owdMoney(n, cur) { return expMoney(n, cur || OWD.currency); }
 function owdAmt(n, cur) { return homeAmtHtml(owdMoney(n, cur)); }
 function owdThings() { return OWD.data ? OWD.data.things : []; }
 function owdThing(id) { return owdThings().find(t => t.id === id) || null; }
-function owdPrefs() { return (OWD.data && OWD.data.prefs) || { autoMark: false, netSpending: true, offers: true, chaseTasks: false, chaseDays: 7, oldDays: 30, offerMin: 30, bankDetails: '', sendBank: false }; }
+function owdPrefs() { return (OWD.data && OWD.data.prefs) || { autoMark: false, netSpending: true, offers: true, chaseTasks: false, chaseDays: 7, oldDays: 30, offerMin: 30, bankDetails: '', sendBank: false, payLink: '' }; }
 function owdKey(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60); }
 function owdForTx(tx) { return tx ? owdThings().find(t => t.source && ((tx.k && t.source.k === tx.k) || (t.source.txKey && t.source.txKey === expTxKey(tx)))) || null : null; }
 function owdFirstName(n) { return String(n || '').trim().split(/\s+/)[0] || 'them'; }
 const OWD_STATUS = { wait: ['Waiting', 'clock'], think: ['We think they paid', 'circle-help'], paid: ['Paid', 'circle-check'], part: ['Part paid', 'circle-dot'], off: ['Written off', 'x'] };
 function owdAgo(days) { return days <= 1 ? (days ? 'yesterday' : 'today') : days < 14 ? `${days} days ago` : days < 60 ? `${Math.round(days / 7)} weeks ago` : `${Math.round(days / 30)} months ago`; }
-/** Someone on OpenDash too (by the name you know them by): marked on the row. Nothing is sent to them. */
+/** Someone on OpenDash too (by the name you know them by): marked on the row. Nothing is sent to them unless you share it. */
 function owdFriend(name) {
   try {
     const list = (typeof _fr !== 'undefined' && _fr.data && _fr.data.friends) || [];
@@ -119,7 +124,7 @@ function owdSplit(total, people, o) {
   if (!people.length) return { error: 'Add at least one person.', lines: new Map(), me: T, rounding: 0 };
   const num = (v, d) => (v !== '' && v != null && Number(v) >= 0 ? Number(v) : (d || 0));
   const p100 = (v) => Math.round(num(v) * 100 + 1e-9);
-  const pounds = (p) => owdMoney(p / 100);
+  const pounds = (p) => owdMoney(p / 100, o.cur);
   const meIn = o.meIn !== false, lines = new Map();
   let me = 0, rounding = 0;
   if (o.method === 'shares') {
@@ -187,7 +192,7 @@ function owdMoneyChanged() { if (state.view === 'finance' && window.FinanceView 
 /* ---------- saving a split ---------- */
 async function owdCreate(thing, o) {
   o = o || {};
-  const j = await owdDo('/create', { thing }, { quiet: true, what: 'save that' });
+  const j = await owdDo('/create', { thing, ...(o.receiptToken ? { receiptToken: o.receiptToken } : {}) }, { quiet: true, what: 'save that' });
   if (!j) return null;
   const t = owdThing(j.id) || j.thing;
   const tasks = owdMakeChaseTasks(t);
@@ -245,6 +250,8 @@ window.Owed = {
   noteOf: (k) => (OWD.data && OWD.data.notes && OWD.data.notes[k]) || '',
   noteHas: (k, q) => { const n = OWD.data && OWD.data.notes && OWD.data.notes[k]; return !!n && n.toLowerCase().includes(q); },
   txNote: (tx) => owdTxNote(tx), txRefund: (tx) => owdTxRefund(tx), txAttach: (tx) => owdTxAttach(tx),
+  repeat: (pre) => owdRepeatDialog(pre || {}), repeatFor: (m) => ((OWD.data && OWD.data.repeats) || []).find(r => r.match && r.match.m === m) || null,
+  planChanged: () => { OWD.scanAt = 0; owdScan(true); },
 };
 /** Another computer changed it (56-remote-jobs.js syncedFilesChanged). */
 function owedFilesChanged(rels) {

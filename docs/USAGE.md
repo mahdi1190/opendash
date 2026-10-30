@@ -407,6 +407,12 @@ weekly-review day.
 
 For when you paid and friends owe you a share. Find it under **Money > Owed to me**.
 
+- **Rent and bills:** a split can repeat. Choose the regular payment (from the page, from a payment in Regular bills, or by typing names in **Split with** on your money plan) and it splits by itself each time it leaves the bank, then checks who has paid and reminds you. It can have start and end dates, for everyone or for one person moving in or out.
+- **Getting paid:** save a pay-me link (for example a monzo.me link) or your bank details under **How people pay you**, and your reminders include it.
+- **In another currency:** say what it was paid in and what each person owes shows in both.
+- **A receipt:** read a photo or PDF, or type the items in, then tap who had what. Tax, tip and service are shared out for you. Reading it uses Claude, only when you press the button, and you check it all before anything is saved.
+- **With friends on Freeflo:** you can send someone just their own part. You see exactly what goes before it does, and they can tap "I've paid", which asks you to confirm. They never see what anyone else owes or anything about your bank.
+
 - **Split a payment**: press **Split this** on a payment in Transactions, or **Split a payment** to write one in. Pick people, and it divides equally, with you included. It can also use exact amounts, shares, percentages or extras for one person. Pennies that don't divide fall to you.
 - **See who has paid**: by person, by thing with a progress bar, or by trip with who pays whom. The oldest come first.
 - **The bank**: Freeflo looks at money coming in for the amount, the name and the date, and asks: "We think Sam paid". **Yes** marks it and remembers the wording, **Not this** never asks again. It marks nothing by itself unless you turn that on. Money into an account unticked in Your data is not looked at.

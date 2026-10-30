@@ -235,6 +235,7 @@
     if (r.incomeType === 'self') bits.push('no tax taken');
     if (r.codeText) bits.push(`tax code ${r.codeText}`);
     if (r.linkLabel) bits.push(r.link && r.link.m ? `matched to ${r.linkLabel}` : `from ${r.linkLabel}`);
+    if (r.splitWith) bits.push(`split with ${r.splitWith}`);
     return bits.join(' · ');
   }
   function plRow(r, v) {
@@ -293,6 +294,17 @@
     }
     if (r.per === 'total') kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Money in, total' }), plAmountInput(r.amount, 'Money in, total', x => plChange(p => { const it = plItem(p, r.id); if (it) it.amount = x || 0; }, 'Saved'))));
     if (r.kind === 'income' && r.incomeType === 'job') kids.push(h('button', { type: 'button', class: 'fv-btn', onclick: () => pqStart(r.main ? 'salary' : 'jobs') }, ic('pencil'), h('span', { text: r.main ? 'Change my pay' : 'Change this job' })));
+    if (r.kind === 'bill' || r.kind === 'everyday') {
+      // Names here make it a split that repeats (Owed to me): each time it leaves the bank, they owe you their share.
+      const sw = h('input', { type: 'text', class: 'fv-input', maxlength: '120', placeholder: 'For example, Sam and Alex', 'aria-label': `Who you split ${r.name} with` });
+      sw.value = r.splitWith || '';
+      sw.addEventListener('change', () => {
+        const t = sw.value.trim();
+        plChange(p => { const it = plItem(p, r.id); if (it) { if (t) it.splitWith = t; else delete it.splitWith; } }, t ? `Each time it leaves the bank, ${r.name} splits with ${t}` : 'Saved');
+        setTimeout(() => { if (window.Owed && window.Owed.planChanged) window.Owed.planChanged(); }, 700);
+      });
+      kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Split with (optional)' }), sw));
+    }
     const panel = h('div', { class: 'fv-pl-panel' }, h('div', { class: 'fv-pl-pgrid' }, kids));
     // When.
     if (r.kind !== 'saving' && r.kind !== 'everyday') {
