@@ -1,4 +1,5 @@
-; OpenDash Windows installer (Inno Setup 6).
+; Freeflo Windows installer (called OpenDash before 2.23; Inno Setup 6). The data folder, the install folder, the Run value name
+; and the output file name keep the old name on purpose, so an update installs over the old one and nothing is lost.
 ; Built by installer\build-installer.ps1 (CI), which passes:
 ;   /DAppVersion=2.19.7  /DSourceDir=<extracted release zip>  /DRuntimeDir=<folder with node.exe + LICENSE>
 ; Per-user, no administrator prompt. The data folder is outside the app folder
@@ -11,9 +12,9 @@
 
 [Setup]
 AppId={{B7C1E2F4-5A3D-4E8B-9C21-6D0F7A1E4B93}
-AppName=OpenDash
+AppName=Freeflo
 AppVersion={#AppVersion}
-AppPublisher=OpenDash
+AppPublisher=Freeflo
 AppPublisherURL=https://github.com/mahdi1190/opendash
 DefaultDirName={localappdata}\Programs\OpenDash
 DisableDirPage=yes
@@ -32,7 +33,7 @@ CloseApplications=no
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; Flags: unchecked
-Name: "startup"; Description: "Start OpenDash when I &sign in"; Flags: unchecked
+Name: "startup"; Description: "Start Freeflo when I &sign in"; Flags: unchecked
 
 [Dirs]
 Name: "{localappdata}\OpenDash\data"; Flags: uninsneveruninstall
@@ -43,15 +44,21 @@ Source: "{#RuntimeDir}\node.exe"; DestDir: "{app}\runtime"; Flags: ignoreversion
 Source: "{#RuntimeDir}\LICENSE"; DestDir: "{app}\runtime"; DestName: "LICENSE-node.txt"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\OpenDash"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\tools\launch.vbs"" --data-dir ""{localappdata}\OpenDash\data"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\brand\favicon.ico"
-Name: "{autoprograms}\Stop OpenDash"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\tools\launch.vbs"" --stop"; WorkingDir: "{app}"; IconFilename: "{app}\assets\brand\favicon.ico"
-Name: "{userdesktop}\OpenDash"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\tools\launch.vbs"" --data-dir ""{localappdata}\OpenDash\data"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\brand\favicon.ico"; Tasks: desktopicon
+Name: "{autoprograms}\Freeflo"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\tools\launch.vbs"" --data-dir ""{localappdata}\OpenDash\data"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\brand\favicon.ico"
+Name: "{autoprograms}\Stop Freeflo"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\tools\launch.vbs"" --stop"; WorkingDir: "{app}"; IconFilename: "{app}\assets\brand\favicon.ico"
+Name: "{userdesktop}\Freeflo"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\tools\launch.vbs"" --data-dir ""{localappdata}\OpenDash\data"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\brand\favicon.ico"; Tasks: desktopicon
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OpenDash"; ValueData: """{sys}\wscript.exe"" ""{app}\tools\launch.vbs"" --background --data-dir ""{localappdata}\OpenDash\data"""; Tasks: startup; Flags: uninsdeletevalue
 
 [Run]
-Filename: "{sys}\wscript.exe"; Parameters: """{app}\tools\launch.vbs"" --data-dir ""{localappdata}\OpenDash\data"""; WorkingDir: "{app}"; Description: "Open OpenDash now"; Flags: nowait postinstall skipifsilent
+Filename: "{sys}\wscript.exe"; Parameters: """{app}\tools\launch.vbs"" --data-dir ""{localappdata}\OpenDash\data"""; WorkingDir: "{app}"; Description: "Open Freeflo now"; Flags: nowait postinstall skipifsilent
+
+; The shortcuts an install before 2.23 made carry the old name: replace them rather than leave two.
+[InstallDelete]
+Type: files; Name: "{autoprograms}\OpenDash.lnk"
+Type: files; Name: "{autoprograms}\Stop OpenDash.lnk"
+Type: files; Name: "{userdesktop}\OpenDash.lnk"
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
