@@ -345,6 +345,10 @@ yours.
   file on a local disk: network (`\\host\share`, `//host`) and device
   (`\\?\`, `\\.\`) paths are refused, links are followed to their real
   target, and a preview never touches the disk.
+- **The in-app assistant and Owed to me.** It may note a split and record a
+  payment you told it about (with Undo). It moves no money and contacts nobody.
+  A payment it only read about, in an email or a message, is a question on the
+  page, never a mark. The remote connector has none of these tools.
 - **The remote connector (Claude in your browser).** The public gateway only
   lets claude.ai read and propose changes; it can never write expenses or
   apply anything. New connections are accepted only within ten minutes of

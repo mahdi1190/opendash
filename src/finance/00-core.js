@@ -39,6 +39,7 @@
     ['budgets', 'Budgets', 'piggy-bank', ['budgets']],
     ['transactions', 'Transactions', 'receipt', ['transactions']],
     ['expenses', 'Expenses', 'coins', []],
+    ['owed', 'Owed to me', 'handshake', []],   // Owed to me: its own page too (#view=owed, 66-owed-1page.js)
     ['data', 'Your data', 'database', ['data']],   // 2.21.1: where every payment comes from, and what counts (44-your-data.js)
   ];
   const groupOf = (id) => (GROUPS.find(g => g[3].includes(id)) || GROUPS[0])[0];

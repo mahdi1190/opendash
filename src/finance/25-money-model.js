@@ -67,9 +67,10 @@
         const amt = Number(r.a); if (!isFinite(amt)) return;
         const c = String(r.c || 'Uncategorised');
         const kind = exclude.includes(c) ? (c === 'Income' ? 'income' : 'transfer') : 'spend';
+        const bk = Number(r.bk) > 0 ? Number(r.bk) : 0, sa = Number(r.sa) > 0 ? Number(r.sa) : 0;   // Owed to me: what came back for this payment; the part of this money in that was someone paying back
         tx.push({ i: idx, d: r.d.slice(0, 10), n: dnum(r.d), m: String(r.m || 'Unknown'), c, a: amt, acct: r.acct ? String(r.acct) : '', memo: r.memo ? String(r.memo) : '',
           how: r.how ? String(r.how) : '', bc: r.bc ? String(r.bc) : null, ty: r.ty ? String(r.ty) : '', k: r.k ? String(r.k) : 'i' + idx, kind,
-          s: kind === 'spend' ? -amt : 0, inc: kind === 'income' && amt > 0 ? amt : 0 });
+          s: kind === 'spend' ? -amt - bk + sa : 0, inc: kind === 'income' && amt > 0 ? amt - sa : 0 });
       });
       tx.sort((p, q) => q.n - p.n || p.i - q.i);
       // No day given: the home day on the page (Clock; money days stay on home time); without Clock,

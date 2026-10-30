@@ -33,6 +33,7 @@ import { HttpError } from '../http.mjs';
 import { createZip } from '../../lib/zip.mjs';
 import * as X from '../../lib/expenses.mjs';
 import * as R from '../../lib/expense-report.mjs';
+import { readStore as readOwed, usedKeys as owedUsed } from '../../lib/owed.mjs';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
@@ -71,7 +72,7 @@ export default function register(app) {
     return done(c, r, { claimId: r.claimId, claim: r.claim });
   });
   post('unsubmit', async (c, b) => done(c, await X.unsubmit(dataDir, ids(b), { home: home() })));
-  post('paid', async (c, b) => done(c, await X.markPaid(dataDir, ids(b), { date: b.date, today: todayOf(c), home: home() })));
+  post('paid', async (c, b) => done(c, await X.markPaid(dataDir, ids(b), { date: b.date, txKey: b.txKey, learnFrom: typeof b.memo === 'string' ? b.memo : '', today: todayOf(c), home: home() })));
   post('unpaid', async (c, b) => done(c, await X.markUnpaid(dataDir, ids(b), { home: home() })));
   post('payer', async (c, b) => { const r = await X.setPayer(dataDir, String(b && b.name || ''), b && b.patch, { today: todayOf(c), home: home() }); return done(c, r, { payer: r.payer }); });
   post('prefs', async (c, b) => done(c, await X.setPrefs(dataDir, b && b.patch, { home: home() })));
@@ -123,7 +124,8 @@ export default function register(app) {
     try { const { financeData } = await import('../../lib/finance.mjs'); const d = await financeData(); analysis = d && d.status === 'ok' ? d.analysis : null; } catch { analysis = null; }
     const today = todayOf(c);
     if (!analysis) return { ok: true, auto: [], ask: [], data: await view(c) };
-    const r = await X.scanPaid(dataDir, X.creditsFromAnalysis(analysis, { today }), { today, home: home() });
+    const taken = owedUsed(await readOwed(dataDir, { home: home() }));   // a payment that paid back a friend is not also a claim paid
+    const r = await X.scanPaid(dataDir, X.creditsFromAnalysis(analysis, { today }).filter(x => !taken.has(x.k) && !taken.has(x.txKey)), { today, home: home() });
     if (r.auto.length) log('info', `expenses: ${r.auto.length} payment(s) matched`);
     return { ok: true, auto: r.auto, ask: r.ask, ...(r.undo ? { undo: r.undo } : {}), data: await view(c) };
   });

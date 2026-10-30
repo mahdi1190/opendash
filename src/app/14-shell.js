@@ -241,7 +241,7 @@ function navNoteMove(from, to) {
 function navBackTarget() {
   if (!_navBack || _navBack.to !== state.view) return null;
   const v = _navBack.from;
-  if (/^(finance|expenses)$/.test(v) && /^(finance|expenses)$/.test(String(state.view))) return null;   // both Money: its tabs are the way back, and nothing moves
+  if (/^(finance|expenses|owed)$/.test(v) && /^(finance|expenses|owed)$/.test(String(state.view))) return null;   // both Money: its tabs are the way back, and nothing moves
   let label = '';
   const p = pageFor(v);
   const sec = typeof sectionFor === 'function' ? sectionFor(v) : null;

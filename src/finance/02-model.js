@@ -10,11 +10,13 @@
       const amt = Number(r.a); if (!isFinite(amt)) return;
       const c = String(r.c || 'Uncategorised');
       const kind = exclude.includes(c) ? (c === 'Income' ? 'income' : 'transfer') : 'spend';
+      const bk = Number(r.bk) > 0 ? Number(r.bk) : 0, sa = Number(r.sa) > 0 ? Number(r.sa) : 0;   // Owed to me: what came back for this payment; the part of this money in that was someone paying back
       tx.push({
         i: idx, d: r.d.slice(0, 10), n: dnum(r.d), m: String(r.m || 'Unknown'), c, a: amt,
         acct: r.acct ? String(r.acct) : '', memo: r.memo ? String(r.memo) : '', how: r.how ? String(r.how) : '',
         bc: r.bc ? String(r.bc) : null, k: r.k ? String(r.k) : 'i' + idx, kind, oa: r.oa ? 1 : 0,
-        s: kind === 'spend' ? -amt : 0, inc: kind === 'income' && amt > 0 ? amt : 0, abs: Math.abs(amt),
+        s: kind === 'spend' ? -amt - bk + sa : 0, inc: kind === 'income' && amt > 0 ? amt - sa : 0, abs: Math.abs(amt),
+        bk, sa, sb: r.sb ? 1 : 0,
         // @fux-begin where it was paid (lib/finance/place.mjs; 25-place-model.js reads these)
         cc: typeof r.cc === 'string' && /^[A-Z]{2}$/.test(r.cc) ? r.cc : '', city: typeof r.city === 'string' ? r.city.slice(0, 40) : '',
         lc: typeof r.lc === 'string' && /^[A-Z]{3}$/.test(r.lc) && Number(r.la) > 0 ? r.lc : '', la: Number(r.la) > 0 ? Number(r.la) : 0, ol: r.ol ? 1 : 0,

@@ -20,6 +20,7 @@
       const j = await r.json();
       R.data = j; R.err = null; R.loadedAt = Date.now();
       try { if (window.Expenses && window.Expenses.financeUpdated) window.Expenses.financeUpdated(); } catch (e) { /* Expenses is optional */ }
+      try { if (window.Owed && window.Owed.financeUpdated) window.Owed.financeUpdated(); } catch (e) { /* so is Owed to me */ }
       const job = j.meta && j.meta.job;
       if (job) { R.job = job; if (job.state === 'running') startPolling(); }
       R.model = (j.status === 'ok' && j.analysis) ? buildModel(j.analysis) : null;

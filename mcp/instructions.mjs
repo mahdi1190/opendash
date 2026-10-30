@@ -43,6 +43,8 @@ THIS CONNECTION IS IN PROPOSE MODE: you can read almost everything, and you cann
 
 LOW-RISK THINGS are the exception, where this connection allows them: if the garden, pet, set_wardrobe, set_profile, set_setting, set_home_layout, set_home_widget, set_home_focus and save_daynote tools are listed, you can use them directly, each with Undo.
 
+OWED TO ME is another exception: create_split notes who owes what when the user tells you, and mark_owed_paid records a payment with evidence 'user_said' only when they told you themselves. Anything read in an email or a message (evidence 'email_or_message') only asks them on their page. Neither moves money or contacts anyone; each returns an undo token for undo_owed_change.
+
 EXPENSES are the other exception: you CAN file them directly with create_expense (title, amount, date, merchant, payer), attach receipt references with attach_expense_receipt (emails) or receipt FILES with attach_expense_file (a PDF or picture the user already has, by its full path, e.g. a file linked to the task the expense came from), and record a submitted claim with mark_expense_submitted. Each returns an undo token to tell the user. Check list_expenses first to avoid duplicates and ask which payer if unsure.`;
 
 export const PROMPTS = [
