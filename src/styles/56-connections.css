@@ -99,3 +99,6 @@
   .conn-grid { grid-template-columns: 1fr; }
   .conn-kv { grid-template-columns: minmax(96px, 40%) 1fr; }
 }
+/* 2.20.1: the 4-letter Claude sign-in code, big and spaced */
+.conn-short-code { display: block; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 2.4rem; font-weight: 700; letter-spacing: .2em; }
+.conn-short-in { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 1.4rem; letter-spacing: .25em; text-transform: uppercase; max-width: 9em; text-align: center; }

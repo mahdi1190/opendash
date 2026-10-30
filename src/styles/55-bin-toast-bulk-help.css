@@ -38,7 +38,7 @@
   background: var(--surface-raised); color: var(--fg); border: 1px solid var(--border);
   border-radius: var(--radius-lg); padding: var(--space-1-5) var(--space-1-5) var(--space-1-5) var(--space-4); box-shadow: var(--shadow-xl);
   display: none; gap: var(--space-1-5); align-items: center; font-size: var(--text-sm); z-index: var(--z-drawer);
-  max-width: calc(100vw - 24px); flex-wrap: wrap;
+  width: max-content; max-width: calc(100vw - 24px); flex-wrap: wrap;
 }
 .bulk-bar.open { display: flex; transform: translateX(-50%) translateY(0); }
 .bulk-bar .count { font-weight: var(--weight-semibold); margin-right: var(--space-1-5); font-variant-numeric: tabular-nums; }

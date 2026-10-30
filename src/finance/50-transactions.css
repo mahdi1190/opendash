@@ -119,3 +119,20 @@
 .fv-tx-card .fv-tx-count { display: none; }
 .fv-tx-card > .fv-card-h .fv-tx-tools { flex: 1 1 auto; }
 .fv-tx-card > .fv-card-h .fv-tx-search { flex: 0 1 280px; min-width: 170px; }
+
+/* 2.21: one row height whatever the second line holds; the name and the category answer a click */
+.fv-txr .meta { min-height: 20px; }
+.fv-txr .meta .c, .fv-txr .meta .cd { cursor: pointer; }
+.fv-txr .meta .c:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+.fv-txr .nm .n:hover { text-decoration: underline; text-underline-offset: 2px; }
+.fv-tx-clear { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.fv-tx-clear[hidden] { display: none; }
+.fv-tx-none { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); color: var(--fg-muted); font-size: var(--text-sm); text-align: center; }
+.fv-tx-none b { color: var(--fg); font-size: var(--text-md); }
+
+/* 2.21: on a phone the toolbar fits the card: the search box was pushed off the right-hand edge */
+@media (max-width: 760px) {
+  .fv-tx-card > .fv-card-h .fv-tx-tools { flex: 1 1 100%; min-width: 0; max-width: 100%; justify-content: flex-start; }
+  .fv-tx-card > .fv-card-h .fv-tx-search { flex: 1 1 100%; min-width: 0; }
+  .fv-tx-card > .fv-card-h .fv-tx-ctl { flex: 1 1 100%; min-width: 0; max-width: 100%; margin: 0; padding: 0; justify-content: flex-start; }
+}

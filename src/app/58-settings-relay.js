@@ -281,7 +281,7 @@ function _rlNextCard(el, st) {
     s.append(tt, btn);
     return s;
   };
-  steps.appendChild(one('user-plus', 'Invite a friend', 'They get a link; you both check a code.', _rlBtn('Invite a friend', 'primary', relayInviteFriend, 'user-plus')));
+  steps.appendChild(one('user-plus', 'Invite a friend', 'They get a link; you both check the same pictures.', _rlBtn('Invite a friend', 'primary', relayInviteFriend, 'user-plus')));
   const sy = st.sync || {};
   steps.appendChild(sy.on
     ? one('circle-check', 'Your computers sync through it', 'Changes arrive within a second, anywhere.', _rlBtn('Open Sync', 'secondary', () => setView('settings:sync'), 'refresh-cw'))

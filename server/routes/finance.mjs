@@ -13,6 +13,7 @@
 //   POST /api/finance/here        {} -> {ok, job?} | {ok, already}: this computer becomes the finance
 //                                 computer (409 SIGN_IN_FIRST without a bank connection of its own)
 //   POST /api/finance/categorise  {merchant, category|null} -> {ok, changed, analysis}
+//   POST /api/finance/categorise-batch  {changes: [{merchant, category|null}]} -> the same, one rebuild
 //   GET  /api/finance/budgets     -> {budgets};  PUT {budgets} -> {ok, budgets}
 //   GET  /api/finance/export      -> text/csv of every transaction (same-origin only)
 //   GET  /api/finance/brief       ?mode=cycle|month[&ai=1|&regenerate=1] -> the Overview's money brief
@@ -32,7 +33,7 @@
 // and the export is built from the copy.
 
 import {
-  financeData, financeJob, startFinanceUpdate, categoriseMerchant, getBudgets, setBudgets,
+  financeData, financeJob, startFinanceUpdate, categoriseMerchant, categoriseMerchants, getBudgets, setBudgets,
   importUpload, exportTransactions, setFinanceHooks, MAX_UPLOAD_BYTES,
   localFinanceData, localBudgets, writeBudgetsFile, applyMerchantOverrides,
 } from '../../lib/finance.mjs';
@@ -283,6 +284,15 @@ export default function register(app) {
       const body = await c.body();
       if (!('category' in body)) throw new HttpError(400, 'category is required (a name, or null to clear)');
       const r = await categoriseMerchant(body.merchant, body.category);
+      return { ok: true, changed: r.changed, analysis: r.analysis };
+    },
+  });
+
+  app.route({
+    path: '/api/finance/categorise-batch', method: 'POST', methodError: 'POST only', maxBody: 256 * 1024,
+    handler: async (c) => {
+      const body = await c.body();
+      const r = await categoriseMerchants(body.changes);
       return { ok: true, changed: r.changed, analysis: r.analysis };
     },
   });

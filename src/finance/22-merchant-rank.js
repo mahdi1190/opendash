@@ -26,18 +26,18 @@
     const sk = sortBy === 'visits' ? 'count' : sortBy === 'avg' ? 'avg' : 'total';
     list.sort((p, q) => q[sk] - p[sk] || q.total - p.total || (p.m < q.m ? -1 : 1));
     const top = list.slice(0, n);
-    cd.setSub(list.length ? `${nf0.format(list.length)} merchants · top ${top.length} shown` : '');
-    if (!top.length) { cd.setEmpty('No merchants in this range.'); return; }
+    cd.setSub(list.length ? `${nf0.format(list.length)} shops · top ${top.length} shown` : '');
+    if (!top.length) { cd.setEmpty('No shops in these dates.'); return; }
     const selKey = F.merchant ? G.keyOf(F.merchant) : null;
     const val = m => sk === 'count' ? m.count : round2(m[sk]);
-    const fmtv = v => sk === 'count' ? `${v} visit${v === 1 ? '' : 's'}` : gbpShort(v);
+    const fmtv = v => sk === 'count' ? `${v} payment${v === 1 ? '' : 's'}` : gbpShort(v);
     const narrow = (cd.chart && cd.chart.clientWidth || 400) < 440;
     const gut = narrow ? 128 : 156;
     const rt = VK.richTiles(top.map(m => ({ name: m.primary, cat: m.cat, label: m.m })), 20, { max: narrow ? 14 : 18, fontSize: 11.5 });
     const option = base({
       grid: { left: gut + 12, right: 58, top: 2, bottom: 2 },
       tooltip: FX.tooltip({ trigger: 'item', formatter: p => { const m = top[p.dataIndex]; return m ? vkTip(m.m, m.primary, m.cat, [
-        { c: catColor(m.cat), v: gbp2(m.total), k: 'spent', box: true }, { v: nf0.format(m.count), k: m.count === 1 ? 'visit' : 'visits' }, { v: gbp2(m.avg), k: 'average' }, { v: m.cat, k: '', muted: true }],
+        { c: catColor(m.cat), v: gbp2(m.total), k: 'spent', box: true }, { v: nf0.format(m.count), k: m.count === 1 ? 'payment' : 'payments' }, { v: gbp2(m.avg), k: 'average' }, { v: m.cat, k: '', muted: true }],
         selKey === m.key ? 'Selected · Esc or × clears it' : 'Click to focus · double-click for details') : ''; } }),
       xAxis: { type: 'value', show: false, max: v => v.max * 1.02 },
       yAxis: { type: 'category', inverse: true, data: top.map(m => m.m), axisLine: { show: false }, axisTick: { show: false }, axisLabel: rt.axisLabel(gut) },

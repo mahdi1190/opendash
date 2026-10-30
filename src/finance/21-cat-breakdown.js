@@ -21,7 +21,7 @@
     const nCats = Object.keys(totals).filter(c => totals[c] > 0).length;
     cd.setSub(items.length ? `${gbp(total)} across ${nCats} categor${nCats === 1 ? 'y' : 'ies'}${selItems.length === 1 ? ` · ${selItems[0].name} selected` : selItems.length > 1 ? ` · ${selItems.length} selected` : ''}` : '');
     if (listEl) listEl.innerHTML = '';
-    if (!items.length) { cd.setEmpty('No spending in this range.'); if (o.centre) o.centre.hidden = true; return; }
+    if (!items.length) { cd.setEmpty('No spending in these dates.'); if (o.centre) o.centre.hidden = true; return; }
     const mode = o.mode || (F.catMode === 'bar' ? 'bar' : 'donut');
     const aligned = !!(o.aligned && listEl && mode === 'bar' && cd.el.clientWidth >= 560);
     const anim = FX.animated();
@@ -46,7 +46,7 @@
         const top = ms.slice(0, 6); const rest = it.value - sum(top, e => e[1]);
         const op = dim(it) ? 0.26 : 1;
         const kids = top.map(([m, v], j) => ({ name: m, value: round2(v), merchant: true, itemStyle: { color: C1.mix(it.color, t.card, Math.max(0.42, 0.84 - j * 0.08)), opacity: op } }));
-        if (rest > 0.5) kids.push({ name: `${ms.length - top.length > 0 ? 'Other merchants' : 'Other'}`, value: round2(rest), itemStyle: { color: C1.mix(it.color, t.card, 0.3), opacity: op } });
+        if (rest > 0.5) kids.push({ name: `${ms.length - top.length > 0 ? 'Other shops' : 'Other'}`, value: round2(rest), itemStyle: { color: C1.mix(it.color, t.card, 0.3), opacity: op } });
         return { name: it.name, value: round2(it.value), itemStyle: { color: it.color, opacity: op }, children: kids };
       });
       option = base({

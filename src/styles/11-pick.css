@@ -1,0 +1,43 @@
+/* ============= MULTI-SELECT: the shared checkbox, row highlight and bar (11-ui-pick.js) ============= */
+/* A small gutter is always kept, so a checkbox appearing never moves the row. */
+:root .pk-row.pk-row { position: relative; padding-left: 30px; }
+.pk-check { opacity: 0; transition: opacity var(--m-fast); }
+.pk-row > .pk-check { position: absolute; left: 7px; top: 50%; margin-top: -8px; z-index: 1; }
+.pk-td { width: 30px; padding-left: 7px !important; padding-right: 0 !important; }
+.pk-td > .pk-check { display: inline-grid; vertical-align: middle; }
+.pk-row:hover > .pk-check, tr:hover > .pk-td > .pk-check, .pk-check:focus-visible, .pk-active .pk-check, .pk-check.checked { opacity: 1; }
+.pk-check:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* A bigger target on a touch screen, where there is no hover. */
+@media (pointer: coarse) { .pk-check { width: 22px; height: 22px; } .pk-row > .pk-check { left: 4px; margin-top: -11px; } :root .pk-row.pk-row { padding-left: 34px; } }
+:root .pk-row.pk-on, :root .pk-row.pk-on:hover, :root tr.pk-on > td, :root .task.multi-selected:hover, :root .task.multi-selected.kb-cursor { background: var(--accent-soft-2); }
+.pk-active .pk-row, .pk-active tr { -webkit-user-select: none; user-select: none; }
+.pk-select-btn[aria-pressed="true"] { color: var(--accent); }
+.ppl-table td:nth-child(2) { max-width: 250px; }
+.ppl-table.narrow td:nth-child(2) { max-width: 230px; }
+
+/* Lists with their own left padding, or that are cards: the box fits what is there. */
+:root .fv-txr.pk-row.pk-row { padding-left: var(--space-5); }
+.fv-txr > .pk-check { left: 2px; }
+:root .fv-bud.pk-row.pk-row { padding-left: var(--space-4, 16px); }
+.fv-bud > .pk-check { left: 8px; top: 8px; margin-top: 0; }
+.pk-root .agd-row { padding-left: 30px; }
+.pk-root .agd-row > .pk-check { left: 7px; }
+.pk-list-tools { display: flex; justify-content: flex-end; gap: var(--space-2); padding: 0 var(--space-1) var(--space-1); }
+.xp-list-tools { display: flex; align-items: center; gap: var(--space-2); }
+.xp-list-tools .xp-search { flex: 1 1 auto; min-width: 0; }
+.bin-head .pk-select-btn, .ppl-bar .pk-select-btn { flex: none; }
+
+/* The task lists: their checkbox shows on hover and once selecting (the row keeps dragging from anywhere). */
+.task:hover .multi-handle, body.pk-selecting .multi-handle { display: flex; }
+.task:hover .drag-handle, body.pk-selecting .task .drag-handle { display: none; }
+
+/* The floating bar */
+.bulk-bar .pk-bar-gap { flex: 1 1 8px; min-width: 8px; }
+.bulk-bar.is-busy { opacity: 0.75; cursor: progress; }
+.bulk-bar button:disabled { cursor: progress; }
+.bulk-bar .count { white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .bulk-bar.open { animation: msBarIn var(--m-base, 180ms) var(--m-ease-out, ease-out); }
+  @keyframes msBarIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+}
+@media print { .pk-check, .pk-td, .pk-select-btn { display: none !important; } }

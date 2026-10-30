@@ -284,6 +284,8 @@ function _pplPaintBody() {
   sb.onclick = () => openMenu(sb, Object.entries(SORT).map(([k, l]) => ({ label: l, checked: pref.sort === k, run: () => { pref.sort = k; saveUI(); _pplPaintBody(); } })), { align: 'end', width: 200 });
   bar.append(showBtn, sb);
   body.appendChild(bar);
+  const pick = _pplPick(body);
+  bar.appendChild(pick.button());
   if (typeof pcSetPageList === 'function') pcSetPageList(rows.map(r => r.p.id));   // previous / next on the card
 
   if (!rows.length) {
@@ -295,7 +297,8 @@ function _pplPaintBody() {
   if (pref.mode === 'cards') {
     const grid = document.createElement('div'); grid.className = 'ppl-cards';
     rows.forEach(({ p, f }, n) => {
-      const c = document.createElement('button'); c.type = 'button';
+      const c = document.createElement('div'); c.tabIndex = 0; c.setAttribute('role', 'button');   // a div: the select box cannot sit in a button
+      c.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === c) { e.preventDefault(); c.click(); } });
       c.className = 'card ppl-card' + (p.id === selId ? ' sel tc-current' : '') + (p.inactive ? ' inactive' : '');
       c.dataset.pid = p.id; c.style.setProperty('--i', Math.min(n, 16));
       if (p.id === selId) c.setAttribute('aria-current', 'true');
@@ -745,6 +748,66 @@ function openPersonEditor(id, prefill, o) {
 }
 
 /* ---------- merge / delete ---------- */
+/** Several people at once: group, merge, not active, delete; one Undo for the lot (11-ui-pick.js). */
+function _pplPick(body) {
+  const undoToast = (msg, ic) => toast(msg, { kind: 'ok', icon: ic, action: { label: 'Undo', run: () => undo() } });
+  const after = () => { if (state.view !== 'people') setView('people'); else render(); };
+  const setGroup = (ms, g) => {
+    const ids = ms.ids();
+    for (const id of ids) { const p = getPerson(id); if (p) { if (g) p.group = g; else delete p.group; } }
+    saveData(); ms.clear(true); render();
+    undoToast(g ? `${ids.length} moved to ${g}` : `${ids.length} taken out of their group`, 'tag');
+  };
+  return multiPick(body, { key: 'people', rows: 'tr[data-pid], .ppl-card[data-pid]', idOf: (r) => r.dataset.pid, noun: ['person', 'people'],
+    nameOf: (r) => (r.querySelector('.pp-name') || {}).textContent || '',
+    exists: (id) => !!getPerson(id),
+    actions: (ids) => [
+      { label: 'Group', icon: 'tag', tip: 'Put them in a group', keep: true, run: (l, a, ms) => {
+        const groups = _pplGroups(_pplVisible()).map(([g]) => g);
+        openMenu(a, [...groups.map(g => ({ label: g, icon: 'tag', run: () => setGroup(ms, g) })), ...(groups.length ? ['sep'] : []),
+          { label: 'New group…', icon: 'plus', run: async () => { const g = await promptDialog({ title: 'New group', label: 'Name', placeholder: 'e.g. Work' }); if (g) setGroup(ms, g); } },
+          { label: 'No group', icon: 'x', run: () => setGroup(ms, '') }], { align: 'center', width: 220 });
+      } },
+      ids.length > 1 ? { label: 'Merge', icon: 'git-merge', tip: 'Duplicates: make them one person', keep: true, run: (l, a, ms) => _pplMergeMany(l, ms) } : null,
+      { label: 'Not active', icon: 'moon', tip: 'Mark as active or not active', run: (l) => {
+        const list = l.map(getPerson).filter(Boolean); const off = list.some(p => !p.inactive);
+        for (const p of list) { if (off) p.inactive = true; else delete p.inactive; }
+        saveData(); render(); undoToast(off ? `${list.length} marked not active` : `${list.length} marked active`, 'moon');
+      } },
+      { label: 'Delete', icon: 'trash-2', danger: true, run: (l) => {
+        const names = l.map(getPerson).filter(Boolean).filter(p => !p.self);
+        let n = 0; for (const p of names) n += deletePersonById(p.id, { noSave: true }) || 0;
+        saveData(); after();
+        toast(`Deleted ${names.length} ${names.length === 1 ? 'person' : 'people'}${n ? ` · unlinked from ${n} task${n === 1 ? '' : 's'} (the tasks stay)` : ''}`, { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
+      } },
+    ] });
+}
+function _pplMergeMany(ids, ms) {
+  const list = ids.map(getPerson).filter(Boolean);
+  if (list.length < 2) return;
+  let sel = null;
+  openDialog({
+    title: `Merge ${list.length} people into one`, size: 'sm',
+    body: (el) => {
+      const p = document.createElement('p'); p.className = 'muted';
+      p.textContent = 'Use this for duplicates. Their task links, emails and notes move to the person you keep; the other names become aliases.';
+      const lab = document.createElement('label'); lab.className = 'field';
+      lab.innerHTML = '<span class="field-label">Keep</span>';
+      sel = document.createElement('select'); sel.className = 'control';
+      sel.innerHTML = list.map(o => `<option value="${escAttr(o.id)}">${esc(o.name)}${o.org ? ' · ' + esc(o.org) : ''}</option>`).join('');
+      lab.appendChild(sel);
+      el.append(p, lab);
+    },
+    actions: [{ label: 'Cancel' }, { label: 'Merge', primary: true, run: () => {
+      const into = getPerson(sel.value);
+      let n = 0; for (const o of list) if (o.id !== sel.value) n += mergePeople(o.id, sel.value, { noSave: true }) || 0;
+      saveData(); ms.clear(true);
+      if (state.view !== 'people') setView('people'); else render();
+      toast(`Merged into ${into ? into.name : ''} (${n} task${n === 1 ? '' : 's'} relinked)`, { kind: 'ok', action: { label: 'Undo', run: () => undo() } });
+      return true;
+    } }],
+  });
+}
 function openPersonMerge(fromId) {
   const a = getPerson(fromId); if (!a) return;
   const others = _pplVisible().filter(p => p.id !== a.id).sort((x, y) => String(x.name).localeCompare(String(y.name)));

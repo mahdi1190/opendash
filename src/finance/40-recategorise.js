@@ -16,7 +16,7 @@
       if (v === '__new') { reset(); confirmCat(sel, merchant, null, cur, how, true); return; }
       if (v === cur) return;
       reset();
-      confirmCat(sel, merchant, v, cur, how, false);
+      categorise(merchant, v, cur, how);   // 2.21: at once, with Undo in the toast (no second question)
     });
     return sel;
   }
@@ -26,7 +26,7 @@
     const n = M.tx.filter(x => x.m === merchant).length;
     const input = isNew ? h('input', { class: 'fv-input', type: 'text', maxlength: '31', placeholder: 'e.g. Health', 'aria-label': 'New category name' }) : null;
     const err = h('div', { class: 'fv-pop-err', hidden: true });
-    const apply = h('button', { type: 'button', class: 'fv-btn primary', text: 'Apply to all from this merchant' });
+    const apply = h('button', { type: 'button', class: 'fv-btn primary', text: 'Apply to all from this shop' });
     const pop = h('div', { class: 'fv-pop', role: 'dialog', 'aria-label': 'Change category' },
       h('div', { class: 'fv-pop-t' }, isNew ? 'New category for ' : 'Move ', h('b', { text: merchant }), isNew ? '' : ' to ', isNew ? '' : h('b', { text: cat })),
       // @new-begin C2: the move, drawn (merchant tile, from -> to)
@@ -35,7 +35,7 @@
         isNew ? h('span', { class: 'fv-pop-cat to new' }, ic('plus'), h('span', { text: 'New category' })) : h('span', { class: 'fv-pop-cat to' }, VK.cat(cat, { size: 'xs', plain: false }), h('span', { text: cat }))),
       // @new-end
       input,
-      h('p', { class: 'mute', text: `Applies to all ${n} transaction${n === 1 ? '' : 's'} from this merchant, and to future imports (saved as a rule in rules.json).` }),
+      h('p', { class: 'mute', text: `Changes all ${n} payment${n === 1 ? '' : 's'} from this shop, now and in future.` }),
       err,
       h('div', { class: 'fv-pop-actions' }, h('button', { type: 'button', class: 'fv-btn ghost', text: 'Cancel', onclick: closePop }), apply));
     apply.addEventListener('click', async () => {
@@ -46,7 +46,7 @@
       }
       apply.disabled = true; apply.textContent = 'Saving…';
       const ok = await categorise(merchant, c, prevCat, prevHow);
-      if (ok) closePop(); else { apply.disabled = false; apply.textContent = 'Apply to all from this merchant'; }
+      if (ok) closePop(); else { apply.disabled = false; apply.textContent = 'Apply to all from this shop'; }
     });
     if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') apply.click(); });
     pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closePop(); anchor.focus(); } });
@@ -93,7 +93,7 @@
       });
       rows.push(b); list.append(b);
     }
-    if (!o.items.length) list.append(h('div', { class: 'fv-menu-empty', text: 'Nothing to choose from in this range.' }));
+    if (!o.items.length) list.append(h('div', { class: 'fv-menu-empty', text: 'Nothing to choose from in these dates.' }));
     const pop = h('div', { class: 'fv-pop fv-menu', role: 'dialog', 'aria-label': o.label },
       h('div', { class: 'fv-menu-t', text: o.label }), list, o.note ? h('div', { class: 'fv-menu-note', text: o.note }) : null);
     pop.addEventListener('keydown', e => {
@@ -121,10 +121,11 @@
       const r = await api('/api/finance/categorise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ merchant, category }) });
       if (r.ok && r.body && r.body.analysis) {
         const n = R.model.tx.filter(x => x.m === merchant).length;
+        if (!isUndo) { try { if (typeof window.gameCount === 'function') window.gameCount('fin-recat'); } catch (e) { /* achievements */ } }
         applyAnalysis(r.body.analysis);
         if (!isUndo) {
           const undoCat = prevHow === 'override' ? prevCat : null;
-          toast(category ? `Moved ${n} transaction${n === 1 ? '' : 's'} to ${category}` : 'Rule removed', { action: 'Undo', onAction: () => categorise(merchant, undoCat, category, 'override', true) });
+          toast(category ? `Moved ${n} payment${n === 1 ? '' : 's'} to ${category}` : 'Back to the automatic category', { action: 'Undo', onAction: () => categorise(merchant, undoCat, category, 'override', true) });
         } else toast('Undone');
         return true;
       }

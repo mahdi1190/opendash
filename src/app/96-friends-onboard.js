@@ -108,7 +108,7 @@ function _froInviteMessage(inv) {
   const when = inv.exp ? new Date(Number(inv.exp)).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : '';
   return 'Hi! I use OpenDash and would love to add you as a friend there (we can cheer each other on and do things together).\n\n'
     + 'In OpenDash, open Friends > Add a friend > Paste an invite, and paste this link:\n' + inv.link + '\n\n'
-    + `It works once${when ? ' and ends on ' + when : ''}. We'll both see a short code to check before we're connected.\n\n`
+    + `It works once${when ? ' and ends on ' + when : ''}. We'll both see the same pictures to check before we're connected.\n\n`
     + "Don't have OpenDash yet? It's free: https://github.com/mahdi1190/opendash";
 }
 /** Step 3: make a single-use invite (with relay access when it is your own relay) and offer it two ways. */
@@ -133,7 +133,7 @@ function _froInviteBox(acts, d, again) {
       await friendsLoad(true).catch(() => {}); _froRepaint();
     }, 'Invite cancelled: the link no longer works', 'cancel the invite') }));
     const when = inv.exp ? new Date(Number(inv.exp)).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : '';
-    out.append(inp, row, _froEl('p', 'fro-sub muted', `Send it to one person. It works once${when ? ', until ' + when : ''}, and you approve them after you both check a short code.`));
+    out.append(inp, row, _froEl('p', 'fro-sub muted', `Send it to one person. It works once${when ? ', until ' + when : ''}, and you accept them after you both check the same pictures.`));
   };
   const relay = d.relay && d.relay.home;
   if (!_fro.invite) {
@@ -170,7 +170,7 @@ function _froRender(sec, d) {
   t.appendChild(_froEl('span', 'overline', 'Getting started'));
   t.appendChild(_froEl('h2', null, s.all ? "You're all set" : 'Welcome to Friends'));
   t.appendChild(_froEl('p', 'muted', s.all
-    ? 'Your character is ready, your relay is connected, and your first invite is out. When they paste it, you will both see a short code: check it matches, then approve.'
+    ? 'Your character is ready, your relay is connected, and your first invite is out. When they paste it, you will both see the same pictures: check they match, then accept.'
     : 'Three small steps to your first friend. Everything between friends is end-to-end encrypted, and you choose what each friend can see.'));
   const ha = _froEl('div', 'fro-hacts');
   ha.appendChild(uiButton({ label: 'How friends work', icon: 'circle-help', kind: 'ghost', size: 'sm', run: () => friendsHelpOpen() }));
@@ -219,7 +219,7 @@ function _froRender(sec, d) {
   // 3. invite
   const c = _froStep(3, s.invite, active === 3, 'Invite a friend', !s.relay ? 'After step 2: invites travel through your relay.'
     : _fro.invite ? 'Here is your link. Send it as it is, or copy a ready message that explains what to do.'
-    : s.invite ? 'Your invite is out. When they paste it, you both check a short code, then you approve.'
+    : s.invite ? 'Your invite is out. When they paste it, you both check the same pictures, then you accept.'
     : 'Send one person a link, as it is or in a ready message.');
   if (s.relay) {
     const box = _froInviteBox(c.acts, d, s.invite);
@@ -264,7 +264,7 @@ document.addEventListener('opendash:profile', () => { if (/^friends$/.test(Strin
 const _FRO_HELP = Object.freeze([
   ['eye', 'What friends can see', 'At first only your profile (name, character, bio) and your game progress (level, streaks). Tasks, calendar, money, places and your journal stay off until you turn them on for a friend you mark Trusted. On a friend\'s page, Preview shows exactly what would go to them.'],
   ['cloud', 'The relay', "Friends' messages travel through a small private relay: your own on your Cloudflare account (free), or a friend's that you join with their invite. It only ever holds encrypted messages it can't read. Only you, your computers and the people you invite can use yours."],
-  ['user-plus', 'Adding someone', 'Send an invite link (it works once and ends by itself), or swap friend codes if you share a relay. You both see the same 6-digit code: check it matches (in person, a call or a message) before you approve. A forwarded link alone is not enough.'],
+  ['user-plus', 'Adding someone', 'Send an invite link (it works once and ends by itself), or show your friend a 4-letter friend code (it works once, for 10 minutes). You both see the same pictures: check they match (in person, a call or a message) before you accept. A forwarded link alone is not enough.'],
   ['shield-check', 'Privacy', "Everything between friends is end-to-end encrypted. Your sign-ins, keys, email, Claude, connectors and accounts are never shared. Nothing a friend sends reaches Claude or changes your tasks unless you click."],
   ['user-minus', 'Removing someone', "Remove or Block them on their page (with Undo). Their access to your relay ends, your copy of what they shared is deleted, and their app is asked to delete what you shared."],
   ['lock', "What can't be forced", "Deleting on their device is a request their app carries out: it cannot be forced, and nobody can stop a screenshot. So only share what you are happy for them to have seen."],

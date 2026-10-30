@@ -127,6 +127,7 @@ function recapOpen(period, ref) {
   const p = period === 'month' ? 'month' : 'year';
   // 2.16: the year is Wrapped now (93-memories-wrapped.js); this story stays for the month.
   if (p === 'year' && typeof memWrappedOpen === 'function') return memWrappedOpen(+String(ref || '').slice(0, 4) || undefined);
+  if (p === 'month' && /^\d{4}-\d{2}$/.test(String(ref || '')) && typeof gameMark === 'function') gameMark('recap-month', String(ref));   // achievements (71-ach-pack-plan.js)
   return storyOpen('recap', { autoplay: true, period: p, ref, variant: p + ':' + (ref || '') });
 }
 registerCommand({ id: 'story-recap-year', label: 'Play my year in OpenDash', icon: 'sparkles', group: 'Go to', keywords: 'year in review recap wrapped story annual summary achievements', when: () => typeof memWrappedOpen !== 'function', run: () => recapOpen('year', todayStr().slice(0, 4)) });

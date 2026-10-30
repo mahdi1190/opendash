@@ -76,7 +76,7 @@
     const steps = h('ol', { class: 'fv-welcome-steps' },
       [['download', 'Export', "Download a CSV of your transactions from your bank's website (any date range; overlaps are fine)."],
         ['upload', 'Import', 'Drop it here or press Import a CSV. Duplicates are skipped and every transaction is categorised.'],
-        ['chart-column', 'Explore', 'Spending, categories, merchants, recurring payments and budgets, all on this computer.']]
+        ['chart-column', 'Explore', 'Spending, categories, shops, regular bills and budgets, all on this computer.']]
         .map(([i, t, d]) => h('li', null, h('span', { class: 'fv-step-ic' }, ic(i)), h('b', { text: t }), h('span', { text: d }))));
     const el = emptyState({ icon: 'wallet', cls: 'fv-welcome', title: 'Bring in your transactions',
       text: 'Import a CSV from your bank, or connect your bank (read-only).',
@@ -301,7 +301,7 @@
     if (a) {
       const st = staleness(a), days = st.days;
       const rm = R.data && R.data.meta && R.data.meta.remote && R.data.meta.remote.name && !R.data.meta.remote.trial ? R.data.meta.remote : null;
-      msg = a.sample ? ['info', 'Sample data.', 'These figures are made up to show the layout. Import a CSV from your bank to see your own.']
+      msg = a.sample ? ['info', 'Sample data.', 'These figures are made up to show the layout.', h('button', { class: 'btn-link', type: 'button', text: 'Import a CSV from your bank', onclick: () => pickCsv() })]
         : days > 4 && rm ? ['triangle-alert', st.late.length ? lateText(st.late) : `Your data is ${days} days old.`, `Update bank asks ${rm.name} to update it${rm.online ? '' : ' when it is on'}.`]
           : st.late.length && bankOk() ? ['triangle-alert', lateText(st.late), '', h('button', { class: 'btn-link', type: 'button', text: 'Update now', onclick: () => startUpdate({}) })]
             : days > 4 && !(a.fetches && a.fetches.length) ? ['triangle-alert', `Your data is ${days} days old.`, bankOk() ? 'Sync your bank, or import a recent CSV export.' : 'Import a recent CSV export from your bank, or connect your bank to sync it.']

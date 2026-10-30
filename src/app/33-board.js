@@ -355,7 +355,7 @@ function _renderKanbanCard(it, L, col) {
   card.onclick = (e) => {
     if (e.shiftKey && _selectRangeTo(it.id)) return;   // Shift+click: everything from the last one clicked (30-task-row.js)
     _lastSelectedTaskId = it.id;
-    if (e.ctrlKey || e.metaKey) { _toggleMulti(it.id); return; }
+    if (e.ctrlKey || e.metaKey || multiSelect.active) { _toggleMulti(it.id); return; }
     openTask(it.id, { from: card });
   };
   card.oncontextmenu = (e) => { e.preventDefault(); _lastSelectedTaskId = it.id; openTaskMenu({ x: e.clientX, y: e.clientY }, it.id); };

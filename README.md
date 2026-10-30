@@ -93,6 +93,9 @@ priority and estimate become chips before you press Enter.
 <b>One card per task.</b> Subtasks, notes, people, repeats, an estimate, a
 planned day apart from the due date, and a focus timer. Undo works everywhere,
 and deleted tasks wait in the Bin.
+<br><br>
+<b>Select many things at once.</b> Tick a few tasks, expenses or
+transactions, change them together, and one <b>Undo</b> puts them all back.
 </td>
 </tr>
 </table>
@@ -169,8 +172,10 @@ what is coming up. Press <b>Play story</b> on the brief.</td>
 purchase as an expense, drop in the receipt, and see what you are owed on
 Home. When the money arrives, OpenDash matches it and marks the claim paid.</td>
 <td><b>One click to a filled-in expense form.</b> Tick the expenses and press
-<b>Make expense report</b>: a PDF with your name, the rows, totals and your
-signature, plus the receipts zipped and named to match.</td>
+<b>Make expense report</b>: a PDF laid out exactly like the paper expense form
+(your name, one row per expense in the right column, totals and your
+signature), plus the receipts zipped and named to match. Made it by accident?
+<b>Undo this report</b> puts everything back.</td>
 </tr>
 </table>
 
@@ -181,8 +186,10 @@ signature, plus the receipts zipped and named to match.</td>
 <td width="62%"><img alt="The assistant panel with a made-up conversation and a proposed change waiting for Apply (demo data; nothing was sent to Claude)" src="docs/media/assistant.png"></td>
 <td>
 <b>Ask in plain words.</b> "Move everything for Acme to next Monday." The
-assistant looks things up and <b>proposes</b> the change; nothing happens
-until you press <b>Apply</b>, and every change can be undone.
+assistant looks things up and can do nearly everything in the dashboard, and
+every change can be undone. Ordinary changes wait for your <b>Apply</b>, and
+anything sensitive (friends, your computers, your relay, sign-ins, money rules,
+updates) always asks for your approval on screen.
 <br><br>
 It is optional and runs through <b>your own</b> Claude Code, on your own
 plan. It has no shell and no file tools.
@@ -224,7 +231,8 @@ so a good day of work grows something. Friends can visit and water a plant.</td>
 </tr>
 <tr>
 <td><b>A companion that grows with what you do.</b> Adopt a pet from 18
-species, teach it tricks and read its journal.</td>
+species, teach it tricks and read its journal. There are 497 hard
+achievements to earn over months of steady use, each with a reward.</td>
 <td><b>Dress your character.</b> Clothes, saved outfits, expressions and
 <i>Surprise me</i>.</td>
 </tr>
@@ -289,14 +297,15 @@ so that they stay yours.
 - **You host the relay.** It runs on your own free Cloudflare account, and only
   your devices and people you approve can use it. Every request is signed.
 - **Your devices sign their records.** Removing a device rotates the keys and
-  makes a new recovery code, so a lost laptop can't read new data or rewrite
+  locks it out of Friends, so a lost laptop can't read new data or rewrite
   old data.
 - **Signed updates.** Updates come only from this project's GitHub releases
   and must carry a valid Ed25519 signature. Unsigned or older releases are
   refused.
-- **An assistant on a short lead.** It has no shell and no file tools. It
-  proposes changes and you approve them. (The one thing it may do directly is
-  file an expense you asked for, and that has Undo.)
+- **An assistant on a short lead.** It has no shell and no file tools. It can
+  do nearly everything in the dashboard, and every change has Undo. Anything
+  sensitive (friends, devices, relay, sign-ins, money rules, updates) is only a
+  proposal that you approve on screen, never done behind your back.
 - **Untrusted text stays text.** Emails, calendar invites, bank memos, invites
   and friends' data are escaped before they reach the page. When the AI reads
   them, they are data, and they can't change anything without your click.
@@ -325,8 +334,8 @@ You never need the cloud. You choose how far your data goes.
 | Level | What it means | Who can read your data |
 |---|---|---|
 | **1. Local only** (the default) | Everything stays in one folder on this computer. | You |
-| **2. Your own devices** | Your computers stay in step through a relay **you** host on **your own** free Cloudflare account (one click in Settings > Your relay). A OneDrive, Google Drive or Dropbox folder can hold an encrypted backup copy. | You, on your own devices |
-| **3. Friends** | Friends connect to you, you both check a 6-digit code, and you approve them. They can use your relay or host their own. Each friend sees only what you choose for them. | You, and each friend only what you picked |
+| **2. Your own devices** | Your computers stay in step through a relay **you** host on **your own** free Cloudflare account (one click in Settings > Your relay). Add a computer with *Join my other computer*: type a 4-letter code and check the same picture shows on both screens. An optional 10-word emergency backup sheet is only for the day you lose every computer. A OneDrive, Google Drive or Dropbox folder can hold an encrypted backup copy. | You, on your own devices |
+| **3. Friends** | Friends connect to you with an invite link or a 4-letter friend code (live for 10 minutes, works once), you both check the same pictures, and you press Accept. They can use your relay or host their own. Each friend sees only what you choose for them. | You, and each friend only what you picked |
 
 For the most privacy, host your own relay, or stay local and use the relay only
 between your own devices. There is no OpenDash cloud at any level.

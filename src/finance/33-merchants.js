@@ -5,15 +5,15 @@
   // one merchant (VK.groups). The selected merchant (F.merchant) is lit in
   // every one of them and the rest dim; clicking it again does nothing.
   BUILD.merchants = g => {
-    S.vc = h('div', { class: 'fv-vc-grid', role: 'list', 'aria-label': 'Top merchants' });
+    S.vc = h('div', { class: 'fv-vc-grid', role: 'list', 'aria-label': 'Top shops' });
     S.vcWrap = h('div', { class: 'fv-vc-wrap' }, S.vc);
     g.append(S.vcWrap);
     S.vcEls = new Map(); S.vcFirst = true;
-    S.race = card(g, { title: 'Leaderboard', span: 8, chart: true, height: 300, cls: 'fv-race-card' });
-    S.raceSeg = seg([['spend', 'Spend'], ['visits', 'Visits']], R.raceMetric || 'spend', v => { R.raceMetric = v; S.raceSeg.set(v); raceChart(S.race, R.ctx, { metric: true }); }, 'Race by');
+    S.race = card(g, { title: 'Who gets the most', span: 8, chart: true, height: 300, cls: 'fv-race-card' });
+    S.raceSeg = seg([['spend', 'Amount'], ['visits', 'Payments']], R.raceMetric || 'spend', v => { R.raceMetric = v; S.raceSeg.set(v); raceChart(S.race, R.ctx, { metric: true }); }, 'Race by');
     S.race.tools.append(S.raceSeg.el);
     S.bub = card(g, { title: 'How often vs how much', span: 4, md: 12, chart: true, height: 360 });
-    S.list = card(g, { title: 'All merchants', span: 12 });
+    S.list = card(g, { title: 'All shops', span: 12 });
   };
   UPDATE.merchants = ctx => {
     vendorCards(S.vc, ctx);
@@ -48,7 +48,7 @@
     grid.classList.toggle('has-sel', !!selKey);
     if (!top.length) {
       grid.innerHTML = ''; S.vcEls.clear();
-      grid.append(h('div', { class: 'fv-empty fv-vc-empty', text: 'No merchants in this range.' }));
+      grid.append(h('div', { class: 'fv-empty fv-vc-empty', text: 'No shops in these dates.' }));
       return;
     }
     const empty = grid.querySelector('.fv-vc-empty'); if (empty) empty.remove();
@@ -96,7 +96,7 @@
     const on2 = selKey === m.key;
     el.classList.toggle('is-current', on2); el.classList.toggle('is-dim', !!selKey && !on2);
     if (on2) el.setAttribute('aria-current', 'true'); else el.removeAttribute('aria-current');
-    el.setAttribute('aria-label', `${m.m}, ${gbp(m.total)}, ${m.count} visit${m.count === 1 ? '' : 's'}`);
+    el.setAttribute('aria-label', `${m.m}, ${gbp(m.total)}, ${m.count} payment${m.count === 1 ? '' : 's'}`);
     if (!old || old.cat !== m.cat || old.primary !== m.primary) {
       f.tile.innerHTML = ''; const tl = VK.tile(m.primary, m.cat, { size: 'lg', enter: entering, i }); f.tile.append(tl);
       if (entering) vkSettle(tl, 'fsym-enter', 1600);
@@ -107,7 +107,7 @@
     f.open.setAttribute('aria-label', 'Details for ' + m.m);
     MK.tick(f.amt, round2(m.total), gbp);
     f.meta.textContent = '';
-    f.meta.append(h('span', { text: `${nf0.format(m.count)} visit${m.count === 1 ? '' : 's'}` }), h('span', { text: 'avg ' + gbp2(m.avg) }), h('span', { text: 'last ' + fDay(m.last) }));
+    f.meta.append(h('span', { text: `${nf0.format(m.count)} payment${m.count === 1 ? '' : 's'}` }), h('span', { text: 'avg ' + gbp2(m.avg) }), h('span', { text: 'last ' + fDay(m.last) }));
     // Trend vs the previous period of the same length.
     f.trend.textContent = ''; f.trend.className = 'fv-vc-trend';
     if (prevTotal != null) {
@@ -145,7 +145,7 @@
     const race = VL.raceFrames(spendNoMerchant(ctx), G.keyOf, B, indexer(ctx.rg.from, gran), metric, 10);
     const st = S.raceSt || (S.raceSt = { i: null, timer: 0, playing: false, played: false });
     raceStop(st);
-    if (!race.keys.length) { cd.setEmpty('No merchants in this range.'); if (S.raceCtl) S.raceCtl.hidden = true; return; }
+    if (!race.keys.length) { cd.setEmpty('No shops in these dates.'); if (S.raceCtl) S.raceCtl.hidden = true; return; }
     const groups = new Map(merchantGroupsFor(ctx).map(m => [m.key, m]));
     const labels = []; const seen = new Set();
     race.keys.forEach(k => { let l = G.label(k); while (seen.has(l)) l += ' '; seen.add(l); labels.push(l); });
@@ -155,7 +155,7 @@
     const nF = race.frames.length;
     const ms = clamp(Math.round(9000 / Math.max(1, nF)), 380, 1100);
     const anim = FX.animated();
-    const fmt = v => (metric === 'visits' ? nf0.format(v) + (v === 1 ? ' visit' : ' visits') : gbp(v));
+    const fmt = v => (metric === 'visits' ? nf0.format(v) + (v === 1 ? ' payment' : ' payments') : gbp(v));
     const dataAt = i => race.frames[i].values.map((v, j) => FX.sel({ value: v, itemStyle: { color: catColor(cats[j]) } }, selKey === race.keys[j], !!selKey));
     // The first view starts at the first bucket and waits to be seen; later
     // updates (filters, a sync) rest on the latest bucket and morph there.
@@ -168,7 +168,7 @@
     const option = base({
       grid: { left: gut + 12, right: 72, top: 4, bottom: 4 },
       tooltip: FX.tooltip({ trigger: 'item', formatter: p => { const j = p.dataIndex; const g2 = groups.get(race.keys[j]); return vkTip(labels[j], prim[j], cats[j], [
-        { c: catColor(cats[j]), v: fmt(p.value), k: (metric === 'visits' ? 'visits' : 'spent') + ' by ' + race.frames[st.i].label, box: true },
+        { c: catColor(cats[j]), v: fmt(p.value), k: (metric === 'visits' ? 'payments' : 'spent') + ' by ' + race.frames[st.i].label, box: true },
         g2 ? { v: gbp2(g2.total), k: 'in the whole range', muted: true } : null], selKey === race.keys[j] ? 'Selected · Esc or × clears it' : 'Click to focus · double-click for details'); } }),
       xAxis: { type: 'value', max: 'dataMax', show: false },
       yAxis: { type: 'category', inverse: true, max: Math.min(7, race.keys.length - 1), data: labels, axisLine: { show: false }, axisTick: { show: false },
@@ -186,7 +186,7 @@
     // @p2 the chart's table (Enter on the focused chart, 07-chart-a11y.js) reads the final standings, not the frame on screen
     c.a11yOption = () => {
       const o2 = c.inst.getOption(); const s = S.raceSt; const lastF = s && s.race && s.race.frames.length ? s.race.frames.length - 1 : -1;
-      if (lastF >= 0 && o2.series && o2.series[0]) Object.assign(o2.series[0], { data: s.dataAt(lastF), name: (metric === 'visits' ? 'Visits' : 'Spent') + ' by ' + s.race.frames[lastF].label });
+      if (lastF >= 0 && o2.series && o2.series[0]) Object.assign(o2.series[0], { data: s.dataAt(lastF), name: (metric === 'visits' ? 'Payments' : 'Spent') + ' by ' + s.race.frames[lastF].label });
       if (metric === 'visits' && o2.xAxis && o2.xAxis[0]) o2.xAxis[0].axisLabel = { formatter: v => nf0.format(v) };
       return o2;
     };
@@ -274,16 +274,16 @@
   function bubbles(cd, ctx) {
     const t = tk(); const G = VK.groups(ctx.M);
     const list = merchantGroupsFor(ctx).filter(m => m.count > 0 && m.total > 0).sort((p, q) => q.total - p.total).slice(0, 200);
-    if (!list.length) { cd.setEmpty('No merchants in this range.'); return; }
-    cd.setSub('Each bubble is a merchant · size is the total spent');
+    if (!list.length) { cd.setEmpty('No shops in these dates.'); return; }
+    cd.setSub('Each bubble is a shop · bigger means more spent');
     const maxT = Math.max(...list.map(m => m.total));
     const maxC = Math.max(...list.map(m => m.count));
     const few = (cd.chart.clientWidth || 600) < 480 ? 4 : 6;
     const selKey = F.merchant ? G.keyOf(F.merchant) : null;
     const option = base({
       grid: { left: 6, right: 30, top: 30, bottom: 26, containLabel: true },
-      tooltip: FX.tooltip({ trigger: 'item', formatter: p => { const m = list[p.dataIndex]; return m ? vkTip(m.m, m.primary, m.cat, [{ c: catColor(m.cat), v: gbp2(m.total), k: 'spent', box: true }, { v: nf0.format(m.count), k: m.count === 1 ? 'visit' : 'visits' }, { v: gbp2(m.avg), k: 'average' }, { v: m.cat, k: '', muted: true }], selKey === m.key ? 'Selected · Esc or × clears it' : 'Click to focus · double-click for details') : ''; } }),
-      xAxis: { type: 'log', logBase: 2, min: 0.8, name: 'Visits', nameLocation: 'middle', nameGap: 24, nameTextStyle: { color: t.dim, fontSize: 10.5 }, axisLabel: { color: t.dim, fontSize: 10.5, formatter: v => v < 1 ? '' : nf0.format(v) }, splitLine: { lineStyle: { color: t.grid, type: [3, 4] } }, axisLine: { show: false }, axisTick: { show: false } },
+      tooltip: FX.tooltip({ trigger: 'item', formatter: p => { const m = list[p.dataIndex]; return m ? vkTip(m.m, m.primary, m.cat, [{ c: catColor(m.cat), v: gbp2(m.total), k: 'spent', box: true }, { v: nf0.format(m.count), k: m.count === 1 ? 'payment' : 'payments' }, { v: gbp2(m.avg), k: 'average' }, { v: m.cat, k: '', muted: true }], selKey === m.key ? 'Selected · Esc or × clears it' : 'Click to focus · double-click for details') : ''; } }),
+      xAxis: { type: 'log', logBase: 2, min: 0.8, name: 'Payments', nameLocation: 'middle', nameGap: 24, nameTextStyle: { color: t.dim, fontSize: 10.5 }, axisLabel: { color: t.dim, fontSize: 10.5, formatter: v => v < 1 ? '' : nf0.format(v) }, splitLine: { lineStyle: { color: t.grid, type: [3, 4] } }, axisLine: { show: false }, axisTick: { show: false } },
       yAxis: FX.yAxis({ ticks: 4, extra: { type: 'log', logBase: 10, name: 'Average', nameTextStyle: { color: t.dim, fontSize: 10.5, align: 'left' }, min: v => Math.max(0.5, v.min / 1.5) } }),
       series: [Object.assign({ id: 'b', type: 'scatter',
         data: list.map((m, i) => FX.sel({ value: [m.count, round2(Math.max(0.5, m.avg))], name: m.m, label: { show: i < few || selKey === m.key, position: Math.log2(Math.max(1, m.count)) > 0.62 * Math.log2(Math.max(2, maxC)) ? 'left' : 'right' },
@@ -305,21 +305,21 @@
     const G = VK.groups(ctx.M);
     const list = merchantGroupsFor(ctx).filter(m => Math.abs(m.total) > 0.004);
     cd.body.querySelectorAll('.fv-tablewrap,.fv-btn').forEach(x => x.remove());
-    if (!list.length) { cd.setEmpty('No merchants in this range.'); return; }
+    if (!list.length) { cd.setEmpty('No shops in these dates.'); return; }
     cd.setEmpty(null);
     const total = sum(list, m => m.total);
     const key = F.mSort.key, dir = F.mSort.dir;
     const val = { m: m => m.m.toLowerCase(), cat: m => m.cat, count: m => m.count, total: m => m.total, avg: m => m.avg, last: m => m.last };
     const vf = val[key] || val.total;
     list.sort((p, q) => { const a = vf(p), b = vf(q); return (a < b ? -1 : a > b ? 1 : 0) * dir || q.total - p.total; });
-    cd.setSub(`${nf0.format(list.length)} merchants · ${gbp(total)}`);
+    cd.setSub(`${nf0.format(list.length)} shops · ${gbp(total)}`);
     const selKey = F.merchant ? G.keyOf(F.merchant) : null;
     const maxShare = Math.max(...list.map(m => m.total / Math.max(1, total)), 0.0001);
     const th = (k, l, cls) => h('th', { class: (cls || '') + ' sort' + (key === k ? ' on' : ''), 'aria-sort': key === k ? (dir > 0 ? 'ascending' : 'descending') : 'none' },
       h('button', { type: 'button', onclick: () => { F.mSort = { key: k, dir: key === k ? -dir : (k === 'm' || k === 'cat' ? 1 : -1) }; saveF(); merchantTable(cd, R.ctx); } }, l, h('span', { class: 'ar' }, key === k ? ic(dir > 0 ? 'chevron-up' : 'chevron-down') : null)));
     const lim = R.mLimit;
     const tbl = h('table', { class: 'fv-table fv-mtable' + (selKey ? ' has-sel' : '') },
-      h('thead', null, h('tr', null, th('m', 'Merchant'), th('cat', 'Category'), th('count', 'Visits', 'r'), th('total', 'Spent', 'r'), th('avg', 'Average', 'r'), h('th', { class: 'fv-th-share', text: 'Share' }), th('last', 'Last', 'r'))),
+      h('thead', null, h('tr', null, th('m', 'Name'), th('cat', 'Category'), th('count', 'Payments', 'r'), th('total', 'Spent', 'r'), th('avg', 'Average', 'r'), h('th', { class: 'fv-th-share', text: 'Share' }), th('last', 'Last', 'r'))),
       h('tbody', null, list.slice(0, lim).map(m => {
         const on2 = selKey === m.key; const share = m.total / Math.max(1, total);
         return h('tr', { class: 'click fsym-host' + (on2 ? ' sel' : ''), 'aria-current': on2 ? 'true' : null, tabindex: '0', onclick: () => openMerchant(m.primary), onkeydown: e => { if (e.key === 'Enter') openMerchant(m.primary); } },

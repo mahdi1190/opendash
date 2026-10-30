@@ -101,6 +101,7 @@ async function tagRename(from) {
   // Renaming onto a tag you have merges them (the dialog says so); the toast's Undo takes it back, so no second question.
   const r = tglRename(state, from, t, _tagLog());
   _tmSel.delete(from);
+  if (typeof gameCount === 'function') gameCount('tag-edit');   // achievements (71-ach-pack-plan.js)
   _tagDone(`${exists ? 'Merged' : 'Renamed'} #${from} → #${t} on ${_tagTasks(r)}`);
 }
 async function tagMergeDialog(tags) {
@@ -138,6 +139,7 @@ async function tagMergeDialog(tags) {
       if (!a.into || !a.froms.length) { input.focus(); return false; }
       const r = tglMerge(state, a.froms, a.into, _tagLog());
       for (const t of a.froms) _tmSel.delete(t);
+      if (typeof gameCount === 'function') gameCount('tag-edit', a.froms.length);   // achievements (71-ach-pack-plan.js)
       _tagDone(`Merged ${a.froms.length} tag${a.froms.length === 1 ? '' : 's'} into #${a.into} on ${_tagTasks(r)}`);
       return true;
     } }],
@@ -349,7 +351,7 @@ function _tmSuggestions(side, rows, o) {
   for (const g of tglSimilar(state, usage).slice(0, 3)) {
     const n = (() => { let k = 0; for (const i of getAllItems()) if (effTags(i).some(t => g.from.includes(t))) k++; return k; })();
     card('merge:' + g.into, 'git-merge', `Merge into <span class="chip chip-accent">${esc(g.into)}</span>`, `<div class="from">${g.from.map(t => `<span class="chip">${esc(t)}</span>`).join('')}</div>`,
-      `Merge · ${n} task${n === 1 ? '' : 's'}`, () => { const r = tglMerge(state, g.from, g.into, _tagLog()); return `Merged into #${g.into} on ${_tagTasks(r)}`; });
+      `Merge · ${n} task${n === 1 ? '' : 's'}`, () => { const r = tglMerge(state, g.from, g.into, _tagLog()); if (typeof gameCount === 'function') gameCount('tag-edit'); return `Merged into #${g.into} on ${_tagTasks(r)}`; });
   }
   // Most used first; "a, b, c, d… The stream" (no full stop after the ellipsis).
   const show = (list) => {

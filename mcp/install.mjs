@@ -8,6 +8,7 @@
 //   cmd.exe      "C:\a b\x"  and a bare --
 //   bash / zsh   'a b/x'     (single quotes, ' escaped as '\'')
 
+import { READ_TOOLS as AGENT_READ_TOOLS } from '../lib/agent-tiers.mjs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { QUERIES } from '../server/actions/queries.mjs';
@@ -61,7 +62,7 @@ export function installInfo({ dataDir, platform = process.platform, nodePath = p
     proposeMode: { args: proposeArgs, note: 'read tools + propose_changes only; never applies anything (what the in-app assistant uses)' },
     mcpConfigJson: { mcpServers: { [name]: { command: 'node', args } } },
     permissions,
-    tools: { read: READ_TOOLS, write: writeTools },
+    tools: { read: [...READ_TOOLS, ...AGENT_READ_TOOLS], write: writeTools },
   };
 }
 

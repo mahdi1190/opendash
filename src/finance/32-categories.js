@@ -3,18 +3,18 @@
   const ctView = () => (['donut', 'bar', 'sun'].includes(F.ctView) ? F.ctView : (F.catMode === 'bar' ? 'bar' : 'donut'));
   BUILD.categories = g => {
     S.cats = card(g, { title: 'Where it went', span: 8, md: 12, chart: true, height: 272, cls: 'fv-cats c1-where' });
-    S.catSeg = seg([['donut', 'Donut'], ['bar', 'Ranked'], ['sun', 'Sunburst', 'Categories with their biggest merchants']], ctView(), v => { F.ctView = v; saveF(); S.catSeg.set(v); catWhere(R.ctx); }, 'Chart type');
+    S.catSeg = seg([['donut', 'Donut'], ['bar', 'Ranked'], ['sun', 'Rings', 'Categories with their biggest shops']], ctView(), v => { F.ctView = v; saveF(); S.catSeg.set(v); catWhere(R.ctx); }, 'Chart type');
     S.cats.tools.append(S.catSeg.el);
     S.catCentre = h('div', { class: 'c1-dcenter', 'aria-hidden': 'true' }, h('span', { class: 'c1-dc-t' }, h('span', { class: 'c1-dc-i' }), h('span', { class: 'c1-dc-n' })), h('b', { class: 'c1-dc-v num' }), h('span', { class: 'c1-dc-s' }));
     S.catList = h('div', { class: 'fv-legend c1-cl' });
     const box = h('div', { class: 'c1-where-chart' }, S.cats.chart, S.catCentre);
     S.cats.body.prepend(h('div', { class: 'c1-where-wrap' }, box, S.catList));
-    S.area = card(g, { title: 'Category trends', span: 4, md: 12, chart: true, height: 300, fill: true });
+    S.area = card(g, { title: 'Categories over time', span: 4, md: 12, chart: true, height: 300, fill: true });
     S.areaSeg = seg([['abs', SYM], ['pct', '%']], F.stackMode, v => { F.stackMode = v; saveF(); S.areaSeg.set(v); stackedArea(S.area, R.ctx); }, 'Scale');
     S.area.tools.append(S.areaSeg.el);
     S.multi = card(g, { title: 'Each category over time', span: 12, cls: 'c1-multi-card' });
     S.multiGrid = h('div', { class: 'c1-multi' }); S.multi.body.prepend(S.multiGrid);
-    S.tree = card(g, { title: 'Categories and their merchants', span: 12, chart: true, height: 380, cls: 'c1-tree-card' });
+    S.tree = card(g, { title: 'Categories and their shops', span: 12, chart: true, height: 380, cls: 'c1-tree-card' });
     S.focus = card(g, { title: 'Category', span: 5, md: 12, cls: 'c1-focus' });
     S.focus.el.hidden = true;
     S.table = card(g, { title: 'Category details', span: 12 });
@@ -52,9 +52,9 @@
     const cats = [...new Set([...Object.keys(cur), ...Object.keys(prv)])].filter(c => (cur[c] || 0) > 0.004 || (prv[c] || 0) > 0.004).sort((p, q) => (cur[q] || 0) - (cur[p] || 0));
     const total = sum(Object.values(cur));
     cd.body.querySelectorAll('.fv-tablewrap').forEach(x => x.remove());
-    if (!cats.length) { cd.setEmpty('No spending in this range.'); return; }
+    if (!cats.length) { cd.setEmpty('No spending in these dates.'); return; }
     cd.setEmpty(null);
-    cd.setSub(ctx.hasPrev ? 'Compared with the previous period of the same length · click a row to focus on it' : 'No earlier data to compare with');
+    cd.setSub(ctx.hasPrev ? 'Compared with the same number of days before · click a row to focus on it' : 'No earlier data to compare with');
     const max = Math.max(...cats.map(c => Math.max(cur[c] || 0, prv[c] || 0)), 1);
     const bud = R.budgets || {}; const scale = ctx.rg.len / 30.44;
     const only = F.cats.length === 1 ? F.cats[0] : null;
@@ -81,14 +81,14 @@
     const t = tk(); const B = ctx.buckets, ix = ctx.ix;
     const rows = ctx.spendNoCat();
     const { items, memberOf } = c1Folded(rows);
-    if (!items.length) { cd.setEmpty('No spending in this range.'); return; }
+    if (!items.length) { cd.setEmpty('No spending in these dates.'); return; }
     const data = {}; items.forEach(it => { data[it.name] = new Array(B.length).fill(0); });
     rows.forEach(x => { const s = memberOf[x.c]; const i = ix(x.n); if (s && i >= 0 && i < B.length) data[s][i] += x.s; });
     const totals = B.map((_, i) => sum(items, it => Math.max(0, data[it.name][i])));
     const pctMode = F.stackMode === 'pct';
     const sel = F.cats; const isSel = it => sel.length > 0 && it.members.some(m => sel.includes(m));
     const anySel = sel.length > 0;
-    cd.setSub((pctMode ? 'Share of each period’s spending' : `Per ${F.gran}, stacked`) + (anySel ? ' · the selection stays lit' : ''));
+    cd.setSub((pctMode ? 'Share of each period’s spending' : `Each ${F.gran}`) + (anySel ? ' · the selection stays lit' : ''));
     // @p1: stacked BARS, not smoothed areas. Spending lands in whole periods; a smoothed stack drew a
     // rent week as a mountain with fake slopes either side. The legend wraps (no "◀ 1/3 ▶" pager);
     // the plot starts below however many rows it takes.
@@ -127,12 +127,12 @@
     const rows = ctx.spendNoCat();
     const { items, memberOf } = c1Folded(rows);
     const grid = S.multiGrid;
-    if (!items.length) { grid.innerHTML = ''; cd.setEmpty('No spending in this range.'); return; }
+    if (!items.length) { grid.innerHTML = ''; cd.setEmpty('No spending in these dates.'); return; }
     cd.setEmpty(null);
     const series = C1.bucketSeries(rows, B, ix, x => memberOf[x.c]);
     const prevT = ctx.hasPrev ? rowsTotals(ctx.spendNoCatPrev()) : null;
     const gl = { day: 'day', week: 'week', month: 'month' }[F.gran];
-    cd.setSub(`Spending per ${gl}, each on its own scale${ctx.hasPrev ? ' · change on the previous period' : ''} · click one to focus on it`);
+    cd.setSub(`Spending each ${gl}${ctx.hasPrev ? ', and the change on the days before' : ''} · click one to focus on it`);
     const sel = F.cats; const anySel = sel.length > 0;
     // The tiles rise and their lines draw in once, on the first render; never on later updates.
     const play = MK.once(cd.el, 'multi') && !MK.reduced();
@@ -181,16 +181,16 @@
     const byCat = new Map();
     rows.forEach(x => { if (!byCat.has(x.c)) byCat.set(x.c, new Map()); const m = byCat.get(x.c); m.set(x.m, (m.get(x.m) || 0) + x.s); });
     const h3 = cd.el.querySelector('h3');
-    if (!byCat.size) { cd.setEmpty('No spending in this range.'); c1Crumbs(cd, null); return; }
+    if (!byCat.size) { cd.setEmpty('No spending in these dates.'); c1Crumbs(cd, null); return; }
     const one = byCat.size === 1 && F.cats.length > 0 ? [...byCat.keys()][0] : null;
-    h3.textContent = one ? `Inside ${one}` : 'Categories and their merchants';
+    h3.textContent = one ? `Inside ${one}` : 'Categories and their shops';
     c1Crumbs(cd, one || (F.cats.length > 1 ? `${F.cats.length} categories` : null));
     const merchantsOf = (c, mm, max) => {
       const col = catColor(c);
       const ms = [...mm.entries()].sort((p, q) => q[1] - p[1]);
       const kids = ms.slice(0, max).map(([m, v], j) => { const cc = C1.mix(col, /^#[0-9a-f]{6}$/i.test(t.card) ? t.card : (t.dark ? '#18181c' : '#ffffff'), Math.max(0.5, 1 - j * 0.08)); return { name: m, value: round2(v), merchant: true, itemStyle: { color: cc }, label: { color: ink(cc) } }; });
       const rest = sum(ms.slice(max), e => e[1]);
-      if (rest > 0) { const cc = C1.mix(col, /^#[0-9a-f]{6}$/i.test(t.card) ? t.card : '#ffffff', 0.42); kids.push({ name: `${ms.length - max} more merchants`, value: round2(rest), more: true, itemStyle: { color: cc }, label: { color: ink(cc) } }); }
+      if (rest > 0) { const cc = C1.mix(col, /^#[0-9a-f]{6}$/i.test(t.card) ? t.card : '#ffffff', 0.42); kids.push({ name: `${ms.length - max} more shops`, value: round2(rest), more: true, itemStyle: { color: cc }, label: { color: ink(cc) } }); }
       return kids;
     };
     const data = one ? merchantsOf(one, byCat.get(one), 30)
@@ -199,14 +199,14 @@
     // @p1: a tile under about 1.3% of the whole (more on a narrow card) is too small for "Name £n";
     // it showed stubs like "Su" or "The". Those tiles go unlabelled (the tooltip names them).
     const lblMin = clamp(0.013 * 1100 / Math.max(320, cd.chart.clientWidth || 1100), 0.006, 0.05);
-    cd.setSub(one ? `${nf0.format(byCat.get(one).size)} merchants · sized by spend · click one to open it`
-      : `${gbp(total)} · ${byCat.size} categories · ${nf0.format(new Set(rows.map(x => x.m)).size)} merchants · click a category to focus on it`);
+    cd.setSub(one ? `${nf0.format(byCat.get(one).size)} shops · bigger means more spent · click one to open it`
+      : `${gbp(total)} · ${byCat.size} categories · ${nf0.format(new Set(rows.map(x => x.m)).size)} shops · click a category to focus on it`);
     const option = base({
       tooltip: C1.tooltip({ trigger: 'item', formatter: p => {
         const path = (p.treePathInfo || []).slice(1).map(x => x.name);
         const v = p.value; const isM = p.data && (p.data.merchant || p.data.more);
         return C1.tip(path.length ? path[path.length - 1] : 'All spending', [{ c: p.color, key: 'bx', v: gbp2(v), k: `${pct(v / Math.max(1, total), 1)} of ${one ? one : 'spending'}` }, path.length > 1 ? { key: 'none', v: path[0], k: '', muted: true } : null],
-          { foot: p.data && p.data.merchant ? 'Click to open this merchant' : !isM && !one ? 'Click to focus on this category' : '' });
+          { foot: p.data && p.data.merchant ? 'Click to open it' : !isM && !one ? 'Click to focus on this category' : '' });
       } }),
       series: [{
         id: 'tree', type: 'treemap', roam: false, nodeClick: false, top: 0, left: 0, right: 0, bottom: 0, squareRatio: 0.62, breadcrumb: { show: false },
@@ -249,7 +249,7 @@
     cd.el.querySelector('h3').textContent = one;
     cd.setSub(`${fRange(ctx.rg.from, ctx.rg.to)}`);
     cd.body.querySelectorAll('.c1-focus-b').forEach(x => x.remove());
-    if (!rows.length) { cd.setEmpty('No spending in this category in this range.'); return; }
+    if (!rows.length) { cd.setEmpty('No spending in this category in these dates.'); return; }
     cd.setEmpty(null);
     const weeks = Math.max(1, ctx.days / 7);
     const kv = (label, val, fmt, sub) => { const b = h('b', { class: 'num' }); MK.tick(b, val, fmt); return h('div', { class: 'c1-kv' }, h('span', { class: 'l', text: label }), b, sub); };
@@ -276,13 +276,13 @@
     const totalU = sum(list, a => a.total), totalAll = sum(M.tx.filter(x => x.kind === 'spend'), x => x.s);
     if (!list.length) { cd.setEmpty('Everything has a category. Nice.'); cd.setSub(''); return; }
     cd.setEmpty(null);
-    cd.setSub(`${nf0.format(list.length)} merchants, ${gbp(totalU)} (${pct(totalU / Math.max(1, totalAll))} of all spending). Picking one saves a rule for future imports.`);
+    cd.setSub(`${nf0.format(list.length)} shops, ${gbp(totalU)} (${pct(totalU / Math.max(1, totalAll))} of all spending). Picking one is remembered for next time.`);
     const shown = list.slice(0, R.uncatLimit || 12);
     const wrap = h('div', { class: 'fv-uncat' });
     shown.forEach(a => {
       wrap.append(h('div', { class: 'fv-uncat-row c1-uncat-row fsym-host' },
         C1.tileEl(a.m, 'Uncategorised', 'sm', { badge: false }),
-        h('button', { type: 'button', class: 'fv-link fv-uncat-m', text: a.m, title: 'Open merchant', onclick: () => openMerchant(a.m) }),
+        h('button', { type: 'button', class: 'fv-link fv-uncat-m', text: a.m, title: 'Open it', onclick: () => openMerchant(a.m) }),
         h('span', { class: 'mute num', text: `${a.count} × · ${gbp(a.total)}` }),
         // Pass the real `how` so Undo removes the new rule instead of pinning
         // the merchant to "Uncategorised" with an override.

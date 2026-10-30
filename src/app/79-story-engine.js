@@ -958,6 +958,7 @@ function _stOnEnd() {
   const root = _story.root; if (!root) return;
   root.querySelectorAll('.st-seg').forEach(s => s.style.setProperty('--p', '1'));
   seenMarkDay('storyPlayed:' + _story.kind, todayStrSafe());   // synced: played on one computer, played everywhere (06-core-seen.js)
+  if (typeof gameStreakTick === 'function') gameStreakTick('story-' + _story.kind);   // achievements (71-ach-pack-plan.js)
 }
 function _stPaintProgress() {
   const root = _story.root; if (!root) return;

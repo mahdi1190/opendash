@@ -437,6 +437,7 @@ async function _asstAdopt(version) {
 /** Why a proposal needs a second click, from the server's reasons (bin/delete/merge, or a large batch). */
 function _asstConfirmText(p) {
   const rs = Array.isArray(p.reasons) ? p.reasons.map(String) : [];
+  if (rs.some(r => /^sensitive/i.test(r))) return 'This sends something to another person, changes what is shared, starts a sign-in, or changes a device. Check it is what you asked for.';
   const danger = !rs.length || rs.some(r => /delete|merge/i.test(r));
   const bulk = rs.some(r => /more than/i.test(r));
   if (danger && bulk) return 'This changes a lot at once, and includes moving something to the bin, deleting or merging.';
@@ -460,7 +461,7 @@ function _asstPartLive(p, part) {
 }
 async function _asstApply(msg, p) {
   if (p.needsConfirm) {
-    const ok = await confirmDialog({ title: 'Apply these changes?', text: _asstConfirmText(p) + ' You can undo it afterwards.', confirmLabel: 'Apply', danger: true });
+    const ok = await confirmDialog({ title: 'Apply these changes?', text: _asstConfirmText(p) + (Array.isArray(p.reasons) && p.reasons.some(r => /^sensitive/i.test(String(r))) ? '' : ' You can undo it afterwards.'), confirmLabel: 'Apply', danger: true });
     if (!ok) return;
   }
   p = _asstPLive(p);
@@ -471,6 +472,8 @@ async function _asstApply(msg, p) {
     const j = await _asstPost('/api/actions', { proposalId: p.id, source: 'assistant', client: 'dashboard assistant' });
     p = _asstPLive(p);
     p.state = 'applied'; p.undo = j.undo || null; p.appliedOn = _asstHere();
+    // A sensitive action's next step, in the person's words ("The sign-in page is opening in the browser...").
+    p.notice = (Array.isArray(j.effects) ? j.effects : []).map(x => x && x.result && x.result.next).filter(s => typeof s === 'string').join(' ').slice(0, 400) || null;
     _asst.applying.delete(p.id);
     _asstSave();
     await _asstAdopt(j.version);

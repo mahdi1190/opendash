@@ -2,6 +2,7 @@
 //
 //   GET  /api/expenses                  -> {ok, data: {prefs, payers, items, claims, hints, summary}, today}
 //   POST /api/expenses/create           {expense} -> {ok, id, expense, undo, data}     (409 duplicate transaction)
+//   POST /api/expenses/create-batch     {expenses} -> {ok, ids, skipped, undo, data}   one undo for all of them
 //   POST /api/expenses/update           {id, patch} -> {ok, expense, undo, data}
 //   POST /api/expenses/delete           {ids} -> {ok, removed, undo, data}
 //   POST /api/expenses/submit           {ids, payer?, method?, date?, note?} -> {ok, claimId, claim, undo, data}
@@ -19,8 +20,10 @@
 //   POST /api/expenses/pack             {ids, claimId?, format: 'zip'|'html'|'csv'|'text'} -> the file (text: JSON {text})
 //   GET  /api/expenses/year?year=       the yearly summary
 //   POST /api/expenses/report/plan      {ids} -> {rows: [{id, date, description, col, label, amount, hasReceipt}], columns, name, signature: {set}, missing}
-//   POST /api/expenses/report           {ids, cols?: {id: column}, advances?, payer?} -> {ok, dir, count, receipts, missing}: PDF + Receipts.zip in Documents/Expense reports/, folder opened
-//   POST /api/expenses/report/open      {dir} (only a folder made by report) -> opens it in the file manager
+//   POST /api/expenses/report           {ids, cols?: {id: column}, advances?, payer?, name?, unsigned?} -> {ok, report, dir, count, receipts, missing, data}: PDF + Receipts.zip in Documents/Expense reports/, folder opened, the expenses moved to submitted, the report listed
+//   POST /api/expenses/report/open      {id} or {dir} (only a folder made by report) -> opens it in the file manager
+//   POST /api/expenses/report/undo      {id} -> {ok, changed, undo, data}: its expenses back to "to claim"; the folder stays
+//   POST /api/expenses/report/delete    {id} -> {ok, kept?, data}: removes its PDF and zip (and the folder if empty) and the list entry; the expenses stay as they are
 //   GET  /api/expenses/signature[?info=1]; POST /api/expenses/signature {data}; POST /api/expenses/signature/remove   (your signature for the report; private, never shared)
 //   POST /api/expenses/undo             {undo} -> {ok, label, data}
 //
@@ -30,7 +33,7 @@ import { HttpError } from '../http.mjs';
 import { createZip } from '../../lib/zip.mjs';
 import * as X from '../../lib/expenses.mjs';
 import * as R from '../../lib/expense-report.mjs';
-import { join, resolve, sep } from 'node:path';
+import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
 const FETCH_WAIT_MS = 4000;
@@ -55,6 +58,11 @@ export default function register(app) {
     if (!r.error) log('info', 'expenses: one added');
     return done(c, r, { id: r.id, expense: r.expense });
   });
+  post('create-batch', async (c, b) => {
+    const r = await X.createExpenses(dataDir, b && b.expenses, { today: todayOf(c), home: home() });
+    if (!r.error) log('info', `expenses: ${r.ids.length} added together`);
+    return done(c, r, { ids: r.ids, skipped: r.skipped });
+  }, 512 * 1024);
   post('update', async (c, b) => { const r = await X.updateExpense(dataDir, String(b && b.id), b && b.patch, { today: todayOf(c), home: home() }); return done(c, r, { expense: r.expense }); });
   post('delete', async (c, b) => { const r = await X.deleteExpenses(dataDir, ids(b), { home: home() }); return done(c, r, { removed: r.removed }); });
   post('submit', async (c, b) => {
@@ -152,23 +160,42 @@ export default function register(app) {
     const list = goodIds(b).map(id => S.items[id]).filter(Boolean);
     if (!list.length) throw new HttpError(400, 'Choose at least one expense.');
     const cfg = typeof getConfig === 'function' ? getConfig() || {} : {};
-    return { ok: true, rows: R.reportRows(list), columns: R.COLUMN_KEYS.map(k => [k, R.COLUMN_LABELS[k]]), name: typeof cfg.userName === 'string' ? cfg.userName : (typeof cfg.name === 'string' ? cfg.name : ''), signature: await R.signatureInfo(dataDir), payer: list[0].payer || '' };
+    return { ok: true, rows: R.reportRows(list), columns: R.COLUMN_KEYS.map(k => [k, R.COLUMN_LABELS[k]]), name: typeof cfg.userName === 'string' ? cfg.userName : (typeof cfg.name === 'string' ? cfg.name : ''), signature: await R.signatureInfo(dataDir), payer: list[0].payer || '', perPage: 11 };
   });
   post('report', async (c, b) => {
     const S = await X.readStore(dataDir, { home: home() });
     const cfg = typeof getConfig === 'function' ? getConfig() || {} : {};
     const cols = {}; if (b && b.cols && typeof b.cols === 'object') for (const [id, v] of Object.entries(b.cols).slice(0, 200)) if (X.ID_RE.test(id) && R.COLUMN_KEYS.includes(v)) cols[id] = v;
     const name = typeof (b && b.name) === 'string' ? b.name : (typeof cfg.userName === 'string' ? cfg.userName : (typeof cfg.name === 'string' ? cfg.name : ''));
-    const r = await R.makeReport(dataDir, S, { ids: goodIds(b), cols, advances: b && b.advances, name, payer: typeof (b && b.payer) === 'string' ? b.payer : '', today: todayOf(c), currency: home() });
+    const r = await R.makeReport(dataDir, S, { ids: goodIds(b), cols, advances: b && b.advances, name, payer: typeof (b && b.payer) === 'string' ? b.payer : '', today: todayOf(c), currency: home(), unsigned: !!(b && b.unsigned) });
     if (r.error) fail(r);
+    // One step: the folder, the list entry and the expenses moving on. If the save fails, the folder does not stay behind.
+    const rec = await X.recordReport(dataDir, { ids: goodIds(b), dir: r.dir, payer: typeof (b && b.payer) === 'string' ? b.payer : '', count: r.count, total: r.total, from: r.from, to: r.to, today: todayOf(c), home: home() });
+    if (rec.error) { await R.removeReportFolder(r.dir); fail(rec); }
     log('info', `expenses: a report of ${r.count} made`);
     R.openFolder(r.dir);
-    return { ok: true, dir: r.dir, count: r.count, receipts: r.receipts, missing: r.missing };
+    return done(c, rec, { report: rec.report, moved: rec.ids, dir: r.dir, count: r.count, receipts: r.receipts, missing: r.missing, total: r.total });
   });
   post('report/open', async (c, b) => {
-    const root = resolve(join(R.documentsDir(), 'Expense reports')), dir = resolve(String(b && b.dir || ''));
-    if (!dir.startsWith(root + sep) || !existsSync(dir)) throw new HttpError(400, 'That folder is not one of your expense reports.');
-    return { ok: R.openFolder(dir) };
+    let dir = String(b && b.dir || '');
+    if (b && typeof b.id === 'string') { const S = await X.readStore(dataDir, { home: home() }); dir = (S.reports[b.id] || {}).dir || ''; }
+    if (!R.isReportDir(dir) || !existsSync(resolve(dir))) throw new HttpError(400, 'That folder is not on this computer. It may have been moved, or made on another computer.');
+    return { ok: R.openFolder(resolve(dir)) };
+  });
+  post('report/undo', async (c, b) => {
+    const r = await X.undoReport(dataDir, String(b && b.id || ''), { today: todayOf(c), home: home() });
+    return done(c, r, { changed: r.changed, ids: r.ids, report: r.report });
+  });
+  post('report/delete', async (c, b) => {
+    const id = String(b && b.id || '');
+    const S = await X.readStore(dataDir, { home: home() });
+    const rp = S.reports[id];
+    if (!rp) throw new HttpError(404, 'That report is gone.');
+    const rm = await R.removeReportFolder(rp.dir);
+    if (rm.error) throw new HttpError(409, rm.error);
+    const r = await X.deleteReportRecord(dataDir, id, { home: home() });
+    if (r.error) fail(r);
+    return { ok: true, kept: !!rm.kept, gone: !!rm.gone, data: X.publicView(r.S, todayOf(c)) };
   });
   post('signature', async (c, b) => { const r = await R.setSignature(dataDir, b && b.data); if (r.error) fail(r); return { ok: true, signature: { set: true, ext: r.ext } }; }, 4 * 1024 * 1024);
   post('signature/remove', async () => ({ ok: true, ...(await R.removeSignature(dataDir)), signature: { set: false } }));

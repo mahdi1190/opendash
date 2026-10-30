@@ -105,7 +105,7 @@
           </figure>
           <figure class="shot">
             <img src="img/task-card.png" alt="A task card with subtasks, a time suggestion and a focus timer" width="1440" height="900" loading="lazy" decoding="async">
-            <figcaption><strong>One card per task.</strong> Subtasks, notes, people, repeats, an estimate and a focus timer. Undo works everywhere.</figcaption>
+            <figcaption><strong>One card per task.</strong> Subtasks, notes, people, repeats, an estimate and a focus timer. Select many things at once and one Undo puts them all back.</figcaption>
           </figure>
           <figure class="shot">
             <img src="img/calendar-week.png" alt="The calendar week view with events and due tasks side by side" width="1440" height="900" loading="lazy" decoding="async">
@@ -149,7 +149,7 @@
           </figure>
           <figure class="shot">
             <img src="img/expense-report.png" alt="The Make expense report dialog" width="1440" height="900" loading="lazy" decoding="async">
-            <figcaption><strong>Expense reports.</strong> One click to a filled-in PDF form, with the receipts zipped and named to match.</figcaption>
+            <figcaption><strong>Expense reports.</strong> One click to a PDF laid out exactly like the paper expense form, with the receipts zipped and named to match.</figcaption>
           </figure>
         </div>
       </div>
@@ -162,7 +162,7 @@
       <div class="hour-body split">
         <div class="lede">
           <h2 id="h-ai">Ask, then approve</h2>
-          <p>"Move everything for Acme to next Monday." The assistant looks things up and proposes the change. Nothing happens until you press <strong>Apply</strong>, and every change can be undone.</p>
+          <p>"Move everything for Acme to next Monday." The assistant looks things up and can do nearly everything in the dashboard, and every change can be undone. Anything sensitive asks for your approval first.</p>
           <p>It is optional, and runs through your own Claude Code on your own plan. It has no shell and no file tools.</p>
         </div>
         <figure class="shot">
@@ -217,7 +217,7 @@
           </figure>
           <figure class="shot">
             <img src="img/achievements.png" alt="Level, quests, streaks and achievements" width="1440" height="900" loading="lazy" decoding="async">
-            <figcaption><strong>Achievements.</strong> Levels, quests and streaks.</figcaption>
+            <figcaption><strong>Achievements.</strong> Levels, quests, streaks and 497 hard achievements.</figcaption>
           </figure>
           <figure class="shot">
             <img src="img/places.png" alt="Places: an overview and a travel timeline" width="1440" height="900" loading="lazy" decoding="async">
@@ -251,9 +251,9 @@
           <div><dt>A local server that stays local</dt><dd>It listens only on 127.0.0.1 and checks each request's Host and Origin, so websites you visit can't reach it. A strict Content Security Policy allows no inline scripts but the app's own.</dd></div>
           <div><dt>End-to-end encrypted</dt><dd>Sync and friends use standard primitives: AES-256-GCM, X25519, Ed25519 and HKDF. The relay carries sealed data it can't read.</dd></div>
           <div><dt>Your relay, your rules</dt><dd>You host the relay on your own free Cloudflare account. Every request is signed, and only your devices and people you approve can use it.</dd></div>
-          <div><dt>Signed by each device</dt><dd>Every sync record is signed by the device that wrote it. Removing a device rotates the keys and makes a new recovery code.</dd></div>
+          <div><dt>Signed by each device</dt><dd>Every sync record is signed by the device that wrote it. Removing a device rotates the keys and locks it out of Friends.</dd></div>
           <div><dt>Signed updates</dt><dd>Updates come only from this project's GitHub releases, with an Ed25519 signature checked before anything installs.</dd></div>
-          <div><dt>An assistant on a short lead</dt><dd>No shell, no file tools. It proposes changes and you approve them.</dd></div>
+          <div><dt>An assistant on a short lead</dt><dd>No shell, no file tools. It can do nearly everything with Undo; anything sensitive needs your approval.</dd></div>
           <div><dt>Untrusted text stays text</dt><dd>Emails, calendar invites, bank memos, invites and friends' data are escaped before they reach the page.</dd></div>
         </dl>
         <div class="review">
@@ -296,7 +296,7 @@
             <svg viewBox="0 0 120 40" aria-hidden="true" focusable="false"><rect class="dev" x="6" y="12" width="24" height="16" rx="3"/><circle class="relay" cx="60" cy="20" r="7"/><circle class="friend" cx="100" cy="9" r="5"/><circle class="friend" cx="100" cy="31" r="5"/><path class="link" d="M32 20H51M67 17L93 10M67 23L93 30"/></svg>
             <h3>Friends you approve</h3>
             <p class="who">Read by: each friend, only what you pick.</p>
-            <p>Friends connect to you, you both check a 6-digit code, and you approve them. They can use your relay or host their own.</p>
+            <p>Friends connect to you with an invite link or a 4-letter friend code, you both check the same pictures, and you press Accept. They can use your relay or host their own.</p>
           </li>
         </ol>
         <p class="tip">For the most privacy, host your own relay, or stay local and use the relay only between your own devices.</p>

@@ -298,6 +298,7 @@ function memRediscover(seed) {
   const cands = [...ix.days.keys()].filter(d => d < cut && (ix.days.get(d).length >= 2 || (memState().journal[d] || {}).line));
   for (const d of Object.keys(memState().journal)) if (d < cut && memState().journal[d].line && !cands.includes(d)) cands.push(d);
   if (!cands.length) return '';
+  if (typeof gameStreakTick === 'function') gameStreakTick('rediscover');   // achievements (71-ach-src-b3-life.js): days a past day was rediscovered
   cands.sort();
   return cands[_memHash(String(seed == null ? Date.now() : seed)) % cands.length];   // clock-ok: only a seed
 }

@@ -16,7 +16,7 @@
     S.catSeg = seg([['donut', 'Donut'], ['bar', 'Ranked']], F.catMode, v => { F.catMode = v; saveF(); S.catSeg.set(v); catBreakdown(S.cats, R.ctx, 's:ov-cats', S.catList); }, 'Chart type');
     S.cats.tools.append(S.catSeg.el);
     S.catList = h('div', { class: 'fv-legend' }); S.cats.body.append(S.catList);
-    S.merch = card(g, { title: 'Top merchants', span: 6, chart: true, height: 280 });
+    S.merch = card(g, { title: 'Top shops', span: 6, chart: true, height: 280 });
     S.flags = card(g, { title: 'Worth a look', span: 6 });
   };
   UPDATE.overview = ctx => {

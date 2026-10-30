@@ -189,14 +189,18 @@ again.
 - **Invite link.** Works for anyone. It works **once** and ends by itself (1,
   7 or 30 days). If it is your own relay, you can let them use it for friends,
   and also for syncing their own devices.
-- **Friend code**, like `ALEX-7K2QX9`. Only between people on the same relay.
-  *New code* makes a new one; the old one stops working at once.
+- **Friend code.** Press **Show my friend code** and read the 4 letters to your
+  friend (in person or on a call). They type them under *Add a friend > Friend
+  code*. The code is live for **10 minutes** and works **once**; *New code*
+  makes another. It needs a relay you both use (for example one of you joined
+  with the other's invite). Without one, send an invite link instead.
 - **Paste an invite** that a friend sent you.
 
-Before you are friends, you both see the same **6-digit code**. Check that it
-matches (in person, on a call or in a message), then the person who sent the
-invite approves. A forwarded or stolen link alone is not enough: the code
-would not match. If the codes differ, choose *The codes are different*.
+Before you are friends, both screens show the same **pictures** (three small
+ones). Check that they match (in person, on a call or in a message), then the
+person who showed the code or sent the invite presses **Accept**. A forwarded
+or stolen link alone is not enough: the pictures would not match. If they
+differ, choose *No, they're different* and nothing is shared.
 
 ## What friends can see
 
@@ -333,11 +337,11 @@ OpenDash is honest about its limits:
 - **A relay's owner controls their own Cloudflare account.** They can't read
   your messages, but they decide whether the relay keeps running.
 - **A lost or stolen device that still has your keys** could keep acting as
-  you in Friends. Remove it from Sync and from Settings > Your relay, then
-  choose **Renew my keys** (offered right after you remove a device): your
-  friends move to your new keys and the old ones stop working.
-- **Someone you approve** sees what you chose to share with them. The 6-digit
-  code makes sure the person you approve is the person you meant.
+  you in Friends. Remove it in Settings > Sync: that locks it out of Friends
+  automatically, from the server, and your friends move to your new keys. (If
+  you only learn later, **Lock it out** in Friends settings does the same.)
+- **Someone you approve** sees what you chose to share with them. The
+  matching pictures make sure the person you approve is the person you meant.
 
 ## Questions
 

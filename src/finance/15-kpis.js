@@ -4,12 +4,12 @@
     { k: 'spent', l: 'Spent', hero: true, good: -1, go: 'spending', icon: 'wallet' },
     { k: 'avg', l: 'Average a day', good: -1, go: 'spending', icon: 'calendar-days' },
     { k: 'income', l: 'Money in', good: 1, go: 'cashflow', icon: 'coins' },
-    { k: 'net', l: 'Net cash flow', good: 1, go: 'cashflow', icon: 'arrow-up-down' },
-    { k: 'rate', l: 'Savings rate', good: 1, go: 'cashflow', icon: 'piggy-bank' },
+    { k: 'net', l: 'Left over', good: 1, go: 'cashflow', icon: 'arrow-up-down' },
+    { k: 'rate', l: 'Share kept', good: 1, go: 'cashflow', icon: 'piggy-bank' },
     { k: 'count', l: 'Transactions', good: 0, go: 'transactions', icon: 'receipt' },
     { k: 'big', l: 'Biggest purchase', good: 0, go: 'big', icon: 'flag' },
-    { k: 'rec', l: 'Recurring a month', good: -1, go: 'recurring', icon: 'repeat' },
-    { k: 'proj', l: 'Projected this month', good: -1, go: 'budgets', icon: 'chart-line' },
+    { k: 'rec', l: 'Regular bills a month', good: -1, go: 'recurring', icon: 'repeat' },
+    { k: 'proj', l: 'Heading for this month', good: -1, go: 'budgets', icon: 'chart-line' },
   ];
   // Which tiles each section shows. The full row (nine tiles, Spent as the
   // hero) suits a summary; a section with its own story gets a compact row of
@@ -19,8 +19,8 @@
   const KPI_SETS = {
     overview: false, budgets: false,
     spending: ['spent', 'avg', 'count', 'big'], categories: ['spent', 'avg', 'count'], merchants: ['spent', 'count', 'big'],
-    // @p1: Recurring's own summary strip already leads with "Committed each month", so no 'rec' tile.
-    cashflow: ['income', 'spent', 'net', 'rate'], recurring: ['proj', 'spent'], transactions: ['count', 'spent', 'income'],
+    // Regular bills' own summary strip leads with what they come to: no tiles about other spending above it (2.21).
+    cashflow: ['income', 'spent', 'net', 'rate'], recurring: false, transactions: ['count', 'spent', 'income'],
   };
   function kpiSetFor(id) {
     const o = SEC_OPTS[id];
@@ -138,13 +138,13 @@
     const bdays = buckets.map(b => b.e - b.s + 1);
     const sCount = seriesBy(cur.spend, buckets, ix, x => (x.s > 0 ? 1 : 0));
     const sBig = new Array(buckets.length).fill(0); cur.spend.forEach(x => { const i = ix(x.n); if (i >= 0 && i < sBig.length) sBig[i] = Math.max(sBig[i], x.s); });
-    const vs = ctx.rg.len === 1 ? 'vs previous day' : `vs previous ${ctx.rg.len} days`;
+    const vs = ctx.rg.len === 1 ? 'vs the day before' : `vs the ${ctx.rg.len} days before`;
     const vals = {
       spent: { v: spent, f: gbp, prev: has ? spentP : null, sp: sSpend },
       avg: { v: avg, f: gbp, prev: avgP, sp: sSpend.map((v, i) => v / bdays[i]), sub: `over ${ctx.days} day${ctx.days === 1 ? '' : 's'}` },
       income: { v: income, f: gbp, prev: has ? incomeP : null, sp: sInc, color: t.income },
       net: { v: net, f: x => (x > 0.5 ? '+' : '') + gbp(x), prev: has ? netP : null, sp: sNet, abs: true },
-      rate: { v: rate, f: x => x == null ? '—' : pct(x), prev: has ? rateP : null, sp: sInc.map((v, i) => v > 0 ? sNet[i] / v : null), pts: true, sub: income > 0 ? '' : 'No income in range' },
+      rate: { v: rate, f: x => x == null ? '—' : pct(x), prev: has ? rateP : null, sp: sInc.map((v, i) => v > 0 ? sNet[i] / v : null), pts: true, sub: income > 0 ? '' : 'No money in during these dates' },
       count: { v: count, f: x => nf0.format(Math.round(x)), prev: has ? countP : null, sp: sCount, sub: count ? `avg ${gbp2(spent / Math.max(1, count))}` : '' },
       big: { v: bigTx ? bigTx.s : 0, f: gbp, prev: has ? bigP : null, sp: sBig, sub: bigTx ? `${bigTx.m} · ${fDay(bigTx.n)}` : 'Nothing yet' },
       rec: { v: M.recurringMonthly, f: gbp, prev: null, sp: null, sub: `${recs.length} active payment${recs.length === 1 ? '' : 's'} · ${gbp(M.recurringMonthly * 12)}/yr` },
@@ -163,7 +163,7 @@
       let dkey = 'none', dir = null, parts = null, tone = 'flat';
       if (x.prev != null && x.v != null && isFinite(x.prev)) {
         let txt;
-        if (d.k === 'rate') { const dd = (x.v - x.prev) * 100; dir = Math.sign(Math.round(dd)); txt = `${dd >= 0 ? '+' : '−'}${Math.abs(dd).toFixed(0)} pts`; }
+        if (d.k === 'rate') { const dd = (x.v - x.prev) * 100; dir = Math.sign(Math.round(dd)); txt = `${dd >= 0 ? '+' : '−'}${Math.abs(dd).toFixed(0)} points`; }
         else if (x.abs || Math.abs(x.prev) < 0.5) { const dd = x.v - x.prev; dir = Math.sign(Math.round(dd)); txt = (dd >= 0 ? '+' : '−') + gbp(Math.abs(dd)).replace('−', ''); if (d.k === 'count') txt = (dd >= 0 ? '+' : '−') + nf0.format(Math.abs(dd)); }
         else { const r = (x.v - x.prev) / Math.abs(x.prev); dir = Math.abs(r) < 0.005 ? 0 : Math.sign(r); txt = `${r >= 0 ? '+' : '−'}${Math.abs(r * 100) < 10 ? Math.abs(r * 100).toFixed(1) : Math.abs(r * 100).toFixed(0)}%`; if (Math.abs(r) < 0.0005) txt = 'No change'; if (r >= 9.995 && x.prev > 0) txt = '×' + (x.v / x.prev < 100 ? nf1 : nf0).format(x.v / x.prev); }   // @p1: not "+0.0%" · @p2: ten times or more reads "×1,309", not "+130845%"
         tone = !dir || !d.good ? 'flat' : (dir * d.good > 0 ? 'good' : 'bad');

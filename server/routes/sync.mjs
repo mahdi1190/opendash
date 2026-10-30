@@ -211,7 +211,15 @@ export default function register(app) {
   post('/api/sync/offer', () => engine.makeOffer());
   post('/api/sync/offer/join', (b) => engine.joinWithOffer(str(b.text, 300) || ''));
   post('/api/sync/devices/rename', (b) => engine.renameDevice(str(b.id, 40), str(b.name, 60)));
-  post('/api/sync/devices/remove', (b) => engine.removeDevice(str(b.id, 40)));
+  // 2.20.1: a removed computer is locked out of Friends too, without asking: its friend keys are renewed
+  // in the background (it goes on by itself; Friends > Lost a computer? shows how it goes).
+  post('/api/sync/devices/remove', async (b) => {
+    const out = await engine.removeDevice(str(b.id, 40));
+    const fr = app.ctx.friends;
+    const has = fr && await fr.me().then(Boolean, () => false);
+    if (has) fr.rotateIdentity().then(() => (typeof engine.relayChanged === 'function' ? engine.relayChanged() : null)).catch((e) => log('warn', `friends: renewal after removing a computer waits (${e && (e.code || e.message)})`));
+    return { ...out, friendsLockOut: !!has };
+  });
   post('/api/sync/live', async (b) => {
     if (!live) { const e = new Error('Live sync is turned off on this computer (DASHBOARD_LIVE_SYNC=off).'); e.status = 400; e.code = 'LIVE_OFF'; throw e; }
     const patch = {};
@@ -235,6 +243,19 @@ export default function register(app) {
   app.route({ path: '/api/sync/changes', method: 'GET', quiet: true, handler: () => ({ entries: engine.changes(100) }) });
   app.route({ path: '/api/sync/conflicts', method: 'GET', quiet: true, handler: () => engine.conflicts({ max: 50 }) });
   post('/api/sync/conflicts/resolve', (b) => engine.resolveConflict(str(b.id, 40), b.keep === 'lost' ? 'lost' : b.keep === 'kept' ? 'kept' : ''));
+  // Several clashes in one request. One that fails does not stop the rest: the answer says what happened to each kind.
+  post('/api/sync/conflicts/resolve-many', async (b) => {
+    const ids = Array.isArray(b.ids) ? b.ids.filter((x) => typeof x === 'string').slice(0, 50) : [];
+    const keep = b.keep === 'lost' ? 'lost' : b.keep === 'kept' ? 'kept' : '';
+    let done = 0, stale = 0;
+    const failed = [];
+    let last = null;
+    for (const id of ids) {
+      try { last = await engine.resolveConflict(id.slice(0, 40), keep); if (last && last.stale) stale++; else done++; }
+      catch (e) { failed.push((e && e.message) || 'That one could not be changed.'); }
+    }
+    return { ...(last || engine.status()), ok: true, done, stale, failed };
+  });
   post('/api/sync/fix', async (b) => {
     const name = str(b.fix, 40) || '';
     const r = await health.fix(name, { folder: str(b.folder, 1000) });

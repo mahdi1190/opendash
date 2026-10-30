@@ -98,6 +98,15 @@ step through Settings > Sync. Until you move it, use OpenDash on one computer
 at a time: it pauses changes when another computer has the folder open (choose
 *Use here anyway* to go on).
 
+**How do I add another computer?**
+Install OpenDash there, open Settings > Sync and choose *No, join my other
+computer*. Your first computer shows a 4-letter code and a picture; type the
+letters on the new one, check both screens show the same picture, and press
+*Yes*. The code works once and for ten minutes. You can also print an optional
+10-word emergency backup sheet (Settings > Sync); you only need it if you ever
+lose every computer. Removing a computer in Settings > Sync stops it reading
+new data and locks it out of Friends.
+
 **I moved my data. Where did it go, and can I go back?**
 Settings > Data shows the new place and the name of the kept old folder (there
 is a `README` in it). **Undo move** puts everything back, including changes you
@@ -153,9 +162,12 @@ so it never handles an API key or password, and calls use the plan you already
 have.
 
 **Can the assistant change my data without asking?**
-No. It proposes changes; nothing happens until you press Apply, and every
-change can be undone. Text inside emails or calendar invitations cannot change
-your data on its own.
+It can do nearly everything you can do in the dashboard, and every change can
+be undone. Ordinary changes (tasks, people, tags) are proposed first and happen
+when you press Apply. Anything sensitive (friends, your computers, your relay,
+sign-ins, money rules, changes to existing expenses, updates) is only ever a
+proposal you approve on screen. Text inside emails or calendar invitations
+cannot change your data on its own.
 
 **Can OpenDash send email, change my calendar or move money?**
 No. Gmail, Calendar and bank connectors are only ever used with read tools,
@@ -163,7 +175,8 @@ and tools that could send, change or delete anything are locked.
 
 **What is the "OpenDash MCP"?**
 A way for your own Claude (Claude Code, T3 Code or Claude Desktop) to read and
-change your tasks from a chat. See [MCP.md](MCP.md).
+change nearly everything in the dashboard from a chat, with Undo. Sensitive
+things need a dry run or your approval. See [MCP.md](MCP.md).
 
 ## Using it
 

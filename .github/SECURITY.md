@@ -18,11 +18,14 @@ seriously and are always welcome.
 - **Your own relay.** It runs on your own Cloudflare account. Every request to
   it is signed, and only your devices and the people you approve can use it.
 - **Device-signed sync.** Each device signs its own records. Removing a device
-  rotates the sync key and makes a new recovery code.
+  rotates the sync key, locks it out of Friends and renews the secret behind the
+  optional emergency backup sheet.
 - **Signed updates** (Ed25519), downloaded only from this project's GitHub
   releases.
 - **A contained assistant.** No shell, no file tools, a fixed allow-list of
-  OpenDash tools, and changes proposed for you to apply.
+  OpenDash tools. It can do nearly everything in the dashboard, with Undo;
+  anything sensitive (friends, devices, relay, sign-ins, money, updates) only
+  as a proposal you approve on screen.
 - **Untrusted content is escaped**: emails, invitations, bank memos, invites
   and friends' data.
 
@@ -53,8 +56,8 @@ operating-system protection of local secrets). The main fixes:
 - removing a friend always revokes their relay access, retried until
   confirmed; an invite gives only limited access until you approve the friend;
   old friend messages can't be replayed;
-- sync records are signed by each device, and removing a device makes a new
-  recovery code;
+- sync records are signed by each device, and removing a device renews the
+  backup-sheet secret and locks that device out of Friends;
 - iCal feeds and bank memos can no longer stall the server.
 
 The reviewers also recorded what held up. Among the parts they checked and
@@ -226,9 +229,14 @@ safeguards below follow from that, and are enforced in the code (mainly
   profile is stopped (`POLICY`).
 - **Prompt injection.** Text from email, calendars, banks, notes and files is
   passed as data, with instructions never to follow it. The in-app assistant
-  uses OpenDash's own MCP server in **propose mode**: it can read and suggest
-  changes, but it cannot apply anything. You see a preview and apply it with a
-  click, and every change can be undone.
+  uses OpenDash's own MCP server in **propose mode**. Every tool sits in a
+  safety tier enforced in code: reading is free; low-risk changes with Undo
+  (garden, pet, profile, a short allow-list of settings, Home layout, a daily
+  note) run directly; everything sensitive (friends, devices, relay, sign-ins,
+  money rules, expenses, updates) never runs directly, only as a proposal you
+  approve on screen. Other changes (tasks, people, tags and so on) are
+  proposals too. Every change returns an undo token. Nothing a friend wrote
+  reaches the model. Details: [docs/MCP.md](../docs/MCP.md#safety-tiers).
 - **Connectors are MCP-based** (claude.ai connectors or MCP servers you added
   to Claude Code) and used **read-only**. Bank sync allows only the read-only
   bank tools and denies every other tool and connector. Calendar and Gmail jobs allow named
@@ -283,18 +291,23 @@ safeguards below follow from that, and are enforced in the code (mainly
   ciphers. All keys, nonces and codes come from `crypto.getRandomValues`.
 - **Sync.** Each record is encrypted with a key only your devices hold, bound
   to its group, device, file and position, and signed by the device that
-  wrote it. A new device gets the key only after you approve it (a 4-letter
-  join code or the same six digits on both screens). Removing a device
-  rotates the key, makes a new recovery code and offers to renew your Friends
-  keys; the removed device can't read new data or rewrite old records.
+  wrote it. A new device gets the key only through pairing: a 4-letter code
+  that is live for ten minutes, works once and allows three wrong tries, and
+  the same picture on both screens that you check before pressing Yes.
+  Removing a device rotates the key, renews the secret behind the emergency
+  backup sheet and locks the device out of Friends from the server, without
+  asking; the removed device can't read new data or rewrite old records. The
+  optional backup sheet (10 words) is only for the day every computer is lost;
+  an old sheet stops working once a computer is removed.
 - **The relay** (on your own Cloudflare account) stores and forwards sealed
   data. Every request is signed with Ed25519 over the host, method, path, time,
   a nonce and the body's hash; unsigned and unknown callers are refused before
   any stored state is touched. Only you, your devices and friends you approve
   can use it. It learns metadata (that devices exist, when they write and how
   much), never content.
-- **Friends.** Each friendship starts with a signed card and a 6-digit code
-  you both check, and you approve it. Messages are sealed per friend, and old
+- **Friends.** Each friendship starts with a signed card (an invite link, or
+  a 4-letter friend code that is live for ten minutes and works once). Both
+  screens then show the same three pictures to check, and you approve it. Messages are sealed per friend, and old
   ones can't be replayed. What you share is built on your computer from named
   fields only, default deny, per friend.
 
@@ -326,7 +339,9 @@ yours.
   and installs only the release GitHub names now: a planted file cannot make
   it install an older version.
 - **The in-app assistant and expenses.** The assistant on this computer may
-  file expenses and attach receipt files, as before. A receipt path must be a
+  file new expenses, attach receipt files and mark them submitted directly (with Undo); changing
+  existing ones (bulk paid, unsubmit, delete) is a sensitive proposal you
+  approve. A receipt path must be a
   file on a local disk: network (`\\host\share`, `//host`) and device
   (`\\?\`, `\\.\`) paths are refused, links are followed to their real
   target, and a preview never touches the disk.

@@ -60,9 +60,9 @@ function remoteMcpCard() {
     const from = [request.ip, request.country].filter(Boolean).join(', ');
     row.append(
       _connEl('p', null, `Connection request from "${request.clientName || 'Claude connector'}". It will send its sign-in back to ${request.redirectHost || request.redirectOrigin}${from ? ` (request came from ${from})` : ''}.`),
-      _connEl('p', null, 'Only approve if YOU just started this in Claude. Type the code shown in your own Claude sign-in tab:'),
+      _connEl('p', null, 'Only approve if YOU just started this in Claude. Type the 4 letters shown in your own Claude sign-in tab (3 tries):'),
       _connEl('p', null, 'Allows dashboard reads and proposals. Applied changes still require approval in OpenDash.'));
-    const input = _connEl('input', 'field'); input.placeholder = 'Code from your sign-in tab'; input.setAttribute('aria-label', 'Code from your Claude sign-in tab'); input.maxLength = 12; input.autocomplete = 'off'; input.spellcheck = false;
+    const input = _connEl('input', 'field conn-short-in'); input.placeholder = 'AB CD'; input.setAttribute('aria-label', 'The 4 letters from your Claude sign-in tab'); input.maxLength = 12; input.autocomplete = 'off'; input.spellcheck = false;
     input.dataset.remoteCode = request.id; input.value = _remoteMcpCodes[request.id] || ''; input.oninput = () => { _remoteMcpCodes[request.id] = input.value; };
     const approve = uiButton({ label: 'Approve', icon: 'check', kind: 'primary', size: 'sm', run: () => remoteMcpAction('approve', { id: request.id, code: input.value.trim() }) });
     approve.onclick = async () => { approve.disabled = true; const ok = await remoteMcpAction('approve', { id: request.id, code: input.value.trim() }); if (!ok) approve.disabled = false; };

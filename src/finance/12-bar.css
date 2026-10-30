@@ -193,3 +193,6 @@
 @container fvbody (max-width: 560px) {
   .fv-bar .fv-tabs { flex: 1 1 100%; padding-right: 0; border-right: 0; border-bottom: 1px solid var(--border-subtle); margin-bottom: var(--space-1); }
 }
+
+/* 2.21: the words in the date buttons are longer: when the left side wraps, Filters stays beside it instead of on a row of its own */
+@media (min-width: 761px) { .fv-bar-l { flex: 1 1 0; } }

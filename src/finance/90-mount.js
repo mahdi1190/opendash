@@ -9,6 +9,7 @@
     finally { R.noAnim = false; }
   }
   function teardown() {
+    mbReadStop();   // leaving Money: reading aloud stops with it
     disposeAll(); closePop(); closeDrawer();
     if (R.layer && R.layer.isConnected) R.layer.remove();
     R.drawerEl = null; R.scrim = null;
@@ -84,11 +85,15 @@
     sharedChanged: () => sharedChanged(),
     // For the app shell's sidebar and breadcrumb (14-shell.js / 15-nav-sidebar.js).
     sections: () => SECTIONS.map(([id, label]) => ({ id, label })),
-    groups: () => GROUPS.map(([id, label, icon, secs]) => ({ id, label, icon, sections: secs.slice() })),
+    groups: () => GROUPS.filter(g => g[3].length).map(([id, label, icon, secs]) => ({ id, label, icon, sections: secs.slice() })),   // (Expenses has its own sidebar row: 66-expenses-1page.js)
     section: () => F.section,
     // 2.19.5: the sidebar lists the five tabs too: the tab you are on, and a way to open one (the section last used in it).
     group: () => groupOf(F.section),
-    openGroup: (id) => { const g = GROUPS.find(x => x[0] === id); if (g) setSection((R.groupLast && R.groupLast[id]) || g[3][0]); },
+    openGroup: (id) => openGroup(id),
+    // 2.21: Money's tabs for the Expenses page, and a repaint when the number of expenses to claim changes.
+    groupTabs: (active) => groupTabsEl(active),
+    tabsFor: () => MONEY_TABS_FOR,
+    repaintTabs: () => paintGroupTabs(),
     sectionLabel: () => (SECTIONS.find(s => s[0] === F.section) || [])[1] || '',
     setSection: (id) => setSection(id),
     // Select a merchant (the bar's chip clears it): Home's Payday & safe to spend opens a bill in Recurring with it.

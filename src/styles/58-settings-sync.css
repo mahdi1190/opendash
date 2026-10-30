@@ -125,3 +125,13 @@
 .sync-job, .sync-fact { padding: var(--space-0-5) 0; }
 /* Check-up: the problems first, the rest folded */
 .sh-fold > summary { cursor: pointer; padding: var(--space-2) 0; color: var(--text-muted, inherit); }
+/* 2.20.1: big friendly steps, the matching picture, the emergency backup sheet */
+.sync-step { font-size: var(--text-sm, .85rem); font-weight: 600; color: var(--accent, inherit); text-transform: none; letter-spacing: .02em; }
+.sync-pic { display: inline-flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); border-radius: var(--radius-lg, 12px); background: var(--accent-soft, rgba(127,127,127,.1)); }
+.sync-pic-e { font-size: 3rem; line-height: 1; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.sync-pic-w { font-size: 1.4rem; font-weight: 600; }
+.sync-words { display: grid; grid-template-columns: repeat(2, minmax(8rem, 1fr)); gap: var(--space-1) var(--space-6, 2rem); margin: var(--space-1) 0; padding-left: 2.2em; font-size: 1.3rem; font-weight: 600; user-select: all; }
+.sync-words li::marker { color: var(--text-muted, inherit); font-weight: 400; font-size: 1rem; }
+.sync-words-print { font-size: 20pt; gap: 8pt 48pt; margin: 18pt 0; }
+.sync-words-input { flex: 1 1 18rem; min-width: 0; resize: vertical; font-size: 1rem; }
+.sync-sheet-offer { border-style: dashed; }

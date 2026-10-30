@@ -516,6 +516,12 @@ function liveSyncStart() {
   // A change written to Google Calendar from another tab or tool (44-calendar-write.js).
   _liveES.addEventListener('calendar', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (typeof calwOnRemote === 'function') calwOnRemote(d); });
   // Another tab told the server the computer's zone changed: read our own now (07-core-clock.js).
+  _liveES.addEventListener('config', (ev) => {
+    let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; }
+    if (!d || typeof d !== 'object') return;
+    for (const k of Object.keys(d)) { if (d[k] && typeof d[k] === 'object' && !Array.isArray(d[k])) APP_CONFIG[k] = Object.assign({}, APP_CONFIG[k] || {}, d[k]); else APP_CONFIG[k] = d[k]; }
+    if (typeof render === 'function') render();
+  });
   _liveES.addEventListener('time', () => { if (typeof Clock !== 'undefined') Clock.check(); });
   // A data file changed on disk behind the server's back (the assistant's MCP, a sync): the open page reads it again (section 5).
   _liveES.addEventListener('files', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && Array.isArray(d.rels)) liveFilesChanged(d.rels); });

@@ -375,11 +375,14 @@ function cloneTask(id) {
   toast('Task duplicated', { kind: 'ok', icon: 'copy' });
 }
 
+// Several tasks binned in one go must not share a stamp: it is how the bin finds an entry again.
+let _binLastStamp = 0;
+function _binStamp() { _binLastStamp = Math.max(Date.now(), _binLastStamp + 1); return _binLastStamp; }
 function deleteTask(id, opts) {
   const item = getItem(id); if (!item) return;
   const isCustom = id.startsWith('u-');
   state.bin.tasks.push({
-    binTs: Date.now(), kind: isCustom ? 'custom' : 'seed', id,
+    binTs: _binStamp(), kind: isCustom ? 'custom' : 'seed', id,
     title: effTitle(item), stream: effStream(item),
     customData: isCustom ? { ...state.custom.find(x => x.id === id) } : null,
     status: state.statuses[id] || 'todo',
@@ -397,7 +400,8 @@ function deleteTask(id, opts) {
   if (!(opts && opts.quiet)) toast('Moved to the bin', { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } });
 }
 function restoreTask(binTs, opts) {
-  const i = state.bin.tasks.findIndex(t => t.binTs === binTs); if (i < 0) return null;
+  // id: which one, for entries binned together before each got its own stamp
+  const i = state.bin.tasks.findIndex(t => t.binTs === binTs && (!opts || !opts.id || t.id === opts.id)); if (i < 0) return null;
   const t = state.bin.tasks[i];
   if (t.kind === 'custom') {
     let data = t.customData;
@@ -427,7 +431,7 @@ function restoreTask(binTs, opts) {
   return t.id;
 }
 function restoreNote(binTs, opts) {
-  const i = state.bin.notes.findIndex(n => n.binTs === binTs); if (i < 0) return null;
+  const i = state.bin.notes.findIndex(n => n.binTs === binTs && (!opts || !opts.id || (n.note && n.note.id) === opts.id)); if (i < 0) return null;
   const b = state.bin.notes[i];
   state.notes[b.taskId] = state.notes[b.taskId] || [];
   if (!state.notes[b.taskId].some(n => n.id === b.note.id)) state.notes[b.taskId].unshift(b.note);
@@ -446,10 +450,11 @@ function restoreAllFromBin() {
   return n;
 }
 /** Permanently delete one bin entry (task or note). */
-function purgeBinEntry(kind, binTs) {
+function purgeBinEntry(kind, binTs, opts) {
   const list = kind === 'note' ? state.bin.notes : state.bin.tasks;
-  const i = list.findIndex(x => x.binTs === binTs); if (i < 0) return;
+  const i = list.findIndex(x => x.binTs === binTs && (!opts || !opts.id || (kind === 'note' ? (x.note && x.note.id) : x.id) === opts.id)); if (i < 0) return;
   list.splice(i, 1);
+  if (opts && opts.noSave) return;
   saveData(); render();
 }
 function emptyBin() { state.bin = { tasks: [], notes: [] }; saveData(); render(); }

@@ -883,10 +883,14 @@ function masterDetail(o) {
   el.mdList = list; el.mdDetail = pane; el.mdSet = set;
   return el;
 }
-/** One row of a masterDetail list: {title, sub, icon | avatar (an element), badge, active, tip, run}. -> <button class="md-row"> */
+/**
+ * One row of a masterDetail list: {title, sub, icon | avatar (an element), badge, active, tip, run}. -> <button class="md-row">
+ * pickable: true makes it a <div> that acts as a button, because a checkbox (multiPick, 11-ui-pick.js) cannot sit in a <button>.
+ */
 function mdRow(o) {
   o = o || {};
-  const b = document.createElement('button'); b.type = 'button';
+  const b = document.createElement(o.pickable ? 'div' : 'button');
+  if (o.pickable) { b.tabIndex = 0; b.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === b) { e.preventDefault(); b.click(); } }); } else b.type = 'button';
   b.className = 'md-row' + (o.active ? ' on' : '') + _lyCls(o.cls);
   b.setAttribute('role', 'listitem');
   if (o.active) b.setAttribute('aria-current', 'true');
