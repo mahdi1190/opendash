@@ -1,6 +1,6 @@
 /* ============================================================
    GARDEN, what lies over the world (2.23). Owner, 30 Oct 2026: "the side buttons must go ... all of it happens inside the game ... the garden fills the
-   page: only overlays on top of the world". There is no page round the garden any more: the app's sidebar and top bar step aside (html.gd-immersive)
+   page: only overlays on top of the world". There is no page round the garden any more: the app's top bar steps aside and the sidebar stays (html.gd-immersive)
    and everything below floats on the stage (.gd-stagebox).
 
      HUD (top left)       level bar, coins, treats, water, casts, the season and the hour
@@ -71,7 +71,7 @@ function _ghMenu(box, m) {
   try { if (typeof gardenSocialBadge === 'function') badge.friends = gardenSocialBadge(); } catch (e) { /* later */ }
   badge.goals = gardenDailyTasks(m).filter(t => !t.done).length;
   const btn = ([id, label, ic]) => `<button type="button" class="gd-mbtn" data-menu="${id}" aria-label="${escAttr(label)}">${icon(ic)}<span>${esc(label)}</span>${badge[id] ? `<i class="gd-mbadge">${badge[id] > 99 ? '99+' : badge[id]}</i>` : ''}</button>`;
-  const html = `<button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Menu" aria-expanded="${_gh.menuOpen ? 'true' : 'false'}">${icon('menu')}</button><div class="gd-mlist">${_GH_MENU.map(btn).join('')}</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="Leave the garden" data-tip="Leave the garden">${icon('x')}</button>`;
+  const html = `<button type="button" class="gd-mbtn gd-mleave gd-mnav" data-menu="nav" aria-label="Show sidebar" title="Show sidebar">${icon('panel-left')}</button><button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Menu" aria-expanded="${_gh.menuOpen ? 'true' : 'false'}">${icon('menu')}</button><div class="gd-mlist">${_GH_MENU.map(btn).join('')}</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="Leave the garden" data-tip="Leave the garden">${icon('x')}</button>`;
   const el = _ghHost(box, 'gd-menu', 'nav');
   el.classList.toggle('is-open', !!_gh.menuOpen);
   if (_gh.menu === html && el.firstChild) return;
@@ -81,6 +81,7 @@ function _ghMenu(box, m) {
     el.addEventListener('click', (ev) => {
       const b = ev.target.closest('[data-menu]'); if (!b) return;
       const id = b.dataset.menu;
+      if (id === 'nav') { const t = document.getElementById('drawer-btn'); if (t) t.click(); return; }   // on a phone, or with the sidebar folded away
       if (id === 'more') { _gh.menuOpen = !_gh.menuOpen; _gh.menu = ''; _ghMenu(box, gardenModel()); return; }
       _gh.menuOpen = false; _gh.menu = '';
       if (id === 'leave') { setView('home'); return; }

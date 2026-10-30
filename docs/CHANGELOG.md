@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.24.1]
+
+### Fixed
+- The sidebar stays in the garden and in friends' gardens, so the rest of Life is one click away. If you have hidden it, or on a phone, a button at the top brings it back.
+- Crafted flower collars (daisy, rose, lavender) drew nothing and could not be worn.
+- Icons on the crafting bench stay inside their cards.
+
 ## [2.24.0]
 
 The garden, overhauled: a cosy game you play inside the world.

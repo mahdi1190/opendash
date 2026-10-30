@@ -470,8 +470,6 @@ html[data-motion="reduced"] .gd-float, html[data-motion="reduced"] .gd-pop i, ht
 .hgd-st .i { color: color-mix(in srgb, var(--sw-green) 70%, var(--fg)); }
 
 /* 2.18.1: a friend's garden uses the same full-screen stage and HUD (read-only tools) */
-html.gsv-immersive .app { grid-template-columns: 0 minmax(0, 1fr) !important; }
-html.gsv-immersive .app-sidebar { visibility: hidden; }
 html.gsv-immersive .topbar { display: none; }
 html.gsv-immersive #main { padding: 0; }
 html.gd-immersive .toast-host, html.gsv-immersive .toast-host { bottom: 96px; }
@@ -547,10 +545,8 @@ html.gd-immersive .anew-card, html.gsv-immersive .anew-card { display: none; }
 .gd-full .gd-deal { margin-bottom: var(--space-3); }
 
 /* ============================================================
-   2.23: the garden is the whole page. The app's sidebar and top bar step aside, and everything else is an overlay on the world.
+   2.23: the garden fills the page beside the app's sidebar (2.24.1: the sidebar stays, so the rest of Life is one click away). The top bar steps aside, and everything else is an overlay on the world.
    ============================================================ */
-html.gd-immersive .app { grid-template-columns: 0 minmax(0, 1fr) !important; }
-html.gd-immersive .app-sidebar { visibility: hidden; }
 html.gd-immersive .topbar { display: none; }
 html.gd-immersive #main { padding: 0; }
 .gd-full, .gd-full.gd-tab-garden > .gd-body { height: 100%; }
@@ -593,6 +589,9 @@ html.gd-immersive #main { padding: 0; }
 .gd-mbadge { position: absolute; top: 3px; right: 7px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 10px; font-style: normal; font-weight: 800; line-height: 16px; text-align: center; color: #3a2a00; background: var(--gh-gold); border-radius: 8px; }
 .gd-mleave, .gd-mmore { width: 40px; height: 40px; background: var(--gh-glass); border-radius: 12px; box-shadow: var(--gh-shadow); }
 .gd-mmore { display: none; }
+.gd-mnav { display: none; }
+.app.sidebar-collapsed .gd-mnav { display: flex; }
+@media (max-width: 900px) { .gd-mnav { display: flex; } }
 
 /* the hotbar */
 .gd-full .gd-toolbar.gd-hotbar { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 6; display: flex; flex-direction: row; align-items: center; gap: 5px; width: auto; max-width: calc(100% - 24px); padding: 6px; background: var(--gh-glass); border: 0; border-radius: 16px; box-shadow: var(--gh-shadow); }
