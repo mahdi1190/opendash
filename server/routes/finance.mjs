@@ -5,8 +5,10 @@
 //   POST /api/finance/update      {full?:true, bank?:false} -> 202 {job}; 409 if one is running
 //                                 (one source only: POST /api/fin-connect/sources/:id/sync)
 //                                 bank:false = no bank fetch, just import inbox/ and rebuild
-//   POST /api/finance/import      {name, data: base64 of a CSV export, force?} -> {ok, rows, imported, analysis}
+//   POST /api/finance/import      {name, data: base64 of a CSV export, force?, card?} -> {ok, rows, imported, analysis}
 //                                 (5 MB file limit; works with no connection at all)
+//                                 {needsCardCheck, preview}: it looks like a credit card and nothing is imported yet;
+//                                 send it again with card: {key, name, flip, flipped}, or false (lib/finance/cards.mjs)
 //                                 409 {code:'LOOKS_LIKE_DUPLICATE'}: the file's account is new but most of
 //                                 its rows match another account's (an export of a synced account);
 //                                 nothing imported - send again with force:true to import anyway
@@ -48,6 +50,7 @@ import { HttpError } from '../http.mjs';
 import { skippedBody } from '../../lib/main-computer.mjs';
 import { clockTodayIn, canonZone } from '../../lib/clock.mjs';
 import { financeDir } from '../../lib/finance.mjs';
+import { readCards } from '../../lib/finance/cards.mjs';
 import { MBM, briefFor, aiBrief, readBriefCache, writeBriefCache, briefCacheFile, DEFAULT_BRIEF_MODEL } from '../../lib/finance/brief.mjs';
 import { askJson, aiStatus } from '../../lib/ai.mjs';
 
@@ -106,6 +109,7 @@ export default function register(app) {
       }
     }
     // Accounts in the data that no source names: CSV imports (or a bank that was removed).
+    const fileCards = financeDir() ? (await readCards(financeDir())).cards : {};
     const csv = list.find(s => s.kind === 'csv');
     const aureli = list.find(s => s.preset === 'aureli');
     const tx = analysis && Array.isArray(analysis.transactions) ? analysis.transactions : [];
@@ -116,9 +120,10 @@ export default function register(app) {
       const isAureli = !generic && aureli && /^[A-Za-z0-9_-]{8,64}$/.test(k) && /[A-Za-z]/.test(k);
       const src = generic || (isAureli ? aureli : csv) || null;
       out.push({ ...(stats[k] || { transactionCount: 0, latestTransaction: null }), key: k, sourceId: src ? src.id : null, sourceLabel: src ? src.label : 'Imported', sourceColour: src ? src.colour : 'slate', provider: providerOf(src), kind: null,
-        // Account numbers are shortened; a readable label from a CSV is kept as it is.
-        name: /\d{5,}/.test(k) || (isAureli && !generic) ? 'Account …' + String(k).replace(/^.*\./, '').replace(/\s+/g, '').slice(-4) : String(k).replace(/^.*\./, '').slice(0, 30),
+        // A card from a file has its own name; account numbers are shortened; a readable label from a CSV is kept as it is.
+        name: fileCards[k] && fileCards[k].name ? fileCards[k].name : /\d{5,}/.test(k) || (isAureli && !generic) ? 'Account …' + String(k).replace(/^.*\./, '').replace(/\s+/g, '').slice(-4) : String(k).replace(/^.*\./, '').slice(0, 30),
         colour: null, enabled: true, lastSync: (src && src.lastSync) || null });
+      if (fileCards[k]) out[out.length - 1].kind = 'credit';
     }
     return out;
   }
@@ -274,7 +279,9 @@ export default function register(app) {
         const name = (v.host && v.host.name) || 'your other computer';
         return c.json(409, { code: 'FINANCE_ELSEWHERE', runsOn: name, error: `Your finances come from ${name}, so a CSV is imported there: open OpenDash on ${name} and import it in Finances. It shows here after that.` });
       }
-      const r = await importUpload({ name: body.name, data: body.data, force: body.force === true });
+      const card = body.card === false || (body.card && typeof body.card === 'object' && !Array.isArray(body.card)) ? body.card : undefined;
+      const r = await importUpload({ name: body.name, data: body.data, force: body.force === true, card });
+      if (r.needsCardCheck) { log('note', 'finance import: looks like a card file, asking first'); return r; }
       log('note', `finance import: ${r.rows} rows, ${r.imported} new`);
       return r;
     },
