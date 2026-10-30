@@ -271,8 +271,8 @@
         else toast(`Moved ${nf0.format(n)} transaction${n === 1 ? '' : 's'} from ${byM.size} place${byM.size === 1 ? '' : 's'} to ${category}`, { action: 'Undo', onAction: () => txBulkCategorise([], null, back) });
         return true;
       }
-      toast(r.status === 404 ? 'This OpenDash server can’t do that yet: restart it to pick up the new version.' : r.status === 409 ? 'An update is running. Try again when it finishes.' : (r.body && r.body.error) || 'HTTP ' + r.status, { bad: true });
-    } catch (e) { toast('Could not reach the OpenDash server', { bad: true }); }
+      toast(r.status === 404 ? 'This Freeflo server can’t do that yet: restart it to pick up the new version.' : r.status === 409 ? 'An update is running. Try again when it finishes.' : (r.body && r.body.error) || 'HTTP ' + r.status, { bad: true });
+    } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); }
     return false;
   }
 

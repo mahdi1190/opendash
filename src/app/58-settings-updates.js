@@ -26,7 +26,7 @@ function _upWhen(iso) {
 /** What the page says about the last check (pure: tested). */
 function upSummary(st) {
   if (!st) return { tone: 'idle', text: 'Reading…' };
-  if (st.available) return { tone: 'new', text: `OpenDash ${st.latest.version} is available (you have ${st.current}).` };
+  if (st.available) return { tone: 'new', text: `Freeflo ${st.latest.version} is available (you have ${st.current}).` };
   if (st.error) return { tone: 'err', text: st.error };
   if (st.upToDate) return { tone: 'ok', text: `You have the latest version (${st.current}).` };
   return { tone: 'idle', text: `You have ${st.current}. Not checked yet.` };
@@ -63,7 +63,7 @@ async function upInstall() {
   const st = _upStatus || await upLoad();
   if (!st || !st.available) { toast('No newer version yet. Check for updates first.', { kind: 'info' }); return false; }
   if (!st.canApply) { toast(st.reason || 'This copy cannot update itself.', { kind: 'err', timeout: 9000 }); return false; }
-  const how = 'OpenDash downloads it, checks it, keeps a copy of the old files and restarts. Your data stays as it is. About a minute.';
+  const how = 'Freeflo downloads it, checks it, keeps a copy of the old files and restarts. Your data stays as it is. About a minute.';
   // One decision with everything on it: what is new, what happens, and Not now.
   const ok = await _upAsk(st, how);
   if (!ok) return false;
@@ -84,7 +84,7 @@ function _upAsk(st, how) {
   return new Promise((resolve) => {
     let answered = false;
     openDialog({
-      title: `Update to OpenDash ${st.latest.version}?`, size: 'md', fixed: true, resizeKey: 'update-ask',
+      title: `Update to Freeflo ${st.latest.version}?`, size: 'md', fixed: true, resizeKey: 'update-ask',
       body: (el) => {
         const h = document.createElement('h3'); h.className = 'up-ask-h'; h.textContent = `What’s new in ${st.latest.version}`;
         const pre = document.createElement('pre'); pre.className = 'up-notes'; pre.tabIndex = 0; pre.textContent = _upNotesText(st.latest, 40);
@@ -105,7 +105,7 @@ async function upShowNotes() {
   const latest = st && st.latest;
   if (!latest || !latest.notes) { setView('settings:updates'); return; }
   openDialog({
-    title: `What’s new in OpenDash ${latest.version}`, size: 'md', fixed: true, resizeKey: 'update-notes',
+    title: `What’s new in Freeflo ${latest.version}`, size: 'md', fixed: true, resizeKey: 'update-notes',
     body: (el) => {
       const pre = document.createElement('pre'); pre.className = 'up-notes'; pre.tabIndex = 0; pre.textContent = _upNotesText(latest, 0);
       el.appendChild(pre);
@@ -117,13 +117,13 @@ async function upShowNotes() {
 
 function _upCard(el) {
   const st = _upStatus;
-  const card = _settingsCard('OpenDash version');
+  const card = _settingsCard('Freeflo version');
   if (_upError) card.body.appendChild(setStatusLine('warn', 'Needs you', _upError));
   else if (!st) card.body.appendChild(setStatusLine('idle', 'Checking', ''));
   else if (st.available) card.body.appendChild(setStatusLine('busy', 'Update available', `${st.latest.version} (you have ${st.current})`));
   else if (st.error) card.body.appendChild(setStatusLine('warn', 'Needs you', st.error));
-  else if (st.upToDate) card.body.appendChild(setStatusLine('ok', 'Up to date', `OpenDash ${st.current}`));
-  else card.body.appendChild(setStatusLine('idle', 'Not checked yet', `OpenDash ${st.current}`));
+  else if (st.upToDate) card.body.appendChild(setStatusLine('ok', 'Up to date', `Freeflo ${st.current}`));
+  else card.body.appendChild(setStatusLine('idle', 'Not checked yet', `Freeflo ${st.current}`));
   card.body.appendChild(_settingsRow('', 'Checking sends nothing about you.', null));
   if (st && st.available) setAction(card, st.canApply ? 'Update and restart' : `Update to ${st.latest.version}`, () => upInstall(), { icon: 'download', disabled: _upBusy || !st.canApply });
   else setAction(card, _upBusy ? 'Checking…' : 'Check for updates', () => upCheck(), { icon: 'refresh-cw', disabled: _upBusy });
@@ -151,7 +151,7 @@ function _upNotesCard(el) {
 function _upAutoCard(el) {
   const st = _upStatus;
   const card = _settingsCard('Automatic checks');
-  card.body.appendChild(_settingsRow('Check once a day', 'Asks GitHub once a day while OpenDash is open. It only tells you; it never installs.',
+  card.body.appendChild(_settingsRow('Check once a day', 'Asks GitHub once a day while Freeflo is open. It only tells you; it never installs.',
     _settingsSwitch(!!(st && st.auto), 'Check for updates once a day', async (v) => {
       try { _upStatus = await _upPost('/api/update/settings', { auto: v }); toast(v ? 'Will check once a day' : 'Automatic checks off', { kind: 'ok' }); }
       catch (e) { toastError('save that', e); }   // the switch shows the old state again: flip it to retry
@@ -163,9 +163,9 @@ function _upAutoCard(el) {
 
 registerSettingsGroup({
   id: 'updates', title: 'Updates', icon: 'download', order: 93,
-  description: 'Get the newest OpenDash.',
+  description: 'Get the newest Freeflo.',
   search: [
-    { label: 'OpenDash version', target: 'OpenDash version', description: 'Check for updates and install a newer release.', keywords: 'upgrade github update release install latest rollback' },
+    { label: 'Freeflo version', target: 'Freeflo version', description: 'Check for updates and install a newer release.', keywords: 'upgrade github update release install latest rollback' },
     { label: 'Check once a day', target: 'Check once a day', description: 'Choose whether to check for updates automatically.', keywords: 'automatic check daily' },
     { label: 'This copy', target: 'This copy', description: 'How this app copy was installed and updated.', keywords: 'zip git installed source' },
   ],
@@ -178,7 +178,7 @@ registerSettingsGroup({
 });
 
 registerCommand({ id: 'update-check', label: 'Check for updates', icon: 'download', keywords: 'update upgrade new version release check latest', run: () => { setView('settings:updates'); upCheck(); } });
-registerCommand({ id: 'update-install', label: 'Update OpenDash', icon: 'download', keywords: 'update upgrade install new version release', run: async () => { const st = await upCheck({ quiet: true }); if (st && st.available) upInstall(); else toast(upSummary(st).text, { kind: 'info' }); } });
+registerCommand({ id: 'update-install', label: 'Update Freeflo', icon: 'download', keywords: 'update upgrade install new version release', run: async () => { const st = await upCheck({ quiet: true }); if (st && st.available) upInstall(); else toast(upSummary(st).text, { kind: 'info' }); } });
 
 /* After an update reloads the page: say what happened. Once a day when the
    switch is on: look quietly and tell the user (it never installs by itself). */
@@ -188,7 +188,7 @@ if (typeof window !== 'undefined') window.addEventListener('load', () => {
     if (raw) {
       sessionStorage.removeItem('dashboard-updated');
       const u = JSON.parse(raw);
-      if (u && u.to) setTimeout(() => toast(`OpenDash updated to ${u.to}`, { kind: 'ok', timeout: 10000, action: { label: 'What’s new', run: () => upShowNotes() } }), 900);
+      if (u && u.to) setTimeout(() => toast(`Freeflo updated to ${u.to}`, { kind: 'ok', timeout: 10000, action: { label: 'What’s new', run: () => upShowNotes() } }), 900);
     }
   } catch (e) { /* fine */ }
   setTimeout(async () => {
@@ -197,7 +197,7 @@ if (typeof window !== 'undefined') window.addEventListener('load', () => {
       if (!upCheckDue(st, Date.now())) return;
       const fresh = await upCheck({ quiet: true });
       // One click from the toast: the update dialog (what's new, Update and restart, Not now).
-      if (fresh && fresh.available) toast(`OpenDash ${fresh.latest.version} is available`, { icon: 'download', timeout: 12000, action: { label: fresh.canApply ? 'See what’s new' : 'View', run: () => (fresh.canApply ? upInstall() : setView('settings:updates')) } });
+      if (fresh && fresh.available) toast(`Freeflo ${fresh.latest.version} is available`, { icon: 'download', timeout: 12000, action: { label: fresh.canApply ? 'See what’s new' : 'View', run: () => (fresh.canApply ? upInstall() : setView('settings:updates')) } });
     } catch (e) { /* offline or no server: nothing to say */ }
   }, 6000);
 }, { once: true });

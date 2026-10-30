@@ -1,6 +1,6 @@
-# Using OpenDash
+# Using Freeflo
 
-A tour of OpenDash, area by area. Everything here works without any
+A tour of Freeflo, area by area. Everything here works without any
 connection; features that need Claude or an account are marked
 **(needs Claude)** or **(needs a connection)** and stay visible but greyed
 out until you connect them in **Connections**.
@@ -38,7 +38,7 @@ the welcome screen.
   and links) wait under **More views**; Waiting, Email triage and Do now come
   up by themselves while they need you. *Customise sidebar* sets each one to
   Shown, In More or Hidden.
-- **Life** holds the fun side of OpenDash: **Friends**, **Garden**, **Pets**,
+- **Life** holds the fun side of Freeflo: **Friends**, **Garden**, **Pets**,
   **Achievements** (your level, streaks, quests and the achievements wall),
   **Memories** and **Places** (where you have been, and your trips), with a tab
   for each at the top of every Life page. Under **You** in its sidebar: your
@@ -125,7 +125,7 @@ draft): change anything, then press *Save*. Nothing is saved before that. The
 small **✓** beside it does the suggestion exactly as offered, at once, with
 *Undo*. Blocking time always makes a calendar event (and plans the task for
 that day); it never moves a deadline. Email is only ever saved as a **draft** in
-Gmail: OpenDash cannot send email or move money.
+Gmail: Freeflo cannot send email or move money.
 
 **Tune Focus** with *Tune* on the Focus widget: how many tasks it shows (3 to
 7), what it includes (overdue, pinned, in progress, planned for today, high
@@ -245,7 +245,7 @@ to add several tasks at once.
 - Click an event for its details: join link, attendees (linked to People),
   related tasks, your own notes and agenda, *Create task*.
 - The sidebar lists your calendars; switch each on or off, rename or recolour
-  it (in OpenDash only).
+  it (in Freeflo only).
 - Calendars that belong to other people start switched off once your email
   addresses are in Settings > Region & language. If you switch one on, it shows
   in the Calendar only: Home, the brief and the stories keep to your own day
@@ -322,7 +322,7 @@ rewrite gets totals and the next few bills only. See [PRIVACY.md](PRIVACY.md).
   work with: role, organisation, emails, notes, and the tasks linked to them,
   split into *you owe them* and *waiting on them*.
 - Tasks are linked to people explicitly, by a tag that names them, or by their
-  name in the title (OpenDash suggests the link).
+  name in the title (Freeflo suggests the link).
 - **Tags** say what kind of work a task is or which cross-stream project it
   belongs to. The tag manager renames, merges, pins and archives tags
   everywhere at once.
@@ -339,10 +339,10 @@ rewrite gets totals and the next few bills only. See [PRIVACY.md](PRIVACY.md).
 - Attach **folders, files, web links, GitHub repositories, pull requests and
   issues, Google Drive files and code snippets** to tasks, streams and people.
   Open, reveal, explore a folder, copy a path or link, or send it.
-- OpenDash only opens items you saved. Programs are never launched from it
+- Freeflo only opens items you saved. Programs are never launched from it
   (only revealed in your file manager).
 - **Auto-linking** (Settings > Files & auto-link): choose your workspace
-  folders, and OpenDash finds the folder, repository, meetings, emails, people
+  folders, and Freeflo finds the folder, repository, meetings, emails, people
   and related tasks each open task belongs to. Folders you mark "names only"
   are never opened. With Claude connected, an optional judge rates the
   suggestions; confident ones are attached for you (with Undo), the rest wait
@@ -375,7 +375,7 @@ weekly-review day.
   mood and a journal note. *Close the day* saves the recap.
 - The **weekly review** opens as a story the first time you visit it each week
   (or as the step-by-step page: Settings > Brief and stories > *Weekly review opens
-  as*), and OpenDash offers it from Friday afternoon. It shows the week's
+  as*), and Freeflo offers it from Friday afternoon. It shows the week's
   numbers and wins, progress by stream, the people of the week, what slipped
   and why, next week against your capacity and three outcomes to aim for, then
   hands over to the guided review. Saved reviews are in Review > History.
@@ -408,12 +408,12 @@ weekly-review day.
 
 For money you spend on someone else's behalf (your employer, a client, a friend) and want paid back. Find it under **Money > Expenses**; **Owed to you** on Home shows the total.
 
-- **Add one**: on a purchase in Money > Transactions press **Expense**, or press **Add an expense** on the page (for a card that is not connected), or **More > Make this an expense** on a task. Pick who pays you back; OpenDash remembers them.
+- **Add one**: on a purchase in Money > Transactions press **Expense**, or press **Add an expense** on the page (for a card that is not connected), or **More > Make this an expense** on a task. Pick who pays you back; Freeflo remembers them.
 - **Receipts**: drop a PDF or photo on the expense (or paste, or choose a file). If your email is connected, receipt emails that match the amount and date are suggested; one click links them. Nothing is sent anywhere.
 - **Claim**: select expenses and press **Submit**. Copy the summary or download the pack (a summary page, a spreadsheet and the receipts), send it yourself, then **Mark as submitted**. Every step has Undo.
-- **Expense report (PDF)**: tick the expenses and press **Make expense report**. OpenDash fills in an expense form (A4 landscape PDF: your name, the pay period, one row per expense in the right column, totals and advances) and zips the receipts, named to match the rows. Both go in a new folder in `Documents/Expense reports/`, which opens for you. The columns are chosen automatically; click a column name to change one. The expenses are marked as submitted, with one Undo.
+- **Expense report (PDF)**: tick the expenses and press **Make expense report**. Freeflo fills in an expense form (A4 landscape PDF: your name, the pay period, one row per expense in the right column, totals and advances) and zips the receipts, named to match the rows. Both go in a new folder in `Documents/Expense reports/`, which opens for you. The columns are chosen automatically; click a column name to change one. The expenses are marked as submitted, with one Undo.
 - **Your signature** (More > *Your signature…*): add a PNG or JPEG once and it goes on the Claimant line of the report. It stays in your data folder and is never shared.
-- **Paid back**: when money arrives from the payer that equals a claim (or several together), it is marked **Paid** with an Undo. If OpenDash is not sure it asks one question (Yes / No) and never guesses. Payers' bank text and claim deadlines are in **More > Payers and deadlines**.
+- **Paid back**: when money arrives from the payer that equals a claim (or several together), it is marked **Paid** with an Undo. If Freeflo is not sure it asks one question (Yes / No) and never guesses. Payers' bank text and claim deadlines are in **More > Payers and deadlines**.
 - **Tasks**: each expense gets "Submit expense" and "Check <payer> paid" tasks (switch off in **More**). Finishing the first offers to mark the expense submitted; marking it paid finishes the second.
 - **Claude**: ask it to file an expense from a pasted order. It asks you who the payer is when unsure.
 - **Private**: expenses and receipts sync only between your own computers with encrypted sync, and are never shared with friends.
@@ -442,7 +442,7 @@ Acme to next Monday", "Add a task to email Sam on Thursday, high priority".
 
 ## Life: garden, pets, achievements, memories, places and your profile
 
-**Life** is the fifth area, for the fun side of OpenDash. Each part is a tab
+**Life** is the fifth area, for the fun side of Freeflo. Each part is a tab
 at the top of every Life page; G then L opens it.
 
 | Page | What it is |
@@ -461,7 +461,7 @@ at the top of every Life page; G then L opens it.
 
 ## Friends
 
-Add people who also use OpenDash: cheer each other on, compare levels and
+Add people who also use Freeflo: cheer each other on, compare levels and
 streaks, and do things together. Friends is the first tab in **Life** (or
 click your avatar in the sidebar's top-left corner, then **Open Friends**);
 until you have a friend, a short welcome walks
@@ -497,7 +497,7 @@ Press **Ctrl+K** (Cmd+K on a Mac), or click the search box at the top, to open
 the **command palette**. Type a few letters to:
 
 - jump to any page or view (*Money*, *Garden*, *Waiting*...);
-- run a command (*Start my day*, *Check for updates*, *Restart OpenDash*,
+- run a command (*Start my day*, *Check for updates*, *Restart Freeflo*,
   *Stop sharing everything*, *Friends: getting started*...);
 - find a task, person, file or link;
 - find any setting: results say where the option lives and open it, even
@@ -525,7 +525,7 @@ Open **Settings** from the sidebar footer (or Ctrl+K, "settings").
 | AI | which Claude models to use for quick jobs, the assistant and the money brief |
 | Brief and stories, Animations | brief and story options, voices, scenes |
 | Game | the fun level and sounds |
-| Notifications | a morning summary and reminders before events, while OpenDash is open in a tab |
+| Notifications | a morning summary and reminders before events, while Freeflo is open in a tab |
 | Data | the data folder, backups and restore, export and import, the daily encrypted copy, moving your data, a clean copy of the app, reset |
 | Sync | your other computers, how changes travel, the main computer, adding a computer with a 4-letter code, the optional 10-word backup sheet ([PRIVACY.md](PRIVACY.md#level-2-your-own-devices)) |
 | Your relay | your private relay on Cloudflare for Friends and sync: Set up my relay, who can use it, invites, today's free allowance, Update my relay and Stop using this relay (under Advanced) ([FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#your-relay)) |
@@ -541,20 +541,20 @@ Open **Settings** from the sidebar footer (or Ctrl+K, "settings").
 
 ## The server
 
-OpenDash's page talks to a small local server. **Settings > Server** shows it
+Freeflo's page talks to a small local server. **Settings > Server** shows it
 and lets you **restart** it, **rebuild & restart** it after an update, read its
 **log**, or **stop** it.
 
 When the server is not running, the page says so in a banner with **Start
 server** and **Retry**, keeps your edits in the browser and saves them when the
 server is back. On Windows, the optional *Enable the Start server button*
-switch lets that banner start OpenDash for you, and *Start automatically when
+switch lets that banner start Freeflo for you, and *Start automatically when
 I log in* starts it with no window when you log in (both are off by default,
 for your account only). On macOS and Linux the same page shows how to start
 it at login yourself. **Add a desktop shortcut** (and, on Windows, **Add to
-Start menu**) makes an OpenDash icon that starts it with no window if needed
+Start menu**) makes a Freeflo icon that starts it with no window if needed
 and opens it. With the Windows installer, the Start menu also has **Stop
-OpenDash**.
+Freeflo**.
 
 ![Settings > Server](screenshots/settings-server-light.png)
 

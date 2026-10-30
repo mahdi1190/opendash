@@ -8,7 +8,7 @@
   async function ydPost(path, body, signal) {
     const r = await fetch('/api/finance/data' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}), cache: 'no-store', signal });
     let j = null; try { j = await r.json(); } catch (e) { j = null; }
-    if (!r.ok) { const e = new Error((j && j.error) || 'OpenDash did not answer properly'); e.code = j && j.code; throw e; }
+    if (!r.ok) { const e = new Error((j && j.error) || 'Freeflo did not answer properly'); e.code = j && j.code; throw e; }
     return j || {};
   }
   function ydTakeDraft(doc) {
@@ -32,12 +32,12 @@
     if (!quiet) ydPaint();
     try {
       const r = await fetch('/api/finance/data', { cache: 'no-store' });
-      if (!r.ok) throw new Error(r.status === 404 ? 'Restart OpenDash to use this page' : 'OpenDash did not answer properly');
+      if (!r.ok) throw new Error(r.status === 404 ? 'Restart Freeflo to use this page' : 'Freeflo did not answer properly');
       const doc = await r.json();
       const keep = YD.doc && ydDirty() > 0;
       YD.doc = doc; YD.err = null;
       if (!keep || !YD.off) ydTakeDraft(doc);
-    } catch (e) { YD.err = (e && e.message) || 'OpenDash is not answering'; }
+    } catch (e) { YD.err = (e && e.message) || 'Freeflo is not answering'; }
     YD.loading = false;
     ydPaint();
   }
@@ -65,10 +65,10 @@
     const conn = (label) => h('button', { type: 'button', class: 'fv-link', text: label, onclick: () => { if (window.Connections && Connections.open) Connections.open('money'); else setView('connections'); } });
     if (s.kind === 'reconnect') return [s.message || 'Your bank asks you to sign in again every so often.', ' ', conn('Reconnect')];
     if (s.kind !== 'stopped') return null;
-    if (s.reason === 'unticked') return ['You unticked this, so OpenDash no longer asks the bank for it. Tick it to start again.'];
+    if (s.reason === 'unticked') return ['You unticked this, so Freeflo no longer asks the bank for it. Tick it to start again.'];
     if (s.reason === 'sourceoff') return ['It is switched off. ', conn('Turn it on in Connections')];
     if (s.reason === 'gone') return ['It is not connected any more. ', conn('Connect it again'), ' if you still use it, or leave it as history.'];
-    return [s.message ? s.message + ' ' : 'OpenDash has not heard from this bank for a while. ', h('button', { type: 'button', class: 'fv-link', text: 'Update bank', onclick: () => startUpdate({}) })];
+    return [s.message ? s.message + ' ' : 'Freeflo has not heard from this bank for a while. ', h('button', { type: 'button', class: 'fv-link', text: 'Update bank', onclick: () => startUpdate({}) })];
   }
   const ydOrigin = (r) => {
     if (r.origin === 'connected') return `Connected to ${r.bank === 'Other banks' ? (r.sourceLabel || 'your bank') : r.bank}`;
@@ -295,7 +295,7 @@
   function ydGone(d) {
     if (!(d.gone || []).length) return null;
     return h('div', { class: 'yd-gone' }, h('h3', { text: 'Deleted, and staying deleted' }),
-      d.gone.map(g => h('p', {}, h('span', { text: `${g.name}${g.bank ? ' (' + g.bank + ')' : ''}: ${g.disconnected ? 'disconnected too.' : 'OpenDash ignores it, even if the bank still sends it.'} ` }),
+      d.gone.map(g => h('p', {}, h('span', { text: `${g.name}${g.bank ? ' (' + g.bank + ')' : ''}: ${g.disconnected ? 'disconnected too.' : 'Freeflo ignores it, even if the bank still sends it.'} ` }),
         d.remote ? null : h('button', { type: 'button', class: 'fv-link', text: 'Bring it back', onclick: (e) => ydRestore({ key: g.key }, e.currentTarget) }))));
   }
 
@@ -323,7 +323,7 @@
       onClose: () => { gone = true; if (ac) ac.abort(); },
       body: (el, close) => { box = h('div', { class: 'yd-review' }); foot = h('div', { class: 'modal-f' }); el.append(box, foot); closeIt = close; },
     });
-    const fail = (e) => lay([h('p', { class: 'yd-err', text: `That didn’t work: ${(e && e.message) || 'OpenDash is not answering'}. Nothing has changed.` })],
+    const fail = (e) => lay([h('p', { class: 'yd-err', text: `That didn’t work: ${(e && e.message) || 'Freeflo is not answering'}. Nothing has changed.` })],
       [h('button', { type: 'button', class: 'btn btn-secondary', text: 'Close', onclick: () => closeIt() }), h('button', { type: 'button', class: 'btn btn-primary', text: 'Try again', onclick: () => { closeIt(); ydReview(label); } })]);
     wait('Working out the difference…', () => closeIt());
     ydPost('/preview', choice, ac ? ac.signal : undefined).then((p) => {
@@ -446,7 +446,7 @@
 
   // ── Delete for good ───────────────────────────────────────────────────
   function ydDelete(r) {
-    if (YD.doc && YD.doc.remote) { toast(`Your payments are kept on ${YD.doc.remote.name}. Open OpenDash there to delete them.`, {}); return; }
+    if (YD.doc && YD.doc.remote) { toast(`Your payments are kept on ${YD.doc.remote.name}. Open Freeflo there to delete them.`, {}); return; }
     let disc = null;
     openDialog({
       title: `Delete ${r.name} for good?`, size: 'sm', className: 'yd-dialog',
@@ -466,7 +466,7 @@
         } });
         const box = h('div');
         el.append(
-          h('p', { text: 'This removes it from OpenDash. Unticking is usually enough, because that keeps it safe in case you want it back.' }),
+          h('p', { text: 'This removes it from Freeflo. Unticking is usually enough, because that keeps it safe in case you want it back.' }),
           h('h4', { class: 'yd-h4', text: 'What goes' }),
           h('ul', { class: 'yd-moves' },
             h('li', { text: ydRange(r) + '.' }),
@@ -476,7 +476,7 @@
           h('p', { text: 'Your rules, categories, budgets and everything from your other banks. A safety copy is saved first and kept for 30 days, then it goes too.' }),
           r.count ? h('p', {}, h('button', { type: 'button', class: 'fv-link', onclick: () => ydDownload(r) }, ic('download'), ' Download its payments first')) : null,
           r.origin === 'connected' ? h('label', { class: 'yd-tick yd-disc' }, (disc = h('input', { type: 'checkbox', class: 'yd-check' })), h('span', { text: `Disconnect ${r.bank === 'Other banks' ? 'this bank' : r.bank} too, so it stops updating` })) : null,
-          r.origin === 'connected' ? h('p', { class: 'yd-small', text: 'Either way it won’t come back by itself: OpenDash ignores it until you bring it back here or connect it again.' }) : null,
+          r.origin === 'connected' ? h('p', { class: 'yd-small', text: 'Either way it won’t come back by itself: Freeflo ignores it until you bring it back here or connect it again.' }) : null,
           box,
           h('div', { class: 'modal-f' }, h('button', { type: 'button', class: 'btn btn-secondary', text: 'Keep it', onclick: () => close() }), del));
         if (disc) disc.checked = true;

@@ -289,7 +289,7 @@ async function tgBookInMyCalendar(spaceId, cardId, manual) {
   if (!manual && _tgPlan.failed[key] && Date.now() - _tgPlan.failed[key] < 10 * 60000) return;
   const note = (text) => { const was = _tgPlan.calNote[key]; _tgPlan.calNote[key] = text; _tgPlan.failed[key] = Date.now(); if (was !== text || manual) render(); };
   const CW = typeof CalWrite !== 'undefined' && CalWrite && typeof CalWrite.create === 'function' ? CalWrite : null;
-  if (!CW) { note('This OpenDash cannot add events to a calendar.'); return; }
+  if (!CW) { note('This Freeflo cannot add events to a calendar.'); return; }
   const store = typeof CalStore !== 'undefined' ? CalStore : null;
   if (store && !store.data && typeof store.load === 'function') {
     if (!_tgPlan.calLoading) { _tgPlan.calLoading = true; Promise.resolve().then(() => store.load()).catch(() => {}).finally(() => { _tgPlan.calLoading = false; if (!store.data) { note('Your calendar has not loaded yet: open Calendar once, then try again from this card.'); return; } _tgPlan.tickAt = 0; if (manual) tgBookInMyCalendar(spaceId, cardId, true); }); }
@@ -306,7 +306,7 @@ async function tgBookInMyCalendar(spaceId, cardId, manual) {
   render();
   const title = _tgEventTitle(spaceId, c);
   let r = null;
-  try { r = await CW.create({ title, start: c.start, end: c.end, description: 'Planned together with friends in OpenDash.' }, { silent: true, quiet: true }); } catch (e) { r = { ok: false, message: String((e && e.message) || e) }; }
+  try { r = await CW.create({ title, start: c.start, end: c.end, description: 'Planned together with friends in Freeflo.' }, { silent: true, quiet: true }); } catch (e) { r = { ok: false, message: String((e && e.message) || e) }; }
   _tgPlan.booking[key] = false;
   if (r && r.ok) {
     tgMarkSeen(key);

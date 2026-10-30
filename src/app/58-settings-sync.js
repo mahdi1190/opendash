@@ -120,7 +120,7 @@ function syncLiveLines(st, pres) {
     if (p.reason === 'trying') { out.push({ tone: 'idle', text: `${n}: connecting…`, peer: p.id, act: 'hold' }); continue; }
     if (p.reason === 'held') { out.push({ tone: 'idle', text: `${n}: direct paused`, peer: p.id, act: 'retry' }); continue; }
     if (away && p.reason !== 'new-key') { out.push({ tone: 'idle', text: `${n}: ${q && q.base === 'off' ? 'off' : 'asleep'}${q && q.ago != null ? ', seen ' + syncAgo(Date.now() - q.ago, Date.now()) : ''}` }); continue; }
-    if (p.reason === 'no-address') out.push({ tone: 'idle', text: `${n}: no direct address yet (is OpenDash up to date on it?)`, peer: p.id, act: 'retry' });
+    if (p.reason === 'no-address') out.push({ tone: 'idle', text: `${n}: no direct address yet (is Freeflo up to date on it?)`, peer: p.id, act: 'retry' });
     else if (p.reason === 'new-key') out.push({ tone: 'idle', text: `${n}: catching up with a change` });
     else if (p.reason === 'firewall') out.push({ tone: relay ? 'idle' : 'warn', text: 'Windows Firewall blocks direct connections on this Wi-Fi', peer: p.id, act: 'firewall' });
     else if (p.reason === 'lan-blocked') out.push({ tone: 'idle', text: `${n}: this Wi-Fi keeps computers apart; ${via}`, peer: p.id, act: 'retry' });
@@ -204,7 +204,7 @@ function syncComputerRows(st, pres, nowMs, main) {
     if (row.kind === 'phone') Object.assign(row, { chip: '', tone: 'idle', detail: seen });
     else if (c) Object.assign(row, { chip: c.pct == null ? 'Catching up' : 'Catching up ' + c.pct + '%', tone: 'busy', detail: reachable ? path : seen, pct: c.pct });
     else if (q && q.checking && !live) Object.assign(row, { chip: 'Checking…', tone: 'idle', detail: '' });
-    else if (old && ver && reachable) Object.assign(row, { chip: 'Needs an update', tone: 'warn', detail: 'On OpenDash ' + ver + ': update it there' });
+    else if (old && ver && reachable) Object.assign(row, { chip: 'Needs an update', tone: 'warn', detail: 'On Freeflo ' + ver + ': update it there' });
     else if (reachable && q && q.behind > 0) Object.assign(row, { chip: q.pct != null ? 'Catching up ' + q.pct + '%' : 'Catching up', tone: 'busy', detail: q.pct != null ? path : q.behind + ' change' + (q.behind === 1 ? '' : 's') + ' to go', pct: q.pct != null ? q.pct : null });
     else if (reachable) Object.assign(row, { chip: 'Up to date', tone: 'ok', detail: path });
     else Object.assign(row, { chip: base === 'off' ? 'Off' : 'Asleep', tone: 'idle', detail: seen, away: true });
@@ -370,8 +370,8 @@ function syncRelayView(st) {
   if (R.missing === 'scope') return { title: name, tone: 'idle', text: "It belongs to a friend, who gave you messages only, so it does not carry your sync. Ask them for an invite that includes device sync, or sync through your folder as now.", act: null };
   // A friend's relay that allows device sync is used for it only once chosen in Settings > Your relay (never by itself).
   if (R.missing === 'choose') return { title: "A friend's relay" + (host ? ' ' + host : ''), tone: 'idle', text: "Its owner lets you sync your devices through it, but you haven't chosen that yet, so sync goes through your folder as now. To use it, open Your relay and click Use it for sync.", act: 'relay' };
-  if (R.missing === 'key') return { title: name + " isn't used on this computer yet", tone: 'warn', text: 'Waiting for ' + other + ' to share the key to it: open OpenDash there (on the same network it takes a second). Or paste a join link from it (Advanced, below).', act: 'check' };
-  if (R.missing === 'record') return { title: name + " isn't used on this computer yet", tone: 'warn', text: 'Its details are on their way from ' + other + ': open OpenDash there, or click Try again.', act: 'check' };
+  if (R.missing === 'key') return { title: name + " isn't used on this computer yet", tone: 'warn', text: 'Waiting for ' + other + ' to share the key to it: open Freeflo there (on the same network it takes a second). Or paste a join link from it (Advanced, below).', act: 'check' };
+  if (R.missing === 'record') return { title: name + " isn't used on this computer yet", tone: 'warn', text: 'Its details are on their way from ' + other + ': open Freeflo there, or click Try again.', act: 'check' };
   if (P || (R.available && R.usable && R.source !== 'link')) {
     const cloud = st && st.folder ? (st.cloud || 'your folder') : 'your folder';
     return { title: name + " isn't used on this computer yet", tone: 'idle', text: (R.off ? 'You turned it off on this computer. ' : '') + 'It carries your changes locked, within a second, without ' + cloud + ' having to be running; ' + cloud + ' keeps a backup copy.', act: R.available && R.usable ? 'use' : 'check' };
@@ -385,7 +385,7 @@ function syncRelayView(st) {
  */
 function syncNoRelayLine(st) {
   const R = (st && st.relay) || {};
-  if (R.private) return "Your relay's address" + (R.privateHost ? ' (' + R.privateHost + ')' : '') + ' points inside this network, so OpenDash does not use it here. Check the address in Settings > Your relay, then click Try again.';
+  if (R.private) return "Your relay's address" + (R.privateHost ? ' (' + R.privateHost + ')' : '') + ' points inside this network, so Freeflo does not use it here. Check the address in Settings > Your relay, then click Try again.';
   if (R.person || (R.hasKey && !R.available)) return 'Your relay' + (R.person && R.person.host ? ' ' + R.person.host : '') + ' is set up on your other computer but has not reached this one yet. It arrives by itself when your computers next sync; Try again looks now.';
   return 'Tip: set up your relay (free) to sync anywhere within a second.';
 }
@@ -418,7 +418,7 @@ function syncJoinCodeView(j) {
   // 2.20.1: big friendly steps, the code as "KQ MX", the matching picture, and what to do next in plain words.
   if (j.role === 'offer') {
     switch (j.step) {
-      case 'waiting': return { step: 'Step 1 of 2', title: 'Type this on your new computer', code: syncFormatShort(j.code), countdown: true, text: 'On the new computer, open OpenDash, go to Settings > Sync, choose "No, join my other computer" and type these 4 letters. The code works once.' + (j.wrong ? ' ' + j.wrong + (j.wrong === 1 ? ' wrong try' : ' wrong tries') + ' so far; after 3 you need a new code.' : ''), actions: [['new', 'New code'], ['cancel', 'Cancel']] };
+      case 'waiting': return { step: 'Step 1 of 2', title: 'Type this on your new computer', code: syncFormatShort(j.code), countdown: true, text: 'On the new computer, open Freeflo, go to Settings > Sync, choose "No, join my other computer" and type these 4 letters. The code works once.' + (j.wrong ? ' ' + j.wrong + (j.wrong === 1 ? ' wrong try' : ' wrong tries') + ' so far; after 3 you need a new code.' : ''), actions: [['new', 'New code'], ['cancel', 'Cancel']] };
       case 'approve': return j.member
         ? { step: 'Step 2 of 2', title: 'Let ' + other + ' use fast sync too?', pic: j.pic, text: j.pic ? 'It already syncs with this computer. Say yes only if it shows the same picture:' : 'It already syncs with this computer.', actions: [['approve', 'Yes', true], ['decline', 'No']] }
         : { step: 'Step 2 of 2', title: 'Is ' + other + ' your new computer?', pic: j.pic, text: j.pic ? 'Say yes only if it shows this same picture:' : "Say yes only if you're adding it right now.", actions: [['approve', 'Yes, add it', true], ['decline', 'No, not mine']] };
@@ -433,7 +433,7 @@ function syncJoinCodeView(j) {
   }
   // j.member: this computer already syncs and asked for fast sync only (2.17.1: a pasted join link under Advanced)
   switch (j.step) {
-    case 'looking': return { step: 'Step 2 of 2', title: j.member ? 'Asking your other computer' : 'Looking for your other computer', countdown: true, text: 'Usually a few seconds. Keep OpenDash open on both computers.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
+    case 'looking': return { step: 'Step 2 of 2', title: j.member ? 'Asking your other computer' : 'Looking for your other computer', countdown: true, text: 'Usually a few seconds. Keep Freeflo open on both computers.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
     case 'sent': return { step: 'Step 2 of 2', title: 'Now press Yes on your other computer', pic: j.pic, countdown: true, text: j.pic ? 'It asks if this is your new computer and shows this same picture:' : 'It asks if this is your new computer.', actions: [['retry', 'Try again'], ['cancel', 'Cancel']] };
     case 'declined': return { title: 'Not added', text: 'Your other computer said no. To try again, make a new code there (Settings > Sync > Add a computer).', actions: [['close', 'Close']] };
     case 'done': return { title: 'Done', text: j.member ? 'This computer uses fast sync in a moment.' : 'This computer is joined. It now stays the same as your other one.', actions: j.member ? [['close', 'OK', true]] : [] };
@@ -597,11 +597,11 @@ function _syncWordsEl(words, cls) {
 /** Print the emergency backup sheet (the words, big, with how to use them). */
 function _syncPrintSheet(words) {
   const sheet = _syncEl('div', 'sync-print-sheet');
-  sheet.appendChild(_syncEl('h1', null, 'OpenDash emergency backup sheet'));
-  sheet.appendChild(_syncEl('p', null, 'Keep this at home, somewhere safe. You only need it if you lose every computer that has OpenDash.'));
+  sheet.appendChild(_syncEl('h1', null, 'Freeflo emergency backup sheet'));
+  sheet.appendChild(_syncEl('p', null, 'Keep this at home, somewhere safe. You only need it if you lose every computer that has Freeflo.'));
   if (/^[a-z]+( [a-z]+){5,}$/.test(String(words || ''))) sheet.appendChild(_syncWordsEl(words, 'sync-words sync-words-print'));
   else for (const l of syncCodeLines(words)) sheet.appendChild(_syncEl('p', 'sync-code-v', l));
-  sheet.appendChild(_syncEl('p', null, 'To use it: put OpenDash on a computer, open Settings > Sync, choose "No, join my other computer", then "Lost all your computers?", and type these words.'));
+  sheet.appendChild(_syncEl('p', null, 'To use it: put Freeflo on a computer, open Settings > Sync, choose "No, join my other computer", then "Lost all your computers?", and type these words.'));
   sheet.appendChild(_syncEl('p', null, 'Anyone with these words and your cloud folder can read your synced data, so keep it private. Made ' + new Date().toLocaleDateString() + '.'));
   document.body.appendChild(sheet); document.body.classList.add('sync-printing');
   const done = () => { document.body.classList.remove('sync-printing'); sheet.remove(); window.removeEventListener('afterprint', done); };
@@ -762,7 +762,7 @@ function _syncJoinInput(card) {
   const go = () => { const v = input.value.trim(); if (v) { _syncLastJoinCode = v; _syncPost('/api/sync/code/join', { code: v }); } else input.focus(); };
   input.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); go(); } };
   wrap.append(input, _syncBtn('Join', go, true));
-  card.body.appendChild(_settingsRow('Type the 4 letters from your other computer', 'On your other computer, open OpenDash, go to Settings > Sync and press Add a computer. It shows 4 letters.', wrap));
+  card.body.appendChild(_settingsRow('Type the 4 letters from your other computer', 'On your other computer, open Freeflo, go to Settings > Sync and press Add a computer. It shows 4 letters.', wrap));
 }
 /** A folded "Other ways" box; fill(box) adds rows to box.body like a card. */
 function _syncOtherWays(card, fill) {
@@ -786,7 +786,7 @@ function _syncRecoveryRow(card, title, hint) {
   card.body.appendChild(_settingsRow(title, hint, wrap));
 }
 const SYNC_LOST_ALL = 'Lost all your other computers?';
-const SYNC_LOST_HINT = 'Only if no other computer has OpenDash any more: type the 10 words from your emergency backup sheet.';
+const SYNC_LOST_HINT = 'Only if no other computer has Freeflo any more: type the 10 words from your emergency backup sheet.';
 
 function _syncStart(card, st) {
   const e2e = (st && st.e2e) || {};
@@ -800,7 +800,7 @@ function _syncStart(card, st) {
     _syncBtn("Yes, it's my first", () => { _syncFlow = 'first'; _syncRefresh(); }, true),
     _syncBtn('No, join my other computer', () => { _syncFlow = 'join'; _syncRefresh(); }),
   );
-  card.body.appendChild(_settingsRow('Is this your first computer with OpenDash?', '', q));
+  card.body.appendChild(_settingsRow('Is this your first computer with Freeflo?', '', q));
   card.body.appendChild(_syncEl('p', 'set-h sync-what', syncWhatSyncs()));
   // 2.20.1: no relay tip on this first screen (jargon for someone just starting); Advanced has it.
 }
@@ -870,7 +870,7 @@ function _syncJoining(card, st) {
   if (st.relay && st.relay.on && !st.folder) _syncLinkJoin(card); else _syncJoinInput(card);
   _syncOtherWays(card, (box) => {
     _syncRecoveryRow(box, SYNC_LOST_ALL, SYNC_LOST_HINT);
-    box.body.appendChild(_settingsRow('Your other computer has an older OpenDash?', 'It can approve this one with 6 numbers instead.', _syncBtn('Ask it to approve', () => _syncPost('/api/sync/pair/start'))));
+    box.body.appendChild(_settingsRow('Your other computer has an older Freeflo?', 'It can approve this one with 6 numbers instead.', _syncBtn('Ask it to approve', () => _syncPost('/api/sync/pair/start'))));
   });
   stop();
 }
@@ -1091,7 +1091,7 @@ function _syncMore(box, st) {
 function _syncAddPanel(box) {
   const p = _syncEl('div', 'sync-add');
   if (_syncOffer && _syncOffer.expiresAt > Date.now()) {
-    p.appendChild(_syncEl('p', 'set-h', 'Scan it in OpenDash on the phone. Works once, for 10 minutes.'));
+    p.appendChild(_syncEl('p', 'set-h', 'Scan it in Freeflo on the phone. Works once, for 10 minutes.'));
     try { const q = _syncEl('div', 'sync-qr'); q.appendChild(syncQrSvg(_syncOffer.text, 220)); p.appendChild(q); }
     catch (e) { p.appendChild(_syncEl('p', 'sync-status sync-err', 'The code could not be drawn.')); }
   } else p.appendChild(_syncBtn('Show a QR code', () => _syncPost('/api/sync/offer')));
@@ -1119,7 +1119,7 @@ function _syncWays(box, st) {
         : v.act === 'relay' ? _syncBtn('Open Your relay', () => setView('settings:relay')) : _syncBtn('Your relay', () => setView('settings:relay'));
     box.body.appendChild(_settingsRow('Your relay', v.act === 'use' ? 'Faster, and ' + cloud + ' keeps working alongside.' : v.text, btn));
   }
-  box.body.appendChild(_settingsRow(st.folder ? _syncCap(cloud) + ' folder' : 'Cloud folder (optional)', 'OpenDash keeps an "OpenDash Sync" folder in it.', _syncFolderControl(st)));
+  box.body.appendChild(_settingsRow(st.folder ? _syncCap(cloud) + ' folder' : 'Cloud folder (optional)', 'Freeflo keeps an "OpenDash Sync" folder in it.', _syncFolderControl(st)));
   if (L) {
     box.body.appendChild(_settingsRow('Direct on the same Wi-Fi', 'Changes show within a second when both computers are on the same Wi-Fi.', _settingsSwitch(!!L.on, 'Direct on the same Wi-Fi', (v) => _syncPost('/api/sync/live', { enabled: v }, v ? 'Direct on the same Wi-Fi is on' : 'Direct on the same Wi-Fi is off'), _syncBusy)));
     // L4: on 'auto' (off and hidden while your relay is in use); shown again if you turned it on yourself.
@@ -1250,7 +1250,7 @@ function _syncCard(el) {
     // A computer that already syncs takes keys only from your other computers (the code above).
     if (!(st.e2e && st.e2e.ready)) _syncOtherWays(card, (box) => {
       _syncRecoveryRow(box, SYNC_LOST_ALL, SYNC_LOST_HINT);
-      if (st.e2e && st.e2e.found && st.e2e.found.groups) box.body.appendChild(_settingsRow('Your other computer has an older OpenDash?', 'It can approve this one with 6 numbers instead.', _syncBtn('Ask it to approve', () => _syncPost('/api/sync/pair/start'))));
+      if (st.e2e && st.e2e.found && st.e2e.found.groups) box.body.appendChild(_settingsRow('Your other computer has an older Freeflo?', 'It can approve this one with 6 numbers instead.', _syncBtn('Ask it to approve', () => _syncPost('/api/sync/pair/start'))));
     });
   }
   if (screen === 'plain') {
@@ -1262,7 +1262,7 @@ function _syncCard(el) {
     name.value = st.deviceName || ''; name.placeholder = 'Home laptop';
     name.onchange = () => _syncSave({ deviceName: name.value.trim() }, 'Name saved');
     card.body.appendChild(_settingsRow('Name this computer', '', name));
-    card.body.appendChild(_settingsRow('Cloud folder', 'OpenDash keeps an "OpenDash Sync" folder in it.', _syncFolderControl(st)));
+    card.body.appendChild(_settingsRow('Cloud folder', 'Freeflo keeps an "OpenDash Sync" folder in it.', _syncFolderControl(st)));
     card.body.appendChild(_settingsRow('Sync now', '', _syncBtn('Sync now', _syncCheckNow)));
     if (st.blobs && st.blobs.text) card.body.appendChild(_settingsRow(st.blobs.text, '', null));
   }
@@ -1297,7 +1297,7 @@ registerSettingsGroup({
     { label: 'Add a computer', target: 'Sync', description: 'Shows 4 letters to type on the new computer.', keywords: 'join pair new computer laptop lost reinstall set up again' },
     { label: 'Computers and phones', target: 'Computers and phones', description: 'Rename one, or remove one you no longer have.', keywords: 'devices remove rename lost stolen phone' },
     { label: 'Main computer', target: 'Main computer', description: 'Checks mail, calendar and bank, and runs Claude jobs.', keywords: 'main primary fetch fetcher claude host jobs' },
-    { label: 'Add a phone', target: 'Add a phone', description: 'A QR code to scan in OpenDash on the phone.', keywords: 'qr scan mobile' },
+    { label: 'Add a phone', target: 'Add a phone', description: 'A QR code to scan in Freeflo on the phone.', keywords: 'qr scan mobile' },
     { label: 'Emergency backup sheet', target: 'Emergency backup sheet', description: 'Print one in case you lose every computer.', keywords: 'recovery code backup words lost all computers print sheet' },
     { label: 'Sync now', target: 'Sync now', description: 'Look for changes now.', keywords: 'check now refresh folder' },
     { label: 'Turn off sync on this computer', target: 'Turn off sync on this computer', description: 'Nothing is deleted.', keywords: 'disable stop sync across my devices' },
@@ -1307,7 +1307,7 @@ registerSettingsGroup({
     { label: 'Preview changes first', target: 'Preview changes first', description: 'List what your other computers changed, without using it.', keywords: 'trial shadow apply use changes from my other computers' },
     { label: 'Which computer does what', target: 'Runs Claude jobs', description: 'Who checks each account, answers your phone and runs Claude jobs.', keywords: 'claude host fetcher accounts phone main computer for each account' },
     { label: 'Details for support', target: 'Details for support', description: 'Each computer\'s direct link, in plain words.', keywords: 'connection reasons firewall router live connection' },
-    { label: 'Is this your first computer with OpenDash?', target: 'Sync', description: 'Set up sync on this computer, or join the one you already have.', keywords: 'join setup start first computer new computer' },
+    { label: 'Is this your first computer with Freeflo?', target: 'Sync', description: 'Set up sync on this computer, or join the one you already have.', keywords: 'join setup start first computer new computer' },
     { label: 'Check-up', target: 'Check-up', description: 'Problems that need you, each with one fix.', keywords: 'health problems fix' },
   ],
   render(el) {

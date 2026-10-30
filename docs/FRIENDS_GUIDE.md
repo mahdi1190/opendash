@@ -1,11 +1,11 @@
 # Friends: a plain guide
 
-Friends lets you add people who also use OpenDash, cheer each other on, see
+Friends lets you add people who also use Freeflo, cheer each other on, see
 each other's levels and streaks, share as much or as little as you like, and
 do things together: shared lists, gardens, pets and more. Friends lives in
 **Life** (the fifth area, beside Home, Tasks, Calendar and Money). This guide
 explains, without jargon, what friends can see, how messages travel, how to
-remove someone, and what OpenDash cannot promise.
+remove someone, and what Freeflo cannot promise.
 
 The technical design is in [docs/dev/FRIENDS.md](dev/FRIENDS.md) and
 [docs/dev/RELAY_PROTOCOL.md](dev/RELAY_PROTOCOL.md). Exactly which fields each
@@ -69,7 +69,7 @@ cannot read them, and it never learns names or what you send.
 Settings > **Your relay** > **Set up my relay** (or step 2 of the
 welcome). It takes about two minutes. You will see each step tick off:
 
-1. **Get Cloudflare's tool.** OpenDash uses Cloudflare's own tool,
+1. **Get Cloudflare's tool.** Freeflo uses Cloudflare's own tool,
    *wrangler*. The first time, it is downloaded ("Downloading Cloudflare's
    tool (first time only)…"); later it starts in seconds. It needs Node.js 20
    or newer with `npx`. A zip install already has it. The **Windows
@@ -77,12 +77,12 @@ welcome). It takes about two minutes. You will see each step tick off:
    version from nodejs.org once before you set up your own relay.
 2. **Sign in to Cloudflare.** A Cloudflare page opens in your browser:
    **click Allow**. No account yet? Create a free one on that page first. If
-   no page opened, the step shows a link to open it. OpenDash never sees your
+   no page opened, the step shows a link to open it. Freeflo never sees your
    Cloudflare password or sign-in: they stay with Cloudflare's tool.
 3. **Put your relay on Cloudflare.** Your relay is uploaded under a name like
    `opendash-relay-k3x9q2`.
 4. **Check that it answers.** A brand-new address can take up to a minute
-   to work everywhere; OpenDash keeps trying for about a minute.
+   to work everywhere; Freeflo keeps trying for about a minute.
 5. **Use it on all your devices.** The relay's address is saved and travels
    (encrypted) to your other computers.
 
@@ -106,7 +106,7 @@ ones:
 
 | You see | What to do |
 |---|---|
-| Node.js was not found, or is too old | Install Node.js 20 or newer (the LTS version) from nodejs.org, restart OpenDash, then *Try again*. |
+| Node.js was not found, or is too old | Install Node.js 20 or newer (the LTS version) from nodejs.org, restart Freeflo, then *Try again*. |
 | The Cloudflare sign-in was cancelled / was not answered in time | *Try again*, then click **Allow** on the Cloudflare page (within two minutes). |
 | Another Cloudflare sign-in is still waiting | Close other Cloudflare sign-in pages, or wait two minutes, then *Try again*. |
 | No workers.dev subdomain yet | Open dash.cloudflare.com > **Workers & Pages** (the page has a link). It asks you to choose a workers.dev subdomain: pick any free name, then *Try again*. |
@@ -142,11 +142,11 @@ Settings > Your relay > **Who can use it** lists:
   storage they use. *Revoke* takes their access away at once, with Undo; a
   revoked member can still be restored for 7 days, then their data on the
   relay is deleted. While you are friends their access is renewed by itself
-  whenever your OpenDash runs (if it is not opened for about six months, it
+  whenever your Freeflo runs (if it is not opened for about six months, it
   runs out and they need a new invite); someone an invite let in who is no longer your friend
   loses it after two months at the latest. Removing a friend, or a friend
   removing you, takes their access away; if your relay can't be reached at
-  that moment, OpenDash keeps trying until it can.
+  that moment, Freeflo keeps trying until it can.
 - **Pending invites**, with when each one ends, and *Cancel invite*. An
   invite works once and ends by itself.
 
@@ -311,7 +311,7 @@ tools. When they stop sharing, it disappears.
   inside your own encrypted device pairing.
 - **Nothing from a friend reaches Claude**, the assistant, MCP tools or any
   automatic action, and nothing a friend sends changes your tasks unless you
-  click. Friends' text is shown as plain text, and OpenDash never loads a
+  click. Friends' text is shown as plain text, and Freeflo never loads a
   picture or a link a friend sent.
 
 ## Removing or blocking someone
@@ -329,10 +329,10 @@ To only stop sharing (and stay friends), use *Stop sharing with Sam* instead.
 
 ## What cannot be forced
 
-OpenDash is honest about its limits:
+Freeflo is honest about its limits:
 
 - **Deleting on their device is a request.** Their app carries it out; a
-  normal OpenDash does, but it cannot be forced, and nobody can stop a
+  normal Freeflo does, but it cannot be forced, and nobody can stop a
   screenshot. Only share what you are happy for them to have seen.
 - **A relay's owner controls their own Cloudflare account.** They can't read
   your messages, but they decide whether the relay keeps running.
@@ -349,7 +349,7 @@ OpenDash is honest about its limits:
 friend's invite that includes their relay, you don't.
 
 **Does Friends cost anything?** No. The relay runs on Cloudflare's free plan,
-and OpenDash never upgrades it.
+and Freeflo never upgrades it.
 
 **Can a stranger use my relay?** No. Every request must be signed by you, one
 of your devices, or someone you invited.

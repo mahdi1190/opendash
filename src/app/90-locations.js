@@ -30,7 +30,7 @@
                                      {detail: badge} and emitShell('locations:badge', badge)
    No Claude calls, no network beyond this dashboard's own server.
    ============================================================ */
-const LOC_NOTICE = "OpenDash keeps a private history of where you've been, for fun facts. It stays on your computers unless you share places with a friend.";
+const LOC_NOTICE = "Freeflo keeps a private history of where you've been, for fun facts. It stays on your computers unless you share places with a friend.";
 const _LOC_CUR_KEY = 'dashboard-location-log-cur';
 const _LOC_MIGRATED_KEY = 'dashboard-location-log-migrated';
 const _loc = { data: null, loading: null, recs: new Map(), sent: new Map(), dirty: new Set(), doneQ: new Map(), badgeQ: {}, timer: null, ver: 0, subs: new Set(), badgeSubs: new Set(), memo: null, memoKey: '', spend: undefined, booted: false, zonesAt: 0 };

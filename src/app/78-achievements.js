@@ -310,7 +310,7 @@ function achPanelRender(el) {
       uiButton({ label: `Play my ${today.slice(0, 4)}`, icon: 'sparkles', size: 'sm', run: () => recapOpen('year', today.slice(0, 4)) }),
       uiButton({ label: 'Play this month', icon: 'calendar-days', size: 'sm', run: () => recapOpen('month', today.slice(0, 7)) }),
       uiButton({ label: 'Play last month', icon: 'calendar-days', size: 'sm', run: () => recapOpen('month', lastMonth) }));
-    root.appendChild(_settingsRow('Your year and month in OpenDash', 'An animated recap of your tasks, busiest day, people and money; save its last card as an image.', row));
+    root.appendChild(_settingsRow('Your year and month in Freeflo', 'An animated recap of your tasks, busiest day, people and money; save its last card as an image.', row));
   }
   el.appendChild(root);
 }

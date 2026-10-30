@@ -1,6 +1,6 @@
-# OpenDash - notes for Claude Code
+# Freeflo (called OpenDash before 2.23) - notes for Claude Code
 
-OpenDash: a local, single-user dashboard (tasks, calendar, finances, people, email
+Freeflo: a local, single-user dashboard (tasks, calendar, finances, people, email
 triage, AI helpers). Version 2.0: modular source, one data folder, zero npm
 dependencies, Node >= 20, offline at runtime. **Read MODULES.md first**: it maps
 every area to its files and gives the rules for adding modules, routes,
@@ -64,6 +64,16 @@ MCP (`mcp/server.mjs`, tools such as `get_context`, `search_tasks`,
 validate, take the lock, keep undo history and update open tabs live. The old
 `tools/apply_sync.py` (untracked) is retired; anything that still edits the
 file directly must take `<file>.lock` and bump `_lastSave`.
+
+## Brand
+
+The logo is the **orb** (`src/brand/freeflo-orb.js`, one plain script, no dependencies): the name written in one stroke with an orb of moving
+liquid as its last o. The season colours it and a holiday turns it into the holiday. It is inlined by `build.mjs` ahead of the opening
+(`<!--@freeflo-orb-->` in `src/body.html`) because the opening picks its orb at parse time; the app calls `FreefloBrand` for the sidebar mark
+and the tab icon, and `tools/release-brand.mjs` runs it in a vm to make every file in `assets/brand/`. All motion is CSS inside the SVG.
+The spelling of the name is `NAME` at the top of the module. Display text says Freeflo; identifiers, paths, the `opendash` repo and folders, the
+MCP server id and the hosted relay connector name keep the old name on purpose (data and settings must keep working). Preview any day:
+`prototypes/freeflo-orb-gallery.html`, or `?logo=halloween` on the app URL.
 
 ## Render flow
 

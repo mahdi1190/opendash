@@ -342,7 +342,7 @@ function renderEmailTriage(container) {
   const list = document.createElement('div'); list.className = 'em-list';
   if (!msgs.length) {
     mountEmptyState(list, InboxStore.access() === 'no'
-      ? { icon: 'mail', title: 'Connect a mailbox', text: 'OpenDash reads subjects, senders and previews and suggests tasks. It never sends or deletes.', actions: [{ label: 'Open Connections', icon: 'plug', primary: true, run: () => (window.Connections ? Connections.open('gmail') : setView('connections')) }] }
+      ? { icon: 'mail', title: 'Connect a mailbox', text: 'Freeflo reads subjects, senders and previews and suggests tasks. It never sends or deletes.', actions: [{ label: 'Open Connections', icon: 'plug', primary: true, run: () => (window.Connections ? Connections.open('gmail') : setView('connections')) }] }
       : { icon: 'inbox', title: running ? 'Reading your inbox…' : 'No email yet', text: running ? 'This takes a minute.' : 'Update the inbox to see your recent threads here.' });
   } else if (!shown.length) {
     mountEmptyState(list, { icon: 'check-check', title: _emFilter === 'handled' ? 'Nothing handled yet' : 'Inbox triaged', text: _emFilter === 'handled' ? 'Threads you turn into tasks or mark as nothing to do show here.' : 'Every recent thread has a task or needs nothing. Nice.', compact: true });

@@ -378,7 +378,7 @@ function homeRefreshAll(o) {
   _hrButtons();
   if (run.visible && typeof homeAnnounce === 'function') homeAnnounce('Refreshing everything');
   run.promise = Promise.resolve().then(async () => {
-    if (!_hrUp()) { run.results.server = { status: 'error', reason: typeof NET_DOWN_MESSAGE !== 'undefined' ? NET_DOWN_MESSAGE : 'OpenDash isn’t answering.' }; run.offline = true; return; }
+    if (!_hrUp()) { run.results.server = { status: 'error', reason: typeof NET_DOWN_MESSAGE !== 'undefined' ? NET_DOWN_MESSAGE : 'Freeflo isn’t answering.' }; run.offline = true; return; }
     const steps = _hrSteps();
     const jobs = [];
     for (const s of steps) {
@@ -457,7 +457,7 @@ function _hrChip(run, id, r) {
   return `<span class="hr-chip s-${escAttr(st)}"${tip ? ` title="${escAttr(tip)}"` : ''}>${ic}<span>${esc(label)}${esc(word)}</span></span>`;
 }
 function _hrSummaryText(run) {
-  if (run.offline) return 'Refreshed for the current time. OpenDash isn’t answering, so nothing new came in.';
+  if (run.offline) return 'Refreshed for the current time. Freeflo isn’t answering, so nothing new came in.';
   const bad = _hrProblems(run);
   if (run.cancelled) return 'Refresh stopped. What already came in is shown.';
   if (bad.length) return `Refreshed, but ${bad.map(([id]) => _hrLabel(run, id)).join(' and ')} ${bad.length === 1 ? 'needs' : 'need'} another try.`;
@@ -588,6 +588,6 @@ function homeRefreshSettingsRow() {
   // One sentence on the face (SIMPLIFY_PLAN.md 5.1, P2); the details stay in the tooltip.
   sel.setAttribute('data-tip', 'Weather, travel and data read without Claude refresh on this schedule. Parts that use Claude (calendars and email read through Claude, the bank update, the day adviser, tasks from email) refresh at most every hour, and only when something could have changed. Refresh today always refreshes everything at once. The same on all your computers.');
   return _settingsRow('Refresh everything automatically',
-    'While OpenDash is open; parts that use Claude refresh at most once an hour.',
+    'While Freeflo is open; parts that use Claude refresh at most once an hour.',
     sel);
 }

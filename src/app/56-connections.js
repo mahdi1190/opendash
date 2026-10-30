@@ -78,7 +78,7 @@ async function _connOpenTerminal(btn) {
     const r = await fetch('/api/connections/open-terminal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
     const j = await r.json().catch(() => ({}));
     if (r.ok && j.opened) {
-      toast('A Claude window opened. Finish signing in there: OpenDash checks again when you come back.', { kind: 'ok', timeout: 7000 });
+      toast('A Claude window opened. Finish signing in there: Freeflo checks again when you come back.', { kind: 'ok', timeout: 7000 });
       // Back in this tab within 10 minutes: check by itself (no hunting for Check again).
       const t0 = Date.now();
       const back = async () => {
@@ -93,7 +93,7 @@ async function _connOpenTerminal(btn) {
       window.addEventListener('focus', back);
     }
     else if (r.ok) toast('No terminal app was found. Open one yourself and run: claude', { kind: 'warn', timeout: 9000 });
-    else toastError('open a terminal window', j.error || 'OpenDash didn’t say why', () => _connOpenTerminal(btn));
+    else toastError('open a terminal window', j.error || 'Freeflo didn’t say why', () => _connOpenTerminal(btn));
   } catch (e) { toastError('open a terminal window', e, () => _connOpenTerminal(btn)); }
   if (btn) btn.disabled = false;
 }
@@ -110,12 +110,12 @@ function _connHelp(c, e, all) {
       box.appendChild(_connSteps([
         ['Open ' + (win ? 'PowerShell' : 'a terminal') + ' and run the installer:', _connCode(win ? 'irm https://claude.ai/install.ps1 | iex' : 'curl -fsSL https://claude.ai/install.sh | bash')],
         'Run claude once and sign in with your Claude account (Pro or Max).',
-        'Restart OpenDash, then click Check again.',
+        'Restart Freeflo, then click Check again.',
       ]));
       // The unusual cases fold away (SIMPLIFY_PLAN.md 5.6): npm, and Claude in an odd place.
       setFold(box, 'conn-claude-unusual', 'Something unusual?', ({ body }) => {
         body.appendChild(_connEl('p', 'conn-note', 'Using npm instead? npm install -g @anthropic-ai/claude-code.'));
-        body.appendChild(_connEl('p', 'conn-note', 'Claude installed somewhere unusual? Put CLAUDE_CLI_PATH=<full path to claude> in a .env file in the OpenDash app folder, or in the OpenDash folder in your local app data (never in the data folder).'));
+        body.appendChild(_connEl('p', 'conn-note', 'Claude installed somewhere unusual? Put CLAUDE_CLI_PATH=<full path to claude> in a .env file in the Freeflo app folder, or in the Freeflo folder in your local app data (never in the data folder).'));
       });
     } else if (st === 'auth' || st === 'error' || st === 'unknown') {
       box.appendChild(_connEl('div', 'conn-help-t', st === 'auth' ? 'Sign in to Claude' : 'Connect Claude'));
@@ -142,7 +142,7 @@ function _connHelp(c, e, all) {
   box.appendChild(_connSteps([
     open,
     st === 'auth' ? `Find ${c.name} and choose Reconnect (or Disconnect, then Connect).` : `Find ${c.name} and choose Connect, then sign in and allow access.`,
-    'Return here after sign-in. OpenDash checks the connection automatically.',
+    'Return here after sign-in. Freeflo checks the connection automatically.',
   ]));
   const fb = _connEl('div', 'conn-fallback');
   fb.appendChild(_connEl('span', null, 'Still not working? Run claude in a terminal and type /mcp, then pick the connector to sign in again.'));
@@ -223,7 +223,7 @@ async function _connInstallMcp() {
     ok = true;
     toast(j.already ? 'Already added to Claude Code' : 'Added to Claude Code. Restart open Claude sessions to use it.', { kind: 'ok' });
   } catch (e) {
-    toastError('add OpenDash to Claude Code', e, () => _connInstallMcp());
+    toastError('add Freeflo to Claude Code', e, () => _connInstallMcp());
   }
   _connMcpInstalling = false;
   connRefresh({ force: true });
@@ -237,12 +237,12 @@ async function _connRunMcpTest() {
   _connMcpTesting = true; if (state.view === 'connections') renderMain();
   try {
     const r = await fetch('/api/connections/mcp-test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    _connMcpTest = await r.json().catch(() => ({ ok: false, error: 'OpenDash isn’t answering. Try again in a moment.' }));
+    _connMcpTest = await r.json().catch(() => ({ ok: false, error: 'Freeflo isn’t answering. Try again in a moment.' }));
   } catch (e) { _connMcpTest = { ok: false, error: netErrorMessage(e) }; }
   _connMcpTesting = false;
   _connRecheckMcp();
   await connRefresh({ force: true });
-  if (_connMcpTest.ok) toast(`OpenDash answered with ${_connMcpTest.tools} tools`, { kind: 'ok' });
+  if (_connMcpTest.ok) toast(`Freeflo answered with ${_connMcpTest.tools} tools`, { kind: 'ok' });
   if (state.view === 'connections') renderMain();
 }
 /**
@@ -259,14 +259,14 @@ function _connMcpCard(all) {
   const head = _connEl('div', 'conn-head');
   const ic = _connEl('span', 'conn-ic'); ic.innerHTML = _connMark('mcp', 'plug-zap');
   const t = _connEl('div', 'conn-titles');
-  t.append(_connEl('div', 'conn-name', 'OpenDash in your AI apps'), _connEl('div', 'conn-sub', 'Claude Code, T3 Code or Claude Desktop'));
+  t.append(_connEl('div', 'conn-name', 'Freeflo in your AI apps'), _connEl('div', 'conn-sub', 'Claude Code, T3 Code or Claude Desktop'));
   head.append(ic, t);
   card.appendChild(head);
   const anyInstalled = inst.claudeCode === 'installed' || inst.desktop === 'installed';
   const other = !anyInstalled && (inst.claudeCode === 'other-copy' || inst.desktop === 'other-copy');
   const where = [inst.claudeCode === 'installed' ? 'Claude Code' : '', inst.desktop === 'installed' ? 'Claude Desktop' : ''].filter(Boolean).join(' and ');
   card.appendChild(anyInstalled ? setStatusLine('ok', 'Added', where)
-    : other ? setStatusLine('warn', 'Added for another copy of OpenDash', 'Add it again for this one')
+    : other ? setStatusLine('warn', 'Added for another copy of Freeflo', 'Add it again for this one')
       : setStatusLine('off', 'Not added'));
   card.appendChild(_connEl('p', 'conn-text', 'Claude Code, T3 Code or Claude Desktop can read and change your tasks, with Undo here.'));
   if (_connMcpTest && !_connMcpTest.ok && _connMcpTest.error) {
@@ -286,7 +286,7 @@ function _connMcpCard(all) {
   }
   setFold(card, 'conn-mcp-more', 'More', ({ body }) => {
     const rows = _connEl('dl', 'kv conn-kv');
-    const said = (v) => v === 'installed' ? 'Added' : v === 'other-copy' ? 'Added for another copy of OpenDash' : 'Not added';
+    const said = (v) => v === 'installed' ? 'Added' : v === 'other-copy' ? 'Added for another copy of Freeflo' : 'Not added';
     rows.innerHTML = `<dt>Claude Code / T3 Code</dt><dd>${esc(said(inst.claudeCode))}</dd><dt>Claude Desktop</dt><dd>${esc(said(inst.desktop))}</dd>`
       + `<dt>Last test</dt><dd>${esc(e.checkedAt ? (e.state === 'ok' ? `Answered (${e.tools || '?'} tools) · ${_connAgo(e.checkedAt)}` : `Failed · ${_connAgo(e.checkedAt)}`) : 'Not tested yet')}</dd>`;
     body.appendChild(rows);
@@ -304,7 +304,7 @@ function _connMcpDrawer() {
   clearInterval(_connMcpPoll);
   const poll = _connMcpPoll = setInterval(() => _connLoadMcp(), 4000);
   openDrawer({
-    title: 'Add OpenDash to your AI apps', width: 560,
+    title: 'Add Freeflo to your AI apps', width: 560,
     onClose: () => { clearInterval(poll); if (_connMcpPoll === poll) _connMcpPoll = null; },
     body: (el, closeD) => {
       if (!info) { el.appendChild(_connEl('p', 'muted', 'Loading the commands for this computer…')); _connLoadMcp().then(() => { if (_connMcp) { closePopovers(); _connMcpDrawer(); } }); return; }
@@ -385,12 +385,12 @@ async function _connPageCheck() {
 }
 function _connPagePrivacy() {
   openDrawer({ title: 'How your data is handled', width: 500, body: el => {
-    el.appendChild(_connEl('p', 'conn-text', 'Your connections only read. They bring information into OpenDash without sending email, changing account records or deleting data.'));
+    el.appendChild(_connEl('p', 'conn-text', 'Your connections only read. They bring information into Freeflo without sending email, changing account records or deleting data.'));
     el.appendChild(_connSteps([
-      'Sign in with the provider or in Claude’s own window. OpenDash never asks for your password.',
+      'Sign in with the provider or in Claude’s own window. Freeflo never asks for your password.',
       'Choose which calendars, mailboxes and accounts to include. Pause or remove a connection from its menu at any time.',
       'What comes in lives in your data folder. Anything that goes through Claude uses your own Claude account.',
-      'Your AI apps can read and change tasks if you add OpenDash to them (Advanced).',
+      'Your AI apps can read and change tasks if you add Freeflo to them (Advanced).',
     ]));
   } });
 }
@@ -400,7 +400,7 @@ function _connHeaderContract() { return typeof headerActionsFor === 'function' |
 function _connPageStatus(sources, all, ready) {
   const box = _connEl('div', 'cp-status');
   const c = _connPageCounts(sources, all);
-  if (!ready && SourcesStore.error) box.appendChild(setStatusLine('warn', 'Needs you', 'OpenDash isn’t answering'));
+  if (!ready && SourcesStore.error) box.appendChild(setStatusLine('warn', 'Needs you', 'Freeflo isn’t answering'));
   else if (!ready) box.appendChild(setStatusLine('busy', 'Checking', 'Your connections are loading'));
   else if (c.attention) box.appendChild(setStatusLine('warn', `${c.attention} need${c.attention === 1 ? 's' : ''} you`, c.first));
   else if (c.connected) box.appendChild(setStatusLine('ok', `${c.connected} connected`));
@@ -484,12 +484,12 @@ function _connPageSourceSection(sources, ready, all) {
 
 function _connPageAssistantSection(all) {
   const section = _connEl('section', 'cp-assistants');
-  section.append(secHead({ title: 'AI', sub: 'OpenDash’s AI uses Claude. Other assistants can use your tasks too.' }), _connPageAssistantCards(all));
+  section.append(secHead({ title: 'AI', sub: 'Freeflo’s AI uses Claude. Other assistants can use your tasks too.' }), _connPageAssistantCards(all));
   return section;
 }
 /** Advanced (rare and technical): OpenDash in your AI apps, Claude's own connections, Claude in your browser, Google's direct sign-in. */
 function _connPageAdvancedFold(page, all) {
-  return setFold(page, 'conn-page-adv', 'Advanced · Use OpenDash from your AI apps, and Claude’s own connections', ({ body, card }) => {
+  return setFold(page, 'conn-page-adv', 'Advanced · Use Freeflo from your AI apps, and Claude’s own connections', ({ body, card }) => {
     if (_connPageAdvanced) card.open = true;
     _connPageAdvanced = card.open;
     body.classList.add('cp-advanced-body');

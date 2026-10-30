@@ -106,10 +106,10 @@ function _froConnectJob() {
 }
 function _froInviteMessage(inv) {
   const when = inv.exp ? new Date(Number(inv.exp)).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) : '';
-  return 'Hi! I use OpenDash and would love to add you as a friend there (we can cheer each other on and do things together).\n\n'
-    + 'In OpenDash, open Friends > Add a friend > Paste an invite, and paste this link:\n' + inv.link + '\n\n'
+  return 'Hi! I use Freeflo and would love to add you as a friend there (we can cheer each other on and do things together).\n\n'
+    + 'In Freeflo, open Friends > Add a friend > Paste an invite, and paste this link:\n' + inv.link + '\n\n'
     + `It works once${when ? ' and ends on ' + when : ''}. We'll both see the same pictures to check before we're connected.\n\n`
-    + "Don't have OpenDash yet? It's free: https://github.com/mahdi1190/opendash";
+    + "Don't have Freeflo yet? It's free: https://github.com/mahdi1190/opendash";
 }
 /** Step 3: make a single-use invite (with relay access when it is your own relay) and offer it two ways. */
 function _froInviteBox(acts, d, again) {
@@ -126,7 +126,7 @@ function _froInviteBox(acts, d, again) {
       uiButton({ label: 'Copy link', icon: 'copy', kind: 'primary', size: 'sm', run: () => copyText(inv.link, 'invite link') }),
       uiButton({ label: 'Copy a ready message', icon: 'mail', size: 'sm', run: () => copyText(_froInviteMessage(inv), 'message') }),
     );
-    if (navigator.share) row.appendChild(uiButton({ label: 'Share', icon: 'send', size: 'sm', run: () => navigator.share({ title: 'Join me on OpenDash', text: _froInviteMessage(inv) }).catch(() => {}) }));
+    if (navigator.share) row.appendChild(uiButton({ label: 'Share', icon: 'send', size: 'sm', run: () => navigator.share({ title: 'Join me on Freeflo', text: _froInviteMessage(inv) }).catch(() => {}) }));
     row.appendChild(uiButton({ label: 'Cancel this invite', kind: 'ghost', size: 'sm', run: (e, b) => _frDo(b, async () => {
       await _frApi('/api/friends/invite/cancel', { id: inv.id });
       _fro.invite = null; paint();

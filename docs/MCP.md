@@ -1,10 +1,10 @@
-# Using OpenDash from your own Claude (MCP)
+# Using Freeflo from your own Claude (MCP)
 
-OpenDash ships its own [Model Context Protocol](https://modelcontextprotocol.io)
+Freeflo ships its own [Model Context Protocol](https://modelcontextprotocol.io)
 server, `mcp/server.mjs`. Register it once and Claude Code, T3 Code or Claude
 Desktop can read and change your tasks, people, tags, countdowns and more,
-**without being told anything about OpenDash first**: the server explains
-itself to the model. Every change appears in the open OpenDash page at once,
+**without being told anything about Freeflo first**: the server explains
+itself to the model. Every change appears in the open Freeflo page at once,
 with Undo.
 
 - [Register it](#register-it)
@@ -20,7 +20,7 @@ with Undo.
 
 ## Register it
 
-The easiest way: **Connections > OpenDash MCP > Set up** shows the exact
+The easiest way: **Connections > Freeflo MCP > Set up** shows the exact
 commands for your computer, with copy buttons, and *Test MCP* checks that the
 server answers. You can also print them in a terminal from the app folder:
 
@@ -48,9 +48,9 @@ before it reaches `claude`. Check with `claude mcp list`; remove with
 afterwards.
 
 > **Already installed under the name `dashboard`?** Keep it. Installs made
-> before the OpenDash name use `dashboard`, and their tools are called
+> before the Freeflo name use `dashboard`, and their tools are called
 > `mcp__dashboard__...`. Everything works the same; only the prefix in your
-> permission rules differs. OpenDash recognises its own server by path, not by
+> permission rules differs. Freeflo recognises its own server by path, not by
 > name.
 
 The **Set up** panel and `node mcp/server.mjs --print-install` print the name
@@ -124,7 +124,7 @@ when the two differ.
 
 Ask Claude, for example:
 
-- "What is due this week in OpenDash?"
+- "What is due this week in Freeflo?"
 - "Add a task to email Sam on Thursday, high priority."
 - "Push every Acme task due next week back two days; preview first."
 - "Plan my day."
@@ -167,7 +167,7 @@ returns every operation with its exact JSON Schema and its
 | Tags | `add_tag`, `remove_tag`, `create_tag`, `update_tag`, `rename_tag`, `merge_tags`, `delete_tag` |
 | Streams | `create_stream`, `update_stream`, `reorder_streams` |
 | Top bar and Home | `create_countdown`, `update_countdown`, `delete_countdown`, `reorder_countdowns`, `add_topbar_widget`, `set_home_focus`, `set_home_layout`, `reset_home_layout`, `set_home_widget` (a widget's own settings; another copy of Deadline runway or Smart list) |
-| Calendar and email | `annotate_event` (your notes on an event, important, linked tasks, wrapped up; the event itself is never changed), `update_calendar` (display name and colour in OpenDash only), `triage_email` |
+| Calendar and email | `annotate_event` (your notes on an event, important, linked tasks, wrapped up; the event itself is never changed), `update_calendar` (display name and colour in Freeflo only), `triage_email` |
 | Files & links | `create_resource`, `update_resource`, `delete_resource` (never touches the file itself), `link_resource`, `unlink_resource` |
 | Auto-linking | `suggest_links`, `rate_suggested_links`, `apply_suggested_links`, `reject_suggested_links`, `relate_task`, `unrelate_task` |
 | Reviews | `save_review` |
@@ -192,7 +192,7 @@ finance writes are `money_change`, and they are sensitive.
 
 ## Safety rails
 
-Enforced by OpenDash, not left to the model:
+Enforced by Freeflo, not left to the model:
 
 - **Dates are ISO only** (`2026-10-08`). "Next Tuesday" is refused, with
   today's date in the error so the model can work it out.
@@ -264,7 +264,7 @@ changing the update feed.
 
 The remote gateway (`mcp/remote-server.mjs`) stays read and `propose_changes`
 only. It lists none of the new tools and cannot propose the new operations.
-To connect claude.ai, press **Connect Claude** in OpenDash and type the 4-letter
+To connect claude.ai, press **Connect Claude** in Freeflo and type the 4-letter
 code shown in your own sign-in tab; the code works once, for ten minutes, and
 three wrong codes close the Connect window.
 
@@ -275,17 +275,17 @@ three wrong codes close the Connect window.
 - **Propose mode** (`--mode propose`): read tools (all but `get_daynotes`), the
   low-risk tier and `propose_changes`.
   The model can suggest anything else but never apply it; you review the preview
-  in OpenDash and apply it with one click. The in-app assistant uses this mode,
+  in Freeflo and apply it with one click. The in-app assistant uses this mode,
   so text inside an email, an invitation or a bank transaction can never change
   your tasks, reach another person, share data or start a sign-in on its own.
 
-While OpenDash is running, the MCP server sends every call through it (it finds
+While Freeflo is running, the MCP server sends every call through it (it finds
 the server through `data/runtime.json` and authenticates with
 `data/local-token`), so open tabs update at once with "Updated by Claude Code".
-When OpenDash is not running, the MCP server works directly on the data folder
+When Freeflo is not running, the MCP server works directly on the data folder
 with the same rules and the same lock; the page picks the change up next time
 it opens. Its own log is `data/logs/mcp.log`. Friends, sync status, stories and
-every sensitive action need OpenDash running, and say so if it is not.
+every sensitive action need Freeflo running, and say so if it is not.
 
 ## Scripts and the HTTP API
 
@@ -301,7 +301,7 @@ every sensitive action need OpenDash running, and say so if it is not.
 
 | Problem | What to do |
 |---|---|
-| Claude says the OpenDash tools are missing | `claude mcp list`: if `opendash` (or `dashboard`) is not listed, run the install command; if it shows an error, the path is wrong (moved folder): remove it and add it again |
+| Claude says the Freeflo tools are missing | `claude mcp list`: if `opendash` (or `dashboard`) is not listed, run the install command; if it shows an error, the path is wrong (moved folder): remove it and add it again |
 | Connections says your Claude points at another copy | you moved or updated the app: remove the server and add it again with the commands from the Set up panel |
 | Changes do not appear in the open page | check that the page is open on the same data folder; the page also picks changes up when it is next opened |
-| "the data folder has no data yet" | point `--data-dir` at the data folder OpenDash uses (Settings > Data shows it) |
+| "the data folder has no data yet" | point `--data-dir` at the data folder Freeflo uses (Settings > Data shows it) |

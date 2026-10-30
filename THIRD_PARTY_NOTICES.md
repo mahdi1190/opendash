@@ -11,7 +11,7 @@ derived from OpenStreetMap and hill outlines derived from open elevation data
 | Component | Version | Used for | Licence (SPDX) | Full text |
 |---|---|---|---|---|
 | Apache ECharts | 5.6.1 | Charts in Finances | Apache License 2.0 (`Apache-2.0`) | `vendor/echarts.LICENSE`, `vendor/echarts.NOTICE` |
-| Inter (rsms/inter), variable, Latin subset | 4.x | The interface font; the letterforms of the OpenDash wordmark | SIL Open Font License 1.1 (`OFL-1.1`) | `vendor/fonts/Inter-OFL.txt` |
+| Inter (rsms/inter), variable, Latin subset | 4.x | The interface font | SIL Open Font License 1.1 (`OFL-1.1`) | `vendor/fonts/Inter-OFL.txt` |
 | Lucide icons (lucide-static), subset as an SVG sprite | current | Interface icons | ISC License (`ISC`); the Feather-derived icons MIT (`MIT`) | `vendor/icons/Lucide-LICENSE.txt` |
 | GeoNames cities15000 and countryInfo, a subset | 2026-10 | The travel features' city and country tables (`src/app/69-travel-data.js`) | Creative Commons Attribution 4.0 (`CC-BY-4.0`) | below |
 | IANA time zone database (zone.tab, backward links) | 2025 | Time zone to country and city | Public domain | below |
@@ -33,9 +33,8 @@ Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter).
 This Font Software is licensed under the SIL Open Font License, Version 1.1,
 with no Reserved Font Name. The font was subset (Basic Latin, Latin-1, common
 punctuation, currency, arrows and maths symbols) and embedded as a data URI;
-the licence travels with it in `vendor/fonts/Inter-OFL.txt`. The OpenDash
-wordmark and lockups in `assets/brand/` use Inter's letterforms converted to
-outlines, under the same licence (see `assets/brand/BRAND.md`).
+the licence travels with it in `vendor/fonts/Inter-OFL.txt`. The Freeflo
+wordmark in `assets/brand/` is drawn as strokes and uses no font.
 
 ## Lucide
 

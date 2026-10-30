@@ -126,7 +126,7 @@ function _gdcGiftMenu(kind, id, anchor) {
   openPopover(anchor, (el, close) => {
     el.classList.add('gsv-pop', 'gsv-gifts');
     el.appendChild(_gdpEl('div', 'pop-label', 'Give it to…'));
-    if (!fr.length) { el.appendChild(_gdpEl('p', 'gsv-pop-p muted', 'You have no friends in OpenDash yet. Add some in Friends, and you can give them your catches.')); el.appendChild(_gdpBtn('Open Friends', { icon: 'users', run: () => { close(); setView('friends'); } })); return; }
+    if (!fr.length) { el.appendChild(_gdpEl('p', 'gsv-pop-p muted', 'You have no friends in Freeflo yet. Add some in Friends, and you can give them your catches.')); el.appendChild(_gdpBtn('Open Friends', { icon: 'users', run: () => { close(); setView('friends'); } })); return; }
     const list = _gdpEl('div', 'gsv-gift-list');
     for (const f of fr.slice(0, 60)) {
       const b = _gdpEl('button', 'gsv-gift'); b.type = 'button';

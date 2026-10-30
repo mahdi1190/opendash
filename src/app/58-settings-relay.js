@@ -63,7 +63,7 @@ function _rlLoad() {
 }
 function _rlLoadAdmin() {
   _rlAdminAt = Date.now();
-  return fetch('/api/relay/admin', { cache: 'no-store' }).then(r => r.json()).then((j) => { _rlAdmin = j; }).catch(() => { _rlAdmin = { error: { message: 'The OpenDash server is not running.' } }; }).finally(_rlRender);
+  return fetch('/api/relay/admin', { cache: 'no-store' }).then(r => r.json()).then((j) => { _rlAdmin = j; }).catch(() => { _rlAdmin = { error: { message: 'The Freeflo server is not running.' } }; }).finally(_rlRender);
 }
 async function _rlPost(path, body, okMsg) {
   if (_rlBusy) return null;
@@ -209,7 +209,7 @@ function _rlConnectBox(el, st) {
       if (s.id === 'login') {
         const a = c.loginUrl ? _rlLink(c.loginUrl, 'No page opened? Open the Cloudflare sign-in page') : null;
         if (a) box.appendChild(a);
-        box.appendChild(_rlP('Signing in happens on Cloudflare\'s own page: OpenDash never sees your password or sign-in.', 'set-h'));
+        box.appendChild(_rlP('Signing in happens on Cloudflare\'s own page: Freeflo never sees your password or sign-in.', 'set-h'));
       }
     }
   }
@@ -308,7 +308,7 @@ function _rlMainCard(el, st) {
         : ['off', 'Not set up', "Friends can't reach you, and sync uses Wi-Fi and " + (cloud || 'your cloud folder') + ' only'];
   c.body.appendChild(setStatusLine(S[0], S[1], S[2]));
   if (pend) {
-    c.body.appendChild(_settingsRow('Check again', 'Keep OpenDash open on your other computer for a moment.', _rlBtn('Check again', 'secondary', async () => { if (await _rlPost('/api/sync/relay/check', {})) _rlLoad(); }, 'refresh-cw')));
+    c.body.appendChild(_settingsRow('Check again', 'Keep Freeflo open on your other computer for a moment.', _rlBtn('Check again', 'secondary', async () => { if (await _rlPost('/api/sync/relay/check', {})) _rlLoad(); }, 'refresh-cw')));
     return;
   }
   if (!running && !nextShown && _rlSyncOffer(st)) {
@@ -319,7 +319,7 @@ function _rlMainCard(el, st) {
   }
   // Not set up: the one main button. Set up: updating and stopping are rare (Advanced).
   if (!running && !st.relay) {
-    c.body.appendChild(_settingsRow('Set up my relay', 'Free, about 2 minutes. You sign in to Cloudflare; OpenDash never sees your password.', _rlBtn('Set up my relay', 'primary', () => relayConnect(), 'cloud')));
+    c.body.appendChild(_settingsRow('Set up my relay', 'Free, about 2 minutes. You sign in to Cloudflare; Freeflo never sees your password.', _rlBtn('Set up my relay', 'primary', () => relayConnect(), 'cloud')));
   }
   _rlConnectBox(c.body, st);
   // More: how friends work, a friend's relay.
@@ -517,7 +517,7 @@ registerSettingsGroup({
   render(el) {
     if (!_rlSt) { _rlLoad(); el.appendChild(_rlP('Loading…')); return; }
     if (_rlSt.error) {
-      el.appendChild(_rlP("OpenDash isn't answering."));
+      el.appendChild(_rlP("Freeflo isn't answering."));
       el.appendChild(_rlBtn('Try again', 'secondary', () => { _rlSt = null; _rlLoad(); }, 'refresh-cw'));
       return;
     }

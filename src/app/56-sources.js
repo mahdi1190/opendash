@@ -63,7 +63,7 @@ async function _srcApi(path, opts) {
     ...(opts.signal ? { signal: opts.signal } : {}),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok && !(opts.okStatuses || []).includes(r.status)) throw Object.assign(new Error(j.error || 'The OpenDash server did not answer.'), { code: j.code, status: r.status });
+  if (!r.ok && !(opts.okStatuses || []).includes(r.status)) throw Object.assign(new Error(j.error || 'The Freeflo server did not answer.'), { code: j.code, status: r.status });
   return j;
 }
 

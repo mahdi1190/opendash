@@ -2,17 +2,17 @@
 
 ## General
 
-**What is OpenDash?**
+**What is Freeflo?**
 A calm, local-first productivity dashboard: tasks, calendar, finances, people,
 files and links, a morning brief and an optional Claude assistant, in one page
 that runs on your own computer.
 
 **Is it free?**
-Yes. OpenDash is open source under the MIT licence. The optional AI features
-use your own Claude plan through Claude Code; OpenDash adds no cost.
+Yes. Freeflo is open source under the MIT licence. The optional AI features
+use your own Claude plan through Claude Code; Freeflo adds no cost.
 
 **Do I need an account?**
-No. There is no OpenDash account or cloud service. You only sign in to the
+No. There is no Freeflo account or cloud service. You only sign in to the
 services you choose to connect (Claude, and through it Gmail, Google Calendar
 or your bank).
 
@@ -32,7 +32,7 @@ copy, compare it with `SHA256SUMS-installer.txt` on the release page.
 **Can I use it on my phone?**
 Not yet. The page adapts to narrow windows and touch screens, but the server
 runs on your computer and only answers on that computer (`127.0.0.1`), and it
-refuses requests addressed to any other host name. OpenDash is not designed to
+refuses requests addressed to any other host name. Freeflo is not designed to
 be reached from other devices, and opening it to your network is not
 supported. A supported way to do this is on the
 [roadmap](../README.md#roadmap) as an idea; share your use case in
@@ -41,14 +41,14 @@ supported. A supported way to do this is on the
 ## Data and privacy
 
 **Is the cloud required?**
-No. OpenDash works fully on one computer, and that is how it starts. Syncing
+No. Freeflo works fully on one computer, and that is how it starts. Syncing
 your own devices and Friends are optional extras, and both run through a
 relay you host on your own (free) Cloudflare account, or a friend's, never
-an OpenDash server. See
+a Freeflo server. See
 [Cloud and sync](PRIVACY.md#cloud-and-sync-optional-in-three-levels).
 
 **Does anyone else see my data?**
-Not unless you choose. There is no OpenDash company server, account or
+Not unless you choose. There is no Freeflo company server, account or
 telemetry, so the project never sees anything. Sync between your own devices
 is end-to-end encrypted: your relay and your cloud folder only hold scrambled
 records. A friend sees your profile, game progress and garden, and only what
@@ -65,13 +65,13 @@ Only for features you switch on, and only to the service the feature names
 (Claude through your own Claude Code, the connectors you added, an iCal host,
 Open-Meteo for weather, GitHub when you check for updates). No analytics or
 telemetry. One exception: if Claude
-Code is already installed and signed in on your computer, OpenDash uses it
+Code is already installed and signed in on your computer, Freeflo uses it
 without being asked (a tiny test prompt at start-up, and the Morning brief's
 daily summary and story scripts; Settings > Brief and stories > *AI summary* turns
 those off). Details in [PRIVACY.md](PRIVACY.md).
 
 **Is my data encrypted?**
-OpenDash does not encrypt the data folder itself. Use your operating system's
+Freeflo does not encrypt the data folder itself. Use your operating system's
 disk encryption. The optional *daily encrypted copy* (below) is encrypted
 before it leaves your computer.
 
@@ -89,17 +89,17 @@ use the new one).
 
 **Can I keep the data folder in OneDrive, Dropbox or iCloud?**
 It works, but it is not a good idea: sync tools copy files, they do not merge
-edits made on two computers, so edits can be lost. OpenDash says so (*Your data
+edits made on two computers, so edits can be lost. Freeflo says so (*Your data
 is in OneDrive*) and offers **Move my data out of OneDrive** in Settings > Data:
 it copies everything to a folder on this computer, checks every file, updates
 the start-up and assistant settings that use the old place, keeps the old
 folder (renamed, never deleted) and can be undone. Your computers then stay in
-step through Settings > Sync. Until you move it, use OpenDash on one computer
+step through Settings > Sync. Until you move it, use Freeflo on one computer
 at a time: it pauses changes when another computer has the folder open (choose
 *Use here anyway* to go on).
 
 **How do I add another computer?**
-Install OpenDash there, open Settings > Sync and choose *No, join my other
+Install Freeflo there, open Settings > Sync and choose *No, join my other
 computer*. Your first computer shows a 4-letter code and a picture; type the
 letters on the new one, check both screens show the same picture, and press
 *Yes*. The code works once and for ten minutes. You can also print an optional
@@ -111,7 +111,7 @@ new data and locks it out of Friends.
 Settings > Data shows the new place and the name of the kept old folder (there
 is a `README` in it). **Undo move** puts everything back, including changes you
 made since: they are copied back into the old folder first. Delete the old
-folder yourself once you are happy; OpenDash never deletes it.
+folder yourself once you are happy; Freeflo never deletes it.
 
 **Why does a job say "Runs on HOME-PC"?**
 That computer is your *main computer* (Settings > Sync > Main computer). Only
@@ -123,12 +123,12 @@ runs the job where you are.
 **I used the zip version. How do I move my data to the installer version?**
 Stop the zip version (and turn off its start-up switches in Settings >
 Server), install, stop the new copy, copy everything inside the old `data`
-folder into `%LOCALAPPDATA%\OpenDash\data`, then start OpenDash from the
+folder into `%LOCALAPPDATA%\OpenDash\data`, then start Freeflo from the
 Start menu. Step by step:
 [INSTALL.md](INSTALL.md#moving-to-the-installer-version).
 
 **How do I move to a new computer?**
-*Export all data (.zip)* on the old one, install OpenDash on the new one,
+*Export all data (.zip)* on the old one, install Freeflo on the new one,
 *Import data*. Connections are set up again on the new computer.
 
 **What can friends see?**
@@ -157,7 +157,7 @@ the brief and the stories all work without it. Claude adds the assistant,
 smart suggestions, AI summaries and the connectors.
 
 **Why Claude Code and not an API key?**
-OpenDash runs Claude through the Claude Code CLI signed in to your own account,
+Freeflo runs Claude through the Claude Code CLI signed in to your own account,
 so it never handles an API key or password, and calls use the plan you already
 have.
 
@@ -169,11 +169,11 @@ sign-ins, money rules, changes to existing expenses, updates) is only ever a
 proposal you approve on screen. Text inside emails or calendar invitations
 cannot change your data on its own.
 
-**Can OpenDash send email, change my calendar or move money?**
+**Can Freeflo send email, change my calendar or move money?**
 No. Gmail, Calendar and bank connectors are only ever used with read tools,
 and tools that could send, change or delete anything are locked.
 
-**What is the "OpenDash MCP"?**
+**What is the "Freeflo MCP"?**
 A way for your own Claude (Claude Code, T3 Code or Claude Desktop) to read and
 change nearly everything in the dashboard from a chat, with Undo. Sensitive
 things need a dry run or your approval. See [MCP.md](MCP.md).
@@ -212,17 +212,17 @@ days the clocks change.
 ## Running it
 
 **The page says the server isn't running.**
-Start OpenDash with its launcher. Settings > Server > *Open log* (or
+Start Freeflo with its launcher. Settings > Server > *Open log* (or
 `data/logs/server.log`) says why it stopped.
 
-**"Port 4173 is in use by something that is not OpenDash".**
-If OpenDash is already running, the launcher simply opens it. Otherwise start
+**"Port 4173 is in use by something that is not Freeflo".**
+If Freeflo is already running, the launcher simply opens it. Otherwise start
 it on another port from a terminal in the app folder: `.\start-opendash.bat
 --port 4174` on Windows, `sh start-opendash.sh --port 4174` on macOS and Linux
 (see [launcher options](INSTALL.md#launcher-options)).
 
 **Can it start when I log in?**
-With the Windows installer, tick *Start OpenDash when I sign in* while
+With the Windows installer, tick *Start Freeflo when I sign in* while
 installing. With a zip install on Windows, turn on *Start automatically when I
 log in* in Settings > Server. On macOS and Linux, Settings > Server shows how
 to add a login item.

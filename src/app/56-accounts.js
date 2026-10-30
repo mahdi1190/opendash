@@ -77,7 +77,7 @@ function accSignInProblem() {
   const was = new Map((_accBefore || []).map(a => [a.id, a]));
   for (const a of ((AccountsStore.data && AccountsStore.data.accounts) || [])) {
     const old = was.get(a.id);
-    if (a.status === 'needs-admin-approval' && (!old || old.status !== 'needs-admin-approval')) return `${a.email} needs your organisation to approve OpenDash once. Close this and press Ask for approval on its card.`;
+    if (a.status === 'needs-admin-approval' && (!old || old.status !== 'needs-admin-approval')) return `${a.email} needs your organisation to approve Freeflo once. Close this and press Ask for approval on its card.`;
     const err = a.error ? a.error.message || a.error.code || '' : '';
     if (err && (!old || old.err !== err)) return `${a.email}: ${err}`;
   }
@@ -118,9 +118,9 @@ function accAdd(provider) {
     };
     swap.onclick = () => { kind = (kind || accGuessKind(input.value)) === 'personal' ? 'work' : 'personal'; paintHint(); };
     el.append(hint, swap);
-    el.appendChild(_connSteps([`${name} opens in a new tab. Sign in there and say yes.`, 'Come back to this tab. OpenDash finishes on its own.']));
+    el.appendChild(_connSteps([`${name} opens in a new tab. Sign in there and say yes.`, 'Come back to this tab. Freeflo finishes on its own.']));
     const note = _connEl('p', 'conn-note acc-promise'); note.innerHTML = icon('shield-check', 'i-xs');
-    note.appendChild(_connEl('span', null, 'OpenDash only reads. It never sends, changes or deletes your mail or events, and your password stays with ' + name + '.'));
+    note.appendChild(_connEl('span', null, 'Freeflo only reads. It never sends, changes or deletes your mail or events, and your password stays with ' + name + '.'));
     el.appendChild(note);
     const actions = _connEl('div', 'assistant-actions');
     const go = uiButton({ label: 'Continue to ' + name, icon: 'log-in', kind: 'primary', size: 'sm', run: () => {
@@ -171,7 +171,7 @@ function accWaiting(name, close) {
       b.disabled = false;
       if (ok) { clearInterval(timer); return; }
       // Not there yet: say so, with what to do, instead of closing as if it worked.
-      say(accSignInProblem() || (AccountsStore.error ? 'OpenDash could not check just now: ' + AccountsStore.error : `OpenDash has not received the sign-in yet. If the ${name} tab is still open, finish there. If it showed an error or you closed it, press Open the sign-in again.`), true);
+      say(accSignInProblem() || (AccountsStore.error ? 'Freeflo could not check just now: ' + AccountsStore.error : `Freeflo has not received the sign-in yet. If the ${name} tab is still open, finish there. If it showed an error or you closed it, press Open the sign-in again.`), true);
     } }),
     uiButton({ label: 'Open the sign-in again', icon: 'external-link', kind: 'secondary', size: 'sm', run: () => { if (_accSignInOpts) { accOpenSignIn(_accSignInOpts); clearInterval(timer); box.replaceWith(accWaiting(name, close)); } } }),
     uiButton({ label: 'Cancel', kind: 'ghost', size: 'sm', run: () => { clearInterval(timer); _accSignInAt = 0; close(); } }));
@@ -230,7 +230,7 @@ function accOtherEmail() {
     const card = _connEl('div', 'acc-soon');
     card.innerHTML = icon('hourglass');
     card.append(_connEl('h3', 'conn-name', 'Coming soon: Yahoo, iCloud and others with an app password'),
-      _connEl('p', 'conn-text', 'An app password is a special password your email provider makes just for apps like OpenDash. When this arrives, OpenDash will show you where to get one, step by step.'),
+      _connEl('p', 'conn-text', 'An app password is a special password your email provider makes just for apps like Freeflo. When this arrives, Freeflo will show you where to get one, step by step.'),
       _connEl('p', 'conn-note', 'Already have a calendar link from iCloud, Yahoo or another calendar? You can add it now.'));
     card.appendChild(uiButton({ label: 'Add a calendar link', icon: 'link', kind: 'secondary', size: 'sm', run: () => { close(); accAddCalendarLink(); } }));
     el.appendChild(card);
@@ -242,16 +242,16 @@ function accAddCalendarLink() { if (typeof srcAddFlow === 'function') srcAddFlow
 async function accApproval(a) {
   let help = a.approval || null;
   if (!help) { try { help = await _srcApi('/api/accounts/approval?id=' + encodeURIComponent(a.id)); } catch (e) { help = null; } }
-  openDrawer({ title: 'Your organisation needs to approve OpenDash once', width: 540, body: (el, close) => {
+  openDrawer({ title: 'Your organisation needs to approve Freeflo once', width: 540, body: (el, close) => {
     const org = String(a.email || '').split('@')[1] || 'your organisation';
     el.appendChild(_connEl('p', 'conn-text', `Your work account belongs to ${org}. It only lets apps in after an administrator says yes. This is normal for work accounts and only needs doing once.`));
-    if (!help || !help.consentUrl) { el.appendChild(_connEl('p', 'conn-note', 'Ask your IT team to approve OpenDash for read-only mail and calendar.')); return; }
+    if (!help || !help.consentUrl) { el.appendChild(_connEl('p', 'conn-note', 'Ask your IT team to approve Freeflo for read-only mail and calendar.')); return; }
     el.appendChild(_connSteps([
-      [_connEl('strong', null, 'If you look after Microsoft 365 yourself:'), uiButton({ label: 'Approve OpenDash', icon: 'external-link', kind: 'primary', size: 'sm', run: () => window.open(help.consentUrl, '_blank', 'noopener') })],
+      [_connEl('strong', null, 'If you look after Microsoft 365 yourself:'), uiButton({ label: 'Approve Freeflo', icon: 'external-link', kind: 'primary', size: 'sm', run: () => window.open(help.consentUrl, '_blank', 'noopener') })],
       [_connEl('strong', null, 'If not, send this to your IT team:'), uiButton({ label: 'Email my IT team', icon: 'send', kind: 'secondary', size: 'sm', run: () => { window.location.href = help.mailto; } }), _connCopyBtn(help.body || help.mailto, 'Copy the message')],
       [_connEl('span', null, 'When it has been approved:'), uiButton({ label: 'Try again', icon: 'log-in', kind: 'secondary', size: 'sm', run: () => { close(); accOpenSignIn({ provider: a.provider, accountId: a.id }); } })],
     ]));
-    el.appendChild(_connEl('p', 'conn-note', 'OpenDash asks only to read your profile, mail and calendar. It cannot send, change or delete anything.'));
+    el.appendChild(_connEl('p', 'conn-note', 'Freeflo asks only to read your profile, mail and calendar. It cannot send, change or delete anything.'));
   } });
 }
 
@@ -267,7 +267,7 @@ function accCard(a) {
   titles.append(h, _connEl('span', 'acc-sub', `${accProviderName(a)} · ${accKindText(a.kind)}`));
   top.append(mark, titles, _connEl('span', 'status ' + (view.tone === 'ok' ? 'ok' : view.tone === 'warn' ? 'warn' : 'off'), view.label));
   card.appendChild(top);
-  const feats = _connEl('div', 'acc-features'); feats.setAttribute('role', 'group'); feats.setAttribute('aria-label', 'What OpenDash reads from ' + a.email);
+  const feats = _connEl('div', 'acc-features'); feats.setAttribute('role', 'group'); feats.setAttribute('aria-label', 'What Freeflo reads from ' + a.email);
   for (const f of accFeatureList(a)) {
     const b = _connEl('button', 'acc-feature' + (f.on ? ' on' : '')); b.type = 'button';
     b.setAttribute('aria-pressed', String(f.on));
@@ -311,7 +311,7 @@ function accCard(a) {
       a.status === 'paused' ? { label: 'Resume', icon: 'refresh-cw', run: () => run('resume') } : { label: 'Pause', icon: 'clock', run: () => accAct(a, '/api/accounts/pause', { paused: true }) },
       ...(a.status !== 'needs-admin-approval' && a.here && a.here.fetcher ? [{ label: 'Sign in again', icon: 'log-in', run: () => run('sign-in') }] : []),
       { label: 'Remove…', icon: 'trash-2', danger: true, run: async () => {
-        const ok = await confirmDialog({ title: 'Remove this account?', text: `OpenDash stops reading ${a.email} and forgets the mail and events it saved from it. Your account itself is not changed.`, confirmLabel: 'Remove', danger: true });
+        const ok = await confirmDialog({ title: 'Remove this account?', text: `Freeflo stops reading ${a.email} and forgets the mail and events it saved from it. Your account itself is not changed.`, confirmLabel: 'Remove', danger: true });
         if (ok) accAct(a, '/api/accounts/remove', {}, () => toast(`${a.email} removed`, { kind: 'ok' }));
       } },
     ];
@@ -354,7 +354,7 @@ function accountsCompactCard() {
   if (!AccountsStore.data && !AccountsStore.loading) accLoad();
   const d = accList();
   const box = _connEl('section', 'card conn-card acc-compact'); box.dataset.conn = 'accounts';
-  box.append(_connEl('div', 'conn-name', 'Email and calendar (optional)'), _connEl('p', 'conn-note', 'Add your accounts now or later from Connections. OpenDash only reads.'));
+  box.append(_connEl('div', 'conn-name', 'Email and calendar (optional)'), _connEl('p', 'conn-note', 'Add your accounts now or later from Connections. Freeflo only reads.'));
   for (const a of accSort((d && d.accounts) || [])) box.appendChild(_connEl('p', 'conn-note', `${a.email}: ${accStatusView(a).label}`));
   const row = _connEl('div', 'assistant-actions');
   for (const b of accAddButtons(d && d.providers)) row.appendChild(accAddButton(b, b.id === 'other' ? 'btn-ghost' : 'btn-secondary'));

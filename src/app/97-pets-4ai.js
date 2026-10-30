@@ -25,7 +25,7 @@ async function _paiPost(url, body) {
   return j;
 }
 function _paiWhy(e) {
-  if (typeof netIsDown === 'function' && netIsDown(e)) return 'The OpenDash server isn\'t running, so the assistant cannot restyle your pet. Start it, then try again.';
+  if (typeof netIsDown === 'function' && netIsDown(e)) return 'The Freeflo server isn\'t running, so the assistant cannot restyle your pet. Start it, then try again.';
   if (e && e.status === 503) return 'Claude isn\'t connected, so the assistant cannot restyle your pet right now. Connect it in Connections, then try again.';
   return typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The assistant could not do that. Try again.') : 'The assistant could not do that. Try again.';
 }
@@ -185,7 +185,7 @@ const _PDZ_EXAMPLES = Object.freeze(['A big blue wig', 'A wizard hat with stars'
 function _pdzField(slot) { const s = PET_ITEM_SLOTS.find(x => x[0] === slot); return s ? s[2] : ''; }
 function _pdzSlotLabel(slot) { const s = PET_ITEM_SLOTS.find(x => x[0] === slot); return s ? s[1] : String(slot); }
 function _pdzWhy(e, verb) {
-  if (typeof netIsDown === 'function' && netIsDown(e)) return 'The OpenDash server isn\'t running, so that did not work. Start it, then try again.';
+  if (typeof netIsDown === 'function' && netIsDown(e)) return 'The Freeflo server isn\'t running, so that did not work. Start it, then try again.';
   if (e && e.status === 503) return 'Claude isn\'t connected, so the assistant cannot draw right now. Connect it in Connections, then try again.';
   if (e && e.code === 'GATE') return (verb || 'That') + ' did not pass the safety checks' + (e.errors && e.errors.length ? ` (${e.errors.slice(0, 2).join('; ')})` : '') + '. Try again, or describe it differently.';
   return typeof netErrorMessage === 'function' ? netErrorMessage(e, 'That did not work. Try again.') : 'That did not work. Try again.';
@@ -379,7 +379,7 @@ function petDesignEditOpen(item, repaint) {
           code.value = j.code; code.hidden = false;
           let copied = false;
           try { await navigator.clipboard.writeText(j.code); copied = true; } catch (e) { /* the box is there to copy by hand */ }
-          status.textContent = copied ? 'Copied. Anyone with OpenDash can paste it under My designs > Import a code.' : 'Select the code above and copy it. Anyone with OpenDash can paste it under My designs > Import a code.';
+          status.textContent = copied ? 'Copied. Anyone with Freeflo can paste it under My designs > Import a code.' : 'Select the code above and copy it. Anyone with Freeflo can paste it under My designs > Import a code.';
         } catch (e) { status.textContent = _pdzWhy(e); }
       }, 'btn-ghost');
       const sv = _ptBtn('Save', 'check', async () => {

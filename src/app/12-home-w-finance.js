@@ -339,7 +339,7 @@ function _hbFinRender(el, ctx) {
     return true;
   }
   if (!g && _hbFin.err) {
-    body.appendChild(hglEmpty({ icon: 'circle-alert', title: 'Couldn’t read Finances', text: 'OpenDash isn’t answering. Your data is safe.',
+    body.appendChild(hglEmpty({ icon: 'circle-alert', title: 'Couldn’t read Finances', text: 'Freeflo isn’t answering. Your data is safe.',
       actions: [{ label: 'Try again', icon: 'refresh-cw', run: () => { _hbFin.at = 0; _hbFin.err = null; _hbFin.key = ''; _hbFinLoad(0); homeRerenderWidget('finance'); } }] }));
     return true;
   }

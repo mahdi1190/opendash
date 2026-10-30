@@ -35,7 +35,7 @@ registerPage({
   sections: MEM_TABS.map(([id, label]) => [id === 'journal' ? 'memories' : 'memories:' + id, label]),
   badge: () => { const n = typeof memCapsulesDue === 'function' ? memCapsulesDue().length : 0; return n ? String(n) : ''; },
 });
-registerCommand({ id: 'mem-wrapped', label: 'Your year in OpenDash (Wrapped)', icon: 'party-popper', group: 'Go to', keywords: 'wrapped year review recap stats spotify annual memories', run: () => memWrappedOpen() });
+registerCommand({ id: 'mem-wrapped', label: 'Your year in Freeflo (Wrapped)', icon: 'party-popper', group: 'Go to', keywords: 'wrapped year review recap stats spotify annual memories', run: () => memWrappedOpen() });
 registerCommand({ id: 'mem-journal', label: 'Journal', icon: 'notebook-pen', group: 'Go to', keywords: 'memories diary journal day line mood', run: () => setView('memories') });
 registerCommand({ id: 'mem-capsule', label: 'Write a note to your future self', icon: 'mail', keywords: 'time capsule letter future self memories', run: () => memCapsuleWrite() });
 registerCommand({ id: 'mem-rediscover', label: 'Rediscover a day', icon: 'sparkles', keywords: 'memories random past day throwback on this day', run: () => { const d = memRediscover(); if (d) memDayDialog(d); else toast('Come back when there is more history to rediscover', { icon: 'history' }); } });
@@ -175,7 +175,7 @@ function _mpJournalSide(list) {
     const n = document.createElement('p'); n.className = 'mem-side-n';
     n.innerHTML = `<b class="num">${list.length.toLocaleString()}</b> <span class="muted">day${list.length === 1 ? '' : 's'} kept</span>`;
     const p = document.createElement('p'); p.className = 'muted';
-    p.textContent = 'Each evening OpenDash writes a few lines about your day from what you did, where and with whom. Add your own line and how the day felt. It is all kept, forever.';
+    p.textContent = 'Each evening Freeflo writes a few lines about your day from what you did, where and with whom. Add your own line and how the day felt. It is all kept, forever.';
     const row = document.createElement('div'); row.className = 'mem-side-a';
     row.append(uiButton({ label: 'Rediscover a day', icon: 'sparkles', kind: 'ghost', size: 'sm', run: _mpRediscover }),
       uiButton({ label: 'Write a time capsule', icon: 'mail', kind: 'ghost', size: 'sm', run: () => memCapsuleWrite() }));

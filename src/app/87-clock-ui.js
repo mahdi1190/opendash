@@ -357,7 +357,7 @@ function clockSettingsRows(el, opts) {
       if (await _clkPutConfig({ timezone: v }, 'Home time zone saved')) after();
     }, 'set-tz');
     sel.setAttribute('aria-label', 'Home time zone');
-    el.appendChild(_settingsRow('Home time zone', 'Where you live. While you travel, OpenDash follows this computer.', sel));
+    el.appendChild(_settingsRow('Home time zone', 'Where you live. While you travel, Freeflo follows this computer.', sel));
   }
   if (o.clock) {
     const c12 = APP_CONFIG.time && APP_CONFIG.time.clock12;

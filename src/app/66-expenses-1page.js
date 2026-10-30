@@ -45,7 +45,7 @@ function _xpMount(container) {
   if (!items.length) {
     const box = _xe('div', 'xp-empty'); root.appendChild(box);
     mountEmptyState(box, { icon: 'receipt', title: 'Get paid back, without the chasing',
-      text: 'Mark a payment as an expense to start: open Money > Transactions and press Expense on the purchase, or add one by hand. Keep the receipt, send the claim, and OpenDash notices when the money arrives.',
+      text: 'Mark a payment as an expense to start: open Money > Transactions and press Expense on the purchase, or add one by hand. Keep the receipt, send the claim, and Freeflo notices when the money arrives.',
       actions: [{ label: 'Add an expense', icon: 'plus', primary: true, run: () => expAddDialog({}) }, { label: 'Open transactions', icon: 'arrow-right', run: () => { setView('finance'); try { window.FinanceView.setSection('transactions'); } catch (e) { /* later */ } } }] });
     const rp0 = _xpReports(d); if (rp0) root.appendChild(rp0);
     return;
@@ -162,7 +162,7 @@ function _xpListInto(host, all, sel, pick, tools) {
   qi.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { EXP.q = qi.value; const at = qi.selectionStart; render(); const again = document.querySelector('.xp-search input'); if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (e) { /* fine */ } } }, 260); });
   tools.appendChild(q);
   host.appendChild(tools);
-  const groups = [['to-claim', 'To claim', 'Add the receipt, then send the claim.'], ['submitted', 'Waiting', 'Sent and waiting to be paid back. OpenDash looks for the payment.'], ['paid', 'Paid', '']];
+  const groups = [['to-claim', 'To claim', 'Add the receipt, then send the claim.'], ['submitted', 'Waiting', 'Sent and waiting to be paid back. Freeflo looks for the payment.'], ['paid', 'Paid', '']];
   for (const [st, title, hint] of groups) {
     const list = all.filter(e => e.status === st);
     if (!list.length) continue;
@@ -398,7 +398,7 @@ function expSubmitDialog(ids) {
         uiButton({ label: 'Download pack', icon: 'download', size: 'sm', run: () => expPack({ ids, payer: payer.value }, 'zip'), tip: 'A summary page, a spreadsheet and the receipts, in one file' }),
         uiButton({ label: 'Print view', icon: 'printer', size: 'sm', run: () => expPack({ ids, payer: payer.value }, 'html'), tip: 'A page you can open and print or save as a PDF' }));
       el.appendChild(acts);
-      el.appendChild(_xe('p', 'xp-fh', 'OpenDash never sends anything. Send the pack yourself, then mark it as submitted.'));
+      el.appendChild(_xe('p', 'xp-fh', 'Freeflo never sends anything. Send the pack yourself, then mark it as submitted.'));
     },
     actions: [{ label: 'Cancel' }, { label: 'Mark as submitted', primary: true, icon: 'send', run: async (close) => {
       if (!payer.value.trim()) { payer.focus(); toast('Say who you sent it to.', { kind: 'err' }); return false; }

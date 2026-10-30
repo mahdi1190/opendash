@@ -16,7 +16,7 @@
     const timer = ac ? setTimeout(() => ac.abort(), LOAD_TIMEOUT_MS) : null;
     try {
       const r = await fetch('/api/finance', { cache: 'no-store', signal: ac ? ac.signal : undefined });
-      if (!r.ok) throw new Error(r.status === 404 ? 'this server has no finance support — restart OpenDash' : 'HTTP ' + r.status);
+      if (!r.ok) throw new Error(r.status === 404 ? 'this server has no finance support — restart Freeflo' : 'HTTP ' + r.status);
       const j = await r.json();
       R.data = j; R.err = null; R.loadedAt = Date.now();
       try { if (window.Expenses && window.Expenses.financeUpdated) window.Expenses.financeUpdated(); } catch (e) { /* Expenses is optional */ }
@@ -70,7 +70,7 @@
       if (r.status === 202 && r.body.remote) { waitRemote(r.body.remote); return; }
       if (r.status === 202 || (r.status === 409 && r.body.job)) { if (r.body.job) R.job = r.body.job; startPolling(); }
       else R.startErr = (r.body.skipped && r.body.message) || r.body.error || ('Couldn’t start the update: HTTP ' + r.status + '.');
-    } catch (e) { R.startErr = 'OpenDash isn’t answering. Is it running?'; }
+    } catch (e) { R.startErr = 'Freeflo isn’t answering. Is it running?'; }
     paintUpdate();
   }
   // "Sync bank" on a device that shows another device's finances: that device
@@ -85,7 +85,7 @@
     try {
       res = await window.RemoteJobs.wait(remote, { quiet: true, onState: (x) => { if (R.remoteJob) { R.remoteJob = x; paintUpdate(); } } });
       body = await res.json().catch(() => ({}));
-    } catch (e) { body = { error: 'OpenDash isn’t answering. Is it running?' }; }
+    } catch (e) { body = { error: 'Freeflo isn’t answering. Is it running?' }; }
     R.remoteJob = null;
     if (res && res.ok) {
       for (let i = 0; i < 6; i++) {
@@ -143,7 +143,7 @@
         // @p2 Transient: keep polling. After three misses in a row (about 6 s) say so, in words, instead
         // of a "Syncing…" that never ends; the sync picks up again when the server answers.
         R.pollFails = (R.pollFails || 0) + 1;
-        if (R.pollFails === 3) { R.lostServer = true; toast("Lost touch with OpenDash during the update. It carries on when it’s back.", { bad: true }); }
+        if (R.pollFails === 3) { R.lostServer = true; toast("Lost touch with Freeflo during the update. It carries on when it’s back.", { bad: true }); }
       }
       paintUpdate();
     }, 2000);

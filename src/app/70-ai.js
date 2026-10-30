@@ -59,15 +59,15 @@ function aiErrorView(e) {
   if (typeof netIsDown === 'function' && netIsDown(e)) return { text: netErrorMessage(e), fix: null, retry: true, cancelled: false };
   switch (code) {
     case 'UNAVAILABLE': case 'CLI_MISSING':
-      return { text: 'Claude Code is not installed on this computer, so OpenDash cannot ask Claude.', fix: { label: 'How to install', run: open.run }, retry: false, cancelled: false };
+      return { text: 'Claude Code is not installed on this computer, so Freeflo cannot ask Claude.', fix: { label: 'How to install', run: open.run }, retry: false, cancelled: false };
     case 'NOT_SIGNED_IN':
       return { text: 'Claude Code is signed out on this computer.', fix: { label: 'Sign in to Claude', run: () => (typeof _connOpenTerminal === 'function' ? _connOpenTerminal() : open.run()) }, retry: false, cancelled: false };
     case 'USAGE_LIMIT':
       return { text: 'Your Claude usage limit is reached for now. It resets on its own (usually within a few hours); try again then.', fix: null, retry: false, cancelled: false };
     case 'TIMEOUT':
-      return { text: 'Claude took too long, so OpenDash stopped waiting. Your text is kept: try again (a shorter question is quicker).', fix: null, retry: true, cancelled: false };
+      return { text: 'Claude took too long, so Freeflo stopped waiting. Your text is kept: try again (a shorter question is quicker).', fix: null, retry: true, cancelled: false };
     case 'QUEUE_FULL':
-      return { text: 'Claude is busy with other OpenDash requests. Try again in a minute.', fix: null, retry: true, cancelled: false };
+      return { text: 'Claude is busy with other Freeflo requests. Try again in a minute.', fix: null, retry: true, cancelled: false };
     case 'BAD_OUTPUT':
       return { text: 'Claude’s answer came back empty or in the wrong shape. Trying again usually works.', fix: null, retry: true, cancelled: false };
     case 'CONNECTOR_AUTH': case 'TOOL_MISSING':

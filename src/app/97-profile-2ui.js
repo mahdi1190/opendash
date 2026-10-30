@@ -438,7 +438,7 @@ function _pfLookScenes(host, look, apply) {
   const sec = _pfLookSection(host, 'Your scene');
   if (!all.length) { sec.appendChild(emptyLine('The scenes are still loading, or this dashboard has none yet. Your colour shows meanwhile.')); return; }
   const chosen = all.find(it => it.ref === look.scene) || null;
-  sec.appendChild(_pfEl('div', 'set-h', chosen ? `Showing ${chosen.label}. Friends see it if their OpenDash has it too; otherwise your colour.` : 'Pick a scene. Friends see it if their OpenDash has it too; otherwise your colour.'));
+  sec.appendChild(_pfEl('div', 'set-h', chosen ? `Showing ${chosen.label}. Friends see it if their Freeflo has it too; otherwise your colour.` : 'Pick a scene. Friends see it if their Freeflo has it too; otherwise your colour.'));
   const q = _pfEl('input', 'control control-sm set-input pf-l-q'); q.type = 'search'; q.placeholder = `Search ${all.length} scenes`; q.setAttribute('aria-label', 'Search the scenes');
   q.value = _pfUI.sceneQ || '';
   const list = _pfEl('div', 'pf-l-scenes'); list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', 'Scenes');

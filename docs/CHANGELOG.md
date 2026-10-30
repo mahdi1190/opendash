@@ -1,14 +1,41 @@
 # Changelog
 
-All notable changes to OpenDash are documented in this file.
+All notable changes to Freeflo (called OpenDash before 2.23) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and OpenDash follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-For OpenDash, a **major** version may need a data-folder upgrade that older
+and Freeflo follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+For Freeflo, a **major** version may need a data-folder upgrade that older
 versions cannot read; the launcher always backs the data folder up before it
 upgrades it.
 
 ## [Unreleased]
+
+## [2.23.0] - 2026-10-30
+
+OpenDash is now **Freeflo**, with a new logo that follows the seasons and turns into the holidays.
+
+### Changed
+- **The name is Freeflo.** The app, the tab title, the opening, Settings, the docs and the website say Freeflo. Nothing else moves: your data
+  folder, the `opendash` command and folder names, the MCP server id, the GitHub address and the update check stay exactly as they were, so
+  nothing needs doing on your side.
+- **A new logo and a new opening.** The name is written in one stroke and its last o is an orb of moving liquid that drops in and settles. The
+  orb is bigger than the letters around it, and it is the app icon in the browser tab too.
+- **The orb follows the seasons.** Spring, summer, autumn and winter each colour it (the southern hemisphere is flipped from the time zone),
+  with a small detail of their own: petals, bubbles, a drifting leaf, snow.
+
+### Added
+- **The orb turns into the holiday.** For a few days around each one it becomes a jack-o'-lantern (Halloween), a snow globe (Christmas),
+  fireworks (New Year), a heart (Valentine's Day), a lantern (Lunar New Year), a diya (Diwali), a crescent and star (Eid), an egg (Easter), a
+  flipping pancake (Pancake Day), a bonfire (Bonfire Night), a clover (St Patrick's Day), the Earth (Earth Day), a rainbow (all of June), a
+  cake on your birthday (the one in Settings), and the sun or a starry night at the solstices.
+- **Logo style** in the workspace icon menu: follow the seasons and holidays (the default), seasons only, the classic colours, or pin any season
+  or holiday to preview it. `assets/brand/orbs/` and `assets/brand/preview/orbs.png` show all 21.
+- `prototypes/freeflo-orb-gallery.html`: every orb, animated, with a date picker to see what any day shows.
+
+### Notes
+- The Windows installer, Start menu entries and the `OpenDash-Setup-<version>.exe` file name keep their old names for now; the installer's
+  window text says Freeflo.
+- Screenshots on the website still show the old name until they are retaken.
 
 ## [2.22.2] - 2026-10-30
 

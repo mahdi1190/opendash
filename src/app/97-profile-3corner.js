@@ -179,7 +179,7 @@ function profileCornerPaint() {
   const bn = document.getElementById('brand-name');
   let txt = btn.querySelector(':scope > .sb-ws-txt');
   if (bn && !txt && bn.parentNode === btn) { txt = _pfcEl('span', 'sb-ws-txt'); btn.insertBefore(txt, bn); txt.appendChild(bn); }
-  const name = you ? profileDisplayName(p) : ((typeof userName === 'function' && userName()) || 'OpenDash');
+  const name = you ? profileDisplayName(p) : ((typeof userName === 'function' && userName()) || 'Freeflo');
   if (you && bn && bn.textContent !== name) bn.textContent = name;
   if (txt) {
     let sub = txt.querySelector(':scope > .sb-ws-sub');

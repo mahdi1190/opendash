@@ -94,7 +94,7 @@ function _hspRender(el, ctx) {
   }
   if (!g && (res.status === 'error' || res.offline)) {
     body.appendChild(hglEmpty({ icon: 'circle-alert', title: 'Couldn’t read Finances',
-      text: res.offline ? 'OpenDash isn’t answering. Your data is safe.' : (res.error || 'OpenDash isn’t answering. Your data is safe.'),
+      text: res.offline ? 'Freeflo isn’t answering. Your data is safe.' : (res.error || 'Freeflo isn’t answering. Your data is safe.'),
       actions: [{ label: 'Retry', icon: 'refresh-cw', run: () => { homeDataRefresh(_HSP_DATA); } }] }));
     return true;
   }
@@ -288,7 +288,7 @@ async function _hspSyncStart() {
     j = await r.json().catch(() => ({}));
   } catch (e) {
     _hsp.sync = null; _hspPaintSync();
-    toast(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'The OpenDash server isn’t running.', { kind: 'err' });
+    toast(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'The Freeflo server isn’t running.', { kind: 'err' });
     return;
   }
   // Another device reads the bank: it was asked to update; wait for its answer (56-remote-jobs.js), then a fresh glance.
@@ -322,7 +322,7 @@ function _hspPoll() {
     _hsp.sync = null;
     homeDataRefresh(_HSP_DATA);
     _hspPaintSync();
-    if (!s) toast('Couldn’t check the sync: the OpenDash server didn’t answer.', { kind: 'err' });
+    if (!s) toast('Couldn’t check the sync: the Freeflo server didn’t answer.', { kind: 'err' });
     else if (job && job.state === 'error') toast('The bank sync didn’t finish. Finances shows why.', { kind: 'err', action: { label: 'Open Finances', run: () => _hspOpen('overview') } });
     else if (typeof homeAnnounce === 'function') homeAnnounce('Bank data synced');
   }, 2000);

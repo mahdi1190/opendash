@@ -60,7 +60,7 @@ registerAchievementPack({ id: "b5-play", label: "Play shelf, places and meta", d
   { id: "sc-tod", cat: "scenes", name: "Dawn to midnight", desc: "See scenes at dawn, by day, at dusk and at night.", when: {mark:'scene-tod',gte:4}, rarity: "common" },
   { id: "sc-first-snow", cat: "scenes", name: "First snow", desc: "Be here for the first snowy day of two winters.", when: {n:'scenes.firstSnow',gte:2}, rarity: "epic", season: "11-01..02-28" },
   { id: "sc-stories", cat: "scenes", name: "Storyteller", desc: "Play all four kinds of story: morning, evening, week and money.", when: {n:'stories.kinds',gte:4}, rarity: "uncommon" },
-  { id: "sc-midsummer", cat: "scenes", name: "Midsummer", desc: "Open OpenDash on 21 June in two different years.", when: {days:'d.open',gte:2,on:{md:'06-21'}}, rarity: "rare", season: "06-21..06-21" },
+  { id: "sc-midsummer", cat: "scenes", name: "Midsummer", desc: "Open Freeflo on 21 June in two different years.", when: {days:'d.open',gte:2,on:{md:'06-21'}}, rarity: "rare", season: "06-21..06-21" },
   { id: "sc-seasons", cat: "scenes", name: "Turn of the year", desc: "See your scenes in all four seasons.", when: {mark:'scene-season',gte:4}, rarity: "epic" },
   { id: "mx-100", cat: "meta", name: "Centurion", desc: "Earn 100 achievements.", when: {meta:{},gte:100}, rarity: "rare" },
   { id: "mx-200", cat: "meta", name: "Two hundred strong", desc: "Earn 200 achievements.", when: {meta:{},gte:200}, rarity: "epic" },

@@ -104,13 +104,13 @@ const WHATS_NEW = [
     text: 'Resize any widget to any size and drag it anywhere on Home and Money; gaps fill themselves. Money has its welcome banner and Play money story back, and both pages are in the sidebar as well as the tabs.',
     view: ['finance', 'home'], sel: ['#sidebar', '#main-body'] },
   { id: 'expense-report', group: 'n219', icon: 'file-text', title: '2.19.6: make an expense report',
-    text: 'On Expenses, tick what you spent for work and press Make expense report. OpenDash fills in the expense form as a PDF, zips the receipts, saves both in Documents and opens the folder.',
+    text: 'On Expenses, tick what you spent for work and press Make expense report. Freeflo fills in the expense form as a PDF, zips the receipts, saves both in Documents and opens the folder.',
     view: ['expenses'], sel: ['#main-body'], present: () => _wnHasPage('expenses') },
-  { id: 'desktop-shortcut', group: 'n219', icon: 'plus', title: '2.19.7: an OpenDash icon on your desktop',
-    text: 'Settings > Server can add an OpenDash shortcut to your desktop (and the Start menu on Windows) that starts OpenDash if needed and opens it. Windows also has a one-click installer now.',
+  { id: 'desktop-shortcut', group: 'n219', icon: 'plus', title: '2.19.7: a Freeflo icon on your desktop',
+    text: 'Settings > Server can add a Freeflo shortcut to your desktop (and the Start menu on Windows) that starts Freeflo if needed and opens it. Windows also has a one-click installer now.',
     view: ['settings'], sel: ['#main-body'] },
   { id: 'security-2200', group: 'n219', icon: 'shield-check', title: '2.20.0: a full security check',
-    text: 'OpenDash was reviewed end to end and hardened: signed updates, safer links in descriptions, friends removed for good when you remove them, and a new recovery code whenever you remove a device. If you use your own relay, redeploy it once in Settings > Your relay.',
+    text: 'Freeflo was reviewed end to end and hardened: signed updates, safer links in descriptions, friends removed for good when you remove them, and a new recovery code whenever you remove a device. If you use your own relay, redeploy it once in Settings > Your relay.',
     view: ['settings'], sel: ['#main-body'] },
 
   // ---- 2.18.1 ----
@@ -563,12 +563,12 @@ function openWhatsNew(o) {
   const list = _wnVisible();
   openDialog({
     // Groups and jump chips: a fixed height, so the list scrolls and the buttons stay put (UI_CLEANUP_PLAN.md 1.3).
-    title: `What’s new in OpenDash ${WHATS_NEW_VERSION}`, size: 'lg', fixed: true, resizeKey: 'whats-new',
+    title: `What’s new in Freeflo ${WHATS_NEW_VERSION}`, size: 'lg', fixed: true, resizeKey: 'whats-new',
     body: (b, close) => {
       b.classList.add('wn-body');
       const hero = document.createElement('div'); hero.className = 'wn-hero';
       hero.innerHTML = `<div class="wn-hero-art" aria-hidden="true">${icon('sprout')}</div>`
-        + `<div class="wn-hero-txt"><div class="wn-hero-k">OpenDash ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Do more at once, and with less typing</h3>`
+        + `<div class="wn-hero-txt"><div class="wn-hero-k">Freeflo ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Do more at once, and with less typing</h3>`
         + `<p class="wn-hero-s">Select many things at once with one Undo, an assistant that can do much more, simple 4-letter codes for your computers and friends, and 497 hard achievements. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, and everything from earlier releases below.</p></div>`
         + '<div class="wn-hero-acts"></div>';
       const ha = hero.querySelector('.wn-hero-acts');

@@ -498,7 +498,7 @@ async function storyOpen(kind, opts) {
     if (seq !== _story.seq) return;
     root.classList.remove('is-loading'); root.classList.add('is-error');
     root.querySelector('.st-poster-h').textContent = 'The story could not load.';
-    root.querySelector('.st-poster-sub').textContent = _serverAvailable === false ? 'The OpenDash server is not running. Start OpenDash, then press Try again.' : (e.message || 'Try again in a moment.');
+    root.querySelector('.st-poster-sub').textContent = _serverAvailable === false ? 'The Freeflo server is not running. Start Freeflo, then press Try again.' : (e.message || 'Try again in a moment.');
     root.querySelector('.st-bigplay').hidden = true;
     // One click to load it again (no closing and finding the story again).
     const again = document.createElement('button'); again.type = 'button'; again.className = 'btn btn-secondary btn-sm st-retry';

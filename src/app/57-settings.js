@@ -249,7 +249,7 @@ registerSettingsGroup({
 /* ---------- Appearance ---------- */
 registerSettingsGroup({
   id: 'appearance', title: 'Appearance', icon: 'palette', order: 20,
-  description: 'How OpenDash looks. Your other computers follow.',
+  description: 'How Freeflo looks. Your other computers follow.',
   render(el) {
     const themeNow = state.autoTheme ? 'auto' : (state.theme === 'dark' ? 'dark' : 'light');
     el.appendChild(_settingsRow('Theme', 'Auto turns dark in the evening.', _settingsSeg(
@@ -264,7 +264,7 @@ registerSettingsGroup({
       _settingsSwitch(on, 'Reduce motion', () => { if (window.Motion) { Motion.setReduced(!Motion.prefersReduced()); render(); } }, sys)));
     // The app icon (17-app-icon.js): automatic, or one the user picks (moved here from Region & language).
     const ik = typeof appIconKind === 'function' ? appIconKind(APP_CONFIG.appIcon) : '';
-    const ib = uiButton({ label: ({ '': 'Automatic', logo: 'OpenDash logo', initial: 'Initial', icon: 'Icon', emoji: 'Emoji' })[ik] || 'Automatic', size: 'sm', cls: 'set-appicon',
+    const ib = uiButton({ label: ({ '': 'Automatic', logo: 'Freeflo logo', initial: 'Initial', icon: 'Icon', emoji: 'Emoji' })[ik] || 'Automatic', size: 'sm', cls: 'set-appicon',
       aria: 'App icon: pick an icon or emoji, or go back to automatic', run: (e, b) => openAppIconPicker(b) });
     const imk = document.createElement('span'); imk.className = 'brand-mark'; imk.setAttribute('aria-hidden', 'true'); setBrandMark(imk, userName());
     ib.prepend(imk);
@@ -287,7 +287,7 @@ registerSettingsGroup({
     // Status first (P1): one line; the one button only when there is something to do.
     el.appendChild(ok ? setStatusLine('ok', 'Connected', 'Claude') : setStatusLine('off', 'Not connected', 'AI features are greyed out'));
     const cfg = APP_CONFIG.ai || {};
-    el.appendChild(_settingsRow('Assistant', 'For talking to OpenDash and task chat.', _settingsSelect(SETTINGS_MODELS, cfg.chatModel,
+    el.appendChild(_settingsRow('Assistant', 'For talking to Freeflo and task chat.', _settingsSelect(SETTINGS_MODELS, cfg.chatModel,
       (v) => settingsSaveConfig({ ai: { chatModel: v } }))));
     el.appendChild(_settingsRow('Quick jobs', 'Suggestions, linking and tidy-ups.', _settingsSelect(SETTINGS_MODELS, cfg.model,
       (v) => settingsSaveConfig({ ai: { model: v } }))));
@@ -329,7 +329,7 @@ registerSettingsGroup({
 /* ---------- Notifications ---------- */
 registerSettingsGroup({
   id: 'notifications', title: 'Notifications', icon: 'bell', order: 60,
-  description: 'Reminders while OpenDash is open in a browser tab.',
+  description: 'Reminders while Freeflo is open in a browser tab.',
   render(el) {
     const n = APP_CONFIG.notifications || { enabled: false, dueDigest: true, eventLeadMin: 10 };
     const supported = typeof Notification !== 'undefined';
@@ -340,7 +340,7 @@ registerSettingsGroup({
         : live ? setStatusLine('ok', 'On') : setStatusLine('off', 'Off'));
     const ctl = document.createElement('div'); ctl.className = 'set-btns set-notify-ctl';
     ctl.appendChild(uiButton({ label: 'Send a test', icon: 'bell', size: 'sm', disabled: !live,
-      run: () => notifyShow('Notifications work', 'You will see reminders like this while OpenDash is open.', 'test') }));
+      run: () => notifyShow('Notifications work', 'You will see reminders like this while Freeflo is open.', 'test') }));
     ctl.appendChild(_settingsSwitch(live, 'Show notifications', async (on) => {
       if (on && supported && Notification.permission !== 'granted') {
         const p = await Notification.requestPermission().catch(() => 'denied');
@@ -364,7 +364,7 @@ registerSettingsGroup({
   id: 'about', title: 'About', icon: 'info', order: 99,
   render(el) {
     const dl = document.createElement('dl'); dl.className = 'kv';
-    dl.innerHTML = `<dt>App</dt><dd><span class="set-ver">OpenDash</span> · MIT licence</dd>`
+    dl.innerHTML = `<dt>App</dt><dd><span class="set-ver">Freeflo</span> · MIT licence</dd>`
       + `<dt>Project</dt><dd><a href="https://github.com/mahdi1190/opendash" target="_blank" rel="noopener noreferrer">github.com/mahdi1190/opendash</a> · <a href="https://github.com/mahdi1190/opendash/tree/main/docs" target="_blank" rel="noopener noreferrer">Docs</a></dd>`
       + `<dt>Runs on</dt><dd>This computer. No account and no tracking; sync and friends are encrypted.</dd>`
       + `<dt>Weather</dt><dd>Weather data by Open-Meteo.com · CC BY 4.0</dd>`
@@ -375,10 +375,10 @@ registerSettingsGroup({
       + (typeof sceneCreditAboutHtml === 'function' ? sceneCreditAboutHtml() : '');   // Maps: OpenStreetMap (ODbL) and terrain credits (70-scene-1credit.js)
     el.appendChild(dl);
     const p = document.createElement('p'); p.className = 'set-h set-foot';
-    p.textContent = 'The OpenDash licence is in LICENSE; full third-party licence texts are in THIRD_PARTY_NOTICES.md and vendor/ in the app folder.';
+    p.textContent = 'The Freeflo licence is in LICENSE; full third-party licence texts are in THIRD_PARTY_NOTICES.md and vendor/ in the app folder.';
     el.appendChild(p);
     fetch('/api/settings/info', { cache: 'no-store' }).then(r => r.json()).then(j => {
-      const s = dl.querySelector('.set-ver'); if (s && j && j.version) s.textContent = 'OpenDash ' + j.version;
+      const s = dl.querySelector('.set-ver'); if (s && j && j.version) s.textContent = 'Freeflo ' + j.version;
     }).catch(() => {});
   },
 });

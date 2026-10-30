@@ -129,11 +129,11 @@
         } else toast('Undone');
         return true;
       }
-      const msg = r.status === 404 ? 'This OpenDash server can’t change categories yet — restart it to pick up the new version.'
+      const msg = r.status === 404 ? 'This Freeflo server can’t change categories yet — restart it to pick up the new version.'
         : r.status === 409 ? 'An update is running. Try again when it finishes.'
           : r.status === 400 ? (r.body.error || 'That category name isn’t allowed.') : (r.body.error || 'HTTP ' + r.status);
       toast(msg, { bad: true });
-    } catch (e) { toast('Could not reach the OpenDash server', { bad: true }); }
+    } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); }
     return false;
   }
 

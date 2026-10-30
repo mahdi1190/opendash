@@ -541,7 +541,7 @@ function _gmCheckAll() {
     _gmSave();
     gameAccentApply();
     _gm.introUntil = Date.now() + 15000;
-    if (gameOn()) toast(`New: OpenDash keeps score. From your history you're level ${lv} (${s.level.title}) with ${s.xp.total.toLocaleString()} XP`, { icon: 'trophy', action: { label: 'Have a look', run: () => setView('game') } });
+    if (gameOn()) toast(`New: Freeflo keeps score. From your history you're level ${lv} (${s.level.title}) with ${s.xp.total.toLocaleString()} XP`, { icon: 'trophy', action: { label: 'Have a look', run: () => setView('game') } });
     return;
   }
   // level

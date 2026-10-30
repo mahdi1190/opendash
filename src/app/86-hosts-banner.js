@@ -51,7 +51,7 @@ function hostsBannerModel(st, opts) {
   if (st.paused && st.by) {
     out.push({
       key: 'paused', kind: 'paused', tone: 'warning',
-      title: `OpenDash is open on ${st.by.hostname}, so changes here are paused.`,
+      title: `Freeflo is open on ${st.by.hostname}, so changes here are paused.`,
       sub: '',
       actions: [{ id: 'override', label: 'Use it here', primary: true }], dismissible: false,
     });
@@ -61,7 +61,7 @@ function hostsBannerModel(st, opts) {
       if (dismissed.has(key)) continue;
       out.push({
         key, kind: 'also-open', tone: 'warning',
-        title: `OpenDash is also open on ${h.hostname}. Use one at a time.`,
+        title: `Freeflo is also open on ${h.hostname}. Use one at a time.`,
         sub: '',
         actions: [], dismissible: true,
       });
@@ -89,7 +89,7 @@ function hostsBannerModel(st, opts) {
   } else if (st.oneDrive && !o.oneDriveOff && !dismissed.has('onedrive')) {
     out.push({
       key: 'onedrive', kind: 'onedrive', tone: 'info',
-      title: 'Your data is in OneDrive: use OpenDash on one computer at a time.',
+      title: 'Your data is in OneDrive: use Freeflo on one computer at a time.',
       sub: '', actions: [{ id: 'move', label: 'Move it', primary: false }], dismissible: true,
     });
   }
@@ -137,7 +137,7 @@ async function _hbAction(item, act, btn) {
       if (typeof setView === 'function') setView('settings:data');
     } else if (act.id === 'override') {
       const r = await fetch('/api/hosts/override', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-      if (!r.ok) throw new Error('OpenDash didn’t accept it');
+      if (!r.ok) throw new Error('Freeflo didn’t accept it');
       _hb.status = await r.json();
       _hbRender();
       _hbResumed();

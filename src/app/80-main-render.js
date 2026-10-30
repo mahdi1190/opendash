@@ -94,7 +94,7 @@ function render() {
   try { return _render(); }
   catch (e) {
     console.error('Render crashed:', e);
-    showDebug('OpenDash render error', `${e.name || 'Error'}: ${e.message || e}\n\n${e.stack || ''}`);
+    showDebug('Freeflo render error', `${e.name || 'Error'}: ${e.message || e}\n\n${e.stack || ''}`);
     // Still try to show the topbar at least
     try { renderTopbar(); } catch (_) {}
   }

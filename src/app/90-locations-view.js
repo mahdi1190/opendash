@@ -166,7 +166,7 @@ function _locvStory(f) {
   if (abroad.length) lines.push('Countries: ' + abroad.join(', ') + '.');
   if (f.productive) lines.push(`Most productive in ${f.productive.city} (${f.productive.rate} tasks a day).`);
   if (f.badges.length) lines.push('Badges: ' + f.badges.slice(-6).map(b => b.title).join(' · ') + '.');
-  lines.push('(from my OpenDash)');
+  lines.push('(from my Freeflo)');
   return lines.join('\n');
 }
 /** "Where was I on ...?" (command palette). */

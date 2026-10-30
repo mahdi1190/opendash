@@ -65,10 +65,10 @@ function finMonzoView(st) {
   const year = st.earliest ? String(st.earliest).slice(0, 4) : '';
   const waitMin = Math.max(1, Math.round((Number(st.waitSeconds) || 900) / 60));
   switch (st.state) {
-    case 'waiting': return { phase: 'waiting', title: 'Approve in your Monzo app now', text: 'Open Monzo on your phone and tap Allow access. As soon as you do, OpenDash brings in your full history by itself (Monzo allows that for 5 minutes after you approve), so keep this open.',
+    case 'waiting': return { phase: 'waiting', title: 'Approve in your Monzo app now', text: 'Open Monzo on your phone and tap Allow access. As soon as you do, Freeflo brings in your full history by itself (Monzo allows that for 5 minutes after you approve), so keep this open.',
       missed: `Not seeing it? Monzo’s app shows a notification; if it is not there, open the app and look at the top of the home screen. If ${waitMin} minutes pass first, nothing is lost: press Keep waiting, no new sign-in needed.` };
     case 'importing': return { phase: 'importing', title: 'Bringing in your history', text: `${n.toLocaleString()} transaction${n === 1 ? '' : 's'}${year ? ', back to ' + year : ''} so far. Keep this open for a moment.`,
-      missed: 'If the 5 minutes run out first, OpenDash keeps what came and adds the last 90 days; Get full history fetches the rest later.' };
+      missed: 'If the 5 minutes run out first, Freeflo keeps what came and adds the last 90 days; Get full history fetches the rest later.' };
     case 'done': return { phase: 'done', title: 'Your Monzo history is in', text: `${n.toLocaleString()} transaction${n === 1 ? '' : 's'}${year ? ' since ' + year : ''}.` };
     case 'expired': return { phase: 'expired', title: 'Connected, with the last 90 days', text: 'Monzo is connected, with the last 90 days. To bring in older history, press Get full history and approve within 5 minutes.' };
     case 'auth': case 'error': return { phase: 'error', retry: !!st.canRetry,
@@ -225,7 +225,7 @@ function _finPaintSheet(ctx) {
 /* ---------- Plasma One ---------- */
 function _finPlasmaStep(ctx, body) {
   const w = ctx.w;
-  body.appendChild(_finEl('p', 'fc-lead', 'In Plasma One, open Receive and copy your address. That is all OpenDash needs: an address is public, so it can only ever read.'));
+  body.appendChild(_finEl('p', 'fc-lead', 'In Plasma One, open Receive and copy your address. That is all Freeflo needs: an address is public, so it can only ever read.'));
   const row = _finEl('div', 'fc-addr-row');
   const input = _finEl('input', 'fc-input fc-mono'); input.type = 'text'; input.value = w.address || '';
   input.placeholder = '0x…'; input.autocomplete = 'off'; input.spellcheck = false; input.setAttribute('autocapitalize', 'off');
@@ -341,7 +341,7 @@ function _finMonzoClient(ctx, body) {
   ]));
   const fields = _finEl('div', 'fc-copylist');
   fields.append(
-    _finCopyRow('Name', 'OpenDash'),
+    _finCopyRow('Name', 'Freeflo'),
     _finCopyRow('Logo URL', '', 'Leave empty'),
     _finCopyRow('Redirect URLs', _finMonzoRedirect()),
     _finCopyRow('Description', 'Personal dashboard (read-only)'),
@@ -387,7 +387,7 @@ function _finMonzoClockFrom(w, st) {
 function _finPollProblem(el, fails, e) {
   if (!el) return;
   if (fails < 3) { el.replaceChildren(); return; }
-  el.replaceChildren(_finCallout('warn', 'circle-alert', (e && (e.code === 'SERVER_DOWN' || e.code === 'NETWORK') ? e.message : 'OpenDash is not answering right now (' + String((e && e.message) || 'no answer').replace(/\.$/, '') + ').') + ' Still trying every few seconds.'));
+  el.replaceChildren(_finCallout('warn', 'circle-alert', (e && (e.code === 'SERVER_DOWN' || e.code === 'NETWORK') ? e.message : 'Freeflo is not answering right now (' + String((e && e.message) || 'no answer').replace(/\.$/, '') + ').') + ' Still trying every few seconds.'));
 }
 /** Stop the server waiting for this Monzo sign-in (nothing is removed). Quiet: the page moves on anyway. */
 function _finMonzoStop(w) {
@@ -405,7 +405,7 @@ function _finMonzoConnect(ctx, body) {
   const start = () => {
     if (!w.sourceId) { ctx.go('client'); return; }
     const tab = window.open(FIN_API + 'monzo/connect?source=' + encodeURIComponent(w.sourceId), '_blank');
-    if (!tab) toast('Your browser blocked the new tab. Allow pop-ups for OpenDash and press Connect Monzo again', { kind: 'err', timeout: 8000 });
+    if (!tab) toast('Your browser blocked the new tab. Allow pop-ups for Freeflo and press Connect Monzo again', { kind: 'err', timeout: 8000 });
     // A first Connect clears an answer left from an earlier try; "Open Monzo again" never does
     // (that sign-in may have just finished) and keeps the start time the answer is checked against.
     if (!w.connectAt) { _finMonzoStop(w); w.connectAt = Date.now(); }
@@ -664,7 +664,7 @@ function _finEbApp(ctx, body) {
     if (app.error) body.appendChild(_finCallout('warn', 'circle-alert', 'Could not check the app just now (' + app.error.replace(/\.$/, '') + '). You can still continue.'));
     else body.appendChild(_finCallout(active ? 'ok' : 'warn', active ? 'circle-check' : 'info', `App found${entry.appIdMasked ? ' (' + entry.appIdMasked + ')' : ''}: ${app.restricted === false ? 'full' : 'restricted'} mode, ${active ? 'active' : 'inactive'}.`));
     if (!active) {
-      body.appendChild(_finSteps(['In the Enable Banking Control Panel, open your OpenDash app.', 'Press Activate by linking accounts, and link the bank you want.', 'Come back here and press Check again.']));
+      body.appendChild(_finSteps(['In the Enable Banking Control Panel, open your Freeflo app.', 'Press Activate by linking accounts, and link the bank you want.', 'Come back here and press Check again.']));
       ctx.foot.add('Check again', 'refresh-cw', 'btn-primary', async (b) => {
         b.disabled = true;
         try { w.app = await finApi('eb/app'); } catch (e) { b.disabled = false; toastError('check the app', e); }
@@ -684,8 +684,8 @@ function _finEbApp(ctx, body) {
   const fields = _finEl('div', 'fc-copylist');
   fields.append(
     _finCopyRow('Environment', 'Production'),
-    _finCopyRow('Application name', 'OpenDash'),
-    _finCopyRow('Allowed redirect URLs', red.url, red.mode === 'paste' ? 'Nothing runs at this address: after the bank, you paste it back here.' : 'A small page that sends your browser straight back to OpenDash.'),
+    _finCopyRow('Application name', 'Freeflo'),
+    _finCopyRow('Allowed redirect URLs', red.url, red.mode === 'paste' ? 'Nothing runs at this address: after the bank, you paste it back here.' : 'A small page that sends your browser straight back to Freeflo.'),
     _finCopyRow('Description', 'Personal dashboard (read-only)'),
     _finCopyRow('Private key', '', 'Keep “Generate in the browser”. Submitting downloads a .pem key file.'),
   );
@@ -788,7 +788,7 @@ function _finEbSignin(ctx, body) {
   const red = _finEbRedirect();
   if (!bank.name) { ctx.go('bank'); return; }
   const days = Math.min(Number(bank.maxConsentDays) || 180, 180);
-  body.appendChild(_finEl('p', 'fc-lead', `You sign in on ${bank.name}’s own page (usually you approve in its app). ${bank.name} then gives OpenDash read-only access for ${days} days; we remind you before it ends.`));
+  body.appendChild(_finEl('p', 'fc-lead', `You sign in on ${bank.name}’s own page (usually you approve in its app). ${bank.name} then gives Freeflo read-only access for ${days} days; we remind you before it ends.`));
   const wait = _finEl('div', 'fc-waiting'); wait.setAttribute('aria-live', 'polite');
   const err = _finEl('div', 'fc-field-err'); err.setAttribute('aria-live', 'polite');
   if (w.err) err.appendChild(_finCallout('err', 'circle-alert', w.err));

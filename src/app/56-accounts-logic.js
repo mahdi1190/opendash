@@ -41,7 +41,7 @@ function accStatusView(a) {
   if (!a) return { tone: 'off', label: 'Not connected', note: null, primary: null, secondary: [] };
   if (a.status === 'paused') return { tone: 'off', label: 'Paused', note: 'Nothing new is read while it is paused. What was already read stays here.', primary: { id: 'resume', label: 'Resume' }, secondary: [] };
   if (a.status === 'needs-admin-approval') {
-    return { tone: 'warn', label: 'Waiting for your organisation', note: 'Your organisation needs to approve OpenDash once. Ask your IT team, then press Try again.',
+    return { tone: 'warn', label: 'Waiting for your organisation', note: 'Your organisation needs to approve Freeflo once. Ask your IT team, then press Try again.',
       primary: { id: 'approval', label: 'Ask for approval' }, secondary: [{ id: 'sign-in', label: 'Try again' }] };
   }
   if (!here.fetcher) {

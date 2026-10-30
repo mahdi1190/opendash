@@ -1,6 +1,6 @@
 # Roadmap
 
-OpenDash is local-first, and that stays the default: your data lives in one
+Freeflo is local-first, and that stays the default: your data lives in one
 folder on your own computer and nothing leaves it unless you switch something
 on. Everything below that involves the cloud, accounts or other devices is
 **optional, opt-in and end-to-end encrypted**, and can be self-hosted.
@@ -33,9 +33,9 @@ spaces (2.17); Life, the garden and pets (2.18); Expenses (2.18.1 and
 - **Also:** imports from other task apps (Todoist, Google Tasks, Microsoft To
   Do, Notion), more languages, and battery-saver motion.
 
-## v3.0: "OpenDash Everywhere" (planned)
+## v3.0: "Freeflo Everywhere" (planned)
 
-Use OpenDash on your phone, without giving up privacy.
+Use Freeflo on your phone, without giving up privacy.
 
 - **Phone app.** First as an installable web app (PWA) with offline support,
   then native iOS and Android apps built from the same code. Quick capture,
@@ -44,7 +44,7 @@ Use OpenDash on your phone, without giving up privacy.
 - **Locking.**
   - App lock with passkeys or a password.
   - Encryption at rest for the data folder.
-- **Optional self-hosting.** Run OpenDash on your own server or a home NAS and
+- **Optional self-hosting.** Run Freeflo on your own server or a home NAS and
   reach it securely from anywhere: HTTPS, login, and rate limiting.
 - **Push notifications** for reminders, meetings and the morning brief.
 - **A code-signed Windows installer**, so SmartScreen no longer warns.
@@ -62,9 +62,9 @@ Use OpenDash on your phone, without giving up privacy.
 
 ## Principles that will not change
 
-1. **Local-first by default.** No account is needed to use OpenDash.
+1. **Local-first by default.** No account is needed to use Freeflo.
 2. **You own the data.** Plain files, easy export, no lock-in.
-3. **Privacy.** No telemetry, no ads and no OpenDash company server. Cloud
+3. **Privacy.** No telemetry, no ads and no Freeflo company server. Cloud
    features are opt-in, end-to-end encrypted, and run on infrastructure you
    (or a friend) control.
 4. **Calm.** Features that reduce noise, not add to it.

@@ -260,7 +260,7 @@ function profileLookLockOf(kind, id, ctx) {
     const s = typeof PF_SEASONS !== 'undefined' && PF_SEASONS ? PF_SEASONS[o.season] : null;
     return typeof profileSeasonOn === 'function' && profileSeasonOn(o.season, ctx.today || '', ctx.birthday) ? '' : 'Seasonal: comes ' + (s ? s.label : 'with its season');
   }
-  if (o.friends && (Number(ctx.friends) || 0) < o.friends) return `Make ${o.friends} friends in OpenDash`;
+  if (o.friends && (Number(ctx.friends) || 0) < o.friends) return `Make ${o.friends} friends in Freeflo`;
   if (o.ribbon && ctx.ribbons && !ctx.ribbons.has(o.ribbon)) return 'Earn the garden ribbon “' + ((ctx.ribbonLabel && ctx.ribbonLabel(o.ribbon)) || o.ribbon) + '”';   // 2.22
   if (!ctx.game) return '';   // no game on this page: nothing to unlock
   if (o.level && (Number(ctx.levelMax) || 1) < o.level) return 'Reach level ' + o.level;

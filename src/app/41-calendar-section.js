@@ -275,7 +275,7 @@ function calFilterMenu(anchor) {
   openMenu(anchor, [
     ...(cals.length ? [{ heading: 'Calendars' }] : []),
     ...cals.map(c => ({ label: c.name, icon: 'calendar', checked: () => !calPrefs().hidden[c.id === 'google' ? 'google' : 'cal:' + c.id], keepOpen: true, run: (e) => { calSetCalendarHidden(c.id, !c.hidden); c.hidden = !c.hidden; _calRefreshMenuChecks(e); } })),
-    { heading: 'From OpenDash' },
+    { heading: 'From Freeflo' },
     { label: 'Task due dates', icon: 'circle-check', checked: () => !calPrefs().hidden.tasks, keepOpen: true, run: (e) => { toggle('tasks')(); _calRefreshMenuChecks(e); } },
     { label: 'Planned time', icon: 'calendar-clock', checked: () => !calPrefs().hidden.plans, keepOpen: true, run: (e) => { toggle('plans')(); _calRefreshMenuChecks(e); } },   // planned slots (20-task-plan.js)
     { label: 'Tasks from', icon: 'layers', hint: _calOnlyStream() ? STREAMS[_calOnlyStream()].label : 'every stream', run: () => setTimeout(() => {
