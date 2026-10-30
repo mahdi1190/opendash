@@ -70,6 +70,9 @@ const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets')
 
 const WHATS_NEW = [
   // ---- 2.21 ----
+  { id: 'owed-two', group: 'n221', icon: 'handshake', title: '2.23.3: splits that repeat, and receipts',
+    text: 'Rent or a bill can split with the same people every time. Read a receipt and tap who had what, send a friend their part, add a pay-me link, and split in another currency.',
+    view: ['finance'], sel: ['#main-body'] },
   { id: 'money-alive', group: 'n221', icon: 'sparkles', title: '2.23.2: Money comes to life',
     text: 'Logos and little pictures on your payments, faces for family and friends, story scenes for your spending, and Your year in money. Turn logos or the fun down in Settings.',
     view: ['finance'], sel: ['#main-body'] },

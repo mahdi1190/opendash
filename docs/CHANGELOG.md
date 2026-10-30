@@ -10,6 +10,18 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.23.3]
+
+Owed to me, round two.
+
+### Added
+- Repeating splits: rent or a bill splits with the people you named each time it leaves your bank, from the money plan, a regular payment or a split, with dates per person, nudges and Undo.
+- Reminders can carry a pay-me link (https only).
+- Send a friend on Freeflo their own part only, and they can tap "I've paid". They never see anyone else's share, the original payment or your bank data, and you only send it when you press the button.
+- Foreign-currency splits show both amounts.
+- Receipts: read a photo or PDF (only when you press the button, and you confirm it), or type the items in, then tap who had what.
+- Money back this month, "make a group?", "you've paid the last 5 times", "paid back faster than usual", and a settle-up picture for trips.
+
 ## [2.23.2]
 
 Money comes to life.

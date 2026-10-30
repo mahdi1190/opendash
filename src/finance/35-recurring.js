@@ -195,7 +195,8 @@
       const isNew = VL.isNew(r, anchor, 70);
       const last = VK.lastTx(r.m);
       const sel = isSelMerchant(r.m);
-      wrap.append(h('button', { type: 'button', role: 'listitem', class: 'fv-rl-row fsym-host' + (r.active ? '' : ' off') + (sel ? ' is-current' : ''), 'aria-current': sel ? 'true' : null, style: { '--i': Math.min(i, 14) }, onclick: () => openMerchant(r.m) },
+      const splitting = window.Owed && window.Owed.repeatFor ? window.Owed.repeatFor(r.m) : null;
+      wrap.append(h('div', { role: 'listitem', class: 'fv-rl-wrap' }, h('button', { type: 'button', class: 'fv-rl-row fsym-host' + (r.active ? '' : ' off') + (sel ? ' is-current' : ''), 'aria-current': sel ? 'true' : null, style: { '--i': Math.min(i, 14) }, onclick: () => openMerchant(r.m) },
         VK.tile(r.m, r.cat, { size: 'md' }),
         h('span', { class: 'fv-rl-main' },
           h('span', { class: 'fv-rl-nm' }, h('span', { class: 'n', text: vkName(r.m) }),
@@ -206,7 +207,8 @@
         VK.badgeIf(last ? VK.kind(last) : null, null, true),
         h('span', { class: 'fv-rl-yr' }, h('span', { class: 'bar' }, h('i', { style: { '--w': (r.monthly * 12 / maxY * 100).toFixed(1) + '%', background: catColor(r.cat) } })), h('span', { class: 'cap', text: `${gbp(r.monthly * 12)} a year` })),
         h('span', { class: 'fv-rl-nx', text: r.active ? fDayW(r.next) : `last ${fDay(r.last)}` }),
-        h('span', { class: 'fv-rl-am' }, h('b', { text: gbp2(r.typical) }), Math.abs(r.period - 30.44) > 5 ? h('small', { text: `≈ ${gbp2(r.monthly)}/mo` }) : null)));
+        h('span', { class: 'fv-rl-am' }, h('b', { text: gbp2(r.typical) }), Math.abs(r.period - 30.44) > 5 ? h('small', { text: `≈ ${gbp2(r.monthly)}/mo` }) : null)),
+        window.Owed && window.Owed.repeat && (r.active || splitting) ? h('button', { type: 'button', class: 'fv-btn ghost fv-rl-split' + (splitting ? ' on' : ''), 'aria-label': splitting ? `${vkName(r.m)} splits with ${splitting.people.map(p => p.name).join(', ')}. Change it` : `Split ${vkName(r.m)} with someone each time`, title: splitting ? `Splits with ${splitting.people.map(p => p.name).join(', ')}. Change it` : 'Split it with someone each time it leaves the bank', onclick: () => window.Owed.repeat(splitting ? { edit: splitting.id } : { title: vkName(r.m), match: { m: r.m, near: r.varies ? 0 : r.typical }, amount: r.typical, last: new Date(r.last * 86400000).toISOString().slice(0, 10) }) }, ic(splitting ? 'repeat' : 'handshake'), h('span', { text: splitting ? 'Splits' : 'Split it' })) : null));
     });
     cd.body.append(wrap);
   }

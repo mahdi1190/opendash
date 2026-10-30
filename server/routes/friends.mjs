@@ -35,6 +35,7 @@
 // 400 {error, code}: a plain sentence the page shows as it is.
 
 import { createFriendsEngine } from '../../lib/friends/engine.mjs';
+import { isOwedKind } from '../../lib/owed-friends.mjs';
 import { createNodeDirect } from '../../lib/friends/node-direct.mjs';
 import { registerIdentityExtra, primeIdentity, loadIdentity } from '../../lib/friends/store.mjs';
 
@@ -94,6 +95,8 @@ export default function register(app) {
   app.onClose(async () => { await engine.stop().catch(() => {}); });
 
   const str = (v, max = 200) => (typeof v === 'string' ? v.slice(0, max) : undefined);
+  // What someone owes goes only through /api/owed/share, which builds it itself on the person's press (lib/owed-friends.mjs).
+  const refuseOwed = (kind) => { if (isOwedKind(kind)) throw Object.assign(new Error('That can only be sent from Owed to me.'), { status: 400, code: 'BAD_KIND' }); };
   const route = (path, method, fn, extra = {}) => app.route({
     path, method, methodError: `${[].concat(method).join(' or ')} only`, ...extra,
     handler: async (c) => {
@@ -112,6 +115,7 @@ export default function register(app) {
       return { entries: await engine.feed({ friend: str(q.get('friend'), 20) || null, kind: str(q.get('kind'), 90) || null, limit: Number(q.get('limit')) || 50, before: q.get('before') != null ? Number(q.get('before')) : null }) };
     }
     const b = await body(c);
+    refuseOwed(b.event && b.event.kind);
     return engine.feedPost(b.event);
   }, { maxBody: 48 * 1024, quiet: true });
   route('/api/friends/me', 'POST', async (c) => {
@@ -145,10 +149,11 @@ export default function register(app) {
   route('/api/friends/remove/undo', 'POST', async (c) => ({ friend: await engine.undoRemove(str((await body(c)).id, 20)) }));
   route('/api/friends/send', 'POST', async (c) => {
     const b = await body(c);
+    refuseOwed(b.kind);
     const to = Array.isArray(b.to) ? b.to.map(x => str(x, 20)).filter(Boolean).slice(0, 64) : str(b.to, 20);
     return engine.send(b.to === '*' ? '*' : to, str(b.kind, 90) || '', b.body, { group: str(b.group, 64) || null, revoke: b.revoke === true });
   }, { maxBody: 64 * 1024 });
-  route('/api/friends/publish', 'POST', async (c) => { const b = await body(c); return b.revoke === true ? engine.unpublish(str(b.kind, 90) || '') : engine.publish(str(b.kind, 90) || '', b.body); }, { maxBody: 48 * 1024 });
+  route('/api/friends/publish', 'POST', async (c) => { const b = await body(c); refuseOwed(b.kind); return b.revoke === true ? engine.unpublish(str(b.kind, 90) || '') : engine.publish(str(b.kind, 90) || '', b.body); }, { maxBody: 48 * 1024 });
   route('/api/friends/presence', 'POST', async (c) => { await engine.setPresence(str((await body(c)).state, 20) || ''); return {}; }, { quiet: true });
   route('/api/friends/check', 'POST', async () => ({ got: await engine.check() }));
   // Identity rotation (FRIENDS.md section 15): start (or go on with) renewing my keys; answer a friend's relay ask.

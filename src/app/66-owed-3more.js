@@ -47,18 +47,37 @@ function owdPartDialog(t, l) {
     } }],
   });
 }
+/** The saved link with the amount in it, for the two that take one in the address. Any other link stays as it was saved. */
+function owdLinkFor(link, amount) {
+  let u; try { u = new URL(link); } catch (e) { return link; }
+  const seg = u.pathname.split('/').filter(Boolean), host = u.hostname.toLowerCase().replace(/^www\./, '');
+  if (!(amount > 0) || OWD.currency !== 'GBP' || seg.length !== 1 || u.search || u.hash) return link;
+  if (host === 'monzo.me') return `https://monzo.me/${seg[0]}/${Number(amount).toFixed(2)}`;
+  if (host === 'paypal.me') return `https://paypal.me/${seg[0]}/${Number(amount).toFixed(2)}GBP`;
+  return link;
+}
+/** How to pay you, for the end of a message: what you saved, when you said to put it in. */
+function owdPayWords(amount) {
+  const p = owdPrefs();
+  if (!p.sendBank) return '';
+  const a = [];
+  if (p.payLink) a.push(`You can pay me here: ${owdLinkFor(p.payLink, amount)}`);
+  if (p.bankDetails) a.push(`My bank details: ${p.bankDetails}`);
+  return a.length ? '\n\n' + a.join('\n') : '';
+}
 /** The friendly message for one person's open lines. */
 function owdRemindText(name, lines) {
   const sum = lines.reduce((a, x) => a + x.left, 0);
-  const what = lines.length === 1 ? `${lines[0].title}` : lines.map(x => `${x.title} (${owdMoney(x.left)})`).join(', ');
-  const p = owdPrefs();
-  const bank = p.sendBank && p.bankDetails ? `\n\nMy bank details: ${p.bankDetails}` : '';
-  return `Hi ${owdFirstName(name)}, a friendly nudge: you owe me ${owdMoney(sum)} for ${what}. No rush, and thanks!${bank}`;
+  // In the money it was paid in as well, when that is another currency.
+  const both = (x) => (x.fx ? `${owdMoney(x.left)}, ${owdMoney(x.fx.left, x.fx.cur)}` : owdMoney(x.left));
+  const what = lines.length === 1 ? `${lines[0].title}` : lines.map(x => `${x.title} (${both(x)})`).join(', ');
+  const amount = lines.length === 1 && lines[0].fx ? `${owdMoney(sum)} (${owdMoney(lines[0].fx.left, lines[0].fx.cur)})` : owdMoney(sum);
+  return `Hi ${owdFirstName(name)}, a friendly nudge: you owe me ${amount} for ${what}. No rush, and thanks!${owdPayWords(sum)}`;
 }
 /** Remind: the wording is yours to change, and you send it (copy, share or your own email). Never sent by itself. */
 function owdRemindDialog(refs) {
   const byPerson = new Map();
-  for (const r of refs) { const t = owdThing(r.id); const l = t && t.lines.find(x => x.key === r.key); if (!l || !(l.left > 0.004)) continue; const a = byPerson.get(r.key) || { name: l.name, key: r.key, lines: [], refs: [] }; a.lines.push({ title: t.title, left: l.left }); a.refs.push(r); byPerson.set(r.key, a); }
+  for (const r of refs) { const t = owdThing(r.id); const l = t && t.lines.find(x => x.key === r.key); if (!l || !(l.left > 0.004)) continue; const a = byPerson.get(r.key) || { name: l.name, key: r.key, lines: [], refs: [] }; a.lines.push({ title: t.title, left: l.left, ...(t.fx && l.fx ? { fx: { cur: t.fx.cur, left: Math.round(l.fx * (l.left / l.owes) * 100) / 100 } } : {}) }); a.refs.push(r); byPerson.set(r.key, a); }
   if (!byPerson.size) { toast('Nothing left to remind them about.'); return; }
   const noted = (a) => owdApi('/reminded', { refs: a.refs }).then((j) => { owdSet(j); owdRepaint(); }).catch(() => {});
   openDialog({
@@ -80,18 +99,46 @@ function owdRemindDialog(refs) {
         el.appendChild(box);
       }
       el.appendChild(_xe('p', 'xp-fh', 'Freeflo never sends this by itself. You choose how to send it.'));
+      const p = owdPrefs();
+      if (!p.payLink && !p.bankDetails) { const n = _xe('p', 'owd-hint', '<span>Want them to pay in one tap?</span>'); n.appendChild(uiButton({ label: 'Add a pay-me link', kind: 'link', run: () => owdBankDialog({ then: () => owdRemindDialog(refs) }) })); el.appendChild(n); }
     },
     actions: [{ label: 'Done', primary: true }],
   });
 }
-function owdBankDialog() {
+/** A link you can trust to open: the server's rule (lib/owed.mjs cleanPayLink) decides when it is saved; this says so as you type. */
+function owdLinkOk(v) {
+  const t = String(v || '').trim();
+  if (!/^https:\/\/[^\s<>"'`\\]+$/i.test(t) || t.length > 200) return false;
+  try { const u = new URL(t); return u.protocol === 'https:' && !u.username && !u.password && !u.port && /\.[a-z]{2,}$/i.test(u.hostname); } catch (e) { return false; }
+}
+function owdBankDialog(o) {
+  o = o || {};
   const p = owdPrefs();
+  const link = _xInput('url', p.payLink || '', 'e.g. https://monzo.me/yourname', { autocomplete: 'off', inputMode: 'url' });
   const details = _xInput('text', p.bankDetails || '', 'e.g. M Ahmed, 12-34-56, 12345678');
-  const on = _xe('label', 'owd-me', `<input type="checkbox"${p.sendBank ? ' checked' : ''}><span>Put them in reminders</span>`);
+  // Saving a way to be paid means you want it used, unless you have said otherwise before.
+  const on = _xe('label', 'owd-me', `<input type="checkbox"${p.sendBank || (!p.payLink && !p.bankDetails) ? ' checked' : ''}><span>Put them in my reminders</span>`);
+  const err = _xe('div', 'owd-err'); err.hidden = true; err.setAttribute('role', 'alert');
+  const check = () => { const bad = !!link.value.trim() && !owdLinkOk(link.value); err.textContent = bad ? 'That doesn’t look right. It should start with https://, for example https://monzo.me/yourname.' : ''; err.hidden = !bad; return !bad; };
+  link.addEventListener('input', () => { if (!err.hidden) check(); });
+  link.addEventListener('change', check);
   openDialog({
-    title: 'Bank details for reminders', size: 'sm',
-    body(el) { el.className += ' xp-form'; el.append(_xField('Your name, sort code and account number', details), on, _xe('p', 'xp-fh', 'These only go in a message you send yourself. You can edit it each time.')); },
-    actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, run: async () => { const j = await owdDo('/prefs', { patch: { bankDetails: details.value.trim(), sendBank: on.querySelector('input').checked } }, { done: 'Saved', what: 'save that' }); return j ? undefined : false; } }],
+    title: 'How people pay you', size: 'sm',
+    body(el) {
+      el.className += ' xp-form';
+      el.appendChild(_xField('A pay-me link (optional)', link, 'From Monzo, PayPal, Revolut or similar. With a Monzo or PayPal link, the amount is filled in for them.'));
+      el.appendChild(err);
+      const t = uiButton({ label: 'Try the link', kind: 'link', run: () => { if (check() && link.value.trim()) window.open(link.value.trim(), '_blank', 'noopener,noreferrer'); } });
+      el.appendChild(t);
+      el.append(_xField('Or your bank details (optional)', details, 'Your name, sort code and account number.'), on, _xe('p', 'xp-fh', 'These only go in a message you send yourself, and you can edit it each time. Freeflo never sends them to anyone.'));
+    },
+    actions: [{ label: 'Cancel' }, { label: 'Save', primary: true, run: async () => {
+      if (!check()) { link.focus(); return false; }
+      const j = await owdDo('/prefs', { patch: { payLink: link.value.trim(), bankDetails: details.value.trim(), sendBank: on.querySelector('input').checked } }, { done: 'Saved', what: 'save that' });
+      if (!j) return false;
+      if (o.then) setTimeout(o.then, 60);
+      return undefined;
+    } }],
   });
 }
 /** Settling up with someone: both directions, what it comes to, and one step to close it all. */
@@ -104,7 +151,7 @@ function owdSettleDialog(p) {
     for (const l of mine) a.push(`- ${l.title}: I owe you ${owdMoney(l.left)}`);
     if (p.over > 0) a.push(`- You overpaid me by ${owdMoney(p.over)}`);
     a.push(p.net > 0 ? `So you owe me ${owdMoney(p.net)} overall.` : p.net < 0 ? `So I owe you ${owdMoney(-p.net)} overall.` : 'So we are even.');
-    return a.join('\n');
+    return a.join('\n') + (p.net > 0 ? owdPayWords(p.net) : '');
   };
   openDialog({
     title: `Settle up with ${first}`, size: 'sm',
@@ -170,10 +217,14 @@ function owdBriefLine(o) {
   if (!OWD.loaded) { owdLoad(); return null; }
   const askOnly = !!(o && o.askOnly);   // a place that shows the total already (My money's widget)
   const s = OWD.data && OWD.data.summary, q = OWD.suggestions[0], offer = OWD.offers[0];
-  if (!(s && ((s.count && !askOnly) || q)) && !offer) return null;
+  const nudge = !askOnly && OWD.data && (OWD.data.nudges || [])[0];
+  const back = (OWD.data && OWD.data.insights && OWD.data.insights.backMonth) || 0;
+  if (!(s && ((s.count && !askOnly) || q)) && !offer && !nudge && !(back > 0 && !askOnly)) return null;
   const n = _xe('div', 'owd-brief');
   if (q) { n.innerHTML = `${icon('circle-help', 'i-sm')}<span>${q.conf === 'low' ? `${owdAmt(q.amount)} arrived. Is it someone paying you back?` : `We think ${esc(owdFirstName(q.name))} paid you ${owdAmt(q.amount)}.`}</span>`; n.appendChild(uiButton({ label: 'Check', kind: 'link', run: owdOpen })); }
-  else if (s && s.count && !askOnly) { n.innerHTML = `${icon('handshake', 'i-sm')}<span>${owdAmt(s.owedToMe)} is owed to you.</span>`; n.appendChild(uiButton({ label: 'See who', kind: 'link', run: owdOpen })); }
+  else if (nudge) { n.innerHTML = `${icon('calendar-clock', 'i-sm')}<span>${esc(owdFirstName(nudge.name))} hasn’t paid ${owdAmt(nudge.left)} for ${esc(nudge.title)} yet.</span>`; n.appendChild(uiButton({ label: 'See', kind: 'link', run: owdOpen })); }
+  else if (s && s.count && !askOnly) { n.innerHTML = `${icon('handshake', 'i-sm')}<span>${owdAmt(s.owedToMe)} is owed to you.${back > 0 ? ` ${owdAmt(back)} has come back this month.` : ''}</span>`; n.appendChild(uiButton({ label: 'See who', kind: 'link', run: owdOpen })); }
+  else if (back > 0 && !askOnly) { n.innerHTML = `${icon('circle-check', 'i-sm')}<span>${owdAmt(back)} has come back to you this month.</span>`; }
   if (offer) { const w = _xe('span', 'owd-brief-o', `<span>${esc(offer.m)}, ${owdAmt(Math.abs(offer.a))}: split this?</span>`); w.appendChild(uiButton({ label: 'Split', kind: 'link', run: () => owdSplitDialog(owdPrefillFromTx(offer)) })); w.appendChild(uiButton({ icon: 'x', size: 'sm', kind: 'ghost', tip: 'Not one to split', run: () => owdDismissOffer(offer) })); n.appendChild(w); }
   return n;
 }
