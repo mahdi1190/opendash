@@ -29,7 +29,8 @@
         root.append(emptyState({ icon: 'wallet', title: 'Finances are not set up', text: 'Finances isn’t set up on this computer.', actions: [h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('plug'), h('span', { text: 'Connections > Money' }))] }));
       } else if (mode === 'empty') {
         root.append(buildTop());
-        root.append(buildWelcome());
+        // Payments are stored but none is counted (Your data): the list, not "connect your bank".
+        root.append(R.data.meta && R.data.meta.storeCount > 0 ? ydStandalone() : buildWelcome());
         paintTop(); paintUpdate();
       } else {
         buildReady(root);

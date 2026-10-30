@@ -13,7 +13,7 @@
       tx.push({
         i: idx, d: r.d.slice(0, 10), n: dnum(r.d), m: String(r.m || 'Unknown'), c, a: amt,
         acct: r.acct ? String(r.acct) : '', memo: r.memo ? String(r.memo) : '', how: r.how ? String(r.how) : '',
-        bc: r.bc ? String(r.bc) : null, k: r.k ? String(r.k) : 'i' + idx, kind,
+        bc: r.bc ? String(r.bc) : null, k: r.k ? String(r.k) : 'i' + idx, kind, oa: r.oa ? 1 : 0,
         s: kind === 'spend' ? -amt : 0, inc: kind === 'income' && amt > 0 ? amt : 0, abs: Math.abs(amt),
         // @fux-begin where it was paid (lib/finance/place.mjs; 25-place-model.js reads these)
         cc: typeof r.cc === 'string' && /^[A-Z]{2}$/.test(r.cc) ? r.cc : '', city: typeof r.city === 'string' ? r.city.slice(0, 40) : '',

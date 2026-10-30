@@ -687,7 +687,7 @@ function _finAccountRow(group, a, nameOf) {
     add('Account', finMask(a.mask));
     add('Last fetched', a.lastSync ? new Date(a.lastSync).toLocaleString() : 'Not synced yet');
     if (a.reauthDue) add('Sign in again', finDateLabel(a.reauthDue));
-    add('In Finances', a.enabled ? 'Shown' : a.hiddenReason === 'duplicate' ? 'Hidden (possible duplicate)' : 'Hidden; its data is kept');
+    add('In Finances', a.enabled ? 'Shown' : a.hiddenReason === 'duplicate' ? 'Hidden (possible duplicate)' : a.hiddenReason === 'deleted' ? 'Deleted in Your data; show it to bring it back' : 'Hidden; its data is kept');
     if (group.provider === 'plasma') add('Note', 'Card purchases show as “Plasma One payment” without the shop name.');
     row.appendChild(det);
   }

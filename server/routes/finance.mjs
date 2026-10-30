@@ -138,7 +138,7 @@ export default function register(app) {
     sync: () => app.ctx.sync || null, remoteJobs: () => app.ctx.remoteJobs || null,
     hooks: {
       localData: () => localFinanceData(),
-      extraMeta: async (analysis) => { const m = await sourcesMeta(analysis); return { sources: m.sources, accounts: m.accounts }; },
+      extraMeta: async (analysis) => { const m = await sourcesMeta(analysis); const dataSources = app.ctx.financeDataSvc ? await app.ctx.financeDataSvc.publicOverview().catch(() => null) : null; return { sources: m.sources, accounts: m.accounts, ...(dataSources ? { dataSources } : {}) }; },
       financeDir: () => financeDir(),
       localBudgets: () => localBudgets(),
       writeBudgets: (map) => writeBudgetsFile(map),
@@ -155,11 +155,13 @@ export default function register(app) {
           const patch = {};
           if (x.name && x.name !== cur.name) patch.name = x.name;
           if (x.colour && x.colour !== cur.colour) patch.colour = x.colour;
-          if (typeof x.hidden === 'boolean' && x.hidden === (cur.enabled !== false)) patch.enabled = !x.hidden;
           if (!Object.keys(patch).length) continue;
           try { await svc.patchAccount(x.k, patch); n++; } catch (e) { log('warn', `finance share: an account edit was not applied (${e.code || 'error'})`); }
         }
-        return n > 0;
+        // What counts (the tick and the last day): every source, one rebuild (lib/finance-data.mjs).
+        const data = app.ctx.financeDataSvc;
+        const counted = data ? await data.applyEdits(list).catch((e) => { log('warn', `finance share: what counts was not applied (${e.code || 'error'})`); return false; }) : false;
+        return n > 0 || counted;
       },
     },
   });

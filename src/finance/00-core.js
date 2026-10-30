@@ -27,7 +27,7 @@
   // Spending by country (38-countries.js).
   const SECTIONS = [
     ['board', 'My money'], ['overview', 'Money brief'], ['spending', 'Spending'], ['categories', 'Categories'], ['merchants', 'Shops'],
-    ['countries', 'Countries'], ['cashflow', 'Cash flow'], ['recurring', 'Regular bills'], ['budgets', 'Budgets'], ['transactions', 'Transactions'],
+    ['countries', 'Countries'], ['cashflow', 'Cash flow'], ['recurring', 'Regular bills'], ['budgets', 'Budgets'], ['transactions', 'Transactions'], ['data', 'Your data'],
   ];
   // 2.19 (lean UI): the ten sections sit under five tabs in the page header (the shell's subTabs); a tab with
   // more than one section shows a small chooser for them above the filters (12-bar.js). Order = SECTIONS order.
@@ -39,6 +39,7 @@
     ['budgets', 'Budgets', 'piggy-bank', ['budgets']],
     ['transactions', 'Transactions', 'receipt', ['transactions']],
     ['expenses', 'Expenses', 'coins', []],
+    ['data', 'Your data', 'database', ['data']],   // 2.21.1: where every payment comes from, and what counts (44-your-data.js)
   ];
   const groupOf = (id) => (GROUPS.find(g => g[3].includes(id)) || GROUPS[0])[0];
   const INNER_LABEL = { spending: 'Over time', cashflow: 'Cash flow' };   // inside its tab, where the tab's own name would repeat
