@@ -473,6 +473,9 @@ const GARDEN_PROPS = _gdRows([
   { id: 'post-box', name: 'Post box', x: 20, y: 11, w: 1, h: 1, door: _gdF({ x: 20, y: 12 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
   { id: 'sundial', name: 'Sundial', x: 26, y: 11, w: 1, h: 1, door: _gdF({ x: 26, y: 12 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
   { id: 'jetty-post', name: 'Mooring post', x: 4, y: 12, w: 1, h: 1, walk: 0, blurb: 'A rope, a post and a very patient rowing boat.' },
+  // the rowing boat is drawn by gardenWorldProps (key 'boat'); clicking it opens the trip to a friend's garden. x and w are fractions on
+  // purpose: its box is the boat's own width, so the water beside it still casts a line.
+  { id: 'boat', name: 'Rowing boat', x: 4.65, y: 13, w: 1.25, h: 1, walk: 0, door: _gdF({ x: 5, y: 12 }), act: 'sail', verb: 'climb in', tall: 0.5, blurb: 'Row over to a friend’s garden.' },
   { id: 'reed-bank', name: 'Reeds', x: 22, y: 12, w: 3, h: 1, walk: 0, blurb: 'Dragonflies like it here.' },
   { id: 'forest-edge', name: 'The forest', x: 27, y: 0, w: 1, h: 11, walk: 0, blurb: 'Too thick to walk through.' },
 ]);

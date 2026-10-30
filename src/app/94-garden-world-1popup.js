@@ -20,7 +20,28 @@ const _GDPOP = Object.freeze({
   almanac: { title: 'Notice board', icon: 'book-open', fill: (el, m) => gardenAlmanacTab(el, m) },
   friends: { title: 'Post box', icon: 'users', fill: (el, m) => gardenFriendsTab(el, m) },
   catch: { title: 'Catch', icon: 'fish', fill: (el, m) => gardenCatchTab(el, m) },
+  sail: { title: 'The rowing boat', icon: 'ship', fill: (el) => gardenSailTab(el) },
 });
+/** The rowing boat: the friends whose gardens you can row over to (the cards the Post box shows), and a click on one takes you there. */
+function gardenSailTab(el) {
+  const fill = () => {
+    if (!el.isConnected) return;
+    el.textContent = '';
+    const head = document.createElement('div'); head.className = 'gd-sail-h';
+    head.innerHTML = icon('ship') + '<div><b>Where to?</b><span>Row over to a friend’s garden: water a plant, leave a little gift, sign the guestbook.</span></div>';
+    el.appendChild(head);
+    el.appendChild(_gsvGallery({ crop: 'wide' }));
+  };
+  fill();
+  if (typeof gardenSocialLoad === 'function') gardenSocialLoad(false).then(fill).catch(fill);
+  if (!el.dataset.sail) {
+    el.dataset.sail = '1';
+    // choosing a garden takes you there (the card changes the page): close the pop-up behind you
+    const leave = (e) => { if (e.target.closest && e.target.closest('.gsv-gcard')) setTimeout(() => gardenPopupClose(), 0); };
+    el.addEventListener('click', leave);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') leave(e); });
+  }
+}
 function _gdpopInGarden() { return typeof _gdp !== 'undefined' && !!_gdp.root && _gdp.root.isConnected && /^garden$/.test(String(state.view || '')); }
 function gardenPopupOpen(tab, o) {
   o = o || {};
@@ -65,7 +86,7 @@ function gardenPopupRefresh() {
 }
 /** A link between the garden's own pages: in the garden it is a pop-up, anywhere else the page. */
 function gardenGoPage(view) {
-  const mm = /^garden:(shop|almanac|basket|friends|catch)$/.exec(String(view || ''));
+  const mm = /^garden:(shop|almanac|basket|friends|catch|sail)$/.exec(String(view || ''));
   if (mm && _gdpopInGarden()) { gardenPopupOpen(mm[1]); return; }
   if (view === 'garden' && _gdp.pop) { gardenPopupClose(); return; }
   setView(view);

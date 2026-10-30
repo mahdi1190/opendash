@@ -239,7 +239,7 @@ function gardenWorldProps(sc, o) {
     if (inner) out.push(wrap('gd-prop-' + p.kind + ' gd-prop-click', p.y + p.h, p.x, inner, p.id));
   }
   const post = GARDEN_PROPS.find(p => p.id === 'jetty-post');
-  out.push(wrap('gd-prop-boat', post.y + 1, post.x, _gwBoat(sc, o), 'boat'));
+  out.push(wrap('gd-prop-boat gd-prop-click', post.y + 1, post.x, _gwBoat(sc, o), 'boat'));
   const reeds = GARDEN_PROPS.find(p => p.id === 'reed-bank');
   out.push(wrap('gd-prop-reeds', reeds.y + 1, reeds.x, _gwReeds(sc, o), 'reeds'));
   // the forest edge: big trees all down the east side, so the woods have a back wall
