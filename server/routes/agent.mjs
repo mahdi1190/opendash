@@ -85,6 +85,7 @@ export default function register(app) {
     },
     'money.categorise': async (e) => pick(await route('POST', '/api/finance/categorise', { merchant: e.merchant, category: e.category }), ['changed']),
     'money.budgets': async (e) => { await route('PUT', '/api/finance/budgets', { budgets: e.budgets }); return { done: true }; },
+    'tax.change': async (e) => pick(await route('POST', '/api/finance/tax/change', { change: e.change, year: e.year, brief: true }), ['said', 'undo']),
     'expense.change': async (e) => {
       const path = { delete: 'delete', mark_paid: 'paid', mark_unpaid: 'unpaid', unsubmit: 'unsubmit' }[e.action];
       return pick(await route('POST', `/api/expenses/${path}`, { ids: e.ids, ...(e.date ? { date: e.date } : {}) }), ['removed', 'undo']);

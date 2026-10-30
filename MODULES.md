@@ -27,7 +27,10 @@ lib/                      shared Node modules (server, tools and tests use them)
   state-keys.mjs          which state keys are UI-only (no undo, no backup)
   ai.mjs                  text/JSON helpers + availability probe (on the runner)
   finance.mjs             Finances backend: bank sync job, CSV upload, recategorise, budgets, export
-  finance/                the finance pipeline (Node port of the old spend.py; Python no longer needed)
+  finance/                the finance pipeline (Node port of the old spend.py; Python no longer needed), the money plan and the Tax tab:
+                          uk-tax.mjs (the engine and the dated per-year table), tax-tab.mjs (a year's view, the tax document), tax-rules.mjs (dates, do I need to file, prompts),
+                          tax-expenses.mjs (the expense finder), tax-forms.mjs (form boxes, File my return), tax-read.mjs (paste and payslip reading), tax-change.mjs (one change with the same checks)
+  tax-ids.mjs             UTR and NI number, in the secret store only; tax-pack.mjs the return pack
     pipeline.mjs          runPipeline(dir): import inbox CSVs, de-duplicate, categorise, analysis.json
     store.mjs csv.mjs     bank CSV parsing, the transaction store, de-dup keys
     categorise.mjs        merchant cleaning + rules (overrides -> keywords -> bank category -> defaults)

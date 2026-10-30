@@ -39,7 +39,7 @@
     const mode = F.mbMode === 'month' ? 'month' : 'cycle';
     if (MB.B && MB.model === M && MB.mode === mode) return MB.B;
     MB.input = { tx: M.tx, anchor: M.anchor, minN: M.minN, balances: M.a.balances, history: M.a.balance_history, recurring: M.recurring, cards: M.a.cards };
-    MB.B = MBM.compute(MB.input, { mode, fmt: mbFmt() });
+    MB.B = MBM.compute(MB.input, { mode, fmt: mbFmt(), ...(R.planBrief ? { plan: R.planBrief } : {}) });   // Your money plan's real paydays and bills
     MB.model = M; MB.mode = mode;
     return MB.B;
   }

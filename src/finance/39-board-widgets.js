@@ -60,6 +60,21 @@
     },
   };
 
+  /* ---------- Your money plan ---------- */
+  BWR.moneyplan = {
+    update(cd, w) {
+      const box = bdBox(cd); const v = MPL.v;
+      cd.setSub('');
+      const go = () => setSection('budgets');
+      if (!v || !v.has) { box.append(h('p', { class: 'fvb-note', text: 'A few easy questions, and we work out what you take home and build a budget.' }), h('button', { type: 'button', class: 'btn btn-secondary btn-sm', text: 'Start your plan', onclick: go })); return; }
+      box.append(bdBig(gbp(v.budget.left), v.budget.left >= 0 ? 'left a month' : 'short a month', v.budget.left < 0 ? 'bad' : 'good'));
+      const top = Number(bwOpt(w, 'top')) || 2;
+      if (!v.flags.length) box.append(h('p', { class: 'fvb-plain', text: 'Nothing looks off against your bank this month.' }));
+      for (const f of v.flags.slice(0, top)) box.append(h('p', { class: 'fvb-line' }, amt(f.title)));
+      bdMore(cd, 'Open my plan', go);
+    },
+  };
+
   /* ---------- This month vs last ---------- */
   function bdMonthNumbers(M, q) {
     const today = M.anchor, mi = monthIdx(today), ms = monthStart(mi);

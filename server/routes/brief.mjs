@@ -29,7 +29,8 @@ import {
   readAnimAi, writeAnimAi, moneyLine, isIsoDate, SUMMARY_KINDS, SNAPSHOT_KINDS,
 } from '../../lib/brief-store.mjs';
 import { askText, askJson, aiStatus } from '../../lib/ai.mjs';
-import { financeData, getBudgets } from '../../lib/finance.mjs';
+import { financeData, getBudgets, getPlan } from '../../lib/finance.mjs';
+import { planView, planFlagLine } from '../../lib/finance/money-plan.mjs';
 import { animTypes, animTitleKey } from '../../lib/brief-logic.mjs';
 
 // Tests swap the network and the model for fakes.
@@ -85,7 +86,9 @@ export default function register(app) {
       const b = await getBudgets().catch(() => ({ budgets: null }));
       // Home time on purpose: banks date transactions at home (cfg.timezone = home; travel spec 2.3).
       const out = moneyLine(d.analysis, { today: localToday(cfg.timezone), budgets: b.budgets, currency: cfg.currency });
-      return { ...out, lastUpdate: d.meta.lastUpdate || null, analysisAt: d.meta.analysisAt || null };
+      // Your money plan: the one thing most worth a look (this person's own screen only).
+      const planNote = await getPlan().then(x => (x.plan ? planFlagLine(planView(x.plan, d.analysis, { today: localToday(cfg.timezone), currency: cfg.currency, locale: cfg.locale })) : null)).catch(() => null);
+      return { ...out, ...(planNote ? { planNote } : {}), lastUpdate: d.meta.lastUpdate || null, analysisAt: d.meta.analysisAt || null };
     },
   });
 

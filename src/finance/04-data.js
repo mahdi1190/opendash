@@ -24,7 +24,7 @@
       const job = j.meta && j.meta.job;
       if (job) { R.job = job; if (job.state === 'running') startPolling(); }
       R.model = (j.status === 'ok' && j.analysis) ? buildModel(j.analysis) : null;
-      if (R.model) await loadBudgets(j.analysis);
+      if (R.model) { await loadBudgets(j.analysis); await planLoad(); }
     } catch (e) {
       const slow = e && e.name === 'AbortError';
       R.err = slow ? 'Your finances took too long to load' : ((e && e.message) || String(e));

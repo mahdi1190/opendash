@@ -27,7 +27,7 @@
   // Spending by country (38-countries.js).
   const SECTIONS = [
     ['board', 'My money'], ['overview', 'Money brief'], ['spending', 'Spending'], ['categories', 'Categories'], ['merchants', 'Shops'],
-    ['countries', 'Countries'], ['cashflow', 'Cash flow'], ['recurring', 'Regular bills'], ['budgets', 'Budgets'], ['transactions', 'Transactions'], ['data', 'Your data'],
+    ['countries', 'Countries'], ['cashflow', 'Cash flow'], ['recurring', 'Regular bills'], ['budgets', 'Budgets'], ['tax', 'Tax'], ['transactions', 'Transactions'], ['data', 'Your data'],
   ];
   // 2.19 (lean UI): the ten sections sit under five tabs in the page header (the shell's subTabs); a tab with
   // more than one section shows a small chooser for them above the filters (12-bar.js). Order = SECTIONS order.
@@ -37,6 +37,7 @@
     ['spending', 'Spending', 'chart-column', ['spending', 'categories', 'merchants', 'countries']],
     ['cash', 'Cash flow', 'arrow-up-down', ['cashflow', 'recurring']],
     ['budgets', 'Budgets', 'piggy-bank', ['budgets']],
+    ['tax', 'Tax', 'landmark', ['tax']],   // UK only (37-tax.js): hidden for "Somewhere else"
     ['transactions', 'Transactions', 'receipt', ['transactions']],
     ['expenses', 'Expenses', 'coins', []],
     ['owed', 'Owed to me', 'handshake', []],   // Owed to me: its own page too (#view=owed, 66-owed-1page.js)

@@ -106,6 +106,10 @@
 
   BUILD.budgets = g => {
     S.rings = new Map();
+    // 2.21: the plan comes first (36-plan.js); the category limits below it fold away once there is a plan.
+    planBuild(g);
+    S.plBar = h('div', { class: 'fv-pl-limits', hidden: true });
+    g.append(S.plBar);
     // Month bar: step through months (a past month shows how it ended), the day and pace, edit.
     S.bPrev = h('button', { type: 'button', class: 'fv-bud-step', 'aria-label': 'Previous month', onclick: () => budStep(-1) }, ic('chevron-left'));
     S.bNext = h('button', { type: 'button', class: 'fv-bud-step', 'aria-label': 'Next month', onclick: () => budStep(1) }, ic('chevron-right'));
@@ -147,6 +151,9 @@
     };
   };
   UPDATE.budgets = ctx => {
+    planUpdate();
+    if (MPQ.open || !planLimitsOpen()) { S.entering = false; plLimits(!MPQ.open); return; }   // folded: nothing below to draw until it is opened
+    plLimits(true);
     const M = ctx.M; const bc = budgetCalc(M);
     S.entering = R.entering && !MK.reduced();   // the first visit: rings fill, numbers count up
     const B = R.budgetDraft || R.budgets || {};
