@@ -151,11 +151,13 @@ function _hspBodyHtml(m, size, f, prefs, hidden) {
   const hero = `<button type="button" class="hsp-hero" data-go="overview" aria-label="${escAttr(say.hero + ' Open Finances, Overview.')}">${big}${sub}${note}</button>`;
   const left = size !== 's' && m.left != null && m.left > 0
     ? `<div class="hsp-left"><span class="sr-only">${esc(say.left)}</span><span aria-hidden="true"><b class="num">${A(Math.max(0, m.left))}</b> left after bills<span class="hsp-kb"> · ${A(m.cushion)} kept back</span></span></div>` : '';
+  const owe = size !== 's' && m.owed
+    ? `<button type="button" class="hsp-owe" data-go="data"><span aria-hidden="true">You owe <b class="num">${A(m.owed.total)}</b> on ${m.owed.name ? esc(m.owed.name) : m.owed.n === 1 ? 'your credit card' : 'your credit cards'}</span><span class="sr-only">Open Finances, Your data.</span></button>` : '';
   const low = size === 'l' && m.low
     ? `<div class="hsp-low"><span class="sr-only">${esc(say.low)}</span>${icon('arrow-down', 'i-sm')}<span aria-hidden="true">Lowest <b class="num">${A(m.low.amount)}</b> on ${esc(m.low.when)}</span><small aria-hidden="true">if nothing else is spent</small></div>` : '';
   const stale = m.stale ? _hspStaleHtml(m.stale) : '';
   if (size === 's') return `<div class="hsp-wrap">${hero}${stale}</div>`;
-  const colA = `<div class="hsp-col hsp-a">${hero}${left}${low}</div>`;
+  const colA = `<div class="hsp-col hsp-a">${hero}${left}${owe}${low}</div>`;
   const colB = `<div class="hsp-col hsp-bb">${_hspBillsHtml(m, f, A)}</div>`;
   const bal = size === 'l' && m.balance ? _hspBalanceHtml(m, f, A, say, prefs) : '';
   return `<div class="hsp-wrap"><div class="hsp-grid">${colA}${colB}</div>${bal}${stale}</div>`;
@@ -174,7 +176,7 @@ function _hspBillsHtml(m, f, A) {
   }
   const rows = m.bills.map(b => {
     const label = `${b.name}, ${homeAmountsHidden() ? 'hidden' : f.money2(b.amount)}, ${b.due ? 'due now' : b.day}. Open in Finances, Recurring.`;
-    return `<li><button type="button" class="hsp-bill hgl-row" ${homeRowAttrs(b.key, label)} data-m="${escAttr(b.m)}" data-flip="bill:${escAttr(b.key)}">`
+    return `<li><button type="button" class="hsp-bill hgl-row" ${homeRowAttrs(b.key, label)} data-m="${escAttr(b.m)}" ${b.card ? 'data-card="1" ' : ''}data-flip="bill:${escAttr(b.key)}">`
       + `<span class="hsp-tile" style="--c:var(--sw-${_hspTint(b.name)})" aria-hidden="true">${esc(b.initial)}</span>`
       + `<span class="n"><span class="nm">${esc(b.name)}</span><small${b.due ? ' class="due"' : ''}>${esc(b.day)}</small></span>`
       + `<span class="a num">${A(b.amount, true)}</span></button></li>`;
@@ -207,7 +209,7 @@ function _hspBalanceHtml(m, f, A, say, prefs) {
 function _hspWire(body, m, f, hidden) {
   for (const b of body.querySelectorAll('[data-go]')) b.onclick = () => _hspOpen(b.dataset.go);
   for (const b of body.querySelectorAll('[data-act="sync"]')) b.onclick = () => _hspSyncStart();
-  const openBill = (row) => { if (row && row.dataset.m) _hspOpen('recurring', row.dataset.m); };
+  const openBill = (row) => { if (row && row.dataset.card) _hspOpen('data'); else if (row && row.dataset.m) _hspOpen('recurring', row.dataset.m); };
   for (const b of body.querySelectorAll('.hsp-bill')) b.onclick = () => openBill(b);
   const list = body.querySelector('.hsp-bl');
   if (list) homeRowKeys(list, { open: (id, row) => openBill(row) });

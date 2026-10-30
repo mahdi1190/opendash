@@ -908,11 +908,11 @@
     const ch = _channel(memo, tx.type || tx.sub || tx.subcategory);
 
     if (ch === 'atm' || bc === 'cash_withdrawal' || (CAT_RX.cash.test(c) && !inflow)) return inflow ? 'transfer-in' : 'atm';
-    if (how === 'own-transfer' || BC_SETS.own.has(bc) || CAT_RX.own.test(c) || RX.own.test(memo)) return 'own-transfer';
+    if (how === 'own-transfer' || how === 'card-payment' || BC_SETS.own.has(bc) || CAT_RX.own.test(c) || RX.own.test(memo)) return 'own-transfer';
     if (BC_SETS.interest.has(bc) || ch === 'interest' || c === 'interest' || (RX.interest.test(memo) && (!c || /^(income|fees.*|bank.*|uncategori[sz]ed|other)$/.test(c)))) return 'interest';
     if (bc === 'bank_fees' || ch === 'fee' || CAT_RX.fees.test(c) || (RX.fee.test(memo) && (!c || /^(fees.*|bank.*|uncategori[sz]ed|other)$/.test(c)))) return inflow ? 'refund' : 'fee';
     if (inflow) {
-      if (RX.refund.test(memo)) return 'refund';
+      if (how === 'refund' || RX.refund.test(memo)) return 'refund';
       if (BC_SETS.income.has(bc) || RX.salary.test(memo) || ch === 'credit') return 'income';
       if (ch === 'transfer' || BC_SETS.people.has(bc) || CAT_RX.people.test(c)) return 'transfer-in';
       if (ch === 'card' || ch === 'contactless' || ch === 'cardcredit') return 'refund';

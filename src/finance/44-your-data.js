@@ -55,7 +55,7 @@
     const s = r.status || {};
     const last = `last new payment ${ydWhen(r.to)}`;
     if (s.kind === 'updating') return { tone: 'good', icon: 'refresh-cw', text: r.balanceOnly ? 'Updating' : `Updating: ${last}` };
-    if (s.kind === 'file') return { tone: 'plain', icon: 'file-spreadsheet', text: 'One-off file' };
+    if (s.kind === 'file') return { tone: 'plain', icon: 'file-spreadsheet', text: r.kind === 'credit' ? 'From a file' : 'One-off file' };
     if (s.kind === 'demo') return { tone: 'plain', icon: 'sparkles', text: 'Example data' };
     if (s.kind === 'reconnect') return { tone: 'warn', icon: 'plug', text: 'Needs you to reconnect' };
     return { tone: 'quiet', icon: 'pause', text: r.count ? `Stopped updating: ${last}` : 'Stopped updating' };
@@ -82,7 +82,7 @@
     const n = `${nf0.format(r.count)} ${r.count === 1 ? 'payment' : 'payments'}`;
     return r.from === r.to ? `${ydDate(r.from, true)} · ${n}` : `${ydDate(r.from, true)} to ${ydDate(r.to, true)} · ${n}`;
   };
-  const BANK_TINT = { monzo: '#e8503f', barclays: '#0a84c6', hsbc: '#c8102e', lloyds: '#00733e', natwest: '#5a287d', santander: '#d71920', starling: '#6935d3', revolut: '#23262b', nationwide: '#00338d', halifax: '#0a5aa8', files: 'var(--fg-subtle)', other: 'var(--accent)' };
+  const BANK_TINT = { amex: '#006fcf', cards: 'var(--accent)', monzo: '#e8503f', barclays: '#0a84c6', hsbc: '#c8102e', lloyds: '#00733e', natwest: '#5a287d', santander: '#d71920', starling: '#6935d3', revolut: '#23262b', nationwide: '#00338d', halifax: '#0a5aa8', files: 'var(--fg-subtle)', other: 'var(--accent)' };
   const ydTile = (id, label) => h('span', { class: 'yd-tile', style: { background: BANK_TINT[id] || 'var(--accent)' }, 'aria-hidden': 'true' }, id === 'files' ? ic('file-spreadsheet') : id === 'other' ? ic('landmark') : String(label || '?').charAt(0).toUpperCase());
   // An amount that blurs with Hide amounts: on the page by the page's own switch (.fv-amt), in a dialog (outside the page) by Home's.
   const ydAmt = (x) => h('span', { class: 'fv-amt', text: gbp2(x) });
@@ -121,15 +121,17 @@
         actions: [
           h('button', { class: 'btn btn-primary', type: 'button', onclick: () => { if (window.Connections && Connections.open) Connections.open('money'); else setView('connections'); } }, ic('plug'), h('span', { text: 'Connect a bank' })),
           h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => pickCsv() }, ic('upload'), h('span', { text: 'Import a file' })),
+          h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => cdAddCard() }, ic('credit-card'), h('span', { text: 'Add a credit card' })),
         ],
       }));
       return;
     }
     const main = h('div', { class: 'yd-main' });
     const start = h('button', { type: 'button', class: 'btn btn-secondary', onclick: () => ydStartFresh() }, ic('sparkles'), h('span', { text: 'Start fresh' }));
+    const addCard = h('button', { type: 'button', class: 'btn btn-secondary', onclick: () => cdAddCard() }, ic('credit-card'), h('span', { text: 'Add a credit card' }));
     const list = h('div', { class: 'yd-list' });
     const head = typeof secHead === 'function'
-      ? secHead({ title: 'Your data', sub: 'Everything your money figures are worked out from. Untick what should not count.', icon: 'database', actions: [start] })
+      ? secHead({ title: 'Your data', sub: 'Everything your money figures are worked out from. Untick what should not count.', icon: 'database', actions: [addCard, start] })
       : h('h2', { text: 'Your data' });
     main.append(head);
     const fresh = ydFreshness(d); if (fresh) main.append(fresh);
@@ -138,6 +140,7 @@
     main.append(S.ydBar);
     const ov = ydOverlaps(d); if (ov) main.append(ov);
     const notes = ydNotes(d.notes); if (notes) main.append(notes);
+    const unseen = cdUnseen(d.cardUnseen); if (unseen) main.append(unseen);
     const groups = new Map();
     for (const r of d.rows) { if (!groups.has(r.bankId)) groups.set(r.bankId, { id: r.bankId, label: r.bank, rows: [] }); groups.get(r.bankId).rows.push(r); }
     const order = [...groups.values()].sort((a, b) => ydGroupRank(a) - ydGroupRank(b) || a.label.localeCompare(b.label));
@@ -187,10 +190,12 @@
     const until = YD.until[r.key];
     const row = h('article', { class: 'yd-row' + (off ? ' is-off' : ''), 'data-key': r.key, 'data-name': r.name },
       h('div', { class: 'yd-row-top' },
-        h('div', { class: 'yd-row-t' }, h('strong', { text: r.name }), h('span', { class: 'yd-origin', text: ydOrigin(r) })),
+        h('div', { class: 'yd-row-t' }, h('strong', {}, r.name, r.kind === 'credit' ? h('span', { class: 'yd-kind', text: 'Credit card' }) : null), h('span', { class: 'yd-origin', text: ydOrigin(r) })),
         h('span', { class: 'yd-chip ' + chip.tone }, ic(chip.icon), h('span', { text: chip.text }))),
-      h('div', { class: 'yd-meta' }, h('span', { text: ydRange(r) }), r.balance != null ? h('span', {}, 'Balance ', ydAmt(r.balance)) : null),
+      h('div', { class: 'yd-meta' }, h('span', { text: ydRange(r) }), r.balance != null && r.kind !== 'credit' ? h('span', {}, 'Balance ', ydAmt(r.balance)) : null),
       next ? h('p', { class: 'yd-next' }, next) : null,
+      r.kind === 'credit' ? cdRowBlock(r) : null,
+      r.kind === 'credit' ? cdLate(r) : null,
       until ? h('p', { class: 'yd-until-note' }, ic('calendar-days'), `Counted up to ${ydDate(until, true)}. Older payments stay in your long-term trends.`) : null,
       h('div', { class: 'yd-acts' },
         h('label', { class: 'yd-tick' }, tick, h('span', { text: 'Count this in my money' })),
@@ -217,6 +222,9 @@
   function ydMore(anchor, r) {
     const items = [];
     if (r.count && !(YD.doc && YD.doc.remote)) items.push({ label: 'Download its payments', icon: 'download', run: () => ydDownload(r) });
+    if (r.count && r.origin === 'file' && !(YD.doc && YD.doc.remote)) items.push({ label: r.kind === 'credit' ? 'Money in and out are the wrong way round' : 'Flip money in and out', icon: 'repeat', run: () => cdFlip(r) });
+    if (r.kind !== 'credit' && !(YD.doc && YD.doc.remote)) items.push({ label: 'This is a credit card', icon: 'credit-card', run: () => cdMark(r, true) });
+    else if (r.kind === 'credit' && r.origin === 'file' && !(YD.doc && YD.doc.remote)) items.push({ label: 'This isn’t a credit card', icon: 'landmark', run: () => cdMark(r, false) });
     items.push({ label: 'Delete this data for good', icon: 'trash-2', danger: true, run: () => ydDelete(r) });
     if (typeof openMenu === 'function') openMenu(anchor, items, { align: 'end' });
     else items[0].run();

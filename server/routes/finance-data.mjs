@@ -7,6 +7,8 @@
 //   POST /api/finance/data/delete     {key, disconnect} -> {removed, token} (safety copy first)
 //   POST /api/finance/data/restore    {token} or {key}: back from the safety copy, or let the account in again
 //   POST /api/finance/data/purge      {token}: the safety copy goes now
+//   POST /api/finance/data/card       {key, isCard?, name?, balance?, pay?}: a credit card's details -> {prev}
+//   POST /api/finance/data/flip       {key}: its money in and out the other way round (again = back)
 //   GET  /api/finance/data/download?key=   one source's payments as CSV (same-origin only)
 //
 // Loaded before server/routes/finance.mjs (sorted by name), whose /api/finance/ catch-all comes last.
@@ -37,6 +39,8 @@ export default function register(app) {
   post('delete', async (c) => { const b = await c.body(); return svc.remove(b.key, { disconnect: b.disconnect === true }); });
   post('restore', async (c) => svc.restore(await c.body()));
   post('purge', async (c) => svc.purge(await c.body()));
+  post('card', async (c) => svc.setCard(await c.body()));
+  post('flip', async (c) => { const b = await c.body(); return svc.flip(b.key); });
   app.route({
     path: '/api/finance/data/download', method: 'GET', methodError: 'GET only', sameOrigin: true,
     handler: guarded(async (c) => {

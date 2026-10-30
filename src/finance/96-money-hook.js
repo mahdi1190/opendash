@@ -10,7 +10,7 @@
       opts = opts || {};
       const M = opts.analysis ? buildModel(opts.analysis) : R.model;
       if (!M) return null;
-      const input = { tx: M.tx, anchor: M.anchor, minN: M.minN, balances: M.a.balances, history: M.a.balance_history, recurring: M.recurring };
+      const input = { tx: M.tx, anchor: M.anchor, minN: M.minN, balances: M.a.balances, history: M.a.balance_history, recurring: M.recurring, cards: M.a.cards };
       const B = MBM.compute(input, { mode: opts.mode, fmt: mbFmt() });
       const pick = x => JSON.parse(JSON.stringify(x));
       return pick({ mode: B.mode, key: B.key, cycle: B.cycle, spent: B.spent, usual: B.usual, mood: B.mood, projected: B.projected, usualEnd: B.usualEnd, moneyIn: B.moneyIn, net: B.net,
