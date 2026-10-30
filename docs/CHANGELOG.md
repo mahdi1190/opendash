@@ -10,6 +10,25 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.22.2] - 2026-10-30
+
+The garden: a rowing boat to your friends’ gardens, press and hold to walk, and clicks that always do something.
+
+### Added
+- **The rowing boat is the way to your friends’ gardens.** Click the boat by the mooring post: you walk to it and a menu asks where to; it lists
+  the friends whose gardens are shared with you, and picking one takes you there (the Post box still has your visits and parcels).
+- **Press and hold to walk.** Hold the left button on the ground and you keep walking to the pointer (drag to steer, let go to stop); a quick
+  click still walks to that spot, round whatever is in the way.
+
+### Fixed
+- **The highlight no longer depends on where you point.** A plant lit up only on a petal or at its foot; now the whole drawing lights up, and
+  what lights up is exactly what a click will do.
+- **Clicks that did nothing now do something.** Click a plant that needs nothing (a sunflower still growing) and it tells you how it is doing;
+  a click in the sky or past the edge walks you to the nearest ground; a click that wobbled a few pixels still counts; a click while you creep
+  up on a bug stops the chase instead of being pulled back by it; and a walk carries on when the page is drawn again.
+- **Less getting stuck.** A pop-up closed some other way can no longer leave hover and the keys switched off, and a missed mouse release can no
+  longer leave a press hanging.
+
 ## [2.22.1]
 
 Your money, from only the banks you still use.

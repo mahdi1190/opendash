@@ -298,6 +298,35 @@ function _gdpItemOf(ev) {
   const g = ev.target && ev.target.closest ? ev.target.closest('.gd-it[data-uid]') : null;
   return g ? { uid: g.getAttribute('data-uid'), kind: g.classList.contains('gd-plant') ? 'plant' : 'decor', ground: !!g.closest('.gd-paths') } : null;
 }
+/**
+ * The plant or decoration under the pointer, the same answer for the hover, the press and the right-click: whatever is painted under the
+ * pointer; else the one whose drawing's box the pointer is inside (a tall flower used to light up only on a petal or at its foot, and
+ * nowhere between); else null (the cell then decides).
+ */
+function _gdpPickItem(ev, cell) {
+  const exact = _gdpItemOf(ev);
+  if (exact && !exact.ground) return exact;
+  const svg = _gdp.svg, pt = typeof _gwPointAt === 'function' ? _gwPointAt(ev) : null;
+  if (svg && pt) {
+    let best = null, bz = -1e9;
+    for (const n of svg.querySelectorAll('.gd-objects > .gd-it[data-uid]')) {
+      const z = parseFloat(n.getAttribute('data-z'));
+      if (!(z >= pt.y - 0.3 && z <= pt.y + 6.5)) continue;   // a drawing stands up to about six rows above where it is rooted
+      const r = n.getBoundingClientRect();
+      if (ev.clientX < r.left - 2 || ev.clientX > r.right + 2 || ev.clientY < r.top - 2 || ev.clientY > r.bottom + 2) continue;
+      if (z > bz) { bz = z; best = n; }   // the one nearest the front wins
+    }
+    if (best) return { uid: best.getAttribute('data-uid'), kind: best.classList.contains('gd-plant') ? 'plant' : 'decor', ground: false };
+  }
+  void cell;
+  return exact;
+}
+/** Is a pop-up open over the garden? (One that was closed some other way is forgotten, so it can never lock the garden up.) */
+function _gdpPopOpen() {
+  const P = _gdp.pop;
+  if (P && !(P.el && P.el.isConnected)) _gdp.pop = null;
+  return !!_gdp.pop;
+}
 function _gdpRect(el, x, y, w, h) { if (!el) return; const W = GARDEN_WORLD; el.setAttribute('x', x * W.cellW + 1); el.setAttribute('y', W.sky + y * W.cellH + 1); el.setAttribute('width', Math.max(0, w * W.cellW - 2)); el.setAttribute('height', Math.max(0, h * W.cellH - 2)); }
 function _gdpFootOf(m, uid) {
   const p = gardenPlantById(m, uid); if (p) return { x: p.x, y: p.y, w: p.fp, h: p.fp };
@@ -323,15 +352,15 @@ function _gdpHover(ev) {
   if (!_gdp.svg) return;
   const box = _gdp.root && _gdp.root.querySelector('.gd-stagebox'), status = _gdp.root && _gdp.root.querySelector('.gd-status');
   // fishing locks you in and a pop-up is on top of the garden: nothing under the pointer lights up
-  if (_gdp.pop || (typeof _gwFishBusy === 'function' && _gwFishBusy())) { _gdpHighlight(null); _gdpGhostClear(); gardenHoverCardHide(); if (box) box.dataset.hover = ''; if (status) status.textContent = ''; return; }
-  const m = gardenModel(), it = _gdpItemOf(ev), cell = _gdpCellOf(ev);
+  if (_gdpPopOpen() || (typeof _gwFishBusy === 'function' && _gwFishBusy())) { _gdpHighlight(null); _gdpGhostClear(); gardenHoverCardHide(); if (box) box.dataset.hover = ''; if (status) status.textContent = ''; return; }
+  const m = gardenModel(), cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell);
   const tool = _gdpTool(), mode = _gdpMode();
   const placing = mode === 'decorate' && _gdp.decor ? gardenDecor(_gdp.decor) : mode === 'tend' && tool === 'seed' && _gdp.seed ? gardenPlant(_gdp.seed) : null;
   if (_gdp.carry) return;
   // placing: the ghost shows where it will go (this is the one place a square of ground shows)
   if (placing && cell) _gdpGhost(m, placing, mode === 'decorate' ? 'decor' : 'plant', cell.x, cell.y);
   else _gdpGhostClear();
-  const h = !placing && typeof gardenWorldHover === 'function' ? gardenWorldHover(ev, cell) : null;
+  const h = !placing && typeof gardenWorldHover === 'function' ? gardenWorldHover(ev, cell, it) : null;
   if (box) box.dataset.hover = h ? h.kind : '';
   let node = null, uid = '';
   if (!placing) {
@@ -379,8 +408,12 @@ function _gdpGhostClear() { const gh = _gdp.svg && _gdp.svg.querySelector('.gd-g
 /* ---------- pointer: click, sweep, drag ---------- */
 function _gdpBindStage(box) {
   box.addEventListener('pointermove', (ev) => {
-    const pr = _gdp.press;
-    if (pr && (Math.abs(ev.clientX - pr.x0) > 4 || Math.abs(ev.clientY - pr.y0) > 4)) pr.moved = true;
+    let pr = _gdp.press;
+    // the button came up where we could not see it (outside the window, another window): the press is over, whatever it was doing
+    if (pr && ev.pointerType === 'mouse' && ev.buttons === 0) { _gdp.press = null; pr = null; if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); if (_gdp.sweep) _gdpSweepEnd(); }
+    // a click may wobble a little (a mouse, a trackpad): only more than a few pixels is a drag. A press that wobbled 5 pixels used to be thrown away.
+    if (pr && (Math.abs(ev.clientX - pr.x0) > 9 || Math.abs(ev.clientY - pr.y0) > 9)) pr.moved = true;
+    if (pr && pr.hold) { if (typeof gardenHoldMove === 'function') gardenHoldMove(ev); return; }   // holding the button on the ground: you keep walking to the pointer
     if (pr && pr.moved) { _gdpDragMove(ev); return; }
     _gdpHover(ev);
   });
@@ -388,15 +421,15 @@ function _gdpBindStage(box) {
   box.addEventListener('pointerleave', () => { _gdpHighlight(null); });
   // right-click a plant: pick, water, fertilise, trim, dig up
   box.addEventListener('contextmenu', (ev) => {
-    if (!_gdp.svg || !_gdp.svg.contains(ev.target) || _gdp.pop || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || _gdpMode() === 'decorate') return;
-    const m = gardenModel(), it = _gdpItemOf(ev), cell = _gdpCellOf(ev);
+    if (!_gdp.svg || !_gdp.svg.contains(ev.target) || _gdpPopOpen() || (typeof _gwFishBusy === 'function' && _gwFishBusy()) || _gdpMode() === 'decorate') return;
+    const m = gardenModel(), cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell);
     const p = it && it.kind === 'plant' ? gardenPlantById(m, it.uid) : cell ? _gdpPlantAtCell(m, cell) : null;
     if (!p) return;
     ev.preventDefault(); _gdp.sel = p.uid; _gdpPaintSel(m); _gdpPaintSide(m); gardenCtxMenu(ev, p);
   });
   box.addEventListener('pointerdown', (ev) => {
     if (ev.button !== 0 || !_gdp.svg || !_gdp.svg.contains(ev.target)) return;
-    const it = _gdpItemOf(ev), cell = _gdpCellOf(ev);
+    const cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell);
     _gdp.press = { x0: ev.clientX, y0: ev.clientY, it, cell, moved: false, id: ev.pointerId };
     const mode = _gdpMode(), tool = _gdpTool();
     if (mode === 'tend' && tool === 'seed' && !_gdp.seed) { _gdpSay({ ok: false, msg: _gdpSeedList().length ? 'Pick a seed in the tray under the garden first.' : 'You have no seeds yet: free packets come from working, and the shop sells them.' }); const tr = _gdp.root.querySelector('.gd-tray'); if (tr) { tr.classList.remove('is-flash'); void tr.offsetWidth; tr.classList.add('is-flash'); } return; }
@@ -407,17 +440,24 @@ function _gdpBindStage(box) {
       const w0 = typeof gardenWorldHover === 'function' ? gardenWorldHover(ev, cell) : null;
       if (!w0 && pp && pp.thirsty && !pp.ripe && pp.def.thirst && !m0.rain.now) { _gdp.sweep = { done: new Set(), n: 0, undo0: _gd.undo.length, tool: 'water', last: '' }; _gdpSweepAt(ev); }
     }
+    // pressing bare ground: you start walking there at once, and keep walking to the pointer for as long as the button is down
+    if (!_gdp.sweep && mode !== 'decorate' && tool !== 'seed' && !_gdpPopOpen() && typeof gardenHoldStart === 'function' && typeof gardenWorldPick === 'function') {
+      const k = gardenWorldPick(it, cell, ev, gardenModel());
+      if (k.kind === 'ground' && gardenHoldStart(ev)) _gdp.press.hold = true;
+    }
     try { box.setPointerCapture(ev.pointerId); } catch (e) { /* fine */ }
   });
   box.addEventListener('pointerup', (ev) => {
     const pr = _gdp.press; _gdp.press = null;
     try { box.releasePointerCapture(ev.pointerId); } catch (e) { /* fine */ }
     if (!pr) return;
+    if (pr.hold) { if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); return; }   // the press already walked you there
     if (_gdp.sweep) { _gdpSweepEnd(); return; }
     if (pr.moved && pr.drag) { _gdpDragDrop(ev, pr); return; }
     if (!pr.moved) _gdpClick(pr.it, pr.cell, ev);
   });
-  box.addEventListener('pointercancel', () => { _gdp.press = null; if (_gdp.sweep) _gdpSweepEnd(); _gdpGhostClear(); });
+  box.addEventListener('pointercancel', () => { _gdp.press = null; if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); if (_gdp.sweep) _gdpSweepEnd(); _gdpGhostClear(); });
+  box.addEventListener('lostpointercapture', () => { if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); });
   box.addEventListener('keydown', (ev) => _gdpKey(ev));
   box.addEventListener('focus', () => { if (!_gdp.cur) _gdp.cur = { x: 9, y: 6, kb: false }; });
 }
@@ -459,6 +499,11 @@ function _gdpSmartPlant(p, m) {
   if (p.ripe) { _gdpAct(gardenHarvest(p.uid), true); return; }
   if (p.thirsty && p.def.thirst && !m.rain.now) { _gdpAct(gardenWater(p.uid), true); return; }
   if (p.overgrown && p.stage >= 3) { _gdpAct(gardenPrune(p.uid), true); return; }
+  // nothing it needs: say how it is doing, so a click is never met with silence
+  const bits = [`${p.def.name}: ${gardenStageName(p.def, p.stage)}`];
+  if (p.nextIn) bits.push('next stage in about ' + _gdHoursLabel(p.nextIn));
+  bits.push(!p.def.thirst ? 'finds its own water' : m.rain.now ? 'the rain is watering it' : 'not thirsty');
+  _gdgNote(bits.join(' · ') + '. Nothing to do yet; right-click for more.');
 }
 function _gdpPlantAtCell(m, cell) { const c = m.occ.get(cell.x + ',' + cell.y); return c && c.plant ? gardenPlantById(m, c.plant) : null; }
 /** The watering can or a seed dragged across the beds: each plant (or cell) once, one Undo for the whole sweep. */
@@ -565,7 +610,7 @@ function _gdpCarryEnd() {
 /* ---------- keyboard ---------- */
 function _gdpKey(ev) {
   if (ev.target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ev.target.tagName)) return;
-  if (_gdp.pop) return;   // a pop-up is open: its own keys
+  if (_gdpPopOpen()) return;   // a pop-up is open: its own keys
   if (ev.key === 'Escape' && typeof _gwFishBusy === 'function' && (_gwFishBusy() || _gw.netting)) { ev.preventDefault(); ev.stopPropagation(); if (_gwFishBusy()) _gwFishCancel('You wound the line in.'); _gw.netting = null; return; }
   if (typeof gardenWorldKey === 'function' && gardenWorldKey(ev, true, _gdpMode() === 'decorate')) return;   // 2.22: you walk, the camera zooms (while decorating only the arrows walk: R, S and Delete are yours)
   const m = gardenModel(), mode = _gdpMode(), W = GARDEN_WORLD;

@@ -204,3 +204,9 @@ html[data-motion="reduced"] .gd-svg .gd-shadowfish, html[data-motion="reduced"] 
 /* a building you stand behind lets you see through it */
 .gd-svg .gd-prop { transition: opacity .25s; }
 .gd-svg .gd-prop.gd-behind { opacity: .38; }
+
+/* the rowing boat: where to? */
+.gd-sail-h { display: flex; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); border-radius: var(--radius-lg); background: var(--bg-subtle); border: 1px solid var(--border-subtle); }
+.gd-sail-h > svg { width: 28px; height: 28px; flex: none; color: var(--sw-blue, var(--fg-muted)); }
+.gd-sail-h b { display: block; font-size: var(--text-md); }
+.gd-sail-h span { color: var(--fg-muted); font-size: var(--text-sm); }

@@ -460,7 +460,7 @@ function _gwNetWalk() {
   }
   if (!best) { _gdpSay({ ok: false, msg: 'It is too far in among the plants to reach. Wait for it to come out.' }); _gw.netting = null; _gw.path = []; return false; }
   N.goal = { x: b.x, y: b.y };
-  if (!gardenWalkToPoint(best, null, { sneak: true, radius: 0.5 })) { _gdpSay({ ok: false, msg: 'You cannot get close to it.' }); _gw.netting = null; return false; }
+  if (!gardenWalkToPoint(best, null, { sneak: true, radius: 0.5, net: true })) { _gdpSay({ ok: false, msg: 'You cannot get close to it.' }); _gw.netting = null; return false; }
   return true;
 }
 function _gwNetFrame(dt) {

@@ -122,6 +122,8 @@ function _gdgNote(text, svg) {
   const box = _gdgBox(); if (!box) return;
   let host = box.querySelector('.gd-notes');
   if (!host) { host = document.createElement('div'); host.className = 'gd-notes'; host.setAttribute('role', 'status'); box.appendChild(host); }
+  for (const o of host.children) if (o.textContent === text) return;   // clicking the same thing again does not stack the same note
+  while (host.children.length >= 3) host.firstChild.remove();
   const n = document.createElement('div'); n.className = 'gd-note'; n.innerHTML = (svg || '') + '<span></span>'; n.querySelector('span').textContent = text;
   host.appendChild(n);
   setTimeout(() => n.remove(), 5200);
