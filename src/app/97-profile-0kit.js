@@ -241,7 +241,8 @@ const PF_PARTS = Object.freeze([
   { k: 'watch', tab: 'jewel', label: 'Watch', opts: _pfO([['none', 'None'], ['classic', 'Classic'], ['smart', 'Smart watch'], ['sport', 'Sports watch'], ['bangle', 'Bangles']]), figure: true },
   { k: 'pin', tab: 'jewel', label: 'Pin badge', opts: _pfO([['none', 'None'], ['star', 'Star'], ['heart', 'Heart'], ['rainbow', 'Rainbow'], ['flower', 'Flower'], ['leaf', 'Leaf'],
     ['planet', 'Planet'], ['coffee', 'Coffee'], ['smiley', 'Smiley'], ['bolt', 'Bolt'], ['bee', 'Bee'],
-    ['sun', 'Sunrise', { ach: 'early-bird' }], ['owl', 'Owl', { ach: 'night-owl' }], ['flame', 'Flame', { ach: 'streak-7' }]]) },
+    ['sun', 'Sunrise', { ach: 'early-bird' }], ['owl', 'Owl', { ach: 'night-owl' }], ['flame', 'Flame', { ach: 'streak-7' }],
+    ['fish', 'Fish pin', { ribbon: 'first-catch' }], ['butterfly', 'Butterfly pin', { ribbon: 'first-bug' }]]) },   // 2.22: garden ribbons (94-garden-0catalog.js)
   { k: 'glasses', tab: 'extras', label: 'Glasses', opts: _pfO([['none', 'None'], ['round', 'Round'], ['square', 'Square'], ['rect', 'Narrow'], ['wire', 'Wire rims'], ['browline', 'Browline'],
     ['cat', 'Cat-eye'], ['oversized', 'Oversized'], ['aviator', 'Aviators'], ['half', 'Half-moons'], ['sun', 'Sunglasses'], ['aviatorsun', 'Aviator shades'],
     ['roundsun', 'Round sunnies'], ['mirror', 'Mirrored shades'], ['sport', 'Sport shades'], ['3d', '3D glasses', { level: 9 }],
@@ -254,7 +255,8 @@ const PF_PARTS = Object.freeze([
     ['wizard', 'Wizard hat', { level: 25 }], ['crown', 'Crown', { level: 40 }],
     ['witch', 'Witch hat', { season: 'halloween' }], ['horns', 'Little horns', { season: 'halloween' }], ['santa', 'Santa hat', { season: 'december' }],
     ['antlers', 'Antlers', { season: 'festive' }], ['flowers', 'Flower crown', { season: 'spring' }], ['bunny', 'Bunny ears', { season: 'spring' }],
-    ['party', 'Party hat', { season: 'birthday' }]]) },
+    ['party', 'Party hat', { season: 'birthday' }],
+    ['anglerhat', 'Angler’s hat', { ribbon: 'angler' }], ['pith', 'Explorer’s helmet', { ribbon: 'bug-catcher' }]]) },   // 2.22: garden ribbons
   { k: 'hatCol', tab: 'extras', label: 'Hat colour', colour: 'cloth' },
   { k: 'headphones', tab: 'extras', label: 'Headphones', opts: _pfO([['none', 'None'], ['over', 'Headphones'], ['buds', 'Earbuds'], ['gaming', 'Headset'], ['muffs', 'Ear muffs'],
     ['cat', 'Cat ears', { level: 12 }]]) },
@@ -354,6 +356,8 @@ function profileLockOf(k, id, ctx) {
     if (ctx.collected && ctx.collected[k + ':' + id]) return '';
     return profileSeasonOn(o.season, ctx.today || '', ctx.birthday) ? '' : 'Seasonal: comes ' + PF_SEASONS[o.season].label;
   }
+  // 2.22: a garden ribbon (ctx.ribbons is a Set of the ribbon ids you have earned; a page without a garden has none to check)
+  if (o.ribbon && ctx.ribbons && !ctx.ribbons.has(o.ribbon)) return 'Earn the garden ribbon “' + ((ctx.ribbonLabel && ctx.ribbonLabel(o.ribbon)) || o.ribbon) + '”';
   if (!ctx.game) return '';   // no game on this page: nothing to unlock
   if (o.level && (Number(ctx.levelMax) || 1) < o.level) return 'Reach level ' + o.level;
   if (o.ach && !(ctx.ach && ctx.ach.has && ctx.ach.has(o.ach))) return 'Earn “' + ((ctx.achLabel && ctx.achLabel(o.ach)) || o.ach) + '”';

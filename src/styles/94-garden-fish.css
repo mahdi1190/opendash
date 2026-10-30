@@ -1,0 +1,206 @@
+/* ============================================================
+   GARDEN, 2.22: the world you walk in, the lake, fishing and bug catching. Sizes and colours come from the same tokens as
+   94-garden.css; everything that moves stops under reduced motion and the Fun level Off (html[data-motion="reduced"],
+   .is-still, .is-funoff, the prefers-reduced-motion query), exactly like the garden's own animations.
+   ============================================================ */
+
+/* the camera buttons on the stage */
+.gd-camui { position: absolute; right: 12px; bottom: 12px; z-index: 5; display: flex; gap: 2px; padding: 3px; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--surface) 88%, transparent); box-shadow: var(--shadow-sm); border: 1px solid var(--border-subtle); }
+.gd-cambtn { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: var(--radius-md); background: none; color: var(--fg-muted); cursor: pointer; }
+.gd-cambtn:hover:not(:disabled) { background: var(--bg-muted); color: var(--fg); }
+.gd-cambtn:disabled { opacity: .35; cursor: default; }
+.gd-cambtn[aria-pressed="true"] { background: color-mix(in srgb, var(--sw-green) 18%, var(--surface)); color: var(--fg); cursor: default; }
+.gd-cambtn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* the player and the pet */
+.gd-actors, .gd-player, .gd-pet-follow { pointer-events: none; }
+.gd-player .gd-pl-in { transform-box: view-box; }
+.gd-pet-follow .gdp-face { transform-box: view-box; }
+.gd-svg .gd-pl-sh { opacity: .9; }
+
+/* the lake: foam, waves, glints */
+.gd-svg .gd-foam { animation: gd-foam 4.2s ease-in-out infinite alternate; }
+.gd-svg .gd-waves { animation: gd-waves 7s ease-in-out infinite alternate; }
+.gd-svg .gd-glint { animation: gd-glint 3.4s ease-in-out infinite; }
+@keyframes gd-foam { from { stroke-opacity: .35; transform: translateY(0); } to { stroke-opacity: .75; transform: translateY(1.6px); } }
+@keyframes gd-waves { from { transform: translateX(-14px); } to { transform: translateX(14px); } }
+@keyframes gd-glint { 0%, 70%, 100% { opacity: 0; } 82% { opacity: 1; } }
+.gd-svg .gd-prop-tree { cursor: default; }
+
+/* fish in the aquarium swim to and fro; the fancy tails wave */
+.gd-svg .gfa-swim { animation: gfa-swim 8s ease-in-out infinite alternate; }
+@keyframes gfa-swim { from { transform: translateX(calc(var(--sx, 8px) * -1)); } to { transform: translateX(var(--sx, 8px)); } }
+.gd-svg .gfa-tail { transform-box: fill-box; transform-origin: 100% 50%; animation: gfa-tail 1.1s ease-in-out infinite alternate; }
+@keyframes gfa-tail { from { transform: skewY(-6deg); } to { transform: skewY(6deg); } }
+
+/* fishing: the ripples, the line and the bite */
+.gd-svg .gd-ring { transform-box: fill-box; transform-origin: 50% 50%; animation: gd-ring 1.4s ease-out forwards; }
+@keyframes gd-ring { from { transform: scale(.3); opacity: .95; } to { transform: scale(2.6); opacity: 0; } }
+.gd-svg .gd-bite { animation: gd-bite .5s ease-in-out infinite alternate; }
+@keyframes gd-bite { from { opacity: .85; } to { opacity: 1; } }
+.gd-svg .gd-held { animation: gd-held 1.4s ease-out forwards; }
+@keyframes gd-held { 0% { opacity: 0; } 12% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.gd-svg .gd-swing { animation: gd-swing .36s ease-out forwards; }
+@keyframes gd-swing { from { opacity: 1; } to { opacity: 0; } }
+
+/* bugs */
+.gd-svg .gd-bug .gba-wings { transform-origin: 0 0; transform: scaleY(.72); }
+.gd-svg .gd-bug.is-fly .gba-wings { animation: gba-flap .13s ease-in-out infinite alternate; }
+@keyframes gba-flap { from { transform: scaleY(1); } to { transform: scaleY(.22); } }
+.gd-svg .gd-bug .gba-glow { animation: gba-pulse 1.8s ease-in-out infinite; }
+@keyframes gba-pulse { 0%, 100% { opacity: .15; } 50% { opacity: .55; } }
+.gd-svg .gd-bug.is-target .gb-in { filter: drop-shadow(0 0 3px #ffffff); }
+.gd-svg .gd-bug.is-flee .gb-in { filter: drop-shadow(0 0 2px #ffe27a); }
+.gd-stagebox[data-tool="net"] .gd-bug .gb-in { filter: drop-shadow(0 0 2px #ffffff); }
+
+/* the reel: a bar and a fish on a track */
+.gd-reel { position: absolute; z-index: 6; right: 26px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 12px 8px; border-radius: var(--radius-xl); background: color-mix(in srgb, var(--surface) 90%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); animation: gd-reel-in .22s ease-out; touch-action: none; user-select: none; }
+@keyframes gd-reel-in { from { opacity: 0; transform: translateY(-50%) scale(.92); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
+.gd-reel-head b { font-size: var(--text-sm); }
+.gd-reel-body { display: flex; gap: 8px; height: min(300px, 44vh); }
+.gd-reel-track { position: relative; width: 44px; border-radius: 10px; background: linear-gradient(#7fc4e8, #2f6a98); border: 2px solid color-mix(in srgb, var(--fg) 40%, transparent); overflow: hidden; }
+.gd-reel-bar { position: absolute; left: 2px; right: 2px; border-radius: 7px; background: color-mix(in srgb, #5fd35f 70%, transparent); border: 2px solid #2f8f3a; box-shadow: 0 0 0 1px #ffffff55 inset; transition: background .12s; }
+.gd-reel.is-in .gd-reel-bar { background: color-mix(in srgb, #8ff08a 85%, transparent); box-shadow: 0 0 10px #8ff08a; }
+.gd-reel-fish { position: absolute; left: 50%; width: 30px; height: 30px; margin-left: -15px; display: grid; place-items: center; z-index: 2; }
+.gd-reel-fish.is-hidden svg { filter: brightness(0.15) contrast(1.4); }
+.gd-reel-fish svg { width: 30px; height: auto; }
+.gd-reel-prog { position: relative; width: 12px; border-radius: 6px; background: color-mix(in srgb, var(--fg) 14%, var(--surface)); overflow: hidden; border: 1px solid var(--border-subtle); }
+.gd-reel-prog i { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(#f2c432, #e8782a); border-radius: 5px; transition: height .08s linear; }
+.gd-reel-hint { font-size: 10.5px; color: var(--fg-muted); max-width: 150px; text-align: center; line-height: 1.3; }
+
+/* what you caught */
+.gd-catchcard { position: absolute; z-index: 6; left: 50%; top: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 10px; border-radius: var(--radius-xl); background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); cursor: pointer; animation: gd-card-in .3s cubic-bezier(.2, 1.3, .4, 1); max-width: min(92%, 420px); }
+.gd-catchcard.is-out { opacity: 0; transform: translateX(-50%) translateY(-8px); transition: opacity .25s, transform .25s; }
+.gd-catchcard.is-new { border-color: color-mix(in srgb, var(--sw-amber) 70%, var(--border-subtle)); }
+.gd-catchcard.is-rare .gd-cc-art { background: radial-gradient(circle, color-mix(in srgb, var(--sw-amber) 35%, transparent), transparent 70%); }
+@keyframes gd-card-in { from { opacity: 0; transform: translateX(-50%) translateY(-14px) scale(.9); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
+.gd-cc-art { display: grid; place-items: center; min-width: 64px; border-radius: var(--radius-lg); }
+.gd-cc-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.gd-cc-txt b { font-size: var(--text-md); }
+.gd-cc-txt span { font-size: var(--text-xs); color: var(--fg-muted); }
+.gd-cc-txt em { font-style: normal; font-size: var(--text-xs); font-weight: 600; color: color-mix(in srgb, var(--sw-amber) 80%, var(--fg)); }
+.gd-stars { font-size: 11px; letter-spacing: 1px; margin-left: 4px; }
+.gd-stars.q1 { color: #3f8f5a; } .gd-stars.q2 { color: #3a6fc4; } .gd-stars.q3 { color: #c98a12; }
+
+/* cursors for the two new tools */
+.gd-full .gd-stagebox[data-tool="rod"] { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='24' font-size='24'%3E%F0%9F%8E%A3%3C/text%3E%3C/svg%3E") 6 26, crosshair; }
+.gd-full .gd-stagebox[data-tool="net"] { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='24' font-size='24'%3E%F0%9F%A6%8B%3C/text%3E%3C/svg%3E") 16 16, crosshair; }
+.gd-full .gd-stagebox[data-reeling="1"] { cursor: grabbing; }
+
+/* the Catch page */
+.gdc-top { margin-bottom: var(--space-3); }
+.gdc-sum { margin-left: auto; font-size: var(--text-sm); }
+.gdc-market, .gdc-orders, .gdc-empty { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); }
+.gdc-market-h { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.gdc-market-h .muted { flex-basis: 100%; font-size: var(--text-sm); }
+.gdc-meters { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-2) var(--space-4); }
+.gdc-meter { display: grid; grid-template-columns: 76px 1fr auto; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.gdc-bar { height: 8px; border-radius: 4px; background: var(--bg-muted); overflow: hidden; }
+.gdc-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--sw-amber), color-mix(in srgb, var(--sw-amber) 60%, #e8782a)); border-radius: 4px; }
+.gdc-casts { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.gdc-acts { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.gdc-order-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.gdc-order { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius-lg); background: var(--bg-subtle); border: 1px solid var(--border-subtle); }
+.gdc-order.is-done { opacity: .55; }
+.gdc-order-art { display: grid; place-items: center; width: 56px; flex: none; }
+.gdc-order-t { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.gdc-done { font-size: var(--text-sm); color: var(--fg-muted); }
+.gdc-empty { flex-direction: row; align-items: center; gap: var(--space-4); }
+.gdc-empty p { margin: 2px 0 0; font-size: var(--text-sm); }
+.gdc-grid { margin-bottom: var(--space-4); }
+.gdc-book.is-unknown .gd-card-art { filter: grayscale(.3); opacity: .85; }
+.gdc-filters { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.gdc-prog, .gdc-intro { margin: 0 0 var(--space-3); font-size: var(--text-sm); display: flex; align-items: center; gap: var(--space-2); }
+.gdc-h { margin: var(--space-4) 0 var(--space-2); font-size: var(--text-md); }
+.gdc-gear.is-equipped { border-color: color-mix(in srgb, var(--sw-green) 55%, var(--border-subtle)); background: color-mix(in srgb, var(--sw-green) 7%, var(--surface)); }
+.gdc-showwrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3); }
+.gdc-showpanel { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+.gdc-showh { display: flex; justify-content: space-between; align-items: baseline; }
+.gdc-showart { display: grid; place-items: center; min-height: 150px; border-radius: var(--radius-lg); background: linear-gradient(color-mix(in srgb, var(--sw-green) 10%, var(--bg-subtle)), var(--bg-subtle)); padding: var(--space-3); }
+.gdc-pins { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+.gdc-pin { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 92px; padding: var(--space-2); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); background: var(--surface); cursor: pointer; font-size: var(--text-xs); text-align: center; }
+.gdc-pin:hover { background: var(--bg-muted); }
+.gdc-pin span { font-weight: 600; line-height: 1.2; }
+.gdc-pin small { color: var(--fg-muted); }
+.gdc-side { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); }
+.gdc-side-h { display: flex; align-items: center; gap: var(--space-3); }
+.gdc-side-t { display: flex; flex-direction: column; min-width: 0; }
+.gdc-baitrow { display: flex; align-items: center; gap: var(--space-2); }
+.gdc-baitrow select { flex: 1; }
+.gdc-side-tip { margin: 0; font-size: var(--text-xs); line-height: 1.4; }
+.gd-catch-ico { display: block; max-width: 100%; height: auto; overflow: visible; }
+
+@media (max-width: 720px) {
+  .gd-reel { right: 10px; padding: 8px; }
+  .gd-reel-hint { display: none; }
+  .gdc-meter { grid-template-columns: 62px 1fr auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gd-svg .gd-foam, .gd-svg .gd-waves, .gd-svg .gd-glint, .gd-svg .gfa-swim, .gd-svg .gfa-tail, .gd-svg .gd-ring, .gd-svg .gd-bite, .gd-svg .gd-bug .gba-wings, .gd-svg .gd-bug .gba-glow, .gd-reel, .gd-catchcard { animation: none !important; }
+}
+html[data-motion="reduced"] .gd-svg .gd-foam, html[data-motion="reduced"] .gd-svg .gd-waves, html[data-motion="reduced"] .gd-svg .gd-glint, html[data-motion="reduced"] .gd-svg .gfa-swim, html[data-motion="reduced"] .gd-svg .gfa-tail,
+html[data-motion="reduced"] .gd-svg .gd-ring, html[data-motion="reduced"] .gd-svg .gd-bite, html[data-motion="reduced"] .gd-svg .gd-bug .gba-wings, html[data-motion="reduced"] .gd-svg .gd-bug .gba-glow, html[data-motion="reduced"] .gd-reel, html[data-motion="reduced"] .gd-catchcard { animation: none !important; }
+.gd-svg.is-still .gd-foam, .gd-svg.is-still .gd-waves, .gd-svg.is-still .gd-glint, .gd-svg.is-still .gfa-swim, .gd-svg.is-still .gfa-tail, .gd-page.is-funoff .gd-svg .gd-glint, .gd-page.is-funoff .gd-svg .gd-waves { animation: none !important; }
+html.anim-paused .gd-svg .gd-foam, html.anim-paused .gd-svg .gd-waves, html.anim-paused .gd-svg .gd-glint, html.anim-paused .gd-svg .gfa-swim { animation-play-state: paused !important; }
+
+/* ambient life in the lake */
+.gd-svg .gd-shadowfish { animation: gd-shadowfish 50s linear infinite alternate; }
+@keyframes gd-shadowfish { from { transform: translateX(0); } to { transform: translateX(var(--dx, 120px)); } }
+.gd-svg .gd-leap-x { animation: gd-leap-x .8s linear forwards; }
+.gd-svg .gd-leap-y { animation: gd-leap-y .8s cubic-bezier(.3, .6, .5, 1) forwards; }
+.gd-svg .gd-leap-r { animation: gd-leap-r .8s linear forwards; }
+@keyframes gd-leap-x { from { transform: translateX(0); } to { transform: translateX(var(--lx, 26px)); } }
+@keyframes gd-leap-y { 0% { transform: translateY(0); } 45% { transform: translateY(-26px); animation-timing-function: cubic-bezier(.5, 0, .8, .5); } 100% { transform: translateY(0); } }
+@keyframes gd-leap-r { from { transform: rotate(-55deg); } to { transform: rotate(55deg); } }
+
+/* your catches on your profile card */
+.pf-card-catch { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; margin: var(--space-2) auto 0; padding: 6px 10px; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--sw-blue, #4f8fc0) 9%, var(--bg-subtle)); max-width: 100%; }
+.pf-card-catch.is-compact { padding: 3px 6px; gap: 3px 5px; }
+.pf-catch-i { display: inline-grid; place-items: center; line-height: 0; }
+.pf-catch-gear { font-size: var(--text-xs); color: var(--fg-muted); padding-left: 6px; border-left: 1px solid var(--border-subtle); }
+@media (prefers-reduced-motion: reduce) { .gd-svg .gd-shadowfish, .gd-svg .gd-leap-x, .gd-svg .gd-leap-y, .gd-svg .gd-leap-r { animation: none !important; } }
+html[data-motion="reduced"] .gd-svg .gd-shadowfish, html[data-motion="reduced"] .gd-svg .gd-leap-x, html[data-motion="reduced"] .gd-svg .gd-leap-y, html[data-motion="reduced"] .gd-svg .gd-leap-r { animation: none !important; }
+.gd-svg.is-still .gd-shadowfish, .gd-page.is-funoff .gd-svg .gd-shadowfish { animation: none !important; }
+.gdc-visit-row { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: flex-end; }
+.gdc-visit-i { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; line-height: 1; }
+.gdc-visit-i small { font-size: 10px; color: var(--fg-muted); }
+
+/* what is under the pointer decides the cursor: the water is a rod, a bug is a net, a building is a hand */
+.gd-full .gd-stagebox[data-hover="water"] { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='24' font-size='24'%3E%F0%9F%8E%A3%3C/text%3E%3C/svg%3E") 6 26, crosshair; }
+.gd-full .gd-stagebox[data-hover="bug"] { cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Ctext y='24' font-size='24'%3E%F0%9F%A6%8B%3C/text%3E%3C/svg%3E") 16 16, crosshair; }
+.gd-full .gd-stagebox[data-hover="prop"] { cursor: pointer; }
+.gd-svg .gd-prop-click { cursor: pointer; }
+.gd-svg .gd-prop-click:hover { filter: brightness(1.06); }
+
+/* 2.22, second round: nothing lights up a square of grass. The thing under the pointer glows, the selected plant glows. */
+.gd-hover, .gd-sel { display: none; }
+.gd-svg .gd-hl { filter: drop-shadow(0 0 1.4px #ffffff) drop-shadow(0 0 4px rgba(255, 255, 255, .8)); }
+.gd-svg .gd-selected { filter: drop-shadow(0 0 1.6px #ffe27a) drop-shadow(0 0 5px rgba(255, 226, 122, .8)); }
+.gd-svg .gd-hl.gd-selected { filter: drop-shadow(0 0 1.6px #ffe27a) drop-shadow(0 0 4px rgba(255, 255, 255, .85)); }
+
+/* fishing locks you in */
+.gd-page.is-fishing .gd-toolbar { opacity: .4; pointer-events: none; transition: opacity .25s; }
+.gd-page.is-fishing .gd-camui { display: none; }
+.gd-full .gd-stagebox[data-fishing="1"], .gd-full .gd-stagebox[data-fishing="1"] * { cursor: default; }
+.gd-stagebox[data-fishing="1"] .gd-status, .gd-stagebox[data-fishing="1"] .gd-hovercard { display: none; }
+.gd-fishhud { position: absolute; z-index: 6; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); font-size: var(--text-sm); animation: gd-card-in .25s ease-out; }
+.gd-fishhud[hidden] { display: none; }
+.gd-fishhud.is-bite { background: color-mix(in srgb, var(--sw-amber) 30%, var(--surface)); border-color: color-mix(in srgb, var(--sw-amber) 70%, var(--border-subtle)); font-weight: 600; }
+.gd-fishhud-b { border: 0; border-radius: 999px; padding: 4px 10px; background: var(--bg-muted); color: var(--fg-muted); font: inherit; font-size: var(--text-xs); cursor: pointer; }
+.gd-fishhud-b:hover { background: color-mix(in srgb, var(--fg) 12%, var(--bg-muted)); color: var(--fg); }
+.gd-fishhud-b kbd { margin-left: 4px; font: 600 10px/1 var(--font-mono, monospace); opacity: .7; }
+
+/* right-click a plant */
+.gd-ctx { position: absolute; z-index: 8; min-width: 190px; padding: 4px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-lg, var(--shadow-md)); display: flex; flex-direction: column; animation: gd-card-in .15s ease-out; }
+.gd-ctx-h { padding: 6px 10px 4px; font-size: var(--text-xs); font-weight: 600; color: var(--fg-muted); }
+.gd-ctx button { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 0; border-radius: var(--radius-md); background: none; color: var(--fg); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
+.gd-ctx button:hover:not(:disabled) { background: var(--bg-muted); }
+.gd-ctx button:disabled { opacity: .45; cursor: default; }
+
+/* the shop, the post box and the rest, as pop-ups */
+.modal.gd-popup .modal-b { padding: var(--space-4); }
+.modal.gd-popup .gd-popup-body { overflow-y: auto; }
+
+/* a building you stand behind lets you see through it */
+.gd-svg .gd-prop { transition: opacity .25s; }
+.gd-svg .gd-prop.gd-behind { opacity: .38; }

@@ -174,6 +174,11 @@ const PF_TITLES = _pflO([
   ['gifter', 'Gift giver', { icon: 'gift', ach: 'gift-first' }],
   ['stickers', 'Sticker collector', { icon: 'book-open', ach: 'stickers-10' }],
   ['social', 'Social butterfly', { icon: 'users', friends: 3 }],
+  ['angler', 'Angler', { icon: 'fish', ribbon: 'angler' }],
+  ['master-angler', 'Master angler', { icon: 'crown', ribbon: 'master-angler' }],
+  ['bug-whisperer', 'Bug whisperer', { icon: 'bug', ribbon: 'bug-catcher' }],
+  ['entomologist', 'Entomologist', { icon: 'microscope', ribbon: 'entomologist' }],
+  ['trader', 'Market trader', { icon: 'handshake', ribbon: 'market-trader' }],
   ['garden', 'Garden keeper', { icon: 'sprout', garden: 50 }],
   ['green', 'Green fingers', { icon: 'flower-2', garden: 400 }],
   ['rising', 'Rising star', { icon: 'star', level: 10 }],
@@ -256,6 +261,7 @@ function profileLookLockOf(kind, id, ctx) {
     return typeof profileSeasonOn === 'function' && profileSeasonOn(o.season, ctx.today || '', ctx.birthday) ? '' : 'Seasonal: comes ' + (s ? s.label : 'with its season');
   }
   if (o.friends && (Number(ctx.friends) || 0) < o.friends) return `Make ${o.friends} friends in OpenDash`;
+  if (o.ribbon && ctx.ribbons && !ctx.ribbons.has(o.ribbon)) return 'Earn the garden ribbon “' + ((ctx.ribbonLabel && ctx.ribbonLabel(o.ribbon)) || o.ribbon) + '”';   // 2.22
   if (!ctx.game) return '';   // no game on this page: nothing to unlock
   if (o.level && (Number(ctx.levelMax) || 1) < o.level) return 'Reach level ' + o.level;
   // its own achievement, else the one whose reward names it (2.18: the achievements' 'title:' / 'banner:' / 'plate:')

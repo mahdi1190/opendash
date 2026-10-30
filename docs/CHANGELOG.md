@@ -10,7 +10,29 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.22.0] - 2026-10-30
+
+The garden becomes a world you walk in, with fishing and bug catching, and pets you can customise with words.
+
 ### Added
+- **The garden is a world you walk in.** The figure on the grass is you, drawn from your profile (the one the scenes use), and your pet
+  follows. Click the ground to walk there (free movement, not square to square), click a plant with a tool and you walk over and use it, or use W A S D / the arrow keys
+  (Shift creeps, Space or E uses the tool in front of you). The camera follows you; the wheel, + and - zoom, F shows the whole garden.
+  The keys now work wherever you are on the page, not only after clicking the stage. Shift+W waters everything (W alone walks).
+- **A bigger garden**: 28 x 18 cells instead of 20 x 11 (everything you planted stays exactly where it was), with the Lake along the south
+  (a pier, a boat, reeds, fish shadows and leaping fish, a tackle shop) and the Wild woods down the east side (level 4).
+- **Fishing**, like Stardew Valley: just click the water, wait for the bite, strike, then hold to keep the fish in the bar until the
+  meter fills. 39 fish and 9 finds (junk and treasure) by depth, hour, season and rain; quality stars; five rods (the golden one is a ribbon
+  prize), bait and floats; casts a day that grow with the work you do. **Bug catching**: click a bug, creep up on it and swing; 33 bugs
+  that live near flowers, water, lights and trees.
+- **The menus are in the world.** The shop, the market stall, the notice board (your almanac), the field journal (fish and bug books), the tackle shop, the post box (friends), the camera (photos) and the sundial (time-lapse) are buildings along the lake shore: click one and you walk to its door and it opens as a pop-up you close by clicking outside it (or Esc). The garden no longer has a row of menu buttons; your pet is smaller than you.
+- **No more tools to juggle.** Click a plant and it is picked, watered (drag across a row for several) or trimmed, whichever it needs; right-click for fertilise and dig up. Only Plant and Decorate are left as modes. Nothing lights up a square of grass any more: the thing you can click lights up.
+- **Fishing locks you in**: the camera closes in on you and your line, hover effects go quiet, and you reel without the garden moving around. Bugs are easier to catch: you can creep up on one over a flower bed, and it sits still while you do.
+- **The Catch page**: your bag and the market (it only wants so much a day), an order board of three requests a day paid in coins and goods, a
+  fish book and a bug book (shadows and hints until you meet each one), the tackle shop, and a showcase.
+- **Show them off and share them**: an Aquarium, a Bug case and a Trophy board for the garden show your best catches; friends see them when
+  they visit, on a card of their own, and on your profile card. Give a fish or a bug to a friend like any other parcel (they go in the
+  friend's book too). Garden ribbons unlock hats, pins and titles on your profile, and pet hats.
 - Pets can be customised with words. Pets > Wardrobe: your own colours for the
   coat, the belly and pattern, the eyes and every accessory (a "Custom" swatch);
   **Restyle with AI** (describe a change, see it before and after, Apply, Undo);
@@ -25,6 +47,15 @@ upgrades it.
 - Nothing from a friend ever goes to Claude. The sentence you type, your pet's
   look and (when you ask for a change) your own previous drawing go to your
   Claude, only when you press the button. See `docs/PRIVACY.md`.
+
+### Changed
+- The garden's whole-garden crop and the aspect of its views follow the new size; the "Every corner" ribbon now needs all eight areas.
+- Icons added to the sprite: fish, zoom-in, zoom-out, maximize, locate-fixed.
+
+### Fixed
+- **You no longer get stuck on things in the garden.** Walking into the corner of a bed, a bench or a building slides you along it and round
+  the corner instead of stopping you dead, and a click re-plans the way if something grows or is put down in your path. If a plant grows
+  where you stand, you step out of it instead of being wedged inside.
 
 ## [2.21.0]
 

@@ -395,3 +395,62 @@ gifts, seenAt). Friends' snapshots themselves are in `friends/shared.json` (kind
 Gaps: a friend on an OpenDash before 2.18 drops these kinds quietly (you see "sent"). Caps live in
 `friends/garden.json`, which reaches your other devices through sync only, so two devices offline from each other can
 each use a day's caps. A visit shows their garden as of their last snapshot (stages move between snapshots).
+
+## 12. The walking world, the lake, fishing and bug catching (2.22)
+
+User request, 30 Oct 2026: "update the garden and games section, so better animations and unlockables on profiles, pets, bigger
+garden, make it render better, QoL as controls are shit ... a fishing mini game similar to Stardew Valley ... collect fish, trade
+them / gift them to other people, showcase them ... upgrades to fishing rods ... bug collecting too. I want the player to always be
+in the garden and the fishing mini game to be connected to it. You can move the player around with click."
+
+| Part | Files |
+|---|---|
+| The bigger world: `GARDEN_WORLD` is 28 x 18 cells (the first 20 x 11 are exactly where they were: every saved x, y stays valid); the Wild woods (east, level 4) and the Lake (south, level 1) in `GARDEN_AREAS`, `GARDEN_PROPS` (the pier, the tackle shop, the mooring post, the reeds, the forest edge), `gardenWaterZone(x, y)`, `gardenPropAt`, new tiles | `94-garden-0catalog.js` |
+| The catalogue of 39 fish, 9 finds, 33 bugs, 5 rods, 4 nets, 5 baits, 6 floats, the economy (`GARDEN_CATCH_ECON`), the odds (`gardenFishOdds`), the order board (`gardenTradesFor`), the showcase's wire form (`gardenShowClean`). PURE; Node evaluates it (`lib/friends/garden.mjs`) | `94-garden-fish-0catalog.js` |
+| The art: parametric fish (12 body shapes x patterns), bugs (16 shapes), finds, gear icons: `gardenFishArt`, `gardenBugArt`, `gardenGearArt`, `gardenCatchSvg(kind, id, px)` | `94-garden-fish-1art.js` |
+| The ground and scenery: the lake, pier, woods, tackle shop, boat, reeds, forest edge; the decorations that show catches (aquarium, bug case, trophy board, fish weathervane, bait bucket) | `94-garden-fish-1world.js` |
+| The engine: gear, casts, `gardenFishPlan` / `gardenCatchFish`, `gardenBugsNow` / `gardenCatchBug`, bag, market, order board, showcase, facts | `94-garden-fish-2core.js` |
+| The play: casting, the bite, the reel (a bar and a fish on a track), the net, the bugs' own little minds, the catch card | `94-garden-fish-3game.js` |
+| The Catch page (`#view=garden:catch`: Bag and market, Fish book, Bug book, Tackle, Showcase) and the card in the side panel | `94-garden-fish-4page.js` |
+| The player, the pet that follows, click-to-walk (A*), the keys, the camera | `94-garden-world-0walk.js` |
+| Your catches on your profile card (`profileExtend` key `catch`; server half `lib/profile-catch.mjs`) | `97-profile-5catch.js` |
+| Styles | `src/styles/94-garden-fish.css` |
+
+**State** (all in `state.garden`, synced; `lib/sync/model.mjs` has `fl`, `bl`, `fd` as maps): `fl {fishId: {n, b (best cm), q (best
+quality), d, l, g}}` (the fish log), `bl {bugId: {n, d, l, g}}` (the bug book), `fd {day: {c (casts), k (bugs caught), mf, mb (market
+coins at full rate), o (orders done)}}` (kept 8 days), `prefs.{rod, net, bait, bobber, show: {f, b}, px, py, cam, zoom}`. What you carry
+is the garden's ledger and item map as before: `fish:<id>-<q>` (q 0..3), `bug:<id>`, `gear:<id>`, `bait:<id>`; ledger kinds `fc`, `bc`, `ct`, `od`.
+Selling a fish never loses its log entry; the showcase shows your best of each kind.
+
+**Rules that keep it calm**: a cast is spent, a fish that gets away costs only the cast; 10 casts a day plus one per 12 credited minutes
+(30 at most); the market pays full price for 90 coins of fish and 50 of bugs a day and a fifth after that; the order board (3 a day) is
+paid in coins and goods and does not use the market up; rods and nets come from coins and garden level (the golden ones are ribbon
+prizes: Master angler, Entomologist); bait is optional. Nothing here pays by clicking.
+
+**Walking**: the figure is `profileFigureSvg(profileGet().avatar)` (the same one the scenes use), a node inside `.gd-objects` put in depth
+order by `data-z` (every item has one now); the loop (`_gwFrame`) moves it along an A* path over `gardenWalkable` cells (plants of stage 2 and up,
+objects, water, locked areas and non-walkable props block), writes attributes only when they change, and pauses with the tab. The camera is the
+SVG's own `viewBox` (follow, or the whole garden), so `getScreenCTM` hit-testing, the overlays and the scene's patching all keep working. The `actors`
+layer (`<g class="gd-actors">`) is never patched: bugs, the line, the bobber and the leaping fish live there. Tools still act at once; a click on a
+plant makes you walk over. Keys: W A S D / arrows (Shift creeps), Space / E, 1 Plant and 2 Decorate, Shift+W water all, H pick all, Delete digs up the selected plant, + - F C camera, Esc.
+
+**Free movement, not cells** (30 Oct, second round: "less grid based movement ... just click on things like the ocean to start fishing and the bugs to catch them ... the shop and other menu things in the world ... the pet is a little big"): the grid is only used to find a way round things. Your feet are a small oval (`GW_FOOT`, `_gwFree`) that touches only the cells it overlaps, a route (`_gwRoute`) is A* over the cells string-pulled with a straight-line test for the oval (`_gwLos`) and ends exactly where you clicked, and the loop cuts corners as soon as it can see the next waypoint, with a soft start and stop (`GW_ACC`). **There are no tools for fishing or bugs**: `gardenWorldClick` reads what is under the pointer (`_gwPointAt`, the exact point): a building or board (`GARDEN_PROPS` with `act`: you walk to its door and it opens), a bug (`_gwBugNear`: you creep up on it), water (`gardenFishClickPt`: you walk to a place the rod reaches and cast to the exact spot), a plant or decoration (the current tool, as before; the aquarium, bug case and trophy board open the showcase), else the ground. `gardenWorldHover` puts the same thing in the status line and the cursor (`data-hover` on the stage). Only Plant and Decorate keep their clicks.
+
+**The menus are in the world**: along the lake shore (y 11) stand the market stall (Basket), garden shop (Shop), notice board (Almanac and ribbons), field journal (fish book), camera (photo mode), tackle shop (Catch > Tackle), post box (Friends) and sundial (time-lapse); each is a row of `GARDEN_PROPS` (`kind` says how it is drawn in `94-garden-fish-1world.js`, `door` where you stand, `tall` how far its art stands above its footprint for clicks). The garden tab has no tab bar and no Shop / Almanac / Friends / Photo / Time-lapse buttons any more (the pages are still routes, the palette still opens them, and their own tab bar is there to get back); the next-step card's "Walk to the shop" walks you there (`gardenGoToProp`). Your own pet is drawn at half scale (`GW_PET_SCALE`) beside the full-size figure.
+
+**Friends**: the snapshot carries `cv: 1` (it can take fish and bugs) and `sh` (the showcase: `{f: [[id, q, cm]], b, rod, net}`); gifts of
+`fish` (`carp-2`) and `bug` use the existing parcel flow (`gsocGiftOk`, caps, Undo); sending needs the friend's snapshot to say `cv >= 1`
+(an older OpenDash would drop it); a received catch also goes in your book (`gardenCatchReceived`). The visit page shows their showcase
+(`gardenCatchVisitCard`), and the aquarium, case and board draw it in their garden.
+
+**Unlockables**: garden ribbons unlock avatar hats and pins (`ribbon` on a kit option, `ctx.ribbons`), card titles (97-profile-0look.js) and pet hats
+(97-pets-0kit.js): Angler's hat (Angler), Explorer's helmet (Bug catcher), fish and butterfly pins (First catch, First bug), titles Angler,
+Master angler, Bug whisperer, Entomologist, Market trader; floats unlock by catching (`GARDEN_BOBBERS`).
+
+**Third round (30 Oct, "the grid highlight should not be there ... the shop should be a pop up ... get rid of the tools ... fishing should lock you in")**:
+- *No grid highlight.* The hover square is gone (`.gd-hover` and `.gd-sel` are `display: none`). The thing under the pointer lights up instead (`_gdpHighlight`: class `gd-hl` on the plant, decoration or building node; a bug gets its own glow; the water gets the rod cursor), and the selected plant glows (`gd-selected`). The ghost of a seed or decoration being placed is the one place a square of ground still shows.
+- *Pop-ups, not pages* (`94-garden-world-1popup.js`): the buildings open `gardenPopupOpen(tab)` with the garden's ordinary dialog (`openDialog`: click outside, Esc or the x closes it). The five pages fill any element, so the same code serves the pop-up and the `#view=garden:*` routes; `gardenGoPage(view)` is the link between them (a pop-up in the garden, a page elsewhere); `_gdpRepaint` refreshes an open pop-up. The garden tab has no tab bar any more (the pages keep theirs).
+- *Two modes, not seven tools.* Plant and Decorate are all that is left of the toolbar (plus Water all, Pick all, Undo). A click on a plant does what it needs (`_gdpSmartPlant`: ripe is picked, thirsty is watered, wild is trimmed; pressing on a thirsty plant and dragging waters a row with one Undo); right-click opens `gardenCtxMenu` (pick, water, fertilise, trim, dig up); the side panel's inspector has the same buttons; Delete digs up the selected plant. Saved `tool` values from before ('water', 'feed', 'trim', 'dig') fall back to the plain hand.
+- *Fishing locks you in.* A cast starts `_gwFishFocus(true)`: the camera closes in on you and the bobber (`_gwCamTarget`), nothing under the pointer lights up or says anything, the toolbar and camera buttons rest, the keys and clicks on the world do nothing, and a bar says what to do (`Waiting for a bite…`, `Now! Click or press Space`) with a Reel in button (Esc does the same). A click while you wait no longer winds the line in. A line survives the garden being drawn again (`_gwFishResume`: the state arriving from another tab or the server redraws the page).
+- *Bugs.* The chase picks a free spot within reach of the bug, wherever it is (over a plant too), says so and stops when it is too far in among the plants (`_gwNetWalk`), gives up after 9 s, and a bug sits still while you creep up on it. The hit test uses where the bug is drawn (lifted).
+- Where you stand is per device (`localStorage`), no longer in the synced state: a save for every step made the garden redraw and put you back where you were 1.5 s ago. A building you walk behind turns see-through (`gd-behind`).

@@ -192,6 +192,9 @@ function profileUnlockCtx() {
     game: !!s, levelMax: Math.max(1, Number(g.levelMax) || 1, s ? Number(s.level.max) || s.level.level : 1),
     ach: new Set(_pfEarned().map(x => x.id)), achLabel: (id) => { const b = profileBadgeInfo(id); return b ? b.label : id; },
     collected: _pfState().collected, today: _pfToday(), birthday: typeof APP_CONFIG !== 'undefined' && APP_CONFIG ? APP_CONFIG.birthday : '',
+    // 2.22: the garden's ribbons unlock hats, pins and titles (94-garden-0catalog.js GARDEN_RIBBONS)
+    ribbons: (() => { try { return new Set(Object.keys((state.garden && state.garden.rib) || {})); } catch (e) { return new Set(); } })(),
+    ribbonLabel: (id) => { try { const r = GARDEN_RIBBONS.find(x => x.id === id); return r ? r.label : id; } catch (e) { return id; } },
   };
 }
 function _pfSeason(iso) { const m = Number(String(iso).slice(5, 7)); return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter'; }

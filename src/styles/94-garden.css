@@ -81,7 +81,7 @@
 .gd-stagebox { position: relative; border-radius: var(--radius-xl); overflow: hidden; border: 1px solid var(--border-subtle); background: #9fd3f2; outline: none; box-shadow: var(--shadow-sm); touch-action: none; }
 .gd-stagebox[data-mode="view"] { touch-action: pan-y; }
 .gd-stagebox:focus-visible { box-shadow: 0 0 0 3px var(--focus-ring); }
-.gd-stage { line-height: 0; aspect-ratio: 2 / 1; }
+.gd-stage { line-height: 0; aspect-ratio: 1344 / 690; }   /* 2.22: the garden is 28 x 18 cells */
 .gd-stage > svg, .gd-svg { width: 100%; height: 100%; display: block; }
 .gd-status { position: absolute; left: var(--space-3); bottom: var(--space-2); max-width: calc(100% - 24px); padding: 3px 10px; border-radius: var(--radius-full); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(6px); font-size: var(--text-xs); color: var(--fg); pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gd-status:empty { display: none; }
@@ -210,7 +210,7 @@ html[data-theme="dark"] .gd-ico.is-sil, .dark .gd-ico.is-sil { filter: brightnes
 
 /* photo mode and the time-lapse */
 .gd-photo, .gd-tl { display: flex; flex-direction: column; gap: var(--space-3); }
-.gd-photo-frame { position: relative; line-height: 0; border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 2 / 1; background: #9fd3f2; }
+.gd-photo-frame { position: relative; line-height: 0; border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 1344 / 690; background: #9fd3f2; }
 .gd-photo-frame > svg { width: 100%; height: 100%; display: block; }
 .gd-frame-polaroid { padding: 14px 14px 52px; background: #fbfaf6; border-radius: 4px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18); aspect-ratio: auto; transform: rotate(-.6deg); }
 .gd-frame-postcard { padding: 12px; background: repeating-linear-gradient(45deg, #d94a3a 0 10px, #fbfaf6 10px 20px, #3a6fc4 20px 30px, #fbfaf6 30px 40px); border-radius: 6px; aspect-ratio: auto; }

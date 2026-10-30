@@ -36,7 +36,8 @@ const _gd = { rev: 0, obj: null, memo: null, memoKey: '', wallet: null, walletKe
   tickT: 0, tickBusy: false, paintQ: 0, seenVisit: '', lastToastAt: 0 };
 
 /* ---------- state ---------- */
-const _GD_MAPS = ['plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'rib', 'dt', 'wq', 'gr', 'seen', 'prefs'];
+const _GD_MAPS = ['plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'rib', 'dt', 'wq', 'gr', 'seen', 'prefs',
+  'fl', 'bl', 'fd'];   // 2.22: the fish log, the bug book, per-day fishing (94-garden-fish-2core.js)
 function _gdG() {
   if (typeof state === 'undefined' || !state) { const z = { v: 1 }; for (const k of _GD_MAPS) z[k] = {}; return z; }
   if (!state.garden || typeof state.garden !== 'object' || Array.isArray(state.garden)) state.garden = { v: 1 };
@@ -343,7 +344,8 @@ function _gdPlantState(pl, def, ctx) {
 
 /* ---------- the wallet: coins, XP, items (everything summed, nothing double) ---------- */
 function _gdAddItems(into, items, k) { if (!items) return; for (const [id, n] of Object.entries(items)) { const v = Number(n) || 0; if (v) into[id] = (into[id] || 0) + v * (k || 1); } }
-const _GD_N_KINDS = { p: 'planted', h: 'harvests', q: 'bouquets', s: 'sold', f: 'fed', r: 'pruned', b: 'bought', w: 'wishes', cp: 'collected', hy: 'collected' };
+const _GD_N_KINDS = { p: 'planted', h: 'harvests', q: 'bouquets', s: 'sold', f: 'fed', r: 'pruned', b: 'bought', w: 'wishes', cp: 'collected', hy: 'collected',
+  fc: 'fished', bc: 'netted', od: 'traded', gv: 'gifted' };   // 2.22: fish caught, bugs netted, orders filled, catches given
 function _gdSeedPool(pred) { return GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && pred(p)).map(p => p.id); }
 /** A reward's items with its wildcards resolved ('seed:*' a common seed, 'seed:*rare' an uncommon or rare one), seeded. */
 function _gdResolve(items, seed) {
@@ -385,7 +387,7 @@ function gardenWallet() {
   const g = _gdG(), A = _gdAct();
   const key = _gd.rev + '|' + _gd.actKey + '|' + Object.keys(g.led).length;
   if (_gd.wallet && _gd.walletKey === key) return _gd.wallet;
-  const items = {}, n = { planted: 0, harvests: 0, bouquets: 0, sold: 0, fed: 0, pruned: 0, bought: 0, wishes: 0, collected: 0, daily: 0, quests: 0 };
+  const items = {}, n = { planted: 0, harvests: 0, bouquets: 0, sold: 0, fed: 0, pruned: 0, bought: 0, wishes: 0, collected: 0, daily: 0, quests: 0, fished: 0, netted: 0, traded: 0, gifted: 0 };
   let coins = 0, xp = 0, earned = 0, today = _gdToday();
   // earned from the data since the garden began (2.18.0 rules before the econ2 day, the time-based rules from it)
   let econToday = null;
@@ -425,6 +427,7 @@ function gardenWallet() {
   for (const id of Object.keys(g.rib)) { const r = _gdRewardOf('rib', id); if (r) { coins += r.c; xp += r.x; _gdAddItems(items, r.i); } }
   for (const key of Object.keys(g.gr)) { const m = /^(ach|ev):([a-z0-9-]+)/.exec(key); if (m && gardenPlant(m[2])) _gdAddItems(items, { ['seed:' + m[2]]: 1 }); }
   xp += 10 * Object.keys(g.disc).filter(id => gardenPlant(id) || gardenVisitor(id)).length;
+  xp += 8 * (Object.keys(g.fl).filter(id => gardenFishDef(id)).length + Object.keys(g.bl).filter(id => gardenBugDef(id)).length);   // 2.22: every new kind of fish or bug
   // decorations placed are not in your bag (never below none: a copy synced from elsewhere may lead the ledger)
   for (const d of Object.values(g.decor)) if (d && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;
   for (const k of Object.keys(items)) if (items[k] < 0) items[k] = 0;
@@ -566,13 +569,15 @@ function gardenSnapshot() {
     const m = gardenModel();
     const plants = m.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants).map(p => [p.def.id, p.x, p.y, p.stage, p.variant, (p.thirsty ? 1 : 0) | (p.overgrown ? 2 : 0) | (p.ripe ? 4 : 0)]);
     const decor = m.decor.slice(0, GARDEN_SNAPSHOT_MAX.decor).map(d => [d.def.id, d.x, d.y, d.r, d.v]);
-    return { v: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
+    const out = { v: 1, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
+    try { const sh = typeof gardenShowWire === 'function' ? gardenShowWire() : null; if (sh) out.sh = sh; } catch (e) { /* the showcase is optional */ }   // 2.22: the tank and the case
+    return out;
   } catch (e) { console.error('[garden]', e); return null; }
 }
 
 /* ---------- facts, ribbons, daily tasks, quests ---------- */
 function _gdDayFacts(g, m, from, to) {
-  const f = { watered: 0, harvests: 0, planted: 0, fed: 0, pruned: 0, bouquets: 0, sold: 0, tasks: 0, focusMin: 0, visitors: 0, visitorKinds: 0, decorated: 0, waterDays: 0, dailyDone: 0 };
+  const f = { watered: 0, harvests: 0, planted: 0, fed: 0, pruned: 0, bouquets: 0, sold: 0, tasks: 0, focusMin: 0, visitors: 0, visitorKinds: 0, decorated: 0, waterDays: 0, dailyDone: 0, fished: 0, netted: 0 };
   const A = _gdAct(), kinds = new Set();
   for (let d = from, i = 0; d <= to && i < 8; d = _gdAddDays(d, 1), i++) {
     const wn = Object.keys(g.wl[d] || {}).length;
@@ -609,10 +614,13 @@ function gardenFacts(mArg) {
   const g = _gdG(), m = mArg || gardenModel(), w = m.wallet;
   const disc = Object.keys(g.disc);
   const vis = disc.filter(id => gardenVisitor(id));
+  let cat = null;   // 2.22: fishing and bug catching (94-garden-fish-2core.js)
+  try { cat = typeof gardenCatchFacts === 'function' ? gardenCatchFacts(m) : null; } catch (e) { cat = null; }
   let soc = null;   // ── garden-social ── visits, waterings, gifts, signatures and hearts with friends (94-garden-social-1core.js)
   try { soc = typeof gardenSocialFacts === 'function' ? gardenSocialFacts() : null; } catch (e) { soc = null; }
   return {
     ...(soc || {}),
+    ...(cat || {}),
     planted: w.n.planted, harvests: w.n.harvests, bouquets: w.n.bouquets, sold: w.n.sold, dailyDone: w.n.daily,
     plantsFound: disc.filter(id => gardenPlant(id)).length, visitorsFound: vis.length,
     pondLife: ['frog', 'dragonfly', 'mallard'].filter(id => g.disc[id]).length,
@@ -664,7 +672,7 @@ function gardenTick() {
     if ((Number(g.seen.level) || 1) < lv) {
       const was = Number(g.seen.level) || 1; g.seen.level = lv; changed = true;
       moments.push({ kind: 'level', text: `Garden level ${lv}: ${gardenLevelOf(gardenWallet().xp).title}`, icon: 'sprout', level: lv });
-      for (const a of GARDEN_AREAS) if (a.lv > was && a.lv <= lv) moments.push({ kind: 'area', text: `The ${a.name.toLowerCase()} is open`, icon: a.icon, area: a.id });
+      for (const a of GARDEN_AREAS) if (a.lv > was && a.lv <= lv) moments.push({ kind: 'area', text: `The ${a.name.toLowerCase()} ${/s$/.test(a.name) ? 'are' : 'is'} open`, icon: a.icon, area: a.id });
     }
     // tidy: keep a week of per-day maps, fold old ledger entries by month
     if (g.seen.tidy !== today) { g.seen.tidy = today; changed = _gdTidy(g, today) || changed; }
@@ -691,7 +699,7 @@ function gardenNoteVisitors(list) {
 function _gdTidy(g, today) {
   let changed = false;
   const keepFrom = _gdAddDays(today, -8);
-  for (const k of ['wl', 'vd']) for (const d of Object.keys(g[k])) if (d < keepFrom) { delete g[k][d]; changed = true; }
+  for (const k of ['wl', 'vd', 'fd']) for (const d of Object.keys(g[k])) if (d < keepFrom) { delete g[k][d]; changed = true; }
   const cut = _gdAddDays(today, -40);
   // daily tasks and weekly quests older than 40 days fold into the bank (their rewards and counts kept)
   const fold = (month, part) => { const b = g.bank[month] || (g.bank[month] = { c: 0, x: 0, i: {}, nn: {} }); b.c += part.c || 0; b.x += part.x || 0; _gdAddItems(b.i, part.i); if (part.nn) for (const [k, v] of Object.entries(part.nn)) b.nn[k] = (b.nn[k] || 0) + v; };

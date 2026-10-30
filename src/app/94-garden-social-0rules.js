@@ -70,9 +70,12 @@ function gsocText(s) {
   return cps.length > GSOC_TEXT_MAX ? cps.slice(0, GSOC_TEXT_MAX).join('').trim() : t;
 }
 function gsocReact(id) { return GSOC_REACTS.find(r => r.id === id) || null; }
-/** Gifts: any decoration; any seed but the ones found only (the four-leaf clover) and the old oak. */
+/** Gifts: any decoration; any seed but the ones found only (the four-leaf clover) and the old oak; a fish or a bug you caught (2.22). */
 function gsocGiftOk(k, id) {
   if (k === 'decor') return !!gardenDecor(id);
+  // 2.22: a caught fish ('carp-2': its kind and quality) or bug (94-garden-fish-0catalog.js); never junk or treasure
+  if (k === 'fish') { const m = /^([a-z0-9-]+)-([0-3])$/.exec(String(id)); const d = m && typeof gardenFishDef === 'function' ? gardenFishDef(m[1]) : null; return !!d && d.cat === 'fish'; }
+  if (k === 'bug') return typeof gardenBugDef === 'function' && !!gardenBugDef(id);
   if (k !== 'seed') return false;
   const p = gardenPlant(id);
   return !!p && p.special !== 'heart' && !(p.unlock && p.unlock.find);
