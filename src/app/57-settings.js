@@ -371,6 +371,7 @@ registerSettingsGroup({
       + `<dt>Font</dt><dd>Inter · SIL Open Font License 1.1</dd>`
       + `<dt>Icons</dt><dd>Lucide · ISC licence</dd>`
       + `<dt>Charts</dt><dd>Apache ECharts · Apache License 2.0</dd>`
+      + `<dt>Logos</dt><dd>Logos are trademarks of their owners, used only to identify who a payment went to; no endorsement implied.</dd>`
       + `<dt>Places</dt><dd>Cities from GeoNames (geonames.org) · CC BY 4.0; time zones (IANA) and airports (OurAirports) · public domain</dd>`
       + (typeof sceneCreditAboutHtml === 'function' ? sceneCreditAboutHtml() : '');   // Maps: OpenStreetMap (ODbL) and terrain credits (70-scene-1credit.js)
     el.appendChild(dl);

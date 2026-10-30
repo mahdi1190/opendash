@@ -275,6 +275,7 @@ function renderTaskRow(item, opts) {
   const titleRow = document.createElement('div'); titleRow.className = 't-title-row';
   const titleEl = document.createElement('span'); titleEl.className = 't-title';
   if (searchQuery) titleEl.innerHTML = _highlightText(effTitle(item)); else titleEl.textContent = effTitle(item);
+  try { const tl = typeof finTaskTile === 'function' ? finTaskTile(effTitle(item)) : null; if (tl) titleRow.appendChild(tl); } catch (e) { /* a task is never held up by this */ }
   titleRow.appendChild(titleEl);
   body.appendChild(titleRow);
 

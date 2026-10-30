@@ -263,7 +263,7 @@
     const mood = B.mood.mood;
     E.hero.setAttribute('data-mood', mood);
     if (MB.moodShown !== mood) {
-      const layer = h('div', { class: 'fv-mb-skyl', 'data-mood': mood, html: `<i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i>${mbHills(B)}<i class="grain"></i>` });
+      const layer = h('div', { class: 'fv-mb-skyl', 'data-mood': mood, html: `<i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i>${faSky(B)}${mbHills(B)}<i class="grain"></i>` });
       const old = [...E.sky.children];
       E.sky.append(layer);
       if (MB.moodShown == null || MK.reduced()) old.forEach(x => x.remove());
@@ -273,6 +273,8 @@
       const top = E.sky.lastElementChild; const hills = top && top.querySelector('.fv-mb-hills');
       if (hills) hills.outerHTML = mbHills(B);
     }
+    faPayday(E.hero, B);   // on the day: a gentle hello, and where it's all going (29-money-alive.js)
+    faYearButton(E.hero.querySelector('.fv-mb-actions'), B.anchor);
     // Overline: the date, the day of the period, the phase.
     const longD = fd(B.anchor, { weekday: 'long', day: 'numeric', month: 'long' }), shortD = fd(B.anchor, { weekday: 'short', day: 'numeric', month: 'short' });
     const dayTxt = isCycle ? `Day ${cyc.day + 1} of ${cyc.len}` : `Day ${cyc.day + 1} of ${fd(cyc.start, { month: 'long' })}`;

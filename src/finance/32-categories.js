@@ -1,9 +1,9 @@
   // @part 32-categories.js · OWNER: C1 (Categories section: where it went, trends, small multiples, treemap, focus, table, needs a category)
   // ----- Categories -----
-  const ctView = () => (['donut', 'bar', 'sun'].includes(F.ctView) ? F.ctView : (F.catMode === 'bar' ? 'bar' : 'donut'));
+  const ctView = () => (['donut', 'bar', 'sun', 'jars'].includes(F.ctView) ? F.ctView : (F.catMode === 'bar' ? 'bar' : 'donut'));
   BUILD.categories = g => {
     S.cats = card(g, { title: 'Where it went', span: 8, md: 12, chart: true, height: 272, cls: 'fv-cats c1-where' });
-    S.catSeg = seg([['donut', 'Donut'], ['bar', 'Ranked'], ['sun', 'Rings', 'Categories with their biggest shops']], ctView(), v => { F.ctView = v; saveF(); S.catSeg.set(v); catWhere(R.ctx); }, 'Chart type');
+    S.catSeg = seg([['donut', 'Donut'], ['bar', 'Ranked'], ['sun', 'Rings', 'Categories with their biggest shops'], ['jars', 'Jars', 'A jar for each category, filled in proportion']], ctView(), v => { F.ctView = v; saveF(); S.catSeg.set(v); catWhere(R.ctx); }, 'Chart type');
     S.cats.tools.append(S.catSeg.el);
     S.catCentre = h('div', { class: 'c1-dcenter', 'aria-hidden': 'true' }, h('span', { class: 'c1-dc-t' }, h('span', { class: 'c1-dc-i' }), h('span', { class: 'c1-dc-n' })), h('b', { class: 'c1-dc-v num' }), h('span', { class: 'c1-dc-s' }));
     S.catList = h('div', { class: 'fv-legend c1-cl' });
@@ -31,6 +31,21 @@
     uncatList(S.uncat, ctx);
   };
   function catWhere(ctx) {
+    // Jars: the same totals as a small living scene (29-money-alive.js); clicking a jar filters as a slice does.
+    const jars = ctView() === 'jars';
+    S.cats.el.classList.toggle('fa-mode-jars', jars);
+    if (jars) {
+      const rows = ctx.spendNoCat(); const items = foldCats(ctx.catTotals(rows)); const total = sum(items, x => x.value);
+      if (S.catCentre) S.catCentre.hidden = true;
+      if (S.catList) S.catList.innerHTML = '';
+      S.cats.setSub(items.length ? `${gbp(total)} across ${items.length} categories` : '');
+      if (!S.catJars) { S.catJars = h('div', { class: 'fa-jars-host' }); S.cats.body.append(S.catJars); }
+      S.catJars.hidden = false;
+      if (!items.length) { S.catJars.innerHTML = ''; S.cats.setEmpty('No spending in these dates.'); return; }
+      faLiving(S.catJars, items, total, it => { F.cats = it.members.slice(); saveF(); updateSection(R.ctx); });
+      return;
+    }
+    if (S.catJars) S.catJars.hidden = true;
     catBreakdown(S.cats, ctx, 's:ct-cats', S.catList, { mode: ctView(), centre: S.catCentre, aligned: true });
     S.cats.el.classList.toggle('c1-mode-bar', ctView() === 'bar');
     const it = (R.charts.get('s:ct-cats') || {}).c1Items || [];

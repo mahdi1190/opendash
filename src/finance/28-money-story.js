@@ -65,17 +65,20 @@
     opts = opts || {}; M = M || R.model;
     const input = { tx: M.tx, anchor: M.anchor, minN: M.minN, balances: M.a.balances, history: M.a.balance_history, recurring: M.recurring, cards: M.a.cards };
     const def = MSM.defaultPeriod(M.anchor);
-    const period = opts.period === 'week' || opts.period === 'month' ? opts.period : def.period;
-    const ref = typeof opts.ref === 'string' && validIso(opts.ref) ? dnum(opts.ref) : Number.isFinite(opts.ref) ? opts.ref : (opts.period ? M.anchor : def.ref);
-    return MSM.build(input, { period, ref, fmt: mbFmt(), weekStart: CFG.weekStart, groups: msGroups(M), isCoffee: msIsCoffee });
+    const period = opts.period === 'week' || opts.period === 'month' || opts.period === 'year' ? opts.period : def.period;
+    let ref = typeof opts.ref === 'string' && validIso(opts.ref) ? dnum(opts.ref) : Number.isFinite(opts.ref) ? opts.ref : (opts.period ? M.anchor : def.ref);
+    // "Your year" in the first half of January is the year just gone.
+    if (period === 'year' && opts.ref == null) { const d0 = new Date(M.anchor * 864e5); if (d0.getUTCMonth() === 0 && d0.getUTCDate() <= 15) ref = M.anchor - d0.getUTCDate(); }
+    return MSM.build(input, { period, ref, fmt: mbFmt(), weekStart: CFG.weekStart, groups: msGroups(M), isCoffee: msIsCoffee, tallyOf: msvTallyOf });
   }
   function msPayload(S) {
     const sc = MSM.script(S, mbFmt());
-    return { kind: 'money', date: diso(S.anchor), data: { S, tod: 'night' }, script: Object.assign({ palette: '', mood: '' }, sc), ai: { state: mbAiAllowed() ? 'missing' : 'off', model: '' } };
+    return { kind: 'money', date: diso(S.anchor), data: { S, tod: 'night' }, script: Object.assign({ palette: '', mood: '' }, sc), ai: { state: mbAiAllowed() && S.period !== 'year' ? 'missing' : 'off', model: '' } };
   }
   // Claude's wording (aggregates only, server side), checked again against the numbers here.
   async function msAi(p, o) {
     const S = p && p.data && p.data.S; if (!S) return null;
+    if (S.period === 'year') return null;
     if (!mbAiAllowed()) {
       if (o && o.regenerate) throw new Error(CFG.finance && CFG.finance.briefAi === false ? 'Claude’s wording is switched off in Settings.' : 'Connect Claude to reword the story.');
       return null;
@@ -140,6 +143,7 @@
     const root = f.root; if (!root) return;
     msBackdrop(root);
     root.setAttribute('data-ms-tone', b.tone || 'navy');
+    try { root.setAttribute('data-fun', typeof gameFun === 'function' ? gameFun() : 'subtle'); } catch (e) { /* no game */ }
     if (b.tone === 'cat' && b.S && b.S.topcat) root.style.setProperty('--ms-cat', catColor(b.S.topcat.c));
   }
   function msSay(b, delay) {
@@ -154,7 +158,7 @@
       const to = Number(el.getAttribute('data-ms-to')) || 0;
       const f = el.getAttribute('data-ms-fmt');
       const fmt = f === 'money2' ? (x => (Math.abs(x - to) < 0.005 ? msMoney(to) : gbp(x))) : f === 'pct' ? (x => Math.round(x) + '%') : f === 'n' ? (x => String(Math.round(x))) : (x => gbp(x));
-      if (K && !msStill()) K.countUp(el, to, { delay: (Number(el.getAttribute('data-ms-delay')) || base || 380) + k * 90, duration: 1200, format: fmt });
+      if (K && !msStill()) { const wait = (Number(el.getAttribute('data-ms-delay')) || base || 380) + k * 90; K.countUp(el, to, { delay: wait, duration: 1200, format: fmt }); faLand(el, wait + 1220); }
       else el.textContent = fmt(to);
     });
   }
@@ -175,7 +179,7 @@
       msSetTone(f, b);
       const S = b.S, K = msKit(), FS = msFS();
       const W0 = MSM.words(S, mbFmt());
-      const title = S.period === 'month' ? fd(S.start, { month: 'long' }) : (S.thisPeriod ? 'This week' : 'Your week');
+      const title = S.period === 'year' ? W0.name : S.period === 'month' ? fd(S.start, { month: 'long' }) : (S.thisPeriod ? 'This week' : 'Your week');
       const range = `${fd(S.start, { day: 'numeric', month: 'short' })} – ${fd(S.to, { day: 'numeric', month: 'short' })}${S.thisPeriod ? ' so far' : ''}`;
       const icons = FS ? S.cats.slice(0, 6).map((c, i) => `<span class="ms-orb" ${msIn(i, `--a:${(i * 61 + 18) % 360}deg;--d:${(i % 3) * 0.7}s`)}>${FS.categoryIcon(c.c, { size: 'lg', live: 'loop', color: catColor(c.c) })}</span>`).join('') : '';
       f.cards.innerHTML = `<div class="ms ms-intro">
@@ -183,6 +187,7 @@
           <div class="ms-over ms-in" ${msIn(0)}>${msIc('sparkles', 'i-sm')}<span>Your money story</span></div>
           <h2 class="ms-title">${K ? K.driftHtml(title, { delay: 120 }) : esc(title)}</h2>
           <div class="ms-sub ms-in" ${msIn(3)}>${esc(range)} · ${esc(String(S.payments))} payment${S.payments === 1 ? '' : 's'}</div>
+          ${FS && S.merchants.length ? `<div class="msv-shops ms-in" ${msIn(4)} aria-hidden="true">${S.merchants.slice(0, 5).map(m => FS.merchantSymbol(m.m, m.c, { size: 'md', badge: false, live: false })).join('')}</div>` : ''}
           ${msSay(b, 900)}
         </div>
         <div class="ms-viz ms-orbit ms-in" ${msIn(2)} aria-hidden="true"><div class="ms-orbit-c"><b>${esc(gbp(S.spent))}</b><span>${esc(W0.when)}</span></div>${icons}</div>
@@ -446,7 +451,7 @@
       if (S.big && !(S.merchants[0] && S.big.k === S.merchants[0].k)) rows.push([null, 'Biggest', S.big.name, msMoney(S.big.a), FS ? FS.merchantSymbol(S.big.m, S.big.c, { size: 'sm', badge: false, live: false }) : '']);
       if (S.kept.inc > 0.004) rows.push(['piggy-bank', S.kept.kept >= 0 ? 'Kept' : 'Over', gbp(Math.abs(S.kept.kept)), S.kept.rate != null && S.kept.kept >= 0 ? `${Math.round(S.kept.rate * 100)}% of money in` : '', '', S.kept.kept >= 0 ? 'good' : 'warn']);
       if (S.bills.length) rows.push(['calendar-check', 'Bills ahead', gbp(S.billsTotal), `${S.bills.length} in 30 days`, '']);
-      const title = S.period === 'month' ? fd(S.start, { month: 'long', year: 'numeric' }) : `${fd(S.start, { day: 'numeric', month: 'short' })} – ${fd(S.to, { day: 'numeric', month: 'short' })}`;
+      const title = S.period === 'year' ? W0.name : S.period === 'month' ? fd(S.start, { month: 'long', year: 'numeric' }) : `${fd(S.start, { day: 'numeric', month: 'short' })} – ${fd(S.to, { day: 'numeric', month: 'short' })}`;
       f.cards.innerHTML = `<div class="ms ms-close">
         <div class="ms-copy">
           <div class="ms-over ms-in" ${msIn(0)}>${esc(S.thisPeriod ? 'So far' : 'That was')}</div>
@@ -476,7 +481,7 @@
       const A = S.anchor;
       const thisM = U0.mStart(U0.mIdx(A)), lastM = U0.mStart(U0.mIdx(A) - 1);
       const wk = MSM.weekStartOf(A, CFG.weekStart);
-      const opts = [['month', lastM, fd(lastM, { month: 'long' })], ['month', thisM, fd(thisM, { month: 'long' }) + ' so far'], ['week', wk - 7, 'Last week']];
+      const opts = [['month', lastM, fd(lastM, { month: 'long' })], ['month', thisM, fd(thisM, { month: 'long' }) + ' so far'], ['week', wk - 7, 'Last week'], ['year', U0.mStart(U0.mIdx(A) - new Date(A * 864e5).getUTCMonth()), 'Your year']];
       for (const [p, ref, label] of opts) {
         const cur = p === S.period && ref === S.start;
         btn(label, '', () => msOpen({ period: p, ref: diso(ref) }), 'btn-ghost btn-sm ms-alt', cur, alts);
@@ -493,11 +498,20 @@
     // The backdrop shows behind the Play poster too.
     const root = document.querySelector('.story[data-kind="money"]');
     if (root) { msBackdrop(root); if (!root.hasAttribute('data-ms-tone')) root.setAttribute('data-ms-tone', 'navy'); }
-    return MSM.beats(S, { lines: L }).map(id => {
+    const list = MSM.beats(S, { lines: L }).map(id => {
       const text = L[id] || '';
       return { id, type: 'ms-' + id, say: text, text, entities: msEntities(text, S), S, tone: msTone(id, S), bg: { tod: 'night', cond: 'none' },
         hold: MS_HOLD[id], scene: id === 'intro' ? 'finance' : null, auto: id === 'close' ? false : undefined };
     });
+    // The scenes (28-money-scenes.js) slot in where they belong; the Fun level Off leaves the plain story.
+    const X = (() => { try { return typeof gameFun === 'function' && gameFun() === 'off' ? null : msvExtraBeats(S); } catch (e) { return null; } })();
+    if (!X) return list;
+    const at = (id) => list.findIndex(b => b.id === id);
+    if (X.months) list.splice(Math.max(0, at('spent')) + 1, 0, X.months);
+    const afterRace = at('race') >= 0 ? at('race') + 1 : at('topcat') >= 0 ? at('topcat') + 1 : Math.max(1, at('spent') + 1);
+    list.splice(afterRace, 0, ...X.scenes);
+    if (X.payday && at('kept') >= 0) list.splice(at('kept'), 0, X.payday);
+    return list;
   }
 
   /* ---------- entry points ---------- */
@@ -506,6 +520,8 @@
   function msOpen(o) {
     o = o || {};
     if (!window.Story) return null;
+    // Hide amounts covers speech too: a story full of figures waits, and says why.
+    try { if (bdHidden()) { if (typeof toast === 'function') toast('Amounts are hidden, so the story waits. Show amounts to play it.', { icon: 'eye-off' }); return null; } } catch (e) { /* not on the page */ }
     const variant = (o.period || 'auto') + ':' + (o.ref == null ? '' : String(o.ref));
     return window.Story.open('money', { autoplay: o.autoplay !== false, period: o.period, ref: o.ref, variant });
   }
@@ -557,6 +573,7 @@
     const ST = typeof window !== 'undefined' ? window.Story : null;
     if (!ST || typeof ST.registerKind !== 'function') return;
     msRegisterBeats(ST);
+    msvRegister(ST);
     ST.registerBuilder('money', msBuilder);
     ST.registerKind('money', {
       label: 'Money story', view: 'finance', dark: true,
@@ -568,5 +585,6 @@
     if (typeof registerCommand === 'function') {
       registerCommand({ id: 'story-money', label: 'Play my money story', icon: 'wallet', group: 'Go to', keywords: 'money story finance month summary spending recap monzo play read aloud', run: () => msOpen({}) });
       registerCommand({ id: 'story-money-week', label: 'Play my money week (story)', icon: 'wallet', group: 'Go to', keywords: 'money story week spending recap play', run: () => msOpen({ period: 'week' }) });
+      registerCommand({ id: 'story-money-year', label: 'Your year in money (story)', icon: 'wallet', group: 'Go to', keywords: 'money story year wrapped recap annual review spending', run: () => msOpen({ period: 'year' }) });
     }
   })();
