@@ -60,7 +60,7 @@ function _gsvAvatar(f, size) {
 function _gsvSig(snap) { return snap ? String(gardenHash(JSON.stringify([snap.lv, snap.season, snap.areas, snap.plants, snap.decor, snap.heart]))) : ''; }
 function _gsvLevelTitle(lv) { return typeof GARDEN_LEVEL_TITLES !== 'undefined' ? GARDEN_LEVEL_TITLES[Math.max(0, Math.min(GARDEN_LEVEL_TITLES.length - 1, (lv || 1) - 1))] || '' : ''; }
 /** The art anchor of a cell row in the 960 x 480 scene, as a share of the stage (the stage keeps the scene's 2:1). */
-function _gsvAt(x, y, fp) { const W = GARDEN_WORLD, f = fp || 1; return { l: ((x + f / 2) * W.cellW) / (W.cols * W.cellW) * 100, t: (W.sky + (y + f) * W.cellH) / (W.sky + W.rows * W.cellH) * 100 }; }
+function _gsvAt(x, y, fp) { const W = GARDEN_WORLD, f = fp || 1, B = gardenCropBox(_gsv.crop || 'all'); return { l: ((x + f / 2) * W.cellW) / B.w * 100, t: (W.sky + (y + f) * W.cellH) / B.h * 100 }; }
 
 /* ---------- the section, the palette, Home's Fun list ---------- */
 registerSection('garden-visit', {
@@ -68,8 +68,8 @@ registerSection('garden-visit', {
   title: () => 'Garden',
   crumb: v => { const id = _gsvIdOf(v); return [id ? `${gardenSocialName(id)}'s garden` : "A friend's garden"]; },
   group: 'home', layout: 'bare', hashable: true, taskControls: false, icon: 'sprout',
-  mount(container, view) { _gsvMount(container, view || state.view); },
-  unmount() { clearTimeout(_gsv.visitT); _gsv.root = null; _gsv.view = ''; },
+  mount(container, view) { document.documentElement.classList.add('gsv-immersive'); _gsvMount(container, view || state.view); },
+  unmount() { document.documentElement.classList.remove('gsv-immersive'); clearTimeout(_gsv.visitT); _gsv.root = null; _gsv.view = ''; },
 });
 registerCommand({ id: 'garden-friends', group: 'Go to', label: "Friends' gardens", icon: 'users', keywords: 'garden friends visit water guestbook gift heart neighbour', run: () => setView('garden:friends') });
 if (typeof gardenFunNavAdd === 'function') gardenFunNavAdd({ id: 'garden-friends', order: 20, label: "Friends' gardens", icon: 'users', view: 'garden:friends', when: () => _gscFriendList().length > 0 });
@@ -79,7 +79,7 @@ function _gsvMount(container, view) {
   const fid = _gsvIdOf(view);
   const entering = _gsv.entered !== view;
   _gsv.entered = view; _gsv.view = view; _gsv.fid = fid;
-  if (entering) _gsv.mode = 'look';
+  if (entering) { _gsv.mode = 'look'; _gsv.panel = false; }
   const root = _gsvEl('div', 'gd-page gd-full gsv-page gsv-full' + (entering ? ' is-enter' : '') + (_gscFun() === 'off' ? ' is-funoff' : ''));
   container.appendChild(root);
   _gsv.root = root;
@@ -130,11 +130,14 @@ function _gsvPaint() {
   }
   if (!c.garden) { root.appendChild(_gsvNotShared(f)); return; }
   const main = _gsvEl('div', 'gd-game gsv-game');
-  main.appendChild(_gsvToolbar(f, c));
   const left = _gsvEl('div', 'gd-col gsv-col');
   left.appendChild(_gsvStageBox(f, c));
   main.appendChild(left);
-  const side = _gsvEl('aside', 'gd-side gsv-side');
+  main.appendChild(_gsvToolbar(f, c));
+  root.appendChild(_gsvBtn('', { icon: 'x', cls: 'gsv-leave', aria: 'Back to your garden', tip: 'Back to your garden', kind: 'btn-ghost', run: () => setView('garden') }));
+  // today's list, what is growing and the guestbook: a panel you open, over the world
+  const side = _gsvEl('aside', 'gd-side gsv-side'); side.hidden = !_gsv.panel;
+  side.appendChild(_gsvBtn('', { icon: 'x', cls: 'gsv-side-x', aria: 'Close', kind: 'btn-ghost', run: () => _gsvPanel(false) }));
   { const how = _gsvEl('section', 'card gsv-how'); how.appendChild(_gsvEl('b', null, `You are visiting ${_gscFirst(fid)}`)); how.appendChild(_gsvEl('p', 'muted', 'Look around, hover a plant to read about it. Pick Water and click a thirsty plant to help it grow. You can also give a heart, react, leave a gift or write in the guestbook. Nothing here is ever required.')); side.appendChild(how); }
   side.appendChild(_gsvToday(f, c));
   { const cc = typeof gardenCatchVisitCard === 'function' ? gardenCatchVisitCard(f, c.garden.snap) : null; if (cc) side.appendChild(cc); }   // 2.22: their showcase
@@ -142,8 +145,16 @@ function _gsvPaint() {
   side.appendChild(_gsvBook(f, c));
   main.appendChild(side);
   root.appendChild(main);
+  // a phone is too narrow for the whole garden: it scrolls sideways, and starts on the beds
+  if (left.scrollWidth > left.clientWidth) { const B = gardenCropBox(_gsv.crop || 'all'), k = left.scrollWidth / B.w; left.scrollLeft = _gsv.scrollX != null ? _gsv.scrollX : Math.max(0, 10 * GARDEN_WORLD.cellW * k - left.clientWidth / 2); left.addEventListener('scroll', () => { _gsv.scrollX = left.scrollLeft; }, { passive: true }); }
   const mm = document.getElementById('main'); if (mm && keepY != null) mm.scrollTop = keepY;
   if (focusId) { const el = document.getElementById(focusId); if (el) el.focus({ preventScroll: true }); }
+}
+/** The panel of notes, over the world. */
+function _gsvPanel(on) {
+  _gsv.panel = !!on;
+  const s = _gsv.root && _gsv.root.querySelector('.gsv-side'); if (s) s.hidden = !on;
+  const b = _gsv.root && _gsv.root.querySelector('.gsv-toolbar [data-notes]'); if (b) b.setAttribute('aria-pressed', on ? 'true' : 'false');
 }
 function _gsvCalm(ic, title, text) {
   const c = _gsvEl('div', 'card gsv-calm');
@@ -253,7 +264,7 @@ function _gsvToolbar(f, c) {
   const tools = _gsvEl('div', 'gd-tools'); tools.setAttribute('role', 'group'); tools.setAttribute('aria-label', 'What a click does');
   const waterLeft = _gsvLeft(c, 'water'), winfo = _gsvWaterInfo(f, c);
   const set = (mode) => { _gsv.mode = mode; const box = _gsv.root && _gsv.root.querySelector('.gsv-stagebox'); if (box) box.dataset.mode = mode; for (const b of tools.querySelectorAll('.gd-tool')) b.setAttribute('aria-pressed', b.dataset.mode === mode ? 'true' : 'false'); _gsvStatus(mode === 'water' ? winfo.text + (winfo.n ? ': a drink from you helps it grow a little faster' : '') : ''); };
-  for (const [mode, label, ic] of [['look', 'Look', 'eye'], ['water', waterLeft ? 'Water' : 'Watered today', 'droplet']]) {
+  for (const [mode, label, ic] of [['look', 'Look', 'eye'], ['water', waterLeft ? 'Water' : 'Watered', 'droplet']]) {
     const b = _gsvEl('button', 'gd-tool'); b.type = 'button'; b.dataset.mode = mode;
     b.innerHTML = icon(ic); b.appendChild(_gsvEl('span', null, label));
     b.setAttribute('aria-pressed', _gsv.mode === mode ? 'true' : 'false');
@@ -265,12 +276,14 @@ function _gsvToolbar(f, c) {
   bar.appendChild(tools);
   const q = _gsvEl('div', 'gd-quick');
   const liked = !_gsvLeft(c, 'like');
-  q.appendChild(_gsvBtn(liked ? 'Hearted today' : 'Give a heart', { icon: 'heart', cls: 'gsv-heart' + (liked ? ' is-done' : ''), disabled: liked, tip: liked ? 'One heart a day for each garden' : `${_gscFirst(f.id)} sees it, and their garden's hearts add up`, run: (e, b) => _gsvLike(f, b) }));
+  q.appendChild(_gsvBtn(liked ? 'Hearted' : 'Heart', { icon: 'heart', cls: 'gsv-heart' + (liked ? ' is-done' : ''), disabled: liked, tip: liked ? 'One heart a day for each garden' : `${_gscFirst(f.id)} sees it, and their garden's hearts add up`, run: (e, b) => _gsvLike(f, b) }));
   const reactsLeft = _gsvLeft(c, 'react');
   q.appendChild(_gsvBtn('React', { icon: 'smile-plus', disabled: !reactsLeft, tip: reactsLeft ? 'Leave a little reaction' : 'That is all the reactions for today', run: (e, b) => _gsvReactMenu(f, b) }));
   const gifted = !_gsvLeft(c, 'gift');
-  q.appendChild(_gsvBtn(gifted ? 'Parcel left' : 'Leave a gift', { icon: 'gift', disabled: gifted, tip: gifted ? 'One parcel a day for each garden' : 'A seed or a decoration from your bag', run: (e, b) => _gsvGiftMenu(f, b) }));
-  q.appendChild(_gsvBtn('Guestbook', { icon: 'feather', kind: 'btn-ghost', run: () => { const i = document.getElementById('gsv-book-in'); if (i) { i.scrollIntoView({ block: 'center', behavior: _gscReduced() ? 'auto' : 'smooth' }); i.focus({ preventScroll: true }); } } }));
+  q.appendChild(_gsvBtn(gifted ? 'Left' : 'Gift', { icon: 'gift', disabled: gifted, tip: gifted ? 'One parcel a day for each garden' : 'A seed or a decoration from your bag', run: (e, b) => _gsvGiftMenu(f, b) }));
+  const nb = _gsvBtn('Notes', { icon: 'feather', kind: 'btn-ghost', tip: 'The guestbook, and what is growing here', pressed: !!_gsv.panel, run: () => { _gsvPanel(!_gsv.panel); if (_gsv.panel) { const i = document.getElementById('gsv-book-in'); if (i) { i.scrollIntoView({ block: 'center', behavior: _gscReduced() ? 'auto' : 'smooth' }); i.focus({ preventScroll: true }); } } } });
+  nb.setAttribute('data-notes', '1');
+  q.appendChild(nb);
   bar.appendChild(q);
   return bar;
 }
@@ -280,6 +293,7 @@ function _gsvStatus(text) { const s = _gsv.root && _gsv.root.querySelector('.gsv
 function _gsvStageBox(f, c) {
   const box = _gsvEl('div', 'gd-stagebox gsv-stagebox');
   box.dataset.mode = _gsv.mode;
+  { const B = gardenCropBox(gardenCropFor(c.garden.snap.areas)); box.style.setProperty('--gsv-ar', (B.w / B.h).toFixed(3)); box.style.setProperty('--gsv-fig', (5600 / B.h).toFixed(2) + '%'); }   // the world's own shape, and you at the world's own scale
   box.setAttribute('role', 'group');
   box.setAttribute('aria-label', `${gardenSocialName(f)}'s garden. Hover or tab to a plant to read about it.`);
   const snap = c.garden.snap, sig = _gsvSig(snap);
@@ -290,7 +304,9 @@ function _gsvStageBox(f, c) {
   if (fig) for (const g of fig.querySelectorAll('.gsv-hot, .gsv-watered, .gsv-can')) g.classList.remove('gsv-hot', 'gsv-watered', 'gsv-can');
   if (!fig) {
     const holder = _gsvEl('div');
-    const r = gardenRender(holder, snap, { readOnly: true, visitor: { name: gardenSocialName(f) }, size: 'm', crop: 'all', friend: f });   // integrate 2.18: f brings their pet (agent pets)
+    _gsv.crop = gardenCropFor(snap.areas);   // 2.23: a friend who has bought land is shown all of it
+    const r = gardenRender(holder, snap, { readOnly: true, visitor: { name: gardenSocialName(f) }, size: 'm', crop: _gsv.crop, friend: f });   // integrate 2.18: f brings their pet (agent pets)
+    if (r && typeof petVisitPerform === 'function') petVisitPerform(holder, snap, f);   // 2.23: their pet shows what it can do
     fig = holder.firstElementChild;
     if (!r || !fig) { box.appendChild(_gsvCalm('sprout', 'This garden could not be drawn', 'It may come from a newer Freeflo: update to see everything in it.')); return box; }
     for (const k of [..._gsv.stage.keys()]) if (k.startsWith(f.id + '|')) _gsv.stage.delete(k);
@@ -306,6 +322,7 @@ function _gsvStageBox(f, c) {
   }
   _gsvMarkCan(fig, _gsvWaterInfo(f, c));
   box.appendChild(fig);
+  try { if (typeof gardenLifeVisit === 'function') gardenLifeVisit(fig.matches('svg') ? fig : fig.querySelector('svg'), snap); } catch (e) { /* the creatures are a bonus */ }   // creatures from their objects, nothing sent
   box.appendChild(_gsvWaterNote(f, c));
   const over = _gsvEl('div', 'gsv-over'); over.setAttribute('aria-hidden', 'true');
   box.appendChild(over);
@@ -379,8 +396,8 @@ function _gsvPlantCard(f, r, g) {
   }, { align: 'center' });
 }
 /** A plant that cannot be watered says why, in the toast and in the line over the garden. */
-function _gsvWhy(msg) {
-  toast(msg, { icon: 'droplet', timeout: 3600 });
+function _gsvWhy(msg, target) {
+  gameDeny(target || null, { say: msg, kind: 'tool' });
   _gsvStatus(msg);
   const n = _gsv.root && _gsv.root.querySelector('.gsv-water-note');
   if (n) { n.classList.remove('is-nudge'); void n.offsetWidth; n.classList.add('is-nudge'); }
@@ -483,10 +500,21 @@ function _gsvRefreshSide(f) {
 }
 
 /* you at the gate (in your outfit), and them when they are around */
+/** You, as you look in your own garden. */
+function _gsvGardener() {
+  try {
+    if (typeof gartPlayerSvg === 'function' && typeof profileGet === 'function') {
+      const w = _gsvEl('span', 'fsc-fig');
+      w.innerHTML = `<svg viewBox="-34 -78 68 82" aria-hidden="true">${gartPlayerSvg(profileGet().avatar, { dir: 's', pose: 'idle' })}</svg>`;
+      return w;
+    }
+  } catch (e) { /* the scene's figure below */ }
+  return typeof friendsSceneFigureEl === 'function' ? friendsSceneFigureEl('me', 64) : null;
+}
 function _gsvPeople(over, f, snap) {
   if (!over || !over.isConnected) return;
   over.textContent = '';
-  const me = typeof friendsSceneFigureEl === 'function' ? friendsSceneFigureEl('me', 64) : null;
+  const me = _gsvGardener();
   const gate = _gsvAt(10, 9.4);
   if (me) {
     const w = _gsvEl('div', 'gsv-fig is-me');
@@ -498,7 +526,7 @@ function _gsvPeople(over, f, snap) {
   // the gardener, when they are around and share an avatar
   const pres = window.Friends && typeof Friends.presence === 'function' ? Friends.presence(f.id) : 'offline';
   if (['online', 'focusing', 'travelling'].includes(pres) && typeof friendsSceneFigureEl === 'function') {
-    const host = friendsSceneFigureEl(f, 64, { pet: false });   // integrate 2.18: their pet is already out in their garden
+    const host = friendsSceneFigureEl(f, 64, { pet: false, person: true });   // integrate 2.18: their pet is already out in their garden
     if (host) {
       const oak = snap.plants.find(r => r[0] === 'heart-oak');
       const at = oak ? _gsvAt(oak[1] + 1.4, oak[2] + 0.6) : _gsvAt(13, 8.6);

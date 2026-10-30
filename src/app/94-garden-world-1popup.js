@@ -12,7 +12,6 @@
      gardenPopupClose()
      gardenGoPage(view)         a link between the garden's pages: a pop-up while you are in the garden, a page elsewhere
      gardenPopupRefresh()       the pop-up's content again (the garden calls it after every change)
-     gardenCtxMenu(ev, plant)   right-click a plant: pick, water, fertilise, trim, dig up (the same actions as the side panel)
    ============================================================ */
 const _GDPOP = Object.freeze({
   shop: { title: 'Garden shop', icon: 'store', fill: (el, m) => gardenShopTab(el, m) },
@@ -20,16 +19,17 @@ const _GDPOP = Object.freeze({
   almanac: { title: 'Notice board', icon: 'book-open', fill: (el, m) => gardenAlmanacTab(el, m) },
   friends: { title: 'Post box', icon: 'users', fill: (el, m) => gardenFriendsTab(el, m) },
   catch: { title: 'Catch', icon: 'fish', fill: (el, m) => gardenCatchTab(el, m) },
-  sail: { title: 'The rowing boat', icon: 'ship', fill: (el) => gardenSailTab(el) },
+  nature: { title: 'Nature book', icon: 'leaf', fill: (el, m) => gardenLifeBookTab(el, m) },
+  goals: { title: 'Goals', icon: 'target', fill: (el, m) => gardenGoalsPanel(el, m) },
+  sail: { title: 'Where to?', icon: 'ship', fill: (el) => gardenSailTab(el) },
+  craft: { title: 'Crafting bench', icon: 'hammer', fill: (el, m) => gardenCraftTab(el, m) },
+  tricks: { title: 'Trick book', icon: 'wand-sparkles', fill: (el) => { el.textContent = ''; petBookPage(el, { panel: true }); } },
 });
 /** The rowing boat: the friends whose gardens you can row over to (the cards the Post box shows), and a click on one takes you there. */
 function gardenSailTab(el) {
   const fill = () => {
     if (!el.isConnected) return;
     el.textContent = '';
-    const head = document.createElement('div'); head.className = 'gd-sail-h';
-    head.innerHTML = icon('ship') + '<div><b>Where to?</b><span>Row over to a friend’s garden: water a plant, leave a little gift, sign the guestbook.</span></div>';
-    el.appendChild(head);
     el.appendChild(_gsvGallery({ crop: 'wide' }));
   };
   fill();
@@ -50,9 +50,12 @@ function gardenPopupOpen(tab, o) {
   if (!gardenEnsure()) return;
   if (tab === 'catch' && o.sub) { try { _gdG().prefs.catchTab = o.sub; } catch (e) { /* fine */ } }
   if (typeof _gw !== 'undefined') { _gw.keys.clear(); _gw.path = []; }
+  gardenBubbleClose();
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel('');
+  _gdpGhostClear();
   openDialog({
-    title: o.title || def.title, size: 'xl', fixed: true, height: '90vh', className: 'gd-popup gd-popup-' + tab, keepOnOutside: false,
+    // a panel is as big as what is in it; the long lists keep a steady height so paging through them does not jump
+    title: o.title || def.title, size: tab === 'goals' ? 'md' : 'xl', fixed: !['goals', 'basket'].includes(tab), height: ['goals', 'basket'].includes(tab) ? '' : '82vh', className: 'gd-popup gd-popup-' + tab, keepOnOutside: false,
     body(el) {
       el.classList.add('gd-body', 'gd-popup-body');
       _gdp.pop = { tab, el };
@@ -78,7 +81,8 @@ function gardenPopupRefresh() {
   const ae = document.activeElement;
   if (ae && P.el.contains(ae) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName)) return;
   const scroller = P.el, y = scroller.scrollTop;
-  if (P.tab !== 'friends') scroller.textContent = '';
+  if (P.tab === 'tricks') return;   // the book has its own stage: it paints itself
+  if (P.tab !== 'friends' && P.tab !== 'craft') scroller.textContent = '';
   const def = _GDPOP[P.tab];
   if (P.tab === 'friends') { if (typeof gardenFriendsTabRepaint === 'function') gardenFriendsTabRepaint(); }
   else def.fill(scroller, gardenModel());
@@ -86,43 +90,9 @@ function gardenPopupRefresh() {
 }
 /** A link between the garden's own pages: in the garden it is a pop-up, anywhere else the page. */
 function gardenGoPage(view) {
-  const mm = /^garden:(shop|almanac|basket|friends|catch|sail)$/.exec(String(view || ''));
+  const mm = /^garden:(shop|almanac|basket|friends|catch|sail|craft)$/.exec(String(view || ''));
   if (mm && _gdpopInGarden()) { gardenPopupOpen(mm[1]); return; }
   if (view === 'garden' && _gdp.pop) { gardenPopupClose(); return; }
   setView(view);
 }
 
-/* ---------- right-click a plant ---------- */
-function _gdpCtxClose() {
-  const c = _gdp.root && _gdp.root.querySelector('.gd-ctx'); if (c) c.remove();
-  document.removeEventListener('pointerdown', _gdpCtxAway, true); document.removeEventListener('keydown', _gdpCtxKey, true);
-}
-function _gdpCtxAway(ev) { if (!(ev.target && ev.target.closest && ev.target.closest('.gd-ctx'))) _gdpCtxClose(); }
-function _gdpCtxKey(ev) { if (ev.key === 'Escape') { ev.stopPropagation(); _gdpCtxClose(); } }
-function gardenCtxMenu(ev, p) {
-  _gdpCtxClose();
-  const box = _gdp.root && _gdp.root.querySelector('.gd-stagebox'); if (!box || !p) return;
-  const m = gardenModel(), def = p.def, r = box.getBoundingClientRect();
-  const menu = document.createElement('div'); menu.className = 'gd-ctx'; menu.setAttribute('role', 'menu');
-  const head = document.createElement('div'); head.className = 'gd-ctx-h'; head.textContent = def.name; menu.appendChild(head);
-  const item = (label, ic, run, o) => {
-    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.innerHTML = icon(ic) + '<span></span>'; b.querySelector('span').textContent = label;
-    if (o && o.disabled) b.disabled = true;
-    if (o && o.tip) b.setAttribute('data-tip', o.tip);
-    b.onclick = () => { _gdpCtxClose(); run(); };
-    menu.appendChild(b);
-  };
-  if (def.special !== 'heart') {
-    if (p.ripe) item('Pick', 'shopping-basket', () => _gdpAct(gardenHarvest(p.uid), true));
-    if (def.thirst) item(p.thirsty ? 'Water (thirsty)' : 'Water', 'droplet', () => _gdpAct(gardenWater(p.uid), true));
-    item(`Fertilise (${gardenHas('fertiliser')})`, 'flask-conical', () => _gdpAct(gardenFeed(p.uid)), { disabled: gardenHas('fertiliser') < 1, tip: gardenHas('fertiliser') < 1 ? 'No fertiliser: the shop has some' : 'Half a day of growth' });
-    if (p.stage >= 3) item(p.overgrown ? 'Trim (it has gone wild)' : 'Trim', 'scissors', () => _gdpAct(gardenPrune(p.uid), true));
-    item('Dig up', 'shovel', () => { _gdpAct(gardenDig(p.uid)); _gdp.sel = ''; _gdpPaintSide(gardenModel()); });
-  } else item('The old oak grows with your work', 'trees', () => {}, { disabled: true });
-  box.appendChild(menu);
-  const w = menu.offsetWidth || 190, h = menu.offsetHeight || 160;
-  menu.style.left = Math.max(6, Math.min(r.width - w - 6, ev.clientX - r.left + 4)) + 'px';
-  menu.style.top = Math.max(6, Math.min(r.height - h - 6, ev.clientY - r.top + 4)) + 'px';
-  setTimeout(() => { document.addEventListener('pointerdown', _gdpCtxAway, true); document.addEventListener('keydown', _gdpCtxKey, true); }, 0);
-  void m;
-}

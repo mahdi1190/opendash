@@ -10,6 +10,38 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.24.0]
+
+The garden, overhauled: a cosy game you play inside the world.
+
+### Play
+- The garden fills the window. Tools and seeds sit in a bar with number keys, with a corner display and a menu for Shop, Basket, Crafting, Tricks, Almanac, Nature, Catch, Friends, Goals and Help.
+- Click and you walk there along a dotted route. WASD and arrows work too, as does hold to steer. Walk up and the obvious thing happens: pick, water, or a bubble of seeds at an empty bed. Decorations come out of your bag as a ghost on a soft grid.
+- "You can't do that" messages are gone: a red flash, a shake, an X, a padlock or a shaking coin counter instead, and the cursor changes with what you point at.
+- About 3.8 times the walkable area once all land is open, bought with coins. Existing beds stay where they are.
+- Things are drawn by where their feet are, so you walk behind a sunflower. Plants that need you glow, and there is one seasonal quest a week.
+- Your gardener is now your own avatar, drawn by the avatar kit, with a walk, gardening poses and front, side and back views.
+
+### Look
+- New lawn, beds, pond, lake, sky and pools of light at night. Most plants, trees, visitors, fish, bugs and props redrawn in one storybook style. Wind, ripples, bursts when you harvest.
+
+### Pets
+- 62 species, up from 18. 44 are earned by playing: rare visitors with lures, garden milestones, treats, coins, friendship and achievements. Treats come from garden play, up to 4 a day.
+- A living pet page, a field-guide collection with silhouettes, toys, beds, hats and colours. Your pet follows you and others roam.
+
+### Crafting and tricks
+- A crafting bench with 40 recipes for you, your pets and the garden.
+- 82 tricks in a trick book with five rarities, with a live preview before you buy. 16 spectacles, 11 of them legendary or mythical, and 4 secret ones.
+- 12 moves for your gardener on an emote wheel (Q).
+
+### The living garden
+- 26 creatures that land on what you placed, walk round things and react when clicked, kept few so they stay special: usually 2 to 4 around, 6 at most.
+- 17 easter eggs, at most one a visit and none on about half of them. A Nature book with silhouettes and a small reward per discovery.
+
+### Fixed
+- Fish and bug gifts between friends were refused, and the showcase was lost.
+- App cards no longer open over the garden.
+
 ## [2.23.3]
 
 Owed to me, round two.

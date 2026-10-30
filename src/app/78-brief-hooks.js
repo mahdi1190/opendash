@@ -63,7 +63,7 @@ registerTopbarWidget({
     let label = '', ic = '', go = null;
     if (evening && !_eveningSavedToday()) { label = 'Finish the day'; ic = 'sunset'; go = () => setView('home:evening'); }
     else if (!evening && !_briefSeenToday()) { label = 'Start my day'; ic = 'sunrise'; go = () => briefOpen({ welcome: false }); }
-    if (!go) { el.innerHTML = ''; return false; }
+    if (!go) { el.innerHTML = ''; delete el.dataset.k; return false; }   // (it forgets its label too: the same pill coming back the next day has to be drawn again, or the line below finds no button)
     // The pill opens the full-screen story over its page (79-story-engine.js); "Open details" is one click away.
     if (typeof storyOpen === 'function') { const page = go, kind = evening ? 'evening' : 'morning'; go = () => { page(); storyOpen(kind, { autoplay: true }); }; }
     if (el.dataset.k !== label) {

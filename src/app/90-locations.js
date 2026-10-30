@@ -373,7 +373,7 @@ function _locCheckBadges() {
 /* ---------- the first-time notice ---------- */
 function _locMaybeNotice() {
   if (!_loc.data || _loc.data.prefs.noticeAt) return;
-  const busy = (typeof _obOpen !== 'undefined' && _obOpen) || (typeof storyIsOpen === 'function' && storyIsOpen()) || document.querySelector('.modal, .scrim');
+  const busy = (typeof _obOpen !== 'undefined' && _obOpen) || (typeof storyIsOpen === 'function' && storyIsOpen()) || document.querySelector('.modal, .scrim') || (document.documentElement.classList.contains('gd-immersive') || document.documentElement.classList.contains('gsv-immersive'));   // not over the garden
   if (busy || document.hidden) { setTimeout(_locMaybeNotice, 20000); return; }
   let answered = false;
   const seen = (on) => { answered = true; fetch('/api/locations/prefs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ noticeAt: _locNow(), ...(on === false ? { on: false } : {}) }) }).then(r => r.json()).then(j => { if (j && j.prefs && _loc.data) { _loc.data.prefs = j.prefs; _locBump(); } }).catch(() => {}); };

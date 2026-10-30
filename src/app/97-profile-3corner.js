@@ -123,7 +123,7 @@ function _pfcPetPaint(me, you) {
   let pe = me.querySelector(':scope > .sb-ws-pet');
   const key = you ? _pfcPetKey() : '';
   if (!key) { if (pe) pe.remove(); return; }
-  const el = typeof petEl === 'function' ? petEl('me', 22, { motion: false }) : null;
+  const el = typeof petEl === 'function' ? petEl('me', 22, { motion: true }) : null;   // 2.23: it breathes and blinks (pt-lite: nothing else, and it rests off screen)
   if (!el) { if (pe) pe.remove(); return; }
   if (!pe) { pe = _pfcEl('span', 'sb-ws-pet'); pe.setAttribute('aria-hidden', 'true'); me.appendChild(pe); }
   el.removeAttribute('role'); el.removeAttribute('aria-label');

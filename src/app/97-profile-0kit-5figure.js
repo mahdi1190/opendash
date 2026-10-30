@@ -36,7 +36,7 @@ const _PF_FIG_BOTTOM = Object.freeze({ jeans: 'jeans', trousers: 'trousers', chi
   shorts: 'shorts', skirt: 'skirt', pleated: 'skirt', midi: 'skirt', dungarees: 'jeans' });
 /** Shoes the people builder draws itself; the others are drawn here instead (its shoe is taken off first). */
 const _PF_FIG_SHOE_OWN = Object.freeze(new Set(['trainer', 'shoe', 'boot', 'sandal']));
-const _PF_FIG_HAT = Object.freeze({ anglerhat: 'sunhat', pith: 'sunhat', beanie: 'beanie', slouch: 'beanie', bearbeanie: 'beanie', trapper: 'beanie', cap: 'cap', flatcap: 'flatcap', sunhat: 'sunhat',
+const _PF_FIG_HAT = Object.freeze({ strawhat: 'sunhat', beekeeper: 'sunhat', anglerhat: 'sunhat', pith: 'sunhat', beanie: 'beanie', slouch: 'beanie', bearbeanie: 'beanie', trapper: 'beanie', cap: 'cap', flatcap: 'flatcap', sunhat: 'sunhat',
   headscarf: 'beanie', santa: 'beanie' });
 const _PF_FIG_BAG = Object.freeze({ crossbody: 'crossbody', satchel: 'crossbody', messenger: 'crossbody', bumbag: 'crossbody', shoulder: 'shoulder', tote: 'shoulder', backpack: 'backpack' });
 const _PF_SUNGLASSES = Object.freeze(new Set(['sun', 'aviatorsun', 'roundsun', 'mirror', 'sport', 'heart', 'starsun', '3d']));

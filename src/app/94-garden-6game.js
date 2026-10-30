@@ -1,15 +1,15 @@
 /* ============================================================
    GARDEN, the game layer (2.18.1): everything that makes the full-screen garden clear and alive.
-     - "What to do next": one suggested step with a pulsing ring on the thing to click
+     - "What to do next": one suggested step (gardenNextStep): an arrow in the world (94-garden-world-2hud.js), a line in the Goals panel
      - the income panel ("Today: 42 coins from 1h40 focused (cap 120)") and its small log
-     - the first-run tour (6 steps, skippable, replay from the ? button) and the Garden guide
+     - the Garden guide (Help)
      - feedback: floating "+2 XP", splashes, dark soil, harvest arcs into the basket, growth pops,
        visitor notes, the level-up card
      - the hover card with a growth ring
    Draws into the page built by 94-garden-4page.js (_gdp). Reduced motion and the Fun level are respected
    (gardenMotionOn): without motion nothing flies, the toasts still say what happened.
    ============================================================ */
-const _gdg = { tour: -1, bound: false, stages: null, visitors: null, wlSeen: null, ro: null, noteT: 0, nextKey: '' };
+const _gdg = { bound: false, stages: null, visitors: null, wlSeen: null, noteT: 0, nextKey: '' };
 
 /* ---------- geometry: a cell rectangle in the stage box's pixels ---------- */
 function _gdgBox() { return _gdp.root ? _gdp.root.querySelector('.gd-stagebox') : null; }
@@ -62,7 +62,7 @@ function _gdgFly(plantId, x, y, w, h, delay) {
   if (!gardenMotionOn()) return;
   const box = _gdgBox(), ov = _gdgOv(); if (!box || !ov) return;
   const r = _gdgRectPx(x, y, w || 1, h || 1); if (!r) return;
-  const tgt = _gdp.root.querySelector('.gd-act[data-act="pick"]') || _gdp.root.querySelector('.gd-tabbtn[data-tab="basket"]');
+  const tgt = _gdp.root.querySelector('.gd-mbtn[data-menu="basket"]');
   const br = box.getBoundingClientRect(), tr = tgt ? tgt.getBoundingClientRect() : null;
   const n = document.createElement('div'); n.className = 'gd-fly';
   try { n.innerHTML = gardenIconSvg(plantId, { kind: 'crop', px: 30 }); } catch (e) { n.textContent = ''; }
@@ -94,7 +94,6 @@ function _gdgOnEvent(ev) {
   try {
     if (d.kind === 'plant') {
       gardenFloat('+2 XP', d.x, d.y, 1, 1, 'is-xp'); gardenPop(d.x, d.y, 1, 1, 'is-plant');
-      gardenTourEvent('plant');
     } else if (d.kind === 'feed') { gardenFloat('+half a day', d.x, d.y, d.fp || 1, d.fp || 1, 'is-feed'); gardenPop(d.x, d.y, d.fp || 1, d.fp || 1, 'is-feed'); }
     else if (d.kind === 'prune') { gardenFloat('Tidy', d.x, d.y, d.fp || 1, d.fp || 1); }
     else if (d.kind === 'harvest') {
@@ -102,21 +101,21 @@ function _gdgOnEvent(ev) {
       else if (d.x != null) { for (let i = 0; i < Math.min(3, d.n || 1); i++) _gdgFly(d.id, d.x, d.y, d.fp || 1, d.fp || 1, i * 110); gardenFloat((d.gold ? 'Golden! +' : '+') + d.n, d.x, d.y, d.fp || 1, d.fp || 1, d.gold ? 'is-gold' : 'is-xp'); gardenPop(d.x, d.y, d.fp || 1, d.fp || 1, d.gold ? 'is-gold' : 'is-harvest'); }
     } else if (d.kind === 'level') gardenLevelUpCard(d);
     else if (d.kind === 'area') gardenLevelUpCard(d);
-    else if (d.kind === 'buy') { const t = _gdp.root.querySelector('.gd-tabbtn[data-tab="shop"]'); if (t) { t.classList.remove('is-bump'); void t.offsetWidth; t.classList.add('is-bump'); } }
+    else if (d.kind === 'land') { gardenPop(d.x + d.w / 2 - 1, d.y + d.h / 2 - 1, 2, 2, 'is-gold'); if (typeof _gw !== 'undefined') _gw.reach = null; }
   } catch (e) { console.error('[garden fx]', e); }
-  if (d.kind === 'water') gardenTourEvent('water');
 }
 /** After every paint of the stage: new waterings, stages that grew, new visitors. */
 function gardenGamePainted(m) {
   if (!gardenMotionOn() && gardenFun() === 'off') { _gdg.stages = null; return; }
-  for (const p of _gdgWatered(m)) { _gdpSplash(p); _gdgSoil(p.x, p.y, p.fp, p.fp); gardenFloat('Watered', p.x, p.y, p.fp, p.fp, 'is-water'); }
+  for (const p of _gdgWatered(m)) { _gdpSplash(p); _gdgSoil(p.x, p.y, p.fp, p.fp); gardenFloat('+1', p.x, p.y, p.fp, p.fp, 'is-water'); }
   const prev = _gdg.stages, now = new Map();
   for (const p of m.plants) now.set(p.uid, p.stage);
   _gdg.stages = now;
-  if (prev) for (const p of m.plants) { const was = prev.get(p.uid); if (was != null && p.stage > was && p.def.special !== 'heart') { gardenPop(p.x, p.y, p.fp, p.fp, 'is-grow'); gardenFloat(p.ripe ? 'Ready!' : 'Grew!', p.x, p.y, p.fp, p.fp, 'is-grow'); } }
+  if (prev) for (const p of m.plants) { const was = prev.get(p.uid); if (was != null && p.stage > was && p.def.special !== 'heart') { gardenPop(p.x, p.y, p.fp, p.fp, 'is-grow'); void 0; } }
   // visitors drifting in
   const ids = new Set(m.visitors.map(v => v.id)), pv = _gdg.visitors; _gdg.visitors = ids;
-  if (pv && gardenFun() !== 'off') for (const v of m.visitors) if (!pv.has(v.id)) _gdgNote(`${/^[aeiou]/i.test(v.def.name) ? 'An' : 'A'} ${v.def.name.toLowerCase()} visited!`, gardenIconSvg(v.id, { kind: 'visitor', px: 28 }));
+  // (one you have never met gets its "New visitor" moment instead of this as well)
+  if (pv && gardenFun() !== 'off') for (const v of m.visitors) if (!pv.has(v.id) && _gdG().disc[v.id] && !(typeof gardenLifeOwns === 'function' && gardenLifeOwns(v.id))) { const nm = v.def.name; _gdgNote(/[’']s /.test(nm) ? `${nm} visited!` : `${/^[aeiou]/i.test(nm) ? 'An' : 'A'} ${nm.toLowerCase()} visited!`, gardenIconSvg(v.id, { kind: 'visitor', px: 28 })); }
 }
 function _gdgNote(text, svg) {
   const box = _gdgBox(); if (!box) return;
@@ -183,24 +182,24 @@ function gardenNextStep(m) {
   const go = (label, run) => ({ label, run });
   // 1. something is ready
   const ripe = m.plants.find(p => p.ripe && p.def.yield);
-  if (ripe) return { icon: 'shopping-basket', title: m.ripe > 1 ? `${m.ripe} things are ready to pick` : `Your ${ripe.def.name.toLowerCase()} is ready`, text: 'Click it with the Harvest tool and it flies into your basket.', target: { x: ripe.x, y: ripe.y, w: ripe.fp, h: ripe.fp }, btn: go(m.ripe > 1 ? 'Harvest all' : 'Pick it', () => _gdpAct(m.ripe > 1 ? gardenHarvestAll() : gardenHarvest(ripe.uid))), key: 'ripe' + ripe.uid };
+  if (ripe) return { icon: 'shopping-basket', title: m.ripe > 1 ? `${m.ripe} things are ready to pick` : `Your ${ripe.def.name.toLowerCase()} is ready`, text: 'Click it: it flies into your basket.', target: { x: ripe.x, y: ripe.y, w: ripe.fp, h: ripe.fp }, btn: go(m.ripe > 1 ? 'Harvest all' : 'Pick it', () => _gdpAct(m.ripe > 1 ? gardenHarvestAll() : gardenHarvest(ripe.uid))), key: 'ripe' + ripe.uid };
   // 2. an empty garden
   const nPlants = m.plants.filter(p => p.def.special !== 'heart').length;
   if (!seeds.length && !nPlants) {
     const cheap = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && p.lv <= 1).sort((a, b) => a.price - b.price)[0];
-    return { icon: 'store', title: 'Your plot is empty', text: `Seeds start at ${cheap ? cheap.price : 6} coins in the shop. Coins come from time spent on tasks.`, target: null, btn: go('Walk to the shop', () => gardenGoToProp('garden-shop')), key: 'empty' };
+    return { icon: 'store', title: 'Your plot is empty', text: `Seeds start at ${cheap ? cheap.price : 6} coins in the shop. Coins come from time spent on tasks.`, target: null, btn: go('Walk to the shop', () => gardenGoToAct('shop')), key: 'empty' };
   }
   // 3. thirsty
   const dry = m.plants.filter(p => p.thirsty && p.def.thirst && p.def.special !== 'heart');
-  if (dry.length && wi.left > 0 && !m.rain.now) { const p = dry[0]; return { icon: 'droplet', title: dry.length > 1 ? `${dry.length} plants are thirsty` : `Your ${p.def.name.toLowerCase()} is thirsty`, text: 'Thirsty plants droop and grow slowly. They never die. Pick Water and click them.', target: { x: p.x, y: p.y, w: p.fp, h: p.fp }, btn: go(dry.length > 1 ? 'Water them all' : 'Water it', () => _gdpAct(dry.length > 1 ? gardenWaterAll() : gardenWater(p.uid))), key: 'dry' + p.uid }; }
+  if (dry.length && wi.left > 0 && !m.rain.now) { const p = dry[0]; return { icon: 'droplet', title: dry.length > 1 ? `${dry.length} plants are thirsty` : `Your ${p.def.name.toLowerCase()} is thirsty`, text: 'Click them: they never die, they just wait.', target: { x: p.x, y: p.y, w: p.fp, h: p.fp }, btn: go(dry.length > 1 ? 'Water them all' : 'Water it', () => _gdpAct(dry.length > 1 ? gardenWaterAll() : gardenWater(p.uid))), key: 'dry' + p.uid }; }
   // 4. a seed to plant
   if (seeds.length && nPlants < 4) {
     const s = seeds[0], spot = _gdgFreeSpot(m, s.def);
-    if (spot) return { icon: 'sprout', title: nPlants ? 'Plant another seed' : 'Plant your first seed', text: `You have ${s.n} ${s.def.name.toLowerCase()} seed${s.n === 1 ? '' : 's'}. Pick Plant, pick the seed below, click a free tile.`, target: { x: spot.x, y: spot.y, w: 1, h: 1 }, btn: go('Plant it here', () => { _gdp.seed = s.id; const r = gardenPlantAt(s.id, spot.x, spot.y); _gdpAct(r); _gdpPickTool('seed'); }), key: 'plant' + s.id };
+    if (spot) return { icon: 'sprout', title: nPlants ? 'Plant another seed' : 'Plant your first seed', text: `Click the soil and pick the ${s.def.name.toLowerCase()} seed.`, target: { x: spot.x, y: spot.y, w: 1, h: 1 }, btn: go('Plant it here', () => { _gdp.seed = s.id; const r = gardenPlantAt(s.id, spot.x, spot.y); _gdpAct(r); _gdpPickTool('seed'); }), key: 'plant' + s.id };
   }
   // 5. money to spend
   const buy = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && p.lv <= m.level.level && !_gdG().disc[p.id] && p.price <= w.coins).sort((a, b) => a.price - b.price)[0];
-  if (buy) return { icon: 'store', title: `You have ${_gdpNum(w.coins)} coins`, text: `The shop has a ${buy.name.toLowerCase()} seed for ${buy.price}: a plant you have not grown yet.`, target: null, btn: go('Walk to the shop', () => gardenGoToProp('garden-shop')), key: 'buy' + buy.id };
+  if (buy) return { icon: 'store', title: `You have ${_gdpNum(w.coins)} coins`, text: `The shop has a ${buy.name.toLowerCase()} seed for ${buy.price}: a plant you have not grown yet.`, target: null, btn: go('Walk to the shop', () => gardenGoToAct('shop')), key: 'buy' + buy.id };
   // 6. a seed to plant, any time
   if (seeds.length) { const s = seeds[0], spot = _gdgFreeSpot(m, s.def); if (spot) return { icon: 'sprout', title: 'Seeds in your bag', text: `${s.n} ${s.def.name.toLowerCase()} seed${s.n === 1 ? '' : 's'} waiting. A fuller garden brings more visitors.`, target: { x: spot.x, y: spot.y, w: 1, h: 1 }, btn: go('Plant it here', () => { _gdp.seed = s.id; _gdpAct(gardenPlantAt(s.id, spot.x, spot.y)); _gdpPickTool('seed'); }), key: 'plant2' + s.id }; }
   // 7. a daily goal
@@ -210,24 +209,6 @@ function gardenNextStep(m) {
   const tid = typeof gameFocusNextTask === 'function' ? gameFocusNextTask() : null;
   return { icon: 'timer', title: 'Earn coins by working', text: 'Focus on a task with the timer: about 12 coins an hour, plus a bonus when you finish it.', target: null, btn: tid && typeof gameFocusStart === 'function' ? go('Start a focus timer', () => { gameFocusStart(tid); toast('Focus timer started. Coins arrive as the minutes add up.', { icon: 'timer' }); }) : go('Open my tasks', () => setView('list')), key: 'earn' };
 }
-function gardenNextCard(m) {
-  const n = gardenNextStep(m), c = _gdpEl('section', 'gd-next card');
-  c.innerHTML = `<div class="gd-next-h"><span class="gd-next-ic">${icon(n.icon)}</span><span class="overline">What to do next</span></div><h3></h3><p class="muted"></p>`;
-  c.querySelector('h3').textContent = n.title; c.querySelector('p').textContent = n.text;
-  if (n.btn) c.appendChild(_gdpBtn(n.btn.label, { kind: 'btn-primary', run: n.btn.run }));
-  _gdg.next = n;
-  return c;
-}
-/** The pulsing ring on whatever the next step points at. */
-function gardenNextRing() {
-  const box = _gdgBox(); if (!box) return;
-  const ov = _gdgOv(); if (!ov) return;
-  ov.querySelectorAll('.gd-hint').forEach(x => x.remove());
-  const n = _gdg.next; if (!n || !n.target || _gdg.tour >= 0) return;
-  const r = _gdgRectPx(n.target.x, n.target.y, n.target.w, n.target.h); if (!r) return;
-  _gdgNode('gd-hint', '<i></i>', { l: r.l - 3, t: r.t - 3, w: r.w + 6, h: r.h + 6 });
-}
-
 /* ---------- today's income ---------- */
 function gardenEconCard(m) {
   const w = m.wallet, e = w.econToday, g = _gdG();
@@ -255,64 +236,24 @@ function gardenEconCard(m) {
   return c;
 }
 
-/* ---------- the tour (first run; replay from the ? button) ---------- */
-const GARDEN_TOUR = Object.freeze([
-  { id: 'plot', title: 'This is your plot', text: 'Every square is a tile. Plants go on free tiles, paths and seats go anywhere. Hover over a tile to see what your tool would do there.', target: '.gd-stagebox' },
-  { id: 'walk', title: 'You are in the garden', text: 'That is you. Click the ground to walk there, or use W A S D. Click a plant with a tool and you walk over and use it. Click the lake to fish and click a bug to net it: no tool needed. The wheel zooms and F shows the whole garden.', target: '.gd-stagebox' },
-  { id: 'plant', title: 'Plant your first seed', text: 'We gave you a free seed. Pick Plant, pick the seed in the tray under the garden, then click a free tile. Or just drag the seed onto the garden.', target: '.gd-tool[data-tool="seed"]', wait: 'plant' },
-  { id: 'water', title: 'Give it a drink', text: 'Just click a thirsty plant to water it, or press and drag across a row. Click a ripe one to pick it, right-click for more. Thirsty plants droop and grow slowly (they never die). Rain waters everything for you.', target: '.gd-stagebox' },
-  { id: 'grow', title: 'Watch it grow', text: 'Plants grow with real time: seed, sprout, young, bud, bloom. Hover over a plant for a progress ring. Working on your tasks speeds them up a little.', target: '.gd-stagebox' },
-  { id: 'earn', title: 'Earn coins by working', text: 'Coins come from time: about 12 an hour while the focus timer runs on a task, plus a bonus when you finish it. This box shows today’s coins and why.', target: '.gd-econ, .gd-chip.is-coins' },
-  { id: 'shop', title: 'Spend them in the shop', text: 'The garden shop on the lake shore sells seeds, decorations and tools: click it and you walk to its door and go in. The notice board is your almanac, the post box is your friends, the camera and the sundial are the photo and the time-lapse. The ? button explains everything again.', target: '.gd-stagebox' },
-]);
-function gardenTourStart(force) {
+/* ---------- first run: no tour (2.23): a bouncing arrow does it (94-garden-world-2hud.js). The free seed is still there. ---------- */
+function _gdgFirstSeed() {
   const g = _gdG();
-  if (!force && g.seen.tour) return;
-  _gdg.tour = 0;
-  // the free seed (once), unless you already have some
-  if (!g.seen.tourSeed && _gdpSeedList().length === 0) {
-    g.seen.tourSeed = _gdToday();
-    _gdLed('onb', { c: 0, i: { 'seed:daisy': 1 }, n: 0 });
-    _gdSave();
-  }
-  gardenTourPaint();
+  if (g.seen.tourSeed || _gdpSeedList().length || gardenModel().plants.some(p => p.def.special !== 'heart')) return;
+  g.seen.tourSeed = _gdToday();
+  _gdLed('onb', { c: 0, i: { 'seed:daisy': 1 }, n: 0 });
+  _gdSave();
 }
-function gardenTourEnd(done) {
-  _gdg.tour = -1;
-  const g = _gdG(); if (!g.seen.tour) { g.seen.tour = _gdToday(); _gdSave(); }
-  if (_gdp.root) { _gdp.root.querySelectorAll('.gd-tour').forEach(x => x.remove()); _gdp.root.querySelectorAll('.gd-spot').forEach(x => x.classList.remove('gd-spot')); }
-  if (done) toast('That is the tour. The ? button explains everything again.', { icon: 'sprout', timeout: 3500 });
-  try { _gdpPaintSide(gardenModel()); } catch (e) { /* page gone */ }
+/** The goals panel: the next step as one line with one button, today's goals, the week's quests, where today's coins came from. */
+function gardenGoalsPanel(el, m) {
+  const n = gardenNextStep(m), row = _gdpEl('div', 'gd-goal-next');
+  row.innerHTML = `<span class="gd-next-ic">${icon(n.icon)}</span>`;
+  row.appendChild(_gdpEl('b', null, n.title));
+  if (n.btn) row.appendChild(_gdpBtn(n.btn.label, { kind: 'btn-primary', run: () => { gardenPopupClose(); n.btn.run(); } }));
+  el.appendChild(row);
+  const goals = _gdpEl('section', 'gd-goals'); _gdpToday(goals, m); el.appendChild(goals);
+  el.appendChild(gardenEconCard(m));
 }
-function gardenTourEvent(kind) {
-  if (_gdg.tour < 0) return;
-  const s = GARDEN_TOUR[_gdg.tour];
-  if (s && s.wait === kind) setTimeout(() => gardenTourNext(), 700);
-}
-function gardenTourNext() {
-  if (_gdg.tour < 0) return;
-  if (_gdg.tour >= GARDEN_TOUR.length - 1) { gardenTourEnd(true); return; }
-  _gdg.tour++;
-  gardenTourPaint();
-}
-function gardenTourPaint() {
-  const root = _gdp.root; if (!root || _gdg.tour < 0) return;
-  const s = GARDEN_TOUR[_gdg.tour];
-  root.querySelectorAll('.gd-spot').forEach(x => x.classList.remove('gd-spot'));
-  for (const el of root.querySelectorAll(s.target)) el.classList.add('gd-spot');
-  let c = root.querySelector('.gd-tour');
-  if (!c) { c = document.createElement('div'); c.className = 'gd-tour card'; c.setAttribute('role', 'dialog'); c.setAttribute('aria-label', 'Garden tour'); root.appendChild(c); }
-  c.innerHTML = '<div class="gd-tour-n"></div><h3></h3><p></p><div class="gd-tour-a"></div>';
-  c.querySelector('.gd-tour-n').textContent = `Step ${_gdg.tour + 1} of ${GARDEN_TOUR.length}`;
-  c.querySelector('h3').textContent = s.title; c.querySelector('p').textContent = s.text;
-  const a = c.querySelector('.gd-tour-a');
-  a.appendChild(_gdpBtn('Skip tour', { kind: 'btn-ghost', run: () => gardenTourEnd(false) }));
-  const last = _gdg.tour >= GARDEN_TOUR.length - 1;
-  a.appendChild(_gdpBtn(last ? 'Start gardening' : s.wait ? 'I’ll do it later' : 'Next', { kind: s.wait ? 'btn-secondary' : 'btn-primary', run: () => gardenTourNext() }));
-  gardenNextRing();
-}
-/** Keep the tour's highlight on after the toolbar or HUD is rebuilt. */
-function gardenTourReapply() { if (_gdg.tour >= 0 && _gdp.root) { const s = GARDEN_TOUR[_gdg.tour]; for (const el of _gdp.root.querySelectorAll(s.target)) el.classList.add('gd-spot'); } }
 
 /* ---------- the guide ---------- */
 function gardenGuideOpen() {
@@ -321,18 +262,15 @@ function gardenGuideOpen() {
   const E = GARDEN_ECON;
   const sec = (ic, title, html) => `<section class="gd-gsec"><h3>${icon(ic)}<span>${esc(title)}</span></h3>${html}</section>`;
   const g = document.createElement('div'); g.className = 'gd-guide'; g.setAttribute('role', 'dialog'); g.setAttribute('aria-label', 'Garden guide');
-  g.innerHTML = `<div class="gd-guide-card card"><div class="gd-guide-h"><h2>Garden guide</h2><span class="gd-guide-b"></span></div><div class="gd-guide-body">`
-    + sec('sprout', 'How plants grow', `<p>Plant a seed on a free tile. It grows through five stages (seed, sprout, young, bud, bloom) as real time passes: quick flowers take hours, trees take weeks. In season a plant grows faster, out of season a little slower. Finishing tasks and focusing nudge growth along.</p><p>A thirsty plant droops and grows at half speed. It <b>never dies</b> and never loses what it has grown.</p>`)
-    + sec('coins', 'What makes coins', `<p>Coins come from <b>time spent working</b>, not from clicking:</p><ul><li><b>Focus timer</b>: 1 coin per 5 focused minutes for the first 2 hours of the day, half after that, nothing past 4 hours. Sessions under ${E.minSessionMin} minutes do not count.</li><li><b>Finishing a task</b>: a bonus for the time it took (1 coin per ${E.bonusMinPerCoin} minutes logged, up to ${E.bonusEach}). With no timer, half of the estimate counts, up to ${E.noLogCapMin} minutes. A big estimate does not help: it counts up to 1.5 times the time you logged.</li><li>Tasks done within 5 minutes of being created, empty ones and re-closed ones pay nothing. Each task pays once.</li><li>A small streak bonus (up to ${E.streakMax}) and a hard cap of <b>${E.dayCap} coins a day</b>.</li><li>Garden goals pay a few coins, weekly quests pay more, and the market buys what you grow.</li></ul>`)
-    + sec('droplet', 'Water and seeds', `<p>Your can holds 10 waterings a day plus more for each task and half hour of focus you put in. Free seed packets arrive for every ${E.packetEveryMin} minutes of work (two a day at most). Seeds, decorations and tools are sold in the shop; prices are higher for rarer things and unlock as your garden levels up.</p>`)
-    + sec('hand', 'Tending', `<ul><li><b>Click a plant</b>: it is picked if it is ripe, watered if it is thirsty (press and drag across a row to water several), trimmed if it has gone wild; otherwise you see how it is doing. <b>Right-click</b> it for everything else: fertilise, trim, dig up (Undo puts it back).</li><li><b>Plant</b> (key 1): pick a seed in the tray, click a free tile (or drag the seed in).</li><li><b>Decorate</b> (key 2): place benches, paths and lanterns; drag to move, R turns, S restyles.</li></ul><p>Keys: Shift+W waters everything, H picks everything that is ready, Delete digs up the selected plant, Esc puts a mode down, Ctrl+Z undoes.</p>`)
-    + sec('footprints', 'Walking about', `<p>You live in the garden: the figure is you, as you look in the scenes, and your pet follows. <b>Click</b> the ground to walk there (click a plant with a tool and you walk over and use it). Click a <b>building</b> and you walk to its door and it opens as a pop-up (click outside it, or press Esc, to close it): the shop, the market stall, the notice board (your almanac), the field journal, the tackle shop, the post box (friends), the camera and the sundial (photos and the time-lapse). Or use <b>W A S D</b> or the <b>arrow keys</b> (hold <b>Shift</b> to creep). <b>Space</b> or <b>E</b> uses the tool on what is in front of you, or knocks at the tackle shop door. The <b>wheel</b>, <b>+</b> and <b>−</b> zoom, <b>F</b> shows the whole garden and <b>C</b> follows you again. Keys <b>1</b> and <b>2</b> pick Plant and Decorate, <b>Shift+W</b> waters everything and <b>H</b> picks everything that is ready. <b>Esc</b> puts a mode down.</p>`)
-    + sec('fish', 'Fishing and bugs', `<p>The lake runs along the bottom of the garden, with a pier and a tackle shop. Click the water: you walk to a place the rod reaches and cast. When the bobber dips (and a ! appears), click or press Space, then <b>hold</b> to lift the bar and keep the fish inside it until the meter fills. Deeper water, night, dawn, dusk and rain bring different fish; a better rod reaches further and holds more kindly. You get ${GARDEN_CATCH_ECON.castsBase} casts a day and more for every 12 minutes of work. Click a bug: creep up on it (running makes it bolt) and swing. Everything you catch goes in your bag and your book (the <b>Catch</b> tab), can be sold at the market (it only wants so much a day), filled into the order board, given to friends, or pinned in your showcase: an aquarium, a bug case and a trophy board in the garden, and a strip on your profile card.</p>`)
-    + sec('bird', 'What visitors want', `<p>Bees and butterflies come for flowers, robins for a bird bath, frogs for a pond, hedgehogs and owls at dusk. Fuller, more varied gardens bring rarer visitors; each new one goes in the Almanac.</p>`)
-    + sec('trophy', 'Levels, goals and surprises', `<p>Planting, harvesting and discovering earn garden XP. Each level can open a new area (veg patch, orchard, pond, greenhouse, meadow). Daily goals and weekly quests give coins and seeds. Now and then a harvest is golden (double) or a rare seed drops out.</p>`)
+  g.innerHTML = `<div class="gd-guide-card card"><div class="gd-guide-h"><h2>How it works</h2><span class="gd-guide-b"></span></div><div class="gd-guide-body">`
+    + sec('footprints', 'Walking', `<p>Click or tap a spot and you walk there. W A S D and the arrow keys work too. Wheel or pinch to zoom.</p>`)
+    + sec('hand', 'Doing things', `<p>Click what you want and you walk over and do it: a ripe plant is picked, a thirsty one watered, an empty bed offers its seeds. Right-click (or click a happy plant) for everything else. A red X means it can't be done there.</p>`)
+    + sec('coins', 'Coins come from your work', `<ul><li>1 coin per 5 focused minutes for the first 2 hours of the day, half after that, none past 4 hours (sessions under ${E.minSessionMin} minutes do not count).</li><li>A bonus when you finish a task, for the time it took. Each task pays once.</li><li>At most <b>${E.dayCap} coins a day</b> from work. Garden goals, quests and the market pay extra.</li></ul>`)
+    + sec('sprout', 'Plants', `<p>They grow with real time, faster in season. Thirsty ones droop and grow slowly. They <b>never die</b>.</p>`)
+    + sec('trees', 'More land', `<p>Follow the lane east along the shore. Each sign is a piece of land you can buy with coins.</p>`)
+    + sec('fish', 'Fishing and bugs', `<p>Click the water to cast. When the bobber dips, click, then hold to keep the fish in the bar. Click a bug to creep up and net it. You get ${GARDEN_CATCH_ECON.castsBase} casts a day, and one more for every 12 minutes of work.</p>`)
     + `</div></div>`;
   const b = g.querySelector('.gd-guide-b');
-  b.appendChild(_gdpBtn('Replay the tour', { icon: 'sprout', run: () => { g.remove(); gardenTourStart(true); } }));
   b.appendChild(_gdpBtn('', { icon: 'x', aria: 'Close the guide', kind: 'btn-ghost', run: () => g.remove() }));
   g.addEventListener('click', (ev) => { if (ev.target === g) g.remove(); });
   g.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.stopPropagation(); g.remove(); } });
@@ -344,14 +282,8 @@ function gardenGuideOpen() {
 function gardenGameStart(root, m) {
   _gdg.stages = null; _gdg.visitors = null; _gdg.wlSeen = null; _gdg.next = null;
   if (!_gdg.bound) { _gdg.bound = true; document.addEventListener('opendash:garden', _gdgOnEvent); }
-  const box = _gdgBox();
-  if (box && typeof ResizeObserver !== 'undefined') {
-    if (_gdg.ro) _gdg.ro.disconnect();
-    _gdg.ro = new ResizeObserver(() => { if (_gdg.rq) return; _gdg.rq = requestAnimationFrame(() => { _gdg.rq = 0; gardenNextRing(); }); });
-    _gdg.ro.observe(box);
-  }
   _gdgWatered(m);
-  if (!_gdG().seen.tour) setTimeout(() => { if (_gdp.root === root && root.isConnected) gardenTourStart(false); }, 500);
-  else _gdg.tour = -1;
+  setTimeout(() => { if (_gdp.root === root && root.isConnected) _gdgFirstSeed(); }, 500);
+  void root;
 }
-function gardenGameStop() { if (_gdg.ro) { _gdg.ro.disconnect(); _gdg.ro = null; } _gdg.tour = -1; }
+function gardenGameStop() { }

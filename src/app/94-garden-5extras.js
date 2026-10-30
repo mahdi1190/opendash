@@ -12,7 +12,7 @@
      gardenTimelapseOpen()      your garden from its first day to now; play, pause, scrub
      _gdpBurst(kind)            a handful of petals over the garden (Full fun level, motion on)
    ============================================================ */
-const GDX_SHOP_PAGE = 8;
+const GDX_SHOP_PAGE = 24;
 const _gdx = { shop: 'seeds', shopCat: '', shopN: GDX_SHOP_PAGE, pick: null, qty: 1, alm: 'plants', almCat: '', stems: {} };
 
 function _gdxSeg(list, cur, pick, cls) {
@@ -41,26 +41,19 @@ function _gdxRepaintTab() { if (typeof _gdpRepaint === 'function') _gdpRepaint()
 function gardenShopTab(el, m) {
   const w = m.wallet, kind = _gdx.shop;
   const resetPage = () => { _gdx.shopN = GDX_SHOP_PAGE; _gdx.pick = null; };
-  // One row: what you are shopping for, a category dropdown, and the event as a small pill (2.19.4: it was four stacked rows).
+  // What you are shopping for, your coins, and kinds as chips (2.23: the shop is a panel of goods, you compare by looking, the details are on hover).
   const top = _gdpEl('div', 'gd-shop-top');
-  top.appendChild(_gdxSeg([['seeds', 'Seeds', 'sprout'], ['decor', 'Decorations', 'armchair'], ['tools', 'Tools', 'wrench'], ['market', 'Market', 'coins']], kind, (k) => { _gdx.shop = k; _gdx.shopCat = ''; resetPage(); _gdxRepaintTab(); }, 'gd-shop-seg'));
-  const cats = kind === 'seeds' ? [['', 'All plants'], ...GARDEN_CAT_ORDER.map(c => [c, GARDEN_CATS[c].label]), ['season', 'In season now']]
-    : kind === 'decor' ? [['', 'All decorations'], ...GARDEN_DECOR_CAT_ORDER.map(c => [c, GARDEN_DECOR_CATS[c].label])] : null;
-  if (cats) {
-    const sel = _gdpEl('select', 'control gd-shop-cat'); sel.setAttribute('aria-label', 'Kind of ' + (kind === 'seeds' ? 'plant' : 'decoration'));
-    for (const [k, label] of cats) { const o = document.createElement('option'); o.value = k; o.textContent = label; if (k === _gdx.shopCat) o.selected = true; sel.appendChild(o); }
-    sel.onchange = () => { _gdx.shopCat = sel.value; resetPage(); sel.blur(); _gdxRepaintTab(); };
-    top.appendChild(sel);
-  }
-  const ev = m.events.map(id => GARDEN_EVENTS.find(e => e.id === id)).filter(Boolean)[0];
-  if (ev) { const b = _gdpEl('span', 'gd-event'); b.innerHTML = icon(ev.icon); b.appendChild(_gdpEl('b', null, ev.label)); b.title = ev.blurb || ''; top.appendChild(b); }
+  top.appendChild(_gdxSeg([['seeds', 'Seeds', 'sprout'], ['decor', 'Decorations', 'armchair'], ['tools', 'Tools', 'wrench'], ['market', 'Sell', 'coins']], kind, (k) => { _gdx.shop = k; _gdx.shopCat = ''; resetPage(); _gdxRepaintTab(); }, 'gd-shop-seg'));
+  const wallet = _gdpEl('span', 'gd-stat is-coins gd-shop-coins'); wallet.innerHTML = _GH_GLYPH.coin + `<b>${esc(_gdpNum(w.coins))}</b>`; top.appendChild(wallet);
   el.appendChild(top);
+  const cats = kind === 'seeds' ? [['', 'All'], ['season', 'In season'], ...GARDEN_CAT_ORDER.map(c => [c, GARDEN_CATS[c].label])]
+    : kind === 'decor' ? [['', 'All'], ...GARDEN_DECOR_CAT_ORDER.map(c => [c, GARDEN_DECOR_CATS[c].label])] : null;
+  if (cats) el.appendChild(_gdxChips(cats, _gdx.shopCat, (k) => { _gdx.shopCat = k; resetPage(); _gdxRepaintTab(); }));
   if (kind === 'market') { gardenMarket(el, m); return; }
   if (kind === 'tools') {
     const grid = _gdpEl('div', 'gd-grid gd-shop-grid');
-    for (const t of GARDEN_TOOLS) grid.appendChild(_gdxCard({ id: t.id, item: t.id, name: t.name, icon: gardenIconSvg(t.id, { kind: 'tool', px: 56 }), sub: t.kind === 'consumable' ? `you have ${gardenHas('fertiliser')}` : _gdOwnsTool(t.id) ? 'yours' : '', facts: [t.blurb], blurb: t.blurb }, m));
+    for (const t of GARDEN_TOOLS) grid.appendChild(_gdxCard({ id: t.id, item: t.id, name: t.name, icon: gardenIconSvg(t.id, { kind: 'tool', px: 56 }), have: t.kind === 'consumable' ? gardenHas('fertiliser') : 0, owned: t.kind !== 'consumable' && _gdOwnsTool(t.id), facts: [t.blurb], blurb: t.blurb }, m));
     el.appendChild(grid);
-    el.appendChild(_gdpEl('p', 'muted gd-shop-foot', `You have ${_gdpNum(w.coins)} coins. Coins come from finished tasks (4 each), focus time, streaks, garden tasks, quests, ribbons and the market.`));
     return;
   }
   const uc = gardenUnlockCtx(m), coins = w.coins;
@@ -79,16 +72,16 @@ function gardenShopTab(el, m) {
       const sells = p.yield ? `sells for ${sell} coin${sell === 1 ? '' : 's'}` : 'just for looks';
       const inSeason = gardenInSeason(p, m.season);
       return { key: [lock ? 1 : 0, !lock && pr.price != null && pr.price <= coins ? 0 : 1, inSeason ? 0 : 1, p.lv, p.name],
-        o: { id: p.id, item: 'seed:' + p.id, name: p.name, icon: gardenIconSvg(p.id, { kind: 'seed', px: 56 }), rarity: p.rarity, sub: [GARDEN_CATS[p.cat].one, inSeason ? 'in season' : ''].filter(Boolean).join(' · '), facts: [grows, sells].filter(Boolean), blurb: p.blurb, have: gardenHas('seed:' + p.id) } };
+        o: { id: p.id, item: 'seed:' + p.id, name: p.name, icon: gardenIconSvg(p.id, { kind: 'seed', px: 56 }), rarity: p.rarity, inSeason, grow: gh ? gh[3] / 1.3 : 0, sell, facts: [GARDEN_CATS[p.cat].one, grows, sells].filter(Boolean), blurb: p.blurb, have: gardenHas('seed:' + p.id) } };
     });
   } else {
-    let list = GARDEN_DECOR.slice();
+    let list = GARDEN_DECOR.filter(d => !d.craft);
     if (_gdx.shopCat) list = list.filter(d => d.cat === _gdx.shopCat);
     rows = list.map(d => {
       const pr = gardenPriceOf('decor:' + d.id, m), lock = !!gardenLockOf(d, uc);
       const size = d.w > 1 || d.h > 1 ? `takes ${d.w} × ${d.h} tiles` : '';
       return { key: [lock ? 1 : 0, !lock && pr.price != null && pr.price <= coins ? 0 : 1, 0, d.lv, d.name],
-        o: { id: d.id, item: 'decor:' + d.id, name: d.name, icon: gardenIconSvg(d.id, { kind: 'decor', px: 56 }), sub: GARDEN_DECOR_CATS[d.cat].label.replace(/s$/, '').toLowerCase(), facts: [size, _gdpEffectText(d)].filter(Boolean), blurb: d.blurb, have: gardenHas('decor:' + d.id), placed: m.decor.filter(x => x.def.id === d.id).length } };
+        o: { id: d.id, item: 'decor:' + d.id, name: d.name, icon: gardenIconSvg(d.id, { kind: 'decor', px: 56 }), facts: [size, _gdpEffectText(d)].filter(Boolean), blurb: d.blurb, have: gardenHas('decor:' + d.id), placed: m.decor.filter(x => x.def.id === d.id).length } };
     });
   }
   // What you can buy now comes first (affordable, in season), then by garden level; the rest is behind "Show more".
@@ -98,83 +91,61 @@ function gardenShopTab(el, m) {
   for (const r of rows.slice(0, shown)) grid.appendChild(_gdxCard(r.o, m));
   el.appendChild(grid);
   if (!rows.length) el.appendChild(_gdpEl('p', 'muted', 'Nothing here yet.'));
-  if (rows.length > GDX_SHOP_PAGE) {
-    const more = _gdpEl('div', 'gd-shop-more');
-    more.appendChild(_gdpEl('span', 'muted', `Showing ${shown} of ${rows.length}`));
-    if (shown < rows.length) more.appendChild(_gdpBtn('Show more', { icon: 'chevron-down', run: () => { _gdx.shopN = shown + GDX_SHOP_PAGE; _gdxRepaintTab(); } }));
-    if (shown > GDX_SHOP_PAGE) more.appendChild(_gdpBtn('Show fewer', { kind: 'btn-ghost', run: () => { _gdx.shopN = GDX_SHOP_PAGE; _gdxRepaintTab(); } }));
-    el.appendChild(more);
-  }
+  if (shown < rows.length) { const more = _gdpEl('div', 'gd-shop-more'); more.appendChild(_gdpBtn(`${rows.length - shown} more`, { icon: 'chevron-down', run: () => { _gdx.shopN = shown + GDX_SHOP_PAGE; _gdxRepaintTab(); } })); el.appendChild(more); }
 }
-/** Today's deal as one slim strip (not a card): the seed, the price, one button. */
+/** Today's deal as one slim strip: the seed, its name and the price button. */
 function _gdxDealStrip(deal, m) {
   const pr = gardenPriceOf('seed:' + deal.id, m);
   const d = _gdpEl('div', 'gd-deal');
   const art = _gdpEl('span', 'gd-deal-art'); art.innerHTML = gardenIconSvg(deal.id, { kind: 'seed', px: 28 }); d.appendChild(art);
   const t = _gdpEl('span', 'gd-deal-t');
-  t.appendChild(_gdpEl('b', null, `Today’s deal: ${deal.name}`));
-  t.appendChild(_gdpEl('span', 'muted', ` half price until midnight${pr.price != null ? ' (' + pr.price + ' coin' + (pr.price === 1 ? '' : 's') + ')' : ''}`));
+  t.appendChild(_gdpEl('span', 'gd-deal-tag', '½ price'));
+  t.appendChild(_gdpEl('b', null, deal.name));
   d.appendChild(t);
-  if (pr.price != null && !pr.why) {
-    d.appendChild(_gdpBtn('Buy', { kind: 'btn-primary', icon: 'coins', tip: m.wallet.coins < pr.price ? `You have ${m.wallet.coins}: finish a task or two` : `Buy one for ${pr.price} coins`, disabled: m.wallet.coins < pr.price, run: () => _gdxBuy('seed:' + deal.id, 1) }));
-  } else if (pr.why) d.appendChild(_gdpEl('span', 'gd-lock', pr.why));
+  d.appendChild(_gdxPriceBtn('seed:' + deal.id, m, pr));
   return d;
 }
-/** One thing for sale, in plain words ("Costs 10 coins · grows in about 2 days · sells for 3 coins") and ONE Buy button. */
+/** The price on a thing, and the way to buy it: press it. Short of coins or locked, it says no the way a game does. */
+function _gdxPriceBtn(item, m, pr, card) {
+  const short = pr.price != null && !pr.why && m.wallet.coins < pr.price, locked = pr.price == null || !!pr.why;
+  const b = _gdpEl('button', 'gd-price' + (short ? ' is-short' : '') + (locked ? ' is-locked' : '')); b.type = 'button';
+  if (locked) { b.innerHTML = icon('lock', 'i-xs'); b.appendChild(_gdpEl('span', null, _gdxWhyShort(pr.why))); b.setAttribute('aria-label', pr.why || 'Not for sale'); }
+  else { b.innerHTML = _GH_GLYPH.coin; b.appendChild(_gdpEl('b', null, _gdpNum(pr.price))); b.setAttribute('aria-label', `Buy for ${pr.price} coins`); }
+  b.onclick = (ev) => { ev.stopPropagation(); _gdxBuy(item, 1, card || b, pr, b); };
+  return b;
+}
+function _gdxWhyShort(why) { const w = String(why || ''); const lv = /level (\d+)/i.exec(w); return lv ? 'Lv ' + lv[1] : w.replace(/^Event: /, '').replace(/ only$/, ''); }
+/** A short time ('15h', '4d') for a tile. */
+function _gdxShortH(h) { return h < 24 ? Math.max(1, Math.round(h)) + 'h' : Math.round(h / 24) + 'd'; }
+/** One thing for sale: a picture, its name, and a price you press. How long it takes and what it sells for are small marks; the sentence is on hover. */
 function _gdxCard(o, m) {
   const pr = gardenPriceOf(o.item, m);
-  const c = _gdpEl('div', 'gd-card' + (pr.why ? ' is-locked' : '') + (o.rarity ? ' gd-r-' + o.rarity : ''));
-  const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = o.icon; c.appendChild(art);
-  const t = _gdpEl('div', 'gd-card-t');
-  t.appendChild(_gdpEl('b', null, o.name));
-  if (o.rarity && o.rarity !== 'common') t.appendChild(_gdpEl('span', 'gd-rar gd-rar-' + o.rarity, GARDEN_RARITY[o.rarity].label));
-  if (o.sub) t.appendChild(_gdpEl('small', 'muted', o.sub));
-  if (pr.price != null) {
-    const cost = `Costs ${pr.price} coin${pr.price === 1 ? '' : 's'}${pr.deal ? ' (half price today)' : ''}`;
-    t.appendChild(_gdpEl('small', 'gd-facts', [cost, ...(o.facts || [])].join(' · ')));
-  }
-  if (o.have || o.placed) t.appendChild(_gdpEl('small', 'gd-have', [o.have ? `${o.have} in your bag` : '', o.placed ? `${o.placed} in the garden` : ''].filter(Boolean).join(' · ')));
-  c.appendChild(t);
-  if (o.blurb) c.title = o.blurb;
-  const f = _gdpEl('div', 'gd-card-f');
-  if (pr.price == null) f.appendChild(_gdpEl('span', 'gd-lock', pr.why || 'Not for sale'));
-  else if (pr.why) { const l = _gdpEl('span', 'gd-lock'); l.innerHTML = icon('lock', 'i-xs'); l.appendChild(_gdpEl('span', null, pr.why)); f.appendChild(l); }
-  else f.appendChild(_gdxBuyBtns(o.item, m, pr));
-  c.appendChild(f);
+  const c = _gdpEl('div', 'gd-tile' + (pr.why || pr.price == null ? ' is-locked' : '') + (o.rarity ? ' gd-r-' + o.rarity : ''));
+  const art = _gdpEl('div', 'gd-tile-art'); art.innerHTML = o.icon; c.appendChild(art);
+  if (o.have) c.appendChild(_gdpEl('i', 'gd-slotn gd-tile-have', '×' + o.have));
+  if (o.inSeason) { const lf = _gdpEl('span', 'gd-tile-season'); lf.innerHTML = icon('leaf', 'i-xs'); lf.setAttribute('data-tip', 'In season: grows faster now'); c.appendChild(lf); }
+  c.appendChild(_gdpEl('b', 'gd-tile-n', o.name));
+  const facts = _gdpEl('div', 'gd-tile-f');
+  if (o.grow) { const g = _gdpEl('span'); g.innerHTML = icon('clock', 'i-xs'); g.appendChild(document.createTextNode(_gdxShortH(o.grow))); facts.appendChild(g); }
+  if (o.sell) { const g = _gdpEl('span'); g.innerHTML = _GH_GLYPH.coin; g.appendChild(document.createTextNode(String(o.sell))); facts.appendChild(g); }
+  if (o.placed) { const g = _gdpEl('span'); g.innerHTML = icon('map-pin', 'i-xs'); g.appendChild(document.createTextNode(String(o.placed))); facts.appendChild(g); }
+  if (facts.children.length) c.appendChild(facts);
+  if (o.owned) c.appendChild(_gdpEl('span', 'gd-price is-owned', '✓'));
+  else c.appendChild(_gdxPriceBtn(o.item, m, pr, c));
+  c.setAttribute('data-tip', [o.name, ...(o.facts || []), o.blurb].filter(Boolean).join(' · '));
   return c;
 }
-/** Things you buy in bunches: seeds, fertiliser, paths and fences. */
-function _gdxStackable(item) { return item.startsWith('seed:') || item === 'fertiliser' || /^decor:.*(path|stones|flagstones|boardwalk|tiles|fence|hedge|wall|railings|screen)$/.test(item); }
-/** One "Buy". For things bought in bunches, choosing Buy opens a small quantity stepper right there (1 to 20). */
-function _gdxBuyBtns(item, m, pr) {
-  pr = pr || gardenPriceOf(item, m);
-  const box = _gdpEl('div', 'gd-buy');
-  if (pr.price == null || pr.why) { box.appendChild(_gdpEl('span', 'gd-lock', pr.why || '')); return box; }
-  const coins = m.wallet.coins, poor = coins < pr.price;
-  if (_gdx.pick === item && _gdxStackable(item) && !poor) {
-    const max = Math.max(1, Math.min(20, Math.floor(coins / pr.price)));
-    const q = Math.max(1, Math.min(max, _gdx.qty || 1));
-    box.classList.add('is-open');
-    const step = _gdpEl('span', 'gd-step');
-    step.appendChild(_gdpBtn('', { icon: 'minus', aria: 'One less', disabled: q <= 1, run: () => { _gdx.qty = q - 1; _gdxRepaintTab(); } }));
-    step.appendChild(_gdpEl('b', 'gd-step-n', String(q)));
-    step.appendChild(_gdpBtn('', { icon: 'plus', aria: 'One more', disabled: q >= max, run: () => { _gdx.qty = q + 1; _gdxRepaintTab(); } }));
-    box.appendChild(step);
-    box.appendChild(_gdpBtn(`Buy ${q} for ${pr.price * q}`, { kind: 'btn-primary', icon: 'coins', run: () => _gdxBuy(item, q) }));
-    box.appendChild(_gdpBtn('', { kind: 'btn-ghost', icon: 'x', aria: 'Cancel', run: () => { _gdx.pick = null; _gdxRepaintTab(); } }));
-    return box;
-  }
-  const b = _gdpBtn('Buy', { kind: 'btn-primary', icon: 'coins', tip: poor ? `You have ${coins}: finish a task or two` : pr.deal ? 'Half price today' : _gdxStackable(item) ? 'Choose how many' : `Buy for ${pr.price} coins`, disabled: poor, run: () => { if (_gdxStackable(item)) { _gdx.pick = item; _gdx.qty = 1; _gdxRepaintTab(); } else _gdxBuy(item, 1); } });
-  b.classList.add('gd-buy1');
-  box.appendChild(b);
-  return box;
+function _gdxBuy(item, n, target, pr, btn) {
+  _gdx.pick = null;
+  const r = gardenBuy(item, n);
+  if (!r.ok) { gameDenyOf(r, target || null, pr && pr.price != null && !pr.why ? { kind: 'coins', badge: String(pr.price) } : undefined); return; }
+  if (pr && pr.price != null) gameCheer(btn || target, { text: '-' + pr.price * n, tone: 'coin', sound: true });
 }
-function _gdxBuy(item, n) { _gdx.pick = null; const r = gardenBuy(item, n); _gdpSay(r); }
 function gardenMarket(el, m) {
   const items = Object.entries(m.wallet.items).filter(([k, n]) => n > 0 && gardenSellPrice(k, m) > 0 && !k.startsWith('decor:'));
   const decor = Object.entries(m.wallet.items).filter(([k, n]) => n > 0 && k.startsWith('decor:'));
   if (m.events.includes('harvest-home')) el.appendChild(_gdpEl('p', 'gd-note', 'Harvest home: the market pays a fifth more this week.'));
-  if (!items.length && !decor.length) { mountEmptyState(el, { icon: 'shopping-basket', title: 'Nothing to sell yet', text: 'Pick what is ripe in the garden (it sparkles) and it lands in your basket, ready for the market.', actions: [{ label: 'To the garden', icon: 'sprout', primary: true, run: () => setView('garden') }] }); return; }
+  if (!items.length && !decor.length) { mountEmptyState(el, { icon: 'shopping-basket', title: 'Nothing to sell yet', text: '' }); return; }
   const list = _gdpEl('div', 'gd-sell');
   let total = 0;
   for (const [k, n] of items) {
@@ -210,8 +181,9 @@ function _gdxSellRow(k, n, each, note) {
   const r = _gdpEl('div', 'gd-sellrow');
   const a = _gdpEl('span', 'gd-sellrow-art'); a.innerHTML = _gdxItemIcon(k, 40); r.appendChild(a);
   const t = _gdpEl('span', 'gd-sellrow-t'); t.appendChild(_gdpEl('b', null, _gdxItemName(k))); t.appendChild(_gdpEl('small', 'muted', `${n} · ${each} coin${each === 1 ? '' : 's'} each${note ? ' · ' + note : ''}`)); r.appendChild(t);
-  r.appendChild(_gdpBtn(`Sell 1 · ${each}`, { run: () => _gdpSay(gardenSell(k, 1)) }));
-  if (n > 1) r.appendChild(_gdpBtn(`All · ${each * n}`, { kind: 'btn-primary', run: () => _gdpSay(gardenSell(k, n)) }));
+  const sell = (q, ev) => { const b = ev.currentTarget, x = gardenSell(k, q); if (x.ok) gameCheer(b, { text: '+' + each * q, tone: 'coin', sound: true }); else gameDenyOf(x, b); };
+  r.appendChild(_gdpBtn(`Sell 1 · ${each}`, { run: (ev) => sell(1, ev) }));
+  if (n > 1) r.appendChild(_gdpBtn(`All · ${each * n}`, { kind: 'btn-primary', run: (ev) => sell(n, ev) }));
   return r;
 }
 
@@ -221,8 +193,9 @@ function gardenAlmanacTab(el, m) {
   const plantsFound = GARDEN_PLANTS.filter(p => g.disc[p.id]).length, visFound = GARDEN_VISITORS.filter(v => g.disc[v.id]).length, decFound = GARDEN_DECOR.filter(d => g.disc[d.id]).length;
   const ribs = gardenRibbonRows(m), ribDone = ribs.filter(r => r.earned).length;
   const top = _gdpEl('div', 'gd-alm-top');
-  top.appendChild(_gdxSeg([['plants', `Plants ${plantsFound}/${GARDEN_PLANTS.length}`, 'flower-2'], ['visitors', `Visitors ${visFound}/${GARDEN_VISITORS.length}`, 'bird'], ['decor', `Decorations ${decFound}/${GARDEN_DECOR.length}`, 'armchair'], ['ribbons', `Ribbons ${ribDone}/${ribs.length}`, 'award']], _gdx.alm, (k) => { _gdx.alm = k; _gdx.almCat = ''; _gdxRepaintTab(); }, 'gd-alm-seg'));
+  top.appendChild(_gdxSeg([['plants', `Plants ${plantsFound}/${GARDEN_PLANTS.length}`, 'flower-2'], ['visitors', `Visitors ${visFound}/${GARDEN_VISITORS.length}`, 'bird'], ['decor', `Decorations ${decFound}/${GARDEN_DECOR.length}`, 'armchair'], ['ribbons', `Ribbons ${ribDone}/${ribs.length}`, 'award'], ...(typeof gardenLifeBookTab === 'function' ? [['nature', 'Nature book', 'leaf']] : [])], _gdx.alm, (k) => { _gdx.alm = k; _gdx.almCat = ''; _gdxRepaintTab(); }, 'gd-alm-seg'));
   el.appendChild(top);
+  if (_gdx.alm === 'nature' && typeof gardenLifeBookTab === 'function') { gardenLifeBookTab(el, m); return; }   // the creatures and the surprises: 94-garden-life-6book.js
   if (_gdx.alm === 'ribbons') {
     const grid = _gdpEl('div', 'gd-ribbons');
     for (const r of ribs) {
@@ -312,8 +285,7 @@ function gardenBasketTab(el, m) {
   const bqs = Object.entries(items).filter(([k, n]) => k.startsWith('bq:') && n > 0);
   const flowers = crops.filter(([k]) => { const p = gardenPlant(k.slice(5)); return p && ['flower', 'wild', 'water', 'exotic'].includes(p.cat); }).concat(crops.filter(([k]) => k === 'crop:holly'));
   if (!crops.length && !bqs.length && !(items.honey > 0)) {
-    mountEmptyState(el, { icon: 'shopping-basket', title: 'Your basket is empty', text: 'Ripe plants sparkle in the garden: the hand picks them (or Harvest all). Flowers make bouquets; everything sells at the market.', actions: [{ label: 'To the garden', icon: 'sprout', primary: true, run: () => setView('garden') }] });
-    _gdxBag(el, m);
+    mountEmptyState(el, { icon: 'shopping-basket', title: 'Your basket is empty', text: '' });
     return;
   }
   // bouquets
@@ -324,7 +296,7 @@ function gardenBasketTab(el, m) {
     for (const k of Object.keys(pick)) if (!flowers.some(([f]) => f === k)) delete pick[k];
     const stems = []; for (const [k, n] of Object.entries(pick)) for (let i = 0; i < n; i++) stems.push({ id: k.slice(5) });
     const style = gardenBouquetOf(stems);
-    bq.appendChild(_gdpEl('p', 'muted', 'Pick at least three stems. The flowers decide the style: all roses make a bouquet of roses, five colours make a rainbow, wildflowers a posy.'));
+    bq.appendChild(_gdpEl('p', 'muted', 'Three stems or more.'));
     const row = _gdpEl('div', 'gd-stems');
     for (const [k, n] of flowers) {
       const c = _gdpEl('div', 'gd-stem');
@@ -341,7 +313,7 @@ function gardenBasketTab(el, m) {
     else f.appendChild(_gdpEl('span', 'muted', stems.length ? `${stems.length} stem${stems.length === 1 ? '' : 's'}: ${3 - stems.length} more for a posy` : 'No stems picked yet'));
     f.appendChild(_gdpBtn('Make the bouquet', { kind: 'btn-primary', icon: 'flower', disabled: !style, run: () => { const r = gardenMakeBouquet(stems); if (r.ok) _gdx.stems = {}; else _gdpSay(r); } }));
     bq.appendChild(f);
-  } else bq.appendChild(_gdpEl('p', 'muted', 'Cut flowers make bouquets: pick some flowers that are in bloom and come back.'));
+  } else bq.appendChild(_gdpEl('p', 'muted', 'Pick some flowers first.'));
   el.appendChild(bq);
   if (bqs.length) {
     const sec = _gdpEl('section', 'gd-bqs');
@@ -363,7 +335,6 @@ function gardenBasketTab(el, m) {
   if (items.honey > 0) list.appendChild(_gdxSellRow('honey', Math.floor(items.honey), gardenSellPrice('honey', m)));
   sec.appendChild(list);
   el.appendChild(sec);
-  _gdxBag(el, m);
 }
 function _gdxBag(el, m) {
   const items = m.wallet.items;
@@ -396,7 +367,7 @@ function gardenPhotoOpen() {
         el.appendChild(frame);
         const ctl = _gdpEl('div', 'gd-photo-ctl');
         ctl.appendChild(_gdxSeg([['', 'Now'], ['dawn', 'Dawn'], ['day', 'Midday'], ['dusk', 'Golden hour'], ['night', 'Night']], st.tod, (k) => { st.tod = k; paint(); }));
-        ctl.appendChild(_gdxSeg([['all', 'Whole garden'], ['wide', 'Closer'], ['bed', 'Front garden']], st.crop, (k) => { st.crop = k; paint(); }));
+        ctl.appendChild(_gdxSeg([...(gardenCropFor(gardenModel().areas) === 'world' ? [['world', 'Everything']] : []), ['all', 'Whole garden'], ['wide', 'Closer'], ['bed', 'Front garden']], st.crop, (k) => { st.crop = k; paint(); }));
         ctl.appendChild(_gdxSeg([['none', 'No frame'], ['polaroid', 'Polaroid'], ['postcard', 'Postcard']], st.frame, (k) => { st.frame = k; paint(); }));
         const vis = _gdpBtn(st.visitors ? 'Visitors on' : 'Visitors off', { icon: 'bird', run: () => { st.visitors = !st.visitors; paint(); } });
         ctl.appendChild(vis);
@@ -417,7 +388,7 @@ function _gdxSavePhoto(sc, st) {
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `garden-${_gdToday()}.png`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast('Saved to your downloads', { icon: 'camera', kind: 'ok' });
+    toast('Saved to your downloads', { icon: 'camera', kind: 'ok', now: true });
   }).catch(() => { if (typeof busy === 'function') busy(); toast('The photo could not be saved.', { kind: 'err', retry: () => _gdxSavePhoto(sc, st) }); });
 }
 

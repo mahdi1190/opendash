@@ -242,7 +242,8 @@ const PF_PARTS = Object.freeze([
   { k: 'pin', tab: 'jewel', label: 'Pin badge', opts: _pfO([['none', 'None'], ['star', 'Star'], ['heart', 'Heart'], ['rainbow', 'Rainbow'], ['flower', 'Flower'], ['leaf', 'Leaf'],
     ['planet', 'Planet'], ['coffee', 'Coffee'], ['smiley', 'Smiley'], ['bolt', 'Bolt'], ['bee', 'Bee'],
     ['sun', 'Sunrise', { ach: 'early-bird' }], ['owl', 'Owl', { ach: 'night-owl' }], ['flame', 'Flame', { ach: 'streak-7' }],
-    ['fish', 'Fish pin', { ribbon: 'first-catch' }], ['butterfly', 'Butterfly pin', { ribbon: 'first-bug' }]]) },   // 2.22: garden ribbons (94-garden-0catalog.js)
+    ['fish', 'Fish pin', { ribbon: 'first-catch' }], ['butterfly', 'Butterfly pin', { ribbon: 'first-bug' }],   // 2.22: garden ribbons (94-garden-0catalog.js)
+    ['beebadge', 'Bee badge', { craft: 'bee-badge' }], ['trowelbadge', 'Trowel badge', { craft: 'trowel-badge' }], ['sunbadge', 'Sunflower badge', { craft: 'sun-badge' }]]) },   // 2.23: made at the crafting bench
   { k: 'glasses', tab: 'extras', label: 'Glasses', opts: _pfO([['none', 'None'], ['round', 'Round'], ['square', 'Square'], ['rect', 'Narrow'], ['wire', 'Wire rims'], ['browline', 'Browline'],
     ['cat', 'Cat-eye'], ['oversized', 'Oversized'], ['aviator', 'Aviators'], ['half', 'Half-moons'], ['sun', 'Sunglasses'], ['aviatorsun', 'Aviator shades'],
     ['roundsun', 'Round sunnies'], ['mirror', 'Mirrored shades'], ['sport', 'Sport shades'], ['3d', '3D glasses', { level: 9 }],
@@ -256,13 +257,14 @@ const PF_PARTS = Object.freeze([
     ['witch', 'Witch hat', { season: 'halloween' }], ['horns', 'Little horns', { season: 'halloween' }], ['santa', 'Santa hat', { season: 'december' }],
     ['antlers', 'Antlers', { season: 'festive' }], ['flowers', 'Flower crown', { season: 'spring' }], ['bunny', 'Bunny ears', { season: 'spring' }],
     ['party', 'Party hat', { season: 'birthday' }],
-    ['anglerhat', 'Angler’s hat', { ribbon: 'angler' }], ['pith', 'Explorer’s helmet', { ribbon: 'bug-catcher' }]]) },   // 2.22: garden ribbons
+    ['anglerhat', 'Angler’s hat', { ribbon: 'angler' }], ['pith', 'Explorer’s helmet', { ribbon: 'bug-catcher' }],   // 2.22: garden ribbons
+    ['flowercrown', 'Daisy crown', { craft: 'flower-crown' }], ['strawhat', 'Straw hat', { craft: 'straw-hat' }], ['leafwreath', 'Herb wreath', { craft: 'herb-wreath' }], ['wildcirclet', 'Meadow circlet', { craft: 'meadow-circlet' }], ['beekeeper', 'Beekeeper’s hat', { craft: 'beekeeper-hat' }]]) },   // 2.23: made at the crafting bench
   { k: 'hatCol', tab: 'extras', label: 'Hat colour', colour: 'cloth' },
   { k: 'headphones', tab: 'extras', label: 'Headphones', opts: _pfO([['none', 'None'], ['over', 'Headphones'], ['buds', 'Earbuds'], ['gaming', 'Headset'], ['muffs', 'Ear muffs'],
     ['cat', 'Cat ears', { level: 12 }]]) },
   { k: 'headphonesCol', tab: 'extras', label: 'Headphones colour', colour: 'cloth' },
   { k: 'scarf', tab: 'extras', label: 'Scarf', opts: _pfO([['none', 'None'], ['plain', 'Plain'], ['striped', 'Striped'], ['chunky', 'Chunky knit'], ['tartan', 'Tartan'], ['silk', 'Silk scarf'],
-    ['bandana', 'Neckerchief'], ['rainbow', 'Rainbow', { level: 7 }]]) },
+    ['bandana', 'Neckerchief'], ['rainbow', 'Rainbow', { level: 7 }], ['gardenscarf', 'Gardener’s scarf', { craft: 'gardener-scarf' }], ['daisychain', 'Daisy chain', { craft: 'daisy-chain' }]]) },
   { k: 'scarfCol', tab: 'extras', label: 'Scarf colour', colour: 'cloth' },
   { k: 'scarf2Col', tab: 'extras', label: 'Stripe colour', colour: 'cloth' },
   { k: 'tie', tab: 'extras', label: 'Tie', opts: _pfO([['none', 'None'], ['tie', 'Tie'], ['skinny', 'Skinny tie'], ['bow', 'Bow tie'], ['lanyard', 'Lanyard']]) },
@@ -358,6 +360,7 @@ function profileLockOf(k, id, ctx) {
   }
   // 2.22: a garden ribbon (ctx.ribbons is a Set of the ribbon ids you have earned; a page without a garden has none to check)
   if (o.ribbon && ctx.ribbons && !ctx.ribbons.has(o.ribbon)) return 'Earn the garden ribbon “' + ((ctx.ribbonLabel && ctx.ribbonLabel(o.ribbon)) || o.ribbon) + '”';
+  if (o.craft && ctx.crafted && !ctx.crafted.has(o.craft)) return 'Make it at the crafting bench';   // 2.23
   if (!ctx.game) return '';   // no game on this page: nothing to unlock
   if (o.level && (Number(ctx.levelMax) || 1) < o.level) return 'Reach level ' + o.level;
   if (o.ach && !(ctx.ach && ctx.ach.has && ctx.ach.has(o.ach))) return 'Earn “' + ((ctx.achLabel && ctx.achLabel(o.ach)) || o.ach) + '”';
@@ -856,13 +859,17 @@ function _pfFrame(a, live, theme, small) {
   }
 }
 
+/** The head's outline (the portrait's egg). */
+const PF_HEAD_D = 'M50 22 C61.5 22 69.4 30.5 69.4 43.5 C69.4 56.5 61 66.2 50 66.2 C39 66.2 30.6 56.5 30.6 43.5 C30.6 30.5 38.5 22 50 22 Z';
 /** The builder's close-ups (no frame): o.crop -> the viewBox. */
 const _PF_CROPS = Object.freeze({ face: '27 26 46 46', head: '12 0 76 76', chest: '27 55 46 46', ears: '22 30 56 56', bust: '4 6 92 92', upper: '20 40 60 60' });
 /**
  * The avatar as an <svg> string (every value comes from the tables: see the header).
  * o: {size (px, default 64), uid (unique per drawing on a page: gradients and the clip), theme (the frame colour,
  *     a swatch id or hex), live: {hour, season, level, levelPct, streak}, mood: {mouth, eyes, brows, extra},
- *     motion (blink: false when reduced motion is on), cls, crop: 'face' | 'head' | 'chest' | 'ears' | 'bust' | 'upper' (a close-up, no frame)}
+ *     motion (blink: false when reduced motion is on), cls, crop: 'face' | 'head' | 'chest' | 'ears' | 'bust' | 'upper' (a close-up, no frame),
+ *     layers: true -> no <svg>, no background, clip or frame: {back, outerback, hairback, neck, body, strands, scarf, ears, skull, face, hair, glasses, hat, phones, extra} (strings, this
+ *     same drawing cut at its seams, in portrait units: 94-garden-art-g-player.js stands them on a body, so the garden's person IS the portrait)}
  * Layers, back to front: the background; hoods and collars behind the neck; the back of the hair; the neck; the top
  * (or the dress) with its pattern; the dungarees' bib, necklace, tie; outerwear; pin; bag straps; hair over the
  * shoulders; scarf; ears and earrings; the face (cheeks, marks, paint, make-up, eyes, brows, mouth, piercings);
@@ -891,14 +898,20 @@ function profileAvatarSvg(a0, o) {
   const patOn = (base) => (a.pattern === 'none' ? null : (silD) => _pfPattern(a.pattern, pc, base, uid + 'p' + (nPat++), silD, small));
   const dye = a.dye !== 'none' && !scarfOn && a.hair !== 'bald' ? (layer, draw) => _pfDye(a.dye, layer, a.hair, draw, uid + 'd' + layer, hc, hc2) : () => '';
   const shape = crop ? '<rect x="-20" y="-20" width="140" height="140"/>' : a.shape === 'squircle' ? '<rect width="100" height="100" rx="26"/>' : '<circle cx="50" cy="50" r="50"/>';
-  let s = `<defs><clipPath id="${uid}c">${shape}</clipPath></defs><g clip-path="url(#${uid}c)">` + _pfBg(a, live, uid, small);
+  let s = o.layers ? '' : `<defs><clipPath id="${uid}c">${shape}</clipPath></defs><g clip-path="url(#${uid}c)">` + _pfBg(a, live, uid, small);
+  const seams = [], seam = (k) => seams.push([k, s.length]);   // o.layers
   // behind the neck
+  seam('back');
   if (!dressOn || overTop) s += _pfTopBack(a.top, tc);
+  seam('outerback');
   s += _pfOuterBack(a.outer, oc, t2);
+  seam('hairback');
   if (scarfOn) s += _pfP('M26.6 46 C24.6 21.6 37 12.4 50 12.4 C63 12.4 75.4 21.6 73.4 46 C74.6 61 69 74.6 60 79 L40 79 C31 74.6 25.4 61 26.6 46 Z', hatT[1]);
   else s += _pfHairBack(a.hair, hc) + dye('back', (t) => _pfHairBack(a.hair, t));
   // neck and body
+  seam('neck');
   s += _pfP('M43.5 58 L43.5 77 Q50 80 56.5 77 L56.5 58 Z', _pfMix(sk[0], sk[1], 0.55)) + _pfP('M43.5 60 Q50 66 56.5 60 L56.5 63.4 Q50 69.4 43.5 63.4 Z', sk[3], 0.22);
+  seam('body');
   if (!dressOn || overTop) s += _pfTop(a.top, a.top === 'lab' ? pfTone('#f4f4f2') : tc, t2, small, { sk, pat: dressOn ? null : patOn(tc), id: uid + 't' });
   if (dressOn) s += _pfDress(a.dress, dc, t2, sk, small, { pat: patOn(dc) });
   if (a.bottom === 'dungarees' && !dressOn) s += _pfBib(bc, mt, small);
@@ -907,14 +920,19 @@ function profileAvatarSvg(a0, o) {
   s += _pfOuter(a.outer, oc, t2, mt, small);
   s += _pfPin(a.pin, small, a.outer !== 'none');
   s += _pfBagStraps(a.bag, pfTone(_pfHexOf('cloth', a.bagCol, '#9a6a40')), mt, small);
+  seam('strands');
   if (scarfOn) s += _pfP('M37 62 Q50 72 63 62 L67 80 Q50 88.6 33 80 Z', hatT[0]) + _pfS('M36 74 Q50 82 64 74', hatT[1], 1, 0.7);
   else s += _pfHairStrands(a.hair, hc) + dye('strands', (t) => _pfHairStrands(a.hair, t));
+  seam('scarf');
   s += _pfScarf(a.scarf, pfTone(_pfHexOf('cloth', a.scarfCol, '#c89a32')), pfTone(_pfHexOf('cloth', a.scarf2Col, '#ece4d0')), small);
   // the head
+  seam('ears');
   if (!scarfOn) s += _pfE(31.6, 47, 3.8, 5.4, sk[0]) + _pfE(68.4, 47, 3.8, 5.4, sk[0]) + (small ? '' : _pfBothS('M31.2 44.5 Q29.6 47 31.4 49.6', sk[3], 0.9, 0.4))
     + _pfEarrings(a.earrings, mt, small) + (a.piercing === 'ear' ? _pfPiercing('ear', mt, small) : '');
-  s += _pfP('M50 22 C61.5 22 69.4 30.5 69.4 43.5 C69.4 56.5 61 66.2 50 66.2 C39 66.2 30.6 56.5 30.6 43.5 C30.6 30.5 38.5 22 50 22 Z', sk[0])
+  seam('skull');
+  s += _pfP(PF_HEAD_D, sk[0])
     + _pfP('M63 28 C69.6 35 70.6 52 60.6 63.2 C65.6 53.6 66.8 40.6 63 28 Z', sk[1], 0.35) + (small ? '' : _pfE(41, 31, 6, 3.2, sk[2], 0.45));
+  seam('face');
   s += _pfCheeks(a.marks, sk, small) + _pfBeauty(a.beauty, small);
   s += _pfS('M50.6 47.6 Q48.2 52.8 50.8 54', sk[3], 1.3, 0.5);
   s += _pfPaint(a.paint, sk, small) + _pfFacialBase(a.facial, hc) + _pfLiner(a.liner, false, small);
@@ -927,14 +945,20 @@ function profileAvatarSvg(a0, o) {
   s += _pfMouth(mouth, a.lips) + _pfFacialTop(a.facial, hc);
   s += _pfNose(a.nose, mt, small) + (a.piercing !== 'ear' ? _pfPiercing(a.piercing, mt, small) : '');
   // over the face
+  seam('hair');
   if (scarfOn) s += _pfP('M31.4 41 C31 27 40 20.4 50 20.4 C60 20.4 69 27 68.6 41 C66 33 59 28.8 50 28.8 C41 28.8 34 33 31.4 41 Z', hatT[0]) + (small ? '' : _pfS('M33.6 36 Q50 25.6 66.4 36', hatT[1], 0.9, 0.6));
   else s += _pfHairFront(a.hair, hc, small) + dye('front', (t) => _pfHairFront(a.hair, t, small));
+  seam('glasses');
   s += _pfGlasses(a.glasses, _pfHexOf('cloth', a.glassesCol, '#232328'));
+  seam('hat');
   if (!scarfOn) s += _pfHat(a.hat, hatT, small);
+  seam('phones');
   s += _pfHeadphones(a.headphones, pfTone(_pfHexOf('cloth', a.headphonesCol, '#3a3c42')));
+  seam('extra');
   if (!small && mood.extra === 'party' && (a.hat === 'none')) s += _pfHat('party', pfTone(_pfHexOf('swatch', 'pink', '#f08fb3')), small);
   if (!small && mood.extra === 'sparkle') s += _pfP(_pfSpark(77, 22, 4.4), '#f6d35e') + _pfP(_pfSpark(24, 30, 2.8), '#f6d35e', 0.9) + _pfP(_pfSpark(82, 34, 2), '#ffffff', 0.9);
   if (!small && mood.extra === 'zzz') s += _pfS('M70 20 L75.4 20 L70 25.4 L75.4 25.4', '#ffffff', 1.5, 0.9) + _pfS('M78 11 L81.6 11 L78 14.6 L81.6 14.6', '#ffffff', 1.2, 0.75);
+  if (o.layers) return Object.fromEntries(seams.map(([k, at], i) => [k, s.slice(at, i + 1 < seams.length ? seams[i + 1][1] : s.length)]));
   s += '</g>' + (crop ? '' : _pfFrame(a, live, o.theme, small));
   return `<svg class="${String(o.cls || 'pf-av-svg').replace(/[^a-z0-9 _-]/gi, '')}" viewBox="${crop || '0 0 100 100'}" width="${size}" height="${size}" aria-hidden="true" focusable="false">${s}</svg>`;
 }
@@ -954,7 +978,9 @@ function profileFigureOpts(a0) {
 const _PF_FIG_CROPS = Object.freeze({ legs: '-15 -40 30 42', feet: '-6.5 -13 15 15', wrist: '-13 -38 13 13', head: '-9 -70 18 18', torso: '-13 -66 26 37' });
 /**
  * The full figure as an <svg> string, '' when the scene library is not on this page.
- * o {size (px height), walk (animate), crop: 'legs' | 'feet' | 'wrist' | 'head' | 'torso' (a close-up for the builder), uid}
+ * o {size (px height), walk (animate), crop: 'legs' | 'feet' | 'wrist' | 'head' | 'torso' (a close-up for the builder), uid,
+ *    layers: true -> no <svg>: {legA, legB, back, farArm, mid, nearArm, shoulders, hands} (strings, figure units; mid stops at the neck: the caller brings the head),
+ *    arms: the people builder's arm pose (with layers), plain: leave out the fine pieces}
  */
 function profileFigureSvg(a0, o) {
   o = o || {};
@@ -962,6 +988,7 @@ function profileFigureSvg(a0, o) {
   const a = profileAvatarNormalize(a0);
   let parts;
   const f = profileFigureOpts(a);
+  if (o.layers && o.arms) f.o.arms = o.arms;
   try { parts = profileFigureDress(a, _pfSP.figure(f.o), { PP: _pfSP }); } catch (e) { return ''; }
   // the palette: the kit's own slots first, then the scene people's, the kit's extra cloth colours, the sole and the ink
   const pal = {};
@@ -999,7 +1026,7 @@ function profileFigureSvg(a0, o) {
   const draw = (list) => (Array.isArray(list) ? list : []).map(sh => {
     if (!sh) return '';
     const x = Array.isArray(sh) ? { f: sh[0], d: sh[1], op: sh[2] } : sh;
-    if (!x.d || typeof x.d !== 'string' || x.glow || (small && x.detail)) return '';
+    if (!x.d || typeof x.d !== 'string' || x.glow || ((small || o.plain) && x.detail)) return '';
     if (!/^[MLHVCSQTAZmlhvcsqtaz0-9 .,eE-]+$/.test(x.d)) return '';   // path data only
     const fill = x.f == null ? 'none' : paint(x.f) || 'none', stroke = x.s ? paint(x.s) : null;
     let at = `<path d="${x.d}" fill="${fill}"`;
@@ -1011,6 +1038,12 @@ function profileFigureSvg(a0, o) {
     if (patOn && !x.s && patTargets.has(x.f)) at += _pfFigPattern(a.pattern, x.d, uid + 'fp' + (nPat++), pc, patBase);
     return at;
   }).join('');
+  if (o.layers) {
+    // the arms' ranges in body; what lies wholly above the collar (the neck, the egg) stays out of mid
+    const at = parts.at, b = parts.body, collar = parts.shoulders.near[1] - 1.9 + 0.7;
+    const low = (x) => { const d = String(Array.isArray(x) ? x[1] : x && x.d), n = d.match(/-?\d*\.?\d+/g) || []; if (/[ahv]/.test(d)) return Number(n[1]) > collar; for (let i = 1; i < n.length; i += 2) if (Number(n[i]) > collar) return true; return false; };
+    return { legA: draw(parts.legA), legB: draw(parts.legB), back: draw(b.slice(0, at.farArm[0])), farArm: draw(b.slice(at.farArm[0], at.farArm[1])), mid: draw(b.slice(at.farArm[1], at.nearArm[0]).filter(low)), nearArm: draw(b.slice(at.nearArm[0], at.nearArm[1])), shoulders: parts.shoulders, hands: parts.hands };
+  }
   const piv = '0 ' + _pfN(Number(_pfSP.HIP) || -31.5);
   const walk = !!o.walk && !crop;
   const swing = (from, to) => (walk ? `<animateTransform attributeName="transform" type="rotate" values="${from} ${piv};${to} ${piv};${from} ${piv}" dur="0.9s" repeatCount="indefinite"/>` : '');

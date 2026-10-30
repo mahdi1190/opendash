@@ -152,15 +152,15 @@ function _gwRing(x, y, k) {
   g.innerHTML = `<ellipse class="gd-ring" cx="0" cy="0" rx="${(8 * (k || 1)).toFixed(1)}" ry="${(2.6 * (k || 1)).toFixed(1)}" fill="none" stroke="#ffffff" stroke-width="1.4" stroke-opacity="0.9"/>`;
   fx.ring.appendChild(g); setTimeout(() => g.remove(), 1500);
 }
-function _gwFishCancel(msg) {
+function _gwFishCancel() {
+  // you wound it in yourself: that is not a mistake, so nothing is said
   if (!_gwFishBusy()) return;
   _gw.fishing.state = 'idle'; _gwReelClose(); _gwFishClearFx(); _gwFishFocus(false);
-  if (msg) _gdpSay({ ok: false, msg });
 }
 function _gwFishCancelWalkAway() { if (_gwFishBusy() && _gw.fishing.state !== 'cast') _gwFishCancel(''); }
 function _gwFishLost(msg) {
   _gw.fishing.state = 'idle'; _gwReelClose(); _gwFishClearFx(); _gwFishFocus(false);
-  if (msg && typeof toast === 'function') toast(msg, { icon: 'fish', timeout: 2600 });
+  if (msg) { const s = _ghProject(_gw.fishing.bx, _gw.fishing.by), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, say: msg }); }
   if (gardenMotionOn()) { const [x, y] = _gwPx(_gw.fishing.bx, _gw.fishing.by); _gwRing(x, y, 1.2); }
   _gdpRefreshChromeSoon();
 }
@@ -250,7 +250,6 @@ function _gwFishFinish() {
   else sub = d.cat === 'junk' ? 'Junk, but the market takes it' : 'Treasure!';
   _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc' }), name, sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: 'fish' });
   if (typeof gardenFloat === 'function') gardenFloat(d.cat === 'fish' ? `+${(_GC_XP[d.rarity] || 1)} XP` : '', Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
-  if (typeof gardenTourEvent === 'function') gardenTourEvent('catch');
   _gdpRefreshChromeSoon();
 }
 
@@ -315,11 +314,8 @@ function _gwReelStep(dt) {
 }
 
 /* ---------- bugs: they live in the actors layer and wander by themselves ---------- */
-function _gwBugsLayer() {
-  const a = _gwActors(); if (!a) return null;
-  let g = a.querySelector('.gd-bugs'); if (!g) { g = _gwEl('g', { class: 'gd-bugs' }); a.insertBefore(g, a.firstChild); }
-  return g;
-}
+const GW_BUG_SCALE = 0.4;   // a butterfly (36 units of art) comes out about 14 units across: smaller than the gardener's head (about 22), and a beetle smaller still
+function _gwBugsLayer() { return _gw.svg ? _gw.svg.querySelector('.gd-objects') : null; }   // 2.23: a bug is drawn in its row: it goes behind a tree and in front of a bench
 function _gwBugsReset() { if (_gw.bugs) for (const b of _gw.bugs.values()) if (b.node && b.node.remove) b.node.remove(); _gw.bugs = new Map(); _gw.bugsAt = 0; _gw.netting = null; }
 /** Bring the bugs on the stage in line with the ones about now (after a paint, and every so often). */
 function _gwBugsSync(m) {
@@ -330,10 +326,10 @@ function _gwBugsSync(m) {
     keep.add(s.key);
     if (_gw.bugs.has(s.key)) continue;
     const def = gardenBugDef(s.id); if (!def) continue;
-    const node = _gwEl('g', { class: 'gd-bug', 'data-bk': s.key });
-    node.innerHTML = `<g class="gb-sh"><ellipse cx="0" cy="0" rx="${(7 * def.size).toFixed(1)}" ry="2.2" fill="#1a2a14" fill-opacity="0.18"/></g><g class="gb-lift"><g class="gb-in" transform="scale(${(0.72 * def.size).toFixed(2)})">${gardenBugArt(s.id, { uid: 'bg' + (gardenHash(s.key) % 9999).toString(36) })}</g></g>`;
-    layer.appendChild(node);
-    const b = { key: s.key, id: s.id, def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: def.rest === 'crawl' ? 0 : 5, face: 1, node, fleeT: 0, hab: s.hab, seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
+    const node = _gwEl('g', { class: 'gd-bug', 'data-bk': s.key, 'data-live': '1', 'data-z': String(s.y) });
+    node.innerHTML = `<g class="gb-sh"><ellipse cx="0" cy="0" rx="${(GW_BUG_SCALE * 9 * def.size).toFixed(1)}" ry="${(GW_BUG_SCALE * 3 * def.size).toFixed(1)}" fill="#1a2a14" fill-opacity="0.18"/></g><g class="gb-lift"><g class="gb-in" transform="scale(${(GW_BUG_SCALE * def.size).toFixed(2)})">${gardenBugArt(s.id, { uid: 'bg' + (gardenHash(s.key) % 9999).toString(36) })}</g></g>`;
+    _gwPlace(node, s.y);
+    const b = { key: s.key, id: s.id, def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: def.rest === 'crawl' ? 0 : 5, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
     _gw.bugs.set(s.key, b);
   }
   for (const [k, b] of _gw.bugs) if (!keep.has(k)) { if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(k); }
@@ -366,7 +362,7 @@ function _gwLeapFrame(dt) {
   const a = _gwActors(); if (!a) return;
   const W = GARDEN_WORLD, wa = gardenArea('lake').water;
   // somewhere in water near you (the camera follows you), a few cells out
-  const cx = Math.max(1, Math.min(W.cols - 2, Math.round(_gw.px + (Math.random() - 0.5) * 9))), cy = wa.y + 1 + Math.floor(Math.random() * 3);
+  const cx = Math.max(1, Math.min(W.coreCols - 2, Math.round(_gw.px + (Math.random() - 0.5) * 9))), cy = wa.y + 1 + Math.floor(Math.random() * 3);
   if (!gardenIsWater(cx, cy)) return;
   const defs = GARDEN_FISH_ONLY.filter(f => f.zone.includes(cy - wa.y <= 1 ? 'shallow' : 'mid') && f.lv <= m.level.level && (!f.tod.length || f.tod.includes(m.tod)));
   const f = defs.length ? defs[Math.floor(Math.random() * defs.length)] : gardenFishDef('perch');
@@ -383,7 +379,10 @@ function _gwBugsFrame(dt) {
   const W = GARDEN_WORLD, pxx = _gw.px, pyy = _gw.py, motion = gardenMotionOn();
   if (performance.now() - (_gw.bugsAt || 0) > 25000) _gwBugsSync(gardenModel());
   const moving = _gw.moving, sneaking = _gw.sneak || !!_gw.netting;
+  let busy = false;
   for (const b of _gw.bugs.values()) {
+    // with motion off a bug stays where it is: you can still creep up and net it
+    if (!motion) { if (b.state !== 'rest') b.state = 'rest'; _gwBugDraw(b, false); continue; }
     const d = Math.hypot((b.x - pxx) * W.cellW, (b.y - pyy) * W.cellH) / 40;   // in "cell-ish" units
     const skitR = 0.9 + 0.38 * b.def.skit;
     // do you scare it? running at it does; creeping or standing still hardly does
@@ -403,22 +402,34 @@ function _gwBugsFrame(dt) {
       if (dist < 0.15 || b.timer < -6) { b.state = 'rest'; b.timer = crawl ? 0.8 + Math.random() * 2.4 : 2 + Math.random() * 4.5; }
       else {
         const wob = !crawl && motion ? Math.sin(_gw.t * 6 + b.seed * 9) * 0.25 : 0;
-        b.x += dx / dist * sp * dt * (1 + wob * 0.2) / 1; b.y += dy / dist * sp * dt * 0.7;
+        const nx = b.x + dx / dist * sp * dt * (1 + wob * 0.2), ny = b.y + dy / dist * sp * dt * 0.7;
+        // what crawls keeps to the same ground you do (the one collision map); what flies goes over it
+        if (crawl && !gardenWorldFree(nx, ny, 0.08)) { b.state = 'rest'; b.timer = 0.6 + Math.random() * 2; }
+        else { b.x = nx; b.y = ny; }
         if (Math.abs(dx) > 0.05) b.face = dx > 0 ? 1 : -1;
         b.lift += ((crawl ? 0 : 13 + Math.sin(_gw.t * 5 + b.seed * 7) * 3) - b.lift) * Math.min(1, dt * 4);
       }
       if (b.state === 'flee') { b.fleeT -= dt; if (b.fleeT <= 0) { b.state = 'fly'; b.timer = 3; } }
     }
-    const [x, y] = _gwPx(b.x, b.y);
     const flying = b.state !== 'rest' && !crawl || b.def.rest === 'hover';
-    b.node.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
-    const lift = b.node.querySelector('.gb-lift'); if (lift) lift.setAttribute('transform', `translate(0 ${(-b.lift).toFixed(1)})`);
-    const inner = b.node.querySelector('.gb-in'); if (inner) { const k = 0.72 * b.def.size; inner.setAttribute('transform', `scale(${(b.face * k).toFixed(2)} ${k.toFixed(2)})`); }
-    const cls = 'gd-bug' + (flying && motion ? ' is-fly' : '') + (b.state === 'flee' ? ' is-flee' : '') + ((_gw.netting && _gw.netting.actor === b) || _gw.hoverBug === b.key ? ' is-target' : '') + (b.def.glow || b.def.id === 'firefly' ? ' is-glow' : '');
-    if (b.node.getAttribute('class') !== cls) b.node.setAttribute('class', cls);
-    b.node.setAttribute('data-z', (b.y).toFixed(2));
+    if (_gwBugDraw(b, flying) && b.state !== 'rest') busy = true;
   }
+  _gw.bugsBusy = busy;
   _gwNetFrame(dt);
+}
+/** Put a bug on the stage: only what changed, and nothing at all while it is out of view (a frame that writes is a frame the stage paints). True when it is in view. */
+function _gwBugDraw(b, flying) {
+  if (!_gwInView(b.x, b.y, 1) && b.node.parentNode && b.zk != null) return false;
+  const [x, y] = _gwPx(b.x, b.y), tf = `translate(${x.toFixed(1)} ${y.toFixed(1)})`;
+  if (b.tf !== tf) { b.tf = tf; b.node.setAttribute('transform', tf); b.node.setAttribute('data-z', b.y.toFixed(2)); }
+  const lf = `translate(0 ${(-b.lift).toFixed(1)})`;
+  if (b.lf !== lf) { b.lf = lf; b.liftEl.setAttribute('transform', lf); }
+  if (b.fc !== b.face) { b.fc = b.face; const k = GW_BUG_SCALE * b.def.size; b.inEl.setAttribute('transform', `scale(${(b.face * k).toFixed(2)} ${k.toFixed(2)})`); }
+  const cls = 'gd-bug' + (flying ? ' is-fly' : '') + (b.state === 'flee' ? ' is-flee' : '') + ((_gw.netting && _gw.netting.actor === b) || _gw.hoverBug === b.key ? ' is-target' : '') + (b.def.glow || b.def.id === 'firefly' ? ' is-glow' : '');
+  if (b.cls !== cls) { b.cls = cls; b.node.setAttribute('class', cls); }
+  const zk = Math.floor(b.y * 3);
+  if (b.zk !== zk || !b.node.parentNode) { b.zk = zk; _gwPlace(b.node, b.y); }
+  return true;
 }
 
 /* ---------- the net ---------- */
@@ -514,7 +525,6 @@ function _gwNetResolve() {
   const d2 = r.def, rare = ['rare', 'epic', 'legendary'].includes(d2.rarity);
   _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false }), name: d2.name, sub: d2.rarity === 'common' ? 'In your bag' : GARDEN_RARITY[d2.rarity].label + ' find', isNew: r.isNew, rare, open: 'bugs', ms: 3400 });
   if (typeof gardenFloat === 'function') gardenFloat(`+${_GC_XP[d2.rarity] || 1} XP`, Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
-  if (typeof gardenTourEvent === 'function') gardenTourEvent('catch');
   _gdpRefreshChromeSoon();
 }
 

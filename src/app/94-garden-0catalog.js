@@ -65,7 +65,8 @@ function _gdRows(list) { return Object.freeze(list.map(r => Object.freeze(r))); 
 /* ---------- the world ---------- */
 /* 2.22: the garden grew. The first 20 x 11 cells are exactly where they were (every saved x, y stays valid); the Wild
    woods run down the east side (x 20..27) and the Lake lies along the south (y 11..17) with its pier and tackle shop. */
-const GARDEN_WORLD = _gdF({ cols: 28, rows: 18, cellW: 48, cellH: 30, sky: 150, unit: 64, oldCols: 20, oldRows: 11 });
+// 2.23: 60 x 30 (it was 28 x 18, and 20 x 11 before that). Every saved x, y stays where it was: new land only ever goes east and south. coreCols, coreRows: what a friend on 2.22 can draw.
+const GARDEN_WORLD = _gdF({ cols: 60, rows: 30, cellW: 48, cellH: 30, sky: 150, unit: 64, oldCols: 20, oldRows: 11, coreCols: 28, coreRows: 18 });
 
 const GARDEN_RARITY = _gdF({
   common: _gdF({ label: 'Common', col: '#7c8b6f', weight: 60 }),
@@ -153,10 +154,10 @@ const GARDEN_PLANTS = _gdRows([
   _gP('snapdragon', 'Snapdragon', 'flower', 'common', 'fast', ['summer'], { form: 'spike-cup', c: '#f6c445', leaf: '#5a8f4a', h: 0.9, v: ['#f6c445', '#e2507a', '#f7f3ee', '#d9581f'] }, { yield: _G_CUT(3, 36), lv: 3, attracts: ['bumblebee'], blurb: 'Squeeze a flower and it opens its mouth.' }),
   _gP('michaelmas-daisy', 'Michaelmas daisy', 'flower', 'common', 'medium', ['autumn'], { form: 'daisy-cloud', c: '#9d7be0', c2: '#f4c430', leaf: '#5a7f4a', h: 0.9 }, { yield: _G_CUT(3, 36), lv: 3, unlock: { season: 'autumn' }, attracts: ['red-admiral'], blurb: 'A cloud of little purple stars at the end of the year.' }),
   _gP('hosta', 'Hosta', 'flower', 'common', 'fast', ['spring', 'summer'], { form: 'hosta', c: '#c9b8ec', leaf: '#4f8a64', h: 0.55, v: ['#4f8a64', '#8fb86a', '#6a8fa8'] }, { lv: 3, thirst: 20, attracts: ['snail'], blurb: 'Grown for its leaves: cool and calm in the shade.' }),
-  _gP('christmas-rose', 'Christmas rose', 'flower', 'rare', 'slow', ['winter'], { form: 'cup', c: '#f5f0f7', c2: '#c7d36b', leaf: '#335f3e', h: 0.55, v: ['#f5f0f7', '#d998b8', '#5b2440'] }, { yield: _G_CUT(8, 72), lv: 6, unlock: { season: 'winter' }, blurb: 'Flowers in the snow, when nothing else dares.' }),
+  _gP('christmas-rose', 'Christmas rose', 'flower', 'rare', 'slow', ['winter'], { form: 'flat', c: '#f5f0f7', c2: '#c7d36b', leaf: '#335f3e', h: 0.55, v: ['#f5f0f7', '#d998b8', '#5b2440'] }, { yield: _G_CUT(8, 72), lv: 6, unlock: { season: 'winter' }, blurb: 'Flowers in the snow, when nothing else dares.' }),
   _gP('camellia', 'Camellia', 'flower', 'rare', 'slow', ['winter', 'spring'], { form: 'rose-bush', c: '#e14b6b', leaf: '#2f5f3a', h: 1.3, v: ['#e14b6b', '#f8d2dc', '#fbf6f2'] }, { yield: _G_CUT(8, 72), lv: 8, blurb: 'Glossy leaves and perfect roses in late winter.' }),
   _gP('golden-sunflower', 'Golden sunflower', 'flower', 'legendary', 'medium', ['summer'], { form: 'sunflower', c: '#ffd34d', c2: '#a8641a', leaf: '#5d9a3a', h: 2.3 }, { yield: { n: [1, 1], regrow: 72, sell: 40 }, price: 0, unlock: { ach: 'streak-30' }, glow: 1, attracts: ['honeybee', 'goldfinch'], blurb: 'Earned with a month in a row. It shimmers when the sun hits it.' }),
-  _gP('rainbow-tulip', 'Rainbow tulip', 'flower', 'epic', 'fast', ['spring'], { form: 'cup', c: '#e0393e', c2: '#4a6fe3', leaf: '#4f8f4a', h: 0.85 }, { yield: _G_CUT(20, 48), price: 0, unlock: { ach: 'quest-perfect' }, blurb: 'Every colour at once: a perfect quest week grows one.' }),
+  _gP('rainbow-tulip', 'Rainbow tulip', 'flower', 'epic', 'fast', ['spring'], { form: 'cup', c: '#e0393e', c2: '#4a6fe3', mix: ['#e0393e', '#f6c445', '#4a6fe3', '#8e5bc8', '#f28a1a', '#4fae5a'], leaf: '#4f8f4a', h: 0.85 }, { yield: _G_CUT(20, 48), price: 0, unlock: { ach: 'quest-perfect' }, blurb: 'Every colour at once: a perfect quest week grows one.' }),
   _gP('frost-rose', 'Frost rose', 'flower', 'epic', 'slow', ['winter'], { form: 'rose', c: '#cfe6fb', c2: '#ffffff', leaf: '#5f8fa0', h: 1.0 }, { yield: _G_CUT(22, 72), price: 0, unlock: { event: 'winter-lights' }, glow: 1, blurb: 'Icy petals that sparkle under the winter lights.' }),
   _gP('sunrise-rose', 'Sunrise rose', 'flower', 'epic', 'medium', ['all'], { form: 'rose', c: '#f7a24a', c2: '#f26b7a', leaf: '#3f7a3e', h: 1.0 }, { yield: _G_CUT(20, 48), price: 0, unlock: { ach: 'early-bird' }, blurb: 'For people who get things done before breakfast.' }),
   /* wildflowers */
@@ -249,7 +250,7 @@ const GARDEN_PLANTS = _gdRows([
   _gP('lotus', 'Lotus', 'water', 'rare', 'slow', ['summer'], { form: 'lotus', c: '#f49ac1', c2: '#f6d34a', leaf: '#4f9f6a', h: 0.9 }, { yield: _G_CUT(12, 72), lv: 9, attracts: ['dragonfly'], blurb: 'Rises clean from the mud, every single morning.' }),
   _gP('bulrush', 'Bulrush', 'water', 'common', 'fast', 'all', { form: 'reed', c: '#7a4b2a', leaf: '#7a9f4a', h: 1.4 }, { lv: 7, attracts: ['dragonfly', 'mallard'], blurb: 'Velvet sausages on sticks, rustling at the edge.' }),
   _gP('yellow-flag', 'Yellow flag iris', 'water', 'common', 'medium', ['spring', 'summer'], { form: 'iris', c: '#f5d02c', c2: '#7a4a2a', leaf: '#5a8f6a', h: 1.1 }, { yield: _G_CUT(4, 48), lv: 7, blurb: 'Golden flags waving at the water’s edge.' }),
-  _gP('marsh-marigold', 'Marsh marigold', 'water', 'common', 'fast', ['spring'], { form: 'cup', c: '#f6c90e', leaf: '#3f7f4a', h: 0.4 }, { yield: _G_CUT(3, 36), lv: 7, blurb: 'Kingcups: gold coins in the shallows.' }),
+  _gP('marsh-marigold', 'Marsh marigold', 'water', 'common', 'fast', ['spring'], { form: 'cup-small', c: '#f6c90e', leaf: '#3f7f4a', h: 0.4 }, { yield: _G_CUT(3, 36), lv: 7, blurb: 'Kingcups: gold coins in the shallows.' }),
   _gP('water-mint', 'Water mint', 'water', 'common', 'quick', 'all', { form: 'leafy', c: '#c7a6e0', leaf: '#4f9f6a', h: 0.35 }, { yield: { n: [2, 3], regrow: 18, sell: 2 }, lv: 7, blurb: 'Brush past it and the whole pond smells of mint.' }),
   _gP('papyrus', 'Papyrus', 'water', 'rare', 'medium', 'all', { form: 'papyrus', leaf: '#6fae4a', h: 1.6 }, { lv: 10, blurb: 'Green fireworks on tall stems.' }),
   _gP('pickerel-weed', 'Pickerel weed', 'water', 'uncommon', 'medium', ['summer'], { form: 'spike', c: '#6c7fd8', leaf: '#4f8f5a', h: 0.8 }, { yield: _G_CUT(4, 48), lv: 8, attracts: ['dragonfly', 'bumblebee'], blurb: 'Blue spikes above glossy hearts.' }),
@@ -380,6 +381,15 @@ const GARDEN_DECOR = _gdRows([
   _gD('festive-lights', 'Festive lights', 'seasonal', { w: 2, price: 30, unlock: { event: 'winter-lights' }, look: { c: '#2f5f2e', c2: '#ffd36a', h: 1.2 }, v: 2, effect: { kind: 'light' }, blurb: 'A twinkling garland for the darkest weeks.' }),
   _gD('bunting', 'Bunting', 'seasonal', { w: 2, price: 15, unlock: { season: 'summer' }, look: { c: '#d83a3a', c2: '#3a6fc4', h: 1.3 }, v: 2, blurb: 'Little flags for a summer fete.' }),
   _gD('painted-eggs', 'Painted eggs', 'seasonal', { price: 10, unlock: { event: 'spring-bloom' }, look: { c: '#f2a7c8', c2: '#7fb3f0', h: 0.25 }, blurb: 'Hidden in the grass for someone to find.' }),
+  // 2.23: made at the crafting bench (94-garden-craft-0rules.js), never sold: craft: 1 keeps them out of the shop, price 0 means the market pays nothing for them
+  _gD('flower-barrow', 'Flower barrow', 'planter', { craft: 1, price: 0, w: 2, look: { c: '#a86a3a', c2: '#e87a9a', h: 0.7, parts: [['box', { w: 40, h: 18, y: -6 }], ['post', { x: -24, w: 4, h: 10, y: 0 }], ['orb', { x: 16, r: 6, y: 2, c: '#3a3a3a' }], ['bush', { x: -8, y: -22, w: 20, clip: 'sway' }], ['bush', { x: 10, y: -22, w: 16, clip: 'sway' }]] }, blurb: 'Parked for good.' }),
+  _gD('herb-rack', 'Drying rack', 'ornament', { craft: 1, price: 0, look: { c: '#8a6a44', c2: '#7aa45a', h: 0.9, parts: [['post', { x: -16, w: 4, h: 44 }], ['post', { x: 16, w: 4, h: 44 }], ['block', { y: -42, w: 42, h: 4 }], ['bush', { x: -9, y: -20, w: 11, h: 18, clip: 'sway' }], ['bush', { x: 9, y: -20, w: 11, h: 18, clip: 'sway' }]] }, blurb: 'Hang it, forget it, cook with it.' }),
+  _gD('apple-crate', 'Apple crate', 'ornament', { craft: 1, price: 0, look: { c: '#b08a58', c2: '#d8453a', h: 0.5, parts: [['box', { w: 34, h: 18 }], ['orb', { x: -9, y: -15, r: 6 }], ['orb', { x: 3, y: -16, r: 6 }], ['orb', { x: 11, y: -14, r: 5 }]] }, blurb: 'Help yourself.' }),
+  _gD('lantern-gourd', 'Gourd lantern', 'light', { craft: 1, price: 0, effect: { kind: 'light' }, look: { c: '#e88a3c', c2: '#ffd070', h: 0.7, parts: [['post', { w: 4, h: 26 }], ['lantern', { y: -26, r: 9 }]] }, blurb: 'A soft orange glow, and a slightly smug face.' }),
+  _gD('driftwood-seat', 'Driftwood seat', 'seat', { craft: 1, price: 0, w: 2, effect: { kind: 'sit' }, look: { c: '#b8a58a', c2: '#8a7a60', h: 0.5, parts: [['block', { w: 54, h: 9, y: -10 }], ['stone', { x: -18, w: 14 }], ['stone', { x: 18, w: 14 }]] }, blurb: 'It came a long way to be sat on.' }),
+  _gD('bee-skep', 'Straw skep', 'wildlife', { craft: 1, price: 0, look: { c: '#d8b060', c2: '#8a6a3a', h: 0.7, parts: [['post', { w: 7, h: 16 }], ['block', { y: -16, w: 28, h: 4 }], ['orb', { y: -18, r: 14 }], ['orb', { y: -34, r: 8 }]] }, blurb: 'Bees approve of the thatch.' }),
+  _gD('fish-flag', 'Fish flag', 'angling', { craft: 1, price: 0, look: { c: '#4a7ab0', c2: '#f4ead8', h: 1.1, parts: [['post', { w: 4, h: 62 }], ['flag', { x: 2, y: -60, w: 24, h: 12, clip: 'flutter' }]] }, blurb: 'It tells the wind which way the fish went.' }),
+  _gD('rose-arch', 'Rose arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#7a5a3a', c2: '#d8405a', h: 1.4, parts: [['post', { x: -24, w: 5, h: 72 }], ['post', { x: 24, w: 5, h: 72 }], ['block', { y: -70, w: 58, h: 6 }], ['bush', { x: -24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { x: 24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { y: -74, w: 40, h: 16, clip: 'sway' }]] }, blurb: 'Left by a friend, with a note.' }),
 ]);
 const _GD_DECOR = new Map(GARDEN_DECOR.map(d => [d.id, d]));
 
@@ -456,8 +466,17 @@ const GARDEN_AREAS = _gdRows([
   { id: 'meadow', name: 'Flower meadow', lv: 12, x: 7, y: 0, w: 7, h: 4, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree']), icon: 'flower', blurb: 'Let it go wild: poppies, clover and the rarest orchid.' },
   // 2.22: the Wild woods (east) are the bug-catchers' corner; the Lake (south) is where you fish, from the shore or the pier.
   { id: 'woods', name: 'Wild woods', lv: 4, x: 20, y: 0, w: 8, h: 11, tile: 'forest', cats: _gdF(['tree', 'wild', 'fruit', 'herb']), icon: 'trees', bugs: 1, blurb: 'Tall trees, logs and mushrooms: the best place to catch bugs.' },
-  { id: 'lake', name: 'The lake', lv: 1, x: 0, y: 11, w: 28, h: 7, tile: 'sand', water: _gdF({ x: 0, y: 13, w: 28, h: 5 }), cats: _gdF([]), icon: 'fish', fishing: 1, blurb: 'Cast a line from the shore or the pier. Deeper water, better fish.' },
+  { id: 'lake', name: 'The lake', lv: 1, x: 0, y: 11, w: 28, h: 19, tile: 'sand', water: _gdF({ x: 0, y: 13, w: 28, h: 17 }), cats: _gdF([]), icon: 'fish', fishing: 1, blurb: 'Cast a line from the shore or the pier. Deeper water, better fish.' },
+  // 2.23: land you buy with coins, either side of the lane that runs east along the shore (y 11-12). buy: coins; lv: the garden level it can be bought from; look: how the ground is drawn.
+  // At most 12 areas in all: a friend's snapshot carries the open ones and older versions check that list's length (lib/friends/garden.mjs).
+  { id: 'hill', name: 'Sunny hill', lv: 2, buy: 150, look: 'meadow', x: 28, y: 0, w: 16, h: 11, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree', 'herb']), icon: 'flower', blurb: 'Open grass that catches the sun all day.' },
+  { id: 'field', name: 'Kitchen field', lv: 3, buy: 300, look: 'veg', x: 28, y: 13, w: 16, h: 17, tile: 'tilled', cats: _gdF(['veg', 'herb', 'fruit']), icon: 'carrot', blurb: 'Long rows of good dark soil.' },
+  { id: 'grove', name: 'Old orchard', lv: 5, buy: 500, look: 'orchard', x: 44, y: 0, w: 16, h: 11, tile: 'orchard-grass', cats: _gdF(['tree', 'fruit', 'wild', 'flower']), icon: 'trees', blurb: 'Room for a whole avenue of fruit trees.' },
+  { id: 'marsh', name: 'Lily marsh', lv: 7, buy: 800, look: 'pond', x: 44, y: 13, w: 16, h: 17, tile: 'pond-edge', water: _gdF({ x: 47, y: 16, w: 10, h: 10 }), cats: _gdF(['water', 'flower', 'wild', 'tree']), icon: 'waves', blurb: 'A wide still pool with its own frogs.' },
 ]);
+/* The land you own, kept here so gardenAreaAt stays a plain lookup: 94-garden-1core.js fills it from your wallet (items 'land:<id>'). Empty in Node, where nothing asks by level. */
+const _GD_LAND = new Set();
+function gardenLandSet(ids) { _GD_LAND.clear(); for (const id of ids || []) _GD_LAND.add(id); }
 /* Fixed things in the world (not in your bag, not movable): the pier you walk out on, the tackle shop. x, y, w, h in cells.
    walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there. */
 const GARDEN_PROPS = _gdRows([
@@ -471,12 +490,13 @@ const GARDEN_PROPS = _gdRows([
   { id: 'camera-tripod', name: 'Camera', x: 15, y: 11, w: 1, h: 1, door: _gdF({ x: 15, y: 12 }), act: 'photo', kind: 'tripod', tall: 1.6, blurb: 'Take a picture of your garden.' },
   { id: 'tackle-shop', name: 'Tackle shop', x: 17, y: 11, w: 3, h: 1, door: _gdF({ x: 18, y: 12 }), act: 'tackle', kind: 'tackle', tall: 3, blurb: 'Rods, nets, bait and the fish market.' },
   { id: 'post-box', name: 'Post box', x: 20, y: 11, w: 1, h: 1, door: _gdF({ x: 20, y: 12 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
+  { id: 'craft-bench', name: 'Crafting bench', x: 3, y: 11, w: 2, h: 1, door: _gdF({ x: 3, y: 12 }), act: 'craft', kind: 'bench', tall: 1.5, verb: 'make something', blurb: 'Turn what you grow, catch and find into hats, collars, decorations and treats.' },
   { id: 'sundial', name: 'Sundial', x: 26, y: 11, w: 1, h: 1, door: _gdF({ x: 26, y: 12 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
-  { id: 'jetty-post', name: 'Mooring post', x: 4, y: 12, w: 1, h: 1, walk: 0, blurb: 'A rope, a post and a very patient rowing boat.' },
+  { id: 'jetty-post', name: 'Mooring post', x: 4, y: 12, w: 1, h: 1, walk: 0, tall: 1, blurb: 'A rope, a post and a very patient rowing boat.' },
   // the rowing boat is drawn by gardenWorldProps (key 'boat'); clicking it opens the trip to a friend's garden. x and w are fractions on
   // purpose: its box is the boat's own width, so the water beside it still casts a line.
-  { id: 'boat', name: 'Rowing boat', x: 4.65, y: 13, w: 1.25, h: 1, walk: 0, door: _gdF({ x: 5, y: 12 }), act: 'sail', verb: 'climb in', tall: 0.5, blurb: 'Row over to a friend’s garden.' },
-  { id: 'reed-bank', name: 'Reeds', x: 22, y: 12, w: 3, h: 1, walk: 0, blurb: 'Dragonflies like it here.' },
+  { id: 'boat', name: 'Rowing boat', kind: 'boat', x: 4.65, y: 13, w: 1.25, h: 1, walk: 0, door: _gdF({ x: 5, y: 12 }), act: 'sail', verb: 'climb in', tall: 0.5, blurb: 'Row over to a friend’s garden.' },
+  { id: 'reed-bank', name: 'Reeds', kind: 'reeds', x: 22, y: 12, w: 3, h: 1, walk: 0, tall: 0.4, blurb: 'Dragonflies like it here.' },
   { id: 'forest-edge', name: 'The forest', x: 27, y: 0, w: 1, h: 11, walk: 0, blurb: 'Too thick to walk through.' },
 ]);
 const GARDEN_LAWN = _gdF({ id: 'lawn', name: 'Lawn', lv: 1, tile: 'grass', cats: _gdF([]), icon: 'fence', blurb: 'Room for paths, seats and everything else.' });
@@ -585,6 +605,11 @@ const GARDEN_DAILY = _gdRows([
   { id: 'bug-3', label: 'Net {n} bugs', n: 3, fact: 'netted', c: 16, x: 12, icon: 'bug', lv: 3 },
 ]);
 const GARDEN_QUESTS = _gdRows([
+  // 2.23: a task for the time of year (always offered that season, one a week, paid once a week like the others)
+  { id: 'qs-spring', season: 'spring', label: 'Spring: plant {n} seeds', n: 6, fact: 'planted', c: 40, x: 30, icon: 'sprout', i: { fertiliser: 1 } },
+  { id: 'qs-summer', season: 'summer', label: 'Summer: water on {n} days', n: 4, fact: 'waterDays', c: 40, x: 30, icon: 'droplets', i: { fertiliser: 1 } },
+  { id: 'qs-autumn', season: 'autumn', label: 'Autumn: bring in {n} harvests', n: 8, fact: 'harvests', c: 40, x: 30, icon: 'shopping-basket', i: { fertiliser: 1 } },
+  { id: 'qs-winter', season: 'winter', label: 'Winter: trim back {n} plants', n: 3, fact: 'pruned', c: 40, x: 30, icon: 'scissors', i: { fertiliser: 1 } },
   { id: 'q-harvest-15', label: 'Harvest {n} times this week', n: 15, fact: 'harvests', c: 70, x: 50, icon: 'shopping-basket', i: { 'seed:*rare': 1 } },
   { id: 'q-plant-10', label: 'Plant {n} seeds this week', n: 10, fact: 'planted', c: 60, x: 45, icon: 'sprout', i: { fertiliser: 3 } },
   { id: 'q-visitors-4', label: 'Spot {n} kinds of visitor this week', n: 4, fact: 'visitorKinds', c: 60, x: 45, icon: 'binoculars', i: { 'seed:*rare': 1 } },
@@ -682,7 +707,7 @@ function gardenLockOf(def, ctx) {
 }
 /** The area a cell belongs to ('lawn' when no area claims it, or the area is not open yet at that level). */
 function gardenAreaAt(x, y, level) {
-  for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (level || 1) >= a.lv ? a.id : 'locked:' + a.id;
+  for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
   return 'lawn';
 }
 /** Is this cell open water (the pond's or the lake's)? A pier stands over water but is not water to walk on. */
@@ -694,7 +719,7 @@ function gardenIsWater(x, y) {
 function gardenWaterZone(x, y) {
   for (const a of GARDEN_AREAS) {
     const w = a.water; if (!w || x < w.x || x >= w.x + w.w || y < w.y || y >= w.y + w.h) continue;
-    if (a.id === 'pond') return 'pond';
+    if (!a.fishing) return 'pond';
     const d = y - w.y;
     return d <= 1 ? 'shallow' : d <= 3 ? 'mid' : 'deep';
   }
@@ -716,7 +741,7 @@ function gardenCellOk(def, x, y, level, kind) {
   let area = null;
   for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) {
     const a = gardenAreaAt(x + dx, y + dy, level);
-    if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)); return `${ar.name} opens at garden level ${ar.lv}`; }
+    if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)); return ar.buy ? `${ar.name}: buy this land first` : `${ar.name} opens at garden level ${ar.lv}`; }
     if (kind !== 'decor') {
       if (area && a !== area) return 'Straddles two areas';
       area = a;
@@ -748,7 +773,7 @@ function gardenPickDaily(iso, level) {
 }
 /** The weekly garden quests for the week starting weekFrom: 3, the same on every device. */
 function gardenPickQuests(weekFrom, level) {
-  const pool = GARDEN_QUESTS.filter(t => (t.lv || 1) <= (level || 1));
+  const pool = GARDEN_QUESTS.filter(t => !t.season && (t.lv || 1) <= (level || 1));
   const rnd = gardenRand('gd-quest|' + weekFrom), left = pool.slice(), out = [];
   while (out.length < 3 && left.length) out.push(left.splice(Math.floor(rnd() * left.length), 1)[0]);
   return out;
@@ -802,7 +827,8 @@ function gardenSnapshotClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const W = GARDEN_WORLD, int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null; };
   const out = { v: 1, cv: int(raw.cv, 0, 9) || 0, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
-  if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 10)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);
+  if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);
+  if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {
     if (!Array.isArray(p) || !_GD_PLANT.has(p[0])) continue;
     const x = int(p[1], 0, W.cols - 1), y = int(p[2], 0, W.rows - 1);

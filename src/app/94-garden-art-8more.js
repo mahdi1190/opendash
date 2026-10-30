@@ -1,11 +1,7 @@
 /* ============================================================
-   GARDEN ART, succulents, the pond and the greenhouse exotics (2.18, agent
-   'garden-art'). Succulents: aloe, rosette (echeveria), spiky-rosette (zebra
-   haworthia), jade, barrel, pads (prickly pear), saguaro, trailing (string of
-   pearls). Pond: lily-pad (water lily), lotus, reed (bulrush), papyrus.
-   Exotics: orchid, bird-paradise, flytrap, pitcher, passion, hibiscus, banana,
-   mushroom (the glowcap), titan (the titan arum). PURE.
-   Anchor: the foot at (0, 0). Light from the left.
+   GARDEN ART, succulents, the pond and the greenhouse exotics (2.18, agent 'garden-art'). Succulents: aloe, rosette (echeveria), spiky-rosette (zebra
+   haworthia), barrel, pads (prickly pear), saguaro, trailing (string of pearls). Pond: lily-pad (water lily). Exotics: orchid, pitcher, mushroom (the glowcap),
+   titan (the titan arum). The rest are rows in 94-garden-art-j-bloom.js. PURE. Anchor: the foot at (0, 0). Light from the left.
    ============================================================ */
 (function () {
   const A = GART, PAL = GART_PAL;
@@ -86,22 +82,6 @@
     },
   });
 
-  /* ---------- jade: a little tree of thick stems and round, shiny, fleshy leaves ---------- */
-  gartDefine('form:jade', {
-    box: [40, 44],
-    draw(o, r) {
-      const fl = colOf(o, '#f7f0f4'), s = o.s5, L = gartSeasonLeaf(o, 'succulent');
-      if (s === 0) return gartSeed(o, A, 'cutting', L[1]);
-      const k = s === 1 ? 0.35 : s === 2 ? 0.6 : s === 3 ? 0.85 : 1;
-      const tr = A.limb(0, 0, 0.04, 16, 4.4, 3, 1), b1 = A.limb(tr.tip[0], tr.tip[1], -0.7, 12, 2.8, 1.6, -1), b2 = A.limb(tr.tip[0], tr.tip[1], 0.6, 13, 2.8, 1.6, 1), b3 = A.limb(tr.tip[0], tr.tip[1], 0.02, 10, 2.4, 1.4, 0);
-      let lv = '', lvL = '', edge = '';
-      [b1, b2, b3].forEach(b => { for (let i = 0; i < 6; i++) { const [x, y] = A.at(b.tip[0], b.tip[1], (i / 5 - 0.5) * 2.6, 3.4 + (i % 2) * 2); lv += A.ell(x, y, 2.6, 2); lvL += A.ell(x - 0.7, y - 0.6, 1.1, 0.8); edge += A.ell(x, y, 2.6, 2); } });
-      let flw = '';
-      if (s === 4) [b1, b2, b3].forEach(b => { flw += A.star(b.tip[0], b.tip[1] - 6, 5, 1.8, 0.7) + A.star(b.tip[0] + 2, b.tip[1] - 5, 5, 1.6, 0.6); });
-      const tree = A.P('#7a6a4a', tr.d + b1.d + b2.d + b3.d) + A.S('#a8946a', 0.7, 'M-1-1L-0.6-14', 0.6) + A.P(L[1], lv) + A.S('#c86a6a', 0.5, edge, 0.5) + A.P(L[3], lvL, 0.8) + A.P(fl[1], flw);
-      return A.shadow(14, 2.4) + `<g transform="scale(${k})">${tree}</g>`;
-    },
-  });
 
   /* ---------- barrel: a round ribbed cactus, spines in rows, a crown of flowers ---------- */
   gartDefine('form:barrel', {
@@ -188,7 +168,7 @@
   /* ================= the pond ================= */
   /* ---------- lily-pad (water lily): round notched pads on the water, a star of pointed petals ---------- */
   gartDefine('form:lily-pad', {
-    box: [46, 20],
+    box: [74, 26],
     draw(o, r) {
       const col = colOf(o, '#f7c5d8'), eye = gartC2(o, '#f6c445'), s = o.s5, L = gartSeasonLeaf(o, 'evergreen').map(c => A.shift(c, -8, 1, 0.06)), win = o.season === 'winter';
       let out = pondWater(o, r, 22);
@@ -216,79 +196,8 @@
     },
   });
 
-  /* ---------- lotus: round pads raised on stalks, a great pink cup, a seed pod like a shower head ---------- */
-  gartDefine('form:lotus', {
-    box: [44, 58],
-    draw(o, r) {
-      const col = colOf(o, '#f49ac1'), eye = gartC2(o, '#f6d34a'), s = o.s5, L = gartSeasonLeaf(o, 'evergreen').map(c => A.shift(c, -14, 0.8, 0.08)), win = o.season === 'winter';
-      let out = pondWater(o, r, 21);
-      if (s === 0) return out + A.P('#a8846a', A.ell(0, -0.6, 3, 1.4));
-      let stalks = '', pads = '', padsL = '';
-      const n = s === 1 ? 1 : s === 2 ? 2 : 3;
-      for (let i = 0; i < n; i++) {
-        const x = [-9, 10, -2][i], h = [12, 20, 30][i] * (s === 1 ? 0.5 : 1), R = s === 1 ? 4 : 8;
-        stalks += `M${f1(x * 0.3)} 0Q${f1(x)} ${f1(-h * 0.5)} ${f1(x)} ${f1(-h)}`;
-        if (win && i > 0) continue;
-        // a shallow bowl of a leaf, seen from the side
-        pads += `M${f1(x - R)} ${f1(-h - 1)}Q${f1(x)} ${f1(-h + R * 0.45)} ${f1(x + R)} ${f1(-h - 1.6)}Q${f1(x)} ${f1(-h - R * 0.2)} ${f1(x - R)} ${f1(-h - 1)}z`;
-        padsL += A.ell(x - R * 0.3, -h - 0.4, R * 0.4, R * 0.1);
-      }
-      let flw = '';
-      if (s >= 3 && !win) {
-        const x = 3, y = -40;
-        stalks += `M1 0Q4 -20 ${x} ${y}`;
-        if (s === 3) flw = A.P(col[1], A.leaf(x, y + 2, 0, 9, 3, 0.45)) + A.P(col[2], A.leaf(x - 1, y + 1, -0.1, 6, 1.2, 0.45), 0.8);
-        else {
-          let back = '', mid = '', front = '';
-          for (const a of [-1.2, -0.6, 0, 0.6, 1.2]) back += A.leaf(x, y + 2, a, 10, 2.4, 0.45);
-          for (const a of [-0.8, -0.25, 0.3, 0.85]) mid += A.leaf(x, y + 3, a, 9, 2.4, 0.45);
-          for (const a of [-0.4, 0.45]) front += A.leaf(x, y + 4, a, 7.6, 2.6, 0.45);
-          flw = A.P(col[0], back) + A.P(col[1], mid) + A.P(eye, `M${f1(x - 2.6)} ${f1(y - 2)}h5.2l-0.8 2.6h-3.6z`) + A.P(col[2], front);
-        }
-      }
-      if (win) flw = A.P('#8a7a5a', `M${f1(-1.6)} -26h5l-0.6 3h-3.8z`) + A.S('#7a6a4a', 0.8, 'M0 0Q2 -12 1 -24');
-      return out + A.S(L[0], 1, stalks) + A.P(L[1], pads) + A.P(L[3], padsL, 0.55) + flw;
-    },
-  });
 
-  /* ---------- reed (bulrush): tall straps from the water, velvet brown cattails ---------- */
-  gartDefine('form:reed', {
-    box: [36, 90],
-    draw(o, r) {
-      const head = colOf(o, '#7a4b2a'), s = o.s5, L = gartSeasonLeaf(o, 'perennial'), win = o.season === 'winter';
-      let out = pondWater(o, r, 17);
-      if (s === 0) return out + A.S(L[2], 1.2, 'M-1 0l0.4-5M2 0l-0.2-4');
-      let straps = '', straps2 = '', stems = '', heads = '', fluff = '';
-      const n = s === 1 ? 3 : s === 2 ? 6 : 9, H = s === 1 ? 14 : s === 2 ? 44 : 78;
-      for (let i = 0; i < n; i++) { const a = (i / (n - 1) - 0.5) * 0.7, h = H * rr(r, 0.7, 1), st = A.stem(rr(r, -4, 4), 0, a, h, (a > 0 ? 1 : -1) * rr(r, 2, 6)), w = 1.4; const d = `M${f1(st.pt(0)[0] - w)} 0Q${f1(st.pt(0.5)[0])} ${f1(st.pt(0.5)[1])} ${f1(st.tip[0])} ${f1(st.tip[1])}Q${f1(st.pt(0.5)[0] + w)} ${f1(st.pt(0.5)[1])} ${f1(st.pt(0)[0] + w)} 0z`; (i % 2 ? (straps += d) : (straps2 += d)); }
-      if (s >= 3) for (let i = 0; i < (s === 3 ? 2 : 3); i++) {
-        const x = (i - 1) * 5, h = H * 0.95 - Math.abs(i - 1) * 8;
-        stems += `M${f1(x * 0.6)} 0L${f1(x)} ${f1(-h - 8)}`;
-        heads += A.rrect(x - 2.2, -h + 1, 4.4, s === 3 ? 7 : 13, 2.2);
-        if (win) fluff += A.circ(x + 2, -h - 1, 2.2) + A.circ(x + 3.6, -h + 2, 1.6);
-      }
-      return out + A.P(win ? '#a8946a' : L[1], straps2) + A.P(win ? '#c8b48a' : L[2], straps) + A.S(win ? '#a8946a' : L[1], 1, stems) + A.P(head[1], heads) + A.P(head[2], heads.replace(/M([-\d.]+) ([-\d.]+)h([\d.]+)/g, (m, x, y, w) => `M${x} ${y}h${f1(w * 0.4)}`), 0.5) + A.P('#f4efe4', fluff, 0.9);
-    },
-  });
 
-  /* ---------- papyrus: tall green stems, each crowned by a starburst of fine threads ---------- */
-  gartDefine('form:papyrus', {
-    box: [48, 100],
-    draw(o, r) {
-      const s = o.s5, L = gartSeasonLeaf(o, 'perennial').map(c => A.shift(c, -6, 1, 0.04)), win = o.season === 'winter';
-      let out = pondWater(o, r, 18);
-      if (s === 0) return out + A.S(L[2], 1.2, 'M0 0l0-5');
-      let stems = '', burst = '', burst2 = '';
-      const n = s === 1 ? 2 : s === 2 ? 4 : 6, H = s === 1 ? 14 : s === 2 ? 50 : 88;
-      for (let i = 0; i < n; i++) {
-        const a = (i / (n - 1) - 0.5) * 0.8, st = A.stem(rr(r, -3, 3), 0, a, H * rr(r, 0.75, 1), rr(r, -3, 3)), [tx, ty] = st.tip;
-        stems += st.d;
-        const R = s === 1 ? 4 : 13;
-        for (let k = 0; k < 16; k++) { const g = (k / 15 - 0.5) * 3.6 + a, [ex, ey] = A.at(tx, ty, g, R * rr(r, 0.8, 1.1)); const d = `M${f1(tx)} ${f1(ty)}Q${f1((tx + ex) / 2)} ${f1(Math.min(ty, ey) - 3)} ${f1(ex)} ${f1(ey + 2)}`; (k % 2 ? (burst += d) : (burst2 += d)); }
-      }
-      return out + A.S(L[1], 1.3, stems) + A.S(win ? '#b8a87a' : L[1], 0.7, burst2) + A.S(win ? '#d8c89a' : L[2], 0.6, burst);
-    },
-  });
 
   /* ================= greenhouse exotics ================= */
   /* ---------- orchid: a moth orchid in a pot, broad leaves, an arching spray of flat flowers ---------- */
@@ -318,55 +227,7 @@
     },
   });
 
-  /* ---------- bird-paradise: paddle leaves on long stalks, an orange-and-blue bird's head flower ---------- */
-  gartDefine('form:bird-paradise', {
-    box: [48, 84],
-    draw(o, r) {
-      const orange = colOf(o, '#f68b1f'), blue = gartC2(o, '#3b5bdb'), s = o.s5, L = gartSeasonLeaf(o, 'evergreen').map(c => A.shift(c, -4, 0.85, 0.04));
-      if (s === 0) return gartSeed(o, A, 'seed', orange[1]);
-      let stalks = '', lv = '', lvL = '', ribs = '';
-      const n = s === 1 ? 2 : s === 2 ? 4 : 6, H = s === 1 ? 14 : s === 2 ? 40 : 66;
-      for (let i = 0; i < n; i++) {
-        const a = (i / (n - 1) - 0.5) * 1.1, st = A.stem(rr(r, -2, 2), 0, a, H * rr(r, 0.5, 0.7), rr(r, -2, 2)), l = H * 0.42;
-        stalks += st.d;
-        lv += A.leaf(st.tip[0], st.tip[1], a * 1.3, l, l * 0.2, 0.45); lvL += A.halfLeaf(st.tip[0], st.tip[1], a * 1.3, l, l * 0.19, gartLit(a * 1.3), 0.45);
-        const [ex, ey] = A.at(st.tip[0], st.tip[1], a * 1.3, l * 0.95); ribs += `M${f1(st.tip[0])} ${f1(st.tip[1])}L${f1(ex)} ${f1(ey)}`;
-      }
-      let bird = '';
-      if (s >= 3) {
-        const st = A.stem(2, 0, 0.18, H * 0.75, -2), [tx, ty] = st.tip;
-        stalks += st.d;
-        // the beak (a green-purple sheath) pointing sideways; orange crests rising from it, a blue tongue
-        bird = A.P('#5a6a4a', `M${f1(tx - 3)} ${f1(ty)}Q${f1(tx + 6)} ${f1(ty - 3)} ${f1(tx + 15)} ${f1(ty + 1)}Q${f1(tx + 5)} ${f1(ty + 2.6)} ${f1(tx - 3)} ${f1(ty)}z`);
-        if (s === 4) bird += A.P(orange[1], A.leaf(tx + 4, ty - 1.5, -0.3, 10, 1.6) + A.leaf(tx + 5, ty - 1.5, 0.1, 9, 1.5) + A.leaf(tx + 6, ty - 1.5, 0.5, 8, 1.4)) + A.P(orange[2], A.leaf(tx + 4, ty - 1.5, -0.3, 7, 0.6), 0.8) + A.P(blue, A.leaf(tx + 5, ty - 1.4, 1.0, 9, 1.2));
-        else bird += A.P(orange[0], A.leaf(tx + 4, ty - 1.4, 0.4, 4, 1), 0.8);
-      }
-      return A.shadow(14, 2.6) + gartSway(o, r, A.S(L[0], 1.2, stalks) + A.P(L[1], lv) + A.P(L[2], lvL, 0.6) + A.S(L[0], 0.5, ribs, 0.6) + bird);
-    },
-  });
 
-  /* ---------- flytrap: a rosette of hinged traps, red inside, lined with teeth ---------- */
-  gartDefine('form:flytrap', {
-    box: [40, 24],
-    draw(o, r) {
-      const red = colOf(o, '#d94a3a'), s = o.s5, L = gartSeasonLeaf(o, 'succulent').map(c => A.shift(c, -20, 1.1, 0.04));
-      if (s === 0) return gartSeed(o, A, 'spore', red[1]);
-      let stalks = '', outer = '', inner = '', teeth = '';
-      const n = s === 1 ? 3 : s === 2 ? 5 : 7;
-      for (let i = 0; i < n; i++) {
-        const a = (i / (n - 1) - 0.5) * 2.8, len = (s === 1 ? 5 : s === 2 ? 9 : 12) * rr(r, 0.85, 1.05), [tx, ty] = A.at(0, 0, a, len);
-        stalks += A.leaf(0, 0, a, len, 1.2, 0.6);
-        if (s < 2) continue;
-        // a trap: two lobes open like a clam, teeth on the rims
-        const R = s === 2 ? 2.6 : 3.8, g = a;
-        const up = A.at(tx, ty, g - 0.9, R), dn = A.at(tx, ty, g + 0.9, R);
-        outer += `M${f1(tx)} ${f1(ty)}Q${f1(up[0])} ${f1(up[1])} ${f1(A.at(tx, ty, g, R * 1.5)[0])} ${f1(A.at(tx, ty, g, R * 1.5)[1])}Q${f1(dn[0])} ${f1(dn[1])} ${f1(tx)} ${f1(ty)}z`;
-        inner += A.ell(...A.at(tx, ty, g, R * 0.75), R * 0.5, R * 0.35);
-        for (let k = 0; k < 5; k++) { const p = A.at(tx, ty, g - 0.6 + k * 0.3, R * 1.3); teeth += `M${f1(p[0])} ${f1(p[1])}l${f1(Math.sin(g - 0.6 + k * 0.3) * 1.6)} ${f1(-Math.cos(g - 0.6 + k * 0.3) * 1.6)}`; }
-      }
-      return A.shadow(12, 2) + A.P(L[1], stalks) + A.P(L[2], outer) + A.P(red[1], inner) + A.S(L[3], 0.5, teeth);
-    },
-  });
 
   /* ---------- pitcher: tall veined pitchers with lids, rising from a rosette ---------- */
   gartDefine('form:pitcher', {
@@ -389,79 +250,8 @@
     },
   });
 
-  /* ---------- passion: a vine on a fan trellis, the clockwork flower with its purple crown of filaments ---------- */
-  gartDefine('form:passion', {
-    box: [46, 76],
-    draw(o, r) {
-      const corona = colOf(o, '#8f7be8'), petal = gartC2(o, '#f7f5f0'), s = o.s5, L = gartSeasonLeaf(o, 'evergreen').map(c => A.shift(c, -6, 1, 0.04));
-      if (s === 0) return gartSeed(o, A, 'seed', corona[1]);
-      const F = gartFoliage(L);
-      const H = 72, climb = s === 1 ? 0.15 : s === 2 ? 0.5 : s === 3 ? 0.85 : 1;
-      let trellis = A.S('#b08a5a', 1.2, `M0 0L-18 ${-H}M0 0L-6 ${-H}M0 0L6 ${-H}M0 0L18 ${-H}M-14 ${-H * 0.5}H14M-17 ${-H * 0.8}H17`), vine = 'M0 0';
-      const pts = [];
-      for (let i = 1; i <= 9 * climb; i++) { const y = -i * 8, x = Math.sin(i * 1.4) * 10 * (i / 9); vine += `L${f1(x)} ${f1(y)}`; pts.push([x, y]); F.leaf(x, y, (i % 2 ? 1 : -1) * 0.9, 6, 1.6).leaf(x, y, (i % 2 ? 1 : -1) * 0.9 - 0.6, 5, 1.4).leaf(x, y, (i % 2 ? 1 : -1) * 0.9 + 0.6, 5, 1.4); }
-      let flw = '';
-      if (s >= 3) pts.filter((p, i) => i % 3 === 2).forEach(([x, y]) => {
-        const fx = x + 6, fy = y + 2;
-        if (s === 3) { flw += A.P(L[2], A.ell(fx, fy, 1.8, 2.6)); return; }
-        let fil = '';
-        for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; fil += `M${f1(fx + Math.cos(a) * 1.4)} ${f1(fy + Math.sin(a) * 1.1)}L${f1(fx + Math.cos(a) * 5.2)} ${f1(fy + Math.sin(a) * 4)}`; }
-        flw += A.P(petal, A.star(fx, fy, 10, 6.6, 4, 0.2)) + A.S(corona[1], 0.6, fil) + A.P(corona[0], A.circ(fx, fy, 1.6)) + A.S('#6a8a3a', 0.8, `M${f1(fx - 2)} ${f1(fy - 1.6)}l4 0M${f1(fx)} ${f1(fy - 3)}l0 2.6`);
-      });
-      return A.shadow(12, 2.4) + trellis + gartSway(o, r, A.S(L[1], 1, vine) + F.out() + flw);
-    },
-  });
 
-  /* ---------- hibiscus: a glossy bush, huge five-petal saucers with a long beaded stamen ---------- */
-  gartDefine('form:hibiscus', {
-    box: [48, 54],
-    draw(o, r) {
-      const col = colOf(o, '#e8344e'), stam = gartC2(o, '#f6d34a'), s = o.s5, L = gartSeasonLeaf(o, 'evergreen');
-      if (s === 0) return gartSeed(o, A, 'cutting', col[1]);
-      const F = gartFoliage(L);
-      const W = s === 1 ? 5 : s === 2 ? 14 : 20, H = s === 1 ? 9 : s === 2 ? 26 : 44;
-      if (s >= 2) F.add('back', A.blob(r, 0, -H * 0.5, W, H * 0.48, 10, 0.3));
-      for (let i = 0; i < (s === 1 ? 3 : 18); i++) { const x = rr(r, -W * 0.8, W * 0.8), y = -rr(r, H * 0.15, H * 0.95), a = (x > 0 ? 0.6 : -0.6) + rr(r, -0.7, 0.7); F.leaf(x, y, a, 6, 2.4, { vein: true }); }
-      let flw = '';
-      if (s >= 3) for (let i = 0; i < (s === 3 ? 3 : 4); i++) {
-        const x = (i / 3 - 0.5) * W * 1.4 + rr(r, -2, 2), y = -H * (0.55 + (i % 2) * 0.3);
-        if (s === 3) { flw += A.P(col[1], A.leaf(x, y + 2, 0.3, 6, 1.8, 0.55)) + A.P(L[1], A.leaf(x, y + 3, 0.3, 3, 1.8)); continue; }
-        let p5 = '';
-        for (let k = 0; k < 5; k++) p5 += A.petal(x, y, k / 5 * Math.PI * 2 + 0.3, 6.4, 3.4);
-        const [sx, sy] = A.at(x, y, 0.9, 7);
-        flw += A.P(col[1], p5) + A.P(col[0], A.circ(x, y, 2)) + A.S(col[0], 0.5, p5.replace(/C[^z]*z/g, ''), 0.4) + A.S(stam, 0.9, `M${f1(x)} ${f1(y)}L${f1(sx)} ${f1(sy)}`) + A.P(stam, A.circ(sx, sy, 1) + A.circ(sx - 1, sy + 1, 0.7));
-      }
-      return A.shadow(W + 3, 3) + gartSway(o, r, F.out() + flw);
-    },
-  });
 
-  /* ---------- banana: a tall soft trunk, huge torn paddle leaves, a hanging bunch and its purple bell ---------- */
-  gartDefine('form:banana', {
-    box: [64, 140],
-    draw(o, r) {
-      const fruit = colOf(o, '#f6e049'), s = o.s5, L = gartSeasonLeaf(o, 'evergreen').map(c => A.shift(c, -12, 0.95, 0.08));
-      if (s === 0) return gartSeed(o, A, 'cutting', L[1]);
-      const H = s === 1 ? 16 : s === 2 ? 50 : s === 3 ? 96 : 116, tw = s === 1 ? 2 : s === 2 ? 4 : 6;
-      const trunk = A.limb(0, 0, 0.02, H * 0.62, tw * 2, tw * 1.4, 1);
-      let lv = '', lvL = '', tears = '', ribs = '';
-      const n = s === 1 ? 2 : s === 2 ? 4 : 7;
-      for (let i = 0; i < n; i++) {
-        const a = (i / (n - 1) - 0.5) * 2.8 + rr(r, -0.08, 0.08), st = A.stem(trunk.tip[0], trunk.tip[1], a * 0.5, H * 0.12, 0), l = H * 0.42 * rr(r, 0.85, 1.05), g = a + (a > 0 ? 0.25 : -0.25);
-        lv += A.leaf(st.tip[0], st.tip[1], g, l, l * 0.16, 0.5); lvL += A.halfLeaf(st.tip[0], st.tip[1], g, l, l * 0.15, gartLit(g), 0.5);
-        const [ex, ey] = A.at(st.tip[0], st.tip[1], g, l * 0.96); ribs += `M${f1(st.tip[0])} ${f1(st.tip[1])}L${f1(ex)} ${f1(ey)}`;
-        // the wind-torn edges: short gaps cut across the blade
-        for (let k = 1; k < 4; k++) { const p = A.at(st.tip[0], st.tip[1], g, l * k / 4.5), sd = gartLit(g); tears += `M${f1(p[0])} ${f1(p[1])}l${f1(Math.cos(g) * l * 0.16 * sd)} ${f1(Math.sin(g) * l * 0.16 * sd)}`; }
-      }
-      let bunch = '';
-      if (s >= 3) {
-        const [bx, by] = A.at(trunk.tip[0], trunk.tip[1], 0.6, 6), st = A.stem(bx, by, 2.4, 16, 3);
-        bunch = A.S('#6a7a3a', 1.6, st.d);
-        if (s === 4) { let b = '', bl = ''; for (let k = 0; k < 4; k++) { const p = st.pt(0.2 + k * 0.18); for (let j = 0; j < 3; j++) { b += A.leaf(p[0] - 1, p[1], -0.9 - j * 0.35, 7, 1.4, 0.5); bl += A.leaf(p[0] - 1, p[1], -0.9 - j * 0.35, 5, 0.4, 0.5); } } bunch += A.P(fruit[1], b) + A.P(fruit[2], bl, 0.7); }
-        bunch += A.P('#7a2a4a', A.leaf(st.tip[0], st.tip[1] - 1, Math.PI, 7, 2.6, 0.45)) + A.P('#a8406a', A.leaf(st.tip[0] - 0.6, st.tip[1], Math.PI, 5, 0.9, 0.45), 0.7);
-      }
-      return A.shadow(20, 3) + A.P('#8a9a5a', trunk.d) + A.S('#6a7a3a', 0.8, `M${-tw * 0.4} -2V${f1(-H * 0.55)}M${tw * 0.5} -4V${f1(-H * 0.5)}`, 0.6) + gartSway(o, r, A.P(L[1], lv) + A.P(L[2], lvL, 0.6) + A.S(L[0], 0.7, ribs, 0.7) + A.S('#f2f6e8', 0.7, tears, 0.8) + bunch);
-    },
-  });
 
   /* ---------- mushroom (the glowcap): a ring of little caps on pale stems that glow teal in the dark ---------- */
   gartDefine('form:mushroom', {
@@ -507,57 +297,6 @@
       return A.shadow(28, 4) + s1 + A.P('#5a7a4a', 'M-26 -10Q0 4 26 -10L22 0H-22z');
     },
   });
-  /* ---------- the pickerel weed: glossy arrow-heart leaves standing out of the water, a spike of blue ---------- */
-  gartDefine('plant:pickerel-weed', {
-    box: [40, 50],
-    draw(o, r) {
-      const col = colOf(o, '#6c7fd8'), s = o.s5, L = gartSeasonLeaf(o, 'perennial'), win = o.season === 'winter';
-      let out = pondWater(o, r, 18);
-      if (s === 0) return out + A.S(L[2], 1.2, 'M0 0l0.4-5');
-      let stalks = '', lv = '', lvL = '', spikes = '';
-      const n = s === 1 ? 2 : s === 2 ? 4 : 6, H = s === 1 ? 10 : s === 2 ? 22 : 30;
-      for (let i = 0; i < n; i++) {
-        const a = (i / (n - 1) - 0.5) * 1, st = A.stem(rr(r, -3, 3), 0, a, H * rr(r, 0.75, 1), rr(r, -2, 2)), [tx, ty] = st.tip, R = s === 1 ? 3 : 6;
-        stalks += st.d;
-        if (win) continue;
-        // an arrow-shaped heart, pointing up, glossy
-        lv += `M${f1(tx)} ${f1(ty + R * 0.3)}C${f1(tx - R * 1.3)} ${f1(ty + R * 0.6)} ${f1(tx - R)} ${f1(ty - R * 1.2)} ${f1(tx)} ${f1(ty - R * 1.8)}C${f1(tx + R)} ${f1(ty - R * 1.2)} ${f1(tx + R * 1.3)} ${f1(ty + R * 0.6)} ${f1(tx)} ${f1(ty + R * 0.3)}z`;
-        lvL += A.ell(tx - R * 0.35, ty - R * 0.6, R * 0.22, R * 0.6);
-      }
-      if (s >= 3 && !win) for (let i = 0; i < (s === 3 ? 1 : 3); i++) {
-        const x = (i - 1) * 7, st = A.stem(x * 0.5, 0, x * 0.02, H + 8, 0), [tx, ty] = st.tip;
-        stalks += st.d;
-        for (let k = 0; k < 9; k++) spikes += A.circ(tx + (k % 2 ? 1.1 : -1.1), ty + k * 1.3, 1.3 - k * 0.04);
-      }
-      return out + A.S(win ? '#a8946a' : L[1], 1.1, stalks) + A.P(L[1], lv) + A.P('#ffffff', lvL, 0.35) + A.P(s === 3 ? L[2] : col[1], spikes) + A.P(col[2], spikes.replace(/a([\d.]+) ([\d.]+)/g, (m, a2, b2) => `a${f1(a2 * 0.4)} ${f1(b2 * 0.4)}`), 0.8);
-    },
-  });
 
-  /* ---------- the marsh marigold: a cushion of glossy round leaves at the water's edge, shining gold cups ---------- */
-  gartDefine('plant:marsh-marigold', {
-    box: [40, 26],
-    draw(o, r) {
-      const col = colOf(o, '#f6c90e'), s = o.s5, L = gartSeasonLeaf(o, 'perennial'), win = o.season === 'winter';
-      let out = pondWater(o, r, 18);
-      if (s === 0) return out + A.P('#8a6a4a', A.ell(0, -0.4, 2.4, 1));
-      let lv = '', lvL = '', cups = '', gloss = '', stalks = '';
-      const n = s === 1 ? 3 : s === 2 ? 6 : 9;
-      for (let i = 0; i < n; i++) {
-        const x = (i / (n - 1) - 0.5) * 24 + rr(r, -1.5, 1.5), y = -rr(r, 3, 9), R = (s === 1 ? 2.6 : 4.4) * rr(r, 0.85, 1.1);
-        stalks += `M${f1(x * 0.5)} 0Q${f1(x * 0.9)} ${f1(y * 0.5)} ${f1(x)} ${f1(y)}`;
-        // a round kidney leaf with its notch, glossy
-        lv += `M${f1(x)} ${f1(y + R * 0.2)}A${f1(R)} ${f1(R * 0.8)} 0 1 1 ${f1(x + R * 0.5)} ${f1(y + R * 0.7)}z`;
-        lvL += A.ell(x - R * 0.35, y - R * 0.3, R * 0.3, R * 0.2);
-      }
-      if (s >= 3 && !win) for (let i = 0; i < (s === 3 ? 3 : 6); i++) {
-        const x = (i / 5 - 0.5) * 22 + rr(r, -1, 1), y = -12 - rr(r, 0, 4);
-        stalks += `M${f1(x * 0.6)} -3L${f1(x)} ${f1(y)}`;
-        if (s === 3) { cups += A.circ(x, y, 1.4); continue; }
-        cups += `M${f1(x - 3)} ${f1(y - 2)}Q${f1(x - 3)} ${f1(y + 2)} ${f1(x)} ${f1(y + 2)}Q${f1(x + 3)} ${f1(y + 2)} ${f1(x + 3)} ${f1(y - 2)}q-1.5 0.6-3 0q-1.5 0.6-3 0z`;
-        gloss += A.ell(x - 1.4, y - 0.2, 0.8, 1.2);
-      }
-      return out + A.S(L[1], 0.8, stalks) + A.P(L[1], lv) + A.P('#ffffff', lvL, 0.35) + A.P(s === 3 ? L[2] : col[1], cups) + A.P('#fffbe0', gloss, 0.85);
-    },
-  });
 
 })();

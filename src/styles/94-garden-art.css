@@ -15,6 +15,9 @@
    place these fragments are shown.
    ============================================================ */
 .gart [class*="gart-"] { transform-box: fill-box; }
+.gart .gda-spin { transform-box: fill-box; transform-origin: 50% 50%; }
+/* an icon in a list stays still: a moving drawing inside an inline SVG makes the browser lay out the page round it, every frame (one breathing duck in the side panel cost 70 ms a second) */
+.gd-ico .gart * { animation: none !important; }
 
 /* hanging things swing from their top */
 .gart-swing { transform-origin: 50% 0%; animation: gart-swing 3.6s ease-in-out infinite alternate; }
@@ -34,7 +37,7 @@
 .gart-creep { animation: gart-creep 12s ease-in-out infinite alternate; }
 @keyframes gart-creep { from { transform: translate(0, 0); } to { transform: translate(5px, 0); } }
 .gart-breathe { transform-origin: 50% 100%; animation: gart-breathe 3.8s ease-in-out infinite alternate; }
-@keyframes gart-breathe { from { transform: scale(1, 1); } to { transform: scale(1.02, 1.045); } }
+@keyframes gart-breathe { from { transform: translate(0, 0); } to { transform: translate(0, -0.7px); } }
 .gart-ear { transform-origin: 50% 100%; animation: gart-ear 5s ease-in-out infinite; }
 @keyframes gart-ear { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-8deg); } 90% { transform: rotate(2deg); } }
 
@@ -57,6 +60,95 @@
 @keyframes gart-leaf { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 8% { opacity: 1; } 50% { transform: translate(calc(var(--gx, 0px) * .5 + 12px), calc(var(--gy, 400px) * .5)) rotate(170deg); } 92% { opacity: 1; } 100% { transform: translate(var(--gx, 0px), var(--gy, 400px)) rotate(330deg); opacity: 0; } }
 .gart-drift { animation: gart-drift 40s ease-in-out infinite alternate; }
 @keyframes gart-drift { from { transform: translate(-30px, 0); } to { transform: translate(30px, 0); } }
+
+/* 2.23: the wind. Not a metronome: a lean, a gust past it, a slow recovery, and every plant at its own place in the gust. */
+.gd-svg .gd-it .gda-sway { animation-name: gart-wind; }
+@keyframes gart-wind {
+  0%, 100% { transform: rotate(-.9deg) skewX(.5deg); }
+  28% { transform: rotate(1.9deg) skewX(-1.4deg); }
+  42% { transform: rotate(1.1deg) skewX(-.6deg); }
+  58% { transform: rotate(2.3deg) skewX(-1.7deg); }
+  82% { transform: rotate(-.3deg) skewX(.2deg); }
+}
+.gd-svg .gart-rest, .gd-svg .gart-rest * { animation: none !important; }
+.gd-svg .gart-off { display: none; }
+.gart-nosky .gart-cloud, .gart-nosky .gd-sky * { animation: none !important; }
+.gd-svg .gd-ground .gart-live { pointer-events: none; }
+.gart-popw { transform-box: fill-box; transform-origin: 50% 100%; }
+.gart-fx, .gart-fx * { pointer-events: none; transform-box: fill-box; transform-origin: 50% 50%; }
+.gart-fx ellipse { transform-box: fill-box; }
+
+/* water: a ring that opens and fades; the second foam line follows the first */
+.gd-svg .gart-ring { transform-box: fill-box; transform-origin: 50% 50%; animation: gart-ring 6.4s ease-out infinite; }
+@keyframes gart-ring { 0% { transform: scale(.2); opacity: 0; } 12% { opacity: .85; } 60%, 100% { transform: scale(1.5); opacity: 0; } }
+.gd-svg .gart-foam2 { animation-delay: -1.6s; animation-duration: 5.2s; }
+.gart-cloud { animation: gart-cloud 150s ease-in-out infinite alternate; }
+@keyframes gart-cloud { from { transform: translateX(calc(var(--gx, 300px) * -1)); } to { transform: translateX(var(--gx, 300px)); } }
+
+/* the garden's small residents (94-garden-art-e-sky.js): a path through the air, wings on their own beat */
+.gart-amb { animation: gart-amb var(--d, 16s) ease-in-out var(--dl, 0s) infinite; }
+@keyframes gart-amb {
+  0%, 100% { transform: translate(0, 0); }
+  17% { transform: translate(calc(var(--r, 24px) * .9), calc(var(--r, 24px) * -.5)); }
+  34% { transform: translate(calc(var(--r, 24px) * 1.3), calc(var(--r, 24px) * .25)); }
+  50% { transform: translate(calc(var(--r, 24px) * .4), calc(var(--r, 24px) * .55)); }
+  67% { transform: translate(calc(var(--r, 24px) * -.8), calc(var(--r, 24px) * .05)); }
+  84% { transform: translate(calc(var(--r, 24px) * -1), calc(var(--r, 24px) * -.6)); }
+}
+.gart-wing { transform-box: fill-box; transform-origin: 100% 60%; animation: gart-wing .28s ease-in-out infinite alternate; }
+.gart-wing.is-r { transform-origin: 0% 60%; }
+.gart-wing.is-fast { animation-duration: .07s; }
+@keyframes gart-wing { from { transform: scaleX(1); } to { transform: scaleX(.3); } }
+.gart-fly { animation: gart-fly var(--d, 50s) linear var(--dl, 0s) infinite; }
+@keyframes gart-fly { 0% { transform: translate(0, 0); opacity: 0; } 2% { opacity: 1; } 18% { transform: translate(var(--gx, 1400px), var(--gy, -20px)); opacity: 1; } 19%, 100% { transform: translate(var(--gx, 1400px), var(--gy, -20px)); opacity: 0; } }
+
+/* the gardener (94-garden-art-g-player.js, the avatar kit's own drawing): named limbs, each with a pivot set in its own style attribute. Walk: 0.5 s a stride. */
+.gpl-idle .gpl-up { animation: gpl-breathe 3.4s ease-in-out infinite alternate; }
+.gpl-idle .gpl-hd { animation: gpl-look 7s ease-in-out infinite; }
+.gpl-idle .gpl-lg.gpl-a { transform: rotate(-5deg); }
+.gpl-idle .gpl-lg.gpl-b { transform: rotate(6deg); }
+@keyframes gpl-breathe { from { transform: scale(1, 1); } to { transform: scale(1.012, 1.028); } }
+@keyframes gpl-look { 0%, 62%, 100% { transform: rotate(0); } 70%, 82% { transform: rotate(3deg); } 90% { transform: rotate(-1.4deg); } }
+.gpl-walk .gpl-root { animation: gpl-bounce .25s ease-in-out infinite alternate; }
+@keyframes gpl-bounce { from { transform: translateY(0); } to { transform: translateY(-1.8px); } }
+.gpl-walk .gpl-up { animation: gpl-lean .5s ease-in-out infinite alternate; }
+@keyframes gpl-lean { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
+.gpl-walk.gpl-de .gpl-up { animation: none; transform: rotate(3deg); }
+.gpl-walk .gpl-hd { animation: gpl-nod .25s ease-in-out infinite alternate; }
+@keyframes gpl-nod { from { transform: translateY(0); } to { transform: translateY(.9px); } }
+/* side view: legs and arms swing about the hip and shoulder, opposite each other */
+.gpl-walk .gpl-lg.gpl-a { animation: gpl-leg .5s ease-in-out infinite alternate; }
+.gpl-walk .gpl-lg.gpl-b { animation: gpl-leg .5s ease-in-out -.5s infinite alternate; }
+@keyframes gpl-leg { from { transform: rotate(-24deg); } to { transform: rotate(24deg); } }
+.gpl-walk .gpl-as.gpl-a { animation: gpl-arm .5s ease-in-out -.5s infinite alternate; }
+.gpl-walk .gpl-as.gpl-b { animation: gpl-arm .5s ease-in-out infinite alternate; }
+@keyframes gpl-arm { from { transform: rotate(-26deg); } to { transform: rotate(26deg); } }
+/* front and back: a leg foreshortens from the hip as it lifts, the arms swing a little */
+.gpl-walk .gpl-lf.gpl-a { animation: gpl-lift .5s ease-in-out infinite alternate; }
+.gpl-walk .gpl-lf.gpl-b { animation: gpl-lift .5s ease-in-out -.5s infinite alternate; }
+@keyframes gpl-lift { from { transform: scaleY(1); } to { transform: scaleY(.84); } }
+.gpl-walk .gpl-af.gpl-a { animation: gpl-sw .5s ease-in-out infinite alternate; }
+.gpl-walk .gpl-af.gpl-b { animation: gpl-sw .5s ease-in-out -.5s infinite alternate; }
+@keyframes gpl-sw { from { transform: rotate(-11deg); } to { transform: rotate(11deg); } }
+/* the jobs */
+.gpl-water .gpl-up { transform: rotate(3deg); }
+.gpl-wat { animation: gpl-tip 1s ease-in-out infinite alternate; }
+@keyframes gpl-tip { from { transform: rotate(-3deg); } to { transform: rotate(9deg); } }
+.gpl-drops { animation: gpl-pour .55s linear infinite; }
+@keyframes gpl-pour { from { transform: translateY(-3px); opacity: 0; } 20% { opacity: 1; } to { transform: translateY(19px); opacity: 0; } }
+.gpl-dig .gpl-up { animation: gpl-bend .76s ease-in-out infinite; }
+@keyframes gpl-bend { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(13deg) translateY(1.4px); } }
+.gpl-dg { animation: gpl-dg .76s ease-in-out infinite; }
+@keyframes gpl-dg { 0%, 100% { transform: rotate(-16deg); } 50% { transform: rotate(14deg) translateY(2px); } }
+.gpl-pick .gpl-up { animation: gpl-stoop .76s ease-in-out infinite; }
+@keyframes gpl-stoop { 0%, 100% { transform: rotate(2deg); } 50% { transform: rotate(20deg) translateY(2.4px); } }
+.gpl-pk { animation: gpl-reach .76s ease-in-out infinite; }
+@keyframes gpl-reach { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(-28deg); } }
+.gpl-fs { animation: gpl-fs 3s ease-in-out infinite alternate; }
+@keyframes gpl-fs { from { transform: rotate(-2deg); } to { transform: rotate(3deg); } }
+.is-still .gpl *, html[data-motion="reduced"] .gpl * { animation: none !important; }
+html[data-motion="reduced"] .gd-svg .gart-live *, html[data-motion="reduced"] .gart-cloud, html[data-motion="reduced"] .gd-svg .gd-sky *, html[data-motion="reduced"] .gd-svg .gd-halo, html[data-motion="reduced"] .gd-svg .gd-objects *, html[data-motion="reduced"] .gd-svg .gd-weather * { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .gpl *, .gd-svg .gart-live *, .gart-cloud, .gd-svg .gd-sky *, .gd-svg .gd-halo, .gd-svg .gd-objects *, .gd-svg .gd-weather * { animation: none !important; } }
 
 /* still: anywhere else these fragments are shown, the same rules as the garden's */
 .is-still .gart *, .is-funoff .gart *, .is-still .gart-wx *, .is-funoff .gart-wx * { animation: none !important; }

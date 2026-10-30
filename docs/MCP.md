@@ -150,8 +150,8 @@ returns every operation with its exact JSON Schema and its
 | Files & links | `list_resources`, `get_suggested_links`, `get_related` |
 | Brief and reviews | `get_brief`, `list_reviews` |
 | Daily note | `get_daynotes` (one day, a range or a search; not offered to the in-app assistant) |
-| Garden | `get_garden` (overview with ids, bag, shop, quests) |
-| You | `get_profile` (card and status, avatar options, outfits, pet), `get_game` (level, streaks, quests, achievements), `get_memories` (milestones, week, year, facts, goals, countries; the journal and capsules are not offered to the in-app assistant) |
+| Garden | `get_garden` (overview with ids, bag, shop, quests, `recipes`: what the crafting bench knows and what each needs) |
+| You | `get_profile` (card and status, avatar options, outfits, pet with its trick book), `get_game` (level, streaks, quests, achievements), `get_memories` (milestones, week, year, facts, goals, countries; the journal and capsules are not offered to the in-app assistant) |
 | Settings | `get_settings` (each setting `set_setting` can change, its value and what it can be) |
 | Money and travel | `get_money` (budgets, the money plan, the tax year line by line with `part: tax`, a year of expenses), `list_owed` (who owes you what, what you owe, money you expect back; not on the remote connection), `get_travel` (trip decisions, countries; never exact locations) |
 | Stories | `get_stories` (the day's script) |
@@ -173,8 +173,8 @@ returns every operation with its exact JSON Schema and its
 | Reviews | `save_review` |
 | Daily note | `save_daynote` (replace a day's note, or add lines at its end; 10,000 characters a day) |
 | Batches | `apply_changes` (several operations, all or nothing), `undo_changes` |
-| Garden | `garden`: plant, water, feed, prune, harvest, dig up, move, decorate, buy, sell, make a bouquet, collect |
-| You | `set_profile` (status, avatar, card text), `set_wardrobe` (save, wear, rename, remove, surprise), `pet` (feed, pat, teach, dress, name, adopt) |
+| Garden | `garden`: plant, water, feed, prune, harvest, dig up, move, decorate, buy, buy land, sell, make a bouquet, collect, craft (a recipe from `get_garden {view:"recipes"}`) |
+| You | `set_profile` (status, avatar, card text), `set_wardrobe` (save, wear, rename, remove, surprise), `pet` (feed, pat, teach, dress, name, adopt, learn a trick from the book, perform a trick it knows, wear or take off what you made at the bench) |
 | Settings | `set_setting` (one ordinary setting), `undo_change` (undoes a garden, profile, pet, layout, note, tax or setting change) |
 | Tax and the money plan | `tax_change` (income sources, client payments, claims, flat rates, plan items and debts, ticks on dates, a filed return, things to remember, each with Undo), `open_what_if` (shows a scenario on screen, saves nothing) |
 | Friends (sensitive) | `friends_act` (waves, cheers, postcards, garden visits, add, approve, decline, remove, block), `friends_share` (what a friend can see), `together_act` (shared spaces) |
