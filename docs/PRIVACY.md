@@ -134,7 +134,7 @@ computer where you made them. On another computer you sign in again.
 
 A few things are only shared between your devices when sync is encrypted (it
 always is for a new setup; an older copy that synced without encryption is
-asked to switch): your location history, expenses and receipts, what friends
+asked to switch): your location history, expenses and receipts, who owes you what, what friends
 share with you, and your sharing log.
 
 ### Level 3: friends

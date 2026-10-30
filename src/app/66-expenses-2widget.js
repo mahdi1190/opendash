@@ -64,6 +64,7 @@ function expTaskMenuItem(taskId) {
 /* ---------- Finances: the button and the hint on a transaction ---------- */
 function expTxButton(tx) {
   if (!tx || !(Number(tx.a) < 0)) return null;
+  if (typeof owdForTx === 'function' && owdForTx(tx)) return null;   // split with friends: Owed to me has it
   if (!EXP.loaded) expLoad();
   const e = expForTx(tx);
   if (e) return uiButton({ label: `Expense · ${XP_STATUS[e.status][0]}`, icon: 'receipt', cls: 'fv-btn', tip: 'Open this expense', run: () => expAddDialog({ edit: e.id }) });
@@ -73,7 +74,7 @@ function expTxChip(tx) {
   if (!EXP.loaded || !tx) return null;
   const e = expForTx(tx);
   if (e) { const s = _xe('span', 'xp-tag st-' + e.status, icon('receipt', 'i-xs') + esc(XP_STATUS[e.status][0])); s.title = 'Expense: ' + e.title; return s; }
-  const hint = expHintFor(tx);
+  const hint = typeof owdForTx === 'function' && owdForTx(tx) ? '' : expHintFor(tx);
   if (!hint) return null;
   const w = _xe('span', 'xp-hintchip');
   const go = _xe('button', 'xp-hintb', icon('receipt', 'i-xs') + 'Expense?'); go.type = 'button'; go.title = hint === 'trip' ? 'You were on a work trip' : 'You have expensed this merchant before';

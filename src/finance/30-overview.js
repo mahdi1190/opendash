@@ -10,6 +10,7 @@
   BUILD.overview = g => {
     MB.painted = false;
     mbBuild(g);
+    S.owedLine = h('div', { class: 'fv-owed-line', style: { gridColumn: '1 / -1' } }); g.append(S.owedLine);   // Owed to me: what is owed, or "Split this?"
     g.append(h('div', { class: 'fv-mb-divider' }, h('h2', { text: 'More detail' }), h('span', { class: 'fv-mb-divider-s', text: 'For the dates in the bar above' })));
     S.trend = card(g, { title: 'Spending over time', span: 8, chart: true, height: 400, fill: true });
     S.cats = card(g, { title: 'Where it went', span: 4, chart: true, height: 200, cls: 'fv-cats' });
@@ -26,6 +27,7 @@
       mbPaint(ctx, first);
       mbChartUpdate(false);
     } catch (e) { console.error('[finance] money brief failed', e); }
+    try { const n = window.Owed && window.Owed.briefLine ? window.Owed.briefLine() : null; S.owedLine.replaceChildren(...(n ? [n] : [])); } catch (e) { console.error('[finance] owed line', e); }
     trendChart(S.trend, ctx, 's:ov-trend', false);
     catBreakdown(S.cats, ctx, 's:ov-cats', S.catList);
     topMerchants(S.merch, ctx, 's:ov-merch', 8);

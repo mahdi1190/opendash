@@ -10,6 +10,25 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.22.4]
+
+Owed to me: split a payment, and let your bank tell you who has paid.
+
+### Added
+- **Owed to me**, a new tab in Money. Click a payment, choose Split this, and pick people: equal, exact amounts, shares, percentages or extras. Stray pennies fall to you and are shown.
+- Your bank is checked for who paid back: "We think Sam paid £8. Yes or Not this?". Each Yes teaches it how that person's payments look. Nothing is marked paid by itself unless you turn that on.
+- Paying for others: a payment can cover several people ("Sam paid £16: for himself and one other?"). Click any payment to say what it was for, with editable amounts; the rest can be credit, a gift or not related. Change it later.
+- Views by person, thing and trip, with who pays whom and settle up. Also I owe, Expecting money (refunds, deposits, loans) with a late flag, and moving an expense to Owed to me and back.
+- Remind someone with a friendly message you send yourself; OpenDash never sends anything.
+- A Home widget and a My money widget; search Transactions by amount; a note on any payment; "Expecting a refund" on a payment; "I paid £40 for bowling" typed in one line.
+- The assistant can list what is owed, create a split and mark it paid, with Undo. "Paid" read from an email only asks you on the page.
+
+### Changed
+- Money that is paid back and matched in your bank is no longer income, and comes off the original payment, so bowling counts as your £8 share. It lands in the month of the original payment, so past months can move. You can switch this off.
+
+### Fixed
+- A dialog no longer closes or loses what you typed when saving fails.
+
 ## [2.22.3]
 
 Credit cards, like an Amex.

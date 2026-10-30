@@ -263,8 +263,14 @@ function openDialog(o) {
     for (const a of o.actions) {
       if (a === 'spacer') { const s = document.createElement('span'); s.className = 'spacer'; f.appendChild(s); continue; }
       if (!a) continue;
-      f.appendChild(uiButton({ label: a.label, icon: a.icon, kind: a.primary ? 'primary' : a.danger ? 'danger' : 'secondary', tip: a.tip, disabled: a.disabled, cls: a.cls, bubble: true,
-        run: () => { const r = a.run ? a.run(close) : undefined; if (r !== false) close(); } }));
+      f.appendChild(uiButton({ label: a.label, icon: a.icon, kind: a.primary ? 'primary' : a.danger ? 'danger' : 'secondary', tip: a.tip, disabled: a.disabled, cls: a.cls, bubble: true, wait: true,
+        // An async save keeps the dialog, and what was typed, until it has worked: false or a failure leaves it open.
+        run: () => {
+          const r = a.run ? a.run(close) : undefined;
+          if (r && typeof r.then === 'function') return r.then((v) => { if (v !== false) close(); }, (e) => { console.error('[dialog]', e); toastError('do that', e); });
+          if (r !== false) close();
+          return undefined;
+        } }));
     }
     dlg.appendChild(f);
   }

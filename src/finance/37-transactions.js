@@ -206,7 +206,8 @@
           // "Payment" says nothing (the bank gave no method), so it is left out.
           kind !== 'payment' ? [h('span', { class: 'sep', text: '·' }), VK.badge(kind, { size: 'sm' })] : null,
           showAcct ? h('span', { class: 'ac', text: M.acctNames[x.acct] || x.acct || '' }) : null,
-          x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txChip ? window.Expenses.txChip(x) : null)),   // an expense, or the "Expense?" hint
+          x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txChip ? window.Expenses.txChip(x) : null,   // an expense, or the "Expense?" hint
+          window.Owed && window.Owed.txChip ? window.Owed.txChip(x) : null)),   // a split, "Paid back", or "Split this?"
       h('span', { class: 'fv-txr-am' + (x.a > 0 ? ' in' : ''), text: x.a > 0 ? sgbp2(x.a) : gbp2(x.a) }));
     row._x = x;
     return row;
@@ -252,6 +253,7 @@
         } },
         { label: 'Not spending', icon: 'repeat', tip: 'Count these as transfers, not spending (every payment from the same place too)', run: ids => txBulkCategorise(txPickRows(ids), 'Internal transfers') },
         window.Expenses && window.Expenses.fromTransactions ? { label: 'Mark as expense', icon: 'receipt', keep: true, run: (ids, a, ms) => window.Expenses.fromTransactions(txPickRows(ids), () => ms.clear(true)) } : null,
+        window.Owed && window.Owed.fromTransactions ? { label: 'Split', icon: 'handshake', tip: 'Share between people and see who has paid', keep: true, run: (ids, a, ms) => window.Owed.fromTransactions(txPickRows(ids), () => ms.clear(true)) } : null,
         { label: 'Download', icon: 'download', tip: 'The selected ones as a CSV file', keep: true, run: ids => exportCsv(txPickRows(ids), R.ctx) },
       ] });
     S.txCtl.insertBefore(S.txPick.button({ cls: 'fv-btn ghost' }), S.txExport);
@@ -341,8 +343,8 @@
     const nM = all.length && monthIdx(Math.min(...all.map(y => y.n))) <= endMi - 11 ? 12 : 6;
     const mons = new Array(nM).fill(0);
     for (const y of all) { const k = monthIdx(y.n) - (endMi - nM + 1); if (k >= 0 && k < nM) mons[k] += y.s; }
-    const how = { override: 'your choice', rule: 'its name', bank: 'the bank’s category', default: 'the default', unmatched: 'no match yet', 'own-transfer': 'a matching payment into another of your accounts', 'card-payment': 'a payment to a credit card, already counted when you bought things', refund: 'money back on a credit card' }[x.how] || (x.how || 'the import');
-    const counts = x.oa ? 'Money from your other account (not income or spending)' : x.kind === 'spend' ? 'Spending' : x.kind === 'income' ? 'Money in' : 'A transfer (not spending)';
+    const how = { 'owed-back': 'you matching it to someone who owed you', override: 'your choice', rule: 'its name', bank: 'the bank’s category', default: 'the default', unmatched: 'no match yet', 'card-payment': 'a payment to a credit card, already counted when you bought things', 'own-transfer': 'a matching payment into another of your accounts' }[x.how] || (x.how || 'the import');
+    const counts = x.sa ? `${gbp2(x.sa)} is someone paying you back; the other ${gbp2(x.a - x.sa)} counts as it did` : x.sb ? 'Someone paying you back (not income; it comes off what they paid back)' : x.bk ? `Spending: ${gbp2(x.s)} after ${gbp2(x.bk)} paid back` : x.oa ? 'Money from your other account (not income or spending)' : x.kind === 'spend' ? 'Spending' : x.kind === 'income' ? 'Money in' : 'A transfer (not spending)';
     const filt = isSelMerchant(x.m);
     const det = h('div', { class: 'fv-txx', role: 'region', 'aria-label': 'Details' },
       h('dl', null,
@@ -360,6 +362,10 @@
           h('button', { type: 'button', class: 'fv-btn', onclick: () => setMerchant(filt ? '' : G.primary(key)) }, ic(filt ? 'x' : 'filter'), filt ? 'Show all shops' : 'Only this shop'),
           h('button', { type: 'button', class: 'fv-btn', onclick: () => openDay(x.n) }, ic('calendar'), 'This day'),
           x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txAction ? window.Expenses.txAction(x) : null,   // Expenses (src/app/66-expenses-2widget.js)
+          window.Owed && window.Owed.txAction ? window.Owed.txAction(x) : null,   // Split this, or Who paid this? (src/app/66-owed-3more.js)
+          window.Owed && window.Owed.txAttach ? window.Owed.txAttach(x) : null,   // Attach to something you owe, a split, an expense or a trip
+          window.Owed && window.Owed.txRefund ? window.Owed.txRefund(x) : null,
+          window.Owed && window.Owed.txNote ? window.Owed.txNote(x) : null,
           x.how === 'override' ? h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => categorise(x.m, null, x.c, 'override') }, ic('rotate-ccw'), 'Use the automatic category') : null,
           h('button', { type: 'button', class: 'fv-btn ghost fv-txx-all', onclick: () => openMerchant(x.m) }, `All at ${label}`, ic('arrow-right')))));
     return det;
