@@ -287,3 +287,18 @@
   .fv-pl-row-sub { white-space: normal; }
   .fv-pw-peek { display: flex; }
 }
+
+/* Money entry: what stops, what a change did */
+.fv-pl-oneoff { display: block; font-size: 12px; line-height: 16px; color: var(--fg-muted); font-weight: 400; white-space: nowrap; }
+.fv-pl-rare { margin-top: var(--space-2); }
+.fv-pl-addf-d { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: 6px; }
+.fv-pl-adddates { flex-basis: 100%; font-size: 13px; color: var(--fg-muted); }
+.fv-pl-adddates summary { cursor: pointer; }
+.fv-pl-addsay { flex-basis: 100%; }
+.fv-pl-addsay[hidden], .fv-pl-pf .fv-tx-say[hidden] { display: none; }
+.fv-plq-count { margin-left: 8px; font-size: 12.5px; color: var(--fg-muted); font-variant-numeric: tabular-nums; }
+.fv-plq-said { display: flex; gap: 8px; margin: var(--space-2) 0 0; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--accent-soft-2, var(--bg-muted)); color: var(--fg); font-size: 13.5px; line-height: 20px; }
+.fv-plq-said .i { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--accent-ink); }
+.fv-plq-tell { margin-top: var(--space-2); }
+.fv-plq-payper { display: flex; gap: 6px; align-items: center; }
+.fv-plq-echo { display: block; min-height: 16px; font-size: 12px; line-height: 16px; color: var(--fg-muted); }

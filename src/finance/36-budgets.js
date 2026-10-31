@@ -406,11 +406,11 @@
     const M = ctx.M, t = tk();
     cd.body.innerHTML = '';
     const dirty = !!R.budgetDraft && JSON.stringify(cleanBudgets(R.budgetDraft)) !== JSON.stringify(cleanBudgets(saved));
-    cd.setSub(`${fMonth(bc.mi)} · “Heading for” is where this month looks set to end` + (R.budgetsLocal ? ' · saved in this browser only (server has no budgets route yet)' : ''));
+    cd.setSub(`${fMonth(bc.mi)}. Type a monthly amount and press Enter. “Heading for” is where this month looks set to end` + (R.budgetsLocal ? ' · saved in this browser only (server has no budgets route yet)' : ''));
     cd.tools.innerHTML = '';
     const saveBtn = h('button', { type: 'button', class: 'fv-btn primary', disabled: !dirty || R.budgetsBusy, text: R.budgetsBusy ? 'Saving…' : 'Save budgets', onclick: saveBudgets });
     const suggest = h('button', { type: 'button', class: 'fv-btn ghost', title: 'Fills empty budgets with what you usually spend, rounded up to the next 5. Nothing is saved until you press Save.', onclick: () => budSuggest() }, ic('sparkles'), h('span', { text: 'Suggest amounts' }));
-    const discard = h('button', { type: 'button', class: 'fv-btn ghost', text: 'Discard changes', hidden: !dirty, onclick: () => { R.budgetDraft = null; UPDATE.budgets(R.ctx); } });
+    const discard = h('button', { type: 'button', class: 'fv-btn ghost', text: 'Discard changes', hidden: !dirty, onclick: () => { const was = R.budgetDraft; R.budgetDraft = null; UPDATE.budgets(R.ctx); toast('What you typed was not saved', { action: 'Undo', onAction: () => { R.budgetDraft = was; UPDATE.budgets(R.ctx); } }); } });
     cd.tools.append(suggest, discard, saveBtn);
     const all = M.spendCats.filter(c => c !== 'Internal transfers');
     const rows = all.map(c => ({ c, b: +B[c] || 0, s: bc.spent[c] || 0, f: bc.fc(c), a: bc.avg3(c) }))
@@ -422,18 +422,18 @@
     const tbl = h('table', { class: 'fv-table fv-budget' },
       h('thead', null, h('tr', null, h('th', { text: 'Category' }), h('th', { class: 'r', text: 'Budget a month' }), h('th', { class: 'r', text: 'Usual month' }), h('th', { class: 'r', text: 'Spent' }), h('th', { class: 'prog', text: 'Progress' }), h('th', { class: 'r', text: 'Heading for' }), h('th', { text: 'Status' }))),
       h('tbody', null, rows.map(r => {
-        const inp = h('input', { type: 'number', min: '0', step: '5', inputmode: 'decimal', class: 'fv-input fv-money', placeholder: '—', 'aria-label': `Monthly budget for ${r.c}` });
-        if (r.b > 0) inp.value = String(r.b);
+        const inp = moneyWire(h('input', { type: 'text', inputmode: 'decimal', autocomplete: 'off', class: 'fv-input fv-money', placeholder: '—', 'aria-label': `Monthly budget for ${r.c}` }));
+        if (r.b > 0) inp.value = moneyNice(r.b);
         inp.addEventListener('input', () => {
-          const v = inp.value === '' ? 0 : Number(inp.value);
-          if (!isFinite(v) || v < 0) { inp.classList.add('bad'); return; }
-          inp.classList.remove('bad');
+          const x = moneyParse(inp.value), v = x == null ? 0 : x;
+          if (!isFinite(v) || v < 0) { inp.classList.add('bad'); inp.title = MONEY_HELP; return; }
+          inp.classList.remove('bad'); inp.title = '';
           R.budgetDraft = Object.assign({}, R.budgetDraft || saved);
           if (v > 0) R.budgetDraft[r.c] = round2(v); else delete R.budgetDraft[r.c];
           const d2 = JSON.stringify(cleanBudgets(R.budgetDraft)) !== JSON.stringify(cleanBudgets(saved));
           saveBtn.disabled = !d2 || R.budgetsBusy; discard.hidden = !d2;
         });
-        inp.addEventListener('change', () => UPDATE.budgets(R.ctx));
+        inp.addEventListener('change', () => setTimeout(() => { const ae = document.activeElement, lab = ae && ae.getAttribute && ae.getAttribute('aria-label'); UPDATE.budgets(R.ctx); if (lab && lab.startsWith('Monthly budget for ')) { const next = [...S.ed.el.querySelectorAll('input.fv-money')].find(x => x.getAttribute('aria-label') === lab); if (next) { next.focus(); next.select(); } } }, 0));
         inp.addEventListener('keydown', e => { if (e.key === 'Enter') { inp.blur(); if (!saveBtn.disabled) saveBudgets(); } });
         const look = budgetLook(r.s, r.b, pace, budgetScheduled(r.c));
         // Budgeted rows read against their own budget; the rest share one scale.
@@ -455,7 +455,7 @@
     cd.body.append(h('div', { class: 'fv-tablewrap' }, tbl));
     if (extra.length) {
       const sel = h('select', { class: 'fv-input', 'aria-label': 'Add a budget for another category' }, h('option', { value: '', text: '+ Add a category…' }), extra.map(c => h('option', { value: c, text: c })));
-      sel.addEventListener('change', () => { if (!sel.value) return; R.budgetDraft = Object.assign({}, R.budgetDraft || saved, { [sel.value]: 50 }); UPDATE.budgets(R.ctx); });
+      sel.addEventListener('change', () => { if (!sel.value) return; const c = sel.value; R.budgetDraft = Object.assign({}, R.budgetDraft || saved, { [c]: 50 }); UPDATE.budgets(R.ctx); const box = S.ed.el.querySelector(`input[aria-label="Monthly budget for ${c.replace(/["\\]/g, '')}"]`); if (box) { box.focus(); box.select(); } });
       cd.body.append(h('div', { class: 'fv-budget-add' }, sel, h('span', { class: 'mute', text: 'The tick shows how much of the month has gone.' })));
     }
   }
@@ -477,6 +477,13 @@
       } }] });
     if (S.bBar && !S.bBar.querySelector('.pk-select-btn')) S.bBar.appendChild(S.bPick.button({ cls: 'fv-btn ghost' }));
   }
+  async function budPutBack(was, base) {
+    try {
+      const r = await api('/api/finance/budgets', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgets: was, base }) });
+      if (r.ok && r.body && r.body.budgets) { R.budgets = cleanBudgets(r.body.budgets); R.budgetDraft = null; if (R.sectionId === 'budgets') UPDATE.budgets(R.ctx); toast('Put back'); }
+      else toast('That could not be undone. Change the amount below instead.', { bad: true });
+    } catch (e) { toast('Freeflo isn’t answering, so that was not undone. Try again in a moment.', { bad: true }); }
+  }
   async function saveBudgets() {
     if (!R.budgetDraft) return;
     const b = cleanBudgets(R.budgetDraft);
@@ -485,10 +492,16 @@
       // base: what this draft started from, so with sync on only the budgets changed here are written
       // (one another device set meanwhile is kept; lib/finance-share.mjs).
       const r = await api('/api/finance/budgets', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgets: b, base: cleanBudgets(R.budgets || {}) }) });
-      if (r.ok && r.body && r.body.budgets) { R.budgets = cleanBudgets(r.body.budgets); R.budgetsLocal = false; R.budgetDraft = null; toast('Budgets saved'); }
+      if (r.ok && r.body && r.body.budgets) {
+        const was = cleanBudgets(R.budgets || {}), now = cleanBudgets(r.body.budgets);
+        R.budgets = now; R.budgetsLocal = false; R.budgetDraft = null;
+        const changed = [...new Set([...Object.keys(was), ...Object.keys(now)])].filter(c => was[c] !== now[c]);
+        const words = changed.length === 1 ? `${changed[0]}: ${now[changed[0]] ? gbp(now[changed[0]]) + ' a month' : 'no budget'}` : 'Budgets saved';
+        toast(words, { action: 'Undo', onAction: () => budPutBack(was, now) });
+      }
       else if (r.status === 404 || r.status === 405) { R.budgets = b; F.localBudgets = b; saveF(); R.budgetsLocal = true; R.budgetDraft = null; toast('Saved in this browser (restart the Freeflo server to store budgets in the finance folder)'); }
-      else toast('Could not save budgets: ' + (r.body.error || 'HTTP ' + r.status), { bad: true });
-    } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); }
+      else toast('Your budgets were not saved: ' + (r.body.error || 'Freeflo could not store them') + '. What you typed is still here.', { bad: true, action: 'Try again', onAction: saveBudgets });
+    } catch (e) { toast('Freeflo isn’t answering, so your budgets were not saved. What you typed is still here.', { bad: true, action: 'Try again', onAction: saveBudgets }); }
     R.budgetsBusy = false;
     if (R.sectionId === 'budgets') UPDATE.budgets(R.ctx);
     if (R.ctx && R.sectionId === 'categories' && typeof catTable === 'function' && S.table) catTable(S.table, R.ctx);

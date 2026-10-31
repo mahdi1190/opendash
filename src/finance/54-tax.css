@@ -160,6 +160,27 @@
 .fv-tx-lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
 .fv-tx-wi { margin-top: var(--space-2); }
 
+/* Saying what is wrong next to the box, and what a change would do */
+.fv-tx-say { display: flex; gap: 6px; margin-top: 3px; font-size: 12.5px; line-height: 18px; color: var(--danger-ink); }
+.fv-tx-say .i { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.fv-tx-say.soft { color: var(--fg-muted); }
+.fv-tx-foot:empty { display: none; }
+.fv-tx-foot .fv-tx-say { font-size: 13.5px; }
+.fv-tx-echo { min-height: 16px; }
+.fv-tx-effect { display: flex; gap: 8px; margin: 0; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--accent-soft-2, var(--bg-muted)); color: var(--fg); font-size: 13.5px; line-height: 20px; }
+.fv-tx-effect[hidden] { display: none; }
+.fv-tx-effect .i { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--accent-ink); }
+.fv-tx-note-draft { display: flex; gap: 8px; margin: 0; font-size: 13px; line-height: 19px; color: var(--fg-muted); }
+.fv-tx-note-draft .i { width: 15px; height: 15px; flex: none; margin-top: 2px; }
+.fv-tx-src-h em.fv-tx-tag { color: var(--accent-ink); font-weight: 600; }
+.fv-tx-src-h em.fv-tx-unsaved { color: var(--warning-ink, var(--warning)); font-weight: 600; }
+.fv-tx-lastask { display: inline-block; font-size: 13px; margin-bottom: 4px; }
+.fv-tx-start .fv-plq-help { margin: 0 0 var(--space-2); }
+.fv-tx-slipways { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.fv-tx-ytd[hidden] { display: none; }
+.fv-pl-more .fv-tx-ytd { margin-top: var(--space-2); }
+.fv-pl-more > .fv-link { margin-top: var(--space-2); display: inline-block; }
+
 @media (max-width: 560px) {
   .fv-tx .fv-pl-big-v { font-size: 36px; line-height: 42px; }
   .fv-tx-dl { grid-template-columns: 24px minmax(0, 1fr); }

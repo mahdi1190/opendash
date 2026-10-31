@@ -9,9 +9,9 @@
   function txFeedBtn(id, calc) {
     const open = TX.why === id;
     return h('button', { type: 'button', class: 'fv-chg' + (calc ? ' calc' : ''), 'aria-expanded': open ? 'true' : 'false', onclick: () => { TX.why = open ? null : id; txPaint(); } },
-      ic(open ? 'chevron-down' : calc ? 'calculator' : 'pencil'), h('span', { text: open ? 'Close' : calc ? 'Worked out from these' : 'Change' }));
+      ic(open ? 'chevron-down' : calc ? 'circle-help' : 'pencil'), h('span', { text: open ? 'Close' : calc ? 'Worked out from these' : 'Change' }));
   }
-  function txOpenJob(id) { TX.edit = { id }; TX.focus = id; TX.why = null; txPaint(); }
+  function txOpenJob(id, o) { TX.edit = { id }; TX.focus = id; TX.why = null; if (o && o.ytd) TX.focusYtd = id; txPaint(); }
   const txStatic = (label, valueKids, note, o) => h('li', { class: 'fv-ans-r fv-tx-fi' + (o && o.total ? ' total' : '') + (o && o.dim ? ' dim' : '') },
     h('div', { class: 'fv-tx-fi-h' }, h('span', { class: 'l' }, label, note ? h('small', { text: note }) : null), h('span', { class: 'v' }, valueKids)),
     o && o.btn ? o.btn : null);
@@ -76,12 +76,12 @@
     if (a.override != null) {
       return h('li', { class: 'fv-ans-r fv-tx-own' }, h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', null, `This is your figure, not one Freeflo worked out. The sums use ${gbp(a.override)}. `, h('button', { type: 'button', class: 'fv-link', text: `Go back to worked out (${gbp(a.workedOut)})`, onclick: () => txDo({ action: 'answers.set', fields: { allowanceOverride: null } }, 'Your tax-free amount is worked out again', { close: false }) }))));
     }
-    const num = h('input', { type: 'text', inputmode: 'decimal', class: 'fv-tx-in', 'aria-label': 'Tax-free amount from HMRC', placeholder: String(a.workedOut), autocomplete: 'off' });
+    const num = moneyWire(h('input', { type: 'text', inputmode: 'decimal', class: 'fv-tx-in', 'aria-label': 'Tax-free amount from HMRC', placeholder: moneyNice(a.workedOut), autocomplete: 'off' }));
     const note = h('input', { type: 'text', class: 'fv-tx-in', 'aria-label': 'A note about where it came from', placeholder: 'For example: from my coding notice of 3 October', maxlength: '120', autocomplete: 'off' });
     const go = async (e) => {
       e.preventDefault();
-      const x = Number(num.value.replace(/[£,\s]/g, ''));
-      if (!num.value.trim() || !isFinite(x) || x < 0) { num.classList.add('bad'); num.focus(); return; }
+      const x = moneyParse(num.value);
+      if (x == null || !isFinite(x) || x < 0) { num.classList.add('bad'); num.title = MONEY_HELP; num.focus(); return; }
       await txDo({ action: 'answers.set', fields: { allowanceOverride: x, allowanceNote: note.value.trim() } }, 'Using your tax-free amount from HMRC', { close: false });
     };
     return h('li', { class: 'fv-ans-r fv-tx-own' }, h('details', { class: 'fv-pl-more' }, h('summary', null, h('b', { text: 'Use my actual figure' }), h('span', { class: 'mute', text: 'If HMRC gave you one' })),

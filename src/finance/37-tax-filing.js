@@ -42,7 +42,7 @@
     const out = h('div');
     const inp = txInput('total', v.hmrc ? v.hmrc.total : '', 'money');
     const fm = h('form', { class: 'fv-tx-inline', onsubmit: async (e) => {
-      e.preventDefault(); const val = inp.value.replace(/[£,\s]/g, '');
+      e.preventDefault(); const val = moneyParse(inp.value); if (Number.isNaN(val) || val == null) { inp.classList.add('bad'); inp.title = MONEY_HELP; inp.focus(); return; } inp.classList.remove('bad');
       const r = await txPost('/compare', { total: val });
       if (!r) return;
       out.textContent = '';
@@ -54,7 +54,7 @@
     const f = v.filed || {};
     const b = v.bill;
     const hits = TX.d.hmrc || [];
-    const fm = h('form', { class: 'fv-tx-form', onsubmit: async (e) => { e.preventDefault(); const x = txRead(fm); await txDo({ action: 'filed.record', fields: { at: x.at, total: x.total, paid: x.paid, paidAt: x.paidAt, poaFirst: x.poaFirst, poaSecond: x.poaSecond, poaFirstPaid: x.poaFirstPaid, poaSecondPaid: x.poaSecondPaid } }, 'Recorded', { close: false }); } },
+    const fm = h('form', { class: 'fv-tx-form', onsubmit: async (e) => { e.preventDefault(); const x = txGet(fm); if (!x) return; await txDo({ action: 'filed.record', fields: { at: x.at, total: x.total, paid: x.paid, paidAt: x.paidAt, poaFirst: x.poaFirst, poaSecond: x.poaSecond, poaFirstPaid: x.poaFirstPaid, poaSecondPaid: x.poaSecondPaid } }, 'Recorded', { close: false }); } },
       h('div', { class: 'fv-tx-grid' },
         txField('Date you sent it', txInput('at', f.at || v.today, 'date')), txField('Total HMRC worked out', txInput('total', f.total != null ? f.total : b.owed, 'money')),
         txField('First payment on account', txInput('poaFirst', f.poaFirst != null ? f.poaFirst : b.poa.first || '', 'money'), 'Towards next year. Feeds next year\'s bill.'), txField('Second payment on account', txInput('poaSecond', f.poaSecond != null ? f.poaSecond : b.poa.second || '', 'money')),
@@ -65,7 +65,7 @@
   }
   /* ---------- the card on the page ---------- */
   function txFiling(v) {
-    if (v.filing.answer === 'no' && !v.filed) return txCard('fv-tx-file', txHead('Your tax return', v.filing.say), h('div', { class: 'fv-pl-acts' }, txBtn('Make the figures pack anyway', 'file-down', () => txMakePack(v), 'ghost')));
+    if (v.filing.answer === 'no' && !v.filed) return v.yearState === 'current' ? null : txCard('fv-tx-file', txHead('Your tax return', v.filing.say), h('div', { class: 'fv-pl-acts' }, txBtn('Make the figures pack anyway', 'file-down', () => txMakePack(v), 'ghost')));
     const fileIt = h('div', { class: 'fv-pl-acts' }, txBtn('File my return', 'send', () => txOpenWalk(), 'primary'), txBtn('Make the return pack', 'file-down', () => txMakePack(v)));
     const withIds = h('label', { class: 'fv-tx-check' }, h('input', { type: 'checkbox', id: 'tx-pack-ids' }), h('span', null, 'Put my UTR and National Insurance number on the pack', h('small', { text: 'Off by default. Only tick this if you are giving it to your accountant.' })));
     return txCard('fv-tx-file',
@@ -108,7 +108,7 @@
   /* ---------- the quieter things ---------- */
   function txMore(v) {
     const secs = [];
-    secs.push(h('details', { class: 'fv-pl-more', open: TX.open.has('ids') || (TX.edit && String(TX.edit.id || '').startsWith('id-')) ? true : null, ontoggle: (e) => { if (e.target.open) TX.open.add('ids'); else TX.open.delete('ids'); } }, h('summary', null, h('b', { text: 'Your details' }), h('span', { class: 'mute', text: TX.d.ids.utr.set ? `UTR ${TX.d.ids.utr.masked}` : 'UTR and National Insurance number' })), h('div', { class: 'fv-pl-more-b' }, txIds(v))));
+    secs.push(h('details', { class: 'fv-pl-more', open: TX.open.has('ids') || (TX.edit && String(TX.edit.id || '').startsWith('id-')) ? true : null, ontoggle: (e) => { if (e.target.open) TX.open.add('ids'); else TX.open.delete('ids'); } }, h('summary', null, h('b', { text: 'Your details' }), h('span', { class: 'mute', text: TX.d.ids.utr.set ? `UTR ${TX.d.ids.utr.masked}` : 'Your tax reference (UTR) and National Insurance number' })), h('div', { class: 'fv-pl-more-b' }, txIds(v))));
     if (v.notes && v.notes.length) secs.push(h('details', { class: 'fv-pl-more', open: TX.open.has('notes') ? true : null, ontoggle: (e) => { if (e.target.open) TX.open.add('notes'); else TX.open.delete('notes'); } }, h('summary', null, h('b', { text: 'Worth knowing' }), h('span', { class: 'mute', text: `${v.notes.length} note${v.notes.length === 1 ? '' : 's'} for you` })), h('div', { class: 'fv-pl-more-b' }, h('ul', { class: 'fv-tx-tips' }, v.notes.map(n => h('li', { class: 'fv-amt', text: n.text }))))));
     secs.push(txMemory(v), txShelf(v), txChecklists(v));
     secs.push(h('p', { class: 'fv-pl-mute small fv-tx-wi' }, 'Thinking of a change? ', h('button', { type: 'button', class: 'fv-link', text: 'Try it in What if?', onclick: () => { try { window.FinanceView.openWhatIf([]); } catch (e) { setSection('budgets'); } } })));
@@ -250,6 +250,16 @@
   }
   function txSlipCard(v) {
     const S1 = TX.slip;
+    if (S1.choose) {
+      const jobs = v.sources.jobs;
+      const toJob = (j) => { TX.slip = null; txOpenJob(j.id, { ytd: true }); };
+      return txCard('fv-tx-slip', txHead('Add a payslip', 'Either way, you check every figure before it counts.'),
+        h('div', { class: 'fv-tx-slipways' },
+          jobs.length ? jobs.map(j => txBtn(jobs.length > 1 ? `Type the figures in for ${j.name}` : 'Type the figures in', 'pencil', () => toJob(j), 'primary'))
+            : txBtn('Add your job first', 'plus', () => { TX.slip = null; TX.edit = { add: true, type: 'job' }; txPaint(); }, 'primary'),
+          txBtn('Read a file with Claude', 'file-up', () => { TX.slip = null; txPaint(); txPickSlip(); }),
+          txBtn('Close', null, () => { TX.slip = null; txPaint(); }, 'ghost')));
+    }
     if (S1.ask) return txCard('fv-tx-slip', txHead('Read this payslip with Claude?', S1.name),
       h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: 'The whole file goes to Claude to read, including anything printed on it such as your name and National Insurance number. It is held only for this and removed straight after. You check every figure before anything changes.' })),
       h('div', { class: 'fv-pl-acts' }, txBtn('Read it', 'sparkles', txSlipGo, 'primary'), txBtn('Cancel', null, () => { TX.slip = null; txPaint(); }, 'ghost')));
@@ -259,7 +269,7 @@
     const s = S1.slip;
     const inp = (k, label, val, type) => txField(label, txInput(k, val, type || 'money'));
     const fm = h('form', { class: 'fv-tx-form', onsubmit: async (e) => {
-      e.preventDefault(); const f = txRead(fm);
+      e.preventDefault(); const f = txGet(fm); if (!f) return;
       const n = (x) => (x == null ? null : Number(x));
       const body = { token: S1.token, year: S1.year, job: f.job === '__new' ? null : f.job, newJobName: f.job === '__new' ? (f.newJob || s.employer || 'A job') : null, usual: f.usual, slip: { employer: s.employer, payDate: f.payDate, period: s.period, gross: n(f.gross), code: f.code, tax: n(f.tax), ni: n(f.ni), plan: n(f.plan), pg: n(f.pg), pension: n(f.pension), net: n(f.net), ytd: { pay: n(f.ytdPay), taxablePay: n(f.ytdTaxable), tax: n(f.ytdTax), ni: n(f.ytdNi), plan: n(f.ytdPlan), pg: n(f.ytdPg) } } };
       const r = await api('/api/finance/tax/payslip/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

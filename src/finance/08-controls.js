@@ -25,6 +25,31 @@
     };
     return cd;
   }
+  /** What someone typed in a money box: a number, null when empty, NaN when it is not an amount. "£1,250.50", "1250", "3k", "1.5m". */
+  function moneyParse(raw) {
+    const t = String(raw == null ? '' : raw).trim().toLowerCase().replace(/^[£$€]/, '').replace(/[,\s]/g, '').replace(/^[£$€]/, '');
+    if (t === '') return null;
+    const m = /^(\d+\.?\d*|\.\d+)(k|m)?$/.exec(t);
+    if (!m) return NaN;
+    return Math.round(Number(m[1]) * (m[2] === 'k' ? 1000 : m[2] === 'm' ? 1e6 : 1) * 100) / 100;
+  }
+  /** A figure as it sits in a money box: 3000 -> "3,000", 1250.5 -> "1,250.50". */
+  function moneyNice(n) {
+    if (n == null || n === '' || !isFinite(Number(n))) return n == null ? '' : String(n);
+    const x = Number(n);
+    return x.toLocaleString('en-GB', Number.isInteger(x) ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  const MONEY_HELP = 'Type just the amount, like 1,250.50 or 3k.';
+  /** A money box tidies itself when you leave it, so "3k" is seen to mean 3,000. Something else stays as typed and is marked. */
+  function moneyWire(el) {
+    el.addEventListener('blur', () => {
+      const x = moneyParse(el.value);
+      if (x === null) { el.classList.remove('bad'); return; }
+      if (Number.isNaN(x)) { el.classList.add('bad'); el.title = MONEY_HELP; return; }
+      el.classList.remove('bad'); el.title = ''; el.value = moneyNice(x);
+    });
+    return el;
+  }
   function seg(options, value, onChange, label, cls) {
     const el = h('div', { class: 'fv-seg' + (cls ? ' ' + cls : ''), role: 'radiogroup', 'aria-label': label });
     const btns = options.map(([v, l, title]) => {

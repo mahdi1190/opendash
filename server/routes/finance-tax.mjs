@@ -5,6 +5,7 @@
 //   GET  /api/finance/tax/summary?year= -> the assistant's read: figures only (get_money part tax)
 //   POST /api/finance/tax/saving {amount, year?} -> {saves, keep}           what a cost would save, what to keep of a payment
 //   POST /api/finance/tax/change {change, year?} -> {ok, said, undo, ...}   one change through the same checks (the assistant; proposals)
+//     with preview:true nothing is saved -> {ok, preview: {income, balance, jobs}}: a form's "if you save" line
 //   POST /api/finance/tax/undo {undo}   -> {ok, said}
 //   POST /api/finance/tax/ids {kind, value|null}; POST /api/finance/tax/ids/reveal {kind} -> {value}   tap to reveal or copy
 //   POST /api/finance/tax/read-text {text} -> {items, notes, hid, found: {utr, nino}} (Claude; only on the button; nothing saved)
@@ -164,6 +165,14 @@ export default function register(app) {
       curPlan = r.plan; curDoc = r.doc; said = r.said; last = r;
     }
     if (!last) throw new HttpError(400, 'Nothing to change.');
+    // A form's "if you save" line: what this change would do, with nothing saved.
+    if (b.preview) {
+      const pv = cleanTax(curDoc), pp = cleanPlan(curPlan);
+      if (pp.country === 'uk') pp.taxLink = taxLinkFor(pp, pv, o.today);
+      const { view } = await viewOf(pp, pv, year, await analysis());
+      if (!view.uk) return { ok: true };
+      return { ok: true, preview: { income: view.position.income, balance: view.bill.balance, jobs: view.sources.jobs.map(j => ({ id: j.id, pay: j.year ? j.year.pay : null })) } };
+    }
     if (list.length > 1) said = b.say ? String(b.say).slice(0, 120) : `Saved ${list.length} changes`;
     const undo = 'tax-' + randomBytes(6).toString('hex');
     undoStore.set(undo, { plan, doc, said, at: Date.now() });
