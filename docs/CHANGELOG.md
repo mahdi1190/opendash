@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.32.0]
+
+Pets are where they really are in a live garden, they can have playdates, and a group photo goes into everyone's Memories.
+
+### Added
+- **Pets in the right place.** In a live garden each person's own computer now says where its pets really are, so a friend's pet is where it is on their screen, not just behind them: it wanders, sniffs a flower and trots over to another pet in the same place for everyone. The host's roaming pets too. Older versions keep following their person.
+- **Pet playdates.** Two people's pets that stay close for a moment greet each other. A pet remembers the friend it played with: playdates on different days make them pals, then best pals (a line in the pet's journal, and "Pet friends" on its page), a pet that knows the other trots over from a few cells away, and the first playdate with a friend each day adds a little to your pet's friendship. Nothing is sent for this: each computer sees where both pets are and makes its own pet do it.
+- **Group photo.** A camera button appears in a live garden: one tap and everyone there gets a three-second countdown (with Skip), then each Freeflo draws the same part of the garden itself and keeps it in its own Memories. The picture is never sent to anyone. Memories has a new Photos tab, and photo mode has "Keep in Memories" next to "Save picture". Photos are kept on this computer (not synced), newest first, up to 200.
+
+### Fixed
+- **Tiny pets on a visit.** In a friend's garden your pet was a small stand-in that sat apart from the way pets look and move at home. It is now your real companion at the usual size (the rest of your pack stays home, and no rare visitor comes to a garden that is not yours).
+
+### Security
+- The new `gl:pp` message is checked at both ends against `glPpOk` (a guest may only say where its own companion is; the host's pack is the host's alone; at most four pets, whole numbers within the garden), and the group photo's ask is an ordinary `gl:fx` that carries only an id and a cell. The picture is drawn and kept on each computer and is never part of any message. The photo files are checked again by the server (real image bytes, size and pixel caps, a file name it makes itself, album rows of ids and numbers only).
+
 ## [2.31.0]
 
 Putting money in is easier, and many tax figures are corrected.

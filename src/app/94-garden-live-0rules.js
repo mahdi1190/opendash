@@ -9,6 +9,7 @@
      GL_BUDGET            this computer's allowance of room messages a day, sent and arrived, and one visitor's share (direct links do not count)
      GL_EMOTES            the moves anyone can see, GL_PHRASES the preset speech bubbles: ids on the wire, drawn from these tables
      GL_FX_KINDS          what people see each other do (pets, fishing, nets, a catch held up): glFxOk(b) -> '' | why
+     GL_PP / glPpOk       pets in place (gl:pp); GL_PLAY / glPlayLevel playdates; GL_SNAP the group photo
      GL_QUEUE             what can wait for a host who is out
      GL_CT                contests: a timed round of fishing or bug-netting that the host referees; glCtFishPoints / glCtBugPoints score a catch
      GL_TRADE             trading: the level, how much, how often; glTradeOk(b, fromHost) -> '' | why
@@ -55,9 +56,9 @@ const GL_PHRASE_IDS = Object.freeze(GL_PHRASES.map(p => p.id));
 const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet']);   // what two people do together: an `em` with c: 'do'
 /** What people SEE each other do (gl:fx, a kind of its own: an older app has no such kind and drops it, so GL_V stays). Ids and cells on the wire, each side draws them from its own tables;
  *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
- *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT). `to` and `w` are slots as in gl:em. */
-const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct']);
-const GL_FX_STEPS = Object.freeze({ fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']), cheer: Object.freeze(['level', 'ach', 'photo']) });
+ *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT), snap (ask for a group photo: `i` its id, `x` and `y` the middle of the frame, see GL_SNAP). `to` and `w` are slots as in gl:em. */
+const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap']);
+const GL_FX_STEPS = Object.freeze({ fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']) });
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
 const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*']));
 const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke']));
@@ -116,8 +117,40 @@ function glFxOk(b) {
   if (b.c === 'cheer' && b.e === 'level' && !(Number.isInteger(b.n) && b.n >= 1 && b.n <= 99)) return 'level';   // 2.29.0: a moment of yours the others there cheer
   if (b.c === 'cheer' && b.e === 'ach' && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
   if (b.c === 'fish' && b.e === 'cast' && !(Number.isInteger(b.x) && Number.isInteger(b.y))) return 'cell';
+  if (b.c === 'snap' && !(GL_ID_RE.test(String(b.i || '')) && Number.isInteger(b.x) && Number.isInteger(b.y) && b.x >= 0 && b.y >= 0)) return 'snap';
   return '';
 }
+/** PETS IN PLACE (docs/dev/GARDEN_TOGETHER.md section 18). A person's own computer says where its pets really are, so every screen shows them in the same place (`gl:pp`, a kind of its own: an older app drops
+ *  it and keeps the old rule, a pet that follows its person). Tenths of a cell; a walk is its end point, never a stream. `gap` the least ms between two while a pet walks (`thin`: when walking is sent less),
+ *  `settle` ms after it stops before its resting place is sent, `idle` ms between the "still here" messages while it sits, `stale` ms after which a screen stops trusting the last place and follows the person
+ *  again, `snap` cells of difference after which a screen puts the pet in its place instead of walking it there. */
+const GL_PP = Object.freeze({ gap: 900, thin: 2500, settle: 450, idle: 15000, stale: 40000, snap: 3 });
+/** The pets in a `gl:pp` (a list of up to 4: `u` 0 is the sender's own companion, 1 to 3 the host's pack with `e` its species): '' when it fits, else why. The pack is the host's to say. */
+function glPpOk(b, fromHost) {
+  if (!b || typeof b !== 'object' || !Array.isArray(b.l) || b.l.length < 1 || b.l.length > 4) return 'pp';
+  const seen = new Set();
+  for (const r of b.l) {
+    if (!r || typeof r !== 'object' || !Number.isInteger(r.u) || r.u < 0 || r.u > 3 || seen.has(r.u)) return 'pp';
+    seen.add(r.u);
+    if (r.u > 0 && !(fromHost && GL_FX_ID_RE.test(String(r.e || '')))) return 'pp';
+    if (r.u === 0 && r.e != null) return 'pp';
+    if (!Number.isInteger(r.x) || r.x < 0 || r.x > 640 || !Number.isInteger(r.y) || r.y < 0 || r.y > 320) return 'pp';
+    if ((r.gx == null) !== (r.gy == null)) return 'pp';
+    if (r.gx != null && !(Number.isInteger(r.gx) && r.gx >= 0 && r.gx <= 640 && Number.isInteger(r.gy) && r.gy >= 0 && r.gy <= 320)) return 'pp';
+  }
+  return '';
+}
+/** PLAYDATES (section 18). Two people's pets that stay close for a few seconds greet each other, and a pet remembers the friend it played with: playdates on different days make them pals. Rules, not messages:
+ *  every screen sees where the pets are, so each computer works it out for itself. `near` cells apart (the up-and-down counted 1.4 times as far), `trot` the distance from which a pet that knows the other trots over,
+ *  `hold` ms they must stay near, `cool` ms before the same two greet again, `keep` friends remembered, `pals` and `best` the days of playdates for each level, `bond` the friendship points the pet gets
+ *  (once a friend a day, inside the pet's own daily limit). */
+const GL_PLAY = Object.freeze({ near: 1.8, trot: 4.5, hold: 2200, cool: 240000, keep: 60, pals: 3, best: 8, bond: 2 });
+/** How well two pets know each other after this many days of playdates: 0 not at all, 1 met, 2 pals, 3 best pals. */
+function glPlayLevel(days) { const d = Math.max(0, Math.floor(Number(days) || 0)); return d >= GL_PLAY.best ? 3 : d >= GL_PLAY.pals ? 2 : d >= 1 ? 1 : 0; }
+/** THE GROUP PHOTO (section 19). Anyone there can ask for one (`gl:fx snap ask`); every screen that does not skip it counts down and takes the same part of the garden itself, and keeps it in its own Memories.
+ *  The picture is never sent. `w` and `h` the frame in the garden's own units (a cell is 48 wide and 30 tall), `count` seconds of "smile", `gap` the least seconds between two asks from one person,
+ *  `keep` photos kept in Memories (the oldest go; lib/memory-photos.mjs holds the same number). */
+const GL_SNAP = Object.freeze({ w: 720, h: 450, count: 3, gap: 30, keep: 200 });
 /** SHARED GOALS (docs/dev/GARDEN_TOGETHER.md section 14). The host's page picks one from this table while somebody is in the garden, counts what it applied or confirmed itself,
  *  and tells everyone the WHOLE state each time (gl:goal, host to guests, a kind of its own: an older app drops it, so GL_V stays). A row: `t` the goal (`{n}` its size), `d` how it reads
  *  when it is done, `n` the sizes it may have [least, most], `per` how many more for each person beyond two, `needs` the level somebody must have for it to be possible, and `rew` what each

@@ -123,6 +123,15 @@ function _ptCollection(root) {
     if (r.owned) {
       box.appendChild(_ptEl('p', 'ptl-blurb', r.sp.blurb || ''));
       if (r.bond) { const b = _ptEl('div', 'ptl-bond'); b.appendChild(_ptHeartsRow(r.bond.level)); b.appendChild(_ptBar(r.bond.pct, 'pt-bar-love')); box.appendChild(b); }
+      if (r.me && typeof gardenPalRows === 'function') {   // 2.32: the friends it has played with in a live garden
+        const pals = gardenPalRows().slice(0, 6);
+        if (pals.length) {
+          const pl = _ptEl('div', 'ptl-pals');
+          pl.appendChild(_ptEl('h3', 'ptl-pals-h', 'Pet friends'));
+          for (const x of pals) pl.appendChild(_ptEl('div', 'ptl-pal', `${x.name}\u2019s ${x.species ? x.species.toLowerCase() : 'pet'}: ${x.level >= 3 ? 'best pals' : x.level === 2 ? 'pals' : 'met'}, ${x.days} ${x.days === 1 ? 'day' : 'days'} together`));
+          box.appendChild(pl);
+        }
+      }
       const acts = _ptEl('div', 'ptl-acts');
       if (r.me) { const with_ = _ptEl('span', 'ptl-with'); with_.innerHTML = icon('heart', 'i-sm'); with_.appendChild(_ptEl('span', null, 'With you')); acts.appendChild(with_); }
       else {

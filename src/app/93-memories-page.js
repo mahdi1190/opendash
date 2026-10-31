@@ -6,13 +6,14 @@
                  Wrapped (93-memories-wrapped.js)
      capsules    notes to your future self: sealed until their day
      postcards   the album of first visits (agent locations' tab mounts the same album)
+     photos      garden photos kept on this computer, group photos from a live garden among them (93-memories-photos.js)
      people      birthdays coming up, friendship streaks, people it has been a while with
      milestones  your 1st, 10th, 100th... task finished, your best streak, firsts
    Life > Memories since 2.18 (docs/dev/NAVIGATION_PLAN.md 2.2): the page is one of Life's tabs; its
-   own six tabs are the level-2 control under Life's strip. Tabs: re-selecting is a no-op;
+   own seven tabs are the level-2 control under Life's strip. Tabs: re-selecting is a no-op;
    the entrance plays once per entry.
    ============================================================ */
-const MEM_TABS = [['journal', 'Journal', 'notebook-pen'], ['year', 'Your year', 'calendar-days'], ['capsules', 'Time capsules', 'mail'], ['postcards', 'Postcards', 'map'], ['people', 'People', 'heart'], ['milestones', 'Milestones', 'trophy']];
+const MEM_TABS = [['journal', 'Journal', 'notebook-pen'], ['year', 'Your year', 'calendar-days'], ['capsules', 'Time capsules', 'mail'], ['postcards', 'Postcards', 'map'], ['photos', 'Photos', 'camera'], ['people', 'People', 'heart'], ['milestones', 'Milestones', 'trophy']];
 let _mpEntry = '', _mpYear = 0, _mpJournalN = 0, _mpCapSel = '';
 function _mpTab(v) { const m = /^memories:([a-z]+)$/.exec(String(v || '')); const t = m ? m[1] : 'journal'; return MEM_TABS.some(x => x[0] === t) ? t : 'journal'; }
 function _mpTabLabel(t) { const x = MEM_TABS.find(y => y[0] === t); return x ? x[1] : 'Journal'; }
@@ -30,7 +31,7 @@ registerSection('memories', {
 registerPage({
   id: 'memories', view: 'memories', match: v => v === 'memories' || /^memories:[a-z]+$/.test(String(v || '')),
   label: 'Memories', icon: 'book-open', area: 'life', tab: true, order: 50, since: '2.16', discover: true, ownTabs: true,
-  desc: 'Journal, your year, capsules, postcards and milestones',
+  desc: 'Journal, your year, capsules, postcards, garden photos and milestones',
   keywords: 'memories journal diary year heatmap wrapped time capsule letter postcards birthdays people milestones firsts',
   sections: MEM_TABS.map(([id, label]) => [id === 'journal' ? 'memories' : 'memories:' + id, label]),
   badge: () => { const n = typeof memCapsulesDue === 'function' ? memCapsulesDue().length : 0; return n ? String(n) : ''; },
@@ -39,6 +40,7 @@ registerCommand({ id: 'mem-wrapped', label: 'Your year in Freeflo (Wrapped)', ic
 registerCommand({ id: 'mem-journal', label: 'Journal', icon: 'notebook-pen', group: 'Go to', keywords: 'memories diary journal day line mood', run: () => setView('memories') });
 registerCommand({ id: 'mem-capsule', label: 'Write a note to your future self', icon: 'mail', keywords: 'time capsule letter future self memories', run: () => memCapsuleWrite() });
 registerCommand({ id: 'mem-rediscover', label: 'Rediscover a day', icon: 'sparkles', keywords: 'memories random past day throwback on this day', run: () => { const d = memRediscover(); if (d) memDayDialog(d); else toast('Come back when there is more history to rediscover', { icon: 'history' }); } });
+registerCommand({ id: 'mem-photos', label: 'Garden photos', icon: 'camera', group: 'Go to', keywords: 'memories garden photos pictures album group photo', run: () => setView('memories:photos') });
 registerCommand({ id: 'mem-postcards', label: 'Postcards', icon: 'map', group: 'Go to', keywords: 'memories travel countries trips album', run: () => setView('memories:postcards') });
 
 function _mpRediscover() { const d = memRediscover(); if (d) memDayDialog(d); else toast('Come back when there is more history to rediscover', { icon: 'history' }); }
@@ -72,6 +74,7 @@ function _mpMount(container, view) {
     else if (tab === 'year') _mpYearTab(body);
     else if (tab === 'capsules') _mpCapsules(body);
     else if (tab === 'postcards') _mpPostcards(body);
+    else if (tab === 'photos') _mpPhotos(body);
     else if (tab === 'people') _mpPeople(body);
     else if (tab === 'milestones') _mpMilestones(body);
   } catch (e) {

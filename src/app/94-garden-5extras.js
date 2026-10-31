@@ -373,6 +373,7 @@ function gardenPhotoOpen() {
         ctl.appendChild(vis);
         const save = _gdpBtn('Save picture', { kind: 'btn-primary', icon: 'download', run: () => _gdxSavePhoto(sc, st) });
         ctl.appendChild(save);
+        if (typeof memPhotoKeep === 'function') ctl.appendChild(_gdpBtn('Keep in Memories', { icon: 'book-open', run: () => _gdxKeepPhoto(sc, st) }));   // 2.32
         el.appendChild(ctl);
       };
       paint();
@@ -391,6 +392,18 @@ function _gdxSavePhoto(sc, st) {
     toast('Saved to your downloads', { icon: 'camera', kind: 'ok', now: true });
     try { if (typeof gardenLiveCheer === 'function') gardenLiveCheer('photo'); } catch (e) { /* only a moment */ }   // 2.29.0: the others in a live garden see the flash
   }).catch(() => { if (typeof busy === 'function') busy(); toast('The photo could not be saved.', { kind: 'err', retry: () => _gdxSavePhoto(sc, st) }); });
+}
+
+/** 2.32: the same picture, kept in Memories (the Photos tab) instead of downloaded. */
+function _gdxKeepPhoto(sc, st) {
+  const box = gardenCropBox(st.crop), k = 2400 / box.w;
+  const svg = gardenSceneSvg(sc, { size: 'l', crop: st.crop, still: true, uid: 'gdkeep', photo: true, label: 'My garden', fit: 'xMidYMid meet' });
+  const busy = toast('Developing the photo…', { icon: 'camera', busy: true });
+  gardenScenePng(svg, Math.round(box.w * k), Math.round(box.h * k)).then((blob) => memPhotoKeep(blob, { iso: _gdToday(), ts: Clock.now(), kind: 'garden' })).then(() => {
+    if (typeof busy === 'function') busy();
+    toast('Kept in your Memories', { icon: 'camera', kind: 'ok', now: true, action: { label: 'See it', run: () => setView('memories:photos') } });
+    try { if (typeof gardenLiveCheer === 'function') gardenLiveCheer('photo'); } catch (e) { /* only a moment */ }
+  }).catch(() => { if (typeof busy === 'function') busy(); toast('The photo could not be kept.', { kind: 'err', retry: () => _gdxKeepPhoto(sc, st) }); });
 }
 
 /* ---------- the time-lapse ---------- */

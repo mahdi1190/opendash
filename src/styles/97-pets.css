@@ -555,6 +555,9 @@ html[data-theme="dark"] .ptl-big { background: var(--surface); color: var(--fg);
 .ptl-title { margin: 0; font-size: 20px; }
 .ptl-blurb { margin: 0; font-size: var(--text-sm); color: var(--fg-muted); }
 .ptl-bond { display: flex; align-items: center; gap: 8px; width: 100%; }
+.ptl-pals { width: 100%; display: grid; gap: 4px; text-align: left; }
+.ptl-pals-h { margin: var(--space-2) 0 0; font-size: var(--text-sm); font-weight: var(--weight-semibold); }
+.ptl-pal { font-size: var(--text-sm); color: var(--fg-muted); }
 .ptl-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .ptl-with { display: inline-flex; align-items: center; gap: 6px; color: #d0405e; font-weight: 600; }
 .ptl-howbig { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: var(--text-md); }
