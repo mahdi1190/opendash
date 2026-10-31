@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.7]
+
+### Fixed
+- Friends could stop responding: Make an invite link and other buttons did nothing, because one job was waiting forever behind itself. Jobs can no longer block each other for good, and a request that takes too long now says so.
+
 ## [2.27.6]
 
 Change any answer, and see what each tax figure comes from.
