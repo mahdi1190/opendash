@@ -34,13 +34,16 @@ function _gllFxPlay(A, ev) {
   if (!A || !ev) return;
   const c = ev.c, e = String(ev.e || '');
   if (c === 'pet' || c === 'wow' || c === 'nap') { if (typeof _gllPetFx === 'function') _gllPetFx(A, ev); return; }
+  if (c === 'cr' || c === 'egg' || c === 'pick') { _glcFx(A, ev); return; }
   if (c === 'roam') { if (typeof _gllRoamAdd === 'function') _gllRoamAdd(e); return; }
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {
     if (e === 'sneak') A.sneakUntil = Date.now() + 4500;   // clock-ok: how long a creep lasts
     else if (e === 'swing') _gllSwing(A);
     else if (e === 'miss') _gllFloat(_gw.svg, A.x, A.y - 1.6, '', 'It got away!');
-    else if (e === 'gone' && ev.i) _gllBugGone(String(ev.i).replace('-', '.'));   // someone netted it: it is gone from every screen, and a swing at it misses
+    else if (e === 'claim') { if (_gll.role === 'host') _glcBugClaim(ev); }   // a guest's swing found one: the host decides
+    else if ((e === 'gone' || e === 'lost') && ev.i && _gll.role === 'visit') _glcBugVerdict(ev, e);   // the host said who netted it: it is gone from every screen
+    else if (e === 'gone' && ev.i) _gllBugGone(String(ev.i).replace('-', '.'));
     return;
   }
   if (c === 'make') { _gllPose(A, 'dig', 1200); if (!_gllOffscreen(A)) _gllFloat(_gw.svg, A.x, A.y - 1.2, '🔨', A.n); return; }

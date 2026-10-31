@@ -87,23 +87,25 @@ function _glClient(x, y, lift) {
   const W = _gl.W, svg = (W && W.svg) || (typeof _gw !== 'undefined' ? _gw.svg : null); if (!svg) return null;
   try { const s = _glStage(x, y, lift), pt = svg.createSVGPoint(); pt.x = s.x; pt.y = s.y; const q = pt.matrixTransform(svg.getScreenCTM()); return { x: q.x, y: q.y }; } catch (e) { return null; }
 }
-function _glReact(c) {
+/** from: the slot of another person in a live garden whose click this is (the host decides what it does: 94-garden-live-6life.js). */
+function _glReact(c, from) {
   if (c.gone || !_gl.W) return;
-  const W = _gl.W, R = c.def.react || {}, S = c.S, P = W.player();
-  if (typeof gardenLifeFound === 'function') gardenLifeFound('c', c.def.id);
+  const W = _gl.W, R = c.def.react || {}, S = c.S, P = from != null ? (typeof gardenLiveActorAt === 'function' ? gardenLiveActorAt(from) : null) : W.player();
+  if (from == null && typeof gardenLifeFound === 'function') gardenLifeFound('c', c.def.id);
+  if (typeof gardenLiveCr === 'function') gardenLiveCr('react', c.id);   // everyone there sees it
   if (P) c.faceTo = P.x > S.x ? 1 : -1;
   c.calm = 3.5; c.reacting = 1.6; c.after = c.clip || 'rest';
-  if (W.still) { _glMark(c, R.mark || 'heart'); if (R.sound) _glSound(R.sound); _glMaybeGift(c, R); return; }
+  if (W.still) { _glMark(c, R.mark || 'heart'); if (R.sound) _glSound(R.sound); _glMaybeGift(c, R, from); return; }
   _glClip(c, R.clip || 'react');
   if (R.mark) _glMark(c, R.mark);
   if (R.sound) _glSound(R.sound);
   if (R.hop && c.medium === 'ground' && !c.perched && !c.hop) _glHopTo(c, S.x, S.y, 0.34, 11);
-  _glMaybeGift(c, R);
+  _glMaybeGift(c, R, from);
   if (R.flee) setTimeout(() => { if (!c.gone && _gl.W) { c.calm = 0; c.reacting = 0; const P2 = _gl.W.player(); if (P2) _glScareOne(c, _gl.W, P2.x, P2.y); } }, 1100);
 }
-function _glMaybeGift(c, R) {
+function _glMaybeGift(c, R, from) {
   if (!R.gift || !GL_KEEPSAKE.has(R.gift) || !_gl.W.own) return;
-  if (typeof gardenLifeHas === 'function' && gardenLifeHas('k', R.gift)) return;   // you have this one: a hello is its own reward
+  if (from == null && typeof gardenLifeHas === 'function' && gardenLifeHas('k', R.gift)) return;   // (a friend's click: it drops whether or not you have it; whoever clicks it first keeps it)   // you have this one: a hello is its own reward
   if (Math.random() > (R.chance == null ? 0.4 : R.chance)) return;
   if (_gl.gifted && _gl.gifted.has(R.gift)) return;
   (_gl.gifted = _gl.gifted || new Set()).add(R.gift);
@@ -117,9 +119,10 @@ function _glDropGift(id, x, y, lift) {
   const S = W.add({
     id: 'gift-' + id, svg: `<g class="gl-gift"><g class="gl-glint">${GL_MARKS.spark()}</g>${gardenKeepsakeSvg(k)}</g>`, x: at.x, y: at.y, lift, hit: 0.7, label: k.name, cursor: 'hand', ground: false,
     update(dt) { if (S.lift > 0) { S.lift = Math.max(0, S.lift - dt * Math.max(40, S.lift * 3)); if (S.lift === 0) _glFx(S.x, S.y, 'flurry', { n: 3 }); } },
-    onClick() { if (typeof gardenLifeFound === 'function') gardenLifeFound('k', id); const q = _glClient(S.x, S.y, 16); if (typeof gameCheer === 'function') gameCheer(q, { quiet: false, sound: true }); _glGifts.delete(S); S.remove(); },
+    onClick() { if (typeof gardenLivePickGift === 'function' && gardenLivePickGift(S, id)) return; if (typeof gardenLifeFound === 'function') gardenLifeFound('k', id); const q = _glClient(S.x, S.y, 16); if (typeof gameCheer === 'function') gameCheer(q, { quiet: false, sound: true }); _glGifts.delete(S); S.remove(); },
   });
   _glGifts.add(S);
+  if (typeof gardenLivePickSpawn === 'function') gardenLivePickSpawn(S, 'keep', id, at.x, at.y);   // shared: anyone there may take it, the first click wins
 }
 const _glGifts = new Set();
 

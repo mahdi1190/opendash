@@ -522,11 +522,25 @@ function _gwNetResolve() {
   if (awake) p *= b.state === 'flee' ? 0.18 : 0.4;
   if (_gw.sneak) p += 0.06;
   const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < Math.max(0.06, Math.min(0.96, p));   // (somebody netted it first: your swing misses)
-  if (!ok) { if (typeof gardenLiveFx === 'function') gardenLiveFx('bug', 'miss'); b.state = 'flee'; b.fleeT = 2; const pk = _gwBugPick(b, true); b.tx = pk.x; b.ty = pk.y; if (typeof gardenFloat === 'function') gardenFloat('It got away!', Math.floor(b.x), Math.floor(b.y) - 1, 1, 1, ''); return; }
+  if (!ok) { _gwBugMissed(b, true); return; }
+  // in a live garden the host says who netted it first (94-garden-live-6life.js): 'wait' for a guest, 'lost' when somebody had it
+  const claim = typeof gardenLiveBugClaim === 'function' ? gardenLiveBugClaim(b) : 'ok';
+  if (claim === 'wait') return;
+  if (claim === 'lost') { _gwBugMissed(b); return; }
+  _gwBugTaken(b);
+}
+/** A clean miss: it bolts, and nothing is given. */
+function _gwBugMissed(b, tell) {
+  if (tell && typeof gardenLiveFx === 'function') gardenLiveFx('bug', 'miss');
+  b.state = 'flee'; b.fleeT = 2; const pk = _gwBugPick(b, true); b.tx = pk.x; b.ty = pk.y;
+  if (typeof gardenFloat === 'function') gardenFloat('It got away!', Math.floor(b.x), Math.floor(b.y) - 1, 1, 1, '');
+}
+/** It is yours (and, in a live garden, the host said so): into your bag, held up. */
+function _gwBugTaken(b) {
+  const W = GARDEN_WORLD;
   const r = gardenCatchBug({ key: b.key, id: b.id });
   if (!r.ok) { _gdpSay(r); return; }
   if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(b.key);
-  if (typeof gardenLiveFx === 'function') gardenLiveFx('bug', 'gone', { i: String(b.key).replace('.', '-') });
   if (gardenMotionOn() && typeof gardenPop === 'function') gardenPop(Math.floor(b.x), Math.floor(b.y), 1, 1, 'is-grow');
   const d2 = r.def, rare = ['rare', 'epic', 'legendary'].includes(d2.rarity);
   const held = gardenCatchMoment('bug', d2.id, { isNew: r.isNew });
