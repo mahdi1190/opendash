@@ -327,6 +327,8 @@ Searching needs your own Spotify link ([Connections > Spotify](CONNECTIONS.md#sp
 
 **On your card.** *Profile > Music* lets you choose a favourite song, album and playlist and show your top five artists (the last 4 weeks, 6 months or all time). Friends see them on your card and can open them in Spotify. Nothing shows until you choose it, and your top artists have their own switch.
 
+**Listening to.** With *Show what I'm listening to* on (Profile > Music, off until you turn it on), a friend who opens your card sees the song you are playing right now, with a small progress bar. It is only sent when they look, only to friends who can see your card, never for a podcast or a Spotify private session, and **Stop sharing** stops it. Your Freeflo has to be running with Spotify linked for it to answer.
+
 ## Your card, wardrobe, garden and pet
 
 <!-- media: Life > Profile, the profile card with banner, nameplate and pet -->

@@ -1,11 +1,12 @@
 /* ============================================================
    MUSIC on your profile card (2.26): up to three favourites (a song, an album, a playlist) and your top artists from Spotify, as the
    optional profile field 'music' (lib/friends/songs.mjs is its server half). Nothing shows until you choose something; the top
-   artists are yours to switch on, and refresh themselves about once a day while Spotify is linked.
+   artists are yours to switch on, and refresh themselves about once a day while Spotify is linked. "Show what I'm listening to" (2.28,
+   98-music-3listening.js) is a switch too, off until you turn it on.
 
-   state.profile.music = {f: {track?, album?, playlist?}, a: [{id, n}], show: bool, r: 'short'|'medium'|'long', at: ms}
+   state.profile.music = {f: {track?, album?, playlist?}, a: [{id, n}], show: bool, r: 'short'|'medium'|'long', at: ms, l: bool}
      f.<type> = {t, id, n, by?}   a Spotify item you chose (the id is checked before it is ever used in an address)
-   What friends get (wire): {f: [{t, id, n, by?}] (3), a: [{id, n}] (5), r}. A friend's value is cleaned again here with
+   What friends get (wire): {f: [{t, id, n, by?}] (3), a: [{id, n}] (5), r, l (true: ask me what I am listening to)}. A friend's value is cleaned again here with
    profileText, and the card draws it with textContent: a name from a friend is never markup.
 
      musicProfileCard(changed)     the card on the Profile page (Settings style)
@@ -24,7 +25,7 @@ function musicMine() {
   const f = {};
   for (const [t] of _MU_SLOTS) if (raw.f && _muSlotOk(t, raw.f[t])) f[t] = { t, id: raw.f[t].id, n: _muText(raw.f[t].n, 80), by: _muText(raw.f[t].by, 60) };
   const a = (Array.isArray(raw.a) ? raw.a : []).filter(x => x && musicOk('artist', x.id) && _muText(x.n, 50)).slice(0, 5).map(x => ({ id: x.id, n: _muText(x.n, 50) }));
-  return { f, a, show: raw.show === true, r: _MU_RANGES.some(x => x[0] === raw.r) ? raw.r : 'medium', at: Number(raw.at) || 0 };
+  return { f, a, show: raw.show === true, r: _MU_RANGES.some(x => x[0] === raw.r) ? raw.r : 'medium', at: Number(raw.at) || 0, l: raw.l === true };
 }
 function _muSave(patch) {
   const next = Object.assign({}, musicMine(), patch);
@@ -38,8 +39,8 @@ function _muWire(sp) {
   const c = musicMine();
   const f = _MU_SLOTS.map(([t]) => c.f[t]).filter(Boolean).map(x => ({ t: x.t, id: x.id, n: x.n, ...(x.by ? { by: x.by } : {}) }));
   const a = c.show ? c.a.map(x => ({ id: x.id, n: x.n })) : [];
-  if (!f.length && !a.length) return undefined;
-  return { ...(f.length ? { f } : {}), ...(a.length ? { a, r: c.r } : {}) };
+  if (!f.length && !a.length && !c.l) return undefined;
+  return { ...(f.length ? { f } : {}), ...(a.length ? { a, r: c.r } : {}), ...(c.l ? { l: true } : {}) };
 }
 /** A music value from a friend (or from _muWire), cleaned for drawing: {f, a, r} | null. */
 function _muSanitize(v) {
@@ -48,7 +49,8 @@ function _muSanitize(v) {
     .map(x => ({ t: x.t, id: x.id, n: _muText(x.n, 80), by: _muText(x.by, 60) })).filter(x => x.n);
   const a = (Array.isArray(v.a) ? v.a : []).filter(x => x && typeof x === 'object' && musicOk('artist', x.id)).slice(0, 5)
     .map(x => ({ id: x.id, n: _muText(x.n, 50) })).filter(x => x.n);
-  return f.length || a.length ? { f, a, r: _MU_RANGES.some(x => x[0] === v.r) ? v.r : '' } : null;
+  const l = v.l === true;
+  return f.length || a.length || l ? { f, a, r: _MU_RANGES.some(x => x[0] === v.r) ? v.r : '', l } : null;
 }
 
 /* ---------- on the card ---------- */
@@ -56,8 +58,11 @@ function _muCard(card, view, o) {
   const m = view && view.profile && view.profile.ext ? view.profile.ext.music : null;
   if (!m || !card) return;
   const compact = !!(o && o.compact);
+  if (!m.f.length && !m.a.length && !m.l) return;
   const wrap = _muEl('div', 'pf-card-music' + (compact ? ' is-compact' : ''));
   wrap.setAttribute('role', 'group'); wrap.setAttribute('aria-label', 'Music');
+  if (m.l && view.me === true && typeof musicNowEl === 'function') { try { wrap.appendChild(musicNowEl('me')); } catch (e) { /* the card does fine without it */ } }   // your own card: what friends would see
+  if (m.l && view.friend === true && /^[0-9a-f]{16}$/.test(String(view.fid || '')) && typeof musicNowEl === 'function') { try { wrap.appendChild(musicNowEl(view.fid)); } catch (e) { /* the card does fine without it */ } }
   for (const x of m.f.slice(0, compact ? 2 : 3)) {
     const b = _muEl('button', 'mu-fav'); b.type = 'button';
     b.setAttribute('data-tip', `${musicLabel(x.t)}: ${x.n}${x.by ? ' · ' + x.by : ''}. Open in Spotify`);
@@ -85,7 +90,7 @@ function _muCard(card, view, o) {
     if (!compact) row.appendChild(_muEl('span', 'mu-artist-names', shown.map(x => x.n).join(', ')));
     wrap.appendChild(row);
   }
-  card.appendChild(wrap);
+  if (wrap.childElementCount) card.appendChild(wrap);
 }
 
 /* ---------- your top artists ---------- */
@@ -153,6 +158,21 @@ function musicProfileCard(changed) {
       refresh.disabled = !linked;
       body.appendChild(_settingsRow('Right now', '', (() => { const w = _muEl('div', 'mu-top-now'); w.append(list, refresh); return w; })()));
     }
+    const listenSw = _settingsSwitch(m.l, 'Show what I’m listening to', async (on) => {
+      if (on && !linked) { toast('Link Spotify first, then switch this on.', { icon: 'music', action: { label: 'Set up', run: () => spotifySetup() } }); return; }
+      if (typeof musicListenSet === 'function' && (await musicListenSet(on))) { paint(); done(); }
+    });
+    const listenCtl = _muEl('div', 'mu-top');
+    if (linked) listenCtl.appendChild(uiButton({ label: 'Check what friends see', icon: 'eye', kind: 'ghost', size: 'sm', run: async (e, b) => {
+      b.disabled = true;
+      try {
+        const j = await spotifyApi('/api/spotify/now'), n = j && j.now;
+        toast(n && n.on ? `A friend who looks would see: ${n.n}${n.by ? ' · ' + n.by : ''}` : 'Nothing right now: no song is playing, or Spotify is in a private session.', { icon: 'music' });
+      } catch (err) { toastError('check that', err); }
+      b.disabled = false;
+    } }));
+    listenCtl.appendChild(listenSw);
+    body.appendChild(_settingsRow('Show what I’m listening to', linked ? 'When a friend opens your card, Freeflo tells them the song you are playing right now. Never a podcast, never a Spotify private session, and nothing is sent unless they look. Off until you turn it on.' : 'Needs Spotify linked in Connections.', listenCtl));
     if (!linked) body.appendChild(_settingsRow('Spotify', 'Link it to search music and show your top artists.', uiButton({ label: 'Set up Spotify', icon: 'arrow-right', kind: 'secondary', size: 'sm', run: () => spotifySetup() })));
   };
   paint();

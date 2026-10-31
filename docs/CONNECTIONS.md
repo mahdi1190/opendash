@@ -506,9 +506,11 @@ Spotify is optional. Link it to search music from inside Freeflo, show your favo
 
 **Friends and limits.** Spotify lets a Development Mode app have up to **5 people**, each added under *User management* in the dashboard (otherwise they get a "refused" message when they sign in). The simplest way for a friend to search too is to make their own app the same way. Spotify also returns 10 results per page here (Show more asks for the next 10).
 
+**Using your app for friends.** The Client ID is not a secret: it just says which app is asking. Everyone still signs in with their own Spotify account, but Spotify lets a Development Mode app serve only 5 people (you and 4 more, each added by hand), and open access is only for organisations with a large audience. So the simplest way to share is: a friend opens *Set up Spotify*, pastes your Client ID instead of making an app, and signs in; you add their name and Spotify email under *User management* in your dashboard. Your set-up has the Client ID ready to copy under *Let friends use your Spotify app*. If your Premium lapses, the app stops working for everyone using it.
+
 **Covers.** The pictures come through your own Freeflo, by id, and are kept on this computer. While Spotify is linked they are on. For a song a friend sent you when you have not linked Spotify, *Show cover art for songs friends send* (in the set-up) asks Spotify for just that picture; off, you see a plain tile and the link still works.
 
-**If something is off:** *Spotify did not accept this Client ID* means a typo (it is 32 letters and numbers). *Spotify refused this account* means the person signing in is not on the app's User management list, or the owner's Premium has lapsed. *Open Spotify on your phone, computer or web player first* means Play and Queue need a Spotify app running somewhere. Sign-in lasts about six months; Freeflo asks you to sign in again when it ends.
+**If something is off:** *Spotify did not accept this Client ID* means a typo (it is 32 letters and numbers). *Spotify refused this account* means the person signing in is not on the app's User management list, or the owner's Premium has lapsed. *Spotify can't see an open Spotify app* means Play and Queue found no Spotify app at all: open Spotify on your phone, computer or web player and play anything for a second. (An app that is open but idle is found and woken by Freeflo; *Check where it can play* in the set-up shows what Spotify can see.) Sign-in lasts about six months; Freeflo asks you to sign in again when it ends.
 
 ## Troubleshooting
 

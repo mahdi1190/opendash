@@ -49,7 +49,7 @@ export async function seed(dir) {
   const people = [
     { name: 'Sam Rivera', pronouns: 'he/him', emoji: '🎧', status: 'Deep in a podcast edit', bio: 'Audio engineer, tea drinker, terrible at chess.', city: 'Leeds', color: '#e07a5f', working: 'Season 2 mix',
       music: { f: [{ t: 'track', id: MUSIC_IDS.lanterns, n: 'Paper Lanterns', by: 'Northern Static' }, { t: 'album', id: MUSIC_IDS.lowtide, n: 'Low Tide Radio', by: 'The Marlow Set' }],
-        a: [['north', 'Northern Static'], ['marlow', 'The Marlow Set'], ['mira', 'Mira Okafor'], ['juno', 'Juno & the Tides'], ['fern', 'Fern Collective']].map(([k, n]) => ({ id: MUSIC_IDS[k], n })), r: 'medium' } },
+        a: [['north', 'Northern Static'], ['marlow', 'The Marlow Set'], ['mira', 'Mira Okafor'], ['juno', 'Juno & the Tides'], ['fern', 'Fern Collective']].map(([k, n]) => ({ id: MUSIC_IDS[k], n })), r: 'medium', l: true } },
     { name: 'Priya Nair', pronouns: 'she/her', emoji: '🌱', status: 'Repotting everything', bio: 'Data analyst. Weekend gardener. Will trade cuttings.', city: 'Bristol', color: '#3d9a6a', working: 'Quarterly report',
       music: { f: [{ t: 'playlist', id: MUSIC_IDS.greenhouse, n: 'Sunday greenhouse' }] } },
     { name: 'Jonas Weber', pronouns: 'he/him', emoji: '🚲', status: 'Out on a long ride', bio: 'Designer who cycles to every meeting he can.', city: 'Berlin', color: '#5b8def' },

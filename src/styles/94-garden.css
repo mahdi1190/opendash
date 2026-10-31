@@ -824,3 +824,6 @@ html.gd-carrying .gd-full .gd-gridlines { display: block; opacity: .16; }
   .modal.gd-popup { --modal-h: 100dvh; position: fixed; inset: 0; margin: 0; transform: none; }
   .gd-levelup { top: 60px; }
 }
+
+/* Calm (94-garden-world-0walk.js _gwCalm): nobody is looking, so the ambient motion rests where it is. It picks up from there when you come back. */
+.gd-calm, .gd-calm * { animation-play-state: paused !important; }

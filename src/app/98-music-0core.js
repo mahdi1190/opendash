@@ -56,12 +56,20 @@ document.addEventListener('opendash:spotify', () => { for (const el of document.
 /* ---------- play and queue ---------- */
 async function musicPlay(item) {
   if (!item || !musicOk(item.t, item.id)) return false;
-  try { await spotifyApi('/api/spotify/play', { method: 'POST', body: { t: item.t, id: item.id } }); toast(`Playing ${item.n || 'it'} on Spotify`, { kind: 'ok', icon: 'play' }); return true; }
+  try {
+    const r = await spotifyApi('/api/spotify/play', { method: 'POST', body: { t: item.t, id: item.id } });
+    toast(`Playing ${item.n || 'it'} on ${r && r.device ? r.device : 'Spotify'}`, { kind: 'ok', icon: 'play' });
+    return true;
+  }
   catch (e) { _muPlayError('play that', e); return false; }
 }
 async function musicQueue(item) {
   if (!item || item.t !== 'track' || !musicOk('track', item.id)) return false;
-  try { await spotifyApi('/api/spotify/queue', { method: 'POST', body: { id: item.id } }); toast(`Added ${item.n || 'the song'} to your queue`, { kind: 'ok', icon: 'list-plus' }); return true; }
+  try {
+    const r = await spotifyApi('/api/spotify/queue', { method: 'POST', body: { id: item.id } });
+    toast(r && r.started ? `Nothing was playing, so ${item.n || 'the song'} has started${r.device ? ' on ' + r.device : ''}` : `Added ${item.n || 'the song'} to your queue${r && r.device ? ' on ' + r.device : ''}`, { kind: 'ok', icon: r && r.started ? 'play' : 'list-plus' });
+    return true;
+  }
   catch (e) { _muPlayError('add that to your queue', e); return false; }
 }
 function _muPlayError(what, e) {

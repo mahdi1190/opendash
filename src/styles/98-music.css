@@ -74,6 +74,25 @@
 .mu-artist:hover { background: transparent; transform: translateY(-1px); }
 .mu-artist-names { font-size: var(--text-xs); line-height: var(--lh-xs); color: var(--fg-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
+/* listening to (a friend's card) */
+.mu-now {
+  display: flex; align-items: center; gap: var(--space-3); position: relative; width: 100%; padding: 8px 10px; overflow: hidden;
+  border: 0; border-radius: var(--radius-md); background: var(--accent-soft); color: var(--accent-ink); font: inherit; text-align: left; cursor: pointer;
+}
+.mu-now[hidden] { display: none; }
+.mu-now:hover { background: var(--accent-soft-2); }
+.mu-now:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.mu-now .mu-tx { flex: 1; min-width: 0; }
+.mu-now .mu-n { color: var(--fg); }
+.mu-now-k { font-size: var(--text-2xs); line-height: var(--lh-2xs); color: var(--accent-ink); }
+.mu-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 16px; flex: none; }
+.mu-eq i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; transform-origin: 50% 100%; animation: mu-eq 1s ease-in-out infinite; }
+.mu-eq i:nth-child(2) { animation-delay: -0.35s; animation-duration: 0.8s; }
+.mu-eq i:nth-child(3) { animation-delay: -0.7s; animation-duration: 1.2s; }
+@keyframes mu-eq { 0%, 100% { transform: scaleY(0.3); } 50% { transform: scaleY(1); } }
+.mu-now-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: color-mix(in oklab, currentColor 18%, transparent); }
+.mu-now-bar i { display: block; height: 100%; width: 0; background: currentColor; transition: width 1s linear; }
+
 /* the Profile page's card */
 .mu-slot { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); justify-content: flex-end; }
 .mu-chip { display: inline-flex; align-items: center; gap: var(--space-2); max-width: 260px; min-width: 0; }
@@ -83,6 +102,10 @@
 /* Connections */
 .spotify-card { margin-top: var(--space-4); }
 .spotify-msg { margin: var(--space-3) 0; }
+.spotify-dev { margin-top: var(--space-3); }
+.spotify-share { margin-top: var(--space-4); }
+.spotify-share > summary { cursor: pointer; font-weight: 600; margin-bottom: var(--space-2); }
+.spotify-share .conn-code pre { overflow-wrap: anywhere; white-space: pre-wrap; }
 .spotify-setup .set-action, .drawer-b .assistant-actions { margin-top: var(--space-2); }
 .spotify-setup { margin-top: 20px; }
 .spotify-setup > summary { cursor: pointer; font-weight: 600; margin-bottom: 16px; }
@@ -94,4 +117,4 @@
 .spotify-art-t { font-weight: var(--weight-medium); }
 .spotify-art .conn-note { grid-column: 1 / -1; margin: 0; }
 
-@media (prefers-reduced-motion: reduce) { .mu-art img { transition: none; } .mu-artist:hover { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .mu-art img { transition: none; } .mu-artist:hover { transform: none; } .mu-eq i { animation: none; transform: scaleY(0.7); } .mu-now-bar i { transition: none; } }

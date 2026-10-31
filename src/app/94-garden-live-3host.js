@@ -124,6 +124,9 @@ function _glhWatchStart() {
 }
 function gardenLiveEmoted(id) { if (_gll.role === 'visit') { if (_glvLive() && GL_EMOTES.includes(id)) _glvSend('em', { c: 'em', e: id }); return; } if (_glh.on && _glhAnyone() && GL_EMOTES.includes(id)) _glhSend('all', 'em', { c: 'em', e: id }); }
 function _glhAnyone() { return _gll.actors.size > 0; }
+/** Can you say something here now? A visitor on a live visit, or the host while somebody is in the garden (the quick bar asks). */
+function gardenLiveCanSay(m) { return !!(m && m.visit ? m.visit.live : _glh.on && _glhAnyone()); }
+function _glhQuickSoon() { setTimeout(() => { try { if (typeof gardenHudPaint === 'function' && typeof _gw !== 'undefined' && _gw.on) gardenHudPaint(gardenHere()); } catch (e) { /* the next paint */ } }, 80); }
 
 /* ---------- the people here ---------- */
 function _glhAdd(ev) {
@@ -132,12 +135,14 @@ function _glhAdd(ev) {
   else { A.n = ev.n; A.a = ev.a || A.a; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }
   A.f = ev.f;
   if (!_glh.sprites.has(ev.w) && typeof gardenWorldAdd === 'function') _glh.sprites.set(ev.w, _gllSprite(A, () => _glhPersonMenu(A)));
+  _glhQuickSoon();   // (the Say button shows while somebody is here)
   return A;
 }
 function _glhRemove(w) {
   const S = _glh.sprites.get(w); if (S) { S.remove(); _glh.sprites.delete(w); }
   const A = _gll.actors.get(w); if (A && typeof _gllPetDrop === 'function') _gllPetDrop(A);
   _gll.actors.delete(w);
+  _glhQuickSoon();
 }
 function _glhByName(fid) { try { const f = _gscFriend(fid); return f ? String(f.name || gardenSocialName(f)).split(/\s+/)[0].slice(0, 40) : 'A friend'; } catch (e) { return 'A friend'; } }
 function _glhEvent(ev) {
@@ -734,3 +739,11 @@ document.addEventListener('opendash:garden', (ev) => {
   const t = { water: 'water', plant: 'plant', harvest: 'harvest', prune: 'weed', feed: 'water' }[d.kind]; if (!t) return;
   _glhSend('all', 'res', { w: 0, t, ok: true, x: Math.floor(d.x), y: Math.floor(d.y) });
 });
+
+/* 2.28: the same for the host: the server tells everyone who is here as soon as your look changes (it hears it with the next "here") */
+(function _glhLookWatch() {
+  if (typeof document === 'undefined') return;
+  let t = 0;
+  const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_glh.on && _glhAnyone()) _gllApi('/api/garden-live/here', _glhHereBody(true)).catch(() => {}); } catch (e) { /* the next beat has it */ } }, 1500); };
+  document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
+})();

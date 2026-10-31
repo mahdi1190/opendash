@@ -155,6 +155,12 @@ Yes. Link your own Spotify once (Connections > Spotify; it needs a free Spotify 
 **Do I need Spotify Premium?**
 To link Spotify, yes: since February 2026 Spotify lets an app in Development Mode work only while its owner has Premium. Playing or queueing a song from Freeflo needs Premium and a Spotify app open. Friends who just receive songs need nothing.
 
+**Can friends see what I'm listening to?**
+Only if you turn on *Show what I'm listening to* (Profile > Music; it is off by default). Then a friend who opens your card sees the song playing right now. It is sent only when they look, never for a podcast or a Spotify private session, and only to friends who can see your card.
+
+**Can my friends use my Spotify app?**
+Yes, up to 4 of them. A friend pastes your Client ID (it is not a secret) in their Spotify set-up and signs in with their own Spotify account, and you add them under User management in your Spotify dashboard. Spotify allows 5 people per app in Development Mode, and only organisations with a large audience can lift that, so Freeflo cannot ship one Client ID for everyone.
+
 ## Claude and connections
 
 **Do I need Claude?**

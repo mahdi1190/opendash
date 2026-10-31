@@ -296,6 +296,8 @@ function _ptwFrame(now) {
   _ptw.raf = 0;
   if (!_ptw.on) return;
   if (!_ptw.svg || !_ptw.svg.isConnected || document.hidden) return;   // the check below starts it again
+  // calm (94-garden-world-0walk.js _gwCalm): nobody is looking, so the pets stand where they are and this looks in four times a second
+  if (typeof _gwCalm !== 'undefined' && _gwCalm.on) { _ptw.last = 0; if (_ptw.pets.length) _ptw.idleT = setTimeout(() => { _ptw.idleT = 0; if (_ptw.on && !_ptw.raf && !document.hidden) _ptw.raf = requestAnimationFrame(_ptwFrame); }, 250); return; }
   const dt = Math.min(0.2, (now - (_ptw.last || now)) / 1000); _ptw.last = now;
   _ptw.tThink = (_ptw.tThink || 0) - dt;
   if (_ptw.tThink <= 0) { _ptw.tThink = 0.25; _ptw.W = _ptwWorld(); if (_ptw.W) _ptwEncounter(_ptw.W); }
