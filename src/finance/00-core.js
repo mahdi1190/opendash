@@ -23,6 +23,8 @@
   const LS_KEY = 'dash-finance-ui-v1';
   const DAY_MS = 864e5;
   const FONT = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';   // Inter is embedded by build.mjs
+  // The small "Pending" tag on a row, everywhere one is listed (lib/finance/pending.mjs). "Not counted" when it is left out.
+  const txPendTag = x => (x && (x.pe || x.kind === 'off') ? h('span', { class: 'fv-pend-tag' + (x.kind === 'off' ? ' off' : ''), title: x.kind === 'off' ? 'In none of your totals' : 'Your bank has not finished this payment. It counts now, and the amount can still change.', text: x.kind === 'off' ? (x.pe ? 'Pending, not counted' : 'Not counted') : 'Pending' }) : null);
   // 'board' = My money (2.16): the page you put together yourself (39-board*.js); 'countries' =
   // Spending by country (38-countries.js).
   const SECTIONS = [

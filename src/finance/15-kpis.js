@@ -152,6 +152,11 @@
     };
     ctx.kpi = { bigTx };
     const calm = MK.reduced();
+    // Honest about what is in the total: "including £12.40 pending". Nothing is said when nothing is pending; Hide amounts hides the figure.
+    const pendTip = (rows, f) => { const v = sum(rows.filter(x => x.pe), f); return v > 0.004 ? (bdHidden() ? 'Including payments still pending' : `Including ${gbp2(v)} pending`) : null; };
+    const setTip = (k, tip) => { if (tip) k.el.setAttribute('data-tip', tip); else k.el.removeAttribute('data-tip'); };
+    setTip(E.kpi.spent, pendTip(cur.spend, x => x.s));
+    setTip(E.kpi.income, pendTip(cur.income, x => x.inc));
     for (const d of KPI_DEFS) {
       const k = E.kpi[d.k], x = vals[d.k];
       const first = !k.painted; k.painted = true;

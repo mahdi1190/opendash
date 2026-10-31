@@ -365,7 +365,7 @@
       const out = []; let g = null;
       for (const x of rows) {
         if (!g || g.n !== x.n) { g = { n: x.n, rows: [], spent: 0, inc: 0 }; out.push(g); }
-        g.rows.push(x); g.spent += x.s || 0; if (x.a > 0) g.inc += x.a;
+        g.rows.push(x); g.spent += x.s || 0; if (x.a > 0 && x.kind !== 'off') g.inc += x.a;
       }
       for (const d of out) { d.spent = round2(d.spent); d.inc = round2(d.inc); }
       return out;

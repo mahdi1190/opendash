@@ -73,6 +73,9 @@ const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets')
 const WHATS_NEW = [
   // ---- 2.21 ----
   // ---- 2.27 ----
+  { id: 'pending-count', group: 'n227', icon: 'handshake', title: '2.27.3: pending payments count',
+    text: 'Pay for bowling and split it straight away, before the bank has finished. It counts now, with a small Pending tag, and stays split when it settles. Not this one? Press Don’t count.',
+    view: ['finance'], sel: ['#main-body'] },
   { id: 'music', group: 'n227', icon: 'music', title: '2.27: Spotify, and songs for friends',
     text: 'Link your own Spotify in Connections to search music, show a favourite song, album and playlist and your top artists on your card, and send a friend a song to listen to.',
     note: 'It needs a free Spotify app made with a Premium account (about two minutes; the steps are in the set-up). Friends who only receive a song need nothing.',

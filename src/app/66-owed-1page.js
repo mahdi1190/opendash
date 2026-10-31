@@ -60,6 +60,7 @@ function _owMount(container) {
   // Only a look: it makes no friends identity (96-friends-0core.js). Then "Share with Sam" can be offered.
   if (typeof friendsLoad === 'function' && !OWD.friendsAsked) { OWD.friendsAsked = true; friendsLoad(false).then(() => { if (state.view === 'owed' && owdFriends().length) render(); }).catch(() => {}); }
   const d = OWD.data;
+  for (const n of owdNoticeEls()) root.appendChild(n);
   for (const n of _owFromFriends(d)) root.appendChild(n);
   if (!d.things.length && !(d.repeats || []).length) {
     const box = _xe('div', 'xp-empty'); root.appendChild(box);
@@ -127,7 +128,7 @@ function _owQuestions() {
   return out;
 }
 function _owAskText(s) {
-  const who = owdFirstName(s.name), when = _xpDate(s.date), memo = s.memo ? ` from ${esc(s.memo.slice(0, 48))}` : '';
+  const who = owdFirstName(s.name), when = _xpDate(s.date) + (s.pe ? ', still pending' : ''), memo = s.memo ? ` from ${esc(s.memo.slice(0, 48))}` : '';
   const what = s.allocs.length > 1 ? `${s.allocs.length} things (${s.allocs.map(a => esc(a.title)).slice(0, 3).join(', ')})` : esc(s.allocs[0].title);
   if (s.dir === 'out') return `We think you paid ${esc(who)}: ${owdAmt(s.amount)} on ${esc(when)} for ${what}`;
   if (s.kind === 'same') return `${owdAmt(s.amount)} arrived on ${esc(when)}${memo}. It could be several people. Who was it?`;
@@ -183,7 +184,7 @@ function _owAsk(s) {
 function _owOffers() {
   return OWD.offers.slice(0, 2).map(o => {
     const c = _xe('div', 'owd-offer');
-    c.innerHTML = `${icon('lightbulb', 'i-sm')}<span class="owd-offer-t">${esc(o.m)}, ${owdAmt(Math.abs(o.a))} on ${esc(_xpDate(o.d))}. Split this?</span>`;
+    c.innerHTML = `${icon('lightbulb', 'i-sm')}<span class="owd-offer-t">${esc(o.m)}, ${owdAmt(Math.abs(o.a))} on ${esc(_xpDate(o.d))}${o.pe ? ', still pending' : ''}. Split this?</span>`;
     c.append(uiButton({ label: 'Split', size: 'sm', run: () => owdSplitDialog(owdPrefillFromTx(o)) }), uiButton({ icon: 'x', size: 'sm', kind: 'ghost', tip: 'Not one to split', run: () => owdDismissOffer(o) }));
     return c;
   });

@@ -30,6 +30,7 @@ function owdSet(j) {
   if (j.data) { OWD.data = j.data; OWD.loaded = true; OWD.at = Date.now(); OWD.error = ''; owdCloseChaseTasks(); }
   if (Array.isArray(j.suggestions)) OWD.suggestions = j.suggestions;
   if (Array.isArray(j.offers)) OWD.offers = j.offers;
+  if (Array.isArray(j.notices)) OWD.notices = j.notices;
   if (Array.isArray(j.leftOut)) OWD.leftOut = j.leftOut;
   if (j.connected != null) OWD.connected = j.connected;
   // What is matched changed: the analysis was built again, so what Money shows moves too.
@@ -75,6 +76,8 @@ async function owdScan(force) {
   let j; try { j = await owdApi('/scan', {}); } catch (e) { return; }
   owdSet(j);
   owdRepeatsMade(j);
+  owdNoticeToast();
+  try { if (state.view === 'finance' && window.FinanceView && window.FinanceView.pendingNotices) window.FinanceView.pendingNotices(); } catch (e) { /* not loaded yet */ }
   if (j.auto && j.auto.length) {
     const a = j.auto[0];
     toast(j.auto.length === 1 ? `${owdMoney(a.amount)} from ${a.name} arrived: marked as paid` : `${j.auto.length} payments arrived and were marked as paid`, { icon: 'circle-check', timeout: 12000, action: j.undo ? { label: 'Undo', run: () => owdUndo(j.undo) } : undefined });
@@ -252,6 +255,7 @@ window.Owed = {
   txNote: (tx) => owdTxNote(tx), txRefund: (tx) => owdTxRefund(tx), txAttach: (tx) => owdTxAttach(tx),
   repeat: (pre) => owdRepeatDialog(pre || {}), repeatFor: (m) => ((OWD.data && OWD.data.repeats) || []).find(r => r.match && r.match.m === m) || null,
   planChanged: () => { OWD.scanAt = 0; owdScan(true); },
+  pendingNoticeEls: () => owdNoticeEls(),
 };
 /** Another computer changed it (56-remote-jobs.js syncedFilesChanged). */
 function owedFilesChanged(rels) {

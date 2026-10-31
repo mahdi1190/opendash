@@ -96,6 +96,7 @@
     repaintTabs: () => paintGroupTabs(),
     sectionLabel: () => (SECTIONS.find(s => s[0] === F.section) || [])[1] || '',
     setSection: (id) => setSection(id),
+    pendingNotices: () => { if (S.txNote && S.txNote.isConnected) txPaintNotices(); },
     // Select a merchant (the bar's chip clears it): Home's Payday & safe to spend opens a bill in Recurring with it.
     setMerchant: (m) => { m = typeof m === 'string' ? m : ''; if (m !== F.merchant) setMerchant(m); },
     // Connections > Money's "Import a CSV" opens the same file picker (inside the user's click).

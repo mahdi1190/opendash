@@ -16,28 +16,45 @@
   };
   UPDATE.transactions = ctx => txTable(S.tx, ctx);
   function txRows(ctx) {
-    const rows = ctx.cur.spend.concat(F.inc ? ctx.cur.income : [], F.xfer ? ctx.cur.xfer : []);
+    // What does not count is still listed, on its date, and says so; it is in no total (M.off, 02-model.js).
+    const off = (ctx.M.off || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t) && (!F.cats.length || F.cats.includes(t.c)));
+    const rows = ctx.cur.spend.concat(F.inc ? ctx.cur.income : [], F.xfer ? ctx.cur.xfer : [], off);
     const { key, dir } = F.sort;
     const val = { d: x => x.n, m: x => x.m.toLowerCase(), c: x => x.c, acct: x => x.acct, a: x => x.a };
     const f = val[key] || val.d;
     return rows.sort((p, q) => { const a = f(p), b = f(q); return (a < b ? -1 : a > b ? 1 : 0) * dir || q.n - p.n || p.i - q.i; });
   }
-  // Card payments the bank has not settled yet (M.pending): on top, labelled, never counted in the totals. They go when they settle.
-  function txPaintPending(ctx, M) {
-    const el = S.txPend; if (!el) return;
-    let rows = (M.pending || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t));
-    if (R.txFlow === 'in') rows = rows.filter(t => t.a > 0);
-    else if (R.txFlow === 'out') rows = rows.filter(t => t.a < 0);
-    if (R.txKinds && R.txKinds.size) rows = [];
-    el.hidden = !rows.length;
+  // ── Pending payments (lib/finance/pending.mjs) ────────────────────────
+  /** "Don't count this" and back, one payment or several: stored, synced, and remembered when it settles. */
+  async function txCount(rows, count, isUndo) {
+    const ks = rows.map(x => x.k);
+    try {
+      const r = await api('/api/finance/count', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ks, count }) });
+      if (r.ok && r.body && r.body.analysis) {
+        applyAnalysis(r.body.analysis);
+        if (isUndo) toast('Undone');
+        else toast(count ? (rows.length === 1 ? `${rows[0].m} counts again` : `${rows.length} payments count again`) : (rows.length === 1 ? `${rows[0].m} no longer counts` : `${rows.length} payments no longer count`), { action: 'Undo', onAction: () => txCount(rows, !count, true) });
+        return true;
+      }
+      toast(r.status === 409 ? 'An update is running. Try again when it finishes.' : (r.body && r.body.error) || 'HTTP ' + r.status, { bad: true });
+    } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); }
+    return false;
+  }
+  /** The quick action on a row. A row the setting left out has no button: Settings > Money is the way back. */
+  function txCountBtn(x) {
+    if (!x.pe && !x.off) return null;
+    if (x.kind === 'off' && !x.off) return null;
+    const off = x.kind === 'off';
+    return h('button', { type: 'button', class: 'fv-txr-q', 'data-tip': off ? 'Count this payment again' : 'Leave this out of your spending and totals', 'aria-label': `${off ? 'Count' : 'Do not count'} ${x.m}`, onclick: e => { e.stopPropagation(); txCount([x], off); } },
+      ic(off ? 'plus' : 'minus', 'i-sm'), h('span', { class: 'l', text: off ? 'Count this' : 'Don’t count' }));
+  }
+  /** A line for a payment that settled at another amount, or never settled, with something attached (66-owed-3more.js). */
+  function txPaintNotices() {
+    const el = S.txNote; if (!el) return;
     el.replaceChildren();
-    if (!rows.length) return;
-    el.append(h('div', { class: 'fv-tx-pend-h' }, h('b', { text: 'Pending' }), h('span', { text: 'Not settled yet, and not in your totals' })));
-    const ul = h('ul', { class: 'fv-list' });
-    for (const t of rows) ul.append(h('li', null, h('div', { class: 'fv-row fsym-host' }, C1.tileEl(t.m, 'Uncategorised', 'sm'),
-      h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s', text: fDay(t.n) })),
-      h('span', { class: 'fv-cc-v' }, h('span', { class: 'fv-amt fv-row-v' + (t.kind === 'income' ? ' in' : ''), text: t.kind === 'income' ? '+' + gbp2(t.inc) : gbp2(t.s) })))));
-    el.append(ul);
+    const n = window.Owed && window.Owed.pendingNoticeEls ? window.Owed.pendingNoticeEls() : [];
+    for (const x of n) el.append(x);
+    el.hidden = !n.length;
   }
   // The list as shown: txRows plus this view's own Money in / out and type filters.
   function txVisible(ctx) {
@@ -66,8 +83,8 @@
     S.txList = h('div', { class: 'fv-txl', role: 'list', 'aria-label': 'Transactions' });
     S.txMore = h('div', { class: 'fv-tx-more', 'aria-hidden': 'true' });
     cd.el.querySelector(':scope > .fv-card-h').append(S.txBar);   // 2.19.4: the title and the tools are one row
-    S.txPend = h('div', { class: 'fv-tx-pend', hidden: true });
-    cd.body.append(S.txPend, S.txList, S.txMore);
+    S.txNote = h('div', { class: 'fv-tx-pend', hidden: true });
+    cd.body.append(S.txNote, S.txList, S.txMore);
     S.txCtl = cd.el.querySelector('.fv-tx-ctl');
     S.txList.addEventListener('click', e => {
       if (e.target.closest('select,button,input,a,.fv-txx')) return;
@@ -129,8 +146,10 @@
     if (!S.txBar) txBuildBar(cd);
     if (document.activeElement !== S.txSearch) S.txSearch.value = F.q;
     const rows = txVisible(ctx);
-    const out = sum(rows.filter(x => x.a < 0), x => -x.a), inn = sum(rows.filter(x => x.a > 0), x => x.a);
-    cd.setSub(`${nf0.format(rows.length)} shown · ${gbp2(out)} out · ${gbp2(inn)} in`);
+    const counted = rows.filter(x => x.kind !== 'off');
+    const out = sum(counted.filter(x => x.a < 0), x => -x.a), inn = sum(counted.filter(x => x.a > 0), x => x.a);
+    const pendOut = sum(counted.filter(x => x.pe && x.a < 0), x => -x.a);
+    cd.setSub(bdHidden() ? `${nf0.format(rows.length)} shown` + (pendOut > 0.004 ? ' · some still pending' : '') : `${nf0.format(rows.length)} shown · ${gbp2(out)} out · ${gbp2(inn)} in` + (pendOut > 0.004 ? ` · including ${gbp2(pendOut)} pending` : ''));
     S.txCount.textContent = `${nf0.format(rows.length)} transaction${rows.length === 1 ? '' : 's'}`;
     // Toolbar state
     const sk = (TX_SORTS.find(s => s[2].key === F.sort.key && s[2].dir === F.sort.dir) || TX_SORTS[0]);
@@ -151,7 +170,7 @@
     S.txNew = txNewSet(M);
     if (S.txNew && S.txNew.size && !M._faPrinted) { M._faPrinted = true; faReceipt(S.txCtl, S.txNew.size); }   // new payments: a tiny receipt prints
     S.txEnter = first;
-    txPaintPending(ctx, M);
+    txPaintNotices();
     S.txList.innerHTML = ''; S.txGroupEl = null;
     S.txList.classList.toggle('flat', !S.txByDate);
     cd.setEmpty(null);
@@ -215,21 +234,21 @@
     const kind = VK.kind(x);
     const isNew = S.txNew && S.txNew.has(x.k);
     const sel = isSelMerchant(x.m);
-    const name = G.label(G.keyOf(x.m));
+    const name = x.kind === 'off' && !G.members.has(G.keyOf(x.m)) ? x.m : G.label(G.keyOf(x.m));   // a payment that does not count may be in no shop's group
     const row = h('div', { class: 'fv-txr fsym-host' + (x.kind !== 'spend' ? ' alt' : '') + (isNew ? ' is-new' : '') + (sel ? ' is-current' : ''), role: 'listitem', tabindex: '0', 'aria-expanded': 'false', 'data-k': x.k,
-      'aria-label': `${name}, ${sgbp2(x.a)}, ${fDayW(x.n)}${isNew ? ', new' : ''}` },
+      'aria-label': `${name}, ${sgbp2(x.a)}, ${fDayW(x.n)}${x.pe ? ', pending' : ''}${x.kind === 'off' ? ', not counted' : ''}${isNew ? ', new' : ''}` },
       VK.txTile(x, { size: 'md', bc: x.bc, live: 'view' }),
       h('div', { class: 'fv-txr-main' },
-        h('div', { class: 'nm' }, h('span', { class: 'n', text: name }), isNew ? h('span', { class: 'fv-new-dot', title: 'New since your last visit' }, 'New') : null),
+        h('div', { class: 'nm' }, h('span', { class: 'n', text: name }), txPendTag(x), txCountBtn(x), isNew ? h('span', { class: 'fv-new-dot', title: 'New since your last visit' }, 'New') : null),
         h('div', { class: 'meta' },
           withDate ? h('span', { class: 'dt', text: fDay(x.n) + (dobj(x.n).getUTCFullYear() !== dobj(M.anchor).getUTCFullYear() ? ' ' + dobj(x.n).getUTCFullYear() : '') }) : null,
           h('i', { class: 'cd', style: { background: catColor(x.c) } }), h('span', { class: 'c', text: x.c }),
           // "Payment" says nothing (the bank gave no method), so it is left out.
           kind !== 'payment' ? [h('span', { class: 'sep', text: '·' }), VK.badge(kind, { size: 'sm' })] : null,
           showAcct ? h('span', { class: 'ac', text: M.acctNames[x.acct] || x.acct || '' }) : null,
-          x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txChip ? window.Expenses.txChip(x) : null,   // an expense, or the "Expense?" hint
+          x.a < 0 && (x.kind === 'spend' || x.kind === 'off') && window.Expenses && window.Expenses.txChip ? window.Expenses.txChip(x) : null,   // an expense, or the "Expense?" hint
           window.Owed && window.Owed.txChip ? window.Owed.txChip(x) : null)),   // a split, "Paid back", or "Split this?"
-      h('span', { class: 'fv-txr-am' + (x.a > 0 ? ' in' : ''), text: x.a > 0 ? sgbp2(x.a) : gbp2(x.a) }));
+      h('span', { class: 'fv-txr-am' + (x.a > 0 ? ' in' : '') + (x.kind === 'off' ? ' off' : ''), text: x.a > 0 ? sgbp2(x.a) : gbp2(x.a) }));
     row._x = x;
     return row;
   }
@@ -273,6 +292,7 @@
             { label: 'New category…', icon: 'plus', run: async () => { const c = await promptDialog({ title: 'New category', label: 'Name', placeholder: 'e.g. Health' }); if (!c) return; if (!CAT_RE.test(c)) { toast('Use 2 to 31 letters, spaces, &, / or -, starting with a letter.', { bad: true }); return; } pick(c); } }], { align: 'center', width: 260 });
         } },
         { label: 'Not spending', icon: 'repeat', tip: 'Count these as transfers, not spending (every payment from the same place too)', run: ids => txBulkCategorise(txPickRows(ids), 'Internal transfers') },
+        (R.model.tx.some(x => x.pe)) ? { label: 'Don’t count', icon: 'minus', tip: 'Leave the pending ones among these out of your totals', run: ids => { const rows = txPickRows(ids).filter(x => x.pe && x.kind !== 'off'); if (rows.length) txCount(rows, false); else toast('Only pending payments can be left out.'); } } : null,
         window.Expenses && window.Expenses.fromTransactions ? { label: 'Mark as expense', icon: 'receipt', keep: true, run: (ids, a, ms) => window.Expenses.fromTransactions(txPickRows(ids), () => ms.clear(true)) } : null,
         window.Owed && window.Owed.fromTransactions ? { label: 'Split', icon: 'handshake', tip: 'Share between people and see who has paid', keep: true, run: (ids, a, ms) => window.Owed.fromTransactions(txPickRows(ids), () => ms.clear(true)) } : null,
         { label: 'Download', icon: 'download', tip: 'The selected ones as a CSV file', keep: true, run: ids => exportCsv(txPickRows(ids), R.ctx) },
@@ -364,8 +384,8 @@
     const nM = all.length && monthIdx(Math.min(...all.map(y => y.n))) <= endMi - 11 ? 12 : 6;
     const mons = new Array(nM).fill(0);
     for (const y of all) { const k = monthIdx(y.n) - (endMi - nM + 1); if (k >= 0 && k < nM) mons[k] += y.s; }
-    const how = { 'owed-back': 'you matching it to someone who owed you', override: 'your choice', rule: 'its name', bank: 'the bank’s category', default: 'the default', unmatched: 'no match yet', 'card-payment': 'a payment to a credit card, already counted when you bought things', 'own-transfer': 'a matching payment into another of your accounts' }[x.how] || (x.how || 'the import');
-    const counts = x.sa ? `${gbp2(x.sa)} is someone paying you back; the other ${gbp2(x.a - x.sa)} counts as it did` : x.sb ? 'Someone paying you back (not income; it comes off what they paid back)' : x.bk ? `Spending: ${gbp2(x.s)} after ${gbp2(x.bk)} paid back` : x.oa ? 'Money from your other account (not income or spending)' : x.kind === 'spend' ? 'Spending' : x.kind === 'income' ? 'Money in' : 'A transfer (not spending)';
+    const how = { 'owed-back': 'you matching it to someone who owed you', override: 'your choice', carried: 'your choice while it was pending', rule: 'its name', bank: 'the bank’s category', default: 'the default', unmatched: 'no match yet', 'card-payment': 'a payment to a credit card, already counted when you bought things', 'own-transfer': 'a matching payment into another of your accounts' }[x.how] || (x.how || 'the import');
+    const counts = x.kind === 'off' ? (x.off ? 'Not counted: you said not to count this' : 'Not counted yet: pending payments are switched off in Settings') : x.pe ? 'Counted now. Your bank has not finished this payment, so the amount can still change' : x.sa ? `${gbp2(x.sa)} is someone paying you back; the other ${gbp2(x.a - x.sa)} counts as it did` : x.sb ? 'Someone paying you back (not income; it comes off what they paid back)' : x.bk ? `Spending: ${gbp2(x.s)} after ${gbp2(x.bk)} paid back` : x.oa ? 'Money from your other account (not income or spending)' : x.kind === 'spend' ? 'Spending' : x.kind === 'income' ? 'Money in' : 'A transfer (not spending)';
     const filt = isSelMerchant(x.m);
     const det = h('div', { class: 'fv-txx', role: 'region', 'aria-label': 'Details' },
       h('dl', null,
@@ -382,7 +402,8 @@
         h('div', { class: 'fv-txx-acts' },
           h('button', { type: 'button', class: 'fv-btn', onclick: () => setMerchant(filt ? '' : G.primary(key)) }, ic(filt ? 'x' : 'filter'), filt ? 'Show all shops' : 'Only this shop'),
           h('button', { type: 'button', class: 'fv-btn', onclick: () => openDay(x.n) }, ic('calendar'), 'This day'),
-          x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txAction ? window.Expenses.txAction(x) : null,   // Expenses (src/app/66-expenses-2widget.js)
+          (x.pe || x.off) && !(x.kind === 'off' && !x.off) ? h('button', { type: 'button', class: 'fv-btn', onclick: () => txCount([x], x.kind === 'off') }, ic(x.kind === 'off' ? 'plus' : 'minus'), x.kind === 'off' ? 'Count this' : 'Don’t count this') : null,
+          x.a < 0 && (x.kind === 'spend' || x.kind === 'off') && window.Expenses && window.Expenses.txAction ? window.Expenses.txAction(x) : null,   // Expenses (src/app/66-expenses-2widget.js)
           window.Owed && window.Owed.txAction ? window.Owed.txAction(x) : null,   // Split this, or Who paid this? (src/app/66-owed-3more.js)
           window.Owed && window.Owed.txAttach ? window.Owed.txAttach(x) : null,   // Attach to something you owe, a split, an expense or a trip
           window.Owed && window.Owed.txRefund ? window.Owed.txRefund(x) : null,
@@ -435,8 +456,8 @@
       if (/^[=+\-@\t\r]/.test(s) && typeof v === 'string') s = "'" + s;   // spreadsheet formula injection
       return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
-    const lines = [['Date', 'Merchant', 'Category', 'Account', 'Amount', 'Description', 'Categorised by', 'Type'].join(',')];
-    for (const x of rows) lines.push([x.d, cell(x.m), cell(x.c), cell(ctx.M.acctNames[x.acct] || x.acct), x.a.toFixed(2), cell(x.memo), cell(x.how), cell(VK.kindInfo(VK.kind(x)).label)].join(','));
+    const lines = [['Date', 'Merchant', 'Category', 'Account', 'Amount', 'Description', 'Categorised by', 'Type', 'Status'].join(',')];
+    for (const x of rows) lines.push([x.d, cell(x.m), cell(x.c), cell(ctx.M.acctNames[x.acct] || x.acct), x.a.toFixed(2), cell(x.memo), cell(x.how), cell(VK.kindInfo(VK.kind(x)).label), x.kind === 'off' ? (x.pe ? 'Pending, not counted' : 'Not counted') : x.pe ? 'Pending' : ''].join(','));
     const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
     const a = h('a', { href: URL.createObjectURL(blob), download: `finances-${diso(ctx.rg.from)}-to-${diso(ctx.rg.to)}.csv` });
     document.body.append(a); a.click(); a.remove();

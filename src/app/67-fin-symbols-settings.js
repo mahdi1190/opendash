@@ -10,9 +10,28 @@ function finLogosSet(on) {
   if (typeof render === 'function') render();
 }
 if (typeof registerSettingsGroup === 'function') registerSettingsGroup({
-  id: 'money-look', title: 'Money look', icon: 'wallet', order: 46,
-  description: 'How your payments look: company logos and your own pictures.',
+  id: 'money-look', title: 'Money', icon: 'wallet', order: 46,
+  description: 'What counts, and how your payments look.',
   render(el) {
+    // Count pending payments: the server's choice, so every computer and every total follows it (lib/finance/pending.mjs).
+    const cp = _settingsRow('Count pending payments', 'Payments your bank has not finished yet count as spending straight away. Off: they still show in Transactions, and count once they settle.', null);
+    el.appendChild(cp);
+    fetch('/api/finance/count', { headers: { Accept: 'application/json' } }).then(r => r.json()).then((j) => {
+      const sw = _settingsSwitch(j.countPending !== false, 'Count pending payments', async (on) => {
+        let r = null;
+        try { r = await fetch('/api/finance/count', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ countPending: on }) }); } catch (e) { /* below */ }
+        if (!r || !r.ok) {
+          const b = r ? await r.json().catch(() => null) : null;
+          toast(r && r.status === 409 ? 'An update is running. Try again when it finishes.' : (b && b.error) || 'Could not reach the Freeflo server. Is it running?', { kind: 'err' });
+          return;
+        }
+        sw.setAttribute('aria-checked', on ? 'true' : 'false');
+        toast(on ? 'Pending payments count now' : 'Pending payments no longer count until they settle', { icon: 'circle-check' });
+        try { if (window.FinanceView && window.FinanceView.refresh) window.FinanceView.refresh(); } catch (e) { /* not loaded */ }
+      });
+      const slot = cp.querySelector('.set-c') || cp;
+      slot.appendChild(sw);
+    }).catch(() => {});
     const FS = window.FinSymbols;
     const on = !FS || FS.logosOn();
     const sw = _settingsSwitch(on, 'Show company logos', (v) => finLogosSet(v));

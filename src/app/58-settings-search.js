@@ -38,6 +38,10 @@ const SETTINGS_SEARCH_CATALOG = {
     { label: 'Quick-add templates', description: 'Starter title, stream, tags, priority, date and repeat schedule.', selector: '.set-tpls' },
     ['Full task templates', 'Saved tasks with their subtasks and notes.'],
   ],
+  'money-look': [
+    ['Count pending payments', 'Count payments your bank has not finished yet as spending straight away.', 'money finance unsettled hold split budget'],
+    ['Show company logos', 'Logos on payments, or our own symbols.', 'money finance pictures'],
+  ],
   home: [
     ['Widgets', 'Customise Home, add widgets, drag, resize or hide panels.'],
     ['Suggestions on Home', 'Show one-click ideas on the Home board.'],

@@ -234,12 +234,12 @@ html.anim-paused .fvb-streak .i { animation-play-state: paused; }
 .fvb-prev-grid .fvb-w { box-shadow: var(--shadow-sm); }
 
 /* ---------- Hide amounts (Home's switch, the whole Finances page) ---------- */
-.fv.fv-amts-hidden .fv-amt, .fv.fv-amts-hidden .fv-kpi-v, .fv.fv-amts-hidden .fv-row-v, .fv.fv-amts-hidden .fv-legend-row .v, .fv.fv-amts-hidden .fv-stat b,
+.fv.fv-amts-hidden .fv-amt, .fv.fv-amts-hidden .fv-kpi-v, .fv.fv-amts-hidden .fv-row-v, .fv.fv-amts-hidden .fv-legend-row .v, .fv.fv-amts-hidden .fv-stat b, .fv.fv-amts-hidden .fv-txr-am, .fv.fv-amts-hidden .fv-dg-h .dt b, .fv.fv-amts-hidden .fv-dg-h .bal,
 .fv.fv-amts-hidden .fv-mb-big b, .fv.fv-amts-hidden .fv-mb-kv, .fv.fv-amts-hidden .fv-cc-hv,
 .fv.fv-amts-hidden .fv-mb-ent.t-money, .fv.fv-amts-hidden .fv-mb-note b:not(.d), .fv.fv-amts-hidden .fv-mb-split b {
   filter: blur(6px); transition: filter var(--fv-fast) var(--fv-ease);
 }
-.fv.fv-amts-hidden .fv-amt:hover, .fv.fv-amts-hidden .fv-kpi:hover .fv-kpi-v, .fv.fv-amts-hidden .fv-row:hover .fv-row-v, .fv.fv-amts-hidden .fv-row:hover .fv-amt,
+.fv.fv-amts-hidden .fv-txr:hover .fv-txr-am, .fv.fv-amts-hidden .fv-amt:hover, .fv.fv-amts-hidden .fv-kpi:hover .fv-kpi-v, .fv.fv-amts-hidden .fv-row:hover .fv-row-v, .fv.fv-amts-hidden .fv-row:hover .fv-amt,
 .fv.fv-amts-hidden .fv-row:focus-visible .fv-amt, .fv.fv-amts-hidden .fvb-tile:hover .fv-amt, .fv.fv-amts-hidden .fvb-tile:focus-visible .fv-amt,
 .fv.fv-amts-hidden .fv-legend-row:hover .v, .fv.fv-amts-hidden .fv-stat:hover b { filter: none; }
 

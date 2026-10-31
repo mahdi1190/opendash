@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.3]
+
+Pending payments count, and you can split them.
+
+### Changed
+- Pending payments now count as normal spending and money in, everywhere: totals, this month, budgets, safe to spend, the brief and the story, Home, your money plan and what Claude reads. They use your categories and rules, show their logo, and sit in Transactions on their date with a small Pending tag. The separate block at the top of Transactions has gone. This works for banks connected directly (Monzo and Enable Banking).
+- Settings > Money has Count pending payments, on by default. Off, they are listed but count only once they settle.
+
+### Added
+- Don't count: a quick action on a pending payment, with Undo. It is remembered on your other computers and when the payment settles.
+- Everything works on a pending payment: split it, mark it as an expense, ask who paid, add a note, pick a category, select several. All of it stays when the payment settles, and each payment is only ever counted once.
+- When a pending payment settles at another amount (a tip, a hotel hold, fuel), Freeflo asks in one tap: "Bowling settled at £42, not £40. Update the split?"
+- When one disappears without settling (a declined or released hold), it leaves your numbers after five days. If it had a split or an expense, Freeflo says so once and offers to delete it or keep it.
+- A pending payment coming in can be suggested for Owed to me too ("We think Sam paid"), and it stays matched when it settles.
+
 ## [2.27.2]
 
 ### Added

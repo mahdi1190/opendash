@@ -42,6 +42,7 @@ function _xpMount(container) {
   if (EXP.error && !EXP.data) { mountEmptyState(root, { icon: 'circle-alert', title: 'Expenses did not load', text: EXP.error, actions: [{ label: 'Try again', primary: true, run: () => { EXP.loaded = false; render(); } }] }); return; }
   expScan(false);
   const d = EXP.data, items = d.items, sum = d.summary;
+  if (typeof owdNoticeEls === 'function') for (const n of owdNoticeEls('expense')) root.appendChild(n);   // a pending payment that changed under one of these
   if (!items.length) {
     const box = _xe('div', 'xp-empty'); root.appendChild(box);
     mountEmptyState(box, { icon: 'receipt', title: 'Get paid back, without the chasing',

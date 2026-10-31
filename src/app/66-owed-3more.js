@@ -229,6 +229,51 @@ function owdBriefLine(o) {
   return n;
 }
 
+/* ---------- A pending payment that changed under a split or a claim (lib/owed.mjs pendingNotices) ---------- */
+/** One calm line with the answers. Said until answered; the answer is remembered on all your computers. */
+function owdNoticeEl(x) {
+  const n = _xe('div', 'xp-remind owd-net owd-pend');
+  const said = () => owdDo('/said', { id: x.id }, { quiet: true, what: 'note that' });
+  const word = x.what === 'expense' ? 'expense' : 'split';
+  const add = (o) => n.appendChild(uiButton({ kind: 'link', ...o }));
+  if (x.kind === 'changed') {
+    n.innerHTML = `${icon('info')}<span>${esc(x.title)} settled at ${owdAmt(x.now)}, not ${owdAmt(x.was)}.${x.claimed ? ' It is on a claim already, so check that claim.' : ` Update the ${word}?`}</span>`;
+    if (x.claimed) { add({ label: 'OK', run: said }); return n; }
+    add({ label: 'Update', run: async () => {
+      if (x.what === 'expense') { await expDo('/update', { id: x.ref, patch: { amount: x.now } }, { done: 'Expense updated', what: 'update the expense' }); owdScan(true); return; }
+      try { const j = await owdApi('/retotal', { id: x.ref, total: x.now }); owdSet(j); toast('Split updated', { icon: 'handshake', timeout: 8000, action: j.undo ? { label: 'Undo', run: () => owdUndo(j.undo) } : undefined }); owdRepaint(); owdMoneyChanged(); }
+      catch (e) { owdSplitDialog({ edit: x.ref }); }   // it cannot be worked out by itself (you are not in it): the split opens, to share out the difference
+    } });
+    add({ label: 'Keep it', run: said });
+    return n;
+  }
+  const gone = `${esc(x.title)} (${owdAmt(x.a)}) did not go through: your bank dropped it.`;
+  if (x.what === 'claim') {
+    n.innerHTML = `${icon('info')}<span>The ${owdAmt(x.a)} that paid ${esc(x.title)} did not go through: your bank dropped it. Mark it as not paid?</span>`;
+    add({ label: 'Not paid', run: () => expDo('/unpaid', { ids: [x.ref] }, { done: 'Marked as not paid', what: 'change that' }).then(() => owdScan(true)) });
+  } else if (x.what === 'paid') {
+    n.innerHTML = `${icon('info')}<span>${esc(owdFirstName(x.name))}’s payment of ${owdAmt(x.a)} for ${esc(x.title)} did not go through: your bank dropped it. Take it off?</span>`;
+    add({ label: 'Take it off', run: () => owdDo('/unassign', { tx: { k: x.k, txKey: x.txKey } }, { done: 'Taken off', what: 'take that off' }) });
+  } else {
+    n.innerHTML = `${icon('info')}<span>${gone} Delete the ${word}, or keep it?</span>`;
+    add({ label: 'Delete it', run: () => (x.what === 'expense' ? expDo('/delete', { ids: [x.ref] }, { done: 'Expense deleted', what: 'delete that' }).then(() => owdScan(true)) : owdDo('/delete', { ids: [x.ref] }, { done: 'Split deleted', what: 'delete that' })) });
+  }
+  add({ label: 'Keep it', run: said });
+  return n;
+}
+function owdNoticeEls(only) { return (OWD.notices || []).filter(x => !only || x.what === only || (only === 'expense' && x.what === 'claim')).map(owdNoticeEl); }
+/** Said once out loud, per computer; after that it waits quietly in Transactions and Owed to me until it is answered. */
+function owdNoticeToast() {
+  let said = {};
+  try { said = JSON.parse(localStorage.getItem('dash-pending-said') || '{}') || {}; } catch (e) { said = {}; }
+  const fresh = (OWD.notices || []).find(x => !said[x.id + '|' + x.what]);
+  if (!fresh) return;
+  for (const x of OWD.notices) said[x.id + '|' + x.what] = 1;
+  try { localStorage.setItem('dash-pending-said', JSON.stringify(said)); } catch (e) { /* private mode */ }
+  const amt = (v) => (typeof homeAmountsHidden === 'function' && homeAmountsHidden() ? '•••' : owdMoney(v));
+  toast(fresh.kind === 'changed' ? `${fresh.title} settled at ${amt(fresh.now)}, not ${amt(fresh.was)}` : `${fresh.title} did not go through`, { icon: 'info', timeout: 12000, action: { label: 'See', run: () => { if (typeof setView === 'function') setView('owed'); } } });
+}
+
 /* ---------- Transactions: the button and the chip on a row ---------- */
 /** Your note on a payment: a line in the open row. Click it to change it. */
 function owdTxNote(tx) {
@@ -241,7 +286,7 @@ function owdTxNote(tx) {
 }
 /** Sent something back? Watch for the refund: it comes off this payment when it arrives. */
 function owdTxRefund(tx) {
-  if (!tx || !(Number(tx.a) < 0) || tx.kind !== 'spend' || owdForTx(tx)) return null;
+  if (!tx || !(Number(tx.a) < 0) || (tx.kind !== 'spend' && tx.kind !== 'off') || owdForTx(tx)) return null;
   return uiButton({ label: 'Expecting a refund', icon: 'wallet', cls: 'fv-btn ghost', tip: 'Freeflo watches for it and tells you if it is late', run: () => owdExpectDialog({ title: `Refund: ${tx.m}`, from: tx.m, total: Math.abs(Number(tx.a)), date: tx.d, expectKind: 'refund', source: { type: 'tx', txKey: expTxKey(tx), k: tx.k } }) });
 }
 function owdTxButton(tx) {
@@ -250,7 +295,7 @@ function owdTxButton(tx) {
   if (Number(tx.a) > 0) {
     return uiButton({ label: owdTransferOf(owdTxOf(tx)) ? 'Paid back · Change' : 'Who paid this?', icon: 'handshake', cls: 'fv-btn', tip: 'Say who it was from and what it was for', run: () => owdPayDialog({ tx: owdTxOf(tx) }) });
   }
-  if (tx.kind !== 'spend') return null;
+  if (tx.kind !== 'spend' && tx.kind !== 'off') return null;
   const t = owdForTx(tx);
   if (t) return uiButton({ label: t.kind === 'split' ? `Split · ${t.done} of ${t.count} paid` : t.kind === 'expect' ? 'Expecting a refund' : 'Open', icon: 'handshake', cls: 'fv-btn', tip: 'Open it', run: () => owdSplitDialog({ edit: t.id }) });
   if (typeof expForTx === 'function' && expForTx(tx)) { const e = expForTx(tx); return uiButton({ label: 'Move to Owed to me', icon: 'handshake', cls: 'fv-btn', tip: 'Friends pay you back, not work', run: () => owdSplitDialog({ fromExpense: e }) }); }

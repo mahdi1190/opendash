@@ -221,7 +221,7 @@ export function createAgentTools({ mode, dataDir, api, readState, clockInfo, con
     if (a.part === 'tax') return route('GET', `/api/finance/tax/summary${a.taxYear ? `?year=${encodeURIComponent(a.taxYear)}` : ''}`);
     const r = await route('GET', '/api/finance/budgets');
     const fin = await api.query('finance.summary', {}).catch(() => null);
-    return { budgets: r.budgets || {}, thisMonth: fin && fin.month ? fin.month : null, byCategory: fin && (fin.topCategoriesThisMonth || fin.byCategory || fin.categories) || null };
+    return { budgets: r.budgets || {}, thisMonth: fin && fin.month ? fin.month : null, byCategory: fin && (fin.topCategoriesThisMonth || fin.byCategory || fin.categories) || null, ...(fin && fin.pending ? { pending: fin.pending } : {}) };
   }
   async function getTravel(a) {
     const { state, e } = await engine();
