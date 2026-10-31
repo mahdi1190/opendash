@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.32.2]
+
+### Fixed
+- When your friend's relay turns your knock away (it answers "too many requests", which an older relay does once it has taken a day's share of your messages), the garden now says so and who can fix it: they press Update my relay (Settings > Your relay), or it opens again after midnight UTC.
+- Knocking asks less often after the first round (the later rounds knock once, 90 seconds, 3, 6 and then 12 minutes apart; 10 minutes after a "too many" answer) so a gate left open no longer uses up a relay's daily allowance of messages from you. Pressing Knock starts again at once.
+
 ## [2.32.1]
 
 ### Fixed

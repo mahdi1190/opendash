@@ -304,6 +304,7 @@ const _GLV_NOTES = Object.freeze({
   road: 'Live play needs a quick update of the relay you share. This is the garden as they last shared it.',
   quiet: 'No answer. Their Freeflo has to be open, on the latest version, for you to get in. This is the garden as they last shared it.',
   unsent: 'Your knock could not be sent just now. Check your relay under Settings > Your relay, then knock again. This is the garden as they last shared it.',
+  limit: 'Their relay is turning your messages away for now (too many today). It opens again after midnight UTC, or at once when they press Update my relay under Settings > Your relay. This is the garden as they last shared it.',
   lost: 'The connection dropped. Trying again…',
   home: 'They sent you home for now. This is the garden as they last shared it.',
   budget: 'That is all the live play for today. This is the garden as they last shared it.',
