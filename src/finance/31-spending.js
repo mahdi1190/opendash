@@ -261,7 +261,7 @@
         C1.tileEl(x.m, x.c, 'md'),
         h('span', { class: 'fv-row-main' },
           h('span', { class: 'fv-row-t', text: x.m }),
-          h('span', { class: 'fv-row-s' }, h('span', { class: 'c1-nw', text: fDayW(x.n) + ' ·' }), C1.catIconEl(x.c, { size: 'xs', plain: true, live: false }), h('span', { class: 'c1-ell', text: x.c })),
+          h('span', { class: 'fv-row-s' }, txPendTag(x), h('span', { class: 'c1-nw', text: fDayW(x.n) + ' ·' }), C1.catIconEl(x.c, { size: 'xs', plain: true, live: false }), h('span', { class: 'c1-ell', text: x.c })),
           h('span', { class: 'fv-row-bar c1-bar' }, h('i', { style: { transform: `scaleX(${(x.s / max).toFixed(4)})`, background: x.c === 'Uncategorised' ? tk().uncat : catColor(x.c) } }))),
         badge,
         h('span', { class: 'fv-row-v', text: gbp2(x.s) }))));

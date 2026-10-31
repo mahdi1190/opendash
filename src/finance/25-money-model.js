@@ -278,7 +278,9 @@
       const cur = list.filter(b => /current|transaction|checking|cheque/i.test(String(b.kind || '')));
       const use = cur.length ? cur : list.filter(b => !/credit|card|saving|loan|mortgage|invest|isa|pension/i.test(String(b.kind || '')));
       if (!use.length) return null;
-      return { total: r2(sumBy(use, b => +b.balance)), accts: use.map(b => String(b.acct || '')), asOf: validIso(use[0].asOf) ? use[0].asOf.slice(0, 10) : null, n: use.length };
+      // pend: pending payments the bank's figure does not have in it yet (lib/finance/pending.mjs). Safe to spend takes them off; the balance shown stays the bank's.
+      const pend = r2(sumBy(use, b => (isFinite(+b.pend) ? +b.pend : 0)));
+      return { total: r2(sumBy(use, b => +b.balance)), accts: use.map(b => String(b.acct || '')), asOf: validIso(use[0].asOf) ? use[0].asOf.slice(0, 10) : null, n: use.length, ...(pend ? { pend } : {}) };
     }
     function balanceSeries(history, accts) {
       const pts = [];
@@ -502,7 +504,7 @@
       const upcoming = billsBetween(homeRecs, anchor, anchor + 31).concat(cardPays.filter(b => b.n < anchor + 31), planIn(anchor + 31)).sort(billOrder);
       const cushion = Number.isFinite(opts.cushion) ? opts.cushion : CUSHION;
       const safe = bal ? (() => {
-        const left = r2(bal.total - billsTotal - cushion);
+        const left = r2(bal.total + (bal.pend || 0) - billsTotal - cushion);
         return { perDay: r2(Math.max(0, left) / Math.max(1, cyc.daysLeft)), left, cushion, bills: billsTotal, daysLeft: cyc.daysLeft };
       })() : null;
       // Movers and who leads each category this cycle.

@@ -77,7 +77,7 @@ function expForTx(tx) {
   return expItems().find(e => e.source && ((e.source.txKey && e.source.txKey === key) || (tx.k && e.source.k === tx.k))) || null;
 }
 /** The finance de-dup key of a transaction row of the Finances view ({d, a, acct, memo}); lib/expenses.mjs txKeyOf. */
-function expTxKey(tx) { return `${tx.d}|${Number(tx.a).toFixed(2)}|${tx.acct == null ? '' : tx.acct}|${String(tx.memo == null ? '' : tx.memo).toUpperCase()}`.slice(0, 300); }
+function expTxKey(tx) { if (tx.tk) return tx.tk; return `${tx.d}|${Number(tx.a).toFixed(2)}|${tx.acct == null ? '' : tx.acct}|${String(tx.memo == null ? '' : tx.memo).toUpperCase()}`.slice(0, 300); }
 function expAgo(iso) {
   if (!iso) return '';
   const n = Math.max(0, Math.round((Date.parse(todayStr() + 'T12:00:00Z') - Date.parse(iso + 'T12:00:00Z')) / 86400000));

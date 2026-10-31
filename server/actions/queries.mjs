@@ -441,7 +441,7 @@ export const QUERIES = [
   },
   {
     name: 'finance.summary', tool: 'get_finance_summary',
-    description: 'Read-only spending aggregates (this week, this month, by category, recurring total, balances). No individual transactions.',
+    description: 'Read-only spending aggregates (this week, this month, by category, recurring total, balances). No individual transactions. Payments the bank has not settled yet are in the totals unless pending.counted is false.',
     schema: obj({}),
     async run(q) {
       const dir = q.financeDir;
@@ -464,6 +464,8 @@ export const QUERIES = [
         week: a.week ? { from: a.week.start, to: a.week.end, total: num(a.week.total), averageOfPreviousWeeks: num(a.week.avg_prev), byCategory: top(a.week.by_category) } : null,
         month: a.month ? { label: a.month.label, toDate: num(a.month.mtd), lastMonthSameDay: num(a.month.last_month_to_date), lastMonthFull: num(a.month.last_month_full), byCategory: top(a.month.by_category), threeMonthAverageByCategory: top(a.month.avg3_by_category) } : null,
         incomeThisMonth: num(a.income_month),
+        // Payments the bank has not settled yet are in these totals (unless the person turned that off: counted false).
+        ...(a.pending_info && (a.pending_info.n || a.pending_info.off) ? { pending: { counted: a.pending_info.on !== false, payments: a.pending_info.n, moneyOut: num(a.pending_info.out), moneyIn: num(a.pending_info.in), leftOutOfTotals: a.pending_info.off } } : {}),
         recurringMonthlyTotal: num(a.recurring_monthly_total),
         recurringCount: Array.isArray(a.recurring) ? a.recurring.length : 0,
         flagsCount: Array.isArray(a.flags) ? a.flags.length : 0,

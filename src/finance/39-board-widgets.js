@@ -455,7 +455,7 @@
       for (const x of list.slice(0, X.size(w) === 's' ? 4 : 7)) {
         const t = x.t;
         ul.append(h('li', null, h('button', { type: 'button', class: 'fv-row fsym-host', onclick: () => openMerchant(t.m) }, C1.tileEl(t.m, t.c, 'sm'),
-          h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, fDayW(t.n), ' · ', ...x.why.map(y => h('span', { class: 'fvb-why', text: y })))),
+          h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, txPendTag(t), fDayW(t.n), ' · ', ...x.why.map(y => h('span', { class: 'fvb-why', text: y })))),
           amt(gbp2(t.s), 'fv-row-v'))));
       }
       box.append(ul);
@@ -569,9 +569,9 @@
     update(cd, w, X) {
       const ctx = X.ctxOf(w); const box = bdBox(cd); const M = X.M;
       const kind = bwOpt(w, 'kind'), n = Number(bwOpt(w, 'n')) || 10;
-      // Card payments the bank has not settled yet come first, labelled Pending (they vanish once settled).
-      const pend = (M.pending || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t) && (kind === 'spend' || kind === 'income' ? t.kind === kind : true));
-      const rows = pend.concat((kind === 'spend' ? ctx.cur.spend : kind === 'income' ? ctx.cur.income : ctx.cur.all.filter(t => F.xfer || t.kind !== 'transfer')).slice().sort((a, b) => b.n - a.n || a.i - b.i));
+      // What does not count is still listed, and says so.
+      const off = (M.off || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t) && (kind === 'spend' ? t.a < 0 : kind === 'income' ? t.a > 0 : true));
+      const rows = (kind === 'spend' ? ctx.cur.spend : kind === 'income' ? ctx.cur.income : ctx.cur.all.filter(t => F.xfer || t.kind !== 'transfer')).concat(off).sort((a, b) => b.n - a.n || a.i - b.i);
       cd.setSub(bdPeriodSub(ctx, w) + (F.cats.length || F.country || F.merchant || F.accts.length ? ' · with your filters' : ''));
       if (!rows.length) { box.append(h('p', { class: 'fvb-note', text: 'No payments in these dates with these filters.' })); return; }
       PL.ensure(M);
@@ -582,14 +582,8 @@
         const abroad = t.pc && t.pc !== M._plHome && t.pc !== 'HOME';
         const subs = [X.size(w) === 's' ? fDay(t.n) : '', t.c, abroad ? PL.label(t.pc) : ''].filter(Boolean).join(' · ');
         const local = abroad && t.plc && t.pla > 0 && t.plc !== CUR ? fmtCcy(t.pla, t.plc) : '';
-        if (t.pending) {
-          ul.append(h('li', null, h('div', { class: 'fv-row fsym-host' }, C1.tileEl(t.m, 'Uncategorised', 'sm'),
-            h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, X.size(w) === 's' ? fDay(t.n) + ' · ' : '', h('b', { text: 'Pending' }), ' · not settled yet')),
-            h('span', { class: 'fv-cc-v' }, amt(t.kind === 'income' ? '+' + gbp2(t.inc) : gbp2(t.s), 'fv-row-v' + (t.kind === 'income' ? ' in' : ''))))));
-          continue;
-        }
         ul.append(h('li', null, h('button', { type: 'button', class: 'fv-row fsym-host', onclick: () => openMerchant(t.m) }, C1.tileEl(t.m, t.c, 'sm'),
-          h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, abroad ? h('span', { class: 'fvb-txflag', html: PL.flag(t.pc) }) : null, subs)),
+          h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, txPendTag(t), abroad ? h('span', { class: 'fvb-txflag', html: PL.flag(t.pc) }) : null, subs)),
           h('span', { class: 'fv-cc-v' }, amt(t.kind === 'income' ? '+' + gbp2(t.inc) : t.kind === 'spend' ? gbp2(t.s) : gbp2(t.a), 'fv-row-v' + (t.kind === 'income' ? ' in' : '')), local ? h('small', { class: 'fv-amt', text: local }) : null))));
       }
       box.append(ul);

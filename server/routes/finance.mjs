@@ -16,6 +16,9 @@
 //                                 computer (409 SIGN_IN_FIRST without a bank connection of its own)
 //   POST /api/finance/categorise  {merchant, category|null} -> {ok, changed, analysis}
 //   POST /api/finance/categorise-batch  {changes: [{merchant, category|null}]} -> the same, one rebuild
+//   GET  /api/finance/count       -> {countPending}
+//   POST /api/finance/count       {ks: [payment keys], count: bool} ("Don't count this" and back) or {countPending: bool}
+//                                 (Settings > Money) -> {ok, analysis}; lib/finance/pending.mjs
 //   GET  /api/finance/budgets     -> {budgets};  PUT {budgets} -> {ok, budgets}
 //   GET  /api/finance/export      -> text/csv of every transaction (same-origin only)
 //   GET  /api/finance/brief       ?mode=cycle|month[&ai=1|&regenerate=1] -> the Overview's money brief
@@ -37,7 +40,7 @@
 import {
   financeData, financeJob, startFinanceUpdate, categoriseMerchant, categoriseMerchants, getBudgets, setBudgets,
   importUpload, exportTransactions, setFinanceHooks, MAX_UPLOAD_BYTES,
-  localFinanceData, localBudgets, writeBudgetsFile, applyMerchantOverrides,
+  localFinanceData, localBudgets, writeBudgetsFile, applyMerchantOverrides, getCounting, setCounting, applyCountingEdits, rebuildOldAnalysis,
 } from '../../lib/finance.mjs';
 import { createFinanceShare } from '../../lib/finance-share.mjs';
 import { EDITS_REL, SHARE_REL } from '../../lib/sync/finance-share.mjs';
@@ -148,6 +151,7 @@ export default function register(app) {
       localBudgets: () => localBudgets(),
       writeBudgets: (map) => writeBudgetsFile(map),
       applyOverrides: (list) => applyMerchantOverrides(list),
+      applyCounting: (o) => applyCountingEdits(o),
       // An account's name, colour or Show in Finances chosen on another device: into this computer's sources.
       applyAccounts: async (list) => {
         const svc = finConnectFor(app.ctx);
@@ -191,6 +195,7 @@ export default function register(app) {
       });
     }
     const first = setTimeout(applyEdits, 15000); first.unref?.();
+    const upgrade = setTimeout(() => { rebuildOldAnalysis().catch(() => {}); }, 8000); upgrade.unref?.();
     shareTimer = setInterval(applyEdits, 5 * 60 * 1000); shareTimer.unref?.();
   });
   app.onClose(() => { clearInterval(shareTimer); });
@@ -306,6 +311,17 @@ export default function register(app) {
     },
   });
 
+  app.route({ path: '/api/finance/count', method: 'GET', methodError: 'GET or POST only', handler: () => getCounting() });
+  app.route({
+    path: '/api/finance/count', method: 'POST', methodError: 'GET or POST only',
+    handler: async (c) => {
+      const body = await c.body();
+      const r = await setCounting({ ks: body.ks, count: body.count, countPending: body.countPending });
+      log('note', 'finance: what counts changed');
+      return { ok: true, changed: r.changed, analysis: r.analysis };
+    },
+  });
+
   app.route({ path: '/api/finance/budgets', method: 'GET', methodError: 'GET or PUT only', handler: () => getBudgets() });
   app.route({
     path: '/api/finance/budgets', method: 'PUT', methodError: 'GET or PUT only',
@@ -316,7 +332,7 @@ export default function register(app) {
   /** The export on a device that shows another device's finances: built from that copy. */
   function mirrorCsv(analysis) {
     const exclude = Array.isArray(analysis.exclude_from_spending) ? analysis.exclude_from_spending : ['Income', 'Internal transfers'];
-    const rows = (analysis.transactions || []).filter(t => t && typeof t.d === 'string').map(t => {
+    const rows = (analysis.transactions || []).filter(t => t && typeof t.d === 'string' && !t.pe).map(t => {
       const amount = Number(t.a) || 0;
       return { date: t.d, n: Date.parse(t.d + 'T12:00:00Z') / 864e5, merchant: String(t.m || ''), category: String(t.c || 'Uncategorised'), amount,
         spend: exclude.includes(t.c) ? 0 : -amount, account: String(t.acct || ''), subcategory: '', memo: String(t.memo || ''), source: '' };

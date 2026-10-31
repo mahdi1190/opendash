@@ -229,7 +229,7 @@ async function owdPickPayment(o) {
     const list = rows.filter(r => !nq || expNorm(`${r.memo} ${r.merchant} ${Number(r.amount).toFixed(2)}`).includes(nq));
     if (!list.length) { listEl.appendChild(_xe('div', 'xp-none', wait ? 'No bank data yet. Connect a bank or import a statement in Money.' : nq ? 'Nothing matches.' : 'No payments left to match.')); return; }
     for (const r of list.slice(0, 40)) {
-      const b = _xe('button', 'owd-pp', `<span class="owd-pl-n">${esc(r.merchant || r.memo || 'Payment')}<small>${esc(_xpDate(r.date))}${r.memo && r.memo !== r.merchant ? ' · ' + esc(r.memo.slice(0, 48)) : ''}</small></span><b class="num">${esc(owdMoney(r.amount))}</b>`); b.type = 'button';
+      const b = _xe('button', 'owd-pp', `<span class="owd-pl-n">${esc(r.merchant || r.memo || 'Payment')}<small>${r.pe ? 'Pending · ' : ''}${esc(_xpDate(r.date))}${r.memo && r.memo !== r.merchant ? ' · ' + esc(r.memo.slice(0, 48)) : ''}</small></span><b class="num">${esc(owdMoney(r.amount))}</b>`); b.type = 'button';
       b.onclick = () => owdPayDialog({ tx: r, preset });
       listEl.appendChild(b);
     }

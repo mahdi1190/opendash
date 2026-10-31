@@ -68,6 +68,8 @@ export default function register(app) {
     const r = await refreshFinanceAnalysis().catch(() => null);
     return !!(r && r.ok);
   }
+  /** A pending payment that settled at another amount, or never settled, with something attached (lib/owed.mjs pendingNotices). */
+  const notices = async (S, d) => (d ? O.pendingNotices(S, await readExpenses(dataDir, { home: home() }).catch(() => null), d.analysis) : []);
   const statePeople = async () => { try { const s = await store.readObject(); return Array.isArray(s && s.people) ? s.people : []; } catch { return []; } };
   /** What Expenses has already used: a payment is only used once. */
   const takenByExpenses = async () => { const X = await readExpenses(dataDir, { home: home() }); const s = new Set(); for (const e of Object.values(X.items)) { if (e.paidTxKey) s.add(e.paidTxKey); if (e.source && e.source.k) s.add(e.source.k); if (e.source && e.source.txKey) s.add(e.source.txKey); } return s; };
@@ -124,7 +126,7 @@ export default function register(app) {
     if (rebuilt) d = await analysisNow();
     const S = r && r.S ? r.S : await read();
     const sugg = await suggestions(c, S, d);
-    return { ok: true, ...(r && r.undo ? { undo: r.undo } : {}), ...(rebuilt ? { rebuilt: true } : {}), ...extra, suggestions: sugg, data: O.publicView(S, todayOf(c), sugg) };
+    return { ok: true, ...(r && r.undo ? { undo: r.undo } : {}), ...(rebuilt ? { rebuilt: true } : {}), ...extra, suggestions: sugg, notices: await notices(S, d), data: O.publicView(S, todayOf(c), sugg) };
   };
 
   app.route({ path: '/api/owed', method: 'GET', methodError: 'GET only', quiet: true, handler: async (c) => ({ ok: true, data: O.publicView(await read(), todayOf(c)), today: todayOf(c), currency: home() }) });
@@ -145,7 +147,7 @@ export default function register(app) {
     // Money into an account left out of Your data is not in the analysis at all, so it is never looked at. The page says so.
     let leftOut = [];
     try { const ov = app.ctx.financeDataSvc ? await app.ctx.financeDataSvc.publicOverview() : null; leftOut = ((ov && ov.rows) || []).filter(x => x && x.count > 0 && x.counted === false).map(x => x.name).filter(Boolean).slice(0, 8); } catch { leftOut = []; }
-    return { ok: true, connected: true, auto: r.auto, suggestions: r.suggestions, offers: O.findOffers(S, d.analysis, { today, skip }), leftOut, ...repOut, ...(r.undo ? { undo: r.undo } : {}), ...(rebuilt ? { rebuilt: true } : {}), data: O.publicView(S, today, r.suggestions) };
+    return { ok: true, connected: true, auto: r.auto, suggestions: r.suggestions, notices: await notices(S, d), offers: O.findOffers(S, d.analysis, { today, skip }), leftOut, ...repOut, ...(r.undo ? { undo: r.undo } : {}), ...(rebuilt ? { rebuilt: true } : {}), data: O.publicView(S, today, r.suggestions) };
   });
   post('create', async (c, b) => {
     // A receipt that was read and is to be kept: the file goes in with the Expenses receipts, on this computer and your own devices.
@@ -221,7 +223,7 @@ export default function register(app) {
     const S = await read(); const taken = O.usedKeys(S); for (const x of await takenByExpenses()) taken.add(x);
     for (const t of Object.values(S.things)) { if (t.source.k) taken.add(t.source.k); }
     const list = out ? O.debitsFromAnalysis(d.analysis, { today, days: 90 }) : creditsFromAnalysis(d.analysis, { today, days: 180 });
-    return { ok: true, connected: true, rows: list.filter(x => !taken.has(x.k) && !taken.has(x.txKey)).slice(0, 60).map(x => ({ k: x.k, txKey: x.txKey, date: x.date, amount: x.amount, memo: x.memo, merchant: x.merchant, dir: out ? 'out' : 'in' })) };
+    return { ok: true, connected: true, rows: list.filter(x => !taken.has(x.k) && !taken.has(x.txKey)).slice(0, 60).map(x => ({ k: x.k, txKey: x.txKey, date: x.date, amount: x.amount, memo: x.memo, merchant: x.merchant, dir: out ? 'out' : 'in', ...(x.pe ? { pe: 1 } : {}) })) };
   });
   post('proposal', async (c, b) => { const r = settled(await O.answerProposal(dataDir, String(b && b.id || ''), !!(b && b.yes === true), { today: todayOf(c), home: home() })); return done(c, r); });
   post('prefs', async (c, b) => {
@@ -230,6 +232,8 @@ export default function register(app) {
     return done(c, await O.setPrefs(dataDir, b && b.patch, { home: home() }));
   });
   post('offer', async (c, b) => done(c, await O.dismissOffer(dataDir, b && b.offer, { home: home() })));
+  post('said', async (c, b) => done(c, await O.saidNotice(dataDir, String(b && b.id || ''), { home: home() })), 1024);
+  post('retotal', async (c, b) => { const r = await O.retotalThing(dataDir, String(b && b.id || ''), Number(b && b.total), { home: home(), today: todayOf(c) }); return done(c, r, { thing: r.thing }); }, 1024);
   post('group', async (c, b) => done(c, await O.saveGroup(dataDir, { name: b && b.name, keys: b && b.keys }, { today: todayOf(c), home: home() })));
   post('note', async (c, b) => done(c, await O.setNote(dataDir, String(b && b.k || ''), String(b && b.text || ''), { home: home() })));
   post('person', async (c, b) => done(c, await O.setPersonWords(dataDir, String(b && b.key || ''), b && b.match, { home: home() })));

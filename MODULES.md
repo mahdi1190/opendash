@@ -1330,6 +1330,11 @@ Files: `lib/finance.mjs`, `lib/finance/*`, `server/routes/finance.mjs`,
 - **No connection needed**: `POST /api/finance/import` (a CSV the user picks or
   drops on the page), `GET /api/finance/export` (every transaction as CSV;
   cells that would start a formula are quoted), recategorise, budgets.
+- **Pending payments** (`lib/finance/pending.mjs`, rules at its top): what the bank has not settled counts as a normal row, unless
+  you said not to (`POST /api/finance/count`; `_system/pending-choices.json`, shared through `finance-share/edits.json`). A pending payment
+  has one key and one txKey for life, and its settled row inherits them (`_system/pending-ledger.json`), so splits, expenses, notes and hints
+  need no rewriting. Rows that do not count are in `analysis.uncounted` (`M.off` on the page), never in `transactions`, so they cannot reach a
+  total. `analysis.pending_info`, `analysis.pending_gone`; `lib/owed.mjs pendingNotices` asks about a changed amount or a dropped payment.
 - **Credit cards** (`lib/finance/cards.mjs`, rules at its top; page `src/finance/45-cards.js`):
   an upload that looks like a card comes back as `{needsCardCheck, preview}` and is only imported
   with the person's answer, in the store's direction under one account key (`card-<name>`).
