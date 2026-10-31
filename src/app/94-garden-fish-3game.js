@@ -206,7 +206,7 @@ function _gwFishCast(pt) {
 }
 /** Space / E with a rod and nothing out: cast at the water in front of you. */
 function gardenFishFront() {
-  const W = GARDEN_WORLD, m = gardenModel(), px = Math.floor(_gw.px), py = Math.floor(_gw.py), rod = gardenRod();
+  const W = GARDEN_WORLD, m = gardenHere(), px = Math.floor(_gw.px), py = Math.floor(_gw.py), rod = gardenRod();
   for (let r = 2; r <= rod.st.range; r++) {
     const x = px + _gw.face * r, y = py + 1;
     if (x >= 0 && x < W.cols && gardenIsWater(x, y)) { gardenFishClick({ x, y }, m); return; }
@@ -357,7 +357,7 @@ function _gwLeapFrame(dt) {
   _gw.leapT = (_gw.leapT == null ? 3 + Math.random() * 5 : _gw.leapT) - dt;
   if (_gw.leapT > 0) return;
   _gw.leapT = 7 + Math.random() * 12;
-  const m = gardenModel(); if (m.tod === 'night' && Math.random() < 0.5) return;
+  const m = gardenHere(); if (m.tod === 'night' && Math.random() < 0.5) return;
   if (_gwFishBusy()) return;
   const a = _gwActors(); if (!a) return;
   const W = GARDEN_WORLD, wa = gardenArea('lake').water;
@@ -377,7 +377,7 @@ function _gwBugsFrame(dt) {
   _gwLeapFrame(dt);
   if (!_gw.bugs || !_gw.bugs.size) { _gwNetFrame(dt); return; }
   const W = GARDEN_WORLD, pxx = _gw.px, pyy = _gw.py, motion = gardenMotionOn();
-  if (performance.now() - (_gw.bugsAt || 0) > 25000) _gwBugsSync(gardenModel());
+  if (performance.now() - (_gw.bugsAt || 0) > 25000) _gwBugsSync(gardenHere());
   const moving = _gw.moving, sneaking = _gw.sneak || !!_gw.netting;
   let busy = false;
   for (const b of _gw.bugs.values()) {

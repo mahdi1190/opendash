@@ -55,18 +55,18 @@ function _gwBuildGrid(m) {
   return g;
 }
 function _gwGrid(m) {
-  const key = _gd.memoKey + '|' + (m && m.level.level);
-  if (!_gw.grid || _gw.gridKey !== key) { _gw.grid = _gwBuildGrid(m || gardenModel()); _gw.gridKey = key; }
+  const key = (m && m.visit ? m.visit.key : _gd.memoKey) + '|' + (m && m.level.level);
+  if (!_gw.grid || _gw.gridKey !== key) { _gw.grid = _gwBuildGrid(m || gardenHere()); _gw.gridKey = key; }
   return _gw.grid;
 }
 function gardenWalkable(x, y) {
   const W = GARDEN_WORLD;
   if (x < 0 || y < 0 || x >= W.cols || y >= W.rows) return false;
-  return !_gwGrid(gardenModel())[y * W.cols + x];
+  return !_gwGrid(gardenHere())[y * W.cols + x];
 }
 /** Every cell you can get to from where you stand (a flood over the same grid the routes use), so the cursor can tell you before you click. */
 function _gwReach() {
-  const W = GARDEN_WORLD, C = W.cols, R = W.rows, grid = _gwGrid(gardenModel());
+  const W = GARDEN_WORLD, C = W.cols, R = W.rows, grid = _gwGrid(gardenHere());
   const sx = Math.max(0, Math.min(C - 1, Math.floor(_gw.px))), sy = Math.max(0, Math.min(R - 1, Math.floor(_gw.py)));
   if (_gw.reach && _gw.reachGrid === grid && _gw.reach[sy * C + sx]) return _gw.reach;
   const seen = new Uint8Array(C * R), stack = [sy * C + sx];
@@ -181,7 +181,7 @@ function _gwNearestFreePt(x, y, maxR) {
 }
 /** The cells A* goes through, eight ways, no cutting corners (raw: every cell; else string-pulled by cell). null when there is no way. */
 function gardenPath(from, to, raw) {
-  const W = GARDEN_WORLD, C = W.cols, R = W.rows, grid = _gwGrid(gardenModel());
+  const W = GARDEN_WORLD, C = W.cols, R = W.rows, grid = _gwGrid(gardenHere());
   const sx = Math.max(0, Math.min(C - 1, Math.floor(from.x))), sy = Math.max(0, Math.min(R - 1, Math.floor(from.y)));
   const tx = to.x, ty = to.y;
   if (sx === tx && sy === ty) return [];
@@ -592,14 +592,15 @@ function _gwFadeProps() {
 const GW_POS_KEY = 'opendash.garden.pos';
 function _gwSaveSoon() {
   clearTimeout(_gw.saveT);
+  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) return;   // where you stood at home stays where you stood at home
   _gw.saveT = setTimeout(() => { try { localStorage.setItem(GW_POS_KEY, JSON.stringify({ x: Math.round(_gw.px * 10) / 10, y: Math.round(_gw.py * 10) / 10 })); } catch (e) { /* private window: you start at the gate next time */ } }, 1200);
 }
-function _gwSavedPos() { try { const o = JSON.parse(localStorage.getItem(GW_POS_KEY) || 'null'); return o && Number.isFinite(o.x) && Number.isFinite(o.y) ? o : null; } catch (e) { return null; } }
+function _gwSavedPos() { if (typeof gardenVisitOn === 'function' && gardenVisitOn()) return null; try { const o = JSON.parse(localStorage.getItem(GW_POS_KEY) || 'null'); return o && Number.isFinite(o.x) && Number.isFinite(o.y) ? o : null; } catch (e) { return null; } }
 
 /* ---------- the pet: it trots after you, sits when you stop, and sits at the pier while you fish ---------- */
 function _gwPetSprite() {
   if (typeof window === 'undefined' || typeof window.petGardenSprite !== 'function') return null;
-  const m = gardenModel(), key = [m.season, m.tod, !!m.rain.now].join('|');
+  const m = gardenHere(), key = [m.season, m.tod, !!m.rain.now].join('|');
   if (_gw.petKey === key && _gw.petSvg !== undefined) return _gw.petSvg;
   let list = null;
   try { list = window.petGardenSprite({ season: m.season, tod: m.tod, size: 'm', readOnly: false, rain: !!m.rain.now }); } catch (e) { list = null; }
@@ -696,7 +697,7 @@ function gardenWorldPick(it, cell, ev, m) {
   if (prop) return { kind: 'prop', prop, pt };
   if (_gdpTool() === 'seed') return { kind: 'seed', pt };   // planting is its own click (the sweep)
   const c = cell || { x: Math.floor(pt.x), y: Math.floor(pt.y) };
-  m = m || gardenModel();
+  m = m || gardenHere();
   const plant = it && it.kind === 'plant' ? gardenPlantById(m, it.uid) : _gdpPlantAtCell(m, c);
   // bugs live on flowers: on a plant you have to mean the bug itself, or a bee beside a ripe daisy would keep you from ever picking it
   const bug = typeof _gwBugNear === 'function' ? _gwBugNear(pt.x, pt.y, plant ? GW_BUG_PICK.onPlant : GW_BUG_PICK.open) : null;
@@ -707,14 +708,14 @@ function gardenWorldPick(it, cell, ev, m) {
   if (area.startsWith('locked:')) return { kind: 'land', land: area.slice(7), pt, cell: c };
   if (gardenIsWater(c.x, c.y)) return { kind: 'water', pt, cell: c };
   const def = gardenArea(area), oc = m.occ.get(c.x + ',' + c.y);
-  if (_gdpTool() === 'hand' && def && def.cats && def.cats.length && !oc) return { kind: 'spot', pt, cell: c };   // an empty spot in a bed: it offers planting right there
+  if (_gdpTool() === 'hand' && def && def.cats && def.cats.length && !oc && !(m.visit && m.visit.no.plant)) return { kind: 'spot', pt, cell: c };   // an empty spot in a bed: it offers planting right there
   return { kind: 'ground', pt, cell: c };
 }
 /** What is under the pointer: {kind, text} for a building, a bug or the water; null for anything else (plants are the page's own). */
 function gardenWorldHover(ev, cell, it) {
   if (!_gw.on) return null;
   _gw.hoverBug = '';
-  const k = gardenWorldPick(it || null, cell, ev, gardenModel());
+  const k = gardenWorldPick(it || null, cell, ev, gardenHere());
   if (k.kind === 'prop') return { kind: 'prop', id: k.prop.id, text: k.prop.name };
   if (k.kind === 'bug') { _gw.hoverBug = k.bug.key; return { kind: 'bug', text: k.bug.def.name }; }
   if (k.kind === 'water') return { kind: 'water', text: '' };
@@ -757,6 +758,7 @@ function gardenWorldClick(it, cell, ev, m) {
     const plant = k.plant, decor = k.decor;
     const stand = plant ? { x: plant.x + plant.fp / 2, y: plant.y + plant.fp + 0.4 } : { x: decor.x + (decor.def.w || 1) / 2, y: decor.y + (decor.def.h || 1) + 0.4 };
     const uid = plant ? plant.uid : decor.uid;
+    if (m.visit && plant && gardenVisitCursor(plant, tool) === 'no') { gardenVisitClickNo(plant, tool); return true; }   // your level does not reach it: you are told now, and do not walk over for nothing
     if (!gardenWalkAct(stand, () => _gdpActOn(uid), { face: k.cell, near: plant ? 62 + plant.fp * 20 : 70 })) gameDeny(_ghNodeOf(uid), { at, say: 'You cannot get to it.' });
     return true;
   }
@@ -765,7 +767,7 @@ function gardenWorldClick(it, cell, ev, m) {
   // 6. an empty spot in a bed, with your hand free: walk over and it offers planting right there
   if (k.kind === 'spot') {
     const c = k.cell;
-    if (!gardenWalkAct({ x: c.x + 0.5, y: c.y + 1.3 }, () => gardenSpotBubble(c, gardenModel()), { radius: 2.5, face: c, near: 70 })) gameDeny(null, { at, say: 'You cannot get there.' });
+    if (!gardenWalkAct({ x: c.x + 0.5, y: c.y + 1.3 }, () => gardenSpotBubble(c, gardenHere()), { radius: 2.5, face: c, near: 70 })) gameDeny(null, { at, say: 'You cannot get there.' });
     return true;
   }
   // 7. the ground (or the sky, or the far side of the water): walk to the nearest place you can stand to where you clicked
@@ -827,7 +829,7 @@ function gardenWorldKey(ev, down, arrowsOnly) {
 /** Space / E: do the sensible thing right here: a bite, a door beside you, a bug in reach, a ripe plant, water in front of you. */
 function gardenWorldInteract() {
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
-  const m = gardenModel(), W = GARDEN_WORLD;
+  const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
   for (const p of GARDEN_PROPS) if (p.act && p.door && Math.abs(p.door.x - px) <= 1 && Math.abs(p.door.y - py) <= 1) { _gwOpenProp(p); return; }
   if (_gh.bubble) { const b = _gh.bubble.el.querySelector('.gd-bub-btn'); if (b) b.click(); return; }
@@ -856,7 +858,7 @@ const GARDEN_SURFACE_BY_EFFECT = Object.freeze({ sit: 0.55 });
  * top is where something could land or sit. Flat things (paths, seedlings) are not listed. Worked out on demand: don't call it every frame.
  */
 function gardenWorldObjects(mArg) {
-  const m = mArg || gardenModel(), out = [], K = 0.75 * GARDEN_WORLD.unit;
+  const m = mArg || gardenHere(), out = [], K = 0.75 * GARDEN_WORLD.unit;
   const row = (kind, uid, def, x, y, w, h, hgt, share) => {
     const height = Math.round(hgt * K);
     out.push({ kind, uid, id: def.id, name: def.name, x, y, w, h, z: y + h, height, top: { x: x + w / 2, y: y + h - 0.15, lift: Math.round(height * share) }, node: () => (_gdp.svg && uid ? _gdp.svg.querySelector(`.gd-it[data-uid="${CSS.escape(uid)}"], .gd-prop[data-prop="${CSS.escape(uid)}"]`) : null) });
@@ -932,7 +934,7 @@ function gardenWorldStart(root, m) {
   }
   document.addEventListener('keydown', _gwDocKeyDown); document.addEventListener('keyup', _gwDocKeyUp);
   if (!_gw.vis) { _gw.vis = true; document.addEventListener('visibilitychange', () => { if (!document.hidden) { _gw.last = 0; _gwEnsureLoop(); } }); window.addEventListener('blur', _gwBlur); }
-  gardenWorldPainted(m || gardenModel());
+  gardenWorldPainted(m || gardenHere());
   _gwUpdateCamUi();
   if (typeof _gwFishResume === 'function') _gwFishResume();   // a line that was out when the garden was drawn again is still out
   _gwEnsureLoop();
@@ -942,7 +944,7 @@ function _gwKeyUp(ev) { gardenWorldKey(ev, false); }
    focus is elsewhere, and having to click the garden again before the keys work was the old garden's worst habit. Text fields, buttons,
    menus and dialogs keep their own keys. */
 function _gwDocKeyDown(ev) {
-  if (!_gw.on || !_gdp.root || state.view !== 'garden' || ev.defaultPrevented || ev.isComposing || _gdpPopOpen()) return;
+  if (!_gw.on || !_gdp.root || !_gdpWorldView() || ev.defaultPrevented || ev.isComposing || _gdpPopOpen()) return;
   const t = ev.target;
   if (t && t.closest && (t.closest('.gd-stagebox') || t.closest('input, textarea, select, button, a, [contenteditable="true"], [role="dialog"], [role="menu"], [role="listbox"], .gd-guide, .modal, .popover, .cmdk, .palette'))) return;
   if (document.querySelector('.gd-guide, .modal-backdrop.is-open, .cmdk.is-open')) return;

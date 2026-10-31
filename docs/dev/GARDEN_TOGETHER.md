@@ -6,7 +6,7 @@ Code: `lib/relay/space-room.mjs` (the relay's pass-through room), `lib/friends/l
 
 ## 1. The shape of it
 
-**The garden's owner's computer is the truth.** A visitor sends intents ("plant carrot at 4,5"). The host checks them with the same rules the owner's own clicks go through, applies them to the host's own garden, and tells everyone there what happened. Everyone animates that. No visitor ever writes the host's data. If the host is not in their garden, a visit stays what it has always been: the saved copy, look only.
+**The garden's owner's computer is the truth.** A visitor sends intents ("plant carrot at 4,5"). The host checks them with the same rules the owner's own clicks go through, applies them to the host's own garden, and tells everyone there what happened. Everyone animates that. No visitor ever writes the host's data. If the host is not in their garden, a visit is the saved copy, in the same world (section 10).
 
 **A star, not a mesh.** Every message goes visitor to host or host to visitor, sealed for that pair of friends (the same envelopes as every friend message, `sealPair`). So two visitors need not be friends with each other, and neither learns the other's friend id: the host gives each person a small slot number (0 is the host), a first name and a look.
 
@@ -21,7 +21,7 @@ Code: `lib/relay/space-room.mjs` (the relay's pass-through room), `lib/friends/l
 | none (the default for everyone) | the saved copy only; a knock shows up at the host's gate, and the host can let them in with one tap |
 | Look | walk, emote, say preset phrases, wave and high five |
 | Help | Look, plus water, weed, and pick what they planted themselves |
-| Play | Help, plus plant, place decorations, move or take back what is theirs, gifts |
+| Play | Help, plus plant, place decorations, fertilise with their own fertiliser, move, turn or take back what is theirs, gifts |
 
 Also: **the gate** (open or closed, whatever the levels say; a new garden's gate is open but nobody has a level), **May touch my things** per friend (off: a visitor can never move, dig up, take or pick what is the host's), and **Harvest share** per friend (below). Group members never get more than Look unless the host chooses that friend's level by hand. Levels are data (`GL_LEVELS`, `GL_ACTS`).
 
@@ -44,9 +44,11 @@ All are friends kinds with a strict schema (`lib/friends/live.mjs`): ids, cells 
 | `gl:d` | H to V | `{s, q, ops}`: the garden changed: rows added, changed, removed |
 | `gl:snap` | H to V | `{s, q, n, of, d}`: the garden as it is now, in pieces of 3,600 characters |
 | `gl:lv` `gl:bye` `gl:ping` | | the level changed; I left, you were sent home, or that is your share of the relay today; still here? |
-| `gl:post` | H to V | `{id, why: crop\|back, i?, items}`: **not live**: posted things (a crop, something handed back), queued like any friend message until it arrives, taken once by id. The id says what it is (`c<plant>-<pick>`, `b<intent>0`), so the same post made twice is one. Each friend has their own place for them: 120 waiting, 120 a day; nobody can push another friend's out |
+| `gl:q` | V to H | `{i, t, p, x, y, r?, at}`: **not live**: done on the saved copy, to wait for the host (section 10). The same fields and id as `gl:do` |
+| `gl:perm` `gl:ask` | H to V, V to H | **not live**: `{lv, q}` what you may do in my garden, told when it changes and at a knock, so you know when I am out; `{v}` may I do more? It shows at the gate |
+| `gl:post` | H to V | `{id, why: crop\|back\|did, i?, items}`: **not live**: posted things (a crop, something handed back), queued like any friend message until it arrives, taken once by id. The id says what it is (`c<plant>-<pick>`, `b<intent>0`), so the same post made twice is one. Each friend has their own place for them: 120 waiting, 120 a day; nobody can push another friend's out |
 
-An older app does not know these kinds and drops them: the knock is never answered and the visit stays the saved copy. A `v` the host does not support gets `gl:no {why: 'old'}`.
+The protocol is `GL_V`, 2 since a visit became the world. A `v` that is not the host's gets `gl:no {why: 'old'}`, older or newer, and that visitor keeps the saved copy: an older app gets its old look-only page, a newer one the world, with a plain note in the tag. An app older than all this does not know these kinds and drops them: the knock is never answered.
 
 ## 4. How messages travel
 
@@ -134,6 +136,29 @@ Strangers will read this code. The checks are in section 5. Also:
 Proofs: throwaway scripts, not shipped, run on 31 October 2026 against real instances and a real relay, after an independent review: a Look-only friend's forged Plant is refused by the host's server and the page never hears it; a forged "harvest my host's plant" is refused; a gift moves one thing once, the same intent id three times applies once, a crop posted for a plant you never planted is refused, coins do not move; a removed friend is cut at once, their knock gets nothing and a kicked key cannot come back with its ticket. The room itself: strangers, wrong nonces and no, expired, someone else's or forged tickets are refused before a socket; guests reach only the host; a flood is cut and closed; one oversize message closes only its sender; one key's rooms and the whole relay stop at their day through hibernation; nothing is written to disk but the registry's one row. Every way the review found to duplicate a decoration or a crop (place, give, take; put away and Undo; move, take, Undo; pick, Put back, pick; pick, Undo, pick) now leaves one thing in the world. What still has not run: real Cloudflare.
 
 Walkers follow the host's own routes round beds and benches (a walk that arrives within 200 ms of that walker's last one goes straight). A guest's own figure sets off straight and takes the way round when the host answers, a moment later. Typed chat is for later.
+
+## 10. A visit is the garden
+
+The owner, 31 October 2026: "a live visit should be identical to being in my own garden." There is one world and one engine (`94-garden-visit-0world.js`).
+
+**One model, two gardens.** `gardenHere()` is the garden you stand in; on a visit it is `gardenVisitModel()`, the shape of `gardenModel()`, drawn from the saved snapshot or the live host's, with what you have asked for on top. The page, the walking, the collisions, the camera, the HUD, the hotbar, the bubbles and the ghost read `gardenHere()`. `gardenModel()` stays your own garden whatever is on screen: your wallet, the shop, crafting, rewards, the tick and what you publish go by it, so a friend's garden can never be published as yours. `m.level` on a visit is theirs (what is open there); `m.wallet` is yours. Bought land follows the garden on screen (`gardenLandSet`).
+
+**Every action asks first.** Each garden action in `94-garden-1core.js` starts by asking `gardenVisitAct`. On a visit it never touches your own garden. It becomes an intent (live), something that waits (below), the saved copy's one watering a day, or the red flash and padlock with one tap to ask for more (`gl:ask`). Your position at home is not moved by a visit. The tag says whose garden it is, and the house takes you home.
+
+**A live act** is the flow in sections 5 to 7, unchanged. It shows at once with a pending look (`_glv.pending` on top of the snapshot), stays when the host says yes (`_glvEcho`, until their next change says the same) and goes if they say no, with the debit deleted.
+
+**The saved copy** is free walking and everything you can see, on your own computer. Nothing leaves it but hearts, the guestbook, a parcel and the one watering a day, as ever (section 11 of GARDEN.md; the Guestbook panel, `gardenVisitNotes`). Fishing and bugs work in both, on your own casts and in your own bag, as at home.
+
+**Help while they are out.** With Help or Play, what you plant, place or water on the saved copy can wait for them (`GL_QUEUE`: 20 waiting per friend, 30 a day, 14 days; on top of the mailbox's 100 a day, which is the relay's). A host can turn it off ("Friends with Help or Play can leave things for when I am back"; on by default); a shut gate counts as off.
+
+1. **Visitor.** The same ledger record as a live intent, `gl.o.<id>` with `q: 1`, comes out of your bag first. It shows with a clock, and goes by the friend mailbox as `gl:q` (what never left is sent again next time; the host takes an id once). What the host last told you (`theirs`, from `gl:perm`) only lets you try.
+2. **Host's server.** On arrival: `permOf`, `glMayDo`, `glIntentOk`, the same as `gl:do` (`onQueue`). It waits in `queue` in `friends/garden-live.json`. A lowered level, a shut gate or the switch sends what is no longer allowed back at once (`dropQueue`). A removed friend's goes, and their page gives it back when it sees you are no longer friends.
+3. **Host's page.** When you open your garden, `_glhQueueRun` runs each through `_glhIntent` in order: the same code as a live intent, the same exactly-once key, with the level your server read just now. The garden, the diary line (`away`), and the answer are all in one save: `gq['d<id>0']` (`did`, it happened) or `gq['b<id>0']` (`back`, the post that has always handed things back) with a `q-no` entry, so the same id can never be tried twice. Only then does the server forget it. The diary says "While you were away, Taylor planted 3 carrots", with one Undo; Put my garden back covers it too.
+4. **Visitor again.** `back`: the record goes, so it is back in your bag, once, and you are told. `did`: `_glvSettled`, the same as a live yes. After `GL_QUEUE.days` the host refuses it, and two days later your page gives it back (`_gllRefundOld`), so the two can only overlap if your clocks differ by more than that.
+
+**No relay redeploy.** `gl:q`, `gl:perm` and `gl:ask` are ordinary mailbox kinds; rooms carry only `gl:` live kinds, as before.
+
+**The assistant** has no tool for any of it: its garden tool works on your own garden through `lib/agent-engine.mjs` (no visit there, so `gardenVisitAct` is absent), and the new routes are not in the MCP or the actions layer.
 
 ## 9. Measured
 

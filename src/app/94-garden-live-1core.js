@@ -168,8 +168,22 @@ function _gllFloat(svg, x, y, emoji, who) {
   inner.appendChild(t); g.appendChild(inner); fx.appendChild(g);
   setTimeout(() => g.remove(), 1900);
 }
-const _GL_EMOJI = Object.freeze({ plant: '🌱', water: '💧', weed: '✂️', harvest: '🧺', dig: '🪴', place: '🪑', move: '↔️', take: '📦', give: '🎁', drop: '🎁', pick: '🎁', catch: '🦋' });
-const _GL_POSE = Object.freeze({ plant: 'dig', water: 'water', weed: 'pick', harvest: 'pick', dig: 'dig', place: 'pick', move: 'pick', take: 'pick', give: 'pick', drop: 'pick', pick: 'pick', catch: 'pick' });
+const _GL_EMOJI = Object.freeze({ plant: '🌱', water: '💧', weed: '✂️', harvest: '🧺', dig: '🪴', place: '🪑', move: '↔️', take: '📦', give: '🎁', drop: '🎁', pick: '🎁', catch: '🦋', feed: '🌿', turn: '↻' });
+const _GL_POSE = Object.freeze({ plant: 'dig', water: 'water', weed: 'pick', harvest: 'pick', dig: 'dig', place: 'pick', move: 'pick', take: 'pick', give: 'pick', drop: 'pick', pick: 'pick', catch: 'pick', feed: 'pick', turn: 'pick' });
+const _GLL_PARCEL_SVG = '<ellipse cx="0" cy="1" rx="11" ry="3" fill="#000000" fill-opacity="0.16"/><rect x="-9" y="-15" width="18" height="15" rx="2" fill="#e8799a" stroke="#b84a6f"/><rect x="-2" y="-15" width="4" height="15" fill="#fff0c8"/><path d="M0 -15c-6 -7 -10 -2 -6 0zM0 -15c6 -7 10 -2 6 0z" fill="#fff0c8" stroke="#d9c188"/>';
+/** Someone in the world: a sprite like anything else that moves, sorted with everything else. The host's page and a visitor's use the same one. */
+function _gllSprite(A, onClick) {
+  return gardenWorldAdd({
+    id: 'gl-' + A.w, svg: '', x: A.x, y: A.y, hit: 0.75, hitUp: 30, cursor: 'hand', label: A.n,
+    update(dt, sp) {
+      if (sp.dressed !== sp.node) { sp.dressed = sp.node; _gllDress(A, sp.node); }
+      _gllStep(A, dt);
+      sp.x = A.x; sp.y = A.y;
+      _gllPetStep(A, dt, _gw.svg);
+    },
+    onClick,
+  });
+}
 
 /* ---------- "Planted by Taylor": a small tip that follows the pointer ---------- */
 function _gllTip(box, text, ev) {
@@ -192,7 +206,7 @@ function _gllAnchorAt(ev) {
 function gardenLiveLoad(force) {
   if (_gll.loading) return _gll.loading;
   if (!force && _gll.view && Date.now() - _gll.viewAt < 15000) return Promise.resolve(_gll.view);   // clock-ok: a cache age
-  _gll.loading = _gllApi('/api/garden-live').then((d) => { _gll.view = d; _gll.viewAt = Date.now(); _gllApplyPosts(); return d; }).finally(() => { _gll.loading = null; });   // clock-ok: a cache age
+  _gll.loading = _gllApi('/api/garden-live').then((d) => { _gll.view = d; _gll.viewAt = Date.now(); _gllApplyPosts(); if (_gll.role === 'visit' && typeof _gdvTouch === 'function') _gdvTouch(); return d; }).finally(() => { _gll.loading = null; });   // clock-ok: a cache age
   return _gll.loading;
 }
 /* ---------- things posted to you: a crop, something handed back ---------- */
@@ -208,7 +222,15 @@ function _gllApplyPosts() {
     const debit = p.i ? g.led['gl.o.' + p.i] : null;
     const theirs = debit && debit.to === p.f;
     if (p.why === 'back') {
+      // (something that was waiting for them could not be done: it is back in your bag, once, and you are told)
+      if (theirs && debit.q && !debit.ok && typeof toast === 'function') toast(`${_gscFirst(p.f)}'s garden could not take that${debit.p && (gardenPlant(debit.p) || gardenDecor(debit.p)) ? ': your ' + (gardenPlant(debit.p) || gardenDecor(debit.p)).name.toLowerCase() + (debit.t === 'water' ? ' was not watered' : ' is back in your bag') : ''}.`, { icon: 'undo-2', now: true, timeout: 6000 });
       if (theirs) { delete g.led['gl.o.' + p.i]; if (g.gv[p.i]) delete g.gv[p.i]; changed = true; }
+      g.led[key] = { d: today, k: 'gl', n: 0 }; done.push(p.id); changed = true;
+      continue;
+    }
+    if (p.why === 'did') {
+      // what was waiting for them has happened: your spending stands, and it is on record as if you had been there
+      if (theirs && !debit.ok && typeof _glvSettled === 'function') { _glvSettled(p.i, debit, debit.t); if (debit.t === 'water') _gscXp('water', p.f, today); }
       g.led[key] = { d: today, k: 'gl', n: 0 }; done.push(p.id); changed = true;
       continue;
     }
@@ -244,8 +266,13 @@ function _gllApplyPosts() {
 function _gllRefundOld() {
   if (typeof gardenReady !== 'function' || !gardenReady() || !state.garden || !state.garden.since) return;
   const g = _gdG(); let changed = false;
-  const cut = _gdAddDays(_gllToday(), -7);
-  for (const [k, e] of Object.entries(g.led)) if (k.startsWith('gl.o.') && e && !e.ok && e.d < cut) { delete g.led[k]; changed = true; }
+  const cut = _gdAddDays(_gllToday(), -7), cutQ = _gdAddDays(_gllToday(), -(GL_QUEUE.days + 2));   // (what waits for them keeps longer, and two days longer than their computer would still take it)
+  const known = !!(window.Friends && Friends.me && Friends.me());
+  for (const [k, e] of Object.entries(g.led)) {
+    if (!k.startsWith('gl.o.') || !e || e.ok) continue;
+    const f = e.q && known ? _gscFriend(e.to) : null, gone = !!e.q && known && !(f && f.status === 'friend');   // no longer friends: nothing will ever answer
+    if (gone || e.d < (e.q ? cutQ : cut)) { delete g.led[k]; changed = true; }
+  }
   if (changed) _gscSaveGarden();
 }
 /* ---------- /api/events ---------- */
@@ -253,11 +280,12 @@ function gardenLiveOnEvent(d) {
   const ev = d && d.ev;
   if (!ev || typeof ev !== 'object') return;
   if (ev.k === 'post') { gardenLiveLoad(true).catch(() => {}); return; }
+  if (ev.k === 'theirs') { gardenLiveLoad(true).then(() => { if (typeof _gdvTouch === 'function') _gdvTouch(); }).catch(() => {}); return; }
   if (_gll.role === 'visit' && typeof _glvEvent === 'function') { try { _glvEvent(ev); } catch (e) { console.error('[garden-live]', e); } }
   else if (_gll.role === 'host' && typeof _glhEvent === 'function') { try { _glhEvent(ev); } catch (e) { console.error('[garden-live]', e); } }
 }
 setTimeout(function _gllBoot() {
   if (typeof _gscServer === 'function' && !_gscServer()) { setTimeout(_gllBoot, 30000); return; }
   // (what the assistant picked or put away while no page was open is posted now)
-  Promise.resolve(window.Friends && Friends.ready).then(() => { if (_gscFriendList().length) return gardenLiveLoad(true).then(() => { _gllRefundOld(); if (typeof _glhFlushPosts === 'function' && typeof gardenReady === 'function' && gardenReady()) _glhFlushPosts(); }); return null; }).catch(() => {});
+  Promise.resolve(window.Friends && Friends.ready).then(() => { _gllRefundOld(); if (_gscFriendList().length) return gardenLiveLoad(true).then(() => { if (typeof _glhFlushPosts === 'function' && typeof gardenReady === 'function' && gardenReady()) _glhFlushPosts(); if (typeof gardenVisitQueueFlush === 'function') gardenVisitQueueFlush(); }); return null; }).catch(() => {});
 }, 8000);

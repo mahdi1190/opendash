@@ -10,6 +10,20 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.5]
+
+A friend's garden is now the same world as your own.
+
+### Changed
+- **Visiting a friend is like being in your own garden.** You walk with a click, the keys or by holding the button, go through what is planted, zoom, and use the same hotbar, bag, bubbles and minimap. Your own coins, seeds, basket, shop and crafting come with you. The sidebar stays. One small tag says whose garden it is, and the house in it takes you home. The guestbook, hearts and reactions are in the menu.
+- **When they are there, anything your level allows works as it does at home.** It shows straight away, slightly faded until their computer agrees, and goes back if it says no. What your level does not allow flashes red with a padlock, and one tap asks them for more.
+
+### Added
+- **Help while they are away.** If a friend gave you Help or Play, what you plant, place or water while they are out can wait for them. It comes out of your bag and shows a little clock. When they next open their garden it happens, and their diary says "While you were away, Taylor planted 3 carrots". Anything that is no longer possible comes back to your bag, once, and you are told. Your friend can turn this off at their gate.
+- Visitors can fertilise with their own fertiliser, and turn what they placed.
+
+### Compatibility
+- Live play needs both people on this version or later. With an older friend, either way round, the visit is their garden as they last shared it. No relay update is needed.
 ## [2.27.4]
 
 ### Fixed

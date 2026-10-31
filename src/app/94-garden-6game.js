@@ -79,7 +79,7 @@ function _gdgFly(plantId, x, y, w, h, delay) {
     a.onfinish = () => { n.remove(); if (tgt) { tgt.classList.remove('is-bump'); void tgt.offsetWidth; tgt.classList.add('is-bump'); } };
   } catch (e) { n.remove(); }
 }
-function _gdgPlantsNow() { try { return gardenModel().plants; } catch (e) { return []; } }
+function _gdgPlantsNow() { try { return gardenHere().plants; } catch (e) { return []; } }
 /** Plants whose watering is new since the last look (a sweep, "Water all" or one click). */
 function _gdgWatered(m) {
   const g = _gdG(), now = new Set(Object.keys(g.wl[m.today] || {}));
@@ -153,13 +153,13 @@ function gardenHoverCard(ev, m, uid) {
   if (!c) { c = document.createElement('div'); c.className = 'gd-hovercard'; c.setAttribute('aria-hidden', 'true'); box.appendChild(c); }
   const def = p.def, st = p.stage;
   const a = gardenHoursFor(def, st), b = st >= 4 ? a : gardenHoursFor(def, st + 1);
-  const pct = st >= 4 ? 100 : Math.max(0, Math.min(100, Math.round(100 * (p.hours - a) / Math.max(1, b - a))));
+  const pct = st >= 4 ? 100 : m.visit ? st * 25 : Math.max(0, Math.min(100, Math.round(100 * (p.hours - a) / Math.max(1, b - a))));
   const key = [uid, st, pct, p.thirsty ? 1 : 0, p.ripe ? 1 : 0].join('|');
   if (c.dataset.k !== key) {
     c.dataset.k = key;
     c.innerHTML = `<span class="gd-ringp" style="--p:${pct}"><b>${st >= 4 ? icon('check') : pct + '%'}</b></span><span class="gd-hc-t"><b></b><small></small></span>`;
     c.querySelector('.gd-hc-t b').textContent = def.name;
-    c.querySelector('small').textContent = (p.ripe ? 'Ready to pick' : gardenStageName(def, st)) + (p.thirsty ? ' · thirsty' : '');
+    c.querySelector('small').textContent = (p.ripe ? 'Ready to pick' : gardenStageName(def, st)) + (p.thirsty ? ' · thirsty' : '') + (p.by ? ' · ' + _gllByLine('p', p.by) : '');
   }
   c.hidden = false;
   const r = box.getBoundingClientRect();
@@ -283,7 +283,7 @@ function gardenGameStart(root, m) {
   _gdg.stages = null; _gdg.visitors = null; _gdg.wlSeen = null; _gdg.next = null;
   if (!_gdg.bound) { _gdg.bound = true; document.addEventListener('opendash:garden', _gdgOnEvent); }
   _gdgWatered(m);
-  setTimeout(() => { if (_gdp.root === root && root.isConnected) _gdgFirstSeed(); }, 500);
+  if (!m.visit) setTimeout(() => { if (_gdp.root === root && root.isConnected) _gdgFirstSeed(); }, 500);
   void root;
 }
 function gardenGameStop() { }

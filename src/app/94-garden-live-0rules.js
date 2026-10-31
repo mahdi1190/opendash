@@ -8,9 +8,10 @@
      GL_CAPS              how many of each a visitor may do in one garden in a day
      GL_BUDGET            this computer's allowance of room messages a day, sent and arrived, and one visitor's share (direct links do not count)
      GL_EMOTES            the moves anyone can see, GL_PHRASES the preset speech bubbles: ids on the wire, drawn from these tables
+     GL_QUEUE             what can wait for a host who is out
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
-const GL_V = 1;
+const GL_V = 2;                   // 2: what a visit can ask for grew (feed, turn), and what waits for the host. An older peer gets the saved copy
 const GL_PEOPLE = 8;              // everyone in a garden at once, the host included
 const GL_LEVELS = Object.freeze(['none', 'look', 'help', 'play']);
 const GL_LEVEL_NAMES = Object.freeze({ none: 'Not yet', look: 'Look', help: 'Help', play: 'Play' });
@@ -29,9 +30,13 @@ const GL_ACTS = Object.freeze({
   drop: Object.freeze({ lv: 'play' }),
   pick: Object.freeze({ lv: 'look' }),
   catch: Object.freeze({ lv: 'look' }),
+  feed: Object.freeze({ lv: 'play', on: 'plant' }),
+  turn: Object.freeze({ lv: 'play', on: 'decor', mine: true }),
 });
 const GL_ACT_IDS = Object.freeze(Object.keys(GL_ACTS));
-const GL_CAPS = Object.freeze({ plant: 40, place: 20, water: 40, weed: 40, harvest: 60, dig: 40, move: 60, take: 40, give: 10, drop: 6, pick: 12, catch: 3, postsPerFriend: 120 });
+const GL_CAPS = Object.freeze({ plant: 40, place: 20, water: 40, weed: 40, harvest: 60, dig: 40, move: 60, take: 40, give: 10, drop: 6, pick: 12, catch: 3, feed: 30, turn: 40, postsPerFriend: 120 });
+/** What can wait for an owner who is out: which acts (each still needs its level in GL_ACTS), how many from one friend at once and in a day, and how many days it keeps. */
+const GL_QUEUE = Object.freeze({ acts: Object.freeze(['plant', 'place', 'water']), perFriend: 20, perDay: 30, days: 14 });
 /** Room messages a host's rooms carry in a day, what it sends and what arrives from visitors: 80,000 is 4,000 of Cloudflare's 100,000 free requests (incoming socket messages count 20 to 1). Over thin, walking sends less. guestDay: one visitor's share (the relay holds them to it too: ROOM.guestDay). */
 const GL_BUDGET = Object.freeze({ day: 80000, thin: 60000, guestDay: 6000, restMs: 15 * 60000 });
 const GL_WALK_GAP = Object.freeze({ normal: 250, thin: 1500 });     // the least time between two destinations, ms
@@ -78,8 +83,8 @@ function glPostItemOk(item) {
   return gsocGiftOk(m[1], m[2]);
 }
 function glPostOk(p) {
-  if (!p || typeof p !== 'object' || !['crop', 'back'].includes(p.why)) return 'why';
-  if (p.why === 'back') return '';
+  if (!p || typeof p !== 'object' || !['crop', 'back', 'did'].includes(p.why)) return 'why';
+  if (p.why === 'back' || p.why === 'did') return '';
   if (!Array.isArray(p.items) || !p.items.length || p.items.length > 4) return 'items';
   for (const row of p.items) { if (!Array.isArray(row) || !glPostItemOk(row[0]) || !Number.isInteger(row[1]) || row[1] < 1 || row[1] > 99) return 'items'; }
   return '';

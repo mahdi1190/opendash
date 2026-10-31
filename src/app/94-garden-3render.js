@@ -171,9 +171,10 @@ function _gdrItem(kind, it, sc, o) {
   if (!frag) return '';
   const tr = ground ? `translate(${_gdrN(ax)} ${_gdrN(ay)}) scale(${_gdrN(cw / 64 * fw / fw)} ${_gdrN(ch / 40)})` : `translate(${_gdrN(ax)} ${_gdrN(ay)}) scale(0.75)`;
   const uid = it.uid ? ` data-uid="${escAttr(it.uid)}"` : '';
-  const cls = 'gd-it gd-' + kind + (it.thirsty ? ' is-thirsty' : '') + (it.ripe ? ' is-ripe' : '') + (it.overgrown ? ' is-wild' : '');
+  const cls = 'gd-it gd-' + kind + (it.thirsty ? ' is-thirsty' : '') + (it.ripe ? ' is-ripe' : '') + (it.overgrown ? ' is-wild' : '') + (it.pend ? ' is-' + it.pend : '');   // pend: on a visit, what the host has not answered yet, or what waits for them (94-garden-visit-0world.js)
   const sig = gardenHash(cls + tr + frag).toString(36);
-  return `<g class="${cls}"${uid} data-sig="${sig}" data-x="${it.x}" data-y="${it.y}" data-z="${it.y + fh}"${kind === 'plant' ? ` data-st="${it.stage}" data-f="${def.fp || 1}"` : ''} transform="${tr}">${frag}</g>`;
+  const waitMark = it.pend === 'wait' ? '<g class="gd-waitmark" transform="translate(0 -40)"><circle r="8" fill="#fff8e1" stroke="#a87c1c" stroke-width="1.6"/><path d="M0 -4.500V0l3 2" fill="none" stroke="#7a5a10" stroke-width="1.700" stroke-linecap="round"/></g>' : '';   // waiting for them: a little clock
+  return `<g class="${cls}"${uid} data-sig="${sig}" data-x="${it.x}" data-y="${it.y}" data-z="${it.y + fh}"${kind === 'plant' ? ` data-st="${it.stage}" data-f="${def.fp || 1}"` : ''} transform="${tr}">${frag}${waitMark}</g>`;
 }
 function _gdrVisitor(v, sc, o) {
   const W = GARDEN_WORLD, def = gardenVisitor(v.id); if (!def) return '';
@@ -303,10 +304,10 @@ function _gdrShowSig() { try { return typeof gardenShowSig === 'function' ? gard
 function gardenSceneFromModel(m) {
   const p = Clock.parts(m.now);
   return {
-    plants: m.plants.map(x => ({ id: x.def.id, uid: x.uid, x: x.x, y: x.y, stage: x.stage, variant: x.variant, thirsty: x.thirsty, overgrown: x.overgrown, ripe: x.ripe, t: x.t, heart: x.heart })),
-    decor: m.decor.map(d => ({ id: d.def.id, uid: d.uid, x: d.x, y: d.y, r: d.r, v: d.v, t: (gardenHash(d.uid) % 100) / 100 })),
+    plants: m.plants.map(x => ({ id: x.def.id, uid: x.uid, x: x.x, y: x.y, stage: x.stage, variant: x.variant, thirsty: x.thirsty, overgrown: x.overgrown, ripe: x.ripe, t: x.t, heart: x.heart, pend: x.pend })),
+    decor: m.decor.map(d => ({ id: d.def.id, uid: d.uid, x: d.x, y: d.y, r: d.r, v: d.v, t: (gardenHash(d.uid) % 100) / 100, pend: d.pend })),
     areas: m.areas, season: m.season, tod: m.tod, rain: m.rain, visitors: m.visitors, lv: m.level.level, hour: Math.round((p.h + p.mi / 60) * 4) / 4, day: m.today,
-    show: _gdrShowOf(), showSig: _gdrShowSig(),
+    show: m.visit ? m.visit.sh : _gdrShowOf(), showSig: m.visit ? m.visit.shSig : _gdrShowSig(),
   };
 }
 /** A friend's (or anyone's) snapshot as a scene: their garden, your sky (your clock, their season). */
