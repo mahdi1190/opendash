@@ -209,7 +209,7 @@
 
     const how = h('details', { class: 'fv-pl-more fv-tx-how', open: TX.open.has('how') ? true : null, ontoggle: (e) => { if (e.target.open) TX.open.add('how'); else TX.open.delete('how'); } },
       h('summary', null, h('b', { text: 'How this was worked out' }), h('span', { class: 'mute', text: 'Line by line' })),
-      h('div', { class: 'fv-tx-lines' }, v.lines.map(l => h('div', { class: 'fv-tx-line' + (l.total ? ' total' : '') + (l.sub ? ' sub' : '') }, h('span', { class: 'l' }, l.label, l.how ? h('small', { text: l.how }) : null), h('span', { class: 'v' }, amt(money(l.amount)), txAsk(l.label))))));
+      h('div', { class: 'fv-tx-lines' }, v.lines.map(l => h('div', { class: 'fv-tx-line' + (l.total ? ' total' : '') + (l.sub ? ' sub' : '') }, h('span', { class: 'l' }, l.label, l.how ? h('small', { text: l.how }) : null, l.key === 'allowance' && typeof pqStart === 'function' ? h('button', { type: 'button', class: 'fv-link', onclick: () => { setSection('budgets'); setTimeout(() => pqStart('blind'), 60); } }, h('span', { text: 'Not right? Change my answers' })) : null), h('span', { class: 'v' }, amt(money(l.amount)), txAsk(l.label))))));
     const cmp = v.compare ? h('p', { class: 'fv-pl-mute fv-tx-cmp' }, `Last year (${v.compare.label}): income `, amt(gbp(v.compare.income)), ', income tax ', amt(gbp(v.compare.tax)), v.compare.loan ? ', student loan ' : '', v.compare.loan ? amt(gbp(v.compare.loan)) : '', '.') : null;
     return txCard('fv-tx-pos',
       h('div', { class: 'fv-pl-big' }, amt(big.big, 'fv-pl-big-v'), h('span', { text: big.word })),

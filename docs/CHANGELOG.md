@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.4]
+
+### Fixed
+- The tax-free amount says what it includes, such as Blind Person's Allowance, with a link to change your answers.
+- The assistant can now change the answers behind your tax figures when you tell it one is wrong.
+
 ## [2.27.3]
 
 Pending payments count, and you can split them.
