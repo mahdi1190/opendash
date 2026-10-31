@@ -119,3 +119,35 @@ html[data-motion="reduced"] .gmo-pop, html[data-motion="reduced"] .gmo-spark { a
 @keyframes gll-flop { from { transform: rotate(-14deg) translateY(0); } to { transform: rotate(12deg) translateY(-3px); } }
 html[data-motion="reduced"] .gll-flop { animation: none; }
 @media (prefers-reduced-motion: reduce) { .gll-flop { animation: none; } }
+
+/* 2.29 contests: the board over the stage (94-garden-live-7contest.js). The host's page is the referee; this is only how it looks. */
+.gll-ct { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); z-index: 7; width: min(250px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 9px; color: var(--gh-ink); background: var(--gh-glass); border-radius: 14px; box-shadow: var(--gh-shadow); backdrop-filter: blur(6px); animation: gll-ct-in .35s ease-out both; }
+@keyframes gll-ct-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.gll-ct { pointer-events: none; }
+.gll-ct .btn { pointer-events: auto; }
+.gll-ct-h { display: flex; align-items: center; gap: 7px; min-height: 24px; }
+.gll-ct-ic { display: inline-flex; color: var(--gh-gold, #f2b01e); }
+.gll-ct-ic svg { width: 16px; height: 16px; }
+.gll-ct-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gll-ct-t { font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 800; color: var(--gh-gold, #f2b01e); }
+.gll-ct.is-over .gll-ct-t { color: var(--gh-ink); }
+.gll-ct-end { color: var(--gh-ink) !important; padding-inline: 6px; font-size: 11px; }
+.gll-ct-bar { height: 5px; overflow: hidden; background: rgba(0, 0, 0, .35); border-radius: 3px; }
+.gll-ct-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(#ffe48a, #f2b01e); border-radius: 3px; transition: width .5s linear; }
+.gll-ct.is-over .gll-ct-bar i { background: rgba(255, 255, 255, .35); }
+.gll-ct-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.gll-ct-row { position: relative; display: flex; align-items: center; gap: 7px; padding: 3px 8px 3px 6px; font-size: 12.5px; border-radius: 8px; overflow: hidden; isolation: isolate; }
+.gll-ct-row::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--ct-w, 0%); background: rgba(255, 255, 255, .14); border-radius: 8px; z-index: -1; transition: width .5s ease-out; }
+.gll-ct-row.is-me { box-shadow: inset 0 0 0 1.5px rgba(255, 226, 138, .8); }
+.gll-ct-row.is-win { background: rgba(242, 176, 30, .28); font-weight: 700; }
+.gll-ct-row.muted { opacity: .75; justify-content: center; }
+.gll-ct-rank { flex: none; width: 18px; text-align: center; font-weight: 700; opacity: .8; }
+.gll-ct-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gll-ct-pts { flex: none; font-variant-numeric: tabular-nums; }
+.gll-ct-w { min-height: 0; font-size: 12.5px; font-weight: 700; text-align: center; }
+.gll-ct-w:empty { display: none; }
+.gll-ct-menu { max-width: 260px; }
+.gll-ct-menu p { margin: 4px 0 6px; }
+@media (max-width: 640px) { .gll-ct { top: auto; bottom: 150px; left: 6px; transform: none; width: min(230px, calc(100% - 12px)); animation-name: gll-ct-in-m; } @keyframes gll-ct-in-m { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } } }
+@media (prefers-reduced-motion: reduce) { .gll-ct { animation: none; } .gll-ct-bar i, .gll-ct-row::before { transition: none; } }
+html[data-motion="reduced"] .gll-ct { animation: none; }

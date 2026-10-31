@@ -77,6 +77,7 @@ function _glhElsewhere(on) {
 function gardenLiveHostGone() {
   clearTimeout(_glh.claimT); _glh.claimT = 0; _glhElsewhere(false);
   if (!_glh.on) return;
+  if (typeof gardenContestHostGone === 'function') gardenContestHostGone();   // (a round ends with a clean stop, while the host can still speak)
   _glh.on = false; clearInterval(_glh.beatT);
   if (_gll.role === 'host') _gll.role = '';
   _gllApi('/api/garden-live/here', { role: 'host', on: false, tab: _GLL_TAB }).catch(() => {});
@@ -156,12 +157,13 @@ function _glhEvent(ev) {
       _glhSendSnap(ev.f);
       if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
       if (typeof _glcJoin === 'function') _glcJoin(ev.f);
+      if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
       _glhResendDrops(ev.f);
       _glhBugsMaybe();
       gardenLiveLoad(true).then(_glhHud).catch(() => {});
       return;
     }
-    case 'leave': _glhRemove(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
+    case 'leave': _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
     case 'go': { const A = _gll.actors.get(ev.w); if (A) { _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
@@ -659,6 +661,7 @@ function _glhHud() {
   if (people.length) b.appendChild(_gsvEl('span', 'gll-count', String(people.length)));
   if (unseen || knocks.length || asks.length) b.appendChild(_gsvEl('i', 'gll-dot'));
   hud.appendChild(b);
+  if (typeof gardenContestHostBtn === 'function') gardenContestHostBtn(hud);
   for (const A of people.slice(0, 7)) { const p = _gsvEl('span', 'gll-person', A.n.slice(0, 1).toUpperCase()); p.title = A.n; hud.appendChild(p); }
   // someone at the gate: one tap lets them in
   for (const id of knocks.slice(0, 3)) {
