@@ -10,13 +10,24 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.30.0]
+
+Contests, trading and shared goals for playing together in a live garden.
+
 ### Added
 - Live play: contests. With a friend in your garden, tap the trophy beside the gate and start a fishing or bug-netting round of 2, 3 or 5 minutes. Everyone in the garden competes: a live board shows the countdown and everyone's points, and at the end the winner is named, cheers and gets a sparkle.
 - Points come from the size and quality of a fish, or the rarity of a bug. In a round casts are free and use no bait, and what is caught is let go, so a contest costs nothing and cannot be farmed. A bug round shows a fresh bug every few seconds so there is always one to race for.
 - A small reward for playing (5 coins and 2 XP) and for winning (20 coins and 10 XP), at most 40 coins a day from contests. You can start 4 contests a day, and not on your own.
+- Live play: trading. Open a person's menu in a live garden and press Trade: you each offer up to four things from your bag (seeds, decorations, fish, bugs), you both see both offers side by side, and the swap happens only when you have BOTH confirmed the same terms. Change an offer and the confirmations clear; take yours back or cancel any time before. A line in the corner says it is done.
+- Trading works between the host and a guest and between two guests. The host's computer is the referee, and guests never learn each other's friend ids.
+- Your things go on hold when you confirm, so they cannot be spent twice, and come back if the trade is called off. If someone's computer drops between the two confirmations nothing is lost or doubled: the host's decision is posted as well as sent, and a computer that missed it asks when it is back.
+
+- **Live play: shared goals.** While friends are in your garden there is one small goal at a time that you all work on together: catch 6 fish, water 12 plants, net 5 bugs. A card under the menu shows a progress bar and what each of you did, the corner line says when it starts, is half done and is reached, and each person who took part gets a small thank-you of their own (6 coins, 4 XP and a little bait or fertiliser, at most 3 goals a day). It only counts what the host's computer applied or confirmed, nobody's part can be more than 60% of it so it takes two of you, and a goal that no longer fits (rain, nobody who can water) is let go. Turn them off in Your gate (Suggest shared goals while friends are here); skip one with the card's x.
 
 ### Security
 - The host referees. Only the host can start or end a contest, send the board or name a winner (both computers refuse a guest's); a guest's catch counts only when the host can match it to the steps of a line it saw. Older apps ignore contest messages. No relay update is needed.
+- Trades are checked like the rest of live play: a strict message shape in the shared rules file, only kinds that can be given as gifts (never coins), four things and twenty of each at most, ten trades a day, both people at Play. Older apps ignore the new messages and a request to one just times out. No relay update is needed.
+- The new `gl:goal` message goes from the host to its guests only, with a strict schema checked at both ends; a guest cannot send one, and an older app ignores it. No relay update is needed.
 
 ## [2.29.0]
 

@@ -401,6 +401,7 @@ function gardenHudPaint(m) {
   const box = _ghBox(); if (!box) return;
   _ghHud(box, m); _ghMenu(box, m); _ghBar(box, m); _ghQuick(box, m); _ghMini(box, m); _ghNeeds(m); _ghArrow(m); _ghWalkHint();
   if (typeof gardenVisitTagPaint === 'function') gardenVisitTagPaint(box, m);
+  if (typeof gardenLiveGoalPaint === 'function') gardenLiveGoalPaint(box);   // a shared goal in a live garden (94-garden-live-7goal.js)
   if (_gh.bag) _ghBag();
 }
 function gardenHudReset() { Object.assign(_gh, { hud: '', menu: '', bar: '', quick: '', mini: '', needs: '', bubble: null, bag: false, menuOpen: false, arrow: null, hint: false, dot: '' }); }

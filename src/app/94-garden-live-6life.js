@@ -287,6 +287,7 @@ function _glcBugClaim(ev) {
   _gllBugGone(key);
   _glhSend('all', 'fx', { c: 'bug', e: 'gone', i: String(ev.i), to: ev.w });
   if (typeof gardenContestBug === 'function') gardenContestBug(ev.w, bug);   // in a bug contest the host scores who it named
+  if (typeof _glgBugWon === 'function') _glgBugWon(ev.w);   // (a shared goal counts a bug the host named a winner for)
 }
 /** The host has said who got a bug. */
 function _glcBugVerdict(ev, e) {

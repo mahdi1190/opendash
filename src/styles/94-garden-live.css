@@ -151,3 +151,27 @@ html[data-motion="reduced"] .gll-flop { animation: none; }
 @media (max-width: 640px) { .gll-ct { top: auto; bottom: 150px; left: 6px; transform: none; width: min(230px, calc(100% - 12px)); animation-name: gll-ct-in-m; } @keyframes gll-ct-in-m { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } } }
 @media (prefers-reduced-motion: reduce) { .gll-ct { animation: none; } .gll-ct-bar i, .gll-ct-row::before { transition: none; } }
 html[data-motion="reduced"] .gll-ct { animation: none; }
+
+/* shared goals (94-garden-live-7goal.js): one small card over the world, the same on every screen in the garden */
+.glg { position: absolute; right: 14px; top: 74px; z-index: 6; box-sizing: border-box; width: min(330px, calc(100% - 28px)); padding: 7px 10px 8px; border-radius: 14px; background: rgba(255, 253, 245, .95); color: #3a3424; box-shadow: 0 2px 8px rgba(30, 40, 20, .22); animation: glg-in .35s ease-out; }
+.glg-top { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.glg-ic { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; color: #2f8f46; }
+.glg-ic svg { width: 17px; height: 17px; }
+.glg-t { flex: 1; min-width: 0; overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.glg-n { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; color: #6b6a5a; }
+.glg-skip { flex: none; width: 22px; height: 22px; padding: 0; color: #6b6a5a; }
+.glg-skip[hidden] { display: none; }
+.glg-bar { height: 8px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: #e6e1cd; }
+.glg-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7cc45a, #3fa65a); transition: width .45s ease-out; }
+.glg-who { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.glg-p { padding: 1px 8px; border-radius: 999px; background: #efeadb; font-size: 11.5px; line-height: 1.5; }
+.glg-p.is-me { background: #dcefc9; font-weight: 600; }
+.glg-p.is-full::after { content: ' \2713'; color: #2f8f46; }
+.glg-none { background: none; padding-left: 0; color: #6b6a5a; }
+.glg.is-done { background: #fff6c8; box-shadow: 0 2px 10px rgba(216, 154, 26, .4); }
+.glg.is-done .glg-bar i { background: linear-gradient(90deg, #f2c744, #e8a83a); }
+/* (it only moves: in the garden's calm mode animations are paused, and a card that began transparent would stay invisible) */
+@keyframes glg-in { from { translate: 0 -10px; } to { translate: 0 0; } }
+@media (max-width: 760px) { .glg { top: 150px; right: 12px; } }
+html[data-motion="reduced"] .glg, html[data-motion="reduced"] .glg-bar i { animation: none; transition: none; }
+@media (prefers-reduced-motion: reduce) { .glg, .glg-bar i { animation: none; transition: none; } }

@@ -233,6 +233,12 @@ function _gllApplyPosts() {
       g.led[key] = { d: today, k: 'gl', n: 0 }; done.push(p.id); changed = true;
       continue;
     }
+    if (p.why === 'trade') {
+      // the host's decision about a trade you held things for: it goes, or it does not (94-garden-live-7trade.js; only the host the hold names may decide)
+      if (typeof gardenLiveTradePost === 'function') gardenLiveTradePost(p);
+      g.led[key] = { d: today, k: 'gl', n: 0 }; done.push(p.id); changed = true;
+      continue;
+    }
     if (p.why === 'crop') {
       // only for a plant you really planted there, and no more than that plant could have made by now
       const items = {};

@@ -1,0 +1,35 @@
+/* Trading in a live garden (94-garden-live-7trade.js, docs/dev/GARDEN_TOGETHER.md section 14): a small panel with both offers side by side, or a chip while it is hidden. */
+.gll-trade-wrap { position: absolute; left: 50%; top: 120px; transform: translateX(-50%); z-index: 8; width: min(470px, calc(100% - 24px)); display: flex; justify-content: center; pointer-events: none; }
+.gll-trade-wrap > * { pointer-events: auto; }
+.gll-trade { width: 100%; max-height: calc(100% - 24px); overflow: auto; padding: 12px 14px 14px; border-radius: 14px; background: var(--surface, #fffdf7); color: var(--text, #2d2a20); box-shadow: 0 8px 28px rgba(20, 30, 14, .3); animation: gll-trade-in .16s ease-out both; }
+@keyframes gll-trade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.gll-trade-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.gll-trade-h { margin: 0; font-size: 15px; font-weight: 700; }
+.gll-trade-st { margin: 4px 0 10px; font-size: 13px; line-height: 1.35; color: var(--muted, #6b6a5a); min-height: 2.7em; }
+.gll-trade-st.is-done { color: #2f8f46; font-weight: 600; }
+.gll-trade-st.is-end { color: #b4532a; }
+.gll-trade-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.gll-trade-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 8px; border-radius: 10px; background: var(--surface-2, #f4f0e3); }
+.gll-trade-col.is-mine { background: #eef6e6; }
+.gll-trade-ch { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 13px; min-height: 22px; }
+.gll-trade-ok { padding: 1px 7px; border-radius: 999px; background: #2f8f46; color: #fff; font-size: 11px; font-weight: 600; }
+.gll-trade-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; min-height: 40px; }
+.gll-trade-row { display: flex; align-items: center; gap: 6px; padding: 3px 4px; border-radius: 8px; background: var(--surface, #fffdf7); font-size: 13px; }
+.gll-trade-ic { flex: none; display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; }
+.gll-trade-ic svg { max-width: 30px; max-height: 30px; }
+.gll-trade-nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
+.gll-trade-step { display: inline-flex; align-items: center; gap: 0; }
+.gll-trade-step .btn, .gll-trade-row > .btn { padding: 2px 4px; min-width: 0; }
+.gll-trade-row.is-edit { flex-wrap: wrap; }
+.gll-trade-ctl { flex: 0 0 100%; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding-left: 36px; }
+.gll-trade-q { min-width: 26px; text-align: center; font-variant-numeric: tabular-nums; font-weight: 600; }
+.gll-trade-empty { padding: 10px 6px; text-align: center; font-size: 12.5px; color: var(--muted, #6b6a5a); }
+.gll-trade-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 12px; }
+.gll-trade-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: 999px; background: #fff6df; color: #3a3424; font-size: 13px; box-shadow: 0 1px 6px rgba(30, 40, 20, .28); }
+@media (max-width: 640px) {
+  .gll-trade-wrap { left: 6px; right: 6px; top: auto; bottom: 74px; width: auto; transform: none; }
+  .gll-trade { max-height: calc(100vh - 220px); }
+  .gll-trade-cols { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .gll-trade { animation: none; } }
+html[data-motion="reduced"] .gll-trade { animation: none; }
