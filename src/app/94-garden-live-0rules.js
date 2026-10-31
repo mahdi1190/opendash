@@ -10,6 +10,9 @@
      GL_EMOTES            the moves anyone can see, GL_PHRASES the preset speech bubbles: ids on the wire, drawn from these tables
      GL_FX_KINDS          what people see each other do (pets, fishing, nets, a catch held up): glFxOk(b) -> '' | why
      GL_QUEUE             what can wait for a host who is out
+     GL_CT                contests: a timed round of fishing or bug-netting that the host referees; glCtFishPoints / glCtBugPoints score a catch
+     GL_TRADE             trading: the level, how much, how often; glTradeOk(b, fromHost) -> '' | why
+     GL_GOALS / GL_GOAL   shared goals (a joint quest in a live garden): the table, the pacing and the reward; glGoalOk(b) -> '' | why checks gl:goal, glGoalCap(of), glGoalSize(def, people)
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
 const GL_V = 2;                   // 2: what a visit can ask for grew (feed, turn), and what waits for the host. An older peer gets the saved copy
@@ -52,20 +55,59 @@ const GL_PHRASE_IDS = Object.freeze(GL_PHRASES.map(p => p.id));
 const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet']);   // what two people do together: an `em` with c: 'do'
 /** What people SEE each other do (gl:fx, a kind of its own: an older app has no such kind and drops it, so GL_V stays). Ids and cells on the wire, each side draws them from its own tables;
  *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
- *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken). `to` and `w` are slots as in gl:em. */
-const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer']);
-const GL_FX_STEPS = Object.freeze({ fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']) , cheer: Object.freeze(['level', 'ach', 'photo']) });
+ *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT). `to` and `w` are slots as in gl:em. */
+const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct']);
+const GL_FX_STEPS = Object.freeze({ fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']), cheer: Object.freeze(['level', 'ach', 'photo']) });
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
-const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*']));
+const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*']));
 const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke']));
 const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*'));
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
 const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+/** CONTESTS (docs/dev/GARDEN_TOGETHER.md section 15). The host's page is the referee: it starts a timed round (`ct|start`), keeps the scores, sends the board (`ct|board`) and names the winner (`ct|end`);
+ *  all of those are host-only. A guest says nothing new: its casts and nets are the `fish`, `bug` and `got` events it always sends, and the host counts only a catch it can match to the steps of a line.
+ *  Points come from size and quality (a fish) or rarity (a bug), never from money. Everything here is data: change it here.
+ *    lens      the lengths a round may have (seconds); `len` the usual one.  minLen / maxLen: what the wire accepts
+ *    perDay    rounds a garden's host may start in a day (on the host's computer, in the day's fishing record)
+ *    minPts    points that count as having played; a guest also needs a catch of its own in the round
+ *    reward    coins and XP for winning (needs a second player with points) and for playing; `day` the most coins one person is given by contests in a day, counted on their own computer
+ *    gap       the least seconds between two catches of one guest (a line cannot be cast, bitten, reeled and landed faster)
+ *    grace     seconds after the end a catch already landed still counts, and the board is held before the winner is named
+ *    waveSec   a bug round: another bug shows every this many seconds (the same ones on every screen, from the round's id), and stays `bugLife` seconds
+ *    bugPts    points for a bug, by rarity */
+const GL_CT = Object.freeze({
+  kinds: Object.freeze(['fish', 'bug']), lens: Object.freeze([120, 180, 300]), len: 180, minLen: 60, maxLen: 600, perDay: 4, minPts: 3,
+  reward: Object.freeze({ win: Object.freeze({ c: 20, x: 10 }), play: Object.freeze({ c: 5, x: 2 }), day: 40 }),
+  gap: 2.5, grace: 3, boardGap: 1800, beat: 10, waveSec: 5, bugLife: 30, maxCatch: 50,
+  bugPts: Object.freeze({ common: 2, uncommon: 4, rare: 8, epic: 14, legendary: 25 }),
+});
+const GL_CT_Q = Object.freeze([1, 1.25, 1.6, 2.2]);   // the quality multipliers of the fish catalogue (GARDEN_QUALITY), so this file stays pure
+/** A fish's points: one for every 5 cm, times its quality (a 40 cm plain fish is 8, a fine one 13, a perfect one 18). At least 1, at most GL_CT.maxCatch. */
+function glCtFishPoints(cm, q) {
+  const c = Math.max(0, Math.min(400, Math.floor(Number(cm) || 0))); if (c < 1) return 0;
+  return Math.max(1, Math.min(GL_CT.maxCatch, Math.round(c / 5 * GL_CT_Q[Math.max(0, Math.min(3, Math.floor(Number(q) || 0)))])));
+}
+function glCtBugPoints(rarity) { return Object.prototype.hasOwnProperty.call(GL_CT.bugPts, rarity) ? GL_CT.bugPts[rarity] : 0; }
+/** The board: up to GL_PEOPLE rows of [slot, points, catches]. */
+function _glCtBoardOk(l) {
+  if (!Array.isArray(l) || l.length > GL_PEOPLE) return false;
+  const seen = new Set();
+  for (const r of l) { if (!Array.isArray(r) || !Number.isInteger(r[0]) || r[0] < 0 || r[0] > GL_PEOPLE || seen.has(r[0]) || !Number.isInteger(r[1]) || r[1] < 0 || r[1] > 9999 || !Number.isInteger(r[2]) || r[2] < 0 || r[2] > 99) return false; seen.add(r[0]); }
+  return true;
+}
 /** '' when an fx body fits the tables, else why. (The page checks the ids against its own catalogues, and ignores what it does not know.) */
 function glFxOk(b) {
   if (!b || typeof b !== 'object' || !GL_FX_KINDS.includes(b.c) || !GL_FX_ID_RE.test(String(b.e || ''))) return 'kind';
   const steps = GL_FX_STEPS[b.c];
   if (steps && !steps.includes(b.e)) return 'step';
+  if (b.c === 'ct') {
+    if (!GL_ID_RE.test(String(b.i || ''))) return 'id';
+    const secs = Number.isInteger(b.n) && b.n >= 0 && b.n <= GL_CT.maxLen;
+    if (b.e === 'start' && !(GL_CT.kinds.includes(b.kd) && secs && b.n >= 1 && Number.isInteger(b.tt) && b.tt >= GL_CT.minLen && b.tt <= GL_CT.maxLen && b.n <= b.tt)) return 'ct';
+    if (b.e === 'board' && !(secs && _glCtBoardOk(b.l))) return 'ct';
+    if (b.e === 'end' && !(_glCtBoardOk(b.l) && (b.to == null || (Number.isInteger(b.to) && b.l.some(r => r[0] === b.to))))) return 'ct';
+    return '';
+  }
   if (b.c === 'got' && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
   if (b.c === 'bug' && ['gone', 'claim', 'lost'].includes(b.e) && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
   if ((b.c === 'cr' || b.c === 'egg') && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
@@ -76,6 +118,24 @@ function glFxOk(b) {
   if (b.c === 'fish' && b.e === 'cast' && !(Number.isInteger(b.x) && Number.isInteger(b.y))) return 'cell';
   return '';
 }
+/** SHARED GOALS (docs/dev/GARDEN_TOGETHER.md section 14). The host's page picks one from this table while somebody is in the garden, counts what it applied or confirmed itself,
+ *  and tells everyone the WHOLE state each time (gl:goal, host to guests, a kind of its own: an older app drops it, so GL_V stays). A row: `t` the goal (`{n}` its size), `d` how it reads
+ *  when it is done, `n` the sizes it may have [least, most], `per` how many more for each person beyond two, `needs` the level somebody must have for it to be possible, and `rew` what each
+ *  person who took part gets, on their own computer, once (the ids are the garden's own items). Add a goal: add a row here and say where the host counts it (94-garden-live-7goal.js). */
+const GL_GOALS = Object.freeze([
+  Object.freeze({ id: 'fish', t: 'Catch {n} fish together', d: 'Caught {n} fish together', icon: 'fish', n: Object.freeze([4, 10]), per: 2, rew: Object.freeze({ c: 6, x: 4, i: Object.freeze({ 'bait:dough': 3 }) }) }),
+  Object.freeze({ id: 'water', t: 'Water {n} plants together', d: 'Watered {n} plants together', icon: 'droplets', n: Object.freeze([4, 20]), per: 3, needs: 'help', rew: Object.freeze({ c: 6, x: 4, i: Object.freeze({ fertiliser: 1 }) }) }),
+  Object.freeze({ id: 'bug', t: 'Net {n} bugs together', d: 'Netted {n} bugs together', icon: 'bug', n: Object.freeze([3, 8]), per: 1, rew: Object.freeze({ c: 6, x: 4, i: Object.freeze({ 'bait:maggot': 3 }) }) }),
+]);
+/** share: nobody's part counts for more than this much of a goal (so it takes at least two of you, and one dishonest guest cannot finish it alone); dayMax: goals one person is rewarded for in a day, in every garden;
+ *  startsMax: goals one host starts in a day; firstMs / gapMs: the wait after somebody arrives and between goals; staleMs: a goal nobody has moved on is let go; idleMs: how long an empty garden keeps one;
+ *  claimMs: the least time between two fish the same person is counted for (a fish is the one thing the host can only hear about). */
+const GL_GOAL = Object.freeze({ share: 0.6, dayMax: 3, startsMax: 6, firstMs: 20000, gapMs: 150000, staleMs: 30 * 60000, idleMs: 15 * 60000, claimMs: 4000, doneMs: 9000 });
+const glGoalDef = (id) => GL_GOALS.find(g => g.id === id) || null;
+/** The most one person's part can count for in a goal of this size: never all of it. */
+const glGoalCap = (of) => Math.max(1, Math.min(of - 1, Math.ceil(of * GL_GOAL.share)));
+/** How big a goal of this kind is for this many people here (the host, and then each guest), inside the row's range. */
+const glGoalSize = (def, people) => Math.max(def.n[0], Math.min(def.n[1], def.n[0] + def.per * Math.max(0, (people | 0) - 2)));
 const GL_COLS = 64;               // cells are 0..63 on the wire, as in a garden snapshot
 const GL_ID_RE = /^[0-9a-z]{6,24}$/;   // an intent's id, as _gllNewId makes it: it ends up in synced records, so it can never look like a credential
 
@@ -102,6 +162,48 @@ function glIntentOk(b) {
   if (!GL_ID_RE.test(String(b.i || ''))) return 'id';
   return '';
 }
+/* ---------- trading (docs/dev/GARDEN_TOGETHER.md section 14) ----------
+   Two people in one live garden swap what is in their bags, and it happens only when BOTH have confirmed the same terms. The host's page is the referee (it decides, once, and is the
+   only one that does); each side holds what it offers when it confirms, and takes the other's offer when the host says go. gl:tr is a kind of its own (an older app drops it, GL_V stays 2).
+   lv: the level both need. rows, qty: what one side may offer (seed, decor, fish, bug, as gsocGiftOk allows; never coins). perDay: trades one person may finish in a day.
+   askMs: how long a request waits for the other app to say it can trade (an older one never does). idleMs: an open trade nobody touches is called off. */
+const GL_TRADE = Object.freeze({ lv: 'play', rows: 4, qty: 20, perDay: 10, askMs: 8000, idleMs: 5 * 60000 });
+/** From a guest to the host: ask (to a slot), hi (I can trade), offer (my whole offer), ok (I confirm version v), no (I take my confirmation back), end, chk (what became of this trade?).
+ *  From the host: st (the state, for you), go (it happened), x (it did not, why). Counters: n on a guest's offer, ok and no, answered by an in st (the host has seen up to n). */
+const GL_TRADE_GUEST = Object.freeze(['ask', 'hi', 'offer', 'ok', 'no', 'end', 'chk']);
+const GL_TRADE_HOST = Object.freeze(['st', 'go', 'x']);
+const GL_TRADE_STEPS = Object.freeze([...GL_TRADE_GUEST, ...GL_TRADE_HOST]);
+const GL_TRADE_WHY = Object.freeze(['busy', 'gone', 'level', 'cap', 'left', 'cancel', 'idle', 'old', 'item', 'host', 'lost']);
+const GL_TRADE_ITEM_RE = /^(seed|decor|fish|bug):([a-z0-9-]{1,64})$/;
+function glTradeItemOk(item) { const m = GL_TRADE_ITEM_RE.exec(String(item || '')); return !!m && gsocGiftOk(m[1], m[2]); }
+/** '' when rows ([[item, n], ...]) are a fitting offer: few, distinct, known and given-able, a few of each. */
+function glTradeRowsOk(rows) {
+  if (!Array.isArray(rows) || rows.length > GL_TRADE.rows) return 'rows';
+  const seen = new Set();
+  for (const r of rows) {
+    if (!Array.isArray(r) || typeof r[0] !== 'string' || seen.has(r[0]) || !Number.isInteger(r[1]) || r[1] < 1 || r[1] > GL_TRADE.qty) return 'rows';
+    seen.add(r[0]);
+    if (!glTradeItemOk(r[0])) return 'item';
+  }
+  return '';
+}
+/** '' when a gl:tr body fits the tables, else why. host: it comes from the garden's host (st, go, x); otherwise from a guest. */
+function glTradeOk(b, host) {
+  if (!b || typeof b !== 'object' || !GL_ID_RE.test(String(b.t || ''))) return 'id';
+  if (!(host ? GL_TRADE_HOST : GL_TRADE_GUEST).includes(b.e)) return 'step';
+  const slot = (v) => Number.isInteger(v) && v >= 0 && v < GL_PEOPLE, count = (v) => Number.isInteger(v) && v >= 0 && v <= 1e6;
+  switch (b.e) {
+    case 'ask': return slot(b.to) ? '' : 'who';
+    case 'offer': return count(b.n) ? glTradeRowsOk(b.o) : 'n';
+    case 'ok': return count(b.v) && count(b.n) ? '' : 'n';
+    case 'no': return count(b.n) ? '' : 'n';
+    case 'st': return slot(b.to) && count(b.v) && count(b.an) && typeof b.c === 'boolean' && typeof b.d === 'boolean' && typeof b.r === 'boolean' ? glTradeRowsOk(b.o) || glTradeRowsOk(b.p) : 'st';
+    case 'go': return count(b.v) ? '' : 'n';
+    case 'x': return GL_TRADE_WHY.includes(b.why) ? '' : 'why';
+    default: return '';
+  }
+}
+
 /** What may arrive by post: known things, a few at a time. */
 function glPostItemOk(item) {
   const m = /^(crop|seed|decor|fish|bug):([a-z0-9-]{1,64})$/.exec(String(item || ''));
@@ -110,9 +212,26 @@ function glPostItemOk(item) {
   return gsocGiftOk(m[1], m[2]);
 }
 function glPostOk(p) {
-  if (!p || typeof p !== 'object' || !['crop', 'back', 'did'].includes(p.why)) return 'why';
+  if (!p || typeof p !== 'object' || !['crop', 'back', 'did', 'trade'].includes(p.why)) return 'why';
   if (p.why === 'back' || p.why === 'did') return '';
+  if (p.why === 'trade') return GL_ID_RE.test(String(p.i || '')) && (p.d === 'go' || p.d === 'x') ? '' : 'trade';   // (the host's decision about a trade you held things for: go, or x)
   if (!Array.isArray(p.items) || !p.items.length || p.items.length > 4) return 'items';
   for (const row of p.items) { if (!Array.isArray(row) || !glPostItemOk(row[0]) || !Number.isInteger(row[1]) || row[1] < 1 || row[1] > 99) return 'items'; }
   return '';
+}
+/** '' when a gl:goal body fits the tables, else why: the goal exists, its size is one the row allows, the parts of the people here are no more than the progress (somebody who has left took their part with them: it still counts, and is theirs no longer) and none is more than the cap. */
+function glGoalOk(b) {
+  if (!b || typeof b !== 'object') return 'kind';
+  const def = glGoalDef(b.c); if (!def) return 'goal';
+  if (!GL_ID_RE.test(String(b.g || ''))) return 'id';
+  if (!Number.isInteger(b.of) || b.of < def.n[0] || b.of > def.n[1]) return 'size';
+  if (!Number.isInteger(b.n) || b.n < 0 || b.n > b.of || ![0, 1, 2].includes(b.st) || (b.st === 1 && b.n !== b.of)) return 'count';
+  if (!Array.isArray(b.p) || b.p.length > GL_PEOPLE) return 'who';
+  const cap = glGoalCap(b.of), seen = new Set();
+  let sum = 0;
+  for (const r of b.p) {
+    if (!Array.isArray(r) || r.length !== 2 || !Number.isInteger(r[0]) || r[0] < 0 || r[0] >= GL_PEOPLE || seen.has(r[0]) || !Number.isInteger(r[1]) || r[1] < 1 || r[1] > cap) return 'who';
+    seen.add(r[0]); sum += r[1];
+  }
+  return sum <= b.n ? '' : 'count';
 }

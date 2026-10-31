@@ -50,6 +50,7 @@ function _glhStart() {
   _glh.on = true; _gll.role = 'host';
   _glhElsewhere(false);
   _glhOldDrops();
+  if (typeof _gltHostStart === 'function') _gltHostStart();
   try { _glh.seenAt = Number(localStorage.getItem(_GLH_SEEN_KEY)) || 0; } catch (e) { _glh.seenAt = 0; }
   gardenLiveLoad(true).then((d) => { for (const p of (d && d.host && d.host.people) || []) _glhEvent({ k: 'join', again: true, ...p }); _glhHud(); _glhFlushPosts(); _glhQueueRun(d); }).catch(() => {});
   clearInterval(_glh.beatT);
@@ -61,6 +62,7 @@ function _glhStart() {
   }, 30000);
   _glhWatchStart();
   if (typeof _glcHostStart === 'function') _glcHostStart();
+  if (typeof _glgHostStart === 'function') _glgHostStart();
   _glhHud();
   _glhHoverBind();
   _glhDiffSoon(250);
@@ -77,6 +79,8 @@ function _glhElsewhere(on) {
 function gardenLiveHostGone() {
   clearTimeout(_glh.claimT); _glh.claimT = 0; _glhElsewhere(false);
   if (!_glh.on) return;
+  if (typeof gardenContestHostGone === 'function') gardenContestHostGone();   // (a round ends with a clean stop, while the host can still speak)
+  if (typeof _gltHostStop === 'function') _gltHostStop();   // (an open trade is called off while the server can still carry the word)
   _glh.on = false; clearInterval(_glh.beatT);
   if (_gll.role === 'host') _gll.role = '';
   _gllApi('/api/garden-live/here', { role: 'host', on: false, tab: _GLL_TAB }).catch(() => {});
@@ -84,6 +88,7 @@ function gardenLiveHostGone() {
   _glh.sprites.clear(); _gll.actors.clear(); _glh.sent.clear();
   if (_glh.watch) { _glh.watch.remove(); _glh.watch = null; }
   if (typeof _glcHostStop === 'function') _glcHostStop();
+  if (typeof _glgHostStop === 'function') _glgHostStop();
   _glhReturnDrops();
   clearTimeout(_glh.bugT);
 }
@@ -141,6 +146,7 @@ function _glhAdd(ev) {
   return A;
 }
 function _glhRemove(w) {
+  if (typeof _glgLeft === 'function') _glgLeft(w);   // (a slot is given to the next person to come in: what this one did in a shared goal stays counted, and is theirs no longer)
   const S = _glh.sprites.get(w); if (S) { S.remove(); _glh.sprites.delete(w); }
   const A = _gll.actors.get(w); if (A && typeof _gllPetDrop === 'function') _gllPetDrop(A);
   _gll.actors.delete(w);
@@ -156,12 +162,15 @@ function _glhEvent(ev) {
       _glhSendSnap(ev.f);
       if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
       if (typeof _glcJoin === 'function') _glcJoin(ev.f);
+      if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
+      if (typeof _glgJoin === 'function') _glgJoin(ev.f);
       _glhResendDrops(ev.f);
       _glhBugsMaybe();
       gardenLiveLoad(true).then(_glhHud).catch(() => {});
       return;
     }
-    case 'leave': _glhRemove(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
+    case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
+    case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
     case 'go': { const A = _gll.actors.get(ev.w); if (A) { _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
@@ -256,6 +265,7 @@ function _glhIntent(ev) {
   _glh.unseen++;
   _glhHud();
   _glhDiffSoon(60);
+  if (typeof _glgApplied === 'function') _glgApplied(ev);   // (a shared goal counts what was really applied)
 }
 /* ---------- what waited for you ---------- */
 /** It could not be done: it is on record, so the same id can never be tried again, and what they spent goes back by the usual post, once. */
@@ -445,7 +455,7 @@ function _glhFlushPosts() {
       const g = _gdG(), p = g.gq[id];
       if (!p || !p.to) { delete g.gq[id]; changed = true; continue; }
       _gdUndoDrop('gq', id);
-      try { await _gllApi('/api/garden-live/post', { to: p.to, id, why: p.why, ...(p.i ? { i: p.i } : {}), ...(p.items ? { items: p.items } : {}) }); delete _gdG().gq[id]; changed = true; }
+      try { await _gllApi('/api/garden-live/post', { to: p.to, id, why: p.why, ...(p.i ? { i: p.i } : {}), ...(p.d ? { d: p.d } : {}), ...(p.items ? { items: p.items } : {}) }); delete _gdG().gq[id]; changed = true; }
       catch (e) { if (e && e.status === 400) { delete _gdG().gq[id]; changed = true; } else failed = true; }
     }
     if (changed && typeof saveUI === 'function') saveUI();
@@ -605,6 +615,7 @@ function _glhPersonMenu(A) {
     const r = _gsvEl('div', 'gll-menu-row');
     r.appendChild(_gsvBtn('Wave', { icon: 'hand', kind: 'btn-ghost', run: () => { close(); if (typeof gartEmoteRun === 'function') gartEmoteRun('wave', { quiet: true }); _glhSend('all', 'em', { c: 'em', e: 'wave', to: A.w }); } }));
     r.appendChild(_gsvBtn('High five', { icon: 'hand', kind: 'btn-ghost', run: () => { close(); gardenWalkToPoint({ x: A.x - 0.7, y: A.y + 0.1 }, () => { if (typeof gartEmoteRun === 'function') gartEmoteRun('clap', { quiet: true }); _gllEmote(A, 'clap'); _glhSend('all', 'em', { c: 'do', e: 'high5', to: A.w }); }); } }));
+    r.appendChild(_gsvBtn('Trade', { icon: 'repeat', kind: 'btn-ghost', tip: 'Swap things from your bags, face to face', run: () => { close(); gardenLiveTradeOpen(A); } }));
     r.appendChild(_gsvBtn('Send home', { icon: 'log-out', kind: 'btn-ghost', tip: 'Ends their visit and turns their permission off', run: () => { close(); _gllApi('/api/garden-live/home', { id: f }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}); } }));
     el.appendChild(r);
   }, { align: 'center' });
@@ -644,6 +655,7 @@ function _glhDiaryWhat(e, n) {
     case 'give': return `${who} gave you the ${what}`;
     case 'drop': return `${who} left a parcel`;
     case 'pick': return `${who} picked up a parcel`;
+    case 'trade': return e.f2 ? `${who} and ${_glhByName(e.f2)} traded` : `${who} traded with you`;
     default: return `${who} was here`;
   }
 }
@@ -659,6 +671,7 @@ function _glhHud() {
   if (people.length) b.appendChild(_gsvEl('span', 'gll-count', String(people.length)));
   if (unseen || knocks.length || asks.length) b.appendChild(_gsvEl('i', 'gll-dot'));
   hud.appendChild(b);
+  if (typeof gardenContestHostBtn === 'function') gardenContestHostBtn(hud);
   for (const A of people.slice(0, 7)) { const p = _gsvEl('span', 'gll-person', A.n.slice(0, 1).toUpperCase()); p.title = A.n; hud.appendChild(p); }
   // someone at the gate: one tap lets them in
   for (const id of knocks.slice(0, 3)) {
@@ -719,6 +732,7 @@ function _glhPanel(el, v) {
   el.appendChild(list);
   { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = !!v.groupLook; i.onchange = () => prefs({ groupLook: i.checked }); c.append(i, _gsvEl('span', null, 'People in my groups may look')); el.appendChild(c); }
   { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = v.queueOn !== false; i.onchange = () => prefs({ queue: i.checked }); c.append(i, _gsvEl('span', null, 'Friends with Help or Play can leave things for when I am back')); el.appendChild(c); }
+  if (typeof gardenLiveGoalsOn === 'function') { const c = document.createElement('label'); c.className = 'gll-check'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = gardenLiveGoalsOn(); i.onchange = () => gardenLiveGoalsSet(i.checked); c.append(i, _gsvEl('span', null, 'Suggest shared goals while friends are here')); el.appendChild(c); }
   el.appendChild(_gsvEl('h4', 'gll-h', 'What happened here'));
   const diary = _gsvEl('ul', 'gll-diary');
   for (const { e, keys } of _glhDiaryGroups()) {

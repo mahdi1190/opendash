@@ -13,6 +13,7 @@ function gardenLiveFx(c, e, o) {
     const body = Object.assign({ c, e: String(e) }, o || {});
     for (const k of Object.keys(body)) if (body[k] == null || (body[k] === 0 && (k === 'n' || k === 'ql' || k === 'nw'))) delete body[k];
     if (glFxOk(body)) return;
+    if (c === 'got' && _gll.role === 'host' && typeof _glgOwnGot === 'function') _glgOwnGot(String(e), body.i);   // (the host's own catch counts towards a shared goal)
     if (_gll.role === 'visit') { if (_glvLive()) _glvSend('fx', body); return; }
     if (_gll.role === 'host' && _glh.on && _glhAnyone()) _glhSend('all', 'fx', body);
   } catch (err) { /* only a message */ }
@@ -39,6 +40,8 @@ const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', cra
 function _gllFxPlay(A, ev) {
   if (!A || !ev) return;
   const c = ev.c, e = String(ev.e || '');
+  if (c === 'ct') return;   // (the host's round: a visitor hears it in 94-garden-live-7contest.js; a guest cannot say it)
+  if (_gll.role === 'host' && (c === 'fish' || c === 'got') && typeof gardenContestSeen === 'function') { try { gardenContestSeen(A, ev); } catch (err) { console.error('[garden live] contest', err); } }   // the host counts what it can match
   if (c === 'pet' || c === 'wow' || c === 'nap') { if (typeof _gllPetFx === 'function') _gllPetFx(A, ev); return; }
   if (c === 'cr' || c === 'egg' || c === 'pick') { _glcFx(A, ev); return; }
   if (c === 'roam') { if (typeof _gllRoamAdd === 'function') _gllRoamAdd(e); return; }
@@ -55,6 +58,7 @@ function _gllFxPlay(A, ev) {
   }
   if (c === 'make') { _gllPose(A, 'dig', 1200); if (!_gllOffscreen(A)) _gllFloat(_gw.svg, A.x, A.y - 1.2, '🔨', A.n); return; }
   if (c === 'got') {
+    if (_gll.role === 'host' && typeof _glgFxGot === 'function') _glgFxGot(A, ev);   // (a guest's fish counts towards a shared goal, at a real line's pace)
     const kind = _GLL_FX_KIND[e], spec = kind ? gardenMomentSpec(kind, ev.i, { cm: ev.n, q: ev.ql, isNew: (ev.nw & 1) === 1, record: (ev.nw & 2) === 2 }) : null;
     if (!spec) return;   // an id this version does not know
     const who = String(A.n).split(/\s+/)[0];

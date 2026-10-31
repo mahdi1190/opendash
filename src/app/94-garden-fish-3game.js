@@ -172,7 +172,7 @@ function gardenFishClickPt(pt, m) {
   const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) };
   if (!gardenIsWater(cell.x, cell.y)) return false;
   const info = gardenCastsInfo(m);
-  if (info.left < 1) { _gdpSay({ ok: false, msg: 'No casts left today. They come back tomorrow, and with every 12 minutes of work you do.' }); return true; }
+  if (info.left < 1 && !info.free) { _gdpSay({ ok: false, msg: 'No casts left today. They come back tomorrow, and with every 12 minutes of work you do.' }); return true; }
   const zone = gardenWaterZone(cell.x, cell.y);
   if (zone === 'pond' && !m.areas.includes('pond')) { _gdpSay({ ok: false, msg: 'The pond opens at garden level 7.' }); return true; }
   const rod = gardenRod(), reach = rod.st.range, W = GARDEN_WORLD;
@@ -243,16 +243,17 @@ function _gwFishFinish() {
   const r = gardenCatchFish(plan, F.res || {});
   if (!r.ok) { _gdpSay(r); return; }
   const d = r.def;
-  const held = gardenCatchMoment('fish', d.id, { cm: r.cm, q: r.q, isNew: r.isNew, record: r.record });   // held up over your head, and told to the others
+  const held = gardenCatchMoment('fish', d.id, { cm: r.cm, q: r.q, isNew: r.isNew, record: r.record, contest: !!r.contest });   // held up over your head, and told to the others
   if (!held) _gwHeldUp(gardenFishArt(d.id, { uid: 'held' }), 1500);
   const rare = ['rare', 'epic', 'legendary'].includes(d.rarity);
   let sub, name = d.name;
-  if (d.cat === 'fish') sub = `${r.cm} cm · ${gardenQuality(r.q).label}${r.perfect ? ' reel' : ''}`;
+  if (r.contest) sub = d.cat === 'fish' ? `${r.cm} cm · ${gardenQuality(r.q).label} · let go` : 'Let go again';
+  else if (d.cat === 'fish') sub = `${r.cm} cm · ${gardenQuality(r.q).label}${r.perfect ? ' reel' : ''}`;
   else if (r.coins) { sub = `${r.coins} coins inside`; name = 'A coin purse'; }
   else if (r.items) { const k = Object.keys(r.items)[0], pl = gardenPlant(String(k).replace('seed:', '')); sub = pl ? `A ${pl.name.toLowerCase()} seed packet and 10 coins` : 'A seed packet'; }
   else sub = d.cat === 'junk' ? 'Junk, but the market takes it' : 'Treasure!';
   if (!held) _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc' }), name, sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: 'fish' });
-  if (typeof gardenFloat === 'function') gardenFloat(d.cat === 'fish' ? `+${(_GC_XP[d.rarity] || 1)} XP` : '', Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
+  if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(d.cat === 'fish' ? `+${(_GC_XP[d.rarity] || 1)} XP` : '', Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }
 
@@ -545,7 +546,7 @@ function _gwBugTaken(b) {
   const d2 = r.def, rare = ['rare', 'epic', 'legendary'].includes(d2.rarity);
   const held = gardenCatchMoment('bug', d2.id, { isNew: r.isNew });
   if (!held) _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false }), name: d2.name, sub: d2.rarity === 'common' ? 'In your bag' : GARDEN_RARITY[d2.rarity].label + ' find', isNew: r.isNew, rare, open: 'bugs', ms: 3400 });
-  if (typeof gardenFloat === 'function') gardenFloat(`+${_GC_XP[d2.rarity] || 1} XP`, Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
+  if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(`+${_GC_XP[d2.rarity] || 1} XP`, Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }
 

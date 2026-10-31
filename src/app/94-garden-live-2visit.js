@@ -39,6 +39,8 @@ function _glvPeopleOut() {
   for (const B of _glv.bugs.values()) if (B.sprite) B.sprite.remove();
   _glv.parcels.clear(); _glv.bugs.clear();
   if (typeof _glcGuestClear === 'function') _glcGuestClear();
+  if (typeof gardenContestGuestClear === 'function') gardenContestGuestClear();
+  if (typeof _glgGuestClear === 'function') _glgGuestClear();
   if (_glv.watch) { _glv.watch.remove(); _glv.watch = null; }
 }
 function _glvClear() {
@@ -55,8 +57,8 @@ function _glvTake(d) {
   _glv.ver = v.ver || 0;
   const was = _glv.state;
   _glv.state = v.state; _glv.why = v.why; _glv.lv = v.lv; _glv.w = v.w; _glv.road = v.road; _glv.touch = v.touch; _glv.mode = v.mode || 'normal';
-  if (was === 'live' && _glv.state !== 'live') { _glvPeopleOut(); _glv.snap = null; _gll.by.clear(); _glv.pending.clear(); _glv.doQ.length = 0; if (typeof _gsvPaint === 'function') _gsvPaint(); }
-  if (was !== 'live' && _glv.state === 'live') { _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
+  if (was === 'live' && _glv.state !== 'live') { if (typeof _gltLost === 'function') _gltLost(); _glvPeopleOut(); _glv.snap = null; _gll.by.clear(); _glv.pending.clear(); _glv.doQ.length = 0; if (typeof _gsvPaint === 'function') _gsvPaint(); }
+  if (was !== 'live' && _glv.state === 'live') { _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); if (typeof _gltResume === 'function') _gltResume(); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
   _glvHud();
 }
 /** What you asked for before and never heard back about: the same id, so it can only happen once. (What waits for them went by the mailbox: its answer comes by post.) */
@@ -260,6 +262,7 @@ function _glvPersonMenu(A) {
     go('High five', 'hand', () => _glvHigh5(A));
     go(_glv.follow === A.w ? 'Stop following' : 'Follow', 'footprints', () => { _glv.follow = _glv.follow === A.w ? null : A.w; _glvSend('em', { c: 'do', e: _glv.follow != null ? 'follow' : 'unfollow', to: A.w }); if (_glv.follow != null) _glvFollowGo(A.x - 0.8, A.y + 0.3); });
     if (!glMayDo(_glv.lv, 'drop')) go('Give something', 'gift', () => _glvGiveMenu(A));
+    if (glAtLeast(_glv.lv, GL_TRADE.lv)) go('Trade', 'repeat', () => gardenLiveTradeOpen(A));
     el.appendChild(r);
   }, { align: 'center' });
 }
@@ -362,7 +365,12 @@ function _glvEvent(ev) {
       return;
     }
     case 'cr': _glcGuestCr(ev.l); return;
-    case 'fx': { const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
+    case 'tr': if (typeof _gltFromHost === 'function') _gltFromHost(ev); return;
+    case 'goal': if (typeof _glgGuestIn === 'function') _glgGuestIn(ev); return;
+    case 'fx': {
+      if (ev.c === 'ct') { if (typeof _ctGuestEvent === 'function') _ctGuestEvent(ev); return; }   // the host's contest round (94-garden-live-7contest.js)
+      const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return;
+    }
     case 'd': _glvDelta(ev.ops); return;
     default:
   }

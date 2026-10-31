@@ -77,7 +77,8 @@ function gardenGearBuy(id) {
 function gardenCastsInfo(mArg) {
   const m = mArg || gardenModel();
   const max = gardenCastsFor(m.wallet.econToday.credited), used = Number((_gdG().fd[m.today] || {}).c) || 0;
-  return { max, used, left: Math.max(0, max - used) };
+  // (contests) in a fishing contest casts are free: they cost nothing, use no bait and keep no fish (94-garden-live-7contest.js)
+  return { max, used, left: Math.max(0, max - used), free: typeof gardenContestLive === 'function' && !!gardenContestLive('fish') };
 }
 /** Can you cast at this water cell from where you stand? A walk is the page's job; this says how far the rod reaches. */
 function gardenCastReach(rod) { return (rod || gardenRod()).st.range; }
@@ -90,13 +91,15 @@ function gardenFishPlan(x, y) {
   const m = gardenModel(), zone = gardenWaterZone(x, y);
   if (!zone) return _gdNo('Nothing to fish in there');
   if (zone === 'pond' && !m.areas.includes('pond')) return _gdNo('The pond opens at garden level 7');
-  const info = gardenCastsInfo(m);
-  if (info.left < 1) return _gdNo('No casts left today: work a little and there will be more tomorrow, or sooner.');
-  const rod = gardenRod(), bait = gardenBait(), g = _gdG();
+  const info = gardenCastsInfo(m), contest = info.free;
+  if (info.left < 1 && !contest) return _gdNo('No casts left today: work a little and there will be more tomorrow, or sooner.');
+  const rod = gardenRod(), bait = contest ? GARDEN_BAITS[0] : gardenBait(), g = _gdG();
   const useBait = !bait.own;
-  _gcFd(g, m.today).c = info.used + 1;
-  if (useBait) g.led['ct.' + m.today + '.' + _gdUid('')] = { d: m.today, k: 'ct', i: { ['bait:' + bait.id]: -1 }, n: 1 };
-  _gdSave();
+  if (!contest) {   // a contest cast spends nothing
+    _gcFd(g, m.today).c = info.used + 1;
+    if (useBait) g.led['ct.' + m.today + '.' + _gdUid('')] = { d: m.today, k: 'ct', i: { ['bait:' + bait.id]: -1 }, n: 1 };
+    _gdSave();
+  }
   const odds = gardenFishOdds({ zone, tod: m.tod, season: m.season, rain: !!m.rain.now, level: m.level.level, rare: bait.st.rare + (rod.tier - 1) * 0.03, night: !!bait.st.night });
   const id = gardenFishPick(odds, _gcRand), def = gardenFishDef(id);
   const E = GARDEN_CATCH_ECON;
@@ -104,7 +107,7 @@ function gardenFishPlan(x, y) {
   if (m.rain.now) wait *= 0.85;
   if (m.tod === 'dawn' || m.tod === 'dusk') wait *= 0.88;
   wait = Math.max(1.4, wait);
-  return { ok: true, zone, id, def, wait, strike: E.strike + rod.st.react, diff: def.diff, beh: def.beh, bar: rod.st.bar, line: rod.st.line, tier: rod.tier, qmax: rod.st.q, bait: useBait ? bait.id : '', x, y };
+  return { ok: true, zone, id, def, wait, strike: E.strike + rod.st.react, diff: def.diff, beh: def.beh, bar: rod.st.bar, line: rod.st.line, tier: rod.tier, qmax: rod.st.q, bait: useBait ? bait.id : '', x, y, contest };
 }
 const _GC_XP = { common: 1, uncommon: 2, rare: 4, epic: 7, legendary: 12 };
 /** A fish is landed: add it to the bag and the log. res {perfect}. Returns {ok, def, cm, q, isNew, record, coins?, items?}. */
@@ -122,6 +125,7 @@ function gardenCatchFish(plan, res) {
   const cm = def.cat === 'fish' ? gardenFishSize(def, rnd, (perfect ? 0.1 : 0) + 0.02 * ((plan.tier || 1) - 1) + (plan.zone === 'deep' ? 0.04 : 0)) : 0;
   const key = gardenFishKey(def.id, q);
   const out = { ok: true, def, cm, q, perfect, isNew: false, record: false };
+  if (plan.contest) return Object.assign(out, { contest: true });   // (contests) let go again: a contest fish is points and a story, never an item, a coin or a record
   const entry = { d: today, k: 'fc', n: 1, x: def.cat === 'fish' ? (_GC_XP[def.rarity] || 1) + (perfect ? 1 : 0) : 0, i: {} };
   if (def.opens) {
     if (def.id === 'coin-purse') { out.coins = 20 + Math.floor(rnd() * 60); entry.c = out.coins; }
@@ -144,6 +148,12 @@ function _gcWindow(now) { return Math.floor(now / 1200000); }   // 20 minutes: t
  */
 const GARDEN_BUGS_MAX = 8;   // about at once in the whole garden: enough to go looking for, not a swarm
 function gardenBugsNow(mArg) {
+  const base = _gcBugsBase(mArg);
+  if (typeof gardenContestBugsNow !== 'function') return base;
+  const extra = gardenContestBugsNow(mArg || gardenModel());   // (contests) a bug contest shows a bug every few seconds, the same on every screen
+  return extra.length ? base.concat(extra) : base;
+}
+function _gcBugsBase(mArg) {
   const m = mArg || gardenModel(), g = _gdG(), W = GARDEN_WORLD;
   if (gardenFun() === 'off') return [];
   const win = _gcWindow(m.now), rnd = gardenRand('gd-bugs|' + win);
@@ -185,6 +195,7 @@ function gardenBugsNow(mArg) {
 /** A bug is netted. Returns {ok, def, isNew}. */
 function gardenCatchBug(actor) {
   const def = actor && gardenBugDef(actor.id); if (!def) return _gdNo('It got away');
+  if (/^c[0-9a-z]{6,24}\.\d+$/.test(String(actor.key))) return { ok: true, def, isNew: false, contest: true };   // (contests) a contest bug is let go again: points, never an item
   const g = _gdG(), today = _gdToday(), fd = _gcFd(g, today);
   if (Array.isArray(fd.k) ? fd.k.includes(actor.key) : false) return _gdNo('It has gone');
   fd.k = (Array.isArray(fd.k) ? fd.k : []).concat(actor.key).slice(-60);

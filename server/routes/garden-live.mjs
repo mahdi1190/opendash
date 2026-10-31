@@ -7,9 +7,9 @@
 //
 //   GET  /api/garden-live                      -> {ok, on, v, open, groupLook, perms, posts, host, visit, budget, stats}
 //   POST /api/garden-live/here  {role: host|visit, on, f?, look?, name?, tab?}   the page says where it is (and every 30 s while it stays); a host's answer says whether this tab is the host (`lead`)
-//   POST /api/garden-live/send  {k: go|em|do|me|fx, body}                  a visitor's page to the garden it is in
-//   POST /api/garden-live/host  {to?, k: go|em|res|d|fx|snap, body, tab?}   the host's page to who is there
-//   POST /api/garden-live/post  {to, id, why, i?, items?}                  something posted to a friend (durable)
+//   POST /api/garden-live/send  {k: go|em|do|me|fx|tr, body}                  a visitor's page to the garden it is in
+//   POST /api/garden-live/host  {to?, k: go|em|res|d|fx|cr|tr|goal|snap, body, tab?}   the host's page to who is there
+//   POST /api/garden-live/post  {to, id, why, i?, d?, items?}                  something posted to a friend (durable)
 //   POST /api/garden-live/applied {ids}
 //   POST /api/garden-live/perm  {id, lv?, touch?, share?}   /prefs {open?, groupLook?, queue?}   /home {id}
 //   POST /api/garden-live/queue {to, i, t, p, x, y, r?, at}   something done on the saved copy, to wait for them (the mailbox); /queued {ids}   the host's page has run these; /ask {to}   may I do more?
@@ -53,7 +53,7 @@ export default function register(app) {
   }, { quiet: true, maxBody: 8192 });
   route('/api/garden-live/send', 'POST', async (c) => { const b = await body(c); return gl.visitSend({ k: str(b.k, 8), body: b.body }); }, { quiet: true });
   route('/api/garden-live/host', 'POST', async (c) => { const b = await body(c); return gl.hostSend({ to: b.to === undefined ? 'all' : str(b.to, 20), k: str(b.k, 8), body: b.body, tab: str(b.tab, 24) }); }, { quiet: true, maxBody: 64 * 1024 });
-  route('/api/garden-live/post', 'POST', async (c) => { const b = await body(c); return gl.post({ to: str(b.to, 20), id: str(b.id, 64), why: str(b.why, 10), i: str(b.i, 64), items: Array.isArray(b.items) ? b.items.slice(0, 4) : undefined }); });
+  route('/api/garden-live/post', 'POST', async (c) => { const b = await body(c); return gl.post({ to: str(b.to, 20), id: str(b.id, 64), why: str(b.why, 10), i: str(b.i, 64), d: str(b.d, 4), items: Array.isArray(b.items) ? b.items.slice(0, 4) : undefined }); });
   route('/api/garden-live/applied', 'POST', async (c) => { const b = await body(c); return gl.applied({ ids: Array.isArray(b.ids) ? b.ids.slice(0, 200).map(x => str(x, 64)) : [] }); }, { maxBody: 16384 });
   route('/api/garden-live/perm', 'POST', async (c) => { const b = await body(c); return gl.setPerm({ id: str(b.id, 20), lv: str(b.lv, 8), touch: typeof b.touch === 'boolean' ? b.touch : undefined, share: str(b.share, 8) }); });
   route('/api/garden-live/prefs', 'POST', async (c) => { const b = await body(c); return gl.setPrefs({ open: typeof b.open === 'boolean' ? b.open : undefined, groupLook: typeof b.groupLook === 'boolean' ? b.groupLook : undefined, queue: typeof b.queue === 'boolean' ? b.queue : undefined }); });

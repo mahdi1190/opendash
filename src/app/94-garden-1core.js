@@ -741,7 +741,7 @@ function _gdTidy(g, today) {
   }
   for (const [key, e] of Object.entries(g.led)) {
     if (!e || key === 'mig' || !e.d || e.d >= cut) continue;
-    if (key.startsWith('gl.o.') && (e.t === 'place' || !e.ok)) continue;   // still out in a friend's garden, or never answered: taking it back deletes this
+    if ((key.startsWith('gl.o.') && (e.t === 'place' || !e.ok)) || (key.startsWith('gl.x.') && !e.ok) || (key.startsWith('gl.t.') && e.d >= _gdAddDays(today, -120))) continue;   // (a trade's hold is released or swapped by the host's word, never by age; the host's record of its decision is what answers a late "what became of it")   // still out in a friend's garden, or never answered: taking it back deletes this
     const nn = {}; if (e.k && _GD_N_KINDS[e.k]) nn[_GD_N_KINDS[e.k]] = Number(e.n) || 0;
     fold(e.d.slice(0, 7), { c: Number(e.c) || 0, x: Number(e.x) || 0, i: e.i, nn });
     delete g.led[key]; changed = true;

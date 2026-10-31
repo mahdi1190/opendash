@@ -54,7 +54,7 @@ function _ghHud(box, m) {
     + stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins: earned by focusing on tasks and finishing them')
     + (treats != null ? stat('is-treats', icon('cookie'), treats, 'Treats for your pet') : '')
     + stat('is-water', icon('droplet'), wi.raining ? '∞' : wi.left, wi.raining ? 'The rain is watering everything' : 'Water left in the can today')
-    + (ci ? stat('is-casts', icon('fish'), ci.left, 'Casts left today') : '')
+    + (ci ? stat('is-casts', icon('fish'), ci.free ? '∞' : ci.left, ci.free ? 'Casts are free while the contest is on' : 'Casts left today') : '')
     + '</div>'
     + `<div class="gd-hud-sky" data-tip="${escAttr(_gdpWeatherNote(m) || sky.text)}">${icon(sky.ic)}<span>${esc(sky.text)}</span></div>`;
   if (_gh.hud === html && box.querySelector(':scope > .gd-hud')) return;
@@ -401,6 +401,7 @@ function gardenHudPaint(m) {
   const box = _ghBox(); if (!box) return;
   _ghHud(box, m); _ghMenu(box, m); _ghBar(box, m); _ghQuick(box, m); _ghMini(box, m); _ghNeeds(m); _ghArrow(m); _ghWalkHint();
   if (typeof gardenVisitTagPaint === 'function') gardenVisitTagPaint(box, m);
+  if (typeof gardenLiveGoalPaint === 'function') gardenLiveGoalPaint(box);   // a shared goal in a live garden (94-garden-live-7goal.js)
   if (_gh.bag) _ghBag();
 }
 function gardenHudReset() { Object.assign(_gh, { hud: '', menu: '', bar: '', quick: '', mini: '', needs: '', bubble: null, bag: false, menuOpen: false, arrow: null, hint: false, dot: '' }); }
