@@ -54,7 +54,7 @@ function frShellHeadOn(id) { return _frShellHead.has(String(id)); }
 
 async function _frApi(path, body, opts) {
   const o = opts || {};
-  const init = body === undefined ? { method: 'GET', signal: o.signal } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: o.signal };
+  const init = body === undefined ? { method: 'GET', signal: o.signal || AbortSignal.timeout(o.timeout || 90000) } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: o.signal || AbortSignal.timeout(o.timeout || 90000) };
   const r = await fetch(path, init);
   let j = null;
   try { j = await r.json(); } catch (e) { j = null; }
