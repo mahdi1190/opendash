@@ -324,6 +324,8 @@ a calm note; both turn into the real garden by themselves.
 
 ## 11. Gardens with friends (agent 'garden-social')
 
+Playing together live, when the host allows it, is in docs/dev/GARDEN_TOGETHER.md. What follows is the saved copy and the small things that go by message; a visit falls back to it whenever nobody is at home.
+
 The owner, 24 Oct 2026: "see other people's gardens". Your garden goes to friends as a snapshot; they walk round it
 in THEIR app, drawn by THEIR art engine, and can do a few small, capped things there. Nothing a friend sends ever
 writes your garden: their app sends a request ("Sam watered the sunflower at 9,6"), and YOUR page applies it only

@@ -819,3 +819,26 @@ per 10 minutes (shared with friend codes), 6 per address per 10 minutes, 200 a d
 request, direct request and member; **one row per key rotation whatever the group's size**. Posts expire after 30 days; requests after
 30 days; 2,000 posts and 32 MiB at most, oldest notes first. A group nobody used for a year is deleted. What its owner stored counts for
 the relay's total only. `used` goes down with what leaves, and is worked out again from the rows once a day.
+
+## Pass-through rooms (lib/relay/space-room.mjs)
+
+Space `rt:<id>`, path `/v1/rt/<id>/ws`, WebSocket only (a plain request is 404 at the front). `GET /v1/health` says `rt: 1`. A room writes nothing to storage and sets no alarm: what survives a hibernation is in the socket attachments (`sp` is the space's name, which the Worker reads when a socket wakes it; the host's holds what the room has cost today). See docs/dev/GARDEN_TOGETHER.md section 4.
+
+The upgrade is signed, unlike every other socket: the request headers of 3.1 with an empty body, plus `X-OD-Room: host.nonce[.exp.ticket]`. `front()` checks all of it before any space is touched: the signature, that `host` and `nonce` make this `id`, the ticket if the signer is not the host, and that `host` is the owner or a member who is not there only through a group (no `X-OD-Cert`: a room takes the person's own key). Anyone else gets 401 or 403 and costs one Worker request. On Cloudflare `io.known` may answer busy (429, `Retry-After` 5).
+
+`id = base64url(SHA-256("opendash-relay-room-v1
+" + hostKey + "
+" + nonce))`. After the usual challenge the socket answers `{t: 'auth', key, sig, host, nonce, ticket?, exp?}`. The host (`key == host`) must be the owner or a member with `message` and not pending. A guest shows `ticket`: Ed25519 by `host` over `"opendash-relay-room-ticket-v1
+" + id + "
+" + key + "
+" + exp`, at most 6 hours ahead; the host's socket must be there and the key not banned.
+
+| Socket sends | | Others get |
+|---|---|---|
+| guest `{t: 'to', env}` | to the host | `{t: 'fwd', f: iid, env}` |
+| host `{t: 'to', b: [[iid, env], ...]}` (13 at most) | one message a broadcast | each `{t: 'fwd', env}` |
+| host `{t: 'kick', g: iid}` / `{t: 'unban', g: iid}` | | that guest `{t: 'closed', why: 'kick'}`, closed 4403 |
+
+The host hears `{t: 'peer', g, on}`. The host's socket closing closes the room (4410). Per socket 40 messages a second and 1,200 a minute (over: dropped before parsing; 200 over in a minute: closed 4429). A message is at most 8 KiB from a guest and 32 KiB from the host, in bytes; over: that sender is closed (1009) and nobody else.
+
+Every message that arrives is counted, whatever becomes of it (the numbers are `ROOM` in `lib/relay/space-room.mjs`). A guest has 6,000 a day in a room: over, `{t: 'err', error: 'share'}`, that socket closed 4429, the key banned in that room, the host told `{t: 'over', g}`. A room has 60,000 a day. Every 1,024 messages or 10 minutes in memory, and when the host's socket goes, the room calls the registry's internal `room-spend`; the registry keeps one row (`rr`) with today's messages and time in memory for the relay (300,000 messages, 12 hours) and each host key (120,000, 6 hours), and answers whether to go on: if not, `{t: 'err', error: 'budget'}` and everyone closed 4429, or 4403 if the host's access is gone. A host signing in calls `room-open`: refused while over a budget or past 12 rooms an hour for that key (`{t: 'error', error: 'rate_limit'}`, or `not_member`), and a fourth open room of one key closes its oldest (4409). So that row also lists every room a key has open, and `DELETE /v1/admin/members/<iid>` closes them at once (4403). None of these counts touch the per-key limits device sync uses.

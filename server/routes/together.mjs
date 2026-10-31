@@ -105,6 +105,7 @@ export default function register(app) {
     } catch { /* keep */ }
   }
 
+  ctx.togetherSpaces = () => spaces;   // lib/friends/live.mjs: who shares a group with me
   const spaces = createSpaces({
     store: {
       read: () => readJson(file, { fallback: null }).catch(() => null),

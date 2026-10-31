@@ -120,7 +120,7 @@ function gardenSocialFriendLoad(id, force) {
   _gsc.friends.set(id, c);
   return c.loading;
 }
-function gardenSocialFriendCached(id) { const c = _gsc.friends.get(id); return c ? c.data : null; }
+function gardenSocialFriendCached(id) { const c = _gsc.friends.get(id), d = c ? c.data : null; return d && typeof gardenLiveOverlay === 'function' ? gardenLiveOverlay(id, d) : d; }
 /** Repaint what shows friends' gardens (the visit page, the Friends tab, the hangout panels): one frame. */
 function _gscRepaintSoon() {
   if (_gsc.repaintT) return;
@@ -133,6 +133,7 @@ function _gscRepaintSoon() {
 /* ---------- live events (/api/events 'garden') ---------- */
 function gardenSocialOnEvent(d) {
   if (!d || typeof d !== 'object') return;
+  if (d.type === 'live') { if (typeof gardenLiveOnEvent === 'function') gardenLiveOnEvent(d); return; }   // playing together (94-garden-live-1core.js)
   const from = typeof d.from === 'string' && _GSC_FID_RE.test(d.from) ? d.from : '';
   if (d.type === 'snap' && from) { const c = _gsc.friends.get(from); if (c) c.at = 0; }
   if (d.type === 'act' && from && typeof d.id === 'string' && _GSC_MSG_RE.test(d.id) && !_gsc.toasted.has(d.id)) {

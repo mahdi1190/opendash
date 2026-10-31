@@ -72,6 +72,9 @@ const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets')
 const WHATS_NEW = [
   // ---- 2.21 ----
   // ---- 2.24 ----
+  { id: 'garden-together', group: 'n224', icon: 'users', title: '2.26: play together, live',
+    text: 'Friends can walk around your garden with you. You choose who may look, help or play, everything they do shows their name, and Undo and Put my garden back keep it safe.',
+    view: ['garden'], sel: ['#main-body'] },
   { id: 'groups', group: 'n224', icon: 'users', title: '2.25: groups, one link for everyone',
     text: 'Friends > Groups. Start a group for friends or a whole organisation and share one link. You approve who joins, and joining only shows your name and avatar.',
     view: ['friends'], sel: ['#main-body'] },

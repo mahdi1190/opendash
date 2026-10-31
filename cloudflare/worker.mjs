@@ -27,6 +27,8 @@ async function limit(env, bucket, key) {
   return fallback(bucket, key);
 }
 const toResponse = (r) => new Response(r.body ?? null, { status: r.status, headers: r.headers });
+// A room (lib/relay/space-room.mjs) has no rows, so after a hibernation its name comes from the socket that woke it.
+const socketSpace = (ws) => { try { const a = ws.deserializeAttachment(); return a && typeof a.sp === 'string' ? a.sp : null; } catch { return null; } };
 // Who may sign members-only requests, per isolate (core.mjs memberGate): a key that is neither the owner
 // nor a member is refused here, before any Durable Object is asked (RELAY_PROTOCOL.md 8.1).
 let gate = null;
@@ -192,7 +194,7 @@ export class RelaySpace {
     } catch (e) { return toResponse(errorReply(e, now)); }
   }
   async webSocketMessage(ws, message) {
-    const sp = this.spaceFor(null);
+    const sp = this.spaceFor(socketSpace(ws));
     if (!sp) { try { ws.close(4410, 'gone'); } catch { /* gone */ } return; }
     await sp.wsMessage({
       get att() { try { return ws.deserializeAttachment(); } catch { return null; } },
@@ -202,7 +204,12 @@ export class RelaySpace {
     }, typeof message === 'string' ? message : null);
   }
   async webSocketClose(ws, code, reason) {
+    // (read before it closes: an attachment goes with its socket)
+    const name = socketSpace(ws);
+    let att = null;
+    try { att = ws.deserializeAttachment(); } catch { /* gone */ }
     try { ws.close(code, reason); } catch { /* already closed */ }
+    if (name) { const sp = this.spaceFor(name); if (sp) await sp.wsClose({ att, setAtt() {}, send() {}, close() {} }); }
   }
   async webSocketError(ws) {
     try { ws.close(1011, 'error'); } catch { /* already closed */ }

@@ -65,6 +65,7 @@ function gartEmoteRun(id, o) {
   o = o || {};
   const row = o.seat ? _peOnSeat() : GART_EMOTES[id]; if (!row) return false;
   if (typeof _gw === 'undefined' || !_gw.on || !_gw.node) return false;
+  if (!o.quiet && typeof gardenLiveEmoted === 'function') gardenLiveEmoted(id);   // friends here see it
   if (_gw.moving && !o.quiet) { _gw.path = []; _gw.then = null; }
   gartEmoteStop();
   // face front, in the plain idle drawing
