@@ -10,6 +10,7 @@
      GL_EMOTES            the moves anyone can see, GL_PHRASES the preset speech bubbles: ids on the wire, drawn from these tables
      GL_FX_KINDS          what people see each other do (pets, fishing, nets, a catch held up): glFxOk(b) -> '' | why
      GL_QUEUE             what can wait for a host who is out
+     GL_CT                contests: a timed round of fishing or bug-netting that the host referees; glCtFishPoints / glCtBugPoints score a catch
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
 const GL_V = 2;                   // 2: what a visit can ask for grew (feed, turn), and what waits for the host. An older peer gets the saved copy
@@ -52,20 +53,59 @@ const GL_PHRASE_IDS = Object.freeze(GL_PHRASES.map(p => p.id));
 const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet']);   // what two people do together: an `em` with c: 'do'
 /** What people SEE each other do (gl:fx, a kind of its own: an older app has no such kind and drops it, so GL_V stays). Ids and cells on the wire, each side draws them from its own tables;
  *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
- *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken). `to` and `w` are slots as in gl:em. */
-const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer']);
-const GL_FX_STEPS = Object.freeze({ fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']) , cheer: Object.freeze(['level', 'ach', 'photo']) });
+ *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT). `to` and `w` are slots as in gl:em. */
+const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct']);
+const GL_FX_STEPS = Object.freeze({ fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']), cheer: Object.freeze(['level', 'ach', 'photo']) });
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
-const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*']));
+const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*']));
 const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke']));
 const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*'));
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
 const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+/** CONTESTS (docs/dev/GARDEN_TOGETHER.md section 15). The host's page is the referee: it starts a timed round (`ct|start`), keeps the scores, sends the board (`ct|board`) and names the winner (`ct|end`);
+ *  all of those are host-only. A guest says nothing new: its casts and nets are the `fish`, `bug` and `got` events it always sends, and the host counts only a catch it can match to the steps of a line.
+ *  Points come from size and quality (a fish) or rarity (a bug), never from money. Everything here is data: change it here.
+ *    lens      the lengths a round may have (seconds); `len` the usual one.  minLen / maxLen: what the wire accepts
+ *    perDay    rounds a garden's host may start in a day (on the host's computer, in the day's fishing record)
+ *    minPts    points that count as having played; a guest also needs a catch of its own in the round
+ *    reward    coins and XP for winning (needs a second player with points) and for playing; `day` the most coins one person is given by contests in a day, counted on their own computer
+ *    gap       the least seconds between two catches of one guest (a line cannot be cast, bitten, reeled and landed faster)
+ *    grace     seconds after the end a catch already landed still counts, and the board is held before the winner is named
+ *    waveSec   a bug round: another bug shows every this many seconds (the same ones on every screen, from the round's id), and stays `bugLife` seconds
+ *    bugPts    points for a bug, by rarity */
+const GL_CT = Object.freeze({
+  kinds: Object.freeze(['fish', 'bug']), lens: Object.freeze([120, 180, 300]), len: 180, minLen: 60, maxLen: 600, perDay: 4, minPts: 3,
+  reward: Object.freeze({ win: Object.freeze({ c: 20, x: 10 }), play: Object.freeze({ c: 5, x: 2 }), day: 40 }),
+  gap: 2.5, grace: 3, boardGap: 1800, beat: 10, waveSec: 5, bugLife: 30, maxCatch: 50,
+  bugPts: Object.freeze({ common: 2, uncommon: 4, rare: 8, epic: 14, legendary: 25 }),
+});
+const GL_CT_Q = Object.freeze([1, 1.25, 1.6, 2.2]);   // the quality multipliers of the fish catalogue (GARDEN_QUALITY), so this file stays pure
+/** A fish's points: one for every 5 cm, times its quality (a 40 cm plain fish is 8, a fine one 13, a perfect one 18). At least 1, at most GL_CT.maxCatch. */
+function glCtFishPoints(cm, q) {
+  const c = Math.max(0, Math.min(400, Math.floor(Number(cm) || 0))); if (c < 1) return 0;
+  return Math.max(1, Math.min(GL_CT.maxCatch, Math.round(c / 5 * GL_CT_Q[Math.max(0, Math.min(3, Math.floor(Number(q) || 0)))])));
+}
+function glCtBugPoints(rarity) { return Object.prototype.hasOwnProperty.call(GL_CT.bugPts, rarity) ? GL_CT.bugPts[rarity] : 0; }
+/** The board: up to GL_PEOPLE rows of [slot, points, catches]. */
+function _glCtBoardOk(l) {
+  if (!Array.isArray(l) || l.length > GL_PEOPLE) return false;
+  const seen = new Set();
+  for (const r of l) { if (!Array.isArray(r) || !Number.isInteger(r[0]) || r[0] < 0 || r[0] > GL_PEOPLE || seen.has(r[0]) || !Number.isInteger(r[1]) || r[1] < 0 || r[1] > 9999 || !Number.isInteger(r[2]) || r[2] < 0 || r[2] > 99) return false; seen.add(r[0]); }
+  return true;
+}
 /** '' when an fx body fits the tables, else why. (The page checks the ids against its own catalogues, and ignores what it does not know.) */
 function glFxOk(b) {
   if (!b || typeof b !== 'object' || !GL_FX_KINDS.includes(b.c) || !GL_FX_ID_RE.test(String(b.e || ''))) return 'kind';
   const steps = GL_FX_STEPS[b.c];
   if (steps && !steps.includes(b.e)) return 'step';
+  if (b.c === 'ct') {
+    if (!GL_ID_RE.test(String(b.i || ''))) return 'id';
+    const secs = Number.isInteger(b.n) && b.n >= 0 && b.n <= GL_CT.maxLen;
+    if (b.e === 'start' && !(GL_CT.kinds.includes(b.kd) && secs && b.n >= 1 && Number.isInteger(b.tt) && b.tt >= GL_CT.minLen && b.tt <= GL_CT.maxLen && b.n <= b.tt)) return 'ct';
+    if (b.e === 'board' && !(secs && _glCtBoardOk(b.l))) return 'ct';
+    if (b.e === 'end' && !(_glCtBoardOk(b.l) && (b.to == null || (Number.isInteger(b.to) && b.l.some(r => r[0] === b.to))))) return 'ct';
+    return '';
+  }
   if (b.c === 'got' && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
   if (b.c === 'bug' && ['gone', 'claim', 'lost'].includes(b.e) && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
   if ((b.c === 'cr' || b.c === 'egg') && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';

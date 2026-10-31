@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+### Added
+- Live play: contests. With a friend in your garden, tap the trophy beside the gate and start a fishing or bug-netting round of 2, 3 or 5 minutes. Everyone in the garden competes: a live board shows the countdown and everyone's points, and at the end the winner is named, cheers and gets a sparkle.
+- Points come from the size and quality of a fish, or the rarity of a bug. In a round casts are free and use no bait, and what is caught is let go, so a contest costs nothing and cannot be farmed. A bug round shows a fresh bug every few seconds so there is always one to race for.
+- A small reward for playing (5 coins and 2 XP) and for winning (20 coins and 10 XP), at most 40 coins a day from contests. You can start 4 contests a day, and not on your own.
+
+### Security
+- The host referees. Only the host can start or end a contest, send the board or name a winner (both computers refuse a guest's); a guest's catch counts only when the host can match it to the steps of a line it saw. Older apps ignore contest messages. No relay update is needed.
+
 ## [2.29.0]
 
 Cheers and photos you can see, a fire to gather round, listening along, and room to move on the shore.

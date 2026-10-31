@@ -39,6 +39,7 @@ function _glvPeopleOut() {
   for (const B of _glv.bugs.values()) if (B.sprite) B.sprite.remove();
   _glv.parcels.clear(); _glv.bugs.clear();
   if (typeof _glcGuestClear === 'function') _glcGuestClear();
+  if (typeof gardenContestGuestClear === 'function') gardenContestGuestClear();
   if (_glv.watch) { _glv.watch.remove(); _glv.watch = null; }
 }
 function _glvClear() {
@@ -362,7 +363,10 @@ function _glvEvent(ev) {
       return;
     }
     case 'cr': _glcGuestCr(ev.l); return;
-    case 'fx': { const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
+    case 'fx': {
+      if (ev.c === 'ct') { if (typeof _ctGuestEvent === 'function') _ctGuestEvent(ev); return; }   // the host's contest round (94-garden-live-7contest.js)
+      const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return;
+    }
     case 'd': _glvDelta(ev.ops); return;
     default:
   }

@@ -39,6 +39,8 @@ const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', cra
 function _gllFxPlay(A, ev) {
   if (!A || !ev) return;
   const c = ev.c, e = String(ev.e || '');
+  if (c === 'ct') return;   // (the host's round: a visitor hears it in 94-garden-live-7contest.js; a guest cannot say it)
+  if (_gll.role === 'host' && (c === 'fish' || c === 'got') && typeof gardenContestSeen === 'function') { try { gardenContestSeen(A, ev); } catch (err) { console.error('[garden live] contest', err); } }   // the host counts what it can match
   if (c === 'pet' || c === 'wow' || c === 'nap') { if (typeof _gllPetFx === 'function') _gllPetFx(A, ev); return; }
   if (c === 'cr' || c === 'egg' || c === 'pick') { _glcFx(A, ev); return; }
   if (c === 'roam') { if (typeof _gllRoamAdd === 'function') _gllRoamAdd(e); return; }

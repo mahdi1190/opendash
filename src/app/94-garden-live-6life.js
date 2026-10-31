@@ -283,8 +283,10 @@ function _glcBugClaim(ev) {
   const A = _gll.actors.get(ev.w), key = String(ev.i).replace('-', '.'); if (!A) return;
   const known = !!(_gw.bugs && _gw.bugs.has(key)) && !(_gw.goneKeys && _gw.goneKeys.has(key));
   if (!known) { _glhSend(A.f, 'fx', { c: 'bug', e: 'lost', i: String(ev.i), to: ev.w }); return; }
+  const bug = _gw.bugs.get(key);
   _gllBugGone(key);
   _glhSend('all', 'fx', { c: 'bug', e: 'gone', i: String(ev.i), to: ev.w });
+  if (typeof gardenContestBug === 'function') gardenContestBug(ev.w, bug);   // in a bug contest the host scores who it named
 }
 /** The host has said who got a bug. */
 function _glcBugVerdict(ev, e) {

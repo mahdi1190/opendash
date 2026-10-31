@@ -47,6 +47,7 @@ function gardenMomentEnd() {
 function gardenCatchMoment(kind, id, o) {
   o = o || {};
   try { if (typeof gardenLiveFx === 'function') gardenLiveFx('got', kind, { i: id, n: o.cm || 0, ql: o.q || 0, nw: (o.isNew ? 1 : 0) | (o.record ? 2 : 0) }); } catch (e) { /* only a message */ }
+  try { if (typeof gardenContestMine === 'function') gardenContestMine(kind, id, o); } catch (e) { /* a contest is only a game */ }
   if (o.own === false || gardenFun() === 'off' || typeof _gw === 'undefined' || !_gw.on) return false;
   const spec = gardenMomentSpec(kind, id, o), a = typeof _gwActors === 'function' ? _gwActors() : null;
   if (!spec || !a) return false;
