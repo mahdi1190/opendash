@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.32.1]
+
+### Fixed
+- **Knocking at a friend's garden is more reliable.** A knock and its answer are no longer lost when your live connection to your relay has dropped: while someone is waiting at a gate, Freeflo reopens that connection and reads your mailbox straight away, and a knock read a moment late still counts. You also knock three times (about 20 seconds) before giving up, and a knock or answer no longer stops silently after 30 a day.
+- When a knock cannot be sent at all, the garden now says so ("Your knock could not be sent just now") instead of "No answer". Your friend's Freeflo needs this version too for their side to benefit.
+
 ## [2.32.0]
 
 Pets are where they really are in a live garden, they can have playdates, and a group photo goes into everyone's Memories.

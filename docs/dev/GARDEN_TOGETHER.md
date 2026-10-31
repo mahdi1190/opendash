@@ -33,7 +33,7 @@ All are friends kinds with a strict schema (`lib/friends/live.mjs`): ids, cells 
 
 | Kind | Way | Body |
 |---|---|---|
-| `gl:knock` | V to H | `{v, k?}`: the protocol version, and the key made for this visit that the room's ticket will name (needed for the relay road). The only live kind but `gl:hi` and `gl:no` that may use the friend's mailbox (a post, about 30 a day at most) |
+| `gl:knock` | V to H | `{v, k?}`: the protocol version, and the key made for this visit that the room's ticket will name (needed for the relay road). The only live kind but `gl:hi`, `gl:no` and `gl:bye` that may use the friend's mailbox (a post; 200 a day at most per friend, `LIVE_KNOCK_DAY`, and the kind's own rate). These are awaited: `sendLive` returns `failed` and `why` (`rate`, `cap`, `route`, `seal`, `post`), counted as `live-post-failed`, and a knock that did not leave shows the visitor "could not be sent" (`unsent`) instead of "no answer". Read from the mailbox instead of pushed, one still inside its `ttl` (+30 s) counts, and `liveLink.wake()` (a host at home, a visitor waiting) reopens a dropped live connection and reads the mailbox at once. A visitor knocks 3 times, 7 s apart |
 | `gl:hi` / `gl:no` | H to V | `{v, s, lv, w, r?: {n, t, e}}`: you are in (level, slot, the room's nonce and ticket, good for 15 minutes) / `{v, why: closed\|ask\|away\|full\|old\|road\|budget}` |
 | `gl:me` | V to H | `{s, q, a?, pet?}`: how I look (allow-listed ids; drawn through the avatar kit on each side) |
 | `gl:who` | H to V | `{s, q, w, n, a?, pet?, lv, on, x?, y?}`: someone here or gone |
