@@ -212,7 +212,7 @@
     if (p.class2 && p.class2.voluntary) rows.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `Your profit is under ${gbp(p.class2.spt)}, so you do not have to pay any Class 2 National Insurance. You can choose to, at ${gbp2(p.class2.week)} a week (${gbp(p.class2.year)} a year), to keep your record going. A job that pays enough usually does that already.` })));
     if (p.cgt) rows.push(txPosRow('Capital Gains Tax', gbp(p.cgt), `On ${gbp(p.gains)} of gains.`));
     if (b.parts.paidOnAccount) rows.push(txPosRow('Payments on account already made', '−' + gbp(b.parts.paidOnAccount), 'What you paid in advance last January and July.'));
-    if (b.parts.poaToCome) rows.push(txPosRow('Payments on account still to make', '−' + gbp(b.parts.poaToCome), 'Set by last year's return, and due this coming January and July. They count towards this year, so they come off here. Not paid yet.'));
+    if (b.parts.poaToCome) rows.push(txPosRow('Payments on account still to make', '−' + gbp(b.parts.poaToCome), 'Set by last year’s return, and due this coming January and July. They count towards this year, so they come off here. Not paid yet.'));
     rows.push(txPosRow(b.balance >= 0 ? 'Still to pay' : 'Too much paid', gbp(Math.abs(b.balance)), null, { total: true }));
 
     const poa = !b.poa.applies && b.noReturn ? null : h('div', { class: 'fv-tx-poa' },
