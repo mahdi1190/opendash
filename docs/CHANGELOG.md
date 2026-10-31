@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.0]
+
+Music: Spotify, and songs for friends.
+
+### Added
+- **Spotify (Connections > Spotify).** Link your own Spotify: make a free Spotify app, paste its Client ID and sign in. No password and no client secret pass through Freeflo, and the sign-in stays on this computer. Search songs, albums, playlists and artists (10 at a time, with Show more), or paste a Spotify link to find that one. With nothing typed it offers your own playlists, top artists and top songs.
+- **Music on your card (Profile > Music).** Choose a favourite song, album and playlist, and switch on your top five artists from the last 4 weeks, 6 months or all time (read again about once a day). Friends see them on your card, with covers, and a click opens it in Spotify. Nothing shows until you choose it.
+- **Send a friend a song.** From a friend's page (Music), the palette (Send a song to a friend) or the Spotify card: find a song, album, playlist or artist, pick one or more friends, add a line. They get a card in the feed with the cover, your line and Open in Spotify, and if they have Spotify linked too, Play and Queue (Premium, with a Spotify app open). A friend does not need Spotify linked to open what you send.
+- Cover pictures come through your own Freeflo, by id, and are kept on this computer. They are on while Spotify is linked; for a friend's song without Spotify linked there is a switch ("Show cover art for songs friends send") that is off until you turn it on, and the card shows a plain tile and a working link until then.
+
+### Notes
+- Spotify's own rules (February 2026): an app in Development Mode works only while its owner has Premium, for up to 5 people you add under User management, and searches return 10 results a page. Friends who only receive songs need none of this.
+
+### Security
+- Only a 22-character Spotify id and plain text cross to a friend, never a link or a picture. The link and the cover request are made on the receiving side from an id that passed a strict check. Every Spotify request goes through one client with fixed hosts, no redirects and a short list of allowed routes; sign-in uses PKCE and the tokens stay in this computer's secret store.
+
 ## [2.26.0]
 
 Play together, live, in each other's gardens.

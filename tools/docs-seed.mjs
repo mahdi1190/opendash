@@ -10,6 +10,8 @@ import { updateDoc } from '../lib/friends/store.mjs';
 
 const iso = (d) => new Date(Date.now() - d * 864e5).toISOString().slice(0, 10);
 
+/** Invented Spotify-shaped ids (22 letters and digits) for the music in the demo friends' cards. */
+const MUSIC_IDS = Object.freeze({ lanterns: 'DemoTrackPaperLantrn01', lowtide: 'DemoAlbumLowTideRadio1', greenhouse: 'DemoListSundayGreenh01', north: 'DemoArtistNorthStatic1', marlow: 'DemoArtistMarlowSet001', mira: 'DemoArtistMiraOkafor01', juno: 'DemoArtistJunoAndTides', fern: 'DemoArtistFernCollect1' });
 export async function seed(dir) {
   dir = resolve(dir);
   if (!/sbx|sandbox|tmp/i.test(dir) || /OneDrive|Documents/i.test(dir)) throw new Error('docs-seed only writes to a throwaway sandbox folder: ' + dir);
@@ -45,8 +47,11 @@ export async function seed(dir) {
 
   // ---- friends: made-up people with their own (invented) keys; no relay, so nothing is ever sent
   const people = [
-    { name: 'Sam Rivera', pronouns: 'he/him', emoji: '🎧', status: 'Deep in a podcast edit', bio: 'Audio engineer, tea drinker, terrible at chess.', city: 'Leeds', color: '#e07a5f', working: 'Season 2 mix' },
-    { name: 'Priya Nair', pronouns: 'she/her', emoji: '🌱', status: 'Repotting everything', bio: 'Data analyst. Weekend gardener. Will trade cuttings.', city: 'Bristol', color: '#3d9a6a', working: 'Quarterly report' },
+    { name: 'Sam Rivera', pronouns: 'he/him', emoji: '🎧', status: 'Deep in a podcast edit', bio: 'Audio engineer, tea drinker, terrible at chess.', city: 'Leeds', color: '#e07a5f', working: 'Season 2 mix',
+      music: { f: [{ t: 'track', id: MUSIC_IDS.lanterns, n: 'Paper Lanterns', by: 'Northern Static' }, { t: 'album', id: MUSIC_IDS.lowtide, n: 'Low Tide Radio', by: 'The Marlow Set' }],
+        a: [['north', 'Northern Static'], ['marlow', 'The Marlow Set'], ['mira', 'Mira Okafor'], ['juno', 'Juno & the Tides'], ['fern', 'Fern Collective']].map(([k, n]) => ({ id: MUSIC_IDS[k], n })), r: 'medium' } },
+    { name: 'Priya Nair', pronouns: 'she/her', emoji: '🌱', status: 'Repotting everything', bio: 'Data analyst. Weekend gardener. Will trade cuttings.', city: 'Bristol', color: '#3d9a6a', working: 'Quarterly report',
+      music: { f: [{ t: 'playlist', id: MUSIC_IDS.greenhouse, n: 'Sunday greenhouse' }] } },
     { name: 'Jonas Weber', pronouns: 'he/him', emoji: '🚲', status: 'Out on a long ride', bio: 'Designer who cycles to every meeting he can.', city: 'Berlin', color: '#5b8def' },
     { name: 'Mia Chen', pronouns: 'she/her', emoji: '📚', status: 'Revision week', bio: 'Second-year medic. Flashcards for breakfast.', city: 'Glasgow', color: '#a06cd5', working: 'Anatomy flashcards' },
   ];
@@ -73,6 +78,12 @@ export async function seed(dir) {
       const mid = randomBytes(16).toString('hex');
       doc.msgs[mid] = { id: mid, f: m.id, dir: 'in', k: 'profile', at: now - k * 3600e3, lc: now - k * 3600e3, b: { ...m.p, at: now - k * 3600e3 } };
     });
+    // songs they sent (2.26): invented titles and ids, so a shot of the feed and of a friend's page shows the cards
+    const songs = [[0, { t: 'track', id: MUSIC_IDS.lanterns, n: 'Paper Lanterns', by: 'Northern Static', note: 'Made me think of you on the walk home' }], [1, { t: 'playlist', id: MUSIC_IDS.greenhouse, n: 'Sunday greenhouse', note: 'For the repotting' }]];
+    for (const [k, b] of songs) {
+      const mid = randomBytes(16).toString('hex'), at = now - (k + 1) * 1800e3;
+      doc.msgs[mid] = { id: mid, f: made[k].id, dir: 'in', k: 'song', at, lc: at, b: { ...b, at } };
+    }
     return doc;
   });
   console.log(`  seeded ${ids.length} expenses and ${made.length} fake friends in ${dir}`);

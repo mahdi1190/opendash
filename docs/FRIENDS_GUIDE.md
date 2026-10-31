@@ -317,6 +317,16 @@ tools. When they stop sharing, it disappears.
   together, duo streaks and friendship levels, waves, high-fives and cheers,
   postcards from scenes, and gifts.
 
+## Sending a song
+
+Found something a friend would like? Open their page and choose **Send Sam a song** (or press Ctrl+K and type *Send a song*). Search for a song, album, playlist or artist, pick one or more friends, add a line if you like, and send.
+
+They get a card in the feed with the cover, your line and **Open in Spotify**. If they have Spotify linked too, they also get **Play** and **Queue** (Premium, with a Spotify app open). A friend does not need Spotify linked to Freeflo to open what you send.
+
+Searching needs your own Spotify link ([Connections > Spotify](CONNECTIONS.md#spotify-songs-for-friends-favourites-and-top-artists)). Only the song's name, artist and Spotify id travel, never a link or a picture, and **Stop sharing** pauses songs too.
+
+**On your card.** *Profile > Music* lets you choose a favourite song, album and playlist and show your top five artists (the last 4 weeks, 6 months or all time). Friends see them on your card and can open them in Spotify. Nothing shows until you choose it, and your top artists have their own switch.
+
 ## Your card, wardrobe, garden and pet
 
 <!-- media: Life > Profile, the profile card with banner, nameplate and pet -->

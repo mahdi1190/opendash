@@ -269,7 +269,7 @@ computer for them. A friend's page has a *What they can see* panel; Settings >
   exactly as sent.
 - **Stop at once.** *Stop sharing with Sam* on their page, or *Stop sharing
   everything* in Settings > Privacy (also in the command palette): nothing more
-  goes out (Together spaces, cheers, challenges, postcards and your computer's
+  goes out (Together spaces, cheers, challenges, postcards, songs and your computer's
   addresses for direct links pause too), and after 15 seconds (your chance to
   Undo) every friend's app is asked to delete its copy. Your choices are kept for *Share again*.
   Removing or blocking a friend clears your choices for them: if they come
@@ -303,6 +303,7 @@ Only in these cases, and only when you switch the feature on:
 | **Connectors** (Gmail, Google Calendar, a bank, GitHub, Google Drive, other MCP servers) | a request to read: "list events this month", "list transactions since...", "open pull requests of this repository" | the connector, called by Claude through your Claude Code. The results (your events, email subjects and snippets, transactions...) pass through Claude (Anthropic) on their way to your computer |
 | **iCal links** | a normal download request for that address | the calendar host in the link |
 | **Weather** (if you set a town) | the town name (to find it once), then its coordinates | Open-Meteo (open-meteo.com), no account, no key |
+| **Spotify** (only when you set it up in Settings > Connections > Spotify, or switch on cover art) | the sign-in (your Client ID and a one-time code, with a PKCE challenge; there is no client secret), then what you search for, a request for your top artists or playlists, and a request to start a song or add it to your queue. With cover art on and Spotify not linked: only the id of a song, album, playlist or artist, to find its picture | Spotify (`accounts.spotify.com`, `api.spotify.com`, `open.spotify.com`) and its picture hosts (`i.scdn.co`, `*.spotifycdn.com`). The tokens stay in this computer's secret store (never in your data folder). Freeflo never changes your library or playlists |
 | **Direct Google route** (older setups only) | read-only Gmail and Calendar requests | Google, with your own OAuth client |
 | **Read aloud** (stories and the money brief), only with an online voice | the text being read | your browser's speech service. Voices built into your computer keep everything local; voices marked *(online)* in Settings > Brief and stories > *Voice* (for example some "Natural" voices in Microsoft Edge, or Chrome's Google voices) send the text to the browser maker |
 | **Avatars** (if you set an image address on a person) | a normal image request | the site in that address |

@@ -149,6 +149,12 @@ join with their invite. It only holds sealed messages it cannot read. See
 their app to delete its copy. That deletion cannot be forced on their device,
 so only share what you are happy for them to have seen.
 
+**Can I send a friend a song?**
+Yes. Link your own Spotify once (Connections > Spotify; it needs a free Spotify app made with a Premium account, about two minutes), then open a friend's page and choose *Send a song*. They get a card with the cover and Open in Spotify, and do not need Spotify linked to Freeflo. Only the name and Spotify id travel. See [Connections](CONNECTIONS.md#spotify-songs-for-friends-favourites-and-top-artists).
+
+**Do I need Spotify Premium?**
+To link Spotify, yes: since February 2026 Spotify lets an app in Development Mode work only while its owner has Premium. Playing or queueing a song from Freeflo needs Premium and a Spotify app open. Friends who just receive songs need nothing.
+
 ## Claude and connections
 
 **Do I need Claude?**
