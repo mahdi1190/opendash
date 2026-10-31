@@ -85,6 +85,7 @@
     '.fo-in .fo-dr{animation:fo-drop calc(860ms * var(--fo-s,1)) cubic-bezier(.45,0,.6,1) calc(var(--fo-d,0ms) * var(--fo-s,1)) both}',
     '.fo-in .fo-rise{animation:fo-rise calc(800ms * var(--fo-s,1)) cubic-bezier(.3,.8,.3,1) calc((var(--fo-d,0ms) + 300ms) * var(--fo-s,1)) both}',
     '.fo-in .fo-ls{stroke-dasharray:1 1;animation:fo-dw calc(var(--dur,420ms) * var(--fo-s,1)) cubic-bezier(.4,0,.2,1) calc(var(--dl,0ms) * var(--fo-s,1)) both}',
+    '.fo-in .fo-c{animation-duration:calc(var(--dur,420ms) * var(--fo-s,1));animation-timing-function:linear;animation-delay:calc(var(--dl,0ms) * var(--fo-s,1));animation-fill-mode:both}',
     '@keyframes fo-pop{from{opacity:0;transform:scale(.55) rotate(-10deg)}60%{opacity:1}}',
     '@keyframes fo-drop{0%{opacity:0;transform:translateY(-84px) scale(.88,1.16)}8%{opacity:1}56%{transform:translateY(0) scale(.9,1.12)}68%{transform:translateY(0) scale(1.16,.8)}84%{transform:translateY(0) scale(.96,1.05)}100%{transform:none}}',
     '@keyframes fo-rise{from{transform:translateY(32px)}}',
@@ -93,6 +94,23 @@
     '.fo-still *{animation:none!important}',
     '@media (prefers-reduced-motion:reduce){.fo-orb *,.fo-lock *{animation:none!important}}',
   ].join('');
+
+  /* The opening writes each stroke as STEPS copies of it, drawn to growing lengths, and shows one at a time by opacity. Opacity (like
+     the orb's transform) runs on the compositor, so the word keeps writing while the page is busy starting up; animating the stroke
+     itself (stroke-dashoffset) needs the main thread every frame and froze for the whole 1.5 s the app takes to load. */
+  var STEPS = 12;
+  (function () {
+    for (var k = 1; k <= STEPS; k++) {
+      var a = f((k - 1) / STEPS * 100), b = f(k / STEPS * 100);
+      CSS += '.fo-in .fo-c' + k + '{animation-name:fo-s' + k + '}@keyframes fo-s' + k + '{0%' + (a > 0 ? ',' + a + '%' : '') + '{opacity:0}' + f(a + .01) + '%' + (k < STEPS ? ',' + b + '%{opacity:1}' + f(b + .01) + '%,100%{opacity:0}' : ',100%{opacity:1}') + '}';
+    }
+  })();
+  /** cubic-bezier(.4,0,.2,1) (the old stroke's easing): how far along the stroke is at time u. */
+  function ease(u) {
+    var lo = 0, hi = 1, t = u, x;
+    for (var i = 0; i < 24; i++) { t = (lo + hi) / 2; x = 3 * .4 * t * (1 - t) * (1 - t) + 3 * .2 * t * t * (1 - t) + t * t * t; if (x < u) lo = t; else hi = t; }
+    return 3 * t * t * (1 - t) + t * t * t;
+  }
 
   /* ---------- small drawing helpers (all in the 64-unit orb box; the glass interior is r = 22.4 around 32,32) ---------- */
   var seed = 7;
@@ -426,6 +444,13 @@
     o: { w: 66, p: ['M32.5 40.5A27 27 0 1 1 32.5 94.5A27 27 0 1 1 32.5 40.5'] },
     w: { w: 82, p: ['M5.5 40.5L24 94.5L41 52L58 94.5L76.5 40.5'] },
   };
+  /** One stroke of a letter. Still: a single path. In the opening: STEPS copies, each drawn a little further (see STEPS above). */
+  function stroke(d, x, dur, dl, intro) {
+    if (!intro) return '<path class="fo-ls" pathLength="1" d="' + d + '" transform="translate(' + x + ' 0)" style="--dur:' + dur + 'ms;--dl:' + dl + 'ms"/>';
+    var s = '<g transform="translate(' + x + ' 0)" style="--dur:' + dur + 'ms;--dl:' + dl + 'ms">';
+    for (var k = 1; k <= STEPS; k++) s += '<path class="fo-c fo-c' + k + '" pathLength="1" d="' + d + '" stroke-dasharray="' + (k < STEPS ? +ease(k / STEPS).toFixed(3) : 1) + ' 2"/>';
+    return s + '</g>';
+  }
   /** The name as an <svg> string with the orb as its last o. o.name overrides the spelling. */
   function lockup(o) {
     o = o || {}; var v = current(o), p = parts(v, o), chars = (o.name || NAME).split(''), x = 0, idx = 0, body = '', orbX = 0, drop = 0;
@@ -433,7 +458,7 @@
     chars.forEach(function (ch, n) {
       var g = GL[ch]; if (!g) return;
       if (n === slot) { orbX = x + ORB_D / 2; drop = d0 + idx * 60 + 60; x += ORB_D + GAP; idx++; return; }
-      g.p.forEach(function (d, j) { body += '<path class="fo-ls" pathLength="1" d="' + d + '" transform="translate(' + x + ' 0)" style="--dur:' + (j ? 300 : 420) + 'ms;--dl:' + (d0 + idx * 60 + j * 110) + 'ms"/>'; });
+      g.p.forEach(function (d, j) { body += stroke(d, x, j ? 300 : 420, d0 + idx * 60 + j * 110, o.intro); });
       x += g.w + GAP; idx++;
     });
     var W = x - GAP, sc = ORB_D / 55.6, cy = 100.5 - ORB_D / 2;
