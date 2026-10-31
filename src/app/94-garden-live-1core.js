@@ -28,7 +28,8 @@ function _gllReduced() { return typeof gardenMotionOn === 'function' ? !gardenMo
 function gardenLiveLook() {
   const out = {};
   try { if (typeof profileGet === 'function') { const p = profileGet(), w = typeof profileWire === 'function' ? profileWire(p, {}) : null; const a = (w && w.avatar) || p.avatar; if (a && typeof a === 'object') out.a = a; } } catch (e) { /* the default figure */ }
-  try { if (typeof petGet === 'function' && typeof petWire === 'function') { const p = petGet(); if (p && p.species && p.walks !== false) { const w = petWire(p); if (w && w.species) out.pet = w; } } } catch (e) { /* no pet today */ }
+  // (petGet() has no species of its own, its look is in .look: petPayload() is what friends are given of it, and honours "share" and "stays home")
+  try { if (typeof petPayload === 'function') { const w = petPayload(); if (w && w.species && w.walks !== false) out.pet = w; } } catch (e) { /* no pet today */ }
   return out;
 }
 function _gllMyName() { try { if (typeof profileGet === 'function') { const n = String(profileGet().name || '').split(/\s+/)[0]; if (n) return n.slice(0, 40); } } catch (e) { /* below */ } try { const m = window.Friends && Friends.me && Friends.me(); if (m && m.name) return String(m.name).slice(0, 40); } catch (e) { /* below */ } return 'Host'; }
@@ -57,11 +58,13 @@ function _gllPaint(A) {
   if (!A.inner) return;
   const motion = !_gllReduced(), now = Date.now();   // clock-ok: how long a pose lasts
   if (A.pose && now > A.poseUntil) A.pose = '';
-  const pose = A.moving && motion ? 'walk' : A.pose || 'idle', dir = A.dir;
+  let pose = A.moving && motion ? 'walk' : A.pose || 'idle', dir = A.dir;
+  if (A.fish && !A.moving) { pose = 'fish'; dir = 'e'; }   // a line out (94-garden-live-4fx.js): side on, the rod drawn there
+  if (typeof GPL_POSE_FRONT !== 'undefined' && GPL_POSE_FRONT.has(pose)) dir = 's';
   const key = pose + dir + (motion ? 'm' : '');
   if (A.key !== key) {
     let s = '';
-    try { s = typeof gartPlayerSvg === 'function' ? gartPlayerSvg(A.a, { dir, pose, motion }) : ''; } catch (e) { s = ''; }
+    try { s = typeof gartPlayerSvg === 'function' ? gartPlayerSvg(A.a, { dir, pose, motion, stageRod: pose === 'fish' }) : ''; } catch (e) { s = ''; }
     if (!s) s = '<ellipse cx="0" cy="0.6" rx="11" ry="1.8" fill="#000000" opacity="0.14"/><rect x="-6" y="-40" width="12" height="26" rx="5" fill="#5a8a5a"/><circle cx="0" cy="-48" r="8" fill="#e8b890"/><rect x="-5" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/><rect x="1" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/>';
     A.inner.innerHTML = s;   // allow-listed ids through the avatar kit (profileAvatarNormalize), or the fixed figure above
     A.key = key;
@@ -79,7 +82,7 @@ function _gllStep(A, dt) {
   let moving = false;
   if (A.tx != null) {
     const dx = (A.tx - A.x) * W.cellW, dy = (A.ty - A.y) * W.cellH, d = Math.hypot(dx, dy);
-    const step = (d > 170 ? GL_ACT_SPEED * 1.35 : GL_ACT_SPEED) * dt;
+    const step = (d > 170 ? GL_ACT_SPEED * 1.35 : GL_ACT_SPEED) * dt * (A.sneakUntil > Date.now() ? 0.45 : 1);   // clock-ok: a creep
     if (d <= Math.max(step, 1.5)) {
       A.x = A.tx; A.y = A.ty;
       if (A.way && A.way.length) { const n = A.way.shift(); A.tx = n[0]; A.ty = n[1]; moving = true; }
@@ -99,26 +102,6 @@ function _gllStep(A, dt) {
   if (A.bob) { const bt = moving && !_gllReduced() ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : ''; if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
   if (!A.key) _gllPaint(A);
   return moving;
-}
-/** The pet at their heel: it keeps a cell and a bit behind. */
-function _gllPetStep(A, dt, svg) {
-  if (!A.pet || !svg) { if (A.petNode) { A.petNode.remove(); A.petNode = null; } return; }
-  const W = GARDEN_WORLD;
-  if (!A.petNode || !A.petNode.isConnected) {
-    let p = null;
-    try { p = typeof petSanitize === 'function' ? petSanitize(A.pet) : null; } catch (e) { p = null; }
-    if (!p || typeof petSvgGroup !== 'function') { A.pet = null; return; }
-    const g = _gllSvgEl('g', 'gll-pet'); g.setAttribute('data-live', '1');
-    A.petNode = g; A.petLook = p; A.petPose = '';
-  }
-  const dx = (A.x - A.petX) * W.cellW, dy = (A.y - A.petY) * W.cellH, d = Math.hypot(dx, dy);
-  const pose = d > 60 ? 'walk' : 'sit';
-  if (A.petPose !== pose) { A.petPose = pose; try { A.petNode.innerHTML = petSvgGroup(A.petLook, { h: GL_PET_H, pose, cls: _gllReduced() ? '' : 'pt-live' }); } catch (e) { /* no pet today */ } }   // petSanitize: known ids only, drawn from the kit
-  if (d > 60) { const sp = Math.min(A.moving ? 260 : 170, d - 50) * dt; A.petX += dx / d * sp / W.cellW; A.petY += dy / d * sp / W.cellH; }
-  const tf = `translate(${(A.petX * W.cellW).toFixed(1)} ${(W.sky + A.petY * W.cellH).toFixed(1)}) ${dx < 0 ? 'scale(-1 1)' : ''}`;
-  if (A.petT !== tf) { A.petT = tf; A.petNode.setAttribute('transform', tf); }
-  const z = Math.floor(A.petY * 3);
-  if (A.petZ !== z || !A.petNode.parentNode) { A.petZ = z; A.petNode.setAttribute('data-z', A.petY.toFixed(2)); _gllPlace(svg, A.petNode, A.petY); }
 }
 /** Put a node in the row it stands in, among the plants, so what is in front of it hides it. */
 function _gllPlace(svg, node, z) {
@@ -180,6 +163,7 @@ function _gllSprite(A, onClick) {
       _gllStep(A, dt);
       sp.x = A.x; sp.y = A.y;
       _gllPetStep(A, dt, _gw.svg);
+      if (typeof _gllFxStep === 'function') _gllFxStep(A, dt);
     },
     onClick,
   });

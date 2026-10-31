@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.9]
+
+### Added
+- Live play: you see your friend's pet follow them, in its real look, and do what it does (tricks, spectacles, pats, treats, naps). Their roaming pets show too.
+- Live play: you see a friend fish (the rod, the line, the bobber, the bite, the reel) and swing a net, and hear the splash if sounds are on.
+- When anyone catches a fish or a bug, or finds or makes something, they turn to face you and hold it up over their head with a small banner ("Sam caught a bream!"). Off screen it is one short line in a corner. Fun Off skips it.
+- A bug a friend nets is gone from your screen too.
+
+### Fixed
+- A friend's pet never showed up in live play.
+
 ## [2.27.8]
 
 ### Changed

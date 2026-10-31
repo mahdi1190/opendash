@@ -219,6 +219,7 @@ function petWowRun(id, where, o) {
   if (where === 'garden') {
     const P = typeof _ptw !== 'undefined' && _ptw.on ? (_ptw.pets.find(q => q.me) || _ptw.pets[0]) : null;
     if (!P) return null;
+    if (typeof gardenLivePet === 'function') gardenLivePet('wow', id);
     P.tx = null; P.wow = true; P.busy = def.ms / 1000 + 0.3; P.cb = null; P.sit();
     host = _fxGardenHost(P);
     if (_gdp.svg) _gdp.svg.classList.add('gd-hush');

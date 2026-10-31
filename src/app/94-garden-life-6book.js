@@ -26,6 +26,7 @@ function gardenLifeFound(kind, id) {
     if (kind === 'c' && gardenVisitor(id) && !g.disc[id]) g.disc[id] = _gdToday();   // the Almanac's Visitors page knows it too
     gardenLifeSettle(true);
     _glbShow(kind, def);
+    if (kind === 'k' && typeof gardenCatchMoment === 'function') gardenCatchMoment('keep', id, { isNew: true });
     return true;
   } catch (e) { console.error('[garden life]', e); return false; }
 }

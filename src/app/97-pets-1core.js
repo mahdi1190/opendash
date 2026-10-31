@@ -237,6 +237,7 @@ function petFeed() {
   _pt.lastCare = Date.now(); _pt.reactUntil = Date.now() + 2600; _pt.memo = null;   // clock-ok: UI timing
   for (const k of [1, 10, 50, 100, 250, 500, 1000]) if (total === k) _ptNote('treat-' + k, { n: k });
   _ptCareAward(g);
+  if (typeof gardenLivePet === 'function') gardenLivePet('pet', 'eat');
   const bondUp = typeof petBondGive === 'function' ? petBondGive('treat') : 0;
   _ptEmit();
   return { ok: true, bondUp, treat: (petSpecies(g.look.species) || {}).treat || 'cookie', msg: [`${n} loved the ${label}!`, `Nom nom. ${n} says thank you.`, `${n} munched the ${label} happily.`][total % 3] };
@@ -252,6 +253,7 @@ function petPat() {
   if ((_ptHour() >= 22 || _ptHour() < 6)) petWake(45000);
   for (const k of [1, 10, 100, 500, 1000]) if (total === k) _ptNote('pat-' + k, { n: k });
   _ptCareAward(g);
+  if (typeof gardenLivePet === 'function') gardenLivePet('pet', 'pat');
   const bondUp = typeof petBondGive === 'function' ? petBondGive('pat') : 0;
   if (typeof saveUI === 'function' && bondUp) saveUI();
   return { ok: true, n, bondUp };

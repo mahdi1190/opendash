@@ -8,6 +8,7 @@
      GL_CAPS              how many of each a visitor may do in one garden in a day
      GL_BUDGET            this computer's allowance of room messages a day, sent and arrived, and one visitor's share (direct links do not count)
      GL_EMOTES            the moves anyone can see, GL_PHRASES the preset speech bubbles: ids on the wire, drawn from these tables
+     GL_FX_KINDS          what people see each other do (pets, fishing, nets, a catch held up): glFxOk(b) -> '' | why
      GL_QUEUE             what can wait for a host who is out
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
@@ -49,6 +50,22 @@ const GL_PHRASES = Object.freeze([
 ]);
 const GL_PHRASE_IDS = Object.freeze(GL_PHRASES.map(p => p.id));
 const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet']);   // what two people do together: an `em` with c: 'do'
+/** What people SEE each other do (gl:fx, a kind of its own: an older app has no such kind and drops it, so GL_V stays). Ids and cells on the wire, each side draws them from its own tables;
+ *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
+ *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id). `to` and `w` are slots as in gl:em. */
+const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make']);
+const GL_FX_STEPS = Object.freeze({ fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']) });
+const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+/** '' when an fx body fits the tables, else why. (The page checks the ids against its own catalogues, and ignores what it does not know.) */
+function glFxOk(b) {
+  if (!b || typeof b !== 'object' || !GL_FX_KINDS.includes(b.c) || !GL_FX_ID_RE.test(String(b.e || ''))) return 'kind';
+  const steps = GL_FX_STEPS[b.c];
+  if (steps && !steps.includes(b.e)) return 'step';
+  if (b.c === 'got' && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
+  if (b.c === 'bug' && b.e === 'gone' && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
+  if (b.c === 'fish' && b.e === 'cast' && !(Number.isInteger(b.x) && Number.isInteger(b.y))) return 'cell';
+  return '';
+}
 const GL_COLS = 64;               // cells are 0..63 on the wire, as in a garden snapshot
 const GL_ID_RE = /^[0-9a-z]{6,24}$/;   // an intent's id, as _gllNewId makes it: it ends up in synced records, so it can never look like a credential
 

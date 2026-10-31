@@ -127,7 +127,7 @@ function _gwFishFrame(dt) {
     by = ty + Math.sin(F.t * 2.6) * 0.9; sag = 8;
     if (F.t > F.nextNibble) { F.nextNibble = F.t + 1.2 + Math.random() * 2.4; F.nibble = 0.35; _gwRing(tx, ty, 0.6); }
     if (F.nibble > 0) { F.nibble -= dt; by += Math.sin(F.nibble * 40) * 1.2; }
-    if (F.t >= F.plan.wait) { F.state = 'bite'; F.t = 0; _gwRing(tx, ty); _gwRing(tx, ty, 1.3); }
+    if (F.t >= F.plan.wait) { F.state = 'bite'; F.t = 0; _gwRing(tx, ty); _gwRing(tx, ty, 1.3); if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'bite'); }
   } else if (F.state === 'bite') {
     by = ty + 4 + Math.sin(F.t * 36) * 2; sag = 3;
     if (F.t >= F.plan.strike) { _gwFishLost('It got away: too slow.'); return; }
@@ -155,10 +155,12 @@ function _gwRing(x, y, k) {
 function _gwFishCancel() {
   // you wound it in yourself: that is not a mistake, so nothing is said
   if (!_gwFishBusy()) return;
+  if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'in');
   _gw.fishing.state = 'idle'; _gwReelClose(); _gwFishClearFx(); _gwFishFocus(false);
 }
 function _gwFishCancelWalkAway() { if (_gwFishBusy() && _gw.fishing.state !== 'cast') _gwFishCancel(''); }
 function _gwFishLost(msg) {
+  if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'lost');
   _gw.fishing.state = 'idle'; _gwReelClose(); _gwFishClearFx(); _gwFishFocus(false);
   if (msg) { const s = _ghProject(_gw.fishing.bx, _gw.fishing.by), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, say: msg }); }
   if (gardenMotionOn()) { const [x, y] = _gwPx(_gw.fishing.bx, _gw.fishing.by); _gwRing(x, y, 1.2); }
@@ -202,6 +204,7 @@ function _gwFishCast(pt) {
   if (!plan.ok) { _gdpSay(plan); return; }
   _gw.fishing = { state: 'cast', t: 0, plan, bx: pt.x, by: pt.y, nextNibble: 1.1 + Math.random() * 1.5, nibble: 0, hold: false };
   _gwFishClearFx(); _gwFx(); _gwBody(); _gwFishFocus(true);
+  if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'cast', { x: Math.floor(pt.x), y: Math.floor(pt.y) });
   _gdpRefreshChromeSoon(); if (typeof _gdpPaintSide === 'function') _gdpPaintSide(gardenModel());
 }
 /** Space / E with a rod and nothing out: cast at the water in front of you. */
@@ -226,12 +229,12 @@ function _gwFishPress(fromClick) {
 function _gwFishRelease() { if (_gw.reel) _gw.reel.hold = false; }
 function _gwFishStrike() {
   const F = _gw.fishing, plan = F.plan;
-  F.state = 'reel'; F.t = 0;
+  F.state = 'reel'; F.t = 0; if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'reel');
   if (!plan.diff) { _gwFishLand({ perfect: false, easy: true }); return; }   // junk and treasure just come in
   _gwReelOpen(plan);
 }
 function _gwFishLand(res) {
-  const F = _gw.fishing; F.state = 'land'; F.t = 0; F.res = res; _gwReelClose();
+  const F = _gw.fishing; F.state = 'land'; F.t = 0; F.res = res; _gwReelClose(); if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'land');
   if (gardenMotionOn()) { const [x, y] = _gwPx(F.bx, F.by); _gwRing(x, y, 1.6); }
 }
 function _gwFishFinish() {
@@ -240,15 +243,15 @@ function _gwFishFinish() {
   const r = gardenCatchFish(plan, F.res || {});
   if (!r.ok) { _gdpSay(r); return; }
   const d = r.def;
-  const frag = gardenFishArt(d.id, { uid: 'held' });
-  _gwHeldUp(frag, 1500);
+  const held = gardenCatchMoment('fish', d.id, { cm: r.cm, q: r.q, isNew: r.isNew, record: r.record });   // held up over your head, and told to the others
+  if (!held) _gwHeldUp(gardenFishArt(d.id, { uid: 'held' }), 1500);
   const rare = ['rare', 'epic', 'legendary'].includes(d.rarity);
   let sub, name = d.name;
   if (d.cat === 'fish') sub = `${r.cm} cm · ${gardenQuality(r.q).label}${r.perfect ? ' reel' : ''}`;
   else if (r.coins) { sub = `${r.coins} coins inside`; name = 'A coin purse'; }
   else if (r.items) { const k = Object.keys(r.items)[0], pl = gardenPlant(String(k).replace('seed:', '')); sub = pl ? `A ${pl.name.toLowerCase()} seed packet and 10 coins` : 'A seed packet'; }
   else sub = d.cat === 'junk' ? 'Junk, but the market takes it' : 'Treasure!';
-  _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc' }), name, sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: 'fish' });
+  if (!held) _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc' }), name, sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: 'fish' });
   if (typeof gardenFloat === 'function') gardenFloat(d.cat === 'fish' ? `+${(_GC_XP[d.rarity] || 1)} XP` : '', Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }
@@ -321,7 +324,7 @@ function _gwBugsReset() { if (_gw.bugs) for (const b of _gw.bugs.values()) if (b
 function _gwBugsSync(m) {
   if (!_gw.bugs) _gw.bugs = new Map();
   const layer = _gwBugsLayer(); if (!layer) return;
-  const now = gardenBugsNow(m), keep = new Set();
+  const now = gardenBugsNow(m).filter(s => !(_gw.goneKeys && _gw.goneKeys.has(s.key))), keep = new Set();   // (one a friend netted is gone for you too)
   for (const s of now) {
     keep.add(s.key);
     if (_gw.bugs.has(s.key)) continue;
@@ -455,6 +458,7 @@ function _gwBugDist(b) { return Math.hypot(b.x - _gw.px, (b.y - _gw.py) * 1.5); 
 function _gwNetReach() { return gardenNet().st.reach; }
 function _gwNetChase(bug) {
   _gw.netting = { actor: bug, state: 'chase', t: 0, swing: 0, lastWalk: -9, goal: null, stuck: 0 };
+  if (typeof gardenLiveFx === 'function') gardenLiveFx('bug', 'sneak');
   _gwNetWalk();
 }
 /** Creep to a free place within reach of the bug. Says so (and stops) when it is too far in among the plants for the net to reach. */
@@ -495,6 +499,7 @@ function gardenNetSwing() {
   _gw.face = best.x >= _gw.px ? 1 : -1; _gwBody(); _gwNetDraw(best);
 }
 function _gwNetAir() {
+  if (typeof gardenLiveFx === 'function') gardenLiveFx('bug', 'swing');
   if (!gardenMotionOn()) return;
   const a = _gwActors(); if (!a) return;
   const [x, y] = _gwFeet(), f = _gw.face;
@@ -516,14 +521,16 @@ function _gwNetResolve() {
   let p = 0.78 + net.st.luck - 0.065 * b.def.skit - Math.max(0, d - net.st.reach) * 0.4;
   if (awake) p *= b.state === 'flee' ? 0.18 : 0.4;
   if (_gw.sneak) p += 0.06;
-  const ok = Math.random() < Math.max(0.06, Math.min(0.96, p));
-  if (!ok) { b.state = 'flee'; b.fleeT = 2; const pk = _gwBugPick(b, true); b.tx = pk.x; b.ty = pk.y; if (typeof gardenFloat === 'function') gardenFloat('It got away!', Math.floor(b.x), Math.floor(b.y) - 1, 1, 1, ''); return; }
+  const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < Math.max(0.06, Math.min(0.96, p));   // (somebody netted it first: your swing misses)
+  if (!ok) { if (typeof gardenLiveFx === 'function') gardenLiveFx('bug', 'miss'); b.state = 'flee'; b.fleeT = 2; const pk = _gwBugPick(b, true); b.tx = pk.x; b.ty = pk.y; if (typeof gardenFloat === 'function') gardenFloat('It got away!', Math.floor(b.x), Math.floor(b.y) - 1, 1, 1, ''); return; }
   const r = gardenCatchBug({ key: b.key, id: b.id });
   if (!r.ok) { _gdpSay(r); return; }
   if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(b.key);
+  if (typeof gardenLiveFx === 'function') gardenLiveFx('bug', 'gone', { i: String(b.key).replace('.', '-') });
   if (gardenMotionOn() && typeof gardenPop === 'function') gardenPop(Math.floor(b.x), Math.floor(b.y), 1, 1, 'is-grow');
   const d2 = r.def, rare = ['rare', 'epic', 'legendary'].includes(d2.rarity);
-  _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false }), name: d2.name, sub: d2.rarity === 'common' ? 'In your bag' : GARDEN_RARITY[d2.rarity].label + ' find', isNew: r.isNew, rare, open: 'bugs', ms: 3400 });
+  const held = gardenCatchMoment('bug', d2.id, { isNew: r.isNew });
+  if (!held) _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false }), name: d2.name, sub: d2.rarity === 'common' ? 'In your bag' : GARDEN_RARITY[d2.rarity].label + ' find', isNew: r.isNew, rare, open: 'bugs', ms: 3400 });
   if (typeof gardenFloat === 'function') gardenFloat(`+${_GC_XP[d2.rarity] || 1} XP`, Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }

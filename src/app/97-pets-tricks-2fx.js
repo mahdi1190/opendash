@@ -354,6 +354,7 @@ function _fxSound(kind) {
       sparkle: () => { for (let i = 0; i < 8; i++) tone(_fxR(1500, 3600), i * 0.07, 0.25, 0.014, 'sine'); },
       flame: () => noise(0, 1.6, 0.05, 900, 300),
       pop: () => tone(520, 0, 0.14, 0.06, 'sine', 980),
+      splash: () => { noise(0, 0.28, 0.05, 1800, 500); tone(300, 0.02, 0.12, 0.03, 'sine', 140); },
       rise: () => tone(220, 0, 1.6, 0.04, 'sine', 880),
     };
     if (S[kind]) S[kind]();
