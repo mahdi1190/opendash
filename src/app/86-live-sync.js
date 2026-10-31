@@ -494,6 +494,7 @@ function liveFilesChanged(rels) {
 // The pages and what reads their data again (each reader is the page's own load function; none writes anything).
 liveRefresh(/^expenses\//, (rels) => { if (typeof expensesFilesChanged === 'function') expensesFilesChanged(rels); });                       // Expenses page, the Owed widget, a task's expenses (66-expenses-0core.js)
 liveRefresh(/^friends\/(friends|feed|shared|me|relays|fun)\.json$/, () => { if (typeof _frReloadSoon === 'function') _frReloadSoon(250); });     // Friends: the list, the feed, what friends share (96-friends-0core.js)
+liveRefresh('friends/groups.json', () => { if (typeof grOnEvent === 'function') grOnEvent(null); });                                          // Groups: another of my computers changed one (96-friends-4groups.js)
 liveRefresh('friends/spaces.json', () => { if (typeof togetherFilesChanged === 'function') togetherFilesChanged(); });                      // Together: shared spaces (99-together-0core.js)
 liveRefresh('friends/garden.json', () => { if (typeof _gscReloadSoon === 'function') _gscReloadSoon(300); });                               // Friends' gardens and the co-op bed (94-garden-social-1core.js)
 liveRefresh('profile.json', () => { if (typeof render === 'function') { try { render(); } catch (e) { /* fine */ } } });                     // your card and look

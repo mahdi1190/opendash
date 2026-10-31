@@ -30,7 +30,7 @@ const _frUI = { entry: '', root: null, feedN: 30, feed: null, feedAt: 0, feedBus
 const _FR_PRES = Object.freeze({ online: ['Here now', 'circle-dot'], focusing: ['Focusing', 'timer'], travelling: ['Travelling', 'plane'], away: ['Away', 'moon'], offline: ['Not around', 'moon'] });
 const _FR_CHEERS = Object.freeze(['👏', '🎉', '💪', '🔥', '❤️', '🌟']);
 /** Every Friends view: the five tabs (96-friends-2tabs.js) and a friend's page. */
-const _FR_VIEW_RE = /^friends(:(feed|requests|shared|settings|data(:[0-9a-f]{16})?|[0-9a-f]{16}))?$/;
+const _FR_VIEW_RE = /^friends(:(feed|requests|shared|settings|data(:[0-9a-f]{16})?|groups(:[A-Za-z0-9_-]{22})?|[0-9a-f]{16}))?$/;
 function _frIdOf(v) { const m = /^friends:([0-9a-f]{16})$/.exec(String(v || '')); return m ? m[1] : null; }
 
 registerSection('friends', {
@@ -323,9 +323,9 @@ function _frPendCard(f) {
   const acts = _frEl('div', 'fr-pend-a');
   if (f.status === 'incoming') {
     body.appendChild(_frEl('b', null, `${name} wants to connect`));
-    body.appendChild(_frEl('span', 'muted fr-small', f.how === 'invite' ? 'They used your invite link.' : 'They found you with your friend code.'));
+    body.appendChild(_frEl('span', 'muted fr-small', f.how === 'invite' ? 'They used your invite link.' : f.how === 'group' ? 'You are in a group together.' : 'They found you with your friend code.'));
     if (f.step === 'check') {
-      body.appendChild(_frEl('span', null, `Is it really ${name}? Accept only if their screen shows these same pictures:`));
+      body.appendChild(_frEl('span', null, f.how === 'group' ? `Want to be sure it's ${name}? Their screen shows these same pictures:` : `Is it really ${name}? Accept only if their screen shows these same pictures:`));
       body.appendChild(_frCodeEl(f.code));
       acts.appendChild(uiButton({ label: 'Accept', icon: 'check', kind: 'primary', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/approve', { id: f.id }); _frBurst(b); await friendsLoad(true); _frRepaint(); }, null, 'accept ' + name) }));
       acts.appendChild(uiButton({ label: "No, they're different", size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try adding each other again.', 'stop this request') }));
@@ -770,6 +770,7 @@ function _frAddPaste(pane, close) {
   stop.hidden = true;
   const go = uiButton({ label: 'Use this invite', icon: 'user-plus', kind: 'primary', run: (e, b) => {
     if (!ta.value.trim()) { ta.focus(); return; }
+    if (/ODG1\./.test(ta.value) && typeof grJoinDialog === 'function') { const text = ta.value.trim(); close(); grJoinDialog(text); return; }   // a group's link: the group's own steps
     ctl = new AbortController(); stop.hidden = false;
     _frDo(b, async () => {
       const r = await _frApi('/api/friends/add', { invite: ta.value.trim() }, { signal: ctl.signal });

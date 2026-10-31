@@ -137,6 +137,7 @@ function friendsOnEvent(d) {
     try { document.dispatchEvent(new CustomEvent('opendash:identity-rotated', { detail: { oldEd: k(d.oldEd), newEd: k(d.newEd), role: ['owner', 'member', 'none'].includes(d.role) ? d.role : null, source: d.source === 'sync' ? 'sync' : 'here' } })); } catch (e) { /* old browser */ }
     if (d.source === 'sync') toast('You renewed your friend security on another computer. This one is up to date.', { icon: 'key-round' });
   }
+  if (d.type === 'groups') { if (typeof grOnEvent === 'function') grOnEvent(d); return; }   // a group changed (96-friends-4groups.js)
   if (d.type === 'presence' && typeof d.id === 'string') {
     _fr.presenceLive.set(d.id, { s: String(d.s || 'offline'), at: Date.now() });
     const f = friendsGet(d.id);

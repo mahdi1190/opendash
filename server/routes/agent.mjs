@@ -61,6 +61,19 @@ export default function register(app) {
     'together.create': async (e) => pick(await route('POST', '/api/together/space', { id: 's' + randomBytes(9).toString('hex'), name: e.name, kind: e.kind, members: e.members }), ['id']),
     'together.edit': async (e) => pick(await route('POST', '/api/together/edit', { space: e.space, ops: e.ops }), ['changed']),
     'together.status': async (e) => pick(await route('POST', '/api/together/status', { space: e.space, status: e.status }), ['status']),
+    // Groups: only allow-listed fields come back. Never a link, a code or a key.
+    'groups.create': async (e) => { const r = await route('POST', '/api/groups/create', { name: e.name, mode: e.mode }); return { ...pick(r, ['id', 'name', 'mode']), next: 'The link is in Friends > Groups > Share the link. The person shares it themselves.' }; },
+    'groups.join': async (e) => pick(await route('POST', '/api/groups/join', { text: e.code }), ['status', 'name', 'id']),
+    'groups.person': async (e) => {
+      if (e.action === 'add_friend') { const r = await route('POST', '/api/groups/friend', { id: e.id, iid: e.iid }); return { status: r.friend && r.friend.status, next: 'They still have to accept.' }; }
+      if (e.action === 'remove' || e.action === 'block') { const r = await route('POST', '/api/groups/remove', { id: e.id, iid: e.iid, block: e.action === 'block' }); return { undoUntil: r.undoUntil, next: 'The app shows Undo until then. After that the group gets a new key.' }; }
+      await route('POST', `/api/groups/${e.action}`, { id: e.id, iid: e.iid });
+      return { done: true };
+    },
+    'groups.leave': async (e) => { await route('POST', '/api/groups/leave', { id: e.id }); return { done: true }; },
+    'groups.reset': async (e) => { await route('POST', '/api/groups/reset', { id: e.id }); return { done: true, next: 'The new link is in Friends > Groups > Share the link.' }; },
+    'groups.share': async () => ({ next: 'Friends > Groups > Share the link shows the link, a QR code, a message and a poster. The person shares it themselves.' }),
+    'groups.announce': async (e) => { await route('POST', '/api/groups/post', { id: e.id, ch: 'a', text: e.text }); return { done: true }; },
     'devices.add': async () => { await route('POST', '/api/sync/code/start', {}); return { next: 'The code is on screen in Settings > Sync. The person types it on the new computer.' }; },   // the code stays on screen
     'devices.remove': async (e) => { await route('POST', '/api/sync/devices/remove', { id: e.id }); return { done: true }; },
     'relay.connect': async () => { await route('POST', '/api/relay/connect', {}); return { next: 'Settings > Your relay shows each step. Cloudflare opens in the browser: the person signs in there.' }; },

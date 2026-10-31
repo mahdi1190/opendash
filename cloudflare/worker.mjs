@@ -49,13 +49,17 @@ export default {
       // Unsigned requests stop here, before any Durable Object is looked up (or created).
       const f = await front(request.method, u.pathname, ip, io, { host: u.host, query: u.search.slice(1), headers: request.headers, upgrade });
       if (f.response) return toResponse(f.response);
+      // Too big by its own say-so: refused here, before any Durable Object is asked.
+      if (Number(request.headers.get('content-length')) > maxBody(request.method, u.pathname)) return toResponse(errorReply(new RelayError(413, 'too_large'), now));
       const headers = new Headers();
       for (const h of FORWARD) { const v = request.headers.get(h); if (v) headers.set(h, v); }
       headers.set('X-OD-Space', f.route.space);
       headers.set('X-OD-IP', ip);
       const stub = env.SPACES.get(env.SPACES.idFromName(f.route.space));
       const res = await stub.fetch(new Request(request, { headers }));
-      if (res.status === 200 && u.pathname === '/v1/invites/redeem') gate.add(request.headers.get('x-od-key'));
+      // Let in moments ago: known here at once. A group's POST /join answers 200 only for a member (a 202 means they only asked); anyone
+      // may read their own state with GET /join, so that says nothing about who they are.
+      if (res.status === 200 && request.method === 'POST' && (u.pathname === '/v1/invites/redeem' || /^\/v1\/rg\/[^/]+\/join$/.test(u.pathname))) gate.add(request.headers.get('x-od-key'));
       return res;
     } catch (e) { return toResponse(errorReply(e, now)); }
   },

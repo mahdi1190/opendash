@@ -49,6 +49,7 @@ export default function register(app) {
   app.route({ path: '/api/relay/members/revoke', method: 'POST', handler: wrap(async (c) => { const b = await body(c); const r = await svc.memberRevoke(b.iid); return { ok: true, undo: b.iid, until: r.until || null }; }) });
   app.route({ path: '/api/relay/members/restore', method: 'POST', handler: wrap(async (c) => { const b = await body(c); await svc.memberRestore(b.iid); return { ok: true }; }) });
   app.route({ path: '/api/relay/members/scopes', method: 'POST', handler: wrap(async (c) => { const b = await body(c); await svc.memberScopes(b.iid, b.scopes); return { ok: true }; }) });
+  app.route({ path: '/api/relay/groups/delete', method: 'POST', handler: wrap(async (c) => { const b = await body(c); await svc.groupDelete(b.gid); return { ok: true }; }) });
   app.route({ path: '/api/relay/invites/cancel', method: 'POST', handler: wrap(async (c) => { const b = await body(c); await svc.inviteCancel(b.id); return { ok: true }; }) });
   app.route({ path: '/api/relay/devices/revoke', method: 'POST', handler: wrap(async (c) => { const b = await body(c); await svc.certRevoke(b.cert); return { ok: true }; }) });
   app.route({ path: '/api/relay/disconnect', method: 'POST', handler: wrap(() => svc.disconnect()) });

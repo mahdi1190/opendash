@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.25.0]
+
+Groups: one link for everyone.
+
+### Added
+- **Friends > Groups.** Start a group for your friends or your organisation: a name, then one link and QR code to share by message, email or poster. Joining shows the group's name and who runs it first.
+- You choose "I approve each person" (the default) or "anyone with the link", with an optional expiry and maximum uses. Reset link kills the old one at once. Short codes are off by default, only work for people already on that connection, and can only ask to join.
+- A waiting list, an end-to-end encrypted noticeboard with announcements, a searchable list of people, pictures to check someone in person, helpers, handing over ownership, remove (with Undo) and block, and a different name per group.
+- Being in a group shares only your name, avatar and status. Add as friend still needs the other person to accept unless they agreed to automatic friends. Tasks, calendar and money are never shared by joining.
+- A small page on your relay explains Freeflo to people who follow a link and do not have it yet.
+
+### Security
+- An independent review before release found ways a dishonest relay could read a group. All were fixed before this release: the link now anchors the group's identity, and every member, role and key is checked against signatures. What a relay can still see and do is written down in docs/dev/GROUPS.md.
+
+Press Update my relay (Settings > Your relay) to use groups. A free Cloudflare account suits about 100 active people; the app warns you before then.
+
 ## [2.24.1]
 
 ### Fixed
