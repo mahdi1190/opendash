@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.2]
+
+### Added
+- Transactions shows pending payments at the top, labelled and not counted in your totals. They go once the bank settles them. This works for banks connected directly (Monzo and Enable Banking).
+
 ## [2.27.1]
 
 ### Fixed

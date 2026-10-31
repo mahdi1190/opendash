@@ -22,6 +22,23 @@
     const f = val[key] || val.d;
     return rows.sort((p, q) => { const a = f(p), b = f(q); return (a < b ? -1 : a > b ? 1 : 0) * dir || q.n - p.n || p.i - q.i; });
   }
+  // Card payments the bank has not settled yet (M.pending): on top, labelled, never counted in the totals. They go when they settle.
+  function txPaintPending(ctx, M) {
+    const el = S.txPend; if (!el) return;
+    let rows = (M.pending || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t));
+    if (R.txFlow === 'in') rows = rows.filter(t => t.a > 0);
+    else if (R.txFlow === 'out') rows = rows.filter(t => t.a < 0);
+    if (R.txKinds && R.txKinds.size) rows = [];
+    el.hidden = !rows.length;
+    el.replaceChildren();
+    if (!rows.length) return;
+    el.append(h('div', { class: 'fv-tx-pend-h' }, h('b', { text: 'Pending' }), h('span', { text: 'Not settled yet, and not in your totals' })));
+    const ul = h('ul', { class: 'fv-list' });
+    for (const t of rows) ul.append(h('li', null, h('div', { class: 'fv-row fsym-host' }, C1.tileEl(t.m, 'Uncategorised', 'sm'),
+      h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s', text: fDay(t.n) })),
+      h('span', { class: 'fv-cc-v' }, h('span', { class: 'fv-amt fv-row-v' + (t.kind === 'income' ? ' in' : ''), text: t.kind === 'income' ? '+' + gbp2(t.inc) : gbp2(t.s) })))));
+    el.append(ul);
+  }
   // The list as shown: txRows plus this view's own Money in / out and type filters.
   function txVisible(ctx) {
     let rows = txRows(ctx);
@@ -49,7 +66,8 @@
     S.txList = h('div', { class: 'fv-txl', role: 'list', 'aria-label': 'Transactions' });
     S.txMore = h('div', { class: 'fv-tx-more', 'aria-hidden': 'true' });
     cd.el.querySelector(':scope > .fv-card-h').append(S.txBar);   // 2.19.4: the title and the tools are one row
-    cd.body.append(S.txList, S.txMore);
+    S.txPend = h('div', { class: 'fv-tx-pend', hidden: true });
+    cd.body.append(S.txPend, S.txList, S.txMore);
     S.txCtl = cd.el.querySelector('.fv-tx-ctl');
     S.txList.addEventListener('click', e => {
       if (e.target.closest('select,button,input,a,.fv-txx')) return;
@@ -133,6 +151,7 @@
     S.txNew = txNewSet(M);
     if (S.txNew && S.txNew.size && !M._faPrinted) { M._faPrinted = true; faReceipt(S.txCtl, S.txNew.size); }   // new payments: a tiny receipt prints
     S.txEnter = first;
+    txPaintPending(ctx, M);
     S.txList.innerHTML = ''; S.txGroupEl = null;
     S.txList.classList.toggle('flat', !S.txByDate);
     cd.setEmpty(null);
