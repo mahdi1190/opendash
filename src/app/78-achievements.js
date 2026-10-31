@@ -259,6 +259,7 @@ function _achRewardLabel(d) {
 /** The unlock moment: the game plays it by rarity (92-game-1core.js gameAchMoment); else one quiet toast. */
 function achUnlockMoment(ids) {
   if (!ids || !ids.length) return;
+  try { if (typeof gardenLiveCheer === 'function') for (const id of ids.slice(0, 3)) gardenLiveCheer('ach', id); } catch (e) { /* only a cheer */ }   // 2.29.0: the others in a live garden see it
   if (typeof gameAchMoment === 'function') { try { gameAchMoment(ids); return; } catch (e) { /* fall back to the toast */ } }
   if (ids.length > 1) { toast(`${ids.length} achievements unlocked`, { icon: 'award', action: { label: 'See them', run: () => achOpenPanel() } }); return; }
   const d = achDef(ids[0]);

@@ -118,3 +118,6 @@
 .spotify-art .conn-note { grid-column: 1 / -1; margin: 0; }
 
 @media (prefers-reduced-motion: reduce) { .mu-art img { transition: none; } .mu-artist:hover { transform: none; } .mu-eq i { animation: none; transform: scaleY(0.7); } .mu-now-bar i { transition: none; } }
+
+/* Listen along: the chip in a live garden's tag */
+.gd-visittag .mu-now { max-width: 230px; margin-left: 6px; }

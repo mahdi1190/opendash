@@ -76,6 +76,11 @@ function _gwBuildSolids(m) {
     const w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = Math.min(w, 2) * 0.5, d = 0.28 + (h > 1 ? 0.3 : 0);
     add(cx - bw / 2, foot - d, cx + bw / 2, foot);
   }
+  for (const p of GARDEN_PROPS) {
+    if (gardenPropCol(p) !== 'soft') continue;
+    const cx = p.x + p.w / 2, foot = p.y + p.h - 0.08, bw = Math.min(p.w, 2) * 0.5, d = 0.28;
+    add(cx - bw / 2, foot - d, cx + bw / 2, foot);   // a lectern, a camera, a post box: a small box at the base, so there is room beside it
+  }
   return { list, at };
 }
 /** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
@@ -94,9 +99,9 @@ function _gwBuildGrid(m) {
     let blocked = false;
     const a = gardenAreaAt(x, y, lvl);
     if (a.startsWith('locked:')) blocked = true;                     // behind the little fence
-    const pr = gardenPropAt(x, y);
-    if (pr && !pr.walk) blocked = true;
-    if (!pr && gardenIsWater(x, y)) blocked = true;
+    const pr = gardenPropAt(x, y), pc = pr ? gardenPropCol(pr) : '';
+    if (pc === 'full') blocked = true;                                // (a shop is a wall; a lectern is a box, the mooring post, the reeds and the boat nothing: _gwBuildSolids)
+    if ((!pr || (pc === 'none' && !pr.walk)) && gardenIsWater(x, y)) blocked = true;   // (a boat floats: the water under it is still water)
     const c = m.occ.get(x + ',' + y);
     if (c && c.decor) { const d = gardenDecorById(m, c.decor); if (!d || gardenDecorCol(d.def) === 'full') blocked = true; }   // (a seat is full: you walk up to it to sit)
     // (a tree's trunk and a small decoration are boxes, not cells: _gwBuildSolids)
@@ -183,8 +188,8 @@ function _gwMoveBy(dx, dy) {
     if (x === x0 && y === y0) {
       const horiz = Math.abs(dx * W.cellW) >= Math.abs(dy * W.cellH), stepPx = Math.hypot(dx * W.cellW, dy * W.cellH);
       const unit = horiz ? 1 / W.cellH : 1 / W.cellW;   // one pixel across the way we are going, in cells
-      // the smallest sideways offset (2 .. 10 px) that lets the step go on; walk toward it a step at a time, so it never jitters
-      search: for (let k = 1; k <= 5; k++) for (const s of [1, -1]) {
+      // the smallest sideways offset (2 .. 24 px: far enough to round a small box head-on) that lets the step go on; walk toward it a step at a time, so it never jitters
+      search: for (let k = 1; k <= 12; k++) for (const s of [1, -1]) {
         const full = s * k * 2 * unit, part = s * Math.min(k * 2, Math.max(1, stepPx)) * unit, whole = Math.abs(part) >= Math.abs(full) - 1e-9;
         const ax = horiz ? x0 + dx : x0 + full, ay = horiz ? y0 + full : y0 + dy;   // sideways by the whole offset and on
         if (!_gwFree(ax, ay)) continue;
@@ -290,6 +295,69 @@ function _gwRoute(from, to) {
     let j = pts.length - 1;
     while (j > i && !_gwLos(at, pts[j], GW_CLEAR)) j--;
     out.push(pts[j]); at = pts[j]; i = j + 1;
+  }
+  // the cell route runs through the middle of each cell, and a small box (a lectern, a lantern) can stand right there: any leg the feet cannot take is planned again, finely, round it
+  const fixed = []; at = { x: from.x, y: from.y };
+  for (const p of out) {
+    if (_gwLos(at, p)) fixed.push(p); else fixed.push(..._gwMend(at, p));
+    at = p;
+  }
+  return fixed;
+}
+/** The points to walk from a to b when a small box stands in the straight leg: straight up to it, a fine way round it (_gwLocalPath), then on. Always ends at b. */
+function _gwMend(a, b) {
+  const out = []; let at = a;
+  for (let round = 0; round < 4; round++) {
+    if (_gwLos(at, b)) { out.push(b); return out; }
+    const steps = Math.max(2, Math.ceil(Math.hypot(b.x - at.x, b.y - at.y) / 0.0625));
+    const q = (i) => ({ x: at.x + (b.x - at.x) * i / steps, y: at.y + (b.y - at.y) * i / steps });
+    let t1 = 0, t2 = steps;
+    for (let i = 1; i <= steps; i++) { const p = q(i); if (!_gwFree(p.x, p.y)) { t1 = i; break; } }
+    if (!t1) { out.push(b); return out; }
+    for (let i = t1 + 1; i <= steps; i++) { const p = q(i); if (_gwFree(p.x, p.y, 0.08)) { t2 = i; break; } }
+    const p0 = q(Math.max(0, t1 - 2)), p1 = t2 >= steps ? b : q(t2), way = _gwLocalPath(p0, p1);
+    if (!way) { out.push(b); return out; }
+    if (t1 > 2) out.push(p0);
+    out.push(...way); at = p1;
+    if (p1 === b) return out;
+  }
+  out.push(b); return out;
+}
+/** The way round a small box between a and b (a few cells apart at most): A* on a lattice of an eighth of a cell, half a cell or so either side, string-pulled. null when there is none (or it takes too long). */
+function _gwLocalPath(a, b) {
+  const S = 0.125, pad = 0.6, x0 = Math.min(a.x, b.x) - pad, y0 = Math.min(a.y, b.y) - pad, t0 = Date.now();   // clock-ok: a time budget
+  const nx = Math.ceil((Math.abs(b.x - a.x) + 2 * pad) / S) + 1, ny = Math.ceil((Math.abs(b.y - a.y) + 2 * pad) / S) + 1;
+  if (nx * ny > 2500) return null;
+  const sI = Math.round((a.x - x0) / S), sJ = Math.round((a.y - y0) / S), gI = Math.round((b.x - x0) / S), gJ = Math.round((b.y - y0) / S);
+  const id = (i, j) => j * nx + i, memo = new Int8Array(nx * ny);   // 0 not looked at, 1 open, 2 not
+  const free = (i, j) => { if (i < 0 || j < 0 || i >= nx || j >= ny) return false; const k = id(i, j); if (!memo[k]) memo[k] = _gwFree(x0 + i * S, y0 + j * S) ? 1 : 2; return memo[k] === 1; };
+  const g = new Float32Array(nx * ny).fill(1e9), came = new Int32Array(nx * ny).fill(-1), done = new Uint8Array(nx * ny), open = [id(sI, sJ)];
+  g[open[0]] = 0;
+  let guard = 0, end = -1;
+  while (open.length && guard++ < 1200) {
+    if ((guard & 63) === 0 && Date.now() - t0 > 15) return null;   // clock-ok: a time budget; the leg then stays as it was
+    let bt = 0, bf = 1e9;
+    for (let t = 0; t < open.length; t++) { const k = open[t], f = g[k] + Math.hypot(k % nx - gI, (k - k % nx) / nx - gJ); if (f < bf) { bf = f; bt = t; } }
+    const cur = open.splice(bt, 1)[0]; if (done[cur]) continue; done[cur] = 1;
+    const ci = cur % nx, cj = (cur - ci) / nx;
+    if (Math.abs(ci - gI) <= 1 && Math.abs(cj - gJ) <= 1) { end = cur; break; }
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      const ni = ci + di, nj = cj + dj; if (!free(ni, nj)) continue;
+      if (di && dj && (!free(ci + di, cj) || !free(ci, cj + dj))) continue;   // no corner cutting
+      const k = id(ni, nj); if (done[k]) continue;
+      const ng = g[cur] + Math.hypot(di, dj);
+      if (ng < g[k]) { g[k] = ng; came[k] = cur; open.push(k); }
+    }
+  }
+  if (end < 0) return null;
+  const nodes = []; for (let k = end; k >= 0 && k !== id(sI, sJ); k = came[k]) nodes.push({ x: x0 + (k % nx) * S, y: y0 + ((k - k % nx) / nx) * S });
+  nodes.reverse(); nodes.push({ x: b.x, y: b.y });
+  const out = []; let at = { x: a.x, y: a.y }, i = 0;
+  while (i < nodes.length) {
+    let j = nodes.length - 1;
+    while (j > i && !_gwLos(at, nodes[j], GW_CLEAR) && !_gwLos(at, nodes[j])) j--;
+    out.push(nodes[j]); at = nodes[j]; i = j + 1;
   }
   return out;
 }

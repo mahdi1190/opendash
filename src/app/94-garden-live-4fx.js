@@ -18,6 +18,12 @@ function gardenLiveFx(c, e, o) {
   } catch (err) { /* only a message */ }
 }
 function gardenLivePet(c, e) { gardenLiveFx(c, e); }
+/** A moment of yours that the others in the garden cheer (2.29.0): a garden level (v: the level), an achievement (v: its id) or a photo taken. Nothing when nobody is there. */
+function gardenLiveCheer(e, v) {
+  if (e === 'level') { const n = Math.round(Number(v)); if (n >= 1 && n <= 99) gardenLiveFx('cheer', 'level', { n }); }
+  else if (e === 'ach') { if (/^[A-Za-z0-9_-]{1,64}$/.test(String(v || '')) && typeof _pfAutoBadgeOk === 'function' && _pfAutoBadgeOk(String(v))) gardenLiveFx('cheer', 'ach', { i: String(v) }); }   // (only the groups a profile's automatic showcase may show: never money, places, health or memories)
+  else if (e === 'photo') gardenLiveFx('cheer', 'photo');
+}
 /* ---------- the corner feed ---------- */
 function _gllFeed(text) {
   const box = typeof _gw !== 'undefined' ? _gw.box : null; if (!box) return;
@@ -36,6 +42,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'pet' || c === 'wow' || c === 'nap') { if (typeof _gllPetFx === 'function') _gllPetFx(A, ev); return; }
   if (c === 'cr' || c === 'egg' || c === 'pick') { _glcFx(A, ev); return; }
   if (c === 'roam') { if (typeof _gllRoamAdd === 'function') _gllRoamAdd(e); return; }
+  if (c === 'cheer') { _gllCheerFx(A, e, ev); return; }
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {
     if (e === 'sneak') A.sneakUntil = Date.now() + 4500;   // clock-ok: how long a creep lasts
@@ -60,6 +67,21 @@ function _gllFxPlay(A, ev) {
     setTimeout(() => { g.remove(); if (tag) tag.style.display = ''; }, GART_MOMENT_MS);
     if (typeof _fxSound === 'function') _fxSound('sparkle');
   }
+}
+/** Somebody's moment: they cheer, a spark goes up and one line in the corner says what. An id this version does not know is ignored. */
+function _gllCheerFx(A, e, ev) {
+  const who = String(A.n || 'Someone').split(/\s+/)[0] || 'Someone';
+  let line = '';
+  if (e === 'level') { const n = Math.round(Number(ev.n)); if (n >= 1 && n <= 99) line = `${who} reached garden level ${n}`; }
+  else if (e === 'ach') { const d = typeof achDef === 'function' ? achDef(String(ev.i || '')) : null; if (d && d.label) line = `${who} unlocked \u201c${String(d.label).slice(0, 60)}\u201d`; }
+  else if (e === 'photo') line = `${who} took a photo`;
+  if (!line) return;
+  _gllFeed(line);
+  if (_gllOffscreen(A) || gardenFun() === 'off') return;
+  if (e === 'photo') { if (!_gllReduced()) _gllFloat(_gw.svg, A.x, A.y - 1.4, '📸', ''); if (typeof _fxSound === 'function') _fxSound('shutter'); return; }
+  try { _gllEmote(A, 'cheer'); } catch (err) { /* the float says it */ }
+  _gllFloat(_gw.svg, A.x, A.y - 1.6, e === 'ach' ? '🏆' : '🎉', '');
+  if (typeof _fxSound === 'function') _fxSound('sparkle');
 }
 function _gllSwing(A) {
   if (!A.root || _gllReduced()) return;
@@ -102,7 +124,36 @@ function _gllRing(A, F, k) {
   g.innerHTML = `<ellipse class="gd-ring" cx="0" cy="0" rx="${(8 * k).toFixed(1)}" ry="${(2.6 * k).toFixed(1)}" fill="none" stroke="#ffffff" stroke-width="1.4" stroke-opacity="0.9"/>`;
   A.root.appendChild(g); setTimeout(() => g.remove(), 1500);
 }
+/*
+ * Gathered by the fire (2.29.0): when two or more people (you count) are near the same fire pit, marshmallows float up from it now and then, and the corner says who is there.
+ * Nothing is sent: every screen sees where the people are and works it out for itself, so it is the same for everyone without a message. Quiet when the fun level is off.
+ */
+const _gllFire = { at: 0, pitsAt: 0, pits: [], since: new Map(), last: new Map(), told: new Set() };
+function _gllFireStep() {
+  const t = Date.now();   // clock-ok: a rate window and how long people have been there
+  if (t - _gllFire.at < 700 || typeof _gw === 'undefined' || !_gw.svg) return;
+  _gllFire.at = t;
+  if (t - _gllFire.pitsAt > 3000) {
+    _gllFire.pitsAt = t;
+    try { _gllFire.pits = gardenHere().decor.filter(d => d.def && d.def.id === 'fire-pit').slice(0, 6).map(d => ({ x: d.x + (d.def.w || 2) / 2, y: d.y + (d.def.h || 2) / 2 })); } catch (e) { _gllFire.pits = []; }
+  }
+  if (!_gllFire.pits.length) return;
+  const people = [{ n: 'You', x: _gw.px, y: _gw.py }];
+  for (const A of _gll.actors.values()) people.push({ n: String(A.n || '').split(/\s+/)[0], x: A.x, y: A.y });
+  _gllFire.pits.forEach((p, i) => {
+    const near = people.filter(q => Math.hypot(q.x - p.x, (q.y - p.y) * 1.6) <= 2.6);
+    if (near.length < 2) { _gllFire.since.delete(i); _gllFire.told.delete(i); return; }
+    if (!_gllFire.since.has(i)) _gllFire.since.set(i, t);
+    if (t - _gllFire.since.get(i) < 3000) return;
+    if (!_gllFire.told.has(i)) { _gllFire.told.add(i); const names = near.filter(q => q.n !== 'You').map(q => q.n).slice(0, 3); _gllFeed(near.some(q => q.n === 'You') ? `By the fire with ${names.join(' and ') || 'friends'}` : `${names.join(' and ')} by the fire`); }
+    if (t - (_gllFire.last.get(i) || 0) < 9000 || gardenFun() === 'off' || (typeof _gwInView === 'function' && !_gwInView(p.x, p.y, 1))) return;
+    _gllFire.last.set(i, t);
+    _gllFloat(_gw.svg, p.x - 0.4, p.y - 0.6, '\ud83c\udf61', '');   // marshmallows on a stick
+    if (typeof _fxSound === 'function') _fxSound('pop');
+  });
+}
 function _gllFxStep(A, dt) {
+  _gllFireStep();
   const F = A.fish;
   if (!F) return;
   if (A.moving || Date.now() - F.at > 40000) { A.fish = null; A.key = ''; _gllFxClear(A); return; }   // clock-ok: a line forgotten

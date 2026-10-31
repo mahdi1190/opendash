@@ -721,7 +721,7 @@ function _glVisitWorld(svg, snap) {
   for (const r of snap.plants || []) { const def = gardenPlant(r[0]); if (def) plants.push({ uid: `p${r[1]},${r[2]}`, def, x: r[1], y: r[2], fp: def.fp || 1, stage: r[3], ripe: !!(r[5] & 4) }); }
   for (const r of snap.decor || []) { const def = gardenDecor(r[0]); if (def) decor.push({ uid: `d${r[1]},${r[2]}`, def, x: r[1], y: r[2] }); }
   const grid = new Uint8Array(G.cols * G.rows);
-  for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) { const pr = gardenPropAt(x, y); grid[y * G.cols + x] = !open(x, y) || (pr && !pr.walk) || (!pr && gardenIsWater(x, y)) ? 1 : 0; }
+  for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) { const pr = gardenPropAt(x, y); grid[y * G.cols + x] = !open(x, y) || (pr && gardenPropCol(pr) === 'full') || ((!pr || (gardenPropCol(pr) === 'none' && !pr.walk)) && gardenIsWater(x, y)) ? 1 : 0; }
   const block = (x, y, w, h) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (xx >= 0 && yy >= 0 && xx < G.cols && yy < G.rows) grid[yy * G.cols + xx] = 1; };
   for (const p of plants) if (typeof gardenPlantBlocks === 'function' ? gardenPlantBlocks(p) : (p.stage >= 2 || p.fp > 1)) block(p.x, p.y, p.fp, p.fp);
   for (const d of decor) if (d.def.layer !== 'ground') block(d.x, d.y, d.def.w || 1, d.def.h || 1);

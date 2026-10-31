@@ -752,6 +752,7 @@ function _gdTidy(g, today) {
 /* ---------- moments (the Fun level gates them) ---------- */
 function _gdMoment(x) {
   _gdEmit(x.kind, x);
+  try { if (x.kind === 'level' && x.level && typeof gardenLiveCheer === 'function') gardenLiveCheer('level', x.level); } catch (e) { /* only a cheer */ }   // 2.29.0: the others in a live garden see it
   const fun = gardenFun();
   if (fun === 'off') return;
   if (fun === 'subtle' && x.kind === 'daily') return;   // Subtle: the page shows the tick, no toast

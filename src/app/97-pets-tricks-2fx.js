@@ -356,6 +356,7 @@ function _fxSound(kind) {
       pop: () => tone(520, 0, 0.14, 0.06, 'sine', 980),
       splash: () => { noise(0, 0.28, 0.05, 1800, 500); tone(300, 0.02, 0.12, 0.03, 'sine', 140); },
       rise: () => tone(220, 0, 1.6, 0.04, 'sine', 880),
+      shutter: () => { noise(0, 0.045, 0.06, 3400, 1500); noise(0.085, 0.06, 0.045, 2400, 900); },   // 2.29.0: a photo somebody takes in the garden
     };
     if (S[kind]) S[kind]();
   } catch (e) { /* no audio here */ }

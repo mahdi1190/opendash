@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.29.0]
+
+Cheers and photos you can see, a fire to gather round, listening along, and room to move on the shore.
+
+### Added
+- **Live play: moments.** When someone in the same live garden reaches a new garden level, unlocks an achievement or takes a photo with the camera, their figure cheers (or the camera flashes, with a new shutter sound) and one line in the corner says what: "Sam reached garden level 5", "Sam unlocked “A hundred done”", "Sam took a photo". Only the level, the achievement's id (your app shows its own name for it) or "a photo was taken" is sent, never the picture. Achievements are only the kinds your profile's automatic showcase may show (never money, places, health or memories ones). Older apps ignore it.
+- **Live play: gathered by the fire.** When two or more of you stand near the same fire pit, marshmallows float up from it now and then and the corner says who is there. Nothing is sent: each screen works it out from where people stand.
+- **Listen along.** In a friend's live garden, when they share what they are listening to (Profile > Music) and you have Spotify linked, a small *Listen along* chip sits by the tag with their song, and one click plays it on your own Spotify. It uses the same careful, rarely-asked "Listening to" check as a friend's card: nothing is broadcast.
+
+### Changed
+- **The shore has room to move.** The market stall is one step further along the lane, the notice board one step the other way, and the field journal now stands beside the post box, so there is a gap between every pair of big buildings (the stall, the bench, the shop, the board and the tackle shop). The small things on the shore (the journal, the camera, the post box, the sundial) are small boxes at their base instead of a whole square, so you slip past them. The mooring post, the reeds and the boat no longer block the lane at all; the water under the boat is still water.
+- A step toward a small box now goes further round it before the walk gives up, and a route planned through the middle of a cell that has a small box in it is planned again round the box.
+
+### Fixed
+- You could not walk past a small box or a post on the shore: a click on a door could leave you standing just short of it. Every door on the shore can now be reached from anywhere along it.
+
 ## [2.28.1]
 
 ### Added

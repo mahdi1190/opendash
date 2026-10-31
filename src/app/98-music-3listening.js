@@ -8,7 +8,7 @@
    most, 24 a day, and only while that card is on screen. An answer says how far into the song they were, so the line keeps counting by itself
    and goes away when the song would have ended.
 
-     musicNowEl(friendId)           the line (an element that repaints itself); asks if the budget allows. 'me' is your own card: it reads your own
+     musicNowEl(friendId, {along})  the line (an element that repaints itself); asks if the budget allows. along: a click plays the song on your own Spotify (a live garden's Listen along). 'me' is your own card: it reads your own
                                     Spotify (GET /api/spotify/now) every 15 seconds while the card is on screen, so you see what friends would see
      musicNowReceive(friendId, b)   a music:now body from a friend (Friends.on does this); cleaned here
      musicListenSet(on)             your switch: tells this computer's server whether to answer (and keeps music.l in your profile)
@@ -83,14 +83,15 @@ function _munPaint(el) {
     const eq = _muEl('span', 'mu-eq'); eq.setAttribute('aria-hidden', 'true');
     for (let i = 0; i < 3; i++) eq.appendChild(_muEl('i'));
     const tx = _muEl('span', 'mu-tx');
-    tx.appendChild(_muEl('span', 'mu-now-k', 'Listening to'));
+    tx.appendChild(_muEl('span', 'mu-now-k', el.hasAttribute('data-along') ? 'Listen along' : 'Listening to'));
     tx.appendChild(_muEl('span', 'mu-n', e.n));
     if (e.by) tx.appendChild(_muEl('span', 'mu-s', e.by));
     el.append(eq, tx);
     if (e.dur > 0) { const bar = _muEl('span', 'mu-now-bar'); bar.setAttribute('aria-hidden', 'true'); bar.appendChild(_muEl('i')); el.appendChild(bar); }
-    el.setAttribute('data-tip', `${id === 'me' ? 'What friends see right now: ' : ''}${e.n}${e.by ? ' · ' + e.by : ''}. Open in Spotify`);
-    el.setAttribute('aria-label', `Listening to ${e.n}${e.by ? ' by ' + e.by : ''}. Open in Spotify`);
-    el.onclick = () => musicOpen('track', e.id);
+    const along = el.hasAttribute('data-along');
+    el.setAttribute('data-tip', along ? `${e.n}${e.by ? ' · ' + e.by : ''}. Play it on your Spotify` : `${id === 'me' ? 'What friends see right now: ' : ''}${e.n}${e.by ? ' · ' + e.by : ''}. Open in Spotify`);
+    el.setAttribute('aria-label', along ? `Listen along to ${e.n}${e.by ? ' by ' + e.by : ''}: play it on your Spotify` : `Listening to ${e.n}${e.by ? ' by ' + e.by : ''}. Open in Spotify`);
+    el.onclick = along ? () => { musicPlay({ t: 'track', id: e.id, n: e.n }); } : () => musicOpen('track', e.id);
   }
   const fill = el.querySelector('.mu-now-bar i');
   if (fill && e.dur > 0) fill.style.width = Math.max(0, Math.min(100, ((e.pos * 1000 + (Date.now() - e.got)) / (e.dur * 1000)) * 100)).toFixed(1) + '%';   // clock-ok: progress
@@ -107,8 +108,9 @@ function _munTick() {
   if (!_mun.els.size) { clearInterval(_mun.timer); _mun.timer = 0; }
 }
 /** The "Listening to" line for one friend's card (hidden until they answer). */
-function musicNowEl(friendId) {
+function musicNowEl(friendId, o) {
   const el = _muEl('button', 'mu-now'); el.type = 'button'; el.hidden = true; el.setAttribute('data-f', friendId);
+  if (o && o.along) el.setAttribute('data-along', '1');
   _mun.els.add(el);
   if (!_mun.timer) _mun.timer = setInterval(_munTick, 5000);
   _munPaint(el);

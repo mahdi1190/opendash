@@ -389,6 +389,7 @@ function _gdxSavePhoto(sc, st) {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     toast('Saved to your downloads', { icon: 'camera', kind: 'ok', now: true });
+    try { if (typeof gardenLiveCheer === 'function') gardenLiveCheer('photo'); } catch (e) { /* only a moment */ }   // 2.29.0: the others in a live garden see the flash
   }).catch(() => { if (typeof busy === 'function') busy(); toast('The photo could not be saved.', { kind: 'err', retry: () => _gdxSavePhoto(sc, st) }); });
 }
 
