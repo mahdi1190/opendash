@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.25.1]
+
+The opening plays all the way through.
+
+### Fixed
+- The opening no longer stalls. The letters were traced by animating the stroke, which needs the page's main thread every frame, so while the app
+  was starting up (about 1.5 s) they froze at a stem and a dot, the orb dropped in beside them, and the word finished in a jump. Each letter is
+  now written by stepping through pre-drawn copies with opacity, which keeps running while the app loads, so the whole word is written and the
+  orb lands on time.
+
 ## [2.25.0]
 
 Groups: one link for everyone.

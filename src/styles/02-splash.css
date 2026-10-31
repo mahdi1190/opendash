@@ -3,7 +3,8 @@
    orb that drops in and settles (src/brand/freeflo-orb.js draws it and carries its own motion: the
    season colours the orb, a holiday turns it into the holiday). Once per page load, under 1.2 s; the
    overlay fades as the app is ready. Never takes input; any click or key skips it; removed before paint
-   under reduced motion / Intensity Off. Transform, opacity and stroke only.
+   under reduced motion / Intensity Off. Transform and opacity only: the compositor runs them while the app's
+   scripts are still starting up (about 1.5 s of a blocked page), so even the letters are written with opacity steps, not a stroke trace.
    ============================================================ */
 .od-splash {
   position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center;
