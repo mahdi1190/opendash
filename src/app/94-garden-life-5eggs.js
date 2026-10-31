@@ -119,6 +119,7 @@ function _glEggFire(e, W) {
   if (!ok) return;
   _glE.fired = (_glE.fired || 0) + 1;
   _glSeenMark(e.id);
+  if (typeof gardenLiveEgg === 'function') gardenLiveEgg(e.id);   // everyone in the garden sees it
   if (typeof gardenLifeFound === 'function' && !e.effect.foundOnClick) gardenLifeFound('e', e.id);
 }
 /* ---------- a thing put in the world ---------- */

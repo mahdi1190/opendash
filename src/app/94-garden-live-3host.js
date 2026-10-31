@@ -60,6 +60,7 @@ function _glhStart() {
     _glhDiffSoon(0);
   }, 30000);
   _glhWatchStart();
+  if (typeof _glcHostStart === 'function') _glcHostStart();
   _glhHud();
   _glhHoverBind();
   _glhDiffSoon(250);
@@ -82,6 +83,7 @@ function gardenLiveHostGone() {
   for (const S of _glh.sprites.values()) S.remove();
   _glh.sprites.clear(); _gll.actors.clear(); _glh.sent.clear();
   if (_glh.watch) { _glh.watch.remove(); _glh.watch = null; }
+  if (typeof _glcHostStop === 'function') _glcHostStop();
   _glhReturnDrops();
   clearTimeout(_glh.bugT);
 }
@@ -153,6 +155,7 @@ function _glhEvent(ev) {
       if (!ev.again) setTimeout(() => _gllEmote(A, 'wave'), 400);
       _glhSendSnap(ev.f);
       if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
+      if (typeof _glcJoin === 'function') _glcJoin(ev.f);
       _glhResendDrops(ev.f);
       _glhBugsMaybe();
       gardenLiveLoad(true).then(_glhHud).catch(() => {});

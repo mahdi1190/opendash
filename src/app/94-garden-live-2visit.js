@@ -38,6 +38,7 @@ function _glvPeopleOut() {
   for (const P of _glv.parcels.values()) if (P.sprite) P.sprite.remove();
   for (const B of _glv.bugs.values()) if (B.sprite) B.sprite.remove();
   _glv.parcels.clear(); _glv.bugs.clear();
+  if (typeof _glcGuestClear === 'function') _glcGuestClear();
   if (_glv.watch) { _glv.watch.remove(); _glv.watch = null; }
 }
 function _glvClear() {
@@ -360,6 +361,7 @@ function _glvEvent(ev) {
       _gdvTouch();
       return;
     }
+    case 'cr': _glcGuestCr(ev.l); return;
     case 'fx': { const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
     case 'd': _glvDelta(ev.ops); return;
     default:

@@ -114,3 +114,8 @@ html[data-motion="reduced"] .gmo-pop, html[data-motion="reduced"] .gmo-spark { a
 @keyframes gll-feed { 0% { opacity: 0; transform: translateY(6px); } 8% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
 .gll-fxline { fill: none; stroke: #fbfbf2; stroke-opacity: .85; stroke-width: .9; stroke-linecap: round; }
 .gll-fxrod { fill: none; stroke: #6a4a2a; stroke-width: 2.2; stroke-linecap: round; }
+
+.gll-flop { animation: gll-flop .7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes gll-flop { from { transform: rotate(-14deg) translateY(0); } to { transform: rotate(12deg) translateY(-3px); } }
+html[data-motion="reduced"] .gll-flop { animation: none; }
+@media (prefers-reduced-motion: reduce) { .gll-flop { animation: none; } }

@@ -657,6 +657,7 @@ function _glDirector(dt) {
 }
 function _glDirect(W) {
   if (gardenFun() === 'off') { for (const c of [..._gl.list]) _glRemove(c); return; }
+  if (W.visit && typeof _glvLive === 'function' && _glvLive()) return;   // a live visit: the host owns the creatures, this screen only draws them (94-garden-live-6life.js)
   const v = W.view();
   for (const c of _gl.list) {
     if (c.gone || c.left) continue;
@@ -765,6 +766,7 @@ function _glVisitFrame(ts) {
     }
   }
   V.t = (V.t || 0) + dt; if (V.t > 1) { V.t = 0; _glDirect(_gl.W); }
+  if (typeof _glcVisitFrame === 'function') _glcVisitFrame(dt);
   V.raf = requestAnimationFrame(_glVisitFrame);
 }
 function _glVisitWake() { const V = _gl.visit; if (V && !V.raf && !document.hidden) { V.last = 0; V.raf = requestAnimationFrame(_glVisitFrame); } }

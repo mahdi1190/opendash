@@ -10,6 +10,19 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.28.1]
+
+### Added
+- Live play: one living garden. The host's birds, insects and animals are the same ones on everyone's screen. Say hello to one and it answers for all of you.
+- Pets notice the creatures, creep up on them, and greet each other, for everyone to see.
+- Surprises (easter eggs) the host's garden finds are seen by everyone there.
+- Something lying about (a creature's gift, a fish flopping on the shore) goes to whoever clicks first. The host decides, so it can only be taken once.
+- A bug is caught only once: if Sam's net got it first, yours is a clean miss with no reward.
+- Someone creeping up on a bug now walks slowly and ducks a little on every screen.
+
+### Security
+- The new live messages are checked like the rest of live play: only the host can spawn, move, give or name a winner; a guest can only poke, claim and say what it is doing. Older apps ignore them. No relay update is needed.
+
 ## [2.28.0]
 
 What a friend is listening to, Play that finds your Spotify, and a kinder, calmer garden to play together in.
