@@ -319,7 +319,7 @@ function gardenVisitTagPaint(box, m) {
   if (!m.visit) { if (el) el.remove(); return; }
   box.classList.add('is-visit');
   const name = m.visit.name, live = m.visit.live, knock = _glv.state === 'knocking', note = live || knock ? '' : _GLV_NOTES[_glv.why] || '', hint = live ? (_GDV_STATE[_glv.lv] || '') : knock ? 'Knocking…' : 'As they last shared it';
-  const key = [name, live, hint, note, _glv.road, _glv.state, _glv.why].join('|');
+  const key = [name, live, hint, note, _glv.road, _glv.state, _glv.why, typeof spotifyLinked === 'function' && spotifyLinked() ? 'sp' : ''].join('|');
   if (el && _gdv.tagKey === key) return;
   _gdv.tagKey = key;
   if (!el) { el = document.createElement('div'); el.className = 'gd-visittag'; box.appendChild(el); }
@@ -332,6 +332,11 @@ function gardenVisitTagPaint(box, m) {
   t.appendChild(_gsvEl('span', 'gd-vt-how', hint));
   t.onclick = () => gardenPopupOpen('visit');
   el.appendChild(t);
+  // 2.28.1: Listen along. In their garden, while they are playing a song and share it (Profile > Music), a click plays it on your own Spotify
+  try {
+    const pv = _gdv.f && typeof _pfWho === 'function' ? _pfWho(_gdv.f) : null, mu = pv && pv.profile && pv.profile.ext ? pv.profile.ext.music : null;
+    if (live && mu && mu.l === true && /^[0-9a-f]{16}$/.test(String(_gdv.fid)) && typeof musicNowEl === 'function' && typeof spotifyLinked === 'function' && spotifyLinked()) el.appendChild(musicNowEl(_gdv.fid, { along: true }));
+  } catch (e) { /* the tag does fine without it */ }
   if (_glv.state === 'look' && _glv.why && _glv.why !== 'home') el.appendChild(_gsvBtn('Knock', { kind: 'btn-ghost', cls: 'gd-vt-knock', tip: 'Knock again', run: _glvKnockAgain }));
   el.appendChild(_gsvBtn('', { icon: 'house', kind: 'btn-ghost', cls: 'gd-vt-home', aria: 'Back to your garden', tip: 'Back to your garden', run: () => setView('garden') }));
 }

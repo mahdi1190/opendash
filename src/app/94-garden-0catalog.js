@@ -478,25 +478,27 @@ const GARDEN_AREAS = _gdRows([
 const _GD_LAND = new Set();
 function gardenLandSet(ids) { _GD_LAND.clear(); for (const id of ids || []) _GD_LAND.add(id); }
 /* Fixed things in the world (not in your bag, not movable): the pier you walk out on, the tackle shop. x, y, w, h in cells.
-   walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there. */
+   walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there.
+   col (2.28.1, what it does to your feet): 'full' (the default: its whole footprint is a wall: a shop, a stall, the bench), 'soft' (a small box at its base:
+   a lectern, a post box, you slip past) or 'none' (you walk through it: a post at the water's edge, reeds, the boat on the water). A walk prop is 'none'. */
 const GARDEN_PROPS = _gdRows([
   { id: 'pier', name: 'The pier', x: 12, y: 12, w: 2, h: 5, walk: 1, blurb: 'Walk out over the water: the fish are bigger past the end of it.' },
   // 2.22: the menus are in the world. Walk up and click a building (you go to its door and it opens): act is the page it opens,
   // kind the way it is drawn, tall how many rows its art stands above its footprint (that is where a click counts).
-  { id: 'market-stall', name: 'Market stall', x: 1, y: 11, w: 2, h: 1, door: _gdF({ x: 2, y: 12 }), act: 'basket', kind: 'stall', tall: 2, blurb: 'Sell what you have picked, and make bouquets.' },
+  { id: 'market-stall', name: 'Market stall', x: 0, y: 11, w: 2, h: 1, door: _gdF({ x: 1, y: 12 }), act: 'basket', kind: 'stall', tall: 2, blurb: 'Sell what you have picked, and make bouquets.' },
   { id: 'garden-shop', name: 'Garden shop', x: 6, y: 11, w: 3, h: 1, door: _gdF({ x: 7, y: 12 }), act: 'shop', kind: 'shop', tall: 2.8, blurb: 'Seeds, decorations and tools.' },
-  { id: 'notice-board', name: 'Notice board', x: 9, y: 11, w: 2, h: 1, door: _gdF({ x: 10, y: 12 }), act: 'almanac', kind: 'board', tall: 1.9, blurb: 'Everything you have found, and your ribbons.' },
-  { id: 'field-journal', name: 'Field journal', x: 11, y: 11, w: 1, h: 1, door: _gdF({ x: 11, y: 12 }), act: 'journal', kind: 'lectern', tall: 1.4, blurb: 'Your fish book, bug book and showcase.' },
-  { id: 'camera-tripod', name: 'Camera', x: 15, y: 11, w: 1, h: 1, door: _gdF({ x: 15, y: 12 }), act: 'photo', kind: 'tripod', tall: 1.6, blurb: 'Take a picture of your garden.' },
+  { id: 'notice-board', name: 'Notice board', x: 10, y: 11, w: 2, h: 1, door: _gdF({ x: 11, y: 12 }), act: 'almanac', kind: 'board', tall: 1.9, blurb: 'Everything you have found, and your ribbons.' },
+  { id: 'field-journal', name: 'Field journal', x: 21, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 21, y: 12 }), act: 'journal', kind: 'lectern', tall: 1.4, blurb: 'Your fish book, bug book and showcase.' },
+  { id: 'camera-tripod', name: 'Camera', x: 15, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 15, y: 12 }), act: 'photo', kind: 'tripod', tall: 1.6, blurb: 'Take a picture of your garden.' },
   { id: 'tackle-shop', name: 'Tackle shop', x: 17, y: 11, w: 3, h: 1, door: _gdF({ x: 18, y: 12 }), act: 'tackle', kind: 'tackle', tall: 3, blurb: 'Rods, nets, bait and the fish market.' },
-  { id: 'post-box', name: 'Post box', x: 20, y: 11, w: 1, h: 1, door: _gdF({ x: 20, y: 12 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
+  { id: 'post-box', name: 'Post box', x: 20, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 20, y: 12 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
   { id: 'craft-bench', name: 'Crafting bench', x: 3, y: 11, w: 2, h: 1, door: _gdF({ x: 3, y: 12 }), act: 'craft', kind: 'bench', tall: 1.5, verb: 'make something', blurb: 'Turn what you grow, catch and find into hats, collars, decorations and treats.' },
-  { id: 'sundial', name: 'Sundial', x: 26, y: 11, w: 1, h: 1, door: _gdF({ x: 26, y: 12 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
-  { id: 'jetty-post', name: 'Mooring post', x: 4, y: 12, w: 1, h: 1, walk: 0, tall: 1, blurb: 'A rope, a post and a very patient rowing boat.' },
+  { id: 'sundial', name: 'Sundial', x: 26, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 26, y: 12 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
+  { id: 'jetty-post', name: 'Mooring post', x: 4, y: 12, w: 1, h: 1, walk: 0, col: 'none', tall: 1, blurb: 'A rope, a post and a very patient rowing boat.' },
   // the rowing boat is drawn by gardenWorldProps (key 'boat'); clicking it opens the trip to a friend's garden. x and w are fractions on
   // purpose: its box is the boat's own width, so the water beside it still casts a line.
-  { id: 'boat', name: 'Rowing boat', kind: 'boat', x: 4.65, y: 13, w: 1.25, h: 1, walk: 0, door: _gdF({ x: 5, y: 12 }), act: 'sail', verb: 'climb in', tall: 0.5, blurb: 'Row over to a friend’s garden.' },
-  { id: 'reed-bank', name: 'Reeds', kind: 'reeds', x: 22, y: 12, w: 3, h: 1, walk: 0, tall: 0.4, blurb: 'Dragonflies like it here.' },
+  { id: 'boat', name: 'Rowing boat', kind: 'boat', x: 4.65, y: 13, w: 1.25, h: 1, walk: 0, col: 'none', door: _gdF({ x: 5, y: 12 }), act: 'sail', verb: 'climb in', tall: 0.5, blurb: 'Row over to a friend’s garden.' },
+  { id: 'reed-bank', name: 'Reeds', kind: 'reeds', x: 22, y: 12, w: 3, h: 1, walk: 0, col: 'none', tall: 0.4, blurb: 'Dragonflies like it here.' },
   { id: 'forest-edge', name: 'The forest', x: 27, y: 0, w: 1, h: 11, walk: 0, blurb: 'Too thick to walk through.' },
 ]);
 const GARDEN_LAWN = _gdF({ id: 'lawn', name: 'Lawn', lv: 1, tile: 'grass', cats: _gdF([]), icon: 'fence', blurb: 'Room for paths, seats and everything else.' });
@@ -730,6 +732,8 @@ function gardenPropAt(x, y) {
   for (const p of GARDEN_PROPS) if (x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h) return p;
   return null;
 }
+/** What a prop does to your feet: 'full', 'soft' or 'none' (see the table). */
+function gardenPropCol(p) { return !p ? 'none' : p.col === 'none' || p.col === 'soft' || p.col === 'full' ? p.col : p.walk ? 'none' : 'full'; }
 /** Walkable prop cell (the pier boards)? */
 function gardenPropWalk(x, y) { const p = gardenPropAt(x, y); return !!(p && p.walk); }
 /** Can this plant (or decoration) go at x, y (its top-left cell) at this level? '' = yes, else why not (one short line). */
