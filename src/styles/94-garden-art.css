@@ -155,3 +155,13 @@ html[data-motion="reduced"] .gd-svg .gart-live *, html[data-motion="reduced"] .g
 html.anim-paused .gart *, html.anim-paused .gart-wx * { animation-play-state: paused !important; }
 html[data-motion="reduced"] .gart *, html[data-motion="reduced"] .gart-wx * { animation: none !important; }
 @media (prefers-reduced-motion: reduce) { .gart *, .gart-wx * { animation: none !important; } }
+
+/* a catch held up (GPL_HOLD in 94-garden-art-g-player.js): a hop as it goes up, then arms that pump a little and a body that sways */
+.gpl-hold .gpl-root { animation: gpl-hold-hop .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes gpl-hold-hop { 0% { transform: translateY(0) scale(1.05, .92); } 45% { transform: translateY(-7px) scale(.97, 1.05); } 100% { transform: translateY(0); } }
+.gpl-hold .gpl-up { animation: gpl-hold-sway 1.1s ease-in-out .5s infinite alternate; }
+@keyframes gpl-hold-sway { from { transform: rotate(-2.4deg); } to { transform: rotate(2.4deg); } }
+.gpl-hup.is-a { animation: gpl-hup-a .55s ease-in-out .5s infinite alternate; }
+.gpl-hup.is-b { animation: gpl-hup-b .55s ease-in-out .5s infinite alternate; }
+@keyframes gpl-hup-a { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
+@keyframes gpl-hup-b { from { transform: rotate(3deg); } to { transform: rotate(-4deg); } }

@@ -136,7 +136,7 @@ function _glhAdd(ev) {
 }
 function _glhRemove(w) {
   const S = _glh.sprites.get(w); if (S) { S.remove(); _glh.sprites.delete(w); }
-  const A = _gll.actors.get(w); if (A && A.petNode) A.petNode.remove();
+  const A = _gll.actors.get(w); if (A && typeof _gllPetDrop === 'function') _gllPetDrop(A);
   _gll.actors.delete(w);
 }
 function _glhByName(fid) { try { const f = _gscFriend(fid); return f ? String(f.name || gardenSocialName(f)).split(/\s+/)[0].slice(0, 40) : 'A friend'; } catch (e) { return 'A friend'; } }
@@ -147,6 +147,7 @@ function _glhEvent(ev) {
       _glhSnapshotTake();
       if (!ev.again) setTimeout(() => _gllEmote(A, 'wave'), 400);
       _glhSendSnap(ev.f);
+      if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
       _glhResendDrops(ev.f);
       _glhBugsMaybe();
       gardenLiveLoad(true).then(_glhHud).catch(() => {});
@@ -162,6 +163,7 @@ function _glhEvent(ev) {
       else if (ev.c === 'do' && ev.e === 'follow' && ev.to === 0) _gllFloat(_gw.svg, A.x, A.y - 1.4, '🚶', A.n);
       return;
     }
+    case 'fx': { const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
     case 'do': _glhIntent(Object.assign({}, ev, { k: ev.ik })); return;
     case 'queue': clearTimeout(_glh.queueT); _glh.queueT = setTimeout(() => { gardenLiveLoad(true).then(_glhQueueRun).catch(() => {}); }, 300); return;
     case 'knock': case 'host': case 'road': case 'budget': if (ev.note && _gll.view) _gll.view.host = Object.assign(_gll.view.host || {}, { note: ev.note }); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;

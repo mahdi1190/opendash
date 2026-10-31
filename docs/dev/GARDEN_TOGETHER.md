@@ -39,6 +39,7 @@ All are friends kinds with a strict schema (`lib/friends/live.mjs`): ids, cells 
 | `gl:who` | H to V | `{s, q, w, n, a?, pet?, lv, on, x?, y?}`: someone here or gone |
 | `gl:go` | both | `{s, q, w?, x, y, r?}`: walking to a destination, never a stream of positions. The host's page answers every walk with the way round the beds (`r`: up to 12 turns), so nobody walks through a bed or a bench |
 | `gl:em` | both | `{s, q, w?, e, c?, to?}`: an emote, a preset phrase or an interaction, ids from tables on each side |
+| `gl:fx` | both | `{s, q, w?, c, e, i?, x?, y?, n?, ql?, nw?}`: what people SEE each other do (2.27.9; `GL_FX_KINDS`): `pet` a clip id or pat / eat, `wow` a spectacle, `nap` on / off, `roam` a species of the host's pack, `fish` cast (with the cell) / bite / reel / land / lost / in, `bug` sneak / swing / miss / gone (`i` the bug's key), `got` what was caught or found (`e` kind, `i` id, `n` cm, `ql`, `nw` bit 1 new, bit 2 record), `make` a recipe. A kind of its own, so an older app drops it and `GL_V` stays 2 |
 | `gl:do` | V to H | `{s, q, i, t, p?, x?, y?, r?, k?, item?, to?}`: an intent; `i` is the sender's id for it (exactly once; `[0-9a-z]{6,24}`, so it can never look like a credential when it syncs) |
 | `gl:res` | H to V | `{s, q, i?, w, t, ok, why?, ...}`: what happened, to everyone (a refusal only to the sender) |
 | `gl:d` | H to V | `{s, q, ops}`: the garden changed: rows added, changed, removed |
@@ -173,3 +174,7 @@ The owner, 31 October 2026: "a live visit should be identical to being in my own
 Eight people (scaled, not measured): about 19,000 messages an hour, 950 request-equivalents, 1% of the free day. So the host's 80,000 a day is 14 hours of three people or about 4 of eight, and a visitor's 6,000 is about 4 hours of this very busy play. On a direct link: 0 room messages (measured).
 
 Not measured: Durable Object duration on real Cloudflare (the time-in-memory budget above assumes the worst the Hibernation API allows: 10 seconds after each message). Nothing here has run on Cloudflare yet.
+
+## 11. What people see each other do (2.27.9)
+
+`94-garden-live-4fx.js` (events and the figure's rod, line and net), `94-garden-live-5pets.js` (pets), `94-garden-fish-5moment.js` (the catch held up: `GART_MOMENTS`, one row per kind; the pose is `GPL_HOLD` in the gardener's art). Pets were missing because `gardenLiveLook()` read a species off `petGet()`, which has none: it now sends `petPayload()`. A follower walks by the home rule, clips arrive by id (`P.clip`, `petWowRun`, `petPat`, `petFeed` send them), a spectacle on another's pet skips tints and freezes. Bugs are the same on every screen (the 20-minute seed), so a net's catch sends `bug gone` and it leaves every screen; a swing at one already gone misses. Not built: host-spawned animals and birds with pets reacting to them, the host deciding who netted first (a race is possible), shared fish and pick-ups on the ground.

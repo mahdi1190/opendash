@@ -32,7 +32,8 @@ function gardenLiveVisitLeave() {
 function _glvPeopleOut() {
   for (const S of _glv.sprites.values()) S.remove();
   _glv.sprites.clear();
-  for (const A of _gll.actors.values()) if (A.petNode) A.petNode.remove();
+  for (const A of _gll.actors.values()) if (typeof _gllPetDrop === 'function') _gllPetDrop(A);
+  if (typeof _gllRoamClear === 'function') _gllRoamClear();
   _gll.actors.clear();
   for (const P of _glv.parcels.values()) if (P.sprite) P.sprite.remove();
   for (const B of _glv.bugs.values()) if (B.sprite) B.sprite.remove();
@@ -243,7 +244,7 @@ function _glvActorAdd(ev) {
 }
 function _glvActorGone(w) {
   const S = _glv.sprites.get(w); if (S) { S.remove(); _glv.sprites.delete(w); }
-  const A = _gll.actors.get(w); if (A && A.petNode) A.petNode.remove();
+  const A = _gll.actors.get(w); if (A && typeof _gllPetDrop === 'function') _gllPetDrop(A);
   _gll.actors.delete(w);
   if (_glv.follow === w) _glv.follow = null;
 }
@@ -353,6 +354,7 @@ function _glvEvent(ev) {
       _gdvTouch();
       return;
     }
+    case 'fx': { const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
     case 'd': _glvDelta(ev.ops); return;
     default:
   }

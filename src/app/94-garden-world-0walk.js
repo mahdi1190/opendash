@@ -470,6 +470,7 @@ function _gwPace() {
   if (_gw.keys.size || _gw.hold || _gw.path.length || _gw.moving || _gw.netting || _gw.reel || _gw.cam.dirty || _gw.routeOn || _gw.pet && _gw.pet.moving) return 60;
   if (_gw.fishing && _gw.fishing.state !== 'idle') return 60;
   if (_gw.bugsBusy) return 30;
+  if (typeof _gll !== 'undefined') for (const A of _gll.actors.values()) if (A.fish || A.pose || (A.pp && (A.pp.busy > 0 || A.pp.tx != null))) return 60;   // someone's line, pose or pet in view (94-garden-live-4fx.js)
   for (const S of _gwSprites) if (S.update && !S.still && (S.quiet || 0) < 0.35 && _gwInView(S.x, S.y, 1.5)) return 30;   // one that has not moved for a moment, or is off screen, does not count
   return 10;
 }

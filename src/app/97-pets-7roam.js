@@ -42,6 +42,7 @@ function _ptwNew(look, me) {
   const P = { look, me, per, node: g, face, lift, x: p.x - 1.2 - Math.random() * 2, y: p.y + Math.random(), tx: null, ty: null, dir: 1, pose: '', mood: '', act: '', run: false, speed: 1, cb: null, t: Math.random() * 4, z: -1, cache: {}, cool: 0, busy: 0 };
   if (!_ptwFree(P.x, P.y)) { P.x = p.x; P.y = p.y; }
   P.draw = (pose, mood) => {
+    if (P.me && P.pose === 'sleep' && pose !== 'sleep' && typeof gardenLivePet === 'function') gardenLivePet('nap', 'off');
     const k = pose + '|' + (mood ? mood.eyes + mood.mouth + (mood.extra || '') : '');
     if (P.mood === k) return;
     P.mood = k; P.pose = pose; P.lastMood = mood;
@@ -50,7 +51,8 @@ function _ptwNew(look, me) {
     P.root = face.firstChild;
     if (P.root) { if (P.act) P.root.classList.add('pt-act-' + P.act); if (P.run) P.root.classList.add('pt-run'); }
   };
-  P.clip = (name, ms, then) => {
+  P.clip = (name, ms, then, o) => {
+    if (P.me && !P.wow && !(o && o.quiet) && typeof gardenLivePet === 'function' && /^[A-Za-z0-9_-]{1,64}$/.test(String(name))) gardenLivePet('pet', name);   // the others see it (94-garden-live-5pets.js)
     // 2.23: the clip library first (97-pets-tricks-0clips.js); nothing runs for a pet out of view
     const lib = typeof petClipDef === 'function' ? petClipDef(name) : null;
     if (lib && P.root) {
@@ -67,7 +69,7 @@ function _ptwNew(look, me) {
   P.setAct = (n) => { if (P.root && P.act) P.root.classList.remove('pt-act-' + P.act); P.act = n || ''; if (P.root && n) P.root.classList.add('pt-act-' + n); };
   P.walkTo = (x, y, run, then) => { P.tx = x; P.ty = y; P.run = !!run; P.speed = run ? 2 : 1; P.stuck = 0; P.draw('walk'); if (P.root) P.root.classList.toggle('pt-run', P.run); P.arrive = then || null; };
   P.sit = (mood) => { P.tx = null; P.run = false; P.draw('sit', mood); };
-  P.sleep = (s) => { P.tx = null; P.draw('sleep', { eyes: 'closed', mouth: 'calm', extra: 'zzz' }); P.busy = s; P.cb = null; };
+  P.sleep = (s) => { if (P.me && typeof gardenLivePet === 'function') gardenLivePet('nap', 'on'); P.tx = null; P.draw('sleep', { eyes: 'closed', mouth: 'calm', extra: 'zzz' }); P.busy = s; P.cb = null; };
   P.hearts = () => _ptwHearts(P);
   P.draw('sit');
   return P;
@@ -315,7 +317,7 @@ function _ptwClick(ev) {
   if (!P) return;
   if (P.me) { const r = petPat(); if (r.ok && typeof _ptCheer === 'function') { /* the pet's joy is the feedback */ } if (typeof petBookTick === 'function') { const tt = petBookTick('pat'); for (const id of tt.secret) petSecretReveal(id); } }
   P.tx = null; P.sit({ eyes: 'happy', mouth: 'open' }); P.hearts();
-  P.clip('jump', 800, () => { P.sit(); P.busy = 1.5; });
+  P.clip('jump', 800, () => { P.sit(); P.busy = 1.5; }, { quiet: true });
 }
 function _ptwCheck() {
   const onPage = typeof state !== 'undefined' && state && String(state.view || '') === 'garden' && typeof _gdp !== 'undefined' && _gdp && _gdp.svg && _gdp.svg.isConnected;

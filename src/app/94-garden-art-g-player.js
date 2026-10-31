@@ -20,7 +20,11 @@
    gpl-af / gpl-as (arms, front and side), gpl-lf / gpl-lg (legs). The moves (97-pets-tricks-6emote.js) and the walk both drive those. Reduced motion and the Fun level stop it with everything else.
    ============================================================ */
 const _GPL = { cache: new Map(), dir: 's', pose: '', until: 0, key: '', t: 0, lastX: null, lastY: null };
-const GPL_POSES = Object.freeze(['walk', 'water', 'dig', 'pick', 'fish']);
+const GPL_POSES = Object.freeze(['walk', 'water', 'dig', 'pick', 'fish', 'hold']);
+/** Poses that face the camera whatever way the person was going (a catch held up: gartPlayerPaint and the other people's figures both ask). One row per pose; arms and class names are in _gplPoseArms. */
+const GPL_POSE_FRONT = Object.freeze(new Set(['hold']));
+/** The catch held up (AC-style, in our own drawing): both arms up and a little outward, stretched so the hands reach over the crown; the item sits between them. ang: how far the arms turn from hanging, k: how much longer they reach, y: where the item's middle is, in the walker's units (feet at 0). */
+const GPL_HOLD = Object.freeze({ ang: 168, k: 1.62, y: -74 });
 /** The proportions, in the portrait's units (its head is 44 tall): the ground, the crown, the shoulder line. The side-on figure is scaled to fit between them. */
 const _GPL_FLOOR = 186, _GPL_CROWN = 16, _GPL_SHOULDER = 77;
 const _GPL_S = 70 / (_GPL_FLOOR - _GPL_CROWN);                        // portrait units -> the walker's 70 units
@@ -53,9 +57,10 @@ function _gplTools() {
   };
 }
 /** An arm: its drawing hanging from the joint j, a class for its motion, a turn, what it holds at the hand. */
-function _gplArm(art, j, len, cls, ang, tool) {
-  const r = (ang || 0) * Math.PI / 180, h = [j[0] - Math.sin(r) * len, j[1] + Math.cos(r) * len];
-  return `<g class="gpl-limb ${cls || ''}" style="transform-origin:${_gplN(j[0])}px ${_gplN(j[1])}px">${ang ? `<g transform="rotate(${_gplN(ang)} ${_gplN(j[0])} ${_gplN(j[1])})">${art}</g>` : art}${tool ? tool(h) : ''}</g>`;
+function _gplArm(art, j, len, cls, ang, tool, k) {
+  const L = len * (k || 1), r = (ang || 0) * Math.PI / 180, h = [j[0] - Math.sin(r) * L, j[1] + Math.cos(r) * L];
+  const body = k ? `<g transform="translate(${_gplN(j[0])} ${_gplN(j[1])}) scale(1 ${_gplN(k)}) translate(${_gplN(-j[0])} ${_gplN(-j[1])})">${art}</g>` : art;   // a longer reach: the arm's drawing stretched along itself, from the shoulder
+  return `<g class="gpl-limb ${cls || ''}" style="transform-origin:${_gplN(j[0])}px ${_gplN(j[1])}px">${ang ? `<g transform="rotate(${_gplN(ang)} ${_gplN(j[0])} ${_gplN(j[1])})">${body}</g>` : body}${tool ? tool(h) : ''}</g>`;
 }
 /** Where each arm goes for a pose, and what it holds: {a: [turn, class, tool], b: [turn, class], tool}. a is the far (side) or left (front) arm, b the near or right. */
 function _gplPoseArms(pose, side, T, stageRod) {
@@ -73,6 +78,7 @@ function _gplPoseArms(pose, side, T, stageRod) {
     case 'fish': { const rod = stageRod ? null : (h) => at(h[0], h[1], T.rod()); return side
       ? { a: [-58], b: [-70, 'gpl-fs'], tool: rod }
       : { a: [-22], b: [-52, 'gpl-fs'], tool: rod }; }
+    case 'hold': return { a: [-GPL_HOLD.ang, 'gpl-hup is-a'], b: [-GPL_HOLD.ang, 'gpl-hup is-b'], k: GPL_HOLD.k };   // (the left arm is mirrored by its caller: the same turn lifts both)
     default: return null;
   }
 }
@@ -209,8 +215,8 @@ function _gplDraw(a, dir, pose, o) {
     const w = B.arm + T.g * 0.6, ax = (16.4 * kb / w) * S, ay = KY * S, jx = 34 * kb * S, jy = _gplY(88), sh = Fp.shoulders.near;
     const armArt = (sgn, art) => _gplG(_gplM(sgn * ax, ay, sgn * (jx - sh[0] * ax), jy - sh[1] * ay), art), len = 19.1 * ay;
     const armL = armArt(-1, FpL.nearArm), armR = armArt(1, Fp.nearArm);
-    const left = P ? _gplArm(armL, [-jx, jy], len, P.a[1] || '', -P.a[0], P.a[2]) : _gplArm(armL, [-jx, jy], len, 'gpl-af gpl-b');
-    const right = P ? _gplArm(armR, [jx, jy], len, P.b[1] || '', P.b[0], P.tool || P.b[2]) : _gplArm(armR, [jx, jy], len, 'gpl-af gpl-a is-r');
+    const left = P ? _gplArm(armL, [-jx, jy], len, P.a[1] || '', -P.a[0], P.a[2], P.k) : _gplArm(armL, [-jx, jy], len, 'gpl-af gpl-b');
+    const right = P ? _gplArm(armR, [jx, jy], len, P.b[1] || '', P.b[0], P.tool || P.b[2], P.k) : _gplArm(armR, [jx, jy], len, 'gpl-af gpl-a is-r');
     const lower = _gplG(bust, _gplLower(a, fo, T, uid, back)), cape = a.outer === 'cape';   // a cape lies over the arms
     if (back) {
       upper = lower + _gplG(bust, _gplBackBust(a, fo, uid) + _gplHipBag(a, true)) + left + right + _gplG(bust, L.neck)
@@ -256,7 +262,7 @@ function gartPlayerPaint(inner, gw) {
     let pose = moving ? 'walk' : 'idle', stageRod = false;
     if ((gw.fishing && gw.fishing.state !== 'idle') || gw.casting) { pose = 'fish'; stageRod = true; }   // the fishing game draws the rod and the line itself
     if (_GPL.pose && now < _GPL.until && !moving) pose = _GPL.pose;
-    const av = _gplAvatar(), dir = stageRod ? 'e' : _GPL.dir;   // fishing is side on: the game's rod starts from the hand on the side you face
+    const av = _gplAvatar(), dir = GPL_POSE_FRONT.has(pose) ? 's' : stageRod ? 'e' : _GPL.dir;   // fishing is side on: the game's rod starts from the hand on the side you face; a catch held up faces you
     const key = pose + dir + (motion ? 'm' : '') + (stageRod ? 'r' : '') + JSON.stringify(av);   // a compare: a wardrobe change shows at once, nothing else redraws
     if (_GPL.key !== key || !inner.firstChild || inner._gplKey !== key) {
       const s = gartPlayerSvg(av, { dir, pose, motion, stageRod });
