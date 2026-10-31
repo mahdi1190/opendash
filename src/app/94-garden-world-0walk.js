@@ -35,8 +35,58 @@ const GW_SCALE = 0.74;                                                // the fig
 const GW_PET_SCALE = 0.5;                                             // your pet, drawn at two thirds of the size the garden uses for a wandering one: it comes up to your knee
 
 /* ---------- the grid you walk on ---------- */
-/** You walk through what you plant, so a full bed never walls you off: only a tree that has grown past a seedling stands in the way. */
+/** You walk through what you plant, so a full bed never walls you off: only a tree that has grown past a seedling stands in the way (its trunk, below). */
 function gardenPlantBlocks(p) { return !!(p && p.def && p.def.cat === 'tree' && p.stage >= 2); }
+/*
+ * What has collisions, and how big (2.28; the owner, 31 Oct 2026: "collisions are weird in the garden ... rethink what has collisions and how big they are").
+ * Three sizes, so a flower pot is not a wall:
+ *   'none'  you walk through or over it: flat things (a picnic blanket), things you walk under (an arch, a pergola) or that hang (string lights, bunting)
+ *   'soft'  a small box where it stands: a lantern, a bird bath, a gnome. About half a cell wide and a third deep at its base, so you slip past it
+ *   'full'  the whole footprint, like a wall: fences, walls, hedges, benches and seats (you walk up to sit), a fountain, a shed
+ * Trees block their trunk only (a small box at the foot), so the leaves are for walking behind. A catalogue row may say `col: 'none' | 'soft' | 'full'`
+ * for itself. Soft boxes are not in the cell grid the routes are planned on (a cell with a lantern in it is still a cell you cross), only in what the
+ * feet are tested against (_gwFree, gardenWorldFree), so you go round them instead of the route avoiding the whole cell.
+ */
+const GARDEN_COL_NONE = new Set(['picnic-blanket', 'sprinkler', 'solar-lights', 'toadstool-lamps', 'string-lights', 'paper-lanterns', 'festive-lights', 'bunting', 'rose-arch', 'pergola',
+  'painted-eggs', 'leaf-pile', 'hanging-basket', 'wind-chimes', 'stone-frog', 'old-watering-can', 'bait-bucket']);
+const GARDEN_COL_FULL = new Set(['picket-fence', 'wattle-fence', 'box-hedge', 'stone-wall', 'iron-railings', 'bamboo-screen', 'bench', 'stone-bench', 'swing-seat', 'hammock', 'deckchair', 'bistro-set',
+  'driftwood-seat', 'fountain', 'mini-pond', 'wishing-well', 'potting-shed', 'gazebo', 'cold-frame', 'aquarium', 'trophy-board']);
+/** 'none' | 'soft' | 'full' for a decoration (unknown ones are soft: a small box is the safe middle). */
+function gardenDecorCol(def) {
+  if (!def) return 'full';
+  if (def.col === 'none' || def.col === 'soft' || def.col === 'full') return def.col;
+  if (GARDEN_COL_NONE.has(def.id)) return 'none';
+  if (GARDEN_COL_FULL.has(def.id) || (def.effect && def.effect.kind === 'sit')) return 'full';
+  return 'soft';
+}
+/** The boxes the feet are tested against besides the cell grid: [{x0, y0, x1, y1}] in cells, and which cells each touches. */
+function _gwBuildSolids(m) {
+  const list = [], at = new Map();
+  const add = (x0, y0, x1, y1) => {
+    const r = { x0, y0, x1, y1 }; list.push(r);
+    for (let cy = Math.floor(y0); cy <= Math.floor(y1 - 1e-6); cy++) for (let cx = Math.floor(x0); cx <= Math.floor(x1 - 1e-6); cx++) { const k = cx + ',' + cy; (at.get(k) || at.set(k, []).get(k)).push(r); }
+  };
+  for (const p of m.plants) {
+    if (!gardenPlantBlocks(p)) continue;
+    const fp = p.fp || 1, cx = p.x + fp / 2, foot = p.y + fp - 0.08, w = fp > 1 ? 0.5 : 0.4, d = fp > 1 ? 0.32 : 0.28;
+    add(cx - w / 2, foot - d, cx + w / 2, foot);   // the trunk: the leaves are for walking behind
+  }
+  for (const dc of m.decor) {
+    const def = dc.def; if (!def || def.layer === 'ground' || gardenDecorCol(def) !== 'soft') continue;
+    const w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = Math.min(w, 2) * 0.5, d = 0.28 + (h > 1 ? 0.3 : 0);
+    add(cx - bw / 2, foot - d, cx + bw / 2, foot);
+  }
+  return { list, at };
+}
+/** Do feet (half width fx, half depth fy, in cells) at x, y touch one of the boxes? */
+function _gwSolidHit(x, y, fx, fy) {
+  const S = _gw.solids; if (!S || !S.list.length) return false;
+  for (let cy = Math.floor(y - fy); cy <= Math.floor(y + fy); cy++) for (let cx = Math.floor(x - fx); cx <= Math.floor(x + fx); cx++) {
+    const rs = S.at.get(cx + ',' + cy); if (!rs) continue;
+    for (const r of rs) if (x + fx > r.x0 && x - fx < r.x1 && y + fy > r.y0 && y - fy < r.y1) return true;
+  }
+  return false;
+}
 function _gwBuildGrid(m) {
   const W = GARDEN_WORLD, g = new Uint8Array(W.cols * W.rows);   // 1 = blocked
   const lvl = m.level.level;
@@ -48,15 +98,15 @@ function _gwBuildGrid(m) {
     if (pr && !pr.walk) blocked = true;
     if (!pr && gardenIsWater(x, y)) blocked = true;
     const c = m.occ.get(x + ',' + y);
-    if (c && c.decor) { const d = gardenDecorById(m, c.decor); if (d && d.def.effect && d.def.effect.kind === 'sit') { /* a seat: you may sit, so walk up to it */ } blocked = true; }
-    if (c && c.plant && gardenPlantBlocks(gardenPlantById(m, c.plant))) blocked = true;
+    if (c && c.decor) { const d = gardenDecorById(m, c.decor); if (!d || gardenDecorCol(d.def) === 'full') blocked = true; }   // (a seat is full: you walk up to it to sit)
+    // (a tree's trunk and a small decoration are boxes, not cells: _gwBuildSolids)
     g[y * W.cols + x] = blocked ? 1 : 0;
   }
   return g;
 }
 function _gwGrid(m) {
   const key = (m && m.visit ? m.visit.key : _gd.memoKey) + '|' + (m && m.level.level);
-  if (!_gw.grid || _gw.gridKey !== key) { _gw.grid = _gwBuildGrid(m || gardenHere()); _gw.gridKey = key; }
+  if (!_gw.grid || _gw.gridKey !== key) { const mm = m || gardenHere(); _gw.grid = _gwBuildGrid(mm); _gw.solids = _gwBuildSolids(mm); _gw.gridKey = key; }
   return _gw.grid;
 }
 function gardenWalkable(x, y) {
@@ -110,7 +160,8 @@ const GW_CLEAR = 0.07;                                // planning keeps this muc
 function _gwFree(x, y, m) {
   const fx = GW_FOOT.x + (m || 0), fy = GW_FOOT.y + (m || 0);
   return gardenWalkable(Math.floor(x - fx), Math.floor(y - fy)) && gardenWalkable(Math.floor(x + fx), Math.floor(y - fy))
-    && gardenWalkable(Math.floor(x - fx), Math.floor(y + fy)) && gardenWalkable(Math.floor(x + fx), Math.floor(y + fy));
+    && gardenWalkable(Math.floor(x - fx), Math.floor(y + fy)) && gardenWalkable(Math.floor(x + fx), Math.floor(y + fy))
+    && !_gwSolidHit(x, y, fx, fy);
 }
 /** Can the feet go in a straight line from a to b? (`m`: with that much room to spare.) Sampled finer than a corner can hide in. */
 function _gwLos(a, b, m) {
@@ -464,6 +515,26 @@ function _gwBuildCamUi(stagebox) {
 }
 
 /* ---------- the loop ---------- */
+/*
+ * Calm (2.28; the owner, 31 Oct 2026: "optimize it to not consume CPU when it's not open ... graphics"). Measured on this stage: an open, idle garden kept
+ * a core about 40% busy, almost all of it painting: 70-odd ambient CSS animations (clouds, leaves, wings, water, pets) each repaint the stage every frame
+ * while the scripts take 2%. So when nobody is looking, the ambient motion rests: the window has not had the focus for 8 seconds, or there has been no
+ * pointer or key for 90 seconds and nobody is in the garden with you. Any pointer, key or focus wakes it at once; it pauses and resumes in place.
+ */
+const _gwCalm = { on: false, input: Date.now(), blur: 0 };   // clock-ok: when you last did something
+function _gwCalmSet(on) { if (_gwCalm.on === on) return; _gwCalm.on = on; if (_gw.root) _gw.root.classList.toggle('gd-calm', on); }
+function _gwCalmTick() {
+  const t = Date.now(), focused = typeof document.hasFocus === 'function' ? document.hasFocus() : true;   // clock-ok: idle time
+  if (focused) _gwCalm.blur = 0; else if (!_gwCalm.blur) _gwCalm.blur = t;
+  const away = !focused && _gwCalm.blur > 0 && t - _gwCalm.blur > 8000;
+  const company = typeof _gll !== 'undefined' && _gll.actors && _gll.actors.size > 0;   // friends here: you are watching them
+  _gwCalmSet(!!(away || (!company && t - _gwCalm.input > 90000)));
+}
+if (typeof window !== 'undefined') {
+  const wake = () => { _gwCalm.input = Date.now(); if (_gwCalm.on) { _gwCalmSet(false); if (_gw.idleT) { clearTimeout(_gw.idleT); _gw.idleT = 0; } if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } };   // clock-ok: idle time
+  for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(ev, wake, { passive: true, capture: true });
+  window.addEventListener('focus', wake);   // (the pets' roaming loop, 97-pets-7roam.js, rests while it is calm too)
+}
 function _gwEnsureLoop() { if (!_gw.on || _gw.raf || document.hidden) return; if (_gw.idleT) { clearTimeout(_gw.idleT); _gw.idleT = 0; } _gw.last = 0; _gw.raf = requestAnimationFrame(_gwFrame); }
 /** Is anything in the view moving, or about to? Every frame asked for is a frame the whole stage paints, so an idle garden looks up only a few times a second. */
 function _gwPace() {
@@ -483,6 +554,7 @@ function _gwFrame(ts) {
   _gw.raf = 0;
   if (!_gw.on || !_gw.root || !_gw.root.isConnected || !_gw.svg || !_gw.svg.isConnected) { _gw.on = _gw.on && !!_gw.root && _gw.root.isConnected; if (_gw.on) { _gw.raf = requestAnimationFrame(_gwFrame); } return; }
   if (document.hidden) return;
+  _gwCalmTick();
   const dt = Math.min(0.11, _gw.last ? (ts - _gw.last) / 1000 : 0.016); _gw.last = ts; _gw.t = (_gw.t || 0) + dt;
   const W = GARDEN_WORLD;
   // 1. where you are going: the keys, or the way you clicked (a free line round whatever is in the way, with a soft start and stop)
@@ -573,9 +645,10 @@ function _gwFrame(ts) {
   gardenHudFrame();
   // (something in this frame may have asked for the loop already: a walk begun on arrival, a sprite added. Two chains of frames, the second with dt 0, stop you dead: a step of nothing looks like a wall)
   if (_gw.raf) return;
-  const pace = _gwPace();
+  let pace = _gwPace();
+  if (_gwCalm.on && pace < 60) pace = 2;   // calm: nobody is looking: look in twice a second (anything you do wakes it, and the next look is then at once)
   if (pace >= 60) _gw.raf = requestAnimationFrame(_gwFrame);
-  else if (!_gw.idleT) _gw.idleT = setTimeout(() => { _gw.idleT = 0; if (_gw.on && !_gw.raf && !document.hidden) _gw.raf = requestAnimationFrame(_gwFrame); }, pace >= 30 ? 26 : 90);
+  else if (!_gw.idleT) _gw.idleT = setTimeout(() => { _gw.idleT = 0; if (_gw.on && !_gw.raf && !document.hidden) _gw.raf = requestAnimationFrame(_gwFrame); }, pace >= 30 ? 26 : pace <= 2 ? 500 : 90);
 }
 /** A building you walk behind turns see-through, so you never lose yourself behind the shop. */
 function _gwFadeProps() {
@@ -847,10 +920,11 @@ function gardenWorldInteract() {
 }
 
 /* ---------- the world's API for anything that lives in it (docs/dev/GARDEN.md, "The world API") ---------- */
+function _gwSolidHitAfterGrid(x, y, f) { _gwGrid(gardenHere()); return _gwSolidHit(x, y, f, f); }   // (the grid is built first: it makes the boxes)
 /** The one collision map, for feet of any size: can something this wide (r, in cells) stand at x, y? */
 function gardenWorldFree(x, y, r) {
   const f = r == null ? 0.1 : r;
-  return gardenWalkable(Math.floor(x - f), Math.floor(y - f)) && gardenWalkable(Math.floor(x + f), Math.floor(y - f)) && gardenWalkable(Math.floor(x - f), Math.floor(y + f)) && gardenWalkable(Math.floor(x + f), Math.floor(y + f));
+  return !_gwSolidHitAfterGrid(x, y, f) && gardenWalkable(Math.floor(x - f), Math.floor(y - f)) && gardenWalkable(Math.floor(x + f), Math.floor(y - f)) && gardenWalkable(Math.floor(x - f), Math.floor(y + f)) && gardenWalkable(Math.floor(x + f), Math.floor(y + f));
 }
 /* How high up a thing's top surface is, as a share of its height, by behaviour (a seat is sat on below the top of its back). A catalogue row can say `perch: 0.8` for itself. */
 const GARDEN_SURFACE_BY_EFFECT = Object.freeze({ sit: 0.55 });
@@ -971,7 +1045,7 @@ function gardenWorldPainted(m) {
   if (!_gw.on || !_gdp.svg) return;
   if (_gw.svg !== _gdp.svg) { _gw.svg = _gdp.svg; _gw.node = null; _gw.cam.init = false; _gw.cam.dirty = true; if (_gw.pet) { _gw.pet.node = null; _gw.pet = null; } if (typeof _gwBugsReset === 'function') _gwBugsReset(); }
   _gwGrid(m);
-  if (!_gw.node || !_gw.node.isConnected) { for (const n of _gw.svg.querySelectorAll('.gd-player')) n.remove(); _gw.node = _gwMakeNode(); _gw.bodyKey = ''; _gwBody(); }
+  if (!_gw.node || !_gw.node.isConnected) { for (const n of _gw.svg.querySelectorAll('.gd-player')) n.remove(); _gw.node = _gwMakeNode(); _gw.bodyKey = ''; _gwBody(); if (typeof gardenLiveMineRedraw === 'function') gardenLiveMineRedraw(); }
   else for (const n of _gw.svg.querySelectorAll('.gd-player')) if (n !== _gw.node) n.remove();
   // (boxed in by a new plant or decoration? _gwPushOut walks you out in the loop and carries your walk on)
   _gw.z = -1; _gw._fadeKey = ''; _gwApplyNode();

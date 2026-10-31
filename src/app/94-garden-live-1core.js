@@ -53,6 +53,7 @@ function _gllDress(A, root) {
   root.appendChild(tag);
   A.root = root; A.inner = inner; A.bob = bob; A.key = '';
   _gllPaint(A);
+  _gllSayDraw(A);   // (a repaint of the garden or a new look makes this node new: what they were saying goes back on it)
 }
 function _gllPaint(A) {
   if (!A.inner) return;
@@ -128,19 +129,32 @@ function _gllEmote(A, id) {
   return true;
 }
 function _gllEmoteStop(A) { clearTimeout(A.animT); for (const a of A.anims || []) { try { a.cancel(); } catch (e) { /* gone */ } } A.anims = null; }
-/** A speech bubble over someone. Phrases come from the table on this side. */
+/**
+ * A speech bubble over someone. Phrases come from the table on this side. The bubble is kept on the person (A.say) and drawn into whatever node
+ * they are in now (_gllSayDraw), so a repaint of the garden, which makes a new node, does not take it away before its 3.6 seconds are up.
+ */
 function _gllSay(A, id) {
-  const row = GL_PHRASES.find(p => p.id === id); if (!row || !A.root) return;
-  const old = A.root.querySelector(':scope > .gll-say'); if (old) old.remove();
+  const row = GL_PHRASES.find(p => p.id === id); if (!row) return;
+  A.say = { id, until: Date.now() + 3600 };   // clock-ok: how long a bubble stays
+  _gllSayDraw(A);
+  clearTimeout(A.sayT); A.sayT = setTimeout(() => { A.say = null; _gllSayDraw(A); }, 3600);
+}
+function _gllSayDraw(A) {
+  const root = A.root; if (!root) return;
+  const old = root.querySelector(':scope > .gll-say'); if (old) old.remove();
+  const s = A.say; if (!s || Date.now() >= s.until) return;   // clock-ok: how long a bubble stays
+  const row = GL_PHRASES.find(p => p.id === s.id); if (!row) return;
   const g = _gllSvgEl('g', 'gll-say'); g.setAttribute('transform', 'translate(0 -74)');
   const w = row.t.length * 5.4 + 14;
   const r = _gllSvgEl('rect', 'gll-say-b'); r.setAttribute('x', String(-w / 2)); r.setAttribute('y', '-19'); r.setAttribute('width', String(w)); r.setAttribute('height', '17'); r.setAttribute('rx', '8');
   const tail = _gllSvgEl('path', 'gll-say-b'); tail.setAttribute('d', 'M-4 -3 L0 3 L4 -3Z');
   const t = _gllSvgEl('text', 'gll-say-t'); t.setAttribute('text-anchor', 'middle'); t.setAttribute('y', '-7'); t.textContent = row.t;
   g.append(r, tail, t);
-  A.root.appendChild(g);
-  clearTimeout(A.sayT); A.sayT = setTimeout(() => g.remove(), 3600);
+  root.appendChild(g);
 }
+/** You, in your own garden or on a visit: your figure's node is made again whenever the stage is painted (94-garden-world-0walk.js asks for the bubble back). */
+const _gllMe = { say: null, sayT: 0, get root() { return typeof _gw !== 'undefined' ? _gw.node : null; } };
+function gardenLiveMineRedraw() { if (_gllMe.say) _gllSayDraw(_gllMe); }
 /** A little float over a cell: what happened, and who. */
 function _gllFloat(svg, x, y, emoji, who) {
   const fx = svg && svg.querySelector('.gd-actors'); if (!fx || _gllReduced()) return;

@@ -495,7 +495,7 @@ Owner, 30 Oct 2026: "moving the player around is unclear, the UI is very unclear
 ### The world API (for anything that lives in the garden)
 
 - `gardenWorldObjects(m)`: `[{kind, uid, id, name, x, y, w, h, z, height, top: {x, y, lift}, node()}]`: what stands in the garden and where something could land. `top.lift` is pixels above the ground. A row can set `perch: 0.8` (a share of its height); a seat uses `GARDEN_SURFACE_BY_EFFECT.sit`. Not for every frame.
-- `gardenWorldFree(x, y, r)`: the one collision map (the same grid you walk on), for feet `r` cells wide. `gardenWalkable(cx, cy)`, `gardenReachable(cx, cy)` are its cell forms.
+- `gardenWorldFree(x, y, r)`: the one collision map (the cell grid you walk on, plus the small boxes of `_gwBuildSolids`: a tree's trunk and the soft decorations, `gardenDecorCol`), for feet `r` cells wide. `gardenWalkable(cx, cy)`, `gardenReachable(cx, cy)` are its cell forms.
 - `gardenWorldAdd(sprite)`: a moving thing, sorted with everything else.
   `{id, svg, x, y, lift, update(dt, s), ground, foot, hit, label, cursor, onClick(s)}`. `svg` has its feet at 0,0. `ground: true` makes `s.moveBy(dx, dy)` slide along the collision map. `hit` (cells) makes it clickable through `gardenWorldPick`, with the hand free: the cursor and label show on hover; `onAim` runs at once (it knows you are coming), you walk up, then `onClick` runs (with no `onClick`, `onAim` alone is the click and you stay where you are). `hitUp` (px) raises the middle of the click target above its feet. Returns the sprite with `moveBy`, `perch(obj)`, `unperch()`, `remove()`.
 - Elevated: `s.perch(obj)` puts it on a `gardenWorldObjects` row's `top` and sorts it just in front of that thing, so a bird on a fence is hidden by whatever hides the fence.

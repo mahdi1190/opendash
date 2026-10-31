@@ -10,6 +10,27 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.28.0]
+
+What a friend is listening to, Play that finds your Spotify, and a kinder, calmer garden to play together in.
+
+### Added
+- **Live play: their sky.** When you visit a garden you see the light the owner has now (dawn, day, dusk or night by their clock, with their sunrise and sunset when they have the weather), and their rain or snow. Their time zone's offset, sunrise, sunset and weather travel in the garden snapshot, so a friend can tell roughly where in the world you are.
+- **Live play: the host can talk.** The Say button now shows for the owner while someone is in the garden, with the same phrases a visitor has.
+- **Live play: a change of clothes or of pet shows at once** while you are together, for the host and for visitors, not at the next visit.
+- **Calm.** When the window has not had the focus for 8 seconds, or nobody has touched it for 90 seconds and nobody is in the garden with you, the garden's ambient motion rests in place and its loops look in only a few times a second. Anything you do wakes it. An open idle garden went from about 40% of a core to under 3% in a measured run; leaving the garden already stopped it. A host with nobody else in the garden also reads the levels file every 15 seconds instead of every 3.
+- **Your own card shows what friends would see.** With Show what I'm listening to on, your own Profile card shows your Listening to line, and a *Check what friends see* button tells you what a friend would be told.
+- **Listening to.** Turn on *Show what I'm listening to* (Profile > Music) and a friend who opens your card sees the song you are playing, like a status line, with a small progress bar. It is asked for, never broadcast: opening your card sends your Freeflo one small question, it answers only while a song is playing, and nothing is sent when nobody looks. Never a podcast, a local file or a Spotify private session. It is off until you turn it on, only friends who can see your card get an answer, and Stop sharing stops it. Your friends' Freeflo asks at most once every few minutes, only while your card is on screen.
+- **Check where it can play** (Connections > Spotify > Set up) lists the Spotify apps Spotify can see, so you can tell whether an open app is visible to Freeflo.
+- **Let friends use your Spotify app (up to 4).** The set-up now has your Client ID ready to copy and says what to do: a friend pastes it instead of making an app, and you add them under User management in the Spotify dashboard. Spotify allows 5 people per app in Development Mode (you and 4 more), and only organisations with a large audience can lift that.
+
+### Changed
+- **Collisions in the garden, rethought.** Three sizes: flat things (a picnic blanket) and things you walk under or that hang (an arch, a pergola, string lights, bunting) are walk-through; small decorations (a lantern, a bird bath, a gnome, a pump) are a small box at their base, so you slip past instead of meeting a wall the size of a cell; walls, fences, hedges, seats, a fountain and a shed stay full. Trees block their trunk only; the leaves are for walking behind. A catalogue row can say `col: 'none' | 'soft' | 'full'` for itself.
+
+### Fixed
+- **A speech bubble no longer vanishes** a moment after it appears. It was kept inside the figure, which is made again whenever the garden is painted (every change the host's page applies), so a visitor's bubble often disappeared on the host's screen at once. It now belongs to the person and comes back with the figure until its 3.6 seconds are up.
+- **Play and Queue when your Spotify app is open but idle.** Spotify only treats an app as "active" once it has played something, so Play said "Open Spotify first" although it was open. Freeflo now looks at the devices Spotify can see, names one (the active one, else a computer or phone) and wakes it if it has to. If nothing is playing, Queue starts the song instead, and the message says which app it played on. A refused player command is now told apart from a refused account.
+
 ## [2.27.9]
 
 ### Added

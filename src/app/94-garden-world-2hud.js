@@ -176,7 +176,7 @@ function _ghQuick(box, m) {
   const thirsty = m.visit ? gardenVisitCount(m, 'water') : m.rain.now ? 0 : m.plants.filter(p => p.thirsty && p.def.thirst && p.def.special !== 'heart').length;
   const ripeN = m.visit ? gardenVisitCount(m, 'harvest') : m.ripe;
   const undo = gardenCanUndo() ? _gd.undo[_gd.undo.length - 1] : null;
-  const html = `<button type="button" class="gd-pill is-emote" data-quick="emote" data-tip="Moves (Q)" aria-label="Moves">${icon('smile')}</button>` + (m.visit && m.visit.live ? `<button type="button" class="gd-pill is-say" data-quick="say" data-tip="Say something" aria-label="Say something">${icon('message-circle')}</button>` : '') + (ripeN > 1 ? `<button type="button" class="gd-pill is-pick" data-quick="pick" data-tip="Pick everything that is ready (H)" aria-label="Pick all ${ripeN}">${icon('shopping-basket')}<b>${ripeN}</b></button>` : '')
+  const html = `<button type="button" class="gd-pill is-emote" data-quick="emote" data-tip="Moves (Q)" aria-label="Moves">${icon('smile')}</button>` + (typeof gardenLiveCanSay === 'function' && gardenLiveCanSay(m) ? `<button type="button" class="gd-pill is-say" data-quick="say" data-tip="Say something" aria-label="Say something">${icon('message-circle')}</button>` : '') + (ripeN > 1 ? `<button type="button" class="gd-pill is-pick" data-quick="pick" data-tip="Pick everything that is ready (H)" aria-label="Pick all ${ripeN}">${icon('shopping-basket')}<b>${ripeN}</b></button>` : '')
     + (thirsty > 1 ? `<button type="button" class="gd-pill is-water" data-quick="water" data-tip="Water every thirsty plant (Shift+W)" aria-label="Water all ${thirsty}">${icon('droplets')}<b>${thirsty}</b></button>` : '')
     + (undo ? `<button type="button" class="gd-pill is-undo" data-quick="undo" data-tip="${escAttr('Undo ' + undo.label)}" aria-label="${escAttr('Undo ' + undo.label)}">${icon('undo-2')}</button>` : '');
   const el = _ghHost(box, 'gd-quick');
@@ -189,7 +189,7 @@ function _ghQuick(box, m) {
       const q = b.dataset.quick, at = b;
       if (q === 'undo') { if (gardenUndo()) gameCheer(at, { quiet: true }); return; }
       if (q === 'emote') { if (typeof gartEmoteWheel === 'function') gartEmoteWheel(); return; }
-      if (q === 'say') { if (typeof _glvPhrases === 'function') _glvPhrases(at); return; }
+      if (q === 'say') { if (typeof gardenLivePhrases === 'function') gardenLivePhrases(at); return; }
       const r = q === 'pick' ? gardenHarvestAll() : gardenWaterAll();
       if (r && !r.ok) gameDenyOf(r, at);
     });

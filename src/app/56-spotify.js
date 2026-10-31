@@ -128,6 +128,29 @@ function spotifySetup() {
       if (s.connected) el.appendChild(_connEl('p', 'conn-note', s.name ? `Signed in as ${s.name}.` : 'Signed in.'));
       else el.appendChild(_connEl('p', 'conn-note', 'A new tab opens on Spotify. Allow access there, then come back to this one.'));
     }
+    if (s.configured) {
+      // Where can it play? (an open Spotify app only counts once Spotify can see it)
+      if (s.connected) {
+        const dev = _connEl('p', 'conn-note spotify-dev'); dev.setAttribute('role', 'status'); dev.setAttribute('aria-live', 'polite');
+        const btn = uiButton({ label: 'Check where it can play', icon: 'refresh-cw', kind: 'ghost', size: 'sm', run: async (e, b) => {
+          b.disabled = true; dev.textContent = 'Looking…';
+          try {
+            const j = await spotifyApi('/api/spotify/devices');
+            const list = Array.isArray(j.devices) ? j.devices : [];
+            dev.textContent = list.length ? 'Spotify can see: ' + list.map(d => `${d.name}${d.type ? ' (' + d.type.toLowerCase() + ')' : ''}${d.active ? ', playing now' : ''}`).join('; ') + '.'
+              : 'Spotify can’t see an open Spotify app right now. Open it on your phone or computer and play anything for a second.';
+          } catch (err) { dev.textContent = err.message || 'Spotify could not say.'; }
+          if (alive) b.disabled = false;
+        } });
+        el.append(dev, btn);
+      }
+      // Your app can serve 5 people (you and 4 more): a friend pastes your Client ID instead of making an app of their own
+      const share = _connEl('details', 'spotify-share');
+      share.appendChild(_connEl('summary', null, 'Let friends use your Spotify app (up to 4)'));
+      share.appendChild(_connEl('p', 'conn-note', 'Spotify lets one app serve 5 people: you and 4 more. A friend does not need to make an app. They open Connections > Spotify > Set up Spotify, paste this Client ID and sign in. You then add them under User management in the dashboard (their name and the email of their Spotify account). The ID is not a secret, but only people you add can use it. Friends who only receive songs need none of this.'));
+      share.appendChild(_connCode(s.clientId || '', 'Copy Client ID', 'Client ID'));
+      el.appendChild(share);
+    }
     const details = _connEl('details', 'spotify-setup'); details.open = !s.configured;
     details.appendChild(_connEl('summary', null, s.configured ? 'Change the Client ID' : 'One-time Spotify set-up (about two minutes)'));
     const link = uiButton({ label: 'Open the Spotify developer dashboard', icon: 'external-link', kind: 'ghost', size: 'sm', run: () => window.open('https://developer.spotify.com/dashboard', '_blank', 'noopener') });
@@ -136,7 +159,7 @@ function spotifySetup() {
       ['Sign in at developer.spotify.com/dashboard with your Spotify account and choose Create app.', link],
       ['Give it any name and description. Tick Web API. For the redirect URI, paste this address exactly (Spotify does not accept “localhost”):', _connCode(redirect, 'Copy address', 'address')],
       'Save the app, open its Settings and copy the Client ID. It is not a secret, and you do not need the client secret.',
-      'Paste the Client ID below and save. Then choose Sign in with Spotify.',
+      'Paste the Client ID below and save. Then choose Sign in with Spotify. (Using a friend’s app? Paste their Client ID, and ask them to add your Spotify email under User management.)',
     ]));
     const field = _connEl('label', 'field spotify-id');
     field.appendChild(_connEl('span', 'field-label', 'Client ID'));

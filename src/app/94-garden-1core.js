@@ -199,12 +199,19 @@ function _gdRain(now) {
   }
   return out;
 }
-/** dawn / day / dusk / night from your clock (and sunrise / sunset from the weather when there is one). */
-function _gdTod(now, season) {
-  const p = Clock.parts(now), h = p.h + p.mi / 60;
-  const w = _gdWeather();
+/**
+ * dawn / day / dusk / night from your clock (and sunrise / sunset from the weather when there is one).
+ * o = {tz, sr, ss} (2.28): somebody else's garden. Their time zone's offset in minutes and, when they had one, their sunrise and sunset in minutes after
+ * midnight; the hour is theirs, not yours, so a visit shows the light they have right now.
+ */
+function _gdTod(now, season, o) {
+  const theirs = !!o && Number.isFinite(o.tz);
+  let h;
+  if (theirs) { const t = new Date(now + o.tz * 60000); h = t.getUTCHours() + t.getUTCMinutes() / 60; }   // clock-ok: their local hour, by their offset
+  else { const p = Clock.parts(now); h = p.h + p.mi / 60; }
+  const w = theirs ? null : _gdWeather();
   const hm = (s) => { const m = /(\d{1,2}):(\d{2})/.exec(String(s || '')); return m ? +m[1] + m[2] / 60 : NaN; };
-  let up = w && w.today ? hm(w.today.sunrise) : NaN, down = w && w.today ? hm(w.today.sunset) : NaN;
+  let up = theirs && Number.isFinite(o.sr) ? o.sr / 60 : w && w.today ? hm(w.today.sunrise) : NaN, down = theirs && Number.isFinite(o.ss) ? o.ss / 60 : w && w.today ? hm(w.today.sunset) : NaN;
   if (!isFinite(up) || !isFinite(down)) { const t = { spring: [6.3, 19.6], summer: [5, 21.2], autumn: [7, 18], winter: [8, 16.2] }[season] || [7, 19]; up = t[0]; down = t[1]; }
   if (h >= up - 0.75 && h < up + 0.75) return 'dawn';
   if (h >= down - 0.75 && h < down + 0.75) return 'dusk';
@@ -578,6 +585,14 @@ function gardenSnapshot() {
     const plants = m.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants).map(p => [p.def.id, p.x, p.y, p.stage, p.variant, (p.thirsty ? 1 : 0) | (p.overgrown ? 2 : 0) | (p.ripe ? 4 : 0)]);
     const decor = m.decor.slice(0, GARDEN_SNAPSHOT_MAX.decor).map(d => [d.def.id, d.x, d.y, d.r, d.v]);
     const out = { v: 1, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
+    if (m.rain && (m.rain.snow || m.rain.now)) out.wx = m.rain.snow ? 2 : 1;   // 2.28: is it raining (1) or snowing (2) over your garden now? A visit has the same sky
+    // 2.28: your time zone and your sunrise and sunset, so a friend who visits sees your sky as it is for you now (the offset tells them roughly where you are in the world)
+    try {
+      out.tz = Math.max(-840, Math.min(840, Math.round(Clock.offset(m.now))));
+      const w = _gdWeather(), mn = (s) => { const x = /(\d{1,2}):(\d{2})/.exec(String(s || '')); return x ? +x[1] * 60 + +x[2] : NaN; };
+      const up = w && w.today ? mn(w.today.sunrise) : NaN, dn = w && w.today ? mn(w.today.sunset) : NaN;
+      if (Number.isFinite(up) && Number.isFinite(dn) && up >= 0 && up < 1440 && dn >= 0 && dn < 1440) { out.sr = up; out.ss = dn; }
+    } catch (e) { /* their own clock then */ }
     try { const sh = typeof gardenShowWire === 'function' ? gardenShowWire() : null; if (sh) out.sh = sh; } catch (e) { /* the showcase is optional */ }   // 2.22: the tank and the case
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
     return out;

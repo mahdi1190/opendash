@@ -729,7 +729,7 @@ function _glVisitWorld(svg, snap) {
   for (const o of rows) { if (o.kind === 'pad') continue; const uid = o.uid, x = o.x, y = o.y, kind = o.kind; o.node = () => (kind === 'prop' ? svg.querySelector(`.gd-prop[data-prop="${CSS.escape(uid)}"]`) : svg.querySelector(`.gd-it[data-x="${x}"][data-y="${y}"]`)); }
   const now = _gdNow(), season = snap.season || 'summer';
   const W = _glMakeWorld({
-    own: false, visit: true, svg, tod: _gdTod(now, season), season, rain: false, snow: false, wet: false, level: lvl, still: !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()),
+    own: false, visit: true, svg, tod: _gdTod(now, season, snap), season, rain: snap.wx === 1, snow: snap.wx === 2, wet: !!snap.wx, level: lvl, still: !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()),
     cell: (x, y) => x >= 0 && y >= 0 && x < G.cols && y < G.rows && !grid[y * G.cols + x],
     water: (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); return cx >= 0 && cy >= 0 && cx < G.cols && cy < G.rows && gardenIsWater(cx, cy) && open(cx, cy); },
     view() { const b = svg.viewBox && svg.viewBox.baseVal; return b && b.width ? { x0: Math.max(0, b.x / G.cellW), y0: (b.y - G.sky) / G.cellH, x1: Math.min(G.cols, (b.x + b.width) / G.cellW), y1: Math.min(G.rows + 1, (b.y + b.height - G.sky) / G.cellH) } : { x0: 0, y0: 0, x1: G.coreCols, y1: G.coreRows }; },

@@ -310,16 +310,22 @@ function _glvKnockAgain() {
   _glv.state = 'knocking'; _glv.why = ''; _glvHud();
   _gllApi('/api/garden-live/here', { role: 'visit', on: 'again', f: _glv.fid, look: _glvLook() }).then(_glvTake).catch(() => {});
 }
-function _glvPhrases(anchor) {
+/** The phrases anyone in a live garden can say: the host too (2.28), to everyone who is there. */
+function gardenLivePhrases(anchor) {
   openPopover(anchor, (el, close) => {
     el.classList.add('gsv-pop', 'gll-menu');
     const grid = _gsvEl('div', 'gll-menu-col');
-    for (const p of GL_PHRASES) grid.appendChild(_gsvBtn(p.t, { kind: 'btn-ghost', run: () => { close(); _glvSayMine(p); _glvSend('em', { c: 'say', e: p.id }); } }));
+    for (const p of GL_PHRASES) grid.appendChild(_gsvBtn(p.t, { kind: 'btn-ghost', run: () => { close(); gardenLiveSay(p.id); } }));
     el.appendChild(grid);
   }, { align: 'center' });
 }
-/** Your own words over your own head, in the bubble everyone else sees. */
-function _glvSayMine(p) { const n = typeof _gw !== 'undefined' ? _gw.node : null; if (n) _gllSay({ root: n }, p.id); }
+const _glvPhrases = gardenLivePhrases;
+/** Say one: your own bubble at once, and everyone else's a moment later. */
+function gardenLiveSay(id) {
+  if (!GL_PHRASE_IDS.includes(id)) return;
+  if (_gll.role === 'visit') { if (!_glvLive()) return; _gllSay(_gllMe, id); _glvSend('em', { c: 'say', e: id }); return; }
+  if (typeof _glh !== 'undefined' && _glh.on && _glhAnyone()) { _gllSay(_gllMe, id); _glhSend('all', 'em', { c: 'say', e: id }); }
+}
 /* ---------- what the server hears ---------- */
 function _glvEvent(ev) {
   switch (ev.k) {
@@ -375,3 +381,11 @@ function _glvDelta(ops) {
   }
   _gdvTouch();
 }
+
+/* 2.28: a change of clothes or of pet while you are in somebody's garden shows at once, not at your next visit */
+(function _glvLookWatch() {
+  if (typeof document === 'undefined') return;
+  let t = 0;
+  const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role === 'visit' && _glvLive()) _glvSend('me', _glvLook()); } catch (e) { /* the next beat has it */ } }, 1500); };
+  document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
+})();
