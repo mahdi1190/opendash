@@ -721,7 +721,7 @@ function _glVisitWorld(svg, snap) {
   const grid = new Uint8Array(G.cols * G.rows);
   for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) { const pr = gardenPropAt(x, y); grid[y * G.cols + x] = !open(x, y) || (pr && !pr.walk) || (!pr && gardenIsWater(x, y)) ? 1 : 0; }
   const block = (x, y, w, h) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (xx >= 0 && yy >= 0 && xx < G.cols && yy < G.rows) grid[yy * G.cols + xx] = 1; };
-  for (const p of plants) if (p.stage >= 2 || p.fp > 1) block(p.x, p.y, p.fp, p.fp);
+  for (const p of plants) if (typeof gardenPlantBlocks === 'function' ? gardenPlantBlocks(p) : (p.stage >= 2 || p.fp > 1)) block(p.x, p.y, p.fp, p.fp);
   for (const d of decor) if (d.def.layer !== 'ground') block(d.x, d.y, d.def.w || 1, d.def.h || 1);
   const pm = new Map(plants.map(p => [p.uid, p]));
   const rows = _glTagRows(gardenWorldObjects({ plants, decor }), (u) => pm.get(u)).concat(_glPadRows({ areas, season: snap.season, rain: {} }));

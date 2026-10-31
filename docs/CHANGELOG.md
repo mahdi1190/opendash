@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.1]
+
+### Fixed
+- You can walk through what you plant, so a full bed no longer walls you off from the plants in the middle. Only grown trees, and decorations and buildings, still stand in the way.
+
 ## [2.27.0]
 
 Music: Spotify, and songs for friends.
