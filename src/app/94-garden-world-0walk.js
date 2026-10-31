@@ -35,6 +35,8 @@ const GW_SCALE = 0.74;                                                // the fig
 const GW_PET_SCALE = 0.5;                                             // your pet, drawn at two thirds of the size the garden uses for a wandering one: it comes up to your knee
 
 /* ---------- the grid you walk on ---------- */
+/** You walk through what you plant, so a full bed never walls you off: only a tree that has grown past a seedling stands in the way. */
+function gardenPlantBlocks(p) { return !!(p && p.def && p.def.cat === 'tree' && p.stage >= 2); }
 function _gwBuildGrid(m) {
   const W = GARDEN_WORLD, g = new Uint8Array(W.cols * W.rows);   // 1 = blocked
   const lvl = m.level.level;
@@ -47,7 +49,7 @@ function _gwBuildGrid(m) {
     if (!pr && gardenIsWater(x, y)) blocked = true;
     const c = m.occ.get(x + ',' + y);
     if (c && c.decor) { const d = gardenDecorById(m, c.decor); if (d && d.def.effect && d.def.effect.kind === 'sit') { /* a seat: you may sit, so walk up to it */ } blocked = true; }
-    if (c && c.plant) { const p = gardenPlantById(m, c.plant); if (p && (p.stage >= 2 || p.fp > 1)) blocked = true; }
+    if (c && c.plant && gardenPlantBlocks(gardenPlantById(m, c.plant))) blocked = true;
     g[y * W.cols + x] = blocked ? 1 : 0;
   }
   return g;
