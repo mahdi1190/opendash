@@ -48,37 +48,86 @@
       h('div', { class: 'fv-pl-acts' }, h('button', { type: 'submit', class: 'fv-btn primary', text: 'Add it' }), txBtn('Cancel', null, () => { TX.edit = null; txPaint(); }, 'ghost')));
     return form;
   }
+  /** "£5,760.65 so far + £3,150 on 30 Nov = £8,910.65 this year": what this job adds up to, before tax. */
+  function txJobLine(j) {
+    const s = j.summary;
+    if (!s || !(s.total > 0)) return null;
+    const c = s.coming || [];
+    let more = '';
+    if (c.length && c.length <= 3) more = c.map(p => ` + ${gbp2(p.gross)} on ${fDay(dnum(p.date))}`).join('');
+    else if (c.length) { const first = c[0].gross, same = c.every(p => Math.abs(p.gross - first) < 0.01); more = same ? ` + ${c.length} more payments of ${gbp2(first)}` : ` + ${c.length} more payments, ${gbp2(c.reduce((t, p) => t + p.gross, 0))} in all`; }
+    return `${gbp2(s.soFar)} so far${s.soFarFrom === 'estimate' ? ' (our estimate)' : ''}${more} = ${gbp2(s.total)} this year${s.before ? `, plus ${gbp2(s.before)} from an earlier job` : ''}. All before tax.`;
+  }
   function txJobRow(j, v) {
     const editing = TX.edit && TX.edit.id === j.id;
     const y = j.year || {};
+    const line = txJobLine(j);
     const head = h('button', { type: 'button', class: 'fv-tx-src-h', 'aria-expanded': editing ? 'true' : 'false', onclick: () => { TX.edit = editing ? null : { id: j.id }; txPaint(); } },
-      h('span', { class: 'n' }, h('b', { text: j.name }), j.main ? h('em', { text: 'main job' }) : null, h('small', { class: 'fv-amt', text: `${j.codeText}: ${j.codeLabel}` })),
-      h('span', { class: 'v' }, amt(gbp(y.pay || j.annual)), h('small', { text: 'pay this year' })));
+      h('span', { class: 'n' }, h('b', { text: j.name }), j.main ? h('em', { text: 'main job' }) : null, j.ended ? h('em', { text: 'ended' }) : null, h('small', { class: 'fv-amt', text: `${j.codeText}: ${j.codeLabel}` })),
+      h('span', { class: 'v' }, amt(gbp(y.pay || j.annual)), h('small', { text: 'pay this year' }), h('span', { class: 'fv-chg' }, ic(editing ? 'chevron-down' : 'pencil'), h('span', { text: editing ? 'Close' : 'Change' }))));
     const notes = (j.notes || []).map(n => h('p', { class: 'fv-pl-note ' + n.level }, ic(n.level === 'warn' ? 'triangle-alert' : 'info'), h('span', { text: n.text })));
-    const dates = j.start || j.end ? h('small', { class: 'fv-tx-dates', text: [j.start ? `From ${txShort(j.start)}` : '', j.end ? `to ${txShort(j.end)}` : ''].filter(Boolean).join(' ') }) : null;
+    const dates = j.start || j.end ? h('small', { class: 'fv-tx-dates', text: [j.start ? `From ${txShort(j.start)}` : '', j.end ? `${j.ended ? 'ended' : 'to'} ${txShort(j.end)}` : ''].filter(Boolean).join(' ') }) : null;
     const summary = y.pay != null ? h('p', { class: 'fv-pl-mute small' }, 'Tax ', amt(gbp(y.tax)), ', National Insurance ', amt(gbp(y.ni)), (y.plan + y.pg) ? ', student loan ' : '', (y.plan + y.pg) ? amt(gbp(y.plan + y.pg)) : '', ' over the year.', j.ytd ? ` Using your payslip of ${txShort(j.ytd.asOf)}.` : '') : null;
-    let form = null;
-    if (editing) {
-      const yt = j.ytd || {};
-      form = h('form', { class: 'fv-tx-form', onsubmit: async (e) => {
-        e.preventDefault();
-        const f = txRead(form);
-        const fields = { name: f.name, annual: f.annual, taxCode: f.taxCode, every: f.every, start: f.start, end: f.end, prevPay: f.prevPay, prevTax: f.prevTax };
-        fields.ytd = f.asOf ? { asOf: f.asOf, pay: f.ytdPay, taxablePay: f.ytdTaxable, tax: f.ytdTax, ni: f.ytdNi, plan: f.ytdPlan, pg: f.ytdPg } : null;
-        await txDo({ action: 'source.update', id: j.id, fields }, 'Changed');
-      } },
-        h('div', { class: 'fv-tx-grid' },
-          txField('Employer', txInput('name', j.name)), txField('Pay a year, before tax', txInput('annual', j.annual, 'money')),
-          txField('Tax code', txInput('taxCode', j.codeGiven ? j.codeText : '', 'text', { upper: true, placeholder: j.codeText }), 'A short code on your payslip. Leave empty and we use ' + j.codeText + '.'),
-          txField('Paid every', h('select', { name: 'every', class: 'fv-tx-in' }, TX_EVERY.map(([k, l]) => h('option', { value: k, text: l, selected: k === j.freq ? true : null })))),
-          txField('First day', txInput('start', j.start, 'date')), txField('Last day, if it ended', txInput('end', j.end, 'date'))),
-        h('fieldset', { class: 'fv-tx-ytd' }, h('legend', { text: 'So far this tax year, from your latest payslip' }), h('p', { class: 'fv-pl-mute small', text: 'Payslips show these as "year to date" or "YTD". Fill in what you can: they replace our estimates up to that date.' }),
-          h('div', { class: 'fv-tx-grid' }, txField('Payslip date', txInput('asOf', yt.asOf, 'date')), txField('Pay so far', txInput('ytdPay', yt.pay, 'money')), txField('Taxable pay so far', txInput('ytdTaxable', yt.taxablePay, 'money'), 'Only if it is different.'), txField('Tax so far', txInput('ytdTax', yt.tax, 'money')), txField('National Insurance so far', txInput('ytdNi', yt.ni, 'money')), txField('Student loan so far', txInput('ytdPlan', yt.plan, 'money')), txField('Postgraduate loan so far', txInput('ytdPg', yt.pg, 'money')))),
-        h('fieldset', { class: 'fv-tx-ytd' }, h('legend', { text: 'From a job earlier this tax year' }), h('p', { class: 'fv-pl-mute small', text: 'A P45 (the form you get when you leave) shows these. Leave empty if you listed that job here too.' }),
-          h('div', { class: 'fv-tx-grid' }, txField('Pay to date', txInput('prevPay', j.prevPay, 'money')), txField('Tax to date', txInput('prevTax', j.prevTax, 'money')))),
-        h('div', { class: 'fv-pl-acts' }, h('button', { type: 'submit', class: 'fv-btn primary', text: 'Save' }), txBtn('Cancel', null, () => { TX.edit = null; txPaint(); }, 'ghost'), h('span', { class: 'fv-grow' }), txBtn('Remove this job', 'trash-2', () => txDo({ action: 'source.remove', id: j.id }, 'Removed'), 'ghost danger')));
-    }
-    return h('li', { class: 'fv-tx-src-i' + (editing ? ' open' : '') }, head, dates, summary, notes, form);
+    const sum = line ? h('p', { class: 'fv-tx-sumline' }, ic('calculator'), h('span', { class: 'fv-amt', text: line })) : null;
+    const last = j.ended || ((j.payments || []).length && j.end);
+    const next = j.next && v.yearState === 'current' ? h('p', { class: 'fv-pl-mute small' }, last ? 'Last payslip' : 'Next payslip', ': about ', amt(gbp2(j.next.takeHome)), ` on ${txShort(j.next.date)}.`) : null;
+    return h('li', { class: 'fv-tx-src-i' + (editing ? ' open' : ''), 'data-src': j.id }, head, dates, sum, summary, next, notes, editing ? txJobForm(j, v) : null);
+  }
+  /** The job in plain words: each part says what it is for, in one line. */
+  function txJobForm(j, v) {
+    const yt = j.ytd || {};
+    const pays = (j.payments || []).map(p => ({ date: p.date, amount: p.amount }));
+    let exact = pays.length > 0;
+    const payBox = h('div', { class: 'fv-tx-pays-ed' });
+    const paintPays = () => {
+      payBox.textContent = '';
+      if (!exact) return;
+      payBox.append(h('p', { class: 'fv-pl-mute small', text: 'Type each payment before tax and the day it is paid. From your pay-so-far date Freeflo uses exactly these, instead of the yearly pay. Nothing is paid on any other date.' }));
+      pays.forEach((p, i) => {
+        const d = h('input', { type: 'date', class: 'fv-tx-in', 'aria-label': 'Payment date', value: p.date || '' });
+        const a = h('input', { type: 'text', inputmode: 'decimal', class: 'fv-tx-in', 'aria-label': 'Payment amount before tax', placeholder: 'Amount before tax', autocomplete: 'off', value: p.amount != null ? String(p.amount) : '' });
+        d.addEventListener('change', () => { p.date = d.value || null; });
+        a.addEventListener('input', () => { const raw = a.value.replace(/[£,\s]/g, ''); p.amount = raw === '' ? null : Number(raw); });
+        payBox.append(h('div', { class: 'fv-tx-payrow' }, d, a, h('button', { type: 'button', class: 'fv-btn ghost', 'aria-label': 'Remove this payment', onclick: () => { pays.splice(i, 1); paintPays(); } }, ic('x'))));
+      });
+      payBox.append(txBtn('Add a payment', 'plus', () => { pays.push({ date: null, amount: null }); paintPays(); }, 'ghost small'));
+    };
+    const modeSeg = seg([['steady', 'Steady pay, as usual'], ['exact', 'Exact amounts on dates']], exact ? 'exact' : 'steady', (x) => { exact = x === 'exact'; if (exact && !pays.length) pays.push({ date: null, amount: null }); modeSeg.set(x); paintPays(); }, 'How the rest of the pay comes');
+    modeSeg.set(exact ? 'exact' : 'steady');
+    const endBox = h('div', { class: 'fv-tx-endbox' });
+    const ended = h('input', { type: 'checkbox', name: 'ended', checked: j.end ? true : null, onchange: () => { endBox.hidden = !ended.checked; } });
+    endBox.hidden = !j.end;
+    endBox.append(txField('Last day', txInput('end', j.end, 'date'), 'The last day you work, or worked, there.'));
+    const form = h('form', { class: 'fv-tx-form', onsubmit: async (e) => {
+      e.preventDefault();
+      const f = txRead(form);
+      const good = pays.filter(p => p.date || p.amount);
+      if (exact && good.some(p => !p.date || !(p.amount > 0))) { toast('Each payment needs a date and an amount.', { bad: true }); return; }
+      const fields = { name: f.name, annual: f.annual, taxCode: f.taxCode, every: f.every, start: f.start, end: ended.checked ? f.end : null, prevPay: f.prevPay, prevTax: f.prevTax,
+        payments: exact ? good.map(p => ({ date: p.date, amount: p.amount })) : [], bonus: f.bonus, bonusOn: f.bonus ? f.bonusOn : null };
+      fields.ytd = f.asOf ? { asOf: f.asOf, pay: f.ytdPay, taxablePay: f.ytdTaxable, tax: f.ytdTax, ni: f.ytdNi, plan: f.ytdPlan, pg: f.ytdPg } : null;
+      await txDo({ action: 'source.update', id: j.id, fields }, 'Changed');
+    } },
+      h('div', { class: 'fv-tx-grid' },
+        txField('Employer', txInput('name', j.name)),
+        txField('Yearly pay, before tax', txInput('annual', j.annual, 'money'), 'Leave it empty if you only know your payslips.'),
+        txField('Paid every', h('select', { name: 'every', class: 'fv-tx-in' }, TX_EVERY.map(([k, l]) => h('option', { value: k, text: l, selected: k === j.freq ? true : null })))),
+        txField('Tax code', txInput('taxCode', j.codeGiven ? j.codeText : '', 'text', { upper: true, placeholder: j.codeText }), `On your payslip, like 1257L. Leave it empty and Freeflo uses ${j.codeText}.`),
+        txField('First day', txInput('start', j.start, 'date'), 'Leave it empty if you have had the job all year.')),
+      h('label', { class: 'fv-tx-check' }, ended, h('span', null, 'This job has ended, or I know when it will end', h('small', { text: 'Pay stops after the last day. Any last payments go in the list below.' }))), endBox,
+      h('fieldset', { class: 'fv-tx-ytd' }, h('legend', { text: 'Pay so far this tax year' }), h('p', { class: 'fv-pl-mute small', text: 'From your latest payslip: the figures called “year to date” or “YTD”. Freeflo uses them instead of its own guess up to that date.' }),
+        h('div', { class: 'fv-tx-grid' }, txField('Payslip date', txInput('asOf', yt.asOf, 'date')), txField('Pay so far, before tax', txInput('ytdPay', yt.pay, 'money')), txField('Tax taken so far', txInput('ytdTax', yt.tax, 'money'))),
+        h('details', { class: 'fv-pl-more' }, h('summary', null, h('b', { text: 'More from the payslip' }), h('span', { class: 'mute', text: 'National Insurance, student loan' })),
+          h('div', { class: 'fv-tx-grid' }, txField('National Insurance so far', txInput('ytdNi', yt.ni, 'money')), txField('Student loan so far', txInput('ytdPlan', yt.plan, 'money')), txField('Postgraduate loan so far', txInput('ytdPg', yt.pg, 'money')), txField('Taxable pay so far', txInput('ytdTaxable', yt.taxablePay, 'money'), 'Only if it is different from pay.')))),
+      h('fieldset', { class: 'fv-tx-ytd' }, h('legend', { text: 'Pay before this job this tax year' }), h('p', { class: 'fv-pl-mute small', text: 'Only if you started this job after April and were paid elsewhere earlier this tax year. The P45 from that job shows both. It also needs the first day above.' }),
+        h('div', { class: 'fv-tx-grid' }, txField('Pay before this job', txInput('prevPay', j.prevPay, 'money')), txField('Tax taken on it', txInput('prevTax', j.prevTax, 'money')))),
+      h('fieldset', { class: 'fv-tx-ytd' }, h('legend', { text: 'The rest of the pay' }), h('p', { class: 'fv-pl-mute small', text: 'Choose exact amounts for one or more last payments (for example £3,150 next month and then nothing), or if you are paid a different amount each time.' }),
+        modeSeg.el, payBox),
+      h('fieldset', { class: 'fv-tx-ytd' }, h('legend', { text: 'A bonus' }), h('p', { class: 'fv-pl-mute small', text: 'A one-off payment on top, before tax. Leave it empty if there is none.' }),
+        h('div', { class: 'fv-tx-grid' }, txField('Bonus, before tax', txInput('bonus', j.bonus, 'money')), txField('Paid on', txInput('bonusOn', j.bonusOn, 'date')))),
+      h('div', { class: 'fv-pl-acts' }, h('button', { type: 'submit', class: 'fv-btn primary', text: 'Save' }), txBtn('Cancel', null, () => { TX.edit = null; txPaint(); }, 'ghost'), h('span', { class: 'fv-grow' }), txBtn('Remove this job', 'trash-2', () => txDo({ action: 'source.remove', id: j.id }, 'Removed'), 'ghost danger')));
+    paintPays();
+    return form;
   }
   function txSelfRow(s, v) {
     const editing = TX.edit && TX.edit.id === s.id;
