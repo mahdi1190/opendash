@@ -142,7 +142,7 @@ export default function register(app) {
     const skip = await takenByExpenses();
     const credits = creditsFromAnalysis(d.analysis, { today, days: 365 }), debits = O.debitsFromAnalysis(d.analysis, { today, days: 365 });
     const r = await O.scan(dataDir, credits, { debits, today, aliases: (S) => O.aliasMap(S, people), skip, home: home() });
-    if (r.auto.length) { log('info', `owed: ${r.auto.length} payment(s) marked from the bank`); if (await ensureNet(d)) { rebuilt = true; d = await analysisNow(); } }
+    if (r.auto.length || r.linked) { log('info', `owed: ${r.auto.length + (r.linked || 0)} payment(s) marked from the bank`); if (await ensureNet(d)) { rebuilt = true; d = await analysisNow(); } }
     const S = await read();
     // Money into an account left out of Your data is not in the analysis at all, so it is never looked at. The page says so.
     let leftOut = [];
