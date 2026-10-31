@@ -372,10 +372,8 @@ the same. Your visits give your own garden a little XP (GSOC_XP: visit 2, water 
 **Ribbons** (in the catalogue; their facts come from `gardenSocialFacts()`): Garden tourist (visit on 7 days), Good
 neighbour (water 10 plants), Kind words (sign 5 guestbooks), Generous gardener (5 gifts), Much loved (10 hearts).
 
-**Pages.** `#view=garden:visit:<friendId>`: their garden at your time of day (cached per change and per time of
-day), you at the gate in your outfit (`friendsSceneFigureEl`) walking over to what you water, them waving when they
-are around, your pet when you have one (the renderer asks `petGardenSprite` with `readOnly`); Look / Water, Give a
-heart, React, Leave a gift, the guestbook; "Today in Sam's garden" (all optional). `garden:friends` (the Garden page's
+**Pages.** `#view=garden:visit:<friendId>`: the same world as your own garden, with theirs in it, at your time of day (2.27.5; GARDEN_TOGETHER.md section 10). You walk, zoom and use the hotbar as at home;
+one small tag says whose garden it is and takes you home. The Guestbook panel (the menu, `gardenVisitNotes`) has Give a heart, React, Leave a gift, the guestbook, their showcase, what is growing and "Today in Sam's garden" (all optional). `garden:friends` (the Garden page's
 Friends tab, a count of what is new): visits to your garden and parcels to unwrap, your guestbook (hide a line, Undo),
 friends' gardens (a gallery: sorted by their last change, no scores), who sees your garden and the guestbook and gift
 switches. In Friends: the hangout's 'Gardens' panel and a friend's 'Garden' panel (`Friends.registerPanel`). Home's
@@ -477,6 +475,8 @@ Owner, 30 Oct 2026: "moving the player around is unclear, the UI is very unclear
 | HUD, menu, hotbar, bag, bubble, needs marks, arrow, walk hint, minimap | `94-garden-world-2hud.js` |
 | Walking, the route marker, `gardenWorldPick`, the world API | `94-garden-world-0walk.js` |
 | Panels over the world (`_GDPOP`: one row per panel) | `94-garden-world-1popup.js` |
+
+**A visit is this page too.** World code asks `gardenHere()` (your garden, or the one you are visiting), never `gardenModel()`; what is yours wherever you stand (wallet, shop, goals) asks `gardenModel()`. Actions in `94-garden-1core.js` ask `gardenVisitAct` first (GARDEN_TOGETHER.md section 10).
 
 **The page.** `html.gd-immersive` hides the app's sidebar and top bar while you are in the garden; X in the corner leaves. There are no tabs and no side panel. `#view=garden:shop` and the other old routes open the world, then the panel. Nothing here is page chrome: only overlays on `.gd-stagebox`.
 

@@ -11,7 +11,8 @@
 //   POST /api/garden-live/host  {to?, k: go|em|res|d|snap, body, tab?}     the host's page to who is there
 //   POST /api/garden-live/post  {to, id, why, i?, items?}                  something posted to a friend (durable)
 //   POST /api/garden-live/applied {ids}
-//   POST /api/garden-live/perm  {id, lv?, touch?, share?}   /prefs {open?, groupLook?}   /home {id}
+//   POST /api/garden-live/perm  {id, lv?, touch?, share?}   /prefs {open?, groupLook?, queue?}   /home {id}
+//   POST /api/garden-live/queue {to, i, t, p, x, y, r?, at}   something done on the saved copy, to wait for them (the mailbox); /queued {ids}   the host's page has run these; /ask {to}   may I do more?
 
 import { createGardenLive } from '../../lib/friends/live.mjs';
 
@@ -55,7 +56,10 @@ export default function register(app) {
   route('/api/garden-live/post', 'POST', async (c) => { const b = await body(c); return gl.post({ to: str(b.to, 20), id: str(b.id, 64), why: str(b.why, 10), i: str(b.i, 64), items: Array.isArray(b.items) ? b.items.slice(0, 4) : undefined }); });
   route('/api/garden-live/applied', 'POST', async (c) => { const b = await body(c); return gl.applied({ ids: Array.isArray(b.ids) ? b.ids.slice(0, 200).map(x => str(x, 64)) : [] }); }, { maxBody: 16384 });
   route('/api/garden-live/perm', 'POST', async (c) => { const b = await body(c); return gl.setPerm({ id: str(b.id, 20), lv: str(b.lv, 8), touch: typeof b.touch === 'boolean' ? b.touch : undefined, share: str(b.share, 8) }); });
-  route('/api/garden-live/prefs', 'POST', async (c) => { const b = await body(c); return gl.setPrefs({ open: typeof b.open === 'boolean' ? b.open : undefined, groupLook: typeof b.groupLook === 'boolean' ? b.groupLook : undefined }); });
+  route('/api/garden-live/prefs', 'POST', async (c) => { const b = await body(c); return gl.setPrefs({ open: typeof b.open === 'boolean' ? b.open : undefined, groupLook: typeof b.groupLook === 'boolean' ? b.groupLook : undefined, queue: typeof b.queue === 'boolean' ? b.queue : undefined }); });
+  route('/api/garden-live/queue', 'POST', async (c) => { const b = await body(c); return gl.queueSend({ to: str(b.to, 20), i: str(b.i, 24), t: str(b.t, 8), p: str(b.p, 64), x: b.x, y: b.y, r: b.r, at: b.at }); });
+  route('/api/garden-live/queued', 'POST', async (c) => { const b = await body(c); return gl.queued({ ids: Array.isArray(b.ids) ? b.ids.slice(0, 400).map(x => str(x, 64)) : [] }); }, { maxBody: 32768 });
+  route('/api/garden-live/ask', 'POST', async (c) => { const b = await body(c); return gl.ask({ to: str(b.to, 20) }); });
   route('/api/garden-live/home', 'POST', async (c) => gl.sendHome({ id: str((await body(c)).id, 20) }));
   app.route({ prefix: '/api/garden-live/', method: '*', handler: (c) => c.json(404, { error: 'unknown garden route' }) });
 }

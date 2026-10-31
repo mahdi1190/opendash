@@ -415,7 +415,7 @@ function gardenWallet() {
   // the ledger and the bank
   const take = (e) => {
     if (!e || typeof e !== 'object') return;
-    coins += Number(e.c) || 0; xp += Number(e.x) || 0;
+    coins += Number(e.c) || 0; xp += e.k === 'gl' && !e.ok ? 0 : Number(e.x) || 0;   // (a visit's record that has not been answered: its x is still a cell, not XP)
     _gdAddItems(items, e.i);
     if (e.k && _GD_N_KINDS[e.k]) n[_GD_N_KINDS[e.k]] += Number(e.n) || 0;
     if (e.nn && typeof e.nn === 'object') for (const [k, v] of Object.entries(e.nn)) if (k in n) n[k] += Number(v) || 0;
@@ -458,7 +458,7 @@ function gardenWaterInfo(model) {
 function _gdAreasOpen(level) {
   // 2.23: land you bought is yours for good (its row is in your ledger as an item, 'land:<id>', so it syncs and banks like everything else)
   const owned = GARDEN_AREAS.filter(a => a.buy && gardenHas('land:' + a.id) > 0).map(a => a.id);
-  gardenLandSet(owned);
+  if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) gardenLandSet(owned);   // (on a visit the land on screen is your friend's)
   return GARDEN_AREAS.filter(a => (a.buy ? owned.includes(a.id) : level >= a.lv)).map(a => a.id);
 }
 function gardenModel(nowArg) {
@@ -503,6 +503,8 @@ function gardenModel(nowArg) {
   if (!nowArg) { _gd.memo = m; _gd.memoKey = key; }
   return m;
 }
+/** The garden you are standing in: your own, or on a visit your friend's (94-garden-visit-0world.js). Your wallet, the shop and your own rewards always go by gardenModel(): they are yours wherever you stand. */
+function gardenHere(nowArg) { const v = typeof gardenVisitModel === 'function' ? gardenVisitModel() : null; return v || gardenModel(nowArg); }
 function gardenPlantById(m, uid) { return m.plants.find(p => p.uid === uid) || null; }
 function gardenDecorById(m, uid) { return m.decor.find(d => d.uid === uid) || null; }
 
@@ -762,7 +764,7 @@ function _gdPushUndo(label, mark) {
   _gd.undo.push({ label, mark, at: _gdNow() });
   if (_gd.undo.length > 40) _gd.undo.shift();
 }
-function gardenCanUndo() { return _gd.undo.length > 0; }
+function gardenCanUndo() { return _gd.undo.length > (typeof gardenVisitUndoFloor === 'function' ? gardenVisitUndoFloor() : 0); }
 /** Undo steps that would bring back this record or this queued post are over: it has moved on, and bringing it back would make two. */
 function _gdUndoDrop(map, id) {
   const before = _gd.undo.length;
@@ -831,7 +833,9 @@ function _gdLiveTouched(uid) {
   if (g.glc && g.glt[uid] !== '!') { rows.push(..._gdMark([['glt', uid]])); g.glt[uid] = '!'; }
   return rows;
 }
-function _gdOnPage() { return typeof _gdp !== 'undefined' && !!_gdp.root && _gdp.root.isConnected && state.view === 'garden'; }
+function _gdOnPage() { return typeof _gdp !== 'undefined' && !!_gdp.root && _gdp.root.isConnected && (state.view === 'garden' || (typeof gardenVisitOn === 'function' && gardenVisitOn())); }
+/** On a visit every garden action is a request to the garden's owner, or waits for them: it never writes your own garden (94-garden-visit-0world.js). Null: no visit, carry on. */
+function _gdvAsk(t, a) { return typeof gardenVisitAct === 'function' ? gardenVisitAct(t, a) : null; }
 function _gdLed(k, body) { const key = k + '.' + _gdToday() + '.' + _gdUid(''); _gdG().led[key] = Object.assign({ d: _gdToday(), k }, body); return key; }
 
 /* ---------- actions ---------- */
@@ -845,6 +849,7 @@ function _gdCellFree(m, x, y, w, h, ignore) {
   return '';
 }
 function _gdPlaceOk(m, def, x, y, kind, ignore) {
+  if (m.visit && m.visit.no[kind === 'decor' ? 'decor' : 'plant']) return m.visit.no[kind === 'decor' ? 'decor' : 'plant'];   // your level there does not reach this: the ghost goes red
   const why = gardenCellOk(def, x, y, m.level.level, kind);
   if (why) return why;
   const w = kind === 'decor' ? def.w || 1 : def.fp || 1, h = kind === 'decor' ? def.h || 1 : def.fp || 1;
@@ -858,6 +863,7 @@ function _gdPlaceOk(m, def, x, y, kind, ignore) {
 /** Plant a seed from your bag. o {quiet, variant}. */
 function gardenPlantAt(plantId, x, y, o) {
   o = o || {};
+  { const v = _gdvAsk('plant', { id: plantId, x, y }); if (v) return v; }
   const def = gardenPlant(plantId); if (!def) return _gdNo('Unknown seed');
   const m = gardenModel();
   if (gardenHas('seed:' + plantId) < 1) return _gdNo(`No ${def.name} seeds left: the shop has more`);
@@ -878,6 +884,7 @@ function _gdA(name) { return (/^[aeiou]/i.test(name) ? 'an ' : 'a ') + name.toLo
 /** Water one plant (o.quiet: part of a sweep). */
 function gardenWater(uid, o) {
   o = o || {};
+  { const v = _gdvAsk('water', { uid }); if (v) return v; }
   const m = gardenModel(), p = gardenPlantById(m, uid);
   if (!p) return _gdNo('Nothing to water there');
   if (!p.def.thirst || p.def.special === 'heart') return _gdNo(p.def.cat === 'water' ? 'It lives in the pond: never thirsty' : 'Its roots go deep: it finds its own water');
@@ -897,6 +904,7 @@ function gardenWater(uid, o) {
 /** Water every plant that wants it (the thirstiest first), as far as the can goes. */
 function gardenWaterAll(o) {
   o = o || {};
+  { const v = _gdvAsk('waterAll', {}); if (v) return v; }
   const m = gardenModel();
   if (m.rain.now) return _gdNo('The rain is watering everything for you');
   const want = m.plants.filter(p => p.def.thirst && p.def.special !== 'heart' && (p.thirsty || (m.now - p.lastWater) / _GD_H >= Math.min(8, p.def.thirst / 2)))
@@ -911,6 +919,7 @@ function gardenWaterAll(o) {
   return _gdDone(`Watered ${list.length} plant${list.length === 1 ? '' : 's'}${more ? ` · ${more} more when the can refills` : ''}`, 'watering', mark, { icon: 'droplets', quiet: o.quiet });
 }
 function gardenFeed(uid) {
+  { const v = _gdvAsk('feed', { uid }); if (v) return v; }
   const m = gardenModel(), p = gardenPlantById(m, uid);
   if (!p) return _gdNo('Nothing to feed there');
   if (p.def.special === 'heart') return _gdNo('The old oak grows with your work, not with feed');
@@ -926,6 +935,7 @@ function gardenFeed(uid) {
   return _gdDone(`Fed the ${p.def.name.toLowerCase().replace(/^the /, '')}: half a day’s growth`, 'feeding', mark, { icon: 'flask-conical' });
 }
 function gardenPrune(uid) {
+  { const v = _gdvAsk('weed', { uid }); if (v) return v; }
   const m = gardenModel(), p = gardenPlantById(m, uid);
   if (!p) return _gdNo('Nothing to trim there');
   if (p.stage < 3) return _gdNo('Too young for a trim');
@@ -943,6 +953,7 @@ function gardenPrune(uid) {
 }
 /** Harvest one plant: its crop into your basket. */
 function gardenHarvest(uid) {
+  { const v = _gdvAsk('harvest', { uid }); if (v) return v; }
   const m = gardenModel(), p = gardenPlantById(m, uid);
   if (!p) return _gdNo('Nothing to harvest there');
   if (!p.def.yield) return _gdNo(`${p.def.name} is grown for its looks`);
@@ -953,6 +964,7 @@ function gardenHarvest(uid) {
 }
 /** Every ripe plant at once: one save, one Undo. */
 function gardenHarvestAll() {
+  { const v = _gdvAsk('harvestAll', {}); if (v) return v; }
   const m = gardenModel(), ready = m.plants.filter(p => p.ripe && p.def.yield);
   if (!ready.length) return _gdNo('Nothing is ready to pick yet');
   const marks = [];
@@ -988,6 +1000,7 @@ function _gdHarvestOne(m, p, o) {
   return { mark, n, extra, what, gold };
 }
 function gardenDig(uid) {
+  { const v = _gdvAsk('dig', { uid }); if (v) return v; }
   const m = gardenModel(), p = gardenPlantById(m, uid);
   if (!p) return _gdNo('Nothing to dig up there');
   if (p.def.special === 'heart') return _gdNo('The old oak stays: it is your garden’s heart');
@@ -996,6 +1009,7 @@ function gardenDig(uid) {
   return _gdDone(`Dug up the ${p.def.name.toLowerCase().replace(/^the /, '')}`, 'digging up', mark, { icon: 'shovel' });
 }
 function gardenMovePlant(uid, x, y) {
+  { const v = _gdvAsk('move', { uid, x, y }); if (v) return v; }
   const m = gardenModel(), p = gardenPlantById(m, uid);
   if (!p) return _gdNo('Nothing to move');
   if (p.x === x && p.y === y) return { ok: true, msg: '' };
@@ -1005,6 +1019,7 @@ function gardenMovePlant(uid, x, y) {
   return _gdDone(`Moved the ${p.def.name.toLowerCase().replace(/^the /, '')}`, 'moving', mark, { icon: 'move' });
 }
 function gardenPlaceDecor(decorId, x, y, r) {
+  { const v = _gdvAsk('place', { id: decorId, x, y, r }); if (v) return v; }
   const def = gardenDecor(decorId); if (!def) return _gdNo('Unknown decoration');
   if (gardenHas('decor:' + decorId) < 1) return _gdNo(`You have no ${def.name.toLowerCase()} to place: the shop has them`);
   const m = gardenModel();
@@ -1018,6 +1033,7 @@ function gardenPlaceDecor(decorId, x, y, r) {
   return _gdDone(`Placed ${_gdA(def.name)}`, 'placing ' + def.name.toLowerCase(), mark, { icon: 'armchair' });
 }
 function gardenMoveDecor(uid, x, y) {
+  { const v = _gdvAsk('move', { uid, x, y }); if (v) return v; }
   const m = gardenModel(), d = gardenDecorById(m, uid);
   if (!d) return _gdNo('Nothing to move');
   if (d.x === x && d.y === y) return { ok: true, msg: '' };
@@ -1027,6 +1043,7 @@ function gardenMoveDecor(uid, x, y) {
   return _gdDone('', 'moving ' + d.def.name.toLowerCase(), mark, { quiet: true });
 }
 function gardenRotateDecor(uid) {
+  { const v = _gdvAsk('turn', { uid }); if (v) return v; }
   const m = gardenModel(), d = gardenDecorById(m, uid);
   if (!d) return _gdNo('Nothing to turn');
   if (!d.def.rot && !(d.def.v > 1)) return _gdNo(`${d.def.name} looks the same every way round`);
@@ -1038,6 +1055,7 @@ function gardenRotateDecor(uid) {
 }
 /** Next style of a decoration (v styles). */
 function gardenStyleDecor(uid) {
+  { const v = _gdvAsk('turn', { uid, style: true }); if (v) return v; }
   const m = gardenModel(), d = gardenDecorById(m, uid);
   if (!d || !(d.def.v > 1)) return _gdNo('Only one style');
   const mark = _gdMark([['decor', uid]]);
@@ -1045,6 +1063,7 @@ function gardenStyleDecor(uid) {
   return _gdDone('', 'restyling ' + d.def.name.toLowerCase(), mark, { quiet: true });
 }
 function gardenRemoveDecor(uid) {
+  { const v = _gdvAsk('take', { uid }); if (v) return v; }
   const m = gardenModel(), d = gardenDecorById(m, uid);
   if (!d) return _gdNo('Nothing to put away');
   const mark = [..._gdMark([['decor', uid]]), ..._gdDecorBack(_gdG().decor[uid], true), ..._gdLiveTouched(uid)];   // a friend's goes back to them
@@ -1084,6 +1103,7 @@ function gardenLandInfo(id, m) {
 }
 /** Buy a piece of land with coins. One Undo; what grows on it stays where it is. */
 function gardenBuyLand(id) {
+  { const v = _gdvAsk('land', { id }); if (v) return v; }
   const info = gardenLandInfo(id); if (!info) return _gdNo('That land is not for sale');
   if (info.owned) return _gdNo('That land is already yours');
   if (!info.lvOk) return _gdNo(`${info.def.name} opens at garden level ${info.def.lv}`);
@@ -1170,7 +1190,7 @@ function gardenBouquetGift(bouquetId) {
  * flowers bloom), the wishing well (a coin in, sometimes a seed back, daily). */
 function gardenCollectInfo(uid, mArg) {
   const m = mArg || gardenModel(), d = gardenDecorById(m, uid), g = _gdG();
-  if (!d || !d.def.effect) return null;
+  if (!d || !d.def.effect || m.visit) return null;   // (a friend's hive is theirs)
   const k = d.def.effect.kind;
   if (k === 'compost') { const key = 'cp.' + m.today + '.' + uid; return { kind: k, key, ready: !g.led[key], label: 'Take the compost', soon: 'More compost tomorrow' }; }
   if (k === 'hive') {
@@ -1181,6 +1201,7 @@ function gardenCollectInfo(uid, mArg) {
   return null;
 }
 function gardenCollect(uid) {
+  { const v = _gdvAsk('collect', { uid }); if (v) return v; }
   const m = gardenModel(), info = gardenCollectInfo(uid, m);
   if (!info) return _gdNo('Nothing to collect');
   if (!info.ready) return _gdNo(info.soon);

@@ -22,6 +22,7 @@ const _GDPOP = Object.freeze({
   nature: { title: 'Nature book', icon: 'leaf', fill: (el, m) => gardenLifeBookTab(el, m) },
   goals: { title: 'Goals', icon: 'target', fill: (el, m) => gardenGoalsPanel(el, m) },
   sail: { title: 'Where to?', icon: 'ship', fill: (el) => gardenSailTab(el) },
+  visit: { title: 'Guestbook', icon: 'feather', fill: (el) => gardenVisitNotes(el) },
   craft: { title: 'Crafting bench', icon: 'hammer', fill: (el, m) => gardenCraftTab(el, m) },
   tricks: { title: 'Trick book', icon: 'wand-sparkles', fill: (el) => { el.textContent = ''; petBookPage(el, { panel: true }); } },
 });
@@ -42,7 +43,7 @@ function gardenSailTab(el) {
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter') leave(e); });
   }
 }
-function _gdpopInGarden() { return typeof _gdp !== 'undefined' && !!_gdp.root && _gdp.root.isConnected && /^garden$/.test(String(state.view || '')); }
+function _gdpopInGarden() { return typeof _gdp !== 'undefined' && !!_gdp.root && _gdp.root.isConnected && _gdpWorldView(); }
 function gardenPopupOpen(tab, o) {
   o = o || {};
   const def = _GDPOP[tab];

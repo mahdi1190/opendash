@@ -127,6 +127,7 @@ function gameCheer(target, opts) {
 }
 /** An engine's "no", in pictures: what stopped you is read from the words, so the engine and the assistant's tools keep their plain sentences. */
 function gameDenyOf(r, target, o) {
+  if (r && r.shown) return false;   // (already said)
   const msg = r && r.msg ? String(r.msg) : '', opts = Object.assign({ say: msg }, o || {});
   if (!opts.kind) {
     const lv = /level (\d+)/i.exec(msg), coins = /(\d+) coins?/i.exec(msg);
