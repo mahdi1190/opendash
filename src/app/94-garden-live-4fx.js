@@ -46,6 +46,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'cr' || c === 'egg' || c === 'pick') { _glcFx(A, ev); return; }
   if (c === 'roam') { if (typeof _gllRoamAdd === 'function') _gllRoamAdd(e); return; }
   if (c === 'cheer') { _gllCheerFx(A, e, ev); return; }
+  if (c === 'snap') { if (typeof _glsHear === 'function') _glsHear(A, ev); return; }   // (a group photo: 94-garden-live-7snap.js)
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {
     if (e === 'sneak') A.sneakUntil = Date.now() + 4500;   // clock-ok: how long a creep lasts
@@ -158,6 +159,7 @@ function _gllFireStep() {
 }
 function _gllFxStep(A, dt) {
   _gllFireStep();
+  if (typeof _glpStep === 'function') _glpStep();   // (2.32: two pets close for a moment play, 94-garden-live-7pals.js)
   const F = A.fish;
   if (!F) return;
   if (A.moving || Date.now() - F.at > 40000) { A.fish = null; A.key = ''; _gllFxClear(A); return; }   // clock-ok: a line forgotten

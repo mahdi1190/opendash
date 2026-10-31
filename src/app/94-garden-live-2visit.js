@@ -365,6 +365,7 @@ function _glvEvent(ev) {
       return;
     }
     case 'cr': _glcGuestCr(ev.l); return;
+    case 'pp': _gllPlacesIn(ev); return;
     case 'tr': if (typeof _gltFromHost === 'function') _gltFromHost(ev); return;
     case 'goal': if (typeof _glgGuestIn === 'function') _glgGuestIn(ev); return;
     case 'fx': {

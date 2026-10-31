@@ -7,8 +7,8 @@
 //
 //   GET  /api/garden-live                      -> {ok, on, v, open, groupLook, perms, posts, host, visit, budget, stats}
 //   POST /api/garden-live/here  {role: host|visit, on, f?, look?, name?, tab?}   the page says where it is (and every 30 s while it stays); a host's answer says whether this tab is the host (`lead`)
-//   POST /api/garden-live/send  {k: go|em|do|me|fx|tr, body}                  a visitor's page to the garden it is in
-//   POST /api/garden-live/host  {to?, k: go|em|res|d|fx|cr|tr|goal|snap, body, tab?}   the host's page to who is there
+//   POST /api/garden-live/send  {k: go|em|do|me|fx|tr|pp, body}                  a visitor's page to the garden it is in
+//   POST /api/garden-live/host  {to?, k: go|em|res|d|fx|cr|tr|goal|pp|snap, body, tab?}   the host's page to who is there
 //   POST /api/garden-live/post  {to, id, why, i?, d?, items?}                  something posted to a friend (durable)
 //   POST /api/garden-live/applied {ids}
 //   POST /api/garden-live/perm  {id, lv?, touch?, share?}   /prefs {open?, groupLook?, queue?}   /home {id}

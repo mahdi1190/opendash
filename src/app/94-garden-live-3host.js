@@ -181,6 +181,7 @@ function _glhEvent(ev) {
       return;
     }
     case 'fx': { const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return; }
+    case 'pp': _gllPlacesIn(ev); return;
     case 'do': _glhIntent(Object.assign({}, ev, { k: ev.ik })); return;
     case 'queue': clearTimeout(_glh.queueT); _glh.queueT = setTimeout(() => { gardenLiveLoad(true).then(_glhQueueRun).catch(() => {}); }, 300); return;
     case 'knock': case 'host': case 'road': case 'budget': if (ev.note && _gll.view) _gll.view.host = Object.assign(_gll.view.host || {}, { note: ev.note }); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;

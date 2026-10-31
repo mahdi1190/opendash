@@ -4,6 +4,9 @@
    butterflies, nap in the sun, greet each other, shake off the rain, sleep at night.
    And now and then a rare visitor shows up, waiting for the right lure.
 
+   2.32: it runs on a visit too (your companion, at the same size as at home, in the garden you stand in: the old small follower of the world was all a
+   visit had, which looked wrong beside a friend's pet and could not say where it was). The pack stays home, and no rare visitor comes to a garden that is not yours.
+
    One small loop: requestAnimationFrame only while your garden page is showing and the
    tab is visible; a transform per pet, the limbs are CSS clips (97-pets.css). With
    reduced motion or the Fun level Off the pets stay still: the garden's own sitting
@@ -19,6 +22,8 @@ const _PTW_NS = 'http://www.w3.org/2000/svg';
 /* How many of the pets you let out are about on one visit: this share of visits has one, two, three (never more than you let out). The others are having a lie-down, and take turns. */
 const PET_ROAM_ODDS = Object.freeze([0.55, 0.33, 0.12]);
 function _ptwMotion() { return _ptMotionOk() && _ptFun() !== 'off'; }
+/** True while you are in a friend's garden (a visit, live or the saved copy). */
+function _ptwVisiting() { try { return typeof gardenVisitOn === 'function' && !!gardenVisitOn(); } catch (e) { return false; } }
 /** While true the garden's own follower stands aside (94-garden-world-0walk.js asks). */
 function petGardenWorldOwns() { return _ptw.on && _ptwMotion() && _ptw.pets.length > 0; }
 /** Where your pets are in the world, for whatever lives alongside them: [{x, y (cells), species, me (the one that follows you), moving}]. */
@@ -117,7 +122,7 @@ function _ptwPick(P, W) {
 /* ---------- the world around them ---------- */
 function _ptwWorld() {
   let m = null;
-  try { m = gardenModel(); } catch (e) { return null; }
+  try { m = typeof gardenHere === 'function' ? gardenHere() : gardenModel(); } catch (e) { return null; }   // (2.32: the garden you stand in; on a visit it is theirs)
   const rain = !!(m.rain && m.rain.now);
   return { m, rain, night: m.tod === 'night', day: m.tod === 'day', pets: _ptw.pets, blooms: (m.plants || []).filter(p => p.stage >= 3 && p.def && ['flower', 'wild', 'herb', 'exotic'].includes(p.def.cat)).slice(0, 40) };
 }
@@ -156,7 +161,7 @@ function _ptwThink(P, W, dt) {
   if (P.wow) { P.busy = 0.5; return; }   // 2.23: in the middle of something wonderful
   const pl = _ptwPlayer();
   if (P.me && pl && (pl.moving || pl.busy)) { P.sit(); P.busy = 0.6; return; }
-  if (P.me && typeof petSurpriseMaybe === 'function' && !(_gw && _gw.reel) && petSurpriseMaybe('garden', 8)) return;
+  if (P.me && typeof petSurpriseMaybe === 'function' && !_ptwVisiting() && !(_gw && _gw.reel) && petSurpriseMaybe('garden', 8)) return;
   if (P.pose === 'sleep' && W.night && !P.per.night) { P.busy = 12; return; }
   if (W.night && !P.per.night) { P.sleep(30); return; }   // bedtime
   if (W.rain && Math.random() < 0.35) { P.sit(); P.clip('shake', 900, () => { P.clip('shiver', 1800, () => { P.busy = 1; }); }); return; }
@@ -215,7 +220,7 @@ function _ptwFlies(dt, t) {
 
 /* ---------- a rare visitor ---------- */
 function _ptwEncounter(W) {
-  const E = petEncounterNow(W.m), key = E ? E.key : '';
+  const E = _ptwVisiting() ? null : petEncounterNow(W.m), key = E ? E.key : '';
   if (key === _ptw.encKey) return;
   _ptw.encKey = key;
   if (_ptw.enc) { _ptw.enc.node.remove(); _ptw.enc = null; _ptwBubbleClose(); }
@@ -272,14 +277,14 @@ function _ptwBubble(e) {
 }
 
 /* ---------- start, stop, the loop ---------- */
-function _ptwRosterKey() { const g = petGet(); return g.has && g.on ? JSON.stringify([g.look, g.name, petPackLooks().map(l => [l.species, l.coat, l.marks])]) : ''; }
+function _ptwRosterKey() { const g = petGet(); return g.has && g.on ? JSON.stringify([g.look, g.name, _ptwVisiting(), petPackLooks().map(l => [l.species, l.coat, l.marks])]) : ''; }
 function _ptwBuild() {
   for (const P of _ptw.pets) P.node.remove();
   _ptw.pets = [];
   const g = petGet();
   if (!g.has || !g.on || !_ptwMotion()) return;
   _ptw.pets.push(_ptwNew(petWithItems(g.look, 'me'), true));
-  for (const l of _ptwOutToday()) _ptw.pets.push(_ptwNew(l, false));
+  if (!_ptwVisiting()) for (const l of _ptwOutToday()) _ptw.pets.push(_ptwNew(l, false));   // (the pack stays home: nobody else would see it)
 }
 /** Who of the pack is about on this visit: chosen once when you come in, so nobody vanishes while you are here. */
 function _ptwOutToday() {
@@ -297,13 +302,14 @@ function _ptwFrame(now) {
   if (!_ptw.on) return;
   if (!_ptw.svg || !_ptw.svg.isConnected || document.hidden) return;   // the check below starts it again
   // calm (94-garden-world-0walk.js _gwCalm): nobody is looking, so the pets stand where they are and this looks in four times a second
-  if (typeof _gwCalm !== 'undefined' && _gwCalm.on) { _ptw.last = 0; if (_ptw.pets.length) _ptw.idleT = setTimeout(() => { _ptw.idleT = 0; if (_ptw.on && !_ptw.raf && !document.hidden) _ptw.raf = requestAnimationFrame(_ptwFrame); }, 250); return; }
+  if (typeof _gwCalm !== 'undefined' && _gwCalm.on) { _ptw.last = 0; if (typeof gardenLivePets === 'function') gardenLivePets(_ptw.pets); if (_ptw.pets.length) _ptw.idleT = setTimeout(() => { _ptw.idleT = 0; if (_ptw.on && !_ptw.raf && !document.hidden) _ptw.raf = requestAnimationFrame(_ptwFrame); }, 250); return; }
   const dt = Math.min(0.2, (now - (_ptw.last || now)) / 1000); _ptw.last = now;
   _ptw.tThink = (_ptw.tThink || 0) - dt;
   if (_ptw.tThink <= 0) { _ptw.tThink = 0.25; _ptw.W = _ptwWorld(); if (_ptw.W) _ptwEncounter(_ptw.W); }
   const W = _ptw.W;
   let going = _ptw.flies.length > 0;
   if (W) for (const P of _ptw.pets) { _ptwThink(P, W, dt); _ptwStep(P, dt, now / 1000); if (P.tx != null) going = true; }
+  if (_ptw.pets.length && typeof gardenLivePets === 'function') gardenLivePets(_ptw.pets);   // (2.32) where they really are, to who is in this garden with you
   if (_ptw.flies.length) _ptwFlies(dt, now / 1000);
   // walking: every frame. Sitting about: a few looks a second is plenty (their limbs are CSS). Nobody out: _ptwCheck looks in once a second
   if (going) _ptw.raf = requestAnimationFrame(_ptwFrame);
@@ -322,7 +328,7 @@ function _ptwClick(ev) {
   P.clip('jump', 800, () => { P.sit(); P.busy = 1.5; }, { quiet: true });
 }
 function _ptwCheck() {
-  const onPage = typeof state !== 'undefined' && state && String(state.view || '') === 'garden' && typeof _gdp !== 'undefined' && _gdp && _gdp.svg && _gdp.svg.isConnected;
+  const onPage = typeof state !== 'undefined' && state && (String(state.view || '') === 'garden' || _ptwVisiting()) && typeof _gdp !== 'undefined' && _gdp && _gdp.svg && _gdp.svg.isConnected;
   if (!onPage) { if (_ptw.on) _ptwStop(); _ptw.out = null; return; }
   if (_ptw.svg !== _gdp.svg) { _ptwStop(); _ptw.svg = _gdp.svg; _ptw.on = true; _ptw.key = ''; for (const type of ['pointerdown', 'pointerup', 'click']) _ptw.svg.addEventListener(type, _ptwClick, true); }
   const key = _ptwRosterKey();
