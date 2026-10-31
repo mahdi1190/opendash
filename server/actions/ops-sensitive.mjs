@@ -150,6 +150,62 @@ function runTogether(ctx, p) {
   return { summary: `${a[0].toUpperCase()}${a.slice(1)} a shared space`, changes: [line('Shared space', status)] };
 }
 
+// ─── Groups (docs/dev/GROUPS.md) ────────────────────────────────────────────
+const GROUP_ID = { type: 'string', pattern: '^[A-Za-z0-9_-]{22}$', description: "a group id from list_friends {part: 'groups'}" };
+const cleanWord = (v, n = 40) => String(v == null ? '' : v).replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, '').trim().slice(0, n);
+/** A group and (when asked) a person in it, named from the app's own files, never from text the model gave. */
+function groupOf(ctx, id, iid = null) {
+  let doc = null, local = null;
+  try { doc = JSON.parse(readFileSync(join(ctx.paths.root, 'friends', 'groups.json'), 'utf8')); } catch { /* none yet */ }
+  const g = doc && doc.groups && Object.hasOwn(doc.groups, id) ? doc.groups[id] : null;
+  if (!g) throw new ActionError('NOT_FOUND', 'there is no group with that id', { field: 'group', hint: "list_friends {part: 'groups'} shows them" });
+  const name = cleanWord(g.card && g.card.name, 60) || 'that group';
+  if (!iid) return { id, name, person: null };
+  try { local = JSON.parse(readFileSync(join(ctx.paths.root, 'friends', 'groups-local.json'), 'utf8')); } catch { /* not read yet */ }
+  const l = local && local.g && Object.hasOwn(local.g, id) ? local.g[id] : null;
+  const known = l && ((l.roster || []).some(r => r.iid === iid) || (l.requests || []).some(r => r.iid === iid));
+  if (!known) throw new ActionError('NOT_FOUND', 'that person is not in this group or waiting to join', { field: 'person', hint: "list_friends {part: 'groups', group} shows them" });
+  const q = (l.requests || []).find(r => r.iid === iid);
+  const person = cleanWord((l.profiles && l.profiles[iid] && l.profiles[iid].name) || (q && q.name), 40) || 'that person';
+  return { id, name, person };
+}
+function runGroups(ctx, p) {
+  const a = p.action;
+  if (a === 'create') {
+    need(p, 'name', a);
+    const name = truncate(cleanWord(p.name, 60), 60);
+    ctx.effect({ op: 'groups.create', name, mode: p.mode === 'open' ? 'open' : 'approve' });
+    return { summary: `Start a group called "${name}"`, changes: [line('Who can join', p.mode === 'open' ? 'anyone with the link' : 'you approve each person')] };
+  }
+  if (a === 'join') {
+    need(p, 'code', a);
+    // The link holds the group's secret, so it never comes through here; the person pastes it in the app themselves.
+    if (!/^[A-Za-z]{2}[ ]?[A-Za-z]{2}$/.test(p.code)) throw new ActionError('BAD_VALUE', 'that is not a 4-letter group code. A group link is never accepted here: the person pastes it in Friends > Groups > Join a group', { field: 'code' });
+    ctx.effect({ op: 'groups.join', code: p.code });
+    return { summary: `Ask to join a group with the code ${p.code}`, changes: [line('Ask to join', 'someone who runs it decides. They see the name you use, your picture and your status.')] };
+  }
+  need(p, 'group', a);
+  const withPerson = ['approve', 'decline', 'remove', 'block', 'add_friend'].includes(a);
+  if (withPerson) need(p, 'person', a);
+  const g = groupOf(ctx, p.group, withPerson ? p.person : null);
+  const to = g.person;
+  if (a === 'approve' || a === 'decline' || a === 'remove' || a === 'block' || a === 'add_friend') {
+    const words = { approve: `Let ${to} into ${g.name}`, decline: `Decline ${to}'s request to join ${g.name}`, remove: `Remove ${to} from ${g.name}`, block: `Remove and block ${to} in ${g.name}`, add_friend: `Ask ${to}, from ${g.name}, to be your friend` };
+    ctx.effect({ op: 'groups.person', action: a, id: g.id, iid: p.person });
+    return { summary: words[a], changes: [line(words[a], a === 'add_friend' ? 'they still have to accept' : g.name)] };
+  }
+  if (a === 'leave') { ctx.effect({ op: 'groups.leave', id: g.id }); return { summary: `Leave ${g.name}`, changes: [line('Leave the group', g.name)] }; }
+  if (a === 'reset_link') { ctx.effect({ op: 'groups.reset', id: g.id }); return { summary: `Make a new link for ${g.name}`, changes: [line('The old link and any code stop working at once', g.name)] }; }
+  if (a === 'share') { ctx.effect({ op: 'groups.share', id: g.id }); return { summary: `Show the link for ${g.name}`, changes: [line('You share it yourself, from the screen', g.name)] }; }
+  if (a === 'announce') {
+    need(p, 'text', a);
+    const text = truncate(String(p.text), 500);
+    ctx.effect({ op: 'groups.announce', id: g.id, text });
+    return { summary: `Announce to everyone in ${g.name}`, changes: [line('Everyone in the group sees this', text)] };
+  }
+  throw new ActionError('BAD_VALUE', 'there is no such group action', { field: 'action' });
+}
+
 // ─── Devices, relay, connections ───────────────────────────────────────────
 function runDevices(ctx, p) {
   if (p.action === 'add') {
@@ -231,6 +287,16 @@ export const SENSITIVE_OPS = [
       ops: { type: 'array', minItems: 1, maxItems: 50, items: { type: 'object', required: ['op', 'path'], properties: { op: { type: 'string', enum: ['set', 'del', 'move'] }, path: { type: 'array', maxItems: 12 }, value: {}, before: {} } } },
     }, ['action']),
     run: runTogether,
+  },
+  {
+    name: 'groups.act', tool: 'groups_act', danger: true,
+    description: "Groups: one link connects many people. Anything that joins, invites, removes or reaches everyone. The user approves it first. action create {name, mode?: approve | open}; join {code}: a 4-letter code the user typed to you (a group's LINK is never accepted here: it holds the group's secret, and the person pastes it in Friends > Groups > Join a group); approve, decline, remove, block, add_friend {group, person} (ids from list_friends {part: 'groups', group}); leave, reset_link, share {group} (the link is never given to you: the app shows it on screen, for the person to share); announce {group, text}.",
+    schema: obj({
+      action: { type: 'string', enum: ['create', 'join', 'approve', 'decline', 'remove', 'block', 'add_friend', 'leave', 'reset_link', 'share', 'announce'] },
+      group: GROUP_ID, person: { type: 'string', pattern: '^[A-Za-z0-9_-]{22}$' }, name: { type: 'string', minLength: 1, maxLength: 60 }, mode: { type: 'string', enum: ['approve', 'open'] },
+      code: { type: 'string', maxLength: 6 }, text: { type: 'string', minLength: 1, maxLength: 500 },
+    }, ['action']),
+    run: runGroups,
   },
   {
     name: 'devices.act', tool: 'devices_act', danger: true,

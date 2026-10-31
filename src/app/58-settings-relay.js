@@ -417,7 +417,8 @@ function _rlPeopleCard(el, a) {
     c.body.appendChild(_settingsRow('Your computers', '', list));
   }
   // the people you invited
-  const members = (a.members || []).filter(m => m && /^[A-Za-z0-9_-]{22}$/.test(String(m.iid || '')));
+  // Someone a group let in is not someone you invited: they are counted under Groups below, and leave with their group.
+  const members = (a.members || []).filter(m => m && /^[A-Za-z0-9_-]{22}$/.test(String(m.iid || '')) && !String(m.via || '').startsWith('group:'));
   if (members.length) _rlFriendsWanted();
   const ml = document.createElement('div'); ml.className = 'relay-list';
   for (const m of members) {
@@ -464,6 +465,30 @@ function _rlPeopleCard(el, a) {
     ml.appendChild(e);
   }
   c.body.appendChild(_settingsRow('Friends', members.length ? 'Remove access works at once, with Undo for 7 days.' : '', ml));
+  // Groups on this relay (docs/dev/GROUPS.md). Their names are sealed from the relay, so only yours can be named here.
+  const groups = (a.groups || []).filter(g => g && /^[A-Za-z0-9_-]{22}$/.test(String(g.gid || '')));
+  if (groups.length) {
+    const gl = document.createElement('div'); gl.className = 'relay-list';
+    const mine = new Map(((typeof _gr !== 'undefined' && _gr.data && _gr.data.groups) || []).map(g => [g.id, g.name]));
+    const people = groups.reduce((n, g) => n + (Number(g.n) || 0), 0);
+    for (const g of groups) {
+      const label = mine.get(g.gid) || `A group started by someone else (${String(g.gid).slice(0, 6)})`;
+      const row = document.createElement('div'); row.className = 'relay-row';
+      const info = document.createElement('div'); info.className = 'relay-info';
+      const nm = document.createElement('div'); nm.className = 'relay-name'; nm.textContent = label;
+      info.appendChild(nm);
+      info.appendChild(_rlP(`${Number(g.n) || 0} ${Number(g.n) === 1 ? 'person' : 'people'}, ${_rlMb(g.used)} kept`, 'set-h'));
+      row.appendChild(info);
+      const acts = document.createElement('div'); acts.className = 'btn-group relay-member-acts';
+      acts.appendChild(_rlBtn('Delete', 'ghost', async () => {
+        const yes = await confirmDialog({ title: 'Delete this group for everyone?', text: 'Everyone in it loses it at once and its link stops working. There is no way back.', confirmLabel: 'Delete it', danger: true });
+        if (yes && await _rlPost('groups/delete', { gid: g.gid }, 'Group deleted')) _rlLoadAdmin();
+      }, 'trash-2'));
+      row.appendChild(acts);
+      gl.appendChild(row);
+    }
+    c.body.appendChild(_settingsRow('Groups', people >= 100 ? `${people} people. A free Cloudflare account comfortably runs about 100: your relay may rest until midnight UTC on busy days. Nothing is lost. Cloudflare's paid plan (US$5 a month) lifts this, and that choice is yours.` : 'People in groups use your relay too. Any cost is yours, between you and Cloudflare. This is not a compliance or records system.', gl));
+  }
   // invites not used yet
   const inv = (a.invites || []).filter(i => i && /^[A-Za-z0-9_-]{11}$/.test(String(i.id || '')));
   if (inv.length) {

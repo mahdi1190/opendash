@@ -17,6 +17,11 @@ seriously and are always welcome.
   HKDF-SHA-256. The relay carries sealed data it cannot read.
 - **Your own relay.** It runs on your own Cloudflare account. Every request to
   it is signed, and only your devices and the people you approve can use it.
+- **Groups.** One shared link, whose secret is never sent to the relay. In the
+  default mode the link only lets someone ask, and a person approves them. A
+  group's messages are sealed under a group key and signed by their sender.
+  Removing someone cuts their access at once and rotates that key. See
+  [Groups](#groups) below.
 - **Device-signed sync.** Each device signs its own records. Removing a device
   rotates the sync key, locks it out of Friends and renews the secret behind the
   optional emergency backup sheet.
@@ -311,6 +316,19 @@ safeguards below follow from that, and are enforced in the code (mainly
   ones can't be replayed. What you share is built on your computer from named
   fields only, default deny, per friend.
 
+### Groups
+
+A group lets one link connect many people (design: [docs/dev/GROUPS.md](../docs/dev/GROUPS.md)).
+
+- **The link.** A 128-bit secret after the `#`, so a browser does not send it. The relay keeps a hash of a value derived from it, and never sees the secret. A reset stops the old link at the next request.
+- **Approval by default.** Holding the link lets someone read the group's name and ask. They get no relay access, member list or key until a person approves them. "Anyone with the link" is an explicit choice, and the screen says that whoever holds the link can read the group.
+- **Short codes** are optional, off by default, for people already on that relay, limited three ways (per person, per address, per day across the relay), and can only ever lead to asking.
+- **End to end.** Messages, profiles, join requests and the group's card are sealed before they leave the app. A new key goes to each person by a wrap that the relay cannot open, signed by whoever runs the group. Every message is signed by its sender. In *Anyone with the link* the key is also sealed under the link, so that mode is as private as the link.
+- **Removal.** The relay refuses them at once and closes their connections. Their app's removal job is retried until the relay confirms, and the relay itself remembers that the key must change, so any admin's app can finish it. Removing someone who runs the group also signs them out for good, and replaces the link.
+- **Against a dishonest relay.** The group's id is a hash of its first signed document, so the link anchors who runs it, and a joiner checks from there. Each person on the list carries a signed proof, checked against that history before they are given a new key, and it names both their keys, so a relay cannot slip in a key of its own or be made an admin. Nothing the relay labels is ever signed. It can still withhold messages, see who is in a group and when they post, refuse service, and read a group in *Anyone with the link* if it gets the link (its landing page can read it in a browser). A code cannot prove it leads to the right group: the check pictures can. The remaining limits are in [docs/dev/GROUPS.md](../docs/dev/GROUPS.md) section 4.
+- **Friends through a group.** Until someone accepts, the handshake stays inside the group: no address anyone named is called, and no mailbox is shown. A friend made this way starts with nothing shared but the name used in the group. Automatic friends need each person's own yes.
+- **Group text** is never rendered as markup, and a group cannot make your computer load anything: a logo is an emoji and a colour. Nothing a group sends reaches the assistant: it gets names and counts only, built field by field, never a link or a code, and anything that joins, invites or removes is a proposal you approve on screen.
+
 ### Synced data folders, updates and the remote connector
 
 The data folder may sit in OneDrive, Dropbox or Google Drive, so OpenDash
@@ -360,6 +378,7 @@ yours.
 
 ### Known limitations
 
+- In a group, a person you removed keeps what they already read. An admin who was removed, working with a dishonest relay operator, could still sign someone onto the list as having been let in earlier: the next key would then go to that person. A group whose relay you do not trust is only as safe as the people who have run it. "Anyone with the link" is only as private as the link. Groups are not a compliance or records system.
 - OpenDash does not encrypt the data folder. Use your operating system's disk
   encryption, and think before putting the folder in a cloud-synced location.
 - Any program running under your account can read the data folder and the

@@ -20,6 +20,8 @@ Reference implementation: `lib/friends/`.
 | `server/routes/relay-rotate.mjs` | `/api/relay/rotate`: after a key renewal, your own relay is deployed again with the new owner key (section 15) |
 | `src/app/96-friends-*.js`, `src/styles/96-friends.css` | the Friends tab, `window.Friends`, `friendsFeedPost()` |
 
+**Groups** (one link connects many people) are built beside this, not in it: docs/dev/GROUPS.md. Friends keep their own handshake and pictures; a group only adds one more way to ask (`how: 'group'`, section 6).
+
 ## 1. Rules (the owner's, 24 Oct 2026)
 
 1. **The identity private key stays in the device secret store** (`lib/secret-store.mjs`, key `friends-identity`). It is never written to the data folder, never logged, never returned by an `/api` route. It reaches the person's other devices only inside the encrypted device-pairing keyring (`lib/sync/e2e.mjs`, `registerKeyringExtra('friends', ...)`: the same wraps that carry the sync keys, in every one of them: the join code, the 6-digit pairing, a QR offer, the recovery code and the members' rewraps in keys.json all bring it).
@@ -120,6 +122,7 @@ R       added by code: compares the same code and says "The codes match" (confir
 - R commits to its nonce before it sees A's, so nobody in the middle (the relay included) can choose keys that make both codes equal (one chance in a million).
 - `code = 6 digits of SHA-256(JSON ["opendash-friend-sas-v1", R.id, R.x, R.ed, A.id, A.x, A.ed, nR, nA])`, shown as `482 913`.
 - A's screen: "Sam wants to connect. Check that Sam sees 482 913." Approve / Decline / Block. R's screen, added by code: "Check that Alex sees this same code: 482 913" with "The codes match", "The codes are different" and Cancel; then "Waiting for Alex to approve". Added with an invite: "Waiting for Alex to approve. Tell them your code: 482 913", with Cancel and "The codes are different".
+- **Asked through a group** (`how: 'group'`, `g`: the group's id, `gp`: proof of holding its key, lib/friends/groups.mjs): the whole handshake travels inside the group (`POST /v1/rg/<gid>/dm`) until A accepts. A takes a request only from a key on that group's list that proves it holds the group's key; `drop` is ignored, so no address R names is ever called. `friend:approve` carries A's drop token, and R answers with `friend:relay` carrying its own, so neither mailbox is shown before then, and a queued message to R waits for that. Same pictures; only A has to press Accept, as with an invite. Both sides start with `perms` off for profile, game, garden, presence and direct (`GROUP_FRIEND_PERMS`), and send only `{name}` as they are known in the group; `lib/friends/share.mjs` shows those as chosen off, and they stay off until the person turns them on. `groupHook.autoAccept`: a group whose owner chose automatic friends, and this person said yes (`autoOk`). At most 8 requests per group wait at a time.
 - Both asked at once: the side with the larger id answers as A; the other keeps waiting as R.
 - A request from a blocked id, a used or expired invite, or a second request for a pending one is dropped quietly.
 

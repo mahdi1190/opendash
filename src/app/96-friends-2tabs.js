@@ -15,10 +15,10 @@
    panels where they belong with Friends.registerPanel({..., tab, zone}) (96-friends-0core.js).
    Friend strings are set with textContent only (the owner's rule).
    ============================================================ */
-const _FR_TABS = Object.freeze([['friends', 'Friends', 'users'], ['data', 'Shared with me', 'folder-open'], ['feed', 'Feed', 'newspaper'], ['requests', 'Requests', 'user-check'], ['shared', 'Shared', 'handshake'], ['settings', 'Settings', 'settings']]);
+const _FR_TABS = Object.freeze([['friends', 'Friends', 'users'], ['groups', 'Groups', 'building-2'], ['data', 'Shared with me', 'folder-open'], ['feed', 'Feed', 'newspaper'], ['requests', 'Requests', 'user-check'], ['shared', 'Shared', 'handshake'], ['settings', 'Settings', 'settings']]);
 const _FR_FEED_PAGE = 10, _FR_FEED_FETCH = 40;
 _frUI.sel = ''; _frUI.listTop = 0; _frUI.feedC = new Map(); _frUI.folds = new Set(); _frUI.tab = '';
-function _frTabOf(view) { const m = /^friends:(feed|requests|shared|settings|data)(?::[0-9a-f]{16})?$/.exec(String(view || '')); return m ? m[1] : 'friends'; }
+function _frTabOf(view) { if (/^friends:groups(:|$)/.test(String(view || ''))) return 'groups'; const m = /^friends:(feed|requests|shared|settings|data)(?::[0-9a-f]{16})?$/.exec(String(view || '')); return m ? m[1] : 'friends'; }
 function _frViewOfTab(tab) { return tab === 'friends' ? 'friends' : 'friends:' + tab; }
 /** Requests that wait for you, and friends that need a look (the Requests tab's badge and the Friends tab's one line). */
 function _frNeedsYou(d) {
@@ -29,7 +29,7 @@ function _frSubTabs(tab, d) {
   const need = _frNeedsYou(d).length;
   return subTabs({
     label: 'Friends', active: tab, onChange: (id) => setView(_frViewOfTab(id)),
-    tabs: _FR_TABS.map(([id, label, ic]) => ({ id, label, icon: ic, badge: id === 'requests' ? need : id === 'shared' ? inv : 0 })),
+    tabs: _FR_TABS.map(([id, label, ic]) => ({ id, label, icon: ic, badge: id === 'requests' ? need : id === 'shared' ? inv : id === 'groups' && typeof grWaiting === 'function' ? grWaiting() : 0 })),
   });
 }
 /** Paint the open tab (called by _frRender, 96-friends-1ui.js). */
@@ -40,7 +40,7 @@ function _frRenderTabs(root, view) {
   headerSubTabs(_frSubTabs(tab, d), /^friends(:|$)/);
   const sub = document.getElementById('view-subtitle');
   if (sub) sub.textContent = '';
-  ({ friends: _frTabFriends, data: _frTabData, feed: _frTabFeed, requests: _frTabRequests, shared: _frTabShared, settings: _frTabSettings })[tab](root, view, d);
+  ({ friends: _frTabFriends, groups: _frTabGroups, data: _frTabData, feed: _frTabFeed, requests: _frTabRequests, shared: _frTabShared, settings: _frTabSettings })[tab](root, view, d);
 }
 
 /* ---------- panels other modules registered ---------- */

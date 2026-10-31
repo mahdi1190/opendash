@@ -14,6 +14,7 @@ sharing level sends is in [PRIVACY.md](PRIVACY.md#friends).
 - [Getting started](#getting-started)
 - [Your relay](#your-relay)
 - [Adding a friend](#adding-a-friend)
+- [Groups: one link for everyone](#groups-one-link-for-everyone)
 - [What friends can see](#what-friends-can-see)
 - [Seeing what friends share with you](#seeing-what-friends-share-with-you)
 - [Doing things together](#doing-things-together)
@@ -202,6 +203,53 @@ person who showed the code or sent the invite presses **Accept**. A forwarded
 or stolen link alone is not enough: the pictures would not match. If they
 differ, choose *No, they're different* and nothing is shared.
 
+## Groups: one link for everyone
+
+A group connects many people at once: your family, your club, or everyone in a company. Instead of adding each person
+one by one, you share **one link**. Everyone who joins can see everyone else's name and picture. Open **Life > Friends > Groups**.
+
+**Start a group.** Press *Start a group* and give it a name. The link is ready straight away: copy it, send it as a message, show the
+QR code, or print a poster to pin up. You need your own relay for this (Settings > Your relay, about two minutes). If it is older than groups,
+the page says so and offers *Update my relay*: it takes a minute, and nothing is lost.
+
+**Join a group.** Press *Join a group*, paste the link, and you see the group's name, who runs it and where it is kept before anything happens. Press
+*Ask to join* (or *Join*). You don't need a relay of your own. If you have none, Freeflo asks before using this group's for your friend requests too. Someone without Freeflo who opens the link sees a small page saying what it is and how to get it.
+
+**Who gets in is up to you.** Choose one in the group's settings:
+
+- **I approve each person** (the normal way). Share the link anywhere: holding it only lets someone ask. You see their name and
+  picture and press *Let in*. Until then they get nothing at all.
+- **Anyone with the link.** They are in straight away, so whoever has the link can read the group. You can give it a date to run out and a
+  maximum number of people. Use this for something public, not for anything private.
+
+**A short code, if you want one.** People already connected through the same place can type 4 letters instead of pasting a link. It
+is off until you turn it on in *Share the link*, and it only ever lets them ask: you always approve them, even in *Anyone with the link*. A code can't prove it leads to the right group, so ask the person who gave it to you to read out their check pictures.
+Why not codes for everyone? Freeflo has no central server, so 4 letters alone can't tell a new computer where to look. The link carries that for you.
+
+**What people in a group see of you:** your name, your picture and your status. Nothing else. Each group can know you by a different name
+(*Settings for this group*). Your tasks, calendar and money are never part of a group.
+
+**Being friends with someone in the group.** Press their name, then *Add as friend*. They still have to accept. If you meet, you can each open
+your own card and compare the check pictures. A friend made in a group sees only the name you use there, until you choose to share more on their page. An owner can choose *Everyone
+here is friends automatically*: it is off unless they turn it on, you are told before you join and can untick it, and if they turn it on later nothing changes for you until you say yes.
+
+**Running a group.** The owner can let others help run it: they can let people in, remove people, make announcements and see the link. *Reset
+the link* makes a new one, and the old link and any code stop working at once. *Remove* has ten seconds of Undo; after that their access ends
+straight away, even if your computer is offline when you pressed it (Freeflo keeps trying until it is done), and the group's key changes so they
+can't read anything new. *Block* also stops them asking again. If you use *Anyone with the link*, make a new link too (the page offers it): otherwise they could come back under a new name. Removing someone who helps run the group makes a new link by itself, because they knew the old one: share the new one with anyone still to join.
+*Hand the group to them* makes someone else the owner; an owner has to do this before they can leave.
+
+**Companies and organisations.** Run your own relay on your own Cloudflare account, or ask whoever runs one to let you start a group on it.
+You get a name, a logo (an emoji and a colour, never an uploaded picture), a description, a welcome message, announcements and a searchable list of people.
+**This is not a compliance or records system.** Noticeboard posts go after 30 days, nothing is archived for you, you cannot read anyone's private messages,
+and people keep what they already read.
+
+**How many people, and what it costs.** A free Cloudflare account comfortably runs about 100 active people; a group can have up to 500. Past 100 the
+page warns you. If the free allowance runs out, the group rests until midnight UTC and nothing is lost. Cloudflare's paid plan is US$5 a month and, at
+around 300 active people, comes to about that. Any cost is between the relay's owner and Cloudflare: Freeflo never charges anything, and nothing upgrades by itself.
+
+**Older versions.** Friends on older versions keep working as friends. They can't join groups until they update.
+
 ## What friends can see
 
 **Nothing private until you say so.** A new friend sees only:
@@ -328,6 +376,8 @@ seconds).
 To only stop sharing (and stay friends), use *Stop sharing with Sam* instead.
 
 ## What cannot be forced
+
+In a group, a person you remove keeps what they already read, and someone can come back under a new identity if they still hold a link in *Anyone with the link* mode. A dishonest relay can't read an *I approve each person* group, or make itself a member, but it can see who is in a group and when they post, and it can stop working.
 
 Freeflo is honest about its limits:
 

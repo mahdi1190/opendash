@@ -72,6 +72,8 @@ one device, or want friends, you choose how far it goes:
 There is no Freeflo cloud in any of this. Nothing ever goes to the Freeflo
 project, its maintainers or any server they run.
 
+A **group** (Life > Friends > Groups) shows the people in it your name, picture and status, and nothing else unless you choose. See [What a group shares](#what-a-group-shares).
+
 **For the most privacy**, host your own relay rather than using a friend's,
 or stay local and use your relay only between your own devices. Your relay's
 operator is you.
@@ -391,3 +393,28 @@ only answers the tool calls. See [MCP.md](MCP.md) for permissions.
 Delete the data folder (and clear the site data for `http://localhost:4173` in
 your browser). Data held by Anthropic, Google, your bank or other services is
 governed by those services. See [INSTALL.md](INSTALL.md#uninstalling).
+
+## What a group shares
+
+**With the people in it:** the name you chose for that group, your picture, your status, and your check pictures (made from your public key, so they can check
+it is you). What you post on its noticeboard. Not where your mail goes, or your address. Someone you become friends with through a group gets the name you use there, and
+nothing else until you choose; a friendship you already had has its own settings, and the group changes nothing about them. If you say yes to automatic friends in a group, that much happens with no click.
+
+**Never, through a group:** your tasks, calendar, money, places, or anything else in Freeflo.
+
+**With whoever runs the relay it is on:** they cannot read group names, descriptions, posts, profiles or join requests: those are sealed before they leave your computer, and
+only people in the group hold the key. They can see that a group exists and its id, how many people are in it and their public keys, who runs it, when something is posted and how
+big it is, and the address your computer connects from at that moment. They can also tell when the same person is in two groups on that relay.
+
+**If you use "Anyone with the link":** the group is only as private as the link. Whoever holds it can join and read what is posted. A dishonest relay operator could also read it if someone
+opens the link in a browser, because the relay serves that page. With "I approve each person", holding the link gets someone only the group's name, description and who runs it, and the chance to ask.
+
+**If you have no connection of your own,** the Join dialog asks before using that group's relay for your friend requests too. Untick it, and it isn't used for that.
+
+**A 4-letter code**, if someone turns one on: whoever runs the relay could work out the code and so read the group's name and who runs it. Nothing else.
+
+**Removing someone** ends their access at once and changes the group's key, so they can't read anything new. What they already read stays on their computer.
+
+**No tracking:** the page a group link opens is static, loads nothing from anywhere else, and keeps no record of the visit.
+
+Groups are not a compliance or records system. Technical details: [docs/dev/GROUPS.md](dev/GROUPS.md).
