@@ -90,6 +90,10 @@ export function shots(d) {
 
   // ---------- Life
   add('friends', () => still('friends', 'friends'));
+  // Music (2.26): a friend's card with their music and the songs they sent; the song picker. The sandbox's Spotify is a stand-in
+  // that answers with invented music (the seed gives the demo friends invented ids), so no real artist or cover is ever shown.
+  add('music-friends', () => still('music-friends', 'friends', { prep: async () => { await click('text=Sam Rivera', { wait: 1500 }); await ev("(() => { const m = document.querySelector('main.main'); if (m) m.scrollTop = 230; })()"); await sleep(500); } }));
+  add('music-picker', () => still('music-picker', 'friends', { prep: async () => { await ev('musicSendDialog()'); await sleep(900); await type('paper', 70); await sleep(1600); } }));
   add('together', async () => {   // run once per sandbox: it makes a space
     await open('together'); await sleep(1500);
     await record('together', async (r) => {

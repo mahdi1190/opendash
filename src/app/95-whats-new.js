@@ -43,6 +43,7 @@ const _WN_QS_KEY = 'dashboard-quickstart';
 
 // The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
+  ['n227', 'Music with friends (2.27)', 'music'],
   ['n224', 'The garden, overhauled (2.24)', 'sprout'],
   ['n221', 'Money, codes and more (2.21 to 2.23)', 'sparkles'],
   ['n219', 'Tidier and calmer (2.19)', 'layout-grid'],
@@ -65,12 +66,17 @@ const WHATS_NEW_GROUPS = Object.freeze([
   ['fun', 'Fun and motivation (2.16)', 'party-popper'],
   ['money', 'Money (2.16)', 'wallet'],
 ]);
-const _WN_CURRENT_GROUPS = ['n224'];
+const _WN_CURRENT_GROUPS = ['n227', 'n224'];
 function _wnHasPage(id) { try { const p = typeof pageById === 'function' ? pageById(id) : null; return !!(p && pageAvailable(p)); } catch (e) { return false; } }
 const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets');
 
 const WHATS_NEW = [
   // ---- 2.21 ----
+  // ---- 2.27 ----
+  { id: 'music', group: 'n227', icon: 'music', title: '2.27: Spotify, and songs for friends',
+    text: 'Link your own Spotify in Connections to search music, show a favourite song, album and playlist and your top artists on your card, and send a friend a song to listen to.',
+    note: 'It needs a free Spotify app made with a Premium account (about two minutes; the steps are in the set-up). Friends who only receive a song need nothing.',
+    cmd: ['connect-spotify'], view: ['connections'], sel: ['[data-conn="spotify"]'] },
   // ---- 2.24 ----
   { id: 'garden-together', group: 'n224', icon: 'users', title: '2.26: play together, live',
     text: 'Friends can walk around your garden with you. You choose who may look, help or play, everything they do shows their name, and Undo and Put my garden back keep it safe.',

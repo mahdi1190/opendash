@@ -224,6 +224,7 @@ function _frFriendHero(f) {
   const acts = _frEl('div', 'fr-fhero-a');
   if (typeof fdOpen === 'function') acts.appendChild(uiButton({ label: 'View their data', icon: 'eye', kind: 'ghost', size: 'sm', tip: `What ${friendName(f)} shares with you: tasks, calendar, money, places, memories`, run: () => fdOpen(f.id) }));
   acts.appendChild(uiButton({ label: 'Cheer', icon: 'heart', size: 'sm', run: (e, b) => _frCheerMenu(b, f) }));
+  if (typeof musicFriendAction === 'function') { try { const mb = musicFriendAction(f); if (mb) acts.appendChild(mb); } catch (e) { console.error('[friends] music action', e); } }   // 2.26: Send a song
   acts.appendChild(uiButton({ icon: 'ellipsis', kind: 'ghost', size: 'sm', aria: 'More', tip: 'More', run: (e, b) => openMenu(b, _frFriendMore(f), { align: 'end' }) }));
   el.appendChild(acts);
   if (typeof funFriendHero === 'function') { try { funFriendHero(el, f); } catch (e) { console.error('[friends] fun hero', e); } }   // agent 'fun': wave, high five, gift

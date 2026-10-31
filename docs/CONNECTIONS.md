@@ -491,6 +491,25 @@ in the same place (*Advanced: use your own Microsoft app*).
 own client file in `data/secrets/`. It is moved into one Google account
 automatically (same sign-in, same Google app) the first time Freeflo starts.
 
+## Spotify (songs for friends, favourites and top artists)
+
+Spotify is optional. Link it to search music from inside Freeflo, show your favourites and top artists on your card, and send friends songs. A friend who only *receives* a song needs nothing: it opens in Spotify.
+
+**What you need:** a Spotify account with **Premium** (Spotify requires the owner of an app in Development Mode to have it), and about two minutes.
+
+1. Open **Connections > Spotify > Set up Spotify**. It lists the steps and the exact address to copy.
+2. Sign in at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and choose **Create app**. Any name and description. Tick **Web API**. For the **Redirect URI** paste the address Freeflo shows, for example `http://127.0.0.1:4173/api/spotify/callback` (Spotify no longer accepts `localhost`; if you run Freeflo on another port, add that address too).
+3. Open the app's **Settings**, copy the **Client ID** and paste it into Freeflo. You do not need the client secret, and Freeflo never asks for it.
+4. Choose **Sign in with Spotify**. A new tab opens on Spotify; allow access and come back.
+
+**What Freeflo can do:** search songs, albums, playlists and artists (or paste a Spotify link); read your top artists, top songs and playlists; and, on a Spotify app you have open (Premium), start a song or add it to your queue. It never changes your library or playlists.
+
+**Friends and limits.** Spotify lets a Development Mode app have up to **5 people**, each added under *User management* in the dashboard (otherwise they get a "refused" message when they sign in). The simplest way for a friend to search too is to make their own app the same way. Spotify also returns 10 results per page here (Show more asks for the next 10).
+
+**Covers.** The pictures come through your own Freeflo, by id, and are kept on this computer. While Spotify is linked they are on. For a song a friend sent you when you have not linked Spotify, *Show cover art for songs friends send* (in the set-up) asks Spotify for just that picture; off, you see a plain tile and the link still works.
+
+**If something is off:** *Spotify did not accept this Client ID* means a typo (it is 32 letters and numbers). *Spotify refused this account* means the person signing in is not on the app's User management list, or the owner's Premium has lapsed. *Open Spotify on your phone, computer or web player first* means Play and Queue need a Spotify app running somewhere. Sign-in lasts about six months; Freeflo asks you to sign in again when it ends.
+
 ## Troubleshooting
 
 | What you see | What to do |

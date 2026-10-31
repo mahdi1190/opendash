@@ -213,6 +213,17 @@ garden; you choose anything more, per friend.</td>
 <td><b>Do things together.</b> Shared lists, boards, parties and trips with the
 friends you pick. Everything between friends is end-to-end encrypted.</td>
 </tr>
+<tr>
+<td width="50%"><img alt="Finding a song to send a friend: search, tabs for songs, albums, playlists and artists, and results with covers (demo data; the music is invented)" src="docs/media/music-picker.png"></td>
+<td width="50%"><img alt="A friend's page: the song they sent, and their card with a favourite song, album and top artists (demo data; the friend and the music are made up)" src="docs/media/music-friends.png"></td>
+</tr>
+<tr>
+<td><b>Send a song.</b> Link your own Spotify, search for a song, album or
+playlist and send it to a friend with a line. They need nothing installed to
+open it.</td>
+<td><b>Music on your card.</b> A favourite song, album and playlist, and your top
+artists, shown only if you choose.</td>
+</tr>
 </table>
 
 ### Garden, pets, wardrobe and achievements

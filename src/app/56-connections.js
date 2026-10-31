@@ -364,13 +364,15 @@ function _connPageMatchesSource(s, filter, query) {
 function _connPageCounts(sources, all) {
   const assistants = all.assistants ? ASSISTANT_OPTIONS.filter(p => p.id !== 'grok').map(p => Object.assign({ name: p.name }, _connPageAssistantDetails(p.id, all))) : null;
   const health = all.googleHealth || {};
+  const spot = all.spotify || {};
   const needs = [
     ...sources.filter(_connPageNeedsAttention).map(s => s.label),
     ...(assistants ? assistants.filter(a => a.attention).map(a => a.name) : all.claude && ['auth', 'error', 'setup'].includes(all.claude.state) ? ['Claude'] : []),
     ...(health.error || health.needsAuth ? ['Google Health'] : []),
+    ...(spot.error || spot.needsAuth ? ['Spotify'] : []),
   ];
   return {
-    connected: sources.filter(s => _connPageLiveSource(s) && _connPageSourceState(s) === 'ok').length + (assistants ? assistants.filter(a => a.working).length : all.claude && all.claude.state === 'ok' ? 1 : 0) + (health.connected ? 1 : 0),
+    connected: sources.filter(s => _connPageLiveSource(s) && _connPageSourceState(s) === 'ok').length + (assistants ? assistants.filter(a => a.working).length : all.claude && all.claude.state === 'ok' ? 1 : 0) + (health.connected ? 1 : 0) + (spot.connected ? 1 : 0),
     attention: needs.length,
     first: needs[0] || '',
   };
@@ -478,6 +480,8 @@ function _connPageSourceSection(sources, ready, all) {
   paint();
   // Google Health shows here once it can be used; while it is not available yet it sits under Advanced.
   if (typeof googleHealthConnectionCard === 'function' && googleHealthActive(all)) section.appendChild(googleHealthConnectionCard(all));
+  // Spotify (2.26): songs for friends and your top artists; always offered, it is a few clicks to set up
+  if (typeof spotifyConnectionCard === 'function') section.appendChild(spotifyConnectionCard(all));
   if (filtered && _connPageSearchFocus) requestAnimationFrame(() => { if (input && input.isConnected) { input.focus({ preventScroll: true }); input.setSelectionRange(_connPageSearchCaret, _connPageSearchCaret); } });
   return section;
 }

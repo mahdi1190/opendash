@@ -178,6 +178,7 @@ function settingsSearchEntries() {
       ['calendar', 'Calendar connections', 'Connect calendar accounts and sources.', 'Google Outlook events meetings'],
       ['money', 'Money connections', 'Connect banks or import financial data.', 'bank finance CSV'],
     ]) entries.push({ group: 'connections', groupTitle: 'Connections', label, description, keywords, icon: 'plug', run: () => connOpen(id) });
+    if (typeof spotifySetup === 'function') entries.push({ group: 'connections', groupTitle: 'Connections', label: 'Spotify', description: 'Link Spotify to search music, show top artists on your card and send friends songs.', keywords: 'music songs playlist albums artists listen friends premium client id', icon: 'music', run: () => { connOpen('spotify'); spotifySetup(); } });
     if (typeof googleHealthConnectionSetup === 'function') entries.push({ group: 'connections', groupTitle: 'Connections', label: 'Google Health', description: 'Connect activity and sleep from Google Health and Fitbit.', keywords: 'fitness wellness steps OAuth integration', icon: 'heart', run: () => { connOpen('google-health'); googleHealthConnectionSetup(); } });
   }
   return entries;

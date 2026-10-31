@@ -99,7 +99,7 @@ function _pfSettings(el) {
     // your card stays in view beside the forms that change it
     cardHost = _pfEl('div', 'pf-set-card');
     paintCard();
-    el.appendChild(pageLayout({ main: zone(_pfAboutCard(changed), _pfLookCard(changed)), side: zone(cardHost), sideWidth: 380, sticky: true, cls: 'pf-layout' }));   // the avatar is a tab; the look is the card beside it: no hint and no second way there
+    el.appendChild(pageLayout({ main: zone(...[_pfAboutCard(changed), _pfLookCard(changed), typeof musicProfileCard === 'function' ? musicProfileCard(changed) : null].filter(Boolean)), side: zone(cardHost), sideWidth: 380, sticky: true, cls: 'pf-layout' }));   // the avatar is a tab; the look is the card beside it: no hint and no second way there
   } else if (sec === 'avatar') {
     el.appendChild(pageLayout({ main: _pfBuilderCard(changed), cls: 'pf-layout pf-wide' }));
   } else {
