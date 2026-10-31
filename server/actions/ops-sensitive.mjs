@@ -42,7 +42,7 @@ function runTax(ctx, p) {
     'source.add': 'Add an income source', 'source.update': 'Change an income source', 'source.remove': 'Remove an income source', 'payment.add': 'Add a payment from a client', 'payment.remove': 'Remove a payment',
     'claim.add': 'Claim a work cost', 'claim.update': 'Change a claim', 'claim.remove': 'Remove a claim', 'simplified.set': 'Set mileage or working from home', 'extras.set': 'Set figures for the tax year', 'gain.add': 'Add a sale of shares or crypto', 'gain.remove': 'Remove a sale',
     'item.add': 'Add to your money plan', 'item.update': 'Change something in your money plan', 'item.remove': 'Remove something from your money plan', 'memory.add': 'Remember this about your money', 'memory.update': 'Change a note about your money', 'memory.remove': 'Forget a note about your money',
-    'pref.set': 'Change a tax setting', 'filed.record': 'Record your tax return', 'year.confirm': 'Confirm your sources for the year',
+    'answers.set': 'Change your tax answers', 'pref.set': 'Change a tax setting', 'filed.record': 'Record your tax return', 'year.confirm': 'Confirm your sources for the year',
   };
   const say = words[c.action];
   if (!say) throw new ActionError('BAD_VALUE', 'that is not a change the Tax tab knows', { field: 'change.action', valid: Object.keys(words) });
