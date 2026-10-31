@@ -137,7 +137,8 @@ function _owAskText(s) {
   if (s.kind === 'over') return `We think ${esc(who)} paid ${owdAmt(s.amount)} on ${esc(when)}${memo}: that covers ${what} and ${owdAmt(s.over)} over`;
   if (s.kind === 'cover') {
     const others = s.allocs.filter(a => a.key !== s.key).length, own = s.allocs.some(a => a.key === s.key);
-    if (s.everyone) return `${esc(who)} paid ${owdAmt(s.amount)} on ${esc(when)}${memo}: for everyone on ${esc(s.title || s.allocs[0].title)}?`;
+    if (s.everyone) return `${esc(who)} paid ${owdAmt(s.amount)} on ${esc(when)}${memo}: for everyone still owing on ${esc(s.title || s.allocs[0].title)}?`;
+    if (s.ownDone) return `${esc(who)} has already paid their part, and another ${owdAmt(s.amount)} arrived on ${esc(when)}${memo}. Is it for someone else? Who?`;
     return `${esc(who)} paid ${owdAmt(s.amount)} on ${esc(when)}${memo}: ${own ? `for themselves and ${others === 1 ? 'one other' : others + ' others'}` : 'for someone else'}? Who?`;
   }
   if (s.kind === 'several') return `We think ${esc(who)} paid for ${what}: ${owdAmt(s.amount)} on ${esc(when)}${memo}`;

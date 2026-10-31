@@ -10,6 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.30.1]
+
+### Fixed
+- **Owed to me: a payment you marked by hand no longer comes back as a question.** If you marked someone paid and the bank then showed their money, Freeflo took it for a second payment and asked who else it was for. It now knows it is the same payment, joins the two up, and takes it off your spending like any other money paid back.
+- **Two people the bank can't tell apart.** "M Hart" with both a Max and a Mia Hart owing the same now asks which one it was, and doesn't guess or learn that wording for either.
+
+### Changed
+- When someone really has paid a second time, the question says so: "Sam has already paid their part, and another £10.00 arrived…".
+
 ## [2.30.0]
 
 Contests, trading and shared goals for playing together in a live garden.
