@@ -5,7 +5,7 @@
   // debts, goals, net worth, the year). The numbers are worked out on the server (GET /api/finance/plan -> {plan, view},
   // lib/finance/money-plan.mjs); this file draws them and sends back whole-plan saves. Every change has Undo.
   // Category spending limits (36-budgets.js) stay, below the plan.
-  const MPL = { host: null, plan: null, v: null, err: null, saveErr: null, open: new Set(), per: 'month', edit: null, adding: null, limits: null };
+  const MPL = { host: null, plan: null, v: null, err: null, saveErr: null, open: new Set(), per: 'month', edit: null, adding: null, limits: null, answers: false };
 
   async function planLoad() {
     try {
@@ -28,6 +28,7 @@
       const r = await api('/api/finance/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: next }) });
       if (!r.ok || !r.body || !r.body.view) { MPL.saveErr = (r.body && r.body.error) ? r.body.error + '.' : 'That could not be saved.'; if (!o.quiet) toast(MPL.saveErr, { bad: true, action: 'Try again', onAction: () => planSave(next, o) }); return false; }
       planTake(r.body);
+      ansAfterSave();   // the Tax tab follows a change made from its Your answers page (36-answers.js)
       if (!o.quiet) { if (!o.noPaint) planPaint(); toast(o.say || 'Saved', o.noUndo ? { icon: o.icon } : { action: 'Undo', icon: o.icon, onAction: () => planSave(before, { say: 'Put back', noUndo: true }) }); }
       return true;
     } catch (e) {
@@ -55,6 +56,7 @@
     if (MPL.err && !MPL.v) { host.append(h('section', { class: 'fv-card fv-pl-invite' }, h('p', { text: MPL.err }), h('button', { type: 'button', class: 'fv-btn', text: 'Try again', onclick: () => { MPL.err = null; planLoad().then(planPaint); } }))); return; }
     if (!MPL.v) { host.append(h('section', { class: 'fv-card fv-pl-invite' }, h('p', { class: 'fv-pl-mute', text: 'Opening your plan…' }))); return; }
     if (MPQ.open) { pqPaint(host); plLimits(false); return; }
+    if (MPL.answers && MPL.v) { host.append(ansPage(() => { MPL.answers = false; ANS.edit = null; planPaint(); })); plLimits(false); return; }
     const v = MPL.v;
     if (!v.has || !v.done) host.append(plInvite(v));
     if (v.has && (v.done || v.budget.income > 0 || v.budget.groups.some(g => g.rows.length))) {
@@ -100,7 +102,7 @@
       h('div', { class: 'fv-pl-hero-top' },
         h('div', null, h('div', { class: 'fv-pl-big' }, amt(gbp(b.left), 'fv-pl-big-v' + (b.left < 0 ? ' neg' : '')), h('span', { text: b.left >= 0 ? 'left over a month' : 'short a month' })),
           h('p', { class: 'fv-pl-say' }, amt(gbp(b.income)), ' comes in. ', amt(gbp(out)), ' is planned to go out.', v.paydays.next[0] ? ` Next payday: ${fd(dnum(v.paydays.next[0].date), { weekday: 'long', day: 'numeric', month: 'long' })}.` : '')),
-        h('div', { class: 'fv-pl-acts' }, h('button', { type: 'button', class: 'fv-btn', onclick: () => pqStart('country') }, ic('pencil'), h('span', { text: 'Change my answers' })))),
+        h('div', { class: 'fv-pl-acts' }, h('button', { type: 'button', class: 'fv-btn primary', onclick: () => ansOpen() }, ic('pencil'), h('span', { text: 'Your answers' })))),
       h('div', { class: 'fv-pl-split', role: 'img', 'aria-label': 'Where your money goes' },
         b.groups.map(g => seg(g.total, 'g-' + g.id, g.label)), seg(b.aside, 'g-aside', 'Tax to keep aside'), seg(Math.max(0, b.left), 'g-left', 'Left over')),
       h('ul', { class: 'fv-pl-key' }, b.groups.filter(g => g.total > 0).map(g => h('li', null, h('i', { class: 'g-' + g.id }), g.label + ' ', amt(gbp(g.total)))),
@@ -130,8 +132,13 @@
       h('span', null, r.label, r.help ? h('small', { text: r.help }) : null),
       h('span', { class: 'fv-pl-step-v' }, amt((r.amount < 0 ? '−' : '') + fmtv(Math.abs(r.amount)), 'v'), txAsk(r.label, '', 'money plan')))).concat([]);
     const kids = [h('header', { class: 'fv-pl-h row' }, h('div', null, h('h3', { text: 'What you take home' }), h('p', { text: c.kind === 'estimate' ? `An estimate for the ${c.yearLabel} tax year, using official ${c.regionName} rates. Your payslip has the final word.` : 'From what you told us.' })), s.el), h('div', { class: 'fv-pl-steps' }, rows)];
-    if (c.code) kids.push(h('p', { class: 'fv-pl-code' }, h('b', { text: `Your tax code: ${c.code.text}. ` }), h('span', { class: 'fv-amt', text: c.code.label + '. ' }), h('button', { type: 'button', class: 'fv-link', text: c.code.given ? 'Change it' : 'Use the one on my payslip', onclick: () => pqStart('taxcode') })));
+    if (c.code) kids.push(h('p', { class: 'fv-pl-code' }, h('b', { text: `Your tax code: ${c.code.text}. ` }), h('span', { class: 'fv-amt', text: c.code.label + '. ' }), h('button', { type: 'button', class: 'fv-link', text: c.code.given ? 'Change it' : 'Use the one on my payslip', onclick: () => ansOpen('taxcode:job.taxCode') })));
     const jobs = Object.entries(c.jobs || {});
+    if (per === 'month' && c.kind === 'estimate' && jobs.some(([, j]) => j.next)) kids.push(h('p', { class: 'fv-pl-mute small', text: 'A month here means a normal month from now on, worked from your next ordinary payslips. It is not the whole year spread over 12 months.' }));
+    for (const [, j] of jobs) if (j.next) {
+      const named = jobs.length > 1 && j.name, what = j.final ? 'last payslip' : 'next payslip';
+      kids.push(h('p', { class: 'fv-pl-next' }, ic('calendar-check'), h('span', null, named ? `${j.name}: your ${what}` : `Your ${what}`, ': about ', amt(gbp(j.next.takeHome)), ' on ' + fd(dnum(j.next.date), { weekday: 'short', day: 'numeric', month: 'long' }) + '.', j.next.bonus ? ' It includes a bonus.' : '')));
+    }
     if (jobs.length > 1) kids.push(h('div', { class: 'fv-pl-jobs' }, jobs.map(([id, j]) => h('div', { class: 'fv-pl-job' }, h('b', { text: j.name || 'Your job' }), h('span', { class: 'fv-amt', text: `${j.codeText}: ${j.codeLabel}` }), j.payslip ? h('span', null, amt(gbp(j.payslip.takeHome)), ` each payday. Tax ${''}`, amt(gbp(j.payslip.tax)), ', National Insurance ', amt(gbp(j.payslip.ni)), j.payslip.loans ? ', loan ' : '', j.payslip.loans ? amt(gbp(j.payslip.loans)) : '', '.') : null))));
     for (const w of c.warnings || []) kids.push(h('p', { class: 'fv-pl-note ' + w.level }, ic(w.level === 'warn' ? 'triangle-alert' : 'info'), h('span', { text: w.text })));
     for (const n of c.notes || []) kids.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { class: 'fv-amt', text: n })));
@@ -224,34 +231,44 @@
     for (const el of [name, amount, later]) el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } if (e.key === 'Escape') { MPL.adding = null; planPaint(); } });
     return h('div', { class: 'fv-pl-addf' }, name, amount, h('label', { class: 'fv-pl-startl' }, h('span', { text: 'Starts on (optional)' }), later), h('button', { type: 'button', class: 'fv-btn primary', text: 'Add', onclick: go }), h('button', { type: 'button', class: 'fv-btn ghost', text: 'Cancel', onclick: () => { MPL.adding = null; planPaint(); } }));
   }
+  /** The line under a plan item. Every date and the amount in it is a button with a pencil: tap it and the item opens to change it. */
   function plRowSub(r) {
     const bits = [];
-    if (r.state === 'future') bits.push(r.starts ? `Starts ${fDayY(dnum(r.starts))}` : 'Starts later');
+    const open = () => { MPL.edit = r.id; planPaint(); setTimeout(() => { const w = MPL.host && MPL.host.querySelector('.fv-pl-panel'); if (w) w.scrollIntoView({ block: 'nearest' }); }, 40); };
+    const date = (iso, fmt) => h('button', { type: 'button', class: 'fv-ie-b date', title: 'Change this date', 'aria-label': `Change the date: ${fDayY(dnum(iso))}`, onclick: open }, fmt ? fmt(dnum(iso)) : fDayY(dnum(iso)), ic('pencil'));
+    const wd = n => fd(n, { weekday: 'short', day: 'numeric', month: 'short' });
+    if (r.state === 'future') bits.push(r.starts ? ['Starts ', date(r.starts)] : 'Starts later');
     else if (r.state === 'paused') bits.push('Paused');
-    else if (r.state === 'ended') bits.push(`Ended ${fDayY(dnum(r.ends))}`);
-    else if (r.next && r.next[0]) bits.push(`Next ${fd(dnum(r.next[0].date), { weekday: 'short', day: 'numeric', month: 'short' })}`);
-    if (r.ends && r.state === 'active') bits.push(`until ${fDayY(dnum(r.ends))}`);
+    else if (r.state === 'ended') bits.push(['Ended ', date(r.ends)]);
+    else if (r.nextPay) bits.push([r.nextPay.final ? 'Last payslip' : 'Next payslip', ' about ', amt(gbp(r.nextPay.takeHome)), ' on ', date(r.nextPay.date, wd)]);
+    else if (r.next && r.next[0]) bits.push(['Next ', date(r.next[0].date, wd)]);
+    if (r.ends && r.state === 'active') bits.push(['until ', date(r.ends)]);
     if (!bdHidden() && r.amount != null && r.per && r.per !== 'month' && r.per !== 'total') bits.push(`${gbp(r.amount)} ${{ week: 'a week', fortnight: 'a fortnight', '4weeks': 'every 4 weeks', quarter: 'a quarter', year: 'a year' }[r.per] || ''}`);
     if (r.incomeType === 'self') bits.push('no tax taken');
     if (r.codeText) bits.push(`tax code ${r.codeText}`);
     if (r.linkLabel) bits.push(r.link && r.link.m ? `matched to ${r.linkLabel}` : `from ${r.linkLabel}`);
     if (r.splitWith) bits.push(`split with ${r.splitWith}`);
-    return bits.join(' · ');
+    return bits.map((b, i) => [i ? ' · ' : '', b]);
   }
   function plRow(r, v) {
     const st = PL_STATUS[r.statusKey];
     const monthlyAmount = !r.per || r.per === 'month';
     const editable = monthlyAmount && (r.kind === 'bill' || r.kind === 'everyday' || (r.kind === 'income' && r.incomeType !== 'job'));
     const isOpen = MPL.edit === r.id;
-    const planned = r.kind === 'income' && r.incomeType === 'job' ? amt(gbp(r.monthly), 'fv-pl-planned')
-      : editable ? plAmountInput(r.amount, `Amount for ${r.name}`, x => plChange(p => { const it = plItem(p, r.id); if (it) { if (x == null) delete it.amount; else it.amount = x; } }, 'Saved'))
-        : amt(gbp(r.monthly), 'fv-pl-planned');
+    const setField = (k, label) => x => plChange(p => { const it = plItem(p, r.id); if (it) { if (x == null) delete it[k]; else it[k] = x; } }, 'Saved');
+    // Every figure is tap-to-change: a job opens on the Tax tab (its pay, last payments, bonus), a goal opens its own panel, the rest edit right here.
+    const planned = r.kind === 'income' && r.incomeType === 'job' ? h('button', { type: 'button', class: 'fv-ie-b', title: 'Change this job', 'aria-label': `${r.name}: ${gbp(r.monthly)} a month. Change this job`, onclick: () => ansOpenJob(r.id) }, amt(gbp(r.monthly), 'fv-pl-planned'), ic('pencil'))
+      : editable ? plAmountInput(r.amount, `Amount for ${r.name}`, setField('amount'))
+        : r.kind === 'debt' ? ansInlineAmount(r.minimum, `Least you pay a month on ${r.name}`, setField('minimum'))
+          : r.kind === 'saving' ? h('button', { type: 'button', class: 'fv-ie-b', title: 'Change this goal', onclick: () => { MPL.edit = r.id; planPaint(); } }, amt(gbp(r.monthly), 'fv-pl-planned'), ic('pencil'))
+            : ansInlineAmount(r.amount, `Amount for ${r.name}`, setField('amount'), { empty: gbp(r.monthly) });
+    const toggle = () => { MPL.edit = isOpen ? null : r.id; planPaint(); };
     const el = h('div', { class: 'fv-pl-row' + (r.state !== 'active' ? ' dim' : '') + (isOpen ? ' open' : ''), draggable: r.kind === 'bill' || r.kind === 'everyday' ? 'true' : null, 'data-id': r.id },
-      h('button', { type: 'button', class: 'fv-pl-row-main', 'aria-expanded': isOpen ? 'true' : 'false', onclick: () => { MPL.edit = isOpen ? null : r.id; planPaint(); } },
-        h('b', { text: r.name }), h('span', { class: 'fv-pl-row-sub', text: plRowSub(r) })),
+      h('div', { class: 'fv-pl-row-main' },
+        h('button', { type: 'button', class: 'fv-pl-row-name', 'aria-expanded': isOpen ? 'true' : 'false', onclick: toggle }, h('b', { text: r.name })), h('span', { class: 'fv-pl-row-sub' }, plRowSub(r))),
       h('div', { class: 'fv-pl-row-n' }, planned, r.actual != null && r.state === 'active' ? h('span', { class: 'fv-pl-row-act' }, 'so far ', amt(gbp(r.actual))) : null),
       st ? h('span', { class: 'fv-bst ' + st[1] }, ic(st[2]), st[0]) : h('span', { class: 'fv-pl-row-gap' }),
-      h('button', { type: 'button', class: 'fv-btn ghost fv-pl-row-x', 'aria-label': (isOpen ? 'Close ' : 'Open ') + r.name, onclick: () => { MPL.edit = isOpen ? null : r.id; planPaint(); } }, ic(isOpen ? 'chevron-down' : 'chevron-right')));
+      h('button', { type: 'button', class: 'fv-btn ghost fv-pl-row-x', 'aria-label': (isOpen ? 'Close ' : 'Open ') + r.name, onclick: toggle }, ic(isOpen ? 'chevron-down' : 'chevron-right')));
     if (el.draggable) el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-plan-row', r.id); e.dataTransfer.effectAllowed = 'move'; });
     return isOpen ? [el, plRowPanel(r, v)] : el;
   }
@@ -293,7 +310,7 @@
       kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'How often' }), per));
     }
     if (r.per === 'total') kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Money in, total' }), plAmountInput(r.amount, 'Money in, total', x => plChange(p => { const it = plItem(p, r.id); if (it) it.amount = x || 0; }, 'Saved'))));
-    if (r.kind === 'income' && r.incomeType === 'job') kids.push(h('button', { type: 'button', class: 'fv-btn', onclick: () => pqStart(r.main ? 'salary' : 'jobs') }, ic('pencil'), h('span', { text: r.main ? 'Change my pay' : 'Change this job' })));
+    if (r.kind === 'income' && r.incomeType === 'job') kids.push(h('button', { type: 'button', class: 'fv-btn', onclick: () => ansOpenJob(r.id) }, ic('pencil'), h('span', { text: r.main ? 'Change my pay and job details' : 'Change this job' })));
     if (r.kind === 'bill' || r.kind === 'everyday') {
       // Names here make it a split that repeats (Owed to me): each time it leaves the bank, they owe you their share.
       const sw = h('input', { type: 'text', class: 'fv-input', maxlength: '120', placeholder: 'For example, Sam and Alex', 'aria-label': `Who you split ${r.name} with` });

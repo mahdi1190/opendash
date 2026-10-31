@@ -3,7 +3,7 @@
   // For people with income nobody takes tax from. One tax year at a time, in plain words. Every number comes from the server
   // (GET /api/finance/tax -> {plan, doc, view, finder, comeIn, hmrc, ids}: lib/finance/uk-tax.mjs, tax-tab.mjs); this file only draws
   // and sends one change at a time (POST /api/finance/tax/change), each with Undo. UTR and NI number stay masked until tapped.
-  const TX = { host: null, d: null, year: null, err: null, busy: false, open: new Set(), edit: null, paste: null, walk: null, slip: null, shelf: false, seq: 0 };
+  const TX = { host: null, d: null, year: null, err: null, busy: false, open: new Set(), edit: null, paste: null, walk: null, slip: null, shelf: false, seq: 0, answers: false, why: null, focus: null };
   const txCard = (cls, ...kids) => h('section', { class: 'fv-card fv-tx-c ' + (cls || '') }, ...kids);
   const txHead = (title, sub, right) => h('header', { class: 'fv-pl-h row' }, h('div', null, h('h3', { text: title }), sub ? h('p', { text: sub }) : null), right || null);
   const txBtn = (label, icon, fn, cls, more) => h('button', Object.assign({ type: 'button', class: 'fv-btn ' + (cls || ''), onclick: fn }, more || {}), icon ? ic(icon) : null, h('span', { text: label }));
@@ -23,7 +23,7 @@
   function txTake(body) {
     if (body && body.view) TX.d = body;
     // The plan follows: safe to spend and the Budgets tab see the change at once.
-    if (body && body.plan) { MPL.plan = body.plan; planLoad().then(() => { if (R.sectionId === 'budgets') planPaint(); }); }
+    if (body && body.plan) { const first = !MPL.v; MPL.plan = body.plan; planLoad().then(() => { if (R.sectionId === 'budgets') planPaint(); else if (first && R.sectionId === 'tax') txPaint(); }); }
   }
   async function txLoad(year) {
     TX.err = null; const my = ++TX.seq;
@@ -93,11 +93,13 @@
     const v = TX.d.view;
     if (!v.uk) { host.append(txNotUk(v)); return; }
     if (TX.walk) { host.append(txWalkScreen(v)); restoreScroll(keep); return; }
+    if (TX.answers) { host.append(ansPage(() => { TX.answers = false; ANS.edit = null; txPaint(); })); restoreScroll(keep); return; }
     host.append(txTop(v));
     if (TX.d.rolledFrom) host.append(txRolled(v));
     if (v.yearState === 'past' && v.carried && !v.confirmed) host.append(txCarried(v));
     if (TX.paste) host.append(txPasteCard(v));
     if (TX.slip) host.append(txSlipCard(v));
+    const lo = txLooksOff(v); if (lo) host.append(lo);
     const ak = txAskNowCard(v); if (ak) host.append(ak);
     const pr = txPrompts(v); if (pr) host.append(pr);
     host.append(txPosition(v));
@@ -108,6 +110,7 @@
     host.append(txFiling(v));
     host.append(txMore(v));
     restoreScroll(keep);
+    if (TX.focus) { const f = TX.focus; TX.focus = null; setTimeout(() => { const el = host.querySelector('[data-src="' + String(f).replace(/[^\w-]/g, '') + '"]'); if (el) el.scrollIntoView({ block: 'start' }); }, 30); }
   }
   const scrollerTop = () => { try { const s = scroller(); return s ? s.scrollTop : null; } catch (e) { return null; } };
   const restoreScroll = (y) => { if (y == null) return; try { const s = scroller(); if (s && Math.abs(s.scrollTop - y) > 1) s.scrollTop = y; } catch (e) { /* no scroller */ } };
@@ -125,9 +128,10 @@
     const drop = (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) { e.preventDefault(); txReadSlip(f); } };
     return h('section', { class: 'fv-card fv-tx-c fv-tx-top', ondragover: (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files')) e.preventDefault(); }, ondrop: drop },
       h('div', { class: 'fv-tx-top-r' }, h('h2', { class: 'fv-tx-t', text: 'Your tax' }), years.el),
-      h('p', { class: 'fv-pl-mute', text: `An estimate from official ${v.regionName} rates and what you tell Freeflo. You file on GOV.UK yourself.` }),
+      h('p', { class: 'fv-pl-mute', text: `An estimate from official ${v.regionName} rates and what you tell Freeflo. You file on GOV.UK yourself. Something not right? Open Your answers and change it.` }),
       v.estimated ? h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `The ${v.yearLabel} figures are not in Freeflo yet, so this uses the ${v.figuresFromLabel} ones as an estimate. An update brings the real ones.` })) : null,
       h('div', { class: 'fv-pl-acts fv-tx-acts' },
+        txBtn('Your answers', 'pencil', () => ansOpen(), 'primary'),
         txBtn('Tell Freeflo in one go', 'pencil', () => { TX.paste = TX.paste ? null : { text: '' }; txPaint(); }),
         txBtn('Add a payslip', 'file-up', () => txPickSlip()),
         v.filing.answer !== 'no' || v.yearState === 'past' ? txBtn('File my return', 'send', () => txOpenWalk(), 'primary') : null));
@@ -164,29 +168,32 @@
     if (b.balance < -0.5) return { big: gbp(-b.balance), word: 'paid too much', tone: 'good', say: 'Your jobs took more than your whole-year bill. You may be due a refund, usually paid after the year ends.' };
     return { big: gbp(0), word: 'left to pay', tone: 'good', say: 'What your jobs take through payroll covers the year.' };
   }
+  /** One line of the year's position. o.feed: what feeds it (a visible Change, or "Worked out from these" when o.calc). */
   function txPosRow(label, val, help, o) {
     o = o || {};
-    return h('div', { class: 'fv-tx-row' + (o.total ? ' total' : '') + (o.sub ? ' sub' : '') },
-      h('span', { class: 'l' }, label, help ? h('small', { text: help }) : null),
+    const id = o.feed ? 'row:' + o.feed : null;
+    const row = h('div', { class: 'fv-tx-row' + (o.total ? ' total' : '') + (o.sub ? ' sub' : '') },
+      h('span', { class: 'l' }, label, help ? h('small', { text: help }) : null, id ? txFeedBtn(id, o.calc) : null),
       h('span', { class: 'v' }, val == null ? null : amt(val), o.ask !== false ? txAsk(typeof label === 'string' ? label : o.ask || 'this line') : null));
+    return id && TX.why === id && TX.d ? [row, txFeed(TX.d.view, o.feed)] : row;
   }
   function txPosition(v) {
     const p = v.position, b = v.bill, big = txBigLine(v);
     const money = (x) => (x < 0 ? '−' : '') + gbp(Math.abs(x));
     const rows = [
-      txPosRow('Total income', gbp(p.income), `Everything you earned and received in ${v.yearLabel}.`),
-      txPosRow('Tax-free amount', gbp(p.allowance), p.allowanceLeft > 0.5 ? `You used ${gbp(p.allowanceUsed)}. ${gbp(p.allowanceLeft)} is unused.` : 'All of it is used, across your jobs and other income.'),
-      txPosRow('Income tax due', gbp(p.taxDue), `Your jobs take ${gbp(p.taxTaken)} of this through payroll.`),
+      txPosRow('Total income', gbp(p.income), `Everything you earned and received in ${v.yearLabel}.`, { feed: 'income' }),
+      txPosRow('Tax-free amount', gbp(p.allowance), (v.allowance.override != null ? 'Your own figure from HMRC. ' : '') + (p.allowanceLeft > 0.5 ? `You used ${gbp(p.allowanceUsed)}. ${gbp(p.allowanceLeft)} is unused.` : 'All of it is used, across your jobs and other income.'), { feed: 'allowance' }),
+      txPosRow('Income tax due', gbp(p.taxDue), `Your jobs take ${gbp(p.taxTaken)} of this through payroll.`, { feed: 'taxDue', calc: true }),
       p.taxLeft > 0.5 ? txPosRow('Income tax still to pay', gbp(p.taxLeft), null, { sub: true }) : p.taxLeft < -0.5 ? txPosRow('Income tax paid too much', gbp(-p.taxLeft), 'You may be due a refund.', { sub: true }) : null,
     ];
     if (p.hasLoan) {
-      rows.push(txPosRow(`Student loan (${p.loanNames.join(' and ')})`, gbp(p.loanDue), `Your jobs take ${gbp(p.loanTaken)}. Each job looks only at its own pay, so the rest is collected through your tax return.`));
+      rows.push(txPosRow(`Student loan (${p.loanNames.join(' and ')})`, gbp(p.loanDue), `Your jobs take ${gbp(p.loanTaken)}. Each job looks only at its own pay, so the rest is collected through your tax return.`, { feed: 'loan', calc: true }));
       if (p.unearned > 0) rows.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', null, p.unearnedCounted ? `Your other income (${gbp(p.unearned)}) is over ${gbp(p.unearnedLimit)}, so all of it counts towards your student loan.` : `Your other income (${gbp(p.unearned)}) is ${gbp(p.unearnedLimit)} or less, so it does not count towards your student loan.`)));
       if (p.loanLeft > 0.5) rows.push(txPosRow('Student loan still to pay', gbp(p.loanLeft), b.noReturn ? 'Only collected if you send a tax return.' : null, { sub: true }));
       if (p.loanOver > 0.5) rows.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `Your jobs take ${gbp(p.loanOver)} more than the year's repayment. That does not reduce your tax bill; the Student Loans Company can refund it.` })));
     }
-    rows.push(txPosRow('National Insurance from your jobs', gbp(p.niTotal), p.ni.length > 1 ? p.ni.map(n => `${n.name || 'Job'}: ${gbp(n.amount)}`).join('. ') + '.' : 'Taken through payroll, job by job. Pays towards your State Pension.'));
-    if (v.trade) rows.push(txPosRow('National Insurance on your profit', gbp(p.class4), 'Called Class 4. It starts once your profit is over £12,570.'));
+    rows.push(txPosRow('National Insurance from your jobs', gbp(p.niTotal), p.ni.length > 1 ? p.ni.map(n => `${n.name || 'Job'}: ${gbp(n.amount)}`).join('. ') + '.' : 'Taken through payroll, job by job. Pays towards your State Pension.', { feed: 'ni', calc: true }));
+    if (v.trade) rows.push(txPosRow('National Insurance on your profit', gbp(p.class4), 'Called Class 4. It starts once your profit is over £12,570.', { feed: 'class4', calc: true }));
     if (p.class2 && p.class2.voluntary) rows.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `Your profit is under ${gbp(p.class2.spt)}, so you do not have to pay any Class 2 National Insurance. You can choose to, at ${gbp2(p.class2.week)} a week (${gbp(p.class2.year)} a year), to keep your record going. A job that pays enough usually does that already.` })));
     if (p.cgt) rows.push(txPosRow('Capital Gains Tax', gbp(p.cgt), `On ${gbp(p.gains)} of gains.`));
     if (b.parts.paidOnAccount) rows.push(txPosRow('Payments on account already made', '−' + gbp(b.parts.paidOnAccount), 'What you paid in advance last January and July.'));
@@ -209,12 +216,30 @@
 
     const how = h('details', { class: 'fv-pl-more fv-tx-how', open: TX.open.has('how') ? true : null, ontoggle: (e) => { if (e.target.open) TX.open.add('how'); else TX.open.delete('how'); } },
       h('summary', null, h('b', { text: 'How this was worked out' }), h('span', { class: 'mute', text: 'Line by line' })),
-      h('div', { class: 'fv-tx-lines' }, v.lines.map(l => h('div', { class: 'fv-tx-line' + (l.total ? ' total' : '') + (l.sub ? ' sub' : '') }, h('span', { class: 'l' }, l.label, l.how ? h('small', { text: l.how }) : null, l.key === 'allowance' && typeof pqStart === 'function' ? h('button', { type: 'button', class: 'fv-link', onclick: () => { setSection('budgets'); setTimeout(() => pqStart('blind'), 60); } }, h('span', { text: 'Not right? Change my answers' })) : null), h('span', { class: 'v' }, amt(money(l.amount)), txAsk(l.label))))));
+      h('div', { class: 'fv-tx-lines' }, v.lines.map(l => txLine(l, v, money))));
     const cmp = v.compare ? h('p', { class: 'fv-pl-mute fv-tx-cmp' }, `Last year (${v.compare.label}): income `, amt(gbp(v.compare.income)), ', income tax ', amt(gbp(v.compare.tax)), v.compare.loan ? ', student loan ' : '', v.compare.loan ? amt(gbp(v.compare.loan)) : '', '.') : null;
     return txCard('fv-tx-pos',
       h('div', { class: 'fv-pl-big' }, amt(big.big, 'fv-pl-big-v'), h('span', { text: big.word })),
       h('p', { class: 'fv-pl-say', text: big.say }),
       h('div', { class: 'fv-tx-rows' }, rows), poa, trade, how, cmp);
+  }
+
+  /** The feed behind a line of "How this was worked out": a job or piece of work to open, or a panel (Change / Worked out from these). */
+  function txLineFeed(l, v) {
+    if (/^job:/.test(l.key)) return { open: l.key.slice(4), label: 'Open this job' };
+    if (/^self-/.test(l.key) && v.sources.self[0]) return { open: v.sources.self[0].id, label: 'Open this work' };
+    if (l.key === 'allowance' || l.key === 'bik') return { feed: 'allowance' };
+    if (l.key === 'income') return { feed: 'income' };
+    if (l.key === 'tax-due' || /^band:/.test(l.key)) return { feed: 'taxDue', calc: true };
+    if (l.key === 'loan-due') return { feed: 'loan', calc: true };
+    if (l.key === 'class4') return { feed: 'class4', calc: true };
+    return null;
+  }
+  function txLine(l, v, money) {
+    const f = txLineFeed(l, v), id = f && f.feed ? 'line:' + f.feed + ':' + l.key : null;
+    const btn = !f ? null : f.open ? h('button', { type: 'button', class: 'fv-chg', onclick: () => txOpenJob(f.open) }, ic('pencil'), h('span', { text: f.label })) : txFeedBtn(id, f.calc);
+    const row = h('div', { class: 'fv-tx-line' + (l.total ? ' total' : '') + (l.sub ? ' sub' : '') }, h('span', { class: 'l' }, l.label, l.how ? h('small', { text: l.how }) : null, btn), h('span', { class: 'v' }, amt(money(l.amount)), txAsk(l.label)));
+    return id && TX.why === id ? [row, txFeed(v, f.feed)] : row;
   }
 
   /* ---------- keep aside ---------- */
