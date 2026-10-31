@@ -37,7 +37,8 @@ const _gd = { rev: 0, obj: null, memo: null, memoKey: '', wallet: null, walletKe
 
 /* ---------- state ---------- */
 const _GD_MAPS = ['plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'rib', 'dt', 'wq', 'gr', 'seen', 'prefs',
-  'fl', 'bl', 'fd'];   // 2.22: the fish log, the bug book, per-day fishing (94-garden-fish-2core.js)
+  'fl', 'bl', 'fd',   // 2.22: the fish log, the bug book, per-day fishing (94-garden-fish-2core.js)
+  'gl', 'gq', 'gv', 'glt'];  // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
 function _gdG() {
   if (typeof state === 'undefined' || !state) { const z = { v: 1 }; for (const k of _GD_MAPS) z[k] = {}; return z; }
   if (!state.garden || typeof state.garden !== 'object' || Array.isArray(state.garden)) state.garden = { v: 1 };
@@ -429,7 +430,7 @@ function gardenWallet() {
   xp += 10 * Object.keys(g.disc).filter(id => gardenPlant(id) || gardenVisitor(id)).length;
   xp += 8 * (Object.keys(g.fl).filter(id => gardenFishDef(id)).length + Object.keys(g.bl).filter(id => gardenBugDef(id)).length);   // 2.22: every new kind of fish or bug
   // decorations placed are not in your bag (never below none: a copy synced from elsewhere may lead the ledger)
-  for (const d of Object.values(g.decor)) if (d && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;
+  for (const d of Object.values(g.decor)) if (d && !d.own && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;   // (own: a friend's, from their bag: docs/dev/GARDEN_TOGETHER.md)
   for (const k of Object.keys(items)) if (items[k] < 0) items[k] = 0;
   const lv = gardenLevelOf(xp);
   _gd.wallet = { coins: Math.max(0, Math.round(coins)), xp: Math.max(0, xp), level: lv, items, n, earned, econToday: econToday || gardenEconDay({ sessions: [], done: [] }), econFrom: _gdEconFrom(g) };
@@ -723,6 +724,7 @@ function _gdTidy(g, today) {
   }
   for (const [key, e] of Object.entries(g.led)) {
     if (!e || key === 'mig' || !e.d || e.d >= cut) continue;
+    if (key.startsWith('gl.o.') && (e.t === 'place' || !e.ok)) continue;   // still out in a friend's garden, or never answered: taking it back deletes this
     const nn = {}; if (e.k && _GD_N_KINDS[e.k]) nn[_GD_N_KINDS[e.k]] = Number(e.n) || 0;
     fold(e.d.slice(0, 7), { c: Number(e.c) || 0, x: Number(e.x) || 0, i: e.i, nn });
     delete g.led[key]; changed = true;
@@ -761,6 +763,12 @@ function _gdPushUndo(label, mark) {
   if (_gd.undo.length > 40) _gd.undo.shift();
 }
 function gardenCanUndo() { return _gd.undo.length > 0; }
+/** Undo steps that would bring back this record or this queued post are over: it has moved on, and bringing it back would make two. */
+function _gdUndoDrop(map, id) {
+  const before = _gd.undo.length;
+  _gd.undo = _gd.undo.filter(u => !u.mark.some(r => r[0] === map && r[1] === id));
+  if (_gd.undo.length !== before) gardenRepaintSoon();
+}
 function gardenUndo() {
   const u = _gd.undo.pop();
   if (!u) { if (typeof toast === 'function') toast('Nothing to undo in the garden.', { icon: 'undo-2' }); return false; }
@@ -784,6 +792,45 @@ function _gdDone(msg, label, mark, o) {
   return { ok: true, msg };
 }
 function _gdNo(msg) { return { ok: false, msg }; }
+/* ---------- a friend's things in your garden (docs/dev/GARDEN_TOGETHER.md section 7), whoever picks or puts away: you, or the assistant ---------- */
+const GD_POST_HOLD_MS = 6000;   // your own pick or put-away waits this long before it is posted (Undo takes it out of the queue); then it goes, and so does the Undo step
+function _gdPostsSoon() { if (typeof gardenLivePostsSoon === 'function') gardenLivePostsSoon(); }
+/**
+ * A friend's share of what was just picked: out of `items`, queued in the same save. The id says which pick of which plant, so it can only arrive once
+ * however often it is made. What cannot travel (a four-leaf clover) stays here. -> rows for the Undo mark.
+ */
+function _gdCropShare(rec, uid, items, hold) {
+  if (!rec || !rec.by || !rec.gi) return [];
+  const share = typeof gardenLiveShareOf === 'function' ? gardenLiveShareOf(rec.by) : 'keeper';
+  if (share === 'owner') return [];
+  const post = [];
+  for (const k of Object.keys(items)) {
+    if (!/^(crop|seed):/.test(k) || (typeof glPostItemOk === 'function' ? !glPostItemOk(k) : !k.startsWith('crop:'))) continue;
+    const n = items[k], theirs = share === 'split' ? Math.ceil(n / 2) : n;
+    if (theirs > 0) post.push([k, Math.min(99, theirs)]);
+    if (n - theirs > 0) items[k] = n - theirs; else delete items[k];
+  }
+  if (!post.length) return [];
+  const id = 'c' + uid + '-' + (Number(rec.hc) || 0), rows = _gdMark([['gq', id]]);
+  _gdG().gq[id] = { to: rec.by, why: 'crop', i: rec.gi, items: post, at: _gdNow(), ...(hold ? { hold: _gdNow() + GD_POST_HOLD_MS } : {}) };
+  _gdPostsSoon();
+  return rows;
+}
+/** A friend's decoration leaves your garden: it goes back to their bag by post, once. -> rows for the Undo mark. */
+function _gdDecorBack(rec, hold) {
+  if (!rec || !rec.own || !rec.gi) return [];
+  const id = 'b' + rec.gi + '0', rows = _gdMark([['gq', id]]);
+  _gdG().gq[id] = { to: rec.own, why: 'back', i: rec.gi, at: _gdNow(), ...(hold ? { hold: _gdNow() + GD_POST_HOLD_MS } : {}) };
+  _gdPostsSoon();
+  return rows;
+}
+/** You did something final to a record visitors have touched: their lines about it can no longer be undone, and Put my garden back leaves it alone. -> rows for the Undo mark. */
+function _gdLiveTouched(uid) {
+  const g = _gdG(), rows = [];
+  for (const [k, e] of Object.entries(g.gl)) if (e && e.u === uid && !e.undone && !e.over) { rows.push(['gl', k, JSON.parse(JSON.stringify(e))]); e.over = 'own'; }
+  if (g.glc && g.glt[uid] !== '!') { rows.push(..._gdMark([['glt', uid]])); g.glt[uid] = '!'; }
+  return rows;
+}
 function _gdOnPage() { return typeof _gdp !== 'undefined' && !!_gdp.root && _gdp.root.isConnected && state.view === 'garden'; }
 function _gdLed(k, body) { const key = k + '.' + _gdToday() + '.' + _gdUid(''); _gdG().led[key] = Object.assign({ d: _gdToday(), k }, body); return key; }
 
@@ -914,8 +961,9 @@ function gardenHarvestAll() {
   _gdEmit('harvest', { n: items, plants: ready.length, cells: ready.map(p => [p.x, p.y, p.fp, p.def.id]) });
   return _gdDone(`Harvested ${ready.length} plant${ready.length === 1 ? '' : 's'}: ${items} into your basket${extra}`, 'the harvest', marks, { icon: 'shopping-basket' });
 }
-function _gdHarvestOne(m, p) {
-  const g = _gdG(), y = p.def.yield, uid = p.uid;
+/** o.visitor: a visitor picks (their share posts at once, no Undo of yours applies, and 94-garden-live-3host.js keeps the diary). */
+function _gdHarvestOne(m, p, o) {
+  const g = _gdG(), y = p.def.yield, uid = p.uid, visitor = !!(o && o.visitor);
   const rnd = gardenRand('gd-harvest|' + uid + '|' + (p.hc || 0) + '|' + m.today);
   let n = y.n[0] + Math.floor(rnd() * (y.n[1] - y.n[0] + 1));
   if (_gdNearEffect(m.decor, p.x, p.y, p.fp, 'scare', 2) && rnd() < 0.5) n++;
@@ -929,6 +977,8 @@ function _gdHarvestOne(m, p) {
   if (gold) { items['crop:' + p.def.id] = n * 2; n *= 2; extra += ' · a golden harvest, double!'; }
   const lk = 'h.' + m.today + '.' + uid + '.' + (p.hc || 0);
   const mark = _gdMark([['plants', uid], ['led', lk], ['disc', 'four-leaf-clover']]);
+  mark.push(..._gdCropShare(g.plants[uid], uid, items, !visitor));   // a friend planted it: their share goes by post
+  if (!visitor) mark.push(..._gdLiveTouched(uid));
   g.led[lk] = { d: m.today, k: 'h', i: items, x: 3, n: 1 };
   if (items.clover && !g.disc['four-leaf-clover']) g.disc['four-leaf-clover'] = m.today;
   const pl = g.plants[uid];
@@ -941,7 +991,7 @@ function gardenDig(uid) {
   const m = gardenModel(), p = gardenPlantById(m, uid);
   if (!p) return _gdNo('Nothing to dig up there');
   if (p.def.special === 'heart') return _gdNo('The old oak stays: it is your garden’s heart');
-  const mark = _gdMark([['plants', uid]]);
+  const mark = [..._gdMark([['plants', uid]]), ..._gdLiveTouched(uid)];
   delete _gdG().plants[uid];
   return _gdDone(`Dug up the ${p.def.name.toLowerCase().replace(/^the /, '')}`, 'digging up', mark, { icon: 'shovel' });
 }
@@ -997,7 +1047,7 @@ function gardenStyleDecor(uid) {
 function gardenRemoveDecor(uid) {
   const m = gardenModel(), d = gardenDecorById(m, uid);
   if (!d) return _gdNo('Nothing to put away');
-  const mark = _gdMark([['decor', uid]]);
+  const mark = [..._gdMark([['decor', uid]]), ..._gdDecorBack(_gdG().decor[uid], true), ..._gdLiveTouched(uid)];   // a friend's goes back to them
   delete _gdG().decor[uid];
   return _gdDone(`Put the ${d.def.name.toLowerCase()} back in your bag`, 'putting away', mark, { icon: 'package' });
 }

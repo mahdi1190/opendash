@@ -69,7 +69,7 @@ registerSection('garden-visit', {
   crumb: v => { const id = _gsvIdOf(v); return [id ? `${gardenSocialName(id)}'s garden` : "A friend's garden"]; },
   group: 'home', layout: 'bare', hashable: true, taskControls: false, icon: 'sprout',
   mount(container, view) { document.documentElement.classList.add('gsv-immersive'); _gsvMount(container, view || state.view); },
-  unmount() { document.documentElement.classList.remove('gsv-immersive'); clearTimeout(_gsv.visitT); _gsv.root = null; _gsv.view = ''; },
+  unmount() { document.documentElement.classList.remove('gsv-immersive'); clearTimeout(_gsv.visitT); _gsv.root = null; _gsv.view = ''; if (typeof gardenLiveVisitLeave === 'function') gardenLiveVisitLeave(); },
 });
 registerCommand({ id: 'garden-friends', group: 'Go to', label: "Friends' gardens", icon: 'users', keywords: 'garden friends visit water guestbook gift heart neighbour', run: () => setView('garden:friends') });
 if (typeof gardenFunNavAdd === 'function') gardenFunNavAdd({ id: 'garden-friends', order: 20, label: "Friends' gardens", icon: 'users', view: 'garden:friends', when: () => _gscFriendList().length > 0 });
@@ -80,6 +80,7 @@ function _gsvMount(container, view) {
   const entering = _gsv.entered !== view;
   _gsv.entered = view; _gsv.view = view; _gsv.fid = fid;
   if (entering) { _gsv.mode = 'look'; _gsv.panel = false; }
+  if (fid && typeof gardenLiveVisitEnter === 'function') gardenLiveVisitEnter(fid);   // knock: if they are in and let you, you are in their garden
   const root = _gsvEl('div', 'gd-page gd-full gsv-page gsv-full' + (entering ? ' is-enter' : '') + (_gscFun() === 'off' ? ' is-funoff' : ''));
   container.appendChild(root);
   _gsv.root = root;
@@ -329,6 +330,7 @@ function _gsvStageBox(f, c) {
   box.appendChild(_gsvEl('div', 'gd-status gsv-status'));
   _gsvBindStage(box, f, snap);
   requestAnimationFrame(() => _gsvPeople(over, f, snap));
+  if (typeof gardenLiveStage === 'function') gardenLiveStage(box, fig, f);
   return box;
 }
 function _gsvRowAt(snap, x, y) { return snap.plants.find(r => r[1] === x && r[2] === y) || null; }

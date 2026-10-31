@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.26.0]
+
+Play together, live, in each other's gardens.
+
+### Added
+- A friend knocks and you give them Look, Help or Play with one tap. The garden's owner must have it open: their computer checks everything against the normal game rules. A closed garden stays the saved look-only copy.
+- See each other walk, do moves and tricks, with name tags and preset phrases. Wave, high five, follow, sit on one bench, catch a bug together. Up to about 8 people.
+- Every action happens live, with "Planted by Taylor" on hover and in a garden diary.
+- Everyone spends their own coins and seeds. Crops go to whoever planted them by post, or split or to the owner, as you choose per friend. Decorations can be taken back or given. Drop a gift at someone's feet.
+- Undo, Put my garden back and Send home keep your garden safe.
+
+### Security
+- An independent review before release found ways to overspend your Cloudflare allowance, duplicate items and disturb a room. All were fixed before this release: rooms have budgets per person and per relay well under the free day, sync always comes first, and removed friends are cut off at once. Rooms pass messages straight through and store nothing.
+
+Press Update my relay (Settings > Your relay) to play over the relay.
+
 ## [2.25.1]
 
 The opening plays all the way through.
