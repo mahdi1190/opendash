@@ -11,7 +11,10 @@
   function ansAfterSave() {
     if (R.sectionId === 'tax' && typeof txLoad === 'function') txLoad(TX.year).then(() => { if (R.sectionId === 'tax') txPaint(); });
   }
+  /** The job question has no answer yet, but there is a job on the list. */
+  const ansHasJob = (plan) => !!plan && !(plan.tax && typeof plan.tax.hasJob === 'boolean') && (plan.items || []).some(i => i.kind === 'income' && i.incomeType === 'job');
   function ansRead(plan, path) {
+    if (path === 'tax.hasJob' && ansHasJob(plan)) return true;
     const [root, ...rest] = path.split('.');
     if (root === 'country') return plan.country == null ? null : plan.country;
     let cur = root === 'job' ? pqMainJob(plan) : plan[root];
@@ -72,7 +75,7 @@
       if (pqSame(val, cur)) { ANS.edit = null; ansRepaint(); return; }
       ansSave(() => pqSet(f.path, val), `${label}: ${ansFieldWords(f, val) || 'cleared'}`);
     };
-    const instant = f.type === 'select' || f.type === 'date';
+    const instant = f.type === 'select';
     const inp = pqInput(f, cur, v => { val = v; if (instant) send(); });
     inp.el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); val = f.type === 'text' ? (inp.el.value.trim() || null) : val; send(); } });
     setTimeout(() => { try { inp.el.focus({ preventScroll: true }); } catch (e) { /* no focus */ } }, 0);

@@ -31,7 +31,7 @@
       }, 0);
     } else if (f) kids.push(h('p', { class: 'fv-pl-mute', text: TX.d.view && (R.model && R.model.tx && R.model.tx.length) ? 'Nothing new in your bank looks like a work cost during this period. You can add one by hand below.' : 'Connect your bank, and Freeflo looks through your payments for you. You can add costs by hand below.' }));
     // Costs by hand, and what is claimed so far.
-    const hand = h('form', { class: 'fv-tx-inline', onsubmit: async (e) => { e.preventDefault(); const x = txRead(hand); await txDo({ action: 'claim.add', claim: { what: x.what, amount: x.amount, pct: x.pct, date: x.date, cat: x.cat } }, 'Claimed', { close: false }); } },
+    const hand = h('form', { class: 'fv-tx-inline', onsubmit: async (e) => { e.preventDefault(); const x = txGet(hand); if (!x) return; await txDo({ action: 'claim.add', claim: { what: x.what, amount: x.amount, pct: x.pct, date: x.date, cat: x.cat } }, 'Claimed', { close: false }); } },
       txField('What was it?', txInput('what')), txField('Date', txInput('date', '', 'date')), txField('Cost', txInput('amount', '', 'money')), txField('% for work', txInput('pct', '100', 'number')),
       txField('Kind', h('select', { name: 'cat', class: 'fv-tx-in' }, [['office', 'Software, phone, office'], ['travel', 'Travel'], ['repairs', 'Equipment or repairs'], ['fees', 'Accountant or legal fees'], ['ads', 'Advertising, website'], ['premises', 'Rent, power, insurance'], ['goods', 'Goods to resell'], ['other', 'Something else']].map(([k, l]) => h('option', { value: k, text: l })))),
       h('button', { type: 'submit', class: 'fv-btn', text: 'Add' }));
@@ -45,7 +45,7 @@
   function txFlat(v) {
     const r = v.rates, s = v.simplified || {}, miles = s.miles || {}, wfh = (s.wfh && s.wfh[0]) || {};
     const fm = h('form', { class: 'fv-tx-form', onsubmit: async (e) => {
-      e.preventDefault(); const f = txRead(fm);
+      e.preventDefault(); const f = txGet(fm); if (!f) return;
       await txDo({ action: 'simplified.set', miles: { car: f.car, motorcycle: f.bike }, wfh: f.hours && f.months ? [{ hours: f.hours, months: f.months }] : [] }, 'Saved', { close: false });
     } },
       h('p', { class: 'fv-pl-mute small', text: `Instead of adding up real costs, you can use flat rates. Business miles by car or van: ${Math.round(r.mileage.first * 100)}p for the first ${r.mileage.firstMiles.toLocaleString('en-GB')} miles, then ${Math.round(r.mileage.after * 100)}p. Motorbike: ${Math.round(r.mileage.motorcycle * 100)}p. Your ordinary commute does not count.` }),

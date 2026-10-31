@@ -10,6 +10,28 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.31.0]
+
+Putting money in is easier, and many tax figures are corrected.
+
+### Added
+- **Easier money entry.** Type amounts the way you know them: £1,250.50, 1250 or 3k, by the month or the year. Forms point out mistakes next to the box, such as dates the wrong way round or figures in the wrong place, and show what a change will do to your tax bill before you save.
+- Anything you type is kept if you close a form by accident, and Cancel has Undo. A new Tax tab starts with one simple question, and you can type a payslip's figures in directly.
+
+### Changed
+- Jobs and bills that stop now say so, along with what you will have left afterwards, so they no longer look like an ongoing salary.
+
+### Fixed
+- Pay so far from a payslip no longer counts a month twice.
+- Starting a new job after leaving one now works out the tax-free amount and tax correctly.
+- If your job ended part-way through the year, you now see the tax coming back to you.
+- Capital Gains Tax and the Child Benefit charge now show in "still to pay".
+- Payments on account are no longer kept aside twice, and next January's bill now allows for them.
+- Marriage Allowance only applies if you pay the basic rate.
+- A mistyped tax code no longer means no tax.
+- Last year's payslip no longer affects this year, and costs across two tax years count once.
+- New notes explain a trading loss, rent costs and pay after your P45.
+
 ## [2.30.2]
 
 ### Changed
@@ -126,7 +148,7 @@ Change any answer, and see what each tax figure comes from.
 - **Your answers.** A button on Budgets and on the Tax tab lists every answer you gave, in plain words ("Registered blind: No"). Tap a line to change just that one, right there. It saves at once, Undo is on the message, and the figures above follow. It is made from the same questions as the first walk-through, so every country gets it.
 - **What feeds a number.** Every Tax figure that comes from something you told Freeflo has a plain Change button: the tax-free amount opens how it is made up (the standard amount, high-income reduction, Blind Person's Allowance, Marriage Allowance, work benefits), each piece changeable. Figures the tax sums produce (tax due, the bands, National Insurance, student loan) say "Worked out from these" and list what they come from.
 - **Use my actual figure.** Type the tax-free amount HMRC gave you (a coding notice), with a note. Freeflo uses it for that tax year, says it is your figure, and one click goes back to worked out.
-- **Jobs in plain words.** Pay so far this tax year (from your latest payslip), pay before this job (a P45), tax code, first and last day, "This job has ended", exact amounts on dates (one or more last payments, or pay that differs each time), and a bonus on a date. Each job shows its own line, such as "£5,760.65 so far + £3,150 on 30 Nov = £8,910.65 this year".
+- **Jobs in plain words.** Pay so far this tax year (from your latest payslip), pay before this job (a P45), tax code, first and last day, "This job has ended", exact amounts on dates (one or more last payments, or pay that differs each time), and a bonus on a date. Each job shows its own line, such as "£5,760.65 so far + £2,500 on 30 Nov = £8,910.65 this year".
 - **Check this.** A calm note, with one tap to put it right or "That is right", when Blind Person's Allowance is on, your tax code and tax-free amount disagree, a job has no pay, two jobs share a name, or pay figures look copied from another job.
 - **Pension.** Say whether the percentage is of all your pay or of qualifying earnings (£6,240 to £50,270), and when it starts.
 - **Budgets.** Tap any amount or date on a plan line to change it there.

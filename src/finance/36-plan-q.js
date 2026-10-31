@@ -4,7 +4,7 @@
   // (lib/finance/countries.mjs for the country's set, lib/finance/money-plan.mjs for the rest): this file only draws
   // each kind (choice, multi, fields, schedule, timing, list). Answers go into a draft that is saved after each screen;
   // if a save fails the answers stay on screen, with the reason and Try again.
-  const MPQ = { open: false, id: null, draft: null, busy: false, err: null, done: false };
+  const MPQ = { open: false, id: null, draft: null, busy: false, err: null, done: false, said: null };
   const pqClone = o => JSON.parse(JSON.stringify(o));
   const PL_NEW_ID = p => p + '-' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
   function pqMainJob(d, create) {
@@ -30,6 +30,7 @@
   }
   function pqStart(id) {
     MPQ.open = true; MPQ.done = false; MPQ.err = null; MPQ.draft = pqClone(MPL.plan || {});
+    if (ansHasJob(MPQ.draft)) MPQ.draft.tax = Object.assign({}, MPQ.draft.tax, { hasJob: true });   // a job added on the Tax tab answers this question
     const list = MPL.v.questions;
     MPQ.id = id && list.some(q => q.id === id) ? id : (MPQ.draft.step && list.some(q => q.id === MPQ.draft.step) ? MPQ.draft.step : list[0].id);
     planPaint();
@@ -40,17 +41,44 @@
   async function pqGo(dir) {
     if (MPQ.busy) return;
     const list0 = MPL.v.questions, i0 = list0.findIndex(q => q.id === MPQ.id);
-    if (dir < 0) { MPQ.err = null; MPQ.id = list0[Math.max(0, i0 - 1)].id; planPaint(); return; }
+    if (dir < 0) { MPQ.err = null; MPQ.said = null; MPQ.id = list0[Math.max(0, i0 - 1)].id; planPaint(); return; }
+    const box = MPL.host && MPL.host.querySelector('.fv-plq');
+    const wrong = pqProblem(list0[i0], box);
+    if (wrong) { pqTell(box, wrong); return; }
     MPQ.busy = true; MPQ.err = null; pqPaintButtons();
-    const here = MPQ.id;
+    const here = MPQ.id, wasLeft = MPL.v && MPL.v.budget ? MPL.v.budget.left : null;
     MPQ.draft.step = here;
     const ok = await planSave(MPQ.draft, { quiet: true });
     MPQ.busy = false;
     if (!ok) { MPQ.err = MPL.saveErr || 'Could not save that.'; planPaint(); return; }
+    const nowLeft = MPL.v && MPL.v.budget ? MPL.v.budget.left : null;
+    MPQ.said = wasLeft != null && nowLeft != null && Math.abs(nowLeft - wasLeft) >= 1 ? `That answer takes what is left over a month from ${gbp(wasLeft)} to ${gbp(nowLeft)}.` : null;
     MPQ.draft = pqClone(MPL.plan);
     const list = MPL.v.questions, i = list.findIndex(q => q.id === here);
     if (i < 0 || i >= list.length - 1) MPQ.done = true; else MPQ.id = list[i + 1].id;
     planPaint();
+  }
+  /** What stops this question being saved: an amount that is not one, or two dates the wrong way round. */
+  function pqProblem(q, box) {
+    if (!q) return null;
+    if (box && box.querySelector('.fv-plq-body input.bad')) return MONEY_HELP;
+    const d = MPQ.draft;
+    if (q.id === 'jobstart') { const j = pqMainJob(d); if (j && j.starts && j.ends && j.ends < j.starts) return 'The last day is before the first day. Change one of them.'; }
+    if (q.kind === 'list' && q.list !== 'asset') {
+      const rows = (d.items || []).filter(PQ_LISTS[q.list].pick);
+      for (const r of rows) {
+        const from = r.starts || r.from, to = r.ends || r.to;
+        if (from && to && to < from) return `${r.name || 'One of these'}: the last date is before the first. Change one of them.`;
+      }
+    }
+    return null;
+  }
+  function pqTell(box, text) {
+    if (!box) return;
+    let el = box.querySelector('.fv-plq-tell');
+    if (!el) { el = h('p', { class: 'fv-plq-err fv-plq-tell', role: 'alert' }); box.querySelector('.fv-plq-foot').before(el); }
+    el.textContent = text;
+    const bad = box.querySelector('.fv-plq-body input.bad'); if (bad) bad.focus();
   }
   async function pqFinishLater() {
     MPQ.draft.step = MPQ.id;
@@ -84,14 +112,16 @@
     const back = h('button', { type: 'button', class: 'fv-btn ghost', disabled: i === 0, onclick: () => pqGo(-1) }, ic('arrow-left'), h('span', { text: 'Back' }));
     pqButtons = [next, back].concat(mustAnswer ? [] : [skip]);
     const box = h('section', { class: 'fv-card fv-plq', 'aria-label': 'Your money plan' },
-      h('div', { class: 'fv-plq-top' }, h('span', { class: 'fv-plq-group', text: q.group }), h('span', { class: 'fv-grow' }),
+      h('div', { class: 'fv-plq-top' }, h('span', { class: 'fv-plq-group', text: q.group }), h('span', { class: 'fv-plq-count', text: `${i + 1} of ${list.length}` }), h('span', { class: 'fv-grow' }),
         h('button', { type: 'button', class: 'fv-link', text: 'Finish later', onclick: pqFinishLater })),
       bar,
       MPL.plan && MPL.plan.done ? h('div', { class: 'fv-plq-jump', role: 'navigation', 'aria-label': 'Jump to a part' }, groups.map(g => h('button', { type: 'button', class: 'fv-plq-chip' + (g === q.group ? ' on' : ''), text: g, onclick: () => { MPQ.id = list.find(x => x.group === g).id; MPQ.err = null; planPaint(); } }))) : null,
+      MPQ.said ? h('p', { class: 'fv-plq-said' }, ic('circle-help'), h('span', { class: 'fv-amt', text: MPQ.said })) : null,
       h('h2', { class: 'fv-plq-t', text: q.title }),
       q.help ? h('p', { class: 'fv-plq-help', text: q.help }) : null,
       q.hint ? h('p', { class: 'fv-plq-hint' }, ic('info'), h('span', { class: 'fv-amt', text: q.hint })) : null,
       body,
+      q.id === 'jobstart' && (pqMainJob(MPQ.draft) || {}).ends ? h('p', { class: 'fv-plq-help', text: 'Pay stops after the last day, so this will not count as a lasting salary. If you know your exact last payment, add it on the Tax tab afterwards.' }) : null,
       MPQ.err ? h('p', { class: 'fv-plq-err', role: 'alert' }, h('span', { text: MPQ.err + ' ' }), h('button', { type: 'button', class: 'fv-link', text: 'Try again', onclick: () => pqGo(1) })) : null,
       h('footer', { class: 'fv-plq-foot' }, back, h('span', { class: 'fv-grow' }), skip, next));
     host.append(box);
@@ -143,14 +173,14 @@
       el.addEventListener('input', () => { if (f.upper) el.value = el.value.toUpperCase(); onChange(el.value.trim() || null); });
     } else {
       el = h('input', { type: 'text', inputmode: 'decimal', class: 'fv-input fv-plq-in fv-plq-num' + (f.type === 'money' ? ' fv-amt' : ''), placeholder: f.placeholder || '', autocomplete: 'off' });
-      if (value != null) el.value = String(value);
+      if (value != null) el.value = f.type === 'money' ? moneyNice(value) : String(value);
       el.addEventListener('input', () => {
-        const raw = el.value.replace(/[£$€,\s%]/g, '');
-        if (raw === '') { el.classList.remove('bad'); onChange(null); return; }
-        const n = Number(raw);
+        const n = f.type === 'money' ? moneyParse(el.value) : (() => { const raw = el.value.replace(/[,\s%]/g, ''); return raw === '' ? null : Number(raw); })();
+        if (n === null) { el.classList.remove('bad'); onChange(null); return; }
         if (!isFinite(n) || n < 0 || (f.type === 'percent' && n > 100)) { el.classList.add('bad'); return; }
         el.classList.remove('bad'); onChange(n);
       });
+      if (f.type === 'money') moneyWire(el);
     }
     const unit = f.type === 'money' ? SYM : f.type === 'percent' ? '%' : null;
     return { el, wrap: unit ? h('span', { class: 'fv-plq-unit' + (f.type === 'percent' ? ' after' : '') }, f.type === 'money' ? h('i', { text: unit }) : null, el, f.type === 'percent' ? h('i', { text: unit }) : null) : el };
@@ -191,7 +221,7 @@
           const res = await api('/api/finance/plan/dates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rule: r, country: o.country || (MPL.plan && MPL.plan.country) }) });
           if (me !== seq || !res.ok) return;
           next.textContent = '';
-          next.append(h('span', { class: 'mute', text: 'Next: ' }), ...res.body.next.map((d, i) => h('b', { text: (i ? ', ' : '') + fd(dnum(d.date), { weekday: 'short', day: 'numeric', month: 'long' }) })));
+          next.append(h('span', { class: 'mute', text: 'Next: ' }), ...res.body.next.map((d, i) => h('b', { text: (i ? ', ' : '') + fd(dnum(d.date), r.t === 'months' ? { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'long' }) })));
           const moved = res.body.next.find(d => d.moved && d.why);
           if (moved) next.append(h('span', { class: 'mute', text: ` (one moved for ${moved.why})` }));
         } catch (e) { if (me === seq) next.textContent = ''; }
@@ -299,6 +329,17 @@
   };
   const pqCell = (row, k) => (k === 'dueMonth' ? (row.when && row.when.month) || 1 : row[k]);
   const pqCellSet = (row, k, v) => { if (k === 'dueMonth') { row.when = Object.assign({ t: 'months', every: 12, day: 1, adjust: 'next' }, row.when || {}, { month: Number(v) || 1 }); return; } if (v == null) delete row[k]; else row[k] = v; };
+  /** Pay before tax, typed by the year or the month: kept as its yearly figure. */
+  function pqPayCell(row) {
+    let per = 'year', typed = row.annual != null ? row.annual : null;
+    const say = h('small', { class: 'fv-plq-echo fv-amt' });
+    const put = () => { if (typed == null) { delete row.annual; say.textContent = ''; return; } row.annual = per === 'month' ? Math.round(typed * 1200) / 100 : typed; say.textContent = per === 'month' ? `${gbp(row.annual)} a year if it runs all year` : `about ${gbp(row.annual / 12)} a month`; };
+    const amount = pqInput({ type: 'money' }, typed, v => { typed = v; put(); });
+    const sel = h('select', { class: 'fv-input fv-plq-in', 'aria-label': 'A year or a month?' }, [['year', 'a year'], ['month', 'a month']].map(([v, l]) => h('option', { value: v, text: l })));
+    sel.addEventListener('change', () => { per = sel.value; put(); });
+    put();
+    return h('label', { class: 'fv-plq-field' }, h('span', { class: 'fv-plq-lab', text: 'Pay, before tax' }), h('span', { class: 'fv-plq-payper' }, amount.wrap, sel), say);
+  }
   function pqList(body, q) {
     const d = MPQ.draft;
     const isAsset = q.list === 'asset';
@@ -311,6 +352,7 @@
       if (!all.length) list.append(h('p', { class: 'fv-plq-empty', text: isAsset ? 'Nothing added. Skip this if you like.' : def.empty }));
       for (const row of all) {
         const cells = q.columns.map(c => {
+          if (q.list === 'jobs' && c.key === 'annual') return pqPayCell(row);
           const inp = pqInput({ type: c.type, options: c.options, placeholder: c.placeholder, upper: c.upper }, pqCell(row, c.key) != null ? pqCell(row, c.key) : null, v => pqCellSet(row, c.key, v));
           return h('label', { class: 'fv-plq-field' }, h('span', { class: 'fv-plq-lab', text: c.label }), inp.wrap);
         });

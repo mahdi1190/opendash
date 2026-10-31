@@ -3,7 +3,7 @@
   // For people with income nobody takes tax from. One tax year at a time, in plain words. Every number comes from the server
   // (GET /api/finance/tax -> {plan, doc, view, finder, comeIn, hmrc, ids}: lib/finance/uk-tax.mjs, tax-tab.mjs); this file only draws
   // and sends one change at a time (POST /api/finance/tax/change), each with Undo. UTR and NI number stay masked until tapped.
-  const TX = { host: null, d: null, year: null, err: null, busy: false, open: new Set(), edit: null, paste: null, walk: null, slip: null, shelf: false, seq: 0, answers: false, why: null, focus: null };
+  const TX = { host: null, d: null, year: null, err: null, busy: false, open: new Set(), edit: null, paste: null, walk: null, slip: null, shelf: false, seq: 0, answers: false, why: null, focus: null, drafts: {}, focusYtd: null };
   const txCard = (cls, ...kids) => h('section', { class: 'fv-card fv-tx-c ' + (cls || '') }, ...kids);
   const txHead = (title, sub, right) => h('header', { class: 'fv-pl-h row' }, h('div', null, h('h3', { text: title }), sub ? h('p', { text: sub }) : null), right || null);
   const txBtn = (label, icon, fn, cls, more) => h('button', Object.assign({ type: 'button', class: 'fv-btn ' + (cls || ''), onclick: fn }, more || {}), icon ? ic(icon) : null, h('span', { text: label }));
@@ -39,20 +39,30 @@
     o = o || {};
     if (TX.busy) return false;
     TX.busy = true;
+    if (o.form) o.form.dataset.sending = '1';   // what is on its way is no longer a draft
     try {
       const body = Array.isArray(change) ? { changes: change, say, year: TX.year } : { change, year: TX.year };
       const r = await api('/api/finance/tax/change', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (!r.ok || !r.body.view) { toast((r.body && r.body.error) || 'That could not be saved.', { bad: true, action: 'Try again', onAction: () => txDo(change, say, o) }); return false; }
+      if (!r.ok || !r.body.view) {
+        const text = (r.body && r.body.error) || 'That could not be saved.';
+        // A form says it next to what was typed, and keeps all of it.
+        if (o.form && o.form.isConnected) { txSayClear(o.form); txSay(o.form, null, text + ' What you typed is still here.'); }
+        else toast(text, { bad: true, action: 'Try again', onAction: () => txDo(change, say, o) });
+        return false;
+      }
+      const wasBill = TX.d && TX.d.view && TX.d.view.bill ? TX.d.view.bill.balance : null;
       txTake(r.body);
       if (o.close !== false) TX.edit = null;
       txPaint();
       const undo = r.body.undo;
-      if (!o.quiet) toast(say || r.body.said || 'Saved', { action: 'Undo', onAction: () => txUndo(undo) });
+      const moved = txBillChange(wasBill, r.body.view.bill ? r.body.view.bill.balance : null);
+      if (!o.quiet) toast([say || r.body.said || 'Saved', moved].filter(Boolean).join('. '), { action: 'Undo', onAction: () => txUndo(undo) });
       return true;
     } catch (e) {
-      toast('Freeflo isn’t answering, so that was not saved.', { bad: true, action: 'Try again', onAction: () => txDo(change, say, o) });
+      if (o.form && o.form.isConnected) { txSayClear(o.form); txSay(o.form, null, 'Freeflo isn’t answering, so that was not saved. What you typed is still here. Press Save again in a moment.'); }
+      else toast('Freeflo isn’t answering, so that was not saved.', { bad: true, action: 'Try again', onAction: () => txDo(change, say, o) });
       return false;
-    } finally { TX.busy = false; }
+    } finally { TX.busy = false; if (o.form) delete o.form.dataset.sending; }
   }
   async function txUndo(token) {
     const r = await api('/api/finance/tax/undo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ undo: token, year: TX.year }) });
@@ -73,6 +83,8 @@
   SEC_OPTS.tax = Object.assign({ filters: false, kpis: false }, SEC_OPTS.tax || {});
   BUILD.tax = (g) => {
     TX.host = h('div', { class: 'fv-pl fv-tx', style: { '--span': 12, '--span-md': 12 } });
+    // Enter saves, from any box in a form.
+    TX.host.addEventListener('keydown', (e) => { if (e.key !== 'Enter' || e.target.tagName !== 'INPUT' || e.target.type === 'checkbox') return; const form = e.target.form; if (form) { e.preventDefault(); form.requestSubmit(); } });
     g.append(TX.host);
     txPaint();
     txLoad(TX.year).then(() => { if (R.sectionId === 'tax') txPaint(); });
@@ -102,12 +114,14 @@
     const lo = txLooksOff(v); if (lo) host.append(lo);
     const ak = txAskNowCard(v); if (ak) host.append(ak);
     const pr = txPrompts(v); if (pr) host.append(pr);
+    const nothing = !v.sources.jobs.length && !v.sources.self.length && !v.sources.other.length;
+    if (nothing) { host.append(txSources(v)); host.append(txMore(v)); restoreScroll(keep); return; }
     host.append(txPosition(v));
-    host.append(txAside(v));
-    host.append(txDeadlines(v));
     host.append(txSources(v));
+    const asideCard = txAside(v); if (asideCard) host.append(asideCard);
+    host.append(txDeadlines(v));
     const fi = txFinder(v); if (fi) host.append(fi);
-    host.append(txFiling(v));
+    const filing = txFiling(v); if (filing) host.append(filing);
     host.append(txMore(v));
     restoreScroll(keep);
     if (TX.focus) { const f = TX.focus; TX.focus = null; setTimeout(() => { const el = host.querySelector('[data-src="' + String(f).replace(/[^\w-]/g, '') + '"]'); if (el) el.scrollIntoView({ block: 'start' }); }, 30); }
@@ -128,13 +142,13 @@
     const drop = (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) { e.preventDefault(); txReadSlip(f); } };
     return h('section', { class: 'fv-card fv-tx-c fv-tx-top', ondragover: (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files')) e.preventDefault(); }, ondrop: drop },
       h('div', { class: 'fv-tx-top-r' }, h('h2', { class: 'fv-tx-t', text: 'Your tax' }), years.el),
-      h('p', { class: 'fv-pl-mute', text: `An estimate from official ${v.regionName} rates and what you tell Freeflo. You file on GOV.UK yourself. Something not right? Open Your answers and change it.` }),
+      h('p', { class: 'fv-pl-mute', text: `An estimate from official ${v.regionName} rates and what you tell Freeflo. You file on GOV.UK yourself.` }),
       v.estimated ? h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `The ${v.yearLabel} figures are not in Freeflo yet, so this uses the ${v.figuresFromLabel} ones as an estimate. An update brings the real ones.` })) : null,
       h('div', { class: 'fv-pl-acts fv-tx-acts' },
-        txBtn('Your answers', 'pencil', () => ansOpen(), 'primary'),
-        txBtn('Tell Freeflo in one go', 'pencil', () => { TX.paste = TX.paste ? null : { text: '' }; txPaint(); }),
-        txBtn('Add a payslip', 'file-up', () => txPickSlip()),
-        v.filing.answer !== 'no' || v.yearState === 'past' ? txBtn('File my return', 'send', () => txOpenWalk(), 'primary') : null));
+        v.filing.answer !== 'no' || v.yearState === 'past' ? txBtn('File my return', 'send', () => txOpenWalk(), 'primary') : null,
+        txBtn('Add a payslip', 'file-up', () => { TX.slip = TX.slip && TX.slip.choose ? null : { choose: true }; txPaint(); }),
+        txBtn('Your answers', 'pencil', () => ansOpen()),
+        txBtn('Tell Freeflo in one go', 'sparkles', () => { TX.paste = TX.paste ? null : { text: '' }; txPaint(); }, 'ghost')));
   }
   function txRolled(v) {
     return txCard('fv-tx-note', h('h3', { text: 'A new tax year has started' }), h('p', { text: `We kept your ${TX.d.rolledFrom} sources and carried them over. New year, new figures: check your jobs below, and the tax code on your first payslip.` }),
@@ -159,11 +173,12 @@
   function txBigLine(v) {
     const b = v.bill;
     if (b.noReturn) {
+      if (b.balance > 0.5 && b.balance < 10) return { big: gbp(b.balance), word: 'difference', tone: 'good', say: 'Nothing to do. Tax codes round a little, so payroll and the year’s tax end a few pounds apart.' };
       if (b.balance > 0.5) return { big: gbp(b.balance), word: 'tax not yet taken', tone: 'owe', say: 'You do not need a tax return for this. HMRC normally collects it through your tax code next year.' };
       if (b.balance < -0.5) return { big: gbp(-b.balance), word: 'paid too much', tone: 'good', say: 'You may be due a refund. HMRC usually writes to you after the tax year ends, in a letter called a P800.' };
       return { big: gbp(0), word: 'left to pay', tone: 'good', say: 'What your jobs take through payroll covers the year.' };
     }
-    if (b.parts.paidOnAccount > 0.5 && b.balance < -0.5) return { big: gbp(-b.balance), word: 'to come back', tone: 'good', say: 'The payments you made in advance were more than the year\'s bill. HMRC refunds it, or takes it off your next payment.' };
+    if (b.parts.paidOnAccount + (b.parts.poaToCome || 0) > 0.5 && b.balance < -0.5) return { big: gbp(-b.balance), word: 'to come back', tone: 'good', say: 'The payments you made in advance were more than the year\'s bill. HMRC refunds it, or takes it off your next payment.' };
     if (b.balance > 0.5) return { big: gbp(b.balance), word: 'still to pay for this year', tone: 'owe', say: b.poa.applies ? 'This goes on your tax return. With payments on account, your January bill is higher: see below.' : 'This goes on your tax return. Nobody takes it before the money reaches you.' };
     if (b.balance < -0.5) return { big: gbp(-b.balance), word: 'paid too much', tone: 'good', say: 'Your jobs took more than your whole-year bill. You may be due a refund, usually paid after the year ends.' };
     return { big: gbp(0), word: 'left to pay', tone: 'good', say: 'What your jobs take through payroll covers the year.' };
@@ -181,7 +196,7 @@
     const p = v.position, b = v.bill, big = txBigLine(v);
     const money = (x) => (x < 0 ? '−' : '') + gbp(Math.abs(x));
     const rows = [
-      txPosRow('Total income', gbp(p.income), `Everything you earned and received in ${v.yearLabel}.`, { feed: 'income' }),
+      txPosRow('Total income', gbp(p.income), null, { feed: 'income' }),
       txPosRow('Tax-free amount', gbp(p.allowance), (v.allowance.override != null ? 'Your own figure from HMRC. ' : '') + (p.allowanceLeft > 0.5 ? `You used ${gbp(p.allowanceUsed)}. ${gbp(p.allowanceLeft)} is unused.` : 'All of it is used, across your jobs and other income.'), { feed: 'allowance' }),
       txPosRow('Income tax due', gbp(p.taxDue), `Your jobs take ${gbp(p.taxTaken)} of this through payroll.`, { feed: 'taxDue', calc: true }),
       p.taxLeft > 0.5 ? txPosRow('Income tax still to pay', gbp(p.taxLeft), null, { sub: true }) : p.taxLeft < -0.5 ? txPosRow('Income tax paid too much', gbp(-p.taxLeft), 'You may be due a refund.', { sub: true }) : null,
@@ -192,14 +207,15 @@
       if (p.loanLeft > 0.5) rows.push(txPosRow('Student loan still to pay', gbp(p.loanLeft), b.noReturn ? 'Only collected if you send a tax return.' : null, { sub: true }));
       if (p.loanOver > 0.5) rows.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `Your jobs take ${gbp(p.loanOver)} more than the year's repayment. That does not reduce your tax bill; the Student Loans Company can refund it.` })));
     }
-    rows.push(txPosRow('National Insurance from your jobs', gbp(p.niTotal), p.ni.length > 1 ? p.ni.map(n => `${n.name || 'Job'}: ${gbp(n.amount)}`).join('. ') + '.' : 'Taken through payroll, job by job. Pays towards your State Pension.', { feed: 'ni', calc: true }));
+    rows.push(txPosRow('National Insurance from your jobs', gbp(p.niTotal), p.ni.length > 1 ? p.ni.map(n => `${n.name || 'Job'}: ${gbp(n.amount)}`).join('. ') + '.' : null, { feed: 'ni', calc: true }));
     if (v.trade) rows.push(txPosRow('National Insurance on your profit', gbp(p.class4), 'Called Class 4. It starts once your profit is over £12,570.', { feed: 'class4', calc: true }));
     if (p.class2 && p.class2.voluntary) rows.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `Your profit is under ${gbp(p.class2.spt)}, so you do not have to pay any Class 2 National Insurance. You can choose to, at ${gbp2(p.class2.week)} a week (${gbp(p.class2.year)} a year), to keep your record going. A job that pays enough usually does that already.` })));
     if (p.cgt) rows.push(txPosRow('Capital Gains Tax', gbp(p.cgt), `On ${gbp(p.gains)} of gains.`));
     if (b.parts.paidOnAccount) rows.push(txPosRow('Payments on account already made', '−' + gbp(b.parts.paidOnAccount), 'What you paid in advance last January and July.'));
+    if (b.parts.poaToCome) rows.push(txPosRow('Payments on account still to make', '−' + gbp(b.parts.poaToCome), 'Set by last year's return, and due this coming January and July. They count towards this year, so they come off here. Not paid yet.'));
     rows.push(txPosRow(b.balance >= 0 ? 'Still to pay' : 'Too much paid', gbp(Math.abs(b.balance)), null, { total: true }));
 
-    const poa = h('div', { class: 'fv-tx-poa' },
+    const poa = !b.poa.applies && b.noReturn ? null : h('div', { class: 'fv-tx-poa' },
       h('h4', { text: 'Payments on account' }), h('p', { class: 'fv-pl-mute' }, amt(b.poa.why)),
       b.poa.applies ? h('div', { class: 'fv-tx-cash' },
         h('div', null, h('span', { class: 'fv-tx-k', text: `January after this tax year` }), amt(gbp(b.january), 'fv-tx-v'), h('small', { text: `Still to pay, plus the first ${gbp(b.poa.first)} in advance.` })),
@@ -246,6 +262,7 @@
   function txAside(v) {
     const a = v.aside;
     const off = a.mode === 'off';
+    if (a.pot < 10 && !v.trade && !off && !a.bills.length) return null;
     const each = Math.round(a.keepShare * 100);
     const say = a.pot > 0.5 ? (a.lastUnpaid > 0.5 && a.owedThisYear > 0.5 ? `${gbp(a.lastUnpaid)} for your last return, and ${gbp(a.owedThisYear)} so far this year.` : a.lastUnpaid > 0.5 ? 'For your last return.' : 'What you have earned so far this year will owe this.') : 'Nothing to keep aside right now.';
     return txCard('fv-tx-aside',
@@ -294,7 +311,7 @@
       need,
       list.length ? h('ul', { class: 'fv-tx-dl-list' }, rows) : null,
       list.length ? h('p', { class: 'fv-pl-mute small', text: v.penaltyLine }) : null,
-      !list.length && v.yearState === 'current' ? h('p', { class: 'fv-pl-mute', text: 'If that changes, the dates appear here.' }) : null,
+      !list.length && v.yearState === 'current' ? h('p', { class: 'fv-pl-mute small' }, 'If that changes, the dates appear here. ', h('button', { type: 'button', class: 'fv-link', text: 'Make the figures pack anyway', onclick: () => txMakePack(v) })) : null,
       v.upcoming.filter(d => d.year !== v.year && d.days >= 0).slice(0, 3).length ? h('div', { class: 'fv-tx-other' }, h('h4', { text: 'Also coming up' }), h('ul', null, v.upcoming.filter(d => d.year !== v.year && d.days >= 0).slice(0, 3).map(d => h('li', null, h('button', { type: 'button', class: 'fv-link', text: `${d.title}, ${txShort(d.date)}`, onclick: () => { TX.year = d.year; txLoad(d.year).then(txPaint); } })))) ) : null);
   }
   function txPrompts(v) {
