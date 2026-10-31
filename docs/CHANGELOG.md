@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.30.2]
+
+### Changed
+- **Tax, a job's form is simpler.** You can type pay by the month or the year, and Freeflo works out the yearly figure for you. When a job ends with exact last payments, the yearly pay and "Paid every" boxes go away, and the last payments sit straight under the end date. Pay from an earlier job and bonuses are folded under Less common until you need them.
+
 ## [2.30.1]
 
 ### Fixed
