@@ -10,6 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.27.8]
+
+### Changed
+- No daily limits on people you have approved: messages, storage up to 1 GB each, mailboxes and live play. Press Update my relay (Settings > Your relay) to apply this.
+- What stays: Cloudflare's own free-plan limits, protection against floods, message size limits, a small allowance for anyone not yet approved, and a whole-relay stop for live play at 60% of the free day so your sync keeps working.
+
+### Fixed
+- Re-adding a friend no longer fails with "Today's share of that relay is used up".
+
 ## [2.27.7]
 
 ### Fixed
