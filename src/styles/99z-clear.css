@@ -69,3 +69,10 @@
    them in a column: "Overdue" sat in the middle and Reschedule fell on top of the first task's date. */
 .tg-h.tg-sec { flex-direction: row; }
 .tg-h .tg-toggle { margin: 0; }
+
+/* Small controls: the same look, a bigger area to press. */
+.cbx, .switch { position: relative; }
+.cbx::before, .switch::before, .checkbox::before { content: ""; position: absolute; inset: -6px; }
+.btn-link, .link-btn { padding-block: 2px; }
+/* Fine print stays readable. */
+small { font-size: max(11px, 0.85em); }

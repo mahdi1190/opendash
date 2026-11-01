@@ -54,7 +54,7 @@ async function _funApi(path, body, opts) {
   let j = null;
   try { j = await r.json(); } catch (e) { j = null; }
   if (!r.ok || !j || j.ok === false) {
-    const e = new Error((j && typeof j.error === 'string' && j.error) || (r.status === 404 ? 'This part of Freeflo isn’t ready yet: close and reopen Freeflo after updating.' : `That didn't work just now (${r.status}). Try again in a moment.`));
+    const e = new Error((j && typeof j.error === 'string' && j.error) || (r.status === 404 ? 'This part of Freeflo isn’t ready yet: close and reopen Freeflo after updating.' : 'That didn’t work just now. Try again in a moment.'));
     e.code = j && j.code; e.status = r.status;
     throw e;
   }

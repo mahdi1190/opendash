@@ -738,7 +738,7 @@ async function _asstSend(text) {
     });
     if (!r.ok || !r.body) {
       const j = await r.json().catch(() => ({}));
-      acc.error = { code: j.code || 'HTTP_' + r.status, message: j.error || `The assistant could not start (${r.status}).` };
+      acc.error = { code: j.code || 'HTTP_' + r.status, message: j.error || 'The assistant could not start. Try again in a moment.' };
     } else {
       const reader = r.body.getReader();
       const dec = new TextDecoder();

@@ -17,7 +17,7 @@ const CONNECTION_INFO = [
     unlocks: ['Assistant', 'Smart suggestions', 'Link tasks to people', 'Task chat'],
     text: 'Uses your own Claude account.' },
   { id: 'gmail', name: 'Gmail', icon: 'mail', sub: 'Through Claude · read-only',
-    unlocks: ['Email triage', 'Tasks from email', 'Recent mail on people'],
+    unlocks: ['Sort email', 'Tasks from email', 'Recent mail on people'],
     text: 'Finds tasks in recent email. It never sends or deletes.' },
   { id: 'calendar', name: 'Google Calendar', icon: 'calendar-days', sub: 'Through Claude · read-only',
     unlocks: ['Events next to tasks', 'Update calendar', 'Meeting prep'],

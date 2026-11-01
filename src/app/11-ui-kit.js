@@ -570,7 +570,12 @@ if (typeof document !== 'undefined') document.addEventListener('visibilitychange
 let _tipEl = null, _tipTimer = null, _tipFor = null;
 function _hideTip() { if (_tipTimer) clearTimeout(_tipTimer); _tipTimer = null; _tipFor = null; if (_tipEl) { _tipEl.remove(); _tipEl = null; } }
 document.addEventListener('mouseover', (e) => {
-  const t = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+  let t = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+  // A button with only a picture and a spoken name: its name is its tooltip too.
+  if (!t && e.target && e.target.closest) {
+    const b = e.target.closest('button[aria-label], a[aria-label], [role="button"][aria-label]');
+    if (b && !b.title && !b.textContent.trim()) { b.setAttribute('data-tip', b.getAttribute('aria-label')); t = b; }
+  }
   if (t === _tipFor) return;
   _hideTip();
   if (!t || !t.getAttribute('data-tip')) return;

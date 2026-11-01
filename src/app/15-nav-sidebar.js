@@ -90,9 +90,9 @@ registerPage({ id: 'now', view: 'now', match: v => v === 'now', label: 'Do now',
 registerPage({ id: 'tomorrow', view: 'tomorrow', match: v => v === 'tomorrow', label: 'Tomorrow', icon: 'sunrise', area: 'tasks', order: 65, desc: 'What is due tomorrow', keywords: 'next day' });
 registerPage({ id: 'no-date', view: 'no-date', match: v => v === 'no-date', label: 'No date', icon: 'circle-dashed', area: 'tasks', order: 70, desc: 'Open tasks without a due date', keywords: 'undated no due' });
 registerPage({ id: 'someday', view: 'tag:someday', match: v => v === 'tag:someday', label: 'Someday', icon: 'archive', area: 'tasks', order: 75, desc: 'Parked: not now, not forgotten', keywords: 'someday maybe later parked' });
-registerPage({ id: 'completed', view: 'completed', match: v => v === 'completed', label: 'Logbook', icon: 'circle-check', area: 'tasks', order: 80, desc: 'Everything you have finished', keywords: 'done completed finished log history' });
+registerPage({ id: 'completed', view: 'completed', match: v => v === 'completed', label: 'Finished tasks', icon: 'circle-check', area: 'tasks', order: 80, desc: 'Everything you have finished', keywords: 'done completed finished log history' });
 registerPage({ id: 'wins', view: 'wins', match: v => v === 'wins', label: 'Wins', icon: 'trophy', area: 'tasks', order: 85, desc: 'Your wins log', keywords: 'wins log good things achievements' });
-registerPage({ id: 'triage', view: 'triage', match: v => v === 'triage', label: 'Email triage', icon: 'mail', area: 'tasks', order: 90, desc: 'Turn emails into tasks', keywords: 'email mail inbox suggestions triage' });
+registerPage({ id: 'triage', view: 'triage', match: v => v === 'triage', label: 'Sort email', icon: 'mail', area: 'tasks', order: 90, desc: 'Turn emails into tasks', keywords: 'email mail inbox suggestions triage' });
 registerPage({ id: 'bin', view: 'bin', match: v => v === 'bin', label: 'Bin', icon: 'trash-2', area: 'system', order: 80, desc: 'Deleted tasks and notes, ready to restore', keywords: 'trash deleted restore' });
 
 /** The Waiting list ('waiting', tasks with waitingOn, grouped by person) comes from the review area: its row shows only when the view exists. */

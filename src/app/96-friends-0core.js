@@ -59,7 +59,7 @@ async function _frApi(path, body, opts) {
   let j = null;
   try { j = await r.json(); } catch (e) { j = null; }
   if (!r.ok || !j || j.ok === false) {
-    const e = new Error((j && typeof j.error === 'string' && j.error) || `Friends could not do that just now (${r.status}).`);
+    const e = new Error((j && typeof j.error === 'string' && j.error) || 'Friends could not do that just now. Try again in a moment.');
     e.code = j && j.code; e.status = r.status;
     throw e;
   }

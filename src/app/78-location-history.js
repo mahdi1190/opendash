@@ -34,13 +34,13 @@ function dashboardLocationHistoryPanel() {
     box.replaceChildren();
     const history=dashboardLocationHistory(), visits=history.visits.slice(-6).reverse();
     const note=document.createElement('p');note.className='muted';
-    note.textContent='Local history: '+history.visits.length+' visits/selections. Device presence is sampled; departures and time between fixes are estimates. Retained for up to 90 days here; your permanent history is in Settings > Location history.';box.appendChild(note);
+    note.textContent='Places remembered on this computer: '+history.visits.length+'. When you left and how long you stayed are best guesses. These are kept for up to 90 days here; your full history is in Settings > Location history.';box.appendChild(note);
     const date=at=>Number.isFinite(at)?new Date(at).toLocaleString():'Unknown'; // clock-ok: observed real timestamps, not simulated clock
     const duration=ms=>Math.round(ms/60000)+' min';
     for(const v of visits){
       const row=document.createElement('p');
       row.textContent=v.source==='device'
-        ? v.point.name+' — first seen '+date(v.firstSeenAt)+'; last confirmed '+date(v.lastConfirmedAt)+'; departure '+(v.departureConfirmed?'between '+date(v.departureEarliestAt)+' and '+date(v.departureLatestAt):v.closedBy?'unknown (source changed)':'not observed')+'; observed span '+duration(v.lastConfirmedAt-v.firstSeenAt)+'; sampled presence '+duration(v.sampledPresenceMs)+'; unobserved gaps '+duration(v.unobservedMs)+'; fix accuracy '+v.accuracy+' m.'
+        ? v.point.name+' — first seen '+date(v.firstSeenAt)+'; last seen '+date(v.lastConfirmedAt)+'; departure '+(v.departureConfirmed?'between '+date(v.departureEarliestAt)+' and '+date(v.departureLatestAt):v.closedBy?'unknown (source changed)':'not observed')+'; observed span '+duration(v.lastConfirmedAt-v.firstSeenAt)+'; sampled presence '+duration(v.sampledPresenceMs)+'; unobserved gaps '+duration(v.unobservedMs)+'; fix accuracy '+v.accuracy+' m.'
         : v.point.name+' — manual selection first recorded '+date(v.firstSeenAt)+'; physical presence and time spent unknown.';
       box.appendChild(row);
     }

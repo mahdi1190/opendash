@@ -986,6 +986,7 @@ registerMoreItem({ id: 'reduce-motion', label: 'Reduce motion', icon: 'sparkle',
   disabled: () => (window.Motion && Motion.systemReduced ? Motion.systemReduced() : !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)),
   title: 'Turn interface animations down to the minimum (saved on this device)',
   run: () => { if (window.Motion) Motion.setReduced(!Motion.prefersReduced()); } });
+registerMoreItem({ id: 'undo', label: 'Undo my last change', icon: 'undo-2', order: 205, where: ['more', 'workspace'], kbd: _TOAST_MOD + '+Z', run: () => undo() });
 registerMoreItem({ id: 'briefing', label: 'Morning briefing', icon: 'sunrise', order: 210, hidden: () => !HAS_COWORK, run: () => runMorningBriefing() });
 registerMoreItem({ id: 'backup', label: 'Back up now', icon: 'download', order: 310, where: ['more', 'workspace'],
   hint: () => lastBackupLabel(), run: () => downloadBackup(false) });

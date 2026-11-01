@@ -408,8 +408,8 @@ registerSettingsGroup({
     const act = document.createElement('div'); act.className = 'loc-set-act';
     act.append(
       uiButton({ label: 'Open Places', icon: 'map-pin', size: 'sm', run: () => setView('locations') }),
-      uiButton({ label: 'Export JSON', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('json') }),
-      uiButton({ label: 'Export CSV', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('csv') }));
+      uiButton({ label: 'Download a data file', tip: 'A JSON file, for moving your places to another program', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('json') }),
+      uiButton({ label: 'Download a spreadsheet', tip: 'A CSV file that Excel and other spreadsheets can open', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('csv') }));
     el.appendChild(_settingsRow('Your data', 'Download everything, any time.', act));
     const del = document.createElement('div');
     del.appendChild(uiButton({ label: 'Delete my location history', icon: 'trash-2', kind: 'danger', size: 'sm', run: async () => { if (await locLogDelete()) render(); } }));

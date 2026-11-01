@@ -120,7 +120,7 @@ function _hfHead(nOpen, total, nDone) {
   const tune = uiButton({ label: 'Tune', kind: 'ghost', size: 'sm', cls: 'hf-tune', run: (e, b) => _homeTunePopover(b) });
   tune.insertAdjacentHTML('beforeend', icon('sliders-horizontal', 'i-sm'));
   tune.setAttribute('aria-haspopup', 'dialog');
-  const add = uiButton({ icon: 'plus', iconCls: 'i-sm', size: 'sm', cls: 'hf-new', aria: 'New task', tip: 'New task', run: (e, b) => openNewTask('', { from: b }) });
+  const add = uiButton({ icon: 'plus', iconCls: 'i-sm', label: 'New task', kind: 'ghost', size: 'sm', cls: 'hf-new', tip: 'Add a new task', run: (e, b) => openNewTask('', { from: b }) });
   // A focus block with a scene that grows as it runs (78-anim-moments.js)
   const blk = uiButton({ icon: 'timer', iconCls: 'i-sm', size: 'sm', cls: 'hf-block', aria: 'Start a 25-minute focus block', tip: 'Focus block (25 min)', run: () => { if (typeof animFocusStart === 'function') animFocusStart(25); } });
   if (typeof animFocusStart !== 'function') blk.hidden = true;

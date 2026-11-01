@@ -558,9 +558,9 @@ function sgTriageCard(ctx) {
     key: `triage:${_sgkHash(list.map(s => s.id).sort().join(','))}`, icon: 'inbox', scene: null, urgency: n >= 3 ? 1.1 : 1,
     title: n === 1 ? `An email looks like a task` : `${n} emails look like tasks`,
     text: n === 1 ? `Add “${sgShort(list[0].title, 60)}”?` : `${names.join(', ')}${n > 2 ? ` and ${n - 2} more` : ''}. Add ${n === 2 ? 'both' : 'them'}?`,
-    why: [`${_sgkPlural(n, 'suggestion')} from Email triage ${n === 1 ? 'is' : 'are'} waiting for you.`].concat(list[0].confidence != null ? [`The surest is ${Math.round(Number(list[0].confidence) * 100)}% sure.`] : []),
+    why: [`${_sgkPlural(n, 'suggestion')} from Sort email ${n === 1 ? 'is' : 'are'} waiting for you.`].concat(list[0].confidence != null ? [`The surest is ${Math.round(Number(list[0].confidence) * 100)}% sure.`] : []),
     quick: { label: n === 1 ? 'Add it now' : `Add ${Math.min(n, 8)} now`, icon: 'check', aria: `Add ${_sgkPlural(Math.min(n, 8), 'task')} from email now, with Undo`, action: { type: 'ops', args: { ops: all, line: `Added ${_sgkPlural(Math.min(n, 8), 'task')} from email` } } },
-    secondary: [{ label: n === 1 ? 'Not a task' : 'Review in Email triage', icon: n === 1 ? 'x' : 'inbox', action: n === 1
+    secondary: [{ label: n === 1 ? 'Not a task' : 'Review in Sort email', icon: n === 1 ? 'x' : 'inbox', action: n === 1
       ? { type: 'ops', args: { ops: [{ op: 'email.triage', threadId: list[0].emailId, action: 'dismiss' }], line: 'Dismissed' } }
       : { type: 'nav', args: { to: 'view', view: 'triage' } } }],
     claims: list.map(s => 'email:' + s.emailId), entity: '',
@@ -582,7 +582,7 @@ function sgTriageCard(ctx) {
 }
 sgRegisterRule({
   id: 'email-tasks', area: 'people', title: 'Emails that look like tasks', value: 4, defaultOn: true,
-  description: 'Email triage found emails that look like tasks: add them in one go.',
+  description: 'Sort email found emails that look like tasks: add them in one go.',
   safetyHint: 'The button opens the task (or the list, ticked); ✓ adds them at once, with Undo.',
   needs: [], hours: 'any', surfaces: ['hero', 'home', 'story-morning'], cooldown: { notFor: 7 },
   run(ctx) { const c = sgTriageCard(ctx); return c ? [c] : []; },

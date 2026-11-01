@@ -420,7 +420,7 @@ function openSidebarCustomiser(tab) {
 }
 /** The fixed rows of the Tasks views section (15-nav-sidebar.js draws them; Files and links joined them in 2.18). */
 function _sbViewRows() {
-  return [['inbox', 'Inbox', 'inbox'], ['today', 'Today', 'sun'], ['now', 'Do now', 'target'], ['week', 'Upcoming', 'calendar-range'], ['all', 'All tasks', 'layers'], ['no-date', 'No date', 'circle-dashed'], ...(typeof sbWaitingViewExists === 'function' && sbWaitingViewExists() ? [['waiting', 'Waiting', 'hourglass']] : []), ['tag:someday', 'Someday', 'archive'], ['completed', 'Logbook', 'circle-check'], ['wins', 'Wins', 'trophy'], ['triage', 'Email triage', 'mail'], ...(typeof sectionFor === 'function' && sectionFor('files') ? [['files', 'Files and links', 'paperclip']] : [])]
+  return [['inbox', 'Inbox', 'inbox'], ['today', 'Today', 'sun'], ['now', 'Do now', 'target'], ['week', 'Upcoming', 'calendar-range'], ['all', 'All tasks', 'layers'], ['no-date', 'No date', 'circle-dashed'], ...(typeof sbWaitingViewExists === 'function' && sbWaitingViewExists() ? [['waiting', 'Waiting', 'hourglass']] : []), ['tag:someday', 'Someday', 'archive'], ['completed', 'Finished tasks', 'circle-check'], ['wins', 'Wins', 'trophy'], ['triage', 'Email triage', 'mail'], ...(typeof sectionFor === 'function' && sectionFor('files') ? [['files', 'Files and links', 'paperclip']] : [])]
     .map(([view, label, ic]) => ({ view, label, icon: ic }));
 }
 /* ---------- Views rows: Shown, In More, Hidden (2.18, NAVIGATION_PLAN.md 2.4) ---------- */

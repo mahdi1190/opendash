@@ -331,7 +331,7 @@ function _ssOfflineCard(el) {
 }
 
 registerSettingsGroup({
-  id: 'server', title: 'Server', icon: 'hard-drive', order: 92,
+  id: 'server', title: 'Freeflo on this computer', icon: 'hard-drive', order: 92,
   description: 'Restart Freeflo and choose how it starts.',
   search: [
     { label: 'Freeflo on this computer', target: 'Freeflo on this computer', description: 'Status, version, restart, open the log or stop it.', keywords: 'this server restart rebuild stop log port process uptime backend' },

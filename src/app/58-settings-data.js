@@ -214,7 +214,7 @@ registerSettingsGroup({
   search: [
     { label: 'Diagnostics', keywords: 'diagnostics debug logs errors version node system queue connections achievements', selector: '.set-kv' },
     { label: 'Copy diagnostics', description: 'Copy system, app, connection and queue details for troubleshooting.', keywords: 'debug problems Node migrations', selector: '.set-btns' },
-    { label: 'Recent server log', description: 'Read recent server messages.', keywords: 'errors debug', selector: '.set-log' },
+    { label: 'Recent activity', description: 'What Freeflo has been doing lately, for whoever is helping you.', keywords: 'errors debug', selector: '.set-log' },
   ],
   render(el) {
     if (!_sdDiag) {
@@ -252,7 +252,7 @@ registerSettingsGroup({
     }
     ct.appendChild(tb);
     el.appendChild(ct);
-    const lh = document.createElement('div'); lh.className = 'set-t set-log-h'; lh.textContent = 'Recent server log';
+    const lh = document.createElement('div'); lh.className = 'set-t set-log-h'; lh.textContent = 'Recent activity (for whoever is helping you)';
     const pre = document.createElement('pre'); pre.className = 'set-log'; pre.textContent = (d.log || []).join('\n') || '(empty)';
     el.append(lh, pre);
   },

@@ -525,7 +525,7 @@ async function pcUploadPicture(id, kind, file) {
     r = await fetch('/api/people/image', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ person: id, kind, data }) });
   } catch (e) { throw new Error(netErrorMessage(e)); }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j.ok) throw new Error(j.error || `The picture could not be saved (HTTP ${r.status}).`);
+  if (!r.ok || !j.ok) throw new Error(j.error || 'The picture could not be saved. Try again, or pick a smaller picture.');
   return _pcApply([{ op: 'person.update', id, [kind === 'avatar' ? 'photo' : 'cover']: j.ref }], kind === 'avatar' ? 'Profile picture updated' : 'Cover updated');
 }
 async function _pcSha256(text) {
