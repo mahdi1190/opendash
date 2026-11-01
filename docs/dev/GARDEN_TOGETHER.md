@@ -357,3 +357,17 @@ The owner's own online status is left as they set it: `presence` is off by defau
 `94-garden-fish-7gear.js`. **The rule for anything that can be bought or unlocked, now and from now on: it appears in the world or on the figure, and friends see it, live and on a saved copy.** A bonus that is only a number on a card is not finished. The owner, 1 November 2026: "I want to see if my friend has a cool new rod."
 
 What a person carries goes in their look as `g` (ids; a receiver draws from its own tables and leaves out what it does not know), through `cleanLook`, `gl:me` and `gl:who`, and again 1.5 s after a purchase or a change of gear. What is built goes in the snapshot's `wk`; a host in a live garden sends the snapshot again when they build, so it appears at once. A purchase is told as `fx got gear`, and held up on your own screen when the shop is closed (`gardenCatchMomentSoon`). A new thing to draw: a row in the table, a drawing, and this section's check.
+
+## 23. Variants, specimens and showing off
+
+`94-garden-fish-0variants.js` (the table: pure, the server reads it too), `94-garden-fish-1vart.js` (the drawing), `94-garden-fish-8spec.js` (the records), `94-garden-fish-9best.js` (the page). The owner, 1 November 2026: "variants, so like shiny, glowing, evil, angel ... make every fish caught unique with its own size etc, and it gets added to some sort of user base".
+
+**Decided at spawn, by whoever decides.** The host rolls a fish's variant in `_gfsSpawn` and sends it as `v` in `gl:fs`; an older app drops it, `GL_V` stays 2. A bug's comes from its key and the conditions, so every screen gets the same one, like the bug. Each side takes only ids from the table (`gardenVariantFor`): anything else is an ordinary fish. What raises the odds is the table's `more`, and `gardenVariantHow` makes the player's words from it, so they cannot disagree. Never more than `GARDEN_VARIANT_MAX_SHARE` of what spawns is a variant. It shows on the shadow (`gardenVariantShadow`), on the reel's words, held up (`fx got` carries `v`), on the card, in the tank and on a saved copy.
+
+**A specimen is a record beside the bag.** Bag items stay `fish:<id>-<q>` and `bug:<id>`. `state.garden.sp` holds each catch as one value, merged entry by entry; `vl` holds the variants found and is never trimmed, so progress does not go back. Past `GARDEN_SPEC.max` the lowest-scoring go, never a pinned one or the newest few. Selling marks the record `s`, and its Undo takes that back. A contest fish makes no record. `p` and `w` are friend ids, never names, and stay in your own state.
+
+**What friends get.** The snapshot's `sp` (`gardenSpecWire`): your best few as [id, variant or '-', size, quality, serial], how many variants, catches to the nearest ten. No day, no place, no company. `sh` gains `fv` and `bv`, lists of their own, because an older app's rows must stay as they were. It travels with the garden, so the per-friend Garden permission decides who gets it. `_gscSnapBody` now also copies `cv`, `wk`, `sh` and `sp`: until now the saved copy went without them.
+
+**There is no central server, and this adds none.** The friends board (`gardenSpecBoard`) is what this computer has heard from your friends, and the page says so.
+
+**Economy.** A variant pays `tier.sell` times at the market, added to the sale's total before the daily limit applies, so `marketFish` and `marketBugs` still rule it. XP is untouched.

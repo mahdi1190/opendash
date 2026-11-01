@@ -76,14 +76,15 @@ function _gfsPlaceKey() { return typeof _gll === 'undefined' ? 'own' : _gll.role
 function _gfsLen(cm) { return 10 + 5.2 * Math.sqrt(Math.max(1, Number(cm) || 1)); }   // stage units: a 5 cm minnow about 22 (half a cell), a 1 m carp 62, a 2.8 m sturgeon 97
 /** Does it show a fin above the water? The rarest do, and the great long hunters. */
 function gardenFishFin(def) { return !!def && def.cat === 'fish' && (def.rarity === 'epic' || def.rarity === 'legendary' || (['pike', 'sturgeon', 'cat'].includes(def.look.s) && def.cm[1] >= 120)); }
-function _gfsArt(def, cm) {
+function _gfsArt(def, cm, v) {
   const L = _gfsLen(cm), s = def.look.s, long = ['eel', 'pike', 'sturgeon'].includes(s), deep = ['round', 'flat', 'fancy'].includes(s);
   const rx = L * (long ? 0.5 : 0.42), ry = L * (long ? 0.1 : deep ? 0.25 : 0.18), glow = def.look.p === 'glow' || /^ghost-/.test(def.id);
-  const fill = glow ? '#e4eeff' : '#07233a', op = glow ? 0.55 : 0.4;
+  const W = v && typeof gardenVariantShadow === 'function' ? gardenVariantShadow(v, L, rx, ry) : null;   // a variant shows in its shadow, on every screen
+  const fill = (W && W.fill) || (glow ? '#e4eeff' : '#07233a'), op = (W && W.op) || (glow ? 0.55 : 0.4);
   const tx = -rx * 0.9, ts = ry * 1.05, n = (v) => v.toFixed(1);
   let s2 = `<ellipse cx="0" cy="0" rx="${n(rx)}" ry="${n(ry)}" fill="${fill}" fill-opacity="${op}"/><path d="M${n(tx)} 0L${n(tx - L * 0.2)} ${n(-ts)}L${n(tx - L * 0.14)} 0L${n(tx - L * 0.2)} ${n(ts)}Z" fill="${fill}" fill-opacity="${op}"/>`;
   if (gardenFishFin(def)) { const h = Math.max(9, L * 0.2), w = h * 0.8; s2 += `<path d="M${n(-w * 0.6)} ${n(-ry * 0.4)}Q${n(-w * 0.1)} ${n(-ry * 0.4 - h)} ${n(w * 0.75)} ${n(-ry * 0.4 - h)}Q${n(w * 0.25)} ${n(-ry * 0.4 - h * 0.45)} ${n(w * 0.6)} ${n(-ry * 0.4)}Z" fill="${glow ? '#f4f8ff' : '#27455c'}" fill-opacity="0.92" stroke="#eaf4fa" stroke-opacity="0.5" stroke-width="0.8"/><path d="M${n(-w * 1.1)} ${n(-ry * 0.2)}h${n(w * 2.2)}" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1" stroke-linecap="round"/>`; }
-  return s2;
+  return W ? W.under + s2 + W.over : s2;
 }
 function _gfsLayer() {
   if (_gfs.layer && _gfs.layer.isConnected && _gw.svg && _gfs.layer.ownerSVGElement === _gw.svg) return _gfs.layer;
@@ -109,9 +110,10 @@ function _gfsRing(x, y, k) {
 }
 function _gfsAdd(r) {
   const def = gardenFishDef(r.id); if (!def) return null;
-  const f = { u: r.u, id: r.id, def, cm: r.cm, x: r.x, y: r.y, tx: r.tx, ty: r.ty, st: r.st || 0, to: r.to == null ? null : r.to, n: r.n || 0, band: r.band || null, life: r.life || 0, cool: 0, sx: r.x, sy: r.y, face: 1, a: 0, node: null, dn: r.n || 0, dst: r.st || 0, seed: Math.random() * 9 };
+  const v = r.v && typeof gardenVariantFor === 'function' && gardenVariantFor('fish', def, r.v) ? String(r.v) : '';   // (only an id from the table: anything else is an ordinary fish)
+  const f = { u: r.u, id: r.id, def, v, cm: r.cm, x: r.x, y: r.y, tx: r.tx, ty: r.ty, st: r.st || 0, to: r.to == null ? null : r.to, n: r.n || 0, band: r.band || null, life: r.life || 0, cool: 0, sx: r.x, sy: r.y, face: 1, a: 0, node: null, dn: r.n || 0, dst: r.st || 0, seed: Math.random() * 9 };
   const layer = _gfsLayer();
-  if (layer) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(def, r.cm); layer.appendChild(f.node); }
+  if (layer) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(def, r.cm, v); layer.appendChild(f.node); }
   _gfs.list.set(f.u, f);
   return f;
 }
@@ -129,12 +131,12 @@ function _gfsFrame(dt) {
   const layer = _gfsLayer(); if (!layer) return;
   const k = Math.min(1, dt * 4), t = _gw.t || 0, moving = gardenMotionOn();
   for (const f of _gfs.list.values()) {
-    if (!f.node) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(f.def, f.cm); layer.appendChild(f.node); }   // (it was made before the stage was there)
+    if (!f.node) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(f.def, f.cm, f.v); layer.appendChild(f.node); }   // (it was made before the stage was there)
     const dx = f.x - f.sx; if (Math.abs(dx) > 0.015) f.face = dx > 0 ? 1 : -1;
     f.sx += dx * k; f.sy += (f.y - f.sy) * k;
     if (f.a < 1) { f.a = Math.min(1, f.a + dt * 0.8); if (f.node) f.node.setAttribute('opacity', f.a.toFixed(2)); }
     if (f.st === GF_ST.nibble && f.n !== f.dn) { _gfsRing(f.x, f.y, 0.6); }
-    if (f.st === GF_ST.swim && f.a >= 1 && ['epic', 'legendary'].includes(f.def.rarity)) { f.bub = (f.bub == null ? 2 + f.seed : f.bub) - dt; if (f.bub <= 0) { f.bub = 3 + Math.random() * 4; _gfsRing(f.sx, f.sy, 0.5); } }   // (rings on the surface give a great fish away)
+    if (f.st === GF_ST.swim && f.a >= 1 && (['epic', 'legendary'].includes(f.def.rarity) || (f.v && gardenVariantRank(f.v) >= 3))) { f.bub = (f.bub == null ? 2 + f.seed : f.bub) - dt; if (f.bub <= 0) { f.bub = 3 + Math.random() * 4; _gfsRing(f.sx, f.sy, 0.5); } }   // (rings on the surface give a great fish away)
     f.dn = f.n;
     if (f.st !== f.dst) { if (f.st === GF_ST.bite) { _gfsRing(f.x, f.y, 1.3); _gfsRing(f.x, f.y, 0.8); } else if (f.st === GF_ST.bolt) _gfsRing(f.sx, f.sy, 1.1); f.dst = f.st; }
     if (!f.node || !_gwInView(f.sx, f.sy, 1)) continue;
@@ -142,6 +144,7 @@ function _gfsFrame(dt) {
     const fast = f.st === GF_ST.hooked ? 16 : f.st === GF_ST.bolt ? 12 : 3 + 2 * Math.min(1, 40 / Math.max(10, f.cm));
     const wob = moving ? Math.sin(t * fast + f.seed) * (f.st === GF_ST.hooked ? 11 : 4) : 0;
     f.node.setAttribute('transform', `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${wob.toFixed(1)}) scale(${f.face} 1)`);
+    if (f.v && moving) { const tw = f.vt === undefined ? (f.vt = f.node.querySelector('.gd-fsv')) : f.vt; if (tw) tw.setAttribute('opacity', (0.5 + 0.5 * Math.sin(t * 2.6 + f.seed)).toFixed(2)); }   // (a sparkle twinkles only while you can see it)
   }
 }
 
@@ -208,10 +211,11 @@ function _gfsSpawn(b, m, at) {
   const id = gardenFishPick(odds, Math.random), def = gardenFishDef(id); if (!def) return;
   // further out is bigger, in the same kind as well as in the kinds that live there
   const out = b.zone === 'pond' ? 0.05 : Math.max(0, Math.min(0.55, (p.y - 13) / 24));
-  const cm = def.cat === 'fish' ? gardenFishSize(def, Math.random, out) : Math.round((def.cm[0] + def.cm[1]) / 2);
+  const cm0 = def.cat === 'fish' ? gardenFishSize(def, Math.random, out) : Math.round((def.cm[0] + def.cm[1]) / 2);
+  const sv = typeof gardenVariantSpawn === 'function' ? gardenVariantSpawn(def, cm0, b, m, { chum: !!at, frenzy: _gfsFrenzy() }) : { v: '', cm: cm0 }, cm = sv.cm;   // what it is, decided here and now: everyone sees the same one
   const go = _gfsSpot(b, p) || p;
   _gfs.u = (_gfs.u + 1) % 1000;
-  _gfsAdd({ u: _gfs.u, id, cm, x: p.x, y: p.y, tx: go.x, ty: go.y, band: b.key, life: GF_SCHOOL.life[0] + Math.random() * (GF_SCHOOL.life[1] - GF_SCHOOL.life[0]) });
+  _gfsAdd({ u: _gfs.u, id, v: sv.v, cm, x: p.x, y: p.y, tx: go.x, ty: go.y, band: b.key, life: GF_SCHOOL.life[0] + Math.random() * (GF_SCHOOL.life[1] - GF_SCHOOL.life[0]) });
   _gfs.dirty = true;
 }
 /** Every line in the water now: yours and, if you are the host, everyone's. Keyed by slot. */
@@ -324,7 +328,7 @@ function _gfsTell() {
   if (now - _gfs.sentAt < (_gfs.dirty ? GF_SCHOOL.msgGap : GF_SCHOOL.beat)) return;
   _gfs.sentAt = now; _gfs.dirty = false;
   const n10 = (v) => Math.max(0, Math.min(640, Math.round(v * 10)));
-  const l = [..._gfs.list.values()].slice(0, GF_SCHOOL.max).map(f => Object.assign({ u: f.u, e: f.id, c: Math.round(f.cm), x: n10(f.x), y: n10(f.y), tx: n10(f.tx), ty: n10(f.ty), st: f.st }, f.to != null ? { to: f.to } : {}, f.n ? { n: Math.min(9, f.n) } : {}));
+  const l = [..._gfs.list.values()].slice(0, GF_SCHOOL.max).map(f => Object.assign({ u: f.u, e: f.id, c: Math.round(f.cm), x: n10(f.x), y: n10(f.y), tx: n10(f.tx), ty: n10(f.ty), st: f.st }, f.v ? { v: f.v } : {}, f.to != null ? { to: f.to } : {}, f.n ? { n: Math.min(9, f.n) } : {}));
   _glhSend('all', 'fs', { l });
 }
 /** A guest hears the host's water. Anything not listed has left it. */
@@ -337,7 +341,7 @@ function _gfsIn(l) {
     if (!r || !Number.isInteger(r.u) || !gardenFishDef(r.e)) continue;   // (one this version does not know)
     seen.add(r.u);
     const f = _gfs.list.get(r.u), to = r.to == null ? null : r.to;
-    if (!f) { _gfsAdd({ u: r.u, id: r.e, cm: r.c, x: r.x / 10, y: r.y / 10, tx: r.tx / 10, ty: r.ty / 10, st: r.st, to, n: r.n }); continue; }
+    if (!f) { _gfsAdd({ u: r.u, id: r.e, v: r.v, cm: r.c, x: r.x / 10, y: r.y / 10, tx: r.tx / 10, ty: r.ty / 10, st: r.st, to, n: r.n }); continue; }
     f.x = r.x / 10; f.y = r.y / 10; f.tx = r.tx / 10; f.ty = r.ty / 10; f.st = r.st; f.to = to; f.n = r.n || 0;
   }
   for (const f of [..._gfs.list.values()]) if (!seen.has(f.u)) _gfsDrop(f);
