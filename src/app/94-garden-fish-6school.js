@@ -29,7 +29,7 @@ const GF_SCHOOL = Object.freeze({
     Object.freeze({ zone: 'deep', x0: 0.6, x1: 27.4, y0: 17.2, y1: 27.5, n: 1 }),
   ]),
   pond: 1, max: 20,                             // fish in each still pool; the most in the water at once (the wire takes 20). The owner, 1 Nov 2026: a fish should be a pleasant surprise, not everywhere all the time
-  tick: 0.25, beat: 2500, msgGap: 400,          // the clock (seconds); a list at least this often (ms), and never closer than this
+  tick: 0.25, beat: 5000, msgGap: 400, oldHostMs: 12000, // the clock (seconds); a list at least this often (ms: a guest carries each fish on between lists), never closer than this; how long a guest waits for a host's first list
   gap: Object.freeze([45, 100]), contestGap: 0.2, contestMore: 3, // seconds until the next fish in a band that is short of one; a contest fills up faster, with this many times the fish
   life: Object.freeze([90, 240]),              // seconds a fish stays before it swims off (so the hour and the season change what is about)
   reach: 1.7, lureReach: 0.5,                   // cells at which a fish notices a float; each point of a bait's lure adds this
@@ -43,12 +43,22 @@ const GF_SCHOOL = Object.freeze({
   biteGrace: 1.8,                               // seconds a guest's bite is held beyond its strike window: the message has to get there and back
 });
 const GF_ST = Object.freeze({ swim: 0, come: 1, nibble: 2, bite: 3, hooked: 4, bolt: 5 });
-const _gfs = { list: new Map(), u: 0, layer: null, clock: null, last: 0, key: '', sentAt: 0, dirty: false, hostAt: 0, band: new Map(), lines: new Map(), seen: new Map(), chum: new Map(), frenzyUntil: 0, stompSaid: false };
+const _gfs = { list: new Map(), u: 0, layer: null, clock: null, last: 0, key: '', sentAt: 0, dirty: false, hostAt: 0, hostSeen: false, liveAt: 0, band: new Map(), lines: new Map(), seen: new Map(), chum: new Map(), frenzyUntil: 0, stompSaid: false };
 
 /* ---------- whose water is it ---------- */
 function _gfsGuest() { return typeof _gll !== 'undefined' && _gll.role === 'visit' && typeof _glvLive === 'function' && _glvLive(); }
 /** This computer decides, unless it is a guest whose host has spoken lately (an older host never does). */
-function _gfsDecides() { return !(_gfsGuest() && Date.now() - _gfs.hostAt < 15000); }   // clock-ok: when the host was last heard
+function _gfsDecides() {
+  if (typeof _gll === 'undefined' || _gll.role !== 'visit') return true;
+  const t = Date.now();   // clock-ok: how long since this visit went live
+  // live: the host's water, always. Only a host that has said nothing for 12 seconds (an older version) leaves you a water of your own. Never two waters flipping: that looked like fish vanishing.
+  if (_gfsGuest()) { if (!_gfs.liveAt) _gfs.liveAt = t; return !_gfs.hostSeen && t - _gfs.liveAt > GF_SCHOOL.oldHostMs; }
+  _gfs.liveAt = 0;
+  if (_gfs.hostSeen && _glv.why === 'lost') return false;   // (reconnecting: their fish stay as they were)
+  if (_gfs.hostSeen) { _gfs.hostSeen = false; _gfsClear(); }
+  return true;
+}
+function _gfsClear() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); }
 function _gfsSlot() { return _gfsGuest() ? _glv.w : 0; }
 /** How many a water holds: few at the start, growing with your level and what you build for the lake, never many. */
 function _gfsWant(b, m) {
@@ -60,7 +70,7 @@ function _gfsWant(b, m) {
   if (m.tod === 'night' && b.zone !== 'pond' && b.zone !== 'shallow') n += W('night-lantern');
   return n;
 }
-function _gfsPlaceKey() { return typeof _gll === 'undefined' ? 'own' : _gll.role === 'visit' ? 'v|' + (_glv.fid || '') + '|' + (_gfsGuest() ? 1 : 0) : 'own'; }
+function _gfsPlaceKey() { return typeof _gll === 'undefined' ? 'own' : _gll.role === 'visit' ? 'v|' + (_glv.fid || '') : 'own'; }
 
 /* ---------- the shadows ---------- */
 function _gfsLen(cm) { return 10 + 5.2 * Math.sqrt(Math.max(1, Number(cm) || 1)); }   // stage units: a 5 cm minnow about 22 (half a cell), a 1 m carp 62, a 2.8 m sturgeon 97
@@ -111,7 +121,7 @@ function _gfsDrop(f) {
   const n = f.node; if (!n) return;
   if (gardenMotionOn()) { n.setAttribute('style', 'transition:opacity .5s'); n.setAttribute('opacity', '0'); setTimeout(() => n.remove(), 520); } else n.remove();
 }
-function _gfsReset() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); _gfs.lines.clear(); _gfs.seen.clear(); _gfs.chum.clear(); _gfs.hostAt = 0; _gfs.m = null; _gfs.dirty = true; }
+function _gfsReset() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); _gfs.lines.clear(); _gfs.seen.clear(); _gfs.chum.clear(); _gfs.hostAt = 0; _gfs.hostSeen = false; _gfs.liveAt = 0; _gfs.m = null; _gfs.dirty = true; }
 /** Once a frame: the shadows go where they are. Nothing is written for one out of view. */
 function _gfsFrame(dt) {
   if (!_gfs.clock && _gw.on) { _gfs.last = 0; _gfsClockStart(); _gfsClock(); }
@@ -254,7 +264,7 @@ function _gfsRun(dt) {
     if (f.st === GF_ST.swim) {
       f.life -= dt;
       if (f.life <= 0) { _gfsDrop(f); _gfs.dirty = true; continue; }
-      if (_gfsMove(f, dt)) { const go = _gfsSpot(byKey.get(f.band) || bands[0], f) || f; f.tx = go.x; f.ty = go.y; _gfs.dirty = true; }
+      if (_gfsMove(f, dt)) { const go = _gfsSpot(byKey.get(f.band) || bands[0], f) || f; f.tx = go.x; f.ty = go.y; }   // (a new place to swim to goes with the next list: nothing is lost by waiting, and it costs far fewer messages)
       if (f.band !== 'x' && byKey.get(f.band) && byKey.get(f.band).zone !== 'deep') for (const s of stomps) if (Math.hypot(f.x - s.x, (f.y - s.y) * 1.2) < E.noise && Math.random() < E.noiseKeen * dt) { _gfsBolt(f, byKey.get(f.band)); if (s.me) _gfsStompSaid(); break; }
       if (f.st !== GF_ST.swim) continue;
       if (f.cm < 40 && fins.some(h => h !== f && Math.hypot(h.x - f.x, h.y - f.y) < E.hunter) && Math.random() < dt) { _gfsBolt(f, byKey.get(f.band)); continue; }
@@ -320,7 +330,7 @@ function _gfsTell() {
 /** A guest hears the host's water. Anything not listed has left it. */
 function _gfsIn(l) {
   if (!_gfsGuest() || !Array.isArray(l)) return;
-  if (!_gfs.hostAt || Date.now() - _gfs.hostAt >= 15000) for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); _gfs.list.delete(f.u); }   // clock-ok: (what this screen made up until the host spoke)
+  if (!_gfs.hostSeen) { _gfsClear(); _gfs.hostSeen = true; }   // (what this screen made up until the host spoke)
   _gfs.hostAt = Date.now();   // clock-ok: when the host was last heard
   const seen = new Set();
   for (const r of l.slice(0, GF_SCHOOL.max)) {
