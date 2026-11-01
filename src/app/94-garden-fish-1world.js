@@ -333,7 +333,7 @@ function gardenWorldProps(sc, o) {
   if (typeof gardenLandWorldProps === 'function') for (const r of gardenLandWorldProps(sc, o)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // the land office and what has been built on the land
   // what has been built for the lake stands where it is (94-garden-fish-7gear.js). pointer-events: a click there is still a click on the water
   if (typeof gardenWorksArt === 'function') for (const r of gardenWorksArt(sc)) out.push(wrap('gd-prop-work', r.y, r.x, `<g pointer-events="none" transform="translate(${_gwN(r.x * cw)} ${_gwN(base + r.y * ch)})">${r.svg}</g>`, 'work-' + r.key));
-  if (typeof gardenCatchWorldArt === 'function') for (const r of gardenCatchWorldArt(sc, o)) out.push(wrap('gd-prop-work', r.z, r.x, r.svg, 'ca-' + r.key));   // spots, events, the rack: 94-garden-fish-9world.js
+  if (typeof gardenCatchWorldArt === 'function') for (const r of gardenCatchWorldArt(sc, o)) { const it = wrap('gd-prop-work', r.z, r.x, r.svg, 'ca-' + r.key); if (r.wide) it.html = it.html.replace(/ data-x="[^"]*"/, ''); out.push(it); }   // spots, events, the rack: 94-garden-fish-9world.js
   // the forest edge: big trees all down the east side, so the woods have a back wall
   const pal = (GART_PAL.leaf[sc.season] || GART_PAL.leaf.summer);
   const rnd = gardenRand('forest-edge');

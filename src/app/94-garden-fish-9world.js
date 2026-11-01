@@ -74,7 +74,7 @@ function _gcwRack(rk) {
 function gardenCatchWorldArt(sc, o) {
   o = o || {}; const out = []; let ca = {};
   try { ca = sc.ca || gardenCatchHere() || {}; } catch (e) { ca = {}; }
-  const push = (key, z, x, svg) => out.push({ key, z, x, svg: `<g pointer-events="none">${svg}</g>` });
+  const push = (key, z, x, svg, wide) => out.push({ key, z, x, wide, svg: `<g pointer-events="none">${svg}</g>` });   // (wide: as big as the lake, so it has no one place for the off-screen check to go by)
   const fed = new Set(ca.fd || []); let hot = null, list = [];
   try { const live = !sc.ca; if (live) { list = gardenEventsNow(); hot = gardenHotSpot(gardenHere().today); } } catch (e) { hot = null; }
   for (const s of GARDEN_SPOTS) {
@@ -82,9 +82,9 @@ function gardenCatchWorldArt(sc, o) {
     const [x, y] = _gcwP(s.x, s.y); let art = draw(s, o, ca);
     if (fed.has(s.id)) { const r = gardenRand('fed|' + s.id); for (let i = 0; i < 12; i++) art += `<circle cx="${_gcwN((r() - 0.5) * 50)}" cy="${_gcwN((r() - 0.5) * 18)}" r="1.1" fill="#e8c88a"/>`; }
     push('sp' + s.id + (fed.has(s.id) ? 'f' : '') + (s.id === 'lily-pads' ? Math.floor((Number(ca.rl) || 0) / 3) : ''), _GCW_FLAT.has(s.id) ? Math.ceil(s.y) - 3 : Math.ceil(s.y), s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${art}</g>`);
-    if (hot && hot.id === s.id) push('hot' + s.id, 28, s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${_gcwGulls(o)}</g>`);
+    if (hot && hot.id === s.id) push('hot' + s.id, Math.ceil(s.y) + 1, s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${_gcwGulls(o)}</g>`);
   }
-  for (const id of list) { const svg = _gcwEvent(id, sc, o); if (svg) push('ev' + id, id === 'festival' ? 13 : 29, 0, svg); }
+  for (const id of list) { const svg = _gcwEvent(id, sc, o); if (svg) push('ev' + id, id === 'festival' ? 13 : 29, 0, svg, true); }
   if (Array.isArray(ca.sg)) { const [sx, sy] = _gcwP(ca.sg[0] + 0.5, ca.sg[1] + 1); push('sugar' + ca.sg.join('-'), ca.sg[1] + 2, ca.sg[0], `<g transform="translate(${_gcwN(sx)} ${_gcwN(sy)})"><ellipse cx="0" cy="-18" rx="5.4" ry="9" fill="#6a3a14" fill-opacity=".85"/><path d="M-3 -10q1 5 0 8M3 -11q1 4 0 6" stroke="#6a3a14" stroke-width="1.4" fill="none" stroke-linecap="round"/><ellipse cx="-1.6" cy="-21" rx="1.5" ry="2.6" fill="#ffe9a8"/></g>`); }   // the sugar on a tree: it glistens
   if (gardenWorkOwned('rowing-boat')) { const bp = GARDEN_PROPS.find(q => q.id === 'boat'); if (bp) { const [bx, by] = _gcwP(bp.x + bp.w / 2, bp.y + 0.4); push('boatflag', Math.ceil(bp.y + bp.h), bp.x, `<g transform="translate(${_gcwN(bx)} ${_gcwN(by)})"><path d="M18 2V-22" stroke="#6e4c2a" stroke-width="1.8"/><path d="M18 -22l14 4l-14 4z" fill="#d8452a"/><path d="M-10 -3L16 6M10 -3L-16 6" stroke="#5a3a20" stroke-width="2" stroke-linecap="round"/></g>`); } }   // it is yours: a flag on the mast, and oars
   if (Array.isArray(ca.rk) && ca.rk.length) push('rk' + gardenHash(JSON.stringify(ca.rk)).toString(36), Math.ceil(GARDEN_CATCH_CELLS.rack.y), GARDEN_CATCH_CELLS.rack.x, _gcwRack(ca.rk));

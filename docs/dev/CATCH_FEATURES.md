@@ -54,11 +54,15 @@ Smaller, not counted above: **Get ready** on every fish in the book (what it nee
 
 ## Run and not run
 
-Run once in a sandbox with made-up data and no browser exceptions, before the last small edits: buying, setups, why-not words, spots, the event table, a landing (rack, record, job), letting go, the hall, the smoker and meal, the spawn plan, the host reading a fake guest's set, the art in the page, boat in and out, the snapshot round trip, the Tackle, Lake and Hall tabs.
+Run on the merged code in a sandbox with made-up data, no browser exceptions: setups, the words for a fish you lack the tackle for, spots, the event table, a landing (rack, record, job), letting go, the hall, the smoker and meal, a fake guest's set read by the host, the art in the page, boat in, across the water and out, the snapshot round trip, the Tackle, Lake and Hall tabs. The real reel was opened and stepped by hand: dart, leap and run were seen, and forcing tension to the top snapped the line and remembered the fish. Sulk was seen only in the simulation.
 
-The reel game was simulated in Node, 60 fights a case: a player who lets go in a run lands nearly everything; one who holds on snapped 31 of 60 pikes on plain line and 2 of 60 on braid. Minnows come in 49 to 53 times out of 60 for a simple bot.
+The reel game was also simulated in Node, 60 fights a case: a player who lets go in a run lands nearly everything; one who holds on snapped 31 of 60 pikes on plain line and 2 of 60 on braid. Minnows come in 49 to 53 times out of 60 for a simple bot.
 
-Not run: treasure maps, festival weigh-in, wanted board with friends, sugar, habitats in play, lantern bugs, pins, the second line, a guest's real visit, any fish with real `needs`, legends and the one that got away reeled in for real. The real reel was opened in the browser but the headless page ran too few frames to play it through, so snapping there was not seen. The last fog, lily pad and button placement edits were not looked at again.
+Ran before the merge only, then their code changed around them: the spawn plan and the Get ready popover. Get ready moved to the new book's entry page and that spot was not opened.
+
+Not run: treasure maps, festival weigh-in, wanted board with friends, sugar, habitats in play, lantern bugs, pins, the second line, a guest's real visit, fish spawning at a spot with real `needs` over time, legends and the one that got away reeled in for real, buying through the page's buttons.
+
+Not looked at: everything after the first screenshots. Fog did not show in those: the off-screen check was hiding it, so it now has no `data-x`; that fix, the rounder lily pads and the moved buttons have not been looked at. The hall's tank and the lake tab were only read as text.
 
 ## Next, if wanted
 
