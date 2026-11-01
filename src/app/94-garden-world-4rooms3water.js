@@ -242,7 +242,7 @@ function _grbSwingNear() {
 function _grbResolve(b) {
   const M = _grm.me, d = Math.hypot(b.x - M.x, (b.y - M.y) * 1.3) / GRW.cw;
   const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < gardenNetOdds(b, d, _grm.keys.has('shift') || !!b.crept);
-  if (!ok) { gardenLiveFx('bug', 'miss'); b.state = 'flee'; b.fleeT = 2; b.needPick = true; _grmSay('It got away!', 2200); return; }
+  if (!ok) { gardenLiveFx('bug', 'miss'); b.state = 'flee'; b.fleeT = 2; b.needPick = true; _grmSay('It got away.', 2200); return; }
   const claim = gardenLiveBugClaim(b);
   if (claim === 'wait') return;
   if (claim === 'lost') { b.state = 'flee'; b.fleeT = 2; b.needPick = true; _grmSay('Somebody else netted that one.'); return; }

@@ -175,14 +175,7 @@ function wdTalk(o) {
 function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = null; T.el.remove(); if (T.o.onClose && !quiet) { try { T.o.onClose(); } catch (e) { console.error('[garden wonder]', e); } } else if (T.o.onClose && quiet === true && T.o.closeQuiet) T.o.onClose(); }
 /** Walked away from whoever you were talking to: they stop. */
 function _wdTalkCheck() { const T = _wd.talk; if (!T) return; const a = T.o.at; if (a && !wdNear(a.x, a.y, 6)) wdTalkClose(); else if (!T.el.isConnected) { const box = _wdBox(); if (box) box.appendChild(T.el); } }
-function wdWhisper(text, ms) {
-  const box = _wdBox(); if (!box) return;
-  if (_wd.wh) { clearTimeout(_wd.wh.t); _wd.wh.el.remove(); }
-  const el = document.createElement('div'); el.className = 'wd-whisper'; el.setAttribute('role', 'status'); el.textContent = text;
-  box.appendChild(el);
-  const W = { el, t: setTimeout(() => { el.classList.add('is-out'); setTimeout(() => el.remove(), 900); if (_wd.wh === W) _wd.wh = null; }, ms || 6000) };
-  _wd.wh = W;
-}
+function wdWhisper(text, ms) { gardenMessage(text, { ms }); }
 /** A page to read, or something found: the kit's own dialog, since you asked to see it. */
 function wdPage(o) {
   openDialog({

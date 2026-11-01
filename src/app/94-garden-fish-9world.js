@@ -231,7 +231,7 @@ function gardenThingFrame() {
       _gct.seen = 0; c.thSlot = T.slot; c.th = (Number(c.th) || 0) + 1;
       if (c.th === 5) { const today = _gdToday(); _gdG().led['ca.' + today + '.' + _gdUid('')] = { d: today, k: 'ca', i: { 'decor:thing-cast': 1 }, n: 1 }; }
       _gdSave(); gardenCatchShowSoon();
-      if (typeof _gdgNote === 'function') _gdgNote(c.th === 1 ? 'Did you see that?' : c.th <= GARDEN_THING_CLUES.length ? 'There it goes again. It is in the lake page now.' : 'There it goes again.', icon('eye'));
+      if (typeof _gdgNote === 'function') _gdgNote(c.th === 1 ? 'Something moved on the lake.' : c.th <= GARDEN_THING_CLUES.length ? 'There it goes again. It is in the lake page now.' : 'There it goes again.', icon('eye'));
     }
   }
 }

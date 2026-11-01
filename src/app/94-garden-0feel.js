@@ -84,52 +84,112 @@ function _gfSound(kind) {
 const _GF_X = '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true"><circle cx="14" cy="14" r="12.5" fill="#d8352a" stroke="#fff" stroke-width="2"/><path d="M9.4 9.4l9.2 9.2M18.6 9.4l-9.2 9.2" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
 const _GF_LOCK = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#fff" stroke-width="1.6"/><rect x="3.5" y="7" width="9" height="7" rx="1.6" fill="#fff"/></svg>';
 /*
- * WORDS IN THE WORLD. The owner: "no more annoying messages at the bottom ... messages only if needed, but it looks good and thematic". In the garden, what used to be a bar is said by your own figure, a bubble over its head that
- * only you see (gardenSay). What needs an answer or is a real problem hangs on a wooden sign at the top of the stage, with its buttons (gardenSign). Away from the garden, or with a dialog open, it is the app's ordinary toast.
- *   gardenToast(msg, o)   takes toast's arguments and chooses
+ * THE MESSAGE LINE. The owner: messages belong "top middle of the screen", plain, not said by your character. Every short message in the garden, a room or a friend's garden goes through here:
+ *   gardenMessage(text, o)        one line, top middle, fading by itself. A newer one replaces it. o: { kind: 'err', ms, action, action2, retry, log: false }. Falsy when the garden is not showing
+ *   gardenMessageHold(key, text, o)  a line that stays while it applies (fishing). o: { urgent, tone: 'now' | 'err' }. urgent: shown at once, and passing messages wait in Recent messages until it ends
+ *   gardenMessageDrop(key)        that line no longer applies
+ *   gardenMessageHost()           the column it sits in, so the Nature book card and the connection strip stack with it
+ *   gardenToast(msg, o)           takes toast's arguments: the line in the garden, the app's toast anywhere else, and for a running wait with its Cancel
  */
-function _gfWorldOpen() { return typeof _gw !== 'undefined' && _gw.on && !!_gw.box && _gw.box.isConnected && typeof _gdOnPage === 'function' && _gdOnPage() && !document.querySelector('.modal, .ee-room'); }
-function gardenSay(text, ms) {
-  const t = String(text || '').replace(/\s+/g, ' ').trim();
-  if (!t || t.length > 110 || !_gfWorldOpen() || !_gw.node || typeof _gllMe === 'undefined') return false;
-  const wait = Math.max(2600, Math.min(6000, Number(ms) || 1400 + t.length * 60));
-  _gllMe.say = { text: t, until: Date.now() + wait };   // clock-ok: how long a bubble stays
-  _gllSayDraw(_gllMe);
-  clearTimeout(_gllMe.sayT); _gllMe.sayT = setTimeout(() => { _gllMe.say = null; _gllSayDraw(_gllMe); }, wait);
-  return true;
+const _gmsg = { host: null, el: null, temp: null, hold: null, shown: null, t: 0, outT: 0 };
+function _gmsgWhere() {
+  const room = document.querySelector('.ee-room'); if (room) return room;   // (a room is drawn over the stage)
+  if (typeof _gw === 'undefined' || !_gw.on || !_gw.box || !_gw.box.isConnected || typeof _gdOnPage !== 'function' || !_gdOnPage()) return null;
+  return document.querySelector('.modal') ? document.body : _gw.box;   // (a panel of the garden's own covers the stage: the line goes over it)
 }
-function gardenSign(text, o) {
+function gardenMessageHost() {
+  const at = _gmsgWhere(); if (!at) return null;
+  if (!_gmsg.host) { _gmsg.host = document.createElement('div'); _gmsg.host.className = 'gd-msgs'; }
+  const h = _gmsg.host;
+  if (h.parentNode !== at) at.appendChild(h);
+  h.classList.toggle('is-over', at === document.body);
+  h.classList.toggle('is-room', at.classList.contains('ee-room'));
+  return h;
+}
+function _gmsgWait(M) { const len = Math.max(2600, Math.min(12000, 1400 + M.text.length * 60)); return Math.max(len, Number(M.ms) || 0, M.acts.length || M.kind === 'err' ? 10000 : 0); }
+function _gmsgArm() {
+  clearTimeout(_gmsg.t); clearTimeout(_gmsg.outT);
+  const M = _gmsg.temp; if (!M || _gmsg.shown !== M) return;
+  if (_gmsg.el) _gmsg.el.classList.remove('is-out');
+  _gmsg.t = setTimeout(() => {
+    if (_gmsg.temp !== M) return;
+    if (_gmsg.hold) { _gmsg.temp = null; _gmsgPaint(); return; }   // (what is still going on comes straight back)
+    if (_gmsg.el) _gmsg.el.classList.add('is-out');
+    _gmsg.outT = setTimeout(() => { if (_gmsg.temp === M) { _gmsg.temp = null; _gmsgPaint(); } }, 450);
+  }, _gmsgWait(M));
+}
+function _gmsgPaint() {
+  const H = _gmsg.hold, M = H && H.urgent ? H : _gmsg.temp || H;
+  if (!M) { _gmsg.shown = null; clearTimeout(_gmsg.t); clearTimeout(_gmsg.outT); if (_gmsg.el) { _gmsg.el.remove(); _gmsg.el = null; } return; }
+  const host = gardenMessageHost(); if (!host) return;
+  if (_gmsg.shown === M && _gmsg.el && _gmsg.el.parentNode === host) return;
+  const fresh = !_gmsg.el || !_gmsg.el.isConnected;
+  let el = _gmsg.el;
+  if (!el) { el = _gmsg.el = document.createElement('div'); el.onpointerenter = () => clearTimeout(_gmsg.t); el.onpointerleave = _gmsgArm; }
+  if (el.parentNode !== host) host.appendChild(el);
+  clearTimeout(_gmsg.outT);
+  // (a fresh line eases in; a change of words on a line already there, or "Now!", is simply there)
+  el.className = 'gd-msg' + (M.kind === 'err' ? ' is-bad' : '') + (M.tone === 'now' ? ' is-now' : '') + (M.acts.length ? ' has-acts' : '') + (fresh && !M.urgent ? ' is-in' : '');
+  el.setAttribute('role', M.kind === 'err' ? 'alert' : 'status');
+  el.textContent = '';
+  const p = document.createElement('span'); p.textContent = M.text; el.appendChild(p);
+  for (const a of M.acts) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label;
+    b.onclick = (ev) => { ev.stopPropagation(); if (_gmsg.temp === M) { _gmsg.temp = null; _gmsgPaint(); } try { a.run(); } catch (e) { console.error('[garden]', e); } };
+    el.appendChild(b);
+  }
+  _gmsg.shown = M;
+  _gmsgArm();
+}
+function gardenMessage(text, o) {
   o = o || {};
-  const box = _gw.box;
-  let n = box.querySelector(':scope > .gd-sign');
-  if (n) { clearTimeout(n._t); n.remove(); }
-  n = document.createElement('div'); n.className = 'gd-sign' + (o.kind === 'err' ? ' is-bad' : ''); n.setAttribute('role', o.kind === 'err' ? 'alert' : 'status');
-  const p = document.createElement('span'); p.textContent = String(text); n.appendChild(p);
-  const close = () => { clearTimeout(n._t); n.remove(); };
-  const btn = (label, run) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.onclick = (ev) => { ev.stopPropagation(); close(); try { run(); } catch (e) { console.error('[garden]', e); } }; n.appendChild(b); };
-  if (o.action && o.action.label && typeof o.action.run === 'function') btn(o.action.label, o.action.run);
-  if (typeof o.retry === 'function') btn('Try again', o.retry);
-  box.appendChild(n);
-  n._t = setTimeout(close, Number(o.timeout) || (o.kind === 'err' || o.retry ? 10000 : 7000));
+  let t = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+  if (!t || !_gmsgWhere()) return false;
+  let kind = o.kind === 'err' ? 'err' : '';
+  if (kind) {
+    if (typeof presenceCalmMatch === 'function' && presenceCalmMatch(t)) kind = '';   // (a device of yours is only asleep: that is not a problem)
+    else if (typeof netPlainError === 'function') t = netPlainError(t);
+  }
+  const acts = [];
+  for (const a of [o.action, o.action2]) {
+    if (!a || !a.label || typeof a.run !== 'function') continue;
+    if (typeof _toastIsPlainUndo === 'function' && _toastIsPlainUndo(a) && typeof undoMark === 'function') {
+      let mark = null;   // (taken after this tick, as a toast does: a save made just after the call is the step it undoes)
+      setTimeout(() => { mark = undoMark(); }, 0);
+      acts.push({ label: a.label, run: () => (mark ? undoMarked(mark) : undo()) });
+    } else acts.push(a);
+  }
+  if (!acts.length && typeof o.retry === 'function') acts.push({ label: 'Try again', run: o.retry });
+  if (o.log !== false && typeof _toastRemember === 'function') _toastRemember(t, kind, o.icon || (kind === 'err' ? 'circle-alert' : 'info'));
+  const M = { text: t, kind, acts, ms: o.ms };
+  const close = Object.assign(() => { if (_gmsg.temp === M) { _gmsg.temp = null; _gmsgPaint(); } }, { update: () => {}, progress: () => {} });
+  if (_gmsg.hold && _gmsg.hold.urgent && !kind && !acts.length) return close;   // ("Now!" wins over chatter)
+  const T = _gmsg.temp;
+  if (T && T.text === t && !acts.length && !T.acts.length && _gmsg.shown === T && _gmsg.el && _gmsg.el.isConnected) { T.ms = o.ms; _gmsgArm(); return close; }   // (the same words again: they stay a little longer)
+  _gmsg.temp = M;
+  _gmsgPaint();
   return close;
 }
+function gardenMessageHold(key, text, o) {
+  if (!text) { gardenMessageDrop(key); return; }
+  o = o || {};
+  const H = _gmsg.hold, urgent = !!o.urgent, kind = o.tone === 'err' ? 'err' : '', tone = o.tone || '';
+  if (H && H.key === key && H.text === text && H.urgent === urgent && H.tone === tone && (_gmsg.shown !== H || (_gmsg.el && _gmsg.el.isConnected))) return;
+  _gmsg.hold = { key, text, urgent, kind, tone, acts: [] };
+  if (urgent && _gmsg.temp && !_gmsg.temp.acts.length && _gmsg.temp.kind !== 'err') _gmsg.temp = null;
+  _gmsgPaint();
+}
+function gardenMessageDrop(key) { if (!_gmsg.hold || _gmsg.hold.key !== key) return; _gmsg.hold = null; _gmsgPaint(); }
+function gardenMessageClear() { _gmsg.hold = _gmsg.temp = null; _gmsgPaint(); }
 function gardenToast(msg, o) {
   const opt = o || {};
-  if (opt.busy) return toast(msg, opt);
-  if (!_gfWorldOpen()) {
-    if (opt.later || typeof _gw === 'undefined' || !_gw.on || typeof _gdOnPage !== 'function' || !_gdOnPage()) return toast(msg, opt);
-    setTimeout(() => gardenToast(msg, Object.assign({}, opt, { later: true })), 500);   // (a panel of the garden's own is just closing)
-    return () => {};
-  }
-  const plain = opt.kind !== 'err' && !opt.action && !opt.retry;
-  if (plain && gardenSay(msg, opt.timeout)) return () => {};
-  return gardenSign(msg, opt);
+  if (opt.busy || !_gmsgWhere()) return toast(msg, opt);
+  return gardenMessage(msg, { kind: opt.kind, ms: opt.timeout, action: opt.action, action2: opt.action2, retry: opt.retry, icon: opt.icon }) || toast(msg, opt);
 }
 function gameDeny(target, opts) {
   const o = opts || {};
   try {
-    _gfSay(o.say);
-    if (o.say) gardenSay(o.say);
+    if (o.say && !gardenMessage(o.say, { log: false })) _gfSay(o.say);
     const el = target && target.getBoundingClientRect ? target : null;
     if (el) { _gfFlash(el); _gfShake(el); }
     const page = document;

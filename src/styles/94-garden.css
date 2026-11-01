@@ -438,8 +438,6 @@ html[data-motion="reduced"] .gd-burst { display: none; }
 .gd-ringp::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--surface); }
 .gd-ringp b { position: relative; font-size: 10px; font-variant-numeric: tabular-nums; }
 .gd-ringp b .i { width: 14px; height: 14px; color: var(--sw-green); }
-.gd-notes { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 3; display: flex; flex-direction: column; gap: 6px; pointer-events: none; align-items: center; }
-.gd-note { display: flex; align-items: center; gap: 8px; padding: 5px 14px 5px 8px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-md); font-size: var(--text-sm); animation: gd-rise .4s cubic-bezier(.2, .9, .3, 1) both; }
 .gd-levelup { position: absolute; left: 50%; top: 34%; transform: translate(-50%, -50%); z-index: 8; display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 260px; padding: 18px 28px; border-radius: var(--radius-xl); background: var(--surface); box-shadow: var(--shadow-lg); text-align: center; animation: gd-rise .5s cubic-bezier(.2, .9, .3, 1) both; }
 .gd-levelup b { font-size: var(--text-xl, 22px); }
 .gd-levelup p { margin: 0; color: var(--fg-muted); }
@@ -682,9 +680,6 @@ html.gd-immersive #main { padding: 0; }
 @keyframes gd-hint-in { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* the world's own notes and the fishing bar sit clear of the HUD */
-.gd-full .gd-notes { top: 14px; }
-@media (max-width: 1180px) { .gd-full .gd-notes { top: 72px; max-width: 92%; } }   /* below the card and the menu once they would meet */
-.gd-full .gd-note { color: var(--gh-ink); background: var(--gh-glass-strong); border: 0; }
 .gd-page.is-fishing .gd-toolbar.gd-hotbar, .gd-page.is-fishing .gd-quick, .gd-page.is-fishing .gd-mini, .gd-page.is-fishing .gd-bagpop { opacity: 0; pointer-events: none; transition: opacity .25s; }
 .is-lifted { opacity: .4; }
 

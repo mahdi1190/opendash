@@ -42,15 +42,8 @@ function gardenLiveCheer(e, v) {
   else if (e === 'ach') { if (/^[A-Za-z0-9_-]{1,64}$/.test(String(v || '')) && typeof _pfAutoBadgeOk === 'function' && _pfAutoBadgeOk(String(v))) gardenLiveFx('cheer', 'ach', { i: String(v) }); }   // (only the groups a profile's automatic showcase may show: never money, places, health or memories)
   else if (e === 'photo') gardenLiveFx('cheer', 'photo');
 }
-/* ---------- the corner feed ---------- */
-function _gllFeed(text) {
-  const box = typeof _gw !== 'undefined' ? _gw.box : null; if (!box) return;
-  let f = box.querySelector(':scope > .gll-feed');
-  if (!f) { f = document.createElement('div'); f.className = 'gll-feed'; f.setAttribute('role', 'status'); box.appendChild(f); }
-  while (f.children.length >= 3) f.firstChild.remove();
-  const l = document.createElement('div'); l.className = 'gll-feed-l'; l.textContent = text; f.appendChild(l);
-  setTimeout(() => l.remove(), 5600);
-}
+/** What a friend or the game did: the message line, like every other message. */
+function _gllFeed(text) { gardenMessage(text); }
 function _gllOffscreen(A) { try { return typeof _gwInView === 'function' ? !_gwInView(A.x, A.y, 1) : false; } catch (e) { return false; } }
 const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', craft: 'craft', crop: 'crop', gear: 'gear' });
 /* ---------- they did it ---------- */

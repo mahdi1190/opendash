@@ -134,11 +134,12 @@ function _glyPaint(force) {
 
   if (_gll.role !== 'visit' && _gly.stale) { btn = 'relay'; if (!say) say = 'Your connection to friends needs a quick update'; else say += '. Your connection to friends needs a quick update'; tone = tone || 'is-wait'; }
   const sig = say + '|' + tone + '|' + btn;
-  let el = _gw.box.querySelector(':scope > .gll-link');
+  const top = gardenMessageHost();
+  let el = top ? top.querySelector(':scope > .gll-link') : null;
   if (!say) { if (el) el.remove(); _gly.sig = ''; return; }
   if (el && sig === _gly.sig) return;
   _gly.sig = sig;
-  if (!el) { el = document.createElement('div'); el.className = 'gll-link'; el.setAttribute('role', 'status'); _gw.box.appendChild(el); }
+  if (!el) { el = document.createElement('div'); el.className = 'gll-link'; el.setAttribute('role', 'status'); if (!top) return; top.prepend(el); }
   el.className = 'gll-link ' + tone; el.textContent = '';
   const t = document.createElement('span'); t.textContent = say; el.appendChild(t);
   if (btn) {
