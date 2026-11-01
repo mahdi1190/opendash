@@ -77,7 +77,7 @@ function gardenPalMeet(fid, species) {
     if (lv > was && lv >= 2) {
       const f = typeof _gscFriend === 'function' ? _gscFriend(fid) : null, who = f ? _gscFirst(fid) : 'a friend';
       try { _ptNote('pal-' + lv + '-' + _ptHash(fid).toString(36), { d: today }); } catch (err) { /* the journal is full */ }
-      if (typeof toast === 'function') toast(`${_glpName()} and ${who}’s pet are ${lv >= 3 ? 'best pals' : 'pals'} now.`, { icon: 'heart', kind: 'ok', timeout: 5000 });
+      if (typeof toast === 'function') gardenToast(`${_glpName()} and ${who}’s pet are ${lv >= 3 ? 'best pals' : 'pals'} now.`, { icon: 'heart', kind: 'ok', timeout: 5000 });
     }
     if (typeof saveUI === 'function') saveUI();
     return lv;

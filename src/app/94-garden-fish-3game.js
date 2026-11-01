@@ -69,7 +69,8 @@ const _GW_FISH_SAY = { cast: 'Casting…', wait: 'Waiting for a fish…', bite: 
 function _gwFishHud(F) {
   const box = _gdgBox(); if (!box) return;
   let say = _GW_FISH_SAY[F.state] || '';
-  if (F.state === 'wait' && F.mood) say = F.mood;
+  if (F.state === 'wait' && F.mood && F.saidMood !== F.mood) { F.saidMood = F.mood; if (/shadow/.test(F.mood)) gardenSay(F.mood); }   // (the float says the rest: what would have been a bar is a word from your figure, once)
+  if (F.state === 'wait') say = '';
   let h = box.querySelector('.gd-fishhud');
   if (!h) {
     h = document.createElement('div'); h.className = 'gd-fishhud';

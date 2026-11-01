@@ -156,7 +156,7 @@ function _gscArrived(d, from) {
   else if (d.t === 'visit') { if (_gscFun() !== 'full') return; text = `${who} is visiting your garden`; ic = 'footprints'; }
   if (!text) return;
   if (!action && !/^garden(:|$)/.test(String(state.view || ''))) action = { label: 'See', run: () => setView('garden:friends') };
-  toast(text, { icon: ic, timeout: 6000, action });
+  gardenToast(text, { icon: ic, timeout: 6000, action });
 }
 
 /* ---------- publishing your garden ---------- */
@@ -167,9 +167,10 @@ function _gscSnapBody() {
   if (!s || !Array.isArray(s.plants)) return null;
   const v = _gsc.data && _gsc.data.tally ? _gsc.data.tally : null;
   const body = { v: 1, lv: Math.max(1, Math.min(999, Number(s.lv) || 1)), season: s.season, areas: s.areas.slice(0, 12), plants: s.plants, decor: s.decor, heart: Math.max(0, Math.min(6, Number(s.heart) || 0)), at: Math.floor(Number(s.at) || _gscNow()) };
-  for (const k of ['wv', 'ls', 'lf', 'lc', 'lz', 'lr', 'wk', 'sh', 'tk', 'wd', 'dz', 'bk', 'rf', 'tg']) if (s[k] !== undefined) body[k] = s[k];   // the land, what is built for the lake, the showcase and the pet's tricks: what you own shows on a saved copy too (an older version drops these). Not the time zone or weather: those are for a live visit
+  for (const k of ['wv', 'ls', 'lf', 'lc', 'lz', 'lr', 'wk', 'sh', 'tk', 'wd', 'dz', 'bk', 'rf', 'tg', 'ca', 'tz', 'sr', 'ss', 'wx']) if (s[k] !== undefined) body[k] = s[k];   // the land, what is built for the lake, the showcase and the pet's tricks: what you own shows on a saved copy too (an older version drops these). Not the time zone or weather: those are for a live visit
   if (v && Number(v['in.like']) > 0) body.hearts = Math.min(1e7, Number(v['in.like']));
   for (const k of ['cv', 'sp']) if (s[k] != null) body[k] = s[k];   // the saved copy too: can they take a catch, and their best specimens
+  if (JSON.stringify(body).length > _GSC_BYTES) delete body.ca;   // (what the lake shows goes before anything in the garden)
   if (typeof gardenDesignSnapTrim === 'function') gardenDesignSnapTrim(body, _GSC_BYTES);   // a design gives up its ground and paths before anyone's decorations go
   let json = JSON.stringify(body);
   if (json.length > _GSC_BYTES) {
@@ -257,11 +258,11 @@ function gardenSocialBoosted(id) { const e = state.garden && state.garden.led &&
 function gardenSocialUnwrap(id) {
   const d = _gsc.data;
   const a = d ? [...(Array.isArray(d.pending) ? d.pending : []), ...(Array.isArray(d.inbox) ? d.inbox : [])].find(x => x && x.id === id && x.t === 'gift' && x.dir === 'in') : null;
-  if (!a) { toast('That parcel is unwrapped already, or not here any more.', { icon: 'gift' }); return false; }
-  if (typeof gardenReady !== 'function' || !gardenReady() || !gardenEnsure()) { toast('Your garden is still waking up: try again in a moment.', { icon: 'sprout' }); return false; }
+  if (!a) { gardenToast('That parcel is unwrapped already, or not here any more.', { icon: 'gift' }); return false; }
+  if (typeof gardenReady !== 'function' || !gardenReady() || !gardenEnsure()) { gardenToast('Your garden is still waking up: try again in a moment.', { icon: 'sprout' }); return false; }
   const g = typeof _gdG === 'function' ? _gdG() : state.garden;
   if (!g.led['gg.' + id]) {
-    if (!gsocGiftOk(a.k, a.item)) { toast('This parcel holds something your Freeflo does not know yet: update Freeflo to open it.', { icon: 'gift' }); return false; }
+    if (!gsocGiftOk(a.k, a.item)) { gardenToast('This parcel holds something your Freeflo does not know yet: update Freeflo to open it.', { icon: 'gift' }); return false; }
     g.led['gg.' + id] = { d: _gscToday(), k: 'gg', i: { [a.k + ':' + a.item]: 1 }, n: 1 };
     if (a.k === 'decor' && !g.disc[a.item]) g.disc[a.item] = _gscToday();
     if ((a.k === 'fish' || a.k === 'bug') && typeof gardenCatchReceived === 'function') gardenCatchReceived(a.k, a.item);   // 2.22: it goes in your book too
@@ -272,7 +273,7 @@ function gardenSocialUnwrap(id) {
   _gscApi('/api/garden-social/applied', { ids: [id] }).then(() => _gscReloadSoon(300)).catch(() => {});
   const what = _gscA(_gscItemName(a.k, a.item));
   const plant = a.k === 'seed', catchy = a.k === 'fish' || a.k === 'bug';
-  toast(`From ${_gscFirst(a.f)}: ${what}. It is in your bag.`, { icon: 'gift', kind: 'ok', timeout: 7000,
+  gardenToast(`From ${_gscFirst(a.f)}: ${what}. It is in your bag.`, { icon: 'gift', kind: 'ok', timeout: 7000,
     action: catchy ? { label: 'See it', run: () => gardenCatchOpen('bag') } : { label: plant ? 'Plant it' : 'Place it', run: () => { try { const p = g.prefs || (g.prefs = {}); if (plant) { p.mode = 'tend'; p.tool = 'seed'; p.seed = a.item; } else p.mode = 'decorate'; if (typeof saveUI === 'function') saveUI(); } catch (e) { /* prefs are a nicety */ } setView('garden'); } } });
   if (_gscFun() === 'full' && typeof _gdpBurst === 'function' && /^garden/.test(String(state.view || ''))) { try { _gdpBurst('ribbon'); } catch (e) { /* a flourish */ } }
   _gscRepaintSoon();
@@ -306,12 +307,12 @@ async function gardenSocialAct(friendId, t, extra, o) {
       const who = _gscFirst(friendId);
       const tail = xp ? ` · +${xp} garden XP` : '';
       const msg = t === 'water' ? `You watered ${who}'s ${_gscPlantName(extra && extra.p, true)}${tail}` : t === 'like' ? `You gave ${who}'s garden a heart${tail}` : t === 'react' ? `${(gsocReact(extra && extra.e) || {}).e || ''} sent to ${who}${tail}`.trim() : '';
-      if (msg) toast(r.queued && !r.sent ? msg + ' (it goes when they are reachable)' : msg, { icon: t === 'water' ? 'droplet' : t === 'like' ? 'heart' : 'smile', kind: 'ok', timeout: 3500 });
+      if (msg) gardenToast(r.queued && !r.sent ? msg + ' (it goes when they are reachable)' : msg, { icon: t === 'water' ? 'droplet' : t === 'like' ? 'heart' : 'smile', kind: 'ok', timeout: 3500 });
     }
     _gscReloadSoon(600);
     return r;
   } catch (e) {
-    if (!o.quiet) toast(e && e.message ? e.message : 'That did not go through.', { kind: e && e.code === 'CAP' ? '' : 'err', icon: e && e.code === 'CAP' ? 'clock' : undefined, retry: e && (e.code === 'CAP' || e.code === 'NOT_SHARED' || e.code === 'GONE') ? undefined : () => gardenSocialAct(friendId, t, extra, o) });
+    if (!o.quiet) gardenToast(e && e.message ? e.message : 'That did not go through.', { kind: e && e.code === 'CAP' ? '' : 'err', icon: e && e.code === 'CAP' ? 'clock' : undefined, retry: e && (e.code === 'CAP' || e.code === 'NOT_SHARED' || e.code === 'GONE') ? undefined : () => gardenSocialAct(friendId, t, extra, o) });
     return null;
   }
 }
@@ -320,12 +321,12 @@ function _gscAfterUndo(msg, ic, run, undo, ms) {
   let undone = false;
   const wait = ms || 6000;
   const timer = setTimeout(() => { if (!undone) run(); }, wait);
-  toast(msg, { icon: ic, timeout: wait, action: { label: 'Undo', run: () => { undone = true; clearTimeout(timer); if (undo) undo(); toast('Undone: nothing was sent', { kind: 'ok', icon: 'undo-2' }); } } });
+  gardenToast(msg, { icon: ic, timeout: wait, action: { label: 'Undo', run: () => { undone = true; clearTimeout(timer); if (undo) undo(); gardenToast('Undone: nothing was sent', { kind: 'ok', icon: 'undo-2' }); } } });
 }
 /** Leave a seed or a decoration from your bag in a friend's garden. It leaves your bag at once (Undo puts it back). */
 function gardenSocialGive(friendId, k, id) {
-  if (!gsocGiftOk(k, id)) { toast('That can not be given as a gift.', { icon: 'gift' }); return; }
-  if (typeof gardenHas !== 'function' || gardenHas(k + ':' + id) < 1) { toast(`You have no ${_gscItemName(k, id)} left to give.`, { icon: 'gift' }); return; }
+  if (!gsocGiftOk(k, id)) { gardenToast('That can not be given as a gift.', { icon: 'gift' }); return; }
+  if (typeof gardenHas !== 'function' || gardenHas(k + ':' + id) < 1) { gardenToast(`You have no ${_gscItemName(k, id)} left to give.`, { icon: 'gift' }); return; }
   const g = typeof _gdG === 'function' ? _gdG() : state.garden;
   const key = 'gs.' + _gscToday() + '.' + Math.floor(_gscNow()).toString(36) + Math.floor(Math.random() * 1e6).toString(36);
   g.led[key] = { d: _gscToday(), k: 'gs', i: { [k + ':' + id]: -1 }, n: 1 };
@@ -334,19 +335,19 @@ function gardenSocialGive(friendId, k, id) {
   const who = _gscFirst(friendId), what = _gscA(_gscItemName(k, id));
   _gscAfterUndo(`Wrapping ${what} for ${who}…`, 'gift', async () => {
     const r = await gardenSocialAct(friendId, 'gift', Object.assign({ k, item: id }, typeof gardenWonderHideAt === 'function' ? gardenWonderHideAt() : null), { quiet: true });
-    if (!r) { back(); toast(`The parcel for ${who} did not go: it is back in your bag.`, { kind: 'err', retry: () => gardenSocialGive(friendId, k, id) }); return; }
-    toast(`Parcel left in ${who}'s garden${GSOC_XP.gift ? ` · +${GSOC_XP.gift} garden XP` : ''}`, { icon: 'gift', kind: 'ok' });
+    if (!r) { back(); gardenToast(`The parcel for ${who} did not go: it is back in your bag.`, { kind: 'err', retry: () => gardenSocialGive(friendId, k, id) }); return; }
+    gardenToast(`Parcel left in ${who}'s garden${GSOC_XP.gift ? ` · +${GSOC_XP.gift} garden XP` : ''}`, { icon: 'gift', kind: 'ok' });
   }, back);
 }
 /** Sign a friend's guestbook (one line, plain text). input: the field, given its text back if it does not go. */
 function gardenSocialSign(friendId, text, input) {
   const t = gsocText(text);
-  if (!t) { toast('Write a few words first.', { icon: 'feather' }); return false; }
+  if (!t) { gardenToast('Write a few words first.', { icon: 'feather' }); return false; }
   const who = _gscFirst(friendId);
   _gscAfterUndo(`Signing ${who}'s guestbook…`, 'feather', async () => {
     const r = await gardenSocialAct(friendId, 'sign', { txt: t }, { quiet: true });
-    if (!r) { _gscDraftBack(friendId, t, input); toast(`Your note to ${who} did not go. It is back in the box.`, { kind: 'err', retry: () => gardenSocialSign(friendId, t, input) }); return; }
-    toast(`Signed ${who}'s guestbook${GSOC_XP.sign ? ` · +${GSOC_XP.sign} garden XP` : ''}`, { icon: 'feather', kind: 'ok' });
+    if (!r) { _gscDraftBack(friendId, t, input); gardenToast(`Your note to ${who} did not go. It is back in the box.`, { kind: 'err', retry: () => gardenSocialSign(friendId, t, input) }); return; }
+    gardenToast(`Signed ${who}'s guestbook${GSOC_XP.sign ? ` · +${GSOC_XP.sign} garden XP` : ''}`, { icon: 'feather', kind: 'ok' });
     _gscRepaintSoon();
   }, () => _gscDraftBack(friendId, t, input));
   return true;
@@ -364,7 +365,7 @@ function gardenSocialShares(friendId) {
   return true;
 }
 function gardenSocialSetShare(friendId, on) {
-  if (typeof permsSetScope !== 'function') { toast('Sharing choices live in Friends: update Freeflo to change them here.', { icon: 'info' }); return; }
+  if (typeof permsSetScope !== 'function') { gardenToast('Sharing choices live in Friends: update Freeflo to change them here.', { icon: 'info' }); return; }
   permsSetScope(friendId, 'garden', { mode: on ? 'on' : 'off' });
   if (on) _gscPublishSoon(3000);
 }

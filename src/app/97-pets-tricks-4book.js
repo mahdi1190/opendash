@@ -50,8 +50,8 @@ function petBookPage(root, o) {
     const w = _ptcWallet(); if (w) { const co = _ptCostIcon('coins', w.coins, 16); co.classList.add('ptb-purse'); top.appendChild(co); }
     const shown = rows.filter(r => !_ptb.tier || r.tier === _ptb.tier);
     list.replaceChildren();
-    const pg = pagedList({ items: shown, pageSize: o.panel ? 15 : 20, cls: 'ptb-pages', render: (r) => card(r) });
-    list.appendChild(pg);
+    if (o.panel) list.classList.add('gpg-box');
+    gardenPager(list, { key: 'tricks:' + (_ptb.tier || ''), items: shown, grid: 'ptb-cards', row: 128, rowSm: 118, rows: 4, draw: (r) => card(r) });
     paintSide(rows.find(r => r.id === _ptb.sel));
   };
   const card = (r) => {

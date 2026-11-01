@@ -6,9 +6,9 @@
      gardenVariantEvent(spec, o)     a catch rare enough to stop what you are doing: a card over the garden
      gardenSpecVisitRow(snap)        a friend's best specimens on their visit card
    ============================================================ */
-const _gvb = { view: 'catches', kind: '', sort: 'rare', tier: '', id: '', n: 24 };
-const _GVB_VIEWS = Object.freeze([['catches', 'My best catches'], ['variants', 'Variants'], ['friends', 'Friends board']]);
-function _gvbSet(k, v) { const ae = document.activeElement; if (ae && ae.tagName === 'SELECT') ae.blur(); _gvb[k] = v; _gvb.n = 24; _gdxRepaintTab(); }   // (a pop-up does not repaint under a focused list: gardenPopupRefresh)
+const _gvb = { view: 'catches', kind: '', sort: 'rare', tier: '', id: '', vtier: '' };
+const _GVB_VIEWS = Object.freeze([['catches', 'My best catches'], ['records', 'Records'], ['variants', 'Variants'], ['friends', 'Friends board']]);
+function _gvbSet(k, v) { const ae = document.activeElement; if (ae && ae.tagName === 'SELECT') ae.blur(); _gvb[k] = v; _gdxRepaintTab(); }   // (a pop-up does not repaint under a focused list: gardenPopupRefresh)
 function _gvbPill(v) { const t = gardenVariantTier(v); return t ? _gdpEl('span', 'gd-rar gvb-t-' + t.id, t.label) : null; }
 
 function gardenSpecTab(el) {
@@ -19,11 +19,10 @@ function gardenSpecTab(el) {
   const bar = _gdpEl('span', 'gdc-bar gvb-bar'); bar.innerHTML = `<i style="width:${Math.round(found / all * 100)}%"></i>`; nums.appendChild(bar);
   nums.appendChild(_gdpEl('small', 'muted', rows.length ? `${rows.length} catch${rows.length === 1 ? '' : 'es'} kept. Each has its own size, weight, day and number. When there are too many, the best stay.` : 'Everything you catch is kept here, with its own size, weight, day and number.'));
   head.appendChild(nums);
+  head.appendChild(_gdxChips(_GVB_VIEWS, _gvb.view, (k) => _gvbSet('view', k)));
   el.appendChild(head);
-  const top = _gdpEl('div', 'gdc-filters');
-  top.appendChild(_gdxChips(_GVB_VIEWS, _gvb.view, (k) => _gvbSet('view', k)));
-  el.appendChild(top);
-  if (_gvb.view === 'variants') _gvbVariants(el);
+  if (_gvb.view === 'records') { _gvbRecords(el, rows); if (!rows.length) el.appendChild(_gdpEl('p', 'muted gdc-none', 'Nothing here yet.')); }
+  else if (_gvb.view === 'variants') _gvbVariants(el);
   else if (_gvb.view === 'friends') _gvbFriends(el);
   else _gvbCatches(el, rows);
 }
@@ -66,7 +65,6 @@ function _gvbCard(r) {
 }
 function _gvbCatches(el, rows) {
   if (!rows.length) { const e = _gdpEl('div', 'card gdc-empty'); e.innerHTML = `${icon('fish')}<div><b>Nothing here yet</b><br><span class="muted">Catch a fish or a bug and it will be here. Now and then one is something special: a glowing perch, say, or a golden beetle.</span></div>`; el.appendChild(e); return; }
-  _gvbRecords(el, rows);
   const bar = _gdpEl('div', 'gdc-filters gvb-filters');
   bar.appendChild(_gdxChips([['', 'Fish and bugs'], ['f', 'Fish'], ['b', 'Bugs']], _gvb.kind, (k) => { _gvb.id = ''; _gvbSet('kind', k); }));
   bar.appendChild(_gdxChips([['rare', 'Rarest'], ['big', 'Biggest'], ['new', 'Newest']], _gvb.sort, (k) => _gvbSet('sort', k)));
@@ -87,36 +85,32 @@ function _gvbCatches(el, rows) {
   if (_gvb.tier) list = list.filter(r => (_gvb.tier === 'plain' ? !gardenVariantTier(r.v) : (gardenVariantTier(r.v) || {}).id === _gvb.tier));
   const by = _gvb.sort === 'big' ? (r) => (r.k === 'b' ? (Number(r.c) || 0) / 10 : Number(r.c) || 0) : _gvb.sort === 'new' ? (r) => Number(r.n) || 0 : gardenSpecScore;
   list = list.slice().sort((a, b) => by(b) - by(a));
-  const grid = _gdpEl('div', 'gd-grid gdc-grid gvb-grid');
-  for (const r of list.slice(0, _gvb.n)) { const c = _gvbCard(r); if (c) grid.appendChild(c); }
-  el.appendChild(grid);
-  if (list.length > _gvb.n) { const more = _gdpEl('div', 'gd-shop-more'); more.appendChild(_gdpBtn(`Show more (${list.length - _gvb.n})`, { run: () => { _gvb.n += 24; _gdxRepaintTab(); } })); el.appendChild(more); }
-  if (!list.length) el.appendChild(_gdpEl('p', 'muted gdc-none', 'Nothing here with those filters.'));
+  const place = ['best', _gvb.kind, _gvb.sort, _gvb.tier, _gvb.id].join(':');
+  gardenPager(el, { key: place, items: list, grid: 'gd-grid gdc-grid gvb-grid gpg-gear', row: 238, rowSm: 224, draw: _gvbCard, none: 'Nothing here with those filters.' });
 }
 
 /* ---------- every variant, and how to find it ---------- */
 function _gvbVariants(el) {
   const g = _gdG(), intro = _gdpEl('p', 'muted gdc-intro');
-  intro.textContent = 'Any fish or bug can turn out to be one of these. It is decided the moment it appears, so you can spot it in the water. The chances below are real: they are what the game uses.';
+  intro.textContent = 'Any fish or bug can turn out to be one of these, and you can spot it in the water. The chances below are the real ones.';
   el.appendChild(intro);
-  for (const t of Object.values(GARDEN_VARIANT_TIERS)) {
-    const list = GARDEN_VARIANTS.filter(V => V.tier === t.id), have = list.filter(V => g.vl[V.id]).length;
-    el.appendChild(_gdpEl('h3', 'gdc-h gvb-tier-h', `${t.label} · ${have} of ${list.length}`));
-    const grid = _gdpEl('div', 'gd-grid gdc-grid gvb-grid');
-    for (const V of list) {
-      const l = g.vl[V.id], kind = V.for === 'bug' ? 'bug' : 'fish', c = _gdpEl('div', 'gd-card gvb-var' + (l ? ' gvb-c-' + t.id : ' is-unknown'));
-      const onId = l && l.i && (gardenFishDef(l.i) || gardenBugDef(l.i)) ? l.i : (kind === 'bug' ? 'small-tortoiseshell' : 'perch');
-      const k2 = gardenFishDef(onId) ? 'fish' : 'bug';
-      const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = gardenCatchSvg(k2, onId, 96, { uid: 'vv' + V.id, v: V.id, silhouette: !l, glow: false }); c.appendChild(art);
-      const b = _gdpEl('div', 'gd-card-t');
-      b.appendChild(_gdpEl('b', null, l ? V.name : '???'));
-      const p = _gvbPill(V.id); if (p) b.appendChild(p);
-      if (l) { b.appendChild(_gdpEl('small', 'gd-facts', `${Number(l.n) || 0} caught · first on ${gardenSpecDay(l.d)}`)); if (V.blurb) b.appendChild(_gdpEl('small', 'muted', V.blurb)); }
-      for (const line of gardenVariantHow(V)) b.appendChild(_gdpEl('small', 'muted gvb-how', line));
-      c.appendChild(b); grid.appendChild(c);
-    }
-    el.appendChild(grid);
-  }
+  // one kind of rarity at a time, what you have found first
+  const tiers = Object.values(GARDEN_VARIANT_TIERS), cur = tiers.some(t => t.id === _gvb.vtier) ? _gvb.vtier : tiers[0].id;
+  el.appendChild(_gdxChips(tiers.map(t => [t.id, `${t.label} ${GARDEN_VARIANTS.filter(V => V.tier === t.id && g.vl[V.id]).length}/${GARDEN_VARIANTS.filter(V => V.tier === t.id).length}`]), cur, (k) => { _gvb.vtier = k; _gdxRepaintTab(); }));
+  const t = tiers.find(x => x.id === cur), place = 'best:variants:' + cur, cmp = (a, b) => (g.vl[a.id] ? 0 : 1) - (g.vl[b.id] ? 0 : 1) || String(a.name).localeCompare(b.name);
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, GARDEN_VARIANTS.filter(V => V.tier === t.id), V => V.id, cmp), grid: 'gd-grid gdc-grid gvb-grid gpg-gear', row: 216, rowSm: 204, draw: (V) => {
+    const l = g.vl[V.id], kind = V.for === 'bug' ? 'bug' : 'fish', c = _gdpEl('div', 'gd-card gvb-var' + (l ? ' gvb-c-' + t.id : ' is-unknown'));
+    const onId = l && l.i && (gardenFishDef(l.i) || gardenBugDef(l.i)) ? l.i : (kind === 'bug' ? 'small-tortoiseshell' : 'perch');
+    const k2 = gardenFishDef(onId) ? 'fish' : 'bug';
+    const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = gardenCatchSvg(k2, onId, 96, { uid: 'vv' + V.id, v: V.id, silhouette: !l, glow: false }); c.appendChild(art);
+    const b = _gdpEl('div', 'gd-card-t');
+    b.appendChild(_gdpEl('b', null, l ? V.name : '???'));
+    const p = _gvbPill(V.id); if (p) b.appendChild(p);
+    if (l) { b.appendChild(_gdpEl('small', 'gd-facts', `${Number(l.n) || 0} caught · first on ${gardenSpecDay(l.d)}`)); if (V.blurb) b.appendChild(_gdpEl('small', 'muted', V.blurb)); }
+    for (const line of gardenVariantHow(V)) b.appendChild(_gdpEl('small', 'muted gvb-how', line));
+    c.appendChild(b);
+    return c;
+  } });
 }
 
 /* ---------- the friends board ---------- */

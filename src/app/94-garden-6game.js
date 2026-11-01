@@ -119,6 +119,7 @@ function gardenGamePainted(m) {
   if (pv && gardenFun() !== 'off') for (const v of m.visitors) if (!pv.has(v.id) && _gdG().disc[v.id] && !(typeof gardenLifeOwns === 'function' && gardenLifeOwns(v.id))) { const nm = v.def.name; _gdgNote(/[’']s /.test(nm) ? `${nm} visited!` : `${/^[aeiou]/i.test(nm) ? 'An' : 'A'} ${nm.toLowerCase()} visited!`, gardenIconSvg(v.id, { kind: 'visitor', px: 28 })); }
 }
 function _gdgNote(text, svg) {
+  if (gardenSay(text)) return;
   const box = _gdgBox(); if (!box) return;
   let host = box.querySelector('.gd-notes');
   if (!host) { host = document.createElement('div'); host.className = 'gd-notes'; host.setAttribute('role', 'status'); box.appendChild(host); }
@@ -208,7 +209,7 @@ function gardenNextStep(m) {
   if (goal) return { icon: goal.def.icon || 'target', title: 'Today’s goal: ' + goal.label, text: `${Math.min(goal.have, goal.n)} of ${goal.n} done. It pays ${gardenDailyCoins(goal.def)} coins.`, target: null, btn: null, key: 'goal' + goal.id };
   // 8. earn
   const tid = typeof gameFocusNextTask === 'function' ? gameFocusNextTask() : null;
-  return { icon: 'timer', title: 'Earn coins by working', text: 'Focus on a task with the timer: about 12 coins an hour, plus a bonus when you finish it.', target: null, btn: tid && typeof gameFocusStart === 'function' ? go('Start a focus timer', () => { gameFocusStart(tid); toast('Focus timer started. Coins arrive as the minutes add up.', { icon: 'timer' }); }) : go('Open my tasks', () => setView('list')), key: 'earn' };
+  return { icon: 'timer', title: 'Earn coins by working', text: 'Focus on a task with the timer: about 12 coins an hour, plus a bonus when you finish it.', target: null, btn: tid && typeof gameFocusStart === 'function' ? go('Start a focus timer', () => { gameFocusStart(tid); gardenToast('Focus timer started. Coins arrive as the minutes add up.', { icon: 'timer' }); }) : go('Open my tasks', () => setView('list')), key: 'earn' };
 }
 /* ---------- today's income ---------- */
 function gardenEconCard(m) {
@@ -233,7 +234,7 @@ function gardenEconCard(m) {
   det.addEventListener('toggle', () => { _gdp.econOpen = det.open; });
   c.appendChild(det);
   const tid = typeof gameFocusNextTask === 'function' ? gameFocusNextTask() : null;
-  if (tid && typeof gameFocusStart === 'function' && typeof gameFocusRun === 'function' && !gameFocusRun()) c.appendChild(_gdpBtn('Start a focus timer', { icon: 'timer', run: () => { gameFocusStart(tid); toast('Focus timer started. Coins arrive as the minutes add up.', { icon: 'timer' }); } }));
+  if (tid && typeof gameFocusStart === 'function' && typeof gameFocusRun === 'function' && !gameFocusRun()) c.appendChild(_gdpBtn('Start a focus timer', { icon: 'timer', run: () => { gameFocusStart(tid); gardenToast('Focus timer started. Coins arrive as the minutes add up.', { icon: 'timer' }); } }));
   return c;
 }
 

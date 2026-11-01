@@ -172,7 +172,7 @@ function _gdzDec(g) { const m = new Map(); for (const row of g || []) for (let i
 
 /* ---------- entering and leaving ---------- */
 function gardenDesignEnter() {
-  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) { toast('You can only design your own garden.', { now: true, icon: 'paintbrush' }); return; }
+  if (typeof gardenVisitOn === 'function' && gardenVisitOn()) { gardenToast('You can only design your own garden.', { now: true, icon: 'paintbrush' }); return; }
   if (typeof _gwFishBusy === 'function' && _gwFishBusy() && typeof _gwFishCancel === 'function') _gwFishCancel();
   const T = _gdzT(), g = _gdG(), box = _gdp.root && _gdp.root.querySelector('.gd-stagebox'); if (!box) return;
   const z = g.dz && g.dz.lay ? g.dz : { cur: 'l1', lay: { l1: { n: 'My garden', d: gardenDesignEmpty() } } };
@@ -209,7 +209,7 @@ function _gdzSameAsSaved() { const T = _gdzT(); return !T.hist.length && !Object
 function gardenDesignCancel() {
   const T = _gdzT(), keep = { draft: T.draft, dm: T.dm, lay: T.lay, hist: T.hist }, had = !_gdzSameAsSaved();
   _gdzClose(); _gdzStageSaved();
-  if (had) toast('Your changes are gone. The garden is as it was.', { now: true, icon: 'undo-2', timeout: 7000, action: { label: 'Bring them back', run: () => { gardenDesignEnter(); Object.assign(_gdzT(), keep); _gdzStage(); gardenDesignPanel(); } } });
+  if (had) gardenToast('Your changes are gone. The garden is as it was.', { now: true, icon: 'undo-2', timeout: 7000, action: { label: 'Bring them back', run: () => { gardenDesignEnter(); Object.assign(_gdzT(), keep); _gdzStage(); gardenDesignPanel(); } } });
 }
 function _gdzStageSaved() { gardenDesignShow(gardenDesignSaved(_gdG())); _gd.rev++; _gd.memoKey = ''; gardenRepaintSoon(); }
 function gardenDesignKeep() {
@@ -227,7 +227,7 @@ function gardenDesignKeep() {
   const left = (wired.paths.length || 0) + (trim ? trim.paths : 0), cells = (wired.cells || 0) + (trim ? trim.cells : 0);
   const lost = left || cells ? ` It is too big to send whole: friends will not see ${[left ? `${left} of your paths` : '', cells ? `${cells} squares of ground` : ''].filter(Boolean).join(' or ')}.` : '';
   const stuck = fails.length ? ` ${fails.join(', ')} could not move there and stayed put.` : '';
-  toast('Your garden is saved. Friends see it when they visit.' + lost + stuck, { now: true, icon: 'check', timeout: lost || stuck ? 12000 : 6000, action: { label: 'Undo', run: () => { const gg = _gdG(); gg.dz = JSON.parse(was); gardenDesignShow(gardenDesignSaved(gg)); for (const [uid, x, y] of backs) gardenMoveDecor(uid, x, y); _gdSave(); _gdEmit('landshow', {}); } } });
+  gardenToast('Your garden is saved.' + lost + stuck, { now: true, icon: 'check', timeout: lost || stuck ? 12000 : 6000, action: { label: 'Undo', run: () => { const gg = _gdG(); gg.dz = JSON.parse(was); gardenDesignShow(gardenDesignSaved(gg)); for (const [uid, x, y] of backs) gardenMoveDecor(uid, x, y); _gdSave(); _gdEmit('landshow', {}); } } });
 }
 
 /* ---------- layouts ---------- */

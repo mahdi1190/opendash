@@ -58,7 +58,7 @@ function _gpRiddleOpen() {
         const s = _gpRiddleState(); if (s.g.includes(x.id)) return;
         s.g.push(x.id); if (x.id === A.id) s.w = 1;
         gpSet('rd.' + _gdToday(), s);
-        if (s.w) { const r = gpPay('riddle', { tickets: 7 - s.g.length, xp: 3 }); gpTone([523, 659, 784, 1047]); const n = gpPaidLine(r); if (n) toast(`Solved. ${n}.`, { icon: 'ticket' }); }
+        if (s.w) { const r = gpPay('riddle', { tickets: 7 - s.g.length, xp: 3 }); gpTone([523, 659, 784, 1047]); const n = gpPaidLine(r); if (n) gardenToast(`Solved. ${n}.`, { icon: 'ticket' }); }
         paint();
       };
       const fill = () => {

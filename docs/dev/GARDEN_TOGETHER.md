@@ -365,6 +365,12 @@ Not built: a guest's own rod does not change how a fish behaves (it decides how 
 
 The owner's own online status is left as they set it: `presence` is off by default for every friend, and that is why a friend shows offline until a message arrives.
 
+**Everything else about the garden** (2.54; `_glhWorldCheck`). Plants and decorations go as `gl:d`. Whatever else a snapshot says (land, works, the saved design, painted buildings, rooms, the lake, wonders, shared projects, weather, the season) has no message of its own: every 3 seconds the host's page compares it with what everyone last got, and on a difference everyone gets the whole garden. Nothing has to remember to say it changed. A new snapshot field needs four things: `gardenSnapshot`, `GARDEN_SCHEMA`, `gardenSnapshotClean`, and the list in `_gscSnapBody` for the saved copy. The server's `gardenSnapshotClean` only has what `lib/friends/garden.mjs` loads: a cleaner in another file means that file goes in the list too.
+
+**Words in the world** (`gardenToast`, `gardenSay`, `gardenSign`, `94-garden-0feel.js`). In the garden a message is a bubble over your own figure that only you see. What needs an answer or is a real problem hangs on a wooden sign at the top. Away from the garden, or with a dialog open, it is the ordinary toast. The connection's line shows only when something is wrong.
+
+`fx use {e: bell | wish | collect | machine, x, y}`: someone set something going in the world. Each screen plays it; what it gives stays theirs.
+
 ## 22. What you own shows (2.39)
 
 `94-garden-fish-7gear.js`. **The rule for anything that can be bought or unlocked, now and from now on: it appears in the world or on the figure, and friends see it, live and on a saved copy.** A bonus that is only a number on a card is not finished. The owner, 1 November 2026: "I want to see if my friend has a cool new rod."

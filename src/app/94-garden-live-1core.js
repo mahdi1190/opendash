@@ -188,13 +188,16 @@ function _gllSayDraw(A) {
   const root = A.root; if (!root) return;
   const old = root.querySelector(':scope > .gll-say'); if (old) old.remove();
   const s = A.say; if (!s || Date.now() >= s.until) return;   // clock-ok: how long a bubble stays
-  const row = GL_PHRASES.find(p => p.id === s.id); if (!row) return;
+  // a phrase from the table, or (your own figure, on your own screen) a few words of your own: gardenSay. Set with textContent, on no wire
+  const row = s.text ? null : GL_PHRASES.find(p => p.id === s.id); if (!row && !s.text) return;
+  const lines = [];
+  for (const word of String(s.text || row.t).split(/\s+/)) { const last = lines[lines.length - 1]; if (last != null && (last + ' ' + word).length <= 34) lines[lines.length - 1] = last + ' ' + word; else lines.push(word); }
   const g = _gllSvgEl('g', 'gll-say'); g.setAttribute('transform', 'translate(0 -74)');
-  const w = row.t.length * 5.4 + 14;
-  const r = _gllSvgEl('rect', 'gll-say-b'); r.setAttribute('x', String(-w / 2)); r.setAttribute('y', '-19'); r.setAttribute('width', String(w)); r.setAttribute('height', '17'); r.setAttribute('rx', '8');
+  const w = Math.max(...lines.map(l => l.length)) * 5.4 + 14, h = 17 + (lines.length - 1) * 12;
+  const r = _gllSvgEl('rect', 'gll-say-b'); r.setAttribute('x', String(-w / 2)); r.setAttribute('y', String(-2 - h)); r.setAttribute('width', String(w)); r.setAttribute('height', String(h)); r.setAttribute('rx', '8');
   const tail = _gllSvgEl('path', 'gll-say-b'); tail.setAttribute('d', 'M-4 -3 L0 3 L4 -3Z');
-  const t = _gllSvgEl('text', 'gll-say-t'); t.setAttribute('text-anchor', 'middle'); t.setAttribute('y', '-7'); t.textContent = row.t;
-  g.append(r, tail, t);
+  g.append(r, tail);
+  lines.forEach((l, i) => { const t = _gllSvgEl('text', 'gll-say-t'); t.setAttribute('text-anchor', 'middle'); t.setAttribute('y', String(-7 - (lines.length - 1 - i) * 12)); t.textContent = l; g.appendChild(t); });
   root.appendChild(g);
 }
 /** You, in your own garden or on a visit: your figure's node is made again whenever the stage is painted (94-garden-world-0walk.js asks for the bubble back). */
@@ -266,7 +269,7 @@ function _gllApplyPosts() {
     const theirs = debit && debit.to === p.f;
     if (p.why === 'back') {
       // (something that was waiting for them could not be done: it is back in your bag, once, and you are told)
-      if (theirs && debit.q && !debit.ok && typeof toast === 'function') toast(`${_gscFirst(p.f)}'s garden could not take that${debit.p && (gardenPlant(debit.p) || gardenDecor(debit.p)) ? ': your ' + (gardenPlant(debit.p) || gardenDecor(debit.p)).name.toLowerCase() + (debit.t === 'water' ? ' was not watered' : ' is back in your bag') : ''}.`, { icon: 'undo-2', now: true, timeout: 6000 });
+      if (theirs && debit.q && !debit.ok && typeof toast === 'function') gardenToast(`${_gscFirst(p.f)}'s garden could not take that${debit.p && (gardenPlant(debit.p) || gardenDecor(debit.p)) ? ': your ' + (gardenPlant(debit.p) || gardenDecor(debit.p)).name.toLowerCase() + (debit.t === 'water' ? ' was not watered' : ' is back in your bag') : ''}.`, { icon: 'undo-2', now: true, timeout: 6000 });
       if (theirs) { delete g.led['gl.o.' + p.i]; if (g.gv[p.i]) delete g.gv[p.i]; changed = true; }
       g.led[key] = { d: today, k: 'gl', n: 0 }; done.push(p.id); changed = true;
       continue;
@@ -305,7 +308,7 @@ function _gllApplyPosts() {
       }
       g.led[key] = { d: today, k: 'gl', i: items, n: 0 }; done.push(p.id); changed = true;
       const first = Object.entries(items)[0];
-      if (first && typeof toast === 'function') { const m = /^crop:(.+)$/.exec(first[0]), def = m ? gardenPlant(m[1]) : null; toast(`From ${_gscFirst(p.f)}: ${first[1]} ${def ? def.name.toLowerCase() : 'things'} in your basket.`, { icon: 'shopping-basket', kind: 'ok', timeout: 5000 }); }
+      if (first && typeof toast === 'function') { const m = /^crop:(.+)$/.exec(first[0]), def = m ? gardenPlant(m[1]) : null; gardenToast(`From ${_gscFirst(p.f)}: ${first[1]} ${def ? def.name.toLowerCase() : 'things'} in your basket.`, { icon: 'shopping-basket', kind: 'ok', timeout: 5000 }); }
     }
   }
   if (changed) _gscSaveGarden();

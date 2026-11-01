@@ -279,7 +279,7 @@ function _gsbSeedMenu(anchor, sp, x, y) {
 async function _gsbPlant(sp, x, y, plantId) {
   const def = gardenPlant(plantId);
   if (!def || !gsocBedPlantOk(def)) return;
-  if (typeof gardenHas !== 'function' || gardenHas('seed:' + plantId) < 1) { toast(`No ${def.name} seeds left: the garden shop has more.`, { icon: 'sprout' }); return; }
+  if (typeof gardenHas !== 'function' || gardenHas('seed:' + plantId) < 1) { gardenToast(`No ${def.name} seeds left: the garden shop has more.`, { icon: 'sprout' }); return; }
   const me = tgMe(), id = tgNewId('b'), today = _gscToday();
   const variants = (def.look && Array.isArray(def.look.v) ? def.look.v.length : 0) || 1;
   // the seed (and the usual planting XP) come from your own garden: a ledger entry Undo takes back
@@ -292,7 +292,7 @@ async function _gsbPlant(sp, x, y, plantId) {
   const ok = await tgEdit(sp.id, ops, { undo: false });
   const giveBack = () => { const gg = typeof _gdG === 'function' ? _gdG() : state.garden; if (gg.led[lk]) { delete gg.led[lk]; _gscSaveGarden(); } };
   if (!ok) { giveBack(); return; }
-  toast(`Planted ${_gscA(def.name.toLowerCase().replace(/^the /, ''))} in the shared bed`, { icon: 'sprout', timeout: 6000, action: { label: 'Undo', run: () => { giveBack(); tgEdit(sp.id, [{ op: 'del', path: ['bed', id] }, ...ops.slice(1).map(o => ({ op: 'del', path: o.path }))], { undo: false, toast: 'Undone: the seed is back in your bag', icon: 'undo-2' }); } } });
+  gardenToast(`Planted ${_gscA(def.name.toLowerCase().replace(/^the /, ''))} in the shared bed`, { icon: 'sprout', timeout: 6000, action: { label: 'Undo', run: () => { giveBack(); tgEdit(sp.id, [{ op: 'del', path: ['bed', id] }, ...ops.slice(1).map(o => ({ op: 'del', path: o.path }))], { undo: false, toast: 'Undone: the seed is back in your bag', icon: 'undo-2' }); } } });
 }
 async function _gsbWater(sp, list) {
   const me = tgMe(), now = Date.now(), today = _gscToday();   // clock-ok: a register's time, like every space edit
@@ -324,7 +324,7 @@ function _gsbCelebrate(sp, plants) {
     if (_gsb.celebrated.has(key) || tgSeen(key)) continue;
     _gsb.celebrated.add(key);
     tgMarkSeen(key);
-    setTimeout(() => toast(`The shared ${p.def.name.toLowerCase().replace(/^the /, '')} is in bloom. Well tended, all of you.`, { icon: 'flower', kind: 'ok' }), 300);
+    setTimeout(() => gardenToast(`The shared ${p.def.name.toLowerCase().replace(/^the /, '')} is in bloom. Well tended, all of you.`, { icon: 'flower', kind: 'ok' }), 300);
     break;
   }
 }

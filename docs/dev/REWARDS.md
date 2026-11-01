@@ -198,3 +198,7 @@ No new state keys and no sync change. Work's goods are worked out, like seed pac
 ## Adding a reward
 
 One row: `GR_DID` plus a one-line `gardenRewardDid('id')` where it happens, or `GR_DAILY` for anything the ledger already records, or `GR_ONCE` for a milestone (its count comes from `gardenRewardCtx`). No positions anywhere here: sections and trails go by id.
+
+## The early gift
+
+A wrapped present near where you start, in your own garden only (94-garden-wonder-7gift.js). Opened once, on any device: 50,000 coins, enough experience for level 20, building materials, better rods and nets, bait, seeds, tickets and pet treats. All numbers are in `GARDEN_EARLY_GIFT`; set `on` to false to stop giving it.

@@ -23,7 +23,7 @@ function gardenSnapAsk() {
   if (!gardenSnapCan() || typeof _gw === 'undefined' || !_gw.on) return false;
   const t = Date.now();   // clock-ok: a rate window
   if (_gls.job) return false;
-  if (t - _gls.mine < GL_SNAP.gap * 1000) { if (typeof toast === 'function') toast('One group photo at a time. Try again in a moment.', { icon: 'camera', timeout: 3000 }); return false; }
+  if (t - _gls.mine < GL_SNAP.gap * 1000) { if (typeof toast === 'function') gardenToast('One group photo at a time. Try again in a moment.', { icon: 'camera', timeout: 3000 }); return false; }
   _gls.mine = t;
   const x = Math.max(0, Math.min(GARDEN_WORLD.cols - 1, Math.round(_gw.px))), y = Math.max(0, Math.min(GARDEN_WORLD.rows - 1, Math.round(_gw.py))), id = _gllNewId();
   gardenLiveFx('snap', 'ask', { i: id, x, y });
@@ -90,8 +90,8 @@ async function _glsShoot(job) {
     const blob = await _glsBlob(frame);
     const who = _gll.role === 'host' ? [...new Set([..._gll.actors.values()].map(A => String(A.f || '')).filter(Boolean))] : [];
     await memPhotoKeep(blob, { iso: _gllToday(), ts: Clock.now(), kind: 'group', at: _gll.role === 'visit' ? String(_glv.fid || '') : '', who });
-    if (typeof toast === 'function') toast('Group photo kept in your Memories', { icon: 'camera', kind: 'ok', timeout: 6000, action: { label: 'See it', run: () => setView('memories:photos') } });
+    if (typeof toast === 'function') gardenToast('Group photo kept in your Memories', { icon: 'camera', kind: 'ok', timeout: 6000, action: { label: 'See it', run: () => setView('memories:photos') } });
   } catch (e) {
-    if (typeof toast === 'function') toast('The group photo could not be kept.', { icon: 'camera', kind: 'err', timeout: 5000 });
+    if (typeof toast === 'function') gardenToast('The group photo could not be kept.', { icon: 'camera', kind: 'err', timeout: 5000 });
   }
 }

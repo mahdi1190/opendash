@@ -19,7 +19,12 @@ function gardenLiveFx(c, e, o) {
     if (_gll.role === 'host' && _glh.on && _glhAnyone()) _glhSend('all', 'fx', body);
   } catch (err) { /* only a message */ }
 }
-function gardenLivePet(c, e) { gardenLiveFx(c, e); }
+function gardenLivePet(c, e) {
+  if (_gll.role === 'host' && !(typeof _glhLooking === 'function' && _glhLooking())) return;
+  // (what you did to it goes at once; what it does by itself, one clip at most every few seconds. Each screen's copy goes on being a pet in between)
+  if (c === 'pet' && e !== 'pat' && e !== 'eat') { const t = Date.now(); if (t - (_gll.petAt || 0) < 6000) return; _gll.petAt = t; }   // clock-ok: spacing
+  gardenLiveFx(c, e);
+}
 /** You have stopped and are about to do something where you stand: if that is not quite where you last said you were going, they hear it now. */
 function _gllGoNow() {
   if (typeof _gw === 'undefined') return;
@@ -59,6 +64,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'roam') { if (typeof _gllRoamAdd === 'function') _gllRoamAdd(e); return; }
   if (c === 'cheer') { _gllCheerFx(A, e, ev); return; }
   if (c === 'hall') { if (typeof _eeHear === 'function') _eeHear(A, ev); return; }
+  if (c === 'use') { _gllUseFx(A, e, ev); return; }
   if (c === 'snap') { if (typeof _glsHear === 'function') _glsHear(A, ev); return; }   // (a group photo: 94-garden-live-7snap.js)
   if (c === 'sync') { if (e === 'ask') { if (typeof _glyAsked === 'function') _glyAsked(A); } else if (e === 'away' || e === 'back') { if (typeof _glyAwayIn === 'function') _glyAwayIn(A, e === 'away'); } else if (typeof _glyAtIn === 'function') _glyAtIn(A, ev); return; }   // (staying in step: 94-garden-live-8sync.js)
   if (c === 'fs') { if (typeof _gfsHeard === 'function') _gfsHeard(A, ev); return; }   // (the fish at a guest's line: the host decides)
@@ -92,6 +98,14 @@ function _gllFxPlay(A, ev) {
     setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; const now = A.root && A.root.querySelector('.gll-name'); if (now) now.style.display = ''; }, holdMs);
     if (typeof _fxSound === 'function') _fxSound('sparkle');
   }
+}
+/** Something someone set going in the world: their figure does it, and everyone hears and sees it there. Nothing else changes: what it gives is theirs alone. */
+function _gllUseFx(A, e, ev) {
+  _gllPose(A, 'pick', 760);
+  if (e === 'bell') { const S = typeof _wdi !== 'undefined' && _wdi.S ? _wdi.S.bell : null; if (S && typeof _wdBellRing === 'function') _wdBellRing(S, true); return; }
+  if (_gllOffscreen(A)) return;
+  _gllFloat(_gw.svg, ev.x, ev.y - 1, { wish: '✨', collect: '🧺', machine: '⚙️' }[e] || '', '');
+  if (typeof _fxSound === 'function') _fxSound(e === 'wish' ? 'splash' : 'pop');
 }
 /** Somebody's moment: they cheer, a spark goes up and one line in the corner says what. An id this version does not know is ignored. */
 function _gllCheerFx(A, e, ev) {
