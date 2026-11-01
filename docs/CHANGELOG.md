@@ -10,6 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.53.0]
+
+### Added
+- **Friends' gardens hold a few fish and bugs found only there.**
+- **Build a bridge, lighthouse or statue with a friend** from your real work.
+- **Seasons change the map.** In winter the lake freezes: walk on it and fish through the ice. Spring has cherry blossom, summer flowers and autumn fallen leaves, each with new kinds, and a friend's garden shows their season.
+- **Pose with your catch,** add filters and frames, and keep it in Memories.
+- A lamp after dusk shows your day. Also: something strange in dusk photos, a travelling gnome, bottle post and a giant vegetable fed by your work.
+
 ## [2.52.1]
 
 ### Changed
