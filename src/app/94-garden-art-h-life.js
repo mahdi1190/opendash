@@ -108,7 +108,10 @@ function gardenArtAllBack(svg) {
 }
 function _gartRestItems(svg) {
   const layer = svg.querySelector('.gd-objects'); if (!layer) return;
-  const vb = svg.viewBox && svg.viewBox.baseVal; if (!vb) return;
+  const vb0 = svg.viewBox && svg.viewBox.baseVal; if (!vb0) return;
+  // what is on the page covers the view and the view the camera is going to: zooming out never shows a thing being put back
+  const goal = svg === _gw.svg && _gw.cam.goal ? _gw.cam.goal : null;
+  const vb = goal ? { x: Math.min(vb0.x, goal.x), y: Math.min(vb0.y, goal.y), width: Math.max(vb0.x + vb0.width, goal.x + goal.w) - Math.min(vb0.x, goal.x), height: Math.max(vb0.y + vb0.height, goal.y + goal.h) - Math.min(vb0.y, goal.y) } : vb0;
   const needs = svg.querySelector('.gd-needs'), liveL = svg.querySelector('.gart-live');
   const key = (vb.x / 24 | 0) + ',' + (vb.y / 24 | 0) + ',' + vb.width.toFixed(0) + ',' + vb.height.toFixed(0) + ',' + layer.childElementCount + ',' + (needs ? needs.childElementCount : 0) + ',' + (liveL ? liveL.childElementCount : 0);
   if (svg._gartViewKey === key) return;

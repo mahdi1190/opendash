@@ -508,6 +508,8 @@ function _gwRowsBuild(layer) {
     const kids = [...g.children]; g.remove();
     for (const n of kids) gardenRowPlace(layer, n, Number(n.getAttribute('data-z')) || 0);
   }
+  // a new depth between two rows: whoever now belongs in it moves there
+  for (const g of slots) for (const n of [...g.children]) gardenRowPlace(layer, n, Number(n.getAttribute('data-z')) || 0);
   return layer._gwRows;
 }
 /** Put a node in the row it stands in. Nothing happens when it is already there: only a real change of what is in front of it touches the page. */
@@ -519,7 +521,11 @@ function gardenRowPlace(layer, node, z) {
   let ref = null;
   for (let c = row.firstElementChild; c; c = c.nextElementSibling) { if (c !== node && Number(c.getAttribute('data-z')) > z) { ref = c; break; } }
   if (node.parentNode === row && node.nextElementSibling === ref) return;
+  // moving a node starts its CSS animations again from nothing: a walking leg or a beating wing would jump at every row. They carry on from where they were
+  const was = node.parentNode && !node.classList.contains('gart-off') && node.getAnimations ? node.getAnimations({ subtree: true }) : null, at = was && was.length ? new Map() : null;
+  if (at) for (const a of was) if (a.animationName) at.set(a.effect.target, Object.assign(at.get(a.effect.target) || {}, { [a.animationName]: a.currentTime }));
   row.insertBefore(node, ref);
+  if (at) for (const a of node.getAnimations({ subtree: true })) { const t = a.animationName && at.get(a.effect.target); if (t && t[a.animationName] != null) a.currentTime = t[a.animationName]; }
 }
 function _gwPlace(node, z) {
   const layer = _gw.svg && _gw.svg.querySelector('.gd-objects'); if (!layer || !node) return;
@@ -595,6 +601,9 @@ function _gwApplyCam(dt, snap) {
   const svg = _gw.svg; if (!svg) return;
   const t = _gwCamTarget(); if (!t) return;
   const c = _gw.cam;
+  c.goal = t;
+  // a new view to go to (a zoom, a line cast, a catch): what it will show goes on the page now, before the camera moves, never in sight
+  { const gk = (t.w | 0) + ',' + (t.h | 0); if (c.gk !== gk) { c.gk = gk; if (c.init && !_gwCalm.hid && typeof _gartRestItems === 'function') { _gw.restAt = _gw.t; _gartRestItems(svg); } } }
   if (!c.init || snap || !gardenMotionOn()) { c.x = t.x; c.y = t.y; c.w = t.w; c.h = t.h; c.init = true; }
   else { const k = 1 - Math.exp(-dt * 7); c.x += (t.x - c.x) * k; c.y += (t.y - c.y) * k; c.w += (t.w - c.w) * k; c.h += (t.h - c.h) * k; }
   const same = Math.abs(t.x - c.x) < 0.05 && Math.abs(t.y - c.y) < 0.05 && Math.abs(t.w - c.w) < 0.05;
@@ -682,9 +691,15 @@ function _gwPace() {
  */
 const GW_CULL = 3.5;
 function gardenCull(o, node, x, y) {
-  const off = !_gwInView(x, y, GW_CULL);
+  const off = !_gwInView(x, y, GW_CULL) && !_gwInCamGoal(x, y);
   if (o._off !== off) { o._off = off; node.classList.toggle('gart-off', off); }
   return off;
+}
+/** Is this point (cells) in the view the camera is on its way to, zooming or following a catch? (With the margin: it is on the page before the view gets there.) */
+function _gwInCamGoal(x, y) {
+  const t = _gw.cam.goal, W = GARDEN_WORLD; if (!t) return false;
+  const mg = GW_CULL * W.cellW, px = x * W.cellW, py = W.sky + y * W.cellH;
+  return px > t.x - mg && px < t.x + t.w + mg && py > t.y - mg && py < t.y + t.h + mg;
 }
 /** Is this point (cells) on screen, give or take `m` cells? */
 function _gwInView(x, y, m) {
