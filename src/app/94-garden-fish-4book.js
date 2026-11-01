@@ -131,6 +131,7 @@ function _gdbEntry(el, m, kind, r) {
     if (r.held) fact('In your bag', String(r.held));
     t.appendChild(facts);
   } else t.appendChild(_gdpEl('p', 'muted', 'You will see its name and its story once you catch one. Here is how.'));
+  if (d.cat === 'fish' && typeof gardenReadyButton === 'function') t.appendChild(gardenReadyButton(d));   // put on what it needs, walk there and cast (94-garden-fish-9page.js)
   top.appendChild(t); page.appendChild(top);
   const now = _gdbNow(d, m);
   page.appendChild(_gdpEl('h4', 'gdb-how-h', d.cat === 'fish' || d.cat === 'bug' ? 'How to catch it' : 'How to find it'));

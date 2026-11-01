@@ -421,6 +421,19 @@ const GARDEN_DECOR = _gdRows([
   _gD('driftwood-seat', 'Driftwood seat', 'seat', { craft: 1, price: 0, w: 2, effect: { kind: 'sit' }, look: { c: '#b8a58a', c2: '#8a7a60', h: 0.5, parts: [['block', { w: 54, h: 9, y: -10 }], ['stone', { x: -18, w: 14 }], ['stone', { x: 18, w: 14 }]] }, blurb: 'It came a long way to be sat on.' }),
   _gD('bee-skep', 'Straw skep', 'wildlife', { craft: 1, price: 0, look: { c: '#d8b060', c2: '#8a6a3a', h: 0.7, parts: [['post', { w: 7, h: 16 }], ['block', { y: -16, w: 28, h: 4 }], ['orb', { y: -18, r: 14 }], ['orb', { y: -34, r: 8 }]] }, blurb: 'Bees approve of the thatch.' }),
   _gD('fish-flag', 'Fish flag', 'angling', { craft: 1, price: 0, look: { c: '#4a7ab0', c2: '#f4ead8', h: 1.1, parts: [['post', { w: 4, h: 62 }], ['flag', { x: 2, y: -60, w: 24, h: 12, clip: 'flutter' }]] }, blurb: 'It tells the wind which way the fish went.' }),
+  /* the catching overhaul: bugs come to these (effect.what: their shape), and what the lake gives you. Drawn by gartDefine in 94-garden-fish-9world.js */
+  _gD('log-pile', 'Log pile', 'wildlife', { price: 30, lv: 3, look: { c: '#7a5636', c2: '#a87c4f', h: 0.5 }, effect: { kind: 'habitat', what: ['beetle', 'stag', 'ladybird', 'spider', 'snail'] }, blurb: 'Beetles move in. So do things that eat beetles.' }),
+  _gD('butterfly-bush', 'Butterfly bush', 'wildlife', { price: 45, lv: 4, look: { c: '#5a8a4a', c2: '#a86ad8', h: 1.1 }, effect: { kind: 'habitat', what: ['butterfly', 'bee'] }, blurb: 'Long purple spikes. Butterflies come from all over.' }),
+  _gD('moth-sheet', 'Moth sheet', 'wildlife', { price: 40, lv: 5, look: { c: '#f4f0e6', c2: '#8a6a3a', h: 1.2 }, effect: { kind: 'habitat', what: ['moth', 'firefly', 'cicada'] }, blurb: 'A white sheet and a lamp. What flies at night comes to look.' }),
+  _gD('firefly-jar', 'Firefly jar', 'angling', { craft: 1, price: 0, look: { c: '#d8ecd8', c2: '#ffe25a', h: 0.7 }, blurb: 'Dark all day. At dusk it wakes up.' }),
+  _gD('boot-planter', 'Boot planter', 'angling', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#e8607a', h: 0.8 }, blurb: 'Somebody lost this. Now it has daisies.' }),
+  _gD('can-chimes', 'Tin can chimes', 'angling', { craft: 1, price: 0, look: { c: '#b8bcc0', c2: '#6a4426', h: 1.3 }, blurb: 'They clink in the wind. Not badly.' }),
+  _gD('sea-chest', 'Sunken chest', 'angling', { craft: 1, price: 0, look: { c: '#7a4a2a', c2: '#e8c24a', h: 0.6 }, blurb: 'You read the map, and you found it.' }),
+  _gD('ship-wheel', 'Ship’s wheel', 'angling', { craft: 1, price: 0, look: { c: '#7a4a2a', c2: '#c8a23a', h: 1.2 }, blurb: 'From the old wreck, by way of a second map.' }),
+  _gD('figurehead', 'Figurehead', 'angling', { craft: 1, price: 0, look: { c: '#c8a46a', c2: '#3f6f8a', h: 1.5 }, blurb: 'She has looked out over this lake a long time.' }),
+  _gD('rosette-stand', 'Festival rosette', 'angling', { craft: 1, price: 0, look: { c: '#d8452a', c2: '#e8c24a', h: 1 }, blurb: 'Weighed in, and judged. Friends can see the ribbon.' }),
+  _gD('thing-cast', 'Plaster footprint', 'angling', { craft: 1, price: 0, w: 2, look: { c: '#e8e4d8', c2: '#3f6f8a', h: 0.5 }, blurb: 'Five sightings, and this washed up. Nobody can say what made it.' }),
+  _gD('legend-plaque', 'Legend plaque', 'angling', { craft: 1, price: 0, look: { c: '#6a4a2e', c2: '#e8c24a', h: 1.1 }, blurb: 'The old angler carved it himself. All four.' }),
   _gD('rose-arch', 'Rose arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#7a5a3a', c2: '#d8405a', h: 1.4, parts: [['post', { x: -24, w: 5, h: 72 }], ['post', { x: 24, w: 5, h: 72 }], ['block', { y: -70, w: 58, h: 6 }], ['bush', { x: -24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { x: 24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { y: -74, w: 40, h: 16, clip: 'sway' }]] }, blurb: 'Left by a friend, with a note.' }),
 ]);
 const _GD_DECOR = new Map(GARDEN_DECOR.map(d => [d.id, d]));
@@ -536,6 +549,11 @@ const GARDEN_PROPS = _gdRows([
   { id: 'post-box', name: 'Post box', x: 20, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 20, y: 12 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
   { id: 'craft-bench', name: 'Crafting bench', x: 3, y: 11, w: 2, h: 1, door: _gdF({ x: 3, y: 12 }), act: 'craft', kind: 'bench', tall: 1.5, verb: 'make something', blurb: 'Turn what you grow, catch and find into hats, collars, decorations and treats.' },
   { id: 'sundial', name: 'Sundial', x: 26, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 26, y: 12 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
+  // the catching overhaul: drawn by gardenCatchPropArt, opened through _gwOpenProp (94-garden-fish-9world.js). `needs` keeps one that is not built from taking a click
+  { id: 'lake-hall', name: 'The lake hall', kind: 'hall', x: 22, y: 11, w: 3, h: 1, door: _gdF({ x: 23, y: 12 }), act: 'hall', tall: 3, blurb: 'Give one of each fish and bug. It grows as you do.' },
+  { id: 'lake-board', name: 'The lake board', kind: 'lakeboard', x: 9, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 9, y: 12 }), act: 'lake', tall: 1.8, blurb: 'The forecast, who is wanted this week, and the lake records.' },
+  { id: 'old-angler', name: 'The old angler', kind: 'angler', x: 14, y: 12, w: 1, h: 1, col: 'none', door: _gdF({ x: 15, y: 12 }), act: 'angler', tall: 1.4, blurb: 'Has fished here longer than anybody can remember.' },
+  { id: 'smoker', name: 'Smoker', kind: 'smoker', x: 2, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 2, y: 12 }), act: 'smoker', needs: 'smoker', tall: 1.5, blurb: 'Fish go in. Hours later, something wonderful comes out.' },
   { id: 'jetty-post', name: 'Mooring post', x: 4, y: 12, w: 1, h: 1, walk: 0, col: 'none', tall: 1, blurb: 'A rope, a post and a very patient rowing boat.' },
   // the rowing boat is drawn by gardenWorldProps (key 'boat'); clicking it opens the trip to a friend's garden. x and w are fractions on
   // purpose: its box is the boat's own width, so the water beside it still casts a line.
@@ -913,5 +931,6 @@ function gardenSnapshotClean(raw) {
   if (typeof gardenLandsClean === 'function') gardenLandsClean(raw, out);   // the sections and features they have (94-garden-lands-0table.js); an older app drops these
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
+  if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
   return out;
 }

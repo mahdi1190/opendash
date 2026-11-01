@@ -15,7 +15,7 @@ const GART_MOMENTS = Object.freeze({
   keep: { verb: () => 'found', def: (id) => GL_KEEPSAKE.get(id), name: (d) => d.name, art: (id, px, d) => `<svg viewBox="-12 -16 24 20" width="${px}" height="${Math.round(px * 20 / 24)}">${gardenKeepsakeSvg(d)}</svg>` },
   craft: { verb: () => 'made', def: (id) => gardenRecipe(id), name: (d) => d.name, art: (id, px, d) => gardenCraftArt(d, px) },
   // what you bought or built: a rod, a net, a can, something for the lake (94-garden-fish-7gear.js)
-  gear: { verb: () => 'got', def: (id) => gardenGearDef(id) || gardenTool(id), name: (d) => d.name, art: (id, px, d) => (d.kind === 'rod' || d.kind === 'net' ? gardenCatchSvg(d.kind, id, px) : d.kind === 'lake' ? gardenWorkSvg(id, px) : _gdxItemIcon('tool:' + id, px)) },
+  gear: { verb: () => 'got', def: (id) => gardenGearDef(id) || gardenTool(id), name: (d) => d.name, art: (id, px, d) => (d.tackle ? gardenTackleSvg(d, px) : d.kind === 'rod' || d.kind === 'net' ? gardenCatchSvg(d.kind, id, px) : d.kind === 'lake' ? gardenWorkSvg(id, px) : _gdxItemIcon('tool:' + id, px)) },
   crop: { verb: () => 'picked', def: (id) => gardenPlant(id), name: (d) => (d.yield && d.yield.item ? d.yield.item : d.name), art: (id, px) => _gdxItemIcon('crop:' + id, px) },
 });
 const GART_MOMENT_MS = 2700;

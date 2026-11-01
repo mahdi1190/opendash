@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.45.0]
+
+### Added
+- **Fishing goes deeper.** Reels, lines, hooks and new baits, with saved setups. Fish dart, sulk, run and leap, and weak lines can snap, while easy fish stay easy.
+- **Seven places in the lake and seven events,** so where and when you fish matters.
+- **Row your own boat, grow a lake hall, help the old angler, hunt treasure maps,** and watch for the thing in the lake. There are also legends to chase, lake records, a smoker and meals, a wanted poster and a board for friends, a firefly jar, a hand lantern and bug habitats.
+
 ## [2.44.0]
 
 ### Added

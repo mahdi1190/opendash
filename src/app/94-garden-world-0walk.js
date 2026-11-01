@@ -111,6 +111,7 @@ function _gwBuildGrid(m) {
   return g;
 }
 function _gwGrid(m) {
+  if (_gw.boat && typeof gardenBoatGrid === 'function') return gardenBoatGrid();   // in a boat the water is the ground: 94-garden-fish-9world.js
   const key = (m && m.visit ? m.visit.key : _gd.memoKey) + '|' + (m && m.level.level);
   if (!_gw.grid || _gw.gridKey !== key) { const mm = m || gardenHere(); _gw.grid = _gwBuildGrid(mm); _gw.solids = _gwBuildSolids(mm); _gw.gridKey = key; }
   return _gw.grid;
@@ -799,7 +800,7 @@ function _gwPropAtPt(wx, wy, ev) {
     const el = document.elementFromPoint(ev.clientX, ev.clientY), g = el && el.closest ? el.closest('.gd-prop[data-prop]') : null;
     if (g) { const id = g.getAttribute('data-prop'), p = gardenPropsNow().find(x => x.id === id) || gardenLandSiteProp(id); if (p && p.act) return p; }
   }
-  for (const p of gardenPropsNow()) { if (p.act && wx >= p.x && wx <= p.x + p.w && wy >= p.y && wy <= p.y + p.h) return p; }
+  for (const p of gardenPropsNow()) { if (p.act && (!p.needs || gardenWorkOwned(p.needs)) && wx >= p.x && wx <= p.x + p.w && wy >= p.y && wy <= p.y + p.h) return p; }
   return null;
 }
 function _gwOpenProp(p) {
@@ -808,7 +809,9 @@ function _gwOpenProp(p) {
     tackle: () => gardenPopupOpen('catch', { sub: 'tackle', title: 'Tackle shop' }), journal: () => gardenPopupOpen('catch', { sub: 'fish', title: 'Field journal' }),
     shop: () => gardenPopupOpen('shop'), basket: () => gardenPopupOpen('basket'), almanac: () => gardenPopupOpen('almanac'), friends: () => gardenPopupOpen('friends'),
     photo: () => { if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); }, timelapse: () => { if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); },
-    sail: () => gardenPopupOpen('sail'),
+    sail: () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) return; gardenPopupOpen('sail'); },
+    hall: () => gardenPopupOpen('catch', { sub: 'hall', title: 'The lake hall' }), lake: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }),
+    angler: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }), smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
     craft: () => gardenPopupOpen('craft'),
     lands: () => gardenPopupOpen('lands'),
     lf: () => gardenLandPropOpen(p),

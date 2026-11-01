@@ -111,7 +111,7 @@ function _glhWalk(A, ev) {
   const t = Date.now();   // clock-ok: spacing the sums
   // (a hidden tab draws nothing, so the figure is not where it was: it would be routed from an old place, and everyone would see it walk back)
   if (typeof document !== 'undefined' && document.hidden) { A.x = ev.x; A.y = ev.y; A.tx = null; A.way = null; }
-  else if (typeof _gwRoute === 'function' && t - (A.routeAt || 0) >= 200) {
+  else if (typeof _gwRoute === 'function' && !(A.g && A.g.bt) && t - (A.routeAt || 0) >= 200) {   // (someone in a boat goes straight over the water)
     A.routeAt = t;
     try {
       const tgt = _gwFree(ev.x, ev.y) ? { x: ev.x, y: ev.y } : _gwNearestFreePt(ev.x, ev.y, 3);   // (a seat is on the bench itself: as near as the feet go, then there)

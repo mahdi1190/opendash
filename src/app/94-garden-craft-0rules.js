@@ -63,6 +63,9 @@ const GARDEN_RECIPES = Object.freeze([
   _gR('butterfly-wings', 'Butterfly wings', 'pet', { 'bug:red-admiral': 1, 'crop:buttercup': 3 }, { pet: 'pi-cwingbfly' }, { fact: ['bugSpecies', 5] }, { blurb: 'Borrowed from no one, promise.' }),
   _gR('leaf-wings', 'Leaf wings', 'pet', { 'crop:mint': 2, 'crop:sage': 2 }, { pet: 'pi-cwingleaf' }, { level: 5 }, { blurb: 'A green rustle whenever it runs.' }),
   // for the garden
+  _gR('firefly-jar', 'Firefly jar', 'garden', { 'bug:firefly': 3 }, { decor: 'firefly-jar' }, { start: 1 }, { blurb: 'Three fireflies and a jam jar. Dark all day; at dusk it wakes up.' }),
+  _gR('boot-planter', 'Boot planter', 'garden', { 'fish:old-boot': 1, 'crop:daisy': 2 }, { decor: 'boot-planter' }, { start: 1 }, { blurb: 'That old boot was good for something after all.' }),
+  _gR('can-chimes', 'Tin can chimes', 'garden', { 'fish:tin-can': 3, 'fish:driftwood': 1 }, { decor: 'can-chimes' }, { start: 1 }, { blurb: 'Everything the lake gave back, on a bit of string.' }),
   _gR('flower-barrow', 'Flower barrow', 'garden', { 'crop:tulip': 3, 'crop:pansy': 3 }, { decor: 'flower-barrow' }, { level: 2 }, { blurb: 'Parked for good.' }),
   _gR('herb-rack', 'Drying rack', 'garden', { 'crop:rosemary': 3, 'crop:sage': 2 }, { decor: 'herb-rack' }, { fact: ['harvests', 25] }, { blurb: 'Hang it, forget it, cook with it.' }),
   _gR('apple-crate', 'Apple crate', 'garden', { 'crop:apple': 5 }, { decor: 'apple-crate' }, { season: 'autumn', n: 8 }, { blurb: 'Help yourself.' }),

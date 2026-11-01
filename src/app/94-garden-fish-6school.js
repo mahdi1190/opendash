@@ -114,9 +114,9 @@ function _gfsRing(x, y, k) {
 function _gfsAdd(r) {
   const def = gardenFishDef(r.id); if (!def) return null;
   const v = r.v && typeof gardenVariantFor === 'function' && gardenVariantFor('fish', def, r.v) ? String(r.v) : '';   // (only an id from the table: anything else is an ordinary fish)
-  const f = { u: r.u, id: r.id, def, v, cm: r.cm, x: r.x, y: r.y, tx: r.tx, ty: r.ty, st: r.st || 0, to: r.to == null ? null : r.to, n: r.n || 0, band: r.band || null, life: r.life || 0, cool: 0, sx: r.x, sy: r.y, face: 1, a: 0, node: null, dn: r.n || 0, dst: r.st || 0, seed: Math.random() * 9 };
+  const f = { u: r.u, id: r.id, def, v, z: r.z || 0, cm: r.cm, x: r.x, y: r.y, tx: r.tx, ty: r.ty, st: r.st || 0, to: r.to == null ? null : r.to, n: r.n || 0, band: r.band || null, life: r.life || 0, cool: 0, sx: r.x, sy: r.y, face: 1, a: 0, node: null, dn: r.n || 0, dst: r.st || 0, seed: Math.random() * 9 };
   const layer = _gfsLayer();
-  if (layer) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(def, r.cm, v); layer.appendChild(f.node); }
+  if (layer) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(def, r.cm, v) + (f.z && typeof gardenFishMark === 'function' ? gardenFishMark(f) : ''); layer.appendChild(f.node); }
   _gfs.list.set(f.u, f);
   return f;
 }
@@ -134,7 +134,7 @@ function _gfsFrame(dt) {
   const layer = _gfsLayer(); if (!layer) return;
   const k = Math.min(1, dt * 4), t = _gw.t || 0, moving = gardenMotionOn();
   for (const f of _gfs.list.values()) {
-    if (!f.node) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(f.def, f.cm, f.v); layer.appendChild(f.node); }   // (it was made before the stage was there)
+    if (!f.node) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(f.def, f.cm, f.v) + (f.z && typeof gardenFishMark === 'function' ? gardenFishMark(f) : ''); layer.appendChild(f.node); }   // (it was made before the stage was there)
     const dx = f.x - f.sx; if (Math.abs(dx) > 0.015) f.face = dx > 0 ? 1 : -1;
     f.sx += dx * k; f.sy += (f.y - f.sy) * k;
     if (f.a < 1) { f.a = Math.min(1, f.a + dt * 0.8); if (f.node) f.node.setAttribute('opacity', f.a.toFixed(2)); }
@@ -180,6 +180,7 @@ function _gfsClock() {
   if (_gfsDecides()) { _gfsRun(dt); _gfsTell(); }
   else for (const f of _gfs.list.values()) _gfsMove(f, dt);   // (carried on towards where it is going until the next list)
   if (typeof _glyTick === 'function') _glyTick();
+  if (typeof gardenCatchTick === 'function') gardenCatchTick();   // events coming and going, wanted fish, the thing in the lake: a look every few seconds
 }
 
 /* ---------- the water, for the one who decides ---------- */
@@ -204,7 +205,8 @@ function _gfsSpot(b0, near0) {
   return near;
 }
 function _gfsSpawn(b, m, at) {
-  const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : _gfsSpot(b); if (!p) return;
+  const plus = typeof gardenCatchSpawnPlan === 'function' ? gardenCatchSpawnPlan(b, m, at) : null;   // spots, events and what you have done raise the odds: 94-garden-fish-8catch.js
+  const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : (plus && plus.p) || _gfsSpot(b); if (!p) return;
   const ctx = { zone: b.zone, tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id) || gardenWorkOwned(id), caught: (id) => !!_gdG().fl[id] };
   if (typeof gardenEventOn === 'function') ctx.event = gardenEventOn;
   if (typeof gardenSpotAt === 'function') ctx.spot = gardenSpotAt(p.x, p.y) || null;
@@ -213,14 +215,16 @@ function _gfsSpawn(b, m, at) {
   const outward = b.zone === 'deep' ? 1 + Math.max(0, p.y - 17) / 2.5 : 1;
   let odds = gardenFishOdds(ctx).map(([k, w]) => { const d0 = gardenFishDef(k); return [k, d0.cat !== 'fish' ? w * GF_SCHOOL.finds : d0.rarity === 'common' ? w : w * outward]; });
   if (b.zone === 'deep' && !odds.some(([k]) => gardenFishDef(k).cat === 'fish')) odds = odds.concat(gardenFishOdds(Object.assign({}, ctx, { zone: 'mid' })).filter(([k]) => gardenFishDef(k).cat === 'fish'));
-  const id = gardenFishPick(odds, Math.random), def = gardenFishDef(id); if (!def) return;
+  if (plus && plus.weigh) odds = odds.map(([k, w]) => [k, plus.weigh(gardenFishDef(k), w, p)]);
+  const forced = plus && plus.forced ? plus.forced(ctx) : null;   // the one that got away, a legend, a fish you let go
+  const id = forced ? forced.id : gardenFishPick(odds, Math.random), def = gardenFishDef(id); if (!def) return;
   // further out is bigger, in the same kind as well as in the kinds that live there
   const out = b.zone === 'pond' ? 0.05 : Math.max(0, Math.min(0.55, (p.y - 13) / 24));
-  const cm0 = def.cat === 'fish' ? gardenFishSize(def, Math.random, out) : Math.round((def.cm[0] + def.cm[1]) / 2);
-  const sv = typeof gardenVariantSpawn === 'function' ? gardenVariantSpawn(def, cm0, b, m, { chum: !!at, frenzy: _gfsFrenzy() }) : { v: '', cm: cm0 }, cm = sv.cm;   // what it is, decided here and now: everyone sees the same one
+  const cm0 = forced && forced.cm ? forced.cm : def.cat === 'fish' ? gardenFishSize(def, Math.random, out) : Math.round((def.cm[0] + def.cm[1]) / 2);
+  const sv = forced && forced.cm ? { v: '', cm: cm0 } : typeof gardenVariantSpawn === 'function' ? gardenVariantSpawn(def, cm0, b, m, { chum: !!at, frenzy: _gfsFrenzy() }) : { v: '', cm: cm0 }, cm = sv.cm;   // what it is, decided here and now: everyone sees the same one
   const go = _gfsSpot(b, p) || p;
   _gfs.u = (_gfs.u + 1) % 1000;
-  _gfsAdd({ u: _gfs.u, id, v: sv.v, cm, x: p.x, y: p.y, tx: go.x, ty: go.y, band: b.key, life: GF_SCHOOL.life[0] + Math.random() * (GF_SCHOOL.life[1] - GF_SCHOOL.life[0]) });
+  _gfsAdd({ u: _gfs.u, id, v: sv.v, z: forced ? forced.z || 0 : 0, cm, x: p.x, y: p.y, tx: go.x, ty: go.y, band: b.key, life: GF_SCHOOL.life[0] + Math.random() * (GF_SCHOOL.life[1] - GF_SCHOOL.life[0]) });
   _gfs.dirty = true;
 }
 /** Every line in the water now: yours and, if you are the host, everyone's. Keyed by slot. */
@@ -230,7 +234,7 @@ function _gfsLinesNow() {
   if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) {
     const L = A.fish; if (!L || L.state === 'land') continue;
     const d = L.bait ? gardenGearDef(L.bait) : null;
-    out.set(A.w, { x: L.bx, y: L.by, bait: d && d.kind === 'bait' ? d : GARDEN_BAITS[0], setup: Object.assign({ rod: A.g && A.g.r, bait: L.bait }, A.g && A.g.tk) });
+    out.set(A.w, { x: L.bx, y: L.by, bait: d && d.kind === 'bait' ? d : GARDEN_BAITS[0], setup: typeof gardenSetOfLook === 'function' ? gardenSetOfLook(A.g, L.bait) : { rod: A.g && A.g.r, bait: L.bait } });   // (their reel, line and hook: the look they send)
   }
   return out;
 }
@@ -294,6 +298,7 @@ function _gfsRun(dt) {
       if ((best.Q.bait.st.night || gardenWorkOwned('night-lantern')) && m.tod === 'night') keen *= 1.6;
       if (kind !== 'common' && gardenWorkOwned('reed-beds')) keen *= 1.3;
       if (m.tod === 'dawn' || m.tod === 'dusk' || _gfsFrenzy()) keen *= E.feedTimes;
+      if (typeof gardenLineKeen === 'function') keen *= gardenLineKeen(f, best.Q, m);   // what you have on, where you are, what is going on
       if (Math.random() >= keen * dt) continue;
       f.st = GF_ST.come; f.to = best.slot; f.tx = best.Q.x; f.ty = best.Q.y; f.n = 0;
       f.nN = Math.max(E.nibbles[0], E.nibbles[0] + Math.floor(Math.random() * (E.nibbles[1] - E.nibbles[0] + 1)) - (best.Q.bait.st.lure > 1 ? 1 : 0));
@@ -341,7 +346,7 @@ function _gfsTell() {
   const bands = _gfs.m ? new Map(_gfsBands(_gfs.m).map(b => [b.key, b])) : null;
   for (const f of _gfs.list.values()) if (f.rest) { f.rest = false; if (f.st === GF_ST.swim && bands) { const go = _gfsSpot(bands.get(f.band) || GF_SCHOOL.bands[0], f) || f; f.tx = go.x; f.ty = go.y; } }
   const n10 = (v) => Math.max(0, Math.min(640, Math.round(v * 10)));
-  const l = [..._gfs.list.values()].slice(0, GF_SCHOOL.max).map(f => Object.assign({ u: f.u, e: f.id, c: Math.round(f.cm), x: n10(f.x), y: n10(f.y), tx: n10(f.tx), ty: n10(f.ty), st: f.st }, f.v ? { v: f.v } : {}, f.to != null ? { to: f.to } : {}, f.n ? { n: Math.min(9, f.n) } : {}));
+  const l = [..._gfs.list.values()].slice(0, GF_SCHOOL.max).map(f => Object.assign({ u: f.u, e: f.id, c: Math.round(f.cm), x: n10(f.x), y: n10(f.y), tx: n10(f.tx), ty: n10(f.ty), st: f.st }, f.v ? { v: f.v } : {}, f.to != null ? { to: f.to } : {}, f.n ? { n: Math.min(9, f.n) } : {}, f.z ? { z: f.z } : {}));
   _glhSend('all', 'fs', { l });
 }
 /** A guest hears the host's water. Anything not listed has left it. */
@@ -354,7 +359,7 @@ function _gfsIn(l) {
     if (!r || !Number.isInteger(r.u) || !gardenFishDef(r.e)) continue;   // (one this version does not know)
     seen.add(r.u);
     const f = _gfs.list.get(r.u), to = r.to == null ? null : r.to;
-    if (!f) { _gfsAdd({ u: r.u, id: r.e, v: r.v, cm: r.c, x: r.x / 10, y: r.y / 10, tx: r.tx / 10, ty: r.ty / 10, st: r.st, to, n: r.n }); continue; }
+    if (!f) { _gfsAdd({ u: r.u, id: r.e, v: r.v, cm: r.c, x: r.x / 10, y: r.y / 10, tx: r.tx / 10, ty: r.ty / 10, st: r.st, to, n: r.n, z: r.z }); continue; }
     f.x = r.x / 10; f.y = r.y / 10; f.tx = r.tx / 10; f.ty = r.ty / 10; f.st = r.st; f.to = to; f.n = r.n || 0;
   }
   for (const f of [..._gfs.list.values()]) if (!seen.has(f.u)) _gfsDrop(f);
@@ -383,12 +388,12 @@ function _gfsAct(e, u, slot) {
 function _gfsHeard(A, ev) { if (typeof _gll !== 'undefined' && _gll.role === 'host' && A) _gfsAct(String(ev.e), ev.i, A.w); }
 /** Would a float landing here scare something? (Said to you at once: the host decides, a moment later.) */
 function _gfsTooClose(pt) { for (const f of _gfs.list.values()) if (f.st === GF_ST.swim && Math.hypot(f.x - pt.x, f.y - pt.y) < GF_SCHOOL.spook) return true; return false; }
-function _gfsFrenzy() { return performance.now() < _gfs.frenzyUntil; }
+function _gfsFrenzy() { return performance.now() < _gfs.frenzyUntil || (typeof gardenEventOn === 'function' && gardenEventOn('frenzy')); }
 function _gfsSay2(text) { if (typeof _gllFeed === 'function') _gllFeed(text); }
 /** Who is stomping about: you, unless you are creeping, and anyone in your garden. */
 function _gfsStomps() {
   const out = [], t = Date.now();   // clock-ok: how long a creep lasts
-  if (_gw.moving && !_gw.sneak && !_gw.keys.has('shift')) out.push({ x: _gw.px, y: _gw.py, me: true });
+  if (_gw.moving && !_gw.sneak && !_gw.boat && !_gw.keys.has('shift')) out.push({ x: _gw.px, y: _gw.py, me: true });
   if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (A.moving && !(A.sneakUntil > t)) out.push({ x: A.x, y: A.y });
   return out;
 }

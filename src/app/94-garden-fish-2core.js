@@ -48,6 +48,7 @@ function gardenGearEquip(kind, id) {
 /** Buy a rod or a net (once), or a pack of bait. */
 function gardenGearBuy(id) {
   const d = gardenGearDef(id); if (!d) return _gdNo('Unknown gear');
+  if (d.tackle && typeof gardenTackleBuy === 'function') return gardenTackleBuy(d);   // reels, lines, hooks and the bug kit: 94-garden-fish-8catch.js
   const m = gardenModel(), w = m.wallet;
   if (d.kind === 'bait') {
     if (d.own) return _gdNo('You always have those');
@@ -93,11 +94,12 @@ function gardenFishPlan(x, y) {
   const rod = gardenRod(), bait = contest ? GARDEN_BAITS[0] : gardenBait(), station = gardenWorkOwned('fishing-station');
   // chum goes in with the cast: it is spent whether or not anything comes
   if (!contest && bait.st.chum) { const today = _gdToday(); _gdG().led['ct.' + today + '.' + _gdUid('')] = { d: today, k: 'ct', i: { ['bait:' + bait.id]: -1 }, n: 1 }; _gdSave(); }
-  return { ok: true, zone, strike: GARDEN_CATCH_ECON.strike + rod.st.react + (station ? 0.3 : 0), bar: rod.st.bar + (station ? 0.05 : 0), line: rod.st.line, spent: !!bait.st.chum, tier: rod.tier, qmax: rod.st.q, baitDef: bait, x, y, contest };
+  const out = { ok: true, zone, strike: GARDEN_CATCH_ECON.strike + rod.st.react + (station ? 0.3 : 0), bar: rod.st.bar + (station ? 0.05 : 0), line: rod.st.line, spent: !!bait.st.chum, tier: rod.tier, qmax: rod.st.q, baitDef: bait, x, y, contest };
+  return typeof gardenTacklePlan === 'function' ? gardenTacklePlan(out) : out;   // what your reel, line and hook do
 }
 /** That very fish has bitten your line: the plan gets it, and a piece of bait is eaten (a cast that nothing took costs nothing). */
 function gardenFishBite(plan, f) {
-  plan.id = f.id; plan.def = f.def; plan.beh = f.def.beh; plan.cm = f.cm;
+  plan.id = f.id; plan.def = f.def; plan.beh = f.def.beh; plan.cm = f.cm; plan.z = f.z || 0; plan.at = { x: f.x, y: f.y };
   // how hard: the kind of fish, then how big this one is for its kind (a giant of its kind fights up to 2 points harder), and a weak rod feels it more
   const span = Math.max(1, f.def.cm[1] - f.def.cm[0]), size = Math.max(0, Math.min(1, (f.cm - f.def.cm[0]) / span));
   plan.diff = f.def.diff ? Math.min(12, f.def.diff + size * 2) : 0;
@@ -120,7 +122,7 @@ function gardenCatchFish(plan, res) {
   const perfect = !!res.perfect;
   let q = 0;
   if (def.cat === 'fish') {
-    if (perfect) q = Math.min(plan.qmax || 1, 1 + (rnd() < 0.35 ? 1 : 0) + (rnd() < 0.08 ? 1 : 0));
+    if (perfect) q = Math.min(plan.qmax || 1, 1 + (rnd() < 0.35 ? 1 : 0) + (rnd() < 0.08 ? 1 : 0) + (plan.hookQ || 0));
     else q = rnd() < 0.12 + 0.06 * (plan.tier || 1) ? Math.min(plan.qmax || 1, 1) : 0;
   }
   const vd = plan.v && typeof gardenVariantFor === 'function' ? gardenVariantFor('fish', def, plan.v) : null, cmr = vd ? gardenVariantCmRange(def, vd.id) : def.cm;
@@ -141,6 +143,7 @@ function gardenCatchFish(plan, res) {
   if (!rec) { g.fl[def.id] = { n: 1, b: cm, q, d: today, l: today }; out.isNew = true; }
   else { rec.n = (Number(rec.n) || 0) + 1; rec.l = today; if (cm > (Number(rec.b) || 0)) { rec.b = cm; out.record = def.cat === 'fish'; } if (q > (Number(rec.q) || 0)) rec.q = q; }
   if (def.cat === 'fish' && typeof gardenSpecAdd === 'function') out.spec = gardenSpecAdd('fish', def, { v: out.v, cm, q, z: plan.zone, day: today });   // this very fish, for your records (94-garden-fish-8spec.js)
+  if (typeof gardenCatchAfter === 'function') gardenCatchAfter(def, out, plan);   // the rack, the records, the angler, the run of catches: 94-garden-fish-8catch.js
   _gdSave(); gardenTickSoon(); _gdEmit('catch', { kind: 'fish', id: def.id, cm, q, isNew: out.isNew });
   return out;
 }
@@ -174,7 +177,7 @@ function _gcBugsBase(mArg) {
     switch (hab) {
       case 'flower': { if (!blooms.length) return null; const p = pick(blooms); if (onFlower.has(p.uid)) return null; onFlower.add(p.uid); return { x: p.x + 0.5 + (rnd() - 0.5) * 0.5, y: p.y + 0.6 }; }   // one to a flower: a single daisy with three bees on it is a crowd
       case 'tree': { if (!trees.length) return null; const p = pick(trees); return { x: p.x + 0.9, y: p.y + 1.2 }; }
-      case 'light': { if (lights.length) { const d = pick(lights); return { x: d.x + 0.5, y: d.y + 0.5 }; } return woods ? spot('woods') : null; }
+      case 'light': { if (!lights.length && typeof gardenLanternHere === 'function') { const l = gardenLanternHere(rnd); if (l) return l; } if (lights.length) { const d = pick(lights); return { x: d.x + 0.5, y: d.y + 0.5 }; } return woods ? spot('woods') : null; }
       case 'water': { const lake = rnd() < 0.7 || !m.areas.includes('pond'); return lake ? { x: 1 + rnd() * (W.coreCols - 2), y: 13.2 + rnd() * 0.5 } : { x: 15 + rnd() * 4, y: 1.4 + rnd() }; }
       case 'woods': { if (!woods) return null; for (let i = 0; i < 12; i++) { const x = 20 + Math.floor(rnd() * 8), y = Math.floor(rnd() * 11); if (free(x, y)) return { x: x + 0.5, y: y + 0.5 }; } return null; }
       case 'ground': { for (let i = 0; i < 16; i++) { const x = Math.floor(rnd() * W.cols), y = Math.floor(rnd() * 13); const a = gardenAreaAt(x, y, m.level.level); if (!a.startsWith('locked:') && free(x, y)) return { x: x + 0.5, y: y + 0.5 }; } return null; }
@@ -189,7 +192,7 @@ function _gcBugsBase(mArg) {
   // flowers bring them, up to what a garden of this level holds: 2 at the start, one more every 5 levels. A bug hotel adds one of its own
   const cap = Math.min(GARDEN_BUGS_MAX, 2 + Math.floor(m.level.level / 5) + Math.min(2, hotels));
   const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + (woods ? 1 : 0) + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
-  const weights = pool.map(b => gardenBugWeight(b, ctx));
+  const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1));   // (habitats you built: a kind comes more often, never more bugs)
   const out = [];
   for (let i = 0; i < n * 3 && out.length < n; i++) {
     let r = rnd() * weights.reduce((a, b) => a + b, 0), k = 0;
@@ -201,7 +204,8 @@ function _gcBugsBase(mArg) {
     const vb = typeof gardenSpecBugV === 'function' ? gardenSpecBugV(key, hab, m) : '';   // the same on every screen, like the bug itself
     out.push(Object.assign({ key, id: b.id, x: s.x, y: s.y, hab, t: rnd() }, vb ? { v: vb } : {}));
   }
-  return out.filter(Boolean);
+  const kept = out.filter(Boolean);
+  return typeof gardenSugarBug === 'function' ? gardenSugarBug(kept, m) : kept;   // (a tree you painted: the one that came to it, in place of another)
 }
 /** A bug is netted. Returns {ok, def, isNew}. */
 function gardenCatchBug(actor) {
@@ -216,6 +220,7 @@ function gardenCatchBug(actor) {
   if (!rec) { g.bl[def.id] = { n: 1, d: today, l: today }; isNew = true; } else { rec.n = (Number(rec.n) || 0) + 1; rec.l = today; }
   const vb = actor.v && typeof gardenVariantFor === 'function' ? gardenVariantFor('bug', def, actor.v) : null;
   const spec = typeof gardenSpecAdd === 'function' ? gardenSpecAdd('bug', def, { v: vb ? vb.id : '', q: gardenSpecBugQ(Math.random, gardenNet().tier), z: actor.hab, day: today }) : null;
+  if (typeof gardenCatchAfterBug === 'function') gardenCatchAfterBug(def, isNew);
   _gdSave(); gardenTickSoon(); _gdEmit('catch', { kind: 'bug', id: def.id, isNew });
   return { ok: true, def, isNew, v: vb ? vb.id : '', spec };
 }

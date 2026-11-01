@@ -711,6 +711,15 @@ const GARDEN_BAITS = Object.freeze([
   _gfG('glow-lure', 'bait', 2, 'Glow lure', 14, 6, { lure: 0.8, rare: 0.18, night: 1 }, 'Seen from afar, and at night the shy ones come for it.', { pack: 3 }),
   _gfG('chum', 'bait', 1, 'Fish chum', 8, 2, { lure: 0.4, rare: 0.05, chum: 1 }, 'Goes in with your cast, and brings a fish up near your float.', { pack: 3 }),
   _gfG('golden-fly', 'bait', 3, 'Golden fly', 40, 9, { lure: 1.2, rare: 0.35 }, 'Even the great fish cannot resist it.', { pack: 2 }),
+  /* the catching overhaul: likes is who loves it (94-garden-fish-0tackle.js, gardenBaitLikes): twice as keen, and the book can say so */
+  _gfG('cricket', 'bait', 1, 'Crickets', 6, 2, { lure: 0.6, rare: 0.05, likes: ['surface'] }, 'Kicks on the top of the water. Fish that feed up there cannot leave it alone.', { pack: 5 }),
+  _gfG('shrimp', 'bait', 1, 'River shrimp', 8, 3, { lure: 0.6, rare: 0.08, likes: ['bottom'] }, 'Sinks to the bottom, where the whiskery ones feel about for it.', { pack: 5 }),
+  _gfG('berry', 'bait', 1, 'Bramble berries', 7, 2, { lure: 0.7, rare: 0.05, likes: ['grazer'] }, 'Sweet and soft. Carp and koi go quite silly for them.', { pack: 5 }),
+  _gfG('spinner', 'bait', 2, 'Spinner', 16, 4, { lure: 1.4, rare: 0.1, likes: ['hunter'] }, 'Flashes as it turns. Hunters come from further off.', { pack: 3 }),
+  _gfG('spoon', 'bait', 2, 'Silver spoon', 22, 6, { lure: 1.8, rare: 0.1, likes: ['hunter'] }, 'A wobbling flash of silver: seen from right across the water.', { pack: 3 }),
+  _gfG('moth-fly', 'bait', 2, 'Moth fly', 18, 5, { lure: 0.8, rare: 0.15, night: 1, likes: ['surface'] }, 'A pale fly for the dark. Best at dusk and at night.', { pack: 3 }),
+  _gfG('frog-lure', 'bait', 2, 'Frog lure', 20, 5, { lure: 1, rare: 0.15, likes: ['hunter', 'bottom'] }, 'Kicks like a frog in trouble. Big fish take it.', { pack: 3 }),
+  _gfG('deep-jig', 'bait', 3, 'Deep jig', 24, 7, { lure: 1.2, rare: 0.2, deep: 1 }, 'Heavy, and it works best out in the deep water.', { pack: 3 }),
 ]);
 /* Floats for the line: unlocked by catching, chosen in the tackle shop; they change how the bobber looks and nothing else. */
 const GARDEN_BOBBERS = Object.freeze([
@@ -731,6 +740,8 @@ const GARDEN_WORKS = Object.freeze([
   _gfG('fishing-station', 'lake', 1, 'Fishing station', 500, 6, { adds: 'Bigger bar, and longer to strike' }, 'A proper seat, a rod rest and somewhere to put your tea.', { icon: 'armchair' }),
   _gfG('night-lantern', 'lake', 1, 'Night lantern', 250, 5, { adds: 'Night fish come more readily, and one more at night' }, 'A lamp on a pole, and everything that likes the dark comes to look.', { icon: 'lamp' }),
   _gfG('pool-stock', 'lake', 1, 'Bucket of young fish', 400, 7, { adds: 'One more fish in each pond' }, 'A bucket of young fish for your still water.', { icon: 'droplets' }),
+  _gfG('smoker', 'lake', 1, 'Smoker', 220, 5, { adds: 'Smoke up to three fish: they are ready hours later, and a meal makes you fish better for a while' }, 'A tin box with a chimney. You can smell it from the pier.', { icon: 'flame' }),
+  _gfG('rowing-boat', 'lake', 1, 'Rowing boat of your own', 650, 6, { adds: 'Row out anywhere on the lake and fish from the boat' }, 'Click the boat by the mooring post. Friends see you out on the water.', { icon: 'ship' }),
 ]);
 const _GF_GEAR = new Map(GARDEN_RODS.concat(GARDEN_NETS, GARDEN_BAITS, GARDEN_WORKS).map(x => [x.id, x]));
 
@@ -978,6 +989,21 @@ function gardenShowClean(raw) {
   if (!f.length && !b.length && !rod && !net) return null;
   const out = { f, b, rod, net };
   if (bv.some(v => v !== '-')) out.bv = bv;
+  return out;
+}
+/** Clean what the lake shows to friends (`ca` in a snapshot, 94-garden-fish-8catch.js gardenCatchWire): only ids from tables, only numbers in bounds, never text. An id this version does not know is dropped. */
+function gardenCatchWireClean(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : 0; };
+  const fish = (id) => { const d = gardenFishDef(id); return d && d.cat === 'fish'; };
+  const pairs = (list, max) => (Array.isArray(list) ? list.slice(0, max).filter(x => Array.isArray(x) && fish(x[0])).map(x => [x[0], int(x[1], 1, 400) || 1]) : []);
+  const ids = (list, max, ok) => (Array.isArray(list) ? list.slice(0, max).filter(ok) : []);
+  const out = { sd: int(raw.sd, 0, 9999), ha: int(raw.ha, 0, 999), sm: int(raw.sm, 0, 2), aj: int(raw.aj, 0, 99), fe: int(raw.fe, 0, 99), rl: int(raw.rl, 0, 999), th: int(raw.th, 0, 99), ch: int(raw.ch, 0, 9) };
+  out.hf = ids(raw.hf, 24, fish); out.hb = ids(raw.hb, 12, (id) => !!gardenBugDef(id)); out.st = ids(raw.st, 6, fish);
+  out.fd = ids(raw.fd, 7, (id) => typeof id === 'string' && /^[a-z0-9-]{1,32}$/.test(id));
+  out.rk = pairs(raw.rk, 5); out.rc = pairs(raw.rc, 3);
+  if (Array.isArray(raw.wb)) out.wb = [int(raw.wb[0], 0, 1e6), int(raw.wb[1], 0, 400)];
+  if (Array.isArray(raw.sg)) out.sg = [int(raw.sg[0], 0, 63), int(raw.sg[1], 0, 63)];
   return out;
 }
 /** A short key for a showcase (the art cache and change detection). */
