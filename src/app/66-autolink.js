@@ -651,7 +651,7 @@ function _alSettingsRender(el) {
     const row = document.createElement('div'); row.className = 'al-folder';
     row.innerHTML = `<span class="res-ic k-folder">${icon('folder')}</span><span class="al-txt"><span class="al-label truncate"></span><span class="al-where"></span></span>`;
     row.querySelector('.al-label').textContent = f.path;
-    row.querySelector('.al-where').textContent = [st ? (st.error ? (st.error === 'MISSING' ? 'Not found on this computer' : st.error) : `${Number(st.files).toLocaleString()} files`) : 'Not indexed yet', f.depth != null ? `depth ${f.depth}` : '', f.container ? 'only its subfolders are suggested' : '', st && st.truncated ? 'stopped at a limit' : '', st && st.cloudUnknown ? 'OneDrive check failed: contents not read' : ''].filter(Boolean).join(' · ');
+    row.querySelector('.al-where').textContent = [st ? (st.error ? (st.error === 'MISSING' ? 'Not found on this computer' : netPlainError(st.error)) : `${Number(st.files).toLocaleString()} files`) : 'Not indexed yet', f.depth != null ? `depth ${f.depth}` : '', f.container ? 'only its subfolders are suggested' : '', st && st.truncated ? 'stopped at a limit' : '', st && st.cloudUnknown ? 'OneDrive check failed: contents not read' : ''].filter(Boolean).join(' · ');
     row.appendChild(uiButton({ icon: 'x', size: 'sm', aria: 'Remove ' + f.path, tip: 'Remove', run: () => _alSaveSettings({ folders: cfg.folders.filter(x => x.path !== f.path) }, 'Folder removed') }));
     fl.appendChild(row);
   }

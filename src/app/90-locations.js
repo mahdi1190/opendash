@@ -265,7 +265,7 @@ async function locLogForgetRange(from, to) {
   const a = Date.parse(from + 'T00:00:00'), b = Date.parse((to || from) + 'T23:59:59');
   if (!Number.isFinite(a) || !Number.isFinite(b)) return;
   for (const [id, r] of [..._loc.recs]) if (r.at <= b && (r.until || r.at) >= a) { _loc.recs.delete(id); _loc.dirty.delete(id); }
-  try { await fetch('/api/locations/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true, from: a, to: b }) }); } catch (e) { /* the server is down: the next load shows them again */ }
+  try { const r = await fetch('/api/locations/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true, from: a, to: b }) }); if (!r.ok) toast('Those days may still be in your places history. Try forgetting them again.', { kind: 'err', retry: () => locLogForgetRange(from, to) }); } catch (e) { /* the server is down: the next load shows them again */ }
   _locBump();
 }
 async function locLogSetOn(on) {
@@ -408,8 +408,8 @@ registerSettingsGroup({
     const act = document.createElement('div'); act.className = 'loc-set-act';
     act.append(
       uiButton({ label: 'Open Places', icon: 'map-pin', size: 'sm', run: () => setView('locations') }),
-      uiButton({ label: 'Export JSON', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('json') }),
-      uiButton({ label: 'Export CSV', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('csv') }));
+      uiButton({ label: 'Download a data file', tip: 'A JSON file, for moving your places to another program', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('json') }),
+      uiButton({ label: 'Download a spreadsheet', tip: 'A CSV file that Excel and other spreadsheets can open', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('csv') }));
     el.appendChild(_settingsRow('Your data', 'Download everything, any time.', act));
     const del = document.createElement('div');
     del.appendChild(uiButton({ label: 'Delete my location history', icon: 'trash-2', kind: 'danger', size: 'sm', run: async () => { if (await locLogDelete()) render(); } }));

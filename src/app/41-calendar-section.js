@@ -532,7 +532,7 @@ registerSidebarBlock('calendar', {
       title = gdAgeLabel(at);
       const n = (d.calendars || []).length;
       const ns = Array.isArray(d.sources) ? d.sources.length : 0;
-      text = d.source === 'snapshot' && ns <= 1 ? 'From an older snapshot.' : `${n ? n + ' calendar' + (n === 1 ? '' : 's') + (ns > 1 ? ' from ' + ns + ' sources' : '') + ' · ' : ''}${Number(d.count || 0).toLocaleString(_CAL_LOCALE())} events.${d.partial ? ' Some were missed.' : ''}`;
+      text = d.source === 'snapshot' && ns <= 1 ? 'From an older copy.' : `${n ? n + ' calendar' + (n === 1 ? '' : 's') + (ns > 1 ? ' from ' + ns + ' sources' : '') + ' · ' : ''}${Number(d.count || 0).toLocaleString(_CAL_LOCALE())} events.${d.partial ? ' Some were missed.' : ''}`;
     } else { title = 'No calendar data yet'; text = 'Events come from the calendars you connect (Google, Outlook, iCal links).'; }
     card.innerHTML = `<div class="cal-sync-h">${icon(running ? 'loader-circle' : job && job.state === 'error' ? 'circle-alert' : 'refresh-cw', running ? 'i-sm spin' : 'i-sm')}<b></b></div><div class="cal-sync-t"></div>`;
     card.querySelector('b').textContent = title;

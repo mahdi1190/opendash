@@ -142,7 +142,7 @@ function applyAutoTheme() {
 setInterval(applyAutoTheme, 5 * 60 * 1000);
 async function runMorningBriefing() {
   if (!HAS_COWORK || typeof window.cowork.runScheduledTask !== 'function') {
-    showDebug('Briefing unavailable', 'window.cowork.runScheduledTask is not available.');
+    toast('The morning briefing only runs inside the Claude desktop app. Open Freeflo there to use it.', { kind: 'err' });
     return;
   }
   toast('Starting the morning briefing…', { icon: 'sunrise' });
@@ -150,7 +150,7 @@ async function runMorningBriefing() {
     await window.cowork.runScheduledTask('task-management');
     toast('Briefing sent. Check your chat.', { kind: 'ok' });
   } catch (e) {
-    showDebug('Briefing failed', (e && e.message) || String(e));
+    toastError('start the morning briefing', e, () => runMorningBriefing());
   }
 }
 

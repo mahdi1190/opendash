@@ -202,7 +202,7 @@ function _froRender(sec, d) {
   const job = _froConnectJob();
   const b = _froStep(2, s.relay, active === 2, 'Set up your relay', s.relay
     ? (d.relay.home.role === 'owner' ? 'Your own relay.' : 'A friend’s relay.')
-    : 'Set up your relay (free, about 2 minutes) or join a friend’s.');
+    : 'A relay is your own private link that carries messages between you and your friends. Set up yours (free, about 2 minutes) or join a friend’s.');
   if (!s.relay) {
     if (job && job.state === 'running') {
       const w = _froEl('div', 'fro-wait');

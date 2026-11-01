@@ -472,7 +472,7 @@
         const put = async (b, base) => { const r = await api('/api/finance/budgets', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgets: b, base }) }); if (r.ok && r.body && r.body.budgets) { R.budgets = cleanBudgets(r.body.budgets); R.budgetDraft = null; if (R.sectionId === 'budgets') UPDATE.budgets(R.ctx); return true; } toast('Could not change the budgets: ' + ((r.body && r.body.error) || 'HTTP ' + r.status), { bad: true }); return false; };
         try {
           if (!(await put(next, was))) return false;
-          toast(`${cats.length} budget${cats.length === 1 ? '' : 's'} removed`, { action: 'Undo', onAction: () => { put(was, next).then(ok => { if (ok) toast('Undone'); }).catch(() => toast('Could not reach the Freeflo server', { bad: true })); } });
+          toast(`${cats.length} budget${cats.length === 1 ? '' : 's'} removed`, { action: 'Undo', onAction: () => { put(was, next).then(ok => { if (ok) toast('Undone'); }).catch(() => toast('Couldn’t reach Freeflo. Open it from your shortcut, then try again.', { bad: true })); } });
         } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); return false; }
       } }] });
     if (S.bBar && !S.bBar.querySelector('.pk-select-btn')) S.bBar.appendChild(S.bPick.button({ cls: 'fv-btn ghost' }));

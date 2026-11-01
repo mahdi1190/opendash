@@ -533,7 +533,7 @@ function _rlUsageCard(el, a) {
 
 registerSettingsGroup({
   id: 'relay', title: 'Your relay', icon: 'cloud', order: 91.5,
-  description: 'Your private relay: sync and friends anywhere, within a second.',
+  description: 'A relay is your own private link, free to run: it keeps your computers and your friends connected wherever you are.',
   search: [
     { label: 'Set up my relay', target: 'Your relay', description: 'Your own private relay for friends and sync, free on Cloudflare', keywords: 'relay cloudflare connect deploy wrangler friends sync update deploy again' },
     { label: 'Who can use your relay', target: 'Who can use it', description: 'Your computers, the friends you invited, invites not used yet', keywords: 'relay members revoke invite devices' },
