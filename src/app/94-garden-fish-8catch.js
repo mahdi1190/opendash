@@ -587,6 +587,7 @@ function gardenHelpHeard(A, e, ev) {
   }
   // a monster on someone's line: a small button for a little while. No more than that
   if (_gwFishBusy()) return;
+  if (ev.x >= GARDEN_ROOM_X && !(_grm.on && _grm.R && A.rm === _grm.R.id)) return;   // (in a room: only for whoever is in it with them)
   const box = _gdgBox(); if (!box) return;
   if (_gcaHelp.el) _gcaHelp.el.remove();
   const b = document.createElement('button'); b.type = 'button'; b.className = 'gd-helpbtn'; b.textContent = `${A.n || 'A friend'} has a monster on! Grab the second line`;

@@ -414,6 +414,6 @@ function _gfsStomps() {
 function _gfsStompSaid() { if (_gfs.stompSaid) return; _gfs.stompSaid = true; _gfsSay2('Your footsteps scared a fish. Hold Shift to creep near the water.'); }
 /** A shadow somewhere in view, for a leap: it really is one of the fish there. */
 function _gfsLeaper() {
-  const l = [..._gfs.list.values()].filter(f => f.st === GF_ST.swim && f.def.cat === 'fish' && _gwInView(f.x, f.y, 0));
+  const l = [..._gfs.list.values()].filter(f => f.x < GARDEN_ROOM_X && f.st === GF_ST.swim && f.def.cat === 'fish' && _gwInView(f.x, f.y, 0));
   return l.length ? l[Math.floor(Math.random() * l.length)] : null;
 }

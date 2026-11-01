@@ -90,7 +90,6 @@ function _grwSnap(w, c) {
 /** Cast there, walking up to the bank first if the rod does not reach. */
 function _grwCastAt(x, y) {
   const w = _grwa.w, M = _grm.me; if (!w || !M) return;
-  if (gardenFun() === 'off') { _grmSay('Fishing is switched off in Settings.'); return; }
   const t = _grwSnap(w, _grwCell(w, x, y)); if (!t) return;
   const reach = gardenRod().st.range - 0.15, tp = _grwRoomPt(w, t.x, t.y), me = _grwCell(w, M.x, M.y), d = Math.hypot(me.x - t.x, me.y - t.y);
   const go = () => { M.tx = M.ty = null; M.go = null; _gwFishCast(t); M.face = _gw.face; };
@@ -128,7 +127,7 @@ function _grmPaintFig(M, t) {
   M.g.setAttribute('transform', `translate(${M.x.toFixed(1)} ${M.y.toFixed(1)})`);
   if (P.rod && M.me) M.face = _gw.face;
   M.bob.setAttribute('transform', `translate(0 ${bob.toFixed(2)}) scale(${P.dir === 'e' && M.face < 0 ? -EE.fig : EE.fig} ${EE.fig})`);
-  const tag = M.g.querySelector('.ee-pname'); if (tag) tag.style.display = _grm.on && M.heldG ? 'none' : '';
+  const tag = M.g.querySelector('.ee-pname'); if (tag) tag.style.display = (M.me ? _gmo.g : M.heldG) ? 'none' : '';
 }
 /** Is that person's line in the room you are in? null: it is out in the garden. false: in a room, not yours. Else where to draw it from. */
 function gardenRoomFxAt(A, F) {

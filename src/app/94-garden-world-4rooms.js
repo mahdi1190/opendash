@@ -418,7 +418,7 @@ function _grmChip(A, R) {
   const box = typeof _gw !== 'undefined' ? _gw.box : null; if (!box || !_gw.on) return;
   let c = box.querySelector(':scope > .grm-chip');
   if (!c) { c = gpEl('div', 'grm-chip'); box.appendChild(c); }
-  c.innerHTML = '';
+  c.innerHTML = gardenRoomSym(R, 26);   // (the same picture as the door)
   c.appendChild(gpEl('span', null, `${String(A.n || 'A friend').slice(0, 40)} went into ${R.name.replace(/^The /, 'the ')}`));
   const b = gpEl('button', 'btn btn-secondary btn-sm', 'Go in too'); b.type = 'button'; b.onclick = () => { c.remove(); gardenRoomGo(R, true); }; c.appendChild(b);
   clearTimeout(_grm.chipT); _grm.chipT = setTimeout(() => c.remove(), 14000);

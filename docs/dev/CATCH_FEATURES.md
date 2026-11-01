@@ -21,7 +21,7 @@ Code: `94-garden-fish-0tackle.js` (tables), `-8catch.js` (engine), `-8reel.js` (
 | Reel game: dart, sulk, run, leap | any | | Fish under difficulty 4 only swim. Words on the reel say what to do | Own screen. A leap splashes in the lake on your screen only |
 | Line tension and snapping | any | | Difficulty 5.5 up. Holding through a run snaps a weak line | Own screen |
 | Rounds | any | | Difficulty 7 up: 2 rounds; 9 up or 150 cm: 3 | Own screen |
-| 7 spots | any | | Reed bank, lily pads, weed bed, sunken log, cold spring, drop-off, old wreck: drawn in the water. Fish there are 25% keener | Same on every screen, from the table |
+| 7 spots | any | | Reed bank, lily pads, weed bed, sunken log, cold spring, drop-off (only darker water), old wreck: drawn in the water, and each says what it is when you point at it or go up to it. Fish there are 25% keener | Same on every screen, from the table |
 | 7 events | any | | Frenzy, fog, storm, shooting stars, red moon, festival, spawning. Worked out from the day and hour, so no message is needed. A note on the stage in plain words | Same clock on every screen: not seen on two |
 | What raises the odds | any | | Chum at a spot (feeds it for an hour), a run of catches, reeds, hot spot, events, fish you let go | Fed spots in the copy |
 
