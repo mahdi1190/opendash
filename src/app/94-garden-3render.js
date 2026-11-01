@@ -266,7 +266,8 @@ function gardenSceneParts(sc, o) {
   // (in your garden and a friend's, the creatures the life engine draws are live: 94-garden-life-*.js; their still drawings stay for the photos and the Home card)
   const vis = (sc.visitors || []).filter(v => !((o.interactive || o.friend) && !o.photo && !o.still && typeof gardenLifeOwns === 'function' && gardenLifeOwns(v.id))).sort((a, b) => a.y - b.y);
   const items = [];
-  const push = (html) => { if (!html) return; const m = /data-sig="([^"]+)"/.exec(html); items.push([m ? m[1] : String(gardenHash(html)), html]); };
+  // every item carries its signature on the node: one without it could not be found again, and was parsed anew on every repaint
+  const push = (html) => { if (!html) return; const m = /data-sig="([^"]+)"/.exec(html), sig = m ? m[1] : String(gardenHash(html)); items.push([sig, m ? html : html.replace(/^\s*<\w+/, `$& data-sig="${sig}"`)]); };
   let vi = 0;
   for (const ob of objs) {
     while (vi < vis.length && vis[vi].y <= ob.z - 0.05) push(_gdrVisitor(vis[vi++], sc, o));
@@ -396,18 +397,56 @@ function gardenSvgPatch(oldSvg, partsOrHtml) {
     if (nu && parts) _gdrRemember(nu, parts);
     return nu || oldSvg;
   };
-  if (!oldSvg || !oldSvg.parentNode || !parts || !oldSvg._gdParts || oldSvg._gdParts.open !== parts.open || oldSvg._gdParts.names !== parts.layers.map(l => l[0]).join(',')) return full();
-  const was = oldSvg._gdParts, kids = [...oldSvg.children];
-  if (kids.length !== parts.layers.length) return full();
+  // The layers are the nodes remembered when the scene was drawn, not "whatever is in the svg now": the fish school and the season's ground put their own groups in beside them, and counting those threw the whole picture away on every save
+  const kids = oldSvg && oldSvg._gdEls;
+  if (!oldSvg || !oldSvg.parentNode || !parts || !oldSvg._gdParts || !kids || _gdrOpenBare(oldSvg._gdParts.open) !== _gdrOpenBare(parts.open) || oldSvg._gdParts.names !== parts.layers.map(l => l[0]).join(',') || kids.length !== parts.layers.length || kids.some(k => k.parentNode !== oldSvg)) return full();
+  const was = oldSvg._gdParts;
+  // the light changed (the hour, the weather): the same stage, the old light fading off it. Everything else in the scene stays where it is
+  const skyAt = parts.layers.find(l => l[0] === 'sky');
+  const lightChanged = was.open !== parts.open || !!(skyAt && was.layers.sky !== skyAt[1]);
+  const soft = lightChanged && !parts.open.includes(' is-still') && !document.hidden && !(typeof gardenMotionOn === 'function' && !gardenMotionOn());
+  if (was.open !== parts.open) {
+    for (const c of [...oldSvg.classList]) if (/^gd-(?:tod|season)-/.test(c)) oldSvg.classList.remove(c);
+    for (const c of /class="([^"]*)"/.exec(parts.open)[1].split(/\s+/)) if (/^gd-(?:tod|season)-/.test(c)) oldSvg.classList.add(c);
+  }
+  const fading = soft ? _gdrFadeDefs(kids[parts.layers.findIndex(l => l[0] === 'defs')]) : null;
   parts.layers.forEach(([name, h], i) => {
     if (name === 'objects') { _gdrPatchItems(kids[i], parts.items); return; }
     if (name === 'ui' || was.layers[name] === h) return;
     const nu = _gdrParse(h)[0];
-    if (nu) oldSvg.replaceChild(nu, kids[i]);
+    if (!nu) return;
+    if (soft && GDR_LIGHT_LAYERS.has(name)) { oldSvg.insertBefore(nu, kids[i]); _gdrFadeAway(kids[i], fading.names, nu, name); }
+    else oldSvg.replaceChild(nu, kids[i]);
+    kids[i] = nu;
+    oldSvg._gartViewKey = '';   // (what is drawn follows the view: the new layer's nodes need telling)
   });
+  // the old gradients stay, under new names, for as long as the old light needs them
+  if (fading) { oldSvg.insertBefore(fading.defs, oldSvg.firstChild); setTimeout(() => fading.defs.remove(), GDR_FADE_MS + 200); }
   oldSvg.setAttribute('aria-label', parts.label);
-  _gdrRemember(oldSvg, parts);
+  _gdrRemember(oldSvg, parts, kids);
   return oldSvg;
+}
+const GDR_FADE_MS = 1800;
+const GDR_LIGHT_LAYERS = new Set(['sky', 'clouds', 'far', 'ground', 'weather', 'night']);
+/** The svg's opening tag without the time of day and the season: those change on the same stage. */
+function _gdrOpenBare(open) { return open.replace(/ gd-(?:tod|season)-\w+/g, ''); }
+/** A copy of the old gradients under names of their own, so the old sky keeps its colours while it fades instead of jumping to the new ones. */
+function _gdrFadeDefs(defs) {
+  const names = new Map(), copy = defs.cloneNode(true);
+  for (const el of copy.querySelectorAll('[id]')) { const nu = el.id + '-was'; names.set(el.id, nu); el.id = nu; }
+  return { defs: copy, names };
+}
+/** The old layer, on top of its replacement, fading off it. A see-through layer (the dark of the night, the rain) also fades its replacement in, or the change would jump. */
+function _gdrFadeAway(old, names, nu, name) {
+  for (const b of old.querySelectorAll('.gart-bake')) b.classList.add('no-bake');
+  for (const el of old.querySelectorAll('[fill^="url(#"]')) { const m = /url\(#([^)]+)\)/.exec(el.getAttribute('fill')), to = m && names.get(m[1]); if (to) el.setAttribute('fill', `url(#${to})`); }
+  old.setAttribute('pointer-events', 'none');
+  const opts = { duration: GDR_FADE_MS, easing: 'ease-in-out' };
+  try {
+    if (name === 'night' || name === 'weather') nu.animate([{ opacity: 0 }, { opacity: 1 }], opts);
+    const b = old.animate([{ opacity: 1 }, { opacity: 0 }], Object.assign({ fill: 'forwards' }, opts));
+    b.onfinish = () => old.remove(); b.oncancel = () => old.remove();
+  } catch (e) { old.remove(); }
 }
 /** Draw a scene's parts into a holder from scratch, remembering them for the next patch. */
 function gardenSvgMount(holder, parts) {
@@ -416,10 +455,12 @@ function gardenSvgMount(holder, parts) {
   if (svg) _gdrRemember(svg, parts);
   return svg;
 }
-function _gdrRemember(svg, parts) {
+function _gdrRemember(svg, parts, kids) {
   const layers = {};
   for (const [n, h] of parts.layers) if (h != null) layers[n] = h;
   svg._gdParts = { open: parts.open, names: parts.layers.map(l => l[0]).join(','), layers };
+  if (kids) svg._gdEls = kids;
+  else { const all = [...svg.children]; svg._gdEls = all.length === parts.layers.length ? all : null; }   // (just drawn: nothing else is in it yet)
 }
 /** SVG markup to nodes in the SVG namespace. */
 function _gdrParse(html) {
@@ -437,7 +478,9 @@ function _gdrPatchItems(layer, items) {
   const parsed = fresh.length ? _gdrParse(fresh.map(x => x[1]).join('')) : [];
   let pi = 0;
   const next = items.map(([sig]) => { const l = pool.get(sig); if (l && l.length) return l.shift(); return parsed[pi++]; }).filter(Boolean);
+  // what others keep at the bottom of the layer (the rings of what needs you) is not the scene's either: it stays at the bottom
   let ref = layer.firstChild;
+  for (const el of [...layer.children]) { if (el.hasAttribute('data-sig') || el.hasAttribute('data-live')) continue; if (el === ref) ref = ref.nextSibling; else layer.insertBefore(el, ref); }
   for (const el of next) { if (el === ref) { ref = ref.nextSibling; continue; } layer.insertBefore(el, ref); }
   // what the world's loop drew (you, your pet, bugs, anything from gardenWorldAdd: data-live) is not the scene's to remove: it goes back in its row
   const live = [];
