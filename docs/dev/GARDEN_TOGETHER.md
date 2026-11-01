@@ -379,7 +379,7 @@ What a person carries goes in their look as `g` (ids; a receiver draws from its 
 
 **A specimen is a record beside the bag.** Bag items stay `fish:<id>-<q>` and `bug:<id>`. `state.garden.sp` holds each catch as one value, merged entry by entry; `vl` holds the variants found and is never trimmed, so progress does not go back. Past `GARDEN_SPEC.max` the lowest-scoring go, never a pinned one or the newest few. Selling marks the record `s`, and its Undo takes that back. A contest fish makes no record. `p` and `w` are friend ids, never names, and stay in your own state.
 
-**What friends get.** The snapshot's `sp` (`gardenSpecWire`): your best few as [id, variant or '-', size, quality, serial], how many variants, catches to the nearest ten. No day, no place, no company. `sh` gains `fv` and `bv`, lists of their own, because an older app's rows must stay as they were. It travels with the garden, so the per-friend Garden permission decides who gets it. `_gscSnapBody` now also copies `cv`, `wk`, `sh` and `sp`: until now the saved copy went without them.
+**What friends get.** The snapshot's `sp` (`gardenSpecWire`): your best few as [id, variant or '-', size, quality, serial], how many variants, catches to the nearest ten. No day, no place, no company. `sh` gains `fv` and `bv`, lists of their own, because an older app's rows must stay as they were. It travels with the garden, so the per-friend Garden permission decides who gets it. `_gscSnapBody` copies `sp` to the saved copy, and `cv`, which it went without, so a friend's parcel of a fish or bug could be refused as too old.
 
 **There is no central server, and this adds none.** The friends board (`gardenSpecBoard`) is what this computer has heard from your friends, and the page says so.
 
