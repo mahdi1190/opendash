@@ -64,7 +64,7 @@ function gardenDesignMadeArt(c, n) {
   const kind = GDZ_MADE[c[0]] ? GDZ_MADE[c[0]].id : '', a = _gdzCol(c[3], '#f2e8cf'), b = _gdzCol(c[4], '#c8452f');
   const shadow = '<ellipse cx="1" cy="0" rx="12" ry="3" fill="#1a2a14" fill-opacity="0.22"/>';
   if (kind === 'sign') return shadow + `<rect x="-2.500" y="-34" width="5" height="34" rx="1" fill="#6e4c2c" stroke="#3f2a16" stroke-width="0.8"/><rect x="-37" y="-58" width="74" height="30" rx="4" fill="${a}" stroke="${b}" stroke-width="2.600"/>`
-    + `<text data-dzt="${n}" data-l="0" x="0" y="-46" text-anchor="middle" font-size="9.500" font-weight="700" font-family="Inter, Arial, sans-serif" fill="#2c2418"></text><text data-dzt="${n}" data-l="1" x="0" y="-34" text-anchor="middle" font-size="9.500" font-weight="700" font-family="Inter, Arial, sans-serif" fill="#2c2418"></text>`;
+    + `<text data-dzt="${n}" data-l="0" x="0" y="-46" text-anchor="middle" font-size="8" font-weight="700" font-family="Inter, Arial, sans-serif" fill="#2c2418"></text><text data-dzt="${n}" data-l="1" x="0" y="-34" text-anchor="middle" font-size="8" font-weight="700" font-family="Inter, Arial, sans-serif" fill="#2c2418"></text>`;
   if (kind === 'flag') return shadow + `<rect x="-1.800" y="-84" width="3.600" height="84" rx="1" fill="#7a5636" stroke="#3f2a16" stroke-width="0.7"/><circle cx="0" cy="-85" r="2.800" fill="#d9a520"/>`
     + `<g class="gda-flutter"><g>${_gdzFlagCloth(c[5], 2, -82, 40, 26, a, b)}</g><rect x="2" y="-82" width="40" height="26" fill="none" stroke="#2c2418" stroke-opacity="0.45" stroke-width="1"/></g>`;
   if (kind === 'statue') {
