@@ -133,6 +133,7 @@ function gardenVisitNotes(el) {
   const how = _gsvEl('section', 'card gsv-how');
   how.appendChild(_gsvEl('b', null, `You are visiting ${_gscFirst(fid)}`));
   how.appendChild(_gsvEl('p', 'muted', live ? 'They are here, and they see what you do. What you plant or place comes from your own bag.' : (typeof _GLV_NOTES !== 'undefined' && _GLV_NOTES[_glv.why]) || 'This is their garden as they last shared it. Walk wherever you like: nothing here leaves your computer unless you do one of the things below.'));
+  { let built = ''; try { built = typeof gardenWorksWords === 'function' ? gardenWorksWords((_gdvSnap() || {}).wk) : ''; } catch (e) { built = ''; } if (built) how.appendChild(_gsvEl('p', 'muted', built)); }
   el.appendChild(how);
   el.appendChild(_gsvQuick(f, c));
   el.appendChild(_gsvToday(f, c));

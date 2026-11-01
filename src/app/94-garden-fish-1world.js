@@ -330,6 +330,8 @@ function gardenWorldProps(sc, o) {
     const inner = draw(p);
     if (inner) out.push(wrap('gd-prop-' + p.kind + (p.act ? ' gd-prop-click' : ''), Math.ceil(p.y + p.h), p.x, inner, p.id));
   }
+  // what has been built for the lake stands where it is (94-garden-fish-7gear.js). pointer-events: a click there is still a click on the water
+  if (typeof gardenWorksArt === 'function') for (const r of gardenWorksArt(sc)) out.push(wrap('gd-prop-work', r.y, r.x, `<g pointer-events="none" transform="translate(${_gwN(r.x * cw)} ${_gwN(base + r.y * ch)})">${r.svg}</g>`, 'work-' + r.key));
   // the forest edge: big trees all down the east side, so the woods have a back wall
   const pal = (GART_PAL.leaf[sc.season] || GART_PAL.leaf.summer);
   const rnd = gardenRand('forest-edge');

@@ -84,10 +84,10 @@ function _gwFx() {
   if (_gw.fx && _gw.fx.rod && _gw.fx.rod.isConnected) return _gw.fx;
   const a = _gwActors(); if (!a) return null;
   _gwFishClearFx();
-  const bob = gardenBobber();
+  const bob = gardenBobber(), rodL = gardenRodLook(gardenRod().id);
   const fx = {
     line: _gwEl('path', { class: 'gd-line', fill: 'none', stroke: '#fbfbf2', 'stroke-opacity': '0.85', 'stroke-width': '0.9', 'stroke-linecap': 'round' }),
-    rod: _gwEl('path', { class: 'gd-rod', fill: 'none', stroke: '#6a4a2a', 'stroke-width': '2.2', 'stroke-linecap': 'round' }),
+    rod: _gwEl('path', { class: 'gd-rod', fill: 'none', stroke: rodL.c, 'stroke-width': String(rodL.w), 'stroke-linecap': 'round' }),
     bob: _gwEl('g', { class: 'gd-bobber' }),
     bubble: _gwEl('g', { class: 'gd-bite' }),
     ring: _gwEl('g', { class: 'gd-rings' }),

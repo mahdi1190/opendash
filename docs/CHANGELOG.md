@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.39.0]
+
+What you buy now shows, and friends can see it.
+
+### Added
+- **Your gear shows on you.** A better rod or net hangs on your back, your rod in your hand and your float on the water look like the ones you own, and your watering can matches too. Friends see all of this.
+- **What you build stands in the garden.** The fish feeder, reed beds, fishing station, night lantern and stocked pools are drawn where they are, as well as the longer piers. Friends see them when they visit, and as soon as you build them if they are in your garden.
+- **New things are held up.** Buy something and you hold it over your head, and friends see "Sam got a carbon rod!"
+- **See what a friend carries.** Click them in the garden for their rod, net, float and can. A visit also says what they have built.
+
 ## [2.38.2]
 
 ### Fixed
