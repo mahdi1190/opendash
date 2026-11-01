@@ -11,7 +11,7 @@
 const _glv = { fid: '', state: '', why: '', lv: 'none', w: null, road: null, touch: false, mode: 'normal', snap: null, beatT: 0, goAt: 0, goT: 0, lastGo: 0, goX: 0, goY: 0, watch: null, pending: new Map(), follow: null, followGo: false, parcels: new Map(), bugs: new Map(), sprites: new Map(), doQ: [], doT: 0, doAt: 0, selfName: '', ver: 0 };
 function _glvLive() { return _glv.state === 'live'; }
 function _glvFriend() { return _gscFriend(_glv.fid); }
-function _glvSend(k, body) { return _gllApi('/api/garden-live/send', { k, body }).catch(() => null); }
+function _glvSend(k, body) { return _gllPipe('/api/garden-live/send', { k, body }); }
 function _glvLook() { const l = gardenLiveLook(); if (typeof _gw !== 'undefined' && _gw.on) { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return l; }
 function gardenLiveVisitEnter(fid) {
   if (_glv.fid === fid && _gll.role === 'visit') return;
@@ -19,9 +19,19 @@ function gardenLiveVisitEnter(fid) {
   _gll.role = 'visit'; _glv.fid = fid; _glv.state = 'knocking';
   _gllApi('/api/garden-live/here', { role: 'visit', on: true, f: fid, look: gardenLiveLook() }).then(_glvTake).catch(() => { _glv.state = 'look'; _glv.why = 'quiet'; _glvHud(); });
   clearInterval(_glv.beatT);
-  _glv.beatT = setInterval(() => { if (_glv.fid === fid) _gllApi('/api/garden-live/here', { role: 'visit', on: true, f: fid, look: _glvLook() }).then(_glvTake).catch(() => {}); }, 30000);
+  _glv.beatAt = Date.now();   // clock-ok: spacing
+  _glv.beatT = setInterval(_glvBeat, 30000);
   gardenLiveLoad(true).then(() => { if (typeof _gdvTouch === 'function') _gdvTouch(); }).catch(() => {});
 }
+/** I am still here. Also from the fish's clock (94-garden-live-8sync.js), which a hidden tab does not slow. */
+function _glvBeat() {
+  if (!_glv.fid) return;
+  const fid = _glv.fid;
+  _glv.beatAt = Date.now();   // clock-ok: spacing
+  _gllApi('/api/garden-live/here', { role: 'visit', on: true, f: fid, look: _glvLook(), hidden: typeof document !== 'undefined' && !!document.hidden }).then(_glvTake).catch(() => {});
+}
+// A page going away says so: unless it comes straight back (a reload), the visit is over soon.
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('pagehide', () => { if (!_glv.fid) return; try { fetch('/api/garden-live/here', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'visit', on: 'gone', f: _glv.fid }) }); } catch (e) { /* the server sees the silence */ } });
 function gardenLiveVisitLeave() {
   if (_gll.role !== 'visit') return;
   const fid = _glv.fid;
@@ -47,19 +57,31 @@ function _glvClear() {
   clearInterval(_glv.beatT); clearTimeout(_glv.goT); clearTimeout(_glv.doT);
   _glvPeopleOut();
   _gll.by.clear();
-  Object.assign(_glv, { fid: '', state: '', why: '', lv: 'none', w: null, road: null, snap: null, follow: null, ver: 0, selfName: '', doT: 0 });
+  Object.assign(_glv, { fid: '', state: '', why: '', lv: 'none', w: null, road: null, snap: null, follow: null, ver: 0, boot: '', gen: null, here: false, resumeAt: 0, lookSig: '', selfName: '', doT: 0 });
   _glv.pending.clear(); _glv.doQ.length = 0;
   _gllTip(null, '');
 }
 function _glvTake(d) {
   const v = d && d.visit;
+  if (v && v.boot !== _glv.boot) { _glv.boot = v.boot; _glv.ver = 0; }   // (this server restarted: its count started again)
   if (!v || v.f !== _glv.fid || (v.ver || 0) < (_glv.ver || 0)) return;   // (an answer that left before the latest event)
   _glv.ver = v.ver || 0;
-  const was = _glv.state;
-  _glv.state = v.state; _glv.why = v.why; _glv.lv = v.lv; _glv.w = v.w; _glv.road = v.road; _glv.touch = v.touch; _glv.mode = v.mode || 'normal';
-  if (was === 'live' && _glv.state !== 'live') { if (typeof _gltLost === 'function') _gltLost(); _glvPeopleOut(); _glv.snap = null; _gll.by.clear(); _glv.pending.clear(); _glv.doQ.length = 0; if (typeof _gsvPaint === 'function') _gsvPaint(); }
+  const was = _glv.state, wasWhy = _glv.why, wasGen = _glv.gen;
+  _glv.state = v.state; _glv.why = v.why; _glv.lv = v.lv; _glv.w = v.w; _glv.road = v.road; _glv.touch = v.touch; _glv.mode = v.mode || 'normal'; _glv.gen = v.gen;
+  if (_glv.state === 'live' && _glv.why === 'resume') { if (wasWhy !== 'resume') _glv.resumeAt = Date.now(); } else _glv.resumeAt = 0;   // clock-ok: a brief drop is not worth a word
+  // A dropped connection takes nobody away: everyone stays where they are, the garden stays as it is, until it is back or it really is over (a plain note says so).
+  const hold = _glv.state !== 'live' && _glv.why === 'lost';
+  if (_glv.here && _glv.state !== 'live' && !hold) { _glv.here = false; if (typeof _gltLost === 'function') _gltLost(); _glvPeopleOut(); _glv.snap = null; _gll.by.clear(); _glv.pending.clear(); _glv.doQ.length = 0; if (typeof _gsvPaint === 'function') _gsvPaint(); }
+  if (_glv.state === 'live') _glv.here = true;
   if (was !== 'live' && _glv.state === 'live') { _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); if (typeof _gltResume === 'function') _gltResume(); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
+  else if (was === 'live' && _glv.state === 'live' && wasWhy === 'resume' && !_glv.why) { _glvResend(); if (typeof _gltResume === 'function') _gltResume(); }   // (back: what I asked for and never heard about, with the same ids)
+  if (wasGen != null && wasGen !== _glv.gen && _glv.state === 'live') _glvRosterAgain();
   _glvHud();
+}
+/** A new session (their app restarted): whoever it does not name again within a few seconds has gone. Everyone else never left the screen. */
+function _glvRosterAgain() {
+  for (const A of _gll.actors.values()) A.stale = true;
+  setTimeout(() => { for (const [w, A] of [..._gll.actors]) if (A.stale && _glvLive()) _glvActorGone(w); }, 7000);
 }
 /** What you asked for before and never heard back about: the same id, so it can only happen once. (What waits for them went by the mailbox: its answer comes by post.) */
 function _glvResend() {
@@ -241,7 +263,9 @@ function _glvGotBug(u, item) {
 function _glvActorAdd(ev) {
   let A = _gll.actors.get(ev.w);
   if (!A) { A = _gllActor(ev); _gll.actors.set(ev.w, A); }
-  else { A.n = ev.n; A.a = ev.a || A.a; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }
+  else if (A.n !== ev.n || JSON.stringify([A.a, A.pet]) !== JSON.stringify([ev.a || A.a, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
+  else A.lv = ev.lv;
+  A.stale = false;
   if (!_glv.sprites.has(ev.w)) _glv.sprites.set(ev.w, _gllSprite(A, () => _glvPersonMenu(A)));
   return A;
 }
@@ -334,6 +358,7 @@ function gardenLiveSay(id) {
 }
 /* ---------- what the server hears ---------- */
 function _glvEvent(ev) {
+  if (typeof _gly !== 'undefined') _gly.heard = Date.now();   // clock-ok: when the host was last heard
   switch (ev.k) {
     case 'state': _glvTake(ev); return;
     case 'budget': _glv.mode = ev.mode || 'normal'; return;
@@ -345,12 +370,12 @@ function _glvEvent(ev) {
     }
     case 'go': {
       const A = _gll.actors.get(ev.w); if (!A) return;   // (you are not one of them: your own feet are the world's)
-      _gllWalkVia(A, ev.r, ev.x, ev.y); if (_glv.follow === ev.w) _glvFollowGo(ev.x - 0.8, ev.y + 0.3);
+      _gllGoPace(A, ev); _gllWalkVia(A, ev.r, ev.x, ev.y); if (_glv.follow === ev.w) _glvFollowGo(ev.x - 0.8, ev.y + 0.3);
       return;
     }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
-      if (ev.c === 'em') { if (Number.isFinite(ev.x)) { A.x = ev.x; A.y = ev.y; A.tx = null; } _gllEmote(A, ev.e); }
+      if (ev.c === 'em') _gllEmoteAt(A, ev);
       else if (ev.c === 'say') _gllSay(A, ev.e);
       else if (ev.c === 'do' && ev.e === 'high5') { _gllEmote(A, 'clap'); if (ev.to === _glv.w && typeof gartEmoteRun === 'function') gartEmoteRun('clap', { quiet: true }); _gllFloat(_glvSvg(), A.x + 0.35, A.y - 1.4, '✋', ''); }
       else if (ev.c === 'do' && ev.e === 'follow' && ev.to === _glv.w) _gllFloat(_glvSvg(), A.x, A.y - 1.4, '🚶', A.n);
@@ -402,6 +427,7 @@ function _glvDelta(ops) {
 (function _glvLookWatch() {
   if (typeof document === 'undefined') return;
   let t = 0;
-  const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role === 'visit' && _glvLive()) _glvSend('me', _glvLook()); } catch (e) { /* the next beat has it */ } }, 1500); };
+  // (only a real change: the same look again means "tell me everything", and a pet says it changed for many small reasons)
+  const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role !== 'visit' || !_glvLive()) return; const l = _glvLook(), sig = JSON.stringify([l.a || null, l.pet || null]); if (sig === _glv.lookSig) return; const first = !_glv.lookSig; _glv.lookSig = sig; if (!first) _glvSend('me', l); } catch (e) { /* the next beat has it */ } }, 1500); };
   document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
 })();

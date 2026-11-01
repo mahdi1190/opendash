@@ -58,10 +58,10 @@ const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet'
  *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
  *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT), snap (ask for a group photo: `i` its id, `x` and `y` the middle of the frame, see GL_SNAP). `to` and `w` are slots as in gl:em. */
 const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync']);
-const GL_FX_STEPS = Object.freeze({ sync: Object.freeze(['ask', 'at']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']) });
+const GL_FX_STEPS = Object.freeze({ sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']) });
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
 const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*']));
-const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask']));
+const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back']));
 const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*'));
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
 const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -127,7 +127,7 @@ function glFxOk(b) {
  *  it and keeps the old rule, a pet that follows its person). Tenths of a cell; a walk is its end point, never a stream. `gap` the least ms between two while a pet walks (`thin`: when walking is sent less),
  *  `settle` ms after it stops before its resting place is sent, `idle` ms between the "still here" messages while it sits, `stale` ms after which a screen stops trusting the last place and follows the person
  *  again, `snap` cells of difference after which a screen puts the pet in its place instead of walking it there. */
-const GL_PP = Object.freeze({ gap: 900, thin: 2500, settle: 450, idle: 15000, stale: 40000, snap: 3 });
+const GL_PP = Object.freeze({ gap: 3000, thin: 6000, settle: 450, idle: 30000, stale: 40000, snap: 3 });
 /** The pets in a `gl:pp` (a list of up to 4: `u` 0 is the sender's own companion, 1 to 3 the host's pack with `e` its species): '' when it fits, else why. The pack is the host's to say. */
 function glPpOk(b, fromHost) {
   if (!b || typeof b !== 'object' || !Array.isArray(b.l) || b.l.length < 1 || b.l.length > 4) return 'pp';
