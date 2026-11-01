@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.59.1]
+
+### Fixed
+- **Tidied the garden map.** Water no longer cuts through trees, trees no longer hide buildings, gates and lamps stand clear of each other, and every door can be reached. Room doors stay hidden behind locked gates.
+
 ## [2.59.0]
 
 ### Fixed
