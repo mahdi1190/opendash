@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.52.0]
+
+### Changed
+- **Fish and bugs now come in real families, each with its own body shape:** eels, rays, koi, butterflies, stag beetles, spiders and many more. Each family moves its own way and does something when held up, and friends see the same. Shadows in the water match the body, and a minnow now looks tiny next to a sturgeon.
+
 ## [2.51.0]
 
 ### Added

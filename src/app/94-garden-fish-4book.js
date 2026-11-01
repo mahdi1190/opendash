@@ -104,7 +104,7 @@ function _gdcBook(el, m, kind) {
 }
 function _gdbCard(r, kind, m, q) {
   const d = r.def, known = !!r.rec, b = _gdpEl('button', 'gdb-card gd-r-' + d.rarity + (known ? '' : ' is-unknown')); b.type = 'button';
-  const art = _gdpEl('span', 'gdb-card-art'); art.innerHTML = gardenCatchSvg(kind, d.id, 84, { uid: 'bk' + d.id, silhouette: !known, glow: false }); b.appendChild(art);
+  const art = _gdpEl('span', 'gdb-card-art'); art.innerHTML = gardenCatchSvg(kind, d.id, 84, { uid: 'bk' + d.id, silhouette: !known, glow: false, real: true }); b.appendChild(art);
   const name = known || q ? d.name : '???';
   b.appendChild(_gdpEl('b', 'gdb-card-n', name));
   b.appendChild(_gdpEl('small', 'gdb-card-s muted', known ? (d.cat === 'fish' ? `Best ${Math.round(Number(r.rec.b) || 0)} cm · ${r.rec.n || 0} caught` : `${r.rec.n || 0} caught`) : _gdcWhen(d, m.level.level)));
@@ -121,7 +121,7 @@ function _gdbEntry(el, m, kind, r) {
   const back = _gdpBtn('Back to the book', { icon: 'arrow-left', kind: 'btn-ghost', run: () => { _gdc.pick = null; _gdbGo(); } });
   page.appendChild(back);
   const top = _gdpEl('div', 'gdb-entry-top');
-  const art = _gdpEl('div', 'gdb-entry-art'); art.innerHTML = gardenCatchSvg(kind, d.id, 220, { uid: 'be' + d.id, silhouette: !known, glow: false }); top.appendChild(art);
+  const art = _gdpEl('div', 'gdb-entry-art'); art.innerHTML = gardenCatchSvg(kind, d.id, 220, { uid: 'be' + d.id, silhouette: !known, glow: false, real: true }); top.appendChild(art);
   const t = _gdpEl('div', 'gdb-entry-t');
   t.appendChild(_gdpEl('h3', 'gd-h3', known ? d.name : 'Not caught yet'));
   const pill = _gdcPill(d.rarity); if (pill) t.appendChild(pill);

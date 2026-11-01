@@ -27,7 +27,7 @@ function gardenMomentSpec(kind, id, o) {
   const V = (kind === 'fish' || kind === 'bug') && o.v && typeof gardenVariantFor === 'function' ? gardenVariantFor(kind, d, o.v) : null, tier = V ? gardenVariantTier(V) : null;   // an id this version does not know: an ordinary one
   const name = (V ? V.name.toLowerCase() + ' ' : '') + String(row.name(d) || '').toLowerCase().replace(/^the /, '');
   const sub = [tier && tier.rank >= 2 ? tier.label : '', kind === 'fish' && o.cm ? o.cm + ' cm' : '', o.q ? (typeof gardenQuality === 'function' ? gardenQuality(o.q).label : '') : ''].filter(Boolean).join(' · ');
-  return { kind, id, d, name, verb: row.verb(d), sub, isNew: !!o.isNew, record: !!o.record, v: V ? V.id : '', rank: tier ? tier.rank : 0, tier: tier ? tier.label : '', art: (px) => { try { return row.art(id, px, d, V ? V.id : '') || ''; } catch (e) { return ''; } } };
+  return { kind, id, d, name, verb: row.verb(d), cm: o.cm || 0, sub, isNew: !!o.isNew, record: !!o.record, v: V ? V.id : '', rank: tier ? tier.rank : 0, tier: tier ? tier.label : '', art: (px) => { try { return row.art(id, px, d, V ? V.id : '') || ''; } catch (e) { return ''; } } };
 }
 /** How long it is held up: the rarer, the longer. */
 function gardenMomentMs(spec) { const r = (spec && spec.rank) || 0; return GART_MOMENT_MS + (r >= 5 ? 3000 : r >= 4 ? 2000 : r >= 3 ? 1000 : 0); }
@@ -35,12 +35,12 @@ function gardenMomentMs(spec) { const r = (spec && spec.rank) || 0; return GART_
 function gardenMomentSvg(spec, o) {
   o = o || {};
   const title = o.who ? `${o.who} ${spec.verb} ${_gscA(spec.name)}!` : `${_gscA(spec.name)}!`.replace(/^./, (c) => c.toUpperCase());
-  const rank = spec.rank || 0, px = rank >= 4 ? 66 : rank >= 2 ? 54 : 46, y = GPL_HOLD.y, tw = Math.max(40, title.length * 5.4 + 16), sub = o.who ? '' : spec.sub;
-  const by = y - 40, flag = spec.isNew ? 'New!' : spec.record ? 'Record!' : '';
+  const rank = spec.rank || 0, y = GPL_HOLD.y, Fx = gardenCreatureMomentFx(spec.kind, spec.d, y), px = Math.round((rank >= 4 ? 66 : rank >= 2 ? 54 : 46) * gardenCreatureHoldK(spec.kind, spec.d, spec.cm)), tw = Math.max(40, title.length * 5.4 + 16), sub = o.who ? '' : spec.sub;
+  const by = y - 40 - Math.max(0, px * 0.3 - 22), flag = spec.isNew ? 'New!' : spec.record ? 'Record!' : '';
   const star = (x, yy, s, dl) => `<path class="gmo-spark" style="animation-delay:${dl}s" transform="translate(${x} ${yy}) scale(${s})" d="M0-5L1.3-1.3L5 0L1.3 1.3L0 5L-1.3 1.3L-5 0L-1.3-1.3z" fill="#ffe27a" stroke="#e8a83a" stroke-width=".5"/>`;
   const rays = rank >= 2 && typeof gardenVariantMomentSvg === 'function' ? gardenVariantMomentSvg(rank, y) : '';
   const tag = rank >= 3 ? `${spec.tier}!` : '', tagW = tag.length * 4.8 + 10;
-  return `<g class="gmo">${rays}<g class="gmo-pop"><ellipse cx="0" cy="${y}" rx="26" ry="22" fill="#fff6c8" fill-opacity=".38"/><g transform="translate(${-px / 2} ${y - px / 2 + 2})">${spec.art(px)}</g></g>`
+  return `<g class="gmo">${rays}${Fx.back}<g class="gmo-pop"><ellipse cx="0" cy="${y}" rx="26" ry="22" fill="#fff6c8" fill-opacity=".38"/><g transform="translate(${-px / 2} ${y - px / 2 + 2})"><g class="${Fx.cls}">${spec.art(px)}</g></g></g>${Fx.over}`
     + star(-26, y - 16, 1, 0) + star(27, y - 10, .8, .3) + star(8, y - 30, .7, .6) + (rank >= 2 ? star(-34, y + 8, .8, .45) + star(36, y + 12, .9, .15) + star(-12, y - 36, .8, .75) : '')
     + `<g class="gmo-pop" style="animation-delay:.12s"><rect class="gmo-b" x="${-tw / 2}" y="${by - 12}" width="${tw}" height="${sub ? 24 : 17}" rx="8"/><text class="gmo-t" text-anchor="middle" y="${by}">${esc(title)}</text>${sub ? `<text class="gmo-s" text-anchor="middle" y="${by + 10}">${esc(sub)}</text>` : ''}`
     + (flag ? `<rect class="gmo-nb" x="${tw / 2 - 16}" y="${by - 20}" width="${flag.length * 4.8 + 8}" height="11" rx="5.5"/><text class="gmo-new" x="${tw / 2 - 12}" y="${by - 12}">${flag}</text>` : '') + (tag ? `<rect class="gmo-nb gmo-tag" x="${-tagW / 2}" y="${by - 26}" width="${tagW}" height="12" rx="6"/><text class="gmo-new" text-anchor="middle" y="${by - 17}">${esc(tag)}</text>` : '') + '</g></g>';
