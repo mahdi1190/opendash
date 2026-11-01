@@ -316,7 +316,7 @@ function _ptwStep(P, dt, t) {
     const W = GARDEN_WORLD, dx = (P.tx - P.x) * W.cellW, dy = (P.ty - P.y) * W.cellH, d = Math.hypot(dx, dy);
     if (d < 3) { P.x = P.tx; P.y = P.ty; P.tx = null; P.run = false; const c = P.arrive; P.arrive = null; if (P.root) P.root.classList.remove('pt-run'); if (c) c(); else { P.sit(); P.busy = 0.5; } }
     else {
-      const sp = 44 * P.per.speed * P.speed * dt, nx = P.x + dx / d * sp / W.cellW, ny = P.y + dy / d * sp / W.cellH;
+      const sp = Math.min(d, 44 * P.per.speed * P.speed * dt), nx = P.x + dx / d * sp / W.cellW, ny = P.y + dy / d * sp / W.cellH;
       if (Math.abs(dx) > 3) P.dir = dx > 0 ? 1 : -1;
       if (_ptwCanStep(P, nx, ny)) { P.x = nx; P.y = ny; }
       else if (_ptwCanStep(P, nx, P.y)) P.x = nx;

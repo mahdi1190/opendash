@@ -429,3 +429,13 @@ Code: `src/app/94-garden-zz-*.js`, `src/styles/94-garden-together.css`. The owne
 **One rule for standing in the way** (`_gdzReachWhy`): it builds the same grid the walking uses, before and after, and refuses if any land you could reach, or any door you could reach, would be cut off, in plain words. It runs on a move, on Put it back and on swapping to an older layout. Decorations put out by hand away from the designer are not checked for this, as before.
 
 **Strict rules are for your own hands.** `94-garden-design-1strict.js` (every number in `GDZ_STRICT`) runs only when you draw or put something down in the designer. It never refuses a snapshot: `gardenDesignClean` still draws a design from an older or newer app whatever it breaks, and what is already placed stays until it is moved.
+
+## 25. Zones, fewer fish, pets in the world
+
+**Zones** (docs/dev/GARDEN_PLAN.md, "Zones") add nothing to a snapshot or the wire: a garden's zones come from `lv` and what it owns.
+
+**Fish.** `GF_SCHOOL.max` is 8 across the whole map in ordinary play; contests and feeding frenzies may go up to `GF_SCHOOL.wire` (20, what `gl:fs` carries). Each water wants 1, plus 1 for what you built for it. The one who decides fills the water nearest anyone in the garden first, and the last places are kept for nearer waters; someone standing at an empty water makes the furthest swimming fish leave. In the lake only fish within 14 cells of someone count. A fish within 9 cells of a float in its own water drifts over, and a line nothing has come to for 12 seconds brings one up nearby: every bite is still a fish you can see. Still host-decided, still the whole list.
+
+**Pets in the world.** Nothing new is sent. Where a pet is goes out as before (`gl:pp`, tenths of a cell); what it is doing there is worked out from where it is and what stands in the garden (`_ptwStand`, `97-pets-7roam.js`): a water pet on an open water cell is swimming, a flying pet at a perch's point is on that perch. Perch points are kept to tenths of a cell, so the place sent lands on them exactly. Only open land and open water count; perches come from the live rows, so moved objects keep theirs. With reduced motion or Fun off none of it runs.
+
+**A pet away on a little journey.** Who is here hears it once (`fx pet away` and `back`: an older app ignores the id). A later arrival gets no pet in your look, because `petPayload()` says `walks: false` while away. No places are sent. A saved copy says when it is due back: snapshot field `pa`, a time, so an old copy stops saying so by itself. It is in `gardenSnapshot`, `gardenSnapshotClean`, `_gscSnapBody` and `GARDEN_SCHEMA`; a saved copy can lag by up to the 15 minutes between publishes.
