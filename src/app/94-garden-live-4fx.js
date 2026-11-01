@@ -75,16 +75,18 @@ function _gllFxPlay(A, ev) {
   if (c === 'make') { _gllPose(A, 'dig', 1200); if (!_gllOffscreen(A)) _gllFloat(_gw.svg, A.x, A.y - 1.2, '🔨', A.n); return; }
   if (c === 'got') {
     if (_gll.role === 'host' && typeof _glgFxGot === 'function') _glgFxGot(A, ev);   // (a guest's fish counts towards a shared goal, at a real line's pace)
-    const kind = _GLL_FX_KIND[e], spec = kind ? gardenMomentSpec(kind, ev.i, { cm: ev.n, q: ev.ql, isNew: (ev.nw & 1) === 1, record: (ev.nw & 2) === 2 }) : null;
+    const kind = _GLL_FX_KIND[e], spec = kind ? gardenMomentSpec(kind, ev.i, { cm: ev.n, q: ev.ql, isNew: (ev.nw & 1) === 1, record: (ev.nw & 2) === 2, v: ev.v }) : null;
     if (!spec) return;   // an id this version does not know
     const who = String(A.n).split(/\s+/)[0];
     if (_gllOffscreen(A) || gardenFun() === 'off') { _gllFeed(`${who} ${spec.verb} ${_gscA(spec.name)}`); return; }
     A.fish = null; _gllFxClear(A);
-    A.dir = 's'; _gllPose(A, 'hold', GART_MOMENT_MS);
+    const holdMs = gardenMomentMs(spec);
+    if (spec.rank >= 3) _gllFeed(`${who} ${spec.verb} ${_gscA(spec.name)}! ${spec.tier}!`);
+    A.dir = 's'; _gllPose(A, 'hold', holdMs);
     const g = _gllSvgEl('g', 'gll-held'); g.setAttribute('transform', 'scale(.74)'); g.innerHTML = gardenMomentSvg(spec, { who });
     A.root.appendChild(g); A.heldG = g;
     const tag = A.root.querySelector('.gll-name'); if (tag) tag.style.display = 'none';
-    setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; const now = A.root && A.root.querySelector('.gll-name'); if (now) now.style.display = ''; }, GART_MOMENT_MS);
+    setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; const now = A.root && A.root.querySelector('.gll-name'); if (now) now.style.display = ''; }, holdMs);
     if (typeof _fxSound === 'function') _fxSound('sparkle');
   }
 }

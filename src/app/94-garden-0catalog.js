@@ -870,5 +870,6 @@ function gardenSnapshotClean(raw) {
   // 2.22: the showcase (the tank and the bug case): ids from the fish and bug tables, sizes in bounds (94-garden-fish-0catalog.js)
   if (typeof gardenLandsClean === 'function') gardenLandsClean(raw, out);   // the sections and features they have (94-garden-lands-0table.js); an older app drops these
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
+  if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
   return out;
 }

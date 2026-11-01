@@ -169,6 +169,7 @@ function _gscSnapBody() {
   const body = { v: 1, lv: Math.max(1, Math.min(999, Number(s.lv) || 1)), season: s.season, areas: s.areas.slice(0, 12), plants: s.plants, decor: s.decor, heart: Math.max(0, Math.min(6, Number(s.heart) || 0)), at: Math.floor(Number(s.at) || _gscNow()) };
   for (const k of ['ls', 'lf', 'lc', 'lz', 'lr', 'wk', 'sh', 'tk']) if (s[k] !== undefined) body[k] = s[k];   // the land, what is built for the lake, the showcase and the pet's tricks: what you own shows on a saved copy too (an older version drops these). Not the time zone or weather: those are for a live visit
   if (v && Number(v['in.like']) > 0) body.hearts = Math.min(1e7, Number(v['in.like']));
+  for (const k of ['cv', 'sp']) if (s[k] != null) body[k] = s[k];   // the saved copy too: can they take a catch, and their best specimens
   let json = JSON.stringify(body);
   if (json.length > _GSC_BYTES) {
     const ground = (r) => { const d = gardenDecor(r[0]); return d && d.layer === 'ground'; };
