@@ -174,10 +174,12 @@
     const b = v.bill;
     if (b.noReturn) {
       if (b.balance > 0.5 && b.balance < 10) return { big: gbp(b.balance), word: 'difference', tone: 'good', say: 'Nothing to do. Tax codes round a little, so payroll and the year’s tax end a few pounds apart.' };
-      if (b.balance > 0.5) return { big: gbp(b.balance), word: 'tax not yet taken', tone: 'owe', say: 'You do not need a tax return for this. HMRC normally collects it through your tax code next year.' };
+      if (b.viaCode && b.balance > 0.5) return { big: gbp(b.balance), word: 'collected through your tax code', tone: 'good', say: 'You do not need a tax return for this, and it is not a bill to pay. HMRC normally collects it through your tax code next tax year, so your pay will be a little lower then. Nothing is kept aside for it.' };
+      if (b.balance > 0.5) return { big: gbp(b.balance), word: 'tax not yet taken', tone: 'owe', say: 'You do not need a tax return for this, but it is too much to collect through a tax code. HMRC writes to you about how to pay it, so it is kept aside.' };
       if (b.balance < -0.5) return { big: gbp(-b.balance), word: 'paid too much', tone: 'good', say: 'You may be due a refund. HMRC usually writes to you after the tax year ends, in a letter called a P800.' };
       return { big: gbp(0), word: 'left to pay', tone: 'good', say: 'What your jobs take through payroll covers the year.' };
     }
+    if (b.viaCode) return { big: gbp(b.balance), word: 'collected through your tax code', tone: 'good', say: 'This is not a January bill. HMRC takes it through your pay next tax year, so your pay will be a little lower then. Nothing is kept aside for it.' };
     if (b.parts.paidOnAccount + (b.parts.poaToCome || 0) > 0.5 && b.balance < -0.5) return { big: gbp(-b.balance), word: 'to come back', tone: 'good', say: 'The payments you made in advance were more than the year\'s bill. HMRC refunds it, or takes it off your next payment.' };
     if (b.balance > 0.5) return { big: gbp(b.balance), word: 'still to pay for this year', tone: 'owe', say: b.poa.applies ? 'This goes on your tax return. With payments on account, your January bill is higher: see below.' : 'This goes on your tax return. Nobody takes it before the money reaches you.' };
     if (b.balance < -0.5) return { big: gbp(-b.balance), word: 'paid too much', tone: 'good', say: 'Your jobs took more than your whole-year bill. You may be due a refund, usually paid after the year ends.' };
@@ -213,12 +215,12 @@
     if (p.cgt) rows.push(txPosRow('Capital Gains Tax', gbp(p.cgt), `On ${gbp(p.gains)} of gains.`));
     if (b.parts.paidOnAccount) rows.push(txPosRow('Payments on account already made', '−' + gbp(b.parts.paidOnAccount), 'What you paid in advance last January and July.'));
     if (b.parts.poaToCome) rows.push(txPosRow('Payments on account still to make', '−' + gbp(b.parts.poaToCome), 'Set by last year’s return, and due this coming January and July. They count towards this year, so they come off here. Not paid yet.'));
-    rows.push(txPosRow(b.balance >= 0 ? 'Still to pay' : 'Too much paid', gbp(Math.abs(b.balance)), null, { total: true }));
+    rows.push(txPosRow(b.viaCode ? 'Collected through your tax code' : b.balance >= 0 ? 'Still to pay' : 'Too much paid', gbp(Math.abs(b.balance)), null, { total: true }));
 
     const poa = !b.poa.applies && b.noReturn ? null : h('div', { class: 'fv-tx-poa' },
       h('h4', { text: 'Payments on account' }), h('p', { class: 'fv-pl-mute' }, amt(b.poa.why)),
       b.poa.applies ? h('div', { class: 'fv-tx-cash' },
-        h('div', null, h('span', { class: 'fv-tx-k', text: `January after this tax year` }), amt(gbp(b.january), 'fv-tx-v'), h('small', { text: `Still to pay, plus the first ${gbp(b.poa.first)} in advance.` })),
+        h('div', null, h('span', { class: 'fv-tx-k', text: `January after this tax year` }), amt(gbp(b.january), 'fv-tx-v'), h('small', { text: b.viaCode ? `The first ${gbp(b.poa.first)} in advance. The rest comes through your tax code.` : `Still to pay, plus the first ${gbp(b.poa.first)} in advance.` })),
         h('div', null, h('span', { class: 'fv-tx-k', text: `The July after` }), amt(gbp(b.july), 'fv-tx-v'), h('small', { text: 'The second payment in advance.' }))) : null,
       txAsk('payments on account'));
     const trade = v.trade ? h('div', { class: 'fv-tx-trade' },
@@ -237,7 +239,9 @@
     return txCard('fv-tx-pos',
       h('div', { class: 'fv-pl-big' }, amt(big.big, 'fv-pl-big-v'), h('span', { text: big.word })),
       h('p', { class: 'fv-pl-say', text: big.say }),
-      h('div', { class: 'fv-tx-rows' }, rows), poa, trade, how, cmp);
+      h('div', { class: 'fv-tx-rows' }, rows),
+      (v.notes || []).filter(n => n.uncovered).map(n => h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: n.text }))),
+      poa, trade, how, cmp);
   }
 
   /** The feed behind a line of "How this was worked out": a job or piece of work to open, or a panel (Change / Worked out from these). */
@@ -271,7 +275,7 @@
         h('div', null, h('span', { class: 'fv-tx-k', text: 'Right now' }), amt(gbp(a.pot), 'fv-tx-v'), h('small', { text: say + (a.owedThisYear > 0.5 && a.thisYearDue ? ` This year's is due by ${txShort(a.thisYearDue)}.` : '') })),
         v.trade || a.keepPer1000 > 0 ? h('div', null, h('span', { class: 'fv-tx-k', text: 'Of each new payment' }), amt(`${each}%`, 'fv-tx-v'), h('small', null, 'Keep ', amt(gbp(a.keepPer1000)), ' of every £1,000 a client pays you.')) : null,
         a.monthly != null && a.monthly > 0 ? h('div', null, h('span', { class: 'fv-tx-k', text: 'In your money plan' }), amt(gbp(a.monthly), 'fv-tx-v'), h('small', { text: 'Held back each month.' })) : null),
-      a.bills.length ? h('ul', { class: 'fv-tx-bills' }, a.bills.map(x => h('li', null, h('span', { text: `${x.label}, by ${txShort(x.date)}` }), amt(gbp(x.amount))))) : null,
+      a.bills.length ? h('ul', { class: 'fv-tx-bills' }, a.bills.map(x => h('li', null, h('span', { text: x.overdue ? `${x.label}, was due ${txShort(x.date)}. It stays here until you tell us it is paid.` : `${x.label}, by ${txShort(x.date)}` }), amt(gbp(x.amount)), x.overdue ? txBtn('I have paid this', 'check', () => txPost('/tick', { id: x.id, done: true, year: x.year, brief: true }, () => { toast('Marked as paid'); txLoad(TX.year).then(txPaint); }), 'ghost small') : null))) : null,
       a.short ? h('p', { class: 'fv-pl-note warn' }, ic('triangle-alert'), h('span', null, 'You have ', amt(gbp(a.have)), ' across your accounts and savings, less than the ', amt(gbp(a.pot)), ' to keep aside. Try to build it back up before the bill is due.')) : null,
       h('div', { class: 'fv-tx-aside-m' }, h('label', null, h('input', { type: 'checkbox', checked: off ? null : true, onchange: (e) => txSetAside(e.target.checked) }), h('span', { text: 'Show this in my money plan and safe to spend' }))));
   }
@@ -303,9 +307,9 @@
     const hasTasks = list.some(d => d.task);
     const allTasks = open.length && open.every(d => d.task);
     const rows = list.map(d => h('li', { class: 'fv-tx-dl ' + d.state },
-      h('label', { class: 'fv-tx-tick', title: 'I have done this' }, h('input', { type: 'checkbox', 'aria-label': `I've done this: ${d.title}`, checked: d.state === 'done' ? true : null, onchange: (e) => txPost('/tick', { id: d.id, done: e.target.checked }) })),
+      d.viaCode ? h('span', { class: 'fv-tx-tick' }) : h('label', { class: 'fv-tx-tick', title: 'I have done this' }, h('input', { type: 'checkbox', 'aria-label': `I've done this: ${d.title}`, checked: d.state === 'done' ? true : null, onchange: (e) => txPost('/tick', { id: d.id, done: e.target.checked }) })),
       h('div', { class: 'fv-tx-dl-m' }, h('b', { text: d.title }), h('small', null, d.text), d.amount ? h('small', null, 'About ', amt(gbp(d.amount))) : null, d.task ? h('small', { class: 'on', text: 'On your task list' }) : null, paidTick(d)),
-      h('time', { datetime: d.date, text: d.state === 'done' ? 'Done' : txShort(d.date) + (d.state === 'overdue' ? ' (passed)' : d.days <= 30 && d.days >= 0 ? ` (${d.days === 0 ? 'today' : d.days + ' days'})` : '') })));
+      h('time', { datetime: d.date, text: d.viaCode ? 'Nothing to pay' : d.state === 'done' ? 'Done' : txShort(d.date) + (d.state === 'overdue' ? ' (passed)' : d.days <= 30 && d.days >= 0 ? ` (${d.days === 0 ? 'today' : d.days + ' days'})` : '') })));
     return txCard('fv-tx-dls',
       txHead('Dates to remember', 'Each reminder goes on your task list a little ahead of its date.', list.length ? (allTasks ? h('span', { class: 'mute small', text: 'All on your task list' }) : txBtn('Remind me', 'bell', () => txPost('/reminders', { always: true }, (b) => { if (b && b.made) toast(`${b.made} reminder${b.made === 1 ? '' : 's'} added to your tasks and calendar, each a little ahead of its date.`); }))) : null),
       need,

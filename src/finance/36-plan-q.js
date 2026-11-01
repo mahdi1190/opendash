@@ -4,7 +4,9 @@
   // (lib/finance/countries.mjs for the country's set, lib/finance/money-plan.mjs for the rest): this file only draws
   // each kind (choice, multi, fields, schedule, timing, list). Answers go into a draft that is saved after each screen;
   // if a save fails the answers stay on screen, with the reason and Try again.
-  const MPQ = { open: false, id: null, draft: null, busy: false, err: null, done: false, said: null };
+  const MPQ = { open: false, id: null, draft: null, busy: false, err: null, done: false, said: null, more: false };
+  /** The questions on show: those that matter to this person, and the rest (q.more) once they ask for them. */
+  const pqShown = () => MPL.v.questions.filter(q => MPQ.more || !q.more);
   const pqClone = o => JSON.parse(JSON.stringify(o));
   const PL_NEW_ID = p => p + '-' + Date.now().toString(36) + Math.floor(Math.random() * 1296).toString(36);
   function pqMainJob(d, create) {
@@ -33,6 +35,8 @@
     if (ansHasJob(MPQ.draft)) MPQ.draft.tax = Object.assign({}, MPQ.draft.tax, { hasJob: true });   // a job added on the Tax tab answers this question
     const list = MPL.v.questions;
     MPQ.id = id && list.some(q => q.id === id) ? id : (MPQ.draft.step && list.some(q => q.id === MPQ.draft.step) ? MPQ.draft.step : list[0].id);
+    const here = list.find(q => q.id === MPQ.id);
+    MPQ.more = !!(here && here.more);
     planPaint();
   }
   function pqClose() { MPQ.open = false; MPQ.err = null; planPaint(); }
@@ -40,7 +44,7 @@
   // Save the draft, then move. A failed save stays on this screen with the reason.
   async function pqGo(dir) {
     if (MPQ.busy) return;
-    const list0 = MPL.v.questions, i0 = list0.findIndex(q => q.id === MPQ.id);
+    const list0 = pqShown(), i0 = list0.findIndex(q => q.id === MPQ.id);
     if (dir < 0) { MPQ.err = null; MPQ.said = null; MPQ.id = list0[Math.max(0, i0 - 1)].id; planPaint(); return; }
     const box = MPL.host && MPL.host.querySelector('.fv-plq');
     const wrong = pqProblem(list0[i0], box);
@@ -54,8 +58,9 @@
     const nowLeft = MPL.v && MPL.v.budget ? MPL.v.budget.left : null;
     MPQ.said = wasLeft != null && nowLeft != null && Math.abs(nowLeft - wasLeft) >= 1 ? `That answer takes what is left over a month from ${gbp(wasLeft)} to ${gbp(nowLeft)}.` : null;
     MPQ.draft = pqClone(MPL.plan);
-    const list = MPL.v.questions, i = list.findIndex(q => q.id === here);
-    if (i < 0 || i >= list.length - 1) MPQ.done = true; else MPQ.id = list[i + 1].id;
+    // An answer can change which questions matter: the next one on show comes after this one in the whole list.
+    const all = MPL.v.questions, i = all.findIndex(q => q.id === here), next = i < 0 ? null : all.slice(i + 1).find(q => MPQ.more || !q.more);
+    if (next) MPQ.id = next.id; else MPQ.done = true;
     planPaint();
   }
   /** What stops this question being saved: an amount that is not one, or two dates the wrong way round. */
@@ -99,11 +104,11 @@
     if (MPQ.done) return pqPaintDone(host);
     const q = pqCurrent();
     if (!q) { MPQ.done = true; return pqPaintDone(host); }
-    const list = MPL.v.questions, i = list.indexOf(q);
+    const list = pqShown(), i = Math.max(0, list.indexOf(q));
     const groups = [...new Set(list.map(x => x.group))];
     const bar = h('div', { class: 'fv-plq-prog', role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(list.length), 'aria-valuenow': String(i + 1), 'aria-label': 'How far through' }, h('i', { style: { width: ((i + 1) / list.length * 100).toFixed(1) + '%' } }));
     const body = h('div', { class: 'fv-plq-body' });
-    const drawers = { choice: pqChoice, multi: pqMulti, fields: pqFields, schedule: pqSchedule, timing: pqTiming, list: pqList };
+    const drawers = { choice: pqChoice, multi: pqMulti, fields: pqFields, pay: pqPay, schedule: pqSchedule, timing: pqTiming, list: pqList };
     (drawers[q.kind] || pqFields)(body, q);
     // The first question decides what comes next, so it is the one that cannot be skipped.
     const mustAnswer = q.id === 'country' && !MPQ.draft.country;
@@ -127,10 +132,11 @@
     host.append(box);
     box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') { e.preventDefault(); e.target.blur(); pqGo(1); } });
     const first = box.querySelector('.fv-plq-body input:not([type=hidden]), .fv-plq-body select');
-    if (first && q.kind === 'fields') setTimeout(() => { try { first.focus({ preventScroll: true }); } catch (e) { /* no focus */ } }, 0);
+    if (first && (q.kind === 'fields' || q.kind === 'pay')) setTimeout(() => { try { first.focus({ preventScroll: true }); } catch (e) { /* no focus */ } }, 0);
   }
   function pqPaintDone(host) {
     const v = MPL.v, b = v.budget;
+    const rest = v.questions.filter(q => q.more);
     host.append(h('section', { class: 'fv-card fv-plq fv-plq-end' },
       h('span', { class: 'fv-plq-group', text: 'All done' }),
       h('h2', { class: 'fv-plq-t', text: 'Here is your plan' }),
@@ -138,6 +144,9 @@
       h('p', { class: 'fv-plq-help' }, amt(gbp(b.income)), ' comes in each month. You can change anything at any time.'),
       v.calc && v.calc.kind === 'estimate' ? h('p', { class: 'fv-plq-help', text: 'Tax is an estimate from what you told us, using official rates. Your payslip has the final word.' }) : null,
       MPQ.err ? h('p', { class: 'fv-plq-err', role: 'alert', text: MPQ.err }) : null,
+      !MPQ.more && rest.length ? h('details', { class: 'fv-pl-more' }, h('summary', null, h('b', { text: 'More questions' }), h('span', { class: 'mute', text: `${rest.length}, only if they apply to you` })),
+        h('div', { class: 'fv-pl-more-b' }, h('p', { class: 'fv-plq-help', text: 'Other jobs, a bonus, your tax code, bills and savings. You can answer these now, or at any time from Your answers.' }),
+          h('button', { type: 'button', class: 'fv-btn', onclick: () => { MPQ.more = true; MPQ.done = false; MPQ.id = rest[0].id; planPaint(); } }, h('span', { text: 'Answer these too' }), ic('arrow-right')))) : null,
       h('footer', { class: 'fv-plq-foot' }, h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => { MPQ.done = false; planPaint(); } }, ic('arrow-left'), h('span', { text: 'Back' })), h('span', { class: 'fv-grow' }),
         h('button', { type: 'button', class: 'fv-btn primary fv-plq-next', text: 'See my plan', onclick: pqFinish }))));
   }
@@ -177,7 +186,7 @@
       el.addEventListener('input', () => {
         const n = f.type === 'money' ? moneyParse(el.value) : (() => { const raw = el.value.replace(/[,\s%]/g, ''); return raw === '' ? null : Number(raw); })();
         if (n === null) { el.classList.remove('bad'); onChange(null); return; }
-        if (!isFinite(n) || n < 0 || (f.type === 'percent' && n > 100)) { el.classList.add('bad'); return; }
+        if (!isFinite(n) || n < 0 || (f.type === 'percent' && n > 100) || (f.type === 'day' && !(Number.isInteger(n) && n >= 1 && n <= 31))) { el.classList.add('bad'); return; }
         el.classList.remove('bad'); onChange(n);
       });
       if (f.type === 'money') moneyWire(el);
@@ -199,6 +208,39 @@
       }
     }
     refresh();
+  }
+  /**
+   * The main job's pay before tax, by the year or the month like the job forms, kept as its yearly figure. Pay already given as an
+   * amount on each payslip keeps that choice too, until it is changed.
+   */
+  function pqPay(body, q) {
+    const draft = MPQ.draft, j0 = pqMainJob(draft);
+    const isSlip = !!(j0 && j0.basis === 'payslip');
+    let per = isSlip ? 'payslip' : (typeof txPerOf === 'function' && j0 ? txPerOf(j0.id) : 'year');
+    const shown = () => { const j = pqMainJob(draft); if (!j) return null; if (per === 'payslip') return j.payslipGross != null ? j.payslipGross : null; return j.annual != null ? (per === 'month' ? Math.round(j.annual / 12 * 100) / 100 : j.annual) : null; };
+    let typed = false;
+    const say = h('small', { class: 'fv-plq-echo fv-amt', 'aria-live': 'polite' });
+    const echo = () => { const j = pqMainJob(draft); if (per === 'payslip' || !j || j.annual == null) { say.textContent = ''; return; } say.textContent = per === 'month' ? `${gbp(j.annual)} a year if it runs all year` : `about ${gbp(j.annual / 12)} a month`; };
+    const put = (v) => {
+      const j = pqMainJob(draft, true);
+      if (per === 'payslip') { j.basis = 'payslip'; if (v == null) delete j.payslipGross; else j.payslipGross = v; }
+      else { delete j.basis; delete j.payslipGross; if (v == null) delete j.annual; else j.annual = per === 'month' ? Math.round(v * 1200) / 100 : v; }
+      echo();
+    };
+    const amount = pqInput({ type: 'money' }, shown(), v => { typed = true; put(v); });
+    const opts = [['year', 'a year'], ['month', 'a month']].concat(isSlip ? [['payslip', 'on each payslip']] : []);
+    const sel = h('select', { class: 'fv-input fv-plq-in', 'aria-label': 'A year or a month?' }, opts.map(([v, l]) => h('option', { value: v, text: l })));
+    sel.value = per;
+    // Saved pay stays the same when you only switch how it is shown; a figure you just typed is taken to be in the new unit.
+    sel.addEventListener('change', () => {
+      const was = per; per = sel.value;
+      if (j0 && per !== 'payslip' && typeof F !== 'undefined') { F.txPer = Object.assign({}, F.txPer, { [j0.id]: per }); if (typeof saveF === 'function') saveF(); }
+      if (!typed && was !== 'payslip' && per !== 'payslip') { const x = shown(); amount.el.value = x != null ? moneyNice(x) : ''; }
+      else { const x = moneyParse(amount.el.value); if (x != null && isFinite(x)) put(x); }
+      echo();
+    });
+    echo();
+    body.append(h('label', { class: 'fv-plq-field' }, h('span', { class: 'fv-plq-lab', text: 'Pay, before tax' }), h('span', { class: 'fv-plq-payper' }, amount.wrap, sel), say));
   }
   /* ---------- dates ---------- */
   const PL_WD = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -327,8 +369,8 @@
     saving: { pick: i => i.kind === 'saving', make: () => ({ id: PL_NEW_ID('goal'), kind: 'saving', status: 'now' }), empty: 'No goals yet. You can add one at any time.' },
     fund: { pick: i => i.kind === 'fund', make: () => ({ id: PL_NEW_ID('fund'), kind: 'fund', per: 'year', status: 'now', when: { t: 'months', every: 12, month: 1, day: 1, adjust: 'next' } }), empty: 'None yet. Skip this if you have none.' },
   };
-  const pqCell = (row, k) => (k === 'dueMonth' ? (row.when && row.when.month) || 1 : row[k]);
-  const pqCellSet = (row, k, v) => { if (k === 'dueMonth') { row.when = Object.assign({ t: 'months', every: 12, day: 1, adjust: 'next' }, row.when || {}, { month: Number(v) || 1 }); return; } if (v == null) delete row[k]; else row[k] = v; };
+  const pqCell = (row, k) => (k === 'dueMonth' ? (row.when && row.when.month) || 1 : k === 'payday' ? (row.when && row.when.t === 'day' ? row.when.day : null) : row[k]);
+  const pqCellSet = (row, k, v) => { if (k === 'payday') { if (v == null) delete row.when; else row.when = { t: 'day', day: v, adjust: (row.when && row.when.t === 'day' && row.when.adjust) || 'prev' }; return; } if (k === 'dueMonth') { row.when = Object.assign({ t: 'months', every: 12, day: 1, adjust: 'next' }, row.when || {}, { month: Number(v) || 1 }); return; } if (v == null) delete row[k]; else row[k] = v; };
   /** Pay before tax, typed by the year or the month: kept as its yearly figure. */
   function pqPayCell(row) {
     let per = 'year', typed = row.annual != null ? row.annual : null;
@@ -353,6 +395,8 @@
       for (const row of all) {
         const cells = q.columns.map(c => {
           if (q.list === 'jobs' && c.key === 'annual') return pqPayCell(row);
+          // A job paid every so many weeks, or on the last working day, keeps that rule: it changes on Budgets.
+          if (c.key === 'payday' && row.when && row.when.t !== 'day') return h('p', { class: 'fv-plq-field fv-pl-mute small', text: planRuleWords(row.when) });
           const inp = pqInput({ type: c.type, options: c.options, placeholder: c.placeholder, upper: c.upper }, pqCell(row, c.key) != null ? pqCell(row, c.key) : null, v => pqCellSet(row, c.key, v));
           return h('label', { class: 'fv-plq-field' }, h('span', { class: 'fv-plq-lab', text: c.label }), inp.wrap);
         });

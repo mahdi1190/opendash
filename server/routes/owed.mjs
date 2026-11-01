@@ -54,7 +54,8 @@ export default function register(app) {
   app.onReady(async () => { shared.attach(); });
 
   // The pipeline asks for this on every rebuild: an update, a change of ticks, or ensureNet below.
-  setFinanceHooks({ owedNet: async () => O.netPlan(await read()) });
+  const netNow = async () => O.netPlanAll(await read(), await readExpenses(dataDir, { home: home() }).catch(() => null), home());
+  setFinanceHooks({ owedNet: netNow });
 
   const analysisNow = async () => {
     try { const d = await financeData(); return d && d.status === 'ok' ? d : null; } catch { return null; }
@@ -62,7 +63,7 @@ export default function register(app) {
   /** Build the analysis again if what is matched changed since it was built. A computer showing another's finances leaves that to the other. */
   async function ensureNet(d) {
     if (!d || !financeAvailable() || (d.meta && d.meta.remote)) return false;
-    const sig = O.netPlan(await read()).sig;
+    const sig = (await netNow()).sig;
     const was = (d.analysis.owed_net && d.analysis.owed_net.sig) || '';
     if (sig === was) return false;
     const r = await refreshFinanceAnalysis().catch(() => null);

@@ -4,7 +4,7 @@
   // "Registered blind: No". Tap a line and a small control made from that question's definition opens under it (choice, many
   // choices, money, date, percent, text, pay day, a bill, a list). It saves at once, the toast has Undo, and every figure on the page
   // follows. Any country's questions work the same way. Used on Budgets and on the Tax tab (the Tax tab's "Change" panels reuse the rows).
-  const ANS = { edit: null, shut: new Set(['What you pay', 'Day to day']), draft: null };
+  const ANS = { edit: null, shut: new Set(['What you pay', 'Day to day']), draft: null, more: false };
   const ansWith = (draft, fn) => { const was = MPQ.draft; MPQ.draft = draft; try { return fn(); } finally { MPQ.draft = was; } };
   const ansRepaint = () => { if (R.sectionId === 'tax' && typeof txPaint === 'function') txPaint(); else planPaint(); };
   /** The plan changed (here, or by Undo): the Tax tab reads its figures again. Budgets repaints itself. */
@@ -124,6 +124,17 @@
     paint();
     return body;
   }
+  /** Pay before tax: the walk-through's own control on a copy, with Save. */
+  function ansPayEd(q) {
+    const draft = pqClone(MPL.plan);
+    const body = h('div', { class: 'fv-ans-in' });
+    ansWith(draft, () => pqPay(body, q));
+    const box = body.querySelector('input');
+    body.append(h('div', { class: 'fv-pl-acts' },
+      h('button', { type: 'button', class: 'fv-btn primary small', text: 'Save', onclick: () => { if (box && box.classList.contains('bad')) return; ANS.edit = null; planSave(draft, { say: `${ansShort(q)} saved` }); } }),
+      h('button', { type: 'button', class: 'fv-btn ghost small', text: 'Cancel', onclick: () => { ANS.edit = null; ansRepaint(); } })));
+    return body;
+  }
   /** A list (debts, goals, other jobs...): the walk-through's own list control on a copy, with Save. */
   function ansListEd(q) {
     const draft = pqClone(MPL.plan);
@@ -180,6 +191,11 @@
         return ansLine(q.id + ':' + f.path, f.row || f.label, shown, () => ansFieldEd(q, f), q.fields.length === 1 ? q.help : null);
       });
     }
+    if (q.kind === 'pay') {
+      const j = pqMainJob(plan), slip = j && j.basis === 'payslip';
+      const x = j ? (slip ? j.payslipGross : j.annual) : null;
+      return [ansLine(key, ansShort(q), x != null ? amt(`${ansMoney(x)} ${slip ? 'on each payslip' : 'a year'}`) : ansUnset('Not set'), () => ansPayEd(q), q.help)];
+    }
     if (q.kind === 'schedule') {
       const v = ansRead(plan, q.path);
       return [ansLine(key, ansShort(q), v ? h('span', { text: planRuleWords(v) }) : ansUnset(), () => ansScheduleEd(q), q.help)];
@@ -210,8 +226,10 @@
     if (!v.has) return h('section', { class: 'fv-card fv-pl-invite' }, h('h2', { text: 'Your answers' }), h('p', { text: 'There are no answers yet. A few easy questions set up your money plan, and then they are all listed here.' }),
       h('div', { class: 'fv-pl-acts' }, h('button', { type: 'button', class: 'fv-btn primary big', onclick: () => ansWalk() }, h('span', { text: 'Start' }), ic('arrow-right')), h('button', { type: 'button', class: 'fv-btn ghost', text: 'Back', onclick: onDone })));
     const qs = v.questions, groups = [...new Set(qs.map(q => q.group))];
-    const g = (name) => {
-      const lines = qs.filter(q => q.group === name).flatMap(ansQuestionLines);
+    // The questions that matter to this person come first; the rest wait in one fold. An answer that is open is never folded away.
+    const moreQs = qs.filter(q => q.more), moreOpen = ANS.more || moreQs.some(q => ANS.edit && (ANS.edit === q.id || String(ANS.edit).startsWith(q.id + ':')));
+    const g = (name, shown) => {
+      const lines = shown.filter(q => q.group === name).flatMap(ansQuestionLines);
       if (!lines.length) return null;
       return h('details', { class: 'fv-card fv-ans-g', open: ANS.shut.has(name) ? null : true, ontoggle: e => { if (e.target.open) ANS.shut.delete(name); else ANS.shut.add(name); } },
         h('summary', null, h('h3', { text: name }), h('span', { class: 'mute', text: `${lines.length} ${lines.length === 1 ? 'answer' : 'answers'}` })), h('ul', { class: 'fv-ans-list' }, lines));
@@ -222,7 +240,12 @@
           h('div', { class: 'fv-pl-acts' }, h('button', { type: 'button', class: 'fv-btn primary', onclick: onDone }, ic('check'), h('span', { text: 'Done' })))),
         ansStrip(),
         c_overrideNote(v)),
-      groups.map(g), h('p', { class: 'fv-pl-mute small fv-ans-foot' }, 'Prefer the step-by-step questions? ', h('button', { type: 'button', class: 'fv-link', text: 'Walk through them again', onclick: () => ansWalk() })));
+      groups.map(name => g(name, qs.filter(q => !q.more))),
+      moreQs.length ? h('details', { class: 'fv-card fv-ans-g fv-ans-more', open: moreOpen ? true : null, ontoggle: e => { ANS.more = e.target.open; } },
+        h('summary', null, h('h3', { text: 'More questions' }), h('span', { class: 'mute', text: `${moreQs.length}, only if they apply to you` })),
+        h('p', { class: 'fv-pl-mute small', text: 'Nothing here is needed to start. Anything you have already answered stays with the questions above.' }),
+        groups.map(name => g(name, moreQs))) : null,
+      h('p', { class: 'fv-pl-mute small fv-ans-foot' }, 'Prefer the step-by-step questions? ', h('button', { type: 'button', class: 'fv-link', text: 'Walk through them again', onclick: () => ansWalk() })));
   }
   function c_overrideNote(v) {
     const t = (MPL.plan && MPL.plan.tax) || {};

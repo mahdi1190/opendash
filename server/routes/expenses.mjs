@@ -33,7 +33,7 @@ import { HttpError } from '../http.mjs';
 import { createZip } from '../../lib/zip.mjs';
 import * as X from '../../lib/expenses.mjs';
 import * as R from '../../lib/expense-report.mjs';
-import { readStore as readOwed, usedKeys as owedUsed } from '../../lib/owed.mjs';
+import { readStore as readOwed, usedKeys as owedUsed, netPlanAll } from '../../lib/owed.mjs';
 import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
@@ -45,9 +45,22 @@ export default function register(app) {
   const todayOf = (c) => (c.clockNow ? c.clockNow().today : new Date().toISOString().slice(0, 10));
   const view = async (c) => X.publicView(await X.readStore(dataDir, { home: home() }), todayOf(c));
   const fail = (r) => { throw new HttpError(r.status || (r.duplicate ? 409 : 400), r.error); };
+  /** What was paid back changed: the analysis is built again, so it comes off spending and out of income (lib/owed.mjs netPlanAll). true when it was. */
+  const syncNet = async () => {
+    try {
+      const F = await import('../../lib/finance.mjs');
+      const d = await F.financeData();
+      if (!d || d.status !== 'ok' || !F.financeAvailable() || (d.meta && d.meta.remote)) return false;
+      const sig = netPlanAll(await readOwed(dataDir, { home: home() }), await X.readStore(dataDir, { home: home() }), home()).sig;
+      if (sig === ((d.analysis.owed_net && d.analysis.owed_net.sig) || '')) return false;
+      const r = await F.refreshFinanceAnalysis().catch(() => null);
+      return !!(r && r.ok);
+    } catch { return false; }
+  };
   const done = async (c, r, extra = {}) => {
     if (r && r.error) fail(r);
-    return { ok: true, ...(r && r.undo ? { undo: r.undo } : {}), ...extra, data: X.publicView(r && r.S ? r.S : await X.readStore(dataDir, { home: home() }), todayOf(c)) };
+    const rebuilt = await syncNet();
+    return { ok: true, ...(rebuilt ? { rebuilt } : {}), ...(r && r.undo ? { undo: r.undo } : {}), ...extra, data: X.publicView(r && r.S ? r.S : await X.readStore(dataDir, { home: home() }), todayOf(c)) };
   };
   const blobs = () => (app.ctx.sync && app.ctx.sync.blobs) || null;
   const post = (path, fn, maxBody) => app.route({ path: '/api/expenses/' + path, method: 'POST', methodError: 'POST only', maxBody: maxBody || 64 * 1024, handler: async (c) => fn(c, await c.body()) });
@@ -72,7 +85,7 @@ export default function register(app) {
     return done(c, r, { claimId: r.claimId, claim: r.claim });
   });
   post('unsubmit', async (c, b) => done(c, await X.unsubmit(dataDir, ids(b), { home: home() })));
-  post('paid', async (c, b) => done(c, await X.markPaid(dataDir, ids(b), { date: b.date, txKey: b.txKey, learnFrom: typeof b.memo === 'string' ? b.memo : '', today: todayOf(c), home: home() })));
+  post('paid', async (c, b) => done(c, await X.markPaid(dataDir, ids(b), { date: b.date, txKey: b.txKey || await paidCredit(c, b), learnFrom: typeof b.memo === 'string' ? b.memo : '', today: todayOf(c), home: home() })));
   post('unpaid', async (c, b) => done(c, await X.markUnpaid(dataDir, ids(b), { home: home() })));
   post('payer', async (c, b) => { const r = await X.setPayer(dataDir, String(b && b.name || ''), b && b.patch, { today: todayOf(c), home: home() }); return done(c, r, { payer: r.payer }); });
   post('prefs', async (c, b) => done(c, await X.setPrefs(dataDir, b && b.patch, { home: home() })));
@@ -118,6 +131,17 @@ export default function register(app) {
     },
   });
 
+  /** Marked by hand: the money in it must have been, so that is not counted as income either. */
+  const paidCredit = async (c, b) => {
+    try {
+      const { financeData } = await import('../../lib/finance.mjs');
+      const d = await financeData();
+      if (!d || d.status !== 'ok') return '';
+      const today = todayOf(c);
+      const taken = owedUsed(await readOwed(dataDir, { home: home() }));
+      return X.findPaidCredit(await X.readStore(dataDir, { home: home() }), ids(b), X.creditsFromAnalysis(d.analysis, { today }).filter(x => !taken.has(x.k) && !taken.has(x.txKey)), typeof b.date === 'string' && b.date ? b.date : today);
+    } catch { return ''; }
+  };
   // ── paid back? ──
   post('scan', async (c) => {
     let analysis = null;
@@ -127,7 +151,8 @@ export default function register(app) {
     const taken = owedUsed(await readOwed(dataDir, { home: home() }));   // a payment that paid back a friend is not also a claim paid
     const r = await X.scanPaid(dataDir, X.creditsFromAnalysis(analysis, { today }).filter(x => !taken.has(x.k) && !taken.has(x.txKey)), { today, home: home() });
     if (r.auto.length) log('info', `expenses: ${r.auto.length} payment(s) matched`);
-    return { ok: true, auto: r.auto, ask: r.ask, ...(r.undo ? { undo: r.undo } : {}), data: await view(c) };
+    const rebuilt = r.auto.length ? await syncNet() : false;
+    return { ok: true, ...(rebuilt ? { rebuilt } : {}), auto: r.auto, ask: r.ask, ...(r.undo ? { undo: r.undo } : {}), data: await view(c) };
   });
   post('answer', async (c, b) => {
     const r = await X.answerAsk(dataDir, b && b.ask, b && b.yes === true, { today: todayOf(c), home: home() });
