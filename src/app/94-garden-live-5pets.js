@@ -98,7 +98,7 @@ function _gllRoamTell(fid) {
 
 /* ---------- where pets really are (2.32, GARDEN_TOGETHER.md section 18) ----------
    The owner's pet is the truth about where it is: a pet that wanders, sniffs a flower or trots over to a friend's pet is somewhere nobody else could guess, so the owner's computer says where it is
-   (gl:pp, tenths of a cell): the end point of a walk when one starts (and again about once a second while it goes on), the place it came to rest, and "still here" now and then. Everyone else walks their copy to
+   (gl:pp, tenths of a cell): the end point of a walk when one starts or changes (and every few seconds while it goes on), the place it came to rest, and "still here" now and then. Everyone else walks their copy to
    that spot at the pet's own pace, a little faster or slower to catch up, and puts it there if it is far off. A copy with no place (an older app, or one that has gone quiet for GL_PP.stale ms) follows its person
    as before, so nothing here is needed to play. Calm mode still sends the "still here". */
 const _gllPp = { at: 0, since: 0, warm: 0 };
@@ -109,7 +109,7 @@ function gardenLivePets(pets) {
     const t = Date.now();   // clock-ok: spacing messages
     if (t - _gllPp.at < 250) return;
     _gllPp.at = t;
-    if (_gll.role === 'visit' ? !_glvLive() : !(_glh.on && _glhAnyone())) { _gllPp.since = 0; return; }
+    if (_gll.role === 'visit' ? !_glvLive() : !(_glh.on && _glhAnyone() && _glhLooking())) { _gllPp.since = 0; return; }
     if (!_gllPp.since) { _gllPp.since = t; _gllPp.warm = 0; }
     const age = t - _gllPp.since, warm = age >= 8000 ? 2 : age >= 2500 ? 1 : 0;
     const again = warm > _gllPp.warm;   // twice after it starts, in case the first came before they had drawn us
@@ -126,11 +126,11 @@ function gardenLivePets(pets) {
       const mv = P.tx != null;
       let due = false;
       if (L.force) due = true;
-      else if (mv) { L.stopT = 0; due = !L.mv || t - L.at >= gap; }
+      else if (mv) { L.stopT = 0; due = !L.mv || L.tx !== P.tx || L.ty !== P.ty || t - L.at >= gap; }   // (a walk is its end point: the other screens walk it themselves, so it is said when it starts or changes, and now and then to stay close)
       else if (L.mv) { if (!L.stopT) L.stopT = t; due = t - L.stopT >= GL_PP.settle; }
       else due = t - L.at >= GL_PP.idle;
       if (!due) continue;
-      L.force = false; L.at = t; L.mv = mv; L.stopT = 0;
+      L.force = false; L.at = t; L.mv = mv; L.stopT = 0; L.tx = P.tx; L.ty = P.ty;
       const row = { u, x: _gllClamp(P.x * 10, 640), y: _gllClamp(P.y * 10, 320) };
       if (!mine) row.e = P.look.species;
       if (mv && P.ty != null) { row.gx = _gllClamp(P.tx * 10, 640); row.gy = _gllClamp(P.ty * 10, 320); if (P.run) row.r = 1; }

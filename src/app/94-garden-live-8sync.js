@@ -2,16 +2,17 @@
    STAYING IN STEP (2.34.1, docs/dev/GARDEN_TOGETHER.md section 21). The owner, 31 Oct and 1 Nov 2026: "how do you tell if we are synced or desynced, and how can we improve and fix it if it does happen".
 
    A visitor gets the whole garden when they arrive, then only the changes (gl:d). A change that was lost used to stay lost until they left and came back. Now:
-     gl:sum        every 20 seconds the host says what it has told everyone: a fingerprint of the plants and decorations. Everything still on its way goes first.
+     gl:sum        every 30 seconds the host says what it has told everyone: a fingerprint of the plants and decorations. Everything still on its way goes first.
      fx sync ask   a guest whose copy differs twice running asks for the whole garden again, by itself (at most GL_SYNC.autoAsks times a visit), or when you press Refresh garden.
-     fx sync at    every 20 seconds each person says which cell they are in. Someone another screen shows more than 1.5 cells away walks there. Close enough is left alone,
-                   so a person fishing or sitting is never disturbed.
+     fx sync at    every 30 seconds each person says which cell they are in, and what they are doing that lasts: a line out (n, tt: its cell + 1; i: the bait), sitting (nw bit 2). nw bit 1 says it is this kind of check, so
+                   no line named means no line. Someone another screen shows more than 1.5 cells away walks there; someone fishing or sitting slides there without being disturbed. So a line or a seat that someone missed (a dropped connection) comes right by itself.
+     fx sync away / back   a guest's tab has been hidden for a while / is back: to the host alone. While everyone is away nothing that only moves on a screen is sent (fish, creatures, pets, these checks), and it all comes again at once when someone is back.
    A change the host could not send at all sends the whole garden to everyone there, a moment later.
 
    The line in the garden says how you are connected: Connected (direct or through the relay), Catching up, Slow connection, Reconnecting. It also says when your connection to friends needs its update,
    and when a host is on an older version, so its fish are not shared.
    ============================================================ */
-const GL_SYNC = Object.freeze({ sumMs: 20000, atMs: 20000, askGap: 20000, handGap: 4000, autoAsks: 6, asked: 8000, slowMs: 25000, near: 1.5, oldHostMs: 12000, relayMs: 300000 });
+const GL_SYNC = Object.freeze({ sumMs: 30000, atMs: 30000, askGap: 20000, handGap: 4000, autoAsks: 6, asked: 8000, slowMs: 45000, near: 1.5, oldHostMs: 12000, relayMs: 300000, awayMs: 15000, resumeSayMs: 1500, beatMs: 31000 });
 const _gly = { sumAt: 0, atAt: 0, heard: 0, bad: 0, asks: 0, askAt: 0, catching: 0, liveAt: 0, oldTold: false, failT: 0, asked: new Map(), paintAt: 0, relayAt: 0, stale: false, sig: '' };
 
 /* ---------- the fingerprint: the same sum from what was sent and from what arrived ---------- */
@@ -67,12 +68,55 @@ function _glyAsk(byHand) {
 /** The whole garden has just arrived. */
 function _glySnapIn() { _gly.bad = 0; _gly.catching = 0; _gly.heard = Date.now(); _glyPaint(true); }   // clock-ok: when the host was last heard
 function gardenLiveRefresh() { _glyAsk(true); }
-/** Where someone says they are. Close enough is left alone. */
+/** Where someone says they are, and what they are doing. Close enough is left alone. */
 function _glyAtIn(A, ev) {
-  if (!A || A.moving || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
+  if (!A || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
+  const told = (Number(ev.nw) & 1) === 1, t = Date.now();   // clock-ok: how long a line has been quiet
+  if (told) {
+    const bx = Number(ev.n) - 1, by = Number(ev.tt) - 1, line = Number.isInteger(ev.n) && Number.isInteger(ev.tt) && bx >= 0 && bx < 64 && by >= 0 && by < 64;
+    if (line) {
+      const F = A.fish;
+      if (F && Math.floor(F.bx) === bx && Math.floor(F.by) === by) F.at = t;
+      else { A.fish = { state: 'wait', t: 0, bx: bx + 0.5, by: by + 0.5, at: t, bait: typeof ev.i === 'string' ? ev.i : '' }; A.key = ''; if (typeof _gllFxClear === 'function') _gllFxClear(A); }   // (a line I never heard go out)
+    } else if (A.fish && A.fish.state !== 'land' && t - A.fish.at > 4000) { A.fish = null; A.key = ''; if (typeof _gllFxClear === 'function') _gllFxClear(A); }   // (a line I never heard come in)
+    if (!A.moving) { if ((Number(ev.nw) & 2) && !A.sit) _gllEmote(A, 'sit', true); else if (!(Number(ev.nw) & 2) && A.sit) { A.sit = false; _gllEmoteStop(A); A.key = ''; } }
+  }
+  if (A.moving) return;
   const x = ev.x + 0.5, y = ev.y + 0.5;
-  if (Math.hypot(A.x - x, A.y - y) > GL_SYNC.near && typeof _gllWalkVia === 'function') _gllWalkVia(A, null, x, y);
+  if (Math.hypot(A.x - x, A.y - y) <= GL_SYNC.near) return;
+  if (A.fish || A.sit) { A.tx = x; A.ty = y; A.way = null; return; }   // (they stay as they are while the figure is put right)
+  if (typeof _gllWalkVia === 'function') _gllWalkVia(A, null, x, y);
 }
+function _glyAtBody() {
+  const F = _gw.fishing, b = { x: Math.max(0, Math.min(63, Math.floor(_gw.px))), y: Math.max(0, Math.min(63, Math.floor(_gw.py))), nw: typeof _pe !== 'undefined' && _pe.hold ? 3 : 1 };
+  if (F && F.state && F.state !== 'idle' && F.state !== 'land') { b.n = Math.floor(F.bx) + 1; b.tt = Math.floor(F.by) + 1; if (F.plan && F.plan.baitDef) b.i = F.plan.baitDef.id; }
+  return b;
+}
+/** A guest's tab went away or came back. Back: everything that was held for them, at once. */
+function _glyAwayIn(A, away) {
+  if (_gll.role !== 'host' || !A) return;
+  A.away = away;
+  if (away) return;
+  if (typeof _gfs !== 'undefined') _gfs.dirty = true;
+  if (typeof _glc !== 'undefined') { _glc.sig = ''; _glc.sentAt = 0; }
+  if (typeof _ptw !== 'undefined' && _ptw.pets) for (const P of _ptw.pets) if (P.lf) P.lf.force = true;
+  _gly.sumAt = 0; _gly.atAt = 0;
+}
+/** My own tab: hidden for a while means nobody is looking from here. Figures that went on walking while nothing was drawn are simply where they were going. */
+function _glyVisible() {
+  if (typeof document === 'undefined' || typeof _gll === 'undefined') return;
+  if (document.hidden) { _gly.hiddenAt = Date.now(); return; }   // clock-ok: how long it has been hidden
+  _gly.hiddenAt = 0;
+  if (_gly.awaySaid) { _gly.awaySaid = false; if (_gll.role === 'visit' && _glvLive()) gardenLiveFx('sync', 'back'); }
+  for (const A of _gll.actors.values()) {
+    if (A.tx == null) continue;
+    const end = A.way && A.way.length ? A.way[A.way.length - 1] : [A.tx, A.ty];
+    A.x = end[0]; A.y = end[1]; A.tx = null; A.ty = null; A.way = null; A.pace = 0;
+    const th = A.then; A.then = null;
+    if (th) { try { th(); } catch (e) { console.error('[garden-live]', e); } }
+  }
+}
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', _glyVisible);
 /* ---------- the line in the garden ---------- */
 function _glyPaint(force) {
   if (typeof _gw === 'undefined' || !_gw.box || !_gw.box.isConnected) return;
@@ -82,7 +126,8 @@ function _glyPaint(force) {
   let say = '', tone = '', btn = '';
   if (guest && _glvLive()) {
     const way = _glv.road ? 'through the relay' : 'direct';
-    if (_gly.catching) { say = 'Catching up…'; tone = 'is-wait'; }
+    if (_glv.why === 'resume') { if (_glv.resumeAt && now - _glv.resumeAt > GL_SYNC.resumeSayMs) { say = 'Reconnecting…'; tone = 'is-wait'; } }   // (a brief drop is not worth a word)
+    else if (_gly.catching) { say = 'Catching up…'; tone = 'is-wait'; }
     else if (_gly.heard && now - _gly.heard > GL_SYNC.slowMs) { say = 'Slow connection…'; tone = 'is-wait'; btn = 'refresh'; }
     else { say = `Connected, ${way}`; btn = 'refresh'; }
   } else if (guest && _glv.fid && _glv.why === 'lost') { say = 'Reconnecting…'; tone = 'is-wait'; }
@@ -111,14 +156,19 @@ function _glyTick() {
   const hostLive = _gll.role === 'host' && _glh.on && _glhAnyone(), guestLive = _gll.role === 'visit' && _glvLive();
   if (guestLive && !_gly.liveAt) { _gly.liveAt = now; _gly.asks = 0; _gly.bad = 0; _gly.heard = 0; _gly.oldTold = false; }
   if (!guestLive) _gly.liveAt = 0;
-  if (hostLive && now - _gly.sumAt >= GL_SYNC.sumMs) {
+  // the pages' beats go by this clock too: a hidden tab's own timers can be a minute late
+  if (_gll.role === 'visit' && _glv.fid && now - (_glv.beatAt || 0) >= GL_SYNC.beatMs && typeof _glvBeat === 'function') _glvBeat();
+  if (_gll.role === 'host' && _glh.on && now - (_glh.beatAt || 0) >= GL_SYNC.beatMs && typeof _glhBeat === 'function') _glhBeat();
+  if (guestLive && _gly.hiddenAt && !_gly.awaySaid && now - _gly.hiddenAt >= GL_SYNC.awayMs && !_gw.fishing) { _gly.awaySaid = true; gardenLiveFx('sync', 'away'); }
+  const looking = guestLive ? !(_gly.awaySaid && !_gw.fishing) : hostLive && _glhLooking();
+  if (hostLive && looking && now - _gly.sumAt >= GL_SYNC.sumMs) {
     _gly.sumAt = now;
     _glhDiff();   // (what is still to go goes first)
     if (!_glyTooBig()) { const s = _glySum(_glyHostRows()); _glhSend('all', 'sum', s); }
   }
-  if ((hostLive || guestLive) && now - _gly.atAt >= GL_SYNC.atMs && !_gw.moving) {
+  if ((hostLive || guestLive) && looking && now - _gly.atAt >= GL_SYNC.atMs && !_gw.moving) {
     _gly.atAt = now;
-    gardenLiveFx('sync', 'at', { x: Math.max(0, Math.min(63, Math.floor(_gw.px))), y: Math.max(0, Math.min(63, Math.floor(_gw.py))) });
+    gardenLiveFx('sync', 'at', _glyAtBody());
   }
   if (guestLive && !_gly.oldTold && now - _gly.liveAt > GL_SYNC.oldHostMs && typeof _gfs !== 'undefined' && !_gfs.hostSeen) {
     _gly.oldTold = true;

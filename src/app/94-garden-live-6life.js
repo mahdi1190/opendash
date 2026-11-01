@@ -35,7 +35,7 @@ function _glcHostStop() {
 }
 /** A person has just come in: the creatures and what lies about, at once. */
 function _glcJoin(fid) {
-  _glc.sig = '';
+  _glc.sig = ''; _glc.sentAt = 0;
   for (const P of _glc.picks.values()) _glhSend(fid, 'fx', { c: 'pick', e: 'spawn', i: P.id, kd: P.kind, n: P.u, x: P.x, y: P.y });
 }
 function _glcHostTick(dt) {
@@ -46,7 +46,8 @@ function _glcHostTick(dt) {
   for (const c of _gl.list) { if (c.gone || c.left || !c.S) continue; cs.push(c); if (cs.length >= 8) break; }
   const l = cs.map(c => Object.assign({ u: c.id % 100000, e: c.def.id, x: _glcNum(c.S.x * 10, 0, 700), y: _glcNum(c.S.y * 10, 0, 500), h: _glcNum(c.S.lift || 0, 0, 255), f: c.faceTo > 0 ? 1 : 0 }, c.clip && _GLC_ID.test(c.clip) ? { k: c.clip } : {}));
   const sig = JSON.stringify(l);
-  if (sig !== _glc.sig || (l.length && now - _glc.sentAt > 4000)) { _glc.sig = sig; _glc.sentAt = now; _glhSend('all', 'cr', { l }); }
+  // every 2 s while one moves, 8 s when they rest (a guest takes each leg at the pace they come in), nothing while nobody is looking
+  if (_glhLooking() && (!_glc.sentAt || (sig !== _glc.sig && now - _glc.sentAt >= 2000) || (l.length && now - _glc.sentAt >= 8000))) { _glc.sig = sig; _glc.sentAt = now; _glhSend('all', 'cr', { l }); }
   _glcNotice(cs, now);
   _glc.fishT -= 0.7;
   if (_glc.fishT <= 0) { _glc.fishT = 150 + Math.random() * 100; _glcShoreFish(); }
@@ -125,7 +126,10 @@ function _glcGuestCr(l) {
     let g = _glc.ghosts.get(r.u);
     if (g && (g.W !== W || g.c.gone)) { _glc.ghosts.delete(r.u); g = null; }
     if (!g) { if (_glc.ghosts.size >= 8) continue; g = _glcGhostNew(def, r, W); _glc.ghosts.set(r.u, g); }
+    // (from where it is now to where it was just said to be, in the time until the next word: smooth at any rate, and never ahead of the host)
+    const T = Math.max(0.3, Math.min(3, (now - g.at) / 1000));
     g.tx = r.x / 10; g.ty = r.y / 10; g.tl = r.h; g.c.faceTo = r.f ? 1 : -1; g.at = now;
+    if (g.c.S) { g.vx = (g.tx - g.c.S.x) / T; g.vy = (g.ty - g.c.S.y) / T; g.vl = (g.tl - (g.c.S.lift || 0)) / T; g.left = T; }
     if (r.k && r.k !== g.c.clip && !g.reactUntil) _glClip(g.c, r.k);
   }
   for (const [u, g] of _glc.ghosts) if (!seen.has(u)) g.c.fadeOut = true;
@@ -143,10 +147,9 @@ function _glcGhostNew(def, r, W) {
 }
 function _glcGhostStep(g, dt) {
   const c = g.c, S = c.S; if (!S || c.gone) { _glc.ghosts.delete(-c.id); return; }
-  if (Date.now() - g.at > 9000) c.fadeOut = true;   // clock-ok: the host has gone quiet
+  if (Date.now() - g.at > 20000 && _glvLive() && _glv.why !== 'resume') c.fadeOut = true;   // clock-ok: the host has gone quiet
   _glBind(c);
-  const k = Math.min(1, dt * 5);
-  S.x += (g.tx - S.x) * k; S.y += (g.ty - S.y) * k; S.lift += (g.tl - S.lift) * k;
+  if (g.left > 0) { const u = Math.min(dt, g.left); S.x += g.vx * u; S.y += g.vy * u; S.lift += g.vl * u; g.left -= u; }
   if (g.reactUntil && Date.now() > g.reactUntil) { g.reactUntil = 0; _glClip(c, 'rest'); }   // clock-ok: a reaction's length
   c.onScreen = true;
   _glPaint(c, dt);
