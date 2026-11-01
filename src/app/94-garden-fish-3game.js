@@ -151,9 +151,8 @@ function _gwFishFrame(dt) {
   fx.rod.setAttribute('visibility', 'visible'); fx.rod.setAttribute('d', `M${R.hx.toFixed(1)} ${R.hy.toFixed(1)}L${R.tipX.toFixed(1)} ${R.tipY.toFixed(1)}`);
   fx.line.setAttribute('visibility', 'visible'); fx.line.setAttribute('d', `M${R.tipX.toFixed(1)} ${R.tipY.toFixed(1)}Q${((R.tipX + bx) / 2).toFixed(1)} ${(Math.max(R.tipY, by) + sag).toFixed(1)} ${bx.toFixed(1)} ${(by - 4).toFixed(1)}`);
   fx.bob.setAttribute('visibility', 'visible'); fx.bob.setAttribute('transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)})`);
-  const [fx0, fy0] = _gwFeet();
   fx.bubble.setAttribute('visibility', F.state === 'bite' ? 'visible' : 'hidden');
-  if (F.state === 'bite') fx.bubble.setAttribute('transform', `translate(${fx0.toFixed(1)} ${(fy0 - 84 - Math.abs(Math.sin(F.t * 9)) * 3).toFixed(1)})`);
+  if (F.state === 'bite') fx.bubble.setAttribute('transform', `translate(${bx.toFixed(1)} ${(by - 30 - Math.abs(Math.sin(F.t * 9)) * 3).toFixed(1)})`);   // over the float: over your head it could go behind the top bar
   void W;
 }
 function _gwRing(x, y, k) {

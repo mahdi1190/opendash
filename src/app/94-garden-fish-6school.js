@@ -40,7 +40,7 @@ const GF_SCHOOL = Object.freeze({
   biteGrace: 1.8,                               // seconds a guest's bite is held beyond its strike window: the message has to get there and back
 });
 const GF_ST = Object.freeze({ swim: 0, come: 1, nibble: 2, bite: 3, hooked: 4, bolt: 5 });
-const _gfs = { list: new Map(), u: 0, layer: null, clock: 0, last: 0, key: '', sentAt: 0, dirty: false, hostAt: 0, band: new Map(), lines: new Map(), seen: new Map() };
+const _gfs = { list: new Map(), u: 0, layer: null, clock: null, last: 0, key: '', sentAt: 0, dirty: false, hostAt: 0, band: new Map(), lines: new Map(), seen: new Map() };
 
 /* ---------- whose water is it ---------- */
 function _gfsGuest() { return typeof _gll !== 'undefined' && _gll.role === 'visit' && typeof _glvLive === 'function' && _glvLive(); }
@@ -66,7 +66,13 @@ function _gfsLayer() {
   if (_gfs.layer && _gfs.layer.isConnected && _gw.svg && _gfs.layer.ownerSVGElement === _gw.svg) return _gfs.layer;
   if (!_gw.svg) return null;
   const objs = _gw.svg.querySelector('.gd-objects'); if (!objs || !objs.parentNode) return null;
-  const g = _gwEl('g', { class: 'gd-school', 'pointer-events': 'none', 'aria-hidden': 'true' });
+  const g = _gwEl('g', { class: 'gd-school', 'pointer-events': 'none', 'aria-hidden': 'true', 'clip-path': 'url(#gd-school-clip)' });
+  // the pier is drawn with the ground, so a fish is cut away where the planks are: it swims under them
+  if (!_gw.svg.querySelector('#gd-school-clip')) {
+    const W = GARDEN_WORLD, p = GARDEN_PROPS.find(q => q.id === 'pier'), x0 = p.x * W.cellW - 3, x1 = (p.x + p.w) * W.cellW + 3, y0 = W.sky + p.y * W.cellH, y1 = W.sky + (p.y + p.h) * W.cellH + 5;
+    const cp = _gwEl('clipPath', { id: 'gd-school-clip' }), path = _gwEl('path', { 'clip-rule': 'evenodd', d: `M-200 -200H${W.cols * W.cellW + 200}V${W.sky + W.rows * W.cellH + 200}H-200ZM${x0} ${y0}H${x1}V${y1}H${x0}Z` });
+    cp.appendChild(path); objs.parentNode.insertBefore(cp, objs);
+  }
   objs.parentNode.insertBefore(g, objs);
   _gfs.layer = g;
   for (const f of _gfs.list.values()) if (f.node) g.appendChild(f.node);
@@ -95,7 +101,7 @@ function _gfsDrop(f) {
 function _gfsReset() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); _gfs.lines.clear(); _gfs.seen.clear(); _gfs.hostAt = 0; _gfs.m = null; _gfs.dirty = true; }
 /** Once a frame: the shadows go where they are. Nothing is written for one out of view. */
 function _gfsFrame(dt) {
-  if (!_gfs.clock && _gw.on) { _gfs.last = 0; _gfs.clock = setInterval(_gfsClock, GF_SCHOOL.tick * 1000); _gfsClock(); }
+  if (!_gfs.clock && _gw.on) { _gfs.last = 0; _gfsClockStart(); _gfsClock(); }
   const key = _gfsPlaceKey(); if (key !== _gfs.key) { _gfs.key = key; _gfsReset(); }
   const layer = _gfsLayer(); if (!layer) return;
   const k = Math.min(1, dt * 4), t = _gw.t || 0, moving = gardenMotionOn();
@@ -127,12 +133,23 @@ function _gfsMove(f, dt) {
   f.x += dx / d * sp * dt; f.y += dy / d * sp * dt;
   return false;
 }
+/** The clock: a small worker where one can run, because a browser slows a hidden tab's own timers to a crawl and everyone in the garden would see the host's fish stop. */
+function _gfsClockStart() {
+  const ms = GF_SCHOOL.tick * 1000, plain = () => { _gfs.clock = { stop() { clearInterval(this.t); }, t: setInterval(_gfsClock, ms) }; };
+  try {
+    const w = new Worker('/garden-clock.js');   // (from this server, as the page's security policy asks: it only ticks)
+    w.onmessage = _gfsClock;
+    w.onerror = () => { if (_gfs.clock && _gfs.clock.w === w) { w.terminate(); plain(); } };
+    _gfs.clock = { w, stop() { w.terminate(); } };
+  } catch (e) { plain(); }
+}
 function _gfsClock() {
-  if (!_gw.on || !_gw.svg || !_gw.svg.isConnected) { clearInterval(_gfs.clock); _gfs.clock = 0; return; }
+  if (!_gw.on || !_gw.svg || !_gw.svg.isConnected) { if (_gfs.clock) { _gfs.clock.stop(); _gfs.clock = null; } return; }
   const now = performance.now(), dt = _gfs.last ? Math.min(1.5, (now - _gfs.last) / 1000) : GF_SCHOOL.tick;
   _gfs.last = now;
   if (_gfsDecides()) { _gfsRun(dt); _gfsTell(); }
   else for (const f of _gfs.list.values()) _gfsMove(f, dt);   // (carried on towards where it is going until the next list)
+  if (typeof _glyTick === 'function') _glyTick();
 }
 
 /* ---------- the water, for the one who decides ---------- */

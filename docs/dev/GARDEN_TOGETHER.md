@@ -43,6 +43,7 @@ All are friends kinds with a strict schema (`lib/friends/live.mjs`): ids, cells 
 | `gl:pp` | both | `{s, q, w?, l: [{u, e?, x, y, gx?, gy?, r?, f?}]}` (2.32; `GL_PP`, `glPpOk`): where pets really are, section 18. `u` 0 is the sender's own companion, 1 to 3 the host's pack (`e` its species, the host alone); tenths of a cell; `gx`, `gy` where it is walking to. A guest's goes to the host and on to the others. A kind of its own, so an older app drops it and `GL_V` stays 2 |
 | `gl:cr` | H to V | `{s, q, l: [{u, e, x, y, h, f, k?}]}` (2.28.1): the creatures about in the host's garden, the whole list (at most 8) every 0.7 s while one moves, a kind of its own (an older app drops it). Tenths of a cell; `k` the clip |
 | `gl:fs` | H to V | `{s, q, l: [{u, e, c, x, y, tx, ty, st, to?, n?}]}` (2.34): the fish in the host's water (section 20), the whole list (at most 20) on any change, at most every 0.4 s, and every 2.5 s anyway. A kind of its own: an older app drops it |
+| `gl:sum` | H to V | `{s, q, h, n}` (2.34.1): a fingerprint of the plants and decorations the host has told everyone about, every 10 s (section 21) |
 | `gl:tr` | both | `{s, q, w?, t, e, to?, v?, n?, an?, o?, p?, c?, d?, r?, why?}` (2.30; `GL_TRADE`, `glTradeOk`): a trade between two people there, section 16. `t` its id, `e` the step (guest to host: ask, hi, offer, ok, no, end, chk; host to guest: st, go, x). A kind of its own, so an older app drops it and `GL_V` stays 2 |
 | `gl:goal` | H to V | `{s, q, g, c, n, of, st, p: [[slot, part]]}` (2.30): a shared goal (section 17), the whole state each time: `g` its id, `c` which goal (`GL_GOALS`), `n` how far, `of` how many, `st` 0 going / 1 done / 2 let go, `p` the part each person here has done. A kind of its own (an older app drops it) |
 | `gl:do` | V to H | `{s, q, i, t, p?, x?, y?, r?, k?, item?, to?}`: an intent; `i` is the sender's id for it (exactly once; `[0-9a-z]{6,24}`, so it can never look like a credential when it syncs) |
@@ -339,4 +340,14 @@ The user, 31 October 2026: the leftover "guestbook moments: photo saved to both 
 
 **A dishonest guest** can say it struck, landed or let go of its own fish, and can name any bait (a keener fish, no more); it can still award itself what its own computer holds, as ever. **A dishonest host** can show any fish; the guest still has to cast and land it, and its size is kept to what that kind can be. Not a relay change, `GL_V` stays 2.
 
-Not built: a guest's own rod does not change how a fish behaves (it decides how far they can cast); a fish does not leave a band for the whole lake, and swims straight to a float even past the pier.
+Not built: a guest's own rod does not change how a fish behaves (it decides how far they can cast); a fish does not leave a band for the whole lake, and swims straight to a float even under the pier.
+
+## 21. Staying in step (2.34.1)
+
+`94-garden-live-8sync.js` (the header there is the design). `gl:d` is a stream of changes and `q` lets gaps through, so a lost change used to stay lost until the visit ended. The host now flushes (`_glhDiff`), hashes what `_glh.sent` holds, not the model, and sends `gl:sum`. A guest hashes its snapshot the same way, leaving out the flags and variants; two differences running send `fx sync ask` to the host alone (`GL_FX_TO_HOST`), which answers with `gl:snap`, at most once per person in 8 s. A guest asks by itself at most 6 times a visit, so something this copy can never match (a catalogue id it does not know) cannot loop. A garden over `GARDEN_SNAPSHOT_MAX` sends no sum.
+
+`_glhSendSnap` used to mark the whole model as told while sending to one person, so everyone else lost what changed at that moment: it flushes first now. A `gl:d` that fails at the local server (`_glhSend` answers null) sends the whole garden to everyone 3 s later. A send the engine drops for its rate is not seen by the page; the sum catches that.
+
+`fx sync at {x, y}` is a cell every 15 s, not `gl:go`: only someone more than 1.5 cells out walks, so a line stays out (`A.moving` clears it) and a seated person stays seated. Everything runs off the fish's clock, a worker from `/garden-clock.js` (the policy `script-src 'self'` refuses a blob) with `setInterval` as the fallback, because a hidden tab's own timers are throttled. `/api/relay` says `stale` when this computer's deploy record is behind `RELAY_CODE` (raise it when people must press Update my relay).
+
+The owner's own online status is left as they set it: `presence` is off by default for every friend, and that is why a friend shows offline until a message arrives.

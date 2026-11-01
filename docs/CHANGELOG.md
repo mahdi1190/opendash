@@ -10,6 +10,23 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.34.1]
+
+Playing together stays in step, and fishing has fewer rough edges.
+
+### Added
+- **The garden repairs itself.** Every 10 seconds the host says what it has told everyone about the plants and decorations. If your copy differs, it quietly gets a fresh one. A change that could not be sent goes out again as a whole garden.
+- **A line that says how you are connected:** Connected (direct or through the relay), Catching up, Slow connection or Reconnecting. A visitor gets a Refresh garden button beside it.
+- **Your relay tells you when it needs its update**, in the garden and under Settings > Your relay.
+
+### Fixed
+- When someone joined or refreshed, changes made at that moment could be missed by everyone else already there.
+- Someone shown in the wrong place walks to the right one within 15 seconds, and is left alone if they are only slightly off, so people fishing or sitting are not disturbed.
+- A friend who has just sent you something no longer shows as offline, whatever they share.
+- The host's fish keep swimming while the host's tab is in the background.
+- The bite "!" shows over the float, not behind the top bar. Fish swim under the pier, not over it. The walking hint no longer sits on the fishing bar.
+- A visitor is told when the host's version is too old to share its fish, and "they are not in their garden" says what to do about it.
+
 ## [2.34.0]
 
 Fishing is now about the fish you can see, like Animal Crossing.

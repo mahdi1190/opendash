@@ -200,6 +200,7 @@ function _glhByTable() {
 }
 function _glhSendSnap(fid) {
   const s = gardenSnapshot(); if (!s) return;
+  _glhDiff();   // what has changed goes to everyone first: the line below counts it as told, and everyone else must not miss it
   _glhRemember(gardenModel());
   _glhSend(fid, 'snap', { g: s, by: _glhByTable() });
 }
@@ -226,7 +227,7 @@ function _glhDiff() {
   if (!ops.length) return;
   // removals first: something moved within one frame leaves its old cell before it takes its new one
   ops.sort((a, b) => (a.o[0] === '-' ? 0 : 1) - (b.o[0] === '-' ? 0 : 1));
-  for (let i = 0; i < ops.length; i += 24) _glhSend('all', 'd', { ops: ops.slice(i, i + 24) });
+  for (let i = 0; i < ops.length; i += 24) _glhSend('all', 'd', { ops: ops.slice(i, i + 24) }).then((r) => { if (r == null && typeof _glySendFailed === 'function') _glySendFailed(); });
 }
 /* ---------- an intent ---------- */
 function _glhKeyOf(f, i) { return String(f).slice(0, 8) + '.' + String(i).slice(0, 40) + '.0'; }   // (never ends in a word sync takes for a credential's name)
