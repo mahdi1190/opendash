@@ -41,6 +41,12 @@ const GARDEN_REGION_WATERS = _gdRows(_GRG_WATER_ROWS.map(w => {
   const p = gardenArea('pond').water;   // derived, so it stays with the pond
   return Object.assign({}, w, { x: p.x + p.w - 2, y: p.y, w: 2, h: p.h });
 }).concat(GARDEN_LAND_SECTIONS.filter(s => s.pool).map(s => ({ id: s.id, name: s.name.replace(/^The /, 'the '), r: 'marsh', sec: s.id, via: s.via, x: s.x, y: s.y, w: s.w, h: s.h, cap: 120, like: _GRG_POOL_LIKE[s.id] || /^$/ }))));
+/** The zone a water is in: how far out it lies, and never before the way to it. Open water only counts when its zone is open. */
+function _grgWaterZone(w) {
+  if (w.room || w.area) return 0;
+  if (w.sec) return (gardenLandRow(w.sec) || {}).zn || 0;
+  return Math.max(gardenZoneOf(Math.floor(w.x + w.w / 2), Math.floor(w.y + w.h / 2)), (gardenLandRow(w.via) || {}).zn || 0);
+}
 const _GRG_WATER = new Map(GARDEN_REGION_WATERS.map(w => [w.id, w]));
 const _GRG_WET = new Set();
 for (const w of GARDEN_REGION_WATERS) if (!w.area && !w.sec) for (let y = w.y; y < w.y + w.h; y++) for (let x = w.x; x < w.x + w.w; x++) _GRG_WET.add(x + ',' + y);
@@ -152,7 +158,7 @@ function gardenRegionKinds(id) { return _GRG_KINDS.get(String(id)) || []; }
 /** Can you get to this home, with these areas open? */
 function gardenRegionHomeOpen(H, areas) {
   if (!H) return true;
-  if (H.w) { if (H.w === 'pond') return areas.includes('pond'); const w = _GRG_WATER.get(H.w); return w.sec ? areas.includes(w.sec) : w.area ? areas.includes(w.area) : areas.includes(w.via); }
+  if (H.w) { if (H.w === 'pond') return areas.includes('pond'); const w = _GRG_WATER.get(H.w), zn = _grgWaterZone(w); if (zn && !areas.includes('zn-' + zn)) return false; return w.sec ? areas.includes(w.sec) : w.area ? areas.includes(w.area) : areas.includes(w.via); }
   return !H.t || areas.includes(H.t);
 }
 /** Is this lake or pond kind one the lake holds? (what is "in stock" today comes from these) */
@@ -165,7 +171,7 @@ function _grgOpenWords(H) {
     const w = H.w === 'pond' ? null : _GRG_WATER.get(H.w);
     if (!w || w.area) return 'The pond opens at garden level 7.';
     if (w.sec) { const s = gardenLandRow(w.sec), t = gardenLandRow(w.via); return `Open ${_grgTrailWords(w.via)} (garden level ${t.lv}), then buy ${w.name} at the land office (level ${s.lv}).`; }
-    return `Open ${_grgTrailWords(w.via)} (garden level ${gardenLandRow(w.via).lv}).`;
+    return `Open ${_grgTrailWords(w.via)} (garden level ${Math.max(gardenLandRow(w.via).lv, gardenZone(_grgWaterZone(w)).lv)}).`;
   }
   if (H.t) return `Open ${_grgTrailWords(H.t)} (garden level ${gardenLandRow(H.t).lv}).`;
   return '';
@@ -192,6 +198,12 @@ function gardenRegionShort(def) {
   if (H.p) return _grgPlaceName(H);
   if (H.w) return _GRG_WATER.get(H.w).name;
   return gardenRegion(H.r).name.replace(/^The /, 'the ');
+}
+/** What stops a cast at this cell of any water, the lake too. '' if nothing. */
+function gardenWaterNo(x, y, m) {
+  const zone = gardenWaterZone(x, y); if (!zone) return '';
+  if (zone === 'pond') return gardenRegionWaterNo(x, y, m.areas);
+  return y >= gardenLakeOpenTo() ? `That far water is past the line of floats. It opens at garden level ${gardenLakeZoneOfRow(y).lv}.` : '';
 }
 /** What stops a cast here. '' if nothing. */
 function gardenRegionWaterNo(x, y, areas) {
@@ -232,7 +244,7 @@ function _grgHomeCells(H) {
 }
 /** Somewhere open for a bug that lives away from the garden: {x, y}, or null. free(x, y): nothing stands there. */
 function gardenRegionBugCell(H, rnd, areas, free) {
-  const cells = _grgHomeCells(H).filter(c => areas.includes(c.id));
+  const cells = _grgHomeCells(H).filter(c => { if (!areas.includes(c.id)) return false; const n = gardenZoneOf(c.x, c.y); return !n || areas.includes('zn-' + n); });   // (not past a gate, even on a path that is open up to it)
   for (let i = 0; i < 10 && cells.length; i++) { const c = cells[Math.floor(rnd() * cells.length)]; if (free(c.x, c.y)) return { x: c.x + 0.5, y: c.y + 0.5 }; }
   return null;
 }

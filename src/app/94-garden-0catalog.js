@@ -842,8 +842,9 @@ function gardenAreaAt(x, y, level) {
   // the world is one map (94-garden-lands-0table.js). A trail, the lane and the mown green are lawn to everything else: you walk there, nothing grows there. The thicket is locked for good.
   if (typeof gardenLandCell === 'function') {
     const c = gardenLandCell(x, y);
-    if (c) { if (c.lane) return 'lawn'; if (c.solid) return 'locked:' + c.id; if (level != null && !_GD_LAND.has(c.id)) return 'locked:' + c.id; if (c.green && level != null && typeof gardenDesignBedAt === 'function') { const b = gardenDesignBedAt(x, y); if (b) return b; } return c.trail || c.green ? 'lawn' : c.id; }   // (a bed plotted on the green grows like that area: the designer)
+    if (c) { if (c.lane) { const zl = level != null ? gardenZoneLockAt(x, y) : ''; return zl ? 'locked:' + zl : 'lawn'; } if (c.solid) return 'locked:' + c.id; if (level != null && !_GD_LAND.has(c.id)) return 'locked:' + c.id; if (c.trail && level != null) { const zl = gardenZoneLockAt(x, y); if (zl) return 'locked:' + zl; } if (c.green && level != null && typeof gardenDesignBedAt === 'function') { const b = gardenDesignBedAt(x, y); if (b) return b; } return c.trail || c.green ? 'lawn' : c.id; }   // (a bed plotted on the green grows like that area: the designer)
   }
+  if (level != null && typeof gardenLakeOpenTo === 'function' && y >= gardenLakeOpenTo() && y < 38 && x >= 12 && x < 40 && !_GD_WALK_EXTRA.has(x + ',' + y)) return 'locked:' + gardenLakeZoneOfRow(y).id;   // the far water: it opens with its zone
   for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
   return 'lawn';
 }

@@ -9,7 +9,44 @@ const WD_ISLE = WD_AT.isle, WD_ROAD = WD_AT.road;   // world cells: the table is
 const _wdi = { open: '', S: {}, tick: 0, onIsle: false, lastBell: 0 };
 function _wdIsleCells() { const out = []; for (let y = Math.floor(WD_ISLE.cy - WD_ISLE.ry - 1); y <= WD_ISLE.cy + WD_ISLE.ry + 1; y++) for (let x = Math.floor(WD_ISLE.cx - WD_ISLE.rx - 1); x <= WD_ISLE.cx + WD_ISLE.rx + 1; x++) { const dx = (x + 0.5 - WD_ISLE.cx) / WD_ISLE.rx, dy = (y + 0.5 - WD_ISLE.cy) / WD_ISLE.ry; if (dx * dx + dy * dy <= 1) out.push(x + ',' + y); } return out; }
 function _wdRoadPts(step) { const pts = []; for (let i = 0; i < WD_ROAD.length - 1; i++) { const a = WD_ROAD[i], b = WD_ROAD[i + 1], n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / step)); for (let k = 0; k < n; k++) pts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]); } pts.push(WD_ROAD[WD_ROAD.length - 1]); return pts; }
-function _wdRoadCells() { const s = new Set(); for (const [x, y] of _wdRoadPts(0.25)) for (const dx of [-0.5, 0, 0.5]) for (const dy of [-0.3, 0, 0.3]) { const cy = Math.floor(y + dy); if (cy >= _WD_LAKE.y) s.add(Math.floor(x + dx) + ',' + cy); } return [...s]; }
+/* The cells the way touches, for the routes and the cursor. They are bigger than the way itself: what the feet may stand on is the fine shape below (_wdWalkFine), so the water round the stones blocks. */
+function _wdRoadCells() { const s = new Set(); for (const [x, y] of _wdRoadPts(0.25)) for (const dx of [-0.55, 0, 0.55]) for (const dy of [-0.65, 0, 0.65]) { const cy = Math.floor(y + dy); if (cy >= _WD_LAKE.y) s.add(Math.floor(x + dx) + ',' + cy); } return [...s]; }
+/* The owner, 1 Nov 2026: "the collision lets you walk on water a lot, too big". How far from the line of stones your feet may be, in stage pixels: a stone is 26 wide, so this is a stone and a little. */
+const WD_WAY_REACH = 15;
+/** How far (stage pixels) a point is from the line of stones, and how far along it that is (leg + share). */
+function _wdRoadNear(x, y) {
+  const G = GARDEN_WORLD; let best = 1e9, at = 0;
+  for (let i = 0; i < WD_ROAD.length - 1; i++) {
+    const a = WD_ROAD[i], b = WD_ROAD[i + 1], vx = (b[0] - a[0]) * G.cellW, vy = (b[1] - a[1]) * G.cellH, wx = (x - a[0]) * G.cellW, wy = (y - a[1]) * G.cellH;
+    const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / (vx * vx + vy * vy || 1))), d = Math.hypot(wx - vx * t, wy - vy * t);
+    if (d < best) { best = d; at = i + t; }
+  }
+  return { d: best, at };
+}
+function _wdInIsle(x, y) { const dx = (x - WD_ISLE.cx) / WD_ISLE.rx, dy = (y - WD_ISLE.cy) / WD_ISLE.ry; return dx * dx + dy * dy <= 1; }
+/** The cell grid says what is near; this says what the feet may really stand on over the lake: the island's own shape and the line of stones. Anywhere else on the lake it has nothing to say. `m`: the routes keep this much (cells) to spare. */
+function gardenWonderWalkFine(x, y, fy, m) {
+  const yf = y + (fy || 0), cx = Math.floor(x), cy = Math.floor(yf);
+  if (!_GD_WALK_EXTRA.has(cx + ',' + cy) || gardenIceAt(cx, cy)) return true;   // (a frozen lake: you walk where you like)
+  if (_wdInIsle(x, y)) return true;
+  return !!_wdi.open && _wdRoadNear(x, y).d <= WD_WAY_REACH - (m || 0) * GARDEN_WORLD.cellH;
+}
+/** The way over the water, as points to walk: straight along the stones, not cell to cell. null when this walk has nothing to do with it. */
+function gardenWonderWayRoute(from, to) {
+  if (!_wdi.open) return null;
+  const side = (p) => (_wdInIsle(p.x, p.y) ? 'isle' : p.y + 0.12 >= _WD_LAKE.y && _GD_WALK_EXTRA.has(Math.floor(p.x) + ',' + Math.floor(p.y + 0.12)) && _wdRoadNear(p.x, p.y).d <= WD_WAY_REACH ? 'way' : 'land');
+  const a = side(from), b = side(to);
+  if (a === b && a !== 'way') return null;   // both on the shore, or both on the island: an ordinary walk
+  const pt = (i) => ({ x: WD_ROAD[i][0], y: WD_ROAD[i][1] }), last = WD_ROAD.length - 1;
+  const at = (p, s) => (s === 'land' ? 0 : s === 'isle' ? last : _wdRoadNear(p.x, p.y).at), A = at(from, a), B = at(to, b), out = [];
+  if (a === 'land') { const r = _gwRoute(from, pt(0)); if (!r) return null; out.push(...r); }
+  if (A < B) { for (let i = Math.floor(A) + 1; i <= Math.ceil(B) && i <= last; i++) if (i <= B) out.push(pt(i)); }
+  else for (let i = Math.ceil(A) - 1; i >= Math.floor(B) && i >= 0; i--) if (i >= B) out.push(pt(i));
+  if (b === 'land') { const r = _gwRoute(pt(0), to); if (!r) return null; out.push(...r); }
+  else if (b === 'isle') { const r = _gwRoute(pt(last), to); if (!r) return null; out.push(...r); }
+  else out.push({ x: to.x, y: to.y });
+  return out;
+}
 for (const c of _wdIsleCells()) _GD_WALK_EXTRA.add(c);   // (the island is always land)
 const _WD_ROADCELLS = _wdRoadCells();
 function gardenWonderIsleWay(m) {

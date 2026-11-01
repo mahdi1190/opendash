@@ -154,9 +154,9 @@ function gardenCatchPropArt(sc, o) {
 /* ---------- the boat: in it, the water is the ground ---------- */
 const _gcb = { key: -1, g: null, hud: null };
 function gardenBoatGrid() {
-  const W = GARDEN_WORLD, key = gardenPierMore(); if (_gcb.g && _gcb.key === key) return _gcb.g;
+  const W = GARDEN_WORLD, to = gardenLakeOpenTo(), key = gardenPierMore() + '|' + to; if (_gcb.g && _gcb.key === key) return _gcb.g;
   const g = new Uint8Array(W.cols * W.rows);
-  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const z = gardenIsWater(x, y) ? gardenWaterZone(x, y) : ''; g[y * W.cols + x] = z && z !== 'pond' && !gardenPropWalk(x, y) ? 0 : 1; }
+  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) { const z = gardenIsWater(x, y) ? gardenWaterZone(x, y) : ''; g[y * W.cols + x] = z && z !== 'pond' && y < to && !gardenPropWalk(x, y) ? 0 : 1; }
   _gcb.g = g; _gcb.key = key;
   return g;
 }

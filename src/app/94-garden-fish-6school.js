@@ -188,7 +188,8 @@ function _gfsClock() {
 
 /* ---------- the water, for the one who decides ---------- */
 function _gfsBands(m) {
-  const out = GF_SCHOOL.bands.map((b, i) => Object.assign({ key: 'b' + i }, b));
+  // only the lake that is open: past the line of floats nothing swims (the zones, 94-garden-lands-0table.js)
+  const to = gardenLakeOpenTo() - 0.4, out = GF_SCHOOL.bands.map((b, i) => Object.assign({ key: 'b' + i }, b, { y1: Math.min(b.y1, to) })).filter(b => b.y1 > b.y0);
   for (const a of GARDEN_AREAS) if (a.water && !a.fishing && m.areas.includes(a.id)) { const w = a.water; out.push({ key: 'a' + a.id, zone: 'pond', x0: w.x + 0.4, x1: w.x + w.w - 0.4, y0: w.y + 0.3, y1: w.y + w.h - 0.3, n: GF_SCHOOL.pond }); }
   out.push(...gardenRegionBands(m.areas));   // the regions' waters, once they are open (94-garden-regions-0table.js)
   return out;
@@ -211,7 +212,8 @@ function _gfsSpot(b0, near0) {
 }
 function _gfsSpawn(b, m, at) {
   const plus = typeof gardenCatchSpawnPlan === 'function' ? gardenCatchSpawnPlan(b, m, at) : null;   // spots, events and what you have done raise the odds: 94-garden-fish-8catch.js
-  const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : (plus && plus.p) || _gfsSpot(b); if (!p) return;
+  const plusP = plus && plus.p && plus.p.y <= b.y1 + 0.3 ? plus.p : null;   // (a favourite spot past the floats: not yet)
+  const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : plusP || _gfsSpot(b); if (!p) return;
   const ctx = { zone: b.zone, tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id) || gardenWorkOwned(id), caught: (id) => !!_gdG().fl[id] };
   if (typeof gardenPlaceHas === 'function') ctx.home = gardenPlaceHas;
   if (typeof gardenEventOn === 'function') ctx.event = gardenEventOn;
@@ -284,7 +286,7 @@ function _gfsRun(dt) {
     }
     if (f.st === GF_ST.swim) {
       f.life -= dt;
-      if (f.life <= 0) { _gfsDrop(f); _gfs.dirty = true; continue; }
+      if (f.life <= 0 || (f.band && !byKey.has(f.band))) { _gfsDrop(f); _gfs.dirty = true; continue; }
       // With people here a fish waits where it got to until the next list says where it goes next, here as on their screens. It used to go on here at once while they saw it stop, and then glide after it: the same fish, in two places.
       if (_gfsMove(f, dt)) { if (told) f.rest = true; else { const go = _gfsSpot(byKey.get(f.band) || bands[0], f) || f; f.tx = go.x; f.ty = go.y; } }
       if (f.band !== 'x' && byKey.get(f.band) && byKey.get(f.band).zone !== 'deep') for (const s of stomps) if (Math.hypot(f.x - s.x, (f.y - s.y) * 1.2) < E.noise && Math.random() < E.noiseKeen * dt) { _gfsBolt(f, byKey.get(f.band)); if (s.me) _gfsStompSaid(); break; }
