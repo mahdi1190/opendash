@@ -21,7 +21,7 @@ function gardenRodLook(id) {
 function gardenGearLook() {
   const out = { r: gardenRod().id, n: gardenNet().id, b: gardenBobber().id };
   for (const id of ['can-4', 'can-3', 'can-2']) if (gardenHas('tool:' + id) > 0) { out.c = id; break; }
-  return out;
+  return typeof gardenTackleLook === 'function' ? gardenTackleLook(out) : out;   // reel, line, hook, lantern, jar, boat: 94-garden-fish-8catch.js
 }
 /** Yours, for your own figure (it is asked every frame; what you carry changes rarely). */
 const _gplGearMemo = { at: -1e9, v: null };
@@ -39,9 +39,10 @@ function _gplSlung(gear, pose) {
     const hoop = GARDEN_NET_HOOP[net.tier - 1] || GARDEN_NET_HOOP[0], k = 1 + net.tier * 0.08;
     s += `<g class="gpl-slung"><path d="M9 -24L-9 -62" stroke="#6a4a2a" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="-11.5" cy="-67" rx="${(6 * k).toFixed(1)}" ry="${(7.5 * k).toFixed(1)}" fill="#f4f0e6" fill-opacity="0.55" stroke="${hoop}" stroke-width="1.5"/></g>`;
   }
-  if (rod && rod.kind === 'rod' && rod.tier > 1) {
+  if (typeof gardenKitOnFigure === 'function') s += gardenKitOnFigure(gear);   // lantern, firefly jar, a run of catches
+  if (rod && rod.kind === 'rod' && (rod.tier > 1 || gear.rl)) {
     const L = gardenRodLook(rod.id), tip = -80 - rod.tier * 2;
-    s += `<g class="gpl-slung"><path d="M-9 -22L14 ${tip}" stroke="#1a1a1a" stroke-opacity="0.35" stroke-width="${(L.w + 0.8).toFixed(1)}" stroke-linecap="round"/><path d="M-9 -22L14 ${tip}" stroke="${L.c}" stroke-width="${L.w}" stroke-linecap="round"/><circle cx="-6.2" cy="-28.5" r="2.6" fill="#3a2a1a"/>${rod.tier >= 4 ? `<circle cx="14" cy="${tip}" r="1.7" fill="#fff4b0"/>` : ''}</g>`;
+    s += `<g class="gpl-slung"><path d="M-9 -22L14 ${tip}" stroke="#1a1a1a" stroke-opacity="0.35" stroke-width="${(L.w + 0.8).toFixed(1)}" stroke-linecap="round"/><path d="M-9 -22L14 ${tip}" stroke="${L.c}" stroke-width="${L.w}" stroke-linecap="round"/><circle cx="-6.2" cy="-28.5" r="2.6" fill="#3a2a1a"/>${rod.tier >= 4 ? `<circle cx="14" cy="${tip}" r="1.7" fill="#fff4b0"/>` : ''}${gear.rl && typeof gardenReelOnBack === 'function' ? gardenReelOnBack(gear.rl) : ''}</g>`;
   }
   return s;
 }
@@ -57,6 +58,8 @@ function gardenWorkArt(id, sc) {
     case 'reed-beds': return '<ellipse cx="0" cy="1" rx="17" ry="4.6" fill="#0a2a1e" fill-opacity="0.18"/><g fill="none" stroke-linecap="round"><path d="M-11 0Q-13 -18 -9 -32" stroke="#4f8a3f" stroke-width="1.7"/><path d="M-5 0Q-7 -24 -3 -42" stroke="#3f7a35" stroke-width="1.9"/><path d="M1 0Q0 -22 3 -36" stroke="#5a9a48" stroke-width="1.7"/><path d="M7 0Q7 -18 11 -30" stroke="#3f7a35" stroke-width="1.8"/><path d="M12 0Q13 -10 16 -20" stroke="#5a9a48" stroke-width="1.5"/></g><path d="M-4.6 -36l2.6 .3 -.5 -9 -2.5 -.1z" fill="#6a4426"/><path d="M1.8 -30l2.5 .3 -.2 -8 -2.4 -.1z" fill="#7a5230"/><path d="M-10 -28l2.2 .4 .4 -7 -2.2 -.2z" fill="#6a4426"/>';
     case 'fishing-station': return '<ellipse cx="0" cy="1" rx="17" ry="4" fill="#1a1208" fill-opacity="0.2"/><path d="M-11 0L-3 -13M-3 0L-11 -13" stroke="#5a3e22" stroke-width="1.6"/><path d="M-13 -15h12l1 -3h-14z" fill="#3f7a8a" stroke="#2a5560" stroke-width="0.7"/><path d="M-14 -18L-13 -29h11L-1 -18" fill="#4f8ea0" stroke="#2a5560" stroke-width="0.7"/><path d="M4 0V-11h10V0z" fill="#8a9298" stroke="#59636a" stroke-width="0.8"/><path d="M4 -11Q9 -19 14 -11" fill="none" stroke="#59636a" stroke-width="1.1"/><path d="M15 0L19 -18M19 -18L21 -19" stroke="#6e4c2a" stroke-width="1.5" stroke-linecap="round"/>';
     case 'night-lantern': return `${night ? '<ellipse cx="0" cy="-46" rx="30" ry="24" fill="#ffd97a" fill-opacity="0.26"/><ellipse cx="0" cy="-46" rx="13" ry="11" fill="#ffe9a8" fill-opacity="0.5"/><ellipse cx="0" cy="2" rx="22" ry="6" fill="#ffd97a" fill-opacity="0.18"/>' : ''}<path d="M-1.4 0V-40h2.8V0z" fill="#3a3a42"/><path d="M-6 -41h12l-2 -11h-8z" fill="${night ? '#ffe28a' : '#e8e0c0'}" stroke="#2a2a32" stroke-width="1"/><path d="M-7.5 -52h15L0 -58z" fill="#3a3a42"/><path d="M-5 0h10l-1 -3h-8z" fill="#3a3a42"/>`;
+    case 'rowing-boat': return '<path d="M-20 -8Q0 8 20 -8L16 2Q0 10 -16 2z" fill="#7a4a2a"/><path d="M-20 -8Q0 2 20 -8Q0 -3 -20 -8z" fill="#e8d0a0"/><path d="M4 -8L18 6" stroke="#5a3a20" stroke-width="2" stroke-linecap="round"/>';
+    case 'smoker': return '<path d="M-9 0V-22h18V0z" fill="#59636a" stroke="#2a2a32" stroke-width="1"/><path d="M-9 -22L0 -30L9 -22z" fill="#3a3a42"/><path d="M4 -28V-40h4v12z" fill="#3a3a42"/><path d="M-5 -14h10M-5 -9h10" stroke="#c8743a" stroke-width="1.6"/>';
     case 'pool-stock': return '<ellipse cx="0" cy="1" rx="13" ry="3.4" fill="#1a1208" fill-opacity="0.18"/><path d="M-9 0V-10h9V0z" fill="#8a9298" stroke="#59636a" stroke-width="0.8"/><path d="M-9 -10Q-4.5 -17 0 -10" fill="none" stroke="#59636a" stroke-width="1"/><path d="M-7.5 -7q2 -2.4 4 0q-2 2.4 -4 0z" fill="#f08a2a"/><path d="M6 0V-20h2V0z" fill="#6e4c2a"/><rect x="2" y="-27" width="11" height="8" rx="1.2" fill="#c8a46a" stroke="#6e4c2a" stroke-width="0.7"/><path d="M4.4 -23q1.4 -1.8 3.2 0q-1.8 1.8 -3.2 0zM7.6 -23l2 -1.4v2.8z" fill="#3f6f8a"/>';
     default: return '';
   }
@@ -89,6 +92,7 @@ function gardenGearRow(g) {
   if (rod && rod.kind === 'rod') add(gardenCatchSvg('rod', rod.id, 22), rod.name);
   if (net && net.kind === 'net') add(gardenCatchSvg('net', net.id, 22), net.name);
   if (bob) add(gardenCatchSvg('bobber', bob.id, 22), bob.name);
+  if (typeof gardenTackleRow === 'function') gardenTackleRow(g, add);
   if (can) add(typeof _gdxItemIcon === 'function' ? _gdxItemIcon('tool:' + can.id, 22) : '', can.name);
   return row.children.length ? row : null;
 }
@@ -101,6 +105,7 @@ function gardenWorksWords(wk) {
 if (typeof document !== 'undefined') document.addEventListener('opendash:garden', (ev) => {
   const d = ev && ev.detail; if (!d || d.kind !== 'buy' || typeof d.item !== 'string') return;
   const m = /^(gear|tool):([a-z0-9-]+)$/.exec(d.item); if (!m) return;   // (bait, seeds and decorations: a decoration shows when you place it)
+  if (typeof gardenTackleBought === 'function') gardenTackleBought(m[2]);
   _gplGearMemo.at = -1e9;
   if (typeof gardenCatchMoment === 'function') gardenCatchMomentSoon('gear', m[2], { isNew: true });
   const def = gardenGearDef(m[2]);

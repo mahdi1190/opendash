@@ -10,7 +10,7 @@
    Also the little card in the garden's side panel (gardenCatchSideCard): your rod, your bait, the casts you have left, the bugs about.
    ============================================================ */
 const _gdc = { zone: '', found: '', n: 36 };
-const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['fish', 'Fish book', 'fish'], ['bugs', 'Bug book', 'bug'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy']]);
+const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['fish', 'Fish book', 'fish'], ['bugs', 'Bug book', 'bug'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);
 function _gdcTab() { const t = _gdG().prefs.catchTab; return GDC_TABS.some(x => x[0] === t) ? t : 'bag'; }
 function _gdcSetTab(t) { _gdG().prefs.catchTab = t; if (typeof saveUI === 'function') saveUI(); _gdc.n = 36; _gdxRepaintTab(); }
 function _gdcRar(r) { return GARDEN_RARITY[r] || GARDEN_RARITY.common; }
@@ -43,6 +43,8 @@ function gardenCatchTab(el, m) {
   else if (tab === 'fish') _gdcBook(el, m, 'fish');
   else if (tab === 'bugs') _gdcBook(el, m, 'bug');
   else if (tab === 'tackle') _gdcTackle(el, m);
+  else if (tab === 'lake') gardenLakeTab(el, m);
+  else if (tab === 'hall') gardenHallTab(el, m);
   else _gdcShow(el, m);
 }
 
@@ -108,6 +110,7 @@ function _gdcBagCard(kind, r, m) {
   c.appendChild(t);
   const f = _gdpEl('div', 'gd-card-f');
   f.appendChild(_gdpBtn('Sell', { icon: 'coins', tip: 'Sell one', run: () => _gdcSay(gardenCatchSell(r.key, 1)) }));
+  if (typeof gardenBagExtras === 'function') gardenBagExtras(f, kind, r);   // let it go, give it to the hall
   if (r.n > 1) f.appendChild(_gdpBtn(`All ${r.n}`, { kind: 'btn-ghost', run: () => _gdcSay(gardenCatchSell(r.key, r.n)) }));
   if (kind === 'bug' || r.def.cat === 'fish') {
     const gb = _gdpBtn('', { icon: 'gift', kind: 'btn-ghost', aria: 'Give one to a friend', tip: 'Give one to a friend' });
@@ -174,6 +177,7 @@ function _gdcBook(el, m, kind) {
       pb.setAttribute('aria-pressed', on ? 'true' : 'false');
       f.appendChild(pb); c.appendChild(f);
     }
+    if (isFish && d.cat === 'fish' && typeof gardenReadyButton === 'function') { let ft = c.querySelector('.gd-card-f'); if (!ft) { ft = _gdpEl('div', 'gd-card-f'); c.appendChild(ft); } ft.appendChild(gardenReadyButton(d)); }   // set me up for this fish, and take me there
     grid.appendChild(c);
   }
   el.appendChild(grid);
@@ -239,7 +243,10 @@ function _gdcTackle(el, m) {
     const grid = _gdpEl('div', 'gd-grid gd-shop-grid gdc-grid'); for (const d of list) grid.appendChild(_gdcGearCard(d, m)); el.appendChild(grid);
     if (extra) el.appendChild(extra);
   };
-  sec('Rods', GARDEN_RODS); sec('Nets', GARDEN_NETS); sec('Bait', GARDEN_BAITS); sec('Build for the lake', GARDEN_WORKS);
+  gardenSetupPanel(el, m);
+  sec('Rods', GARDEN_RODS);
+  gardenTackleShelves(el, m);
+  sec('Nets', GARDEN_NETS); sec('Bait', GARDEN_BAITS); sec('Build for the lake', GARDEN_WORKS);
   el.appendChild(_gdpEl('h3', 'gdc-h', 'Floats'));
   const grid = _gdpEl('div', 'gd-grid gdc-grid gdc-bobbers');
   const cur = gardenBobber();
@@ -313,6 +320,7 @@ function gardenCatchSideCard(m) {
   for (const b of GARDEN_BAITS) { if (!b.own && gardenHas('bait:' + b.id) < 1) continue; const o = document.createElement('option'); o.value = b.id; o.textContent = b.own ? b.name : `${b.name} (${gardenHas('bait:' + b.id)})`; if (b.id === bait.id) o.selected = true; sel.appendChild(o); }
   sel.onchange = () => { gardenGearEquip('bait', sel.value); sel.blur(); };
   row.appendChild(sel); card.appendChild(row);
+  if (typeof gardenSetupQuick === 'function') gardenSetupQuick(card);
   const n = typeof _gw !== 'undefined' && _gw.bugs ? _gw.bugs.size : 0;
   const tip = _gdpEl('p', 'muted gdc-side-tip');
   tip.textContent = m.tod === 'night' ? 'Night: eels, zander and the deep lantern fish are about. ' : m.rain.now ? 'Rain: the trout and the catfish are biting. ' : '';

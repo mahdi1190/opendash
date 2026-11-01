@@ -105,7 +105,7 @@ function _glhTurns(path) {
 function _glhWalk(A, ev) {
   let way = null;
   const t = Date.now();   // clock-ok: spacing the sums
-  if (typeof _gwRoute === 'function' && t - (A.routeAt || 0) >= 200) {
+  if (typeof _gwRoute === 'function' && !(A.g && A.g.bt) && t - (A.routeAt || 0) >= 200) {   // (someone in a boat goes straight over the water)
     A.routeAt = t;
     try {
       const tgt = _gwFree(ev.x, ev.y) ? { x: ev.x, y: ev.y } : _gwNearestFreePt(ev.x, ev.y, 3);   // (a seat is on the bench itself: as near as the feet go, then there)
