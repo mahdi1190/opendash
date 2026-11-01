@@ -35,6 +35,19 @@ const _GFA_SHAPES = {
   sturgeon: { L: 74, H: 13, pt: 3, sn: 20, bel: 0.82, tail: 'shark', dor: [-0.32, -0.14, 7], ana: [-0.3, -0.16, 5], eye: 2.8, eyeX: 0.24, barb: 2 },
   angler: { L: 52, H: 24, pt: 3.4, sn: 6, bel: 1.0, tail: 'fan', dor: [-0.26, 0.1, 9], ana: [-0.22, 0.0, 6], eye: 5, eyeX: 0.26, lure: 1 },
   crayfish: { L: 60, H: 9, pt: 4, sn: 8, bel: 1, tail: 'none', dor: [0, 0, 0], ana: [0, 0, 0], eye: 1.6, eyeX: 0.4 },
+  torpedo: { L: 70, H: 14, pt: 2.6, sn: 15, bel: 0.9, tail: 'shark', dor: [-0.12, 0.08, 9], ana: [-0.3, -0.16, 5], eye: 3.4, eyeX: 0.32 },
+  disc: { L: 44, H: 26, pt: 3, sn: 10, bel: 1.0, tail: 'fan', dor: [-0.3, 0.2, 7], ana: [-0.3, 0.14, 7], eye: 4.6, eyeX: 0.24 },
+  tall: { L: 38, H: 22, pt: 2.6, sn: 8, bel: 1.0, tail: 'fan', dor: [-0.3, 0.14, 20], ana: [-0.3, 0.1, 18], eye: 4.2, eyeX: 0.24 },
+  chunky: { L: 60, H: 22, pt: 4, sn: 9, bel: 1.02, tail: 'round', dor: [-0.32, 0.14, 8], ana: [-0.26, -0.02, 6], eye: 3.8, eyeX: 0.3 },
+  needle: { L: 78, H: 7, pt: 2.6, sn: 24, bel: 0.9, tail: 'round', dor: [-0.42, -0.26, 6], ana: [-0.42, -0.26, 5], eye: 2.8, eyeX: 0.26 },
+  loach: { L: 60, H: 8, pt: 3.4, sn: 7, bel: 0.86, tail: 'round', dor: [-0.12, 0.04, 5], ana: [-0.3, -0.18, 3.6], eye: 2.6, eyeX: 0.36, barb: 3 },
+  goby: { L: 46, H: 11, pt: 2.6, sn: 7, bel: 1.0, tail: 'round', dor: [-0.3, 0.12, 8], ana: [-0.24, -0.04, 5], eye: 4.4, eyeX: 0.28 },
+  herring: { L: 56, H: 11, pt: 2.4, sn: 12, bel: 1.0, tail: 'fork', dor: [-0.08, 0.1, 6], ana: [-0.3, -0.18, 3.6], eye: 4, eyeX: 0.3 },
+  puffer: { L: 42, H: 21, pt: 2.6, sn: 8, bel: 1.08, tail: 'fan', dor: [-0.34, -0.14, 5], ana: [-0.34, -0.16, 4], eye: 5.4, eyeX: 0.22, spike: 1 },
+  hump: { L: 62, H: 23, pt: 3.6, sn: 15, bel: 0.86, tail: 'fork', dor: [-0.3, 0.1, 8], ana: [-0.24, -0.06, 6], eye: 3.4, eyeX: 0.31 },
+  paddle: { L: 56, H: 12, pt: 2.6, sn: 9, bel: 0.9, tail: 'shark', dor: [-0.32, -0.16, 8], ana: [-0.3, -0.16, 5], eye: 2.6, eyeX: 0.3, paddle: 1 },
+  shark: { L: 76, H: 13, pt: 2.6, sn: 20, bel: 0.85, tail: 'shark', dor: [-0.1, 0.06, 16], ana: [-0.32, -0.24, 5], eye: 2.6, eyeX: 0.34, gill: 1 },
+  mola: { L: 44, H: 28, pt: 8, sn: 8, bel: 1.0, tail: 'round', dor: [-0.34, -0.14, 22], ana: [-0.34, -0.14, 20], eye: 4.2, eyeX: 0.24 },
 };
 function _gfaBody(S) {
   const L = S.L, H = S.H, x0 = -L / 2, x1 = L / 2, pt = S.pt, sn = S.sn, b = S.bel;
@@ -48,6 +61,7 @@ function _gfaTail(S, fin, edge) {
   if (t === 'fork') return `<path d="M${_gfaN(x0 + 3)} ${-pt}C${_gfaN(x0 - 6)} ${_gfaN(-H * 0.5)} ${_gfaN(x0 - 15)} ${_gfaN(-H * 1.02)} ${_gfaN(x0 - 16)} ${_gfaN(-H * 0.72)}Q${_gfaN(x0 - 10)} 0 ${_gfaN(x0 - 16)} ${_gfaN(H * 0.72)}C${_gfaN(x0 - 15)} ${_gfaN(H * 1.02)} ${_gfaN(x0 - 6)} ${_gfaN(H * 0.5)} ${_gfaN(x0 + 3)} ${pt}Z" ${A}/>`;
   if (t === 'fan') return `<path d="M${_gfaN(x0 + 3)} ${-pt}C${_gfaN(x0 - 10)} ${_gfaN(-H * 1.06)} ${_gfaN(x0 - 18)} ${_gfaN(-H * 0.6)} ${_gfaN(x0 - 16)} 0C${_gfaN(x0 - 18)} ${_gfaN(H * 0.6)} ${_gfaN(x0 - 10)} ${_gfaN(H * 1.06)} ${_gfaN(x0 + 3)} ${pt}Z" ${A}/>`;
   if (t === 'shark') return `<path d="M${_gfaN(x0 + 3)} ${-pt}L${_gfaN(x0 - 14)} ${_gfaN(-H * 1.3)}Q${_gfaN(x0 - 11)} ${_gfaN(-H * 0.4)} ${_gfaN(x0 - 7)} 0L${_gfaN(x0 - 10)} ${_gfaN(H * 0.7)}L${_gfaN(x0 + 3)} ${pt}Z" ${A}/>`;
+  const t2 = _gfaTail2(t, x0, pt, H, A); if (t2) return t2;
   // veil: a flowing double tail
   return `<path class="gfa-tail" d="M${_gfaN(x0 + 4)} ${-pt}C${_gfaN(x0 - 6)} ${_gfaN(-H * 1.5)} ${_gfaN(x0 - 22)} ${_gfaN(-H * 1.2)} ${_gfaN(x0 - 18)} ${_gfaN(-H * 0.2)}C${_gfaN(x0 - 13)} ${_gfaN(H * 0.1)} ${_gfaN(x0 - 23)} ${_gfaN(H * 0.7)} ${_gfaN(x0 - 15)} ${_gfaN(H * 1.3)}C${_gfaN(x0 - 6)} ${_gfaN(H * 1.3)} ${_gfaN(x0 + 1)} ${_gfaN(H * 0.5)} ${_gfaN(x0 + 4)} ${pt}Z" ${A}/>`;
 }
@@ -66,7 +80,7 @@ function _gfaPattern(look, S, rnd) {
     case 'mirror': for (let i = 0; i < 4; i++) s += `<ellipse cx="${_gfaN(x0 + L * (0.3 + i * 0.13))}" cy="${_gfaN((rnd() - 0.65) * H)}" rx="${_gfaN(3.6 + rnd() * 2)}" ry="${_gfaN(3 + rnd() * 1.6)}" fill="${light}" fill-opacity="0.75" stroke="${dark}" stroke-width="0.7" stroke-opacity="0.5"/>`; break;
     case 'scutes': { let d = ''; for (let i = 0; i < 6; i++) { const x = x0 + L * (0.16 + i * 0.1); d += `M${_gfaN(x)} ${_gfaN(-H * 0.28)}l3 -3.4 3 3.4z`; } s += `<path d="${d}" fill="${mark}"/>`; break; }
     case 'glow': s += `<ellipse cx="${_gfaN(x0 + L * 0.5)}" cy="0" rx="${_gfaN(L * 0.34)}" ry="${_gfaN(H * 0.72)}" fill="${look.c2}" fill-opacity="0.55"/>`; break;
-    default: break;
+    default: s += _gfaPattern2(p, look, S, rnd); break;
   }
   return s;
 }
@@ -76,23 +90,27 @@ function gardenFishArt(id, o) {
   if (!f) return '';
   const look = f.look, uid = _gfaUid(o, id), rnd = _gfaRng('fish|' + id);
   if (f.cat !== 'fish') return _gfaFind(f, uid);
-  const S = _GFA_SHAPES[look.s] || _GFA_SHAPES.slim;
+  const S0 = _GFA_SHAPES[look.s] || _GFA_SHAPES.slim;
   if (look.s === 'crayfish') return _gfaCrayfish(look);
+  const own = _gfaCustom(look, rnd); if (own) return own;
+  const S = Object.assign({}, S0, look.k ? { L: S0.L * look.k[0], H: S0.H * look.k[1] } : null, look.t ? { tail: look.t } : null);
   const body = _gfaBody(S), edge = _gfaDk(look.c, 0.5);
   const fin = look.s === 'koi' || look.s === 'fancy' ? _gfaMix(look.c2 === look.c ? look.c : look.c2, '#ffffff', 0.25) : _gfaMix(look.c, look.c3 || look.c2, 0.45);
   const finc = (look.p === 'belly' && look.c3) ? _gfaMix(look.c, look.c3, 0.5) : fin;
   const x0 = -S.L / 2, x1 = S.L / 2, H = S.H, finLine = `stroke="${edge}" stroke-width="1" stroke-linejoin="round"`;
   let s = '<g class="gfa-fish">';
   // fins behind the body: dorsal, anal, tail
-  const sail = look.p === 'sail';
+  const sail = look.p === 'sail' || look.d === 'sail';
   const dx0 = x0 + S.L * (0.5 + S.dor[0]), dx1 = x0 + S.L * (0.5 + S.dor[1]), dh = S.dor[2] * (sail ? 1.9 : 1.1);
-  if (S.dor[2]) s += `<path d="M${_gfaN(dx0)} ${_gfaN(-H * 0.76)}C${_gfaN(dx0 + 2)} ${_gfaN(-H - dh)} ${_gfaN(dx1)} ${_gfaN(-H - dh * 0.9)} ${_gfaN(dx1 + 2)} ${_gfaN(-H * 0.7)}Z" fill="${finc}" ${finLine}/>`;
+  const dor2 = S.dor[2] ? _gfaDorsal2(look.d, dx0, dx1, H, dh, finc, finLine) : '';
+  if (dor2) s += dor2;
+  else if (S.dor[2]) s += `<path d="M${_gfaN(dx0)} ${_gfaN(-H * 0.76)}C${_gfaN(dx0 + 2)} ${_gfaN(-H - dh)} ${_gfaN(dx1)} ${_gfaN(-H - dh * 0.9)} ${_gfaN(dx1 + 2)} ${_gfaN(-H * 0.7)}Z" fill="${finc}" ${finLine}/>`;
   if (S.ana[2]) s += `<path d="M${_gfaN(x0 + S.L * (0.5 + S.ana[0]))} ${_gfaN(H * 0.72 * S.bel)}q${_gfaN(S.L * 0.05)} ${_gfaN(S.ana[2] * 1.3)} ${_gfaN(S.L * (S.ana[1] - S.ana[0]))} ${_gfaN(S.ana[2] * 0.1)}z" fill="${finc}" ${finLine}/>`;
   s += _gfaTail(S, finc, edge);
   if (look.s === 'eel') {
     // a ribbon with a gentle S, and a friendly round head
     const d = `M${x0} 1C${_gfaN(x0 + 16)} -10 ${_gfaN(x0 + 28)} 10 ${_gfaN(x0 + 46)} 1S${_gfaN(x1 - 10)} -4 ${_gfaN(x1 - 6)} -2`;
-    s += `<path d="${d}" stroke="${edge}" stroke-width="${_gfaN(S.H * 2 + 1.6)}" stroke-linecap="round" fill="none"/><path d="${d}" stroke="${look.c}" stroke-width="${_gfaN(S.H * 2 - 0.4)}" stroke-linecap="round" fill="none"/><path d="M${x0 + 2} 3C${_gfaN(x0 + 16)} -7 ${_gfaN(x0 + 28)} 13 ${_gfaN(x0 + 46)} 4S${_gfaN(x1 - 10)} 0 ${_gfaN(x1 - 6)} 1" stroke="${look.c2}" stroke-width="${_gfaN(S.H * 0.7)}" stroke-linecap="round" fill="none"/>`;
+    s += `<path d="${d}" stroke="${edge}" stroke-width="${_gfaN(S.H * 2 + 1.6)}" stroke-linecap="round" fill="none"/><path d="${d}" stroke="${look.c}" stroke-width="${_gfaN(S.H * 2 - 0.4)}" stroke-linecap="round" fill="none"/><path d="M${x0 + 2} 3C${_gfaN(x0 + 16)} -7 ${_gfaN(x0 + 28)} 13 ${_gfaN(x0 + 46)} 4S${_gfaN(x1 - 10)} 0 ${_gfaN(x1 - 6)} 1" stroke="${look.c2}" stroke-width="${_gfaN(S.H * 0.7)}" stroke-linecap="round" fill="none"/>` + _gfaEelMarks(look, x0) + (look.x === 'frill' ? `<path d="M${_gfaN(x1 - 10)} -7l-3 -7M${_gfaN(x1 - 6)} -7l0 -8M${_gfaN(x1 - 2)} -6l3 -7" stroke="${look.c3}" stroke-width="2.2" stroke-linecap="round"/>` : '') + (look.m === 'tube' ? `<circle cx="${_gfaN(x1 - 1)}" cy="0" r="2.6" fill="${_gfaDk(look.c, 0.2)}" stroke="${edge}" stroke-width="0.9"/>` : '');
     s += `<circle cx="${_gfaN(x1 - 5)}" cy="-2.4" r="3.4" fill="#fbf8ee" stroke="${edge}" stroke-width="0.7"/><circle cx="${_gfaN(x1 - 4.2)}" cy="-2.4" r="2.1" fill="#1a1712"/><circle cx="${_gfaN(x1 - 3.5)}" cy="-3.3" r="0.8" fill="#ffffff"/>`;
     return s + '</g>';
   }
@@ -108,7 +126,8 @@ function gardenFishArt(id, o) {
   s += `<path d="M${_gfaN(gx - 2.4)} ${_gfaN(H * 0.2)}q${_gfaN(-S.L * 0.09)} ${_gfaN(H * 0.2)} ${_gfaN(-S.L * 0.15)} ${_gfaN(H * 0.44)}q${_gfaN(S.L * 0.08)} ${_gfaN(H * 0.1)} ${_gfaN(S.L * 0.15)} ${_gfaN(-H * 0.44)}z" fill="${finc}" stroke="${edge}" stroke-width="0.9" stroke-linejoin="round"/>`;
   const ex = x0 + S.L * (S.eyeX + 0.5), ey = -H * 0.24;
   s += `<circle cx="${_gfaN(ex)}" cy="${_gfaN(ey)}" r="${S.eye}" fill="#fbf8ee" stroke="${edge}" stroke-width="0.8"/><circle cx="${_gfaN(ex + S.eye * 0.2)}" cy="${_gfaN(ey + S.eye * 0.06)}" r="${_gfaN(S.eye * 0.66)}" fill="#1a1712"/><circle cx="${_gfaN(ex + S.eye * 0.44)}" cy="${_gfaN(ey - S.eye * 0.26)}" r="${_gfaN(S.eye * 0.24)}" fill="#ffffff"/>`;
-  s += `<path d="M${_gfaN(x1 - 1.2)} ${_gfaN(H * 0.16)}q${_gfaN(-2.6)} ${_gfaN(2.6)} ${_gfaN(-5.6)} 1.2" stroke="${edge}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
+  if (look.m !== 'tube') s += `<path d="M${_gfaN(x1 - 1.2)} ${_gfaN(H * 0.16)}q${_gfaN(-2.6)} ${_gfaN(2.6)} ${_gfaN(-5.6)} 1.2" stroke="${edge}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`;
+  s += _gfaFishMore(look, S, edge, x0, x1);
   if (S.barb) { const n = S.barb; for (let i = 0; i < n; i++) s += `<path d="M${_gfaN(x1 - 2.6)} ${_gfaN(H * 0.28)}q${_gfaN(2.4 + i * 0.4)} ${_gfaN(4 + i)} ${_gfaN(-2 - i * 1.8)} ${_gfaN(6 + i * 0.6)}" stroke="${edge}" stroke-width="1.2" fill="none" stroke-linecap="round"/>`; }
   if (S.lure) s += `<path d="M${_gfaN(x1 - 12)} ${_gfaN(-H * 0.86)}Q${_gfaN(x1 + 1)} ${_gfaN(-H * 1.5)} ${_gfaN(x1 + 4)} ${_gfaN(-H * 0.86)}" stroke="${edge}" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="${_gfaN(x1 + 4)}" cy="${_gfaN(-H * 0.8)}" r="8" fill="${look.c3}" fill-opacity="0.26"/><circle cx="${_gfaN(x1 + 4)}" cy="${_gfaN(-H * 0.8)}" r="3.8" fill="${look.c3}" stroke="${edge}" stroke-width="0.7"/>`;
   if (look.p === 'glow') s += `<ellipse cx="0" cy="0" rx="${_gfaN(S.L * 0.66)}" ry="${_gfaN(H * 1.4)}" fill="${look.c2}" fill-opacity="0.18"/>`;
@@ -149,11 +168,19 @@ function _gfaEyes(x, r, e) { const R = r * 0.42, y = r * 0.52; return `<circle c
 function _gfaFeel(x, e, r, k) { const K = k || 1; return `<path d="M${_gfaN(x)} ${_gfaN(-r * 0.5)}q${_gfaN(3 * K)} ${_gfaN(-2.4 * K)} ${_gfaN(5 * K)} ${_gfaN(-4.2 * K)}M${_gfaN(x)} ${_gfaN(r * 0.5)}q${_gfaN(3 * K)} ${_gfaN(2.4 * K)} ${_gfaN(5 * K)} ${_gfaN(4.2 * K)}" stroke="${e}" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="${_gfaN(x + 5 * K)}" cy="${_gfaN(-r * 0.5 - 4.2 * K)}" r="1.3" fill="${e}"/><circle cx="${_gfaN(x + 5 * K)}" cy="${_gfaN(r * 0.5 + 4.2 * K)}" r="1.3" fill="${e}"/>`; }
 /** Six short legs, mirrored. pts: pairs of [x, y, dx, dy]. */
 function _gfaLegs(pts, e, w) { let d = ''; for (const [x, y, dx, dy] of pts) d += `M${x} ${y}l${dx} ${dy}M${x} ${-y}l${dx} ${-dy}`; return `<path d="${d}" stroke="${e}" stroke-width="${w || 2}" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`; }
-function _gfaWing(c, c2, c3, p, e, fore) {
+function _gfaWing(c, c2, c3, p, e, fore, w) {
   // one side's wing above the body (the caller mirrors it): big, round forewings over small hindwings
   const line = `stroke="${e}" stroke-width="1" stroke-linejoin="round"`;
   if (!fore) return `<path d="M-1 -1C-5 -3 -17 -3 -17 -9C-17 -14 -9 -14 -5 -9C-3 -6 -1 -3 -1 -1Z" fill="${_gfaMix(c, c2, 0.14)}" ${line}/>` + (p === 'dots' || p === 'eyes' ? `<circle cx="-12" cy="-9" r="1.9" fill="${c3}"/>` : '') + (p === 'tails' ? `<path d="M-15 -5q-4 3 -5 8" stroke="${c}" stroke-width="2.6" fill="none" stroke-linecap="round"/>` : '');
-  let s = `<path d="M3 -1C7 -9 4 -19 -5 -19C-13 -19 -14 -9 -3 -1Z" fill="${c}" ${line}/>`;
+  const fo = p === 'glass' ? ' fill-opacity="0.45"' : '';
+  let s = w === 'scallop' ? `<path d="M3 -1C7 -6 6 -9 5 -11C6 -13 4 -15 3 -16C1 -19 -2 -17 -4 -19C-7 -17 -9 -19 -11 -16C-13 -13 -11 -9 -3 -1Z" fill="${c}"${fo} ${line}/>` : `<path d="M3 -1C7 -9 4 -19 -5 -19C-13 -19 -14 -9 -3 -1Z" fill="${c}"${fo} ${line}/>`;
+  if (p === 'check') s += `<path d="M1 -6h2M-4 -6h2M-9 -7h2M1 -11h2M-4 -11h2M-9 -11h2M-4 -16h2" stroke="${c2}" stroke-width="2.6" stroke-linecap="round"/>`;
+  else if (p === 'stripe') s += `<path d="M3 -5L-9 -8M3 -10L-11 -12M1 -15L-10 -16" stroke="${c2}" stroke-width="2.2" stroke-linecap="round"/>`;
+  else if (p === 'marble') s += `<ellipse cx="-1" cy="-7" rx="3.4" ry="2.4" fill="${c2}"/><ellipse cx="-7" cy="-11" rx="3" ry="2.2" fill="${c2}"/><ellipse cx="0" cy="-15" rx="2.8" ry="2" fill="${c2}"/>`;
+  else if (p === 'ring') s += `<circle cx="-3" cy="-12" r="3.4" fill="none" stroke="${c2}" stroke-width="1.8"/><circle cx="-3" cy="-12" r="1" fill="${c2}"/><circle cx="1.5" cy="-7" r="1.3" fill="none" stroke="${c2}" stroke-width="1.2"/>`;
+  else if (p === 'glass') s += `<path d="M3 -3C5 -9 3 -17 -5 -18C-12 -18 -12 -10 -3 -2" stroke="${c2}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  else if (p === 'ombre') s += `<path d="M5 -11C5 -16 0 -19 -5 -19C-13 -19 -14 -9 -8 -6Q-2 -11 5 -11Z" fill="${c2}" fill-opacity="0.8"/><circle cx="-6" cy="-12" r="2" fill="${c3}"/>`;
+  else if (p === 'spots') s += `<circle cx="-1" cy="-9" r="1.8" fill="${c3}"/><circle cx="-6" cy="-13" r="2.2" fill="${c3}"/><circle cx="1" cy="-15" r="1.4" fill="${c3}"/>`;
   if (p === 'dots') s += `<circle cx="-3" cy="-13" r="2.3" fill="${c2}"/><circle cx="-5" cy="-8" r="1.5" fill="${c2}"/>`;
   else if (p === 'edge') s += `<path d="M5 -8C5 -14 1 -18 -5 -18C-11 -18 -12 -12 -9 -8" stroke="${c2}" stroke-width="2.6" fill="none" stroke-linecap="round"/><circle cx="-3" cy="-15.6" r="1.1" fill="${c3}"/><circle cx="2" cy="-13" r="1.1" fill="${c3}"/>`;
   else if (p === 'tip') s += `<path d="M5 -11C5 -16 0 -19 -5 -19C-9 -19 -11 -16 -11 -13Q-3 -9 5 -11Z" fill="${c2}"/>`;
@@ -174,14 +201,14 @@ function gardenBugArt(id, o) {
   let s = '<g class="gba-bug">';
   switch (b.shape) {
     case 'butterfly': {
-      const wing = (m) => `<g transform="scale(1 ${m})">${_gfaWing(c, c2, c3, p, e, false)}${_gfaWing(c, c2, c3, p, e, true)}</g>`;
+      const ws = L.w === 'long' ? 'scale(1.3 0.74)' : L.w === 'wide' ? 'scale(1.1 1.16)' : '', wing = (m) => `<g transform="scale(1 ${m})${ws ? ' ' + ws : ''}">${_gfaWing(c, c2, c3, p, e, false, L.w)}${_gfaWing(c, c2, c3, p, e, true, L.w)}</g>`;
       s += `<g class="gba-wings" style="transform-origin:0 0">${wing(1)}${wing(-1)}</g>`;
       const bd = _gfaDk(c2 === c ? '#3a2a1a' : c2, 0.35);
       s += `<ellipse cx="-2.6" cy="0" rx="8.6" ry="2.8" fill="${bd}"/><circle cx="7" cy="0" r="3.4" fill="${bd}"/>${_gfaEyes(7, 3.4, bd)}${_gfaFeel(9, bd, 2.4)}`;
       break;
     }
     case 'moth': {
-      const wing = (m) => `<g transform="scale(1 ${m})"><path d="M-1 -1C-5 -4 -16 -5 -16 -10C-15 -13 -8 -12 -4 -8Z" fill="${_gfaMix(c, c2, 0.3)}" ${line}/><path d="M4 -1C8 -9 2 -18 -8 -17C-15 -15 -11 -5 -2 -1Z" fill="${c}" ${line}/>${p === 'tiger' ? `<path d="M1 -5l-3 -4 3 -2 -2 -5M-5 -5l-2 -4 3 -3" stroke="${c2}" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}${p === 'tails' ? `<path d="M-14 -7q-5 3 -6 9" stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="-3" cy="-11" r="2.6" fill="${c3}"/>` : ''}${p === 'fur' ? `<path d="M2 -5L-5 -12M3 -2L-7 -7" stroke="${c2}" stroke-width="3" stroke-opacity="0.85" fill="none" stroke-linecap="round"/>` : ''}</g>`;
+      const wing = (m) => `<g transform="scale(1 ${m})"><path d="M-1 -1C-5 -4 -16 -5 -16 -10C-15 -13 -8 -12 -4 -8Z" fill="${_gfaMix(c, c2, 0.3)}" ${line}/><path d="M4 -1C8 -9 2 -18 -8 -17C-15 -15 -11 -5 -2 -1Z" fill="${c}" ${line}/>${p === 'tiger' ? `<path d="M1 -5l-3 -4 3 -2 -2 -5M-5 -5l-2 -4 3 -3" stroke="${c2}" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` : ''}${p === 'tails' ? `<path d="M-14 -7q-5 3 -6 9" stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="-3" cy="-11" r="2.6" fill="${c3}"/>` : ''}${p === 'fur' ? `<path d="M2 -5L-5 -12M3 -2L-7 -7" stroke="${c2}" stroke-width="3" stroke-opacity="0.85" fill="none" stroke-linecap="round"/>` : ''}${p === 'band' ? `<path d="M3 -9Q-3 -14 -11 -13" stroke="${c2}" stroke-width="3" fill="none" stroke-linecap="round"/>` : p === 'stripe' ? `<path d="M2 -4L-8 -7M2 -9L-10 -12" stroke="${c2}" stroke-width="2.2" stroke-linecap="round"/>` : p === 'eyes' || p === 'ring' ? `<circle cx="-3" cy="-11" r="3.4" fill="${c3}" stroke="${c2}" stroke-width="1.4"/><circle cx="-3" cy="-11" r="1.2" fill="${c2}"/>` : p === 'spots' ? `<circle cx="-1" cy="-7" r="2" fill="${c2}"/><circle cx="-6" cy="-12" r="2" fill="${c2}"/><circle cx="1" cy="-13" r="1.6" fill="${c2}"/>` : p === 'speckle' ? `<path d="M1 -6h.1M-3 -9h.1M-7 -12h.1M1 -12h.1M-4 -14h.1M-9 -8h.1" stroke="${c2}" stroke-width="1.8" stroke-linecap="round"/>` : p === 'edge' ? `<path d="M4 -7C5 -13 0 -17 -7 -17" stroke="${c2}" stroke-width="2.2" fill="none" stroke-linecap="round"/>` : ''}</g>`;
       const bd = _gfaMix(c, '#ffffff', 0.25);
       s += `<g class="gba-wings">${wing(1)}${wing(-1)}</g><ellipse cx="-2" cy="0" rx="9" ry="3.8" fill="${bd}" ${line}/><path d="M9 -2Q14 -7 16 -3L12 -3M9 2Q14 7 16 3L12 3" stroke="${e}" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="0" r="3.8" fill="${bd}" ${line}/>${_gfaEyes(7, 3.8, e)}`;
       break;
@@ -190,13 +217,14 @@ function gardenBugArt(id, o) {
       s += `<g class="gba-wings"><ellipse cx="-1" cy="-9" rx="8" ry="5" fill="${c3}" fill-opacity="0.75" stroke="${e}" stroke-width="0.9" transform="rotate(-18 -1 -9)"/><ellipse cx="-1" cy="9" rx="8" ry="5" fill="${c3}" fill-opacity="0.75" stroke="${e}" stroke-width="0.9" transform="rotate(18 -1 9)"/></g>`;
       s += `<ellipse cx="-3" cy="0" rx="11" ry="8" fill="${c}" ${line}/><path d="M-9 -6.6q3 6.6 0 13.2M-3 -8q3 8 0 16" stroke="${c2}" stroke-width="3.8" fill="none"/>`;
       if (p === 'fur') s += `<circle cx="5" cy="0" r="6" fill="${_gfaLt(c, 0.25)}"/>`;
+      else if (p === 'metal') s += _gbMarks('metal', -3, 10, 7, c3, c3);
       s += `<path d="M-9 -4Q-4 -7 2 -5" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1.8" fill="none" stroke-linecap="round"/><circle cx="9" cy="0" r="5" fill="${c2}"/>${_gfaEyes(9, 5, c2)}${_gfaFeel(12, c2, 3.4, 0.8)}`;
       break;
     }
     case 'ladybird':
       s += _gfaLegs([[-5, 9, -2, 4], [1, 10, 0, 4], [6, 9, 2, 4]], c2);
       s += `<path d="M-13 -5Q-12 -13 0 -13Q13 -12 13 0Q13 12 0 13Q-12 13 -13 5Q-14 0 -13 -5Z" fill="${c}" ${line}/><path d="M-13 0H12" stroke="${c2}" stroke-width="1.5"/>`;
-      for (const [x, y, r] of [[-6, -7, 2.6], [3, -8, 2.6], [-6, 7, 2.6], [3, 8, 2.6], [-1, 0, 0]]) if (r) s += `<circle cx="${x}" cy="${y}" r="${r}" fill="${c2}"/>`;
+      for (const [x, y, r] of p === 'spots2' ? [[-3, -6.4, 3.4], [-3, 6.4, 3.4]] : p === 'spots14' ? [[-9, -5, 1.7], [-4, -9, 1.7], [2, -9.6, 1.7], [7, -6, 1.7], [-3, -4, 1.7], [3, -4, 1.7], [-9, 5, 1.7], [-4, 9, 1.7], [2, 9.6, 1.7], [7, 6, 1.7], [-3, 4, 1.7], [3, 4, 1.7]] : [[-6, -7, 2.6], [3, -8, 2.6], [-6, 7, 2.6], [3, 8, 2.6], [-1, 0, 0]]) if (r) s += `<circle cx="${x}" cy="${y}" r="${r}" fill="${c2}"/>`;
       s += `<path d="M-9 -9Q-3 -12 4 -11" stroke="#ffffff" stroke-opacity="0.55" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="12" cy="0" r="5.4" fill="${c2}"/>${_gfaEyes(12, 5.4, c2)}`;
       break;
     case 'beetle':
@@ -207,6 +235,7 @@ function gardenBugArt(id, o) {
       else s += _gfaFeel(12, e, 3.4, 0.8);
       s += `<path d="M-14 -6Q-14 -12 -3 -12Q8 -12 8 0Q8 12 -3 12Q-14 12 -14 6Z" fill="${c}" ${line}/><path d="M-13 0H7" stroke="${e}" stroke-width="1.1" stroke-opacity="0.7"/><path d="M-10 -7Q-5 -10.5 2 -9" stroke="${c2}" stroke-width="2.4" stroke-opacity="0.9" fill="none" stroke-linecap="round"/>`;
       if (p === 'metal') s += `<ellipse cx="-3" cy="-5" rx="6" ry="3" fill="${c2}" fill-opacity="0.6"/><ellipse cx="-3" cy="5" rx="5" ry="2" fill="${c2}" fill-opacity="0.35"/>`;
+      else if (p) s += _gbMarks(p, -3, 10, 11, c2, c3);
       s += `<circle cx="10" cy="0" r="5.6" fill="${hd}" ${line}/>${_gfaEyes(10, 5.6, e)}`;
       break;
     }
@@ -216,14 +245,14 @@ function gardenBugArt(id, o) {
       s += `<path d="M-4 -4L-14 -12L-19 -9M-4 4L-14 12L-19 9" stroke="${e}" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>` + _gfaLegs([[2, 4, 2, 6]], e, 2);
       if (ci) s += `<g class="gba-wings"><ellipse cx="-4" cy="-8" rx="13" ry="5.4" fill="${c2}" fill-opacity="0.8" stroke="${e}" stroke-width="0.9" transform="rotate(-8 -4 -8)"/><ellipse cx="-4" cy="8" rx="13" ry="5.4" fill="${c2}" fill-opacity="0.8" stroke="${e}" stroke-width="0.9" transform="rotate(8 -4 8)"/></g>`;
       s += `<ellipse cx="-3" cy="0" rx="${ci ? 11 : 13}" ry="${ci ? 6.4 : 5}" fill="${c}" ${line}/>`;
-      if (!ci) s += `<path d="M-13 0Q-4 -3 7 0" stroke="${c2}" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+      if (!ci) s += `<path d="M-13 0Q-4 -3 7 0" stroke="${c2}" stroke-width="2.4" fill="none" stroke-linecap="round"/>` + (p === 'stripe' ? `<path d="M-11 -3H5M-11 3H5" stroke="${c3}" stroke-width="1.6" stroke-linecap="round"/>` : p === 'band' ? `<path d="M-7 -4.4V4.4M0 -4.6V4.6" stroke="${c3}" stroke-width="2.4"/>` : '');
       s += `<ellipse cx="${ci ? 10 : 11}" cy="0" rx="5" ry="${ci ? 5.4 : 4.6}" fill="${_gfaDk(c, 0.1)}" ${line}/>${_gfaEyes(ci ? 10 : 11, ci ? 5.4 : 4.8, e)}`;
       if (!ci) s += _gfaFeel(14, e, 3, 0.7);
       break;
     }
     case 'snail':
       s += `<path d="M-16 7Q-18 0 -10 -1H10Q19 -1 18 4Q16 8 4 8Z" fill="${c3}" ${line}/><path d="M13 -1Q14 -7 13 -11M17 0Q20 -6 20 -10" stroke="${e}" stroke-width="1.8" fill="none" stroke-linecap="round"/><circle cx="13" cy="-12" r="2.1" fill="#fbf8ee" stroke="${e}" stroke-width="0.6"/><circle cx="13.5" cy="-12" r="1.2" fill="#1a1712"/><circle cx="20" cy="-11" r="2.1" fill="#fbf8ee" stroke="${e}" stroke-width="0.6"/><circle cx="20.5" cy="-11" r="1.2" fill="#1a1712"/>`;
-      s += `<circle cx="-3" cy="-4" r="11" fill="${c}" ${line}/><path d="M-3 -4m-7.4 0a7.4 7.4 0 1 1 12 5a4.4 4.4 0 1 1 -6 -4" stroke="${c2}" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M-9 -10Q-6 -13 -2 -13" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+      s += `<circle cx="-3" cy="-4" r="11" fill="${c}" ${line}/><path d="M-3 -4m-7.4 0a7.4 7.4 0 1 1 12 5a4.4 4.4 0 1 1 -6 -4" stroke="${c2}" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M-9 -10Q-6 -13 -2 -13" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1.8" fill="none" stroke-linecap="round"/>` + (p === 'stripe' ? `<path d="M-13 -4h20M-11 -9Q-3 -12 5 -9M-11 1Q-3 4 5 1" stroke="${c3}" stroke-width="1.8" fill="none" stroke-linecap="round"/>` : p === 'ring' ? `<circle cx="-3" cy="-4" r="14" fill="${c2}" fill-opacity="0.2"/>` : '');
       break;
     case 'caterpillar':
       for (let i = 0; i < 5; i++) { const x = -15 + i * 6.4, y = i % 2 ? -1 : 1, r = 5.4 - Math.abs(i - 2) * 0.2; s += `<circle cx="${_gfaN(x)}" cy="${y}" r="${_gfaN(r)}" fill="${i % 2 ? c : _gfaLt(c, 0.14)}" ${line}/><circle cx="${_gfaN(x - r * 0.3)}" cy="${_gfaN(y - r * 0.34)}" r="${_gfaN(r * 0.24)}" fill="#ffffff" fill-opacity="0.5"/>`; }
@@ -239,7 +268,7 @@ function gardenBugArt(id, o) {
       break;
     case 'dragonfly': {
       const big = p === 'big', slim = p === 'slim', wl = big ? 18 : 15, wing = (x, y, rot) => `<ellipse cx="${x}" cy="${_gfaN(y)}" rx="4.4" ry="${_gfaN(wl * 0.6)}" fill="${c3}" fill-opacity="0.72" stroke="${e}" stroke-width="0.9" transform="rotate(${rot} ${x} ${_gfaN(y)})"/>`;
-      s += `<g class="gba-wings">${wing(4, -wl * 0.6, -12)}${wing(4, wl * 0.6, 12)}${wing(-3, -wl * 0.55, -8)}${wing(-3, wl * 0.55, 8)}</g>`;
+      s += `<g class="gba-wings">${wing(4, -wl * 0.6, -12)}${wing(4, wl * 0.6, 12)}${wing(-3, -wl * 0.55, -8)}${wing(-3, wl * 0.55, 8)}</g>` + (p === 'band' ? `<path d="M1 -14h8M1 14h8" stroke="${c}" stroke-width="5" stroke-linecap="round" stroke-opacity="0.8"/>` : '');
       s += `<path d="M-21 0H6" stroke="${e}" stroke-width="${slim ? 4.6 : 6}" stroke-linecap="round"/><path d="M-21 0H6" stroke="${c}" stroke-width="${slim ? 3 : 4.2}" stroke-linecap="round"/><path d="M-16 0h2.4M-9 0h2.4M-2 0h2.4" stroke="${c2}" stroke-width="${slim ? 3 : 4.2}"/><ellipse cx="6" cy="0" rx="5" ry="4.4" fill="${c2 === '#1a1a2a' ? c : c2}" stroke="${e}" stroke-width="0.9"/><circle cx="11" cy="0" r="4.6" fill="${_gfaLt(c, 0.1)}" stroke="${e}" stroke-width="0.9"/>${_gfaEyes(11, 4.6, e)}`;
       break;
     }
@@ -258,10 +287,11 @@ function gardenBugArt(id, o) {
     case 'spider':
       s += `<path d="M4 -3L10 -10L15 -8M4 -1L12 -5L18 -3M4 1L12 5L18 3M4 3L10 10L15 8M-2 -4L-7 -12L-11 -10M-2 4L-7 12L-11 10M-4 -2L-12 -5L-16 -3M-4 2L-12 5L-16 3" stroke="${e}" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="-5" cy="0" rx="9.4" ry="8" fill="${c}" ${line}/>`;
       if (p === 'cross') s += `<path d="M-11 0H1M-5 -5V5" stroke="${c2}" stroke-width="2.4" stroke-linecap="round"/>`;
+      else if (p) s += _gbMarks(p, -5, 8, 7, c2, c3);
       s += `<path d="M-11 -4Q-7 -7 -3 -6" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1.6" fill="none" stroke-linecap="round"/><circle cx="7" cy="0" r="5" fill="${_gfaDk(c, 0.2)}" ${line}/>${_gfaEyes(7, 5, e)}`;
       break;
     default:
-      s += `<ellipse rx="9" ry="6" fill="${c}" ${line}/>`;
+      s += _gbaMore(b.shape, c, c2, c3, e, p, line) || `<ellipse rx="9" ry="6" fill="${c}" ${line}/>`;
   }
   return s + '</g>';
 }

@@ -435,7 +435,8 @@ function gardenWallet() {
   for (const id of Object.keys(g.rib)) { const r = _gdRewardOf('rib', id); if (r) { coins += r.c; xp += r.x; _gdAddItems(items, r.i); } }
   for (const key of Object.keys(g.gr)) { const m = /^(ach|ev):([a-z0-9-]+)/.exec(key); if (m && gardenPlant(m[2])) _gdAddItems(items, { ['seed:' + m[2]]: 1 }); }
   xp += 10 * Object.keys(g.disc).filter(id => gardenPlant(id) || gardenVisitor(id)).length;
-  xp += 8 * (Object.keys(g.fl).filter(id => gardenFishDef(id)).length + Object.keys(g.bl).filter(id => gardenBugDef(id)).length);   // 2.22: every new kind of fish or bug
+  const kinds = Object.keys(g.fl).filter(id => gardenFishDef(id)).length + Object.keys(g.bl).filter(id => gardenBugDef(id)).length;
+  xp += 8 * Math.min(kinds, 80) + 3 * Math.max(0, kinds - 80);   // 2.22: every new kind of fish or bug. Past the first 80 (all there were before the book of 300) each counts for less, so a long book is not a ladder of levels
   // decorations placed are not in your bag (never below none: a copy synced from elsewhere may lead the ledger)
   for (const d of Object.values(g.decor)) if (d && !d.own && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;   // (own: a friend's, from their bag: docs/dev/GARDEN_TOGETHER.md)
   for (const k of Object.keys(items)) if (items[k] < 0) items[k] = 0;

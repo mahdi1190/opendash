@@ -589,7 +589,7 @@ function _glhBugsMaybe() {
   _glh.bugT = setTimeout(() => {
     _glhBugsMaybe();
     if (document.hidden || typeof GARDEN_BUGS === 'undefined') return;
-    const m = gardenModel(), pool = GARDEN_BUGS.filter(b => !b.seasons || b.seasons.includes(m.season));
+    const m = gardenModel(), pool = GARDEN_BUGS.filter(b => !b.needs && (b.rarity === 'common' || b.rarity === 'uncommon') && b.lv <= m.level.level && b.seasons.includes(m.season));
     if (!pool.length) return;
     const def = pool[Math.floor(Math.random() * pool.length)], u = 'b' + _gllNewId(), x = 4 + Math.floor(Math.random() * 12), y = 5 + Math.floor(Math.random() * 5);
     _glh.bugs.set(u, { u, p: def.id, caught: new Set() });

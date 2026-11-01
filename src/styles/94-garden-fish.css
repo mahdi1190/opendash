@@ -210,3 +210,46 @@ html[data-motion="reduced"] .gd-svg .gd-shadowfish, html[data-motion="reduced"] 
 .gd-sail-h > svg { width: 28px; height: 28px; flex: none; color: var(--sw-blue, var(--fg-muted)); }
 .gd-sail-h b { display: block; font-size: var(--text-md); }
 .gd-sail-h span { color: var(--fg-muted); font-size: var(--text-sm); }
+
+/* the dictionary: big, plain, and fine on a phone */
+.gdb-head { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); }
+.gdb-progress { display: grid; grid-template-columns: auto minmax(60px, 1fr) auto; align-items: center; gap: var(--space-2); font-size: var(--text-sm); }
+.gdb-moon { margin: 0; font-size: var(--text-sm); }
+.gdb-search { width: 100%; min-height: 40px; font-size: var(--text-md); }
+.gdb-filter { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.gdb-filter-l { min-width: 44px; font-size: var(--text-sm); }
+.gdb-more > summary { cursor: pointer; font-size: var(--text-sm); padding: 4px 0; color: var(--fg-muted); }
+.gdb-more[open] { display: flex; flex-direction: column; gap: var(--space-2); }
+.gdb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3); }
+.gdb-card { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--space-3) var(--space-2); text-align: center; border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); background: var(--surface); color: var(--fg); font: inherit; cursor: pointer; min-height: 150px; }
+.gdb-card:hover { background: var(--bg-muted); }
+.gdb-card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.gdb-card-art { display: grid; place-items: center; width: 100%; height: 64px; }
+.gdb-card-n { line-height: 1.2; }
+.gdb-card-s { line-height: 1.3; font-size: var(--text-xs); }
+.gdb-now { font-size: var(--text-2xs); line-height: 18px; padding: 0 7px; border-radius: var(--radius-full); background: color-mix(in srgb, var(--sw-green) 18%, var(--surface)); }
+.gdb-entry { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); align-items: stretch; }
+.gdb-entry > .btn { align-self: flex-start; }
+.gdb-entry-top { display: grid; grid-template-columns: minmax(180px, 280px) 1fr; gap: var(--space-4); align-items: center; }
+.gdb-entry-art { display: grid; place-items: center; padding: var(--space-4) var(--space-5); border-radius: var(--radius-lg); background: var(--bg-subtle); overflow: hidden; }
+.gdb-entry-t { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; min-width: 0; }
+.gdb-blurb { margin: 0; font-size: var(--text-md); }
+.gdb-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-3); margin: 0; font-size: var(--text-sm); }
+.gdb-facts dd { margin: 0; font-weight: 600; }
+.gdb-how-h { margin: 0; font-size: var(--text-md); }
+.gdb-how { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.gdb-how li { display: grid; grid-template-columns: 22px 72px 1fr; gap: var(--space-2); align-items: baseline; padding: 7px var(--space-2); border-radius: var(--radius-md); font-size: var(--text-sm); }
+.gdb-how li:nth-child(odd) { background: var(--bg-subtle); }
+.gdb-how em { font-style: normal; font-weight: 600; }
+.gdb-how li.is-ok .gdb-how-i, .gdb-how li.is-ok em { color: color-mix(in srgb, var(--sw-green) 75%, var(--fg)); }
+.gdb-how li.is-no .gdb-how-i, .gdb-how li.is-no em { color: color-mix(in srgb, var(--sw-amber) 75%, var(--fg)); }
+.gdb-nowline { margin: 0; font-size: var(--text-sm); }
+.gdb-nowline.is-yes { font-weight: 600; color: color-mix(in srgb, var(--sw-green) 75%, var(--fg)); }
+@media (max-width: 720px) {
+  .gdb-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: var(--space-2); }
+  .gdb-card { min-height: 128px; padding: var(--space-2) 4px; }
+  .gdb-entry-top { grid-template-columns: 1fr; }
+  .gdb-how li { grid-template-columns: 22px 1fr; }
+  .gdb-how li > span:last-child { grid-column: 2; }
+  .gdb-filter-l { min-width: 100%; }
+}

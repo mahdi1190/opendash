@@ -75,12 +75,14 @@ function _gfsPlaceKey() { return typeof _gll === 'undefined' ? 'own' : _gll.role
 /* ---------- the shadows ---------- */
 function _gfsLen(cm) { return 10 + 5.2 * Math.sqrt(Math.max(1, Number(cm) || 1)); }   // stage units: a 5 cm minnow about 22 (half a cell), a 1 m carp 62, a 2.8 m sturgeon 97
 /** Does it show a fin above the water? The rarest do, and the great long hunters. */
-function gardenFishFin(def) { return !!def && def.cat === 'fish' && (def.rarity === 'epic' || def.rarity === 'legendary' || (['pike', 'sturgeon', 'cat'].includes(def.look.s) && def.cm[1] >= 120)); }
+function gardenFishFin(def) { return !!def && def.cat === 'fish' && (def.rarity === 'epic' || def.rarity === 'legendary' || (['pike', 'sturgeon', 'cat', 'shark'].includes(def.look.s) && def.cm[1] >= 120)); }
 function _gfsArt(def, cm) {
-  const L = _gfsLen(cm), s = def.look.s, long = ['eel', 'pike', 'sturgeon'].includes(s), deep = ['round', 'flat', 'fancy'].includes(s);
-  const rx = L * (long ? 0.5 : 0.42), ry = L * (long ? 0.1 : deep ? 0.25 : 0.18), glow = def.look.p === 'glow' || /^ghost-/.test(def.id);
+  const L = _gfsLen(cm), s = def.look.s, long = ['eel', 'pike', 'sturgeon', 'needle', 'paddle', 'shark', 'loach'].includes(s), deep = ['round', 'flat', 'fancy', 'disc', 'tall', 'puffer', 'hump', 'mola', 'chunky'].includes(s);
+  const rx = L * (long ? 0.5 : 0.42), ry = L * (long ? 0.1 : deep ? 0.25 : 0.18), glow = def.look.p === 'glow' || def.look.p === 'ghost' || /^ghost-/.test(def.id);
   const fill = glow ? '#e4eeff' : '#07233a', op = glow ? 0.55 : 0.4;
   const tx = -rx * 0.9, ts = ry * 1.05, n = (v) => v.toFixed(1);
+  if (s === 'ray') return `<path d="M${n(L * 0.5)} 0Q${n(L * 0.1)} ${n(-L * 0.46)} ${n(-L * 0.12)} ${n(-L * 0.42)}Q${n(-L * 0.24)} ${n(-L * 0.1)} ${n(-L * 0.3)} 0Q${n(-L * 0.24)} ${n(L * 0.1)} ${n(-L * 0.12)} ${n(L * 0.42)}Q${n(L * 0.1)} ${n(L * 0.46)} ${n(L * 0.5)} 0Z" fill="${fill}" fill-opacity="${op}"/><path d="M${n(-L * 0.3)} 0H${n(-L * 0.72)}" stroke="${fill}" stroke-opacity="${op}" stroke-width="2" stroke-linecap="round"/>`;
+  if (s === 'jelly' || s === 'crab' || s === 'turtle') return `<ellipse cx="0" cy="0" rx="${n(L * 0.3)}" ry="${n(L * 0.24)}" fill="${fill}" fill-opacity="${op}"/>`;
   let s2 = `<ellipse cx="0" cy="0" rx="${n(rx)}" ry="${n(ry)}" fill="${fill}" fill-opacity="${op}"/><path d="M${n(tx)} 0L${n(tx - L * 0.2)} ${n(-ts)}L${n(tx - L * 0.14)} 0L${n(tx - L * 0.2)} ${n(ts)}Z" fill="${fill}" fill-opacity="${op}"/>`;
   if (gardenFishFin(def)) { const h = Math.max(9, L * 0.2), w = h * 0.8; s2 += `<path d="M${n(-w * 0.6)} ${n(-ry * 0.4)}Q${n(-w * 0.1)} ${n(-ry * 0.4 - h)} ${n(w * 0.75)} ${n(-ry * 0.4 - h)}Q${n(w * 0.25)} ${n(-ry * 0.4 - h * 0.45)} ${n(w * 0.6)} ${n(-ry * 0.4)}Z" fill="${glow ? '#f4f8ff' : '#27455c'}" fill-opacity="0.92" stroke="#eaf4fa" stroke-opacity="0.5" stroke-width="0.8"/><path d="M${n(-w * 1.1)} ${n(-ry * 0.2)}h${n(w * 2.2)}" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1" stroke-linecap="round"/>`; }
   return s2;
@@ -199,7 +201,9 @@ function _gfsSpot(b0, near0) {
 }
 function _gfsSpawn(b, m, at) {
   const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : _gfsSpot(b); if (!p) return;
-  const ctx = { zone: b.zone, tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level };
+  const ctx = { zone: b.zone, tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id) || gardenWorkOwned(id), caught: (id) => !!_gdG().fl[id] };
+  if (typeof gardenEventOn === 'function') ctx.event = gardenEventOn;
+  if (typeof gardenSpotAt === 'function') ctx.spot = gardenSpotAt(p.x, p.y) || null;
   // mostly real fish: a find (a boot, a pearl) is the odd small shadow, and water too deep for this garden's level still has what can live in it
   // further out the rare ones are likelier: the far end of the deep water is where the fins are
   const outward = b.zone === 'deep' ? 1 + Math.max(0, p.y - 17) / 2.5 : 1;
@@ -217,11 +221,11 @@ function _gfsSpawn(b, m, at) {
 /** Every line in the water now: yours and, if you are the host, everyone's. Keyed by slot. */
 function _gfsLinesNow() {
   const out = new Map(), F = _gw.fishing;
-  if (F && (F.state === 'wait' || F.state === 'bite' || F.state === 'reel')) out.set(_gfsSlot(), { x: F.bx, y: F.by, bait: F.plan.baitDef || GARDEN_BAITS[0] });
+  if (F && (F.state === 'wait' || F.state === 'bite' || F.state === 'reel')) out.set(_gfsSlot(), { x: F.bx, y: F.by, bait: F.plan.baitDef || GARDEN_BAITS[0], me: true, setup: typeof gardenTackleInUse === 'function' ? gardenTackleInUse() : { rod: gardenRod().tier, bait: (F.plan.baitDef || GARDEN_BAITS[0]).id } });
   if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) {
     const L = A.fish; if (!L || L.state === 'land') continue;
     const d = L.bait ? gardenGearDef(L.bait) : null;
-    out.set(A.w, { x: L.bx, y: L.by, bait: d && d.kind === 'bait' ? d : GARDEN_BAITS[0] });
+    out.set(A.w, { x: L.bx, y: L.by, bait: d && d.kind === 'bait' ? d : GARDEN_BAITS[0], setup: Object.assign({ rod: A.g && A.g.r, bait: L.bait }, A.g && A.g.tk) });
   }
   return out;
 }
@@ -273,7 +277,10 @@ function _gfsRun(dt) {
       for (const [slot, Q] of lines) {
         if (taken.has(slot)) continue;
         const d = Math.hypot(f.x - Q.x, f.y - Q.y), reach = E.reach + (Q.bait.st.lure || 0) * E.lureReach;
-        if (d < reach && d < bd) { bd = d; best = { slot, Q }; }
+        if (d >= reach || d >= bd) continue;
+        const lacks = f.def.needs ? gardenFishLacks(f.def, Q.setup) : null;   // you can see it, but it ignores a line without what it wants
+        if (lacks && lacks.length) { if (Q.me) _gfs.refused = { at: performance.now(), name: f.def.name, why: lacks[0] }; continue; }
+        bd = d; best = { slot, Q };
       }
       if (!best) continue;
       const rare = best.Q.bait.st.rare || 0, kind = f.def.rarity;

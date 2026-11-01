@@ -247,7 +247,7 @@ function _glcPickTake(ev) {
 /** Now and then a fish flops on the shore: the host's, for everyone to see, one winner. (The host's roll: a common fish of the shallows.) */
 function _glcShoreFish() {
   if (!_glh.on || !_glhAnyone() || gardenFun() === 'off' || _glc.picks.size > 1 || typeof GARDEN_FISH_ONLY === 'undefined') return;
-  const m = gardenModel(), defs = GARDEN_FISH_ONLY.filter(f => f.zone.includes('shallow') && f.lv <= m.level.level && (f.rarity === 'common' || f.rarity === 'uncommon'));
+  const m = gardenModel(), defs = GARDEN_FISH_ONLY.filter(f => f.zone.includes('shallow') && !f.needs && f.lv <= m.level.level && (f.rarity === 'common' || f.rarity === 'uncommon'));
   if (!defs.length) return;
   const wa = gardenArea('lake').water, f = defs[Math.floor(Math.random() * defs.length)];
   for (let i = 0; i < 24; i++) {
