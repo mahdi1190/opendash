@@ -73,7 +73,7 @@ function _gtgoPaint() {
   el.append(gpEl('b', 'tg-pose-t', 'Hold up'), row, gpEl('b', 'tg-pose-t', 'Frame'), seg('How close', GTG_POSE.zooms, _gtgo.z, (i) => { _gtgo.z = i; }), nudge, seg('The frame around it', GTG_POSE.frames, GTG_POSE.frames.findIndex(r => r[0] === _gtgo.frame), (i) => { _gtgo.frame = GTG_POSE.frames[i][0]; }), gpEl('b', 'tg-pose-t', 'Filter'), seg('Filter', GTG_POSE.filters, _gtgo.f, (i) => { _gtgo.f = i; _gw.svg.style.filter = GTG_POSE.filters[i][0]; }), go);
 }
 function gardenPoseOpen() {
-  if (typeof _gw === 'undefined' || !_gw.on || !_gw.box) { setView('garden'); toast('Open your garden first, then Pose with a catch.', { icon: 'camera', timeout: 4000 }); return; }
+  if (typeof _gw === 'undefined' || !_gw.on || !_gw.box) { setView('garden'); gardenToast('Open your garden first, then Pose with a catch.', { icon: 'camera', timeout: 4000 }); return; }
   if (_gtgo.on) return;
   gardenBubbleClose && gardenBubbleClose();
   _gtgo.on = true; _gtgo.dx = 0; _gtgo.dy = 0; _gtgo.f = 0;
@@ -107,9 +107,9 @@ async function _gtgoShoot() {
     await memPhotoKeep(blob, { iso: _gdToday(), ts: Clock.now(), kind: 'garden', at: m.visit ? String(m.visit.fid || '') : '' });
     try { if (typeof gardenLiveCheer === 'function') gardenLiveCheer('photo'); } catch (e) { /* only a moment */ }
     const paid = _grGive('did.pose', { ticket: 2, x: 1 });
-    toast(paid ? 'Kept in your Memories. 2 tickets' : 'Kept in your Memories', { icon: 'camera', kind: 'ok', timeout: 6000, action: { label: 'See it', run: () => setView('memories:photos') } });
+    gardenToast(paid ? 'Kept in your Memories. 2 tickets' : 'Kept in your Memories', { icon: 'camera', kind: 'ok', timeout: 6000, action: { label: 'See it', run: () => setView('memories:photos') } });
     if (_gtgGhostIn(frame, m)) { if (gpGrant('tg-ghost', { ticket: 15, 'mat:stone': 3 })) setTimeout(() => wdWhisper('There is someone in that photograph. She was not there. 15 tickets, and three stones she left.', 9000), 1800); }
-  } catch (e) { toast('The photo could not be kept.', { icon: 'camera', kind: 'err', timeout: 5000, retry: _gtgoShoot }); }
+  } catch (e) { gardenToast('The photo could not be kept.', { icon: 'camera', kind: 'err', timeout: 5000, retry: _gtgoShoot }); }
 }
 gardenPlayAdd({ id: 'tg-pose', name: 'Photo mode', icon: 'camera', group: 'secret', blurb: 'Hold up something you caught, frame the shot, pick a filter, and keep it in Memories. A photo a day gives a couple of tickets.', open: () => { if (typeof gardenPopupClose === 'function') gardenPopupClose(); setTimeout(gardenPoseOpen, 60); } });
 registerCommand({ id: 'garden-pose', label: 'Pose in the garden with a catch', icon: 'camera', keywords: 'garden photo pose catch filter memories', run: () => gardenPoseOpen() });

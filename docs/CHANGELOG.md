@@ -10,6 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.54.0]
+
+### Changed
+- **Fish are now the same for everyone, all across the lake.** Before, a friend far down the lake could see different fish from you.
+- **Whatever you build or change in your garden reaches friends within seconds.**
+- **Friends see you ring the bell or make a wish.**
+- **Messages in the garden are now your character's speech bubbles, or a wooden sign for real problems,** instead of bars at the bottom.
+- A hidden window now uses almost no connection.
+
 ## [2.53.0]
 
 ### Added

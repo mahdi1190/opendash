@@ -52,7 +52,7 @@ function gpGrant(key, items) {
   _gdSave();
   return true;
 }
-function gpNote(text) { try { if (typeof _gdgNote === 'function') _gdgNote(text); else toast(text, { icon: 'gamepad-2', dismiss: true }); } catch (e) { /* no stage */ } }
+function gpNote(text) { try { if (typeof _gdgNote === 'function') _gdgNote(text); else gardenToast(text, { icon: 'gamepad-2', dismiss: true }); } catch (e) { /* no stage */ } }
 function gpVisiting() { return typeof gardenVisitOn === 'function' && !!gardenVisitOn(); }
 function gpInWorld() { return typeof _gdpopInGarden === 'function' && _gdpopInGarden() && !gpVisiting(); }
 
@@ -157,7 +157,7 @@ function _gpStall() {
         c.appendChild(uiButton({ label: `${cost} tickets`, icon: 'ticket', size: 'sm', disabled: gpTickets() < cost, tip: gpTickets() < cost ? `You need ${cost - gpTickets()} more` : '', run: () => {
           if (gpTickets() < cost) return;
           gpSpend('a prize', { ticket: -cost, ['decor:' + id]: 1 }, `${d.name}: it is in your bag`); paint();
-          toast(`${d.name} is in your bag`, { icon: 'gift', action: { label: 'Undo', run: () => { gardenUndo(); paint(); } } });
+          gardenToast(`${d.name} is in your bag`, { icon: 'gift', action: { label: 'Undo', run: () => { gardenUndo(); paint(); } } });
         } }));
         grid.appendChild(c);
       }

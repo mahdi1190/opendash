@@ -67,7 +67,7 @@ function _gtgpAdd(P, m, n) {
   g.led['pl.' + today + '.' + uid] = { d: today, k: 'pl', i: { [R[1]]: -v }, n: 1, w: 'project' };
   _gdSave(); gardenTickSoon(); gtgPublishSoon();
   _fxSoundOk('sparkle');
-  toast(`${v} ${R[2].toLowerCase()} on the ${P.row.short}`, { icon: 'hammer', timeout: 6000, action: { label: 'Undo', run: () => { const u = _gdUid('').toLowerCase(); W['tg.pa.' + P.fid + '.' + u] = { [m]: -v, d: gtgToday() }; g.led['pl.' + gtgToday() + '.' + u] = { d: gtgToday(), k: 'pl', i: { [R[1]]: v }, n: 1, w: 'project' }; _gdSave(); gardenTickSoon(); gtgPublishSoon(); _gtgpDraw(gardenHere()); } } });
+  gardenToast(`${v} ${R[2].toLowerCase()} on the ${P.row.short}`, { icon: 'hammer', timeout: 6000, action: { label: 'Undo', run: () => { const u = _gdUid('').toLowerCase(); W['tg.pa.' + P.fid + '.' + u] = { [m]: -v, d: gtgToday() }; g.led['pl.' + gtgToday() + '.' + u] = { d: gtgToday(), k: 'pl', i: { [R[1]]: v }, n: 1, w: 'project' }; _gdSave(); gardenTickSoon(); gtgPublishSoon(); _gtgpDraw(gardenHere()); } } });
   _gtgpTick(); _gtgpDraw(gardenHere());
   return v;
 }
@@ -173,7 +173,7 @@ function _gtgpCard(P, repaint) {
   }
   body.appendChild(gpEl('p', 'muted tg-pj-say', S.real ? 'Each step of it gives you both tickets. Pegs come from finished tasks, timber from focus, stone from finished tasks and digs.' : 'Add a little of your own and each step of it gives you tickets too. Pegs come from finished tasks, timber from focus, stone from finished tasks and digs.'));
   if (S.done) body.appendChild(_gdpBtn(row.go, { kind: 'btn-primary', icon: 'footprints', run: () => setView('garden:visit:' + P.fid) }));
-  else body.appendChild(_gdpBtn('Stop building this', { kind: 'btn-ghost', run: () => { const was = _gtgW()['tg.pj.' + P.fid]; _gtgpLeave(P); toast(`Stopped the ${row.short}. What you added stays on it.`, { timeout: 6000, action: { label: 'Undo', run: () => { _gtgW()['tg.pj.' + P.fid] = was; _gdSave(); gtgPublishSoon(); _gtgpDraw(gardenHere()); } } }); repaint(); } }));
+  else body.appendChild(_gdpBtn('Stop building this', { kind: 'btn-ghost', run: () => { const was = _gtgW()['tg.pj.' + P.fid]; _gtgpLeave(P); gardenToast(`Stopped the ${row.short}. What you added stays on it.`, { timeout: 6000, action: { label: 'Undo', run: () => { _gtgW()['tg.pj.' + P.fid] = was; _gdSave(); gtgPublishSoon(); _gtgpDraw(gardenHere()); } } }); repaint(); } }));
   card.append(art, body);
   return card;
 }

@@ -47,7 +47,7 @@ function _gpMillOpen() {
             row.innerHTML = `<span class="gp-t"><b>${Math.min(got, s[1])} of ${s[1]}</b> ${esc(s[2])}</span><span class="gp-bar"><i style="width:${Math.min(100, got / s[1] * 100)}%"></i></span>`;
             if (got < s[1]) row.appendChild(uiButton({ label: any ? `Hand in (you have ${any})` : 'You have none yet', size: 'sm', disabled: !any, run: () => {
               const was = _gpMillStage(); _gpMillGive(st, i);
-              if (_gpMillStage() > was) { const r = gpPay('mill', { tickets: st.tickets, xp: 10 }); gpTone([392, 523, 659, 784], { gap: 0.14 }); gpSet('ev.mill', _gpMillStage()); toast(`${st.name}: done. ${gpPaidLine(r)}`, { icon: 'sparkles', dismiss: true }); _gpMillSync(); }
+              if (_gpMillStage() > was) { const r = gpPay('mill', { tickets: st.tickets, xp: 10 }); gpTone([392, 523, 659, 784], { gap: 0.14 }); gpSet('ev.mill', _gpMillStage()); gardenToast(`${st.name}: done. ${gpPaidLine(r)}`, { icon: 'sparkles', dismiss: true }); _gpMillSync(); }
               paint();
             } }));
             card.appendChild(row);

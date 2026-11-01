@@ -181,7 +181,7 @@ function gardenMarket(el, m) {
     list.appendChild(_gdxSellRow(k, Math.floor(n), each));
   }
   el.appendChild(list);
-  if (items.length > 1) el.appendChild(_gdpBtn(`${_gdxTerms().length ? "Sell these" : "Sell everything"} for ${total}`, { kind: 'btn-secondary', icon: 'coins', sm: false, run: () => { let sum = 0, mark = []; const u0 = _gd.undo.length; for (const [k, n] of items) { const r = gardenSell(k, Math.floor(n), { quiet: true }); if (r.ok) sum++; } const steps = _gd.undo.splice(u0); for (const s of steps) mark.push(...s.mark); if (mark.length) { _gdPushUndo('selling everything', mark); const u = _gd.undo[_gd.undo.length - 1]; toast(`Sold everything for ${total} coins`, { icon: 'coins', action: { label: 'Undo', run: () => { if (_gd.undo[_gd.undo.length - 1] === u) gardenUndo(); } } }); } void sum; } }));
+  if (items.length > 1) el.appendChild(_gdpBtn(`${_gdxTerms().length ? "Sell these" : "Sell everything"} for ${total}`, { kind: 'btn-secondary', icon: 'coins', sm: false, run: () => { let sum = 0, mark = []; const u0 = _gd.undo.length; for (const [k, n] of items) { const r = gardenSell(k, Math.floor(n), { quiet: true }); if (r.ok) sum++; } const steps = _gd.undo.splice(u0); for (const s of steps) mark.push(...s.mark); if (mark.length) { _gdPushUndo('selling everything', mark); const u = _gd.undo[_gd.undo.length - 1]; gardenToast(`Sold everything for ${total} coins`, { icon: 'coins', action: { label: 'Undo', run: () => { if (_gd.undo[_gd.undo.length - 1] === u) gardenUndo(); } } }); } void sum; } }));
   if (decor.length) {
     el.appendChild(_gdpEl('h3', 'gd-h3', 'Decorations in your bag'));
     const dl = _gdpEl('div', 'gd-sell');
@@ -350,7 +350,7 @@ function gardenBasketTab(el, m) {
     for (const [k, n] of bqs) {
       const r = _gdxSellRow(k, Math.floor(n), gardenSellPrice(k, m));
       const canGift = typeof funGiftDialog === 'function' && window.Friends && Friends.list && Friends.list().length;
-      if (canGift) r.insertBefore(_gdpBtn('Send to a friend', { icon: 'gift', tip: 'Opens the gift dialog', run: () => { if (!gardenBouquetGift(k.slice(3))) toast('Gifts are not available right now.', { icon: 'gift' }); } }), r.querySelector('button'));
+      if (canGift) r.insertBefore(_gdpBtn('Send to a friend', { icon: 'gift', tip: 'Opens the gift dialog', run: () => { if (!gardenBouquetGift(k.slice(3))) gardenToast('Gifts are not available right now.', { icon: 'gift' }); } }), r.querySelector('button'));
       list.appendChild(r);
     }
     sec.appendChild(list);
@@ -412,27 +412,27 @@ function gardenPhotoOpen() {
 function _gdxSavePhoto(sc, st) {
   const box = gardenCropBox(st.crop), k = 2400 / box.w;
   const svg = gardenSceneSvg(sc, { size: 'l', crop: st.crop, still: true, uid: 'gdpng', photo: true, label: 'My garden', fit: 'xMidYMid meet' });
-  const busy = toast('Developing the photo…', { icon: 'camera', busy: true });
+  const busy = gardenToast('Developing the photo…', { icon: 'camera', busy: true });
   gardenScenePng(svg, Math.round(box.w * k), Math.round(box.h * k)).then((blob) => {
     if (typeof busy === 'function') busy();
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `garden-${_gdToday()}.png`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    toast('Saved to your downloads', { icon: 'camera', kind: 'ok', now: true });
+    gardenToast('Saved to your downloads', { icon: 'camera', kind: 'ok', now: true });
     try { if (typeof gardenLiveCheer === 'function') gardenLiveCheer('photo'); } catch (e) { /* only a moment */ }   // 2.29.0: the others in a live garden see the flash
-  }).catch(() => { if (typeof busy === 'function') busy(); toast('The photo could not be saved.', { kind: 'err', retry: () => _gdxSavePhoto(sc, st) }); });
+  }).catch(() => { if (typeof busy === 'function') busy(); gardenToast('The photo could not be saved.', { kind: 'err', retry: () => _gdxSavePhoto(sc, st) }); });
 }
 
 /** 2.32: the same picture, kept in Memories (the Photos tab) instead of downloaded. */
 function _gdxKeepPhoto(sc, st) {
   const box = gardenCropBox(st.crop), k = 2400 / box.w;
   const svg = gardenSceneSvg(sc, { size: 'l', crop: st.crop, still: true, uid: 'gdkeep', photo: true, label: 'My garden', fit: 'xMidYMid meet' });
-  const busy = toast('Developing the photo…', { icon: 'camera', busy: true });
+  const busy = gardenToast('Developing the photo…', { icon: 'camera', busy: true });
   gardenScenePng(svg, Math.round(box.w * k), Math.round(box.h * k)).then((blob) => memPhotoKeep(blob, { iso: _gdToday(), ts: Clock.now(), kind: 'garden' })).then(() => {
     if (typeof busy === 'function') busy();
-    toast('Kept in your Memories', { icon: 'camera', kind: 'ok', now: true, action: { label: 'See it', run: () => setView('memories:photos') } });
+    gardenToast('Kept in your Memories', { icon: 'camera', kind: 'ok', now: true, action: { label: 'See it', run: () => setView('memories:photos') } });
     try { if (typeof gardenLiveCheer === 'function') gardenLiveCheer('photo'); } catch (e) { /* only a moment */ }
-  }).catch(() => { if (typeof busy === 'function') busy(); toast('The photo could not be kept.', { kind: 'err', retry: () => _gdxKeepPhoto(sc, st) }); });
+  }).catch(() => { if (typeof busy === 'function') busy(); gardenToast('The photo could not be kept.', { kind: 'err', retry: () => _gdxKeepPhoto(sc, st) }); });
 }
 
 /* ---------- the time-lapse ---------- */

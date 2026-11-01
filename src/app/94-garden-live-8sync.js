@@ -9,7 +9,7 @@
      fx sync away / back   a guest's tab has been hidden for a while / is back: to the host alone. While everyone is away nothing that only moves on a screen is sent (fish, creatures, pets, these checks), and it all comes again at once when someone is back.
    A change the host could not send at all sends the whole garden to everyone there, a moment later.
 
-   The line in the garden says how you are connected: Connected (direct or through the relay), Catching up, Slow connection, Reconnecting. It also says when your connection to friends needs its update,
+   The sign in the garden shows only when something is wrong: Catching up, Slow connection, Reconnecting. It also says when your connection to friends needs its update,
    and when a host is on an older version, so its fish are not shared.
    ============================================================ */
 const GL_SYNC = Object.freeze({ sumMs: 30000, atMs: 30000, askGap: 20000, handGap: 4000, autoAsks: 6, asked: 8000, slowMs: 45000, near: 1.5, oldHostMs: 12000, relayMs: 300000, awayMs: 15000, resumeSayMs: 1500, beatMs: 31000 });
@@ -129,9 +129,9 @@ function _glyPaint(force) {
     if (_glv.why === 'resume') { if (_glv.resumeAt && now - _glv.resumeAt > GL_SYNC.resumeSayMs) { say = 'Reconnecting…'; tone = 'is-wait'; } }   // (a brief drop is not worth a word)
     else if (_gly.catching) { say = 'Catching up…'; tone = 'is-wait'; }
     else if (_gly.heard && now - _gly.heard > GL_SYNC.slowMs) { say = 'Slow connection…'; tone = 'is-wait'; btn = 'refresh'; }
-    else { say = `Connected, ${way}`; btn = 'refresh'; }
+    void way;   // (all is well: nothing to say. The line is only for when something is wrong)
   } else if (guest && _glv.fid && _glv.why === 'lost') { say = 'Reconnecting…'; tone = 'is-wait'; }
-  else if (host && _glhAnyone()) { const v = _gll.view && _gll.view.host; say = `Connected, ${v && v.road ? 'through the relay' : 'direct'}`; }
+
   if (_gll.role !== 'visit' && _gly.stale) { btn = 'relay'; if (!say) say = 'Your connection to friends needs a quick update'; else say += '. Your connection to friends needs a quick update'; tone = tone || 'is-wait'; }
   const sig = say + '|' + tone + '|' + btn;
   let el = _gw.box.querySelector(':scope > .gll-link');
@@ -162,6 +162,7 @@ function _glyTick() {
   const lineOut = !!(_gw.fishing && _gw.fishing.state && _gw.fishing.state !== 'idle');   // (a line that has ended leaves its record behind)
   if (guestLive && _gly.hiddenAt && !_gly.awaySaid && now - _gly.hiddenAt >= GL_SYNC.awayMs && !lineOut) { _gly.awaySaid = true; gardenLiveFx('sync', 'away'); }
   const looking = guestLive ? !(_gly.awaySaid && !lineOut) : hostLive && _glhLooking();
+  if (hostLive) _glhWorldCheck();
   if (hostLive && looking && now - _gly.sumAt >= GL_SYNC.sumMs) {
     _gly.sumAt = now;
     _glhDiff();   // (what is still to go goes first)

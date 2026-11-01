@@ -28,7 +28,7 @@ function _gtgnLeave(fid, m) {
   _gtgnDraw(gardenHere());
   wdWhisper('It looks at home. Three days, it says.', 5000);
   setTimeout(async () => {   // the postcard: drawn here, kept here, sent to nobody
-    try { const G = _gtgnSpot(0), blob = await _glsBlob(_glsFrame(Math.round(G.x), Math.round(G.y))); await memPhotoKeep(blob, { iso: _gdToday(), ts: Clock.now(), kind: 'garden', at: fid }); toast('A photo of your gnome is in your Memories', { icon: 'camera', timeout: 5000, action: { label: 'See it', run: () => setView('memories:photos') } }); } catch (e) { /* only a postcard */ }
+    try { const G = _gtgnSpot(0), blob = await _glsBlob(_glsFrame(Math.round(G.x), Math.round(G.y))); await memPhotoKeep(blob, { iso: _gdToday(), ts: Clock.now(), kind: 'garden', at: fid }); gardenToast('A photo of your gnome is in your Memories', { icon: 'camera', timeout: 5000, action: { label: 'See it', run: () => setView('memories:photos') } }); } catch (e) { /* only a postcard */ }
   }, 1200);
 }
 function _gtgnSpot(i) { const g = GTG_GN_AT.guest; return { x: g.x - i * 0.9, y: g.y + (i % 2) * 0.35 }; }
@@ -120,11 +120,11 @@ function gardenBottlePostOpen(to) {
       const b = gpEl('button', 'tg-line', t); b.type = 'button';
       b.onclick = () => {
         const W = _gtgW(), fid = sel.value, dn = gtgDayNum(), key = `tg.bt.${fid}.${dn}`;
-        if (W[key]) { toast(`One bottle a day to ${_gscFirst(fid)}: the next can go tomorrow.`, { icon: 'waves', timeout: 4000 }); return; }
+        if (W[key]) { gardenToast(`One bottle a day to ${_gscFirst(fid)}: the next can go tomorrow.`, { icon: 'waves', timeout: 4000 }); return; }
         W[key] = { l: i }; _gdSave();
         try { if (typeof _gscPublish === 'function') _gscPublish(true).catch(() => {}); } catch (e) { /* the next check tells them */ }
         const paid = _grGive('did.bottle', { ticket: GTG_BOTTLE.send });
-        toast(`It floats off towards ${_gscFirst(fid)}. Three days.${paid ? ' 1 ticket' : ''}`, { icon: 'waves', kind: 'ok', timeout: 5000 });
+        gardenToast(`It floats off towards ${_gscFirst(fid)}. Three days.${paid ? ' 1 ticket' : ''}`, { icon: 'waves', kind: 'ok', timeout: 5000 });
         if (typeof gardenPopupClose === 'function') gardenPopupClose();
         document.querySelector('.tg-panel')?.closest('[role=dialog]')?.querySelector('.dlg-close, [aria-label="Close"]')?.click();
       };

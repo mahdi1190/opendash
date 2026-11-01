@@ -196,7 +196,7 @@ function _gsvNotShared(f) {
   t.appendChild(_gsvEl('span', 'muted', 'When they do (it is on unless they turned it off), it grows here for you to visit. Meanwhile, yours is waiting for them.'));
   c.appendChild(t);
   const a = _gsvEl('div', 'gsv-row');
-  a.appendChild(_gsvBtn('Check again', { icon: 'refresh-cw', run: (e, b) => { b.disabled = true; _gscApi('/api/garden-social/ask', { to: f.id }).catch(() => {}).finally(() => setTimeout(() => gardenSocialFriendLoad(f.id, true).then(() => _gsvPaint()).catch(() => _gsvPaint()), 5000)); toast(`Asked ${_gscFirst(f.id)}'s app for their garden. It shows here if they share it.`, { icon: 'sprout' }); } }));
+  a.appendChild(_gsvBtn('Check again', { icon: 'refresh-cw', run: (e, b) => { b.disabled = true; _gscApi('/api/garden-social/ask', { to: f.id }).catch(() => {}).finally(() => setTimeout(() => gardenSocialFriendLoad(f.id, true).then(() => _gsvPaint()).catch(() => _gsvPaint()), 5000)); gardenToast(`Asked ${_gscFirst(f.id)}'s app for their garden. It shows here if they share it.`, { icon: 'sprout' }); } }));
   a.appendChild(_gsvBtn('Your garden', { icon: 'sprout', kind: 'btn-ghost', run: () => setView('garden') }));
   c.appendChild(a);
   return c;
@@ -581,8 +581,8 @@ async function _gsvHide(id) {
   try {
     await _gscApi('/api/garden-social/hide', { id, hidden: true });
     await gardenSocialLoad(true);
-    toast('Hidden from your guestbook', { icon: 'eye-off', action: { label: 'Undo', run: () => _gscApi('/api/garden-social/hide', { id, hidden: false }).then(() => gardenSocialLoad(true)).catch((e) => toast(e.message, { kind: 'err' })) } });
-  } catch (e) { toast(e && e.message ? e.message : 'That did not go through.', { kind: 'err', retry: () => _gsvHide(id) }); }
+    gardenToast('Hidden from your guestbook', { icon: 'eye-off', action: { label: 'Undo', run: () => _gscApi('/api/garden-social/hide', { id, hidden: false }).then(() => gardenSocialLoad(true)).catch((e) => gardenToast(e.message, { kind: 'err' })) } });
+  } catch (e) { gardenToast(e && e.message ? e.message : 'That did not go through.', { kind: 'err', retry: () => _gsvHide(id) }); }
 }
 function _gsvSwitch(label, on, run, hint) {
   const row = _gsvEl('label', 'gsv-switch');
@@ -607,7 +607,7 @@ function _gsvSharing(friends, d) {
   }
   sec.appendChild(grid);
   const prefs = (d && d.prefs) || { book: true, gifts: true };
-  const setPref = (k) => (on, c) => _gscApi('/api/garden-social/prefs', { [k]: on }).then(() => gardenSocialLoad(true)).catch((e) => { c.checked = !on; toast(e && e.message ? e.message : 'Not saved just now.', { kind: 'err', retry: () => setPref(k)(on, c) }); });
+  const setPref = (k) => (on, c) => _gscApi('/api/garden-social/prefs', { [k]: on }).then(() => gardenSocialLoad(true)).catch((e) => { c.checked = !on; gardenToast(e && e.message ? e.message : 'Not saved just now.', { kind: 'err', retry: () => setPref(k)(on, c) }); });
   sec.appendChild(_gsvSwitch('Friends can sign my guestbook', prefs.book !== false, setPref('book'), 'One line a day each, plain text'));
   sec.appendChild(_gsvSwitch('Friends can leave me parcels', prefs.gifts !== false, setPref('gifts'), 'Seeds and decorations from their bags'));
   return sec;
