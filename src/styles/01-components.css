@@ -363,7 +363,7 @@ a.card:hover, button.card:hover, .card.is-clickable:hover { box-shadow: var(--sh
 .scrim.drawer-scrim { z-index: calc(var(--z-drawer) - 1); background: color-mix(in oklab, var(--overlay) 60%, transparent); backdrop-filter: none; }
 
 /* ---------- toasts (toast() in 11-ui-kit.js) ---------- */
-.toast-host { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: var(--z-toast); display: flex; flex-direction: column-reverse; align-items: center; gap: var(--space-2); pointer-events: none; }
+.toast-host { position: fixed; right: 18px; top: 60px; z-index: var(--z-toast); display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-2); pointer-events: none; }
 .toast {
   display: inline-flex; align-items: center; gap: var(--space-2); min-height: 40px; max-width: min(520px, calc(100vw - 32px)); padding: 0 var(--space-2) 0 var(--space-3);
   background: var(--surface-raised); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-md);
@@ -396,9 +396,7 @@ html[data-motion="reduced"] .toast.busy.spin > .i { animation: none; }
 @media (prefers-reduced-motion: reduce) { .toast.bump { animation: none; } }
 html[data-motion="reduced"] .toast.bump { animation: none; }
 /* Never on top of the bulk action bar (same place at the bottom): sit above it. */
-body:has(.bulk-bar.open) .toast-host { bottom: 84px; }
 /* A maximised task card reaches the bottom of the window: keep its footer buttons uncovered. */
-body:has(.tc.is-max) .toast-host { bottom: 80px; }
 @keyframes ui-toast-in { from { opacity: 0; transform: translateY(8px); } }
 @keyframes ui-toast-out { to { opacity: 0; transform: translateY(4px); } }
 
@@ -497,3 +495,18 @@ html[data-motion="reduced"] .set-status-busy .set-status-dot { animation: none; 
   .md-row { width: auto; flex: none; max-width: 200px; }
   .md-row-s { display: none; }
 }
+/* a message speaks from what you pressed (11-ui-kit.js, 2.37) */
+.toast.near { position: fixed; border-radius: 14px; max-width: min(360px, calc(100vw - 20px)); min-height: 34px; line-height: 1.3; animation: toast-near-in .2s cubic-bezier(.3, 1.5, .5, 1) both; transform-origin: var(--tail, 50%) 100%; }
+.toast.near .msg { padding: 7px 2px; }
+.toast.near::after { content: ''; position: absolute; left: var(--tail, 50%); bottom: -6px; width: 11px; height: 11px; margin-left: -6px; background: inherit; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); transform: rotate(45deg); }
+.toast.near.below { transform-origin: var(--tail, 50%) 0; }
+.toast.near.below::after { bottom: auto; top: -6px; border: 0; border-left: 1px solid var(--border); border-top: 1px solid var(--border); }
+.toast.near.err { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+.toast.near.out { animation: none; opacity: 0; transition: opacity .15s; }
+@keyframes toast-near-in { from { opacity: 0; transform: scale(.82) translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .toast.near { animation: none; } }
+.toast-recent { display: flex; flex-direction: column; gap: 2px; max-height: 60vh; overflow-y: auto; padding: 4px 0; }
+.toast-recent-r { display: flex; align-items: flex-start; gap: 8px; padding: 7px 4px; font-size: var(--text-sm); border-bottom: 1px solid var(--border-subtle); }
+.toast-recent-r > span { flex: 1; }
+.toast-recent-r > time { flex: none; color: var(--fg-subtle); font-size: var(--text-xs); }
+.toast-recent-r.ok > .i { color: var(--success); } .toast-recent-r.err > .i { color: var(--danger); } .toast-recent-r.warn > .i { color: var(--warning); }

@@ -20,7 +20,7 @@
    copies copyText (11-ui-kit.js). The page's one primary action (Add a friend; Cheer on a friend's
    page) and the rest go to the shared header (headerActions); until the shell draws them the page
    keeps its own row (frShellHeadOn, 96-friends-0core.js). The settings fold is short: your name
-   (it lives on Profile), Online status (one select), your relay; Blocked under More; Connect
+   (it lives on Profile), Online status (one select), your connection to friends; Blocked under More; Connect
    directly and Lost a computer? (Lock out a lost computer) under Advanced.
 
    Friend strings are set with textContent only (the owner's rule); markup
@@ -176,17 +176,17 @@ function _frBurst(anchor) {
   document.body.appendChild(host);
   setTimeout(() => host.remove(), 1100);
 }
-/** Settings > Your relay; start: begin setting one up there now (the relay page's own "Set up my relay"). */
+/** Settings > Your connection to friends; start: begin setting one up there now (the relay page's own "Set up my connection"). */
 function _frOpenRelaySettings(start) {
   if (typeof relaySettingsOpen === 'function') { try { relaySettingsOpen(start ? { start: true } : undefined); return; } catch (e) { console.error('[friends] relay settings', e); } }
   setView('settings:relay');
 }
-/** "Set up my relay", or "Update my relay" when it is yours already: the relay page's own words (SIMPLIFY_PLAN.md 2). */
+/** "Set up my connection", or "Update my connection" when it is yours already: the relay page's own words (SIMPLIFY_PLAN.md 2). */
 function _frRelayBtn(d, o) {
   const home = d && d.relay && d.relay.home;
   o = o || {};
   if (home && home.role === 'owner') {
-    return uiButton({ label: 'Update my relay', icon: 'cloud', kind: o.kind || 'secondary', size: o.size, run: () => {
+    return uiButton({ label: 'Update my connection', icon: 'cloud', kind: o.kind || 'secondary', size: o.size, run: () => {
       if (o.close) o.close();
       _frOpenRelaySettings(false);
       // as the relay page's own Update button does, after reading it fresh (never from a stale view)
@@ -266,13 +266,13 @@ function _frSec(title, ic, extra) {
   s.appendChild(secHead({ title, icon: ic || 'sparkles', cls: 'fr-sec-h', actions: extra ? [extra] : [] }));
   return s;
 }
-/** No relay yet: status first (Not set up, grey: nothing is wrong), one sentence, Set up my relay (SIMPLIFY_PLAN.md 5.9). */
+/** No relay yet: status first (Not set up, grey: nothing is wrong), one sentence, Set up my connection (SIMPLIFY_PLAN.md 5.9). */
 function _frNoRelay(d) {
   const el = _frEl('section', 'card fr-norelay fr-sec');
   const ic = _frEl('div', 'fr-norelay-ic');
   ic.innerHTML = icon('cloud', 'i-lg');
   const t = _frEl('div', 'fr-norelay-t');
-  t.appendChild(setStatusLine('off', 'Not set up', 'Set up your relay to add friends'));
+  t.appendChild(setStatusLine('off', 'Not set up', 'Set up your connection to friends to add friends'));
   t.appendChild(_frEl('span', 'muted', "Free, about 2 minutes. Or join a friend's with their invite."));
   const a = _frEl('div', 'fr-norelay-a');
   a.appendChild(_frRelayBtn(d));
@@ -435,7 +435,7 @@ function _frDescribe(e, f) {
 }
 
 /* ---------- settings (quiet, at the bottom; SIMPLIFY_PLAN.md 5.9) ----------
-   On the face: your name (one name, changed on Profile), Online status (one select), your relay.
+   On the face: your name (one name, changed on Profile), Online status (one select), your connection to friends.
    More: who you blocked. Advanced: connecting directly on the same Wi-Fi, and Lost a computer?. */
 function _frSettingsSec(d, o) {
   const open = !!(o && o.open);   // the Settings tab shows it open; elsewhere it would be a fold
@@ -453,13 +453,13 @@ function _frSettingsSec(d, o) {
   body.appendChild(_settingsRow(`Your name: ${d.me.name || (typeof profileDisplayName === 'function' ? profileDisplayName() : '') || 'not set'}`, '', toProfile));
   // online status: one select (Off, or how you show) (L15)
   body.appendChild(_settingsRow('Online status', 'A word like “focusing”, never where you are.', _frPresenceSelect(d)));
-  // your friend code: people on your relay add you with it
+  // your friend code: people on your connection to friends add you with it
   // 2.20.1: no lasting friend code here any more; "Show my friend code" makes a 4-letter one for 10 minutes.
   body.appendChild(_settingsRow('Your friend code', 'A 4-letter code for a friend to type. It works once, for 10 minutes.', uiButton({ label: 'Show my friend code', icon: 'key-round', size: 'sm', run: () => friendsAddDialog('code') })));
-  // your relay
+  // your connection to friends
   const home = d.relay && d.relay.home;
   body.appendChild(_settingsRow(home ? (home.role === 'owner' ? 'Relay: yours' : 'Relay: a friend’s') : 'Relay: not set up', '',
-    home ? uiButton({ label: 'Your relay', size: 'sm', icon: 'cloud', run: () => _frOpenRelaySettings(false) }) : _frRelayBtn(d, { size: 'sm' })));
+    home ? uiButton({ label: 'Your connection to friends', size: 'sm', icon: 'cloud', run: () => _frOpenRelaySettings(false) }) : _frRelayBtn(d, { size: 'sm' })));
   if (d.relay && d.relay.outbox) body.appendChild(emptyLine(`${d.relay.outbox} message${d.relay.outbox === 1 ? '' : 's'} waiting to send.`));
   // More: who you blocked
   setFold(body, 'friends-settings-more', 'More', ({ body: b }) => {
@@ -607,7 +607,7 @@ function _frAddInvite(pane, d, close) {
   if (d.relay.home.role === 'owner') {
     const l1 = _frEl('label', 'fr-switch');
     relayChk = document.createElement('input'); relayChk.type = 'checkbox'; relayChk.checked = true;
-    l1.append(relayChk, _frEl('span', null, 'Let them use my relay'));
+    l1.append(relayChk, _frEl('span', null, 'Let them use my connection'));
     const l2 = _frEl('label', 'fr-switch');
     syncChk = document.createElement('input'); syncChk.type = 'checkbox'; syncChk.checked = false;
     l2.append(syncChk, _frEl('span', null, '…and sync their computers through it'));
@@ -678,14 +678,14 @@ function _frInviteOut(out, r, d, close) {
   if (!r.short) {
     const owner = d && d.relay && d.relay.home && d.relay.home.role === 'owner';
     out.appendChild(_frEl('p', 'muted fr-small', r.shortWhy === 'old-relay'
-      ? (owner ? 'A long link (your relay is older). It works the same. Update my relay for short links.' : 'A long link (the relay you use is older). It works the same.')
+      ? (owner ? 'A long link (your connection to friends is older). It works the same. Update my connection for short links.' : 'A long link (the relay you use is older). It works the same.')
       : "The short link couldn't be made just now, so this is the long one. It works the same."));
     if (r.shortWhy === 'old-relay' && owner) { const a = _frEl('div', 'fr-add-acts'); a.appendChild(_frRelayBtn(d, { size: 'sm', close })); out.appendChild(a); }
   }
   const c = _frEl('div', 'fr-add-acts');
   c.appendChild(uiButton({ label: 'Cancel this invite', kind: 'ghost', size: 'sm', run: (ev, bb) => _frDo(bb, async () => { await _frApi('/api/friends/invite/cancel', { id: r.id }); out.textContent = ''; await friendsLoad(true); }, 'Invite cancelled: the link no longer works', 'cancel the invite') }));
   out.appendChild(c);
-  out.appendChild(_frEl('p', 'muted fr-small', `Works once. Expires ${_frDate(r.exp)}.${r.relayScopes && r.relayScopes.length ? ' It also lets them use your relay.' : ''}`));
+  out.appendChild(_frEl('p', 'muted fr-small', `Works once. Expires ${_frDate(r.exp)}.${r.relayScopes && r.relayScopes.length ? ' It also lets them use your connection to friends.' : ''}`));
 }
 /**
  * Friend code (2.20.1): "Show my friend code" makes 4 letters that work once, for 10 minutes; the
@@ -787,7 +787,7 @@ function _frAddPaste(pane, close) {
 /* ---------- Lock out a lost computer: new friend keys (docs/dev/FRIENDS.md section 15) ----------
    The words follow the glossary (SIMPLIFY_PLAN.md 2): "Lock out a lost computer", never "renew keys"
    on the face; the details of what happens are in the dialog's "What happens" fold. */
-/** Friends whose update needs you: two different updates came (paused), or they ask to keep using your relay. */
+/** Friends whose update needs you: two different updates came (paused), or they ask to keep using your connection to friends. */
 function _frAttentionSec(list) {
   const sec = _frSec('Needs a look', 'triangle-alert');
   for (const f of list) {
@@ -800,10 +800,10 @@ function _frAttentionSec(list) {
       body.appendChild(_frEl('span', 'muted fr-small', `Two different updates claimed to be from ${name}. Ask them for a fresh invite in person or on a call.`));
       acts.appendChild(uiButton({ label: 'Remove', size: 'sm', icon: 'user-minus', run: () => _frRemove(f, false) }));
     } else {
-      body.appendChild(_frEl('b', null, `Let ${name} keep using your relay?`));
+      body.appendChild(_frEl('b', null, `Let ${name} keep using your connection to friends?`));
       body.appendChild(_frEl('span', 'muted fr-small', 'They updated their security; their access moves over.'));
-      acts.appendChild(uiButton({ label: 'Let them keep using it', icon: 'check', kind: 'primary', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/relay-ask', { id: f.id }); await friendsLoad(true); _frRepaint(); }, `${name} can keep using your relay`, 'let them keep using it') }));
-      acts.appendChild(uiButton({ label: 'Not now', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/relay-ask', { id: f.id, allow: false }); await friendsLoad(true); _frRepaint(); }, `Left as it is. ${name}'s old access stays until you remove it in Settings > Your relay.`, 'answer') }));
+      acts.appendChild(uiButton({ label: 'Let them keep using it', icon: 'check', kind: 'primary', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/relay-ask', { id: f.id }); await friendsLoad(true); _frRepaint(); }, `${name} can keep using your connection to friends`, 'let them keep using it') }));
+      acts.appendChild(uiButton({ label: 'Not now', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/relay-ask', { id: f.id, allow: false }); await friendsLoad(true); _frRepaint(); }, `Left as it is. ${name}'s old access stays until you remove it in Settings > Your connection to friends.`, 'answer') }));
     }
     el.append(body, acts);
     sec.appendChild(el);
@@ -829,7 +829,7 @@ function _frKeysEl(d) {
   const progress = n ? `${r.moved} of ${n} friend${n === 1 ? ' has' : 's have'} moved over${r.moved < n ? '; the rest follow when their Freeflo is next on' : ''}.` : '';
   if (r.step === 'done') box.appendChild(_frLine('check', `Locked out ${_frAgo(r.doneAt || r.at)}. ${progress}`.trim()));
   else if (r.waiting === 'relay-update') { box.appendChild(_frLine('key-round', `Locked out here. ${progress}`.trim())); box.appendChild(_frRelayRotateEl()); }
-  else if (r.waiting === 'relay-owner') box.appendChild(_frLine('hourglass', `Locked out here. ${progress} Waiting for your relay's owner to let the change in; until then the lost computer can still use that relay.`.replace(/\s+/g, ' ')));
+  else if (r.waiting === 'relay-owner') box.appendChild(_frLine('hourglass', `Locked out here. ${progress} Waiting for your connection to friends's owner to let the change in; until then the lost computer can still use that relay.`.replace(/\s+/g, ' ')));
   else if (r.waiting === 'friends') box.appendChild(_frLine('hourglass', `Locked out here. ${progress}`.trim()));
   else box.appendChild(_frLine('loader-circle', 'Locking it out and telling your friends…'));
   if (r.error) {
@@ -849,15 +849,15 @@ function _frRelayRotateEl() {
     el.textContent = '';
     const s = _frRot.st || { state: 'idle' };
     if (s.state === 'running') {
-      el.appendChild(_frLine('loader-circle', 'Updating your relay so the lost computer can’t use it…'));
-      el.appendChild(uiButton({ label: 'Cancel', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/relay/cancel', {}); await poll(); }, 'Stopped. The lost computer can use your relay until you update it.', 'stop the update') }));
+      el.appendChild(_frLine('loader-circle', 'Updating your connection to friends so the lost computer can’t use it…'));
+      el.appendChild(uiButton({ label: 'Cancel', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/relay/cancel', {}); await poll(); }, 'Stopped. The lost computer can use your connection to friends until you update it.', 'stop the update') }));
       return;
     }
     if (s.state === 'error' && s.error) el.appendChild(_frLine('triangle-alert', `${s.error.message} ${s.error.next || ''}`.trim(), 'fr-err'));
     el.appendChild(emptyLine(s.state === 'elsewhere'
-      ? 'Update your relay so the lost computer can’t use it: from the computer that set it up, or here (Cloudflare may ask you to sign in).'
-      : 'Update your relay so the lost computer can’t use it (same address; Cloudflare may ask you to sign in).'));
-    el.appendChild(uiButton({ label: s.state === 'error' ? 'Try again' : 'Update my relay', size: 'sm', icon: s.state === 'error' ? 'refresh-cw' : 'cloud', kind: 'primary', run: (e, b) => _frDo(b, async () => { _frRot.st = await _frApi('/api/relay/rotate', {}); paint(); poll(); }, null, 'update your relay') }));
+      ? 'Update your connection to friends so the lost computer can’t use it: from the computer that set it up, or here (Cloudflare may ask you to sign in).'
+      : 'Update your connection to friends so the lost computer can’t use it (same address; Cloudflare may ask you to sign in).'));
+    el.appendChild(uiButton({ label: s.state === 'error' ? 'Try again' : 'Update my connection', size: 'sm', icon: s.state === 'error' ? 'refresh-cw' : 'cloud', kind: 'primary', run: (e, b) => _frDo(b, async () => { _frRot.st = await _frApi('/api/relay/rotate', {}); paint(); poll(); }, null, 'update your connection to friends') }));
   };
   poll = async () => {
     clearTimeout(_frRot.t);
@@ -897,8 +897,8 @@ function friendsRenewKeysDialog(o) {
       if (friends) li(`Each friend's Freeflo moves you over by itself (${friends} friend${friends === 1 ? '' : 's'}). Your friendships, history and what you share stay as they are.`);
       if (pending) li('Requests still in progress and open invite links stop working: send new ones afterwards.');
       if (d.me.code) li('Your friend code changes.');
-      if (home && home.role === 'owner') li('Your relay is updated so it trusts only the new keys (same address; Cloudflare may ask you to sign in).');
-      else if (home) li("Your relay belongs to a friend: they get a button to let your new keys in. Until they press it, the lost computer can still use it.");
+      if (home && home.role === 'owner') li('Your connection to friends is updated so it trusts only the new keys (same address; Cloudflare may ask you to sign in).');
+      else if (home) li("Your connection to friends belongs to a friend: they get a button to let your new keys in. Until they press it, the lost computer can still use it.");
       li("What it can't do: if the lost computer does this first, friends who hear from it first could be fooled. A friend's Freeflo then pauses your friendship; if a friend tells you that, send them a fresh invite.");
       det.appendChild(ul);
       el.appendChild(det);

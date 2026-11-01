@@ -155,10 +155,10 @@ function _prAgo(ms) {
   const d = Math.round(h / 24);
   return d <= 1 ? 'yesterday' : d + ' days ago';
 }
-/** The way a computer is reached now, in the Sync page's words: direct, via your relay, via OneDrive. */
+/** The way a computer is reached now, in the Sync page's words: direct, via your connection to friends, via OneDrive. */
 function _prWay(d) {
   if (d.path === 'live' || d.path === 'direct') return 'direct';
-  if (d.path === 'relay') return 'via your relay';
+  if (d.path === 'relay') return 'via your connection to friends';
   if (d.path === 'folder') {
     const st = typeof _syncSt !== 'undefined' ? _syncSt : null;
     const cloud = st && typeof syncCloudName === 'function' ? syncCloudName(st) : null;

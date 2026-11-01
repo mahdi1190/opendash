@@ -5,7 +5,7 @@
    "No relay yet" card while it shows (CSS :has, 96-friends-onboard.css).
 
      1. Make your character   opens the profile builder (Settings > Profile)
-     2. Set up your relay     Set up my relay (free, about 2 minutes:
+     2. Set up your connection to friends     Set up my connection (free, about 2 minutes:
                               relaySettingsOpen({start: true}), 58-settings-relay.js)
                               or Paste an invite (friendsAddDialog('paste'))
      3. Invite a friend       a single-use link, copied as it is or inside a
@@ -100,7 +100,7 @@ function _froConnect() {
   if (typeof relaySettingsOpen === 'function') relaySettingsOpen({ start: true });
   else setView('settings:relay');
 }
-/** Setting up your relay on this computer right now (Settings > Your relay keeps it in _rlSt), or null. */
+/** Setting up your connection to friends on this computer right now (Settings > Your connection to friends keeps it in _rlSt), or null. */
 function _froConnectJob() {
   try { return typeof _rlSt !== 'undefined' && _rlSt && _rlSt.connect ? _rlSt.connect : null; } catch (e) { return null; }
 }
@@ -170,7 +170,7 @@ function _froRender(sec, d) {
   t.appendChild(_froEl('span', 'overline', 'Getting started'));
   t.appendChild(_froEl('h2', null, s.all ? "You're all set" : 'Welcome to Friends'));
   t.appendChild(_froEl('p', 'muted', s.all
-    ? 'Your character is ready, your relay is connected, and your first invite is out. When they paste it, you will both see the same pictures: check they match, then accept.'
+    ? 'Your character is ready, your connection to friends is connected, and your first invite is out. When they paste it, you will both see the same pictures: check they match, then accept.'
     : 'Three small steps to your first friend. Everything between friends is end-to-end encrypted, and you choose what each friend can see.'));
   const ha = _froEl('div', 'fro-hacts');
   ha.appendChild(uiButton({ label: 'How friends work', icon: 'circle-help', kind: 'ghost', size: 'sm', run: () => friendsHelpOpen() }));
@@ -200,24 +200,24 @@ function _froRender(sec, d) {
   ol.appendChild(a.li);
   // 2. relay
   const job = _froConnectJob();
-  const b = _froStep(2, s.relay, active === 2, 'Set up your relay', s.relay
+  const b = _froStep(2, s.relay, active === 2, 'Set up your connection to friends', s.relay
     ? (d.relay.home.role === 'owner' ? 'Your own relay.' : 'A friend’s relay.')
     : 'A relay is your own private link that carries messages between you and your friends. Set up yours (free, about 2 minutes) or join a friend’s.');
   if (!s.relay) {
     if (job && job.state === 'running') {
       const w = _froEl('div', 'fro-wait');
       w.innerHTML = icon('loader-circle', 'i-sm fr-spin');
-      w.appendChild(_froEl('span', null, 'Setting up your relay…'));
+      w.appendChild(_froEl('span', null, 'Setting up your connection to friends…'));
       b.acts.append(w, uiButton({ label: 'Open', size: 'sm', run: () => setView('settings:relay') }));
     } else {
-      if (job && job.state === 'error' && job.error) b.body.insertBefore(_froEl('p', 'fro-sub fro-err', `Setting up your relay stopped: ${job.error.message}`), b.acts);
-      b.acts.append(uiButton({ label: 'Set up my relay', icon: 'cloud', kind: active === 2 ? 'primary' : 'secondary', run: _froConnect }),
+      if (job && job.state === 'error' && job.error) b.body.insertBefore(_froEl('p', 'fro-sub fro-err', `Setting up your connection to friends stopped: ${job.error.message}`), b.acts);
+      b.acts.append(uiButton({ label: 'Set up my connection', icon: 'cloud', kind: active === 2 ? 'primary' : 'secondary', run: _froConnect }),
         uiButton({ label: 'Paste an invite', icon: 'clipboard', run: () => friendsAddDialog('paste') }));
     }
-  } else b.acts.appendChild(uiButton({ label: 'Your relay', kind: 'ghost', size: 'sm', run: () => setView('settings:relay') }));
+  } else b.acts.appendChild(uiButton({ label: 'Your connection to friends', kind: 'ghost', size: 'sm', run: () => setView('settings:relay') }));
   ol.appendChild(b.li);
   // 3. invite
-  const c = _froStep(3, s.invite, active === 3, 'Invite a friend', !s.relay ? 'After step 2: invites travel through your relay.'
+  const c = _froStep(3, s.invite, active === 3, 'Invite a friend', !s.relay ? 'After step 2: invites travel through your connection to friends.'
     : _fro.invite ? 'Here is your link. Send it as it is, or copy a ready message that explains what to do.'
     : s.invite ? 'Your invite is out. When they paste it, you both check the same pictures, then you accept.'
     : 'Send one person a link, as it is or in a ready message.');
@@ -266,7 +266,7 @@ const _FRO_HELP = Object.freeze([
   ['cloud', 'The relay', "Friends' messages travel through a small private relay: your own on your Cloudflare account (free), or a friend's that you join with their invite. It only ever holds encrypted messages it can't read. Only you, your computers and the people you invite can use yours."],
   ['user-plus', 'Adding someone', 'Send an invite link (it works once and ends by itself), or show your friend a 4-letter friend code (it works once, for 10 minutes). You both see the same pictures: check they match (in person, a call or a message) before you accept. A forwarded link alone is not enough.'],
   ['shield-check', 'Privacy', "Everything between friends is end-to-end encrypted. Your sign-ins, keys, email, Claude, connectors and accounts are never shared. Nothing a friend sends reaches Claude or changes your tasks unless you click."],
-  ['user-minus', 'Removing someone', "Remove or Block them on their page (with Undo). Their access to your relay ends, your copy of what they shared is deleted, and their app is asked to delete what you shared."],
+  ['user-minus', 'Removing someone', "Remove or Block them on their page (with Undo). Their access to your connection to friends ends, your copy of what they shared is deleted, and their app is asked to delete what you shared."],
   ['lock', "What can't be forced", "Deleting on their device is a request their app carries out: it cannot be forced, and nobody can stop a screenshot. So only share what you are happy for them to have seen."],
 ]);
 function friendsHelpOpen() {

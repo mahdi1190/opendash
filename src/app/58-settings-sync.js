@@ -14,23 +14,23 @@
                  status line (syncSummary: a dot, one word, one detail: Up to
                  date, Catching up, Syncing, Setting up, Previewing, Needs
                  you), the path line (syncPathLine: "Same Wi-Fi: direct ·
-                 Elsewhere: your relay · OneDrive: backup", only what applies),
+                 Elsewhere: your connection to friends · OneDrive: backup", only what applies),
                  one row per computer (syncComputerRows: Up to date, Catching
                  up n%, Asleep, Off, Needs an update, Main computer), edits to
                  review, and one main button (the fix when something needs
                  you, else Add a computer). More: computers and phones (rename,
                  remove), the main computer (one choice for the jobs, who
                  answers first and Claude), add a phone, the recovery code,
-                 Sync now, turn off. Advanced: ways to sync (your relay, the
+                 Sync now, turn off. Advanced: ways to sync (your connection to friends, the
                  cloud folder, direct on the same Wi-Fi, outside home only
                  without the relay), Preview changes first, which computer does
                  what, details for support. An asleep computer is never a fault
-                 and never shows a router reason; with your relay in use the
+                 and never shows a router reason; with your connection to friends in use the
                  router is left alone and not mentioned.
-   Through your relay (lib/sync/relay.mjs; Settings > Your relay sets it up):
-   when one is connected, "Sync through your relay (recommended)" is the
+   Through your connection to friends (lib/sync/relay.mjs; Settings > Your connection to friends sets it up):
+   when one is connected, "Sync through your connection to friends (recommended)" is the
    default and a folder is the alternative; a computer that syncs through a
-   folder gets "Sync through your relay too" (both at once). A new computer
+   folder gets "Sync through your connection to friends too" (both at once). A new computer
    joins with a LINK from the other one (<relay>/j#ODJ1....) plus the 4
    letters; the existing one still asks "Approve <name>?".
    Changes from the other computer arrive through live sync (86-live-sync.js
@@ -89,14 +89,14 @@ function syncDeviceLines(st, nowMs) {
   if (!others.length) return ['No other computer yet.'];
   return others.map(d => `${d.name}: seen ${syncAgo(d.lastSeen, nowMs) || 'a while ago'}`);
 }
-/** Is this computer's sync going through your relay now? */
+/** Is this computer's sync going through your connection to friends now? */
 function syncViaRelay(st) { const R = (st && st.relay) || {}; return !!(R.on && (R.transport === 'relay' || R.transport === 'both')); }
 /** "OneDrive" / "Google Drive" / "your cloud folder" (never "the sync folder"), or null without a folder. */
-function syncCloudName(st) { return st && st.folder ? (st.cloud && st.cloud !== 'the sync folder' && st.cloud !== 'your relay' ? st.cloud : 'your cloud folder') : null; }
+function syncCloudName(st) { return st && st.folder ? (st.cloud && st.cloud !== 'the sync folder' && st.cloud !== 'your connection to friends' ? st.cloud : 'your cloud folder') : null; }
 const _syncCap = (s) => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1);
 /**
  * Advanced > Details for support (docs/dev/SIMPLIFY_PLAN.md table 5.2): one line per other computer about
- * its direct link, in plain words, grey unless it needs you; then (only without your relay) whether this
+ * its direct link, in plain words, grey unless it needs you; then (only without your connection to friends) whether this
  * computer can be reached from outside home. {tone, text, peer?, act?: 'hold'|'retry'}. pres (optional):
  * the presence rows, so an asleep computer shows no reason at all. Pure.
  */
@@ -104,7 +104,7 @@ function syncLiveLines(st, pres) {
   const L = st && st.live;
   if (!st || !st.enabled || !L) return [];
   const relay = syncViaRelay(st);
-  const via = relay ? 'via your relay' : 'via ' + (syncCloudName(st) || 'your cloud folder');
+  const via = relay ? 'via your connection to friends' : 'via ' + (syncCloudName(st) || 'your cloud folder');
   if (!L.on) return [{ tone: 'off', text: 'Direct on the same Wi-Fi is off.' }];
   if (L.state !== 'on') return [];
   const out = [];
@@ -157,7 +157,7 @@ const SYNC_AWAKE_MS = 210 * 1000;          // a device.json heartbeat every 2 mi
 const SYNC_ASLEEP_MS = 12 * 3600 * 1000;   // quiet for less than this: asleep; longer: off (presence.mjs ASLEEP_MS)
 /**
  * The path line (plan 4.3): how this computer's changes travel now, only what applies.
- * "Same Wi-Fi: direct · Elsewhere: your relay · OneDrive: backup". Pure.
+ * "Same Wi-Fi: direct · Elsewhere: your connection to friends · OneDrive: backup". Pure.
  */
 function syncPathLine(st) {
   const R = (st && st.relay) || {}, L = (st && st.live) || null;
@@ -165,7 +165,7 @@ function syncPathLine(st) {
   const cloud = syncCloudName(st);
   const parts = [];
   if (L && L.on && L.state === 'on') parts.push('Same Wi-Fi: direct');
-  const whose = R.role === 'member' ? "a friend's relay" : 'your relay';
+  const whose = R.role === 'member' ? "a friend's relay" : 'your connection to friends';
   const why = { busy: whose + ' is resting until tomorrow', rate: whose + ' is slowing down for a moment', offline: whose + " can't be reached right now" }[R.state];
   if (relay && !why) { parts.push('Elsewhere: ' + whose); if (cloud) parts.push(_syncCap(cloud) + ': backup'); }
   else if (relay) parts.push(cloud ? 'Elsewhere: ' + cloud + ' for now (' + why + ')' : _syncCap(why) + '; changes wait here and go then');
@@ -196,7 +196,7 @@ function syncComputerRows(st, pres, nowMs, main) {
     const base = live ? 'running' : q ? q.base : (seenMs && nowMs - seenMs <= SYNC_AWAKE_MS && !(p && p.reason === 'offline') ? 'running' : seenMs && nowMs - seenMs <= SYNC_ASLEEP_MS ? 'asleep' : 'off');
     const reachable = live || (q ? !!q.reachable : base === 'running');
     const seen = seenMs ? 'seen ' + syncAgo(seenMs, nowMs) : '';
-    const path = live || q && q.path === 'direct' ? 'direct' : q && q.path === 'relay' ? 'via your relay' : cloud ? 'via ' + cloud : '';
+    const path = live || q && q.path === 'direct' ? 'direct' : q && q.path === 'relay' ? 'via your connection to friends' : cloud ? 'via ' + cloud : '';
     const ver = (q && q.version) || d.app || null;
     const old = q && q.outdated != null ? !!q.outdated : !!(ver && mine && _syncVerLess(ver, mine));
     const c = catching.find(x => x.name === name);
@@ -222,9 +222,9 @@ function syncNeedsYou(st, health) {
   if (!st || !st.enabled) return null;
   const R = st.relay || {};
   if (st.state === 'error') return { detail: 'Sync is paused', fix: { label: 'Try again', run: 'now' }, err: true };
-  if (R.on && R.state === 'quota') return { detail: "Your relay's storage is full", fix: { label: 'Make room', run: 'compact' } };
-  if (R.on && R.state === 'denied') return R.hasKey ? { detail: 'Your relay refused this computer', fix: { label: 'Open Check-up', run: 'checkup' } } : { detail: 'Type a 4-letter code from a computer that uses your relay', fix: null };
-  if (['key', 'record', 'private'].includes(R.missing)) return { detail: R.missing === 'private' ? "Your relay's address doesn't work on this network" : "Your relay isn't set up on this computer yet", fix: { label: 'Try again', run: 'check' } };
+  if (R.on && R.state === 'quota') return { detail: "Your connection to friends's storage is full", fix: { label: 'Make room', run: 'compact' } };
+  if (R.on && R.state === 'denied') return R.hasKey ? { detail: 'Your connection to friends refused this computer', fix: { label: 'Open Check-up', run: 'checkup' } } : { detail: 'Type a 4-letter code from a computer that uses your connection to friends', fix: null };
+  if (['key', 'record', 'private'].includes(R.missing)) return { detail: R.missing === 'private' ? "Your connection to friends's address doesn't work on this network" : "Your connection to friends isn't set up on this computer yet", fix: { label: 'Try again', run: 'check' } };
   if (st.skew && Math.abs(st.skew.aheadMin || 0) > 2) return { detail: `${st.skew.device}'s clock is ${Math.abs(st.skew.aheadMin)} min out`, fix: { label: 'How to fix', run: 'checkup' } };
   const c = health && Array.isArray(health.checks) ? health.checks.find(x => x.needsUser) : null;
   if (c) return { detail: c.title, fix: c.fix && (c.fix.action || c.fix.view) ? { label: c.fix.label || 'Fix it', run: 'apply-health', check: c.id } : { label: 'Open Check-up', run: 'checkup' }, err: c.tone === 'err' };
@@ -337,7 +337,7 @@ function syncCatchUpLines(st) {
 }
 /** "Catching up with Work laptop: 28%" (one line per computer). */
 function syncCatchUpText(c) { return 'Catching up with ' + c.name + (c.pct == null ? ': a change is missing here, reading its changes again' : ': ' + c.pct + '%'); }
-/** Your relay's state for Advanced > Ways to sync (plan table 5.2): {tone, word, detail, fix?} or null when it is not used here. Pure. */
+/** Your connection to friends's state for Advanced > Ways to sync (plan table 5.2): {tone, word, detail, fix?} or null when it is not used here. Pure. */
 function syncRelayState(st) {
   const R = st && st.relay;
   if (!R || !R.on || !(R.transport === 'relay' || R.transport === 'both')) return null;
@@ -355,28 +355,28 @@ function syncRelayState(st) {
 }
 /**
  * The relay row while this computer does NOT sync through it: {title, text, tone, act}
- * act: 'use' (Use it here) | 'check' (Try again: look for it again) | 'relay' (Open Your relay:
+ * act: 'use' (Use it here) | 'check' (Try again: look for it again) | 'relay' (Open Your connection to friends:
  * a friend's relay to choose for sync there) | null. Never offers
- * Set up my relay when the person already has a relay (here or on another computer):
+ * Set up my connection when the person already has a relay (here or on another computer):
  * that would make a second one. Pure.
  */
 function syncRelayView(st) {
   const R = (st && st.relay) || {};
   const P = R.person || null;
   const host = (P && P.host) || R.host || R.privateHost || null;
-  const name = host ? 'Your relay ' + host : 'Your relay';
+  const name = host ? 'Your connection to friends ' + host : 'Your connection to friends';
   const other = (P && P.from === 'peer' && P.by) || 'your other computer';
   if (R.missing === 'private') return { title: name, tone: 'warn', text: syncNoRelayLine(st), act: 'check' };
   if (R.missing === 'scope') return { title: name, tone: 'idle', text: "It belongs to a friend, who gave you messages only, so it does not carry your sync. Ask them for an invite that includes device sync, or sync through your folder as now.", act: null };
-  // A friend's relay that allows device sync is used for it only once chosen in Settings > Your relay (never by itself).
-  if (R.missing === 'choose') return { title: "A friend's relay" + (host ? ' ' + host : ''), tone: 'idle', text: "Its owner lets you sync your devices through it, but you haven't chosen that yet, so sync goes through your folder as now. To use it, open Your relay and click Use it for sync.", act: 'relay' };
+  // A friend's relay that allows device sync is used for it only once chosen in Settings > Your connection to friends (never by itself).
+  if (R.missing === 'choose') return { title: "A friend's relay" + (host ? ' ' + host : ''), tone: 'idle', text: "Its owner lets you sync your devices through it, but you haven't chosen that yet, so sync goes through your folder as now. To use it, open Your connection to friends and click Use it for sync.", act: 'relay' };
   if (R.missing === 'key') return { title: name + " isn't used on this computer yet", tone: 'warn', text: 'Waiting for ' + other + ' to share the key to it: open Freeflo there (on the same network it takes a second). Or paste a join link from it (Advanced, below).', act: 'check' };
   if (R.missing === 'record') return { title: name + " isn't used on this computer yet", tone: 'warn', text: 'Its details are on their way from ' + other + ': open Freeflo there, or click Try again.', act: 'check' };
   if (P || (R.available && R.usable && R.source !== 'link')) {
     const cloud = st && st.folder ? (st.cloud || 'your folder') : 'your folder';
     return { title: name + " isn't used on this computer yet", tone: 'idle', text: (R.off ? 'You turned it off on this computer. ' : '') + 'It carries your changes locked, within a second, without ' + cloud + ' having to be running; ' + cloud + ' keeps a backup copy.', act: R.available && R.usable ? 'use' : 'check' };
   }
-  return { title: 'Your relay', tone: 'idle', text: syncNoRelayLine(st), act: syncRelayCanCheck(st) ? 'check' : null };
+  return { title: 'Your connection to friends', tone: 'idle', text: syncNoRelayLine(st), act: syncRelayCanCheck(st) ? 'check' : null };
 }
 /**
  * The calm line when this computer has no relay to sync through. st (optional): the status,
@@ -385,9 +385,9 @@ function syncRelayView(st) {
  */
 function syncNoRelayLine(st) {
   const R = (st && st.relay) || {};
-  if (R.private) return "Your relay's address" + (R.privateHost ? ' (' + R.privateHost + ')' : '') + ' points inside this network, so Freeflo does not use it here. Check the address in Settings > Your relay, then click Try again.';
-  if (R.person || (R.hasKey && !R.available)) return 'Your relay' + (R.person && R.person.host ? ' ' + R.person.host : '') + ' is set up on your other computer but has not reached this one yet. It arrives by itself when your computers next sync; Try again looks now.';
-  return 'Tip: set up your relay (free) to sync anywhere within a second.';
+  if (R.private) return "Your connection to friends's address" + (R.privateHost ? ' (' + R.privateHost + ')' : '') + ' points inside this network, so Freeflo does not use it here. Check the address in Settings > Your connection to friends, then click Try again.';
+  if (R.person || (R.hasKey && !R.available)) return 'Your connection to friends' + (R.person && R.person.host ? ' ' + R.person.host : '') + ' is set up on your other computer but has not reached this one yet. It arrives by itself when your computers next sync; Try again looks now.';
+  return 'Tip: set up your connection to friends (free) to sync anywhere within a second.';
 }
 /** Whether the no-relay line has a Try again (the relay exists, it has not arrived or its address was refused). */
 function syncRelayCanCheck(st) { const R = (st && st.relay) || {}; return !!(R.private || R.person || (R.hasKey && !R.available)); }
@@ -699,7 +699,7 @@ function _syncJoinPanel(card, j) {
   card.body.appendChild(box);
 }
 /**
- * The join link under the code on the computer that shows it (sync through your relay):
+ * The join link under the code on the computer that shows it (sync through your connection to friends):
  * Copy, "send it to yourself", and its own 2-minute countdown.
  */
 function _syncLinkBox(box, j) {
@@ -727,9 +727,9 @@ function _syncLinkBox(box, j) {
   if (wrap.childNodes.length) box.appendChild(wrap);
 }
 /**
- * "Paste the join link" + the 4 letters: a new computer with no shared folder (sync through your relay),
- * or (o.member, 2.17.1) a computer that already syncs and wants your relay now: it keeps everything,
- * and gets only the key to your relay.
+ * "Paste the join link" + the 4 letters: a new computer with no shared folder (sync through your connection to friends),
+ * or (o.member, 2.17.1) a computer that already syncs and wants your connection to friends now: it keeps everything,
+ * and gets only the key to your connection to friends.
  */
 function _syncLinkJoin(card, o) {
   const wrap = _syncEl('div', 'sync-link-join');
@@ -811,7 +811,7 @@ function _syncSetup(card, st, first) {
     card.body.appendChild(_syncEl('div', 'sync-step', 'Step 1 of 2'));
     card.body.appendChild(_syncEl('div', 'sync-pair-t', 'Name this computer, then join'));
   }
-  // The way: through your relay (recommended when one is connected) or a folder; a new computer: a link or a folder.
+  // The way: through your connection to friends (recommended when one is connected) or a folder; a new computer: a link or a folder.
   const ways = first ? (relayOk ? ['relay', 'folder'] : ['folder']) : ['link', 'folder'];
   if (!_syncVia || !ways.includes(_syncVia)) _syncVia = ways[0];
   if (ways.length > 1) {
@@ -961,9 +961,9 @@ function _syncFace(card, st, showAdd) {
   card.body.appendChild(face);
   _syncFacePaint(face, st);
   const R = st.relay || {};
-  // Your relay is waiting for its key here: the 4-letter code box, on the face.
+  // Your connection to friends is waiting for its key here: the 4-letter code box, on the face.
   if (R.on && R.state === 'denied' && !R.hasKey) _syncJoinInput(card);
-  // "This computer now syncs through your relay too" (it switched by itself, 2.17.1): Undo and OK.
+  // "This computer now syncs through your connection to friends too" (it switched by itself, 2.17.1): Undo and OK.
   const auto = syncRelayAutoLine(st);
   if (auto) {
     const cloud = syncCloudName(st);
@@ -971,7 +971,7 @@ function _syncFace(card, st, showAdd) {
     const okb = uiButton({ label: 'OK', kind: 'ghost', size: 'sm', bubble: true, run: () => _syncSave({ relayNotice: false }) });
     _syncNote(card, auto, 'ok', [undo, okb]);
   }
-  // A grey tip: your relay could carry this computer's changes too (or a friend's relay waits to be chosen).
+  // A grey tip: your connection to friends could carry this computer's changes too (or a friend's relay waits to be chosen).
   const tip = _syncRelayTip(st);
   if (tip) _syncNote(card, tip.text, 'idle', [tip.btn]);
   // A calm reminder, only for someone who had made a backup sheet and then removed a computer.
@@ -997,12 +997,12 @@ function _syncNote(card, text, tone, btns) {
   for (const b of btns || []) if (b) row.appendChild(b);
   card.body.appendChild(row);
 }
-/** "This computer now syncs through your relay too" (it switched by itself, 2.17.1). */
+/** "This computer now syncs through your connection to friends too" (it switched by itself, 2.17.1). */
 function syncRelayAutoLine(st) {
   const R = (st && st.relay) || {};
   if (!R.on || !R.autoAt) return null;
   const cloud = syncCloudName(st);
-  return 'This computer now syncs through your relay too, like your other computers' + (cloud ? '; ' + cloud + ' keeps a backup.' : '.');
+  return 'This computer now syncs through your connection to friends too, like your other computers' + (cloud ? '; ' + cloud + ' keeps a backup.' : '.');
 }
 /** The grey tip for a computer that syncs through a folder while a relay is there: {text, btn} or null. */
 function _syncRelayTip(st) {
@@ -1011,8 +1011,8 @@ function _syncRelayTip(st) {
   if (['key', 'record', 'private'].includes(R.missing)) return null;          // the status line says it, with Try again
   const v = syncRelayView(st);
   const cloud = syncCloudName(st) || 'your cloud folder';
-  if (v.act === 'use' && syncRelayReady(st)) return { text: 'Use your relay too: faster, and ' + cloud + ' keeps working alongside.', btn: _syncBtn('Use my relay too', () => _syncSave({ relay: true }, 'This computer syncs through your relay now (' + cloud + ' keeps a backup)'), true) };
-  if (v.act === 'relay') return { text: v.text, btn: _syncBtn('Open Your relay', () => setView('settings:relay')) };
+  if (v.act === 'use' && syncRelayReady(st)) return { text: 'Use your connection to friends too: faster, and ' + cloud + ' keeps working alongside.', btn: _syncBtn('Use my connection too', () => _syncSave({ relay: true }, 'This computer syncs through your connection to friends now (' + cloud + ' keeps a backup)'), true) };
+  if (v.act === 'relay') return { text: v.text, btn: _syncBtn('Open Your connection to friends', () => setView('settings:relay')) };
   return null;
 }
 
@@ -1098,7 +1098,7 @@ function _syncAddPanel(box) {
   p.appendChild(_syncBtn('Close', () => { _syncAdd = false; _syncOffer = null; _syncRefresh(); }));
   box.body.appendChild(_settingsRow('Add a phone', '', p));
 }
-/** Advanced > Ways to sync: your relay, the cloud folder, direct on the same Wi-Fi, outside home. */
+/** Advanced > Ways to sync: your connection to friends, the cloud folder, direct on the same Wi-Fi, outside home. */
 function _syncWays(box, st) {
   const R = st.relay || {}, L = st.live;
   const cloud = syncCloudName(st) || 'your cloud folder';
@@ -1109,22 +1109,22 @@ function _syncWays(box, st) {
     if (rs.fix) wrap.appendChild(_syncBtn(rs.fix.label, () => _syncRunFix(rs.fix)));
     if (R.transport === 'both') wrap.appendChild(_syncBtn('Stop using ' + cloud + '…', async () => {
       const ok = await confirmDialog({ title: 'Stop using ' + cloud + '?', text: 'Nothing is deleted. Computers that only use ' + cloud + ' stop getting this one\'s changes.', confirmLabel: 'Stop using ' + cloud });
-      if (ok) _syncSave({ folder: false }, 'This computer syncs through your relay only');
+      if (ok) _syncSave({ folder: false }, 'This computer syncs through your connection to friends only');
     }));
-    box.body.appendChild(_settingsRow('Your relay', R.transport === 'both' ? 'Your other computers should use the relay before you stop using ' + cloud + '.' : '', wrap));
+    box.body.appendChild(_settingsRow('Your connection to friends', R.transport === 'both' ? 'Your other computers should use the relay before you stop using ' + cloud + '.' : '', wrap));
   } else {
     const v = syncRelayView(st);
-    const btn = v.act === 'use' && syncRelayReady(st) ? _syncBtn('Use my relay too', () => _syncSave({ relay: true }, 'This computer syncs through your relay now'), true)
+    const btn = v.act === 'use' && syncRelayReady(st) ? _syncBtn('Use my connection too', () => _syncSave({ relay: true }, 'This computer syncs through your connection to friends now'), true)
       : v.act === 'check' ? _syncBtn('Try again', () => _syncPost('/api/sync/relay/check'))
-        : v.act === 'relay' ? _syncBtn('Open Your relay', () => setView('settings:relay')) : _syncBtn('Your relay', () => setView('settings:relay'));
-    box.body.appendChild(_settingsRow('Your relay', v.act === 'use' ? 'Faster, and ' + cloud + ' keeps working alongside.' : v.text, btn));
+        : v.act === 'relay' ? _syncBtn('Open Your connection to friends', () => setView('settings:relay')) : _syncBtn('Your connection to friends', () => setView('settings:relay'));
+    box.body.appendChild(_settingsRow('Your connection to friends', v.act === 'use' ? 'Faster, and ' + cloud + ' keeps working alongside.' : v.text, btn));
   }
   box.body.appendChild(_settingsRow(st.folder ? _syncCap(cloud) + ' folder' : 'Cloud folder (optional)', 'Freeflo keeps an "OpenDash Sync" folder in it.', _syncFolderControl(st)));
   if (L) {
     box.body.appendChild(_settingsRow('Direct on the same Wi-Fi', 'Changes show within a second when both computers are on the same Wi-Fi.', _settingsSwitch(!!L.on, 'Direct on the same Wi-Fi', (v) => _syncPost('/api/sync/live', { enabled: v }, v ? 'Direct on the same Wi-Fi is on' : 'Direct on the same Wi-Fi is off'), _syncBusy)));
-    // L4: on 'auto' (off and hidden while your relay is in use); shown again if you turned it on yourself.
+    // L4: on 'auto' (off and hidden while your connection to friends is in use); shown again if you turned it on yourself.
     const relay = syncViaRelay(st);
-    if (L.on && (!relay || (L.internetSet && L.internet))) box.body.appendChild(_settingsRow('Let my computers reach this one from outside home', 'Asks your router to let them in. Not needed with your relay.', _settingsSwitch(L.internet !== false, 'Let my computers reach this one from outside home', (v) => _syncPost('/api/sync/live', { internet: v }, v ? 'Asking your router' : 'Your router is left alone'), _syncBusy)));
+    if (L.on && (!relay || (L.internetSet && L.internet))) box.body.appendChild(_settingsRow('Let my computers reach this one from outside home', 'Asks your router to let them in. Not needed with your connection to friends.', _settingsSwitch(L.internet !== false, 'Let my computers reach this one from outside home', (v) => _syncPost('/api/sync/live', { internet: v }, v ? 'Asking your router' : 'Your router is left alone'), _syncBusy)));
   }
 }
 /** Advanced: ways to sync, preview, which computer does what, details for support. */
@@ -1301,9 +1301,9 @@ registerSettingsGroup({
     { label: 'Emergency backup sheet', target: 'Emergency backup sheet', description: 'Print one in case you lose every computer.', keywords: 'recovery code backup words lost all computers print sheet' },
     { label: 'Sync now', target: 'Sync now', description: 'Look for changes now.', keywords: 'check now refresh folder' },
     { label: 'Turn off sync on this computer', target: 'Turn off sync on this computer', description: 'Nothing is deleted.', keywords: 'disable stop sync across my devices' },
-    { label: 'Ways to sync', target: 'Your relay', description: 'Your relay, your cloud folder and direct on the same Wi-Fi.', keywords: 'relay folder onedrive google drive dropbox transport' },
+    { label: 'Ways to sync', target: 'Your connection to friends', description: 'Your connection to friends, your cloud folder and direct on the same Wi-Fi.', keywords: 'relay folder onedrive google drive dropbox transport' },
     { label: 'Direct on the same Wi-Fi', target: 'Direct on the same Wi-Fi', description: 'Changes show within a second on the same Wi-Fi.', keywords: 'live sync connection lan instant realtime peer' },
-    { label: 'Let my computers reach this one from outside home', target: 'Ways to sync', description: 'Only shown when your relay isn\'t in use.', keywords: 'router upnp nat port internet reach' },
+    { label: 'Let my computers reach this one from outside home', target: 'Ways to sync', description: 'Only shown when your connection to friends isn\'t in use.', keywords: 'router upnp nat port internet reach' },
     { label: 'Preview changes first', target: 'Preview changes first', description: 'List what your other computers changed, without using it.', keywords: 'trial shadow apply use changes from my other computers' },
     { label: 'Which computer does what', target: 'Runs Claude jobs', description: 'Who checks each account, answers your phone and runs Claude jobs.', keywords: 'claude host fetcher accounts phone main computer for each account' },
     { label: 'Details for support', target: 'Details for support', description: 'Each computer\'s direct link, in plain words.', keywords: 'connection reasons firewall router live connection' },
