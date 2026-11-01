@@ -85,7 +85,23 @@ export default function register(app) {
     return done(c, r, { claimId: r.claimId, claim: r.claim });
   });
   post('unsubmit', async (c, b) => done(c, await X.unsubmit(dataDir, ids(b), { home: home() })));
-  post('paid', async (c, b) => done(c, await X.markPaid(dataDir, ids(b), { date: b.date, txKey: b.txKey || await paidCredit(c, b), learnFrom: typeof b.memo === 'string' ? b.memo : '', today: todayOf(c), home: home() })));
+  post('paid', async (c, b) => {
+    const txKey = b.txKey || await paidCredit(c, b);
+    const r = await X.markPaid(dataDir, ids(b), { date: b.date, txKey, learnFrom: typeof b.memo === 'string' ? b.memo : '', today: todayOf(c), home: home() });
+    // No bank payment was sure: say so, and offer the likely ones, so the money does not sit in income unnoticed.
+    const unlinked = !r.error && !txKey ? await unlinkedOf(c, r.ids || ids(b), b.date) : null;
+    return done(c, r, unlinked ? { unlinked } : {});
+  });
+  /** Which bank payment was it? {ids}: the likely ones. */
+  post('paid-candidates', async (c, b) => ({ ok: true, unlinked: await unlinkedOf(c, ids(b), b.date) }));
+  /** {ids, txKey}: that payment paid them back. {ids, noBank: true}: it did not come through the bank. */
+  post('paid-link', async (c, b) => {
+    if (b.noBank === true) return done(c, await X.linkPaid(dataDir, ids(b), '', { home: home() }));
+    const key = typeof b.txKey === 'string' ? b.txKey : '';
+    const list = await bankCredits(c);
+    if (!key || !list.some(x => x.txKey === key)) throw new HttpError(409, 'That payment is not in your bank list any more. Open it again and pick another.');
+    return done(c, await X.linkPaid(dataDir, ids(b), key, { home: home() }));
+  });
   post('unpaid', async (c, b) => done(c, await X.markUnpaid(dataDir, ids(b), { home: home() })));
   post('payer', async (c, b) => { const r = await X.setPayer(dataDir, String(b && b.name || ''), b && b.patch, { today: todayOf(c), home: home() }); return done(c, r, { payer: r.payer }); });
   post('prefs', async (c, b) => done(c, await X.setPrefs(dataDir, b && b.patch, { home: home() })));
@@ -131,6 +147,25 @@ export default function register(app) {
     },
   });
 
+  /** Money in that can still be matched: not one a friend's payment already took. */
+  const bankCredits = async (c) => {
+    try {
+      const { financeData } = await import('../../lib/finance.mjs');
+      const d = await financeData();
+      if (!d || d.status !== 'ok') return [];
+      const taken = owedUsed(await readOwed(dataDir, { home: home() }));
+      return X.creditsFromAnalysis(d.analysis, { today: todayOf(c) }).filter(x => !taken.has(x.k) && !taken.has(x.txKey));
+    } catch { return []; }
+  };
+  /** Marked paid with no bank payment: how much, and what it might have been. null when nothing is counted either way (the setting is off, or another currency). */
+  const unlinkedOf = async (c, list, date) => {
+    const O = await readOwed(dataDir, { home: home() });
+    if (!O.prefs || !O.prefs.netSpending) return null;
+    const S = await X.readStore(dataDir, { home: home() });
+    const open = X.unlinkedPaid(S, list, home());
+    if (!open.length) return null;
+    return { ids: open.map(e => e.id), amount: Math.round(open.reduce((t, e) => t + e.amount, 0) * 100) / 100, candidates: X.paidCandidates(S, open.map(e => e.id), await bankCredits(c), typeof date === 'string' && date ? date : '') };
+  };
   /** Marked by hand: the money in it must have been, so that is not counted as income either. */
   const paidCredit = async (c, b) => {
     try {
@@ -149,9 +184,11 @@ export default function register(app) {
     const today = todayOf(c);
     if (!analysis) return { ok: true, auto: [], ask: [], data: await view(c) };
     const taken = owedUsed(await readOwed(dataDir, { home: home() }));   // a payment that paid back a friend is not also a claim paid
-    const r = await X.scanPaid(dataDir, X.creditsFromAnalysis(analysis, { today }).filter(x => !taken.has(x.k) && !taken.has(x.txKey)), { today, home: home() });
+    const free = X.creditsFromAnalysis(analysis, { today }).filter(x => !taken.has(x.k) && !taken.has(x.txKey));
+    const r = await X.scanPaid(dataDir, free, { today, home: home() });
     if (r.auto.length) log('info', `expenses: ${r.auto.length} payment(s) matched`);
-    const rebuilt = r.auto.length ? await syncNet() : false;
+    const late = await X.linkLatePaid(dataDir, free, { home: home() }).catch(() => 0);
+    const rebuilt = r.auto.length || late ? await syncNet() : false;
     return { ok: true, ...(rebuilt ? { rebuilt } : {}), auto: r.auto, ask: r.ask, ...(r.undo ? { undo: r.undo } : {}), data: await view(c) };
   });
   post('answer', async (c, b) => {

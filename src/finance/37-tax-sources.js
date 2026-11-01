@@ -263,12 +263,13 @@
   /** "£4,000 so far + £2,500 on 30 Nov = £6,500 this year": what this job adds up to, before tax. */
   function txJobLine(j) {
     const s = j.summary;
-    if (!s || !(s.total > 0)) return null;
+    if (!s || !(s.total > 0 || (s.later || []).length)) return null;
     const c = s.coming || [];
     let more = '';
     if (c.length && c.length <= 3) more = c.map(p => ` + ${gbp2(p.gross)} on ${fDay(dnum(p.date))}`).join('');
     else if (c.length) { const first = c[0].gross, same = c.every(p => Math.abs(p.gross - first) < 0.01); more = same ? ` + ${c.length} more payments of ${gbp2(first)}` : ` + ${c.length} more payments, ${gbp2(c.reduce((t, p) => t + p.gross, 0))} in all`; }
-    return `${gbp2(s.soFar)} so far${s.soFarFrom === 'estimate' ? ' (our estimate)' : ''}${more} = ${gbp2(s.total)} this year${s.before ? `, plus ${gbp2(s.before)} from an earlier job` : ''}. All before tax.`;
+    const after = (s.later || []).map(p => ` ${gbp2(p.gross)} on ${fDay(dnum(p.date))} counts in ${p.yearLabel}.`).join('');
+    return `${gbp2(s.soFar)} so far${s.soFarFrom === 'estimate' ? ' (our estimate)' : ''}${more} = ${gbp2(s.total)} this year${s.before ? `, plus ${gbp2(s.before)} from an earlier job` : ''}. All before tax.${after}`;
   }
   /** "ended 31 Aug 2026", "ends 30 Nov 2026", "starts 1 Dec 2026": a job that is not an ongoing salary says so at once. */
   function txJobTag(j, v) {

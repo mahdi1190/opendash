@@ -65,7 +65,7 @@
   }
   /* ---------- the card on the page ---------- */
   function txFiling(v) {
-    if (v.filing.answer === 'no' && !v.filed) return v.yearState === 'current' ? null : txCard('fv-tx-file', txHead('Your tax return', v.filing.say), h('div', { class: 'fv-pl-acts' }, txBtn('Make the figures pack anyway', 'file-down', () => txMakePack(v), 'ghost')));
+    if (v.filing.answer === 'no' && !v.filed) return v.yearState !== 'past' ? null : txCard('fv-tx-file', txHead('Your tax return', v.filing.say), h('div', { class: 'fv-pl-acts' }, txBtn('Make the figures pack anyway', 'file-down', () => txMakePack(v), 'ghost')));
     const fileIt = h('div', { class: 'fv-pl-acts' }, txBtn('File my return', 'send', () => txOpenWalk(), 'primary'), txBtn('Make the return pack', 'file-down', () => txMakePack(v)));
     const withIds = h('label', { class: 'fv-tx-check' }, h('input', { type: 'checkbox', id: 'tx-pack-ids' }), h('span', null, 'Put my UTR and National Insurance number on the pack', h('small', { text: 'Off by default. Only tick this if you are giving it to your accountant.' })));
     return txCard('fv-tx-file',
