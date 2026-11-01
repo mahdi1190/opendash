@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.58.1]
+
+### Fixed
+- **The odd red, orange and blue circles and ovals in the garden are gone.** Lights now glow softly instead of showing as solid discs, and the seasons leave scattered leaves, petals, flowers and soft snow rather than big see-through ovals.
+- **The garden should stutter less.** It has far fewer things to draw, most of all in summer.
+
 ## [2.58.0]
 
 ### Changed

@@ -257,7 +257,7 @@ html[data-theme="dark"] .gd-ico.is-sil, .dark .gd-ico.is-sil { filter: brightnes
 .gd-svg .gda-flutter { transform-box: fill-box; transform-origin: 50% 50%; animation: gda-flutter .32s ease-in-out infinite alternate; }
 @keyframes gda-flutter { from { transform: scaleX(1); } to { transform: scaleX(.35); } }
 .gd-svg .gda-glow { animation: gda-glow 3.2s ease-in-out infinite alternate; }
-@keyframes gda-glow { from { opacity: .55; } to { opacity: 1; } }
+@keyframes gda-glow { from { fill-opacity: .55; } to { fill-opacity: 1; } }   /* not opacity: that overrode a glow's own faint opacity and showed it as a solid disc */
 .gd-svg .gda-ripple { transform-box: fill-box; transform-origin: 50% 50%; animation: gda-ripple 4.5s ease-in-out infinite; }
 @keyframes gda-ripple { 0%, 100% { opacity: .35; transform: scale(.92); } 50% { opacity: .9; transform: scale(1.05); } }
 .gd-svg .gda-flicker { transform-box: fill-box; transform-origin: 50% 100%; animation: gda-flicker .9s steps(3) infinite alternate; }

@@ -47,21 +47,29 @@ function _gtgIceSvg() {
   for (const [hx, hy] of _GTG_HOLES) { if (gardenPropAt(hx, hy)) continue; const cx = (hx + 0.5) * cw, cy = W.sky + (hy + 0.5) * ch; s += `<ellipse cx="${n(cx)}" cy="${n(cy + 1)}" rx="20" ry="11" fill="#f4fafc"/><ellipse cx="${n(cx)}" cy="${n(cy)}" rx="16" ry="8.5" fill="#1c4a66"/><ellipse cx="${n(cx - 3)}" cy="${n(cy - 1.6)}" rx="8" ry="3" fill="#37708f" fill-opacity="0.8"/><path d="M${n(cx - 24)} ${n(cy + 5)}l5 -3l3 4zM${n(cx + 20)} ${n(cy - 5)}l6 1l-3 4z" fill="#ffffff"/>`; }
   return s;
 }
+/* What the season leaves on the ground: scattered, thicker towards the middle, with no flat colour under it (a big see-through oval showed as a hard-edged disc over the paths; the owner, 1 Nov 2026). One path for each colour, not a node for each leaf: summer alone was 900 nodes. */
 function _gtgPatchSvg(season, seed) {
-  const W = GARDEN_WORLD, rnd = gardenRand('tg-p|' + seed + season), n = (v) => v.toFixed(1); let s = '';
+  const W = GARDEN_WORLD, rnd = gardenRand('tg-p|' + seed + season), n = (v) => v.toFixed(1), by = new Map();
+  const add = (c, d) => by.set(c, (by.get(c) || '') + d);
+  const leaf = (x, y, l, w) => { const a = rnd() * 3.142, cx = Math.cos(a), sx = Math.sin(a); return `M${n(x - cx * l)} ${n(y - sx * l)}Q${n(x + sx * w)} ${n(y - cx * w)} ${n(x + cx * l)} ${n(y + sx * l)}Q${n(x - sx * w)} ${n(y + cx * w)} ${n(x - cx * l)} ${n(y - sx * l)}z`; };
+  const dot = (x, y, r) => `M${n(x - r)} ${n(y)}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 ${-r * 2} 0z`;
+  let s = '', i = 0;
+  if (season === 'winter') s += '<defs><radialGradient id="tg-snow"><stop offset="0" stop-color="#ffffff" stop-opacity=".85"/><stop offset=".65" stop-color="#ffffff" stop-opacity=".6"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>';
   for (const [cx, cy, r] of GTG_SEASON_AT.patches) {
     const px = cx * W.cellW, py = W.sky + cy * W.cellH, rx = r * W.cellW, ry = r * W.cellH * 0.8;
-    if (season === 'spring') { s += `<ellipse cx="${n(px)}" cy="${n(py)}" rx="${n(rx)}" ry="${n(ry)}" fill="#f8cfdc" fill-opacity="0.34"/>`; for (let i = 0; i < 46; i++) { const a = rnd() * 6.283, d = Math.sqrt(rnd()), x = px + Math.cos(a) * rx * d, y = py + Math.sin(a) * ry * d; s += `<ellipse cx="${n(x)}" cy="${n(y)}" rx="2.6" ry="1.5" fill="${['#fbdce6', '#f4b4c8', '#ffffff'][i % 3]}" transform="rotate(${Math.floor(rnd() * 180)} ${n(x)} ${n(y)})"/>`; } }
-    else if (season === 'summer') { s += `<ellipse cx="${n(px)}" cy="${n(py)}" rx="${n(rx)}" ry="${n(ry)}" fill="#8fb65a" fill-opacity="0.45"/>`; for (let i = 0; i < 44; i++) { const a = rnd() * 6.283, d = Math.sqrt(rnd()), x = px + Math.cos(a) * rx * d, y = py + Math.sin(a) * ry * d, c = ['#e8483a', '#f4d03a', '#ffffff', '#b06ad8', '#5a9ae8'][i % 5]; s += `<path d="M${n(x)} ${n(y + 3)}v-7" stroke="#5a8a3a" stroke-width="1"/><circle cx="${n(x)}" cy="${n(y - 5)}" r="2.3" fill="${c}"/><circle cx="${n(x)}" cy="${n(y - 5)}" r="0.8" fill="#4a3a14"/>`; } }
-    else if (season === 'autumn') { s += `<ellipse cx="${n(px)}" cy="${n(py)}" rx="${n(rx)}" ry="${n(ry)}" fill="#c8782a" fill-opacity="0.3"/>`; for (let i = 0; i < 60; i++) { const a = rnd() * 6.283, d = Math.sqrt(rnd()), x = px + Math.cos(a) * rx * d, y = py + Math.sin(a) * ry * d; s += `<path d="M${n(x - 4)} ${n(y)}Q${n(x)} ${n(y - 3.4)} ${n(x + 4)} ${n(y)}Q${n(x)} ${n(y + 3.4)} ${n(x - 4)} ${n(y)}" fill="${['#d8682a', '#e8a83a', '#a84a1a', '#c8382a', '#d8b84a'][i % 5]}" transform="rotate(${Math.floor(rnd() * 180)} ${n(x)} ${n(y)})"/>`; } }
-    else { s += `<ellipse cx="${n(px)}" cy="${n(py)}" rx="${n(rx * 1.1)}" ry="${n(ry)}" fill="#ffffff" fill-opacity="0.72"/><ellipse cx="${n(px - rx * 0.2)}" cy="${n(py - 3)}" rx="${n(rx * 0.6)}" ry="${n(ry * 0.5)}" fill="#ffffff" fill-opacity="0.8"/>`; }
+    const at = () => { const a = rnd() * 6.283, d = rnd(); return [px + Math.cos(a) * rx * d, py + Math.sin(a) * ry * d]; };
+    if (season === 'spring') for (let k = 0; k < 46; k++, i++) { const [x, y] = at(); add(['#fbdce6', '#f4b4c8', '#ffffff'][i % 3], leaf(x, y, 2.6, 1.5)); }
+    else if (season === 'summer') for (let k = 0; k < 44; k++, i++) { const [x, y] = at(); add('stem', `M${n(x)} ${n(y + 3)}v-7`); add(['#e8483a', '#f4d03a', '#ffffff', '#b06ad8', '#5a9ae8'][i % 5], dot(x, y - 5, 2.3)); add('#4a3a14', dot(x, y - 5, 0.8)); }
+    else if (season === 'autumn') for (let k = 0; k < 60; k++, i++) { const [x, y] = at(); add(['#d8682a', '#e8a83a', '#a84a1a', '#c8382a', '#d8b84a'][i % 5], leaf(x, y, 4, 3.4)); }
+    else s += `<ellipse cx="${n(px)}" cy="${n(py)}" rx="${n(rx * 1.25)}" ry="${n(ry * 1.15)}" fill="url(#tg-snow)"/>`;
   }
+  for (const [c, d] of by) s += c === 'stem' ? `<path d="${d}" stroke="#5a8a3a" stroke-width="1" fill="none"/>` : `<path d="${d}" fill="${c}"/>`;
   return s;
 }
 function _gtgFallSvg(season) {
   if (season !== 'spring' && season !== 'autumn') return '';
   const W = GARDEN_WORLD, rnd = gardenRand('tg-fall' + season), cols = season === 'spring' ? ['#fbdce6', '#f4b4c8', '#ffffff'] : ['#d8682a', '#e8a83a', '#c8382a']; let s = '';
-  for (let i = 0; i < 16; i++) { const t = GTG_SEASON_AT.trees[i % GTG_SEASON_AT.trees.length], x = (t[0] + rnd() * 3 - 1.5) * W.cellW, y = W.sky + t[1] * W.cellH - 70 - rnd() * 40; s += `<ellipse class="tg-fall" style="animation-delay:-${(rnd() * 9).toFixed(1)}s" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="1.8" fill="${cols[i % 3]}"/>`; }
+  for (let i = 0; i < 8; i++) { const t = GTG_SEASON_AT.trees[i % GTG_SEASON_AT.trees.length], x = (t[0] + rnd() * 3 - 1.5) * W.cellW, y = W.sky + t[1] * W.cellH - 70 - rnd() * 40; s += `<ellipse class="tg-fall" style="animation-delay:-${(rnd() * 9).toFixed(1)}s" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="3" ry="1.8" fill="${cols[i % 3]}"/>`; }
   return s;
 }
 function _gtgGround(m) {
