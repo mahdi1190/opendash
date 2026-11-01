@@ -86,7 +86,7 @@ function _gvbCatches(el, rows) {
   const by = _gvb.sort === 'big' ? (r) => (r.k === 'b' ? (Number(r.c) || 0) / 10 : Number(r.c) || 0) : _gvb.sort === 'new' ? (r) => Number(r.n) || 0 : gardenSpecScore;
   list = list.slice().sort((a, b) => by(b) - by(a));
   const place = ['best', _gvb.kind, _gvb.sort, _gvb.tier, _gvb.id].join(':');
-  gardenPager(el, { key: place, items: list, grid: 'gd-grid gdc-grid gvb-grid gpg-gear', row: 238, rowSm: 216, draw: _gvbCard, none: 'Nothing here with those filters.' });
+  gardenPager(el, { key: place, items: list, grid: 'gd-grid gdc-grid gvb-grid gpg-gear', row: 238, rowSm: 224, draw: _gvbCard, none: 'Nothing here with those filters.' });
 }
 
 /* ---------- every variant, and how to find it ---------- */
@@ -98,7 +98,7 @@ function _gvbVariants(el) {
   const tiers = Object.values(GARDEN_VARIANT_TIERS), cur = tiers.some(t => t.id === _gvb.vtier) ? _gvb.vtier : tiers[0].id;
   el.appendChild(_gdxChips(tiers.map(t => [t.id, `${t.label} ${GARDEN_VARIANTS.filter(V => V.tier === t.id && g.vl[V.id]).length}/${GARDEN_VARIANTS.filter(V => V.tier === t.id).length}`]), cur, (k) => { _gvb.vtier = k; _gdxRepaintTab(); }));
   const t = tiers.find(x => x.id === cur), place = 'best:variants:' + cur, cmp = (a, b) => (g.vl[a.id] ? 0 : 1) - (g.vl[b.id] ? 0 : 1) || String(a.name).localeCompare(b.name);
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, GARDEN_VARIANTS.filter(V => V.tier === t.id), V => V.id, cmp), grid: 'gd-grid gdc-grid gvb-grid gpg-gear', row: 216, rowSm: 200, draw: (V) => {
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, GARDEN_VARIANTS.filter(V => V.tier === t.id), V => V.id, cmp), grid: 'gd-grid gdc-grid gvb-grid gpg-gear', row: 216, rowSm: 204, draw: (V) => {
     const l = g.vl[V.id], kind = V.for === 'bug' ? 'bug' : 'fish', c = _gdpEl('div', 'gd-card gvb-var' + (l ? ' gvb-c-' + t.id : ' is-unknown'));
     const onId = l && l.i && (gardenFishDef(l.i) || gardenBugDef(l.i)) ? l.i : (kind === 'bug' ? 'small-tortoiseshell' : 'perch');
     const k2 = gardenFishDef(onId) ? 'fish' : 'bug';

@@ -182,6 +182,25 @@ html[data-theme="dark"] .gpg-mid, html[data-theme="dark"] .gpg-what { color: inh
   .gpg-gear > .gd-card .gd-card-art svg { max-height: 42px; }
   .gpg-gear .gd-card-t small.muted { -webkit-line-clamp: 2; }
   .gdb-head > p.muted, .gdc-intro { display: none; }
-  .gd-deal { display: none !important; }
   .modal.gd-popup .modal-h { min-height: 40px; padding-block: 4px; }
 }
+@media (max-height: 640px) { .gd-deal { display: none !important; } }
+.gpg-gear .gdc-gear .gd-card-t small.muted { -webkit-line-clamp: 2; }
+/* nine tabs on one row, down to a small window */
+@media (max-width: 1160px) { .gdc-top .seg button { padding: 0 7px; gap: 4px; } .gdc-top .seg button .i { display: none; } }
+@media (max-height: 700px) {
+  .gdb-head .gdb-filter-l { display: none; }
+  .gdb-head.card { padding: 6px 10px; gap: 4px 8px; }
+  .modal.gd-popup .seg button { height: 26px; }
+}
+@media (max-width: 760px) { .gcr-right { max-height: 34vh; } }
+/* the trick book and the scene picker use the same arrows */
+.gpg-page.ptb-cards { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.ptb.is-panel .ptb-grid.gpg-box { overflow: hidden; }
+.pf-l-scenes:has(> .gpg) { display: block; max-height: none; overflow: visible; }
+.gpg-page.pf-l-pagegrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.gpg-page.pf-l-pagegrid > .chip { width: 100%; max-width: none; justify-content: flex-start; }
+/* (this file is named to come after 94-garden.css: "-" sorts before ".") */
+html[data-theme="dark"] .gcr .gpg-mid, html[data-theme="dark"] .gcr .gpg-what { color: #f0e6d0; }
+html[data-theme="dark"] .gcr .gpg-arrow.is-off { color: #a89c84; background: #3a3226; border-bottom-color: #2f2a20; }
+.modal.gd-popup .gcr-body.modal-b { scrollbar-gutter: auto; }
