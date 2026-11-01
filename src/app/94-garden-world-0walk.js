@@ -112,7 +112,7 @@ function _gwBuildGrid(m) {
 }
 function _gwGrid(m) {
   if (_gw.boat && typeof gardenBoatGrid === 'function') return gardenBoatGrid();   // in a boat the water is the ground: 94-garden-fish-9world.js
-  const key = (m && m.visit ? m.visit.key : _gd.memoKey) + '|' + (m && m.level.level);
+  const key = (m && m.visit ? m.visit.key : _gd.memoKey) + '|' + (m && m.level.level) + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0);   // (a moved shop is a moved wall)
   if (!_gw.grid || _gw.gridKey !== key) { const mm = m || gardenHere(); _gw.grid = _gwBuildGrid(mm); _gw.solids = _gwBuildSolids(mm); _gw.gridKey = key; }
   return _gw.grid;
 }
@@ -525,6 +525,7 @@ function _gwCamTarget() {
   const W = GARDEN_WORLD, wpx = W.cols * W.cellW, hpx = W.sky + W.rows * W.cellH, s = _gwSize();
   if (!s.w || !s.h) return null;
   const ar = s.w / s.h;
+  if (typeof gardenDesignCam === 'function') { const dc = gardenDesignCam(ar, wpx, hpx); if (dc) return dc; }   // the designer's own view, moved with its own buttons
   // fishing locks the camera onto you and the bobber: close in, and back out again when the line is in
   if (typeof _gwFishBusy === 'function' && _gwFishBusy() && _gw.fishing) {
     const F = _gw.fishing, bx = F.bx * W.cellW, by = W.sky + F.by * W.cellH, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 30;

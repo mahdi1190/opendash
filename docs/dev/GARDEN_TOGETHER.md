@@ -384,3 +384,13 @@ What a person carries goes in their look as `g` (ids; a receiver draws from its 
 **There is no central server, and this adds none.** The friends board (`gardenSpecBoard`) is what this computer has heard from your friends, and the page says so.
 
 **Economy.** A variant pays `tier.sell` times at the market, added to the sale's total before the daily limit applies, so `marketFish` and `marketBugs` still rule it. XP is untouched.
+
+## 24. A garden's design
+
+`94-garden-design-*.js` (the headers there are the design). A snapshot's `dz` is `{p, g, m, c}`: drawn paths, painted ground, fixed things moved, and things made. Ids from the tables and numbers, plus the one line of words on a sign, cleaned, at most 24 letters and only ever set with `textContent`. `GARDEN_SCHEMA` is strict and an older app drops the field. A friend's `dz` stays in memory on the visit: it never goes in your state file.
+
+**The host's design decides.** `gardenVisitModel` puts `dz` on screen with `gardenDesignShow`, which moves the rows of `GARDEN_PROPS` and the land's tables themselves, so walls, doors and clicks all follow. Keeping changes emits `landshow`, so friends in a live garden get the snapshot again at once. A draft is never sent. A guest on an older app sees shops where the tables say.
+
+**It may not fit.** `gardenDesignWire` caps `dz` at 6000 bytes and the saved copy gives way before any decoration (`gardenDesignSnapTrim`): ground goes first, then the newest paths. Moved things and things made always go. The designer says what is left out and dashes it in red.
+
+**One rule for standing in the way** (`_gdzReachWhy`): it builds the same grid the walking uses, before and after, and refuses if any land you could reach, or any door you could reach, would be cut off, in plain words. It runs on a move, on Put it back and on swapping to an older layout. Decorations put out by hand away from the designer are not checked for this, as before.

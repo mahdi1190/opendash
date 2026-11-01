@@ -321,7 +321,7 @@ function _gwReeds(sc, o) {
 /** The standing scenery: [{z, x, html}] sorted in with plants and decorations. */
 function gardenWorldProps(sc, o) {
   const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky, out = [], open = new Set(sc.areas || []);
-  const wrap = (cls, z, x, inner, key) => ({ z, x, html: `<g class="gd-it gd-prop ${cls}" data-sig="${gardenHash(key + inner.length + sc.tod + sc.season).toString(36)}" data-prop="${key}" data-z="${z}" data-x="${x}">${inner}</g>` });
+  const wrap = (cls, z, x, inner, key) => ({ z, x, html: `<g class="gd-it gd-prop ${cls}" data-sig="${gardenHash(key + '|' + x + '|' + z + '|' + inner.length + sc.tod + sc.season).toString(36)}" data-prop="${key}" data-z="${z}" data-x="${x}">${inner}</g>` });
   // a row of GARDEN_PROPS is drawn by its `kind`, from this table: a new building is one row there and one function here
   const art = { tackle: (p) => _gwHouse(p, sc, o, _GW_HOUSES.tackle), shop: (p) => _gwHouse(p, sc, o, _GW_HOUSES.shop), stall: (p) => _gwStall(p, sc, o), board: (p) => _gwBoard(p, sc, o), lectern: (p) => _gwLectern(p, sc, o), tripod: (p) => _gwTripod(p, sc, o), postbox: (p) => _gwPostbox(p, sc, o), sundial: (p) => _gwSundial(p, sc, o), bench: (p) => (typeof gardenCraftBenchArt === 'function' ? gardenCraftBenchArt(p, sc, o) : ''), boat: () => _gwBoat(sc, o), reeds: () => _gwReeds(sc, o) };
   if (typeof gardenCatchPropArt === 'function') Object.assign(art, gardenCatchPropArt(sc, o));   // the lake hall, the board, the old angler, the smoker
@@ -331,6 +331,7 @@ function gardenWorldProps(sc, o) {
     if (inner) out.push(wrap('gd-prop-' + p.kind + (p.act ? ' gd-prop-click' : ''), Math.ceil(p.y + p.h), p.x, inner, p.id));
   }
   if (typeof gardenLandWorldProps === 'function') for (const r of gardenLandWorldProps(sc, o)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // the land office and what has been built on the land
+  if (typeof gardenDesignWorldProps === 'function') for (const r of gardenDesignWorldProps(sc)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // what you made in the designer
   // what has been built for the lake stands where it is (94-garden-fish-7gear.js). pointer-events: a click there is still a click on the water
   if (typeof gardenWorksArt === 'function') for (const r of gardenWorksArt(sc)) out.push(wrap('gd-prop-work', r.y, r.x, `<g pointer-events="none" transform="translate(${_gwN(r.x * cw)} ${_gwN(base + r.y * ch)})">${r.svg}</g>`, 'work-' + r.key));
   if (typeof gardenCatchWorldArt === 'function') for (const r of gardenCatchWorldArt(sc, o)) { const it = wrap('gd-prop-work', r.z, r.x, r.svg, 'ca-' + r.key); if (r.wide) it.html = it.html.replace(/ data-x="[^"]*"/, ''); out.push(it); }   // spots, events, the rack: 94-garden-fish-9world.js
