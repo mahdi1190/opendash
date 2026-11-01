@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.57.0]
+
+### Changed
+- **Indoor places are redrawn, each with its own door you can recognise.** Fish in the grotto and the cellar just as you do at the lake, with your own rod and shadows in the water, and every room has a proper game.
+- **The line and yellow flag in the lake are gone.** Fishing spots now explain themselves when you point at them or go near.
+
 ## [2.56.0]
 
 ### Changed
