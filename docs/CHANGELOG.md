@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.52.1]
+
+### Changed
+- **The garden designer is stricter, so gardens stay tidy.** Paths join up, buildings face a path, furniture has room, paint comes in whole patches and landmarks stay put. It snaps to good spots and tells you why if something won't go. What you already placed stays.
+
 ## [2.52.0]
 
 ### Changed
