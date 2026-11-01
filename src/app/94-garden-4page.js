@@ -131,6 +131,7 @@ function _gdpWorldView() { return state.view === 'garden' || (typeof gardenVisit
 function _gdpBasketCount(m) { let n = 0; for (const [k, v] of Object.entries(m.wallet.items)) if (v > 0 && (k.startsWith('crop:') || k.startsWith('bq:') || k === 'honey')) n += v; return n; }
 /** Everything that shows the garden, brought up to date (the engine calls this after every change). */
 function _gdpRepaint() {
+  if (_grm.on || _ee.on) { _gdp.owed = true; return; }   // nobody can see the stage from a room: going in saves a mark, and that alone redrew the whole garden, a quarter of a second, on the way in. It is done on the way out (_gwIndoors).
   _gdpRepaintInner();
   if (_gdp.pop && typeof gardenPopupRefresh === 'function') gardenPopupRefresh();   // a pop-up over the garden shows the new state too
 }

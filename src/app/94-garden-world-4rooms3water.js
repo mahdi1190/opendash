@@ -124,10 +124,11 @@ function _grmPaintFig(M, t) {
   const P = _grmPose(M), motion = gardenMotionOn(), key = P.pose + P.dir + (motion ? 'm' : '') + JSON.stringify(P.gear);
   if (M.key !== key) { M.key = key; let s = ''; try { s = gartPlayerSvg(M.a, { dir: P.dir, pose: P.pose, motion, stageRod: P.rod, gear: P.gear }); } catch (e) { s = ''; } M.in.innerHTML = s || _eeFigure(M.a, P.dir, M.moving); }
   const bob = !motion ? 0 : M.moving ? -Math.abs(Math.sin(t * 11)) * 2 : 0;
-  M.g.setAttribute('transform', `translate(${M.x.toFixed(1)} ${M.y.toFixed(1)})`);
+  // only what has changed: setting a transform to what it already is still lays the room out again, and this runs every frame for everybody in the room (M.g and M.bob are new when a person is redrawn, so what is remembered goes with them)
+  const tf = `translate(${M.x.toFixed(1)} ${M.y.toFixed(1)})`; if (M.g._tf !== tf) { M.g._tf = tf; M.g.setAttribute('transform', tf); }
   if (P.rod && M.me) M.face = _gw.face;
-  M.bob.setAttribute('transform', `translate(0 ${bob.toFixed(2)}) scale(${P.dir === 'e' && M.face < 0 ? -EE.fig : EE.fig} ${EE.fig})`);
-  const tag = M.g.querySelector('.ee-pname'); if (tag) tag.style.display = (M.me ? _gmo.g : M.heldG) ? 'none' : '';
+  const bf = `translate(0 ${bob.toFixed(2)}) scale(${P.dir === 'e' && M.face < 0 ? -EE.fig : EE.fig} ${EE.fig})`; if (M.bob._tf !== bf) { M.bob._tf = bf; M.bob.setAttribute('transform', bf); }
+  const hide = !!(M.me ? _gmo.g : M.heldG); if (M.g._nameHid !== hide) { M.g._nameHid = hide; const tag = M.g.querySelector('.ee-pname'); if (tag) tag.style.display = hide ? 'none' : ''; }
 }
 /** Is that person's line in the room you are in? null: it is out in the garden. false: in a room, not yours. Else where to draw it from. */
 function gardenRoomFxAt(A, F) {

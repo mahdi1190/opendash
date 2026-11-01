@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.59.2]
+
+### Fixed
+- **Indoor rooms are much smoother.** The garden rests while you're inside, and moving the mouse no longer slows everything down.
+
 ## [2.59.1]
 
 ### Fixed
