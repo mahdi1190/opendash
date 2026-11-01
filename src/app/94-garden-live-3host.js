@@ -159,6 +159,7 @@ function _glhQuickSoon() { setTimeout(() => { try { if (typeof gardenHudPaint ==
 function _glhAdd(ev) {
   let A = _gll.actors.get(ev.w);
   if (!A) { A = _gllActor(ev); A.f = ev.f; _gll.actors.set(ev.w, A); }
+  else if (ev.pet && A.petAway) { A.petAway = false; A.pet = ev.pet; }   // (their look has a pet in it again: it is home)
   else if (A.n !== ev.n || JSON.stringify([A.a, A.g, A.pet]) !== JSON.stringify([ev.a || A.a, ev.g || A.g, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.g = ev.g || A.g; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
   else A.lv = ev.lv;
   A.f = ev.f;

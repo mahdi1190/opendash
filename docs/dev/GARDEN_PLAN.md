@@ -9,20 +9,35 @@ Tables: `src/app/94-garden-lands-0table.js`. Engine: `94-garden-lands-1core.js`.
 The world is 52 by 44 cells (the wire allows 64 by 64). The old garden is the middle (x 12-39, y 8-18). The lane runs right through the world under it (y 19-20), with the shops on it, and the lake lies below (x 12-39, y 21-37). North is the hill (meadows and stones), east the orchards, west the fields, and south, reached round the lake by a path on each shore, the marsh. There are 128 small sections and 21 trails, one character a cell, in `GARDEN_LAND_MAPS`: letters are sections, signs and digits are trails, `#` is thicket, rock or reeds, where trees stand and nobody walks.
 
 - A **trail** opens with your garden level. It has a small gate and a sign until then. It costs nothing. You walk on it; nothing grows on it and nothing stands in the way on it.
-- A **section** in the old garden is free at its level. Anywhere else it needs its level, its trail open, and coins. It is fenced where it faces land you can stand on.
+- A **section** in the old garden is free at its level. Anywhere else it needs its zone's gate open, its trail open, and coins (see Zones). It is fenced where it faces land you can stand on.
 - What is drawn follows the cells loosely: a section's outline is traced round its cells and rounded off, a trail is a curve that stays inside its cells. Walking and planting are still on the cell grid.
+
+## Zones
+
+The owner, 1 Nov 2026: "further from the centre costs more and needs a higher level ... gates and zones locked ... we should only see we can buy stuff when that zone itself is unlocked." The purpose is to avoid barren-looking land. One table, `GARDEN_ZONES` in `src/app/94-garden-lands-0table.js`.
+
+| Zone | Garden level | Coins a square | Lake open down to | Pieces of land | Coins for all of it |
+|---|---|---|---|---|---|
+| The square | 1 | free, by its own levels | row 27 | | |
+| Near land | 3 | 10 | row 27 | 11 | 650 |
+| Middle land | 6 | 18 | row 30 | 17 | 2,600 |
+| Far land | 10 | 30 | row 33 | 32 | 9,395 |
+| Wild land | 14 | 48 | row 35 | 14 | 6,315 |
+| The world’s edge | 18 | 75 | row 37 | 26 | 20,455 |
+
+All of it: 100 pieces, 39,415 coins. Dearer kinds of land cost more (`GARDEN_ZONE_COST`: pool, rich soil, sun trap, warm glade, nursery; the walled garden double), and a piece is charged for 14 squares at most.
+
+- Every cell is in one zone, by how far it is from the square (x 10-41, y 8-20), and a path is never in an earlier zone than the way to it. A path's cells only go up in zone, walking out from its mouth; the lane goes up towards each end. The old garden's own sections and paths keep their own levels.
+- A **gate** (24 of them, `GARDEN_ZONE_GATES`, worked out from the map) stands wherever a path or the lane crosses into a further zone. Only the next gate shows shut, with a board saying the level. An opened gate stands wide. Further out there is nothing to see of it.
+- Past a shut gate there are no plots, signs or stakes: one stretch of long grass, wildflowers, brambles and young trees, thicker with mist the further it is. The lane and the paths stop at the gate and grow over. The land office lists the zone, not what is in it.
+- **Water** in a shut zone is shut: no casts, no fish, no pets on it, and bugs do not come there. The lake has a line of floats and a sign across it at its open row, with mist beyond. A pier you have built always has water round it. The island and the stones stay open at every level.
+- Land you already own keeps its zone, and the zones on the way to it, open. Nothing goes in a snapshot for this: a garden's zones come from its level and what it owns, so a friend's garden shows theirs.
 
 ## Prices, and a player earning at the cap
 
 Coins come from focus time and finished tasks, at most 120 a day (`GARDEN_ECON.dayCap`), plus about 19 a day from daily tasks and 33 a day from weekly quests: about 170 a day before selling anything. XP is about 80 a day for someone playing every day.
 
-| Stage | Levels | Sections | Coins for all of it | Features | Coins for all of them | About how long at 170 a day |
-|---|---|---|---|---|---|---|
-| Early | 1-5 | 41 | 1,420 | 7 | 530 | 11 days |
-| Mid | 6-12 | 52 | 10,630 | 20 | 4,870 | 91 days |
-| Late | 13 and up | 35 | 25,140 | 4 | 5,800 | 182 days |
-
-All of it: 48,390 coins, about 41 weeks of steady play. Levels hold it back too: level 12 is 3,300 XP (about 6 weeks), level 20 is 9,500 (about 4 months). 
+All of it: 39,415 coins for the land, about 33 weeks of steady play, plus the features. Levels hold it back too: level 12 is 3,300 XP (about 6 weeks), level 20 is 9,500 (about 4 months). 
 
 ## Saved games
 
@@ -62,16 +77,16 @@ The exceptions are not things you own: today's dig spot, today's forage and the 
 | 12 | Help wanted board | 7 | 150 | Shore green (34, 17) | A neighbour asks for something you grow, once a week, and pays well for it. |
 | 13 | Jam kettle | 7 | 220 | Windfall corner (47, 16) | Five pieces of fruit, a day on the stove, and it sells for much more. |
 | 14 | The windmill | 7 | 380 | Sunny doorstep (26, 5) | Up on the hill, where you can see it from the village. A little flour money every day. |
-| 15 | Seed swap shelf | 8 | 180 | Cider nook (50, 15) | Once a day, leave five common seeds and take a better one. |
+| 15 | Seed swap shelf | 10 | 180 | Cider nook (50, 15) | Once a day, leave five common seeds and take a better one. |
 | 16 | Drying rack | 8 | 260 | Thyme terrace (12, 2) | Five bunches of herbs, two days in the air, three times the price. |
-| 17 | Spring rill | 9 | 320 | Potato ground (0, 13) | A little spring: everything planted near it is watered every morning. |
+| 17 | Spring rill | 10 | 320 | Potato ground (0, 13) | A little spring: everything planted near it is watered every morning. |
 | 18 | Village fountain | 9 | 450 | The green (24, 13) | People throw coins in it. Nobody will mind if you tidy a few away each day. |
 | 19 | Lantern walk | 10 | 240 | Bandstand green (26, 16) | Lamps along the lane that come on at dusk. Friends see them too. |
 | 20 | Little museum | 10 | 500 | The green (26, 13) | Show the curios you dig up, and be paid as the collection grows. Friends can look in. |
 | 21 | Dew stone | 11 | 260 | Fern hollow (15, 4) | Go there at dawn: five more cans of water for the day. |
 | 22 | Lookout tower | 11 | 300 | The long view (21, 0) | Climb up and see the whole of your land. Friends can climb it too. |
 | 23 | Savings oak | 12 | 400 | Bluebell wood (40, 9) | Bury coins at its roots. In a week they come back with a little more. |
-| 24 | Hedge maze | 14 | 900 | The maze ground (0, 4) | A little maze with a chest in the middle, full again every week. Friends can get lost in it. |
+| 24 | Hedge maze | 18 | 900 | The maze ground (0, 4) | A little maze with a chest in the middle, full again every week. Friends can get lost in it. |
 | 25 | Observatory | 15 | 1400 | High pasture (30, 0) | At night, log the stars you can see. Twelve to find in all. |
 | 26 | Moon stone | 16 | 1100 | Otter holt (8, 33) | Only at night: it gathers water that feeds a plant like fertiliser, and it glows. |
 | 27 | Stone circle | 20 | 2400 | Mist meadow (15, 40) | Stand in it once each season for a big share of experience and a rare seed. |
@@ -90,23 +105,23 @@ The exceptions are not things you own: today's dig spot, today's forage and the 
 | The heart path | 1 | The lane |
 | Cottage path | 1 | The lane |
 | Pond path | 1 | The lane |
-| Bramble path | 2 | The heart path |
-| Carrot row | 3 | The lane |
+| Bramble path | 3 | The heart path |
+| Carrot row | 6 | The lane |
 | Orchard steps | 5 | Cottage path |
-| Foxglove steps | 5 | Bramble path |
-| Apple walk | 6 | The lane |
-| West shore path | 6 | The lane |
-| The boardwalk | 7 | West shore path |
-| Cider lane | 8 | The lane |
-| Bean walk | 8 | Carrot row |
-| Ridge walk | 9 | Foxglove steps |
-| East shore path | 9 | The lane |
-| Pear steps | 11 | Apple walk |
-| Over the top | 12 | Ridge walk |
-| Cabbage steps | 13 | Bean walk |
-| South shore walk | 14 | The boardwalk |
-| Old wall walk | 15 | Pear steps |
-| Deep rows | 17 | Cabbage steps |
+| Foxglove steps | 6 | Bramble path |
+| Apple walk | 3 | The lane |
+| West shore path | 3 | The lane |
+| The boardwalk | 18 | West shore path |
+| Cider lane | 10 | The lane |
+| Bean walk | 14 | Carrot row |
+| Ridge walk | 10 | Foxglove steps |
+| East shore path | 6 | The lane |
+| Pear steps | 6 | Apple walk |
+| Over the top | 14 | Ridge walk |
+| Cabbage steps | 18 | Bean walk |
+| South shore walk | 18 | The boardwalk |
+| Old wall walk | 10 | Pear steps |
+| Deep rows | 18 | Cabbage steps |
 | Willow ways | 18 | South shore walk |
 
 ## Sections
@@ -125,122 +140,122 @@ The exceptions are not things you own: today's dig spot, today's forage and the 
 | Gate patch | core | The green | 2 | 1 | free | Pond path |
 | Notice green | core | The green | 4 | 1 | free | Pond path |
 | Rose corner | core | Flower bed | 10 | 2 | free | Cottage path |
-| Clover corner | north | Meadow | 5 | 2 | 30 | Bramble path |
-| Buttercup bank | north | Meadow | 4 | 2 | 40 | Bramble path |
+| Clover corner | north | Meadow | 5 | 3 | 50 | Bramble path |
+| Buttercup bank | north | Meadow | 4 | 3 | 40 | Bramble path |
 | Bean rows | core | Veg patch | 6 | 3 | free | Cottage path |
 | Salad patch | core | Veg patch | 4 | 3 | free | Cottage path |
 | Cabbage corner | core | Veg patch | 4 | 3 | free | Cottage path |
 | Long beds | core | Veg patch | 11 | 3 | free | Cottage path |
-| First furrow | west | Veg plot | 6 | 3 | 40 | The lane |
-| Sunny doorstep | north | Herb terrace | 7 | 3 | 60 | Bramble path |
-| Blackbird corner | north | Fruit bed | 6 | 3 | 70 | Bramble path |
-| Allotment row | west | Veg plot | 12 | 3 | 90 | The lane |
+| First furrow | west | Veg plot | 6 | 10 | 180 | The lane |
+| Sunny doorstep | north | Herb terrace | 7 | 3 | 70 | Bramble path |
+| Blackbird corner | north | Fruit bed | 6 | 3 | 60 | Bramble path |
+| Allotment row | west | Veg plot | 12 | 6 | 215 | The lane |
 | Deer corner | core | Little wood | 6 | 4 | free | Pond path |
 | Bracken dip | core | Little wood | 4 | 4 | free | Pond path |
 | The old logs | core | Little wood | 10 | 4 | free | Pond path |
 | Badger bank | core | Little wood | 7 | 4 | free | The lane |
-| Gate pear | east | Orchard row | 4 | 4 | 60 | The lane |
-| Salad strip | west | Veg plot | 7 | 4 | 70 | Carrot row |
-| Frog steps | swest | Reedy bank | 8 | 4 | 70 | The lane |
-| Windfall corner | east | Orchard row | 6 | 4 | 80 | The lane |
-| Bean corner | west | Veg plot | 6 | 4 | 80 | The lane |
-| Onion bed | west | Veg plot | 4 | 4 | 90 | Carrot row |
+| Gate pear | east | Orchard row | 4 | 10 | 120 | The lane |
+| Salad strip | west | Veg plot | 7 | 6 | 125 | Carrot row |
+| Frog steps | swest | Reedy bank | 8 | 10 | 240 | The lane |
+| Windfall corner | east | Orchard row | 6 | 6 | 110 | The lane |
+| Bean corner | west | Veg plot | 6 | 3 | 60 | The lane |
+| Onion bed | west | Veg plot | 4 | 10 | 120 | Carrot row |
 | The old apple | core | Orchard row | 12 | 5 | free | Orchard steps |
 | Pear corner | core | Orchard row | 7 | 5 | free | Orchard steps |
 | Plum row | core | Orchard row | 8 | 5 | free | Orchard steps |
-| Foxglove strip | north | Shady dell | 13 | 5 | 90 | Foxglove steps |
-| Fern hollow | north | Shady dell | 12 | 5 | 100 | Foxglove steps |
-| Kingcup corner | swest | Reedy bank | 5 | 5 | 100 | The lane |
-| Crab apple row | east | Orchard row | 6 | 5 | 110 | The lane |
-| The old plum | east | Orchard row | 8 | 5 | 120 | The lane |
-| Bulrush edge | seast | Reedy bank | 5 | 5 | 120 | The lane |
-| Warm stones | north | Rock garden | 5 | 6 | 140 | Bramble path |
-| Strawberry bank | swest | Fruit bed | 10 | 6 | 140 | West shore path |
-| Thyme terrace | north | Herb terrace | 14 | 6 | 150 | Foxglove steps |
-| Pumpkin nook | west | Rich black soil | 10 | 6 | 150 | Carrot row |
-| Apple row | east | Orchard row | 10 | 6 | 170 | Apple walk |
+| Foxglove strip | north | Shady dell | 13 | 6 | 235 | Foxglove steps |
+| Fern hollow | north | Shady dell | 12 | 6 | 215 | Foxglove steps |
+| Kingcup corner | swest | Reedy bank | 5 | 3 | 50 | The lane |
+| Crab apple row | east | Orchard row | 6 | 6 | 110 | The lane |
+| The old plum | east | Orchard row | 8 | 3 | 80 | The lane |
+| Bulrush edge | seast | Reedy bank | 5 | 3 | 50 | The lane |
+| Warm stones | north | Rock garden | 5 | 3 | 50 | Bramble path |
+| Strawberry bank | swest | Fruit bed | 10 | 6 | 180 | West shore path |
+| Thyme terrace | north | Herb terrace | 14 | 6 | 250 | Foxglove steps |
+| Pumpkin nook | west | Rich black soil | 10 | 10 | 360 | Carrot row |
+| Apple row | east | Orchard row | 10 | 6 | 180 | Apple walk |
 | The pond | core | The pond | 24 | 7 | free | Pond path |
-| Snipe rough | swest | Reedy bank | 8 | 7 | 130 | West shore path |
-| Medlar strip | east | Orchard row | 7 | 7 | 150 | Apple walk |
-| Boat bank | south | Reedy bank | 10 | 7 | 150 | The boardwalk |
-| Willow foot | swest | Reedy bank | 6 | 7 | 160 | West shore path |
-| Rhubarb patch | swest | Fruit bed | 5 | 7 | 170 | West shore path |
-| Lily pool | swest | Pool | 12 | 7 | 220 | West shore path |
-| Seedling rows | west | Veg plot | 8 | 8 | 150 | Carrot row |
-| Dragonfly bank | swest | Reedy bank | 9 | 8 | 170 | West shore path |
-| Cider nook | east | Orchard row | 4 | 8 | 180 | Cider lane |
-| Sedge isle | swest | Reedy bank | 6 | 8 | 190 | West shore path |
-| Bean beds | west | Veg plot | 9 | 8 | 200 | Bean walk |
-| Wader flats | south | Reedy bank | 13 | 8 | 200 | The boardwalk |
-| Cherry row | east | Orchard row | 8 | 8 | 210 | Apple walk |
-| Alder carr | swest | Little wood | 12 | 8 | 210 | West shore path |
-| Hazel copse | east | Little wood | 7 | 8 | 220 | Apple walk |
-| Potato ground | west | Rich black soil | 7 | 8 | 240 | Carrot row |
+| Snipe rough | swest | Reedy bank | 8 | 10 | 240 | West shore path |
+| Medlar strip | east | Orchard row | 7 | 3 | 70 | Apple walk |
+| Boat bank | south | Reedy bank | 10 | 18 | 750 | The boardwalk |
+| Willow foot | swest | Reedy bank | 6 | 6 | 110 | West shore path |
+| Rhubarb patch | swest | Fruit bed | 5 | 6 | 90 | West shore path |
+| Lily pool | swest | Pool | 12 | 10 | 505 | West shore path |
+| Seedling rows | west | Veg plot | 8 | 10 | 240 | Carrot row |
+| Dragonfly bank | swest | Reedy bank | 9 | 10 | 270 | West shore path |
+| Cider nook | east | Orchard row | 4 | 10 | 120 | Cider lane |
+| Sedge isle | swest | Reedy bank | 6 | 10 | 180 | West shore path |
+| Bean beds | west | Veg plot | 9 | 14 | 430 | Bean walk |
+| Wader flats | south | Reedy bank | 13 | 18 | 975 | The boardwalk |
+| Cherry row | east | Orchard row | 8 | 6 | 145 | Apple walk |
+| Alder carr | swest | Little wood | 12 | 10 | 360 | West shore path |
+| Hazel copse | east | Little wood | 7 | 3 | 70 | Apple walk |
+| Potato ground | west | Rich black soil | 7 | 10 | 250 | Carrot row |
 | The greenhouse | core | Greenhouse | 12 | 9 | free | Pond path |
-| Tiny isle | swest | Reedy bank | 10 | 9 | 110 | West shore path |
-| Reed isle | swest | Reedy bank | 6 | 9 | 130 | West shore path |
-| Gull rest | seast | Rock garden | 6 | 9 | 150 | East shore path |
-| Marigold bank | swest | Reedy bank | 10 | 9 | 190 | West shore path |
-| Bee bank | north | Meadow | 6 | 9 | 220 | Ridge walk |
-| Hop garden | west | Veg plot | 9 | 9 | 230 | Bean walk |
-| Orchid slope | north | Meadow | 10 | 9 | 240 | Ridge walk |
-| Cockle bank | south | Rock garden | 16 | 9 | 240 | The boardwalk |
-| Otter run | seast | Little wood | 8 | 10 | 230 | East shore path |
-| Otter holt | swest | Little wood | 8 | 10 | 240 | West shore path |
-| Spit end | south | Rock garden | 8 | 10 | 250 | East shore path |
-| Rabbit warren | north | Meadow | 11 | 10 | 260 | Ridge walk |
-| Skylark top | north | Meadow | 12 | 10 | 300 | Ridge walk |
-| Deep pool | swest | Pool | 9 | 10 | 320 | West shore path |
-| Sandy spit | seast | Rock garden | 6 | 11 | 240 | East shore path |
-| Damson dip | east | Orchard row | 6 | 11 | 300 | Pear steps |
-| Walnut shade | east | Little wood | 12 | 11 | 310 | Pear steps |
-| The long view | north | Rock garden | 12 | 11 | 330 | Ridge walk |
+| Tiny isle | swest | Reedy bank | 10 | 14 | 480 | West shore path |
+| Reed isle | swest | Reedy bank | 6 | 10 | 180 | West shore path |
+| Gull rest | seast | Rock garden | 6 | 6 | 110 | East shore path |
+| Marigold bank | swest | Reedy bank | 10 | 10 | 300 | West shore path |
+| Bee bank | north | Meadow | 6 | 10 | 180 | Ridge walk |
+| Hop garden | west | Veg plot | 9 | 14 | 430 | Bean walk |
+| Orchid slope | north | Meadow | 10 | 10 | 300 | Ridge walk |
+| Cockle bank | south | Rock garden | 16 | 18 | 1,050 | The boardwalk |
+| Otter run | seast | Little wood | 8 | 6 | 145 | East shore path |
+| Otter holt | swest | Little wood | 8 | 14 | 385 | West shore path |
+| Spit end | south | Rock garden | 8 | 18 | 600 | East shore path |
+| Rabbit warren | north | Meadow | 11 | 10 | 330 | Ridge walk |
+| Skylark top | north | Meadow | 12 | 10 | 360 | Ridge walk |
+| Deep pool | swest | Pool | 9 | 14 | 605 | West shore path |
+| Sandy spit | seast | Rock garden | 6 | 10 | 180 | East shore path |
+| Damson dip | east | Orchard row | 6 | 6 | 110 | Pear steps |
+| Walnut shade | east | Little wood | 12 | 10 | 360 | Pear steps |
+| The long view | north | Rock garden | 12 | 10 | 360 | Ridge walk |
 | Poppy bank | core | Meadow | 7 | 12 | free | The heart path |
 | Long meadow | core | Meadow | 11 | 12 | free | The heart path |
 | Moon daisy strip | core | Meadow | 6 | 12 | free | The heart path |
-| Cowslip rise | north | Meadow | 12 | 12 | 260 | Over the top |
-| Sedge pool | seast | Pool | 4 | 12 | 280 | East shore path |
-| Hazel isle | seast | Little wood | 10 | 12 | 300 | East shore path |
-| Lark marsh | seast | Meadow | 11 | 12 | 320 | East shore path |
-| Bluebell wood | east | Shady dell | 9 | 12 | 360 | Pear steps |
-| The heronry | swest | Little wood | 16 | 12 | 360 | West shore path |
-| High pasture | north | Meadow | 10 | 12 | 380 | Ridge walk |
-| The nursery | east | Tree nursery | 9 | 12 | 380 | Cider lane |
-| Moorhen bank | seast | Reedy bank | 6 | 13 | 340 | East shore path |
-| Herb wall | west | Herb terrace | 6 | 13 | 360 | Cabbage steps |
-| Pea sticks | west | Veg plot | 9 | 13 | 380 | Cabbage steps |
-| Bittern reach | seast | Reedy bank | 8 | 13 | 380 | East shore path |
-| Ivy corner | east | Shady dell | 6 | 13 | 400 | Pear steps |
-| Black soil | west | Rich black soil | 10 | 13 | 420 | Bean walk |
-| The maze ground | west | Meadow | 40 | 13 | 700 | Cabbage steps |
-| Heron isle | south | Reedy bank | 8 | 14 | 420 | South shore walk |
-| Clear pool | swest | Pool | 5 | 14 | 520 | West shore path |
-| Market beds | west | Rich black soil | 7 | 14 | 560 | Cabbage steps |
-| Far willows | seast | Little wood | 11 | 15 | 480 | East shore path |
-| Iris bed | south | Reedy bank | 6 | 15 | 500 | South shore walk |
-| The espalier | east | Fruit bed | 7 | 15 | 520 | Old wall walk |
-| The far shore | south | Meadow | 15 | 15 | 520 | South shore walk |
-| The walled garden | east | Sun trap | 9 | 15 | 1200 | Old wall walk, with the old key |
-| Windy flats | south | Rock garden | 9 | 16 | 620 | South shore walk |
-| Owl wood | east | Little wood | 6 | 16 | 640 | Old wall walk |
-| Sun terrace | east | Sun trap | 9 | 16 | 900 | Old wall walk |
-| Moon pool | swest | Pool | 6 | 16 | 900 | West shore path |
-| Ness wood | south | Little wood | 14 | 17 | 700 | South shore walk |
-| Beech top | east | Little wood | 9 | 17 | 720 | Old wall walk |
-| Stone pool | seast | Pool | 10 | 17 | 760 | East shore path |
-| Silver birches | south | Little wood | 9 | 18 | 700 | South shore walk |
-| Mist meadow | south | Meadow | 15 | 18 | 720 | South shore walk |
-| Deep loam | west | Rich black soil | 8 | 18 | 780 | Cabbage steps |
-| Giant veg ground | west | Rich black soil | 13 | 18 | 900 | Deep rows |
-| Ferny way | south | Shady dell | 7 | 19 | 780 | Willow ways |
-| Sallow carr | south | Little wood | 9 | 19 | 800 | Willow ways |
-| Rush hollow | south | Reedy bank | 9 | 19 | 820 | Willow ways |
-| Exotic glade | south | Warm glade | 12 | 19 | 1000 | South shore walk |
-| The last bank | south | Reedy bank | 17 | 20 | 900 | Willow ways |
-| Otter beach | south | Rock garden | 6 | 20 | 1000 | Willow ways |
-| The prize beds | west | Rich black soil | 8 | 20 | 1100 | Deep rows |
-| Hermit corner | south | Warm glade | 3 | 20 | 1200 | South shore walk |
-| The world’s end | south | Meadow | 14 | 22 | 1500 | Willow ways |
+| Cowslip rise | north | Meadow | 12 | 14 | 575 | Over the top |
+| Sedge pool | seast | Pool | 4 | 14 | 270 | East shore path |
+| Hazel isle | seast | Little wood | 10 | 14 | 480 | East shore path |
+| Lark marsh | seast | Meadow | 11 | 10 | 330 | East shore path |
+| Bluebell wood | east | Shady dell | 9 | 6 | 160 | Pear steps |
+| The heronry | swest | Little wood | 16 | 14 | 670 | West shore path |
+| High pasture | north | Meadow | 10 | 10 | 300 | Ridge walk |
+| The nursery | east | Tree nursery | 9 | 10 | 325 | Cider lane |
+| Moorhen bank | seast | Reedy bank | 6 | 14 | 290 | East shore path |
+| Herb wall | west | Herb terrace | 6 | 18 | 450 | Cabbage steps |
+| Pea sticks | west | Veg plot | 9 | 18 | 675 | Cabbage steps |
+| Bittern reach | seast | Reedy bank | 8 | 14 | 385 | East shore path |
+| Ivy corner | east | Shady dell | 6 | 6 | 110 | Pear steps |
+| Black soil | west | Rich black soil | 10 | 14 | 575 | Bean walk |
+| The maze ground | west | Meadow | 40 | 18 | 1,050 | Cabbage steps |
+| Heron isle | south | Reedy bank | 8 | 18 | 600 | South shore walk |
+| Clear pool | swest | Pool | 5 | 14 | 335 | West shore path |
+| Market beds | west | Rich black soil | 7 | 18 | 630 | Cabbage steps |
+| Far willows | seast | Little wood | 11 | 10 | 330 | East shore path |
+| Iris bed | south | Reedy bank | 6 | 18 | 450 | South shore walk |
+| The espalier | east | Fruit bed | 7 | 10 | 210 | Old wall walk |
+| The far shore | south | Meadow | 15 | 18 | 1,050 | South shore walk |
+| The walled garden | east | Sun trap | 9 | 10 | 865 | Old wall walk, with the old key |
+| Windy flats | south | Rock garden | 9 | 18 | 675 | South shore walk |
+| Owl wood | east | Little wood | 6 | 10 | 180 | Old wall walk |
+| Sun terrace | east | Sun trap | 9 | 10 | 430 | Old wall walk |
+| Moon pool | swest | Pool | 6 | 14 | 405 | West shore path |
+| Ness wood | south | Little wood | 14 | 18 | 1,050 | South shore walk |
+| Beech top | east | Little wood | 9 | 10 | 270 | Old wall walk |
+| Stone pool | seast | Pool | 10 | 10 | 420 | East shore path |
+| Silver birches | south | Little wood | 9 | 18 | 675 | South shore walk |
+| Mist meadow | south | Meadow | 15 | 18 | 1,050 | South shore walk |
+| Deep loam | west | Rich black soil | 8 | 18 | 720 | Cabbage steps |
+| Giant veg ground | west | Rich black soil | 13 | 18 | 1,170 | Deep rows |
+| Ferny way | south | Shady dell | 7 | 18 | 525 | Willow ways |
+| Sallow carr | south | Little wood | 9 | 18 | 675 | Willow ways |
+| Rush hollow | south | Reedy bank | 9 | 18 | 675 | Willow ways |
+| Exotic glade | south | Warm glade | 12 | 18 | 1,350 | South shore walk |
+| The last bank | south | Reedy bank | 17 | 18 | 1,050 | Willow ways |
+| Otter beach | south | Rock garden | 6 | 18 | 450 | Willow ways |
+| The prize beds | west | Rich black soil | 8 | 18 | 720 | Deep rows |
+| Hermit corner | south | Warm glade | 3 | 18 | 340 | South shore walk |
+| The world’s end | south | Meadow | 14 | 18 | 1,050 | Willow ways |
 
 ## What is on the map for everyone
 

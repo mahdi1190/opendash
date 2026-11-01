@@ -1,6 +1,7 @@
 /* ============================================================
    PLAY: your pet. Little journeys and the postcard album, hide and seek, its knack, its diary. docs/dev/HUNDRED_PLAY.md 1-4, 19, 21.
-   Your pet is really gone while it travels (html.gp-away hides the companion in your world; friends' views are not changed).
+   Your pet is really gone while it travels: html.gp-away hides the companion in your world, a little basket and signpost near the gate says where it has gone (the owner: "I can't see my pet"), and friends do not see it either.
+   Friends: who is here hears it once (fx pet away / back); someone coming in later gets no pet in your look (petPayload says it stays home); a saved copy says when it is due back (snapshot `pa`). Nothing is sent frame by frame.
    Saved: pl.jr {at, back, place, n, lunch, sp}, pl.pc.<place>.<n> (a card you have, its day), pl.dy.<day> (a diary page).
    ============================================================ */
 const GP_PLACES = Object.freeze([
@@ -56,7 +57,52 @@ function _gpLunches() { const out = []; for (const [k, n] of Object.entries(gard
 function _gpCards() { const out = []; for (const p of GP_PLACES) for (let i = 0; i < 3; i++) if (gpGet(`pc.${p.id}.${i}`)) out.push([p.id, i]); return out; }
 function gpJourney() { const j = gpGet('jr'); return j && j.at ? j : null; }
 function gpPetAway() { return !!gpJourney(); }
-function _gpSyncAway() { document.documentElement.classList.toggle('gp-away', gpPetAway()); }
+const _gpAw = { was: null, S: null };
+function _gpSyncAway() {
+  const on = gpPetAway();
+  document.documentElement.classList.toggle('gp-away', on);
+  if (_gpAw.was !== on) {
+    const first = _gpAw.was === null; _gpAw.was = on;
+    if (!first) {   // once, each way: not on every page load
+      if (typeof gardenLiveFx === 'function') gardenLiveFx('pet', on ? 'away' : 'back');
+      try { if (typeof _ptShareSoon === 'function') _ptShareSoon(); if (typeof _gscPublishSoon === 'function') _gscPublishSoon(3000); if (typeof _ptRefresh === 'function' && /^pet(:|$)/.test(String(state.view || ''))) _ptRefresh(); if (typeof renderSidebar === 'function') renderSidebar(); } catch (e) { /* later, then */ }
+    }
+    if (!on) { const P = gpPetMe(); if (P && gpInWorld() && typeof _gwNearestFreePt === 'function') { const f = _gwNearestFreePt(_gw.px - 0.9, _gw.py + 0.3, 2); if (f) { P.x = f.x; P.y = f.y; P.tx = null; P.z = -1; } } }   // it comes trotting up beside you
+  }
+  _gpAwayMark(on);
+}
+/** Plain words for when it is due, for the marker and the pet's own page. */
+function gpJourneyDueWords(j) { const left = j.back - _gdNow(); return left <= 0 ? 'any moment now' : `in ${_gpHoursWord(left)}`; }
+/* The marker near the gate: an empty basket with its blanket folded, and a small signpost with a suitcase on it. In your own garden only. */
+function _gpAwaySvg() {
+  const wick = '#b48a54', dark = '#7a5a32', lite = '#d4b07a';
+  return '<ellipse cx="0" cy="1" rx="23" ry="5" fill="#1a2a14" fill-opacity="0.22"/>'
+    + `<path d="M-19 -13h26l-3 14h-20z" fill="${wick}" stroke="${dark}" stroke-width="1.2"/><path d="M-18 -9h24M-17 -5h22M-16 -1h20M-13 -13l1 14M-7 -13l.6 14M-1 -13v14M5 -13l-.6 14" stroke="${dark}" stroke-width="0.7" fill="none" opacity="0.65"/><path d="M-20 -13.500h28" stroke="${lite}" stroke-width="2.600" stroke-linecap="round"/>`
+    + '<path d="M-16 -13c3-4 8-5 12-3 3 1 6 1 8 3z" fill="#e8d8c0" stroke="#b09a7c" stroke-width="0.7"/><path d="M-13 -14l5-2M-6 -15l5 1" stroke="#c8605a" stroke-width="1"/>'
+    + `<path d="M14 1v-37" stroke="${dark}" stroke-width="3" stroke-linecap="round"/><rect x="2" y="-42" width="25" height="19" rx="3" fill="#f8ecc8" stroke="#6e4c2a" stroke-width="1.300"/>`
+    + '<rect x="8.500" y="-35.500" width="12" height="9" rx="1.600" fill="#a8603a" stroke="#6a3a20" stroke-width="0.8"/><path d="M12 -35.500v-1.500a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v1.500" fill="none" stroke="#6a3a20" stroke-width="1.100"/><path d="M8.500 -31h12" stroke="#e8c88a" stroke-width="1"/>';
+}
+/** Somewhere clear near the gate, the same each time. */
+function _gpAwaySpot(m) {
+  const S = { x: 24, y: 15 };   // the green by the square: near where you come in, and clear of the shops' roofs
+  for (let r = 0; r <= 9; r++) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1], [0, 1], [-1, 1], [1, 1]]) {
+    const x = S.x + dx * r, y = S.y + dy * r; let ok = true;
+    for (const [a, b] of [[0, 0], [1, 0]]) { const k = (x + a) + ',' + (y + b); if (m.occ.has(k) || gardenPropAt(x + a, y + b) || !gardenWalkable(x + a, y + b) || gardenLandPathAt(x + a, y + b)) ok = false; }
+    if (ok) return { x: x + 0.6, y: y + 0.75 };
+  }
+  return { x: S.x + 0.5, y: S.y + 1.7 };
+}
+function _gpAwayBubble() {
+  const j = gpJourney(), pet = gpPet(), S = _gpAw.S; if (!j || !pet || !S) return;
+  gardenBubbleOpen({ x: S.x, y: S.y - 1.5 }, { cls: 'is-words', title: `${pet.name} is away`, sub: `Gone on a little journey. Back ${gpJourneyDueWords(j)}, with a postcard.`, items: [{ ic: 'undo-2', label: 'Call it home now', text: 'Call it home now', cls: 'is-go', run: () => { gardenBubbleClose(); gpJourneyCall(); gpNote(`${pet.name} is home. Its lunch is back in your bag.`); } }] });
+}
+function _gpAwayMark(on) {
+  const want = on && typeof _gw !== 'undefined' && _gw.on && !gpVisiting();
+  if (!want) { if (_gpAw.S) { _gpAw.S.remove(); _gpAw.S = null; } return; }
+  if (_gpAw.S) return;
+  const m = gardenModel(), p = _gpAwaySpot(m), pet = gpPet();
+  _gpAw.S = gardenWorldAdd({ id: 'gp-away', x: p.x, y: p.y, svg: _gpAwaySvg(), still: true, hit: 0.8, hitUp: 14, label: `${pet ? pet.name : 'Your pet'} is away`, cursor: 'hand', onClick: () => _gpAwayBubble() });
+}
 function _gpHoursWord(ms) { const h = Math.max(0, ms) / 3600000; return h < 1 ? 'less than an hour' : h < 1.5 ? 'about an hour' : `about ${Math.round(h)} hours`; }
 function gpCardSvg(placeId, n, look, w) {
   const p = _GP_PLACE.get(placeId); if (!p) return '';
@@ -84,6 +130,7 @@ function gpJourneyCall() {
   const j = gpJourney(); if (!j) return;
   if (j.lunch) { _gdLed('pl', { i: { [j.lunch]: 1 }, n: 1 }); }
   gpSet('jr', null); _gpSyncAway();
+  if (typeof gardenRepaintSoon === 'function') gardenRepaintSoon();
 }
 function gpJourneyHome() {
   const j = gpJourney(); if (!j || _gdNow() < j.back) return false;
@@ -159,7 +206,7 @@ function _gpJourneyOpen() {
 gardenPlayAdd({ id: 'journey', name: 'Little journeys', icon: 'luggage', group: 'pet', blurb: 'Pack a lunch. Your pet goes away for hours, and writes.',
   status: () => { const j = gpJourney(), p = gpPet(); if (j) return _gdNow() >= j.back ? 'Home, with a postcard' : `${p ? p.name : 'Your pet'} is away`; return `${_gpCards().length} of ${GP_PLACES.length * 3} postcards`; },
   fresh: () => !!gpGet('new') || (!!gpJourney() && _gdNow() >= gpJourney().back),
-  hud: () => { _gpSyncAway(); gpJourneyHome(); },
+  hud: () => { _gpSyncAway(); gpJourneyHome(); if (!_gpSeek.on || gpVisiting() || !_gwSprites.has(_gpSeek.S)) gardenPlaySeekStop(); },
   open: _gpJourneyOpen });
 
 /* ---------- hide and seek ---------- */
@@ -204,7 +251,9 @@ function _gpRustle(o) {
   gpTone([180, 150], { gap: 0.07, len: 0.1, vol: 0.03, type: 'sawtooth' });
   return L;
 }
-function _gpSeekEnd(found) {
+/** Leaving the garden, or going to a friend's, in the middle of a game: it comes out by itself, and html.gp-seeking never stays on. */
+function gardenPlaySeekStop() { if (_gpSeek.on) _gpSeekEnd(false, true); else document.documentElement.classList.remove('gp-seeking'); }
+function _gpSeekEnd(found, quiet) {
   if (!_gpSeek.on) return;
   _gpSeek.on = false;
   const S = _gpSeek.S, x = S.x, y = S.y, secs = Math.round(_gpSeek.sec), box = _ghBox(), P = gpPetMe();
@@ -212,7 +261,7 @@ function _gpSeekEnd(found) {
   document.documentElement.classList.remove('gp-seeking');
   if (box) { const c = box.querySelector(':scope > .gp-seekchip'); if (c) c.remove(); }
   if (P) { P.x = x; P.y = y + 0.2; P.tx = null; P.ty = null; try { P.sit({ eyes: 'happy', mouth: 'open' }); if (found) P.clip('jump', 800, () => { P.sit(); P.busy = 1; if (P.hearts) P.hearts(); }); } catch (e) { /* fine */ } }
-  if (!found) { gpNote(`${_gpSeek.name} comes out, very pleased with itself.`); return; }
+  if (!found) { if (!quiet) gpNote(`${_gpSeek.name} comes out, very pleased with itself.`); return; }
   const best = gpBest('seek', secs, true), n = Number(gpGet('seek.' + _gdToday(), 0)) + 1;
   gpSet('seek.' + _gdToday(), n);
   const r = gpPay('seek', { tickets: n <= 3 ? 3 : 0, xp: n <= 3 ? 2 : 0 });

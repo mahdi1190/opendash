@@ -27,7 +27,8 @@ function _ptwVisiting() { try { return typeof gardenVisitOn === 'function' && !!
 /** While true the garden's own follower stands aside (94-garden-world-0walk.js asks). */
 function petGardenWorldOwns() { return _ptw.on && _ptwMotion() && _ptw.pets.length > 0; }
 /** Where your pets are in the world, for whatever lives alongside them: [{x, y (cells), species, me (the one that follows you), moving}]. */
-function petGardenPositions() { return _ptw.pets.map(P => ({ x: P.x, y: P.y, species: P.look.species, me: !!P.me, moving: P.tx != null })); }
+function _ptwGone(P) { return !!P.me && typeof gpPetAway === 'function' && gpPetAway(); }   // on a little journey (94-garden-play-1pet.js): it is not here to do anything
+function petGardenPositions() { return _ptw.pets.filter(P => !_ptwGone(P)).map(P => ({ x: P.x, y: P.y, species: P.look.species, me: !!P.me, moving: P.tx != null })); }
 function _ptwCell(x, y) { const W = GARDEN_WORLD; return { x: x * W.cellW, y: W.sky + y * W.cellH }; }
 function _ptwFree(x, y) { try { return gardenWorldFree(x, y, 0.14); } catch (e) { return true; } }
 function _ptwPlayer() { return typeof _gw !== 'undefined' && _gw && _gw.on !== false ? { x: _gw.px, y: _gw.py, moving: !!_gw.moving, busy: !!_gw.reel } : null; }
@@ -79,8 +80,150 @@ function _ptwNew(look, me) {
   P.draw('sit');
   return P;
 }
+/* ---------- pets and the world: water, perches, seats ----------
+   The owner, 1 Nov 2026: pets should interact with the world and objects. A water pet goes in and swims; a flying pet lands on what is really standing there; a cat takes a bench, a dog goes to a fountain or digs.
+   HOW FRIENDS SEE THE SAME, WITH NOTHING NEW ON THE WIRE. Where a pet is goes out as it always did (gl:pp, in tenths of a cell). What it is doing there is worked out from where it is and what stands in the garden: a duck on a water
+   cell is swimming, an owl at a perch's point is on that perch. Every screen has the same garden, so every screen draws the same. Perch points are kept to tenths of a cell so the place that is sent lands on them exactly.
+   Only open land and open water count (a shut gate, or water past the floats, is not somewhere to go). Moved objects come from the live rows, so a thing the designer moved takes its perch with it. With reduced motion or the Fun level Off none of this runs: the pets stay still. */
+const PET_HABIT_BY_SPECIES = Object.freeze({
+  duck: ['swim'], goose: ['swim'], penguin: ['swim'], otter: ['swim', 'dig'], axolotl: ['swim'], frog: ['swim'], octopus: ['swim'], capybara: ['swim'], flamingo: ['swim'],
+  owl: ['perch'], parrot: ['perch'], wren: ['perch'], robin: ['perch'], phoenix: ['perch'], bat: ['perch'], bee: ['perch'], butterfly: ['perch'],
+  cat: ['seat'], fox: ['seat', 'dig'], kitsune: ['seat'], redpanda: ['seat'], raccoon: ['seat', 'drink'], lion: ['seat'], tiger: ['seat', 'drink'], squirrel: ['seat', 'dig'], koala: ['seat'], panda: ['seat'],
+  dog: ['drink', 'dig'], wolf: ['drink', 'dig'], fawn: ['drink'], lamb: ['drink'], pony: ['drink'], unicorn: ['drink'], alpaca: ['drink'], goat: ['drink', 'seat'], piglet: ['drink', 'dig'], bear: ['drink'],
+  rabbit: ['dig'], hamster: ['dig'], guinea: ['dig'], hedgehog: ['dig'], mole: ['dig'], badger: ['dig'], mouse: ['dig'], ferret: ['dig'], jackalope: ['dig'],
+});
+function _ptwHabits(id) { const own = PET_HABIT_BY_SPECIES[id]; if (own) return own; const g = (petSpecies(id) || {}).gait; return g === 'fly' ? ['perch'] : g === 'paddle' ? ['swim'] : g === 'scurry' || g === 'hop' ? ['dig'] : g === 'trot' ? ['drink'] : []; }
+function _ptwHas(P, h) { return (P.habits || (P.habits = _ptwHabits(P.look.species))).includes(h); }
+function _ptwFlier(P) { return P.per.flies || _ptwHas(P, 'perch'); }
+/* How high up the top of each drawn thing is (stage pixels above its foot), and for what you can sit on, the seat. From the drawings in 94-garden-lands-2art.js; anything not here goes by its `tall`. */
+const PET_TOPS = Object.freeze({ lamp: 33, cross: 44, statue: 56, topiary: 44, gate: 50, cairn: 33, stump: 24, wall: 24, hay: 38, barrels: 30, picnic: 22, mile: 26, finger: 40, seat: 28 });
+const PET_SEATS = Object.freeze({ seat: 15, wall: 24, stump: 24, picnic: 22, mile: 26, hay: 38, barrels: 30 });
+const PET_NOT_PERCH = new Set(['boat', 'reed-bank', 'old-angler', 'jetty-post', 'ld-bridge', 'ld-rope', 'ld-sunk', 'ld-labyrinth', 'lf-rill', 'land-finds']);
+const PET_DRINKS = new Set(['fountain', 'bird-bath', 'mini-pond', 'wishing-well', 'lf-fountain', 'lf-well', 'ld-wish', 'ld-pump']);
+const _ptwS = { at: 0, built: 0, key: '', water: null, shore: [], perch: [], seat: [], drink: [], top: new Map() };
+const _ptwTenth = (v) => Math.round(v * 10) / 10;
+function _ptwSpots() {
+  const t = performance.now(); if (_ptwS.water && t - _ptwS.at < 1000) return _ptwS;
+  _ptwS.at = t;
+  let m = null; try { m = gardenHere(); } catch (e) { return _ptwS; }
+  const key = [m.visit ? m.visit.key : 'me', m.plants.length, m.decor.length, m.areas.length, gardenLakeOpenTo(), typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0, gardenPierMore(), _GD_WALK_EXTRA.size, _GD_ICE.size].join('|');
+  if (_ptwS.water && _ptwS.key === key && t - _ptwS.built < 30000) return _ptwS;
+  _ptwS.key = key; _ptwS.built = t;
+  const G = GARDEN_WORLD, water = new Uint8Array(G.cols * G.rows), shore = [], perch = [], seat = [], drink = [], top = new Map(), zoneOk = (x, y) => { const n = gardenZoneOf(Math.floor(x), Math.floor(y)); return !n || m.areas.includes('zn-' + n); };
+  for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) if (gardenIsWater(x, y) && !gardenWaterNo(x, y, m)) water[y * G.cols + x] = 1;
+  const wet = (x, y) => x >= 0 && y >= 0 && x < G.cols && y < G.rows && !!water[y * G.cols + x];
+  for (let y = 0; y < G.rows; y++) for (let x = 0; x < G.cols; x++) {
+    if (water[y * G.cols + x] || !zoneOk(x, y) || !gardenWalkable(x, y)) continue;
+    for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) if (wet(x + dx, y + dy) && wet(x + dx * 2, y + dy * 2)) { shore.push({ x: x + 0.5 + dx * 0.25, y: y + 0.5 + dy * 0.25, wx: x + 0.5 + dx * 1.7, wy: y + 0.5 + dy * 1.7 }); break; }
+  }
+  const add = (id, x, y, z, up, seatUp, name) => {
+    if (!zoneOk(x, y)) return;
+    const row = { id, x: _ptwTenth(x), y: _ptwTenth(y), z, up: Math.round(up), name };
+    if (up >= 14) { perch.push(row); top.set(row.x + ',' + row.y, row); }
+    if (seatUp) { const s = Object.assign({}, row, { x: _ptwTenth(x + 0.2), y: _ptwTenth(y + 0.1), up: Math.round(seatUp), seat: 1 }); seat.push(s); top.set(s.x + ',' + s.y, s); }
+  };
+  let rows = []; try { rows = gardenWorldObjects(m); } catch (e) { rows = []; }
+  for (const o of rows) {
+    if (PET_NOT_PERCH.has(o.id) || (o.kind === 'plant' && o.height < 28)) continue;
+    add(o.uid, o.top.x, o.top.y, o.z, o.top.lift, o.kind === 'decor' && gardenDecor(o.id) && gardenDecor(o.id).effect && gardenDecor(o.id).effect.kind === 'sit' ? o.top.lift : 0, o.name);
+    if (PET_DRINKS.has(o.id)) drink.push({ x: o.top.x, y: o.y + o.h, name: o.name });
+  }
+  for (const p of gardenLandProps()) {
+    if (PET_NOT_PERCH.has(p.id) || !p.tall || p.walk) continue;
+    const art = String(p.kind || '').replace(/^l[df]-/, ''), x = p.x + p.w / 2, y = p.y + p.h - 0.1;
+    add(p.id, x, y, p.y + p.h, PET_TOPS[art] != null ? PET_TOPS[art] : p.tall * 48 * 0.9, PET_SEATS[art] || 0, p.name);
+    if (PET_DRINKS.has(p.id)) drink.push({ x, y: p.y + p.h, name: p.name });
+  }
+  Object.assign(_ptwS, { water, shore, perch, seat, drink, top });
+  return _ptwS;
+}
+function _ptwWet(x, y) { const S = _ptwSpots(), G = GARDEN_WORLD, cx = Math.floor(x), cy = Math.floor(y); return !!S.water && cx >= 0 && cy >= 0 && cx < G.cols && cy < G.rows && !!S.water[cy * G.cols + cx]; }
+function _ptwTopAt(x, y) { return _ptwSpots().top.get(_ptwTenth(x) + ',' + _ptwTenth(y)) || null; }
+function _ptwMayStand(P, t) { return !!t && (t.seat ? _ptwHas(P, 'seat') : _ptwFlier(P)); }
+/** May this pet be here at all? (A friend's copy asks too, before it believes a place.) */
+function _ptwCanStand(P, x, y) { return _ptwFlier(P) || _ptwFree(x, y) || (_ptwHas(P, 'swim') && _ptwWetEdge(x, y)) || _ptwMayStand(P, _ptwTopAt(x, y)); }
+/** On the water, or at its very edge going in or out: the shore cell's own feet test would stop it a step short. */
+function _ptwWetEdge(x, y) { return _ptwWet(x, y) || _ptwWet(x, y + 0.2) || _ptwWet(x, y - 0.2) || _ptwWet(x + 0.2, y) || _ptwWet(x - 0.2, y); }
+function _ptwCanStep(P, x, y) {
+  if (_ptwFlier(P) || _ptwFree(x, y) || (_ptwHas(P, 'swim') && _ptwWetEdge(x, y))) return true;
+  if ((P.up || 0) > 1) return true;   // hopping down
+  return _ptwHas(P, 'seat') && P.tx != null && !!_ptwTopAt(P.tx, P.ty) && Math.hypot(P.tx - x, P.ty - y) < 1.7;   // the last hop up
+}
+/** How it stands where it is, worked out from there alone: {up (px above the ground), sink (px under the water), z (the row it is drawn in)}. Eased, so nothing jumps. */
+function _ptwStand(P, dt) {
+  const fly = _ptwFlier(P), sits = _ptwHas(P, 'seat'), swims = _ptwHas(P, 'swim');
+  if (!fly && !sits && !swims) return { up: 0, sink: 0, z: P.y };
+  const t = fly || sits ? _ptwTopAt(P.x, P.y) : null, on = t && _ptwMayStand(P, t) ? t : null, goal = (fly || sits) && P.tx != null ? _ptwTopAt(P.tx, P.ty) : null;
+  let want = on && P.tx == null ? on.up : 0;
+  if (fly && P.tx != null) want = Math.max(24, goal ? goal.up : 0, Math.hypot(P.tx - P.x, P.ty - P.y) > 0.4 ? 26 : 0);   // in the air
+  else if (sits && P.tx != null && goal && Math.hypot(P.tx - P.x, P.ty - P.y) < 0.9) want = goal.up;   // the hop up
+  const rate = _ptwMotion() ? 150 * dt : 1e9;
+  P.up = (P.up || 0) + Math.max(-rate, Math.min(rate, want - (P.up || 0)));
+  const wet = swims && !(P.up > 1) && _ptwWet(P.x, P.y);
+  if (wet !== !!P.wet) _ptwSwimSet(P, wet);
+  return { up: P.up, sink: wet ? P.sinkPx : 0, z: on && P.tx == null ? on.z + 0.01 : P.y };
+}
+let _ptwClipN = 0;
+/** On the water: the lower part of it is under the surface, and there are rings round it. */
+function _ptwSwimSet(P, on) {
+  P.wet = on;
+  if (!P.clipId) {
+    P.clipId = 'ptw-w' + (++_ptwClipN); P.sinkPx = Math.round(_ptwH(P.look.species) * 0.3);
+    const c = document.createElementNS(_PTW_NS, 'clipPath'), r = document.createElementNS(_PTW_NS, 'rect'), w = document.createElementNS(_PTW_NS, 'g');
+    c.setAttribute('id', P.clipId); r.setAttribute('x', '-120'); r.setAttribute('y', '-300'); r.setAttribute('width', '240'); r.setAttribute('height', String(300 - P.sinkPx)); c.appendChild(r); P.node.insertBefore(c, P.node.firstChild);
+    w.setAttribute('class', 'ptw-ripple'); const rx = Math.round(_ptwH(P.look.species) * 0.5);
+    w.innerHTML = `<ellipse cx="0" cy="${-P.sinkPx}" rx="${rx + 3}" ry="3.4" fill="#ffffff" fill-opacity="0.22"/><ellipse class="ptw-ring" cx="0" cy="${-P.sinkPx}" rx="${rx + 2}" ry="3" fill="none" stroke="#ffffff" stroke-opacity="0.8" stroke-width="1.100"/>`;
+    P.node.appendChild(w); P.rip = w;
+  }
+  if (on) P.lift.setAttribute('clip-path', `url(#${P.clipId})`); else P.lift.removeAttribute('clip-path');
+  P.rip.style.display = on ? '' : 'none';
+}
+/** Things near enough to go to: a pet that follows you stays near you, the others go where they like. */
+function _ptwNearby(P, list, xy) {
+  const pl = P.me ? _ptwPlayer() : null, cx = pl ? pl.x : P.x, cy = pl ? pl.y : P.y, R = pl ? 4.6 : 13, out = [];
+  for (const q of list) { const a = xy ? xy(q) : q; if (Math.hypot(a.x - cx, (a.y - cy) * 1.4) <= R) out.push(q); }   // (measured as _ptwComeAlong measures it: it must not be called back before it gets there)
+  return out;
+}
+const _ptwPick1 = (list) => list[Math.floor(Math.random() * list.length)];
+function _ptwTaken(row, P) { return _ptw.pets.concat(typeof _gllRoams !== 'undefined' ? _gllRoams.map(R => R.P) : []).some(q => q !== P && ((q.tx === row.x && q.ty === row.y) || (q.x === row.x && q.y === row.y))); }
+function _ptwSoon(P, id, secs) { const t = performance.now(), k = 'at_' + id; if (P[k] && t - P[k] < secs * 1000) return false; return true; }
 /* ---------- the behaviour library ---------- */
 const PET_BEHAVIOURS = {
+  swim: { when: (P) => (_ptwHas(P, 'swim') && _ptwSoon(P, 'swim', 35) && _ptwNearby(P, _ptwSpots().shore).length ? 6 : 0), run(P) {
+    P.at_swim = performance.now();
+    const list = _ptwNearby(P, _ptwSpots().shore); if (!list.length) { P.busy = 1; return; }
+    list.sort((a, b) => Math.hypot(a.x - P.x, a.y - P.y) - Math.hypot(b.x - P.x, b.y - P.y));
+    const s = _ptwPick1(list.slice(0, 6)), pad = (n) => {
+      if (n <= 0) { P.walkTo(s.x, s.y, false, () => { P.sit(); P.clip('shake', 900, () => { P.sit(); P.busy = 1; }); }); return; }
+      for (let i = 0; i < 8; i++) { const x = s.wx + (Math.random() - 0.5) * 5, y = s.wy + (Math.random() - 0.5) * 2.6; if (_ptwWet(x, y) && _ptwWet(x, y + 0.4) && _ptwWet(x + 0.4, y) && _ptwWet(x - 0.4, y)) { P.walkTo(x, y, false, () => { P.sit(); P.busy = 2 + Math.random() * 3; P.cb = () => pad(n - 1); }); return; } }
+      pad(0);
+    };
+    P.walkTo(s.x, s.y, false, () => { P.walkTo(s.wx, s.wy, false, () => { P.sit(); P.busy = 1.5 + Math.random() * 2; P.cb = () => pad(2 + Math.floor(Math.random() * 2)); }); });
+  } },
+  perch: { when: (P) => (_ptwFlier(P) && _ptwSoon(P, 'perch', 12) && _ptwNearby(P, _ptwSpots().perch).length ? 7 : 0), run(P) {
+    P.at_perch = performance.now();
+    const list = _ptwNearby(P, _ptwSpots().perch).filter(q => !_ptwTaken(q, P)); if (!list.length) { P.busy = 1; return; }
+    const t = _ptwPick1(list);
+    P.walkTo(t.x, t.y, false, () => { P.dir = Math.random() < 0.5 ? 1 : -1; P.sit(); const stay = 7 + Math.random() * 12; if (Math.random() < 0.5 && typeof petClipSuits === 'function' && petClipSuits('preen', P.look.species)) P.clip('preen', 1500, () => { P.sit(); P.busy = stay; }, { quiet: true }); else P.busy = stay; });
+  } },
+  seat: { when: (P, W) => (_ptwHas(P, 'seat') && !W.rain && _ptwSoon(P, 'seat', 25) && _ptwNearby(P, _ptwSpots().seat).length ? 5 : 0), run(P) {
+    P.at_seat = performance.now();
+    const list = _ptwNearby(P, _ptwSpots().seat).filter(q => !_ptwTaken(q, P)); if (!list.length) { P.busy = 1; return; }
+    const t = _ptwPick1(list), beside = [[0, 0.75], [-0.9, 0.5], [0.9, 0.5], [0, 1.1], [-1.2, 0.2], [1.2, 0.2]].map(([a, b]) => [t.x + a, t.y + b]).find(([a, b]) => _ptwFree(a, b));
+    if (!beside) { P.busy = 1; return; }
+    P.walkTo(beside[0], beside[1], false, () => { P.walkTo(t.x, t.y, false, () => { P.dir = Math.random() < 0.5 ? 1 : -1; P.sit({ eyes: 'happy', mouth: 'smile' }); P.busy = 8 + Math.random() * 14; }); });
+  } },
+  drink: { when: (P) => (_ptwHas(P, 'drink') && _ptwSoon(P, 'drink', 30) && (_ptwNearby(P, _ptwSpots().drink).length || _ptwNearby(P, _ptwSpots().shore).length) ? 4 : 0), run(P) {
+    P.at_drink = performance.now();
+    const S = _ptwSpots(), a = _ptwNearby(P, S.drink), b = _ptwNearby(P, S.shore), t = a.length ? _ptwPick1(a) : _ptwPick1(b); if (!t) { P.busy = 1; return; }
+    const near = [[0, 0.45], [-0.8, 0.3], [0.8, 0.3], [0, 0.9], [-1.2, 0.3], [1.2, 0.3]].map(([q, w]) => [t.x + q, t.y + w]).find(([q, w]) => _ptwFree(q, w)); if (!near) { P.busy = 1; return; }
+    P.walkTo(near[0], near[1], false, () => { P.sit(); P.dir = t.x >= P.x ? 1 : -1; P.clip('sniff', 2200, () => { P.sit(); if (Math.random() < 0.4) P.hearts(); P.busy = 1; }); });
+  } },
+  dig: { when: (P, W) => (_ptwHas(P, 'dig') && !W.rain && _ptwSoon(P, 'dig', 45) && typeof petClipSuits === 'function' && petClipSuits('dig', P.look.species) ? 2.5 : 0), run(P) {
+    P.at_dig = performance.now();
+    for (let i = 0; i < 8; i++) { const a = Math.random() * 6.28, x = P.x + Math.cos(a) * 1.8, y = P.y + Math.sin(a) * 1.2; if (_ptwFree(x, y) && !gardenLandPathAt(Math.floor(x), Math.floor(y)) && !(gardenLandCell(Math.floor(x), Math.floor(y)) || {}).lane) { P.walkTo(x, y, false, () => { P.sit(); P.clip('dig', 2000, () => { P.sit(); P.busy = 1; }); }); return; } }
+    P.busy = 1;
+  } },
   wander: { when: () => 3, run(P) {
     for (let i = 0; i < 8; i++) { const a = Math.random() * 6.28, d = 1.5 + Math.random() * 3.5, x = P.x + Math.cos(a) * d, y = P.y + Math.sin(a) * d * 0.7; if (_ptwFree(x, y)) { P.walkTo(x, y, false, () => { P.sit(); P.busy = 1 + Math.random() * 3; }); return; } }
     P.busy = 2;
@@ -171,22 +314,22 @@ function _ptwThink(P, W, dt) {
 function _ptwStep(P, dt, t) {
   if (P.tx != null) {
     const W = GARDEN_WORLD, dx = (P.tx - P.x) * W.cellW, dy = (P.ty - P.y) * W.cellH, d = Math.hypot(dx, dy);
-    if (d < 3) { P.tx = null; P.run = false; const c = P.arrive; P.arrive = null; if (P.root) P.root.classList.remove('pt-run'); if (c) c(); else { P.sit(); P.busy = 0.5; } }
+    if (d < 3) { P.x = P.tx; P.y = P.ty; P.tx = null; P.run = false; const c = P.arrive; P.arrive = null; if (P.root) P.root.classList.remove('pt-run'); if (c) c(); else { P.sit(); P.busy = 0.5; } }
     else {
-      const sp = 44 * P.per.speed * P.speed * dt, nx = P.x + dx / d * sp / W.cellW, ny = P.y + dy / d * sp / W.cellH;
+      const sp = Math.min(d, 44 * P.per.speed * P.speed * dt), nx = P.x + dx / d * sp / W.cellW, ny = P.y + dy / d * sp / W.cellH;
       if (Math.abs(dx) > 3) P.dir = dx > 0 ? 1 : -1;
-      if (P.per.flies || _ptwFree(nx, ny)) { P.x = nx; P.y = ny; }
-      else if (_ptwFree(nx, P.y)) P.x = nx;
-      else if (_ptwFree(P.x, ny)) P.y = ny;
+      if (_ptwCanStep(P, nx, ny)) { P.x = nx; P.y = ny; }
+      else if (_ptwCanStep(P, nx, P.y)) P.x = nx;
+      else if (_ptwCanStep(P, P.x, ny)) P.y = ny;
       else if (++P.stuck > 20) { P.tx = null; P.arrive = null; P.run = false; P.sit(); P.busy = 1; if (P.me) { P.lost = true; P.busy = 0.2; } }
     }
   }
-  const pos = _ptwCell(P.x, P.y), tf = `translate(${pos.x.toFixed(1)} ${pos.y.toFixed(1)})`;
-  if (tf !== P.tf) { P.tf = tf; P.node.setAttribute('transform', tf); P.node.setAttribute('data-z', (P.y + 0.002).toFixed(2)); }
+  const T = _ptwStand(P, Math.min(0.2, dt || 0)), pos = _ptwCell(P.x, P.y), tf = `translate(${pos.x.toFixed(1)} ${(pos.y - T.up + T.sink).toFixed(1)})`;
+  if (tf !== P.tf) { P.tf = tf; P.node.setAttribute('transform', tf); P.node.setAttribute('data-z', (T.z + 0.002).toFixed(2)); }
   const fd = P.dir < 0 ? 'scale(-1 1)' : '';
   if (fd !== P.fd) { P.fd = fd; P.face.setAttribute('transform', fd); }
-  const z = Math.floor(P.y * 2);
-  if (z !== P.z || !P.node.isConnected) { P.z = z; _ptwPlace(P.node, P.y); }
+  const z = Math.floor(T.z * 2);
+  if (z !== P.z || !P.node.isConnected) { P.z = z; _ptwPlace(P.node, T.z); }
 }
 function _ptwPlace(node, y) { if (typeof _gwPlace === 'function') _gwPlace(node, y); else { const l = _ptw.svg && _ptw.svg.querySelector('.gd-objects'); if (l && !node.isConnected) l.appendChild(node); } }
 function _ptwHearts(P) {
@@ -277,7 +420,7 @@ function _ptwBubble(e) {
 }
 
 /* ---------- start, stop, the loop ---------- */
-function _ptwRosterKey() { const g = petGet(); return g.has && g.on ? JSON.stringify([g.look, g.name, _ptwVisiting(), petPackLooks().map(l => [l.species, l.coat, l.marks])]) : ''; }
+function _ptwRosterKey() { const g = petGet(); return g.has && g.on ? JSON.stringify([g.look, g.name, _ptwVisiting(), _ptwMotion(), petPackLooks().map(l => [l.species, l.coat, l.marks])]) : ''; }   // (reduced motion switched on: they sit down at once)
 function _ptwBuild() {
   for (const P of _ptw.pets) P.node.remove();
   _ptw.pets = [];
@@ -308,7 +451,7 @@ function _ptwFrame(now) {
   if (_ptw.tThink <= 0) { _ptw.tThink = 0.25; _ptw.W = _ptwWorld(); if (_ptw.W) _ptwEncounter(_ptw.W); }
   const W = _ptw.W;
   let going = _ptw.flies.length > 0;
-  if (W) for (const P of _ptw.pets) { _ptwThink(P, W, dt); _ptwStep(P, dt, now / 1000); if (P.tx != null) going = true; }
+  if (W) for (const P of _ptw.pets) { if (_ptwGone(P)) continue; _ptwThink(P, W, dt); _ptwStep(P, dt, now / 1000); if (P.tx != null) going = true; }
   if (_ptw.pets.length && typeof gardenLivePets === 'function') gardenLivePets(_ptw.pets);   // (2.32) where they really are, to who is in this garden with you
   if (_ptw.flies.length) _ptwFlies(dt, now / 1000);
   // walking: every frame. Sitting about: a few looks a second is plenty (their limbs are CSS). Nobody out: _ptwCheck looks in once a second
@@ -335,7 +478,7 @@ function _ptwCheck() {
   if (key !== _ptw.key) { _ptw.key = key; _ptwBuild(); }
   // 2.23: a secret that comes true while you are out in the garden with your pet
   if (typeof petBookTick === 'function' && (_ptw.bookT = (_ptw.bookT || 0) + 1) % 60 === 5 && _ptw.pets.length) { const tt = petBookTick(''); for (const id of tt.secret) petSecretReveal(id); }
-  for (const P of _ptw.pets) if (!P.node.isConnected) { P.z = -1; _ptwPlace(P.node, P.y); }
+  for (const P of _ptw.pets) if (!P.node.isConnected) { P.z = -1; P.tf = null; _ptwPlace(P.node, P.y); }
   if (_ptw.enc && !_ptw.enc.node.isConnected) _ptwPlace(_ptw.enc.node, _ptw.enc.cell.y);
   if (!_ptw.pets.length) { try { const W = _ptwWorld(); if (W) _ptwEncounter(W); } catch (e) { /* later */ } return; }   // nobody out: no frames at all, but a rare visitor may still come
   if (!_ptw.raf && !_ptw.idleT && !document.hidden) { _ptw.last = 0; _ptw.raf = requestAnimationFrame(_ptwFrame); }

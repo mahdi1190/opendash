@@ -25,7 +25,7 @@ function _gllPetLook(pet, view) {
 function _gllPetDrop(A) { if (A.pp) { try { A.pp.node.remove(); } catch (e) { /* gone */ } A.pp = null; } A.ppKey = ''; }
 function _gllPetBusy(P, dt) { if (P.busy > 0) { P.busy -= dt; if (P.busy <= 0 && P.cb) { const c = P.cb; P.cb = null; c(); } } }
 function _gllPetStep(A, dt, svg) {
-  if (!A.pet || !svg || typeof _ptwNew !== 'function') { if (A.pp) _gllPetDrop(A); return; }
+  if (!A.pet || A.petAway || !svg || typeof _ptwNew !== 'function') { if (A.pp) _gllPetDrop(A); return; }
   const W = GARDEN_WORLD, key = JSON.stringify(A.pet) + (A.w === 0 ? '|h' : '');
   if (!A.pp || A.ppKey !== key || !A.pp.node) {
     _gllPetDrop(A);
@@ -33,7 +33,7 @@ function _gllPetStep(A, dt, svg) {
     const P = _ptwNew(look, false), pf = _gllPlaceFresh(A.pf);
     P.x = pf ? pf.x : A.x - 1.1; P.y = pf ? pf.y : A.y + 0.2; P.tx = null; P.z = -1;
     A.pp = P; A.ppKey = key;
-    if (!_ptwFree(P.x, P.y)) { P.x = A.x; P.y = A.y; }
+    if (!_ptwCanStand(P, P.x, P.y)) { P.x = A.x; P.y = A.y; }
   }
   const P = A.pp, pf = _gllPlaceFresh(A.pf);
   const d = Math.hypot(A.x - P.x, (A.y - P.y) * 1.4);
@@ -49,8 +49,9 @@ function _gllPetStep(A, dt, svg) {
   void W;
 }
 function _gllPetFx(A, ev) {
-  const P = A.pp; if (!P || P.wow) return;
   const e = String(ev.e || '');
+  if (ev.c === 'pet' && (e === 'away' || e === 'back')) { A.petAway = e === 'away'; if (A.petAway) _gllPetDrop(A); return; }   // their pet went on a little journey, or came home: as they see it, so do you
+  const P = A.pp; if (!P || P.wow) return;
   if (ev.c === 'nap') { if (e === 'on') { P.tx = null; P.sleep(120); } else { P.sit(); P.busy = 0; } return; }
   if (ev.c === 'wow') {
     const def = typeof PET_WOW !== 'undefined' && Object.prototype.hasOwnProperty.call(PET_WOW, e) ? PET_WOW[e] : null;
@@ -118,6 +119,7 @@ function gardenLivePets(pets) {
     let pack = 0;
     for (const P of pets) {
       if (!P || !P.look || !P.node) continue;
+      if (typeof _ptwGone === 'function' && _ptwGone(P)) continue;   // (away on a journey: there is no place to say)
       const mine = !!P.me;
       if (!mine && (_gll.role !== 'host' || pack >= 3)) continue;   // the pack is the host's to show
       const u = mine ? 0 : ++pack;
@@ -172,7 +174,7 @@ function _gllPetFix(P, f) {
   f.seen = true;
   const err = Math.hypot(f.x - P.x, (f.y - P.y) * 1.4);
   if (err > GL_PP.snap) {
-    const q = typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(f.x, f.y, 2) : null;
+    const q = !_ptwCanStand(P, f.x, f.y) && typeof _gwNearestFreePt === 'function' ? _gwNearestFreePt(f.x, f.y, 2) : null;   // (on the water or up on something: exactly there, if it can be: its own screen said so)
     P.x = q ? q.x : f.x; P.y = q ? q.y : f.y; P.tx = null; P.z = -1;
   }
   if (P.busy > 0 && (f.gx != null || err > 0.3)) { P.busy = 0; P.cb = null; if (P.act) P.setAct(''); }

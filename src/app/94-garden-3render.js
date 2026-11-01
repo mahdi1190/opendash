@@ -191,6 +191,7 @@ function _gdrPets(sc, o) {
   let list = null;
   // integrate 2.18: o.friend (a friend view, gardenRender's option) brings THEIR pet into their garden (agent pets)
   const ctx = { season: sc.season, tod: sc.tod, size: o.size, readOnly: !!o.readOnly, rain: !!(sc.rain && sc.rain.now) };
+  if (o.friend && Number(sc.pa) > _gdNow()) return [];   // away on a little journey: they cannot see it, so neither do you
   if (o.friend && typeof o.friend === 'object') ctx.friend = o.friend;
   try { list = window.petGardenSprite(ctx); } catch (e) { list = null; }
   if (!list) return [];
@@ -331,7 +332,7 @@ function _gdrSceneFromSnapshot(snap, o) {
   }
   // 2.22: a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4
   const areas = gardenLandsOfSnap(snap).areas; if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
-  return { dz: snap.dz || null, plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
+  return { pa: snap.pa || 0, dz: snap.dz || null, plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
 }
 /**
  * Draw anyone's garden into el, read-only. snapshot: from gardenSnapshot() or a friend (cleaned here).

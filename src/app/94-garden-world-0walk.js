@@ -168,7 +168,7 @@ function _gwFree(x, y, m) {
   const fx = GW_FOOT.x + (m || 0), fy = GW_FOOT.y + (m || 0);
   return gardenWalkable(Math.floor(x - fx), Math.floor(y - fy)) && gardenWalkable(Math.floor(x + fx), Math.floor(y - fy))
     && gardenWalkable(Math.floor(x - fx), Math.floor(y + fy)) && gardenWalkable(Math.floor(x + fx), Math.floor(y + fy))
-    && !_gwSolidHit(x, y, fx, fy);
+    && !_gwSolidHit(x, y, fx, fy) && gardenWonderWalkFine(x, y, fy, m);   // (over the lake: the island's shape and the line of stones, not whole cells)
 }
 /** Can the feet go in a straight line from a to b? (`m`: with that much room to spare.) Sampled finer than a corner can hide in. */
 function _gwLos(a, b, m) {
@@ -288,6 +288,7 @@ function _gwLineClear(a, b, grid) {
 }
 /** The way from one point to another: [waypoints] ending exactly at `to`, as straight as it can be, or null. */
 function _gwRoute(from, to) {
+  { const way = gardenWonderWayRoute(from, to); if (way) return way; }   // over the stones to the island: along the line of them
   if (_gwLos(from, to, GW_CLEAR) || _gwLos(from, to)) return [{ x: to.x, y: to.y }];
   const raw = gardenPath(from, { x: Math.floor(to.x), y: Math.floor(to.y) }, true);
   if (raw === null) return null;
@@ -1005,7 +1006,7 @@ function _gwSolidHitAfterGrid(x, y, f) { _gwGrid(gardenHere()); return _gwSolidH
 /** The one collision map, for feet of any size: can something this wide (r, in cells) stand at x, y? */
 function gardenWorldFree(x, y, r) {
   const f = r == null ? 0.1 : r;
-  return !_gwSolidHitAfterGrid(x, y, f) && gardenWalkable(Math.floor(x - f), Math.floor(y - f)) && gardenWalkable(Math.floor(x + f), Math.floor(y - f)) && gardenWalkable(Math.floor(x - f), Math.floor(y + f)) && gardenWalkable(Math.floor(x + f), Math.floor(y + f));
+  return !_gwSolidHitAfterGrid(x, y, f) && gardenWalkable(Math.floor(x - f), Math.floor(y - f)) && gardenWalkable(Math.floor(x + f), Math.floor(y - f)) && gardenWalkable(Math.floor(x - f), Math.floor(y + f)) && gardenWalkable(Math.floor(x + f), Math.floor(y + f)) && gardenWonderWalkFine(x, y, f);
 }
 /* How high up a thing's top surface is, as a share of its height, by behaviour (a seat is sat on below the top of its back). A catalogue row can say `perch: 0.8` for itself. */
 const GARDEN_SURFACE_BY_EFFECT = Object.freeze({ sit: 0.55 });
@@ -1119,7 +1120,7 @@ function gardenWorldStop(keepOn) {
   if (!keepOn && typeof _gwFishReset === 'function') _gwFishReset(); else _gw.fx = null;
   if (typeof _gwBugsReset === 'function') _gwBugsReset();
   gardenBubbleClose();
-  if (!keepOn) { if (typeof gardenLiveHostGone === 'function') gardenLiveHostGone(); if (typeof gardenLifeStop === 'function') gardenLifeStop(); if (typeof gardenWonderStop === 'function') gardenWonderStop(); _gw.on = false; _gw.routeEls = null; _gw.reach = null; _gw.root = null; _gw.svg = null; _gw.box = null; _gw.node = null; _gw.pet = null; _gw.grid = null; }
+  if (!keepOn) { if (typeof gardenPlaySeekStop === 'function') gardenPlaySeekStop(); if (typeof gardenLiveHostGone === 'function') gardenLiveHostGone(); if (typeof gardenLifeStop === 'function') gardenLifeStop(); if (typeof gardenWonderStop === 'function') gardenWonderStop(); _gw.on = false; _gw.routeEls = null; _gw.reach = null; _gw.root = null; _gw.svg = null; _gw.box = null; _gw.node = null; _gw.pet = null; _gw.grid = null; }
 }
 /** After every paint of the stage: the svg may be a new element (a mount), or the patch may have dropped our nodes. */
 function gardenWorldPainted(m) {

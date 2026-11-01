@@ -266,7 +266,7 @@ const _GARTW = (function () {
     if (snowy) { let sn = ''; for (let i = 0; i < 60; i++) sn += A.blob(r, r() * W.cols * cw, W.sky + r() * W.rows * ch, rr(r, 14, 36), rr(r, 4, 8), 8, 0.5); s += A.P('#ffffff', sn, 0.72); }
     // past the edge of the world (a window of another shape, zoomed right out): more lawn, and the lake carrying on
     const W2 = W.cols * cw, H0 = W.sky + W.rows * ch, pal = LAWN[season] || LAWN.summer;
-    const margin = `<path fill="${pal[0]}" d="M-3000 ${W.sky}H${W2 + 3000}V${H0 + 3000}H-3000z"/>`;
+    const margin = `<path fill="${pal[0]}" d="M-3000 ${W.sky}H${W2 + 3000}V${H0 + 3000}H-3000z"/>` + (typeof gartLandsFringe === 'function' ? gartLandsFringe(sc) : '');
     flush();
     return `${margin}<g class="gart-bake" data-bake="ground" data-split="1">${groups.join('')}</g><g class="gart-live">${live}</g>`;
   }

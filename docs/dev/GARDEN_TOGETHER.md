@@ -446,3 +446,13 @@ A room's water is real water with cells of its own past the edge of the map, fro
 - The room's small games are each person's own: nothing about them is sent.
 
 While you are in a room, `_gwActors`, `_gwFeet`, `_gwPx` and `_gdgBox` answer for the room, so the fishing and netting code does not know the difference. The layer is scaled by `GRW.k`, which makes the rod, float and moment fit the bigger figure.
+
+## 26. Zones, fewer fish, pets in the world
+
+**Zones** (docs/dev/GARDEN_PLAN.md, "Zones") add nothing to a snapshot or the wire: a garden's zones come from `lv` and what it owns.
+
+**Fish.** `GF_SCHOOL.max` is 8 across the whole map in ordinary play; contests and feeding frenzies may go up to `GF_SCHOOL.wire` (20, what `gl:fs` carries). Each water wants 1, plus 1 for what you built for it. (A room's water keeps its own two.) The one who decides fills the water nearest anyone in the garden first, and the last places are kept for nearer waters; someone standing at an empty water makes the furthest swimming fish leave. In the lake only fish within 14 cells of someone count. A fish within 9 cells of a float in its own water drifts over, and a line nothing has come to for 12 seconds brings one up nearby: every bite is still a fish you can see. Still host-decided, still the whole list.
+
+**Pets in the world.** Nothing new is sent. Where a pet is goes out as before (`gl:pp`, tenths of a cell); what it is doing there is worked out from where it is and what stands in the garden (`_ptwStand`, `97-pets-7roam.js`): a water pet on an open water cell is swimming, a flying pet at a perch's point is on that perch. Perch points are kept to tenths of a cell, so the place sent lands on them exactly. Only open land and open water count; perches come from the live rows, so moved objects keep theirs. With reduced motion or Fun off none of it runs.
+
+**A pet away on a little journey.** Who is here hears it once (`fx pet away` and `back`: an older app ignores the id). A later arrival gets no pet in your look, because `petPayload()` says `walks: false` while away. No places are sent. A saved copy says when it is due back: snapshot field `pa`, a time, so an old copy stops saying so by itself. It is in `gardenSnapshot`, `gardenSnapshotClean`, `_gscSnapBody` and `GARDEN_SCHEMA`; a saved copy can lag by up to the 15 minutes between publishes.

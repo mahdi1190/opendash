@@ -85,8 +85,8 @@ const GARDEN_LAND_MAPS = _gdF({
     'ooooooooooo!!!!!!!!rrrrrrrrr!!!!!!!!!!!ssssssvvvvvvv',
     '#####oooooottttttt!!!!!!!!!!!uuuuuuuuu!!!!!!!vvvvvvv']) }),
 });
-/* A trail's level is when its gate opens. `from` is the way to it, so a trail never opens before the one that leads to it. */
-const GARDEN_LAND_TRAILS = _gdRows([
+/* A trail's level is when its gate opens. `from` is the way to it, so a trail never opens before the one that leads to it. Outside the old garden the level here is only a note of the first plan: the zones below decide. */
+const _GLD_TRAIL_ROWS = ([
   { id: 'lt-heart', ch: '0', name: 'The heart path', lv: 1, from: '' },
   { id: 'lt-cottage', ch: '5', name: 'Cottage path', lv: 1, from: '' },
   { id: 'lt-pondway', ch: '_', name: 'Pond path', lv: 1, from: '' },
@@ -108,7 +108,73 @@ const GARDEN_LAND_TRAILS = _gdRows([
   { id: 'lt-board', ch: '$', name: 'The boardwalk', lv: 7, from: 'lt-furrow' },
   { id: 'lt-heron', ch: '^', name: 'South shore walk', lv: 14, from: 'lt-board' },
   { id: 'lt-willow', ch: '!', name: 'Willow ways', lv: 18, from: 'lt-heron' },
-].map(t => Object.assign({ trail: 1 }, t)));
+]);
+/* ---------- the zones ----------
+   The owner, 1 Nov 2026: "further from the centre costs more and needs a higher level ... gates and zones locked ... we should only see we can buy stuff when that zone itself is unlocked". Every cell of the world is in one zone,
+   worked out by how far it is from the square, and a path is never in an earlier zone than the way to it. Everything in a zone opens with its gate: its paths, and its land to buy. It is all in this one table:
+     n, id, name      the zone ('zn-<n>' is in the open set when it is open, and is the answer to "what is locked here")
+     lv               the garden level that opens it
+     far              the cells beyond the square (GARDEN_ZONE_SQUARE) that this zone reaches to
+     coin             what a square of land costs here (GARDEN_ZONE_COST: dearer kinds of land, and the most squares a piece is charged for)
+     lake             the lake is open down to this row. Past it the water is locked: no casts and no fish
+   Nothing new goes in a snapshot: a garden's zones come from its level and what it owns, so a friend's garden shows THEIR zones by itself. */
+const GARDEN_ZONES = _gdRows([
+  { n: 0, id: 'zn-0', name: 'The square', lv: 1, far: 0, coin: 0, lake: 28, zone: 1, cats: _gdF([]) },
+  { n: 1, id: 'zn-1', name: 'Near land', lv: 3, far: 3, coin: 10, lake: 28, zone: 1, cats: _gdF([]) },
+  { n: 2, id: 'zn-2', name: 'Middle land', lv: 6, far: 7, coin: 18, lake: 31, zone: 1, cats: _gdF([]) },
+  { n: 3, id: 'zn-3', name: 'Far land', lv: 10, far: 12, coin: 30, lake: 34, zone: 1, cats: _gdF([]) },
+  { n: 4, id: 'zn-4', name: 'Wild land', lv: 14, far: 18, coin: 48, lake: 36, zone: 1, cats: _gdF([]) },
+  { n: 5, id: 'zn-5', name: 'The world’s edge', lv: 18, far: 99, coin: 75, lake: 38, zone: 1, cats: _gdF([]) },
+]);
+const GARDEN_ZONE_SQUARE = _gdF({ x0: 10, x1: 42, y0: 8, y1: 21 });   // (edges of cells: the lane's two rows and x 10 to 41 are in it)
+const GARDEN_ZONE_COST = _gdF({ most: 14, walled: 2, kinds: _gdF({ pool: 1.4, rich: 1.2, suntrap: 1.6, exotic: 1.5, nursery: 1.2 }) });
+function gardenZoneFar(x, y) { const Q = GARDEN_ZONE_SQUARE, dx = Math.max(Q.x0 - x, x - Q.x1, 0), dy = Math.max(Q.y0 - y, y - Q.y1, 0); return Math.hypot(dx, dy); }
+function _gldZoneOfFar(d) { for (const z of GARDEN_ZONES) if (d <= z.far) return z.n; return GARDEN_ZONES.length - 1; }
+/* Which zone each cell is in, from the maps alone (this runs before the rows below are made, so their levels and prices can come from it). A path's cells only ever go up in zone, walking out from its mouth. */
+const _GLD_ZP = (function () {
+  const C = GARDEN_WORLD.cols, R = GARDEN_WORLD.rows, ring = new Int8Array(C * R), trailOf = new Array(C * R).fill(null), byCh = new Map(_GLD_TRAIL_ROWS.map(t => [t.ch, t])), core = new Set(), top = GARDEN_ZONES.length - 1;
+  const at = (x, y) => y * C + x, inside = (x, y) => x >= 0 && y >= 0 && x < C && y < R;
+  for (let y = 0; y < R; y++) for (let x = 0; x < C; x++) ring[at(x, y)] = _gldZoneOfFar(gardenZoneFar(x + 0.5, y + 0.5));
+  for (const [id, M] of Object.entries(GARDEN_LAND_MAPS)) M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) { const i = at(M.x + dx, M.y + dy), t = byCh.get(row[dx]); if (t) trailOf[i] = t; if (id === 'core') { ring[i] = 0; core.add(i); } } });
+  const isLane = (x, y) => y === 19 || y === 20, base = new Map(), adj = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (const t of _GLD_TRAIL_ROWS) {
+    const cells = []; for (let i = 0; i < C * R; i++) if (trailOf[i] === t) cells.push(i);
+    if (cells.every(i => core.has(i))) { base.set(t.id, 0); continue; }
+    const parent = t.from ? _GLD_TRAIL_ROWS.find(q => q.id === t.from) : null, seen = new Set(), queue = [];
+    let b = 1e9;
+    for (const i of cells) { const x = i % C, y = (i - x) / C; for (const [a, c] of adj) if (inside(x + a, y + c) && (parent ? trailOf[at(x + a, y + c)] === parent : isLane(x + a, y + c))) { b = Math.min(b, ring[at(x + a, y + c)] + (parent ? 1 : 0)); if (!seen.has(i)) { seen.add(i); queue.push(i); } } }
+    if (b === 1e9) { b = 1; queue.push(cells[0]); seen.add(cells[0]); }
+    b = Math.min(top, Math.max(b, 1));
+    base.set(t.id, b);
+    for (const i of queue) ring[i] = Math.max(b, ring[i]);
+    while (queue.length) {
+      const i = queue.shift(), x = i % C, y = (i - x) / C;
+      for (const [a, c] of adj) { if (!inside(x + a, y + c)) continue; const j = at(x + a, y + c); if (trailOf[j] !== t || seen.has(j)) continue; seen.add(j); ring[j] = Math.min(top, Math.max(ring[i], ring[j], b)); queue.push(j); }
+    }
+  }
+  return { ring, base };
+})();
+const GARDEN_LAND_TRAILS = _gdRows(_GLD_TRAIL_ROWS.map(t => { const b = _GLD_ZP.base.get(t.id); return Object.assign({ trail: 1 }, t, b ? { lv: GARDEN_ZONES[b].lv, zn: b } : { zn: 0 }); }));
+/** The zone a cell is in (a number). */
+function gardenZoneOf(x, y) { const W = GARDEN_WORLD; return x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _GLD_ZP.ring[y * W.cols + x] : 0; }
+/** The zone's row, for a number. */
+function gardenZone(n) { return GARDEN_ZONES[Math.max(0, Math.min(GARDEN_ZONES.length - 1, n | 0))]; }
+/** What locks this path or lane cell, in the garden on screen: '' when it is open, else the zone's id. */
+function gardenZoneLockAt(x, y) { const n = gardenZoneOf(x, y); return n && !_GD_LAND.has('zn-' + n) ? 'zn-' + n : ''; }
+/** The lake is open down to this row, in the garden on screen: the open zones say, and a pier you have built always has water round it. */
+function gardenLakeOpenTo() {
+  let to = GARDEN_ZONES[0].lake;
+  for (const z of GARDEN_ZONES) if (_GD_LAND.has(z.id)) to = Math.max(to, z.lake);
+  return Math.min(GARDEN_ZONES[GARDEN_ZONES.length - 1].lake, Math.max(to, 28 + gardenPierMore()));
+}
+/** The same from a set of what is open (the drawing, the page). */
+function gardenLakeOpenToOf(open) {
+  let to = GARDEN_ZONES[0].lake;
+  for (const z of GARDEN_ZONES) if (open.has(z.id)) to = Math.max(to, z.lake);
+  return Math.min(GARDEN_ZONES[GARDEN_ZONES.length - 1].lake, Math.max(to, 28 + gardenPierMore()));
+}
+/** The first zone whose opening would open this row of the lake. */
+function gardenLakeZoneOfRow(y) { for (const z of GARDEN_ZONES) if (y < z.lake) return z; return GARDEN_ZONES[GARDEN_ZONES.length - 1]; }
 /* The old garden's sections: free, each at its own level. [map character, id, name, kind, level, via, the old area it counts as]. */
 const _GLD_CORE_ROWS = [
   ['O', 'lc-front-bed', 'Front bed', 'bed', 1, '0', 'bed'], ['U', 'lc-cottage-bed', 'Cottage bed', 'bed', 1, '5', 'bed'], ['K', 'lc-rose-corner', 'Rose corner', 'bed', 2, '5', 'bed'],
@@ -158,7 +224,21 @@ function _gldSectionRow(region, ch, id, name, kind, lv, buy, via, needs, fam) {
   if (K.always) r.always = 1; if (K.grow) r.grow = K.grow; if (K.pool) r.pool = 1; if (K.green) r.green = 1;
   return r;
 }
-const GARDEN_LAND_SECTIONS = _gdRows(_GLD_CORE_ROWS.map(([ch, id, name, kind, lv, via, fam]) => _gldSectionRow('core', ch, id, name, kind, lv, 0, via, '', fam)).concat(_GLD_SECTION_ROWS.map(r => _gldSectionRow(...r))));
+/* A piece of land to buy: its zone is how far out it lies, and never before the way to it. Its price is its squares at that zone's price (the row's own level and coins were the first plan, kept only as notes). */
+function _gldZonedRow(region, ch, id, name, kind, lv, buy, via, needs) {
+  const r = _gldSectionRow(region, ch, id, name, kind, lv, buy, via, needs), at = (x, y) => y * GARDEN_WORLD.cols + x, n0 = r.cells.reduce((sum, [x, y]) => sum + gardenZoneFar(x + 0.5, y + 0.5), 0) / r.cells.length;
+  let n = Math.max(1, _gldZoneOfFar(n0));
+  const viaRow = via ? _GLD_TRAIL_BY_CH.get(via) : null;
+  if (viaRow) n = Math.max(n, viaRow.zn);
+  // and the cell you knock at must be open by then: the nearest on its way
+  let best = 1e9, door = 0; const mx = r.x + r.w / 2, my = r.y + r.h / 2;
+  for (const [x, y] of r.cells) for (const [a, c] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) { const q = x + a, w = y + c; if (q < 0 || w < 0 || q >= GARDEN_WORLD.cols || w >= GARDEN_WORLD.rows) continue; const onLane = w === 19 || w === 20, onVia = viaRow ? _gldTrailCh(q, w) === via : onLane; if (!onVia) continue; const d = Math.hypot(q + 0.5 - mx, w + 0.5 - my); if (d < best) { best = d; door = _GLD_ZP.ring[at(q, w)]; } }
+  n = Math.min(GARDEN_ZONES.length - 1, Math.max(n, door));
+  const Z = GARDEN_ZONES[n], C = GARDEN_ZONE_COST, price = Z.coin * Math.min(C.most, r.cells.length) * (C.kinds[kind] || 1) * (needs ? C.walled : 1);
+  return Object.assign(r, { lv: Z.lv, buy: Math.max(5, Math.round(price / 5) * 5), zn: n });
+}
+function _gldTrailCh(x, y) { for (const M of Object.values(GARDEN_LAND_MAPS)) { const row = M.rows[y - M.y]; if (row && x >= M.x && x < M.x + row.length) return row[x - M.x]; } return ''; }
+const GARDEN_LAND_SECTIONS = _gdRows(_GLD_CORE_ROWS.map(([ch, id, name, kind, lv, via, fam]) => Object.assign(_gldSectionRow('core', ch, id, name, kind, lv, 0, via, '', fam), { zn: 0 })).concat(_GLD_SECTION_ROWS.map(r => _gldZonedRow(...r))));
 const _GLD_ROW = new Map();
 for (let y = 19; y <= 20; y++) for (let x = 0; x < GARDEN_WORLD.cols; x++) _GLD_GRID[y * GARDEN_WORLD.cols + x] = _GLD_LANE;
 for (const M of Object.values(GARDEN_LAND_MAPS)) M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) { const t = row[dx] === '#' ? GARDEN_LAND_THICKET : _GLD_TRAIL_BY_CH.get(row[dx]); if (t) _GLD_GRID[(M.y + dy) * GARDEN_WORLD.cols + M.x + dx] = t; } });
@@ -166,6 +246,25 @@ for (const t of GARDEN_LAND_TRAILS) _GLD_ROW.set(t.id, t);
 for (const s of GARDEN_LAND_SECTIONS) { _GLD_ROW.set(s.id, s); _GD_AREA.set(s.id, s); for (const [x, y] of s.cells) _GLD_GRID[y * GARDEN_WORLD.cols + x] = s; }
 for (const t of GARDEN_LAND_TRAILS) _GD_AREA.set(t.id, t);   // (so a 'locked:' answer can be looked up like any other)
 _GD_AREA.set(GARDEN_LAND_THICKET.id, GARDEN_LAND_THICKET);
+for (const z of GARDEN_ZONES) _GD_AREA.set(z.id, z);   // (a 'locked:zn-2' answer is looked up the same way, and says its own name and level)
+/* The gates: wherever a path or the lane crosses into a further zone. {id, n (the zone it opens), x, y (the cell it stands at, on the far side), dx, dy (the way through), h (cells across, for the lane), door (the cell you knock at)}. */
+const GARDEN_ZONE_GATES = (function () {
+  const out = [], W = GARDEN_WORLD, walk = (x, y) => { const c = gardenLandCell(x, y); return !!c && !c.solid && (!!c.lane || !!c.trail); };
+  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
+    if (!walk(x, y)) continue;
+    const n = gardenZoneOf(x, y); if (!n) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ix = x - dx, iy = y - dy; if (!walk(ix, iy) || gardenZoneOf(ix, iy) >= n) continue;
+      const lane = !!gardenLandCell(x, y).lane && !!gardenLandCell(ix, iy).lane;
+      if (lane && y === 20) continue;   // one gate right across the lane, from its top row
+      if (out.some(g => g.n === n && Math.abs(g.x - x) + Math.abs(g.y - y) <= 1)) continue;   // (a corner of a path: one gate is enough)
+      out.push(Object.freeze({ id: 'zg-' + x + '-' + y, n, x, y, dx, dy, h: lane ? 2 : 1, door: Object.freeze({ x: ix, y: iy }) }));
+    }
+  }
+  return Object.freeze(out);
+})();
+const _GLD_GATE = new Map(GARDEN_ZONE_GATES.map(g => [g.id, g]));
+function gardenZoneGate(id) { return _GLD_GATE.get(String(id)) || null; }
 /** What a cell is: a section's row, a trail's row, the lane, the thicket, or null (the lake). */
 function gardenLandCell(x, y) { const W = GARDEN_WORLD; return x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _GLD_GRID[y * W.cols + x] : null; }
 function gardenLandIsTrail(r) { return !!r && !!r.trail; }
@@ -252,7 +351,7 @@ const GARDEN_LAND_FEATURES = (function () {
     }
     return f;   // (the throwaway check says if one has no spot; it is then not drawn or built)
   };
-  return _gdMovable(_GLD_FEATURE_ROWS.map(place));
+  return _gdMovable(_GLD_FEATURE_ROWS.map(place).map(f => { const q = f.sec ? _GLD_ROW.get(f.sec) : null; return q && q.lv > f.lv ? Object.assign({}, f, { lv: q.lv }) : f; }));   // (never before the zone it stands in)
 })();
 const _GLD_FEAT = new Map(GARDEN_LAND_FEATURES.map(f => [f.id, f]));
 function gardenLandFeature(id) { return _GLD_FEAT.get(String(id)) || null; }
@@ -330,7 +429,7 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-frog', art: 'frogstone', name: 'The frog stone', x: 7, y: 25, col: 'full', tall: 0.8, say: 'A big stone that somebody thought looked like a frog, and helped along a bit.', egg: { verb: 'Sit and listen', tod: 'dusk', c: 6, found: 'At dusk every frog on the marsh starts up at once, and stops when you stand. Six coins on the stone.', soon: 'It only makes sense at dusk, people say.' } },
   { id: 'ld-churn', art: 'churn', name: 'The milk stand', x: 9, y: 23, col: 'full', tall: 0.9, say: 'Two churns, still waiting to be collected.' },
   { id: 'ld-driftwood', art: 'drift', name: 'The driftwood arch', x: 0, y: 34, w: 2, col: 'full', tall: 1.4, say: 'Somebody has been building this from what the marsh gives up, for years.' },
-  { id: 'ld-sunk', art: 'sunken', name: 'The sunken pool', x: 30, y: 18, w: 2, col: 'none', tall: 0.2, say: 'Three stone steps down to a square of still water, right behind the shops. Everyone forgets it is there.', egg: { verb: 'Look in the water', c: 3, found: 'Three old coins on the bottom, and your own face looking pleased.' } },
+  { id: 'ld-sunk', art: 'sunken', name: 'The sunken pool', x: 30, y: 18, w: 2, col: 'full', tall: 0.2, say: 'Three stone steps down to a square of still water, right behind the shops. Everyone forgets it is there.', egg: { verb: 'Look in the water', c: 3, found: 'Three old coins on the bottom, and your own face looking pleased.' } },
   { id: 'ld-picnic', art: 'picnic', name: 'The picnic table', x: 33, y: 12, w: 2, col: 'soft', tall: 0.8, say: 'Somebody has carved a draughts board in the top.' },
   { id: 'ld-mile', art: 'mile', name: 'The milestone', x: 1, y: 19, col: 'soft', tall: 0.8, say: 'It says “0” on both sides. This is as far as anyone measured.', egg: { verb: 'Read the back', c: 2, found: 'On the back, small: “Well done for checking.” Two coins.' } },
   { id: 'ld-arch-se', art: 'gate', name: 'The east shore gate', x: 45, y: 21, col: 'none', tall: 1.9, say: 'Round the lake, the other long way.' },
@@ -343,7 +442,7 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
 const GARDEN_LAND_SQUARES = _gdF([[48.5, 12.5, 40, 16], [8.5, 9.5, 34, 15], [46.5, 29.5, 34, 15], [27, 6.5, 34, 13], [36.5, 40.5, 40, 13], [9.5, 24.5, 34, 13], [5.5, 39.5, 30, 13], [30.5, 12.5, 30, 12]]);
 const GARDEN_LAND_BROOKS = _gdF([
   _gdF([[38.6, 7.2], [38.2, 7.8], [37.4, 8.3], [37.6, 8.9], [37, 9.4]]),   // the little falls to the pond
-  _gdF([[49.5, 30.4], [48.5, 30.8], [47.5, 30.2], [46.5, 30.5], [45.5, 30.9], [44.5, 30.3], [43.5, 30.7], [42.5, 30.3], [41.5, 30.8], [40.5, 30.4], [39.5, 30.5]]),   // past the mill to the lake
+  _gdF([[48.6, 30.7], [47.5, 30.2], [46.5, 30.5], [45.5, 30.9], [44.5, 30.3], [43.5, 30.7], [42.5, 30.3], [41.5, 30.8], [40.5, 30.4], [39.5, 30.5]]),   // past the mill to the lake
   _gdF([[49.5, 34.6], [48.5, 34.2], [47.5, 34.7], [46.5, 34.4], [45.6, 34.6]]),   // under the rope bridge to the sedge pool
 ]);
 const _GLD_SIGHT = new Map(GARDEN_LAND_SIGHTS.map(d => [d.id, d]));
@@ -371,12 +470,17 @@ const GARDEN_LAND_WILD = _gdF(['meadow', 'dell', 'wood', 'orchard', 'reed']);   
  */
 function gardenLandsOpen(level, own) {
   const out = new Set(own || []);
+  for (const z of GARDEN_ZONES) if ((level || 1) >= z.lv) out.add(z.id);
   for (const t of GARDEN_LAND_TRAILS) if ((level || 1) >= t.lv && (!t.from || out.has(t.from))) out.add(t.id);
   const walkBack = (id) => { let t = gardenLandRow(id), g = 0; while (t && g++ < 9) { out.add(t.id); t = t.from ? gardenLandRow(t.from) : null; } };
   for (const s of GARDEN_LAND_SECTIONS) {
     if (!s.buy && (level || 1) >= s.lv && (!s.via || out.has(s.via))) out.add(s.id);
     if (out.has(s.id) && s.via) walkBack(s.via);
   }
+  // what you own keeps its zone open, and the zones on the way to it (land from before the zones, a path opened early with pegs): nothing you own is ever behind a gate
+  let upto = 0;
+  for (const id of out) { const q = gardenLandRow(id); if (q && q.zn) upto = Math.max(upto, q.zn); }
+  for (let n = 1; n <= upto; n++) out.add('zn-' + n);
   return out;
 }
 /** A snapshot's land: {areas (for the scene and the walking: GARDEN_AREAS rows, sections, trails, features), land (what goes in gardenLandSet)}. */

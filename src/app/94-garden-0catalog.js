@@ -844,8 +844,9 @@ function gardenAreaAt(x, y, level) {
   // the world is one map (94-garden-lands-0table.js). A trail, the lane and the mown green are lawn to everything else: you walk there, nothing grows there. The thicket is locked for good.
   if (typeof gardenLandCell === 'function') {
     const c = gardenLandCell(x, y);
-    if (c) { if (c.lane) return 'lawn'; if (c.solid) return 'locked:' + c.id; if (level != null && !_GD_LAND.has(c.id)) return 'locked:' + c.id; if (c.green && level != null && typeof gardenDesignBedAt === 'function') { const b = gardenDesignBedAt(x, y); if (b) return b; } return c.trail || c.green ? 'lawn' : c.id; }   // (a bed plotted on the green grows like that area: the designer)
+    if (c) { if (c.lane) { const zl = level != null ? gardenZoneLockAt(x, y) : ''; return zl ? 'locked:' + zl : 'lawn'; } if (c.solid) return 'locked:' + c.id; if (level != null && !_GD_LAND.has(c.id)) return 'locked:' + (c.zn && !_GD_LAND.has('zn-' + c.zn) ? 'zn-' + c.zn : c.id); if (c.trail && level != null) { const zl = gardenZoneLockAt(x, y); if (zl) return 'locked:' + zl; } if (c.green && level != null && typeof gardenDesignBedAt === 'function') { const b = gardenDesignBedAt(x, y); if (b) return b; } return c.trail || c.green ? 'lawn' : c.id; }   // (a bed plotted on the green grows like that area: the designer)
   }
+  if (level != null && typeof gardenLakeOpenTo === 'function' && y >= gardenLakeOpenTo() && y < 38 && x >= 12 && x < 40 && !_GD_WALK_EXTRA.has(x + ',' + y)) return 'locked:' + gardenLakeZoneOfRow(y).id;   // the far water: it opens with its zone
   for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
   return 'lawn';
 }
@@ -980,6 +981,7 @@ function gardenSnapshotClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const W = GARDEN_WORLD, int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null; };
   const out = { v: 1, wv: int(raw.wv, 1, 9) || 1, cv: int(raw.cv, 0, 9) || 0, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
+  { const pa = Number(raw.pa); if (Number.isInteger(pa) && pa > 0 && pa < 1e14) out.pa = pa; }   // their pet is away until then: 94-garden-play-1pet.js
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
   { const tz = int(raw.tz, -840, 840), sr = int(raw.sr, 0, 1439), ss = int(raw.ss, 0, 1439); if (tz !== null) { out.tz = tz; if (sr !== null && ss !== null) { out.sr = sr; out.ss = ss; } } }   // 2.28: their time zone, so a visit has their light
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);

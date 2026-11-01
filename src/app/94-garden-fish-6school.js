@@ -28,12 +28,14 @@ const GF_SCHOOL = Object.freeze({
     Object.freeze({ zone: 'mid', x0: 12.6, x1: 39.4, y0: 23.1, y1: 24.9, n: 1 }),
     Object.freeze({ zone: 'deep', x0: 12.6, x1: 39.4, y0: 25.2, y1: 35.5, n: 1 }),
   ]),
-  pond: 1, max: 20,                             // fish in each still pool; the most in the water at once (the wire takes 20). The owner, 1 Nov 2026: a fish should be a pleasant surprise, not everywhere all the time
+  pond: 1, max: 8, wire: 20,                    // fish in each still pool; the most in all the water of the map at once in ordinary play; contests and feeding frenzies may go up to the wire's limit. The owner, 1 Nov 2026: a fish should be a pleasant surprise, not everywhere all the time, and "there are still too many fish"
+  close: 8, nearGap: Object.freeze([6, 14]), near: 14,   // someone within this many cells of a water: the next fish comes this soon (seconds). In the big lake a fish further than `near` from everyone leaves, and the next comes where people are
   tick: 0.25, beat: 6000, beatEmpty: 20000, msgGap: 400, oldHostMs: 12000, // the clock (seconds); a list at least this often (ms: a guest carries each fish on between lists), an empty one this often, never closer than this; how long a guest waits for a host's first list
   gap: Object.freeze([45, 100]), contestGap: 0.2, contestMore: 3, // seconds until the next fish in a band that is short of one; a contest fills up faster, with this many times the fish
   life: Object.freeze([90, 240]),              // seconds a fish stays before it swims off (so the hour and the season change what is about)
-  reach: 1.7, lureReach: 0.5,                   // cells at which a fish notices a float; each point of a bait's lure adds this
-  keen: 0.45, rareKeen: 3,                      // chance a second that it comes, before shyness; a bait's `rare` multiplies it for all but commons
+  reach: 2.2, lureReach: 0.5,                   // cells at which a fish notices a float; each point of a bait's lure adds this
+  draw: 9, lineWait: 12,                        // a fish in the same water this near a float drifts over to look; a line nothing has come to for this many seconds brings one up nearby. Fewer fish must not mean a long wait
+  keen: 0.6, rareKeen: 3,                       // chance a second that it comes, before shyness; a bait's `rare` multiplies it for all but commons
   shy: Object.freeze({ common: 1, uncommon: 0.8, rare: 0.5, epic: 0.32, legendary: 0.2 }),
   nibbles: Object.freeze([1, 3]), nibGap: Object.freeze([0.9, 2.1]), hookedMs: 90000, idle: 120, spook: 0.8,
   noise: 1.7, noiseKeen: 0.7,                   // how near (cells) stomping feet scare a fish near the surface, and how readily a second
@@ -43,7 +45,7 @@ const GF_SCHOOL = Object.freeze({
   biteGrace: 1.8,                               // seconds a guest's bite is held beyond its strike window: the message has to get there and back
 });
 const GF_ST = Object.freeze({ swim: 0, come: 1, nibble: 2, bite: 3, hooked: 4, bolt: 5 });
-const _gfs = { list: new Map(), u: 0, layer: null, clock: null, last: 0, key: '', sentAt: 0, dirty: false, hostAt: 0, hostSeen: false, liveAt: 0, band: new Map(), lines: new Map(), seen: new Map(), chum: new Map(), frenzyUntil: 0, stompSaid: false };
+const _gfs = { lineWait: new Map(), list: new Map(), u: 0, layer: null, clock: null, last: 0, key: '', sentAt: 0, dirty: false, hostAt: 0, hostSeen: false, liveAt: 0, band: new Map(), lines: new Map(), seen: new Map(), chum: new Map(), frenzyUntil: 0, stompSaid: false };
 
 /* ---------- whose water is it ---------- */
 function _gfsGuest() { return typeof _gll !== 'undefined' && _gll.role === 'visit' && typeof _glvLive === 'function' && _glvLive(); }
@@ -60,14 +62,14 @@ function _gfsDecides() {
 }
 function _gfsClear() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); }
 function _gfsSlot() { return _gfsGuest() ? _glv.w : 0; }
-/** How many a water holds: few at the start, growing with your level and what you build for the lake, never many. */
+/** How many a water holds: one, and one more for what you built for it. */
 function _gfsWant(b, m) {
   if (b.room) return 2 + (gardenWorkOwned('pool-stock') ? 1 : 0);   // an indoor water is small, and it is what you came for
-  const L = (m.level && m.level.level) || 1, W = (id) => gardenWorkOwned(id) ? 1 : 0;
+  const W = (id) => gardenWorkOwned(id) ? 1 : 0;
   let n = b.zone === 'pond' ? 1 + W('pool-stock')
-    : b.zone === 'shallow' ? 1 + (L >= 5 ? 1 : 0) + W('fish-feeder')
-    : b.zone === 'mid' ? 1 + (L >= 8 ? 1 : 0) + W('fish-feeder')
-    : 1 + (L >= 6 ? 1 : 0) + W('reed-beds');
+    : b.zone === 'shallow' ? 1 + W('fish-feeder')
+    : b.zone === 'mid' ? 1 + W('fish-feeder')
+    : 1 + W('reed-beds');
   if (m.tod === 'night' && b.zone !== 'pond' && b.zone !== 'shallow') n += W('night-lantern');
   return n;
 }
@@ -129,7 +131,7 @@ function _gfsDrop(f) {
   const n = f.node; if (!n) return;
   if (gardenMotionOn()) { n.setAttribute('style', 'transition:opacity .5s'); n.setAttribute('opacity', '0'); setTimeout(() => n.remove(), 520); } else n.remove();
 }
-function _gfsReset() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); _gfs.lines.clear(); _gfs.seen.clear(); _gfs.chum.clear(); _gfs.hostAt = 0; _gfs.hostSeen = false; _gfs.liveAt = 0; _gfs.m = null; _gfs.dirty = true; }
+function _gfsReset() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); _gfs.lineWait.clear(); _gfs.lines.clear(); _gfs.seen.clear(); _gfs.chum.clear(); _gfs.hostAt = 0; _gfs.hostSeen = false; _gfs.liveAt = 0; _gfs.m = null; _gfs.dirty = true; }
 /** Once a frame: the shadows go where they are. Nothing is written for one out of view. */
 function _gfsFrame(dt) {
   if (!_gfs.clock && _gw.on) { _gfs.last = 0; _gfsClockStart(); _gfsClock(); }
@@ -190,7 +192,8 @@ function _gfsClock() {
 
 /* ---------- the water, for the one who decides ---------- */
 function _gfsBands(m) {
-  const out = GF_SCHOOL.bands.map((b, i) => Object.assign({ key: 'b' + i }, b));
+  // only the lake that is open: past the line of floats nothing swims (the zones, 94-garden-lands-0table.js)
+  const to = gardenLakeOpenTo() - 0.4, out = GF_SCHOOL.bands.map((b, i) => Object.assign({ key: 'b' + i }, b, { y1: Math.min(b.y1, to) })).filter(b => b.y1 > b.y0);
   for (const a of GARDEN_AREAS) if (a.water && !a.fishing && m.areas.includes(a.id)) { const w = a.water; out.push({ key: 'a' + a.id, zone: 'pond', x0: w.x + 0.4, x1: w.x + w.w - 0.4, y0: w.y + 0.3, y1: w.y + w.h - 0.3, n: GF_SCHOOL.pond }); }
   out.push(...gardenRoomBands());   // a room's water, while somebody is in the room
   out.push(...gardenRegionBands(m.areas));   // the regions' waters, once they are open (94-garden-regions-0table.js)
@@ -213,9 +216,11 @@ function _gfsSpot(b0, near0) {
   }
   return near;
 }
-function _gfsSpawn(b, m, at) {
-  const plus = typeof gardenCatchSpawnPlan === 'function' ? gardenCatchSpawnPlan(b, m, at) : null;   // spots, events and what you have done raise the odds: 94-garden-fish-8catch.js
-  const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : (plus && plus.p) || _gfsSpot(b); if (!p) return;
+/** A new fish in this water. at: right there (chum, or a line waiting: o.plain says it is no special treat). o.near: the person to come near, in water as big as the lake. */
+function _gfsSpawn(b, m, at, o) {
+  const plus = typeof gardenCatchSpawnPlan === 'function' ? gardenCatchSpawnPlan(b, m, at) : null, near = o && o.near;   // spots, events and what you have done raise the odds: 94-garden-fish-8catch.js
+  const plusP = plus && plus.p && plus.p.y <= b.y1 + 0.3 && (!near || b.zone === 'pond' || Math.hypot(plus.p.x - near.x, plus.p.y - near.y) <= GF_SCHOOL.near) ? plus.p : null;   // (a favourite spot past the floats, or a long way off: not now)
+  const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : plusP || _gfsSpot(b, near && b.zone !== 'pond' ? near : null); if (!p) return;
   const ctx = { zone: b.zone, tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id) || gardenWorkOwned(id), caught: (id) => !!_gdG().fl[id] };
   if (b.room) ctx.room = b.room;
   if (typeof gardenPlaceHas === 'function') ctx.home = gardenPlaceHas;
@@ -234,7 +239,7 @@ function _gfsSpawn(b, m, at) {
   // further out is bigger, in the same kind as well as in the kinds that live there
   const out = b.zone === 'pond' ? 0.05 : Math.max(0, Math.min(0.55, (p.y - 13) / 24));
   const cm0 = forced && forced.cm ? forced.cm : def.cat === 'fish' ? gardenFishSize(def, Math.random, out) : Math.round((def.cm[0] + def.cm[1]) / 2);
-  const sv = forced && forced.cm ? { v: '', cm: cm0 } : typeof gardenVariantSpawn === 'function' ? gardenVariantSpawn(def, cm0, b, m, { chum: !!at, frenzy: _gfsFrenzy(), room: b.room || '' }) : { v: '', cm: cm0 }, cm = sv.cm;   // what it is, decided here and now: everyone sees the same one
+  const sv = forced && forced.cm ? { v: '', cm: cm0 } : typeof gardenVariantSpawn === 'function' ? gardenVariantSpawn(def, cm0, b, m, { chum: !!at && !(o && o.plain), frenzy: _gfsFrenzy(), room: b.room || '' }) : { v: '', cm: cm0 }, cm = sv.cm;   // what it is, decided here and now: everyone sees the same one
   const go = _gfsSpot(b, p) || p;
   _gfs.u = (_gfs.u + 1) % 1000;
   _gfsAdd({ u: _gfs.u, id, v: sv.v, z: forced ? forced.z || 0 : 0, cm, x: p.x, y: p.y, tx: go.x, ty: go.y, band: b.key, life: GF_SCHOOL.life[0] + Math.random() * (GF_SCHOOL.life[1] - GF_SCHOOL.life[0]) });
@@ -251,6 +256,28 @@ function _gfsLinesNow() {
   }
   return out;
 }
+/** Who the fish should be near: you, and on a host, everyone in the garden. */
+function _gfsFolk() {
+  const out = [typeof _grm !== 'undefined' && _grm.me && typeof gardenRoomMeCell === 'function' ? gardenRoomMeCell() : { x: _gw.px, y: _gw.py }];   // (in a hidden room you are at its water)
+  if (typeof _gll !== 'undefined' && _gll.role === 'host') for (const A of _gll.actors.values()) if (Number.isFinite(A.x) && Number.isFinite(A.y)) out.push({ x: A.x, y: A.y });
+  return out;
+}
+function _gfsFar(x, y, folk) { let best = 1e9; for (const q of folk) { const d = Math.hypot(x - q.x, y - q.y); if (d < best) best = d; } return best; }
+/** How far the nearest person is from this water, and who that is. */
+function _gfsBandNear(b, folk) {
+  if (b.room) return { far: 0, who: { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 } };   // (it exists only while someone is in the room: they are right there)
+  let best = 1e9, who = folk[0];
+  for (const q of folk) { const d = Math.hypot(Math.max(b.x0 - q.x, q.x - b.x1, 0), Math.max(b.y0 - q.y, q.y - b.y1, 0)); if (d < best) { best = d; who = q; } }
+  return { far: best, who };
+}
+/** Room for one more, near people: the swimming fish furthest from anyone goes, if it is well further off than this water. */
+function _gfsMakeRoom(far, folk) {
+  let out = null, bd = far + 4;
+  for (const f of _gfs.list.values()) { if (f.st !== GF_ST.swim || f.to != null || f.x >= GARDEN_ROOM_X) continue; const d = _gfsFar(f.x, f.y, folk); if (d > bd) { bd = d; out = f; } }
+  if (!out) return false;
+  _gfsDrop(out); _gfs.dirty = true;
+  return true;
+}
 function _gfsBolt(f, b) {
   const ang = Math.random() * Math.PI * 2, r = 2.5 + Math.random() * 2;
   const near = { x: f.x + Math.cos(ang) * r, y: f.y + Math.sin(ang) * r * 0.5 };
@@ -263,14 +290,15 @@ function _gfsRun(dt) {
   const clk = performance.now();
   if (!_gfs.m || clk - _gfs.mAt > 2000) { try { _gfs.m = gardenHere(); _gfs.mAt = clk; } catch (e) { return; } }
   const m = _gfs.m; if (!m) return;
-  const bands = _gfsBands(m), byKey = new Map(bands.map(b => [b.key, b])), lines = _gfsLinesNow(), E = GF_SCHOOL, told = typeof _gll !== 'undefined' && _gll.role === 'host' && _glh.on && _glhAnyone();
+  const bands = _gfsBands(m), byKey = new Map(bands.map(b => [b.key, b])), lines = _gfsLinesNow(), E = GF_SCHOOL, told = typeof _gll !== 'undefined' && _gll.role === 'host' && _glh.on && _glhAnyone(), folk = _gfsFolk();
+  const contest = typeof gardenContestLive === 'function' && !!gardenContestLive('fish'), cap = contest || _gfsFrenzy() ? E.wire : E.max;
   // a float that has just landed frightens what is right under it
   for (const [slot, L] of lines) {
     const key = L.x + ',' + L.y;
     if (_gfs.seen.get(slot) !== key) { _gfs.seen.set(slot, key); for (const f of _gfs.list.values()) if (f.st === GF_ST.swim && Math.hypot(f.x - L.x, f.y - L.y) < E.spook) _gfsBolt(f, byKey.get(f.band)); }
   }
   for (const [slot, L] of lines) {
-    if (!L.bait.st.chum || _gfs.chum.get(slot) === L.x + ',' + L.y || _gfs.list.size >= E.max) continue;
+    if (!L.bait.st.chum || _gfs.chum.get(slot) === L.x + ',' + L.y || _gfs.list.size >= cap) continue;
     _gfs.chum.set(slot, L.x + ',' + L.y);
     const b = bands.find(q => L.x >= q.x0 - 1 && L.x <= q.x1 + 1 && L.y >= q.y0 - 0.3 && L.y <= q.y1 + 0.3);
     if (b) _gfsSpawn(b, m, { x: L.x + (Math.random() < 0.5 ? -1.2 : 1.2), y: Math.max(b.y0, Math.min(b.y1, L.y + 0.5)) });
@@ -290,7 +318,7 @@ function _gfsRun(dt) {
     }
     if (f.st === GF_ST.swim) {
       f.life -= dt;
-      if (f.life <= 0) { _gfsDrop(f); _gfs.dirty = true; continue; }
+      if (f.life <= 0 || (f.band && !byKey.has(f.band))) { _gfsDrop(f); _gfs.dirty = true; continue; }
       // With people here a fish waits where it got to until the next list says where it goes next, here as on their screens. It used to go on here at once while they saw it stop, and then glide after it: the same fish, in two places.
       if (_gfsMove(f, dt)) { if (told) f.rest = true; else { const go = _gfsSpot(byKey.get(f.band) || bands[0], f) || f; f.tx = go.x; f.ty = go.y; } }
       if (f.band !== 'x' && byKey.get(f.band) && byKey.get(f.band).zone !== 'deep') for (const s of stomps) if (Math.hypot(f.x - s.x, (f.y - s.y) * 1.2) < E.noise && Math.random() < E.noiseKeen * dt) { _gfsBolt(f, byKey.get(f.band)); if (s.me) _gfsStompSaid(); break; }
@@ -306,7 +334,17 @@ function _gfsRun(dt) {
         if (lacks && lacks.length) { if (Q.me) _gfs.refused = { at: performance.now(), name: f.def.name, why: lacks[0] }; continue; }
         bd = d; best = { slot, Q };
       }
-      if (!best) continue;
+      if (!best) {
+        // a float further off in its own water: it drifts over to have a look, once for each cast
+        const B0 = byKey.get(f.band);
+        for (const [slot, Q] of lines) {
+          if (taken.has(slot) || !B0 || f.drawn === Q.x + ',' + Q.y || Math.hypot(f.x - Q.x, f.y - Q.y) >= E.draw) continue;
+          if (Q.x < B0.x0 - 1 || Q.x > B0.x1 + 1 || Q.y < B0.y0 - 2 || Q.y > B0.y1 + 2) continue;
+          f.drawn = Q.x + ',' + Q.y; f.tx = Math.max(B0.x0, Math.min(B0.x1, Q.x + (f.x < Q.x ? -1.1 : 1.1))); f.ty = Math.max(B0.y0, Math.min(B0.y1, Q.y)); f.rest = false; _gfs.dirty = true;
+          break;
+        }
+        continue;
+      }
       const rare = best.Q.bait.st.rare || 0, kind = f.def.rarity;
       let keen = E.keen * (E.shy[kind] || 1) * (kind === 'common' ? 1 : 1 + rare * E.rareKeen);
       if ((best.Q.bait.st.night || gardenWorkOwned('night-lantern')) && m.tod === 'night') keen *= 1.6;
@@ -335,19 +373,38 @@ function _gfsRun(dt) {
     }
   }
   // fill the water up again, one at a time
-  const contest = typeof gardenContestLive === 'function' && !!gardenContestLive('fish');
   if (!contest && !_gfsFrenzy() && Math.random() < E.frenzy.chance * dt) { _gfs.frenzyUntil = performance.now() + E.frenzy.secs * 1000; _gfsSay2('The fish are feeding! For a little while there are more about.'); }
-  const fast = (contest ? E.contestGap : _gfsFrenzy() ? E.frenzy.gap : m.rain && m.rain.now ? 0.7 : 1);
-  const count = new Map(); for (const f of _gfs.list.values()) count.set(f.band, (count.get(f.band) || 0) + 1);
-  const empty = !_gfs.band.size;
-  for (const b of bands) {
-    const have = count.get(b.key) || 0, base = _gfsWant(b, m), want = contest ? base * E.contestMore : base + (_gfsFrenzy() ? E.frenzy.more : 0);
-    if (empty) { if (b.zone === 'pond' || Math.random() < 0.7) _gfsSpawn(b, m); _gfs.band.set(b.key, E.gap[0] * Math.random()); continue; }   // (a garden you have just come into has a fish or two)
-    if (have >= want || _gfs.list.size >= E.max) continue;
-    const t = (_gfs.band.has(b.key) ? _gfs.band.get(b.key) : E.gap[0]) - dt;
-    if (t > 0) { _gfs.band.set(b.key, t); continue; }
-    _gfsSpawn(b, m); _gfs.band.set(b.key, (E.gap[0] + Math.random() * (E.gap[1] - E.gap[0])) * fast * (b.room ? GRW.gap : 1));
+  const fast = contest ? E.contestGap : _gfsFrenzy() ? E.frenzy.gap : m.rain && m.rain.now ? 0.7 : 1;
+  // the water nearest to people first: with only a few fish in all, a far pool must not take them while the water you stand at stays empty. In the lake only the fish near someone count: the lake is too big to call one water
+  const count = new Map(), distant = new Map();
+  for (const f of _gfs.list.values()) { const b = byKey.get(f.band); if (b && b.zone !== 'pond' && f.st === GF_ST.swim && f.to == null && _gfsFar(f.x, f.y, folk) > E.near) { if (!distant.has(f.band)) distant.set(f.band, f); continue; } count.set(f.band, (count.get(f.band) || 0) + 1); }
+  const empty = !_gfs.band.size, order = bands.map(b => Object.assign({ b }, _gfsBandNear(b, folk))).sort((p, q) => p.far - q.far);
+  let ahead = 0;   // nearer waters still waiting for their fish: the last places are theirs
+  for (const { b, far, who } of order) {
+    const have = count.get(b.key) || 0, base = _gfsWant(b, m), want = contest ? base * E.contestMore : base + (_gfsFrenzy() ? E.frenzy.more : 0), close = far <= E.close;
+    if (empty) { if (_gfs.list.size < cap && (b.zone === 'pond' || Math.random() < 0.7)) _gfsSpawn(b, m, null, { near: who }); _gfs.band.set(b.key, E.gap[0] * Math.random()); continue; }   // (a garden you have just come into has a fish or two, nearest first)
+    if (have >= want) continue;
+    const had = _gfs.band.has(b.key) ? _gfs.band.get(b.key) : close ? E.nearGap[0] : E.gap[0], t = (close ? Math.min(had, E.nearGap[1]) : had) - dt;
+    if (t > 0) { _gfs.band.set(b.key, t); ahead += want - have; continue; }
+    if (!close && _gfs.list.size + ahead >= cap) { ahead += want - have; continue; }
+    if (distant.has(b.key)) { _gfsDrop(distant.get(b.key)); distant.delete(b.key); _gfs.dirty = true; }   // (the one at the far end of the lake leaves as this one comes)
+    if (_gfs.list.size >= cap && !(close && !have && _gfsMakeRoom(far, folk))) continue;
+    _gfsSpawn(b, m, null, { near: who });
+    const G = close ? E.nearGap : E.gap; _gfs.band.set(b.key, (G[0] + Math.random() * (G[1] - G[0])) * fast * (b.room ? GRW.gap : 1));
   }
+  // a line nothing has come to: one comes up near it. Every bite is still a fish you can see
+  for (const [slot, L] of lines) {
+    const W = _gfs.lineWait.get(slot), key = L.x + ',' + L.y, busy = [..._gfs.list.values()].some(f => f.to === slot);
+    if (!W || W.key !== key || busy) { _gfs.lineWait.set(slot, { key, t: 0 }); continue; }
+    if ((W.t += dt) < E.lineWait) continue;
+    W.t = 0;
+    const b = bands.find(q => L.x >= q.x0 - 1 && L.x <= q.x1 + 1 && L.y >= q.y0 - 0.3 && L.y <= q.y1 + 0.3); if (!b) continue;
+    if (_gfs.list.size >= cap && !_gfsMakeRoom(1, folk)) continue;
+    const side = Math.random() < 0.5 ? -1 : 1, rx = Math.min(1.5, (b.x1 - b.x0) / 2);
+    let x = Math.max(b.x0, Math.min(b.x1, L.x + side * rx)); if (Math.abs(x - L.x) < 0.9) x = Math.max(b.x0, Math.min(b.x1, L.x - side * rx));
+    _gfsSpawn(b, m, { x, y: Math.max(b.y0, Math.min(b.y1, L.y + (Math.random() - 0.5) * 0.4)) }, { plain: true });
+  }
+  for (const slot of [..._gfs.lineWait.keys()]) if (!lines.has(slot)) _gfs.lineWait.delete(slot);
 }
 /** The whole list to everyone there: when something changed, and now and then anyway. */
 function _gfsTell() {
@@ -360,7 +417,7 @@ function _gfsTell() {
   const bands = _gfs.m ? new Map(_gfsBands(_gfs.m).map(b => [b.key, b])) : null;
   for (const f of _gfs.list.values()) if (f.rest) { f.rest = false; if (f.st === GF_ST.swim && bands) { const go = _gfsSpot(bands.get(f.band) || GF_SCHOOL.bands[0], f) || f; f.tx = go.x; f.ty = go.y; } }
   const n10 = (v) => Math.max(0, Math.min(640, Math.round(v * 10)));
-  const l = [..._gfs.list.values()].slice(0, GF_SCHOOL.max).map(f => Object.assign({ u: f.u, e: f.id, c: Math.round(f.cm), x: n10(f.x), y: n10(f.y), tx: n10(f.tx), ty: n10(f.ty), st: f.st }, f.v ? { v: f.v } : {}, f.to != null ? { to: f.to } : {}, f.n ? { n: Math.min(9, f.n) } : {}, f.z ? { z: f.z } : {}));
+  const l = [..._gfs.list.values()].slice(0, GF_SCHOOL.wire).map(f => Object.assign({ u: f.u, e: f.id, c: Math.round(f.cm), x: n10(f.x), y: n10(f.y), tx: n10(f.tx), ty: n10(f.ty), st: f.st }, f.v ? { v: f.v } : {}, f.to != null ? { to: f.to } : {}, f.n ? { n: Math.min(9, f.n) } : {}, f.z ? { z: f.z } : {}));
   _glhSend('all', 'fs', { l });
 }
 /** A guest hears the host's water. Anything not listed has left it. */
@@ -369,7 +426,7 @@ function _gfsIn(l) {
   if (!_gfs.hostSeen) { _gfsClear(); _gfs.hostSeen = true; }   // (what this screen made up until the host spoke)
   _gfs.hostAt = Date.now();   // clock-ok: when the host was last heard
   const seen = new Set();
-  for (const r of l.slice(0, GF_SCHOOL.max)) {
+  for (const r of l.slice(0, GF_SCHOOL.wire)) {
     if (!r || !Number.isInteger(r.u) || !gardenFishDef(r.e)) continue;   // (one this version does not know)
     seen.add(r.u);
     const f = _gfs.list.get(r.u), to = r.to == null ? null : r.to;

@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.58.0]
+
+### Changed
+- **The garden now opens in zones.** The central square starts built and free. Further out costs more and needs a higher level, with a gate at each border. Things to buy only show in zones you have opened, and locked land looks grown over rather than bare.
+- **You can only stand on the stepping stones,** not the water around them.
+- **You can only fish in water you have opened,** and nothing swims in the rest.
+- **Fewer fish at once,** and they gather nearer you.
+- **Pets use the world.** Ducks swim, birds perch on things, cats sit on benches.
+- **A pet on a journey leaves a signpost,** so you can see why it is gone and call it home. Friends no longer see it while it is away.
+
 ## [2.57.0]
 
 ### Changed

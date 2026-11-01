@@ -192,7 +192,7 @@ function gardenFishClickPt(pt, m) {
   const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) };
   if (!gardenIsWater(cell.x, cell.y)) return false;
   const zone = gardenWaterZone(cell.x, cell.y);
-  if (zone === 'pond') { const no = gardenRegionWaterNo(cell.x, cell.y, m.areas); if (no) { _gdpSay({ ok: false, msg: no }); return true; } }
+  { const no = gardenWaterNo(cell.x, cell.y, m); if (no) { _gdpSay({ ok: false, msg: no }); return true; } }
   const rod = gardenRod(), reach = rod.st.range, W = GARDEN_WORLD;
   const dist = (x, y) => Math.hypot(x - pt.x, y - pt.y);
   const d0 = dist(_gw.px, _gw.py);
@@ -231,12 +231,13 @@ function _gwFishCast(pt0) {
 /** Space / E with a rod and nothing out: cast at the water in front of you. */
 function gardenFishFront() {
   const W = GARDEN_WORLD, m = gardenHere(), px = Math.floor(_gw.px), py = Math.floor(_gw.py), rod = gardenRod();
+  const wet = (x, y) => x >= 0 && x < W.cols && y >= 0 && y < W.rows && gardenIsWater(x, y) && !gardenWaterNo(x, y, m);   // (only water that is open: shut water is not "in front of you")
   for (let r = 2; r <= rod.st.range; r++) {
     const x = px + _gw.face * r, y = py + 1;
-    if (x >= 0 && x < W.cols && gardenIsWater(x, y)) { gardenFishClick({ x, y }, m); return; }
+    if (wet(x, y)) { gardenFishClick({ x, y }, m); return; }
   }
-  for (let r = 1; r <= rod.st.range; r++) for (const dy of [1, 0, -1]) { const x = px + _gw.face * r, y = py + dy; if (x >= 0 && x < W.cols && y >= 0 && y < W.rows && gardenIsWater(x, y)) { gardenFishClick({ x, y }, m); return; } }
-  for (let r = 1; r <= rod.st.range; r++) { const y = py + r; if (y < W.rows && gardenIsWater(px, y)) { gardenFishClick({ x: px, y }, m); return; } }
+  for (let r = 1; r <= rod.st.range; r++) for (const dy of [1, 0, -1]) { const x = px + _gw.face * r, y = py + dy; if (wet(x, y)) { gardenFishClick({ x, y }, m); return; } }
+  for (let r = 1; r <= rod.st.range; r++) { const y = py + r; if (wet(px, y)) { gardenFishClick({ x: px, y }, m); return; } }
   _gdpSay({ ok: false, msg: 'No water in front of you: walk to the lake, or click the water.' });
 }
 /** A click while a line is out: strike on a bite, reel in early while waiting. */
@@ -383,7 +384,7 @@ function _gwBugPick(b, far) {
     const base = far ? { x: b.x, y: b.y } : b.anchor;
     const x = Math.max(0.5, Math.min(W.cols - 0.5, base.x + Math.cos(ang) * r)), y = Math.max(0.8, Math.min(W.rows - 0.4, base.y + Math.sin(ang) * r * 0.7));
     const water = gardenIsWater(Math.floor(x), Math.floor(y)), flyer = b.def.rest !== 'crawl';
-    if (b.hab === 'water' || b.def.hab.includes('water') && Math.random() < 0.5) { if (water || y >= 20) return { x, y: Math.max(y, 20.4) }; }
+    if (b.hab === 'water' || b.def.hab.includes('water') && Math.random() < 0.5) { if ((water || y >= 20) && !gardenAreaAt(Math.floor(x), Math.floor(Math.max(y, 20.4)), 99).startsWith('locked')) return { x, y: Math.max(y, 20.4) }; continue; }
     if (flyer ? !!gardenPropAt(Math.floor(x), Math.floor(y)) || gardenAreaAt(Math.floor(x), Math.floor(y), 99).startsWith('locked') : !gardenWalkable(Math.floor(x), Math.floor(y))) continue;
     if (!flyer && water) continue;
     return { x, y };

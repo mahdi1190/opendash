@@ -455,8 +455,10 @@ function petCardBadge(who, o) {
     if (!pe) return null;
     b.appendChild(pe);
     if (o.label !== false) { const t = document.createElement('span'); t.className = 'pt-badge-n'; t.textContent = w.name || (petSpecies(w.look.species) || {}).label || 'Pet'; b.appendChild(t); }
-    b.setAttribute('aria-label', w.me ? `${w.name || 'Your pet'}: open your pet's page` : `${_ptLabel(w)}: give them a pat`);
-    b.setAttribute('data-tip', w.me ? (petMood() || {}).line || 'Your pet' : `Give ${w.name || 'them'} a pat`);
+    const gone = w.me && typeof gpPetAway === 'function' && gpPetAway();   // on a little journey: the button says so
+    if (gone) { b.classList.add('is-away'); const t = b.querySelector('.pt-badge-n'); if (t) t.textContent = `${w.name || 'Your pet'} is away`; const lug = document.createElement('span'); lug.className = 'pt-badge-away'; lug.innerHTML = icon('luggage'); b.appendChild(lug); }
+    b.setAttribute('aria-label', gone ? `${w.name || 'Your pet'} is away on a little journey: open your pet's page` : w.me ? `${w.name || 'Your pet'}: open your pet's page` : `${_ptLabel(w)}: give them a pat`);
+    b.setAttribute('data-tip', gone ? `${w.name || 'Your pet'} is away on a little journey` : w.me ? (petMood() || {}).line || 'Your pet' : `Give ${w.name || 'them'} a pat`);
     b.onclick = (e) => {
       e.stopPropagation();
       if (w.me) { if (typeof setView === 'function') setView('pet'); return; }
@@ -546,7 +548,7 @@ function petPayload() {
   const p = _ptS();
   if (!p.look || p.on === false || p.share === false) return null;
   const w = petWire(Object.assign({}, p.look, { name: p.name }));
-  if (w && p.scenes === false) w.walks = false;   // it stays home when you visit a friend's scene
+  if (w && (p.scenes === false || (typeof gpPetAway === 'function' && gpPetAway()))) w.walks = false;   // it stays home when you visit a friend's scene (and while it is away on a little journey it does not follow you anywhere)
   return w;
 }
 /**
