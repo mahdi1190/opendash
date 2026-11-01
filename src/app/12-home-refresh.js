@@ -173,16 +173,18 @@ function _hrAiSet(k, sig) {
 async function _hrStore(run, store, conn, what) {
   if (typeof store === 'undefined' || !store) return { status: 'skipped', reason: 'off' };
   const age = store.age();
+  const mail = typeof InboxStore !== 'undefined' && store === InboxStore && typeof emailReadPrefs === 'function';
+  if (mail && !run.manual && !emailReadMs()) return { status: 'skipped', reason: 'runs when you ask' };   // (Settings > Reading your email)
   if (run.manual && age !== null && age < HR_FRESH_MS && !store.running()) return { status: 'fresh', at: Date.now() - age };
   // Automatic: read through Claude at most hourly (or on the schedule when longer); without Claude, on the schedule.
   if (!run.manual && age !== null && !store.running()) {
-    const wait = (_hrViaClaude(store) ? _hrClaudeMs() : _hrEveryMs()) - 60000;
+    const wait = Math.max(_hrViaClaude(store) ? _hrClaudeMs() : _hrEveryMs(), mail ? emailReadMs() : 0) - 60000;
     if (age < wait) return { status: 'fresh', at: Date.now() - age };
   }
   const away = _hrAway(conn, what);
   if (away) { store.load(true).catch(() => {}); return { status: 'away', reason: away }; }
   if (!store.running()) {
-    const r = await store.update({ force: !!run.manual, quiet: true });
+    const r = await store.update(Object.assign({ force: !!run.manual, quiet: true }, mail ? { body: { days: emailReadPrefs().days } } : {}));
     if (run.cancelled) return { status: 'cancelled' };
     if (r.noSources) return { status: 'skipped', reason: 'not connected' };
     if (r.error) return { status: 'error', reason: r.message || 'The update could not start.' };
@@ -287,7 +289,8 @@ async function _hrTriage(run) {
   if (!fresh.length) return { status: 'fresh', reason: 'No new email for Claude to look at.' };
   if (!run.manual) {
     const local = typeof connLocalHas === 'function' ? connLocalHas('claude') : false;
-    if (!local || Date.now() - _hrClaudeAt('triage') < _hrClaudeMs() - 60000) return { status: 'skipped', reason: 'runs when you ask' };
+    const mailMs = typeof emailReadMs === 'function' ? emailReadMs() : _hrClaudeMs();   // (your choice in Settings > Reading your email)
+    if (!local || !mailMs || Date.now() - _hrClaudeAt('triage') < mailMs - 60000) return { status: 'skipped', reason: 'runs when you ask' };
     _hrAiSet('auto:triage', '');
   }
   const r = await aiSuggestTasksFromEmails({ quiet: true, onlyNew: true });
