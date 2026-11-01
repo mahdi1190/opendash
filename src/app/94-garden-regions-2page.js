@@ -6,6 +6,7 @@ function gardenRegionWaterArt(px, py, season) {
   const A = GART, W = GARDEN_WORLD, ice = season === 'winter';
   let s = '';
   for (const w of GARDEN_REGION_WATERS) {
+    if (w.room) continue;   // (indoors: not on the map)
     if (w.area || w.sec) continue;   // (the pond and the bought pools are drawn already)
     const cx = px(w.x + w.w / 2), cy = py(w.y + w.h / 2), rx = w.w * W.cellW / 2, ry = w.h * W.cellH / 2;
     s += `<path fill="#6e8a5a" d="${A.ell(cx, cy, rx + 5, ry + 4)}"/><path fill="${ice ? '#c0d8e6' : '#5fb0cc'}" d="${A.ell(cx, cy, rx + 1, ry)}"/><path fill="#ffffff" fill-opacity="0.28" d="${A.ell(cx - rx * 0.25, cy - ry * 0.3, rx * 0.4, ry * 0.22)}"/>`;
@@ -38,7 +39,7 @@ function _grgMapSvg(m) {
   }
   let s = `<svg class="grg-map" viewBox="0 0 ${W.cols} ${W.rows}" role="img" aria-label="A map of the world and how much of each part you have found">`;
   for (const R of GARDEN_REGIONS) s += `<g class="grg-map-r" data-r="${R.id}"><path d="${open[R.id] || ''}" fill="${R.color}"/><path d="${shut[R.id] || ''}" fill="${R.color}" fill-opacity="0.3"/></g>`;
-  for (const w of GARDEN_REGION_WATERS) { const on = gardenRegionHomeOpen({ w: w.id }, m.areas); s += `<ellipse cx="${w.x + w.w / 2}" cy="${w.y + w.h / 2}" rx="${w.w / 2 + 0.15}" ry="${w.h / 2 + 0.15}" fill="${on ? '#3f8fc0' : 'none'}" stroke="#2f6a98" stroke-width="0.18"${on ? '' : ' stroke-dasharray="0.4 0.3"'}/>`; }
+  for (const w of GARDEN_REGION_WATERS) { if (w.room) continue; const on = gardenRegionHomeOpen({ w: w.id }, m.areas); s += `<ellipse cx="${w.x + w.w / 2}" cy="${w.y + w.h / 2}" rx="${w.w / 2 + 0.15}" ry="${w.h / 2 + 0.15}" fill="${on ? '#3f8fc0' : 'none'}" stroke="#2f6a98" stroke-width="0.18"${on ? '' : ' stroke-dasharray="0.4 0.3"'}/>`; }
   for (const R of GARDEN_REGIONS) {
     const M = GARDEN_LAND_MAPS[GRG_LABELS[R.id]], a = R.id === 'lake' ? gardenArea('lake') : null, P = gardenRegionProgress(R.id);
     const cx = a ? a.x + a.w / 2 : M.x + M.rows[0].length / 2, cy = a ? a.y + a.h / 2 : M.y + M.rows.length / 2;
