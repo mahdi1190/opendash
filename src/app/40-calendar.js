@@ -103,7 +103,7 @@ function createGoogleDataStore(o) {
       st.data = j; st.error = null;
       if (j.job) st.job = j.job;
     } catch (e) {
-      st.error = _serverAvailable ? ((e && e.message) || String(e)) : 'The Freeflo server is not running, so ' + o.label + ' data cannot be loaded.';
+      st.error = _serverAvailable ? netErrorMessage(e) : 'Freeflo isn’t running, so ' + o.label + ' can’t be loaded. Open it from your shortcut, then try again.';
     }
     st.loaded = true; st.loading = false;
     if (st.job && st.job.state === 'running') poll();

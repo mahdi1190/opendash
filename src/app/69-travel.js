@@ -282,7 +282,7 @@ const TravelStore = {
     state.travel = _trlNormState(null);
     saveData();
     _trlCache.weather.clear(); _trlCache.online.clear(); _trlCache.rows = null; _trlCache.geo = null; _trlCache.changes = null;
-    try { await fetch('/api/time/history', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch (e) { /* down */ }
+    try { const r = await fetch('/api/time/history', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: '{}' }); if (!r.ok) throw new Error('HTTP ' + r.status); } catch (e) { toastError('forget your time zone history', e); }
     if (typeof settingsSaveConfig === 'function') await settingsSaveConfig({ travel: { on: false } }, false);
     _trlBump();
     return { ok: true };

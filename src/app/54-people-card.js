@@ -547,7 +547,7 @@ function pcOpenPictures(id, tab) {
   const run = async (fn) => {
     if (busy) return; busy = true; err('');
     bodyEl.classList.add('is-busy');
-    try { await fn(); } catch (e) { err((e && e.message) || String(e)); }
+    try { await fn(); } catch (e) { err(netErrorMessage(e)); }
     busy = false;
     if (bodyEl && bodyEl.isConnected) { bodyEl.classList.remove('is-busy'); paint(); }
   };

@@ -251,7 +251,7 @@ function briefLocationPicker(current, onPick) {
           b.onclick = () => { inp.value = _briefLocLabel(l); res.hidden = true; onPick(l); };
           res.appendChild(b);
         }
-      } catch (e) { if (my === seq) res.innerHTML = `<div class="loc-msg">${esc(e.message || 'The search is not reachable right now.')}</div>`; }
+      } catch (e) { if (my === seq) res.innerHTML = `<div class="loc-msg">${esc(netErrorMessage(e, 'The search isn’t reachable right now. Try again in a moment.'))}</div>`; }
     }, 300);
   };
   inp.onkeydown = (e) => { if (e.key === 'Escape') { res.hidden = true; } if (e.key === 'Enter') { e.preventDefault(); const f = res.querySelector('.loc-opt'); if (f) f.click(); } };

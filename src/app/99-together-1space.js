@@ -807,7 +807,7 @@ async function tgCreateSpace(o) {
     return id;
   } catch (e) {
     if (typeof busy === 'function') busy();
-    toast(String(e.message || e), { kind: 'err', retry: () => tgCreateSpace(o) });
+    toastError('make the shared space', e, () => tgCreateSpace(o));
     return null;
   }
 }

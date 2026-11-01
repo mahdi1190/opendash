@@ -265,7 +265,7 @@ async function locLogForgetRange(from, to) {
   const a = Date.parse(from + 'T00:00:00'), b = Date.parse((to || from) + 'T23:59:59');
   if (!Number.isFinite(a) || !Number.isFinite(b)) return;
   for (const [id, r] of [..._loc.recs]) if (r.at <= b && (r.until || r.at) >= a) { _loc.recs.delete(id); _loc.dirty.delete(id); }
-  try { await fetch('/api/locations/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true, from: a, to: b }) }); } catch (e) { /* the server is down: the next load shows them again */ }
+  try { const r = await fetch('/api/locations/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true, from: a, to: b }) }); if (!r.ok) toast('Those days may still be in your places history. Try forgetting them again.', { kind: 'err', retry: () => locLogForgetRange(from, to) }); } catch (e) { /* the server is down: the next load shows them again */ }
   _locBump();
 }
 async function locLogSetOn(on) {

@@ -142,7 +142,7 @@ function renderStoryVoiceSettings(el) {
     const focusBefore = document.activeElement;
     busy = true; message(progress); update();
     try { const result = await work(); if (section.isConnected) message(result === undefined ? 'Saved.' : result); return true; }
-    catch (e) { if (section.isConnected) message((e && e.message) || 'The Freeflo server is unavailable. Your browser voice is still available.', true); return false; }
+    catch (e) { if (section.isConnected) message(netErrorMessage(e, 'Freeflo isn’t answering. Your browser voice still works.'), true); return false; }
     finally {
       busy = false; update();
       if (section.isConnected && controls.includes(focusBefore) && !focusBefore.disabled && !focusBefore.hidden && (!document.activeElement || document.activeElement === document.body)) focusBefore.focus();

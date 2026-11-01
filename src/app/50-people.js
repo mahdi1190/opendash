@@ -315,7 +315,7 @@ async function fetchPersonEmails(personId, force) {
     if (!r.ok) throw new Error(d.error || 'request failed');
     _pplMail[personId] = { ts: Date.now(), messages: Array.isArray(d.messages) ? d.messages : [], err: null };
   } catch (e) {
-    _pplMail[personId] = { ts: Date.now(), messages: [], err: (e && e.message) || String(e) };
+    _pplMail[personId] = { ts: Date.now(), messages: [], err: netErrorMessage(e) };
   }
   return _pplMail[personId].messages;
 }

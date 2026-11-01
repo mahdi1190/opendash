@@ -748,7 +748,7 @@ function storyAutoOpen(kind) {
 /** Rewriting failed: why (signed out, usage limit, timeout...) and the fix or Try again (70-ai.js). */
 function _stAiError(e, retry) {
   if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Claude could not rewrite the story', retry });
-  else toast((e && e.message) || 'Claude could not rewrite the story just now.', { kind: 'err' });
+  else toast((e && e.message) || 'Claude could not rewrite the story just now. Try again in a moment.', { kind: 'err' });
 }
 /** A page-built kind's Claude version: src.ai(payload, {regenerate}) -> a new script or null (quiet unless asked). */
 async function _stSourceAi(src, regenerate) {

@@ -428,8 +428,10 @@ function toast(msg, o) {
     }
   }
   const kind = Object.prototype.hasOwnProperty.call(_TOAST_KINDS, o.kind) ? _TOAST_KINDS[o.kind] : (o.kind ? String(o.kind).replace(/[^a-z-]/g, '') : '');
-  const text = String(msg == null ? '' : msg);
+  const text = kind === 'err' && typeof netPlainError === 'function' ? netPlainError(msg) : String(msg == null ? '' : msg);
   let action = o.action && o.action.label ? o.action : null;
+  // Told to sign in again: the button goes there.
+  if (!action && kind === 'err' && typeof _NET_SIGNIN !== 'undefined' && /sign-in to that account has run out/.test(text) && typeof setView === 'function') action = { label: 'Open Connections', run: () => setView('connections') };
   if (!action && typeof o.retry === 'function' && !o.calm) action = { label: 'Try again', run: o.retry };   // calm lines have no Try again
   if (!action && kind === 'err' && typeof srvShowStartHelp === 'function' && typeof NET_DOWN_REASON !== 'undefined' && text.includes(NET_DOWN_REASON)) action = { label: 'How to start it', run: () => srvShowStartHelp() };
   if (action && _toastIsPlainUndo(action) && typeof undoMark === 'function') {
@@ -758,6 +760,25 @@ function toastError(what, e, retry) {
   else if (retry && retry.label && typeof retry.run === 'function') o.action = { label: retry.label, run: retry.run };
   if (e && e.stack && !netIsDown(e)) console.warn('[' + (w || 'error') + ']', e);
   return toast(text, o);
+}
+/* Something you pressed broke with nothing handling it (a promise nobody caught, an error in a click
+   handler): say so instead of the button doing nothing. Only just after a press, at most every 30 s;
+   background work stays quiet, and the garden speaks for itself. */
+let _pressAt = 0, _pressSaidAt = 0;
+function _pressFailed(reason) {
+  if (Date.now() - _pressAt > 4000 || Date.now() - _pressSaidAt < 30000) return;
+  if (!reason || reason.name === 'AbortError' || reason.code === 'CANCELLED') return;
+  if (typeof document === 'undefined' || document.documentElement.classList.contains('gd-immersive')) return;
+  if (/ResizeObserver|^Script error/i.test(String(reason.message || reason))) return;
+  _pressSaidAt = Date.now();
+  toast('That didn’t work: ' + netErrorReason(reason, _NET_INSIDE) + '.', { kind: 'err' });
+}
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  const pressed = () => { _pressAt = Date.now(); };
+  window.addEventListener('pointerdown', pressed, true);
+  window.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') pressed(); }, true);
+  window.addEventListener('unhandledrejection', (e) => _pressFailed(e.reason));
+  window.addEventListener('error', (e) => { if (e.error) _pressFailed(e.error); });
 }
 /** 'link' -> 'the link'; 'your code' and 'the address' stay as they are. */
 function _copyWhat(w) { return /^(the|your|my|this|that|these|those|a|an|its|their)\b/i.test(w) ? w : 'the ' + w; }

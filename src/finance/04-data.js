@@ -16,7 +16,7 @@
     const timer = ac ? setTimeout(() => ac.abort(), LOAD_TIMEOUT_MS) : null;
     try {
       const r = await fetch('/api/finance', { cache: 'no-store', signal: ac ? ac.signal : undefined });
-      if (!r.ok) throw new Error(r.status === 404 ? 'this server has no finance support — restart Freeflo' : 'HTTP ' + r.status);
+      if (!r.ok) throw new Error(r.status === 404 ? 'Money isn’t ready in this copy of Freeflo. Close Freeflo and open it again' : 'HTTP ' + r.status);
       const j = await r.json();
       R.data = j; R.err = null; R.loadedAt = Date.now();
       try { if (window.Expenses && window.Expenses.financeUpdated) window.Expenses.financeUpdated(); } catch (e) { /* Expenses is optional */ }
@@ -27,7 +27,7 @@
       if (R.model) { await loadBudgets(j.analysis); await planLoad(); }
     } catch (e) {
       const slow = e && e.name === 'AbortError';
-      R.err = slow ? 'Your finances took too long to load' : ((e && e.message) || String(e));
+      R.err = slow ? 'Your finances took too long to load' : netErrorMessage(e);
       R.errDown = !slow && (typeof netIsDown === 'function' ? netIsDown(e) : /failed to fetch|network/i.test(R.err));   // @p2 the server is not running
     } finally {
       if (timer) clearTimeout(timer);

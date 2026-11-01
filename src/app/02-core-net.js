@@ -11,6 +11,8 @@
      NET_DOWN_REASON                "OpenDash isn’t running" (the reason alone)
      NET_DOWN_MESSAGE               the reason and the next step, as sentences
      netIsDown(e)                   "could not reach the server" (not an HTTP error, not an abort)
+     netPlainWords(raw)             plain words for a raw message (a system code, a stack, a status), or null if it reads fine
+     netPlainError(raw)             the raw message with those words swapped in; every red toast goes through it
      netErrorMessage(e, fallback)   the text to show for any error: whole sentences,
                                     its first one a reason that also reads after a colon
      netErrorReason(e, fallback)    the same as a reason that fits "Couldn’t X: <reason>."
@@ -27,7 +29,7 @@
    The helpers above the wrapper are pure (no DOM).
    ============================================================ */
 const NET_DOWN_REASON = 'Freeflo isn’t running';
-const NET_DOWN_MESSAGE = NET_DOWN_REASON + '. Start it with start-opendash in the app folder (or your Freeflo shortcut), then try again.';
+const NET_DOWN_MESSAGE = NET_DOWN_REASON + '. Open it from your Freeflo shortcut, then try again.';
 // Chrome/Edge: "Failed to fetch"; Firefox: "NetworkError when attempting to fetch resource."; Safari: "Load failed".
 const _NET_DOWN_RE = /failed to fetch|networkerror|network error|load failed|network request failed|err_connection|econnrefused/i;
 // What the page's fetch helpers throw for a bad status with no message of its own: 'HTTP 500', 'GET 404', 'health 503'.
@@ -42,6 +44,47 @@ function _netStatusWords(code) {
   if (code === 413) return 'It’s too big to save.';
   if (code === 401 || code === 403) return 'Freeflo didn’t accept it from this tab. Reload the page and try again.';
   return null;
+}
+
+/* Words a person can act on, for the raw text that can reach them: what a server, the operating
+   system, a bank or the browser said. Whole sentences: what happened, then what to do next. */
+const _NET_INSIDE = 'Something unexpected went wrong inside Freeflo. Try again; if it keeps happening, close Freeflo and open it again.';
+const _NET_UNREADABLE = 'Freeflo couldn’t understand that request. Reload the page and try again.';
+const _NET_SIGNIN = 'Your sign-in to that account has run out. Open Connections and sign in again.';
+function _netOfflineNow() { return typeof navigator !== 'undefined' && navigator.onLine === false; }
+function _netServiceWords() { return _netOfflineNow() ? 'You’re offline. Connect to the internet, then try again.' : 'A service Freeflo needs didn’t answer. Check your internet connection, then try again.'; }
+/** Plain words for a raw message, or null when it already reads fine. Pure apart from navigator.onLine. */
+function netPlainWords(raw) {
+  const s = String(raw == null ? '' : raw).trim();
+  if (!s) return null;
+  // 'PUT 500', 'PUT 500 — detail', 'AI request failed: 502', 'HTTP 500: detail'
+  const st = /^(?:(?:HTTP|GET|POST|PUT|PATCH|DELETE|health)\s*|AI request failed:\s*)(\d{3})(?:\s*(?:[—:-]\s*)?(.*))?$/is.exec(s);
+  if (st) return (st[2] && st[2].trim() ? netPlainWords(st[2]) || st[2].trim() : null) || _netStatusWords(Number(st[1])) || 'Something went wrong. Try again.';
+  const pre = /^(?:Uncaught\s+)?(?:Error|Exception):\s*(.+)$/is.exec(s);
+  if (pre) return netPlainWords(pre[1]) || pre[1].trim();
+  if (/\bENOSPC\b|no space left/i.test(s)) return 'This computer’s disk is full. Free up some space, then try again.';
+  if (/\b(?:EACCES|EPERM|EBUSY|EROFS)\b|permission denied|operation not permitted|resource busy|used by another process/i.test(s)) return 'This computer wouldn’t let Freeflo use that file. Close any other program using it, then try again.';
+  if (/\bENOENT\b|no such file/i.test(s)) return 'Freeflo couldn’t find a file it needed. If you moved or renamed it, put it back and try again.';
+  if (/\b(?:ENOTFOUND|EAI_AGAIN|ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH|EPIPE|UND_ERR_\w+|CERT_\w+)\b|getaddrinfo|socket hang up|\bfetch failed\b|failed to fetch|networkerror|load failed|network request failed/i.test(s)) return _netServiceWords();
+  if (/invalid_grant|invalid_token|\bunauthori[sz]ed\b|\btoken (?:has )?expired|\bstatus(?: code)?:? 401\b/i.test(s)) return _NET_SIGNIN;
+  if (/\bstatus(?: code)?:? 429\b|\brate.?limit(?:ed)?\b|too many requests/i.test(s)) return 'That service is busy right now. Try again in a few minutes.';
+  if (/bad gateway|service unavailable|gateway time-?out|internal server error|\bstatus(?: code)?:? 5\d\d\b|\b5\d\d (?:error|response)\b/i.test(s)) return 'That service is having trouble right now. Try again in a few minutes.';
+  if (/^(?:request |connection |fetch )?(?:timed out|timeout)\.?$/i.test(s)) return 'It took too long to answer. Try again.';
+  if (/\b(?:TypeError|ReferenceError|SyntaxError|RangeError)\b|is not a function|is not defined|is not iterable|cannot (?:read|set) propert|\bundefined\b|\[object \w+\]|unexpected (?:token|end of)|not valid json|json\.parse|^not json$|\n\s+at .+:\d+/i.test(s)) return _NET_INSIDE;
+  if (/^unknown\b.*\broute$/i.test(s)) return _netStatusWords(404);
+  if (/^not found\.?$/i.test(s)) return 'That couldn’t be found. It may have been removed; refresh the page and try again.';
+  if (/^(?:forbidden(?: origin)?|origin)\.?$/i.test(s)) return _netStatusWords(403);
+  if (/^(?:invalid|body|bad request|unknown|content-type must\b.*|bad [\w ]{1,30})\.?$/i.test(s)) return _NET_UNREADABLE;
+  if (/^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/.test(s) && s.length > 2) return 'Something went wrong. Try again.';
+  if (s.length > 400) return 'Something went wrong. Try again.';
+  return null;
+}
+/** The text to show for a raw message, keeping a lead-in such as "Couldn’t save: " or "Bank didn’t update: ". */
+function netPlainError(raw) {
+  const s = String(raw == null ? '' : raw);
+  const m = /^((?:Couldn[’']t|Could not|Can[’']t|Cannot) [^:\n]{1,80}|[^:\n]{1,60} didn[’']t update|Not restored|Not saved|Last update failed): (.+)$/s.exec(s.trim());
+  if (m) { const w = netPlainWords(m[2]); return w ? m[1] + ': ' + w.replace(/^(The|That|This|It|You|You’re|Your|A|An|Something|Try|Check|Open)\b/, (x) => x.toLowerCase()) : s; }
+  return netPlainWords(s) || s;
 }
 
 /** True when `e` means the server could not be reached at all. */
@@ -63,7 +106,7 @@ function netErrorMessage(e, fallback) {
   if (e && typeof e === 'object' && e.name === 'AbortError' && (!m || /\babort/i.test(m))) return 'It was stopped.';
   const st = _NET_STATUS_RE.exec(m);
   if (st) return _netStatusWords(Number(st[1])) || fallback || `Something went wrong (error ${st[1]}). Try again.`;
-  return m || (fallback || 'Something went wrong. Try again.');
+  return (m && netPlainWords(m)) || m || (fallback || 'Something went wrong. Try again.');
 }
 /**
  * The reason alone, to follow "Couldn’t X: ": no final full stop, and a plain first word
