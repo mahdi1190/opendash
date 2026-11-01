@@ -160,6 +160,7 @@ function _glhEvent(ev) {
       _glhSnapshotTake();
       if (!ev.again) setTimeout(() => _gllEmote(A, 'wave'), 400);
       _glhSendSnap(ev.f);
+      if (typeof _gfs !== 'undefined') _gfs.dirty = true;   // (the fish in the water, at once)
       if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
       if (typeof eeTell === 'function') eeTell(ev.f);
       if (typeof _glcJoin === 'function') _glcJoin(ev.f);
@@ -199,6 +200,7 @@ function _glhByTable() {
 }
 function _glhSendSnap(fid) {
   const s = gardenSnapshot(); if (!s) return;
+  _glhDiff();   // what has changed goes to everyone first: the line below counts it as told, and everyone else must not miss it
   _glhRemember(gardenModel());
   _glhSend(fid, 'snap', { g: s, by: _glhByTable() });
 }
@@ -225,7 +227,7 @@ function _glhDiff() {
   if (!ops.length) return;
   // removals first: something moved within one frame leaves its old cell before it takes its new one
   ops.sort((a, b) => (a.o[0] === '-' ? 0 : 1) - (b.o[0] === '-' ? 0 : 1));
-  for (let i = 0; i < ops.length; i += 24) _glhSend('all', 'd', { ops: ops.slice(i, i + 24) });
+  for (let i = 0; i < ops.length; i += 24) _glhSend('all', 'd', { ops: ops.slice(i, i + 24) }).then((r) => { if (r == null && typeof _glySendFailed === 'function') _glySendFailed(); });
 }
 /* ---------- an intent ---------- */
 function _glhKeyOf(f, i) { return String(f).slice(0, 8) + '.' + String(i).slice(0, 40) + '.0'; }   // (never ends in a word sync takes for a credential's name)
@@ -705,8 +707,8 @@ function _glhPanel(el, v) {
   row.append(sw('Open', v.open !== false, () => prefs({ open: true })), sw('Closed', v.open === false, () => prefs({ open: false })));
   el.appendChild(row);
   const note = v.host && v.host.note;
-  if (note) { const msg = { 'old-mine': 'Friends on another network can only play here after a quick update: Settings > Your relay > Update.', 'old-theirs': 'Friends on another network can only play here once the relay you share is updated.', norelay: 'Friends on another network need a relay to play here: Settings > Your relay. On the same network they can play now.', unreachable: 'Your relay cannot be reached just now.', refused: 'Your relay does not let you host rooms now: its owner may have taken your access back.', rest: 'The relay is resting for a little while. Friends on your network can still play.' }[note]; if (msg) el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', msg)); }
-  if (v.budget && v.budget.mode === 'over') el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', 'That is all the live play through your relay for today. It keeps your sync safe. Friends on your network can still play.'));
+  if (note) { const msg = { 'old-mine': 'Friends on another network can only play here after a quick update: Settings > Your connection to friends > Update.', 'old-theirs': 'Friends on another network can only play here once the relay you share is updated.', norelay: 'Friends on another network need a relay to play here: Settings > Your connection to friends. On the same network they can play now.', unreachable: 'Your connection to friends cannot be reached just now.', refused: 'Your connection to friends does not let you host rooms now: its owner may have taken your access back.', rest: 'The relay is resting for a little while. Friends on your network can still play.' }[note]; if (msg) el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', msg)); }
+  if (v.budget && v.budget.mode === 'over') el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', 'That is all the live play through your connection to friends for today. It keeps your sync safe. Friends on your network can still play.'));
   el.appendChild(_gsvEl('h4', 'gll-h', 'Who may come in'));
   const list = _gsvEl('div', 'gll-friends');
   const setP = (id, o) => _gllApi('/api/garden-live/perm', { id, ...o }).then(() => gardenLiveLoad(true)).then(_glhHud).catch((e) => toast(e.message, { kind: 'err' }));

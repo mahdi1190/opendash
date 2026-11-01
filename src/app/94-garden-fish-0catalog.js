@@ -11,7 +11,7 @@
      GARDEN_RODS       five rods (the bamboo one is yours; the golden one is a ribbon prize)
      GARDEN_NETS       four nets (the hand net is yours; the golden one is a ribbon prize)
      GARDEN_BAITS      bait you can bring along; GARDEN_BOBBERS: floats you unlock by catching
-     GARDEN_CATCH_ECON casts a day, what the market will pay for, the showcase sizes
+     GARDEN_CATCH_ECON what the market will pay for, the XP a day from fish, the showcase sizes
      GARDEN_TRADES     the order board: three requests a day, paid in goods (the same on every device)
 
    Every id is stable and unique, saved in the state and sent to friends: never rename or reuse one.
@@ -158,9 +158,9 @@ function _gfG(id, kind, tier, name, price, lv, st, blurb, more) { return Object.
 const GARDEN_RODS = Object.freeze([
   _gfG('rod-1', 'rod', 1, 'Bamboo rod', 0, 1, { range: 3, bar: 0.2, line: 1, bite: 0, react: 0, q: 1 }, 'A bit of bamboo, some string and plenty of hope.', { own: 1 }),
   _gfG('rod-2', 'rod', 2, 'Fibreglass rod', 80, 3, { range: 4, bar: 0.24, line: 0.9, bite: 0.8, react: 0.1, q: 2 }, 'Springy and light. It reaches one cell further.'),
-  _gfG('rod-3', 'rod', 3, 'Carbon rod', 240, 6, { range: 5, bar: 0.28, line: 0.8, bite: 1.6, react: 0.2, q: 2 }, 'Stiff, quick and good at telling you something is there.'),
-  _gfG('rod-4', 'rod', 4, 'Master rod', 620, 9, { range: 6, bar: 0.33, line: 0.7, bite: 2.4, react: 0.3, q: 3 }, 'Hand-built for people who take fish seriously.'),
-  _gfG('rod-5', 'rod', 5, 'Golden rod', 0, 1, { range: 7, bar: 0.38, line: 0.6, bite: 3.2, react: 0.4, q: 3 }, 'It glitters, and the fish seem to want to meet it.', { ribbon: 'master-angler' }),
+  _gfG('rod-3', 'rod', 3, 'Carbon rod', 240, 6, { range: 6, bar: 0.28, line: 0.8, bite: 1.6, react: 0.2, q: 2 }, 'Stiff and quick. It reaches out to where the big shadows swim.'),
+  _gfG('rod-4', 'rod', 4, 'Master rod', 620, 9, { range: 8, bar: 0.33, line: 0.7, bite: 2.4, react: 0.3, q: 3 }, 'Hand-built, and it reaches the deep water from the pier.'),
+  _gfG('rod-5', 'rod', 5, 'Golden rod', 0, 1, { range: 10, bar: 0.38, line: 0.6, bite: 3.2, react: 0.4, q: 3 }, 'It glitters, and the fish seem to want to meet it.', { ribbon: 'master-angler' }),
 ]);
 const GARDEN_NETS = Object.freeze([
   _gfG('net-1', 'net', 1, 'Hand net', 0, 1, { reach: 1.1, swing: 0.55, luck: 0 }, 'A mesh bag on a stick.', { own: 1 }),
@@ -168,13 +168,14 @@ const GARDEN_NETS = Object.freeze([
   _gfG('net-3', 'net', 3, 'Long-handled net', 210, 8, { reach: 2, swing: 0.38, luck: 0.12 }, 'Reaches dragonflies on their reed.'),
   _gfG('net-4', 'net', 4, 'Golden net', 0, 1, { reach: 2.5, swing: 0.3, luck: 0.2 }, 'The bugs seem to hold still for it.', { ribbon: 'entomologist' }),
 ]);
-/* Bait is used one per cast, if you pick it. lure: faster bites; rare: bigger chance of the better fish; night/dawn... fit it to a time. */
+/* Bait is eaten when a fish bites, if you pick it. lure: fish notice it from further off, and nibble less; rare: shy fish are keener to come; night: more so at night (94-garden-fish-6school.js). */
 const GARDEN_BAITS = Object.freeze([
-  _gfG('worm', 'bait', 0, 'Worms', 0, 1, { lure: 0, rare: 0 }, 'Free and wriggly. Always in your pocket.', { own: 1 }),
-  _gfG('dough', 'bait', 1, 'Bread dough', 3, 1, { lure: 1.6, rare: 0 }, 'Fish come sooner. A little sooner.', { pack: 5 }),
-  _gfG('maggot', 'bait', 1, 'Maggots', 5, 3, { lure: 0.8, rare: 0.12 }, 'Better fish take an interest.', { pack: 5 }),
-  _gfG('glow-lure', 'bait', 2, 'Glow lure', 14, 6, { lure: 0.8, rare: 0.18, night: 1 }, 'A little light for the night fish.', { pack: 3 }),
-  _gfG('golden-fly', 'bait', 3, 'Golden fly', 40, 9, { lure: 1.2, rare: 0.35 }, 'The deep fish cannot resist it.', { pack: 2 }),
+  _gfG('worm', 'bait', 0, 'Worms', 0, 1, { lure: 0, rare: 0 }, 'Free and wriggly. A fish has to swim close to notice.', { own: 1 }),
+  _gfG('dough', 'bait', 1, 'Bread dough', 3, 1, { lure: 1.6, rare: 0 }, 'Fish notice it from further away.', { pack: 5 }),
+  _gfG('maggot', 'bait', 1, 'Maggots', 5, 3, { lure: 0.8, rare: 0.12 }, 'Shy fish are keener to come.', { pack: 5 }),
+  _gfG('glow-lure', 'bait', 2, 'Glow lure', 14, 6, { lure: 0.8, rare: 0.18, night: 1 }, 'Seen from afar, and at night the shy ones come for it.', { pack: 3 }),
+  _gfG('chum', 'bait', 1, 'Fish chum', 8, 2, { lure: 0.4, rare: 0.05, chum: 1 }, 'Goes in with your cast, and brings a fish up near your float.', { pack: 3 }),
+  _gfG('golden-fly', 'bait', 3, 'Golden fly', 40, 9, { lure: 1.2, rare: 0.35 }, 'Even the great fish cannot resist it.', { pack: 2 }),
 ]);
 /* Floats for the line: unlocked by catching, chosen in the tackle shop; they change how the bobber looks and nothing else. */
 const GARDEN_BOBBERS = Object.freeze([
@@ -185,15 +186,26 @@ const GARDEN_BOBBERS = Object.freeze([
   Object.freeze({ id: 'lantern', name: 'Lantern float', c: '#e8503a', c2: '#ffd86a', unlock: 'rare:3', hint: 'Catch 3 rare fish.' }),
   Object.freeze({ id: 'gold', name: 'Golden float', c: '#f2c432', c2: '#fff0a0', unlock: 'species:30', hint: 'Catch 30 kinds of fish.' }),
 ]);
-const _GF_GEAR = new Map(GARDEN_RODS.concat(GARDEN_NETS, GARDEN_BAITS).map(x => [x.id, x]));
+/* What you build for the lake (kind 'lake', owned for good like a rod, in order of a chain's tier where they need one another). Mid and late game: the first ones change what you can reach, the later ones what swims there.
+   Fish start few and grow with your level (94-garden-fish-6school.js, _gfsWant); these add to that, never by much. */
+const GARDEN_WORKS = Object.freeze([
+  _gfG('pier-2', 'lake', 2, 'Longer pier', 350, 3, { adds: 'Pier 4 cells longer' }, 'New planks out over the middle of the lake, towards the bigger fish.', { icon: 'waves' }),
+  _gfG('pier-3', 'lake', 3, 'Deep-water pier', 900, 7, { adds: 'Pier 4 cells longer again' }, 'All the way out, to where the fins are.', { icon: 'waves', needs: 'pier-2' }),
+  _gfG('fish-feeder', 'lake', 1, 'Fish feeder', 120, 2, { adds: 'One more fish in the shallows and open water' }, 'A little drum that scatters feed each morning.', { icon: 'fish' }),
+  _gfG('reed-beds', 'lake', 1, 'Reed beds', 300, 4, { adds: 'One more fish in deep water, and shy fish come more readily' }, 'Somewhere for the big ones to feel safe.', { icon: 'leaf' }),
+  _gfG('fishing-station', 'lake', 1, 'Fishing station', 500, 6, { adds: 'Bigger bar, and longer to strike' }, 'A proper seat, a rod rest and somewhere to put your tea.', { icon: 'armchair' }),
+  _gfG('night-lantern', 'lake', 1, 'Night lantern', 250, 5, { adds: 'Night fish come more readily, and one more at night' }, 'A lamp on a pole, and everything that likes the dark comes to look.', { icon: 'lamp' }),
+  _gfG('pool-stock', 'lake', 1, 'Stocked pools', 400, 7, { adds: 'One more fish in each pond' }, 'A bucket of young fish for your still water.', { icon: 'droplets' }),
+]);
+const _GF_GEAR = new Map(GARDEN_RODS.concat(GARDEN_NETS, GARDEN_BAITS, GARDEN_WORKS).map(x => [x.id, x]));
 
 /* ---------- the economy: calm, never a farm ---------- */
 const GARDEN_CATCH_ECON = Object.freeze({
-  castsBase: 10, castEveryMin: 12, castsMax: 30,        // casts a day: 10, and one more per 12 credited minutes, at most 30
+  xpFish: 30,                                           // fish a day that earn XP: fishing has no limit (2.34), levelling from it has
   marketFish: 90, marketBugs: 50, afterCap: 0.2,        // coins the market pays a day for fish and for bugs; past it, a fifth
   showFish: 6, showBugs: 9, bagMax: 400,                // the showcase tank holds 6 fish and the case 9 bugs
   giftMax: 3,                                           // catches you can put in one parcel a day, per friend
-  biteMin: 3.2, biteMax: 8.5, strike: 1.15,             // seconds waiting for a bite; seconds you have to strike
+  strike: 1.3,                                          // seconds you have to strike
 });
 
 /* ---------- lookups ---------- */
@@ -257,11 +269,6 @@ function gardenFishValue(id, cm, q) {
 }
 /** A bug is worth its price; a rarer one pinned in a case is worth the same. */
 function gardenBugValue(id) { const b = gardenBugDef(id); return b ? b.price : 0; }
-/** Casts a day, from the credited minutes (the garden economy's own count of time worked). */
-function gardenCastsFor(creditedMin) {
-  const E = GARDEN_CATCH_ECON;
-  return Math.min(E.castsMax, E.castsBase + Math.floor(Math.max(0, Number(creditedMin) || 0) / E.castEveryMin));
-}
 /** The three requests of the order board for a day: {fish, n, c (coins), item}; the same on every device. */
 function gardenTradesFor(iso, level) {
   const rnd = gardenRand('gd-trades|' + iso);

@@ -48,6 +48,8 @@ function _gllFxPlay(A, ev) {
   if (c === 'cheer') { _gllCheerFx(A, e, ev); return; }
   if (c === 'hall') { if (typeof _eeHear === 'function') _eeHear(A, ev); return; }
   if (c === 'snap') { if (typeof _glsHear === 'function') _glsHear(A, ev); return; }   // (a group photo: 94-garden-live-7snap.js)
+  if (c === 'sync') { if (e === 'ask') { if (typeof _glyAsked === 'function') _glyAsked(A); } else if (typeof _glyAtIn === 'function') _glyAtIn(A, ev); return; }   // (staying in step: 94-garden-live-8sync.js)
+  if (c === 'fs') { if (typeof _gfsHeard === 'function') _gfsHeard(A, ev); return; }   // (the fish at a guest's line: the host decides)
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {
     if (e === 'sneak') A.sneakUntil = Date.now() + 4500;   // clock-ok: how long a creep lasts
@@ -68,9 +70,9 @@ function _gllFxPlay(A, ev) {
     A.fish = null; _gllFxClear(A);
     A.dir = 's'; _gllPose(A, 'hold', GART_MOMENT_MS);
     const g = _gllSvgEl('g', 'gll-held'); g.setAttribute('transform', 'scale(.74)'); g.innerHTML = gardenMomentSvg(spec, { who });
-    A.root.appendChild(g);
+    A.root.appendChild(g); A.heldG = g;
     const tag = A.root.querySelector('.gll-name'); if (tag) tag.style.display = 'none';
-    setTimeout(() => { g.remove(); if (tag) tag.style.display = ''; }, GART_MOMENT_MS);
+    setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; if (tag) tag.style.display = ''; }, GART_MOMENT_MS);
     if (typeof _fxSound === 'function') _fxSound('sparkle');
   }
 }
@@ -112,7 +114,7 @@ function _gllFishFx(A, e, ev) {
     const bx = ev.x + 0.5, by = ev.y + 0.5;
     A.tx = null; A.moving = false; A.way = null;
     if (Math.abs(bx - A.x) > 0.1) A.face = bx > A.x ? 1 : -1;
-    A.fish = { state: 'cast', t: 0, bx, by, at: t, nib: 1.2 }; A.key = '';
+    A.fish = { state: 'cast', t: 0, bx, by, at: t, bait: typeof ev.i === 'string' ? ev.i : '' }; A.key = '';
     _gllFxClear(A);
     return;
   }
@@ -161,9 +163,10 @@ function _gllFireStep() {
 function _gllFxStep(A, dt) {
   _gllFireStep();
   if (typeof _glpStep === 'function') _glpStep();   // (2.32: two pets close for a moment play, 94-garden-live-7pals.js)
+  if (A.heldG && A.root && !A.root.contains(A.heldG)) A.root.appendChild(A.heldG);   // (a redraw gave them a new figure: what they caught stays held up)
   const F = A.fish;
   if (!F) return;
-  if (A.moving || Date.now() - F.at > 40000) { A.fish = null; A.key = ''; _gllFxClear(A); return; }   // clock-ok: a line forgotten
+  if (A.moving || Date.now() - F.at > 150000) { A.fish = null; A.key = ''; _gllFxClear(A); return; }   // clock-ok: a line forgotten
   F.t += dt;
   if (!A.fxe || !A.fxe.rod.isConnected) {
     _gllFxClear(A);
@@ -177,7 +180,7 @@ function _gllFxStep(A, dt) {
   const tx = (F.bx - A.x) * W.cellW, ty = (F.by - A.y) * W.cellH;
   let tipX = f * 34, tipY = -62, bx = tx, by = ty, sag = 8;
   if (F.state === 'cast') { const u = Math.min(1, F.t / 0.28); tipX = f * (-18 + 52 * u); tipY = -(78 - 16 * u); const k = Math.max(0, Math.min(1, (F.t - 0.22) / 0.5)); bx = tipX + (tx - tipX) * k; by = tipY + (ty - tipY) * k - Math.sin(k * Math.PI) * 46; sag = 2 + 6 * k; if (F.t >= 0.75) { F.state = 'wait'; F.t = 0; _gllRing(A, F, 1); if (typeof _fxSound === 'function') _fxSound('splash'); } }
-  else if (F.state === 'wait') { tipX = f * 38; tipY = -56; by = ty + Math.sin(F.t * 2.6) * 0.9; if (F.t > F.nib) { F.nib = F.t + 1.5 + ((F.t * 7) % 2); _gllRing(A, F, 0.6); } }
+  else if (F.state === 'wait') { tipX = f * 38; tipY = -56; by = ty + Math.sin(F.t * 2.6) * 0.9; const fsh = typeof _gfs !== 'undefined' ? [..._gfs.list.values()].find(q => q.to === A.w) : null; if (fsh && fsh.st === GF_ST.nibble && fsh.n !== F.nibN) { F.nibN = fsh.n; F.dip = 0.35; } if (F.dip > 0) { F.dip -= dt; by += Math.sin(F.dip * 40) * 1.2; } }
   else if (F.state === 'bite') { tipX = f * 38; tipY = -56 + Math.sin(F.t * 40) * 2; by = ty + 4 + Math.sin(F.t * 36) * 2; sag = 3; }
   else if (F.state === 'reel') { tipX = f * 30; tipY = -68 + Math.sin(F.t * 18) * 1.4; by = ty + Math.sin(F.t * 12) * 1.4; sag = 1.2; }
   else if (F.state === 'land') { const u = Math.min(1, F.t / 0.5); tipX = f * 30; tipY = -68; bx = tx + (tipX - tx) * u; by = ty + (tipY - ty) * u - Math.sin(u * Math.PI) * 30; sag = 2; if (F.t >= 0.6) { A.fish = null; A.key = ''; _gllFxClear(A); return; } }
@@ -185,5 +188,5 @@ function _gllFxStep(A, dt) {
   e.line.setAttribute('d', `M${tipX.toFixed(1)} ${tipY.toFixed(1)}Q${((tipX + bx) / 2).toFixed(1)} ${(Math.max(tipY, by) + sag).toFixed(1)} ${bx.toFixed(1)} ${(by - 4).toFixed(1)}`);
   e.bob.setAttribute('transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)})`);
   e.bub.setAttribute('visibility', F.state === 'bite' ? 'visible' : 'hidden');
-  if (F.state === 'bite') e.bub.setAttribute('transform', `translate(0 ${(-84 - Math.abs(Math.sin(F.t * 9)) * 3).toFixed(1)})`);
+  if (F.state === 'bite') e.bub.setAttribute('transform', `translate(${bx.toFixed(1)} ${(by - 30 - Math.abs(Math.sin(F.t * 9)) * 3).toFixed(1)})`);   // over the float, where everyone is looking
 }

@@ -107,7 +107,7 @@ async function _coSet(next, o) {
     j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
   } catch (e) {
-    const message = typeof netErrorMessage === 'function' ? netErrorMessage(e, 'the Freeflo server is not running') : String((e && e.message) || e);
+    const message = typeof netErrorMessage === 'function' ? netErrorMessage(e, 'Freeflo isn’t running') : String((e && e.message) || e);
     if (!o.quiet) toastError('save the time', message, () => _coSet(next, o));
     return { ok: false, message, before };
   }

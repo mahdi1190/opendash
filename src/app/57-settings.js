@@ -20,7 +20,7 @@ const SETTINGS_SECTIONS = {
   me: 'You', profile: 'You', time: 'You',
   appearance: 'Look and feel', animations: 'Look and feel', game: 'Look and feel',
   tasks: 'Tasks and Home', streams: 'Tasks and Home', templates: 'Tasks and Home', home: 'Tasks and Home', brief: 'Tasks and Home', suggestions: 'Tasks and Home', autolink: 'Tasks and Home',
-  ai: 'AI and connections', notifications: 'AI and connections',
+  ai: 'AI and connections', email: 'AI and connections', notifications: 'AI and connections',
   sync: 'Your computers', relay: 'Your computers', server: 'Your computers', updates: 'Your computers',
   friends: 'Friends and privacy', privacy: 'Friends and privacy', locations: 'Friends and privacy',
   data: 'Data', diagnostics: 'Data', advanced: 'Data', about: 'Data',

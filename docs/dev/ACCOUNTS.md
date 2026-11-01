@@ -579,3 +579,9 @@ malformed and oversized answers, timeouts, strict certificates, STARTTLS injecti
 `tests/accounts-imap.test.mjs` (the provider through the core and the Node binding:
 the password only in the secret store, friendly errors, the Microsoft mail shape),
 `tests/accounts-imap-routes.test.mjs` and `tests/accounts-imap-ui.test.mjs`.
+
+## How much it reads (2.35)
+
+`src/app/55-email-reading.js`; `uiPrefs.emailRead`, synced. `days` goes to every inbox read (each provider still applies its own limit). `every` gates the automatic inbox read and the automatic triage, and can be shorter than the hourly Claude gate because the person chose it. `batch`, `picky` (the confidence floor and a sentence in the prompt), `bulk`, `known` and `ignore` shape what `aiSuggestTasksFromEmails` sends; the filters run before the prompt is built, so a filtered email never reaches Claude. Mail is still fetched and listed.
+
+Events are `emailTriage.events`, separate from `suggestions`, so nothing that counts or accepts tasks sees them. Claude's answer is untrusted, like the email it read: `emailEventClean` keeps a real date from today to 400 days on, a real time, and short plain text. An event is created only by the person's click through `CalWrite.create`, with no guests. `auto: 'sure'` adds tasks at confidence 0.85 or more and never events; it is off by default because the words behind it come from a stranger's email.

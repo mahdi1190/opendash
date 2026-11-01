@@ -405,6 +405,45 @@ function _toastIsPlainUndo(a) {
   return /^(?:\(\)|_)\s*=>\s*\{?\s*undo\(\)\s*;?\s*\}?$/.test(String(a.run).trim());
 }
 const _toastHeld = [];
+/* WHERE A MESSAGE APPEARS (2.37). The owner, 1 Nov 2026: "the message we get right at the bottom is weird ... so many messages is tiring and unclear". A message now speaks from what you pressed:
+   a small bubble beside it, and a press that failed shakes with a cross. Something nobody asked for right now (a result long after, a passing note) says nothing and waits in Recent messages (More menu);
+   only a problem, a warning, a wait or an Undo still shows by itself, in the corner under the top bar. */
+const _TOAST_NEAR_MS = 20000, _TOAST_LOG_MAX = 40;
+const _toastPress = { t: 0, el: null, x: 0, y: 0 }, _toastLog = [], _toastRate = [];
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerdown', (e) => { _toastPress.t = Date.now(); _toastPress.el = e.target && e.target.closest ? e.target.closest('button, a, [role="button"], [role="tab"], label, select, input') || e.target : null; _toastPress.x = e.clientX; _toastPress.y = e.clientY; }, true);
+  document.addEventListener('keydown', (e) => {
+    const a = document.activeElement, typing = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+    if (typing && e.key !== 'Enter') return;
+    _toastPress.t = Date.now(); _toastPress.el = a && a !== document.body ? a : null;
+    if (_toastPress.el) { const r = _toastPress.el.getBoundingClientRect(); _toastPress.x = r.left + r.width / 2; _toastPress.y = r.top; } else _toastPress.y = 0;
+  }, true);
+}
+/** What was said lately, for Recent messages. */
+function toastRecent() { return _toastLog.slice().reverse(); }
+function _toastRemember(text, kind, ic) { if (!text) return; const last = _toastLog[_toastLog.length - 1]; if (last && last.text === text) { last.at = Date.now(); return; } _toastLog.push({ text, kind, ic, at: Date.now() }); if (_toastLog.length > _TOAST_LOG_MAX) _toastLog.shift(); }
+function _toastPressedLately() { return Date.now() - _toastPress.t < _TOAST_NEAR_MS; }
+/** Beside what you pressed, with a tail towards it; the corner if that has gone from the screen. */
+function _toastPlace(t) {
+  const el = _toastPress.el && _toastPress.el.isConnected && !_toastPress.el.closest('.toast') ? _toastPress.el : null;
+  let ax = _toastPress.x, top = _toastPress.y, bot = _toastPress.y;
+  if (el) { const r = el.getBoundingClientRect(); if (r.width && r.bottom > 0 && r.top < innerHeight) { ax = r.left + r.width / 2; top = r.top; bot = r.bottom; } }
+  else if (Date.now() - _toastPress.t > 4000) return null;   // (a while ago, and what you pressed has gone: the corner)
+  if (!top && !ax) return null;
+  t.classList.add('near');
+  const w = t.offsetWidth, h = t.offsetHeight, m = 10;
+  const below = top - h - 14 < 56;
+  const left = Math.max(m, Math.min(innerWidth - w - m, ax - w / 2));
+  t.style.left = Math.round(left) + 'px';
+  t.style.top = Math.round(below ? Math.min(innerHeight - h - m, bot + 12) : top - h - 12) + 'px';
+  t.style.setProperty('--tail', Math.round(Math.max(16, Math.min(w - 16, ax - left))) + 'px');
+  t.classList.toggle('below', below);
+  return el;
+}
+function openRecentMessages() {
+  const list = toastRecent(), when = (at) => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  showModal(`<div class="modal-h"><h2>Recent messages</h2></div><div class="toast-recent">${list.length ? list.map(m => `<div class="toast-recent-r ${esc(m.kind || '')}">${icon(m.ic)}<span>${esc(m.text)}</span><time>${esc(when(m.at))}</time></div>`).join('') : '<p class="muted">Nothing yet. Messages you did not need straight away wait here.</p>'}</div>`);
+}
 /** You left the garden: the notes that waited for you, the newest few. */
 function toastHeldFlush() { const list = _toastHeld.splice(0).slice(-3); list.forEach(([m, o], i) => setTimeout(() => toast(m, o), 500 + i * 300)); }
 /** Close the newest toast (Esc). False when none is showing. */
@@ -428,8 +467,10 @@ function toast(msg, o) {
     }
   }
   const kind = Object.prototype.hasOwnProperty.call(_TOAST_KINDS, o.kind) ? _TOAST_KINDS[o.kind] : (o.kind ? String(o.kind).replace(/[^a-z-]/g, '') : '');
-  const text = String(msg == null ? '' : msg);
+  const text = kind === 'err' && typeof netPlainError === 'function' ? netPlainError(msg) : String(msg == null ? '' : msg);
   let action = o.action && o.action.label ? o.action : null;
+  // Told to sign in again: the button goes there.
+  if (!action && kind === 'err' && typeof _NET_SIGNIN !== 'undefined' && /sign-in to that account has run out/.test(text) && typeof setView === 'function') action = { label: 'Open Connections', run: () => setView('connections') };
   if (!action && typeof o.retry === 'function' && !o.calm) action = { label: 'Try again', run: o.retry };   // calm lines have no Try again
   if (!action && kind === 'err' && typeof srvShowStartHelp === 'function' && typeof NET_DOWN_REASON !== 'undefined' && text.includes(NET_DOWN_REASON)) action = { label: 'How to start it', run: () => srvShowStartHelp() };
   if (action && _toastIsPlainUndo(action) && typeof undoMark === 'function') {
@@ -441,12 +482,20 @@ function toast(msg, o) {
   // A running wait: it ends when its job does (close()), not on a timer.
   const busy = kind !== 'err' && kind !== 'ok' && !!(o.busy || (action && _TOAST_STOP_RE.test(String(action.label))));
   const key = kind + '|' + (o.icon || '') + '|' + text;
+  const ic0a = o.icon || (kind === 'ok' ? 'circle-check' : kind === 'err' ? 'circle-alert' : kind === 'warn' ? 'triangle-alert' : 'info');
+  if (!busy) _toastRemember(text, kind, ic0a);
+  // Nobody is waiting for this: it waits in Recent messages. A problem, a warning, an Undo and a wait still show.
+  const plainNote = !busy && !action && kind !== 'err' && kind !== 'warn' && !o.dismiss && !o.now;
+  const shy = Object.assign(() => {}, { update: () => {}, progress: () => {} });
+  if (plainNote && !_toastPressedLately()) return shy;
+  if (plainNote) { const nowT = Date.now(); while (_toastRate.length && nowT - _toastRate[0] > 8000) _toastRate.shift(); if (_toastRate.length >= 3) return shy; _toastRate.push(nowT); }
   // the garden fills the window and answers with pictures: a passing note from the rest of the app waits until you leave it. Errors, waits and Undo still show; garden code passes `now`.
   if (!o.now && !busy && kind !== 'err' && !(action && /^undo$/i.test(String(action.label))) && typeof document !== 'undefined' && document.documentElement.classList.contains('gd-immersive')) {
     if (_toastHeld.length < 5 && !_toastHeld.some(h => h[0] === text)) _toastHeld.push([msg, o]);
     return Object.assign(() => {}, { update: () => {} });
   }
-  const ms = _toastMs(text, Object.assign({}, o, { action }), kind, busy);
+  const near = !busy && _toastPressedLately();
+  const ms = near && plainNote ? Math.min(2800, _toastMs(text, Object.assign({}, o, { action }), kind, busy)) : _toastMs(text, Object.assign({}, o, { action }), kind, busy);
 
   // The same message is already showing: count it instead of stacking another (never two waits in one).
   if (!busy) for (const c of _toastLive) {
@@ -540,6 +589,11 @@ function toast(msg, o) {
   for (const x of live) { if (extra <= 0) break; if (!x.busy) { x.close(); extra--; } }
   _toastLive.add(c);
   host.appendChild(t);
+  if (near) {
+    const at = _toastPlace(t);
+    // a press that failed says so with a picture too: it shakes, with a cross (the garden's own "no")
+    if (kind === 'err' && at && typeof gameDeny === 'function') gameDeny(at, { silent: true });
+  }
   start();
   const keep = action || busy ? 4000 : 1800;   // what is left after the pointer or focus leaves, at least
   t.addEventListener('mouseenter', () => { hover = true; if (!busy) stop(); });
@@ -568,7 +622,12 @@ if (typeof document !== 'undefined') document.addEventListener('visibilitychange
 let _tipEl = null, _tipTimer = null, _tipFor = null;
 function _hideTip() { if (_tipTimer) clearTimeout(_tipTimer); _tipTimer = null; _tipFor = null; if (_tipEl) { _tipEl.remove(); _tipEl = null; } }
 document.addEventListener('mouseover', (e) => {
-  const t = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+  let t = e.target && e.target.closest ? e.target.closest('[data-tip]') : null;
+  // A button with only a picture and a spoken name: its name is its tooltip too.
+  if (!t && e.target && e.target.closest) {
+    const b = e.target.closest('button[aria-label], a[aria-label], [role="button"][aria-label]');
+    if (b && !b.title && !b.textContent.trim()) { b.setAttribute('data-tip', b.getAttribute('aria-label')); t = b; }
+  }
   if (t === _tipFor) return;
   _hideTip();
   if (!t || !t.getAttribute('data-tip')) return;
@@ -758,6 +817,25 @@ function toastError(what, e, retry) {
   else if (retry && retry.label && typeof retry.run === 'function') o.action = { label: retry.label, run: retry.run };
   if (e && e.stack && !netIsDown(e)) console.warn('[' + (w || 'error') + ']', e);
   return toast(text, o);
+}
+/* Something you pressed broke with nothing handling it (a promise nobody caught, an error in a click
+   handler): say so instead of the button doing nothing. Only just after a press, at most every 30 s;
+   background work stays quiet, and the garden speaks for itself. */
+let _pressAt = 0, _pressSaidAt = 0;
+function _pressFailed(reason) {
+  if (Date.now() - _pressAt > 4000 || Date.now() - _pressSaidAt < 30000) return;
+  if (!reason || reason.name === 'AbortError' || reason.code === 'CANCELLED') return;
+  if (typeof document === 'undefined' || document.documentElement.classList.contains('gd-immersive')) return;
+  if (/ResizeObserver|^Script error/i.test(String(reason.message || reason))) return;
+  _pressSaidAt = Date.now();
+  toast('That didn’t work: ' + netErrorReason(reason, _NET_INSIDE) + '.', { kind: 'err' });
+}
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  const pressed = () => { _pressAt = Date.now(); };
+  window.addEventListener('pointerdown', pressed, true);
+  window.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') pressed(); }, true);
+  window.addEventListener('unhandledrejection', (e) => _pressFailed(e.reason));
+  window.addEventListener('error', (e) => { if (e.error) _pressFailed(e.error); });
 }
 /** 'link' -> 'the link'; 'your code' and 'the address' stay as they are. */
 function _copyWhat(w) { return /^(the|your|my|this|that|these|those|a|an|its|their)\b/i.test(w) ? w : 'the ' + w; }

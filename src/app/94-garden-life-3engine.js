@@ -17,14 +17,14 @@
    ============================================================ */
 const _gl = { on: false, W: null, list: new Set(), dir: null, tickT: 0, spawnT: 0, m: null, visit: null, seq: 0, dev: {} };
 /* How much life there is. Owner's direction, 30 Oct 2026: it must not be excessive, so that it stays special. Usually two to four about, sometimes nobody; the rare ones really rare. Tune here. */
-const GL_CAP = Object.freeze({ full: 6, subtle: 3, visit: 3 });   // never more than this at once
+const GL_CAP = Object.freeze({ full: 3, subtle: 2, visit: 2 });   // never more than this at once
 const GL_RARITY_ODDS = Object.freeze({ common: 1, uncommon: 0.45, rare: 0.06, epic: 0.015, legendary: 0.004 });
 const GL_TUNE = Object.freeze({
-  target: Object.freeze({ base: 2, perBloom: 12, bloomMax: 2 }),   // how many it aims for: base, and one more per so many plants in flower, up to bloomMax
+  target: Object.freeze({ base: 1, perBloom: 20, bloomMax: 1 }),   // how many it aims for: base, and one more per so many plants in flower, up to bloomMax
   overChance: 0.02,                       // now and then one more than that
-  firstIn: Object.freeze([3, 9]),         // seconds after you come in, the first arrival
-  gap: Object.freeze([10, 26]),           // seconds between arrivals
-  quiet: Object.freeze({ chance: 0.3, secs: Object.freeze([50, 130]) }),   // and sometimes a long quiet spell: a garden can simply be peaceful
+  firstIn: Object.freeze([15, 45]),         // seconds after you come in, the first arrival
+  gap: Object.freeze([45, 120]),           // seconds between arrivals
+  quiet: Object.freeze({ chance: 0.5, secs: Object.freeze([120, 300]) }),   // and sometimes a long quiet spell: a garden can simply be peaceful
   rarePerVisit: 1,                        // rare, epic and legendary together, on one visit
   eggs: Object.freeze({ perVisit: 1, chance: 0.5, firstAfter: Object.freeze([25, 100]) }),   // surprises: at most this many a visit, on about this share of visits, never the same one twice running
 });
@@ -678,7 +678,9 @@ function _glDirect(W) {
   for (const def of GARDEN_CREATURES) {
     if (def.egg || _glCount(def.id) >= (def.max || 2) || !_glEligible(def, W, v)) continue;
     if (_GL_RARE.has(def.rarity) && (_gl.rareN || 0) >= T.rarePerVisit) continue;
-    const w = _glOdds(def, W); pool.push([def, w]); total += w;
+    // a butterfly or a bee you cannot catch looks like one you can: one at a time, and seldom
+    if (def.group === 'insect' && _gl.list.some(c => !c.gone && !c.left && c.def.group === 'insect')) continue;
+    const w = _glOdds(def, W) * (def.group === 'insect' ? 0.15 : 1); pool.push([def, w]); total += w;
   }
   if (!pool.length) { _gl.spawnT = 3; return; }
   let r = Math.random() * total, pick = pool[0][0];

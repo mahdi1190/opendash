@@ -11,10 +11,10 @@ function viewTitle(v) {
   if (v === 'week')      return 'Upcoming';
   if (v === 'all')       return 'All tasks';
   if (v === 'no-date')   return 'No date';
-  if (v === 'completed') return 'Logbook';
+  if (v === 'completed') return 'Finished tasks';
   if (v === 'bin')       return 'Bin';
   if (v === 'wins')      return 'Wins';
-  if (v === 'triage')    return 'Email triage';
+  if (v === 'triage')    return 'Sort email';
   if (v === 'finance')   return 'Finances';
   if (v.startsWith('stream:')) return STREAMS[v.slice(7)]?.label || 'Stream';
   if (v.startsWith('tag:'))    return '#' + v.slice(4);
@@ -194,7 +194,7 @@ function _mountTaskEmpty(list, view, searching, inline) {
     : view.startsWith('person:')
     ? { icon: 'users', title: `Nothing open with ${viewTitle(view)}`, text: 'Add a task above and they are linked to it, or type @name in any task.' }
     : view === 'all'
-    ? { icon: 'sparkles', title: 'No open tasks', text: 'Add one above (try “email Sam fri !p1”), or press Q from anywhere.' }
+    ? { icon: 'sparkles', title: 'No open tasks', text: 'Type one above, the way you would say it: “email Sam on Friday”. New task at the top of the page works from anywhere too.' }
     : { icon: 'sparkles', title: 'Nothing here', text: 'Add a task above, or press Q from anywhere.' });
   o.compact = true;
   mountEmptyState(list, o);
@@ -466,7 +466,7 @@ function _renderWeekStrip(o) {
 }
 
 /* ---------- quick add ---------- */
-/** The placeholder example, from the user's own data: '"email Sam tomorrow #work !p2"' (cached per save). */
+/** The placeholder example, from the user's own data: '"email Sam tomorrow"' (cached per save). */
 let _qaExKey = null, _qaExVal = '';
 function _qaExample() {
   const key = [state._lastSave || 0, (state.custom || []).length, (state.people || []).length].join('|');
@@ -493,8 +493,7 @@ function _qaExample() {
       if (st && STREAMS[st[0]]) stream = st[0];
     }
   } catch (e) { /* keep the defaults */ }
-  const tag = String((STREAMS[stream] && STREAMS[stream].label) || stream).toLowerCase().replace(/\s+/g, '');
-  _qaExVal = `"email ${name} tomorrow #${tag} !p2"`;
+  _qaExVal = `"email ${name} tomorrow"`;
   return _qaExVal;
 }
 function _renderQuickAdd(view) {

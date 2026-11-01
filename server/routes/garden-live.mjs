@@ -46,6 +46,8 @@ export default function register(app) {
   const body = async (c) => { const b = await c.body({ allowEmpty: true }); return b && typeof b === 'object' && !Array.isArray(b) ? b : {}; };
   const str = (v, max = 64) => (typeof v === 'string' ? v.slice(0, max) : undefined);
 
+  // the fish's clock: a worker that only ticks, because a browser slows a hidden tab's own timers (94-garden-fish-6school.js). No data in it
+  app.route({ path: '/garden-clock.js', method: 'GET', handler: (c) => c.send(200, 'setInterval(function () { postMessage(0); }, 250);\n', 'text/javascript; charset=utf-8', { 'Cache-Control': 'no-store' }) });
   route('/api/garden-live', 'GET', () => gl.view(), { quiet: true });
   route('/api/garden-live/here', 'POST', async (c) => {
     const b = await body(c);

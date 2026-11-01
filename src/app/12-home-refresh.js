@@ -173,16 +173,18 @@ function _hrAiSet(k, sig) {
 async function _hrStore(run, store, conn, what) {
   if (typeof store === 'undefined' || !store) return { status: 'skipped', reason: 'off' };
   const age = store.age();
+  const mail = typeof InboxStore !== 'undefined' && store === InboxStore && typeof emailReadPrefs === 'function';
+  if (mail && !run.manual && !emailReadMs()) return { status: 'skipped', reason: 'runs when you ask' };   // (Settings > Reading your email)
   if (run.manual && age !== null && age < HR_FRESH_MS && !store.running()) return { status: 'fresh', at: Date.now() - age };
   // Automatic: read through Claude at most hourly (or on the schedule when longer); without Claude, on the schedule.
   if (!run.manual && age !== null && !store.running()) {
-    const wait = (_hrViaClaude(store) ? _hrClaudeMs() : _hrEveryMs()) - 60000;
+    const wait = Math.max(_hrViaClaude(store) ? _hrClaudeMs() : _hrEveryMs(), mail ? emailReadMs() : 0) - 60000;
     if (age < wait) return { status: 'fresh', at: Date.now() - age };
   }
   const away = _hrAway(conn, what);
   if (away) { store.load(true).catch(() => {}); return { status: 'away', reason: away }; }
   if (!store.running()) {
-    const r = await store.update({ force: !!run.manual, quiet: true });
+    const r = await store.update(Object.assign({ force: !!run.manual, quiet: true }, mail ? { body: { days: emailReadPrefs().days } } : {}));
     if (run.cancelled) return { status: 'cancelled' };
     if (r.noSources) return { status: 'skipped', reason: 'not connected' };
     if (r.error) return { status: 'error', reason: r.message || 'The update could not start.' };
@@ -287,7 +289,8 @@ async function _hrTriage(run) {
   if (!fresh.length) return { status: 'fresh', reason: 'No new email for Claude to look at.' };
   if (!run.manual) {
     const local = typeof connLocalHas === 'function' ? connLocalHas('claude') : false;
-    if (!local || Date.now() - _hrClaudeAt('triage') < _hrClaudeMs() - 60000) return { status: 'skipped', reason: 'runs when you ask' };
+    const mailMs = typeof emailReadMs === 'function' ? emailReadMs() : _hrClaudeMs();   // (your choice in Settings > Reading your email)
+    if (!local || !mailMs || Date.now() - _hrClaudeAt('triage') < mailMs - 60000) return { status: 'skipped', reason: 'runs when you ask' };
     _hrAiSet('auto:triage', '');
   }
   const r = await aiSuggestTasksFromEmails({ quiet: true, onlyNew: true });
@@ -453,7 +456,7 @@ function _hrChip(run, id, r) {
   const ic = st === 'running' ? '<span class="spinner" aria-hidden="true"></span>'
     : icon(st === 'done' || st === 'fresh' ? 'check' : st === 'away' ? 'moon' : st === 'elsewhere' ? 'monitor' : st === 'skipped' || st === 'cancelled' ? 'minus' : st === 'slow' ? 'clock' : 'x', 'i-xs');
   const word = st === 'running' ? '…' : st === 'fresh' ? ' up to date' : st === 'skipped' ? ` · ${r.reason || 'not connected'}` : st === 'cancelled' ? ' · stopped' : st === 'slow' ? ' · still working' : st === 'elsewhere' || st === 'away' ? ' · ' + (st === 'away' ? 'away' : 'elsewhere') : st === 'error' ? ' · failed' : '';
-  const tip = r.reason || (st === 'fresh' && r.at ? `Already up to date (${_hrHM(r.at)})` : '');
+  const tip = (r.reason && netPlainError(r.reason)) || (st === 'fresh' && r.at ? `Already up to date (${_hrHM(r.at)})` : '');
   return `<span class="hr-chip s-${escAttr(st)}"${tip ? ` title="${escAttr(tip)}"` : ''}>${ic}<span>${esc(label)}${esc(word)}</span></span>`;
 }
 function _hrSummaryText(run) {
@@ -484,7 +487,7 @@ function _hrPaint() {
   const head = busy ? `<span class="spinner" aria-hidden="true"></span><b>Refreshing everything</b>`
     : `${icon(_hrProblems(run).length || run.offline ? 'triangle-alert' : 'circle-check', 'i-sm')}<b>${esc(_hrSummaryText(run))}</b><span class="hr-at">${esc(_hrHM(_hr.lastAt || Date.now()))}</span>`;
   const rows = busy ? '' : (run.offline ? [['server', run.results.server]] : _hrProblems(run)).map(([id, r]) =>
-    `<div class="hr-row s-${escAttr(r.status)}"><span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || 'It did not finish.')}</span><button type="button" class="btn btn-ghost btn-sm" data-hr-retry="${escAttr(id)}">${icon('refresh-cw', 'i-xs')}<span>Try again</span></button></div>`).join('');
+    `<div class="hr-row s-${escAttr(r.status)}"><span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason ? netPlainError(r.reason) : 'It did not finish. Try again.')}</span><button type="button" class="btn btn-ghost btn-sm" data-hr-retry="${escAttr(id)}">${icon('refresh-cw', 'i-xs')}<span>Try again</span></button></div>`).join('');
   const calm = busy ? '' : Object.entries(run.results).filter(([, r]) => r && (r.status === 'away' || r.status === 'elsewhere')).map(([id, r]) =>
     `<div class="hr-row is-calm">${icon(r.status === 'away' ? 'moon' : 'monitor', 'i-xs')}<span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || '')}</span></div>`).join('');
   el.classList.toggle('is-busy', busy);

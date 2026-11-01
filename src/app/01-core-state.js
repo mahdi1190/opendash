@@ -128,16 +128,16 @@ function saveData() {
     else _saveLocalFull();
     maybeAutoBackup();
   }
-  catch (e) { showToast('⚠ save failed', true); }
+  catch (e) { showToast('Your last change could not be saved in this browser. Keep this page open and try again in a moment.', true); }
 }
 let _localFullToastAt = 0;
 /** Browser storage refused the copy: say where the edit went (at most once a minute). */
 function _saveLocalFull() {
   const server = typeof _serverAvailable === 'undefined' || _serverAvailable;
-  if (!server) { showToast('⚠ save failed: browser storage is full and the Freeflo server isn’t running', true); return; }
+  if (!server) { showToast('Your last change could not be saved: this browser’s storage is full and Freeflo isn’t running. Open Freeflo from your shortcut, and keep this page open until it says Saved.', true); return; }
   if (Date.now() - _localFullToastAt < 60000) return;
   _localFullToastAt = Date.now();
-  showToast('Browser storage is full; saved to the server', false);
+  showToast('This browser’s storage is full, but your change is safely saved in Freeflo', false);
 }
 /**
  * Save a UI change (view, selection, sort, theme, calendar month, caches): no
@@ -353,7 +353,7 @@ function importBackup(file) {
   const fail = (msg) => {
     const pick = () => { const inp = document.getElementById('import-file'); if (inp) { inp.value = ''; inp.click(); } };
     if (typeof toast === 'function' && document.getElementById('toast-host')) toast('Not restored: ' + msg, { kind: 'err', action: { label: 'Choose another file', run: pick } });
-    else alert('Failed to import: ' + msg);
+    else alert('Not restored: ' + msg);
   };
   reader.onerror = () => fail('the file could not be read.');
   reader.onload = async e => {

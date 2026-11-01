@@ -185,3 +185,10 @@ html[data-motion="reduced"] .glg, html[data-motion="reduced"] .glg-bar i { anima
 .gls-flash { position: absolute; inset: 0; z-index: 8; background: #fff; opacity: 0; pointer-events: none; animation: gls-flash .6s ease-out both; }
 @keyframes gls-flash { 0% { opacity: .9; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .gls-flash { display: none; } }
+/* how you are connected (94-garden-live-8sync.js) */
+.gll-link { position: absolute; left: 12px; bottom: 14px; z-index: 6; display: flex; align-items: center; gap: 8px; max-width: min(420px, calc(100% - 24px)); padding: 4px 6px 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--border-subtle); color: var(--fg-muted); font-size: var(--text-xs); line-height: 1.3; }
+.gll-link::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--sw-green, #3f8f5a); }
+.gll-link.is-wait::before { background: var(--sw-amber, #c98a12); }
+.gll-link-b { flex: none; border: 0; border-radius: 999px; padding: 3px 9px; background: var(--bg-muted); color: var(--fg); font: inherit; cursor: pointer; }
+.gll-link-b:hover { background: color-mix(in srgb, var(--fg) 12%, var(--bg-muted)); }
+.gd-page.is-fishing .gll-link { display: none; }

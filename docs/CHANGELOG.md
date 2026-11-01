@@ -10,6 +10,122 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.38.1]
+
+### Fixed
+- Tax collected through a tax code now shows on the later year's payslips and says which year it is from.
+- Exact payments in the next tax year now show and count in that year.
+- The money plan and Tax tab now agree on tax returns, including when HMRC asked you to file, for partners, and when you have been abroad.
+- If an expense is marked paid and no bank payment is sure, Freeflo says so and lets you pick it in one tap.
+
+## [2.38.0]
+
+Fishing is a proper game again, and it grows with your garden.
+
+### Changed
+- **The reel game is back.** After the strike you fight the fish in the bar. How hard depends on the kind of fish, how big this one is, and your rod.
+- **Every shadow is a real fish.** The small decorative ones in the water are gone.
+- **Careful fishing.** Cast right on top of a fish and it bolts, so land just in front. Your footsteps scare fish near the surface: hold Shift to creep. A big hunter with a fin scares small fish away.
+- **Further out, bigger and rarer.** The far deep water is where the giants and the fins are, and great fish give themselves away with rings on the surface.
+- **Fish and bugs start few and grow with your garden.** Fish come with your level and what you build for the lake. Bugs come with your flowers and trees, up to a limit for your level, and a bug hotel adds to it. Butterflies and bees you cannot catch are now rare.
+
+### Added
+- **Build for the lake**, at the tackle shop: a longer pier and a deep-water pier that reach further out, a fish feeder, reed beds, a fishing station (a bigger bar and longer to strike), a night lantern and stocked pools. Friends walk on your longer pier when they visit.
+- **Fish chum:** a new bait that brings a fish up near your float.
+- **Feeding times:** fish are keener at dawn and dusk, come back faster in the rain, and now and then there is a short feeding frenzy.
+
+## [2.37.0]
+
+Messages are quieter, and Freeflo notices when your pay is not what it expected.
+
+### Changed
+- **Messages speak from what you pressed.** A small bubble appears beside the button, not a bar at the bottom of the screen. A press that failed shakes with a cross. Things you did not need straight away say nothing and wait under More > Recent messages. Problems, Undo and long waits still show, in the corner.
+- "Your relay" is now called "Your connection to friends".
+
+### Added
+- **Pay that is not what Freeflo expected.** On the Tax tab: "£400 more than expected". It says why it thinks so (a bonus, no pension taken out, a part month, a new tax code), and one tap answers it. It uses your payslips, or what reached your bank if you have not added one.
+- You can say you pay into a pension at work but are not sure how.
+
+### Fixed
+- The Tax tab no longer says money you made in advance is coming back when you have not paid it yet. It now says those advance payments are still to come, and what you can do if your income has dropped.
+
+## [2.36.0]
+
+Clearer screens across the whole dashboard, and the remaining money plan and tax fixes.
+
+### Changed
+- **Clearer everywhere.** When something goes wrong, Freeflo now says what happened and what to do next, instead of showing codes. Buttons that only appeared under the mouse now stay visible. Every picture-only button says what it does when you point at it. Undo is in the More menu. "Email triage" is now "Sort email" and "Logbook" is now "Finished tasks".
+- Your plan asks a few questions first, with the rest folded away. Pay can be typed by the month or the year.
+- Freeflo now says plainly when something it does not work out may apply to you.
+
+### Fixed
+- Job forms ask for your payday, so no extra payment appears before your last one.
+- A job that is ending shows its real payments left, not an average.
+- A one-off self-employed total is no longer counted as monthly money.
+- An overdue tax bill stays in keep-aside until you tick it as paid.
+- A work expense paid back comes off spending and does not count as income.
+- A bill under £3,000 collected through your tax code is no longer shown as a January bill or kept aside.
+- Calendar's name no longer gets cut off, and Reschedule no longer sits on top of a task.
+
+## [2.35.1]
+
+The garden is calmer, and fishing is simpler and fixed.
+
+### Changed
+- **Far fewer fish, bugs and creatures.** A few fish in the whole lake and one in each pool, up to 3 bugs, and up to 3 birds, butterflies and other visitors at once, with long quiet spells. They are a nice surprise now. A fishing contest still has plenty of fish.
+- **Fishing works like Animal Crossing.** Wait for the big splash and press once: the fish is yours. The bar game is gone. You also have a little longer to press. Press quickly for a better catch.
+- Casting right on a fish no longer scares it, so just click the shadow.
+
+### Fixed
+- A frightened fish could run out of the pond and across the land. It now stays in the water.
+- **What you catch is held up over your head again.** Saving the catch redrew the garden and wiped it straight away, so it hardly ever showed, for you or for friends watching.
+- What you caught also says so in words, where the top bar cannot cover it, with a line about the catch.
+
+## [2.35.0]
+
+You choose how much Freeflo reads your email, and it can now suggest calendar events too.
+
+### Added
+- **Settings > Reading your email.** Pick Light, Balanced or Thorough, or set each choice: how often it looks, how far back, how many emails at a time, how sure it must be, and whether to skip automatic email or read only people you know.
+- **Never read email from:** addresses or whole domains Claude never sees. Filters run on your computer, before anything is sent.
+- **Calendar events from email.** Meetings, appointments and deadlines with a clear date appear on the Email page with Add to calendar. Nothing reaches your calendar until you press it.
+- **Add tasks by themselves (off by default):** tasks it is very sure of go straight in, with Undo.
+
+### Fixed
+- Choosing to read further back now sticks: the next automatic read used to go back to 2 weeks.
+- Update inbox and the page's Last days choice now use the same setting.
+
+## [2.34.1]
+
+Playing together stays in step, and fishing has fewer rough edges.
+
+### Added
+- **The garden repairs itself.** Every 10 seconds the host says what it has told everyone about the plants and decorations. If your copy differs, it quietly gets a fresh one. A change that could not be sent goes out again as a whole garden.
+- **A line that says how you are connected:** Connected (direct or through the relay), Catching up, Slow connection or Reconnecting. A visitor gets a Refresh garden button beside it.
+- **Your relay tells you when it needs its update**, in the garden and under Settings > Your relay.
+
+### Fixed
+- When someone joined or refreshed, changes made at that moment could be missed by everyone else already there.
+- Someone shown in the wrong place walks to the right one within 15 seconds, and is left alone if they are only slightly off, so people fishing or sitting are not disturbed.
+- A friend who has just sent you something no longer shows as offline, whatever they share.
+- The host's fish keep swimming while the host's tab is in the background.
+- The bite "!" shows over the float, not behind the top bar. Fish swim under the pier, not over it. The walking hint no longer sits on the fishing bar.
+- A visitor is told when the host's version is too old to share its fish, and "they are not in their garden" says what to do about it.
+
+## [2.34.0]
+
+Fishing is now about the fish you can see, like Animal Crossing.
+
+### Added
+- **Fish in the water.** Every fish is a shadow you can see swimming. Bigger fish have bigger shadows and live further out. The rarest and the great hunters show a fin above the water, and ghostly ones glow pale.
+- **Bites come only from those fish.** Cast near a shadow and it may turn, swim to your float and nibble. Wait for the big splash and strike: strike on a nibble and it bolts. Cast right on top of one and it bolts too. Nothing near your float, and nothing happens.
+- **Fishing together.** In a live garden everyone sees the same fish in the same places, and can watch one swim to a friend's float. Each fish goes to one line, so only one of you can catch it. The fish you land is the size you saw. Both of you need this version: with a host on an older one, a guest sees fish of its own.
+
+### Changed
+- **No daily limit on casts.** You can fish as long as there are fish to see, and a new one swims in after a while. The first 30 fish a day earn XP; the market's daily limits stay.
+- **Rods reach further:** the carbon rod 6 cells, the master rod 8, the golden rod 10. The rod no longer changes how long a bite takes: where you can reach decides which fish you can get.
+- **Bait draws fish.** Fish notice better bait from further away, shy fish come more readily for the best bait, and the glow lure works best at night. Bait is only used up when a fish bites.
+
 ## [2.33.1]
 
 ### Changed

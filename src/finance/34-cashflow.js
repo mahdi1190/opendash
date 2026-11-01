@@ -155,7 +155,7 @@
       cd.body.append(h('div', { class: 'fv-mini-stats fv-bal-stats' },
         h('div', null, h('span', { class: 'l', text: 'Lowest' }), h('b', { class: 'num', text: gbp(lo.v) }), h('span', { class: 'l', text: fDay(lo.n) })),
         h('div', null, h('span', { class: 'l', text: 'Highest' }), h('b', { class: 'num', text: gbp(hi.v) }), h('span', { class: 'l', text: fDay(hi.n) })),
-        h('div', { class: 'wide' }, h('span', { class: 'l', text: 'Average balance' }), h('b', { class: 'num', text: gbp(avg) }), h('span', { class: 'l', text: `across ${hist.length} snapshots` }))));
+        h('div', { class: 'wide' }, h('span', { class: 'l', text: 'Average balance' }), h('b', { class: 'num', text: gbp(avg) }), h('span', { class: 'l', text: `across ${hist.length} balance checks` }))));
     }
     cd.body.prepend(h('div', { class: 'fv-bals' }, bs.map(b => h('div', { class: 'fv-bal' }, h('span', { class: 'l', text: b.name || b.acct }), h('b', { class: +b.balance < 0 ? 'neg' : '', text: gbp2(+b.balance) }), h('span', { class: 'mute', text: [b.currency && b.currency !== 'GBP' ? b.currency : '', validIso(b.asOf) ? fDay(dnum(b.asOf)) : ''].filter(Boolean).join(' · ') })))));
   }

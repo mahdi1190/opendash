@@ -103,5 +103,7 @@
           h('div', { class: 'fv-pl-acts' },
             n.fix ? txBtn(n.fix.label, 'check', () => txDo(n.fix.change, n.fix.label, { close: false }), 'small primary') : null,
             n.open ? txBtn('Open it', 'pencil', () => txOpenJob(n.open), 'small') : null,
-            txBtn(n.keep, null, () => txDo({ action: 'dismiss', tx: 'check:' + n.id }, 'Thanks. Freeflo will not ask about that again.', { close: false }), 'ghost small')))))));
+            // what was it? one tap, and it is not asked about again for that payday
+            ...(n.choices || []).map(l => txBtn(l, null, () => txDo({ action: 'dismiss', tx: 'check:' + n.id }, 'Thanks. Noted.', { close: false }), 'ghost small')),
+            n.choices ? null : txBtn(n.keep, null, () => txDo({ action: 'dismiss', tx: 'check:' + n.id }, 'Thanks. Freeflo will not ask about that again.', { close: false }), 'ghost small')))))));
   }

@@ -616,22 +616,22 @@ function renderSaveStatus() {
   const offline = _serverAvailable && ((typeof srvIsOffline === 'function' && srvIsOffline()) || (window.DashboardNet && DashboardNet.down) || /isn.t running|not running/i.test(err));
   if (!_serverAvailable) {
     kind = 'local'; text = 'Local only';
-    tip = 'Saved in this browser only. Start Freeflo with start-opendash to save to your data folder.';
+    tip = 'Saved in this browser only. Open Freeflo from your shortcut so your changes are kept safely on this computer.';
   } else if (offline) {
     kind = 'offline'; text = 'Offline · changes kept';
-    tip = 'The Freeflo server isn’t running. Your changes are kept in this browser and saved as soon as it is back. Click to check again.';
+    tip = 'Freeflo isn’t running. Your changes are kept in this browser and saved as soon as it is back. Click to check again.';
   } else if (/paused/i.test(err)) {
     kind = 'paused'; text = 'Paused · changes kept';
     tip = err.charAt(0).toUpperCase() + err.slice(1) + '. Your changes are kept in this browser and saved when it resumes.';
   } else if (err) {
     kind = 'err'; text = 'Not saved · retry';
-    tip = 'Saving to the data folder failed: ' + err + '. Your work is still in this browser. Click to try again.';
+    tip = 'Your latest change isn’t saved yet: ' + (typeof netPlainError === 'function' ? netPlainError(err) : err) + ' Your work is still safe in this browser. Click to try again.';
   } else if (state._localDirty || _persistInFlight || _persistTimer) {
     kind = 'busy'; text = 'Saving…';
-    tip = 'Saving to the data folder';
+    tip = 'Saving your changes';
   } else {
     kind = 'ok'; text = 'Saved';
-    tip = 'Saved to the data folder' + (state._lastSave ? ' · ' + formatTimestamp(state._lastSave) : '');
+    tip = 'All your changes are saved' + (state._lastSave ? ' · ' + formatTimestamp(state._lastSave) : '');
   }
   btn.classList.remove('ok', 'err', 'busy', 'local', 'offline', 'paused');
   btn.classList.add(kind);
@@ -976,6 +976,7 @@ function renderShell() {
 /* ---------- default More / workspace items ---------- */
 registerMoreItem({ id: 'new-task', label: 'New task', icon: 'plus', order: 10, kbd: 'Q', run: () => openNewTask() });
 registerMoreItem({ id: 'bulk-add', label: 'Bulk add tasks…', icon: 'clipboard-list', order: 20, run: () => openBulkImport() });
+registerMoreItem({ id: 'recent-messages', label: 'Recent messages…', icon: 'message-square', order: 25, run: () => openRecentMessages() });
 registerMoreItem({ id: 'templates', label: 'Templates…', icon: 'layout-template', order: 30, run: () => openTemplatesModal() });
 registerMoreItem({ id: 'density', label: 'Compact rows', icon: 'list', order: 110, checked: () => state.density === 'compact',
   run: () => { state.density = state.density === 'compact' ? 'normal' : 'compact'; saveUI(); render(); } });
@@ -986,6 +987,7 @@ registerMoreItem({ id: 'reduce-motion', label: 'Reduce motion', icon: 'sparkle',
   disabled: () => (window.Motion && Motion.systemReduced ? Motion.systemReduced() : !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)),
   title: 'Turn interface animations down to the minimum (saved on this device)',
   run: () => { if (window.Motion) Motion.setReduced(!Motion.prefersReduced()); } });
+registerMoreItem({ id: 'undo', label: 'Undo my last change', icon: 'undo-2', order: 205, where: ['more', 'workspace'], kbd: _TOAST_MOD + '+Z', run: () => undo() });
 registerMoreItem({ id: 'briefing', label: 'Morning briefing', icon: 'sunrise', order: 210, hidden: () => !HAS_COWORK, run: () => runMorningBriefing() });
 registerMoreItem({ id: 'backup', label: 'Back up now', icon: 'download', order: 310, where: ['more', 'workspace'],
   hint: () => lastBackupLabel(), run: () => downloadBackup(false) });

@@ -24,7 +24,7 @@
      Friends.open(id)                    that friend's page
    friendsFeedPost({kind, text, icon, to?, body?, friend?, group?})  agent 'together'
    profileAvatarEl(friend, {size})       agent 'profile' defines it: the avatar element
-   friendsNameForRelayKey(edPub)         a relay member's key -> friend's name, 'You' or null (Settings > Your relay)
+   friendsNameForRelayKey(edPub)         a relay member's key -> friend's name, 'You' or null (Settings > Your connection to friends)
    friendsRenewKeysDialog({device?})     Lock out a lost computer: new friend keys (FRIENDS.md section 15; 96-friends-1ui.js)
    friendsOfferLockOut(deviceName)       after a device is removed from sync: "Lock it out" (Sync may call it)
    friendsPresenceShare(on, state?)      Online status on / off for everyone (Privacy's "Turn it on")
@@ -59,7 +59,7 @@ async function _frApi(path, body, opts) {
   let j = null;
   try { j = await r.json(); } catch (e) { j = null; }
   if (!r.ok || !j || j.ok === false) {
-    const e = new Error((j && typeof j.error === 'string' && j.error) || `Friends could not do that just now (${r.status}).`);
+    const e = new Error((j && typeof j.error === 'string' && j.error) || 'Friends could not do that just now. Try again in a moment.');
     e.code = j && j.code; e.status = r.status;
     throw e;
   }
@@ -103,7 +103,7 @@ function _frAfterLoad(before, d) {
     else toast(`You and ${friendName(f)} are now friends`, { icon: 'party-popper' });
   }
 }
-/** For Settings > Your relay (agent 'relay'): a member's identity key -> the friend's name, 'You', or null. */
+/** For Settings > Your connection to friends (agent 'relay'): a member's identity key -> the friend's name, 'You', or null. */
 function friendsNameForRelayKey(edPub) {
   const k = String(edPub || '');
   if (!k || !_fr.data) return null;

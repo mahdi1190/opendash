@@ -69,7 +69,7 @@
 .gd-reel-hint { font-size: 10.5px; color: var(--fg-muted); max-width: 150px; text-align: center; line-height: 1.3; }
 
 /* what you caught */
-.gd-catchcard { position: absolute; z-index: 6; left: 50%; top: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 10px; border-radius: var(--radius-xl); background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); cursor: pointer; animation: gd-card-in .3s cubic-bezier(.2, 1.3, .4, 1); max-width: min(92%, 420px); }
+.gd-catchcard { position: absolute; z-index: 8; left: 50%; top: 84px; max-width: min(460px, calc(100% - 24px)); transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 16px 8px 10px; border-radius: var(--radius-xl); background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); cursor: pointer; animation: gd-card-in .3s cubic-bezier(.2, 1.3, .4, 1); max-width: min(92%, 420px); }
 .gd-catchcard.is-out { opacity: 0; transform: translateX(-50%) translateY(-8px); transition: opacity .25s, transform .25s; }
 .gd-catchcard.is-new { border-color: color-mix(in srgb, var(--sw-amber) 70%, var(--border-subtle)); }
 .gd-catchcard.is-rare .gd-cc-art { background: radial-gradient(circle, color-mix(in srgb, var(--sw-amber) 35%, transparent), transparent 70%); }
@@ -180,7 +180,7 @@ html[data-motion="reduced"] .gd-svg .gd-shadowfish, html[data-motion="reduced"] 
 
 /* fishing locks you in */
 .gd-page.is-fishing .gd-toolbar { opacity: .4; pointer-events: none; transition: opacity .25s; }
-.gd-page.is-fishing .gd-camui { display: none; }
+.gd-page.is-fishing .gd-camui, .gd-page.is-fishing .gd-walkhint { display: none; }
 .gd-full .gd-stagebox[data-fishing="1"], .gd-full .gd-stagebox[data-fishing="1"] * { cursor: default; }
 .gd-stagebox[data-fishing="1"] .gd-status, .gd-stagebox[data-fishing="1"] .gd-hovercard { display: none; }
 .gd-fishhud { position: absolute; z-index: 6; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); font-size: var(--text-sm); animation: gd-card-in .25s ease-out; }

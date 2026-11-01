@@ -1,4 +1,4 @@
-// server/routes/relay.mjs - Settings > Your relay (lib/relay/deploy.mjs,
+// server/routes/relay.mjs - Settings > Your connection to friends (lib/relay/deploy.mjs,
 // docs/dev/RELAY_PROTOCOL.md).
 //
 //   GET  /api/relay                    {relay: the home relay of friends/relays.json, connect: {state, step, steps,

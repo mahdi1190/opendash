@@ -297,14 +297,14 @@ function _glvGiveMenu(A) {
 const _GLV_NOTES = Object.freeze({
   ask: 'You knocked. They can let you in from their garden.',
   closed: 'Their gate is closed just now. This is their garden as they last shared it.',
-  away: 'They are not in their garden just now. This is the garden as they last shared it.',
+  away: 'They are not in their garden just now. One of you stays in your own garden and the other knocks. This is the garden as they last shared it.',
   full: 'Their garden is full just now. Try again in a little while.',
   old: 'Their Freeflo is older than yours, so this is the garden as they last shared it.',
   newer: 'Their Freeflo is newer than yours. Update yours to play together. This is the garden as they last shared it.',
   road: 'Live play needs a quick update of the relay you share. This is the garden as they last shared it.',
   quiet: 'No answer. Their Freeflo has to be open, on the latest version, for you to get in. This is the garden as they last shared it.',
-  unsent: 'Your knock could not be sent just now. Check your relay under Settings > Your relay, then knock again. This is the garden as they last shared it.',
-  limit: 'Their relay is turning your messages away for now (too many today). It opens again after midnight UTC, or at once when they press Update my relay under Settings > Your relay. This is the garden as they last shared it.',
+  unsent: 'Your knock could not be sent just now. Check your connection to friends under Settings > Your connection to friends, then knock again. This is the garden as they last shared it.',
+  limit: 'Their relay is turning your messages away for now (too many today). It opens again after midnight UTC, or at once when they press Update my connection under Settings > Your connection to friends. This is the garden as they last shared it.',
   lost: 'The connection dropped. Trying again…',
   home: 'They sent you home for now. This is the garden as they last shared it.',
   budget: 'That is all the live play for today. This is the garden as they last shared it.',
@@ -362,11 +362,14 @@ function _glvEvent(ev) {
       _glv.snap = ev.snap;
       _gll.by.clear();
       if (ev.by) for (const [kind, x, y, n] of ev.by.r) _gll.by.set(kind + '|' + x + '|' + y, ev.by.n[n]);
+      if (typeof _glySnapIn === 'function') _glySnapIn();
       if (first && typeof _gsvPaint === 'function') _gsvPaint();   // (no saved copy to look at: this may be the first the page has seen of it)
       _gdvTouch();
       return;
     }
     case 'cr': _glcGuestCr(ev.l); return;
+    case 'fs': if (typeof _gfsIn === 'function') _gfsIn(ev.l); return;
+    case 'sum': if (typeof _glySumIn === 'function') _glySumIn(ev); return;
     case 'pp': _gllPlacesIn(ev); return;
     case 'tr': if (typeof _gltFromHost === 'function') _gltFromHost(ev); return;
     case 'goal': if (typeof _glgGuestIn === 'function') _glgGuestIn(ev); return;

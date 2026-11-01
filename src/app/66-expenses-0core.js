@@ -19,6 +19,8 @@ async function expApi(path, body, o) {
   const r = await fetch('/api/expenses' + path, body === undefined ? { headers: { Accept: 'application/json' } } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   let j = null; try { j = await r.json(); } catch (e) { /* not JSON */ }
   if (!r.ok || !j || j.ok === false) { const e = new Error((j && (j.error || j.message)) || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+  // What was paid back changed: the analysis was built again, so what Money shows moves too.
+  if (j.rebuilt) { try { if (window.FinanceView && window.FinanceView.refresh) window.FinanceView.refresh(); } catch (e) { /* not loaded yet */ } }
   return j;
 }
 function expSet(data) {
@@ -176,7 +178,32 @@ async function expMarkPaid(ids, date) {
   if (!j) return null;
   const back = expCompleteChecks(ids);
   toast(`Marked ${ids.length === 1 ? 'it' : ids.length} as paid`, { icon: 'circle-check', action: { label: 'Undo', run: () => expUndo(j.undo, back) } });
+  if (j.unlinked) expPickCredit(j.unlinked);
   return j;
+}
+/** Marked as paid, and no bank payment is sure: until one is picked, that money still counts as income. One tap to say which. u: {ids, amount, candidates}. */
+function expPickCredit(u) {
+  const amount = expMoney(u.amount), list = u.candidates || [];
+  const pick = async (txKey) => { const j = await expDo('/paid-link', { ids: u.ids, txKey }, { quiet: true, what: 'save that' }); if (!j) return false; toast(`${amount} is no longer counted as income`, { icon: 'circle-check', action: j.undo ? { label: 'Undo', run: () => expUndo(j.undo) } : undefined }); return undefined; };
+  openDialog({
+    title: 'Which bank payment paid this back?', size: 'sm', className: 'owd-pay',
+    body(el) {
+      el.className += ' xp-form owd-form';
+      el.appendChild(_xe('p', 'xp-hint', esc(list.length ? `We could not be sure which one it was. Until you pick one, ${amount} is still counted as income, as well as coming off your spending.` : `We cannot see it in your bank yet. If it comes in later, ${amount} may count as income until it is matched. You can pick it from this expense's menu.`)));
+      const box = _xe('div', 'owd-pay-list');
+      for (const r of list) {
+        const b = _xe('button', 'owd-pp', `<span class="owd-pl-n">${esc(r.merchant || r.memo || 'Payment')}<small>${esc(_xpDate(r.date))}${r.exact ? ' · the same amount' : ` · ${esc(amount)} of this`}</small></span><b class="num">${esc(expMoney(r.amount))}</b>`); b.type = 'button';
+        b.onclick = async () => { if ((await pick(r.txKey)) !== false && typeof _dialogClose === 'function' && _dialogClose) _dialogClose(); };
+        box.appendChild(b);
+      }
+      if (list.length) el.appendChild(box);
+    },
+    actions: [
+      { label: 'It did not come through my bank', run: async () => { const j = await expDo('/paid-link', { ids: u.ids, noBank: true }, { quiet: true, what: 'save that' }); return j ? undefined : false; } },
+      'spacer',
+      { label: 'Later', primary: !list.length },
+    ],
+  });
 }
 async function expDelete(ids) {
   const list = ids.map(expItem).filter(Boolean);

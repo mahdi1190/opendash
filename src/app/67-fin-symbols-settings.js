@@ -22,7 +22,7 @@ if (typeof registerSettingsGroup === 'function') registerSettingsGroup({
         try { r = await fetch('/api/finance/count', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ countPending: on }) }); } catch (e) { /* below */ }
         if (!r || !r.ok) {
           const b = r ? await r.json().catch(() => null) : null;
-          toast(r && r.status === 409 ? 'An update is running. Try again when it finishes.' : (b && b.error) || 'Could not reach the Freeflo server. Is it running?', { kind: 'err' });
+          toast(r && r.status === 409 ? 'An update is running. Try again when it finishes.' : (b && b.error) || 'Couldn’t reach Freeflo. Open it from your shortcut, then try again.', { kind: 'err' });
           return;
         }
         sw.setAttribute('aria-checked', on ? 'true' : 'false');

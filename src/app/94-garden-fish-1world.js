@@ -41,8 +41,7 @@ function gardenLakeGround(sc, o) {
   const rr = gardenRand('lake-ripples');
   for (let i = 0; i < 9; i++) { const cx = rr() * w, cy = wy + 12 + rr() * (wh - 20); s += `<ellipse class="${o.still ? '' : 'gda-ripple'}" cx="${_gwN(cx)}" cy="${_gwN(cy)}" rx="${_gwN(8 + rr() * 14)}" ry="2" fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-width="1.1" style="animation-delay:-${_gwN(rr() * 4)}s"/>`; }
   if (sc.tod === 'day' || sc.tod === 'dusk') for (let i = 0; i < 12; i++) { const cx = rr() * w, cy = wy + 8 + rr() * (wh - 12); s += `<path class="${o.still ? '' : 'gd-glint'}" d="M${_gwN(cx - 3)} ${_gwN(cy)}h6M${_gwN(cx)} ${_gwN(cy - 1.4)}v2.8" stroke="#ffffff" stroke-width="1.3" stroke-opacity="0.8" stroke-linecap="round" style="animation-delay:-${_gwN(rr() * 5)}s"/>`; }
-  // the shadows of fish, slowly going about their day
-  if (!o.still && sc.tod !== 'night') { const rs = gardenRand('lake-shadows'); for (let i = 0; i < 6; i++) { const cy = wy + (1.2 + rs() * 3.4) * ch, cx = rs() * w, k = 0.8 + (cy - wy) / wh * 0.9; s += `<g class="gd-shadowfish" style="--dx:${Math.round(90 + rs() * 160)}px;animation-duration:${Math.round(34 + rs() * 40)}s;animation-delay:-${Math.round(rs() * 40)}s"><ellipse cx="${_gwN(cx)}" cy="${_gwN(cy)}" rx="${_gwN(10 * k)}" ry="${_gwN(3.2 * k)}" fill="#06223c" fill-opacity="0.16"/><path d="M${_gwN(cx - 9 * k)} ${_gwN(cy)}l${_gwN(-6 * k)} ${_gwN(-3 * k)}v${_gwN(6 * k)}z" fill="#06223c" fill-opacity="0.16"/></g>`; } }
+  // (no fish are drawn here: every shadow in the water is a real fish, 94-garden-fish-6school.js)
   if (sc.tod === 'night') { const mx = w * 0.78; s += `<ellipse cx="${_gwN(mx)}" cy="${_gwN(wy + wh * 0.4)}" rx="70" ry="${_gwN(wh * 0.36)}" fill="#dfe8ff" fill-opacity="0.10"/>`; for (let i = 0; i < 9; i++) s += `<path d="M${_gwN(mx - 26 + i * 6)} ${_gwN(wy + 8 + i * 9)}h${_gwN(18 - i)}" stroke="#f4f1e0" stroke-width="1.6" stroke-opacity="0.5" stroke-linecap="round"/>`; }
   // lily pads and reeds at the far edges (flat scenery in the water, never in the way)
   for (const px of [34, 70, w - 50, w - 96]) s += `<ellipse cx="${px}" cy="${_gwN(wy + 14 + (px % 7))}" rx="9" ry="3.4" fill="#5a9a4a" fill-opacity="0.9"/><ellipse cx="${px + 5}" cy="${_gwN(wy + 14 + (px % 7))}" rx="2" ry="1.2" fill="${frozen ? '#e8f0f4' : '#f2c4d8'}"/>`;
@@ -50,7 +49,7 @@ function gardenLakeGround(sc, o) {
 }
 function gardenPierGround(sc, o) {
   const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky, p = GARDEN_PROPS.find(x => x.id === 'pier');
-  const x0 = p.x * cw, x1 = (p.x + p.w) * cw, y0 = base + p.y * ch, y1 = base + (p.y + p.h) * ch, night = sc.tod === 'night' || sc.tod === 'dusk';
+  const x0 = p.x * cw, x1 = (p.x + p.w) * cw, y0 = base + p.y * ch, y1 = base + (p.y + p.h + gardenPierMore()) * ch, night = sc.tod === 'night' || sc.tod === 'dusk';
   const pal = sc.season === 'winter' ? ['#c4b49a', '#b0a088', '#d0c2aa'] : ['#c49a64', '#b28650', '#d2ac78'], dark = '#6e4c2a', deep = '#4c3218';
   const rnd = gardenRand('pier');
   // its shadow on the water, thrown down and to the right, and the posts' reflections

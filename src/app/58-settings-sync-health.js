@@ -129,8 +129,8 @@ async function syncRunFix(fix) {
   else if (fix.action === 'remove-device') { url = '/api/sync/devices/remove'; body = { id: fix.id }; done = 'Removed. Your other computers carry on as usual.'; }
   else if (fix.action === 'apply-on') { url = '/api/sync/settings'; body = { apply: true }; done = 'Changes from your other computers will be used'; }
   else if (fix.action === 'sync-off') { url = '/api/sync/settings'; body = { enabled: false }; done = 'Sync is off on this computer. Nothing was deleted.'; }
-  else if (fix.action === 'relay-on') { url = '/api/sync/settings'; body = { relay: true }; done = 'This computer syncs through your relay now'; }
-  else if (fix.action === 'relay-check') { url = '/api/sync/relay/check'; body = {}; done = 'Looked for your relay again'; }
+  else if (fix.action === 'relay-on') { url = '/api/sync/settings'; body = { relay: true }; done = 'This computer syncs through your connection to friends now'; }
+  else if (fix.action === 'relay-check') { url = '/api/sync/relay/check'; body = {}; done = 'Looked for your connection to friends again'; }
   else if (fix.folder) body.folder = fix.folder;
   _shHealthErr = '';
   _syncRefresh();

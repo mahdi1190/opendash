@@ -151,7 +151,7 @@ function _connPageSourceCard(s) {
   const warning = s.health && s.health.syncWarning;
   const syncWarning = typeof warning === 'string' ? warning : warning && warning.message || '';
   if (syncWarning && st !== 'off' && st !== 'demo') {
-    card.appendChild(_connEl('p', 'conn-note', 'Last update failed: ' + syncWarning));
+    card.appendChild(_connEl('p', 'conn-note', 'The last update didn’t work: ' + netPlainError(syncWarning)));
   }
   if (st === 'ok' && _connPageToolsReady(s)) card.appendChild(_connEl('p', 'conn-note', 'Ready. Update it to bring in data.'));
   const accountDetails = _connPageSourceAccounts(s, busy); if (accountDetails) card.appendChild(accountDetails);

@@ -44,7 +44,7 @@ const FIN_PROVIDERS = [
     },
     more: 'Aureli is a bank connector inside claude.ai. Freeflo asks your own Claude to read it with read-only tools, then keeps the transactions in your data folder. Check Aureli’s current pricing and bank list on their sign-in page; Freeflo does not see your Aureli login.',
     action: 'Connect in Claude' },
-  { id: 'plasma', group: 'direct', name: 'Plasma One', sub: 'Stablecoin wallet · public Plasma blockchain', mark: 'plasma', flow: 'plasma',
+  { id: 'plasma', group: 'direct', name: 'Plasma One', sub: 'Digital dollar wallet · reads its public record', mark: 'plasma', flow: 'plasma',
     keywords: 'plasma one wallet usdt usdt0 stablecoin crypto rain card blockchain 0x',
     line: 'Plasma One wallet · free · read-only',
     facts: {
@@ -56,7 +56,7 @@ const FIN_PROVIDERS = [
     },
     more: 'A wallet address is public, so this connection can only read: there is nothing to sign in to and nothing that could move money. Freeflo keeps the address on this computer only (never in your data folder) and reads transfers from a public block explorer. Card payments are settled by the card issuer, so a shop name is not on the blockchain.',
     action: 'Paste address' },
-  { id: 'monzo', group: 'direct', name: 'Monzo', sub: 'Monzo’s personal developer API', mark: 'monzo', flow: 'monzo',
+  { id: 'monzo', group: 'direct', name: 'Monzo', sub: 'Monzo’s own free connection', mark: 'monzo', flow: 'monzo',
     keywords: 'monzo bank current joint pots uk',
     line: 'Monzo · free · read-only',
     facts: {
@@ -1093,7 +1093,7 @@ function _finChooser(groups) {
       for (const p of list) { grid.appendChild(_finProviderCard(p, groups, match, list.length === 1)); shown++; }
       if (g.id === 'claude' && !match.query) {
         const other = _finEl('p', 'fc-alt');
-        other.appendChild(_finEl('span', null, 'Another bank MCP in your Claude? '));
+        other.appendChild(_finEl('span', null, 'Another bank connected in your Claude? '));
         const b = _finEl('button', 'fc-link', 'Add it as a source'); b.type = 'button';
         b.onclick = () => srcAddFlow({ capability: 'bank', mcpBank: true });
         other.appendChild(b);

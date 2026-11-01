@@ -133,7 +133,7 @@ function _obRestoreDialog(bk, folder) {
           const j = await _obJson('/api/backup/offsite/inspect', secret());
           out.textContent = `It holds ${j.tasks != null ? j.tasks + ' tasks' : 'no task list'}${j.people != null ? ', ' + j.people + ' people' : ''}${j.financeFiles ? ', ' + j.financeFiles + ' finance files' : ''}${j.savedAt ? ' (saved ' + _sdWhen(j.savedAt) + ')' : ''}. You have ${Array.isArray(state.custom) ? state.custom.length : 0} tasks now.`;
           go.disabled = false;
-        } catch (e) { out.textContent = e.message; }
+        } catch (e) { out.textContent = netErrorMessage(e); }
       }), go);
       el.appendChild(g);
     },

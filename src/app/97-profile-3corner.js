@@ -14,7 +14,7 @@
 
    Clicking it opens the hub: your compact card (Edit profile, Set status
    with the quick statuses inline), Friends (who is around, Open Friends,
-   Add a friend, What my friends can see), Your relay and Sync with a
+   Add a friend, What my friends can see), Your connection to friends and Sync with a
    one-word state, then the workspace menu items (registerMoreItem where
    'workspace', 14-shell.js), unchanged and in their order. It replaces the
    2.17 top-bar chip; the Friends sidebar item is hidden by default
@@ -197,7 +197,7 @@ function profileCornerPaint() {
 }
 
 /* ---------- one-word states for the relay and sync ---------- */
-/** Your relay in one word (glossary): On, Not set up, or Resting (today's free allowance is used up: calm, it comes back). */
+/** Your connection to friends in one word (glossary): On, Not set up, or Resting (today's free allowance is used up: calm, it comes back). */
 function _pfcRelayWord(fr) {
   if (!fr) return _pfc.frErr ? 'Unknown' : '';
   if (!fr.relay) return 'Not set up';
@@ -383,14 +383,14 @@ function _pfcFriendsPaint(host, close, again) {
   host.appendChild(m);
 }
 
-/** Your relay and Sync, each with its state in one word. */
+/** Your connection to friends and Sync, each with its state in one word. */
 function _pfcSysPaint(host, close) {
   const fr = _pfcFriends();
   const sync = _pfc.syncErr ? 'Unknown' : _pfcSyncWord(_pfc.sync);
   const had = host.contains(document.activeElement) ? [...host.querySelectorAll('.pop-item')].indexOf(document.activeElement) : -1;
   host.replaceChildren();
   buildMenuItems(host, [
-    { icon: 'cloud', label: 'Your relay', hint: _pfcRelayWord(fr) || '…', run: () => { if (typeof relaySettingsOpen === 'function') relaySettingsOpen(); else setView('settings:relay'); } },
+    { icon: 'cloud', label: 'Your connection to friends', hint: _pfcRelayWord(fr) || '…', run: () => { if (typeof relaySettingsOpen === 'function') relaySettingsOpen(); else setView('settings:relay'); } },
     { icon: 'refresh-cw', label: 'Sync', hint: sync || '…', run: () => setView('settings:sync') },
   ], close);
   if (had >= 0) { const b = host.querySelectorAll('.pop-item')[had]; if (b) b.focus({ preventScroll: true }); }   // a state arriving keeps your place

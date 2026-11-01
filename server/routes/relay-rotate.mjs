@@ -1,7 +1,7 @@
 // server/routes/relay-rotate.mjs - after a key renewal (docs/dev/FRIENDS.md section 15) the person's
 // OWN relay is deployed again with OWNER_KEY = the new identity key, through the existing deploy
 // path (lib/relay/deploy.mjs createRelayService().connect(): the same Worker name and address,
-// and the job Settings > Your relay shows, with its Cancel).
+// and the job Settings > Your connection to friends shows, with its Cancel).
 //
 //   GET  /api/relay/rotate   -> {ok, state: 'idle'|'running'|'done'|'error'|'cancelled'|'elsewhere'|'not-needed', error?, at}
 //   POST /api/relay/rotate   update the relay now (also on a computer that did not deploy it:
@@ -11,7 +11,7 @@
 // were renewed ('identity-rotated': here, or on another device whose renewal the keyring brought),
 // this person OWNS their home relay, the relay does not know the new key as its owner yet, and THIS
 // computer deployed the relay before (its device folder has deploy.json, so wrangler is signed in).
-// Anywhere else the page offers "Update my relay". Until then the new key works on the relay as a
+// Anywhere else the page offers "Update my connection". Until then the new key works on the relay as a
 // member (the old key let it in), and the old key is still the owner: the page says so.
 // Nothing here returns wrangler's output, the Cloudflare sign-in or a key.
 
@@ -52,7 +52,7 @@ export default function register(app) {
       else if (job && job.state === 'cancelled') st = { state: 'cancelled', at: Date.now(), error: null };
       else {
         const e = job && job.error;
-        st = { state: 'error', at: Date.now(), error: { message: e && e.message ? String(e.message).slice(0, 200) : 'Your relay could not be updated.', next: e && e.next ? String(e.next).slice(0, 200) : 'Press Try again.' } };
+        st = { state: 'error', at: Date.now(), error: { message: e && e.message ? String(e.message).slice(0, 200) : 'Your connection to friends could not be updated.', next: e && e.next ? String(e.next).slice(0, 200) : 'Press Try again.' } };
         log('warn', `relay: not deployed again after the key renewal (${e && e.code ? e.code : 'error'})`);
       }
     }, WATCH_MS);
@@ -64,7 +64,7 @@ export default function register(app) {
     if (auto && !relayDeployed(root)) { st = { state: 'elsewhere', at: Date.now(), error: null }; return view(); }
     log('info', `relay: deploying it again with your new keys${auto ? ' (after the key renewal)' : ''}`);
     try { await svc().connect({}); }
-    catch (e) { st = { state: 'error', at: Date.now(), error: { message: 'Your relay could not be updated.', next: 'Press Try again.' } }; return view(); }
+    catch (e) { st = { state: 'error', at: Date.now(), error: { message: 'Your connection to friends could not be updated.', next: 'Press Try again.' } }; return view(); }
     st = { state: 'running', at: Date.now(), error: null };
     follow();
     return view();

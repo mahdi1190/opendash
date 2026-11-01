@@ -290,7 +290,7 @@ async function _hspSyncStart() {
     j = await r.json().catch(() => ({}));
   } catch (e) {
     _hsp.sync = null; _hspPaintSync();
-    toast(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'The Freeflo server isn’t running.', { kind: 'err' });
+    toast(typeof netErrorMessage === 'function' ? netErrorMessage(e) : 'Freeflo isn’t running.', { kind: 'err' });
     return;
   }
   // Another device reads the bank: it was asked to update; wait for its answer (56-remote-jobs.js), then a fresh glance.
@@ -324,7 +324,7 @@ function _hspPoll() {
     _hsp.sync = null;
     homeDataRefresh(_HSP_DATA);
     _hspPaintSync();
-    if (!s) toast('Couldn’t check the sync: the Freeflo server didn’t answer.', { kind: 'err' });
+    if (!s) toast('Couldn’t check your other computers: Freeflo didn’t answer. Try again in a moment.', { kind: 'err' });
     else if (job && job.state === 'error') toast('The bank sync didn’t finish. Finances shows why.', { kind: 'err', action: { label: 'Open Finances', run: () => _hspOpen('overview') } });
     else if (typeof homeAnnounce === 'function') homeAnnounce('Bank data synced');
   }, 2000);

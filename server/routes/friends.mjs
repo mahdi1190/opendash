@@ -30,7 +30,7 @@
 //   POST /api/friends/check      pull the mailbox now -> {ok, got}
 //   POST /api/friends/rotate     renew my friend keys (or go on with a renewal) -> {ok, rotation}
 //   GET  /api/friends/rotation   -> {ok, rotation: {step, role, friends, moved, failed, waiting, error...} | null}
-//   POST /api/friends/relay-ask  {id, allow?}: let a friend's renewed key keep using my relay (allow: false: not now)
+//   POST /api/friends/relay-ask  {id, allow?}: let a friend's renewed key keep using my connection (allow: false: not now)
 //
 // 400 {error, code}: a plain sentence the page shows as it is.
 
