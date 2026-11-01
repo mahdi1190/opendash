@@ -493,7 +493,7 @@ function _gdrPatchItems(layer, items) {
   // what lives in a row goes back in its row, and only if it has been left in the wrong one
   const zOf = (el) => (el ? Number(el.getAttribute('data-z')) : NaN);
   for (const el of [...layer.children]) {
-    if (!el.hasAttribute('data-live')) continue;
+    if (!el.hasAttribute('data-live') || !el.hasAttribute('data-z')) continue;   // (a depth row has no depth of its own: read as 0, every save sent all the rows to the very back, and whoever was in them behind everything)
     const z = zOf(el);
     if (!Number.isFinite(z) || !(zOf(el.nextElementSibling) < z || zOf(el.previousElementSibling) > z)) continue;
     let at = null;
