@@ -201,6 +201,8 @@ html[data-motion="reduced"] .glg, html[data-motion="reduced"] .glg-bar i { anima
 @media (max-width: 1320px) { .gd-msgs:not(.is-over):not(.is-room) { top: 118px; } }   /* (clear of the coins panel once a long line would reach it) */
 @media (max-width: 760px) { .gd-msgs:not(.is-over):not(.is-room) { top: 70px; } .gd-msgs.is-room { top: 58px; max-width: calc(100% - 24px); } .gd-stagebox.is-visit .gd-msgs { top: 116px; } }
 .gd-msgs > * { pointer-events: auto; }
+.gd-msgs.gd-msgs > .gd-catchcard, .gd-msgs.gd-msgs > .gd-levelup { position: static; left: auto; top: auto; z-index: auto; max-width: min(460px, 100%); transform: none; animation: gd-rise .3s ease-out both; }
+.gd-msgs.gd-msgs > .gd-catchcard.is-out { transform: translateY(-8px); }
 .gd-msg { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 7px 16px; color: #fffdf4; font-size: 14.5px; line-height: 1.35; text-align: center; background: rgba(24, 28, 22, 0.78); border: 1px solid transparent; border-radius: 12px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.22); transition: opacity 0.4s; }
 .gd-msgs > .gd-msg { pointer-events: none; }
 .gd-msgs > .gd-msg.has-acts { pointer-events: auto; }

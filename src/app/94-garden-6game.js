@@ -129,7 +129,7 @@ function gardenLevelUpCard(d) {
     c.querySelector('b').textContent = `Garden level ${d.level}`;
     c.querySelector('p').textContent = d.text.replace(/^Garden level \d+:\s*/, '');
     c.querySelector('button').onclick = () => c.remove();
-    _gdp.root.appendChild(c);
+    { const top = gardenMessageHost() || _gdp.root; top.insertBefore(c, top.querySelector(':scope > .gd-msg')); }   // (over the message line, never on top of it)
     setTimeout(() => { if (c.parentNode) c.remove(); }, 9000);
   } else if (c && d.kind === 'area') {
     const li = document.createElement('li'); li.textContent = d.text; c.querySelector('ul').appendChild(li);
