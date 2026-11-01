@@ -33,7 +33,7 @@ function _owMoreItems() {
     { label: 'Expecting money', icon: 'wallet', hint: 'A refund, a deposit, a loan, a claim', run: () => owdExpectDialog({}) },
     { label: 'A split that repeats', icon: 'repeat', hint: 'Rent and bills: splits by itself each time', run: () => owdRepeatDialog({}) },
     'sep',
-    { label: 'Check the bank now', icon: 'refresh-cw', run: () => { OWD.scanAt = 0; owdScan(true).then(() => toast(OWD.connected === false ? 'No bank data yet. Connect a bank or import a statement in Money.' : OWD.suggestions.length ? `${OWD.suggestions.length} to check` : 'Looked: nothing new has arrived', { icon: 'search' })); } },
+    { label: 'Check the bank now', icon: 'refresh-cw', run: () => { OWD.scanAt = 0; owdScan(true).then(() => toast(OWD.connected === false ? 'No bank data yet. Connect a bank or import a statement in Money.' : OWD.suggestions.length ? `${OWD.suggestions.length} to check` : 'Looked: nothing new has arrived', { dismiss: true, icon: 'search' })); } },
     { label: 'Take paid-back money off my spending', icon: 'wallet', checked: p.netSpending, hint: 'Bowling counts as your £8, not £40', run: () => flip('netSpending', 'Paid-back money now comes off your spending', 'Spending now shows what left your account in full') },
     { label: 'Mark sure matches as paid by itself', icon: 'circle-check', checked: p.autoMark, hint: 'Only an exact amount with their name. You can Undo', run: () => flip('autoMark', 'Sure matches will be marked as paid, with Undo', 'Every match will ask you first') },
     { label: 'Offer “Split this?” on big payments', icon: 'lightbulb', checked: p.offers, run: () => flip('offers', 'Offers are on', 'Offers are off') },

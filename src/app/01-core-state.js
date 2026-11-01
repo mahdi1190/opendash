@@ -362,7 +362,7 @@ function importBackup(file) {
       data = JSON.parse(e.target.result);
       if (typeof data !== 'object' || !data || Array.isArray(data)) throw new Error('Not a JSON object');
       if (!Array.isArray(data.custom)) throw new Error('This file has no task list, so it is not a Freeflo backup.');
-    } catch (err) { fail(err.message === 'Not a JSON object' || err instanceof SyntaxError ? 'this file is not a Freeflo backup (it is not JSON).' : err.message); return; }
+    } catch (err) { fail(err.message === 'Not a JSON object' || err instanceof SyntaxError ? 'this file is not a Freeflo backup.' : err.message); return; }
     try {
       const when = data._lastSave ? new Date(data._lastSave).toLocaleString(undefined, { timeZone: Clock.zone() }) : 'an unknown date';
       // Replacing everything cannot be undone with Ctrl+Z, so this one does ask (in the app's own dialog).

@@ -243,7 +243,7 @@ function tgCheerMsg(m) {
   if (tgSeen('cheer:' + key)) return;
   tgMarkSeen('cheer:' + key);
   _tgAward('cheer-boost', key, 'A cheer', true);
-  toast(`${m.b.emoji || '🙌'} ${tgFirst(from)} cheered you${m.b.text ? ': ' + String(m.b.text).slice(0, 80) : ''}`, { icon: 'handshake' });
+  toast(`${m.b.emoji || '🙌'} ${tgFirst(from)} cheered you${m.b.text ? ': ' + String(m.b.text).slice(0, 80) : ''}`, { dismiss: true, icon: 'handshake' });
 }
 function tgCheerHeard(from, ev) { if (ev && ev.ref) tgCheerMsg({ from, b: { re: ev.ref, emoji: '🙌' } }); }
 
@@ -327,7 +327,7 @@ function tgFocusMsg(m) {
     _tg.focusing[from] = { on: true, until: Date.now() + min * 60000, at: Date.now() };
     if (b.state === 'invite') toast(`${tgFirst(from)} invites you to focus together for ${min} min`, { icon: 'timer', timeout: 20000, action: { label: 'Join', run: () => { tgSendKind([from], 'focus', { id: b.id, state: 'join', min }); tgPickFocusTask(document.getElementById('main-body')); } } });
     else if (typeof gameFocusRun === 'function' && gameFocusRun()) toast(`${tgFirst(from)} is focusing too`, { icon: 'timer' });
-  } else if (b.state === 'join') toast(`${tgFirst(from)} joined your focus session`, { icon: 'timer' });
+  } else if (b.state === 'join') toast(`${tgFirst(from)} joined your focus session`, { dismiss: true, icon: 'timer' });
   else if (b.state === 'done' || b.state === 'leave') { if (_tg.focusing[from]) _tg.focusing[from].on = false; if (b.state === 'done') toast(`${tgFirst(from)} finished a focus session${b.min ? ` (${b.min} min)` : ''}`, { icon: 'circle-check' }); }
   if (state.view === 'together' || state.view.startsWith('together:')) render();
 }

@@ -359,15 +359,7 @@ function _hcapOpenEditor(inp, prefs) {
 }
 /** A toast with Undo, plus Open for the new task. */
 function _hcapToast(msg, openId) {
-  const close = toast(msg, { kind: 'ok', action: { label: 'Undo', run: () => undo() } });
-  const host = openId ? document.getElementById('toast-host') : null;
-  const t = host && host.lastElementChild;
-  if (t && t.classList.contains('toast')) {
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.textContent = 'Open';
-    b.onclick = () => { if (typeof close === 'function') close(); if (getItem(openId)) homeOpenTask(openId); };
-    t.appendChild(b);
-  }
-  return close;
+  return toast(msg, { kind: 'ok', action: { label: 'Undo', run: () => undo() }, action2: openId ? { label: 'Open', run: () => { if (getItem(openId)) homeOpenTask(openId); } } : null });
 }
 
 /* ---------- several lines pasted: a preview, then one undo step ---------- */

@@ -58,7 +58,7 @@
     }
     if (R.model) return R.model;
     if (R.err) throw new Error(R.errDown && typeof netErrorMessage === 'function' ? netErrorMessage(new TypeError('Failed to fetch')) : 'Finances could not load: ' + R.err);
-    throw new Error('No money data yet. Import a bank CSV or connect your bank in Finances.');
+    throw new Error('No money data yet. Import a bank statement or connect your bank in Money.');
   }
   // opts: {period: 'month' | 'week', ref: 'YYYY-MM-DD' | day number}; no period = this month (last month on the 1st-3rd).
   function msStory(opts, M) {

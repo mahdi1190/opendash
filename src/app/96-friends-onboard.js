@@ -170,7 +170,7 @@ function _froRender(sec, d) {
   t.appendChild(_froEl('span', 'overline', 'Getting started'));
   t.appendChild(_froEl('h2', null, s.all ? "You're all set" : 'Welcome to Friends'));
   t.appendChild(_froEl('p', 'muted', s.all
-    ? 'Your character is ready, your connection to friends is connected, and your first invite is out. When they paste it, you will both see the same pictures: check they match, then accept.'
+    ? 'Your character is ready, your connection to friends is ready, and your first invite is out. When they paste it, you will both see the same pictures: check they match, then accept.'
     : 'Three small steps to your first friend. Everything between friends is end-to-end encrypted, and you choose what each friend can see.'));
   const ha = _froEl('div', 'fro-hacts');
   ha.appendChild(uiButton({ label: 'How friends work', icon: 'circle-help', kind: 'ghost', size: 'sm', run: () => friendsHelpOpen() }));
@@ -201,8 +201,8 @@ function _froRender(sec, d) {
   // 2. relay
   const job = _froConnectJob();
   const b = _froStep(2, s.relay, active === 2, 'Set up your connection to friends', s.relay
-    ? (d.relay.home.role === 'owner' ? 'Your own relay.' : 'A friend’s relay.')
-    : 'A relay is your own private link that carries messages between you and your friends. Set up yours (free, about 2 minutes) or join a friend’s.');
+    ? (d.relay.home.role === 'owner' ? 'Your own.' : 'A friend’s.')
+    : 'Your own private link that carries messages between you and your friends. Set up yours (free, about 2 minutes) or join a friend’s.');
   if (!s.relay) {
     if (job && job.state === 'running') {
       const w = _froEl('div', 'fro-wait');
@@ -263,7 +263,7 @@ document.addEventListener('opendash:profile', () => { if (/^friends$/.test(Strin
 /* ---------- How friends work (plain language; the full guide: docs/FRIENDS_GUIDE.md) ---------- */
 const _FRO_HELP = Object.freeze([
   ['eye', 'What friends can see', 'At first only your profile (name, character, bio) and your game progress (level, streaks). Tasks, calendar, money, places and your journal stay off until you turn them on for a friend you mark Trusted. On a friend\'s page, Preview shows exactly what would go to them.'],
-  ['cloud', 'The relay', "Friends' messages travel through a small private relay: your own on your Cloudflare account (free), or a friend's that you join with their invite. It only ever holds encrypted messages it can't read. Only you, your computers and the people you invite can use yours."],
+  ['cloud', 'Your connection', "Friends' messages travel through a small private link: your own on your Cloudflare account (free), or a friend's that you join with their invite. It only ever holds encrypted messages it can't read. Only you, your computers and the people you invite can use yours."],
   ['user-plus', 'Adding someone', 'Send an invite link (it works once and ends by itself), or show your friend a 4-letter friend code (it works once, for 10 minutes). You both see the same pictures: check they match (in person, a call or a message) before you accept. A forwarded link alone is not enough.'],
   ['shield-check', 'Privacy', "Everything between friends is end-to-end encrypted. Your sign-ins, keys, email, Claude, connectors and accounts are never shared. Nothing a friend sends reaches Claude or changes your tasks unless you click."],
   ['user-minus', 'Removing someone', "Remove or Block them on their page (with Undo). Their access to your connection to friends ends, your copy of what they shared is deleted, and their app is asked to delete what you shared."],

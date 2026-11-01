@@ -424,7 +424,7 @@ async function liveSyncHandleConflict(payload, key) {
     const r = await _liveReconcile(remote, baseKey, { source: 'external' });
     if (r.ours) schedulePersist(50);              // our edits on top of theirs
     else _liveMergeDepth = 0;
-    if (r.conflicts || r.changed) _liveToast(r.conflicts ? 'Saved your choices with the newer changes' : 'Merged with changes made elsewhere', { kind: 'info' });
+    if (r.conflicts || r.changed) _liveToast(r.conflicts ? 'Saved your choices with the newer changes' : 'Merged with changes made elsewhere', { dismiss: !!r.conflicts, kind: 'info' });
     return true;
   } finally {
     setTimeout(() => { _liveMergeDepth = Math.max(0, _liveMergeDepth - 1); }, 3000);
@@ -555,7 +555,7 @@ function liveSyncBootMerge(fromFile) {
   if (!saved || !saved.key || Number(saved.version) !== (Number(state._lastSave) || 0)) return false;
   _liveReconcile(fromFile, saved.key, { source: 'external' }).then((r) => {
     if (r.ours) schedulePersist(50);
-    _liveToast('Your unsaved changes from last time were merged with newer ones', { kind: 'info' });
+    _liveToast('Your unsaved changes from last time were merged with newer ones', { dismiss: true, kind: 'info' });
   });
   return true;
 }

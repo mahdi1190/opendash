@@ -135,7 +135,7 @@ function relayInviteFriend() {
 /** Connect Cloudflare just finished: a small celebration for a new relay, a quiet line for an update in place. */
 function _rlConnectedToast(st) {
   const res = (st.connect && st.connect.result) || {};
-  if (res.updated) { toast('Your connection to friends is up to date', { kind: 'ok', icon: 'cloud' }); return; }
+  if (res.updated) { toast('Your connection to friends is up to date', { dismiss: true, kind: 'ok', icon: 'cloud' }); return; }
   if (typeof gameMoment === 'function' && typeof gameOn === 'function' && gameOn()) {
     gameMoment({ over: 'Your connection to friends', title: 'Your connection to friends is ready', sub: 'Next: invite a friend, and sync your computers through it', icon: 'party-popper', action: { label: 'Invite a friend', run: relayInviteFriend } });
   } else {
@@ -167,9 +167,9 @@ async function relayDisconnect() {
   const j = await _rlPost('disconnect', {});
   if (!j) return;
   _rlAdmin = null; _rlLoad();
-  toast(mine ? 'Stopped using your connection to friends' : 'You no longer use your friend\'s relay.', {
+  toast(mine ? 'Stopped using your connection to friends' : 'You no longer use your friend\'s connection.', {
     kind: 'ok', timeout: 60000,
-    action: j.undo ? { label: 'Undo', run: async () => { if (await _rlPost('reconnect', {}, 'Relay connected again')) { _rlAdmin = null; _rlLoad(); } } } : null,
+    action: j.undo ? { label: 'Undo', run: async () => { if (await _rlPost('reconnect', {}, 'Connected again')) { _rlAdmin = null; _rlLoad(); } } } : null,
   });
 }
 async function relayRevoke(m, label) {
@@ -253,7 +253,7 @@ function _rlConnectBox(el, st) {
     if (er.check) acts.appendChild(_rlBtn('Check again', 'primary', () => relayConnect({ checkOnly: true }), 'refresh-cw'));
     acts.appendChild(_rlBtn('Try again', er.check ? 'secondary' : 'primary', () => relayConnect(), 'refresh-cw'));
     if (er.relogin) acts.appendChild(_rlBtn('Sign in with another account', 'secondary', () => relayConnect({ relogin: true }), 'log-in'));
-    if (er.adopt) acts.appendChild(_rlBtn('Use the new relay instead', 'ghost', () => relayConnect({ checkOnly: true, adopt: true }), 'arrow-right'));
+    if (er.adopt) acts.appendChild(_rlBtn('Use the new connection instead', 'ghost', () => relayConnect({ checkOnly: true, adopt: true }), 'arrow-right'));
     if (er.fresh) acts.appendChild(_rlBtn('Use a new address', 'ghost', () => relayConnect({ fresh: true }), 'sparkles'));
   }
   if (acts.childNodes.length) box.appendChild(acts);
@@ -305,7 +305,7 @@ function _rlMainCard(el, st) {
   const cloud = typeof _syncSt !== 'undefined' && typeof syncCloudName === 'function' ? syncCloudName(_syncSt) : null;
   const S = running ? ['busy', 'Setting up', '']
     : pend ? ['busy', 'Setting up', 'Its details are on their way from your other computer' + (st.relay.by ? ' (' + st.relay.by + ')' : '')]
-      : st.relay ? ['ok', 'On', st.mine ? 'On your Cloudflare account, used by ' + (nComp > 1 ? 'your ' + nComp + ' computers' : 'this computer') : "A friend's relay"]
+      : st.relay ? ['ok', 'On', st.mine ? 'On your Cloudflare account, used by ' + (nComp > 1 ? 'your ' + nComp + ' computers' : 'this computer') : "A friend's connection"]
         : ['off', 'Not set up', "Friends can't reach you, and sync uses Wi-Fi and " + (cloud || 'your cloud folder') + ' only'];
   c.body.appendChild(setStatusLine(S[0], S[1], S[2]));
   if (pend) {
@@ -332,19 +332,19 @@ function _rlMainCard(el, st) {
     const inp = document.createElement('input'); inp.className = 'control control-sm'; inp.placeholder = 'Paste the invite link from your friend'; inp.value = _rlInvite;
     inp.setAttribute('aria-label', 'Invite link'); inp.spellcheck = false; inp.autocomplete = 'off';
     inp.oninput = () => { _rlInvite = inp.value; };
-    wrap.append(inp, _rlBtn('Use this relay', 'secondary', async () => {
+    wrap.append(inp, _rlBtn('Use this connection', 'secondary', async () => {
       if (!_rlInvite.trim()) { inp.focus(); return; }
-      const j = await _rlPost('use-invite', { invite: _rlInvite.trim() }, 'You are using your friend\'s relay');
+      const j = await _rlPost('use-invite', { invite: _rlInvite.trim() }, 'You are using your friend\'s connection');
       if (j) { _rlInvite = ''; _rlAdmin = null; _rlLoad(); }
     }, 'users'));
-    more.appendChild(_settingsRow('Use a friend\'s relay', 'Paste the invite link they sent you. To add them as a friend too, paste it in Friends.', wrap));
+    more.appendChild(_settingsRow('Use a friend\'s connection', 'Paste the invite link they sent you. To add them as a friend too, paste it in Friends.', wrap));
   }
   });
   // Advanced: update it, stop using it.
   if (!running && st.relay) setFold(c, 'relay-card-adv', 'Advanced', (adv) => {
     adv = adv.body;
-    if (st.mine) adv.appendChild(_settingsRow('Update my connection', st.fromOther ? 'Set up on your other computer. This puts the newest relay on Cloudflare from this one; same address, everyone keeps access.' : 'Puts the newest relay on Cloudflare. Same address; everyone keeps access.', _rlBtn('Update my connection', 'secondary', () => relayConnect(), 'cloud')));
-    adv.appendChild(_settingsRow('Stop using this relay', st.mine ? 'Your computers stop using it (Undo for a minute). It stays in your Cloudflare account until you delete it there.' : 'Your computers stop using your friend\'s relay (Undo for a minute). Your friendships stay.', _rlBtn('Stop using this relay', 'ghost', relayDisconnect, 'link-2-off')));
+    if (st.mine) adv.appendChild(_settingsRow('Update my connection', st.fromOther ? 'Set up on your other computer. This puts the newest version on Cloudflare from this one; same address, everyone keeps access.' : 'Puts the newest version on Cloudflare. Same address; everyone keeps access.', _rlBtn('Update my connection', 'secondary', () => relayConnect(), 'cloud')));
+    adv.appendChild(_settingsRow('Stop using this connection', st.mine ? 'Your computers stop using it (Undo for a minute). It stays in your Cloudflare account until you delete it there.' : 'Your computers stop using your friend\'s connection (Undo for a minute). Your friendships stay.', _rlBtn('Stop using this connection', 'ghost', relayDisconnect, 'link-2-off')));
   }, { advanced: true });
 }
 
@@ -533,12 +533,12 @@ function _rlUsageCard(el, a) {
 
 registerSettingsGroup({
   id: 'relay', title: 'Your connection to friends', icon: 'cloud', order: 91.5,
-  description: 'A relay is your own private link, free to run: it keeps your computers and your friends connected wherever you are.',
+  description: 'Your own private link, free to run: it keeps your computers and your friends connected wherever you are.',
   search: [
-    { label: 'Set up my connection', target: 'Your connection to friends', description: 'Your own private relay for friends and sync, free on Cloudflare', keywords: 'relay cloudflare connect deploy wrangler friends sync update deploy again' },
+    { label: 'Set up my connection', target: 'Your connection to friends', description: 'Your own private link for friends and sync, free on Cloudflare', keywords: 'relay cloudflare connect deploy wrangler friends sync update deploy again' },
     { label: 'Who can use your connection to friends', target: 'Who can use it', description: 'Your computers, the friends you invited, invites not used yet', keywords: 'relay members revoke invite devices' },
     { label: 'Today\'s free allowance', target: 'Today\'s free allowance', description: "Today's use of Cloudflare's free allowance", keywords: 'relay usage limit quota free storage requests' },
-    { label: 'Stop using this relay', target: 'Stop using this relay', description: 'Your computers stop using it (Undo for a minute)', keywords: 'relay disconnect remove stop' },
+    { label: 'Stop using this connection', target: 'Stop using this connection', description: 'Your computers stop using it (Undo for a minute)', keywords: 'relay disconnect remove stop' },
   ],
   render(el) {
     if (!_rlSt) { _rlLoad(); el.appendChild(_rlP('Loading…')); return; }
@@ -558,13 +558,13 @@ registerSettingsGroup({
       note.innerHTML = icon(a.error.calm ? 'moon' : 'circle-alert');
       note.appendChild(Object.assign(document.createElement('span'), { textContent: a.error.calm
         ? (a.error.message || 'Your connection to friends cannot be reached right now.') + ' Nothing is lost: your devices try again by themselves.'
-        : (a.error.message || 'The relay could not be reached.') }));
+        : (a.error.message || 'That connection could not be reached.') }));
       c.body.append(note, _rlBtn('Try again', 'secondary', _rlLoadAdmin, 'refresh-cw'));
       return;
     }
     if (a.role !== 'owner') {
       const c = _settingsCard('Your access'); el.appendChild(c.card);
-      c.body.appendChild(_rlP((a.scopes || []).includes('sync') ? 'You can message friends and sync your computers through it.' : 'You can message friends through this relay.'));
+      c.body.appendChild(_rlP((a.scopes || []).includes('sync') ? 'You can message friends and sync your computers through it.' : 'You can message friends through this connection.'));
       if (Number(a.quota) > 0) c.body.appendChild(_settingsRow('Your storage on it', 'Set by its owner.', _rlMiniBar(a.used, a.quota, `${_rlMb(a.used)} of ${_rlMb(a.quota)}`)));
       return;
     }

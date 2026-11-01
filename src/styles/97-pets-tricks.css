@@ -74,7 +74,7 @@
 .pew { position: absolute; z-index: 30; width: 0; height: 0; pointer-events: none; }
 .pew-b { position: absolute; left: -31px; top: -31px; width: 62px; height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 50%; border: 3px solid #fff; background: #fbf5e7; color: #6a5636; box-shadow: 0 4px 14px rgba(40, 30, 10, .3); cursor: pointer; pointer-events: auto; transform: translate(var(--x), var(--y)); animation: pew-in .26s cubic-bezier(.2,1.5,.4,1) both; animation-delay: calc(var(--i) * 18ms); transition: background .1s ease, scale .1s ease; }
 .pew-b:hover { background: #fff; scale: 1.12; }
-.pew-n { font-size: 10px; font-weight: 600; line-height: 1.05; text-align: center; max-width: 56px; }
+.pew-n { font-size: 11px; font-weight: 600; line-height: 1.05; text-align: center; max-width: 56px; }
 .pew-b.is-locked { background: #e8e0d0; color: #8f8168; }
 .pew-b.is-locked .i { opacity: .55; }
 .pew-b .ptl-cost { position: absolute; bottom: -9px; padding: 0 5px; border-radius: 9px; background: #fff; font-size: 10px; box-shadow: 0 1px 4px rgba(0, 0, 0, .2); }

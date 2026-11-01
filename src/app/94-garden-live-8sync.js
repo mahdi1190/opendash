@@ -2,16 +2,16 @@
    STAYING IN STEP (2.34.1, docs/dev/GARDEN_TOGETHER.md section 21). The owner, 31 Oct and 1 Nov 2026: "how do you tell if we are synced or desynced, and how can we improve and fix it if it does happen".
 
    A visitor gets the whole garden when they arrive, then only the changes (gl:d). A change that was lost used to stay lost until they left and came back. Now:
-     gl:sum        every 10 seconds the host says what it has told everyone: a fingerprint of the plants and decorations. Everything still on its way goes first.
+     gl:sum        every 20 seconds the host says what it has told everyone: a fingerprint of the plants and decorations. Everything still on its way goes first.
      fx sync ask   a guest whose copy differs twice running asks for the whole garden again, by itself (at most GL_SYNC.autoAsks times a visit), or when you press Refresh garden.
-     fx sync at    every 15 seconds each person says which cell they are in. Someone another screen shows more than 1.5 cells away walks there. Close enough is left alone,
+     fx sync at    every 20 seconds each person says which cell they are in. Someone another screen shows more than 1.5 cells away walks there. Close enough is left alone,
                    so a person fishing or sitting is never disturbed.
    A change the host could not send at all sends the whole garden to everyone there, a moment later.
 
    The line in the garden says how you are connected: Connected (direct or through the relay), Catching up, Slow connection, Reconnecting. It also says when your connection to friends needs its update,
    and when a host is on an older version, so its fish are not shared.
    ============================================================ */
-const GL_SYNC = Object.freeze({ sumMs: 10000, atMs: 15000, askGap: 20000, handGap: 4000, autoAsks: 6, asked: 8000, slowMs: 25000, near: 1.5, oldHostMs: 12000, relayMs: 300000 });
+const GL_SYNC = Object.freeze({ sumMs: 20000, atMs: 20000, askGap: 20000, handGap: 4000, autoAsks: 6, asked: 8000, slowMs: 25000, near: 1.5, oldHostMs: 12000, relayMs: 300000 });
 const _gly = { sumAt: 0, atAt: 0, heard: 0, bad: 0, asks: 0, askAt: 0, catching: 0, liveAt: 0, oldTold: false, failT: 0, asked: new Map(), paintAt: 0, relayAt: 0, stale: false, sig: '' };
 
 /* ---------- the fingerprint: the same sum from what was sent and from what arrived ---------- */
@@ -120,7 +120,7 @@ function _glyTick() {
     _gly.atAt = now;
     gardenLiveFx('sync', 'at', { x: Math.max(0, Math.min(63, Math.floor(_gw.px))), y: Math.max(0, Math.min(63, Math.floor(_gw.py))) });
   }
-  if (guestLive && !_gly.oldTold && now - _gly.liveAt > GL_SYNC.oldHostMs && typeof _gfs !== 'undefined' && !_gfs.hostAt) {
+  if (guestLive && !_gly.oldTold && now - _gly.liveAt > GL_SYNC.oldHostMs && typeof _gfs !== 'undefined' && !_gfs.hostSeen) {
     _gly.oldTold = true;
     if (typeof _gllFeed === 'function') _gllFeed('Their Freeflo is older, so you each see your own fish. Ask them to update.');
   }

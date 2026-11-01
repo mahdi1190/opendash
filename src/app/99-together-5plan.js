@@ -352,7 +352,7 @@ function tgPlanTick() {
         // Its time was changed after you said yes: that yes was for the old time, so it is taken back.
         _tgRememberVotes(sp.id, [], [c.id]);
         tgEdit(sp.id, [{ op: 'del', path: ['plan', c.id, 'votes', me] }], { undo: false });
-        toast(`${tgFirst(c.by, v)} moved a time you said you can make, so your yes was taken back. It is on Plan together if the new time works.`, { icon: 'clock' });
+        toast(`${tgFirst(c.by, v)} moved a time you said you can make, so your yes was taken back. It is on Plan together if the new time works.`, { dismiss: true, icon: 'clock' });
         continue;
       }
       const mk = sp.id + '|' + c.id;
