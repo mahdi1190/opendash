@@ -132,7 +132,8 @@ const _gtEv = { key: '', list: [] };
 function gardenEventsNow() {
   try {
     const m = gardenHere(), key = Math.floor(m.now / 20000) + m.today + m.tod + (m.rain && m.rain.now ? 'r' : '');
-    if (_gtEv.key !== key) { _gtEv.key = key; _gtEv.list = gardenCatchEventsAt(m.now, m.today, m.tod, m.season, !!(m.rain && m.rain.now)); }
+    if (_gtEv.key !== key) { _gtEv.key = key; const sv = m.visit && typeof _gdvSnap === 'function' ? _gdvSnap() : null;   // (in their garden, their day: two people in two time zones see the same fog)
+      _gtEv.list = gardenCatchEventsAt(m.now, sv && Number.isFinite(sv.tz) ? new Date(m.now + sv.tz * 60000).toISOString().slice(0, 10) : m.today, m.tod, m.season, !!(m.rain && m.rain.now)); }
     return _gtEv.list;
   } catch (e) { return []; }
 }
