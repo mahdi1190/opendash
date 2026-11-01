@@ -6,7 +6,7 @@
      Fish book           Get ready: what that fish needs, put on what you have, walk there and cast
    Plain words. Everything here is read from tables and your own save, or from a friend's cleaned snapshot.
    ============================================================ */
-function _gcpSay(r) { if (r && r.ok && r.msg && typeof toast === 'function') toast(r.msg, { icon: 'fish', timeout: 4500 }); return _gdpSay(r); }   // (_gdpSay only speaks up for a no)
+function _gcpSay(r) { if (r && r.ok && r.msg && typeof toast === 'function') gardenToast(r.msg, { icon: 'fish', timeout: 4500 }); return _gdpSay(r); }   // (_gdpSay only speaks up for a no)
 function _gcpCard(title, ic) { const c = _gdpEl('section', 'card gca-card'); const h = _gdpEl('div', 'gdc-market-h'); h.innerHTML = `${icon(ic)}<b>${esc(title)}</b>`; c.appendChild(h); return c; }
 function _gcpClose() { try { if (typeof _gdp !== 'undefined' && _gdp.pop && typeof _dialogClose === 'function' && _dialogClose) { _gdp.pop = null; _dialogClose(); } } catch (e) { /* closed already */ } }
 

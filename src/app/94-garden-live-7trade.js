@@ -62,7 +62,7 @@ function _gltSettle(t) {
   _gscSaveGarden();
   const M = _glt.mine, who = M && M.t === t && M.name ? ' with ' + M.name : '';
   const line = `You traded ${_gltSum(gave)} for ${_gltSum(got)}${who}.`;
-  if (typeof _gllFeed === 'function' && typeof _gw !== 'undefined' && _gw.box) _gllFeed(line); else if (typeof toast === 'function') toast(line, { icon: 'repeat', kind: 'ok' });
+  if (typeof _gllFeed === 'function' && typeof _gw !== 'undefined' && _gw.box) _gllFeed(line); else if (typeof toast === 'function') gardenToast(line, { icon: 'repeat', kind: 'ok' });
   if (typeof gameCheer === 'function') gameCheer(null, { text: '🤝', tone: 'gold' });
   return true;
 }
@@ -78,7 +78,7 @@ function _gltOnX(t, why) {
   const back = _gltRelease(t);
   const M = _glt.mine;
   if (M && M.t === t && !M.done) { M.end = { why: why || 'cancel', back, me: !!M.ending }; _gltPaint(); }
-  else if (back && typeof toast === 'function') toast('The trade did not happen. What you had put on hold is back in your bag.', { icon: 'undo-2' });
+  else if (back && typeof toast === 'function') gardenToast('The trade did not happen. What you had put on hold is back in your bag.', { icon: 'undo-2' });
 }
 /** A state for me: the whole picture of my trade. */
 function _gltOnSt(ev) {
@@ -113,7 +113,7 @@ function _gltOnSt(ev) {
 /** What guests hear from the host. Checked against the same tables as at the server, then the page. */
 function _gltFromHost(ev) {
   const why = glTradeOk(ev, true);
-  if (why) { if ((why === 'item' || why === 'rows') && ev.t && ev.e === 'st') { toast(`${(_glt.mine && _glt.mine.name) || 'They'} offered something your Freeflo does not know yet. Update Freeflo to trade.`, { icon: 'repeat' }); _gltSend({ t: ev.t, e: 'end' }); } return; }
+  if (why) { if ((why === 'item' || why === 'rows') && ev.t && ev.e === 'st') { gardenToast(`${(_glt.mine && _glt.mine.name) || 'They'} offered something your Freeflo does not know yet. Update Freeflo to trade.`, { icon: 'repeat' }); _gltSend({ t: ev.t, e: 'end' }); } return; }
   if (ev.e === 'st') _gltOnSt(ev); else if (ev.e === 'go') _gltOnGo(ev.t); else _gltOnX(ev.t, ev.why);
 }
 /** A decision posted to me (94-garden-live-1core.js): only the host I hold things with may make it. */
@@ -302,9 +302,9 @@ function _gltHostStop() {
 function gardenLiveTradeOpen(A) {
   if (!A || !_gltLive()) return;
   const M = _glt.mine;
-  if (M) { if (M.w === A.w && !M.end) { _glt.panel = true; _gltPaint(); } else if (typeof toast === 'function') toast(M.end || M.done ? 'Close the other trade first.' : `Finish your trade with ${M.name} first.`, { icon: 'repeat' }); return; }
-  if (!glAtLeast(A.lv, GL_TRADE.lv)) { if (typeof toast === 'function') toast(`${A.n} can only look or help here, so they cannot trade yet.`, { icon: 'repeat' }); return; }
-  if (_gltMineToday() >= GL_TRADE.perDay) { if (typeof toast === 'function') toast('That is all the trades for today.', { icon: 'repeat' }); return; }
+  if (M) { if (M.w === A.w && !M.end) { _glt.panel = true; _gltPaint(); } else if (typeof toast === 'function') gardenToast(M.end || M.done ? 'Close the other trade first.' : `Finish your trade with ${M.name} first.`, { icon: 'repeat' }); return; }
+  if (!glAtLeast(A.lv, GL_TRADE.lv)) { if (typeof toast === 'function') gardenToast(`${A.n} can only look or help here, so they cannot trade yet.`, { icon: 'repeat' }); return; }
+  if (_gltMineToday() >= GL_TRADE.perDay) { if (typeof toast === 'function') gardenToast('That is all the trades for today.', { icon: 'repeat' }); return; }
   const t = _gllNewId();
   _glt.mine = { t, w: A.w, name: A.n, incoming: false, r: false, o: [], p: [], c: false, d: false, v: 0, n: 0, an: 0, asked: Date.now() };   // clock-ok: how long we have waited
   _glt.panel = true;
@@ -361,7 +361,7 @@ function _gltWhyNot(M) {
 function _gltConfirm() {
   const M = _glt.mine; if (!M || M.c || M.end || M.done) return;
   const why = _gltWhyNot(M);
-  if (why) { if (typeof toast === 'function') toast(why, { icon: 'repeat' }); return; }
+  if (why) { if (typeof toast === 'function') gardenToast(why, { icon: 'repeat' }); return; }
   if (!_gltReady()) return;
   // the hold first (your things leave your bag now, and are saved), then the word
   const g = _gdG(), i = {};
@@ -459,7 +459,7 @@ function _gltPicker(anchor) {
         _gltEdit(r => {
           const at = r.find(x => x[0] === item);
           if (at) { at[1] = Math.min(at[1] + 1, it.n, GL_TRADE.qty); return r; }
-          if (r.length >= GL_TRADE.rows) { toast(`${GL_TRADE.rows} different things at most.`, { icon: 'repeat' }); return null; }
+          if (r.length >= GL_TRADE.rows) { gardenToast(`${GL_TRADE.rows} different things at most.`, { icon: 'repeat' }); return null; }
           r.push([item, 1]); return r;
         });
       };
@@ -520,6 +520,6 @@ setTimeout(function _gltBoot() {
     const old = _gltOpenHolds().filter(([, h]) => h.at && _gdNow() - h.at > 3 * 86400000).sort((a, b) => a[1].at - b[1].at)[0];
     if (!old) return;
     const [k, h] = old, rows = Object.entries(h.i || {}).map(([item, n]) => [item, -n]);
-    toast(`A trade never finished: ${_gltSum(rows)} is still on hold. If their computer is only away, wait: it will finish by itself. If it is gone for good, you can take it back.`, { icon: 'repeat', timeout: 20000, action: { label: 'Take it back', run: () => { if (gardenLiveTradeGiveUp(k.slice(5))) toast('It is back in your bag.', { icon: 'undo-2', kind: 'ok' }); } } });
+    gardenToast(`A trade never finished: ${_gltSum(rows)} is still on hold. If their computer is only away, wait: it will finish by itself. If it is gone for good, you can take it back.`, { icon: 'repeat', timeout: 20000, action: { label: 'Take it back', run: () => { if (gardenLiveTradeGiveUp(k.slice(5))) gardenToast('It is back in your bag.', { icon: 'undo-2', kind: 'ok' }); } } });
   } catch (e) { /* the next start */ }
 }, 14000);

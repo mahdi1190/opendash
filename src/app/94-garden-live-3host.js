@@ -230,6 +230,24 @@ function _glhSendSnap(fid) {
   _glhRemember(gardenModel());
   _glhSend(fid, 'snap', { g: s, by: _glhByTable() });
 }
+/**
+ * Plants and decorations go as changes (gl:d). Everything else a snapshot says (the land, what is built, the design, how buildings are painted, rooms, the lake, wonders, weather, the season) has no change message: when any of it differs from
+ * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
+ */
+function _glhWorldSig(s) { const { v, at, plants, decor, heart, hearts, tz, ...rest } = s; void v; void at; void plants; void decor; void heart; void hearts; void tz; return JSON.stringify(rest); }
+function _glhSnapAll() {
+  const s = gardenSnapshot(); if (s) _glh.worldSig = _glhWorldSig(s);
+  for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f);
+}
+function _glhWorldCheck() {
+  if (!_glh.on || !_glhAnyone() || !_glhLooking()) return;
+  const t = Date.now(); if (t - (_glh.worldAt || 0) < 3000) return;   // clock-ok: spacing
+  _glh.worldAt = t;
+  const s = gardenSnapshot(); if (!s) return;
+  const sig = _glhWorldSig(s);
+  if (_glh.worldSig == null) { _glh.worldSig = sig; return; }
+  if (sig !== _glh.worldSig) _glhSnapAll();
+}
 function _glhRows(m) {
   const g = _gdG(), out = new Map();
   for (const p of m.plants) { const r = g.plants[p.uid]; out.set('p|' + p.x + '|' + p.y, { o: 'p', id: p.def.id, x: p.x, y: p.y, s: p.stage, v: p.variant, f: (p.thirsty ? 1 : 0) | (p.overgrown ? 2 : 0) | (p.ripe ? 4 : 0), by: r && r.by ? r.by : '' }); }
@@ -509,7 +527,7 @@ function gardenLiveUndo(key, o) {
   const g = _gdG(), e = g.gl[key], quiet = !!(o && o.quiet);
   if (!e || e.undone || e.noUndo || e.over) return false;
   const why = _glhUndoWhy(e);
-  if (why) { if (!quiet && typeof toast === 'function') toast(why, { icon: 'undo-2' }); return false; }
+  if (why) { if (!quiet && typeof toast === 'function') gardenToast(why, { icon: 'undo-2' }); return false; }
   // what they spent goes back to them, if it is still theirs: never twice, never for what was picked or given meanwhile
   const cur = e.u && e.mp ? g[e.mp][e.u] : null;
   const refund = !!cur && (e.t === 'feed' || (cur.gi === e.i && (e.t === 'plant' ? cur.by === e.f && !cur.hc : e.t === 'place' && cur.own === e.f)));
@@ -519,7 +537,7 @@ function gardenLiveUndo(key, o) {
   if (refund) g.gq['b' + e.i + '0'] = { to: e.f, why: 'back', i: e.i, at: _gdNow() };
   for (const x of Object.values(g.gl)) if (x && x.over === key) delete x.over;   // the line before this one is the newest again
   _gd.rev++; _gd.memoKey = '';
-  if (!quiet) { _gdSave(); _glhFlushPosts(); _glhDiffSoon(60); _glhHud(); if (typeof toast === 'function') toast('Undone', { icon: 'undo-2' }); }
+  if (!quiet) { _gdSave(); _glhFlushPosts(); _glhDiffSoon(60); _glhHud(); if (typeof toast === 'function') gardenToast('Undone', { icon: 'undo-2' }); }
   return true;
 }
 /** The copy Put my garden back goes back to, in the state (it is the same on every device). Someone arriving again never makes a new one: only when it has done its work, or is over a day old with nothing newer than it. */
@@ -557,7 +575,7 @@ function gardenLivePutBack() {
   g.glc = null; g.glt = {};
   if (_glhAnyone()) _glhSnapshotTake();
   _gdSave(); _glhFlushPosts(); _glhDiffSoon(60); _glhHud();
-  if (typeof toast === 'function') toast(n ? (snap ? `Your garden is back as it was (${n} undone)` : `Today's changes are undone (${n}). Older ones stay: there is no copy from before them.`) : 'Nothing to put back', { icon: 'undo-2', kind: n ? 'ok' : '' });
+  if (typeof toast === 'function') gardenToast(n ? (snap ? `Your garden is back as it was (${n} undone)` : `Today's changes are undone (${n}). Older ones stay: there is no copy from before them.`) : 'Nothing to put back', { icon: 'undo-2', kind: n ? 'ok' : '' });
   return n;
 }
 /* ---------- parcels and bugs ---------- */
@@ -730,7 +748,7 @@ function _glhPanel(el, v) {
   el.appendChild(_gsvEl('h3', 'gd-h3', 'Your gate'));
   const row = _gsvEl('div', 'gll-switch');
   const sw = (label, on, fn) => { const b = _gsvEl('button', 'gll-seg' + (on ? ' is-on' : ''), label); b.type = 'button'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.onclick = fn; return b; };
-  const prefs = (o) => _gllApi('/api/garden-live/prefs', o).then(() => gardenLiveLoad(true)).then(_glhHud).catch((e) => toast(e.message, { kind: 'err' }));
+  const prefs = (o) => _gllApi('/api/garden-live/prefs', o).then(() => gardenLiveLoad(true)).then(_glhHud).catch((e) => gardenToast(e.message, { kind: 'err' }));
   row.append(sw('Open', v.open !== false, () => prefs({ open: true })), sw('Closed', v.open === false, () => prefs({ open: false })));
   el.appendChild(row);
   const note = v.host && v.host.note;
@@ -738,7 +756,7 @@ function _glhPanel(el, v) {
   if (v.budget && v.budget.mode === 'over') el.appendChild(_gsvEl('p', 'muted gsv-small gll-panel-note', 'That is all the live play through your connection to friends for today. It keeps your sync safe. Friends on your network can still play.'));
   el.appendChild(_gsvEl('h4', 'gll-h', 'Who may come in'));
   const list = _gsvEl('div', 'gll-friends');
-  const setP = (id, o) => _gllApi('/api/garden-live/perm', { id, ...o }).then(() => gardenLiveLoad(true)).then(_glhHud).catch((e) => toast(e.message, { kind: 'err' }));
+  const setP = (id, o) => _gllApi('/api/garden-live/perm', { id, ...o }).then(() => gardenLiveLoad(true)).then(_glhHud).catch((e) => gardenToast(e.message, { kind: 'err' }));
   for (const f of _gscFriendList().slice(0, 60)) {
     const p = _glhPerm(f.id);
     const r = _gsvEl('div', 'gll-friend');
@@ -785,7 +803,8 @@ document.addEventListener('opendash:garden', (ev) => {
   if (!_glh.on || !_glhAnyone()) return;
   const d = ev && ev.detail;
   // land, something built, a find: everyone here sees it now, not when they next come (after the action has finished saving)
-  if (d && (d.kind === 'land' || d.kind === 'landshow')) { setTimeout(() => { if (_glh.on) for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f); }, 0); return; }
+  if (d && (d.kind === 'land' || d.kind === 'landshow')) { setTimeout(() => { if (_glh.on) _glhSnapAll(); }, 0); return; }
+  if (d && d.what && d.x != null) { gardenLiveFx('use', d.what === 'wish' ? 'wish' : 'collect', { x: Math.floor(d.x), y: Math.floor(d.y) }); return; }   // (a wish in the well, the honey: they see you do it)
   if (!d || d.x == null) return;
   const t = { water: 'water', plant: 'plant', harvest: 'harvest', prune: 'weed', feed: 'water' }[d.kind]; if (!t) return;
   _glhSend('all', 'res', { w: 0, t, ok: true, x: Math.floor(d.x), y: Math.floor(d.y) });

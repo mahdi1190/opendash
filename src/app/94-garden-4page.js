@@ -50,7 +50,7 @@ function _gdpNum(n) { try { return Number(n).toLocaleString(); } catch (e) { ret
 function _gdpSay(r, target) {
   if (!r || r.ok || !r.msg) return r;
   if (_gdp.root && _gdp.root.isConnected) gameDenyOf(r, target || null);
-  else if (typeof toast === 'function') toast(r.msg, { icon: 'sprout', timeout: 3200 });
+  else if (typeof toast === 'function') gardenToast(r.msg, { icon: 'sprout', timeout: 3200 });
   return r;
 }
 
