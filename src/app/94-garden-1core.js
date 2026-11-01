@@ -39,7 +39,8 @@ const _gd = { rev: 0, obj: null, memo: null, memoKey: '', wallet: null, walletKe
 const _GD_MAPS = ['plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'rib', 'dt', 'wq', 'gr', 'seen', 'prefs',
   'fl', 'bl', 'fd',   // 2.22: the fish log, the bug book, per-day fishing (94-garden-fish-2core.js)
   'sp', 'vl',   // every catch as a record, and the variants found (94-garden-fish-8spec.js)
-  'gl', 'gq', 'gv', 'glt'];  // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
+  'gl', 'gq', 'gv', 'glt',
+  'wd'];  // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
 function _gdG() {
   if (typeof state === 'undefined' || !state) { const z = { v: 1 }; for (const k of _GD_MAPS) z[k] = {}; return z; }
   if (!state.garden || typeof state.garden !== 'object' || Array.isArray(state.garden)) state.garden = { v: 1 };
@@ -619,6 +620,7 @@ function gardenSnapshot() {
     try { const sh = typeof gardenShowWire === 'function' ? gardenShowWire() : null; if (sh) out.sh = sh; } catch (e) { /* the showcase is optional */ }   // 2.22: the tank and the case
     try { const sp = typeof gardenSpecWire === 'function' ? gardenSpecWire() : null; if (sp) out.sp = sp; } catch (e) { /* specimens are optional */ }   // your best few, for friends: ids and numbers, an older app drops the field
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
+    try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     return out;
   } catch (e) { console.error('[garden]', e); return null; }
 }

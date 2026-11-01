@@ -34,6 +34,7 @@ const GSOC_REACTS = Object.freeze([
   Object.freeze({ id: 'wow', e: '🤩', label: 'Wow' }),
   Object.freeze({ id: 'cosy', e: '🍵', label: 'Cosy' }),
   Object.freeze({ id: 'flutter', e: '🦋', label: 'Fluttery' }),
+  Object.freeze({ id: 'stone', e: '🪨', label: 'A stone for the cairn' }),   // docs/dev/HUNDRED_WORLD.md: it stays, in the world, by their gate
 ]);
 const GSOC_REACT_IDS = Object.freeze(GSOC_REACTS.map(r => r.id));
 /** Each act: its icon, what the visitor's button says, and how it reads for the gardener. */

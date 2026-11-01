@@ -791,7 +791,9 @@ function gardenPropAt(x, y) {
 /** What a prop does to your feet: 'full', 'soft' or 'none' (see the table). */
 function gardenPropCol(p) { return !p ? 'none' : p.col === 'none' || p.col === 'soft' || p.col === 'full' ? p.col : p.walk ? 'none' : 'full'; }
 /** Walkable prop cell (the pier boards)? */
-function gardenPropWalk(x, y) { const p = gardenPropAt(x, y); return !!(p && p.walk); }
+/* Cells over water you can stand on with no prop: the island, always; the stones and the moon road while they are open (94-garden-wonder-4isle.js). */
+const _GD_WALK_EXTRA = new Set();
+function gardenPropWalk(x, y) { if (_GD_WALK_EXTRA.has(x + ',' + y)) return true; const p = gardenPropAt(x, y); return !!(p && p.walk); }
 /** Can this plant (or decoration) go at x, y (its top-left cell) at this level? '' = yes, else why not (one short line). */
 function gardenCellOk(def, x, y, level, kind) {
   const W = GARDEN_WORLD;
@@ -892,6 +894,7 @@ function gardenSnapshotClean(raw) {
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
   { const tz = int(raw.tz, -840, 840), sr = int(raw.sr, 0, 1439), ss = int(raw.ss, 0, 1439); if (tz !== null) { out.tz = tz; if (sr !== null && ss !== null) { out.sr = sr; out.ss = ss; } } }   // 2.28: their time zone, so a visit has their light
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);
+  if (raw.wd && typeof raw.wd === 'object') { const wd = {}; if (Array.isArray(raw.wd.sk)) wd.sk = raw.wd.sk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x)); if (Number.isInteger(raw.wd.st) && raw.wd.st > 0) wd.st = Math.min(999, raw.wd.st); if (raw.wd.w === 1) wd.w = 1; if (Number.isInteger(raw.wd.f) && raw.wd.f > 0) wd.f = Math.min(99, raw.wd.f); out.wd = wd; }   // docs/dev/HUNDRED_WORLD.md
   if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 12).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {

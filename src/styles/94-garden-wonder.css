@@ -1,0 +1,104 @@
+/* GARDEN WONDER: docs/dev/HUNDRED_WORLD.md */
+.wd-glow { pointer-events: none; }
+/* someone speaks: a strip at the foot of the stage */
+.wd-talk { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); z-index: 9; display: flex; align-items: flex-end; gap: 10px; width: min(620px, calc(100% - 24px)); padding: 12px 16px 12px 10px; background: #fffdf4; color: #3a2f22; border: 1px solid #b8a888; border-radius: 16px; box-shadow: 0 8px 26px rgba(30, 24, 12, 0.28); animation: wd-rise 0.26s ease-out; }
+@keyframes wd-rise { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.wd-talk-art { flex: none; width: 72px; height: 90px; margin-top: -30px; }
+.wd-talk-in { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.wd-talk-n { font-size: 12.5px; letter-spacing: 0.02em; color: #7a5a38; }
+.wd-talk-t { margin: 0; font-size: 15px; line-height: 1.42; }
+.wd-talk-go { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.wd-talk .btn-ghost { color: #4a3c2a; }
+.wd-give { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
+.wd-give-l { font-size: 12.5px; margin-right: 4px; }
+.wd-give-b { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; background: #f4ecd8; border: 1px solid #c8b890; border-radius: 10px; cursor: pointer; }
+.wd-give-b:hover, .wd-give-b:focus-visible { background: #fff6d8; border-color: #8a6a44; }
+/* one quiet line */
+.wd-whisper { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 8; max-width: min(520px, calc(100% - 40px)); padding: 7px 15px; color: #fffdf4; font-size: 14.5px; font-style: italic; text-align: center; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7); background: rgba(24, 28, 22, 0.42); border-radius: 12px; pointer-events: none; animation: wd-whisper-in 0.8s ease-out; transition: opacity 0.9s; }
+.wd-whisper.is-out { opacity: 0; }
+@keyframes wd-whisper-in { from { opacity: 0; } to { opacity: 1; } }
+/* the app goes quiet: on the island, or sitting */
+.gd-stagebox.wd-hush .gd-hud, .gd-stagebox.wd-hush .gd-menu, .gd-stagebox.wd-hush .gd-mini, .gd-stagebox.wd-hush .gd-quick, .gd-stagebox.wd-hush .gd-hotbar, .gd-stagebox.wd-hush .gd-camui { opacity: 0; pointer-events: none; transition: opacity 1.6s; }
+.gd-stagebox .gd-hud, .gd-stagebox .gd-menu, .gd-stagebox .gd-mini, .gd-stagebox .gd-quick, .gd-stagebox .gd-hotbar { transition: opacity 0.8s; }
+.gd-stagebox.wd-hush:hover .gd-menu, .gd-stagebox.wd-hush:focus-within .gd-menu { opacity: 0.55; pointer-events: auto; }
+.gd-stagebox.wd-sitting .gd-menu { opacity: 0 !important; }
+.wd-fade { position: absolute; inset: 0; z-index: 12; background: #10161e; pointer-events: none; animation: wd-fade 1.6s ease-in-out both; }
+@keyframes wd-fade { 0% { opacity: 0; } 40%, 60% { opacity: 1; } 100% { opacity: 0; } }
+/* sitting a while: a day passes */
+.wd-still { position: absolute; inset: 0; z-index: 10; display: block; width: 100%; height: 100%; padding: 0; overflow: hidden; background: transparent; border: 0; cursor: default; transition: opacity 0.7s; animation: wd-whisper-in 2.4s ease-out; }
+.wd-still:focus { outline: none; }
+.wd-still.is-out { opacity: 0; }
+.wd-st { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; will-change: opacity; animation: 130s linear infinite; }
+.gd-calm .wd-still, .gd-calm .wd-still * { animation-play-state: running !important; }
+.wd-st-gold { background: linear-gradient(#f2b860 0%, rgba(242, 184, 96, 0.3) 60%, rgba(214, 140, 70, 0.3)); animation-name: wd-gold; }
+.wd-st-dusk { background: linear-gradient(#3e3a74, rgba(190, 90, 96, 0.5)); animation-name: wd-dusk; }
+.wd-st-night { background: linear-gradient(rgba(8, 14, 40, 0.92), rgba(12, 22, 52, 0.72)); animation-name: wd-night; }
+.wd-st-stars { animation-name: wd-night; }
+.wd-st-dawn { background: linear-gradient(rgba(248, 190, 180, 0.72), rgba(255, 226, 180, 0.3)); animation-name: wd-dawn; }
+@keyframes wd-gold { 0% { opacity: 0; } 18% { opacity: 0.1; } 32% { opacity: 0.55; } 42% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes wd-dusk { 0%, 28% { opacity: 0; } 40% { opacity: 0.7; } 50% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes wd-night { 0%, 38% { opacity: 0; } 50% { opacity: 1; } 76% { opacity: 1; } 86% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes wd-dawn { 0%, 76% { opacity: 0; } 86% { opacity: 0.8; } 98% { opacity: 0; } 100% { opacity: 0; } }
+.wd-cloud { position: absolute; top: 8%; left: -30%; width: 34%; height: 15%; pointer-events: none; background: radial-gradient(closest-side, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0)); will-change: transform; animation: wd-drift 110s linear infinite; }
+.wd-c2 { top: 22%; width: 24%; height: 10%; animation-duration: 160s; animation-delay: -60s; }
+@keyframes wd-drift { from { transform: translateX(0); } to { transform: translateX(460%); } }
+.wd-getup { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); padding: 5px 14px; color: #fffdf4; font-size: 13px; background: rgba(0, 0, 0, 0.3); border-radius: 12px; opacity: 0; transition: opacity 0.6s; }
+.wd-still:hover .wd-getup, .wd-still:focus-visible .wd-getup { opacity: 0.8; }
+@media (prefers-reduced-motion: reduce) { .wd-st, .wd-cloud { animation: none; } .wd-st-gold { opacity: 0.4; } }
+/* the island */
+.wd-stones { transition: opacity 3s; opacity: 0.24; }
+.wd-stones.is-up { opacity: 1; }
+.wd-moonlet { opacity: 0.4; animation: wd-moonlet 3.2s ease-in-out infinite; }
+@keyframes wd-moonlet { 0%, 100% { opacity: 0.18; } 50% { opacity: 0.85; } }
+.wd-ring { fill: none; stroke: #fffbe0; stroke-width: 1.2; opacity: 0; transform-box: fill-box; transform-origin: center; animation: wd-ring 2.8s ease-out forwards; }
+.wd-ring2 { animation-delay: 0.5s; }
+.wd-ring3 { animation-delay: 1s; }
+@keyframes wd-ring { 0% { opacity: 0.8; transform: scale(0.6); } 100% { opacity: 0; transform: scale(7); } }
+.wd-lamp-g { animation: gl-glow-soft-wd 3.6s ease-in-out infinite; }
+@keyframes gl-glow-soft-wd { 0%, 100% { opacity: 0.16; } 50% { opacity: 0.3; } }
+.wd-lakestar { animation: wd-moonlet 4.6s ease-in-out infinite; }
+/* the sky */
+.wd-sky { position: absolute; inset: 0; z-index: 11; display: flex; flex-direction: column; background: #0a1230; animation: wd-whisper-in 1.2s ease-out; }
+.wd-sky-svg { flex: 1; min-height: 0; width: 100%; display: block; }
+.wd-sky-s { cursor: pointer; outline: none; }
+.wd-sky-g { transition: opacity 0.3s, r 0.3s; }
+.wd-sky-s:hover .wd-sky-g, .wd-sky-s:focus-visible .wd-sky-g { opacity: 0.6; }
+.wd-sky-s.is-on .wd-sky-g { opacity: 0.85; fill: #ffe9a8; }
+.wd-sky-s.is-on .wd-sky-c { fill: #ffe9a8; }
+.wd-sky-l { stroke: #ffe9a8; stroke-width: 1.8; stroke-linecap: round; opacity: 0.85; animation: wd-whisper-in 0.5s ease-out; }
+.wd-sky-h { stroke: #b8c8f0; stroke-width: 1.5; stroke-dasharray: 3 7; opacity: 0.8; }
+.wd-sky-foot { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 14px; color: #e8ecf6; background: #0d1526; }
+.wd-sky-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wd-sky-chip { padding: 5px 13px; font-size: 13px; color: #c8d2ec; background: transparent; border: 1px solid #38466e; border-radius: 14px; cursor: pointer; }
+.wd-sky-chip.is-on { color: #0d1526; background: #ffe9a8; border-color: #ffe9a8; cursor: default; }
+.wd-sky-say { margin: 0; min-height: 2.8em; font-size: 15px; line-height: 1.4; }
+.wd-sky-go { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.wd-sky-moon { flex: 1; font-size: 12.5px; color: #98a6c8; }
+.wd-sky-go .btn { color: #e8ecf6; background: #2a3658; border-color: #4a5a88; }
+.wd-sky-go .btn:hover, .wd-sky-go .btn:focus-visible { background: #38466e; }
+/* pages and the Keepsakes panel */
+.wd-page-art { display: flex; justify-content: center; margin: 2px 0 10px; }
+.wd-page-art svg { max-width: 100%; height: auto; }
+.wd-page-p { margin: 0 0 9px; font-size: 15px; line-height: 1.5; }
+.wd-page-sign { margin: 8px 0 0; font-size: 15px; font-style: italic; text-align: right; }
+.wd-page-foot { margin: 10px 0 0; font-size: 13px; }
+.wd-card { width: 100%; max-width: 420px; border: 5px solid #fff; border-radius: 3px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.24); }
+.wd-mice { width: 100%; border-radius: 12px; }
+.wd-mice-photo { cursor: pointer; }
+.wd-steam { animation: wd-moonlet 3s ease-in-out infinite; }
+.wd-zz { font-family: serif; animation: wd-moonlet 2.6s ease-in-out infinite; }
+.wd-box-in { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.wd-box-h { margin: 8px 0 2px; font-size: 13.5px; }
+.wd-box-empty { padding: 26px 8px; text-align: center; }
+.wd-letter, .wd-clue, .wd-yearrow { display: flex; align-items: center; gap: 11px; width: 100%; padding: 9px 11px; text-align: left; color: inherit; background: var(--surface-2, rgba(127, 127, 127, 0.08)); border: 1px solid var(--border, rgba(127, 127, 127, 0.22)); border-radius: 10px; }
+.wd-letter { cursor: pointer; }
+.wd-letter:hover, .wd-letter:focus-visible { border-color: var(--accent, #8a6a44); }
+.wd-letter.is-new { border-color: var(--accent, #8a6a44); font-weight: 600; }
+.wd-letter-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.wd-env { flex: none; display: grid; place-items: center; width: 30px; height: 30px; }
+.wd-date { flex: none; display: flex; flex-direction: column; align-items: center; width: 42px; line-height: 1.05; }
+.wd-date b { font-size: 18px; }
+.wd-date small { font-size: 11px; opacity: 0.75; }
+.wd-yearrow.is-now { border-color: var(--accent, #8a6a44); }
+.wd-hide-row { display: flex; align-items: center; gap: 7px; padding: 3px 8px 8px; font-size: 13px; cursor: pointer; }
+@media (max-width: 640px) { .wd-talk { bottom: 66px; } .wd-talk-art { width: 52px; height: 66px; margin-top: -14px; } .wd-talk-art svg { width: 52px; height: 66px; } }

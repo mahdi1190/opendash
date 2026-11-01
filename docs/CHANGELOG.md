@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.44.0]
+
+### Added
+- **Your garden is now a world.** Characters call by and remember what you did. A snail brings letters, and a stranger's letters lead you to things buried in your garden. An island in the lake can be reached at dawn, at dusk, or by moonlight at full moon. Sit on any seat and watch a day pass. Learn the stars. See friends' lamps across the water, leave a stone at their cairn, or hide a gift for them. Find the mice in your oldest tree, and small days through the year. Settings > Garden world turns each kind off.
+
 ## [2.43.0]
 
 ### Added
