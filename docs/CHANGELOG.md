@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.55.0]
+
+### Added
+- **A thank-you present for early users.** Look for something glinting near the start of your garden and press it: 50,000 coins, garden level 20, building materials, better rods and nets, bait, seeds, tickets and pet treats, so you can try everything.
+
 ## [2.54.0]
 
 ### Changed
