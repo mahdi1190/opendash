@@ -478,16 +478,24 @@ function _gdrPatchItems(layer, items) {
   const parsed = fresh.length ? _gdrParse(fresh.map(x => x[1]).join('')) : [];
   let pi = 0;
   const next = items.map(([sig]) => { const l = pool.get(sig); if (l && l.length) return l.shift(); return parsed[pi++]; }).filter(Boolean);
-  // what others keep at the bottom of the layer (the rings of what needs you) is not the scene's either: it stays at the bottom
+  // Move only what is out of place, stepping over what is not the scene's. Moving a node restarts its animations and repaints it, and moving every item behind you on each save was a flash of its own.
+  // Not the scene's: what the world's loop drew (you, your pet, bugs, anything from gardenWorldAdd: data-live), and whatever others keep in the layer (no signature). Those stay.
+  const want = new Set(next), theirs = (el) => el.hasAttribute('data-live') || !el.hasAttribute('data-sig');
+  const clear = (el, stop) => { while (el && el !== stop && !want.has(el)) { const n = el.nextSibling; if (el.nodeType !== 1 || !theirs(el)) el.remove(); el = n; } return el; };
   let ref = layer.firstChild;
-  for (const el of [...layer.children]) { if (el.hasAttribute('data-sig') || el.hasAttribute('data-live')) continue; if (el === ref) ref = ref.nextSibling; else layer.insertBefore(el, ref); }
-  for (const el of next) { if (el === ref) { ref = ref.nextSibling; continue; } layer.insertBefore(el, ref); }
-  // what the world's loop drew (you, your pet, bugs, anything from gardenWorldAdd: data-live) is not the scene's to remove: it goes back in its row
-  const live = [];
-  while (ref) { const n = ref.nextSibling; if (ref.hasAttribute('data-live')) live.push(ref); else ref.remove(); ref = n; }
-  for (const el of live) {
-    const z = Number(el.getAttribute('data-z')); let at = null;
-    for (const c of layer.children) { if (c === el) continue; const cz = Number(c.getAttribute('data-z')); if (Number.isFinite(cz) && cz > z) { at = c; break; } }
-    if (el.nextSibling !== at) layer.insertBefore(el, at);
+  for (const el of next) {
+    ref = clear(ref, el);
+    if (el === ref) ref = ref.nextSibling; else layer.insertBefore(el, ref);
+  }
+  clear(ref, null);
+  // what lives in a row goes back in its row, and only if it has been left in the wrong one
+  const zOf = (el) => (el ? Number(el.getAttribute('data-z')) : NaN);
+  for (const el of [...layer.children]) {
+    if (!el.hasAttribute('data-live')) continue;
+    const z = zOf(el);
+    if (!Number.isFinite(z) || !(zOf(el.nextElementSibling) < z || zOf(el.previousElementSibling) > z)) continue;
+    let at = null;
+    for (const c of layer.children) { if (c === el) continue; if (zOf(c) > z) { at = c; break; } }
+    layer.insertBefore(el, at);
   }
 }
