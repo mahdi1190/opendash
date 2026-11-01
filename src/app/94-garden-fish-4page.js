@@ -184,9 +184,9 @@ function _gdcBook(el, m, kind) {
 /* ---------- tackle ---------- */
 function _gdcGearStats(d) {
   const s = d.st;
-  if (d.kind === 'rod') return [`Reaches ${s.range} cells`, `Bar ${Math.round(s.bar * 100)}%`, s.line < 1 ? `Line ${Math.round((1 - s.line) * 100)}% kinder` : '', `Lands up to ${gardenQuality(s.q).stars || 'plain'}`].filter(Boolean);
+  if (d.kind === 'rod') return [`Reaches ${s.range} cells`, s.react ? `${s.react.toFixed(1)}s longer to press` : '', `Lands up to ${gardenQuality(s.q).stars || 'plain'}`].filter(Boolean);
   if (d.kind === 'net') return [`Reaches ${s.reach} cells`, `Swing ${s.swing}s`, s.luck ? `+${Math.round(s.luck * 100)}% luck` : ''].filter(Boolean);
-  return [s.lure ? `Bites ${s.lure.toFixed(1)}s sooner` : 'Always there', s.rare ? `+${Math.round(s.rare * 100)}% better fish` : '', s.night ? 'Best at night' : ''].filter(Boolean);
+  return [s.lure ? 'Fish notice it from further away' : 'Always there', s.rare ? 'Shy fish come more readily' : '', s.night ? 'Best at night' : ''].filter(Boolean);
 }
 function _gdcGearCard(d, m) {
   const owned = gardenGearOwned(d.id);
