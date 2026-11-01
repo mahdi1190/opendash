@@ -134,6 +134,7 @@ function _gwSignIcon(kind, o) {
 }
 /* one little shop: plank walls, a shingled roof with a chimney, a striped awning, a door with its step, a shuttered window with a window box, a hanging sign; th says how it looks */
 function _gwHouse(p, sc, o, th) {
+  if (typeof gardenBuildTheme === 'function') th = gardenBuildTheme(p.id, th);   // how the owner has painted it, by building id (94-garden-style-2build.js)
   const A = GART, f = _gwN, W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky;
   const cx = (p.x + p.w / 2) * cw, by = base + (p.y + p.h) * ch - 3, half = p.w * cw / 2, night = sc.tod === 'night' || sc.tod === 'dusk', r = gardenRand('house|' + p.id);
   const wall = sc.season === 'winter' ? _gdaShade(th.wall, 0.08) : th.wall, plank = th.plank, roof = th.roof, roofD = _gdaShade(roof, -0.22), roofL = _gdaShade(roof, 0.14), wallD = _gdaShade(wall, -0.14), wallL = _gdaShade(wall, 0.12), inkW = _gdaShade(plank, -0.3);
@@ -162,14 +163,15 @@ function _gwHouse(p, sc, o, th) {
     const t = i / 7, y = wTop + 3 + (ridge - wTop - 3) * t, x0 = eL + (cx - eL) * t, x1 = eR - (eR - cx) * t, step = 11;
     for (let x = x0 + (i % 2 ? step / 2 : 0); x < x1 - 2; x += step) sh += `M${f(x)} ${f(y)}q${f(step / 2)} 4.4 ${f(step)} 0`;
   }
-  s += A.S(_gdaShade(roof, -0.42), 0.9, sh, 0.7);
+  s += th.roofKind ? gardenBuildRoofLines(th.roofKind, roof, eL, eR, cx, ridge, wTop) : A.S(_gdaShade(roof, -0.42), 0.9, sh, 0.7);
   s += A.S(_gdaShade(roof, -0.45), 2.2, `M${f(eL)} ${f(wTop + 3)}L${f(cx)} ${f(ridge)}L${f(eR)} ${f(wTop + 3)}`) + A.S(roofL, 1, `M${f(eL + 1)} ${f(wTop + 2)}L${f(cx)} ${f(ridge + 0.6)}`, 0.8);
   if (sc.season === 'winter') s += A.P('#f6f8fb', `M${f(eL + 4)} ${f(wTop - 1)}L${f(cx)} ${f(ridge - 2)}L${f(eR - 4)} ${f(wTop - 1)}Q${f(cx + half * 0.5)} ${f(wTop - 12)} ${f(cx)} ${f(ridge + 12)}Q${f(cx - half * 0.5)} ${f(wTop - 12)} ${f(eL + 4)} ${f(wTop - 1)}z`, 0.95);
   // the door, its frame and step
   const d = p.door || { x: Math.floor(p.x + p.w / 2), y: p.y + p.h }, dx = (d.x + 0.5) * cw, dT = by - 37;
   s += `<path fill="${_gdaShade(plank, 0.08)}" stroke="${inkW}" stroke-width="1" d="M${f(dx - 11.5)} ${f(by)}V${f(dT + 5)}Q${f(dx)} ${f(dT - 5)} ${f(dx + 11.5)} ${f(dT + 5)}V${f(by)}z"/>`;
-  s += `<path fill="${_gdaShade(th.awn[0], -0.2)}" stroke="${_gdaShade(th.awn[0], -0.5)}" stroke-width="0.9" d="M${f(dx - 9)} ${f(by)}V${f(dT + 6)}Q${f(dx)} ${f(dT - 2)} ${f(dx + 9)} ${f(dT + 6)}V${f(by)}z"/>`;
-  s += A.S(_gdaShade(th.awn[0], -0.42), 0.8, `M${f(dx - 3)} ${f(dT + 2.6)}V${f(by)}M${f(dx + 3)} ${f(dT + 2.6)}V${f(by)}`, 0.7) + A.P('#ffffff', `M${f(dx - 8)} ${f(by)}V${f(dT + 6.4)}l2 -1.2V${f(by)}z`, 0.16);
+  const doorC = th.door || th.awn[0];
+  s += `<path fill="${_gdaShade(doorC, -0.2)}" stroke="${_gdaShade(doorC, -0.5)}" stroke-width="0.9" d="M${f(dx - 9)} ${f(by)}V${f(dT + 6)}Q${f(dx)} ${f(dT - 2)} ${f(dx + 9)} ${f(dT + 6)}V${f(by)}z"/>`;
+  s += A.S(_gdaShade(doorC, -0.42), 0.8, `M${f(dx - 3)} ${f(dT + 2.6)}V${f(by)}M${f(dx + 3)} ${f(dT + 2.6)}V${f(by)}`, 0.7) + A.P('#ffffff', `M${f(dx - 8)} ${f(by)}V${f(dT + 6.4)}l2 -1.2V${f(by)}z`, 0.16);
   s += `<circle cx="${f(dx + 5.4)}" cy="${f(by - 16)}" r="1.5" fill="#f0c84e" stroke="#8a6a1a" stroke-width="0.5"/>`;
   s += `<path fill="#b4ae9e" stroke="#6c675c" stroke-width="0.7" d="${A.rrect(dx - 13, by - 2, 26, 4, 1.2)}"/>`;
   // the window, its shutters and a box of flowers
@@ -184,11 +186,12 @@ function _gwHouse(p, sc, o, th) {
   s += A.P('#4f8a3a', lv) + A.P('#e8607a', fl[0]) + A.P('#f2c432', fl[1]) + A.P('#f6f2ea', fl[2]);
   // the awning: stripes with a scalloped edge, darker where it turns under
   const ax0 = L + 4, aw = R - L - 8, ay = by - 52, n = 6;
-  for (let i = 0; i < n; i++) { const c = i % 2 ? th.awn[1] : th.awn[0]; s += `<path fill="${c}" stroke="${_gdaShade(th.awn[0], -0.34)}" stroke-width="0.7" d="M${f(ax0 + i * aw / n)} ${f(ay)}h${f(aw / n)}l${f((i + 1 - n / 2) * 0.5)} 11q${f(-aw / (2 * n))} 5 ${f(-aw / n - 0.5)} 0z"/>`; }
-  s += A.P('#3a2a18', A.rect(ax0, ay, aw, 2), 0.3) + A.P('#ffffff', A.rect(ax0, ay + 2, aw, 1.6), 0.26) + A.P('#1a1208', `M${f(ax0 + 2)} ${f(ay + 15)}h${f(aw - 4)}v3.6h${f(-aw + 4)}z`, 0.14);
+  if (th.awnKind) s += gardenBuildAwning(th.awnKind, th.awn, ax0, ay, aw);
+  else for (let i = 0; i < n; i++) { const c = i % 2 ? th.awn[1] : th.awn[0]; s += `<path fill="${c}" stroke="${_gdaShade(th.awn[0], -0.34)}" stroke-width="0.7" d="M${f(ax0 + i * aw / n)} ${f(ay)}h${f(aw / n)}l${f((i + 1 - n / 2) * 0.5)} 11q${f(-aw / (2 * n))} 5 ${f(-aw / n - 0.5)} 0z"/>`; }
+  if (!th.awnKind) s += A.P('#3a2a18', A.rect(ax0, ay, aw, 2), 0.3) + A.P('#ffffff', A.rect(ax0, ay + 2, aw, 1.6), 0.26) + A.P('#1a1208', `M${f(ax0 + 2)} ${f(ay + 15)}h${f(aw - 4)}v3.6h${f(-aw + 4)}z`, 0.14);
   // the hanging sign
   const sx = dx > cx ? L + 20 : R - 20;
-  s += `<g transform="translate(${f(sx)} ${f(by - 66)})"><path d="M-8 -7v-5M8 -7v-5" stroke="${inkW}" stroke-width="1.1"/><rect x="-14" y="-8" width="28" height="17" rx="3" fill="${_gdaShade(plank, -0.1)}"/><rect x="-13" y="-9" width="26" height="16" rx="3" fill="#efe4c8" stroke="${inkW}" stroke-width="1.1"/>${_gwSignIcon(th.icon, o)}</g>`;
+  s += `<g transform="translate(${f(sx)} ${f(by - 66)})"><path d="M-8 -7v-5M8 -7v-5" stroke="${inkW}" stroke-width="1.1"/>${th.signKind ? gardenBuildSign(th.signKind, inkW) : `<rect x="-14" y="-8" width="28" height="17" rx="3" fill="${_gdaShade(plank, -0.1)}"/><rect x="-13" y="-9" width="26" height="16" rx="3" fill="#efe4c8" stroke="${inkW}" stroke-width="1.1"/>`}${th.signKind ? gardenBuildSignIcon(th.icon, p.id) : _gwSignIcon(th.icon, o)}</g>`;
   s += th.extra ? th.extra(cx, by, half, plank, o) : '';
   if (night) {
     s += `<circle cx="${f(wx + ww / 2)}" cy="${f(by - 26)}" r="44" fill="#ffe7a8" fill-opacity="0.12"/><circle cx="${f(wx + ww / 2)}" cy="${f(by - 26)}" r="22" fill="#ffe7a8" fill-opacity="0.14"/>`;
@@ -321,16 +324,16 @@ function _gwReeds(sc, o) {
 /** The standing scenery: [{z, x, html}] sorted in with plants and decorations. */
 function gardenWorldProps(sc, o) {
   const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky, out = [], open = new Set(sc.areas || []);
-  const wrap = (cls, z, x, inner, key) => ({ z, x, html: `<g class="gd-it gd-prop ${cls}" data-sig="${gardenHash(key + '|' + x + '|' + z + '|' + inner.length + sc.tod + sc.season).toString(36)}" data-prop="${key}" data-z="${z}" data-x="${x}">${inner}</g>` });
+  const wrap = (cls, z, x, inner, key) => ({ z, x, html: `<g class="gd-it gd-prop ${cls}" data-sig="${gardenHash(key + '|' + x + '|' + z + '|' + inner.length + sc.tod + sc.season + (typeof gardenBuildSig === 'function' ? gardenBuildSig(key) : '')).toString(36)}" data-prop="${key}" data-z="${z}" data-x="${x}">${inner}</g>` });
   // a row of GARDEN_PROPS is drawn by its `kind`, from this table: a new building is one row there and one function here
   const art = { tackle: (p) => _gwHouse(p, sc, o, _GW_HOUSES.tackle), shop: (p) => _gwHouse(p, sc, o, _GW_HOUSES.shop), stall: (p) => _gwStall(p, sc, o), board: (p) => _gwBoard(p, sc, o), lectern: (p) => _gwLectern(p, sc, o), tripod: (p) => _gwTripod(p, sc, o), postbox: (p) => _gwPostbox(p, sc, o), sundial: (p) => _gwSundial(p, sc, o), bench: (p) => (typeof gardenCraftBenchArt === 'function' ? gardenCraftBenchArt(p, sc, o) : ''), boat: () => _gwBoat(sc, o), reeds: () => _gwReeds(sc, o) };
   if (typeof gardenCatchPropArt === 'function') Object.assign(art, gardenCatchPropArt(sc, o));   // the lake hall, the board, the old angler, the smoker
   for (const p of GARDEN_PROPS) {
     const draw = p.kind && art[p.kind]; if (!draw) continue;
-    const inner = draw(p);
+    const inner = typeof gardenBuildDress === 'function' ? gardenBuildDress(p.id, draw(p)) : draw(p);
     if (inner) out.push(wrap('gd-prop-' + p.kind + (p.act ? ' gd-prop-click' : ''), Math.ceil(p.y + p.h), p.x, inner, p.id));
   }
-  if (typeof gardenLandWorldProps === 'function') for (const r of gardenLandWorldProps(sc, o)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // the land office and what has been built on the land
+  if (typeof gardenLandWorldProps === 'function') for (const r of gardenLandWorldProps(sc, o)) out.push(wrap(r.cls, r.z, r.x, typeof gardenBuildDress === 'function' ? gardenBuildDress(r.key, r.inner) : r.inner, r.key));   // the land office and what has been built on the land
   if (typeof gardenDesignWorldProps === 'function') for (const r of gardenDesignWorldProps(sc)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // what you made in the designer
   // what has been built for the lake stands where it is (94-garden-fish-7gear.js). pointer-events: a click there is still a click on the water
   if (typeof gardenWorksArt === 'function') for (const r of gardenWorksArt(sc)) out.push(wrap('gd-prop-work', r.y, r.x, `<g pointer-events="none" transform="translate(${_gwN(r.x * cw)} ${_gwN(base + r.y * ch)})">${r.svg}</g>`, 'work-' + r.key));

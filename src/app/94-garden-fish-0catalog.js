@@ -891,6 +891,7 @@ function gardenCatchNeedsRows(def) {
   if (bug) add('where', 'Where', 'Look near ' + _gfOr(def.hab.map(h => _GF_HAB_WORDS[h] || h)) + '.');
   else if (def.cat === 'fish') add('where', 'Where', _gfOr(def.zone.map(z => (GARDEN_FISH_ZONES[z] || {}).label || z)) + (def.zone.includes('deep') ? ': far out, past the end of the pier.' : def.zone.includes('mid') ? ': cast a little way out.' : def.zone.includes('pond') ? ' (it opens at garden level 7).' : ': close to the shore.'));
   else { add('where', 'Where', 'It can turn up in any water, at any time.'); return rows; }
+  { const rg = typeof gardenRegionWords === 'function' ? gardenRegionWords(def) : null; if (rg) { if (rg.where) rows[0].text = rg.where; if (rg.reach) add('home', 'Getting there', rg.reach); } }   // its home on the map (94-garden-regions-0table.js)
   if (n.spot) add('spot', 'Spot', 'Only at ' + (_GF_SPOT_WORDS[n.spot] || n.spot.replace(/-/g, ' ')) + '.');
   if (n.plant) add('plant', 'Grow', 'It only comes to ' + _gfPlantName(n.plant) + ' in flower, so grow some.');
   if (n.decor) add('decor', 'Build', 'Only if you have ' + _gfThingName(n.decor) + ' in your garden.');

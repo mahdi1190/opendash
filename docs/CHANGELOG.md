@@ -10,6 +10,27 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.49.0]
+
+### Added
+- **New looks for your rod and net** that don't change how they fish, plus umbrellas, balloons, lanterns and buckets to carry.
+- **Paint your buildings.** Choose each shop's walls, roof, door, awning and sign, using materials.
+- **36 new decorations** in seaside, cottage, spooky, festive and ruins themes. Friends see all of it.
+
+## [2.48.0]
+
+### Added
+- **Every fish and bug now lives somewhere on the map,** and opening that land is how you find it. The book says where to go.
+- New ponds and brooks, and fish in the marsh pools.
+- Finish a region's page for coins, a decoration, a ribbon and a prize in your garden. See your progress on the new map tab.
+
+## [2.47.0]
+
+### Added
+- **Real work moves the game on.** Finished tasks and focus time now earn survey pegs, timber, stone, tickets and bait. Use them to open paths early, pay part of the price of land and buildings, and make paths, fences, ground and ornaments at the new builder's yard.
+- **Everything gives something.** Features that paid nothing now give small gifts, within the daily limits.
+- Home can show what's next, and the garden card has a line about it.
+
 ## [2.46.0]
 
 **Your garden is now the middle of a bigger world. Update every computer you use, and friends should update too: live play needs the same version on both sides.**

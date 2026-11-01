@@ -479,7 +479,7 @@ const GARDEN_ANGLER_JOBS = Object.freeze([
 function gardenJobNow() {
   const c = _gca(), i = Number(c.job) || 0, today = _gdToday();
   if (i >= GARDEN_ANGLER_JOBS.length) {
-    const list = GARDEN_FISH.filter(f => f.cat === 'fish' && !f.needs && f.lv <= gardenModel().level.level && f.rarity !== 'epic' && f.rarity !== 'legendary' && f.zone.some(z => z !== 'pond')), d = list.length ? list[gardenHash('aj|' + today) % list.length] : null;
+    const list = GARDEN_FISH.filter(f => f.cat === 'fish' && !f.needs && f.lv <= gardenModel().level.level && f.rarity !== 'epic' && f.rarity !== 'legendary' && f.zone.some(z => z !== 'pond') && gardenRegionHomeOpen(gardenRegionHome(f), gardenModel().areas)), d = list.length ? list[gardenHash('aj|' + today) % list.length] : null;
     return d ? { daily: true, id: 'daily', says: c.jobDay === today ? 'That will do for today. Come back tomorrow.' : 'Forty years, and I still like to see one of these.', ask: `Catch ${_gscA(d.name.toLowerCase())} today.`, fish: d.id, done: c.jobDay === today, test: (e) => e.kind === 'fish' && e.def.id === d.id, c: 10 } : null;
   }
   // after the first three jobs a new one comes the next day: a reason to come back, never a wall in your way
@@ -511,6 +511,7 @@ function gardenReadyFor(def) {
   const sp = n.spot ? gardenSpotDef(n.spot) : null; let where = null;
   if (sp) where = { x: sp.x, y: sp.y, words: sp.name };
   else { const z = (n.zone && [].concat(n.zone)[0]) || def.zone[0], fav = GARDEN_SPOTS.find(s => s.zone === z); if (z === 'pond') { const a = GARDEN_AREAS.find(q => q.water && !q.fishing); if (a) where = { x: a.water.x + a.water.w / 2, y: a.water.y + a.water.h / 2, words: 'the pond' }; } else if (fav) where = { x: fav.x, y: fav.y, words: fav.name.replace(/^The /, 'the ') + ', or anywhere in that water' }; }
+  { const H = gardenRegionHome(def), w = H && H.w && H.w !== 'pond' ? gardenRegionWaterDef(H.w) : null; if (w) where = { x: w.x + w.w / 2, y: w.y + w.h / 2, words: w.name }; }   // it lives in a water of its own
   const bits = [];
   if (def.tod && def.tod.length && def.tod.length < 4) bits.push(def.tod.map(t => ({ dawn: 'at dawn', day: 'by day', dusk: 'at dusk', night: 'at night' })[t]).join(' or '));
   if (def.seasons && def.seasons.length) bits.push('in ' + def.seasons.join(' or '));

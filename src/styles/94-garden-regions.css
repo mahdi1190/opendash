@@ -1,0 +1,16 @@
+/* The map tab of the Catch page (94-garden-regions-2page.js). */
+.grg-over { margin-bottom: var(--space-3); }
+.grg-map-w { max-width: 620px; margin: var(--space-2) auto 0; }
+.grg-map { display: block; width: 100%; height: auto; border-radius: 10px; background: var(--bg-muted); }
+.grg-map-r, .grg-map-t, .grg-map-n { cursor: pointer; }
+.grg-map-r:hover { filter: brightness(1.08); }
+.grg-map-t, .grg-map-n { fill: #1f2a18; paint-order: stroke; stroke: #ffffffcc; stroke-width: 0.35px; }
+.grg-map-t { font-size: 1.7px; font-weight: 700; }
+.grg-map-n { font-size: 1.35px; }
+.grg-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-2); }
+.grg-card { display: flex; gap: var(--space-2); align-items: center; text-align: left; cursor: pointer; width: 100%; color: inherit; }
+.grg-card-t { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.grg-prize { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; border-top: 1px solid var(--border); }
+.grg-prize.is-done { opacity: 0.65; }
+.grg-prize-t { display: grid; gap: 2px; min-width: 0; font-size: var(--text-sm); }
+.grg-ways li { grid-template-columns: auto 1fr; }

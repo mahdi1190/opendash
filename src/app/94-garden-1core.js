@@ -417,6 +417,7 @@ function gardenWallet() {
         c = Math.max(legacy, t.coins) + 25 * (qd[d] || 0);
         packets = d === ef ? Math.max(packets, t.packets) : t.packets;
         if (d === today) econToday = t;
+        if (typeof gardenRewardWorkDay === 'function') _gdAddItems(items, gardenRewardWorkDay(EI.get(d), t, d));   // real work also earns pegs, timber, tickets (94-garden-rewards-0rules.js)
       }
       coins += c; earned += c;
       for (let k = 0; k < packets; k++) { const id = pool[gardenHash('gd-packet|' + d + '|' + k) % pool.length]; items['seed:' + id] = (items['seed:' + id] || 0) + 1; }
@@ -623,6 +624,7 @@ function gardenSnapshot() {
     try { const sp = typeof gardenSpecWire === 'function' ? gardenSpecWire() : null; if (sp) out.sp = sp; } catch (e) { /* specimens are optional */ }   // your best few, for friends: ids and numbers, an older app drops the field
     try { const ca = typeof gardenCatchWire === 'function' ? gardenCatchWire() : null; if (ca) out.ca = ca; } catch (e) { /* the lake is optional */ }   // the lake: its hall, its rack, its records
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
+    try { const bk = typeof gardenBuildWire === 'function' ? gardenBuildWire() : null; if (bk) out.bk = bk; } catch (e) { /* optional */ }   // how you have painted your buildings: ids and small numbers, an older app drops the field
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     return out;
   } catch (e) { console.error('[garden]', e); return null; }
@@ -673,7 +675,10 @@ function gardenFacts(mArg) {
   try { cat = typeof gardenCatchFacts === 'function' ? gardenCatchFacts(m) : null; } catch (e) { cat = null; }
   let soc = null;   // ── garden-social ── visits, waterings, gifts, signatures and hearts with friends (94-garden-social-1core.js)
   try { soc = typeof gardenSocialFacts === 'function' ? gardenSocialFacts() : null; } catch (e) { soc = null; }
+  let rgn = null;   // a region's page finished (94-garden-regions-1core.js)
+  try { rgn = typeof gardenRegionFacts === 'function' ? gardenRegionFacts() : null; } catch (e) { rgn = null; }
   return {
+    ...(rgn || {}),
     ...(soc || {}),
     ...(cat || {}),
     planted: w.n.planted, harvests: w.n.harvests, bouquets: w.n.bouquets, sold: w.n.sold, dailyDone: w.n.daily, crafted: w.n.crafted || 0,
@@ -705,6 +710,7 @@ function gardenTick() {
   try {
     const g = _gdG(), m = gardenModel(), today = m.today, moments = [];
     let changed = false;
+    if (typeof gardenRewardTick === 'function') { try { gardenRewardTick(m); } catch (e) { console.error('[garden rewards]', e); } }   // small things for what you did today, and milestones
     // the season you tended in (Four seasons)
     if (!g.seen['season:' + m.season] && (Object.keys(g.wl[today] || {}).length || Object.values(g.led).some(e => e && e.d === today && e.k !== 'mig'))) { g.seen['season:' + m.season] = today; changed = true; }
     // rare seeds for achievements and events: granted once, then in the shop
@@ -1145,7 +1151,7 @@ function gardenLandInfo(id, m) {
   const def = gardenArea(id); if (!def || !def.buy || !def.plot) return null;
   m = m || gardenModel();
   const owned = gardenHas('land:' + id) > 0;
-  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv, afford: m.wallet.coins >= def.buy, reach: !def.via || m.areas.includes(def.via), keyOk: !def.needs || gardenHas(def.needs) > 0 };
+  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv - (typeof gardenRewardEarly === 'function' ? gardenRewardEarly(def) : 0), afford: m.wallet.coins >= def.buy, reach: !def.via || m.areas.includes(def.via), keyOk: !def.needs || gardenHas(def.needs) > 0 };
 }
 /** Buy a section with coins. One Undo; what grows on it stays where it is. */
 function gardenBuyLand(id) {
@@ -1156,9 +1162,10 @@ function gardenBuyLand(id) {
   if (!info.reach) return _gdNo(`The path to ${info.def.name} is not open yet`);
   if (!info.keyOk) return _gdNo(`${info.def.name} has a rusty gate: you need the old key. Keep digging`);
   const m = gardenModel();
-  if (!info.afford) return _gdNo(`That costs ${info.cost} coins: you have ${m.wallet.coins}`);
+  const rq = typeof gardenRewardQuote === 'function' ? gardenRewardQuote(info.cost) : null, pay = rq ? rq.c : info.cost;   // (part paid in materials: 94-garden-rewards-0rules.js)
+  if (m.wallet.coins < pay) return _gdNo(`That costs ${pay} coins: you have ${m.wallet.coins}`);
   const lk = 'b.' + m.today + '.' + _gdUid(''), mark = _gdMark([['led', lk]]);
-  _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(info.cost), x: 5, i: { ['land:' + id]: 1 }, n: 1 };
+  _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(pay), x: 5, i: Object.assign({ ['land:' + id]: 1 }, rq && rq.i), n: 1 };
   _gdEmit('land', { id, x: info.def.x, y: info.def.y, w: info.def.w, h: info.def.h });
   const done = _gdDone(`${info.def.name} is yours`, `buying ${info.def.name.toLowerCase()}`, mark, { icon: 'trees' });
   gardenModel();   // (the land on screen, and what you can walk on, are yours from this moment)

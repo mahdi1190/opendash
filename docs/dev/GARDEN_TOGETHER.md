@@ -371,6 +371,8 @@ The owner's own online status is left as they set it: `presence` is off by defau
 
 What a person carries goes in their look as `g` (ids; a receiver draws from its own tables and leaves out what it does not know), through `cleanLook`, `gl:me` and `gl:who`, and again 1.5 s after a purchase or a change of gear. What is built goes in the snapshot's `wk`; a host in a live garden sends the snapshot again when they build, so it appears at once. A purchase is told as `fx got gear`, and held up on your own screen when the shop is closed (`gardenCatchMomentSoon`). A new thing to draw: a row in the table, a drawing, and this section's check.
 
+**Looks (`94-garden-style-*.js`).** The look of your rod and net, and what you carry, go in `g` as `rk`, `nk`, `hd`. How you have painted your buildings goes in the snapshot as `bk`: `[[building id, wall, roof, door, awning colour, awning style, roof style, sign]]`, by id and not by position. docs/dev/REWARDS.md has the rest.
+
 ## 23. Variants, specimens and showing off
 
 `94-garden-fish-0variants.js` (the table: pure, the server reads it too), `94-garden-fish-1vart.js` (the drawing), `94-garden-fish-8spec.js` (the records), `94-garden-fish-9best.js` (the page). The owner, 1 November 2026: "variants, so like shiny, glowing, evil, angel ... make every fish caught unique with its own size etc, and it gets added to some sort of user base".

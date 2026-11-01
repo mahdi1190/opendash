@@ -89,7 +89,7 @@ function gardenCastReach(rod) { return (rod || gardenRod()).st.range; }
 function gardenFishPlan(x, y) {
   const m = gardenModel(), zone = gardenWaterZone(x, y);
   if (!zone) return _gdNo('Nothing to fish in there');
-  if (zone === 'pond' && !m.areas.includes('pond')) return _gdNo('The pond opens at garden level 7');
+  if (zone === 'pond') { const no = gardenRegionWaterNo(x, y, m.areas); if (no) return _gdNo(no); }
   const contest = gardenCastsInfo(m).free;
   const rod = gardenRod(), bait = contest ? GARDEN_BAITS[0] : gardenBait(), station = gardenWorkOwned('fishing-station');
   // chum goes in with the cast: it is spent whether or not anything comes
@@ -187,17 +187,19 @@ function _gcBugsBase(mArg) {
   const habOk = (h) => h === 'flower' ? blooms.length > 0 : h === 'tree' ? trees.length > 0 : h === 'woods' ? woods : h === 'light' ? lights.length > 0 || woods : true;
   const ctx = { level: m.level.level, tod: m.tod, season: m.season, rain: wet, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id), plant: (id) => blooms.some(p => p.def.id === id), caught: (id) => !!g.bl[id] };
   if (typeof gardenEventOn === 'function') ctx.event = gardenEventOn;
-  const pool = GARDEN_BUGS.filter(b => gardenBugFits(b, ctx) && b.hab.some(habOk));
+  const rg = gardenRegionBugs(m, habOk);   // where each kind lives: only what lives on open land (94-garden-regions-1core.js)
+  const pool = GARDEN_BUGS.filter(b => gardenBugFits(b, ctx) && rg.ok(b));
   if (!pool.length) return [];
   // flowers bring them, up to what a garden of this level holds: 2 at the start, one more every 5 levels. A bug hotel adds one of its own
   const cap = Math.min(GARDEN_BUGS_MAX, 2 + Math.floor(m.level.level / 5) + Math.min(2, hotels));
   const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + (woods ? 1 : 0) + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
   const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1));   // (habitats you built: a kind comes more often, never more bugs)
+  rg.even(pool, weights);
   const out = [];
   for (let i = 0; i < n * 3 && out.length < n; i++) {
     let r = rnd() * weights.reduce((a, b) => a + b, 0), k = 0;
     for (; k < pool.length - 1; k++) { r -= weights[k]; if (r <= 0) break; }
-    const b = pool[k], habs = b.hab.filter(habOk), hab = habs[Math.floor(rnd() * habs.length)], want = b.needs && b.needs.plant ? blooms.find(p => p.def.id === b.needs.plant) : null, s = want ? { x: want.x + 0.5, y: want.y + 0.6 } : spot(hab);
+    const b = pool[k], habs = b.hab.filter(habOk), hab = habs[Math.floor(rnd() * habs.length)] || b.hab[0], want = b.needs && b.needs.plant ? blooms.find(p => p.def.id === b.needs.plant) : null, s = want ? { x: want.x + 0.5, y: want.y + 0.6 } : rg.away(b) ? rg.cell(b, rnd, free) : spot(hab);
     if (!s) continue;
     const key = win + '.' + out.length;
     if (caught.has(key)) { out.push(null); continue; }   // keeps the numbering stable when one is caught
