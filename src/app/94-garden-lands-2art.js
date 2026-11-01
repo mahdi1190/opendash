@@ -116,24 +116,26 @@ const _GLD_ART = (function () {
     for (const L of loops(allCells, a.id, -2, 7)) s += A.P(P[0], dOf(L));
     { let dk = ''; for (let i = 0; i < a.w * a.h / 7; i++) { const [x, y] = inCell(r, allCells); dk += A.blob(r, x, y, rr(r, 18, 42), rr(r, 7, 15), 8, 0.5); } s += A.P(P[1], dk, 0.35); }
     for (const sec of secs) {
-      const isOpen = open.has(sec.id), lps = loops(sec.cells, sec.id, 3, 3.2), rs = A.rng(A.hash('gld-sec|' + sec.id + '|' + season));
+      const isOpen = open.has(sec.id), lps = loops(sec.cells, sec.id, 5, 6.5), rs = A.rng(A.hash('gld-sec|' + sec.id + '|' + season));
       if (isOpen) {
         const base = tile(sec.tile, season), lip = A.shift(base, 8, 1, -0.24);
         for (const L of lps) s += `<path d="${dOf(L)}" fill="${lip}" transform="translate(0 3.5)"/>` + A.P(base, dOf(L));   // the lip along its front: the ground steps down here
         s += sec.pool ? pool(sec, lps[0], rs, sc) : PAINT[sec.kind](rs, sec.cells, sc, base);
+        { let fr = ''; for (const L of lps) for (const q of L) { const n = 2; for (let k = 0; k < n; k++) fr += tuft(q.x + rr(rs, -7, 7), q.y + rr(rs, -2, 3), rr(rs, 4, 8), rr(rs, -2, 2)); } s += A.S(A.shift(P[0], 6, 1, -0.12), 0.9, fr, 0.85); }
       } else {
         // not yours: longer grass in clumps, a few flowers, and it is fenced
-        for (const L of lps) s += A.P(P[2], dOf(L), 0.5);
         s += grassy(rs, sec.cells, A.shift(P[0], 6, 1, -0.2), 1.8) + dotsOf(rs, sec.cells, 0.5, season === 'winter' ? ['#f4f7f8'] : season === 'autumn' ? ['#e8a23a'] : ['#fbfbf2', '#f6d23a']);
+        if (rs() < 0.4) { const [bx, by] = inCell(rs, sec.cells), R = rr(rs, 9, 15), leaf = season === 'winter' ? ['#7c8c74', '#9aa890'] : season === 'autumn' ? ['#a4742e', '#c8963e'] : ['#4f8a44', '#74ac58']; s += A.P('#1c2a14', A.ell(bx + 2, by + R * 0.3, R, R * 0.3), 0.18) + `<path fill="${leaf[0]}" stroke="${A.dk(leaf[0], 0.3)}" stroke-width="0.7" d="${A.blob(rs, bx, by - R * 0.4, R, R * 0.8, 9, 0.16)}"/>` + A.P(leaf[1], A.blob(rs, bx - R * 0.26, by - R * 0.62, R * 0.55, R * 0.42, 8, 0.2), 0.95); }
         if (sec.pool) s += A.P(tile('pond-water', season), A.blob(rs, sec.x * W().cellW + sec.w * W().cellW / 2, py(sec.y) + sec.h * W().cellH / 2, sec.w * W().cellW * 0.3, sec.h * W().cellH * 0.28, 12, 0.14), 0.55);
         for (const L of lps) {
-          // one fence between two closed sections, not two; a run breaks where there is none
+          // a fence only where it faces land you can stand on: closed land next to closed land is just one rough hillside
           let run = [];
           const flush = () => { if (run.length > 1) s += fenceAlong(rs, run, season); run = []; };
           const n = L.length;
           for (let i = 0; i < n; i++) {
-            const q = L[i], nb = gardenLandCell(q.nb[0], q.nb[1]), other = nb && nb.plot && !open.has(nb.id);
-            if (other && nb.id < sec.id) { flush(); continue; }
+            const q = L[i], nb = gardenLandCell(q.nb[0], q.nb[1]), offWorld = q.nb[0] < 28 && q.nb[1] < 11 || q.nb[0] >= W().cols || q.nb[1] >= W().rows || q.nb[1] < 0 || (q.nb[0] < 28 && q.nb[1] >= 13);
+            const faces = nb ? open.has(nb.id) || open.has(gardenLandPlotAt(q.nb[0], q.nb[1])) : !offWorld;
+            if (!faces) { flush(); continue; }
             run.push([q.x, q.y]);
           }
           if (run.length === n) run.push(run[0]);
@@ -162,8 +164,8 @@ const _GLD_ART = (function () {
     const ph = (A.hash('gld-t|' + seed) % 628) / 100, pts = [];
     for (let i = 0; i < run.length; i++) {
       const [x, y] = run[i], p = run[i - 1] || run[i], n = run[i + 1] || run[i], vert = p[0] === n[0], horiz = p[1] === n[1];
-      const k1 = Math.sin(i * 1.5 + ph), cx = px(x + 0.5), cy = py(y + 0.5);
-      pts.push([cx + (vert ? k1 * 11 : 0), cy + (horiz ? k1 * 5 : 0)]);
+      const k1 = Math.sin(i * 1.5 + ph), cx = px(x + 0.5), cy = py(y + 0.5), corner = i > 0 && i < run.length - 1 && !vert && !horiz;
+      if (!corner) pts.push([cx + (vert ? k1 * 12 : 0), cy + (horiz ? k1 * 6 : 0)]);
       if (i < run.length - 1) { const q = run[i + 1], k2 = Math.sin(i * 1.5 + ph + 1.2); pts.push([px((x + q[0]) / 2 + 0.5) + (vert ? k2 * 9 : 0), py((y + q[1]) / 2 + 0.5) + (horiz ? k2 * 4 : 0)]); }
     }
     return pts;
@@ -198,12 +200,15 @@ const _GLD_ART = (function () {
     if (closed) s += `<path d="${closed}" fill="none" stroke="${A.mix(sand, P[1], 0.62)}" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" stroke-opacity="0.65"/>`;
     if (steps) s += A.S(A.shift(sand, 8, 1, -0.3), 1.6, steps, 0.6);
     if (peb) s += A.P(A.shift(sand, 10, 1, -0.25), peb, 0.7);
+    // the lake's east shore runs down the side of the field: a beach with a wandering edge, over the straight end of the water
+    { const r2 = A.rng(A.hash('gld-shore')), x = px(28), pts = []; for (let y = 13; y <= W().rows; y += 0.5) pts.push([x + Math.sin(y * 0.9) * 9 + rr(r2, -3, 3), py(y)]);
+      const d = curve(pts, false), wet = A.shift(sand, 8, 1, -0.2); s += `<path d="${d}" fill="none" stroke="${wet}" stroke-width="20" stroke-opacity="0.55" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${sand}" stroke-width="14" stroke-linecap="round"/><path d="${curve(pts.map(p => [p[0] - 9, p[1]]), false)}" fill="none" stroke="#ffffff" stroke-width="1.800" stroke-opacity="0.55" stroke-linecap="round"/>`; }
     // the price on what you can buy from here
     if (!o.photo && !o.readOnly) for (const sec of GARDEN_LAND_SECTIONS) {
       if (open.has(sec.id) || open.has(sec.plot)) continue;
       const D = gardenLandDoor(sec); if (!D || (sec.via && !open.has(sec.via))) continue;
       const lvNow = sc.lv == null ? 99 : sc.lv, forSale = lvNow >= sec.lv;
-      if (!forSale && sec.lv > lvNow + 2) continue;   // far off: the land office lists it, a sign here would only be clutter
+      if (!forSale && sec.lv > lvNow + 1) continue;   // far off: the land office lists it, a sign here would only be clutter
       live += sign(px(D.fx + 0.5), py(D.fy + 1) - 2, forSale ? String(sec.buy) : `Level ${sec.lv}`, forSale, sec.id);
     }
     return { s, live };
@@ -260,7 +265,7 @@ function _gldHedgeRow(p, sc) {
   let b = '', t = '', l = '';
   for (let x = x0 + 4; x < x1; x += 11) { b += A.circ(x + A.rr(r, -1.5, 1.5), by - 11 + A.rr(r, -2, 2), A.rr(r, 9, 12)); t += A.circ(x - 2 + A.rr(r, -1, 1), by - 17 + A.rr(r, -2, 1), A.rr(r, 4, 7)); }
   for (let i = 0; i < (x1 - x0) / 5; i++) l += A.leaf(x0 + r() * (x1 - x0), by - 4 - r() * 20, r() * 6.2, 2.6, 0.8);
-  return `<path fill="#1a2a14" fill-opacity="0.2" d="${A.ell((x0 + x1) / 2, by + 1, (x1 - x0) / 2 + 3, 3)}"/>` + A.P(c[0], A.rrect(x0, by - 13, x1 - x0, 14, 5) + b) + A.P(c[1], t) + A.P(c[2], l, 0.7);
+  return `<path fill="#1a2a14" fill-opacity="0.2" d="${A.ell((x0 + x1) / 2, by + 1, (x1 - x0) / 2 + 3, 3)}"/>` + A.P(c[0], A.rrect(x0, by - 13, x1 - x0, 14, 5)) + A.P(c[0], b) + A.P(c[1], t) + A.P(c[2], l, 0.7);
 }
 function _gldDraw(kind, p, sc, o) {
   const fn = _GLD_PROP_ART[kind]; if (!fn) return '';

@@ -679,7 +679,7 @@ function _glDirect(W) {
     if (def.egg || _glCount(def.id) >= (def.max || 2) || !_glEligible(def, W, v)) continue;
     if (_GL_RARE.has(def.rarity) && (_gl.rareN || 0) >= T.rarePerVisit) continue;
     // a butterfly or a bee you cannot catch looks like one you can: one at a time, and seldom
-    if (def.group === 'insect' && _gl.list.some(c => !c.gone && !c.left && c.def.group === 'insect')) continue;
+    if (def.group === 'insect' && [..._gl.list].some(c => !c.gone && !c.left && c.def.group === 'insect')) continue;
     const w = _glOdds(def, W) * (def.group === 'insect' ? 0.15 : 1); pool.push([def, w]); total += w;
   }
   if (!pool.length) { _gl.spawnT = 3; return; }

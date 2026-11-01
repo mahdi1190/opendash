@@ -457,7 +457,7 @@ const _GARTW = (function () {
       else if (a.tile === 'glasshouse') late.push(greenhouse(ar, sc, a, x, y, w, h, W));
       else if (a.tile === 'tilled' || a.tile === 'soil') {
         const deep = A.shift(col, 6, 1, -0.1), S = A.shift(col, 0, 1.02, a.tile === 'tilled' ? -0.02 : -0.03);
-        const bx = x + 7, by = y + 7, bw = w - 14, bh = h - 14, bed = softBed(a.id, a, 5, 3.5);
+        const bx = x + 7, by = y + 7, bw = w - 14, bh = h - 14, bed = softBed(a.id, a, 7, 7);
         s += `<path d="${bed}" fill="${deep}" transform="translate(0 3)" fill-opacity="0.6"/>` + A.P(S, bed);
         s += soilOn(ar, bx, by, bw, bh, S, deep, lod);
         if (a.tile === 'tilled') s += furrows(ar, bx, by, bw, bh, ch, S, deep);
