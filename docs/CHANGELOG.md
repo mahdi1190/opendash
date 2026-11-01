@@ -10,6 +10,20 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.35.0]
+
+You choose how much Freeflo reads your email, and it can now suggest calendar events too.
+
+### Added
+- **Settings > Reading your email.** Pick Light, Balanced or Thorough, or set each choice: how often it looks, how far back, how many emails at a time, how sure it must be, and whether to skip automatic email or read only people you know.
+- **Never read email from:** addresses or whole domains Claude never sees. Filters run on your computer, before anything is sent.
+- **Calendar events from email.** Meetings, appointments and deadlines with a clear date appear on the Email page with Add to calendar. Nothing reaches your calendar until you press it.
+- **Add tasks by themselves (off by default):** tasks it is very sure of go straight in, with Undo.
+
+### Fixed
+- Choosing to read further back now sticks: the next automatic read used to go back to 2 weeks.
+- Update inbox and the page's Last days choice now use the same setting.
+
 ## [2.34.1]
 
 Playing together stays in step, and fishing has fewer rough edges.
