@@ -339,6 +339,7 @@ function _grmKey(ev) {
  * One viewBox for all of them, so they line up at any window size; only the top one takes the pointer. A little still detail between two moving things stays with them, or a room would be a dozen layers.
  */
 const GRM_MOVES = /(^|\s)(grm-(tw|mote|rip|ray|bub|cloud|spray|sail|fall|steam|sway|drip|dripr|glowp|pop|fire)|ee-flame)(\s|$)/;
+const GRM_LAYERS_MAX = 7;
 function _grmMoves(el) {
   if (GRM_MOVES.test(el.getAttribute('class') || '')) return true;
   for (const k of el.querySelectorAll('[class]')) if (GRM_MOVES.test(k.getAttribute('class'))) return true;
@@ -353,13 +354,17 @@ function _grmArtLayers(R, root) {
     const moves = el.tagName.toLowerCase() !== 'defs' && _grmMoves(el), last = runs[runs.length - 1];
     if (last && last.moves === moves) last.els.push(el); else runs.push({ moves, els: [el] });
   }
-  const out = [];
-  runs.forEach((r, i) => {
-    const prev = out[out.length - 1];
-    if (prev && !r.moves && r.els.length < 6 && i < runs.length - 1) { prev.els.push(...r.els); return; }   // (too little to be worth a layer of its own)
-    if (prev && prev.moves === r.moves) { prev.els.push(...r.els); return; }
-    out.push(r);
-  });
+  // never more than a few layers: each one costs the graphics card a window's worth of memory, so the smallest still parts join what moves next to them until it fits (the lamp room would be 41)
+  let out = [];
+  for (let small = 6; ; small *= 2) {
+    out = [];
+    for (const r of runs) {
+      const prev = out[out.length - 1];
+      if (prev && (prev.moves === r.moves || (!r.moves && r.els.length < small))) prev.els = prev.els.concat(r.els);
+      else out.push({ moves: r.moves, els: r.els });
+    }
+    if (out.length <= GRM_LAYERS_MAX || small > 1000) break;
+  }
   for (const r of out) {
     const svg = document.createElementNS(NS, 'svg'), g = document.createElementNS(NS, 'g');
     svg.setAttribute('class', 'ee-svg grm-layer' + (r.moves ? '' : ' is-still')); svg.setAttribute('viewBox', `0 0 ${GRM.W} ${GRM.H}`); svg.setAttribute('preserveAspectRatio', 'xMidYMid meet'); svg.setAttribute('aria-hidden', 'true');
