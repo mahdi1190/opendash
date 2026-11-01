@@ -180,7 +180,7 @@ html[data-motion="reduced"] .gd-svg .gd-shadowfish, html[data-motion="reduced"] 
 
 /* fishing locks you in */
 .gd-page.is-fishing .gd-toolbar { opacity: .4; pointer-events: none; transition: opacity .25s; }
-.gd-page.is-fishing .gd-camui { display: none; }
+.gd-page.is-fishing .gd-camui, .gd-page.is-fishing .gd-walkhint { display: none; }
 .gd-full .gd-stagebox[data-fishing="1"], .gd-full .gd-stagebox[data-fishing="1"] * { cursor: default; }
 .gd-stagebox[data-fishing="1"] .gd-status, .gd-stagebox[data-fishing="1"] .gd-hovercard { display: none; }
 .gd-fishhud { position: absolute; z-index: 6; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); font-size: var(--text-sm); animation: gd-card-in .25s ease-out; }

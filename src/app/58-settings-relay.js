@@ -297,6 +297,7 @@ function _rlMainCard(el, st) {
   const c = _settingsCard('Your relay', '');
   el.appendChild(c.card);
   const running = st.connect && st.connect.state === 'running';
+  if (st.stale && !running) c.body.appendChild(_settingsRow('Your relay needs a quick update', 'Friends can be turned away until you do. Same address, and everyone keeps access. Press Update my relay under Advanced below.'));
   // 2.17.1: set up on another computer of the person (its record arrived through sync, or is on its way): never a second relay.
   const pend = !!(st.relay && st.relay.pending);
   // The status line first (docs/dev/SIMPLIFY_PLAN.md 5.3): a dot, one word, one detail.

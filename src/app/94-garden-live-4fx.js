@@ -48,6 +48,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'cheer') { _gllCheerFx(A, e, ev); return; }
   if (c === 'hall') { if (typeof _eeHear === 'function') _eeHear(A, ev); return; }
   if (c === 'snap') { if (typeof _glsHear === 'function') _glsHear(A, ev); return; }   // (a group photo: 94-garden-live-7snap.js)
+  if (c === 'sync') { if (e === 'ask') { if (typeof _glyAsked === 'function') _glyAsked(A); } else if (typeof _glyAtIn === 'function') _glyAtIn(A, ev); return; }   // (staying in step: 94-garden-live-8sync.js)
   if (c === 'fs') { if (typeof _gfsHeard === 'function') _gfsHeard(A, ev); return; }   // (the fish at a guest's line: the host decides)
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {
@@ -186,5 +187,5 @@ function _gllFxStep(A, dt) {
   e.line.setAttribute('d', `M${tipX.toFixed(1)} ${tipY.toFixed(1)}Q${((tipX + bx) / 2).toFixed(1)} ${(Math.max(tipY, by) + sag).toFixed(1)} ${bx.toFixed(1)} ${(by - 4).toFixed(1)}`);
   e.bob.setAttribute('transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)})`);
   e.bub.setAttribute('visibility', F.state === 'bite' ? 'visible' : 'hidden');
-  if (F.state === 'bite') e.bub.setAttribute('transform', `translate(0 ${(-84 - Math.abs(Math.sin(F.t * 9)) * 3).toFixed(1)})`);
+  if (F.state === 'bite') e.bub.setAttribute('transform', `translate(${bx.toFixed(1)} ${(by - 30 - Math.abs(Math.sin(F.t * 9)) * 3).toFixed(1)})`);   // over the float, where everyone is looking
 }
