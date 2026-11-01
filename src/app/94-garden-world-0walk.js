@@ -470,16 +470,50 @@ function _gwMakeNode() {
 }
 
 /* ---------- depth: the player and the pet sit in the objects layer by row ---------- */
+/*
+ * Rows (the owner: "lag everywhere", "stuttery"). Anything that moves used to be taken out of the objects layer and put back whenever it changed row, and one insertion among 800
+ * siblings restyled and laid out the whole layer: measured 330 ms on a full garden, several times a second. So the layer now holds one empty <g class="gd-row"> before each new depth,
+ * made when the scene changes, and what moves goes in and out of those. A move touches a handful of nodes, whatever the size of the garden.
+ * Row i holds what stands at a depth below zs[i] (and at or past zs[i - 1]), which draws things exactly where "before the first thing further forward" did.
+ */
+function _gwRowsBuild(layer) {
+  const old = layer._gwRowMap || new Map(), map = new Map(), zs = [], slots = [], need = [];
+  let max = -Infinity;
+  for (const el of layer.children) {
+    if (el.hasAttribute('data-live')) continue;
+    const ez = Number(el.getAttribute('data-z'));
+    if (Number.isFinite(ez) && ez > max) { max = ez; need.push([ez, el]); }
+  }
+  need.push([Infinity, null]);
+  for (const [z, before] of need) {
+    let g = old.get(z);
+    if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'gd-row'); g.setAttribute('data-live', '1'); }
+    if (before ? before.previousElementSibling !== g : (g.parentNode !== layer || g.nextElementSibling)) layer.insertBefore(g, before);
+    map.set(z, g); zs.push(z); slots.push(g);
+  }
+  layer._gwRowMap = map; layer._gwRows = { zs, slots };
+  // a depth nothing stands at any more: what was in its row moves to the right one
+  for (const [z, g] of old) {
+    if (map.has(z)) continue;
+    const kids = [...g.children]; g.remove();
+    for (const n of kids) gardenRowPlace(layer, n, Number(n.getAttribute('data-z')) || 0);
+  }
+  return layer._gwRows;
+}
+/** Put a node in the row it stands in. Nothing happens when it is already there: only a real change of what is in front of it touches the page. */
+function gardenRowPlace(layer, node, z) {
+  const R = layer._gwRows || _gwRowsBuild(layer), zs = R.zs;
+  let a = 0, b = zs.length - 1;
+  while (a < b) { const m = (a + b) >> 1; if (zs[m] > z) b = m; else a = m + 1; }
+  const row = R.slots[a];
+  let ref = null;
+  for (let c = row.firstElementChild; c; c = c.nextElementSibling) { if (c !== node && Number(c.getAttribute('data-z')) > z) { ref = c; break; } }
+  if (node.parentNode === row && node.nextElementSibling === ref) return;
+  row.insertBefore(node, ref);
+}
 function _gwPlace(node, z) {
   const layer = _gw.svg && _gw.svg.querySelector('.gd-objects'); if (!layer || !node) return;
-  let ref = null;
-  for (const el of layer.children) {
-    if (el === node) continue;
-    const ez = Number(el.getAttribute('data-z'));
-    if (Number.isFinite(ez) && ez > z) { ref = el; break; }
-  }
-  if (node.parentNode === layer && node.nextSibling === ref) return;
-  layer.insertBefore(node, ref);
+  gardenRowPlace(layer, node, z);
 }
 function _gwApplyNode() {
   const W = GARDEN_WORLD;

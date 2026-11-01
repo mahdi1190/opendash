@@ -267,7 +267,8 @@ function gardenSceneParts(sc, o) {
   const vis = (sc.visitors || []).filter(v => !((o.interactive || o.friend) && !o.photo && !o.still && typeof gardenLifeOwns === 'function' && gardenLifeOwns(v.id))).sort((a, b) => a.y - b.y);
   const items = [];
   // every item carries its signature on the node: one without it could not be found again, and was parsed anew on every repaint
-  const push = (html) => { if (!html) return; const m = /data-sig="([^"]+)"/.exec(html), sig = m ? m[1] : String(gardenHash(html)); items.push([sig, m ? html : html.replace(/^\s*<\w+/, `$& data-sig="${sig}"`)]); };
+  const push = (html0) => { if (!html0) return; const html = html0.replace('class="gd-it', `class="gd-it gd-sw${items.length % 3}`);   // (the sway's timing goes in threes: a class, as :nth-child here made every insertion in the layer restyle all of it)
+    const m = /data-sig="([^"]+)"/.exec(html), sig = m ? m[1] : String(gardenHash(html)); items.push([sig, m ? html : html.replace(/^\s*<\w+/, `$& data-sig="${sig}"`)]); };
   let vi = 0;
   for (const ob of objs) {
     while (vi < vis.length && vis[vi].y <= ob.z - 0.05) push(_gdrVisitor(vis[vi++], sc, o));
@@ -488,6 +489,7 @@ function _gdrPatchItems(layer, items) {
     if (el === ref) ref = ref.nextSibling; else layer.insertBefore(el, ref);
   }
   clear(ref, null);
+  if (layer._gwRows) _gwRowsBuild(layer);   // the depths may have changed: the rows follow (94-garden-world-0walk.js). What moves lives in them, so nothing below finds anything out of place
   // what lives in a row goes back in its row, and only if it has been left in the wrong one
   const zOf = (el) => (el ? Number(el.getAttribute('data-z')) : NaN);
   for (const el of [...layer.children]) {

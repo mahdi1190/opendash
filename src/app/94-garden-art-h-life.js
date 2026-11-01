@@ -106,6 +106,8 @@ function _gartRestItems(svg) {
     const off = !(b.x + b.w > vb.x - GART_OFF_MARGIN && b.x < vb.x + vb.width + GART_OFF_MARGIN && b.y + b.h > vb.y - GART_OFF_MARGIN && b.y < vb.y + vb.height + GART_OFF_MARGIN);
     if (!!el._gartOff !== off) { el._gartOff = off; el.classList.toggle('gart-off', off); }
   }
+  { const W0 = GARDEN_WORLD, gp = svg.querySelector('.gd-paths');   // the paths and the painted ground are drawn or not by the same measure
+    if (gp) for (let i = 0, kids = gp.children; i < kids.length; i++) { const el = kids[i]; if (el._gartPx === undefined) { const gx = el.getAttribute('data-x'), gy = el.getAttribute('data-y'); el._gartPx = gx == null ? null : (+gx + 0.5) * W0.cellW; el._gartPy = gy == null ? 0 : W0.sky + +gy * W0.cellH; } if (el._gartPx === null) continue; const far = !(el._gartPx > vb.x - GART_OFF_MARGIN && el._gartPx < vb.x + vb.width + GART_OFF_MARGIN && el._gartPy > vb.y - GART_OFF_MARGIN && el._gartPy < vb.y + vb.height + GART_OFF_MARGIN); if (!!el._gartOff !== far) { el._gartOff = far; el.classList.toggle('gart-off', far); } } }
   const W = GARDEN_WORLD, m = W.cellW * 2, cx = vb.x + vb.width / 2, cy = vb.y + vb.height / 2, near = [];
   const items = layer.children;
   for (let i = 0; i < items.length; i++) {

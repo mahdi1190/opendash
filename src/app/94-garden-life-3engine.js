@@ -763,9 +763,7 @@ function _glVisitFrame(ts) {
     { const tf = `translate(${(S.x * G.cellW).toFixed(1)} ${(G.sky + S.y * G.cellH - S.lift).toFixed(1)})`; if (S.tf !== tf) { S.tf = tf; S.node.setAttribute('transform', tf); } }
     const z = S.z != null ? S.z : S.y, zk = Math.floor(z * 3);
     if (S.zk !== zk || !S.node.parentNode) {
-      S.zk = zk; S.node.setAttribute('data-z', z.toFixed(2)); let ref = null;
-      for (const el of layer.children) { if (el === S.node) continue; const ez = Number(el.getAttribute('data-z')); if (Number.isFinite(ez) && ez > z) { ref = el; break; } }
-      layer.insertBefore(S.node, ref);
+      S.zk = zk; S.node.setAttribute('data-z', z.toFixed(2)); gardenRowPlace(layer, S.node, z);
     }
   }
   V.t = (V.t || 0) + dt; if (V.t > 1) { V.t = 0; _glDirect(_gl.W); }

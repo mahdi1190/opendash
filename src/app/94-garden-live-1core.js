@@ -147,10 +147,7 @@ function _gllStep(A, dt) {
 /** Put a node in the row it stands in, among the plants, so what is in front of it hides it. */
 function _gllPlace(svg, node, z) {
   const layer = svg && svg.querySelector('.gd-objects'); if (!layer) return;
-  let ref = null;
-  for (const el of layer.children) { if (el === node) continue; const ez = Number(el.getAttribute('data-z')); if (Number.isFinite(ez) && ez > z) { ref = el; break; } }
-  if (node.parentNode === layer && node.nextSibling === ref) return;
-  layer.insertBefore(node, ref);
+  gardenRowPlace(layer, node, z);
 }
 /* ---------- what people do ---------- */
 function _gllEmote(A, id, instant) {
