@@ -42,6 +42,11 @@ const GARDEN_CREATURES = Object.freeze([
     art: ['butterfly', { fore: '#f0e15e', hind: '#e6d94e', edge: '#8a8a30', marks: 'veins', k: 0.92 }], when: { seasons: ['spring'], tod: ['day'], weather: ['clear'] },
     behaviours: _GL_FLYER(), react: { mark: 'heart' }, book: { hint: 'The first warm days of spring.', blurb: 'The butter-coloured one: some say it gave butterflies their name.' } },
 
+  /* ---------- 2.40: hens, wherever a coop stands (docs/dev/HUNDRED_PLAY.md) ---------- */
+  { id: 'hen', name: 'Hen', group: 'bird', rarity: 'common', tags: ['bird'], habitat: 'ground', speed: 0.5, foot: 0.12, count: [1, 3], max: 3,
+    art: ['bird', { body: '#b5763e', belly: '#e8c898', wing: '#8a5430', head: '#b5763e', beak: '#e8b83c', k: 0.95, tail: 8 }], when: { tod: ['dawn', 'day', 'dusk'] }, needs: { near: ['effect:coop'] },
+    behaviours: [['peck', { weight: 1 }], ['wander', { pause: [2, 6], range: 3 }], ['startled-by-pet', { r: 0.9 }], 'leave-when-over'], react: { mark: 'note', sound: 'chirp' },
+    book: { hint: 'Comes with a hen coop.', blurb: 'Looks at everything as if it owes her money.' } },
   /* ---------- bees and small things ---------- */
   { id: 'honeybee', name: 'Honeybee', group: 'insect', rarity: 'common', tags: ['bee'], habitat: 'air', alt: 16, speed: 1.6, count: [1, 3], max: 4,
     art: ['bee', { band: '#f2b01e', pollen: '#f2c84a', k: 0.8 }], when: { seasons: ['spring', 'summer', 'autumn'], tod: ['day'], weather: ['clear'] }, needs: { near: ['bloom', 'effect:hive'] },

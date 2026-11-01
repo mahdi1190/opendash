@@ -468,6 +468,7 @@ function gardenWaterInfo(model) {
   for (const t of GARDEN_TOOLS) if (t.kind === 'can' && _gdOwnsTool(t.id)) cap += t.n;
   const per = {};
   for (const d of Object.values(g.decor)) { const dd = d && gardenDecor(d.d); if (dd && dd.effect && dd.effect.kind === 'can' && (per[dd.id] || 0) < 2) { per[dd.id] = (per[dd.id] || 0) + 1; cap += dd.effect.n || 0; } }
+  if (typeof gardenPlayWater === 'function') cap += gardenPlayWater(today);   // a dish that gives you a strong arm (94-garden-play-3cook.js)
   cap += gardenLandWaterExtra(g, today);   // a rain barrel, the morning's dew
   const A = _gdAct(), doneToday = A.days.has(today) ? A.days.get(today).n : 0;
   const wal = gardenWallet(), bonus = today >= wal.econFrom ? wal.econToday.water : Math.min(10, 2 * doneToday);
@@ -1243,6 +1244,7 @@ function gardenCollectInfo(uid, mArg) {
     const slot = Math.floor(Date.parse(m.today + 'T12:00:00Z') / (2 * _GD_DAY)), key = 'hy.' + slot + '.' + uid;   // clock-ok: a two-day slot from the ISO day
     return { kind: k, key, ready: !g.led[key] && m.blooms >= 3, label: 'Collect the honey', soon: m.blooms < 3 ? 'The bees want three flowers in bloom' : 'More honey in a day or two' };
   }
+  if (k === 'coop') { const key = 'eg.' + m.today + '.' + uid; return { kind: k, key, ready: !g.led[key], label: 'Collect the eggs', soon: 'More eggs tomorrow' }; }
   if (k === 'wish') { const key = 'wi.' + m.today; return { kind: k, key, ready: !g.led[key], label: 'Make a wish (1 coin)', soon: 'One wish a day' }; }
   return null;
 }
@@ -1254,6 +1256,7 @@ function gardenCollect(uid) {
   const g = _gdG(), mark = _gdMark([['led', info.key]]);
   let msg = '';
   if (info.kind === 'compost') { g.led[info.key] = { d: m.today, k: 'cp', i: { fertiliser: 1 }, n: 1 }; msg = 'One bag of fertiliser from the compost'; }
+  else if (info.kind === 'coop') { g.led[info.key] = { d: m.today, k: 'pl', i: { egg: 2 }, x: 1, n: 1 }; msg = 'Two eggs, still warm'; }
   else if (info.kind === 'hive') { g.led[info.key] = { d: m.today, k: 'hy', i: { honey: 1 }, x: 2, n: 1 }; msg = 'A jar of honey from the hive'; }
   else {
     if (gardenWallet().coins < 1) return _gdNo('A wish costs one coin');
