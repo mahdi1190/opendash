@@ -249,7 +249,11 @@
     o = o || {};
     _navHint = { kind: o.kind || 'page', dir: o.dir || 0, at: performance.now() };
     if (o.kind === 'sub') { update(); return; }
-    viewTransition(update);
+    // A page change draws the new page and fades it in. It used to be a View Transition, which froze the page to take two pictures of it
+    // and restyled the whole document twice (about 200 ms on every switch); the page's own entrance still plays (renderMain: Motion.stagger).
+    update();
+    const main = document.getElementById('main');
+    if (main && main.animate && !prefersReduced() && !document.hidden) main.animate([{ opacity: 0.55 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
   }
   /** A same-view change that should still slide (calendar next / previous): call before render(). */
   function hint(o) { _swapHint = o ? { region: o.region, dir: o.dir || 0, at: performance.now() } : null; }

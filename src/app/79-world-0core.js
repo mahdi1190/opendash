@@ -1913,7 +1913,7 @@ function worldAdd(pack, meta, spec) {
       else if (typeof sceneAdd === 'function') sceneAdd(pack, it, it.scene);
     } catch (e) { /* the pack registry is missing: nothing to add to */ }
     const key = _wcReg().get(it.id);
-    if (key) { key.pack = pack; try { _wcItemSpec(key); } catch (e) { /* lazy */ } }   // validate (repair) now: cheap; build later
+    if (key) key.pack = pack;   // validated (repaired) when the scene is first read, not at load: 1.5 s of every start went here
   }
   return items.length > 0;
 }
