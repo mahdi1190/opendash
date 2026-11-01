@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.60.1]
+
+### Fixed
+- **Characters no longer appear behind objects they stand in front of,** and things flash less when you zoom or catch something.
+
 ## [2.60.0]
 
 ### Fixed
