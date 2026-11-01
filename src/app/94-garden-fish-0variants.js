@@ -28,7 +28,7 @@ const GARDEN_VARIANTS = Object.freeze([
   _gvR('pale', 'Pale', 'uncommon', 60, { c: '#efe8d8', mix: 0.55, c2: '#faf6ea', mix2: 0.6, water: { fill: '#8fb6c8', op: 0.5 } }, { blurb: 'All the colour has washed out of it.' }),
   _gvR('dusky', 'Dusky', 'uncommon', 60, { c: '#3a3550', mix: 0.55, fx: ['sheen:#8a7ab8'], water: { fill: '#1a1538', op: 0.55 } }, { more: [[{ tod: 'dusk' }, 4]], blurb: 'The colour of the sky just after sunset.' }),
   _gvR('tiny', 'Tiny', 'uncommon', 70, { scale: 0.62, fx: [], water: { spark: '#ffffff' } }, { size: [0.35, 0.55], fat: 0.8, blurb: 'Perfect in every way, and far too small.' }),
-  _gvR('mossy', 'Mossy', 'uncommon', 60, { c: '#6a8a4a', mix: 0.35, fx: ['moss:#5a8a3a'], water: { fill: '#16402a', op: 0.5 } }, { more: [[{ work: 'reed-beds' }, 2], [{ hab: 'woods' }, 2]], blurb: 'Has not moved much lately.' }),
+  _gvR('mossy', 'Mossy', 'uncommon', 60, { c: '#6a8a4a', mix: 0.35, fx: ['moss:#5a8a3a'], water: { fill: '#16402a', op: 0.5 } }, { more: [[{ work: 'reed-beds' }, 2], [{ hab: 'woods' }, 2], [{ room: 'hothouse' }, 6]], blurb: 'Has not moved much lately.' }),
   _gvR('barnacled', 'Barnacled', 'uncommon', 70, { fx: ['barnacles:#d8d2c0'], water: { fill: '#2a3a44', op: 0.5 } }, { for: 'fish', more: [[{ zone: 'deep' }, 2]], fat: 1.1, blurb: 'Carrying a few passengers.' }),
   _gvR('sunlit', 'Sunlit', 'uncommon', 45, { c: '#f4c04a', mix: 0.4, fx: ['sheen:#fff2b0', 'spark:#ffe27a'], water: { fill: '#d8b84a', op: 0.42, spark: '#fff2b0' } }, { only: { tod: ['day'] }, more: [[{ season: 'summer' }, 2]], blurb: 'The sun seems to follow it about.' }),
   _gvR('moonlit', 'Moonlit', 'uncommon', 45, { c: '#b8cce8', mix: 0.6, c2: '#eef4ff', mix2: 0.7, fx: ['sheen:#ffffff', 'aura:#cfe0ff:0.16'], water: { fill: '#dce8ff', op: 0.5, aura: ['#cfe0ff', 0.14] } }, { only: { tod: ['night'] }, more: [[{ moon: 'full' }, 4]], blurb: 'Silver, and only about when the moon is.' }),
@@ -39,7 +39,7 @@ const GARDEN_VARIANTS = Object.freeze([
   /* ---------- rare ---------- */
   _gvR('silver', 'Silver', 'rare', 250, { c: '#c4ccd4', mix: 0.85, c2: '#eef2f6', mix2: 0.85, c3: '#8a949e', fx: ['sheen:#ffffff', 'spark:#ffffff'], water: { fill: '#c8d4dc', op: 0.55, spark: '#ffffff' } }, { blurb: 'Like a new coin.' }),
   _gvR('golden', 'Golden', 'rare', 400, { c: '#e8b828', mix: 0.92, c2: '#fbe27a', mix2: 0.9, c3: '#b88a10', fx: ['sheen:#fff6c0', 'spark:#fff2a0'], water: { fill: '#e8c24a', op: 0.6, spark: '#fff2a0' } }, { blurb: 'Solid gold, by the look of it. It is not. It is still worth a lot.' }),
-  _gvR('albino', 'Albino', 'rare', 300, { c: '#f8f4ee', mix: 0.95, c2: '#ffffff', mix2: 0.95, c3: '#f0d8d8', p: '', eye: '#e04a5a', water: { fill: '#f4f6f8', op: 0.62 } }, { blurb: 'White from nose to tail, with pink eyes.' }),
+  _gvR('albino', 'Albino', 'rare', 300, { c: '#f8f4ee', mix: 0.95, c2: '#ffffff', mix2: 0.95, c3: '#f0d8d8', p: '', eye: '#e04a5a', water: { fill: '#f4f6f8', op: 0.62 } }, { more: [[{ room: 'cave' }, 12]], blurb: 'White from nose to tail, with pink eyes.' }),
   _gvR('melanistic', 'Melanistic', 'rare', 300, { c: '#1a1a22', mix: 0.92, c2: '#2c2c36', mix2: 0.9, c3: '#0c0c12', fx: ['sheen:#5a5a70'], water: { fill: '#02060c', op: 0.72 } }, { blurb: 'Melanistic means jet black: the opposite of an albino.' }),
   _gvR('shiny', 'Shiny', 'rare', 450, { sat: 1, fx: ['sheen:#ffffff', 'spark:#ffffff', 'spark2:#ffe27a'], water: { spark: '#ffffff', aura: ['#ffffff', 0.1] } }, { blurb: 'Exactly the same as any other, only it gleams.' }),
   _gvR('glowing', 'Glowing', 'rare', 350, { c: '#a8f4d8', mix: 0.5, c2: '#e4fff4', mix2: 0.7, fx: ['aura:#7ff0c8:0.26'], water: { fill: '#c4ffe8', op: 0.7, aura: ['#7ff0c8', 0.28] } }, { more: [[{ tod: 'night' }, 5], [{ work: 'night-lantern' }, 2]], blurb: 'Lights up the water around it.' }),
@@ -54,7 +54,7 @@ const GARDEN_VARIANTS = Object.freeze([
   _gvR('storm', 'Storm-touched', 'epic', 800, { c: '#4a5a7a', mix: 0.65, c2: '#8a9ab8', mix2: 0.5, fx: ['bolts:#ffe84a', 'aura:#c8d8ff:0.14'], water: { fill: '#2a3a5a', op: 0.62, spark: '#ffe84a' } }, { only: [{ rain: true }, { event: 'storm' }], more: [[{ event: 'storm' }, 5]], diff: 1, blurb: 'Crackling, faintly.' }),
   _gvR('starry', 'Starry', 'epic', 1000, { c: '#141c44', mix: 0.92, c2: '#242c64', mix2: 0.9, c3: '#0c1030', fx: ['stars:#ffffff', 'spark:#cfe0ff'], water: { fill: '#10183c', op: 0.72, spark: '#ffffff' } }, { only: { tod: ['night'] }, more: [[{ moon: 'new' }, 3], [{ event: 'meteor' }, 10]], blurb: 'A piece of the night sky, swimming.' }),
   _gvR('ghost', 'Ghost', 'epic', 1200, { c: '#dce8f0', mix: 0.85, c2: '#f4f8fc', mix2: 0.85, op: 0.58, fx: ['wisps:#dce8f0'], water: { fill: '#f0f6fa', op: 0.38, aura: ['#ffffff', 0.1] } }, { only: { tod: ['night', 'dawn', 'dusk'] }, more: [[{ event: 'fog' }, 8]], blurb: 'You can see the water through it.' }),
-  _gvR('crystal', 'Crystal', 'epic', 1500, { c: '#bfe8f4', mix: 0.85, c2: '#e8fbff', mix2: 0.85, c3: '#8ac8dc', op: 0.86, fx: ['facets:#ffffff', 'facets2:#8ad4ec', 'spark:#ffffff'], water: { fill: '#cfeef8', op: 0.55, spark: '#ffffff' } }, { more: [[{ zone: 'deep' }, 2]], blurb: 'Rings like a glass when you tap it.' }),
+  _gvR('crystal', 'Crystal', 'epic', 1500, { c: '#bfe8f4', mix: 0.85, c2: '#e8fbff', mix2: 0.85, c3: '#8ac8dc', op: 0.86, fx: ['facets:#ffffff', 'facets2:#8ad4ec', 'spark:#ffffff'], water: { fill: '#cfeef8', op: 0.55, spark: '#ffffff' } }, { more: [[{ zone: 'deep' }, 2], [{ room: 'cave' }, 6]], blurb: 'Rings like a glass when you tap it.' }),
   _gvR('frozen', 'Frozen', 'epic', 500, { c: '#bcdcf0', mix: 0.8, c2: '#ecf8ff', mix2: 0.85, c3: '#8ab8d8', fx: ['frost:#ffffff', 'icicles:#dff4ff', 'spark:#ffffff'], water: { fill: '#dff2ff', op: 0.6, spark: '#ffffff', aura: ['#bfe6ff', 0.14] } }, { only: { season: ['winter'] }, more: [[{ snow: true }, 3]], diff: 1, blurb: 'Cold to the touch, and quite unbothered.' }),
   _gvR('rainbow', 'Rainbow', 'epic', 1500, { fx: ['bands', 'sheen:#ffffff', 'spark:#ffffff'], water: { fill: '#c88ae0', op: 0.5, spark: '#ffe27a', aura: ['#8ad0ff', 0.12] } }, { more: [[{ rain: true }, 4]], blurb: 'Every colour at once.' }),
   _gvR('ember', 'Ember', 'epic', 1500, { c: '#3a1a14', mix: 0.85, c2: '#6a2a1a', mix2: 0.8, fx: ['cracks:#ff8a2a', 'aura:#ff6a2a:0.16'], water: { fill: '#c8481a', op: 0.6, aura: ['#ff6a2a', 0.2] } }, { more: [[{ season: 'summer' }, 3]], blurb: 'Still warm. The water steams a little.' }),
@@ -134,6 +134,7 @@ const _GV_EVENT_WORDS = Object.freeze({ 'blood-moon': 'during a blood moon', met
 const _GV_TOD_WORDS = Object.freeze({ dawn: 'at dawn', day: 'by day', dusk: 'at dusk', night: 'at night' });
 const _GV_ZONE_WORDS = Object.freeze({ pond: 'in a pond', shallow: 'in the shallows', mid: 'in open water', deep: 'in deep water' });
 const _GV_HAB_WORDS = Object.freeze({ flower: 'on flowers', lawn: 'on the lawn', ground: 'on the ground', tree: 'in trees', water: 'at the water’s edge', light: 'near lights', woods: 'in the woods' });
+const _GV_ROOM_WORDS = Object.freeze({ cave: 'in the cave pool at the back of the mossy grotto', hothouse: 'in the old hothouse' });
 const _GV_WORK_WORDS = Object.freeze({ 'reed-beds': 'once you have built a bed of reeds', 'night-lantern': 'once you have built a night lantern' });
 function _gvOr(list) { return list.length < 2 ? list.join('') : list.slice(0, -1).join(', ') + ' or ' + list[list.length - 1]; }
 function _gvWords(c) {
@@ -147,6 +148,7 @@ function _gvWords(c) {
   if (c.event) bits.push(_GV_EVENT_WORDS[c.event] || c.event);
   if (c.zone) bits.push(_gvOr(many(c.zone).map(z => _GV_ZONE_WORDS[z] || z)));
   if (c.hab) bits.push(_gvOr(many(c.hab).map(h => _GV_HAB_WORDS[h] || h)));
+  if (c.room) bits.push(_GV_ROOM_WORDS[c.room] || 'in a hidden room');
   if (c.work) bits.push(_GV_WORK_WORDS[c.work] || 'with ' + c.work);
   if (c.chum) bits.push('when you throw in chum');
   if (c.frenzy) bits.push('when the fish are feeding');
