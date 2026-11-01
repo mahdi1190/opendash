@@ -252,23 +252,23 @@ const GARDEN_LAND_FEATURES = (function () {
     }
     return f;   // (the throwaway check says if one has no spot; it is then not drawn or built)
   };
-  return _gdRows(_GLD_FEATURE_ROWS.map(place));
+  return _gdMovable(_GLD_FEATURE_ROWS.map(place));
 })();
 const _GLD_FEAT = new Map(GARDEN_LAND_FEATURES.map(f => [f.id, f]));
 function gardenLandFeature(id) { return _GLD_FEAT.get(String(id)) || null; }
 /* The maze, one character a cell over its footprint: # is hedge, C the chest. Gate at the top, from the Cabbage steps. */
 const GARDEN_LAND_MAZE = _gdF(['##.#####', '#...#.C#', '###.#.##', '#.....##', '########']);
-const GARDEN_LAND_OFFICE = _gdF({ id: 'land-office', name: 'Land office', x: 24, y: 19, w: 3, h: 1, door: _gdF({ x: 25, y: 20 }), act: 'lands', kind: 'lf-office', tall: 2.4, verb: 'look at the land', blurb: 'What you can buy and build, and what is still to come.' });
+const GARDEN_LAND_OFFICE = ({ id: 'land-office', name: 'Land office', x: 24, y: 19, w: 3, h: 1, door: _gdF({ x: 25, y: 20 }), act: 'lands', kind: 'lf-office', tall: 2.4, verb: 'look at the land', blurb: 'What you can buy and build, and what is still to come.' });
 const GARDEN_LAND_LAMPS = _gdF([3, 8, 41, 46, 50]);   // x along the lane's north edge, out where there are no shops
 /* Your finds, laid out on a table on the lane from the first one you dig up, until a museum takes them in. */
-const GARDEN_LAND_FINDS = _gdF({ id: 'land-finds', name: 'Your finds', x: 40, y: 19, w: 2, h: 1, col: 'soft', walk: 0, act: 'lf', lf: 'land-finds', door: _gdF({ x: 40, y: 20 }), kind: 'lf-finds', tall: 1, blurb: 'What has turned up so far.' });
+const GARDEN_LAND_FINDS = ({ id: 'land-finds', name: 'Your finds', x: 40, y: 19, w: 2, h: 1, col: 'soft', walk: 0, act: 'lf', lf: 'land-finds', door: _gdF({ x: 40, y: 20 }), kind: 'lf-finds', tall: 1, blurb: 'What has turned up so far.' });
 const GARDEN_LAND_KEY_ID = 'old-key';
 
 /* ---------- what is on the map for everyone ----------
    The owner: "make sure the new garden looks good, populated, lots of cool features, stone paths, plazas, unique easter eggs". A new garden is a place before you plant anything. These stand on thicket,
    the mown green or a path (col 'none' on a path), so they take no room from plots and block nothing. The same for every garden, so a friend sees them with no field in a snapshot.
    say: what you find when you go up to it. egg: a small secret, once each: {c: coins, x: experience, curio: 1, tod: only then, verb, found: what it says}. World cells. */
-const GARDEN_LAND_SIGHTS = _gdRows([
+const GARDEN_LAND_SIGHTS = _gdMovable([
   // the middle
   { id: 'ld-cross', art: 'cross', name: 'The market cross', x: 24, y: 11, col: 'soft', tall: 1.6, say: 'Worn smooth by hundreds of hands. There is a small slot in the base.', egg: { verb: 'Feel in the slot', c: 4, found: 'Somebody left four coins in the slot, a long time ago.' } },
   { id: 'ld-sign-c', art: 'finger', name: 'The signpost', x: 26, y: 12, col: 'none', tall: 1.5, say: 'North: the hill. East: the orchards. West: the fields. South: round the lake. One arm is blank.', egg: { verb: 'Read the blank arm', c: 1, found: 'In very small letters: “You are here.” Someone has taped a coin to it.' } },
@@ -422,6 +422,7 @@ function _gldPropsRebuild() {
     if (f.does === 'maze') { built.push(..._gldMazeRects(f)); continue; }
     built.push({ id: f.id, name: f.name, x: f.x, y: f.y, w: f.w, h: f.h, col: f.col, walk: 0, act: 'lf', lf: f.id, door: f.door, kind: 'lf-' + f.art, tall: f.tall, blurb: f.blurb });
   }
+  if (typeof gardenDesignLandProps === 'function') built.push(...gardenDesignLandProps());   // what you made in the designer: a small box at its foot, and nothing goes on top of it
   const at = new Map();
   for (const p of built) for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) at.set(x + ',' + y, p);
   _GLD_PROPS.built = built; _GLD_PROPS.at = at; _GLD_PROPS.key = 1;

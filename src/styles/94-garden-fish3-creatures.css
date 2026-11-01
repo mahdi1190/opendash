@@ -1,0 +1,129 @@
+/* Garden, fish and bugs: how each family moves (94-garden-fish-1art3.js, 1art4.js). Everything here is a transform or an opacity, and nothing runs unless it is on one of the stages below: a catch held up (yours or a friend's: the same drawing, the same moves, from the ids in gl:fx got), the catch card, the page of the book, the book's card under the pointer, a leap, a bug or a shadow in view (.is-seen, set by the frame that draws them). Paused in calm mode (.gd-calm, 94-garden.css); off with reduced motion. */
+/* --- fish: the tail, the fins, and what makes a family itself --- */
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-leap-r) .gcp-tail { animation: gcp-tail .5s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-leap-r) .gcp-fin { animation: gcp-fin .7s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-leap-r, .gd-bug.is-go) .gcp-seg { animation: gcp-seg 1s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-whisk { animation: gcp-whisk 1.1s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-bell { transform-box: fill-box; transform-origin: 50% 100%; animation: gcp-bell 1.1s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-tent { animation: gcp-tent 1.1s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-claw { animation: gcp-claw .42s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-clawl { animation-name: gcp-clawl; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-leg { animation: gcp-leg .3s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-lure { animation: gcp-lure 1.3s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-jaw { animation: gcp-jaw .8s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-puff { transform-box: fill-box; transform-origin: 50% 50%; animation: gcp-puff 1.4s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-flap { transform-origin: 0 0; animation: gcp-flap 1.1s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-bob { animation: gcp-bob 1.2s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover) .gcp-ripple { transform-box: fill-box; transform-origin: 50% 50%; animation: gcp-ripple .8s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-seen, .gd-fs.is-seen) .gcp-glow { animation: gcp-glow 1.5s ease-in-out infinite alternate; }
+/* a catch held up: the whole animal, by family */
+.gmo .gcm { transform-box: fill-box; transform-origin: 50% 50%; }
+.gmo .gcm-fish { animation: gcm-flop .46s ease-in-out infinite alternate; }
+.gmo .gcmf-eel, .gmo .gcmf-oar, .gmo .gcmf-lamprey, .gmo .gcmf-newt { animation: gcm-coil 1.2s ease-in-out infinite alternate; }
+.gmo .gcmf-eel .gcp-seg, .gmo .gcmf-oar .gcp-seg, .gmo .gcmf-lamprey .gcp-seg { animation-duration: .5s; }
+.gmo .gcmf-ray, .gmo .gcmf-flatfish { animation: gcm-tilt 1.1s ease-in-out infinite alternate; }
+.gmo .gcmf-jelly, .gmo .gcmf-seahorse, .gmo .gcmf-puffer { animation: gcm-float 1.3s ease-in-out infinite alternate; }
+.gmo .gcmf-crab, .gmo .gcmf-crayfish { animation: gcm-shuffle .5s ease-in-out infinite alternate; }
+.gmo .gcmf-turtle { animation: gcm-tilt 1.6s ease-in-out infinite alternate; }
+.gmo .gcmf-koi { animation: gcm-tilt .9s ease-in-out infinite alternate; }
+.gmo .gcmf-shark, .gmo .gcmf-sturgeon, .gmo .gcmf-tuna, .gmo .gcmf-pike, .gmo .gcmf-gar { animation: gcm-tilt .34s ease-in-out infinite alternate; }
+.gmo .gcmf-angler { animation: gcm-float 1.6s ease-in-out infinite alternate; }
+.gmo .gcmf-mola { animation: gcm-tilt 2s ease-in-out infinite alternate; }
+.gmo .gcm-bug { animation: gcm-float 1.2s ease-in-out infinite alternate; }
+.gmo .gcmf-spider { animation: gcm-dangle 1.3s ease-in-out infinite alternate; }
+.gmo .gcmf-hopper, .gmo .gcmf-katydid { animation: gcm-hop .5s cubic-bezier(.3, 0, .7, 1) infinite alternate; }
+.gmo :is(.gcmf-beetle, .gcmf-stag, .gcmf-rhino, .gcmf-scarab, .gcmf-weevil, .gcmf-ladybird, .gcmf-longhorn, .gcmf-shield) { animation: gcm-shuffle .32s ease-in-out infinite alternate; }
+.gmo .gcmf-snail, .gmo .gcmf-slug { animation: gcm-stretch 1.3s ease-in-out infinite alternate; }
+.gmo .gcmf-stick, .gmo .gcmf-leaf, .gmo .gcmf-mantis { animation: gcm-tilt 1.5s ease-in-out infinite alternate; }
+.gcm-shine { animation: gcm-shine 9s linear infinite; }
+.gcm-halo { transform-box: fill-box; transform-origin: 50% 50%; animation: gcm-halo 1.4s ease-in-out infinite alternate; }
+.gcm-drop { animation: gcm-drop 1s ease-in infinite; }
+.gcm-bub { animation: gcm-bub 1.5s ease-out infinite; }
+.gcm-dust { animation: gcm-dust 1.3s ease-out infinite; }
+/* --- bugs: legs that take turns, wings that beat, each at its family's speed --- */
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-go) .gcp-lega { animation: gcb-walka .22s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-go) .gcp-legb { animation: gcb-walkb .22s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-seen) .gcp-ant { animation: gcb-ant 1.2s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-seen) .gcp-raise { animation: gcb-raise .9s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-seen) .gcp-raisel { animation-name: gcb-raisel; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-seen) .gcp-sting { transform-origin: -13px 0; animation: gcb-sting 1s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-seen) .gcp-sway { animation: gcb-sway 2.2s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-go) .gcp-oar { animation: gcb-oar .4s ease-in-out infinite alternate; }
+:is(.gmo, .gd-catchcard, .gdb-entry-art, .gdb-card-art:hover, .gd-bug.is-go) .gcp-foot { transform-box: fill-box; transform-origin: 100% 50%; animation: gcb-foot 1.1s ease-in-out infinite alternate; }
+.gmo .gcp-lamp, .gdb-entry-art .gcp-lamp, .gd-bug.is-seen .gcp-lamp { animation: gcb-lamp 1.3s ease-in-out infinite alternate; }
+.gmo .gba-glow, .gdb-entry-art .gba-glow { animation: gba-pulse 1.3s ease-in-out infinite; }
+/* wings: a butterfly beats slowly, a moth flutters, a dragonfly's shimmer and never fold, a bee is a blur; a beetle's hard back does not flap */
+.gmo .gba-wings, .gd-catchcard .gba-wings, .gdb-entry-art .gba-wings, .gdb-card-art:hover .gba-wings { transform-origin: 0 0; animation: gba-flap .34s ease-in-out infinite alternate; }
+.gd-svg .gd-bug.is-fly .gcb-butterfly .gba-wings { animation: gba-flap .26s ease-in-out infinite alternate; }
+.gd-svg .gd-bug.is-fly .gcb-moth .gba-wings, .gmo .gcmf-moth .gba-wings { animation: gba-flap .11s ease-in-out infinite alternate; }
+.gd-svg .gd-bug .gcb-dragonfly .gba-wings { transform: none; }
+.gd-svg .gd-bug.is-seen .gcb-dragonfly .gba-wings, .gmo .gcmf-dragonfly .gba-wings { animation: gcb-shimmer .06s linear infinite alternate; }
+.gd-svg .gd-bug.is-fly :is(.gcb-bee, .gcb-wasp, .gcb-fly, .gcb-crane) .gba-wings, .gmo :is(.gcmf-bee, .gcmf-wasp, .gcmf-fly, .gcmf-crane) .gba-wings { animation: gcb-shimmer .05s linear infinite alternate; }
+.gd-svg .gd-bug.is-fly :is(.gcb-bee, .gcb-fly) { animation: gcb-buzz .16s ease-in-out infinite alternate; }
+.gd-svg .gd-bug .gcp-case, .gd-svg .gd-bug.is-fly .gcp-case { transform: none; animation: none; }
+.gmo .gcp-case, .gd-catchcard .gcp-case, .gdb-entry-art .gcp-case, .gdb-card-art:hover .gcp-case { animation: none; }
+.gd-svg .gd-bug.is-go :is(.gcb-beetle, .gcb-stag, .gcb-rhino, .gcb-scarab, .gcb-ladybird, .gcb-weevil, .gcb-shield, .gcb-longhorn, .gcb-roach) { animation: gcb-trundle .3s ease-in-out infinite alternate; }
+.gd-svg .gd-bug.is-go .gcb-hopper { animation: gcb-hop .42s ease-in-out infinite alternate; }
+.gd-svg .gd-bug.is-go .gcb-ant :is(.gcp-lega, .gcp-legb) { animation-duration: .12s; }
+/* --- shadows in the water --- */
+.gd-fs.is-seen .gcs-tail { animation: gcp-tail .55s ease-in-out infinite alternate; }
+.gd-fs.is-seen .gcs-seg { animation: gcp-seg 1s ease-in-out infinite alternate; }
+.gd-fs.is-seen .gcs-flap { transform-origin: 0 0; animation: gcp-flap 1.6s ease-in-out infinite alternate; }
+.gd-fs.is-seen .gcs-pulse { transform-box: fill-box; transform-origin: 50% 50%; animation: gcs-pulse 1.2s ease-in-out infinite alternate; }
+.gd-fs.is-seen .gcs-fin { transform-origin: 0 0; animation: gcs-fin 1s ease-in-out infinite alternate; }
+.gd-fs.is-seen .gcs-claw { animation: gcm-shuffle .7s ease-in-out infinite alternate; }
+.gd-fs.is-seen .gcs-bob { animation: gcp-bob 1.3s ease-in-out infinite alternate; }
+@keyframes gcp-tail { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+@keyframes gcp-fin { from { transform: rotate(-12deg); } to { transform: rotate(16deg); } }
+@keyframes gcp-seg { from { transform: rotate(-13deg); } to { transform: rotate(13deg); } }
+@keyframes gcp-whisk { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+@keyframes gcp-bell { from { transform: scale(1, 1); } to { transform: scale(1.1, .82); } }
+@keyframes gcp-tent { from { transform: skewX(-9deg); } to { transform: skewX(9deg); } }
+@keyframes gcp-claw { from { transform: rotate(10deg); } to { transform: rotate(-24deg); } }
+@keyframes gcp-clawl { from { transform: rotate(-10deg); } to { transform: rotate(24deg); } }
+@keyframes gcp-leg { from { transform: translateY(-1px); } to { transform: translateY(1px); } }
+@keyframes gcp-lure { from { transform: translate(-1.5px, -1px); } to { transform: translate(1.5px, 2px); } }
+@keyframes gcp-jaw { from { transform: rotate(-4deg); } to { transform: rotate(6deg); } }
+@keyframes gcp-puff { from { transform: scale(.88); } to { transform: scale(1.14); } }
+@keyframes gcp-flap { from { transform: scaleY(1); } to { transform: scaleY(.62); } }
+@keyframes gcp-bob { from { transform: translateY(-2px); } to { transform: translateY(2px); } }
+@keyframes gcp-ripple { from { transform: scale(1, 1); } to { transform: scale(1.03, .94); } }
+@keyframes gcp-glow { from { opacity: .4; } to { opacity: 1; } }
+@keyframes gcm-flop { from { transform: rotate(-9deg) scaleX(1); } to { transform: rotate(9deg) scaleX(.94); } }
+@keyframes gcm-coil { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+@keyframes gcm-tilt { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+@keyframes gcm-float { from { transform: translateY(2px); } to { transform: translateY(-3px); } }
+@keyframes gcm-shuffle { from { transform: translateX(-1.5px); } to { transform: translateX(1.5px); } }
+@keyframes gcm-dangle { from { transform: rotate(-7deg) translateY(1px); } to { transform: rotate(7deg) translateY(1px); } }
+@keyframes gcm-hop { from { transform: translateY(1px); } to { transform: translateY(-7px); } }
+@keyframes gcm-stretch { from { transform: scaleX(.92); } to { transform: scaleX(1.08); } }
+@keyframes gcm-shine { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@keyframes gcm-halo { from { transform: scale(.78); opacity: .45; } to { transform: scale(1.18); opacity: 1; } }
+@keyframes gcm-drop { from { transform: translateY(0); opacity: 1; } to { transform: translateY(26px); opacity: 0; } }
+@keyframes gcm-bub { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-30px); opacity: 0; } }
+@keyframes gcm-dust { from { transform: translateY(0); opacity: 1; } to { transform: translate(3px, 22px); opacity: 0; } }
+@keyframes gcb-walka { from { transform: translateX(-1px); } to { transform: translateX(1px); } }
+@keyframes gcb-walkb { from { transform: translateX(1px); } to { transform: translateX(-1px); } }
+@keyframes gcb-ant { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+@keyframes gcb-raise { from { transform: rotate(0); } to { transform: rotate(-20deg); } }
+@keyframes gcb-raisel { from { transform: rotate(0); } to { transform: rotate(20deg); } }
+@keyframes gcb-sting { from { transform: rotate(-7deg); } to { transform: rotate(9deg); } }
+@keyframes gcb-sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+@keyframes gcb-oar { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+@keyframes gcb-foot { from { transform: scaleX(1); } to { transform: scaleX(1.1); } }
+@keyframes gcb-lamp { from { opacity: .45; } to { opacity: 1; } }
+@keyframes gcb-shimmer { from { transform: scaleY(1); opacity: .95; } to { transform: scaleY(.86); opacity: .7; } }
+@keyframes gcb-buzz { from { transform: translateY(-.8px); } to { transform: translateY(.8px); } }
+@keyframes gcb-trundle { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+@keyframes gcb-hop { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+@keyframes gcs-pulse { from { transform: scale(1); } to { transform: scale(1.12, .88); } }
+@keyframes gcs-fin { from { transform: scaleY(1); } to { transform: scaleY(.7); } }
+@media (prefers-reduced-motion: reduce) {
+  :is(.gcp, .gcb, .gcm, .gcm-shine, .gcm-halo, .gcm-drop, .gcm-bub, .gcm-dust, .gd-fs), :is(.gcp, .gcb, .gcm, .gd-fs) * { animation: none !important; }
+  :is(.gcm-drop, .gcm-bub, .gcm-dust) { opacity: 0; }
+}
+html[data-motion="reduced"] :is(.gcp, .gcb, .gcm, .gcm-shine, .gcm-halo, .gcm-drop, .gcm-bub, .gcm-dust, .gd-fs), html[data-motion="reduced"] :is(.gcp, .gcb, .gcm, .gd-fs) * { animation: none !important; }
+html[data-motion="reduced"] :is(.gcm-drop, .gcm-bub, .gcm-dust) { opacity: 0; }
+.gd-svg.is-still :is(.gcp, .gcb, .gd-fs), .gd-svg.is-still :is(.gcp, .gcb, .gd-fs) * { animation: none !important; }
+html.anim-paused :is(.gcp, .gcb, .gcm, .gcm-shine, .gcm-halo, .gcm-drop, .gcm-bub, .gcm-dust, .gd-fs), html.anim-paused :is(.gcp, .gcb, .gcm, .gd-fs) * { animation-play-state: paused !important; }
+.gd-page.is-funoff :is(.gd-fs, .gd-bug), .gd-page.is-funoff :is(.gd-fs, .gd-bug) * { animation: none !important; }

@@ -253,6 +253,7 @@ function gardenSceneParts(sc, o) {
   const sky = _gdrSky(sc, o, ww, W.sky);
   const layers = [['defs', sky.defs], ['sky', sky.sky], ['clouds', sky.clouds], ['far', sky.far], ['ground', `<g class="gd-ground">${_gdrGround(sc, o)}</g>`]];
   layers.push(['grid', o.interactive && !o.photo ? `<g class="gd-gridlines" aria-hidden="true">${_gdrGridLines()}</g>` : '<g class="gd-gridlines"></g>']);
+  layers.push(['design', typeof gardenDesignLayer === 'function' ? gardenDesignLayer(sc) : '<g class="gd-dz"></g>']);   // drawn paths and painted ground, under everything that stands
   const ground = [], objs = [], lights = [];
   for (const d of sc.decor || []) { const def = gardenDecor(d.id); if (!def) continue; (def.layer === 'ground' ? ground : objs).push({ kind: 'decor', it: d, def, z: d.y + (def.h || 1), x: d.x }); }
   for (const p of sc.plants || []) { const def = gardenPlant(p.id); if (!def) continue; objs.push({ kind: 'plant', it: p, def, z: p.y + (def.fp || 1), x: p.x }); }
@@ -306,7 +307,8 @@ function gardenSceneFromModel(m) {
   const p = Clock.parts(m.now);
   return {
     plants: m.plants.map(x => ({ id: x.def.id, uid: x.uid, x: x.x, y: x.y, stage: x.stage, variant: x.variant, thirsty: x.thirsty, overgrown: x.overgrown, ripe: x.ripe, t: x.t, heart: x.heart, pend: x.pend })),
-    decor: m.decor.map(d => ({ id: d.def.id, uid: d.uid, x: d.x, y: d.y, r: d.r, v: d.v, t: (gardenHash(d.uid) % 100) / 100, pend: d.pend })),
+    dz: typeof gardenDesignShown === 'function' ? gardenDesignShown() : null,
+    decor: (typeof gardenDesignDecorDraft === 'function' ? gardenDesignDecorDraft(m.decor) : m.decor).map(d => ({ id: d.def.id, uid: d.uid, x: d.x, y: d.y, r: d.r, v: d.v, t: (gardenHash(d.uid) % 100) / 100, pend: d.pend })),
     areas: m.areas, season: m.season, tod: m.tod, rain: m.rain, visitors: m.visitors, lv: m.level.level, hour: Math.round((p.h + p.mi / 60) * 4) / 4, day: m.today,
     show: m.visit ? m.visit.sh : _gdrShowOf(), showSig: m.visit ? m.visit.shSig : _gdrShowSig(), landShow: m.visit ? gardenLandShowOf(m.visit.snap) : gardenLandShowMine(m),
   };
@@ -329,7 +331,7 @@ function _gdrSceneFromSnapshot(snap, o) {
   }
   // 2.22: a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4
   const areas = gardenLandsOfSnap(snap).areas; if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
-  return { plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
+  return { dz: snap.dz || null, plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
 }
 /**
  * Draw anyone's garden into el, read-only. snapshot: from gardenSnapshot() or a friend (cleaned here).

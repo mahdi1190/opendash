@@ -371,6 +371,8 @@ The owner's own online status is left as they set it: `presence` is off by defau
 
 What a person carries goes in their look as `g` (ids; a receiver draws from its own tables and leaves out what it does not know), through `cleanLook`, `gl:me` and `gl:who`, and again 1.5 s after a purchase or a change of gear. What is built goes in the snapshot's `wk`; a host in a live garden sends the snapshot again when they build, so it appears at once. A purchase is told as `fx got gear`, and held up on your own screen when the shop is closed (`gardenCatchMomentSoon`). A new thing to draw: a row in the table, a drawing, and this section's check.
 
+**Looks (`94-garden-style-*.js`).** The look of your rod and net, and what you carry, go in `g` as `rk`, `nk`, `hd`. How you have painted your buildings goes in the snapshot as `bk`: `[[building id, wall, roof, door, awning colour, awning style, roof style, sign]]`, by id and not by position. docs/dev/REWARDS.md has the rest.
+
 ## 23. Variants, specimens and showing off
 
 `94-garden-fish-0variants.js` (the table: pure, the server reads it too), `94-garden-fish-1vart.js` (the drawing), `94-garden-fish-8spec.js` (the records), `94-garden-fish-9best.js` (the page). The owner, 1 November 2026: "variants, so like shiny, glowing, evil, angel ... make every fish caught unique with its own size etc, and it gets added to some sort of user base".
@@ -416,3 +418,14 @@ Code: `src/app/94-garden-zz-*.js`, `src/styles/94-garden-together.css`. The owne
 
 **A dishonest friend** can claim any part of a project up to its cost, or send a gnome or a bottle: they can show you a finished thing, but your thanks need your own tenth. Not built: a friend's pose is not shown as a hold-up (only the flash), and a project has one partner.
 
+## 24. A garden's design
+
+`94-garden-design-*.js` (the headers there are the design). A snapshot's `dz` is `{p, g, m, c}`: drawn paths, painted ground, fixed things moved, and things made. Ids from the tables and numbers, plus the one line of words on a sign, cleaned, at most 24 letters and only ever set with `textContent`. `GARDEN_SCHEMA` is strict and an older app drops the field. A friend's `dz` stays in memory on the visit: it never goes in your state file.
+
+**The host's design decides.** `gardenVisitModel` puts `dz` on screen with `gardenDesignShow`, which moves the rows of `GARDEN_PROPS` and the land's tables themselves, so walls, doors and clicks all follow. Keeping changes emits `landshow`, so friends in a live garden get the snapshot again at once. A draft is never sent. A guest on an older app sees shops where the tables say.
+
+**It may not fit.** `gardenDesignWire` caps `dz` at 6000 bytes and the saved copy gives way before any decoration (`gardenDesignSnapTrim`): ground goes first, then the newest paths. Moved things and things made always go. The designer says what is left out and dashes it in red.
+
+**One rule for standing in the way** (`_gdzReachWhy`): it builds the same grid the walking uses, before and after, and refuses if any land you could reach, or any door you could reach, would be cut off, in plain words. It runs on a move, on Put it back and on swapping to an older layout. Decorations put out by hand away from the designer are not checked for this, as before.
+
+**Strict rules are for your own hands.** `94-garden-design-1strict.js` (every number in `GDZ_STRICT`) runs only when you draw or put something down in the designer. It never refuses a snapshot: `gardenDesignClean` still draws a design from an older or newer app whatever it breaks, and what is already placed stays until it is moved.

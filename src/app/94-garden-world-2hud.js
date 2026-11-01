@@ -63,6 +63,7 @@ function _ghHud(box, m) {
 const _GH_MENU = Object.freeze([
   ['play', 'Play', 'gamepad-2'],
   ['lands', 'Land', 'map'],
+  ['design', 'Design', 'paintbrush'],
   ['shop', 'Shop', 'store'], ['basket', 'Basket', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Tricks', 'wand-sparkles'], ['almanac', 'Almanac', 'book-open'], ['nature', 'Nature', 'leaf'], ['wonder', 'Keepsakes', 'mail'], ['catch', 'Catch', 'fish'], ['friends', 'Friends', 'users'], ['goals', 'Goals', 'target'], ['help', 'Help', 'circle-help'],
 ]);
 function _ghMenu(box, m) {
@@ -89,6 +90,7 @@ function _ghMenu(box, m) {
       _gh.menuOpen = false; _gh.menu = '';
       if (id === 'leave') { setView(typeof gardenVisitOn === 'function' && gardenVisitOn() ? 'garden' : 'home'); return; }
       if (id === 'help') { gardenGuideOpen(); return; }
+      if (id === 'design') { gardenDesignEnter(); return; }
       gardenPopupOpen(id);
     });
   }

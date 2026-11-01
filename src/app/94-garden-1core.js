@@ -36,7 +36,7 @@ const _gd = { rev: 0, obj: null, memo: null, memoKey: '', wallet: null, walletKe
   tickT: 0, tickBusy: false, paintQ: 0, seenVisit: '', lastToastAt: 0 };
 
 /* ---------- state ---------- */
-const _GD_MAPS = ['plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'rib', 'dt', 'wq', 'gr', 'seen', 'prefs',
+const _GD_MAPS = ['dz', 'plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'rib', 'dt', 'wq', 'gr', 'seen', 'prefs',
   'fl', 'bl', 'fd',   // 2.22: the fish log, the bug book, per-day fishing (94-garden-fish-2core.js)
   'sp', 'vl',   // every catch as a record, and the variants found (94-garden-fish-8spec.js)
   'gl', 'gq', 'gv', 'glt',
@@ -487,7 +487,7 @@ function _gdAreasOpen(level) {
   for (const k of Object.keys(items)) if (items[k] > 0 && (k.startsWith('land:') || k.startsWith('feat:'))) own.push(k.slice(5));
   if (GARDEN_LAND_CURIOS.some(c => items['cur:' + c.id] > 0) || items['key:old'] > 0) own.push('finds');   // (the table they are laid out on)
   const openSet = gardenLandsOpen(level, own);
-  if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id)); }   // (on a visit the land on screen is your friend's)
+  if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); if (typeof gardenDesignShow === 'function') gardenDesignShow(gardenDesignOwn(_gdG())); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id)); }   // (on a visit the land on screen is your friend's)
   const base = GARDEN_AREAS.filter(a => !a.buy && level >= a.lv).map(a => a.id);
   return base.concat([...openSet].filter(id => !base.includes(id)));   // (the scene draws by these ids; a snapshot says it differently: gardenLandsWire)
 }
@@ -611,6 +611,7 @@ function gardenSnapshot() {
     const out = { v: 1, wv: GARDEN_WORLD.v, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
     { const L = gardenLandsWire(m); out.areas = L.areas; out.ls = L.ls; if (L.lf.length) out.lf = L.lf; if (L.lc.length) out.lc = L.lc; if (L.lz.length) out.lz = L.lz; if (L.lr) out.lr = L.lr; }   // the land: at most 12 plain areas for an older friend, the real answer beside them
     if (typeof GARDEN_WORKS !== 'undefined') { const wk = GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id); if (wk.length) out.wk = wk; }   // 2.38: so a friend walks on your longer pier
+    if (typeof gardenDesignWireSaved === 'function') { const dz = gardenDesignWireSaved(); if (dz) out.dz = dz; }   // what you drew, moved and made: never the draft you are still working on
     if (m.rain && (m.rain.snow || m.rain.now)) out.wx = m.rain.snow ? 2 : 1;   // 2.28: is it raining (1) or snowing (2) over your garden now? A visit has the same sky
     // 2.28: your time zone and your sunrise and sunset, so a friend who visits sees your sky as it is for you now (the offset tells them roughly where you are in the world)
     try {
@@ -623,6 +624,8 @@ function gardenSnapshot() {
     try { const sp = typeof gardenSpecWire === 'function' ? gardenSpecWire() : null; if (sp) out.sp = sp; } catch (e) { /* specimens are optional */ }   // your best few, for friends: ids and numbers, an older app drops the field
     try { const ca = typeof gardenCatchWire === 'function' ? gardenCatchWire() : null; if (ca) out.ca = ca; } catch (e) { /* the lake is optional */ }   // the lake: its hall, its rack, its records
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
+    try { const rf = typeof gardenRoomsWire === 'function' ? gardenRoomsWire() : null; if (rf) out.rf = rf; } catch (e) { /* optional */ }   // what stands in your hidden rooms
+    try { const bk = typeof gardenBuildWire === 'function' ? gardenBuildWire() : null; if (bk) out.bk = bk; } catch (e) { /* optional */ }   // how you have painted your buildings: ids and small numbers, an older app drops the field
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     try { const tg = typeof gardenTogetherWire === 'function' ? gardenTogetherWire() : null; if (tg) out.tg = tg; } catch (e) { /* optional */ }   // what you share with friends (94-garden-zz-*.js)
     return out;

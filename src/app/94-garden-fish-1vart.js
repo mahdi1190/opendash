@@ -11,6 +11,7 @@ const _GVA_RAINBOW = Object.freeze(['#e0483c', '#f08a2a', '#f4d03a', '#4ab85a', 
 function _gvaN(v) { return Math.round(v * 10) / 10; }
 function _gvaFrame(kind, def, look) {
   if (kind === 'bug') return { kind, L: 30, H: 12, x0: -15, x1: 15, ex: 7, ey: 0, er: 2, top: -12, k: 0.55, body: '' };
+  const fr = gardenFishFrame(def, look); if (fr) return fr;
   const S = _GFA_SHAPES[look.s] || _GFA_SHAPES.slim, L = S.L, H = S.H, x0 = -L / 2, plain = look.s === 'eel' || look.s === 'crayfish';
   return { kind, L, H, x0, x1: L / 2, ex: x0 + L * ((S.eyeX == null ? 0.3 : S.eyeX) + 0.5), ey: -H * 0.24, er: S.eye || 3, top: -H, k: 1, body: plain ? '' : _gfaBody(S) };
 }

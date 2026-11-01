@@ -102,6 +102,17 @@ const GR_DESIGN = Object.freeze([
   _grD('rw-orn-cairn', 'ornament', { 'mat:stone': 3 }, 'Learn 1 pattern of stars', c => c.stars >= 1),
   _grD('rw-orn-sheaf', 'ornament', { 'mat:reed': 3 }, 'Walk to the island in the lake', c => c.isle >= 1),
   _grD('rw-orn-urn', 'ornament', { 'mat:stone': 5, ticket: 10 }, 'Own 25 pieces of land', c => c.sections >= 25),
+  // the themed ones (94-garden-style-3decor.js)
+  _grD('dc-shell-pile', 'ornament', { 'mat:reed': 2, ticket: 2 }, 'Catch 5 kinds of fish', c => c.fish >= 5),
+  _grD('dc-net-rack', 'ornament', { 'mat:timber': 2, 'mat:reed': 3 }, 'Catch 10 kinds of fish', c => c.fish >= 10),
+  _grD('dc-cottage-gate', 'fence', { 'mat:timber': 3 }, 'From the start'),
+  _grD('dc-lavender-tub', 'ornament', { 'mat:timber': 1, 'mat:reed': 2 }, 'From the start'),
+  _grD('dc-dead-tree', 'ornament', { 'mat:timber': 4, ticket: 6 }, 'Read 1 letter', c => c.letters >= 1),
+  _grD('dc-broken-column', 'ornament', { 'mat:stone': 4 }, 'Find 3 curios', c => c.curios >= 3),
+  _grD('dc-ruin-arch', 'ornament', { 'mat:stone': 8, 'mat:timber': 1 }, 'Own 15 pieces of land', c => c.sections >= 15),
+  _grD('dc-stone-head', 'ornament', { 'mat:stone': 6, ticket: 8 }, 'Find 10 curios', c => c.curios >= 10),
+  _grD('dc-old-wall', 'fence', { 'mat:stone': 2 }, 'Find 1 curio', c => c.curios >= 1),
+  _grD('dc-stone-lion', 'ornament', { 'mat:stone': 5, ticket: 4 }, 'Build 5 things on your land', c => c.built >= 5),
 ]);
 /** What the milestones and the design items read. All from your own garden; nothing is sent. */
 function gardenRewardCtx(m) {

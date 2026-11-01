@@ -1,0 +1,12 @@
+/* Things you hold and the look of buildings (94-garden-style-4page.js) */
+.gs-you { display: grid; place-items: center; }
+.gs-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.gs-build { display: block; flex: none; background: linear-gradient(#cfe6f0 0 62%, #8fb56a 62%); border-radius: 10px; overflow: hidden; }
+.gs-act { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.gs-act .muted { flex: 1 1 200px; }
+.gs-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+.gs-sw { min-width: 36px; min-height: 36px; padding: 4px 10px; border: 2px solid var(--border, rgba(0,0,0,.14)); border-radius: 8px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.gs-sw.is-col { padding: 3px; }
+.gs-sw i { display: block; width: 26px; height: 26px; border-radius: 5px; }
+.gs-sw.is-on { border-color: var(--accent, #3f8a4a); box-shadow: 0 0 0 1px var(--accent, #3f8a4a); }
+.gs-sw.is-locked { opacity: .35; cursor: not-allowed; }

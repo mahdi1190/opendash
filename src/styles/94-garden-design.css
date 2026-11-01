@@ -1,0 +1,62 @@
+/* The garden designer: big, plain, the same for a mouse and a finger (src/app/94-garden-design-3panel.js) */
+.gd-stagebox.is-designing > *:not(.gd-stage):not(.gdz) { display: none !important; }
+.gd-stagebox.is-designing { touch-action: none; cursor: crosshair; }
+.gdz-lifted { opacity: .25; }
+.gdz { position: absolute; inset: 0; z-index: 12; pointer-events: none; display: flex; flex-direction: column; font-size: 16px; color: #2c2418; }
+.gdz > *, .gdz-bottom > * { pointer-events: auto; }
+.gdz-top { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255, 250, 238, .96); border-bottom: 2px solid #d9c9a4; flex-wrap: wrap; }
+.gdz-title { margin: 0 auto 0 0; font-size: 20px; font-weight: 700; color: #2c2418; }
+.gdz-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 8px 16px; border-radius: 12px; border: 2px solid #b9a67e; background: #fffdf6; color: #2c2418; font: inherit; font-weight: 600; cursor: pointer; }
+.gdz-btn:hover:not(:disabled) { background: #f6edd6; }
+.gdz-btn:focus-visible, .gdz-sw:focus-visible, .gdz-col:focus-visible, .gdz-pb:focus-visible { outline: 3px solid #2b6cb0; outline-offset: 2px; }
+.gdz-btn:disabled { opacity: .45; cursor: default; }
+.gdz-btn[aria-pressed="true"] { background: #2f6b3f; border-color: #234f2f; color: #fff; }
+.gdz-go { background: #2f7d46; border-color: #235f35; color: #fff; }
+.gdz-go:hover:not(:disabled) { background: #276a3b; }
+.gdz-small { min-height: 42px; padding: 4px 12px; font-size: 15px; }
+.gdz-ic { display: inline-flex; }
+.gdz-ic .i { width: 20px; height: 20px; }
+.gdz-say { align-self: center; margin: 10px 12px 0; padding: 8px 16px; max-width: min(92%, 720px); border-radius: 12px; background: rgba(255, 253, 246, .96); box-shadow: 0 2px 8px rgba(0, 0, 0, .25); font-weight: 600; text-align: center; min-height: 1.4em; }
+.gdz-say:empty { visibility: hidden; }
+.gdz-say.is-bad { background: #8f2a1c; color: #fff; }
+.gdz-fit { align-self: center; margin: 8px 12px 0; padding: 6px 14px; max-width: min(92%, 720px); border-radius: 10px; background: #fff0d0; border: 2px solid #c08a2a; font-size: 15px; text-align: center; }
+.gdz-pad { position: absolute; right: 14px; top: 88px; display: grid; grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(4, 48px); gap: 4px; }
+.gdz-pb { display: grid; place-items: center; border-radius: 10px; border: 2px solid #b9a67e; background: rgba(255, 253, 246, .95); color: #2c2418; cursor: pointer; }
+.gdz-pb .i { width: 22px; height: 22px; }
+.gdz-pb:hover { background: #f6edd6; }
+.gdz-pb-up { grid-area: 1 / 2; } .gdz-pb-left { grid-area: 2 / 1; } .gdz-pb-right { grid-area: 2 / 3; } .gdz-pb-down { grid-area: 3 / 2; } .gdz-pb-in { grid-area: 4 / 1; } .gdz-pb-out { grid-area: 4 / 3; }
+.gdz-bottom { margin-top: auto; background: rgba(255, 250, 238, .97); border-top: 2px solid #d9c9a4; }
+.gdz-opts { max-height: 240px; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.gdz-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+.gdz-sw { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 104px; padding: 6px; border-radius: 12px; border: 2px solid #d3c29c; background: #fffdf6; color: #2c2418; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.gdz-sw.is-on { border-color: #2f6b3f; box-shadow: inset 0 0 0 2px #2f6b3f; background: #eaf5e4; }
+.gdz-sw.is-shut { background: #eee9dc; color: #5e5647; }
+.gdz-sw.is-shut .gdz-sw-pic { opacity: .4; filter: grayscale(.8); }
+.gdz-sw-pic { display: block; width: 92px; height: 44px; }
+.gdz-sw-pic svg { display: block; width: 100%; height: 100%; }
+.gdz-sw-how { font-size: 12px; font-weight: 400; line-height: 1.2; text-align: center; }
+.gdz-rub, .gdz-place { align-self: flex-start; }
+.gdz-tools { display: flex; gap: 8px; padding: 8px 14px 12px; }
+.gdz-tool { flex: 1 1 0; min-height: 60px; font-size: 17px; }
+.gdz-note { margin: 0; line-height: 1.4; }
+.gdz-hold { margin: 0; font-size: 18px; font-weight: 700; }
+.gdz-sub { margin: 0; font-size: 14px; font-weight: 600; color: #5e5647; }
+.gdz-acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.gdz-list { display: flex; flex-direction: column; gap: 6px; }
+.gdz-li { display: flex; align-items: center; gap: 10px; padding: 4px 10px; border-radius: 10px; border: 2px solid #e2d5b6; background: #fffdf6; }
+.gdz-li.is-on { border-color: #2f6b3f; }
+.gdz-li-n { margin-right: auto; font-weight: 600; overflow-wrap: anywhere; }
+.gdz-cols { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gdz-cols .gdz-sub { min-width: 110px; }
+.gdz-col { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #7a6d52; cursor: pointer; }
+.gdz-col.is-on { box-shadow: 0 0 0 3px #2f6b3f; }
+.gdz-col.is-shut { opacity: .35; }
+.gdz-field { display: flex; flex-direction: column; gap: 4px; }
+.gdz-input { min-height: 44px; padding: 6px 12px; border-radius: 10px; border: 2px solid #b9a67e; background: #fff; color: #2c2418; font: inherit; flex: 1 1 200px; }
+@media (max-width: 640px) {
+  .gdz-title { display: none; }
+  .gdz-tool .gdz-lab { font-size: 14px; }
+  .gdz-tool { flex-direction: column; gap: 2px; padding: 6px; }
+  .gdz-pad { top: 74px; right: 6px; grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(4, 42px); }
+  .gdz-opts { max-height: 200px; }
+}

@@ -103,6 +103,7 @@ function _gdpMount(container, view) {
 }
 /** The world on the page: your own garden, or on a visit your friend's. The same stage and the same everything: gardenHere() says which garden it is. */
 function _gdpWorldMount(container, view) {
+  if (typeof gardenDesignAbort === 'function') gardenDesignAbort();   // the app can draw the page again with no unmount: the designer's draft waits and comes back below
   const entering = _gdp.entry !== view;
   _gdp.entry = view;
   const m = gardenHere();
@@ -119,9 +120,10 @@ function _gdpWorldMount(container, view) {
   gardenWorldStart(root, m);
   gardenHudPaint(m);
   gardenTickSoon(400);
+  if (typeof gardenDesignResume === 'function') gardenDesignResume();
   if (_gdp.then) { const t = _gdp.then; _gdp.then = ''; setTimeout(() => { if (_gdp.root === root) gardenPopupOpen(t); }, 60); }
 }
-function _gdpWorldUnmount() { document.documentElement.classList.remove('gd-immersive'); if (typeof toastHeldFlush === 'function') toastHeldFlush(); gardenHudReset(); gardenGameStop(); if (typeof gardenPopupClose === 'function') gardenPopupClose(); if (typeof gardenWorldStop === 'function') gardenWorldStop(); _gdp.entry = ''; _gdp.root = null; _gdp.svg = null; _gdp.press = null; _gdp.sweep = null; _gdpCarryEnd(); }
+function _gdpWorldUnmount() { if (typeof gardenDesignAbort === 'function') gardenDesignAbort(); document.documentElement.classList.remove('gd-immersive'); if (typeof toastHeldFlush === 'function') toastHeldFlush(); gardenHudReset(); gardenGameStop(); if (typeof gardenPopupClose === 'function') gardenPopupClose(); if (typeof gardenWorldStop === 'function') gardenWorldStop(); _gdp.entry = ''; _gdp.root = null; _gdp.svg = null; _gdp.press = null; _gdp.sweep = null; _gdpCarryEnd(); }
 /** Is the world what is on screen? Your garden, or a garden you are visiting. */
 function _gdpWorldView() { return state.view === 'garden' || (typeof gardenVisitOn === 'function' && gardenVisitOn()); }
 function _gdpBasketCount(m) { let n = 0; for (const [k, v] of Object.entries(m.wallet.items)) if (v > 0 && (k.startsWith('crop:') || k.startsWith('bq:') || k === 'honey')) n += v; return n; }
@@ -185,7 +187,7 @@ function _gdpPaintStage(m, force) {
   const inner = _gdp.root.querySelector('.gd-stage'); if (!inner) return;
   const mode = _gdpMode(), still = !gardenMotionOn();
   const sc = gardenSceneFromModel(m);
-  const parts = gardenSceneParts(sc, { size: 'l', crop: 'all', interactive: true, fit: 'xMidYMid meet', still, uid: 'gdp', label: `${m.visit ? m.visit.name + "'s" : 'Your'} garden: ${m.plants.length} plants, level ${m.level.level}`, cacheKey: (m.visit ? m.visit.key : _gd.memoKey) + '|' + mode + '|' + (still ? 1 : 0), friend: m.visit ? m.visit.drawFriend : undefined, readOnly: !!m.visit });
+  const parts = gardenSceneParts(sc, { size: 'l', crop: 'all', interactive: true, fit: 'xMidYMid meet', still, uid: 'gdp', label: `${m.visit ? m.visit.name + "'s" : 'Your'} garden: ${m.plants.length} plants, level ${m.level.level}`, cacheKey: (m.visit ? m.visit.key : _gd.memoKey) + '|' + mode + '|' + (still ? 1 : 0) + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0), friend: m.visit ? m.visit.drawFriend : undefined, readOnly: !!m.visit });
   if (!_gdp.svg || !_gdp.svg.isConnected || force && mode !== (_gdp.svg.dataset.mode || '')) _gdp.svg = gardenSvgMount(inner, parts);
   else _gdp.svg = gardenSvgPatch(_gdp.svg, parts);
   if (_gdp.svg) _gdp.svg.dataset.mode = mode;
@@ -194,6 +196,7 @@ function _gdpPaintStage(m, force) {
   _gdpPaintSel(m);
   try { if (typeof gardenWorldPainted === 'function') gardenWorldPainted(m); } catch (e) { console.error('[garden world]', e); }
   try { gardenGamePainted(m); } catch (e) { console.error('[garden]', e); }
+  if (typeof gardenDesignPainted === 'function') gardenDesignPainted(_gdp.svg, sc.dz);   // the words on signs: textContent, after the markup
   // visitors you can see go in the almanac (only while the page is on screen)
   if (!m.visit && document.visibilityState === 'visible' && m.visitors.length) setTimeout(() => gardenNoteVisitors(typeof gardenLifeOwns === 'function' ? m.visitors.filter(v => !gardenLifeOwns(v.id)) : m.visitors), 1200);   // (the live creatures note themselves when you really see them)
 }
