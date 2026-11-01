@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.59.3]
+
+### Fixed
+- **Calendar opens without freezing,** Home no longer hitches each minute, and pages switch and start faster.
+
 ## [2.59.2]
 
 ### Fixed
