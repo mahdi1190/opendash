@@ -69,7 +69,7 @@ function _wdBirdCome(m) {
     } });
   _wdw.bird = S;
   void m;
-  if (!_wdGet('bird')) { _wdSet('bird', _wdToday()); setTimeout(() => wdWhisper('Don’t move.', 4000), 1500); }
+  if (!_wdGet('bird')) { _wdSet('bird', _wdToday()); gardenRewardDid('bird'); setTimeout(() => wdWhisper('Don’t move.', 4000), 1500); }
   _glSound('chirp');
 }
 /* ---------- coming back ---------- */
@@ -110,7 +110,7 @@ wdMod({
     if (mode) _wdTrackUp(m, mode);
     const T = _wdw.track;
     if (T && !_wdGet('tr.' + m.today) && wdNear(T.end.x, T.end.y, 1.3)) {
-      _wdSet('tr.' + m.today, 1);
+      _wdSet('tr.' + m.today, 1); gardenRewardDid('tracks');
       const c = T.who && _gl.W && _gl.W.own ? gardenLifeSpawn(T.who, { at: { x: T.end.x + 0.9, y: T.end.y, fade: 0 } }) : null;
       wdWhisper(c ? 'So that’s who it was.' : 'The tracks stop here, as if whatever made them simply left the ground.', 6000);
     }

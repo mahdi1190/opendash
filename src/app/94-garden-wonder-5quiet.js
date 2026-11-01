@@ -17,6 +17,7 @@ function _wdStillOn() {
   if (typeof gartEmoteRun === 'function') { try { gartEmoteRun('sit', { quiet: true }); } catch (e) { /* standing will do */ } }
   wdTalkClose(true);
   _wd.still = true; box.classList.add('wd-hush', 'wd-sitting');
+  gardenRewardDid('sit');
   const el = document.createElement('button'); el.type = 'button'; el.className = 'wd-still'; el.setAttribute('aria-label', 'You are sitting quietly. Press to get up.');
   let stars = '';
   for (let i = 0; i < 60; i++) stars += `<circle cx="${gardenHash('s' + i) % 1000}" cy="${gardenHash('y' + i) % 380}" r="${0.6 + (gardenHash('r' + i) % 12) / 10}" fill="#fff" opacity="${(0.3 + (gardenHash('o' + i) % 7) / 10).toFixed(2)}"/>`;

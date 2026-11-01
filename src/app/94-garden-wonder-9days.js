@@ -30,6 +30,7 @@ const _wdLantern = {
       onClick: () => {
         const mm = gardenHere(), n = Number(_wdGet(k)) || 0, cap = 5;
         if (n >= cap) { wdWhisper('They are all out on the water now. They will drift for as long as you stay.', 5000); return; }
+        gardenRewardDid('lantern');
         if (!mm.visit) _wdSet(k, n + 1);
         _wdLanternFloat(mm, n, true); wdSound([[523, 0.9, 'sine', 0.016]]);
         wdWhisper(n === 0 ? 'One for someone, or for nothing. Nobody asks.' : ['There it goes.', 'It catches up with the others in the end.', 'The water doesn’t mind.', 'That’s the last of them, nearly.'][Math.min(3, n - 1)], 4000);
@@ -45,6 +46,7 @@ const _wdFire = {
     return wdSprite({ id: 'wd-fire', x: a.x, y: a.y, hit: 0.9, hitUp: 12, label: 'Jump the fire', cursor: 'hand', t: 0, svg: A.S('#5a3a20', 3, 'M-13 0L13 -6M-13 -6L13 0') + `<g class="gl-glow-soft">${A.P('#e8602a', 'M-9 -3C-11 -14 -3 -18 -2 -28C4 -22 11 -15 9 -3z')}${A.P('#ffc23a', 'M-5 -3C-6 -10 -1 -13 0 -19C3 -14 6 -10 5 -3z')}</g>`,
       update(dt, S) { S.t += dt; if (Math.floor(S.t) !== S.k) { S.k = Math.floor(S.t); glow(); } },
       onClick: () => {
+        gardenRewardDid('fire');
         const side = _gw.px < a.x ? 1 : -1;
         gardenWalkToPoint({ x: a.x + side * 1.3, y: a.y + 0.2 }, () => {
           _glFx(a.x, a.y, 'sparkle', { lift: 26 }); wdSound([[392, 0.2, 'triangle', 0.03], [587, 0.25, 'triangle', 0.03, 0.12]]);

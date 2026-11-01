@@ -163,6 +163,7 @@ function _gldRow(host, o) {
   const ic = _gdpEl('span', 'gld-ic'); ic.innerHTML = icon(o.icon || 'sprout'); r.appendChild(ic);
   const mid = _gdpEl('div', 'gld-mid'); mid.appendChild(_gdpEl('b', null, o.name)); mid.appendChild(_gdpEl('small', null, o.sub || '')); r.appendChild(mid);
   if (o.tag) r.appendChild(_gdpEl('span', 'gld-tag', o.tag));
+  if (o.btn2) { const b = _gdpEl('button', 'gld-buy' + (o.off2 ? ' is-off' : ''), o.btn2); b.type = 'button'; b.onclick = () => o.run2(b); r.appendChild(b); }
   if (o.btn) { const b = _gdpEl('button', 'gld-buy' + (o.off ? ' is-off' : ''), o.btn); b.type = 'button'; b.onclick = () => o.run(b); r.appendChild(b); }
   host.appendChild(r);
 }
@@ -190,8 +191,9 @@ function gardenLandsTab(el, m) {
   txt.appendChild(_gdpEl('p', null, `Garden level ${lv} · ${_gdpNum(m.wallet.coins)} coins · ${built} of ${GARDEN_LAND_FEATURES.length} things built. New land and new paths open as your level goes up. On the map, gold is what you can buy now and grey is for later.`));
   head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
-  const buyRow = (host, s) => { const i = gardenLandInfo(s.id, m), K = GARDEN_LAND_KINDS[s.kind]; _gldRow(host, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}. ${K.says || ''}`, btn: `${_gdpNum(s.buy)} coins`, off: !i.afford, run: (b) => { const r = gardenBuyLand(s.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + s.buy, tone: 'coin', sound: true }); } }); };
-  const buildRow = (host, f, I) => _gldRow(host, { icon: f.icon, name: f.name, sub: f.blurb + (I.spot ? ` ${I.spot} is in the way.` : ''), btn: `${_gdpNum(f.cost)} coins`, off: !I.afford || !!I.spot, run: (b) => { const r = gardenBuildFeature(f.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + f.cost, tone: 'coin', sound: true }); } });
+  const buyRow = (host, s) => { const i = gardenLandInfo(s.id, m), K = GARDEN_LAND_KINDS[s.kind]; _gldRow(host, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}. ${K.says || ''}`, btn: `${_gdpNum(s.buy)} coins`, off: !i.afford, run: (b) => { const r = gardenBuyLand(s.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + s.buy, tone: 'coin', sound: true }); }, ...gardenRewardBtn2(s.buy, m, () => gardenBuyLand(s.id)) }); };
+  const buildRow = (host, f, I) => _gldRow(host, { icon: f.icon, name: f.name, sub: f.blurb + (I.spot ? ` ${I.spot} is in the way.` : ''), btn: `${_gdpNum(f.cost)} coins`, off: !I.afford || !!I.spot, run: (b) => { const r = gardenBuildFeature(f.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + f.cost, tone: 'coin', sound: true }); }, ...(I.spot ? {} : gardenRewardBtn2(f.cost, m, () => gardenBuildFeature(f.id))) });
+  gardenRewardLandRows(sec, m);
   // now
   const canLand = GARDEN_LAND_SECTIONS.filter(s => { const i = s.buy ? gardenLandInfo(s.id, m) : null; return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy);
   const canBuild = GARDEN_LAND_FEATURES.map(f => [f, gardenLandFeatureInfo(f.id, m)]).filter(([, I]) => !I.built && !I.why).sort((a, b) => a[0].cost - b[0].cost);

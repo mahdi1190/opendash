@@ -89,6 +89,7 @@ function _hgdMsg(m) {
   else if (m.ripe) bits.push(`${m.ripe} ready to pick.`);
   else if (thirsty) bits.push(`${thirsty === 1 ? 'One plant would' : thirsty + ' plants would'} love a drink.`);
   if (v) bits.push(`${/^[aeiou]/i.test(v.def.name) ? 'An' : 'A'} ${v.def.name.toLowerCase().replace(/^next door’s/, 'neighbour’s')} is visiting.`);
+  if (bits.length < 2 && typeof gardenRewardLine === 'function') { const l = gardenRewardLine(m); if (l) bits.push(l); }   // what your work opens next
   if (!bits.length) {
     const next = m.plants.filter(p => p.nextIn && !p.def.special).sort((a, b) => a.nextIn - b.nextIn)[0];
     bits.push(next ? `The ${next.def.name.toLowerCase()} grows again in about ${_gdHoursLabel(next.nextIn)}.` : m.plants.length > 1 ? 'All is calm in the garden.' : 'Plant something: finished tasks earn seeds and coins.');

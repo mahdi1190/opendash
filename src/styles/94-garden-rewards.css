@@ -1,0 +1,13 @@
+/* REWARDS (docs/dev/REWARDS.md). */
+.grw-bag { padding: 12px; margin-bottom: 12px; }
+.grw-mats { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-top: 8px; }
+.grw-mat { display: flex; gap: 8px; align-items: flex-start; }
+.grw-mat svg { flex: none; }
+.grw-mat.is-none { opacity: .55; }
+.grw-mat small { display: block; color: var(--fg-muted); font-size: var(--text-xs); }
+.gp-prize.is-locked .gp-prize-art { opacity: .4; filter: grayscale(.7); }
+.grw-line { display: flex; gap: 8px; width: 100%; padding: 4px 0; background: none; border: 0; color: inherit; font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
+.grw-line > span { flex: 1; min-width: 0; }
+.grw-bar { display: block; height: 4px; margin-top: 4px; border-radius: 2px; background: var(--border, rgba(0,0,0,.12)); overflow: hidden; }
+.grw-bar > i { display: block; height: 100%; background: #6a8a4a; }
+.grw-today { margin: 6px 0 0; font-size: var(--text-xs); }
