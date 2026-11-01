@@ -84,7 +84,7 @@ html.gp-away .gd-pet.is-me, html.gp-seeking .gd-pet.is-me { display: none; }
 /* the map */
 .gp-map { display: grid; grid-template-columns: 1fr 180px; gap: 12px; align-items: start; }
 @media (max-width: 640px) { .gp-map { grid-template-columns: 1fr; } }
-.gp-mapsvg { width: 100%; height: auto; max-height: 62vh; background: #eef4e4; border-radius: 12px; }
+.gp-mapsvg { width: 100%; height: auto; max-height: 50vh; background: #eef4e4; border-radius: 12px; }
 .gp-spot { fill: rgba(255,255,255,.28); stroke: rgba(60,90,50,.25); stroke-dasharray: 3 3; cursor: pointer; } .gp-spot.is-on { fill: rgba(255,255,255,0); stroke: #2a2622; }
 .gp-ghost { opacity: .85; pointer-events: none; }
 .gp-mapscore { display: flex; align-items: baseline; gap: 6px; } .gp-mapscore b { font-size: 30px; }

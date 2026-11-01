@@ -40,7 +40,7 @@ function _gpRiddleOpen() {
         const row = gpEl('div', 'gp-guess'); row.appendChild(gpEl('b', '', G.name));
         const chip = (ok, t) => row.appendChild(gpEl('span', 'gp-chip ' + (ok ? 'is-yes' : 'is-no'), t));
         if (G.id === A.id) chip(true, 'That is it');
-        else { chip(G.kind === A.kind, G.kind === A.kind ? `A ${A.kind} too` : `Not ${G.kind}`); chip(G.rar === A.rar, G.rar === A.rar ? `${A.rar} too` : `Not ${G.rar}`); const both = G.seasons.some(s => A.seasons.includes(s)) || !A.seasons.length || !G.seasons.length; chip(both, both ? 'Season fits' : 'Wrong season'); row.appendChild(gpEl('span', 'gp-chip', G.name < A.name ? 'Later in the alphabet' : 'Earlier in the alphabet')); }
+        else { chip(G.kind === A.kind, G.kind === A.kind ? `Also ${A.kind.toLowerCase()}` : `Not ${G.kind.toLowerCase()}`); chip(G.rar === A.rar, G.rar === A.rar ? `${A.rar} too` : `Not ${G.rar}`); const both = G.seasons.some(s => A.seasons.includes(s)) || !A.seasons.length || !G.seasons.length; chip(both, both ? 'Season fits' : 'Wrong season'); row.appendChild(gpEl('span', 'gp-chip', G.name < A.name ? 'Later in the alphabet' : 'Earlier in the alphabet')); }
         el.appendChild(row);
       }
       if (over) {

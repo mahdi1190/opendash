@@ -245,7 +245,9 @@ function _gpKnackGo() {
   const day = _gdToday(), kind = _gpKnackOf(pet), K = GP_KNACK[kind];
   if (gpGet('kn.' + day)) { gpStage('Your pet’s knack', (el) => el.appendChild(gpEl('p', 'muted', `${pet.name} has done its bit today. Ask again tomorrow.`))); return; }
   if (gpPetAway()) { gpStage('Your pet’s knack', (el) => el.appendChild(gpEl('p', 'muted', `${pet.name} is on a journey.`))); return; }
+  let paid = false;
   const finish = () => {
+    if (paid) return; paid = true;
     const G = _gpKnackGift(GP_KNACK[kind].give);
     gpSet('kn.' + day, 1); _gdLed('pl', { i: G.items, x: 1, n: 1 }); _gdSave();
     try { petBondGive('play'); } catch (e) { /* fine */ }
@@ -257,6 +259,7 @@ function _gpKnackGo() {
   const a = Math.random() * 6.28; let tx = P.x + Math.cos(a) * 4, ty = P.y + Math.sin(a) * 2.5;
   if (!gardenWorldFree(tx, ty, 0.14)) { tx = P.x; ty = P.y; }
   const back = () => { P.sit({ eyes: 'happy', mouth: 'open' }); P.clip('jump', 800, () => { P.sit(); P.busy = 1; }); finish(); };
+  setTimeout(finish, 9000);   // (its own habits may have called it away: what it found is yours all the same)
   P.walkTo(tx, ty, true, () => { P.sit(); P.clip('sniff', 1800, () => P.walkTo(_gw.px - 0.6, _gw.py + 0.2, true, back)); });
 }
 gardenPlayAdd({ id: 'knack', name: 'Your pet’s knack', icon: 'paw-print', group: 'pet', blurb: 'Once a day it goes and finds what its kind is good at finding.',

@@ -71,6 +71,10 @@ Honest note: 23 are built in this round. The rest are real plans, not features. 
 
 No new state keys and no sync change. Things you own are ledger lines (`k: 'pl'`, items `ticket`, `egg`, `dish:<id>`, `fos:<piece>`, `decor:<id>`), which add up across devices. Records and what you have found are one value each in `g.seen` under `pl.` (per key, latest wins). Old saves simply have none of them. Ids are stable.
 
+## World positions
+
+No cell numbers anywhere: hiding places come from gardenWorldObjects, marbles from GARDEN_WORLD with a hash and gardenReachable, so moving the map moves nothing here.
+
 ## Economy
 
 Tickets are capped at 30 a day, whatever you play, and XP from games at 20 a day. Games give no coins. Cooking never makes coins: dishes cannot be sold. The tune that rains works once a day and uses no water.
