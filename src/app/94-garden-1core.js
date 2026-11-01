@@ -38,6 +38,7 @@ const _gd = { rev: 0, obj: null, memo: null, memoKey: '', wallet: null, walletKe
 /* ---------- state ---------- */
 const _GD_MAPS = ['plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'rib', 'dt', 'wq', 'gr', 'seen', 'prefs',
   'fl', 'bl', 'fd',   // 2.22: the fish log, the bug book, per-day fishing (94-garden-fish-2core.js)
+  'sp', 'vl',   // every catch as a record, and the variants found (94-garden-fish-8spec.js)
   'gl', 'gq', 'gv', 'glt',
   'wd'];  // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
 function _gdG() {
@@ -322,10 +323,11 @@ function _gdPlantState(pl, def, ctx) {
   }
   const t0 = Number(pl.t) || now;
   const area = gardenAreaAt(pl.x, pl.y, null);
-  const inSeason = area === 'greenhouse' || gardenInSeason(def, ctx.season) || _gdNearEffect(ctx.decorList, pl.x, pl.y, def.fp || 1, 'cold', 1);
+  const inSeason = area === 'greenhouse' || gardenLandAlways(pl.x, pl.y) || gardenInSeason(def, ctx.season) || _gdNearEffect(ctx.decorList, pl.x, pl.y, def.fp || 1, 'cold', 1);
   let sf = inSeason ? 1.3 : 0.8;
   if (ctx.events.includes('midsummer')) sf *= 1.25;
-  const lastWater = Math.max(Number(pl.w) || t0, ctx.rain.last || 0, _gdSprinkled(ctx.g, pl, def, now));
+  sf *= gardenLandGrow(pl.x, pl.y);   // the kind of land it is in, a scarecrow nearby
+  const lastWater = Math.max(Number(pl.w) || t0, ctx.rain.last || 0, _gdSprinkled(ctx.g, pl, def, now), gardenLandRillAt(pl, def.fp || 1, now));
   const dry = def.thirst ? Math.max(0, (now - lastWater) / _GD_H - def.thirst) : 0;
   const realH = Math.max(0, (now - t0) / _GD_H);
   const act = _gdActivity(A, t0, now);
@@ -436,7 +438,8 @@ function gardenWallet() {
   for (const id of Object.keys(g.rib)) { const r = _gdRewardOf('rib', id); if (r) { coins += r.c; xp += r.x; _gdAddItems(items, r.i); } }
   for (const key of Object.keys(g.gr)) { const m = /^(ach|ev):([a-z0-9-]+)/.exec(key); if (m && gardenPlant(m[2])) _gdAddItems(items, { ['seed:' + m[2]]: 1 }); }
   xp += 10 * Object.keys(g.disc).filter(id => gardenPlant(id) || gardenVisitor(id)).length;
-  xp += 8 * (Object.keys(g.fl).filter(id => gardenFishDef(id)).length + Object.keys(g.bl).filter(id => gardenBugDef(id)).length);   // 2.22: every new kind of fish or bug
+  const kinds = Object.keys(g.fl).filter(id => gardenFishDef(id)).length + Object.keys(g.bl).filter(id => gardenBugDef(id)).length;
+  xp += 8 * Math.min(kinds, 80) + 3 * Math.max(0, kinds - 80);   // 2.22: every new kind of fish or bug. Past the first 80 (all there were before the book of 300) each counts for less, so a long book is not a ladder of levels
   // decorations placed are not in your bag (never below none: a copy synced from elsewhere may lead the ledger)
   for (const d of Object.values(g.decor)) if (d && !d.own && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;   // (own: a friend's, from their bag: docs/dev/GARDEN_TOGETHER.md)
   for (const k of Object.keys(items)) if (items[k] < 0) items[k] = 0;
@@ -466,6 +469,7 @@ function gardenWaterInfo(model) {
   for (const t of GARDEN_TOOLS) if (t.kind === 'can' && _gdOwnsTool(t.id)) cap += t.n;
   const per = {};
   for (const d of Object.values(g.decor)) { const dd = d && gardenDecor(d.d); if (dd && dd.effect && dd.effect.kind === 'can' && (per[dd.id] || 0) < 2) { per[dd.id] = (per[dd.id] || 0) + 1; cap += dd.effect.n || 0; } }
+  cap += gardenLandWaterExtra(g, today);   // a rain barrel, the morning's dew
   const A = _gdAct(), doneToday = A.days.has(today) ? A.days.get(today).n : 0;
   const wal = gardenWallet(), bonus = today >= wal.econFrom ? wal.econToday.water : Math.min(10, 2 * doneToday);
   const used = Object.keys(g.wl[today] || {}).length;
@@ -476,9 +480,14 @@ function gardenWaterInfo(model) {
 /* ---------- the model ---------- */
 function _gdAreasOpen(level) {
   // 2.23: land you bought is yours for good (its row is in your ledger as an item, 'land:<id>', so it syncs and banks like everything else)
-  const owned = GARDEN_AREAS.filter(a => a.buy && gardenHas('land:' + a.id) > 0).map(a => a.id);
-  if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(owned); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id)); }   // (on a visit the land on screen is your friend's)
-  return GARDEN_AREAS.filter(a => (a.buy ? owned.includes(a.id) : level >= a.lv)).map(a => a.id);
+  // the land's own items: the whole plots, the sections and what is built (94-garden-lands-0table.js says what that opens)
+  const items = gardenWallet().items, own = [];
+  for (const k of Object.keys(items)) if (items[k] > 0 && (k.startsWith('land:') || k.startsWith('feat:'))) own.push(k.slice(5));
+  if (GARDEN_LAND_CURIOS.some(c => items['cur:' + c.id] > 0) || items['key:old'] > 0) own.push('finds');   // (the table they are laid out on)
+  const openSet = gardenLandsOpen(level, own);
+  if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id)); }   // (on a visit the land on screen is your friend's)
+  const base = GARDEN_AREAS.filter(a => (a.buy ? openSet.has(a.id) : level >= a.lv)).map(a => a.id);
+  return base.concat([...openSet].filter(id => !base.includes(id)));   // (the scene draws by these ids; a snapshot says it differently: gardenLandsWire)
 }
 function gardenModel(nowArg) {
   const g = _gdG();
@@ -597,6 +606,7 @@ function gardenSnapshot() {
     const plants = m.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants).map(p => [p.def.id, p.x, p.y, p.stage, p.variant, (p.thirsty ? 1 : 0) | (p.overgrown ? 2 : 0) | (p.ripe ? 4 : 0)]);
     const decor = m.decor.slice(0, GARDEN_SNAPSHOT_MAX.decor).map(d => [d.def.id, d.x, d.y, d.r, d.v]);
     const out = { v: 1, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
+    { const L = gardenLandsWire(m); out.areas = L.areas; out.ls = L.ls; if (L.lf.length) out.lf = L.lf; if (L.lc.length) out.lc = L.lc; if (L.lz.length) out.lz = L.lz; if (L.lr) out.lr = L.lr; }   // the land: at most 12 plain areas for an older friend, the real answer beside them
     if (typeof GARDEN_WORKS !== 'undefined') { const wk = GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id); if (wk.length) out.wk = wk; }   // 2.38: so a friend walks on your longer pier
     if (m.rain && (m.rain.snow || m.rain.now)) out.wx = m.rain.snow ? 2 : 1;   // 2.28: is it raining (1) or snowing (2) over your garden now? A visit has the same sky
     // 2.28: your time zone and your sunrise and sunset, so a friend who visits sees your sky as it is for you now (the offset tells them roughly where you are in the world)
@@ -607,6 +617,7 @@ function gardenSnapshot() {
       if (Number.isFinite(up) && Number.isFinite(dn) && up >= 0 && up < 1440 && dn >= 0 && dn < 1440) { out.sr = up; out.ss = dn; }
     } catch (e) { /* their own clock then */ }
     try { const sh = typeof gardenShowWire === 'function' ? gardenShowWire() : null; if (sh) out.sh = sh; } catch (e) { /* the showcase is optional */ }   // 2.22: the tank and the case
+    try { const sp = typeof gardenSpecWire === 'function' ? gardenSpecWire() : null; if (sp) out.sp = sp; } catch (e) { /* specimens are optional */ }   // your best few, for friends: ids and numbers, an older app drops the field
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     return out;
@@ -667,7 +678,7 @@ function gardenFacts(mArg) {
     nightVisitors: vis.filter(id => !gardenVisitor(id).when.tod.includes('day')).length,
     seasons: GARDEN_SEASONS.filter(s => g.seen['season:' + s]).length,
     decorPlaced: m.decor.filter(d => d.def.layer !== 'ground').length,
-    areas: m.areas.length, clover: (w.items.clover || 0) > 0 || !!g.disc['four-leaf-clover'] ? 1 : 0,
+    areas: GARDEN_AREAS.filter(a => m.areas.includes(a.id)).length, clover: (w.items.clover || 0) > 0 || !!g.disc['four-leaf-clover'] ? 1 : 0,
   };
 }
 function gardenRibbonRows(mArg) {
@@ -713,6 +724,7 @@ function gardenTick() {
       const was = Number(g.seen.level) || 1; g.seen.level = lv; changed = true;
       moments.push({ kind: 'level', text: `Garden level ${lv}: ${gardenLevelOf(gardenWallet().xp).title}`, icon: 'sprout', level: lv });
       for (const a of GARDEN_AREAS) if (!a.buy && a.lv > was && a.lv <= lv) moments.push({ kind: 'area', text: `The ${a.name.toLowerCase()} ${/s$/.test(a.name) ? 'are' : 'is'} open`, icon: a.icon, area: a.id });
+      gardenLandsTick(was, lv, moments);
     }
     // tidy: keep a week of per-day maps, fold old ledger entries by month
     if (g.seen.tidy !== today) { g.seen.tidy = today; changed = _gdTidy(g, today) || changed; }
@@ -1124,25 +1136,30 @@ function gardenDailyDeal(iso) {
   const pool = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && p.rarity !== 'common');
   return pool[gardenHash('gd-deal|' + iso) % pool.length].id;
 }
-/** A piece of land for sale: {def, owned, cost, lvOk, afford}, or null. */
+/** A section for sale: {def, owned, cost, lvOk, afford, reach (its path is open), keyOk}. A whole plot is no longer sold: you get a row for one only if you own it. Null: not land. */
 function gardenLandInfo(id, m) {
   const def = gardenArea(id); if (!def || !def.buy) return null;
   m = m || gardenModel();
-  const owned = gardenHas('land:' + id) > 0;
-  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv, afford: m.wallet.coins >= def.buy };
+  const whole = !def.plot, owned = gardenHas('land:' + id) > 0 || (!whole && gardenHas('land:' + def.plot) > 0);
+  if (whole && !owned) return null;
+  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv, afford: m.wallet.coins >= def.buy, reach: whole || !def.via || m.areas.includes(def.via), keyOk: !def.needs || gardenHas(def.needs) > 0 };
 }
-/** Buy a piece of land with coins. One Undo; what grows on it stays where it is. */
+/** Buy a section with coins. One Undo; what grows on it stays where it is. */
 function gardenBuyLand(id) {
   { const v = _gdvAsk('land', { id }); if (v) return v; }
-  const info = gardenLandInfo(id); if (!info) return _gdNo('That land is not for sale');
+  const info = gardenLandInfo(id); if (!info) return _gdNo(gardenArea(id) && gardenArea(id).buy ? 'That is sold in small sections now: pick one at the land office' : 'That land is not for sale');
   if (info.owned) return _gdNo('That land is already yours');
   if (!info.lvOk) return _gdNo(`${info.def.name} opens at garden level ${info.def.lv}`);
+  if (!info.reach) return _gdNo(`The path to ${info.def.name} is not open yet`);
+  if (!info.keyOk) return _gdNo(`${info.def.name} has a rusty gate: you need the old key. Keep digging`);
   const m = gardenModel();
   if (!info.afford) return _gdNo(`That costs ${info.cost} coins: you have ${m.wallet.coins}`);
   const lk = 'b.' + m.today + '.' + _gdUid(''), mark = _gdMark([['led', lk]]);
-  _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(info.cost), i: { ['land:' + id]: 1 }, n: 1 };
+  _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(info.cost), x: 5, i: { ['land:' + id]: 1 }, n: 1 };
   _gdEmit('land', { id, x: info.def.x, y: info.def.y, w: info.def.w, h: info.def.h });
-  return _gdDone(`${info.def.name} is yours`, `buying ${info.def.name.toLowerCase()}`, mark, { icon: 'trees' });
+  const done = _gdDone(`${info.def.name} is yours`, `buying ${info.def.name.toLowerCase()}`, mark, { icon: 'trees' });
+  gardenModel();   // (the land on screen, and what you can walk on, are yours from this moment)
+  return done;
 }
 function gardenBuy(item, n) {
   n = Math.max(1, Math.min(20, Math.floor(Number(n) || 1)));

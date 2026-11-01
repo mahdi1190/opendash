@@ -51,7 +51,7 @@ function _gsvAvatar(f, size) {
   el.style.setProperty('--size', size + 'px');
   return el;
 }
-function _gsvSig(snap) { return snap ? String(gardenHash(JSON.stringify([snap.lv, snap.season, snap.areas, snap.plants, snap.decor, snap.heart]))) : ''; }
+function _gsvSig(snap) { return snap ? String(gardenHash(JSON.stringify([snap.lv, snap.season, snap.areas, snap.plants, snap.decor, snap.heart, snap.ls, snap.lf, snap.lc, snap.lz, snap.lr]))) : ''; }
 function _gsvLevelTitle(lv) { return typeof GARDEN_LEVEL_TITLES !== 'undefined' ? GARDEN_LEVEL_TITLES[Math.max(0, Math.min(GARDEN_LEVEL_TITLES.length - 1, (lv || 1) - 1))] || '' : ''; }
 /* ---------- the section, the palette, Home's Fun list ---------- */
 registerSection('garden-visit', {

@@ -61,6 +61,7 @@ function _ghHud(box, m) {
   const el = _ghHost(box, 'gd-hud'); el.setAttribute('aria-label', 'Your garden so far'); el.innerHTML = html;
 }
 const _GH_MENU = Object.freeze([
+  ['lands', 'Land', 'map'],
   ['shop', 'Shop', 'store'], ['basket', 'Basket', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Tricks', 'wand-sparkles'], ['almanac', 'Almanac', 'book-open'], ['nature', 'Nature', 'leaf'], ['wonder', 'Keepsakes', 'mail'], ['catch', 'Catch', 'fish'], ['friends', 'Friends', 'users'], ['goals', 'Goals', 'target'], ['help', 'Help', 'circle-help'],
 ]);
 function _ghMenu(box, m) {
@@ -204,8 +205,9 @@ function _ghMini(box, m) {
   const area = GARDEN_AREAS.map((a) => {
     const isOpen = open.has(a.id), wa = a.water;
     const col = !isOpen ? 'rgba(40,40,30,.55)' : _gdrTileCol(a.tile, m.season);
+    if (a.buy && !isOpen) return `<rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}" fill="${col}"/>`;   // (its sections, below)
     return `<rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}" fill="${col}"/>` + (wa ? `<rect x="${wa.x}" y="${wa.y}" width="${wa.w}" height="${wa.h}" fill="#4f93c8"/>` : '');
-  }).join('');
+  }).join('') + gardenLandMini(open, m.season);
   const html = `<svg viewBox="0 0 ${W.cols} ${W.rows}" preserveAspectRatio="none" aria-hidden="true"><rect width="${W.cols}" height="${W.rows}" fill="#7ea85a"/>${area}${marks}<rect class="gd-mini-view" fill="none" stroke="#fff" stroke-width=".35"/><circle class="gd-mini-me" r="1.100" fill="#fff" stroke="#2a2a2a" stroke-width=".3"/></svg>`;
   const el = _ghHost(box, 'gd-mini');
   if (_gh.mini !== html || !el.firstChild) {
@@ -324,23 +326,26 @@ function gardenSpotMark(cell) {
 }
 function gardenLandBubble(id, m) {
   const info = gardenLandInfo(id, m); if (!info || info.owned) return;
-  const a = info.def, lane = a.y < 11 ? a.y + a.h - 2.1 : a.y + 0.2;
+  const a = info.def, K = GARDEN_LAND_KINDS[a.kind], D = gardenLandDoor(a);
   const items = [{ svg: _GH_GLYPH.coin, label: `Buy for ${_gdpNum(info.cost)} coins`, n: _gdpNum(info.cost), cls: 'is-go is-buy', run: (b) => {
     const r = gardenBuyLand(id);
     if (!r.ok) { gameDenyOf(r, b); return; }
     gameCheer(b, { text: '-' + info.cost, tone: 'coin', sound: true });
   } }];
-  gardenBubbleOpen({ x: a.x + a.w / 2, y: lane }, { title: a.name, sub: a.blurb, items, cls: 'is-land' });
+  gardenBubbleOpen({ x: D ? D.fx + 0.5 : a.x + a.w / 2, y: D ? D.fy : a.y }, { title: a.name, sub: `${K.name}: ${gardenLandGrowsLine(a)}. ${K.says || ''}`.trim(), items, cls: 'is-land' });
 }
-/** A click on land that is not yours. Land for sale: you walk to its sign and the price opens there. Land that opens with your level: a padlock. */
+/** A click on land that is not yours. A section you can buy: you walk to it and the price opens there. Otherwise: a padlock, and it says what is needed. */
 function gardenLandClick(id, ev) {
   const a = gardenArea(id), at = ev && ev.clientX != null ? { x: ev.clientX, y: ev.clientY } : null; if (!a) return;
   const m = gardenHere();
   if (m.visit) { gameDeny(null, { kind: 'lock', at, say: 'That land is not open in this garden.' }); return; }
   if (!a.buy) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} opens at garden level ${a.lv}.` }); return; }
   if (m.level.level < a.lv) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} can be bought from garden level ${a.lv}.` }); return; }
-  const stand = { x: a.x + a.w / 2, y: a.y < 11 ? 11.4 : 12.6 };
-  if (!gardenWalkToPoint(stand, () => gardenLandBubble(id, gardenHere()), { radius: 2 })) gameDeny(null, { at, say: 'You cannot get there.' });
+  const info = gardenLandInfo(id, m), D = gardenLandDoor(a);
+  if (!info || !D) return;
+  if (!info.reach) { const t = gardenLandRow(a.via); gameDeny(null, { kind: 'lock', badge: 'Lv ' + t.lv, at, say: `The way to ${a.name} is ${t.name}: it opens at garden level ${t.lv}.` }); return; }
+  if (!info.keyOk) { gameDeny(null, { kind: 'lock', at, say: `${a.name} has a rusty gate. Keep digging: somebody lost a key.` }); return; }
+  if (!gardenWalkToPoint({ x: D.x + 0.5, y: D.y + 0.5 }, () => gardenLandBubble(id, gardenHere()), { radius: 2 })) gameDeny(null, { at, say: 'You cannot get there.' });
 }
 /** Pick up something already in the garden: it follows the pointer as a ghost until you click somewhere it can go. */
 function gardenMoveStart(uid, kind) {
@@ -402,6 +407,7 @@ function gardenWalkedOnce() {
 function gardenHudPaint(m) {
   const box = _ghBox(); if (!box) return;
   _ghHud(box, m); _ghMenu(box, m); _ghBar(box, m); _ghQuick(box, m); _ghMini(box, m); _ghNeeds(m); _ghArrow(m); _ghWalkHint();
+  gardenLandsPaint(m);   // today's dig spot, the forage, the weekend cart
   if (typeof gardenVisitTagPaint === 'function') gardenVisitTagPaint(box, m);
   if (typeof gardenLiveGoalPaint === 'function') gardenLiveGoalPaint(box);   // a shared goal in a live garden (94-garden-live-7goal.js)
   if (_gh.bag) _ghBag();

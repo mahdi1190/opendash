@@ -44,14 +44,13 @@ Status: **built** works in this branch; **next** is designed and not built. Feel
 | 28 | Star nights: real meteor showers on their real dates | C | The real sky | The game agrees with the real world | built |
 | 29 | The ghost in the photograph: at one hour, in one place, the camera sees something you do not | C | Fatal Frame, ghost stories | "Look at this picture" | next |
 | 30 | The noon shadow: the sundial casts a true shadow by your clock, and at noon it points somewhere | C E | Zelda | A puzzle only your real clock can solve | next |
-| 31 | The singing stones: stones by the shore that play a note when you step on them. A bird sings a tune at dawn; walk it back | F C | Ocarina, Journey | Music by walking, and friends hear it with no new messages | next |
 | 32 | The sound of where you are: rain, water, wind and crickets by place and hour, made on the fly | Q | Any good game | You would miss it if it stopped | next |
 | 33 | Frost fair: a few days each winter the near lake freezes and you can walk on it | F C | Old London frost fairs | "I walked across the lake" | next |
 | 34 | A fog morning, and the ferry that only comes then | C | Spiritfarer | Another way to the island | next |
 | 35 | A friend's ghost: the faint figure of a friend walks the way they walked when they last visited | C Q | Dark Souls, Journey | Being somewhere after someone | next |
 | 36 | Words left on the ground: leave a line from a phrase book in a friend's garden | F | Dark Souls | No free text, still personal | next |
 | 37 | Bottle post: a bottle to a friend's lake that takes days to arrive | Q | Message in a bottle | Slow on purpose | next |
-| 38 | Wind days and a kite | F | Childhood | Weather that gives you something to do | next |
+| 38 | Wind days: gusts, leaves and cloud shadows you can see coming | Q | Any good game | Weather you can feel | next |
 | 39 | A garden that remembers: an old plant tells you who planted it and what it has seen, and marks its birthday | Q | Dorfromantik | Years you can feel | next |
 | 40 | The time capsule: bury a note to yourself, opened at first snow or in a year | Q C | Real life | A surprise you send yourself | next |
 | 41 | Putting the garden to bed: a small way to end the day, and the garden's own diary | Q | Animal Crossing | Gentle endings | next |
@@ -79,8 +78,17 @@ Status: **built** works in this branch; **next** is designed and not built. Feel
 
 **Weather** (`94-garden-wonder-a-weather.js`). Footprints are one path in one sprite, redrawn from a short list after a repaint. `rainbow` wraps the existing effect, no core change.
 
+## With the play plan (docs/dev/HUNDRED_PLAY.md)
+
+- Its old gardener's pages and these letters are about the same place, on purpose. He kept the back and the mill, and wrote pages; his sister, W., kept the front, and writes letters. Each stands alone, and if you do both, each explains the other's silence.
+- Hiding a gift for a friend is built here (row 17); the play plan lists it as next, so it should not be built twice. Birdsong and tunes, and the kite, are theirs: rows for them were taken out here.
+
+## World cells
+
+The garden map is moving, so every position is worked out from `GARDEN_AREAS` and `GARDEN_PROPS`, in two tables, each marked `// world cells`: `WD_AT` in `94-garden-wonder-0kit.js` (the island, the way across, the bench, the rug, the cairn, the far lamps and the rest) and `WD_FINDS` in `94-garden-wonder-3finds.js` (each buried thing, so a clue stays true). Callers and the snail are placed relative to you or to `WD_AT`. Two clues name a place in words ("by the notice board", "past the sundial"): keep them true if those props change neighbours.
+
 ## Honest limits
 
 - Callers, letters and finds are your own: a friend in your garden does not see your caller. What friends do see: your stars, your cairn, the island and its open way.
 - Fun Off means none of this appears. The island and its stones stay, because they are the land.
-- Next round is rows 29 to 42 above, each designed.
+- Next round is the rows marked next above, each designed.

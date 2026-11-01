@@ -1,0 +1,53 @@
+/* Variants of fish and bugs: "My best catches", the friends board, and a catch rare enough to stop you (src/app/94-garden-fish-9best.js). */
+.gd-rar.gvb-t-uncommon { background: color-mix(in srgb, #3f8f5a 16%, var(--surface)); color: color-mix(in srgb, #3f8f5a 80%, var(--fg)); }
+.gd-rar.gvb-t-rare { background: color-mix(in srgb, #3a6fc4 16%, var(--surface)); color: color-mix(in srgb, #3a6fc4 80%, var(--fg)); }
+.gd-rar.gvb-t-epic { background: color-mix(in srgb, #8a4fc9 16%, var(--surface)); color: color-mix(in srgb, #8a4fc9 80%, var(--fg)); }
+.gd-rar.gvb-t-legendary { background: color-mix(in srgb, #c98a12 18%, var(--surface)); color: color-mix(in srgb, #c98a12 85%, var(--fg)); }
+.gd-rar.gvb-t-lifetime { background: linear-gradient(90deg, #e0483c, #e8a12a, #3a9a5a, #3a7ad0, #8a4fc9); color: #fff; }
+.gvb-head { padding: var(--space-3); margin-bottom: var(--space-3); }
+.gvb-nums { display: flex; flex-direction: column; gap: 6px; }
+.gvb-big { font-size: 1.15rem; line-height: 1.2; }
+.gvb-bar { display: block; width: 100%; max-width: 420px; }
+.gvb-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.gvb-sel { width: auto; max-width: 100%; }
+.gvb-records { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3); }
+.gvb-record { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); min-width: 0; }
+.gvb-record-art { flex: none; display: grid; place-items: center; width: 48px; }
+.gvb-record-t { display: flex; flex-direction: column; gap: 1px; min-width: 0; line-height: 1.25; }
+.gvb-card .gd-card-art svg, .gvb-var .gd-card-art svg { max-width: 100%; height: auto; }
+.gvb-c-rare { border-color: color-mix(in srgb, #3a6fc4 45%, var(--border-subtle)); }
+.gvb-c-epic { border-color: color-mix(in srgb, #8a4fc9 55%, var(--border-subtle)); }
+.gvb-c-legendary { border-color: color-mix(in srgb, #c98a12 70%, var(--border-subtle)); box-shadow: 0 0 0 1px color-mix(in srgb, #c98a12 30%, transparent); }
+.gvb-c-lifetime { border-color: #c98a12; box-shadow: 0 0 0 2px color-mix(in srgb, #8a4fc9 45%, transparent), 0 0 14px color-mix(in srgb, #e8a12a 40%, transparent); }
+.gvb-how { display: block; }
+.gvb-tier-h { margin-top: var(--space-3); }
+.gvb-note { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3); margin-bottom: var(--space-3); line-height: 1.45; }
+.gvb-note svg { flex: none; margin-top: 2px; }
+.gvb-boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); }
+.gvb-board { padding: var(--space-3); min-width: 0; }
+.gvb-board-h { display: flex; align-items: center; gap: 6px; margin-bottom: var(--space-2); }
+.gvb-row { display: flex; align-items: center; gap: var(--space-2); padding: 6px 4px; border-radius: var(--radius-md); min-width: 0; }
+.gvb-row.is-me { background: var(--bg-muted); }
+.gvb-pos { flex: none; width: 1.2em; text-align: right; font-variant-numeric: tabular-nums; color: var(--fg-muted); }
+.gvb-row-art { flex: none; display: grid; place-items: center; width: 44px; }
+.gvb-row-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.gvb-none { margin: var(--space-2) 0 0; }
+.gvb-visit { margin-top: var(--space-2); display: flex; flex-direction: column; gap: 4px; }
+.gmo-rays { transform-box: fill-box; transform-origin: 50% 50%; }
+/* a catch rare enough to stop you */
+.gvb-event { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; padding: 12px; background: rgba(12, 10, 24, .46); animation: gvb-in .3s ease both; overflow: auto; }
+.gvb-event.is-out { opacity: 0; transition: opacity .25s; }
+.gvb-event-card { display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(92%, 420px); padding: 18px 16px; text-align: center; border-radius: 18px; background: var(--surface); color: var(--fg); box-shadow: 0 12px 44px rgba(0, 0, 0, .4); border: 2px solid #c98a12; animation: gvb-pop .5s cubic-bezier(.3, 1.6, .5, 1) both; }
+.gvb-e-lifetime .gvb-event-card { border-color: transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, linear-gradient(120deg, #e0483c, #e8a12a, #3a9a5a, #3a7ad0, #8a4fc9) border-box; }
+.gvb-event-tier { font-weight: 800; letter-spacing: .02em; font-size: 1.1rem; color: #b5790c; }
+.gvb-e-lifetime .gvb-event-tier { font-size: 1.3rem; background: linear-gradient(90deg, #e0483c, #e8a12a, #3a9a5a, #3a7ad0, #8a4fc9); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.gvb-event-art svg { max-width: 100%; height: auto; }
+.gvb-event-name { font-size: 1.1rem; }
+.gvb-event-sub { color: var(--fg-muted); }
+.gvb-event-p { margin: 2px 0 8px; color: var(--fg-muted); }
+.gvb-event-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+@keyframes gvb-in { from { opacity: 0; } }
+@keyframes gvb-pop { from { transform: scale(.7); opacity: 0; } }
+html[data-motion="reduced"] .gvb-event, html[data-motion="reduced"] .gvb-event-card { animation: none; }
+@media (prefers-reduced-motion: reduce) { .gvb-event, .gvb-event-card { animation: none; } }
+@media (max-width: 520px) { .gvb-boards { grid-template-columns: 1fr; } .gvb-records { grid-template-columns: 1fr 1fr; } .gvb-record-art { width: 36px; } }

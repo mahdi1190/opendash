@@ -24,6 +24,7 @@ const _GDPOP = Object.freeze({
   goals: { title: 'Goals', icon: 'target', fill: (el, m) => gardenGoalsPanel(el, m) },
   sail: { title: 'Where to?', icon: 'ship', fill: (el) => gardenSailTab(el) },
   visit: { title: 'Guestbook', icon: 'feather', fill: (el) => gardenVisitNotes(el) },
+  lands: { title: 'Land office', icon: 'map-pin', fill: (el, m) => gardenLandsTab(el, m) },
   craft: { title: 'Crafting bench', icon: 'hammer', fill: (el, m) => gardenCraftTab(el, m) },
   tricks: { title: 'Trick book', icon: 'wand-sparkles', fill: (el) => { el.textContent = ''; petBookPage(el, { panel: true }); } },
 });

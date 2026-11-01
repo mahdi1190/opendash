@@ -409,7 +409,7 @@ in the garden and the fishing mini game to be connected to it. You can move the 
 | Part | Files |
 |---|---|
 | The bigger world: `GARDEN_WORLD` is 28 x 18 cells (the first 20 x 11 are exactly where they were: every saved x, y stays valid); the Wild woods (east, level 4) and the Lake (south, level 1) in `GARDEN_AREAS`, `GARDEN_PROPS` (the pier, the tackle shop, the mooring post, the reeds, the forest edge), `gardenWaterZone(x, y)`, `gardenPropAt`, new tiles | `94-garden-0catalog.js` |
-| The catalogue of 39 fish, 9 finds, 33 bugs, 5 rods, 4 nets, 5 baits, 6 floats, the economy (`GARDEN_CATCH_ECON`), the odds (`gardenFishOdds`), the order board (`gardenTradesFor`), the showcase's wire form (`gardenShowClean`). PURE; Node evaluates it (`lib/friends/garden.mjs`) | `94-garden-fish-0catalog.js` |
+| The catalogue of 300 fish, 9 finds, 300 bugs (each may carry `needs`: `gardenFishFits`, `gardenBugFits`, `gardenFishLacks`, `gardenCatchNeedsWords`, `gardenMoonPhase`; the art is in `94-garden-fish-1art.js` and `94-garden-fish-1art2.js`, the dictionary in `94-garden-fish-4book.js`), 5 rods, 4 nets, 5 baits, 6 floats, the economy (`GARDEN_CATCH_ECON`), the odds (`gardenFishOdds`), the order board (`gardenTradesFor`), the showcase's wire form (`gardenShowClean`). PURE; Node evaluates it (`lib/friends/garden.mjs`) | `94-garden-fish-0catalog.js` |
 | The art: parametric fish (12 body shapes x patterns), bugs (16 shapes), finds, gear icons: `gardenFishArt`, `gardenBugArt`, `gardenGearArt`, `gardenCatchSvg(kind, id, px)` | `94-garden-fish-1art.js` |
 | The ground and scenery: the lake, pier, woods, tackle shop, boat, reeds, forest edge; the decorations that show catches (aquarium, bug case, trophy board, fish weathervane, bait bucket) | `94-garden-fish-1world.js` |
 | The engine: gear, casts, `gardenFishPlan` / `gardenCatchFish`, `gardenBugsNow` / `gardenCatchBug`, bag, market, order board, showcase, facts | `94-garden-fish-2core.js` |
@@ -511,7 +511,7 @@ const h = gardenWorldAdd({ id: 'hedgehog', svg: myArt(), x: 12, y: 9.5, ground: 
 - **A plant**: one `_gP(...)` row in `94-garden-0catalog.js`: id, name, category, rarity, growth speed, seasons, look (`form` picks the art), then `yield`, `price`, `lv`, `unlock`. It is in the shop, the almanac and every bed its category grows in.
 - **A decoration**: one `_gD(...)` row: id, name, category, `{w, h, price, lv, rot, look, v, effect: {kind}, blurb}`. Give it `perch` if something should land at a particular height. A new behaviour is one word in `effect.kind`, plus its sentence in `_gdpEffectText`.
 - **A building or scenery**: one `GARDEN_PROPS` row (`kind`, `act`, `door`, `tall`); a new `kind` is one function in the `art` table; a new `act` is one line in `_gwOpenProp`; a panel is one row in `_GDPOP`.
-- **Land**: one `GARDEN_AREAS` row with `buy`, `lv`, `look`, `cats`, a rectangle east or south of what exists, and at most 12 areas in all. Nothing already placed moves.
+- **Land**: the plots you could buy are split into sections and trails: one row in `GARDEN_LAND_SECTIONS` and its letter in `GARDEN_LAND_MAPS` (`94-garden-lands-0table.js`, and docs/dev/GARDEN_PLAN.md). `GARDEN_AREAS` stays at most 12 rows: a friend's snapshot carries the open ones and older versions check that list's length. Nothing already placed moves.
 - **A seasonal task**: one `GARDEN_QUESTS` row with `season`. It pays once a week.
 - **A pet, a creature**: pets are 97-pets-* catalogue rows (agent PETS); a creature is one row in `GARDEN_CREATURES` (section 17).
 
