@@ -191,7 +191,7 @@ function hspModel(g, o) {
     const base = `${b.m}|${b.date}`, k = (seen.get(base) || 0) + 1;
     seen.set(base, k);
     return { key: k > 1 ? `${base}#${k}` : base, m: String(b.m || name), name, c: b.c || '', date: b.date, day: b.due ? 'Due now' : hspDayLabel(b.date, today, locale),
-      amount: +b.amount || 0, due: !!b.due, freq: b.freq || '', initial: hspInitial(name) };
+      amount: +b.amount || 0, due: !!b.due, freq: b.freq || '', initial: hspInitial(name), card: b.card || null };
   };
   const all = (Array.isArray(g.bills) ? g.bills : []).map(bill);
   const safe = g.safe && typeof g.safe === 'object' ? g.safe : null;
@@ -225,7 +225,8 @@ function hspModel(g, o) {
     bills: all.slice(0, max), more: Math.max(0, all.length - max), billCount: all.length, billsTotal: +g.billsTotal || 0,
     next, left: safe ? +safe.left : null, cushion: safe ? +safe.cushion : (Number.isFinite(+g.cushion) ? +g.cushion : null),
     balance: bal, series, low, stale,
-    key: [hero.kind, hero.value, p.next, p.daysLeft, all.length, g.billsTotal, safe ? safe.left : '-', bal ? bal.total : '-', series.length, g.staleDays].join('|'),
+    owed: g.cards && Number.isFinite(+g.cards.owed) ? { total: +g.cards.owed, n: +g.cards.n || 1, name: Array.isArray(g.cards.names) && g.cards.names.length === 1 ? g.cards.names[0] : null } : null,
+    key: [hero.kind, hero.value, p.next, p.daysLeft, all.length, g.billsTotal, safe ? safe.left : '-', bal ? bal.total : '-', series.length, g.staleDays, g.cards ? g.cards.owed : '-'].join('|'),
   };
 }
 
@@ -250,7 +251,7 @@ function hspSay(m, fmt, hidden) {
   }
   return {
     hero,
-    left: m.left != null ? `${A(Math.max(0, m.left))} left after bills, with ${A(m.cushion)} kept back.` : '',
+    left: (m.left != null ? `${A(Math.max(0, m.left))} left after bills, with ${A(m.cushion)} kept back.` : '') + (m.owed ? ` You owe ${A(m.owed.total)} on credit cards, kept apart from this.` : ''),
     spark,
     low: m.low ? `Lowest point before ${m.until}: ${A(m.low.amount)} on ${m.low.when}, if nothing else is spent.` : '',
   };

@@ -30,7 +30,7 @@
                                      {detail: badge} and emitShell('locations:badge', badge)
    No Claude calls, no network beyond this dashboard's own server.
    ============================================================ */
-const LOC_NOTICE = "OpenDash keeps a private history of where you've been, for fun facts. It stays on your computers unless you share places with a friend.";
+const LOC_NOTICE = "Freeflo keeps a private history of where you've been, for fun facts. It stays on your computers unless you share places with a friend.";
 const _LOC_CUR_KEY = 'dashboard-location-log-cur';
 const _LOC_MIGRATED_KEY = 'dashboard-location-log-migrated';
 const _loc = { data: null, loading: null, recs: new Map(), sent: new Map(), dirty: new Set(), doneQ: new Map(), badgeQ: {}, timer: null, ver: 0, subs: new Set(), badgeSubs: new Set(), memo: null, memoKey: '', spend: undefined, booted: false, zonesAt: 0 };
@@ -265,7 +265,7 @@ async function locLogForgetRange(from, to) {
   const a = Date.parse(from + 'T00:00:00'), b = Date.parse((to || from) + 'T23:59:59');
   if (!Number.isFinite(a) || !Number.isFinite(b)) return;
   for (const [id, r] of [..._loc.recs]) if (r.at <= b && (r.until || r.at) >= a) { _loc.recs.delete(id); _loc.dirty.delete(id); }
-  try { await fetch('/api/locations/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true, from: a, to: b }) }); } catch (e) { /* the server is down: the next load shows them again */ }
+  try { const r = await fetch('/api/locations/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm: true, from: a, to: b }) }); if (!r.ok) toast('Those days may still be in your places history. Try forgetting them again.', { kind: 'err', retry: () => locLogForgetRange(from, to) }); } catch (e) { /* the server is down: the next load shows them again */ }
   _locBump();
 }
 async function locLogSetOn(on) {
@@ -373,7 +373,7 @@ function _locCheckBadges() {
 /* ---------- the first-time notice ---------- */
 function _locMaybeNotice() {
   if (!_loc.data || _loc.data.prefs.noticeAt) return;
-  const busy = (typeof _obOpen !== 'undefined' && _obOpen) || (typeof storyIsOpen === 'function' && storyIsOpen()) || document.querySelector('.modal, .scrim');
+  const busy = (typeof _obOpen !== 'undefined' && _obOpen) || (typeof storyIsOpen === 'function' && storyIsOpen()) || document.querySelector('.modal, .scrim') || (document.documentElement.classList.contains('gd-immersive') || document.documentElement.classList.contains('gsv-immersive'));   // not over the garden
   if (busy || document.hidden) { setTimeout(_locMaybeNotice, 20000); return; }
   let answered = false;
   const seen = (on) => { answered = true; fetch('/api/locations/prefs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ noticeAt: _locNow(), ...(on === false ? { on: false } : {}) }) }).then(r => r.json()).then(j => { if (j && j.prefs && _loc.data) { _loc.data.prefs = j.prefs; _locBump(); } }).catch(() => {}); };
@@ -408,8 +408,8 @@ registerSettingsGroup({
     const act = document.createElement('div'); act.className = 'loc-set-act';
     act.append(
       uiButton({ label: 'Open Places', icon: 'map-pin', size: 'sm', run: () => setView('locations') }),
-      uiButton({ label: 'Export JSON', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('json') }),
-      uiButton({ label: 'Export CSV', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('csv') }));
+      uiButton({ label: 'Download a data file', tip: 'A JSON file, for moving your places to another program', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('json') }),
+      uiButton({ label: 'Download a spreadsheet', tip: 'A CSV file that Excel and other spreadsheets can open', icon: 'download', kind: 'ghost', size: 'sm', run: () => locLogExport('csv') }));
     el.appendChild(_settingsRow('Your data', 'Download everything, any time.', act));
     const del = document.createElement('div');
     del.appendChild(uiButton({ label: 'Delete my location history', icon: 'trash-2', kind: 'danger', size: 'sm', run: async () => { if (await locLogDelete()) render(); } }));

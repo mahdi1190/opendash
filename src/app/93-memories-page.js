@@ -6,13 +6,14 @@
                  Wrapped (93-memories-wrapped.js)
      capsules    notes to your future self: sealed until their day
      postcards   the album of first visits (agent locations' tab mounts the same album)
+     photos      garden photos kept on this computer, group photos from a live garden among them (93-memories-photos.js)
      people      birthdays coming up, friendship streaks, people it has been a while with
      milestones  your 1st, 10th, 100th... task finished, your best streak, firsts
    Life > Memories since 2.18 (docs/dev/NAVIGATION_PLAN.md 2.2): the page is one of Life's tabs; its
-   own six tabs are the level-2 control under Life's strip. Tabs: re-selecting is a no-op;
+   own seven tabs are the level-2 control under Life's strip. Tabs: re-selecting is a no-op;
    the entrance plays once per entry.
    ============================================================ */
-const MEM_TABS = [['journal', 'Journal', 'notebook-pen'], ['year', 'Your year', 'calendar-days'], ['capsules', 'Time capsules', 'mail'], ['postcards', 'Postcards', 'map'], ['people', 'People', 'heart'], ['milestones', 'Milestones', 'trophy']];
+const MEM_TABS = [['journal', 'Journal', 'notebook-pen'], ['year', 'Your year', 'calendar-days'], ['capsules', 'Time capsules', 'mail'], ['postcards', 'Postcards', 'map'], ['photos', 'Photos', 'camera'], ['people', 'People', 'heart'], ['milestones', 'Milestones', 'trophy']];
 let _mpEntry = '', _mpYear = 0, _mpJournalN = 0, _mpCapSel = '';
 function _mpTab(v) { const m = /^memories:([a-z]+)$/.exec(String(v || '')); const t = m ? m[1] : 'journal'; return MEM_TABS.some(x => x[0] === t) ? t : 'journal'; }
 function _mpTabLabel(t) { const x = MEM_TABS.find(y => y[0] === t); return x ? x[1] : 'Journal'; }
@@ -30,15 +31,16 @@ registerSection('memories', {
 registerPage({
   id: 'memories', view: 'memories', match: v => v === 'memories' || /^memories:[a-z]+$/.test(String(v || '')),
   label: 'Memories', icon: 'book-open', area: 'life', tab: true, order: 50, since: '2.16', discover: true, ownTabs: true,
-  desc: 'Journal, your year, capsules, postcards and milestones',
+  desc: 'Journal, your year, capsules, postcards, garden photos and milestones',
   keywords: 'memories journal diary year heatmap wrapped time capsule letter postcards birthdays people milestones firsts',
   sections: MEM_TABS.map(([id, label]) => [id === 'journal' ? 'memories' : 'memories:' + id, label]),
   badge: () => { const n = typeof memCapsulesDue === 'function' ? memCapsulesDue().length : 0; return n ? String(n) : ''; },
 });
-registerCommand({ id: 'mem-wrapped', label: 'Your year in OpenDash (Wrapped)', icon: 'party-popper', group: 'Go to', keywords: 'wrapped year review recap stats spotify annual memories', run: () => memWrappedOpen() });
+registerCommand({ id: 'mem-wrapped', label: 'Your year in Freeflo (Wrapped)', icon: 'party-popper', group: 'Go to', keywords: 'wrapped year review recap stats spotify annual memories', run: () => memWrappedOpen() });
 registerCommand({ id: 'mem-journal', label: 'Journal', icon: 'notebook-pen', group: 'Go to', keywords: 'memories diary journal day line mood', run: () => setView('memories') });
 registerCommand({ id: 'mem-capsule', label: 'Write a note to your future self', icon: 'mail', keywords: 'time capsule letter future self memories', run: () => memCapsuleWrite() });
 registerCommand({ id: 'mem-rediscover', label: 'Rediscover a day', icon: 'sparkles', keywords: 'memories random past day throwback on this day', run: () => { const d = memRediscover(); if (d) memDayDialog(d); else toast('Come back when there is more history to rediscover', { icon: 'history' }); } });
+registerCommand({ id: 'mem-photos', label: 'Garden photos', icon: 'camera', group: 'Go to', keywords: 'memories garden photos pictures album group photo', run: () => setView('memories:photos') });
 registerCommand({ id: 'mem-postcards', label: 'Postcards', icon: 'map', group: 'Go to', keywords: 'memories travel countries trips album', run: () => setView('memories:postcards') });
 
 function _mpRediscover() { const d = memRediscover(); if (d) memDayDialog(d); else toast('Come back when there is more history to rediscover', { icon: 'history' }); }
@@ -72,6 +74,7 @@ function _mpMount(container, view) {
     else if (tab === 'year') _mpYearTab(body);
     else if (tab === 'capsules') _mpCapsules(body);
     else if (tab === 'postcards') _mpPostcards(body);
+    else if (tab === 'photos') _mpPhotos(body);
     else if (tab === 'people') _mpPeople(body);
     else if (tab === 'milestones') _mpMilestones(body);
   } catch (e) {
@@ -151,8 +154,21 @@ function _mpJournal(outer) {
   // a page at a time; a repaint (polishing an entry) keeps how many were open
   body.appendChild(pagedList({ items, pageSize: 20, start: _mpJournalN, onShown: (n) => { _mpJournalN = n; }, cls: 'mem-entries', render: (x) => {
     if (x.head) { const h = document.createElement('h3'); h.className = 'mem-month'; h.textContent = x.head; return h; }
-    return _mpEntryEl(x.iso, x.j);
+    const el = _mpEntryEl(x.iso, x.j);
+    el.dataset.pickId = x.iso;
+    return el;
   } }));
+  // Several at once: copy them (entries write themselves each evening, so there is nothing to delete; 11-ui-pick.js).
+  const tools = document.createElement('div'); tools.className = 'pk-list-tools';
+  const pgList = body.querySelector('.mem-entries');
+  tools.appendChild(multiPick(pgList, { key: 'mem-journal', rows: '.mem-entry[data-pick-id]', noun: ['entry', 'entries'],
+    nameOf: (r) => r.dataset.pickId,
+    actions: () => [{ label: 'Copy', icon: 'copy', run: (ids) => {
+      const m = memState();
+      const text = ids.slice().sort().map(iso => { const j = m.journal[iso] || {}; return `${_memFmtLong(iso)}\n${j.polished || j.text || ''}${j.line ? '\n“' + j.line + '”' : ''}`; }).join('\n\n');
+      return copyText(text, ids.length + ' entries');
+    } }] }).button());
+  pgList.parentNode.insertBefore(tools, pgList);
 }
 
 /** The journal's side column: what it is, how many days it holds, and the two things you can do from here. */
@@ -162,7 +178,7 @@ function _mpJournalSide(list) {
     const n = document.createElement('p'); n.className = 'mem-side-n';
     n.innerHTML = `<b class="num">${list.length.toLocaleString()}</b> <span class="muted">day${list.length === 1 ? '' : 's'} kept</span>`;
     const p = document.createElement('p'); p.className = 'muted';
-    p.textContent = 'Each evening OpenDash writes a few lines about your day from what you did, where and with whom. Add your own line and how the day felt. It is all kept, forever.';
+    p.textContent = 'Each evening Freeflo writes a few lines about your day from what you did, where and with whom. Add your own line and how the day felt. It is all kept, forever.';
     const row = document.createElement('div'); row.className = 'mem-side-a';
     row.append(uiButton({ label: 'Rediscover a day', icon: 'sparkles', kind: 'ghost', size: 'sm', run: _mpRediscover }),
       uiButton({ label: 'Write a time capsule', icon: 'mail', kind: 'ghost', size: 'sm', run: () => memCapsuleWrite() }));
@@ -257,13 +273,24 @@ function _mpCapsules(outer) {
   let md = null;
   const paint = () => {
     const cur = sel();
-    md.mdList.replaceChildren(...all.map(c => mdRow({ title: title(c), icon: c.opened ? 'mail' : c.opens <= today ? 'sparkles' : 'lock', active: c === cur,
-      sub: 'Written ' + _memFmt(Clock.parts(c.created).iso, { day: 'numeric', month: 'short', year: 'numeric' }), run: () => { _mpCapSel = c.id; paint(); } })));
+    md.mdList.replaceChildren(tools, ...all.map(c => { const r = mdRow({ pickable: true, title: title(c), icon: c.opened ? 'mail' : c.opens <= today ? 'sparkles' : 'lock', active: c === cur,
+      sub: 'Written ' + _memFmt(Clock.parts(c.created).iso, { day: 'numeric', month: 'short', year: 'numeric' }), run: () => { _mpCapSel = c.id; paint(); } }); r.dataset.pickId = c.id; return r; }));
     md.mdSet(detail(cur));
   };
+  const tools = document.createElement('div'); tools.className = 'pk-list-tools';
   md = masterDetail({ listWidth: 300, label: 'Time capsules' });
   paint();
   outer.appendChild(md);
+  // Several at once: delete, one Undo for the lot (memories are outside the undo snapshots, so it puts them back itself).
+  tools.appendChild(multiPick(md.mdList, { key: 'mem-capsules', rows: '.md-row', noun: ['time capsule', 'time capsules'],
+    nameOf: (r) => (r.querySelector('.md-row-n') || {}).textContent || '',
+    exists: (id) => memCapsules().some(c => c.id === id),
+    actions: () => [{ label: 'Delete', icon: 'trash-2', danger: true, run: (ids) => {
+      const m = memState(), want = new Set(ids), before = m.capsules.slice();
+      m.capsules = before.filter(c => !(c && want.has(c.id)));
+      memSave(); _mpCapSel = ''; render();
+      toast(`${want.size} time capsule${want.size === 1 ? '' : 's'} deleted`, { icon: 'trash-2', action: { label: 'Undo', run: () => { memState().capsules = before; memSave(); render(); toast('Time capsules back', { kind: 'ok', icon: 'undo-2' }); } } });
+    } }] }).button());
 }
 function _mpPostcards(outer) {
   const list = memPostcards();

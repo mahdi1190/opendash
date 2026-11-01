@@ -400,7 +400,7 @@ function _acwCatRow(c, F, un, isOpen) {
 }
 function _acwNeedsWords(needs) {
   const W = { finance: 'once your finances are connected', locations: 'once location history is on', travel: 'once travel is on', calendar: 'once a calendar is connected',
-    friends: 'once you have a friend in OpenDash', claude: 'once Claude is connected', sync: 'once sync is on', garden: 'when the garden arrives',
+    friends: 'once you have a friend in Freeflo', claude: 'once Claude is connected', sync: 'once sync is on', garden: 'when the garden arrives',
     pets: 'when pets arrive', wardrobe: 'when the wardrobe arrives', you: 'when profile cards arrive' };
   return (needs || []).filter(n => !achFeatureOn(n)).map(n => W[n] || 'later').join(' and ') || 'later';
 }

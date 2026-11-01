@@ -163,7 +163,7 @@ function googleHealthConnectionSetup() {
         await connRefresh({ force: true });
         if (alive) { close(); googleHealthConnectionSetup(); }
         toast('Google Health setup saved. Sign in with Google to connect', { kind: 'ok' });
-      } catch (e) { if (alive) { feedback.textContent = e.message; b.disabled = false; input.disabled = false; } }
+      } catch (e) { if (alive) { feedback.textContent = netErrorMessage(e); b.disabled = false; input.disabled = false; } }
     } });
     details.appendChild(save); el.appendChild(details);
   } });

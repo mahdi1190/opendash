@@ -391,7 +391,7 @@ function _gapSlotRow(m, p, where) {
   go.onclick = () => _gapSlotEditor(go, p);
   const ok = _gapBtn('btn btn-secondary btn-sm btn-icon hgap-slot-ok', icon('check'), `Plan ${p.title} ${range} now, with Undo`);
   ok.setAttribute('data-tip', 'Plan it now · Undo');
-  ok.onclick = () => homeAction(ok, () => setPlannedSlot(p.id, m.today, _gapHMs(p.start), p.len, { reason: 'Fill the gap' }), {});
+  ok.onclick = () => homeAction(ok, () => { const r = setPlannedSlot(p.id, m.today, _gapHMs(p.start), p.len, { reason: 'Fill the gap' }); if (r && typeof gameStreakTick === 'function') gameStreakTick('gap'); return r; }, {});   // achievements: days a gap was filled
   a.append(go, ok);
   return row;
 }

@@ -174,7 +174,7 @@
           : VK.tile(y.m, y.c, { size: 'sm' }),
         h('span', { class: 'fv-row-main' },
           h('span', { class: 'fv-row-t' }, byMerchant ? fd(y.n, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : G.label(G.keyOf(y.m))),
-          h('span', { class: 'fv-row-s' }, VK.badgeIf(kind, { compact: true }), sub ? h('span', { text: sub }) : null)),
+          h('span', { class: 'fv-row-s' }, txPendTag(y), VK.badgeIf(kind, { compact: true }), sub ? h('span', { text: sub }) : null)),
         h('span', { class: 'fv-row-v' + (y.a > 0 ? ' in' : ''), text: y.a > 0 ? sgbp2(y.a) : gbp2(y.a) }))));
     });
     if (rows.length > limit) ul.append(h('li', { class: 'fv-more-note', text: `+${rows.length - limit} older` }));

@@ -37,7 +37,7 @@ function settingsMoveCard(el) {
   const m = i.move;
   if (job.state === 'running') { el.appendChild(_mvProgressCard(job)); _mvPollJob(); return; }
   if (i.open && m && m.phase === 'copying') {
-    const c = _settingsCard('A move was interrupted', `It started on ${_mvDate(m.createdAt)}. Nothing was switched: OpenDash still uses ${m.from.data}.`);
+    const c = _settingsCard('A move was interrupted', `It started on ${_mvDate(m.createdAt)}. Nothing was switched: Freeflo still uses ${m.from.data}.`);
     c.card.classList.add('mv-card', 'mv-warn');
     const g = _mvEl('div', 'btn-group set-btns');
     g.append(_mvBtn('Finish the move', 'arrow-right', 'btn-primary', () => _mvStartJob('/api/relocate/resume', {}, m.to)),
@@ -49,7 +49,7 @@ function settingsMoveCard(el) {
     const c = _settingsCard('Your data was moved');
     c.card.classList.add('mv-card');
     c.body.appendChild(setStatusLine('ok', 'Moved', _mvDate(m.switchedAt || m.createdAt)));
-    c.body.appendChild(_mvEl('p', 'set-h', kept ? `The old folder is kept as "${_mvBase(kept)}"; delete it when you're sure.` : 'The old folder is renamed and kept the next time OpenDash starts.'));
+    c.body.appendChild(_mvEl('p', 'set-h', kept ? `The old folder is kept as "${_mvBase(kept)}"; delete it when you're sure.` : 'The old folder is renamed and kept the next time Freeflo starts.'));
     const todo = (m.refs || []).filter(r => ['manual', 'failed', 'skipped'].includes(r.status));
     if (todo.length) {
       c.body.appendChild(_mvEl('div', 'set-t', 'Still to do by hand'));
@@ -105,9 +105,9 @@ function _mvAwaitRestart(expectDataDir, say) {
   const tick = async () => {
     try {
       const j = await _mvJson('/api/relocate');
-      if (j && j.dataDir && (!expectDataDir || String(j.dataDir).toLowerCase() === String(expectDataDir).toLowerCase())) { say('Done. Loading OpenDash from the new place…'); setTimeout(() => location.reload(), 600); return; }
+      if (j && j.dataDir && (!expectDataDir || String(j.dataDir).toLowerCase() === String(expectDataDir).toLowerCase())) { say('Done. Loading Freeflo from the new place…'); setTimeout(() => location.reload(), 600); return; }
     } catch (e) { /* not back yet */ }
-    if (Date.now() - t0 > 180000) { say('OpenDash has not started again by itself. Start it the usual way (your OpenDash shortcut); everything is in the new place.'); return; }
+    if (Date.now() - t0 > 180000) { say('Freeflo has not started again by itself. Start it the usual way (your Freeflo shortcut); everything is in the new place.'); return; }
     setTimeout(tick, 1500);
   };
   setTimeout(tick, 2500);
@@ -121,8 +121,8 @@ function _mvStartJob(url, body, dest, dlgSay) {
       onEnd: (j) => {
         if (j.state === 'error') { say('It stopped: ' + j.error + ' Nothing was lost.'); _mvLoad(true); return; }
         const r = j.restart || {};
-        if (r.mode === 'manual') { say('Done. Close OpenDash and start it again to use the new place.'); _mvLoad(true); return; }
-        say('Done. Starting OpenDash again in the new place…');
+        if (r.mode === 'manual') { say('Done. Close Freeflo and start it again to use the new place.'); _mvLoad(true); return; }
+        say('Done. Starting Freeflo again in the new place…');
         _mvAwaitRestart(j.result && (j.kind === 'undo' ? j.result.from.data : j.result.to.data), say);
       },
     });
@@ -195,14 +195,14 @@ function _mvDialog() {
         const ol = _mvEl('ol', 'mv-steps');
         const s1 = _mvEl('li'); s1.append(_mvEl('div', 'mv-l', `Copy your data (${plan.data.files} files, ${plan.data.size}) and check every file`), _mvEl('div', 'mv-where', `${plan.from.data}  →  ${plan.to.data}`));
         if (plan.app) s1.append(_mvEl('div', 'mv-l', `Copy the app (${plan.app.files} files, ${plan.app.size})`), _mvEl('div', 'mv-where', `${plan.from.app}  →  ${plan.to.app}`));
-        const s2 = _mvEl('li'); s2.appendChild(_mvEl('div', 'mv-l', 'Switch OpenDash on this computer to the new place'));
+        const s2 = _mvEl('li'); s2.appendChild(_mvEl('div', 'mv-l', 'Switch Freeflo on this computer to the new place'));
         const auto = plan.refs.filter(r => r.how === 'auto'), manual = plan.refs.filter(r => r.how === 'manual'), info = plan.refs.filter(r => r.how === 'info');
         const s3 = _mvEl('li'); s3.appendChild(_mvEl('div', 'mv-l', auto.length ? `Update ${auto.length} setting${auto.length === 1 ? '' : 's'} that use the old place` : 'No other settings use the old place'));
         if (auto.length) s3.appendChild(_mvChangeList(auto));
-        if (manual.length) { s3.appendChild(_mvEl('div', 'set-t', 'You will need to do these yourself (a program OpenDash needs for them is not installed):')); s3.appendChild(_mvChangeList(manual)); }
+        if (manual.length) { s3.appendChild(_mvEl('div', 'set-t', 'You will need to do these yourself (a program Freeflo needs for them is not installed):')); s3.appendChild(_mvChangeList(manual)); }
         if (info.length) { s3.appendChild(_mvEl('div', 'set-h', 'Checked, nothing to change:')); s3.appendChild(_mvChangeList(info)); }
         const s4 = _mvEl('li'); s4.append(_mvEl('div', 'mv-l', `Keep the old folder, renamed to "${_mvBase(plan.oldName)}", with a note inside`), _mvEl('div', 'set-h', 'Nothing is deleted. You can undo the move from this page.'));
-        const s5 = _mvEl('li'); s5.appendChild(_mvEl('div', 'mv-l', 'Start OpenDash again from the new place (this page reloads by itself)'));
+        const s5 = _mvEl('li'); s5.appendChild(_mvEl('div', 'mv-l', 'Start Freeflo again from the new place (this page reloads by itself)'));
         ol.append(s1, s2, s3, s4, s5);
         b.appendChild(ol);
         const g = _mvEl('div', 'btn-group mv-actions');
@@ -228,8 +228,8 @@ function _mvDialog() {
           onEnd: (j) => {
             if (j.state === 'error') { say(`The move stopped: ${j.error} Nothing was switched and nothing was lost.`); _mvLoad(true); return; }
             const r = j.restart || {};
-            if (r.mode === 'manual') { say('Done. Close OpenDash and start it again to use the new place.'); return; }
-            holder.innerHTML = ''; holder.appendChild(_mvEl('p', '', 'Copied and checked. Starting OpenDash again in the new place…'));
+            if (r.mode === 'manual') { say('Done. Close Freeflo and start it again to use the new place.'); return; }
+            holder.innerHTML = ''; holder.appendChild(_mvEl('p', '', 'Copied and checked. Starting Freeflo again in the new place…'));
             _mvAwaitRestart(j.result && j.result.to.data, (t) => { holder.innerHTML = ''; holder.appendChild(_mvEl('p', '', t)); });
           },
         });
@@ -255,7 +255,7 @@ function _mvUndoDialog() {
           const li = _mvEl('li'); li.appendChild(_mvEl('div', 'mv-l', u.refs.length ? `Put back ${u.refs.length} setting${u.refs.length === 1 ? '' : 's'}` : 'No settings to put back'));
           if (u.refs.length) li.appendChild(_mvChangeList(u.refs.map(r => Object.assign({ how: 'auto' }, r))));
           ol.appendChild(li);
-          ol.appendChild(_mvEl('li', '', 'Start OpenDash again from the old place. The new folder is kept; delete it yourself later if you like.'));
+          ol.appendChild(_mvEl('li', '', 'Start Freeflo again from the old place. The new folder is kept; delete it yourself later if you like.'));
           b.appendChild(ol);
         }
         const g = _mvEl('div', 'btn-group mv-actions');

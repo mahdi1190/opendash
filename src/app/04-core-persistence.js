@@ -127,7 +127,7 @@ async function serverStateWrite() {
       // Settings > Data is moving the data folder (58-settings-move.js): kept here, saved after the restart.
       if (j && j.code === 'MOVING') { _serverLastError = 'changes are paused while your data moves'; return false; }
       if (typeof hostsOnPaused === 'function') hostsOnPaused(j);
-      _serverLastError = 'changes are paused: OpenDash is open on ' + ((j && j.host) || 'another computer');
+      _serverLastError = 'changes are paused: Freeflo is open on ' + ((j && j.host) || 'another computer');
       return false;
     }
     if (!r.ok) {

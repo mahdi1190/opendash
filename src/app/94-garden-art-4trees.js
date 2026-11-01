@@ -16,36 +16,40 @@
   const A = GART, PAL = GART_PAL;
   const { f1, rr } = A;
 
-  /** A crown: clumps [{x, y, rx, ry, front}] in a palette [deep, base, light, glint]; returns {back, front} markup. */
+  /**
+   * A crown (2.23): one puffy silhouette in the deep tone, then soft rounded volumes in the base tone, each with a lit cap at its upper left.
+   * Clumps [{x, y, rx, ry, front}] in a palette [deep, base, light, glint]; returns {back, front} markup.
+   */
   function crown(r, clumps, pal, o) {
     o = o || {};
-    let bk = '', bkL = '', fd = '', fb = '', fl = '', tex = '';
+    let bk = '', fb = '', fl = '', tex = '';
+    const puff = (x, y, rx, ry, k) => gartScallop(x, y, rx, Math.max(6, Math.round(5 + rx / 3.4)), k || 1.17, ry / rx);
     for (const c of clumps) {
-      const n = c.n || 8, rag = o.rag == null ? 0.32 : o.rag;
-      if (!c.front) { bk += A.blob(r, c.x + c.rx * 0.08, c.y + c.ry * 0.06, c.rx, c.ry, n, rag); bkL += A.blob(r, c.x - c.rx * 0.22, c.y - c.ry * 0.24, c.rx * 0.6, c.ry * 0.52, Math.max(5, n - 2), rag); continue; }
-      fd += A.blob(r, c.x + c.rx * 0.1, c.y + c.ry * 0.1, c.rx, c.ry, n, rag);
-      fb += A.blob(r, c.x - c.rx * 0.06, c.y - c.ry * 0.06, c.rx * 0.88, c.ry * 0.84, n, rag);
-      fl += A.blob(r, c.x - c.rx * 0.3, c.y - c.ry * 0.32, c.rx * 0.5, c.ry * 0.44, Math.max(5, n - 3), rag * 1.2);
-      // leaf tufts: small scallops on the lit side, the crown's texture
-      if (o.tex !== false) for (let i = 0; i < (c.rx > 12 ? 3 : 2); i++) { const a = rr(r, Math.PI * 0.9, Math.PI * 1.6), q = rr(r, 0.35, 0.75); tex += `M${f1(c.x + Math.cos(a) * c.rx * q - 2.4)} ${f1(c.y + Math.sin(a) * c.ry * q)}q2.4-2.6 4.8 0`; }
+      bk += puff(c.x + c.rx * 0.05, c.y + c.ry * 0.07, c.rx, c.ry);
+      if (!c.front) continue;
+      fb += puff(c.x - c.rx * 0.05, c.y - c.ry * 0.07, c.rx * 0.84, c.ry * 0.8, 1.2);
+      fl += puff(c.x - c.rx * 0.26, c.y - c.ry * 0.32, c.rx * 0.44, c.ry * 0.36, 1.24);
+      // a little leaf-mark or two: the crown's only texture
+      if (o.tex !== false && c.rx > 7) { const a = rr(r, Math.PI * 1.05, Math.PI * 1.5), q = rr(r, 0.5, 0.74); tex += `M${f1(c.x + Math.cos(a) * c.rx * q - 2.6)} ${f1(c.y + Math.sin(a) * c.ry * q)}q2.6-2.8 5.2 0`; }
     }
     return {
-      back: A.P(pal[0], bk) + A.P(pal[1], bkL, 0.7),
-      front: A.P(pal[0], fd) + A.P(pal[1], fb) + A.P(pal[2], fl, 0.9) + (tex ? A.S(pal[3], 0.9, tex, 0.7) : ''),
+      back: A.P(pal[0], bk),
+      front: A.P(pal[1], fb) + A.P(pal[2], fl, 0.88) + (tex ? A.S(pal[3], 1.1, tex, 0.7) : ''),
     };
   }
   /** Limbs from a trunk: list of [x, y, a, len, w0, w1, bend]; bark [deep, base, light]; returns markup and the tips. */
   function limbs(list, bark) {
-    let d = '', lit = '';
+    let d = '', lit = '', dark = '';
     const tips = [];
     for (const L of list) {
-      const b = A.limb(L[0], L[1], L[2], L[3], L[4], L[5], L[6] || 0);
+      const b = A.limb(L[0], L[1], L[2], L[3], L[4] * 1.34, L[5] * 1.3, L[6] || 0);
       d += b.d; tips.push(b.tip);
       // the lit left edge of each limb
-      const p0 = b.pt(0.05), p1 = b.pt(0.85), g = b.ang(0.4), off = -L[4] * 0.28;
+      const p0 = b.pt(0.05), p1 = b.pt(0.85), g = b.ang(0.4), off = -L[4] * 0.34;
       lit += `M${f1(p0[0] + Math.cos(g) * off)} ${f1(p0[1] + Math.sin(g) * off)}L${f1(p1[0] + Math.cos(g) * off * 0.5)} ${f1(p1[1] + Math.sin(g) * off * 0.5)}`;
+      if (L[4] > 3.4) dark += `M${f1(p0[0] - Math.cos(g) * off)} ${f1(p0[1] - Math.sin(g) * off)}L${f1(p1[0] - Math.cos(g) * off * 0.5)} ${f1(p1[1] - Math.sin(g) * off * 0.5)}`;
     }
-    return { m: A.P(bark[1], d) + A.S(bark[2], 1, lit, 0.55), tips };
+    return { m: A.P(bark[1], d) + (dark ? A.S(bark[0], 1.5, dark, 0.45) : '') + A.S(bark[2], 1.2, lit, 0.7), tips };
   }
   /** Snow lying along the upper side of limbs (winter). */
   function limbSnow(list) {
@@ -60,7 +64,10 @@
     for (let i = 0; i < n; i++) { const c = cs[i % cs.length], a = r() * Math.PI * 2, q = Math.sqrt(r()) * 0.82; d += mk(c.x + Math.cos(a) * c.rx * q, c.y + Math.sin(a) * c.ry * q, i); }
     return d;
   }
-  const blossomDot = (x, y) => A.circ(x, y, 1.5) + A.circ(x + 1.4, y + 0.8, 1.2);
+  /** Blossom you can see from across the garden: little five-lobed flowers, a soft centre in each. */
+  const flowers = (r, cl, n, col, eye, R) => { let d = '', e = ''; const list = cl.filter(c => c.front); for (let i = 0; i < n; i++) { const c = list[i % list.length], a = r() * Math.PI * 2, q = Math.sqrt(r()) * 0.74, x = c.x + Math.cos(a) * c.rx * q, y = c.y + Math.sin(a) * c.ry * q; d += gartScallop(x, y, R || 2.6, 5, 1.6); e += A.circ(x, y, (R || 2.6) * 0.34); } return A.P(col, d) + A.P(eye, e, 0.9); };
+  /** Fruit: round, glossy and big enough to want to pick. */
+  const fruits = (r, cl, n, R, T) => { let d = '', g = '', sh = ''; const list = cl.filter(c => c.front); for (let i = 0; i < n; i++) { const c = list[i % list.length], a = r() * Math.PI * 2, q = Math.sqrt(r()) * 0.7, x = c.x + Math.cos(a) * c.rx * q, y = c.y + Math.sin(a) * c.ry * q; d += A.circ(x, y, R); sh += A.ell(x + R * 0.3, y + R * 0.32, R * 0.56, R * 0.5); g += A.ell(x - R * 0.34, y - R * 0.36, R * 0.26, R * 0.2); } return A.P(T[1], d) + A.P(T[0], sh, 0.45) + A.P('#fffdf0', g, 0.85); };
   const stake = (h) => A.S('#b08a5a', 1.6, `M3.4 0.4L3.8 ${-h}`) + A.S('#5a8a4a', 1.1, `M0.6 ${f1(-h * 0.62)}l3.4 0.6`);
 
   /** The common tree builder. spec(o, r) returns {box, bark, trunk: [limb...], limbs: [limb...], clumps, pal, ...}. */
@@ -77,6 +84,7 @@
       return A.shadow(7, 2) + A.P(PAL.soil[1], 'M-6 0.6q6-3 12 0z') + gartSway(o, r, A.S('#7a5a3a', 1.4, st.d) + L.out(), 'stiff') + (win ? A.P(PAL.snow, 'M-7 0.4q7-3 14 0z', 0.9) : '');
     }
     const T = spec.build(o, r, pal);
+    for (const c of T.clumps || []) { c.rx *= 1.12; c.ry *= 1.12; }
     const k = s === 2 ? 0.42 : s === 3 ? 0.72 : 1;
     const bare = win && !spec.evergreen;
     let back = '', front = '', extra = '', fx = '', out = A.shadow(T.shadow || 26, (T.shadow || 26) * 0.2);
@@ -94,7 +102,9 @@
     if (s === 4 && !bare && T.bloom) extra += T.bloom;
     if (s >= 3 && T.always) extra += T.always;
     if (o.season === 'autumn' && !spec.evergreen) out += gartFallen(A, r, (T.shadow || 26) * 0.8, [pal[1], pal[2], pal[0]], 4);
-    const body = back + tr.m + fx + (o.anim && !bare ? `<g class="gart-crown" style="${A.T(r, 6, 9)}">${front + extra}</g>` : front + extra);
+    const t0 = T.trunk[0], fw = t0[4] * 0.95, bk0 = spec.bark || PAL.bark;
+    const flare = T.trunk.length > 2 ? '' : A.P(bk0[1], `M${f1(t0[0] - fw * 1.3)} 0.8Q${f1(t0[0] - fw * 0.66)} -1.6 ${f1(t0[0] - fw * 0.5)} -9H${f1(t0[0] + fw * 0.5)}Q${f1(t0[0] + fw * 0.66)} -1.6 ${f1(t0[0] + fw * 1.3)} 0.8Q${f1(t0[0])} 2.4 ${f1(t0[0] - fw * 1.3)} 0.8z`);
+    const body = back + flare + tr.m + fx + (o.anim && !bare ? `<g class="gart-crown" style="${A.T(r, 6, 9)}">${front + extra}</g>` : front + extra);
     const scaled = k === 1 ? body : `<g transform="scale(${k})">${body}</g>`;
     return out + (T.ground || '') + scaled + (s === 2 ? stake(26) : '');
   }
@@ -116,10 +126,9 @@
             { x: -10, y: -68, rx: 15, ry: 12, front: 1 }, { x: 12, y: -70, rx: 15, ry: 12, front: 1 }, { x: 0, y: -55, rx: 12, ry: 9, front: 1 },
           ].map(c => Object.assign(c, { x: c.x + rr(r2, -2, 2), y: c.y + rr(r2, -2, 2) }));
           let bloom = '';
-          if (o2.season === 'spring') bloom = A.P(gartC2(o2, '#f6d8e2'), overClumps(r2, cl, 26, blossomDot, true)) + A.P('#ffffff', overClumps(r2, cl, 16, (x, y) => A.circ(x, y, 1.3), true)) + A.P('#e888a8', overClumps(r2, cl, 10, (x, y) => A.circ(x, y, 0.6), true));
+          if (o2.season === 'spring') bloom = flowers(r2, cl, 14, gartC2(o2, '#f6d8e2'), '#e888a8');
           else {
-            const red = o2.col ? [o2.col[1], o2.col[2]] : o2.variant % 3 === 2 ? ['#7aa02a', '#a8c84a'] : o2.variant % 3 === 1 ? ['#d8a020', '#f2d050'] : ['#c02a1e', '#ec5a3a'];
-            bloom = A.P(red[0], overClumps(r2, cl, 9, (x, y) => A.circ(x, y, 2.6), true)) + A.P(red[1], overClumps(A.rng(A.hash('ap' + o2.variant)), cl, 9, (x, y) => A.circ(x - 0.7, y - 0.7, 1.2), true), 0.8);
+            bloom = fruits(r2, cl, 8, 4, o2.col || ['#a82a24', '#c02a1e', '#ec5a3a']);
           }
           const fc = o2.col || ['#a82a24', '#c02a1e', '#ec5a3a'], ground = o2.season === 'autumn' && o2.s5 === 4 ? A.P(fc[1], A.circ(-14, -2, 2.6) + A.circ(10, -1.6, 2.4)) + A.P(fc[2], A.circ(-14.6, -2.6, 1.1), 0.8) : '';
           return { trunk, limbs: lim, clumps: cl, bloom, shadow: 30, ground, top: -80, twig: 9 };
@@ -147,9 +156,9 @@
           ].map(c => Object.assign(c, { x: c.x + rr(r2, -2, 2), y: c.y + rr(r2, -1.5, 1.5) }));
           let bloom = '', ground = '';
           if (bloomy) {
-            bloom = A.P('#ffffff', overClumps(r2, cl, 30, (x, y) => A.circ(x, y, 1.2), true), 0.9) + A.P(pink[0], overClumps(r2, cl, 20, (x, y) => A.circ(x, y, 1), true), 0.8);
+            bloom = flowers(r2, cl, 16, '#fff4f6', pink[0], 2.5);
             ground = A.P(pink[1], A.ell(-20, -0.5, 1.4, 0.7) + A.ell(8, -0.3, 1.3, 0.6) + A.ell(26, -0.6, 1.2, 0.6) + A.ell(-6, -0.2, 1.2, 0.6));
-          } else if (o2.season === 'summer') bloom = A.P(o2.col ? o2.col[1] : '#a8141e', overClumps(r2, cl, 12, (x, y) => A.circ(x, y, 1.4) + A.circ(x + 2, y + 0.6, 1.4), true));
+          } else if (o2.season === 'summer') bloom = fruits(r2, cl, 10, 2.8, o2.col || ['#6a0e16', '#a8141e', '#e2404a']);
           // the bark's lenticels: short dark bands across the trunk
           const always = A.S('#2a1a1a', 0.7, 'M-2.4-6h3.6M-2-12h4M-2.2-18h3.8', 0.6);
           return { trunk, limbs: lim, clumps: cl, bloom, shadow: 38, ground, always, top: -70, twig: 10 };
@@ -178,7 +187,7 @@
             { x: 0, y: -70, rx: 15, ry: 11, front: 1 }, { x: -42, y: -78, rx: 10, ry: 9, front: 1 }, { x: 42, y: -82, rx: 10, ry: 9, front: 1 },
           ].map(c => Object.assign(c, { x: c.x + rr(r2, -2.5, 2.5), y: c.y + rr(r2, -2, 2) }));
           let bloom = '';
-          if (o2.season === 'autumn' || o2.season === 'summer') bloom = A.P('#8a6a2a', overClumps(r2, cl, 10, (x, y) => A.ell(x, y, 1.3, 1.6), true)) + A.P('#5a4a24', overClumps(A.rng(A.hash('oak' + o2.variant)), cl, 10, (x, y) => A.ell(x, y - 1.4, 1.5, 0.8), true));
+          if (o2.season === 'autumn' || o2.season === 'summer') bloom = fruits(r2, cl, 8, 2.6, ['#6a4a1e', '#a8843a', '#d8b860']);
           // a knot hole in the trunk, and roots flaring at the foot
           const always = A.P('#3a2618', A.ell(2.4, -18, 1.6, 2.4)) + A.P('#6a4a32', 'M-10 0q4-5 5-10l2 10zM10 0q-4-5-5-10l-2 10z');
           return { trunk, limbs: lim, clumps: cl, bloom, shadow: 44, always, top: -110, twig: 12 };
@@ -197,7 +206,7 @@
         crownOpts: { rag: 0.42 },
         build(o2, r2) {
           const two = o2.variant % 3 !== 2;
-          const trunk = [[0, 0, -0.02, 96, 5.4, 1.8, rr(r2, -2, 2)]];
+          const trunk = [[0, 0, -0.02, 96, 6, 2.4, rr(r2, -2, 2)]];
           if (two) trunk.push([1.6, 0, 0.16, 76, 3.8, 1.4, 2]);
           const lim = [[A.at(0, 0, 0, 52)[0], -52, -0.8, 14, 1.6, 0.6, -2], [A.at(0, 0, 0, 64)[0], -64, 0.75, 13, 1.4, 0.6, 2]];
           const cl = [];
@@ -227,10 +236,10 @@
           const cl = [{ x: 0, y: -66, rx: 20, ry: 32, n: 10 }, { x: -11, y: -50, rx: 11, ry: 10, front: 1 }, { x: 11, y: -54, rx: 12, ry: 11, front: 1 }, { x: -6, y: -72, rx: 11, ry: 11, front: 1 }, { x: 7, y: -80, rx: 11, ry: 11, front: 1 }, { x: 0, y: -94, rx: 8, ry: 8, front: 1 }];
           cl.forEach(c => { c.x += rr(r2, -1.5, 1.5); c.y += rr(r2, -1.5, 1.5); });
           let bloom = '';
-          if (o2.season === 'spring') bloom = A.P(gartC2(o2, '#ffffff'), overClumps(r2, cl, 26, blossomDot, true)) + A.P('#c8a0b0', overClumps(r2, cl, 10, (x, y) => A.circ(x, y, 0.6), true));
+          if (o2.season === 'spring') bloom = flowers(r2, cl, 13, gartC2(o2, '#ffffff'), '#c8a0b0');
           else {
             const pc = o2.col ? (o2.season === 'autumn' ? [A.mix(o2.col[1], '#c8862a', 0.4), o2.col[2]] : [o2.col[1], o2.col[2]]) : o2.season === 'autumn' ? ['#b8862a', '#e0b84a'] : ['#8aa82a', '#c8d85a'];
-            bloom = A.P(pc[0], overClumps(r2, cl, 7, (x, y) => `M${f1(x)} ${f1(y - 3)}q-1.4 0-1.2 2.4q-1.6 1.6-0.6 3.4q1.8 1.2 3.6 0q1-1.8-0.6-3.4q0.2-2.4-1.2-2.4z`, true)) + A.P(pc[1], overClumps(A.rng(A.hash('pr' + o2.variant)), cl, 7, (x, y) => A.ell(x - 0.8, y + 0.6, 0.7, 1.1), true), 0.8);
+            bloom = A.P(pc[0], overClumps(r2, cl, 7, (x, y) => `M${f1(x)} ${f1(y - 5)}q-2.2 0-1.9 3.8q-2.5 2.5-1 5.4q2.9 1.9 5.8 0q1.5-2.9-1-5.4q0.3-3.8-1.9-3.8z`, true)) + A.P(pc[1], overClumps(A.rng(A.hash('pr' + o2.variant)), cl, 7, (x, y) => A.ell(x - 1.2, y + 1, 1.1, 1.7), true), 0.85);
           }
           return { trunk, limbs: lim, clumps: cl, bloom, shadow: 22, top: -100, twig: 7 };
         },
@@ -252,8 +261,8 @@
           const cx = top[0];
           const cl = [{ x: cx, y: -54, rx: 26, ry: 18 }, { x: cx - 16, y: -46, rx: 12, ry: 10, front: 1 }, { x: cx + 16, y: -48, rx: 12, ry: 10, front: 1 }, { x: cx - 6, y: -60, rx: 13, ry: 10, front: 1 }, { x: cx + 9, y: -62, rx: 12, ry: 9, front: 1 }];
           let bloom = '';
-          if (o2.season === 'spring') bloom = A.P(gartC2(o2, '#ffffff'), overClumps(r2, cl, 30, (x, y) => A.circ(x, y, 1.2), true)) + A.P('#f6e0e8', overClumps(r2, cl, 12, blossomDot, true), 0.9);
-          else bloom = A.P(o2.col ? o2.col[1] : '#4a1a4a', overClumps(r2, cl, 10, (x, y) => A.ell(x, y, 2, 2.4), true)) + A.P(o2.col ? o2.col[2] : '#8a5aa0', overClumps(A.rng(A.hash('pl' + o2.variant)), cl, 10, (x, y) => A.ell(x - 0.6, y - 0.7, 0.8, 1), true), 0.7);
+          if (o2.season === 'spring') bloom = flowers(r2, cl, 14, gartC2(o2, '#ffffff'), '#e8b0c0');
+          else bloom = fruits(r2, cl, 8, 3.4, o2.col || ['#2a0e2a', '#4a1a4a', '#8a5aa0']);
           return { trunk, limbs: lim, clumps: cl, bloom, shadow: 26, top: -70, twig: 8 };
         },
       });
@@ -320,9 +329,9 @@
       if (s <= 1) return treeDraw(o, r, { seed: 'cutting', tag: '#a8c84a', palette: o2 => o2.season === 'spring' ? ['#5a8a2a', '#8ab83a', '#bcdc6a', '#e4f2a8'] : gartSeasonLeaf(o2, 'deciduous') });
       const pal = o.season === 'autumn' ? ['#8a7a1a', '#c4a42a', '#e8cc4a', '#f6e890'] : o.season === 'spring' ? ['#5a8a2a', '#8ab83a', '#bcdc6a', '#e4f2a8'] : win ? ['#8a6a2a', '#b8943a', '#d8b85a', '#f0dc8a'] : ['#3a6a2a', '#5a8a34', '#86b44a', '#b8d878'];
       const k = s === 2 ? 0.45 : s === 3 ? 0.74 : 1;
-      const trunk = A.limb(0, 0, 0.05, 40, 10, 6, 2), lim = [A.limb(1, -38, -0.7, 22, 5, 1.6, -3), A.limb(1, -38, 0.75, 24, 5, 1.6, 3), A.limb(1, -38, 0, 18, 4, 1.4, 0)];
+      const trunk = A.limb(0, 0, 0.05, 40, 13, 8, 2), lim = [A.limb(1, -38, -0.7, 22, 5, 1.6, -3), A.limb(1, -38, 0.75, 24, 5, 1.6, 3), A.limb(1, -38, 0, 18, 4, 1.4, 0)];
       let strands = ['', '', ''], dome = '';
-      if (!win) dome = A.blob(r, 0, -60, 40, 18, 11, 0.3);
+      if (!win) dome = gartScallop(0, -60, 43, 12, 1.12, 0.46);
       // the curtain: strands falling from the dome's rim almost to the ground
       for (let i = 0; i < 26; i++) {
         const t = i / 25, x0 = -42 + t * 84 + rr(r, -2, 2), y0 = -60 - Math.sin(Math.PI * t) * 14 + rr(r, 0, 4), len = 34 + Math.sin(Math.PI * t) * 20 + rr(r, -4, 6);
@@ -330,7 +339,7 @@
       }
       const bark = PAL.bark;
       let body = (dome ? A.P(pal[0], dome) : '') + A.P(bark[1], trunk.d + lim.map(l => l.d).join('')) + A.S(bark[2], 1, 'M-3-4L-2-34', 0.5);
-      const curtain = A.S(pal[0], win ? 1 : 2.6, strands[0], win ? 0.8 : 1) + A.S(pal[1], win ? 1 : 2.4, strands[1]) + A.S(pal[2], win ? 0.9 : 2, strands[2]) + (win ? '' : A.P(pal[1], A.blob(r, -6, -66, 30, 12, 9, 0.3)) + A.P(pal[2], A.blob(r, -14, -70, 16, 7, 7, 0.3), 0.85));
+      const curtain = A.S(pal[0], win ? 1.4 : 4, strands[0], win ? 0.8 : 1) + A.S(pal[1], win ? 1.4 : 3.6, strands[1]) + A.S(pal[2], win ? 1.2 : 3, strands[2]) + (win ? '' : A.P(pal[1], gartScallop(-4, -66, 34, 11, 1.14, 0.42)) + A.P(pal[2], gartScallop(-14, -71, 17, 7, 1.18, 0.42), 0.85));
       body += o.anim ? `<g class="gart-weep" style="${A.T(r, 5, 8)}">${curtain}</g>` : curtain;
       if (win) body += A.S(PAL.snow, 2, 'M-22-60q20-14 44 0', 0.9);
       let out = A.shadow(42, 8);
@@ -351,9 +360,9 @@
           // the trunk twists: two strands wound round each other, and a hollow
           const trunk = [[-2, 0, -0.18, 30, 6, 3.4, 4], [2, 0, 0.2, 28, 5.4, 3, -4]];
           const lim = [[-5, -27, -0.8, 20, 3, 1, -2], [5, -26, 0.7, 22, 3, 1, 2], [0, -28, 0.1, 18, 2.6, 0.9, 1]];
-          const cl = [{ x: 0, y: -56, rx: 30, ry: 16 }];
+          const cl = [{ x: 0, y: -56, rx: 30, ry: 18 }, { x: -6, y: -60, rx: 14, ry: 10, front: 1 }, { x: 8, y: -52, rx: 13, ry: 9, front: 1 }];
           for (let i = 0; i < 8; i++) { const a = (i / 7) * Math.PI; cl.push({ x: -Math.cos(a) * 26 + rr(r2, -2, 2), y: -46 - Math.sin(a) * 18 + rr(r2, -2, 2), rx: 8 + rr(r2, 0, 3), ry: 6 + rr(r2, 0, 2), front: 1, n: 8 }); }
-          const bloom = o2.season === 'autumn' || o2.season === 'winter' ? A.P(o2.col ? A.dk(o2.col[0], 0.5) : '#2a2430', overClumps(r2, cl, 12, (x, y) => A.ell(x, y, 1.2, 1.6), true)) : A.P(o2.main || '#7a8a3a', overClumps(r2, cl, 10, (x, y) => A.ell(x, y, 1.2, 1.6), true));
+          const bloom = o2.season === 'autumn' || o2.season === 'winter' ? fruits(r2, cl, 9, 2, ['#1a1420', '#2a2430', '#5a5468']) : fruits(r2, cl, 9, 2, o2.col || ['#4a5a1e', '#7a8a3a', '#a8b868']);
           const always = A.P('#3a3a30', A.ell(0, -12, 1.4, 3.4), 0.8);
           return { trunk, limbs: lim, clumps: cl, bloom, always, shadow: 28, top: -70, twig: 6 };
         },
@@ -368,7 +377,7 @@
       const s = o.s5, win = o.season === 'winter';
       const pal = gartSeasonLeaf(o, 'evergreen');
       if (s <= 1) return treeDraw(o, r, { seed: 'cone', tag: '#2f5a3a', needles: true, evergreen: true, palette: () => pal });
-      const k = s === 2 ? 0.42 : s === 3 ? 0.72 : 1, H = 102, W = 28;
+      const k = s === 2 ? 0.42 : s === 3 ? 0.72 : 1, H = 102, W = 32;
       let tiers = ['', '', ''], snow = '', lit = '';
       const n = 6;
       for (let i = 0; i < n; i++) {
@@ -382,9 +391,9 @@
         lit += `M0 ${f1(y - h)}L${f1(-w * 0.86)} ${f1(y + 1.5)}Q${f1(-w * 0.5)} ${f1(y + 4)} ${f1(-w * 0.2)} ${f1(y + 2)}z`;
         if (win) snow += `M${f1(-w * 0.85)} ${f1(y + 0.6)}Q${f1(-w * 0.4)} ${f1(y - h * 0.4)} 0 ${f1(y - h * 0.98)}Q${f1(w * 0.4)} ${f1(y - h * 0.4)} ${f1(w * 0.85)} ${f1(y + 0.6)}Q${f1(w * 0.4)} ${f1(y - h * 0.22)} 0 ${f1(y - h * 0.62)}Q${f1(-w * 0.4)} ${f1(y - h * 0.22)} ${f1(-w * 0.85)} ${f1(y + 0.6)}z`;
       }
-      let body = A.P(PAL.bark[1], A.rect(-3, -18, 6, 18)) + A.P(pal[0], tiers[0]) + A.P(pal[1], tiers[1]) + A.P(pal[2], lit, 0.75) + A.P(PAL.snow, snow, 0.95);
+      let body = A.P(PAL.bark[1], A.rrect(-4.4, -18, 8.8, 18.6, 1.6)) + A.P(pal[0], tiers[0]) + A.P(pal[1], tiers[1]) + A.P(pal[2], lit, 0.75) + A.P(PAL.snow, snow, 0.95);
       // cones hanging under the tiers
-      if (s === 4 && !win) body += A.P('#7a4a24', A.ell(-12, -30, 1.4, 2.6) + A.ell(9, -50, 1.3, 2.4) + A.ell(-6, -64, 1.2, 2.2));
+      if (s === 4 && !win) body += A.P('#8a5a2e', A.ell(-13, -30, 2.2, 3.4) + A.ell(10, -50, 2, 3.2) + A.ell(-7, -64, 1.8, 2.8));
       // winter: a few baubles in the catalogue's colour and a star on top (a fir in the garden is for December)
       if (s === 4 && win) { const bc = o.col || ['#a82a24', '#e2442b', '#f27a62']; body += A.P(bc[1], A.circ(-14, -26, 2.2) + A.circ(12, -38, 2) + A.circ(-6, -54, 1.9) + A.circ(7, -68, 1.7) + A.circ(-3, -80, 1.5)) + A.P(bc[2], A.circ(-14.7, -26.7, 0.8) + A.circ(11.3, -38.7, 0.7) + A.circ(-6.6, -54.6, 0.7), 0.9) + A.P('#f6d040', A.star(0, -H + 1, 5, 4.4, 1.9)); }
       let out = A.shadow(26, 5);
@@ -426,7 +435,7 @@
       const cl = [{ x: 0, y: -46, rx: 15, ry: 13 }, { x: -8, y: -42, rx: 8, ry: 7, front: 1 }, { x: 8, y: -44, rx: 8, ry: 7, front: 1 }, { x: -3, y: -52, rx: 9, ry: 7, front: 1 }, { x: 5, y: -54, rx: 7, ry: 6, front: 1 }];
       const cr = crown(r, cl, pal, { tex: true });
       let fx = '';
-      if (s === 4) fx = A.P(fruit[0], overClumps(r, cl, 6, (x, y) => A.ell(x, y, 2.2, 1.7), true)) + A.P(fruit[1], overClumps(A.rng(A.hash('lm' + o.variant)), cl, 6, (x, y) => A.ell(x - 0.7, y - 0.5, 0.9, 0.6), true), 0.9) + (o.season === 'spring' ? A.P(gartC2(o, '#ffffff'), overClumps(r, cl, 8, (x, y) => A.star(x, y, 5, 1.6, 0.7), true)) : '');
+      if (s === 4) fx = fruits(r, cl, 5, 3.2, o.col || [A.dk(fruit[0], 0.2), fruit[0], fruit[1]]) + (o.season === 'spring' ? flowers(r, cl, 5, gartC2(o, '#ffffff'), '#f2c21e', 2) : '');
       let tree = cr.back + A.P(PAL.bark[1], trunk.d) + (o.anim ? `<g class="gart-crown" style="${A.T(r, 6, 9)}">${cr.front + fx}</g>` : cr.front + fx);
       if (win) tree += gartSnowCap(A, 0, -57, 18, 1);
       // the tree grows in the pot: scale about the pot's rim
@@ -453,7 +462,7 @@
       let glossy = '';
       for (let i = 0; i < 16; i++) { const t = rr(r, 0.15, 0.95), y = -H + t * (H - 10), x = rr(r, -1, 0.5) * W * Math.pow(t, 0.75) * 0.8; glossy += A.leaf(x, y, rr(r, -2, 2), 5, 1.8); }
       let body = A.P(PAL.bark[1], A.rect(-2.6, -10, 5.2, 10)) + A.P(pal[0], edge) + A.P(pal[1], A.blob(r, -3, -H * 0.42, W * 0.7, H * 0.36, 9, 0.3)) + A.P(pal[2], glossy, 0.9);
-      if (s === 4 && (o.season === 'autumn' || win || o.variant % 2)) { let b = ''; for (let i = 0; i < 14; i++) { const t = rr(r, 0.2, 0.92), y = -H + t * (H - 10), x = rr(r, -0.8, 0.8) * W * Math.pow(t, 0.75) * 0.85; b += A.circ(x, y, 1.6) + A.circ(x + 2.2, y + 0.6, 1.5); } body += A.P(o.col ? o.col[1] : '#c8201a', b) + A.P(o.col ? o.col[2] : '#ff6a4a', b.replace(/a([\d.]+) ([\d.]+)/g, (m, a2, b2) => `a${f1(a2 * 0.4)} ${f1(b2 * 0.4)}`), 0.6); }
+      if (s === 4 && (o.season === 'autumn' || win || o.variant % 2)) { let b = ''; for (let i = 0; i < 14; i++) { const t = rr(r, 0.2, 0.92), y = -H + t * (H - 10), x = rr(r, -0.8, 0.8) * W * Math.pow(t, 0.75) * 0.85; b += A.circ(x, y, 2.2) + A.circ(x + 3, y + 0.8, 2); } body += A.P(o.col ? o.col[1] : '#c8201a', b) + A.P(o.col ? o.col[2] : '#ff6a4a', b.replace(/a([\d.]+) ([\d.]+)/g, (m, a2, b2) => `a${f1(a2 * 0.4)} ${f1(b2 * 0.4)}`), 0.6); }
       if (win) body += gartSnowCap(A, 0, -H + 4, 10, 1) + A.P(PAL.snow, `M${-W * 0.6} -30q${W * 0.3} -6 ${W * 0.6} -2q${W * 0.3} -4 ${W * 0.6} 2q${-W * 0.6} -2 ${-W * 1.2} 0z`, 0.9);
       return A.shadow(24, 5) + `<g${k === 1 ? '' : ` transform="scale(${k})"`}>${body}</g>` + (s === 2 ? stake(22) : '');
     },
@@ -472,7 +481,7 @@
       ].map(c => Object.assign(c, { x: c.x + rr(r2, -2.5, 2.5), y: c.y + rr(r2, -2, 2) }));
       const acorn = o2.col2 ? o2.col2[1] : '#8a6a2a';
       let bloom = '';
-      if (o2.season === 'autumn' || o2.season === 'summer') bloom = A.P(acorn, overClumps(r2, cl, 10, (x, y) => A.ell(x, y, 1.3, 1.6), true)) + A.P('#5a4a24', overClumps(A.rng(A.hash('oak' + o2.variant)), cl, 10, (x, y) => A.ell(x, y - 1.4, 1.5, 0.8), true));
+      if (o2.season === 'autumn' || o2.season === 'summer') bloom = fruits(r2, cl, 8, 2.6, ['#6a4a1e', acorn, '#d8b860']);
       const always = A.P('#3a2618', A.ell(2.4, -18, 1.6, 2.4)) + A.P('#6a4a32', 'M-10 0q4-5 5-10l2 10zM10 0q-4-5-5-10l-2 10z');
       return { trunk, limbs: lim, clumps: cl, bloom, shadow: 44, always, top: -110, twig: 12 };
     },

@@ -60,7 +60,7 @@ function _funWaitEl(after) {
 /** A friend the server does not list yet (just approved, or Friends still starting): a calm line, one look again later. */
 function _funNotYet(f) {
   _funRefreshSoon(8000);
-  return _funEl('p', 'muted', `Fun with ${_funFirst(f)} starts in a moment: their OpenDash and yours are still saying hello.`);
+  return _funEl('p', 'muted', `Fun with ${_funFirst(f)} starts in a moment: their Freeflo and yours are still saying hello.`);
 }
 
 /* ---------- the actions popover (the friend card's 👋) ---------- */

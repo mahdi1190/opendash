@@ -169,7 +169,7 @@ for the relay.
 | owner device | device key + certificate from `OWNER_KEY` | everything except admin |
 | member | identity key with an active grant (4.1) | its grant's scopes |
 | member device | device key + certificate from a member identity | its identity's scopes |
-| anonymous | any other valid signature | ONLY: redeem an invite (4.2), post into a mailbox with a drop token (7.3; presence is the owner's only), read a short invite link's sealed invite (7.8), a join slot that a member device opened (6), `GET /v1/health` |
+| anonymous | any other valid signature | ONLY: redeem an invite (4.2), post into a mailbox with a drop token (7.3; presence is the owner's only), read a short invite link's sealed invite (7.8), a join slot that a member device opened (6), read and ask to join a group holding its link (13.3), `GET /v1/health` |
 
 The owner has both scopes. Anyone else gets
 `403 {"error":"not_member","message":"This relay is private. Ask its owner for an invite."}`;
@@ -204,8 +204,8 @@ sync folder when there is one, and say so in Settings > Sync.
 
 ### 3.4 Small endpoints
 
-- `GET /v1/health` (anonymous, rate-limited): `{"service":"opendash-relay","api":1,"now":ms}`.
-- `GET /v1/me`: `{"iid","role":"owner"|"member","device":bool,"scopes":[...],"quota":bytes,"used":bytes,"exp":ms|null}`.
+- `GET /v1/health` (anonymous, rate-limited): `{"service":"opendash-relay","api":1,"groups":1,"now":ms}` (`groups`: this relay runs groups, section 13).
+- `GET /v1/me`: `{"iid","role":"owner"|"member","device":bool,"scopes":[...],"quota":bytes,"used":bytes,"exp":ms|null,"liveCodes":1,"groups":1,"canStartGroups"?:1}`.
   Connect Cloudflare checks a new relay with this, signed by the owner key.
 - `POST /v1/certs` `{}` (a device, with its certificate): records the device
   for the admin page (`{cert, identity iid, device iid, iat, exp, seen}`). Call
@@ -268,7 +268,7 @@ member (`DELETE /v1/admin/members/<iid>`) also tells the spaces they use
 - `POST /v1/admin/invites` `{"scopes":[...], "ttlMs"?, "quota"?, "grantTtlMs"?}` -> `{"id","token","exp"}` (`mintInvite`).
 - `DELETE /v1/admin/invites/<id>`.
 - `PUT /v1/admin/members/<iid>` `{"key"?, "scopes"?, "quota"?, "exp"?}`: add (with `key`) or change.
-- `DELETE /v1/admin/members/<iid>` (`revokeMember`; `iid = iidOf(ed.pub)`): revoke at once. The grant is kept 7 days as
+- `DELETE /v1/admin/members/<iid>[?keepGroups=1]` (`revokeMember`; `iid = iidOf(ed.pub)`): revoke at once (it takes them out of their groups' reach too). With `keepGroups=1` (a friendship or an invite ended; lib/friends always sends it) someone who is also in a group here stays, on the small grant a group gives. The grant is kept 7 days as
   `revoked` so **Undo** works: `POST /v1/admin/members/<iid>/restore`. After 7
   days the member's groups, mailbox and directory entry are deleted.
 
@@ -589,6 +589,8 @@ A relay from before this section answers `404` to the `PUT`; the app then hands 
 
 ## 8. Limits
 
+Groups have their own table (docs/dev/GROUPS.md section 2, `LIMITS.rg` in lib/relay/base.mjs).
+
 ### 8.1 Caps (defaults; the operator may lower them)
 
 | What | Cap |
@@ -733,3 +735,110 @@ Settings > Your relay (`lib/relay/deploy.mjs`).
   `OPENDASH_PERSONAL_RELAY_ORIGIN` (device sync only; it must pass the same
   check) is for operators and development. It is not `OPENDASH_RELAY_ORIGIN`,
   which belongs to the hosted Claude MCP relay (docs/dev/HOSTED_RELAY.md).
+
+## 13. Groups
+
+A group is one space, `rg:<gid>` (`lib/relay/space-rgroup.mjs`); `gid` is `b64u(SHA-256("opendash-group-id-v1\n" + owner.ed + "\n" + owner.x + "\n" + nonce))`, its first 22 characters, from the
+first authority document (13.4). Why it is built this way: docs/dev/GROUPS.md. The relay enforces who may read and post, and reads nothing: everything but keys,
+roles, sizes and times is sealed by the apps (`lib/friends/group-core.mjs`). Apps act on nothing the relay says about who runs a group or who is in it without checking the signatures.
+
+### 13.1 Who may do what
+
+Besides the signature (3.1), every path below is checked against the group's own list. `peek` and `join` are anonymous
+paths (20 a minute per address), and `GET /join` tells any key only about itself; every other path is members-only, so a key the relay does not know is refused at the
+front door (8.1) before any Durable Object is touched. A key becomes known at the door straight away only by a `200` to `POST /join`, which only a real member gets. Roles: `owner`, `admin`, `member`. A relay's owner has no rights
+inside a group they are not in; they can only delete it (`DELETE /v1/admin/rg/<gid>`) and see its id, size and number of people
+(`GET /v1/admin` `groups`).
+
+Joining makes someone a relay member with a small grant (`via: "group:<gid>"`, `groups: [gid]`, `gm`: `approved` or
+`open`; no sync, 8 MiB, 3,000 or 1,000 rows a day; `open` also has no friend-code lookups, no short links and no group codes).
+It ends when they leave their last group. A key renewal keeps the kind of grant and the day's row count. A grant someone already had is kept, with `groups` added. Someone the relay's owner took
+off the relay cannot come back through a group. Only the relay's owner and people let in by other means can start a group.
+
+### 13.2 The link and the code
+
+`<origin>/g#ODG1.<gid>.<secret>.<check>`: `secret` 16 random bytes, b64u; `check` 6 characters of
+`b64u(SHA-256("opendash-group-check-v1\n" + origin + "\n" + gid + "\n" + secret))`. HKDF-SHA-256 of the secret (salt
+`opendash-group-secrets-v1`) gives `proof` (info `proof|<gid>`), a sealing key (`seal|<gid>`) and an admit key (`tag|<gid>`). The relay
+keeps `h = b64u(SHA-256("opendash-group-link-v1\n" + proof))` and sees `proof` when someone uses the link. It never sees the secret, unless its own `/g` page reads it in someone's browser (GROUPS.md).
+
+`GET /g` (with `/g.js`, `/g.css`) is a static page with a strict CSP, no outside requests and no record of the visit: what
+Freeflo is, how to get it, and a Copy button filled from the `#` part in the browser.
+
+A code is 4 letters (the alphabet of `lib/sync/e2e-crypto.mjs` `SHORT_ALPHABET`). `GET /v1/gcodes/<hex SHA-256("opendash-group-code-v1\n" + code)>`
+(members, not pending, not `gm: open`) -> `{gid, blob}`: the card sealed under a key derived from the code. 3 misses per person
+per 10 minutes (shared with friend codes), 6 per address per 10 minutes, 200 a day across the relay (`too_many_misses`). A `409` on `POST /code` (someone else has it) counts in the same way. A code's `join` always waits for approval.
+
+### 13.3 Endpoints (all under `/v1/rg/<gid>`)
+
+| Who | Request | What |
+|---|---|---|
+| a person the relay let in | `POST /create` `{x, auth, cardK, cardL, link: {h, v, exp?, maxUses?}, mode, posts, hdr, wrap, linkWrap?}` | one group; 8 per person, 50 per relay |
+| link holder | `POST /peek` `{proof}` | `{card (sealed), auths: [authority documents], mode, n, lv, full, epoch}`. Wrong, reset, expired or blocked: `410 gone`; 5 of those per address per hour per group, then `429` |
+| link holder | `POST /join` `{proof, x, home, env, admit?: {tag, lv}}` | Approve mode, or someone removed before: `202 {state: "pending"}` with nothing else, and no relay membership. Open mode: `200 {state: "member", linkWrap, mbox?, scopes, auths, card, epoch}`. 60 valid tries per address per hour |
+| relay member | `POST /join` `{codeProof, x, env}` | always `202 pending` |
+| the asker | `GET /join`, `DELETE /join` | `{state: pending\|member\|declined\|removed\|none}`; take the request back |
+| member | `GET /feed?since=&ke=&au=` | `{head, s, rs, more, epoch, due, n, mode, posts, role, since, roster?, keys?, linkWrap?, card?, auths?, dms?, items?}`, and for those who run it `requests?, blocks, link, code, used, limits`. An answer with nothing new reads no rows |
+| member | `POST /post` `{ch: a\|m, env}` | `a` needs owner or admin; `m` follows `posts`. 16 KiB, 30 a minute, 300 a day per person, 5,000 a day per group |
+| member | `PUT /me` `{env}` | this person's sealed profile; 20 an hour |
+| member | `POST /dm` `{to, env}`, `POST /dm/ack` `{ss}` | one sealed message to one other member (the friend handshake, until accepted); 50 a day per seat (stored), 20 waiting per person, 2 MiB for the group, all counted in `used` |
+| member | `POST /leave` | the owner must hand over first (`409`) unless alone, which deletes the group |
+| member | `POST /rekey` `{key, x, sig, sigOld, auth?, admits?}` | key renewal: the seat moves to the new key, signed by both. 3 a day per seat, 20 a day per group (`429`), stored. The grant's kind, the day's rows and the seat's counts move with it; waiting requests for the old key go |
+| owner, admin | `POST /requests/<iid>/approve` `{hdr, wrap, admit}`, `.../decline` `{block?}` | `409 stale` when the key just changed |
+| owner, admin | `DELETE /members/<iid>[?block=1]` | access ends at once, sockets close, the key is due. An admin cannot remove the owner or another admin. `404` when already gone. Not for someone who runs the group: |
+| owner | `POST /members/<iid>/remove` `{auth, admits?, block?, rs?}` | the same, for someone who runs the group: with the signed document that no longer names them, and new proofs for those they let in |
+| owner, admin | `DELETE /blocks/<iid>` | unblock |
+| owner, admin | `POST /link` `{link?, cardK?, cardL?, linkWrap?, admits?, mode?, exp?, maxUses?, rs?}` | a new `link` stops the old one immediately and clears requests that came through it. A new link, or going to `approve`, makes the key due. A date in the past is `400`, except the link's own date sent back, which changes nothing: never "no end date" |
+| owner, admin | `PUT /card` `{cardK, cardL?, posts?}`, `POST /code` `{key, h, blob}`, `DELETE /code` | |
+| owner, admin | `POST /keys` `{hdr, wraps: {iid: {iv, ct}}, cardK, cardL?, linkWrap?, admits?, rs?}` | epoch must be the current + 1, else `409 stale`. Clears `due` |
+| owner | `PUT /members/<iid>/role` `{role, auth, admit?, admits?, rs?}`, `POST /transfer` `{to, auth}`, `POST /auth` `{auth, admits?, rs?}`, `DELETE` (no path) | each with a new authority document (13.4); the key is due after a change. `/auth`: roles follow the document; naming someone not on the list with that very key is `400` |
+| member | `GET /ws` (7.7) | `{t: "chg", s}`, nothing else: telling everyone is held to once per window in a group of 10 or more (3 seconds per person, at most 30 minutes). One person, or those who run the group, hear at once. At most 600 sockets. Refused for anyone not on the list |
+
+`rs`: the feed's `rs` the app worked from. If the list changed since (a new proof or key would miss someone): `409 stale`, and the app looks again.
+
+### 13.4 What the apps check
+
+- **Authority document** `{v, gid, seq, owner: {ed, x}, admins: [{ed, x}], at, prev?, nonce?, sig}`: `seq` 1 carries the `nonce` the group id is a hash of, and is signed
+  by the key it names. Each later one is signed by the owner so far over `lib/relay/auth.mjs` `groupAuthText`, `prev` = `groupAuthHash` of the whole document before it. Apps
+  walk from document 1; with nothing known, nothing else is taken. The relay keeps document 1, every document where the owner changed, and the last 64, so `prev` is checked between neighbours.
+- **Card** `{v, gid, name, about, welcome, logo, owner, j, auto, mode, au: {seq, h}, at, by, sig}`: `by` must run the group now and `owner` must match; `au` names the document it was signed under, which must not be newer than the walk, and must match it if the walk holds it.
+- **Key wraps**: `hdr = {e, by, eph, at, sig}`, signed by `by`, one ephemeral X25519 key per batch; each wrap AES-256-GCM under
+  HKDF(X25519(eph, member x)), AAD group, epoch, member. An app takes a wrap only from someone the document names now, and never an epoch older than its newest. It keeps
+  what runs the group (`j`, `jo`, `t`, `v`, `c`) from a wrap only if the document names it too. `arrive`: a relay's `state: member` counts only when such a key opens.
+- **`linkWrap`**: `{k, old, by, at, sig}` sealed under the link, signed by someone the document names, for exactly that epoch. Taken only when the signed card's `mode` is `open` and the person came by a link. Only `k` and `old` are used.
+- **Messages** `{v: 1, e, id, from, ch, iv, ct, sig}`: AES-256-GCM under the epoch's key, AAD group, epoch, id, sender, channel; Ed25519 by
+  `from` over all of it, so `ch` (`a`, `m`, `p`) cannot be changed. Inside: `{k: post|profile, b, at}`. Checked, then a strict shape, and duplicates (by id) and anything older than 45 days are dropped.
+- **Roster rows** carry `admit`: `{by, at, sig}` (a signature, over group, key, x and time, by someone the document names NOW), `{tag, lv}` (HMAC under the current
+  link's admit key, and only when the signed card's `mode` is `open`), or `{rk, prev}` (a renewal, both signatures, then what the old key had). A row whose exact pair of keys the document names needs nothing else. `{self: true}` means nothing by itself. Its `iid` must be the key's hash, with one row per key. A row whose proof fails is not shown; a rotating admin wraps only to rows that pass, strictly, and what runs the group goes only to the exact pair the document names.
+- **Requests** to join carry, sealed to `j`: `{name, card, at, via, tag?}`; a link's must have the right `tag`, a code's needs a code to be on; not older than 45 days.
+- **Friend requests** through a group carry `gp`: `"<e>.<HMAC under the group's key, over group, epoch, ed, x>"`, with `e` the current epoch or the one before, and no `drop`. The handshake runs over `/dm` until accepted.
+
+### 13.5 Storage
+
+`meta` (counters) and `doc` (sealed card, authority chain) apart, so a post does not rewrite the card. One row per post, profile,
+request, direct request and member; **one row per key rotation whatever the group's size**. Posts expire after 30 days; requests after
+30 days; 2,000 posts and 32 MiB at most, oldest notes first. A group nobody used for a year is deleted. What its owner stored counts for
+the relay's total only. `used` goes down with what leaves, and is worked out again from the rows once a day.
+
+## Pass-through rooms (lib/relay/space-room.mjs)
+
+Space `rt:<id>`, path `/v1/rt/<id>/ws`, WebSocket only (a plain request is 404 at the front). `GET /v1/health` says `rt: 1`. A room writes nothing to storage and sets no alarm: what survives a hibernation is in the socket attachments (`sp` is the space's name, which the Worker reads when a socket wakes it; the host's holds what the room has cost today). See docs/dev/GARDEN_TOGETHER.md section 4.
+
+The upgrade is signed, unlike every other socket: the request headers of 3.1 with an empty body, plus `X-OD-Room: host.nonce[.exp.ticket]`. `front()` checks all of it before any space is touched: the signature, that `host` and `nonce` make this `id`, the ticket if the signer is not the host, and that `host` is the owner or a member who is not there only through a group (no `X-OD-Cert`: a room takes the person's own key). Anyone else gets 401 or 403 and costs one Worker request. On Cloudflare `io.known` may answer busy (429, `Retry-After` 5).
+
+`id = base64url(SHA-256("opendash-relay-room-v1
+" + hostKey + "
+" + nonce))`. After the usual challenge the socket answers `{t: 'auth', key, sig, host, nonce, ticket?, exp?}`. The host (`key == host`) must be the owner or a member with `message` and not pending. A guest shows `ticket`: Ed25519 by `host` over `"opendash-relay-room-ticket-v1
+" + id + "
+" + key + "
+" + exp`, at most 6 hours ahead; the host's socket must be there and the key not banned.
+
+| Socket sends | | Others get |
+|---|---|---|
+| guest `{t: 'to', env}` | to the host | `{t: 'fwd', f: iid, env}` |
+| host `{t: 'to', b: [[iid, env], ...]}` (13 at most) | one message a broadcast | each `{t: 'fwd', env}` |
+| host `{t: 'kick', g: iid}` / `{t: 'unban', g: iid}` | | that guest `{t: 'closed', why: 'kick'}`, closed 4403 |
+
+The host hears `{t: 'peer', g, on}`. The host's socket closing closes the room (4410). Per socket 40 messages a second and 1,200 a minute (over: dropped before parsing; 200 over in a minute: closed 4429). A message is at most 8 KiB from a guest and 32 KiB from the host, in bytes; over: that sender is closed (1009) and nobody else.
+
+Every message that arrives is counted, whatever becomes of it (the numbers are `ROOM` in `lib/relay/space-room.mjs`). A guest has 6,000 a day in a room: over, `{t: 'err', error: 'share'}`, that socket closed 4429, the key banned in that room, the host told `{t: 'over', g}`. A room has 60,000 a day. Every 1,024 messages or 10 minutes in memory, and when the host's socket goes, the room calls the registry's internal `room-spend`; the registry keeps one row (`rr`) with today's messages and time in memory for the relay (300,000 messages, 12 hours) and each host key (120,000, 6 hours), and answers whether to go on: if not, `{t: 'err', error: 'budget'}` and everyone closed 4429, or 4403 if the host's access is gone. A host signing in calls `room-open`: refused while over a budget or past 12 rooms an hour for that key (`{t: 'error', error: 'rate_limit'}`, or `not_member`), and a fourth open room of one key closes its oldest (4409). So that row also lists every room a key has open, and `DELETE /v1/admin/members/<iid>` closes them at once (4403). None of these counts touch the per-key limits device sync uses.

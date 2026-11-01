@@ -1,0 +1,188 @@
+/* ============================================================
+   FINANCE SYMBOLS, part 2 (owner: Finance symbols): the vendor pictograms and logos on merchant
+   tiles, who-and-what tiles (family, friends, salary, refunds and so on), small moving loops, easter eggs.
+   Sits after 67-fin-symbols.css. Motion: transform and opacity; static under reduced motion
+   (the rules at the end of that file cover every .fsym), paused while hidden.
+   ============================================================ */
+.fsym-pic { display: block; width: 72%; height: 72%; overflow: visible; position: relative; z-index: 1; }
+.fsym.sz-xs .fsym-pic { width: 78%; height: 78%; }
+.fsym-pic .f { fill: var(--mi, #fff); }
+.fsym-pic .x { fill: var(--mc, var(--sw-slate)); }
+.fsym-pic .a { fill: var(--ma, var(--mi, #fff)); }
+.fsym-pic :is(.l, .la, .la2, .lx, .lm) { fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.fsym-pic .l, .fsym-pic .lm { stroke: var(--mi, #fff); }
+.fsym-pic .la, .fsym-pic .la2 { stroke: var(--ma, var(--mi, #fff)); }
+.fsym-pic .lx { stroke: var(--mc, var(--sw-slate)); stroke-width: 1.8; }
+.fsym-pic .th { stroke-width: 3; }
+.fsym-pic .dash { stroke-dasharray: 2 2.4; }
+.fsym.sz-xs .fsym-pic :is(.l, .la, .la2, .lm) { stroke-width: 3; }
+.fsym.sz-xs .fsym-pic .lx { stroke-width: 2.2; }
+/* small monogram over a pictogram: only from size md up, and it never hides the drawing's meaning */
+.fsym-chip { position: absolute; left: 6%; top: 6%; z-index: 2; min-width: 34%; height: 34%; padding: 0 3%; border-radius: 28%; display: grid; place-items: center; font-family: var(--font-sans); font-weight: 760; font-size: calc(var(--fs-size) * 0.2); line-height: 1; letter-spacing: -0.02em; background: var(--ma, var(--mi)); color: var(--mc); box-shadow: 0 0 0 1px color-mix(in oklab, var(--mc) 70%, transparent); }
+.fsym.sz-xs .fsym-chip, .fsym.sz-sm .fsym-chip { display: none; }
+/* a top vendor's tile has a little more going on (pictogram mode only) */
+.fsym-m[data-t="band"] .fsym-face::before { content: ''; position: absolute; inset: auto 0 0 0; height: 15%; background: var(--ma); opacity: 0.92; }
+.fsym-m[data-t="corner"] .fsym-face::before { content: ''; position: absolute; right: -14%; top: -14%; width: 46%; height: 46%; border-radius: 50%; background: var(--ma); opacity: 0.9; }
+.fsym-m[data-t="duo"] .fsym-face::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, transparent 0 62%, color-mix(in oklab, var(--ma) 80%, transparent) 62% 100%); }
+.fsym-m[data-t="rings"] .fsym-face::before { content: ''; position: absolute; left: -30%; bottom: -30%; width: 86%; height: 86%; border-radius: 50%; border: calc(var(--fs-size) * 0.05) solid color-mix(in oklab, var(--ma) 70%, transparent); }
+/* logos: shown as drawn. A one-colour mark takes the tile's ink on the brand colour; a full-colour logo sits on white in both themes. */
+.fsym-logo, .fsym-own { position: relative; z-index: 1; display: block; user-select: none; -webkit-user-drag: none; }
+.fsym-logo { width: 68%; height: 68%; object-fit: contain; }
+.fsym-face.is-logo { background-color: #fff; background-image: none; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.08); }
+[data-theme="dark"] .fsym-face.is-logo { box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2), 0 1px 2px rgb(0 0 0 / 0.3); }
+.fsym-face.is-logo .fsym-logo { width: 82%; height: 82%; }
+.fsym-face.is-logo.is-wide .fsym-logo { width: 90%; height: 90%; }
+.fsym-own { width: 100%; height: 100%; object-fit: cover; }
+.fsym-face.is-own { background-image: none; }
+/* a logo is shown as drawn and never moves: no lift, no shine, a plain fade if the row enters */
+.fsym-m.has-logo.fsym-hover:hover { transform: none; }
+.fsym-m.has-logo .fsym-face::after { display: none; }
+.fsym-m.has-logo.fsym-enter { animation-name: fsk-fade; }
+@keyframes fsk-fade { from { opacity: 0; } }
+/* a bill task's little tile beside its title */
+.fsym-task { margin-right: 6px; vertical-align: -3px; }
+/* the badge can say how it was paid or where (see txSymbol) */
+.fsym-badge.is-kind { background: var(--surface); }
+.fsym-badge.is-flag { background: var(--surface); overflow: hidden; }
+.fsym-badge .fsym-flag { width: 100%; height: 100%; display: block; border-radius: 50%; }
+.fsym-badge .fsym-cc { font-family: var(--font-sans); font-size: calc(var(--fs-size) * 0.17); font-weight: 760; letter-spacing: -0.02em; line-height: 1; color: var(--fg); }
+.fsym.sz-xs .fsym-badge .fsym-cc { font-size: 7px; }
+
+/* ---------- who and what ---------- */
+.fsym-who { --who: var(--sw-teal); position: relative; display: inline-block; width: var(--fs-size); height: var(--fs-size); border-radius: 50%; flex: none; line-height: 0; }
+.fsym-who.is-family { --who: var(--sw-pink); }
+.fsym-who-av { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; border-radius: 50%; box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--who) 70%, var(--surface)); background: color-mix(in oklab, var(--who) 20%, var(--surface)); color: color-mix(in oklab, var(--who) 70%, var(--fg)); font-family: var(--font-sans); font-weight: 680; font-size: calc(var(--fs-size) * 0.36); letter-spacing: -0.02em; line-height: 1; }
+.fsym-who-av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fsym-who-av .avatar { width: 100% !important; height: 100% !important; font-size: inherit !important; }
+.fsym-who-mark { position: absolute; right: -12%; bottom: -12%; width: 48%; height: 48%; min-width: 13px; min-height: 13px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--who); box-shadow: 0 0 0 1.5px var(--surface), 0 1px 2px rgb(0 0 0 / 0.14); }
+.fsym-who-mark svg { width: 72%; height: 72%; fill: currentColor; stroke: none; overflow: visible; }
+.fsym-who-mark .fx { transform-box: fill-box; transform-origin: center; }
+:is(.fsym-host, .anim-hover-host):hover .fsym-who-mark .fx, .fsym-who:hover .fsym-who-mark .fx, .fsym-who.is-live .fsym-who-mark .fx { animation: fsk-beat 1.4s ease-in-out infinite; }
+.fsym-who.is-friend :is(.fsym-host, .anim-hover-host):hover .fsym-who-mark .fx { animation-name: fsk-hop; }
+
+/* ---------- small loops: run on hover, or while .is-live (activate's running count) ---------- */
+.fsym-m .fx { --ae: ease-in-out; }
+:is(.fsym-host, .anim-hover-host):hover .fsym-m.fsym-hover .fsym-pic .fx,
+.fsym-m.fsym-hover:hover .fsym-pic .fx,
+.fsym-m.is-live .fsym-pic .fx { animation: var(--an, none) var(--ad, 2.6s) var(--ae, ease-in-out) var(--d, 0s) infinite both; }
+.fsym-m.is-once .fsym-pic .fx { animation-iteration-count: 2; }
+.fsym-pic .d2 { --d: 0.35s; }
+.fsym-pic .d3 { --d: 0.7s; }
+.fsym-pic .o-b { transform-origin: 50% 100%; }
+.fsym-pic .o-t { transform-origin: 50% 0; }
+.fsym-pic .o-bl { transform-origin: 0 100%; }
+.fsym-pic .o-tr { transform-origin: 100% 0; }
+.fsym-pic .fx-run { --an: fsk-run; --ad: 2.4s; --ae: cubic-bezier(0.45, 0.05, 0.55, 0.95); }
+.fsym-pic .fx-near { --an: fsk-near; --ad: 2.8s; }
+.fsym-pic .fx-bank { --an: fsk-bank; --ad: 3.2s; }
+.fsym-pic .fx-rock2 { --an: fsk-rock2; --ad: 3s; }
+.fsym-pic .fx-rock3 { --an: fsk-rock3; --ad: 2.2s; }
+.fsym-pic .fx-bob2 { --an: fsk-bob; --ad: 1.1s; }
+.fsym-pic .fx-spin2 { --an: fs-spin; --ad: 1.1s; --ae: linear; }
+.fsym-pic .fx-drip2 { --an: fsk-drip; --ad: 2s; }
+.fsym-pic .fx-drip3 { --an: fsk-drip3; --ad: 2.2s; }
+.fsym-pic .fx-zap2 { --an: fsk-zap; --ad: 2.4s; }
+.fsym-pic .fx-hop2 { --an: fsk-hop; --ad: 1.7s; }
+.fsym-pic .fx-bun { --an: fsk-bun; --ad: 1.7s; }
+.fsym-pic .fx-pick { --an: fsk-pick; --ad: 2.2s; }
+.fsym-pic .fx-roll2 { --an: fsk-roll; --ad: 3s; }
+.fsym-pic .fx-steam2 { --an: fsk-steam; --ad: 2.2s; --ae: ease-out; }
+.fsym-pic .fx-bubble2 { --an: fsk-bubble; --ad: 2.2s; --ae: ease-in; }
+.fsym-pic .fx-slosh { --an: fsk-slosh; --ad: 2.6s; }
+.fsym-pic .fx-swim { --an: fsk-swim; --ad: 2.2s; }
+.fsym-pic .fx-clap { --an: fsk-clap; --ad: 2s; }
+.fsym-pic .fx-wig { --an: fsk-wig; --ad: 2.6s; }
+.fsym-pic .fx-lift2 { --an: fsk-lift; --ad: 2s; }
+.fsym-pic .fx-bar2 { --an: fsk-bar; --ad: 1.8s; }
+.fsym-pic .fx-wave { --an: fsk-wave; --ad: 1.8s; }
+.fsym-pic .fx-beat2 { --an: fsk-beat; --ad: 1.5s; }
+.fsym-pic .fx-peek2 { --an: fsk-peek; --ad: 2.4s; }
+.fsym-pic .fx-snip1 { --an: fsk-snip1; --ad: 1.1s; transform-origin: 34% 62%; }
+.fsym-pic .fx-snip2 { --an: fsk-snip2; --ad: 1.1s; transform-origin: 34% 38%; }
+.fsym-pic .fx-pump2 { --an: fsk-pump; --ad: 1.8s; }
+.fsym-pic .fx-pop { --an: fsk-pop; --ad: 2.4s; }
+.fsym-pic .fx-sway { --an: fsk-sway; --ad: 2.6s; }
+.fsym-pic .fx-glint { --an: fsk-glint; --ad: 2s; }
+.fsym-pic .fx-drift { --an: fsk-drift; --ad: 3.2s; }
+.fsym-pic .fx-buzz { --an: fsk-buzz; --ad: 0.5s; --ae: linear; }
+.fsym-pic .fx-turn { --an: fsk-turn; --ad: 2.6s; }
+.fsym-pic .fx-turn2 { --an: fsk-turn2; --ad: 2.2s; }
+.fsym-pic .fx-flick { --an: fsk-flick; --ad: 1.3s; }
+.fsym-pic .fx-tickin { --an: fsk-tick; --ad: 2.8s; }
+.fsym-pic .fx-coin2 { --an: fsk-coin; --ad: 2.2s; }
+.fsym-pic .fx-printy { --an: fsk-print; --ad: 2.6s; }
+.fsym-pic .fx-lidup { --an: fsk-lid; --ad: 2.4s; }
+.fsym-pic .fx-sw1 { --an: fs-swapr; --ad: 2s; }
+.fsym-pic .fx-sw2 { --an: fs-swapl; --ad: 2s; }
+.fsym-pic .fx-dispense { --an: fsk-dispense; --ad: 2.8s; }
+.fsym-pic .fx-confetti { --an: fsk-confetti; --ad: 2s; }
+.fsym-pic .fx-back { --an: fsk-back; --ad: 2s; }
+.fsym-pic .fx-pctup { --an: fsk-beat; --ad: 2s; }
+/* Loops begin and end at rest, so hovering never makes a part jump away first. */
+@keyframes fsk-run { 0%, 100% { transform: none; opacity: 1; } 42% { transform: translateX(34px); opacity: 1; } 43%, 44% { transform: translateX(34px); opacity: 0; } 45% { transform: translateX(-34px); opacity: 0; } 46% { transform: translateX(-34px); opacity: 1; } }
+@keyframes fsk-near { 0%, 100% { transform: none; } 45% { transform: scale(0.55) translateY(2px); opacity: 0.6; } 75% { transform: scale(1.06); opacity: 1; } }
+@keyframes fsk-bank { 0%, 100% { transform: none; } 25% { transform: rotate(-16deg) scale(0.96); } 70% { transform: rotate(10deg) translate(1px, -1px); } }
+@keyframes fsk-rock2 { 0%, 100% { transform: none; } 25% { transform: rotate(-3.5deg); } 75% { transform: rotate(3.5deg) translateY(.6px); } }
+@keyframes fsk-rock3 { 0%, 100% { transform: none; } 30% { transform: rotate(-7deg); } 70% { transform: rotate(7deg); } }
+@keyframes fsk-bob { 0%, 100% { transform: none; } 50% { transform: translateY(-1.2px); } }
+@keyframes fsk-drip { 0%, 55%, 100% { transform: none; opacity: 1; } 30% { transform: translateY(7px) scale(0.85); opacity: 0; } 31% { transform: translateY(-3px) scale(0.3); opacity: 0; } }
+@keyframes fsk-drip3 { 0%, 100% { transform: none; } 20% { transform: scale(1.05, 0.92); } 42% { transform: translateY(-2.4px) scale(0.96, 1.04); } 60% { transform: none; } }
+@keyframes fsk-zap { 0%, 38%, 100% { transform: none; opacity: 1; } 8% { transform: scale(1.12); opacity: 0.55; } 16% { transform: scale(0.96); opacity: 1; } 26% { transform: scale(1.07); opacity: 0.8; } }
+@keyframes fsk-hop { 0%, 58%, 100% { transform: none; } 26% { transform: translateY(-3.6px); } 46% { transform: none; } 52% { transform: scale(1.03, 0.96); } }
+@keyframes fsk-bun { 0%, 58%, 100% { transform: none; } 26% { transform: translateY(-4.6px) rotate(-5deg); } }
+@keyframes fsk-pick { 0%, 100% { transform: none; } 40% { transform: translateY(-3px) rotate(-5deg); } }
+@keyframes fsk-roll { 0%, 100% { transform: none; } 50% { transform: rotate(180deg); } }
+@keyframes fsk-steam { 0%, 100% { transform: none; opacity: 0.9; } 50% { transform: translateY(-3px) scaleX(1.25); opacity: 0; } 51% { transform: translateY(1.6px); opacity: 0; } }
+@keyframes fsk-bubble { 0%, 100% { transform: none; opacity: 0.95; } 66% { transform: translateY(-8px); opacity: 0; } 67% { transform: translateY(1px); opacity: 0; } }
+@keyframes fsk-slosh { 0%, 100% { transform: none; } 30% { transform: rotate(-5deg); } 70% { transform: rotate(5deg); } }
+@keyframes fsk-swim { 0%, 100% { transform: none; } 30% { transform: translateX(-2px) rotate(-3deg); } 70% { transform: translateX(2px) rotate(3deg); } }
+@keyframes fsk-clap { 0%, 50%, 100% { transform: none; } 18% { transform: rotate(-15deg); } 34% { transform: rotate(0.6deg); } }
+@keyframes fsk-wig { 0%, 42%, 100% { transform: none; } 8% { transform: rotate(-6deg); } 18% { transform: rotate(6deg); } 28% { transform: rotate(-3deg); } 36% { transform: rotate(2deg); } }
+@keyframes fsk-lift { 0%, 100% { transform: none; } 42%, 58% { transform: translateY(-4.4px); } }
+@keyframes fsk-bar { 0%, 100% { transform: none; opacity: 1; } 40% { transform: scaleY(0.2); opacity: 0.5; } 75% { transform: scaleY(1.05); opacity: 1; } }
+@keyframes fsk-wave { 0%, 100% { opacity: 1; } 40% { opacity: 0.25; } }
+@keyframes fsk-beat { 0%, 46%, 100% { transform: none; } 12% { transform: scale(1.16); } 22% { transform: scale(1.02); } 32% { transform: scale(1.1); } }
+@keyframes fsk-peek { 0%, 100% { transform: none; } 45%, 60% { transform: translateY(-2.6px); } }
+@keyframes fsk-snip1 { 0%, 100% { transform: none; } 50% { transform: rotate(-13deg); } }
+@keyframes fsk-snip2 { 0%, 100% { transform: none; } 50% { transform: rotate(13deg); } }
+@keyframes fsk-pump { 0%, 40%, 100% { transform: none; } 20% { transform: translateY(2.2px); } }
+@keyframes fsk-pop { 0%, 58%, 100% { transform: none; opacity: 1; } 12% { transform: translateY(5px) scale(0.8); opacity: 0; } 34% { transform: translateY(-1.6px); opacity: 1; } }
+@keyframes fsk-sway { 0%, 100% { transform: none; } 30% { transform: rotate(-6deg); } 70% { transform: rotate(6deg); } }
+@keyframes fsk-glint { 0%, 100% { transform: none; opacity: 1; } 50% { transform: scale(0.55) rotate(25deg); opacity: 0.4; } }
+@keyframes fsk-drift { 0%, 100% { transform: none; } 50% { transform: translateX(-1.8px); } }
+@keyframes fsk-buzz { 50% { transform: translateX(1px); } }
+@keyframes fsk-turn { 0%, 100% { transform: none; } 50% { transform: rotate(180deg); } 75% { transform: rotate(360deg); } }
+@keyframes fsk-turn2 { 0%, 100% { transform: none; } 40% { transform: rotate(-22deg); } 70% { transform: rotate(10deg); } }
+@keyframes fsk-flick { 0%, 100% { transform: none; } 25% { transform: scale(0.95, 1.07) rotate(-2deg); } 55% { transform: scale(1.05, 0.95) rotate(2deg); } 80% { transform: scale(0.98, 1.03); } }
+@keyframes fsk-tick { 0%, 100% { transform: none; opacity: 1; } 10% { transform: scale(0.4); opacity: 0; } 28% { transform: scale(1.15); opacity: 1; } 36% { transform: none; } }
+@keyframes fsk-coin { 0%, 55%, 100% { transform: none; opacity: 1; } 30% { transform: translateY(6px) scale(0.86); opacity: 0.9; } 38% { transform: translateY(8px) scale(0.5); opacity: 0; } 39% { transform: translateY(-3px); opacity: 0; } }
+@keyframes fsk-print { 0%, 100% { transform: none; opacity: 1; } 8% { opacity: 0; transform: scaleY(0.14); } 12% { opacity: 1; transform: scaleY(0.14); } 56% { transform: none; } }
+@keyframes fsk-lid { 0%, 60%, 100% { transform: none; } 20% { transform: translateY(-3.4px) rotate(-6deg); } 36% { transform: translateY(-2px) rotate(4deg); } 48% { transform: none; } }
+@keyframes fsk-dispense { 0%, 100% { transform: none; opacity: 1; } 14% { transform: translateY(-13px); opacity: 0; } 15% { transform: translateY(-13px); opacity: 1; } 55% { transform: none; } }
+@keyframes fsk-confetti { 0%, 100% { transform: none; opacity: 1; } 40% { transform: translateY(-2.6px) scale(1.1); opacity: 0.7; } 70% { transform: translateY(1px); opacity: 1; } }
+@keyframes fsk-back { 0%, 100% { transform: none; } 40% { transform: translateX(-2.4px); } }
+
+/* ---------- easter eggs: tiny, once, never in the way ---------- */
+.fsym-egg { position: absolute; left: -14%; top: -14%; width: 52%; height: 52%; z-index: 3; }
+.fsym-egg svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.fsym-egg.is-new { animation: fsk-eggin 900ms cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.fsym-egg.egg-bounce { animation: fsk-eggbounce 1.2s ease-in-out 3 both; }
+.fsym-egg.egg-float { animation: fsk-eggfloat 2.2s ease-in-out 2 both; }
+@keyframes fsk-eggin { 0% { transform: scale(0) rotate(-40deg); opacity: 0; } 60% { transform: scale(1.3) rotate(8deg); opacity: 1; } 100% { transform: none; opacity: 1; } }
+@keyframes fsk-eggbounce { 0%, 100% { transform: none; } 40% { transform: translateY(-40%); } 60% { transform: translateY(-8%); } }
+@keyframes fsk-eggfloat { 0%, 100% { transform: none; opacity: 0.95; } 50% { transform: translateY(-35%) rotate(-6deg); opacity: 0.8; } }
+
+/* the debug gallery's extras */
+.fsg-picts { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 12px 6px; }
+.fsg-picts figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fsg-picts figcaption { font-size: var(--text-2xs); color: var(--fg-muted); }
+.fsg-logoall { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 12px 6px; }
+.fsg-logoall figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fsg-logoall figcaption { font-size: var(--text-2xs); color: var(--fg-muted); text-align: center; line-height: 1.2; }
+.fsg-notice { font-size: var(--text-xs); color: var(--fg-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fsym-egg, .fsym-who *, .fsym-egg * { animation: none !important; }
+}
+html[data-motion="reduced"] :is(.fsym-egg, .fsym-who *), html.anim-off :is(.fsym-egg, .fsym-who *) { animation: none !important; }
+html.fsym-paused :is(.fsym-egg, .fsym-who *), html.anim-paused :is(.fsym-egg, .fsym-who *) { animation-play-state: paused !important; }

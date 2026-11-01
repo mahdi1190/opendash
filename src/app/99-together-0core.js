@@ -197,7 +197,7 @@ async function _tgFetch(path, body, method) {
   catch (e) { throw new Error(netErrorMessage(e)); }
   let j = null;
   try { j = await r.json(); } catch (e) { /* no body */ }
-  if (!r.ok) throw new Error((j && j.error) || `The server said ${r.status}.`);
+  if (!r.ok) throw new Error((j && j.error) || netErrorMessage(new Error('HTTP ' + r.status)));
   return j || {};
 }
 /** Fetch the spaces (coalesced: a second call while one runs queues one more). */
@@ -358,7 +358,7 @@ function tgAfterUndo(msg, ic, run, ms) {
 function tgWaitEl(what) {
   const w = tgEl('div', 'tg-calm tg-sm tg-wait');
   const down = typeof _serverAvailable !== 'undefined' && !_serverAvailable;
-  if (down) w.appendChild(tgEl('span', '', `OpenDash's server isn't answering, so ${what} can't load. It shows here again when the server is back.`));
+  if (down) w.appendChild(tgEl('span', '', `Freeflo isn't answering, so ${what} can't load. It shows here again as soon as Freeflo is back.`));
   else if (_tg.data && _tg.data.failed) w.appendChild(tgEl('span', '', `${what[0].toUpperCase() + what.slice(1)} could not load (${_tgWhy(_tg.err)}). It tries again by itself in a minute.`));
   else { w.insertAdjacentHTML('beforeend', icon('loader-circle', 'i-sm')); w.appendChild(tgEl('span', '', `Loading ${what}…`)); }
   if (!_tg.loading || down || (_tg.data && _tg.data.failed)) w.appendChild(tgBtn('Try again', { ghost: true, icon: 'refresh-cw', run: () => { tgLoad(); render(); } }));

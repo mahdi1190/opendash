@@ -625,7 +625,7 @@ function _alSettingsRender(el) {
         if (st) { _alSettingsAsked = false; _alPaintSettings(); return; }
         if (++tries < 6) { setTimeout(ask, 800); return; }   // the page may still be connecting to its server
         _alSettingsAsked = false;
-        if (_alSettingsEl) _alSettingsEl.replaceChildren(emptyLine('Auto-linking needs OpenDash running on this computer. Start it with start-opendash.', { label: 'Try again', run: () => _alPaintSettings() }));
+        if (_alSettingsEl) _alSettingsEl.replaceChildren(emptyLine('Auto-linking needs Freeflo running on this computer. Start it with start-opendash.', { label: 'Try again', run: () => _alPaintSettings() }));
       });
       setTimeout(ask, 0);
     }
@@ -641,7 +641,7 @@ function _alSettingsRender(el) {
 
   // Workspace folders
   const fh = document.createElement('div'); fh.className = 'set-subh';
-  fh.innerHTML = '<h3>Workspace folders</h3><span class="subtle">OpenDash reads names and short excerpts. It never changes them.</span>';
+  fh.innerHTML = '<h3>Workspace folders</h3><span class="subtle">Freeflo reads names and short excerpts. It never changes them.</span>';
   el.appendChild(fh);
   const fl = document.createElement('div'); fl.className = 'al-folders card';
   const roots = (s.index && s.index.roots) || [];
@@ -651,7 +651,7 @@ function _alSettingsRender(el) {
     const row = document.createElement('div'); row.className = 'al-folder';
     row.innerHTML = `<span class="res-ic k-folder">${icon('folder')}</span><span class="al-txt"><span class="al-label truncate"></span><span class="al-where"></span></span>`;
     row.querySelector('.al-label').textContent = f.path;
-    row.querySelector('.al-where').textContent = [st ? (st.error ? (st.error === 'MISSING' ? 'Not found on this computer' : st.error) : `${Number(st.files).toLocaleString()} files`) : 'Not indexed yet', f.depth != null ? `depth ${f.depth}` : '', f.container ? 'only its subfolders are suggested' : '', st && st.truncated ? 'stopped at a limit' : '', st && st.cloudUnknown ? 'OneDrive check failed: contents not read' : ''].filter(Boolean).join(' · ');
+    row.querySelector('.al-where').textContent = [st ? (st.error ? (st.error === 'MISSING' ? 'Not found on this computer' : netPlainError(st.error)) : `${Number(st.files).toLocaleString()} files`) : 'Not indexed yet', f.depth != null ? `depth ${f.depth}` : '', f.container ? 'only its subfolders are suggested' : '', st && st.truncated ? 'stopped at a limit' : '', st && st.cloudUnknown ? 'OneDrive check failed: contents not read' : ''].filter(Boolean).join(' · ');
     row.appendChild(uiButton({ icon: 'x', size: 'sm', aria: 'Remove ' + f.path, tip: 'Remove', run: () => _alSaveSettings({ folders: cfg.folders.filter(x => x.path !== f.path) }, 'Folder removed') }));
     fl.appendChild(row);
   }
@@ -734,7 +734,7 @@ function _alSettingsRender(el) {
 }
 registerSettingsGroup({
   id: 'autolink', title: 'Files & auto-link', icon: 'wand-sparkles', order: 45,
-  description: 'Folders OpenDash may search, and how it links them to tasks.',
+  description: 'Folders Freeflo may search, and how it links them to tasks.',
   render(el) { _alSettingsRender(el); },
 });
 

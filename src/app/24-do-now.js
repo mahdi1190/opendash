@@ -33,6 +33,7 @@ function doNowActive() { const p = doNowPrefs(); return !!(p.ctx.length || p.ene
 function doNowSet(patch) {
   const next = Object.assign({}, doNowPrefs(), patch);
   _dnMemo = null;
+  if (typeof gameStreakTick === 'function' && (next.ctx && next.ctx.length || next.energy || next.mins)) gameStreakTick('do-now');   // achievements: days What can I do now? was asked
   if (typeof uiPrefSet === 'function') uiPrefSet('doNow', next);
   else { state.uiPrefs = Object.assign({}, state.uiPrefs || {}, { doNow: next }); saveUI(); }
   render();

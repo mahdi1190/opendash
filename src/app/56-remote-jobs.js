@@ -104,6 +104,7 @@ function syncedFilesChanged(rels) {
   if (any('finance-share/') && typeof expFinanceUpdated === 'function') expFinanceUpdated();   // paid back? (66-expenses-0core.js)   // finances from the computer that reads the bank (65-finance-view.js)
   // A person's picture arrived from another computer (lib/sync/blobs.mjs): shown in place of the initials (50-people.js).
   if (any('people/images/') && typeof pplPicturesArrived === 'function') pplPicturesArrived(list);
+  if (any('expenses/') && typeof owedFilesChanged === 'function') owedFilesChanged(list);   // Owed to me from another computer (66-owed-0core.js)
   if (any('expenses/') && typeof expensesFilesChanged === 'function') expensesFilesChanged(list);   // expenses and receipts from another computer (66-expenses-0core.js)
   if (list.includes('friends/spaces.json') && typeof togetherFilesChanged === 'function') togetherFilesChanged();   // shared spaces from another of your computers (99-together-0core.js)
   _rjFilesRefresh(list, any);

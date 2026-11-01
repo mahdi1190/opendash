@@ -78,8 +78,17 @@ function profileSet(patch, o) {
   const p = _pfState();
   if (!patch || typeof patch !== 'object') return profileGet();
   for (const [k, v] of Object.entries(patch)) {
-    if (k === 'avatar' && v && typeof v === 'object') p.avatar = profileAvatarNormalize(Object.assign({}, p.avatar, v));
-    else if (k === 'status' && v && typeof v === 'object') p.status = Object.assign({}, p.status, v);
+    if (k === 'avatar' && v && typeof v === 'object') {
+      p.avatar = profileAvatarNormalize(Object.assign({}, p.avatar, v));
+      try {   // achievements: the seasons of one year you changed your look in
+        if (typeof gameMark === 'function' && typeof todayStr === 'function') { const d = todayStr(), m = Number(d.slice(5, 7)); gameMark('look-season', d.slice(0, 4) + '-' + (m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter')); }
+      } catch (e) { /* never in the way */ }
+    }
+    else if (k === 'status' && v && typeof v === 'object') {
+      p.status = Object.assign({}, p.status, v);
+      try { if (typeof gameStreakTick === 'function' && (p.status.text || p.status.emoji)) gameStreakTick('status'); } catch (e) { /* achievements: days a status was set */ }
+      try { if (typeof gameStreakTick === 'function' && /^On a break$/i.test(String(p.status.text || '').trim())) gameStreakTick('status-break'); } catch (e) { /* achievements: days the break status was set */ }
+    }
     else if (k === 'share' && v && typeof v === 'object') p.share = Object.assign({}, p.share, v);
     else if (k === 'collected' && v && typeof v === 'object') p.collected = Object.assign({}, p.collected, v);
     else if (k === 'look' && v && typeof v === 'object' && !Array.isArray(v)) {   // field by field (the nameplate and 'currently' too), then cleaned
@@ -88,6 +97,9 @@ function profileSet(patch, o) {
       if (v.np && typeof v.np === 'object') next.np = Object.assign({}, cur.np, v.np);
       if (v.cur && typeof v.cur === 'object') next.cur = Object.assign({}, cur.cur, v.cur);
       p.look = typeof profileLookNormalize === 'function' ? profileLookNormalize(next) : next;
+      try {   // achievements: which banners, nameplates and titles you have worn (ids from the app's own tables)
+        if (typeof gameMark === 'function') { const L = p.look || {}; if (L.banner) gameMark('you-banner', L.banner); if (L.np && L.np.font) gameMark('you-nameplate', L.np.font); if (L.title) gameMark('you-title', L.title); }
+      } catch (e) { /* never in the way */ }
     } else if (['name', 'pronouns', 'bio', 'working', 'theme', 'badges', 'places', 'react', 'friendName', 'friendNameOn'].includes(k)) p[k] = v;
     else if (_pfExt().has(k)) p[k] = v;   // another agent's field (profileExtend): its wire() and sanitize() check it
   }
@@ -180,6 +192,11 @@ function profileUnlockCtx() {
     game: !!s, levelMax: Math.max(1, Number(g.levelMax) || 1, s ? Number(s.level.max) || s.level.level : 1),
     ach: new Set(_pfEarned().map(x => x.id)), achLabel: (id) => { const b = profileBadgeInfo(id); return b ? b.label : id; },
     collected: _pfState().collected, today: _pfToday(), birthday: typeof APP_CONFIG !== 'undefined' && APP_CONFIG ? APP_CONFIG.birthday : '',
+    // 2.23: what you made at the crafting bench
+    crafted: (() => { try { return typeof gardenCraftedSet === 'function' && state.garden && state.garden.since ? gardenCraftedSet() : new Set(); } catch (e) { return new Set(); } })(),
+    // 2.22: the garden's ribbons unlock hats, pins and titles (94-garden-0catalog.js GARDEN_RIBBONS)
+    ribbons: (() => { try { return new Set(Object.keys((state.garden && state.garden.rib) || {})); } catch (e) { return new Set(); } })(),
+    ribbonLabel: (id) => { try { const r = GARDEN_RIBBONS.find(x => x.id === id); return r ? r.label : id; } catch (e) { return id; } },
   };
 }
 function _pfSeason(iso) { const m = Number(String(iso).slice(5, 7)); return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter'; }
@@ -254,7 +271,7 @@ function _pfWho(who) {
     c.look = _pfLookOf(raw);   // 2.18: ids mapped through the look tables (an old friend without one gets the default)
     c.ext = _pfExtValues(raw, false);
     const nick = who.profile ? profileText(who.nick || who.name, PF_MAX.name) : '';
-    return { friend: true, avatar: raw.avatar ? c.avatar : null, theme: c.theme, name: nick || c.name, profile: c, game: c.game };
+    return { friend: true, fid: who.id || '', petItems: who.petItems || null, avatar: raw.avatar ? c.avatar : null, theme: c.theme, name: nick || c.name, profile: c, game: c.game };
   }
   // a friend view (window.Friends) that has not sent a profile yet: initials, never People's avatar (their id is not a person's)
   if (Object.prototype.hasOwnProperty.call(who, 'profile') || Object.prototype.hasOwnProperty.call(who, 'friendship')) {

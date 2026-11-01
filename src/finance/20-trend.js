@@ -16,7 +16,7 @@
     const gl = { day: 'day', week: 'week', month: 'month' }[F.gran];
     const total = sum(spend);
     cd.setSub(`${gbp(total)} spent · ${B.length} ${gl}${B.length === 1 ? '' : 's'}${prev ? ` · previous period ${gbp(sum(prev))}` : F.compare ? ' · no earlier data to compare with' : ''}`);
-    if (!hasAny) { cd.setEmpty('No spending in this range. Widen the dates or clear a filter.'); return; }
+    if (!hasAny) { cd.setEmpty('No spending in these dates. Widen the dates or clear a filter.'); return; }
     let c1 = 0; const cum = spend.map(v => round2(c1 += v));
     let c2 = 0; const pcum = prev ? prev.map(v => round2(c2 += v)) : null;
     const avg = total / B.length;

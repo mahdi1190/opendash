@@ -27,6 +27,8 @@ async function limit(env, bucket, key) {
   return fallback(bucket, key);
 }
 const toResponse = (r) => new Response(r.body ?? null, { status: r.status, headers: r.headers });
+// A room (lib/relay/space-room.mjs) has no rows, so after a hibernation its name comes from the socket that woke it.
+const socketSpace = (ws) => { try { const a = ws.deserializeAttachment(); return a && typeof a.sp === 'string' ? a.sp : null; } catch { return null; } };
 // Who may sign members-only requests, per isolate (core.mjs memberGate): a key that is neither the owner
 // nor a member is refused here, before any Durable Object is asked (RELAY_PROTOCOL.md 8.1).
 let gate = null;
@@ -49,13 +51,17 @@ export default {
       // Unsigned requests stop here, before any Durable Object is looked up (or created).
       const f = await front(request.method, u.pathname, ip, io, { host: u.host, query: u.search.slice(1), headers: request.headers, upgrade });
       if (f.response) return toResponse(f.response);
+      // Too big by its own say-so: refused here, before any Durable Object is asked.
+      if (Number(request.headers.get('content-length')) > maxBody(request.method, u.pathname)) return toResponse(errorReply(new RelayError(413, 'too_large'), now));
       const headers = new Headers();
       for (const h of FORWARD) { const v = request.headers.get(h); if (v) headers.set(h, v); }
       headers.set('X-OD-Space', f.route.space);
       headers.set('X-OD-IP', ip);
       const stub = env.SPACES.get(env.SPACES.idFromName(f.route.space));
       const res = await stub.fetch(new Request(request, { headers }));
-      if (res.status === 200 && u.pathname === '/v1/invites/redeem') gate.add(request.headers.get('x-od-key'));
+      // Let in moments ago: known here at once. A group's POST /join answers 200 only for a member (a 202 means they only asked); anyone
+      // may read their own state with GET /join, so that says nothing about who they are.
+      if (res.status === 200 && request.method === 'POST' && (u.pathname === '/v1/invites/redeem' || /^\/v1\/rg\/[^/]+\/join$/.test(u.pathname))) gate.add(request.headers.get('x-od-key'));
       return res;
     } catch (e) { return toResponse(errorReply(e, now)); }
   },
@@ -188,7 +194,7 @@ export class RelaySpace {
     } catch (e) { return toResponse(errorReply(e, now)); }
   }
   async webSocketMessage(ws, message) {
-    const sp = this.spaceFor(null);
+    const sp = this.spaceFor(socketSpace(ws));
     if (!sp) { try { ws.close(4410, 'gone'); } catch { /* gone */ } return; }
     await sp.wsMessage({
       get att() { try { return ws.deserializeAttachment(); } catch { return null; } },
@@ -198,7 +204,12 @@ export class RelaySpace {
     }, typeof message === 'string' ? message : null);
   }
   async webSocketClose(ws, code, reason) {
+    // (read before it closes: an attachment goes with its socket)
+    const name = socketSpace(ws);
+    let att = null;
+    try { att = ws.deserializeAttachment(); } catch { /* gone */ }
     try { ws.close(code, reason); } catch { /* already closed */ }
+    if (name) { const sp = this.spaceFor(name); if (sp) await sp.wsClose({ att, setAtt() {}, send() {}, close() {} }); }
   }
   async webSocketError(ws) {
     try { ws.close(1011, 'error'); } catch { /* already closed */ }

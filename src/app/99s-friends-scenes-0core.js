@@ -120,7 +120,8 @@ function friendsSceneFigureEl(who, size, o) {
     const a = _fscAvatarOf(who);
     if (!a) return null;
     const h = Math.max(24, Math.min(400, Math.round(Number(typeof size === 'object' && size ? size.size : size) || 64)));
-    const svg = profileFigureSvg(a, { size: h, walk: !!o.walk && _fscMotionOk() });
+    // o.person: in a garden, the same person the garden's walker draws (the portrait stood up, 94-garden-art-g-player.js), from the same allow-listed ids
+    const svg = (o.person && typeof gartPlayerFigureSvg === 'function' && gartPlayerFigureSvg(a, { size: h, motion: _fscMotionOk() })) || profileFigureSvg(a, { size: h, walk: !!o.walk && _fscMotionOk() });
     if (!svg) return null;
     const el = _fscEl('span', 'fsc-fig' + (o.cls ? ' ' + String(o.cls).replace(/[^a-z0-9 _-]/gi, '') : ''));
     el.style.setProperty('--fsc-h', h + 'px');

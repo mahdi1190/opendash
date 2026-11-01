@@ -3,8 +3,8 @@
   BUILD.spending = g => {
     S.trend = card(g, { title: 'Spending over time', span: 12, chart: true, height: 420 });
     S.trendSeg = seg([['bars', 'Bars'], ['line', 'Line']], F.spTrend === 'line' ? 'line' : 'bars', v => { F.spTrend = v; saveF(); S.trendSeg.set(v); trendChart(S.trend, R.ctx, 's:sp-trend', true); }, 'Chart style');
-    S.trend.tools.append(h('span', { class: 'fv-hint', text: 'Drag across bars to pick dates · click one to drill in · Ctrl+scroll to zoom' }), S.trendSeg.el);
-    S.pace = card(g, { title: 'Pace against the previous period', span: 8, md: 12, chart: true, height: 260, fill: true });
+    S.trend.tools.append(h('span', { class: 'fv-hint', text: 'Drag across bars to pick dates, click one to see its payments' }), S.trendSeg.el);
+    S.pace = card(g, { title: 'Compared with the days before', span: 8, md: 12, chart: true, height: 260, fill: true });
     S.dow = card(g, { title: 'When you spend', span: 4, md: 12, chart: true, height: 196, fill: true });
     S.dowSeg = seg([['week', 'Week'], ['month', 'Month']], F.spPattern === 'month' ? 'month' : 'week', v => { F.spPattern = v; saveF(); S.dowSeg.set(v); dayOfWeek(S.dow, R.ctx); }, 'Pattern');
     S.dow.tools.append(S.dowSeg.el);
@@ -75,7 +75,7 @@
     const monthMode = F.spPattern === 'month';
     S.wk.innerHTML = '';
     S.wk.classList.toggle('c1-three', monthMode);
-    if (!ctx.cur.spend.length) { cd.setEmpty('No spending in this range.'); return; }
+    if (!ctx.cur.spend.length) { cd.setEmpty('No spending in these dates.'); return; }
     const ghost = alpha(t.accent, t.dark ? 0.34 : 0.26);
     const stat = (label, val, unit, extra) => {
       const b = h('b', { class: 'num' });
@@ -145,8 +145,8 @@
     });
     const vals = [...daily.values()].filter(v => v > 0);
     const nDays = vals.length;
-    cd.setSub(`${ctx.rg.from < from ? 'The last 12 months of the range' : 'Each day of the range'} · ${nf0.format(nDays)} day${nDays === 1 ? '' : 's'} with spending · click a day for its payments`);
-    if (!vals.length) { cd.setEmpty('No spending in this range.'); S.calLegend.innerHTML = ''; return; }
+    cd.setSub(`${ctx.rg.from < from ? 'The last 12 months of these dates' : 'Each of these days'} · ${nf0.format(nDays)} day${nDays === 1 ? '' : 's'} with spending · click a day for its payments`);
+    if (!vals.length) { cd.setEmpty('No spending in these dates.'); S.calLegend.innerHTML = ''; return; }
     const edges = C1.heatBins(vals); const nb = edges.length + 1;
     const colOf = b => t.seq[nb <= 1 ? 4 : 1 + Math.round(b * 4 / (nb - 1))];
     const w0 = weekStart(from);
@@ -217,9 +217,9 @@
     // Compact axis labels so they never need rotating: <£5, £5–10 … £1k–2k, £2k+.
     const kk = v => (v >= 1000 ? (v / 1000) + 'k' : String(v));
     const axl = b => b.lo === 0 ? '<' + curBare(kk(b.hi)) : b.hi === Infinity ? curBare(kk(b.lo)) + '+' : curBare(`${kk(b.lo)}–${kk(b.hi)}`);
-    if (!rows.length) { cd.setEmpty('No payments in this range.'); return; }
+    if (!rows.length) { cd.setEmpty('No payments in these dates.'); return; }
     const med = median(rows.map(x => x.s));
-    cd.setSub(`${nf0.format(rows.length)} payments · median ${gbp2(med)} · click a bar to keep only that size`);
+    cd.setSub(`${nf0.format(rows.length)} payments · a typical one is ${gbp2(med)} · click a bar to see only that size`);
     const amt = F.amt;
     const isSel = b => !!amt && amt[0] === b.lo && (amt[1] === b.hi || b.hi === Infinity);
     const inSel = b => !amt || (b.hi > amt[0] && b.lo <= amt[1]);
@@ -246,7 +246,7 @@
     const M = ctx.M;
     const rows = ctx.cur.spend.filter(x => x.s > 0).sort((p, q) => q.s - p.s).slice(0, 8);
     cd.body.querySelectorAll('.fv-list').forEach(x => x.remove());
-    if (!rows.length) { cd.setEmpty('No payments in this range.'); return; }
+    if (!rows.length) { cd.setEmpty('No payments in these dates.'); return; }
     cd.setEmpty(null);
     const tot = sum(ctx.cur.spend, x => x.s);
     cd.setSub(`The top ${rows.length} make up ${pct(sum(rows, x => x.s) / Math.max(1, tot))} of spending`);
@@ -261,7 +261,7 @@
         C1.tileEl(x.m, x.c, 'md'),
         h('span', { class: 'fv-row-main' },
           h('span', { class: 'fv-row-t', text: x.m }),
-          h('span', { class: 'fv-row-s' }, h('span', { class: 'c1-nw', text: fDayW(x.n) + ' ·' }), C1.catIconEl(x.c, { size: 'xs', plain: true, live: false }), h('span', { class: 'c1-ell', text: x.c })),
+          h('span', { class: 'fv-row-s' }, txPendTag(x), h('span', { class: 'c1-nw', text: fDayW(x.n) + ' ·' }), C1.catIconEl(x.c, { size: 'xs', plain: true, live: false }), h('span', { class: 'c1-ell', text: x.c })),
           h('span', { class: 'fv-row-bar c1-bar' }, h('i', { style: { transform: `scaleX(${(x.s / max).toFixed(4)})`, background: x.c === 'Uncategorised' ? tk().uncat : catColor(x.c) } }))),
         badge,
         h('span', { class: 'fv-row-v', text: gbp2(x.s) }))));

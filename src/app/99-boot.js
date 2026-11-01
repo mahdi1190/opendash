@@ -6,7 +6,7 @@
 const _BOOT_HASH = location.hash || '';
 
 document.title = appTitle();
-{ const b = document.getElementById('brand-name'); if (b) b.textContent = userName() || 'OpenDash'; }
+{ const b = document.getElementById('brand-name'); if (b) b.textContent = userName() || 'Freeflo'; }
 
 applyAutoTheme();
 // '#view=...' wins on load; a plain open lands on Home.

@@ -112,7 +112,7 @@
 .gsv-gcard.is-empty { cursor: default; }
 .gsv-gcard:not(.is-empty):hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .gsv-gcard:focus-visible { box-shadow: 0 0 0 3px var(--focus-ring); outline: none; }
-.gsv-thumb { position: relative; aspect-ratio: 2 / 1; background: linear-gradient(180deg, #cfe8f6 0 42%, #a9d48a 42% 100%); line-height: 0; overflow: hidden; }
+.gsv-thumb { position: relative; aspect-ratio: 1344 / 690; background: linear-gradient(180deg, #cfe8f6 0 42%, #a9d48a 42% 100%); line-height: 0; overflow: hidden; }
 .gsv-thumb .gd-view, .gsv-thumb .gd-stage { height: 100%; }
 .gsv-thumb .gd-view .gd-stage { border-radius: 0; aspect-ratio: auto; }
 .gsv-thumb .gd-cap { display: none; }

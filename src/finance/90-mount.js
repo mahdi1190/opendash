@@ -9,6 +9,7 @@
     finally { R.noAnim = false; }
   }
   function teardown() {
+    mbReadStop();   // leaving Money: reading aloud stops with it
     disposeAll(); closePop(); closeDrawer();
     if (R.layer && R.layer.isConnected) R.layer.remove();
     R.drawerEl = null; R.scrim = null;
@@ -84,20 +85,36 @@
     sharedChanged: () => sharedChanged(),
     // For the app shell's sidebar and breadcrumb (14-shell.js / 15-nav-sidebar.js).
     sections: () => SECTIONS.map(([id, label]) => ({ id, label })),
-    groups: () => GROUPS.map(([id, label, icon, secs]) => ({ id, label, icon, sections: secs.slice() })),
+    groups: () => GROUPS.filter(g => g[3].length && (g[0] !== 'tax' || !(MPL.plan && MPL.plan.country === 'other'))).map(([id, label, icon, secs]) => ({ id, label, icon, sections: secs.slice() })),   // (Expenses has its own sidebar row: 66-expenses-1page.js)
     section: () => F.section,
     // 2.19.5: the sidebar lists the five tabs too: the tab you are on, and a way to open one (the section last used in it).
     group: () => groupOf(F.section),
-    openGroup: (id) => { const g = GROUPS.find(x => x[0] === id); if (g) setSection((R.groupLast && R.groupLast[id]) || g[3][0]); },
+    openGroup: (id) => openGroup(id),
+    // 2.21: Money's tabs for the Expenses page, and a repaint when the number of expenses to claim changes.
+    groupTabs: (active) => groupTabsEl(active),
+    tabsFor: () => MONEY_TABS_FOR,
+    repaintTabs: () => paintGroupTabs(),
     sectionLabel: () => (SECTIONS.find(s => s[0] === F.section) || [])[1] || '',
     setSection: (id) => setSection(id),
+    pendingNotices: () => { if (S.txNote && S.txNote.isConnected) txPaintNotices(); },
     // Select a merchant (the bar's chip clears it): Home's Payday & safe to spend opens a bill in Recurring with it.
     setMerchant: (m) => { m = typeof m === 'string' ? m : ''; if (m !== F.merchant) setMerchant(m); },
     // Connections > Money's "Import a CSV" opens the same file picker (inside the user's click).
     importCsv: () => pickCsv(),
+    // Connections > Money's Credit card card opens the same screen as Your data (45-cards.js).
+    addCard: () => cdAddCard(),
     // The shared page header (14-shell.js headerActions contract) draws these: one primary, the rest under More.
     update: (opts) => startUpdate(opts || {}),
     exportAll: () => exportAll(),
+    // A payslip dropped or attached in the chat: the Tax tab says what is sent and asks first (37-tax-filing.js).
+    taxPayslip: (file) => { try { if (typeof state !== 'undefined' && state.view !== 'finance' && typeof setView === 'function') setView('finance'); } catch (e) { /* already there */ } setSection('tax'); setTimeout(() => txReadSlip(file), 80); },
+    // Open a scenario in the What if? explorer (the assistant). parts: [{type, values}] (lib/finance/what-if.mjs). Nothing is saved.
+    openWhatIf: (parts) => {
+      try { if (typeof state !== 'undefined' && state.view !== 'finance' && typeof setView === 'function') setView('finance'); } catch (e) { /* already there */ }
+      setSection('budgets');
+      const go = () => { if (MPL.v && MPL.v.has && MPL.host && MPW.el) { pwOpen(parts); MPW.el.scrollIntoView({ block: 'start' }); } };
+      if (MPL.v) setTimeout(go, 50); else planLoad().then(() => { planPaint(); setTimeout(go, 50); });
+    },
   };
   // @c3 The shell's pure helpers, for tests/finance-shell.test.mjs and the console (not an API for other modules).
   window.FinanceView._shell = {

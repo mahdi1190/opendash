@@ -117,7 +117,7 @@ function _gsbSvg(sp, list, o) {
   for (const p of list.slice().sort((a, b) => a.y - b.y || a.x - b.x)) {
     const c = _gsbCell(p.x, p.y);
     const frag = _gsbArt(p.def ? p.def.id : 'meadow-grass', { kind: 'plant', stage: p.def ? p.stage : 1, season, variant: p.variant, size: 'm', t: (gardenHash(p.el.id) % 1000) / 1000, tod, thirsty: p.thirsty, overgrown: false, ripe: false, glow: !!(p.def && p.def.glow) });
-    const label = p.def ? `${p.def.name}, ${gardenStageName(p.def, p.stage).toLowerCase()}, planted by ${tgFirst(p.el.by)}` : 'A plant from a newer OpenDash';
+    const label = p.def ? `${p.def.name}, ${gardenStageName(p.def, p.stage).toLowerCase()}, planted by ${tgFirst(p.el.by)}` : 'A plant from a newer Freeflo';
     let marks = '';
     if (p.thirsty) marks += `<g class="gda-bob" transform="translate(0 ${_gsbN(-Math.max(18, 64 * c.s * (p.def ? p.def.look.h || 0.8 : 0.6) * (Math.max(1, p.stage) / 5) + 8))})"><path d="M0 -10c-4 5-6 8-6 10a6 6 0 0 0 12 0c0-2-2-5-6-10z" fill="#5fb3f0" stroke="#2f7fc0" stroke-width="1"/></g>`;
     const waterers = Object.keys((p.el.water && typeof p.el.water === 'object') ? p.el.water : {}).filter(k => Number(p.el.water[k]) > (Number(p.el.at) || 0)).slice(0, 5);
@@ -203,7 +203,7 @@ function _gsbBind(stage, status, sp, plants, ro) {
   stage.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { const g = hit(e.target); if (g) { e.preventDefault(); use(g); } } });
 }
 function _gsbLine(p) {
-  if (!p.def) return 'A plant from a newer OpenDash: update to see it grow';
+  if (!p.def) return 'A plant from a newer Freeflo: update to see it grow';
   const bits = [p.def.name, gardenStageName(p.def, p.stage).toLowerCase(), `planted by ${tgFirst(p.el.by)}`];
   if (p.thirsty) bits.push('a little thirsty');
   if (p.waterers) bits.push(`${p.waterers} ${p.waterers === 1 ? 'person has' : 'people have'} watered it`);
@@ -219,7 +219,7 @@ function _gsbPlantMenu(anchor, sp, p, ro) {
     top.appendChild(ic);
     const t = tgEl('div');
     t.appendChild(tgEl('b', '', p.def ? p.def.name : 'A new plant'));
-    t.appendChild(tgEl('span', 'muted gsv-small', p.def ? `${gardenStageName(p.def, p.stage)} · planted by ${tgFirst(p.el.by)} ${tgAgo(p.el.at)}` : 'From a newer OpenDash'));
+    t.appendChild(tgEl('span', 'muted gsv-small', p.def ? `${gardenStageName(p.def, p.stage)} · planted by ${tgFirst(p.el.by)} ${tgAgo(p.el.at)}` : 'From a newer Freeflo'));
     top.appendChild(t);
     el.appendChild(top);
     if (p.def) {

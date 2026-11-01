@@ -126,7 +126,7 @@ registerSettingsGroup({
     { label: 'Backups', target: 'Backups', description: 'Back up now, download or restore a saved copy.', keywords: 'automatic recovery backup restore download saved backups' },
     { label: 'Daily encrypted copy', target: 'Daily encrypted copy', description: 'One encrypted copy a day in a cloud folder.', keywords: 'offsite off-site daily encrypted backup passphrase' },
     { label: 'Export and import', target: 'Export and import', description: 'Move data to another computer or export JSON and Markdown.', keywords: 'zip tasks json markdown move computers' },
-    { label: 'Share the app', target: 'Share the app', description: 'A clean copy of OpenDash for someone else.', keywords: 'export clean copy app zip' },
+    { label: 'Share the app', target: 'Share the app', description: 'A clean copy of Freeflo for someone else.', keywords: 'export clean copy app zip' },
     { label: 'Reset app data', target: 'Reset app data', description: 'Start over after backing up the data folder.', keywords: 'delete erase clear start over' },
     { label: 'Move my data out of OneDrive', target: 'Move the data folder', description: 'Move your data to a folder no sync program touches.', keywords: 'move relocate onedrive local computer undo' },
   ],
@@ -134,7 +134,7 @@ registerSettingsGroup({
     if (!_sdInfo) { _sdJson('/api/settings/info').then(j => { _sdInfo = j; _sdRefresh(); }).catch(() => { _sdInfo = { error: true }; _sdRefresh(); }); }
     if (!_sdBackups) { _sdJson('/api/settings/backups').then(j => { _sdBackups = j.backups || []; _sdRefresh(); }).catch(() => { _sdBackups = []; _sdRefresh(); }); }
     const folder = document.createElement('div'); folder.className = 'set-path';
-    const code = document.createElement('code'); code.textContent = _sdInfo && _sdInfo.dataDir ? _sdInfo.dataDir : (_sdInfo && _sdInfo.error ? 'OpenDash isn’t answering.' : 'Loading…');
+    const code = document.createElement('code'); code.textContent = _sdInfo && _sdInfo.dataDir ? _sdInfo.dataDir : (_sdInfo && _sdInfo.error ? 'Freeflo isn’t answering.' : 'Loading…');
     folder.appendChild(code);
     if (_sdInfo && _sdInfo.dataDir) {
       const cp = _sdBtn('Copy', 'copy', 'btn-ghost', () => copyText(_sdInfo.dataDir, 'data folder'));
@@ -195,7 +195,7 @@ registerSettingsGroup({
     el.appendChild(mv.card);
 
     // Share the app
-    const sh = _settingsCard('Share the app', 'A clean copy of OpenDash for someone else, with none of your data.');
+    const sh = _settingsCard('Share the app', 'A clean copy of Freeflo for someone else, with none of your data.');
     sh.body.appendChild(_sdLink('Export a clean copy of the app (.zip)', 'download', '/api/settings/export-app'));
     el.appendChild(sh.card);
 
@@ -214,7 +214,7 @@ registerSettingsGroup({
   search: [
     { label: 'Diagnostics', keywords: 'diagnostics debug logs errors version node system queue connections achievements', selector: '.set-kv' },
     { label: 'Copy diagnostics', description: 'Copy system, app, connection and queue details for troubleshooting.', keywords: 'debug problems Node migrations', selector: '.set-btns' },
-    { label: 'Recent server log', description: 'Read recent server messages.', keywords: 'errors debug', selector: '.set-log' },
+    { label: 'Recent activity', description: 'What Freeflo has been doing lately, for whoever is helping you.', keywords: 'errors debug', selector: '.set-log' },
   ],
   render(el) {
     if (!_sdDiag) {
@@ -243,7 +243,7 @@ registerSettingsGroup({
     const tb = document.createElement('tbody');
     for (const [id, c] of Object.entries(d.connections || {})) {
       const tr = document.createElement('tr');
-      const label = { claude: 'Claude', gmail: 'Gmail', calendar: 'Google Calendar', bank: 'Bank', mcp: 'OpenDash MCP', google: 'Google (direct)' }[id] || id;
+      const label = { claude: 'Claude', gmail: 'Gmail', calendar: 'Google Calendar', bank: 'Bank', mcp: 'Freeflo MCP', google: 'Google (direct)' }[id] || id;
       const st = String(c.status || 'unknown');
       const tone = /^(ok|connected)$/i.test(st) ? 'ok' : /auth|limit|sign/i.test(st) ? 'warn' : /err|fail/i.test(st) ? 'err' : 'off';
       const stLabel = st.charAt(0).toUpperCase() + st.slice(1).replace(/[-_]/g, ' ');
@@ -252,7 +252,7 @@ registerSettingsGroup({
     }
     ct.appendChild(tb);
     el.appendChild(ct);
-    const lh = document.createElement('div'); lh.className = 'set-t set-log-h'; lh.textContent = 'Recent server log';
+    const lh = document.createElement('div'); lh.className = 'set-t set-log-h'; lh.textContent = 'Recent activity (for whoever is helping you)';
     const pre = document.createElement('pre'); pre.className = 'set-log'; pre.textContent = (d.log || []).join('\n') || '(empty)';
     el.append(lh, pre);
   },

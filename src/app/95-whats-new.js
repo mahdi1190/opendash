@@ -37,13 +37,16 @@
      openQuickStart()          the first-run card
    Styles: src/styles/95-whats-new.css. Reduced motion: no glides, no pulse.
    ============================================================ */
-const WHATS_NEW_VERSION = '2.19';
-const _WN_SEEN = 'whatsNew:2.19';
+const WHATS_NEW_VERSION = '2.21';
+const _WN_SEEN = 'whatsNew:2.21';
 const _WN_QS_KEY = 'dashboard-quickstart';
 
 // The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
-  ['n219', 'New in 2.19', 'sparkles'],
+  ['n227', 'Music with friends (2.27)', 'music'],
+  ['n224', 'The garden, overhauled (2.24)', 'sprout'],
+  ['n221', 'Money, codes and more (2.21 to 2.23)', 'sparkles'],
+  ['n219', 'Tidier and calmer (2.19)', 'layout-grid'],
   ['n2181', 'Expenses and the garden (2.18.1)', 'receipt'],
   ['life', 'Life, the fifth area (2.18)', 'heart'],
   ['garden', 'A garden to play in (2.18)', 'sprout'],
@@ -63,11 +66,81 @@ const WHATS_NEW_GROUPS = Object.freeze([
   ['fun', 'Fun and motivation (2.16)', 'party-popper'],
   ['money', 'Money (2.16)', 'wallet'],
 ]);
-const _WN_CURRENT_GROUPS = ['n219'];
+const _WN_CURRENT_GROUPS = ['n227', 'n224'];
 function _wnHasPage(id) { try { const p = typeof pageById === 'function' ? pageById(id) : null; return !!(p && pageAvailable(p)); } catch (e) { return false; } }
 const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets');
 
 const WHATS_NEW = [
+  // ---- 2.21 ----
+  // ---- 2.27 ----
+  { id: 'pending-count', group: 'n227', icon: 'handshake', title: '2.27.3: pending payments count',
+    text: 'Pay for bowling and split it straight away, before the bank has finished. It counts now, with a small Pending tag, and stays split when it settles. Not this one? Press Don’t count.',
+    view: ['finance'], sel: ['#main-body'] },
+  { id: 'garden-shop-search', group: 'n227', icon: 'search', title: '2.33: search the garden shop, and a new hair style',
+    text: 'The shop has a search box now: type a word and only the seeds, decorations or tools that match are left. The look builder has a new hair style too, Balding.',
+    view: ['garden'], sel: ['#main-body'] },
+  { id: 'garden-pets-place', group: 'n227', icon: 'paw-print', title: '2.32: pets in the right place, and playdates',
+    text: 'In a live garden every pet is where it really is on its owner’s screen, not just behind them. Pets that stay close say hello and remember each other, and a friend’s pet becomes a pal over days. On a visit your own pet is its proper size now too.',
+    view: ['garden', 'pets'], sel: ['#main-body'] },
+  { id: 'garden-group-photo', group: 'n227', icon: 'camera', title: '2.32: a group photo for everyone’s Memories',
+    text: 'In a live garden, tap the camera: everyone gets a three-second countdown, and each of you keeps the same photo in your own Memories (new Photos tab). The picture is never sent, and anyone can skip. Photo mode has Keep in Memories too.',
+    view: ['garden', 'memories'], sel: ['#main-body'] },
+  { id: 'garden-moments', group: 'n227', icon: 'sparkles', title: '2.29: cheers, photos and the fire, together',
+    text: 'In a live garden you now see a friend reach a new level, unlock an achievement or take a photo, and marshmallows float up when you stand by a fire pit together. You can also listen along to what the owner is playing.',
+    view: ['garden'], sel: ['#main-body'] },
+  { id: 'garden-shore', group: 'n227', icon: 'sprout', title: '2.29: room to move on the shore',
+    text: 'The buildings along the water are spaced out, small things like the camera and the post box no longer block a whole square, and the boat, the post and the reeds never get in your way.',
+    view: ['garden'], sel: ['#main-body'] },
+  { id: 'garden-sky', group: 'n227', icon: 'sun', title: '2.28: their sky, a calmer garden',
+    text: 'When you visit a friend\u2019s garden you see their time of day and weather. Speech bubbles stay up, the owner can talk too, outfits change live, and an idle garden rests when you are not looking. Small decorations no longer block a whole square.',
+    view: ['garden'], sel: ['#main-body'] },
+  { id: 'music-listening', group: 'n227', icon: 'music', title: '2.28: see what a friend is listening to',
+    text: 'Turn on Show what I’m listening to (Profile > Music) and a friend who opens your card sees the song you are playing, like a status line. Nothing is sent unless they look, and never a podcast or a Spotify private session. Play now also finds your Spotify app when it is open but idle.',
+    cmd: ['connect-spotify'], view: ['profile'], sel: ['#main-body'] },
+  { id: 'music', group: 'n227', icon: 'music', title: '2.27: Spotify, and songs for friends',
+    text: 'Link your own Spotify in Connections to search music, show a favourite song, album and playlist and your top artists on your card, and send a friend a song to listen to.',
+    note: 'It needs a free Spotify app made with a Premium account (about two minutes; the steps are in the set-up). Friends who only receive a song need nothing.',
+    cmd: ['connect-spotify'], view: ['connections'], sel: ['[data-conn="spotify"]'] },
+  // ---- 2.24 ----
+  { id: 'garden-together', group: 'n224', icon: 'users', title: '2.26: play together, live',
+    text: 'Friends can walk around your garden with you. You choose who may look, help or play, everything they do shows their name, and Undo and Put my garden back keep it safe.',
+    view: ['garden'], sel: ['#main-body'] },
+  { id: 'groups', group: 'n224', icon: 'users', title: '2.25: groups, one link for everyone',
+    text: 'Friends > Groups. Start a group for friends or a whole organisation and share one link. You approve who joins, and joining only shows your name and avatar.',
+    view: ['friends'], sel: ['#main-body'] },
+  { id: 'garden-world', group: 'n224', icon: 'sprout', title: 'A garden you play inside',
+    text: 'The garden fills the window. Click and walk, and the obvious thing happens when you reach it. It is much bigger, redrawn, and your gardener is your own avatar.',
+    view: ['all'], sel: ['#main-body'] },
+  { id: 'garden-pets-tricks', group: 'n224', icon: 'paw-print', title: '62 pets, crafting and tricks',
+    text: 'Earn pets by playing, craft things from what you grow, teach tricks, and find the rare spectacles. Small creatures visit and land on what you placed.',
+    view: ['all'], sel: ['#main-body'] },
+  { id: 'owed-two', group: 'n221', icon: 'handshake', title: '2.23.3: splits that repeat, and receipts',
+    text: 'Rent or a bill can split with the same people every time. Read a receipt and tap who had what, send a friend their part, add a pay-me link, and split in another currency.',
+    view: ['finance'], sel: ['#main-body'] },
+  { id: 'money-alive', group: 'n221', icon: 'sparkles', title: '2.23.2: Money comes to life',
+    text: 'Logos and little pictures on your payments, faces for family and friends, story scenes for your spending, and Your year in money. Turn logos or the fun down in Settings.',
+    view: ['finance'], sel: ['#main-body'] },
+  { id: 'money-plan', group: 'n221', icon: 'calculator', title: '2.23.1: your money plan and your tax year',
+    text: 'Budgets asks a few questions and works out your take-home, matches your bills to the bank and has a What if? to play with. The new Tax tab shows what to keep aside, what you can claim, your deadlines and a walkthrough for filing.',
+    view: ['finance'], sel: ['#main-body'] },
+  { id: 'owed-to-me', group: 'n221', icon: 'handshake', title: '2.22.4: split a payment, see who has paid',
+    text: 'Money > Owed to me. Click a payment, Split this, pick people, and your bank is checked for who has paid you back. Someone paying for two people is handled too, and what they pay back comes off your spending.',
+    view: ['finance'], sel: ['#main-body'] },
+  { id: 'credit-cards', group: 'n221', icon: 'credit-card', title: '2.22.3: add your credit card',
+    text: 'Add a card like an Amex from Money > Your data. What you owe shows apart from your money, safe to spend keeps back the next payment, and paying the card no longer counts as spending.',
+    view: ['finance'], sel: ['#main-body'] },
+  { id: 'your-data', group: 'n221', icon: 'database', title: '2.22.1: choose which banks count',
+    text: 'Money > Your data shows where every payment comes from. Untick a bank, see the difference, and everything counts only what is ticked. Nothing is deleted.', view: ['finance'] },
+  { id: 'select-many', group: 'n221', icon: 'list-checks', title: '2.21: select many things at once',
+    text: 'Tick a few tasks, expenses or transactions (or press Select), change them all in one go, and one Undo puts them all back. The expense report is now laid out exactly like the paper form, and you can undo a report you made by mistake.',
+    view: ['all'], sel: ['#main-body'] },
+  { id: 'assistant-more', group: 'n221', icon: 'message-circle', title: '2.21: the assistant can do much more',
+    text: 'Ask it to do nearly anything in the dashboard, and every change can be undone. Anything sensitive, like friends, your computers, your connection to friends, sign-ins or money rules, always asks for your approval first.',
+    view: ['settings'], sel: ['#main-body'] },
+  { id: 'simple-codes', group: 'n221', icon: 'key-round', title: '2.21: simple 4-letter codes',
+    text: 'To add a computer, choose Join my other computer and type 4 letters, then check both screens show the same picture. Friends use a 4-letter friend code too. If you use your own relay, redeploy it once in Settings > Your connection to friends so live friend codes work.',
+    view: ['settings'], sel: ['#main-body'] },
+
   // ---- 2.19 ----
   { id: 'lean-pages', group: 'n219', icon: 'layout-grid', title: 'Tidier Friends and Money',
     text: 'Friends and Expenses are a list with the one you pick beside it. Money has tabs at the top (Overview, Spending, Cash flow, Budgets, Transactions) instead of one long page.',
@@ -90,13 +163,13 @@ const WHATS_NEW = [
     text: 'Resize any widget to any size and drag it anywhere on Home and Money; gaps fill themselves. Money has its welcome banner and Play money story back, and both pages are in the sidebar as well as the tabs.',
     view: ['finance', 'home'], sel: ['#sidebar', '#main-body'] },
   { id: 'expense-report', group: 'n219', icon: 'file-text', title: '2.19.6: make an expense report',
-    text: 'On Expenses, tick what you spent for work and press Make expense report. OpenDash fills in the expense form as a PDF, zips the receipts, saves both in Documents and opens the folder.',
+    text: 'On Expenses, tick what you spent for work and press Make expense report. Freeflo fills in the expense form as a PDF, zips the receipts, saves both in Documents and opens the folder.',
     view: ['expenses'], sel: ['#main-body'], present: () => _wnHasPage('expenses') },
-  { id: 'desktop-shortcut', group: 'n219', icon: 'plus', title: '2.19.7: an OpenDash icon on your desktop',
-    text: 'Settings > Server can add an OpenDash shortcut to your desktop (and the Start menu on Windows) that starts OpenDash if needed and opens it. Windows also has a one-click installer now.',
+  { id: 'desktop-shortcut', group: 'n219', icon: 'plus', title: '2.19.7: a Freeflo icon on your desktop',
+    text: 'Settings > Server can add a Freeflo shortcut to your desktop (and the Start menu on Windows) that starts Freeflo if needed and opens it. Windows also has a one-click installer now.',
     view: ['settings'], sel: ['#main-body'] },
   { id: 'security-2200', group: 'n219', icon: 'shield-check', title: '2.20.0: a full security check',
-    text: 'OpenDash was reviewed end to end and hardened: signed updates, safer links in descriptions, friends removed for good when you remove them, and a new recovery code whenever you remove a device. If you use your own relay, redeploy it once in Settings > Your relay.',
+    text: 'Freeflo was reviewed end to end and hardened: signed updates, safer links in descriptions, friends removed for good when you remove them, and a new recovery code whenever you remove a device. If you use your own relay, redeploy it once in Settings > Your connection to friends.',
     view: ['settings'], sel: ['#main-body'] },
 
   // ---- 2.18.1 ----
@@ -231,7 +304,7 @@ const WHATS_NEW = [
     text: 'Three friendly steps: make your character, get a relay (set up your own for free, or paste a friend’s invite), and invite someone.',
     cmd: ['friends-onboard'] },
   { id: 'friends-add', group: 'friends', icon: 'user-plus', title: 'Invites and friend codes',
-    text: 'Send a one-time invite link (or show its QR code), or swap friend codes with people already on your relay. You both check a short code before anything is shared.',
+    text: 'Send a one-time invite link (or show its QR code), or swap friend codes with people already on your connection to friends. You both check a short code before anything is shared.',
     cmd: ['friends-add'] },
   { id: 'friends-privacy', group: 'friends', icon: 'eye-off', title: 'You choose what each friend sees',
     text: 'Profile and game progress by default, nothing else. Per friend, choose tasks, calendar (busy only, titles or full), money, places and memories, for as long as you like, and see exactly what they get.',
@@ -260,7 +333,7 @@ const WHATS_NEW = [
 
   // ---- 2.17: you ----
   { id: 'corner', group: 'you', icon: 'user-round', title: 'The corner is you',
-    text: 'Your avatar and name sit in the top-left corner, with your status (and, since 2.18, a Friends button beside you). Click it for your card, a quick status, your friends, your relay and sync, and the workspace menu.',
+    text: 'Your avatar and name sit in the top-left corner, with your status (and, since 2.18, a Friends button beside you). Click it for your card, a quick status, your friends, your connection to friends and sync, and the workspace menu.',
     sel: ['#ws-btn'] },
   { id: 'profile', group: 'you', icon: 'user-round', title: 'Your profile and character',
     text: 'Build your avatar: hair, face, outfit, hats, glasses and more, with seasonal items to collect and unlocks as you level up. It reacts to your day, too.',
@@ -271,11 +344,11 @@ const WHATS_NEW = [
 
   // ---- 2.17: relay ----
   { id: 'relay', group: 'relay', icon: 'shield-check', title: 'Your own private relay',
-    text: 'Set up my relay takes one click and a free Cloudflare account, and gives you a private relay that only you, your computers and the friends you invite can use.',
+    text: 'Set up my connection takes one click and a free Cloudflare account, and gives you a private relay that only you, your computers and the friends you invite can use.',
     note: 'The relay never sees your data: everything on it is end-to-end encrypted.',
     view: ['settings:relay'], sel: ['#main-body'] },
   { id: 'relay-sync', group: 'relay', icon: 'refresh-cw', title: 'Sync your devices without OneDrive',
-    text: 'Your computers can now sync through your relay, within a second, with no shared folder. Add a new computer with a link and a 4-letter code.',
+    text: 'Your computers can now sync through your connection to friends, within a second, with no shared folder. Add a new computer with a link and a 4-letter code.',
     view: ['settings:sync'], sel: ['#main-body'] },
 
   // ---- 2.16: plan ----
@@ -549,13 +622,13 @@ function openWhatsNew(o) {
   const list = _wnVisible();
   openDialog({
     // Groups and jump chips: a fixed height, so the list scrolls and the buttons stay put (UI_CLEANUP_PLAN.md 1.3).
-    title: `What’s new in OpenDash ${WHATS_NEW_VERSION}`, size: 'lg', fixed: true, resizeKey: 'whats-new',
+    title: `What’s new in Freeflo ${WHATS_NEW_VERSION}`, size: 'lg', fixed: true, resizeKey: 'whats-new',
     body: (b, close) => {
       b.classList.add('wn-body');
       const hero = document.createElement('div'); hero.className = 'wn-hero';
       hero.innerHTML = `<div class="wn-hero-art" aria-hidden="true">${icon('sprout')}</div>`
-        + `<div class="wn-hero-txt"><div class="wn-hero-k">OpenDash ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Make it yours, and watch it grow</h3>`
-        + `<p class="wn-hero-s">Life, a fifth area for the fun side: a garden you can really play in, friends’ gardens to visit, a pet of your own, a bigger card and wardrobe, and a new Achievements page. Plus a tidier app with All pages. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, and everything from 2.17 and 2.16 below.</p></div>`
+        + `<div class="wn-hero-txt"><div class="wn-hero-k">Freeflo ${esc(WHATS_NEW_VERSION)}</div><h3 class="wn-hero-t">Do more at once, and with less typing</h3>`
+        + `<p class="wn-hero-s">Select many things at once with one Undo, an assistant that can do much more, simple 4-letter codes for your computers and friends, and 497 hard achievements. ${esc(String(list.filter(e => _WN_CURRENT_GROUPS.includes(e.group)).length))} new things, and everything from earlier releases below.</p></div>`
         + '<div class="wn-hero-acts"></div>';
       const ha = hero.querySelector('.wn-hero-acts');
       ha.appendChild(uiButton({ label: 'Take the tour', icon: 'compass', kind: 'primary', run: () => { close(); setTimeout(whatsNewTour, 60); } }));
@@ -647,7 +720,7 @@ function openQuickStart() {
 /* ---------- once, after updating (or the quick start after the welcome) ---------- */
 function _wnBusy() {
   return document.hidden || !!document.querySelector('.ap-opening:not(.anim-scene), .modal, .story, .bf-overlay, .ob-card, .anew-card, .wn-ring, .scrim')
-    || document.documentElement.classList.contains('story-open');
+    || document.documentElement.classList.contains('story-open') || (document.documentElement.classList.contains('gd-immersive') || document.documentElement.classList.contains('gsv-immersive'));   // not over the garden
 }
 function _wnAuto(tries) {
   if (typeof _uiSharedBooted !== 'undefined' && !_uiSharedBooted) { if (tries > 0) setTimeout(() => _wnAuto(tries - 1), 1000); return; }   // the state file first: it holds the seen flag

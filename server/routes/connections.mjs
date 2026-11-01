@@ -26,6 +26,7 @@ import { HttpError } from '../http.mjs';
 import { microsoftFor } from '../../lib/microsoft.mjs';
 import { accountsFor } from '../../lib/accounts.mjs';
 import { googleHealthFor } from '../../lib/google-health.mjs';
+import { spotifyFor } from '../../lib/spotify.mjs';
 import { assistantFacts, connectCodex, connectGemini } from '../../lib/assistant-connections.mjs';
 import { localClaudeConnectFor } from '../../lib/local-claude-connect.mjs';
 
@@ -48,6 +49,7 @@ export default function register(app) {
       try { const acc = accountsFor(app.ctx); all.accounts = { list: await acc.list(), providers: await acc.providersInfo() }; }
       catch (e) { log('warn', `connections: accounts failed (${e.code || 'error'})`); }
       all.googleHealth = await googleHealthFor(dataDir).status();
+      all.spotify = await spotifyFor(dataDir).status().catch(() => null);
       delete all.cli.path;              // the page does not need the executable's path
       all.assistants = assistantFacts({ dataDir });
       all.localClaude = localClaudeConnectFor(app.ctx).status();

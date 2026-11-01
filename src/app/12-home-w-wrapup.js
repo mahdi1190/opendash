@@ -467,7 +467,7 @@ function _wuFollowUpNow(m, btn, li) {
     let id = null;
     selUndoGroup(() => {
       calAnnotate(m.id, { wrapped: true }, { toast: false, render: false });
-      id = addCustomTask(pre.title, pre.date, 'p0', [], pre.stream || null, 'none', { people: pre.people, detail: pre.detail });
+      id = addCustomTask(pre.title, pre.date, 'p0', [], pre.stream || null, 'none', { people: pre.people, detail: pre.detail, via: 'wrapup' });
       if (id) calAnnotate(m.id, { linkTasks: [id] }, { toast: false, render: false });
     });
     render();
@@ -587,7 +587,7 @@ function _wuSaveNote(m, li, size, btn) {
       calAnnotate(m.id, Object.assign({ wrapped: true }, text ? { appendNotes: text } : {}), { toast: false, render: false });
       for (const pid of pids) addPersonNote(pid, wuPersonNote(text, m.title, day));
       if (fu) {
-        id = addCustomTask(fu.title, fu.date, 'p0', [], fu.stream || null, 'none', { people: fu.people, detail: fu.detail });
+        id = addCustomTask(fu.title, fu.date, 'p0', [], fu.stream || null, 'none', { people: fu.people, detail: fu.detail, via: 'wrapup' });
         if (id) calAnnotate(m.id, { linkTasks: [id] }, { toast: false, render: false });
       }
     });

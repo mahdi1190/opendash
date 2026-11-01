@@ -35,7 +35,7 @@ function settingsOffsiteCard(el) {
   const c = _settingsCard('Daily encrypted copy');
   el.appendChild(c.card);
   if (!i) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Loading…' })); return; }
-  if (i.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'OpenDash isn’t answering.' })); return; }
+  if (i.error) { c.body.appendChild(Object.assign(document.createElement('p'), { className: 'set-h', textContent: 'Freeflo isn’t answering.' })); return; }
   const when = (iso) => (typeof _sdWhen === 'function' ? _sdWhen(iso) : iso);
   if (!i.enabled) {
     c.body.appendChild(setStatusLine('off', 'Off', ''));
@@ -133,7 +133,7 @@ function _obRestoreDialog(bk, folder) {
           const j = await _obJson('/api/backup/offsite/inspect', secret());
           out.textContent = `It holds ${j.tasks != null ? j.tasks + ' tasks' : 'no task list'}${j.people != null ? ', ' + j.people + ' people' : ''}${j.financeFiles ? ', ' + j.financeFiles + ' finance files' : ''}${j.savedAt ? ' (saved ' + _sdWhen(j.savedAt) + ')' : ''}. You have ${Array.isArray(state.custom) ? state.custom.length : 0} tasks now.`;
           go.disabled = false;
-        } catch (e) { out.textContent = e.message; }
+        } catch (e) { out.textContent = netErrorMessage(e); }
       }), go);
       el.appendChild(g);
     },

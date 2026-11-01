@@ -96,8 +96,8 @@ const _ACH_CORE = [
   { id: 'level-40', group: 'levels', label: 'Level 40', hint: 'Reach level 40.', icon: 'trophy', fact: 'level', of: 40, reward: { item: 'levels/lv-summit' } },
   { id: 'level-50', group: 'levels', label: 'Level 50', hint: 'Reach level 50.', icon: 'crown', fact: 'level', of: 50, reward: { item: 'levels/lv-crown' } },
   { id: 'xp-day-300', group: 'levels', label: 'On fire', hint: 'Earn 300 XP in one day.', icon: 'flame', fact: 'xpDay', of: 300 },
-  { id: 'year-one', group: 'milestones', label: 'One year with OpenDash', hint: 'Use OpenDash for a year.', icon: 'party-popper', fact: 'daysWithUs', of: 365 },
-  { id: 'year-two', group: 'milestones', label: 'Two years with OpenDash', hint: 'Use OpenDash for two years.', icon: 'gift', fact: 'daysWithUs', of: 730 },
+  { id: 'year-one', group: 'milestones', label: 'One year with Freeflo', hint: 'Use Freeflo for a year.', icon: 'party-popper', fact: 'daysWithUs', of: 365 },
+  { id: 'year-two', group: 'milestones', label: 'Two years with Freeflo', hint: 'Use Freeflo for two years.', icon: 'gift', fact: 'daysWithUs', of: 730 },
   /* 2.17: friends (99f-fun-1core.js funAchFacts gives the facts below, counts only; without it they stay at 0) */
   { id: 'coop-first', group: 'friends', label: 'Better together', hint: 'Finish your first co-op task with a friend.', icon: 'handshake', fact: 'coopDone', of: 1 },
   { id: 'cheer-10', group: 'friends', label: 'Cheerleader', hint: 'Cheer friends on 10 times.', icon: 'heart', fact: 'cheersSent', of: 10 },

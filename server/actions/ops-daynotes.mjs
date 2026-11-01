@@ -34,6 +34,8 @@ const tooLong = (n, date) => new ActionError('BAD_VALUE', `the note for ${date} 
 export const DAYNOTE_OPS = [
   {
     name: 'daynote.save', tool: 'save_daynote',
+    // The in-app assistant cannot read daily notes, so by itself it may only add to one: replacing a day it has not seen is a proposal.
+    assistantRefuse: (p) => (p.md !== undefined ? 'the assistant can add to a daily note by itself (appendMd), but replacing one needs the user\'s approval' : null),
     description: "Write the user's daily note for one day (the Daily note widget on Home: a running markdown log of what they tried, decided and learned). md replaces the whole day's note ('' clears it); appendMd adds lines at the end (for a timestamped entry use '- HH:MM text'). Give exactly one of md / appendMd. At most 10,000 characters per day.",
     schema: obj({
       date: { ...DATE, description: 'the day the note is for' },

@@ -161,7 +161,19 @@ function _calBuild() {
     if (typeof calGridEditTime === 'function') calGridEditTime(tg);
   } else {
     const opt = { includeDone: !!calPrefs().showDone };
-    body.appendChild(calAgendaList(Object.assign({}, o, { from: calFocus(), days: 42, entries: (iso) => calEntriesOn(iso, opt) })));
+    const agenda = calAgendaList(Object.assign({}, o, { from: calFocus(), days: 42, entries: (iso) => calEntriesOn(iso, opt) }));
+    body.appendChild(agenda);
+    // Several tasks at once (events belong to their calendar: open one to change it; 11-ui-pick.js).
+    const tools = document.createElement('div'); tools.className = 'pk-list-tools';
+    tools.appendChild(multiPick(agenda, { key: 'cal-agenda', rows: '.agd-row[data-kind="task"]', idOf: (r) => r.dataset.id, noun: ['task', 'tasks'],
+      nameOf: (r) => { const it = getItem(r.dataset.id); return it ? effTitle(it) : ''; },
+      exists: (id) => !!getItem(id),
+      actions: () => [
+        { label: 'Complete', icon: 'circle-check', run: (ids) => bulkComplete(ids) },
+        { label: 'Reschedule', icon: 'calendar', keep: true, run: (ids, a, ms) => openDueDatePopover(a, { allowClear: true, title: `Due date for ${ids.length} task${ids.length === 1 ? '' : 's'}`, onPick: (d) => { ms.clear(true); bulkSetDue(ids.filter(id => getItem(id)), d); } }) },
+        { label: 'Bin', icon: 'trash-2', danger: true, run: (ids) => bulkBin(ids) },
+      ] }).button());
+    agenda.insertBefore(tools, agenda.firstChild);
   }
   // The grid and, beside it, the focused day's agenda or the open event's panel (11-ui-kit.js pageLayout; 2.19.1).
   return pageLayout({ main, side: ev ? calEventPanel(ev) : calRail(), cls: 'cal-wrap' + (ev ? ' with-panel' : '') + ' mode-' + calMode() });
@@ -263,7 +275,7 @@ function calFilterMenu(anchor) {
   openMenu(anchor, [
     ...(cals.length ? [{ heading: 'Calendars' }] : []),
     ...cals.map(c => ({ label: c.name, icon: 'calendar', checked: () => !calPrefs().hidden[c.id === 'google' ? 'google' : 'cal:' + c.id], keepOpen: true, run: (e) => { calSetCalendarHidden(c.id, !c.hidden); c.hidden = !c.hidden; _calRefreshMenuChecks(e); } })),
-    { heading: 'From OpenDash' },
+    { heading: 'From Freeflo' },
     { label: 'Task due dates', icon: 'circle-check', checked: () => !calPrefs().hidden.tasks, keepOpen: true, run: (e) => { toggle('tasks')(); _calRefreshMenuChecks(e); } },
     { label: 'Planned time', icon: 'calendar-clock', checked: () => !calPrefs().hidden.plans, keepOpen: true, run: (e) => { toggle('plans')(); _calRefreshMenuChecks(e); } },   // planned slots (20-task-plan.js)
     { label: 'Tasks from', icon: 'layers', hint: _calOnlyStream() ? STREAMS[_calOnlyStream()].label : 'every stream', run: () => setTimeout(() => {
@@ -520,7 +532,7 @@ registerSidebarBlock('calendar', {
       title = gdAgeLabel(at);
       const n = (d.calendars || []).length;
       const ns = Array.isArray(d.sources) ? d.sources.length : 0;
-      text = d.source === 'snapshot' && ns <= 1 ? 'From an older snapshot.' : `${n ? n + ' calendar' + (n === 1 ? '' : 's') + (ns > 1 ? ' from ' + ns + ' sources' : '') + ' · ' : ''}${Number(d.count || 0).toLocaleString(_CAL_LOCALE())} events.${d.partial ? ' Some were missed.' : ''}`;
+      text = d.source === 'snapshot' && ns <= 1 ? 'From an older copy.' : `${n ? n + ' calendar' + (n === 1 ? '' : 's') + (ns > 1 ? ' from ' + ns + ' sources' : '') + ' · ' : ''}${Number(d.count || 0).toLocaleString(_CAL_LOCALE())} events.${d.partial ? ' Some were missed.' : ''}`;
     } else { title = 'No calendar data yet'; text = 'Events come from the calendars you connect (Google, Outlook, iCal links).'; }
     card.innerHTML = `<div class="cal-sync-h">${icon(running ? 'loader-circle' : job && job.state === 'error' ? 'circle-alert' : 'refresh-cw', running ? 'i-sm spin' : 'i-sm')}<b></b></div><div class="cal-sync-t"></div>`;
     card.querySelector('b').textContent = title;

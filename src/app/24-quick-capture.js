@@ -19,12 +19,21 @@ const _QCAP_SORTS = new Set(['date', 'plan', 'stream', 'priority', 'tags', 'cont
 function inboxOnActivity(taskId, type) {
   if (!_QCAP_SORTS.has(type)) return;
   const it = getItem(taskId);
-  if (it && it.inbox) { delete it.inbox; _qcapMaybeZero(); }
+  if (it && it.inbox) {
+    delete it.inbox;
+    try {   // achievements (71-ach-src-b2-work.js): sorted out of the Inbox, and sorted within an hour of catching it
+      if (typeof gameCount === 'function') { gameCount('inbox-sorted'); if (Number(it.createdAt) > 0 && Date.now() - Number(it.createdAt) < 3600000) gameCount('inbox-sorted-fast'); }
+    } catch (e) { /* never in the way */ }
+    _qcapMaybeZero();
+  }
 }
 let _qcapZeroAt = 0;
 function _qcapMaybeZero() {
   setTimeout(() => {
     const left = getAllItems().filter(i => i.inbox && statusOf(i.id) !== 'done').length;
+    try {   // achievements: the Inbox emptied after 3 or more captures today
+      if (!left && typeof gameStreakTick === 'function') { const td = todayStr(); if (getAllItems().filter(i => i.createdVia === 'capture' && Number(i.createdAt) > 0 && Clock.parts(Number(i.createdAt)).iso === td).length >= 3) gameStreakTick('inbox-empty'); }
+    } catch (e) { /* never in the way */ }
     if (!left && state.view === 'inbox' && Date.now() - _qcapZeroAt > 60000) { _qcapZeroAt = Date.now(); toast('Inbox zero. Everything has a home.', { icon: 'party-popper', kind: 'ok' }); }
   }, 0);
 }
@@ -197,7 +206,7 @@ function openCaptureLauncher() {
     body: (el) => {
       el.classList.add('qcap-launch');
       const p = document.createElement('p'); p.className = 'muted';
-      p.textContent = 'Open a small capture window without opening the dashboard first. Whatever you type goes to the Inbox. OpenDash must be running.';
+      p.textContent = 'Open a small capture window without opening the dashboard first. Whatever you type goes to the Inbox. Freeflo must be running.';
       el.appendChild(p);
       if (win) {
         const s1 = document.createElement('div'); s1.className = 'qcap-step';
@@ -210,10 +219,10 @@ function openCaptureLauncher() {
         dl.onclick = () => {
           // A two-line script: Edge in a small app window at this dashboard's own address. Nothing else.
           const safe = url.replace(/[^A-Za-z0-9:/._#?=&%-]/g, '');
-          const body = `@echo off\r\nrem OpenDash quick capture: opens a small window at the dashboard's capture page.\r\nstart "" msedge --app="${safe}" --window-size=620,260\r\n`;
+          const body = `@echo off\r\nrem Freeflo quick capture: opens a small window at the dashboard's capture page.\r\nstart "" msedge --app="${safe}" --window-size=620,260\r\n`;
           const a = document.createElement('a');
           a.href = URL.createObjectURL(new Blob([body], { type: 'application/octet-stream' }));
-          a.download = 'OpenDash quick capture.cmd';
+          a.download = 'Freeflo quick capture.cmd';
           document.body.appendChild(a); a.click(); a.remove();
           setTimeout(() => URL.revokeObjectURL(a.href), 4000);
           toast('Launcher downloaded', { kind: 'ok' });

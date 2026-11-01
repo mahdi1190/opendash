@@ -90,9 +90,9 @@ registerPage({ id: 'now', view: 'now', match: v => v === 'now', label: 'Do now',
 registerPage({ id: 'tomorrow', view: 'tomorrow', match: v => v === 'tomorrow', label: 'Tomorrow', icon: 'sunrise', area: 'tasks', order: 65, desc: 'What is due tomorrow', keywords: 'next day' });
 registerPage({ id: 'no-date', view: 'no-date', match: v => v === 'no-date', label: 'No date', icon: 'circle-dashed', area: 'tasks', order: 70, desc: 'Open tasks without a due date', keywords: 'undated no due' });
 registerPage({ id: 'someday', view: 'tag:someday', match: v => v === 'tag:someday', label: 'Someday', icon: 'archive', area: 'tasks', order: 75, desc: 'Parked: not now, not forgotten', keywords: 'someday maybe later parked' });
-registerPage({ id: 'completed', view: 'completed', match: v => v === 'completed', label: 'Logbook', icon: 'circle-check', area: 'tasks', order: 80, desc: 'Everything you have finished', keywords: 'done completed finished log history' });
+registerPage({ id: 'completed', view: 'completed', match: v => v === 'completed', label: 'Finished tasks', icon: 'circle-check', area: 'tasks', order: 80, desc: 'Everything you have finished', keywords: 'done completed finished log history' });
 registerPage({ id: 'wins', view: 'wins', match: v => v === 'wins', label: 'Wins', icon: 'trophy', area: 'tasks', order: 85, desc: 'Your wins log', keywords: 'wins log good things achievements' });
-registerPage({ id: 'triage', view: 'triage', match: v => v === 'triage', label: 'Email triage', icon: 'mail', area: 'tasks', order: 90, desc: 'Turn emails into tasks', keywords: 'email mail inbox suggestions triage' });
+registerPage({ id: 'triage', view: 'triage', match: v => v === 'triage', label: 'Sort email', icon: 'mail', area: 'tasks', order: 90, desc: 'Turn emails into tasks', keywords: 'email mail inbox suggestions triage' });
 registerPage({ id: 'bin', view: 'bin', match: v => v === 'bin', label: 'Bin', icon: 'trash-2', area: 'system', order: 80, desc: 'Deleted tasks and notes, ready to restore', keywords: 'trash deleted restore' });
 
 /** The Waiting list ('waiting', tasks with waitingOn, grouped by person) comes from the review area: its row shows only when the view exists. */
@@ -133,7 +133,20 @@ function sidebarCounts() {
     const s = effStream(i); c.streams[s] = (c.streams[s] || 0) + 1;
     for (const t of effTags(i)) c.tags[t] = (c.tags[t] || 0) + 1;
   }
+  _sbAchWatch(c);
   return c;
+}
+/** Achievements (71-ach-pack-plan.js): remember last time's numbers and tick when a list went from 1+ (or 5+) to nothing. */
+let _sbAchLast = null;
+function _sbAchWatch(c) {
+  try {
+    const prev = _sbAchLast, day = todayStr();
+    _sbAchLast = { day, overdue: c.overdue, today: c.today, noDate: c['no-date'], done: c.completed };
+    if (!prev || prev.day !== day || typeof gameStreakTick !== 'function') return;
+    if (prev.overdue >= 1 && c.overdue === 0) gameStreakTick('overdue-clear');
+    if (prev.noDate >= 5 && c['no-date'] === 0) gameStreakTick('nodate-zero');
+    if (prev.today >= 5 && c.today === 0 && c.completed > prev.done) gameStreakTick('today-clear');
+  } catch (e) { /* never in the way */ }
 }
 
 function renderSidebar() {
@@ -445,8 +458,8 @@ registerSidebarBlock('calendar', {
     el.appendChild(sbSection({ title: 'Calendars' }));
     const rows = [
       { label: 'Google Calendar', c: 'var(--sw-blue)', src: GOOGLE_CONNECTED ? (GOOGLE_LIVE ? 'Live' : 'Snapshot') : 'Not connected', off: !GOOGLE_CONNECTED },
-      { label: 'Task due dates', c: 'var(--sw-indigo)', src: 'OpenDash' },
-      { label: 'Countdowns', c: 'var(--sw-amber)', src: 'OpenDash' },
+      { label: 'Task due dates', c: 'var(--sw-indigo)', src: 'Freeflo' },
+      { label: 'Countdowns', c: 'var(--sw-amber)', src: 'Freeflo' },
     ];
     for (const r of rows) {
       const row = document.createElement('div'); row.className = 'calrow';
@@ -510,7 +523,7 @@ registerSidebarBlock('finance', {
     try { groups = typeof FV.groups === 'function' ? FV.groups() : []; if (state.view === 'finance' && typeof FV.group === 'function') cur = FV.group(); } catch (e) { groups = []; }
     if (!groups.length) { el.appendChild(sbNavItem({ label: 'Money', icon: 'wallet', view: 'finance', active: state.view === 'finance', title: 'Overview, spending, cash flow, budgets and transactions' })); return; }
     for (const g of groups) {
-      el.appendChild(sbNavItem({ label: g.label, icon: g.icon, active: state.view === 'finance' && cur === g.id, fresh: false, title: g.id === 'overview' ? 'My money, the Money brief and the money story' : '',
+      el.appendChild(sbNavItem({ label: g.label, icon: g.icon, active: state.view === 'finance' && cur === g.id, fresh: false, title: g.id === 'overview' ? 'Your Money brief, your widgets and the money story' : '',
         onClick: () => { if (state.view !== 'finance') setView('finance'); try { FV.openGroup(g.id); } catch (e) { console.error('[finance] openGroup', e); } if (typeof renderSidebar === 'function') renderSidebar(); } }));
     }
   },

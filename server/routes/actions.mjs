@@ -38,7 +38,7 @@ const BODY = 2 * 1024 * 1024;
 export default function register(app) {
   const ctx = app.ctx;
   const { dataDir, store, log } = ctx;
-  const actions = createActions({ dataDir, store, getConfig: ctx.getConfig, financeDir: ctx.financeDir, log });
+  const actions = createActions({ dataDir, store, getConfig: ctx.getConfig, financeDir: ctx.financeDir, log, effects: (list, info) => ctx.agentEffects(list, info) });
   ctx.actions = actions;            // other route files (e.g. the assistant) use the same instance
   const live = createLiveSync({ store, journal: actions.journal, log });
   ctx.liveSync = live;

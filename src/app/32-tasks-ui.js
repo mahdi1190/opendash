@@ -491,40 +491,45 @@ function bulkDueDatePopover(anchor, list) {
 }
 
 /* ---------- bulk bar ---------- */
+let _bulkBarView = '';
 function renderBulkBar() {
-  const bb = document.getElementById('bulk-bar');
-  if (!bb) return;
+  // A list using the shared multi-select (11-ui-pick.js) owns the bar while it is on screen.
+  if (multiPickAfterRender()) { document.body.classList.remove('pk-selecting'); return; }
+  // Leaving the tasks for another kind of page lets go of what was ticked there.
+  if (state.view !== _bulkBarView) {
+    _bulkBarView = state.view;
+    if (!isTaskView(state.view) && !/^(taskboard:|home$)/.test(String(state.view))) { multiSelect.ids.clear(); multiSelect.active = false; }
+  }
   for (const id of [...multiSelect.ids]) if (!getItem(id)) multiSelect.ids.delete(id);
-  if (!multiSelect.ids.size) { bb.classList.remove('open'); bb.innerHTML = ''; document.body.classList.remove('has-selection'); return; }
+  document.body.classList.toggle('pk-selecting', !!multiSelect.active);
+  document.body.classList.toggle('has-selection', multiSelect.ids.size > 0);
+  if (isTaskView(state.view)) taskPickButton();
   const n = multiSelect.ids.size;
+  if (!n && !multiSelect.active) { uiSelectBar(null); return; }
   const ids = () => [...multiSelect.ids];
-  bb.classList.add('open');
-  bb.innerHTML = `<span class="count">${n} selected</span>`;
-  const btn = (label, ic, run, cls, tip, kbd) => {
-    const b = document.createElement('button'); b.type = 'button'; if (cls) b.className = cls;
-    b.innerHTML = icon(ic) + (label ? `<span>${esc(label)}</span>` : '');
-    if (tip) { b.setAttribute('data-tip', tip); b.setAttribute('aria-label', tip); }
-    if (kbd) { b.setAttribute('data-kbd', kbd); if (!tip) b.setAttribute('data-tip', label); }
-    b.onclick = (e) => run(e.currentTarget);
-    bb.appendChild(b); return b;
-  };
   // More of this list could be selected: one click for all of it (Ctrl+A does the same).
   const rest = _lastRenderedTaskIds.filter(id => !multiSelect.ids.has(id) && getItem(id));
-  if (rest.length) btn('Select all', 'list-checks', () => { for (const id of _lastRenderedTaskIds) if (getItem(id)) multiSelect.ids.add(id); document.body.classList.add('has-selection'); render(); }, 'ghost', `Select all ${_lastRenderedTaskIds.length} in this list`, 'Ctrl+A');
-  btn('Complete', 'circle-check', () => bulkComplete(ids()), '', '', 'X');
-  btn('Today', 'sun', () => bulkPlanToday(ids()), '', 'Plan for today', 'T');
-  btn('Date', 'calendar', (a) => bulkDueDatePopover(a, ids()), '', '', 'D');
-  btn('Priority', 'flag', (a) => openMenu(a, [['p1', 'High', '1'], ['p2', 'Medium', '2'], ['p3', 'Low', '3'], ['p0', 'No priority', '4']].map(([k, l, kb]) => ({ label: l, icon: 'flag', kbd: kb, className: 'prio-item ' + k, run: () => bulkPriority(ids(), k) })), { align: 'center', width: 180 }), '', '', '1–4');
+  const selectAll = rest.length ? { label: 'Select all', tip: `Select all ${_lastRenderedTaskIds.length} in this list`, kbd: 'Ctrl+A', run: () => { for (const id of _lastRenderedTaskIds) if (getItem(id)) multiSelect.ids.add(id); document.body.classList.add('has-selection'); render(); } } : null;
+  const clear = { label: n ? 'Clear' : 'Done', tip: n ? 'Clear the selection (Esc)' : 'Stop selecting (Esc)', kbd: 'Esc', run: () => { multiSelect.ids.clear(); multiSelect.active = false; render(); } };
   const done = _bulkDone;
-  btn('Stream', 'layers', (a) => openStreamMenu(a, null, (k) => {
-    const list = ids(); batchTasks(list, id => { const it = getItem(id); if (it.stream !== k) { logActivity(id, 'stream', { from: it.stream, to: k }); it.stream = k; } }); done(`${list.length} moved to ${STREAMS[k]?.label || k}`);
-  }));
-  // Tags: a picker with every tag (on all / some / none of the selected), one undo step (24-bulk-tags.js).
-  btn('Tag', 'hash', (a) => openBulkTagPicker(a, ids()), '', 'Add or remove tags', '#');
-  btn('Context', 'map-pin', (a) => openBulkContextMenu(a, ids()), '', 'Context and energy', '@');
-  btn('Pin', 'pin', () => { const list = ids(); const allPinned = list.every(id => isPinned(id)); batchTasks(list, id => { if (allPinned) delete state.pinned[id]; else state.pinned[id] = true; }); done(allPinned ? 'Unpinned' : 'Pinned'); }, '', 'Pin or unpin');
-  btn('', 'trash-2', () => bulkBin(ids()), 'danger', 'Move to bin', 'Del');
-  btn('', 'x', () => { multiSelect.ids.clear(); render(); }, 'ghost', 'Clear selection', 'Esc');
+  const acts = !n ? [] : [
+    state.view === 'completed'
+      ? { label: 'Reopen', icon: 'rotate-ccw', run: () => { const list = ids(); batchTasks(list, id => { if (statusOf(id) === 'done') setStatus(id, 'todo', { noSave: true }); }); multiSelect.ids.clear(); render(); done(`${list.length} reopened`); } }
+      : { label: 'Complete', icon: 'circle-check', kbd: 'X', run: () => bulkComplete(ids()) },
+    state.view === 'inbox' ? { label: 'Sorted', icon: 'inbox', tip: 'Take out of the Inbox', run: () => { const list = ids(); batchTasks(list, id => { const it = getItem(id); if (it) delete it.inbox; }); multiSelect.ids.clear(); render(); done(`${list.length} taken out of the Inbox`); } } : null,
+    { label: 'Today', icon: 'sun', tip: 'Plan for today', kbd: 'T', run: () => bulkPlanToday(ids()) },
+    { label: 'Reschedule', icon: 'calendar', kbd: 'D', run: (a) => bulkDueDatePopover(a, ids()) },
+    { label: 'Priority', icon: 'flag', kbd: '1–4', run: (a) => openMenu(a, [['p1', 'High', '1'], ['p2', 'Medium', '2'], ['p3', 'Low', '3'], ['p0', 'No priority', '4']].map(([k, l, kb]) => ({ label: l, icon: 'flag', kbd: kb, className: 'prio-item ' + k, run: () => bulkPriority(ids(), k) })), { align: 'center', width: 180 }) },
+    { label: 'Stream', icon: 'layers', run: (a) => openStreamMenu(a, null, (k) => {
+      const list = ids(); batchTasks(list, id => { const it = getItem(id); if (it.stream !== k) { logActivity(id, 'stream', { from: it.stream, to: k }); it.stream = k; } }); done(`${list.length} moved to ${STREAMS[k]?.label || k}`);
+    }) },
+    // Tags: a picker with every tag (on all / some / none of the selected), one undo step (24-bulk-tags.js).
+    { label: 'Tag', icon: 'hash', tip: 'Add or remove tags', kbd: '#', run: (a) => openBulkTagPicker(a, ids()) },
+    { label: 'Context', icon: 'map-pin', tip: 'Context and energy', kbd: '@', run: (a) => openBulkContextMenu(a, ids()) },
+    { label: 'Pin', icon: 'pin', tip: 'Pin or unpin', run: () => { const list = ids(); const allPinned = list.every(id => isPinned(id)); batchTasks(list, id => { if (allPinned) delete state.pinned[id]; else state.pinned[id] = true; }); done(allPinned ? 'Unpinned' : 'Pinned'); } },
+    { label: 'Bin', icon: 'trash-2', danger: true, tip: 'Move to bin', kbd: 'Del', run: () => bulkBin(ids()) },
+  ].filter(Boolean);
+  uiSelectBar({ text: n ? `${n} selected` : 'Click the ones you want', actions: acts, selectAll, clear });
 }
 
 /* ---------- keyboard ---------- */

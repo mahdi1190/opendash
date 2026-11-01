@@ -6,7 +6,7 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ALxN8qiZLFV4jrmebmQJxbVz5VKckF/NMHz5W+P601k='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
 <meta name="robots" content="noindex">
-<title>Returning to OpenDash</title>
+<title>Returning to Freeflo</title>
 <!--
   OpenDash: the Enable Banking return page (docs/dev/FINANCE_CONNECTIONS.md 2.3.1 A).
 
@@ -34,10 +34,10 @@
 </style>
 </head>
 <body>
-<h1 id="t">Returning to OpenDash…</h1>
-<p id="m">If nothing happens, make sure OpenDash is running on this computer, then use the link below.</p>
-<p><a id="go" href="#" hidden>Continue to OpenDash</a></p>
-<noscript><p class="bad">This page needs JavaScript to hand the bank's answer back to OpenDash. You can instead copy this tab's whole address and paste it into OpenDash (Connections, Enable Banking, "Paste the address").</p></noscript>
+<h1 id="t">Returning to Freeflo…</h1>
+<p id="m">If nothing happens, make sure Freeflo is running on this computer, then use the link below.</p>
+<p><a id="go" href="#" hidden>Continue to Freeflo</a></p>
+<noscript><p class="bad">This page needs JavaScript to hand the bank's answer back to Freeflo. You can instead copy this tab's whole address and paste it into Freeflo (Connections, Enable Banking, "Paste the address").</p></noscript>
 <script>
 (function () {
   var q = new URLSearchParams(location.search);
@@ -46,9 +46,9 @@
   var port = m ? Number(m[1]) : 0;
   var t = document.getElementById('t'), msg = document.getElementById('m');
   if (!(port >= 1024 && port <= 65535)) {
-    t.textContent = 'This link is not for OpenDash';
+    t.textContent = 'This link is not for Freeflo';
     msg.className = 'bad';
-    msg.textContent = 'It did not come from a bank sign-in that OpenDash started. Start again from Connections in OpenDash.';
+    msg.textContent = 'It did not come from a bank sign-in that Freeflo started. Start again from Connections in Freeflo.';
     return;
   }
   var out = new URLSearchParams();

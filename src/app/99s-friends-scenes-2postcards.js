@@ -147,7 +147,7 @@ function friendsPostcardEl(b0, o) {
       art.classList.add('is-missing');
       const m = _fscEl('div', 'fpc-missing');
       m.innerHTML = icon('image', 'i-lg');
-      m.appendChild(_fscEl('span', null, "This scene isn't in your OpenDash yet. Update OpenDash to see it."));
+      m.appendChild(_fscEl('span', null, "This scene isn't in your Freeflo yet. Update Freeflo to see it."));
       art.appendChild(m);
     }
     const back = _fscEl('figcaption', 'fpc-back');
@@ -195,7 +195,7 @@ function _fpcAlbum(sec, f) {
   if (!id || !_FPC_ID_RE.test(id)) return false;
   const name = _fscName(f);
   const top = _fscEl('div', 'fpc-album-top');
-  top.appendChild(_fscEl('span', 'muted fpc-small', 'Scenes you have sent each other, drawn by your own OpenDash.'));
+  top.appendChild(_fscEl('span', 'muted fpc-small', 'Scenes you have sent each other, drawn by your own Freeflo.'));
   const send = _fscEl('button', 'btn btn-secondary btn-sm');
   send.type = 'button';
   send.innerHTML = icon('mail', 'i-sm');
@@ -379,7 +379,7 @@ function friendsPostcardCompose(o) {
       wxRow.appendChild(sel);
       el.appendChild(wxRow);
       const note = _fscEl('p', 'muted fpc-small fpc-note');
-      note.textContent = 'Only the scene’s name, the weather, your message and your outfit are sent; their OpenDash draws it.';
+      note.textContent = 'Only the scene’s name, the weather, your message and your outfit are sent; their Freeflo draws it.';
       el.appendChild(note);
       hint = _fscEl('span', 'fpc-hint muted fpc-small');
       el.appendChild(hint);

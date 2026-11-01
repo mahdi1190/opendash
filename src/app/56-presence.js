@@ -155,10 +155,10 @@ function _prAgo(ms) {
   const d = Math.round(h / 24);
   return d <= 1 ? 'yesterday' : d + ' days ago';
 }
-/** The way a computer is reached now, in the Sync page's words: direct, via your relay, via OneDrive. */
+/** The way a computer is reached now, in the Sync page's words: direct, via your connection to friends, via OneDrive. */
 function _prWay(d) {
   if (d.path === 'live' || d.path === 'direct') return 'direct';
-  if (d.path === 'relay') return 'via your relay';
+  if (d.path === 'relay') return 'via your connection to friends';
   if (d.path === 'folder') {
     const st = typeof _syncSt !== 'undefined' ? _syncSt : null;
     const cloud = st && typeof syncCloudName === 'function' ? syncCloudName(st) : null;
@@ -170,7 +170,7 @@ function _prDeviceHtml(d) {
   const st = d.checking ? 'checking' : d.state;
   const chip = d.checking ? 'Checking…' : d.reachable && d.state !== 'outdated' && d.behind > 0 ? 'Catching up' + (d.pct != null ? ' ' + d.pct + '%' : '') : (_PR_CHIP[d.state] || d.state);
   const bits = [];
-  if (d.version) bits.push('OpenDash ' + d.version);
+  if (d.version) bits.push('Freeflo ' + d.version);
   const way = _prWay(d);
   if (way) bits.push(way);
   if (!d.reachable && Number.isFinite(d.ago)) bits.push('seen ' + _prAgo(d.ago + Math.max(0, Date.now() - _pr.at)));
@@ -196,7 +196,7 @@ function presenceOpenPanel(anchor) {
         <div class="pr-head pr-${esc(s.tone)}"><span class="dot"></span><span><b>${esc(s.text || 'Sync')}</b>${s.tip ? `<span class="pr-tip">${esc(s.tip)}</span>` : ''}</span></div>
         ${notes.map(n => `<div class="pr-note" data-id="${escAttr(n.id)}">${icon('info')}<span>${esc(n.text)}</span><button type="button" class="btn btn-ghost btn-sm" data-act="dismiss">Dismiss</button></div>`).join('')}
         <div class="pr-list" role="list" aria-label="Your computers">${devs.length ? devs.map(_prDeviceHtml).join('') : '<div class="pr-empty mute">No other computer yet.</div>'}</div>
-        ${me ? `<div class="pr-me mute">${icon('monitor')}<span>This computer: ${esc(me.name || 'This computer')}${me.version ? ' · OpenDash ' + esc(me.version) : ''}</span></div>` : ''}
+        ${me ? `<div class="pr-me mute">${icon('monitor')}<span>This computer: ${esc(me.name || 'This computer')}${me.version ? ' · Freeflo ' + esc(me.version) : ''}</span></div>` : ''}
         ${typeof syncPanelExtrasHtml === 'function' ? syncPanelExtrasHtml(s.tone === 'attention') : ''}
         <div class="pr-foot"><button type="button" class="btn btn-secondary btn-sm" data-act="settings">Sync settings</button></div>`;
       el.querySelector('[data-act="settings"]').onclick = () => { close(); if (typeof setView === 'function') setView('settings:sync'); };

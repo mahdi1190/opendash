@@ -390,6 +390,7 @@ function smMoney(m) {
   if (!m || !m.month) return null;
   const mo = m.month, lines = [];
   if (m.yesterday && m.yesterday.text) lines.push({ k: 'Yesterday', v: `${m.yesterday.text}${m.yesterday.count ? ` · ${m.yesterday.count} ${m.yesterday.count === 1 ? 'payment' : 'payments'}` : ''}`, type: 'shopping' });
+  if (m.planNote) lines.push({ k: 'Your plan', v: m.planNote, type: 'finance' });   // lib/story-data.mjs: the one thing most worth a look
   if (m.week && m.week.text) lines.push({ k: 'This week', v: m.week.avgText ? `${m.week.text} · usually ${m.week.avgText}` : m.week.text, type: 'finance' });
   if (typeof mo.lastMonthSameDay === 'number' && typeof mo.toDate === 'number' && mo.lastMonthSameDay > 0) {
     const diff = Math.round((mo.toDate - mo.lastMonthSameDay) / mo.lastMonthSameDay * 100);

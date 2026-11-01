@@ -28,7 +28,7 @@ function _hhmRender(el, ctx) {
   card.querySelector('.n').textContent = `${_memPlural(M.total, 'task')} in ${weeks === 53 ? 'the last year' : weeks + ' weeks'}`;
   const w = document.createElement('button'); w.type = 'button'; w.className = 'btn btn-ghost btn-sm hhm-wrapped';
   w.innerHTML = `${icon('party-popper', 'i-sm')}<span></span>`; w.lastChild.textContent = `Your ${year}`;
-  w.title = 'Wrapped: your year in OpenDash';
+  w.title = 'Wrapped: your year in Freeflo';
   w.onclick = () => memWrappedOpen(+year);
   card.querySelector('.card-h').appendChild(w);
   const body = card.querySelector('.hhm-b');

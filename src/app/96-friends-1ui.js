@@ -20,7 +20,7 @@
    copies copyText (11-ui-kit.js). The page's one primary action (Add a friend; Cheer on a friend's
    page) and the rest go to the shared header (headerActions); until the shell draws them the page
    keeps its own row (frShellHeadOn, 96-friends-0core.js). The settings fold is short: your name
-   (it lives on Profile), Online status (one select), your relay; Blocked under More; Connect
+   (it lives on Profile), Online status (one select), your connection to friends; Blocked under More; Connect
    directly and Lost a computer? (Lock out a lost computer) under Advanced.
 
    Friend strings are set with textContent only (the owner's rule); markup
@@ -30,7 +30,7 @@ const _frUI = { entry: '', root: null, feedN: 30, feed: null, feedAt: 0, feedBus
 const _FR_PRES = Object.freeze({ online: ['Here now', 'circle-dot'], focusing: ['Focusing', 'timer'], travelling: ['Travelling', 'plane'], away: ['Away', 'moon'], offline: ['Not around', 'moon'] });
 const _FR_CHEERS = Object.freeze(['👏', '🎉', '💪', '🔥', '❤️', '🌟']);
 /** Every Friends view: the five tabs (96-friends-2tabs.js) and a friend's page. */
-const _FR_VIEW_RE = /^friends(:(feed|requests|shared|settings|data(:[0-9a-f]{16})?|[0-9a-f]{16}))?$/;
+const _FR_VIEW_RE = /^friends(:(feed|requests|shared|settings|data(:[0-9a-f]{16})?|groups(:[A-Za-z0-9_-]{22})?|[0-9a-f]{16}))?$/;
 function _frIdOf(v) { const m = /^friends:([0-9a-f]{16})$/.exec(String(v || '')); return m ? m[1] : null; }
 
 registerSection('friends', {
@@ -50,7 +50,7 @@ function _frHeadActions(view) {
 /** The hangout's occasional things (the header's More, or the page's own More until the shell draws it). */
 function _frMoreItems(d) {
   const items = [];
-  if (d && d.me && d.me.code) items.push({ label: 'Copy my friend code', icon: 'key-round', run: () => copyText(d.me.code, 'your friend code') });
+  if (d && d.me && d.me.id) items.push({ label: 'Show my friend code', icon: 'key-round', run: () => friendsAddDialog('code') });
   items.push({ label: 'Check for news now', icon: 'refresh-cw', run: () => _frCheckNow(null) });
   if (typeof friendsOnboardOpen === 'function') items.push({ label: 'Getting started', icon: 'sparkles', run: () => friendsOnboardOpen() });
   if (typeof friendsHelpOpen === 'function') items.push({ label: 'How friends work', icon: 'circle-help', run: () => friendsHelpOpen() });
@@ -176,17 +176,17 @@ function _frBurst(anchor) {
   document.body.appendChild(host);
   setTimeout(() => host.remove(), 1100);
 }
-/** Settings > Your relay; start: begin setting one up there now (the relay page's own "Set up my relay"). */
+/** Settings > Your connection to friends; start: begin setting one up there now (the relay page's own "Set up my connection"). */
 function _frOpenRelaySettings(start) {
   if (typeof relaySettingsOpen === 'function') { try { relaySettingsOpen(start ? { start: true } : undefined); return; } catch (e) { console.error('[friends] relay settings', e); } }
   setView('settings:relay');
 }
-/** "Set up my relay", or "Update my relay" when it is yours already: the relay page's own words (SIMPLIFY_PLAN.md 2). */
+/** "Set up my connection", or "Update my connection" when it is yours already: the relay page's own words (SIMPLIFY_PLAN.md 2). */
 function _frRelayBtn(d, o) {
   const home = d && d.relay && d.relay.home;
   o = o || {};
   if (home && home.role === 'owner') {
-    return uiButton({ label: 'Update my relay', icon: 'cloud', kind: o.kind || 'secondary', size: o.size, run: () => {
+    return uiButton({ label: 'Update my connection', icon: 'cloud', kind: o.kind || 'secondary', size: o.size, run: () => {
       if (o.close) o.close();
       _frOpenRelaySettings(false);
       // as the relay page's own Update button does, after reading it fresh (never from a stale view)
@@ -196,7 +196,7 @@ function _frRelayBtn(d, o) {
       }
     } });
   }
-  return uiButton({ label: 'Set up my relay', icon: 'cloud', kind: o.kind || 'primary', size: o.size, run: () => { if (o.close) o.close(); _frOpenRelaySettings(true); } });
+  return uiButton({ label: 'Set it up', icon: 'cloud', kind: o.kind || 'primary', size: o.size, run: () => { if (o.close) o.close(); _frOpenRelaySettings(true); } });
 }
 
 /* ---------- mount and repaint ---------- */
@@ -266,13 +266,13 @@ function _frSec(title, ic, extra) {
   s.appendChild(secHead({ title, icon: ic || 'sparkles', cls: 'fr-sec-h', actions: extra ? [extra] : [] }));
   return s;
 }
-/** No relay yet: status first (Not set up, grey: nothing is wrong), one sentence, Set up my relay (SIMPLIFY_PLAN.md 5.9). */
+/** No relay yet: status first (Not set up, grey: nothing is wrong), one sentence, Set up my connection (SIMPLIFY_PLAN.md 5.9). */
 function _frNoRelay(d) {
   const el = _frEl('section', 'card fr-norelay fr-sec');
   const ic = _frEl('div', 'fr-norelay-ic');
   ic.innerHTML = icon('cloud', 'i-lg');
   const t = _frEl('div', 'fr-norelay-t');
-  t.appendChild(setStatusLine('off', 'Not set up', 'Set up your relay to add friends'));
+  t.appendChild(setStatusLine('off', 'Not set up', 'Set up your connection to friends to add friends'));
   t.appendChild(_frEl('span', 'muted', "Free, about 2 minutes. Or join a friend's with their invite."));
   const a = _frEl('div', 'fr-norelay-a');
   a.appendChild(_frRelayBtn(d));
@@ -287,10 +287,33 @@ function _frPendingSec(list) {
   for (const f of list) sec.appendChild(_frPendCard(f));
   return sec;
 }
+// 2.20.1: the check code as 3 pictures both screens show (from its 6 digits, so an older OpenDash
+// on the other side still compares by the numbers, shown small underneath).
+const FR_PICTURES = [
+  ['🐢', 'Turtle'], ['🍎', 'Apple'], ['⭐', 'Star'], ['🐱', 'Cat'], ['🌻', 'Sunflower'], ['🚲', 'Bicycle'], ['🍌', 'Banana'], ['🐟', 'Fish'],
+  ['🎈', 'Balloon'], ['🌙', 'Moon'], ['🐶', 'Dog'], ['🍓', 'Strawberry'], ['🚗', 'Car'], ['🌲', 'Tree'], ['🐝', 'Bee'], ['🎁', 'Present'],
+  ['🦊', 'Fox'], ['🍋', 'Lemon'], ['☂️', 'Umbrella'], ['🐸', 'Frog'], ['🔑', 'Key'], ['🍄', 'Mushroom'], ['🐘', 'Elephant'], ['🚀', 'Rocket'],
+  ['🌈', 'Rainbow'], ['🐧', 'Penguin'], ['🍇', 'Grapes'], ['⚓', 'Anchor'], ['🦋', 'Butterfly'], ['🍕', 'Pizza'], ['🐴', 'Horse'], ['🎸', 'Guitar'],
+  ['🐻', 'Bear'], ['🍒', 'Cherries'], ['⛵', 'Sailboat'], ['🐰', 'Rabbit'], ['🌵', 'Cactus'], ['🔔', 'Bell'], ['🦉', 'Owl'], ['🍩', 'Doughnut'],
+  ['🐳', 'Whale'], ['🌷', 'Tulip'], ['🚂', 'Train'], ['🐞', 'Ladybird'], ['🍉', 'Watermelon'], ['☕', 'Cup'], ['🦁', 'Lion'], ['🎩', 'Hat'],
+  ['🐌', 'Snail'], ['🥕', 'Carrot'], ['✈️', 'Plane'], ['🐼', 'Panda'], ['🍐', 'Pear'], ['🎺', 'Trumpet'], ['🦆', 'Duck'], ['🧁', 'Cupcake'],
+  ['🐙', 'Octopus'], ['🌽', 'Corn'], ['🏠', 'House'], ['🦒', 'Giraffe'], ['🥝', 'Kiwi'], ['📚', 'Books'], ['🐮', 'Cow'], ['🍪', 'Cookie'],
+];
+/** The 3 pictures for a check code ("123 456" or "123456"): the same on both screens. */
+function friendsCheckPictures(code) {
+  const n = Number(String(code || '').replace(/\D/g, ''));
+  if (!Number.isFinite(n) || String(code || '').replace(/\D/g, '').length !== 6) return [];
+  return [n % 64, Math.floor(n / 64) % 64, Math.floor(n / 4096) % 64].map(i => FR_PICTURES[i]);
+}
 function _frCodeEl(code) {
-  const c = _frEl('div', 'fr-code num', code || '');
-  c.setAttribute('aria-label', 'Check code ' + String(code || '').split('').join(' '));
-  return c;
+  const wrap = _frEl('div', 'fr-check');
+  const pics = friendsCheckPictures(code);
+  const row = _frEl('div', 'fr-check-pics');
+  for (const [e, w] of pics) { const p = _frEl('span', 'fr-check-pic'); const em = _frEl('span', 'fr-check-e', e); em.setAttribute('aria-hidden', 'true'); p.append(em, _frEl('span', 'fr-check-w', w)); row.appendChild(p); }
+  row.setAttribute('role', 'img'); row.setAttribute('aria-label', 'Pictures: ' + pics.map(p => p[1]).join(', '));
+  wrap.appendChild(row);
+  wrap.appendChild(_frEl('span', 'muted fr-small num', 'If their screen shows numbers instead: ' + (code || '')));
+  return wrap;
 }
 function _frPendCard(f) {
   const el = _frEl('div', 'card fr-pend' + (f.step === 'check' ? ' is-check' : ''));
@@ -300,16 +323,16 @@ function _frPendCard(f) {
   const acts = _frEl('div', 'fr-pend-a');
   if (f.status === 'incoming') {
     body.appendChild(_frEl('b', null, `${name} wants to connect`));
-    body.appendChild(_frEl('span', 'muted fr-small', f.how === 'invite' ? 'They used your invite link.' : 'They found you with your friend code.'));
+    body.appendChild(_frEl('span', 'muted fr-small', f.how === 'invite' ? 'They used your invite link.' : f.how === 'group' ? 'You are in a group together.' : 'They found you with your friend code.'));
     if (f.step === 'check') {
-      body.appendChild(_frEl('span', null, `Check ${name} sees the same code:`));
+      body.appendChild(_frEl('span', null, f.how === 'group' ? `Want to be sure it's ${name}? Their screen shows these same pictures:` : `Is it really ${name}? Accept only if their screen shows these same pictures:`));
       body.appendChild(_frCodeEl(f.code));
-      acts.appendChild(uiButton({ label: 'Approve', icon: 'check', kind: 'primary', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/approve', { id: f.id }); _frBurst(b); await friendsLoad(true); _frRepaint(); }, null, 'approve ' + name) }));
-      acts.appendChild(uiButton({ label: 'The codes are different', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try adding each other again.', 'stop this request') }));
+      acts.appendChild(uiButton({ label: 'Accept', icon: 'check', kind: 'primary', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/approve', { id: f.id }); _frBurst(b); await friendsLoad(true); _frRepaint(); }, null, 'accept ' + name) }));
+      acts.appendChild(uiButton({ label: "No, they're different", size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try adding each other again.', 'stop this request') }));
     } else {
       const w = _frEl('span', 'fr-wait');
       w.innerHTML = icon('loader-circle', 'i-sm fr-spin');
-      w.appendChild(_frEl('span', null, `Getting the check code… ${name}'s OpenDash needs to be on.`));
+      w.appendChild(_frEl('span', null, `Getting the pictures to check… ${name}'s Freeflo needs to be on.`));
       body.appendChild(w);
     }
     acts.appendChild(uiButton({ label: 'Decline', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/decline', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Declined. They are not told why.', 'decline') }));
@@ -317,16 +340,16 @@ function _frPendCard(f) {
   } else {
     if (f.step === 'check') {
       // Added by code: this side compares the code too (a relay could have answered for someone else).
-      body.appendChild(_frEl('b', null, f.theyApproved ? `${name} approved: check the code to finish` : `Check the code with ${name}`));
-      body.appendChild(_frEl('span', null, `Check ${name} sees the same code:`));
+      body.appendChild(_frEl('b', null, f.theyApproved ? `${name} accepted: check the pictures to finish` : `Check the pictures with ${name}`));
+      body.appendChild(_frEl('span', null, `Does ${name}'s screen show these same pictures?`));
       body.appendChild(_frCodeEl(f.code));
-      acts.appendChild(uiButton({ label: 'The codes match', icon: 'check', kind: 'primary', run: (e, b) => _frDo(b, async () => { const r = await _frApi('/api/friends/confirm', { id: f.id }); if (r && r.friend && r.friend.status === 'friend') _frBurst(b); await friendsLoad(true); _frRepaint(); }, null, 'finish adding ' + name) }));
-      acts.appendChild(uiButton({ label: 'The codes are different', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try adding each other again.', 'stop this request') }));
+      acts.appendChild(uiButton({ label: 'Yes, the same', icon: 'check', kind: 'primary', run: (e, b) => _frDo(b, async () => { const r = await _frApi('/api/friends/confirm', { id: f.id }); if (r && r.friend && r.friend.status === 'friend') _frBurst(b); await friendsLoad(true); _frRepaint(); }, null, 'finish adding ' + name) }));
+      acts.appendChild(uiButton({ label: "No, they're different", size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try adding each other again.', 'stop this request') }));
     } else if (f.step === 'approve') {
-      body.appendChild(_frEl('b', null, `Waiting for ${name} to approve`));
-      body.appendChild(_frEl('span', null, f.how === 'code' ? 'You checked the code. They approve once it matches the code on their screen:' : 'Tell them your code. They approve once it matches the code on their screen:'));
+      body.appendChild(_frEl('b', null, `Waiting for ${name} to accept`));
+      body.appendChild(_frEl('span', null, f.how === 'code' ? 'You checked the pictures. They accept once their screen shows the same:' : 'Tell them your pictures. They accept once their screen shows the same:'));
       body.appendChild(_frCodeEl(f.code));
-      acts.appendChild(uiButton({ label: 'The codes are different', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try again with a new invite.', 'stop this request') }));
+      acts.appendChild(uiButton({ label: "No, they're different", size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/mismatch', { id: f.id }); await friendsLoad(true); _frRepaint(); }, 'Stopped. Nothing was shared. You can try again with a new invite.', 'stop this request') }));
     } else {
       body.appendChild(_frEl('b', null, `Request sent to ${name}`));
       const w = _frEl('span', 'fr-wait');
@@ -344,7 +367,7 @@ function _frDeclinedSec(list) {
   for (const f of list) {
     const row = _frEl('div', 'fr-row');
     row.appendChild(_frAvatarWrap(f, 28, { presence: false }));
-    const why = f.why === 'codes-differed' ? `The check codes with ${friendName(f)} were different, so nothing was shared.`
+    const why = f.why === 'codes-differed' ? `The pictures with ${friendName(f)} were different, so nothing was shared.`
       : f.why === 'you-declined' ? `You declined ${friendName(f)}.` : `${friendName(f)} didn't accept this time.`;
     row.appendChild(_frEl('span', 'fr-row-t', why));
     row.appendChild(uiButton({ label: 'Dismiss', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/cancel', { id: f.id }); await friendsLoad(true); _frRepaint(); }, null, 'dismiss it') }));
@@ -412,7 +435,7 @@ function _frDescribe(e, f) {
 }
 
 /* ---------- settings (quiet, at the bottom; SIMPLIFY_PLAN.md 5.9) ----------
-   On the face: your name (one name, changed on Profile), Online status (one select), your relay.
+   On the face: your name (one name, changed on Profile), Online status (one select), your connection to friends.
    More: who you blocked. Advanced: connecting directly on the same Wi-Fi, and Lost a computer?. */
 function _frSettingsSec(d, o) {
   const open = !!(o && o.open);   // the Settings tab shows it open; elsewhere it would be a fold
@@ -430,12 +453,13 @@ function _frSettingsSec(d, o) {
   body.appendChild(_settingsRow(`Your name: ${d.me.name || (typeof profileDisplayName === 'function' ? profileDisplayName() : '') || 'not set'}`, '', toProfile));
   // online status: one select (Off, or how you show) (L15)
   body.appendChild(_settingsRow('Online status', 'A word like “focusing”, never where you are.', _frPresenceSelect(d)));
-  // your friend code: people on your relay add you with it
-  if (d.me.code) body.appendChild(_settingsRow('Your friend code', 'People on your relay add you with it.', uiButton({ label: d.me.code, icon: 'key-round', size: 'sm', cls: 'num', tip: 'Copy your friend code', run: () => copyText(d.me.code, 'your friend code') })));
-  // your relay
+  // your friend code: people on your connection to friends add you with it
+  // 2.20.1: no lasting friend code here any more; "Show my friend code" makes a 4-letter one for 10 minutes.
+  body.appendChild(_settingsRow('Your friend code', 'A 4-letter code for a friend to type. It works once, for 10 minutes.', uiButton({ label: 'Show my friend code', icon: 'key-round', size: 'sm', run: () => friendsAddDialog('code') })));
+  // your connection to friends
   const home = d.relay && d.relay.home;
   body.appendChild(_settingsRow(home ? (home.role === 'owner' ? 'Relay: yours' : 'Relay: a friend’s') : 'Relay: not set up', '',
-    home ? uiButton({ label: 'Your relay', size: 'sm', icon: 'cloud', run: () => _frOpenRelaySettings(false) }) : _frRelayBtn(d, { size: 'sm' })));
+    home ? uiButton({ label: 'Your connection to friends', size: 'sm', icon: 'cloud', run: () => _frOpenRelaySettings(false) }) : _frRelayBtn(d, { size: 'sm' })));
   if (d.relay && d.relay.outbox) body.appendChild(emptyLine(`${d.relay.outbox} message${d.relay.outbox === 1 ? '' : 's'} waiting to send.`));
   // More: who you blocked
   setFold(body, 'friends-settings-more', 'More', ({ body: b }) => {
@@ -565,7 +589,7 @@ function _frNeedRelay(pane, close) {
   const e = _frEl('div', 'fr-add-norelay');
   e.innerHTML = icon('cloud', 'i-lg');
   const t = _frEl('div');
-  t.append(_frEl('b', null, 'You need a relay first'), _frEl('span', 'muted', "Set up yours (free), or paste a friend's invite."));
+  t.append(_frEl('b', null, 'One small set-up first'), _frEl('span', 'muted', "Friends connect through a small private service. Set yours up once (it's free), or paste a friend's invite."));
   e.appendChild(t);
   const a = _frEl('div', 'fr-add-acts');
   a.append(_frRelayBtn(_fr.data, { close }));
@@ -573,7 +597,7 @@ function _frNeedRelay(pane, close) {
 }
 function _frAddInvite(pane, d, close) {
   if (!d || !d.relay || !d.relay.home) { _frNeedRelay(pane, close); return; }
-  pane.appendChild(_frEl('p', null, 'Send it to one person. It works once; you both check a code before you’re connected.'));
+  pane.appendChild(_frEl('p', null, 'Send it to one person, by message or email. It works once; you both check the same pictures before you’re connected.'));
   const opts = _frEl('div', 'fr-add-opts');
   const ttl = document.createElement('select');
   ttl.className = 'input input-sm';
@@ -583,7 +607,7 @@ function _frAddInvite(pane, d, close) {
   if (d.relay.home.role === 'owner') {
     const l1 = _frEl('label', 'fr-switch');
     relayChk = document.createElement('input'); relayChk.type = 'checkbox'; relayChk.checked = true;
-    l1.append(relayChk, _frEl('span', null, 'Let them use my relay'));
+    l1.append(relayChk, _frEl('span', null, 'Let them use my connection'));
     const l2 = _frEl('label', 'fr-switch');
     syncChk = document.createElement('input'); syncChk.type = 'checkbox'; syncChk.checked = false;
     l2.append(syncChk, _frEl('span', null, '…and sync their computers through it'));
@@ -622,7 +646,7 @@ function _frAddInvite(pane, d, close) {
  */
 function _frInviteOut(out, r, d, close) {
   const link = String(r.link || r.text || '');
-  const message = String(r.message || `Join me on OpenDash: ${link}`);
+  const message = String(r.message || `Join me on Freeflo: ${link}`);
   const wrap = _frEl('div', 'fr-invite-out');
   if (r.short && typeof syncQrSvg === 'function') {
     try {
@@ -643,7 +667,7 @@ function _frInviteOut(out, r, d, close) {
   const a = _frEl('div', 'fr-add-acts');
   a.appendChild(uiButton({ label: 'Copy link', icon: 'copy', kind: 'primary', run: () => copyText(link, 'invite link') }));
   a.appendChild(uiButton({ label: 'Copy message', icon: 'message-circle', run: () => copyText(message, 'message') }));
-  if (navigator.share) a.appendChild(uiButton({ label: 'Share', icon: 'send', run: () => navigator.share({ title: 'Join me on OpenDash', text: message }).catch(() => {}) }));
+  if (navigator.share) a.appendChild(uiButton({ label: 'Share', icon: 'send', run: () => navigator.share({ title: 'Join me on Freeflo', text: message }).catch(() => {}) }));
   side.appendChild(a);
   const msg = _frEl('div', 'fr-invite-msg');
   msg.appendChild(_frEl('span', 'overline', 'Ready to send'));
@@ -654,52 +678,83 @@ function _frInviteOut(out, r, d, close) {
   if (!r.short) {
     const owner = d && d.relay && d.relay.home && d.relay.home.role === 'owner';
     out.appendChild(_frEl('p', 'muted fr-small', r.shortWhy === 'old-relay'
-      ? (owner ? 'A long link (your relay is older). It works the same. Update my relay for short links.' : 'A long link (the relay you use is older). It works the same.')
+      ? (owner ? 'A long link (your connection to friends is older). It works the same. Update my connection for short links.' : 'A long link (the relay you use is older). It works the same.')
       : "The short link couldn't be made just now, so this is the long one. It works the same."));
     if (r.shortWhy === 'old-relay' && owner) { const a = _frEl('div', 'fr-add-acts'); a.appendChild(_frRelayBtn(d, { size: 'sm', close })); out.appendChild(a); }
   }
   const c = _frEl('div', 'fr-add-acts');
   c.appendChild(uiButton({ label: 'Cancel this invite', kind: 'ghost', size: 'sm', run: (ev, bb) => _frDo(bb, async () => { await _frApi('/api/friends/invite/cancel', { id: r.id }); out.textContent = ''; await friendsLoad(true); }, 'Invite cancelled: the link no longer works', 'cancel the invite') }));
   out.appendChild(c);
-  out.appendChild(_frEl('p', 'muted fr-small', `Works once. Expires ${_frDate(r.exp)}.${r.relayScopes && r.relayScopes.length ? ' It also lets them use your relay.' : ''}`));
+  out.appendChild(_frEl('p', 'muted fr-small', `Works once. Expires ${_frDate(r.exp)}.${r.relayScopes && r.relayScopes.length ? ' It also lets them use your connection to friends.' : ''}`));
 }
+/**
+ * Friend code (2.20.1): "Show my friend code" makes 4 letters that work once, for 10 minutes; the
+ * friend types them in their OpenDash, and you see who it is, check the pictures and press Accept.
+ * The lasting NAME-7K2QX9 codes are no longer shown, but still work when typed (older OpenDash).
+ */
+let _frLiveTick = null;
 function _frAddCode(pane, d, close) {
   if (!d || !d.relay || !d.relay.home) { _frNeedRelay(pane, close); return; }
   const mine = _frEl('div', 'fr-mycode');
   mine.appendChild(_frEl('span', 'overline', 'Your friend code'));
-  if (d.me.code) {
-    const c = _frEl('div', 'fr-mycode-c');
-    c.appendChild(_frEl('b', 'num', d.me.code));
-    c.appendChild(uiButton({ label: 'Copy', icon: 'copy', size: 'sm', run: () => copyText(d.me.code, 'your friend code') }));
-    c.appendChild(uiButton({ label: 'New code', icon: 'refresh-cw', size: 'sm', kind: 'ghost', tip: 'Your old code stops working at once', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/code/rotate', {}); await friendsLoad(true); pane.textContent = ''; _frAddCode(pane, _fr.data, close); }, 'New code made: the old one no longer works', 'make a new code') }));
+  const live = d.me && d.me.live && d.me.live.expiresAt > Date.now() ? d.me.live : null;
+  const redo = () => { pane.textContent = ''; _frAddCode(pane, _fr.data, close); };
+  if (live) {
+    const c = _frEl('div', 'fr-live-code', live.code.slice(0, 2) + ' ' + live.code.slice(2));
+    c.setAttribute('aria-label', 'Your friend code: ' + live.code.split('').join(' '));
     mine.appendChild(c);
+    const left = _frEl('div', 'muted fr-small fr-live-left');
+    const tick = () => {
+      // Someone typed it (the code is gone before its time): on to Accept.
+      const cur = _fr.data && _fr.data.me && _fr.data.me.live;
+      if (!cur && live.expiresAt > Date.now() && document.body.contains(left)) {
+        clearInterval(_frLiveTick); _frLiveTick = null; close(); _frRepaint();
+        toast('Someone typed your code. Check it is your friend, then press Accept.', { icon: 'user-plus', kind: 'ok' });
+        return 0;
+      }
+      const s = Math.max(0, Math.round((live.expiresAt - Date.now()) / 1000));
+      // While the code is on screen, look for the friend's request every 10 seconds, so Accept comes up at once.
+      if (s && s % 10 === 0 && document.body.contains(left)) _frApi('/api/friends/check', {}).then(() => friendsLoad(true)).catch(() => {});
+      left.textContent = s ? Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' left' : 'This code ran out. Make a new one.'; return s; };
+    tick();
+    clearInterval(_frLiveTick);
+    _frLiveTick = setInterval(() => { if (!document.body.contains(left) || !tick()) { clearInterval(_frLiveTick); _frLiveTick = null; } }, 1000);
+    mine.appendChild(left);
+    mine.appendChild(_frEl('p', 'fr-small', 'Read these 4 letters to your friend. They type them in their Freeflo: Friends > Add a friend > Friend code. It works once. Then you check it is them and press Accept.'));
+    const a = _frEl('div', 'fr-add-acts');
+    a.appendChild(uiButton({ label: 'New code', icon: 'refresh-cw', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/live', {}); await friendsLoad(true); redo(); }, null, 'make a new code') }));
+    a.appendChild(uiButton({ label: 'Cancel', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/live', { cancel: true }); await friendsLoad(true); redo(); }, null, 'stop the code') }));
+    mine.appendChild(a);
   } else {
-    mine.appendChild(uiButton({ label: 'Make my friend code', icon: 'key-round', kind: 'primary', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/code/rotate', {}); await friendsLoad(true); pane.textContent = ''; _frAddCode(pane, _fr.data, close); }, null, 'make your friend code') }));
+    mine.appendChild(_frEl('p', 'fr-small', 'Your friend is with you, or on the phone? Show them a 4-letter code to type in their Freeflo.'));
+    mine.appendChild(uiButton({ label: 'Show my friend code', icon: 'key-round', kind: 'primary', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/live', {}); await friendsLoad(true); redo(); }, null, 'show your friend code') }));
   }
-  mine.appendChild(_frEl('p', 'muted fr-small', 'Friend codes work between people on the same relay. For anyone else, send an invite link.'));
   pane.appendChild(mine);
   const theirs = _frEl('div', 'fr-theircode');
-  const lab = _frEl('label', 'fr-set-l', 'Their code');
+  const lab = _frEl('label', 'fr-set-l', 'Got a code from a friend? Type it here');
   const inp = document.createElement('input');
-  inp.type = 'text'; inp.className = 'input fr-code-in num'; inp.placeholder = 'NAME-7K2QX9'; inp.maxLength = 20; inp.autocomplete = 'off'; inp.spellcheck = false;
+  inp.type = 'text'; inp.className = 'input fr-code-in num'; inp.placeholder = 'AB CD'; inp.maxLength = 20; inp.autocomplete = 'off'; inp.spellcheck = false;
   lab.appendChild(inp);
   theirs.appendChild(lab);
   const acts = _frEl('div', 'fr-add-acts');
   let ctl = null;
   const stop = uiButton({ label: 'Cancel', size: 'sm', kind: 'ghost', run: () => { if (ctl) ctl.abort(); } });
   stop.hidden = true;
-  const add = uiButton({ label: 'Send request', icon: 'user-plus', kind: 'primary', run: (e, b) => {
+  const add = uiButton({ label: 'Add friend', icon: 'user-plus', kind: 'primary', run: (e, b) => {
     if (!inp.value.trim()) { inp.focus(); return; }
     ctl = new AbortController(); stop.hidden = false;
     _frDo(b, async () => {
+      // So the one who showed the code sees your picture beside Accept.
+      if (typeof profileShareNow === 'function') await Promise.resolve(profileShareNow(false)).catch(() => {});
       const r = await _frApi('/api/friends/add', { code: inp.value }, { signal: ctl.signal });
       close(); await friendsLoad(true); _frRepaint();
       return r;
-    }, (r) => `Request sent to ${r && r.friend ? friendName(r.friend) : 'them'}. You'll both see a check code.`, { what: 'send the request', retry: false }).finally(() => { stop.hidden = true; ctl = null; });
+    }, (r) => `Asked ${r && r.friend ? friendName(r.friend) : 'them'}. You'll both see the same pictures to check.`, { what: 'add your friend', retry: false }).finally(() => { stop.hidden = true; ctl = null; });
   } });
   inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); add.click(); } };
   acts.append(add, stop);
   theirs.appendChild(acts);
+  theirs.appendChild(_frEl('p', 'muted fr-small', "Codes only work if you and your friend connect through the same place (for example, one of you joined with the other's invite). Otherwise, send an invite link: the first tab."));
   pane.appendChild(theirs);
   setTimeout(() => inp.focus(), 30);
 }
@@ -715,23 +770,24 @@ function _frAddPaste(pane, close) {
   stop.hidden = true;
   const go = uiButton({ label: 'Use this invite', icon: 'user-plus', kind: 'primary', run: (e, b) => {
     if (!ta.value.trim()) { ta.focus(); return; }
+    if (/ODG1\./.test(ta.value) && typeof grJoinDialog === 'function') { const text = ta.value.trim(); close(); grJoinDialog(text); return; }   // a group's link: the group's own steps
     ctl = new AbortController(); stop.hidden = false;
     _frDo(b, async () => {
       const r = await _frApi('/api/friends/add', { invite: ta.value.trim() }, { signal: ctl.signal });
       close(); await friendsLoad(true); _frRepaint();
       return r;
-    }, (r) => `Request sent to ${r && r.friend ? friendName(r.friend) : 'them'}. Tell them the check code when it shows.`, { what: 'use the invite', retry: false }).finally(() => { stop.hidden = true; ctl = null; });
+    }, (r) => `Request sent to ${r && r.friend ? friendName(r.friend) : 'them'}. You'll both see the same pictures to check.`, { what: 'use the invite', retry: false }).finally(() => { stop.hidden = true; ctl = null; });
   } });
   acts.append(go, stop);
   pane.appendChild(acts);
-  pane.appendChild(_frEl('p', 'muted fr-small', 'Nothing is shared until they approve you, after you both see the same short code.'));
+  pane.appendChild(_frEl('p', 'muted fr-small', 'Nothing is shared until they accept you, after you both see the same pictures.'));
   setTimeout(() => ta.focus(), 30);
 }
 
 /* ---------- Lock out a lost computer: new friend keys (docs/dev/FRIENDS.md section 15) ----------
    The words follow the glossary (SIMPLIFY_PLAN.md 2): "Lock out a lost computer", never "renew keys"
    on the face; the details of what happens are in the dialog's "What happens" fold. */
-/** Friends whose update needs you: two different updates came (paused), or they ask to keep using your relay. */
+/** Friends whose update needs you: two different updates came (paused), or they ask to keep using your connection to friends. */
 function _frAttentionSec(list) {
   const sec = _frSec('Needs a look', 'triangle-alert');
   for (const f of list) {
@@ -744,10 +800,10 @@ function _frAttentionSec(list) {
       body.appendChild(_frEl('span', 'muted fr-small', `Two different updates claimed to be from ${name}. Ask them for a fresh invite in person or on a call.`));
       acts.appendChild(uiButton({ label: 'Remove', size: 'sm', icon: 'user-minus', run: () => _frRemove(f, false) }));
     } else {
-      body.appendChild(_frEl('b', null, `Let ${name} keep using your relay?`));
+      body.appendChild(_frEl('b', null, `Let ${name} keep using your connection to friends?`));
       body.appendChild(_frEl('span', 'muted fr-small', 'They updated their security; their access moves over.'));
-      acts.appendChild(uiButton({ label: 'Let them keep using it', icon: 'check', kind: 'primary', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/relay-ask', { id: f.id }); await friendsLoad(true); _frRepaint(); }, `${name} can keep using your relay`, 'let them keep using it') }));
-      acts.appendChild(uiButton({ label: 'Not now', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/relay-ask', { id: f.id, allow: false }); await friendsLoad(true); _frRepaint(); }, `Left as it is. ${name}'s old access stays until you remove it in Settings > Your relay.`, 'answer') }));
+      acts.appendChild(uiButton({ label: 'Let them keep using it', icon: 'check', kind: 'primary', size: 'sm', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/relay-ask', { id: f.id }); await friendsLoad(true); _frRepaint(); }, `${name} can keep using your connection to friends`, 'let them keep using it') }));
+      acts.appendChild(uiButton({ label: 'Not now', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/friends/relay-ask', { id: f.id, allow: false }); await friendsLoad(true); _frRepaint(); }, `Left as it is. ${name}'s old access stays until you remove it in Settings > Your connection to friends.`, 'answer') }));
     }
     el.append(body, acts);
     sec.appendChild(el);
@@ -770,10 +826,10 @@ function _frKeysEl(d) {
     return box;
   }
   const n = r.friends || 0;
-  const progress = n ? `${r.moved} of ${n} friend${n === 1 ? ' has' : 's have'} moved over${r.moved < n ? '; the rest follow when their OpenDash is next on' : ''}.` : '';
+  const progress = n ? `${r.moved} of ${n} friend${n === 1 ? ' has' : 's have'} moved over${r.moved < n ? '; the rest follow when their Freeflo is next on' : ''}.` : '';
   if (r.step === 'done') box.appendChild(_frLine('check', `Locked out ${_frAgo(r.doneAt || r.at)}. ${progress}`.trim()));
   else if (r.waiting === 'relay-update') { box.appendChild(_frLine('key-round', `Locked out here. ${progress}`.trim())); box.appendChild(_frRelayRotateEl()); }
-  else if (r.waiting === 'relay-owner') box.appendChild(_frLine('hourglass', `Locked out here. ${progress} Waiting for your relay's owner to let the change in; until then the lost computer can still use that relay.`.replace(/\s+/g, ' ')));
+  else if (r.waiting === 'relay-owner') box.appendChild(_frLine('hourglass', `Locked out here. ${progress} Waiting for your connection to friends's owner to let the change in; until then the lost computer can still use that relay.`.replace(/\s+/g, ' ')));
   else if (r.waiting === 'friends') box.appendChild(_frLine('hourglass', `Locked out here. ${progress}`.trim()));
   else box.appendChild(_frLine('loader-circle', 'Locking it out and telling your friends…'));
   if (r.error) {
@@ -793,15 +849,15 @@ function _frRelayRotateEl() {
     el.textContent = '';
     const s = _frRot.st || { state: 'idle' };
     if (s.state === 'running') {
-      el.appendChild(_frLine('loader-circle', 'Updating your relay so the lost computer can’t use it…'));
-      el.appendChild(uiButton({ label: 'Cancel', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/relay/cancel', {}); await poll(); }, 'Stopped. The lost computer can use your relay until you update it.', 'stop the update') }));
+      el.appendChild(_frLine('loader-circle', 'Updating your connection to friends so the lost computer can’t use it…'));
+      el.appendChild(uiButton({ label: 'Cancel', size: 'sm', kind: 'ghost', run: (e, b) => _frDo(b, async () => { await _frApi('/api/relay/cancel', {}); await poll(); }, 'Stopped. The lost computer can use your connection to friends until you update it.', 'stop the update') }));
       return;
     }
     if (s.state === 'error' && s.error) el.appendChild(_frLine('triangle-alert', `${s.error.message} ${s.error.next || ''}`.trim(), 'fr-err'));
     el.appendChild(emptyLine(s.state === 'elsewhere'
-      ? 'Update your relay so the lost computer can’t use it: from the computer that set it up, or here (Cloudflare may ask you to sign in).'
-      : 'Update your relay so the lost computer can’t use it (same address; Cloudflare may ask you to sign in).'));
-    el.appendChild(uiButton({ label: s.state === 'error' ? 'Try again' : 'Update my relay', size: 'sm', icon: s.state === 'error' ? 'refresh-cw' : 'cloud', kind: 'primary', run: (e, b) => _frDo(b, async () => { _frRot.st = await _frApi('/api/relay/rotate', {}); paint(); poll(); }, null, 'update your relay') }));
+      ? 'Update your connection to friends so the lost computer can’t use it: from the computer that set it up, or here (Cloudflare may ask you to sign in).'
+      : 'Update your connection to friends so the lost computer can’t use it (same address; Cloudflare may ask you to sign in).'));
+    el.appendChild(uiButton({ label: s.state === 'error' ? 'Try again' : 'Update my connection', size: 'sm', icon: s.state === 'error' ? 'refresh-cw' : 'cloud', kind: 'primary', run: (e, b) => _frDo(b, async () => { _frRot.st = await _frApi('/api/relay/rotate', {}); paint(); poll(); }, null, 'update your connection to friends') }));
   };
   poll = async () => {
     clearTimeout(_frRot.t);
@@ -838,12 +894,12 @@ function friendsRenewKeysDialog(o) {
       const ul = _frEl('ul', 'fr-renew-list');
       const li = (t) => ul.appendChild(_frEl('li', null, t));
       li('New keys are made on this computer. Your other computers get them through sync; a computer you removed from sync does not.');
-      if (friends) li(`Each friend's OpenDash moves you over by itself (${friends} friend${friends === 1 ? '' : 's'}). Your friendships, history and what you share stay as they are.`);
+      if (friends) li(`Each friend's Freeflo moves you over by itself (${friends} friend${friends === 1 ? '' : 's'}). Your friendships, history and what you share stay as they are.`);
       if (pending) li('Requests still in progress and open invite links stop working: send new ones afterwards.');
       if (d.me.code) li('Your friend code changes.');
-      if (home && home.role === 'owner') li('Your relay is updated so it trusts only the new keys (same address; Cloudflare may ask you to sign in).');
-      else if (home) li("Your relay belongs to a friend: they get a button to let your new keys in. Until they press it, the lost computer can still use it.");
-      li("What it can't do: if the lost computer does this first, friends who hear from it first could be fooled. A friend's OpenDash then pauses your friendship; if a friend tells you that, send them a fresh invite.");
+      if (home && home.role === 'owner') li('Your connection to friends is updated so it trusts only the new keys (same address; Cloudflare may ask you to sign in).');
+      else if (home) li("Your connection to friends belongs to a friend: they get a button to let your new keys in. Until they press it, the lost computer can still use it.");
+      li("What it can't do: if the lost computer does this first, friends who hear from it first could be fooled. A friend's Freeflo then pauses your friendship; if a friend tells you that, send them a fresh invite.");
       det.appendChild(ul);
       el.appendChild(det);
       const acts = _frEl('div', 'fr-add-acts');
@@ -890,12 +946,8 @@ window.friendsRenewKeysDialog = friendsRenewKeysDialog;
     }
     const r = await orig.apply(this, arguments);
     if (r && url === '/api/sync/devices/remove') {
-      // 2.19.8: the removal dialog asks (ticked by default); older callers without the choice get the offer.
-      const renew = body && body.renewFriends;
-      if (renew === true) {
-        _frApi('/api/friends/rotate', {}).then(() => { toast('Friends keys renewed. Your friends are being told now: Friends shows how it goes.', { icon: 'key-round', kind: 'ok' }); return friendsLoad(true); })
-          .catch(() => { toast('Your Friends keys could not be renewed just now.', { icon: 'key-round', action: { label: 'Try again', run: () => friendsRenewKeysDialog({ device: name || 'that computer' }) } }); });
-      } else if (renew !== false) friendsLoad(true).then(() => friendsOfferLockOut(name)).catch(() => {});
+      // 2.20.1: the server locks it out of Friends by itself (server/routes/sync.mjs); here only the news.
+      if (r.friendsLockOut) { delete r.friendsLockOut; toast('It is locked out of Friends too.', { icon: 'lock', kind: 'ok' }); friendsLoad(true).catch(() => {}); }
     }
     return r;
   };

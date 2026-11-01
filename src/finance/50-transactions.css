@@ -17,6 +17,15 @@
 .fv-tx-count { font-size: var(--text-xs); color: var(--fg-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* ---------- transactions: day groups ---------- */
 .fv-txl { display: block; }
+.fv-tx-pend { display: grid; gap: var(--space-1-5); margin: 0 var(--space-5) var(--space-2); }
+.fv-tx-pend[hidden] { display: none; }
+.fv-pend-tag { flex: none; display: inline-block; padding: 0 6px; border: 1px dashed var(--border); border-radius: 999px; font-size: 11px; line-height: 16px; font-weight: var(--weight-medium); color: var(--fg-muted); white-space: nowrap; vertical-align: 1px; }
+.fv-row-s .fv-pend-tag { margin-right: 6px; }
+.fv-pend-tag.off { border-style: solid; background: var(--bg-subtle); }
+.fv-txr-q { flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--fg-muted); font: inherit; font-size: 11px; line-height: 18px; cursor: pointer; white-space: nowrap; }
+.fv-txr-q:hover, .fv-txr-q:focus-visible { background: var(--surface); color: var(--fg); box-shadow: inset 0 0 0 1px var(--border); }
+.fv-txr-q .i-sm { width: 12px; height: 12px; }
+.fv-txr-am.off { color: var(--fg-subtle); text-decoration: line-through; text-decoration-thickness: 1px; }
 .fv-dg + .fv-dg { border-top: 1px solid var(--border-subtle); }
 /* Days far off screen skip layout and paint (thousands of rows stay smooth). */
 .fv-dg { content-visibility: auto; contain-intrinsic-size: auto 320px; }
@@ -104,6 +113,9 @@
   .fv-dg-h .bal { order: 9; flex-basis: 100%; border-left: 0; padding-left: 0; }
   .fv-txr { padding: 7px var(--space-4); gap: var(--space-2-5, 10px); }
   .fv-txr .meta .fsym-tx .fsym-tx-l, .fv-txr .meta .ac { display: none; }
+  /* A pending row: the name keeps its room; the tag and the quick action go under it if they must. */
+  .fv-txr .nm:has(.fv-pend-tag) { flex-wrap: wrap; row-gap: 2px; }
+  .fv-txr .nm:has(.fv-pend-tag) .n { max-width: 100%; }
   .fv-txx { margin: 0 var(--space-3) var(--space-2); grid-template-columns: minmax(0, 1fr); }
   .fv-txx dl { grid-template-columns: 86px minmax(0, 1fr); }
   .fv-txx dd > .fsym-cat { display: none; }
@@ -119,3 +131,20 @@
 .fv-tx-card .fv-tx-count { display: none; }
 .fv-tx-card > .fv-card-h .fv-tx-tools { flex: 1 1 auto; }
 .fv-tx-card > .fv-card-h .fv-tx-search { flex: 0 1 280px; min-width: 170px; }
+
+/* 2.21: one row height whatever the second line holds; the name and the category answer a click */
+.fv-txr .meta { min-height: 20px; }
+.fv-txr .meta .c, .fv-txr .meta .cd { cursor: pointer; }
+.fv-txr .meta .c:hover { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+.fv-txr .nm .n:hover { text-decoration: underline; text-underline-offset: 2px; }
+.fv-tx-clear { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.fv-tx-clear[hidden] { display: none; }
+.fv-tx-none { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-8) var(--space-4); color: var(--fg-muted); font-size: var(--text-sm); text-align: center; }
+.fv-tx-none b { color: var(--fg); font-size: var(--text-md); }
+
+/* 2.21: on a phone the toolbar fits the card: the search box was pushed off the right-hand edge */
+@media (max-width: 760px) {
+  .fv-tx-card > .fv-card-h .fv-tx-tools { flex: 1 1 100%; min-width: 0; max-width: 100%; justify-content: flex-start; }
+  .fv-tx-card > .fv-card-h .fv-tx-search { flex: 1 1 100%; min-width: 0; }
+  .fv-tx-card > .fv-card-h .fv-tx-ctl { flex: 1 1 100%; min-width: 0; max-width: 100%; margin: 0; padding: 0; justify-content: flex-start; }
+}

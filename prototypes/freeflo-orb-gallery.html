@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" class="t-light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freeflo orb gallery</title>
+<!-- Brand exploration, not part of the app build. Every orb the logo can become: four seasons, then the holidays.
+     Loads ../src/brand/freeflo-orb.js (inlined by tools/brand-gallery.mjs for the standalone copy). -->
+<style>
+:root { --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --s: 1; }
+.t-light { --bg:#f1f2f6; --card:#fff; --ink:#16171c; --muted:#646875; --line:#e0e2ea; --chip:#e9ebf2; --splash: radial-gradient(60% 50% at 50% 46%, #f4f2ff 0%, #fbfbfd 60%, #fff 100%); color-scheme: light; }
+.t-dark { --bg:#0b0c0f; --card:#14161b; --ink:#ececef; --muted:#9b9eab; --line:#262932; --chip:#1d1f26; --splash: radial-gradient(60% 50% at 50% 46%, #1d1b33 0%, #121218 62%, #0e0e12 100%); color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--ink); line-height: 1.4; }
+button, input { font: inherit; color: inherit; }
+.bar { position: sticky; top: 0; z-index: 5; background: color-mix(in oklab, var(--bg) 88%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+.bar-in { max-width: 1280px; margin: 0 auto; padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; }
+.bar h1 { font-size: 1rem; margin: 0 8px 0 0; }
+.grp { display: flex; align-items: center; gap: 8px; font-size: .84rem; color: var(--muted); }
+.seg { display: inline-flex; background: var(--chip); border-radius: 9px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: none; padding: 5px 11px; border-radius: 7px; color: var(--muted); cursor: pointer; }
+.seg button[aria-pressed=true] { background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .14); cursor: default; }
+input[type=date], .btn { border: 1px solid var(--line); background: var(--card); border-radius: 9px; padding: 5px 9px; cursor: pointer; }
+main { max-width: 1280px; margin: 0 auto; padding: 18px 20px 80px; }
+h2 { font-size: 1.05rem; margin: 26px 0 4px; }
+.sub { color: var(--muted); margin: 0 0 14px; font-size: .9rem; max-width: 70ch; }
+.today { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; padding: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.today .stage { flex: 1 1 360px; }
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); }
+.cell { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 12px 14px; display: grid; gap: 10px; justify-items: center; }
+.cell .cap { text-align: center; }
+.cell b { display: block; font-size: .92rem; }
+.cell small { color: var(--muted); font-size: .78rem; }
+.cell .orbs { display: flex; align-items: flex-end; gap: 14px; }
+.cell svg.fo-orb { width: 120px; height: 120px; }
+.sm svg.fo-orb { width: 32px !important; height: 32px !important; }
+.sm { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: .7rem; color: var(--muted); }
+.stage { display: grid; place-items: center; min-height: 190px; background: var(--splash); border-radius: 12px; border: 1px solid var(--line); padding: 18px; }
+.stage svg.fo-lock { height: 86px; width: auto; color: var(--ink); }
+.cell .stage { width: 100%; min-height: 110px; padding: 10px; }
+.cell .stage svg.fo-lock { height: 50px; max-width: 100%; }
+.btn.replay { margin-left: auto; }
+</style>
+</head>
+<body>
+<div class="bar"><div class="bar-in">
+  <h1>Freeflo orb gallery</h1>
+  <div class="grp"><label for="day">Preview a date</label><input type="date" id="day"><button class="btn" id="today" type="button">Today</button></div>
+  <div class="grp"><span>Theme</span><div class="seg" id="theme"></div></div>
+  <button class="btn replay" id="replay" type="button">Replay all</button>
+</div></div>
+<main>
+  <h2>What the logo shows on the chosen date</h2>
+  <p class="sub" id="why"></p>
+  <div class="today" id="now"></div>
+  <h2>The seasons</h2>
+  <p class="sub">The orb takes the season's colours (northern hemisphere shown; the southern hemisphere is flipped automatically from the time zone), with a small detail of its own.</p>
+  <div class="grid" id="seasons"></div>
+  <h2>The holidays</h2>
+  <p class="sub">On the day (or the few days around it) the orb becomes the holiday. Click any to play its opening.</p>
+  <div class="grid" id="holidays"></div>
+</main>
+<script src="../src/brand/freeflo-orb.js"></script>
+<script>
+'use strict';
+var B = window.FreefloBrand;
+var WINDOWS = { halloween: '24 to 31 Oct', christmas: '20 to 26 Dec', 'new-year': '29 Dec to 2 Jan', valentines: '10 to 14 Feb', 'lunar-new-year': 'two days before to six after', diwali: 'two days either side', eid: 'Eid al-Fitr and al-Adha, three days',
+  easter: 'Good Friday to Easter Monday', 'pancake-day': 'Shrove Tuesday', 'bonfire-night': '3 to 5 Nov', 'st-patricks': '15 to 17 Mar', 'earth-day': '22 Apr', pride: 'all of June', birthday: 'the birthday set in Settings', 'summer-solstice': '20 to 22 Jun', 'winter-solstice': '20 to 22 Jun in the southern hemisphere, which flips it' };
+var theme = 'light';
+function el(id) { return document.getElementById(id); }
+function dayVal() { return el('day').value || B.today(); }
+function paintNow() {
+  var day = dayVal(), v = B.current({ day: day, mode: 'auto', birthday: null });
+  el('why').textContent = day + ' shows ' + v.label + (v.kind === 'holiday' ? ' (a holiday)' : v.kind === 'season' ? ' (the season)' : '') + '.';
+  el('now').innerHTML = '<div class="stage">' + B.lockup({ day: day, mode: 'auto', intro: true, birthday: null }) + '</div>'
+    + '<div class="sm">' + B.orb({ day: day, mode: 'auto', intro: true, birthday: null, cls: '' }).replace('class="fo-orb', 'style="width:96px;height:96px" class="fo-orb') + '<span>the orb on its own</span></div>';
+}
+function cell(v) {
+  var w = WINDOWS[v.id];
+  return '<div class="cell"><div class="stage">' + B.lockup({ id: v.id, intro: true }) + '</div>'
+    + '<div class="orbs"><div class="sm">' + B.orb({ id: v.id }) + '<span>sidebar</span></div><div class="sm">' + B.orb({ id: v.id, static: true }) + '<span>tab icon</span></div></div>'
+    + '<div class="cap"><b>' + v.label + '</b><small>' + (w || (v.kind === 'season' ? 'meteorological season' : '')) + '</small></div></div>';
+}
+function paint() {
+  document.documentElement.className = 't-' + theme;
+  var V = B.VARIANTS, ids = Object.keys(V);
+  el('seasons').innerHTML = ['spring', 'summer', 'autumn', 'winter', 'classic'].map(function (i) { return cell(V[i]); }).join('');
+  el('holidays').innerHTML = ids.filter(function (i) { return V[i].kind === 'holiday'; }).map(function (i) { return cell(V[i]); }).join('');
+  paintNow();
+  document.querySelectorAll('.cell').forEach(function (c, i) { c.onclick = function () { var st = c.querySelector('.stage'); st.innerHTML = st.innerHTML; }; });
+  el('theme').innerHTML = ['light', 'dark'].map(function (t) { return '<button type="button" data-t="' + t + '" aria-pressed="' + (theme === t) + '">' + t[0].toUpperCase() + t.slice(1) + '</button>'; }).join('');
+}
+el('theme').onclick = function (e) { var b = e.target.closest('button'); if (b && theme !== b.dataset.t) { theme = b.dataset.t; paint(); } };
+el('day').value = B.today();
+el('day').onchange = paintNow;
+el('today').onclick = function () { el('day').value = B.today(); paintNow(); };
+el('replay').onclick = paint;
+paint();
+</script>
+</body>
+</html>

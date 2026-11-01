@@ -3,6 +3,8 @@
 // authenticate agents, and cannot route to another installation's object.
 const MAX = 256 * 1024;
 const scopes = ['opendash:read', 'opendash:propose'];
+// The code a person matches between the Claude sign-in tab and OpenDash (2.20.1): 4 letters, no I, L or O.
+const shortCode = () => { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ'; let s = ''; while (s.length < 4) for (const b of crypto.getRandomValues(new Uint8Array(8))) { if (b < 230 && s.length < 4) s += A[b % 23]; } return s; };
 const opaque = () => { const b = crypto.getRandomValues(new Uint8Array(32)); return btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
 export async function relayHash(value) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value))); return btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 const failure = (error, status = 400) => { throw Object.assign(new Error(error), { status }); };
@@ -118,14 +120,14 @@ export class OpenDashRelay {
           const requested = (b.scope || scopes.join(' ')).split(' '); if (requested.length > 2 || !requested.includes(scopes[0]) || requested.some(s => !scopes.includes(s))) failure('invalid_scope');
           const scope = [...new Set(requested)].join(' ');
           if (db.requests.length >= 10) failure('authorization_limit', 429);
-          const r = { id: opaque(), displayCode: opaque().slice(0, 8).toUpperCase(), client_id: client.client_id, client_name: client.client_name, redirect_uri: b.redirect_uri, state: b.state, challenge: b.code_challenge, scope, resource, approved: false, expires: Date.now() + 600000 }; db.requests.push(r); return r.id; });
+          const r = { id: opaque(), displayCode: shortCode(), client_id: client.client_id, client_name: client.client_name, redirect_uri: b.redirect_uri, state: b.state, challenge: b.code_challenge, scope, resource, approved: false, expires: Date.now() + 600000 }; db.requests.push(r); return r.id; });
         return new Response(null, { status: 302, headers: { Location: base + '/oauth/continue?ticket=' + ticket, 'Cache-Control': 'no-store' } });
       }
       if (suffix === '/oauth/continue' && req.method === 'GET') {
         const result = await this.change(async db => { const r = db.requests.find(r => r.id === u.searchParams.get('ticket')); if (!r) failure('expired_request');
           if (!r.approved) return { displayCode: r.displayCode }; if (db.codes.length >= 20) failure('code_limit', 429); const code = opaque(); db.codes.push({ ...r, code: await relayHash(code), expires: Date.now() + 60000 }); db.requests = db.requests.filter(x => x !== r); const url = new URL(r.redirect_uri); url.searchParams.set('code', code); url.searchParams.set('state', r.state); return { redirect: url.href }; });
         if (result.redirect) return new Response(null, { status: 302, headers: { Location: result.redirect, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
-        return new Response(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="3"><title>Connect OpenDash</title><h1>Approve in your local OpenDash</h1><p>In Connections, match this code before approving Claude:</p><strong>${esc(result.displayCode)}</strong><p>Access allows dashboard reads and proposals. Applying changes still needs approval in OpenDash.</p>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': "default-src 'none'; base-uri 'none'; frame-ancestors 'none'" } });
+        return new Response(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="3"><title>Connect OpenDash</title><h1>Approve in your local OpenDash</h1><p>In Connections, match this code before approving Claude:</p><strong style="font-size:3rem;letter-spacing:.2em">${esc(String(result.displayCode).length === 4 ? String(result.displayCode).slice(0, 2) + ' ' + String(result.displayCode).slice(2) : result.displayCode)}</strong><p>Access allows dashboard reads and proposals. Applying changes still needs approval in OpenDash.</p>`, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': "default-src 'none'; base-uri 'none'; frame-ancestors 'none'" } });
       }
       if (suffix === '/oauth/token' && req.method === 'POST') {
         const b = await input(req, true);

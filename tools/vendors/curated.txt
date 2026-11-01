@@ -1,0 +1,703 @@
+# Curated vendors for tools/build-vendor-db.mjs. One per line:
+#   Name | aliases (;) | scene | pictogram | colour | accent | monogram | logo hint (si:slug, c:Commons file, none) | flags (t = top tier, x = whole-memo only)
+# Blank fields are filled in from the name index and the defaults. A row whose name is already in
+# src/app/67-fin-symbols.js only adds to that merchant. Names and colours only: no personal data here.
+# --- groceries
+Tesco|||basket|00539f|e4002b|||t
+Sainsbury's|||basket|c24e00|ffffff|||t
+Asda|||trolley|3f7d1c|ffffff|||t
+Morrisons|wm morrison;morrison|groceries|basket|00563f|ffd400|M||t
+Waitrose|waitrose & partners|groceries|basket|4f6f18|ffffff|||t
+Aldi|aldi stores|groceries|trolley|00205b|ffb81c|||t
+Lidl|lidl gb|groceries|trolley|0050aa|fff000|||t
+Co-op|coop;co op;central co-op;southern co-op;midcounties co-op;the co-operative food|groceries|basket|00a1cc|ffffff|||t
+M&S|marks & spencer;marks and spencer;m&s simply food;marks spencer|groceries|basket|1a1a1a|c5d82d|||t
+Iceland|iceland foods;the food warehouse|groceries|trolley|cc092f|ffffff|||t
+Ocado|ocado retail|groceries|parcel|4f2d7f|a7c539|||t
+Farmfoods|||trolley|d0021b|ffffff
+Spar|||basket|00843d|e4002b
+Nisa|nisa local||basket|ed1c24|ffffff
+Costco|costco wholesale||trolley|005daa|e31837
+Whole Foods|whole foods market||basket|00674b|ffffff
+Amazon Fresh|||basket|146eb4|ff9900
+Gousto|||parcel|0c7c59|ffffff
+HelloFresh|hello fresh||parcel|91c11e|ffffff
+Too Good To Go|||bag|00615f|ffffff
+Budgens|||basket|00843d|ffffff
+Londis|||basket|e30613|ffffff
+Booker|||trolley|002f6c|ffffff
+One Stop|||basket|da291c|ffffff
+Mindful Chef||groceries|parcel|1f4d3a|ffffff
+Abel & Cole|abel and cole|groceries|leaf|3b6e22|ffffff
+Riverford|riverford organic|groceries|leaf|2f6b2f|ffffff
+Oddbox||groceries|leaf|ee5a24|ffffff
+Milk & More|milk and more|groceries|droplet|005ca9|ffffff
+Getir||groceries|scooter|5d3ebc|ffd300
+Zapp||groceries|scooter|ff6600|ffffff
+Beelivery||groceries|scooter|f5b700|16161a
+Holland & Barrett|holland and barrett|groceries|leaf|00594c|ffffff
+Graze|graze.com|groceries|parcel|5b2d82|ffffff
+Huel|huel ltd|groceries|bottle|1a1a1a|ffffff
+Naked Wines|nakedwines|drinks|wine|7b1fa2|ffffff
+Majestic Wine|majestic|drinks|wine|8c1d40|ffffff
+Virgin Wines||drinks|wine|c8102e|ffffff
+Laithwaites|laithwaite's|drinks|wine|5c1a33|ffffff
+# --- coffee and bakeries
+Costa|costa coffee;costa cof|coffee|coffee|6d1f3d|ffffff|||t
+Starbucks|starbucks coffee;sbux|coffee|coffee|00704a|ffffff|||t
+Pret|pret a manger;pret a mang|coffee|sandwich|862633|ffffff|||t
+Caffè Nero|caffe nero;cafe nero|coffee|coffee|1c3f94|ffffff|||t
+Greggs|||bread|00558f|f7a600|||t
+Tim Hortons|||coffee|c8102e|ffffff
+Gail's|gails;gail s bakery||bread|2a2a2a|e8c37b
+Black Sheep Coffee|||coffee|1a1a1a|ffffff
+Joe & the Juice|joe and the juice||tea|e1067f|ffffff
+Harris + Hoole|harris & hoole;harris hoole|coffee|coffee|005c55|ffffff
+Coffee#1|coffee 1;coffee number one|coffee|coffee|d4001a|ffffff
+Esquires|esquires coffee|coffee|coffee|6d3b1f|ffffff
+Bewley's|bewleys|coffee|tea|7a1f3d|ffffff
+Boston Tea Party|||tea|223a5e|ffffff
+Paul|paul bakery;paul uk|eating-out|bread|1f1a17|e7c27d||x
+Ole & Steen|ole and steen|eating-out|bread|263238|ffffff
+Krispy Kreme|||donut|00653a|e31837
+Dunkin'|dunkin donuts;dunkin|coffee|donut|ff671f|da1884
+Pumpkin Cafe|pumpkin coffee|coffee|coffee|e5610b|ffffff
+Puccino's|puccinos|coffee|coffee|3d2314|ffffff
+# --- fast food, restaurants
+McDonald's|mcdonalds;mcdonald s|takeaway|burger|da291c|ffc72c|||t
+KFC|kentucky fried chicken|takeaway|chicken|a3080c|ffffff|||t
+Burger King|||burger|d62300|f5ebdc|||t
+Subway|||sandwich|00843d|ffc600|||t
+Nando's|nandos;nando s|eating-out|chicken|c8102e|ffffff|||t
+Wagamama|||noodle|d0021b|ffffff|||t
+Domino's|dominos;domino s;dominos pizza|takeaway|pizza|006491|e31837|||t
+Pizza Hut|||pizza|c8102e|ffffff|||t
+Pizza Express|pizzaexpress||pizza|1a1a1a|ffffff|||t
+Papa John's|papa johns;papa john s||pizza|00703c|d71920|||t
+Five Guys|||burger|d71920|ffffff|||t
+Itsu|||noodle|e30b5d|ffffff
+Wasabi|||sushi|6ca32a|ffffff
+Tortilla|||taco|e94e1b|ffffff
+Dishoom|||cutlery|7a2520|e9c46a
+Wingstop|||chicken|00563f|ffffff
+Chopstix|||noodle|d9001b|ffffff
+Taco Bell|||taco|702082|f7a800
+Zizzi|||pizza|1b1b1b|ffffff
+Toby Carvery|||cutlery|7a1f2b|ffffff
+YO! Sushi|yo sushi||sushi|e6007e|ffffff
+GBK|gourmet burger kitchen||burger|1a1a1a|ffffff
+Honest Burgers|||burger|e2231a|ffffff
+Deliveroo|roofoods;deliveroo plus|takeaway|scooter|00ccbc|ffffff|||t
+Just Eat|justeat;just-eat;justeat.co.uk|takeaway|scooter|ff8000|ffffff|||t
+Uber Eats|ubereats;uber *eats;uber eats help|takeaway|scooter|06c167|142328|||t
+Wetherspoon|j d wetherspoon;jd wetherspoon;wetherspoons|drinks|pint|1c3f6e|ffffff
+BrewDog|brewdog bar|drinks|pint|0074bd|ffffff
+Greene King|||pint|00613c|ffffff
+Bella Italia||eating-out|pizza|00703c|d71920
+Prezzo||eating-out|pizza|1d1d1b|d4a657
+ASK Italian|ask restaurant|eating-out|pizza|0f5132|ffffff
+Côte|cote brasserie|eating-out|cutlery|1f2a44|ffffff
+Bill's|bills restaurant;bills restaurants|eating-out|cutlery|1f1f1f|f2c94c
+Las Iguanas||eating-out|taco|e8590c|ffffff
+Miller & Carter|miller and carter|eating-out|cutlery|2b1d14|ffffff
+Harvester||eating-out|cutlery|4e7d2a|ffffff
+Beefeater||eating-out|cutlery|8c1d18|ffffff
+Brewers Fayre||eating-out|cutlery|1d4f91|ffffff
+Frankie & Benny's|frankie and bennys;frankie benny|eating-out|burger|a3161a|ffffff
+TGI Fridays|tgi friday;fridays restaurant|eating-out|burger|c8102e|ffffff
+Carluccio's|carluccios|eating-out|cutlery|0a3d62|ffffff
+Franco Manca||eating-out|pizza|ad1f23|ffffff
+Rosa's Thai|rosas thai;rosa s thai|eating-out|noodle|c2185b|ffffff
+Pho|pho restaurant;pho cafe|eating-out|noodle|d22630|ffffff|||x
+Leon|leon restaurants;leon restaurant|eating-out|sandwich|0e3a2f|ffffff||x
+Vapiano||eating-out|pizza|d9001b|ffffff
+Slim Chickens||takeaway|chicken|d9531e|ffffff
+Popeyes|popeyes louisiana|takeaway|chicken|f26522|ffffff
+Shake Shack||takeaway|burger|1a1a1a|7bb342
+Barburrito||takeaway|taco|e4002b|ffffff
+Harry Ramsden's|harry ramsdens|takeaway|fish|00538b|ffffff
+Morley's|morleys|takeaway|chicken|e31837|ffffff
+Dixy Chicken|dixy|takeaway|chicken|e31837|ffffff
+Baskin-Robbins|baskin robbins|eating-out|ice|da1884|0c2d83
+Ben & Jerry's|ben and jerrys;ben jerrys|eating-out|ice|0076c0|ffffff
+Hotel Chocolat||gifts|gift|3e2723|ffffff
+Thorntons||gifts|gift|4b2a1a|ffffff
+# --- public transport
+TfL|transport for london;tfl travel;tfl cycle;tfl congestion;tfl ulez;oyster;tfl travel ch;tfl travel charge|transport|tube|0019a8|dc241f|TfL|si:transportforlondon|t
+Trainline|the trainline;trainline.com;thetrainline|transport|train|00a88f|ffffff|||t
+National Rail|nationalrail|transport|train|003366|e30613|||t
+Avanti West Coast|avanti|transport|train|004354|ffffff|||t
+LNER|london north eastern|transport|train|ce0e2d|ffffff||none|t
+GWR|great western railway;first great western|transport|train|0a493e|ffffff||none|t
+Northern|northern trains;northern rail;northern railway|transport|train|262262|ffffff|||
+TransPennine Express|tpe;transpennine|transport|train|00a0e2|ffffff
+CrossCountry|cross country;crosscountrytrains;xc trains|transport|train|660f21|ffffff
+East Midlands Railway|emr;east midlands trains|transport|train|4c2f48|ffffff
+South Western Railway|swr;south west trains|transport|train|24398c|ffffff
+Southern|southern railway|transport|train|8cc63e|16161a|||x
+Thameslink|||train|ff5aa4|ffffff
+ScotRail|||train|1c4074|ffffff
+Southeastern|southeastern railway|transport|train|00afe8|ffffff
+Merseyrail|||train|fff200|16161a
+Eurostar|||train|1c2d6b|fcd116||none|t
+Greater Anglia||transport|train|d70428|ffffff
+c2c|c2c rail;c2c online|transport|train|b7007c|ffffff
+Chiltern Railways|chiltern||train|00bfff|ffffff
+Transport for Wales|tfw;tfw rail;trafnidiaeth cymru|transport|train|ff4500|ffffff
+Hull Trains||transport|train|de005c|ffffff
+Grand Central|grand central rail|transport|train|1d1d1b|f58220
+Lumo|lumo trains|transport|train|2b6ef2|ffffff
+Caledonian Sleeper||transport|train|2d3e50|f7b500
+Heathrow Express||transport|train|532e63|ffffff
+Gatwick Express||transport|train|eb1e2d|ffffff
+Stansted Express||transport|train|6b717a|ffffff
+Elizabeth line|elizabeth line tfl|transport|tube|6950a1|ffffff
+DLR|docklands light|transport|tram|00a4a7|ffffff
+London Overground||transport|train|ee7c0e|ffffff
+Tyne and Wear Metro|nexus metro;pop card;tyne & wear metro|transport|tram|f7a600|16161a
+Metrolink|tfgm metrolink;bee network tram|transport|tram|ffd900|16161a
+West Midlands Metro|west midlands railway;west midlands trains;wmr;wmt|transport|tram|0075c9|ffffff
+Sheffield Supertram|stagecoach supertram;supertram|transport|tram|4a2a7f|ffffff
+Nottingham Express Transit|net tram|transport|tram|00a14b|ffffff
+Edinburgh Trams||transport|tram|b4131a|ffffff
+Bee Network|tfgm|transport|bus|ffd900|16161a
+Stagecoach|stagecoach bus;stagecoach group|transport|bus|005cab|ee3124
+First Bus|firstbus;first group;first south;first west;first bus uk|transport|bus|e20074|ffffff
+Arriva|arriva uk;arriva buses|transport|bus|00b3c5|ffffff
+Go-Ahead|go ahead;go north east;go north west;go south coast|transport|bus|e2231a|ffffff
+Brighton & Hove Buses|brighton hove bus;brighton & hove|transport|bus|e3000f|ffd400
+Lothian Buses|lothian|transport|bus|8c1d40|ffffff
+Oxford Bus Company|oxford bus|transport|bus|a71930|ffffff
+National Express|nat express;nationalexpress|transport|bus|d70926|ffffff
+Megabus|||bus|0064b1|ffd100
+FlixBus|flix bus;flixbus uk|transport|bus|73d700|16161a
+Blackpool Transport||transport|tram|ffdd00|16161a
+Santander Cycles|tfl cycle hire;boris bikes|transport|bike|ec0000|ffffff
+Lime|lime*ride;limebike;lime ride;lime scooter;li.me|transport|scooter|00dd00|16161a
+Tier|tier mobility|transport|scooter|69d2aa|16161a||x
+Voi|voi technology;voi scooters|transport|scooter|f46c62|ffffff||x
+Dott|dott scooter;ridedott|transport|scooter|00a8e9|ffffff||none|x
+Forest|forest bikes;human forest|transport|bike|00d382|16161a||x
+Beryl|beryl bikes;beryl bike|transport|bike|00d7a3|16161a||x
+Uber|uber trip;uber *trip;uber bv;uber help;uber rides|car|taxi|000000|ffffff|||t
+Bolt|bolt.eu;bolt ride;bolt eu|car|taxi|34d186|16161a|||x
+Addison Lee|addisonlee|car|taxi|1a1a1a|ffffff
+FREENOW|free now;mytaxi|car|taxi|cf0a2c|ffffff
+Gett|gett taxi;gett uk|car|taxi|ffd200|16161a|||x
+Ola|ola cabs;ola uk|car|taxi|bfd630|16161a|||x
+Zipcar|zipcar uk|car|car|6ca12b|ffffff
+Enterprise|enterprise rent-a-car;enterprise rent a car;enterprise car club|car|car|169a5a|ffffff|||x
+Hertz|hertz uk|car|car|ffd100|16161a
+Avis|avis uk|car|car|d4002a|ffffff
+Europcar||car|car|007a33|ffed00
+Sixt|sixt rent a car|car|car|ff5f00|ffffff
+Budget Rent a Car|budget car|car|car|f26b21|ffffff
+Turo||car|car|593cfb|ffffff
+RingGo|ringgo parking|car|parking|4a2d8c|ffffff
+PayByPhone|pay by phone;paybyphone parking|car|parking|00a0df|ffffff
+JustPark|just park|car|parking|0ea5e9|ffffff
+NCP|national car parks|car|parking|ffd200|16161a
+Q-Park|qpark;q park|car|parking|ffcb05|16161a
+APCOA|apcoa parking|car|parking|0058a3|ffffff
+Dart Charge|dartford crossing;dart-charge|car|car|005ea5|ffffff
+DVLA|dvla vehicle tax;dvla-|tax|doc|1d70b8|ffffff
+Halfords|||wrench|ff6600|ffffff
+Kwik Fit|kwikfit||wrench|004f9f|ffd500
+ATS Euromaster|ats|car|wrench|0066b3|ffd500
+AA|the aa;automobile association;aa breakdown|insurance|wrench|ffd300|16161a|||x
+RAC|rac motoring;rac breakdown;royal automobile club|insurance|wrench|f26722|ffffff
+Green Flag|greenflag|insurance|wrench|007a53|ffffff
+# --- fuel and charging
+Shell|shell uk;shell oil;shell motorway|fuel|fuel|fbce07|dd1d21|||t
+BP|bp pulse;bp oil;bp chargemaster|fuel|fuel|007f01|ffe600|||t
+Esso|esso uk|fuel|fuel|ed1c24|1c3f94|||t
+Texaco|||fuel|e30613|ffffff
+Jet|jet petrol;jet uk|fuel|fuel|ffd200|e30613|||x
+Gulf|gulf oil|fuel|fuel|f47b20|1c3f94
+Applegreen|applegreen moto|fuel|fuel|78be20|ffffff
+Moto|moto hospitality;moto services|fuel|fuel|0066b3|ffffff|||x
+Welcome Break|||fuel|c8102e|ffffff
+Roadchef|||fuel|005eb8|ffffff
+Pod Point|podpoint||ev|fdb913|16161a
+InstaVolt||fuel|ev|ee2a24|ffffff
+Gridserve||fuel|ev|0a5f55|ffffff
+Tesla|tesla motors;tesla supercharger;tesla inc|fuel|ev|cc0000|ffffff
+Ionity||fuel|ev|1a1a1a|ffffff
+Osprey Charging|osprey|fuel|ev|00b1b0|ffffff
+ChargePlace Scotland||fuel|ev|005eb8|ffffff
+Ubitricity|ubitricity|fuel|ev|00a3e0|ffffff
+# --- housing, energy, water
+OpenRent|||key|3ea54d|ffffff
+Council Tax|council|tax|house|4c5a6b|ffffff
+TV Licensing|tv licence;tv licensing authority;tvl|utilities|play|c8102e|ffffff
+Octopus Energy|octopus||spark|e6007e|ffffff|||t
+British Gas|centrica||flame|0099ff|ffffff|||t
+EDF|edf energy;edf energy customers||spark|fe5716|10367a|||t
+E.ON|eon next;e.on next;eon energy||spark|ea1b0a|ffffff|||t
+OVO|ovo energy||spark|0a9828|ffffff|||t
+Scottish Power|scottishpower||spark|55a51c|ffffff
+SSE|sse energy||spark|e4032e|ffffff
+Bulb|bulb energy|utilities|spark|f4256d|ffffff||x
+Shell Energy||utilities|spark|dd1d21|fbce07
+Utilita|utilita energy|utilities|spark|ec008c|ffffff
+Utility Warehouse|utilitywarehouse;uw|utilities|spark|ffb612|16161a
+Good Energy||utilities|spark|88bf40|16161a
+Ecotricity||utilities|leaf|00a651|ffffff
+Co-op Energy||utilities|spark|00b1e7|ffffff
+Sainsbury's Energy||utilities|spark|f06c00|ffffff
+Thames Water|||droplet|005fa9|ffffff
+Severn Trent|severn trent water||droplet|2c5c9e|ffffff
+United Utilities|||droplet|0072ce|ffffff
+Yorkshire Water|||droplet|00599b|ffffff
+Anglian Water|||droplet|0075bf|ffffff
+Southern Water|||droplet|004b87|ffffff
+Wessex Water||utilities|droplet|0070b2|ffffff
+South West Water||utilities|droplet|0091d0|ffffff
+Northumbrian Water|nwg|utilities|droplet|1a428a|ffffff
+Welsh Water|dwr cymru;dwr cymru welsh water|utilities|droplet|0095da|ffffff
+Affinity Water||utilities|droplet|0081c6|ffffff
+SES Water|sutton and east surrey water|utilities|droplet|007ac2|ffffff
+Portsmouth Water||utilities|droplet|006eb6|ffffff
+South East Water||utilities|droplet|00a1de|ffffff
+Scottish Water||utilities|droplet|0067b1|ffffff
+Bristol Water||utilities|droplet|005ca9|ffffff
+Hafren Dyfrdwy||utilities|droplet|0073b6|ffffff
+# --- phone and internet
+Virgin Media|virgin media o2;virginmedia||wifi|ed1a37|ffffff|||t
+BT|bt group;bt broadband;british telecom|phone|wifi|6400aa|ffffff|||t
+Sky|sky digital;sky uk;sky broadband;sky subscription;sky mobile|subscriptions|play|0072c9|ffffff|||t
+EE|ee limited;everything everywhere|phone|phone|007b85|ffe600||none|t
+Vodafone|vodafone uk;vodafone limited|phone|phone|e60000|ffffff|||t
+O2|o2 uk;telefonica uk;o2 mobile|phone|phone|0050ff|ffffff|||t
+Three|three uk;3 mobile;hutchison 3g;h3g|phone|phone|1a1a1a|ffffff|||
+giffgaff|giff gaff||phone|1a1a1a|f5a800|||t
+Lebara|||phone|2a1a78|ffffff
+SMARTY|smarty mobile||phone|0a4e8c|ffffff
+VOXI|voxi mobile||phone|e60000|ffffff
+iD Mobile|||phone|0073cf|ffffff
+Lyca Mobile|||phone|ee2a2e|ffffff
+Hyperoptic|||wifi|e4004f|ffffff
+Community Fibre|||wifi|ff6a13|ffffff
+Plusnet|||wifi|ff0a91|ffffff
+TalkTalk|talk talk||wifi|7c3aed|ffffff
+Tesco Mobile|||phone|00539f|e4002b
+Spusu||phone|phone|00a7e1|ffffff
+1pMobile|1p mobile|phone|phone|f7941d|ffffff
+Talkmobile||phone|phone|00a4e4|ffffff
+Zen Internet|zen|phone|wifi|e6004c|ffffff
+KCOM||phone|wifi|e60050|ffffff
+Gigaclear||phone|wifi|ff5b00|ffffff
+G.Network|g network|phone|wifi|00a650|ffffff
+Now Broadband|now broadband|phone|wifi|00b0a0|ffffff
+Starlink|starlink internet|phone|wifi|1a1a1a|ffffff
+Carphone Warehouse||shopping|phone|003a70|ffffff
+# --- insurance and comparison
+Aviva|||shield|ffd900|004fb6|||t
+Admiral|admiral insurance;admiral group||shield|002f6c|ffffff|||t
+Direct Line|directline||shield|e4032e|ffffff
+Hastings Direct|hastings insurance||shield|7f3f98|ffffff
+LV=|liverpool victoria;lv insurance;lv=||shield|00a651|ffffff
+Churchill|churchill insurance||shield|00529b|ffffff
+AXA|axa insurance;axa uk||shield|00008f|ff1721
+Legal & General|legal and general||shield|0072ce|ffffff
+Vitality|vitalityhealth;vitality life||shield|e2006a|ffffff
+Bupa|||cross|0079c8|ffffff
+Compare the Market|comparethemarket;compare the market ltd|insurance|shield|ee3124|ffffff
+GoCompare|go compare|insurance|shield|f1b434|16161a
+MoneySuperMarket|money supermarket|insurance|shield|f7941e|ffffff
+Confused.com|confused com|insurance|shield|00aeef|ffffff
+More Than|morethan|insurance|shield|00a65e|ffffff
+Zurich|zurich insurance;zurich assurance|insurance|shield|2167ae|ffffff
+Saga|saga insurance;saga plc|insurance|shield|1f3f7f|ffffff||x
+Sheilas' Wheels|sheilas wheels|insurance|shield|ec008c|ffffff
+Tesco Insurance||insurance|shield|00539f|ffffff
+Petplan||pets|paw|d2232a|ffffff
+ManyPets|bought by many|pets|paw|f15c43|ffffff
+Animal Friends|animal friends insurance|pets|paw|12a0d7|ffffff
+Royal London||insurance|shield|002663|ffffff
+Scottish Widows||insurance|shield|1a1a1a|ffffff
+Prudential|pru|insurance|shield|e4002b|ffffff
+Nest Pensions|nest corporation|savings|piggy|ed1164|ffffff
+# --- health and personal care
+Specsavers|||glasses|00843d|ffd200
+Vision Express|||glasses|e4002b|ffffff
+Boots|boots the chemist;boots uk||pills|05054b|ffffff|||t
+Superdrug|||bottle|e6007e|ffffff|||t
+Lloyds Pharmacy|||pills|005b9f|ffffff
+NHS|nhs bsa;nhs prescription;nhs business services;nhsbsa||cross|005eb8|ffffff
+Headspace|||heart|f47d31|ffffff
+Lush|lush retail;lush cosmetics||bottle|1a1a1a|ffffff
+The Body Shop|body shop|personal-care|bottle|004236|ffffff
+Rituals||personal-care|bottle|1a1a1a|e0c88d
+Kiehl's|kiehls|personal-care|bottle|1a1a1a|ffffff
+Toni & Guy|toni and guy;toni&guy|personal-care|scissors|1a1a1a|ffffff
+Supercuts||personal-care|scissors|d9281e|ffffff
+Regis Salons|regis|personal-care|scissors|9e1f63|ffffff
+Treatwell||personal-care|scissors|00b3a4|ffffff
+Bluewater Dental|mydentist;my dentist|health|tooth|00a5b5|ffffff
+Calm|calm.com;calm app|subscriptions|heart|4a7bd0|ffffff||x
+# --- fitness
+PureGym|pure gym;puregym ltd||gym|00b5e2|16161a|||t
+The Gym Group|the gym ltd;gym group||gym|e4002b|ffffff
+David Lloyd|david lloyd leisure;david lloyd clubs||gym|003e74|ffffff
+Nuffield Health|||gym|00a59b|ffffff
+Anytime Fitness|||gym|5e2d91|ffffff
+Better|better leisure;gll||gym|e2006a|ffffff|||x
+Everyone Active|||gym|f58220|ffffff
+Strava|||bike|fc4c02|ffffff
+Myprotein|my protein;myprotein.com||bottle|00263e|ffffff
+Gymshark|||shirt|1a1a1a|ffffff
+Decathlon|||bike|0082c3|ffffff
+Virgin Active||fitness|gym|e10a0a|ffffff
+JD Gyms|jd gym|fitness|gym|1a1a1a|ffcc00
+Snap Fitness||fitness|gym|f05323|ffffff
+F45|f45 training|fitness|gym|12284b|e31837
+Peloton|peloton interactive|fitness|bike|1a1a1a|e4002b
+Parkrun|park run|fitness|shoe|4b2e83|ffa300
+ClassPass|class pass|fitness|gym|0ca678|ffffff
+Sports Direct|sportsdirect;sports direct.com||shoe|0c2d83|e4002b
+JD Sports|jd sports fashion||shoe|1a1a1a|ffcc00|||t
+Nike|nike retail;nike.com|shopping|shoe|1a1a1a|ffffff
+Adidas|adidas uk;adidas.co.uk|shopping|shoe|1a1a1a|ffffff
+Puma|puma uk|shopping|shoe|1a1a1a|ffffff
+New Balance||shopping|shoe|cf0a2c|ffffff
+Foot Locker|footlocker|shopping|shoe|cc0000|ffffff
+Schuh||shopping|shoe|1a1a1a|ffffff
+Clarks|c&j clark|shopping|shoe|005f50|ffffff
+Dr. Martens|dr martens;doc martens|shopping|shoe|ffd100|16161a
+# --- streaming, subscriptions, software
+Netflix|netflix.com;netflix international||play|e50914|ffffff|||t
+Spotify|spotify p;spotify ab;spotifyuk||music|1db954|16161a|||t
+Amazon Prime|prime video;amzn prime;prime member;amazon prime video;amazonprime||play|00a8e1|ffffff|||t
+Disney+|disney plus;disneyplus;disney+||play|113ccf|ffffff|||t
+YouTube|youtube premium;youtubepremium;google youtube;google youtubepremium;google youtube premium;yt premium||play|ff0000|ffffff|||t
+Apple Store|apple retail||laptop|555555|ffffff
+Apple|apple.com bill;apple.com/bill;itunes;apple services;apple music;apple one;apple tv;icloud||cloud|1a1a1a|ffffff||si:apple|t
+Google Play|google play apps;google *play||game|01875f|ffffff
+Google|google one;google *services;google workspace;google storage;google *temporary||cloud|1a73e8|ffffff|||t
+NOW|now tv;nowtv;now entertainment||play|00b3a4|ffffff
+Paramount+|paramount plus;paramountplus||play|0064ff|ffffff
+Audible|audible uk;audible.co.uk||books|f8991c|16161a
+Kindle|kindle unlimited;kindle svcs;amazon kindle||books|1a1a1a|ffffff
+OpenAI|chatgpt;open ai;openai *chatgpt||spark2|10a37f|ffffff
+Anthropic|claude.ai;anthropic pbc;claude||spark2|d97757|ffffff
+Xbox|xbox game pass;microsoft xbox;xbox live||game|107c10|ffffff||none|t
+Microsoft|microsoft 365;msft;microsoft*;microsoft office;microsoft store||laptop|0067b8|ffffff|||t
+Adobe|adobe systems;adobe creative cloud;adobe inc||cloud|da1f26|ffffff
+Patreon|||heart|f96854|ffffff
+Duolingo|||books|58cc02|16161a
+Notion|notion labs||doc|1a1a1a|ffffff
+GitHub|||laptop|181717|ffffff
+Dropbox|dropbox.com||cloud|0061ff|ffffff
+LinkedIn|linkedin premium;linkedin corp||case|0a66c2|ffffff
+Substack|||paper|ff6719|ffffff
+Canva|||doc|00c4cc|ffffff
+The Guardian|guardian news;guardian media;guardian.co.uk||paper|052962|ffe500
+Udemy|||cap|a435f0|ffffff
+Coursera|||cap|0056d2|ffffff
+PlayStation|sony playstation;playstation network;psn;playstationnetwork||game|0070d1|ffffff|||t
+Nintendo|nintendo eshop;nintendo of europe||game|e60012|ffffff|||t
+Steam|steamgames;steam games;steampowered;valve||game|1b2838|ffffff|||t
+Epic Games|epicgames||game|1a1a1a|ffffff
+Twitch|twitch.tv;twitch interactive||game|9146ff|ffffff
+Crunchyroll||subscriptions|play|f47521|ffffff
+BritBox|brit box|subscriptions|play|1a1a1a|ff4f8b
+Apple TV+|apple tv plus|subscriptions|play|1a1a1a|ffffff
+Tidal|tidal music|subscriptions|music|1a1a1a|ffffff
+Deezer||subscriptions|music|a238ff|ffffff
+Amazon Music||subscriptions|music|25d1da|16161a
+SoundCloud|sound cloud|subscriptions|music|ff5500|ffffff
+Bandcamp||subscriptions|music|1da0c3|ffffff
+Slack|slack technologies|subscriptions|laptop|4a154b|ffffff
+Zoom|zoom.us;zoom video|subscriptions|laptop|0b5cff|ffffff||x
+Figma||subscriptions|laptop|1a1a1a|ffffff
+1Password|1 password;agilebits|subscriptions|shield|1a285f|ffffff
+NordVPN|nord vpn;nordsec|subscriptions|shield|4687ff|ffffff
+ExpressVPN|express vpn|subscriptions|shield|da3940|ffffff
+Backblaze||subscriptions|cloud|e21e29|ffffff
+Evernote||subscriptions|doc|00a82d|ffffff
+Grammarly||subscriptions|doc|15c39a|ffffff
+Xero|xero uk|work|doc|13b5ea|ffffff
+QuickBooks|intuit;intuit quickbooks|work|doc|2ca01c|ffffff
+Sage|sage uk;sage software|work|doc|00d639|16161a||x
+FreeAgent|free agent|work|doc|00b6e0|ffffff
+Shopify||work|bag|5e8e3e|ffffff
+Squarespace||work|laptop|1a1a1a|ffffff
+Wix|wix.com|work|laptop|0c6efc|ffffff||x
+GoDaddy|go daddy|work|laptop|1bdbdb|16161a
+Namecheap||work|laptop|de3723|ffffff
+Cloudflare||work|cloud|f38020|ffffff
+DigitalOcean|digital ocean|work|cloud|0080ff|ffffff
+AWS|amazon web services;aws emea|work|cloud|232f3e|ff9900
+Vercel||work|cloud|1a1a1a|ffffff
+Nest|google nest|home|house|00afd8|ffffff||x
+Ring|ring.com;ring protect|home|house|1c9ad6|ffffff||x
+Tile|tile inc|other|gift|1a1a1a|ffffff||x
+Times Newspapers|the times;times digital;news uk;thetimes|subscriptions|paper|1a1a1a|ffffff
+The Telegraph|telegraph media;telegraph.co.uk|subscriptions|paper|1a1a1a|ffffff
+Financial Times|ft.com;financial times ltd|subscriptions|paper|fff1e5|16161a
+The Economist|economist newspaper;economist.com|subscriptions|paper|e3120b|ffffff
+The Athletic|theathletic|subscriptions|paper|1a1a1a|ffffff
+Private Eye||subscriptions|paper|d9001b|ffffff
+New Scientist||subscriptions|paper|e4002b|ffffff
+BBC|bbc shop;bbc store;bbc maestro|entertainment|play|1a1a1a|ffffff
+ITV|itvx;itv hub;itv premium|subscriptions|play|102c3d|ffffff
+Channel 4|channel4;c4|subscriptions|play|1a1a1a|aaff89||x
+Roblox|roblox.com|gaming|game|1a1a1a|ffffff
+Minecraft|mojang|gaming|game|3c8527|ffffff
+EA|electronic arts;ea games;ea.com;ea play|gaming|game|ff4747|ffffff||x
+Ubisoft||gaming|game|1a1a1a|ffffff
+GOG|gog.com|gaming|game|86328a|ffffff
+Humble Bundle||gaming|game|cc2929|ffffff
+GAME|game retail;game stores|gaming|game|6a1b9a|ffffff||x
+CeX|cex ltd;cex uk;computer exchange|shopping|game|e30613|ffffff||x
+# --- shopping
+Amazon|amzn;amzn mktp;amznmktplace;amazon.co.uk;amazon marketplace;amazon uk;amazon eu;amazon *|shopping|parcel|232f3e|ff9900|||t
+eBay|ebay uk;ebay commerce||bag|e53238|ffffff|||t
+Argos|argos ltd;argos direct||bag|da291c|ffffff|||t
+ASOS|asos.com||shirt|1a1a1a|ffffff|||t
+John Lewis|john lewis partnership;johnlewis.com||bag|1a1a1a|ffffff|||t
+IKEA|ikea uk;ikea ltd||sofa|0058a3|fbd914|||t
+Primark|primark stores;primark retail||shirt|00a7e1|ffffff|||t
+Next|next directory;next retail;next plc;next.co.uk|shopping|shirt|1a1a1a|ffffff|||t
+H&M|h & m;hennes;hennes & mauritz;h and m;hm.com||shirt|e50010|ffffff|||t
+Zara|zara uk;zara.com||shirt|1a1a1a|ffffff|||t
+Uniqlo|||shirt|ff0000|ffffff
+Currys|currys pc world;dixons carphone;pc world;currys.co.uk||laptop|6a1b9a|ffffff|||t
+TK Maxx|tjx;tk maxx.com;tkmaxx;t k maxx||tag|e4002b|ffffff
+B&Q|b & q;b and q;diy.com;b&q plc||drill|f26a21|ffffff|||t
+Wickes|wickes building;wickes ltd||drill|0066b3|ffffff
+Screwfix|screwfix direct||drill|00539b|ffd100
+Homebase|||drill|f58220|ffffff
+Dunelm|dunelm mill||sofa|df1a31|ffffff
+Wilko|wilkinson;wilkinsons||tag|c6003d|ffffff
+The Range|cds superstores;the range ltd||tag|005eb8|ffffff
+Poundland|||tag|0d4f9e|ffe600
+B&M|b & m;b and m;b&m bargains;b m retail||tag|2d8ec7|ffffff
+Home Bargains|tj morris||tag|e4002b|ffffff
+WHSmith|wh smith;w h smith;whsmith.co.uk||books|13318a|ffffff
+Waterstones|waterstones.com;waterstone's||books|1a1a1a|ffffff|||t
+Vinted|||shirt|007782|ffffff
+Depop|||shirt|ff2300|ffffff
+SHEIN|shein.com||shirt|1a1a1a|ffffff
+Temu|temu.com||parcel|fb7701|ffffff
+AliExpress|ali express;alibaba||parcel|e62e04|ffffff
+Etsy|etsy uk;etsy.com||gift|f1641e|ffffff
+Selfridges|selfridges & co;selfridges retail||bag|ffe600|16161a
+New Look|||shirt|1a1a1a|ffffff
+River Island|||shirt|1a1a1a|ffffff
+Matalan|||shirt|1b3a7a|ffffff
+Card Factory|||gift|d6006d|ffffff
+Moonpig|||gift|d70926|ffffff
+Smyths|smyths toys||blocks|0058a3|f5b700
+Pets at Home|petsathome;pets at home.com||paw|00aa28|ffffff|||t
+Post Office|post office ltd;po counters||parcel|e30613|ffffff|||t
+Royal Mail|royalmail;royal mail group||parcel|e30613|ffcc00|||t
+Evri|hermes parcelnet;hermes;myhermes||parcel|007bc4|ffffff||none|
+DPD|dpd group;dpd local;dpd uk||parcel|dc0032|ffffff
+DHL|dhl express|shopping|parcel|ffcc00|d40511
+UPS|united parcel service;ups uk|shopping|parcel|150400|ffb500
+FedEx|fedex express;fedex uk|shopping|parcel|4d148c|ff6600
+Yodel|yodel delivery|shopping|parcel|83ba41|ffffff
+Parcel2Go|parcel 2 go|shopping|parcel|e30613|ffffff
+InPost|inpost uk|shopping|parcel|ffcb04|16161a
+Funky Pigeon||gifts|gift|ef3e42|ffffff
+Interflora||gifts|leaf|d3004c|ffffff
+Bloom & Wild|bloom and wild|gifts|leaf|1a1a1a|ffffff
+Lakeland|lakeland ltd|home|sofa|006548|ffffff
+Robert Dyas||home|drill|d9001b|ffffff
+The Works|theworks;the works.co.uk|shopping|books|e4002b|ffffff
+Ryman|ryman stationery|shopping|books|e4002b|ffffff
+Paperchase||shopping|books|1a1a1a|ffffff
+Hobbycraft|||gift|0093b2|ffffff
+Dobbies|dobbies garden|home|leaf|00603c|ffffff
+Blue Diamond|blue diamond garden|home|leaf|00558c|ffffff
+Fat Face|fatface|shopping|shirt|1a1a1a|ffffff
+White Stuff||shopping|shirt|1a1a1a|ffffff
+Seasalt|seasalt cornwall|shopping|shirt|153a5b|ffffff
+Boden|boden.co.uk|shopping|shirt|1a1a1a|ffffff
+Barbour|j barbour|shopping|shirt|2a3b2d|ffffff
+Superdry||shopping|shirt|1a1a1a|ff6600
+Accessorize|monsoon accessorize|shopping|bag|1a1a1a|ffffff
+Oasis|oasis fashions|shopping|shirt|1a1a1a|ffffff||x
+Monsoon|monsoon london|shopping|shirt|1a1a1a|ffffff||x
+Mountain Warehouse||shopping|tent|e87722|ffffff
+Go Outdoors|gooutdoors|shopping|tent|f26522|ffffff
+Blacks|blacks outdoor|shopping|tent|1a1a1a|ffffff||x
+Cotswold Outdoor||shopping|tent|c8102e|ffffff
+Millets||shopping|tent|00703c|ffffff
+Trespass||shopping|tent|e4002b|ffffff
+Regatta||shopping|tent|003b73|ffffff
+Pandora|pandora jewellery;pandora uk|shopping|gem|1a1a1a|ffffff||none|
+H Samuel|h. samuel|shopping|gem|8e1737|ffffff
+Ernest Jones||shopping|gem|1a1a1a|ffffff
+Goldsmiths||shopping|gem|1a1a1a|d4af37
+Swarovski||shopping|gem|1a1a1a|ffffff
+Hamleys||gifts|blocks|e4002b|ffffff
+The Entertainer|entertainer toys;thetoyshop|gifts|blocks|e4002b|ffffff
+Lego|lego store;lego.com|gifts|blocks|e3000b|ffd500
+Build-A-Bear|build a bear|gifts|blocks|f15a29|ffffff
+Mothercare||family|blocks|0091d5|ffffff
+JoJo Maman Bebe|jojo maman|family|blocks|ee2a7b|ffffff
+Vets4Pets|vets 4 pets|pets|paw|3c9a39|ffffff
+Medivet||pets|paw|00a2b1|ffffff
+Jollyes|jollyes pet|pets|paw|e30613|ffffff
+Tails.com|tails com|pets|paw|d4145a|ffffff
+Butternut Box||pets|paw|f5a800|16161a
+Amazon Pay|amazon payments|other|card|ff9900|16161a
+# --- travel
+Ryanair|ryanair ltd;ryanair dac||plane|073590|f1c933|||t
+easyJet|easy jet;easyjet airline;easyjet.com||plane|ff6600|ffffff|||t
+British Airways|ba.com;british a;british airw;brit airways||plane|2e5c99|e4002b|||t
+Jet2|jet 2;jet2.com;jet2holidays;jet2 holidays||plane|d81921|fcd000
+Wizz Air|wizzair;wizz.com||plane|c6007e|ffffff
+Virgin Atlantic|||plane|da0530|ffffff
+Emirates|||plane|d71921|ffffff
+Qatar Airways|||plane|5c0632|ffffff
+Turkish Airlines|thy;turkish airl||plane|c70a0c|ffffff
+KLM|klm royal dutch||plane|00a1de|ffffff
+Lufthansa|||plane|05164d|f9ba00
+Air France||travel|plane|002157|e4002b
+Aer Lingus||travel|plane|006272|ffffff
+TAP Air Portugal|tap portugal|travel|plane|00a551|e4002b
+Iberia||travel|plane|d7192d|ffc72c
+Vueling||travel|plane|ffcc00|16161a
+Loganair||travel|plane|1b2e6f|ffffff
+TUI|tui uk;thomson holidays|travel|suitcase|d40e14|ffffff|||t
+Booking.com|booking com;booking.com bv;bkg*booking||bed|003b95|ffffff|||t
+Airbnb|airbnb payments;airbnb uk||house|ff5a5f|ffffff|||t
+Expedia|expedia.co.uk;expedia inc||suitcase|191e3b|ffc94c
+Hotels.com|hotels com;hotelscom||bed|d32f2f|ffffff
+Premier Inn|premier travel inn;whitbread||bed|5c2d91|ffffff|||t
+Travelodge|||bed|0078c1|ffffff
+Holiday Inn|holiday inn express;ihg;ihg hotels||bed|007a53|ffffff
+Hilton|hilton hotels;hampton by hilton;doubletree||bed|104c97|ffffff
+Skyscanner|||plane|0770e3|ffffff
+Heathrow|heathrow airport||plane|5e2d91|ffffff
+Gatwick|gatwick airport||plane|1d2a6d|ffffff
+Marriott|marriott hotels;marriott bonvoy|travel|bed|a6192e|ffffff
+Accor|ibis;novotel;mercure|travel|bed|1e1852|ffffff
+Hostelworld||travel|bed|f25822|ffffff
+Vrbo|vrbo.com|travel|house|245abc|ffffff
+Trip.com|trip com;ctrip|travel|suitcase|287dfa|ffffff
+Kayak||travel|plane|ff690f|ffffff
+Lastminute.com|lastminute|travel|suitcase|e6007e|ffffff
+Hays Travel||travel|suitcase|e31937|ffffff
+Stena Line|stenaline|travel|ferry|003b71|ffffff
+P&O Ferries|p&o;p and o ferries;poferries|travel|ferry|003a70|ffffff
+DFDS|dfds seaways|travel|ferry|002b45|ffffff
+Brittany Ferries||travel|ferry|005596|ffffff
+Irish Ferries||travel|ferry|006633|ffffff
+Red Funnel||travel|ferry|e4002b|ffffff
+Wightlink||travel|ferry|00529c|ffffff
+Caledonian MacBrayne|calmac|travel|ferry|d6001c|ffffff
+LeShuttle|eurotunnel;le shuttle|travel|train|ffd200|16161a
+Manchester Airport||travel|plane|1f2a44|ffffff
+Stansted Airport||travel|plane|7c2d8b|ffffff
+# --- entertainment
+Odeon|odeon cinemas;odeon uk||cinema|00aeef|ffffff|||t
+Vue|vue cinemas;vue entertainment;myvue||cinema|0a2a6e|ffffff|||t
+Cineworld|cineworld cinemas;unlimited cineworld||cinema|e31937|ffffff|||t
+Picturehouse|picturehouse cinemas||cinema|191919|e8c37b
+Everyman|everyman cinema;everyman media||cinema|191919|ffffff
+Showcase Cinemas|showcase|entertainment|cinema|1d4f91|ffffff
+Curzon|curzon cinema|entertainment|cinema|1a1a1a|ffffff
+Ticketmaster|||ticket|026cdf|ffffff
+See Tickets|seetickets||ticket|e4002b|ffffff
+DICE|dice.fm;dice fm||ticket|1a1a1a|ffffff
+Eventbrite|||ticket|f05537|ffffff
+Skiddle|||ticket|0072ce|ffffff
+Hollywood Bowl|||ticket|e4002b|ffffff
+National Trust|||leaf|007a3d|ffffff
+English Heritage||entertainment|house|00447c|ffffff
+Merlin Annual Pass|merlin entertainments;alton towers;thorpe park;madame tussauds|entertainment|ticket|1a7ec4|ffffff
+Tenpin|ten pin bowling|entertainment|ticket|ff6b00|ffffff
+AXS|axs tickets|entertainment|ticket|1a1a1a|ffffff
+StubHub|stub hub|entertainment|ticket|3f1d74|ffffff
+Viagogo||entertainment|ticket|6cb33f|ffffff
+Fever|feverup|entertainment|ticket|ff5a5f|ffffff||x
+ATG Tickets|atg|entertainment|ticket|d71920|ffffff
+RSPB||gifts|leaf|00548f|ffffff
+Age UK||gifts|heart|72318c|ffffff
+Shelter||gifts|house|e4002b|ffffff|||x
+Mind|mind charity;mind.org.uk|gifts|heart|0066b3|ffffff|||x
+Macmillan|macmillan cancer|gifts|heart|008a26|ffffff
+Marie Curie||gifts|heart|ffcc00|16161a
+RNLI|royal national lifeboat|gifts|ferry|ff6e00|ffffff
+Dogs Trust||gifts|paw|ffd200|16161a
+RSPCA||gifts|paw|005aab|ffffff
+Blue Cross||gifts|paw|0067a5|ffffff
+WWF|wwf uk;world wildlife|gifts|paw|1a1a1a|ffffff
+Save the Children||gifts|heart|e4002b|ffffff
+UNICEF|unicef uk|gifts|globe|00aeef|ffffff
+Barnardo's|barnardos|gifts|heart|0076bd|ffffff
+Comic Relief|red nose day|gifts|heart|e4002b|ffffff
+Crisis|crisis uk|gifts|house|e4002b|ffffff|||x
+Cancer Research UK|||heart|2e008b|ec008c
+British Red Cross|||cross|c8102e|ffffff
+Oxfam|||heart|3a7d22|ffffff
+JustGiving|||heart|8a1f99|ffffff
+GoFundMe|||heart|00804a|ffffff
+British Heart Foundation|||heart|c8102e|ffffff
+# --- banks and money (a plain bank pictogram: no fun treatment)
+Barclaycard|||card|00aeef|ffffff
+Barclays|barclays bank;barclays plc||bank|00aeef|ffffff|||t
+HSBC|hsbc uk;hsbc bank;hsbc plc||bank|db0011|ffffff|||t
+Lloyds Bank|lloyds;lloyds tsb;lloyds banking||bank|006a4d|ffffff||none|t
+NatWest|national westminster;natwest bank;nat west||bank|42145f|ffffff|||t
+Santander|santander uk||bank|ec0000|ffffff|||t
+Nationwide|nationwide building society;nationwide bs||bank|0f2a5f|ffffff|||t
+Halifax|halifax plc;bank of scotland;hbos||bank|005ea5|ffffff|||t
+TSB|tsb bank||bank|0b2c6e|00a3e0|||t
+Monzo|monzo bank||card|14233c|ff4f40|||t
+Revolut|revolut ltd||card|191c1f|ffffff|||t
+Starling|starling bank||card|6935d3|ffffff|||t
+Chase|chase uk;jpmorgan chase||card|117aca|ffffff
+American Express|amex;americanexpress;amex gbr||card|2e77bc|ffffff
+Wise|transferwise;wise payments||swap|9fe870|163300|||
+Trading 212|trading212||coins|1a7ee8|ffffff
+Vanguard|vanguard asset;vanguard uk||coins|96151d|ffffff
+Freetrade|free trade||coins|1b1b1b|ffffff
+Hargreaves Lansdown|h lansdown;hl||coins|002d62|ffffff
+Moneybox|money box||piggy|5b2d8e|ffffff
+NS&I|||piggy|7b2d84|ffffff
+Coinbase|||coins|0052ff|ffffff
+Kraken|||coins|5741d9|ffffff
+Binance|||coins|f3ba2f|16161a
+HMRC|||doc|00703c|ffffff
+Student Loans Company|||cap|1d4f91|ffffff
+PayPal|||card|002991|009cde|||t
+Klarna|||card|ffb3c7|16161a
+Clearpay|||card|b2fce4|16161a
+Virgin Money||savings|bank|d9002b|ffffff
+Metro Bank||savings|bank|0072ce|ef3340
+The Co-operative Bank|co-operative bank;cooperative bank;co op bank|savings|bank|00a1cc|ffffff
+First Direct|firstdirect|savings|bank|1a1a1a|ffffff
+Danske Bank||savings|bank|003755|ffffff
+Royal Bank of Scotland|rbs|savings|bank|0a2f5c|ffffff
+Ulster Bank||savings|bank|002d72|ffffff
+Yorkshire Building Society|ybs;yorkshire bs|savings|bank|5b2c86|ffffff
+Coventry Building Society|coventry bs|savings|bank|003b7a|ffffff
+Skipton Building Society|skipton bs|savings|bank|1b3f8b|ffffff
+Leeds Building Society|leeds bs|savings|bank|00843d|ffffff
+Principality|principality bs|savings|bank|c8102e|ffffff
+Curve|curve 1 limited|other|card|1a1a1a|ffffff||none|x
+Zopa||savings|card|00a489|ffffff
+Kroo|kroo bank|savings|card|ff5a44|ffffff
+Atom Bank||savings|bank|5a2bc4|ffffff
+Tide|tide platform|work|card|1929d6|ffffff||none|x
+Capital One|capitalone|debt|card|004977|d03027
+MBNA||debt|card|004990|ffffff
+Vanquis|vanquis bank|debt|card|1b1464|ffffff
+Aqua|aqua card|debt|card|00a9ce|ffffff||none|x
+Zilch|zilch technology|debt|card|00d287|16161a
+Plum|plum fintech;with plum|savings|piggy|4b2a7b|ffffff||x
+Chip|chip financial;getchip;chip account|savings|piggy|ff6f61|ffffff||x
+Nutmeg|nutmeg saving|savings|coins|ffd200|16161a
+Wealthify||savings|coins|2c3e50|ffffff
+AJ Bell|aj bell youinvest|savings|coins|e4002b|ffffff
+Fidelity|fidelity international|savings|coins|368727|ffffff
+Interactive Investor|ii.co.uk|savings|coins|5f259f|ffffff
+SumUp|sum up|work|card|1a1a1a|ffffff
+Tesco Bank|||bank|00539f|ffffff
+Sainsbury's Bank|||bank|c24e00|ffffff

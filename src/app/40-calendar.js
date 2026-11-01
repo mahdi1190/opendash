@@ -103,7 +103,7 @@ function createGoogleDataStore(o) {
       st.data = j; st.error = null;
       if (j.job) st.job = j.job;
     } catch (e) {
-      st.error = _serverAvailable ? ((e && e.message) || String(e)) : 'The OpenDash server is not running, so ' + o.label + ' data cannot be loaded.';
+      st.error = _serverAvailable ? netErrorMessage(e) : 'Freeflo isn’t running, so ' + o.label + ' can’t be loaded. Open it from your shortcut, then try again.';
     }
     st.loaded = true; st.loading = false;
     if (st.job && st.job.state === 'running') poll();
@@ -140,7 +140,7 @@ function createGoogleDataStore(o) {
     if (job.state === 'ok') {
       if (job.forced) toast(`${o.label} updated` + (job.result && Number.isFinite(job.result.count) ? ` · ${job.result.count} ${o.noun}` : ''), { kind: 'ok', icon: 'refresh-cw' });
     } else if (job.state === 'error' && (job.forced || _GD_AUTH_CODES.has(job.code))) {
-      toastError(`update ${String(o.label).toLowerCase()}`, new Error(job.error || 'something went wrong'),
+      toastError(`update ${o.label === 'Email' ? 'your email' : o.label}`, new Error(job.error || 'something went wrong'),
         _GD_AUTH_CODES.has(job.code) ? { label: 'Open Connections', run: () => setView('connections') } : () => update({ force: true }));
     }
   }
@@ -172,7 +172,7 @@ function createGoogleDataStore(o) {
       if (opts.quiet) return { error: true, message: typeof netErrorMessage === 'function' ? netErrorMessage(e, 'The update could not start.') : (e && e.message) || 'The update could not start.' };
       if (opts.force !== false) {
         // A network failure reads as "the server isn't running"; either way the toast offers the next step.
-        toastError(`update ${String(o.label).toLowerCase()}`, e, () => update(Object.assign({}, opts, { force: true })));
+        toastError(`update ${o.label === 'Email' ? 'your email' : o.label}`, e, () => update(Object.assign({}, opts, { force: true })));
       }
       return { error: true };
     }

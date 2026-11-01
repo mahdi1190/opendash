@@ -142,7 +142,7 @@ function applyAutoTheme() {
 setInterval(applyAutoTheme, 5 * 60 * 1000);
 async function runMorningBriefing() {
   if (!HAS_COWORK || typeof window.cowork.runScheduledTask !== 'function') {
-    showDebug('Briefing unavailable', 'window.cowork.runScheduledTask is not available.');
+    toast('The morning briefing only runs inside the Claude desktop app. Open Freeflo there to use it.', { kind: 'err' });
     return;
   }
   toast('Starting the morning briefing…', { icon: 'sunrise' });
@@ -150,7 +150,7 @@ async function runMorningBriefing() {
     await window.cowork.runScheduledTask('task-management');
     toast('Briefing sent. Check your chat.', { kind: 'ok' });
   } catch (e) {
-    showDebug('Briefing failed', (e && e.message) || String(e));
+    toastError('start the morning briefing', e, () => runMorningBriefing());
   }
 }
 
@@ -237,7 +237,8 @@ document.addEventListener('keydown', e => {
     if (document.getElementById('modal-overlay').classList.contains('open')) { closeModal(); return; }
     if (document.getElementById('kb-overlay').classList.contains('open')) { if (typeof closeKbHelp === 'function') closeKbHelp(); else document.getElementById('kb-overlay').classList.remove('open'); return; }
     if (document.getElementById('app').classList.contains('drawer-open')) { _shellCloseDrawer(); return; }
-    if (multiSelect.ids.size > 0) { multiSelect.ids.clear(); document.body.classList.remove('has-selection'); render(); return; }
+    if (typeof multiPickEsc === 'function' && multiPickEsc()) return;   // the shared multi-select (11-ui-pick.js)
+    if (multiSelect.ids.size > 0 || multiSelect.active) { multiSelect.ids.clear(); multiSelect.active = false; document.body.classList.remove('has-selection'); render(); return; }
     if (_expandedTaskIds.size > 0) { _expandedTaskIds.clear(); render(); return; }
     // The side panel closes on Esc only when no field is focused: the first Esc leaves a field in it.
     if (inField && e.target.closest && e.target.closest('#detail-pane')) { e.target.blur(); return; }
@@ -250,6 +251,8 @@ document.addEventListener('keydown', e => {
   if (overlayOpen) return;
   // The shortcut sheet is open: '?' closes it again; other keys do not act on the page behind it.
   if (document.getElementById('kb-overlay').classList.contains('open')) { if (e.key === '?' && !inField) { e.preventDefault(); showKbHelp(); } return; }
+  // Ctrl/Cmd+A: a list using the shared multi-select takes it (11-ui-pick.js)
+  if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'a' && !inField && typeof multiPickSelectAll === 'function' && multiPickSelectAll()) { e.preventDefault(); return; }
   // Ctrl/Cmd+A: select all currently-rendered tasks (skipped when typing in a field)
   if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'a' && !inField && _lastRenderedTaskIds.length) {
     e.preventDefault();
@@ -304,6 +307,6 @@ document.addEventListener('keydown', e => {
     if (e.key.toLowerCase() === 'g') { e.preventDefault(); if (typeof openAllPages === 'function') openAllPages(); return; }   // G then G: All pages (16-pages.js)
     const k = _G_KEYS[e.key.toLowerCase()];
     const v = typeof k === 'function' ? k() : k;
-    if (v) { e.preventDefault(); if (typeof navVia === 'function') navVia('chrome'); setView(v); }
+    if (v) { e.preventDefault(); if (typeof navVia === 'function') navVia('chrome'); setView(v); if (typeof gameMark === 'function') gameMark('gkey', e.key.toLowerCase()); }   // achievements: which G shortcuts were used
   }
 });

@@ -113,7 +113,7 @@ function imapErrorView(err, screen) {
     case 'APP_PASSWORD_NEEDED': return v('You need an app password', 'password', { showSteps: true });
     case 'TWO_STEP_NEEDED': return v('Turn on two-step verification first', 'password', { showSteps: true });
     case 'IMAP_DISABLED': return v('Email access for apps is switched off', 'password', { showSteps: true });
-    case 'IMAP_UNREACHABLE': return v('OpenDash could not reach the mail server', 'server', { openServer: true });
+    case 'IMAP_UNREACHABLE': return v('Freeflo could not reach the mail server', 'server', { openServer: true });
     case 'IMAP_NOT_TRUSTED': return v('The connection could not be checked', 'server', { openServer: true });
     case 'IMAP_NOT_SECURE': return v('The connection is not secure', 'server', { openServer: true });
     case 'BRIDGE_NOT_RUNNING': return v('Proton Mail Bridge is not running', null, { showSteps: true });
@@ -121,7 +121,7 @@ function imapErrorView(err, screen) {
     case 'USE_ONE_CLICK': return v('Use the one-click button', 'email', { redirect: (err && err.retryProvider) || (/google|gmail/i.test(text) ? 'google' : 'microsoft') });
     case 'COMING_SOON': return v('Coming soon', 'email');
     case 'BAD_REQUEST': return v('Check what you typed', /server/i.test(text) ? 'server' : /address/i.test(text) ? 'email' : 'password', { openServer: /server|port/i.test(text) });
-    case 'NETWORK': return v('OpenDash is not answering', null, { text: 'OpenDash itself did not answer. Check it is still running, then try again.' });
+    case 'NETWORK': return v('Freeflo is not answering', null, { text: 'Freeflo itself did not answer. Check it is still running, then try again.' });
     default: return v('That did not work', null);
   }
 }
@@ -133,9 +133,9 @@ function imapDoneView(result, screen) {
   const mail = (r.results || []).find((x) => x.feature === 'mail');
   const email = (r.account && r.account.email) || '';
   const lines = [n == null ? `${email} is connected.` : `${email} is connected. Your inbox has ${n === 1 ? '1 message' : n.toLocaleString('en-GB') + ' messages'}.`];
-  if (mail && mail.ok) lines.push(mail.count ? `The last two weeks of mail (${mail.count}) are now in OpenDash.` : 'There is no mail from the last two weeks yet. New mail appears here on its own.');
-  else if (mail && !mail.ok) lines.push('Reading your mail needs another try. OpenDash tries again on its own.');
-  lines.push('OpenDash only reads. It never sends, changes or deletes your mail.');
+  if (mail && mail.ok) lines.push(mail.count ? `The last two weeks of mail (${mail.count}) are now in Freeflo.` : 'There is no mail from the last two weeks yet. New mail appears here on its own.');
+  else if (mail && !mail.ok) lines.push('Reading your mail needs another try. Freeflo tries again on its own.');
+  lines.push('Freeflo only reads. It never sends, changes or deletes your mail.');
   const cal = (screen && screen.calendar) || { ics: false };
   const short = screen && screen.id && screen.id !== 'other' && screen.name ? screen.name.replace(/ Mail$/, '') + ' ' : '';
   return {

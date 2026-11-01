@@ -740,7 +740,7 @@ function _hhPaintWelcome(root, m) {
         <li class="hh-stp${cal ? ' done' : ''}"><span class="no">${cal ? icon('check', 'i-sm') : '2'}</span><b>Connect a calendar</b><p>Read-only. Your events appear in Today’s schedule with their own scenes.</p>
           <button type="button" class="btn btn-secondary btn-sm" data-act="cal">${icon('calendar-plus')}<span>${cal ? 'Calendar connected' : 'Connect calendar'}</span></button></li>
         <li class="hh-stp"><span class="no">3</span><b>Or explore with demo data</b><p>A realistic week of made-up tasks, people and money. Reset it later in Settings › Data.</p>
-          <button type="button" class="btn btn-ghost btn-sm" data-act="demo">${icon('sparkles')}<span>Load demo data</span></button></li>
+          <button type="button" class="btn btn-ghost btn-sm" data-act="demo">${icon('sparkles')}<span>Try it with example data</span></button></li>
       </ol>
     </div>`;
   _hhPaintWx(root);
@@ -767,7 +767,7 @@ function _hhPaintWelcome(root, m) {
       location.hash = '#view=home';
       location.reload();
     } catch (e) {
-      demo.disabled = false; demo.querySelector('span').textContent = 'Load demo data';
+      demo.disabled = false; demo.querySelector('span').textContent = 'Try it with example data';
       toastError('load demo data', e);
     }
   };

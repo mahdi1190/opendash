@@ -1,6 +1,6 @@
 # Connections
 
-OpenDash works fully offline. Connections switch on the smart parts: the
+Freeflo works fully offline. Connections switch on the smart parts: the
 assistant, calendar and email, bank sync and more. Everything is optional, and
 everything external is used **read-only**.
 
@@ -19,15 +19,17 @@ the page and at most once an hour; *Check again* runs one now.
 - [Calendars from an iCal link](#calendars-from-an-ical-link)
 - [Bank CSV files](#bank-csv-files)
 - [GitHub and Google Drive in Files & links](#github-and-google-drive-in-files--links)
-- [Your own Claude using OpenDash (MCP)](#your-own-claude-using-opendash-mcp)
+- [Your own Claude using Freeflo (MCP)](#your-own-claude-using-opendash-mcp)
 - [Google accounts (Gmail and Google Calendar, without Claude)](#google-accounts-gmail-and-google-calendar-without-claude)
 - [Troubleshooting](#troubleshooting)
 
 ## How it fits together
 
 ```
- OpenDash (this computer)
+ Freeflo (this computer)
    │
+   ├── email and calendar accounts (Microsoft, Google, other email by app
+   │     password) ── read directly by Freeflo, no AI involved, read-only
    ├── Claude Code CLI ("claude"), signed in to YOUR Claude account
    │     ├── the assistant, summaries, suggestions (no tools by default)
    │     └── MCP connectors you set up in Claude: Gmail, Google Calendar,
@@ -35,13 +37,15 @@ the page and at most once an hour; *Check again* runs one now.
    │
    ├── iCal links ── fetched directly, no AI involved
    ├── direct bank and wallet connections (Monzo, Plasma One, Enable Banking)
-   │     ── read directly by OpenDash, no AI involved, read-only
+   │     ── read directly by Freeflo, no AI involved, read-only
    └── bank CSV files ── imported directly, no connection needed
 ```
 
-OpenDash never asks for, sees or stores a password for Claude, Google or your
-bank. Sign-in happens on claude.ai, in Claude's own window or on your bank's
-own page. The direct bank connections are the one place OpenDash keeps a
+Freeflo never asks for, sees or stores a password for Claude, Microsoft,
+Google or your bank. Sign-in happens on claude.ai, in Claude's own window, on
+Microsoft's or Google's own page, or on your bank's own page. (For *Other
+email*, you make an app password just for Freeflo; it stays on this
+computer.) The direct bank connections are the one place Freeflo keeps a
 credential: the Monzo client and sign-in you create, or your Enable Banking key
 file. They stay on this computer, in its private folder outside the data
 folder (`secrets/fin/` there, see [INSTALL.md](INSTALL.md)), are never shown
@@ -52,14 +56,16 @@ secret somewhere safe.
 
 ## Email and calendar accounts
 
-There is no OpenDash account to create. Instead, add the email and calendar
+There is no Freeflo account to create. Instead, add the email and calendar
 accounts you already have, as many as you like, side by side: a personal
 Hotmail, a personal Gmail and a work Outlook, for example.
 
 At the top of **Connections**, under *Your email and calendar accounts*:
 
+<!-- media: Connections, "Your email and calendar accounts" with a Microsoft and a Google account connected -->
+
 > **Coming soon in some copies.** The one-click Microsoft and Google buttons
-> need an app registration that the copy of OpenDash ships with. When a copy
+> need an app registration that the copy of Freeflo ships with. When a copy
 > has none (no built-in app, nothing in the environment or `.env`, and no app
 > of your own), the buttons are greyed out with **Coming soon**. They switch
 > on by themselves as soon as an app is there. Until then a Gmail address can
@@ -69,31 +75,31 @@ At the top of **Connections**, under *Your email and calendar accounts*:
 
 - **+ Add Microsoft account**: type your email address (Hotmail, Outlook, Live,
   or your work or school email) and press *Continue to Microsoft*. Microsoft
-  opens in a new tab: sign in there and say yes. Come back to OpenDash: the
-  account appears with *Connected*. OpenDash works out from the address whether
+  opens in a new tab: sign in there and say yes. Come back to Freeflo: the
+  account appears with *Connected*. Freeflo works out from the address whether
   it is a personal or a work account; if it guessed wrong, press *This is a
   work or school account* (or *personal*) before continuing.
 - **+ Add Google account**: type your Gmail or Google Workspace address, tick
   *Read your email* and/or *See your calendars*, and press *Continue to Google*.
   Google first says "Google hasn't verified this app": press *Advanced*, then
-  *Go to OpenDash (unsafe)* (see [Google accounts](#google-accounts-gmail-and-google-calendar-without-claude)).
+  *Go to Freeflo (unsafe)* (see [Google accounts](#google-accounts-gmail-and-google-calendar-without-claude)).
 - **+ Other email**: Yahoo, iCloud, AOL, GMX, Zoho, Fastmail, Proton (through
   Proton Mail Bridge) and most other email services. Type your address and
-  press *Next*: OpenDash recognises the service and shows its own steps to make
-  an **app password** (a second password your provider makes just for OpenDash,
-  so OpenDash never needs your real password; you can delete it on the
+  press *Next*: Freeflo recognises the service and shows its own steps to make
+  an **app password** (a second password your provider makes just for Freeflo,
+  so Freeflo never needs your real password; you can delete it on the
   provider's website at any time). A button opens the right page. Paste the
-  app password and press *Test connection*. If it does not work, OpenDash says
+  app password and press *Test connection*. If it does not work, Freeflo says
   why in plain words (the wrong password, IMAP switched off, two-step
   verification needed first) and what to do. A Gmail or Outlook address is
   sent to the one-click buttons instead, while those are switched on.
-  Afterwards OpenDash offers *Add a calendar link* with the steps for that
+  Afterwards Freeflo offers *Add a calendar link* with the steps for that
   service (iCloud: a public calendar link; Yahoo: the calendar's ICS link).
   - **Gmail, while + Add Google account says Coming soon**: Gmail works here
-    with an app password (OpenDash reads `imap.gmail.com`, port 993). Google
+    with an app password (Freeflo reads `imap.gmail.com`, port 993). Google
     makes app passwords only with **2-Step Verification** on: turn it on at
     myaccount.google.com/signinoptions/two-step-verification, then make the
-    password at **myaccount.google.com/apppasswords** (name it OpenDash) and
+    password at **myaccount.google.com/apppasswords** (name it Freeflo) and
     paste it. Afterwards *Add your Google Calendar too?* shows where to find
     the calendar's **Secret address in iCal format** (Google Calendar >
     Settings > your calendar > *Integrate calendar*). A Google Workspace
@@ -105,7 +111,7 @@ At the top of **Connections**, under *Your email and calendar accounts*:
     Your Outlook calendar can come in now: Outlook on the web > Settings >
     Calendar > *Shared calendars* > *Publish a calendar* ("Can view all
     details"), copy the ICS link and press *Add a calendar link*. The app password is kept on this
-  computer only, never in the data folder; OpenDash only reads mail and never
+  computer only, never in the data folder; Freeflo only reads mail and never
   marks it as read. If the app password stops working, the account says
   *Sign in again*: press *Paste a new app password*.
 - **Add a calendar link**: any calendar you can share as a link (see
@@ -114,7 +120,7 @@ At the top of **Connections**, under *Your email and calendar accounts*:
 Each account shows **Mail ✓ Calendar ✓** (press one to stop or start reading
 it), when it was last synced, and **Check now**. From its ··· menu you can
 **Pause** it (nothing new is read; what was already read stays) or **Remove**
-it (OpenDash forgets its mail and events; your account itself is not changed).
+it (Freeflo forgets its mail and events; your account itself is not changed).
 
 What the words on an account mean:
 
@@ -123,14 +129,14 @@ What the words on an account mean:
   a password change). Press *Sign in again*.
 - **Waiting for your organisation**: your work or school only lets apps in
   after an administrator says yes, once. Press *Ask for approval*: if you look
-  after your organisation's Microsoft 365 yourself, approve OpenDash there; if
+  after your organisation's Microsoft 365 yourself, approve Freeflo there; if
   not, *Email my IT team* writes the email for you. When it is approved, press
   *Try again*.
 - **Paused**: you paused it.
 - **Checked on your other computer**: another computer of yours reads this
   account; what it reads appears here too.
 
-OpenDash only reads: it never sends, changes or deletes mail or events, and
+Freeflo only reads: it never sends, changes or deletes mail or events, and
 your password stays with Microsoft or Google. The sign-in itself stays on the
 computer where you made it (never in a synced data folder); on another computer
 you sign in again.
@@ -141,7 +147,7 @@ you sign in again.
 people, AI summaries in the brief and stories, the auto-link judge, and every
 connector below.
 
-Press **Link Claude** in Setup or Connections. OpenDash looks for an existing
+Press **Link Claude** in Setup or Connections. Freeflo looks for an existing
 local Claude Code installation first, reuses it, checks sign-in, and adds its
 MCP tools as part of the same connection. If Claude Code is missing, the button
 runs Anthropic's official native installer. Sign-in takes place in your browser;
@@ -154,14 +160,15 @@ you select. A free claude.ai account alone does not provide Claude Code access.
 The local link enables AI inside the dashboard; you do not need to chat in
 Claude's website. For optional browser chat, **Open connected Claude** starts
 an official Remote Control terminal and opens `claude.ai/code`. Complete any
-Claude terminal confirmations, then select **OpenDash** in the browser. Keep
+Claude terminal confirmations, then select **Freeflo** in the browser. Keep
 the terminal running. Remote Control requires an eligible subscription and
-may be restricted by your organization. OpenDash does not treat launching a
+may be restricted by your organization. Freeflo does not treat launching a
 terminal as proof that the browser session is connected.
 
 If the automatic setup needs attention, the manual fallback is:
 
-1. **Install Claude Code**:
+1. **Install Claude Code** by following Anthropic's official setup page,
+   <https://code.claude.com/docs/en/setup>. In short:
 
    - Windows (PowerShell):
 
@@ -179,15 +186,15 @@ If the automatic setup needs attention, the manual fallback is:
    `claude` in a terminal), or run `claude` yourself and follow the prompts.
 3. Press *Check again*. The card turns green when Claude answers.
 
-Calls go through your own Claude plan; OpenDash adds no cost of its own. Each
+Calls go through your own Claude plan; Freeflo adds no cost of its own. Each
 call takes a few seconds (the CLI starts up each time).
 
 Models: Settings > AI picks the model for quick jobs and for the assistant,
-from the models OpenDash allows (`claude-opus-5-5`, `claude-sonnet-5`,
+from the models Freeflo allows (`claude-opus-5-5`, `claude-sonnet-5`,
 `claude-haiku-4-5`) and an effort level (low, medium or high).
 
 If Claude Code is installed somewhere unusual, set the environment variable
-`CLAUDE_CLI_PATH` to the `claude` executable before starting OpenDash.
+`CLAUDE_CLI_PATH` to the `claude` executable before starting Freeflo.
 
 ## Gmail, Google Calendar and your bank (claude.ai connectors)
 
@@ -200,11 +207,11 @@ If Claude Code is installed somewhere unusual, set the environment variable
 1. On the card, press *Sign in & verify* (or go to claude.ai >
    Customize > Connectors yourself).
 2. Connect the service there, signing in with that service.
-3. Return to OpenDash. A user-started sign-in verifies and updates the source
+3. Return to Freeflo. A user-started sign-in verifies and updates the source
    automatically; a failed read stays visible for troubleshooting.
 
 The connectors live in your Claude account; Claude Code on this computer can
-use them once you are signed in. OpenDash only ever lets them use **read**
+use them once you are signed in. Freeflo only ever lets them use **read**
 tools: it can look things up, never send, change or delete anything.
 
 If a card says the connector "needs you to sign in again", run `claude` in a
@@ -217,9 +224,9 @@ Finances. Open it from Connections, from *Connect a bank or wallet* on the
 Finances welcome screen, from Home's money card, or with Ctrl+K "connect a
 bank".
 
-Every connection is **read-only**: OpenDash can read balances and
+Every connection is **read-only**: Freeflo can read balances and
 transactions and can never move money, make a payment or move money in or out
-of a pot. Each provider has a fixed list of the requests OpenDash may make,
+of a pot. Each provider has a fixed list of the requests Freeflo may make,
 and anything else is refused before it leaves your computer.
 
 ### Your accounts
@@ -252,20 +259,56 @@ takes.
 | **Monzo** | your Monzo current and joint accounts, pots (balances only) and transactions with shop names and Monzo's categories | free | the Monzo app and a free Monzo developer client |
 | **Other UK and EU banks** (Enable Banking) | the banks Enable Banking supports in your country | free for your own accounts | a free Enable Banking application and its key file |
 | **Import a CSV** | any bank that lets you download a statement | free | a CSV export |
+| **A credit card** | any card: connected if Enable Banking lists it, otherwise from a file | free | your card's website login |
+
+### Credit cards
+
+American Express and most card companies have no personal connection like
+Monzo's. *Add a credit card* (here, or in Money > Your data) shows both ways on
+one screen:
+
+- **Import a file.** Works for every card. Sign in on the card's website, find
+  your statements or activity, choose Download or Export, then CSV, and bring
+  the file in.
+- **Connect it, if your card is listed.** Through Enable Banking. Which cards it
+  lists changes, and many are not listed. Freeflo checks the live list once
+  Enable Banking is set up and says plainly when yours is not.
+
+Once a card is here:
+
+- **What you buy** counts as spending on the day you buy it. **Money back** takes
+  spending down. It is never income.
+- **Your payment to the card** counts as moving your own money on both sides: not
+  spending, and not income. Freeflo knows the usual names (AMEX, American
+  Express, Barclaycard, MBNA, Capital One and others) even if your rules are old.
+- **A card it can't see.** If your bank shows payments to a card that isn't here,
+  they still don't count as spending, and you see *You pay a card we can't see:
+  add it to see what you bought*.
+- **What you owe** is kept apart from the money you can spend. A connected card
+  takes it from your bank (Freeflo shows the size of the debt, whichever sign
+  the bank uses). For a file, type it once, or Freeflo reads it from the file if
+  the file says; new files keep it up to date.
+- **Safe to spend** keeps back the next payment if you pay from your current
+  account. Choose *In full*, *The minimum* or *A fixed amount*, and the day it is
+  due. Bills charged to the card are left out of the bills before payday, because
+  they only leave your account as part of that payment.
+- **Your data** lists it with a *Credit card* label, its tick and its date
+  cut-off, like any other source. A card from a file gets a calm reminder after
+  two weeks, with the steps for a new file.
 
 ### Plasma One (one click)
 
 1. Press *Paste address*. In Plasma One, open **Receive** and copy your
    address (it starts with `0x`).
-2. Paste it. OpenDash shows the balance and the last 30 days of transfers.
+2. Paste it. Freeflo shows the balance and the last 30 days of transfers.
 3. Press *Add wallet*. The first update brings in the whole history.
 
 An address is public, so it can only ever be read. **Never paste your recovery
-phrase or a private key anywhere**: OpenDash refuses anything that looks like
+phrase or a private key anywhere**: Freeflo refuses anything that looks like
 one and clears the box. Amounts are converted from USD to pounds at each day's
 rate (the dollar amount stays in the description). Card purchases are settled
 on the blockchain, so they show as "Plasma One payment" without the shop's
-name, and some may be combined. OpenDash reads the address through
+name, and some may be combined. Freeflo reads the address through
 Routescan's free public API (Plasmascan's data); a free Routescan key is
 optional.
 
@@ -276,18 +319,18 @@ create your own "client" once:
 
 1. Sign in at [developers.monzo.com](https://developers.monzo.com/) with your
    email. Monzo emails you a link and asks you to approve in the app.
-2. Open *Clients* > *New OAuth Client* and copy in the fields OpenDash shows
-   you: the name, the **Redirect URL** (it has your OpenDash port in it) and
+2. Open *Clients* > *New OAuth Client* and copy in the fields Freeflo shows
+   you: the name, the **Redirect URL** (it has your Freeflo port in it) and
    **Confidential** (needed so you stay signed in). Press *Submit*.
-3. Paste the **Client ID** and **Client secret** into OpenDash and press
+3. Paste the **Client ID** and **Client secret** into Freeflo and press
    *Connect Monzo*, then sign in on Monzo's page.
-4. **Open the Monzo app within 5 minutes and tap *Allow access*.** OpenDash
+4. **Open the Monzo app within 5 minutes and tap *Allow access*.** Freeflo
    counts down. During those 5 minutes Monzo lets your whole history be read;
    after that only the last 90 days. If you miss the window, Monzo is still
    connected with 90 days, and *Get full history* lets you try again.
 
 Monzo's developer API is for your own account only. Only one sign-in is active
-at a time, so signing in somewhere else with the same client signs OpenDash
+at a time, so signing in somewhere else with the same client signs Freeflo
 out (the account then shows *Needs sign-in*).
 
 ### Other UK and EU banks: Enable Banking (about 10 minutes)
@@ -296,22 +339,22 @@ Enable Banking connects to banks through open banking. Its free "restricted"
 mode reads the accounts you link yourself, for personal use.
 
 1. Press *Is my bank supported?* and search. Until you have an application,
-   OpenDash cannot check Enable Banking's live list, and it says so.
+   Freeflo cannot check Enable Banking's live list, and it says so.
 2. Sign up at [enablebanking.com](https://enablebanking.com/) (free). Under
-   *API applications* press *Add* and fill in the fields OpenDash shows you,
+   *API applications* press *Add* and fill in the fields Freeflo shows you,
    including the return address. Keep "Generate in the browser": submitting
    downloads a `.pem` key file.
-3. In OpenDash, choose the key file and paste the **Application ID**. OpenDash
+3. In Freeflo, choose the key file and paste the **Application ID**. Freeflo
    tests them with one read before saving. The key never leaves this computer:
-   it only signs OpenDash's own requests.
+   it only signs Freeflo's own requests.
 4. Choose your bank (personal or business where both exist), then sign in on
    your bank's own page.
 5. When the bank sends you back, the browser shows an address starting with
    `https://localhost/opendash-eb-callback`. The page does not load: that is
    expected. **Copy the whole address from the address bar** and paste it
-   into OpenDash.
+   into Freeflo.
 
-Banks only allow access for a limited time (often 90 or 180 days). OpenDash
+Banks only allow access for a limited time (often 90 or 180 days). Freeflo
 shows the date and reminds you before it ends; *Sign in again* keeps your
 accounts and history. Automatic updates run at most 4 times a day per bank
 (*Sync now* always runs). Which UK banks Enable Banking covers has not been
@@ -345,18 +388,18 @@ you like, each with its own accounts:
    claude mcp add --scope user acme-bank -- npx some-bank-mcp-server
    ```
 
-3. OpenDash lists the server's tools and **ticks only the ones that read**.
+3. Freeflo lists the server's tools and **ticks only the ones that read**.
    Tools that could change, send or delete anything are locked and never used.
 4. A short test fetch runs before you save.
 
 Each source, calendar, mailbox or bank account can be switched off on its own.
 Calendars that belong to other people (named after an address that is not one
-of yours) start hidden; add your own addresses in Settings > Profile >
+of yours) start hidden; add your own addresses in Settings > Region & language >
 *Your email addresses* so your calendars are recognised. If you show one, its
 events appear in the Calendar only; Home, the brief and the stories keep to
 your own calendars and the events you are invited to.
 
-Only add MCP servers you trust: OpenDash restricts them to read tools, but
+Only add MCP servers you trust: Freeflo restricts them to read tools, but
 the server itself runs on your computer or your provider's.
 
 ## Calendars from an iCal link
@@ -371,7 +414,7 @@ Many calendars publish a private "iCal" address (it ends in `.ics`):
 
 In Connections > Data sources, choose *Add a source* > *Calendars* >
 *An iCal link*, paste the address (`webcal://` links work too), then give it a
-name and a colour. A test fetch runs before you save. OpenDash fetches the
+name and a colour. A test fetch runs before you save. Freeflo fetches the
 calendar directly (https only, no AI involved) and the address stays on your
 computer. Treat a secret address like a password: anyone with it can read that
 calendar.
@@ -384,6 +427,18 @@ on the page). Exports with Date, Amount (or Money in / Money out) and
 Description columns work; overlapping exports are fine, duplicates are
 skipped.
 
+**Credit card files.** Card exports often list purchases as positive and
+payments as negative, the opposite of a bank file. Freeflo spots a likely card
+file (by its columns, its name, its "payment received" rows, or most of its shops
+reading as money in) and shows what it read before importing: *We read these as
+money you spent: Tesco £12.40. Is that right?* One tap flips them, and the choice
+is remembered for that card. Column names are matched loosely (Date, Description
+or Merchant, Amount or Billing amount, Debit and Credit, "CR" after an amount), so
+the exact layout doesn't matter. If you got it wrong later, Money > Your data has
+*Money in and out are the wrong way round* in the card's More menu, with Undo.
+A file dropped straight into the Finances folder can't ask: it uses your last
+choice, or Freeflo's best reading when the signs of a card are strong.
+
 ## GitHub and Google Drive in Files & links
 
 - **GitHub**: *Show open PRs and issues* on an attached repository uses the
@@ -394,9 +449,9 @@ skipped.
 
 Both stay greyed out until those connections work.
 
-## Your own Claude using OpenDash (MCP)
+## Your own Claude using Freeflo (MCP)
 
-The **OpenDash MCP** card is the other direction: it lets Claude Code, T3 Code
+The **Freeflo MCP** card is the other direction: it lets Claude Code, T3 Code
 or Claude Desktop read and change your tasks. See [MCP.md](MCP.md).
 
 ## Google accounts (Gmail and Google Calendar, without Claude)
@@ -407,22 +462,22 @@ or Claude Desktop read and change your tasks. See [MCP.md](MCP.md).
 from Google, read-only, with no Claude in between. Add as many Google accounts
 as you like, next to your Microsoft ones.
 
-1. Type the address and tick what OpenDash may read: **Read your email** (who
+1. Type the address and tick what Freeflo may read: **Read your email** (who
    wrote, the subject and Google's short preview; never the whole message) and
    **See your calendars**. Each is separate; tick one or both.
-2. OpenDash explains the next screen first. Google shows **"Google hasn't
+2. Freeflo explains the next screen first. Google shows **"Google hasn't
    verified this app"**: Google reviews apps that read Gmail through a paid
-   security assessment, and this copy of OpenDash runs on your own computer and
-   has not been through it. Click **Advanced**, then **Go to OpenDash
+   security assessment, and this copy of Freeflo runs on your own computer and
+   has not been through it. Click **Advanced**, then **Go to Freeflo
    (unsafe)**, then tick the same boxes and *Continue*.
-3. Back in OpenDash the account shows *Connected*; mail and events arrive in a
+3. Back in Freeflo the account shows *Connected*; mail and events arrive in a
    moment. Nothing is ever sent, changed, labelled or deleted.
 
 The sign-in stays on this computer (never in the data folder). Remove an
-account in Connections, or remove OpenDash's access at any time at
+account in Connections, or remove Freeflo's access at any time at
 myaccount.google.com/permissions; the account then says *Sign in again*.
 
-**Advanced: your own Google app.** If this copy of OpenDash has no built-in
+**Advanced: your own Google app.** If this copy of Freeflo has no built-in
 Google app, or you prefer your own Google Cloud project: create a project,
 enable the Gmail API and the Google Calendar API, set up the consent screen
 (External, then *Publish app*, so sign-ins do not stop after 7 days), add the
@@ -434,7 +489,28 @@ in the same place (*Advanced: use your own Microsoft app*).
 
 **Older setups.** Earlier versions had one direct Google connection with your
 own client file in `data/secrets/`. It is moved into one Google account
-automatically (same sign-in, same Google app) the first time OpenDash starts.
+automatically (same sign-in, same Google app) the first time Freeflo starts.
+
+## Spotify (songs for friends, favourites and top artists)
+
+Spotify is optional. Link it to search music from inside Freeflo, show your favourites and top artists on your card, and send friends songs. A friend who only *receives* a song needs nothing: it opens in Spotify.
+
+**What you need:** a Spotify account with **Premium** (Spotify requires the owner of an app in Development Mode to have it), and about two minutes.
+
+1. Open **Connections > Spotify > Set up Spotify**. It lists the steps and the exact address to copy.
+2. Sign in at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard) and choose **Create app**. Any name and description. Tick **Web API**. For the **Redirect URI** paste the address Freeflo shows, for example `http://127.0.0.1:4173/api/spotify/callback` (Spotify no longer accepts `localhost`; if you run Freeflo on another port, add that address too).
+3. Open the app's **Settings**, copy the **Client ID** and paste it into Freeflo. You do not need the client secret, and Freeflo never asks for it.
+4. Choose **Sign in with Spotify**. A new tab opens on Spotify; allow access and come back.
+
+**What Freeflo can do:** search songs, albums, playlists and artists (or paste a Spotify link); read your top artists, top songs and playlists; and, on a Spotify app you have open (Premium), start a song or add it to your queue. It never changes your library or playlists.
+
+**Friends and limits.** Spotify lets a Development Mode app have up to **5 people**, each added under *User management* in the dashboard (otherwise they get a "refused" message when they sign in). The simplest way for a friend to search too is to make their own app the same way. Spotify also returns 10 results per page here (Show more asks for the next 10).
+
+**Using your app for friends.** The Client ID is not a secret: it just says which app is asking. Everyone still signs in with their own Spotify account, but Spotify lets a Development Mode app serve only 5 people (you and 4 more, each added by hand), and open access is only for organisations with a large audience. So the simplest way to share is: a friend opens *Set up Spotify*, pastes your Client ID instead of making an app, and signs in; you add their name and Spotify email under *User management* in your dashboard. Your set-up has the Client ID ready to copy under *Let friends use your Spotify app*. If your Premium lapses, the app stops working for everyone using it.
+
+**Covers.** The pictures come through your own Freeflo, by id, and are kept on this computer. While Spotify is linked they are on. For a song a friend sent you when you have not linked Spotify, *Show cover art for songs friends send* (in the set-up) asks Spotify for just that picture; off, you see a plain tile and the link still works.
+
+**If something is off:** *Spotify did not accept this Client ID* means a typo (it is 32 letters and numbers). *Spotify refused this account* means the person signing in is not on the app's User management list, or the owner's Premium has lapsed. *Spotify can't see an open Spotify app* means Play and Queue found no Spotify app at all: open Spotify on your phone, computer or web player and play anything for a second. (An app that is open but idle is found and woken by Freeflo; *Check where it can play* in the set-up shows what Spotify can see.) Sign-in lasts about six months; Freeflo asks you to sign in again when it ends.
 
 ## Troubleshooting
 
@@ -443,7 +519,7 @@ automatically (same sign-in, same Google app) the first time OpenDash starts.
 | Claude card: "not installed" | install Claude Code (above), then *Check again*; or set `CLAUDE_CLI_PATH` |
 | Claude card: "not signed in" | run `claude` in a terminal and sign in |
 | A connector "needs you to sign in again" | `claude`, then `/mcp`, pick the connector |
-| Monzo shows *Needs sign-in* | Monzo signed OpenDash out (another sign-in with the same client, or a client that is not Confidential): *Sign in again* on the account |
+| Monzo shows *Needs sign-in* | Monzo signed Freeflo out (another sign-in with the same client, or a client that is not Confidential): *Sign in again* on the account |
 | Monzo connected with only 90 days | the app approval came after Monzo's 5-minute window: *Get full history*, then approve in the app straight away |
 | An Enable Banking bank's *Sign in again by* date is red | the bank's access ends soon: *Sign in again* on the connection |
 | Enable Banking says the key was not accepted | the application ID and key file do not match, or the app is not active yet on enablebanking.com |

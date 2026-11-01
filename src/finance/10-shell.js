@@ -24,12 +24,13 @@
         const retry = h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { R.err = null; paint(); load(); } }, ic('rotate-ccw'), h('span', { text: 'Try again' }));
         // @p2 one clear sentence: the server-down message already says what to do (no "..again.. The Finances view needs").
         const why = String(R.err || 'Something went wrong').replace(/[.\s]+$/, '');
-        root.append(emptyState({ icon: R.errDown ? 'unplug' : 'circle-alert', title: "Couldn't load your finances", text: R.errDown ? `${why}.` : `${why}. If OpenDash isn’t running, start it, then come back.`, actions: [retry] }));
+        root.append(emptyState({ icon: R.errDown ? 'unplug' : 'circle-alert', title: "Couldn't load your finances", text: R.errDown ? `${why}.` : `${why}. If Freeflo isn’t running, start it, then come back.`, actions: [retry] }));
       } else if (mode === 'unavailable') {
         root.append(emptyState({ icon: 'wallet', title: 'Finances are not set up', text: 'Finances isn’t set up on this computer.', actions: [h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => (window.Connections && Connections.open ? Connections.open('money') : setView('connections')) }, ic('plug'), h('span', { text: 'Connections > Money' }))] }));
       } else if (mode === 'empty') {
         root.append(buildTop());
-        root.append(buildWelcome());
+        // Payments are stored but none is counted (Your data): the list, not "connect your bank".
+        root.append(R.data.meta && R.data.meta.storeCount > 0 ? ydStandalone() : buildWelcome());
         paintTop(); paintUpdate();
       } else {
         buildReady(root);
@@ -76,7 +77,7 @@
     const steps = h('ol', { class: 'fv-welcome-steps' },
       [['download', 'Export', "Download a CSV of your transactions from your bank's website (any date range; overlaps are fine)."],
         ['upload', 'Import', 'Drop it here or press Import a CSV. Duplicates are skipped and every transaction is categorised.'],
-        ['chart-column', 'Explore', 'Spending, categories, merchants, recurring payments and budgets, all on this computer.']]
+        ['chart-column', 'Explore', 'Spending, categories, shops, regular bills and budgets, all on this computer.']]
         .map(([i, t, d]) => h('li', null, h('span', { class: 'fv-step-ic' }, ic(i)), h('b', { text: t }), h('span', { text: d }))));
     const el = emptyState({ icon: 'wallet', cls: 'fv-welcome', title: 'Bring in your transactions',
       text: 'Import a CSV from your bank, or connect your bank (read-only).',
@@ -221,26 +222,35 @@
     if (R.importing) return;
     R.importing = true; R.startErr = null; paintSyncBtn(); paintUpdate();
     const before = txKeySet(R.model) || new Set();
-    let added = 0, rows = 0, last = null; const errs = [];
+    let added = 0, rows = 0, last = null, newCard = null; const errs = [], left = [];
     try {
       for (const f of files) {
         if (!/\.csv$/i.test(f.name)) { errs.push(`${f.name}: only .csv files can be imported`); continue; }
         if (f.size > 5 * 1024 * 1024) { errs.push(`${f.name}: larger than 5 MB`); continue; }
         const data = b64(await f.arrayBuffer());
-        let r = await api('/api/finance/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, data }) });
+        const send = (extra) => api('/api/finance/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, data, ...extra }) });
+        let r = await send({});
+        // It looks like a credit card: which way round are its amounts? Nothing is imported until the person says (45-cards.js).
+        let card;
+        if (r.ok && r.body.needsCardCheck) {
+          card = await cdFileCheck(f.name, r.body.preview);
+          if (card === null) { left.push(f.name); continue; }
+          r = await send({ card });
+        }
         // The file looks like an account already synced: importing it would count it twice. Ask.
         if (r.status === 409 && r.body.code === 'LOOKS_LIKE_DUPLICATE') {
           const go = typeof confirmDialog === 'function'
             ? await confirmDialog({ title: 'Import ' + f.name + ' anyway?', text: r.body.error, confirmLabel: 'Import anyway', danger: true })
             : window.confirm(r.body.error);
           if (!go) { errs.push(`${f.name}: not imported (it looks like an account that is already here)`); continue; }
-          r = await api('/api/finance/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: f.name, data, force: true }) });
+          r = await send({ force: true, ...(card !== undefined ? { card } : {}) });
         }
-        if (!r.ok) { errs.push(`${f.name}: ${r.body.error || 'HTTP ' + r.status}`); continue; }
+        if (!r.ok) { errs.push(`${f.name}: ${netPlainError(r.body.error || 'HTTP ' + r.status)}`); continue; }
         added += Number(r.body.imported) || 0; rows += Number(r.body.rows) || 0; last = r.body;
+        if (r.body.card && r.body.card.isNew) newCard = r.body.card;
         for (const e of r.body.errors || []) errs.push(e);
       }
-    } catch (e) { errs.push('Could not reach the OpenDash server. Is it still running?'); }
+    } catch (e) { errs.push('Could not reach the Freeflo server. Is it still running?'); }
     R.importing = false;
     if (last && last.analysis) {
       R.lastImport = { at: new Date(Date.now()).toISOString(), added, rows, errs };   // an instant
@@ -252,6 +262,9 @@
     paintUpdate();
     if (last) syncToast(syncDiff(before, R.model ? R.model.tx : []), added, 'import');
     else if (errs.length) toast(errs[0], { bad: true });
+    else if (left.length) toast('Left out. Nothing was imported.', { icon: 'circle-check' });
+    YD.loadedFor = 0;
+    if (newCard) cdOweDialog({ key: newCard.key, name: newCard.name, owed: newCard.balance ? newCard.balance.amount : null, asOf: newCard.balance ? newCard.balance.date : null, from: newCard.balance ? newCard.balance.from : null, pay: newCard.pay, typed: newCard.balance }, { after: true });
   }
   // Drop a CSV anywhere on the Finances page.
   function wireDrop(root) {
@@ -301,7 +314,7 @@
     if (a) {
       const st = staleness(a), days = st.days;
       const rm = R.data && R.data.meta && R.data.meta.remote && R.data.meta.remote.name && !R.data.meta.remote.trial ? R.data.meta.remote : null;
-      msg = a.sample ? ['info', 'Sample data.', 'These figures are made up to show the layout. Import a CSV from your bank to see your own.']
+      msg = a.sample ? ['info', 'Sample data.', 'These figures are made up to show the layout.', h('button', { class: 'btn-link', type: 'button', text: 'Import a CSV from your bank', onclick: () => pickCsv() })]
         : days > 4 && rm ? ['triangle-alert', st.late.length ? lateText(st.late) : `Your data is ${days} days old.`, `Update bank asks ${rm.name} to update it${rm.online ? '' : ' when it is on'}.`]
           : st.late.length && bankOk() ? ['triangle-alert', lateText(st.late), '', h('button', { class: 'btn-link', type: 'button', text: 'Update now', onclick: () => startUpdate({}) })]
             : days > 4 && !(a.fetches && a.fetches.length) ? ['triangle-alert', `Your data is ${days} days old.`, bankOk() ? 'Sync your bank, or import a recent CSV export.' : 'Import a recent CSV export from your bank, or connect your bank to sync it.']
@@ -333,7 +346,7 @@
     const job = R.job || meta.job;
     const running = !!(job && job.state === 'running');
     const P = E.progress; P.innerHTML = ''; P.hidden = false;
-    if (R.startErr) { callout('danger', 'circle-x', "That didn't work.", ' ' + R.startErr, 'err:' + R.startErr); return; }
+    if (R.startErr) { callout('danger', 'circle-x', "That didn't work.", ' ' + netPlainError(R.startErr), 'err:' + R.startErr); return; }
     // The finance computer is off (04-data.js waitRemote): said calmly, the last copy stays on show.
     if (R.startNote && meta.remote && meta.remote.online) R.startNote = null;   // it is back
     if (R.startNote && R.dismissed !== 'away:' + R.startNote.at) {
@@ -349,7 +362,7 @@
       return;
     }
     if (running && R.lostServer) {   // @p2 the server stopped answering mid-sync (04-data.js startPolling)
-      callout('warn', 'unplug', "Lost touch with the OpenDash server.", h('span', { text: " The sync may still be running. This updates by itself when the server answers again; if OpenDash was closed, start it again (the OpenDash shortcut)." }));
+      callout('warn', 'unplug', "Lost touch with the Freeflo server.", h('span', { text: " The sync may still be running. This updates by itself when the server answers again; if Freeflo was closed, start it again (the Freeflo shortcut)." }));
       return;
     }
     if (running) {
@@ -381,7 +394,7 @@
     const warns = (r.warnings || []).length ? h('ul', { class: 'fv-warn-list' }, r.warnings.map(w => h('li', { text: w }))) : null;
     if (last.state === 'ok' && !warns) { R.quiet = (r.imported != null ? `Imported ${nf0.format(r.imported)} new` : 'Updated') + (last.at ? ` · ${agoText(last.at)}` : ''); P.hidden = true; return; }
     if (last.state === 'ok') callout('warn', 'triangle-alert', (imported || 'Updated') + (upto ? ', ' + upto : '') + '.', [h('span', { class: 'mute', text: when }), warns], key);
-    else if (last.state === 'warning') callout('warn', 'triangle-alert', "Couldn't fetch from your bank.", [' ' + (last.error || ''), imported ? h('div', { text: `${imported} from CSVs in the inbox folder${upto ? ', ' + upto : ''}.` }) : null, h('span', { class: 'mute', text: when }), warns], key);
-    else callout('danger', 'circle-x', 'Update failed.', [' ' + (last.error || 'Unknown error'), h('span', { class: 'mute', text: when }), warns], key);
+    else if (last.state === 'warning') callout('warn', 'triangle-alert', "Couldn't fetch from your bank.", [' ' + netPlainError(last.error || ''), imported ? h('div', { text: `${imported} from CSVs in the inbox folder${upto ? ', ' + upto : ''}.` }) : null, h('span', { class: 'mute', text: when }), warns], key);
+    else callout('danger', 'circle-x', 'The update didn’t finish.', [' ' + netPlainError(last.error || 'Something went wrong. Try again.'), h('span', { class: 'mute', text: when }), warns], key);
   }
 

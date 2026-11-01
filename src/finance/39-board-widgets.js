@@ -60,6 +60,21 @@
     },
   };
 
+  /* ---------- Your money plan ---------- */
+  BWR.moneyplan = {
+    update(cd, w) {
+      const box = bdBox(cd); const v = MPL.v;
+      cd.setSub('');
+      const go = () => setSection('budgets');
+      if (!v || !v.has) { box.append(h('p', { class: 'fvb-note', text: 'A few easy questions, and we work out what you take home and build a budget.' }), h('button', { type: 'button', class: 'btn btn-secondary btn-sm', text: 'Start your plan', onclick: go })); return; }
+      box.append(bdBig(gbp(v.budget.left), v.budget.left >= 0 ? 'left a month' : 'short a month', v.budget.left < 0 ? 'bad' : 'good'));
+      const top = Number(bwOpt(w, 'top')) || 2;
+      if (!v.flags.length) box.append(h('p', { class: 'fvb-plain', text: 'Nothing looks off against your bank this month.' }));
+      for (const f of v.flags.slice(0, top)) box.append(h('p', { class: 'fvb-line' }, amt(f.title)));
+      bdMore(cd, 'Open my plan', go);
+    },
+  };
+
   /* ---------- This month vs last ---------- */
   function bdMonthNumbers(M, q) {
     const today = M.anchor, mi = monthIdx(today), ms = monthStart(mi);
@@ -268,6 +283,19 @@
       text.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
     }, { align: 'end', width: 300 });
   }
+  // Owed to me (src/app/66-owed-*.js): the total, who owes most, and the way to start a split.
+  BWR.owed = {
+    update(cd, w, X) {
+      const box = bdBox(cd), O = window.Owed;
+      const s = O && O.summary ? O.summary() : null;
+      if (O && !s && O.load) O.load();
+      box.append(bdBig(gbp((s && s.owedToMe) || 0), 'owed to you'));
+      if (s && s.iOweCount) box.append(h('p', { class: 'fvb-line mute' }, 'You owe ', amt(gbp(s.iOwe))));
+      const line = O && O.briefLine ? O.briefLine({ askOnly: true }) : null;
+      if (line) box.append(line);
+      box.append(h('div', { class: 'fvb-acts' }, h('button', { type: 'button', class: 'fv-btn', onclick: () => O && O.split({}) }, ic('plus'), h('span', { text: 'Split a payment' })), h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => setView('owed') }, h('span', { text: 'See who' }), ic('chevron-right'))));
+    },
+  };
   BWR.bills = {
     update(cd, w, X) {
       const M = X.M; const box = bdBox(cd);
@@ -427,7 +455,7 @@
       for (const x of list.slice(0, X.size(w) === 's' ? 4 : 7)) {
         const t = x.t;
         ul.append(h('li', null, h('button', { type: 'button', class: 'fv-row fsym-host', onclick: () => openMerchant(t.m) }, C1.tileEl(t.m, t.c, 'sm'),
-          h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, fDayW(t.n), ' · ', ...x.why.map(y => h('span', { class: 'fvb-why', text: y })))),
+          h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, txPendTag(t), fDayW(t.n), ' · ', ...x.why.map(y => h('span', { class: 'fvb-why', text: y })))),
           amt(gbp2(t.s), 'fv-row-v'))));
       }
       box.append(ul);
@@ -493,15 +521,17 @@
       cd.setSub(B.mode === 'cycle' ? 'This pay cycle' : 'This month');
       const ai = MB.ai && MB.ai.key === B.key && MB.ai.mode === B.mode ? MB.ai : null;
       const sents = ai ? ai.sentences : B.sentences;
-      box.append(h('div', { class: 'fvb-say' }, sents.map(s => h('p', { text: s.text }))));
+      const onTop = F.briefOff !== true;   // 2.21: the hero at the top of the page already says the three sentences
+      if (onTop) box.append(h('p', { class: 'fvb-note', text: 'Your three sentences are at the top of this page.' }));
+      else box.append(h('div', { class: 'fvb-say' }, sents.map(s => h('p', { text: s.text }))));
       if (bwOpt(w, 'cards') === 'on' && Array.isArray(B.insights) && B.insights.length && X.size(w) !== 's') {
         const ul = h('ul', { class: 'fvb-ins' });
         for (const x of B.insights.slice(0, 3)) ul.append(h('li', { class: 'tone-' + (x.tone || 'info') }, ic(x.tone === 'warn' ? 'triangle-alert' : x.tone === 'good' ? 'circle-check' : 'info'), h('div', null, h('b', { text: x.title }), x.sub ? h('span', { text: x.sub }) : null)));
         box.append(ul);
       }
       const acts = h('div', { class: 'fvb-acts' }, h('button', { type: 'button', class: 'btn btn-ghost btn-sm', onclick: () => setSection('overview') }, h('span', { text: 'Open the brief' }), ic('chevron-right')));
-      if (!ai && typeof mbAiAllowed === 'function' && mbAiAllowed()) acts.append(bdAiButton(cd, w, X, B));
-      if (ai) acts.append(h('span', { class: 'fvb-src mute' }, ic('sparkles'), ' Worded by Claude, numbers checked'));
+      if (!onTop && !ai && typeof mbAiAllowed === 'function' && mbAiAllowed()) acts.append(bdAiButton(cd, w, X, B));
+      if (!onTop && ai) acts.append(h('span', { class: 'fvb-src mute' }, ic('sparkles'), ' Worded by Claude, numbers checked'));
       box.append(acts);
     },
   };
@@ -527,7 +557,7 @@
         BWR.insights.update(cd, w, X);
       } catch (e) {
         if (e && e.name === 'AbortError') { BWR.insights.update(cd, w, X); return; }
-        const msg = (e && e.message && !/fetch/i.test(e.message)) ? e.message : 'Could not reach the OpenDash server. Is it running?';
+        const msg = (e && e.message && !/fetch/i.test(e.message)) ? e.message : 'Could not reach the Freeflo server. Is it running?';
         wrap.innerHTML = ''; wrap.append(h('span', { class: 'fvb-err', text: msg }), h('button', { type: 'button', class: 'btn-link', text: 'Try again', onclick: () => BWR.insights.update(cd, w, X) }));
       }
     };
@@ -539,9 +569,9 @@
     update(cd, w, X) {
       const ctx = X.ctxOf(w); const box = bdBox(cd); const M = X.M;
       const kind = bwOpt(w, 'kind'), n = Number(bwOpt(w, 'n')) || 10;
-      // Card payments the bank has not settled yet come first, labelled Pending (they vanish once settled).
-      const pend = (M.pending || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t) && (kind === 'spend' || kind === 'income' ? t.kind === kind : true));
-      const rows = pend.concat((kind === 'spend' ? ctx.cur.spend : kind === 'income' ? ctx.cur.income : ctx.cur.all.filter(t => F.xfer || t.kind !== 'transfer')).slice().sort((a, b) => b.n - a.n || a.i - b.i));
+      // What does not count is still listed, and says so.
+      const off = (M.off || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t) && (kind === 'spend' ? t.a < 0 : kind === 'income' ? t.a > 0 : true));
+      const rows = (kind === 'spend' ? ctx.cur.spend : kind === 'income' ? ctx.cur.income : ctx.cur.all.filter(t => F.xfer || t.kind !== 'transfer')).concat(off).sort((a, b) => b.n - a.n || a.i - b.i);
       cd.setSub(bdPeriodSub(ctx, w) + (F.cats.length || F.country || F.merchant || F.accts.length ? ' · with your filters' : ''));
       if (!rows.length) { box.append(h('p', { class: 'fvb-note', text: 'No payments in these dates with these filters.' })); return; }
       PL.ensure(M);
@@ -552,14 +582,8 @@
         const abroad = t.pc && t.pc !== M._plHome && t.pc !== 'HOME';
         const subs = [X.size(w) === 's' ? fDay(t.n) : '', t.c, abroad ? PL.label(t.pc) : ''].filter(Boolean).join(' · ');
         const local = abroad && t.plc && t.pla > 0 && t.plc !== CUR ? fmtCcy(t.pla, t.plc) : '';
-        if (t.pending) {
-          ul.append(h('li', null, h('div', { class: 'fv-row fsym-host' }, C1.tileEl(t.m, 'Uncategorised', 'sm'),
-            h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, X.size(w) === 's' ? fDay(t.n) + ' · ' : '', h('b', { text: 'Pending' }), ' · not settled yet')),
-            h('span', { class: 'fv-cc-v' }, amt(t.kind === 'income' ? '+' + gbp2(t.inc) : gbp2(t.s), 'fv-row-v' + (t.kind === 'income' ? ' in' : ''))))));
-          continue;
-        }
         ul.append(h('li', null, h('button', { type: 'button', class: 'fv-row fsym-host', onclick: () => openMerchant(t.m) }, C1.tileEl(t.m, t.c, 'sm'),
-          h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, abroad ? h('span', { class: 'fvb-txflag', html: PL.flag(t.pc) }) : null, subs)),
+          h('span', { class: 'fv-row-main' }, h('span', { class: 'fv-row-t', text: t.m }), h('span', { class: 'fv-row-s' }, txPendTag(t), abroad ? h('span', { class: 'fvb-txflag', html: PL.flag(t.pc) }) : null, subs)),
           h('span', { class: 'fv-cc-v' }, amt(t.kind === 'income' ? '+' + gbp2(t.inc) : t.kind === 'spend' ? gbp2(t.s) : gbp2(t.a), 'fv-row-v' + (t.kind === 'income' ? ' in' : '')), local ? h('small', { class: 'fv-amt', text: local }) : null))));
       }
       box.append(ul);

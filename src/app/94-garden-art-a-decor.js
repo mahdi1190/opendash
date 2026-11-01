@@ -339,43 +339,6 @@
   });
 
   /* ================= lights ================= */
-  const LANT = [['#2f3438', '#ffd36a'], ['#b8743a', '#ffc860']];
-  gartDefine('decor:lantern', {
-    box: [64, 56], fit: 'none',
-    draw(o, r) {
-      const [c, warm] = LANT[o.variant % 2];
-      const on = lit(o);
-      let s = A.shadow(10, 2.6) + glow(o, r, 0, -40, 26, warm) + A.P(c, A.rect(-1.6, -32, 3.2, 32)) + A.P(c, A.rect(-5, -2, 10, 2));
-      s += A.P(c, 'M-8 -34h16l-2-2h-12z') + A.P(on ? '#fff0b8' : '#e8e4d4', A.rect(-6.4, -48, 12.8, 13)) + A.S(c, 1.2, 'M-6.4 -48v13M6.4 -48v13M0 -48v13M-6.4 -41.5h12.8') + A.P(c, 'M-9 -48L0 -55L9 -48z') + A.P(c, A.circ(0, -56.4, 1.6));
-      if (on) s += `<g class="gda-flicker" style="${A.T(r, 0, 2)}">${A.P('#ffb84a', 'M0 -38q-2.4-3 0-6.6q2.4 3.6 0 6.6z')}</g>`;
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-8 -49L0 -55.4L8 -49z');
-      return s;
-    },
-  });
-  const BULBS = [['#ffe08a', '#ffe08a', '#ffe08a'], ['#ff8a8a', '#ffe08a', '#8ad0ff', '#a8f08a'], ['#ffc8dc', '#c8e8ff', '#fff4b8']];
-  gartDefine('decor:string-lights', {
-    box: [128, 80], fit: 'none',
-    draw(o, r) {
-      const cols = BULBS[o.variant % 3], on = lit(o);
-      let s = A.shadow(50, 4) + A.P('#7a5636', A.rect(-50, -78, 4, 78) + A.rect(46, -78, 4, 78)) + A.S(lc(o, '#3a3a3a'), 1, 'M-48 -74Q0 -46 48 -74');
-      let bulbs = ['', '', '', ''], halo = '';
-      for (let i = 0; i < 9; i++) { const t = (i + 0.5) / 9, x = -48 + t * 96, y = -74 + 28 * 4 * t * (1 - t) + 3; bulbs[i % cols.length] += A.ell(x, y, 2.2, 2.8); if (on) halo += A.circ(x, y, 7); }
-      if (on) s += `<g class="gda-glow" style="${A.T(r, 0, 3)}">${A.P('#ffe08a', halo, o.night ? 0.25 : 0.14)}</g>`;
-      cols.forEach((c, i) => { s += A.P(on ? c : '#e8e4d8', bulbs[i]); });
-      return s + (o.season === 'winter' ? A.P(PAL.snow, A.rect(-50, -79, 4, 1.6) + A.rect(46, -79, 4, 1.6)) : '');
-    },
-  });
-  gartDefine('decor:solar-lights', {
-    box: [64, 30], fit: 'none',
-    draw(o, r) {
-      const c = lc(o, '#3a3f44'), cool = lc2(o, '#e8f4ff'), on = lit(o);
-      let s = '';
-      [[-16, 18], [0, 22], [16, 16]].forEach(([x, h]) => {
-        s += glow(o, r, x, -h - 3, 9, cool) + A.P(c, A.rect(x - 1, -h, 2, h)) + A.P(on ? '#ffffff' : '#cfd6dc', A.ell(x, -h - 3, 3.4, 3.8)) + A.P(c, A.rect(x - 3.6, -h - 7.6, 7.2, 1.8)) + A.P('#2a3a6a', A.rect(x - 3, -h - 8.4, 6, 0.9));
-      });
-      return A.shadow(22, 2) + s;
-    },
-  });
   gartDefine('decor:fire-pit', {
     box: [128, 46], fit: 'none',
     draw(o, r) {
@@ -400,19 +363,6 @@
         if (on) s += A.P('#fff8d8', A.ell(x, -h, R * 0.8, R * 0.2), 0.9);
       });
       return s + (o.season === 'winter' ? A.P(PAL.snow, A.ell(6, -18 - 10.4, 6, 1.6)) : '');
-    },
-  });
-  const PAPER = [['#f2a7c8', '#f8d0e0', '#f2a7c8'], ['#f28a5a', '#f6d34a', '#7ab4e4'], ['#f4f1ea', '#a8c8ec', '#f4f1ea']];
-  gartDefine('decor:paper-lanterns', {
-    box: [128, 86], fit: 'none',
-    draw(o, r) {
-      const cols = PAPER[o.variant % 3], on = lit(o);
-      let s = A.shadow(50, 4) + A.P('#5a3a2a', A.rect(-52, -84, 3.6, 84) + A.rect(48.4, -84, 3.6, 84)) + A.S('#3a3a3a', 0.8, 'M-50 -80Q0 -60 50 -80');
-      for (let i = 0; i < 5; i++) {
-        const t = (i + 0.5) / 5, x = -50 + t * 100, y = -80 + 20 * 4 * t * (1 - t) + 9, R = 6.4 + (i % 2) * 1.4, c = cols[i % 3];
-        s += glow(o, r, x, y, R * 2.2, '#ffd88a') + A.S('#3a3a3a', 0.6, `M${f1(x)} ${f1(y - R - 2)}v2`) + A.P(on ? A.lt(c, 0.3) : c, A.ell(x, y, R, R * 1.1)) + A.S(A.dk(c, 0.2), 0.6, `M${f1(x - R)} ${f1(y)}h${f1(R * 2)}M${f1(x - R * 0.9)} ${f1(y - R * 0.5)}h${f1(R * 1.8)}M${f1(x - R * 0.9)} ${f1(y + R * 0.5)}h${f1(R * 1.8)}`, 0.5) + A.P('#3a3a3a', A.rect(x - R * 0.4, y - R * 1.15, R * 0.8, 1.4) + A.rect(x - R * 0.4, y + R - 0.2, R * 0.8, 1.4));
-      }
-      return s;
     },
   });
 })();

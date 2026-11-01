@@ -25,6 +25,7 @@
   function buildSection(id, o) {
     o = o || {};
     const E = R.els;
+    mbReadStop();   // reading the brief aloud stops when you leave it (26-money-ui.js)
     const oldGrid = E.panel.querySelector(':scope > .fv-grid:not(.fv-ghost)');
     const swap = !!o.dir && !!oldGrid && !MK.reduced() && !document.hidden;
     if (swap) {
@@ -94,7 +95,7 @@
     updateSection(ctx);
     paintTabs(false);
     const meta = (R.data && R.data.meta) || {};
-    R.els.foot.textContent = 'Everything here is built on this computer from your own data folder. Categories are fixed per merchant: change one in Transactions and the rule is saved for future imports.';
+    R.els.foot.textContent = 'Everything here is worked out on this computer from your own files. Change a category in Transactions and Freeflo remembers it.';
     if (R.drawer) refreshDrawer();
   }
   const BUILD = {}, UPDATE = {};

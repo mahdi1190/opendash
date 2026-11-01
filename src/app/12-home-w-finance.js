@@ -129,7 +129,7 @@ function homeFinGlance(a, o) {
     if (n < minN) minN = n; if (n > maxN) maxN = n;
     const c = String(r.c || 'Uncategorised');
     if (exclude.includes(c)) return;
-    tx.push({ i, n, m: String(r.m || 'Unknown'), c, s: -amt, bc: r.bc ? String(r.bc) : null, k: r.k ? String(r.k) : 'i' + i });
+    tx.push({ i, n, m: String(r.m || 'Unknown'), c, s: -amt, bc: r.bc ? String(r.bc) : null, k: r.k ? String(r.k) : 'i' + i, pe: r.pe ? 1 : 0 });
   });
   tx.sort((p, q) => q.n - p.n || p.i - q.i);
   const T = _hbDnum(valid(o.today) ? o.today : _hbLocalIso());
@@ -184,7 +184,7 @@ function homeFinGlance(a, o) {
   for (const t of tx) if (t.n >= mS && t.n <= mE) byCat.set(t.c, (byCat.get(t.c) || 0) + t.s);
   const cats = [...byCat.entries()].filter(e => e[1] > 0.004).sort((p, q) => q[1] - p[1] || (p[0] < q[0] ? -1 : 1))
     .map(([c, v]) => ({ c, v: _hbR2(v), share: month.spent > 0 ? v / month.spent : null }));
-  const recent = tx.filter(t => t.s !== 0 && t.n <= anchor).slice(0, 3).map(t => ({ iso: _hbDiso(t.n), m: t.m, c: t.c, s: _hbR2(t.s), bc: t.bc, k: t.k }));
+  const recent = tx.filter(t => t.s !== 0 && t.n <= anchor).slice(0, 3).map(t => ({ iso: _hbDiso(t.n), m: t.m, c: t.c, s: _hbR2(t.s), bc: t.bc, k: t.k, pe: t.pe }));
   const billDays = Math.max(1, Math.min(60, Math.round(o.billDays || 14)));
   const bills = _hbRecurring(tx, a.recurring, anchor)
     .filter(r => r.active && r.next >= anchor - 3 && r.next <= anchor + billDays)
@@ -339,7 +339,7 @@ function _hbFinRender(el, ctx) {
     return true;
   }
   if (!g && _hbFin.err) {
-    body.appendChild(hglEmpty({ icon: 'circle-alert', title: 'Couldn’t read Finances', text: 'OpenDash isn’t answering. Your data is safe.',
+    body.appendChild(hglEmpty({ icon: 'circle-alert', title: 'Couldn’t read Finances', text: 'Freeflo isn’t answering. Your data is safe.',
       actions: [{ label: 'Try again', icon: 'refresh-cw', run: () => { _hbFin.at = 0; _hbFin.err = null; _hbFin.key = ''; _hbFinLoad(0); homeRerenderWidget('finance'); } }] }));
     return true;
   }
@@ -453,7 +453,7 @@ function _hbFinBody(g, size) {
   const wrap = document.createElement('div'); wrap.className = 'hbf-wrap';
   const top = g.cats[0];
   const topHtml = top ? `<button type="button" class="hbf-top fsym-host" data-go="categories" title="Open Finances › Categories">${_hbCatIcon(top.c)}<span class="t"><small>Top this month</small><b>${esc(top.c)}</b></span><span class="r num">${esc(_hbMoney(top.v))}${top.share != null ? `<small>${Math.round(top.share * 100)}%</small>` : ''}</span></button>` : '';
-  const recent = g.recent.length ? `<ul class="hbf-tx" aria-label="Latest payments">${g.recent.map(t => `<li><button type="button" class="hbf-txr fsym-host" data-go="transactions" data-flip="tx:${escAttr(t.k)}">${_hbMerchantTile(t.m, t.c, t.bc)}<span class="n"><span class="nm">${esc(_hbMerchantName(t.m))}</span><small>${esc(_hbWhen(t.iso))} · ${esc(t.c)}</small></span><span class="a num${t.s < 0 ? ' in' : ''}">${t.s < 0 ? '+' : ''}${esc(_hbMoney(Math.abs(t.s), 2))}</span></button></li>`).join('')}</ul>` : '';
+  const recent = g.recent.length ? `<ul class="hbf-tx" aria-label="Latest payments">${g.recent.map(t => `<li><button type="button" class="hbf-txr fsym-host" data-go="transactions" data-flip="tx:${escAttr(t.k)}">${_hbMerchantTile(t.m, t.c, t.bc)}<span class="n"><span class="nm">${esc(_hbMerchantName(t.m))}</span><small>${t.pe ? 'Pending · ' : ''}${esc(_hbWhen(t.iso))} · ${esc(t.c)}</small></span><span class="a num${t.s < 0 ? ' in' : ''}">${t.s < 0 ? '+' : ''}${esc(_hbMoney(Math.abs(t.s), 2))}</span></button></li>`).join('')}</ul>` : '';
   const legend = (g.week.usualEnd != null || g.month.usualEnd != null) ? '<div class="hbf-lg" aria-hidden="true"><span><i></i>spent</span><span><u></u>usual by now</span><span class="r">/ usual total</span></div>' : '';
   const budget = g.budgetTotal > 0 && size !== 's'
     ? `<div class="hbf-budget">${icon('piggy-bank', 'i-sm')}<span>Budgets: <b class="num">${esc(_hbMoney(g.month.spent))}</b> of ${esc(_hbMoney(g.budgetTotal))} · ${Math.round(g.month.spent / g.budgetTotal * 100)}% used, ${Math.round((g.month.day + 1) / g.month.len * 100)}% of the month gone</span></div>` : '';

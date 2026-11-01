@@ -51,14 +51,17 @@
       desc: 'Each country with its flag, what it cost at home and in the local money. Click one to see only it.',
       opts: [{ k: 'scope', label: 'Countries', choices: [['all', 'Everywhere'], ['abroad', 'Abroad only']], def: 'all' },
         { k: 'top', label: 'How many', choices: [[5, '5'], [8, '8'], [12, '12']], def: 5 }, BD_PERIOD] },
-    { t: 'merchants', title: 'Spending by merchant', icon: 'building-2', group: 'spending', size: 's', sizes: ['s', 'm', 'l'],
+    { t: 'merchants', title: 'Spending by shop', icon: 'building-2', group: 'spending', size: 's', sizes: ['s', 'm', 'l'],
       desc: 'The shops and services you spent the most at, or went to most often.',
-      opts: [{ k: 'sort', label: 'Sort by', choices: [['spend', 'Amount'], ['visits', 'Visits']], def: 'spend' },
+      opts: [{ k: 'sort', label: 'Sort by', choices: [['spend', 'Amount'], ['visits', 'Payments']], def: 'spend' },
         { k: 'top', label: 'How many', choices: [[5, '5'], [8, '8'], [12, '12']], def: 5 }, BD_PERIOD] },
     { t: 'budgets', title: 'Budgets', icon: 'piggy-bank', group: 'plan', size: 'm', sizes: ['s', 'm', 'l', 'xl'], now: true,
       desc: 'Each monthly budget: spent, left and whether it is on pace for the month.',
       opts: [{ k: 'show', label: 'Show', choices: [['all', 'All budgets'], ['watch', 'Only ones to watch']], def: 'all' },
         { k: 'top', label: 'How many', choices: [[4, '4'], [5, '5'], [8, '8'], [20, 'All']], def: 5 }] },
+    { t: 'moneyplan', title: 'Your money plan', icon: 'piggy-bank', group: 'plan', size: 'm', sizes: ['s', 'm', 'l', 'xl'], now: true,
+      desc: 'What is left a month, and what looks off against your bank this month.',
+      opts: [{ k: 'top', label: 'How many things to show', choices: [[2, '2'], [4, '4'], [6, '6']], def: 2 }] },
     { t: 'bills', title: 'Bills and subscriptions', icon: 'repeat', group: 'plan', size: 'm', sizes: ['s', 'm', 'l', 'xl'], now: true,
       desc: 'What is due next and what you pay every month, with cancel reminders you can note on any subscription.',
       opts: [{ k: 'days', label: 'Coming up in', choices: [[7, '7 days'], [14, '14 days'], [30, '30 days'], [60, '60 days']], def: 30 },
@@ -78,7 +81,7 @@
       desc: 'Money in this month against usual, the next payday and where it came from.',
       opts: [{ k: 'sources', label: 'Sources', choices: [['on', 'Show'], ['off', 'Hide']], def: 'on' }] },
     { t: 'big', title: 'Big or unusual payments', icon: 'triangle-alert', group: 'spending', size: 'm', sizes: ['s', 'm', 'l', 'xl'],
-      desc: 'Large payments, a merchant charging much more than usual, and big first-time places.',
+      desc: 'Large payments, a shop charging much more than usual, and big first-time places.',
       opts: [{ k: 'min', label: 'Big means over', choices: [[50, '50'], [100, '100'], [250, '250'], [500, '500']], def: 100, money: true }, BD_PERIOD] },
     { t: 'passport', title: 'Travel passport', icon: 'ticket', group: 'travel', size: 'm', sizes: ['s', 'm', 'l', 'xl'], now: true,
       desc: 'A stamp for every country you have paid in: when you first did, how many trips and what it all cost.',
@@ -97,6 +100,8 @@
       desc: 'Days in a row without day-to-day spending, your best run this year and how many this month. Bills and transfers never break it.',
       opts: [{ k: 'bills', label: 'Bills and subscriptions', choices: [['ignore', "Don't break it"], ['count', 'Break it']], def: 'ignore' },
         { k: 'small', label: 'Small buys under', choices: [[0, 'All count'], [2, '2'], [5, '5']], def: 0, money: true }] },
+    { t: 'owed', title: 'Owed to me', icon: 'handshake', group: 'everyday', size: 's', sizes: ['s', 'm', 'l'], now: true,
+      desc: 'What people owe you and whether the bank shows they paid. Split a payment from here.', opts: [] },
     { t: 'goal', title: 'Savings goal', icon: 'target', group: 'fun', size: 's', sizes: ['s', 'm', 'l'], now: true,
       desc: 'A target for a pot, an account or everything you have, how far along you are and what it takes each month.',
       opts: [{ k: 'name', label: 'Name', input: 'text', def: '' }, { k: 'target', label: 'Target', input: 'money', def: 1000 },
@@ -140,7 +145,7 @@
   // Start from scratch: an empty board and the gallery.
   const BD_PRESETS = {
     simple: () => [
-      ['safe', 'm'], ['vsmonth', 'm', { chart: 'off' }], ['budgets', 'm', { top: 4 }], ['bills', 'm', { days: 14, top: 4 }], ['recent', 'xl', { n: 5 }],
+      ['vsmonth', 'm', { chart: 'off' }], ['budgets', 'm', { top: 4 }], ['bills', 'm', { days: 14, top: 4 }], ['recent', 'xl', { n: 5 }],
     ],
     detailed: () => [
       ['safe', 's'], ['vsmonth', 'm'], ['payday', 's'],
@@ -150,7 +155,7 @@
       ['networth', 'm'], ['balances', 'm'],
       ['big', 'm'], ['trips', 'm'],
       ['passport', 'l'], ['whatif', 's'],
-      ['heatmap', 'l'], ['insights', 's'],
+      ['heatmap', 'l'],
       ['streak', 's'], ['weeks', 's'], ['goal', 's'],
       ['roundup', 's'],
       ['recent', 'xl', { n: 20, kind: 'all' }],
@@ -158,7 +163,7 @@
     scratch: () => [],
   };
   const BD_PRESET_INFO = {
-    simple: { label: 'Simple', icon: 'circle-check', desc: 'The everyday five: safe to spend, this month, budgets, bills and the latest payments. Big numbers, plain words.' },
+    simple: { label: 'Simple', icon: 'circle-check', desc: 'The everyday four: this month, budgets, bills and the latest payments. Big numbers, plain words.' },
     detailed: { label: 'Detailed', icon: 'layout-grid', desc: 'Everything: charts, countries, trips, cash flow, net worth, streaks and goals, filters and drill-downs.' },
     scratch: { label: 'Start from scratch', icon: 'circle-plus', desc: 'An empty page: add only the widgets you want.' },
   };

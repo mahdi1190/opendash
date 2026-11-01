@@ -220,3 +220,11 @@
 .fr-fhero.fun-th { padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); }
 .fr-fold { border: 0; border-top: 1px solid var(--border-subtle); border-radius: 0; background: none; }
 .fr-fold > summary { padding: var(--space-2) 0; border-radius: 0; }
+/* 2.20.1: the live 4-letter friend code, and the check pictures */
+.fr-live-code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 3rem; font-weight: 700; letter-spacing: .25em; line-height: 1.1; color: var(--accent-ink, inherit); user-select: all; }
+.fr-live-left { font-variant-numeric: tabular-nums; }
+.fr-check { display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
+.fr-check-pics { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius-lg); background: var(--accent-soft); }
+.fr-check-pic { display: inline-flex; flex-direction: column; align-items: center; min-width: 4.5rem; }
+.fr-check-e { font-size: 2.2rem; line-height: 1.1; font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.fr-check-w { font-size: var(--text-sm); font-weight: 600; color: var(--accent-ink); }

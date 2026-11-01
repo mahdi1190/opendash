@@ -30,7 +30,7 @@ function userName() { return String(APP_CONFIG.userName || '').trim(); }
 /** "Sam" or "the user": for AI prompts. */
 function userLabel() { return userName() || 'the user'; }
 /** "Sam's OpenDash" or "OpenDash". */
-function appTitle() { return userName() ? `${userName()}'s OpenDash` : 'OpenDash'; }
+function appTitle() { return userName() ? `${userName()}'s Freeflo` : 'Freeflo'; }
 
 // HTML escaping. EVERY piece of user or external text (task titles, tags,
 // names, notes, email subjects/senders, AI output, error messages) must go

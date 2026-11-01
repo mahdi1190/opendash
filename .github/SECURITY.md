@@ -4,15 +4,86 @@ OpenDash runs on your own computer and holds personal information: tasks,
 people, calendar entries, email snippets and money. Security reports are taken
 seriously and are always welcome.
 
+## At a glance
+
+- **Local-first.** No OpenDash server, no account, no analytics, no
+  telemetry. Your data is one folder on your computer.
+- **A local server that stays local.** It listens on `127.0.0.1` only, checks
+  the Host, Origin and Sec-Fetch headers of every request, and serves a strict
+  Content Security Policy with no inline scripts except the app's own, pinned
+  by hash.
+- **End-to-end encryption** for sync and friends, built on standard
+  primitives from Web Crypto and Node: AES-256-GCM, X25519, Ed25519 and
+  HKDF-SHA-256. The relay carries sealed data it cannot read.
+- **Your own relay.** It runs on your own Cloudflare account. Every request to
+  it is signed, and only your devices and the people you approve can use it.
+- **Groups.** One shared link, whose secret is never sent to the relay. In the
+  default mode the link only lets someone ask, and a person approves them. A
+  group's messages are sealed under a group key and signed by their sender.
+  Removing someone cuts their access at once and rotates that key. See
+  [Groups](#groups) below.
+- **Device-signed sync.** Each device signs its own records. Removing a device
+  rotates the sync key, locks it out of Friends and renews the secret behind the
+  optional emergency backup sheet.
+- **Signed updates** (Ed25519), downloaded only from this project's GitHub
+  releases.
+- **A contained assistant.** No shell, no file tools, a fixed allow-list of
+  OpenDash tools. It can do nearly everything in the dashboard, with Undo;
+  anything sensitive (friends, devices, relay, sign-ins, money, updates) only
+  as a proposal you approve on screen.
+- **Untrusted content is escaped**: emails, invitations, bank memos, invites
+  and friends' data.
+
+## The review before launch
+
+Before the public launch, OpenDash 2.19.7 was reviewed end to end in six
+areas: the local server and its API, encryption and sync, the relay and
+friends, untrusted content (the page and the parsers), the AI surfaces, and
+the supply chain and release pipeline (including a scan of every commit in
+the history for secrets and personal data).
+
+The reviewers were six independent AI security reviewers (Claude agents, each
+with one area, read access to the code and a sandbox with demo data for proof
+scripts). It was a structured, evidence-based review, **not a paid audit by a
+human security firm**, and OpenDash holds no certification.
+
+Every finding was fixed in **2.20.0** (see the
+[changelog](../docs/CHANGELOG.md)), except the two listed under
+[Known limitations](#known-limitations) (installer code signing and
+operating-system protection of local secrets). The main fixes:
+
+- a `.env` file in a synced data folder can no longer choose programs, the
+  update feed or Node options;
+- updates are signed, and a planted update record cannot roll the app back;
+- the markdown link renderer was rebuilt, and the page's policy no longer
+  allows inline scripts;
+- privileged local routes need a key that changes at every start;
+- removing a friend always revokes their relay access, retried until
+  confirmed; an invite gives only limited access until you approve the friend;
+  old friend messages can't be replayed;
+- sync records are signed by each device, and removing a device renews the
+  backup-sheet secret and locks that device out of Friends;
+- iCal feeds and bank memos can no longer stall the server.
+
+The reviewers also recorded what held up. Among the parts they checked and
+found sound: the bind address and the DNS-rebinding, CSRF and clickjacking
+defences; path handling for every file the server reads; the encryption
+primitives, the binding of each record to its device, file and position, and
+the pairing and join-code protocols; request signing and invite handling on
+the relay; the default-deny sharing rules for friends; the escaping of about
+two thousand places where text reaches the page; the AI runner's disabled
+tools and double-checked allow-lists; and the release workflows.
+
 ## Supported versions
 
 | Version | Supported |
 |---|---|
-| 2.0.x (the latest release) | Yes |
-| Anything older | No (there were no earlier public releases) |
+| The latest release (2.20.x) | Yes |
+| Anything older | No: please update first |
 
-Security fixes are released as a new version. To update, replace the app
-folder and keep your data folder (see [docs/INSTALL.md](../docs/INSTALL.md#updating)).
+Security fixes are released as a new version. To update, use Settings >
+Updates, run the newer Windows installer, or replace the app folder and keep
+your data folder (see [docs/INSTALL.md](../docs/INSTALL.md#updating)).
 
 ## Reporting a vulnerability
 
@@ -55,7 +126,13 @@ In scope:
   outside its profile, or to make external text change data without your click;
 - the iCal fetcher, data import and export, the Files & links opener and
   folder browser, the service worker, the supervisor and the Windows start-up
-  switches.
+  switches;
+- device sync and its encryption (`lib/sync/`), the relay and its protocol
+  (`lib/relay/`, `cloudflare/worker.mjs`, docs/dev/RELAY_PROTOCOL.md), and
+  Friends (`lib/friends/`): for example a relay or a friend that can read,
+  forge or change what it carries, or a friend's packet that reaches Claude
+  or an action;
+- the updater (`lib/updater.mjs`) and the Windows installer (`installer/`).
 
 Out of scope:
 
@@ -97,8 +174,11 @@ safeguards below follow from that, and are enforced in the code (mainly
 - **JSON only.** Request bodies must be `application/json` (`415` otherwise),
   so a plain HTML form on another site cannot post to it. Bodies have size
   limits (`413`), and stale writes are refused (`409`).
-- **Strict responses.** A Content-Security-Policy (`default-src 'self'`,
-  `connect-src 'self'`, `object-src 'none'`, `base-uri 'none'`,
+- **Strict responses.** A Content-Security-Policy (`default-src 'self'`;
+  `script-src 'self'` plus the SHA-256 hash of each of the app's own inline
+  scripts, so no other inline script, `on*=` handler or `javascript:` link can
+  run; `connect-src 'self'`; images only from the page and two known avatar
+  and bank-logo hosts; `object-src 'none'`, `base-uri 'none'`,
   `frame-ancestors 'self'`), `X-Frame-Options: SAMEORIGIN`,
   `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` and
   `Cache-Control: no-store`.
@@ -130,7 +210,9 @@ safeguards below follow from that, and are enforced in the code (mainly
 
 ### Your data and the network
 
-- **No telemetry.** No analytics, tracking, crash reporting or update checks.
+- **No telemetry.** No analytics, tracking or crash reporting. Update checks
+  happen only when you ask (or once a day if you turn that on), and are plain
+  GET requests to GitHub releases.
 - **Data stays local**, in one data folder (`data/` by default). Logs contain
   no task text, email content, names or money: request methods and URL paths,
   status codes, timings and counts, plus the data folder's location when the
@@ -152,9 +234,14 @@ safeguards below follow from that, and are enforced in the code (mainly
   profile is stopped (`POLICY`).
 - **Prompt injection.** Text from email, calendars, banks, notes and files is
   passed as data, with instructions never to follow it. The in-app assistant
-  uses OpenDash's own MCP server in **propose mode**: it can read and suggest
-  changes, but it cannot apply anything. You see a preview and apply it with a
-  click, and every change can be undone.
+  uses OpenDash's own MCP server in **propose mode**. Every tool sits in a
+  safety tier enforced in code: reading is free; low-risk changes with Undo
+  (garden, pet, profile, a short allow-list of settings, Home layout, a daily
+  note) run directly; everything sensitive (friends, devices, relay, sign-ins,
+  money rules, expenses, updates) never runs directly, only as a proposal you
+  approve on screen. Other changes (tasks, people, tags and so on) are
+  proposals too. Every change returns an undo token. Nothing a friend wrote
+  reaches the model. Details: [docs/MCP.md](../docs/MCP.md#safety-tiers).
 - **Connectors are MCP-based** (claude.ai connectors or MCP servers you added
   to Claude Code) and used **read-only**. Bank sync allows only the read-only
   bank tools and denies every other tool and connector. Calendar and Gmail jobs allow named
@@ -201,6 +288,47 @@ safeguards below follow from that, and are enforced in the code (mainly
   seconds, and remove exactly what they added when switched off. They are not
   offered on macOS or Linux.
 
+### Encryption, sync and friends
+
+- **Primitives.** AES-256-GCM with random 96-bit nonces, X25519 key agreement,
+  Ed25519 signatures and HKDF-SHA-256 with a separate label for each purpose,
+  all from the platform's Web Crypto and Node's `crypto`. No home-made
+  ciphers. All keys, nonces and codes come from `crypto.getRandomValues`.
+- **Sync.** Each record is encrypted with a key only your devices hold, bound
+  to its group, device, file and position, and signed by the device that
+  wrote it. A new device gets the key only through pairing: a 4-letter code
+  that is live for ten minutes, works once and allows three wrong tries, and
+  the same picture on both screens that you check before pressing Yes.
+  Removing a device rotates the key, renews the secret behind the emergency
+  backup sheet and locks the device out of Friends from the server, without
+  asking; the removed device can't read new data or rewrite old records. The
+  optional backup sheet (10 words) is only for the day every computer is lost;
+  an old sheet stops working once a computer is removed.
+- **The relay** (on your own Cloudflare account) stores and forwards sealed
+  data. Every request is signed with Ed25519 over the host, method, path, time,
+  a nonce and the body's hash; unsigned and unknown callers are refused before
+  any stored state is touched. Only you, your devices and friends you approve
+  can use it. It learns metadata (that devices exist, when they write and how
+  much), never content.
+- **Friends.** Each friendship starts with a signed card (an invite link, or
+  a 4-letter friend code that is live for ten minutes and works once). Both
+  screens then show the same three pictures to check, and you approve it. Messages are sealed per friend, and old
+  ones can't be replayed. What you share is built on your computer from named
+  fields only, default deny, per friend.
+
+### Groups
+
+A group lets one link connect many people (design: [docs/dev/GROUPS.md](../docs/dev/GROUPS.md)).
+
+- **The link.** A 128-bit secret after the `#`, so a browser does not send it. The relay keeps a hash of a value derived from it, and never sees the secret. A reset stops the old link at the next request.
+- **Approval by default.** Holding the link lets someone read the group's name and ask. They get no relay access, member list or key until a person approves them. "Anyone with the link" is an explicit choice, and the screen says that whoever holds the link can read the group.
+- **Short codes** are optional, off by default, for people already on that relay, limited three ways (per person, per address, per day across the relay), and can only ever lead to asking.
+- **End to end.** Messages, profiles, join requests and the group's card are sealed before they leave the app. A new key goes to each person by a wrap that the relay cannot open, signed by whoever runs the group. Every message is signed by its sender. In *Anyone with the link* the key is also sealed under the link, so that mode is as private as the link.
+- **Removal.** The relay refuses them at once and closes their connections. Their app's removal job is retried until the relay confirms, and the relay itself remembers that the key must change, so any admin's app can finish it. Removing someone who runs the group also signs them out for good, and replaces the link.
+- **Against a dishonest relay.** The group's id is a hash of its first signed document, so the link anchors who runs it, and a joiner checks from there. Each person on the list carries a signed proof, checked against that history before they are given a new key, and it names both their keys, so a relay cannot slip in a key of its own or be made an admin. Nothing the relay labels is ever signed. It can still withhold messages, see who is in a group and when they post, refuse service, and read a group in *Anyone with the link* if it gets the link (its landing page can read it in a browser). A code cannot prove it leads to the right group: the check pictures can. The remaining limits are in [docs/dev/GROUPS.md](../docs/dev/GROUPS.md) section 4.
+- **Friends through a group.** Until someone accepts, the handshake stays inside the group: no address anyone named is called, and no mailbox is shown. A friend made this way starts with nothing shared but the name used in the group. Automatic friends need each person's own yes.
+- **Group text** is never rendered as markup, and a group cannot make your computer load anything: a logo is an emoji and a colour. Nothing a group sends reaches the assistant: it gets names and counts only, built field by field, never a link or a code, and anything that joins, invites or removes is a proposal you approve on screen.
+
 ### Synced data folders, updates and the remote connector
 
 The data folder may sit in OneDrive, Dropbox or Google Drive, so OpenDash
@@ -221,15 +349,24 @@ yours.
   called `claude` or `claude.exe`, outside the data folder (links are followed
   to check where they really lead). Scripts and network paths are refused.
 - **Updates.** The update check only asks GitHub, and files are only
-  downloaded from this project's GitHub release addresses. The last check is
+  downloaded from this project's GitHub release addresses. Each release's
+  checksum file is signed with the project's Ed25519 release key; the public
+  half is built into the app, and an unsigned or wrongly signed release is
+  refused. The zip must then match its SHA-256. The last check is
   stored in the data folder, so before installing, OpenDash asks GitHub again
   and installs only the release GitHub names now: a planted file cannot make
   it install an older version.
 - **The in-app assistant and expenses.** The assistant on this computer may
-  file expenses and attach receipt files, as before. A receipt path must be a
+  file new expenses, attach receipt files and mark them submitted directly (with Undo); changing
+  existing ones (bulk paid, unsubmit, delete) is a sensitive proposal you
+  approve. A receipt path must be a
   file on a local disk: network (`\\host\share`, `//host`) and device
   (`\\?\`, `\\.\`) paths are refused, links are followed to their real
   target, and a preview never touches the disk.
+- **The in-app assistant and Owed to me.** It may note a split and record a
+  payment you told it about (with Undo). It moves no money and contacts nobody.
+  A payment it only read about, in an email or a message, is a question on the
+  page, never a mark. The remote connector has none of these tools.
 - **The remote connector (Claude in your browser).** The public gateway only
   lets claude.ai read and propose changes; it can never write expenses or
   apply anything. New connections are accepted only within ten minutes of
@@ -241,6 +378,7 @@ yours.
 
 ### Known limitations
 
+- In a group, a person you removed keeps what they already read. An admin who was removed, working with a dishonest relay operator, could still sign someone onto the list as having been let in earlier: the next key would then go to that person. A group whose relay you do not trust is only as safe as the people who have run it. "Anyone with the link" is only as private as the link. Groups are not a compliance or records system.
 - OpenDash does not encrypt the data folder. Use your operating system's disk
   encryption, and think before putting the folder in a cloud-synced location.
 - Any program running under your account can read the data folder and the
@@ -253,9 +391,18 @@ yours.
   computer you share with people you do not trust.
 - Browser extensions that can read `localhost` pages can see what the page
   shows.
-- The Content-Security-Policy allows inline scripts and styles because the app
-  is a single self-contained file; all user and external text is escaped, and
-  a test forbids inline event handlers.
+- The Content-Security-Policy still allows inline *styles*, because the app is
+  a single self-contained file. Inline scripts are not allowed (only the app's
+  own, by hash), and all user and external text is escaped.
+- **The Windows installer is not code-signed yet**, so SmartScreen warns the
+  first time. Each release publishes `SHA256SUMS-installer.txt` (signed, like
+  the update files) to check your download against.
+- **Secrets on your computer are plain files.** Sign-ins, bank keys and the
+  sync and friends private keys live in this computer's private OpenDash
+  folder, outside the data folder and never synced. They are not yet wrapped
+  by the operating system (Windows DPAPI, macOS Keychain), so any program
+  running as your account, or a copy of your user profile, can read them. Use
+  disk encryption.
 - Avatar images you set by URL are loaded by your browser from that address.
 - Your friends relay (if you deployed one) has a public address: anyone can
   send it requests and use up its daily free-tier allowance (Cloudflare

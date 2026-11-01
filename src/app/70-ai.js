@@ -54,30 +54,34 @@ async function _serverAsk(prompt, opts) {
 function aiErrorView(e) {
   const code = (e && e.code) || '';
   const own = String((e && e.message) || '').trim();
+  const ownPlain = typeof netPlainWords === 'function' ? (netPlainWords(own) || own) : own;
+  // No internet: Claude can't answer whatever the code says (a timeout, a stopped program, its raw text).
+  if (typeof navigator !== 'undefined' && navigator.onLine === false && !['CANCELLED', 'UNAVAILABLE', 'CLI_MISSING', 'NOT_MAIN', 'USAGE_LIMIT'].includes(code) && !(e && e.name === 'AbortError') && !(typeof netIsDown === 'function' && netIsDown(e))) return { text: 'You’re offline, so Claude can’t answer. Connect to the internet, then try again.', fix: null, retry: true, cancelled: false };
   const open = { label: 'Open Connections', run: () => (typeof connOpen === 'function' ? connOpen('claude') : setView('connections')) };
   if (code === 'CANCELLED' || (e && e.name === 'AbortError')) return { text: 'Stopped.', fix: null, retry: true, cancelled: true };
   if (typeof netIsDown === 'function' && netIsDown(e)) return { text: netErrorMessage(e), fix: null, retry: true, cancelled: false };
   switch (code) {
     case 'UNAVAILABLE': case 'CLI_MISSING':
-      return { text: 'Claude Code is not installed on this computer, so OpenDash cannot ask Claude.', fix: { label: 'How to install', run: open.run }, retry: false, cancelled: false };
+      return { text: 'Claude Code is not installed on this computer, so Freeflo cannot ask Claude.', fix: { label: 'How to install', run: open.run }, retry: false, cancelled: false };
     case 'NOT_SIGNED_IN':
-      return { text: 'Claude Code is signed out on this computer.', fix: { label: 'Sign in to Claude', run: () => (typeof _connOpenTerminal === 'function' ? _connOpenTerminal() : open.run()) }, retry: false, cancelled: false };
+      return { text: 'Claude is signed out on this computer, so it can’t answer until you sign in again.', fix: { label: 'Sign in to Claude', run: () => (typeof _connOpenTerminal === 'function' ? _connOpenTerminal() : open.run()) }, retry: false, cancelled: false };
     case 'USAGE_LIMIT':
       return { text: 'Your Claude usage limit is reached for now. It resets on its own (usually within a few hours); try again then.', fix: null, retry: false, cancelled: false };
     case 'TIMEOUT':
-      return { text: 'Claude took too long, so OpenDash stopped waiting. Your text is kept: try again (a shorter question is quicker).', fix: null, retry: true, cancelled: false };
+      return { text: 'Claude took too long, so Freeflo stopped waiting. Your text is kept: try again (a shorter question is quicker).', fix: null, retry: true, cancelled: false };
     case 'QUEUE_FULL':
-      return { text: 'Claude is busy with other OpenDash requests. Try again in a minute.', fix: null, retry: true, cancelled: false };
+      return { text: 'Claude is busy with other Freeflo requests. Try again in a minute.', fix: null, retry: true, cancelled: false };
     case 'BAD_OUTPUT':
       return { text: 'Claude’s answer came back empty or in the wrong shape. Trying again usually works.', fix: null, retry: true, cancelled: false };
     case 'CONNECTOR_AUTH': case 'TOOL_MISSING':
-      return { text: own || 'A Claude connector needs you to sign in again.', fix: open, retry: false, cancelled: false };
+      return { text: ownPlain || 'One of your Claude connections needs you to sign in again. Open Connections to do it.', fix: open, retry: false, cancelled: false };
     case 'NOT_MAIN':
       return { text: own || 'This runs on your main computer.', fix: null, retry: false, cancelled: false };
     case 'CLI_FAILED':
-      return { text: 'Claude Code stopped unexpectedly' + (own && !/^Claude Code stopped unexpectedly\.?$/.test(own) ? ': ' + own.replace(/\.$/, '') : '') + '. Try again; if it keeps happening, check Connections > Claude.', fix: null, retry: true, cancelled: false };
+      // Its own text is a program's error output: never for a person.
+      return { text: 'Claude stopped before it finished. Try again; if it keeps happening, open Connections and check Claude.', fix: null, retry: true, cancelled: false };
     default:
-      return { text: own || 'Claude could not answer just now.', fix: null, retry: true, cancelled: false };
+      return { text: ownPlain || 'Claude could not answer just now. Try again in a moment.', fix: null, retry: true, cancelled: false };
   }
 }
 /** A toast for a failed AI call: the reason and its fix, else Try again (when `retry` is given). Quiet when stopped by the user. */

@@ -118,7 +118,7 @@
     const how = PL.SRC.filter(k => cov[k] > 0.004 && cov.total > 0).map(k => `${pct(cov[k] / cov.total)} ${PL.SRC_LABEL[k]}`);
     el.append(h('div', { class: 'fv-cc-hl' }, h('span', { class: 'fv-cc-hic', 'aria-hidden': 'true' }, ic('globe')), h('div', { class: 'fv-cc-ht' }, h('div', { class: 'fv-cc-hbig' }, big),
       h('div', { class: 'fv-cc-hs', text: all > 0 ? `${fRange(ctx.rg.from, ctx.rg.to)} · How we know where: ${how.join(' · ') || '—'}` : 'No spending in these dates.' }))),
-      abroad.length ? h('div', { class: 'fv-cc-hflags', 'aria-hidden': 'true', html: abroad.slice(0, 8).map(x => PL.flag(x.cc)).join('') }) : null);
+      ...(abroad.length ? [h('div', { class: 'fv-cc-hflags', 'aria-hidden': 'true', html: abroad.slice(0, 8).map(x => PL.flag(x.cc)).join('') })] : []));
   }
   function ccPaintList(ctx) {
     const cd = S.ccList; if (!cd) return;

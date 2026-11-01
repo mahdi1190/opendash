@@ -1,10 +1,10 @@
-# Using OpenDash from your own Claude (MCP)
+# Using Freeflo from your own Claude (MCP)
 
-OpenDash ships its own [Model Context Protocol](https://modelcontextprotocol.io)
+Freeflo ships its own [Model Context Protocol](https://modelcontextprotocol.io)
 server, `mcp/server.mjs`. Register it once and Claude Code, T3 Code or Claude
 Desktop can read and change your tasks, people, tags, countdowns and more,
-**without being told anything about OpenDash first**: the server explains
-itself to the model. Every change appears in the open OpenDash page at once,
+**without being told anything about Freeflo first**: the server explains
+itself to the model. Every change appears in the open Freeflo page at once,
 with Undo.
 
 - [Register it](#register-it)
@@ -13,13 +13,14 @@ with Undo.
 - [Tools](#tools)
 - [Prompts and resources](#prompts-and-resources)
 - [Safety rails](#safety-rails)
+- [Safety tiers](#safety-tiers)
 - [Modes and transport](#modes-and-transport)
 - [Scripts and the HTTP API](#scripts-and-the-http-api)
 - [Troubleshooting](#troubleshooting)
 
 ## Register it
 
-The easiest way: **Connections > OpenDash MCP > Set up** shows the exact
+The easiest way: **Connections > Freeflo MCP > Set up** shows the exact
 commands for your computer, with copy buttons, and *Test MCP* checks that the
 server answers. You can also print them in a terminal from the app folder:
 
@@ -47,9 +48,9 @@ before it reaches `claude`. Check with `claude mcp list`; remove with
 afterwards.
 
 > **Already installed under the name `dashboard`?** Keep it. Installs made
-> before the OpenDash name use `dashboard`, and their tools are called
+> before the Freeflo name use `dashboard`, and their tools are called
 > `mcp__dashboard__...`. Everything works the same; only the prefix in your
-> permission rules differs. OpenDash recognises its own server by path, not by
+> permission rules differs. Freeflo recognises its own server by path, not by
 > name.
 
 The **Set up** panel and `node mcp/server.mjs --print-install` print the name
@@ -123,20 +124,19 @@ when the two differ.
 
 Ask Claude, for example:
 
-- "What is due this week in OpenDash?"
+- "What is due this week in Freeflo?"
 - "Add a task to email Sam on Thursday, high priority."
 - "Push every Acme task due next week back two days; preview first."
 - "Plan my day."
 
 ## Tools
 
-87 tools in the default (full) mode: 23 that only read and 64 that change
+120 tools in the default (full) mode: 34 that only read and 86 that change
 something. *Test MCP* in Connections starts the server in
-[propose mode](#modes-and-transport) so the test can never change anything,
-which is why it reports 23 tools (the read tools except `get_daynotes`, which
-the in-app assistant does not get, plus `propose_changes`); the
-server you register runs in full mode. `describe_operations` returns every
-operation with its exact JSON Schema.
+[propose mode](#modes-and-transport) so the test cannot change tasks or send
+anything. The server you register runs in full mode. `describe_operations`
+returns every operation with its exact JSON Schema and its
+[tier](#safety-tiers).
 
 ### Read
 
@@ -150,6 +150,13 @@ operation with its exact JSON Schema.
 | Files & links | `list_resources`, `get_suggested_links`, `get_related` |
 | Brief and reviews | `get_brief`, `list_reviews` |
 | Daily note | `get_daynotes` (one day, a range or a search; not offered to the in-app assistant) |
+| Garden | `get_garden` (overview with ids, bag, shop, quests, `recipes`: what the crafting bench knows and what each needs) |
+| You | `get_profile` (card and status, avatar options, outfits, pet with its trick book), `get_game` (level, streaks, quests, achievements), `get_memories` (milestones, week, year, facts, goals, countries; the journal and capsules are not offered to the in-app assistant) |
+| Settings | `get_settings` (each setting `set_setting` can change, its value and what it can be) |
+| Money and travel | `get_money` (budgets, the money plan, the tax year line by line with `part: tax`, a year of expenses), `list_owed` (who owes you what, what you owe, money you expect back; not on the remote connection), `get_travel` (trip decisions, countries; never exact locations) |
+| Stories | `get_stories` (the day's script) |
+| Friends and groups | `list_friends` (who, by id; what each can see; shared spaces; postcards; gardens; groups: names, your role, how many people, and with `group` who is in it and who is waiting). Never anything a friend or group member wrote, and never a group's link or code |
+| App | `get_app_status` (sync, connections, updates). Never a key, code or link |
 
 ### Change
 
@@ -160,15 +167,26 @@ operation with its exact JSON Schema.
 | Tags | `add_tag`, `remove_tag`, `create_tag`, `update_tag`, `rename_tag`, `merge_tags`, `delete_tag` |
 | Streams | `create_stream`, `update_stream`, `reorder_streams` |
 | Top bar and Home | `create_countdown`, `update_countdown`, `delete_countdown`, `reorder_countdowns`, `add_topbar_widget`, `set_home_focus`, `set_home_layout`, `reset_home_layout`, `set_home_widget` (a widget's own settings; another copy of Deadline runway or Smart list) |
-| Calendar and email | `annotate_event` (your notes on an event, important, linked tasks, wrapped up; the event itself is never changed), `update_calendar` (display name and colour in OpenDash only), `triage_email` |
+| Calendar and email | `annotate_event` (your notes on an event, important, linked tasks, wrapped up; the event itself is never changed), `update_calendar` (display name and colour in Freeflo only), `triage_email` |
 | Files & links | `create_resource`, `update_resource`, `delete_resource` (never touches the file itself), `link_resource`, `unlink_resource` |
 | Auto-linking | `suggest_links`, `rate_suggested_links`, `apply_suggested_links`, `reject_suggested_links`, `relate_task`, `unrelate_task` |
 | Reviews | `save_review` |
 | Daily note | `save_daynote` (replace a day's note, or add lines at its end; 10,000 characters a day) |
 | Batches | `apply_changes` (several operations, all or nothing), `undo_changes` |
+| Garden | `garden`: plant, water, feed, prune, harvest, dig up, move, decorate, buy, buy land, sell, make a bouquet, collect, craft (a recipe from `get_garden {view:"recipes"}`) |
+| You | `set_profile` (status, avatar, card text), `set_wardrobe` (save, wear, rename, remove, surprise), `pet` (feed, pat, teach, dress, name, adopt, learn a trick from the book, perform a trick it knows, wear or take off what you made at the bench) |
+| Settings | `set_setting` (one ordinary setting), `undo_change` (undoes a garden, profile, pet, layout, note, tax or setting change) |
+| Tax and the money plan | `tax_change` (income sources and jobs, including pay so far, exact payments still to come, a job that has ended and a bonus date; client payments, claims, flat rates, plan items and debts, ticks on dates, a filed return, things to remember; and `answers.set`, the answers behind the tax figures: blind, marriage, work benefits, region, student loans, the job's pension with its type, percentage, qualifying-earnings basis and start date, and your own tax-free amount from an HMRC coding notice (`allowanceOverride`, for one tax year; `null` goes back to worked out). Each with Undo), `open_what_if` (shows a scenario on screen, saves nothing) |
+| Friends (sensitive) | `friends_act` (waves, cheers, postcards, garden visits, add, approve, decline, remove, block), `friends_share` (what a friend can see), `together_act` (shared spaces), `groups_act` (start, join by code, let in, decline, remove, block, add as friend, leave, new link, show the link on screen, announce) |
+| Devices, relay, connections (sensitive) | `devices_act` (add, remove), `relay_act` (connect, update, disconnect), `connection_act` (start a sign-in, disconnect) |
+| Owed to me | `create_split` (who owes what, when you tell it), `mark_owed_paid` (when you say someone paid; from an email or a message it only asks you on the page), `undo_owed_change`. They move no money and tell nobody. Not on the remote connection |
+| Money and updates (sensitive) | `money_change` (category rules, budgets), `expense_change` (bulk paid, unsubmit, delete), `tax_document_change` (a tax change taken from a file, email or pasted text), `install_update` |
 
-There are no tools that write to Google, your email or your bank, and no
-finance write tools.
+There are no tools that write to Google, your email or your bank, and nothing
+files with HMRC. Finance writes are `money_change` and `tax_document_change`,
+which are sensitive, `tax_change`, which only touches your own Tax tab and
+money plan and has Undo, and the notes in Owed to me, which move no money. A UTR, a National Insurance number or a password is
+never returned by any tool and is refused by these.
 
 ## Prompts and resources
 
@@ -179,7 +197,7 @@ finance write tools.
 
 ## Safety rails
 
-Enforced by OpenDash, not left to the model:
+Enforced by Freeflo, not left to the model:
 
 - **Dates are ISO only** (`2026-10-08`). "Next Tuesday" is refused, with
   today's date in the error so the model can work it out.
@@ -198,22 +216,81 @@ Enforced by OpenDash, not left to the model:
   scripts and other tabs take turns on one lock, and an open tab merges the
   other change in field by field.
 
+## Safety tiers
+
+The assistant reads emails, invitations and things friends send, and any of
+those can carry text written to trick it (prompt injection). So every tool sits
+in one of three tiers, enforced in code rather than left to the model:
+`lib/agent-tiers.mjs` is the table, `mcp/server.mjs` refuses what a connection
+may not call, `lib/assistant.mjs` and `MCP_PROPOSE_TOOL` in
+`lib/claude-runner.mjs` are the in-app assistant's allow-lists, and the actions
+layer itself (`server/actions/index.mjs`) refuses anything else from the
+assistant without a proposal.
+
+| Tier | What | In-app assistant | Full mode |
+|---|---|---|---|
+| **Read** | everything under [Read](#read) | free | free |
+| **Low-risk, with Undo** | `garden`, `pet`, `set_wardrobe`, `set_profile`, `set_setting`, `undo_change`, `set_home_layout`, `reset_home_layout`, `set_home_widget`, `set_home_focus`, `save_daynote`, `create_split`, `mark_owed_paid`, `undo_owed_change`, `tax_change`, `open_what_if` | runs directly | runs directly |
+| **Sensitive** | `friends_act`, `friends_share`, `together_act`, `groups_act`, `devices_act`, `relay_act`, `connection_act`, `money_change`, `expense_change`, `tax_document_change`, `install_update` | never directly: a proposal you approve on screen | only with a dry run and its confirm token |
+
+Other changes (tasks, people, tags and so on) stay as they were: proposals in
+the in-app assistant, direct in full mode, with a dry run for deletes and merges.
+
+Things worth knowing:
+
+- **Friends see your status, your card text and your pet's name**, so an email
+  could use them to pass your data on. The in-app assistant can set a preset
+  status by itself; free text there goes through a proposal.
+- **The garden runs the app's own rules.** `lib/agent-engine.mjs` runs the page's
+  own files in Node, so coins still come only from focus time, finished tasks and
+  selling, and every cap applies. The tools have no way to give coins, water,
+  seeds or treats.
+- **`set_setting` is an allow-list.** Your name, the AI's settings and style, the
+  currency, sign-ins and folders are not on it: some of those would let an email
+  plant lasting instructions.
+- **Connections.** The agent can show status and start a sign-in. The person signs
+  in, in the browser. No tool takes a password, token or code, and no answer
+  carries one, a sign-in link, a join code or an invite. Bank and other email
+  accounts are started by you under Connections.
+- **The full-mode dry run is a check on the model, not on you.** A model can make
+  the dry run and then use its token by itself. In a local client that reads
+  outside content, also leave the sensitive tools off your allow-list, so the
+  client asks you first.
+- **Nothing a friend wrote reaches the model**: not their status, bio, captions,
+  guestbook lines or what is inside a shared space. Their chosen name and the name
+  of a space do, so the agent can say who is who; both are marked as data.
+- **The in-app assistant cannot read** your daily notes, journal or capsules.
+  It can add to a daily note, and replacing one is a proposal.
+
+Never exposed to any connection: secrets, keys, tokens, the signing key or
+recovery material, reading or writing files by path (`attach_expense_file` takes
+a receipt only, and refuses network and device paths), running programs, and
+changing the update feed.
+
+The remote gateway (`mcp/remote-server.mjs`) stays read and `propose_changes`
+only. It lists none of the new tools and cannot propose the new operations.
+To connect claude.ai, press **Connect Claude** in Freeflo and type the 4-letter
+code shown in your own sign-in tab; the code works once, for ten minutes, and
+three wrong codes close the Connect window.
+
 ## Modes and transport
 
-- **Full mode** (the default): read tools plus every change tool.
-- **Propose mode** (`--mode propose`): read tools (all but `get_daynotes`) plus
-  `propose_changes` only.
-  The model can suggest changes but never apply them; you review the preview
-  in OpenDash and apply it with one click. The in-app assistant uses this mode,
+- **Full mode** (the default): read tools plus every change tool. Sensitive
+  ones need a dry run and its confirm token.
+- **Propose mode** (`--mode propose`): read tools (all but `get_daynotes`), the
+  low-risk tier and `propose_changes`.
+  The model can suggest anything else but never apply it; you review the preview
+  in Freeflo and apply it with one click. The in-app assistant uses this mode,
   so text inside an email, an invitation or a bank transaction can never change
-  your data on its own.
+  your tasks, reach another person, share data or start a sign-in on its own.
 
-While OpenDash is running, the MCP server sends every call through it (it finds
+While Freeflo is running, the MCP server sends every call through it (it finds
 the server through `data/runtime.json` and authenticates with
 `data/local-token`), so open tabs update at once with "Updated by Claude Code".
-When OpenDash is not running, the MCP server works directly on the data folder
+When Freeflo is not running, the MCP server works directly on the data folder
 with the same rules and the same lock; the page picks the change up next time
-it opens. Its own log is `data/logs/mcp.log`.
+it opens. Its own log is `data/logs/mcp.log`. Friends, sync status, stories and
+every sensitive action need Freeflo running, and say so if it is not.
 
 ## Scripts and the HTTP API
 
@@ -229,7 +306,7 @@ it opens. Its own log is `data/logs/mcp.log`.
 
 | Problem | What to do |
 |---|---|
-| Claude says the OpenDash tools are missing | `claude mcp list`: if `opendash` (or `dashboard`) is not listed, run the install command; if it shows an error, the path is wrong (moved folder): remove it and add it again |
+| Claude says the Freeflo tools are missing | `claude mcp list`: if `opendash` (or `dashboard`) is not listed, run the install command; if it shows an error, the path is wrong (moved folder): remove it and add it again |
 | Connections says your Claude points at another copy | you moved or updated the app: remove the server and add it again with the commands from the Set up panel |
 | Changes do not appear in the open page | check that the page is open on the same data folder; the page also picks changes up when it is next opened |
-| "the data folder has no data yet" | point `--data-dir` at the data folder OpenDash uses (Settings > Data shows it) |
+| "the data folder has no data yet" | point `--data-dir` at the data folder Freeflo uses (Settings > Data shows it) |

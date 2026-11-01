@@ -247,7 +247,8 @@ function renderTaskRow(item, opts) {
   const mh = document.createElement('span'); mh.className = 'multi-handle';
   const mc = document.createElement('button'); mc.type = 'button';
   mc.className = 'multi-checkbox' + (multiSelect.ids.has(id) ? ' checked' : '');
-  mc.setAttribute('aria-label', 'Select for bulk actions');
+  mc.setAttribute('role', 'checkbox'); mc.setAttribute('aria-checked', multiSelect.ids.has(id) ? 'true' : 'false');
+  mc.setAttribute('aria-label', 'Select ' + effTitle(item));
   mc.onclick = e => { e.stopPropagation(); _toggleMulti(id); };
   mh.appendChild(mc);
   el.appendChild(mh);
@@ -274,6 +275,7 @@ function renderTaskRow(item, opts) {
   const titleRow = document.createElement('div'); titleRow.className = 't-title-row';
   const titleEl = document.createElement('span'); titleEl.className = 't-title';
   if (searchQuery) titleEl.innerHTML = _highlightText(effTitle(item)); else titleEl.textContent = effTitle(item);
+  try { const tl = typeof finTaskTile === 'function' ? finTaskTile(effTitle(item)) : null; if (tl) titleRow.appendChild(tl); } catch (e) { /* a task is never held up by this */ }
   titleRow.appendChild(titleEl);
   body.appendChild(titleRow);
 
@@ -371,7 +373,7 @@ function renderTaskRow(item, opts) {
   el.onclick = (e) => {
     if (e.target.closest('.multi-handle')) return;
     if (e.shiftKey && _selectRangeTo(id)) return;
-    if (e.ctrlKey || e.metaKey) { _lastSelectedTaskId = id; _toggleMulti(id); return; }
+    if (e.ctrlKey || e.metaKey || multiSelect.active) { _lastSelectedTaskId = id; _toggleMulti(id); return; }
     _lastSelectedTaskId = id;
     // The centre card or the side panel (Settings > Tasks): 61-task-card.js. Clicking the open one again is a no-op.
     if (typeof openTask === 'function') { openTask(id, { from: el }); return; }

@@ -1,9 +1,11 @@
 # Friends: a plain guide
 
-Friends (OpenDash 2.17) lets you add people who also use OpenDash, cheer each
-other on, see each other's levels and streaks, and do things together. This
-guide explains, without jargon, what friends can see, how messages travel,
-how to remove someone, and what OpenDash cannot promise.
+Friends lets you add people who also use Freeflo, cheer each other on, see
+each other's levels and streaks, share as much or as little as you like, and
+do things together: shared lists, gardens, pets and more. Friends lives in
+**Life** (the fifth area, beside Home, Tasks, Calendar and Money). This guide
+explains, without jargon, what friends can see, how messages travel, how to
+remove someone, and what Freeflo cannot promise.
 
 The technical design is in [docs/dev/FRIENDS.md](dev/FRIENDS.md) and
 [docs/dev/RELAY_PROTOCOL.md](dev/RELAY_PROTOCOL.md). Exactly which fields each
@@ -12,7 +14,11 @@ sharing level sends is in [PRIVACY.md](PRIVACY.md#friends).
 - [Getting started](#getting-started)
 - [Your relay](#your-relay)
 - [Adding a friend](#adding-a-friend)
+- [Groups: one link for everyone](#groups-one-link-for-everyone)
 - [What friends can see](#what-friends-can-see)
+- [Seeing what friends share with you](#seeing-what-friends-share-with-you)
+- [Doing things together](#doing-things-together)
+- [Your card, wardrobe, garden and pet](#your-card-wardrobe-garden-and-pet)
 - [Privacy: what travels, and who can see it](#privacy-what-travels-and-who-can-see-it)
 - [Removing or blocking someone](#removing-or-blocking-someone)
 - [What cannot be forced](#what-cannot-be-forced)
@@ -20,8 +26,9 @@ sharing level sends is in [PRIVACY.md](PRIVACY.md#friends).
 
 ## Getting started
 
-Click your avatar in the sidebar's top-left corner (until you have a
-profile it shows your workspace icon) and choose **Open Friends**. The
+Open **Life > Friends**, or click your avatar in the sidebar's top-left
+corner (until you have a profile it shows your workspace icon) and choose
+**Open Friends**. The
 same menu has *Set status*, *Add a friend*, *What my friends can see*, *Your
 relay* and *Sync*; a green dot on your avatar means a friend is around, and
 a number means someone is waiting for you. (Want Friends in the sidebar as
@@ -30,8 +37,8 @@ well? *Customise sidebar*, Home > Friends.)
 Until you have a friend, a short welcome walks you through three steps,
 with a progress bar:
 
-1. **Make your character.** Opens the character builder (Settings >
-   Profile). Friends see your character next to your name. If you like the
+1. **Make your character.** Opens the character builder (Life > Profile >
+   *Avatar and wardrobe*). Friends see your character next to your name. If you like the
    starting one, choose *It looks fine as it is*.
 2. **Get a relay.** Choose *Set up my relay* (free, about 2 minutes) or
    *Paste a friend's invite* to use a friend's relay. See
@@ -63,18 +70,20 @@ cannot read them, and it never learns names or what you send.
 Settings > **Your relay** > **Set up my relay** (or step 2 of the
 welcome). It takes about two minutes. You will see each step tick off:
 
-1. **Get Cloudflare's tool.** OpenDash uses Cloudflare's own tool,
+1. **Get Cloudflare's tool.** Freeflo uses Cloudflare's own tool,
    *wrangler*. The first time, it is downloaded ("Downloading Cloudflare's
    tool (first time only)…"); later it starts in seconds. It needs Node.js 20
-   or newer, which OpenDash already uses.
+   or newer with `npx`. A zip install already has it. The **Windows
+   installer** includes only Node.js itself, without `npx`, so install the LTS
+   version from nodejs.org once before you set up your own relay.
 2. **Sign in to Cloudflare.** A Cloudflare page opens in your browser:
    **click Allow**. No account yet? Create a free one on that page first. If
-   no page opened, the step shows a link to open it. OpenDash never sees your
+   no page opened, the step shows a link to open it. Freeflo never sees your
    Cloudflare password or sign-in: they stay with Cloudflare's tool.
 3. **Put your relay on Cloudflare.** Your relay is uploaded under a name like
    `opendash-relay-k3x9q2`.
 4. **Check that it answers.** A brand-new address can take up to a minute
-   to work everywhere; OpenDash keeps trying for about a minute.
+   to work everywhere; Freeflo keeps trying for about a minute.
 5. **Use it on all your devices.** The relay's address is saved and travels
    (encrypted) to your other computers.
 
@@ -98,7 +107,7 @@ ones:
 
 | You see | What to do |
 |---|---|
-| Node.js was not found, or is too old | Install Node.js 20 or newer (the LTS version) from nodejs.org, restart OpenDash, then *Try again*. |
+| Node.js was not found, or is too old | Install Node.js 20 or newer (the LTS version) from nodejs.org, restart Freeflo, then *Try again*. |
 | The Cloudflare sign-in was cancelled / was not answered in time | *Try again*, then click **Allow** on the Cloudflare page (within two minutes). |
 | Another Cloudflare sign-in is still waiting | Close other Cloudflare sign-in pages, or wait two minutes, then *Try again*. |
 | No workers.dev subdomain yet | Open dash.cloudflare.com > **Workers & Pages** (the page has a link). It asks you to choose a workers.dev subdomain: pick any free name, then *Try again*. |
@@ -134,11 +143,11 @@ Settings > Your relay > **Who can use it** lists:
   storage they use. *Revoke* takes their access away at once, with Undo; a
   revoked member can still be restored for 7 days, then their data on the
   relay is deleted. While you are friends their access is renewed by itself
-  whenever your OpenDash runs (if it is not opened for about six months, it
+  whenever your Freeflo runs (if it is not opened for about six months, it
   runs out and they need a new invite); someone an invite let in who is no longer your friend
   loses it after two months at the latest. Removing a friend, or a friend
   removing you, takes their access away; if your relay can't be reached at
-  that moment, OpenDash keeps trying until it can.
+  that moment, Freeflo keeps trying until it can.
 - **Pending invites**, with when each one ends, and *Cancel invite*. An
   invite works once and ends by itself.
 
@@ -181,22 +190,78 @@ again.
 - **Invite link.** Works for anyone. It works **once** and ends by itself (1,
   7 or 30 days). If it is your own relay, you can let them use it for friends,
   and also for syncing their own devices.
-- **Friend code**, like `ALEX-7K2QX9`. Only between people on the same relay.
-  *New code* makes a new one; the old one stops working at once.
+- **Friend code.** Press **Show my friend code** and read the 4 letters to your
+  friend (in person or on a call). They type them under *Add a friend > Friend
+  code*. The code is live for **10 minutes** and works **once**; *New code*
+  makes another. It needs a relay you both use (for example one of you joined
+  with the other's invite). Without one, send an invite link instead.
 - **Paste an invite** that a friend sent you.
 
-Before you are friends, you both see the same **6-digit code**. Check that it
-matches (in person, on a call or in a message), then the person who sent the
-invite approves. A forwarded or stolen link alone is not enough: the code
-would not match. If the codes differ, choose *The codes are different*.
+Before you are friends, both screens show the same **pictures** (three small
+ones). Check that they match (in person, on a call or in a message), then the
+person who showed the code or sent the invite presses **Accept**. A forwarded
+or stolen link alone is not enough: the pictures would not match. If they
+differ, choose *No, they're different* and nothing is shared.
+
+## Groups: one link for everyone
+
+A group connects many people at once: your family, your club, or everyone in a company. Instead of adding each person
+one by one, you share **one link**. Everyone who joins can see everyone else's name and picture. Open **Life > Friends > Groups**.
+
+**Start a group.** Press *Start a group* and give it a name. The link is ready straight away: copy it, send it as a message, show the
+QR code, or print a poster to pin up. You need your own relay for this (Settings > Your relay, about two minutes). If it is older than groups,
+the page says so and offers *Update my relay*: it takes a minute, and nothing is lost.
+
+**Join a group.** Press *Join a group*, paste the link, and you see the group's name, who runs it and where it is kept before anything happens. Press
+*Ask to join* (or *Join*). You don't need a relay of your own. If you have none, Freeflo asks before using this group's for your friend requests too. Someone without Freeflo who opens the link sees a small page saying what it is and how to get it.
+
+**Who gets in is up to you.** Choose one in the group's settings:
+
+- **I approve each person** (the normal way). Share the link anywhere: holding it only lets someone ask. You see their name and
+  picture and press *Let in*. Until then they get nothing at all.
+- **Anyone with the link.** They are in straight away, so whoever has the link can read the group. You can give it a date to run out and a
+  maximum number of people. Use this for something public, not for anything private.
+
+**A short code, if you want one.** People already connected through the same place can type 4 letters instead of pasting a link. It
+is off until you turn it on in *Share the link*, and it only ever lets them ask: you always approve them, even in *Anyone with the link*. A code can't prove it leads to the right group, so ask the person who gave it to you to read out their check pictures.
+Why not codes for everyone? Freeflo has no central server, so 4 letters alone can't tell a new computer where to look. The link carries that for you.
+
+**What people in a group see of you:** your name, your picture and your status. Nothing else. Each group can know you by a different name
+(*Settings for this group*). Your tasks, calendar and money are never part of a group.
+
+**Being friends with someone in the group.** Press their name, then *Add as friend*. They still have to accept. If you meet, you can each open
+your own card and compare the check pictures. A friend made in a group sees only the name you use there, until you choose to share more on their page. An owner can choose *Everyone
+here is friends automatically*: it is off unless they turn it on, you are told before you join and can untick it, and if they turn it on later nothing changes for you until you say yes.
+
+**Running a group.** The owner can let others help run it: they can let people in, remove people, make announcements and see the link. *Reset
+the link* makes a new one, and the old link and any code stop working at once. *Remove* has ten seconds of Undo; after that their access ends
+straight away, even if your computer is offline when you pressed it (Freeflo keeps trying until it is done), and the group's key changes so they
+can't read anything new. *Block* also stops them asking again. If you use *Anyone with the link*, make a new link too (the page offers it): otherwise they could come back under a new name. Removing someone who helps run the group makes a new link by itself, because they knew the old one: share the new one with anyone still to join.
+*Hand the group to them* makes someone else the owner; an owner has to do this before they can leave.
+
+**Companies and organisations.** Run your own relay on your own Cloudflare account, or ask whoever runs one to let you start a group on it.
+You get a name, a logo (an emoji and a colour, never an uploaded picture), a description, a welcome message, announcements and a searchable list of people.
+**This is not a compliance or records system.** Noticeboard posts go after 30 days, nothing is archived for you, you cannot read anyone's private messages,
+and people keep what they already read.
+
+**How many people, and what it costs.** A free Cloudflare account comfortably runs about 100 active people; a group can have up to 500. Past 100 the
+page warns you. If the free allowance runs out, the group rests until midnight UTC and nothing is lost. Cloudflare's paid plan is US$5 a month and, at
+around 300 active people, comes to about that. Any cost is between the relay's owner and Cloudflare: Freeflo never charges anything, and nothing upgrades by itself.
+
+**Older versions.** Friends on older versions keep working as friends. They can't join groups until they update.
 
 ## What friends can see
 
 **Nothing private until you say so.** A new friend sees only:
 
-- your **profile**: your name, your character, and the bio, emoji, colour,
-  pronouns and city you chose to fill in;
-- your **game progress**: level, title, XP, streaks, quests and focus minutes.
+- your **profile**: your name, your character and outfit, your card's banner,
+  nameplate and title, your pet, and the bio, emoji, colour, pronouns and city
+  you chose to fill in;
+- your **game progress**: level, title, XP, streaks, quests and focus minutes;
+- your **garden**: the plants and decorations and how they are growing (never
+  your tasks or anything you wrote).
+
+Each of these three can be set to *Hidden* for any friend.
 
 Everything else (tasks, calendar, money, places, memories and journal,
 whether you are online) starts **off**, for every friend. On a friend's page,
@@ -212,6 +277,79 @@ or what you are doing.
 
 The full list of fields each level sends is in
 [PRIVACY.md](PRIVACY.md#friends).
+
+## Seeing what friends share with you
+
+<!-- media: Friends > Shared with me, a friend's tasks shown read-only -->
+
+When a friend shares something with you, you can browse it much like your own
+data, **read-only**:
+
+- **Friends > Shared with me**: pick a friend on the left, then their
+  **Tasks**, **Calendar**, **Money**, **Places** or **Memories**. Only the
+  areas they chose to share appear. Each page says whose it is.
+- **The Mine switch**: Tasks, Calendar and Money have a small *Mine* switch in
+  the header. Pick a friend who shares that area to look at theirs, then *Back
+  to mine*.
+- **Alongside your own**: *Show friends' tasks* (Tasks) and *Show friends'
+  events* (Calendar) mix what they share into your views; Money can show a
+  *Friends' money* summary when someone shares money with you.
+- **View their data** on a friend's page opens the same place.
+
+New shares appear by themselves. Nothing a friend shares can change your own
+tasks, calendar or money, and it never reaches Claude, the assistant or MCP
+tools. When they stop sharing, it disappears.
+
+## Doing things together
+
+- **Share a task** with a friend, or **start a shared list**, from the task's
+  menu or the friend's page. *Assign to a friend* and *Share to a space* are
+  on every task. Nothing a friend sends changes your tasks until you choose
+  *Accept*, *Join* or *Mark done*.
+- **Shared spaces** (Together): a list, a board, a party, a trip or a shared
+  house that you and your friends edit together, with Undo. *Plan together*
+  adds a shared board of notes, task ideas, times to vote on and places.
+- **Find a time** across everyone's time zones, and book it once everyone can
+  make it.
+- **Split costs** for a trip or a shared house: only the amounts you type in
+  (your Money pages are never read), plus shared birthdays and wishlists.
+- **Play together**: co-op tasks, team quests, friendly challenges, focus
+  together, duo streaks and friendship levels, waves, high-fives and cheers,
+  postcards from scenes, and gifts.
+
+## Sending a song
+
+Found something a friend would like? Open their page and choose **Send Sam a song** (or press Ctrl+K and type *Send a song*). Search for a song, album, playlist or artist, pick one or more friends, add a line if you like, and send.
+
+They get a card in the feed with the cover, your line and **Open in Spotify**. If they have Spotify linked too, they also get **Play** and **Queue** (Premium, with a Spotify app open). A friend does not need Spotify linked to Freeflo to open what you send.
+
+Searching needs your own Spotify link ([Connections > Spotify](CONNECTIONS.md#spotify-songs-for-friends-favourites-and-top-artists)). Only the song's name, artist and Spotify id travel, never a link or a picture, and **Stop sharing** pauses songs too.
+
+**On your card.** *Profile > Music* lets you choose a favourite song, album and playlist and show your top five artists (the last 4 weeks, 6 months or all time). Friends see them on your card and can open them in Spotify. Nothing shows until you choose it, and your top artists have their own switch.
+
+**Listening to.** With *Show what I'm listening to* on (Profile > Music, off until you turn it on), a friend who opens your card sees the song you are playing right now, with a small progress bar. It is only sent when they look, only to friends who can see your card, never for a podcast or a Spotify private session, and **Stop sharing** stops it. Your Freeflo has to be running with Spotify linked for it to answer.
+
+## Your card, wardrobe, garden and pet
+
+<!-- media: Life > Profile, the profile card with banner, nameplate and pet -->
+
+- **Your profile card** (Life > Profile > *Card*): display name, pronouns, a
+  status, a short bio, what you are working on, a banner, a nameplate and a
+  title, and the badges and favourite places you choose to show. Your card
+  stays in view beside the forms, so you see it as friends will; the
+  *Sharing* tab is about what friends see. Friends' visits to your card are
+  only counted, never listed.
+- **The wardrobe** (Life > Profile > *Avatar and wardrobe*): clothes,
+  hairstyles, accessories and expressions for your character, saved outfits
+  and *Surprise me*.
+- **Your garden** (Life > Garden) is shown to friends by default. They can
+  visit it, water a plant, leave a heart or a gift and sign your guestbook,
+  and you can share a bed with a friend and tend it together. There is a
+  gallery of your friends' gardens. To hide yours from one friend, set
+  *Garden* to *Hidden* on their *What they can see* panel. Garden and pet
+  visits work best when your friends are on 2.18 or newer.
+- **Your pet** (Life > Pets) appears on your profile card, so friends see it
+  too.
 
 ## Privacy: what travels, and who can see it
 
@@ -233,7 +371,7 @@ The full list of fields each level sends is in
   inside your own encrypted device pairing.
 - **Nothing from a friend reaches Claude**, the assistant, MCP tools or any
   automatic action, and nothing a friend sends changes your tasks unless you
-  click. Friends' text is shown as plain text, and OpenDash never loads a
+  click. Friends' text is shown as plain text, and Freeflo never loads a
   picture or a link a friend sent.
 
 ## Removing or blocking someone
@@ -251,19 +389,21 @@ To only stop sharing (and stay friends), use *Stop sharing with Sam* instead.
 
 ## What cannot be forced
 
-OpenDash is honest about its limits:
+In a group, a person you remove keeps what they already read, and someone can come back under a new identity if they still hold a link in *Anyone with the link* mode. A dishonest relay can't read an *I approve each person* group, or make itself a member, but it can see who is in a group and when they post, and it can stop working.
+
+Freeflo is honest about its limits:
 
 - **Deleting on their device is a request.** Their app carries it out; a
-  normal OpenDash does, but it cannot be forced, and nobody can stop a
+  normal Freeflo does, but it cannot be forced, and nobody can stop a
   screenshot. Only share what you are happy for them to have seen.
 - **A relay's owner controls their own Cloudflare account.** They can't read
   your messages, but they decide whether the relay keeps running.
 - **A lost or stolen device that still has your keys** could keep acting as
-  you in Friends. Remove it from Sync and from Settings > Your relay, then
-  choose **Renew my keys** (offered right after you remove a device): your
-  friends move to your new keys and the old ones stop working.
-- **Someone you approve** sees what you chose to share with them. The 6-digit
-  code makes sure the person you approve is the person you meant.
+  you in Friends. Remove it in Settings > Sync: that locks it out of Friends
+  automatically, from the server, and your friends move to your new keys. (If
+  you only learn later, **Lock it out** in Friends settings does the same.)
+- **Someone you approve** sees what you chose to share with them. The
+  matching pictures make sure the person you approve is the person you meant.
 
 ## Questions
 
@@ -271,7 +411,7 @@ OpenDash is honest about its limits:
 friend's invite that includes their relay, you don't.
 
 **Does Friends cost anything?** No. The relay runs on Cloudflare's free plan,
-and OpenDash never upgrades it.
+and Freeflo never upgrades it.
 
 **Can a stranger use my relay?** No. Every request must be signed by you, one
 of your devices, or someone you invited.

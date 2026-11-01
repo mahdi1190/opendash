@@ -51,7 +51,7 @@ function tgRenderMoney(body, sp, ro) {
   const bal = tgBalances(v);
   const sum = tgEl('div', 'tg-card tg-money');
   const curs = Object.keys(bal);
-  if (!curs.length) sum.appendChild(tgEl('p', 'muted', 'No costs yet. Add what someone paid, and who it was for: OpenDash works out who owes whom.'));
+  if (!curs.length) sum.appendChild(tgEl('p', 'muted', 'No costs yet. Add what someone paid, and who it was for: Freeflo works out who owes whom.'));
   for (const cur of curs) {
     const mine = Math.round((bal[cur][me] || 0) * 100) / 100;
     const h = tgEl('div', 'tg-money-h');
