@@ -136,3 +136,35 @@ html[data-theme="dark"] .gpg-mid, html[data-theme="dark"] .gpg-what { color: inh
 .gd-hud-sky { color: rgba(255, 248, 225, .9); }
 .gd-mbtn { font-size: 11px; }
 .gd-slot kbd { color: #fff8e1; text-shadow: 0 1px 1px rgba(0, 0, 0, .7); }
+
+/* ---------- a second pass, from looking at it ---------- */
+.modal.gd-popup .gd-popup-body.gd-body { gap: 0; }
+.modal.gd-popup .gd-body { --fg-muted: #5f5138; }
+.gd-tile-art { height: 52px; }
+.gd-tile-art svg { max-width: 52px; max-height: 52px; }
+.gd-tile .gd-price { margin-top: 1px; height: 28px; }
+.gd-tile.gd-tile { gap: 1px; }
+.modal.gd-popup .gd-chips { margin: 0 0 8px; }
+.gdc-bagbar .gd-chips + .gd-chips { margin-right: auto; }
+.gvb-head.card { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 8px 12px; margin-bottom: 8px; }
+.gvb-head .gvb-nums { flex: 1 1 320px; flex-direction: row; align-items: center; gap: 10px; }
+.gvb-head .gvb-big { flex: none; font-size: 14px; font-weight: 800; }
+.gvb-head .gvb-bar { flex: 1 1 60px; margin: 0; }
+.gvb-head .gvb-nums small { display: none; }
+.modal.gd-popup .gvb-head .gd-chips { margin: 0; }
+.modal.gd-popup .gvb-filters { margin-bottom: 8px; gap: 6px 10px; }
+.modal.gd-popup .gvb-filters .gd-chips { margin: 0; }
+.gvb-filters .gvb-sel { height: 28px; font-size: 13px; }
+.gpg-gear > .gvb-card .gd-card-art, .gpg-gear > .gvb-var .gd-card-art { flex-basis: 56px; height: 56px; }
+.gpg-gear > .gvb-card .gd-card-art svg, .gpg-gear > .gvb-var .gd-card-art svg { max-height: 54px; }
+.gpg-cards { columns: 2 380px; column-gap: 12px; }
+.gpg-cards > * { break-inside: avoid; margin: 0 0 12px; }
+.grg-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 12px; align-items: start; }
+.grg-wrap .grg-over { margin: 0; padding: 10px 12px; }
+.grg-wrap .grg-map-w { max-width: min(100%, calc((82vh - 190px) * 1.18)); }
+.grg-wrap .grg-list { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.gs-looks .gp-prizes { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+@media (max-width: 860px) { .grg-wrap { grid-template-columns: minmax(0, 1fr); } }
+.grg-wrap .grg-map-w { max-width: min(100%, calc((82vh - 240px) * 1.18)); }
+.gpg-gear .gd-card-t small.muted { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; flex: none; }
+.gd-tile .gd-price.is-locked { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }

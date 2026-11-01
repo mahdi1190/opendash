@@ -65,7 +65,7 @@ function _gpgFit(P) {
   let rows = P.o.rows || 3, h = row;
   if (box) {
     const bb = box.getBoundingClientRect(), top = P.page.getBoundingClientRect().top - bb.top - box.clientTop + box.scrollTop, bs = getComputedStyle(box);
-    const room = box.clientHeight - top - (parseFloat(bs.paddingBottom) || 0) - 1, bar = 46;
+    const room = box.clientHeight - top - (parseFloat(bs.paddingBottom) || 0) - 3, bar = 46;
     const fit = (space) => Math.max(1, Math.floor((space + G) / (row + G)));
     rows = fit(room - bar);
     if (P.items.length <= cols * fit(room)) rows = fit(room);   // it all fits with no arrows at all

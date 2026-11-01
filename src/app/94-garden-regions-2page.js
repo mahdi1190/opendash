@@ -77,12 +77,13 @@ function _grgPage(el, m, R) {
   el.appendChild(head);
   const log = gardenCatchLog(), rec = (k, id) => (k === 'fish' ? log.fish : log.bugs).find(x => x.def.id === id), place = 'map:' + R.id;
   const rows = gardenRegionKinds(R.id).map(x => Object.assign({ kind: x.kind }, rec(x.kind, x.def.id)));
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, rows, r => r.kind + r.def.id, _gdbCmp), grid: 'gdb-grid gpg-book', row: 172, rowSm: 158, label: (r) => (r.kind === 'bug' ? 'Bugs' : 'Fish'), draw: (r) => _gdbCard(r, r.kind, m, '') });
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, rows, r => r.kind + r.def.id, _gdbCmp), grid: 'gdb-grid gpg-book', row: 142, rowSm: 142, label: (r) => (r.kind === 'bug' ? 'Bugs' : 'Fish'), draw: (r) => _gdbCard(r, r.kind, m, '') });
 }
 function gardenRegionTab(el, m) {
   if (_gdc.pick) { const log = gardenCatchLog(), r = (_gdc.pickKind === 'fish' ? log.fish : log.bugs).find(x => x.def.id === _gdc.pick); if (r) { _gdbEntry(el, m, _gdc.pickKind, r); return; } }
   const open = _gdc.region && gardenRegion(_gdc.region);
   if (open) { _grgPage(el, m, open); return; }
+  const wrap = _gdpEl('div', 'grg-wrap'); el.appendChild(wrap); el = wrap;   // the map beside its list: both in view
   const card = _gdpEl('section', 'card grg-over');
   card.appendChild(_gdpEl('h3', 'gd-h3', 'The map'));
   card.appendChild(_gdpEl('p', 'muted', 'Every fish and bug lives somewhere. Open up the land to find what lives there, and finish a page for a prize that stands in your garden.'));

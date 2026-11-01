@@ -18,7 +18,7 @@ function _gsLooksPage() {
       side.appendChild(_gdxChips(tabs.map(t => [t[0], t[1]]), kind, (k) => { _gsLooksTab = k; paint(); }));
       // what is yours, then what you can get, then what is still locked
       const rank = (r) => (gardenLookOwned(r.id) ? 0 : gardenLookOpen(r, m, ctx) ? 1 : 2), place = 'looks:' + kind;
-      gardenPager(side, { key: place, items: gardenPagerOrder(place, list, r => r.id, (a, b) => rank(a) - rank(b)), grid: 'gp-prizes', row: 196, rowSm: 196, draw: (r) => {
+      gardenPager(side, { key: place, items: gardenPagerOrder(place, list, r => r.id, (a, b) => rank(a) - rank(b)), grid: 'gp-prizes', row: 186, rowSm: 186, draw: (r) => {
         const own = gardenLookOwned(r.id), open = own || gardenLookOpen(r, m, ctx);
         const c = gpEl('div', 'gp-prize' + (open ? '' : ' is-locked'));
         c.innerHTML = `<div class="gp-prize-art">${gardenLookSvg(r.id, 72)}</div><b>${esc(r.name)}</b><span class="muted">${esc(own ? 'Yours' : open ? gardenLookCostLine(r.cost) : r.how)}</span>`;

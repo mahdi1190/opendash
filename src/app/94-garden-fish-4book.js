@@ -103,7 +103,7 @@ function _gdcBook(el, m, kind) {
     if (_gdc.kit) list = list.filter(r => { const n = r.def.needs || {}, kit = n.rod || n.reel || n.line || n.hook || n.net || n.bait || n.decor || n.plant || n.spot || n.event; return _gdc.kit === 'easy' ? !kit : _gdc.kit === 'kit' ? !!kit : _gdc.kit === 'rain' ? n.rain === true || !!r.def.rain : !!n.moon; });
     // by area, what you have found first inside an area, then how rare. Each set of filters remembers its own page; a search starts at page 1.
     const place = ['book', kind, _gdc.found, _gdc.zone, _gdc.tod, _gdc.season, _gdc.rar, _gdc.kit].map(x => x || '').join(':') + (q ? '?' : '');
-    gardenPager(box, { key: place, sig: q, items: gardenPagerOrder(place, list, r => r.def.id, _gdbCmp, q), grid: 'gdb-grid gpg-book', row: 172, rowSm: 158, label: (r) => _gdbArea(r.def)[1], draw: (r) => _gdbCard(r, kind, m, q), none: q ? `Nothing in the book called “${q}”.` : 'Nothing here with those filters.' });
+    gardenPager(box, { key: place, sig: q, items: gardenPagerOrder(place, list, r => r.def.id, _gdbCmp, q), grid: 'gdb-grid gpg-book', row: 142, rowSm: 142, label: (r) => _gdbArea(r.def)[1], draw: (r) => _gdbCard(r, kind, m, q), none: q ? `Nothing in the book called “${q}”.` : 'Nothing here with those filters.' });
   };
   search.oninput = () => { _gdc.q = search.value; paint(); };
   paint();
@@ -119,6 +119,7 @@ function _gdbCard(r, kind, m, q) {
   const p = known ? _gdcPill(d.rarity) : null; if (p) b.appendChild(p);
   if (_gdbNow(d, m) && !known) b.appendChild(_gdpEl('span', 'gdb-now', 'About now'));
   b.setAttribute('aria-label', `${name}. Open its page.`);
+  if (!known) b.setAttribute('data-tip', _gdcWhen(d, m.level.level));   // (the card has room for two lines of it)
   b.onclick = () => { _gdc.pick = d.id; _gdc.pickKind = kind; _gdbGo(); };
   return b;
 }

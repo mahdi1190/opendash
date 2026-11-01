@@ -12,7 +12,7 @@
      gardenTimelapseOpen()      your garden from its first day to now; play, pause, scrub
      _gdpBurst(kind)            a handful of petals over the garden (Full fun level, motion on)
    ============================================================ */
-const GDX_TILE_ROW = 160;
+const GDX_TILE_ROW = 138;
 const _gdx = { shop: 'seeds', shopCat: '', pick: null, qty: 1, alm: 'plants', almCat: '', stems: {}, q: '' };
 
 function _gdxSeg(list, cur, pick, cls) {

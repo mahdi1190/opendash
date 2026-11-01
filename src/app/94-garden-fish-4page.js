@@ -37,7 +37,7 @@ function gardenCatchTab(el, m) {
   const f = gardenCatchFacts();
   const sum = _gdpEl('span', 'gdc-sum muted');
   sum.textContent = `${f.fishSpecies} of ${GARDEN_FISH_ONLY.length} fish · ${f.bugSpecies} of ${GARDEN_BUGS.length} bugs · ${gardenSpecFound()} of ${GARDEN_VARIANTS.length} variants`;
-  if (tab === 'bag') top.appendChild(sum);   // (the books and the catches say their own counts: a line here would only take room from the page)
+  if (tab === 'bag' && _gdc.bag === 'market') top.appendChild(sum);   // (the books and the catches say their own counts: a line here would only take room from the page)
   el.appendChild(top);
   if (tab === 'bag') _gdcBag(el, m, bag);
   else if (tab === 'fish') _gdcBook(el, m, 'fish');
@@ -45,7 +45,7 @@ function gardenCatchTab(el, m) {
   else if (tab === 'map') gardenRegionTab(el, m);
   else if (tab === 'tackle') _gdcTackle(el, m);
   else if (tab === 'best') gardenSpecTab(el);
-  else if (tab === 'lake') gardenLakeTab(el, m);
+  else if (tab === 'lake') { const cards = _gdpEl('div', 'gpg-cards'); el.appendChild(cards); gardenLakeTab(cards, m); }
   else if (tab === 'hall') gardenHallTab(el, m);
   else _gdcShow(el, m);
 }
@@ -53,8 +53,10 @@ function gardenCatchTab(el, m) {
 /* ---------- bag and market ---------- */
 function _gdcStars(q) { return q ? `<b class="gd-stars q${q}" title="${esc(gardenQuality(q).label)}">${gardenQuality(q).stars}</b>` : ''; }
 function _gdcBag(el, m, bag) {
-  el.appendChild(_gdxChips([['bag', `In your bag (${bag.fish.length + bag.bugs.length})`], ['market', 'Market and orders']], _gdc.bag, (k) => { _gdc.bag = k; _gdxRepaintTab(); }));
-  if (_gdc.bag === 'bag') { _gdcBagList(el, m, bag); return; }
+  const views = _gdxChips([['bag', `In your bag (${bag.fish.length + bag.bugs.length})`], ['market', 'Market and orders']], _gdc.bag, (k) => { _gdc.bag = k; _gdxRepaintTab(); });
+  if (_gdc.bag === 'bag') { _gdcBagList(el, m, bag, views); return; }
+  el.appendChild(views);
+  const page = el; el = _gdpEl('div', 'gpg-cards'); page.appendChild(el);
   const mk = gardenMarketInfo(m), E = GARDEN_CATCH_ECON;
   const head = _gdpEl('section', 'card gdc-market');
   head.innerHTML = `<div class="gdc-market-h">${icon('coins')}<b>The market</b><span class="muted" data-tip="Full price up to a limit each day, then a fifth"></span></div>`;
@@ -84,13 +86,15 @@ function _gdcBag(el, m, bag) {
   board.appendChild(list); el.appendChild(board);
 }
 /** What you carry: the selling buttons, fish or bugs, a page at a time. */
-function _gdcBagList(el, m, bag) {
+function _gdcBagList(el, m, bag, views) {
   if (!bag.nFish && !bag.nBugs) {
+    el.appendChild(views);
     const e = _gdpEl('div', 'card gdc-empty');
     e.innerHTML = `${icon('fish')}<div><b>Nothing in your bag yet</b></div>`;
     el.appendChild(e); return;
   }
   const bar = _gdpEl('div', 'gdc-filters gdc-bagbar');
+  bar.appendChild(views);
   bar.appendChild(_gdxChips([['', 'Everything'], ['fish', `Fish (${bag.fish.length})`], ['bug', `Bugs (${bag.bugs.length})`]], _gdc.bagKind, (k) => { _gdc.bagKind = k; _gdxRepaintTab(); }));
   const acts = _gdpEl('div', 'gdc-acts');
   acts.appendChild(_gdpBtn('Sell spare fish', { icon: 'coins', disabled: !bag.nFish, tip: 'Sell every fish except the best of each kind', run: () => _gdcSay(gardenCatchSellAll('fish', 1)) }));
@@ -98,7 +102,7 @@ function _gdcBagList(el, m, bag) {
   acts.appendChild(_gdpBtn('Sell spare bugs', { icon: 'coins', disabled: !bag.nBugs, tip: 'Sell every bug except one of each kind', run: () => _gdcSay(gardenCatchSellAll('bug', 1)) }));
   bar.appendChild(acts); el.appendChild(bar);
   const items = (_gdc.bagKind === 'bug' ? [] : bag.fish.map(r => ['fish', r])).concat(_gdc.bagKind === 'fish' ? [] : bag.bugs.map(r => ['bug', r]));
-  gardenPager(el, { key: 'catch:bag:' + _gdc.bagKind, items, grid: 'gd-grid gdc-grid gpg-gear', row: 236, rowSm: 236, label: ([k]) => (k === 'bug' ? 'Bugs' : 'Fish'), draw: ([k, r]) => _gdcBagCard(k, r, m) });
+  gardenPager(el, { key: 'catch:bag:' + _gdc.bagKind, items, grid: 'gd-grid gdc-grid gpg-gear', row: 232, rowSm: 232, label: ([k]) => (k === 'bug' ? 'Bugs' : 'Fish'), draw: ([k, r]) => _gdcBagCard(k, r, m) });
 }
 function _gdcItemName(k) {
   if (k.startsWith('seed:')) { const p = gardenPlant(k.slice(5)); return p ? p.name.toLowerCase() + ' seed' : 'a seed'; }
@@ -226,7 +230,7 @@ function _gdcTackle(el, m) {
   const kind = on[0], mine = (d) => (kind === 'float' ? gardenBobberOwned(d.id) : d.pack ? gardenHas('kit:' + d.id) > 0 : gardenGearOwned(d.id));
   const cmp = (a, b) => (mine(a) ? 0 : 1) - (mine(b) ? 0 : 1) || (a.price || 0) - (b.price || 0);
   const place = 'catch:tackle:' + kind;
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, on[2], d => d.id, cmp), grid: 'gd-grid gdc-grid gpg-gear', row: 262, rowSm: 262, draw: (d) => on[3](d, m) });
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, on[2], d => d.id, cmp), grid: 'gd-grid gdc-grid gpg-gear', row: 246, rowSm: 246, draw: (d) => on[3](d, m) });
 }
 
 /* ---------- the showcase ---------- */
