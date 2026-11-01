@@ -257,7 +257,7 @@ const GARDEN_ZONE_GATES = (function () {
       const ix = x - dx, iy = y - dy; if (!walk(ix, iy) || gardenZoneOf(ix, iy) >= n) continue;
       const lane = !!gardenLandCell(x, y).lane && !!gardenLandCell(ix, iy).lane;
       if (lane && y === 20) continue;   // one gate right across the lane, from its top row
-      if (out.some(g => g.n === n && Math.abs(g.x - x) + Math.abs(g.y - y) <= 1)) continue;   // (a corner of a path: one gate is enough)
+      if (out.some(g => g.n === n && (Math.abs(g.x - x) + Math.abs(g.y - y) <= 1 || (g.door.x === ix && g.door.y === iy)))) continue;   // (a corner of a path, or a fork: one gate is enough)
       out.push(Object.freeze({ id: 'zg-' + x + '-' + y, n, x, y, dx, dy, h: lane ? 2 : 1, door: Object.freeze({ x: ix, y: iy }) }));
     }
   }
@@ -358,7 +358,7 @@ function gardenLandFeature(id) { return _GLD_FEAT.get(String(id)) || null; }
 /* The maze, one character a cell over its footprint: # is hedge, C the chest. Gate at the top, from the Cabbage steps. */
 const GARDEN_LAND_MAZE = _gdF(['##.#####', '#...#.C#', '###.#.##', '#.....##', '########']);
 const GARDEN_LAND_OFFICE = ({ id: 'land-office', name: 'Land office', x: 24, y: 19, w: 3, h: 1, door: _gdF({ x: 25, y: 20 }), act: 'lands', kind: 'lf-office', tall: 2.4, verb: 'look at the land', blurb: 'What you can buy and build, and what is still to come.' });
-const GARDEN_LAND_LAMPS = _gdF([3, 8, 41, 46, 50]);   // x along the lane's north edge, out where there are no shops
+const GARDEN_LAND_LAMPS = _gdF([4, 8, 47, 50]);   // x along the lane's north edge, out where there are no shops
 /* Your finds, laid out on a table on the lane from the first one you dig up, until a museum takes them in. */
 const GARDEN_LAND_FINDS = ({ id: 'land-finds', name: 'Your finds', x: 40, y: 19, w: 2, h: 1, col: 'soft', walk: 0, act: 'lf', lf: 'land-finds', door: _gdF({ x: 40, y: 20 }), kind: 'lf-finds', tall: 1, blurb: 'What has turned up so far.' });
 const GARDEN_LAND_KEY_ID = 'old-key';
@@ -367,6 +367,14 @@ const GARDEN_LAND_KEY_ID = 'old-key';
    The owner: "make sure the new garden looks good, populated, lots of cool features, stone paths, plazas, unique easter eggs". A new garden is a place before you plant anything. These stand on thicket,
    the mown green or a path (col 'none' on a path), so they take no room from plots and block nothing. The same for every garden, so a friend sees them with no field in a snapshot.
    say: what you find when you go up to it. egg: a small secret, once each: {c: coins, x: experience, curio: 1, tod: only then, verb, found: what it says}. World cells. */
+/* Where you could not stand to look at a sight: inside a shop, or inside a feature once it is built. */
+function _gldDoorTaken(x, y) {
+  const inside = (p) => x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + (p.h || 1);
+  if (inside(GARDEN_LAND_OFFICE)) return true;
+  for (const p of GARDEN_PROPS) if (!p.walk && (p.col || 'full') === 'full' && inside(p)) return true;
+  for (const f of GARDEN_LAND_FEATURES) if (f.x != null && f.col === 'full' && inside(f)) return true;
+  return false;
+}
 const GARDEN_LAND_SIGHTS = _gdMovable([
   // the middle
   { id: 'ld-cross', art: 'cross', name: 'The market cross', x: 24, y: 11, col: 'soft', tall: 1.6, say: 'Worn smooth by hundreds of hands. There is a small slot in the base.', egg: { verb: 'Feel in the slot', c: 4, found: 'Somebody left four coins in the slot, a long time ago.' } },
@@ -378,7 +386,7 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-box-a', art: 'topiary', name: 'A clipped box', x: 17, y: 8, col: 'full', tall: 1, say: 'Possibly a duck. Possibly a teapot.' },
   { id: 'ld-box-b', art: 'topiary', name: 'A clipped box', x: 33, y: 8, col: 'full', tall: 1, say: 'Definitely the same teapot.' },
   { id: 'ld-statue', art: 'statue', name: 'The old gardener', x: 34, y: 15, col: 'full', tall: 2, say: 'A stone man with a stone trowel, looking at the greenhouse as if it owes him money.', egg: { verb: 'Look under the trowel', curio: 1, found: 'Something was pushed in under the trowel' } },
-  { id: 'ld-arch-n', art: 'gate', name: 'The north gate', x: 27, y: 8, col: 'none', tall: 1.9, say: 'The way up to the hill starts here.' },
+  { id: 'ld-arch-n', art: 'gate', name: 'The north gate', x: 27, y: 10, col: 'none', tall: 1.9, say: 'The way up to the hill starts here.' },
   // north: the hill
   { id: 'ld-stones', art: 'stones', name: 'The hill stones', x: 28, y: 4, w: 4, col: 'full', tall: 1.2, say: 'Nobody knows who stood them up. There are five, or six, depending on when you count.', egg: { verb: 'Count them', tod: 'night', c: 12, found: 'After dark there are six. You count again and there are five, and twelve coins on the grass.', soon: 'Five stones. People say to count them after dark.' } },
   { id: 'ld-cairn', art: 'cairn', name: 'The cairn', x: 26, y: 4, col: 'full', tall: 0.9, say: 'Everyone who comes this way adds a stone.', egg: { verb: 'Add a stone', x: 5, found: 'You add a stone. You feel better for it.' } },
@@ -409,12 +417,12 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-hut', art: 'shepherd', name: 'The shepherd’s hut', x: 33, y: 5, col: 'full', tall: 1.4, say: 'On iron wheels, and it has not moved in years. The kettle is still on the stove.', egg: { verb: 'Look in the window', x: 6, found: 'A chair, a kettle, and a dog’s bowl with the name worn off. You feel you have met them.' } },
   { id: 'ld-folly', art: 'folly', name: 'The hilltop folly', x: 37, y: 1, w: 2, col: 'full', tall: 2.6, say: 'A tower with no stairs, put up to look nice from the village. It does.' },
   { id: 'ld-beacon', art: 'beacon', name: 'The old beacon', x: 29, y: 0, col: 'full', tall: 1.3, say: 'An iron basket on a post, for sending news a long way.', egg: { verb: 'Light it', tod: 'night', c: 11, found: 'It catches at once. Far off, somebody lights another. Eleven coins were left in the ash.', soon: 'Nobody would see it by day. Come back after dark.' } },
-  { id: 'ld-warren', art: 'warren', name: 'The warren bank', x: 27, y: 4, col: 'full', tall: 0.5, say: 'More holes than bank. Something thumps twice underground when you stop.' },
+  { id: 'ld-warren', art: 'warren', name: 'The warren bank', x: 32, y: 4, col: 'full', tall: 0.5, say: 'More holes than bank. Something thumps twice underground when you stop.' },
   // east
   { id: 'ld-ring', art: 'ring', name: 'The ring of old trees', x: 48, y: 1, w: 4, col: 'full', tall: 1.8, say: 'Five huge trunks in a perfect ring. Nobody planted them on purpose, surely.', egg: { verb: 'Stand in the middle', x: 8, found: 'It goes very quiet. When you step out, it has been a bit longer than you thought.' } },
   { id: 'ld-hollow', art: 'hollow', name: 'The hollow oak', x: 41, y: 2, col: 'full', tall: 2.2, say: 'Big enough for a child to stand in. Somebody once did: there is a shelf.', egg: { verb: 'Feel along the shelf', curio: 1, found: 'Tucked at the back of the shelf' } },
   { id: 'ld-treehouse', art: 'treehouse', name: 'The treehouse', x: 44, y: 0, w: 2, col: 'full', tall: 2.8, say: 'The ladder has lost its bottom rungs, so the owner must be grown up by now.', egg: { verb: 'Pull the string', c: 5, found: 'A tin comes down on a pulley. A note says “password?” and there are five coins under it.' } },
-  { id: 'ld-clamp', art: 'clamp', name: 'The charcoal clamp', x: 50, y: 3, col: 'full', tall: 0.8, say: 'A great turf mound, long gone cold. It still smells of smoke.' },
+  { id: 'ld-clamp', art: 'clamp', name: 'The charcoal clamp', x: 51, y: 3, col: 'full', tall: 0.8, say: 'A great turf mound, long gone cold. It still smells of smoke.' },
   { id: 'ld-barrels', art: 'barrels', name: 'Cider square', x: 48, y: 11, col: 'full', tall: 1, say: 'A small paved square, a stack of barrels and the smell of last autumn.', egg: { verb: 'Knock on the barrels', c: 6, found: 'Empty, empty, empty, and one that goes clink. Six coins.' } },
   // west
   { id: 'ld-pump', art: 'pump', name: 'Pump square', x: 8, y: 8, col: 'full', tall: 1.3, say: 'Everyone in the fields comes here for water and news.', egg: { verb: 'Work the handle', x: 5, found: 'It coughs, thinks about it, and gives you a very good cup of water.' } },
@@ -432,10 +440,10 @@ const GARDEN_LAND_SIGHTS = _gdMovable([
   { id: 'ld-sunk', art: 'sunken', name: 'The sunken pool', x: 30, y: 18, w: 2, col: 'full', tall: 0.2, say: 'Three stone steps down to a square of still water, right behind the shops. Everyone forgets it is there.', egg: { verb: 'Look in the water', c: 3, found: 'Three old coins on the bottom, and your own face looking pleased.' } },
   { id: 'ld-picnic', art: 'picnic', name: 'The picnic table', x: 33, y: 12, w: 2, col: 'soft', tall: 0.8, say: 'Somebody has carved a draughts board in the top.' },
   { id: 'ld-mile', art: 'mile', name: 'The milestone', x: 1, y: 19, col: 'soft', tall: 0.8, say: 'It says “0” on both sides. This is as far as anyone measured.', egg: { verb: 'Read the back', c: 2, found: 'On the back, small: “Well done for checking.” Two coins.' } },
-  { id: 'ld-arch-se', art: 'gate', name: 'The east shore gate', x: 45, y: 21, col: 'none', tall: 1.9, say: 'Round the lake, the other long way.' },
+  { id: 'ld-arch-se', art: 'gate', name: 'The east shore gate', x: 46, y: 23, col: 'none', tall: 1.9, say: 'Round the lake, the other long way.' },
 ].map(d => { const w = d.w || 1, r = Object.assign({ w: 1, h: 1, walk: 0, act: 'lf', kind: 'ld-' + d.art, blurb: d.say }, d, { lf: d.id });
   // where you stand to look at it: right there if it is a path, else the nearest ground beside it
-  let best = null, bd = 1e9; for (let yy = d.y - 2; yy <= d.y + 3; yy++) for (let xx = d.x - 3; xx <= d.x + w + 2; xx++) { const c = gardenLandCell(xx, yy); if (!c || c.solid || c.pool || c.fam === 'pond' && !(yy === 8 || yy === 11) || (xx >= d.x && xx < d.x + w && yy === d.y && d.col !== 'none')) continue; const n = Math.hypot(xx - d.x - w / 2 + 0.5, (yy - d.y - 0.5) * 0.9) + (c.trail || c.lane || c.green ? 0 : 0.6); if (n < bd) { bd = n; best = { x: xx, y: yy }; } }
+  let best = null, bd = 1e9; for (let yy = d.y - 2; yy <= d.y + 3; yy++) for (let xx = d.x - 3; xx <= d.x + w + 2; xx++) { const c = gardenLandCell(xx, yy); if (!c || c.solid || c.pool || _gldDoorTaken(xx, yy) || c.fam === 'pond' && !(yy === 8 || yy === 11) || (xx >= d.x && xx < d.x + w && yy === d.y && d.col !== 'none')) continue; const n = Math.hypot(xx - d.x - w / 2 + 0.5, (yy - d.y - 0.5) * 0.9) + (c.trail || c.lane || c.green ? 0 : 0.6); if (n < bd) { bd = n; best = { x: xx, y: yy }; } }
   r.door = best || { x: d.x, y: d.y + 1 };
   return r; }));
 /* The small paved squares, [x, y, rx, ry] in px for the last two (world cells); the brooks, as points they run through, ending in water or under a bridge. */
@@ -560,6 +568,13 @@ function gardenLandTotals() { return { sections: GARDEN_LAND_SECTIONS.length, tr
 function gardenLandTrees() {
   const out = [], taken = new Set();
   for (const d of GARDEN_LAND_SIGHTS) for (let k = -1; k <= d.w; k++) taken.add((d.x + k) + ',' + d.y);
+  // a tree is about three rows tall: nothing stands in the rows just in front of something you would want to see
+  const front = (p) => { const w = Math.ceil(p.w || 1), h = Math.ceil(p.h || 1), x0 = Math.floor(p.x); for (let k = -1; k <= w; k++) for (let dy = 0; dy < 3; dy++) taken.add((x0 + k) + ',' + (Math.floor(p.y) + h + dy)); };
+  for (const d of GARDEN_LAND_SIGHTS) if ((d.tall || 1) >= 0.5 && d.art !== 'bridge') front(d);
+  for (const g of GARDEN_ZONE_GATES) front(g);
+  for (const f of GARDEN_LAND_FEATURES) if (f.x != null && f.does !== 'maze') front(f);
+  for (const p of GARDEN_PROPS) if (!p.walk && p.kind && p.y < 21) front(p);
+  front(GARDEN_LAND_OFFICE); front(GARDEN_LAND_FINDS);
   for (const [rid, M] of Object.entries(GARDEN_LAND_MAPS)) M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) if (row[dx] === '#' && gardenHash(rid + dx + ',' + dy) % 5 === 0 && !taken.has((M.x + dx) + ',' + (M.y + dy)) && !(typeof gardenRegionWaterAt === 'function' && gardenRegionWaterAt(M.x + dx, M.y + dy))) out.push({ x: M.x + dx, y: M.y + dy, theme: M.theme }); });
   return out;
 }

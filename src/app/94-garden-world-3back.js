@@ -339,6 +339,7 @@ function eeEnter(o) {
   clearTimeout(_ee.hintT); _ee.hintT = setTimeout(() => { const h = root.querySelector('.ee-hint'); if (h) h.classList.add('is-gone'); }, 7000);
   _eeSongStart();
   _eeStartLoop();
+  clearTimeout(_ee.hideT); _ee.hideT = setTimeout(() => { if (_ee.on) _gwIndoors(true); }, 760);   // (once it has faded in: the stage is not drawn under a room)
   _eeSendAt(me.x, me.y, 'in');
   return true;
 }
@@ -348,7 +349,8 @@ function _eeLeave() {
   try { if (typeof gardenLiveFx === 'function') gardenLiveFx('hall', 'out'); } catch (e) { /* only a message */ }
   window.removeEventListener('keydown', _eeKey, true); window.removeEventListener('keyup', _eeKey, true);
   document.removeEventListener('visibilitychange', _eeStartLoop);
-  cancelAnimationFrame(_ee.raf); _ee.raf = 0; clearTimeout(_ee.hintT);
+  cancelAnimationFrame(_ee.raf); _ee.raf = 0; clearTimeout(_ee.hintT); clearTimeout(_ee.hideT);
+  _gwIndoors(false);
   _eeSongStop();
   const root = _ee.root;
   if (root) { root.classList.remove('is-on'); root.classList.add('is-out'); setTimeout(() => { root.remove(); }, 420); }

@@ -8,7 +8,7 @@ const GARDEN_EARLY_GIFT = Object.freeze({
   mats: Object.freeze({ peg: 40, timber: 80, stone: 80, reed: 80 }), tickets: 50, treats: 40,
   gear: Object.freeze(['rod-2', 'rod-3', 'rod-4', 'net-2', 'net-3']),   // the golden ones are still there to earn
   bait: 25, seeds: 5, seedKinds: 24,               // of each bait on sale; of each of this many kinds of seed
-  spots: Object.freeze([[13.5, 14.5], [12.5, 17.5], [23.5, 12.5], [26.5, 14.5], [13.5, 19.5], [26.5, 18.5]]),   // world cells: tucked around the front garden, the first that is free
+  spots: Object.freeze([[13.5, 14.5], [12.5, 17.5], [23.5, 12.5], [26.5, 14.5], [14.5, 18.5], [26.5, 18.5]]),   // world cells: tucked around the front garden, the first that is free
 });
 const _wdg = { S: null, at: null, hintT: 0 };
 let _wdgHinted = false;

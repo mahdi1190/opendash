@@ -5,8 +5,8 @@
    Nothing is saved but a line of thanks the first time. Fun Off keeps the ice and the ground, because they are the land; it takes the falling things away.
    ============================================================ */
 const GTG_SEASON_AT = Object.freeze({   // world cells
-  trees: Object.freeze([[13.6, 12], [38.6, 12.4], [15.4, 18.8], [37, 18.6], [21, 19.6], [31.5, 19.6]]),
-  patches: Object.freeze([[14.5, 13.5, 3], [37, 14.2, 3], [18, 19.4, 3.5], [33.5, 19.6, 3.5], [24.5, 13.5, 3], [29, 16.6, 2.5], [17, 15.8, 2.5]]),
+  trees: Object.freeze([[13.6, 12], [38.6, 12.4], [15.4, 18.8], [37, 18.6], [21, 19.6]]),
+  patches: Object.freeze([[14.5, 13.5, 3], [37, 14.2, 3], [18, 17.8, 3.5], [33.5, 17.8, 3.5], [24.5, 13.5, 3], [29, 16.6, 2.5], [17, 15.8, 2.5]]),
   holes: Object.freeze([[16, 22], [21, 21], [29, 22], [34, 21], [38, 22], [14, 24], [19, 23], [30, 24], [37, 23], [22, 28], [28, 34], [15, 32], [38, 27], [33, 26]]),   // and one at each named spot
 });
 const _gtgs = { season: '', ice: false, cold: false };
