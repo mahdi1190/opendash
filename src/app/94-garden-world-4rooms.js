@@ -184,6 +184,18 @@ const GRM_PLAY = Object.freeze({
       S.at = 0; _grmP(R, 'w', 0); _grmPay(R, R.gotLine); _grmPaint(); if (R.won) R.won(R);
     },
   },
+  /* The kinds that live in this room: three about each day, the same all day. */
+  net: {
+    begin(R, S) { S.b = _grmNetToday(R); S.won = _grmDone(R); },
+    spots(R, S) { return S.b.filter(q => !q.gone).map(q => ({ id: q.i, x: q.x, y: q.y, w: 76, h: 76, tip: R.tip, art: `<g transform="translate(-30 -60)">${gardenCatchSvg('bug', q.id, 60, q.v ? { v: q.v } : {})}</g>` })); },
+    act(R, S, i) {
+      const q = S.b.find(x => x.i === i); if (!q || q.gone) return;
+      const out = gardenCatchBug({ key: q.key, id: q.id, v: q.v, hab: 'flower' }); q.gone = true;
+      if (out.ok) { const V = out.v ? gardenVariantDef(out.v) : null, line = `${_gfAnA((V ? V.name.toLowerCase() + ' ' : '') + out.def.name.toLowerCase()).replace(/^./, c => c.toUpperCase())}.${out.isNew ? ' New to your book.' : ''}`; if (S.won) _grmSay(line); else { S.won = true; _grmPay(R, line); } }
+      _grmPaint();
+      if (S.b.every(x => x.gone)) setTimeout(() => _grmSay(R.goneLine, 7000), 6000);
+    },
+  },
   /* Stop it when the mark comes round, three times. */
   catchIt: {
     begin(R, S) { S.a = 0; S.hits = 0; S.goal = (_grmHash(R) % 6) * Math.PI / 3; S.won = _grmDone(R); },
@@ -208,14 +220,15 @@ const GRM_PLAY = Object.freeze({
 function _grmPaint() {
   const R = _grm.R, S = _grm.S; if (!R || !_grm.props) return;
   let s = '';
-  for (const q of GRM_PLAY[R.play].spots(R, S)) {
+  for (const q of _grmAllSpots(R, S)) {
     if (q.still) { s += `<g transform="translate(${q.x} ${q.y})">${q.art}</g>`; continue; }
     s += `<g class="grm-spot" data-s="${q.id}" transform="translate(${q.x} ${q.y})"><title>${esc(q.tip || '')}</title><rect x="${-q.w / 2}" y="${-q.h}" width="${q.w}" height="${q.h}" fill="transparent"/>${q.art}</g>`;
   }
   _grm.props.innerHTML = s;
 }
-function _grmSpot(id) { return GRM_PLAY[_grm.R.play].spots(_grm.R, _grm.S).find(q => String(q.id) === String(id) && !q.still) || null; }
+function _grmSpot(id) { return _grmAllSpots(_grm.R, _grm.S).find(q => String(q.id) === String(id) && !q.still) || null; }
 function _grmAct(id) {
+  if (_grmExtraAct(id)) return;
   const n = /^\d+$/.test(String(id)) ? Number(id) : id;
   try { GRM_PLAY[_grm.R.play].act(_grm.R, _grm.S, n); } catch (e) { console.error('[garden rooms]', e); }
 }
@@ -262,6 +275,7 @@ function _grmFrame(ts) {
     _eeMove(Q, dt, GRM.speed * 1.2); _eePaint(Q, t);
   }
   const P = GRM_PLAY[_grm.R.play]; if (P.frame) P.frame(_grm.R, _grm.S, dt);
+  _grmExtraFrame(ts);
   const all = [..._grm.m.values(), M].sort((a, b) => a.y - b.y), kids = _grm.actors.children;
   if (all.some((r, i) => kids[i] !== r.g)) for (const r of all) _grm.actors.appendChild(r.g);
   _grm.raf = requestAnimationFrame(_grmFrame);
@@ -279,8 +293,9 @@ function _grmWalk(x, y, go) {
   _grmSend(p.x, p.y);
 }
 function _grmClick(ev) {
-  if (!_grm.on || _grm.closing || (ev.target.closest && ev.target.closest('.ee-ui, .grm-ask'))) return;
+  if (!_grm.on || _grm.closing || (ev.target.closest && ev.target.closest('.ee-ui, .grm-ask, .grm-bag'))) return;
   const a = _grm.root.querySelector('.grm-ask'); if (a) a.innerHTML = '';
+  if (_grmCarryClick(ev)) return;
   const sp = ev.target.closest && ev.target.closest('[data-s]'), p = _grmPt(ev), D = GRM.door;
   if (sp) { const id = sp.getAttribute('data-s'), q = _grmSpot(id); if (q) { _grmWalk(q.x, Math.max(q.y + 26, GRM.floor.y0 + 8), () => _grmAct(id)); return; } }
   if (p.x >= D.x0 - 6 && p.x <= D.x1 + 6 && p.y >= D.y0 - 20 && p.y <= D.y1 + 6) { _grmWalk(D.x, D.y, gardenRoomLeave); return; }
@@ -289,7 +304,7 @@ function _grmClick(ev) {
 function _grmKey(ev) {
   if (!_grm.on || ev.ctrlKey || ev.metaKey || ev.altKey || /^F\d+$/.test(ev.key)) return;
   const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key, down = ev.type === 'keydown';
-  if (ev.target && ev.target.closest && ev.target.closest('.ee-ui, .grm-ask') && k !== 'Escape') return;   // a button you are on is yours to use
+  if (ev.target && ev.target.closest && ev.target.closest('.ee-ui, .grm-ask, .grm-bag') && k !== 'Escape') return;   // a button you are on is yours to use
   ev.stopImmediatePropagation();
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's', ' ', 'Enter', 'Escape', 'e'].includes(k)) ev.preventDefault();
   if (!down) { _grm.keys.delete(k); return; }
@@ -298,7 +313,7 @@ function _grmKey(ev) {
     const M = _grm.me;
     if (Math.hypot(M.x - GRM.door.x, M.y - GRM.door.y) < 70) { gardenRoomLeave(); return; }
     let best = null, bd = 130;
-    for (const q of GRM_PLAY[_grm.R.play].spots(_grm.R, _grm.S)) { if (q.still) continue; const d = Math.hypot(M.x - q.x, Math.max(0, M.y - q.y)); if (d < bd) { bd = d; best = q; } }
+    for (const q of _grmAllSpots(_grm.R, _grm.S)) { if (q.still) continue; const d = Math.hypot(M.x - q.x, Math.max(0, M.y - q.y)); if (d < bd) { bd = d; best = q; } }
     if (best) _grmAct(best.id);
     return;
   }
@@ -319,10 +334,10 @@ function gardenRoomEnter(R) {
   try { _gw.keys.clear(); _gw.path = []; gardenBubbleClose(); if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel(''); } catch (e) { /* not in the way */ }
   const root = document.createElement('div'); root.className = 'ee-room grm-room'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', R.name);
   root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${GRM.W} ${GRM.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><clipPath id="grmc"><rect width="${GRM.W}" height="${GRM.H}"/></clipPath><g clip-path="url(#grmc)">${R.art()}${_grmDoorArt(R.door)}<g class="grm-props"></g></g><g class="ee-actors"></g></svg>`
-    + `<div class="ee-ui"><button type="button" class="btn btn-secondary btn-sm ee-leave">${icon('log-out')}<span>Leave</span></button></div><div class="grm-ask"></div><p class="grm-say" role="status"></p>`;
+    + `<div class="ee-ui"><button type="button" class="btn btn-secondary btn-sm ee-leave">${icon('log-out')}<span>Leave</span></button>${R.furnish && !gpVisiting() ? `<button type="button" class="btn btn-secondary btn-sm grm-furn">${icon('armchair')}<span>Furnish</span></button>` : ''}</div><div class="grm-bag"></div><div class="grm-ask"></div><p class="grm-say" role="status"></p>`;
   document.body.appendChild(root);
   _grm.root = root; _grm.svg = root.querySelector('.ee-svg'); _grm.actors = root.querySelector('.ee-actors'); _grm.props = root.querySelector('.grm-props');
-  _grm.R = R; _grm.S = {}; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.closing = false;
+  _grm.R = R; _grm.S = {}; _grm.fu = false; _grm.carry = ''; _grm.pool = null; _grm.poolN = 0; _grm.icons = null; _grm.fuKey = ''; _grm.fuAt = 0; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.closing = false;
   GRM_PLAY[R.play].begin(R, _grm.S);
   _grmPaint();
   const p0 = _grmClamp(GRM.spawn.x + Math.random() * 60 - 30, GRM.spawn.y + Math.random() * 30 - 15);
@@ -331,6 +346,7 @@ function gardenRoomEnter(R) {
   _grm.on = true;
   root.addEventListener('pointerdown', _grmClick);
   root.querySelector('.ee-leave').onclick = () => gardenRoomLeave();
+  { const fb = root.querySelector('.grm-furn'); if (fb) fb.onclick = () => gardenRoomFurnish(); }
   window.addEventListener('keydown', _grmKey, true); window.addEventListener('keyup', _grmKey, true);
   document.addEventListener('visibilitychange', _grmStartLoop);
   requestAnimationFrame(() => root.classList.add('is-on'));
@@ -355,7 +371,7 @@ function gardenRoomLeave() {
   cancelAnimationFrame(_grm.raf); _grm.raf = 0; clearTimeout(_grm.sayT);
   const root = _grm.root;
   if (root) { root.classList.remove('is-on'); root.classList.add('is-out'); setTimeout(() => root.remove(), 420); }
-  _grm.root = _grm.svg = _grm.actors = _grm.props = _grm.me = _grm.R = _grm.S = null; _grm.m.clear(); _grm.keys.clear();
+  _grm.root = _grm.svg = _grm.actors = _grm.props = _grm.me = _grm.R = _grm.S = null; _grm.m.clear(); _grm.keys.clear(); _grm.pool = null; _grm.carry = ''; _grm.fu = false;
   setTimeout(() => { _grm.closing = false; }, 450);
   try { if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } catch (e) { /* the garden's own loop */ }
 }
