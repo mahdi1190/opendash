@@ -118,22 +118,23 @@ function gardenLifeBookTab(el) {
   el.appendChild(head);
   el.appendChild(_gdxChips(_GL_SHELVES.map(s => [s[0], s[1]]), shelf, (k) => { _glb.shelf = k; _gdxRepaintTab(); }));
   const list = shelf === 'surprise' ? GARDEN_LIFE_EGGS.map(d => ['e', d]) : shelf === 'keep' ? GARDEN_KEEPSAKES.map(d => ['k', d]) : GARDEN_CREATURES.filter(d => d.group === shelf).map(d => ['c', d]);
-  const g = _gdG(), grid = _gdpEl('div', 'gd-grid gd-alm-grid gl-book-grid');
-  for (const [kind, d] of list) {
-    const day = g.disc[_glKey(kind, d.id)], found = !!day;
-    const c = _gdpEl('button', 'gd-almcard gl-bookcard' + (found ? '' : ' is-unknown') + (d.rarity ? ' gd-r-' + d.rarity : '')); c.type = 'button';
-    const art = _gdpEl('div', 'gd-card-art' + (found ? '' : ' gl-silhouette')); art.innerHTML = _glbArt(kind, d, 72); c.appendChild(art);
-    c.appendChild(_gdpEl('b', null, found ? d.name : '???'));
-    c.appendChild(_gdpEl('small', 'muted', found ? (kind === 'c' ? _glbWhen(d) || 'Any time' : day) : (d.rarity && GARDEN_RARITY[d.rarity] ? GARDEN_RARITY[d.rarity].label : 'Keep looking')));
+  const g = _gdG(), place = 'nature:' + shelf, rarities = Object.keys(GARDEN_RARITY), found = ([kind, d]) => (g.disc[_glKey(kind, d.id)] ? 0 : 1);
+  const cmp = (a, b) => found(a) - found(b) || rarities.indexOf(a[1].rarity) - rarities.indexOf(b[1].rarity) || String(a[1].name).localeCompare(b[1].name);
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, list, ([k, d]) => k + d.id, cmp), grid: 'gd-grid gd-alm-grid gl-book-grid gpg-book', row: 150, draw: ([kind, d]) => {
+    const day = g.disc[_glKey(kind, d.id)], known = !!day;
+    const c = _gdpEl('button', 'gd-almcard gl-bookcard' + (known ? '' : ' is-unknown') + (d.rarity ? ' gd-r-' + d.rarity : '')); c.type = 'button';
+    const art = _gdpEl('div', 'gd-card-art' + (known ? '' : ' gl-silhouette')); art.innerHTML = _glbArt(kind, d, 72); c.appendChild(art);
+    c.appendChild(_gdpEl('b', null, known ? d.name : '???'));
+    c.appendChild(_gdpEl('small', 'muted', known ? (kind === 'c' ? _glbWhen(d) || 'Any time' : day) : (d.rarity && GARDEN_RARITY[d.rarity] ? GARDEN_RARITY[d.rarity].label : 'Keep looking')));
     c.onclick = () => _glbDetail(kind, d, day);
-    grid.appendChild(c);
-  }
-  el.appendChild(grid);
-  _glbFit(el);
+    _glbFit(c);
+    return c;
+  } });
 }
 function _glbDetail(kind, d, day) {
+  const back = _gdp.pop && _gdp.pop.tab;   // closing an entry goes back to the page of the book you were on
   openDialog({
-    title: day ? d.name : 'Not found yet', width: 480,
+    title: day ? d.name : 'Not found yet', width: 480, onClose: back ? () => setTimeout(() => gardenPopupOpen(back), 0) : undefined,
     body(el) {
       el.classList.add('gd-almdlg');
       const art = _gdpEl('div', 'gd-almdlg-art' + (day ? '' : ' gl-silhouette')); art.innerHTML = _glbArt(kind, d, 128); el.appendChild(art); _glbFit(art);

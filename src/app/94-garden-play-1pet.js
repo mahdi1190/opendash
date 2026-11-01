@@ -184,7 +184,7 @@ function _gpJourneyOpen() {
         for (const L of list.slice(0, 24)) {
           const b = gpEl('button', 'gp-lunch'); b.type = 'button'; b.setAttribute('data-tip', GP_LUNCH_WORDS[L.kind] || '');
           b.innerHTML = `<span class="gp-lunch-art">${_gpLunchSvg(L.item, 44)}</span><b>${esc(_gpLunchName(L.item))}</b><span class="muted">${L.n} in your bag</span>`;
-          b.onclick = () => { if (gpJourneyStart(L.item)) { toast(`${pet.name} has gone off with it`, { icon: 'luggage', action: { label: 'Call it home', run: () => { gpJourneyCall(); } } }); paint(); } };
+          b.onclick = () => { if (gpJourneyStart(L.item)) { gardenToast(`${pet.name} has gone off with it`, { icon: 'luggage', action: { label: 'Call it home', run: () => { gpJourneyCall(); } } }); paint(); } };
           grid.appendChild(b);
         }
         el.appendChild(grid);

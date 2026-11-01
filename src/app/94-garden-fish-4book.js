@@ -57,6 +57,15 @@ function _gdbMoonLine(m) {
 function _gdbGo() { const a = document.activeElement; if (a && a.classList && a.classList.contains('gdb-search')) a.blur(); _gdxRepaintTab(); }
 /** The name a card shows: unknown ones stay ??? unless you searched for that very name. */
 function _gdbMatches(d, q) { return !q || d.name.toLowerCase().includes(q); }
+/** Where a kind lives, for the order of the book: [its place in the list of areas, the area's name]. */
+function _gdbArea(d) {
+  const H = typeof gardenRegionHome === 'function' ? gardenRegionHome(d) : null, i = H ? GARDEN_REGIONS.findIndex(x => x.id === H.r) : -1;
+  return i < 0 ? [GARDEN_REGIONS.length, d.cat === 'bug' || d.cat === 'fish' ? 'Elsewhere' : 'Finds'] : [i, GARDEN_REGIONS[i].name];
+}
+function _gdbCmp(a, b) {
+  const R = Object.keys(GARDEN_RARITY);
+  return _gdbArea(a.def)[0] - _gdbArea(b.def)[0] || (a.rec ? 0 : 1) - (b.rec ? 0 : 1) || R.indexOf(a.def.rarity) - R.indexOf(b.def.rarity) || String(a.def.name).localeCompare(b.def.name);
+}
 function _gdcBook(el, m, kind) {
   const isFish = kind === 'fish', log = gardenCatchLog(), rows = isFish ? log.fish : log.bugs;
   if (_gdc.pick && _gdc.pickKind === kind) { const r = rows.find(x => x.def.id === _gdc.pick); if (r) { _gdbEntry(el, m, kind, r); return; } }
@@ -65,14 +74,15 @@ function _gdcBook(el, m, kind) {
   const top = _gdpEl('div', 'gdb-progress');
   top.innerHTML = `<b>${found} of ${total}</b><span class="gdc-bar"><i style="width:${Math.round(found / Math.max(1, total) * 100)}%"></i></span><span class="muted">${isFish ? 'fish and finds' : 'bugs'} found</span>`;
   head.appendChild(top);
-  head.appendChild(_gdpEl('p', 'gdb-moon muted', _gdbMoonLine(m)));
   const search = _gdpEl('input', 'control gdb-search'); search.type = 'search'; search.placeholder = isFish ? 'Find a fish by name' : 'Find a bug by name'; search.setAttribute('aria-label', search.placeholder); search.value = _gdc.q || '';
   head.appendChild(search);
-  const chips = (list, key, label) => { const w = _gdpEl('div', 'gdb-filter'); if (label) w.appendChild(_gdpEl('span', 'gdb-filter-l muted', label)); w.appendChild(_gdxChips(list, _gdc[key] || '', (k) => { _gdc[key] = k; _gdc.n = 36; _gdbGo(); })); return w; };
+  const chips = (list, key, label) => { const w = _gdpEl('div', 'gdb-filter'); if (label) w.appendChild(_gdpEl('span', 'gdb-filter-l muted', label)); w.appendChild(_gdxChips(list, _gdc[key] || '', (k) => { _gdc[key] = k; _gdbGo(); })); return w; };
   head.appendChild(chips([['', 'Everything'], ['yes', 'Caught'], ['no', 'Not yet'], ['now', 'About right now']], 'found', 'Show'));
   if (isFish) head.appendChild(chips([['', 'All water'], ['pond', 'Pond'], ['shallow', 'Shallows'], ['mid', 'Open water'], ['deep', 'Deep'], ['finds', 'Finds']], 'zone', 'Where'));
   const more = _gdpEl('details', 'gdb-more'); if (_gdc.tod || _gdc.season || _gdc.rar || _gdc.kit) more.open = true;
   more.appendChild(_gdpEl('summary', null, 'More filters'));
+  more.ontoggle = () => gardenPagerFit();   // the drawer takes room from the page: fewer rows, no scrolling
+  more.appendChild(_gdpEl('p', 'gdb-moon muted', _gdbMoonLine(m)));
   more.appendChild(chips(_GDB_MORE.tod, 'tod', 'Time'));
   more.appendChild(chips(_GDB_MORE.season, 'season', 'Season'));
   more.appendChild(chips(_GDB_MORE.rar, 'rar', 'Rarity'));
@@ -91,13 +101,11 @@ function _gdcBook(el, m, kind) {
     if (_gdc.season) list = list.filter(r => !r.def.seasons.length || r.def.seasons.includes(_gdc.season));
     if (_gdc.rar) list = list.filter(r => r.def.rarity === _gdc.rar);
     if (_gdc.kit) list = list.filter(r => { const n = r.def.needs || {}, kit = n.rod || n.reel || n.line || n.hook || n.net || n.bait || n.decor || n.plant || n.spot || n.event; return _gdc.kit === 'easy' ? !kit : _gdc.kit === 'kit' ? !!kit : _gdc.kit === 'rain' ? n.rain === true || !!r.def.rain : !!n.moon; });
-    const grid = _gdpEl('div', 'gdb-grid');
-    for (const r of list.slice(0, _gdc.n)) grid.appendChild(_gdbCard(r, kind, m, q));
-    box.appendChild(grid);
-    if (list.length > _gdc.n) { const b = _gdpEl('div', 'gd-shop-more'); b.appendChild(_gdpBtn(`Show more (${list.length - _gdc.n} left)`, { run: () => { _gdc.n += 36; paint(); } })); box.appendChild(b); }
-    if (!list.length) box.appendChild(_gdpEl('p', 'muted gdc-none', q ? `Nothing in the book called “${q}”.` : 'Nothing here with those filters.'));
+    // by area, what you have found first inside an area, then how rare. Each set of filters remembers its own page; a search starts at page 1.
+    const place = ['book', kind, _gdc.found, _gdc.zone, _gdc.tod, _gdc.season, _gdc.rar, _gdc.kit].map(x => x || '').join(':') + (q ? '?' : '');
+    gardenPager(box, { key: place, sig: q, items: gardenPagerOrder(place, list, r => r.def.id, _gdbCmp, q), grid: 'gdb-grid gpg-book', row: 142, rowSm: 124, label: (r) => _gdbArea(r.def)[1], draw: (r) => _gdbCard(r, kind, m, q), none: q ? `Nothing in the book called “${q}”.` : 'Nothing here with those filters.' });
   };
-  search.oninput = () => { _gdc.q = search.value; _gdc.n = 36; paint(); };
+  search.oninput = () => { _gdc.q = search.value; paint(); };
   paint();
   // (a pop-up puts the focus in its first box as it opens: on a phone that would throw up the keyboard over the book)
   if (!_gdc.q) setTimeout(() => { if (document.activeElement === search && !search.value) search.blur(); }, 30);
@@ -111,6 +119,7 @@ function _gdbCard(r, kind, m, q) {
   const p = known ? _gdcPill(d.rarity) : null; if (p) b.appendChild(p);
   if (_gdbNow(d, m) && !known) b.appendChild(_gdpEl('span', 'gdb-now', 'About now'));
   b.setAttribute('aria-label', `${name}. Open its page.`);
+  if (!known) b.setAttribute('data-tip', _gdcWhen(d, m.level.level));   // (the card has room for two lines of it)
   b.onclick = () => { _gdc.pick = d.id; _gdc.pickKind = kind; _gdbGo(); };
   return b;
 }

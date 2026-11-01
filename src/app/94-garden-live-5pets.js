@@ -129,13 +129,18 @@ function gardenLivePets(pets) {
       let due = false;
       if (L.force) due = true;
       else if (mv) { L.stopT = 0; due = !L.mv || L.tx !== P.tx || L.ty !== P.ty || t - L.at >= gap; }   // (a walk is its end point: the other screens walk it themselves, so it is said when it starts or changes, and now and then to stay close)
-      else if (L.mv) { if (!L.stopT) L.stopT = t; due = t - L.stopT >= GL_PP.settle; }
+      else if (L.mv) {
+        if (!L.stopT) L.stopT = t;
+        due = t - L.stopT >= GL_PP.settle;
+        // (it stopped where everyone was told it was going: their copy stops there too, and needs no word)
+        if (due && L.tx != null && Math.hypot(P.x - L.tx, P.y - L.ty) < 0.4) { due = false; L.mv = false; L.stopT = 0; L.at = t; }
+      }
       else due = t - L.at >= GL_PP.idle;
       if (!due) continue;
       L.force = false; L.at = t; L.mv = mv; L.stopT = 0; L.tx = P.tx; L.ty = P.ty;
-      const row = { u, x: _gllClamp(P.x * 10, 640), y: _gllClamp(P.y * 10, 320) };
+      const row = { u, x: _gllClamp(P.x * 10, 640), y: _gllClamp(P.y * 10, GARDEN_WORLD.rows * 10) };
       if (!mine) row.e = P.look.species;
-      if (mv && P.ty != null) { row.gx = _gllClamp(P.tx * 10, 640); row.gy = _gllClamp(P.ty * 10, 320); if (P.run) row.r = 1; }
+      if (mv && P.ty != null) { row.gx = _gllClamp(P.tx * 10, 640); row.gy = _gllClamp(P.ty * 10, GARDEN_WORLD.rows * 10); if (P.run) row.r = 1; }
       if (P.dir < 0) row.f = 1;
       l.push(row);
     }

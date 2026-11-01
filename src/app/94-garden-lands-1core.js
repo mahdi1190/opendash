@@ -149,6 +149,7 @@ function gardenLandMachineLoad(id) {
   let need = f.n, pay = 0; const i = {};
   for (const [k, n] of info.have) { const take = Math.min(need, Math.floor(n)); if (take <= 0) continue; i[k] = -take; pay += take * gardenPlant(k.slice(5)).yield.sell; need -= take; if (!need) break; }
   pay = Math.ceil(pay * f.mult);
+  if (typeof gardenLiveFx === 'function' && f.x != null) gardenLiveFx('use', 'machine', { x: f.x, y: f.y });
   return _gldPay(f.name.toLowerCase(), `${f.name}: on the go, ${pay} coins when it is done`, { i }, [['ldm.' + id, { at: Math.floor(m.now), pay }]], f.icon);
 }
 function gardenLandMachineTake(id) {

@@ -119,11 +119,13 @@ function _wdIsleRowHome() {
     if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop();
   }, 650);
 }
-function _wdBellRing(S) {
+function _wdBellRing(S, heard) {
   wdSound([[196, 3.2, 'sine', 0.06], [392, 2.4, 'sine', 0.026, 0.01], [588, 1.4, 'sine', 0.012, 0.02]]);
   if (S.node) { const inner = S.node.firstElementChild; if (inner) { S.node.classList.remove('wd-rung'); void S.node.getBBox; S.node.classList.add('wd-rung'); } }
   wdGlow('bell-ring', '<circle class="wd-ring" r="16"/><circle class="wd-ring wd-ring2" r="16"/><circle class="wd-ring wd-ring3" r="16"/>', S.x, S.y - 0.5);
   setTimeout(() => wdGlowOff('bell-ring'), 3200);
+  if (heard) return;   // (someone else rang it: you hear it, it does nothing more)
+  if (typeof gardenLiveFx === 'function') gardenLiveFx('use', 'bell', { x: Math.floor(S.x), y: Math.floor(S.y) });
   const today = _wdToday(), m = gardenHere();
   if (m.visit || _wdi.bell === today) return;
   _wdi.bell = today;

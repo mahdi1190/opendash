@@ -83,10 +83,53 @@ function _gfSound(kind) {
 }
 const _GF_X = '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true"><circle cx="14" cy="14" r="12.5" fill="#d8352a" stroke="#fff" stroke-width="2"/><path d="M9.4 9.4l9.2 9.2M18.6 9.4l-9.2 9.2" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>';
 const _GF_LOCK = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#fff" stroke-width="1.6"/><rect x="3.5" y="7" width="9" height="7" rx="1.6" fill="#fff"/></svg>';
+/*
+ * WORDS IN THE WORLD. The owner: "no more annoying messages at the bottom ... messages only if needed, but it looks good and thematic". In the garden, what used to be a bar is said by your own figure, a bubble over its head that
+ * only you see (gardenSay). What needs an answer or is a real problem hangs on a wooden sign at the top of the stage, with its buttons (gardenSign). Away from the garden, or with a dialog open, it is the app's ordinary toast.
+ *   gardenToast(msg, o)   takes toast's arguments and chooses
+ */
+function _gfWorldOpen() { return typeof _gw !== 'undefined' && _gw.on && !!_gw.box && _gw.box.isConnected && typeof _gdOnPage === 'function' && _gdOnPage() && !document.querySelector('.modal, .ee-room'); }
+function gardenSay(text, ms) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!t || t.length > 110 || !_gfWorldOpen() || !_gw.node || typeof _gllMe === 'undefined') return false;
+  const wait = Math.max(2600, Math.min(6000, Number(ms) || 1400 + t.length * 60));
+  _gllMe.say = { text: t, until: Date.now() + wait };   // clock-ok: how long a bubble stays
+  _gllSayDraw(_gllMe);
+  clearTimeout(_gllMe.sayT); _gllMe.sayT = setTimeout(() => { _gllMe.say = null; _gllSayDraw(_gllMe); }, wait);
+  return true;
+}
+function gardenSign(text, o) {
+  o = o || {};
+  const box = _gw.box;
+  let n = box.querySelector(':scope > .gd-sign');
+  if (n) { clearTimeout(n._t); n.remove(); }
+  n = document.createElement('div'); n.className = 'gd-sign' + (o.kind === 'err' ? ' is-bad' : ''); n.setAttribute('role', o.kind === 'err' ? 'alert' : 'status');
+  const p = document.createElement('span'); p.textContent = String(text); n.appendChild(p);
+  const close = () => { clearTimeout(n._t); n.remove(); };
+  const btn = (label, run) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.onclick = (ev) => { ev.stopPropagation(); close(); try { run(); } catch (e) { console.error('[garden]', e); } }; n.appendChild(b); };
+  if (o.action && o.action.label && typeof o.action.run === 'function') btn(o.action.label, o.action.run);
+  if (typeof o.retry === 'function') btn('Try again', o.retry);
+  box.appendChild(n);
+  n._t = setTimeout(close, Number(o.timeout) || (o.kind === 'err' || o.retry ? 10000 : 7000));
+  return close;
+}
+function gardenToast(msg, o) {
+  const opt = o || {};
+  if (opt.busy) return toast(msg, opt);
+  if (!_gfWorldOpen()) {
+    if (opt.later || typeof _gw === 'undefined' || !_gw.on || typeof _gdOnPage !== 'function' || !_gdOnPage()) return toast(msg, opt);
+    setTimeout(() => gardenToast(msg, Object.assign({}, opt, { later: true })), 500);   // (a panel of the garden's own is just closing)
+    return () => {};
+  }
+  const plain = opt.kind !== 'err' && !opt.action && !opt.retry;
+  if (plain && gardenSay(msg, opt.timeout)) return () => {};
+  return gardenSign(msg, opt);
+}
 function gameDeny(target, opts) {
   const o = opts || {};
   try {
     _gfSay(o.say);
+    if (o.say) gardenSay(o.say);
     const el = target && target.getBoundingClientRect ? target : null;
     if (el) { _gfFlash(el); _gfShake(el); }
     const page = document;

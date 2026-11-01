@@ -6,6 +6,7 @@ function gardenRegionWaterArt(px, py, season) {
   const A = GART, W = GARDEN_WORLD, ice = season === 'winter';
   let s = '';
   for (const w of GARDEN_REGION_WATERS) {
+    if (w.room) continue;   // (indoors: not on the map)
     if (w.area || w.sec) continue;   // (the pond and the bought pools are drawn already)
     const cx = px(w.x + w.w / 2), cy = py(w.y + w.h / 2), rx = w.w * W.cellW / 2, ry = w.h * W.cellH / 2;
     s += `<path fill="#6e8a5a" d="${A.ell(cx, cy, rx + 5, ry + 4)}"/><path fill="${ice ? '#c0d8e6' : '#5fb0cc'}" d="${A.ell(cx, cy, rx + 1, ry)}"/><path fill="#ffffff" fill-opacity="0.28" d="${A.ell(cx - rx * 0.25, cy - ry * 0.3, rx * 0.4, ry * 0.22)}"/>`;
@@ -38,7 +39,7 @@ function _grgMapSvg(m) {
   }
   let s = `<svg class="grg-map" viewBox="0 0 ${W.cols} ${W.rows}" role="img" aria-label="A map of the world and how much of each part you have found">`;
   for (const R of GARDEN_REGIONS) s += `<g class="grg-map-r" data-r="${R.id}"><path d="${open[R.id] || ''}" fill="${R.color}"/><path d="${shut[R.id] || ''}" fill="${R.color}" fill-opacity="0.3"/></g>`;
-  for (const w of GARDEN_REGION_WATERS) { const on = gardenRegionHomeOpen({ w: w.id }, m.areas); s += `<ellipse cx="${w.x + w.w / 2}" cy="${w.y + w.h / 2}" rx="${w.w / 2 + 0.15}" ry="${w.h / 2 + 0.15}" fill="${on ? '#3f8fc0' : 'none'}" stroke="#2f6a98" stroke-width="0.18"${on ? '' : ' stroke-dasharray="0.4 0.3"'}/>`; }
+  for (const w of GARDEN_REGION_WATERS) { if (w.room) continue; const on = gardenRegionHomeOpen({ w: w.id }, m.areas); s += `<ellipse cx="${w.x + w.w / 2}" cy="${w.y + w.h / 2}" rx="${w.w / 2 + 0.15}" ry="${w.h / 2 + 0.15}" fill="${on ? '#3f8fc0' : 'none'}" stroke="#2f6a98" stroke-width="0.18"${on ? '' : ' stroke-dasharray="0.4 0.3"'}/>`; }
   for (const R of GARDEN_REGIONS) {
     const M = GARDEN_LAND_MAPS[GRG_LABELS[R.id]], a = R.id === 'lake' ? gardenArea('lake') : null, P = gardenRegionProgress(R.id);
     const cx = a ? a.x + a.w / 2 : M.x + M.rows[0].length / 2, cy = a ? a.y + a.h / 2 : M.y + M.rows.length / 2;
@@ -47,7 +48,7 @@ function _grgMapSvg(m) {
   return s + '</svg>';
 }
 function _grgBar(P) { return `<span class="gdc-bar"><i style="width:${Math.round(P.found / Math.max(1, P.total) * 100)}%"></i></span>`; }
-function _grgGo(id) { _gdc.region = id; _gdc.pick = null; _gdc.n = 36; _gdbGo(); }
+function _grgGo(id) { _gdc.region = id; _gdc.pick = null; _gdbGo(); }
 function _grgPrizeRow(R, step) {
   const P = gardenRegionPrize(R.id, step), S = step === 'half' ? R.half : R.full, row = _gdpEl('div', 'grg-prize' + (P.taken ? ' is-done' : ''));
   const what = step === 'half' ? `${(gardenDecor(S.decor) || {}).name || 'A decoration'} for your bag, and ${S.c} coins` : `${gardenLandFeature(S.feat).name} standing in the world, a ribbon and ${S.c} coins`;
@@ -75,15 +76,15 @@ function _grgPage(el, m, R) {
   head.appendChild(_grgPrizeRow(R, 'half')); head.appendChild(_grgPrizeRow(R, 'full'));
   if (R.parts.length || GARDEN_REGION_WATERS.some(w => w.r === R.id)) { head.appendChild(_gdpEl('h4', 'gdb-how-h', 'Getting there')); head.appendChild(_grgWays(R, m)); }
   el.appendChild(head);
-  const log = gardenCatchLog(), rec = (k, id) => (k === 'fish' ? log.fish : log.bugs).find(x => x.def.id === id), kinds = gardenRegionKinds(R.id), grid = _gdpEl('div', 'gdb-grid');
-  for (const { kind, def } of kinds.slice(0, _gdc.n)) grid.appendChild(_gdbCard(rec(kind, def.id), kind, m, ''));
-  el.appendChild(grid);
-  if (kinds.length > _gdc.n) { const b = _gdpEl('div', 'gd-shop-more'); b.appendChild(_gdpBtn(`Show more (${kinds.length - _gdc.n} left)`, { run: () => { _gdc.n += 36; _gdbGo(); } })); el.appendChild(b); }
+  const log = gardenCatchLog(), rec = (k, id) => (k === 'fish' ? log.fish : log.bugs).find(x => x.def.id === id), place = 'map:' + R.id;
+  const rows = gardenRegionKinds(R.id).map(x => Object.assign({ kind: x.kind }, rec(x.kind, x.def.id)));
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, rows, r => r.kind + r.def.id, _gdbCmp), grid: 'gdb-grid gpg-book', row: 142, rowSm: 124, label: (r) => (r.kind === 'bug' ? 'Bugs' : 'Fish'), draw: (r) => _gdbCard(r, r.kind, m, '') });
 }
 function gardenRegionTab(el, m) {
   if (_gdc.pick) { const log = gardenCatchLog(), r = (_gdc.pickKind === 'fish' ? log.fish : log.bugs).find(x => x.def.id === _gdc.pick); if (r) { _gdbEntry(el, m, _gdc.pickKind, r); return; } }
   const open = _gdc.region && gardenRegion(_gdc.region);
   if (open) { _grgPage(el, m, open); return; }
+  const wrap = _gdpEl('div', 'grg-wrap'); el.appendChild(wrap); el = wrap;   // the map beside its list: both in view
   const card = _gdpEl('section', 'card grg-over');
   card.appendChild(_gdpEl('h3', 'gd-h3', 'The map'));
   card.appendChild(_gdpEl('p', 'muted', 'Every fish and bug lives somewhere. Open up the land to find what lives there, and finish a page for a prize that stands in your garden.'));

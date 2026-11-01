@@ -57,8 +57,8 @@ const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet'
 /** What people SEE each other do (gl:fx, a kind of its own: an older app has no such kind and drops it, so GL_V stays). Ids and cells on the wire, each side draws them from its own tables;
  *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
  *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT), snap (ask for a group photo: `i` its id, `x` and `y` the middle of the frame, see GL_SNAP). `to` and `w` are slots as in gl:em. */
-const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync']);
-const GL_FX_STEPS = Object.freeze({ sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']) });
+const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync', 'use']);
+const GL_FX_STEPS = Object.freeze({ sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']) });
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
 const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*']));
 const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back']));
@@ -118,7 +118,7 @@ function glFxOk(b) {
   if (b.c === 'pick' && b.e === 'spawn' && (!GL_FX_ID_RE.test(String(b.i || '')) || !['keep', 'fish'].includes(b.kd) || !Number.isInteger(b.x) || !Number.isInteger(b.y))) return 'pick';
   if (b.c === 'cheer' && b.e === 'level' && !(Number.isInteger(b.n) && b.n >= 1 && b.n <= 99)) return 'level';   // 2.29.0: a moment of yours the others there cheer
   if (b.c === 'cheer' && b.e === 'ach' && !GL_FX_ID_RE.test(String(b.i || ''))) return 'id';
-  if (b.c === 'fish' && b.e === 'cast' && !(Number.isInteger(b.x) && Number.isInteger(b.y))) return 'cell';
+  if ((b.c === 'fish' && b.e === 'cast') || b.c === 'use') { if (!(Number.isInteger(b.x) && Number.isInteger(b.y))) return 'cell'; }
   if (b.c === 'snap' && !(GL_ID_RE.test(String(b.i || '')) && Number.isInteger(b.x) && Number.isInteger(b.y) && b.x >= 0 && b.y >= 0)) return 'snap';
   if (b.c === 'hall' && b.e !== 'out' && !(Number.isInteger(b.x) && Number.isInteger(b.y) && b.x >= 0 && b.x <= 59 && b.y >= 0 && b.y <= 37)) return 'hall';
   if (b.c === 'hall' && b.i != null && !GL_FX_ID_RE.test(String(b.i))) return 'id';   // (`i`: which hidden room; none is the stage)
@@ -138,7 +138,7 @@ function glPpOk(b, fromHost) {
     seen.add(r.u);
     if (r.u > 0 && !(fromHost && GL_FX_ID_RE.test(String(r.e || '')))) return 'pp';
     if (r.u === 0 && r.e != null) return 'pp';
-    if (!Number.isInteger(r.x) || r.x < 0 || r.x > 640 || !Number.isInteger(r.y) || r.y < 0 || r.y > 320) return 'pp';
+    if (!Number.isInteger(r.x) || r.x < 0 || r.x > 640 || !Number.isInteger(r.y) || r.y < 0 || r.y > GARDEN_WORLD.rows * 10) return 'pp';
     if ((r.gx == null) !== (r.gy == null)) return 'pp';
     if (r.gx != null && !(Number.isInteger(r.gx) && r.gx >= 0 && r.gx <= 640 && Number.isInteger(r.gy) && r.gy >= 0 && r.gy <= 320)) return 'pp';
   }

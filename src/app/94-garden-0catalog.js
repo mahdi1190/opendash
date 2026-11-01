@@ -69,6 +69,8 @@ function _gdMovable(list) { return Object.freeze(list); }
    woods run down the east side (x 20..27) and the Lake lies along the south (y 11..17) with its pier and tackle shop. */
 /* The world, version 2 (the owner, 1 Nov 2026: "the main bit is the center of the world, expand in all directions"). The old garden is in the middle, its old x, y now at x + ox, y + oy; land goes off north, east, west and,
    round the lake, south (94-garden-lands-0table.js). The wire carries cells 0..63, so it can grow to 64 x 64. v: a save or a snapshot from another world is moved over, or not drawn (94-garden-lands-1core.js). */
+/* Cells from this column on are not on the map: they are the waters inside the hidden rooms (94-garden-world-4rooms3water.js). They fit what the fish list and a cast already carry (x to 63, y to 31). */
+const GARDEN_ROOM_X = 53;
 const GARDEN_WORLD = _gdF({ v: 2, cols: 52, rows: 44, cellW: 48, cellH: 30, sky: 150, unit: 64, ox: 12, oy: 8, start: _gdF({ x: 22, y: 17 }) });
 
 const GARDEN_RARITY = _gdF({
@@ -856,6 +858,7 @@ function gardenIsWater(x, y) {
 }
 /** Which water a cell is: '' (not water), 'pond', or the lake's depth: 'shallow', 'mid', 'deep' (by rows from the shore). */
 function gardenWaterZone(x, y) {
+  if (x >= GARDEN_ROOM_X) return 'pond';   // a room's water
   if (typeof gardenLandWaterAt === 'function') { const q = gardenLandWaterAt(x, y); if (q !== null) return q ? 'pond' : ''; }
   for (const a of GARDEN_AREAS) {
     const w = a.water; if (!w || x < w.x || x >= w.x + w.w || y < w.y || y >= w.y + w.h) continue;

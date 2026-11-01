@@ -803,7 +803,7 @@ function _gdMoment(x) {
     try {
       const away = state.view !== 'garden' && !String(state.view || '').startsWith('garden:');
       if (_gdOnPage() && typeof _gdgNote === 'function') _gdgNote(String(x.text).split('. ')[0], icon(x.icon || 'sprout'));   // in the garden, a note in the sky, not a toast
-      else if (typeof toast === 'function') toast(x.text, { icon: x.icon || 'sprout', kind: x.kind === 'level' || x.kind === 'ribbon' ? 'ok' : '', action: away ? { label: 'Open the garden', run: () => setView(x.kind === 'ribbon' ? 'garden:almanac' : 'garden') } : undefined });
+      else if (typeof toast === 'function') gardenToast(x.text, { icon: x.icon || 'sprout', kind: x.kind === 'level' || x.kind === 'ribbon' ? 'ok' : '', action: away ? { label: 'Open the garden', run: () => setView(x.kind === 'ribbon' ? 'garden:almanac' : 'garden') } : undefined });
       if (fun === 'full' && (x.kind === 'level' || x.kind === 'ribbon') && typeof _gdpBurst === 'function') _gdpBurst(x.kind);
     } catch (e) { /* the toast host is gone */ }
   }, wait);
@@ -828,12 +828,12 @@ function _gdUndoDrop(map, id) {
 }
 function gardenUndo() {
   const u = _gd.undo.pop();
-  if (!u) { if (typeof toast === 'function') toast('Nothing to undo in the garden.', { icon: 'undo-2' }); return false; }
+  if (!u) { if (typeof toast === 'function') gardenToast('Nothing to undo in the garden.', { icon: 'undo-2' }); return false; }
   const g = _gdG();
   // newest first, so a path marked twice ends at its oldest value
   for (const [k, id, old] of u.mark.slice().reverse()) { if (!g[k]) g[k] = {}; if (old === undefined) delete g[k][id]; else g[k][id] = old; }
   _gdSave();
-  if (typeof toast === 'function' && !_gdOnPage()) toast(`Undone: ${u.label}`, { icon: 'undo-2' });
+  if (typeof toast === 'function' && !_gdOnPage()) gardenToast(`Undone: ${u.label}`, { icon: 'undo-2' });
   return true;
 }
 function _gdDone(msg, label, mark, o) {
@@ -844,7 +844,7 @@ function _gdDone(msg, label, mark, o) {
   // 2.23: on the garden itself the world answers (a sparkle, a number) and the Undo pill stays by the hotbar; a toast is for the palette and Home
   if (msg && !o.quiet && typeof toast === 'function' && !_gdOnPage()) {
     const u = _gd.undo[_gd.undo.length - 1];
-    toast(msg, { icon: o.icon || 'sprout', timeout: 5000, action: { label: 'Undo', run: () => { if (_gd.undo[_gd.undo.length - 1] === u) gardenUndo(); else if (typeof toast === 'function') toast('That has moved on: other garden changes came after it.', { icon: 'undo-2' }); } } });
+    gardenToast(msg, { icon: o.icon || 'sprout', timeout: 5000, action: { label: 'Undo', run: () => { if (_gd.undo[_gd.undo.length - 1] === u) gardenUndo(); else if (typeof toast === 'function') gardenToast('That has moved on: other garden changes came after it.', { icon: 'undo-2' }); } } });
   }
   return { ok: true, msg };
 }
@@ -1281,7 +1281,7 @@ function gardenCollect(uid) {
     else { const back = 5 + Math.floor(rnd() * 16); c += back; msg = `Splash. ${back} coins come back up`; }
     g.led[info.key] = { d: m.today, k: 'w', c, i: items, n: 1 };
   }
-  _gdEmit('collect', { kind: info.kind });
+  { const dc = gardenDecorById(m, uid); _gdEmit('collect', { kind: info.kind, what: info.kind, x: dc ? dc.x : null, y: dc ? dc.y : null }); }
   return _gdDone(msg, 'collecting', mark, { icon: info.kind === 'wish' ? 'sparkles' : info.kind === 'hive' ? 'hexagon' : 'recycle' });
 }
 function _gdHoursLabel(h) {

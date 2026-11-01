@@ -109,7 +109,7 @@
 .gmo-nb { fill: #e0683c; }
 html[data-motion="reduced"] .gmo-pop, html[data-motion="reduced"] .gmo-spark { animation: none; }
 @media (prefers-reduced-motion: reduce) { .gmo-pop, .gmo-spark { animation: none; } }
-.gll-feed { position: absolute; left: 12px; bottom: 100px; z-index: 6; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+.gll-feed { position: absolute; left: 12px; top: 164px; z-index: 6; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
 .gll-feed-l { padding: 3px 9px; border-radius: 999px; background: rgba(255, 253, 245, .9); color: #3a3424; font-size: 12px; box-shadow: 0 1px 3px rgba(30, 40, 20, .16); animation: gll-feed 5.5s ease-out both; }
 @keyframes gll-feed { 0% { opacity: 0; transform: translateY(6px); } 8% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
 .gll-fxline { fill: none; stroke: #fbfbf2; stroke-opacity: .85; stroke-width: .9; stroke-linecap: round; }
@@ -186,7 +186,7 @@ html[data-motion="reduced"] .glg, html[data-motion="reduced"] .glg-bar i { anima
 @keyframes gls-flash { 0% { opacity: .9; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .gls-flash { display: none; } }
 /* how you are connected (94-garden-live-8sync.js) */
-.gll-link { position: absolute; left: 12px; bottom: 66px; z-index: 6; display: flex; align-items: center; gap: 8px; max-width: min(420px, calc(100% - 24px)); padding: 4px 6px 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--border-subtle); color: var(--fg-muted); font-size: var(--text-xs); line-height: 1.3; }
+.gll-link { position: absolute; left: 50%; transform: translateX(-50%); top: 74px; z-index: 6; display: flex; align-items: center; gap: 8px; max-width: min(420px, calc(100% - 24px)); padding: 4px 6px 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--border-subtle); color: var(--fg-muted); font-size: var(--text-xs); line-height: 1.3; }
 .gll-link::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--sw-green, #3f8f5a); }
 .gll-link.is-wait::before { background: var(--sw-amber, #c98a12); }
 .gll-link-b { flex: none; border: 0; border-radius: 999px; padding: 3px 9px; background: var(--bg-muted); color: var(--fg); font: inherit; cursor: pointer; }
@@ -195,3 +195,15 @@ html[data-motion="reduced"] .glg, html[data-motion="reduced"] .glg-bar i { anima
 /* what someone carries (94-garden-fish-7gear.js) */
 .gll-gear { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: var(--text-xs); color: var(--fg-muted); }
 .gll-gear-i { display: inline-flex; align-items: center; gap: 4px; }
+
+/* words in the world: a wooden sign, only when something needs saying (94-garden-0feel.js) */
+.gd-sign { position: absolute; left: 50%; top: 74px; transform: translateX(-50%); z-index: 9; display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100% - 32px)); padding: 8px 14px; color: #fff6e0; font-size: 13.5px; line-height: 1.35; background: linear-gradient(#a06d3c, #7f522a); border: 2px solid #5a3818; border-radius: 8px; box-shadow: 0 3px 0 #4a2c12, 0 6px 16px rgba(0, 0, 0, .28); animation: gd-sign-in .22s ease-out; }
+.gd-sign::before, .gd-sign::after { content: ''; position: absolute; top: -12px; width: 3px; height: 12px; background: #5a3818; }
+.gd-sign::before { left: 20%; } .gd-sign::after { right: 20%; }
+.gd-sign.is-bad { background: linear-gradient(#a8583c, #86402a); }
+.gd-sign button { flex: none; border: 1px solid #5a3818; border-radius: 6px; padding: 3px 10px; background: #fff3d4; color: #4a2c12; font: inherit; font-weight: 600; cursor: pointer; }
+.gd-sign button:hover { background: #ffe9b4; }
+@keyframes gd-sign-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .gd-sign { animation: none; } }
+.gll-link { background: linear-gradient(#a06d3c, #7f522a) !important; color: #fff6e0 !important; border: 2px solid #5a3818; }
+.gll-feed-l { background: #fff6e0; border: 1px solid #c9a56a; color: #4a2c12; }

@@ -10,6 +10,32 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.57.0]
+
+### Changed
+- **Indoor places are redrawn, each with its own door you can recognise.** Fish in the grotto and the cellar just as you do at the lake, with your own rod and shadows in the water, and every room has a proper game.
+- **The line and yellow flag in the lake are gone.** Fishing spots now explain themselves when you point at them or go near.
+
+## [2.56.0]
+
+### Changed
+- **Garden lists now turn pages with side arrows or arrow keys,** instead of "show more" and the scroll wheel: the shop, the books, your bag, tackle, crafting, Play and more. They have tabs and a sensible order.
+- **Panel headers and tabs are easier to read,** in light and dark.
+
+## [2.55.0]
+
+### Added
+- **A thank-you present for early users.** Look for something glinting near the start of your garden and press it: 50,000 coins, garden level 20, building materials, better rods and nets, bait, seeds, tickets and pet treats, so you can try everything.
+
+## [2.54.0]
+
+### Changed
+- **Fish are now the same for everyone, all across the lake.** Before, a friend far down the lake could see different fish from you.
+- **Whatever you build or change in your garden reaches friends within seconds.**
+- **Friends see you ring the bell or make a wish.**
+- **Messages in the garden are now your character's speech bubbles, or a wooden sign for real problems,** instead of bars at the bottom.
+- A hidden window now uses almost no connection.
+
 ## [2.53.0]
 
 ### Added

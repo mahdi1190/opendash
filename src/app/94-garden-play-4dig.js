@@ -90,7 +90,7 @@ function _gpDigOpen() {
 function _gpFossilCheck() {
   for (const F of GP_FOSSILS) {
     if (!F.parts.every(P => gardenHas(`fos:${F.id}-${P[0]}`) > 0)) continue;
-    if (gpGrant('fos-' + F.id, { ['decor:play-fos-' + F.id]: 1 })) { gpSet('ev.skeleton', 1); toast(`The ${F.name.toLowerCase()} is complete. It is in your bag, to stand in the garden.`, { icon: 'gem', dismiss: true }); }
+    if (gpGrant('fos-' + F.id, { ['decor:play-fos-' + F.id]: 1 })) { gpSet('ev.skeleton', 1); gardenToast(`The ${F.name.toLowerCase()} is complete. It is in your bag, to stand in the garden.`, { icon: 'gem', dismiss: true }); }
   }
 }
 function _gpFossilShelf(el) {

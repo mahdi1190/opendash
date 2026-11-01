@@ -19,7 +19,12 @@ function gardenLiveFx(c, e, o) {
     if (_gll.role === 'host' && _glh.on && _glhAnyone()) _glhSend('all', 'fx', body);
   } catch (err) { /* only a message */ }
 }
-function gardenLivePet(c, e) { gardenLiveFx(c, e); }
+function gardenLivePet(c, e) {
+  if (_gll.role === 'host' && !(typeof _glhLooking === 'function' && _glhLooking())) return;
+  // (what you did to it goes at once; what it does by itself, one clip at most every few seconds. Each screen's copy goes on being a pet in between)
+  if (c === 'pet' && e !== 'pat' && e !== 'eat') { const t = Date.now(); if (t - (_gll.petAt || 0) < 6000) return; _gll.petAt = t; }   // clock-ok: spacing
+  gardenLiveFx(c, e);
+}
 /** You have stopped and are about to do something where you stand: if that is not quite where you last said you were going, they hear it now. */
 function _gllGoNow() {
   if (typeof _gw === 'undefined') return;
@@ -59,6 +64,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'roam') { if (typeof _gllRoamAdd === 'function') _gllRoamAdd(e); return; }
   if (c === 'cheer') { _gllCheerFx(A, e, ev); return; }
   if (c === 'hall') { if (typeof _eeHear === 'function') _eeHear(A, ev); return; }
+  if (c === 'use') { _gllUseFx(A, e, ev); return; }
   if (c === 'snap') { if (typeof _glsHear === 'function') _glsHear(A, ev); return; }   // (a group photo: 94-garden-live-7snap.js)
   if (c === 'sync') { if (e === 'ask') { if (typeof _glyAsked === 'function') _glyAsked(A); } else if (e === 'away' || e === 'back') { if (typeof _glyAwayIn === 'function') _glyAwayIn(A, e === 'away'); } else if (typeof _glyAtIn === 'function') _glyAtIn(A, ev); return; }   // (staying in step: 94-garden-live-8sync.js)
   if (c === 'fs') { if (typeof _gfsHeard === 'function') _gfsHeard(A, ev); return; }   // (the fish at a guest's line: the host decides)
@@ -80,6 +86,7 @@ function _gllFxPlay(A, ev) {
     const kind = _GLL_FX_KIND[e], spec = kind ? gardenMomentSpec(kind, ev.i, { cm: ev.n, q: ev.ql, isNew: (ev.nw & 1) === 1, record: (ev.nw & 2) === 2, v: ev.v }) : null;
     if (!spec) return;   // an id this version does not know
     const who = String(A.n).split(/\s+/)[0];
+    if (gardenRoomGot(A, spec, who)) return;   // (they are inside somewhere)
     if (_gllOffscreen(A) || gardenFun() === 'off') { _gllFeed(`${who} ${spec.verb} ${_gscA(spec.name)}`); return; }
     A.fish = null; _gllFxClear(A);
     const holdMs = gardenMomentMs(spec);
@@ -91,6 +98,14 @@ function _gllFxPlay(A, ev) {
     setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; const now = A.root && A.root.querySelector('.gll-name'); if (now) now.style.display = ''; }, holdMs);
     if (typeof _fxSound === 'function') _fxSound('sparkle');
   }
+}
+/** Something someone set going in the world: their figure does it, and everyone hears and sees it there. Nothing else changes: what it gives is theirs alone. */
+function _gllUseFx(A, e, ev) {
+  _gllPose(A, 'pick', 760);
+  if (e === 'bell') { const S = typeof _wdi !== 'undefined' && _wdi.S ? _wdi.S.bell : null; if (S && typeof _wdBellRing === 'function') _wdBellRing(S, true); return; }
+  if (_gllOffscreen(A)) return;
+  _gllFloat(_gw.svg, ev.x, ev.y - 1, { wish: '✨', collect: '🧺', machine: '⚙️' }[e] || '', '');
+  if (typeof _fxSound === 'function') _fxSound(e === 'wish' ? 'splash' : 'pop');
 }
 /** Somebody's moment: they cheer, a spark goes up and one line in the corner says what. An id this version does not know is ignored. */
 function _gllCheerFx(A, e, ev) {
@@ -108,6 +123,7 @@ function _gllCheerFx(A, e, ev) {
   if (typeof _fxSound === 'function') _fxSound('sparkle');
 }
 function _gllSwing(A) {
+  if (gardenRoomSwing(A)) return;
   if (!A.root || _gllReduced()) return;
   const g = _gllSvgEl('g'); g.setAttribute('transform', `translate(0 -30) scale(${A.face < 0 ? -1 : 1} 1)`);
   g.innerHTML = '<path d="M6 8Q30 -16 30 -34" stroke="#fbfbf2" stroke-width="2.6" stroke-opacity="0.8" fill="none" stroke-linecap="round"/>' + (A.g && A.g.nk && typeof gardenLookNetSwing === 'function' ? gardenLookNetSwing(A.g.nk) : '');
@@ -119,6 +135,7 @@ function _gllBugGone(key) {
   if (!_gw.goneKeys) _gw.goneKeys = new Set();
   if (_gw.goneKeys.size > 200) _gw.goneKeys.clear();
   _gw.goneKeys.add(key);
+  if (gardenRoomBugGone(key)) return;
   const b = _gw.bugs && _gw.bugs.get(key);
   if (b) { if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(key); if (_gw.netting && _gw.netting.actor === b) _gw.netting = null; if (typeof gardenPop === 'function' && gardenMotionOn()) gardenPop(Math.floor(b.x), Math.floor(b.y), 1, 1, 'is-grow'); }
 }
@@ -144,11 +161,12 @@ function _gllFishFx(A, e, ev) {
   else { _gllRing(A, F, 1.2); A.fish = null; A.key = ''; _gllFxClear(A); }
 }
 function _gllRing(A, F, k) {
-  if (_gllReduced() || !A.root) return;
+  const I = gardenRoomFxAt(A, F);
+  if (_gllReduced() || !A.root || I === false) return;
   const g = _gllSvgEl('g'), W = GARDEN_WORLD;
-  g.setAttribute('transform', `translate(${((F.bx - A.x) * W.cellW).toFixed(1)} ${((F.by - A.y) * W.cellH).toFixed(1)})`);
+  g.setAttribute('transform', `translate(${((F.bx - (I ? I.x : A.x)) * W.cellW).toFixed(1)} ${((F.by - (I ? I.y : A.y)) * W.cellH).toFixed(1)})`);
   g.innerHTML = `<ellipse class="gd-ring" cx="0" cy="0" rx="${(8 * k).toFixed(1)}" ry="${(2.6 * k).toFixed(1)}" fill="none" stroke="#ffffff" stroke-width="1.4" stroke-opacity="0.9"/>`;
-  A.root.appendChild(g); setTimeout(() => g.remove(), 1500);
+  (I ? I.root : A.root).appendChild(g); setTimeout(() => g.remove(), 1500);
 }
 /*
  * Gathered by the fire (2.29.0): when two or more people (you count) are near the same fire pit, marshmallows float up from it now and then, and the corner says who is there.
@@ -186,7 +204,9 @@ function _gllFxStep(A, dt) {
   if (!F) return;
   if (Date.now() - F.at > 150000) { A.fish = null; A.key = ''; _gllFxClear(A); return; }   // clock-ok: a line forgotten (their app says every 30 s that it is out)
   // Only they can say a line has gone (in, lost, the catch, or their next check). A figure that moves is one being put right, or finishing its walk: it used to take the line away here, on this screen and in the host's water, while they sat there fishing.
-  if (A.moving) { if (A.fxg) _gllFxClear(A); return; }
+  const I = gardenRoomFxAt(A, F);   // a line in a room's water: drawn from their figure in the room, if you are there too
+  if (I === false) { _gllFxClear(A); return; }
+  if (A.moving && !I) { if (A.fxg) _gllFxClear(A); return; }
   F.t += dt;
   if (!A.fxe || !A.fxe.rod.isConnected) {
     _gllFxClear(A);
@@ -197,11 +217,11 @@ function _gllFxStep(A, dt) {
     e.bub.innerHTML = '<ellipse cx="0" cy="0" rx="9" ry="9.6" fill="#fff6c8" stroke="#d89a1a" stroke-width="1.6"/><path d="M-1.6 -5.4h3.2l-0.6 6.2h-2z" fill="#d8301a"/><circle cx="0" cy="4.4" r="1.5" fill="#d8301a"/>';
     if (typeof gardenLineLook === 'function') { const ll = gardenLineLook(A.g && A.g.ln); e.line.style.stroke = ll.c; e.line.style.strokeWidth = String(ll.w); }   // (their line)
     if (typeof gardenLureSvg === 'function') e.bob.innerHTML += gardenLureSvg(F.bait);   // (their lure)
-    g.append(e.rod, e.line, e.bob, e.bub); A.root.appendChild(g); A.fxg = g; A.fxe = e;
+    g.append(e.rod, e.line, e.bob, e.bub); (I ? I.root : A.root).appendChild(g); A.fxg = g; A.fxe = e;
     if (A.g && A.g.rk && typeof gardenLookRodSkin === 'function') e.skin = gardenLookRodSkin(A.g.rk, e.rod, g);   // (the look of their rod)
   }
   const e = A.fxe, W = GARDEN_WORLD, f = A.face < 0 ? -1 : 1;
-  const tx = (F.bx - A.x) * W.cellW, ty = (F.by - A.y) * W.cellH;
+  const tx = (F.bx - (I ? I.x : A.x)) * W.cellW, ty = (F.by - (I ? I.y : A.y)) * W.cellH;
   let tipX = f * 34, tipY = -62, bx = tx, by = ty, sag = 8;
   if (F.state === 'cast') { const u = Math.min(1, F.t / 0.28); tipX = f * (-18 + 52 * u); tipY = -(78 - 16 * u); const k = Math.max(0, Math.min(1, (F.t - 0.22) / 0.5)); bx = tipX + (tx - tipX) * k; by = tipY + (ty - tipY) * k - Math.sin(k * Math.PI) * 46; sag = 2 + 6 * k; if (F.t >= 0.75) { F.state = 'wait'; F.t = 0; _gllRing(A, F, 1); if (typeof _fxSound === 'function') _fxSound('splash'); } }
   else if (F.state === 'wait') { tipX = f * 38; tipY = -56; by = ty + Math.sin(F.t * 2.6) * 0.9; const fsh = typeof _gfs !== 'undefined' ? [..._gfs.list.values()].find(q => q.to === A.w) : null; if (fsh && fsh.st === GF_ST.nibble && fsh.n !== F.nibN) { F.nibN = fsh.n; F.dip = 0.35; } if (F.dip > 0) { F.dip -= dt; by += Math.sin(F.dip * 40) * 1.2; } }

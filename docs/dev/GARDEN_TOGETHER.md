@@ -365,6 +365,12 @@ Not built: a guest's own rod does not change how a fish behaves (it decides how 
 
 The owner's own online status is left as they set it: `presence` is off by default for every friend, and that is why a friend shows offline until a message arrives.
 
+**Everything else about the garden** (2.54; `_glhWorldCheck`). Plants and decorations go as `gl:d`. Whatever else a snapshot says (land, works, the saved design, painted buildings, rooms, the lake, wonders, shared projects, weather, the season) has no message of its own: every 3 seconds the host's page compares it with what everyone last got, and on a difference everyone gets the whole garden. Nothing has to remember to say it changed. A new snapshot field needs four things: `gardenSnapshot`, `GARDEN_SCHEMA`, `gardenSnapshotClean`, and the list in `_gscSnapBody` for the saved copy. The server's `gardenSnapshotClean` only has what `lib/friends/garden.mjs` loads: a cleaner in another file means that file goes in the list too.
+
+**Words in the world** (`gardenToast`, `gardenSay`, `gardenSign`, `94-garden-0feel.js`). In the garden a message is a bubble over your own figure that only you see. What needs an answer or is a real problem hangs on a wooden sign at the top. Away from the garden, or with a dialog open, it is the ordinary toast. The connection's line shows only when something is wrong.
+
+`fx use {e: bell | wish | collect | machine, x, y}`: someone set something going in the world. Each screen plays it; what it gives stays theirs.
+
 ## 22. What you own shows (2.39)
 
 `94-garden-fish-7gear.js`. **The rule for anything that can be bought or unlocked, now and from now on: it appears in the world or on the figure, and friends see it, live and on a saved copy.** A bonus that is only a number on a card is not finished. The owner, 1 November 2026: "I want to see if my friend has a cool new rod."
@@ -430,11 +436,22 @@ Code: `src/app/94-garden-zz-*.js`, `src/styles/94-garden-together.css`. The owne
 
 **Strict rules are for your own hands.** `94-garden-design-1strict.js` (every number in `GDZ_STRICT`) runs only when you draw or put something down in the designer. It never refuses a snapshot: `gardenDesignClean` still draws a design from an older or newer app whatever it breaks, and what is already placed stays until it is moved.
 
-## 25. Zones, fewer fish, pets in the world
+## 25. Together indoors: a hidden room's water
+
+A room's water is real water with cells of its own past the edge of the map, from `GARDEN_ROOM_X` (53) on: `gl:fs` carries x to 64 and y to 32, a cast x and y to 63. Nothing new is sent and no snapshot field was added.
+
+- `hall` with `i` says who is in which room (`A.rm`). A fish is one row in the one list, in a band `R:<room>` that exists only while someone is in that room. The host runs it; when everyone has left, its fish go.
+- A line, the bite, the reel and the catch are the usual `fish`, `fs` and `got` events with those cells. `gardenRoomFxAt` draws a friend's rod from their figure in the room. If you are not in that room, nothing is drawn, and a catch is one line in the corner.
+- A bug in a room is claimed the usual way (`gardenLiveBugClaim`), with a key that starts `rm`.
+- The room's small games are each person's own: nothing about them is sent.
+
+While you are in a room, `_gwActors`, `_gwFeet`, `_gwPx` and `_gdgBox` answer for the room, so the fishing and netting code does not know the difference. The layer is scaled by `GRW.k`, which makes the rod, float and moment fit the bigger figure.
+
+## 26. Zones, fewer fish, pets in the world
 
 **Zones** (docs/dev/GARDEN_PLAN.md, "Zones") add nothing to a snapshot or the wire: a garden's zones come from `lv` and what it owns.
 
-**Fish.** `GF_SCHOOL.max` is 8 across the whole map in ordinary play; contests and feeding frenzies may go up to `GF_SCHOOL.wire` (20, what `gl:fs` carries). Each water wants 1, plus 1 for what you built for it. The one who decides fills the water nearest anyone in the garden first, and the last places are kept for nearer waters; someone standing at an empty water makes the furthest swimming fish leave. In the lake only fish within 14 cells of someone count. A fish within 9 cells of a float in its own water drifts over, and a line nothing has come to for 12 seconds brings one up nearby: every bite is still a fish you can see. Still host-decided, still the whole list.
+**Fish.** `GF_SCHOOL.max` is 8 across the whole map in ordinary play; contests and feeding frenzies may go up to `GF_SCHOOL.wire` (20, what `gl:fs` carries). Each water wants 1, plus 1 for what you built for it. (A room's water keeps its own two.) The one who decides fills the water nearest anyone in the garden first, and the last places are kept for nearer waters; someone standing at an empty water makes the furthest swimming fish leave. In the lake only fish within 14 cells of someone count. A fish within 9 cells of a float in its own water drifts over, and a line nothing has come to for 12 seconds brings one up nearby: every bite is still a fish you can see. Still host-decided, still the whole list.
 
 **Pets in the world.** Nothing new is sent. Where a pet is goes out as before (`gl:pp`, tenths of a cell); what it is doing there is worked out from where it is and what stands in the garden (`_ptwStand`, `97-pets-7roam.js`): a water pet on an open water cell is swimming, a flying pet at a perch's point is on that perch. Perch points are kept to tenths of a cell, so the place sent lands on them exactly. Only open land and open water count; perches come from the live rows, so moved objects keep theirs. With reduced motion or Fun off none of it runs.
 
