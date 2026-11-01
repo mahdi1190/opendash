@@ -192,7 +192,9 @@ function _gplDraw(a, dir, pose, o) {
   const S = _GPL_S, KY = _GPL_KY, Tools = _gplTools();
   // (the can they own, on every screen: 94-garden-fish-7gear.js)
   { const col = o.gear && o.gear.c && typeof GARDEN_CAN_LOOK !== 'undefined' ? GARDEN_CAN_LOOK[o.gear.c] : null; if (col) { const can0 = Tools.can; Tools.can = () => can0().split('#6f9ab0').join(col); } }
+  if (o.gear && o.gear.rk && typeof gardenLookRodInHand === 'function' && gardenLookDef(o.gear.rk)) Tools.rod = () => gardenLookRodInHand(o.gear.rk);
   const slung = o.gear && typeof _gplSlung === 'function' ? _gplSlung(o.gear, pose) : '';
+  const held = o.gear && o.gear.hd && typeof gardenLookHeldTool === 'function' ? gardenLookHeldTool(o.gear.hd) : null;   // an umbrella, a balloon: in the hand when it is free
   const side = dir === 'e', back = dir === 'n';
   const hipY = PP.HIP * KY * S, headO = `transform-origin:0px ${_gplN(_gplY(66))}px`;
   const P = _gplPoseArms(pose, side, Tools, o.stageRod);
@@ -202,7 +204,7 @@ function _gplDraw(a, dir, pose, o) {
     legs = `<g class="gpl-limb gpl-lg gpl-b" style="transform-origin:0px ${_gplN(hipY)}px">${_gplG(figL, F.legB)}</g><g class="gpl-limb gpl-lg gpl-a" style="transform-origin:0px ${_gplN(hipY)}px">${_gplG(figL, F.legA)}</g>`;
     const far = _gplG(fig, Fp.farArm), near = _gplG(fig, Fp.nearArm);
     const armFar = P ? _gplArm(far, j(F.shoulders.far), len, P.a[1] || '', P.a[0], P.a[2]) : _gplArm(far, j(F.shoulders.far), len, 'gpl-as gpl-a');
-    const armNear = P ? _gplArm(near, j(F.shoulders.near), len, P.b[1] || '', P.b[0], P.tool || P.b[2]) : _gplArm(near, j(F.shoulders.near), len, 'gpl-as gpl-b');
+    const armNear = P ? _gplArm(near, j(F.shoulders.near), len, P.b[1] || '', P.b[0], P.tool || P.b[2]) : _gplArm(near, j(F.shoulders.near), len, 'gpl-as gpl-b', 0, held);
     // the head turned the way it walks: the face slides over the egg, the ears the other way; what hangs behind goes behind (a ponytail trails)
     const t = _GPL_TURN;
     const head = _gplG(`translate(${_gplN(-t * 0.7)} 0)`, L.ears) + L.skull + `<clipPath id="${uid}h"><path d="${PF_HEAD_D}"/><rect x="20" y="60" width="45" height="70"/></clipPath><g clip-path="url(#${uid}h)">${_gplG(`translate(${t} 0)`, L.face)}</g>` + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hair) + _gplG(`translate(${t} 0)`, L.glasses) + _gplG(`translate(${_gplN(t * 0.22)} 0)`, L.hat) + L.phones + L.extra;
@@ -220,7 +222,7 @@ function _gplDraw(a, dir, pose, o) {
     const armArt = (sgn, art) => _gplG(_gplM(sgn * ax, ay, sgn * (jx - sh[0] * ax), jy - sh[1] * ay), art), len = 19.1 * ay;
     const armL = armArt(-1, FpL.nearArm), armR = armArt(1, Fp.nearArm);
     const left = P ? _gplArm(armL, [-jx, jy], len, P.a[1] || '', -P.a[0], P.a[2], P.k) : _gplArm(armL, [-jx, jy], len, 'gpl-af gpl-b');
-    const right = P ? _gplArm(armR, [jx, jy], len, P.b[1] || '', P.b[0], P.tool || P.b[2], P.k) : _gplArm(armR, [jx, jy], len, 'gpl-af gpl-a is-r');
+    const right = P ? _gplArm(armR, [jx, jy], len, P.b[1] || '', P.b[0], P.tool || P.b[2], P.k) : _gplArm(armR, [jx, jy], len, 'gpl-af gpl-a is-r', 0, held);
     const lower = _gplG(bust, _gplLower(a, fo, T, uid, back)), cape = a.outer === 'cape';   // a cape lies over the arms
     if (back) {
       upper = lower + _gplG(bust, _gplBackBust(a, fo, uid) + _gplHipBag(a, true)) + left + right + _gplG(bust, L.neck)

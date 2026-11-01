@@ -623,6 +623,7 @@ function gardenSnapshot() {
     try { const sp = typeof gardenSpecWire === 'function' ? gardenSpecWire() : null; if (sp) out.sp = sp; } catch (e) { /* specimens are optional */ }   // your best few, for friends: ids and numbers, an older app drops the field
     try { const ca = typeof gardenCatchWire === 'function' ? gardenCatchWire() : null; if (ca) out.ca = ca; } catch (e) { /* the lake is optional */ }   // the lake: its hall, its rack, its records
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
+    try { const bk = typeof gardenBuildWire === 'function' ? gardenBuildWire() : null; if (bk) out.bk = bk; } catch (e) { /* optional */ }   // how you have painted your buildings: ids and small numbers, an older app drops the field
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     return out;
   } catch (e) { console.error('[garden]', e); return null; }

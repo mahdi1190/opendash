@@ -21,6 +21,7 @@ function gardenRodLook(id) {
 function gardenGearLook() {
   const out = { r: gardenRod().id, n: gardenNet().id, b: gardenBobber().id };
   for (const id of ['can-4', 'can-3', 'can-2']) if (gardenHas('tool:' + id) > 0) { out.c = id; break; }
+  if (typeof gardenStyleLook === 'function') gardenStyleLook(out);   // the look of your rod and net, what you carry: 94-garden-style-0rules.js
   return typeof gardenTackleLook === 'function' ? gardenTackleLook(out) : out;   // reel, line, hook, lantern, jar, boat: 94-garden-fish-8catch.js
 }
 /** Yours, for your own figure (it is asked every frame; what you carry changes rarely). */
@@ -35,13 +36,17 @@ function _gplSlung(gear, pose) {
   if (!gear || pose === 'fish' || pose === 'hold') return '';
   const rod = gear.r ? gardenGearDef(gear.r) : null, net = gear.n ? gardenGearDef(gear.n) : null;
   let s = '';
-  if (net && net.kind === 'net' && net.tier > 1) {
+  const netSkin = gear.nk && typeof gardenLookNetOnBack === 'function' ? gardenLookNetOnBack(gear.nk) : '';   // a look shows even on the starter one; an id this app does not know is left out
+  if (netSkin) s += netSkin;
+  else if (net && net.kind === 'net' && net.tier > 1) {
     const hoop = GARDEN_NET_HOOP[net.tier - 1] || GARDEN_NET_HOOP[0], k = 1 + net.tier * 0.08;
     s += `<g class="gpl-slung"><path d="M9 -24L-9 -62" stroke="#6a4a2a" stroke-width="1.6" stroke-linecap="round"/><ellipse cx="-11.5" cy="-67" rx="${(6 * k).toFixed(1)}" ry="${(7.5 * k).toFixed(1)}" fill="#f4f0e6" fill-opacity="0.55" stroke="${hoop}" stroke-width="1.5"/></g>`;
   }
   if (typeof gardenKitOnFigure === 'function') s += gardenKitOnFigure(gear);   // lantern, firefly jar, a run of catches
-  if (rod && rod.kind === 'rod' && (rod.tier > 1 || gear.rl)) {
-    const L = gardenRodLook(rod.id), tip = -80 - rod.tier * 2;
+  const rodTip = -80 - (rod && rod.kind === 'rod' ? rod.tier : 1) * 2, rodSkin = gear.rk && typeof gardenLookRodOnBack === 'function' ? gardenLookRodOnBack(gear.rk, rodTip, gear.rl && typeof gardenReelOnBack === 'function' ? gardenReelOnBack(gear.rl) : '') : '';
+  if (rodSkin) s += rodSkin;
+  else if (rod && rod.kind === 'rod' && (rod.tier > 1 || gear.rl)) {
+    const L = gardenRodLook(rod.id), tip = rodTip;
     s += `<g class="gpl-slung"><path d="M-9 -22L14 ${tip}" stroke="#1a1a1a" stroke-opacity="0.35" stroke-width="${(L.w + 0.8).toFixed(1)}" stroke-linecap="round"/><path d="M-9 -22L14 ${tip}" stroke="${L.c}" stroke-width="${L.w}" stroke-linecap="round"/><circle cx="-6.2" cy="-28.5" r="2.6" fill="#3a2a1a"/>${rod.tier >= 4 ? `<circle cx="14" cy="${tip}" r="1.7" fill="#fff4b0"/>` : ''}${gear.rl && typeof gardenReelOnBack === 'function' ? gardenReelOnBack(gear.rl) : ''}</g>`;
   }
   return s;
@@ -93,6 +98,7 @@ function gardenGearRow(g) {
   if (net && net.kind === 'net') add(gardenCatchSvg('net', net.id, 22), net.name);
   if (bob) add(gardenCatchSvg('bobber', bob.id, 22), bob.name);
   if (typeof gardenTackleRow === 'function') gardenTackleRow(g, add);
+  if (typeof gardenStyleRow === 'function') gardenStyleRow(g, add);
   if (can) add(typeof _gdxItemIcon === 'function' ? _gdxItemIcon('tool:' + can.id, 22) : '', can.name);
   return row.children.length ? row : null;
 }

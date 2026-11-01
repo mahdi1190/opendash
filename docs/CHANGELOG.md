@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.49.0]
+
+### Added
+- **New looks for your rod and net** that don't change how they fish, plus umbrellas, balloons, lanterns and buckets to carry.
+- **Paint your buildings.** Choose each shop's walls, roof, door, awning and sign, using materials.
+- **36 new decorations** in seaside, cottage, spooky, festive and ruins themes. Friends see all of it.
+
 ## [2.48.0]
 
 ### Added
