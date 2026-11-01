@@ -10,6 +10,16 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.58.3]
+
+### Changed
+- **Garden messages are back at the top middle of the screen,** one at a time, in plain words. That includes the fishing and reeling prompts, instead of speech bubbles and signs.
+
+## [2.58.2]
+
+### Added
+- **Start your garden again,** in Settings > Data. Your land, plants, coins and level go back to the start, and your tasks, money and pet stay. You can undo it straight away.
+
 ## [2.58.1]
 
 ### Fixed

@@ -70,7 +70,9 @@ function _glbNext() {
   n.setAttribute('aria-label', `New in your Nature book: ${it.def.name}. Open the book.`);
   n.innerHTML = `<span class="gl-found-art">${_glbArt(it.kind, it.def, 56)}</span><span class="gl-found-t"><small>New in your Nature book</small><b>${esc(it.def.name)}</b></span><span class="gl-found-c">+${r.c}</span>`;
   n.onclick = () => { _glb.shelf = _glbShelfOf(it.kind, it.def); n.remove(); clearTimeout(n._t); _glb.showing = false; _glb.queue.length = 0; if (typeof gardenPopupOpen === 'function') gardenPopupOpen('nature'); };
-  box.appendChild(n); _glbFit(n);
+  const top = gardenMessageHost() || box;
+  top.insertBefore(n, top.querySelector(':scope > .gd-msg'));   // (over the message line, never on top of it)
+  _glbFit(n);
   if (typeof gameCheer === 'function') gameCheer(null, { quiet: true, sound: true, at: { x: 0, y: 0 } });
   n._t = setTimeout(() => { n.classList.add('is-out'); setTimeout(() => { n.remove(); _glbNext(); }, 320); }, 3600);
 }

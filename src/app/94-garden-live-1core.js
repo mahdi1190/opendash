@@ -188,10 +188,9 @@ function _gllSayDraw(A) {
   const root = A.root; if (!root) return;
   const old = root.querySelector(':scope > .gll-say'); if (old) old.remove();
   const s = A.say; if (!s || Date.now() >= s.until) return;   // clock-ok: how long a bubble stays
-  // a phrase from the table, or (your own figure, on your own screen) a few words of your own: gardenSay. Set with textContent, on no wire
-  const row = s.text ? null : GL_PHRASES.find(p => p.id === s.id); if (!row && !s.text) return;
+  const row = GL_PHRASES.find(p => p.id === s.id); if (!row) return;   // (a phrase from the table; set with textContent, on no wire)
   const lines = [];
-  for (const word of String(s.text || row.t).split(/\s+/)) { const last = lines[lines.length - 1]; if (last != null && (last + ' ' + word).length <= 34) lines[lines.length - 1] = last + ' ' + word; else lines.push(word); }
+  for (const word of String(row.t).split(/\s+/)) { const last = lines[lines.length - 1]; if (last != null && (last + ' ' + word).length <= 34) lines[lines.length - 1] = last + ' ' + word; else lines.push(word); }
   const g = _gllSvgEl('g', 'gll-say'); g.setAttribute('transform', 'translate(0 -74)');
   const w = Math.max(...lines.map(l => l.length)) * 5.4 + 14, h = 17 + (lines.length - 1) * 12;
   const r = _gllSvgEl('rect', 'gll-say-b'); r.setAttribute('x', String(-w / 2)); r.setAttribute('y', String(-2 - h)); r.setAttribute('width', String(w)); r.setAttribute('height', String(h)); r.setAttribute('rx', '8');
