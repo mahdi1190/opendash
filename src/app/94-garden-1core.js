@@ -624,6 +624,7 @@ function gardenSnapshot() {
     try { const ca = typeof gardenCatchWire === 'function' ? gardenCatchWire() : null; if (ca) out.ca = ca; } catch (e) { /* the lake is optional */ }   // the lake: its hall, its rack, its records
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
     try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
+    try { const tg = typeof gardenTogetherWire === 'function' ? gardenTogetherWire() : null; if (tg) out.tg = tg; } catch (e) { /* optional */ }   // what you share with friends (94-garden-zz-*.js)
     return out;
   } catch (e) { console.error('[garden]', e); return null; }
 }

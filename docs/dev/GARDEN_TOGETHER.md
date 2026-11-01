@@ -384,3 +384,35 @@ What a person carries goes in their look as `g` (ids; a receiver draws from its 
 **There is no central server, and this adds none.** The friends board (`gardenSpecBoard`) is what this computer has heard from your friends, and the page says so.
 
 **Economy.** A variant pays `tier.sell` times at the market, added to the sale's total before the daily limit applies, so `marketFish` and `marketBugs` still rule it. XP is untouched.
+
+## 24. Together, more (next release)
+
+Code: `src/app/94-garden-zz-*.js`, `src/styles/94-garden-together.css`. The owner, 1 Nov 2026: friends' gardens as places to catch things, a project built together, photo mode, seasons on the map, a day's end, and "surprise me".
+
+**The channel is the sealed snapshot.** One new strict field, `tg` (`GARDEN_SCHEMA` in `lib/friends/garden.mjs`, `gardenTogetherClean` in the catalogue): ids and numbers only, an older app drops it. No new message, server part or relay change. Each person writes only their own numbers; everything shared is worked out by adding the two. Friend words never enter the state; a bottle's line is an index into a table (append only). `gtgPair` is a mark for the two of you: it names neither, so a third friend reading a garden learns nothing. Snapshot publishing keeps its 15-minute gap unless a thing starts (a project, a gnome, a bottle), so shared numbers can lag by that much.
+
+| `tg` field | What |
+|---|---|
+| `k` | the garden's own id, a random mark made once (`g.seen['tg.k']`) |
+| `pj` | `[[pair, kind, pegs, timber, stone, tenths of a percent]]`, up to 3: your part of each project |
+| `gn`, `gs`, `gb` | the pair your gnome is staying with; colour numbers of gnomes staying with you; your pennants |
+| `pv` | `[kind, this one's weight, best]` in hundred grams |
+| `bt`, `bw` | your last 3 bottles `[[pair, line, day sent]]`; how many wait unread in your lake |
+| `ev` | you put the lamp out today |
+
+**A garden's own kinds** (`-0kit`). 12 fish and 12 bugs (ids `gh-*`, `needs: {home: true}`). `gardenPlaceKinds(key)` picks 2 of each from the garden's id, the same on every screen; `ctx.home` asks. They are on no region page, because no page should need a friend. The owner catches theirs at home; a friend has to visit or trade (gifts and trades already take any catalogue fish). First catch of each: 3 tickets.
+
+**A shared project** (`-1project`, `GTG_PROJECTS`). Bridge, lighthouse, statue: weeks of pegs, timber and stone between two. Your adds are `wd['tg.pa.<friend>.<uid>']`, an entry each, so your own devices add up and an Undo is a negative entry. The partner's part comes from their snapshot, capped at the cost and kept in `tg.py` while they are away. Both adding the last of something: the one whose id sorts last takes the extra back, once. Both staking out something different: the same one builds the other's. Tickets at each of 5 stages, only if your own part is at least a tenth; finished, it gives more and becomes a way across to their garden. Stands in both gardens, and visitors see its stage from the snapshot.
+
+**Photo mode in the world** (`-3pose`). Hold up anything you have caught, frame (close, middle, wide, nudge), six filters, three frames. Draws the live stage through the group photo's `_glsBlob`; the filter and frame are drawn on the picture. One a day pays 2 tickets. Friends here see the flash; the picture stays with you.
+
+**Seasons that change the map** (`-2season`, `GTG_SEASON_AT`). Winter: `_GD_ICE` in the catalogue makes the lake walkable, not water and not buildable; holes stay water and fish swim under the ice between them (`gardenIceSpot`), so you fish through them, and the flat spot drawings hide. Spring cherry trees, summer flower clumps, autumn leaf drifts, each with falling petals or leaves and its own kinds (ids `sn-*`, `needs: {season, map: true}`, on the main garden's and lake's pages). All of it reads `gardenHere().season`: in a friend's garden, their season. A thaw while you stand out there brings the little boat.
+
+**The day's end** (`-4evening`). A lamp by the shore bench after dusk: what you caught, what your work earned, what's next. Putting it out pays 2 tickets once a day; friends see it lit or out. No toast, no count, no reminder.
+
+**Surprises.** The ghost in the photograph (`-3pose`): at dusk by the sundial, in any photo including a group one: 15 tickets and stone once. The travelling gnome (`-5gnome`): leave it at a friend's for 3 days, a photo in your Memories, home with a pennant; 6 tickets, the host 3, more at 3 and 6 gardens. Bottle post (`-5gnome`): a line from the book, three days on the water, bobbing in their lake. The prize vegetable (`-6veg`): tend it once a day and your real tasks and focus feed it; it stands at its real size with its weight on a label; on the scales after 7 days of tending.
+
+**World cells** are in tables marked `// world cells`: `GTG_PROJECTS`, `GTG_SEASON_AT`, `GTG_GHOST_AT`, `GTG_EVE_AT`, `GTG_GN_AT`, `GTG_BOTTLE_AT`, `GTG_VEG_AT`.
+
+**A dishonest friend** can claim any part of a project up to its cost, or send a gnome or a bottle: they can show you a finished thing, but your thanks need your own tenth. Not built: a friend's pose is not shown as a hold-up (only the flash), and a project has one partner.
+

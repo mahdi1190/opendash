@@ -272,7 +272,7 @@ function _gldFindCells() {
   for (let y = 0; y < GARDEN_WORLD.rows; y++) for (let x = 0; x < GARDEN_WORLD.cols; x++) { const c = gardenLandCell(x, y); if (c && !c.pool && !c.solid && c.fam !== 'pond' && !(c.lane && y === 19)) out.push([x, y]); }
   return (_GLD_FINDS.cells = out);
 }
-function _gldSpotOk(m, x, y) { if (String(gardenAreaAt(x, y, m.level.level)).startsWith('locked:') || gardenIsWater(x, y) || gardenPropAt(x, y)) return false; const c = m.occ.get(x + ',' + y); return !(c && (c.plant || c.decor)); }
+function _gldSpotOk(m, x, y) { if (String(gardenAreaAt(x, y, m.level.level)).startsWith('locked:') || gardenIsWater(x, y) || gardenIceAt(x, y) || gardenPropAt(x, y)) return false; const c = m.occ.get(x + ',' + y); return !(c && (c.plant || c.decor)); }
 /** Today's dig spot: {x, y}, or null once it is dug. */
 function gardenLandDigSpot(m) {
   if (_gdG().seen[_gldKey('dig')] === m.today || m.visit) return null;

@@ -192,6 +192,7 @@ function _gfsBands(m) {
 }
 /** Somewhere in this water, clear of the pier. Near the pier a fish keeps to its own side, so it never swims under the planks in plain sight. */
 function _gfsSpot(b0, near0) {
+  if (b0 && b0.zone !== 'pond' && typeof gardenIceSpot === 'function') { const q = gardenIceSpot(b0, near0); if (q) return q; }   // a frozen lake: fish keep to the holes (94-garden-zz-2season.js)
   const b = b0 || GF_SCHOOL.bands[0], inX = (v) => Math.max(b.x0, Math.min(b.x1, v)), inY = (v) => Math.max(b.y0, Math.min(b.y1, v));
   const near = near0 ? { x: inX(near0.x), y: inY(near0.y) } : null, lake = b.zone !== 'pond';   // (wherever it was asked to go, it stays in this water: a bolting fish once ran out over the farmland)
   for (let i = 0; i < 12; i++) {
@@ -209,6 +210,7 @@ function _gfsSpawn(b, m, at) {
   const plus = typeof gardenCatchSpawnPlan === 'function' ? gardenCatchSpawnPlan(b, m, at) : null;   // spots, events and what you have done raise the odds: 94-garden-fish-8catch.js
   const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : (plus && plus.p) || _gfsSpot(b); if (!p) return;
   const ctx = { zone: b.zone, tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id) || gardenWorkOwned(id), caught: (id) => !!_gdG().fl[id] };
+  if (typeof gardenPlaceHas === 'function') ctx.home = gardenPlaceHas;
   if (typeof gardenEventOn === 'function') ctx.event = gardenEventOn;
   if (typeof gardenSpotAt === 'function') ctx.spot = gardenSpotAt(p.x, p.y) || null;
   // mostly real fish: a find (a boot, a pearl) is the odd small shadow, and water too deep for this garden's level still has what can live in it

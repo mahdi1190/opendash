@@ -138,7 +138,7 @@ function _gpMarblesFound() { const out = {}; const s = _gdG().seen; for (const k
 function _gpMarbleOk(M, m) { const w = M.when; if (w.tod && !w.tod.includes(m.tod)) return false; if (w.rain && !(m.rain && m.rain.now)) return false; if (w.season && m.season !== w.season) return false; return true; }
 function _gpMarbleCell(M) {
   const W = GARDEN_WORLD;
-  for (let t = 0; t < 30; t++) { const h = gardenHash('gpmb|' + _gdG().since + '|' + M.id + '|' + t), x = h % W.cols, y = (h >> 8) % W.rows; try { if (gardenReachable(x, y) && gardenWorldFree(x + 0.5, y + 0.5, 0.1)) return { x: x + 0.5, y: y + 0.5 }; } catch (e) { return null; } }
+  for (let t = 0; t < 30; t++) { const h = gardenHash('gpmb|' + _gdG().since + '|' + M.id + '|' + t), x = h % W.cols, y = (h >> 8) % W.rows; try { if (gardenReachable(x, y) && !gardenIceAt(x, y) && gardenWorldFree(x + 0.5, y + 0.5, 0.1)) return { x: x + 0.5, y: y + 0.5 }; } catch (e) { return null; } }
   return null;
 }
 const _gpMb = { timer: 0, live: new Map(), cells: new Map() };
