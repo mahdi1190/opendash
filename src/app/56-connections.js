@@ -87,7 +87,7 @@ async function _connOpenTerminal(btn) {
         if (Date.now() - t0 > 10 * 60000) return;
         await connCheck('claude');
         const c = _connAll && _connAll.claude;
-        if (c && c.state === 'ok') toast('Claude connected. AI features are on', { kind: 'ok' });
+        if (c && c.state === 'ok') toast('Claude connected. AI features are on', { dismiss: true, kind: 'ok' });
         else toast('Claude is not signed in yet. Finish in the Claude window, then press Check again.', { kind: 'info', timeout: 9000, action: { label: 'Check again', run: () => connCheck('claude') } });
       };
       window.addEventListener('focus', back);
@@ -108,9 +108,9 @@ function _connHelp(c, e, all) {
       box.appendChild(_connEl('div', 'conn-help-t', 'Install Claude Code'));
       const win = /Win/.test(navigator.platform || '') || /Windows/.test(navigator.userAgent || '');
       box.appendChild(_connSteps([
-        ['Open ' + (win ? 'PowerShell' : 'a terminal') + ' and run the installer:', _connCode(win ? 'irm https://claude.ai/install.ps1 | iex' : 'curl -fsSL https://claude.ai/install.sh | bash')],
-        'Run claude once and sign in with your Claude account (Pro or Max).',
-        'Restart Freeflo, then click Check again.',
+        [(win ? 'Press the Start button, type PowerShell and press Enter. A window opens. Copy the line below, right-click in that window to paste it, and press Enter:' : 'Open the Terminal app (on a Mac: press Cmd and Space, type Terminal, press Enter). Copy the line below, paste it there and press Enter:'), _connCode(win ? 'irm https://claude.ai/install.ps1 | iex' : 'curl -fsSL https://claude.ai/install.sh | bash')],
+        'When it finishes, close that window and open it again the same way. Type claude, press Enter, and sign in with your Claude account (Pro or Max).',
+        'Close Freeflo and open it again, then click Check again.',
       ]));
       // The unusual cases fold away (SIMPLIFY_PLAN.md 5.6): npm, and Claude in an odd place.
       setFold(box, 'conn-claude-unusual', 'Something unusual?', ({ body }) => {

@@ -605,6 +605,12 @@ function renderSidebarFooter() {
 }
 
 /** Save status in the top bar (also called by updateSyncIndicator after each write). */
+/** The Saved word flashes by its dot: for a save that does not go through saveData (settings). */
+function saveStatusFlash() {
+  const b = document.getElementById('folder-btn'); if (!b) return;
+  b.classList.add('flash'); clearTimeout(renderSaveStatus._flashT);
+  renderSaveStatus._flashT = setTimeout(() => b.classList.remove('flash'), 2500);
+}
 function renderSaveStatus() {
   const btn = document.getElementById('folder-btn');
   if (!btn) return;

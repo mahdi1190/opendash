@@ -89,8 +89,8 @@ async function assistantConnect(id, repaint, action = 'link') {
         if (!url) throw new Error(_localClaudeUi.message || 'Dashboard AI is connected. The browser session could not open; press Open connected Claude to retry.');
         if (popup && !popup.closed) { try { popup.location.replace(url); handedOff = true; } catch {} }
         const message = _localClaudeUi.browserReady ? (handedOff ? 'Connected Claude is open in your browser.' : 'Press Open connected Claude to open the browser session.') : (_localClaudeUi.message || 'Finish terminal confirmations, then select Freeflo in Claude Code in your browser.');
-        toast(handedOff ? message : message + ' Press Open connected Claude if the browser did not open.', { kind: 'ok', timeout: 10000 });
-      } else toast('Claude connected. AI features are on', { kind: 'ok' });
+        toast(handedOff ? message : message + ' Press Open connected Claude if the browser did not open.', { dismiss: true, kind: 'ok', timeout: 10000 });
+      } else toast('Claude connected. AI features are on', { dismiss: true, kind: 'ok' });
       await connRefresh({ force: true });
     } else {
       const r = await fetch('/api/connections/assistant-connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });

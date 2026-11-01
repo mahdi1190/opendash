@@ -81,7 +81,7 @@ if (typeof registerHeaderActions === 'function') registerHeaderActions(v => v ==
   return {
     primary: { label: 'Update bank', icon: 'refresh-cw', tip: 'Reads new transactions from your bank', run: () => FV.update({}) },
     more: [
-      { label: 'Import a CSV…', icon: 'upload', run: () => FV.importCsv() },
+      { label: 'Import a statement…', icon: 'upload', run: () => FV.importCsv() },
       { label: 'Read my whole bank history again', icon: 'history', run: () => FV.update({ full: true }) },
       { label: 'Import from the Finances folder', icon: 'rotate-ccw', run: () => FV.update({ bank: false }) },
       { label: 'Export all transactions', icon: 'download', run: () => FV.exportAll() },

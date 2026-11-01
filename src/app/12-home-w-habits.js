@@ -184,7 +184,7 @@ function _habTickHtml(h, cls) {
   const label = done ? `${h.title}: done ${when}` : skipped ? `${h.title}: skipped ${when}`
     : h.tickable ? `Tick off ${h.title}` : h.now === 'before' ? `${h.title}: starts ${_habDate(h.next || h.start)}` : h.next ? `${h.title}: next ${_habDate(h.next)}` : `${h.title}: not due now`;
   return `<button type="button" class="${cls}${done ? ' is-done' : ''}${skipped ? ' is-skipped' : ''}" data-act="tick" data-fk="hab-tick:${escAttr(h.id)}" aria-pressed="${done ? 'true' : 'false'}"`
-    + `${h.tickable ? '' : ' aria-disabled="true"'} aria-label="${escAttr(label)}" title="${escAttr(done ? 'Done. Undo is in the toast' : skipped ? 'Skipped' : h.tickable ? 'Tick it off' : '')}">`
+    + `${h.tickable ? '' : ' aria-disabled="true"'} aria-label="${escAttr(label)}" title="${escAttr(done ? 'Done. Press Undo in the message, or Ctrl+Z' : skipped ? 'Skipped' : h.tickable ? 'Tick it off' : '')}">`
     + `${icon(done ? 'check' : skipped ? 'redo-2' : h.tickable ? 'circle' : 'circle-dashed', done || skipped ? 'i-md' : 'i-xl')}</button>`;
 }
 function _habSkipHtml(h) {

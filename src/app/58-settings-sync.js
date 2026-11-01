@@ -165,7 +165,7 @@ function syncPathLine(st) {
   const cloud = syncCloudName(st);
   const parts = [];
   if (L && L.on && L.state === 'on') parts.push('Same Wi-Fi: direct');
-  const whose = R.role === 'member' ? "a friend's relay" : 'your connection to friends';
+  const whose = R.role === 'member' ? "a friend's connection" : 'your connection to friends';
   const why = { busy: whose + ' is resting until tomorrow', rate: whose + ' is slowing down for a moment', offline: whose + " can't be reached right now" }[R.state];
   if (relay && !why) { parts.push('Elsewhere: ' + whose); if (cloud) parts.push(_syncCap(cloud) + ': backup'); }
   else if (relay) parts.push(cloud ? 'Elsewhere: ' + cloud + ' for now (' + why + ')' : _syncCap(why) + '; changes wait here and go then');
@@ -222,9 +222,9 @@ function syncNeedsYou(st, health) {
   if (!st || !st.enabled) return null;
   const R = st.relay || {};
   if (st.state === 'error') return { detail: 'Sync is paused', fix: { label: 'Try again', run: 'now' }, err: true };
-  if (R.on && R.state === 'quota') return { detail: "Your connection to friends's storage is full", fix: { label: 'Make room', run: 'compact' } };
+  if (R.on && R.state === 'quota') return { detail: "Your connection to friends is full", fix: { label: 'Make room', run: 'compact' } };
   if (R.on && R.state === 'denied') return R.hasKey ? { detail: 'Your connection to friends refused this computer', fix: { label: 'Open Check-up', run: 'checkup' } } : { detail: 'Type a 4-letter code from a computer that uses your connection to friends', fix: null };
-  if (['key', 'record', 'private'].includes(R.missing)) return { detail: R.missing === 'private' ? "Your connection to friends's address doesn't work on this network" : "Your connection to friends isn't set up on this computer yet", fix: { label: 'Try again', run: 'check' } };
+  if (['key', 'record', 'private'].includes(R.missing)) return { detail: R.missing === 'private' ? "The address of your connection to friends doesn't work on this network" : "Your connection to friends isn't set up on this computer yet", fix: { label: 'Try again', run: 'check' } };
   if (st.skew && Math.abs(st.skew.aheadMin || 0) > 2) return { detail: `${st.skew.device}'s clock is ${Math.abs(st.skew.aheadMin)} min out`, fix: { label: 'How to fix', run: 'checkup' } };
   const c = health && Array.isArray(health.checks) ? health.checks.find(x => x.needsUser) : null;
   if (c) return { detail: c.title, fix: c.fix && (c.fix.action || c.fix.view) ? { label: c.fix.label || 'Fix it', run: 'apply-health', check: c.id } : { label: 'Open Check-up', run: 'checkup' }, err: c.tone === 'err' };
@@ -364,12 +364,12 @@ function syncRelayView(st) {
   const R = (st && st.relay) || {};
   const P = R.person || null;
   const host = (P && P.host) || R.host || R.privateHost || null;
-  const name = host ? 'Your connection to friends ' + host : 'Your connection to friends';
+  const name = host ? 'Your connection to friends (' + host + ')' : 'Your connection to friends';
   const other = (P && P.from === 'peer' && P.by) || 'your other computer';
   if (R.missing === 'private') return { title: name, tone: 'warn', text: syncNoRelayLine(st), act: 'check' };
   if (R.missing === 'scope') return { title: name, tone: 'idle', text: "It belongs to a friend, who gave you messages only, so it does not carry your sync. Ask them for an invite that includes device sync, or sync through your folder as now.", act: null };
   // A friend's relay that allows device sync is used for it only once chosen in Settings > Your connection to friends (never by itself).
-  if (R.missing === 'choose') return { title: "A friend's relay" + (host ? ' ' + host : ''), tone: 'idle', text: "Its owner lets you sync your devices through it, but you haven't chosen that yet, so sync goes through your folder as now. To use it, open Your connection to friends and click Use it for sync.", act: 'relay' };
+  if (R.missing === 'choose') return { title: "A friend's connection" + (host ? ' (' + host + ')' : ''), tone: 'idle', text: "Its owner lets you sync your devices through it, but you haven't chosen that yet, so sync goes through your folder as now. To use it, open Your connection to friends and click Use it for sync.", act: 'relay' };
   if (R.missing === 'key') return { title: name + " isn't used on this computer yet", tone: 'warn', text: 'Waiting for ' + other + ' to share the key to it: open Freeflo there (on the same network it takes a second). Or paste a join link from it (Advanced, below).', act: 'check' };
   if (R.missing === 'record') return { title: name + " isn't used on this computer yet", tone: 'warn', text: 'Its details are on their way from ' + other + ': open Freeflo there, or click Try again.', act: 'check' };
   if (P || (R.available && R.usable && R.source !== 'link')) {
@@ -385,8 +385,8 @@ function syncRelayView(st) {
  */
 function syncNoRelayLine(st) {
   const R = (st && st.relay) || {};
-  if (R.private) return "Your connection to friends's address" + (R.privateHost ? ' (' + R.privateHost + ')' : '') + ' points inside this network, so Freeflo does not use it here. Check the address in Settings > Your connection to friends, then click Try again.';
-  if (R.person || (R.hasKey && !R.available)) return 'Your connection to friends' + (R.person && R.person.host ? ' ' + R.person.host : '') + ' is set up on your other computer but has not reached this one yet. It arrives by itself when your computers next sync; Try again looks now.';
+  if (R.private) return "The address of your connection to friends" + (R.privateHost ? ' (' + R.privateHost + ')' : '') + ' points inside this network, so Freeflo does not use it here. Check the address in Settings > Your connection to friends, then click Try again.';
+  if (R.person || (R.hasKey && !R.available)) return 'Your connection to friends' + (R.person && R.person.host ? ' (' + R.person.host + ')' : '') + ' is set up on your other computer but has not reached this one yet. It arrives by itself when your computers next sync; Try again looks now.';
   return 'Tip: set up your connection to friends (free) to sync anywhere within a second.';
 }
 /** Whether the no-relay line has a Try again (the relay exists, it has not arrived or its address was refused). */
@@ -1111,7 +1111,7 @@ function _syncWays(box, st) {
       const ok = await confirmDialog({ title: 'Stop using ' + cloud + '?', text: 'Nothing is deleted. Computers that only use ' + cloud + ' stop getting this one\'s changes.', confirmLabel: 'Stop using ' + cloud });
       if (ok) _syncSave({ folder: false }, 'This computer syncs through your connection to friends only');
     }));
-    box.body.appendChild(_settingsRow('Your connection to friends', R.transport === 'both' ? 'Your other computers should use the relay before you stop using ' + cloud + '.' : '', wrap));
+    box.body.appendChild(_settingsRow('Your connection to friends', R.transport === 'both' ? 'Your other computers should use it too before you stop using ' + cloud + '.' : '', wrap));
   } else {
     const v = syncRelayView(st);
     const btn = v.act === 'use' && syncRelayReady(st) ? _syncBtn('Use my connection too', () => _syncSave({ relay: true }, 'This computer syncs through your connection to friends now'), true)
@@ -1150,7 +1150,7 @@ function _syncAdvanced(box, st) {
   box.body.appendChild(live);
   const R = st.relay || {};
   const facts = [];
-  if (R.host) facts.push('Relay: ' + R.host + (R.state ? ' (' + R.state + ')' : ''));
+  if (R.host) facts.push('Connection to friends: ' + R.host + (R.state ? ' (' + R.state + ')' : ''));
   if (R.outbox && R.outbox.bytes > 0) facts.push(_syncSize(R.outbox.bytes) + ' waiting to send');
   if (st.live && st.live.port) facts.push('Direct link port: ' + st.live.port);
   if (st.live && st.live.listenError) facts.push('Direct links could not start: ' + netPlainError(st.live.listenError));

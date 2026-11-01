@@ -114,7 +114,7 @@ function _mvAwaitRestart(expectDataDir, say) {
 }
 
 function _mvStartJob(url, body, dest, dlgSay) {
-  const say = dlgSay || ((t) => toast(t, { kind: 'ok', timeout: 8000 }));
+  const say = dlgSay || ((t) => toast(t, { kind: 'ok', timeout: 8000, dismiss: true }));
   return _mvJson(url, body).then(() => {
     _mvLoad(true);
     _mvPollJob({

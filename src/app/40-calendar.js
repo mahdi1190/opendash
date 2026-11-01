@@ -138,7 +138,7 @@ function createGoogleDataStore(o) {
     const quiet = st.quietJob; st.quietJob = false;
     if (quiet) return;
     if (job.state === 'ok') {
-      if (job.forced) toast(`${o.label} updated` + (job.result && Number.isFinite(job.result.count) ? ` · ${job.result.count} ${o.noun}` : ''), { kind: 'ok', icon: 'refresh-cw' });
+      if (job.forced) toast(`${o.label} updated` + (job.result && Number.isFinite(job.result.count) ? ` · ${job.result.count} ${o.noun}` : ''), { dismiss: true, kind: 'ok', icon: 'refresh-cw' });
     } else if (job.state === 'error' && (job.forced || _GD_AUTH_CODES.has(job.code))) {
       toastError(`update ${o.label === 'Email' ? 'your email' : o.label}`, new Error(job.error || 'something went wrong'),
         _GD_AUTH_CODES.has(job.code) ? { label: 'Open Connections', run: () => setView('connections') } : () => update({ force: true }));
