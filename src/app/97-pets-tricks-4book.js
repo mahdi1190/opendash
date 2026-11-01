@@ -51,7 +51,7 @@ function petBookPage(root, o) {
     const shown = rows.filter(r => !_ptb.tier || r.tier === _ptb.tier);
     list.replaceChildren();
     if (o.panel) list.classList.add('gpg-box');
-    gardenPager(list, { key: 'tricks:' + (_ptb.tier || ''), items: shown, grid: 'ptb-cards', row: 128, rowSm: 112, rows: 4, draw: (r) => card(r) });
+    gardenPager(list, { key: 'tricks:' + (_ptb.tier || ''), items: shown, grid: 'ptb-cards', row: 128, rowSm: 118, rows: 4, draw: (r) => card(r) });
     paintSide(rows.find(r => r.id === _ptb.sel));
   };
   const card = (r) => {

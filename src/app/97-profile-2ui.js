@@ -22,7 +22,7 @@
    (Friends.registerPanel); opening a friend's card adds one to their
    visitors count, once a day (counts only; Settings > Profile can stop it).
    ============================================================ */
-const _pfUI = { sec: 'card', tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null, lookTab: 'banner', lookUndo: [], lookRedo: [], sceneQ: '', sceneN: 40, curK: '', thumbs: new Map() };
+const _pfUI = { sec: 'card', tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null, lookTab: 'banner', lookUndo: [], lookRedo: [], sceneQ: '', curK: '', thumbs: new Map() };
 const _PF_FACE_CROP = new Set(['eyes', 'eyeCol', 'brows', 'mouth', 'facial', 'marks']);
 const _PF_HEAD_CROP = new Set(['hair', 'hat', 'glasses', 'headphones']);
 const _PF_UNTIL = [['0', "Don't clear"], ['1h', 'In an hour'], ['4h', 'In 4 hours'], ['today', 'Tonight'], ['week', 'In a week']];

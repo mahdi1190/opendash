@@ -138,7 +138,7 @@ html[data-theme="dark"] .gpg-mid, html[data-theme="dark"] .gpg-what { color: inh
 .gd-slot kbd { color: #fff8e1; text-shadow: 0 1px 1px rgba(0, 0, 0, .7); }
 
 /* ---------- a second pass, from looking at it ---------- */
-.modal.gd-popup .gd-popup-body.gd-body { gap: 0; }
+:is(.gd-popup-shop, .gd-popup-almanac, .gd-popup-catch, .gd-popup-nature, .gd-popup-play) .gd-popup-body.gd-body { gap: 0; }
 .modal.gd-popup .gd-body { --fg-muted: #5f5138; }
 .gd-tile-art { height: 52px; }
 .gd-tile-art svg { max-width: 52px; max-height: 52px; }
@@ -204,3 +204,6 @@ html[data-theme="dark"] .gpg-mid, html[data-theme="dark"] .gpg-what { color: inh
 html[data-theme="dark"] .gcr .gpg-mid, html[data-theme="dark"] .gcr .gpg-what { color: #f0e6d0; }
 html[data-theme="dark"] .gcr .gpg-arrow.is-off { color: #a89c84; background: #3a3226; border-bottom-color: #2f2a20; }
 .modal.gd-popup .gcr-body.modal-b { scrollbar-gutter: auto; }
+.gd-alm-top { margin-bottom: 8px; }
+.gl-book-head { margin-bottom: 6px; }
+.grg-wrap .grg-card { padding-block: 6px 9px; }

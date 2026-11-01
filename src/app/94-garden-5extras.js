@@ -218,7 +218,7 @@ function gardenAlmanacTab(el, m) {
   if (_gdx.alm === 'ribbons') {
     // the ones nearest to being earned first, what you have earned after them
     const cmp = (x, y) => (x.earned ? 1 : 0) - (y.earned ? 1 : 0) || y.n / y.of - x.n / x.of || String(x.def.label).localeCompare(y.def.label);
-    gardenPager(el, { key: 'alm:ribbons', items: gardenPagerOrder('alm:ribbons', ribs, r => r.def.label, cmp), grid: 'gd-ribbons', row: 122, draw: (r) => {
+    gardenPager(el, { key: 'alm:ribbons', items: gardenPagerOrder('alm:ribbons', ribs, r => r.def.label, cmp), grid: 'gd-ribbons', row: 126, draw: (r) => {
       const c = _gdpEl('div', 'gd-ribbon' + (r.earned ? ' is-earned' : ''));
       c.innerHTML = `<span class="gd-rib-ic">${icon(r.def.icon)}</span>`;
       const t = _gdpEl('div', 'gd-rib-t');
