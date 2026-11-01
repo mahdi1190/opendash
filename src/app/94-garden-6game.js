@@ -39,6 +39,7 @@ function _gdgGone(n, ms) { setTimeout(() => { if (n && n.parentNode) n.remove();
 /* ---------- feedback ---------- */
 function gardenFloat(text, x, y, w, h, cls) {
   if (!gardenMotionOn()) return;
+  if (_grm.on) { gardenRoomFloat(text); return; }
   const r = _gdgRectPx(x, y, w || 1, h || 1); if (!r) return;
   const n = _gdgNode('gd-float ' + (cls || ''), null, { l: r.l, t: r.t, w: r.w, h: r.h });
   if (!n) return;
@@ -46,7 +47,7 @@ function gardenFloat(text, x, y, w, h, cls) {
   _gdgGone(n, 1700);
 }
 function gardenPop(x, y, w, h, cls) {
-  if (!gardenMotionOn()) return;
+  if (!gardenMotionOn() || _grm.on) return;
   const r = _gdgRectPx(x, y, w || 1, h || 1); if (!r) return;
   const n = _gdgNode('gd-pop ' + (cls || ''), '<i></i><i></i><i></i><i></i>', r);
   _gdgGone(n, 1100);

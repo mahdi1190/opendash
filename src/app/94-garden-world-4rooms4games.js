@@ -7,7 +7,7 @@
 function _grmGated(game, after, opened) {
   return {
     begin(R, S) { after.begin(R, S); S.open = !!S.won || !!(opened && opened(R, S)); if (!S.open) game.begin(R, S); },
-    spots(R, S) { return S.open ? after.spots(R, S) : game.spots(R, S).concat(after.spots(R, S).filter(q => q.still)); },
+    spots(R, S) { return S.open ? (game.doneArt ? [{ id: 'done', still: true, x: 0, y: 0, w: 0, h: 0, art: game.doneArt(R, S) }] : []).concat(after.spots(R, S)) : game.spots(R, S).concat(after.spots(R, S).filter(q => q.still)); },
     act(R, S, i) { if (S.open) after.act(R, S, i); else game.act(R, S, i); },
     frame(R, S, dt) { if (!S.open && game.frame) game.frame(R, S, dt); else if (S.open && after.frame) after.frame(R, S, dt); },
     up(R, S) { if (!S.open && game.up) game.up(R, S); },
@@ -68,8 +68,9 @@ const _grmMapfit = {
   begin(R, S) {
     const h = gardenRand('rm-map|' + R.id + '|' + _gdToday()), o = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     for (let n = 0; n < 40 || o.every((v, i) => v === i); n++) { const a = Math.floor(h() * 9), b = Math.floor(h() * 9); [o[a], o[b]] = [o[b], o[a]]; }
-    S.ord = o; S.sel = null; S.mapS = R.mapArt(h);
+    S.ord = o; S.sel = null; S.mapS = R.mapArt(gardenRand('rm-mapart|' + R.id + '|' + _gdToday()));
   },
+  doneArt(R, S) { const B = R.board; S.mapS = S.mapS || R.mapArt(gardenRand('rm-mapart|' + R.id + '|' + _gdToday())); return `<svg x="${B.x}" y="${B.y}" width="${B.w}" height="${B.h}" viewBox="0 0 ${B.w} ${B.h}">${S.mapS}</svg>`; },
   spots(R, S) {
     const B = R.board, tw = B.w / 3, th = B.h / 3;
     return S.ord.map((t, i) => {
@@ -94,7 +95,7 @@ const _grmKnock = {
     S.pat.forEach((g, i) => { dots += A.c(x, 0, 7, S.tap.length > i ? '#c8483a' : '#3a2a1c'); x += g * 80; });
     dots += A.c(x, 0, 7, S.tap.length > S.pat.length ? '#c8483a' : '#3a2a1c');
     return [
-      { id: 'can', x: Q.can[0], y: Q.can[1], w: 70, h: 100, now: true, tip: 'Listen to the knock', art: A.s('M0 -60V-300', '#c8b488', 2.4) + A.r(-15, -60, 30, 44, '#9aa8ac', null, 3) + A.r(-15, -60, 30, 5, '#6a7478') + A.e(0, -16, 15, 4, '#6a7478') + `<text x="0" y="-70" text-anchor="middle" font-size="26">👂</text>` },
+      { id: 'can', x: Q.can[0], y: Q.can[1], w: 70, h: 100, now: true, tip: 'Listen to the knock', art: A.s('M0 -60V-300', '#c8b488', 2.4) + A.r(-15, -60, 30, 44, '#9aa8ac', null, 3) + A.r(-15, -60, 30, 5, '#6a7478') + A.e(0, -16, 15, 4, '#6a7478') + A.s('M22 -46q8 8 0 18M30 -52q14 14 0 30M-22 -46q-8 8 0 18M-30 -52q-14 14 0 30', '#fff4c8', 3, 0.9) },
       { id: 'sign', still: true, x: Q.sign[0], y: Q.sign[1], w: 0, h: 0, art: A.r(-12, -22, x + 24, 44, '#efe6cc', null, 3) + `<g transform="rotate(${0})">${dots}</g>` },
       { id: 'hatch', x: Q.hatch[0], y: Q.hatch[1], w: 170, h: 130, now: true, tip: 'Knock on the hatch', cls: 'grm-knockb', art: A.r(-78, -118, 156, 118, '#7a5230', null, 6) + A.r(-70, -110, 140, 102, '#92643a', null, 4) + A.s('M-34 -110V-8M0 -110V-8M34 -110V-8', '#5a3a20', 3, 0.6) + A.r(-84, -96, 16, 12, '#3a3a42', null, 2) + A.r(-84, -34, 16, 12, '#3a3a42', null, 2) + A.c(50, -60, 7, '#c8a23a') },
     ];
@@ -118,6 +119,7 @@ const _grmKnock = {
     _grmPaint();
   },
   key(R, S, k) { if (k === ' ' || k === 'e' || k === 'Enter') { this.act(R, S, 'hatch'); return true; } return false; },
+  doneArt(R) { const A = _grmA, H = R.club.hatch; return `<g transform="translate(${H[0]} ${H[1]})">${A.r(-78, -118, 156, 118, '#2a1c0e', null, 6)}${A.r(-70, -110, 140, 102, '#6ab058', 0.5, 4)}${A.p('M-78 -118L-128 -100V-8L-78 0Z', '#92643a')}${A.s('M-104 -108V-6', '#5a3a20', 3, 0.6)}</g>`; },
 };
 
 /* ---------- the stove: pump the bellows and keep the needle in the green ---------- */
@@ -127,8 +129,8 @@ GRM_PLAY.stoke = {
     const A = _grmA, T = R.stove, a = -60 + S.h * 120;
     return [
       { id: 'stove', still: true, x: T.x, y: T.y, w: 0, h: 0, art: T.art(S.won)
-        + `<g transform="translate(-118 -150)">${A.c(0, 0, 40, '#efe6cc')}${A.c(0, 0, 40, 'none')}<path d="M-20 -34.6A40 40 0 0 1 20 -34.6" fill="none" stroke="#c8d8b0" stroke-width="0"/><path d="${_grmArc(0, 0, 30, -6, 36)}" fill="none" stroke="#5aa84a" stroke-width="9"/><path d="${_grmArc(0, 0, 30, 36, 60)}" fill="none" stroke="#d8483a" stroke-width="9"/><path d="${_grmArc(0, 0, 30, -60, -6)}" fill="none" stroke="#c8c0a8" stroke-width="9"/><g class="grm-needle" transform="rotate(${a.toFixed(0)})">${A.s('M0 4V-30', '#2a2018', 3)}${A.c(0, 0, 5, '#2a2018')}</g></g>` },
-      { id: 'bellows', x: T.x + 150, y: T.y, w: 130, h: 110, now: true, tip: 'Pump the bellows', art: `<g class="grm-bel">${A.p('M-50 -36L34 -62L34 -14Z', '#7a4a2a')}${A.p('M-50 -36L34 -10L34 -14L-50 -40z', '#5a3418')}${A.s('M34 -50H58M34 -26H58', '#3a2418', 5)}${A.s('M-50 -36H-74', '#6e7078', 6)}</g>` + A.e(0, 2, 56, 7, '#000', 0.2) },
+        + `<g transform="translate(-122 -96)">${A.r(-3, 30, 6, 66, '#3a342e')}${A.c(0, 0, 40, '#efe6cc')}<path d="${_grmArc(0, 0, 30, -6, 36)}" fill="none" stroke="#5aa84a" stroke-width="9"/><path d="${_grmArc(0, 0, 30, 36, 60)}" fill="none" stroke="#d8483a" stroke-width="9"/><path d="${_grmArc(0, 0, 30, -60, -6)}" fill="none" stroke="#c8c0a8" stroke-width="9"/><g class="grm-needle" transform="rotate(${a.toFixed(0)})">${A.s('M0 4V-30', '#2a2018', 3)}${A.c(0, 0, 5, '#2a2018')}</g></g>` },
+      { id: 'bellows', x: T.x + 150, y: T.y, w: 130, h: 110, now: true, tip: 'Pump the bellows', art: `${A.e(0, 2, 56, 7, '#000', 0.2)}<g class="grm-bel">${A.p('M-40 -70Q10 -96 44 -78Q56 -70 44 -62L-40 -48Z', '#8a5a32')}${A.p('M-40 -18Q10 8 44 -10Q56 -18 44 -26L-40 -40Z', '#7a4a2a')}${A.p('M-40 -48L44 -62Q32 -44 44 -26L-40 -40Z', '#3a2418')}${A.s('M22 -60Q14 -44 22 -28M4 -56Q-2 -44 4 -32', '#1e120a', 2.4)}${A.s('M-40 -44H-72', '#6e7078', 7)}${A.s('M44 -78L62 -86M44 -10L62 -2', '#4a2e18', 7)}</g>` },
     ];
   },
   act(R, S) {
@@ -158,6 +160,7 @@ const _grmPour = {
     const x = P.cups[Math.min(2, S.i)];
     return cups.concat([{ id: 'pot', x: x + 54, y: P.y - 70, w: 150, h: 110, now: true, tip: 'Hold to pour', art: `<g class="grm-pot">${A.e(0, -40, 34, 28, '#b8843a')}${A.c(-12, -66, 6, '#7a5a2a')}${A.p('M-30 -40Q-52 -48 -56 -66L-46 -66Q-42 -54 -24 -52Z', '#a8743a')}${A.s('M32 -54Q52 -40 32 -24', '#7a5a2a', 5)}</g><path class="grm-stream" d="M-56 -64Q-58 -30 -54 ${70 - 8}" fill="none" stroke="#c87a3a" stroke-width="4" opacity="0"/>` }]);
   },
+  doneArt(R) { const A = _grmA, P = R.pour; return P.cups.filter((_, i) => i !== 1).map(x => `<g transform="translate(${x} ${P.y})">${A.e(0, 2, 26, 5, '#000', 0.25)}${A.p('M-22 -56L-18 0H18L22 -56Z', '#c8ccd0')}${A.p('M-17 -50L-14 -6H14L17 -50Z', '#c87a3a')}${A.e(0, -56, 22, 4, '#e8ecf0')}${A.e(0, -50, 16, 3, '#a85a2a')}</g>`).join(''); },
   act(R, S) { if (_grmCrop() || gpVisiting()) { S.pouring = true; } else _grmSay(R.emptyLine); },
   up(R, S) {
     if (!S.pouring) return; S.pouring = false;
@@ -248,19 +251,18 @@ const _grmSlide = {
   begin(R, S) {
     const h = _grmHash(R, 'ice'), L = _GRM_ICE[h % _GRM_ICE.length], W = 6, H = 4;
     // a start the block can get home from, a few moves away
-    const dist = new Map(), start = [], back = [[L.goal[0], L.goal[1], 0]];
+    const start = [];
     const seen = (x, y) => x + ',' + y;
     const all = []; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (!L.pegs.some(p => p[0] === x && p[1] === y)) all.push([x, y]);
     const bfs = (sx, sy) => { const q = [[sx, sy, 0]], m = new Set([seen(sx, sy)]); while (q.length) { const [x, y, d] = q.shift(); if (x === L.goal[0] && y === L.goal[1]) return d; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const [a, b] = _grmIceMove(L, x, y, dx, dy, W, H); if (!m.has(seen(a, b))) { m.add(seen(a, b)); q.push([a, b, d + 1]); } } } return -1; };
-    for (const c of all) { const d = bfs(c[0], c[1]); dist.set(seen(c[0], c[1]), d); if (d >= 2) start.push({ c, d }); }
-    void back;
+    for (const c of all) { const d = bfs(c[0], c[1]); if (d >= 2) start.push({ c, d }); }
     start.sort((a, b) => b.d - a.d || a.c[0] - b.c[0]);
     const pick = start[(h >>> 8) % Math.max(1, Math.min(4, start.length))] || { c: [0, 0] };
     S.L = L; S.x = pick.c[0]; S.y = pick.c[1]; S.px = S.x; S.py = S.y; S.grip = false; S.W = W; S.H = H; S.n = 0;
   },
   at(R, x, y) { const G = R.ice; return [G.x0 + (x + 0.5) * G.cw + (G.skew || 0) * (y - 1.5), G.y0 + (y + 1) * G.ch]; },
   spots(R, S) {
-    const A = _grmA, G = R.ice, self = _grmSlide, out = []; let f = '';
+    const A = _grmA, G = R.ice, self = _grmSlide, out = [{ id: 'bx', still: true, x: R.box.x, y: R.box.y, w: 0, h: 0, art: R.box.art(false) + A.r(-80, -92, 160, 14, '#bfe6f4', 0.8, 3) + A.s('M-70 -92L-50 -60M60 -92L40 -70', '#fff', 2.4, 0.8) }]; let f = '';
     for (let y = 0; y < S.H; y++) for (let x = 0; x < S.W; x++) { const [px, py] = self.at(R, x, y); f += A.r(px - G.cw / 2 + 1, py - G.ch + 1, G.cw - 2, G.ch - 2, (x + y) % 2 ? '#d8eef6' : '#c4e0ee', 0.86, 3); }
     { const [gx, gy] = self.at(R, S.L.goal[0], S.L.goal[1]); f += A.r(gx - G.cw / 2 + 4, gy - G.ch + 3, G.cw - 8, G.ch - 6, '#d8b65a', null, 3); for (let i = 0; i < 9; i++) f += A.s(`M${gx - 30 + i * 7} ${gy - 8 - (i % 3) * 7}l9 -3`, '#8a6a2a', 1.6); }
     for (const [x, y] of S.L.pegs) { const [px, py] = self.at(R, x, y); f += A.e(px, py - 4, 24, 8, '#000', 0.2) + A.blob(px, py - 16, 24, 18, 'p' + x + y, 0.3, '#7a8a94') + A.e(px - 6, py - 22, 9, 5, '#a8b8c0'); }

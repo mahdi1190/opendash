@@ -36,33 +36,34 @@ function gardenRoomGo(R, here) {
   if (why) { wdWhisper(why, 7000); return; }
   const go = () => {
     if (!_grmMayEnter()) return;
+    if (!gardenMotionOn()) { gardenRoomEnter(R); return; }
     const el = document.createElement('div'); el.className = 'grm-through'; el.style.setProperty('--grm-c', R.bg || '#000');
     el.innerHTML = `<i></i><b>${gardenRoomSym(R, 96)}</b><span>${esc(R.name)}</span>`;
     document.body.appendChild(el);
     if (typeof _fxSound === 'function') _fxSound('pop');
-    setTimeout(() => gardenRoomEnter(R), gardenMotionOn() ? 620 : 0);
-    setTimeout(() => el.remove(), gardenMotionOn() ? 1500 : 300);
+    setTimeout(() => gardenRoomEnter(R), 620);
+    setTimeout(() => el.remove(), 1500);
   };
   const P = _grmDoorPt(R);
   if (here || !P || Math.hypot(_gw.px - P.x, _gw.py - P.y) < 1.6 || !gardenWalkToPoint(P, go, { radius: 2 })) go();
 }
 function _grmDoorProp(R) { try { return gardenPropsNow().find(p => p.lf === R.at && !p.site) || null; } catch (e) { return null; } }
 function _grmDoorPt(R) { const p = _grmDoorProp(R); return p ? { x: p.x + p.w * 0.5 + 0.9, y: p.y + p.h + 0.45 } : null; }
-/* each way in stands at its sight, on every land that has it */
-const _grd = { list: [] };
+/* each way in stands at its sight, on every land that has it. It follows the sight if the land is laid out again; a building's door comes when it is built */
+const _grd = { list: new Map() };
 wdMod({
   id: 'room-doors', fun: false, visit: true,
   begin() { this.paint(); },
   painted() { this.paint(); },
   paint() {
-    for (const S of _grd.list) S.remove();
-    _grd.list = [];
     for (const R of GRM_ROOMS) {
-      const P = _grmDoorPt(R); if (!P || !GRM_SYM[R.id]) continue;
-      _grd.list.push(wdSprite({ id: 'grm-door-' + R.id, x: P.x, y: P.y - 0.3, z: P.y, still: true, hit: 0.9, hitUp: 30, label: R.verb, cursor: 'hand', svg: `<g class="grm-wayin" transform="scale(.82)">${GRM_SYM[R.id]()}</g>`, onClick: () => gardenRoomGo(R) }));
+      const P = _grmDoorPt(R), S = _grd.list.get(R.id);
+      if (!P || !GRM_SYM[R.id]) { if (S) { S.remove(); _grd.list.delete(R.id); } continue; }
+      if (S) { if (S.x !== P.x || S.y !== P.y - 0.3) { S.x = P.x; S.y = P.y - 0.3; S.z = P.y; S.tf = null; } continue; }
+      _grd.list.set(R.id, wdSprite({ id: 'grm-door-' + R.id, x: P.x, y: P.y - 0.3, z: P.y, still: true, hit: 0.9, hitUp: 30, label: R.verb, cursor: 'hand', svg: `<g class="grm-wayin" transform="scale(.82)">${GRM_SYM[R.id]()}</g>`, onClick: () => gardenRoomGo(R) }));
     }
   },
-  end() { for (const S of _grd.list) S.remove(); _grd.list = []; },
+  end() { for (const S of _grd.list.values()) S.remove(); _grd.list.clear(); },
 });
 
 /* ---------- the way out, inside ---------- */
@@ -76,15 +77,15 @@ const GRM_DOOR = Object.freeze({
   /* the small iron door, left ajar, the night outside */
   post(D, A) { return A.r(D.x0 + 20, D.y0 + 30, 66, D.y1 - D.y0 - 30, '#0a1a44', null, 8) + A.c(D.x0 + 44, D.y0 + 62, 2, '#fff') + A.c(D.x0 + 62, D.y0 + 90, 1.6, '#fff') + A.r(D.x0 + 34, D.y1 - 90, 8, 90, '#3a4254') + A.c(D.x0 + 38, D.y1 - 96, 9, '#ffe28a', 0.8) + A.p(`M${D.x0 + 86} ${D.y0 + 30}L${D.x1 + 16} ${D.y0 + 50}V${D.y1 + 10}L${D.x0 + 86} ${D.y1}Z`, '#2a3040') + A.c(D.x1 + 4, D.y0 + 96, 3.4, '#d8b24a'); },
   /* a thin place in the mist, a brighter way between two old stones */
-  mist(D, A) { return A.e((D.x0 + D.x1) / 2, D.y0 + 70, 62, 110, '#fff', 0.9) + A.blob(D.x0 + 2, D.y1 - 60, 16, 62, 'nm1', 0.2, '#8a8498') + A.blob(D.x1 - 2, D.y1 - 54, 16, 56, 'nm2', 0.2, '#9a94a8') + A.e((D.x0 + D.x1) / 2, D.y1, 50, 8, '#8a8498', 0.5); },
+  mist(D, A) { const mx = (D.x0 + D.x1) / 2; return `<defs><radialGradient id="grmdm"><stop offset="0" stop-color="#fff8d8"/><stop offset=".6" stop-color="#fff4c8" stop-opacity=".7"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>` + A.e(mx, D.y0 + 70, 70, 110, 'url(#grmdm)') + A.r(D.x0 + 4, D.y0 + 8, 20, D.y1 - D.y0 - 8, '#8a8498', null, 5) + A.r(D.x1 - 24, D.y0 + 16, 20, D.y1 - D.y0 - 16, '#7e788e', null, 5) + A.r(D.x0 - 8, D.y0 - 12, D.x1 - D.x0 + 16, 24, '#9a94a8', null, 6) + A.s(`M${D.x0 + 10} ${D.y0 + 40}v40M${D.x1 - 16} ${D.y0 + 60}v50`, '#6e6880', 2.4, 0.6) + A.e(mx, D.y1 + 2, 62, 8, '#6a6078', 0.3); },
   /* the split in the bark, dusk outside */
-  bark(D, A) { const mx = (D.x0 + D.x1) / 2; return A.p(`M${mx - 56} ${D.y1}Q${mx - 44} ${D.y0 + 40} ${mx - 8} ${D.y0 - 34}Q${mx + 20} ${D.y0 + 10} ${mx + 56} ${D.y1}Z`, '#3a2412') + A.p(`M${mx - 36} ${D.y1}Q${mx - 26} ${D.y0 + 50} ${mx - 6} ${D.y0 + 4}Q${mx + 10} ${D.y0 + 30} ${mx + 34} ${D.y1}Z`, '#d87a54') + A.p(`M${mx - 36} ${D.y1}Q${mx - 28} ${D.y1 - 60} ${mx} ${D.y1 - 70}Q${mx + 26} ${D.y1 - 60} ${mx + 34} ${D.y1}Z`, '#27496e') + A.s(`M${mx - 56} ${D.y1}Q${mx - 44} ${D.y0 + 40} ${mx - 8} ${D.y0 - 34}`, '#1a0e06', 5); },
+  bark(D, A) { const mx = (D.x0 + D.x1) / 2, top = D.y0 - 30; return `<defs><linearGradient id="grmdb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27496e"/><stop offset=".55" stop-color="#d87a54"/><stop offset="1" stop-color="#f4c07a"/></linearGradient></defs>` + A.p(`M${mx - 58} ${D.y1 + 4}Q${mx - 62} ${D.y0 + 60} ${mx - 30} ${top + 40}Q${mx - 8} ${top - 8} ${mx + 8} ${top + 20}Q${mx + 52} ${D.y0 + 60} ${mx + 58} ${D.y1 + 4}Z`, '#2a180a') + A.p(`M${mx - 38} ${D.y1}Q${mx - 40} ${D.y0 + 70} ${mx - 20} ${top + 56}Q${mx - 6} ${top + 26} ${mx + 6} ${top + 44}Q${mx + 34} ${D.y0 + 70} ${mx + 38} ${D.y1}Z`, 'url(#grmdb)') + A.p(`M${mx - 38} ${D.y1}Q${mx - 18} ${D.y1 - 30} ${mx + 6} ${D.y1 - 22}T${mx + 38} ${D.y1 - 12}V${D.y1}Z`, '#2c3a24') + A.s(`M${mx - 48} ${D.y1}Q${mx - 52} ${D.y0 + 66} ${mx - 26} ${top + 48}M${mx + 48} ${D.y1}Q${mx + 44} ${D.y0 + 70} ${mx + 16} ${top + 40}`, '#4a2e16', 4); },
   /* the rock mouth you came in by, ferns, daylight far along it */
   cave(D, A) { const mx = (D.x0 + D.x1) / 2; return A.blob(mx, D.y0 + 60, 74, 130, 'cv', 0.14, '#26342c') + A.p(`M${D.x0 + 6} ${D.y1}Q${D.x0 + 2} ${D.y0 + 16} ${mx} ${D.y0 - 6}Q${D.x1 - 2} ${D.y0 + 16} ${D.x1 - 6} ${D.y1}Z`, '#0e1c16') + A.e(mx, D.y0 + 100, 24, 44, '#e8ffd8', 0.9) + A.e(mx, D.y0 + 100, 42, 70, '#d8ffd0', 0.22) + A.p(`M${mx - 18} ${D.y0 + 136}L${mx + 18} ${D.y0 + 136}L${mx + 44} ${D.y1}H${mx - 44}Z`, '#26402c') + A.e(mx - 36, D.y0 + 8, 28, 13, '#568a50') + A.e(mx + 34, D.y0 + 2, 30, 14, '#4f8a48') + A.fern(D.x0 + 2, D.y1, 0.7, '#3f7a44') + A.fern(D.x1, D.y1, 0.7, '#3f7a44', 1); },
   /* a parting in the water: light on the far side */
-  water(D, A) { const mx = (D.x0 + D.x1) / 2; return A.r(D.x0, D.y0 - 30, 98, D.y1 - D.y0 + 30, '#6ab0cc') + [6, 20, 34, 62, 76, 90].map(x => A.r(D.x0 + x, D.y0 - 30, 7, D.y1 - D.y0 + 30, '#f4fdff', 0.55)).join('') + A.p(`M${mx - 18} ${D.y1}Q${mx - 8} ${D.y0 + 30} ${mx} ${D.y0 - 10}Q${mx + 8} ${D.y0 + 30} ${mx + 18} ${D.y1}Z`, '#ffe9a8'); },
+  water(D, A) { const mx = (D.x0 + D.x1) / 2, top = D.y0 - 26; return `<defs><linearGradient id="grmdw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d8f0f8"/><stop offset="1" stop-color="#7ec0dc"/></linearGradient><radialGradient id="grmdg"><stop offset="0" stop-color="#fff4c8"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>` + A.blob(mx, D.y0 + 70, 74, 124, 'fd', 0.12, '#1a2428') + A.p(`M${D.x0 + 2} ${D.y1}V${top + 34}Q${mx} ${top - 22} ${D.x1 - 2} ${top + 34}V${D.y1}Z`, 'url(#grmdw)') + A.e(mx, D.y0 + 76, 40, 92, 'url(#grmdg)') + A.p(`M${mx - 13} ${D.y1}Q${mx - 7} ${D.y0 + 50} ${mx} ${top + 22}Q${mx + 7} ${D.y0 + 50} ${mx + 13} ${D.y1}Z`, '#fff8dc') + [10, 22, 34, 62, 74, 86].map((x, i) => A.s(`M${D.x0 + x} ${top + 30}V${D.y1 - (i % 3) * 12}`, '#f4fdff', 3, 0.7)).join('') + A.e(mx, D.y1, 52, 7, '#f4fdff', 0.5); },
   /* the top of the spiral stairs, an iron rail curling down */
-  spiral(D, A) { const mx = (D.x0 + D.x1) / 2; let s = A.e(mx, D.y1 - 34, 52, 40, '#3a3630') + A.e(mx, D.y1 - 32, 42, 32, '#100e0c'); for (let i = 0; i < 6; i++) s += A.p(`M${mx} ${D.y1 - 32}L${mx + Math.cos(i * 1.05) * 40} ${D.y1 - 32 + Math.sin(i * 1.05) * 30}L${mx + Math.cos(i * 1.05 + 0.6) * 40} ${D.y1 - 32 + Math.sin(i * 1.05 + 0.6) * 30}Z`, i % 2 ? '#5a564e' : '#6e6a60', 0.8); return s + A.s(`M${mx - 52} ${D.y1 - 34}V${D.y0 + 30}H${mx - 20}M${mx + 52} ${D.y1 - 34}V${D.y0 + 30}H${mx + 20}`, '#b8b4a8', 5); },
+  spiral(D, A) { const mx = (D.x0 + D.x1) / 2, cy = D.y1 - 32; let s = A.e(mx, cy, 60, 30, '#b8b4a8') + A.e(mx, cy, 52, 25, '#14120e'); for (let i = 0; i < 5; i++) { const k = 1 - i * 0.17; s += `<path d="M${mx - 50 * k} ${cy + i * 3}A${50 * k} ${24 * k} 0 0 1 ${mx + 30 * k} ${cy - 20 * k + i * 3}" fill="none" stroke="${['#8a8678', '#6e6a60', '#54514a', '#3e3c36', '#2a2824'][i]}" stroke-width="9"/>`; } return s + A.s(`M${mx - 58} ${cy - 4}V${D.y0 + 18}M${mx + 58} ${cy - 4}V${D.y0 + 18}`, '#a83a2c', 6) + A.s(`M${mx - 58} ${D.y0 + 18}Q${mx} ${D.y0 - 22} ${mx + 58} ${D.y0 + 18}`, '#a83a2c', 6) + A.s(`M${mx - 58} ${D.y0 + 70}H${mx - 34}M${mx + 58} ${D.y0 + 70}H${mx + 34}`, '#a83a2c', 3); },
   /* a pointed door with iron straps */
   gothic(D, A) { const mx = (D.x0 + D.x1) / 2; return A.p(`M${D.x0} ${D.y1}V${D.y0 + 50}Q${D.x0 + 4} ${D.y0 + 6} ${mx} ${D.y0 - 22}Q${D.x1 - 4} ${D.y0 + 6} ${D.x1} ${D.y0 + 50}V${D.y1}Z`, '#6a645a') + A.p(`M${D.x0 + 10} ${D.y1}V${D.y0 + 54}Q${D.x0 + 14} ${D.y0 + 16} ${mx} ${D.y0 - 8}Q${D.x1 - 14} ${D.y0 + 16} ${D.x1 - 10} ${D.y0 + 54}V${D.y1}Z`, '#5a3e22') + A.s(`M${D.x0 + 12} ${D.y0 + 74}H${D.x1 - 30}M${D.x0 + 12} ${D.y1 - 40}H${D.x1 - 30}`, '#1a1a20', 6) + A.c(D.x1 - 22, D.y0 + 100, 7, '#8a8a92'); },
   /* a hole in the boards, the ladder's top and the light from below */
@@ -100,7 +101,7 @@ const GRM_DOOR = Object.freeze({
   /* a glazed iron door, the green of outside through it */
   glass(D, A) { return A.r(D.x0, D.y0 - 30, 92, D.y1 - D.y0 + 30, '#f4f4ec') + A.r(D.x0 + 7, D.y0 - 23, 78, D.y1 - D.y0 + 23, '#e8ffd8') + A.p(`M${D.x0 + 7} ${D.y1}V${D.y1 - 50}Q${D.x0 + 46} ${D.y1 - 86} ${D.x0 + 85} ${D.y1 - 50}V${D.y1}Z`, '#7fb068') + A.s(`M${D.x0 + 46} ${D.y0 - 23}V${D.y1}M${D.x0 + 7} ${D.y0 + 40}H${D.x0 + 85}M${D.x0 + 7} ${D.y0 + 100}H${D.x0 + 85}`, '#f4f4ec', 4) + A.c(D.x0 + 74, D.y0 + 76, 4, '#a8603a'); },
   /* the mill's own steep ladder, down through the floor */
-  cap(D, A) { const mx = (D.x0 + D.x1) / 2; return A.e(mx, D.y1 - 28, 56, 26, '#1a1006') + A.e(mx, D.y1 - 26, 44, 18, '#3a2814') + A.s(`M${mx - 20} ${D.y1 - 28}L${mx - 12} ${D.y0}M${mx + 20} ${D.y1 - 28}L${mx + 12} ${D.y0}`, '#7a5634', 8) + [14, 44, 74, 104].map(y => A.r(mx - 20 + y * 0.05, D.y0 + y, 40 - y * 0.1, 7, '#94703e')).join('') + A.e(mx, D.y1 - 24, 30, 8, '#fff8e0', 0.3); },
+  cap(D, A) { const mx = (D.x0 + D.x1) / 2; let s = A.p(`M${D.x0 + 2} ${D.y1}L${D.x0 + 14} ${D.y0 + 60}H${D.x1 - 14}L${D.x1 - 2} ${D.y1}Z`, '#1a1006') + A.p(`M${D.x0 + 14} ${D.y0 + 60}L${D.x0 + 2} ${D.y0 - 34}H${D.x1 - 2}L${D.x1 - 14} ${D.y0 + 60}Z`, '#6e5230') + A.s(`M${mx - 26} ${D.y0 - 24}L${mx - 22} ${D.y0 + 52}M${mx + 26} ${D.y0 - 24}L${mx + 22} ${D.y0 + 52}`, '#3a2814', 5) + A.c(mx, D.y0 + 2, 9, '#3a3a42') + A.c(mx, D.y0 + 2, 4, '#6e5230'); for (let i = 0; i < 5; i++) { const y = D.y0 + 74 + i * 20, ins = 22 - i * 3.4; s += A.r(D.x0 + ins, y, D.x1 - D.x0 - ins * 2, 12, i % 2 ? '#94703e' : '#a88048') + A.r(D.x0 + ins, y, D.x1 - D.x0 - ins * 2, 2.4, '#fff8e0', 0.5); } return s; },
 });
 function _grmDoorArt(R) {
   const D = GRM.door, A = _grmA, f = GRM_DOOR[R.door] || GRM_DOOR.plank, mx = (D.x0 + D.x1) / 2, badgeY = D.y0 - 56;

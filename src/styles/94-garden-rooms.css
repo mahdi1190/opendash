@@ -34,6 +34,9 @@
 .grm-pop { animation: grm-pop .22s ease-out; transform-box: fill-box; transform-origin: 50% 100%; }
 @keyframes grm-pop { 0% { scale: .3; } 100% { scale: 1; } }
 .grm-front { pointer-events: none; }
+.grm-room.is-calm * { animation-play-state: paused !important; }
+.grm-float { font-size: 11px; font-weight: 800; fill: #ffe9a8; stroke: #12060a; stroke-width: 2.5px; paint-order: stroke; pointer-events: none; animation: grm-float 1.7s ease-out forwards; }
+@keyframes grm-float { 0% { opacity: 0; transform: translateY(6px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px); } }
 .grm-outmark { animation: grm-out 2.2s ease-in-out infinite; }
 @keyframes grm-out { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
 .grm-room .gd-fishhud { bottom: 62px; }

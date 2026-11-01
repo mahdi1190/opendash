@@ -599,7 +599,9 @@ function _gwCalmTick() {
   if (focused) _gwCalm.blur = 0; else if (!_gwCalm.blur) _gwCalm.blur = t;
   const away = !focused && _gwCalm.blur > 0 && t - _gwCalm.blur > 8000;
   const company = typeof _gll !== 'undefined' && _gll.actors && _gll.actors.size > 0;   // friends here: you are watching them
-  _gwCalmSet(!!(away || (!company && t - _gwCalm.input > 90000)));
+  const idle = !!(away || (!company && t - _gwCalm.input > 90000));
+  _gwCalmSet(idle || _grm.on);   // (in a room, the stage under it is not being looked at)
+  if (_grm.root) _grm.root.classList.toggle('is-calm', idle);
 }
 if (typeof window !== 'undefined') {
   const wake = () => { _gwCalm.input = Date.now(); if (_gwCalm.on) { _gwCalmSet(false); if (_gw.idleT) { clearTimeout(_gw.idleT); _gw.idleT = 0; } if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } };   // clock-ok: idle time

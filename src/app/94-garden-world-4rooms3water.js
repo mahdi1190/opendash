@@ -167,8 +167,15 @@ function gardenRoomSwing(A) {
   return true;
 }
 
+/** A little word going up over your head (gardenFloat, while you are in a room). */
+function gardenRoomFloat(text) {
+  const M = _grm.me, g = _grm.game; if (!M || !g || !text) return;
+  const t = _gwEl('text', { class: 'grm-float', x: (M.x / GRW.k).toFixed(1), y: (M.y / GRW.k - 84).toFixed(1), 'text-anchor': 'middle' }); t.textContent = text;
+  g.appendChild(t); setTimeout(() => t.remove(), 1700);
+}
+
 /* ---------- bugs in a room: they sit, they hop, they bolt if you run at them. You creep up and swing, as outside ---------- */
-const GRB = Object.freeze({ sneak: 74, reach: GRW.cw, scale: 0.8 });
+const GRB = Object.freeze({ sneak: 74, reach: GRW.cw, scale: 1 });
 function _grbMake(R, S) {
   const layer = _grm.props, out = _grmNetToday(R).filter(q => !q.gone);
   void S; void layer;
@@ -225,7 +232,7 @@ function _grbFrame(dt) {
     M.netT = (M.netT || 0) + dt; if (M.netT > 9) { M.net = null; _grmSay('It got away from you.'); }
   }
 }
-function _grbChase(b) { const M = _grm.me; M.net = b; M.netT = 0; M.swing = 0; M.go = null; gardenLiveFx('bug', 'sneak'); }
+function _grbChase(b) { const M = _grm.me; b.crept = true; M.net = b; M.netT = 0; M.swing = 0; M.go = null; gardenLiveFx('bug', 'sneak'); }
 /** Space, E: swing at whatever is in reach, or say nothing is. */
 function _grbSwingNear() {
   const S = _grm.S, M = _grm.me, reach = gardenNet().st.reach * GRB.reach * 1.35; let best = null, bd = reach;
@@ -235,7 +242,7 @@ function _grbSwingNear() {
 }
 function _grbResolve(b) {
   const M = _grm.me, d = Math.hypot(b.x - M.x, (b.y - M.y) * 1.3) / GRW.cw;
-  const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < gardenNetOdds(b, d, _grm.keys.has('shift') || true);
+  const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < gardenNetOdds(b, d, _grm.keys.has('shift') || !!b.crept);
   if (!ok) { gardenLiveFx('bug', 'miss'); b.state = 'flee'; b.fleeT = 2; b.needPick = true; _grmSay('It got away!', 2200); return; }
   const claim = gardenLiveBugClaim(b);
   if (claim === 'wait') return;

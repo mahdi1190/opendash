@@ -66,7 +66,7 @@ const GRM_PLAY = {
   },
   /* Play the marks on the wall, in order: a different tune each day. */
   tune: {
-    begin(R, S) { const h = _grmHash(R); S.seq = [0, 1, 2, 3].map((_, k) => (h >>> (k * 5)) % R.things.length); S.i = 0; S.won = _grmDone(R); },
+    begin(R, S) { const h = _grmHash(R); S.seq = []; for (let k = 0; k < 4; k++) { let v = (h >>> (k * 5)) % R.things.length; if (k && v === S.seq[k - 1]) v = (v + 1 + (h >>> (k + 20)) % (R.things.length - 1)) % R.things.length; S.seq.push(v); } S.i = 0; S.won = _grmDone(R); },   // (never the same note twice running: that was no tune)
     spots(R, S) { return R.things.map((t, i) => ({ id: i, x: t.x, y: t.y, w: t.w || 90, h: t.h || 130, now: true, tip: R.tip, art: t.art(S.hot === i) })).concat([{ id: 'chart', x: R.chart.x, y: R.chart.y, w: 0, h: 0, art: R.chart.art(S.seq, S.i), still: true }]); },
     act(R, S, i) {
       gpTone([R.things[i].f], { force: true, type: R.wave || 'triangle', len: R.len || 0.7, vol: 0.12 });
@@ -346,8 +346,9 @@ function gardenRoomEnter(R) {
   try { _gw.keys.clear(); _gw.path = []; gardenBubbleClose(); if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel(''); } catch (e) { /* not in the way */ }
   const root = document.createElement('div'); root.className = `ee-room grm-room grm-r-${R.id}`; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', R.name);
   const w = _grwOf(R), clipW = w ? `<clipPath id="grmwc">${w.e.map(([x, y, a, b]) => `<ellipse cx="${x}" cy="${y}" rx="${a}" ry="${b}"/>`).join('')}</clipPath>` : '';
-  root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${GRM.W} ${GRM.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><clipPath id="grmc"><rect width="${GRM.W}" height="${GRM.H}"/></clipPath>${clipW}<g clip-path="url(#grmc)">${R.art()}${_grmDoorArt(R)}${w ? `<g class="grm-school" clip-path="url(#grmwc)"><g class="grm-school-in" transform="scale(${GRW.k})"></g></g>${R.waterTop ? R.waterTop() : ''}` : ''}<g class="grm-props"></g><g class="grm-bugs"></g></g><g class="ee-actors"></g>${R.front ? R.front() : ''}<g class="grm-game" transform="scale(${GRW.k})"></g></svg>`
+  root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${GRM.W} ${GRM.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><clipPath id="grmc"><rect width="${GRM.W}" height="${GRM.H}"/></clipPath>${clipW}<g clip-path="url(#grmc)">${R.art()}${_grmDoorArt(R)}${w ? `<g class="grm-school" clip-path="url(#grmwc)"><g class="grm-school-in" transform="scale(${GRW.k})"></g></g>${R.waterTop ? R.waterTop() : ''}` : ''}<g class="grm-props"></g><g class="grm-bugs"></g></g><g class="ee-actors"></g>${R.front ? `<g clip-path="url(#grmc)">${R.front()}</g>` : ''}<g class="grm-game" transform="scale(${GRW.k})"></g></svg>`
     + `<div class="ee-ui"><button type="button" class="btn btn-secondary btn-sm ee-leave">${icon('log-out')}<span>Leave</span></button>${R.furnish && !gpVisiting() ? `<button type="button" class="btn btn-secondary btn-sm grm-furn">${icon('armchair')}<span>Furnish</span></button>` : ''}</div><div class="grm-bag"></div><div class="grm-ask"></div><p class="grm-say" role="status"></p>`;
+  root.style.background = R.edge ? `linear-gradient(${R.edge[0]}, ${R.edge[1]})` : (R.bg || '');
   document.body.appendChild(root);
   _grm.root = root; _grm.svg = root.querySelector('.ee-svg'); _grm.actors = root.querySelector('.ee-actors'); _grm.props = root.querySelector('.grm-props'); _grm.game = root.querySelector('.grm-game'); _grm.school = root.querySelector('.grm-school-in'); _grm.bugL = root.querySelector('.grm-bugs');
   _grwa.w = w;
@@ -370,12 +371,6 @@ function gardenRoomEnter(R) {
   _grmStartLoop();
   _grmSend(me.x, me.y, 'in');
   return true;
-}
-/** A click on a door: is it open to you? A friend's garden opens to anyone they have let in. */
-function _grmTry(R) {
-  const why = !gpVisiting() && R.shut ? R.shut(gardenHere()) : '';
-  if (why) { gardenBubbleClose(); wdWhisper(why, 7000); return; }
-  gardenRoomEnter(R);
 }
 function gardenRoomLeave() {
   if (!_grm.on || _grm.closing) return;

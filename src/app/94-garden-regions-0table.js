@@ -34,7 +34,7 @@ const _GRG_WATER_ROWS = [
   { id: 'folly', name: 'the folly pool', r: 'marsh', x: 23, y: 38, w: 5, h: 1, via: 'lt-heron', cap: 60, like: /paper|wish|sun|sprite|crown|ghost/ },
   { id: 'light', name: 'the rocks by the lighthouse', r: 'marsh', x: 36, y: 38, w: 2, h: 1, via: 'lt-heron', cap: 60, like: /lantern|jelly|squid|hatchet|angler/ },
   { id: 'cavepool', name: 'the cave pool at the back of the mossy grotto', r: 'hill', room: 1, via: _grgDoorCell(gardenLandSight('ld-grotto')), cap: 40, like: /^$/ },   // inside a hidden room: its own cells past the map (94-garden-world-4rooms3water.js)
-  { id: 'cellarpool', name: 'the flooded floor of the drowned cellar, under the sunken pool', r: 'lake', room: 1, via: _grgDoorCell(gardenLandSight('ld-sunk')), cap: 70, like: /^$/ },
+  { id: 'cellarpool', name: 'the flooded floor of the drowned cellar, under the sunken pool', r: 'garden', room: 1, via: _grgDoorCell(gardenLandSight('ld-sunk')), cap: 70, like: /^$/ },
 ];
 const _GRG_POOL_LIKE = Object.freeze({ 'ls-lily-pool': /lily|pipefish|reed|weed|sunfish|bluegill|crappie/, 'ls-deep-pool': /catfish|burbot|snakehead|bowfin|gar$|eel/, 'ls-clear-pool': /clear|pearl|silver|glass/, 'ls-moon-pool': /moon|night/, 'ls-sedge-pool': /pike|perch|sedge/, 'ls-stone-pool': /bass|stone|rock/ });
 const GARDEN_REGION_WATERS = _gdRows(_GRG_WATER_ROWS.map(w => {
