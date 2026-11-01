@@ -119,6 +119,7 @@ function gardenVisitModel() {
   // (a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4)
   const areas = s.areas.slice(); if (!areas.includes('lake')) areas.push('lake'); if (s.lv >= 4 && !areas.includes('woods')) areas.push('woods');
   gardenLandSet(areas.filter(id => { const a = gardenArea(id); return a && a.buy; }));
+  gardenWorksSet(s.wk || []);
   const rows = _gdvRows(s), by = (kind, x, y) => (_glvLive() ? _gll.by.get(kind + '|' + x + '|' + y) || '' : '');
   const plants = [], decor = [], cats = {};
   let blooms = 0, ripe = 0, thirsty = 0, trees = 0;
