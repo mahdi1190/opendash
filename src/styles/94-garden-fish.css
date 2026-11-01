@@ -253,3 +253,5 @@ html[data-motion="reduced"] .gd-svg .gd-shadowfish, html[data-motion="reduced"] 
   .gdb-how li > span:last-child { grid-column: 2; }
   .gdb-filter-l { min-width: 100%; }
 }
+
+.gd-fishhud-t:empty { display: none; }

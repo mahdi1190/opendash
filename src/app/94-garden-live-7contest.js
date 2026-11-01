@@ -140,7 +140,7 @@ function _cthStop(quiet) {
   if (!r.done && _glh.on && _glhAnyone()) _glhSend('all', 'fx', { c: 'ct', e: 'stop', i: r.id });
   _cth.r = null; _cth.seq.clear(); _cth.last.clear();
   _ctPaint(); _ctAfterChange();
-  if (!quiet && typeof toast === 'function') toast('The contest is over. Nobody wins this one.', { icon: 'trophy' });
+  if (!quiet && typeof toast === 'function') gardenToast('The contest is over. Nobody wins this one.', { icon: 'trophy' });
 }
 function gardenContestEnd() { if (_cth.r && !_cth.r.done) _cthStop(false); }
 /** You left your garden (or the page is going): the round goes with it. */
@@ -310,7 +310,7 @@ function _ctResult(r, me) {
   }
   const got = _ctPay(r, rows, me, top);
   r.paid = got;
-  if (got && typeof toast === 'function') toast(`${won ? 'You won! ' : ''}+${got.c} coin${got.c === 1 ? '' : 's'}${got.x ? ` and ${got.x} XP` : ''} for the ${r.kind === 'bug' ? 'bug' : 'fishing'} contest`, { icon: 'trophy', kind: 'ok', timeout: 6000 });
+  if (got && typeof toast === 'function') gardenToast(`${won ? 'You won! ' : ''}+${got.c} coin${got.c === 1 ? '' : 's'}${got.x ? ` and ${got.x} XP` : ''} for the ${r.kind === 'bug' ? 'bug' : 'fishing'} contest`, { icon: 'trophy', kind: 'ok', timeout: 6000 });
   _ct.sig = ''; _ctPaint();
 }
 /** What you are given, on your own computer, from the board the host sent. Once a round, only for playing, never more than GL_CT.reward.day coins a day. */
@@ -417,7 +417,7 @@ function _cthMenu(anchor) {
     const paint = () => { seg.textContent = ''; for (const s of GL_CT.lens) { const b = _gsvEl('button', 'gll-seg' + (s === len ? ' is-on' : ''), _CT_LEN_NAME(s)); b.type = 'button'; b.setAttribute('aria-pressed', s === len ? 'true' : 'false'); b.onclick = () => { len = s; paint(); }; seg.appendChild(b); } };
     paint(); el.appendChild(seg);
     const row = _gsvEl('div', 'gll-menu-row');
-    const go = (kind, label, ic) => row.appendChild(_gsvBtn(label, { icon: ic, kind: 'btn-secondary', run: () => { const r = gardenContestStart(kind, len); close(); if (!r.ok && typeof toast === 'function') toast(r.msg, { icon: 'trophy' }); } }));
+    const go = (kind, label, ic) => row.appendChild(_gsvBtn(label, { icon: ic, kind: 'btn-secondary', run: () => { const r = gardenContestStart(kind, len); close(); if (!r.ok && typeof toast === 'function') gardenToast(r.msg, { icon: 'trophy' }); } }));
     go('fish', 'Fishing', 'fish'); go('bug', 'Bug-netting', 'bug');
     el.appendChild(row);
     const left = gardenContestLeft();

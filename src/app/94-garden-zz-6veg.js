@@ -55,7 +55,7 @@ function gardenVegOpen() {
         el.appendChild(tend);
         el.appendChild(gpEl('p', 'muted', `Today so far: ${t.tasks} finished task${t.tasks === 1 ? '' : 's'}, ${t.focus} minutes of focus. Tend it later and it will take more of that in.`));
         const weigh = gpEl('button', 'btn btn-ghost', days >= GTG_VEG.min ? 'Put it on the scales' : `${GTG_VEG.min - days} more day${GTG_VEG.min - days === 1 ? '' : 's'} until the scales`); weigh.type = 'button'; weigh.disabled = days < GTG_VEG.min;
-        weigh.onclick = () => { const r = _gtgvWeigh(); if (!r) return; toast(`${r.kg.toFixed(1)} kg${r.record ? ', your best yet' : ''}. ${r.t} tickets`, { icon: 'trophy', kind: 'ok', timeout: 6000 }); _gtgvDraw(gardenHere()); paint(); };
+        weigh.onclick = () => { const r = _gtgvWeigh(); if (!r) return; gardenToast(`${r.kg.toFixed(1)} kg${r.record ? ', your best yet' : ''}. ${r.t} tickets`, { icon: 'trophy', kind: 'ok', timeout: 6000 }); _gtgvDraw(gardenHere()); paint(); };
         el.appendChild(weigh);
       }
       const best = _gtgvBest();
