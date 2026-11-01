@@ -186,6 +186,7 @@ function _gcBugsBase(mArg) {
   };
   const habOk = (h) => h === 'flower' ? blooms.length > 0 : h === 'tree' ? trees.length > 0 : h === 'woods' ? woods : h === 'light' ? lights.length > 0 || woods : true;
   const ctx = { level: m.level.level, tod: m.tod, season: m.season, rain: wet, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id), plant: (id) => blooms.some(p => p.def.id === id), caught: (id) => !!g.bl[id] };
+  if (typeof gardenPlaceHas === 'function') ctx.home = gardenPlaceHas;
   if (typeof gardenEventOn === 'function') ctx.event = gardenEventOn;
   const rg = gardenRegionBugs(m, habOk);   // where each kind lives: only what lives on open land (94-garden-regions-1core.js)
   const pool = GARDEN_BUGS.filter(b => gardenBugFits(b, ctx) && rg.ok(b));

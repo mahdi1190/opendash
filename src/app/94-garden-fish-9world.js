@@ -81,7 +81,7 @@ function gardenCatchWorldArt(sc, o) {
     const draw = _GCW_SPOT[s.id]; if (!draw) continue;
     const [x, y] = _gcwP(s.x, s.y); let art = draw(s, o, ca);
     if (fed.has(s.id)) { const r = gardenRand('fed|' + s.id); for (let i = 0; i < 12; i++) art += `<circle cx="${_gcwN((r() - 0.5) * 50)}" cy="${_gcwN((r() - 0.5) * 18)}" r="1.1" fill="#e8c88a"/>`; }
-    push('sp' + s.id + (fed.has(s.id) ? 'f' : '') + (s.id === 'lily-pads' ? Math.floor((Number(ca.rl) || 0) / 3) : ''), _GCW_FLAT.has(s.id) ? Math.ceil(s.y) - 3 : Math.ceil(s.y), s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${art}</g>`);
+    if (!(sc.season === 'winter' && _GCW_FLAT.has(s.id))) push('sp' + s.id + (fed.has(s.id) ? 'f' : '') + (s.id === 'lily-pads' ? Math.floor((Number(ca.rl) || 0) / 3) : ''), _GCW_FLAT.has(s.id) ? Math.ceil(s.y) - 3 : Math.ceil(s.y), s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${art}</g>`);
     if (hot && hot.id === s.id) push('hot' + s.id, Math.ceil(s.y) + 1, s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${_gcwGulls(o)}</g>`);
   }
   for (const id of list) { const svg = _gcwEvent(id, sc, o); if (svg) push('ev' + id, id === 'festival' ? 13 : 29, 0, svg, true); }

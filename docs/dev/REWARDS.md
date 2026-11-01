@@ -143,6 +143,9 @@ Every one is a `GARDEN_DECOR` row (`craft: 1`, price 0, so it is not in the shop
 | Hidden rooms (`GRM_ROOMS`, `94-garden-world-5rooms.js`) | | 3 tickets the first time in each (`gpGrant`), one gift a day per room (`_grGive`, inside the limits below), a few one-off keepsakes. A guest pays and saves nothing |
 | Star nights, calendar, coming back | Things to see | Nothing added |
 | Friends' lights, cairn, hidden parcels | Shown between friends | |
+| Walking on the frozen lake | The lake in winter | 5 tickets and reeds, once |
+| Ghost in the photograph | Her, in the picture | 15 tickets and 3 stone, once |
+| The day's end | A calm page, a lamp | 2 tickets and 1 XP a day for putting it out |
 
 ### Friends (GARDEN_TOGETHER.md)
 
@@ -151,6 +154,12 @@ Every one is a `GARDEN_DECOR` row (`craft: 1`, price 0, so it is not in the shop
 | Visiting a friend | Their garden | 2 tickets and 1 XP a day |
 | Contests, group goals | Small coins inside their own daily limit | |
 | Trades, gifts, the second line | Things change hands | |
+| A garden's own kinds | Only in some gardens | 3 tickets the first time you catch each |
+| Shared project | A bridge, lighthouse or statue in both gardens | 8 tickets a stage, 40 and materials at the end, if your own part is a tenth |
+| Photo mode | Kept in Memories | 2 tickets and 1 XP a day |
+| Travelling gnome | It stands in their garden, a pennant comes home | 6 tickets home, 3 to the host, 15 and 25 at 3 and 6 gardens |
+| Bottle post | A bottle in their lake | 1 ticket to send, 3 to find |
+| Prize vegetable | It stands at its real size | Tickets for its weight, up to 60, and stone, at the scales |
 
 **Still gives no reward, on purpose:** star nights, the calendar and coming back. Each is something to see with nothing to do.
 

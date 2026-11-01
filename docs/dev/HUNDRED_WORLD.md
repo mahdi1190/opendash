@@ -42,18 +42,18 @@ Status: **built** works in this branch; **next** is designed and not built. Feel
 | 26 | Midsummer fire: a fire on the lane on the longest days, and you can jump it | F | Old midsummer | Something to do | built |
 | 27 | Wassail: sing to your oldest tree in January | F C | Old custom | A real thing almost nobody knows | built |
 | 28 | Star nights: real meteor showers on their real dates | C | The real sky | The game agrees with the real world | built |
-| 29 | The ghost in the photograph: at one hour, in one place, the camera sees something you do not | C | Fatal Frame, ghost stories | "Look at this picture" | next |
+| 29 | The ghost in the photograph: at one hour, in one place, the camera sees something you do not | C | Fatal Frame, ghost stories | "Look at this picture" | built (GARDEN_TOGETHER.md section 24) |
 | 30 | The noon shadow: the sundial casts a true shadow by your clock, and at noon it points somewhere | C E | Zelda | A puzzle only your real clock can solve | next |
 | 32 | The sound of where you are: rain, water, wind and crickets by place and hour, made on the fly | Q | Any good game | You would miss it if it stopped | next |
-| 33 | Frost fair: a few days each winter the near lake freezes and you can walk on it | F C | Old London frost fairs | "I walked across the lake" | next |
+| 33 | The frozen lake: all winter you can walk on it, and fish through holes in the ice | F C | Old London frost fairs | "I walked across the lake" | built (GARDEN_TOGETHER.md section 24) |
 | 34 | A fog morning, and the ferry that only comes then | C | Spiritfarer | Another way to the island | next |
 | 35 | A friend's ghost: the faint figure of a friend walks the way they walked when they last visited | C Q | Dark Souls, Journey | Being somewhere after someone | next |
 | 36 | Words left on the ground: leave a line from a phrase book in a friend's garden | F | Dark Souls | No free text, still personal | next |
-| 37 | Bottle post: a bottle to a friend's lake that takes days to arrive | Q | Message in a bottle | Slow on purpose | next |
+| 37 | Bottle post: a bottle to a friend's lake that takes days to arrive | Q | Message in a bottle | Slow on purpose | built (GARDEN_TOGETHER.md section 24) |
 | 38 | Wind days: gusts, leaves and cloud shadows you can see coming | Q | Any good game | Weather you can feel | next |
 | 39 | A garden that remembers: an old plant tells you who planted it and what it has seen, and marks its birthday | Q | Dorfromantik | Years you can feel | next |
 | 40 | The time capsule: bury a note to yourself, opened at first snow or in a year | Q C | Real life | A surprise you send yourself | next |
-| 41 | Putting the garden to bed: a small way to end the day, and the garden's own diary | Q | Animal Crossing | Gentle endings | next |
+| 41 | Putting the garden to bed: a lamp to put out, and a day's end page (no diary) | Q | Animal Crossing | Gentle endings | built (GARDEN_TOGETHER.md section 24) |
 | 42 | A season's page: at each season's end, one page of what happened | Q | Slay the Spire's run summary | A story of your own | next |
 
 ## How each part works

@@ -382,7 +382,7 @@ function gardenPhotoOpen() {
   const st = { tod: '', frame: 'none', crop: 'all', visitors: true };
   openDialog({
     title: 'Photo mode', width: 980, resizeKey: 'garden-photo',
-    body(el) {
+    body(el, close) {
       el.classList.add('gd-photo');
       const paint = () => {
         el.textContent = '';
@@ -397,6 +397,7 @@ function gardenPhotoOpen() {
         ctl.appendChild(_gdxSeg([['', 'Now'], ['dawn', 'Dawn'], ['day', 'Midday'], ['dusk', 'Golden hour'], ['night', 'Night']], st.tod, (k) => { st.tod = k; paint(); }));
         ctl.appendChild(_gdxSeg([...(gardenCropFor(gardenModel().areas) === 'world' ? [['world', 'Everything']] : []), ['all', 'Whole garden'], ['wide', 'Closer'], ['bed', 'Front garden']], st.crop, (k) => { st.crop = k; paint(); }));
         ctl.appendChild(_gdxSeg([['none', 'No frame'], ['polaroid', 'Polaroid'], ['postcard', 'Postcard']], st.frame, (k) => { st.frame = k; paint(); }));
+        if (typeof gardenPoseOpen === 'function') ctl.appendChild(_gdpBtn('Pose with a catch', { icon: 'fish', run: () => { if (close) close(); gardenPoseOpen(); } }));   // (94-garden-zz-3pose.js)
         const vis = _gdpBtn(st.visitors ? 'Visitors on' : 'Visitors off', { icon: 'bird', run: () => { st.visitors = !st.visitors; paint(); } });
         ctl.appendChild(vis);
         const save = _gdpBtn('Save picture', { kind: 'btn-primary', icon: 'download', run: () => _gdxSavePhoto(sc, st) });

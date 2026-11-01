@@ -42,7 +42,7 @@ Status: **built** = in this branch. **next** = planned, not built. Order is by h
 | 32 | Pottery wheel: shape a pot by dragging, glaze it, and it stands in your garden in the shape you made | Calm | Tiny Glade | The only thing in the game that is truly yours | next |
 | 33 | Cross-breeding: two flowers side by side make a colour no shop sells | Curious | Animal Crossing | Real experiments, shown to friends | next |
 | 34 | Photo safari: the camera scores what is really in the frame | Fun | Pokemon Snap | Gives the camera a purpose | next |
-| 35 | Prize vegetable: pick one and tend it; it really gets huge; weigh-in with friends | Fun | County shows | A daily small ritual | next |
+| 35 | Prize vegetable: pick one and tend it; it really gets huge; weigh-in with friends | Fun | County shows | A daily small ritual | built (GARDEN_TOGETHER.md section 24) |
 | 36 | Mystery eggs: found in digs, hatched by walking | Curious | Pokemon Go | Walking becomes something | next |
 | 37 | Kite: hold to fly, seen over your head by friends | Calm | A Short Hike | | next |
 | 38 | The toy box: bubbles, sparklers, a frisbee your pet catches | Fun | Animal Crossing | Verbs with no purpose | next |
@@ -54,7 +54,7 @@ Status: **built** = in this branch. **next** = planned, not built. Order is by h
 | 44 | Flower arranging in a vase, freely | Calm | Tiny Glade | | next |
 | 45 | Pressed flower album | Calm | Unpacking | | next |
 | 46 | Time trial round your own garden, with your ghost | Fun | Mario | | next |
-| 47 | A session's summary, the way a roguelike sums up a run | Curious | Slay the Spire | | next |
+| 47 | A day's summary, the way a roguelike sums up a run | Curious | Slay the Spire | | built (GARDEN_TOGETHER.md section 24) |
 | 48 | Metal detector: beeps as you near what is buried | Curious | | | next |
 | 49 | Pet helps: picks one ripe thing an hour, you see it trot over | Calm | Stardew | | next |
 | 50 | Boop the moles | Fun | Harvest Moon | | next |

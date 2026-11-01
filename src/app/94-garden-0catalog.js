@@ -875,7 +875,9 @@ function gardenPropCol(p) { return !p ? 'none' : p.col === 'none' || p.col === '
 /** Walkable prop cell (the pier boards)? */
 /* Cells over water you can stand on with no prop: the island, always; the stones and the moon road while they are open (94-garden-wonder-4isle.js). */
 const _GD_WALK_EXTRA = new Set();
-function gardenPropWalk(x, y) { if (_GD_WALK_EXTRA.has(x + ',' + y)) return true; const p = gardenPropAt(x, y); return !!(p && p.walk); }
+const _GD_ICE = new Set();   // the lake while it is frozen (94-garden-zz-2season.js): you can stand on it, nothing can be built on it
+function gardenIceAt(x, y) { return _GD_ICE.has(Math.floor(x) + ',' + Math.floor(y)); }
+function gardenPropWalk(x, y) { if (_GD_WALK_EXTRA.has(x + ',' + y) || _GD_ICE.has(x + ',' + y)) return true; const p = gardenPropAt(x, y); return !!(p && p.walk); }
 /** Can this plant (or decoration) go at x, y (its top-left cell) at this level? '' = yes, else why not (one short line). */
 function gardenCellOk(def, x, y, level, kind) {
   const W = GARDEN_WORLD;
@@ -885,6 +887,7 @@ function gardenCellOk(def, x, y, level, kind) {
   let area = null;
   for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) {
     const a = gardenAreaAt(x + dx, y + dy, level);
+    if (_GD_ICE.has((x + dx) + ',' + (y + dy))) return 'That is ice, and it will not last';
     if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)); return ar.solid ? 'Too thick to do anything with' : ar.buy ? `${ar.name}: buy this land first` : `${ar.name} opens at garden level ${ar.lv}`; }
     if (typeof gardenLandPathAt === 'function' && gardenLandPathAt(x + dx, y + dy) && !(kind === 'decor' && def.layer === 'ground')) return kind === 'decor' ? 'Keep the path clear' : 'That is a path: plants go in the beds';
     if (kind !== 'decor') {
@@ -998,6 +1001,7 @@ function gardenSnapshotClean(raw) {
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
+  { const tg = gardenTogetherClean(raw.tg); if (tg) out.tg = tg; }   // 94-garden-zz-*.js: ids and numbers only
   if (raw.rf && typeof raw.rf === 'object' && !Array.isArray(raw.rf)) {   // what they have put in their hidden rooms: {room: [[decor, x, y]]} (94-garden-world-4rooms2.js); an older app drops it
     const rf = {};
     for (const [k, l] of Object.entries(raw.rf).slice(0, 8)) { if (!/^[a-z0-9-]{1,24}$/.test(k) || !Array.isArray(l)) continue; const r = []; for (const d of l.slice(0, 12)) { if (!Array.isArray(d) || !_GD_DECOR.has(d[0])) continue; const x = int(d[1], 0, 960), y = int(d[2], 0, 600); if (x !== null && y !== null) r.push([d[0], x, y]); } if (r.length) rf[k] = r; }
@@ -1005,4 +1009,19 @@ function gardenSnapshotClean(raw) {
   }
   if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
   return out;
+}
+/** What a garden tells friends about what you share (docs/dev/GARDEN_TOGETHER.md section 24). Ids and numbers, every one in bounds; anything else is dropped. */
+function gardenTogetherClean(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const id = (v) => typeof v === 'string' && /^[a-z0-9-]{1,32}$/.test(v), int = (v, hi) => (Number.isInteger(v) && v >= 0 && v <= hi ? v : null), out = {};
+  if (id(raw.k)) out.k = raw.k;
+  if (Array.isArray(raw.pj)) { const pj = raw.pj.slice(0, 3).filter(r => Array.isArray(r) && id(r[0]) && id(r[1]) && [2, 3, 4].every(i => int(r[i], 9999) !== null) && int(r[5], 1000) !== null).map(r => r.slice(0, 6)); if (pj.length) out.pj = pj; }
+  if (id(raw.gn)) out.gn = raw.gn;
+  if (Array.isArray(raw.gs)) { const gs = raw.gs.slice(0, 4).filter(v => int(v, 9999) !== null); if (gs.length) out.gs = gs; }
+  if (int(raw.gb, 99)) out.gb = raw.gb;
+  if (Array.isArray(raw.pv) && [[0, 2], [1, 99999], [2, 99999]].every(([i, hi]) => int(raw.pv[i], hi) !== null)) out.pv = raw.pv.slice(0, 3);
+  if (Array.isArray(raw.bt)) { const bt = raw.bt.slice(0, 3).filter(r => Array.isArray(r) && id(r[0]) && int(r[1], 99) !== null && int(r[2], 99999) !== null).map(r => r.slice(0, 3)); if (bt.length) out.bt = bt; }
+  if (int(raw.bw, 9)) out.bw = raw.bw;
+  if (raw.ev === 1) out.ev = 1;
+  return Object.keys(out).length ? out : null;
 }

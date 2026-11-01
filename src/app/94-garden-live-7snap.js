@@ -76,6 +76,7 @@ function _glsBlob(frame) {
     // (a photo has no pointer guides, grid, thirst bubbles, lock signs, name tags or speech: they are the screen's, not the garden's. The classes are dropped when it is drawn, so what a class dimmed is dimmed here)
     for (const n of clone.querySelectorAll('.gd-gridlines, .gd-ui, .gd-needs, .gd-locksign, .gd-route, .gd-pl-halo, .gll-name, .gll-say, .gll-fx')) n.remove();
     for (const n of clone.querySelectorAll('.gll-shadow')) { n.setAttribute('fill', '#1a2a14'); n.setAttribute('fill-opacity', '0.2'); }
+    if (typeof gardenPhotoGhost === 'function') try { gardenPhotoGhost(clone, frame); } catch (e) { /* only a picture */ }   // (94-garden-zz-3pose.js)
     clone.setAttribute('viewBox', `${frame.x.toFixed(1)} ${frame.y.toFixed(1)} ${frame.w} ${frame.h}`);
     clone.removeAttribute('width'); clone.removeAttribute('height'); clone.removeAttribute('style');
     const w = 1600, h = Math.round(frame.h * w / frame.w);

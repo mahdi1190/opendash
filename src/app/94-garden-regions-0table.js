@@ -109,7 +109,7 @@ const _GRG_RANK = Object.freeze({ common: 0, uncommon: 1, rare: 2, epic: 3, lege
 const _GRG_FISH_STAY = /koi|goldfish|moor|fantail|comet|shubunkin|lionhead/;   // fancy ones belong to someone's pond
 function _grgHash(id) { return gardenHash('rg|' + id) >>> 0; }
 function _grgFishPlain(f) { return f.zone.includes('pond') && f.zone.length === 1 ? { r: 'garden', w: 'pond' } : { r: 'lake' }; }
-function _grgFishFree(f) { return !(f.needs && (f.needs.spot || f.needs.decor || f.needs.plant)) && !(f.rarity === 'common' && f.lv <= 3); }
+function _grgFishFree(f) { return !(f.needs && (f.needs.spot || f.needs.decor || f.needs.plant || f.needs.home || f.needs.map)) && !(f.rarity === 'common' && f.lv <= 3); }
 function _grgFishHomes() {
   const out = new Map(), small = GARDEN_REGION_WATERS;
   for (const [w, ids] of Object.entries(_GRG_FISH_HAND)) for (const id of ids) if (gardenFishDef(id)) out.set(id, { r: _GRG_WATER.get(w).r, w });
@@ -135,7 +135,7 @@ function _grgBugHomes() {
   for (const [sight, r, ids, room] of _GRG_BUG_HAND) { const s = gardenLandSight(sight); if (s) for (const id of ids) if (gardenBugDef(id)) out.set(id, Object.assign({ r, p: sight, t: room ? _grgDoorCell(s) : _grgSightTrail(s) }, room ? { room } : {})); }
   for (const b of GARDEN_BUGS) {
     if (out.has(b.id)) continue;
-    if ((b.rarity === 'common' && b.lv <= 3) || (b.needs && (b.needs.plant || b.needs.decor))) { out.set(b.id, { r: 'garden' }); continue; }   // near the start, or it comes to what you grow
+    if ((b.rarity === 'common' && b.lv <= 3) || (b.needs && (b.needs.plant || b.needs.decor || b.needs.home || b.needs.map))) { out.set(b.id, { r: 'garden' }); continue; }   // near the start, or it comes to what you grow
     const h = _grgHash(b.id), hab = b.hab.includes('water') ? 'water' : b.hab[h % b.hab.length], r = _GRG_BUG_HABS[hab][(h >>> 3) % 3], parts = gardenRegion(r).parts;
     out.set(b.id, parts.length ? { r, t: parts[Math.min(parts.length - 1, _GRG_RANK[b.rarity] + ((h >>> 6) % 3 === 0 ? 1 : 0))] } : { r });
   }
@@ -146,8 +146,8 @@ const _GRG_FISH_HOME = _grgFishHomes(), _GRG_BUG_HOME = _grgBugHomes();
 function gardenRegionHome(def) { return !def ? null : def.cat === 'bug' ? _GRG_BUG_HOME.get(def.id) || null : def.cat === 'fish' ? _GRG_FISH_HOME.get(def.id) || null : null; }
 /** Every kind in a region: [{kind: 'fish' | 'bug', def}]. */
 const _GRG_KINDS = new Map(GARDEN_REGIONS.map(r => [r.id, []]));
-for (const f of GARDEN_FISH_ONLY) _GRG_KINDS.get(_GRG_FISH_HOME.get(f.id).r).push({ kind: 'fish', def: f });
-for (const b of GARDEN_BUGS) _GRG_KINDS.get(_GRG_BUG_HOME.get(b.id).r).push({ kind: 'bug', def: b });
+for (const f of GARDEN_FISH_ONLY) if (!(f.needs && f.needs.home)) _GRG_KINDS.get(_GRG_FISH_HOME.get(f.id).r).push({ kind: 'fish', def: f });   // (a garden's own kinds are on no page: no page should need a friend)
+for (const b of GARDEN_BUGS) if (!(b.needs && b.needs.home)) _GRG_KINDS.get(_GRG_BUG_HOME.get(b.id).r).push({ kind: 'bug', def: b });
 function gardenRegionKinds(id) { return _GRG_KINDS.get(String(id)) || []; }
 /** Can you get to this home, with these areas open? */
 function gardenRegionHomeOpen(H, areas) {
