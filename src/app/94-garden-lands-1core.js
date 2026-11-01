@@ -345,6 +345,22 @@ function gardenLandsTick(was, lv, moments) {
   if (n) moments.push({ kind: 'grant', text: `${n} new thing${n === 1 ? '' : 's'} at the land office`, icon: 'map-pin' });
 }
 
+/* ---------- the map's small secrets ---------- */
+function gardenLandEggs() { return GARDEN_LAND_SIGHTS.filter(d => d.egg); }
+function gardenLandEggFound(id) { return !!_gdG().seen['lde.' + id]; }
+function gardenLandEggCount() { return gardenLandEggs().filter(d => gardenLandEggFound(d.id)).length; }
+function gardenLandEgg(id) {
+  { const v = _gdvAsk('take', { uid: id }); if (v) return v; }
+  const d = gardenLandSight(id), m = gardenModel(); if (!d || !d.egg) return _gdNo('Nothing here');
+  if (gardenLandEggFound(id)) return _gdNo('You have had what was there');
+  const E = d.egg;
+  if (E.tod && m.tod !== E.tod) return _gdNo(E.soon || 'Not now');
+  const body = {}; let msg = E.found;
+  if (E.c) body.c = E.c; if (E.x) body.x = E.x;
+  if (E.curio) { const cur = _gldNextCurio('egg|' + id); if (cur) { body.i = { ['cur:' + cur.id]: 1 }; msg += `: ${cur.name.toLowerCase()}.`; } else { body.c = 10; msg += ': ten coins.'; } }
+  return _gldPay('a find', msg, body, [['lde.' + id, m.today]], 'sparkles');
+}
+
 /* ---------- a save from the old world ----------
    The owner, 1 Nov 2026: "because the game is in alpha, if it means destroying existing gardens, that is fine." The map changed, so a cell in an old save means nothing. Once, the first time a save from
    an older world is seen: everything planted goes back as its seed and everything placed back in the bag, land and buildings are paid back in coins, and what was in a kettle or under the oak is paid out.

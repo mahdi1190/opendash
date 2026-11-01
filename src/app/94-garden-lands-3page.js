@@ -16,6 +16,12 @@ function _gldSay(r, b, ic) {
 function gardenLandPropOpen(p) {
   const id = p.lf, m = gardenHere();
   const at = { x: p.x + p.w / 2, y: p.y - 0.4 };
+  if (gardenLandSight(id)) {
+    const d = gardenLandSight(id), items = [], E = !m.visit && d.egg && !gardenLandEggFound(id) ? d.egg : null;
+    if (E) items.push({ ic: 'sparkles', label: E.verb, cls: 'is-go', run: (b) => _gldSay(gardenLandEgg(id), b, 'sparkles') });
+    gardenBubbleOpen(at, { title: d.name, sub: d.say, items, cls: items.length ? '' : 'is-empty' });
+    return;
+  }
   if (id === 'lf-chest') { if (m.visit) { gardenBubbleOpen(at, { title: p.name, sub: 'Your friend’s to open', items: [] }); return; } gardenBubbleOpen(at, { title: p.name, sub: p.blurb, items: [{ ic: 'gift', label: 'Open it', cls: 'is-go', run: (b) => _gldSay(gardenLandChest(), b, 'gift') }] }); return; }
   if (id === 'land-finds') { const n = (m.visit ? gardenLandShowOf(m.visit.snap) : gardenLandShowMine(m)).c.length; gardenBubbleOpen(at, { title: p.name, sub: `${n} on the table.`, items: [{ ic: 'book-open', label: 'See them all', cls: 'is-go', run: () => gardenPopupOpen('lands') }] }); return; }
   const f = gardenLandFeature(id); if (!f) return;
@@ -203,5 +209,6 @@ function gardenLandsTab(el, m) {
   { const d = sec(`Curios found: ${gardenLandCurioCount()} of ${GARDEN_LAND_CURIOS.length}`);
     const n = _gdpEl('p', 'gld-more', 'Look for a little cross on the ground: one spot a day, somewhere on your land or the lane. Some turn up when you forage, help out or open the maze chest.'); d.appendChild(n);
     const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_CURIOS) { const has = gardenHas('cur:' + c.id) > 0, ch = _gdpEl('span', 'gld-chip' + (has ? ' is-on' : ''), has ? '' : '?'); if (has) { ch.innerHTML = gardenLandCurioSvg(c.id, 16); ch.appendChild(document.createTextNode(c.name)); ch.setAttribute('data-tip', c.blurb); } g.appendChild(ch); } d.appendChild(g); }
+  box.appendChild(_gdpEl('p', 'gld-more', `Small secrets found about the place: ${gardenLandEggCount()} of ${gardenLandEggs().length}. Go up to things and have a look.`));
   if (gardenLandOwnsFeature('lf-observatory') || gardenLandSkyCount()) { const d = sec(`Your star book: ${gardenLandSkyCount()} of ${GARDEN_LAND_SKY.length}`); const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_SKY) { const has = gardenHas('sky:' + c.id) > 0; g.appendChild(_gdpEl('span', 'gld-chip' + (has ? ' is-on' : ''), has ? c.name : '?')); } d.appendChild(g); }
 }

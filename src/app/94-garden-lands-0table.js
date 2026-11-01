@@ -255,6 +255,91 @@ const GARDEN_LAND_LAMPS = _gdF([3, 8, 41, 46, 50]);   // x along the lane's nort
 const GARDEN_LAND_FINDS = _gdF({ id: 'land-finds', name: 'Your finds', x: 40, y: 19, w: 2, h: 1, col: 'soft', walk: 0, act: 'lf', lf: 'land-finds', door: _gdF({ x: 40, y: 20 }), kind: 'lf-finds', tall: 1, blurb: 'What has turned up so far.' });
 const GARDEN_LAND_KEY_ID = 'old-key';
 
+/* ---------- what is on the map for everyone ----------
+   The owner: "make sure the new garden looks good, populated, lots of cool features, stone paths, plazas, unique easter eggs". A new garden is a place before you plant anything. These stand on thicket,
+   the mown green or a path (col 'none' on a path), so they take no room from plots and block nothing. The same for every garden, so a friend sees them with no field in a snapshot.
+   say: what you find when you go up to it. egg: a small secret, once each: {c: coins, x: experience, curio: 1, tod: only then, verb, found: what it says}. World cells. */
+const GARDEN_LAND_SIGHTS = _gdRows([
+  // the middle
+  { id: 'ld-cross', art: 'cross', name: 'The market cross', x: 24, y: 11, col: 'soft', tall: 1.6, say: 'Worn smooth by hundreds of hands. There is a small slot in the base.', egg: { verb: 'Feel in the slot', c: 4, found: 'Somebody left four coins in the slot, a long time ago.' } },
+  { id: 'ld-sign-c', art: 'finger', name: 'The signpost', x: 26, y: 12, col: 'none', tall: 1.5, say: 'North: the hill. East: the orchards. West: the fields. South: round the lake. One arm is blank.', egg: { verb: 'Read the blank arm', c: 1, found: 'In very small letters: “You are here.” Someone has taped a coin to it.' } },
+  { id: 'ld-bench-a', art: 'seat', name: 'The bench by the square', x: 29, y: 11, w: 2, col: 'soft', tall: 0.8, say: 'Warm from the sun. Good for watching nothing happen.', egg: { verb: 'Look at the carving', x: 5, found: 'A heart, two initials and a date you cannot read. Good for them.' } },
+  { id: 'ld-bench-b', art: 'seat', name: 'The shore bench', x: 35, y: 18, w: 2, col: 'soft', tall: 0.8, say: 'You can just see the lake from here.' },
+  { id: 'ld-lamp-a', art: 'lamp', name: 'An old lamp', x: 31, y: 11, col: 'none', tall: 1, say: 'Somebody still comes and lights it.' },
+  { id: 'ld-lamp-b', art: 'lamp', name: 'An old lamp', x: 27, y: 16, col: 'none', tall: 1, say: 'Somebody still comes and lights it.' },
+  { id: 'ld-box-a', art: 'topiary', name: 'A clipped box', x: 17, y: 8, col: 'full', tall: 1, say: 'Possibly a duck. Possibly a teapot.' },
+  { id: 'ld-box-b', art: 'topiary', name: 'A clipped box', x: 33, y: 8, col: 'full', tall: 1, say: 'Definitely the same teapot.' },
+  { id: 'ld-statue', art: 'statue', name: 'The old gardener', x: 34, y: 15, col: 'full', tall: 2, say: 'A stone man with a stone trowel, looking at the greenhouse as if it owes him money.', egg: { verb: 'Look under the trowel', curio: 1, found: 'Something was pushed in under the trowel' } },
+  { id: 'ld-arch-n', art: 'gate', name: 'The north gate', x: 27, y: 8, col: 'none', tall: 1.9, say: 'The way up to the hill starts here.' },
+  // north: the hill
+  { id: 'ld-stones', art: 'stones', name: 'The hill stones', x: 28, y: 4, w: 4, col: 'full', tall: 1.2, say: 'Nobody knows who stood them up. There are five, or six, depending on when you count.', egg: { verb: 'Count them', tod: 'night', c: 12, found: 'After dark there are six. You count again and there are five, and twelve coins on the grass.', soon: 'Five stones. People say to count them after dark.' } },
+  { id: 'ld-cairn', art: 'cairn', name: 'The cairn', x: 26, y: 4, col: 'full', tall: 0.9, say: 'Everyone who comes this way adds a stone.', egg: { verb: 'Add a stone', x: 5, found: 'You add a stone. You feel better for it.' } },
+  { id: 'ld-tower', art: 'tower', name: 'The old watchtower', x: 35, y: 7, w: 3, col: 'full', tall: 2.4, say: 'Half of a tower. The other half is the wall round the pond.', egg: { verb: 'Try the loose brick', curio: 1, found: 'A brick comes out, and behind it' } },
+  // east: the orchards
+  { id: 'ld-chapel', art: 'chapel', name: 'The ruined chapel', x: 43, y: 2, w: 3, col: 'full', tall: 2.4, say: 'No roof, and apple trees in the aisle.', egg: { verb: 'Pull the old rope', c: 8, found: 'The bell has not rung for a hundred years, and does not ring now. Eight coins fall out of it.' } },
+  { id: 'ld-stump', art: 'stump', name: 'A great stump', x: 47, y: 2, col: 'full', tall: 0.7, say: 'It must have been the biggest tree for miles. There is a very small door in it.', egg: { verb: 'Knock on the small door', c: 7, found: 'A very small voice says “not today, thank you”. Seven very small coins are pushed out.' } },
+  { id: 'ld-orchard-wall', art: 'wall', name: 'The orchard wall', x: 45, y: 12, w: 2, col: 'full', tall: 0.6, say: 'Dry stone, and older than the trees.', egg: { verb: 'Look on top', c: 3, found: 'One sock, and three coins in the sock. Nobody has come back for it.' } },
+  { id: 'ld-arch-e', art: 'gate', name: 'The orchard gate', x: 43, y: 18, col: 'none', tall: 1.9, say: 'The way up into the orchards.' },
+  // west: the fields
+  { id: 'ld-barn', art: 'barn', name: 'The old barn', x: 0, y: 0, w: 3, col: 'full', tall: 2.2, say: 'Full of things somebody will definitely need one day.' },
+  { id: 'ld-hay', art: 'hay', name: 'The haystack', x: 10, y: 15, w: 2, col: 'full', tall: 1, say: 'A great heap of hay. You could look through it, if you had all afternoon.', egg: { verb: 'Look through it', curio: 1, found: 'You look all afternoon, and there really is something in the haystack' } },
+  { id: 'ld-field-wall', art: 'wall', name: 'The field wall', x: 0, y: 3, w: 2, col: 'full', tall: 0.6, say: 'It keeps nothing in and nothing out, and it has been doing so for a long time.' },
+  { id: 'ld-cart', art: 'cart', name: 'A broken cart', x: 10, y: 3, w: 2, col: 'full', tall: 0.9, say: 'One wheel has gone somewhere better.', egg: { verb: 'Look under the seat', c: 6, found: 'A dry old purse, with six coins and a shopping list. Mostly onions.' } },
+  { id: 'ld-arch-w', art: 'gate', name: 'The field gate', x: 3, y: 18, col: 'none', tall: 1.9, say: 'The way into the fields.' },
+  // south: the marsh and the far shore
+  { id: 'ld-lighthouse', art: 'lighthouse', name: 'The little lighthouse', x: 35, y: 38, col: 'full', tall: 3.2, say: 'Far too small, on a lake far too small to need it. Somebody keeps it painted.', egg: { verb: 'Climb up and light it', tod: 'night', c: 15, found: 'You light it. Over the water, somebody blinks a lamp back. There are fifteen coins on the sill.', soon: 'It is not dark yet. It only wants lighting at night.' } },
+  { id: 'ld-hull', art: 'hull', name: 'An upturned boat', x: 15, y: 38, w: 2, col: 'full', tall: 0.8, say: 'Somebody meant to come back and mend it.', egg: { verb: 'Look underneath', curio: 1, found: 'It is dry underneath, and something has been kept here' } },
+  { id: 'ld-temple', art: 'temple', name: 'The folly', x: 25, y: 39, w: 3, col: 'full', tall: 1.7, say: 'A ruin somebody built on purpose, to look at from across the lake.', egg: { verb: 'Read the stone', c: 10, found: 'It says: “I was going to finish this.” Ten coins lie in the groove.' } },
+  { id: 'ld-house', art: 'summer', name: 'The summer house', x: 4, y: 30, w: 2, col: 'full', tall: 1.5, say: 'For sitting in on the three warm days a year.', egg: { verb: 'Sit a while', x: 8, found: 'You sit a while. It is one of the three warm days, whatever the weather says.' } },
+  { id: 'ld-hide', art: 'hide', name: 'The bird hide', x: 1, y: 43, w: 2, col: 'full', tall: 0.9, say: 'A slot to look through, and a long list of birds in pencil.' },
+  { id: 'ld-boathouse', art: 'boathouse', name: 'The boathouse', x: 40, y: 21, w: 3, col: 'full', tall: 1.6, say: 'Nothing in it but the smell of boats.' },
+  { id: 'ld-bridge', art: 'bridge', name: 'The little bridge', x: 46, y: 30, col: 'none', tall: 0.4, say: 'Over the brook on its way to the lake.' },
+  { id: 'ld-arch-sw', art: 'gate', name: 'The west shore gate', x: 9, y: 21, col: 'none', tall: 1.9, say: 'Round the lake, the long way.' },
+  // small places of their own: north
+  { id: 'ld-falls', art: 'falls', name: 'The little falls', x: 38, y: 7, w: 2, col: 'full', tall: 2, say: 'It comes down off the hill and runs into the pond. You can hear it from the green.', egg: { verb: 'Look behind the water', curio: 1, found: 'There is a dry ledge behind the falls, and on it' } },
+  { id: 'ld-grotto', art: 'grotto', name: 'The mossy grotto', x: 33, y: 7, w: 2, col: 'full', tall: 1.4, say: 'Ferns, a drip of water and a cold breath of air.', egg: { verb: 'Reach inside', c: 9, found: 'Your fingers find a little heap of coins, left for luck. You leave one and take nine.' } },
+  { id: 'ld-hut', art: 'shepherd', name: 'The shepherd’s hut', x: 33, y: 5, col: 'full', tall: 1.4, say: 'On iron wheels, and it has not moved in years. The kettle is still on the stove.', egg: { verb: 'Look in the window', x: 6, found: 'A chair, a kettle, and a dog’s bowl with the name worn off. You feel you have met them.' } },
+  { id: 'ld-folly', art: 'folly', name: 'The hilltop folly', x: 37, y: 1, w: 2, col: 'full', tall: 2.6, say: 'A tower with no stairs, put up to look nice from the village. It does.' },
+  { id: 'ld-beacon', art: 'beacon', name: 'The old beacon', x: 29, y: 0, col: 'full', tall: 1.3, say: 'An iron basket on a post, for sending news a long way.', egg: { verb: 'Light it', tod: 'night', c: 11, found: 'It catches at once. Far off, somebody lights another. Eleven coins were left in the ash.', soon: 'Nobody would see it by day. Come back after dark.' } },
+  { id: 'ld-warren', art: 'warren', name: 'The warren bank', x: 27, y: 4, col: 'full', tall: 0.5, say: 'More holes than bank. Something thumps twice underground when you stop.' },
+  // east
+  { id: 'ld-ring', art: 'ring', name: 'The ring of old trees', x: 48, y: 1, w: 4, col: 'full', tall: 1.8, say: 'Five huge trunks in a perfect ring. Nobody planted them on purpose, surely.', egg: { verb: 'Stand in the middle', x: 8, found: 'It goes very quiet. When you step out, it has been a bit longer than you thought.' } },
+  { id: 'ld-hollow', art: 'hollow', name: 'The hollow oak', x: 41, y: 2, col: 'full', tall: 2.2, say: 'Big enough for a child to stand in. Somebody once did: there is a shelf.', egg: { verb: 'Feel along the shelf', curio: 1, found: 'Tucked at the back of the shelf' } },
+  { id: 'ld-treehouse', art: 'treehouse', name: 'The treehouse', x: 44, y: 0, w: 2, col: 'full', tall: 2.8, say: 'The ladder has lost its bottom rungs, so the owner must be grown up by now.', egg: { verb: 'Pull the string', c: 5, found: 'A tin comes down on a pulley. A note says “password?” and there are five coins under it.' } },
+  { id: 'ld-clamp', art: 'clamp', name: 'The charcoal clamp', x: 50, y: 3, col: 'full', tall: 0.8, say: 'A great turf mound, long gone cold. It still smells of smoke.' },
+  { id: 'ld-barrels', art: 'barrels', name: 'Cider square', x: 48, y: 11, col: 'full', tall: 1, say: 'A small paved square, a stack of barrels and the smell of last autumn.', egg: { verb: 'Knock on the barrels', c: 6, found: 'Empty, empty, empty, and one that goes clink. Six coins.' } },
+  // west
+  { id: 'ld-pump', art: 'pump', name: 'Pump square', x: 8, y: 8, col: 'full', tall: 1.3, say: 'Everyone in the fields comes here for water and news.', egg: { verb: 'Work the handle', x: 5, found: 'It coughs, thinks about it, and gives you a very good cup of water.' } },
+  { id: 'ld-boles', art: 'boles', name: 'The bee boles', x: 8, y: 4, col: 'full', tall: 1.2, say: 'Little niches in an old wall, made for straw hives before anybody can remember.' },
+  // south and round the lake
+  { id: 'ld-wish', art: 'wish', name: 'The wishing well', x: 46, y: 28, col: 'full', tall: 1.5, say: 'A small square, an old well, and a very long way down.', egg: { verb: 'Make a wish', c: 7, found: 'You drop nothing, because you have no need. Something drops seven coins back up.' } },
+  { id: 'ld-mill', art: 'mill', name: 'The watermill', x: 40, y: 31, w: 3, col: 'full', tall: 1.9, say: 'The wheel stopped when the brook moved over. It has been waiting ever since.', egg: { verb: 'Look in the old sacks', curio: 1, found: 'Under the sacks, in the flour dust' } },
+  { id: 'ld-rope', art: 'rope', name: 'The rope bridge', x: 46, y: 34, col: 'none', tall: 0.6, say: 'It sways more than the brook deserves.' },
+  { id: 'ld-labyrinth', art: 'turf', name: 'The turf labyrinth', x: 42, y: 37, w: 3, col: 'full', tall: 0.2, say: 'A spiral cut in the grass, worn by feet. You can only walk it one way.', egg: { verb: 'Walk it', x: 7, found: 'You walk all the way in and all the way out. Nothing has changed, and yet.' } },
+  { id: 'ld-smoke', art: 'smoke', name: 'The eel smokehouse', x: 48, y: 35, w: 3, col: 'full', tall: 1.5, say: 'A black little shed. Nothing has been smoked here for a long while, and yet.' },
+  { id: 'ld-icehouse', art: 'ice', name: 'The ice house', x: 10, y: 35, w: 2, col: 'full', tall: 1, say: 'A turf dome with a very thick door. In summer it still breathes cold.', egg: { verb: 'Open the door a crack', c: 8, found: 'Cold air, the smell of straw, and a purse someone kept very safe. Eight coins.' } },
+  { id: 'ld-frog', art: 'frogstone', name: 'The frog stone', x: 7, y: 25, col: 'full', tall: 0.8, say: 'A big stone that somebody thought looked like a frog, and helped along a bit.', egg: { verb: 'Sit and listen', tod: 'dusk', c: 6, found: 'At dusk every frog on the marsh starts up at once, and stops when you stand. Six coins on the stone.', soon: 'It only makes sense at dusk, people say.' } },
+  { id: 'ld-churn', art: 'churn', name: 'The milk stand', x: 9, y: 23, col: 'full', tall: 0.9, say: 'Two churns, still waiting to be collected.' },
+  { id: 'ld-driftwood', art: 'drift', name: 'The driftwood arch', x: 0, y: 34, w: 2, col: 'full', tall: 1.4, say: 'Somebody has been building this from what the marsh gives up, for years.' },
+  { id: 'ld-sunk', art: 'sunken', name: 'The sunken pool', x: 30, y: 18, w: 2, col: 'none', tall: 0.2, say: 'Three stone steps down to a square of still water, right behind the shops. Everyone forgets it is there.', egg: { verb: 'Look in the water', c: 3, found: 'Three old coins on the bottom, and your own face looking pleased.' } },
+  { id: 'ld-picnic', art: 'picnic', name: 'The picnic table', x: 33, y: 12, w: 2, col: 'soft', tall: 0.8, say: 'Somebody has carved a draughts board in the top.' },
+  { id: 'ld-mile', art: 'mile', name: 'The milestone', x: 1, y: 19, col: 'soft', tall: 0.8, say: 'It says “0” on both sides. This is as far as anyone measured.', egg: { verb: 'Read the back', c: 2, found: 'On the back, small: “Well done for checking.” Two coins.' } },
+  { id: 'ld-arch-se', art: 'gate', name: 'The east shore gate', x: 45, y: 21, col: 'none', tall: 1.9, say: 'Round the lake, the other long way.' },
+].map(d => { const w = d.w || 1, r = Object.assign({ w: 1, h: 1, walk: 0, act: 'lf', kind: 'ld-' + d.art, blurb: d.say }, d, { lf: d.id });
+  // where you stand to look at it: right there if it is a path, else the nearest ground beside it
+  let best = null, bd = 1e9; for (let yy = d.y - 2; yy <= d.y + 3; yy++) for (let xx = d.x - 3; xx <= d.x + w + 2; xx++) { const c = gardenLandCell(xx, yy); if (!c || c.solid || c.pool || c.fam === 'pond' && !(yy === 8 || yy === 11) || (xx >= d.x && xx < d.x + w && yy === d.y && d.col !== 'none')) continue; const n = Math.hypot(xx - d.x - w / 2 + 0.5, (yy - d.y - 0.5) * 0.9) + (c.trail || c.lane || c.green ? 0 : 0.6); if (n < bd) { bd = n; best = { x: xx, y: yy }; } }
+  r.door = best || { x: d.x, y: d.y + 1 };
+  return r; }));
+/* The small paved squares, [x, y, rx, ry] in px for the last two (world cells); the brooks, as points they run through, ending in water or under a bridge. */
+const GARDEN_LAND_SQUARES = _gdF([[48.5, 12.5, 40, 16], [8.5, 9.5, 34, 15], [46.5, 29.5, 34, 15], [27, 6.5, 34, 13], [36.5, 40.5, 40, 13], [9.5, 24.5, 34, 13], [5.5, 39.5, 30, 13], [30.5, 12.5, 30, 12]]);
+const GARDEN_LAND_BROOKS = _gdF([
+  _gdF([[38.6, 7.2], [38.2, 7.8], [37.4, 8.3], [37.6, 8.9], [37, 9.4]]),   // the little falls to the pond
+  _gdF([[49.5, 30.4], [48.5, 30.8], [47.5, 30.2], [46.5, 30.5], [45.5, 30.9], [44.5, 30.3], [43.5, 30.7], [42.5, 30.3], [41.5, 30.8], [40.5, 30.4], [39.5, 30.5]]),   // past the mill to the lake
+  _gdF([[49.5, 34.6], [48.5, 34.2], [47.5, 34.7], [46.5, 34.4], [45.6, 34.6]]),   // under the rope bridge to the sedge pool
+]);
+const _GLD_SIGHT = new Map(GARDEN_LAND_SIGHTS.map(d => [d.id, d]));
+function gardenLandSight(id) { return _GLD_SIGHT.get(String(id)) || null; }
+
 /* ---------- what you can collect ---------- */
 const GARDEN_LAND_CURIOS = _gdRows([
   ['clay-pipe', 'Clay pipe', 'Someone sat here a long time ago.'], ['farthing', 'Old farthing', 'A wren on one side, worn nearly smooth.'], ['blue-bottle', 'Blue bottle', 'Tiny, cobalt and unbroken.'], ['sea-shell', 'Fossil shell', 'A long way from the sea.'],
@@ -321,7 +406,7 @@ function _gldMazeRects(f) {
 /** The rows of GARDEN_PROPS' shape that stand now: the land office and what has been built in the garden on screen. Rebuilt when the land changes (gardenLandSet). */
 function gardenLandProps() { if (_GLD_PROPS.key === null) _gldPropsRebuild(); return _GLD_PROPS.built; }
 function _gldPropsRebuild() {
-  const built = [GARDEN_LAND_OFFICE];
+  const built = [GARDEN_LAND_OFFICE, ...GARDEN_LAND_SIGHTS];
   if (_GD_LAND.has('finds') && !_GD_LAND.has('lf-museum')) built.push(GARDEN_LAND_FINDS);
   for (const f of GARDEN_LAND_FEATURES) {
     if (f.x == null || !_GD_LAND.has(f.id)) continue;
@@ -358,7 +443,8 @@ function gardenLandAlways(x, y) { const c = gardenLandCell(x, y); return !!(c &&
 function gardenLandTotals() { return { sections: GARDEN_LAND_SECTIONS.length, trails: GARDEN_LAND_TRAILS.length, features: GARDEN_LAND_FEATURES.length, land: GARDEN_LAND_SECTIONS.reduce((n, s) => n + s.buy, 0), built: GARDEN_LAND_FEATURES.reduce((n, f) => n + f.cost, 0) }; }
 /** Where the trees stand in the thickets: every so many cells, the same every time. For the drawing and nothing else. */
 function gardenLandTrees() {
-  const out = [];
-  for (const [rid, M] of Object.entries(GARDEN_LAND_MAPS)) M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) if (row[dx] === '#' && gardenHash(rid + dx + ',' + dy) % 5 === 0) out.push({ x: M.x + dx, y: M.y + dy, theme: M.theme }); });
+  const out = [], taken = new Set();
+  for (const d of GARDEN_LAND_SIGHTS) for (let k = -1; k <= d.w; k++) taken.add((d.x + k) + ',' + d.y);
+  for (const [rid, M] of Object.entries(GARDEN_LAND_MAPS)) M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) if (row[dx] === '#' && gardenHash(rid + dx + ',' + dy) % 5 === 0 && !taken.has((M.x + dx) + ',' + (M.y + dy))) out.push({ x: M.x + dx, y: M.y + dy, theme: M.theme }); });
   return out;
 }

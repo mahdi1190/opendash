@@ -242,6 +242,69 @@ The exceptions are not things you own: today's dig spot, today's forage and the 
 | Hermit corner | south | Warm glade | 3 | 20 | 1200 | South shore walk |
 | The world’s end | south | Meadow | 14 | 22 | 1500 | Willow ways |
 
+## What is on the map for everyone
+
+The same in every garden, so friends see them with no field in a snapshot. Paved squares, flagstone, cobble and plank paths and the brooks are drawn in the ground; these stand up (`GARDEN_LAND_SIGHTS`, one table). A secret is a small reward, once.
+
+| Place | Where | Secret |
+|---|---|---|
+| The market cross | 24, 11 | Feel in the slot |
+| The signpost | 26, 12 | Read the blank arm |
+| The bench by the square | 29, 11 | Look at the carving |
+| The shore bench | 35, 18 |  |
+| An old lamp | 31, 11 |  |
+| An old lamp | 27, 16 |  |
+| A clipped box | 17, 8 |  |
+| A clipped box | 33, 8 |  |
+| The old gardener | 34, 15 | Look under the trowel |
+| The north gate | 27, 8 |  |
+| The hill stones | 28, 4 | Count them (night) |
+| The cairn | 26, 4 | Add a stone |
+| The old watchtower | 35, 7 | Try the loose brick |
+| The ruined chapel | 43, 2 | Pull the old rope |
+| A great stump | 47, 2 | Knock on the small door |
+| The orchard wall | 45, 12 | Look on top |
+| The orchard gate | 43, 18 |  |
+| The old barn | 0, 0 |  |
+| The haystack | 10, 15 | Look through it |
+| The field wall | 0, 3 |  |
+| A broken cart | 10, 3 | Look under the seat |
+| The field gate | 3, 18 |  |
+| The little lighthouse | 35, 38 | Climb up and light it (night) |
+| An upturned boat | 15, 38 | Look underneath |
+| The folly | 25, 39 | Read the stone |
+| The summer house | 4, 30 | Sit a while |
+| The bird hide | 1, 43 |  |
+| The boathouse | 40, 21 |  |
+| The little bridge | 46, 30 |  |
+| The west shore gate | 9, 21 |  |
+| The little falls | 38, 7 | Look behind the water |
+| The mossy grotto | 33, 7 | Reach inside |
+| The shepherd’s hut | 33, 5 | Look in the window |
+| The hilltop folly | 37, 1 |  |
+| The old beacon | 29, 0 | Light it (night) |
+| The warren bank | 27, 4 |  |
+| The ring of old trees | 48, 1 | Stand in the middle |
+| The hollow oak | 41, 2 | Feel along the shelf |
+| The treehouse | 44, 0 | Pull the string |
+| The charcoal clamp | 50, 3 |  |
+| Cider square | 48, 11 | Knock on the barrels |
+| Pump square | 8, 8 | Work the handle |
+| The bee boles | 8, 4 |  |
+| The wishing well | 46, 28 | Make a wish |
+| The watermill | 40, 31 | Look in the old sacks |
+| The rope bridge | 46, 34 |  |
+| The turf labyrinth | 42, 37 | Walk it |
+| The eel smokehouse | 48, 35 |  |
+| The ice house | 10, 35 | Open the door a crack |
+| The frog stone | 7, 25 | Sit and listen (dusk) |
+| The milk stand | 9, 23 |  |
+| The driftwood arch | 0, 34 |  |
+| The sunken pool | 30, 18 | Look in the water |
+| The picnic table | 33, 12 |  |
+| The milestone | 1, 19 | Read the back |
+| The east shore gate | 45, 21 |  |
+
 ## Adding more later
 
 A feature is one row in `GARDEN_LAND_FEATURES`, one drawing in `_GLD_PROP_ART`, and, if it does something new, one branch in `_gldUseBubble`. It goes to friends by itself through `lf`. Its spot in its section is worked out for it. Check any change to a map with a throwaway script: every section touches its `via`, every trail its `from`.
