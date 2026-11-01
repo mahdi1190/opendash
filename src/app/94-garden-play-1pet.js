@@ -84,8 +84,8 @@ function _gpAwaySvg() {
 }
 /** Somewhere clear near the gate, the same each time. */
 function _gpAwaySpot(m) {
-  const W = GARDEN_WORLD, S = W.start;
-  for (let r = 1; r <= 9; r++) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1], [0, 1], [-1, 1], [1, 1]]) {
+  const S = { x: 24, y: 15 };   // the green by the square: near where you come in, and clear of the shops' roofs
+  for (let r = 0; r <= 9; r++) for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [-1, -1], [1, -1], [0, 1], [-1, 1], [1, 1]]) {
     const x = S.x + dx * r, y = S.y + dy * r; let ok = true;
     for (const [a, b] of [[0, 0], [1, 0]]) { const k = (x + a) + ',' + (y + b); if (m.occ.has(k) || gardenPropAt(x + a, y + b) || !gardenWalkable(x + a, y + b) || gardenLandPathAt(x + a, y + b)) ok = false; }
     if (ok) return { x: x + 0.6, y: y + 0.75 };
@@ -94,7 +94,7 @@ function _gpAwaySpot(m) {
 }
 function _gpAwayBubble() {
   const j = gpJourney(), pet = gpPet(), S = _gpAw.S; if (!j || !pet || !S) return;
-  gardenBubbleOpen({ x: S.x, y: S.y - 1 }, { title: `${pet.name} is away`, sub: `Gone on a little journey. Back ${gpJourneyDueWords(j)}, with a postcard.`, items: [{ ic: 'undo-2', label: 'Call it home now', cls: 'is-go', run: () => { gardenBubbleClose(); gpJourneyCall(); gpNote(`${pet.name} is home. Its lunch is back in your bag.`); } }] });
+  gardenBubbleOpen({ x: S.x, y: S.y - 1.5 }, { cls: 'is-words', title: `${pet.name} is away`, sub: `Gone on a little journey. Back ${gpJourneyDueWords(j)}, with a postcard.`, items: [{ ic: 'undo-2', label: 'Call it home now', text: 'Call it home now', cls: 'is-go', run: () => { gardenBubbleClose(); gpJourneyCall(); gpNote(`${pet.name} is home. Its lunch is back in your bag.`); } }] });
 }
 function _gpAwayMark(on) {
   const want = on && typeof _gw !== 'undefined' && _gw.on && !gpVisiting();

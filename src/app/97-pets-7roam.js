@@ -141,9 +141,11 @@ function _ptwWet(x, y) { const S = _ptwSpots(), G = GARDEN_WORLD, cx = Math.floo
 function _ptwTopAt(x, y) { return _ptwSpots().top.get(_ptwTenth(x) + ',' + _ptwTenth(y)) || null; }
 function _ptwMayStand(P, t) { return !!t && (t.seat ? _ptwHas(P, 'seat') : _ptwFlier(P)); }
 /** May this pet be here at all? (A friend's copy asks too, before it believes a place.) */
-function _ptwCanStand(P, x, y) { return _ptwFlier(P) || _ptwFree(x, y) || (_ptwHas(P, 'swim') && _ptwWet(x, y)) || _ptwMayStand(P, _ptwTopAt(x, y)); }
+function _ptwCanStand(P, x, y) { return _ptwFlier(P) || _ptwFree(x, y) || (_ptwHas(P, 'swim') && _ptwWetEdge(x, y)) || _ptwMayStand(P, _ptwTopAt(x, y)); }
+/** On the water, or at its very edge going in or out: the shore cell's own feet test would stop it a step short. */
+function _ptwWetEdge(x, y) { return _ptwWet(x, y) || _ptwWet(x, y + 0.2) || _ptwWet(x, y - 0.2) || _ptwWet(x + 0.2, y) || _ptwWet(x - 0.2, y); }
 function _ptwCanStep(P, x, y) {
-  if (_ptwFlier(P) || _ptwFree(x, y) || (_ptwHas(P, 'swim') && _ptwWet(x, y))) return true;
+  if (_ptwFlier(P) || _ptwFree(x, y) || (_ptwHas(P, 'swim') && _ptwWetEdge(x, y))) return true;
   if ((P.up || 0) > 1) return true;   // hopping down
   return _ptwHas(P, 'seat') && P.tx != null && !!_ptwTopAt(P.tx, P.ty) && Math.hypot(P.tx - x, P.ty - y) < 1.7;   // the last hop up
 }
@@ -179,7 +181,7 @@ function _ptwSwimSet(P, on) {
 /** Things near enough to go to: a pet that follows you stays near you, the others go where they like. */
 function _ptwNearby(P, list, xy) {
   const pl = P.me ? _ptwPlayer() : null, cx = pl ? pl.x : P.x, cy = pl ? pl.y : P.y, R = pl ? 4.6 : 13, out = [];
-  for (const q of list) { const a = xy ? xy(q) : q; if (Math.hypot(a.x - cx, (a.y - cy) * 1.2) <= R) out.push(q); }
+  for (const q of list) { const a = xy ? xy(q) : q; if (Math.hypot(a.x - cx, (a.y - cy) * 1.4) <= R) out.push(q); }   // (measured as _ptwComeAlong measures it: it must not be called back before it gets there)
   return out;
 }
 const _ptwPick1 = (list) => list[Math.floor(Math.random() * list.length)];
@@ -418,7 +420,7 @@ function _ptwBubble(e) {
 }
 
 /* ---------- start, stop, the loop ---------- */
-function _ptwRosterKey() { const g = petGet(); return g.has && g.on ? JSON.stringify([g.look, g.name, _ptwVisiting(), petPackLooks().map(l => [l.species, l.coat, l.marks])]) : ''; }
+function _ptwRosterKey() { const g = petGet(); return g.has && g.on ? JSON.stringify([g.look, g.name, _ptwVisiting(), _ptwMotion(), petPackLooks().map(l => [l.species, l.coat, l.marks])]) : ''; }   // (reduced motion switched on: they sit down at once)
 function _ptwBuild() {
   for (const P of _ptw.pets) P.node.remove();
   _ptw.pets = [];

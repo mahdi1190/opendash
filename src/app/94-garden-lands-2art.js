@@ -348,8 +348,8 @@ const _GLD_ART = (function () {
         if (!o.photo && !o.readOnly) live += sign(px(20), y0 + 2, `Level ${z.lv}`, false, z.id);
       }
     }
-    // the price on what you can buy from here
-    if (!o.photo && !o.readOnly) for (const sec of GARDEN_LAND_SECTIONS) {
+    // the price on what you can buy from here (not on a friend's land: nothing there is for sale to you)
+    if (!o.photo && !o.readOnly && !(typeof gardenVisitOn === 'function' && gardenVisitOn())) for (const sec of GARDEN_LAND_SECTIONS) {
       if (open.has(sec.id)) continue;
       if (sec.zn && !open.has('zn-' + sec.zn)) continue;   // the owner: "we should only see we can buy stuff when that zone itself is unlocked"
       const D = gardenLandDoor(sec); if (!D || (sec.via && !open.has(sec.via))) continue;
@@ -585,7 +585,7 @@ function gardenLandWorldProps(sc, o) {
       push('gd-prop-lf gd-prop-click', f.y + f.h, f.x, _gldDraw(f.art, f, sc, o), f.id);
       continue;
     }
-    if (!o.interactive || o.photo || o.readOnly || f.prize) continue;
+    if (!o.interactive || o.photo || o.readOnly || f.prize || (typeof gardenVisitOn === 'function' && gardenVisitOn())) continue;
     if (f.sec && !open.has(f.sec)) continue;
     { const n = gardenZoneOf(f.x, f.y); if (n && !open.has('zn-' + n)) continue; }   // only in a zone that is open
     if (occ.has(f.x + ',' + f.y) || f.lv > lv) continue;   // (a spot shows once you could build on it; the land office lists what comes later)
