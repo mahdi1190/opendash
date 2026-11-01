@@ -70,7 +70,6 @@ const GARDEN_CATCH_CELLS = Object.freeze({   // world cells
   rack: Object.freeze({ x: 16.6, y: 12.9 }),                 // today's catch, hung up by the pier
   boatIn: Object.freeze({ x: 5.3, y: 14.2 }), boatOut: Object.freeze({ x: 5.5, y: 12.6 }),   // getting in and out of the rowing boat, by the mooring post
   bunting: Object.freeze({ x0: 6, x1: 21, y: 12.5 }),        // the festival's flags, along the shore
-  sky: Object.freeze({ dx: 0, y: -2.5 }),                    // how far above the lake's near edge the sky's show is drawn
   thing: Object.freeze({ y0: 19, yN: 5, out: 6, secs: 90 }),  // the thing in the lake: its row, how many rows it may vary by, how far beyond the water it starts and ends, how long a pass takes
 });
 /** The lake's water, from the areas table: {x, y, w, h}. */
@@ -90,7 +89,7 @@ function gardenHotSpot(iso) { return GARDEN_SPOTS[gardenHash('hot|' + iso) % GAR
 const GARDEN_LAKE_EVENTS = Object.freeze({
   frenzy: Object.freeze({ id: 'frenzy', name: 'The fish are feeding', says: 'For a little while there are more about, and they bite quicker.', icon: 'fish', keen: 1.5, rare: 1 }),
   fog: Object.freeze({ id: 'fog', name: 'Fog on the lake', says: 'Shy fish come much closer in the fog.', icon: 'cloud', shy: 1.6, rare: 1.3 }),
-  storm: Object.freeze({ id: 'storm', name: 'A storm', says: 'Big fish feed near the top in rough water, but a thin line snaps more easily.', icon: 'cloud-lightning', rare: 1.5, keen: 1.15, snap: 1.25 }),
+  storm: Object.freeze({ id: 'storm', name: 'A storm', says: 'Big fish feed near the top in rough water, but a thin line snaps more easily.', icon: 'cloud', rare: 1.5, keen: 1.15, snap: 1.25 }),
   meteor: Object.freeze({ id: 'meteor', name: 'Shooting stars tonight', says: 'Rare fish rise to look at the sky. A good night to stay up.', icon: 'sparkles', rare: 2 }),
   'blood-moon': Object.freeze({ id: 'blood-moon', name: 'A red moon', says: 'Strange things swim on a night like this. The rarest fish are about.', icon: 'moon', rare: 3, shy: 1.3 }),
   festival: Object.freeze({ id: 'festival', name: 'Fishing festival', says: 'Everything is biting. Weigh in your best fish at the lake board for a rosette.', icon: 'party-popper', rare: 1.5, keen: 1.3 }),

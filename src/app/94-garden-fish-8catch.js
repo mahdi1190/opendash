@@ -28,6 +28,7 @@ function gardenCatchWire() {
     rc: (Array.isArray(c.rec) ? c.rec : []).slice(0, 3).map(r => [String(r[0]), Math.max(1, Math.min(400, Math.round(Number(r[1]) || 1)))]) };
   const wk = _gdWeekFrom(today);
   if (c.wb && c.wb.w === wk) out.wb = [_gtDayNo(wk), lim(c.wb.cm, 400)];
+  if (c.sugar) { const pl = g.plants[c.sugar.uid]; if (pl && Number.isInteger(pl.x) && Number.isInteger(pl.y)) out.sg = [lim(pl.x, 63), lim(pl.y, 63)]; }   // the tree you painted
   _gcaMemo.at = t; _gcaMemo.v = out;
   return out;
 }
@@ -261,14 +262,13 @@ function gardenCatchAfter(def, out, plan) {
   for (const id of gardenEventsNow()) { if (!Array.isArray(J.ev)) J.ev = []; if (!J.ev.includes(id)) J.ev.push(id); }
   if (spot) { J.s = J.s || {}; J.s[spot] = (Number(J.s[spot]) || 0) + 1; }
   if (isFish) {
-    // the run of catches, and the barbless hook's better fish
+    // the run of catches
     c.run = (c.runDay === today ? Number(c.run) || 0 : 0) + 1; c.runDay = today;
     if ([3, 5, 10].includes(c.run)) { _gcaUseDirty(); _gdEmit('gear', { kind: 'run' }); story.push(`${c.run} in a row`); }
-    if (plan.hookQ && out.perfect && out.q < (plan.qmax || 1)) out.q += 1;
     // the rack: your best five of the day, hung up by the pier
     const rk = Array.isArray(fd.rk) ? fd.rk.slice() : []; rk.push([def.id, out.cm]); rk.sort((a, b) => b[1] - a[1]); fd.rk = rk.slice(0, 5);
     // the lake's records: yours, and anybody's who fished here
-    if (!_gcaOnVisit()) { if (gardenLakeRecord(def.id, out.cm, '')) story.push('A new record for this lake'); }
+    if (!_gcaOnVisit() && gardenLakeRecord(def.id, out.cm, '') && c.rec[0][0] === def.id && c.rec[0][1] === out.cm && c.rec.length > 1) story.push('The biggest ever caught in this lake');
     // the poster
     const wk = _gdWeekFrom(today), wanted = gardenWantedFor(wk);
     if (wanted && wanted.id === def.id) {
@@ -624,6 +624,7 @@ function gardenHelpDone(A, won) {
 const _gcaTick = { at: 0, ev: '', dark: null };
 function gardenCatchTick() {
   if (typeof gardenThingFrame === 'function') gardenThingFrame();
+  if (typeof _gw !== 'undefined' && _gw.boat && typeof gardenBoatHud === 'function') gardenBoatHud();
   const t = performance.now(); if (t - _gcaTick.at < 5000) return; _gcaTick.at = t;
   let m = null; try { m = gardenHere(); } catch (e) { return; }
   const list = gardenEventsNow(), key = list.join(',');

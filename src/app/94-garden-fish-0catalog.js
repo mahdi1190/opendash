@@ -336,6 +336,7 @@ function gardenCatchWireClean(raw) {
   out.fd = ids(raw.fd, 7, (id) => typeof id === 'string' && /^[a-z0-9-]{1,32}$/.test(id));
   out.rk = pairs(raw.rk, 5); out.rc = pairs(raw.rc, 3);
   if (Array.isArray(raw.wb)) out.wb = [int(raw.wb[0], 0, 1e6), int(raw.wb[1], 0, 400)];
+  if (Array.isArray(raw.sg)) out.sg = [int(raw.sg[0], 0, 63), int(raw.sg[1], 0, 63)];
   return out;
 }
 /** A short key for a showcase (the art cache and change detection). */

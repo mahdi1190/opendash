@@ -21,7 +21,7 @@ const _GCW_SPOT = Object.freeze({
   },
   'lily-pads': (s, o, ca) => {   // it grows when you let fish go
     const r = gardenRand('sp-lily'), n = 6 + Math.min(10, Math.floor((Number(ca.rl) || 0) / 3)); let out = '';
-    for (let i = 0; i < n; i++) { const x = (r() - 0.5) * s.r * 66 * (1 + n / 30), y = (r() - 0.5) * 26, k = 7 + r() * 5; out += `<path transform="translate(${_gcwN(x)} ${_gcwN(y)}) rotate(${Math.floor(r() * 360)})" d="M0 0L${_gcwN(k)} -2A${_gcwN(k)} ${_gcwN(k * 0.55)} 0 1 1 ${_gcwN(k)} 2Z" fill="${i % 2 ? '#4f9a4a' : '#3f8a4a'}" stroke="#2f6a3a" stroke-width=".6"/>`; if (i % 3 === 0) out += `<g transform="translate(${_gcwN(x + 1)} ${_gcwN(y - 3)})"><path d="M-4 0Q0 -7 4 0Q0 2 -4 0z" fill="#f4c8d8" stroke="#d87a9a" stroke-width=".5"/><circle cy="-1" r="1.2" fill="#f2c432"/></g>`; }
+    for (let i = 0; i < n; i++) { const x = (r() - 0.5) * s.r * 66 * (1 + n / 30), y = (r() - 0.5) * 26, k = 7 + r() * 5, a = r() * 6.28, q = k * 0.5, p1 = `${_gcwN(Math.cos(a + 0.3) * k)} ${_gcwN(Math.sin(a + 0.3) * q)}`, p2 = `${_gcwN(Math.cos(a - 0.3) * k)} ${_gcwN(Math.sin(a - 0.3) * q)}`; out += `<path transform="translate(${_gcwN(x)} ${_gcwN(y)})" d="M0 0L${p1}A${_gcwN(k)} ${_gcwN(q)} 0 1 1 ${p2}Z" fill="${i % 2 ? '#4f9a4a' : '#3f8a4a'}" stroke="#2f6a3a" stroke-width=".6"/>`; if (i % 3 === 0) out += `<g transform="translate(${_gcwN(x + 1)} ${_gcwN(y - 3)})"><path d="M-4 0Q0 -7 4 0Q0 2 -4 0z" fill="#f4c8d8" stroke="#d87a9a" stroke-width=".5"/><circle cy="-1" r="1.2" fill="#f2c432"/></g>`; }
     void o; return out;
   },
   'weed-bed': (s, o) => {
@@ -49,7 +49,7 @@ function _gcwGulls(o) {
 function _gcwEvent(id, sc, o) {
   const L = gardenLakeWater(), [x0, y0] = _gcwP(L.x, L.y), [x1, y1] = _gcwP(L.x + L.w, L.y + L.h), w = x1 - x0, h = y1 - y0, mov = (c) => (o.still ? '' : c), r = gardenRand('ev-art|' + id); let s = '';
   switch (id) {
-    case 'fog': for (let i = 0; i < 5; i++) s += `<ellipse class="${mov('gca-drift')}" style="animation-delay:-${i * 7}s" cx="${_gcwN(x0 + w * (0.1 + i * 0.2))}" cy="${_gcwN(y0 + h * (0.06 + r() * 0.4))}" rx="${_gcwN(w * 0.26)}" ry="${_gcwN(26 + r() * 22)}" fill="#f4f6f8" fill-opacity=".34"/>`; return s;
+    case 'fog': for (let i = 0; i < 14; i++) s += `<ellipse class="${mov('gca-drift')}" style="animation-delay:-${i * 4}s" cx="${_gcwN(x0 + w * r())}" cy="${_gcwN(y0 - 16 + h * 0.55 * r())}" rx="${_gcwN(110 + r() * 110)}" ry="${_gcwN(16 + r() * 22)}" fill="#f4f6f8" fill-opacity=".5"/>`; return s;
     case 'storm': { s += `<rect x="${_gcwN(x0)}" y="${_gcwN(y0)}" width="${_gcwN(w)}" height="${_gcwN(h)}" fill="#0a1a2e" fill-opacity=".26"/><rect class="${mov('gca-flash')}" x="${_gcwN(x0)}" y="${_gcwN(y0 - 300)}" width="${_gcwN(w)}" height="${_gcwN(h + 300)}" fill="#f4f8ff" fill-opacity="0"/>`; let d = ''; for (let i = 0; i < 12; i++) { const x = x0 + r() * w, y = y0 + r() * h * 0.6; d += `M${_gcwN(x)} ${_gcwN(y)}q8 -3 18 0`; } return s + `<path d="${d}" stroke="#ffffff" stroke-opacity=".5" stroke-width="1.4" fill="none" stroke-linecap="round"/>`; }
     case 'meteor': for (let i = 0; i < 5; i++) { const x = x0 + w * (0.1 + r() * 0.8), y = y0 - 130 + r() * 120; s += `<path class="${mov('gca-streak')}" style="animation-delay:-${_gcwN(i * 1.7)}s" d="M${_gcwN(x)} ${_gcwN(y)}l-46 22" stroke="#fff6c8" stroke-width="2" stroke-linecap="round"/>`; const rx = x0 + w * (0.1 + r() * 0.8), ry = y0 + 20 + r() * h * 0.5; s += `<path d="M${_gcwN(rx)} ${_gcwN(ry)}l-16 7" stroke="#fff6c8" stroke-opacity=".35" stroke-width="1.4" stroke-linecap="round"/>`; } return s;
     case 'blood-moon': { const cx = x0 + w * 0.68, cy = y0 - 90; return `<rect x="${_gcwN(x0)}" y="${_gcwN(y0)}" width="${_gcwN(w)}" height="${_gcwN(h)}" fill="#8a1a1a" fill-opacity=".2"/><circle cx="${_gcwN(cx)}" cy="${_gcwN(cy)}" r="34" fill="#c8402a"/><circle cx="${_gcwN(cx - 9)}" cy="${_gcwN(cy - 7)}" r="7" fill="#a83020"/><circle cx="${_gcwN(cx + 11)}" cy="${_gcwN(cy + 9)}" r="5" fill="#a83020"/><ellipse cx="${_gcwN(cx)}" cy="${_gcwN(y0 + 60)}" rx="36" ry="10" fill="#e8503a" fill-opacity=".42"/><ellipse cx="${_gcwN(cx)}" cy="${_gcwN(y0 + 84)}" rx="24" ry="6" fill="#e8503a" fill-opacity=".3"/>`; }
@@ -85,6 +85,8 @@ function gardenCatchWorldArt(sc, o) {
     if (hot && hot.id === s.id) push('hot' + s.id, 28, s.x, `<g transform="translate(${_gcwN(x)} ${_gcwN(y)})">${_gcwGulls(o)}</g>`);
   }
   for (const id of list) { const svg = _gcwEvent(id, sc, o); if (svg) push('ev' + id, id === 'festival' ? 13 : 29, 0, svg); }
+  if (Array.isArray(ca.sg)) { const [sx, sy] = _gcwP(ca.sg[0] + 0.5, ca.sg[1] + 1); push('sugar' + ca.sg.join('-'), ca.sg[1] + 2, ca.sg[0], `<g transform="translate(${_gcwN(sx)} ${_gcwN(sy)})"><ellipse cx="0" cy="-18" rx="5.4" ry="9" fill="#6a3a14" fill-opacity=".85"/><path d="M-3 -10q1 5 0 8M3 -11q1 4 0 6" stroke="#6a3a14" stroke-width="1.4" fill="none" stroke-linecap="round"/><ellipse cx="-1.6" cy="-21" rx="1.5" ry="2.6" fill="#ffe9a8"/></g>`); }   // the sugar on a tree: it glistens
+  if (gardenWorkOwned('rowing-boat')) { const bp = GARDEN_PROPS.find(q => q.id === 'boat'); if (bp) { const [bx, by] = _gcwP(bp.x + bp.w / 2, bp.y + 0.4); push('boatflag', Math.ceil(bp.y + bp.h), bp.x, `<g transform="translate(${_gcwN(bx)} ${_gcwN(by)})"><path d="M18 2V-22" stroke="#6e4c2a" stroke-width="1.8"/><path d="M18 -22l14 4l-14 4z" fill="#d8452a"/><path d="M-10 -3L16 6M10 -3L-16 6" stroke="#5a3a20" stroke-width="2" stroke-linecap="round"/></g>`); } }   // it is yours: a flag on the mast, and oars
   if (Array.isArray(ca.rk) && ca.rk.length) push('rk' + gardenHash(JSON.stringify(ca.rk)).toString(36), Math.ceil(GARDEN_CATCH_CELLS.rack.y), GARDEN_CATCH_CELLS.rack.x, _gcwRack(ca.rk));
   return out;
 }
@@ -111,9 +113,10 @@ function _gcwBoard(p, sc, o, ca) {
   let b = '<ellipse cx="0" cy="2" rx="24" ry="4" fill="#1a1208" fill-opacity=".2"/><path d="M-20 0V-52M20 0V-52" stroke="#6e4c2a" stroke-width="3.4"/><rect x="-28" y="-66" width="56" height="44" rx="2" fill="#8a6238" stroke="#5a3a20" stroke-width="1.4"/><path d="M-30 -66L0 -74L30 -66z" fill="#6a4a3a"/>';
   // the poster
   b += '<rect x="-25" y="-63" width="24" height="30" fill="#f4ead0" stroke="#b8a678" stroke-width=".6"/><path d="M-23 -60h20M-23 -37h20" stroke="#8a3a2a" stroke-width="1.6"/>';
-  if (wanted) b += `<g transform="translate(-13 -48) scale(.15)" filter="brightness(.2)">${gardenFishArt(wanted.id, { uid: 'wp' })}</g>`;
+  if (wanted) b += `<g transform="translate(-13 -48) scale(.42)">${_gfsArt(wanted, 25)}</g>`;
   // today's forecast: a pin on the hot spot of a little map
-  b += `<rect x="3" y="-63" width="22" height="15" fill="#d8ecf4" stroke="#8ab4c8" stroke-width=".6"/><circle cx="${_gcwN(3 + 22 * Math.min(1, hot.x / 28))}" cy="${_gcwN(-63 + 15 * Math.min(1, Math.max(0, (hot.y - 13) / 12)))}" r="1.8" fill="#e8503a"/>`;
+  const L = gardenLakeWater();
+  b += `<rect x="3" y="-63" width="22" height="15" fill="#d8ecf4" stroke="#8ab4c8" stroke-width=".6"/><circle cx="${_gcwN(3 + 22 * Math.min(1, (hot.x - L.x) / L.w))}" cy="${_gcwN(-63 + 15 * Math.min(1, Math.max(0, (hot.y - L.y) / L.h)))}" r="1.8" fill="#e8503a"/>`;
   // the lake's record
   b += '<rect x="3" y="-45" width="22" height="13" fill="#f4ead0" stroke="#b8a678" stroke-width=".6"/>';
   if (rec && gardenFishDef(rec[0])) b += `<g transform="translate(14 -38) scale(.13)">${gardenFishArt(rec[0], { uid: 'wr' })}</g>`;

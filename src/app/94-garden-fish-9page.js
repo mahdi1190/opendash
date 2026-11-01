@@ -6,7 +6,7 @@
      Fish book           Get ready: what that fish needs, put on what you have, walk there and cast
    Plain words. Everything here is read from tables and your own save, or from a friend's cleaned snapshot.
    ============================================================ */
-function _gcpSay(r) { return _gdpSay(r); }
+function _gcpSay(r) { if (r && r.ok && r.msg && typeof toast === 'function') toast(r.msg, { icon: 'fish', timeout: 4500 }); return _gdpSay(r); }   // (_gdpSay only speaks up for a no)
 function _gcpCard(title, ic) { const c = _gdpEl('section', 'card gca-card'); const h = _gdpEl('div', 'gdc-market-h'); h.innerHTML = `${icon(ic)}<b>${esc(title)}</b>`; c.appendChild(h); return c; }
 function _gcpClose() { try { if (typeof _gdp !== 'undefined' && _gdp.pop && typeof _dialogClose === 'function' && _dialogClose) { _gdp.pop = null; _dialogClose(); } } catch (e) { /* closed already */ } }
 
@@ -27,7 +27,7 @@ function gardenSetupPanel(el) {
     box.appendChild(_gdpEl('b', null, s ? `Setup ${i + 1}: ${(d(s.reel) || { name: 'reel' }).name}, ${(d(s.bait) || { name: 'bait' }).name}` : `Setup ${i + 1}: empty`));
     const f = _gdpEl('div', 'gd-card-f');
     if (s) f.appendChild(_gdpBtn('Put it on', { icon: 'check', kind: 'btn-primary', run: () => _gcpSay(gardenSetupUse(i)) }));
-    f.appendChild(_gdpBtn(s ? 'Save over' : 'Save what I have on', { icon: 'save', kind: 'btn-ghost', run: () => { _gcpSay(gardenSetupSave(i)); _gdxRepaintTab(); } }));
+    f.appendChild(_gdpBtn(s ? 'Save over' : 'Save what I have on', { icon: 'check', kind: 'btn-ghost', run: () => { _gcpSay(gardenSetupSave(i)); _gdxRepaintTab(); } }));
     box.appendChild(f); slots.appendChild(box);
   }
   c.appendChild(slots); el.appendChild(c);
@@ -104,7 +104,7 @@ function gardenLakeTab(el, m) {
     k.appendChild(rows); el.appendChild(k);
   } else _gcpAngler(el, m);
   // today
-  const F = _gcpCard('Today at the lake', 'cloud-sun'), hot = gardenHotSpot(today), events = gardenEventsNow();
+  const F = _gcpCard('Today at the lake', 'cloud'), hot = gardenHotSpot(today), events = gardenEventsNow();
   for (const id of events) { const e = GARDEN_LAKE_EVENTS[id]; if (e) { const p = _gdpEl('p', 'gca-ev'); p.innerHTML = `${icon(e.icon)}<b>${esc(e.name)}.</b> <span>${esc(e.says)}</span>`; F.appendChild(p); } }
   F.appendChild(_gdpEl('p', 'gca-p', `The gulls are over ${hot.name.toLowerCase()} today. ${hot.says}`));
   F.appendChild(_gdpEl('p', 'gca-p muted', _GCP_MOON[_gtMoon(today)] || ''));
@@ -113,7 +113,7 @@ function gardenLakeTab(el, m) {
   if (fest) {
     const what = fest.kind === 'bug' ? 'The bug-off' : 'The fishing festival';
     F.appendChild(_gdpEl('p', 'gca-p', fest.days === 0 ? `${what} is today! ${fest.kind === 'bug' ? 'Net as many as you can.' : 'Weigh in your best fish.'}` : `${what} is ${fest.days === 1 ? 'tomorrow' : `in ${fest.days} days`}. Flags go up along the shore.`));
-    if (fest.days === 0 && !visit) { const done = !!(_gdG().fd[today] || {}).fw; const f = _gdpEl('div', 'gd-card-f'); f.appendChild(_gdpBtn(done ? 'You have weighed in' : fest.kind === 'bug' ? 'Show the judges your bugs' : 'Weigh in', { icon: 'scale', kind: 'btn-primary', disabled: done, run: () => { _gcpSay(gardenFestivalWeigh()); _gdxRepaintTab(); } })); F.appendChild(f); }
+    if (fest.days === 0 && !visit) { const done = !!(_gdG().fd[today] || {}).fw; const f = _gdpEl('div', 'gd-card-f'); f.appendChild(_gdpBtn(done ? 'You have weighed in' : fest.kind === 'bug' ? 'Show the judges your bugs' : 'Weigh in', { icon: 'trophy', kind: 'btn-primary', disabled: done, run: () => { _gcpSay(gardenFestivalWeigh()); _gdxRepaintTab(); } })); F.appendChild(f); }
   }
   el.appendChild(F);
   // wanted

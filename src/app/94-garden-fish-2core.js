@@ -121,7 +121,7 @@ function gardenCatchFish(plan, res) {
   const perfect = !!res.perfect;
   let q = 0;
   if (def.cat === 'fish') {
-    if (perfect) q = Math.min(plan.qmax || 1, 1 + (rnd() < 0.35 ? 1 : 0) + (rnd() < 0.08 ? 1 : 0));
+    if (perfect) q = Math.min(plan.qmax || 1, 1 + (rnd() < 0.35 ? 1 : 0) + (rnd() < 0.08 ? 1 : 0) + (plan.hookQ || 0));
     else q = rnd() < 0.12 + 0.06 * (plan.tier || 1) ? Math.min(plan.qmax || 1, 1) : 0;
   }
   const cm = def.cat === 'fish' ? Math.max(def.cm[0], Math.min(def.cm[1], Math.round(Number(plan.cm) || def.cm[0]))) : 0;   // the size of the very fish you saw (a host's number is kept to what that kind can be)

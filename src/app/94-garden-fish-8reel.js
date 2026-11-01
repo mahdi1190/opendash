@@ -45,6 +45,7 @@ function _gcrMove(R, spd, jump) {
   else {
     R.saying = '';
     if (base === 'smooth') { R.target = Math.max(0.06, Math.min(0.94, R.f + (r() - 0.5) * 2 * jump * 2)); R.tt = 0.8 + r() * 1.2; R.sp = spd; }
+    else if (base === 'dart' && R.diff < E.moveFrom) { R.target = Math.max(0.06, Math.min(0.94, R.f + (r() - 0.5) * 2 * (0.2 + 0.05 * R.diff))); R.tt = 0.8 + r() * 0.8; R.sp = spd * 1.6; }   // (a minnow flickers about; it does not fly across the track: easy fish stay easy)
     else if (base === 'dart') { R.target = 0.06 + r() * 0.88; R.tt = 0.45 + r() * 0.8; R.sp = spd * 2.6; }
     else if (base === 'floater') { R.target = Math.min(0.94, R.f + 0.12 + r() * 0.3); if (R.f > 0.8) R.target = 0.2 + r() * 0.3; R.tt = 0.7 + r() * 1.1; R.sp = spd * 0.9; }
     else { R.target = Math.max(0.06, R.f - 0.12 - r() * 0.3); if (R.f < 0.2) R.target = 0.6 + r() * 0.3; R.tt = 0.7 + r() * 1.1; R.sp = spd * 0.9; }
