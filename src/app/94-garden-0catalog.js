@@ -22,7 +22,7 @@
                                   planters, wildlife homes, seasonal) with their effects
      GARDEN_VISITORS              29 visitors (insects, birds, mammals, pond life) and when they come
      GARDEN_TILES                 ground tiles (the areas' grounds and the pond water)
-     GARDEN_AREAS                 the six areas and the lawn: where they are, their level, what grows there
+     GARDEN_AREAS                 the areas and the lawn: where they are, their level, what grows there (the four plots you could buy are split into sections: 94-garden-lands-0table.js)
      GARDEN_TOOLS                 watering cans, the hose, golden shears, fertiliser
      GARDEN_BOUQUETS              bouquet styles (which flowers make which bouquet)
      GARDEN_LEVELS                level titles; gardenLevelOf(xp) -> {level, into, need, pct, title}
@@ -467,7 +467,8 @@ const GARDEN_AREAS = _gdRows([
   // 2.22: the Wild woods (east) are the bug-catchers' corner; the Lake (south) is where you fish, from the shore or the pier.
   { id: 'woods', name: 'Wild woods', lv: 4, x: 20, y: 0, w: 8, h: 11, tile: 'forest', cats: _gdF(['tree', 'wild', 'fruit', 'herb']), icon: 'trees', bugs: 1, blurb: 'Tall trees, logs and mushrooms: the best place to catch bugs.' },
   { id: 'lake', name: 'The lake', lv: 1, x: 0, y: 11, w: 28, h: 19, tile: 'sand', water: _gdF({ x: 0, y: 13, w: 28, h: 17 }), cats: _gdF([]), icon: 'fish', fishing: 1, blurb: 'Cast a line from the shore or the pier. Deeper water, better fish.' },
-  // 2.23: land you buy with coins, either side of the lane that runs east along the shore (y 11-12). buy: coins; lv: the garden level it can be bought from; look: how the ground is drawn.
+  // 2.23: land you buy with coins, either side of the lane that runs east along the shore (y 11-12). buy: what it cost; lv: the garden level it could be bought from; look: how the ground is drawn.
+  // Not sold whole any more: someone who bought one keeps it (its id is in their ledger), everyone else buys its sections (94-garden-lands-0table.js).
   // At most 12 areas in all: a friend's snapshot carries the open ones and older versions check that list's length (lib/friends/garden.mjs).
   { id: 'hill', name: 'Sunny hill', lv: 2, buy: 150, look: 'meadow', x: 28, y: 0, w: 16, h: 11, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree', 'herb']), icon: 'flower', blurb: 'Open grass that catches the sun all day.' },
   { id: 'field', name: 'Kitchen field', lv: 3, buy: 300, look: 'veg', x: 28, y: 13, w: 16, h: 17, tile: 'tilled', cats: _gdF(['veg', 'herb', 'fruit']), icon: 'carrot', blurb: 'Long rows of good dark soil.' },
@@ -476,7 +477,7 @@ const GARDEN_AREAS = _gdRows([
 ]);
 /* The land you own, kept here so gardenAreaAt stays a plain lookup: 94-garden-1core.js fills it from your wallet (items 'land:<id>'). Empty in Node, where nothing asks by level. */
 const _GD_LAND = new Set();
-function gardenLandSet(ids) { _GD_LAND.clear(); for (const id of ids || []) _GD_LAND.add(id); }
+function gardenLandSet(ids) { _GD_LAND.clear(); for (const id of ids || []) _GD_LAND.add(id); if (typeof gardenLandPropsReset === 'function') gardenLandPropsReset(); }
 /* What has been built for the lake in the garden on screen (GARDEN_WORKS): yours, or on a visit your friend's (the snapshot's `wk`). */
 const _GD_WORKS = new Set();
 function gardenWorksSet(ids) { _GD_WORKS.clear(); for (const id of ids || []) _GD_WORKS.add(id); }
@@ -718,16 +719,22 @@ function gardenLockOf(def, ctx) {
 }
 /** The area a cell belongs to ('lawn' when no area claims it, or the area is not open yet at that level). */
 function gardenAreaAt(x, y, level) {
-  for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
+  for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) {
+    // a plot is sections and trails now (94-garden-lands-0table.js), unless you bought it whole, when it answers as it always did. An open trail is lawn to everything else: you walk on it, nothing grows on it.
+    if (a.buy && !_GD_LAND.has(a.id) && typeof gardenLandCell === 'function') { const c = gardenLandCell(x, y); if (c) return level == null || _GD_LAND.has(c.id) ? (c.plot ? c.id : 'lawn') : 'locked:' + c.id; }
+    return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
+  }
   return 'lawn';
 }
 /** Is this cell open water (the pond's or the lake's)? A pier stands over water but is not water to walk on. */
 function gardenIsWater(x, y) {
+  if (typeof gardenLandWaterAt === 'function') { const q = gardenLandWaterAt(x, y); if (q !== null) return q && !gardenPropWalk(x, y); }
   for (const a of GARDEN_AREAS) { const w = a.water; if (w && x >= w.x && x < w.x + w.w && y >= w.y && y < w.y + w.h) return !gardenPropWalk(x, y); }
   return false;
 }
 /** Which water a cell is: '' (not water), 'pond', or the lake's depth: 'shallow', 'mid', 'deep' (by rows from the shore). */
 function gardenWaterZone(x, y) {
+  if (typeof gardenLandWaterAt === 'function') { const q = gardenLandWaterAt(x, y); if (q !== null) return q ? 'pond' : ''; }
   for (const a of GARDEN_AREAS) {
     const w = a.water; if (!w || x < w.x || x >= w.x + w.w || y < w.y || y >= w.y + w.h) continue;
     if (!a.fishing) return 'pond';
@@ -738,6 +745,7 @@ function gardenWaterZone(x, y) {
 }
 /** The fixed prop covering a cell (the pier, the tackle shop...), or null. */
 function gardenPropAt(x, y) {
+  if (typeof gardenLandPropAt === 'function') { const q = gardenLandPropAt(x, y); if (q) return q; }
   for (const p of GARDEN_PROPS) if (x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h && (!p.needs || _GD_WORKS.has(p.needs))) return p;
   return null;
 }
@@ -755,6 +763,7 @@ function gardenCellOk(def, x, y, level, kind) {
   for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) {
     const a = gardenAreaAt(x + dx, y + dy, level);
     if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)); return ar.buy ? `${ar.name}: buy this land first` : `${ar.name} opens at garden level ${ar.lv}`; }
+    if (typeof gardenLandPathAt === 'function' && gardenLandPathAt(x + dx, y + dy) && !(kind === 'decor' && def.layer === 'ground')) return kind === 'decor' ? 'Keep the path clear' : 'That is a path: plants go in the beds';
     if (kind !== 'decor') {
       if (area && a !== area) return 'Straddles two areas';
       area = a;
@@ -765,7 +774,8 @@ function gardenCellOk(def, x, y, level, kind) {
   }
   if (kind === 'decor') { if (def.areas && !def.areas.includes(area)) return 'Not here'; return ''; }
   const ar = gardenArea(area);
-  const ok = def.areas ? def.areas.includes(area) : ar && ar.cats.includes(def.cat);
+  const landCell = typeof gardenLandCell === 'function' && ar && ar.buy && !ar.plot ? gardenLandCell(x, y) : null;   // (a plot you own whole also grows what its sections do)
+  const ok = def.areas ? def.areas.includes(area) : ar && (ar.cats.includes(def.cat) || !!(landCell && landCell.plot && landCell.cats.includes(def.cat)));
   if (!ok) {
     const where = (def.areas || (GARDEN_CATS[def.cat] || {}).areas || []).map(id => gardenArea(id)).filter(Boolean).map(a2 => a2.name.toLowerCase());
     return area === 'lawn' ? 'Plants grow in the beds, not the lawn' : `${def.name} grows in the ${where.slice(0, 2).join(' or ')}`;
@@ -858,6 +868,7 @@ function gardenSnapshotClean(raw) {
     out.decor.push([d[0], x, y, int(d[3], 0, 3) || 0, int(d[4], 0, 7) || 0]);
   }
   // 2.22: the showcase (the tank and the bug case): ids from the fish and bug tables, sizes in bounds (94-garden-fish-0catalog.js)
+  if (typeof gardenLandsClean === 'function') gardenLandsClean(raw, out);   // the sections and features they have (94-garden-lands-0table.js); an older app drops these
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   return out;
 }

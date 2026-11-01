@@ -757,7 +757,10 @@ function _glhPanel(el, v) {
 /* your own garden actions, for who is here: the can tips, the plant appears */
 document.addEventListener('opendash:garden', (ev) => {
   if (!_glh.on || !_glhAnyone()) return;
-  const d = ev && ev.detail; if (!d || d.x == null) return;
+  const d = ev && ev.detail;
+  // land, something built, a find: everyone here sees it now, not when they next come (after the action has finished saving)
+  if (d && (d.kind === 'land' || d.kind === 'landshow')) { setTimeout(() => { if (_glh.on) for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f); }, 0); return; }
+  if (!d || d.x == null) return;
   const t = { water: 'water', plant: 'plant', harvest: 'harvest', prune: 'weed', feed: 'water' }[d.kind]; if (!t) return;
   _glhSend('all', 'res', { w: 0, t, ok: true, x: Math.floor(d.x), y: Math.floor(d.y) });
 });
