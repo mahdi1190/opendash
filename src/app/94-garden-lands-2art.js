@@ -392,7 +392,8 @@ const _GLD_ART = (function () {
       if (sec.buy && !forSale) continue;
       if (!forSale && sec.lv > lvNow + 1) continue;   // far off: the land office lists it, a sign here would only be clutter
       const noKey = forSale && sec.needs && !((sc.landShow && sc.landShow.c) || []).includes(GARDEN_LAND_KEY_ID);
-      live += sign(px(D.fx + 0.5), py(D.fy + 1) - 2, noKey ? 'Key' : forSale ? String(sec.buy) : `Level ${sec.lv}`, forSale && !noKey, sec.id);
+      const postNear = GARDEN_ZONE_GATES.some(g => Math.abs(g.x - D.fx) <= 1 && D.fy + 1 >= g.y && D.fy <= g.y + g.h);
+      live += sign(px(D.fx + 0.5) + (postNear ? 34 : 0), py(D.fy + 1) - 2, noKey ? 'Key' : forSale ? String(sec.buy) : `Level ${sec.lv}`, forSale && !noKey, sec.id);
     }
     return { s, live };
   }
