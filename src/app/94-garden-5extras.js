@@ -116,7 +116,7 @@ function _gdxShopBody(el, m, kind) {
   const cmp = (a, b) => { if (searching && lead(a) !== lead(b)) return lead(a) - lead(b); for (let i = 0; i < a.key.length; i++) { if (a.key[i] === b.key[i]) continue; return typeof a.key[i] === 'string' ? a.key[i].localeCompare(b.key[i]) : a.key[i] - b.key[i]; } return 0; };
   if (!rows.length) { none(); return; }
   const place = `shop:${kind}:${_gdx.shopCat}` + (searching ? '?' : ''), sig = searching ? _gdx.q : '';
-  gardenPager(el, { key: place, sig, items: gardenPagerOrder(place, rows, r => r.o.id, cmp, sig), grid: 'gd-grid gd-shop-grid', row: GDX_TILE_ROW, draw: (r) => _gdxCard(r.o, m) });
+  gardenPager(el, { key: place, sig, items: gardenPagerOrder(place, rows, r => r.o.id, cmp, sig), grid: 'gd-grid gd-shop-grid', row: GDX_TILE_ROW, rowSm: 128, draw: (r) => _gdxCard(r.o, m) });
 }
 /** Today's deal as one slim strip: the seed, its name and the price button. */
 function _gdxDealStrip(deal, m) {
@@ -240,7 +240,7 @@ function gardenAlmanacTab(el, m) {
   const rarities = Object.keys(GARDEN_RARITY), rank = (d) => Math.max(0, rarities.indexOf(d.rarity));
   const cmp = (a, b) => (cats ? cats.indexOf(a.cat) - cats.indexOf(b.cat) : 0) || (g.disc[a.id] ? 0 : 1) - (g.disc[b.id] ? 0 : 1) || rank(a) - rank(b) || String(a.name).localeCompare(b.name);
   const place = `alm:${kind}:${_gdx.almCat}`;
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, list, d => d.id, cmp), grid: 'gd-grid gd-alm-grid gpg-book', row: 146, label: cats ? (d) => names[d.cat].label : null, draw: (d) => {
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, list, d => d.id, cmp), grid: 'gd-grid gd-alm-grid gpg-book', row: 146, rowSm: 126, label: cats ? (d) => names[d.cat].label : null, draw: (d) => {
     const found = !!g.disc[d.id];
     const c = _gdpEl('button', 'gd-almcard' + (found ? '' : ' is-unknown') + (d.rarity ? ' gd-r-' + d.rarity : '')); c.type = 'button';
     const art = _gdpEl('div', 'gd-card-art');

@@ -18,7 +18,7 @@
    Arrows act on the press rather than the release: the garden repaints often, and a repaint between press and release would swallow the click.
    ============================================================ */
 const _gpg = { at: new Map(), sig: new Map(), per: new Map(), order: new Map(), session: 0, live: [], ro: null, keys: false, focus: '' };
-function gardenPagerFresh() { _gpg.session++; }
+function gardenPagerFresh() { _gpg.session++; _gpg.opened = performance.now(); }
 function gardenPagerOrder(key, rows, idOf, cmp, sig) {
   const s = sig == null ? '' : String(sig), C = _gpg.order.get(key), list = rows.slice();
   if (C && C.session === _gpg.session && C.sig === s) {
@@ -29,7 +29,8 @@ function gardenPagerOrder(key, rows, idOf, cmp, sig) {
   _gpg.order.set(key, { session: _gpg.session, sig: s, pos: new Map(list.map((r, i) => [idOf(r), i])) });
   return list;
 }
-function _gpgRow(P) { return window.innerWidth <= 760 && P.o.rowSm ? P.o.rowSm : P.o.row || 150; }
+function _gpgSmall() { return window.innerWidth <= 760 || window.innerHeight <= 700; }
+function _gpgRow(P) { return _gpgSmall() && P.o.rowSm ? P.o.rowSm : P.o.row || 150; }
 /** The panel that bounds the page, if it has a height of its own. */
 function _gpgBox(P) { return P.root.closest('.gpg-box, .modal.is-fixed > .modal-b'); }
 function _gpgPages(P) { return Math.max(1, Math.ceil(P.items.length / Math.max(1, P.per))); }
@@ -39,7 +40,12 @@ function _gpgPageNow(P) {
 }
 function _gpgPaint(P, dir) {
   const n = _gpgPageNow(P), per = Math.max(1, P.per), on = P.items.slice(n * per, (n + 1) * per), frag = document.createDocumentFragment();
-  for (const it of on) { const e = P.o.draw(it); if (e) frag.appendChild(e); }
+  for (const it of on) {
+    const e = P.o.draw(it); if (!e) continue;
+    const t = e.querySelector('.gd-card-t');   // a card's words can be longer than its row: the whole of them on hover
+    if (t && !e.hasAttribute('data-tip')) e.setAttribute('data-tip', [...t.children].map(x => x.textContent).filter(Boolean).join(' · '));
+    frag.appendChild(e);
+  }
   P.page.replaceChildren(frag);
   if (dir) { P.page.classList.remove('gpg-in-l', 'gpg-in-r'); void P.page.offsetWidth; P.page.classList.add(dir < 0 ? 'gpg-in-l' : 'gpg-in-r'); }
   const pages = _gpgPages(P);
@@ -111,7 +117,7 @@ function gardenPager(parent, o) {
   if (o.sig != null && _gpg.sig.get(key) !== String(o.sig)) { _gpg.sig.set(key, String(o.sig)); _gpg.at.delete(key); }
   const root = document.createElement('div'); root.className = 'gpg' + (o.cls ? ' ' + o.cls : '');
   const page = document.createElement('div'); page.className = 'gpg-page ' + (o.grid || '');
-  page.style.setProperty('--gpg-row', (window.innerWidth <= 760 && o.rowSm ? o.rowSm : o.row || 150) + 'px');
+  page.style.setProperty('--gpg-row', (_gpgSmall() && o.rowSm ? o.rowSm : o.row || 150) + 'px');
   const bar = document.createElement('nav'); bar.className = 'gpg-bar'; bar.setAttribute('aria-label', 'Pages');
   const P = { key, o, items: o.items || [], root, page, bar, per: _gpg.per.get(key) || o.guess || 12 };
   P.prev = _gpgArrow(P, -1); P.next = _gpgArrow(P, 1);
@@ -128,5 +134,7 @@ function gardenPager(parent, o) {
   if (!_gpg.keys) { _gpg.keys = true; document.addEventListener('keydown', _gpgKey, true); }
   // (a panel opening is not in the page yet: it is by the time this runs, and before anything is on the screen)
   queueMicrotask(() => { _gpgWatch(); _gpgFit(P); });
+  // (a pop-up puts the focus in its first box as it opens. A list would take the arrow keys for itself.)
+  if (performance.now() - (_gpg.opened || 0) < 300) setTimeout(() => { const a = document.activeElement; if (a && a.tagName === 'SELECT' && root.isConnected && a.closest('.modal') === root.closest('.modal')) a.blur(); }, 30);
   return P;
 }

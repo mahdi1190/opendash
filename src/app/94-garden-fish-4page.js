@@ -102,7 +102,7 @@ function _gdcBagList(el, m, bag, views) {
   acts.appendChild(_gdpBtn('Sell spare bugs', { icon: 'coins', disabled: !bag.nBugs, tip: 'Sell every bug except one of each kind', run: () => _gdcSay(gardenCatchSellAll('bug', 1)) }));
   bar.appendChild(acts); el.appendChild(bar);
   const items = (_gdc.bagKind === 'bug' ? [] : bag.fish.map(r => ['fish', r])).concat(_gdc.bagKind === 'fish' ? [] : bag.bugs.map(r => ['bug', r]));
-  gardenPager(el, { key: 'catch:bag:' + _gdc.bagKind, items, grid: 'gd-grid gdc-grid gpg-gear', row: 232, rowSm: 232, label: ([k]) => (k === 'bug' ? 'Bugs' : 'Fish'), draw: ([k, r]) => _gdcBagCard(k, r, m) });
+  gardenPager(el, { key: 'catch:bag:' + _gdc.bagKind, items, grid: 'gd-grid gdc-grid gpg-gear', row: 232, rowSm: 206, label: ([k]) => (k === 'bug' ? 'Bugs' : 'Fish'), draw: ([k, r]) => _gdcBagCard(k, r, m) });
 }
 function _gdcItemName(k) {
   if (k.startsWith('seed:')) { const p = gardenPlant(k.slice(5)); return p ? p.name.toLowerCase() + ' seed' : 'a seed'; }
@@ -230,7 +230,7 @@ function _gdcTackle(el, m) {
   const kind = on[0], mine = (d) => (kind === 'float' ? gardenBobberOwned(d.id) : d.pack ? gardenHas('kit:' + d.id) > 0 : gardenGearOwned(d.id));
   const cmp = (a, b) => (mine(a) ? 0 : 1) - (mine(b) ? 0 : 1) || (a.price || 0) - (b.price || 0);
   const place = 'catch:tackle:' + kind;
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, on[2], d => d.id, cmp), grid: 'gd-grid gdc-grid gpg-gear', row: 246, rowSm: 246, draw: (d) => on[3](d, m) });
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, on[2], d => d.id, cmp), grid: 'gd-grid gdc-grid gpg-gear', row: 246, rowSm: 206, draw: (d) => on[3](d, m) });
 }
 
 /* ---------- the showcase ---------- */

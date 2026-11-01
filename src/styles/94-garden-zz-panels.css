@@ -168,3 +168,20 @@ html[data-theme="dark"] .gpg-mid, html[data-theme="dark"] .gpg-what { color: inh
 .grg-wrap .grg-map-w { max-width: min(100%, calc((82vh - 240px) * 1.18)); }
 .gpg-gear .gd-card-t small.muted { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; flex: none; }
 .gd-tile .gd-price.is-locked { white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.gpg-gear .gd-card-t small.gd-facts { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; flex: none; }
+.gpg-gear .gd-card-t small.gvb-how { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; flex: none; }
+/* a short window: the panel takes the height there is, the pictures give way first, and the sentences above a list wait until there is room for them */
+@media (max-height: 700px) and (min-width: 761px) {
+  .modal.gd-popup.is-fixed { height: 94vh; top: 3vh; margin-block: 0; }
+}
+@media (max-height: 700px) {
+  .gd-tile-art { height: 42px; } .gd-tile-art svg { max-width: 42px; max-height: 42px; }
+  .gpg-page > .gdb-card .gdb-card-art, .gpg-page > .gd-almcard .gd-card-art { flex-basis: 44px; min-height: 36px; }
+  .gpg-page > .gdb-card svg, .gpg-page > .gd-almcard .gd-card-art svg { max-height: 44px; }
+  .gpg-gear > .gd-card .gd-card-art { flex-basis: 44px; height: 44px; }
+  .gpg-gear > .gd-card .gd-card-art svg { max-height: 42px; }
+  .gpg-gear .gd-card-t small.muted { -webkit-line-clamp: 2; }
+  .gdb-head > p.muted, .gdc-intro { display: none; }
+  .gd-deal { display: none !important; }
+  .modal.gd-popup .modal-h { min-height: 40px; padding-block: 4px; }
+}

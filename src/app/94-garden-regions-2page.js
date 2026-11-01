@@ -77,7 +77,7 @@ function _grgPage(el, m, R) {
   el.appendChild(head);
   const log = gardenCatchLog(), rec = (k, id) => (k === 'fish' ? log.fish : log.bugs).find(x => x.def.id === id), place = 'map:' + R.id;
   const rows = gardenRegionKinds(R.id).map(x => Object.assign({ kind: x.kind }, rec(x.kind, x.def.id)));
-  gardenPager(el, { key: place, items: gardenPagerOrder(place, rows, r => r.kind + r.def.id, _gdbCmp), grid: 'gdb-grid gpg-book', row: 142, rowSm: 142, label: (r) => (r.kind === 'bug' ? 'Bugs' : 'Fish'), draw: (r) => _gdbCard(r, r.kind, m, '') });
+  gardenPager(el, { key: place, items: gardenPagerOrder(place, rows, r => r.kind + r.def.id, _gdbCmp), grid: 'gdb-grid gpg-book', row: 142, rowSm: 124, label: (r) => (r.kind === 'bug' ? 'Bugs' : 'Fish'), draw: (r) => _gdbCard(r, r.kind, m, '') });
 }
 function gardenRegionTab(el, m) {
   if (_gdc.pick) { const log = gardenCatchLog(), r = (_gdc.pickKind === 'fish' ? log.fish : log.bugs).find(x => x.def.id === _gdc.pick); if (r) { _gdbEntry(el, m, _gdc.pickKind, r); return; } }
