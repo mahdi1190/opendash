@@ -1,17 +1,17 @@
 /* ============================================================
    A ROOM BEHIND THE GARDEN (2.33). A small extra, left for people to find.
-   Four garden gnomes round a scarecrow, then a click on one of the gnomes: everyone who is in the garden is taken to a stage where four red
+   Four garden gnomes round a scarecrow, then a click on the scarecrow: everyone who is in the garden is taken to a stage where four red
    fellows dance and sing, with a song playing. A door on the left takes you back. It is its own little room, drawn over the garden:
    nothing in the garden changes while you are in it, and nothing here is kept.
 
-     gardenBackStep(decor, m)     a click on a decoration in the garden: true when it was one of the four gnomes (and the room opened)
+     gardenBackStep(decor, m)     a click on a decoration in the garden: true when it was a scarecrow with four gnomes round it (and the room opened)
      _eeHear(actor, ev)           somebody else came in, walked or left (gl:fx 'hall': in / at / out; whole units of 16 px on the wire)
      eeTell(fid)                  the host: bring a person who has just arrived along
 
    The song is a file that is not part of the app: <data>/media/stage.ogg, served by server/routes/garden-room.mjs when it is there. Without it a short
    tune is played by the page itself. Everything drawn comes from the tables and functions below; people's looks go through the avatar kit.
    ============================================================ */
-const EE = Object.freeze({ W: 960, H: 600, U: 16, speed: 210, door: Object.freeze({ x: 64, y: 546, x0: 8, x1: 106, y0: 392, y1: 560 }), spawn: Object.freeze({ x: 150, y: 520 }), vol: 0.62, fig: 1.3 });
+const EE = Object.freeze({ W: 960, H: 600, U: 16, speed: 210, door: Object.freeze({ x: 64, y: 546, x0: 8, x1: 106, y0: 392, y1: 560 }), spawn: Object.freeze({ x: 150, y: 520 }), vol: 0.8, volDefault: 50, fig: 1.3 });
 /** The band: where each of the four stands and how it moves (a width to roam, how fast, how high a hop). */
 const EE_BAND = Object.freeze([
   Object.freeze({ id: 'sing', x: 392, y: 362, ax: 12, fx: 0.9, hop: 6, tilt: 3, role: 'sing', ph: 0 }),
@@ -19,7 +19,8 @@ const EE_BAND = Object.freeze([
   Object.freeze({ id: 'dl', x: 232, y: 338, ax: 96, fx: 0.37, hop: 26, tilt: 10, role: 'dance', ph: 3.1 }),
   Object.freeze({ id: 'dr', x: 770, y: 336, ax: 96, fx: 0.29, hop: 26, tilt: 10, role: 'dance', ph: 4.6 }),
 ]);
-const _ee = { on: false, root: null, svg: null, actors: null, notes: null, raf: 0, last: 0, t: 0, lvl: 0, lvlRaw: 0, m: new Map(), me: null, keys: new Set(), sentAt: 0, pawns: [], ac: null, snd: null, mute: false, left: false, hintT: 0, closing: false };
+const EE_VOL_KEY = 'ee-vol';
+const _ee = { volv: 50, on: false, root: null, svg: null, actors: null, notes: null, raf: 0, last: 0, t: 0, lvl: 0, lvlRaw: 0, m: new Map(), me: null, keys: new Set(), sentAt: 0, pawns: [], ac: null, snd: null, mute: false, left: false, hintT: 0, closing: false };
 
 /* ---------- the red fellows: a pixel pawn, five units to a pixel ---------- */
 function _eePawn() {
@@ -84,7 +85,7 @@ function _eeArt() {
   for (const x of [38, 922]) s += `<g transform="translate(${x} 214)"><rect x="-3" y="0" width="6" height="40" fill="#3a2414"/><path d="M-9 0h18l-3 -9h-12z" fill="#7a5322"/><path d="M0 -10Q-9 -22 0 -34Q9 -22 0 -10z" fill="#ff9a2e" class="ee-flame"/><path d="M0 -12Q-4 -20 0 -27Q4 -20 0 -12z" fill="#ffe08a" class="ee-flame"/><circle cx="0" cy="-20" r="34" fill="#ff9a2e" fill-opacity=".16" class="ee-flame"/></g>`;
   // the door, and the sign over it
   const D = EE.door;
-  s += `<g class="ee-door" tabindex="-1"><path d="M${D.x0} ${D.y1}V${D.y0 + 40}Q${D.x0} ${D.y0} ${(D.x0 + D.x1) / 2} ${D.y0}Q${D.x1} ${D.y0} ${D.x1} ${D.y0 + 40}V${D.y1}Z" fill="#3a2414"/>`
+  s += `<g class="ee-door"><title>Leave the room</title><path class="ee-door-glow" d="M${D.x0 - 6} ${D.y1}V${D.y0 + 38}Q${D.x0 - 6} ${D.y0 - 8} ${(D.x0 + D.x1) / 2} ${D.y0 - 8}Q${D.x1 + 6} ${D.y0 - 8} ${D.x1 + 6} ${D.y0 + 38}V${D.y1}Z" fill="#ffe2a0"/><path d="M${D.x0} ${D.y1}V${D.y0 + 40}Q${D.x0} ${D.y0} ${(D.x0 + D.x1) / 2} ${D.y0}Q${D.x1} ${D.y0} ${D.x1} ${D.y0 + 40}V${D.y1}Z" fill="#3a2414"/>`
     + `<path d="M${D.x0 + 8} ${D.y1}V${D.y0 + 44}Q${D.x0 + 8} ${D.y0 + 10} ${(D.x0 + D.x1) / 2} ${D.y0 + 10}Q${D.x1 - 8} ${D.y0 + 10} ${D.x1 - 8} ${D.y0 + 44}V${D.y1}Z" fill="url(#eedoor)"/>`
     + `<path d="M${(D.x0 + D.x1) / 2} ${D.y0 + 12}V${D.y1}" stroke="#3a2414" stroke-width="2"/><rect x="${D.x0 + 18}" y="${D.y0 + 52}" width="24" height="40" rx="2" fill="none" stroke="#4a2c14" stroke-width="2"/><rect x="${D.x1 - 42}" y="${D.y0 + 52}" width="24" height="40" rx="2" fill="none" stroke="#4a2c14" stroke-width="2"/>`
     + `<circle cx="${D.x1 - 20}" cy="${D.y0 + 108}" r="4" fill="#e8c46a"/>`
@@ -172,7 +173,23 @@ async function _eeSongStart() {
   } catch (e) { src = null; }
   if (_ee.ac !== A) { try { ctx.close(); } catch (e) { /* gone */ } return; }   // you have left already
   if (src) { src.start(); A.stop = () => { try { src.stop(); } catch (e) { /* done */ } }; } else A.stop = _eeSynth(ctx, gain);
-  gain.gain.linearRampToValueAtTime(_ee.mute ? 0 : EE.vol, ctx.currentTime + 1.4);
+  gain.gain.linearRampToValueAtTime(_eeGain(), ctx.currentTime + 1.4);
+}
+/** The slider is 0 to 100 and the loudness follows its square, so the low end is gentle. */
+function _eeGain() { return _ee.mute ? 0 : Math.pow(_ee.volv / 100, 2) * EE.vol; }
+function _eeVolRead() {
+  try { const t = localStorage.getItem(EE_VOL_KEY), v = Number(t); if (t !== null && Number.isFinite(v) && v >= 0 && v <= 100) return Math.round(v); } catch (e) { /* no storage: the usual */ }
+  return EE.volDefault;
+}
+function _eeGainApply() {
+  const A = _ee.ac; if (!A) return;
+  try { A.gain.gain.cancelScheduledValues(A.ctx.currentTime); A.gain.gain.setTargetAtTime(_eeGain(), A.ctx.currentTime, 0.08); } catch (e) { /* later */ }
+}
+function _eeSoundSync() {
+  const r = _ee.root; if (!r) return;
+  const b = r.querySelector('.ee-snd span'), v = r.querySelector('.ee-vol');
+  if (b) b.textContent = _ee.mute || _ee.volv === 0 ? 'Sound off' : 'Sound on';
+  if (v) { v.value = String(_ee.volv); v.style.setProperty('--v', _ee.mute ? '0%' : _ee.volv + '%'); }
 }
 function _eeSongStop() {
   const A = _ee.ac; _ee.ac = null;
@@ -273,7 +290,7 @@ function _eeKey(ev) {
   if (!_ee.on) return;
   if (ev.ctrlKey || ev.metaKey || ev.altKey || /^F\d+$/.test(ev.key)) return;
   const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key, down = ev.type === 'keydown';
-  if ((k === 'Enter' || k === ' ' || k === 'Tab') && ev.target && ev.target.closest && ev.target.closest('.ee-ui')) return;   // a button you have tabbed to is yours to press
+  if (ev.target && ev.target.closest && ev.target.closest('.ee-ui') && k !== 'Escape' && (k === 'Enter' || k === ' ' || k === 'Tab' || ev.target.type === 'range')) return;   // a button or the slider you are on is yours to use
   ev.stopImmediatePropagation();
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's', ' ', 'Enter', 'Escape', 'e', 'm'].includes(k)) ev.preventDefault();
   if (!down) { _ee.keys.delete(k); return; }
@@ -285,8 +302,8 @@ function _eeKey(ev) {
 }
 function _eeMute() {
   _ee.mute = !_ee.mute;
-  const A = _ee.ac; if (A) { try { A.gain.gain.setTargetAtTime(_ee.mute ? 0 : EE.vol, A.ctx.currentTime, 0.1); } catch (e) { /* later */ } }
-  const b = _ee.root && _ee.root.querySelector('.ee-snd span'); if (b) b.textContent = _ee.mute ? 'Sound off' : 'Sound on';
+  if (!_ee.mute && _ee.volv === 0) _ee.volv = EE.volDefault;
+  _eeGainApply(); _eeSoundSync();
 }
 function _eeMayEnter() { return !_ee.on && !_ee.closing && !!(typeof _gw !== 'undefined' && _gw.on && _gw.box); }
 /** Open the room. quiet: you were brought here by somebody else (they already know where you are). */
@@ -297,13 +314,13 @@ function eeEnter(o) {
   root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${EE.W} ${EE.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${_eeArt()}`
     + `${_eeStand(436, 366)}<g class="ee-beams"><path class="ee-beam ee-b1" d="M150 36L330 380L90 380Z" fill="url(#eebeam)"/><path class="ee-beam ee-b2" d="M810 36L870 380L630 380Z" fill="url(#eebeam)"/></g>`
     + `<g class="ee-actors">${_eeBand()}</g><g class="ee-notes"></g></svg>`
-    + `<div class="ee-ui"><button type="button" class="btn btn-secondary btn-sm ee-leave">${icon('log-out')}<span>Leave</span></button><button type="button" class="btn btn-secondary btn-sm ee-snd">${icon('music')}<span>Sound on</span></button></div>`
+    + `<div class="ee-ui"><button type="button" class="btn btn-secondary btn-sm ee-leave">${icon('log-out')}<span>Leave</span></button><div class="ee-sound"><button type="button" class="btn btn-secondary btn-sm ee-snd">${icon('music')}<span>Sound on</span></button><input type="range" class="ee-vol" min="0" max="100" step="1" value="50" aria-label="Volume"></div></div>`
     + '<p class="ee-hint">Click to walk. The door is on the left.</p><div class="ee-flash"></div>';
   document.body.appendChild(root);
   _ee.root = root; _ee.svg = root.querySelector('.ee-svg'); _ee.actors = root.querySelector('.ee-actors'); _ee.notes = root.querySelector('.ee-notes');
   // the band lives among the people (so they are put in front of and behind each other by where they stand)
   _ee.pawns = [...root.querySelectorAll('.ee-actors > .ee-pawn')].map(p => ({ pawn: p, pb: p.querySelector('.ee-pb'), sh: p.querySelector('.ee-sh'), mc: p.querySelector('.ee-mc'), mo: p.querySelector('.ee-mo'), gt: p.querySelector('.ee-gt'), open: false, cx: 0, cy: 0 }));
-  _ee.m.clear(); _ee.keys.clear(); _ee.t = 0; _ee.lvl = 0; _ee.last = 0; _ee.mute = false; _ee.left = false; _ee.closing = false;
+  _ee.m.clear(); _ee.keys.clear(); _ee.t = 0; _ee.lvl = 0; _ee.last = 0; _ee.mute = false; _ee.volv = _eeVolRead(); _ee.left = false; _ee.closing = false;
   const sp = EE.spawn, p0 = _eeClamp(sp.x + (Math.random() * 80 - 40), sp.y + (Math.random() * 30 - 15));
   const me = { w: -1, n: 'You', a: (function () { try { return typeof profileGet === 'function' ? profileGet().avatar : null; } catch (e) { return null; } })(), x: p0.x, y: p0.y, tx: null, ty: null, face: 1, dir: 'e', moving: false, me: true, ph: 0 };
   _ee.me = me; _eeMake(me); _eePaint(me, 0);
@@ -311,6 +328,11 @@ function eeEnter(o) {
   root.addEventListener('pointerdown', _eeClick);
   root.querySelector('.ee-leave').onclick = () => _eeLeave();
   root.querySelector('.ee-snd').onclick = () => _eeMute();
+  const vol = root.querySelector('.ee-vol');
+  vol.addEventListener('input', () => { _ee.volv = Number(vol.value) || 0; if (_ee.mute && _ee.volv > 0) _ee.mute = false; _eeGainApply(); _eeSoundSync(); });
+  vol.addEventListener('change', () => { try { localStorage.setItem(EE_VOL_KEY, String(_ee.volv)); } catch (e) { /* only a convenience */ } });
+  vol.addEventListener('pointerup', () => vol.blur());   // the keys walk you again
+  _eeSoundSync();
   window.addEventListener('keydown', _eeKey, true); window.addEventListener('keyup', _eeKey, true);
   document.addEventListener('visibilitychange', _eeStartLoop);
   requestAnimationFrame(() => root.classList.add('is-on'));
@@ -359,17 +381,12 @@ function eeTell(fid) {
 }
 
 /* ---------- the way in: four gnomes round a scarecrow ---------- */
-/** Is this gnome one of at least four standing right round a scarecrow? */
+/** Is this a scarecrow with at least four gnomes standing right round it (in the cells touching it, corners too)? */
 function _eeRing(d, m) {
-  if (!d || !d.def || d.def.id !== 'gnome' || !m || !Array.isArray(m.decor)) return false;
-  for (const S of m.decor) {
-    if (!S.def || S.def.id !== 'scarecrow') continue;
-    const x0 = S.x - 1, y0 = S.y - 1, x1 = S.x + (S.def.w || 1), y1 = S.y + (S.def.h || 1);
-    const near = (g) => g.def && g.def.id === 'gnome' && g.x >= x0 && g.x <= x1 && g.y >= y0 && g.y <= y1 && !(g.x >= S.x && g.x < x1 && g.y >= S.y && g.y < y1);
-    if (!near(d)) continue;
-    if (m.decor.filter(near).length >= 4) return true;
-  }
-  return false;
+  if (!d || !d.def || d.def.id !== 'scarecrow' || !m || !Array.isArray(m.decor)) return false;
+  const x0 = d.x - 1, y0 = d.y - 1, x1 = d.x + (d.def.w || 1), y1 = d.y + (d.def.h || 1);
+  const near = (g) => g.def && g.def.id === 'gnome' && g.x >= x0 && g.x <= x1 && g.y >= y0 && g.y <= y1 && !(g.x >= d.x && g.x < x1 && g.y >= d.y && g.y < y1);
+  return m.decor.filter(near).length >= 4;
 }
 function gardenBackStep(d, m) {
   try {
