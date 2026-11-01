@@ -110,7 +110,7 @@ function _gllCheerFx(A, e, ev) {
 function _gllSwing(A) {
   if (!A.root || _gllReduced()) return;
   const g = _gllSvgEl('g'); g.setAttribute('transform', `translate(0 -30) scale(${A.face < 0 ? -1 : 1} 1)`);
-  g.innerHTML = '<path d="M6 8Q30 -16 30 -34" stroke="#fbfbf2" stroke-width="2.6" stroke-opacity="0.8" fill="none" stroke-linecap="round"/>';
+  g.innerHTML = '<path d="M6 8Q30 -16 30 -34" stroke="#fbfbf2" stroke-width="2.6" stroke-opacity="0.8" fill="none" stroke-linecap="round"/>' + (A.g && A.g.nk && typeof gardenLookNetSwing === 'function' ? gardenLookNetSwing(A.g.nk) : '');
   A.root.appendChild(g); setTimeout(() => g.remove(), 360);
   _gllPose(A, 'pick', 500);
 }
@@ -198,6 +198,7 @@ function _gllFxStep(A, dt) {
     if (typeof gardenLineLook === 'function') { const ll = gardenLineLook(A.g && A.g.ln); e.line.style.stroke = ll.c; e.line.style.strokeWidth = String(ll.w); }   // (their line)
     if (typeof gardenLureSvg === 'function') e.bob.innerHTML += gardenLureSvg(F.bait);   // (their lure)
     g.append(e.rod, e.line, e.bob, e.bub); A.root.appendChild(g); A.fxg = g; A.fxe = e;
+    if (A.g && A.g.rk && typeof gardenLookRodSkin === 'function') e.skin = gardenLookRodSkin(A.g.rk, e.rod, g);   // (the look of their rod)
   }
   const e = A.fxe, W = GARDEN_WORLD, f = A.face < 0 ? -1 : 1;
   const tx = (F.bx - A.x) * W.cellW, ty = (F.by - A.y) * W.cellH;
@@ -207,7 +208,7 @@ function _gllFxStep(A, dt) {
   else if (F.state === 'bite') { tipX = f * 38; tipY = -56 + Math.sin(F.t * 40) * 2; by = ty + 4 + Math.sin(F.t * 36) * 2; sag = 3; }
   else if (F.state === 'reel') { tipX = f * 30; tipY = -68 + Math.sin(F.t * 18) * 1.4; by = ty + Math.sin(F.t * 12) * 1.4; sag = 1.2; }
   else if (F.state === 'land') { const u = Math.min(1, F.t / 0.5); tipX = f * 30; tipY = -68; bx = tx + (tipX - tx) * u; by = ty + (tipY - ty) * u - Math.sin(u * Math.PI) * 30; sag = 2; if (F.t >= 0.6) { A.fish = null; A.key = ''; _gllFxClear(A); return; } }
-  e.rod.setAttribute('d', `M${(f * 8).toFixed(1)} -30L${tipX.toFixed(1)} ${tipY.toFixed(1)}`);
+  e.rod.setAttribute('d', `M${(f * 8).toFixed(1)} -30L${tipX.toFixed(1)} ${tipY.toFixed(1)}`); if (e.skin) gardenLookRodSkinAt(e.skin, f * 8, -30, tipX, tipY);
   e.line.setAttribute('d', `M${tipX.toFixed(1)} ${tipY.toFixed(1)}Q${((tipX + bx) / 2).toFixed(1)} ${(Math.max(tipY, by) + sag).toFixed(1)} ${bx.toFixed(1)} ${(by - 4).toFixed(1)}`);
   e.bob.setAttribute('transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)})`);
   e.bub.setAttribute('visibility', F.state === 'bite' ? 'visible' : 'hidden');

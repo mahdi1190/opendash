@@ -33,6 +33,7 @@ const _GRG_WATER_ROWS = [
   { id: 'brook', name: 'the brook under the rope bridge', r: 'marsh', x: 47, y: 34, w: 3, h: 1, via: 'lt-reed', cap: 40, like: /dace|shiner|bleak|gudgeon|pebble|elver/ },
   { id: 'folly', name: 'the folly pool', r: 'marsh', x: 23, y: 38, w: 5, h: 1, via: 'lt-heron', cap: 60, like: /paper|wish|sun|sprite|crown|ghost/ },
   { id: 'light', name: 'the rocks by the lighthouse', r: 'marsh', x: 36, y: 38, w: 2, h: 1, via: 'lt-heron', cap: 60, like: /lantern|jelly|squid|hatchet|angler/ },
+  { id: 'cavepool', name: 'the cave pool at the back of the mossy grotto', r: 'hill', room: 1, via: _grgDoorCell(gardenLandSight('ld-grotto')), cap: 40, like: /^$/ },   // inside a hidden room: no cells on the map, so no band (94-garden-world-4rooms2.js)
 ];
 const _GRG_POOL_LIKE = Object.freeze({ 'ls-lily-pool': /lily|pipefish|reed|weed|sunfish|bluegill|crappie/, 'ls-deep-pool': /catfish|burbot|snakehead|bowfin|gar$|eel/, 'ls-clear-pool': /clear|pearl|silver|glass/, 'ls-moon-pool': /moon|night/, 'ls-sedge-pool': /pike|perch|sedge/, 'ls-stone-pool': /bass|stone|rock/ });
 const GARDEN_REGION_WATERS = _gdRows(_GRG_WATER_ROWS.map(w => {
@@ -55,6 +56,7 @@ const _GRG_FISH_HAND = Object.freeze({
   tarn: ['arctic-char'],
   frogpool: ['great-crested-newt', 'axolotl', 'terrapin', 'mud-puppy', 'frog-mouth', 'snapping-turtle', 'musk-turtle'],
   light: ['lantern-minnow', 'lantern-angler'],
+  cavepool: ['blind-loach', 'moss-chub', 'drip-pearl'],
   'ls-moon-pool': ['moonfish', 'moon-gazer', 'new-moon-bream'],
   'ls-stone-pool': ['wishing-fish'],
   'ls-lily-pool': ['pearl-gourami'],
@@ -85,7 +87,10 @@ const _GRG_BUG_HAND = Object.freeze([
   ['ld-driftwood', 'marsh', ['antlion']],
   ['ld-temple', 'marsh', ['rainbow-scarab', 'sun-scarab']],
   ['ld-house', 'marsh', ['the-old-snail']],
+  ['ld-statue', 'garden', ['jewel-beetle', 'orchid-hopper', 'old-vine-bee'], 'the old hothouse'],
 ]);
+/** What you have to open to stand at a sight's door (a hidden room's door is there). */
+function _grgDoorCell(s) { const c = gardenLandCell(s.door.x, s.door.y); return c && !c.lane && !c.solid ? c.id : _grgSightTrail(s); }
 /** A sight's way in: the trail cell nearest to it. */
 function _grgSightTrail(s) {
   let best = '', bd = 1e9;
@@ -118,6 +123,7 @@ function _grgFishHomes() {
   // every water keeps a few that live there at any hour, from the day it opens, so nobody casts into an empty pool
   const open = (w) => { const t = w.area === 'pond' ? 7 : gardenLandRow(w.sec || w.via).lv; return t; };
   for (const w of small) {
+    if (w.room) continue;   // only its own
     const easy = (f) => !f.tod.length && !f.seasons.length && !f.needs && f.lv <= open(w) && f.cm[1] <= w.cap, here = () => GARDEN_FISH_ONLY.filter(f => out.get(f.id).w === w.id && easy(f)).length;
     const spare = GARDEN_FISH_ONLY.filter(f => easy(f) && _grgFishFree(f) && (out.get(f.id).r === 'lake' || out.get(f.id).w === 'pond') && !_GRG_FISH_STAY.test(f.id)).sort((a, b) => _grgHash(w.id + a.id) - _grgHash(w.id + b.id));
     while (here() < 3 && spare.length) { const f = spare.shift(); out.set(f.id, { r: w.r, w: w.id }); }
@@ -126,7 +132,7 @@ function _grgFishHomes() {
 }
 function _grgBugHomes() {
   const out = new Map();
-  for (const [sight, r, ids] of _GRG_BUG_HAND) { const s = gardenLandSight(sight); if (s) for (const id of ids) if (gardenBugDef(id)) out.set(id, { r, p: sight, t: _grgSightTrail(s) }); }
+  for (const [sight, r, ids, room] of _GRG_BUG_HAND) { const s = gardenLandSight(sight); if (s) for (const id of ids) if (gardenBugDef(id)) out.set(id, Object.assign({ r, p: sight, t: room ? _grgDoorCell(s) : _grgSightTrail(s) }, room ? { room } : {})); }
   for (const b of GARDEN_BUGS) {
     if (out.has(b.id)) continue;
     if ((b.rarity === 'common' && b.lv <= 3) || (b.needs && (b.needs.plant || b.needs.decor))) { out.set(b.id, { r: 'garden' }); continue; }   // near the start, or it comes to what you grow
@@ -175,6 +181,7 @@ function gardenRegionWords(def) {
     return { where: `Lives in ${w.name}, ${R.on}, and nowhere else.`, reach };
   }
   const near = def.hab.map(h => _GF_HAB_WORDS[h] || h);
+  if (H.room) return { where: `Lives in ${H.room}, behind ${_grgPlaceName(H)}, and nowhere else.`, reach };
   if (H.p) return { where: `Lives at ${_grgPlaceName(H)}, ${R.on}, and nowhere else.`, reach };
   if (H.r === 'garden') return null;
   return { where: `Lives ${R.on}. Look near ${_gfOr(near)}.`, reach };
@@ -195,7 +202,7 @@ function gardenRegionWaterNo(x, y, areas) {
 /** The school's bands for these waters: one small water each, only once it is open. */
 function gardenRegionBands(areas) {
   const out = [];
-  for (const w of GARDEN_REGION_WATERS) if (gardenRegionHomeOpen({ w: w.id }, areas)) out.push({ key: 'r' + w.id, rw: w.id, zone: 'pond', x0: w.x + 0.2, x1: w.x + w.w - 0.2, y0: w.y + 0.2, y1: w.y + w.h - 0.2, n: 1 });
+  for (const w of GARDEN_REGION_WATERS) if (!w.room && gardenRegionHomeOpen({ w: w.id }, areas)) out.push({ key: 'r' + w.id, rw: w.id, zone: 'pond', x0: w.x + 0.2, x1: w.x + w.w - 0.2, y0: w.y + 0.2, y1: w.y + w.h - 0.2, n: 1 });
   return out;
 }
 /** What may swim in a band: a lake or pond band keeps its own kinds and the finds; a region's water has only what lives there, worked out afresh as they are from other zones. */

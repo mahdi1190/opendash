@@ -121,6 +121,7 @@ function glFxOk(b) {
   if (b.c === 'fish' && b.e === 'cast' && !(Number.isInteger(b.x) && Number.isInteger(b.y))) return 'cell';
   if (b.c === 'snap' && !(GL_ID_RE.test(String(b.i || '')) && Number.isInteger(b.x) && Number.isInteger(b.y) && b.x >= 0 && b.y >= 0)) return 'snap';
   if (b.c === 'hall' && b.e !== 'out' && !(Number.isInteger(b.x) && Number.isInteger(b.y) && b.x >= 0 && b.x <= 59 && b.y >= 0 && b.y <= 37)) return 'hall';
+  if (b.c === 'hall' && b.i != null && !GL_FX_ID_RE.test(String(b.i))) return 'id';   // (`i`: which hidden room; none is the stage)
   return '';
 }
 /** PETS IN PLACE (docs/dev/GARDEN_TOGETHER.md section 18). A person's own computer says where its pets really are, so every screen shows them in the same place (`gl:pp`, a kind of its own: an older app drops
