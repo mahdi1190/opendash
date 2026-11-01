@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.40.1]
+
+### Fixed
+- **People and fish stay on screen through a dropped connection,** then catch up by themselves.
+- Lines, seats and bugs now show for people who arrive late.
+- Your figure stops in the right place, and fish stay in step.
+- A hidden tab, or a slow connection, no longer counts as you having left.
+
+### Changed
+- Fewer messages, and less is sent while nobody is looking. Friends' connections recover by themselves and ask a struggling relay less often.
+
 ## [2.40.0]
 
 The garden's land is now small sections joined by winding paths, with much more to build and find.
