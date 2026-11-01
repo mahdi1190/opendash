@@ -334,6 +334,40 @@ function _grmKey(ev) {
 
 /* ---------- coming in and going out ---------- */
 /**
+ * A room's picture in layers. One picture with one thing moving in it (the person breathing is enough) is laid out, painted and put on the screen again, all of it, every frame: on a 165 Hz screen a fifth of a core with nothing happening.
+ * So what never moves goes in a picture of its own, on its own layer, and is drawn once. What moves goes in pictures between them, in the order the room drew them, with the people on top as before.
+ * One viewBox for all of them, so they line up at any window size; only the top one takes the pointer. A little still detail between two moving things stays with them, or a room would be a dozen layers.
+ */
+const GRM_MOVES = /(^|\s)(grm-(tw|mote|rip|ray|bub|cloud|spray|sail|fall|steam|sway|drip|dripr|glowp|pop|fire)|ee-flame)(\s|$)/;
+function _grmMoves(el) {
+  if (GRM_MOVES.test(el.getAttribute('class') || '')) return true;
+  for (const k of el.querySelectorAll('[class]')) if (GRM_MOVES.test(k.getAttribute('class'))) return true;
+  return false;
+}
+function _grmArtLayers(R, root) {
+  const NS = 'http://www.w3.org/2000/svg', top = root.querySelector('.ee-svg'), art = document.createElementNS(NS, 'svg');
+  art.innerHTML = R.art();
+  _grmMergeMotion(art);
+  const runs = [];
+  for (const el of [...art.children]) {
+    const moves = el.tagName.toLowerCase() !== 'defs' && _grmMoves(el), last = runs[runs.length - 1];
+    if (last && last.moves === moves) last.els.push(el); else runs.push({ moves, els: [el] });
+  }
+  const out = [];
+  runs.forEach((r, i) => {
+    const prev = out[out.length - 1];
+    if (prev && !r.moves && r.els.length < 6 && i < runs.length - 1) { prev.els.push(...r.els); return; }   // (too little to be worth a layer of its own)
+    if (prev && prev.moves === r.moves) { prev.els.push(...r.els); return; }
+    out.push(r);
+  });
+  for (const r of out) {
+    const svg = document.createElementNS(NS, 'svg'), g = document.createElementNS(NS, 'g');
+    svg.setAttribute('class', 'ee-svg grm-layer' + (r.moves ? '' : ' is-still')); svg.setAttribute('viewBox', `0 0 ${GRM.W} ${GRM.H}`); svg.setAttribute('preserveAspectRatio', 'xMidYMid meet'); svg.setAttribute('aria-hidden', 'true');
+    g.setAttribute('clip-path', 'url(#grmc)'); for (const el of r.els) g.appendChild(el);
+    svg.appendChild(g); root.insertBefore(svg, top);
+  }
+}
+/**
  * The little things that come and go (motes, twinkles, ripples, bubbles, spray, steam, clouds) were one animation each: 159 in the grotto, and the browser styled every one of them every frame.
  * A run of them side by side now moves in a few groups, each one animation on its own beat: the same specks in the same places.
  * Only for a thing with no transform of its own (a moving one overrode it, and in a group it would apply). The things on the list move by nothing that depends on their own box.
@@ -374,12 +408,12 @@ function gardenRoomEnter(R) {
   try { _gw.keys.clear(); _gw.path = []; gardenBubbleClose(); if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel(''); } catch (e) { /* not in the way */ }
   const root = document.createElement('div'); root.className = `ee-room grm-room grm-r-${R.id}`; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', R.name);
   const w = _grwOf(R), clipW = w ? `<clipPath id="grmwc">${w.e.map(([x, y, a, b]) => `<ellipse cx="${x}" cy="${y}" rx="${a}" ry="${b}"/>`).join('')}</clipPath>` : '';
-  root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${GRM.W} ${GRM.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><clipPath id="grmc"><rect width="${GRM.W}" height="${GRM.H}"/></clipPath>${clipW}<g clip-path="url(#grmc)">${R.art()}${_grmDoorArt(R)}${w ? `<g class="grm-school" clip-path="url(#grmwc)"><g class="grm-school-in" transform="scale(${GRW.k})"></g></g>${R.waterTop ? R.waterTop() : ''}` : ''}<g class="grm-props"></g><g class="grm-bugs"></g></g><g class="ee-actors"></g>${R.front ? `<g clip-path="url(#grmc)">${R.front()}</g>` : ''}<g class="grm-game" transform="scale(${GRW.k})"></g></svg>`
+  root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${GRM.W} ${GRM.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><clipPath id="grmc"><rect width="${GRM.W}" height="${GRM.H}"/></clipPath>${clipW}<g clip-path="url(#grmc)">${_grmDoorArt(R)}${w ? `<g class="grm-school" clip-path="url(#grmwc)"><g class="grm-school-in" transform="scale(${GRW.k})"></g></g>${R.waterTop ? R.waterTop() : ''}` : ''}<g class="grm-props"></g><g class="grm-bugs"></g></g><g class="ee-actors"></g>${R.front ? `<g clip-path="url(#grmc)">${R.front()}</g>` : ''}<g class="grm-game" transform="scale(${GRW.k})"></g></svg>`
     + `<div class="ee-ui"><button type="button" class="btn btn-secondary btn-sm ee-leave">${icon('log-out')}<span>Leave</span></button>${R.furnish && !gpVisiting() ? `<button type="button" class="btn btn-secondary btn-sm grm-furn">${icon('armchair')}<span>Furnish</span></button>` : ''}</div><div class="grm-bag"></div><div class="grm-ask"></div><p class="grm-say" role="status"></p>`;
-  _grmMergeMotion(root.querySelector('.ee-svg'));
+  _grmArtLayers(R, root);
   root.style.background = R.edge ? `linear-gradient(${R.edge[0]}, ${R.edge[1]})` : (R.bg || '');
   document.body.appendChild(root);
-  _grm.root = root; _grm.svg = root.querySelector('.ee-svg'); _grm.actors = root.querySelector('.ee-actors'); _grm.props = root.querySelector('.grm-props'); _grm.game = root.querySelector('.grm-game'); _grm.school = root.querySelector('.grm-school-in'); _grm.bugL = root.querySelector('.grm-bugs');
+  _grm.root = root; _grm.svg = root.querySelector('.ee-svg:not(.grm-layer)'); _grm.actors = root.querySelector('.ee-actors'); _grm.props = root.querySelector('.grm-props'); _grm.game = root.querySelector('.grm-game'); _grm.school = root.querySelector('.grm-school-in'); _grm.bugL = root.querySelector('.grm-bugs');
   _grwa.w = w;
   _grm.R = R; _grm.S = {}; _grm.fu = false; _grm.carry = ''; _grm.icons = null; _grm.fuKey = ''; _grm.fuAt = 0; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.closing = false;
   GRM_PLAY[R.play].begin(R, _grm.S);

@@ -593,7 +593,7 @@ function _gwBuildCamUi(stagebox) {
  * while the scripts take 2%. So when nobody is looking, the ambient motion rests: the window has not had the focus for 8 seconds, or there has been no
  * pointer or key for 90 seconds and nobody is in the garden with you. Any pointer, key or focus wakes it at once; it pauses and resumes in place.
  */
-const _gwCalm = { on: false, input: Date.now(), blur: 0, hid: null };   // clock-ok: when you last did something
+const _gwCalm = { on: false, input: Date.now(), blur: 0, hid: false };   // clock-ok: when you last did something
 function _gwCalmSet(on) { if (_gwCalm.on === on) return; _gwCalm.on = on; if (_gw.root) _gw.root.classList.toggle('gd-calm', on); }
 /**
  * Indoors (the owner: "all of the extra internal rooms seem to be incredibly slow and laggy"). A room covers the whole window, so once it has faded in the stage under it is taken out of the page's drawing altogether.
@@ -601,9 +601,10 @@ function _gwCalmSet(on) { if (_gwCalm.on === on) return; _gwCalm.on = on; if (_g
  * Only the drawing goes: the loop still looks in twice a second, and the fish clock, the host's answers and friends' messages run on as they were.
  */
 function _gwIndoors(on) {
-  if (on) { const b = _gw.box; if (!b || _gwCalm.hid === b) return; _gwCalm.hid = b; b.classList.add('gd-indoors'); _gwCalmSet(true); return; }
-  if (!_gwCalm.hid) return;
-  _gwCalm.hid.classList.remove('gd-indoors'); _gwCalm.hid = null; _gwCalm.input = Date.now(); _gwCalmSet(false);   // clock-ok: idle time
+  if (_gwCalm.hid === on) return;
+  _gwCalm.hid = on; document.body.classList.toggle('gd-room-in', on);   // (on the body: the stage can be rebuilt while you are in a room, and the new one must stay hidden too)
+  if (on) { _gwCalmSet(true); return; }
+  _gwCalm.input = Date.now(); _gwCalmSet(false);   // clock-ok: idle time
 }
 function _gwCalmTick() {
   const t = Date.now(), focused = typeof document.hasFocus === 'function' ? document.hasFocus() : true;   // clock-ok: idle time
@@ -611,7 +612,7 @@ function _gwCalmTick() {
   const away = !focused && _gwCalm.blur > 0 && t - _gwCalm.blur > 8000;
   const company = typeof _gll !== 'undefined' && _gll.actors && _gll.actors.size > 0;   // friends here: you are watching them
   const idle = !!(away || (!company && t - _gwCalm.input > 90000));
-  _gwCalmSet(idle || !!_gwCalm.hid);   // (in a room, the stage under it is not being drawn)
+  _gwCalmSet(idle || _gwCalm.hid);   // (in a room, the stage under it is not being drawn)
   if (_grm.root) _grm.root.classList.toggle('is-calm', idle);
 }
 if (typeof window !== 'undefined') {
