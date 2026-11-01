@@ -1,27 +1,22 @@
 /* ============================================================
    HIDDEN ROOMS, part two (the owner: "rooms that we can place stuff and build in too, and find special species or variants, or higher probabilities").
      Furnishing   a row with `furnish: true`: decorations out of your bag, placed anywhere in the room. One saved entry for each slot (rm.<room>.fu.<n>), so two devices add up. Friends read them from the snapshot's `rf`.
-     A pool       a row with `pool: {room, kinds, ...}`: a line down, wait for the bite, click. Its fish have needs.room, so they are in no other water. The book says where (gardenRegionWords, gardenCatchNeedsRows).
+     A water      a row with `water`: the real fishing game (94-garden-world-4rooms3water.js). Its fish have needs.room, so they are in no other water. The book says where (gardenRegionWords, gardenCatchNeedsRows).
      Odds         ctx.room is one more condition for a variant: {room: 'cave'} in its `more`, and gardenVariantHow says it in words.
    ============================================================ */
 const GRM_FURN = Object.freeze({ slots: 12, x0: 40, x1: 920, y0: 170, y1: 556, px: 96, firstGift: Object.freeze({ ticket: 3 }) });
-const GRM_POOL = Object.freeze({ day: 5, waitMin: 1.5, waitMore: 3, bite: 1.8, clean: 0.6 });
-const _grmNow = () => performance.now() / 1000;   // real seconds: a slow frame must not stretch the bite
 
 /* ---------- what can be clicked, all together ---------- */
 function _grmAllSpots(R, S) {
   const out = _grmFurnSpots(R);
-  if (R.pool) out.push({ id: 'pool', x: R.pool.x, y: R.pool.y, w: R.pool.w, h: R.pool.h, tip: 'Let a line down', art: R.pool.art((_grm.pool && _grm.pool.state) || 'idle') });
   return out.concat(GRM_PLAY[R.play].spots(R, S));
 }
 function _grmExtraAct(id) {
   const k = String(id);
-  if (k === 'pool') { _grmPoolAct(_grm.R); return true; }
   if (k.startsWith('fu-')) { _grmFurnTake(_grm.R, Number(k.slice(3))); return true; }
   return false;
 }
 function _grmExtraFrame(ts) {
-  if (_grm.R.pool) _grmPoolFrame();
   if (_grm.R.furnish && gpVisiting() && ts - (_grm.fuAt || 0) > 5000) {   // a friend's room: they may be moving things about
     _grm.fuAt = ts;
     const k = JSON.stringify(_grmFurnList(_grm.R)); if (k !== _grm.fuKey) { _grm.fuKey = k; _grmPaint(); }
@@ -97,55 +92,15 @@ function gardenRoomsWire() {
   return Object.keys(out).length ? out : null;
 }
 
-/* ---------- a pool ---------- */
-function _grmPoolLeft(R) {
-  if (gpVisiting()) return GRM_POOL.day - (_grm.poolN || 0);
-  const v = String(_grmG(R, 'cd', '')).split('|');
-  return v[0] === _gdToday() ? GRM_POOL.day - (Number(v[1]) || 0) : GRM_POOL.day;
-}
-function _grmPoolUse(R) {
-  _grm.poolN = (_grm.poolN || 0) + 1;
-  _grmP(R, 'cd', `${_gdToday()}|${GRM_POOL.day - _grmPoolLeft(R) + 1}`);
-}
-function _grmPoolSet(state, at) { _grm.pool = { state, at: at || 0 }; _grmPaint(); }
-function _grmPoolAct(R) {
-  const P = _grm.pool || { state: 'idle' };
-  if (P.state === 'wait') { _grmPoolSet('idle'); _grmSay(R.pool.earlyLine); return; }
-  if (P.state === 'bite') { const clean = P.at - _grmNow() > GRM_POOL.bite - GRM_POOL.clean; _grmPoolSet('idle'); _grmPoolLand(R, clean); return; }
-  if (_grmPoolLeft(R) < 1) { _grmSay(R.pool.fullLine); return; }
-  _grmPoolSet('wait', _grmNow() + GRM_POOL.waitMin + Math.random() * GRM_POOL.waitMore);
-  _grmSay(R.pool.castLine, 5000);
-}
-function _grmPoolFrame() {
-  const P = _grm.pool; if (!P || P.state === 'idle' || _grmNow() < P.at) return;
-  if (P.state === 'wait') { _grmPoolSet('bite', _grmNow() + GRM_POOL.bite); gpTone([880], { len: 0.12, vol: 0.06 }); return; }
-  _grmPoolSet('idle'); _grmSay(_grm.R.pool.lostLine);
-}
-function _grmPoolLand(R, perfect) {
-  const m = gardenModel(), g = _gdG(), base = gardenVariantCtx(m, { zone: 'pond' }), ctx = Object.assign({}, base, { zone: 'pond', room: R.pool.room, level: m.level.level, caught: (id) => !!g.fl[id] });
-  const fits = R.pool.kinds.map(gardenFishDef).filter(d => d && gardenFishFits(d, ctx));
-  if (!fits.length) { _grmSay(R.pool.noneLine); return; }
-  const w = fits.map(d => gardenBugWeight(d, ctx)); let r = Math.random() * w.reduce((a, b) => a + b, 0), k = 0;
-  for (; k < fits.length - 1; k++) { r -= w[k]; if (r <= 0) break; }
-  const def = fits[k], v = gardenVariantRoll('fish', ctx, Math.random); let cm = def.cm[0] + Math.round(Math.random() * (def.cm[1] - def.cm[0]));
-  if (v) cm = gardenVariantSize(def, cm, v, Math.random);
-  const rod = gardenRod(), out = gardenCatchFish({ id: def.id, def, cm, v, z: 0, zone: 'pond', tier: rod.tier, qmax: rod.st.q, spent: true }, { perfect });
-  if (!out.ok) { _grmSay(out.msg || R.pool.lostLine); return; }
-  _grmPoolUse(R);
-  const V = out.v ? gardenVariantDef(out.v) : null;
-  _grmSay(`${_gfAnA((V ? V.name.toLowerCase() + ' ' : '') + def.name.toLowerCase()).replace(/^./, c => c.toUpperCase())}, ${out.cm} cm.${out.isNew ? ' New to your book.' : ''}${perfect ? ' A clean strike.' : ''}`, 7000);
-  try { _glSound('twinkle'); } catch (e) { /* no sound, no matter */ }
-}
-
 /* ---------- the bugs of a room: the same three all day, for you ---------- */
 function _grmNetToday(R) {
-  const m = gardenModel(), today = _gdToday(), ctx = Object.assign({}, gardenVariantCtx(m, { hab: 'flower' }), { room: R.net, season: 'summer', rain: false, level: m.level.level, caught: (id) => !!_gdG().bl[id] });
+  const m = gardenModel(), today = _gdToday(), ctx = Object.assign({}, gardenVariantCtx(m, { hab: 'flower' }), { room: R.bugRoom, season: 'summer', rain: false, level: m.level.level, caught: (id) => !!_gdG().bl[id] });
   let list = R.kinds.map(gardenBugDef).filter(b => b && gardenBugFits(b, ctx)); const caught = new Set((_gdG().fd[today] && _gdG().fd[today].k) || []), out = [];
   if (!list.length) return out;
   R.perch.forEach((P, i) => {
-    const key = `rm${R.id}.${today}.${i}`, rnd = gardenRand('rm|' + key), w = list.map(b => gardenBugWeight(b, ctx));
+    const key = `rm${R.id}${today.replace(/-/g, '')}.${i}`, rnd = gardenRand('rm|' + key), w = list.map(b => gardenBugWeight(b, ctx));
     let r = rnd() * w.reduce((a, b) => a + b, 0), k = 0; for (; k < list.length - 1; k++) { r -= w[k]; if (r <= 0) break; }
-    out.push({ i, key, id: list[k].id, x: P.x, y: P.y, v: gardenVariantRoll('bug', ctx, rnd), gone: caught.has(key) });
+    out.push({ i, key, id: list[k].id, x: P.x, y: P.y, v: gardenVariantRoll('bug', ctx, rnd), gone: caught.has(key) || !!(_gw.goneKeys && _gw.goneKeys.has(key)) });
     if (list.length > 1) list = list.filter((b, j) => j !== k);   // a different kind on each perch, while there are kinds to go round
   });
   return out;

@@ -1,6 +1,6 @@
 /* ============================================================
    HIDDEN ROOMS (the owner: "more easter eggs like rooms we can enter"). Small places you walk into, drawn over the garden like the room behind the garden (94-garden-world-3back.js), whose people and walking they share.
-   This file is the engine and the things you can do in a room (GRM_PLAY). The rooms themselves are one row each in GRM_ROOMS (94-garden-world-5rooms.js).
+   This file is the engine and the things you can do in a room (GRM_PLAY, with its small games in 94-garden-world-4rooms4games.js). The rooms are one row each in GRM_ROOMS (94-garden-world-5rooms.js), their doors and symbols in 94-garden-world-6doors.js. Fishing and netting in a room are the real game (94-garden-world-4rooms3water.js).
 
      gardenRoomItems(id, items)   a bubble on the land is opening: rows for a door on this sight or feature (94-garden-lands-3page.js)
      gardenRoomHear(A, ev)        somebody else went in, walked or left (gl:fx 'hall' with `i`, the room's id: the same event as the stage, which has no `i`)
@@ -11,7 +11,7 @@
    ============================================================ */
 const GRM = Object.freeze({ W: 960, H: 600, U: 16, speed: 200, floor: Object.freeze({ x0: 44, x1: 916, y0: 400, y1: 556 }), door: Object.freeze({ x: 66, y: 540, x0: 14, x1: 112, y0: 396, y1: 560 }), spawn: Object.freeze({ x: 160, y: 500 }), firstFind: Object.freeze({ ticket: 3 }) });
 const GRM_WORDS = Object.freeze({ ticket: 'tickets', 'mat:peg': 'survey pegs', 'mat:timber': 'timber', 'mat:stone': 'field stone', 'mat:reed': 'reeds' });
-const _grm = { on: false, closing: false, R: null, S: null, root: null, svg: null, actors: null, props: null, raf: 0, last: 0, t: 0, m: new Map(), me: null, keys: new Set(), sentAt: 0, sayT: 0, chipT: 0 };
+const _grm = { on: false, closing: false, R: null, S: null, root: null, svg: null, actors: null, props: null, game: null, school: null, bugL: null, raf: 0, last: 0, t: 0, m: new Map(), me: null, keys: new Set(), sentAt: 0, sayT: 0, chipT: 0 };
 
 /* ---------- marks and gifts ---------- */
 function _grmG(R, k, d) { return gpGet('rm.' + R.id + '.' + k, d); }
@@ -29,10 +29,12 @@ function _grmPay(R, say, gift) {
   const S = _grm.S; if (S) S.won = true;
   if (gpVisiting()) { _grmSay(say + ' It is your friend’s, so you leave it where it is.'); return false; }
   _grmP(R, 'p', _gdToday());
-  const G = gift || R.gift, got = _grGive('room.' + R.id, G);
+  const G = Object.assign({}, gift || R.gift); let listed = false;
+  try { const A = _gdAct(), t = _gdToday(); if (A.days.has(t) && A.days.get(t).n > 0) { G.ticket = (G.ticket || 0) + 1; listed = true; } } catch (e) { /* no list here */ }   // you got something done on your list today: one more ticket
+  const got = _grGive('room.' + R.id, G);
   if (got) { try { _glSound('twinkle'); gardenTickSoon(); } catch (e) { /* no sound, no matter */ } }
   const w = _grmGiftWords(G);
-  _grmSay(say + (got && w ? ` You take away ${w}.` : ' Your pockets are full for today, but it will all be here tomorrow.'));
+  _grmSay(say + (got && w ? ` You take away ${w}${listed ? ', one of them for what you got done on your list today' : ''}.` : ' Your pockets are full for today, but it will all be here tomorrow.'));
   return got;
 }
 function _grmOnce(R, k, items) { return !gpVisiting() && gpGrant('rm-' + R.id + '-' + k, items); }
@@ -47,17 +49,7 @@ function _grmAsk(q, opts, pick) {
 }
 
 /* ---------- what there is to do: spots(R, S) is what you can click, act(R, S, id) is a click, begin(R, S) sets up the day, frame(R, S, dt) only if it moves ---------- */
-const GRM_PLAY = Object.freeze({
-  /* One of these holds today's thing, a different one each day. */
-  seek: {
-    begin(R, S) { S.hit = _grmHash(R) % R.things.length; S.won = _grmDone(R); },
-    spots(R, S) { return R.things.map((t, i) => ({ id: i, x: t.x, y: t.y, w: t.w || 70, h: t.h || 90, tip: t.tip || R.tip, art: t.art(S.won && i === S.hit) })); },
-    act(R, S, i) {
-      if (S.won) { _grmSay(i === S.hit ? R.gotLine : _grmDoneLine(R)); return; }
-      if (i !== S.hit) { _grmSay(R.miss[i % R.miss.length]); return; }
-      _grmPay(R, R.gotLine); _grmPaint(); if (R.won) R.won(R);
-    },
-  },
+const GRM_PLAY = {
   /* A book that gets one page further each day you come. */
   serial: {
     begin(R, S) { S.n = _grmG(R, 'n', 0); S.won = _grmDone(R); },
@@ -75,7 +67,7 @@ const GRM_PLAY = Object.freeze({
   /* Play the marks on the wall, in order: a different tune each day. */
   tune: {
     begin(R, S) { const h = _grmHash(R); S.seq = [0, 1, 2, 3].map((_, k) => (h >>> (k * 5)) % R.things.length); S.i = 0; S.won = _grmDone(R); },
-    spots(R, S) { return R.things.map((t, i) => ({ id: i, x: t.x, y: t.y, w: t.w || 90, h: t.h || 130, tip: R.tip, art: t.art(S.hot === i) })).concat([{ id: 'chart', x: R.chart.x, y: R.chart.y, w: 0, h: 0, art: R.chart.art(S.seq, S.i), still: true }]); },
+    spots(R, S) { return R.things.map((t, i) => ({ id: i, x: t.x, y: t.y, w: t.w || 90, h: t.h || 130, now: true, tip: R.tip, art: t.art(S.hot === i) })).concat([{ id: 'chart', x: R.chart.x, y: R.chart.y, w: 0, h: 0, art: R.chart.art(S.seq, S.i), still: true }]); },
     act(R, S, i) {
       gpTone([R.things[i].f], { force: true, type: R.wave || 'triangle', len: R.len || 0.7, vol: 0.12 });
       S.hot = i; _grmPaint(); setTimeout(() => { if (_grm.S === S) { S.hot = null; _grmPaint(); } }, 260);
@@ -93,7 +85,7 @@ const GRM_PLAY = Object.freeze({
       const flip = (i) => { for (const j of [i - 1, i, i + 1]) if (j >= 0 && j < 5) S.l[j] = !S.l[j]; };
       flip(h % 5); flip((h % 5 + 1 + (h >>> 4) % 4) % 5);
     },
-    spots(R, S) { return S.l.map((on, i) => ({ id: i, x: 280 + i * 100, y: 330, w: 80, h: 110, tip: R.tip, art: R.wick(on) })); },
+    spots(R, S) { return [{ id: 'dim', still: true, x: 0, y: 0, w: 0, h: 0, art: R.dim ? R.dim(S.l.filter(Boolean).length) : '' }].concat(S.l.map((on, i) => ({ id: i, x: 280 + i * 100, y: 330, w: 80, h: 110, now: true, tip: R.tip, art: R.wick(on) }))); },
     act(R, S, i) {
       if (S.won) { _grmSay(_grmDoneLine(R)); return; }
       for (const j of [i - 1, i, i + 1]) if (j >= 0 && j < 5) S.l[j] = !S.l[j];
@@ -133,7 +125,7 @@ const GRM_PLAY = Object.freeze({
     begin(R, S) { const h = _grmHash(R); S.want = [h % 3, (h >>> 3) % 3, (h >>> 6) % 3]; S.won = _grmDone(R); S.a = S.won ? S.want.slice() : S.want.map(w => (w + 1) % 3); },
     spots(R, S) {
       let upto = 0; while (upto < 3 && S.a[upto] === S.want[upto]) upto++;
-      return R.at3.map((m, i) => ({ id: i, x: m.x, y: m.y, w: 90, h: 120, tip: R.tip, art: R.mirror(S.a[i]) })).concat([{ id: 'ray', x: 0, y: 0, w: 0, h: 0, art: R.ray(upto), still: true }]);
+      return R.at3.map((m, i) => ({ id: i, x: m.x, y: m.y, w: 90, h: 120, now: true, tip: R.tip, art: R.mirror(S.a[i]) })).concat([{ id: 'ray', x: 0, y: 0, w: 0, h: 0, art: R.ray(upto), still: true }]);
     },
     act(R, S, i) {
       if (S.won) { _grmSay(_grmDoneLine(R)); return; }
@@ -172,34 +164,17 @@ const GRM_PLAY = Object.freeze({
       _grmSay(R.leftLine.replace('{crop}', _grmCropName(k))); _grmPaint();
     },
   },
-  /* Start it, go away, come back. */
-  wait: {
-    begin(R, S) { S.at = Number(_grmG(R, 'w', 0)) || 0; S.won = _grmDone(R); },
-    spots(R, S) { const ready = S.at && Number(_gdNow()) - S.at >= R.ms; return [{ id: 0, x: R.thing.x, y: R.thing.y, w: 150, h: 170, tip: R.tip, art: R.thing.art(S.at ? (ready ? 2 : 1) : 0) }]; },
-    act(R, S) {
-      if (S.won && !S.at) { _grmSay(_grmDoneLine(R)); return; }
-      const now = Number(_gdNow());
-      if (!S.at) { if (gpVisiting()) { _grmSay(R.guestLine); return; } S.at = now; _grmP(R, 'w', now); _grmSay(R.startLine); _grmPaint(); return; }
-      if (now - S.at < R.ms) { _grmSay(R.waitLine); return; }
-      S.at = 0; _grmP(R, 'w', 0); _grmPay(R, R.gotLine); _grmPaint(); if (R.won) R.won(R);
-    },
-  },
-  /* The kinds that live in this room: three about each day, the same all day. */
+  /* The kinds that live in this room, as real bugs: the same ones all day. Creep up and swing. */
   net: {
-    begin(R, S) { S.b = _grmNetToday(R); S.won = _grmDone(R); },
-    spots(R, S) { return S.b.filter(q => !q.gone).map(q => ({ id: q.i, x: q.x, y: q.y, w: 76, h: 76, tip: R.tip, art: `<g transform="translate(-30 -60)">${gardenCatchSvg('bug', q.id, 60, q.v ? { v: q.v } : {})}</g>` })); },
-    act(R, S, i) {
-      const q = S.b.find(x => x.i === i); if (!q || q.gone) return;
-      const out = gardenCatchBug({ key: q.key, id: q.id, v: q.v, hab: 'flower' }); q.gone = true;
-      if (out.ok) { const V = out.v ? gardenVariantDef(out.v) : null, line = `${_gfAnA((V ? V.name.toLowerCase() + ' ' : '') + out.def.name.toLowerCase()).replace(/^./, c => c.toUpperCase())}.${out.isNew ? ' New to your book.' : ''}`; if (S.won) _grmSay(line); else { S.won = true; _grmPay(R, line); } }
-      _grmPaint();
-      if (S.b.every(x => x.gone)) setTimeout(() => _grmSay(R.goneLine, 7000), 6000);
-    },
+    begin(R, S) { S.bugs = _grbMake(R, S); S.won = _grmDone(R); },
+    spots() { return []; },
+    frame() { _grbFrame(_grm.dtNow); },
+    act() {},
   },
   /* Stop it when the mark comes round, three times. */
   catchIt: {
     begin(R, S) { S.a = 0; S.hits = 0; S.goal = (_grmHash(R) % 6) * Math.PI / 3; S.won = _grmDone(R); },
-    spots(R, S) { return [{ id: 0, x: R.lever.x, y: R.lever.y, w: 130, h: 150, tip: R.tip, art: R.lever.art(S.hits) }, { id: 'wheel', x: R.wheel.x, y: R.wheel.y, w: 0, h: 0, art: R.wheel.art(S.goal), still: true }]; },
+    spots(R, S) { return [{ id: 0, x: R.lever.x, y: R.lever.y, w: 130, h: 150, now: true, tip: R.tip, art: R.lever.art(S.hits) }, { id: 'wheel', x: R.wheel.x, y: R.wheel.y, w: 0, h: 0, art: R.wheel.art(S.goal), still: true }]; },
     frame(R, S, dt) {
       if (S.won) return;
       S.a = (S.a + dt * (1.5 + S.hits * 0.7)) % (Math.PI * 2);
@@ -214,7 +189,7 @@ const GRM_PLAY = Object.freeze({
       _grmPaint();
     },
   },
-});
+};
 
 /* ---------- drawing what you can click ---------- */
 function _grmPaint() {
@@ -222,7 +197,7 @@ function _grmPaint() {
   let s = '';
   for (const q of _grmAllSpots(R, S)) {
     if (q.still) { s += `<g transform="translate(${q.x} ${q.y})">${q.art}</g>`; continue; }
-    s += `<g class="grm-spot" data-s="${q.id}" transform="translate(${q.x} ${q.y})"><title>${esc(q.tip || '')}</title><rect x="${-q.w / 2}" y="${-q.h}" width="${q.w}" height="${q.h}" fill="transparent"/>${q.art}</g>`;
+    s += `<g class="grm-spot${q.cls ? ' ' + q.cls : ''}" data-s="${q.id}" transform="translate(${q.x} ${q.y})"><title>${esc(q.tip || '')}</title><rect x="${-q.w / 2}" y="${-q.h}" width="${q.w}" height="${q.h}" fill="transparent"/>${q.art}</g>`;
   }
   _grm.props.innerHTML = s;
 }
@@ -246,7 +221,20 @@ function _grmAdd(A, x, y) {
   _grm.m.set(A.w, M); _grmMake(M);
   return M;
 }
-function _grmClamp(x, y) { const F = (_grm.R && _grm.R.floor) || GRM.floor; return { x: Math.max(F.x0, Math.min(F.x1, x)), y: Math.max(F.y0, Math.min(F.y1, y)) }; }
+function _grmClamp(x, y) {
+  const F = (_grm.R && _grm.R.floor) || GRM.floor; let cx = Math.max(F.x0, Math.min(F.x1, x)), cy = Math.max(F.y0, Math.min(F.y1, y));
+  const w = _grwa.w;
+  if (w) for (const [ex, ey, rx, ry] of w.e) {   // you walk round the water, not over it
+    const a = (cx - ex) / rx, b = (cy - ey) / ry, n = Math.hypot(a, b);
+    if (n < 1 && n > 0) { cx = ex + a / n * rx; cy = ey + b / n * ry; }
+    else if (n === 0) cy = ey - ry;
+  }
+  for (const [bx, by, rx, ry] of (_grm.R && _grm.R.blocks) || []) {   // what stands on the floor
+    const a = (cx - bx) / rx, b = (cy - by) / ry, n = Math.hypot(a, b);
+    if (n < 1 && n > 0) { cx = bx + a / n * rx; cy = by + b / n * ry; }
+  }
+  return { x: Math.max(F.x0, Math.min(F.x1, cx)), y: Math.max(F.y0, Math.min(F.y1, cy)) };
+}
 function _grmSend(x, y, e) {
   try { if (typeof gardenLiveFx === 'function' && _grm.R) gardenLiveFx('hall', e || 'at', { i: _grm.R.id, x: Math.max(0, Math.min(59, Math.round(x / GRM.U))), y: Math.max(0, Math.min(37, Math.round(y / GRM.U))) }); } catch (err) { /* only a message */ }
 }
@@ -256,26 +244,31 @@ function _grmFrame(ts) {
   _grm.raf = 0;
   if (!_grm.on) return;
   if (!_gw.on) { gardenRoomLeave(); return; }
-  const dt = Math.min(0.05, _grm.last ? (ts - _grm.last) / 1000 : 0.016); _grm.last = ts; _grm.t += dt;
-  const M = _grm.me, K = _grm.keys, t = _grm.t;
+  const dt = Math.min(0.05, _grm.last ? (ts - _grm.last) / 1000 : 0.016); _grm.last = ts; _grm.t += dt; _grm.dtNow = dt;
+  const M = _grm.me, K = _grm.keys, t = _grm.t, P0 = GRM_PLAY[_grm.R.play], locked = _gwFishBusy() || (P0.lock && P0.lock(_grm.R, _grm.S));
   let vx = (K.has('ArrowRight') || K.has('d') ? 1 : 0) - (K.has('ArrowLeft') || K.has('a') ? 1 : 0), vy = (K.has('ArrowDown') || K.has('s') ? 1 : 0) - (K.has('ArrowUp') || K.has('w') ? 1 : 0);
-  if (vx || vy) {
+  if (locked) { M.moving = false; if (M.tx != null && !_gwFishBusy()) M.tx = M.ty = null; }   // a line out, or a game in your hands: you stand still
+  else if (vx || vy) {
     const n = Math.hypot(vx, vy); vx /= n; vy /= n; M.tx = M.ty = null; M.go = null;
-    const p = _grmClamp(M.x + vx * GRM.speed * dt, M.y + vy * GRM.speed * dt * 0.8); M.x = p.x; M.y = p.y; M.moving = true; M.keyed = true;
+    const speed = K.has('shift') ? GRB.sneak : GRM.speed;
+    const p = _grmClamp(M.x + vx * speed * dt, M.y + vy * speed * dt * 0.8); M.x = p.x; M.y = p.y; M.moving = true; M.keyed = true;
     if (vx) M.face = vx > 0 ? 1 : -1; M.dir = Math.abs(vx) >= Math.abs(vy) ? 'e' : vy > 0 ? 's' : 'n';
     if (ts - _grm.sentAt > 420) { _grm.sentAt = ts; _grmSend(M.x + vx * 70, M.y + vy * 50); }
   } else {
     if (M.keyed) { M.keyed = false; M.moving = false; _grmSend(M.x, M.y); }
-    _eeMove(M, dt, GRM.speed);
+    const x0 = M.x, y0 = M.y;
+    _eeMove(M, dt, M.net || K.has('shift') ? GRB.sneak : GRM.speed);
+    if (M.tx != null) { const c = _grmClamp(M.x, M.y); M.x = c.x; M.y = c.y; if (Math.hypot(M.x - x0, M.y - y0) < 0.1) { M.stuck = (M.stuck || 0) + dt; if (M.stuck > 0.5) { M.tx = M.ty = null; M.stuck = 0; } } else M.stuck = 0; }   // (round the water; stopped dead, you stop)
     if (M.tx == null && M.go) { const go = M.go; M.go = null; go(); if (!_grm.on) return; }
   }
-  _eePaint(M, t);
+  _grmPaintFig(M, t);
   for (const [w, Q] of _grm.m) {
-    if (!_gll.actors.has(w)) { Q.g.remove(); _grm.m.delete(w); continue; }
-    _eeMove(Q, dt, GRM.speed * 1.2); _eePaint(Q, t);
+    if (!_gll.actors.has(w)) { Q.g.remove(); if (Q.fxr) Q.fxr.remove(); _grm.m.delete(w); continue; }
+    _eeMove(Q, dt, GRM.speed * 1.2); _grmPaintFig(Q, t);
   }
-  const P = GRM_PLAY[_grm.R.play]; if (P.frame) P.frame(_grm.R, _grm.S, dt);
+  const P = P0; if (P.frame) P.frame(_grm.R, _grm.S, dt);
   _grmExtraFrame(ts);
+  if (_grwa.w) _grwFishFrame(dt);
   const all = [..._grm.m.values(), M].sort((a, b) => a.y - b.y), kids = _grm.actors.children;
   if (all.some((r, i) => kids[i] !== r.g)) for (const r of all) _grm.actors.appendChild(r.g);
   _grm.raf = requestAnimationFrame(_grmFrame);
@@ -293,28 +286,47 @@ function _grmWalk(x, y, go) {
   _grmSend(p.x, p.y);
 }
 function _grmClick(ev) {
-  if (!_grm.on || _grm.closing || (ev.target.closest && ev.target.closest('.ee-ui, .grm-ask, .grm-bag'))) return;
+  if (!_grm.on || _grm.closing || (ev.target.closest && ev.target.closest('.ee-ui, .grm-ask, .grm-bag, .gd-fishhud-b, .gd-catchcard'))) return;
+  if (_gwFishBusy()) { _gwFishPress(true); return; }   // a line out: the click is the strike, as outside
   const a = _grm.root.querySelector('.grm-ask'); if (a) a.innerHTML = '';
   if (_grmCarryClick(ev)) return;
-  const sp = ev.target.closest && ev.target.closest('[data-s]'), p = _grmPt(ev), D = GRM.door;
-  if (sp) { const id = sp.getAttribute('data-s'), q = _grmSpot(id); if (q) { _grmWalk(q.x, Math.max(q.y + 26, GRM.floor.y0 + 8), () => _grmAct(id)); return; } }
+  const sp = ev.target.closest && ev.target.closest('[data-s]'), p = _grmPt(ev), D = GRM.door, R = _grm.R, F = R.floor || GRM.floor, P = GRM_PLAY[R.play];
+  if (sp) {
+    const id = sp.getAttribute('data-s'), q = _grmSpot(id);
+    if (q && q.now) { _grmAct(id); return; }   // part of a game in front of you
+    if (q) { _grmWalk(q.x, Math.max(q.y + 26, F.y0 + 8), () => _grmAct(id)); return; }
+  }
+  if (P.tap && P.tap(R, _grm.S, p)) return;
   if (p.x >= D.x0 - 6 && p.x <= D.x1 + 6 && p.y >= D.y0 - 20 && p.y <= D.y1 + 6) { _grmWalk(D.x, D.y, gardenRoomLeave); return; }
+  if (_grwa.w && _grwIn(_grwa.w, p.x, p.y)) { _grwCastAt(p.x, p.y); return; }
+  if (R.play === 'net' && _grm.S.bugs) {   // a bug is small: near enough counts
+    let best = null, bd = 56; for (const b of _grm.S.bugs) { const d = Math.hypot(b.x - p.x, b.y - (b.lift || 0) - p.y); if (d < bd) { bd = d; best = b; } }
+    if (best) { _grbChase(best); return; }
+  }
   _grmWalk(p.x, p.y);
 }
+function _grmUp() { if (!_grm.on) return; const P = GRM_PLAY[_grm.R.play]; if (P.up) P.up(_grm.R, _grm.S); }
 function _grmKey(ev) {
   if (!_grm.on || ev.ctrlKey || ev.metaKey || ev.altKey || /^F\d+$/.test(ev.key)) return;
   const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key, down = ev.type === 'keydown';
   if (ev.target && ev.target.closest && ev.target.closest('.ee-ui, .grm-ask, .grm-bag') && k !== 'Escape') return;   // a button you are on is yours to use
   ev.stopImmediatePropagation();
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's', ' ', 'Enter', 'Escape', 'e'].includes(k)) ev.preventDefault();
-  if (!down) { _grm.keys.delete(k); return; }
-  if (k === 'Escape') { gardenRoomLeave(); return; }
+  if (k === 'Shift') { if (down) _grm.keys.add('shift'); else _grm.keys.delete('shift'); return; }
+  const busy = _gwFishBusy();
+  if (!down) { _grm.keys.delete(k); if (k === ' ' || k === 'e' || k === 'Enter' || (k === 'ArrowUp' && busy)) { _gwFishRelease(); _grmUp(); } return; }
+  if (k === 'Escape') { if (busy) { _gwFishCancel(); return; } gardenRoomLeave(); return; }
+  if (ev.repeat && (k === ' ' || k === 'e' || k === 'Enter')) return;
+  if (busy) { if (k === ' ' || k === 'e' || k === 'Enter') _gwFishPress(); else if (k === 'ArrowUp' && _gw.reel) _gw.reel.hold = true; return; }   // as outside: strike, then hold to lift the bar
+  { const P = GRM_PLAY[_grm.R.play]; if (P.key && P.key(_grm.R, _grm.S, k)) return; }
   if (k === 'e' || k === 'Enter' || k === ' ') {
     const M = _grm.me;
     if (Math.hypot(M.x - GRM.door.x, M.y - GRM.door.y) < 70) { gardenRoomLeave(); return; }
     let best = null, bd = 130;
     for (const q of _grmAllSpots(_grm.R, _grm.S)) { if (q.still) continue; const d = Math.hypot(M.x - q.x, Math.max(0, M.y - q.y)); if (d < bd) { bd = d; best = q; } }
-    if (best) _grmAct(best.id);
+    if (best) { _grmAct(best.id); return; }
+    if (_grm.R.play === 'net') { _grbSwingNear(); return; }
+    if (_grwa.w) _grwFront();
     return;
   }
   _grm.keys.add(k);
@@ -332,19 +344,21 @@ function _grmMarkFound(R) {
 function gardenRoomEnter(R) {
   if (!_grmMayEnter() || !R) return false;
   try { _gw.keys.clear(); _gw.path = []; gardenBubbleClose(); if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel(''); } catch (e) { /* not in the way */ }
-  const root = document.createElement('div'); root.className = 'ee-room grm-room'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', R.name);
-  root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${GRM.W} ${GRM.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><clipPath id="grmc"><rect width="${GRM.W}" height="${GRM.H}"/></clipPath><g clip-path="url(#grmc)">${R.art()}${_grmDoorArt(R.door)}<g class="grm-props"></g></g><g class="ee-actors"></g></svg>`
+  const root = document.createElement('div'); root.className = `ee-room grm-room grm-r-${R.id}`; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', R.name);
+  const w = _grwOf(R), clipW = w ? `<clipPath id="grmwc">${w.e.map(([x, y, a, b]) => `<ellipse cx="${x}" cy="${y}" rx="${a}" ry="${b}"/>`).join('')}</clipPath>` : '';
+  root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${GRM.W} ${GRM.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><clipPath id="grmc"><rect width="${GRM.W}" height="${GRM.H}"/></clipPath>${clipW}<g clip-path="url(#grmc)">${R.art()}${_grmDoorArt(R)}${w ? `<g class="grm-school" clip-path="url(#grmwc)"><g class="grm-school-in" transform="scale(${GRW.k})"></g></g>${R.waterTop ? R.waterTop() : ''}` : ''}<g class="grm-props"></g><g class="grm-bugs"></g></g><g class="ee-actors"></g>${R.front ? R.front() : ''}<g class="grm-game" transform="scale(${GRW.k})"></g></svg>`
     + `<div class="ee-ui"><button type="button" class="btn btn-secondary btn-sm ee-leave">${icon('log-out')}<span>Leave</span></button>${R.furnish && !gpVisiting() ? `<button type="button" class="btn btn-secondary btn-sm grm-furn">${icon('armchair')}<span>Furnish</span></button>` : ''}</div><div class="grm-bag"></div><div class="grm-ask"></div><p class="grm-say" role="status"></p>`;
   document.body.appendChild(root);
-  _grm.root = root; _grm.svg = root.querySelector('.ee-svg'); _grm.actors = root.querySelector('.ee-actors'); _grm.props = root.querySelector('.grm-props');
-  _grm.R = R; _grm.S = {}; _grm.fu = false; _grm.carry = ''; _grm.pool = null; _grm.poolN = 0; _grm.icons = null; _grm.fuKey = ''; _grm.fuAt = 0; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.closing = false;
+  _grm.root = root; _grm.svg = root.querySelector('.ee-svg'); _grm.actors = root.querySelector('.ee-actors'); _grm.props = root.querySelector('.grm-props'); _grm.game = root.querySelector('.grm-game'); _grm.school = root.querySelector('.grm-school-in'); _grm.bugL = root.querySelector('.grm-bugs');
+  _grwa.w = w;
+  _grm.R = R; _grm.S = {}; _grm.fu = false; _grm.carry = ''; _grm.icons = null; _grm.fuKey = ''; _grm.fuAt = 0; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.closing = false;
   GRM_PLAY[R.play].begin(R, _grm.S);
   _grmPaint();
-  const p0 = _grmClamp(GRM.spawn.x + Math.random() * 60 - 30, GRM.spawn.y + Math.random() * 30 - 15);
+  const sp0 = R.spawn || GRM.spawn, p0 = _grmClamp(sp0.x + Math.random() * 40 - 20, sp0.y + Math.random() * 24 - 12);
   const me = { w: -1, n: 'You', a: (function () { try { return typeof profileGet === 'function' ? profileGet().avatar : null; } catch (e) { return null; } })(), x: p0.x, y: p0.y, tx: null, ty: null, face: 1, dir: 'e', moving: false, me: true, ph: 0 };
-  _grm.me = me; _grmMake(me); _eePaint(me, 0);
-  _grm.on = true;
-  root.addEventListener('pointerdown', _grmClick);
+  _grm.me = me; _grmMake(me); _grm.on = true; _grmPaintFig(me, 0);
+  _grwStock(R);
+  root.addEventListener('pointerdown', _grmClick); window.addEventListener('pointerup', _grmUp); window.addEventListener('pointercancel', _grmUp);
   root.querySelector('.ee-leave').onclick = () => gardenRoomLeave();
   { const fb = root.querySelector('.grm-furn'); if (fb) fb.onclick = () => gardenRoomFurnish(); }
   window.addEventListener('keydown', _grmKey, true); window.addEventListener('keyup', _grmKey, true);
@@ -352,6 +366,7 @@ function gardenRoomEnter(R) {
   requestAnimationFrame(() => root.classList.add('is-on'));
   const first = _grmMarkFound(R);
   _grmSay(R.say + (first ? ' You have not been here before: you find 3 tickets on the way in.' : ''), 9000);
+  if (R.how) { clearTimeout(_grm.howT); _grm.howT = setTimeout(() => { if (_grm.R === R && !_gwFishBusy()) _grmSay(R.how, 9000); }, 9200); }
   _grmStartLoop();
   _grmSend(me.x, me.y, 'in');
   return true;
@@ -364,21 +379,26 @@ function _grmTry(R) {
 }
 function gardenRoomLeave() {
   if (!_grm.on || _grm.closing) return;
+  try { if (_gwFishBusy()) _gwFishCancel(); gardenMomentEnd(); _gwReelClose(); } catch (e) { /* nothing was out */ }   // (while the helpers still answer for the room)
+  _grwFishForget();
   _grmSend(0, 0, 'out');
   _grm.closing = true; _grm.on = false;
   window.removeEventListener('keydown', _grmKey, true); window.removeEventListener('keyup', _grmKey, true);
+  window.removeEventListener('pointerup', _grmUp); window.removeEventListener('pointercancel', _grmUp);
   document.removeEventListener('visibilitychange', _grmStartLoop);
-  cancelAnimationFrame(_grm.raf); _grm.raf = 0; clearTimeout(_grm.sayT);
+  cancelAnimationFrame(_grm.raf); _grm.raf = 0; clearTimeout(_grm.sayT); clearTimeout(_grm.howT);
   const root = _grm.root;
   if (root) { root.classList.remove('is-on'); root.classList.add('is-out'); setTimeout(() => root.remove(), 420); }
-  _grm.root = _grm.svg = _grm.actors = _grm.props = _grm.me = _grm.R = _grm.S = null; _grm.m.clear(); _grm.keys.clear(); _grm.pool = null; _grm.carry = ''; _grm.fu = false;
+  { const S = _grm.S; if (S && S.leave) S.leave(); }
+  for (const Q of _grm.m.values()) if (Q.fxr) Q.fxr.remove();
+  _grm.root = _grm.svg = _grm.actors = _grm.props = _grm.game = _grm.school = _grm.bugL = _grm.me = _grm.R = _grm.S = null; _grwa.w = null; _grm.m.clear(); _grm.keys.clear(); _grm.carry = ''; _grm.fu = false;
   setTimeout(() => { _grm.closing = false; }, 450);
   try { if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } catch (e) { /* the garden's own loop */ }
 }
 
 /* ---------- doors: rows in a bubble ---------- */
 function gardenRoomItems(id, items) {
-  for (const R of GRM_ROOMS) if (R.at === id) items.push({ ic: 'door-open', label: R.verb, cls: 'is-go', run: () => _grmTry(R) });
+  for (const R of GRM_ROOMS) if (R.at === id) items.push({ svg: gardenRoomSym(R, 26), label: R.verb, cls: 'is-go grm-way', run: () => gardenRoomGo(R) });
 }
 
 /* ---------- other people ---------- */
@@ -386,9 +406,10 @@ function _grmShow(A, inside) { try { if (A.root) A.root.style.visibility = insid
 function gardenRoomHear(A, ev) {
   if (!A || A.me || !ev) return;
   const e = String(ev.e || ''), R = GRM_ROOMS.find(r => r.id === ev.i); if (!R) return;
-  if (e === 'out') { _grmShow(A, false); const Q = _grm.m.get(A.w); if (Q && _grm.R === R) { Q.g.remove(); _grm.m.delete(A.w); } return; }
+  if (e === 'out') { A.rm = ''; _grmShow(A, false); const Q = _grm.m.get(A.w); if (Q && _grm.R === R) { Q.g.remove(); if (Q.fxr) Q.fxr.remove(); _grm.m.delete(A.w); } return; }
   if ((e !== 'in' && e !== 'at') || !Number.isInteger(ev.x) || !Number.isInteger(ev.y)) return;
-  _grmShow(A, true);
+  _grmShow(A, true); A.rm = R.id;
+  if (typeof _gll !== 'undefined' && _gll.role === 'host') _grwStock(R);   // (a fish for them, from whoever runs the water)
   if (!_grm.on || _grm.R !== R) { if (e === 'in') _grmChip(A, R); return; }
   const x = ev.x * GRM.U, y = ev.y * GRM.U;
   let Q = _grm.m.get(A.w);
@@ -404,12 +425,12 @@ function _grmChip(A, R) {
   if (!c) { c = gpEl('div', 'grm-chip'); box.appendChild(c); }
   c.innerHTML = '';
   c.appendChild(gpEl('span', null, `${String(A.n || 'A friend').slice(0, 40)} went into ${R.name.replace(/^The /, 'the ')}`));
-  const b = gpEl('button', 'btn btn-secondary btn-sm', 'Go in too'); b.type = 'button'; b.onclick = () => { c.remove(); gardenRoomEnter(R); }; c.appendChild(b);
+  const b = gpEl('button', 'btn btn-secondary btn-sm', 'Go in too'); b.type = 'button'; b.onclick = () => { c.remove(); gardenRoomGo(R, true); }; c.appendChild(b);
   clearTimeout(_grm.chipT); _grm.chipT = setTimeout(() => c.remove(), 14000);
 }
 function gardenRoomTell(fid) {
   if (!_grm.on || !_grm.me || typeof _glhSend !== 'function' || !/^[A-Za-z0-9_-]{1,64}$/.test(String(fid || ''))) return;
-  const say = () => { if (_grm.on && _grm.me) _glhSend(fid, 'fx', { c: 'hall', e: 'in', i: _grm.R.id, x: Math.max(0, Math.min(59, Math.round(_grm.me.x / GRM.U))), y: Math.max(0, Math.min(37, Math.round(_grm.me.y / GRM.U))) }); };
+  const say = () => { if (_grm.on && _grm.me && !_grm.closing) _glhSend(fid, 'fx', { c: 'hall', e: 'in', i: _grm.R.id, x: Math.max(0, Math.min(59, Math.round(_grm.me.x / GRM.U))), y: Math.max(0, Math.min(37, Math.round(_grm.me.y / GRM.U))) }); };
   setTimeout(say, 1500); setTimeout(say, 6000);
 }
 
@@ -428,21 +449,16 @@ const _grmA = Object.freeze({
   /* rows of stone blocks across a wall */
   stones(y0, y1, c, o) { let s = ''; for (let y = y0, r = 0; y < y1; y += 42, r++) for (let x = (r % 2) * -48; x < 960; x += 96) s += `<rect x="${x + 2}" y="${y + 2}" width="92" height="38" rx="5" fill="${c}" opacity="${o}"/>`; return s; },
   planks(y0, y1, c, o, gap) { let s = ''; for (let x = 0; x < 960; x += gap || 62) s += `<rect x="${x}" y="${y0}" width="3" height="${y1 - y0}" fill="${c}" opacity="${o}"/>`; return s; },
+  /* one pseudo-random stream per room: the same picture every time */
+  rng: (seed) => gardenRand('grm-art|' + seed),
+  lin: (id, stops, x2, y2) => `<linearGradient id="${id}" x1="0" y1="0" x2="${x2 == null ? 0 : x2}" y2="${y2 == null ? 1 : y2}">${stops.map(([o, c, a]) => `<stop offset="${o}" stop-color="${c}"${a != null ? ` stop-opacity="${a}"` : ''}/>`).join('')}</linearGradient>`,
+  rad: (id, stops, cx, cy, r) => `<radialGradient id="${id}" cx="${cx == null ? 0.5 : cx}" cy="${cy == null ? 0.5 : cy}" r="${r == null ? 0.5 : r}">${stops.map(([o, c, a]) => `<stop offset="${o}" stop-color="${c}"${a != null ? ` stop-opacity="${a}"` : ''}/>`).join('')}</radialGradient>`,
+  /* a soft shape: an uneven rounded outline */
+  blob(cx, cy, rx, ry, seed, wob, f, o) { const r = gardenRand('grm-b|' + seed), n = 12, P = []; for (let i = 0; i < n; i++) { const a = i / n * 6.283, k = 1 + (r() - 0.5) * (wob == null ? 0.3 : wob); P.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]); } const m = (a, b) => `${((a[0] + b[0]) / 2).toFixed(1)} ${((a[1] + b[1]) / 2).toFixed(1)}`; let d = 'M' + m(P[n - 1], P[0]); for (let i = 0; i < n; i++) d += `Q${P[i][0].toFixed(1)} ${P[i][1].toFixed(1)} ${m(P[i], P[(i + 1) % n])}`; return `<path d="${d}z" fill="${f}"${o != null ? ` opacity="${o}"` : ''}/>`; },
+  /* little lights that come and go */
+  twinkles(n, seed, x0, x1, y0, y1, c, k) { const r = gardenRand('grm-t|' + seed); let s = ''; for (let i = 0; i < n; i++) s += `<circle class="grm-tw" cx="${(x0 + r() * (x1 - x0)).toFixed(0)}" cy="${(y0 + r() * (y1 - y0)).toFixed(0)}" r="${((k || 1.6) * (0.6 + r() * 0.8)).toFixed(1)}" fill="${c}" style="animation-delay:-${(r() * 5).toFixed(1)}s"/>`; return s; },
+  /* specks hanging in the light, drifting */
+  motes(n, seed, x0, x1, y0, y1, c, o) { const r = gardenRand('grm-m|' + seed); let s = ''; for (let i = 0; i < n; i++) s += `<circle class="grm-mote" cx="${(x0 + r() * (x1 - x0)).toFixed(0)}" cy="${(y0 + r() * (y1 - y0)).toFixed(0)}" r="${(0.9 + r() * 1.6).toFixed(1)}" fill="${c}" opacity="${o || 0.6}" style="animation-delay:-${(r() * 9).toFixed(1)}s;animation-duration:${(7 + r() * 7).toFixed(1)}s"/>`; return s; },
+  fern(x, y, k, c, flip) { let s = ''; for (const [a, l] of [[-70, 44], [-40, 58], [-10, 66], [18, 60], [46, 48], [74, 34]]) { const r = a * Math.PI / 180, ex = Math.sin(r) * l, ey = -Math.cos(r) * l; s += `<path d="M0 0Q${(ex * 0.3).toFixed(1)} ${(ey * 0.9).toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}Q${(ex * 0.6).toFixed(1)} ${(ey * 0.6).toFixed(1)} 0 0z" fill="${c}"/>`; } return `<g class="grm-sway" transform="translate(${x} ${y}) scale(${flip ? -k : k} ${k})">${s}</g>`; },
   jar: (c, h) => `<rect x="-14" y="${-h}" width="28" height="${h}" rx="6" fill="${c}" opacity=".9"/><rect x="-11" y="${-h - 8}" width="22" height="9" rx="2" fill="#6a5a44"/><rect x="-9" y="${-h + 6}" width="5" height="${h - 14}" rx="2" fill="#fff" opacity=".28"/>`,
 });
-function _grmDoorArt(kind) {
-  const D = GRM.door, A = _grmA, mid = (D.x0 + D.x1) / 2;
-  let s = `<g class="ee-door"><title>Leave</title>`;
-  if (kind === 'ladder') {
-    s += A.r(D.x0 + 10, D.y0 - 170, 78, 12, '#4a3a2c') + A.r(D.x0 + 18, D.y0 - 158, 62, 10, '#fff4c8', 0.65);
-    for (const dx of [26, 72]) s += A.r(D.x0 + dx - 3, D.y0 - 150, 6, 310, '#6e4a2a');
-    for (let y = D.y0 - 136; y < D.y1 - 4; y += 28) s += A.r(D.x0 + 23, y, 52, 6, '#8a6238');
-  } else if (kind === 'plank') {
-    s += A.r(D.x0, D.y0, 92, D.y1 - D.y0, '#3a2414') + A.r(D.x0 + 7, D.y0 + 7, 78, D.y1 - D.y0 - 7, '#8a5c32') + A.planks(0, 0, '#000', 0);
-    for (const x of [28, 48, 68]) s += A.r(D.x0 + x, D.y0 + 8, 2, D.y1 - D.y0 - 8, '#3a2414', 0.65);
-    s += A.c(D.x0 + 74, D.y0 + 88, 4, '#d8b24a');
-  } else {
-    s += A.p(`M${D.x0} ${D.y1}V${D.y0 + 44}Q${D.x0} ${D.y0} ${mid} ${D.y0}Q${D.x1} ${D.y0} ${D.x1} ${D.y0 + 44}V${D.y1}Z`, '#4a4640') + A.p(`M${D.x0 + 12} ${D.y1}V${D.y0 + 50}Q${D.x0 + 12} ${D.y0 + 14} ${mid} ${D.y0 + 14}Q${D.x1 - 12} ${D.y0 + 14} ${D.x1 - 12} ${D.y0 + 50}V${D.y1}Z`, '#fff0c0', 0.85);
-  }
-  return s + '</g>';
-}

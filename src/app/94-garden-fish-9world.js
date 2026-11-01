@@ -34,9 +34,9 @@ const _GCW_SPOT = Object.freeze({
     let b = ''; for (let i = 0; i < 6; i++) b += `<circle class="${o.still ? '' : 'gda-bob'}" cx="${(i - 2.5) * 7}" cy="${(i % 3) * -4 - 1}" r="${1.4 + (i % 3) * 0.7}" fill="#ffffff" fill-opacity=".7" stroke="#8ad0ff" stroke-width=".5" style="animation-delay:-${i * 0.5}s"/>`;
     return `<ellipse cx="0" cy="0" rx="32" ry="14" fill="#bfe8ff" fill-opacity=".38"/><ellipse cx="0" cy="0" rx="18" ry="8" fill="#e8fbff" fill-opacity=".4"/><ellipse cx="0" cy="0" rx="26" ry="11" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width="1"/>${b}`;
   },
-  'drop-off': (s) => {
+  'drop-off': (s) => {   // only the darker water: the deep reads by itself. (It had a dashed line and a buoy with a yellow flag, which nobody could read. The owner had them removed.)
     const w = s.r * 48;
-    return `<path d="M${_gcwN(-w)} -8Q0 -22 ${_gcwN(w)} -8L${_gcwN(w)} 22Q0 34 ${_gcwN(-w)} 22z" fill="#04233f" fill-opacity=".34"/><path d="M${_gcwN(-w)} -8Q0 -22 ${_gcwN(w)} -8" stroke="#bfe8ff" stroke-opacity=".5" stroke-width="1.2" stroke-dasharray="5 7" fill="none"/><g transform="translate(${_gcwN(-w * 0.2)} -14)"><path d="M0 2V-14" stroke="#3a3a42" stroke-width="1.6"/><path d="M-5 3Q0 9 5 3Q0 -1 -5 3z" fill="#e8503a" stroke="#8a2a1a" stroke-width=".7"/><path d="M0 -14l8 3l-8 3z" fill="#f2c432"/></g>`;
+    return `<path d="M${_gcwN(-w)} -8Q0 -22 ${_gcwN(w)} -8L${_gcwN(w)} 22Q0 34 ${_gcwN(-w)} 22z" fill="#04233f" fill-opacity=".34"/>`;
   },
   'old-wreck': () => '<ellipse cx="0" cy="8" rx="60" ry="10" fill="#04233f" fill-opacity=".32"/><path d="M-46 4L-34 -10L34 -22L46 -14L40 6Q0 16 -40 8z" fill="#4a3424" stroke="#2a1a10" stroke-width="1.2"/><path d="M-30 -8L32 -19M-34 0L38 -10" stroke="#2a1a10" stroke-width="1.1"/><path d="M-6 -2L-16 -6L-12 4z" fill="#04233f" fill-opacity=".85"/><path d="M6 -16L14 -78" stroke="#3a2818" stroke-width="4" stroke-linecap="round"/><path d="M-2 -60L26 -66" stroke="#3a2818" stroke-width="2.6" stroke-linecap="round"/><path d="M4 -58Q-4 -40 8 -30L18 -32Q10 -44 22 -62z" fill="#d8ceb0" fill-opacity=".72"/><path d="M-52 10q12 3 24 0M18 10q12 3 28 0" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.2" fill="none" stroke-linecap="round"/>',
 });

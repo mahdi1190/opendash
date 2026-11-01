@@ -12,7 +12,7 @@
 const _gdg = { bound: false, stages: null, visitors: null, wlSeen: null, noteT: 0, nextKey: '' };
 
 /* ---------- geometry: a cell rectangle in the stage box's pixels ---------- */
-function _gdgBox() { return _gdp.root ? _gdp.root.querySelector('.gd-stagebox') : null; }
+function _gdgBox() { if (_grm.on && _grm.root) return _grm.root; return _gdp.root ? _gdp.root.querySelector('.gd-stagebox') : null; }
 function _gdgRectPx(x, y, w, h) {
   const svg = _gdp.svg, box = _gdgBox();
   if (!svg || !box || !svg.getScreenCTM) return null;

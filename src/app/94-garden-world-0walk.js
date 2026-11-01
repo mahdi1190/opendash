@@ -385,7 +385,7 @@ function gardenWalkToPoint(pt, then, o) {
 }
 function gardenWalkTo(cell, then, o) { return gardenWalkToPoint({ x: cell.x + 0.5, y: cell.y + 0.5 }, then, o); }
 function gardenWorldFace(cell) { if (!cell) return; _gwFacePt({ x: cell.x + 0.5, y: cell.y + 0.5 }); }
-function _gwFacePt(pt) { const dx = pt.x - _gw.px; if (Math.abs(dx) > 0.05) _gw.face = dx > 0 ? 1 : -1; _gwBody(); }
+function _gwFacePt(pt) { const dx = pt.x - (pt.x >= GARDEN_ROOM_X && _grm.me ? gardenRoomMeCell().x : _gw.px); if (Math.abs(dx) > 0.05) _gw.face = dx > 0 ? 1 : -1; _gwBody(); }
 /** Where on the stage (in cells, fractions allowed) a pointer event is. */
 function _gwPointAt(ev) {
   try {
@@ -527,7 +527,7 @@ function _gwCamTarget() {
   const ar = s.w / s.h;
   if (typeof gardenDesignCam === 'function') { const dc = gardenDesignCam(ar, wpx, hpx); if (dc) return dc; }   // the designer's own view, moved with its own buttons
   // fishing locks the camera onto you and the bobber: close in, and back out again when the line is in
-  if (typeof _gwFishBusy === 'function' && _gwFishBusy() && _gw.fishing) {
+  if (typeof _gwFishBusy === 'function' && _gwFishBusy() && _gw.fishing && _gw.fishing.bx < GARDEN_ROOM_X) {
     const F = _gw.fishing, bx = F.bx * W.cellW, by = W.sky + F.by * W.cellH, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 30;
     let vh = Math.max(190, Math.abs(by - fy) + 130, (Math.abs(bx - fx) + 170) / ar), vw = vh * ar;
     if (vh > hpx) { vh = hpx; vw = vh * ar; }
@@ -618,6 +618,7 @@ function _gwPace() {
 }
 /** Is this point (cells) on screen, give or take `m` cells? */
 function _gwInView(x, y, m) {
+  if (x >= GARDEN_ROOM_X) return true;   // a room's water: the room looks after itself
   const c = _gw.cam, W = GARDEN_WORLD, mg = (m || 0) * W.cellW, px = x * W.cellW, py = W.sky + y * W.cellH;
   return px > c.x - mg && px < c.x + c.w + mg && py > c.y - mg && py < c.y + c.h + mg;
 }

@@ -49,6 +49,7 @@ function _gdpNum(n) { try { return Number(n).toLocaleString(); } catch (e) { ret
 /** An action's "no". In the garden the world shows it (gameDeny: red, a shake, an X); from anywhere else (the palette, Home) it has to be words. */
 function _gdpSay(r, target) {
   if (!r || r.ok || !r.msg) return r;
+  if (_grm.on) { _grmSay(r.msg); return r; }   // (a room is drawn over the stage)
   if (_gdp.root && _gdp.root.isConnected) gameDenyOf(r, target || null);
   else if (typeof toast === 'function') toast(r.msg, { icon: 'sprout', timeout: 3200 });
   return r;
