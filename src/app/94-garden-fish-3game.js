@@ -18,10 +18,10 @@
    is an HTML panel over the stage. State: _gw.fishing, _gw.reel, _gw.netting, _gw.bugs (94-garden-world-0walk.js declares _gw).
    ============================================================ */
 const NS_SVG = 'http://www.w3.org/2000/svg';
-function _gwActors() { return _gw.svg ? _gw.svg.querySelector('.gd-actors') : null; }
+function _gwActors() { if (_grm.on && _grm.game) return _grm.game; return _gw.svg ? _gw.svg.querySelector('.gd-actors') : null; }
 function _gwEl(tag, attrs) { const e = document.createElementNS(NS_SVG, tag); for (const k in attrs || {}) e.setAttribute(k, attrs[k]); return e; }
-function _gwPx(x, y) { const W = GARDEN_WORLD; return [x * W.cellW, W.sky + y * W.cellH]; }
-function _gwFeet() { return _gwPx(_gw.px, _gw.py); }
+function _gwPx(x, y) { if (x >= GARDEN_ROOM_X) return gardenRoomPx(x, y); const W = GARDEN_WORLD; return [x * W.cellW, W.sky + y * W.cellH]; }
+function _gwFeet() { if (_grm.on && _grm.me) return [_grm.me.x / GRW.k, _grm.me.y / GRW.k]; return _gwPx(_gw.px, _gw.py); }
 
 /* ---------- the catch card (what you got, for a few seconds) ---------- */
 function _gwCatchCard(o) {
@@ -48,6 +48,7 @@ function _gwHeldUp(svgFrag, ms) {
 /** The garden was drawn again with a line out (the state arrived from another tab or the server): put the line, the reel and the lock-in back. */
 function _gwFishResume() {
   const F = _gw.fishing; if (!F || F.state === 'idle') return;
+  if (_grm.on) _gwFishClearFx();   // (a room's layer is not wiped by a repaint)
   _gw.fx = null; _gwFx(); _gwFishFocus(true);
   const R = _gw.reel, box = _gdgBox();
   if (R && box) { box.appendChild(R.el); box.addEventListener('pointerdown', R.down, true); box.focus({ preventScroll: true }); }
@@ -180,7 +181,8 @@ function _gwFishCancelWalkAway() { if (_gwFishBusy() && _gw.fishing.state !== 'c
 function _gwFishLost(msg) {
   if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'lost');
   _gw.fishing.state = 'idle'; _gwReelClose(); _gwFishClearFx(); _gwFishFocus(false);
-  if (msg) { const s = _ghProject(_gw.fishing.bx, _gw.fishing.by), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, say: msg }); }
+  if (msg && _grm.on) _grmSay(msg);
+  else if (msg) { const s = _ghProject(_gw.fishing.bx, _gw.fishing.by), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, say: msg }); }
   if (gardenMotionOn()) { const [x, y] = _gwPx(_gw.fishing.bx, _gw.fishing.by); _gwRing(x, y, 1.2); }
   _gdpRefreshChromeSoon();
 }
@@ -390,7 +392,7 @@ function _gwBugPick(b, far) {
 }
 /* a fish leaps out of the lake somewhere in view now and then, with a splash: just for life (never while you fish, never with motion off) */
 function _gwLeapFrame(dt) {
-  if (!gardenMotionOn() || gardenFun() === 'off') return;
+  if (_grm.on || !gardenMotionOn() || gardenFun() === 'off') return;
   _gw.leapT = (_gw.leapT == null ? 12 + Math.random() * 20 : _gw.leapT) - dt;
   if (_gw.leapT > 0) return;
   _gw.leapT = 30 + Math.random() * 45;
@@ -544,18 +546,20 @@ function _gwNetDraw(b) {
   _gwNetAir();
   void b;
 }
+/** How likely a swing is to net it: d in cells. The same in the garden and in a room. */
+function gardenNetOdds(b, d, creeping) {
+  const net = gardenNet();
+  let p = 0.78 + net.st.luck - 0.065 * b.def.skit - Math.max(0, d - net.st.reach) * 0.4;
+  if (b.def.needs && b.def.needs.net > net.tier) p = 0;   // (it needs a better net: the book says so)
+  if (b.state !== 'rest') p *= b.state === 'flee' ? 0.18 : 0.4;
+  if (creeping) p += 0.06;
+  return Math.max(0.06, Math.min(0.96, p));
+}
 function _gwNetResolve() {
   const N = _gw.netting; if (!N) return;
   const b = N.actor; _gw.netting = null;
   if (!b || !_gw.bugs.has(b.key)) return;
-  const W = GARDEN_WORLD, net = gardenNet();
-  const d = _gwBugDist(b);
-  const awake = b.state !== 'rest';
-  let p = 0.78 + net.st.luck - 0.065 * b.def.skit - Math.max(0, d - net.st.reach) * 0.4;
-  if (b.def.needs && b.def.needs.net > net.tier) p = 0;   // (it needs a better net: the book says so)
-  if (awake) p *= b.state === 'flee' ? 0.18 : 0.4;
-  if (_gw.sneak) p += 0.06;
-  const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < Math.max(0.06, Math.min(0.96, p));   // (somebody netted it first: your swing misses)
+  const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < gardenNetOdds(b, _gwBugDist(b), _gw.sneak);   // (somebody netted it first: your swing misses)
   if (!ok) { _gwBugMissed(b, true); return; }
   // in a live garden the host says who netted it first (94-garden-live-6life.js): 'wait' for a guest, 'lost' when somebody had it
   const claim = typeof gardenLiveBugClaim === 'function' ? gardenLiveBugClaim(b) : 'ok';
@@ -587,6 +591,7 @@ function _gwBugTaken(b) {
 
 /** Open the book / tackle shop on a tab of the catch page. */
 function gardenCatchOpen(tab) {
+  if (_grm.on) gardenRoomLeave();   // (the page opens behind a room)
   if (tab) { try { _gdG().prefs.catchTab = tab; } catch (e) { /* fine */ } }
   gardenGoPage('garden:catch');   // a pop-up while you are in the garden, the page elsewhere
 }

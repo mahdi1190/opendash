@@ -90,7 +90,7 @@ function _gspMoon(iso) {
 function gardenVariantCtx(m, o) {
   o = o || {};
   return {
-    tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), snow: !!(m.rain && m.rain.snow), moon: _gspMoon(m.today), zone: o.zone || '', hab: o.hab || '', chum: !!o.chum, frenzy: !!o.frenzy,
+    tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), snow: !!(m.rain && m.rain.snow), moon: _gspMoon(m.today), zone: o.zone || '', room: o.room || '', hab: o.hab || '', chum: !!o.chum, frenzy: !!o.frenzy,
     event: (id) => { try { return typeof gardenEventOn === 'function' && !!gardenEventOn(id); } catch (e) { return false; } },
     work: (id) => { try { return typeof gardenWorkOwned === 'function' && !!gardenWorkOwned(id); } catch (e) { return false; } },
   };

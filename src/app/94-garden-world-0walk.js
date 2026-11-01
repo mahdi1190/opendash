@@ -385,7 +385,7 @@ function gardenWalkToPoint(pt, then, o) {
 }
 function gardenWalkTo(cell, then, o) { return gardenWalkToPoint({ x: cell.x + 0.5, y: cell.y + 0.5 }, then, o); }
 function gardenWorldFace(cell) { if (!cell) return; _gwFacePt({ x: cell.x + 0.5, y: cell.y + 0.5 }); }
-function _gwFacePt(pt) { const dx = pt.x - _gw.px; if (Math.abs(dx) > 0.05) _gw.face = dx > 0 ? 1 : -1; _gwBody(); }
+function _gwFacePt(pt) { const dx = pt.x - (pt.x >= GARDEN_ROOM_X && _grm.me ? gardenRoomMeCell().x : _gw.px); if (Math.abs(dx) > 0.05) _gw.face = dx > 0 ? 1 : -1; _gwBody(); }
 /** Where on the stage (in cells, fractions allowed) a pointer event is. */
 function _gwPointAt(ev) {
   try {
@@ -527,7 +527,7 @@ function _gwCamTarget() {
   const ar = s.w / s.h;
   if (typeof gardenDesignCam === 'function') { const dc = gardenDesignCam(ar, wpx, hpx); if (dc) return dc; }   // the designer's own view, moved with its own buttons
   // fishing locks the camera onto you and the bobber: close in, and back out again when the line is in
-  if (typeof _gwFishBusy === 'function' && _gwFishBusy() && _gw.fishing) {
+  if (typeof _gwFishBusy === 'function' && _gwFishBusy() && _gw.fishing && _gw.fishing.bx < GARDEN_ROOM_X) {
     const F = _gw.fishing, bx = F.bx * W.cellW, by = W.sky + F.by * W.cellH, fx = _gw.px * W.cellW, fy = W.sky + _gw.py * W.cellH - 30;
     let vh = Math.max(190, Math.abs(by - fy) + 130, (Math.abs(bx - fx) + 170) / ar), vw = vh * ar;
     if (vh > hpx) { vh = hpx; vw = vh * ar; }
@@ -599,7 +599,9 @@ function _gwCalmTick() {
   if (focused) _gwCalm.blur = 0; else if (!_gwCalm.blur) _gwCalm.blur = t;
   const away = !focused && _gwCalm.blur > 0 && t - _gwCalm.blur > 8000;
   const company = typeof _gll !== 'undefined' && _gll.actors && _gll.actors.size > 0;   // friends here: you are watching them
-  _gwCalmSet(!!(away || (!company && t - _gwCalm.input > 90000)));
+  const idle = !!(away || (!company && t - _gwCalm.input > 90000));
+  _gwCalmSet(idle || _grm.on);   // (in a room, the stage under it is not being looked at)
+  if (_grm.root) _grm.root.classList.toggle('is-calm', idle);
 }
 if (typeof window !== 'undefined') {
   const wake = () => { _gwCalm.input = Date.now(); if (_gwCalm.on) { _gwCalmSet(false); if (_gw.idleT) { clearTimeout(_gw.idleT); _gw.idleT = 0; } if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } };   // clock-ok: idle time
@@ -618,6 +620,7 @@ function _gwPace() {
 }
 /** Is this point (cells) on screen, give or take `m` cells? */
 function _gwInView(x, y, m) {
+  if (x >= GARDEN_ROOM_X) return true;   // a room's water: the room looks after itself
   const c = _gw.cam, W = GARDEN_WORLD, mg = (m || 0) * W.cellW, px = x * W.cellW, py = W.sky + y * W.cellH;
   return px > c.x - mg && px < c.x + c.w + mg && py > c.y - mg && py < c.y + c.h + mg;
 }

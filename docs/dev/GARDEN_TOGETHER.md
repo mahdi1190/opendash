@@ -435,3 +435,14 @@ Code: `src/app/94-garden-zz-*.js`, `src/styles/94-garden-together.css`. The owne
 **One rule for standing in the way** (`_gdzReachWhy`): it builds the same grid the walking uses, before and after, and refuses if any land you could reach, or any door you could reach, would be cut off, in plain words. It runs on a move, on Put it back and on swapping to an older layout. Decorations put out by hand away from the designer are not checked for this, as before.
 
 **Strict rules are for your own hands.** `94-garden-design-1strict.js` (every number in `GDZ_STRICT`) runs only when you draw or put something down in the designer. It never refuses a snapshot: `gardenDesignClean` still draws a design from an older or newer app whatever it breaks, and what is already placed stays until it is moved.
+
+## 25. Together indoors: a hidden room's water
+
+A room's water is real water with cells of its own past the edge of the map, from `GARDEN_ROOM_X` (53) on: `gl:fs` carries x to 64 and y to 32, a cast x and y to 63. Nothing new is sent and no snapshot field was added.
+
+- `hall` with `i` says who is in which room (`A.rm`). A fish is one row in the one list, in a band `R:<room>` that exists only while someone is in that room. The host runs it; when everyone has left, its fish go.
+- A line, the bite, the reel and the catch are the usual `fish`, `fs` and `got` events with those cells. `gardenRoomFxAt` draws a friend's rod from their figure in the room. If you are not in that room, nothing is drawn, and a catch is one line in the corner.
+- A bug in a room is claimed the usual way (`gardenLiveBugClaim`), with a key that starts `rm`.
+- The room's small games are each person's own: nothing about them is sent.
+
+While you are in a room, `_gwActors`, `_gwFeet`, `_gwPx` and `_gdgBox` answer for the room, so the fishing and netting code does not know the difference. The layer is scaled by `GRW.k`, which makes the rod, float and moment fit the bigger figure.

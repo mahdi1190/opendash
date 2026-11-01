@@ -33,7 +33,8 @@ const _GRG_WATER_ROWS = [
   { id: 'brook', name: 'the brook under the rope bridge', r: 'marsh', x: 47, y: 34, w: 3, h: 1, via: 'lt-reed', cap: 40, like: /dace|shiner|bleak|gudgeon|pebble|elver/ },
   { id: 'folly', name: 'the folly pool', r: 'marsh', x: 23, y: 38, w: 5, h: 1, via: 'lt-heron', cap: 60, like: /paper|wish|sun|sprite|crown|ghost/ },
   { id: 'light', name: 'the rocks by the lighthouse', r: 'marsh', x: 36, y: 38, w: 2, h: 1, via: 'lt-heron', cap: 60, like: /lantern|jelly|squid|hatchet|angler/ },
-  { id: 'cavepool', name: 'the cave pool at the back of the mossy grotto', r: 'hill', room: 1, via: _grgDoorCell(gardenLandSight('ld-grotto')), cap: 40, like: /^$/ },   // inside a hidden room: no cells on the map, so no band (94-garden-world-4rooms2.js)
+  { id: 'cavepool', name: 'the cave pool at the back of the mossy grotto', r: 'hill', room: 1, via: _grgDoorCell(gardenLandSight('ld-grotto')), cap: 40, like: /^$/ },   // inside a hidden room: its own cells past the map (94-garden-world-4rooms3water.js)
+  { id: 'cellarpool', name: 'the flooded floor of the drowned cellar, under the sunken pool', r: 'garden', room: 1, via: _grgDoorCell(gardenLandSight('ld-sunk')), cap: 70, like: /^$/ },
 ];
 const _GRG_POOL_LIKE = Object.freeze({ 'ls-lily-pool': /lily|pipefish|reed|weed|sunfish|bluegill|crappie/, 'ls-deep-pool': /catfish|burbot|snakehead|bowfin|gar$|eel/, 'ls-clear-pool': /clear|pearl|silver|glass/, 'ls-moon-pool': /moon|night/, 'ls-sedge-pool': /pike|perch|sedge/, 'ls-stone-pool': /bass|stone|rock/ });
 const GARDEN_REGION_WATERS = _gdRows(_GRG_WATER_ROWS.map(w => {
@@ -57,6 +58,7 @@ const _GRG_FISH_HAND = Object.freeze({
   frogpool: ['great-crested-newt', 'axolotl', 'terrapin', 'mud-puppy', 'frog-mouth', 'snapping-turtle', 'musk-turtle'],
   light: ['lantern-minnow', 'lantern-angler'],
   cavepool: ['blind-loach', 'moss-chub', 'drip-pearl'],
+  cellarpool: ['jar-minnow', 'cellar-eel', 'barrel-carp'],
   'ls-moon-pool': ['moonfish', 'moon-gazer', 'new-moon-bream'],
   'ls-stone-pool': ['wishing-fish'],
   'ls-lily-pool': ['pearl-gourami'],
@@ -195,6 +197,7 @@ function gardenRegionShort(def) {
 }
 /** What stops a cast here. '' if nothing. */
 function gardenRegionWaterNo(x, y, areas) {
+  if (x >= GARDEN_ROOM_X) return '';   // you are standing beside it
   const w = _grgWaterOfCell(x, y);
   if (w && !w.area) return gardenRegionHomeOpen({ w: w.id }, areas) ? '' : `${w.name[0].toUpperCase()}${w.name.slice(1)}: ${_grgOpenWords({ w: w.id })[0].toLowerCase()}${_grgOpenWords({ w: w.id }).slice(1)}`;
   return areas.includes('pond') ? '' : 'The pond opens at garden level 7.';
