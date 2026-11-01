@@ -62,18 +62,19 @@ function _gdzPanelMake(box, m, c, rw) {
   if (T.lifted) { _gdzPanelMove(box); return; }
   box.appendChild(_gdzBtn('gdz-go gdz-place', 'Put it in the garden', 'plus', gardenDesignPlaceNew));
   const kinds = _gdzEl('div', 'gdz-row');
-  GDZ_MADE.forEach((d, i) => { const open = gardenDesignOpen(d, c, rw); kinds.appendChild(_gdzSwatch(d.name, M.kind === i, open, d.earn ? d.earn.says : '', (el) => { const s = [i, 0, 0, M.a, M.b, i === 1 ? Math.min(M.pat, GDZ_FLAGS.length - 1) : i === 2 ? Math.min(M.pat, GDZ_POSES.length - 1) : 0, '']; el.innerHTML = `<svg viewBox="-46 -92 92 96" aria-hidden="true">${gardenDesignMadeArt(s, 0)}</svg>`; }, () => { M.kind = i; M.pat = 0; gardenDesignPanel(); })); });
+  GDZ_MADE.forEach((d, i) => { const open = gardenDesignOpen(d, c, rw); kinds.appendChild(_gdzSwatch(d.name, M.kind === i, open, d.earn ? d.earn.says : '', (el) => { const pr = GDZ_STRICT.pairs[d.id][0], s = [i, 0, 0, pr[0], pr[1], 0, '']; el.innerHTML = `<svg viewBox="-46 -92 92 96" aria-hidden="true">${gardenDesignMadeArt(s, 0)}</svg>`; }, () => { M.kind = i; M.pat = 0; M.pair = 0; gardenDesignPanel(); })); });
   box.appendChild(kinds);
-  const cols = (label, key) => { const w = _gdzEl('div', 'gdz-cols'); w.appendChild(_gdzEl('span', 'gdz-sub', label)); GDZ_COLOURS.forEach((q, i) => { const open = gardenDesignOpen(q, c, rw), b = _gdzEl('button', 'gdz-col' + (M[key] === i ? ' is-on' : '') + (open ? '' : ' is-shut')); b.type = 'button'; b.title = open ? q.n : `${q.n}: ${q.earn.says}`; b.setAttribute('aria-label', b.title); b.setAttribute('aria-pressed', M[key] === i ? 'true' : 'false'); b.style.background = q.c; b.addEventListener('click', (ev) => { ev.stopPropagation(); if (open) { M[key] = i; gardenDesignPanel(); } else _gdzSay(`${q.n}: ${q.earn.says} to have it.`, true); }); w.appendChild(b); }); return w; };
-  const kind = GDZ_MADE[M.kind].id;
-  box.appendChild(cols(kind === 'sign' ? 'Board' : kind === 'flag' ? 'Colour' : 'Stone', 'a'));
-  box.appendChild(cols(kind === 'sign' ? 'Edge' : kind === 'flag' ? 'Pattern colour' : 'Base', 'b'));
+  const kind = GDZ_MADE[M.kind].id, pairs = GDZ_STRICT.pairs[kind];
+  { const w = _gdzEl('div', 'gdz-cols'); w.appendChild(_gdzEl('span', 'gdz-sub', 'Colours'));
+    if (!pairs[M.pair]) M.pair = 0;
+    pairs.forEach(([a, b], i) => { const ca = GDZ_COLOURS[a], cb = GDZ_COLOURS[b], shut = [ca, cb].find(q => !gardenDesignOpen(q, c, rw)), on = M.pair === i, o = _gdzEl('button', 'gdz-col' + (on ? ' is-on' : '') + (shut ? ' is-shut' : '')); o.type = 'button'; o.title = shut ? `${ca.n} and ${cb.n}: ${shut.earn.says}` : `${ca.n} and ${cb.n}`; o.setAttribute('aria-label', o.title); o.setAttribute('aria-pressed', on ? 'true' : 'false'); o.style.background = `linear-gradient(135deg, ${ca.c} 50%, ${cb.c} 50%)`; o.addEventListener('click', (ev) => { ev.stopPropagation(); if (shut) { _gdzSay(`${o.title} to have these.`, true); return; } M.pair = i; gardenDesignPanel(); }); w.appendChild(o); });
+    box.appendChild(w); }
   if (kind === 'sign') {
-    const lab = _gdzEl('label', 'gdz-field'); lab.appendChild(_gdzEl('span', 'gdz-sub', `Your words (friends can read them when they visit, at most ${GDZ_LIMITS.text} letters)`));
-    const inp = _gdzEl('input', 'gdz-input'); inp.type = 'text'; inp.maxLength = GDZ_LIMITS.text; inp.value = M.text; inp.autocomplete = 'off'; inp.addEventListener('input', () => { M.text = inp.value; }); lab.appendChild(inp); box.appendChild(lab);
+    const lab = _gdzEl('label', 'gdz-field'); lab.appendChild(_gdzEl('span', 'gdz-sub', `Your words (friends can read them when they visit, at most ${GDZ_STRICT.signText} letters)`));
+    const inp = _gdzEl('input', 'gdz-input'); inp.type = 'text'; inp.maxLength = GDZ_STRICT.signText; inp.value = M.text; inp.autocomplete = 'off'; inp.addEventListener('input', () => { M.text = inp.value; }); lab.appendChild(inp); box.appendChild(lab);
   } else {
     const list = kind === 'flag' ? GDZ_FLAGS : GDZ_POSES, row = _gdzEl('div', 'gdz-row');
-    list.forEach((p, i) => { const open = gardenDesignOpen(p, c, rw); row.appendChild(_gdzSwatch(p.name, M.pat === i, open, p.earn ? p.earn.says : '', (el) => { el.innerHTML = `<svg viewBox="-46 -92 92 96" aria-hidden="true">${gardenDesignMadeArt([M.kind, 0, 0, M.a, M.b, i, ''], 0)}</svg>`; }, () => { M.pat = i; gardenDesignPanel(); })); });
+    list.forEach((p, i) => { const open = gardenDesignOpen(p, c, rw); row.appendChild(_gdzSwatch(p.name, M.pat === i, open, p.earn ? p.earn.says : '', (el) => { { const pr = GDZ_STRICT.pairs[GDZ_MADE[M.kind].id], q = pr[M.pair] || pr[0]; el.innerHTML = `<svg viewBox="-46 -92 92 96" aria-hidden="true">${gardenDesignMadeArt([M.kind, 0, 0, q[0], q[1], i, ''], 0)}</svg>`; } }, () => { M.pat = i; gardenDesignPanel(); })); });
     box.appendChild(row);
   }
 }
@@ -124,7 +125,7 @@ function gardenDesignPanel() {
   ({ path: _gdzPanelPath, ground: _gdzPanelGround, move: _gdzPanelMove, make: _gdzPanelMake, layouts: _gdzPanelLayouts }[T.tool] || _gdzPanelPath)(opts, m, c, rw);
   bottom.appendChild(opts);
   const tools = _gdzEl('div', 'gdz-tools');
-  for (const [k, label, ic] of _GDZ_TOOLS) tools.appendChild(_gdzBtn('gdz-tool', label, ic, () => { if (T.lifted && !T.lifted.fresh) _gdzDropCancel(); T.tool = k; T.rubbing = false; gardenDesignPanel(); _gdzSay({ path: 'Pick a path and draw with your mouse or finger.', ground: 'Pick a ground and paint on your own land.', move: 'Tap what you want to move.', make: 'Make something, then put it in the garden.', layouts: 'Keep a few designs and swap between them.' }[k]); }, { pressed: T.tool === k }));
+  for (const [k, label, ic] of _GDZ_TOOLS) tools.appendChild(_gdzBtn('gdz-tool', label, ic, () => { if (T.lifted && !T.lifted.fresh) _gdzDropCancel(); T.tool = k; T.rubbing = false; gardenDesignPanel(); _gdzSay({ path: 'Press on a path, a plaza or a door, and draw to another one.', ground: 'Paint a whole soft patch on your own land. Each land has its own colours.', move: 'Tap what you want to move.', make: 'Make something, then put it in the garden.', layouts: 'Keep a few designs and swap between them.' }[k]); }, { pressed: T.tool === k }));
   bottom.appendChild(tools);
   el.appendChild(bottom);
   box.appendChild(el);

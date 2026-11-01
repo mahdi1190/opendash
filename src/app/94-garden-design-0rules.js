@@ -139,7 +139,7 @@ function gardenDesignShow(d) {
   if (d) {
     for (const [id, x, y, dx, dy] of d.m || []) { const r = rows.get(id); if (!r) continue; r.x = x; r.y = y; if (r.door) r.door = Object.freeze({ x: x + dx, y: y + dy }); }
     for (const row of d.g || []) { const st = GDZ_GROUND[row[0]]; if (!st || !st.area) continue; for (let i = 1; i + 1 < row.length; i += 2) for (let c = row[i]; c < row[i] + row[i + 1]; c++) H.bed.set(c, st.area); }
-    (d.c || []).forEach((c, i) => { const def = GDZ_MADE[c[0]]; if (def) H.madeRows.push({ id: gardenDesignMadeKey(c, i), name: def.id === 'sign' ? 'Your sign' : def.id === 'flag' ? 'Your flag' : 'Your statue', x: c[1], y: c[2], w: 1, h: 1, col: 'soft', walk: 0, tall: def.tall }); });
+    (d.c || []).forEach((c, i) => { const def = GDZ_MADE[c[0]]; if (def) H.madeRows.push({ id: gardenDesignMadeKey(c, i), name: def.id === 'sign' ? 'Your sign' : def.id === 'flag' ? 'Your flag' : 'Your statue', x: c[1], y: c[2], w: 1, h: 1, col: 'soft', walk: 0, tall: def.tall, dz: def.id }); });
   }
   H.sig = sig; H.shown = d || null; H.rev++;
   if (typeof gardenLandPropsReset === 'function') gardenLandPropsReset();

@@ -8,7 +8,7 @@
 
    A stroke is drawn into a single live <path> in the stage's ui layer and only becomes part of the scene when it ends, then just the design layer is swapped: no redraw of the stage per stroke.
    ============================================================ */
-function _gdzT() { return _gdzT.s || (_gdzT.s = { on: false, draft: null, lay: null, dm: {}, hist: [], tool: 'path', pathStyle: 0, groundStyle: 0, rubbing: false, cam: null, say: '', bad: false, lifted: null, stroke: null, press: null, was: null, make: { kind: 0, a: 0, b: 1, pat: 1, text: '' } }); }
+function _gdzT() { return _gdzT.s || (_gdzT.s = { on: false, draft: null, lay: null, dm: {}, hist: [], tool: 'path', pathStyle: 0, groundStyle: 0, rubbing: false, cam: null, say: '', bad: false, lifted: null, stroke: null, press: null, was: null, make: { kind: 0, pair: 0, pat: 0, text: '' } }); }
 function gardenDesignOn() { return !!_gdzT.s && _gdzT.s.on; }
 function gardenDesignCam(ar, wpx, hpx) {
   if (!gardenDesignOn()) return null;
@@ -88,18 +88,21 @@ function _gdzReachWhy(m, thing, out, build) {
   } finally { undo(); gardenLandPropsReset(); }
 }
 /** Can this fixed row stand with its corner at x, y? {why, door}. */
-function gardenDesignMoveCheck(row, x, y) {
-  const m = _gdzModel(), w = row.w || 1, h = row.h || 1, base = gardenDesignBase(row.id);
+function gardenDesignMoveCheck(row, x, y, o) {
+  const m = _gdzModel(), w = row.w || 1, h = row.h || 1, base = gardenDesignBase(row.id), strict = !(o && o.loose), cls = gardenDesignClass(row);   // loose: Put it back and old layouts, only the reach rule
   const res = { why: _gdzCellsWhy(m, x, y, w, h, row, ''), door: null };
   if (res.why) return res;
+  if (strict) { res.why = gardenDesignStandWhy({ cls: cls === 'building' ? 'building' : 'stand', x, y, w, h, key: row.kind || row.id, name: row.name, beside: GDZ_STRICT.besideArts.includes(row.art), self: { id: row.id } }, m, _gdzT().draft); if (res.why) return res; }
   // where you knock: the same side as it had, or else any side with ground you can walk to
   const off = base && base.door ? [base.door.x - base.x, base.door.y - base.y] : null, tries = [];
   if (off) tries.push([x + off[0], y + off[1]]);
   for (let k = 0; k < w; k++) tries.push([x + k, y + h]);
   for (let k = 0; k < h; k++) { tries.push([x - 1, y + k]); tries.push([x + w, y + k]); }
   for (let k = 0; k < w; k++) tries.push([x + k, y - 1]);
+  const mask = gardenDesignPathMask(_gdzT().draft, m), needPath = strict && cls === 'building', byPath = (dx, dy) => { const g = GDZ_STRICT.building.doorToPath; for (let cy = dy - g; cy <= dy + g; cy++) for (let cx = dx - g; cx <= dx + g; cx++) if (cx >= 0 && cy >= 0 && cx < GARDEN_WORLD.cols && cy < GARDEN_WORLD.rows && mask[cy * GARDEN_WORLD.cols + cx]) return true; return false; };
   const W = GARDEN_WORLD, ox = row.x, oy = row.y, od = row.door;
-  const out = { doorOf: !row.door ? null : (after) => { for (const [dx, dy] of tries) { if (dx < 0 || dy < 0 || dx >= W.cols || dy >= W.rows || Math.abs(dx - x) > GDZ_LIMITS.door || Math.abs(dy - y) > GDZ_LIMITS.door) continue; if (after[dy * W.cols + dx]) return { x: dx, y: dy }; } return null; } };
+  const out = { doorOf: !row.door ? null : (after) => { for (const [dx, dy] of tries) { if (dx < 0 || dy < 0 || dx >= W.cols || dy >= W.rows || Math.abs(dx - x) > GDZ_LIMITS.door || Math.abs(dy - y) > GDZ_LIMITS.door || (needPath && !byPath(dx, dy))) continue; if (after[dy * W.cols + dx]) return { x: dx, y: dy }; } return null; } };
+  if (needPath && !tries.some(([dx, dy]) => dx >= 0 && dy >= 0 && dx < W.cols && dy < W.rows && byPath(dx, dy))) { res.why = `The door of ${String(row.name).replace(/^The /, 'the ')} has to face a path. Try right beside one.`; return res; }
   res.why = _gdzReachWhy(m, String(row.name).replace(/^The /, 'the '), out, () => { row.x = x; row.y = y; return () => { row.x = ox; row.y = oy; row.door = od; }; });
   res.door = out.door || null;
   return res;
@@ -107,15 +110,23 @@ function gardenDesignMoveCheck(row, x, y) {
 /** Can a decoration go here? {why}. A wall of them can shut a door as well as a shop can. */
 function _gdzDecorCheck(d, x, y) {
   const m = _gdzModel(), why = _gdPlaceOk(m, d.def, x, y, 'decor', d.uid); if (why) return { why: why.replace(/\.?$/, '.') };
+  const sw = d.def.layer === 'ground' ? '' : gardenDesignStandWhy({ cls: 'stand', x, y, w: d.def.w || 1, h: d.def.h || 1, key: d.def.id, name: d.def.name, free: GDZ_STRICT.freeCats.includes(d.def.cat), beside: !!(d.def.effect && GDZ_STRICT.besideEffects.includes(d.def.effect.kind)), self: { uid: d.uid } }, m, _gdzT().draft); if (sw) return { why: sw };
   if (d.def.layer === 'ground' || gardenDecorCol(d.def) !== 'full') return { why: '' };
   const prev = _gdzT().dm[d.uid];
   const out = { model: null };
   return { why: _gdzReachWhy(m, d.def.name, out, () => { _gdzT().dm[d.uid] = [x, y]; out.model = _gdzModel(); return () => { if (prev) _gdzT().dm[d.uid] = prev; else delete _gdzT().dm[d.uid]; }; }) };
 }
 /** A row of what you made can stand where nothing else does; it is a small box, so it never shuts anything. */
-function _gdzMadeCheck(x, y, i) {
-  const self = i == null ? null : gardenDesignLandProps()[i];
-  return { why: _gdzCellsWhy(_gdzModel(), x, y, 1, 1, self, '') };
+function _gdzMadeCheck(x, y, i, c) {
+  const self = i == null ? null : gardenDesignLandProps()[i], m = _gdzModel(), def = GDZ_MADE[c[0]] || GDZ_MADE[0];
+  const why = _gdzCellsWhy(m, x, y, 1, 1, self, ''); if (why) return { why };
+  return { why: gardenDesignStandWhy({ cls: 'stand', x, y, w: 1, h: 1, key: 'made-' + def.id, name: 'Your ' + def.id, made: def.id, self: { id: self ? self.id : '', madeI: i } }, m, _gdzT().draft) };
+}
+/** The nearest spot that works, within GDZ_STRICT.snap, so a slightly wrong tap still lands right. */
+function _gdzSnapNear(x, y, check) {
+  const R = GDZ_STRICT.snap;
+  for (let r = 1; r <= R; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const c = check(x + dx, y + dy); if (!c.why) return { x: x + dx, y: y + dy, r: c }; }
+  return null;
 }
 
 /* ---------- the draft ---------- */
@@ -177,7 +188,7 @@ function gardenDesignEnter() {
   _gdzBind(box);
   _gdzStage();
   gardenDesignPanel();
-  _gdzSay('Pick a path and draw with your mouse or finger.');
+  _gdzSay('Press on a path, a plaza or a door, and draw to another one.');
 }
 /** Leaving by any door: back to what is saved. */
 function _gdzClose() {
@@ -230,7 +241,7 @@ function gardenDesignLayoutUse(id) {
   for (const q of T.draft.m.slice()) {
     const row = gardenDesignRow(q[0]); if (!row) continue;
     T.draft.m = T.draft.m.filter(r => r !== q); gardenDesignShow(T.draft);
-    if (gardenDesignMoveCheck(row, q[1], q[2]).why) back.push(row.name); else { T.draft.m.push(q); gardenDesignShow(T.draft); }
+    if (gardenDesignMoveCheck(row, q[1], q[2], { loose: true }).why) back.push(row.name); else { T.draft.m.push(q); gardenDesignShow(T.draft); }
   }
   _gdzStage(); gardenDesignPanel();
   _gdzSay(back.length ? `Now showing ${T.lay.lay[id].n}. ${back.join(', ')} could not stand there any more, so it went back where it started.` : `Now showing ${T.lay.lay[id].n}. Keep your changes to stay with it.`, !!back.length);
@@ -249,11 +260,6 @@ function gardenDesignLayoutRemove(id) {
 }
 
 /* ---------- pointer ---------- */
-function _gdzAllowed(x, y, level) {
-  // ground you can use: not water, not somebody else's, not behind the trees
-  if (gardenIsWater(x, y)) return false;
-  return !gardenAreaAt(x, y, level).startsWith('locked:');
-}
 function _gdzPoint(ev) { const p = _gwPointAt(ev); return p ? { x: p.x, y: p.y } : null; }
 function _gdzBind(box) {
   if (box._gdzBound) return; box._gdzBound = true;
@@ -290,7 +296,7 @@ function _gdzMove(ev) {
   const T = _gdzT(), P = T.press;
   if (P && (Math.abs(ev.clientX - P.x0) > 9 || Math.abs(ev.clientY - P.y0) > 9)) P.moved = true;
   if (T.lifted) { _gdzGhostAt(_gdpCellOf(ev)); return; }
-  if (!P) return;
+  if (!P) { if (T.tool === 'path' && !T.rubbing) _gdzPathHint(_gdzPoint(ev)); return; }
   if (T.tool === 'path') { const pt = _gdzPoint(ev); if (T.rubbing) _gdzRubPath(pt, false); else if (T.stroke) _gdzStrokeMore(pt); }
   else if (T.tool === 'ground') _gdzPaintMore(_gdpCellOf(ev));
 }
@@ -306,7 +312,9 @@ function _gdzUp(ev) {
 function _gdzStrokeStart(pt) {
   const T = _gdzT(); if (!pt) return;
   if (T.draft.p.length >= GDZ_LIMITS.paths) { _gdzSay(`You have ${GDZ_LIMITS.paths} paths, which is all there is room for. Rub one out first.`, true); return; }
-  T.stroke = { pts: [[pt.x, pt.y]], ok: true, off: 0, raf: 0 }; _gdzStrokePaint();
+  const a = gardenDesignAnchor(pt, T.draft, gardenModel());
+  if (!a) { _gdzPathHint(pt); _gdzSay('A path has to start on another path, a plaza or a door. Press nearer one.', true); return; }
+  T.stroke = { pts: [[a.x, a.y]], raf: 0, check: null }; _gdzStrokePaint();
 }
 function _gdzStrokeMore(pt) {
   const T = _gdzT(), S = T.stroke; if (!pt) return;
@@ -314,10 +322,28 @@ function _gdzStrokeMore(pt) {
   S.pts.push([pt.x, pt.y]);
   if (!S.raf) S.raf = requestAnimationFrame(() => { S.raf = 0; if (_gdzT().stroke === S) _gdzStrokePaint(); });
 }
+/** A ring where this end would join (green), or where it would not (red). */
+function _gdzRing(x, y, good) { const W = GARDEN_WORLD; return `<circle cx="${_gdzN(x * W.cellW)}" cy="${_gdzN(W.sky + y * W.cellH)}" r="13" fill="${good ? '#2fa84f' : '#d0402c'}" fill-opacity="0.3" stroke="${good ? '#2fa84f' : '#d0402c'}" stroke-width="3.500"/>`; }
+/** Before you press: where would a path start from here? */
+function _gdzPathHint(pt) {
+  const T = _gdzT(); if (!pt) return;
+  const a = gardenDesignAnchor(pt, T.draft, gardenModel());
+  _gdzLive(a ? _gdzRing(a.x, a.y, true) : _gdzRing(pt.x, pt.y, false));
+}
+function _gdzPathGhost(c, st) {
+  const W = GARDEN_WORLD, d = gardenDesignCurve(c.pts.map(([x, y]) => [x * W.cellW, W.sky + y * W.cellH]));
+  let s = d ? gardenDesignPathMarkup(st, d) : '';
+  if (c.why && d) s += `<path d="${d}" fill="none" stroke="#d0402c" stroke-width="4" stroke-dasharray="9 7" stroke-linecap="round"/>`;
+  const e = c.pts[c.pts.length - 1];
+  s += _gdzRing(c.pts[0][0], c.pts[0][1], !!c.a) + (c.pts.length > 1 ? _gdzRing(e[0], e[1], !!c.b) : '');
+  for (const q of c.bad.slice(0, 6)) s += _gdzRing(q[0], q[1], false);
+  return s;
+}
 function _gdzStrokePaint() {
-  const T = _gdzT(), S = T.stroke, W = GARDEN_WORLD, st = GDZ_PATHS[T.pathStyle]; if (!S) return;
-  const d = gardenDesignCurve(S.pts.map(([x, y]) => [x * W.cellW, W.sky + y * W.cellH]));
-  if (d) _gdzLive(gardenDesignPathMarkup(st, d));
+  const T = _gdzT(), S = T.stroke; if (!S) return;
+  const c = S.check = S.pts.length > 1 ? gardenDesignPathCheck(S.pts, T.draft, gardenModel()) : { why: '', pts: S.pts, a: true, b: null, bad: [] };
+  _gdzLive(_gdzPathGhost(c, GDZ_PATHS[T.pathStyle]));
+  if (S.pts.length > 1) _gdzSay(c.why || `Let go to lay this path. It joins ${c.b.what}.`, !!c.why && !/^Keep going/.test(c.why));
 }
 /** The fewest points that keep the shape, so a long curve costs friends little. */
 function _gdzSimplify(pts, tol) {
@@ -332,17 +358,16 @@ function _gdzSimplify(pts, tol) {
   return pts.filter((_, i) => keep[i]);
 }
 function _gdzStrokeEnd() {
-  const T = _gdzT(), S = T.stroke, m = gardenModel(), lv = m.level.level; T.stroke = null; _gdzLive('');
-  // a line stays on ground you can use: where it crosses water or land that is not yours it breaks, and says so
-  const runs = [[]]; let off = 0;
-  for (const p of S.pts) { if (_gdzAllowed(Math.floor(p[0]), Math.floor(p[1]), lv)) runs[runs.length - 1].push(p); else { off++; if (runs[runs.length - 1].length) runs.push([]); } }
-  const add = runs.filter(r => r.length >= 2).map(r => _gdzSimplify(r, 0.14).slice(0, GDZ_LIMITS.pts));
-  if (!add.length) { _gdzSay(off ? 'Paths go on land you can walk on. That was not.' : 'Press and draw a line to make a path.', !!off); return; }
+  const T = _gdzT(), S = T.stroke, m = gardenModel(); T.stroke = null;
+  if (S.pts.length < 2) { _gdzLive(''); _gdzSay('Press on a path and draw to make a new one.'); return; }
+  const c = gardenDesignPathCheck(S.pts, T.draft, m);
+  // refused: the red ghost stays until you move on, so you can see why
+  if (c.why) { _gdzLive(_gdzPathGhost(c, GDZ_PATHS[T.pathStyle])); _gdzSay(c.why.replace(/^Keep going: /, 'That path was not laid: '), true); return; }
+  let tol = 0.14, r = _gdzSimplify(c.pts, tol); while (r.length > GDZ_LIMITS.pts) { tol *= 1.5; r = _gdzSimplify(c.pts, tol); }
   _gdzPush();
-  for (const r of add) { if (T.draft.p.length >= GDZ_LIMITS.paths) break; const row = [T.pathStyle]; let x = 0, y = 0; for (const [px, py] of r) { const qx = Math.round(px * 10), qy = Math.round(py * 10); row.push(qx - x, qy - y); x = qx; y = qy; } T.draft.p.push(row); }
-  _gdzLayerOnly(); gardenDesignPanel();
-  _gdzLive('');
-  _gdzSay(off ? 'Your path stops where the land is not yours or there is water.' : 'A new path. Draw another, or Undo if you do not like it.', false);
+  const row = [T.pathStyle]; let x = 0, y = 0; for (const [px, py] of r) { const qx = Math.round(px * 10), qy = Math.round(py * 10); row.push(qx - x, qy - y); x = qx; y = qy; } T.draft.p.push(row);
+  _gdzLayerOnly(); gardenDesignPanel(); _gdzLive('');
+  _gdzSay(`A new path, joined to ${c.b.what}. Draw another, or Undo if you do not like it.`);
 }
 function _gdzRubPath(pt, first) {
   const T = _gdzT(); if (!pt) return;
@@ -354,27 +379,39 @@ function _gdzRubPath(pt, first) {
 function _gdzRubEnd() { _gdzT().rubbed = false; }
 
 /* ---------- painting the ground ---------- */
-function _gdzPaintStart(cell) { const T = _gdzT(); T.paint = { cells: _gdzDec(T.draft.g), done: new Set(), off: 0, full: false, d: '', pushed: false }; _gdzPaintMore(cell); }
+function _gdzPaintStart(cell) {
+  const T = _gdzT(), m = gardenModel(), mask = gardenDesignPathMask(T.draft, m);
+  T.paint = { cells: _gdzDec(T.draft.g), added: new Set(), done: new Set(), why: '', n: 0, full: false, d: '', mask, lv: m.level.level };
+  _gdzPaintMore(cell);
+  if (!T.paint.n && T.paint.why) _gdzSay(T.paint.why, true);
+}
 function _gdzPaintMore(cell) {
   const T = _gdzT(), P = T.paint, W = GARDEN_WORLD; if (!P || !cell) return;
-  const lv = gardenModel().level.level, rub = T.rubbing;
-  for (let dy = 0; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) {
+  const rub = T.rubbing, st = GDZ_GROUND[T.groundStyle];
+  for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
     const x = cell.x + dx, y = cell.y + dy; if (x < 0 || y < 0 || x >= W.cols || y >= W.rows) continue;
     const i = y * W.cols + x; if (P.done.has(i)) continue; P.done.add(i);
-    const c = gardenLandCell(x, y);
-    if (!_gdzAllowed(x, y, lv) || (c && (c.lane || c.trail))) { P.off++; continue; }
-    if (rub) P.cells.delete(i); else { if (!P.cells.has(i) && P.cells.size >= GDZ_LIMITS.paint) { P.full = true; continue; } P.cells.set(i, T.groundStyle); }
+    if (rub) { if (P.cells.has(i)) { P.cells.delete(i); P.n++; P.d += `M${_gdzN((x + 0.5) * W.cellW)} ${_gdzN(W.sky + (y + 0.5) * W.cellH)}h.1`; } continue; }
+    const why = gardenDesignPaintWhy(x, y, st, P.mask, P.lv);
+    if (why) { if (!P.why || (dx === 0 && dy === 0)) P.why = why; continue; }
+    if (!P.cells.has(i) && P.cells.size >= GDZ_LIMITS.paint) { P.full = true; continue; }
+    P.cells.set(i, T.groundStyle); P.added.add(i); P.n++;
     P.d += `M${_gdzN((x + 0.5) * W.cellW)} ${_gdzN(W.sky + (y + 0.5) * W.cellH)}h.1`;
   }
-  _gdzLive(`<path d="${P.d}" fill="none" stroke="${rub ? '#ffffff' : GDZ_GROUND[T.groundStyle].c}" stroke-opacity="${rub ? 0.5 : 0.9}" stroke-width="50" stroke-linecap="round"/>`);
+  const enough = rub || P.added.size >= GDZ_STRICT.ground.patchMin;
+  _gdzLive(`<path d="${P.d}" fill="none" stroke="${rub ? '#ffffff' : st.c}" stroke-opacity="${rub ? 0.5 : 0.9}" stroke-width="50" stroke-linecap="round"/>` + (enough ? '' : `<path d="${P.d}" fill="none" stroke="#d0402c" stroke-opacity="0.35" stroke-width="50" stroke-linecap="round"/>`));
+  if (!rub && P.n) _gdzSay(enough ? 'A good size. Let go to paint it.' : `Keep going: a patch needs at least ${GDZ_STRICT.ground.patchMin} squares of open ground.`);
 }
 function _gdzPaintEnd() {
   const T = _gdzT(), P = T.paint; T.paint = null; _gdzLive(''); if (!P) return;
-  if (!P.d) { _gdzSay(P.off ? 'Ground goes on your own land. The lane, the paths and land that is not yours yet stay as they are.' : '', !!P.off); return; }
+  if (!P.n) { _gdzSay(P.why || 'Paint on your own land.', !!P.why); return; }
+  if (T.rubbing) { _gdzPush(); T.draft.g = _gdzEnc(P.cells); _gdzLayerOnly(); _gd.rev++; _gd.memoKey = ''; gardenDesignPanel(); _gdzSay('Rubbed out. Undo brings it back.'); return; }
+  const st = GDZ_GROUND[T.groundStyle], W = GARDEN_WORLD, ok = (i) => { const x = i % W.cols; return !gardenDesignPaintWhy(x, (i - x) / W.cols, st, P.mask, P.lv); };
+  const tidy = gardenDesignPatchTidy(P.cells, P.added, T.groundStyle, ok);
+  if (!tidy.kept) { _gdzSay(tidy.why, true); return; }
   _gdzPush(); T.draft.g = _gdzEnc(P.cells);
-  const hadBed = GDZ_GROUND[T.groundStyle].area;
   _gdzLayerOnly(); _gd.rev++; _gd.memoKey = ''; gardenDesignPanel();
-  _gdzSay(P.full ? 'That is as much ground as a garden can hold. Rub some out to paint more.' : P.off ? 'Painted, except where the land is not yours and on the lane and paths.' : hadBed && !T.rubbing ? 'A new bed. On the green, plants will grow in it once you keep your changes.' : 'Painted.', !!P.full);
+  _gdzSay(P.full ? 'That is as much ground as a garden can hold. Rub some out to paint more.' : st.area ? 'A new bed. On the green, plants will grow in it once you keep your changes.' : P.why ? 'Painted, except where it does not suit the ground.' : 'Painted.', !!P.full);
 }
 
 /* ---------- moving things ---------- */
@@ -383,7 +420,7 @@ function _gdzLift(ev, cell) {
   const T = _gdzT(), m = _gdzModel(), n = ev.target && ev.target.closest ? ev.target.closest('.gd-prop[data-prop]') : null, id = n ? n.getAttribute('data-prop') : '';
   let L = null, node = n;
   if (id && /^dzc\d+-/.test(id)) { const i = Number(id.slice(3, id.indexOf('-'))), c = T.draft.c[i]; if (c) L = { kind: 'made', i, c, w: 1, h: 1 }; }
-  else if (id && gardenDesignRow(id)) { if (!gardenDesignMovable(id)) { _gdzSay(`${gardenDesignRow(id).name} stays where it is: it is part of the place.`, true); return false; } L = { kind: 'prop', row: gardenDesignRow(id) }; L.w = L.row.w || 1; L.h = L.row.h || 1; }
+  else if (id && gardenDesignRow(id)) { if (gardenDesignLandmark(id)) { _gdzSay(`${gardenDesignRow(id).name} is a landmark: it stays where it is.`, true); return false; } if (!gardenDesignMovable(id)) { _gdzSay(`${gardenDesignRow(id).name} stays where it is: it is part of the place.`, true); return false; } L = { kind: 'prop', row: gardenDesignRow(id) }; L.w = L.row.w || 1; L.h = L.row.h || 1; }
   if (!L) {
     const it = _gdpPickItem(ev, cell), d = it && it.kind === 'decor' ? gardenDecorById(m, it.uid) : null;
     if (d) { L = { kind: 'decor', uid: d.uid, def: d.def, w: d.def.w || 1, h: d.def.h || 1 }; node = _gdp.svg.querySelector(`.gd-it[data-uid="${CSS.escape(d.uid)}"]`); }
@@ -391,7 +428,7 @@ function _gdzLift(ev, cell) {
   }
   if (!L && cell) {
     const pr = gardenPropAt(cell.x, cell.y);
-    if (pr && gardenDesignRow(pr.id)) { if (!gardenDesignMovable(pr.id)) { _gdzSay(`${pr.name} stays where it is: it is part of the place.`, true); return false; } L = { kind: 'prop', row: gardenDesignRow(pr.id), w: pr.w || 1, h: pr.h || 1 }; node = _gdp.svg.querySelector(`.gd-prop[data-prop="${CSS.escape(pr.id)}"]`); }
+    if (pr && gardenDesignRow(pr.id)) { if (gardenDesignLandmark(pr.id)) { _gdzSay(`${pr.name} is a landmark: it stays where it is.`, true); return false; } if (!gardenDesignMovable(pr.id)) { _gdzSay(`${pr.name} stays where it is: it is part of the place.`, true); return false; } L = { kind: 'prop', row: gardenDesignRow(pr.id), w: pr.w || 1, h: pr.h || 1 }; node = _gdp.svg.querySelector(`.gd-prop[data-prop="${CSS.escape(pr.id)}"]`); }
   }
   if (!L) { _gdzSay('Tap a shop, a bench, a lamp or a decoration to pick it up.'); return false; }
   L.ox = L.kind === 'prop' ? L.row.x : L.kind === 'made' ? L.c[1] : gardenDecorById(m, L.uid).x;
@@ -406,7 +443,8 @@ function _gdzLift(ev, cell) {
 function gardenDesignPlaceNew() {
   const T = _gdzT(), M = T.make;
   if (T.draft.c.length >= GDZ_LIMITS.made) { _gdzSay(`You have made ${GDZ_LIMITS.made} things, which is all there is room for. Put one away first.`, true); return; }
-  const c = [M.kind, 0, 0, M.a, M.b, M.pat, M.kind === 0 ? gardenDesignText(M.text) : ''];
+  const c = [M.kind, 0, 0, 0, 0, M.pat, M.kind === 0 ? gardenDesignText(M.text) : ''];
+  { const P = GDZ_STRICT.pairs[GDZ_MADE[M.kind].id], pr = P[M.pair] || P[0]; c[3] = pr[0]; c[4] = pr[1]; c[6] = c[6].slice(0, GDZ_STRICT.signText); }
   T.lifted = { kind: 'made', i: null, c, w: 1, h: 1, ox: 0, oy: 0, fresh: true };
   _gdzSay('Now tap where it should stand.'); gardenDesignPanel();
 }
@@ -414,8 +452,10 @@ function _gdzGhostAt(cell) {
   const T = _gdzT(), L = T.lifted; if (!L || !cell) return;
   const x = cell.x - Math.floor(L.w / 2), y = cell.y - (L.h - 1), key = x + ',' + y;
   if (L.key === key) return; L.key = key; L.x = x; L.y = y;
-  const r = L.kind === 'prop' ? gardenDesignMoveCheck(L.row, x, y) : L.kind === 'decor' ? _gdzDecorCheck(gardenDecorById(_gdzModel(), L.uid), x, y) : _gdzMadeCheck(x, y, L.i);
-  L.why = r.why; L.door = r.door || null;
+  const check = (qx, qy) => (L.kind === 'prop' ? gardenDesignMoveCheck(L.row, qx, qy) : L.kind === 'decor' ? _gdzDecorCheck(gardenDecorById(_gdzModel(), L.uid), qx, qy) : _gdzMadeCheck(qx, qy, L.i, L.c));
+  let r = check(x, y), snapped = false; const why0 = r.why;
+  if (r.why) { const near = _gdzSnapNear(x, y, check); if (near) { x = near.x; y = near.y; r = near.r; snapped = true; } }
+  L.x = x; L.y = y; L.why = r.why; L.door = r.door || null;
   const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, col = r.why ? '#d0402c' : '#2fa84f';
   let s = `<rect x="${x * cw + 2}" y="${W.sky + y * ch + 2}" width="${L.w * cw - 4}" height="${L.h * ch - 4}" rx="6" fill="${col}" fill-opacity="0.28" stroke="${col}" stroke-width="3"/>`;
   if (r.door) s += `<ellipse cx="${(r.door.x + 0.5) * cw}" cy="${W.sky + (r.door.y + 0.5) * ch}" rx="11" ry="7" fill="#ffffff" fill-opacity="0.92" stroke="#2fa84f" stroke-width="2.600"/>`;
@@ -425,7 +465,7 @@ function _gdzGhostAt(cell) {
   if (L.clone) { wrap.setAttribute('transform', `translate(${(x - L.ox) * cw} ${(y - L.oy) * ch})`); wrap.appendChild(L.clone.cloneNode(true)); }
   else if (L.fresh) { wrap.setAttribute('transform', `translate(${(x + 0.5) * cw} ${W.sky + (y + 1) * ch - 4})`); wrap.innerHTML = gardenDesignMadeArt(L.c, 0); gardenDesignPainted(wrap, { c: [L.c] }); }
   g.appendChild(wrap);
-  if (r.why) _gdzSay(r.why, true); else _gdzSay(L.door ? 'That works. The white mark is where you will stand to go in.' : 'That works. Tap to put it down.');
+  if (r.why) _gdzSay(r.why, true); else if (snapped) _gdzSay(`Moved to the nearest good spot. (${why0})`); else _gdzSay(L.door ? 'That works. The white mark is where you will stand to go in.' : 'That works. Tap to put it down.');
 }
 function _gdzDrop() {
   const T = _gdzT(), L = T.lifted; if (!L) return;
@@ -447,7 +487,7 @@ function _gdzDropCancel() {
 /** Back where the tables say. Everything fixed has this. */
 function gardenDesignPutBack(id) {
   const T = _gdzT(), row = gardenDesignRow(id), b = gardenDesignBase(id); if (!row || !b) return;
-  const r = gardenDesignMoveCheck(row, b.x, b.y);
+  const r = gardenDesignMoveCheck(row, b.x, b.y, { loose: true });
   if (r.why) { _gdzSay(`${row.name} cannot go back yet. ${r.why}`, true); return; }
   _gdzPush(); T.draft.m = T.draft.m.filter(q => q[0] !== id); T.lifted = null; _gdzLive(''); _gdzStage(); gardenDesignPanel(); _gdzSay(`${row.name} is back where it started.`);
 }
