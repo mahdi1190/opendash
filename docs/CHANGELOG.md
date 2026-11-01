@@ -10,6 +10,27 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.59.1]
+
+### Fixed
+- **Tidied the garden map.** Water no longer cuts through trees, trees no longer hide buildings, gates and lamps stand clear of each other, and every door can be reached. Room doors stay hidden behind locked gates.
+
+## [2.59.0]
+
+### Fixed
+- **The garden no longer flashes as you move.** Saving something or news from a friend no longer rebuilds the whole scene.
+- **The light is right when you open the garden and changes gently by itself,** and the time of day no longer flips back and forth.
+
+## [2.58.3]
+
+### Changed
+- **Garden messages are back at the top middle of the screen,** one at a time, in plain words. That includes the fishing and reeling prompts, instead of speech bubbles and signs.
+
+## [2.58.2]
+
+### Added
+- **Start your garden again,** in Settings > Data. Your land, plants, coins and level go back to the start, and your tasks, money and pet stay. You can undo it straight away.
+
 ## [2.58.1]
 
 ### Fixed

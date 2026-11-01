@@ -1133,7 +1133,7 @@ function gardenWorldStop(keepOn) {
   if (!keepOn && typeof _gwFishReset === 'function') _gwFishReset(); else _gw.fx = null;
   if (typeof _gwBugsReset === 'function') _gwBugsReset();
   gardenBubbleClose();
-  if (!keepOn) { if (typeof gardenPlaySeekStop === 'function') gardenPlaySeekStop(); if (typeof gardenLiveHostGone === 'function') gardenLiveHostGone(); if (typeof gardenLifeStop === 'function') gardenLifeStop(); if (typeof gardenWonderStop === 'function') gardenWonderStop(); _gw.on = false; _gw.routeEls = null; _gw.reach = null; _gw.root = null; _gw.svg = null; _gw.box = null; _gw.node = null; _gw.pet = null; _gw.grid = null; }
+  if (!keepOn) { gardenMessageClear(); if (typeof gardenPlaySeekStop === 'function') gardenPlaySeekStop(); if (typeof gardenLiveHostGone === 'function') gardenLiveHostGone(); if (typeof gardenLifeStop === 'function') gardenLifeStop(); if (typeof gardenWonderStop === 'function') gardenWonderStop(); _gw.on = false; _gw.routeEls = null; _gw.reach = null; _gw.root = null; _gw.svg = null; _gw.box = null; _gw.node = null; _gw.pet = null; _gw.grid = null; }
 }
 /** After every paint of the stage: the svg may be a new element (a mount), or the patch may have dropped our nodes. */
 function gardenWorldPainted(m) {

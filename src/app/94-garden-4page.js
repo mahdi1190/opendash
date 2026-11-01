@@ -121,6 +121,7 @@ function _gdpWorldMount(container, view) {
   gardenWorldStart(root, m);
   gardenHudPaint(m);
   gardenTickSoon(400);
+  if (typeof briefLoadWeather === 'function' && typeof _bf !== 'undefined' && !(_bf.weather && _bf.weather.ok) && typeof APP_CONFIG !== 'undefined' && APP_CONFIG.location) briefLoadWeather();   // the real sunset, when the garden is the first page you open
   if (typeof gardenDesignResume === 'function') gardenDesignResume();
   if (_gdp.then) { const t = _gdp.then; _gdp.then = ''; setTimeout(() => { if (_gdp.root === root) gardenPopupOpen(t); }, 60); }
 }
@@ -133,6 +134,12 @@ function _gdpRepaint() {
   if (_grm.on || _ee.on) { _gdp.owed = true; return; }   // nobody can see the stage from a room: going in saves a mark, and that alone redrew the whole garden, a quarter of a second, on the way in. It is done on the way out (_gwIndoors).
   _gdpRepaintInner();
   if (_gdp.pop && typeof gardenPopupRefresh === 'function') gardenPopupRefresh();   // a pop-up over the garden shows the new state too
+}
+/* The light on the stage against the light it should have: the hour passed, or the weather answered, with nobody touching anything. Called from the slow heartbeat (94-garden-art-h-life.js), never per frame. */
+function _gdpLightKey(m) { return [m.tod, m.season, m.rain.now ? 1 : 0, m.rain.snow ? 1 : 0].join('|'); }
+function gardenLightCheck() {
+  if (!_gdp.root || !_gdp.root.isConnected || !_gdp.svg || document.hidden) return;
+  if (_gdpLightKey(gardenHere()) !== _gdp.lightKey) gardenRepaintSoon();
 }
 function _gdpRepaintInner() {
   if (!_gdp.root || !_gdp.root.isConnected) return;
@@ -189,6 +196,7 @@ function _gdpPaintStage(m, force) {
   const inner = _gdp.root.querySelector('.gd-stage'); if (!inner) return;
   const mode = _gdpMode(), still = !gardenMotionOn();
   const sc = gardenSceneFromModel(m);
+  _gdp.lightKey = _gdpLightKey(m);
   const parts = gardenSceneParts(sc, { size: 'l', crop: 'all', interactive: true, fit: 'xMidYMid meet', still, uid: 'gdp', label: `${m.visit ? m.visit.name + "'s" : 'Your'} garden: ${m.plants.length} plants, level ${m.level.level}`, cacheKey: (m.visit ? m.visit.key : _gd.memoKey) + '|' + mode + '|' + (still ? 1 : 0) + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0), friend: m.visit ? m.visit.drawFriend : undefined, readOnly: !!m.visit });
   if (!_gdp.svg || !_gdp.svg.isConnected || force && mode !== (_gdp.svg.dataset.mode || '')) _gdp.svg = gardenSvgMount(inner, parts);
   else _gdp.svg = gardenSvgPatch(_gdp.svg, parts);

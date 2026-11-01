@@ -19,6 +19,8 @@ function _grmP(R, k, v) { if (!gpVisiting()) gpSet('rm.' + R.id + '.' + k, v); }
 function _grmDone(R) { return !gpVisiting() && _grmG(R, 'p') === _gdToday(); }
 function _grmHash(R, salt) { return gardenHash('room|' + R.id + '|' + (salt || '') + '|' + _gdToday()); }
 function _grmSay(text, ms) {
+  // what somebody says or a page reads, in quotation marks, stays on the room's strip at the bottom. Any other message is the same line as everywhere
+  if (!/[“”]/.test(String(text)) && gardenMessage(text, { ms })) return;
   const el = _grm.root && _grm.root.querySelector('.grm-say'); if (!el) return;
   el.textContent = text; el.classList.remove('is-gone');
   clearTimeout(_grm.sayT); _grm.sayT = setTimeout(() => el.classList.add('is-gone'), ms || Math.max(5000, String(text).length * 75));

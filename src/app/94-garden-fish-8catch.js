@@ -398,7 +398,7 @@ function gardenCatchCast(F) {
   if (sp && F.plan.baitDef && F.plan.baitDef.st.chum) {
     const fd = _gcFd(_gdG(), _gdToday()); fd.sf = Object.assign({}, fd.sf, { [sp]: _gdNow() });
     gardenJobEvent({ kind: 'feed', spot: sp }); gardenCatchShowSoon();
-    if (typeof gardenFloat === 'function') gardenFloat('You fed the water here', Math.floor(F.bx), Math.floor(F.by) - 1, 1, 1, '');
+    gardenMessage('You fed the water here.');
   }
   const map = gardenChestMapNow();
   if (map && !_gcaOnVisit() && gardenChestPieces(map) >= 4) { const at = gardenChestAt(gardenLakeSeed(), map.id); if (Math.hypot(F.bx - at.x - 0.5, F.by - at.y - 0.5) < 1.3) { F.chestFor = map; F.chestAt = performance.now() + 3200; } }
@@ -582,7 +582,7 @@ function gardenFestivalWeigh() {
 const _gcaHelp = { of: null, el: null };
 function gardenHelpHeard(A, e, ev) {
   if (e === 'help') {
-    if (ev.to === _gfsSlot() && _gw.reel) { _gw.reel.help = (_gw.reel.help || 0) + 1; if (_gw.reel.say) _gw.reel.say.textContent = 'Somebody has the second line!'; }
+    if (ev.to === _gfsSlot() && _gw.reel) { _gw.reel.help = (_gw.reel.help || 0) + 1; _gw.reel.note = 'Somebody has the second line.'; _gw.reel.noteTo = _gw.reel.t + 3; }
     return;
   }
   // a monster on someone's line: a small button for a little while. No more than that
