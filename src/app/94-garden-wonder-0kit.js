@@ -41,7 +41,7 @@ const WD_AT = Object.freeze({   // world cells
   cairn: _wdPt('notice-board', -2, 0.25),
   farShore: Object.freeze({ x0: _WD_LAKE.x + _WD_LAKE.w * 0.5, x1: _WD_LAKE.x + _WD_LAKE.w * 0.96, y: _WD_LAKE.y + _WD_LAKE.h * 0.8 }),
   lakeStars: Object.freeze({ x: _WD_LAKE.x + 1.2, y: _WD_LAKE.y + 2.2 }),
-  feast: _wdPt('notice-board', -2.5, -3),
+  feast: _wdPt('notice-board', 2.5, -2.3),
   fire: _wdPt('camera-tripod', -0.5, 0.1),
   lanterns: _wdPt('pier', 0, 2.6),
   miceBack: _wdPt('sundial', -2, -2.4),
@@ -82,7 +82,7 @@ function gardenWonderSync(m) {
   const key = m.visit ? 'v' + (_wdFriendId() || '') : 'o';
   if (_wd.on && _wd.key !== key) gardenWonderStop();
   if (!_wd.on) {
-    _wd.on = true; _wd.key = key; _wd.t = 0; _wd.tickT = 0;
+    _wd.on = true; _wd.key = key; _wd.t = 0; _wd.tickAt = 0; _wd.lastF = 0;
     _wd.live = _WD_MODS.filter(M => (!m.visit || M.visit) && _wdActive(M));
     _wd.dir = gardenWorldAdd({ id: 'wonder', svg: '', x: 0, y: -2, lift: 0, still: true, update: _wdFrame });
     for (const M of _wd.live) if (M.begin) { try { M.begin(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
@@ -90,10 +90,11 @@ function gardenWonderSync(m) {
   for (const M of _wd.live) if (M.painted) { try { M.painted(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
 }
 function _wdFrame(dt) {
-  _wd.t += dt;
+  // real time, not the loop's dt: that is capped per frame, and the loop looks in rarely when nothing is moving
+  const now = performance.now(), real = _wd.lastF ? Math.min(2, (now - _wd.lastF) / 1000) : dt; _wd.lastF = now; _wd.t += real;
   for (const M of _wd.live) if (M.frame) { try { M.frame(dt); } catch (e) { console.error('[garden wonder]', M.id, e); } }
-  if ((_wd.tickT -= dt) > 0) return;
-  _wd.tickT = 1;
+  if (now - _wd.tickAt < 1000) return;
+  _wd.tickAt = now;
   const m = gardenHere();
   if (_wd.talk) _wdTalkCheck();
   for (const M of _wd.live) if (M.tick) { try { M.tick(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }

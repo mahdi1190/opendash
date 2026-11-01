@@ -27,9 +27,18 @@ function _wdIsleApply(way) {
   if (way && !was && wdNear(WD_ROAD[0][0], WD_ROAD[0][1], 9) && !_wdGet('isle')) wdWhisper(way === 'moon' ? 'There is a road on the water.' : 'Something has come up out of the lake.', 7000);
 }
 /* ---------- the drawing: land, a willow, a stone seat, a bell ---------- */
+/** A rounded, slightly uneven shape: never a plain oval. */
+function _wdBlob(rx, ry, seed, wob, oy) {
+  const n = 14, p = [], f = (v) => v.toFixed(1);
+  for (let i = 0; i < n; i++) { const a = i / n * 6.283, r = 1 + ((gardenHash(seed + i) % 100) / 100 - 0.5) * wob; p.push([Math.cos(a) * rx * r, Math.sin(a) * ry * r + (oy || 0)]); }
+  const mid = (a, b) => f((a[0] + b[0]) / 2) + ' ' + f((a[1] + b[1]) / 2);
+  let d = 'M' + mid(p[n - 1], p[0]);
+  for (let i = 0; i < n; i++) d += 'Q' + f(p[i][0]) + ' ' + f(p[i][1]) + ' ' + mid(p[i], p[(i + 1) % n]);
+  return d + 'z';
+}
 function _wdIsleSvg() {
   const A = GART, rx = WD_ISLE.rx * 48, ry = WD_ISLE.ry * 30;
-  return A.P('#b8d4dc', A.ell(0, 3, rx + 9, ry + 5), 0.45) + A.P('#d9c79a', A.ell(0, 1, rx, ry)) + A.P('#88ab62', A.ell(-3, -3, rx - 14, ry - 8)) + A.P('#7a9e58', A.ell(12, -9, rx - 74, ry - 26)) + A.S('#a4c47e', 1, 'M-90 -6l2 -5l2 5M-40 14l2 -5l2 5M70 6l2 -5l2 5M30 -30l2 -5l2 5', 0.8);
+  return A.P('#b8d4dc', _wdBlob(rx + 12, ry + 7, 'isw', 0.1, 3), 0.45) + A.P('#d9c79a', _wdBlob(rx + 3, ry + 2, 'iss', 0.08, 1)) + A.P('#88ab62', _wdBlob(rx - 12, ry - 7, 'isg', 0.12, -3)) + A.P('#7a9e58', _wdBlob(rx - 74, ry - 26, 'isd', 0.2, -9)) + A.S('#a4c47e', 1, 'M-90 -6l2 -5l2 5M-40 14l2 -5l2 5M70 6l2 -5l2 5M30 -30l2 -5l2 5', 0.8);
 }
 function _wdWillowSvg() {
   const A = GART;
