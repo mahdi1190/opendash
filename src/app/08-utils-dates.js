@@ -48,8 +48,26 @@ const advanceByRecurrence = (dateStr, recurrence) => {
    DATE / PROGRESS / TOPBAR
    ============================================================ */
 function dueClass(s) { if (!s) return ''; const d = daysUntil(s); if (d<0)return'overdue'; if(d===0)return'today'; if(d<=7)return'soon'; return ''; }
+// A new Intl formatter costs far more than formatting with one, and these labels are drawn hundreds of times per render.
+const _dueFmts = new Map(), _dueLabels = new Map();
+function _dueFmt(loc, o) {
+  const k = (loc || '') + JSON.stringify(o);
+  let f = _dueFmts.get(k);
+  if (!f) _dueFmts.set(k, f = new Intl.DateTimeFormat(loc, o));
+  return f;
+}
 function dueLabel(s) {
-  if (!s) return ''; const d = daysUntil(s);
+  if (!s) return '';
+  const key = s + '|' + todayStr();
+  let v = _dueLabels.get(key);
+  if (v === undefined) {
+    if (_dueLabels.size > 3000) _dueLabels.clear();   // (old days' keys)
+    _dueLabels.set(key, v = _dueLabelMake(s));
+  }
+  return v;
+}
+function _dueLabelMake(s) {
+  const d = daysUntil(s);
   if (d === 0) return 'Today';
   if (d < 0) return `${-d}d ago`;
   if (d === 1) return 'Tomorrow';
@@ -58,8 +76,8 @@ function dueLabel(s) {
   // A wall date: noon UTC formatted in UTC is that date in any zone.
   const dt = new Date(String(s).slice(0, 10) + 'T12:00:00Z');
   if (isNaN(dt)) return s;
-  if (d <= 7) return dt.toLocaleDateString(loc, { weekday:'short', timeZone: 'UTC' });
+  if (d <= 7) return _dueFmt(loc, { weekday:'short', timeZone: 'UTC' }).format(dt);
   const sameYear = String(s).slice(0, 4) === todayStr().slice(0, 4);
-  return dt.toLocaleDateString(loc, sameYear ? { day:'numeric', month:'short', timeZone: 'UTC' } : { day:'numeric', month:'short', year:'numeric', timeZone: 'UTC' });
+  return _dueFmt(loc, sameYear ? { day:'numeric', month:'short', timeZone: 'UTC' } : { day:'numeric', month:'short', year:'numeric', timeZone: 'UTC' }).format(dt);
 }
 

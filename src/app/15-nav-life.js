@@ -124,7 +124,24 @@ function lifeRemember(v) {
 }
 function _lifeRequests() { try { return (_fr && _fr.data && Array.isArray(_fr.data.friends)) ? _fr.data.friends.filter(f => f && f.status === 'incoming').length : 0; } catch (e) { return 0; } }
 function _lifeCapsules() { try { return typeof memCapsulesDue === 'function' ? memCapsulesDue().length : 0; } catch (e) { return 0; } }
-function _lifeGardenReady() { try { return typeof gardenModel === 'function' && state.garden && state.garden.since ? (gardenModel().ripe || 0) : 0; } catch (e) { return 0; } }
+// The badge on the Life tab sits in the top bar, which every render() draws. Working out the garden there put a whole gardenModel into
+// clicks on pages that have nothing to do with the garden, so the count is refreshed when the page is idle (at most once a minute, or after a garden change).
+const _lifeRipe = { n: 0, at: 0, rev: -1, q: 0 };
+function _lifeRipeNow() {
+  _lifeRipe.q = 0;
+  try {
+    const n = gardenModel().ripe || 0, was = _lifeRipe.n;
+    _lifeRipe.n = n; _lifeRipe.at = Date.now(); _lifeRipe.rev = _gd.rev;   // clock-ok: a throttle
+    if (n !== was && typeof renderShell === 'function') renderShell();
+  } catch (e) { /* the badge is optional */ }
+}
+function _lifeGardenReady() {
+  try {
+    if (typeof gardenModel !== 'function' || !state.garden || !state.garden.since) return 0;
+    if (!_lifeRipe.q && (_lifeRipe.rev !== _gd.rev || Date.now() - _lifeRipe.at > 60000)) _lifeRipe.q = window.requestIdleCallback ? requestIdleCallback(_lifeRipeNow, { timeout: 4000 }) : setTimeout(_lifeRipeNow, 500);   // clock-ok: a throttle
+    return _lifeRipe.n;
+  } catch (e) { return 0; }
+}
 /** Only what needs you: friend requests waiting, letters from past you, plants ready to pick. */
 function lifeBadge() {
   const n = _lifeRequests() + _lifeCapsules() + (_lifeFunOff() ? 0 : _lifeGardenReady());
