@@ -1,0 +1,71 @@
+/* Nothing a person needs waits for a mouse to pass over it (owner, Nov 2026: "buttons are hidden").
+   Row and card actions stay quiet at rest and full on hover or focus, on any screen. Each selector
+   repeats the one that hid it (same weight, later file), so the :hover rules beside it still win.
+   Left hover-only on purpose: drag grips (they mean nothing without a mouse), and the row
+   checkboxes, which have a visible Select button and a long press. */
+.hg-body [data-row] .hg-row-acts,
+.hgap-ra,
+.hw-add,
+.tg-arrange,
+.kb-col-menu,
+.ev-addp,
+.ev-link,
+.rf-sw-acts,
+.rf-wait-acts,
+.win-row .win-undo,
+.subtask .st-more,
+.tc-munlink,
+.evc-gx,
+.note-del,
+.ppl-note-del,
+.pc-note-del,
+.set-acts,
+.res-acts,
+.al-linked .al-acts,
+.rf-pw-x,
+.pfw-x,
+.mu-row .mu-go,
+.ui-datef-x,
+.cck-row .cck-tools .cck-x,
+.quick-add .qa-tmpl,
+.qa-tok .x,
+.sl-chip .x,
+.ctx-chip .x { opacity: 0.65; }
+
+.kanban-add.kb-add-sm,
+.home-card .card-h .hg-gear,
+.ap-pin { opacity: 0.5; }
+.ap-pin.on { opacity: 1; }
+
+.em-a > .btn:not(.btn-icon),
+.em-a > a.btn,
+.em-a > .btn-icon { opacity: 0.8; }
+
+.pc-cover-btn,
+.pc-av-edit { opacity: 0.8; transform: none; }
+
+/* Hidden with display: these take their place in the row all the time now. */
+.calrow-more { display: inline-grid; opacity: 0.55; }
+.calrow:hover .calrow-more, .calrow:focus-within .calrow-more { opacity: 1; }
+.hin-sec { display: flex; opacity: 0.65; }
+.hin-row:hover .hin-sec, .hin-row:focus-within .hin-sec { opacity: 1; }
+
+/* Money sits after this file in the build: :root gives these the weight to count. */
+:root .fvb-set { opacity: 0.5; }
+:root .fv-vc-open { opacity: 0.6; }
+:root .fvb-w:hover .fvb-set, :root .fvb-w:focus-within .fvb-set,
+:root .fv-vc:hover .fv-vc-open, :root .fv-vc:focus-within .fv-vc-open { opacity: 1; }
+
+/* The delete button now shows all the time: the words keep clear of it. */
+.note-bubble { padding-right: var(--space-8); }
+.ppl-note { padding-right: var(--space-6); }
+
+/* The section tiles: every word in full ("Calendar" was cut short), the spare room shared out. */
+.switcher { grid-template-columns: repeat(var(--tiles, 4), auto); }
+.sw-tile { padding: 0 var(--space-0-5); }
+.sw-tile > span { overflow: visible; text-overflow: clip; }
+
+/* Today's section headers share the class names tg-sec and tg-toggle with Together, whose rules stacked
+   them in a column: "Overdue" sat in the middle and Reschedule fell on top of the first task's date. */
+.tg-h.tg-sec { flex-direction: row; }
+.tg-h .tg-toggle { margin: 0; }
