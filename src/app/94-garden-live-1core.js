@@ -30,13 +30,14 @@ function gardenLiveLook() {
   try { if (typeof profileGet === 'function') { const p = profileGet(), w = typeof profileWire === 'function' ? profileWire(p, {}) : null; const a = (w && w.avatar) || p.avatar; if (a && typeof a === 'object') out.a = a; } } catch (e) { /* the default figure */ }
   // (petGet() has no species of its own, its look is in .look: petPayload() is what friends are given of it, and honours "share" and "stays home")
   try { if (typeof petPayload === 'function') { const w = petPayload(); if (w && w.species && w.walks !== false) out.pet = w; } } catch (e) { /* no pet today */ }
+  try { if (typeof gardenGearLook === 'function') out.g = gardenGearLook(); } catch (e) { /* what they carry can wait */ }
   return out;
 }
 function _gllMyName() { try { if (typeof profileGet === 'function') { const n = String(profileGet().name || '').split(/\s+/)[0]; if (n) return n.slice(0, 40); } } catch (e) { /* below */ } try { const m = window.Friends && Friends.me && Friends.me(); if (m && m.name) return String(m.name).slice(0, 40); } catch (e) { /* below */ } return 'Host'; }
 
 /* ---------- an actor: a person in the garden ---------- */
 function _gllActor(o) {
-  const A = { w: o.w, n: String(o.n || 'A friend').slice(0, 40), a: o.a || null, pet: o.pet || null, lv: o.lv || 'look', x: Number.isFinite(o.x) ? o.x : 9.5 + (Number(o.w) || 0) * 0.9, y: Number.isFinite(o.y) ? o.y : 9.5, tx: null, ty: null, then: null, face: 1, dir: 's', moving: false, pose: '', poseUntil: 0, me: !!o.me, key: '', root: null, inner: null, petNode: null, petX: 0, petY: 0, sit: false };
+  const A = { w: o.w, n: String(o.n || 'A friend').slice(0, 40), a: o.a || null, g: o.g || null, pet: o.pet || null, lv: o.lv || 'look', x: Number.isFinite(o.x) ? o.x : 9.5 + (Number(o.w) || 0) * 0.9, y: Number.isFinite(o.y) ? o.y : 9.5, tx: null, ty: null, then: null, face: 1, dir: 's', moving: false, pose: '', poseUntil: 0, me: !!o.me, key: '', root: null, inner: null, petNode: null, petX: 0, petY: 0, sit: false };
   A.petX = A.x - 1.1; A.petY = A.y + 0.2;
   return A;
 }
@@ -65,7 +66,7 @@ function _gllPaint(A) {
   const key = pose + dir + (motion ? 'm' : '');
   if (A.key !== key) {
     let s = '';
-    try { s = typeof gartPlayerSvg === 'function' ? gartPlayerSvg(A.a, { dir, pose, motion, stageRod: pose === 'fish' }) : ''; } catch (e) { s = ''; }
+    try { s = typeof gartPlayerSvg === 'function' ? gartPlayerSvg(A.a, { dir, pose, motion, stageRod: pose === 'fish', gear: A.g }) : ''; } catch (e) { s = ''; }
     if (!s) s = '<ellipse cx="0" cy="0.6" rx="11" ry="1.8" fill="#000000" opacity="0.14"/><rect x="-6" y="-40" width="12" height="26" rx="5" fill="#5a8a5a"/><circle cx="0" cy="-48" r="8" fill="#e8b890"/><rect x="-5" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/><rect x="1" y="-14" width="4" height="14" rx="2" fill="#4a5a7a"/>';
     A.inner.innerHTML = s;   // allow-listed ids through the avatar kit (profileAvatarNormalize), or the fixed figure above
     A.key = key;

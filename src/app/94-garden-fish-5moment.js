@@ -14,6 +14,8 @@ const GART_MOMENTS = Object.freeze({
   bug: { verb: () => 'caught', def: (id) => gardenBugDef(id), name: (d) => d.name, art: (id, px) => gardenCatchSvg('bug', id, px, { uid: 'mo' + id, glow: false }) },
   keep: { verb: () => 'found', def: (id) => GL_KEEPSAKE.get(id), name: (d) => d.name, art: (id, px, d) => `<svg viewBox="-12 -16 24 20" width="${px}" height="${Math.round(px * 20 / 24)}">${gardenKeepsakeSvg(d)}</svg>` },
   craft: { verb: () => 'made', def: (id) => gardenRecipe(id), name: (d) => d.name, art: (id, px, d) => gardenCraftArt(d, px) },
+  // what you bought or built: a rod, a net, a can, something for the lake (94-garden-fish-7gear.js)
+  gear: { verb: () => 'got', def: (id) => gardenGearDef(id) || gardenTool(id), name: (d) => d.name, art: (id, px, d) => (d.kind === 'rod' || d.kind === 'net' ? gardenCatchSvg(d.kind, id, px) : d.kind === 'lake' ? gardenWorkSvg(id, px) : _gdxItemIcon('tool:' + id, px)) },
   crop: { verb: () => 'picked', def: (id) => gardenPlant(id), name: (d) => (d.yield && d.yield.item ? d.yield.item : d.name), art: (id, px) => _gdxItemIcon('crop:' + id, px) },
 });
 const GART_MOMENT_MS = 2700;
@@ -46,8 +48,8 @@ function gardenMomentEnd() {
 }
 function gardenCatchMoment(kind, id, o) {
   o = o || {};
-  try { if (typeof gardenLiveFx === 'function') gardenLiveFx('got', kind, { i: id, n: o.cm || 0, ql: o.q || 0, nw: (o.isNew ? 1 : 0) | (o.record ? 2 : 0) }); } catch (e) { /* only a message */ }
-  try { if (typeof gardenContestMine === 'function') gardenContestMine(kind, id, o); } catch (e) { /* a contest is only a game */ }
+  if (o.tell !== false) try { if (typeof gardenLiveFx === 'function') gardenLiveFx('got', kind, { i: id, n: o.cm || 0, ql: o.q || 0, nw: (o.isNew ? 1 : 0) | (o.record ? 2 : 0) }); } catch (e) { /* only a message */ }
+  if (o.tell !== false) try { if (typeof gardenContestMine === 'function') gardenContestMine(kind, id, o); } catch (e) { /* a contest is only a game */ }
   if (o.own === false || gardenFun() === 'off' || typeof _gw === 'undefined' || !_gw.on) return false;
   const spec = gardenMomentSpec(kind, id, o), a = typeof _gwActors === 'function' ? _gwActors() : null;
   if (!spec || !a) return false;
@@ -70,6 +72,17 @@ function gardenCatchMoment(kind, id, o) {
   document.addEventListener('keydown', end, true); document.addEventListener('pointerdown', end, true);
   _gmo.off = () => { clearInterval(iv); document.removeEventListener('keydown', end, true); document.removeEventListener('pointerdown', end, true); };
   return true;
+}
+/** Told to friends now; held up on your screen as soon as you are back in the garden with the shop closed. */
+function gardenCatchMomentSoon(kind, id, o) {
+  gardenCatchMoment(kind, id, Object.assign({}, o, { own: false }));
+  let tries = 0;
+  const t = setInterval(() => {
+    if (++tries > 200) { clearInterval(t); return; }
+    if (typeof _gw === 'undefined' || !_gw.on || (typeof _gdp !== 'undefined' && _gdp.pop)) return;
+    clearInterval(t);
+    gardenCatchMoment(kind, id, Object.assign({}, o, { tell: false }));
+  }, 300);
 }
 document.addEventListener('opendash:garden', (ev) => {
   const d = ev && ev.detail; if (!d) return;

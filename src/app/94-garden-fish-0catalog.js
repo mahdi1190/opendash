@@ -192,10 +192,10 @@ const GARDEN_WORKS = Object.freeze([
   _gfG('pier-2', 'lake', 2, 'Longer pier', 350, 3, { adds: 'Pier 4 cells longer' }, 'New planks out over the middle of the lake, towards the bigger fish.', { icon: 'waves' }),
   _gfG('pier-3', 'lake', 3, 'Deep-water pier', 900, 7, { adds: 'Pier 4 cells longer again' }, 'All the way out, to where the fins are.', { icon: 'waves', needs: 'pier-2' }),
   _gfG('fish-feeder', 'lake', 1, 'Fish feeder', 120, 2, { adds: 'One more fish in the shallows and open water' }, 'A little drum that scatters feed each morning.', { icon: 'fish' }),
-  _gfG('reed-beds', 'lake', 1, 'Reed beds', 300, 4, { adds: 'One more fish in deep water, and shy fish come more readily' }, 'Somewhere for the big ones to feel safe.', { icon: 'leaf' }),
+  _gfG('reed-beds', 'lake', 1, 'Bed of reeds', 300, 4, { adds: 'One more fish in deep water, and shy fish come more readily' }, 'Somewhere for the big ones to feel safe.', { icon: 'leaf' }),
   _gfG('fishing-station', 'lake', 1, 'Fishing station', 500, 6, { adds: 'Bigger bar, and longer to strike' }, 'A proper seat, a rod rest and somewhere to put your tea.', { icon: 'armchair' }),
   _gfG('night-lantern', 'lake', 1, 'Night lantern', 250, 5, { adds: 'Night fish come more readily, and one more at night' }, 'A lamp on a pole, and everything that likes the dark comes to look.', { icon: 'lamp' }),
-  _gfG('pool-stock', 'lake', 1, 'Stocked pools', 400, 7, { adds: 'One more fish in each pond' }, 'A bucket of young fish for your still water.', { icon: 'droplets' }),
+  _gfG('pool-stock', 'lake', 1, 'Bucket of young fish', 400, 7, { adds: 'One more fish in each pond' }, 'A bucket of young fish for your still water.', { icon: 'droplets' }),
 ]);
 const _GF_GEAR = new Map(GARDEN_RODS.concat(GARDEN_NETS, GARDEN_BAITS, GARDEN_WORKS).map(x => [x.id, x]));
 

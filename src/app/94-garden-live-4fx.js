@@ -35,7 +35,7 @@ function _gllFeed(text) {
   setTimeout(() => l.remove(), 5600);
 }
 function _gllOffscreen(A) { try { return typeof _gwInView === 'function' ? !_gwInView(A.x, A.y, 1) : false; } catch (e) { return false; } }
-const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', craft: 'craft', crop: 'crop' });
+const _GLL_FX_KIND = Object.freeze({ fish: 'fish', bug: 'bug', keep: 'keep', craft: 'craft', crop: 'crop', gear: 'gear' });
 /* ---------- they did it ---------- */
 function _gllFxPlay(A, ev) {
   if (!A || !ev) return;
@@ -171,7 +171,8 @@ function _gllFxStep(A, dt) {
   if (!A.fxe || !A.fxe.rod.isConnected) {
     _gllFxClear(A);
     const g = _gllSvgEl('g', 'gll-fx'), e = { rod: _gllSvgEl('path', 'gll-fxrod'), line: _gllSvgEl('path', 'gll-fxline'), bob: _gllSvgEl('g'), bub: _gllSvgEl('g') };
-    const bob = typeof gardenBobber === 'function' ? gardenBobber() : { c: '#d8452a', c2: '#fbfbf2' };
+    const bob = A.g && A.g.b && typeof GARDEN_BOBBERS !== 'undefined' ? gardenBobberDef(A.g.b) : { c: '#d8452a', c2: '#fbfbf2' };   // (their float, not yours)
+    if (typeof gardenRodLook === 'function') { const rl = gardenRodLook(A.g && A.g.r); e.rod.style.stroke = rl.c; e.rod.style.strokeWidth = String(rl.w); }   // (their rod)
     e.bob.innerHTML = `<circle cx="0" cy="-1" r="4.2" fill="${bob.c}" stroke="#2a2018" stroke-width="0.8"/><path d="M-4 -1.6a4.2 4.2 0 0 1 8 0z" fill="${bob.c2}"/>`;
     e.bub.innerHTML = '<ellipse cx="0" cy="0" rx="9" ry="9.6" fill="#fff6c8" stroke="#d89a1a" stroke-width="1.6"/><path d="M-1.6 -5.4h3.2l-0.6 6.2h-2z" fill="#d8301a"/><circle cx="0" cy="4.4" r="1.5" fill="#d8301a"/>';
     g.append(e.rod, e.line, e.bob, e.bub); A.root.appendChild(g); A.fxg = g; A.fxe = e;

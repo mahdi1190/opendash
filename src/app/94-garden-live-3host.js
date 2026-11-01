@@ -139,7 +139,7 @@ function _glhQuickSoon() { setTimeout(() => { try { if (typeof gardenHudPaint ==
 function _glhAdd(ev) {
   let A = _gll.actors.get(ev.w);
   if (!A) { A = _gllActor(ev); A.f = ev.f; _gll.actors.set(ev.w, A); }
-  else { A.n = ev.n; A.a = ev.a || A.a; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }
+  else { A.n = ev.n; A.a = ev.a || A.a; A.g = ev.g || A.g; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }
   A.f = ev.f;
   if (!_glh.sprites.has(ev.w) && typeof gardenWorldAdd === 'function') _glh.sprites.set(ev.w, _gllSprite(A, () => _glhPersonMenu(A)));
   _glhQuickSoon();   // (the Say button shows while somebody is here)
@@ -616,6 +616,7 @@ function _glhPersonMenu(A) {
   openPopover(A.root, (el, close) => {
     el.classList.add('gsv-pop', 'gll-menu');
     el.appendChild(_gsvEl('b', null, A.n));
+    { const carries = typeof gardenGearRow === 'function' ? gardenGearRow(A.g) : null; if (carries) el.appendChild(carries); }
     const r = _gsvEl('div', 'gll-menu-row');
     r.appendChild(_gsvBtn('Wave', { icon: 'hand', kind: 'btn-ghost', run: () => { close(); if (typeof gartEmoteRun === 'function') gartEmoteRun('wave', { quiet: true }); _glhSend('all', 'em', { c: 'em', e: 'wave', to: A.w }); } }));
     r.appendChild(_gsvBtn('High five', { icon: 'hand', kind: 'btn-ghost', run: () => { close(); gardenWalkToPoint({ x: A.x - 0.7, y: A.y + 0.1 }, () => { if (typeof gartEmoteRun === 'function') gartEmoteRun('clap', { quiet: true }); _gllEmote(A, 'clap'); _glhSend('all', 'em', { c: 'do', e: 'high5', to: A.w }); }); } }));
@@ -767,4 +768,5 @@ document.addEventListener('opendash:garden', (ev) => {
   let t = 0;
   const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_glh.on && _glhAnyone()) _gllApi('/api/garden-live/here', _glhHereBody(true)).catch(() => {}); } catch (e) { /* the next beat has it */ } }, 1500); };
   document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
+  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear') soon(); });   // (a new rod: they see it now)
 })();
