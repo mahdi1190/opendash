@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.38.1]
+
+### Fixed
+- Tax collected through a tax code now shows on the later year's payslips and says which year it is from.
+- Exact payments in the next tax year now show and count in that year.
+- The money plan and Tax tab now agree on tax returns, including when HMRC asked you to file, for partners, and when you have been abroad.
+- If an expense is marked paid and no bank payment is sure, Freeflo says so and lets you pick it in one tap.
+
 ## [2.38.0]
 
 Fishing is a proper game again, and it grows with your garden.
