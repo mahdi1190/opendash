@@ -118,17 +118,7 @@ function gardenGamePainted(m) {
   // (one you have never met gets its "New visitor" moment instead of this as well)
   if (pv && gardenFun() !== 'off') for (const v of m.visitors) if (!pv.has(v.id) && _gdG().disc[v.id] && !(typeof gardenLifeOwns === 'function' && gardenLifeOwns(v.id))) { const nm = v.def.name; _gdgNote(/[’']s /.test(nm) ? `${nm} visited!` : `${/^[aeiou]/i.test(nm) ? 'An' : 'A'} ${nm.toLowerCase()} visited!`, gardenIconSvg(v.id, { kind: 'visitor', px: 28 })); }
 }
-function _gdgNote(text, svg) {
-  if (gardenSay(text)) return;
-  const box = _gdgBox(); if (!box) return;
-  let host = box.querySelector('.gd-notes');
-  if (!host) { host = document.createElement('div'); host.className = 'gd-notes'; host.setAttribute('role', 'status'); box.appendChild(host); }
-  for (const o of host.children) if (o.textContent === text) return;   // clicking the same thing again does not stack the same note
-  while (host.children.length >= 3) host.firstChild.remove();
-  const n = document.createElement('div'); n.className = 'gd-note'; n.innerHTML = (svg || '') + '<span></span>'; n.querySelector('span').textContent = text;
-  host.appendChild(n);
-  setTimeout(() => n.remove(), 5200);
-}
+function _gdgNote(text) { gardenMessage(text); }
 function gardenLevelUpCard(d) {
   if (gardenFun() === 'off' || !_gdp.root) return;
   let c = _gdp.root.querySelector('.gd-levelup');

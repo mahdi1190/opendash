@@ -1,6 +1,4 @@
 /* The catching overhaul (docs/dev/CATCH_FEATURES.md): the reel's new parts, what is on at the lake, the two new tabs. */
-.gd-reel-say { min-height: 16px; max-width: 170px; font-size: var(--text-xs); font-weight: 600; text-align: center; color: var(--fg); line-height: 1.25; }
-.gd-reel-say.is-warn { color: var(--sw-red, #c8402a); }
 .gd-reel-pips { display: flex; justify-content: center; gap: 4px; margin-top: 3px; }
 .gd-reel-pips i { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--fg) 18%, var(--surface)); }
 .gd-reel-pips i.on { background: var(--sw-amber, #e8a83a); }

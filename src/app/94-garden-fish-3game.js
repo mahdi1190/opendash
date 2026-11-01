@@ -57,6 +57,7 @@ function _gwFishBusy() { return !!(_gw.fishing && _gw.fishing.state !== 'idle');
 function _gwFishReset() { _gwFishClearFx(); _gw.fishing = null; _gwReelClose(); _gwFishFocus(false); }
 /** Fishing locks you in: the camera closes in on you, nothing under the pointer lights up, the toolbar rests; a little bar says what to do. */
 function _gwFishFocus(on) {
+  if (!on) gardenMessageDrop('fish');
   if (!_gdp.root) return;
   _gdp.root.classList.toggle('is-fishing', !!on);
   const box = _gdgBox();
@@ -65,20 +66,21 @@ function _gwFishFocus(on) {
   else if (box) { const h = box.querySelector('.gd-fishhud'); if (h) h.remove(); }
   _gw.cam.dirty = true; _gw.cam.snap = false;
 }
-const _GW_FISH_SAY = { cast: 'Casting…', wait: 'Waiting for a fish…', bite: 'Now! Click or press Space', reel: 'Hold to lift the bar', land: '', help: 'You have the second line. Hold on!' };
+const _GW_FISH_SAY = { cast: 'Casting…', wait: 'Waiting for a fish…', bite: 'Now! Click or press Space', reel: 'Hold to lift the bar', land: '', help: 'You have the second line. Hold to lift the bar.' };
 function _gwFishHud(F) {
   const box = _gdgBox(); if (!box) return;
-  let say = _GW_FISH_SAY[F.state] || '';
-  if (F.state === 'wait' && F.mood && F.saidMood !== F.mood) { F.saidMood = F.mood; if (/shadow/.test(F.mood)) gardenSay(F.mood); }   // (the float says the rest: what would have been a bar is a word from your figure, once)
-  if (F.state === 'wait') say = '';
+  // what is going on is the message line; while the reel is up it says what it is doing (94-garden-fish-8reel.js). Down here only the button
+  if (!_gw.reel) {
+    const say = F.state === 'wait' ? F.mood || _GW_FISH_SAY.wait : _GW_FISH_SAY[F.state] || '';
+    gardenMessageHold('fish', say, F.state === 'bite' ? { urgent: true, tone: 'now' } : { urgent: F.state === 'reel' || F.state === 'help' });
+  }
   let h = box.querySelector('.gd-fishhud');
   if (!h) {
     h = document.createElement('div'); h.className = 'gd-fishhud';
-    h.innerHTML = '<span class="gd-fishhud-t"></span><button type="button" class="gd-fishhud-b">Reel in <kbd>Esc</kbd></button>';
+    h.innerHTML = '<button type="button" class="gd-fishhud-b">Reel in <kbd>Esc</kbd></button>';
     h.querySelector('button').onclick = (ev) => { ev.stopPropagation(); _gwFishCancel('You wound the line in.'); };
     box.appendChild(h);
   }
-  if (h._say !== say) { h._say = say; h.querySelector('.gd-fishhud-t').textContent = say; h.classList.toggle('is-bite', F.state === 'bite'); }
   h.hidden = F.state === 'land' || F.state === 'reel';
 }
 function _gwFishClearFx() { if (_gw.fx) { for (const k of ['line', 'rod', 'bob', 'bubble', 'ring', 'reel']) if (_gw.fx[k] && _gw.fx[k].remove) _gw.fx[k].remove(); if (_gw.fx.skin) _gw.fx.skin.g.remove(); } _gw.fx = null; }
@@ -572,7 +574,7 @@ function _gwNetResolve() {
 function _gwBugMissed(b, tell) {
   if (tell && typeof gardenLiveFx === 'function') gardenLiveFx('bug', 'miss');
   b.state = 'flee'; b.fleeT = 2; const pk = _gwBugPick(b, true); b.tx = pk.x; b.ty = pk.y;
-  if (typeof gardenFloat === 'function') gardenFloat('It got away!', Math.floor(b.x), Math.floor(b.y) - 1, 1, 1, '');
+  gardenMessage('It got away.');
 }
 /** It is yours (and, in a live garden, the host said so): into your bag, held up. */
 function _gwBugTaken(b) {

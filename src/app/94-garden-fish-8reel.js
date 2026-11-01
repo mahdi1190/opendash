@@ -18,7 +18,6 @@ function gardenReelSetup(R, plan) {
   R.rounds = isFish ? Math.max(1, 1 + (plan.diff >= 7 ? 1 : 0) + (plan.diff >= 9 || plan.cm >= 150 ? 1 : 0) + (reel.st.rounds || 0)) : 1;
   R.round = 1; R.tn = 0; R.tire = 1; R.rest = 0; R.mv = ''; R.help = 0; R.plan = plan;
   const body = R.el.querySelector('.gd-reel-body'), head = R.el.querySelector('.gd-reel-head');
-  R.say = document.createElement('div'); R.say.className = 'gd-reel-say'; R.say.setAttribute('role', 'status'); R.el.insertBefore(R.say, body);
   if (R.rounds > 1) { R.pips = document.createElement('div'); R.pips.className = 'gd-reel-pips'; R.pips.innerHTML = Array.from({ length: R.rounds }, (_, i) => `<i class="${i ? '' : 'on'}"></i>`).join(''); head.appendChild(R.pips); }
   if (R.heavy) { const t = document.createElement('div'); t.className = 'gd-reel-tn'; t.setAttribute('aria-label', 'Line tension'); t.innerHTML = '<i></i>'; body.appendChild(t); R.tnEl = t.querySelector('i'); R.tnBox = t; }
   // a monster: anyone else in the garden can take the second line (94-garden-fish-8catch.js)
@@ -38,10 +37,10 @@ function _gcrMove(R, spd, jump) {
     if (mv === 'run' && !R.heavy && R.diff < E.tenFrom) mv = 'dart';
   }
   R.mv = mv;
-  if (mv === 'sulk') { R.target = 0.06 + r() * 0.12; R.tt = 1.6 + r() * 1.2; R.sp = spd * 2; R.saying = 'It is sulking on the bottom. Stay with it'; }
-  else if (mv === 'run') { R.target = r() < 0.5 ? 0.9 + r() * 0.06 : 0.06 + r() * 0.08; R.tt = 1.1 + r() * 0.9; R.sp = spd * 3; R.saying = 'It is running! Ease off'; }
-  else if (mv === 'leap') { R.target = 0.94; R.tt = 0.75 + r() * 0.3; R.sp = spd * 6; R.saying = 'A leap!'; R.leapAt = R.t + 0.35; }
-  else if (mv === 'dart') { R.target = 0.06 + r() * 0.88; R.tt = 0.5 + r() * 0.6; R.sp = spd * 3.2; R.saying = 'A dart! Keep up'; }
+  if (mv === 'sulk') { R.target = 0.06 + r() * 0.12; R.tt = 1.6 + r() * 1.2; R.sp = spd * 2; R.saying = 'The fish is resting on the bottom. Stay with it.'; }
+  else if (mv === 'run') { R.target = r() < 0.5 ? 0.9 + r() * 0.06 : 0.06 + r() * 0.08; R.tt = 1.1 + r() * 0.9; R.sp = spd * 3; R.saying = 'The fish is running. Ease off.'; }
+  else if (mv === 'leap') { R.target = 0.94; R.tt = 0.75 + r() * 0.3; R.sp = spd * 6; R.saying = 'The fish is leaping.'; R.leapAt = R.t + 0.35; }
+  else if (mv === 'dart') { R.target = 0.06 + r() * 0.88; R.tt = 0.5 + r() * 0.6; R.sp = spd * 3.2; R.saying = 'The fish is darting. Keep up.'; }
   else {
     R.saying = '';
     if (base === 'smooth') { R.target = Math.max(0.06, Math.min(0.94, R.f + (r() - 0.5) * 2 * jump * 2)); R.tt = 0.8 + r() * 1.2; R.sp = spd; }
@@ -84,16 +83,16 @@ function gardenReelStep(R, dt) {
     R.tnBox.classList.toggle('is-hot', R.tn > 0.7);
     if (R.tn >= 1) { _gcrSnap(R); return; }
   }
-  // the words: what it is doing, or how close the line is
-  const say = R.rest > 0 ? (R.restSay || '') : R.heavy && R.tn > 0.7 ? 'Careful! The line is about to snap: let go' : R.saying || '';
-  if (R.say._t !== say) { R.say._t = say; R.say.textContent = say; R.say.classList.toggle('is-warn', R.heavy > 0 && R.tn > 0.7); }
+  // the words: what it is doing, or how close the line is, on the message line for as long as they apply (a quick fish does not flicker them: a new one waits a moment, a danger does not)
+  const warn = R.heavy && R.tn > 0.7, say = R.rest > 0 ? (R.restSay || '') : warn ? 'The line is about to snap. Let go.' : R.note && R.t < R.noteTo ? R.note : R.saying || _GW_FISH_SAY.reel;
+  if (say && say !== R.said && (warn || R.rest > 0 || R.said == null || R.saidWarn || R.t - R.saidAt >= 1.2)) { R.said = say; R.saidAt = R.t; R.saidWarn = warn; gardenMessageHold('fish', say, { urgent: true, tone: warn ? 'err' : '' }); }
   R.bar.style.bottom = (R.b * 100).toFixed(2) + '%'; R.bar.style.height = (barH * 100).toFixed(2) + '%';
   R.fish.style.bottom = `calc(${(R.f * 100).toFixed(2)}% - 15px)`;
   R.prog.style.height = (R.p * 100).toFixed(1) + '%';
   R.el.classList.toggle('is-in', inBar);
   if (R.p >= 1) {
     if (R.round < R.rounds) {   // it gets its breath and goes again
-      R.round += 1; R.p = 0.35; R.rest = E.restSecs; R.tire *= 0.92; R.tn *= 0.5; R.restSay = `Round ${R.round} of ${R.rounds}. It is tiring`;
+      R.round += 1; R.p = 0.35; R.rest = E.restSecs; R.tire *= 0.92; R.tn *= 0.5; R.restSay = `Round ${R.round} of ${R.rounds}. The fish is tiring.`;
       if (R.pips) R.pips.children[R.round - 1].classList.add('on');
       return;
     }
