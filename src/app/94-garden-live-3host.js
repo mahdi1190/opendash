@@ -161,6 +161,7 @@ function _glhEvent(ev) {
       if (!ev.again) setTimeout(() => _gllEmote(A, 'wave'), 400);
       _glhSendSnap(ev.f);
       if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
+      if (typeof eeTell === 'function') eeTell(ev.f);
       if (typeof _glcJoin === 'function') _glcJoin(ev.f);
       if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
       if (typeof _glgJoin === 'function') _glgJoin(ev.f);

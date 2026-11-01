@@ -882,6 +882,7 @@ function gardenWorldClick(it, cell, ev, m) {
   // wherever you click next, you stop creeping after a bug (the chase used to win over your clicks until the bug got away)
   if (_gw.netting && _gw.netting.state === 'chase') _gw.netting = null;
   const k = gardenWorldPick(it, cell, ev, m);
+  if (k.kind === 'decor' && tool === 'hand' && typeof gardenBackStep === 'function' && gardenBackStep(k.decor, m || gardenHere())) return true;
   // 1. a building, a board or a box: walk to its door and go in
   if (k.kind === 'prop') { _gwGoToProp(k.prop); return true; }
   if (k.kind === 'seed') return false;   // planting is its own click

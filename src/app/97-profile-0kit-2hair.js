@@ -11,7 +11,7 @@
                                         one bold band; split: the right half; peekaboo: the under layer only)
    ============================================================ */
 const _PF_HAIR_MORE = new Set(['curtains', 'pixie', 'undercut', 'quiff', 'slick', 'mullet', 'shag', 'sweep', 'halfup', 'pigtails', 'topknot',
-  'puffs', 'locs', 'boxbraids', 'cornrows', 'hightop']);
+  'puffs', 'locs', 'boxbraids', 'cornrows', 'hightop', 'norwood7']);
 const _PF_HAIR_LONG = new Set(['long', 'wavy', 'braids', 'bob', 'pony', 'sweep', 'halfup', 'locs', 'boxbraids', 'shag', 'mullet', 'pigtails', 'curtains']);
 const _PF_SWEPT_D = 'M30.4 44 C29 26 38.6 17.4 50 17.4 C61.4 17.4 71 26 69.6 44 C69 38 67.6 33 63.6 30 C58.6 27.6 54 27 50 27 C46 27 41.4 27.6 36.4 30 C32.4 33 31 38 30.4 44 Z';
 const _PF_LONG_BACK_D = 'M28.4 44 C26 24 37 15.6 50 15.6 C63 15.6 74 24 71.6 44 L73 80 L27 80 Z';
@@ -40,6 +40,7 @@ function _pfRope(x0, y0, x1, y1, bend, w, hc, braid) {
 
 function _pfHairBackMore(st, hc) {
   switch (st) {
+    case 'norwood7': return _pfP('M29 36 C28.2 44 29.4 50 32 54.4 L68 54.4 C70.6 50 71.8 44 71 36 C70 42 66 46 50 46 C34 46 30 42 29 36 Z', hc[1]);   // what is left: a band round the sides and the back
     case 'curtains': return _pfP('M28.4 46 C27 26 37.4 16.4 50 16.4 C62.6 16.4 73 26 71.6 46 L72 57 Q67 59.4 64.4 55 L35.6 55 Q33 59.4 28 57 Z', hc[1]);
     case 'mullet': return _pfP('M30.4 46 C28.4 27 38 17 50 17 C62 17 71.6 27 69.6 46 L70.6 60 Q69 70 62 74.6 L38 74.6 Q31 70 29.4 60 Z', hc[1]);
     case 'shag': return _pfP('M28 46 C26.4 26 37 15.8 50 15.8 C63 15.8 73.6 26 72 46 L73.6 66 L70 63 L68.6 69 L65 64 L35 64 L31.4 69 L30 63 L26.4 66 Z', hc[1]);
@@ -81,6 +82,10 @@ function _pfHairFrontMore(st, hc, small) {
   const hi = (d, w, op) => (small ? '' : _pfS(d, hc[2], w || 1.3, op || 0.55));
   const lo = (d, w, op) => (small ? '' : _pfS(d, hc[3], w || 0.8, op || 0.55));
   switch (st) {
+    case 'norwood7': {   // a narrow horseshoe at the sides above the ears, and a bare, shining top
+      const band = 'M30.6 41.6 C30 37.6 30.4 34 31.6 31.2 C32.8 33.4 33.6 36.6 33.8 40.4 L34 46 C33.6 48 33 49.4 32 50.4 C31 47.6 30.6 44.8 30.6 41.6 Z', fine = 'M31.8 33 Q32.8 40 32.6 48';
+      return _pfP(band, hc[0]) + _pfP(_pfMirror(band), hc[0]) + (small ? '' : _pfS(fine, hc[2], 0.5, 0.5) + _pfS(_pfMirror(fine), hc[2], 0.5, 0.5) + _pfS('M38.4 27 Q44 23.2 50 23.6', '#ffffff', 2.2, 0.25));
+    }
     case 'curtains': return _pfP('M29.6 47 C27.6 26 38 16.6 50 16.6 C62 16.6 72.4 26 70.4 47 C69.6 41 68 36.4 64.6 33.4 C59.6 31.4 54 33.6 50.8 38.4 L50 36.4 L49.2 38.4 C46 33.6 40.4 31.4 35.4 33.4 C32 36.4 30.4 41 29.6 47 Z', hc[0])
       + lo('M50 18.4 L50 35.6', 0.7, 0.5) + hi('M36.4 30.8 Q43 29.6 47.6 34.4') + hi(_pfMirror('M36.4 30.8 Q43 29.6 47.6 34.4')) + hi('M38 22.8 Q44 19.4 49 19.6', 1.1, 0.4);
     case 'pixie': return _pfP('M30.6 44.4 C29.2 27 38.6 18.4 50 18.4 C61.4 18.4 70.8 27 69.4 44 C69 39.6 67.8 36 65.6 33 C60.4 37.4 52.6 39.4 45.4 40.4 C39.8 41.2 34.6 42.4 30.6 44.4 Z', hc[0])

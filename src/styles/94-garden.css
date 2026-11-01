@@ -827,3 +827,8 @@ html.gd-carrying .gd-full .gd-gridlines { display: block; opacity: .16; }
 
 /* Calm (94-garden-world-0walk.js _gwCalm): nobody is looking, so the ambient motion rests where it is. It picks up from there when you come back. */
 .gd-calm, .gd-calm * { animation-play-state: paused !important; }
+
+/* The shop's search box (2.33, 94-garden-5extras.js): it sits above the kinds' chips and fills the row on a narrow panel. */
+.gd-shop-search { display: flex; margin: 0 0 var(--space-2); }
+.gd-shop-q { flex: 1 1 auto; width: 100%; max-width: 360px; }
+.gd-shop-none { margin: var(--space-3) 0; }

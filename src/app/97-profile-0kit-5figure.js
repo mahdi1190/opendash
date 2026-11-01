@@ -17,7 +17,7 @@
    locs, braids, buns), bags and scarves. Face details (eyes, make-up, paint, piercings) are not drawn: the
    scene people have no faces.
    ============================================================ */
-const _PF_FIG_HAIR = Object.freeze({ bald: 'bald', buzz: 'crop', crop: 'crop', mohawk: 'crop', pixie: 'crop', cornrows: 'crop', hightop: 'crop',
+const _PF_FIG_HAIR = Object.freeze({ bald: 'bald', norwood7: 'bald', buzz: 'crop', crop: 'crop', mohawk: 'crop', pixie: 'crop', cornrows: 'crop', hightop: 'crop',
   short: 'short', side: 'short', spiky: 'short', fringe: 'short', curtains: 'short', quiff: 'short', slick: 'short', undercut: 'short',
   curly: 'curly', afro: 'curly', puffs: 'curly', bob: 'long', long: 'long', wavy: 'long', braids: 'long', sweep: 'long', halfup: 'long', shag: 'long',
   mullet: 'long', locs: 'long', boxbraids: 'long', pony: 'pony', pigtails: 'pony', bun: 'bun', buns: 'bun', topknot: 'bun' });
