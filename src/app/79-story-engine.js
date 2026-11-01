@@ -101,7 +101,7 @@ function storyNarrator() {
       onFallback: (e) => {
         if (!_story.open || _story.voiceFallback) return;
         _story.voiceFallback = true;
-        toast(((e && e.message) || 'ElevenLabs is unavailable.') + ' Using the browser voice.', { kind: 'note' });
+        toast(((e && e.message) || 'ElevenLabs is unavailable.') + ' Using the browser voice.', { dismiss: true, kind: 'note' });
       },
     }) : browser;
   } else {
@@ -607,14 +607,14 @@ function _stPrepareVoice() {
     if (result && result.failed && !_story.voiceFallback) {
       _story.voiceFallback = true;
       const error = result.errors && result.errors[0];
-      toast(((error && error.message) || 'Some voice clips could not be prepared.') + ' Those moments will use the browser voice.', { kind: 'note' });
+      toast(((error && error.message) || 'Some voice clips could not be prepared.') + ' Those moments will use the browser voice.', { dismiss: true, kind: 'note' });
     }
     return result;
   })().catch(e => {
     if (!live()) return null;
     preparation.done = true; preparation.progress = { total: 0, completed: 0, failed: 1 };
     _stVoicePreparationUi();
-    toast((e && e.message) || 'Voice preparation could not finish.', { kind: 'note' });
+    toast((e && e.message) || 'Voice preparation could not finish.', { dismiss: true, kind: 'note' });
     return null;
   });
   return preparation.promise;
@@ -1216,7 +1216,7 @@ function storySettingsRows(el, moreRows) {
   el.appendChild(settingsModelNote('Story script', p.model));   // the model is picked in Settings > AI (L13)
   const test = uiButton({ label: 'Test the voice', icon: 'play', size: 'sm', run: () => {
     const nar = storyCreateNarrator({ synth: _stSynth(), Utterance: window.SpeechSynthesisUtterance || null, prefs: { voiceName: p.voiceName, rate: p.rate, pitch: p.pitch, volume: p.volume } });
-    if (!nar.canSpeak()) { toast('No English voice is installed on this computer, so stories show captions only'); return; }
+    if (!nar.canSpeak()) { toast('No English voice is installed on this computer, so stories show captions only', { dismiss: true }); return; }
     nar.prime();
     nar.speak(`Good morning${userName() ? ', ' + userName() : ''}. Here is your day in three sentences.`, { speed: 1 });
   } });

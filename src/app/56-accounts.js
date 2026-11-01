@@ -64,7 +64,7 @@ async function accCheckSignIn() {
   const fresh = accNewlyConnected(before, d && d.accounts);
   if (fresh) {
     _accSignInAt = 0;
-    toast(`${fresh.email} connected. Mail and calendar are on their way`, { kind: 'ok', timeout: 6000 });
+    toast(`${fresh.email} connected. Mail and calendar are on their way`, { dismiss: true, kind: 'ok', timeout: 6000 });
     if (typeof _drawerClose === 'function' && _drawerClose) _drawerClose();
     if (typeof SourcesStore !== 'undefined') SourcesStore.refresh({ cached: true });
     accReloadData();

@@ -1048,7 +1048,7 @@ function _gwSpritesFrame(dt) {
     if (!S.node || !S.node.isConnected) {
       const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
       g.setAttribute('class', 'gd-sprite'); g.setAttribute('data-live', '1'); g.innerHTML = S.svg || '';
-      S.node = g; S.zk = null;
+      S.node = g; S.zk = null; S.tf = null;   // (a new node has no place yet: without this, someone standing still after a redraw sat at the world's top-left corner until they next moved)
     }
     if (typeof S.update === 'function') { try { S.update(dt, S); } catch (e) { console.error('[garden sprite]', e); S.remove(); continue; } }
     if (!S.node) continue;

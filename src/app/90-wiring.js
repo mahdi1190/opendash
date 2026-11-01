@@ -148,7 +148,7 @@ async function runMorningBriefing() {
   toast('Starting the morning briefing…', { icon: 'sunrise' });
   try {
     await window.cowork.runScheduledTask('task-management');
-    toast('Briefing sent. Check your chat.', { kind: 'ok' });
+    toast('Briefing sent. Check your chat.', { dismiss: true, kind: 'ok' });
   } catch (e) {
     toastError('start the morning briefing', e, () => runMorningBriefing());
   }

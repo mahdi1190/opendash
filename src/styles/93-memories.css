@@ -222,7 +222,7 @@ html.anim-paused .mem-mood *, html.anim-paused .mg-svg *, html.anim-paused .hse-
 .mpc-lines { padding: 12px 12px 10px 14px; border-right: 1px solid color-mix(in srgb, currentColor 18%, transparent); background: repeating-linear-gradient(transparent 0 21px, color-mix(in srgb, currentColor 10%, transparent) 21px 22px); display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
 .mpc-msg { margin: 0; font-family: 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive; font-size: 13px; line-height: 22px; overflow: hidden; }
 .mpc-msg .subtle { color: inherit; opacity: .65; }
-.mpc-stats { margin: 0; font-size: 10px; opacity: .75; }
+.mpc-stats { margin: 0; font-size: 11px; opacity: .75; }
 .mpc-side { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px 6px; }
 .mpc-postmark { width: 64px; height: 64px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--sw-blue) 65%, transparent); display: grid; place-items: center; transform: rotate(-14deg); color: color-mix(in srgb, var(--sw-blue) 80%, currentColor); font-size: 8px; font-weight: 700; text-align: center; letter-spacing: .04em; }
 .mpc-postmark span { padding: 0 4px; }

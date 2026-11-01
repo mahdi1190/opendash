@@ -127,7 +127,7 @@ async function srvRestart(opts) {
     await srvResync(h);
     _ssOverlayOff();
     _ssStatus = null; _ssRefresh();
-    if (!failed) toast(rebuild ? 'Rebuilt and restarted (no changes to the app)' : 'Server restarted', { kind: 'ok' });
+    if (!failed) toast(rebuild ? 'Rebuilt and restarted (no changes to the app)' : 'Freeflo restarted', { dismiss: true, kind: 'ok' });
     return true;
   } finally {
     _ssRestarting = false;
@@ -325,7 +325,7 @@ function _ssOfflineCard(el) {
   const on = srvSwEnabled();
   const hint = !supported ? 'This browser does not support it here.' : (on ? (srvSwActive() ? 'On, and ready.' : 'On. Ready after the next page load.') : 'Off in this browser.');
   card.body.appendChild(_settingsRow('Show an offline page', 'When Freeflo isn’t running, this browser shows a page with a Start button instead of an error. ' + hint, _settingsSwitch(on && supported, 'Show an offline page', async (v) => {
-    await srvSetSwEnabled(v); toast(v ? 'Offline page on' : 'Offline page off', { kind: 'ok' }); _ssRefresh();
+    await srvSetSwEnabled(v); _ssRefresh();
   }, !supported)));
   el.appendChild(card.card);
 }

@@ -82,7 +82,7 @@ function spotifySignIn() {
     try {
       const s = await spotifyStatus(true);
       try { await connRefresh({ force: true }); } catch (e) { /* the list catches up on its own */ }
-      if (s.connected || !s.configured) { cleanup(); if (s.connected) toast(s.name ? `Spotify connected as ${s.name}` : 'Spotify connected', { kind: 'ok', icon: 'music' }); }
+      if (s.connected || !s.configured) { cleanup(); if (s.connected) toast(s.name ? `Spotify connected as ${s.name}` : 'Spotify connected', { dismiss: true, kind: 'ok', icon: 'music' }); }
       if (state.view === 'connections' || state.view === 'profile') renderMain();
     } catch (e) { /* try again when the tab is back */ } finally { checking = false; }
   };

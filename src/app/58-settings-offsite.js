@@ -50,7 +50,7 @@ function settingsOffsiteCard(el) {
       try {
         _obInfo = Object.assign({}, _obInfo, await _obJson('/api/backup/offsite/settings', { folder: fold.i.value.trim(), passphrase: p1.i.value, enabled: true }));
         toast('Switched on', { kind: 'ok' });
-        await _obJson('/api/backup/offsite/now', {}).then(() => toast('Copy saved', { kind: 'ok' })).catch(e => toastError('make the first copy', e));
+        await _obJson('/api/backup/offsite/now', {}).then(() => toast('Copy saved', { kind: 'ok', dismiss: true })).catch(e => toastError('make the first copy', e));
       } catch (e) { toastError('switch it on', e); }
       b.disabled = false; _obLoad(true);
     });
@@ -64,7 +64,7 @@ function settingsOffsiteCard(el) {
     c.body.appendChild(i.lastResult === 'error'
       ? setStatusLine('warn', 'Needs you', `The last try failed (${when(i.lastRunAt)}); it tries again every half hour`)
       : i.lastResult === 'ok' ? setStatusLine('ok', 'On', `last copy ${when(i.lastRunAt)}`) : setStatusLine('busy', 'On', 'the first copy is made within a few minutes'));
-    setAction(c, 'Make a copy now', async (e, b) => { try { await _obJson('/api/backup/offsite/now', {}); toast('Copy saved', { kind: 'ok' }); } catch (err) { toastError('make a copy', err, () => b.click()); } _obLoad(true); }, { icon: 'download', kind: 'secondary', wait: true });
+    setAction(c, 'Make a copy now', async (e, b) => { try { await _obJson('/api/backup/offsite/now', {}); toast('Copy saved', { kind: 'ok', dismiss: true }); } catch (err) { toastError('make a copy', err, () => b.click()); } _obLoad(true); }, { icon: 'download', kind: 'secondary', wait: true });
     setFold(c, 'data-offsite-more', 'More', ({ body }) => {
       body.appendChild(_settingsRow('Copies go to', `${i.folder} · locked with ${i.lock === 'recovery' ? 'your recovery code' : 'your passphrase'}.`, null));
       const g = document.createElement('div'); g.className = 'btn-group set-btns';
@@ -123,7 +123,7 @@ function _obRestoreDialog(bk, folder) {
       const g = document.createElement('div'); g.className = 'btn-group mv-actions';
       const go = _sdBtn('Restore', 'archive-restore', 'btn-primary', async (btn) => {
         btn.disabled = true;
-        try { await _obJson('/api/backup/offsite/restore', secret()); toast('Restored. Loading it…', { kind: 'ok' }); setTimeout(() => location.reload(), 700); }
+        try { await _obJson('/api/backup/offsite/restore', secret()); toast('Restored. Loading it…', { dismiss: true, kind: 'ok' }); setTimeout(() => location.reload(), 700); }
         catch (e) { toastError('restore it', e); btn.disabled = false; }
       });
       go.disabled = true;

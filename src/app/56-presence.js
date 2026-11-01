@@ -95,7 +95,7 @@ function presenceNote(text, opts) {
   if (!t) return;
   presenceCalm(t);
   if (!presenceCalmShowOk(t)) return;
-  if (typeof toast === 'function') toast(t, Object.assign({ icon: 'moon', timeout: 6000, calm: true }, opts || {}));
+  if (typeof toast === 'function') toast(t, Object.assign({ icon: 'moon', timeout: 6000, calm: true, dismiss: true }, opts || {}));
 }
 function _prPulse() {
   const b = document.getElementById('presence-btn');

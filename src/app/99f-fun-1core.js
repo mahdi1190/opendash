@@ -265,8 +265,8 @@ function funOnEvent(d) {
       const ev = funEventNow();
       if (ev) {
         if (d.t === 'knock') toast(`${who} ${ev.def.knock.did}: ${ev.def.knock.label}! ${ev.def.knock.e}`, { icon: ev.def.icon, timeout: 12000, action: { label: 'Answer', run: () => { if (typeof funAnswerDialog === 'function') funAnswerDialog(f); } } });
-        else if (d.t === 'treat') toast(`${who} ${ev.def.treat.did} ${ev.def.treat.e}${d.candy ? ` · +${d.candy} ${_funCurrency(d.candy)}` : ''}`, { icon: ev.def.icon, kind: 'ok' });
-        else if (d.t === 'trick') { if (typeof funFxEmote === 'function') funFxEmote(ev.def.emote); toast(`${who} ${ev.def.trick.did} ${ev.def.trick.e}${d.candy ? ` · +${d.candy} ${_funCurrency(d.candy)} anyway` : ''}`, { icon: ev.def.icon }); }
+        else if (d.t === 'treat') toast(`${who} ${ev.def.treat.did} ${ev.def.treat.e}${d.candy ? ` · +${d.candy} ${_funCurrency(d.candy)}` : ''}`, { dismiss: true, icon: ev.def.icon, kind: 'ok' });
+        else if (d.t === 'trick') { if (typeof funFxEmote === 'function') funFxEmote(ev.def.emote); toast(`${who} ${ev.def.trick.did} ${ev.def.trick.e}${d.candy ? ` · +${d.candy} ${_funCurrency(d.candy)} anyway` : ''}`, { dismiss: true, icon: ev.def.icon }); }
       }
     } else if (d.type === 'duo' && f) {
       _funAward('duo-streak', `${funHash(d.from)}:${d.start || ''}:${d.n}`, 10, 'Duo streak', true);

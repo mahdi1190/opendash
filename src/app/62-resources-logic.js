@@ -385,7 +385,7 @@ function rsrcKindLabel(r) {
   if (r.kind === 'snippet') return 'Snippet' + (r.lang ? ' · ' + r.lang : '');
   if (r.kind === 'github') {
     const g = rsrcGithub(r.target);
-    return !g ? 'GitHub' : g.type === 'pr' ? 'GitHub pull request' : g.type === 'issue' ? 'GitHub issue' : g.type === 'blob' ? 'GitHub file' : g.type === 'tree' ? 'GitHub folder' : g.type === 'commit' ? 'GitHub commit' : 'GitHub repo';
+    return !g ? 'GitHub' : g.type === 'pr' ? 'GitHub pull request' : g.type === 'issue' ? 'GitHub issue' : g.type === 'blob' ? 'GitHub file' : g.type === 'tree' ? 'GitHub folder' : g.type === 'commit' ? 'GitHub commit' : 'GitHub project';
   }
   if (r.kind === 'drive') return rsrcDriveLabel(rsrcDrive(r.target));
   const m = /^https?:\/\/(?:www\.)?([^/?#]+)/i.exec(String(r.target || ''));

@@ -925,7 +925,7 @@ registerSection('files', {
       if (!rows.length) {
         mountEmptyState(listEl, all.length
           ? { icon: 'search-x', title: 'Nothing matches', text: 'Try another word, or show all kinds.', compact: true }
-          : { icon: 'paperclip', title: 'No files or links yet', text: 'Attach the folder of a project, a deck, a GitHub repo or a command you keep looking up. Open a task, a stream or a person and use Files & links, or attach here.', actions: [{ label: 'Attach…', icon: 'paperclip', primary: true, run: () => openAttachDialog({ links: [] }) }] });
+          : { icon: 'paperclip', title: 'No files or links yet', text: 'Attach the folder of a project, a deck, a GitHub project or a command you keep looking up. Open a task, a stream or a person and use Files & links, or attach here.', actions: [{ label: 'Attach…', icon: 'paperclip', primary: true, run: () => openAttachDialog({ links: [] }) }] });
         return;
       }
       for (const r of rows) listEl.appendChild(resRow(r, { showLinks: true }));
