@@ -9,7 +9,34 @@
      gardenLandLights(sc)                pools of light for the night layer
      gardenLandMini(open, season)        the land on the little map
    ============================================================ */
-const _GLD_OVER = { fn: null };
+const _GLD_OVER = { fn: null, stand: [], mist: '' };
+/* The things a wild tree must not get in front of: they stand in the world, so they are always drawn over the baked ground, and a tree that belongs in front of one would come out behind it. */
+const _GLD_WILD = { boxes: null, wet: null };
+function _gldWildBoxes() {
+  if (_GLD_WILD.boxes) return _GLD_WILD.boxes;
+  const out = [], W = GARDEN_WORLD, add = (p, tall) => { const x = Math.floor(p.x), w = p.w || 1, h = p.h || 1; out.push({ x0: x, x1: x + w, y0: p.y + h - tall, y1: p.y + h }); };
+  for (const d of GARDEN_LAND_SIGHTS) add(d, d.tall || 1);
+  for (const f of GARDEN_LAND_FEATURES) if (f.x != null && f.does !== 'maze') add(f, f.tall || 1);
+  for (const g of GARDEN_ZONE_GATES) add(Object.assign({}, g, { w: 1 }), 1.3);
+  for (const p of GARDEN_PROPS) if (!p.walk && p.y < 21) add(p, p.tall || 1);
+  add(GARDEN_LAND_OFFICE, 2); add(GARDEN_LAND_FINDS, 1.5);
+  for (const x of GARDEN_LAND_LAMPS) out.push({ x0: x, x1: x + 1, y0: 18, y1: 19.4 });
+  const wet = [];
+  for (const w of GARDEN_REGION_WATERS) if (!w.room && !w.area && !w.sec) wet.push({ cx: w.x + w.w / 2, cy: w.y + w.h / 2, rx: w.w / 2 + 0.3, ry: w.h / 2 + 0.3 });
+  for (const q of GARDEN_LAND_SQUARES) wet.push({ cx: q[0], cy: q[1], rx: (q[2] + 12) / W.cellW, ry: (q[3] + 8) / W.cellH });
+  for (const b of GARDEN_LAND_BROOKS) for (let i = 0; i < b.length - 1; i++) for (let t = 0; t < 1; t += 0.25) wet.push({ cx: b[i][0] + (b[i + 1][0] - b[i][0]) * t, cy: b[i][1] + (b[i + 1][1] - b[i][1]) * t, rx: 0.5, ry: 0.5 });
+  _GLD_WILD.boxes = out; _GLD_WILD.wet = wet;
+  return out;
+}
+/** May a wild tree or bush stand here? Cell x, y; its foot fx, fy in cells; k its size. Not on a path (the way stays there to be found), in water or on paving, or in front of something in the world. */
+function _gldWildFits(x, y, fx, fy, k, kind) {
+  const c = gardenLandCell(x, y); if (!c || c.trail || c.lane) return false;
+  const boxes = _gldWildBoxes(), W = GARDEN_WORLD;
+  for (const e of _GLD_WILD.wet) if (((fx - e.cx) / e.rx) ** 2 + ((fy - e.cy) / e.ry) ** 2 < 1) return false;
+  const hw = (kind === 'tree' ? 34 * k : 18) / W.cellW, tall = (kind === 'tree' ? 100 * k : 26) / W.cellH;
+  for (const b of boxes) if (fy > b.y1 - 1 && fx + hw > b.x0 && fx - hw < b.x1 && fy - tall < b.y1) return false;
+  return true;
+}
 function _gldOvergrown(cells, id, sc, zones) { return _GLD_OVER.fn ? _GLD_OVER.fn(cells, id, sc, zones) : ''; }
 const _GLD_ART = (function () {
   const A = GART, f1 = A.f1, rr = A.rr;
@@ -157,18 +184,20 @@ const _GLD_ART = (function () {
     const pal = GART_PAL.leaf[season] || GART_PAL.leaf.summer, stand = [];
     const seenC = new Set();
     for (const [cx, cy] of cells) { const h = gardenHash('zt|' + cx + ',' + cy), m = h % 100; if (m < 12) { seenC.add(cx + ',' + cy); stand.push(['tree', cx, cy, h]); } else if (m < 22) stand.push(['bush', cx, cy, h]); }
-    stand.sort((a, b) => a[2] - b[2]);
     for (const [kind, cx, cy, h] of stand) {
-      const q = gardenRand(h), x = px(cx + 0.2 + q() * 0.6), y = py(cy + 0.5 + q() * 0.45);
-      if (kind === 'tree' && typeof _gwTree === 'function') { s += `<path fill="#1a2a14" fill-opacity="0.16" d="${A.ell(x + 4, y + 1, 16, 4)}"/>` + _gwTree(x, y, 0.62 + q() * 0.5, pal, season, q); continue; }
+      const q = gardenRand(h), fx = cx + 0.2 + q() * 0.6, fy = cy + 0.5 + q() * 0.45, x = px(fx), y = py(fy), tk = kind === 'tree' ? 0.62 + q() * 0.5 : 0;
+      if (!_gldWildFits(cx, cy, fx, fy, tk, kind)) continue;
+      if (kind === 'tree' && typeof _gwTree === 'function') { _GLD_OVER.stand.push([y, `<path fill="#1a2a14" fill-opacity="0.16" d="${A.ell(x + 4, y + 1, 16, 4)}"/>` + _gwTree(x, y, tk, pal, season, q)]); continue; }
       const R = 9 + q() * 9, L = season === 'winter' ? ['#6f8070', '#8ea088', '#b0bca4'] : season === 'autumn' ? ['#7f6e2c', '#a8923a', '#c8ae52'] : ['#3f7a3c', '#5a9648', '#82b45e'];
       let lobes = '', tops = '', lv = '';
       for (let k = 0; k < 4; k++) { const a = -R + k * R * 0.66, rr0 = R * (0.42 + q() * 0.26), by = y - rr0 * 0.7 - q() * R * 0.28; lobes += A.circ(x + a, by, rr0); tops += A.circ(x + a - 1.5, by - rr0 * 0.34, rr0 * 0.55); }
       for (let k = 0; k < 9; k++) lv += A.leaf(x + (q() - 0.5) * R * 2.1, y - q() * R * 1.1, q() * 6.2, 2.6, 0.9);
-      s += A.P('#1c2a14', A.ell(x + 2, y + 1, R * 1.25, R * 0.3), 0.16) + A.P(L[0], lobes) + A.P(L[1], tops) + A.P(L[2], lv, 0.8);
-      if (q() < 0.3 && season !== 'winter') { let b = ''; for (let k = 0; k < 5; k++) b += A.circ(x + (q() - 0.5) * R * 1.6, y - R * (0.2 + q() * 0.7), 1.2); s += A.P(season === 'autumn' ? '#7a2a5a' : '#f2c4d8', b, 0.95); }
+      let bu = A.P('#1c2a14', A.ell(x + 2, y + 1, R * 1.25, R * 0.3), 0.16) + A.P(L[0], lobes) + A.P(L[1], tops) + A.P(L[2], lv, 0.8);
+      if (q() < 0.3 && season !== 'winter') { let b = ''; for (let k = 0; k < 5; k++) b += A.circ(x + (q() - 0.5) * R * 1.6, y - R * (0.2 + q() * 0.7), 1.2); bu += A.P(season === 'autumn' ? '#7a2a5a' : '#f2c4d8', b, 0.95); }
+      _GLD_OVER.stand.push([y, bu]);
     }
-    return s + mist(cells, id, sc, zones);
+    _GLD_OVER.mist += mist(cells, id, sc, zones);
+    return s;
   }
   /* A soft bank of mist: the further out, the thicker. */
   function mist(cells, id, sc, zones) {
@@ -267,6 +296,7 @@ const _GLD_ART = (function () {
   function trails(sc, o, open) {
     const season = sc.season, sand = tile('sand', season), P = WILD[season] || WILD.summer, r = A.rng(A.hash('gld-trails|' + season));
     let s = '', live = '', under = '', top = '', closed = '', steps = '', peb = '', stone = '', plank = '', cobble = '', verge = ['', '', ''], squares = '';
+    const mouths = [], mouthNear = (x, y) => mouths.some(q => Math.hypot(q[0] - x, (q[1] - y) * 1.6) < 1.6) || GARDEN_LAND_SQUARES.some(q => Math.hypot((q[0] - x) * W().cellW / (q[2] + 34), (q[1] - y) * W().cellH / (q[3] + 30)) < 1);
     for (const t of GARDEN_LAND_TRAILS) {
       const isOpen = open.has(t.id), { runs, start } = runsOf(t), zOpen = (c) => { const n = gardenZoneOf(c[0], c[1]); return !n || open.has('zn-' + n); };
       runs.forEach((run0, ri) => {
@@ -279,7 +309,7 @@ const _GLD_ART = (function () {
           under += d; top += d;
           if (TRAIL_STONE.has(t.id)) stone += d; else if (TRAIL_PLANK.has(t.id)) plank += d; else if (TRAIL_COBBLE.has(t.id)) cobble += d;
           for (let i = 1; i < keep.length; i += 2) { const [x, y] = keep[i], c = gardenLandCell(x, y + 1), c2 = gardenLandCell(x, y - 1); if (c && !c.trail && !c.solid && r() < 0.55) verge[i % 3] += A.circ(px(x) + 8 + r() * 32, py(y) + 27 + r() * 3, rr(r, 1.3, 2)) + A.circ(px(x) + 8 + r() * 32, py(y) + 26 + r() * 3, rr(r, 1.2, 1.8)); if (c2 && !c2.trail && !c2.solid && r() < 0.45) verge[(i + 1) % 3] += A.circ(px(x) + 8 + r() * 32, py(y) + 2 + r() * 3, rr(r, 1.2, 1.8)); }
-          if (ri === 0) squares += paving(r, px(start[0] + 0.5), py(start[1] + 0.5), 26, 15);   // a little square where it meets the way it leads from
+          if (ri === 0 && !mouthNear(start[0] + 0.5, start[1] + 0.5)) { mouths.push([start[0] + 0.5, start[1] + 0.5]); squares += paving(r, px(start[0] + 0.5), py(start[1] + 0.5), 26, 15); }   // a little square where it meets the way it leads from
           for (let i = 1; i < keep.length - 1; i++) { const [x, y] = keep[i]; if (keep[i - 1][0] === x && keep[i + 1][0] === x) steps += `M${f1(px(x + 0.5) - 8)} ${f1(py(y) + 12)}q8 3 16 0M${f1(px(x + 0.5) - 7)} ${f1(py(y) + 24)}q7 3 14 0`; const [qx, qy] = [px(x) + 8 + r() * 32, py(y) + 8 + r() * 14]; peb += A.ell(qx, qy, rr(r, 0.9, 1.9), rr(r, 0.6, 1.1)); }
         } else closed += d;
       });
@@ -348,6 +378,10 @@ const _GLD_ART = (function () {
         if (!o.photo && !o.readOnly) live += sign(px(20), y0 + 2, `Level ${z.lv}`, false, z.id);
       }
     }
+    // the wild land's trees and bushes, after the water, paths and paving they stand in front of, back to front; then its mist
+    _GLD_OVER.stand.sort((a, b) => a[0] - b[0]);
+    for (const t of _GLD_OVER.stand) s += t[1];
+    s += _GLD_OVER.mist; _GLD_OVER.stand = []; _GLD_OVER.mist = '';
     // the price on what you can buy from here (not on a friend's land: nothing there is for sale to you)
     if (!o.photo && !o.readOnly && !(typeof gardenVisitOn === 'function' && gardenVisitOn())) for (const sec of GARDEN_LAND_SECTIONS) {
       if (open.has(sec.id)) continue;
@@ -358,7 +392,8 @@ const _GLD_ART = (function () {
       if (sec.buy && !forSale) continue;
       if (!forSale && sec.lv > lvNow + 1) continue;   // far off: the land office lists it, a sign here would only be clutter
       const noKey = forSale && sec.needs && !((sc.landShow && sc.landShow.c) || []).includes(GARDEN_LAND_KEY_ID);
-      live += sign(px(D.fx + 0.5), py(D.fy + 1) - 2, noKey ? 'Key' : forSale ? String(sec.buy) : `Level ${sec.lv}`, forSale && !noKey, sec.id);
+      const postNear = GARDEN_ZONE_GATES.some(g => Math.abs(g.x - D.fx) <= 1 && D.fy + 1 >= g.y && D.fy <= g.y + g.h);
+      live += sign(px(D.fx + 0.5) + (postNear ? 34 : 0), py(D.fy + 1) - 2, noKey ? 'Key' : forSale ? String(sec.buy) : `Level ${sec.lv}`, forSale && !noKey, sec.id);
     }
     return { s, live };
   }

@@ -407,7 +407,7 @@ const GRM_ART = Object.freeze({
 /* ---------- the rooms ---------- */
 const GRM_ROOMS = Object.freeze([
   /* ---------- open from the start, and hidden ---------- */
-  { id: 'cellar', at: 'ld-sunk', name: 'The drowned cellar', verb: 'Feel for a fourth step', door: 'steps', bg: '#071c24', edge: ['#16505a', '#07202a'], say: 'There are three steps. Then, if you keep going, a fourth. Then a cellar nobody has needed for years, with the pool for a ceiling.', how: 'Open two jars at a time and find the pairs. Something swims in the flood too: click the water to cast.',
+  { id: 'cellar', at: 'ld-sunk', doorAt: [28.4, 19.8], name: 'The drowned cellar', verb: 'Feel for a fourth step', door: 'steps', bg: '#071c24', edge: ['#16505a', '#07202a'], say: 'There are three steps. Then, if you keep going, a fourth. Then a cellar nobody has needed for years, with the pool for a ceiling.', how: 'Open two jars at a time and find the pairs. Something swims in the flood too: click the water to cast.',
     art: GRM_ART.cellar, floor: { x0: 44, x1: 930, y0: 410, y1: 586 }, spawn: { x: 170, y: 490 },
     water: { room: 'cellar', cy: 10, kinds: ['jar-minnow', 'cellar-eel', 'barrel-carp'], e: [[620, 500, 290, 60]] },
     play: 'pairs', gift: { ticket: 1, 'mat:reed': 1 }, doneLine: 'You have sorted today’s jars. The water will have moved things by tomorrow.', gotLine: 'The last pair, and under the wax of the last jar, dry as the day it was sealed: a bundle of reeds and a ticket someone meant to use.',
