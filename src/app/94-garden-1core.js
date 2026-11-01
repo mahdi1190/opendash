@@ -234,6 +234,14 @@ function gardenReady() {
   if (!_gd.bootAt) _gd.bootAt = Date.now();   // clock-ok: a wait, not a date
   return Date.now() - _gd.bootAt > 5000;   // clock-ok: browser storage only: after the server probe has had its chance
 }
+/** Start your garden again, the way a new person starts (the owner, 1 Nov 2026). Everything in state.garden goes: land, plants, coins, level, books and the early gift's mark. Your pet and your tasks are not part of it. Returns a function that puts the old garden back, for as long as this page stays open. */
+function gardenStartAgain() {
+  const old = JSON.stringify(_gdG());
+  state.garden = { v: 1 };
+  gardenEnsure();
+  _gdSave();
+  return () => { state.garden = JSON.parse(old); _gdSave(); };
+}
 /** Set the garden up once. True when the garden exists (now or already). */
 function gardenEnsure() {
   if (typeof state === 'undefined' || !state) return false;
