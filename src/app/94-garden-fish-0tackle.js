@@ -5,7 +5,7 @@
      GARDEN_REELS, GARDEN_LINES, GARDEN_HOOKS   what you fish with. Owned for good (items gear:<id>), chosen in prefs.reel, prefs.line, prefs.hook. Each does something you can feel in the reel game and shows on the figure or the line
      GARDEN_KIT                                 the bug kit: a lantern and a jar you carry, a pot of sugar for trees
      GARDEN_SPOTS, gardenSpotAt(x, y)           places in the water, with their own fish (a fish's needs.spot)
-     GARDEN_EVENTS, gardenCatchEventsAt(...)    what goes on at the lake. Worked out from the day and the hour, so everybody in a garden sees the same thing without a message being sent
+     GARDEN_LAKE_EVENTS, gardenCatchEventsAt(...)    what goes on at the lake. Worked out from the day and the hour, so everybody in a garden sees the same thing without a message being sent
      gardenHotSpot, gardenFestivalOn, gardenWantedFor, gardenLakeKnownFor, GARDEN_CHEST_MAPS: the same on every screen, from the date or the lake's own number
 
    Every id is stable, saved and sent to friends: never rename or reuse one.
@@ -54,8 +54,8 @@ function gardenBaitLikes(bait, def) {
 }
 
 /* ---------- spots ----------
-   x, y, r in cells, in the lake. They are drawn where they are (gardenCatchWorldArt) and stand still, so you learn them. fish: what the spot is good for, in words. */
-const GARDEN_SPOTS = Object.freeze([
+   x, y, r in cells, in the lake. They are drawn where they are (gardenCatchWorldArt) and stand still, so you learn them. says: what the spot is good for, in words. */
+const GARDEN_SPOTS = Object.freeze([   // world cells
   { id: 'reed-bank', name: 'The reed bank', x: 22.8, y: 13.9, r: 1.8, zone: 'shallow', says: 'Reeds, right by the shore. Shy fish feel safe in them.' },
   { id: 'lily-pads', name: 'The lily pads', x: 6.2, y: 14.3, r: 1.7, zone: 'shallow', says: 'Warm and still under the leaves. Carp and tench love it. It grows when you let fish go.' },
   { id: 'weed-bed', name: 'The weed bed', x: 17.6, y: 15.7, r: 1.8, zone: 'mid', says: 'Thick weed where small fish hide, and hunters wait for them.' },
@@ -65,6 +65,16 @@ const GARDEN_SPOTS = Object.freeze([
   { id: 'old-wreck', name: 'The old wreck', x: 18.6, y: 22.4, r: 2.1, zone: 'deep', says: 'A boat that never came home. You need a boat, a long pier or a great rod to reach it.' },
 ].map(Object.freeze));
 const _GT_SPOT = new Map(GARDEN_SPOTS.map(s => [s.id, s]));
+/* Where the rest of it stands, all in one place. */
+const GARDEN_CATCH_CELLS = Object.freeze({   // world cells
+  rack: Object.freeze({ x: 16.6, y: 12.9 }),                 // today's catch, hung up by the pier
+  boatIn: Object.freeze({ x: 5.3, y: 14.2 }), boatOut: Object.freeze({ x: 5.5, y: 12.6 }),   // getting in and out of the rowing boat, by the mooring post
+  bunting: Object.freeze({ x0: 6, x1: 21, y: 12.5 }),        // the festival's flags, along the shore
+  sky: Object.freeze({ dx: 0, y: -2.5 }),                    // how far above the lake's near edge the sky's show is drawn
+  thing: Object.freeze({ y0: 19, yN: 5, out: 6, secs: 90 }),  // the thing in the lake: its row, how many rows it may vary by, how far beyond the water it starts and ends, how long a pass takes
+});
+/** The lake's water, from the areas table: {x, y, w, h}. */
+function gardenLakeWater() { const a = GARDEN_AREAS.find(q => q.water && q.fishing); return a ? a.water : { x: 0, y: 13, w: 28, h: 15 }; }
 function gardenSpotDef(id) { return _GT_SPOT.get(String(id)) || null; }
 /** Which spot is this point in? '' if none. Up and down count for a little more: a cell is shorter than it is wide. */
 function gardenSpotAt(x, y) {
@@ -77,7 +87,7 @@ function gardenHotSpot(iso) { return GARDEN_SPOTS[gardenHash('hot|' + iso) % GAR
 
 /* ---------- events ----------
    rare: how much likelier the rarer kinds are, keen: how keen every fish is, shy: how keen shy fish are, snap: how much harder on a thin line. */
-const GARDEN_EVENTS = Object.freeze({
+const GARDEN_LAKE_EVENTS = Object.freeze({
   frenzy: Object.freeze({ id: 'frenzy', name: 'The fish are feeding', says: 'For a little while there are more about, and they bite quicker.', icon: 'fish', keen: 1.5, rare: 1 }),
   fog: Object.freeze({ id: 'fog', name: 'Fog on the lake', says: 'Shy fish come much closer in the fog.', icon: 'cloud', shy: 1.6, rare: 1.3 }),
   storm: Object.freeze({ id: 'storm', name: 'A storm', says: 'Big fish feed near the top in rough water, but a thin line snaps more easily.', icon: 'cloud-lightning', rare: 1.5, keen: 1.15, snap: 1.25 }),
@@ -129,7 +139,7 @@ function gardenEventsNow() {
 }
 function gardenEventOn(id) { return gardenEventsNow().includes(id); }
 /** How the events on now change a number: gardenEventFactor('rare') */
-function gardenEventFactor(k) { let f = 1; for (const id of gardenEventsNow()) { const e = GARDEN_EVENTS[id]; if (e && e[k]) f *= e[k]; } return f; }
+function gardenEventFactor(k) { let f = 1; for (const id of gardenEventsNow()) { const e = GARDEN_LAKE_EVENTS[id]; if (e && e[k]) f *= e[k]; } return f; }
 
 /* ---------- the same for everyone, from the date or the lake's own number ---------- */
 /** This week's wanted poster: a fish anybody can go and get. */
@@ -153,6 +163,8 @@ const GARDEN_CHEST_MAPS = Object.freeze([
   Object.freeze({ id: 'm3', name: 'The last map', make: 'figurehead', coins: 140, says: 'It is drawn on the back of a ship’s log.' }),
 ]);
 function gardenChestAt(seed, mapId) {
-  const h = gardenHash('chest|' + seed + '|' + mapId), x = 2 + (h % 23), y = 14 + ((h >> 7) % 7);
-  return { x: x >= 11 && x <= 14 ? x + 5 : x, y };
+  // anywhere in the lake's middle rows, clear of the pier
+  const h = gardenHash('chest|' + seed + '|' + mapId), L = gardenLakeWater(), P = GARDEN_PROPS.find(q => q.id === 'pier');
+  const span = Math.max(1, L.w - 4), x = L.x + 2 + (h % span), y = L.y + 1 + ((h >> 7) % 7), inPier = P && x >= P.x - 1 && x <= P.x + P.w;
+  return { x: inPier ? x + P.w + 3 : x, y };
 }
