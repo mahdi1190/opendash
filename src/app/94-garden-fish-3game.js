@@ -30,7 +30,7 @@ function _gwCatchCard(o) {
   c = document.createElement('div'); c.className = 'gd-catchcard' + (o.isNew ? ' is-new' : '') + (o.rare ? ' is-rare' : '');
   c.setAttribute('role', 'status');
   const stars = o.q ? `<b class="gd-stars q${o.q}" title="${esc(gardenQuality(o.q).label)}">${gardenQuality(o.q).stars}</b>` : '';
-  c.innerHTML = `<div class="gd-cc-art">${o.svg}</div><div class="gd-cc-txt"><b>${esc(o.name)}</b>${stars}<span>${esc(o.sub)}</span>${o.isNew ? '<em>New in your book!</em>' : o.record ? '<em>A new record!</em>' : ''}</div>`;
+  c.innerHTML = `<div class="gd-cc-art">${o.svg}</div><div class="gd-cc-txt"><b>${esc(o.name)}</b>${stars}<span>${esc(o.sub)}</span>${o.newV ? '<em>A new variant!</em>' : o.isNew ? '<em>New in your book!</em>' : o.record ? '<em>A new record!</em>' : ''}</div>`;
   c.onclick = () => { c.classList.add('is-out'); setTimeout(() => c.remove(), 220); if (o.open) gardenCatchOpen(o.open); };
   box.appendChild(c);
   clearTimeout(_gw.cardT); _gw.cardT = setTimeout(() => { c.classList.add('is-out'); setTimeout(() => c.remove(), 300); }, o.ms || 4200);
@@ -130,7 +130,8 @@ function _gwFishFrame(dt) {
     by = ty + Math.sin(F.t * 2.6) * 0.9; sag = 8;
     // what happens to the float is what the fish at it does: nothing else can make it dip
     const mine = _gfsMine();
-    F.mood = !mine ? ((typeof gardenLineMood === 'function' && gardenLineMood(F)) || (F.t > 7 ? 'Nothing near your float: cast closer to a shadow' : '')) : mine.st === GF_ST.come ? (mine.z === 1 ? 'Wait. You know this one…' : 'A fish is coming…') : mine.st === GF_ST.nibble ? 'Wait for it…' : '';
+    const nope = _gfs.refused && performance.now() - _gfs.refused.at < 4000 ? _gfs.refused : null;
+    F.mood = !mine ? (nope ? nope.name + ' is looking. ' + nope.why : (typeof gardenLineMood === 'function' && gardenLineMood(F)) || (F.t > 7 ? 'Nothing near your float: cast closer to a shadow' : '')) : mine.st === GF_ST.come ? (mine.z === 1 ? 'Wait. You know this one…' : 'A fish is coming…') : mine.st === GF_ST.nibble ? 'Wait for it…' : '';
     if (mine && mine.st === GF_ST.nibble && mine.n !== F.nibN) { F.nibN = mine.n; F.nibble = 0.35; }
     if (F.nibble > 0) { F.nibble -= dt; by += Math.sin(F.nibble * 40) * 1.2; }
     if (!mine && typeof gardenChestWait === 'function' && gardenChestWait(F)) { F.state = 'bite'; F.t = 0; if (typeof _fxSound === 'function') _fxSound('splash'); }
@@ -268,18 +269,19 @@ function _gwFishFinish() {
   const r = gardenCatchFish(plan, F.res || {});
   if (!r.ok) { _gdpSay(r); return; }
   const d = r.def;
-  const held = gardenCatchMoment('fish', d.id, { cm: r.cm, q: r.q, isNew: r.isNew, record: r.record, contest: !!r.contest });   // held up over your head, and told to the others
-  if (!held) _gwHeldUp(gardenFishArt(d.id, { uid: 'held' }), 1500);
-  const rare = ['rare', 'epic', 'legendary'].includes(d.rarity);
-  let sub, name = d.name;
+  const held = gardenCatchMoment('fish', d.id, { cm: r.cm, q: r.q, isNew: r.isNew, record: r.record, contest: !!r.contest, v: r.v });   // held up over your head, and told to the others
+  if (!held) _gwHeldUp(gardenFishArt(d.id, { uid: 'held', v: r.v }), 1500);
+  const rare = ['rare', 'epic', 'legendary'].includes(d.rarity) || gardenVariantRank(r.v) >= 2;
+  let sub, name = r.v ? gardenSpecName('fish', d.id, r.v) : d.name;
   if (r.contest) sub = d.cat === 'fish' ? `${r.cm} cm · ${gardenQuality(r.q).label} · let go` : 'Let go again';
   else if (d.cat === 'fish') sub = `${r.cm} cm${r.q ? ' · ' + gardenQuality(r.q).label : ''}${r.perfect ? ', a perfect reel' : ''}`;
   else if (r.coins) { sub = `${r.coins} coins inside`; name = 'A coin purse'; }
   else if (r.items) { const k = Object.keys(r.items)[0], pl = gardenPlant(String(k).replace('seed:', '')); sub = pl ? `A ${pl.name.toLowerCase()} seed packet and 10 coins` : 'A seed packet'; }
   else sub = d.cat === 'junk' ? 'Junk, but the market takes it' : 'Treasure!';
+  if (r.spec) sub += ` · ${gardenSpecWeight('fish', r.spec.rec.g)} · No. ${r.spec.rec.n}`;
   if (r.story) sub = `${sub}. ${r.story}`;   // the one that got away, a job for the old angler, a piece of a map
   // always said in words too, where nothing covers it: what you caught, and a line about it
-  _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc' }), name: `You ${d.cat === 'fish' ? 'caught' : 'fished up'} ${_gscA(name.toLowerCase())}!`, sub: d.blurb ? `${sub}. ${d.blurb}` : sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: 'fish', ms: 5200 });
+  _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc', v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You ${d.cat === 'fish' ? 'caught' : 'fished up'} ${_gscA(name.toLowerCase())}!`, sub: d.blurb ? `${sub}. ${d.blurb}` : sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: r.v ? 'best' : 'fish', ms: r.v ? 7000 : 5200 });
   if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(d.cat === 'fish' ? `+${(_GC_XP[d.rarity] || 1)} XP` : '', Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }
@@ -289,7 +291,7 @@ function _gwReelOpen(plan) {
   const box = _gdgBox(); if (!box) { _gwFishLand({ perfect: false }); return; }
   _gwReelClose();
   const el = document.createElement('div'); el.className = 'gd-reel'; el.setAttribute('role', 'application'); el.setAttribute('aria-label', 'Reeling in a fish. Hold the mouse button, Space or E to lift the bar.');
-  el.innerHTML = `<div class="gd-reel-head"><b>${esc(plan.def.cat !== 'fish' ? 'Reeling in' : plan.cm >= 100 || plan.diff >= 8 ? 'A monster! Hold on!' : plan.diff >= 5 ? 'Something big!' : 'A fish on the line')}</b></div><div class="gd-reel-body"><div class="gd-reel-track"><div class="gd-reel-bar"></div><div class="gd-reel-fish">${gardenCatchSvg('fish', plan.id, 30, { uid: 'rf' })}</div></div><div class="gd-reel-prog"><i></i></div></div><div class="gd-reel-hint">Hold to lift the bar · keep the fish inside · Esc lets go</div>`;
+  el.innerHTML = `<div class="gd-reel-head"><b>${esc(plan.vWords || (plan.def.cat !== 'fish' ? 'Reeling in' : plan.cm >= 100 || plan.diff >= 8 ? 'A monster! Hold on!' : plan.diff >= 5 ? 'Something big!' : 'A fish on the line'))}</b></div><div class="gd-reel-body"><div class="gd-reel-track"><div class="gd-reel-bar"></div><div class="gd-reel-fish">${gardenCatchSvg('fish', plan.id, 30, { uid: 'rf' })}</div></div><div class="gd-reel-prog"><i></i></div></div><div class="gd-reel-hint">Hold to lift the bar · keep the fish inside · Esc lets go</div>`;
   // the fish's real name only after it is landed: a dark shape while you fight it
   el.querySelector('.gd-reel-fish').classList.add('is-hidden');
   box.appendChild(el);
@@ -360,9 +362,9 @@ function _gwBugsSync(m) {
     if (_gw.bugs.has(s.key)) continue;
     const def = gardenBugDef(s.id); if (!def) continue;
     const node = _gwEl('g', { class: 'gd-bug', 'data-bk': s.key, 'data-live': '1', 'data-z': String(s.y) });
-    node.innerHTML = `<g class="gb-sh"><ellipse cx="0" cy="0" rx="${(GW_BUG_SCALE * 9 * def.size).toFixed(1)}" ry="${(GW_BUG_SCALE * 3 * def.size).toFixed(1)}" fill="#1a2a14" fill-opacity="0.18"/></g><g class="gb-lift"><g class="gb-in" transform="scale(${(GW_BUG_SCALE * def.size).toFixed(2)})">${gardenBugArt(s.id, { uid: 'bg' + (gardenHash(s.key) % 9999).toString(36) })}</g></g>`;
+    node.innerHTML = `<g class="gb-sh"><ellipse cx="0" cy="0" rx="${(GW_BUG_SCALE * 9 * def.size).toFixed(1)}" ry="${(GW_BUG_SCALE * 3 * def.size).toFixed(1)}" fill="#1a2a14" fill-opacity="0.18"/></g><g class="gb-lift"><g class="gb-in" transform="scale(${(GW_BUG_SCALE * def.size).toFixed(2)})">${gardenBugArt(s.id, { uid: 'bg' + (gardenHash(s.key) % 9999).toString(36), v: s.v })}</g></g>`;
     _gwPlace(node, s.y);
-    const b = { key: s.key, id: s.id, def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: def.rest === 'crawl' ? 0 : 5, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
+    const b = { key: s.key, id: s.id, v: s.v || '', def, x: s.x, y: s.y, tx: s.x, ty: s.y, state: 'rest', timer: 0.6 + (s.t || 0) * 4, lift: def.rest === 'crawl' ? 0 : 5, face: 1, node, liftEl: node.querySelector('.gb-lift'), inEl: node.querySelector('.gb-in'), fleeT: 0, hab: s.hab, seed: s.t || Math.random(), anchor: { x: s.x, y: s.y } };
     _gw.bugs.set(s.key, b);
   }
   for (const [k, b] of _gw.bugs) if (!keep.has(k)) { if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(k); }
@@ -400,7 +402,7 @@ function _gwLeapFrame(dt) {
   const f = lf.def;
   const [x, y] = _gwPx(lf.sx, lf.sy), dir = Math.random() < 0.5 ? 1 : -1;
   const g = _gwEl('g', { class: 'gd-leapfish', transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` });
-  g.innerHTML = `<g class="gd-leap-x" style="--lx:${28 * dir}px"><g class="gd-leap-y"><g class="gd-leap-r" style="transform-box:fill-box;transform-origin:50% 50%"><g transform="scale(${(0.3 * dir).toFixed(2)} 0.3)">${gardenFishArt(f.id, { uid: 'lp' + Math.floor(Math.random() * 1e6).toString(36) })}</g></g></g></g>`;
+  g.innerHTML = `<g class="gd-leap-x" style="--lx:${28 * dir}px"><g class="gd-leap-y"><g class="gd-leap-r" style="transform-box:fill-box;transform-origin:50% 50%"><g transform="scale(${(0.3 * dir).toFixed(2)} 0.3)">${gardenFishArt(f.id, { uid: 'lp' + Math.floor(Math.random() * 1e6).toString(36), v: lf.v })}</g></g></g></g>`;
   a.appendChild(g);
   _gwRing(x, y, 1); setTimeout(() => _gwRing(x + 28 * dir, y, 1.2), 780);
   setTimeout(() => g.remove(), 900);
@@ -548,6 +550,7 @@ function _gwNetResolve() {
   const d = _gwBugDist(b);
   const awake = b.state !== 'rest';
   let p = 0.78 + net.st.luck - 0.065 * b.def.skit - Math.max(0, d - net.st.reach) * 0.4;
+  if (b.def.needs && b.def.needs.net > net.tier) p = 0;   // (it needs a better net: the book says so)
   if (awake) p *= b.state === 'flee' ? 0.18 : 0.4;
   if (_gw.sneak) p += 0.06;
   const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < Math.max(0.06, Math.min(0.96, p));   // (somebody netted it first: your swing misses)
@@ -567,14 +570,15 @@ function _gwBugMissed(b, tell) {
 /** It is yours (and, in a live garden, the host said so): into your bag, held up. */
 function _gwBugTaken(b) {
   const W = GARDEN_WORLD;
-  const r = gardenCatchBug({ key: b.key, id: b.id });
+  const r = gardenCatchBug({ key: b.key, id: b.id, v: b.v, hab: b.hab });
   if (!r.ok) { _gdpSay(r); return; }
   if (b.node && b.node.remove) b.node.remove(); _gw.bugs.delete(b.key);
   if (gardenMotionOn() && typeof gardenPop === 'function') gardenPop(Math.floor(b.x), Math.floor(b.y), 1, 1, 'is-grow');
-  const d2 = r.def, rare = ['rare', 'epic', 'legendary'].includes(d2.rarity);
-  const held = gardenCatchMoment('bug', d2.id, { isNew: r.isNew });
+  const d2 = r.def, rare = ['rare', 'epic', 'legendary'].includes(d2.rarity) || gardenVariantRank(r.v) >= 2;
+  const held = gardenCatchMoment('bug', d2.id, { isNew: r.isNew, v: r.v });
   void held;
-  _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false }), name: `You caught ${_gscA(d2.name.toLowerCase())}!`, sub: d2.blurb || 'In your bag', isNew: r.isNew, rare, open: 'bugs', ms: 5200 });
+  const bugName = (r.v ? gardenSpecName('bug', d2.id, r.v) : d2.name).toLowerCase(), bugFacts = r.spec ? `${gardenSpecSize('bug', r.spec.rec.c)} · No. ${r.spec.rec.n}. ` : '';
+  _gwCatchCard({ svg: gardenCatchSvg('bug', d2.id, 56, { uid: 'cb', glow: false, v: r.v }), newV: !!(r.spec && r.spec.newVariant), name: `You caught ${_gscA(bugName)}!`, sub: bugFacts + (d2.blurb || 'In your bag'), isNew: r.isNew, rare, open: r.v ? 'best' : 'bugs', ms: r.v ? 7000 : 5200 });
   if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(`+${_GC_XP[d2.rarity] || 1} XP`, Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
 }

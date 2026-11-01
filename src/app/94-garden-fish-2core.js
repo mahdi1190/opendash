@@ -103,6 +103,7 @@ function gardenFishBite(plan, f) {
   // how hard: the kind of fish, then how big this one is for its kind (a giant of its kind fights up to 2 points harder), and a weak rod feels it more
   const span = Math.max(1, f.def.cm[1] - f.def.cm[0]), size = Math.max(0, Math.min(1, (f.cm - f.def.cm[0]) / span));
   plan.diff = f.def.diff ? Math.min(12, f.def.diff + size * 2) : 0;
+  if (typeof gardenVariantBite === 'function') gardenVariantBite(plan, f);   // (a rare one fights harder, and the reel's words give it away)
   plan.line = plan.line * (1 + 0.1 * Math.max(0, plan.diff - (plan.tier || 1) * 2.2));
   const bait = plan.baitDef;
   if (plan.contest || !bait || bait.own || plan.spent) return;
@@ -124,9 +125,10 @@ function gardenCatchFish(plan, res) {
     if (perfect) q = Math.min(plan.qmax || 1, 1 + (rnd() < 0.35 ? 1 : 0) + (rnd() < 0.08 ? 1 : 0) + (plan.hookQ || 0));
     else q = rnd() < 0.12 + 0.06 * (plan.tier || 1) ? Math.min(plan.qmax || 1, 1) : 0;
   }
-  const cm = def.cat === 'fish' ? Math.max(def.cm[0], Math.min(def.cm[1], Math.round(Number(plan.cm) || def.cm[0]))) : 0;   // the size of the very fish you saw (a host's number is kept to what that kind can be)
+  const vd = plan.v && typeof gardenVariantFor === 'function' ? gardenVariantFor('fish', def, plan.v) : null, cmr = vd ? gardenVariantCmRange(def, vd.id) : def.cm;
+  const cm = def.cat === 'fish' ? Math.max(cmr[0], Math.min(cmr[1], Math.round(Number(plan.cm) || def.cm[0]))) : 0;   // the size of the very fish you saw (a host's number is kept to what that kind can be)
   const key = gardenFishKey(def.id, q);
-  const out = { ok: true, def, cm, q, perfect, isNew: false, record: false };
+  const out = { ok: true, def, cm, q, perfect, isNew: false, record: false, v: vd ? vd.id : '' };
   if (plan.contest) return Object.assign(out, { contest: true });   // (contests) let go again: a contest fish is points and a story, never an item, a coin or a record
   const fdDay = _gcFd(g, today), landed = Number(fdDay.c) || 0;
   fdDay.c = landed + 1;
@@ -140,6 +142,7 @@ function gardenCatchFish(plan, res) {
   const rec = g.fl[def.id];
   if (!rec) { g.fl[def.id] = { n: 1, b: cm, q, d: today, l: today }; out.isNew = true; }
   else { rec.n = (Number(rec.n) || 0) + 1; rec.l = today; if (cm > (Number(rec.b) || 0)) { rec.b = cm; out.record = def.cat === 'fish'; } if (q > (Number(rec.q) || 0)) rec.q = q; }
+  if (def.cat === 'fish' && typeof gardenSpecAdd === 'function') out.spec = gardenSpecAdd('fish', def, { v: out.v, cm, q, z: plan.zone, day: today });   // this very fish, for your records (94-garden-fish-8spec.js)
   if (typeof gardenCatchAfter === 'function') gardenCatchAfter(def, out, plan);   // the rack, the records, the angler, the run of catches: 94-garden-fish-8catch.js
   _gdSave(); gardenTickSoon(); _gdEmit('catch', { kind: 'fish', id: def.id, cm, q, isNew: out.isNew });
   return out;
@@ -181,21 +184,25 @@ function _gcBugsBase(mArg) {
       default: { for (let i = 0; i < 16; i++) { const x = Math.floor(rnd() * W.cols), y = 7 + Math.floor(rnd() * 5); if (free(x, y) && gardenAreaAt(x, y, m.level.level) === 'lawn') return { x: x + 0.5, y: y + 0.5 }; } return null; }   // lawn
     }
   };
-  const pool = GARDEN_BUGS.filter(b => b.lv <= m.level.level && b.tod.includes(m.tod) && (!b.seasons.length || b.seasons.includes(m.season)) && (b.rain ? wet : !wet || b.hab.includes('light')) && !(m.season === 'winter'));
+  const habOk = (h) => h === 'flower' ? blooms.length > 0 : h === 'tree' ? trees.length > 0 : h === 'woods' ? woods : h === 'light' ? lights.length > 0 || woods : true;
+  const ctx = { level: m.level.level, tod: m.tod, season: m.season, rain: wet, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id), plant: (id) => blooms.some(p => p.def.id === id), caught: (id) => !!g.bl[id] };
+  if (typeof gardenEventOn === 'function') ctx.event = gardenEventOn;
+  const pool = GARDEN_BUGS.filter(b => gardenBugFits(b, ctx) && b.hab.some(habOk));
   if (!pool.length) return [];
   // flowers bring them, up to what a garden of this level holds: 2 at the start, one more every 5 levels. A bug hotel adds one of its own
   const cap = Math.min(GARDEN_BUGS_MAX, 2 + Math.floor(m.level.level / 5) + Math.min(2, hotels));
   const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + (woods ? 1 : 0) + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
-  const weights = pool.map(b => (GARDEN_RARITY[b.rarity] || GARDEN_RARITY.common).weight * (typeof gardenBugWeight === 'function' ? gardenBugWeight(b, m) : 1));   // (habitats you built: a kind comes more often, never more bugs)
+  const weights = pool.map(b => gardenBugWeight(b, ctx) * (typeof gardenBugHabitat === 'function' ? gardenBugHabitat(b, m) : 1));   // (habitats you built: a kind comes more often, never more bugs)
   const out = [];
   for (let i = 0; i < n * 3 && out.length < n; i++) {
     let r = rnd() * weights.reduce((a, b) => a + b, 0), k = 0;
     for (; k < pool.length - 1; k++) { r -= weights[k]; if (r <= 0) break; }
-    const b = pool[k], hab = b.hab[Math.floor(rnd() * b.hab.length)], s = spot(hab);
+    const b = pool[k], habs = b.hab.filter(habOk), hab = habs[Math.floor(rnd() * habs.length)], want = b.needs && b.needs.plant ? blooms.find(p => p.def.id === b.needs.plant) : null, s = want ? { x: want.x + 0.5, y: want.y + 0.6 } : spot(hab);
     if (!s) continue;
     const key = win + '.' + out.length;
     if (caught.has(key)) { out.push(null); continue; }   // keeps the numbering stable when one is caught
-    out.push({ key, id: b.id, x: s.x, y: s.y, hab, t: rnd() });
+    const vb = typeof gardenSpecBugV === 'function' ? gardenSpecBugV(key, hab, m) : '';   // the same on every screen, like the bug itself
+    out.push(Object.assign({ key, id: b.id, x: s.x, y: s.y, hab, t: rnd() }, vb ? { v: vb } : {}));
   }
   const kept = out.filter(Boolean);
   return typeof gardenSugarBug === 'function' ? gardenSugarBug(kept, m) : kept;   // (a tree you painted: the one that came to it, in place of another)
@@ -211,9 +218,11 @@ function gardenCatchBug(actor) {
   const rec = g.bl[def.id];
   let isNew = false;
   if (!rec) { g.bl[def.id] = { n: 1, d: today, l: today }; isNew = true; } else { rec.n = (Number(rec.n) || 0) + 1; rec.l = today; }
+  const vb = actor.v && typeof gardenVariantFor === 'function' ? gardenVariantFor('bug', def, actor.v) : null;
+  const spec = typeof gardenSpecAdd === 'function' ? gardenSpecAdd('bug', def, { v: vb ? vb.id : '', q: gardenSpecBugQ(Math.random, gardenNet().tier), z: actor.hab, day: today }) : null;
   if (typeof gardenCatchAfterBug === 'function') gardenCatchAfterBug(def, isNew);
   _gdSave(); gardenTickSoon(); _gdEmit('catch', { kind: 'bug', id: def.id, isNew });
-  return { ok: true, def, isNew };
+  return { ok: true, def, isNew, v: vb ? vb.id : '', spec };
 }
 
 /* ---------- the bag, the market and the order board ---------- */
@@ -253,9 +262,11 @@ function gardenCatchSell(item, n, o) {
   const m = gardenModel(), g = _gdG(), isBug = String(item).startsWith('bug:'), E = GARDEN_CATCH_ECON;
   const cap = isBug ? E.marketBugs : E.marketFish, field = isBug ? 'mb' : 'mf';
   const day = g.fd[m.today] && typeof g.fd[m.today] === 'object' ? g.fd[m.today] : null, used = Number(day && day[field]) || 0;
-  const total = each * n, full = Math.max(0, Math.min(total, cap - used)), coins = Math.round(full + (total - full) * E.afterCap);
+  const sx = typeof gardenSpecSellExtra === 'function' ? gardenSpecSellExtra(item, n, each) : { extra: 0, keys: [] };   // a variant sells for more, and the daily limit below still rules it
+  const total = each * n + sx.extra, full = Math.max(0, Math.min(total, cap - used)), coins = Math.round(full + (total - full) * E.afterCap);
   const lk = 's.' + m.today + '.' + _gdUid('');
-  const mark = _gdMark([['led', lk], ['fd', m.today]]);
+  const mark = _gdMark([['led', lk], ['fd', m.today], ...sx.keys.map(k => ['sp', k])]);
+  if (sx.keys.length) gardenSpecMarkSold(sx.keys);   // (it left your bag; your records keep it)
   g.led[lk] = { d: m.today, k: 's', c: coins, i: { [item]: -n }, n };
   _gcFd(g, m.today)[field] = used + full;
   _gdEmit('sell', { item, n });
@@ -277,13 +288,16 @@ function gardenCatchSellAll(kind, keep) {
   const m = gardenModel(), g = _gdG(), E = GARDEN_CATCH_ECON, field = isBug ? 'mb' : 'mf', cap = isBug ? E.marketBugs : E.marketFish;
   const day = g.fd[m.today] && typeof g.fd[m.today] === 'object' ? g.fd[m.today] : null;
   let used = Number(day && day[field]) || 0, coins = 0, count = 0;
-  const items = {};
+  const items = {}, soldKeys = [];
   for (const r of sell) {
-    const total = r.each * r.n, full = Math.max(0, Math.min(total, cap - used));
+    const sx = typeof gardenSpecSellExtra === 'function' ? gardenSpecSellExtra(r.key, r.n, r.each) : { extra: 0, keys: [] };
+    soldKeys.push(...sx.keys);
+    const total = r.each * r.n + sx.extra, full = Math.max(0, Math.min(total, cap - used));
     coins += Math.round(full + (total - full) * E.afterCap); used += full; count += r.n; items[r.key] = -r.n;
   }
   const lk = 's.' + m.today + '.' + _gdUid('');
-  const mark = _gdMark([['led', lk], ['fd', m.today]]);
+  const mark = _gdMark([['led', lk], ['fd', m.today], ...soldKeys.map(k => ['sp', k])]);
+  if (soldKeys.length) gardenSpecMarkSold(soldKeys);
   g.led[lk] = { d: m.today, k: 's', c: coins, i: items, n: count };
   _gcFd(g, m.today)[field] = used;
   _gdEmit('sell', { item: kind, n: count });
@@ -333,16 +347,24 @@ function gardenShowToggle(kind, id) {
   _gdSave(); _gdEmit('show', { kind, id });
   return { ok: true, on: at < 0, msg: '' };
 }
-/** Your showcase with sizes from the log: {f: [[id, q, cm]], b: [id]}. */
+/** Your showcase with sizes from the log, or from the very one you chose: {f: [[id, q, cm, variant?]], b: [id], bv: [variant or '']}. */
 function gardenShowEntries() {
-  const g = _gdG(), s = gardenShowGet();
-  return { f: s.f.map(id => [id, Math.max(0, Math.min(3, Number(g.fl[id].q) || 0)), Math.max(1, Math.round(Number(g.fl[id].b) || 1))]), b: s.b.slice() };
+  const g = _gdG(), s = gardenShowGet(), one = (k, id) => (typeof gardenSpecShown === 'function' ? gardenSpecShown(k, id) : null);
+  const f = s.f.map(id => {
+    const r = one('fish', id), row = [id, Math.max(0, Math.min(3, Number(r && r.pinned ? r.q : g.fl[id].q) || 0)), Math.max(1, Math.min(400, Math.round(Number(r && r.pinned ? r.c : g.fl[id].b) || 1)))];
+    if (r && r.v) row.push(r.v);
+    return row;
+  });
+  return { f, b: s.b.slice(), bv: s.b.map(id => { const r = one('bug', id); return (r && r.v) || ''; }) };
 }
 /** What goes to friends with the garden's snapshot (gardenSnapshot): the showcase and your gear, or null when there is nothing. */
 function gardenShowWire() {
   const e = gardenShowEntries(), rod = gardenRod().tier, net = gardenNet().tier;
   if (!e.f.length && !e.b.length && rod < 2 && net < 2) return null;
-  return { f: e.f, b: e.b, rod, net };
+  const out = { f: e.f.map(r => r.slice(0, 3)), b: e.b, rod, net };
+  if (e.f.some(r => r[3])) out.fv = e.f.map(r => r[3] || '-');   // (a list of its own: an older app's rows stay as they were, and it drops this)
+  if (e.bv.some(Boolean)) out.bv = e.bv.map(v => v || '-');
+  return out;
 }
 
 /* ---------- facts, for ribbons, daily tasks and the bobbers ---------- */

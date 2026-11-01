@@ -273,6 +273,7 @@ function gardenSceneParts(sc, o) {
     if (ob.kind === 'plant' && ob.def.glow && ob.it.stage >= 3) lights.push({ x: (ob.it.x + (ob.def.fp || 1) / 2) * W.cellW, y: W.sky + (ob.it.y + (ob.def.fp || 1)) * W.cellH - 64 * (ob.def.look.h || 0.6) * 0.5, r: 48 });
   }
   while (vi < vis.length) push(_gdrVisitor(vis[vi++], sc, o));
+  if (typeof gardenLandLights === 'function') lights.push(...gardenLandLights(sc));   // the lantern walk, the moon stone
   layers.push(['objects', null]);
   layers.push(['actors', '<g class="gd-actors"></g>']);   // 2.22: bugs, the line and the bobber, drawn by the page's own loop
   layers.push(['pets', '<g class="gd-pets"></g>']);
@@ -307,7 +308,7 @@ function gardenSceneFromModel(m) {
     plants: m.plants.map(x => ({ id: x.def.id, uid: x.uid, x: x.x, y: x.y, stage: x.stage, variant: x.variant, thirsty: x.thirsty, overgrown: x.overgrown, ripe: x.ripe, t: x.t, heart: x.heart, pend: x.pend })),
     decor: m.decor.map(d => ({ id: d.def.id, uid: d.uid, x: d.x, y: d.y, r: d.r, v: d.v, t: (gardenHash(d.uid) % 100) / 100, pend: d.pend })),
     areas: m.areas, season: m.season, tod: m.tod, rain: m.rain, visitors: m.visitors, lv: m.level.level, hour: Math.round((p.h + p.mi / 60) * 4) / 4, day: m.today,
-    show: m.visit ? m.visit.sh : _gdrShowOf(), showSig: m.visit ? m.visit.shSig : _gdrShowSig(),
+    show: m.visit ? m.visit.sh : _gdrShowOf(), showSig: m.visit ? m.visit.shSig : _gdrShowSig(), landShow: m.visit ? gardenLandShowOf(m.visit.snap) : gardenLandShowMine(m),
   };
 }
 /** A friend's (or anyone's) snapshot as a scene: their garden, your sky (your clock, their season). */
@@ -327,8 +328,8 @@ function _gdrSceneFromSnapshot(snap, o) {
     if (snap.decor.some(d => ['bird-bath', 'bird-feeder', 'bird-box'].includes(d[0]))) { const d = snap.decor.find(q => ['bird-bath', 'bird-feeder', 'bird-box'].includes(q[0])); visitors.push({ id: 'robin', x: d[1] + 0.5, y: d[2] + 0.8, lift: 0.7, motion: 'hop', t: rnd() }); }
   }
   // 2.22: a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4
-  const areas = snap.areas.slice(); if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
-  return { plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', ca: snap.ca || {} };
+  const areas = gardenLandsOfSnap(snap).areas; if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
+  return { plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
 }
 /**
  * Draw anyone's garden into el, read-only. snapshot: from gardenSnapshot() or a friend (cleaned here).

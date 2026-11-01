@@ -76,7 +76,8 @@ function _gwBuildSolids(m) {
     const w = def.w || 1, h = def.h || 1, cx = dc.x + w / 2, foot = dc.y + h - 0.08, bw = Math.min(w, 2) * 0.5, d = 0.28 + (h > 1 ? 0.3 : 0);
     add(cx - bw / 2, foot - d, cx + bw / 2, foot);
   }
-  for (const p of GARDEN_PROPS) {
+  for (const p of gardenPropsNow()) {
+    if (p.needs && !gardenWorkOwned(p.needs)) continue;
     if (gardenPropCol(p) !== 'soft') continue;
     const cx = p.x + p.w / 2, foot = p.y + p.h - 0.08, bw = Math.min(p.w, 2) * 0.5, d = 0.28;
     add(cx - bw / 2, foot - d, cx + bw / 2, foot);   // a lectern, a camera, a post box: a small box at the base, so there is room beside it
@@ -654,7 +655,7 @@ function _gwFrame(ts) {
     _gw.netting = null; _gw.path = []; _gw.then = null; _gw.replan = false;
     sneak = k.has('shift');
     const len = Math.hypot(mvx * W.cellW, mvy * W.cellH); ux = mvx * W.cellW / len; uy = mvy * W.cellH / len;
-    want = sneak ? GW_SPEED.sneak : GW_SPEED.walk;
+    want = sneak ? GW_SPEED.sneak : GW_SPEED.walk * gardenLandWalkK();
   } else if (_gw.path.length && !casting) {
     // cut corners: as soon as you can see the waypoint after the next, head for that one (no visiting the middle of cells)
     while (_gw.path.length > 1 && _gwLos({ x: _gw.px, y: _gw.py }, _gw.path[1], GW_CLEAR)) _gw.path.shift();
@@ -663,7 +664,7 @@ function _gwFrame(ts) {
     dist = Math.hypot(dxp, dyp); ux = dxp / (dist || 1); uy = dyp / (dist || 1);
     let rem = dist; for (let i = 1; i < _gw.path.length; i++) rem += Math.hypot((_gw.path[i].x - _gw.path[i - 1].x) * W.cellW, (_gw.path[i].y - _gw.path[i - 1].y) * W.cellH);
     sneak = _gw.sneak;
-    want = sneak ? GW_SPEED.sneak : rem > 170 ? GW_SPEED.run : GW_SPEED.walk;
+    want = sneak ? GW_SPEED.sneak : (rem > 170 ? GW_SPEED.run : GW_SPEED.walk) * gardenLandWalkK();
     want = Math.min(want, Math.sqrt(2 * GW_ACC * rem) + 34);   // ease in to the stop
   }
   _gw.spd = _gw.spd || 0;
@@ -724,7 +725,7 @@ function _gwFadeProps() {
   const key = Math.floor(_gw.px * 2) + ',' + Math.floor(_gw.py * 2) + ',' + (_gw.svg && _gw.svg._gwFadeGen);
   if (_gw._fadeKey === key || !_gw.svg) return;
   _gw._fadeKey = key;
-  for (const p of GARDEN_PROPS) {
+  for (const p of gardenPropsNow()) {
     if (!p.kind) continue;
     const n = _gw.svg.querySelector('.gd-prop[data-prop="' + p.id + '"]'); if (!n) continue;
     const tall = p.tall == null ? 2 : p.tall;
@@ -796,9 +797,9 @@ function _gwPetFrame(dt) {
 function _gwPropAtPt(wx, wy, ev) {
   if (ev && ev.clientX != null && typeof document.elementFromPoint === 'function') {
     const el = document.elementFromPoint(ev.clientX, ev.clientY), g = el && el.closest ? el.closest('.gd-prop[data-prop]') : null;
-    if (g) { const p = GARDEN_PROPS.find(x => x.id === g.getAttribute('data-prop')); if (p && p.act) return p; }
+    if (g) { const id = g.getAttribute('data-prop'), p = gardenPropsNow().find(x => x.id === id) || gardenLandSiteProp(id); if (p && p.act) return p; }
   }
-  for (const p of GARDEN_PROPS) { if (p.act && (!p.needs || gardenWorkOwned(p.needs)) && wx >= p.x && wx <= p.x + p.w && wy >= p.y && wy <= p.y + p.h) return p; }
+  for (const p of gardenPropsNow()) { if (p.act && (!p.needs || gardenWorkOwned(p.needs)) && wx >= p.x && wx <= p.x + p.w && wy >= p.y && wy <= p.y + p.h) return p; }
   return null;
 }
 function _gwOpenProp(p) {
@@ -811,6 +812,8 @@ function _gwOpenProp(p) {
     hall: () => gardenPopupOpen('catch', { sub: 'hall', title: 'The lake hall' }), lake: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }),
     angler: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }), smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
     craft: () => gardenPopupOpen('craft'),
+    lands: () => gardenPopupOpen('lands'),
+    lf: () => gardenLandPropOpen(p),
   }[p.act];
   if (go) go();
 }
@@ -851,6 +854,7 @@ function gardenWorldPick(it, cell, ev, m) {
   if (plant || decor) return { kind: plant ? 'plant' : 'decor', plant, decor, pt, cell: c };
   const area = gardenAreaAt(c.x, c.y, m.level.level);
   if (area.startsWith('locked:')) return { kind: 'land', land: area.slice(7), pt, cell: c };
+  { const sign = ev && ev.target && ev.target.closest ? ev.target.closest('.gd-locksign[data-land]') : null; if (sign) return { kind: 'land', land: sign.getAttribute('data-land'), pt, cell: c }; }   // (a sign stands on the path, in front of what it is about)
   if (gardenIsWater(c.x, c.y)) return { kind: 'water', pt, cell: c };
   const def = gardenArea(area), oc = m.occ.get(c.x + ',' + c.y);
   if (_gdpTool() === 'hand' && def && def.cats && def.cats.length && !oc && !(m.visit && m.visit.no.plant)) return { kind: 'spot', pt, cell: c };   // an empty spot in a bed: it offers planting right there
@@ -977,7 +981,7 @@ function gardenWorldInteract() {
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) { if (typeof _gwFishPress === 'function') _gwFishPress(); return; }
   const m = gardenHere(), W = GARDEN_WORLD;
   const px = Math.floor(_gw.px), py = Math.floor(_gw.py);
-  for (const p of GARDEN_PROPS) if (p.act && p.door && Math.abs(p.door.x - px) <= 1 && Math.abs(p.door.y - py) <= 1) { _gwOpenProp(p); return; }
+  for (const p of gardenPropsNow()) if (p.act && p.door && Math.abs(p.door.x - px) <= 1 && Math.abs(p.door.y - py) <= 1) { _gwOpenProp(p); return; }
   if (_gh.bubble) { const b = _gh.bubble.el.querySelector('.gd-bub-btn'); if (b) b.click(); return; }
   if (_gw.bugs && _gw.bugs.size && typeof gardenNetSwing === 'function') { for (const b of _gw.bugs.values()) if (Math.hypot(b.x - _gw.px, (b.y - _gw.py) * 1.4) < gardenNet().st.reach * 1.35) { gardenNetSwing(null); return; } }
   const fx = px + (_gw.face > 0 ? 1 : -1), fy = py;

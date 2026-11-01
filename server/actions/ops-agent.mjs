@@ -49,6 +49,7 @@ const GARDEN_ACTIONS = {
   put_away_decor: (e, p) => e.gardenRemoveDecor(p.id),
   buy: (e, p) => e.gardenBuy(p.item, p.n),
   buy_land: (e, p) => e.gardenBuyLand(p.item),
+  build: (e, p) => e.gardenBuildFeature(p.item),
   sell: (e, p) => e.gardenSell(p.item, p.n),
   bouquet: (e, p) => e.gardenMakeBouquet((p.stems || []).map(id => ({ id }))),
   collect: (e, p) => e.gardenCollect(p.id),
@@ -57,7 +58,7 @@ const GARDEN_ACTIONS = {
 const GARDEN_NEEDS = {
   plant: ['plant', 'x', 'y'], water: ['id'], feed: ['id'], prune: ['id'], harvest: ['id'], dig_up: ['id'], move_plant: ['id', 'x', 'y'],
   place_decor: ['item', 'x', 'y'], move_decor: ['id', 'x', 'y'], turn_decor: ['id'], style_decor: ['id'], put_away_decor: ['id'],
-  buy: ['item'], buy_land: ['item'], sell: ['item'], bouquet: ['stems'], collect: ['id'], craft: ['recipe'],
+  buy: ['item'], buy_land: ['item'], build: ['item'], sell: ['item'], bouquet: ['stems'], collect: ['id'], craft: ['recipe'],
 };
 const gardenTally = (w) => ({ coins: w.coins, level: w.level && w.level.level, items: w.items });
 
@@ -296,7 +297,7 @@ function runSetting(ctx, p) {
 export const AGENT_OPS = [
   {
     name: 'garden.play', tool: 'garden',
-    description: "Play in the user's garden with the app's own rules: action plant {plant, x, y}, water {id}, water_all, feed {id}, prune {id}, harvest {id}, harvest_all, dig_up {id}, move_plant {id, x, y}, place_decor {item: decoration id, x, y, r?}, move_decor {id, x, y}, turn_decor {id}, style_decor {id}, put_away_decor {id}, buy {item: 'seed:<plant>', 'decor:<id>' or a tool id, n?}, buy_land {item: the land's id, from get_garden's land list}, sell {item: 'crop:<plant>', 'bq:<id>', 'decor:<id>' or 'honey', n?}, bouquet {stems: [plant ids]}, collect {id: compost bin, beehive or wishing well}, craft {recipe: a recipe id from get_garden {view:'recipes'}: uses up what it needs from the basket and bag, and makes a hat, a pet accessory, a decoration or treats; it cannot make coins}. Coins only come from focus time, finished tasks and selling: nothing here can make them, and a refused action says why. get_garden shows ids, the bag and the shop. Returns what changed and an undo token (undo_change).",
+    description: "Play in the user's garden with the app's own rules: action plant {plant, x, y}, water {id}, water_all, feed {id}, prune {id}, harvest {id}, harvest_all, dig_up {id}, move_plant {id, x, y}, place_decor {item: decoration id, x, y, r?}, move_decor {id, x, y}, turn_decor {id}, style_decor {id}, put_away_decor {id}, buy {item: 'seed:<plant>', 'decor:<id>' or a tool id, n?}, buy_land {item: a section's id, from get_garden's land list (land is sold in small sections, from a garden level)}, build {item: a feature's id, from get_garden's build list}, sell {item: 'crop:<plant>', 'bq:<id>', 'decor:<id>' or 'honey', n?}, bouquet {stems: [plant ids]}, collect {id: compost bin, beehive or wishing well}, craft {recipe: a recipe id from get_garden {view:'recipes'}: uses up what it needs from the basket and bag, and makes a hat, a pet accessory, a decoration or treats; it cannot make coins}. Coins only come from focus time, finished tasks and selling: nothing here can make them, and a refused action says why. get_garden shows ids, the bag and the shop. Returns what changed and an undo token (undo_change).",
     schema: obj({
       action: { type: 'string', enum: Object.keys(GARDEN_ACTIONS) },
       plant: { ...ID, description: 'plant id (a seed in the bag)' },

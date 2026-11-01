@@ -156,35 +156,25 @@ function gardenTackleSvg(d, px) {
 }
 
 /* ---------- will it come to your line? ---------- */
-function _gcaFits(want, have) {   // this or better for a reel, exactly this for the rest (a golden hook suits anything)
+function _gcaFits(want, have) {   // this or better for a reel, exactly this for the rest, as gardenFishLacks has it
   const w = gardenGearDef(want), h = gardenGearDef(have); if (!w) return true; if (!h) return false;
-  if (w.kind === 'reel') return h.tier >= w.tier;
-  return h.id === w.id || (w.kind === 'hook' && h.id === 'hook-gold');
+  return w.kind === 'reel' ? h.tier >= w.tier : h.id === w.id;
 }
-/** Why this fish ignores this line, in plain words ('' if it does not): rod, reel, line, hook and bait, from the fish's needs. */
-function gardenLineWhyNot(def, set) {
-  const n = def && def.needs; if (!n || !set) return '';
-  const name = (id) => { const d = gardenGearDef(id); return d ? d.name.toLowerCase() : id; };
-  if (n.rod) { const r = gardenGearDef(set.rod), t = r ? r.tier : 1; if (t < n.rod) { const w = GARDEN_RODS.find(x => x.tier === n.rod); return `it wants a stronger rod${w ? ': the ' + w.name.toLowerCase() : ''}`; } }
-  if (n.reel && !_gcaFits(n.reel, set.reel)) return `it pulls too hard for your reel: it wants the ${name(n.reel)}`;
-  if (n.line && !_gcaFits(n.line, set.line)) return `it does not trust your line: it wants the ${name(n.line)}`;
-  if (n.hook && !_gcaFits(n.hook, set.hook)) return `your hook will not do: it wants the ${name(n.hook)}`;
-  if (Array.isArray(n.bait) && n.bait.length && !n.bait.includes(set.bait)) return `it will only take ${n.bait.map(name).slice(0, 3).join(' or ')}`;
-  return '';
-}
+/** Why this fish ignores this line, in plain words ('' if it does not). One truth: the catalogue's gardenFishLacks, which the book and the host's water use too. */
+function gardenLineWhyNot(def, set) { const l = def && def.needs && set ? gardenFishLacks(def, set) : []; return l.length ? l[0] : ''; }
 /** Said while you wait: a fish near your float that will not come, and why. */
 function gardenLineMood(F) {
   if (typeof _gfs === 'undefined') return '';
   const set = gardenTackleInUse();
   for (const f of _gfs.list.values()) {
     if (f.st !== GF_ST.swim || Math.hypot(f.x - F.bx, f.y - F.by) > GF_SCHOOL.reach + 1) continue;
-    const why = gardenLineWhyNot(f.def, set); if (why) { const known = !!_gdG().fl[f.id]; return `${known ? 'A ' + f.def.name.toLowerCase() : 'That fish'} looked and swam on: ${why}.`; }
+    const why = gardenLineWhyNot(f.def, set); if (why) { const known = !!_gdG().fl[f.id]; return `${known ? 'A ' + f.def.name.toLowerCase() : 'That fish'} looked and swam on. ${why}`; }
   }
   return '';
 }
 /** How keen a fish is on this line: what is on it, where it is, what is going on, how you have been doing. */
 function gardenLineKeen(f, Q) {
-  const set = Q.set || {}, line = gardenGearDef(set.line), hook = gardenGearDef(set.hook), shy = f.def.rarity !== 'common', R = GARDEN_CATCH_RULES;
+  const set = Q.setup || {}, line = gardenGearDef(set.line), hook = gardenGearDef(set.hook), shy = f.def.rarity !== 'common', R = GARDEN_CATCH_RULES;
   let k = gardenEventFactor('keen');
   if (shy) k *= gardenEventFactor('shy');
   if (line && line.st.shy && shy) k *= line.st.shy;
@@ -213,7 +203,7 @@ function gardenSpotsFed() {
   if (fd && fd.sf) for (const [id, at] of Object.entries(fd.sf)) if (t - Number(at) < GARDEN_CATCH_RULES.fedMs) out[id] = 1;
   return out;
 }
-/** A new fish: where (a spot, often), the odds and now and then one in particular. Returns {p, ctx(p), weigh(def, w, p), forced(ctx)}. */
+/** A new fish: where (a spot, often), the odds and now and then one in particular. Returns {p, weigh(def, w, p), forced(ctx)}. */
 function gardenCatchSpawnPlan(b, m, at) {
   const R = GARDEN_CATCH_RULES, here = gardenCatchHere(), today = m.today, spots = GARDEN_SPOTS.filter(s => s.zone === b.zone), fed = gardenSpotsFed(), hot = gardenHotSpot(today);
   let p = null;
@@ -227,8 +217,7 @@ function gardenCatchSpawnPlan(b, m, at) {
   const job = _gcaOnVisit() ? null : gardenJobNow();
   return {
     p,
-    ctx: (q) => ({ spot: gardenSpotAt(q.x, q.y), moon: _gtMoon(today), events: gardenEventsNow() }),
-    weigh: (def, w, q) => {
+        weigh: (def, w, q) => {
       if (!def || def.cat !== 'fish') return w;
       let k = 1;
       if (def.rarity !== 'common') k *= rare * (reeds && gardenSpotAt(q.x, q.y) === 'reed-bank' ? 1.5 : 1);
@@ -433,7 +422,7 @@ function gardenChestLanded(plan) {
 }
 
 /* ---------- bugs: habitats, the lantern, sugar ---------- */
-function gardenBugWeight(b, m) {
+function gardenBugHabitat(b, m) {
   let n = 0; for (const d of m.decor) if (d.def.effect && d.def.effect.kind === 'habitat' && d.def.effect.what && d.def.effect.what.includes(b.shape)) n++;
   return 1 + 2 * Math.min(2, n);
 }
@@ -546,11 +535,11 @@ const _gcaPinSaid = new Map();
 /** A soft word when a fish you pinned can be caught right now. At most once in half an hour for each one, and never over a line that is out. */
 function _gcaPinCheck(m) {
   const pins = Array.isArray(_gca().pins) ? _gca().pins : []; if (!pins.length || _gwFishBusy()) return;
-  const ctx = { zone: '', tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, spot: '', moon: _gtMoon(m.today), events: gardenEventsNow() }, t = performance.now();
+  const ctx = { zone: '', tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, moon: _gtMoon(m.today), event: gardenEventOn }, t = performance.now();
   for (const id of pins) {
     const d = gardenFishDef(id); if (!d) continue;
     if ((_gcaPinSaid.get(id) || -1e9) > t - 1800000) continue;
-    if (d.zone.some(z => { try { return gardenFishFits(d, Object.assign({}, ctx, { zone: z, spot: d.needs && d.needs.spot ? d.needs.spot : '' })); } catch (e) { return false; } })) { _gcaPinSaid.set(id, t); if (typeof _gdgNote === 'function') _gdgNote(`The ${_gdG().fl[id] ? d.name.toLowerCase() : 'fish you pinned'} is about now.`, icon('fish')); return; }
+    if (d.zone.some(z => { try { return gardenFishFits(d, Object.assign({}, ctx, { zone: z, spot: d.needs && d.needs.spot ? d.needs.spot : null })); } catch (e) { return false; } })) { _gcaPinSaid.set(id, t); if (typeof _gdgNote === 'function') _gdgNote(`The ${_gdG().fl[id] ? d.name.toLowerCase() : 'fish you pinned'} is about now.`, icon('fish')); return; }
   }
 }
 
