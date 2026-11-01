@@ -677,10 +677,10 @@ function _gwPace() {
   return 10;
 }
 /**
- * What moves is taken off the page while it is well out of the view (5 cells past the edge, further than the camera goes in a look, so it is always back before you could see it).
+ * What moves is taken off the page while it is well out of the view (3.5 cells past the edge, further than the camera goes in a look, so it is always back before you could see it).
  * Only the drawing: what it is doing carries on, so a friend's fish, a pet's errand and the host's decisions are not affected. `o` is whatever keeps its state. True when it is off.
  */
-const GW_CULL = 5;
+const GW_CULL = 3.5;
 function gardenCull(o, node, x, y) {
   const off = !_gwInView(x, y, GW_CULL);
   if (o._off !== off) { o._off = off; node.classList.toggle('gart-off', off); }

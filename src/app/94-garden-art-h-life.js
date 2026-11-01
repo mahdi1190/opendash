@@ -13,8 +13,10 @@
 
    The rule for all of it: no requestAnimationFrame of its own, nothing while the tab is hidden, nothing when no garden is on screen.
    ============================================================ */
-const GART_MOTION_CAP = 24;
+const GART_MOTION_CAP = 14;
 const GART_OFF_MARGIN = 200;   // stage units past the window before a thing stops being drawn (faster than you can walk in a look, wide enough for a tree)
+/* A plant or a decoration is measured from its foot, and only stands up from there: nothing of it can show above the view once its foot is past the top, and a tree can show from below the bottom edge. So the margin need not be the same all round (the even 200 kept about four times the view's area on the page). */
+const GART_ITEM_MARGIN = Object.freeze({ side: 150, top: 130, bottom: 240 });
 const _gartLife = { urls: new Map(), busy: false, grain: null, timer: 0, bound: false };
 
 function _gartMotionOk() {
@@ -88,6 +90,22 @@ async function _gartBakeNext(svg) {
 }
 
 /* ---------- who may move ---------- */
+/**
+ * A thing out of the window is hidden, and what is in it is lifted off the page and kept beside it: an SVG <g> stays in the page's layout even at display: none, so 15,000 hidden nodes were walked in every frame.
+ * Something with ids in it stays (another thing may use its gradient). Whatever copies the stage calls gardenArtAllBack first.
+ */
+function _gartOffSet(el, far) {
+  el._gartOff = far; el.classList.toggle('gart-off', far);
+  if (far) {
+    if (el._gartIds === undefined) el._gartIds = !!el.querySelector('[id]');
+    if (!el._gartIds && el.firstChild && !el._gartKids) { const f = document.createDocumentFragment(); while (el.firstChild) f.appendChild(el.firstChild); el._gartKids = f; }
+  } else if (el._gartKids) { el.appendChild(el._gartKids); el._gartKids = null; }
+}
+/** Everything back in its place, for a moment: the stage is about to be copied whole. The next look lifts it off again. */
+function gardenArtAllBack(svg) {
+  for (const el of svg.querySelectorAll('.gart-off')) if (el._gartKids) { el.appendChild(el._gartKids); el._gartKids = null; el._gartOff = false; el.classList.remove('gart-off'); }
+  svg._gartViewKey = '';
+}
 function _gartRestItems(svg) {
   const layer = svg.querySelector('.gd-objects'); if (!layer) return;
   const vb = svg.viewBox && svg.viewBox.baseVal; if (!vb) return;
@@ -99,7 +117,7 @@ function _gartRestItems(svg) {
   svg.classList.toggle('gart-nosky', vb.y > GARDEN_WORLD.sky);
   // (the list is kept until what is in those layers changes: the search, every few steps, was as much as the rest of this function)
   const auxKey = (liveL ? liveL.childElementCount : 0) + ',' + (needs ? needs.childElementCount : 0);
-  if (!svg._gartAux || svg._gartAuxKey !== auxKey || svg._gartAuxL !== liveL || svg._gartAux.some(e => !e.isConnected)) { svg._gartAux = [...svg.querySelectorAll('.gart-live > *, .gd-needs > g, .gl-puddles > g, .tg-ground > *, .gd-weather .gart-wx > *, .gd-weather .gart-amb')]; svg._gartAuxKey = auxKey; svg._gartAuxL = liveL; }
+  if (!svg._gartAux || svg._gartAuxKey !== auxKey || svg._gartAuxL !== liveL || svg._gartAux.some(e => !e.isConnected)) { svg._gartAux = [...svg.querySelectorAll('.gart-live > *, .gd-needs > g, .gl-puddles > g, .tg-ground > *, .gd-weather .gart-wx > *, .gd-weather .gart-amb, .gd-ground .gart-ring, .gd-ground .gd-glint, .gart-bake ~ .gart-ring, .gart-bake ~ .gd-glint, .gd-waves')]; svg._gartAuxKey = auxKey; svg._gartAuxL = liveL; }
   for (const el of svg._gartAux) {
     let b = el._gartBox;
     if (!b) { try { const bb = el.getBBox(), tf = el.transform && el.transform.baseVal && el.transform.baseVal.numberOfItems ? el.transform.baseVal.consolidate().matrix : null; b = { x: bb.x + (tf ? tf.e : 0), y: bb.y + (tf ? tf.f : 0), w: bb.width, h: bb.height }; } catch (e) { b = { x: 0, y: 0, w: 1e5, h: 1e5 }; } el._gartBox = b; }
@@ -110,7 +128,7 @@ function _gartRestItems(svg) {
     if (!!el._gartOff !== off) { el._gartOff = off; el.classList.toggle('gart-off', off); }
   }
   { const W0 = GARDEN_WORLD, gp = svg.querySelector('.gd-paths');   // the paths and the painted ground are drawn or not by the same measure
-    if (gp) for (let i = 0, kids = gp.children; i < kids.length; i++) { const el = kids[i]; if (el._gartPx === undefined) { const gx = el.getAttribute('data-x'), gy = el.getAttribute('data-y'); el._gartPx = gx == null ? null : (+gx + 0.5) * W0.cellW; el._gartPy = gy == null ? 0 : W0.sky + +gy * W0.cellH; } if (el._gartPx === null) continue; const far = !(el._gartPx > vb.x - GART_OFF_MARGIN && el._gartPx < vb.x + vb.width + GART_OFF_MARGIN && el._gartPy > vb.y - GART_OFF_MARGIN && el._gartPy < vb.y + vb.height + GART_OFF_MARGIN); if (!!el._gartOff !== far) { el._gartOff = far; el.classList.toggle('gart-off', far); } } }
+    if (gp) for (let i = 0, kids = gp.children; i < kids.length; i++) { const el = kids[i]; if (el._gartPx === undefined) { const gx = el.getAttribute('data-x'), gy = el.getAttribute('data-y'); el._gartPx = gx == null ? null : (+gx + 0.5) * W0.cellW; el._gartPy = gy == null ? 0 : W0.sky + +gy * W0.cellH; } if (el._gartPx === null) continue; const far = !(el._gartPx > vb.x - GART_ITEM_MARGIN.side && el._gartPx < vb.x + vb.width + GART_ITEM_MARGIN.side && el._gartPy > vb.y - GART_ITEM_MARGIN.side && el._gartPy < vb.y + vb.height + GART_ITEM_MARGIN.side); if (!!el._gartOff !== far) _gartOffSet(el, far); } }
   const W = GARDEN_WORLD, m = W.cellW * 2, cx = vb.x + vb.width / 2, cy = vb.y + vb.height / 2, near = [];
   const items = layer.children;
   for (let i = 0; i < items.length; i++) {
@@ -120,8 +138,10 @@ function _gartRestItems(svg) {
     const x = el._gartPx, y = el._gartPy;
     const seen = x > vb.x - m && x < vb.x + vb.width + m && y > vb.y - m && y < vb.y + vb.height + m * 2;
     // well out of the window it is not drawn at all: a frame that changes anything paints whatever is drawn, seen or not. This took a 200-plant garden from about 420 ms of each second to under 200
-    const far = !(x > vb.x - GART_OFF_MARGIN && x < vb.x + vb.width + GART_OFF_MARGIN && y > vb.y - GART_OFF_MARGIN && y < vb.y + vb.height + GART_OFF_MARGIN + 60);
-    if (!!el._gartOff !== far) { el._gartOff = far; el.classList.toggle('gart-off', far); }
+    const big = el._gartBig === undefined ? (el._gartBig = el.classList.contains('gd-prop')) : el._gartBig;   // (a building is measured from a corner, and can be several cells wide: the whole margin)
+    const far = big ? !(x > vb.x - GART_OFF_MARGIN - 200 && x < vb.x + vb.width + GART_OFF_MARGIN && y > vb.y - GART_OFF_MARGIN && y < vb.y + vb.height + GART_OFF_MARGIN + 160)
+      : !(x > vb.x - GART_ITEM_MARGIN.side && x < vb.x + vb.width + GART_ITEM_MARGIN.side && y > vb.y - GART_ITEM_MARGIN.top && y < vb.y + vb.height + GART_ITEM_MARGIN.bottom);
+    if (!!el._gartOff !== far) _gartOffSet(el, far);
     if (!seen) { if (!el._gartRest) { el._gartRest = true; el.classList.add('gart-rest'); } continue; }
     near.push([(x - cx) * (x - cx) + (y - cy) * (y - cy), el]);
   }

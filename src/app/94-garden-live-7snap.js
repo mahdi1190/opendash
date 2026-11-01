@@ -72,7 +72,9 @@ function _glsFlash() {
 function _glsBlob(frame) {
   return new Promise((resolve, reject) => {
     const svg = _gw.svg; if (!svg) { reject(new Error('The garden is not on screen.')); return; }
+    if (typeof gardenArtAllBack === 'function') gardenArtAllBack(svg);   // (what is out of the window is lifted off the page)
     const clone = svg.cloneNode(true);
+    for (const n of clone.querySelectorAll('.gd-row .gart-off')) n.remove();   // (what moves, out of the view: it is not where it was last drawn)
     // (a photo has no pointer guides, grid, thirst bubbles, lock signs, name tags or speech: they are the screen's, not the garden's. The classes are dropped when it is drawn, so what a class dimmed is dimmed here)
     for (const n of clone.querySelectorAll('.gd-gridlines, .gd-ui, .gd-needs, .gd-locksign, .gd-route, .gd-pl-halo, .gll-name, .gll-say, .gll-fx')) n.remove();
     for (const n of clone.querySelectorAll('.gll-shadow')) { n.setAttribute('fill', '#1a2a14'); n.setAttribute('fill-opacity', '0.2'); }
