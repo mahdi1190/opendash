@@ -396,3 +396,5 @@ What a person carries goes in their look as `g` (ids; a receiver draws from its 
 **It may not fit.** `gardenDesignWire` caps `dz` at 6000 bytes and the saved copy gives way before any decoration (`gardenDesignSnapTrim`): ground goes first, then the newest paths. Moved things and things made always go. The designer says what is left out and dashes it in red.
 
 **One rule for standing in the way** (`_gdzReachWhy`): it builds the same grid the walking uses, before and after, and refuses if any land you could reach, or any door you could reach, would be cut off, in plain words. It runs on a move, on Put it back and on swapping to an older layout. Decorations put out by hand away from the designer are not checked for this, as before.
+
+**Strict rules are for your own hands.** `94-garden-design-1strict.js` (every number in `GDZ_STRICT`) runs only when you draw or put something down in the designer. It never refuses a snapshot: `gardenDesignClean` still draws a design from an older or newer app whatever it breaks, and what is already placed stays until it is moved.

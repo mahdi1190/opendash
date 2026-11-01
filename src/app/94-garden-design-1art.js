@@ -35,6 +35,12 @@ function _gdzGroundMarkup(row) {
   dots.forEach((q, i) => { if (q) s += `<path d="${q}" fill="none" stroke="${st.dots[i]}" stroke-width="4" stroke-linecap="round"/>`; });
   return s;
 }
+/** Where one material meets another: a round stone, so the join looks meant. */
+function _gdzJoinPads(d) {
+  const rows = (d.p || []).map(r => ({ st: r[0], pts: gardenDesignPts(r) })), r = typeof GDZ_STRICT !== 'undefined' ? GDZ_STRICT.path.joinPad : 17; let s = '';
+  rows.forEach((a) => { if (a.pts.length < 2) return; for (const e of [a.pts[0], a.pts[a.pts.length - 1]]) if (rows.some(b => b.st !== a.st && b.pts.some((q, i) => { const p = b.pts[i - 1]; if (!p) return false; const dx = q[0] - p[0], dy = q[1] - p[1], t = Math.max(0, Math.min(1, ((e[0] - p[0]) * dx + (e[1] - p[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(p[0] + dx * t - e[0], p[1] + dy * t - e[1]) < 14; }))) s += `<circle cx="${_gdzN(e[0])}" cy="${_gdzN(e[1])}" r="${r}" fill="#b3ad9e" stroke="#7f7a6e" stroke-width="2.500"/>`; });
+  return s;
+}
 /** The scene's design layer: ground, then paths, nothing that takes a click. */
 function gardenDesignLayer(sc) {
   const d = sc && sc.dz; let s = '';
@@ -43,6 +49,7 @@ function gardenDesignLayer(sc) {
     const by = new Map();
     for (const row of d.p || []) { if (!GDZ_PATHS[row[0]]) continue; by.set(row[0], (by.get(row[0]) || '') + gardenDesignCurve(gardenDesignPts(row))); }
     for (const [st, line] of by) s += gardenDesignPathMarkup(GDZ_PATHS[st], line);
+    s += _gdzJoinPads(d);
   }
   return `<g class="gd-dz" pointer-events="none">${s}</g>`;
 }
