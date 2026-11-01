@@ -10,6 +10,15 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.41.0]
+
+Every catch is now one of a kind.
+
+### Added
+- **47 variants of fish and bugs,** from speckled to once in a lifetime, including shiny, glowing, evil, angel, golden and frozen. You can spot them in the water, and the chances are shown.
+- **Every catch is kept** with its own size, weight, day and number. See your best catches and every variant, with how to find it.
+- **A friends board** of the rarest and biggest catches. Friends see your best catches when they visit, unless you have turned off sharing your garden with them.
+
 ## [2.40.1]
 
 ### Fixed
