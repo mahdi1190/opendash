@@ -170,6 +170,18 @@ Rule 22 in GARDEN_TOGETHER.md. What you own stands in the world:
 - A path opened early goes in the snapshot's `ls`, so a friend's copy opens it too. `gardenLandsClean` now lets a trail id through; an older app drops it and shows the gate.
 - Your first material brings the Builder's stack, a decoration to put out. **It does not change with how much you hold:** materials and tickets are spending money, not things on show, and a friend does not see the count.
 
+## Looks: things you hold and how buildings look
+
+Code: `src/app/94-garden-style-*.js`. A look is never a stat: `gardenRod()` still decides how you fish. Under Play: "Things you hold" and "Paint the buildings".
+
+- **Rod looks, net looks, things to carry** (`GARDEN_ROD_SKINS`, `GARDEN_NET_SKINS`, `GARDEN_HELD`). Each row says what it costs in coins, tickets or materials, and when it can be had: from the start, at a milestone from `gardenRewardCtx`, or in one season (then yours for good). Owned as the item `look:<id>`, worn in `prefs.lkRod`, `lkNet`, `lkHeld`. It cannot be sold.
+- **Painting a building** (`GARDEN_BUILDINGS`, `GARDEN_BUILD_PARTS`). Each changed part costs materials (walls 1 timber and 1 reed, roof colour 1 stone and 1 reed, door 1 timber, awning colour 1 reed, awning 1 reed and 2 tickets, roof style 2 stone, sign 1 timber and 2 tickets). Going back to how it was built is free. Later colours and styles open with milestones. Stored by building id in `prefs.bk_<id>`, so moving a building keeps its look.
+- **Themed decorations** (ids `dc-*`): seaside, cottage, spooky, festive, ruins. Some are in the shop, by level or season; those in `GR_DESIGN` are made at the yard.
+
+Friends see all of it: `rk`, `nk`, `hd` in the look `g`, and `bk` in the snapshot. An older app drops them, and an id or number an app does not know draws nothing or draws as built.
+
+Ids and table order are saved: never rename a row, reorder a table or reuse a number.
+
 ## Saves
 
 No new state keys and no sync change. Work's goods are worked out, like seed packets. Gifts are ledger lines under `rwd.<day>.<thing>` (kind `pl`), once-only ones use `gpGrant` (`rw-<row>-<step>`). Old saves get the milestones they have already passed, once, the first time they open. Ids are stable: never rename or reuse a material, a design item or a row id, because the keys are built from them.

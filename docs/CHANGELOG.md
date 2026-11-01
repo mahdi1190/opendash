@@ -10,6 +10,18 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.50.0]
+
+### Added
+- **A garden designer.** Draw curved paths, paint ground and plot beds. Move shops, benches and lamps. Make signs, flags and statues, and keep a few layouts. It works on a draft with Undo, Cancel and Keep. Nothing can block land or a door, and friends see your design.
+
+## [2.49.0]
+
+### Added
+- **New looks for your rod and net** that don't change how they fish, plus umbrellas, balloons, lanterns and buckets to carry.
+- **Paint your buildings.** Choose each shop's walls, roof, door, awning and sign, using materials.
+- **36 new decorations** in seaside, cottage, spooky, festive and ruins themes. Friends see all of it.
+
 ## [2.48.0]
 
 ### Added

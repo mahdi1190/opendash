@@ -61,6 +61,8 @@
 const GARDEN_V = 1;
 function _gdF(o) { return Object.freeze(o); }
 function _gdRows(list) { return Object.freeze(list.map(r => Object.freeze(r))); }
+/* Rows the garden designer can move: the list is fixed, a row's x, y and door are not (gardenDesignShow, 94-garden-design-0rules.js). */
+function _gdMovable(list) { return Object.freeze(list); }
 
 /* ---------- the world ---------- */
 /* 2.22: the garden grew. The first 20 x 11 cells are exactly where they were (every saved x, y stays valid); the Wild
@@ -454,6 +456,43 @@ const GARDEN_DECOR = _gdRows([
   _gD('rw-orn-sheaf', 'Reed sheaves', 'ornament', { craft: 1, price: 0, look: { c: '#b9a860', c2: '#7a5636', h: 0.8, parts: [['post', { x: -11, h: 34, w: 8 }], ['post', { x: 0, h: 42, w: 9 }], ['post', { x: 11, h: 32, w: 8 }], ['block', { y: -12, w: 34, h: 4, c: '#7a5636' }]] }, blurb: 'Tied up and left to dry, from the edge of the lake.' }),
   _gD('rw-orn-urn', 'Stone urn', 'ornament', { craft: 1, price: 0, look: { c: '#b5ad9e', c2: '#3f7a3a', h: 0.9, parts: [['block', { w: 24, h: 6 }], ['post', { y: -6, w: 8, h: 8 }], ['pot', { y: -14, w: 28, h: 18 }], ['bush', { y: -32, w: 22, h: 14 }]] }, blurb: 'For someone with a lot of land and something to say about it.' }),
   _gD('rw-yard', 'Builder’s stack', 'ornament', { craft: 1, price: 0, w: 2, look: { c: '#8a6642', c2: '#a39b8c', h: 0.6, parts: [['block', { x: -18, w: 34, h: 8 }], ['block', { x: -18, y: -8, w: 26, h: 8, c: '#a87c4f' }], ['stone', { x: 14, w: 22 }], ['stone', { x: 22, y: -8, w: 12 }], ['post', { x: 30, h: 22, w: 4, c: '#c9a26a' }], ['post', { x: 36, h: 18, w: 4, c: '#c9a26a' }]] }, blurb: 'Your timber, stone and pegs, stacked by the path.' }),
+  /* themed (drawn in 94-garden-style-3decor.js). Those with craft: 1 are made at the yard (GR_DESIGN). */
+  _gD('dc-beach-hut', 'Beach hut', 'structure', { price: 70, lv: 8, look: { c: '#3a8ac4', c2: '#fbf5ec', h: 1.4 }, blurb: 'Seaside. Room inside for one deckchair and a lot of sand.' }),
+  _gD('dc-lighthouse', 'Little lighthouse', 'structure', { price: 110, lv: 14, effect: { kind: 'light' }, look: { c: '#fbf5ec', c2: '#d8352a', h: 1.8 }, blurb: 'Seaside. It turns its light on the neighbours after dark.' }),
+  _gD('dc-anchor', 'Old anchor', 'ornament', { price: 24, lv: 5, look: { c: '#4a525c', c2: '#d8c48e', h: 1 }, blurb: 'Seaside. It has stopped going anywhere.' }),
+  _gD('dc-lobster-pots', 'Lobster pots', 'angling', { price: 18, lv: 4, look: { c: '#c8a46a', c2: '#8a6642', h: 0.8 }, blurb: 'Seaside. A stack of them, and one red float.' }),
+  _gD('dc-buoy', 'Striped buoy', 'ornament', { price: 12, lv: 3, look: { c: '#d8352a', c2: '#fbf5ec', h: 0.8 }, blurb: 'Seaside. Washed up, and rather pleased about it.' }),
+  _gD('dc-sandcastle', 'Sandcastle', 'ornament', { price: 10, unlock: { season: 'summer' }, look: { c: '#e4d6ae', c2: '#d8452a', h: 0.8 }, blurb: 'Seaside. With a flag on top, to show who is in charge.' }),
+  _gD('dc-shell-pile', 'Heap of shells', 'ornament', { craft: 1, price: 0, look: { c: '#f0d8c0', c2: '#e8b8b0', h: 0.4 }, blurb: 'Seaside. Each one picked up and carried home.' }),
+  _gD('dc-net-rack', 'Drying nets', 'angling', { craft: 1, price: 0, w: 2, look: { c: '#7a5a3a', c2: '#c8b68a', h: 1 }, blurb: 'Seaside. Hung out with their corks, smelling of harbour.' }),
+  _gD('dc-milk-churns', 'Milk churns', 'ornament', { price: 16, lv: 3, look: { c: '#b8c0c6', c2: '#8a9298', h: 0.7 }, blurb: 'Cottage. Waiting at the gate for a cart that has stopped coming.' }),
+  _gD('dc-washing-line', 'Washing line', 'structure', { w: 2, price: 22, lv: 4, look: { c: '#7a5a3a', c2: '#e8607a', h: 1.1 }, blurb: 'Cottage. Friends can see your socks.' }),
+  _gD('dc-clay-oven', 'Clay oven', 'structure', { price: 40, lv: 7, effect: { kind: 'light' }, look: { c: '#c8855a', c2: '#a39b8c', h: 0.9 }, blurb: 'Cottage. It glows at dusk and smells of bread.' }),
+  _gD('dc-cottage-gate', 'Cottage gate', 'fence', { craft: 1, price: 0, rot: 1, look: { c: '#efe8d8', c2: '#6a4a2a', h: 0.8 }, blurb: 'Cottage. White pickets, and it never quite shuts.' }),
+  _gD('dc-tea-table', 'Tea table', 'seat', { price: 20, lv: 4, look: { c: '#fbf5ec', c2: '#3a8ac4', h: 0.8 }, blurb: 'Cottage. The pot is still warm.' }),
+  _gD('dc-sleeping-cat', 'Sleeping cat', 'ornament', { price: 30, lv: 6, look: { c: '#e8903a', c2: '#fbf5ec', h: 0.4 }, blurb: 'Cottage. Made of stone, painted ginger, and just as hard to move.' }),
+  _gD('dc-lavender-tub', 'Lavender tub', 'planter', { craft: 1, price: 0, look: { c: '#a87c4f', c2: '#8a6ac8', h: 0.8 }, blurb: 'Cottage. A half barrel of purple.' }),
+  _gD('dc-gravestone', 'Mossy gravestone', 'ornament', { price: 14, unlock: { season: 'autumn' }, look: { c: '#a39b8c', c2: '#5a8a4a', h: 0.7 }, blurb: 'Spooky. Nobody can read the name now.' }),
+  _gD('dc-crooked-fence', 'Crooked railings', 'fence', { price: 4, rot: 1, unlock: { season: 'autumn' }, look: { c: '#3a3a42', c2: '#22222a', h: 0.7 }, blurb: 'Spooky. Every spike leans its own way.' }),
+  _gD('dc-cauldron', 'Bubbling cauldron', 'ornament', { price: 45, unlock: { season: 'autumn' }, effect: { kind: 'light' }, look: { c: '#2a2a32', c2: '#7ae84a', h: 0.8 }, blurb: 'Spooky. Soup, most likely.' }),
+  _gD('dc-raven-post', 'Raven on a post', 'ornament', { price: 20, lv: 5, look: { c: '#54392a', c2: '#22222a', h: 1.1 }, blurb: 'Spooky. It watches you dig.' }),
+  _gD('dc-sheet-ghost', 'Sheet ghost', 'seasonal', { price: 15, unlock: { event: 'halloween' }, look: { c: '#f6f6fb', c2: '#1a1a22', h: 1 }, blurb: 'Spooky. Somebody will want that sheet back.' }),
+  _gD('dc-dead-tree', 'Dead tree', 'ornament', { craft: 1, price: 0, look: { c: '#3a2a22', c2: '#22222a', h: 1.6 }, blurb: 'Spooky. With a crow who has opinions.' }),
+  _gD('dc-pumpkin-stack', 'Pumpkin stack', 'seasonal', { price: 22, unlock: { season: 'autumn' }, effect: { kind: 'light' }, look: { c: '#e87a1a', c2: '#ffd36a', h: 0.8 }, blurb: 'Spooky. Three grins, lit at dusk.' }),
+  _gD('dc-fir-tree', 'Decorated fir', 'seasonal', { price: 40, unlock: { season: 'winter' }, effect: { kind: 'light' }, look: { c: '#3a7a42', c2: '#d8352a', h: 1.5 }, blurb: 'Festive. It twinkles after dark.' }),
+  _gD('dc-gift-pile', 'Pile of presents', 'seasonal', { price: 16, unlock: { season: 'winter' }, look: { c: '#d8352a', c2: '#f2c432', h: 0.6 }, blurb: 'Festive. All empty, so nobody tell anyone.' }),
+  _gD('dc-candy-cane', 'Giant candy cane', 'seasonal', { price: 12, unlock: { season: 'winter' }, look: { c: '#fbf5ec', c2: '#d8352a', h: 0.9 }, blurb: 'Festive. Taller than is sensible.' }),
+  _gD('dc-maypole', 'Maypole', 'seasonal', { price: 35, unlock: { season: 'spring' }, look: { c: '#c8a46a', c2: '#d8352a', h: 1.8 }, blurb: 'Festive. Ribbons all round, and nobody knows the steps.' }),
+  _gD('dc-bell-arch', 'Bell arch', 'seasonal', { w: 2, price: 45, unlock: { season: 'winter' }, look: { c: '#3f6a3a', c2: '#e0b43a', h: 1.4 }, blurb: 'Festive. Evergreen, holly and a bell that swings.' }),
+  _gD('dc-snow-globe', 'Snow globe', 'ornament', { price: 30, lv: 6, look: { c: '#cfe8f2', c2: '#6a4426', h: 0.9 }, blurb: 'Festive. A very small winter, any time of year.' }),
+  _gD('dc-carousel-horse', 'Carousel horse', 'ornament', { price: 60, lv: 10, look: { c: '#fbf5ec', c2: '#d8352a', h: 1.1 }, blurb: 'Festive. It came off a fair and did not go back.' }),
+  _gD('dc-broken-column', 'Broken column', 'ornament', { craft: 1, price: 0, look: { c: '#a39b8c', c2: '#5a8a4a', h: 1.2 }, blurb: 'Ruins. Holding up nothing, beautifully.' }),
+  _gD('dc-ruin-arch', 'Ruined arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#a39b8c', c2: '#5a8a4a', h: 1.4 }, blurb: 'Ruins. All that is left of somewhere grand.' }),
+  _gD('dc-stone-head', 'Giant stone head', 'ornament', { craft: 1, price: 0, look: { c: '#a39b8c', c2: '#5a8a4a', h: 1 }, blurb: 'Ruins. The rest of him is under your lawn.' }),
+  _gD('dc-old-wall', 'Tumbled wall', 'fence', { craft: 1, price: 0, rot: 1, look: { c: '#a39b8c', c2: '#5a8a4a', h: 0.7 }, blurb: 'Ruins. Stones that were once a wall, and still mostly remember.' }),
+  _gD('dc-fallen-capital', 'Fallen capital', 'ornament', { price: 26, lv: 6, look: { c: '#a39b8c', c2: '#c4bdae', h: 0.5 }, blurb: 'Ruins. Good for sitting on and feeling thoughtful.' }),
+  _gD('dc-mossy-steps', 'Steps to nowhere', 'ornament', { price: 20, lv: 5, look: { c: '#a39b8c', c2: '#5a8a4a', h: 0.5 }, blurb: 'Ruins. Three steps up, then you have to come down.' }),
+  _gD('dc-stone-lion', 'Worn stone lion', 'ornament', { craft: 1, price: 0, look: { c: '#a39b8c', c2: '#c4bdae', h: 0.9 }, blurb: 'Ruins. His nose has been patted away.' }),
   _gD('rose-arch', 'Rose arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#7a5a3a', c2: '#d8405a', h: 1.4, parts: [['post', { x: -24, w: 5, h: 72 }], ['post', { x: 24, w: 5, h: 72 }], ['block', { y: -70, w: 58, h: 6 }], ['bush', { x: -24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { x: 24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { y: -74, w: 40, h: 16, clip: 'sway' }]] }, blurb: 'Left by a friend, with a note.' }),
 ]);
 const _GD_DECOR = new Map(GARDEN_DECOR.map(d => [d.id, d]));
@@ -551,7 +590,7 @@ function gardenPierMore() { return _GD_WORKS.has('pier-3') ? 8 : _GD_WORKS.has('
    walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there.
    col (2.28.1, what it does to your feet): 'full' (the default: its whole footprint is a wall: a shop, a stall, the bench), 'soft' (a small box at its base:
    a lectern, a post box, you slip past) or 'none' (you walk through it: a post at the water's edge, reeds, the boat on the water). A walk prop is 'none'. */
-const GARDEN_PROPS = _gdRows([
+const GARDEN_PROPS = _gdMovable([
   { id: 'pier', name: 'The pier', x: 24, y: 20, w: 2, h: 5, walk: 1, blurb: 'Walk out over the water: the fish are bigger past the end of it.' },
   // what you can build on to it (GARDEN_WORKS): no kind, so nothing of their own is drawn: gardenPierGround draws the whole length
   { id: 'pier-2', name: 'The pier', x: 24, y: 25, w: 2, h: 4, walk: 1, needs: 'pier-2', blurb: 'New planks towards the bigger fish.' },
@@ -803,7 +842,7 @@ function gardenAreaAt(x, y, level) {
   // the world is one map (94-garden-lands-0table.js). A trail, the lane and the mown green are lawn to everything else: you walk there, nothing grows there. The thicket is locked for good.
   if (typeof gardenLandCell === 'function') {
     const c = gardenLandCell(x, y);
-    if (c) { if (c.lane) return 'lawn'; if (c.solid) return 'locked:' + c.id; return level == null || _GD_LAND.has(c.id) ? (c.trail || c.green ? 'lawn' : c.id) : 'locked:' + c.id; }
+    if (c) { if (c.lane) return 'lawn'; if (c.solid) return 'locked:' + c.id; if (level != null && !_GD_LAND.has(c.id)) return 'locked:' + c.id; if (c.green && level != null && typeof gardenDesignBedAt === 'function') { const b = gardenDesignBedAt(x, y); if (b) return b; } return c.trail || c.green ? 'lawn' : c.id; }   // (a bed plotted on the green grows like that area: the designer)
   }
   for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
   return 'lawn';
@@ -940,6 +979,7 @@ function gardenSnapshotClean(raw) {
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);
   if (raw.wd && typeof raw.wd === 'object') { const wd = {}; if (Array.isArray(raw.wd.sk)) wd.sk = raw.wd.sk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x)); if (Number.isInteger(raw.wd.st) && raw.wd.st > 0) wd.st = Math.min(999, raw.wd.st); if (raw.wd.w === 1) wd.w = 1; if (Number.isInteger(raw.wd.f) && raw.wd.f > 0) wd.f = Math.min(99, raw.wd.f); out.wd = wd; }   // docs/dev/HUNDRED_WORLD.md
   if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 12).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
+  if (Array.isArray(raw.bk)) { const bk = raw.bk.slice(0, 12).filter(r => Array.isArray(r) && r.length === 8 && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && r.slice(1).every(n => Number.isInteger(n) && n >= 0 && n <= 31)); if (bk.length) out.bk = bk; }   // how they have painted their buildings, by building id; a number this version does not know draws as built
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {
     if (!Array.isArray(p) || !_GD_PLANT.has(p[0])) continue;
@@ -963,5 +1003,6 @@ function gardenSnapshotClean(raw) {
     for (const [k, l] of Object.entries(raw.rf).slice(0, 8)) { if (!/^[a-z0-9-]{1,24}$/.test(k) || !Array.isArray(l)) continue; const r = []; for (const d of l.slice(0, 12)) { if (!Array.isArray(d) || !_GD_DECOR.has(d[0])) continue; const x = int(d[1], 0, 960), y = int(d[2], 0, 600); if (x !== null && y !== null) r.push([d[0], x, y]); } if (r.length) rf[k] = r; }
     if (Object.keys(rf).length) out.rf = rf;
   }
+  if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
   return out;
 }

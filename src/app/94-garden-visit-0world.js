@@ -120,6 +120,8 @@ function gardenVisitModel() {
   const landOf = gardenLandsOfSnap(s), areas = landOf.areas; if (!areas.includes('lake')) areas.push('lake'); if (s.lv >= 4 && !areas.includes('woods')) areas.push('woods');
   gardenLandSet(landOf.land);
   gardenWorksSet(s.wk || []);
+  if (typeof gardenDesignShow === 'function') gardenDesignShow(s.dz || null);   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
+  if (typeof gardenBuildLooksSet === 'function') gardenBuildLooksSet(s.bk);   // how they have painted their buildings
   const rows = _gdvRows(s), by = (kind, x, y) => (_glvLive() ? _gll.by.get(kind + '|' + x + '|' + y) || '' : '');
   const plants = [], decor = [], cats = {};
   let blooms = 0, ripe = 0, thirsty = 0, trees = 0;

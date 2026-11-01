@@ -79,7 +79,7 @@ function _gwFishHud(F) {
   if (h._say !== say) { h._say = say; h.querySelector('.gd-fishhud-t').textContent = say; h.classList.toggle('is-bite', F.state === 'bite'); }
   h.hidden = F.state === 'land' || F.state === 'reel';
 }
-function _gwFishClearFx() { if (_gw.fx) { for (const k of ['line', 'rod', 'bob', 'bubble', 'ring', 'reel']) if (_gw.fx[k] && _gw.fx[k].remove) _gw.fx[k].remove(); } _gw.fx = null; }
+function _gwFishClearFx() { if (_gw.fx) { for (const k of ['line', 'rod', 'bob', 'bubble', 'ring', 'reel']) if (_gw.fx[k] && _gw.fx[k].remove) _gw.fx[k].remove(); if (_gw.fx.skin) _gw.fx.skin.g.remove(); } _gw.fx = null; }
 function _gwFx() {
   if (_gw.fx && _gw.fx.rod && _gw.fx.rod.isConnected) return _gw.fx;
   const a = _gwActors(); if (!a) return null;
@@ -96,6 +96,7 @@ function _gwFx() {
   fx.bubble.innerHTML = '<ellipse cx="0" cy="0" rx="9" ry="9.6" fill="#fff6c8" stroke="#d89a1a" stroke-width="1.6"/><path d="M-1.6 -5.4h3.2l-0.6 6.2h-2z" fill="#d8301a"/><circle cx="0" cy="4.4" r="1.5" fill="#d8301a"/>';
   fx.bubble.setAttribute('visibility', 'hidden'); fx.bob.setAttribute('visibility', 'hidden'); fx.line.setAttribute('visibility', 'hidden');
   a.append(fx.ring, fx.rod, fx.line, fx.bob, fx.bubble);
+  if (typeof gardenLookRodSkin === 'function') fx.skin = gardenLookRodSkin(gardenLookWorn('rod'), fx.rod, a);   // the look of your rod over the rod itself
   if (typeof gardenTackleOnLine === 'function') gardenTackleOnLine(fx, a);   // the colour of your line, your lure under the float, your reel on the rod
   _gw.fx = fx;
   return fx;
@@ -113,7 +114,7 @@ function _gwRodPoints() {
 function _gwFishFrame(dt) {
   if (typeof _gfsFrame === 'function') _gfsFrame(dt);
   const F = _gw.fishing;
-  if (!F || F.state === 'idle') { if (_gw.fx && _gw.fx.rod) { _gw.fx.rod.setAttribute('visibility', 'hidden'); _gw.fx.line.setAttribute('visibility', 'hidden'); _gw.fx.bob.setAttribute('visibility', 'hidden'); _gw.fx.bubble.setAttribute('visibility', 'hidden'); } return; }
+  if (!F || F.state === 'idle') { if (_gw.fx && _gw.fx.rod) { if (_gw.fx.skin) _gw.fx.skin.g.setAttribute('visibility', 'hidden'); _gw.fx.rod.setAttribute('visibility', 'hidden'); _gw.fx.line.setAttribute('visibility', 'hidden'); _gw.fx.bob.setAttribute('visibility', 'hidden'); _gw.fx.bubble.setAttribute('visibility', 'hidden'); } return; }
   const fx = _gwFx(); if (!fx) return;
   F.t += dt;
   _gwFishHud(F);
@@ -155,7 +156,7 @@ function _gwFishFrame(dt) {
     if (F.t > 90) { _gwFishCancel(); return; }
   }
   if (fx.reel) fx.reel.setAttribute('transform', `translate(${(R.hx + (R.tipX - R.hx) * 0.14).toFixed(1)} ${(R.hy + (R.tipY - R.hy) * 0.14 + 2.6).toFixed(1)})`);
-  fx.rod.setAttribute('visibility', 'visible'); fx.rod.setAttribute('d', `M${R.hx.toFixed(1)} ${R.hy.toFixed(1)}L${R.tipX.toFixed(1)} ${R.tipY.toFixed(1)}`);
+  fx.rod.setAttribute('visibility', 'visible'); fx.rod.setAttribute('d', `M${R.hx.toFixed(1)} ${R.hy.toFixed(1)}L${R.tipX.toFixed(1)} ${R.tipY.toFixed(1)}`); if (fx.skin) gardenLookRodSkinAt(fx.skin, R.hx, R.hy, R.tipX, R.tipY);
   fx.line.setAttribute('visibility', 'visible'); fx.line.setAttribute('d', `M${R.tipX.toFixed(1)} ${R.tipY.toFixed(1)}Q${((R.tipX + bx) / 2).toFixed(1)} ${(Math.max(R.tipY, by) + sag).toFixed(1)} ${bx.toFixed(1)} ${(by - 4).toFixed(1)}`);
   fx.bob.setAttribute('visibility', 'visible'); fx.bob.setAttribute('transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)})`);
   fx.bubble.setAttribute('visibility', F.state === 'bite' ? 'visible' : 'hidden');
@@ -535,7 +536,7 @@ function _gwNetAir() {
   const a = _gwActors(); if (!a) return;
   const [x, y] = _gwFeet(), f = _gw.face;
   const g = _gwEl('g', { class: 'gd-swing', transform: `translate(${x.toFixed(1)} ${(y - 30).toFixed(1)}) scale(${f} 1)` });
-  g.innerHTML = '<path d="M6 8Q30 -16 30 -34" stroke="#fbfbf2" stroke-width="2.6" stroke-opacity="0.8" fill="none" stroke-linecap="round"/>';
+  g.innerHTML = '<path d="M6 8Q30 -16 30 -34" stroke="#fbfbf2" stroke-width="2.6" stroke-opacity="0.8" fill="none" stroke-linecap="round"/>' + (typeof gardenLookNetSwing === 'function' ? gardenLookNetSwing(gardenLookWorn('net')) : '');
   a.appendChild(g); setTimeout(() => g.remove(), 360);
 }
 function _gwNetDraw(b) {
