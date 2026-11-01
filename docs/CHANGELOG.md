@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.50.0]
+
+### Added
+- **A garden designer.** Draw curved paths, paint ground and plot beds. Move shops, benches and lamps. Make signs, flags and statues, and keep a few layouts. It works on a draft with Undo, Cancel and Keep. Nothing can block land or a door, and friends see your design.
+
 ## [2.49.0]
 
 ### Added
