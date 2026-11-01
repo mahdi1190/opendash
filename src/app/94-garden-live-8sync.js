@@ -159,8 +159,9 @@ function _glyTick() {
   // the pages' beats go by this clock too: a hidden tab's own timers can be a minute late
   if (_gll.role === 'visit' && _glv.fid && now - (_glv.beatAt || 0) >= GL_SYNC.beatMs && typeof _glvBeat === 'function') _glvBeat();
   if (_gll.role === 'host' && _glh.on && now - (_glh.beatAt || 0) >= GL_SYNC.beatMs && typeof _glhBeat === 'function') _glhBeat();
-  if (guestLive && _gly.hiddenAt && !_gly.awaySaid && now - _gly.hiddenAt >= GL_SYNC.awayMs && !_gw.fishing) { _gly.awaySaid = true; gardenLiveFx('sync', 'away'); }
-  const looking = guestLive ? !(_gly.awaySaid && !_gw.fishing) : hostLive && _glhLooking();
+  const lineOut = !!(_gw.fishing && _gw.fishing.state && _gw.fishing.state !== 'idle');   // (a line that has ended leaves its record behind)
+  if (guestLive && _gly.hiddenAt && !_gly.awaySaid && now - _gly.hiddenAt >= GL_SYNC.awayMs && !lineOut) { _gly.awaySaid = true; gardenLiveFx('sync', 'away'); }
+  const looking = guestLive ? !(_gly.awaySaid && !lineOut) : hostLive && _glhLooking();
   if (hostLive && looking && now - _gly.sumAt >= GL_SYNC.sumMs) {
     _gly.sumAt = now;
     _glhDiff();   // (what is still to go goes first)

@@ -12,6 +12,7 @@ const _glv = { fid: '', state: '', why: '', lv: 'none', w: null, road: null, tou
 function _glvLive() { return _glv.state === 'live'; }
 function _glvFriend() { return _gscFriend(_glv.fid); }
 function _glvSend(k, body) { return _gllPipe('/api/garden-live/send', { k, body }); }
+function _glvLookSig(l) { return JSON.stringify([l.a || null, l.g || null, l.pet || null]); }
 function _glvLook() { const l = gardenLiveLook(); if (typeof _gw !== 'undefined' && _gw.on) { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return l; }
 function gardenLiveVisitEnter(fid) {
   if (_glv.fid === fid && _gll.role === 'visit') return;
@@ -73,7 +74,7 @@ function _glvTake(d) {
   const hold = _glv.state !== 'live' && _glv.why === 'lost';
   if (_glv.here && _glv.state !== 'live' && !hold) { _glv.here = false; if (typeof _gltLost === 'function') _gltLost(); _glvPeopleOut(); _glv.snap = null; _gll.by.clear(); _glv.pending.clear(); _glv.doQ.length = 0; if (typeof _gsvPaint === 'function') _gsvPaint(); }
   if (_glv.state === 'live') _glv.here = true;
-  if (was !== 'live' && _glv.state === 'live') { _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); if (typeof _gltResume === 'function') _gltResume(); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
+  if (was !== 'live' && _glv.state === 'live') { _glv.lookSig = _glvLookSig(_glvLook()); _glvResend(); _glvWatchStart(); if (!_glv.snap) _glvSend('me', _glvLook()); if (typeof _gltResume === 'function') _gltResume(); }   // (this page may be new to a visit the server already has: tell me who is here, and the garden as it is)
   else if (was === 'live' && _glv.state === 'live' && wasWhy === 'resume' && !_glv.why) { _glvResend(); if (typeof _gltResume === 'function') _gltResume(); }   // (back: what I asked for and never heard about, with the same ids)
   if (wasGen != null && wasGen !== _glv.gen && _glv.state === 'live') _glvRosterAgain();
   _glvHud();
@@ -429,7 +430,7 @@ function _glvDelta(ops) {
   if (typeof document === 'undefined') return;
   let t = 0;
   // (only a real change: the same look again means "tell me everything", and a pet says it changed for many small reasons)
-  const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role !== 'visit' || !_glvLive()) return; const l = _glvLook(), sig = JSON.stringify([l.a || null, l.g || null, l.pet || null]); if (sig === _glv.lookSig) return; const first = !_glv.lookSig; _glv.lookSig = sig; if (!first) _glvSend('me', l); } catch (e) { /* the next beat has it */ } }, 1500); };
+  const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role !== 'visit' || !_glvLive()) return; const l = _glvLook(), sig = _glvLookSig(l); if (sig === _glv.lookSig) return; _glv.lookSig = sig; _glvSend('me', l); } catch (e) { /* the next beat has it */ } }, 1500); };
   document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
   document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear') soon(); });   // (a new rod: they see it now)
 })();

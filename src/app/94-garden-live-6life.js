@@ -46,8 +46,8 @@ function _glcHostTick(dt) {
   for (const c of _gl.list) { if (c.gone || c.left || !c.S) continue; cs.push(c); if (cs.length >= 8) break; }
   const l = cs.map(c => Object.assign({ u: c.id % 100000, e: c.def.id, x: _glcNum(c.S.x * 10, 0, 700), y: _glcNum(c.S.y * 10, 0, 500), h: _glcNum(c.S.lift || 0, 0, 255), f: c.faceTo > 0 ? 1 : 0 }, c.clip && _GLC_ID.test(c.clip) ? { k: c.clip } : {}));
   const sig = JSON.stringify(l);
-  // every 2 s while one moves, 8 s when they rest (a guest takes each leg at the pace they come in), nothing while nobody is looking
-  if (_glhLooking() && (!_glc.sentAt || (sig !== _glc.sig && now - _glc.sentAt >= 2000) || (l.length && now - _glc.sentAt >= 8000))) { _glc.sig = sig; _glc.sentAt = now; _glhSend('all', 'cr', { l }); }
+  // every 2 s while one moves, 7 s when they rest (an older guest lets one go after 9 s; a guest takes each leg at the pace they come in), nothing while nobody is looking
+  if (_glhLooking() && (!_glc.sentAt || (sig !== _glc.sig && now - _glc.sentAt >= 2000) || (l.length && now - _glc.sentAt >= 7000))) { _glc.sig = sig; _glc.sentAt = now; _glhSend('all', 'cr', { l }); }
   _glcNotice(cs, now);
   _glc.fishT -= 0.7;
   if (_glc.fishT <= 0) { _glc.fishT = 150 + Math.random() * 100; _glcShoreFish(); }
