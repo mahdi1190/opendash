@@ -108,7 +108,7 @@ if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' &
   new MutationObserver((list) => {
     let run = false;
     for (const m of list) {
-      if (m.type === 'childList') { run = true; continue; }
+      if (m.type === 'childList') { if (!(m.target.closest && m.target.closest('.gd-svg'))) run = true; continue; }   // (the garden's stage moves things every frame, and there are no scenes in it: two searches of the whole page per frame, for nothing)
       const t = m.target;
       if (t.classList && t.classList.contains('anim-scene')) {
         run = true;

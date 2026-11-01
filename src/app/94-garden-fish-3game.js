@@ -460,6 +460,7 @@ function _gwBugsFrame(dt) {
 }
 /** Put a bug on the stage: only what changed, and nothing at all while it is out of view (a frame that writes is a frame the stage paints). True when it is in view. */
 function _gwBugDraw(b, flying) {
+  gardenCull(b, b.node, b.x, b.y);
   if (!_gwInView(b.x, b.y, 1) && b.node.parentNode && b.zk != null) { if (b.cls && b.cls.includes(' is-seen')) { b.cls = ''; b.node.classList.remove('is-seen'); } return false; }
   const [x, y] = _gwPx(b.x, b.y), tf = `translate(${x.toFixed(1)} ${y.toFixed(1)})`;
   if (b.tf !== tf) { b.tf = tf; b.node.setAttribute('transform', tf); b.node.setAttribute('data-z', b.y.toFixed(2)); }

@@ -250,8 +250,8 @@ html[data-theme="dark"] .gd-ico.is-sil, .dark .gd-ico.is-sil { filter: brightnes
 
 /* ---------- motion: the art contract's classes and the engine's ---------- */
 .gd-svg .gda-sway { transform-box: fill-box; transform-origin: 50% 100%; animation: gda-sway 5.5s ease-in-out infinite alternate; }
-.gd-it:nth-child(3n) .gda-sway { animation-duration: 6.4s; animation-delay: -2.1s; }
-.gd-it:nth-child(3n+1) .gda-sway { animation-duration: 4.9s; animation-delay: -3.7s; }
+.gd-sw0 .gda-sway { animation-duration: 6.4s; animation-delay: -2.1s; }
+.gd-sw1 .gda-sway { animation-duration: 4.9s; animation-delay: -3.7s; }
 .gd-it.is-thirsty .gda-sway { animation-duration: 9s; }
 @keyframes gda-sway { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
 .gd-svg .gda-flutter { transform-box: fill-box; transform-origin: 50% 50%; animation: gda-flutter .32s ease-in-out infinite alternate; }

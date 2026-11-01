@@ -324,7 +324,10 @@ function _ptwStep(P, dt, t) {
       else if (++P.stuck > 20) { P.tx = null; P.arrive = null; P.run = false; P.sit(); P.busy = 1; if (P.me) { P.lost = true; P.busy = 0.2; } }
     }
   }
-  const T = _ptwStand(P, Math.min(0.2, dt || 0)), pos = _ptwCell(P.x, P.y), tf = `translate(${pos.x.toFixed(1)} ${(pos.y - T.up + T.sink).toFixed(1)})`;
+  const off = gardenCull(P, P.node, P.x, P.y);
+  const T = _ptwStand(P, Math.min(0.2, dt || 0));
+  if (off && P.node.isConnected) return;   // (far from the view: it carries on with its day, off the page)
+  const pos = _ptwCell(P.x, P.y), tf = `translate(${pos.x.toFixed(1)} ${(pos.y - T.up + T.sink).toFixed(1)})`;
   if (tf !== P.tf) { P.tf = tf; P.node.setAttribute('transform', tf); P.node.setAttribute('data-z', (T.z + 0.002).toFixed(2)); }
   const fd = P.dir < 0 ? 'scale(-1 1)' : '';
   if (fd !== P.fd) { P.fd = fd; P.face.setAttribute('transform', fd); }

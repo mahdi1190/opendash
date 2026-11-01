@@ -248,11 +248,16 @@ function _ghNeeds(m) {
     const ripe = p.ripe, ring = `<ellipse class="gd-need-ring" rx="${(12 + p.fp * 7)}" ry="${(4 + p.fp * 2.4)}" fill="${ripe ? '#ffd24a' : '#62c2ff'}"/>`;
     if (!near.has(p.uid)) return `<g transform="translate(${x.toFixed(1)} ${foot.toFixed(1)})">${ring}</g>`;
     let top = -h - 9;
-    try { const n = _ghNodeOf(p.uid), b = n && n.getBBox ? n.getBBox() : null; if (b && b.height > 1) top = Math.max(-118, b.y * 0.75 - 9); } catch (e) { /* the estimate will do */ }
+    try { const n = _ghNodeOf(p.uid); if (n && n._ghTop === undefined) { const b = n.getBBox ? n.getBBox() : null; n._ghTop = b && b.height > 1 ? Math.max(-118, b.y * 0.75 - 9) : null; } if (n && n._ghTop != null) top = n._ghTop; } catch (e) { /* the estimate will do */ }   // (once per plant: asking forces the whole page's layout)
     return `<g transform="translate(${x.toFixed(1)} ${foot.toFixed(1)})">${ring}<g transform="translate(0 ${top.toFixed(1)})"><g class="gd-need-b" style="--i:${i % 5}"><circle r="6" fill="#fff" stroke="${ripe ? '#c88a08' : '#2c7ab0'}" stroke-width="1.200"/>${ripe ? '<path transform="scale(.74)" d="M0 -5.200l1.500 3.700 3.700 1.500-3.700 1.500L0 5.200l-1.500-3.700-3.700-1.500 3.700-1.500z" fill="#f2a60c"/>' : '<path transform="scale(.74)" d="M0 -5.400c2.500 3.300 3.800 5 3.800 6.800a3.800 3.800 0 0 1-7.600 0c0-1.800 1.300-3.500 3.800-6.800z" fill="#3b9ad8"/>'}</g></g></g>`;
   };
   const fresh = []; list.forEach((p, i) => { const k = keyOf(p); if (!have.has(k)) fresh.push([k, draw(p, i)]); });
-  _gdrParse(fresh.map(f => f[1]).join('')).forEach((n, i) => { n.setAttribute('data-k', fresh[i][0]); have.set(fresh[i][0], n); });
+  _gdrParse(fresh.map(f => f[1]).join('')).forEach((n, i) => {
+    n.setAttribute('data-k', fresh[i][0]); have.set(fresh[i][0], n);
+    const tm = /translate\(([-\d.]+) ([-\d.]+)\)/.exec(n.getAttribute('transform') || '');   // where it is, for what is drawn following the view (94-garden-art-h-life.js), without asking the page
+    if (tm) n._gartBox = { x: +tm[1] - 40, y: +tm[2] - 130, w: 80, h: 145 };
+  });
+  if (fresh.length) _gdp.svg._gartAux = null;
   let ref = g.firstChild;
   for (const p of list) { const n = have.get(keyOf(p)); if (n === ref) ref = ref.nextSibling; else g.insertBefore(n, ref); }
   while (ref) { const nx = ref.nextSibling; ref.remove(); ref = nx; }

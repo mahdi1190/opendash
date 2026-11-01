@@ -149,6 +149,7 @@ function _gfsFrame(dt) {
     f.dn = f.n;
     if (f.st !== f.dst) { if (f.st === GF_ST.bite) { _gfsRing(f.x, f.y, 1.3); _gfsRing(f.x, f.y, 0.8); } else if (f.st === GF_ST.bolt) _gfsRing(f.sx, f.sy, 1.1); f.dst = f.st; }
     const seen = !!f.node && _gwInView(f.sx, f.sy, 1); if (f.node && f.seen !== seen) { f.seen = seen; f.node.classList.toggle('is-seen', seen); }   // (its family's moves run only while you can see it: 94-garden-fish3-creatures.css)
+    if (f.node) gardenCull(f, f.node, f.sx, f.sy);
     if (!seen) continue;
     const [px, py] = _gwPx(f.sx, f.sy);
     const fast = f.st === GF_ST.hooked ? 16 : f.st === GF_ST.bolt ? 12 : 3 + 2 * Math.min(1, 40 / Math.max(10, f.cm));
