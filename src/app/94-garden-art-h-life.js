@@ -97,7 +97,10 @@ function _gartRestItems(svg) {
   svg._gartViewKey = key;
   // what moves on the water and in the sky is the same: nothing off screen runs. A running animation costs every frame, seen or not
   svg.classList.toggle('gart-nosky', vb.y > GARDEN_WORLD.sky);
-  for (const el of svg.querySelectorAll('.gart-live > *, .gd-needs > g, .gl-puddles > g')) {
+  // (the list is kept until what is in those layers changes: the search, every few steps, was as much as the rest of this function)
+  const auxKey = (liveL ? liveL.childElementCount : 0) + ',' + (needs ? needs.childElementCount : 0);
+  if (!svg._gartAux || svg._gartAuxKey !== auxKey || svg._gartAuxL !== liveL || svg._gartAux.some(e => !e.isConnected)) { svg._gartAux = [...svg.querySelectorAll('.gart-live > *, .gd-needs > g, .gl-puddles > g, .tg-ground > *, .gd-weather .gart-wx > *, .gd-weather .gart-amb')]; svg._gartAuxKey = auxKey; svg._gartAuxL = liveL; }
+  for (const el of svg._gartAux) {
     let b = el._gartBox;
     if (!b) { try { const bb = el.getBBox(), tf = el.transform && el.transform.baseVal && el.transform.baseVal.numberOfItems ? el.transform.baseVal.consolidate().matrix : null; b = { x: bb.x + (tf ? tf.e : 0), y: bb.y + (tf ? tf.f : 0), w: bb.width, h: bb.height }; } catch (e) { b = { x: 0, y: 0, w: 1e5, h: 1e5 }; } el._gartBox = b; }
     const seen = b.x + b.w > vb.x - 12 && b.x < vb.x + vb.width + 12 && b.y + b.h > vb.y - 12 && b.y < vb.y + vb.height + 12;
@@ -111,8 +114,10 @@ function _gartRestItems(svg) {
   const W = GARDEN_WORLD, m = W.cellW * 2, cx = vb.x + vb.width / 2, cy = vb.y + vb.height / 2, near = [];
   const items = layer.children;
   for (let i = 0; i < items.length; i++) {
-    const el = items[i], gx = el.getAttribute('data-x'); if (gx == null) continue;
-    const x = (+gx + 0.5) * W.cellW, gy = el.getAttribute('data-y'), y = W.sky + (gy == null ? +el.getAttribute('data-z') || 0 : +gy) * W.cellH;
+    const el = items[i];
+    if (el._gartPx === undefined) { const gx = el.getAttribute('data-x'), gy = el.getAttribute('data-y'); el._gartPx = gx == null ? null : (+gx + 0.5) * W.cellW; el._gartPy = W.sky + (gy == null ? +el.getAttribute('data-z') || 0 : +gy) * W.cellH; }
+    if (el._gartPx === null) continue;
+    const x = el._gartPx, y = el._gartPy;
     const seen = x > vb.x - m && x < vb.x + vb.width + m && y > vb.y - m && y < vb.y + vb.height + m * 2;
     // well out of the window it is not drawn at all: a frame that changes anything paints whatever is drawn, seen or not. This took a 200-plant garden from about 420 ms of each second to under 200
     const far = !(x > vb.x - GART_OFF_MARGIN && x < vb.x + vb.width + GART_OFF_MARGIN && y > vb.y - GART_OFF_MARGIN && y < vb.y + vb.height + GART_OFF_MARGIN + 60);
@@ -213,8 +218,7 @@ function _gartTick() {
   const list = document.querySelectorAll('.gd-svg');
   if (!list.length) return;
   for (const svg of list) {
-    const r = svg.getBoundingClientRect();
-    if (r.width < 240) continue;   // a thumbnail stays as it is
+    if (!(svg === _gw.svg && _gw.sizeOk) && svg.getBoundingClientRect().width < 240) continue;   // a thumbnail stays as it is (the stage's size is known: asking forces a layout)
     _gartWatch(svg);
     _gartRestItems(svg);
     if (!_gartLife.busy) _gartBakeNext(svg);

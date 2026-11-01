@@ -116,10 +116,18 @@ function _gwGrid(m) {
   if (!_gw.grid || _gw.gridKey !== key) { const mm = m || gardenHere(); _gw.grid = _gwBuildGrid(mm); _gw.solids = _gwBuildSolids(mm); _gw.gridKey = key; }
   return _gw.grid;
 }
+/** The grid, without working out the garden for every point tested (a walk tests hundreds a frame; this was a tenth of a core): the same one until the garden saves, the designer moves something, or a moment has passed. */
+function _gwGridNow() {
+  if (_gw.boat) return _gwGrid(null);
+  const t = performance.now(), rev = _gd.rev + '|' + _gdv.on + '|' + (typeof gardenDesignRev === 'function' ? gardenDesignRev() : 0);
+  if (_gw.gq && _gw.gqRev === rev && t - _gw.gqAt < 250) return _gw.gq;
+  _gw.gq = _gwGrid(gardenHere()); _gw.gqRev = rev; _gw.gqAt = t;
+  return _gw.gq;
+}
 function gardenWalkable(x, y) {
   const W = GARDEN_WORLD;
   if (x < 0 || y < 0 || x >= W.cols || y >= W.rows) return false;
-  return !_gwGrid(gardenHere())[y * W.cols + x];
+  return !_gwGridNow()[y * W.cols + x];
 }
 /** Every cell you can get to from where you stand (a flood over the same grid the routes use), so the cursor can tell you before you click. */
 function _gwReach() {
@@ -456,9 +464,11 @@ function _gwBody() {
 /** Make the figures again (the avatar changed, or the wardrobe was opened). */
 function gardenWorldRedress() { _gw.fig = { idle: '', walk: '' }; _gw.bodyKey = ''; _gwBody(); }
 function _gwXray() {
+  if (_gw.xr && _gw.xr.isConnected && _gw.xr.ownerSVGElement === _gw.svg) return _gw.xr;
   const fx = _gw.svg && _gw.svg.querySelector('.gd-ui'); if (!fx) return null;
   let g = fx.querySelector(':scope > .gd-pl-xray');
   if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'gd-pl-xray'); g.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'g')); fx.insertBefore(g, fx.firstChild); }
+  _gw.xr = g;
   return g;
 }
 function _gwMakeNode() {
@@ -666,6 +676,16 @@ function _gwPace() {
   for (const S of _gwSprites) if (S.update && !S.still && (S.quiet || 0) < 0.35 && _gwInView(S.x, S.y, 1.5)) return 30;   // one that has not moved for a moment, or is off screen, does not count
   return 10;
 }
+/**
+ * What moves is taken off the page while it is well out of the view (5 cells past the edge, further than the camera goes in a look, so it is always back before you could see it).
+ * Only the drawing: what it is doing carries on, so a friend's fish, a pet's errand and the host's decisions are not affected. `o` is whatever keeps its state. True when it is off.
+ */
+const GW_CULL = 5;
+function gardenCull(o, node, x, y) {
+  const off = !_gwInView(x, y, GW_CULL);
+  if (o._off !== off) { o._off = off; node.classList.toggle('gart-off', off); }
+  return off;
+}
 /** Is this point (cells) on screen, give or take `m` cells? */
 function _gwInView(x, y, m) {
   if (x >= GARDEN_ROOM_X) return true;   // a room's water: the room looks after itself
@@ -778,12 +798,15 @@ function _gwFadeProps() {
   const key = Math.floor(_gw.px * 2) + ',' + Math.floor(_gw.py * 2) + ',' + (_gw.svg && _gw.svg._gwFadeGen);
   if (_gw._fadeKey === key || !_gw.svg) return;
   _gw._fadeKey = key;
+  // (the nodes are remembered: a search of the stage per building, every half cell walked, was a tenth of the frame)
+  const svg = _gw.svg; let els = svg._gwPropEls;
+  if (!els || svg._gwPropGen !== svg._gwFadeGen || svg._gwPropN !== svg.querySelector('.gd-objects').childElementCount) { els = svg._gwPropEls = new Map(); svg._gwPropGen = svg._gwFadeGen; svg._gwPropN = svg.querySelector('.gd-objects').childElementCount; for (const n of svg.querySelectorAll('.gd-prop[data-prop]')) els.set(n.getAttribute('data-prop'), n); }
   for (const p of gardenPropsNow()) {
     if (!p.kind) continue;
-    const n = _gw.svg.querySelector('.gd-prop[data-prop="' + p.id + '"]'); if (!n) continue;
+    const n = els.get(p.id); if (!n) continue;
     const tall = p.tall == null ? 2 : p.tall;
     const behind = _gw.px > p.x - 0.4 && _gw.px < p.x + p.w + 0.4 && _gw.py > p.y - tall + 0.7 && _gw.py < p.y + p.h - 0.05;
-    n.classList.toggle('gd-behind', behind);
+    if (!!n._gwBehind !== behind) { n._gwBehind = behind; n.classList.toggle('gd-behind', behind); }
   }
 }
 const GW_POS_KEY = 'opendash.garden.pos';
@@ -1049,7 +1072,7 @@ function gardenWorldInteract() {
 }
 
 /* ---------- the world's API for anything that lives in it (docs/dev/GARDEN.md, "The world API") ---------- */
-function _gwSolidHitAfterGrid(x, y, f) { _gwGrid(gardenHere()); return _gwSolidHit(x, y, f, f); }   // (the grid is built first: it makes the boxes)
+function _gwSolidHitAfterGrid(x, y, f) { _gwGridNow(); return _gwSolidHit(x, y, f, f); }   // (the grid is built first: it makes the boxes)
 /** The one collision map, for feet of any size: can something this wide (r, in cells) stand at x, y? */
 function gardenWorldFree(x, y, r) {
   const f = r == null ? 0.1 : r;
@@ -1108,6 +1131,7 @@ function _gwSpritesFrame(dt) {
     }
     if (typeof S.update === 'function') { try { S.update(dt, S); } catch (e) { console.error('[garden sprite]', e); S.remove(); continue; } }
     if (!S.node) continue;
+    if (gardenCull(S, S.node, S.x, S.y) && S.node.parentNode) continue;   // out of the view: it goes on living (update above), and nothing is drawn or moved on the page
     const tf = `translate(${(S.x * W.cellW).toFixed(1)} ${(W.sky + S.y * W.cellH - S.lift).toFixed(1)})`;
     if (S.tf !== tf) { S.tf = tf; S.quiet = 0; S.node.setAttribute('transform', tf); } else S.quiet = (S.quiet || 0) + dt;
     const z = S.z != null ? S.z : S.y, zk = Math.floor(z * 3);

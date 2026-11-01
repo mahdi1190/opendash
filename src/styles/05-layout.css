@@ -96,7 +96,7 @@
    max-width or margin: auto on its root. */
 .main.wide { --page-w: var(--page-max-wide); }
 .main:has(> #main-body > .settings),
-.main:not(:has(> .view-header :is(.view-subtabs, .area-secs))):has(#main-body .pg-layout.no-side:not(.md-detail *, .pg-main *, .pg-side *, .card *)) { --page-w: var(--page-max-narrow); }   /* a one-column page (with no tabs) is a narrower page, header and all */
+.main:not(.bare):not(:has(> .view-header :is(.view-subtabs, .area-secs))):has(#main-body .pg-layout.no-side:not(.md-detail *, .pg-main *, .pg-side *, .card *)) { --page-w: var(--page-max-narrow); }   /* a one-column page (with no tabs) is a narrower page, header and all */
 .main:not(.bare) { scrollbar-gutter: stable; }
 .main.bare { padding: 0; --page-w: none; }
 .main.bare > .view-header { display: none; }
