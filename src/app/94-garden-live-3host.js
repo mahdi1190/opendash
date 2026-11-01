@@ -186,6 +186,7 @@ function _glhEvent(ev) {
       if (typeof _gfs !== 'undefined') _gfs.dirty = true;   // (the fish in the water, at once)
       if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
       if (typeof eeTell === 'function') eeTell(ev.f);
+      if (typeof gardenRoomTell === 'function') gardenRoomTell(ev.f);
       if (typeof _glcJoin === 'function') _glcJoin(ev.f);
       if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
       if (typeof _glgJoin === 'function') _glgJoin(ev.f);

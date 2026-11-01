@@ -91,6 +91,7 @@ function gardenFishArt(id, o) {
   if (o.v && typeof gardenVariantArt === 'function') { const va = gardenVariantArt('fish', id, o); if (va) return va; }   // a variant: this drawing again in its colours, with its marks (94-garden-fish-1vart.js)
   const look = o.look || f.look, uid = _gfaUid(o, id), rnd = _gfaRng('fish|' + id);
   if (f.cat !== 'fish') return _gfaFind(f, uid);
+  const planned = _gcpFishArt(f, look, uid); if (planned) return planned;   // its family's body plan (94-garden-fish-1art3.js)
   const S0 = _GFA_SHAPES[look.s] || _GFA_SHAPES.slim;
   if (look.s === 'crayfish') return _gfaCrayfish(look);
   const own = _gfaCustom(look, rnd); if (own) return own;
@@ -199,6 +200,7 @@ function gardenBugArt(id, o) {
   const b = gardenBugDef(id);
   if (!b) return '';
   if (o.v && typeof gardenVariantArt === 'function') { const va = gardenVariantArt('bug', id, o); if (va) return va; }
+  const planned = _gcbBugArt(b, o.look || b.look, _gfaUid(o, id)); if (planned) return planned;   // its family's body plan (94-garden-fish-1art4.js)
   const L = o.look || b.look, c = L.c, c2 = L.c2, c3 = L.c3 || c2, e = _gfaDk(c, 0.5), p = L.p || '', line = `stroke="${e}" stroke-width="1.1" stroke-linejoin="round"`;
   let s = '<g class="gba-bug">';
   switch (b.shape) {
@@ -325,6 +327,8 @@ function gardenGearArt(kind, id, o) {
   return '';
 }
 
+/** o.real: at its real size against the others (the book): a minnow small on its page, a sturgeon filling it. */
+function _gfaReal(kind, def, o, art) { if (!o.real) return art; const k = gardenCreatureSizeK(kind, def); return k >= 1 ? art : `<g transform="scale(${k.toFixed(2)})">${art}</g>`; }
 /** Any of them as a standalone <svg>. kind: 'fish' | 'bug' | 'rod' | 'net' | 'bait' | 'bobber'. */
 function gardenCatchSvg(kind, id, px, o) {
   o = Object.assign({ uid: 'ci' + (gardenHash(kind + id) % 99999).toString(36) }, o || {});
@@ -333,8 +337,8 @@ function gardenCatchSvg(kind, id, px, o) {
   if (kind === 'fish') {
     const f = gardenFishDef(id); if (!f) return '';
     const big = f.cat === 'fish';
-    return `<svg class="gd-catch-ico" viewBox="${big ? '-46 -28 92 56' : '-32 -28 64 56'}" width="${px}" height="${Math.round(px * (big ? 56 / 92 : 0.875))}" aria-hidden="true" focusable="false"${o.silhouette ? ' style="filter:brightness(0) opacity(.3)"' : ''}>${gardenFishArt(id, o)}</svg>`;
+    return `<svg class="gd-catch-ico" viewBox="${big ? '-46 -28 92 56' : '-32 -28 64 56'}" width="${px}" height="${Math.round(px * (big ? 56 / 92 : 0.875))}" aria-hidden="true" focusable="false"${o.silhouette ? ' style="filter:brightness(0) opacity(.3)"' : ''}>${_gfaReal('fish', f, o, gardenFishArt(id, o))}</svg>`;
   }
-  if (kind === 'bug') { if (!gardenBugDef(id)) return ''; return `<svg class="gd-catch-ico" viewBox="-22 -20 44 40" width="${px}" height="${Math.round(px * 40 / 44)}" aria-hidden="true" focusable="false"${o.silhouette ? ' style="filter:brightness(0) opacity(.3)"' : ''}>${gardenBugArt(id, o)}</svg>`; }
+  if (kind === 'bug') { if (!gardenBugDef(id)) return ''; return `<svg class="gd-catch-ico" viewBox="-22 -20 44 40" width="${px}" height="${Math.round(px * 40 / 44)}" aria-hidden="true" focusable="false"${o.silhouette ? ' style="filter:brightness(0) opacity(.3)"' : ''}>${_gfaReal('bug', gardenBugDef(id), o, gardenBugArt(id, o))}</svg>`; }
   return `<svg class="gd-catch-ico" viewBox="0 0 64 64" width="${px}" height="${px}" aria-hidden="true" focusable="false">${gardenGearArt(kind, id, o)}</svg>`;
 }

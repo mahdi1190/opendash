@@ -10,6 +10,20 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.52.0]
+
+### Changed
+- **Fish and bugs now come in real families, each with its own body shape:** eels, rays, koi, butterflies, stag beetles, spiders and many more. Each family moves its own way and does something when held up, and friends see the same. Shadows in the water match the body, and a minnow now looks tiny next to a sturgeon.
+
+## [2.51.0]
+
+### Added
+- **Hidden rooms.** 17 new places to walk into, 5 of them open from day one if you get curious. Each has something to do, a daily gift and a reason to return. Friends can follow you in.
+- Furnish four rooms from your bag. The cave pool and old hothouse hold six new kinds, and those rooms make some variants likelier. The book explains how.
+
+### Fixed
+- Friends now see painted buildings on a saved copy of your garden, and furnished rooms on any visit.
+
 ## [2.50.0]
 
 ### Added

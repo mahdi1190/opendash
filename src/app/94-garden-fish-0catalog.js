@@ -157,6 +157,9 @@ const GARDEN_FISH = Object.freeze([
   _gfF('mayfly-nymph-eater', 'Mayfly nymph-eater', ['shallow'], 'uncommon', 4, 'dart', [15, 30], 19, { s: 'slim', c: '#627f32', c2: '#c9c78c', c3: '#393f1e', p: 'spots', t: undefined, d: undefined, k: [0.84, 0.72] }, { tod: ['dusk'], seasons: ['spring', 'summer'], lv: 7, blurb: 'Keeps very good time with the mayflies.' }),
   _gfF('pebble-fish', 'Pebble fish', ['shallow'], 'uncommon', 4, 'smooth', [4, 9], 17, { s: 'goby', c: '#85837c', c2: '#dce4cf', c3: '#585852', p: 'speckle', t: 'whip', k: [1.03, 0.93] }, { lv: 5, blurb: 'You thought it was a pebble. It thought so too.' }),
   _gfF('dawn-dace', 'Dawn dace', ['shallow'], 'uncommon', 4, 'dart', [12, 22], 15, { s: 'slim', c: '#e8b9ab', c2: '#fff7e1', c3: '#d2837c', p: 'ombre', d: undefined, k: [0.81, 0.65] }, { tod: ['dawn'], lv: 4, blurb: 'Only about at first light, in pink.' }),
+  _gfF('blind-loach', 'Blind cave loach', ['pond'], 'uncommon', 3, 'dart', [6, 14], 30, { s: 'slim', c: '#e8d8d0', c2: '#f4ece6', c3: '#c8b0a8', p: 'stripe' }, { lv: 2, needs: { room: 'cave' }, blurb: 'It has no eyes, and has never missed them.' }),
+  _gfF('moss-chub', 'Moss-backed chub', ['pond'], 'rare', 5, 'smooth', [14, 30], 62, { s: 'herring', c: '#5a7a4a', c2: '#c8d4a8', c3: '#3a5230', p: 'stripe' }, { lv: 4, needs: { room: 'cave' }, blurb: 'It has been sitting under that drip for a long time.' }),
+  _gfF('drip-pearl', 'Drip pearl', ['pond'], 'epic', 7, 'floater', [10, 22], 130, { s: 'herring', c: '#cfe8e4', c2: '#f4ffff', c3: '#8ac0c0', p: 'glow' }, { lv: 6, tod: ['dawn', 'night'], needs: { room: 'cave' }, blurb: 'Pale and round, and it lights the water a little as it turns.' }),
   _gfF('lantern-minnow', 'Lantern minnow', ['shallow'], 'rare', 6, 'dart', [6, 12], 38, { s: 'herring', c: '#dad140', c2: '#eee3a5', c3: '#ad9107', p: 'glow', d: undefined, k: [0.86, 0.83] }, { tod: ['night'], lv: 7, needs: { bait: ['glow-lure'] }, blurb: 'A very small lamp with a very small job.' }),
   _gfF('bowfin', 'Bowfin', ['shallow'], 'rare', 7, 'floater', [40, 70], 57, { s: 'hump', c: '#153f1d', c2: '#84b371', c3: '#071d09', p: 'eye', d: 'low', t: 'lyre', k: [0.98, 1.05] }, { tod: ['dusk', 'night'], lv: 9, blurb: 'Older than the dinosaurs and just as polite.' }),
   _gfF('rainbow-darter', 'Rainbow darter', ['shallow'], 'rare', 6, 'dart', [5, 9], 43, { s: 'needle', c: '#7ba1c2', c2: '#f3c68e', c3: '#c73568', p: 'bands', t: 'whip', k: [1.01, 0.93] }, { seasons: ['spring'], lv: 11, blurb: 'Wears every colour at once and gets away with it.' }),
@@ -659,6 +662,9 @@ const GARDEN_BUGS = Object.freeze([
   _gbB('lantern-bug', 'Lantern bug', 'mite', 'uncommon', ['light'], 1, 'crawl', 14, { c: '#f0a12d', c2: '#1d1221', c3: '#ffdc96', p: 'ring' }, { tod: ['night'], seasons: ['summer', 'autumn'], lv: 7, size: 0.71, needs: { decor: 'lantern' }, blurb: 'A tiny speck with a tiny lamp.' }),
   _gbB('fairy-light-fly', 'Fairy-light fly', 'fly', 'uncommon', ['light'], 3, 'hover', 15, { c: '#69a7d7', c2: '#e0e9d8', c3: '#a9c6dd', p: 'ring' }, { tod: ['night'], lv: 8, size: 0.82, needs: { decor: 'string-lights' }, blurb: 'Comes for your string lights and stays till morning.' }),
   _gbB('toadstool-sprite', 'Toadstool sprite', 'ant', 'rare', ['light', 'woods'], 2, 'crawl', 52, { c: '#5fc28b', c2: '#c21302', c3: '#b3cfc8', p: 'ring' }, { tod: ['night'], lv: 11, size: 0.84, needs: { decor: 'toadstool-lamps' }, blurb: 'Lives by the toadstool lamps, and glows green.' }),
+  _gbB('jewel-beetle', 'Hothouse jewel beetle', 'beetle', 'uncommon', ['flower'], 2, 'crawl', 30, { c: '#2a9a6a', c2: '#0c2a1e', c3: '#7ae0b0', p: 'ring' }, { tod: ['dawn', 'day', 'dusk', 'night'], lv: 2, needs: { room: 'hothouse' }, blurb: 'Somebody brought it in on a palm, a very long time ago.' }),
+  _gbB('orchid-hopper', 'Orchid hopper', 'hopper', 'rare', ['flower'], 2, 'perch', 52, { c: '#d88ac0', c2: '#f4dcec', c3: '#8a4a7a' }, { tod: ['dawn', 'day', 'dusk', 'night'], lv: 4, needs: { room: 'hothouse' }, blurb: 'It is pretending to be a petal, and it is very good at it.' }),
+  _gbB('old-vine-bee', 'Old vine bee', 'bee', 'epic', ['flower'], 3, 'hover', 110, { c: '#6a4a8a', c2: '#e8c84a', c3: '#2a1a3a' }, { tod: ['day'], lv: 6, needs: { room: 'hothouse' }, blurb: 'One hive, one vine, and no idea there is an outside.' }),
   _gbB('glowcap-beetle', 'Glowcap beetle', 'beetle', 'rare', ['flower'], 2, 'crawl', 42, { c: '#6fbc9c', c2: '#010c00', c3: '#add9c0', p: 'ring' }, { tod: ['night'], lv: 5, size: 1.12, needs: { plant: 'glowcap' }, blurb: 'It smells a glowcap from a long way off.' }),
   _gbB('moonflower-moth', 'Moonflower moth', 'moth', 'rare', ['flower', 'light'], 3, 'perch', 45, { c: '#d1dad7', c2: '#115dc1', c3: '#d9e0ea', p: 'ring' }, { tod: ['night'], seasons: ['summer'], lv: 11, size: 1.12, needs: { plant: 'moonflower' }, blurb: 'Comes to the moonflower when it opens at night.' }),
   _gbB('starlit-firefly', 'Starlit firefly', 'firefly', 'epic', ['woods', 'light'], 4, 'hover', 103, { c: '#182231', c2: '#fbd236', c3: '#8f98aa', p: 'ring' }, { tod: ['night'], lv: 14, size: 1.25, needs: { event: 'meteor' }, blurb: 'You will see it only on a night of shooting stars.' }),
@@ -804,6 +810,7 @@ function _gfWorldOk(n, ctx) {
   if (n.decor && ctx.decor && !ctx.decor(n.decor)) return false;
   if (n.plant && ctx.plant && !ctx.plant(n.plant)) return false;
   if (n.event && ctx.event && !ctx.event(n.event)) return false;
+  if (n.room && ctx.room !== n.room) return false;   // it lives inside a hidden room, and nowhere else (94-garden-world-4rooms2.js)
   return true;
 }
 /** How narrow its window is: the narrower, the more it counts while the window is open (so a fish that needs a full moon really does turn up at one). */
@@ -873,6 +880,7 @@ function gardenFishLacks(def, setup) {
 const _GF_TACKLE_WORDS = Object.freeze({ 'reel-basic': 'the basic reel', 'reel-spin': 'the spinning reel', 'reel-bait': 'the baitcasting reel', 'reel-deep': 'the deep-water reel', 'reel-gold': 'the golden reel', 'line-mono': 'plain line', 'line-braid': 'braided line', 'line-wire': 'wire line', 'line-silk': 'silk line', 'hook-small': 'a small hook', 'hook-large': 'a large hook', 'hook-barbless': 'a barbless hook', 'hook-gold': 'the golden hook', cricket: 'crickets', shrimp: 'shrimp', spinner: 'a spinner', 'frog-lure': 'a frog lure', 'moth-fly': 'a moth fly', 'deep-jig': 'a deep jig', spoon: 'a spoon lure', berry: 'berries' });
 const _GF_EVENT_WORDS = Object.freeze({ frenzy: 'a feeding frenzy', fog: 'a morning fog', storm: 'a thunderstorm', meteor: 'a meteor shower', 'blood-moon': 'a blood moon', festival: 'a lake festival', spawning: 'the spawning run' });
 const _GF_SPOT_WORDS = Object.freeze({ 'reed-bank': 'the reed bank', 'sunken-log': 'the sunken log', 'weed-bed': 'the weed bed', 'drop-off': 'the drop-off', 'old-wreck': 'the old wreck', 'cold-spring': 'the cold spring', 'lily-pads': 'the lily pads' });
+const _GF_ROOM_WORDS = Object.freeze({ cave: 'Go up to the mossy grotto, and go further in than your arm.', hothouse: 'Go up to the stone gardener, and follow his stare.' });
 const _GF_TOD_WORDS = Object.freeze({ dawn: 'dawn', day: 'daytime', dusk: 'dusk', night: 'night' });
 const _GF_HAB_WORDS = Object.freeze({ flower: 'flowers in bloom', lawn: 'the lawn', ground: 'bare ground', tree: 'grown trees', water: 'the water’s edge', light: 'a garden light at night', woods: 'the woods' });
 function _gfOr(a) { return a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' or ' + a[a.length - 1]; }
@@ -892,6 +900,7 @@ function gardenCatchNeedsRows(def) {
   else if (def.cat === 'fish') add('where', 'Where', _gfOr(def.zone.map(z => (GARDEN_FISH_ZONES[z] || {}).label || z)) + (def.zone.includes('deep') ? ': far out, past the end of the pier.' : def.zone.includes('mid') ? ': cast a little way out.' : def.zone.includes('pond') ? ' (it opens at garden level 7).' : ': close to the shore.'));
   else { add('where', 'Where', 'It can turn up in any water, at any time.'); return rows; }
   { const rg = typeof gardenRegionWords === 'function' ? gardenRegionWords(def) : null; if (rg) { if (rg.where) rows[0].text = rg.where; if (rg.reach) add('home', 'Getting there', rg.reach); } }   // its home on the map (94-garden-regions-0table.js)
+  if (n.room) add('room', 'The way in', _GF_ROOM_WORDS[n.room] || 'It lives indoors.');
   if (n.spot) add('spot', 'Spot', 'Only at ' + (_GF_SPOT_WORDS[n.spot] || n.spot.replace(/-/g, ' ')) + '.');
   if (n.plant) add('plant', 'Grow', 'It only comes to ' + _gfPlantName(n.plant) + ' in flower, so grow some.');
   if (n.decor) add('decor', 'Build', 'Only if you have ' + _gfThingName(n.decor) + ' in your garden.');

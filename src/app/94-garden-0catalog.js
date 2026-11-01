@@ -998,6 +998,11 @@ function gardenSnapshotClean(raw) {
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
+  if (raw.rf && typeof raw.rf === 'object' && !Array.isArray(raw.rf)) {   // what they have put in their hidden rooms: {room: [[decor, x, y]]} (94-garden-world-4rooms2.js); an older app drops it
+    const rf = {};
+    for (const [k, l] of Object.entries(raw.rf).slice(0, 8)) { if (!/^[a-z0-9-]{1,24}$/.test(k) || !Array.isArray(l)) continue; const r = []; for (const d of l.slice(0, 12)) { if (!Array.isArray(d) || !_GD_DECOR.has(d[0])) continue; const x = int(d[1], 0, 960), y = int(d[2], 0, 600); if (x !== null && y !== null) r.push([d[0], x, y]); } if (r.length) rf[k] = r; }
+    if (Object.keys(rf).length) out.rf = rf;
+  }
   if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
   return out;
 }

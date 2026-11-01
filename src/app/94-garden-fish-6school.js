@@ -83,6 +83,8 @@ function _gfsArt(def, cm, v) {
   const fill = (W && W.fill) || (glow ? '#e4eeff' : '#07233a'), op = (W && W.op) || (glow ? 0.55 : 0.4);
   const tx = -rx * 0.9, ts = ry * 1.05, n = (v) => v.toFixed(1);
   const wrap = (x) => (W ? W.under + x + W.over : x);
+  const planned = gardenFishShadow(def, L, fill, op);   // its family's outline (94-garden-fish-1art3.js); a fin above the water stays
+  if (planned) { if (!gardenFishFin(def)) return wrap(planned); const hf = Math.max(9, L * 0.2), wf = hf * 0.8, rf = ry * 0.4; return wrap(planned + `<path d="M${n(-wf * 0.6)} ${n(-rf)}Q${n(-wf * 0.1)} ${n(-rf - hf)} ${n(wf * 0.75)} ${n(-rf - hf)}Q${n(wf * 0.25)} ${n(-rf - hf * 0.45)} ${n(wf * 0.6)} ${n(-rf)}Z" fill="${glow ? '#f4f8ff' : '#27455c'}" fill-opacity="0.92" stroke="#eaf4fa" stroke-opacity="0.5" stroke-width="0.8"/>`); }
   if (s === 'ray') return wrap(`<path d="M${n(L * 0.5)} 0Q${n(L * 0.1)} ${n(-L * 0.46)} ${n(-L * 0.12)} ${n(-L * 0.42)}Q${n(-L * 0.24)} ${n(-L * 0.1)} ${n(-L * 0.3)} 0Q${n(-L * 0.24)} ${n(L * 0.1)} ${n(-L * 0.12)} ${n(L * 0.42)}Q${n(L * 0.1)} ${n(L * 0.46)} ${n(L * 0.5)} 0Z" fill="${fill}" fill-opacity="${op}"/><path d="M${n(-L * 0.3)} 0H${n(-L * 0.72)}" stroke="${fill}" stroke-opacity="${op}" stroke-width="2" stroke-linecap="round"/>`);
   if (s === 'jelly' || s === 'crab' || s === 'turtle') return wrap(`<ellipse cx="0" cy="0" rx="${n(L * 0.3)}" ry="${n(L * 0.24)}" fill="${fill}" fill-opacity="${op}"/>`);
   let s2 = `<ellipse cx="0" cy="0" rx="${n(rx)}" ry="${n(ry)}" fill="${fill}" fill-opacity="${op}"/><path d="M${n(tx)} 0L${n(tx - L * 0.2)} ${n(-ts)}L${n(tx - L * 0.14)} 0L${n(tx - L * 0.2)} ${n(ts)}Z" fill="${fill}" fill-opacity="${op}"/>`;
@@ -142,10 +144,11 @@ function _gfsFrame(dt) {
     if (f.st === GF_ST.swim && f.a >= 1 && (['epic', 'legendary'].includes(f.def.rarity) || (f.v && gardenVariantRank(f.v) >= 3))) { f.bub = (f.bub == null ? 2 + f.seed : f.bub) - dt; if (f.bub <= 0) { f.bub = 3 + Math.random() * 4; _gfsRing(f.sx, f.sy, 0.5); } }   // (rings on the surface give a great fish away)
     f.dn = f.n;
     if (f.st !== f.dst) { if (f.st === GF_ST.bite) { _gfsRing(f.x, f.y, 1.3); _gfsRing(f.x, f.y, 0.8); } else if (f.st === GF_ST.bolt) _gfsRing(f.sx, f.sy, 1.1); f.dst = f.st; }
-    if (!f.node || !_gwInView(f.sx, f.sy, 1)) continue;
+    const seen = !!f.node && _gwInView(f.sx, f.sy, 1); if (f.node && f.seen !== seen) { f.seen = seen; f.node.classList.toggle('is-seen', seen); }   // (its family's moves run only while you can see it: 94-garden-fish3-creatures.css)
+    if (!seen) continue;
     const [px, py] = _gwPx(f.sx, f.sy);
     const fast = f.st === GF_ST.hooked ? 16 : f.st === GF_ST.bolt ? 12 : 3 + 2 * Math.min(1, 40 / Math.max(10, f.cm));
-    const wob = moving ? Math.sin(t * fast + f.seed) * (f.st === GF_ST.hooked ? 11 : 4) : 0;
+    const wob = moving ? Math.sin(t * fast + f.seed) * (f.st === GF_ST.hooked ? 11 : 4 * gardenFishWobble(f.def)) : 0;
     f.node.setAttribute('transform', `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${wob.toFixed(1)}) scale(${f.face} 1)`);
     if (f.v && moving) { const tw = f.vt === undefined ? (f.vt = f.node.querySelector('.gd-fsv')) : f.vt; if (tw) tw.setAttribute('opacity', (0.5 + 0.5 * Math.sin(t * 2.6 + f.seed)).toFixed(2)); }   // (a sparkle twinkles only while you can see it)
   }
