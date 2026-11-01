@@ -6,7 +6,7 @@
 // names (plain text: the page sets them with textContent only); never a key or a token.
 //
 //   GET  /api/garden-live                      -> {ok, on, v, open, groupLook, perms, posts, host, visit, budget, stats}
-//   POST /api/garden-live/here  {role: host|visit, on, f?, look?, name?, tab?}   the page says where it is (and every 30 s while it stays); a host's answer says whether this tab is the host (`lead`)
+//   POST /api/garden-live/here  {role: host|visit, on, f?, look?, name?, tab?, hidden?}   the page says where it is (and every 30 s while it stays; hidden: its tab is in the background, so a long silence does not mean it left); a host's answer says whether this tab is the host (`lead`)
 //   POST /api/garden-live/send  {k: go|em|do|me|fx|tr|pp, body}                  a visitor's page to the garden it is in
 //   POST /api/garden-live/host  {to?, k: go|em|res|d|fx|cr|tr|goal|pp|snap, body, tab?}   the host's page to who is there
 //   POST /api/garden-live/post  {to, id, why, i?, d?, items?}                  something posted to a friend (durable)
@@ -51,7 +51,7 @@ export default function register(app) {
   route('/api/garden-live', 'GET', () => gl.view(), { quiet: true });
   route('/api/garden-live/here', 'POST', async (c) => {
     const b = await body(c);
-    return gl.here({ role: str(b.role, 8), on: b.on === 'again' ? 'again' : b.on === 'release' ? 'release' : b.on === true, f: str(b.f, 20), look: b.look, name: str(b.name, 60), tab: str(b.tab, 24) });
+    return gl.here({ role: str(b.role, 8), on: b.on === 'again' ? 'again' : b.on === 'release' ? 'release' : b.on === 'gone' ? 'gone' : b.on === true, f: str(b.f, 20), look: b.look, name: str(b.name, 60), tab: str(b.tab, 24), hidden: b.hidden === true });
   }, { quiet: true, maxBody: 8192 });
   route('/api/garden-live/send', 'POST', async (c) => { const b = await body(c); return gl.visitSend({ k: str(b.k, 8), body: b.body }); }, { quiet: true });
   route('/api/garden-live/host', 'POST', async (c) => { const b = await body(c); return gl.hostSend({ to: b.to === undefined ? 'all' : str(b.to, 20), k: str(b.k, 8), body: b.body, tab: str(b.tab, 24) }); }, { quiet: true, maxBody: 64 * 1024 });

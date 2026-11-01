@@ -544,7 +544,8 @@ function liveSyncStart() {
   for (const ev of ['friends-shared', 'friends-share', 'synced-files']) _liveES.addEventListener(ev, (e) => { let d = null; try { d = JSON.parse(e.data); } catch (x) { return; } if (typeof permsOnServerEvent === 'function') permsOnServerEvent(ev, d); });
   // ── end perms ──
   // After a reconnect the hello carries the current version: catch up on anything missed.
-  _liveES.addEventListener('hello', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && d.version) _liveOnRemote({ version: d.version, source: 'external' }); });
+  let helloSeen = false;
+  _liveES.addEventListener('hello', (ev) => { let d = null; try { d = JSON.parse(ev.data); } catch (e) { return; } if (d && d.version) _liveOnRemote({ version: d.version, source: 'external' }); if (helloSeen && typeof gardenLiveStreamBack === 'function') gardenLiveStreamBack(); helloSeen = true; });
 }
 
 /** Boot: unsaved edits from last time + a newer file. True if merged. */

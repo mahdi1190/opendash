@@ -7,7 +7,7 @@
    a few times and then really bites. Strike on the bite, then fight it in the reel: the kind of fish and its size decide how hard. Strike on a nibble, cast right on top of it or stomp along the bank above one near the surface (creep: hold Shift), and it bolts. A big hunter scares small fish off too. There is no daily count of casts: what limits you is what is
    swimming there, and a caught fish is replaced after a while (GF_SCHOOL.gap). The market's daily limits and GARDEN_CATCH_ECON.xpFish keep it from being a farm.
 
-   ONE WATER, ONE TRUTH. On your own, this computer runs the fish. In a live garden THE HOST'S PAGE runs them and sends the whole list (gl:fs) when something changes and every 2.5 seconds, so a
+   ONE WATER, ONE TRUTH. On your own, this computer runs the fish. In a live garden THE HOST'S PAGE runs them and sends the whole list (gl:fs) when something changes and every 6 seconds, so a
    lost message costs nothing. Guests draw what they are told, carry each fish on towards where it is going between messages, and decide nothing:
      a guest's float reaches the host as the line's `fish cast` (cell and bait), the host's list says which fish is coming to which slot, and that fish belongs to that one line.
      fx fs hook  the guest struck: the host marks it hooked only if it was biting at that guest. Nobody else can have it: a fish goes to one line, and the host's list decides. If the host says it got away, the landing does not count
@@ -29,7 +29,7 @@ const GF_SCHOOL = Object.freeze({
     Object.freeze({ zone: 'deep', x0: 0.6, x1: 27.4, y0: 17.2, y1: 27.5, n: 1 }),
   ]),
   pond: 1, max: 20,                             // fish in each still pool; the most in the water at once (the wire takes 20). The owner, 1 Nov 2026: a fish should be a pleasant surprise, not everywhere all the time
-  tick: 0.25, beat: 5000, msgGap: 400, oldHostMs: 12000, // the clock (seconds); a list at least this often (ms: a guest carries each fish on between lists), never closer than this; how long a guest waits for a host's first list
+  tick: 0.25, beat: 6000, beatEmpty: 20000, msgGap: 400, oldHostMs: 12000, // the clock (seconds); a list at least this often (ms: a guest carries each fish on between lists), an empty one this often, never closer than this; how long a guest waits for a host's first list
   gap: Object.freeze([45, 100]), contestGap: 0.2, contestMore: 3, // seconds until the next fish in a band that is short of one; a contest fills up faster, with this many times the fish
   life: Object.freeze([90, 240]),              // seconds a fish stays before it swims off (so the hour and the season change what is about)
   reach: 1.7, lureReach: 0.5,                   // cells at which a fish notices a float; each point of a bait's lure adds this
@@ -241,7 +241,7 @@ function _gfsRun(dt) {
   const clk = performance.now();
   if (!_gfs.m || clk - _gfs.mAt > 2000) { try { _gfs.m = gardenHere(); _gfs.mAt = clk; } catch (e) { return; } }
   const m = _gfs.m; if (!m) return;
-  const bands = _gfsBands(m), byKey = new Map(bands.map(b => [b.key, b])), lines = _gfsLinesNow(), E = GF_SCHOOL;
+  const bands = _gfsBands(m), byKey = new Map(bands.map(b => [b.key, b])), lines = _gfsLinesNow(), E = GF_SCHOOL, told = typeof _gll !== 'undefined' && _gll.role === 'host' && _glh.on && _glhAnyone();
   // a float that has just landed frightens what is right under it
   for (const [slot, L] of lines) {
     const key = L.x + ',' + L.y;
@@ -268,7 +268,8 @@ function _gfsRun(dt) {
     if (f.st === GF_ST.swim) {
       f.life -= dt;
       if (f.life <= 0) { _gfsDrop(f); _gfs.dirty = true; continue; }
-      if (_gfsMove(f, dt)) { const go = _gfsSpot(byKey.get(f.band) || bands[0], f) || f; f.tx = go.x; f.ty = go.y; }   // (a new place to swim to goes with the next list: nothing is lost by waiting, and it costs far fewer messages)
+      // With people here a fish waits where it got to until the next list says where it goes next, here as on their screens. It used to go on here at once while they saw it stop, and then glide after it: the same fish, in two places.
+      if (_gfsMove(f, dt)) { if (told) f.rest = true; else { const go = _gfsSpot(byKey.get(f.band) || bands[0], f) || f; f.tx = go.x; f.ty = go.y; } }
       if (f.band !== 'x' && byKey.get(f.band) && byKey.get(f.band).zone !== 'deep') for (const s of stomps) if (Math.hypot(f.x - s.x, (f.y - s.y) * 1.2) < E.noise && Math.random() < E.noiseKeen * dt) { _gfsBolt(f, byKey.get(f.band)); if (s.me) _gfsStompSaid(); break; }
       if (f.st !== GF_ST.swim) continue;
       if (f.cm < 40 && fins.some(h => h !== f && Math.hypot(h.x - f.x, h.y - f.y) < E.hunter) && Math.random() < dt) { _gfsBolt(f, byKey.get(f.band)); continue; }
@@ -325,8 +326,12 @@ function _gfsRun(dt) {
 function _gfsTell() {
   if (typeof _gll === 'undefined' || _gll.role !== 'host' || !_glh.on || !_glhAnyone()) return;
   const now = Date.now();   // clock-ok: spacing
-  if (now - _gfs.sentAt < (_gfs.dirty ? GF_SCHOOL.msgGap : GF_SCHOOL.beat)) return;
+  if (!_glhLooking()) return;   // (nobody is looking: it goes when someone is back)
+  if (now - _gfs.sentAt < (_gfs.dirty ? GF_SCHOOL.msgGap : _gfs.list.size ? GF_SCHOOL.beat : GF_SCHOOL.beatEmpty)) return;
   _gfs.sentAt = now; _gfs.dirty = false;
+  // those that have got where they were going set off now, on every screen at once
+  const bands = _gfs.m ? new Map(_gfsBands(_gfs.m).map(b => [b.key, b])) : null;
+  for (const f of _gfs.list.values()) if (f.rest) { f.rest = false; if (f.st === GF_ST.swim && bands) { const go = _gfsSpot(bands.get(f.band) || GF_SCHOOL.bands[0], f) || f; f.tx = go.x; f.ty = go.y; } }
   const n10 = (v) => Math.max(0, Math.min(640, Math.round(v * 10)));
   const l = [..._gfs.list.values()].slice(0, GF_SCHOOL.max).map(f => Object.assign({ u: f.u, e: f.id, c: Math.round(f.cm), x: n10(f.x), y: n10(f.y), tx: n10(f.tx), ty: n10(f.ty), st: f.st }, f.v ? { v: f.v } : {}, f.to != null ? { to: f.to } : {}, f.n ? { n: Math.min(9, f.n) } : {}));
   _glhSend('all', 'fs', { l });

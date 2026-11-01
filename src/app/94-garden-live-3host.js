@@ -16,8 +16,8 @@
    ============================================================ */
 const _glh = { on: false, beatT: 0, lastGo: 0, watch: null, sent: new Map(), diffT: 0, hud: null, panel: false, unseen: 0, seenAt: 0, drops: new Map(), bugT: 0, bugs: new Map(), posting: false, sprites: new Map(), hoverBound: null };
 const _GLH_SEEN_KEY = 'opendash.gardenLive.seen.v1';
-function _glhSend(to, k, body) { return _gllApi('/api/garden-live/host', { to, k, body, tab: _GLL_TAB }).catch(() => null); }
-function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, look: l, name: _gllMyName(), tab: _GLL_TAB }; }
+function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, k, body, tab: _GLL_TAB }); }
+function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
 function _glhPerm(fid) { const v = _gll.view; const p = v && v.perms && v.perms[fid]; return p || { lv: 'none', touch: false, share: 'keeper' }; }
 
 /* ---------- you are here ---------- */
@@ -54,18 +54,22 @@ function _glhStart() {
   try { _glh.seenAt = Number(localStorage.getItem(_GLH_SEEN_KEY)) || 0; } catch (e) { _glh.seenAt = 0; }
   gardenLiveLoad(true).then((d) => { for (const p of (d && d.host && d.host.people) || []) _glhEvent({ k: 'join', again: true, ...p }); _glhHud(); _glhFlushPosts(); _glhQueueRun(d); }).catch(() => {});
   clearInterval(_glh.beatT);
-  _glh.beatT = setInterval(() => {
-    if (!_glh.on) return;
-    if (typeof _gw === 'undefined' || !_gw.on || state.view !== 'garden') { gardenLiveHostGone(); return; }
-    _gllApi('/api/garden-live/here', _glhHereBody(true)).then((d) => { if (d && d.lead === false && _glh.on) { gardenLiveHostGone(); _glhClaim(); } }).catch(() => {});
-    _glhDiffSoon(0);
-  }, 30000);
+  _glh.beatAt = Date.now();   // clock-ok: spacing
+  _glh.beatT = setInterval(_glhBeat, 30000);
   _glhWatchStart();
   if (typeof _glcHostStart === 'function') _glcHostStart();
   if (typeof _glgHostStart === 'function') _glgHostStart();
   _glhHud();
   _glhHoverBind();
   _glhDiffSoon(250);
+}
+/** I am still here. Also from the fish's clock (94-garden-live-8sync.js), which a hidden tab does not slow. */
+function _glhBeat() {
+  if (!_glh.on) return;
+  _glh.beatAt = Date.now();   // clock-ok: spacing
+  if (typeof _gw === 'undefined' || !_gw.on || state.view !== 'garden') { gardenLiveHostGone(); return; }
+  _gllApi('/api/garden-live/here', _glhHereBody(true)).then((d) => { if (d && d.lead === false && _glh.on) { gardenLiveHostGone(); _glhClaim(); } }).catch(() => {});
+  _glhDiffSoon(0);
 }
 /** This tab is on your garden, and another one is hosting it. */
 function _glhElsewhere(on) {
@@ -105,7 +109,9 @@ function _glhTurns(path) {
 function _glhWalk(A, ev) {
   let way = null;
   const t = Date.now();   // clock-ok: spacing the sums
-  if (typeof _gwRoute === 'function' && t - (A.routeAt || 0) >= 200) {
+  // (a hidden tab draws nothing, so the figure is not where it was: it would be routed from an old place, and everyone would see it walk back)
+  if (typeof document !== 'undefined' && document.hidden) { A.x = ev.x; A.y = ev.y; A.tx = null; A.way = null; }
+  else if (typeof _gwRoute === 'function' && t - (A.routeAt || 0) >= 200) {
     A.routeAt = t;
     try {
       const tgt = _gwFree(ev.x, ev.y) ? { x: ev.x, y: ev.y } : _gwNearestFreePt(ev.x, ev.y, 3);   // (a seat is on the bench itself: as near as the feet go, then there)
@@ -115,22 +121,36 @@ function _glhWalk(A, ev) {
   }
   const turns = _glhTurns(way);
   _gllWalkVia(A, turns.r, ev.x, ev.y);
-  if (turns.r || _gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns });   // (alone and walking straight: nobody needs telling)
+  if (_gll.actors.size > 1) _glhSend('all', 'go', { w: ev.w, x: ev.x, y: ev.y, ...turns });   // (with nobody else here, nobody needs telling: the walker's own feet are their own)
 }
 function _glhWatchStart() {
   if (_glh.watch || typeof gardenWorldAdd !== 'function') return;
   _glh.watch = gardenWorldAdd({
     id: 'gll-watch', svg: '', x: 0, y: 0, still: true,
     update() {
-      if (!_glh.on || !_glhAnyone() || !_gw.moving || (_gw.path && _gw.path.length)) return;
-      const t = Date.now(); if (t - _glh.lastGo < 800) return;   // clock-ok: spacing messages
-      if (Math.hypot(_gw.px - (_glh.goX || 0), _gw.py - (_glh.goY || 0)) < 0.4) return;
-      gardenLiveWalked({ x: _gw.px, y: _gw.py });
+      if (!_glh.on || !_glhAnyone() || (_gw.path && _gw.path.length)) return;
+      // as you go, at most every 0.8 s, and once more when you stop: without that last one everyone else saw you stop short, up to a few cells away, until the next check
+      const t = Date.now(), far = Math.hypot(_gw.px - (_glh.goX || 0), _gw.py - (_glh.goY || 0));   // clock-ok: spacing messages
+      if (_gw.moving ? (t - _glh.lastGo >= 800 && far >= 0.4) : (t - _glh.lastGo >= 200 && far >= 0.15)) gardenLiveWalked({ x: _gw.px, y: _gw.py });
     },
   });
 }
 function gardenLiveEmoted(id) { if (_gll.role === 'visit') { if (_glvLive() && GL_EMOTES.includes(id)) _glvSend('em', { c: 'em', e: id }); return; } if (_glh.on && _glhAnyone() && GL_EMOTES.includes(id)) _glhSend('all', 'em', { c: 'em', e: id }); }
 function _glhAnyone() { return _gll.actors.size > 0; }
+/** Is anyone looking? A guest whose tab is hidden says so; what only moves on a screen (fish, creatures, pets, the checks) waits until someone is back, or has a line out. */
+function _glhLooking() { for (const A of _gll.actors.values()) if (!A.away || A.fish) return true; return false; }
+/** Someone has just come in, or is back after a drop: what is going on now that they would otherwise only hear when it ended. A line out, a seat. */
+function _glhCatchUp(fid, who) {
+  const F = typeof _gw !== 'undefined' ? _gw.fishing : null;
+  if (F && F.state && F.state !== 'idle' && F.state !== 'land') _glhSend(fid, 'fx', { c: 'fish', e: 'cast', x: Math.floor(F.bx), y: Math.floor(F.by), ...(F.plan && F.plan.baitDef ? { i: F.plan.baitDef.id } : {}) });
+  if (typeof _pe !== 'undefined' && _pe.hold) _glhSend(fid, 'em', { c: 'em', e: 'sit' });
+  for (const A of _gll.actors.values()) {
+    if (A === who) continue;
+    if (A.fish && A.fish.state !== 'land') _glhSend(fid, 'fx', { w: A.w, c: 'fish', e: 'cast', x: Math.floor(A.fish.bx), y: Math.floor(A.fish.by), ...(A.fish.bait ? { i: A.fish.bait } : {}) });
+    if (A.hold) _glhSend(fid, 'em', { w: A.w, c: 'em', e: A.hold, x: Math.round(A.x * 10) / 10, y: Math.round(A.y * 10) / 10 });
+  }
+  for (const B of _glh.bugs.values()) if (B.x != null) _glhSend(fid, 'res', { w: 0, t: 'bug', ok: true, u: B.u, p: B.p, x: B.x, y: B.y });
+}
 /** Can you say something here now? A visitor on a live visit, or the host while somebody is in the garden (the quick bar asks). */
 function gardenLiveCanSay(m) { return !!(m && m.visit ? m.visit.live : _glh.on && _glhAnyone()); }
 function _glhQuickSoon() { setTimeout(() => { try { if (typeof gardenHudPaint === 'function' && typeof _gw !== 'undefined' && _gw.on) gardenHudPaint(gardenHere()); } catch (e) { /* the next paint */ } }, 80); }
@@ -139,7 +159,8 @@ function _glhQuickSoon() { setTimeout(() => { try { if (typeof gardenHudPaint ==
 function _glhAdd(ev) {
   let A = _gll.actors.get(ev.w);
   if (!A) { A = _gllActor(ev); A.f = ev.f; _gll.actors.set(ev.w, A); }
-  else { A.n = ev.n; A.a = ev.a || A.a; A.g = ev.g || A.g; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }
+  else if (A.n !== ev.n || JSON.stringify([A.a, A.g, A.pet]) !== JSON.stringify([ev.a || A.a, ev.g || A.g, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.g = ev.g || A.g; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
+  else A.lv = ev.lv;
   A.f = ev.f;
   if (!_glh.sprites.has(ev.w) && typeof gardenWorldAdd === 'function') _glh.sprites.set(ev.w, _gllSprite(A, () => _glhPersonMenu(A)));
   _glhQuickSoon();   // (the Say button shows while somebody is here)
@@ -157,6 +178,8 @@ function _glhEvent(ev) {
   switch (ev.k) {
     case 'join': {
       const A = _glhAdd(ev);
+      if (ev.lookOnly) return;   // (new clothes, nothing else)
+      A.away = false;
       _glhSnapshotTake();
       if (!ev.again) setTimeout(() => _gllEmote(A, 'wave'), 400);
       _glhSendSnap(ev.f);
@@ -167,16 +190,18 @@ function _glhEvent(ev) {
       if (typeof gardenContestJoin === 'function') gardenContestJoin(ev.f);
       if (typeof _glgJoin === 'function') _glgJoin(ev.f);
       _glhResendDrops(ev.f);
+      _glhCatchUp(ev.f, A);
+      if (typeof _gly !== 'undefined') _gly.atAt = 0;   // (where everyone stands, at the next tick)
       _glhBugsMaybe();
       gardenLiveLoad(true).then(_glhHud).catch(() => {});
       return;
     }
     case 'tr': if (typeof _gltHostOn === 'function') _gltHostOn(ev); return;
     case 'leave': if (typeof _gltHostLeft === 'function') _gltHostLeft(ev.w); _glhRemove(ev.w); if (typeof gardenContestLeave === 'function') gardenContestLeave(ev.w); _glhReturnDrops(ev.w); gardenLiveLoad(true).then(_glhHud).catch(() => {}); return;
-    case 'go': { const A = _gll.actors.get(ev.w); if (A) { _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
+    case 'go': { const A = _gll.actors.get(ev.w); if (A) { _gllGoPace(A, ev); _glhWalk(A, ev); if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } return; }
     case 'em': {
       const A = _gll.actors.get(ev.w); if (!A) return;
-      if (ev.c === 'em') { if (Number.isFinite(ev.x)) { A.x = ev.x; A.y = ev.y; A.tx = null; } _gllEmote(A, ev.e); }
+      if (ev.c === 'em') _gllEmoteAt(A, ev);
       else if (ev.c === 'say') _gllSay(A, ev.e);
       else if (ev.c === 'do' && ev.e === 'high5') { _gllEmote(A, 'clap'); if (ev.to === 0 && typeof gartEmoteRun === 'function') gartEmoteRun('clap', { quiet: true }); _gllFloat(_gw.svg, A.x + 0.35, A.y - 1.4, '✋', ''); }
       else if (ev.c === 'do' && ev.e === 'follow' && ev.to === 0) _gllFloat(_gw.svg, A.x, A.y - 1.4, '🚶', A.n);
@@ -592,7 +617,7 @@ function _glhBugsMaybe() {
     const m = gardenModel(), pool = GARDEN_BUGS.filter(b => !b.seasons || b.seasons.includes(m.season));
     if (!pool.length) return;
     const def = pool[Math.floor(Math.random() * pool.length)], u = 'b' + _gllNewId(), x = 4 + Math.floor(Math.random() * 12), y = 5 + Math.floor(Math.random() * 5);
-    _glh.bugs.set(u, { u, p: def.id, caught: new Set() });
+    _glh.bugs.set(u, { u, p: def.id, x, y, caught: new Set() });
     _glhSend('all', 'res', { w: 0, t: 'bug', ok: true, u, p: def.id, x, y });
     setTimeout(() => { _glh.bugs.delete(u); _glhSend('all', 'res', { w: 0, t: 'bugend', ok: true, u }); }, 45000);
   }, 90000);
@@ -757,7 +782,10 @@ function _glhPanel(el, v) {
 /* your own garden actions, for who is here: the can tips, the plant appears */
 document.addEventListener('opendash:garden', (ev) => {
   if (!_glh.on || !_glhAnyone()) return;
-  const d = ev && ev.detail; if (!d || d.x == null) return;
+  const d = ev && ev.detail;
+  // land, something built, a find: everyone here sees it now, not when they next come (after the action has finished saving)
+  if (d && (d.kind === 'land' || d.kind === 'landshow')) { setTimeout(() => { if (_glh.on) for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f); }, 0); return; }
+  if (!d || d.x == null) return;
   const t = { water: 'water', plant: 'plant', harvest: 'harvest', prune: 'weed', feed: 'water' }[d.kind]; if (!t) return;
   _glhSend('all', 'res', { w: 0, t, ok: true, x: Math.floor(d.x), y: Math.floor(d.y) });
 });

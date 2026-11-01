@@ -10,6 +10,33 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.40.1]
+
+### Fixed
+- **People and fish stay on screen through a dropped connection,** then catch up by themselves.
+- Lines, seats and bugs now show for people who arrive late.
+- Your figure stops in the right place, and fish stay in step.
+- A hidden tab, or a slow connection, no longer counts as you having left.
+
+### Changed
+- Fewer messages, and less is sent while nobody is looking. Friends' connections recover by themselves and ask a struggling relay less often.
+
+## [2.40.0]
+
+The garden's land is now small sections joined by winding paths, with much more to build and find.
+
+### Changed
+- **Dozens of small sections.** The big plots are now 79 small sections joined by 17 winding trails, opening as your level rises. Land you already own stays yours. The ground looks softer and less square, with curved paths, beds and a lake beach.
+
+### Added
+- **Over 20 new things to build on your land,** from way posts, a rain barrel and bee skeps to a hedge maze, an observatory and a stone circle, each with its own use.
+- **Things to find:** a daily dig spot, curios, foraging, a weekend cart, and an old key to a walled garden.
+- **Friends see it.** Sections and what you build show on a visit.
+
+### Fixed
+- Garden creatures stopped appearing after 2.38.0, because of a crash. They are back.
+- A friend looking at a saved copy of your garden now sees your longer pier, what you built for the lake, and your showcase.
+
 ## [2.39.0]
 
 What you buy now shows, and friends can see it.
