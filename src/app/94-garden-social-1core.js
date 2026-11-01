@@ -330,7 +330,7 @@ function gardenSocialGive(friendId, k, id) {
   const back = () => { const gg = typeof _gdG === 'function' ? _gdG() : state.garden; if (gg.led[key]) { delete gg.led[key]; _gscSaveGarden(); } };
   const who = _gscFirst(friendId), what = _gscA(_gscItemName(k, id));
   _gscAfterUndo(`Wrapping ${what} for ${who}…`, 'gift', async () => {
-    const r = await gardenSocialAct(friendId, 'gift', { k, item: id }, { quiet: true });
+    const r = await gardenSocialAct(friendId, 'gift', Object.assign({ k, item: id }, typeof gardenWonderHideAt === 'function' ? gardenWonderHideAt() : null), { quiet: true });
     if (!r) { back(); toast(`The parcel for ${who} did not go: it is back in your bag.`, { kind: 'err', retry: () => gardenSocialGive(friendId, k, id) }); return; }
     toast(`Parcel left in ${who}'s garden${GSOC_XP.gift ? ` · +${GSOC_XP.gift} garden XP` : ''}`, { icon: 'gift', kind: 'ok' });
   }, back);

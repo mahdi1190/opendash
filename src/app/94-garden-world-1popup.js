@@ -20,6 +20,7 @@ const _GDPOP = Object.freeze({
   friends: { title: 'Post box', icon: 'users', fill: (el, m) => gardenFriendsTab(el, m) },
   catch: { title: 'Catch', icon: 'fish', fill: (el, m) => gardenCatchTab(el, m) },
   nature: { title: 'Nature book', icon: 'leaf', fill: (el, m) => gardenLifeBookTab(el, m) },
+  wonder: { title: 'Keepsakes', icon: 'mail', fill: (el, m) => gardenWonderBox(el, m) },
   goals: { title: 'Goals', icon: 'target', fill: (el, m) => gardenGoalsPanel(el, m) },
   sail: { title: 'Where to?', icon: 'ship', fill: (el) => gardenSailTab(el) },
   visit: { title: 'Guestbook', icon: 'feather', fill: (el) => gardenVisitNotes(el) },

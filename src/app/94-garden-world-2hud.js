@@ -61,13 +61,14 @@ function _ghHud(box, m) {
   const el = _ghHost(box, 'gd-hud'); el.setAttribute('aria-label', 'Your garden so far'); el.innerHTML = html;
 }
 const _GH_MENU = Object.freeze([
-  ['shop', 'Shop', 'store'], ['basket', 'Basket', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Tricks', 'wand-sparkles'], ['almanac', 'Almanac', 'book-open'], ['nature', 'Nature', 'leaf'], ['catch', 'Catch', 'fish'], ['friends', 'Friends', 'users'], ['goals', 'Goals', 'target'], ['help', 'Help', 'circle-help'],
+  ['shop', 'Shop', 'store'], ['basket', 'Basket', 'shopping-basket'], ['craft', 'Crafting', 'hammer'], ['tricks', 'Tricks', 'wand-sparkles'], ['almanac', 'Almanac', 'book-open'], ['nature', 'Nature', 'leaf'], ['wonder', 'Keepsakes', 'mail'], ['catch', 'Catch', 'fish'], ['friends', 'Friends', 'users'], ['goals', 'Goals', 'target'], ['help', 'Help', 'circle-help'],
 ]);
 function _ghMenu(box, m) {
   const badge = { basket: _gdpBasketCount(m) };
   try { if (typeof gardenCraftFresh === 'function') badge.craft = gardenCraftFresh(m); } catch (e) { /* later */ }
   try { if (typeof gardenCatchBag === 'function') { const n = gardenCatchBag(); badge.catch = n.nFish + n.nBugs; } } catch (e) { /* later */ }
   try { if (typeof gardenSocialBadge === 'function') badge.friends = gardenSocialBadge(); } catch (e) { /* later */ }
+  try { if (typeof gardenWonderBadge === 'function') badge.wonder = gardenWonderBadge(); } catch (e) { /* later */ }
   badge.goals = gardenDailyTasks(gardenModel()).filter(t => !t.done).length;   // (your goals, wherever you stand)
   const btn = ([id, label, ic]) => `<button type="button" class="gd-mbtn" data-menu="${id}" aria-label="${escAttr(label)}">${icon(ic)}<span>${esc(label)}</span>${badge[id] ? `<i class="gd-mbadge">${badge[id] > 99 ? '99+' : badge[id]}</i>` : ''}</button>`;
   const html = `<button type="button" class="gd-mbtn gd-mleave gd-mnav" data-menu="nav" aria-label="Show sidebar" title="Show sidebar">${icon('panel-left')}</button><button type="button" class="gd-mbtn gd-mmore" data-menu="more" aria-label="Menu" aria-expanded="${_gh.menuOpen ? 'true' : 'false'}">${icon('menu')}</button><div class="gd-mlist">${m.visit ? btn(['visit', 'Guestbook', 'feather']) : ''}${_GH_MENU.map(btn).join('')}</div><button type="button" class="gd-mbtn gd-mleave" data-menu="leave" aria-label="${m.visit ? 'Back to your garden' : 'Leave the garden'}" data-tip="${m.visit ? 'Back to your garden' : 'Leave the garden'}">${icon('x')}</button>`;
@@ -290,6 +291,7 @@ function gardenPlantBubble(p, m) {
 }
 function gardenDecorBubble(d, m) {
   const def = d.def, items = [], ci = gardenCollectInfo(d.uid, m);
+  if (def.effect && def.effect.kind === 'sit' && typeof gardenWonderSeatItem === 'function') items.push(gardenWonderSeatItem(d));
   if (ci) items.push({ ic: 'gift', label: ci.ready ? ci.label : ci.soon, cls: ci.ready ? 'is-go' : 'is-off', run: (b) => { const r = gardenCollect(d.uid); if (r && !r.ok) gameDenyOf(r, b); } });
   if (m.visit) { gardenVisitDecorBubble(d, m, items); gardenBubbleOpen({ x: d.x + (def.w || 1) / 2, y: d.y - 0.5 }, { title: def.name, sub: gardenVisitDecorLine(d), items }); return; }
   if (def.effect && def.effect.kind === 'show') items.push({ ic: 'eye', label: 'See your catches', run: () => gardenCatchOpen('show') });
