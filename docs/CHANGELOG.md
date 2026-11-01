@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.58.3]
+
+### Changed
+- **Garden messages are back at the top middle of the screen,** one at a time, in plain words. That includes the fishing and reeling prompts, instead of speech bubbles and signs.
+
 ## [2.58.2]
 
 ### Added
