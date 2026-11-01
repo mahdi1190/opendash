@@ -184,17 +184,18 @@ function _gdcBook(el, m, kind) {
 /* ---------- tackle ---------- */
 function _gdcGearStats(d) {
   const s = d.st;
-  if (d.kind === 'rod') return [`Reaches ${s.range} cells`, s.react ? `${s.react.toFixed(1)}s longer to press` : '', `Lands up to ${gardenQuality(s.q).stars || 'plain'}`].filter(Boolean);
+  if (d.kind === 'lake') return [s.adds];
+  if (d.kind === 'rod') return [`Reaches ${s.range} cells`, `Bar ${Math.round(s.bar * 100)}%`, s.line < 1 ? `Line ${Math.round((1 - s.line) * 100)}% kinder` : '', s.react ? `${s.react.toFixed(1)}s longer to strike` : '', `Lands up to ${gardenQuality(s.q).stars || 'plain'}`].filter(Boolean);
   if (d.kind === 'net') return [`Reaches ${s.reach} cells`, `Swing ${s.swing}s`, s.luck ? `+${Math.round(s.luck * 100)}% luck` : ''].filter(Boolean);
-  return [s.lure ? 'Fish notice it from further away' : 'Always there', s.rare ? 'Shy fish come more readily' : '', s.night ? 'Best at night' : ''].filter(Boolean);
+  return [s.lure ? 'Fish notice it from further away' : 'Always there', s.rare ? 'Shy fish come more readily' : '', s.night ? 'Best at night' : '', s.chum ? 'Brings a fish up near your float' : ''].filter(Boolean);
 }
 function _gdcGearCard(d, m) {
   const owned = gardenGearOwned(d.id);
   const kind = d.kind;
-  const cur = kind === 'rod' ? gardenRod() : kind === 'net' ? gardenNet() : gardenBait();
-  const equipped = cur.id === d.id;
+  const cur = kind === 'lake' ? d : kind === 'rod' ? gardenRod() : kind === 'net' ? gardenNet() : gardenBait();
+  const equipped = kind !== 'lake' && cur.id === d.id;
   const c = _gdpEl('div', 'gd-card gdc-gear' + (equipped ? ' is-equipped' : '') + (!owned && kind !== 'bait' ? ' is-locked' : ''));
-  const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = gardenCatchSvg(kind, d.id, 64); c.appendChild(art);
+  const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = kind === 'lake' ? icon(d.icon || 'waves') : gardenCatchSvg(kind, d.id, 64); c.appendChild(art);
   const t = _gdpEl('div', 'gd-card-t');
   t.appendChild(_gdpEl('b', null, d.name));
   if (kind === 'bait' && !d.own) t.appendChild(_gdpEl('small', 'gd-have', `${gardenHas('bait:' + d.id)} in your bag`));
@@ -209,6 +210,8 @@ function _gdcGearCard(d, m) {
       else f.appendChild(_gdpBtn(`Buy ${d.pack} · ${d.price} coins`, { icon: 'shopping-bag', disabled: m.wallet.coins < d.price, run: () => _gdcSay(gardenGearBuy(d.id)) }));
     }
     if (d.own || gardenHas('bait:' + d.id) > 0) f.appendChild(_gdpBtn(equipped ? 'Using this' : 'Use this bait', { icon: equipped ? 'check' : 'fish', kind: equipped ? 'btn-secondary' : 'btn-ghost', disabled: equipped, run: () => { _gdcSay(gardenGearEquip('bait', d.id)); } }));
+  } else if (owned && kind === 'lake') {
+    const l = _gdpEl('span', 'gd-have'); l.textContent = 'Built'; f.appendChild(l);
   } else if (owned) {
     f.appendChild(_gdpBtn(equipped ? 'In your hand' : 'Use this', { icon: equipped ? 'check' : 'hand', kind: equipped ? 'btn-secondary' : 'btn-primary', disabled: equipped, run: () => { _gdcSay(gardenGearEquip(kind, d.id)); } }));
   } else if (d.ribbon) {
@@ -225,7 +228,7 @@ function _gdcGearCard(d, m) {
 function gardenGearBuyInfo(id, m) {
   const d = gardenGearDef(id); if (!d) return { why: 'Unknown' };
   if ((d.lv || 1) > m.level.level) return { why: 'Garden level ' + d.lv };
-  const list = d.kind === 'rod' ? GARDEN_RODS : GARDEN_NETS, prev = list.find(x => x.tier === d.tier - 1);
+  const list = d.kind === 'rod' ? GARDEN_RODS : GARDEN_NETS, prev = d.kind === 'lake' ? (d.needs ? gardenGearDef(d.needs) : null) : list.find(x => x.tier === d.tier - 1);
   if (prev && !gardenGearOwned(prev.id)) return { why: 'Needs the ' + prev.name.toLowerCase() };
   return { why: '' };
 }
@@ -236,7 +239,7 @@ function _gdcTackle(el, m) {
     const grid = _gdpEl('div', 'gd-grid gd-shop-grid gdc-grid'); for (const d of list) grid.appendChild(_gdcGearCard(d, m)); el.appendChild(grid);
     if (extra) el.appendChild(extra);
   };
-  sec('Rods', GARDEN_RODS); sec('Nets', GARDEN_NETS); sec('Bait', GARDEN_BAITS);
+  sec('Rods', GARDEN_RODS); sec('Nets', GARDEN_NETS); sec('Bait', GARDEN_BAITS); sec('Build for the lake', GARDEN_WORKS);
   el.appendChild(_gdpEl('h3', 'gdc-h', 'Floats'));
   const grid = _gdpEl('div', 'gd-grid gdc-grid gdc-bobbers');
   const cur = gardenBobber();

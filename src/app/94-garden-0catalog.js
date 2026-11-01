@@ -477,12 +477,21 @@ const GARDEN_AREAS = _gdRows([
 /* The land you own, kept here so gardenAreaAt stays a plain lookup: 94-garden-1core.js fills it from your wallet (items 'land:<id>'). Empty in Node, where nothing asks by level. */
 const _GD_LAND = new Set();
 function gardenLandSet(ids) { _GD_LAND.clear(); for (const id of ids || []) _GD_LAND.add(id); }
+/* What has been built for the lake in the garden on screen (GARDEN_WORKS): yours, or on a visit your friend's (the snapshot's `wk`). */
+const _GD_WORKS = new Set();
+function gardenWorksSet(ids) { _GD_WORKS.clear(); for (const id of ids || []) _GD_WORKS.add(id); }
+function gardenWorkOwned(id) { return _GD_WORKS.has(id); }
+/** How many cells the pier has grown. */
+function gardenPierMore() { return _GD_WORKS.has('pier-3') ? 8 : _GD_WORKS.has('pier-2') ? 4 : 0; }
 /* Fixed things in the world (not in your bag, not movable): the pier you walk out on, the tackle shop. x, y, w, h in cells.
    walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there.
    col (2.28.1, what it does to your feet): 'full' (the default: its whole footprint is a wall: a shop, a stall, the bench), 'soft' (a small box at its base:
    a lectern, a post box, you slip past) or 'none' (you walk through it: a post at the water's edge, reeds, the boat on the water). A walk prop is 'none'. */
 const GARDEN_PROPS = _gdRows([
   { id: 'pier', name: 'The pier', x: 12, y: 12, w: 2, h: 5, walk: 1, blurb: 'Walk out over the water: the fish are bigger past the end of it.' },
+  // what you can build on to it (GARDEN_WORKS): no kind, so nothing of their own is drawn: gardenPierGround draws the whole length
+  { id: 'pier-2', name: 'The pier', x: 12, y: 17, w: 2, h: 4, walk: 1, needs: 'pier-2', blurb: 'New planks towards the bigger fish.' },
+  { id: 'pier-3', name: 'The pier', x: 12, y: 21, w: 2, h: 4, walk: 1, needs: 'pier-3', blurb: 'All the way out, to where the fins are.' },
   // 2.22: the menus are in the world. Walk up and click a building (you go to its door and it opens): act is the page it opens,
   // kind the way it is drawn, tall how many rows its art stands above its footprint (that is where a click counts).
   { id: 'market-stall', name: 'Market stall', x: 0, y: 11, w: 2, h: 1, door: _gdF({ x: 1, y: 12 }), act: 'basket', kind: 'stall', tall: 2, blurb: 'Sell what you have picked, and make bouquets.' },
@@ -729,7 +738,7 @@ function gardenWaterZone(x, y) {
 }
 /** The fixed prop covering a cell (the pier, the tackle shop...), or null. */
 function gardenPropAt(x, y) {
-  for (const p of GARDEN_PROPS) if (x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h) return p;
+  for (const p of GARDEN_PROPS) if (x >= p.x && x < p.x + p.w && y >= p.y && y < p.y + p.h && (!p.needs || _GD_WORKS.has(p.needs))) return p;
   return null;
 }
 /** What a prop does to your feet: 'full', 'soft' or 'none' (see the table). */
@@ -834,6 +843,7 @@ function gardenSnapshotClean(raw) {
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
   { const tz = int(raw.tz, -840, 840), sr = int(raw.sr, 0, 1439), ss = int(raw.ss, 0, 1439); if (tz !== null) { out.tz = tz; if (sr !== null && ss !== null) { out.sr = sr; out.ss = ss; } } }   // 2.28: their time zone, so a visit has their light
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);
+  if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 12).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {
     if (!Array.isArray(p) || !_GD_PLANT.has(p[0])) continue;
