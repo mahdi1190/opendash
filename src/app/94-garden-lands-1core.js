@@ -17,20 +17,25 @@ function _gldPay(label, msg, body, seen, icon) {
   const mark = _gdMark([['led', lk], ...rows]);
   g.led[lk] = Object.assign({ d: today, k: 'lc' }, body);
   for (const [k, v] of seen || []) { if (v === undefined) delete g.seen[k]; else g.seen[k] = v; }
+  if (body.i && Object.keys(body.i).some(k => /^(cur|sky|key):/.test(k))) _gdEmit('landshow', {});   // a find that shows: friends in a live garden see it now
   return _gdDone(msg, label, mark, { icon: icon || 'sparkles' });
 }
 function _gldInt(seed, a, b) { return a + gardenHash(seed) % (b - a + 1); }
 function _gldOwnedSections() { return GARDEN_LAND_SECTIONS.filter(s => gardenHas('land:' + s.id) > 0 || gardenHas('land:' + s.plot) > 0); }
 
 /* ---------- the land you have, as a snapshot says it ---------- */
-/** For gardenSnapshot: {areas (at most 12, and a plot you own part of, so an older friend can walk on your plants), ls, lf, lc, lr}. */
+/** What shows of your finds, whether you are at home or it came in a snapshot: {c: curio ids and the key, z: stars logged, r: garden stars}. For the drawings. */
+function gardenLandShowMine(m) { return { c: GARDEN_LAND_CURIOS.filter(c => gardenHas('cur:' + c.id) > 0).map(c => c.id).concat(gardenHas('key:old') > 0 ? [GARDEN_LAND_KEY_ID] : []), z: GARDEN_LAND_SKY.filter(c => gardenHas('sky:' + c.id) > 0).map(c => c.id), r: gardenLandOwnsFeature('lf-stars') ? gardenLandStars(m).stars : 0 }; }
+function gardenLandShowOf(snap) { return { c: (snap && snap.lc) || [], z: (snap && snap.lz) || [], r: (snap && snap.lr) || 0 }; }
+/** For gardenSnapshot: {areas (at most 12, and a plot you own part of, so an older friend can walk on your plants), ls, lf, lc, lz, lr}. */
 function gardenLandsWire(m) {
   const ls = [], lf = [], plots = new Set();
   for (const a of GARDEN_AREAS) if (a.buy && gardenHas('land:' + a.id) > 0) { ls.push(a.id); plots.add(a.id); }
   for (const s of GARDEN_LAND_SECTIONS) if (gardenHas('land:' + s.id) > 0) { ls.push(s.id); plots.add(s.plot); }
   for (const f of GARDEN_LAND_FEATURES) if (f.x != null && gardenLandOwnsFeature(f.id)) lf.push(f.id);
   const areas = GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id);
-  return { areas, ls, lf, lc: gardenLandCurioCount(), lr: gardenLandOwnsFeature('lf-stars') ? gardenLandStars(m).stars : 0 };
+  const S = gardenLandShowMine(m);
+  return { areas, ls, lf, lc: S.c, lz: S.z, lr: S.r };
 }
 
 /* ---------- building ---------- */
@@ -64,7 +69,9 @@ function gardenBuildFeature(id) {
   const lk = 'b.' + m.today + '.' + _gdUid(''), mark = _gdMark([['led', lk]]), d = info.def;
   _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(info.cost), x: 10, i: { ['feat:' + id]: 1 }, n: 1 };
   _gdEmit('land', { id, x: d.x == null ? 30 : d.x, y: d.y == null ? 11 : d.y, w: d.w || 3, h: d.h || 1 });
-  return _gdDone(`${d.name}: done`, `building ${d.name.toLowerCase()}`, mark, { icon: d.icon });
+  const done = _gdDone(`${d.name}: done`, `building ${d.name.toLowerCase()}`, mark, { icon: d.icon });
+  gardenModel();   // (it stands in the world from this moment)
+  return done;
 }
 
 /* ---------- helpers that just work ---------- */
@@ -83,7 +90,7 @@ function gardenLandRillAt(pl, fp, now) {
   return t;
 }
 /** How fast you walk, as a share of normal: the stout boots, and not on a friend's land any differently. */
-function gardenLandWalkK() { return gardenLandOwnsFeature('lf-boots') ? 1.25 : 1; }
+function gardenLandWalkK() { return gardenLandOwnsFeature('lf-boots') ? 1.25 : 1; }   // (they are your boots: the same on a friend's land)
 
 /* ---------- what comes round: a stone, a bin, a hive, the dew ---------- */
 function _gldPeriod(per, m) {

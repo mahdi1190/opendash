@@ -16,7 +16,8 @@
    answers as the old plot did (gardenAreaAt -> 'hill': the old plants' rules, no fences, no path keeping them off a cell, the marsh's whole pool), and every section in
    it counts as theirs. Section ids, trail ids and feature ids are stable, like every id in the garden: never rename or reuse one.
    FRIENDS. `areas` in a snapshot stays at most 12 ids of GARDEN_AREAS: an older app reads it and sees a plot as open if any of it is yours. The real answer goes in
-   `ls` (sections, and a whole plot's id if you have one), `lf` (features built), `lc` (curios found), `lr` (garden stars), which an older app drops.
+   `ls` (sections, and a whole plot's id if you have one), `lf` (features built), `lc` (curios found, and the old key), `lz` (stars logged), `lr` (garden stars), which an older app drops.
+   THE OWNER'S RULE: whatever you buy or find shows in the world, and a friend sees it. So everything here has a drawing (94-garden-lands-2art.js) and goes in those fields; nothing is only a number.
    ============================================================ */
 const GARDEN_LAND_KINDS = _gdF({
   meadow: _gdF({ name: 'Meadow', tile: 'long-grass', icon: 'flower', cats: _gdF(['wild', 'flower', 'tree', 'herb']) }),
@@ -129,14 +130,14 @@ function gardenLandDoor(s) {
 
 /* ---------- things you build ----------
    does: 'collect' (every `per` you take `give`), 'post', 'machine', and the rest by name in 94-garden-lands-1core.js. per: 'day' | '2day' | 'week' | 'season'; tod: only at that time of day.
-   sec: the section it stands in ('' = on the lane). No x: it is not a place in the world (boots). col: what it does to your feet. */
+   sec: the section it stands in ('' = on the lane). col: what it does to your feet. */
 const GARDEN_LAND_FEATURES = _gdRows([
   { id: 'lf-post-lane', name: 'Way post on the lane', art: 'post', does: 'post', sec: '', x: 33, y: 11, w: 1, h: 1, door: { x: 33, y: 12 }, col: 'soft', lv: 2, cost: 30, tall: 1.5, icon: 'milestone', blurb: 'Build two way posts and you can hop between them.' },
   { id: 'lf-barrel', name: 'Rain barrel', art: 'barrel', does: 'barrel', sec: 'ls-clover-corner', x: 42, y: 9, w: 1, h: 1, door: { x: 42, y: 10 }, col: 'soft', lv: 3, cost: 60, tall: 1.1, water: 3, icon: 'droplets', blurb: 'Three more cans of water every day.' },
   { id: 'lf-stone', name: 'Lucky stone', art: 'stone', does: 'collect', per: 'day', give: { coins: [3, 10] }, verb: 'Knock on the stone', sec: 'ls-buttercup-bank', x: 39, y: 9, w: 1, h: 1, door: { x: 39, y: 10 }, col: 'soft', lv: 3, cost: 50, tall: 0.9, icon: 'coins', blurb: 'Knock on it once a day. A few coins always fall out, nobody knows why.' },
   { id: 'lf-worms', name: 'Worm bin', art: 'worms', does: 'collect', per: '2day', give: { i: { fertiliser: 1 } }, verb: 'Take the fertiliser', sec: 'ls-first-furrow', x: 29, y: 13, w: 1, h: 1, door: { x: 29, y: 14 }, col: 'soft', lv: 4, cost: 80, tall: 0.9, icon: 'recycle', blurb: 'A bag of free fertiliser every two days.' },
   { id: 'lf-arch', name: 'Seasons arch', art: 'arch', does: 'collect', per: 'season', give: { season: 1, x: 10 }, verb: 'Take this season’s seed', sec: 'ls-sunny-doorstep', x: 35, y: 9, w: 2, h: 1, door: { x: 35, y: 10 }, col: 'none', lv: 5, cost: 120, tall: 1.9, icon: 'flower', blurb: 'Changes with the year, and leaves you a free seed each season.' },
-  { id: 'lf-boots', name: 'Stout boots', art: '', does: 'boots', sec: '', lv: 5, cost: 150, icon: 'footprints', blurb: 'You walk a good bit faster everywhere. Sold at the land office.' },
+  { id: 'lf-boots', name: 'Stout boots', art: 'boots', does: 'boots', sec: '', x: 32, y: 11, w: 1, h: 1, door: { x: 32, y: 12 }, col: 'none', lv: 5, cost: 150, tall: 0.7, icon: 'footprints', blurb: 'You walk a good bit faster everywhere. They stand by the land office door when you are not in them.' },
   { id: 'lf-scarecrow', name: 'Scarecrow', art: 'scarecrow', does: 'scarecrow', sec: 'ls-allot-row', x: 36, y: 13, w: 1, h: 1, door: { x: 36, y: 14 }, col: 'soft', lv: 6, cost: 140, tall: 1.7, grow: 1.1, r: 4, icon: 'wheat', blurb: 'Plants near it grow a tenth faster. Dresses for the season.' },
   { id: 'lf-stars', name: 'Garden stars board', art: 'stars', does: 'stars', sec: 'ls-sunny-doorstep', x: 37, y: 9, w: 1, h: 1, door: { x: 37, y: 10 }, col: 'soft', lv: 6, cost: 120, tall: 1.6, icon: 'star', blurb: 'Rates your garden out of five stars and pays for each one. Friends can read it.' },
   { id: 'lf-skeps', name: 'Bee skeps', art: 'skeps', does: 'collect', per: '2day', give: { i: { honey: 1 }, x: 2 }, verb: 'Take the honey', sec: 'ls-foxglove-strip', x: 34, y: 6, w: 1, h: 1, door: { x: 34, y: 7 }, col: 'soft', lv: 6, cost: 160, tall: 1.1, icon: 'flower', blurb: 'Old straw hives: a jar of honey every two days.' },
@@ -165,6 +166,9 @@ function gardenLandFeature(id) { return _GLD_FEAT.get(String(id)) || null; }
 const GARDEN_LAND_MAZE = _gdF(['##.#####', '#...#.C#', '###.#.##', '#.....##', '########']);
 const GARDEN_LAND_OFFICE = _gdF({ id: 'land-office', name: 'Land office', x: 29, y: 11, w: 3, h: 1, door: _gdF({ x: 30, y: 12 }), act: 'lands', kind: 'lf-office', tall: 2.4, verb: 'look at the land', blurb: 'What you can buy and build, and what is still to come.' });
 const GARDEN_LAND_LAMPS = _gdF([36, 41, 46, 51, 56]);   // x along the lane's north edge
+/* Your finds, laid out on a table on the lane from the first one you dig up, until a museum takes them in. */
+const GARDEN_LAND_FINDS = _gdF({ id: 'land-finds', name: 'Your finds', x: 34, y: 11, w: 2, h: 1, col: 'soft', walk: 0, act: 'lf', lf: 'land-finds', door: _gdF({ x: 34, y: 12 }), kind: 'lf-finds', tall: 1, blurb: 'What has turned up so far.' });
+const GARDEN_LAND_KEY_ID = 'old-key';
 
 /* ---------- what you can collect ---------- */
 const GARDEN_LAND_CURIOS = _gdRows([
@@ -199,9 +203,10 @@ function gardenLandsOpen(level, own) {
 /** A snapshot's land: {areas (for the scene and the walking: GARDEN_AREAS rows, sections, trails, features), land (what goes in gardenLandSet)}. No `ls`: an older friend, whose plots are whole. */
 function gardenLandsOfSnap(snap) {
   const base = (snap.areas || []).filter(id => { const a = gardenArea(id); return a && !gardenLandRow(id); });
-  let areas = base;
+  let areas = base; const own0 = [];
+  if (Array.isArray(snap.lc) && snap.lc.length) own0.push('finds');
   if (Array.isArray(snap.ls)) { const whole = new Set(snap.ls); areas = base.filter(id => { const a = gardenArea(id); return !(a && a.buy) || whole.has(id); }); }
-  const own = areas.filter(id => { const a = gardenArea(id); return a && a.buy; }).concat(snap.ls || [], snap.lf || []);
+  const own = areas.filter(id => { const a = gardenArea(id); return a && a.buy; }).concat(snap.ls || [], snap.lf || [], own0);
   const open = gardenLandsOpen(snap.lv, own);
   return { areas: [...new Set(areas.concat([...open]))], land: [...open] };
 }
@@ -209,8 +214,9 @@ function gardenLandsOfSnap(snap) {
 function gardenLandsClean(raw, out) {
   if (Array.isArray(raw.ls)) out.ls = raw.ls.slice(0, 90).filter(id => typeof id === 'string' && (gardenLandRow(id) ? !!gardenLandRow(id).plot : !!GARDEN_LAND_MAPS[id]));
   if (Array.isArray(raw.lf)) out.lf = raw.lf.slice(0, 40).filter(id => typeof id === 'string' && !!gardenLandFeature(id));
-  const n = (v, hi) => { const k = Number(v); return Number.isInteger(k) && k >= 0 && k <= hi ? k : null; };
-  { const c = n(raw.lc, GARDEN_LAND_CURIOS.length); if (c) out.lc = c; const r = n(raw.lr, 5); if (r) out.lr = r; }
+  if (Array.isArray(raw.lc)) out.lc = raw.lc.slice(0, GARDEN_LAND_CURIOS.length + 1).filter(id => id === GARDEN_LAND_KEY_ID || GARDEN_LAND_CURIOS.some(c => c.id === id));
+  if (Array.isArray(raw.lz)) out.lz = raw.lz.slice(0, GARDEN_LAND_SKY.length).filter(id => GARDEN_LAND_SKY.some(c => c.id === id));
+  { const k = Number(raw.lr); if (Number.isInteger(k) && k > 0 && k <= 5) out.lr = k; }
 }
 
 /* ---------- what stands in the world ---------- */
@@ -234,6 +240,7 @@ function _gldMazeRects(f) {
 function gardenLandProps() { if (_GLD_PROPS.key === null) _gldPropsRebuild(); return _GLD_PROPS.built; }
 function _gldPropsRebuild() {
   const built = [GARDEN_LAND_OFFICE];
+  if (_GD_LAND.has('finds') && !_GD_LAND.has('lf-museum')) built.push(GARDEN_LAND_FINDS);
   for (const f of GARDEN_LAND_FEATURES) {
     if (f.x == null || !_GD_LAND.has(f.id)) continue;
     if (f.does === 'maze') { built.push(..._gldMazeRects(f)); continue; }

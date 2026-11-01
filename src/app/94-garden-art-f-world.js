@@ -305,7 +305,7 @@ const _GARTW = (function () {
     const inset = 6, y0 = y + inset + 8, y1 = y + h - inset, gapW = 30;
     {
       const cellsOf = []; for (let cy = a.y; cy < a.y + a.h; cy++) for (let cx = a.x; cx < a.x + a.w; cx++) cellsOf.push([cx, cy]);
-      const lp = (_GLD_ART.loops(cellsOf, a.id + '|f', 6, 4)[0] || []), n = lp.length;
+      const lp = (_GLD_ART.loops(cellsOf, a.id + '|f', 9, 9)[0] || []), n = lp.length;
       const near = (q) => Math.abs(q.x - gate.x) < gapW / 2 + 4 && Math.abs(q.y - (gate.south ? y0 : y1)) < 14;
       let at = lp.findIndex(near); if (at < 0) at = 0;
       let run = [];

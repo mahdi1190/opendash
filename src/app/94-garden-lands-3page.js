@@ -17,6 +17,7 @@ function gardenLandPropOpen(p) {
   const id = p.lf, m = gardenHere();
   const at = { x: p.x + p.w / 2, y: p.y - 0.4 };
   if (id === 'lf-chest') { if (m.visit) { gardenBubbleOpen(at, { title: p.name, sub: 'Your friend’s to open', items: [] }); return; } gardenBubbleOpen(at, { title: p.name, sub: p.blurb, items: [{ ic: 'gift', label: 'Open it', cls: 'is-go', run: (b) => _gldSay(gardenLandChest(), b, 'gift') }] }); return; }
+  if (id === 'land-finds') { const n = (m.visit ? gardenLandShowOf(m.visit.snap) : gardenLandShowMine(m)).c.length; gardenBubbleOpen(at, { title: p.name, sub: `${n} on the table.`, items: [{ ic: 'book-open', label: 'See them all', cls: 'is-go', run: () => gardenPopupOpen('lands') }] }); return; }
   const f = gardenLandFeature(id); if (!f) return;
   if (m.visit) { _gldVisitBubble(f, at, m); return; }
   if (p.site || !gardenLandOwnsFeature(id)) { _gldBuildBubble(f, at, m); return; }
@@ -25,8 +26,11 @@ function gardenLandPropOpen(p) {
 function _gldVisitBubble(f, at, m) {
   const s = m.visit.snap || {}, items = [];
   let sub = f.blurb;
-  if (f.does === 'museum') sub = `${Number(s.lc) || 0} of ${GARDEN_LAND_CURIOS.length} curios on show.`;
-  if (f.does === 'stars') sub = `${'★'.repeat(Number(s.lr) || 0)}${'☆'.repeat(5 - (Number(s.lr) || 0))} this garden’s stars.`;
+  const seen = gardenLandShowOf(s);
+  if (f.does === 'museum') { sub = `${seen.c.filter(id => id !== GARDEN_LAND_KEY_ID).length} of ${GARDEN_LAND_CURIOS.length} curios on show.`; items.push({ ic: 'book-open', label: 'See them all', cls: 'is-go', run: () => gardenPopupOpen('lands') }); }
+  if (f.does === 'stars') sub = `${'★'.repeat(seen.r)}${'☆'.repeat(5 - seen.r)} this garden’s stars.`;
+  if (f.does === 'observatory') sub = `${seen.z.length} of ${GARDEN_LAND_SKY.length} in their star book.`;
+  if (f.does === 'post') { sub = 'Where to?'; for (const q of GARDEN_LAND_FEATURES) if (q.does === 'post' && q.id !== f.id && _GD_LAND.has(q.id)) items.push({ ic: 'milestone', label: q.name.replace(/^Way post /, ''), cls: 'is-go', run: () => gardenLandHop(q.id) }); }
   if (f.does === 'lookout') items.push({ ic: 'eye', label: 'Look out over the land', cls: 'is-go', run: () => gardenCamSet('fit') });
   gardenBubbleOpen(at, { title: f.name, sub, items });
 }
@@ -93,7 +97,7 @@ function _gldUseBubble(f, at, m0) {
 }
 /** A way post: step to another one. */
 function gardenLandHop(id) {
-  const f = gardenLandFeature(id); if (!f || !gardenLandOwnsFeature(id)) return;
+  const f = gardenLandFeature(id); if (!f || !_GD_LAND.has(id)) return;   // (whoever's land you are on)
   _gw.path = []; _gw.then = null; _gw.px = f.door.x + 0.5; _gw.py = f.door.y + 0.5;
   _gw.cam.init = false; _gw.cam.dirty = true; _gw.reach = null;
   if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop();
@@ -130,6 +134,18 @@ function _gldCartBubble() {
 }
 
 /* ---------- the land office ---------- */
+/** On a friend's land: what they have, the way they would show you round. Only what their snapshot says, and nothing in it can be bought. */
+function _gldFriendTab(el, m) {
+  const box = _gdpEl('div', 'gld'), s = m.visit.snap || {}, S = gardenLandShowOf(s), name = m.visit.name || 'Your friend'; el.appendChild(box);
+  const secs = GARDEN_LAND_SECTIONS.filter(q => m.areas.includes(q.id)), built = GARDEN_LAND_FEATURES.filter(f => m.areas.includes(f.id));
+  const head = _gdpEl('div', 'gld-head'), mp = _gdpEl('div', 'gld-mapbox'); mp.innerHTML = _gldMap(m); head.appendChild(mp);
+  const txt = _gdpEl('div', 'gld-intro'); txt.appendChild(_gdpEl('h3', null, `${name}’s land`)); txt.appendChild(_gdpEl('p', null, `Garden level ${m.level.level} · ${secs.length} of ${GARDEN_LAND_SECTIONS.length} pieces of land · ${built.length} of ${GARDEN_LAND_FEATURES.length} things built${S.r ? ` · ${'★'.repeat(S.r)}` : ''}.`)); head.appendChild(txt); box.appendChild(head);
+  const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
+  if (built.length) { const d = sec('What they have built'); for (const f of built) _gldRow(d, { icon: f.icon, name: f.name, sub: f.blurb }); }
+  if (S.c.length) { const d = sec('What they have dug up'); const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_CURIOS) if (S.c.includes(c.id)) { const ch = _gdpEl('span', 'gld-chip is-on'); ch.innerHTML = gardenLandCurioSvg(c.id, 16); ch.appendChild(document.createTextNode(c.name)); g.appendChild(ch); } if (S.c.includes(GARDEN_LAND_KEY_ID)) { const ch = _gdpEl('span', 'gld-chip is-on'); ch.innerHTML = gardenLandCurioSvg(GARDEN_LAND_KEY_ID, 16); ch.appendChild(document.createTextNode('An old iron key')); g.appendChild(ch); } d.appendChild(g); }
+  if (S.z.length) { const d = sec('Their star book'); const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_SKY) if (S.z.includes(c.id)) g.appendChild(_gdpEl('span', 'gld-chip is-on', c.name)); d.appendChild(g); }
+  if (secs.length) { const d = sec('Their land'); const g = _gdpEl('div', 'gld-chips'); for (const q of secs) g.appendChild(_gdpEl('span', 'gld-chip is-on', q.name)); d.appendChild(g); }
+}
 function _gldRow(host, o) {
   const r = _gdpEl('div', 'gld-row' + (o.dim ? ' is-dim' : '') + (o.done ? ' is-done' : ''));
   const ic = _gdpEl('span', 'gld-ic'); ic.innerHTML = icon(o.icon || 'sprout'); r.appendChild(ic);
@@ -152,6 +168,7 @@ function _gldMap(m) {
 /** Fill the pop-up: where you are with the land, what you can buy and build now, and what is still to come. */
 function gardenLandsTab(el, m) {
   el.textContent = '';
+  { const here = gardenHere(); if (here.visit) { _gldFriendTab(el, here); return; } }
   const box = _gdpEl('div', 'gld'); el.appendChild(box);
   const lv = m.level.level, owned = GARDEN_LAND_SECTIONS.filter(s => m.areas.includes(s.id)).length, built = GARDEN_LAND_FEATURES.filter(f => gardenLandOwnsFeature(f.id)).length;
   const head = _gdpEl('div', 'gld-head');
@@ -179,6 +196,6 @@ function gardenLandsTab(el, m) {
   // finds
   { const d = sec(`Curios found: ${gardenLandCurioCount()} of ${GARDEN_LAND_CURIOS.length}`);
     const n = _gdpEl('p', 'gld-more', 'Look for a little cross on the ground: one spot a day, somewhere on your land or the lane. Some turn up when you forage, help out or open the maze chest.'); d.appendChild(n);
-    const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_CURIOS) { const has = gardenHas('cur:' + c.id) > 0, ch = _gdpEl('span', 'gld-chip' + (has ? ' is-on' : ''), has ? c.name : '?'); if (has) ch.setAttribute('data-tip', c.blurb); g.appendChild(ch); } d.appendChild(g); }
+    const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_CURIOS) { const has = gardenHas('cur:' + c.id) > 0, ch = _gdpEl('span', 'gld-chip' + (has ? ' is-on' : ''), has ? '' : '?'); if (has) { ch.innerHTML = gardenLandCurioSvg(c.id, 16); ch.appendChild(document.createTextNode(c.name)); ch.setAttribute('data-tip', c.blurb); } g.appendChild(ch); } d.appendChild(g); }
   if (gardenLandOwnsFeature('lf-observatory') || gardenLandSkyCount()) { const d = sec(`Your star book: ${gardenLandSkyCount()} of ${GARDEN_LAND_SKY.length}`); const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_SKY) { const has = gardenHas('sky:' + c.id) > 0; g.appendChild(_gdpEl('span', 'gld-chip' + (has ? ' is-on' : ''), has ? c.name : '?')); } d.appendChild(g); }
 }

@@ -656,6 +656,7 @@ function _glDirector(dt) {
   _glDirect(W);
 }
 function _glDirect(W) {
+  if (!W) return;   // (a frame already queued when the world stopped)
   if (gardenFun() === 'off') { for (const c of [..._gl.list]) _glRemove(c); return; }
   if (W.visit && typeof _glvLive === 'function' && _glvLive()) return;   // a live visit: the host owns the creatures, this screen only draws them (94-garden-live-6life.js)
   const v = W.view();

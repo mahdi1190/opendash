@@ -121,6 +121,7 @@ const _GLD_ART = (function () {
         const base = tile(sec.tile, season), lip = A.shift(base, 8, 1, -0.24);
         for (const L of lps) s += `<path d="${dOf(L)}" fill="${lip}" transform="translate(0 3.5)"/>` + A.P(base, dOf(L));   // the lip along its front: the ground steps down here
         s += sec.pool ? pool(sec, lps[0], rs, sc) : PAINT[sec.kind](rs, sec.cells, sc, base);
+        if (sec.needs) for (const L of lps) s += `<path d="${dOf(L)}" fill="none" stroke="#8a5a44" stroke-width="8" stroke-linejoin="round"/><path d="${dOf(L)}" fill="none" stroke="#b87a5a" stroke-width="5" stroke-linejoin="round" stroke-dasharray="9 1.500"/>`;   // the old wall still stands round it
         { let fr = ''; for (const L of lps) for (const q of L) { const n = 2; for (let k = 0; k < n; k++) fr += tuft(q.x + rr(rs, -7, 7), q.y + rr(rs, -2, 3), rr(rs, 4, 8), rr(rs, -2, 2)); } s += A.S(A.shift(P[0], 6, 1, -0.12), 0.9, fr, 0.85); }
       } else {
         // not yours: longer grass in clumps, a few flowers, and it is fenced
@@ -209,7 +210,8 @@ const _GLD_ART = (function () {
       const D = gardenLandDoor(sec); if (!D || (sec.via && !open.has(sec.via))) continue;
       const lvNow = sc.lv == null ? 99 : sc.lv, forSale = lvNow >= sec.lv;
       if (!forSale && sec.lv > lvNow + 1) continue;   // far off: the land office lists it, a sign here would only be clutter
-      live += sign(px(D.fx + 0.5), py(D.fy + 1) - 2, forSale ? String(sec.buy) : `Level ${sec.lv}`, forSale, sec.id);
+      const noKey = forSale && sec.needs && !((sc.landShow && sc.landShow.c) || []).includes(GARDEN_LAND_KEY_ID);
+      live += sign(px(D.fx + 0.5), py(D.fy + 1) - 2, noKey ? 'Key' : forSale ? String(sec.buy) : `Level ${sec.lv}`, forSale && !noKey, sec.id);
     }
     return { s, live };
   }
@@ -229,6 +231,52 @@ function gartFenceAlong(r, pts, season) { return _GLD_ART.fenceAlong(r, pts, sea
 function gartLandsBlob(cells, seed, inset, wob) { return _GLD_ART.loops(cells, seed, inset, wob).map(_GLD_ART.dOf).join(''); }
 
 /* ---------- what stands up ---------- */
+/* Every curio's own little drawing, about ten units across about 0,0. A new one is a row here and a row in GARDEN_LAND_CURIOS. */
+const _GLD_CURIO_ART = {
+  'clay-pipe': (A) => A.S('#e8dcc8', 1.5, 'M-4.500 -2H3') + A.P('#e8dcc8', A.rrect(2, -4, 3, 5, 1)),
+  farthing: (A) => A.P('#c8843a', A.circ(0, 0, 3.6)) + A.P('#e8b070', A.circ(-1, -1, 1.2)),
+  'blue-bottle': (A) => A.P('#2f5fc8', 'M-1 -5h2v2q2 1 2 3v4h-6v-4q0 -2 2 -3z'),
+  'sea-shell': (A) => A.P('#f0d8c0', 'M-4 3Q-5 -4 0 -4Q5 -4 4 3z') + A.S('#b89878', 0.7, 'M0 3V-3M-2 3L-1 -3M2 3L1 -3'),
+  arrowhead: (A) => A.P('#6a6a72', 'M0 -5L3 2L0 1L-3 2z'),
+  token: (A) => A.P('#c8a02e', A.rrect(-3.5, -3.5, 7, 7, 1.2)) + A.P('#8a6a14', A.circ(0, 0, 1.2)),
+  'tin-soldier': (A) => A.P('#2a2a40', A.rect(-1.5, 2, 3, 3)) + A.P('#c8382a', A.rect(-1.5, -2, 3, 4)) + A.P('#e8d8a8', A.circ(0, -3.4, 1.4)),
+  thimble: (A) => A.P('#c8ccd4', 'M-3 3Q-3 -4 0 -4Q3 -4 3 3z') + A.S('#8a909a', 0.7, 'M-3 2H3'),
+  marble: (A) => A.P('#5fb0e8', A.circ(0, 0, 3.4)) + A.S('#1f5fa8', 0.8, 'M-2 1Q0 -1 2 2') + A.P('#ffffff', A.circ(-1, -1, 0.9), 0.8),
+  horseshoe: (A) => A.S('#6a6a72', 1.8, 'M-3 4V-1A3 3 0 0 1 3 -1V4'),
+  ammonite: (A) => A.P('#a89878', A.circ(0, 0, 3.8)) + A.S('#6a5a3a', 0.8, 'M0 0a1 1 0 0 1 2 0a2 2 0 0 1 -4 0a3 3 0 0 1 6 0'),
+  'pot-shard': (A) => A.P('#c8703a', 'M-4 -2L2 -4L4 1L-1 4z') + A.S('#2a4a6a', 0.7, 'M-2 0Q0 -2 2 0'),
+  'bird-ring': (A) => A.S('#c8a02e', 1.3, A.circ(0, 0, 3)),
+  stopper: (A) => A.P('#bfe0e8', 'M-1.5 4V0H-3L0 -4L3 0H1.5V4z'),
+  button: (A) => A.P('#c8a02e', A.circ(0, 0, 3.4)) + A.P('#8a6a14', A.circ(-1, 0, 0.6) + A.circ(1, 0, 0.6)),
+  'lead-seal': (A) => A.P('#7a7e88', A.ell(0, 0, 3.6, 3)) + A.P('#9aa0aa', A.circ(-1, -1, 0.9)),
+  bell: (A) => A.P('#d8a82e', 'M-3.5 2.5Q-3 -4 0 -4Q3 -4 3.5 2.5z') + A.P('#8a6a14', A.circ(0, 3, 1)),
+  spoon: (A) => A.S('#c8ccd4', 1.2, 'M-3 4L1 -1') + A.P('#c8ccd4', A.ell(2, -2.5, 1.8, 2.4)),
+  'key-tag': (A) => A.P('#b8703a', 'M-3 -2L1 -4L4 -1V3H-3z') + A.P('#5a3a1a', A.circ(-1, -1, 0.6)),
+  dice: (A) => A.P('#f0e8d8', A.rrect(-3.2, -3.2, 6.4, 6.4, 1.2)) + A.P('#2a2a2a', A.circ(-1.2, -1.2, 0.6) + A.circ(1.2, -1.2, 0.6) + A.circ(-1.2, 1.2, 0.6) + A.circ(1.2, 1.2, 0.6)),
+  'old-key': (A) => A.S('#7a6a4a', 1.4, 'M-1 -2V4M-1 3H1.5M-1 1H1') + A.S('#7a6a4a', 1.4, A.circ(-1, -3.4, 1.8)),
+};
+/** Curios in rows, each at its own place on the table (so one found later does not push the others along). */
+function _gldCurioRows(ids, x0, y0, cols, dx, dy) {
+  const A = GART, order = GARDEN_LAND_CURIOS.map(c => c.id).concat(GARDEN_LAND_KEY_ID), have = new Set(ids);
+  let s = '';
+  order.forEach((id, i) => { if (!have.has(id) || !_GLD_CURIO_ART[id]) return; s += `<g transform="translate(${_gwN(x0 + (i % cols) * dx)} ${_gwN(y0 + Math.floor(i / cols) * dy)}) scale(0.9)">${_GLD_CURIO_ART[id](A)}</g>`; });
+  return s;
+}
+function gardenLandCurioSvg(id, px) { const fn = _GLD_CURIO_ART[id]; return fn ? `<svg viewBox="-6 -6 12 12" width="${px}" height="${px}" aria-hidden="true">${fn(GART)}</svg>` : ''; }
+/* The star book on a board beside the observatory: each constellation has its own shape, up as soon as you have logged it. */
+const _GLD_SKY_ART = { plough: [[0, 2], [3, 3], [6, 3], [8, 5], [8, 8], [12, 8], [12, 5], [8, 5]], orion: [[2, 0], [9, 1], [4, 5], [6, 5], [8, 5], [3, 10], [10, 9]], cassiopeia: [[0, 2], [3, 7], [6, 3], [9, 8], [12, 2]], swan: [[6, 0], [6, 5], [6, 10], [1, 4], [6, 5], [11, 6]], lyre: [[6, 0], [4, 4], [8, 4], [9, 9], [3, 9], [4, 4]], 'great-bear': [[0, 1], [3, 2], [6, 2], [8, 4], [11, 3], [12, 7], [8, 7], [8, 4]], lion: [[1, 4], [3, 1], [6, 2], [7, 5], [12, 6], [9, 9], [6, 8], [7, 5]], twins: [[1, 0], [2, 5], [2, 10], [2, 5], [9, 5], [9, 0], [9, 5], [10, 10]], bull: [[0, 0], [5, 5], [9, 7], [12, 10], [9, 7], [6, 2]], eagle: [[6, 1], [6, 5], [6, 9], [1, 4], [6, 5], [11, 4]], crown: [[0, 3], [3, 7], [6, 8], [9, 7], [12, 3]], hare: [[2, 1], [4, 5], [8, 4], [11, 7], [8, 9], [4, 9], [4, 5]] };
+function _gldSkyBoard(ids) {
+  const A = GART, Wd = GART_PAL.wood, have = new Set(ids), bx = 34, by = -36, cw = 15, chh = 12;
+  let s = A.S(Wd[0], 2, `M${bx + 4} 0V${by + 34}M${bx + 44} 0V${by + 34}`) + A.P(Wd[1], A.rrect(bx - 2, by - 2, cw * 3 + 7, chh * 3 + 3, 2)) + A.P('#1c2850', A.rect(bx, by, cw * 3 + 3, chh * 3 - 1));
+  GARDEN_LAND_SKY.slice(0, 9).forEach((c, i) => {
+    const ox = bx + 2 + (i % 3) * cw, oy = by + 1 + Math.floor(i / 3) * chh, P = _GLD_SKY_ART[c.id] || [];
+    if (!have.has(c.id)) return;
+    s += A.S('#8aa0d8', 0.5, P.map((p, k) => `${k ? 'L' : 'M'}${_gwN(ox + p[0])} ${_gwN(oy + p[1] * 0.9)}`).join('')) + A.P('#fff4c0', P.map(p => A.circ(ox + p[0], oy + p[1] * 0.9, 0.7)).join(''));
+  });
+  // the last three along a strip under it
+  GARDEN_LAND_SKY.slice(9).forEach((c, i) => { const ox = bx + 2 + i * cw, oy = by + chh * 3 + 1, P = _GLD_SKY_ART[c.id] || []; if (have.has(c.id)) s += A.P('#1c2850', A.rect(ox - 1, oy - 1, cw - 1, 11)) + A.P('#fff4c0', P.map(p => A.circ(ox + p[0], oy + p[1] * 0.8, 0.7)).join('')); });
+  return s;
+}
 /* Each draws at its feet (0, 0), growing up. Small, plain and in the garden's palette; `n` is how the night changes it. */
 const _GLD_PROP_ART = {
   post(sc) { const A = GART, Wd = GART_PAL.wood; return _gwWoodPost(0, 34, 5) + A.P(Wd[1], 'M-3 -34L17 -31L22 -27L17 -23L-3 -24z') + A.P(Wd[3], 'M-1 -32L15 -30L18 -28L-1 -29z', 0.7) + A.P(Wd[1], 'M3 -22L-15 -20L-20 -16L-15 -12L3 -13z') + A.S(Wd[0], 0.9, 'M2 -27h10M-12 -16h10', 0.6); },
@@ -241,7 +289,9 @@ const _GLD_PROP_ART = {
     return A.S(Wd[0], 3, 'M-24 0V-44Q-24 -64 0 -64Q24 -64 24 -44V0') + A.S(Wd[2], 1.3, 'M-24.500 0V-44Q-24 -63 0 -63', 0.8) + A.P(leaf, d) + (sc.season === 'winter' ? A.P('#ffffff', A.circ(0, -8, 8) + A.circ(0, -20, 6)) + A.P('#2a2a2a', A.circ(-2, -21, 0.9) + A.circ(2, -21, 0.9)) + A.P('#e8761a', 'M0 -20l5 1 -5 1z') : '');
   },
   scarecrow(sc) { const A = GART, Wd = GART_PAL.wood, coat = { spring: '#6a9ac8', summer: '#c8603a', autumn: '#8a5a2a', winter: '#5a6a8a' }[sc.season] || '#c8603a', hat = sc.season === 'winter' ? '#c8382a' : '#a8843a'; return _gwWoodPost(0, 40, 3.6) + A.S(Wd[0], 3, 'M-18 -32H18') + A.P(coat, 'M-10 -36H10L13 -14H-13z') + A.S(coat, 5, 'M-10 -32H-20M10 -32H20') + A.P('#e8d8a8', A.circ(0, -44, 7)) + A.P(hat, 'M-11 -47H11L6 -50V-56H-6V-50z') + A.P('#3a2a1a', A.circ(-2.500, -44, 1) + A.circ(2.500, -44, 1)) + A.S('#3a2a1a', 0.9, 'M-3 -40.500q3 2 6 0'); },
-  stars() { const A = GART, Wd = GART_PAL.wood; return _gwWoodPost(-11, 36, 4) + _gwWoodPost(11, 36, 4) + A.P(Wd[1], A.rrect(-17, -48, 34, 26, 2.5)) + A.P('#2c3a60', A.rrect(-14, -45, 28, 20, 1.5)) + [-8, 0, 8].map((x, i) => A.P('#ffd24a', A.star(x, -35 - (i === 1 ? 2 : 0), 5, 3.6, 1.6))).join(''); },
+  stars(sc) { const A = GART, Wd = GART_PAL.wood, n = (sc.landShow && sc.landShow.r) || 0; return _gwWoodPost(-13, 36, 4) + _gwWoodPost(13, 36, 4) + A.P(Wd[1], A.rrect(-22, -48, 44, 26, 2.5)) + A.P('#2c3a60', A.rrect(-19, -45, 38, 20, 1.5)) + [-15, -7.500, 0, 7.500, 15].map((x, i) => A.P(i < n ? '#ffd24a' : '#55618a', A.star(x, -35 - (i % 2) * 2, 5, 3.6, 1.6))).join(''); },
+  boots() { const A = GART, c = '#6a4a2e', d = '#4a3220'; const one = (x) => A.P(c, `M${x - 4} -15H${x + 3}V-6L${x + 8} -3V0H${x - 4}z`) + A.P(d, A.rect(x - 4, -1.500, 12, 1.700)) + A.S('#c8a06a', 0.8, `M${x - 3} -12h5M${x - 3} -9h5`, 0.9); return A.P('#8a7a5a', A.rrect(-15, -1, 30, 2.400, 1)) + one(-9) + one(3); },
+  finds(sc) { const A = GART, Wd = GART_PAL.wood; return A.S(Wd[0], 2.600, 'M-38 0V-14M38 0V-14') + A.P(Wd[1], A.rrect(-44, -18, 88, 5, 1.500)) + A.P('#e8dcc0', A.rect(-42, -17.400, 84, 1.600), 0.8) + _gldCurioRows((sc.landShow && sc.landShow.c) || [], -38, -30, 11, 7.600, 9); },
   skeps() { const A = GART; let s = ''; for (const [x, k] of [[-9, 1], [9, 0.85]]) s += A.P('#c89a4a', `M${x - 11 * k} 0Q${x - 12 * k} ${-22 * k} ${x} ${-24 * k}Q${x + 12 * k} ${-22 * k} ${x + 11 * k} 0z`) + A.S('#8a6420', 0.9, `M${x - 10.600 * k} ${-5 * k}H${x + 10.600 * k}M${x - 10 * k} ${-11 * k}H${x + 10 * k}M${x - 7.500 * k} ${-17 * k}H${x + 7.500 * k}`, 0.75) + A.P('#3a2a10', A.ell(x, -2.400 * k, 2.500, 2)); return s; },
   help() { const A = GART, Wd = GART_PAL.wood; return _gwWoodPost(0, 44, 4.5) + A.P(Wd[1], A.rrect(-16, -48, 32, 24, 2)) + A.P('#fbf7ee', A.rrect(-11, -45, 13, 17, 1)) + A.P('#fff0b0', A.rrect(3, -44, 10, 12, 1)) + A.S('#a8884a', 1, 'M-9 -40h9M-9 -36h9M-9 -32h6M5 -40h6M5 -36h5', 0.8) + A.P('#e8607a', A.circ(-4.500, -44, 1.5)); },
   kettle() { const A = GART; return A.P('#3a3f44', 'M-11 0L-8 -7H8L11 0z') + A.P('#b0703a', 'M-14 -7Q-16 -24 0 -25Q16 -24 14 -7z') + A.P('#e0a060', 'M-11 -10Q-12 -21 -3 -23Q-7 -16 -6 -9z', 0.75) + A.S('#6a3a18', 2, 'M-13 -24Q0 -38 13 -24') + A.P('#c8382a', A.ell(0, -24, 11, 2.800)); },
@@ -249,11 +299,11 @@ const _GLD_PROP_ART = {
   shelf() { const A = GART, Wd = GART_PAL.wood; return A.P(Wd[1], A.rrect(-14, -38, 28, 38, 2)) + A.P(Wd[0], A.rect(-11, -35, 22, 15)) + A.P(Wd[0], A.rect(-11, -17, 22, 13)) + ['#e8c33a', '#e8607a', '#5aa83a'].map((c, i) => A.P(c, A.rrect(-10 + i * 7, -32, 6, 12, 1)) + A.P(['#4a8fd8', '#f28a1a', '#b48ae6'][i], A.rrect(-10 + i * 7, -15, 6, 11, 1))).join('') + A.P('#8a4a30', 'M-17 -38L0 -46L17 -38z'); },
   rill() { const A = GART, St = GART_PAL.stone; return A.P(St[1], A.ell(0, -2, 18, 6)) + A.P('#5fb0cc', A.ell(0, -3, 13, 3.800)) + A.P('#e0f4fa', A.ell(-4, -4, 4, 1), 0.8) + A.P(St[2], A.blob(A.rng(7), -14, -5, 5, 4, 6, 0.2) + A.blob(A.rng(9), 13, -6, 6, 5, 6, 0.2)); },
   lampbox() { const A = GART, Wd = GART_PAL.wood; return A.P(Wd[1], A.rrect(-10, -16, 20, 16, 2)) + A.P('#ffd36a', A.rrect(-5, -24, 10, 9, 2)) + A.S('#2f3438', 1.4, 'M-5 -24H5M0 -28V-24'); },
-  museum(sc) { const A = GART, St = GART_PAL.stone, snow = sc.season === 'winter'; let c = ''; for (const x of [-34, -17, 17, 34]) c += A.P(St[2], A.rect(x - 3.500, -40, 7, 40)) + A.P(St[3], A.rect(x - 2.800, -40, 2, 40), 0.7); return A.P(St[1], A.rect(-40, -3, 80, 4)) + A.P('#b8ac98', A.rect(-30, -40, 60, 38)) + A.P('#5a4a3a', A.rrect(-8, -26, 16, 25, 7)) + c + A.P(St[2], 'M-44 -40L0 -62L44 -40z') + A.P(St[3], 'M-38 -41L-2 -59L-14 -41z', 0.6) + (snow ? A.P(GART_PAL.snow, 'M-44 -41L0 -63L44 -41L0 -55z') : '') + A.P('#f2c432', A.circ(0, -47, 3)); },
+  museum(sc) { const A = GART, St = GART_PAL.stone, snow = sc.season === 'winter', shown = (sc.landShow && sc.landShow.c) || []; let c = ''; for (const x of [-34, -17, 17, 34]) c += A.P(St[2], A.rect(x - 3.500, -40, 7, 40)) + A.P(St[3], A.rect(x - 2.800, -40, 2, 40), 0.7); return A.P(St[1], A.rect(-40, -3, 80, 4)) + A.P('#b8ac98', A.rect(-30, -40, 60, 38)) + A.P('#5a4a3a', A.rrect(-8, -26, 16, 25, 7)) + c + A.P(St[2], 'M-44 -40L0 -62L44 -40z') + A.P(St[3], 'M-38 -41L-2 -59L-14 -41z', 0.6) + (snow ? A.P(GART_PAL.snow, 'M-44 -41L0 -63L44 -41L0 -55z') : '') + A.P('#f2c432', A.circ(0, -47, 3)) + A.P('#6a4a2e', A.rrect(-44, -4, 88, 5, 1)) + A.P('#dff0f6', A.rrect(-43, -23, 86, 19, 2), 0.72) + _gldCurioRows(shown, -38, -19, 11, 7.600, 8.500) + A.S('#ffffff', 1, 'M-41 -21h22', 0.7); },
   lookout(sc) { const A = GART, Wd = GART_PAL.wood; return A.S(Wd[0], 4, 'M-20 0L-12 -70M20 0L12 -70M-17 -24H17M-15 -47H15') + A.S(Wd[0], 2.4, 'M-18 -24L15 -47M18 -24L-15 -47') + A.P(Wd[1], A.rrect(-18, -76, 36, 7, 1)) + A.S(Wd[0], 1.8, 'M-16 -76V-88M16 -76V-88M-16 -88H16') + A.P('#a8483a', 'M-22 -88L0 -106L22 -88z') + (sc.season === 'winter' ? A.P(GART_PAL.snow, 'M-20 -88L0 -106L20 -88L0 -96z') : ''); },
   dew(sc) { const A = GART, St = GART_PAL.stone, dawn = sc.tod === 'dawn'; return A.P(St[1], 'M-15 0Q-18 -10 -9 -13H9Q18 -10 15 0z') + A.P('#9ad4ee', A.ell(0, -12, 9, 2.800)) + A.P(St[3], 'M-11 -3Q-13 -9 -8 -11H-3Q-8 -8 -7 -2z', 0.7) + (dawn ? A.P('#fff4d8', A.circ(-3, -13, 1.500) + A.circ(3, -12, 1.100)) : ''); },
   oak(sc) { const A = GART, leaf = sc.season === 'winter' ? '#9aa890' : sc.season === 'autumn' ? '#c8802e' : '#4f8a44'; return A.P('#6a4a2e', 'M-6 0Q-4 -14 -5 -26H5Q4 -14 6 0Q10 2 12 3H-12Q-10 2 -6 0z') + A.P(leaf, A.blob(A.rng(11), 0, -40, 24, 19, 11, 0.2)) + A.P(A.lt(leaf, 0.2), A.blob(A.rng(13), -6, -46, 13, 10, 9, 0.22), 0.9) + A.P('#f2c432', A.circ(-9, -2, 2) + A.circ(8, -1, 1.600)) + A.P('#5a3a22', A.ell(0, 1, 7, 2)); },
-  observatory(sc) { const A = GART, St = GART_PAL.stone, night = sc.tod === 'night'; return A.P(St[1], A.rrect(-30, -30, 60, 30, 2)) + A.P(St[3], A.rect(-27, -28, 12, 26), 0.5) + A.P('#7a8a9a', 'M-30 -30Q-30 -62 0 -62Q30 -62 30 -30z') + A.P('#a8b8c8', 'M-25 -32Q-24 -56 -4 -59Q-14 -48 -14 -32z', 0.8) + A.P('#2c3a60', 'M2 -60L12 -58L17 -32H4z') + A.S('#3a3f44', 3.4, 'M8 -44L24 -64') + A.P(night ? '#ffd36a' : '#3a4a5a', A.rrect(-6, -20, 12, 20, 6)); },
+  observatory(sc) { const A = GART, St = GART_PAL.stone, night = sc.tod === 'night'; return _gldSkyBoard((sc.landShow && sc.landShow.z) || []) + A.P(St[1], A.rrect(-30, -30, 60, 30, 2)) + A.P(St[3], A.rect(-27, -28, 12, 26), 0.5) + A.P('#7a8a9a', 'M-30 -30Q-30 -62 0 -62Q30 -62 30 -30z') + A.P('#a8b8c8', 'M-25 -32Q-24 -56 -4 -59Q-14 -48 -14 -32z', 0.8) + A.P('#2c3a60', 'M2 -60L12 -58L17 -32H4z') + A.S('#3a3f44', 3.4, 'M8 -44L24 -64') + A.P(night ? '#ffd36a' : '#3a4a5a', A.rrect(-6, -20, 12, 20, 6)); },
   moon(sc) { const A = GART, St = GART_PAL.stone, night = sc.tod === 'night'; return A.P(St[0], 'M-9 0Q-11 -24 0 -34Q11 -24 9 0z') + A.P(St[2], 'M-6 -2Q-8 -22 0 -30Q-2 -14 -1 -2z', 0.7) + A.P(night ? '#cfe8ff' : '#8aa0b8', A.circ(0, -18, 3.500)) + (night ? `<g class="gda-glow">${A.P('#cfe8ff', A.circ(0, -18, 9), 0.25)}</g>` : ''); },
   circle(sc) { const A = GART, St = GART_PAL.stone; let s = ''; for (const [x, h, k] of [[-52, 26, 1], [-26, 32, 1.1], [0, 36, 1.2], [26, 30, 1], [52, 26, 0.95]]) s += A.P(St[1], `M${x - 7 * k} 0L${x - 5 * k} ${-h}Q${x} ${-h - 3} ${x + 5 * k} ${-h}L${x + 7 * k} 0z`) + A.P(St[3], `M${x - 5 * k} -2L${x - 3.500 * k} ${-h + 2}H${x - 1 * k}L${x - 2 * k} -2z`, 0.7); return s + (sc.season === 'winter' ? '' : A.S('#7fa85a', 1, 'M-60 1q2 -4 3 0M60 1q2 -4 3 0', 0.8)); },
   chest() { const A = GART, Wd = GART_PAL.wood; return A.P(Wd[1], A.rrect(-11, -13, 22, 13, 2)) + A.P(Wd[3], 'M-12 -13Q-12 -21 0 -21Q12 -21 12 -13z') + A.S('#c8a02e', 1.6, 'M-12 -13H12M-8 -20V0M8 -20V0') + A.P('#f2c432', A.rrect(-2, -15, 4, 5, 1)); },
@@ -284,6 +334,7 @@ function gardenLandWorldProps(sc, o) {
   const out = [], open = new Set(sc.areas || []), lv = sc.lv == null ? 1 : sc.lv;
   const push = (cls, z, x, inner, key) => { if (inner) out.push({ cls, z, x, inner, key }); };
   push('gd-prop-lf gd-prop-click', GARDEN_LAND_OFFICE.y + 1, GARDEN_LAND_OFFICE.x, _gldDraw('office', GARDEN_LAND_OFFICE, sc, o), GARDEN_LAND_OFFICE.id);
+  if (open.has('finds') && !open.has('lf-museum')) push('gd-prop-lf gd-prop-click', GARDEN_LAND_FINDS.y + 1, GARDEN_LAND_FINDS.x, _gldDraw('finds', GARDEN_LAND_FINDS, sc, o), GARDEN_LAND_FINDS.id);
   const occ = new Set();
   for (const p of sc.plants || []) occ.add(p.x + ',' + p.y);
   for (const d of sc.decor || []) { const dd = gardenDecor(d.id); if (dd && dd.layer !== 'ground') occ.add(d.x + ',' + d.y); }
@@ -303,7 +354,7 @@ function gardenLandWorldProps(sc, o) {
     }
     if (!o.interactive || o.photo || o.readOnly) continue;
     if (f.sec && !open.has(f.sec)) continue;
-    if (occ.has(f.x + ',' + f.y)) continue;
+    if (occ.has(f.x + ',' + f.y) || f.lv > lv + 2) continue;   // (further off, the land office lists it: a field of stakes would only be clutter)
     push('gd-prop-lf gd-prop-click', f.y + f.h, f.x, _gldSiteArt(f, sc, lv), 'site:' + f.id);
   }
   return out;

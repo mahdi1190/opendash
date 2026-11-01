@@ -25,6 +25,6 @@
 .gld-more { margin: 2px 2px 0; font-size: 12px; color: #7a6a4a; }
 .gld-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .gld-chip { padding: 3px 9px; border-radius: 10px; background: #efe6d0; color: #a89a80; font-size: 12px; }
-.gld-chip.is-on { background: #f8ecc8; color: #5a4630; border: 1px solid #e0c98a; }
+.gld-chip.is-on { display: inline-flex; align-items: center; gap: 4px; background: #f8ecc8; color: #5a4630; border: 1px solid #e0c98a; }
 .gd-popup-lands .gd-popup-body { padding: 0 !important; }
 .gd-svg .gd-prop-lf { transition: opacity .25s; }

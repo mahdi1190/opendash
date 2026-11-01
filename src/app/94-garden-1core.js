@@ -480,6 +480,7 @@ function _gdAreasOpen(level) {
   // the land's own items: the whole plots, the sections and what is built (94-garden-lands-0table.js says what that opens)
   const items = gardenWallet().items, own = [];
   for (const k of Object.keys(items)) if (items[k] > 0 && (k.startsWith('land:') || k.startsWith('feat:'))) own.push(k.slice(5));
+  if (GARDEN_LAND_CURIOS.some(c => items['cur:' + c.id] > 0) || items['key:old'] > 0) own.push('finds');   // (the table they are laid out on)
   const openSet = gardenLandsOpen(level, own);
   if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id)); }   // (on a visit the land on screen is your friend's)
   const base = GARDEN_AREAS.filter(a => (a.buy ? openSet.has(a.id) : level >= a.lv)).map(a => a.id);
@@ -602,7 +603,7 @@ function gardenSnapshot() {
     const plants = m.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants).map(p => [p.def.id, p.x, p.y, p.stage, p.variant, (p.thirsty ? 1 : 0) | (p.overgrown ? 2 : 0) | (p.ripe ? 4 : 0)]);
     const decor = m.decor.slice(0, GARDEN_SNAPSHOT_MAX.decor).map(d => [d.def.id, d.x, d.y, d.r, d.v]);
     const out = { v: 1, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
-    { const L = gardenLandsWire(m); out.areas = L.areas; out.ls = L.ls; if (L.lf.length) out.lf = L.lf; if (L.lc) out.lc = L.lc; if (L.lr) out.lr = L.lr; }   // the land: at most 12 plain areas for an older friend, the real answer beside them
+    { const L = gardenLandsWire(m); out.areas = L.areas; out.ls = L.ls; if (L.lf.length) out.lf = L.lf; if (L.lc.length) out.lc = L.lc; if (L.lz.length) out.lz = L.lz; if (L.lr) out.lr = L.lr; }   // the land: at most 12 plain areas for an older friend, the real answer beside them
     if (typeof GARDEN_WORKS !== 'undefined') { const wk = GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id); if (wk.length) out.wk = wk; }   // 2.38: so a friend walks on your longer pier
     if (m.rain && (m.rain.snow || m.rain.now)) out.wx = m.rain.snow ? 2 : 1;   // 2.28: is it raining (1) or snowing (2) over your garden now? A visit has the same sky
     // 2.28: your time zone and your sunrise and sunset, so a friend who visits sees your sky as it is for you now (the offset tells them roughly where you are in the world)
@@ -1151,7 +1152,9 @@ function gardenBuyLand(id) {
   const lk = 'b.' + m.today + '.' + _gdUid(''), mark = _gdMark([['led', lk]]);
   _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(info.cost), x: 5, i: { ['land:' + id]: 1 }, n: 1 };
   _gdEmit('land', { id, x: info.def.x, y: info.def.y, w: info.def.w, h: info.def.h });
-  return _gdDone(`${info.def.name} is yours`, `buying ${info.def.name.toLowerCase()}`, mark, { icon: 'trees' });
+  const done = _gdDone(`${info.def.name} is yours`, `buying ${info.def.name.toLowerCase()}`, mark, { icon: 'trees' });
+  gardenModel();   // (the land on screen, and what you can walk on, are yours from this moment)
+  return done;
 }
 function gardenBuy(item, n) {
   n = Math.max(1, Math.min(20, Math.floor(Number(n) || 1)));
