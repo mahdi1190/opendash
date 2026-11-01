@@ -73,7 +73,7 @@ function rfRenderWaiting(main) {
   page.appendChild(bar);
   if (!total) {
     const box = document.createElement('div'); page.appendChild(box);
-    mountEmptyState(box, { icon: 'hourglass', title: 'Nobody to wait on', text: `Press W on a task that waits on someone: it moves here, and a nudge appears after ${nd} days.`, actions: [{ label: 'Back to Today', icon: 'sun', run: () => setView('today') }] });
+    mountEmptyState(box, { icon: 'hourglass', title: 'Nobody to wait on', text: `This page keeps the things other people owe you. Open a task and choose Waiting on someone: it moves here, and Freeflo reminds you to chase it after ${nd} days.`, actions: [{ label: 'Back to Today', icon: 'sun', run: () => setView('today') }] });
     main.appendChild(page);
     return;
   }

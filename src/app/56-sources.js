@@ -63,7 +63,7 @@ async function _srcApi(path, opts) {
     ...(opts.signal ? { signal: opts.signal } : {}),
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok && !(opts.okStatuses || []).includes(r.status)) throw Object.assign(new Error(j.error || 'The Freeflo server did not answer.'), { code: j.code, status: r.status });
+  if (!r.ok && !(opts.okStatuses || []).includes(r.status)) throw Object.assign(new Error(j.error || 'Freeflo didn’t answer. Try again in a moment.'), { code: j.code, status: r.status });
   return j;
 }
 
@@ -122,7 +122,7 @@ function _srcRow(s) {
     row.appendChild(_connEl('div', 'src-note', h.message));
   }
   const syncWarning = _srcSyncWarning(s);
-  if (syncWarning && s.enabled !== false && !s.demo) row.appendChild(_connEl('div', 'src-note', 'Last update failed: ' + syncWarning + ' Try updating it again.'));
+  if (syncWarning && s.enabled !== false && !s.demo) row.appendChild(_connEl('div', 'src-note', 'The last update didn’t work: ' + netPlainError(syncWarning) + ' Try updating it again.'));
 
   // Accounts / calendars / mailboxes, each with its own switch.
   if (s.accounts && s.accounts.length) {

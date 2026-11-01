@@ -53,6 +53,17 @@
   }
   /** Tax year dates from its id ("2026-27"). */
   const txYearSpan = (v) => { const y = Number(String(v.year).slice(0, 4)); return { start: y + '-04-06', end: (y + 1) + '-04-05' }; };
+  /** The payday box: the day of the month, for a job paid monthly. Empty: not known, and Freeflo keeps its usual guess. */
+  function txPaydayField(value, other) {
+    return h('div', { 'data-payday': '1' }, txField('Payday', txInput('payday', value == null ? '' : value, 'number', { placeholder: 'Day of the month' }), other ? 'Your plan already has a payday, such as the last working day. Type a day to use that instead.' : 'The day of the month your pay arrives, such as 28. Not sure? Leave it empty.'));
+  }
+  /** A payday only means something for pay that comes each month. */
+  function txPaydayFollow(form) {
+    const every = form.querySelector('[name=every]'), box = form.querySelector('[data-payday]');
+    if (!every || !box) return;
+    const show = () => { box.hidden = every.value !== 'monthly'; };
+    every.addEventListener('change', show); show();
+  }
   const txOkCode = (c) => !c || /^[SC]?(\d{1,4}[LMNTP]?|K\d+|BR|D[0-8]|NT|0T)( ?(W1|M1|X))?$/i.test(String(c).trim());
 
   /* ---------- nothing typed is lost ---------- */
@@ -152,6 +163,7 @@
     if (f.start && end && end < f.start) stop('end', `The last day, ${txShort(end)}, is before the first day, ${txShort(f.start)}. Change one of them.`);
     if (f.annual > 0 && f.payPer !== 'month' && f.annual < 6000) note('annual', `${gbp(f.annual)} a year is about ${gbp(f.annual / 12)} a month. If ${gbp(f.annual)} is what you get each month, choose “a month” next to it.`);
     if (f.annual >= 10000 && f.payPer === 'month') note('annual', `${gbp(f.annual)} a month would be ${gbp(f.annual * 12)} a year. If ${gbp(f.annual)} is your yearly pay, choose “a year” next to it.`);
+    if (f.payday != null && f.every === 'monthly' && !(Number.isInteger(Number(f.payday)) && Number(f.payday) >= 1 && Number(f.payday) <= 31)) stop('payday', 'A payday is a day of the month, 1 to 31. For example 28.');
     if (f.taxCode && !txOkCode(f.taxCode)) note('taxCode', 'A tax code looks like 1257L or BR. If that is an amount, it belongs in a money box.');
     if (!f.taxCode && f.start && others.length && others.every(j => j.end && j.end < f.start)) note('taxCode', 'Your other job ended before this one starts, so your code is probably not BR. It is often 1257L or the code on your P45 (the form you get when you leave a job). Check your payslip and type it here.');
     const anyYtd = f.ytdPay != null || f.ytdTax != null || f.ytdNi != null || f.ytdPlan != null || f.ytdPg != null || f.ytdTaxable != null;
@@ -170,7 +182,7 @@
     if (f.prevPay > 0 && f.start) { const had = others.find(j => j.end && j.end <= f.start); if (had) note('prevPay', `${had.name} is already on your list, so its pay is counted. Only type pay from a job that is not on the list.`); }
     if (f.bonusOn && !f.bonus) note('bonus', 'Add the bonus amount, or clear its date.');
     if (f.bonusOn && end && f.bonusOn > end) note('bonusOn', `That is after the last day, ${txShort(end)}. Fine if it is really paid then. If not, change the date.`);
-    if ((o.pays || []).some(p => p.date && p.amount > 0) && !f.asOf && f.annual > 0) note('pays', 'Until the first of these, Freeflo still counts your usual pay on each payday. Already had your last usual pay? Add your latest figures under “Type in a payslip”, and only these payments count after it.');
+    if ((o.pays || []).some(p => p.date && p.amount > 0) && !f.asOf && !end && f.annual > 0) note('pays', 'Your usual pay still counts on each payday before the first of these. If your usual pay stopped sooner, add the last day above, or your latest figures under “Type in a payslip”.');
     for (const p of o.pays || []) {
       if (!p.date && !p.amount && !Number.isNaN(p.amount)) continue;
       if (Number.isNaN(p.amount)) { stop('pays', MONEY_HELP); continue; }
@@ -196,11 +208,12 @@
       if (t === 'job') {
         const pay = txPayField('', 'year');
         echo = pay.echo;
-        box.append(txField('Employer', txInput('name')), pay.field, pay.per, txField('Paid every', h('select', { name: 'every', class: 'fv-tx-in' }, TX_EVERY.map(([k, l]) => h('option', { value: k, text: l })))), txField('Tax code', txInput('taxCode', '', 'text', { upper: true, placeholder: other ? 'BR' : '1257L' }), `A short code on your payslip that says how much of your pay is tax-free. Not sure? Leave it empty and Freeflo uses ${other ? 'BR, the usual code for a second job' : '1257L, the most common one'}.`), txField('First day', txInput('start', '', 'date'), 'Empty if you have had the job all year.'), txField('Last day', txInput('end', '', 'date'), 'Only if it has ended, or you know when it will.'));
+        box.append(txField('Employer', txInput('name')), pay.field, pay.per, txField('Paid every', h('select', { name: 'every', class: 'fv-tx-in' }, TX_EVERY.map(([k, l]) => h('option', { value: k, text: l })))), txPaydayField(), txField('Tax code', txInput('taxCode', '', 'text', { upper: true, placeholder: other ? 'BR' : '1257L' }), `A short code on your payslip that says how much of your pay is tax-free. Not sure? Leave it empty and Freeflo uses ${other ? 'BR, the usual code for a second job' : '1257L, the most common one'}.`), txField('First day', txInput('start', '', 'date'), 'Empty if you have had the job all year.'), txField('Last day', txInput('end', '', 'date'), 'Only if it has ended, or you know when it will.'));
       } else if (t === 'self') box.append(txField('What is the work?', txInput('name')), txField('From', txInput('start', '', 'date')), txField('To', txInput('end', '', 'date'), 'Empty if it is still going.'), txField('Money in, if you know the total', txInput('amount', '', 'money'), 'You can list each payment later instead.'));
       else box.append(txField('Name', txInput('name')), txField('Amount', txInput('amount', '', 'money')), txField('Every', h('select', { name: 'per', class: 'fv-tx-in' }, TX_PER.map(([k, l]) => h('option', { value: k, text: l })))));
       if (keep) for (const el of box.querySelectorAll('input[name], select[name]')) if (keep[el.name] != null && keep[el.name] !== '') el.value = keep[el.name];
       if (echo) echo();
+      txPaydayFollow(box);
     };
     paintFields();
     const checks = (f) => {
@@ -208,9 +221,10 @@
       if (f.type === 'self' && f.start && f.end && f.end < f.start) return [{ name: 'end', text: 'The “To” date is before the “From” date. Change one of them.' }];
       return [];
     };
-    const build = () => { const f = txRead(form); if (Object.values(f).some(x => Number.isNaN(x)) || checks(f).some(c => !c.soft)) return null; if (!(f.annual > 0 || f.amount > 0)) return null; return { action: 'source.add', source: txPayYearly(Object.assign({}, f)) }; };
+    const sourceOf = (f0) => { const f = txPayYearly(Object.assign({}, f0)); if (f.every !== 'monthly') delete f.payday; return f; };
+    const build = () => { const f = txRead(form); if (Object.values(f).some(x => Number.isNaN(x)) || checks(f).some(c => !c.soft)) return null; if (!(f.annual > 0 || f.amount > 0)) return null; return { action: 'source.add', source: sourceOf(f) }; };
     const effect = txEffectLine(build, (p, v0) => { const was = v0.position.income, now = p.income; return Math.abs(now - was) >= 0.5 ? `This adds ${gbp(now - was)} to your income this tax year.` : ''; });
-    const form = h('form', { class: 'fv-tx-form', onsubmit: async (e) => { e.preventDefault(); const f0 = txGet(form, checks); if (!f0) return; delete TX.drafts[key]; const ok = await txDo({ action: 'source.add', source: txPayYearly(f0) }, 'Added', { form }); if (!ok) TX.drafts[key] = { vals: txFormVals(form), extra: null }; } },
+    const form = h('form', { class: 'fv-tx-form', onsubmit: async (e) => { e.preventDefault(); const f0 = txGet(form, checks); if (!f0) return; delete TX.drafts[key]; const ok = await txDo({ action: 'source.add', source: sourceOf(f0) }, 'Added', { form }); if (!ok) TX.drafts[key] = { vals: txFormVals(form), extra: null }; } },
       txField('What is it?', typeSel), box, effect.box,
       h('div', { class: 'fv-tx-foot' }),
       h('div', { class: 'fv-pl-acts' }, h('button', { type: 'submit', class: 'fv-btn primary', text: 'Add it' }), txBtn('Cancel', null, () => txDropDraft(key, () => { TX.edit = { add: true }; txPaint(); }), 'ghost')));
@@ -277,7 +291,9 @@
     const sum = line ? h('p', { class: 'fv-tx-sumline' }, ic('circle-help'), h('span', { class: 'fv-amt', text: line })) : null;
     const coming = (j.summary && j.summary.coming) || [];
     const last = j.ended || (j.end && coming.length <= 1);
-    const next = j.next && v.yearState === 'current' ? h('p', { class: 'fv-pl-mute small' }, last ? 'Last payslip' : 'Next payslip', ': about ', amt(gbp2(j.next.takeHome)), ` on ${txShort(j.next.date)}. `, h('button', { type: 'button', class: 'fv-link', text: 'Not your payday? Change it', onclick: () => { MPL.edit = j.id; MPL.answers = false; setSection('budgets'); setTimeout(() => { const w = MPL.host && MPL.host.querySelector('.fv-pl-panel'); if (w) w.scrollIntoView({ block: 'center' }); }, 300); } })) : null;
+    // With no payday known the date is a guess, so ask: the box is on this job's form.
+    const paydayAsk = !j.paydayKnown && j.freq === 'monthly' && !(j.payments || []).length && !editing ? h('button', { type: 'button', class: 'fv-link', text: 'Tell us your payday', onclick: () => { TX.edit = { id: j.id, payday: true }; txPaint(); } }) : null;
+    const next = j.next && v.yearState === 'current' ? h('p', { class: 'fv-pl-mute small' }, last ? 'Last payslip' : 'Next payslip', ': about ', amt(gbp2(j.next.takeHome)), ` on ${txShort(j.next.date)}. `, paydayAsk) : null;
     const lastAsk = j.end && !j.ended && !(j.payments || []).length && !editing ? h('button', { type: 'button', class: 'fv-link fv-tx-lastask', text: 'Know your last payment? Add the exact amount', onclick: () => { TX.edit = { id: j.id, exact: true }; txPaint(); } }) : null;
     return h('li', { class: 'fv-tx-src-i' + (editing ? ' open' : ''), 'data-src': j.id }, head, sum, summary, next, lastAsk, notes, editing ? txJobForm(j, v) : null);
   }
@@ -323,7 +339,8 @@
     const fieldsOf = (f0) => {
       const f = txPayYearly(f0);
       const good = pays.filter(p => p.date || p.amount);
-      const fields = { name: f.name, annual: f.annual, taxCode: f.taxCode, every: f.every, start: f.start, end: ended.checked ? f.end : null, prevPay: f.prevPay, prevTax: f.prevTax,
+      // An empty box leaves a payday set some other way (the last working day) as it is.
+      const fields = { name: f.name, annual: f.annual, taxCode: f.taxCode, every: f.every, ...(f.every === 'monthly' ? { payday: f.payday == null ? null : Number(f.payday) } : {}), start: f.start, end: ended.checked ? f.end : null, prevPay: f.prevPay, prevTax: f.prevTax,
         payments: exact ? good.map(p => ({ date: p.date, amount: p.amount })) : [], bonus: f.bonus, bonusOn: f.bonus ? f.bonusOn : null };
       fields.ytd = f.asOf ? { asOf: f.asOf, pay: f.ytdPay, taxablePay: f.ytdTaxable, tax: f.ytdTax, ni: f.ytdNi, plan: f.ytdPlan, pg: f.ytdPg } : null;
       return fields;
@@ -343,7 +360,7 @@
     } },
       h('div', { class: 'fv-tx-grid' },
         txField('Employer', txInput('name', j.name)),
-        pay.field, pay.per, everyField,
+        pay.field, pay.per, everyField, txPaydayField(j.payday, j.paydayOther),
         txField('Tax code', txInput('taxCode', j.codeGiven ? j.codeText : '', 'text', { upper: true, placeholder: j.codeText }), `A short code on your payslip that says how much of your pay is tax-free. Leave it empty and Freeflo uses ${j.codeText}.`),
         txField('First day', txInput('start', j.start, 'date'), 'Empty if you have had the job all year.')),
       h('label', { class: 'fv-tx-check' }, ended, h('span', null, 'This job has ended, or I know when it will end', h('small', { text: 'Pay stops after the last day.' }))), endBox,
@@ -366,7 +383,8 @@
     const base = JSON.stringify([txFormVals(form), { exact: (j.payments || []).length > 0, pays: (j.payments || []).map(p => ({ date: p.date, amount: p.amount })) }]);
     const filled = txDraftFill(form, key);
     if (filled) endBox.hidden = !ended.checked;
-    paintPays(); showLast(); pay.echo();
+    paintPays(); showLast(); pay.echo(); txPaydayFollow(form);
+    if (TX.edit && TX.edit.payday) { TX.edit = { id: j.id }; setTimeout(() => { const el = form.querySelector('[name=payday]'); if (el) try { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } catch (e) { /* no focus */ } }, 40); }
     if (askExact) { TX.edit = { id: j.id }; setTimeout(() => { try { lastBox.scrollIntoView({ block: 'nearest' }); const first = lastBox.querySelector('input'); if (first) first.focus({ preventScroll: true }); } catch (e) { /* no scroll */ } }, 40); }
     const after = () => { txSayAll(form, checks, txRead(form)); pay.echo(); effect.run(); };
     const soon = txFollow(form, key, base, after, extra);

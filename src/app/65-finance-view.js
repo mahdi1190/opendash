@@ -61,7 +61,7 @@ function renderFinanceView(container) {
     return;
   }
   if (_finWaitTries > 40) {
-    mountEmptyState(container, { icon: 'circle-alert', title: 'The Finances module did not load', text: 'Rebuild the page (node build.mjs) and reload.' });
+    mountEmptyState(container, { icon: 'circle-alert', title: 'Money couldn’t open', text: 'Reload the page. If it keeps happening, close Freeflo and open it again.' });
     return;
   }
   mountEmptyState(container, { icon: 'loader-circle', title: 'Loading finances…', art: false });

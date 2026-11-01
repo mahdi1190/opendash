@@ -273,7 +273,7 @@ function renderEmailTriage(container) {
   let line;
   if (running) line = (job && job.detail) || 'Reading your recent email…';
   else if (job && job.state === 'error') line = job.error || 'The inbox could not be updated.';
-  else if (d && d.fetchedAt) line = `${gdAgeLabel(d.fetchedAt)} · ${msgs.length} thread${msgs.length === 1 ? '' : 's'}${d.days ? ` from the last ${d.days} days` : ''}${d.source === 'snapshot' ? ' (older snapshot)' : ''}`;
+  else if (d && d.fetchedAt) line = `${gdAgeLabel(d.fetchedAt)} · ${msgs.length} email${msgs.length === 1 ? '' : 's'}${d.days ? ` from the last ${d.days} days` : ''}${d.source === 'snapshot' ? ' (an older copy)' : ''}`;
   else line = 'No email yet. Update the inbox.';
   st.innerHTML = `${icon(running ? 'loader-circle' : job && job.state === 'error' ? 'circle-alert' : 'inbox', running ? 'i-sm spin' : 'i-sm')}<span></span>`;
   st.querySelector('span').textContent = line;
@@ -352,7 +352,7 @@ function renderEmailTriage(container) {
   const handledN = msgsA.filter(m => t.handled[m.id]).length;
   const openN = msgsA.length - handledN;
   sec.innerHTML = `<div class="section-h"><h2>Inbox</h2><span class="n">${openN}</span><span class="spacer"></span><div class="seg" role="tablist" aria-label="Show">`
-    + [['open', `To triage`], ['handled', `Handled${handledN ? ' ' + handledN : ''}`], ['all', 'All']].map(([k, l]) => `<button type="button" data-f="${k}" class="${_emFilter === k ? 'on' : ''}">${esc(l)}</button>`).join('') + '</div></div>';
+    + [['open', `To sort`], ['handled', `Handled${handledN ? ' ' + handledN : ''}`], ['all', 'All']].map(([k, l]) => `<button type="button" data-f="${k}" class="${_emFilter === k ? 'on' : ''}">${esc(l)}</button>`).join('') + '</div></div>';
   sec.querySelectorAll('[data-f]').forEach(b => { b.onclick = () => { _emFilter = b.dataset.f; render(); }; });
   const shown = msgsA.filter(m => _emFilter === 'all' || (_emFilter === 'handled' ? !!t.handled[m.id] : !t.handled[m.id]));
   const list = document.createElement('div'); list.className = 'em-list';
@@ -444,7 +444,7 @@ function _emRow(m, handled) {
   } else {
     const mk = document.createElement('button'); mk.type = 'button'; mk.className = 'btn btn-secondary btn-sm'; mk.innerHTML = icon('plus', 'i-sm') + '<span>Make task</span>';
     mk.onclick = (e) => { e.stopPropagation(); emailMakeTask(m); };
-    const no = document.createElement('button'); no.type = 'button'; no.className = 'btn btn-icon btn-ghost btn-sm'; no.setAttribute('data-tip', 'Nothing to do'); no.setAttribute('aria-label', 'Nothing to do'); no.innerHTML = icon('check');
+    const no = document.createElement('button'); no.type = 'button'; no.className = 'btn btn-ghost btn-sm'; no.setAttribute('data-tip', 'No task needed: move this email to Handled'); no.innerHTML = icon('check', 'i-sm') + '<span>Nothing to do</span>';
     no.onclick = (e) => { e.stopPropagation(); emailMarkHandled(m.id, 'dismiss'); toast('Marked as nothing to do', { action: { label: 'Undo', run: () => undo() } }); };
     acts.append(mk, no);
   }

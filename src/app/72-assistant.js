@@ -738,7 +738,7 @@ async function _asstSend(text) {
     });
     if (!r.ok || !r.body) {
       const j = await r.json().catch(() => ({}));
-      acc.error = { code: j.code || 'HTTP_' + r.status, message: j.error || `The assistant could not start (${r.status}).` };
+      acc.error = { code: j.code || 'HTTP_' + r.status, message: j.error || 'The assistant could not start. Try again in a moment.' };
     } else {
       const reader = r.body.getReader();
       const dec = new TextDecoder();
@@ -913,7 +913,7 @@ function _asstBubble(m, i) {
   } else if (m.error) {
     const code = m.error.code || '';
     const connect = ['CLI_MISSING', 'NOT_SIGNED_IN', 'UNAVAILABLE'].includes(code);
-    html += `<div class="callout danger asst-err">${icon('circle-alert', 'i-sm')}<div><div>${esc(m.error.message || 'Something went wrong.')}</div>`
+    html += `<div class="callout danger asst-err">${icon('circle-alert', 'i-sm')}<div><div>${esc(netPlainError(m.error.message || 'Something went wrong. Try again.'))}</div>`
       + `<div class="asst-err-a">${connect ? '<button type="button" class="btn btn-secondary btn-sm" data-asst-connect>Open Connections</button>' : ''}`
       + `<button type="button" class="btn btn-ghost btn-sm" data-asst-retry="${escAttr(m.id)}">${icon('refresh-cw')}<span>Try again</span></button></div></div></div>`;
   } else {

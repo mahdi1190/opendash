@@ -245,7 +245,7 @@
           if (!go) { errs.push(`${f.name}: not imported (it looks like an account that is already here)`); continue; }
           r = await send({ force: true, ...(card !== undefined ? { card } : {}) });
         }
-        if (!r.ok) { errs.push(`${f.name}: ${r.body.error || 'HTTP ' + r.status}`); continue; }
+        if (!r.ok) { errs.push(`${f.name}: ${netPlainError(r.body.error || 'HTTP ' + r.status)}`); continue; }
         added += Number(r.body.imported) || 0; rows += Number(r.body.rows) || 0; last = r.body;
         if (r.body.card && r.body.card.isNew) newCard = r.body.card;
         for (const e of r.body.errors || []) errs.push(e);
@@ -346,7 +346,7 @@
     const job = R.job || meta.job;
     const running = !!(job && job.state === 'running');
     const P = E.progress; P.innerHTML = ''; P.hidden = false;
-    if (R.startErr) { callout('danger', 'circle-x', "That didn't work.", ' ' + R.startErr, 'err:' + R.startErr); return; }
+    if (R.startErr) { callout('danger', 'circle-x', "That didn't work.", ' ' + netPlainError(R.startErr), 'err:' + R.startErr); return; }
     // The finance computer is off (04-data.js waitRemote): said calmly, the last copy stays on show.
     if (R.startNote && meta.remote && meta.remote.online) R.startNote = null;   // it is back
     if (R.startNote && R.dismissed !== 'away:' + R.startNote.at) {
@@ -394,7 +394,7 @@
     const warns = (r.warnings || []).length ? h('ul', { class: 'fv-warn-list' }, r.warnings.map(w => h('li', { text: w }))) : null;
     if (last.state === 'ok' && !warns) { R.quiet = (r.imported != null ? `Imported ${nf0.format(r.imported)} new` : 'Updated') + (last.at ? ` · ${agoText(last.at)}` : ''); P.hidden = true; return; }
     if (last.state === 'ok') callout('warn', 'triangle-alert', (imported || 'Updated') + (upto ? ', ' + upto : '') + '.', [h('span', { class: 'mute', text: when }), warns], key);
-    else if (last.state === 'warning') callout('warn', 'triangle-alert', "Couldn't fetch from your bank.", [' ' + (last.error || ''), imported ? h('div', { text: `${imported} from CSVs in the inbox folder${upto ? ', ' + upto : ''}.` }) : null, h('span', { class: 'mute', text: when }), warns], key);
-    else callout('danger', 'circle-x', 'Update failed.', [' ' + (last.error || 'Unknown error'), h('span', { class: 'mute', text: when }), warns], key);
+    else if (last.state === 'warning') callout('warn', 'triangle-alert', "Couldn't fetch from your bank.", [' ' + netPlainError(last.error || ''), imported ? h('div', { text: `${imported} from CSVs in the inbox folder${upto ? ', ' + upto : ''}.` }) : null, h('span', { class: 'mute', text: when }), warns], key);
+    else callout('danger', 'circle-x', 'The update didn’t finish.', [' ' + netPlainError(last.error || 'Something went wrong. Try again.'), h('span', { class: 'mute', text: when }), warns], key);
   }
 

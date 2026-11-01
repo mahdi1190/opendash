@@ -29,6 +29,9 @@
 .debug-banner.show { display: block; }
 .debug-banner h4 { font-size: var(--text-sm); color: var(--danger-ink); margin: 0 var(--space-8) var(--space-1-5) 0; font-weight: var(--weight-semibold); }
 .debug-banner pre { font-family: var(--font-mono); white-space: pre-wrap; word-wrap: break-word; max-height: 200px; overflow-y: auto; background: var(--bg-subtle); padding: var(--space-2); border-radius: var(--radius-sm); font-size: var(--text-2xs); }
+.debug-banner .debug-plain { margin: 0 var(--space-8) var(--space-2) 0; font-size: var(--text-sm); color: var(--fg); }
+.debug-banner .debug-more { margin-top: var(--space-2); font-size: var(--text-xs); color: var(--fg-muted); }
+.debug-banner .debug-more summary { cursor: pointer; }
 .debug-banner .x { position: absolute; top: 8px; right: 8px; }
 .debug-banner button#debug-copy { margin-top: var(--space-2); }
 

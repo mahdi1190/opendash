@@ -1153,7 +1153,7 @@ function _syncAdvanced(box, st) {
   if (R.host) facts.push('Relay: ' + R.host + (R.state ? ' (' + R.state + ')' : ''));
   if (R.outbox && R.outbox.bytes > 0) facts.push(_syncSize(R.outbox.bytes) + ' waiting to send');
   if (st.live && st.live.port) facts.push('Direct link port: ' + st.live.port);
-  if (st.live && st.live.listenError) facts.push('Direct links could not start: ' + st.live.listenError);
+  if (st.live && st.live.listenError) facts.push('Direct links could not start: ' + netPlainError(st.live.listenError));
   if (Array.isArray(st.notSynced) && st.notSynced.length) facts.push(st.notSynced.length + ' file' + (st.notSynced.length === 1 ? ' is' : 's are') + ' too big to sync from here: ' + st.notSynced[0].file + (st.notSynced.length > 1 ? '…' : ''));
   if (st.skew) facts.push(st.skew.text || `${st.skew.device}'s clock is about ${st.skew.aheadMin} min ahead of this one.`);
   for (const f of facts) box.body.appendChild(_syncEl('div', 'set-h sync-fact', f));

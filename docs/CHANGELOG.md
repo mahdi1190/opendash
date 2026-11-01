@@ -10,6 +10,24 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.36.0]
+
+Clearer screens across the whole dashboard, and the remaining money plan and tax fixes.
+
+### Changed
+- **Clearer everywhere.** When something goes wrong, Freeflo now says what happened and what to do next, instead of showing codes. Buttons that only appeared under the mouse now stay visible. Every picture-only button says what it does when you point at it. Undo is in the More menu. "Email triage" is now "Sort email" and "Logbook" is now "Finished tasks".
+- Your plan asks a few questions first, with the rest folded away. Pay can be typed by the month or the year.
+- Freeflo now says plainly when something it does not work out may apply to you.
+
+### Fixed
+- Job forms ask for your payday, so no extra payment appears before your last one.
+- A job that is ending shows its real payments left, not an average.
+- A one-off self-employed total is no longer counted as monthly money.
+- An overdue tax bill stays in keep-aside until you tick it as paid.
+- A work expense paid back comes off spending and does not count as income.
+- A bill under £3,000 collected through your tax code is no longer shown as a January bill or kept aside.
+- Calendar's name no longer gets cut off, and Reschedule no longer sits on top of a task.
+
 ## [2.35.1]
 
 The garden is calmer, and fishing is simpler and fixed.

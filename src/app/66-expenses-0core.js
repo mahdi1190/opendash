@@ -19,6 +19,8 @@ async function expApi(path, body, o) {
   const r = await fetch('/api/expenses' + path, body === undefined ? { headers: { Accept: 'application/json' } } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   let j = null; try { j = await r.json(); } catch (e) { /* not JSON */ }
   if (!r.ok || !j || j.ok === false) { const e = new Error((j && (j.error || j.message)) || ('HTTP ' + r.status)); e.status = r.status; throw e; }
+  // What was paid back changed: the analysis was built again, so what Money shows moves too.
+  if (j.rebuilt) { try { if (window.FinanceView && window.FinanceView.refresh) window.FinanceView.refresh(); } catch (e) { /* not loaded yet */ } }
   return j;
 }
 function expSet(data) {

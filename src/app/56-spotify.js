@@ -139,7 +139,7 @@ function spotifySetup() {
             const list = Array.isArray(j.devices) ? j.devices : [];
             dev.textContent = list.length ? 'Spotify can see: ' + list.map(d => `${d.name}${d.type ? ' (' + d.type.toLowerCase() + ')' : ''}${d.active ? ', playing now' : ''}`).join('; ') + '.'
               : 'Spotify can’t see an open Spotify app right now. Open it on your phone or computer and play anything for a second.';
-          } catch (err) { dev.textContent = err.message || 'Spotify could not say.'; }
+          } catch (err) { dev.textContent = netErrorMessage(err, 'Spotify didn’t answer. Try again in a moment.'); }
           if (alive) b.disabled = false;
         } });
         el.append(dev, btn);
@@ -176,7 +176,7 @@ function spotifySetup() {
         _spotStopWatch(); await spotifyStatus(true); await connRefresh({ force: true });
         if (alive) { close(); spotifySetup(); }
         toast('Client ID saved. Sign in with Spotify to finish', { kind: 'ok' });
-      } catch (err) { if (alive) { feedback.textContent = err.message; b.disabled = false; input.disabled = false; } }
+      } catch (err) { if (alive) { feedback.textContent = netErrorMessage(err); b.disabled = false; input.disabled = false; } }
     } });
     details.appendChild(save);
     if (s.configured) {

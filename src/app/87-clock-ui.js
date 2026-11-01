@@ -286,7 +286,7 @@ function _clkUtcCard() {
     Clock.refresh('setting');
     if (Clock.overrideReady) { _clkBannerClose(); toast(`The dashboard uses ${home} time`, { kind: 'ok', icon: 'house' }); return; }
     // Until the page can show another zone, the server (Claude, the stories) keeps home time and the page says so.
-    el.querySelector('.clk-t').textContent = `Claude, the stories and the server now use ${home} time.`;
+    el.querySelector('.clk-t').textContent = `Claude and the stories now use ${home} time.`;
     el.querySelector('.clk-s').textContent = 'This page keeps the computer’s clock until it can show another zone; set Windows to your time zone to change it here too.';
     acts.textContent = '';
     const a = _clkWinLink(); if (a) acts.appendChild(a);
