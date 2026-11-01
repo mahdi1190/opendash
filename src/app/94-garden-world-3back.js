@@ -305,7 +305,7 @@ function _eeMute() {
   if (!_ee.mute && _ee.volv === 0) _ee.volv = EE.volDefault;
   _eeGainApply(); _eeSoundSync();
 }
-function _eeMayEnter() { return !_ee.on && !_ee.closing && !!(typeof _gw !== 'undefined' && _gw.on && _gw.box); }
+function _eeMayEnter() { return !_ee.on && !_ee.closing && !(typeof _grm !== 'undefined' && (_grm.on || _grm.closing)) && !!(typeof _gw !== 'undefined' && _gw.on && _gw.box); }
 /** Open the room. quiet: you were brought here by somebody else (they already know where you are). */
 function eeEnter(o) {
   if (!_eeMayEnter()) return false;
@@ -360,6 +360,7 @@ function _eeLeave() {
 /* ---------- other people ---------- */
 function _eeHear(A, ev) {
   if (!A || A.me || !ev) return;
+  if (ev.i) { if (typeof gardenRoomHear === 'function') gardenRoomHear(A, ev); return; }   // (one of the hidden rooms: 94-garden-world-4rooms.js)
   const e = String(ev.e || '');
   if (e === 'out') { const R = _ee.m.get(A.w); if (R) { R.g.remove(); _ee.m.delete(A.w); } return; }
   if (e !== 'in' && e !== 'at') return;

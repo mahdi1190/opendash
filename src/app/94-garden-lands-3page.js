@@ -19,6 +19,7 @@ function gardenLandPropOpen(p) {
   if (gardenLandSight(id)) {
     const d = gardenLandSight(id), items = [], E = !m.visit && d.egg && !gardenLandEggFound(id) ? d.egg : null;
     if (E) items.push({ ic: 'sparkles', label: E.verb, cls: 'is-go', run: (b) => _gldSay(gardenLandEgg(id), b, 'sparkles') });
+    if (typeof gardenRoomItems === 'function') gardenRoomItems(id, items);
     gardenBubbleOpen(at, { title: d.name, sub: d.say, items, cls: items.length ? '' : 'is-empty' });
     return;
   }
@@ -38,6 +39,7 @@ function _gldVisitBubble(f, at, m) {
   if (f.does === 'observatory') sub = `${seen.z.length} of ${GARDEN_LAND_SKY.length} in their star book.`;
   if (f.does === 'post') { sub = 'Where to?'; for (const q of GARDEN_LAND_FEATURES) if (q.does === 'post' && q.id !== f.id && _GD_LAND.has(q.id)) items.push({ ic: 'milestone', label: q.name.replace(/^Way post /, ''), cls: 'is-go', run: () => gardenLandHop(q.id) }); }
   if (f.does === 'lookout') items.push({ ic: 'eye', label: 'Look out over the land', cls: 'is-go', run: () => gardenCamSet('fit') });
+  if (typeof gardenRoomItems === 'function') gardenRoomItems(f.id, items);
   gardenBubbleOpen(at, { title: f.name, sub, items });
 }
 function _gldBuildBubble(f, at, m) {
@@ -99,6 +101,7 @@ function _gldUseBubble(f, at, m0) {
     if (ms) go('gift', `Collect ${ms.c} coins`, (b) => _gldSay(gardenLandMilestoneTake('stars', S.stars), b, 'gift'));
   }
   void m0;
+  if (typeof gardenRoomItems === 'function') gardenRoomItems(f.id, items);
   gardenBubbleOpen(at, { title: f.name, sub, items, cls: items.length ? '' : 'is-empty' });
 }
 /** A way post: step to another one. */

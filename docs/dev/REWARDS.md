@@ -140,6 +140,7 @@ Every one is a `GARDEN_DECOR` row (`craft: 1`, price 0, so it is not in the shop
 | Bird on your head | A bird | 2 tickets, once ever |
 | Lantern night | A lantern on the water | 2 tickets a day |
 | Midsummer fire | A jump | 1 timber and 2 tickets a day |
+| Hidden rooms (`GRM_ROOMS`, `94-garden-world-5rooms.js`) | | 3 tickets the first time in each (`gpGrant`), one gift a day per room (`_grGive`, inside the limits below), a few one-off keepsakes. A guest pays and saves nothing |
 | Star nights, calendar, coming back | Things to see | Nothing added |
 | Friends' lights, cairn, hidden parcels | Shown between friends | |
 
