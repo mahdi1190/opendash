@@ -65,8 +65,9 @@ function _gdRows(list) { return Object.freeze(list.map(r => Object.freeze(r))); 
 /* ---------- the world ---------- */
 /* 2.22: the garden grew. The first 20 x 11 cells are exactly where they were (every saved x, y stays valid); the Wild
    woods run down the east side (x 20..27) and the Lake lies along the south (y 11..17) with its pier and tackle shop. */
-// 2.23: 60 x 30 (it was 28 x 18, and 20 x 11 before that). Every saved x, y stays where it was: new land only ever goes east and south. coreCols, coreRows: what a friend on 2.22 can draw.
-const GARDEN_WORLD = _gdF({ cols: 60, rows: 30, cellW: 48, cellH: 30, sky: 150, unit: 64, oldCols: 20, oldRows: 11, coreCols: 28, coreRows: 18 });
+/* The world, version 2 (the owner, 1 Nov 2026: "the main bit is the center of the world, expand in all directions"). The old garden is in the middle, its old x, y now at x + ox, y + oy; land goes off north, east, west and,
+   round the lake, south (94-garden-lands-0table.js). The wire carries cells 0..63, so it can grow to 64 x 64. v: a save or a snapshot from another world is moved over, or not drawn (94-garden-lands-1core.js). */
+const GARDEN_WORLD = _gdF({ v: 2, cols: 52, rows: 44, cellW: 48, cellH: 30, sky: 150, unit: 64, ox: 12, oy: 8, start: _gdF({ x: 22, y: 17 }) });
 
 const GARDEN_RARITY = _gdF({
   common: _gdF({ label: 'Common', col: '#7c8b6f', weight: 60 }),
@@ -458,22 +459,20 @@ const _GD_TILE = new Map(GARDEN_TILES.map(t => [t.id, t]));
    categories that grow there; water = the pond's water cells (only pond plants), the rest of the pond is its edge
    (flowers, wildflowers and the willow). The lawn is every cell no area claims: decorations only. */
 const GARDEN_AREAS = _gdRows([
-  { id: 'bed', name: 'Front garden', lv: 1, x: 6, y: 4, w: 8, h: 4, tile: 'soil', cats: _gdF(['flower', 'wild', 'herb', 'fruit', 'tree', 'succulent']), icon: 'flower-2', blurb: 'Where it all starts: flowers, herbs and the old oak.' },
-  { id: 'veg', name: 'Veg patch', lv: 3, x: 0, y: 4, w: 6, h: 5, tile: 'tilled', cats: _gdF(['veg', 'herb', 'fruit']), icon: 'carrot', blurb: 'Rows of good things to eat.' },
-  { id: 'orchard', name: 'Orchard', lv: 5, x: 0, y: 0, w: 7, h: 4, tile: 'orchard-grass', cats: _gdF(['tree', 'fruit', 'wild']), icon: 'trees', blurb: 'Fruit trees, long grass and fallen apples.' },
-  { id: 'pond', name: 'Pond', lv: 7, x: 14, y: 0, w: 6, h: 4, tile: 'pond-edge', water: _gdF({ x: 15, y: 1, w: 4, h: 2 }), cats: _gdF(['water', 'flower', 'wild', 'tree']), icon: 'waves', blurb: 'Water lilies, reeds and a frog or two.' },
-  { id: 'greenhouse', name: 'Greenhouse', lv: 9, x: 14, y: 4, w: 6, h: 5, tile: 'glasshouse', cats: _gdF(['exotic', 'succulent', 'veg', 'flower', 'herb', 'fruit', 'tree']), always: 1, icon: 'warehouse', blurb: 'Always summer inside: exotics, succulents and anything out of season.' },
-  { id: 'meadow', name: 'Flower meadow', lv: 12, x: 7, y: 0, w: 7, h: 4, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree']), icon: 'flower', blurb: 'Let it go wild: poppies, clover and the rarest orchid.' },
-  // 2.22: the Wild woods (east) are the bug-catchers' corner; the Lake (south) is where you fish, from the shore or the pier.
-  { id: 'woods', name: 'Wild woods', lv: 4, x: 20, y: 0, w: 8, h: 11, tile: 'forest', cats: _gdF(['tree', 'wild', 'fruit', 'herb']), icon: 'trees', bugs: 1, blurb: 'Tall trees, logs and mushrooms: the best place to catch bugs.' },
-  { id: 'lake', name: 'The lake', lv: 1, x: 0, y: 11, w: 28, h: 19, tile: 'sand', water: _gdF({ x: 0, y: 13, w: 28, h: 17 }), cats: _gdF([]), icon: 'fish', fishing: 1, blurb: 'Cast a line from the shore or the pier. Deeper water, better fish.' },
-  // 2.23: land you buy with coins, either side of the lane that runs east along the shore (y 11-12). buy: what it cost; lv: the garden level it could be bought from; look: how the ground is drawn.
-  // Not sold whole any more: someone who bought one keeps it (its id is in their ledger), everyone else buys its sections (94-garden-lands-0table.js).
-  // At most 12 areas in all: a friend's snapshot carries the open ones and older versions check that list's length (lib/friends/garden.mjs).
-  { id: 'hill', name: 'Sunny hill', lv: 2, buy: 150, look: 'meadow', x: 28, y: 0, w: 16, h: 11, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree', 'herb']), icon: 'flower', blurb: 'Open grass that catches the sun all day.' },
-  { id: 'field', name: 'Kitchen field', lv: 3, buy: 300, look: 'veg', x: 28, y: 13, w: 16, h: 17, tile: 'tilled', cats: _gdF(['veg', 'herb', 'fruit']), icon: 'carrot', blurb: 'Long rows of good dark soil.' },
-  { id: 'grove', name: 'Old orchard', lv: 5, buy: 500, look: 'orchard', x: 44, y: 0, w: 16, h: 11, tile: 'orchard-grass', cats: _gdF(['tree', 'fruit', 'wild', 'flower']), icon: 'trees', blurb: 'Room for a whole avenue of fruit trees.' },
-  { id: 'marsh', name: 'Lily marsh', lv: 7, buy: 800, look: 'pond', x: 44, y: 13, w: 16, h: 17, tile: 'pond-edge', water: _gdF({ x: 47, y: 16, w: 10, h: 10 }), cats: _gdF(['water', 'flower', 'wild', 'tree']), icon: 'waves', blurb: 'A wide still pool with its own frogs.' },
+  // the old garden's areas are families of small sections now (94-garden-lands-0table.js, `fam`): x, y, w, h say roughly where, for what looks for a spot. The pond and the greenhouse are drawn in theirs.
+  { id: 'bed', name: 'Front garden', lv: 1, x: 15, y: 13, w: 7, h: 4, tile: 'soil', cats: _gdF(['flower', 'wild', 'herb', 'fruit', 'tree', 'succulent']), icon: 'flower-2', blurb: 'Where it all starts: flowers, herbs and the old oak.' },
+  { id: 'veg', name: 'Veg patch', lv: 3, x: 12, y: 12, w: 3, h: 7, tile: 'tilled', cats: _gdF(['veg', 'herb', 'fruit']), icon: 'carrot', blurb: 'Rows of good things to eat.' },
+  { id: 'orchard', name: 'Orchard', lv: 5, x: 12, y: 8, w: 10, h: 4, tile: 'orchard-grass', cats: _gdF(['tree', 'fruit', 'wild']), icon: 'trees', blurb: 'Fruit trees, long grass and fallen apples.' },
+  { id: 'pond', name: 'Pond', lv: 7, x: 34, y: 8, w: 6, h: 4, tile: 'pond-edge', water: _gdF({ x: 35, y: 9, w: 4, h: 2 }), cats: _gdF(['water', 'flower', 'wild', 'tree']), icon: 'waves', blurb: 'Water lilies, reeds and a frog or two.' },
+  { id: 'greenhouse', name: 'Greenhouse', lv: 9, x: 35, y: 14, w: 4, h: 3, tile: 'glasshouse', cats: _gdF(['exotic', 'succulent', 'veg', 'flower', 'herb', 'fruit', 'tree']), always: 1, icon: 'warehouse', blurb: 'Always summer inside: exotics, succulents and anything out of season.' },
+  { id: 'meadow', name: 'Flower meadow', lv: 12, x: 23, y: 8, w: 11, h: 3, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree']), icon: 'flower', blurb: 'Let it go wild: poppies, clover and the rarest orchid.' },
+  { id: 'woods', name: 'Wild woods', lv: 4, x: 29, y: 12, w: 11, h: 7, tile: 'forest', cats: _gdF(['tree', 'wild', 'fruit', 'herb']), icon: 'trees', bugs: 1, blurb: 'Tall trees, logs and mushrooms: the best place to catch bugs.' },
+  { id: 'lake', name: 'The lake', lv: 1, x: 12, y: 21, w: 28, h: 17, tile: 'sand', water: _gdF({ x: 12, y: 21, w: 28, h: 17 }), cats: _gdF([]), icon: 'fish', fishing: 1, blurb: 'Cast a line from the shore or the pier. Deeper water, better fish.' },
+  // the four old plots, by name only: land is sold in sections now. buy: what one cost, to give it back to someone who had one. At most 12 rows: a friend's snapshot carries the open ones and the friends' schema checks that list's length.
+  { id: 'hill', name: 'The north hill', lv: 2, buy: 150, look: 'meadow', x: 0, y: 0, w: 0, h: 0, tile: 'long-grass', cats: _gdF(['wild', 'flower', 'tree', 'herb']), icon: 'flower', blurb: 'Meadows and stones, up behind the village.' },
+  { id: 'field', name: 'The west fields', lv: 3, buy: 300, look: 'veg', x: 0, y: 0, w: 0, h: 0, tile: 'tilled', cats: _gdF(['veg', 'herb', 'fruit']), icon: 'carrot', blurb: 'Long rows of good dark soil.' },
+  { id: 'grove', name: 'The east orchards', lv: 5, buy: 500, look: 'orchard', x: 0, y: 0, w: 0, h: 0, tile: 'orchard-grass', cats: _gdF(['tree', 'fruit', 'wild', 'flower']), icon: 'trees', blurb: 'Fruit trees going up the valley.' },
+  { id: 'marsh', name: 'The south marsh', lv: 7, buy: 800, look: 'pond', x: 0, y: 0, w: 0, h: 0, tile: 'pond-edge', cats: _gdF(['water', 'flower', 'wild', 'tree']), icon: 'waves', blurb: 'Reeds and still water, round the far side of the lake.' },
 ]);
 /* The land you own, kept here so gardenAreaAt stays a plain lookup: 94-garden-1core.js fills it from your wallet (items 'land:<id>'). Empty in Node, where nothing asks by level. */
 const _GD_LAND = new Set();
@@ -489,27 +488,26 @@ function gardenPierMore() { return _GD_WORKS.has('pier-3') ? 8 : _GD_WORKS.has('
    col (2.28.1, what it does to your feet): 'full' (the default: its whole footprint is a wall: a shop, a stall, the bench), 'soft' (a small box at its base:
    a lectern, a post box, you slip past) or 'none' (you walk through it: a post at the water's edge, reeds, the boat on the water). A walk prop is 'none'. */
 const GARDEN_PROPS = _gdRows([
-  { id: 'pier', name: 'The pier', x: 12, y: 12, w: 2, h: 5, walk: 1, blurb: 'Walk out over the water: the fish are bigger past the end of it.' },
+  { id: 'pier', name: 'The pier', x: 24, y: 20, w: 2, h: 5, walk: 1, blurb: 'Walk out over the water: the fish are bigger past the end of it.' },
   // what you can build on to it (GARDEN_WORKS): no kind, so nothing of their own is drawn: gardenPierGround draws the whole length
-  { id: 'pier-2', name: 'The pier', x: 12, y: 17, w: 2, h: 4, walk: 1, needs: 'pier-2', blurb: 'New planks towards the bigger fish.' },
-  { id: 'pier-3', name: 'The pier', x: 12, y: 21, w: 2, h: 4, walk: 1, needs: 'pier-3', blurb: 'All the way out, to where the fins are.' },
+  { id: 'pier-2', name: 'The pier', x: 24, y: 25, w: 2, h: 4, walk: 1, needs: 'pier-2', blurb: 'New planks towards the bigger fish.' },
+  { id: 'pier-3', name: 'The pier', x: 24, y: 29, w: 2, h: 4, walk: 1, needs: 'pier-3', blurb: 'All the way out, to where the fins are.' },
   // 2.22: the menus are in the world. Walk up and click a building (you go to its door and it opens): act is the page it opens,
   // kind the way it is drawn, tall how many rows its art stands above its footprint (that is where a click counts).
-  { id: 'market-stall', name: 'Market stall', x: 0, y: 11, w: 2, h: 1, door: _gdF({ x: 1, y: 12 }), act: 'basket', kind: 'stall', tall: 2, blurb: 'Sell what you have picked, and make bouquets.' },
-  { id: 'garden-shop', name: 'Garden shop', x: 6, y: 11, w: 3, h: 1, door: _gdF({ x: 7, y: 12 }), act: 'shop', kind: 'shop', tall: 2.8, blurb: 'Seeds, decorations and tools.' },
-  { id: 'notice-board', name: 'Notice board', x: 10, y: 11, w: 2, h: 1, door: _gdF({ x: 11, y: 12 }), act: 'almanac', kind: 'board', tall: 1.9, blurb: 'Everything you have found, and your ribbons.' },
-  { id: 'field-journal', name: 'Field journal', x: 21, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 21, y: 12 }), act: 'journal', kind: 'lectern', tall: 1.4, blurb: 'Your fish book, bug book and showcase.' },
-  { id: 'camera-tripod', name: 'Camera', x: 15, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 15, y: 12 }), act: 'photo', kind: 'tripod', tall: 1.6, blurb: 'Take a picture of your garden.' },
-  { id: 'tackle-shop', name: 'Tackle shop', x: 17, y: 11, w: 3, h: 1, door: _gdF({ x: 18, y: 12 }), act: 'tackle', kind: 'tackle', tall: 3, blurb: 'Rods, nets, bait and the fish market.' },
-  { id: 'post-box', name: 'Post box', x: 20, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 20, y: 12 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
-  { id: 'craft-bench', name: 'Crafting bench', x: 3, y: 11, w: 2, h: 1, door: _gdF({ x: 3, y: 12 }), act: 'craft', kind: 'bench', tall: 1.5, verb: 'make something', blurb: 'Turn what you grow, catch and find into hats, collars, decorations and treats.' },
-  { id: 'sundial', name: 'Sundial', x: 26, y: 11, w: 1, h: 1, col: 'soft', door: _gdF({ x: 26, y: 12 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
-  { id: 'jetty-post', name: 'Mooring post', x: 4, y: 12, w: 1, h: 1, walk: 0, col: 'none', tall: 1, blurb: 'A rope, a post and a very patient rowing boat.' },
+  { id: 'market-stall', name: 'Market stall', x: 12, y: 19, w: 2, h: 1, door: _gdF({ x: 13, y: 20 }), act: 'basket', kind: 'stall', tall: 2, blurb: 'Sell what you have picked, and make bouquets.' },
+  { id: 'garden-shop', name: 'Garden shop', x: 18, y: 19, w: 3, h: 1, door: _gdF({ x: 19, y: 20 }), act: 'shop', kind: 'shop', tall: 2.8, blurb: 'Seeds, decorations and tools.' },
+  { id: 'notice-board', name: 'Notice board', x: 22, y: 19, w: 2, h: 1, door: _gdF({ x: 23, y: 20 }), act: 'almanac', kind: 'board', tall: 1.9, blurb: 'Everything you have found, and your ribbons.' },
+  { id: 'field-journal', name: 'Field journal', x: 33, y: 19, w: 1, h: 1, col: 'soft', door: _gdF({ x: 33, y: 20 }), act: 'journal', kind: 'lectern', tall: 1.4, blurb: 'Your fish book, bug book and showcase.' },
+  { id: 'camera-tripod', name: 'Camera', x: 27, y: 19, w: 1, h: 1, col: 'soft', door: _gdF({ x: 27, y: 20 }), act: 'photo', kind: 'tripod', tall: 1.6, blurb: 'Take a picture of your garden.' },
+  { id: 'tackle-shop', name: 'Tackle shop', x: 29, y: 19, w: 3, h: 1, door: _gdF({ x: 30, y: 20 }), act: 'tackle', kind: 'tackle', tall: 3, blurb: 'Rods, nets, bait and the fish market.' },
+  { id: 'post-box', name: 'Post box', x: 32, y: 19, w: 1, h: 1, col: 'soft', door: _gdF({ x: 32, y: 20 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
+  { id: 'craft-bench', name: 'Crafting bench', x: 15, y: 19, w: 2, h: 1, door: _gdF({ x: 15, y: 20 }), act: 'craft', kind: 'bench', tall: 1.5, verb: 'make something', blurb: 'Turn what you grow, catch and find into hats, collars, decorations and treats.' },
+  { id: 'sundial', name: 'Sundial', x: 38, y: 19, w: 1, h: 1, col: 'soft', door: _gdF({ x: 38, y: 20 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
+  { id: 'jetty-post', name: 'Mooring post', x: 16, y: 20, w: 1, h: 1, walk: 0, col: 'none', tall: 1, blurb: 'A rope, a post and a very patient rowing boat.' },
   // the rowing boat is drawn by gardenWorldProps (key 'boat'); clicking it opens the trip to a friend's garden. x and w are fractions on
   // purpose: its box is the boat's own width, so the water beside it still casts a line.
-  { id: 'boat', name: 'Rowing boat', kind: 'boat', x: 4.65, y: 13, w: 1.25, h: 1, walk: 0, col: 'none', door: _gdF({ x: 5, y: 12 }), act: 'sail', verb: 'climb in', tall: 0.5, blurb: 'Row over to a friend’s garden.' },
-  { id: 'reed-bank', name: 'Reeds', kind: 'reeds', x: 22, y: 12, w: 3, h: 1, walk: 0, col: 'none', tall: 0.4, blurb: 'Dragonflies like it here.' },
-  { id: 'forest-edge', name: 'The forest', x: 27, y: 0, w: 1, h: 11, walk: 0, blurb: 'Too thick to walk through.' },
+  { id: 'boat', name: 'Rowing boat', kind: 'boat', x: 16.65, y: 21, w: 1.25, h: 1, walk: 0, col: 'none', door: _gdF({ x: 17, y: 20 }), act: 'sail', verb: 'climb in', tall: 0.5, blurb: 'Row over to a friend’s garden.' },
+  { id: 'reed-bank', name: 'Reeds', kind: 'reeds', x: 34, y: 20, w: 3, h: 1, walk: 0, col: 'none', tall: 0.4, blurb: 'Dragonflies like it here.' },
 ]);
 const GARDEN_LAWN = _gdF({ id: 'lawn', name: 'Lawn', lv: 1, tile: 'grass', cats: _gdF([]), icon: 'fence', blurb: 'Room for paths, seats and everything else.' });
 const _GD_AREA = new Map(GARDEN_AREAS.map(a => [a.id, a]));
@@ -719,11 +717,12 @@ function gardenLockOf(def, ctx) {
 }
 /** The area a cell belongs to ('lawn' when no area claims it, or the area is not open yet at that level). */
 function gardenAreaAt(x, y, level) {
-  for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) {
-    // a plot is sections and trails now (94-garden-lands-0table.js), unless you bought it whole, when it answers as it always did. An open trail is lawn to everything else: you walk on it, nothing grows on it.
-    if (a.buy && !_GD_LAND.has(a.id) && typeof gardenLandCell === 'function') { const c = gardenLandCell(x, y); if (c) return level == null || _GD_LAND.has(c.id) ? (c.plot ? c.id : 'lawn') : 'locked:' + c.id; }
-    return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
+  // the world is one map (94-garden-lands-0table.js). A trail, the lane and the mown green are lawn to everything else: you walk there, nothing grows there. The thicket is locked for good.
+  if (typeof gardenLandCell === 'function') {
+    const c = gardenLandCell(x, y);
+    if (c) { if (c.lane) return 'lawn'; if (c.solid) return 'locked:' + c.id; return level == null || _GD_LAND.has(c.id) ? (c.trail || c.green ? 'lawn' : c.id) : 'locked:' + c.id; }
   }
+  for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
   return 'lawn';
 }
 /** Is this cell open water (the pond's or the lake's)? A pier stands over water but is not water to walk on. */
@@ -762,7 +761,7 @@ function gardenCellOk(def, x, y, level, kind) {
   let area = null;
   for (let dy = 0; dy < fh; dy++) for (let dx = 0; dx < fw; dx++) {
     const a = gardenAreaAt(x + dx, y + dy, level);
-    if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)); return ar.buy ? `${ar.name}: buy this land first` : `${ar.name} opens at garden level ${ar.lv}`; }
+    if (a.startsWith('locked:')) { const ar = gardenArea(a.slice(7)); return ar.solid ? 'Too thick to do anything with' : ar.buy ? `${ar.name}: buy this land first` : `${ar.name} opens at garden level ${ar.lv}`; }
     if (typeof gardenLandPathAt === 'function' && gardenLandPathAt(x + dx, y + dy) && !(kind === 'decor' && def.layer === 'ground')) return kind === 'decor' ? 'Keep the path clear' : 'That is a path: plants go in the beds';
     if (kind !== 'decor') {
       if (area && a !== area) return 'Straddles two areas';
@@ -774,8 +773,7 @@ function gardenCellOk(def, x, y, level, kind) {
   }
   if (kind === 'decor') { if (def.areas && !def.areas.includes(area)) return 'Not here'; return ''; }
   const ar = gardenArea(area);
-  const landCell = typeof gardenLandCell === 'function' && ar && ar.buy && !ar.plot ? gardenLandCell(x, y) : null;   // (a plot you own whole also grows what its sections do)
-  const ok = def.areas ? def.areas.includes(area) : ar && (ar.cats.includes(def.cat) || !!(landCell && landCell.plot && landCell.cats.includes(def.cat)));
+  const ok = def.areas ? def.areas.includes((ar && ar.fam) || area) : ar && ar.cats.includes(def.cat);   // (a section counts as the old area it is part of: only the meadow grows a bee orchid)
   if (!ok) {
     const where = (def.areas || (GARDEN_CATS[def.cat] || {}).areas || []).map(id => gardenArea(id)).filter(Boolean).map(a2 => a2.name.toLowerCase());
     return area === 'lawn' ? 'Plants grow in the beds, not the lawn' : `${def.name} grows in the ${where.slice(0, 2).join(' or ')}`;
@@ -845,11 +843,13 @@ function gardenArtBox(kind, id) {
    {v, lv, season, areas: [open area ids], plants: [[id, x, y, stage, variant, flags]], decor: [[id, x, y, r, variant]],
     heart: 0..6 (the old oak's size), at}. flags: 1 thirsty, 2 overgrown, 4 ripe. Ids only from these tables, numbers
    only within bounds: no names, no text, no times beyond `at`. gardenSnapshotClean drops anything else. */
+/** Is a snapshot from this world? One from another means nothing on this map, cell for cell. */
+function gardenSnapSameWorld(snap) { return !!snap && (Number(snap.wv) || 1) === GARDEN_WORLD.v; }
 const GARDEN_SNAPSHOT_MAX = _gdF({ plants: 400, decor: 300, bytes: 24000 });
 function gardenSnapshotClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const W = GARDEN_WORLD, int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null; };
-  const out = { v: 1, cv: int(raw.cv, 0, 9) || 0, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
+  const out = { v: 1, wv: int(raw.wv, 1, 9) || 1, cv: int(raw.cv, 0, 9) || 0, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
   { const tz = int(raw.tz, -840, 840), sr = int(raw.sr, 0, 1439), ss = int(raw.ss, 0, 1439); if (tz !== null) { out.tz = tz; if (sr !== null && ss !== null) { out.sr = sr; out.ss = ss; } } }   // 2.28: their time zone, so a visit has their light
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);

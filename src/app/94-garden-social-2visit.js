@@ -103,6 +103,7 @@ function _gsvPaint() {
   const f = f0 && f0.status === 'friend' ? f0 : null;
   const c = f ? gardenSocialFriendCached(fid) : null;
   // their garden: the same world as your own (94-garden-visit-0world.js)
+  if (f && c && c.garden && c.garden.snap && !gardenSnapSameWorld(c.garden.snap)) { root.textContent = ''; root.appendChild(_gsvEl('p', 'muted gsv-small', `${_gscFirst(f.id)}’s garden is from an older version of the app. You can visit once they update.`)); return; }   // (a cell in their copy is a different place on this map)
   if (f && c && c.garden && gardenEnsure()) { gardenVisitMount(root, f, _gsv.view); return; }
   if (typeof gardenVisitUnmount === 'function') gardenVisitUnmount();
   root.className = 'gd-page gd-full gsv-page gsv-full';

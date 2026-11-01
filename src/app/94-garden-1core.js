@@ -247,10 +247,11 @@ function gardenEnsure() {
   try { m = typeof memGardenModel === 'function' ? memGardenModel(14) : null; } catch (e) { m = null; }
   const total = m ? m.total || 0 : 0, streak = m ? m.streak || 0 : 0;
   g.since = today;
+  g.seen.world = GARDEN_WORLD.v;   // (a new garden starts in this world: nothing to move over)
   // the old oak: back left of the front garden, at its 2.16 size (it keeps growing with every task)
-  g.plants.heart = { p: 'heart-oak', x: 6, y: 4, t: now - 30 * _GD_DAY, w: now, v: 0 };
+  g.plants.heart = { p: 'heart-oak', x: GARDEN_LAND_HEART.x, y: GARDEN_LAND_HEART.y, t: now - 30 * _GD_DAY, w: now, v: 0 };
   // the last two weeks' plants, as 2.16 drew them, along the front of the bed
-  const cells = [[8, 7], [9, 7], [10, 7], [11, 7], [12, 7], [13, 7], [8, 6], [10, 6], [12, 6]];
+  const cells = [[15, 15], [16, 15], [17, 15], [18, 15], [19, 15], [20, 15], [18, 14], [19, 14], [20, 14]];   // (world cells: the cottage bed and the front of the front bed)
   const plots = m && Array.isArray(m.plots) ? m.plots.filter(p => p.n > 0).slice(-cells.length) : [];
   plots.forEach((pl, i) => {
     const id = _GD_216_KINDS[pl.kind % _GD_216_KINDS.length] || 'daisy', def = gardenPlant(id);
@@ -259,12 +260,12 @@ function gardenEnsure() {
     g.plants['m' + (i + 1)] = { p: id, x: cells[i][0], y: cells[i][1], t, w: now, v: (gardenHash(pl.iso) % ((def.look.v || [0]).length)) };
   });
   if (!plots.length) {   // someone new: two sprouts to say hello
-    g.plants.m1 = { p: 'daisy', x: 9, y: 7, t: now - 3 * _GD_H, w: now, v: 0 };
-    g.plants.m2 = { p: 'sunflower', x: 11, y: 6, t: now - 4 * _GD_H, w: now, v: 0 };
+    g.plants.m1 = { p: 'daisy', x: 18, y: 15, t: now - 3 * _GD_H, w: now, v: 0 };
+    g.plants.m2 = { p: 'sunflower', x: 20, y: 14, t: now - 4 * _GD_H, w: now, v: 0 };
   }
-  // a path, a bench and a sign so it looks lived in
-  for (let x = 6; x <= 13; x++) g.decor['p' + x] = { d: 'stepping-stones', x, y: 8, r: 0, v: 0, at: now };
-  g.decor.sign = { d: 'welcome-sign', x: 14, y: 8, r: 0, v: 0, at: now };
+  // a few stones and a sign so it looks lived in (world cells: on the green, beside the heart path)
+  for (let x = 28; x <= 30; x++) g.decor['p' + x] = { d: 'stepping-stones', x, y: 14, r: 0, v: 0, at: now };
+  g.decor.sign = { d: 'welcome-sign', x: 30, y: 13, r: 0, v: 0, at: now };
   const coins = 60 + Math.min(500, total) + 10 * Math.min(30, streak);
   const xp = Math.min(500, Math.round(total * 1.5));
   // the starter path and sign come with the grant, so your bag balances (placed = owned)
@@ -320,8 +321,7 @@ function _gdPlantState(pl, def, ctx) {
     return { stage: Math.min(4, 1 + lv), hours: 0, thirsty: false, dry: 0, lastWater: now, ripe: false, overgrown: false, inSeason: true, nextIn: null, variant: lv, heart: lv };
   }
   const t0 = Number(pl.t) || now;
-  const area = gardenAreaAt(pl.x, pl.y, null);
-  const inSeason = area === 'greenhouse' || gardenLandAlways(pl.x, pl.y) || gardenInSeason(def, ctx.season) || _gdNearEffect(ctx.decorList, pl.x, pl.y, def.fp || 1, 'cold', 1);
+  const inSeason = gardenLandAlways(pl.x, pl.y) || gardenInSeason(def, ctx.season) || _gdNearEffect(ctx.decorList, pl.x, pl.y, def.fp || 1, 'cold', 1);
   let sf = inSeason ? 1.3 : 0.8;
   if (ctx.events.includes('midsummer')) sf *= 1.25;
   sf *= gardenLandGrow(pl.x, pl.y);   // the kind of land it is in, a scarecrow nearby
@@ -483,12 +483,13 @@ function _gdAreasOpen(level) {
   if (GARDEN_LAND_CURIOS.some(c => items['cur:' + c.id] > 0) || items['key:old'] > 0) own.push('finds');   // (the table they are laid out on)
   const openSet = gardenLandsOpen(level, own);
   if (!(typeof gardenVisitOn === 'function' && gardenVisitOn())) { gardenLandSet(openSet); if (typeof GARDEN_WORKS !== 'undefined') gardenWorksSet(GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id)); }   // (on a visit the land on screen is your friend's)
-  const base = GARDEN_AREAS.filter(a => (a.buy ? openSet.has(a.id) : level >= a.lv)).map(a => a.id);
+  const base = GARDEN_AREAS.filter(a => !a.buy && level >= a.lv).map(a => a.id);
   return base.concat([...openSet].filter(id => !base.includes(id)));   // (the scene draws by these ids; a snapshot says it differently: gardenLandsWire)
 }
 function gardenModel(nowArg) {
   const g = _gdG();
   if (!g.since) gardenEnsure();
+  gardenWorldCheck();   // a save from the old world moves over, once (94-garden-lands-1core.js)
   _gdEconMark();
   const now = nowArg || _gdNow();
   const A = _gdAct();
@@ -550,7 +551,7 @@ function _gdNeedsMet(v, m) {
 function _gdSpotFor(v, m, rnd) {
   const pick = (list) => list.length ? list[Math.floor(rnd() * list.length)] : null;
   const W = GARDEN_WORLD;
-  const freeLawn = () => { for (let i = 0; i < 30; i++) { const x = Math.floor(rnd() * W.cols), y = 8 + Math.floor(rnd() * 3); const c = m.occ.get(x + ',' + y); if (!c || (!c.plant && !c.decor)) return { x: x + 0.5, y: y + 0.7 }; } return { x: 10.5, y: 9.7 }; };
+  const freeLawn = () => { for (let i = 0; i < 30; i++) { const x = W.ox + Math.floor(rnd() * 28), y = W.oy + 5 + Math.floor(rnd() * 6); const c = m.occ.get(x + ',' + y); if (gardenAreaAt(x, y, m.level.level) === 'lawn' && (!c || (!c.plant && !c.decor))) return { x: x + 0.5, y: y + 0.7 }; } return { x: W.start.x + 0.5, y: W.start.y + 0.7 }; };
   const atPlant = (p) => p ? { x: p.x + p.fp / 2 + (rnd() - 0.5) * 0.4, y: p.y + p.fp - 0.25, lift: Math.max(0.4, (p.def.look.h || 0.7) * (p.stage / 4)) } : null;
   const atDecor = (d) => d ? { x: d.x + (d.def.w || 1) / 2, y: d.y + (d.def.h || 1) - 0.2, lift: Math.max(0.3, d.def.look.h || 0.6) } : null;
   switch (v.spot) {
@@ -602,7 +603,7 @@ function gardenSnapshot() {
     const m = gardenModel();
     const plants = m.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants).map(p => [p.def.id, p.x, p.y, p.stage, p.variant, (p.thirsty ? 1 : 0) | (p.overgrown ? 2 : 0) | (p.ripe ? 4 : 0)]);
     const decor = m.decor.slice(0, GARDEN_SNAPSHOT_MAX.decor).map(d => [d.def.id, d.x, d.y, d.r, d.v]);
-    const out = { v: 1, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
+    const out = { v: 1, wv: GARDEN_WORLD.v, cv: 1, lv: m.level.level, season: m.season, areas: m.areas.slice(), plants, decor, heart: m.heart, at: Math.floor(m.now) };
     { const L = gardenLandsWire(m); out.areas = L.areas; out.ls = L.ls; if (L.lf.length) out.lf = L.lf; if (L.lc.length) out.lc = L.lc; if (L.lz.length) out.lz = L.lz; if (L.lr) out.lr = L.lr; }   // the land: at most 12 plain areas for an older friend, the real answer beside them
     if (typeof GARDEN_WORKS !== 'undefined') { const wk = GARDEN_WORKS.filter(d => gardenHas('gear:' + d.id) > 0).map(d => d.id); if (wk.length) out.wk = wk; }   // 2.38: so a friend walks on your longer pier
     if (m.rain && (m.rain.snow || m.rain.now)) out.wx = m.rain.snow ? 2 : 1;   // 2.28: is it raining (1) or snowing (2) over your garden now? A visit has the same sky
@@ -1131,13 +1132,12 @@ function gardenDailyDeal(iso) {
   const pool = GARDEN_PLANTS.filter(p => p.price > 0 && !p.unlock && p.rarity !== 'common');
   return pool[gardenHash('gd-deal|' + iso) % pool.length].id;
 }
-/** A section for sale: {def, owned, cost, lvOk, afford, reach (its path is open), keyOk}. A whole plot is no longer sold: you get a row for one only if you own it. Null: not land. */
+/** A section for sale: {def, owned, cost, lvOk, afford, reach (its path is open), keyOk}. Null: it is not sold (the old garden's are free, at their level). */
 function gardenLandInfo(id, m) {
-  const def = gardenArea(id); if (!def || !def.buy) return null;
+  const def = gardenArea(id); if (!def || !def.buy || !def.plot) return null;
   m = m || gardenModel();
-  const whole = !def.plot, owned = gardenHas('land:' + id) > 0 || (!whole && gardenHas('land:' + def.plot) > 0);
-  if (whole && !owned) return null;
-  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv, afford: m.wallet.coins >= def.buy, reach: whole || !def.via || m.areas.includes(def.via), keyOk: !def.needs || gardenHas(def.needs) > 0 };
+  const owned = gardenHas('land:' + id) > 0;
+  return { def, owned, cost: def.buy, lvOk: m.level.level >= def.lv, afford: m.wallet.coins >= def.buy, reach: !def.via || m.areas.includes(def.via), keyOk: !def.needs || gardenHas(def.needs) > 0 };
 }
 /** Buy a section with coins. One Undo; what grows on it stays where it is. */
 function gardenBuyLand(id) {

@@ -172,10 +172,10 @@ function _gcBugsBase(mArg) {
       case 'flower': { if (!blooms.length) return null; const p = pick(blooms); if (onFlower.has(p.uid)) return null; onFlower.add(p.uid); return { x: p.x + 0.5 + (rnd() - 0.5) * 0.5, y: p.y + 0.6 }; }   // one to a flower: a single daisy with three bees on it is a crowd
       case 'tree': { if (!trees.length) return null; const p = pick(trees); return { x: p.x + 0.9, y: p.y + 1.2 }; }
       case 'light': { if (lights.length) { const d = pick(lights); return { x: d.x + 0.5, y: d.y + 0.5 }; } return woods ? spot('woods') : null; }
-      case 'water': { const lake = rnd() < 0.7 || !m.areas.includes('pond'); return lake ? { x: 1 + rnd() * (W.coreCols - 2), y: 13.2 + rnd() * 0.5 } : { x: 15 + rnd() * 4, y: 1.4 + rnd() }; }
+      case 'water': { const lake = rnd() < 0.7 || !m.areas.includes('pond'); return lake ? { x: W.ox + 1 + rnd() * 26, y: 21.2 + rnd() * 0.5 } : { x: 35 + rnd() * 4, y: 9.4 + rnd() }; }
       case 'woods': { if (!woods) return null; for (let i = 0; i < 12; i++) { const x = 20 + Math.floor(rnd() * 8), y = Math.floor(rnd() * 11); if (free(x, y)) return { x: x + 0.5, y: y + 0.5 }; } return null; }
-      case 'ground': { for (let i = 0; i < 16; i++) { const x = Math.floor(rnd() * W.cols), y = Math.floor(rnd() * 13); const a = gardenAreaAt(x, y, m.level.level); if (!a.startsWith('locked:') && free(x, y)) return { x: x + 0.5, y: y + 0.5 }; } return null; }
-      default: { for (let i = 0; i < 16; i++) { const x = Math.floor(rnd() * W.cols), y = 7 + Math.floor(rnd() * 5); if (free(x, y) && gardenAreaAt(x, y, m.level.level) === 'lawn') return { x: x + 0.5, y: y + 0.5 }; } return null; }   // lawn
+      case 'ground': { for (let i = 0; i < 16; i++) { const x = Math.floor(rnd() * W.cols), y = Math.floor(rnd() * 19); const a = gardenAreaAt(x, y, m.level.level); if (!a.startsWith('locked:') && free(x, y)) return { x: x + 0.5, y: y + 0.5 }; } return null; }
+      default: { for (let i = 0; i < 16; i++) { const x = W.ox + Math.floor(rnd() * 28), y = W.oy + 3 + Math.floor(rnd() * 8); if (free(x, y) && gardenAreaAt(x, y, m.level.level) === 'lawn') return { x: x + 0.5, y: y + 0.5 }; } return null; }   // lawn
     }
   };
   const pool = GARDEN_BUGS.filter(b => b.lv <= m.level.level && b.tod.includes(m.tod) && (!b.seasons.length || b.seasons.includes(m.season)) && (b.rain ? wet : !wet || b.hab.includes('light')) && !(m.season === 'winter'));

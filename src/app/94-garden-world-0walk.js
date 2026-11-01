@@ -22,7 +22,7 @@
    ============================================================ */
 const _gw = {
   on: false, raf: 0, last: 0, svg: null, root: null, box: null, ro: null,
-  px: 10.5, py: 9.5, face: 1, speed: 0, moving: false, sneak: false,
+  px: GARDEN_WORLD.start.x + 0.5, py: GARDEN_WORLD.start.y + 0.5, face: 1, speed: 0, moving: false, sneak: false,
   path: [], then: null, goal: null,
   node: null, body: '', bodyKey: '', fig: { idle: '', walk: '' },
   z: -1, pet: null, petSvg: '', petKey: '',
@@ -209,7 +209,7 @@ function _gwPushOut(dt) {
     return false;
   }
   let f = _gwNearestFreePt(_gw.px, _gw.py, 3);
-  if (!f) { const c = _gwNearestFree(Math.floor(_gw.px), Math.floor(_gw.py), 10) || _gwNearestFree(10, 9, 30); f = c ? { x: c.x + 0.5, y: c.y + 0.5 } : null; }   // a whole free cell is always free for the feet
+  if (!f) { const c = _gwNearestFree(Math.floor(_gw.px), Math.floor(_gw.py), 10) || _gwNearestFree(GARDEN_WORLD.start.x, GARDEN_WORLD.start.y, 30); f = c ? { x: c.x + 0.5, y: c.y + 0.5 } : null; }   // a whole free cell is always free for the feet
   if (!f) return false;   // nowhere to stand at all: nothing to do but let you move
   const W = GARDEN_WORLD, dxp = (f.x - _gw.px) * W.cellW, dyp = (f.y - _gw.py) * W.cellH, d = Math.hypot(dxp, dyp), step = 230 * dt;
   _gw.spd = 0; if (_gw.path.length) _gw.replan = true;   // a walk in progress carries on from the new spot once the feet are clear
@@ -1071,7 +1071,7 @@ function gardenWorldStart(root, m) {
   const again = !!_gw.placed;
   const sv = again ? { x: _gw.px, y: _gw.py } : _gwSavedPos();
   if (sv && (again || _gwFree(sv.x, sv.y))) { _gw.px = sv.x; _gw.py = sv.y; }   // (a redraw never moves you: the walk-out below does, if something is in the way)
-  else { const f = _gwNearestFree(10, 9, 8) || { x: 10, y: 9 }; _gw.px = f.x + 0.5; _gw.py = f.y + 0.5; }
+  else { const f = _gwNearestFree(GARDEN_WORLD.start.x, GARDEN_WORLD.start.y, 8) || GARDEN_WORLD.start; _gw.px = f.x + 0.5; _gw.py = f.y + 0.5; }
   // the page being drawn again (another tab wrote, the state was replaced) used to stop a walk in progress: it now carries on
   _gw.placed = true; if (!again) { _gw.path = []; _gw.then = null; } _gw.moving = false; _gw.fig = { idle: '', walk: '' }; _gw.bodyKey = ''; _gw.node = null; _gw.pet = null; _gw.keys.clear();
   if (_gw.box) {

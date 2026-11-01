@@ -16,7 +16,7 @@
      GL_GOALS / GL_GOAL   shared goals (a joint quest in a live garden): the table, the pacing and the reward; glGoalOk(b) -> '' | why checks gl:goal, glGoalCap(of), glGoalSize(def, people)
      glAtLeast(lv, min)   glMayDo(lv, t) -> '' | why     glIntentOk(b) -> '' | why     glPostOk(p) -> '' | why
    ============================================================ */
-const GL_V = 2;                   // 2: what a visit can ask for grew (feed, turn), and what waits for the host. An older peer gets the saved copy
+const GL_V = 3;   // 3: the world moved (GARDEN_WORLD.v 2): a cell means something else now, so an older peer keeps the saved copy. 2:                 // 2: what a visit can ask for grew (feed, turn), and what waits for the host. An older peer gets the saved copy
 const GL_PEOPLE = 8;              // everyone in a garden at once, the host included
 const GL_LEVELS = Object.freeze(['none', 'look', 'help', 'play']);
 const GL_LEVEL_NAMES = Object.freeze({ none: 'Not yet', look: 'Look', help: 'Help', play: 'Play' });

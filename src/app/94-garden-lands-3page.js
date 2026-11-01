@@ -113,13 +113,19 @@ function _gldCartArt() {
 /** Put today's finds in the world, once each (no loop of their own: nothing moves). */
 function gardenLandsPaint(m) {
   if (typeof _gw === 'undefined' || !_gw.on) return;
+  { const g = _gdG();
+    if (!m.visit && g.seen.worldMoved && !g.seen.worldNoted && typeof openDialog === 'function') {
+      g.seen.worldNoted = m.today; if (typeof saveUI === 'function') saveUI();
+      openDialog({ title: 'We rearranged the garden', size: 'sm', body(el) { el.appendChild(_gdpEl('p', null, 'Your garden is now the middle of a bigger world, with land to find in every direction. Everything you had planted is back in your bag as seeds, and everything you had placed is in your bag too. Land and buildings you bought have been paid back in coins. Your coins, level, gear and books are as they were.')); } });
+    }
+  }
   const want = new Map();
   if (!m.visit) {
     const dig = gardenLandDigSpot(m);
     if (dig) want.set('dig', { x: dig.x + 0.5, y: dig.y + 0.7, svg: _gldDigArt(), hit: 0.45, label: 'Something is buried here', run: () => _gldSay(gardenLandDig(), null, 'gift') });
     for (const s of gardenLandForageSpots(m)) want.set('f' + s.i + m.season, { x: s.x + 0.5, y: s.y + 0.7, svg: _gldForageArt(m.season), hit: 0.4, label: 'Something to pick', run: () => _gldSay(gardenLandForage(s.i), null, 'leaf') });
     const cart = gardenLandCart(m);
-    if (cart) want.set('cart', { x: 39.5, y: 12.2, svg: _gldCartArt(), hit: 0.8, hitUp: 18, label: 'The weekend cart', run: () => _gldCartBubble() });
+    if (cart) want.set('cart', { x: 43.5, y: 20.2, svg: _gldCartArt(), hit: 0.8, hitUp: 18, label: 'The weekend cart', run: () => _gldCartBubble() });
   }
   for (const [k, S] of _gldp.sprites) if (!want.has(k)) { S.remove(); _gldp.sprites.delete(k); }
   for (const [k, w] of want) {
@@ -130,16 +136,16 @@ function gardenLandsPaint(m) {
 function _gldCartBubble() {
   const m = gardenModel(), list = gardenLandCart(m) || [];
   const items = list.map(r => ({ ic: r.key.startsWith('seed:') ? 'sprout' : 'gift', n: r.bought ? '✓' : r.price, label: r.bought ? `${r.name}: sold` : `${r.name} for ${r.price} coins`, cls: r.bought ? 'is-off' : m.wallet.coins >= r.price ? 'is-go' : 'is-off', keep: false, run: (b) => _gldSay(gardenLandCartBuy(r.key), b, 'store') }));
-  gardenBubbleOpen({ x: 39.5, y: 11.1 }, { title: 'The weekend cart', sub: 'Here Saturdays and Sundays. Things you may not have reached yet, one of each.', items });
+  gardenBubbleOpen({ x: 43.5, y: 19.1 }, { title: 'The weekend cart', sub: 'Here Saturdays and Sundays. Things you may not have reached yet, one of each.', items });
 }
 
 /* ---------- the land office ---------- */
 /** On a friend's land: what they have, the way they would show you round. Only what their snapshot says, and nothing in it can be bought. */
 function _gldFriendTab(el, m) {
   const box = _gdpEl('div', 'gld'), s = m.visit.snap || {}, S = gardenLandShowOf(s), name = m.visit.name || 'Your friend'; el.appendChild(box);
-  const secs = GARDEN_LAND_SECTIONS.filter(q => m.areas.includes(q.id)), built = GARDEN_LAND_FEATURES.filter(f => m.areas.includes(f.id));
+  const secs = GARDEN_LAND_SECTIONS.filter(q => q.buy && m.areas.includes(q.id)), built = GARDEN_LAND_FEATURES.filter(f => m.areas.includes(f.id));
   const head = _gdpEl('div', 'gld-head'), mp = _gdpEl('div', 'gld-mapbox'); mp.innerHTML = _gldMap(m); head.appendChild(mp);
-  const txt = _gdpEl('div', 'gld-intro'); txt.appendChild(_gdpEl('h3', null, `${name}’s land`)); txt.appendChild(_gdpEl('p', null, `Garden level ${m.level.level} · ${secs.length} of ${GARDEN_LAND_SECTIONS.length} pieces of land · ${built.length} of ${GARDEN_LAND_FEATURES.length} things built${S.r ? ` · ${'★'.repeat(S.r)}` : ''}.`)); head.appendChild(txt); box.appendChild(head);
+  const txt = _gdpEl('div', 'gld-intro'); txt.appendChild(_gdpEl('h3', null, `${name}’s land`)); txt.appendChild(_gdpEl('p', null, `Garden level ${m.level.level} · ${secs.length} of ${GARDEN_LAND_SECTIONS.filter(q => q.buy).length} pieces of land · ${built.length} of ${GARDEN_LAND_FEATURES.length} things built${S.r ? ` · ${'★'.repeat(S.r)}` : ''}.`)); head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
   if (built.length) { const d = sec('What they have built'); for (const f of built) _gldRow(d, { icon: f.icon, name: f.name, sub: f.blurb }); }
   if (S.c.length) { const d = sec('What they have dug up'); const g = _gdpEl('div', 'gld-chips'); for (const c of GARDEN_LAND_CURIOS) if (S.c.includes(c.id)) { const ch = _gdpEl('span', 'gld-chip is-on'); ch.innerHTML = gardenLandCurioSvg(c.id, 16); ch.appendChild(document.createTextNode(c.name)); g.appendChild(ch); } if (S.c.includes(GARDEN_LAND_KEY_ID)) { const ch = _gdpEl('span', 'gld-chip is-on'); ch.innerHTML = gardenLandCurioSvg(GARDEN_LAND_KEY_ID, 16); ch.appendChild(document.createTextNode('An old iron key')); g.appendChild(ch); } d.appendChild(g); }
@@ -155,33 +161,33 @@ function _gldRow(host, o) {
   host.appendChild(r);
 }
 function _gldMap(m) {
-  const W = GARDEN_WORLD, open = new Set(m.areas), x0 = 28;
+  const W = GARDEN_WORLD, open = new Set(m.areas);
   let s = '';
-  for (let y = 0; y < W.rows; y++) for (let x = x0; x < W.cols; x++) {
+  for (let y = 0; y < W.rows; y++) for (let x = 0; x < W.cols; x++) {
     const c = gardenLandCell(x, y); if (!c) continue;
-    const mine = open.has(c.id), col = c.plot ? (mine ? _gdrTileCol(c.tile, m.season) : (m.level.level >= c.lv && (!c.via || open.has(c.via)) ? '#e8d8a0' : '#b8bca8')) : (mine ? '#f4e8c0' : '#9a9e8c');
-    s += `<rect x="${x - x0}" y="${y}" width="1.02" height="1.02" fill="${col}"/>`;
+    const mine = open.has(c.id), col = c.solid ? '#5f7f52' : c.lane ? '#e3d3a2' : c.trail ? (mine ? '#f4e8c0' : '#9a9e8c') : mine ? _gdrTileCol(c.tile, m.season) : (m.level.level >= c.lv && (!c.via || open.has(c.via)) ? '#e8d8a0' : '#b8bca8');
+    s += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${col}"/>`;
   }
-  const me = typeof _gw !== 'undefined' ? _gw : null, dot = me && me.px >= x0 ? `<circle cx="${(me.px - x0).toFixed(1)}" cy="${me.py.toFixed(1)}" r="0.7" fill="#c8352a" stroke="#fff" stroke-width="0.25"/>` : '';
-  return `<svg viewBox="0 0 ${W.cols - x0} ${W.rows}" class="gld-map" role="img" aria-label="Map of the land"><rect x="0" y="11" width="32" height="2" fill="#e3d3a2"/>${s}${dot}</svg>`;
+  const me = typeof _gw !== 'undefined' ? _gw : null, dot = me ? `<circle cx="${me.px.toFixed(1)}" cy="${me.py.toFixed(1)}" r="0.8" fill="#c8352a" stroke="#fff" stroke-width="0.3"/>` : '';
+  return `<svg viewBox="0 0 ${W.cols} ${W.rows}" class="gld-map" role="img" aria-label="Map of the land"><rect x="12" y="21" width="28" height="17" fill="#4f93c8"/>${s}${dot}</svg>`;
 }
 /** Fill the pop-up: where you are with the land, what you can buy and build now, and what is still to come. */
 function gardenLandsTab(el, m) {
   el.textContent = '';
   { const here = gardenHere(); if (here.visit) { _gldFriendTab(el, here); return; } }
   const box = _gdpEl('div', 'gld'); el.appendChild(box);
-  const lv = m.level.level, owned = GARDEN_LAND_SECTIONS.filter(s => m.areas.includes(s.id)).length, built = GARDEN_LAND_FEATURES.filter(f => gardenLandOwnsFeature(f.id)).length;
+  const lv = m.level.level, owned = GARDEN_LAND_SECTIONS.filter(s => s.buy && m.areas.includes(s.id)).length, built = GARDEN_LAND_FEATURES.filter(f => gardenLandOwnsFeature(f.id)).length;
   const head = _gdpEl('div', 'gld-head');
   const mp = _gdpEl('div', 'gld-mapbox'); mp.innerHTML = _gldMap(m); head.appendChild(mp);
   const txt = _gdpEl('div', 'gld-intro');
-  txt.appendChild(_gdpEl('h3', null, `You have ${owned} of ${GARDEN_LAND_SECTIONS.length} pieces of land`));
+  txt.appendChild(_gdpEl('h3', null, `You have ${owned} of ${GARDEN_LAND_SECTIONS.filter(s => s.buy).length} pieces of land`));
   txt.appendChild(_gdpEl('p', null, `Garden level ${lv} · ${_gdpNum(m.wallet.coins)} coins · ${built} of ${GARDEN_LAND_FEATURES.length} things built. New land and new paths open as your level goes up. On the map, gold is what you can buy now and grey is for later.`));
   head.appendChild(txt); box.appendChild(head);
   const sec = (title) => { box.appendChild(_gdpEl('h4', 'gld-h', title)); const d = _gdpEl('div', 'gld-list'); box.appendChild(d); return d; };
   const buyRow = (host, s) => { const i = gardenLandInfo(s.id, m), K = GARDEN_LAND_KINDS[s.kind]; _gldRow(host, { icon: s.icon, name: s.name, sub: `${K.name}, ${s.cells.length} squares: ${gardenLandGrowsLine(s)}. ${K.says || ''}`, btn: `${_gdpNum(s.buy)} coins`, off: !i.afford, run: (b) => { const r = gardenBuyLand(s.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + s.buy, tone: 'coin', sound: true }); } }); };
   const buildRow = (host, f, I) => _gldRow(host, { icon: f.icon, name: f.name, sub: f.blurb + (I.spot ? ` ${I.spot} is in the way.` : ''), btn: `${_gdpNum(f.cost)} coins`, off: !I.afford || !!I.spot, run: (b) => { const r = gardenBuildFeature(f.id); if (!r.ok) gameDenyOf(r, b); else gameCheer(b, { text: '-' + f.cost, tone: 'coin', sound: true }); } });
   // now
-  const canLand = GARDEN_LAND_SECTIONS.filter(s => { const i = gardenLandInfo(s.id, m); return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy);
+  const canLand = GARDEN_LAND_SECTIONS.filter(s => { const i = s.buy ? gardenLandInfo(s.id, m) : null; return i && !i.owned && i.lvOk && i.reach && i.keyOk; }).sort((a, b) => a.buy - b.buy);
   const canBuild = GARDEN_LAND_FEATURES.map(f => [f, gardenLandFeatureInfo(f.id, m)]).filter(([, I]) => !I.built && !I.why).sort((a, b) => a[0].cost - b[0].cost);
   if (canBuild.length) { const d = sec('You can build these now'); for (const [f, I] of canBuild) buildRow(d, f, I); }
   if (canLand.length) { const d = sec('You can buy these now'); for (const s of canLand.slice(0, 12)) buyRow(d, s); if (canLand.length > 12) d.appendChild(_gdpEl('p', 'gld-more', `And ${canLand.length - 12} more.`)); }
@@ -189,7 +195,7 @@ function gardenLandsTab(el, m) {
   // next
   const later = [];
   for (const t of GARDEN_LAND_TRAILS) if (!m.areas.includes(t.id)) later.push({ lv: t.lv, icon: 'footprints', name: t.name, sub: 'A new path', tag: `Level ${t.lv}` });
-  for (const s of GARDEN_LAND_SECTIONS) { if (m.areas.includes(s.id)) continue; const i = gardenLandInfo(s.id, m); if (i && i.lvOk && i.reach && i.keyOk) continue; const key = i && i.lvOk && i.reach && !i.keyOk; later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: `${GARDEN_LAND_KINDS[s.kind].name}, ${_gdpNum(s.buy)} coins${key ? '. Behind a rusty gate: keep digging, somebody lost a key' : ''}`, tag: key ? 'Key' : `Level ${s.lv}` }); }
+  for (const s of GARDEN_LAND_SECTIONS) { if (m.areas.includes(s.id)) continue; if (!s.buy) { later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: GARDEN_LAND_KINDS[s.kind].name + ', free', tag: `Level ${s.lv}` }); continue; } const i = gardenLandInfo(s.id, m); if (i && i.lvOk && i.reach && i.keyOk) continue; const key = i && i.lvOk && i.reach && !i.keyOk; later.push({ lv: s.lv, icon: s.icon, name: s.name, sub: `${GARDEN_LAND_KINDS[s.kind].name}, ${_gdpNum(s.buy)} coins${key ? '. Behind a rusty gate: keep digging, somebody lost a key' : ''}`, tag: key ? 'Key' : `Level ${s.lv}` }); }
   for (const f of GARDEN_LAND_FEATURES) { const I = gardenLandFeatureInfo(f.id, m); if (I.built || !I.why) continue; later.push({ lv: f.lv, icon: f.icon, name: f.name, sub: `${f.blurb} ${_gdpNum(f.cost)} coins.${lv >= f.lv ? ' ' + I.why + '.' : ''}`, tag: lv >= f.lv ? 'Land first' : `Level ${f.lv}` }); }
   later.sort((a, b) => a.lv - b.lv);
   if (later.length) { const d = sec('Still to come'); for (const r of later.slice(0, 14)) _gldRow(d, Object.assign({ dim: true }, r)); if (later.length > 14) d.appendChild(_gdpEl('p', 'gld-more', `And ${later.length - 14} more further on.`)); }

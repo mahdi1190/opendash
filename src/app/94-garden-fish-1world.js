@@ -332,12 +332,11 @@ function gardenWorldProps(sc, o) {
   if (typeof gardenLandWorldProps === 'function') for (const r of gardenLandWorldProps(sc, o)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // the land office and what has been built on the land
   // what has been built for the lake stands where it is (94-garden-fish-7gear.js). pointer-events: a click there is still a click on the water
   if (typeof gardenWorksArt === 'function') for (const r of gardenWorksArt(sc)) out.push(wrap('gd-prop-work', r.y, r.x, `<g pointer-events="none" transform="translate(${_gwN(r.x * cw)} ${_gwN(base + r.y * ch)})">${r.svg}</g>`, 'work-' + r.key));
-  // the forest edge: big trees all down the east side, so the woods have a back wall
+  // trees in the thickets, all over the map (94-garden-lands-0table.js): woodland is spread about, not a wall
   const pal = (GART_PAL.leaf[sc.season] || GART_PAL.leaf.summer);
-  const rnd = gardenRand('forest-edge');
-  for (let y = 0; y < 11; y++) {
-    const cx = (27 + 0.5 + (rnd() - 0.5) * 1.3) * cw, by = base + (y + 1) * ch - 4, k = 0.95 + rnd() * 0.5;
-    out.push(wrap('gd-prop-tree', y + 1, 27, _gwTree(cx, by, k, pal, sc.season, rnd), 'fe' + y));
+  if (typeof gardenLandTrees === 'function') for (const t of gardenLandTrees()) {
+    const rnd = gardenRand('tree|' + t.x + ',' + t.y), cx = (t.x + 0.5 + (rnd() - 0.5) * 0.7) * cw, by = base + (t.y + 1) * ch - 4, k = 0.8 + rnd() * 0.55;
+    out.push(wrap('gd-prop-tree', t.y + 1, t.x, _gwTree(cx, by, k, pal, sc.season, rnd), 'fe' + t.x + '_' + t.y));
   }
   // a few trees on the north-east skyline behind the woods
   void ch; void open; void o;
