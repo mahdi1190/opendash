@@ -193,7 +193,7 @@ const GARDEN_CATCH_ECON = Object.freeze({
   marketFish: 90, marketBugs: 50, afterCap: 0.2,        // coins the market pays a day for fish and for bugs; past it, a fifth
   showFish: 6, showBugs: 9, bagMax: 400,                // the showcase tank holds 6 fish and the case 9 bugs
   giftMax: 3,                                           // catches you can put in one parcel a day, per friend
-  strike: 1.15,                                         // seconds you have to strike
+  strike: 1.5,                                          // seconds you have to press
 });
 
 /* ---------- lookups ---------- */
