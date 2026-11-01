@@ -64,3 +64,5 @@
 .grm-bag-b { position: relative; width: 56px; height: 56px; padding: 2px; border-radius: 8px; background: rgba(255, 236, 205, .1); border: 1px solid transparent; cursor: pointer; }
 .grm-bag-b:hover, .grm-bag-b.is-on { background: rgba(255, 236, 205, .26); border-color: #ffd28a; }
 .grm-bag-b i { position: absolute; right: 3px; bottom: 1px; font-size: 11px; font-style: normal; font-weight: 700; color: #ffeccd; text-shadow: 0 1px 2px #000; }
+/* Indoors: the stage under a room is not drawn at all (_gwIndoors, 94-garden-world-0walk.js). The box keeps its size. */
+.gd-stagebox.gd-indoors > * { display: none !important; }

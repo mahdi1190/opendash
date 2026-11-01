@@ -593,25 +593,36 @@ function _gwBuildCamUi(stagebox) {
  * while the scripts take 2%. So when nobody is looking, the ambient motion rests: the window has not had the focus for 8 seconds, or there has been no
  * pointer or key for 90 seconds and nobody is in the garden with you. Any pointer, key or focus wakes it at once; it pauses and resumes in place.
  */
-const _gwCalm = { on: false, input: Date.now(), blur: 0 };   // clock-ok: when you last did something
+const _gwCalm = { on: false, input: Date.now(), blur: 0, hid: null };   // clock-ok: when you last did something
 function _gwCalmSet(on) { if (_gwCalm.on === on) return; _gwCalm.on = on; if (_gw.root) _gw.root.classList.toggle('gd-calm', on); }
+/**
+ * Indoors (the owner: "all of the extra internal rooms seem to be incredibly slow and laggy"). A room covers the whole window, so once it has faded in the stage under it is taken out of the page's drawing altogether.
+ * Measured before this: every pointer move in a room woke the garden and the next look put it back to rest, and flipping that class restyled the whole stage: about 90% of a core, frames down from 160 a second to 20.
+ * Only the drawing goes: the loop still looks in twice a second, and the fish clock, the host's answers and friends' messages run on as they were.
+ */
+function _gwIndoors(on) {
+  if (on) { const b = _gw.box; if (!b || _gwCalm.hid === b) return; _gwCalm.hid = b; b.classList.add('gd-indoors'); _gwCalmSet(true); return; }
+  if (!_gwCalm.hid) return;
+  _gwCalm.hid.classList.remove('gd-indoors'); _gwCalm.hid = null; _gwCalm.input = Date.now(); _gwCalmSet(false);   // clock-ok: idle time
+}
 function _gwCalmTick() {
   const t = Date.now(), focused = typeof document.hasFocus === 'function' ? document.hasFocus() : true;   // clock-ok: idle time
   if (focused) _gwCalm.blur = 0; else if (!_gwCalm.blur) _gwCalm.blur = t;
   const away = !focused && _gwCalm.blur > 0 && t - _gwCalm.blur > 8000;
   const company = typeof _gll !== 'undefined' && _gll.actors && _gll.actors.size > 0;   // friends here: you are watching them
   const idle = !!(away || (!company && t - _gwCalm.input > 90000));
-  _gwCalmSet(idle || _grm.on);   // (in a room, the stage under it is not being looked at)
+  _gwCalmSet(idle || !!_gwCalm.hid);   // (in a room, the stage under it is not being drawn)
   if (_grm.root) _grm.root.classList.toggle('is-calm', idle);
 }
 if (typeof window !== 'undefined') {
-  const wake = () => { _gwCalm.input = Date.now(); if (_gwCalm.on) { _gwCalmSet(false); if (_gw.idleT) { clearTimeout(_gw.idleT); _gw.idleT = 0; } if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } };   // clock-ok: idle time
+  const wake = () => { _gwCalm.input = Date.now(); if (_gwCalm.hid) { if (_grm.root) _grm.root.classList.remove('is-calm'); return; } if (_gwCalm.on) { _gwCalmSet(false); if (_gw.idleT) { clearTimeout(_gw.idleT); _gw.idleT = 0; } if (typeof _gwEnsureLoop === 'function') _gwEnsureLoop(); } };   // clock-ok: idle time
   for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(ev, wake, { passive: true, capture: true });
   window.addEventListener('focus', wake);   // (the pets' roaming loop, 97-pets-7roam.js, rests while it is calm too)
 }
 function _gwEnsureLoop() { if (!_gw.on || _gw.raf || document.hidden) return; if (_gw.idleT) { clearTimeout(_gw.idleT); _gw.idleT = 0; } _gw.last = 0; _gw.raf = requestAnimationFrame(_gwFrame); }
 /** Is anything in the view moving, or about to? Every frame asked for is a frame the whole stage paints, so an idle garden looks up only a few times a second. */
 function _gwPace() {
+  if (_grm.on || _ee.on) return _gw.reel || (_gw.fishing && _gw.fishing.state !== 'idle') ? 60 : 2;   // indoors: a line in a room's water still runs here, nothing else needs to
   if (_gw.keys.size || _gw.hold || _gw.path.length || _gw.moving || _gw.netting || _gw.reel || _gw.cam.dirty || _gw.routeOn || _gw.pet && _gw.pet.moving) return 60;
   if (_gw.fishing && _gw.fishing.state !== 'idle') return 60;
   if (_gw.bugsBusy) return 30;
@@ -717,7 +728,7 @@ function _gwFrame(ts) {
   _gwSpritesFrame(dt);
   // 3. the camera
   if (gardenCamMode() === 'fit' ? _gw.cam.dirty : true) _gwApplyCam(dt);
-  if (_gw.cam.dirty && typeof _gartRestItems === 'function' && _gw.t - (_gw.restAt || 0) > 0.12) { _gw.restAt = _gw.t; _gartRestItems(_gw.svg); }   // what is drawn follows the view
+  if (_gw.cam.dirty && !_gwCalm.hid && typeof _gartRestItems === 'function' && _gw.t - (_gw.restAt || 0) > 0.12) { _gw.restAt = _gw.t; _gartRestItems(_gw.svg); }   // what is drawn follows the view
   gardenHudFrame();
   // (something in this frame may have asked for the loop already: a walk begun on arrival, a sprite added. Two chains of frames, the second with dt 0, stop you dead: a step of nothing looks like a wall)
   if (_gw.raf) return;

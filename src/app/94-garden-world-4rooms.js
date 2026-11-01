@@ -333,6 +333,34 @@ function _grmKey(ev) {
 }
 
 /* ---------- coming in and going out ---------- */
+/**
+ * The little things that come and go (motes, twinkles, ripples, bubbles, spray, steam, clouds) were one animation each: 159 in the grotto, and the browser styled every one of them every frame.
+ * A run of them side by side now moves in a few groups, each one animation on its own beat: the same specks in the same places.
+ * Only for a thing with no transform of its own (a moving one overrode it, and in a group it would apply). The things on the list move by nothing that depends on their own box.
+ */
+const GRM_MERGE = Object.freeze({ 'grm-tw': 3.6, 'grm-mote': 9, 'grm-rip': 4.2, 'grm-bub': 5, 'grm-spray': 1.5, 'grm-steam': 2.4, 'grm-cloud': 26 });
+const GRM_MERGE_OWN_LOOK = new Set(['grm-mote', 'grm-cloud']);   // these move and do not fade: their own opacity stays theirs
+function _grmMergeMotion(svg) {
+  const NS = 'http://www.w3.org/2000/svg', beats = 5;
+  for (const [cls, cycle] of Object.entries(GRM_MERGE)) {
+    const seen = new Set();
+    for (const first of svg.querySelectorAll('.' + cls)) {
+      if (seen.has(first)) continue;
+      const run = []; for (let n = first; n && n.classList.contains(cls) && !n.hasAttribute('transform'); n = n.nextElementSibling) { run.push(n); seen.add(n); }
+      if (run.length < 3) continue;
+      const groups = new Map(), parent = run[0].parentNode, at = run[run.length - 1].nextSibling;
+      for (const el of run) {
+        const del = Math.abs(parseFloat(el.style.animationDelay) || 0), dur = parseFloat(el.style.animationDuration) || 0, b = Math.floor(((del % cycle) / cycle) * beats) % beats;
+        let G = groups.get(b);
+        if (!G) { G = document.createElementNS(NS, 'g'); G.setAttribute('class', cls); G.style.animationDelay = '-' + (b * cycle / beats).toFixed(2) + 's'; if (dur) G.style.animationDuration = dur + 's'; if (!GRM_MERGE_OWN_LOOK.has(cls) && el.hasAttribute('opacity')) G.setAttribute('opacity', el.getAttribute('opacity')); groups.set(b, G); }
+        el.removeAttribute('class'); el.style.animationDelay = ''; el.style.animationDuration = ''; if (!el.style.length) el.removeAttribute('style');
+        if (!GRM_MERGE_OWN_LOOK.has(cls)) el.removeAttribute('opacity');
+        G.appendChild(el);
+      }
+      for (const G of groups.values()) parent.insertBefore(G, at);
+    }
+  }
+}
 function _grmMayEnter() { return !_grm.on && !_grm.closing && !(typeof _ee !== 'undefined' && _ee.on) && !!(typeof _gw !== 'undefined' && _gw.on && _gw.box); }
 function _grmMarkFound(R) {
   if (gpVisiting()) return false;
@@ -348,6 +376,7 @@ function gardenRoomEnter(R) {
   const w = _grwOf(R), clipW = w ? `<clipPath id="grmwc">${w.e.map(([x, y, a, b]) => `<ellipse cx="${x}" cy="${y}" rx="${a}" ry="${b}"/>`).join('')}</clipPath>` : '';
   root.innerHTML = `<svg class="ee-svg" viewBox="0 0 ${GRM.W} ${GRM.H}" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><clipPath id="grmc"><rect width="${GRM.W}" height="${GRM.H}"/></clipPath>${clipW}<g clip-path="url(#grmc)">${R.art()}${_grmDoorArt(R)}${w ? `<g class="grm-school" clip-path="url(#grmwc)"><g class="grm-school-in" transform="scale(${GRW.k})"></g></g>${R.waterTop ? R.waterTop() : ''}` : ''}<g class="grm-props"></g><g class="grm-bugs"></g></g><g class="ee-actors"></g>${R.front ? `<g clip-path="url(#grmc)">${R.front()}</g>` : ''}<g class="grm-game" transform="scale(${GRW.k})"></g></svg>`
     + `<div class="ee-ui"><button type="button" class="btn btn-secondary btn-sm ee-leave">${icon('log-out')}<span>Leave</span></button>${R.furnish && !gpVisiting() ? `<button type="button" class="btn btn-secondary btn-sm grm-furn">${icon('armchair')}<span>Furnish</span></button>` : ''}</div><div class="grm-bag"></div><div class="grm-ask"></div><p class="grm-say" role="status"></p>`;
+  _grmMergeMotion(root.querySelector('.ee-svg'));
   root.style.background = R.edge ? `linear-gradient(${R.edge[0]}, ${R.edge[1]})` : (R.bg || '');
   document.body.appendChild(root);
   _grm.root = root; _grm.svg = root.querySelector('.ee-svg'); _grm.actors = root.querySelector('.ee-actors'); _grm.props = root.querySelector('.grm-props'); _grm.game = root.querySelector('.grm-game'); _grm.school = root.querySelector('.grm-school-in'); _grm.bugL = root.querySelector('.grm-bugs');
@@ -369,6 +398,7 @@ function gardenRoomEnter(R) {
   _grmSay(R.say + (first ? ' You have not been here before: you find 3 tickets on the way in.' : ''), 9000);
   if (R.how) { clearTimeout(_grm.howT); _grm.howT = setTimeout(() => { if (_grm.R === R && !_gwFishBusy()) _grmSay(R.how, 9000); }, 9200); }
   _grmStartLoop();
+  clearTimeout(_grm.hideT); _grm.hideT = setTimeout(() => { if (_grm.on) _gwIndoors(true); }, 760);   // (once the room has faded in: .7s, .ee-room)
   _grmSend(me.x, me.y, 'in');
   return true;
 }
@@ -381,7 +411,8 @@ function gardenRoomLeave() {
   window.removeEventListener('keydown', _grmKey, true); window.removeEventListener('keyup', _grmKey, true);
   window.removeEventListener('pointerup', _grmUp); window.removeEventListener('pointercancel', _grmUp);
   document.removeEventListener('visibilitychange', _grmStartLoop);
-  cancelAnimationFrame(_grm.raf); _grm.raf = 0; clearTimeout(_grm.sayT); clearTimeout(_grm.howT);
+  cancelAnimationFrame(_grm.raf); _grm.raf = 0; clearTimeout(_grm.sayT); clearTimeout(_grm.howT); clearTimeout(_grm.hideT);
+  _gwIndoors(false);
   const root = _grm.root;
   if (root) { root.classList.remove('is-on'); root.classList.add('is-out'); setTimeout(() => root.remove(), 420); }
   { const S = _grm.S; if (S && S.leave) S.leave(); }
