@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.47.0]
+
+### Added
+- **Real work moves the game on.** Finished tasks and focus time now earn survey pegs, timber, stone, tickets and bait. Use them to open paths early, pay part of the price of land and buildings, and make paths, fences, ground and ornaments at the new builder's yard.
+- **Everything gives something.** Features that paid nothing now give small gifts, within the daily limits.
+- Home can show what's next, and the garden card has a line about it.
+
 ## [2.46.0]
 
 **Your garden is now the middle of a bigger world. Update every computer you use, and friends should update too: live play needs the same version on both sides.**
