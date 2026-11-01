@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.33.1]
+
+### Changed
+- Small touches to the garden extras that came with 2.33.0
+
 ## [2.33.0]
 
 ### Added
