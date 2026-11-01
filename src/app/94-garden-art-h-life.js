@@ -76,8 +76,11 @@ async function _gartBakeNext(svg) {
     const im = document.createElementNS('http://www.w3.org/2000/svg', 'image');
     im.setAttribute('x', box[0]); im.setAttribute('y', box[1]); im.setAttribute('width', box[2]); im.setAttribute('height', box[3]);
     im.setAttribute('preserveAspectRatio', 'none'); im.setAttribute('href', url);
-    el.replaceChildren(im);
     el.classList.add('is-baked');
+    // the paper's grain makes the picture a shade different from the drawing it replaces: fade it in over the drawing rather than jump. (A see-through layer has no grain, and two darks over each other would flash)
+    let eased = false;
+    if (el.dataset.alpha !== '1' && !document.hidden && _gartMotionOk()) { try { el.appendChild(im); const a = im.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 350, easing: 'ease-out' }); a.onfinish = () => { if (im.parentNode === el) el.replaceChildren(im); }; eased = true; } catch (e) { /* no WAAPI */ } }
+    if (!eased) el.replaceChildren(im);
   } catch (e) {
     el.classList.add('no-bake');
   } finally { _gartLife.busy = false; }
@@ -99,7 +102,9 @@ function _gartRestItems(svg) {
     if (!b) { try { const bb = el.getBBox(), tf = el.transform && el.transform.baseVal && el.transform.baseVal.numberOfItems ? el.transform.baseVal.consolidate().matrix : null; b = { x: bb.x + (tf ? tf.e : 0), y: bb.y + (tf ? tf.f : 0), w: bb.width, h: bb.height }; } catch (e) { b = { x: 0, y: 0, w: 1e5, h: 1e5 }; } el._gartBox = b; }
     const seen = b.x + b.w > vb.x - 12 && b.x < vb.x + vb.width + 12 && b.y + b.h > vb.y - 12 && b.y < vb.y + vb.height + 12;
     if (!!el._gartRest === seen) { el._gartRest = !seen; el.classList.toggle('gart-rest', !seen); }
-    if (!!el._gartOff === seen) { el._gartOff = !seen; el.classList.toggle('gart-off', !seen); }
+    // not drawn only once well out of the window: this runs every few steps, so a tight edge showed things popping in inside the view
+    const off = !(b.x + b.w > vb.x - GART_OFF_MARGIN && b.x < vb.x + vb.width + GART_OFF_MARGIN && b.y + b.h > vb.y - GART_OFF_MARGIN && b.y < vb.y + vb.height + GART_OFF_MARGIN);
+    if (!!el._gartOff !== off) { el._gartOff = off; el.classList.toggle('gart-off', off); }
   }
   const W = GARDEN_WORLD, m = W.cellW * 2, cx = vb.x + vb.width / 2, cy = vb.y + vb.height / 2, near = [];
   const items = layer.children;
@@ -212,6 +217,7 @@ function _gartTick() {
     _gartRestItems(svg);
     if (!_gartLife.busy) _gartBakeNext(svg);
   }
+  if ((_gartLife.beat = (_gartLife.beat || 0) + 1) % 8 === 1 && typeof gardenLightCheck === 'function') { try { gardenLightCheck(); } catch (e) { console.error('[garden]', e); } }   // about every 2.5 s: is the light still the right one?
 }
 function _gartLifeStart() {
   if (_gartLife.bound || typeof document === 'undefined' || typeof setInterval !== 'function') return;

@@ -70,7 +70,8 @@
   58% { transform: rotate(2.3deg) skewX(-1.7deg); }
   82% { transform: rotate(-.3deg) skewX(.2deg); }
 }
-.gd-svg .gart-rest, .gd-svg .gart-rest * { animation: none !important; }
+/* paused, not removed: taking the animation away snapped a glow to full brightness and a swaying plant to upright, in view, each time the nearest two dozen changed as you walked */
+.gd-svg .gart-rest, .gd-svg .gart-rest * { animation-play-state: paused !important; }
 .gd-svg .gart-off { display: none; }
 .gart-nosky .gart-cloud, .gart-nosky .gd-sky * { animation: none !important; }
 .gd-svg .gd-ground .gart-live { pointer-events: none; }

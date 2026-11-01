@@ -341,7 +341,7 @@ function _glhQueueRun(d) {
     done.push(q.f + '.' + q.i);
   }
   _glhFlushPosts(); _glhDiffSoon(60); _glhHud();
-  for (const G of _glhDiaryGroups().filter(x => x.e.away === pass).slice(0, 3)) if (typeof _gdgNote === 'function') _gdgNote(_glhDiaryLine(G.e, G.keys.length), icon('sprout'));
+  _glhDiaryGroups().filter(x => x.e.away === pass).slice(0, 3).forEach((G, i) => setTimeout(() => gardenMessage(_glhDiaryLine(G.e, G.keys.length)), i * 4000));   // (one line at a time: each has its moment)
   _gllApi('/api/garden-live/queued', { ids: done }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}).finally(() => { _glh.queueBusy = false; });
 }
 function _glhResOf(ev, e) {

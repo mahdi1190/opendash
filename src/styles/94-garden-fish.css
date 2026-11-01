@@ -183,9 +183,8 @@ html[data-motion="reduced"] .gd-svg .gd-shadowfish, html[data-motion="reduced"] 
 .gd-page.is-fishing .gd-camui, .gd-page.is-fishing .gd-walkhint { display: none; }
 .gd-full .gd-stagebox[data-fishing="1"], .gd-full .gd-stagebox[data-fishing="1"] * { cursor: default; }
 .gd-stagebox[data-fishing="1"] .gd-status, .gd-stagebox[data-fishing="1"] .gd-hovercard { display: none; }
-.gd-fishhud { position: absolute; z-index: 6; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 6px 8px 6px 16px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); font-size: var(--text-sm); animation: gd-card-in .25s ease-out; }
+.gd-fishhud { position: absolute; z-index: 6; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-md); border: 1px solid var(--border-subtle); font-size: var(--text-sm); animation: gd-card-in .25s ease-out; }
 .gd-fishhud[hidden] { display: none; }
-.gd-fishhud.is-bite { background: color-mix(in srgb, var(--sw-amber) 30%, var(--surface)); border-color: color-mix(in srgb, var(--sw-amber) 70%, var(--border-subtle)); font-weight: 600; }
 .gd-fishhud-b { border: 0; border-radius: 999px; padding: 4px 10px; background: var(--bg-muted); color: var(--fg-muted); font: inherit; font-size: var(--text-xs); cursor: pointer; }
 .gd-fishhud-b:hover { background: color-mix(in srgb, var(--fg) 12%, var(--bg-muted)); color: var(--fg); }
 .gd-fishhud-b kbd { margin-left: 4px; font: 600 10px/1 var(--font-mono, monospace); opacity: .7; }
@@ -253,5 +252,3 @@ html[data-motion="reduced"] .gd-svg .gd-shadowfish, html[data-motion="reduced"] 
   .gdb-how li > span:last-child { grid-column: 2; }
   .gdb-filter-l { min-width: 100%; }
 }
-
-.gd-fishhud-t:empty { display: none; }

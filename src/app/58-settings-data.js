@@ -84,6 +84,19 @@ function _sdPickZip() {
   inp.click();
 }
 
+function _sdGardenAgain() {
+  openDialog({
+    title: 'Start your garden again?', size: 'sm',
+    body: (el) => { const p = document.createElement('p'); p.className = 'muted'; p.textContent = 'Your land, plants, coins, level and books go back to the start, on all your computers. Your tasks, money and pet stay. Friends will see your new garden.'; el.appendChild(p); },
+    actions: [
+      { label: 'Keep my garden' },
+      { label: 'Start again', danger: true, run: () => {
+        const undo = gardenStartAgain();
+        toast('Your garden has started again', { icon: 'sprout', action: { label: 'Undo', run: undo } });
+      } },
+    ],
+  });
+}
 function _sdReset() {
   let input = null, fin = null, go = null;
   openDialog({
@@ -127,6 +140,7 @@ registerSettingsGroup({
     { label: 'Daily encrypted copy', target: 'Daily encrypted copy', description: 'One encrypted copy a day in a cloud folder.', keywords: 'offsite off-site daily encrypted backup passphrase' },
     { label: 'Export and import', target: 'Export and import', description: 'Move data to another computer or export JSON and Markdown.', keywords: 'zip tasks json markdown move computers' },
     { label: 'Share the app', target: 'Share the app', description: 'A clean copy of Freeflo for someone else.', keywords: 'export clean copy app zip' },
+    { label: 'Start your garden again', target: 'Start your garden again', description: 'Begin a new garden. Your tasks and everything else stay.', keywords: 'reset garden game delete erase start over' },
     { label: 'Reset app data', target: 'Reset app data', description: 'Start over after backing up the data folder.', keywords: 'delete erase clear start over' },
     { label: 'Move my data out of OneDrive', target: 'Move the data folder', description: 'Move your data to a folder no sync program touches.', keywords: 'move relocate onedrive local computer undo' },
   ],
@@ -202,6 +216,8 @@ registerSettingsGroup({
     // Danger zone
     const dz = _settingsCard('Start over');
     dz.card.classList.add('set-danger');
+    dz.body.appendChild(_settingsRow('Start your garden again', 'Begins a new garden, with your land, plants, coins and level back to the start. Your tasks, money and pet stay.',
+      _sdBtn('Start again…', 'sprout', 'danger', () => _sdGardenAgain())));
     dz.body.appendChild(_settingsRow('Reset app data', 'Empties the dashboard and shows the welcome set-up. Your data folder is backed up first.',
       _sdBtn('Reset app data…', 'trash-2', 'danger', () => _sdReset())));
     el.appendChild(dz.card);
