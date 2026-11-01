@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.42.0]
+
+### Added
+- **300 kinds of fish and 300 kinds of bug,** with new shapes such as rays, jellies and crabs. Some need the right bait, weather, moon, flower or decoration.
+- **A new dictionary** shows how to catch each one, with search and simple filters. What you have not found yet shows as a silhouette.
+
 ## [2.41.0]
 
 Every catch is now one of a kind.

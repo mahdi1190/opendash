@@ -129,7 +129,8 @@ function _gwFishFrame(dt) {
     by = ty + Math.sin(F.t * 2.6) * 0.9; sag = 8;
     // what happens to the float is what the fish at it does: nothing else can make it dip
     const mine = _gfsMine();
-    F.mood = !mine ? (F.t > 7 ? 'Nothing near your float: cast closer to a shadow' : '') : mine.st === GF_ST.come ? 'A fish is coming…' : mine.st === GF_ST.nibble ? 'Wait for it…' : '';
+    const nope = _gfs.refused && performance.now() - _gfs.refused.at < 4000 ? _gfs.refused : null;
+    F.mood = !mine ? (nope ? nope.name + ' is looking. ' + nope.why : F.t > 7 ? 'Nothing near your float: cast closer to a shadow' : '') : mine.st === GF_ST.come ? 'A fish is coming…' : mine.st === GF_ST.nibble ? 'Wait for it…' : '';
     if (mine && mine.st === GF_ST.nibble && mine.n !== F.nibN) { F.nibN = mine.n; F.nibble = 0.35; }
     if (F.nibble > 0) { F.nibble -= dt; by += Math.sin(F.nibble * 40) * 1.2; }
     if (mine && mine.st === GF_ST.bite) {
@@ -537,6 +538,7 @@ function _gwNetResolve() {
   const d = _gwBugDist(b);
   const awake = b.state !== 'rest';
   let p = 0.78 + net.st.luck - 0.065 * b.def.skit - Math.max(0, d - net.st.reach) * 0.4;
+  if (b.def.needs && b.def.needs.net > net.tier) p = 0;   // (it needs a better net: the book says so)
   if (awake) p *= b.state === 'flee' ? 0.18 : 0.4;
   if (_gw.sneak) p += 0.06;
   const ok = !(_gw.goneKeys && _gw.goneKeys.has(b.key)) && Math.random() < Math.max(0.06, Math.min(0.96, p));   // (somebody netted it first: your swing misses)
