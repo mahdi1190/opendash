@@ -207,3 +207,5 @@ html[data-theme="dark"] .gcr .gpg-arrow.is-off { color: #a89c84; background: #3a
 .gd-alm-top { margin-bottom: 8px; }
 .gl-book-head { margin-bottom: 6px; }
 .grg-wrap .grg-card { padding-block: 6px 9px; }
+.modal.gd-popup .gd-rar-legendary, .modal.gd-popup .gd-rar.gvb-t-legendary { color: #75500a; }
+.gd-rar.gvb-t-lifetime { background: linear-gradient(90deg, #b8342a, #96590a, #2a7a44, #2a5fa8, #6a3aa8); }
