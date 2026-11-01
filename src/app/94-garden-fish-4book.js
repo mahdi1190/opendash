@@ -18,6 +18,9 @@ function _gdbCtx(m, zone) {
 }
 /** Can it be about right now, wherever you are looking for it? (A spot is a place you go to, so it does not count against it.) */
 function _gdbNow(d, m) {
+  const H = gardenRegionHome(d);
+  if (H && !gardenRegionHomeOpen(H, m.areas)) return false;
+  if (H && H.w && H.w !== 'pond' && d.cat === 'fish') return gardenFishFits(d, Object.assign(_gdbCtx(m), { zone: d.zone[0] }));
   if (d.cat === 'bug') return gardenBugFits(d, _gdbCtx(m));
   if (d.cat !== 'fish') return true;
   return d.zone.some(z => (z !== 'pond' || m.areas.includes('pond')) && gardenFishFits(d, _gdbCtx(m, z)));
@@ -26,6 +29,7 @@ function _gdbNow(d, m) {
 function _gdbRowOk(r, d, m, setup) {
   const n = d.needs || {}, c = _gdbCtx(m), list = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
   switch (r.k) {
+    case 'home': return gardenRegionHomeOpen(gardenRegionHome(d), m.areas);
     case 'when': return !d.tod.length ? null : d.tod.includes(m.tod);
     case 'season': return d.seasons.length ? d.seasons.includes(m.season) : d.cat === 'bug' ? m.season !== 'winter' : null;
     case 'rain': return d.cat === 'bug' ? (d.rain ? c.rain : c.rain ? d.hab.includes('light') : true) : n.rain === true ? c.rain : n.rain === false ? !c.rain : null;
@@ -138,7 +142,7 @@ function _gdbEntry(el, m, kind, r) {
   const ul = _gdpEl('ul', 'gdb-how');
   for (const row of gardenCatchNeedsRows(d)) {
     const ok = _gdbRowOk(row, d, m, setup), li = _gdpEl('li', ok === true ? 'is-ok' : ok === false ? 'is-no' : '');
-    li.innerHTML = `<span class="gdb-how-i">${ok === true ? icon('check', 'i-sm') : ok === false ? icon('x', 'i-sm') : ''}</span><b>${esc(row.label)}</b><span>${esc(row.text)}${ok === null ? '' : ' <em>' + (['rod', 'reel', 'line', 'hook', 'bait', 'net'].includes(row.k) ? (ok ? 'You have that with you.' : 'You do not have that with you.') : ['decor', 'plant'].includes(row.k) ? (ok ? 'You have that.' : 'You do not have that yet.') : row.k === 'level' ? (ok ? 'You are there.' : 'Not yet.') : (ok ? 'Right now, yes.' : 'Not right now.')) + '</em>'}</span>`;
+    li.innerHTML = `<span class="gdb-how-i">${ok === true ? icon('check', 'i-sm') : ok === false ? icon('x', 'i-sm') : ''}</span><b>${esc(row.label)}</b><span>${esc(row.text)}${ok === null ? '' : ' <em>' + (['rod', 'reel', 'line', 'hook', 'bait', 'net'].includes(row.k) ? (ok ? 'You have that with you.' : 'You do not have that with you.') : ['decor', 'plant'].includes(row.k) ? (ok ? 'You have that.' : 'You do not have that yet.') : row.k === 'level' ? (ok ? 'You are there.' : 'Not yet.') : row.k === 'home' ? (ok ? 'You can get there.' : 'Not open yet.') : (ok ? 'Right now, yes.' : 'Not right now.')) + '</em>'}</span>`;
     ul.appendChild(li);
   }
   page.appendChild(ul);

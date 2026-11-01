@@ -673,7 +673,10 @@ function gardenFacts(mArg) {
   try { cat = typeof gardenCatchFacts === 'function' ? gardenCatchFacts(m) : null; } catch (e) { cat = null; }
   let soc = null;   // ── garden-social ── visits, waterings, gifts, signatures and hearts with friends (94-garden-social-1core.js)
   try { soc = typeof gardenSocialFacts === 'function' ? gardenSocialFacts() : null; } catch (e) { soc = null; }
+  let rgn = null;   // a region's page finished (94-garden-regions-1core.js)
+  try { rgn = typeof gardenRegionFacts === 'function' ? gardenRegionFacts() : null; } catch (e) { rgn = null; }
   return {
+    ...(rgn || {}),
     ...(soc || {}),
     ...(cat || {}),
     planted: w.n.planted, harvests: w.n.harvests, bouquets: w.n.bouquets, sold: w.n.sold, dailyDone: w.n.daily, crafted: w.n.crafted || 0,

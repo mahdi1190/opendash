@@ -9,16 +9,17 @@
    Also the little card in the garden's side panel (gardenCatchSideCard): your rod, your bait, the casts you have left, the bugs about.
    ============================================================ */
 const _gdc = { zone: '', found: '', n: 36 };
-const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['fish', 'Fish book', 'fish'], ['bugs', 'Bug book', 'bug'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['best', 'My best catches', 'award'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);
+const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['fish', 'Fish book', 'fish'], ['bugs', 'Bug book', 'bug'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['best', 'My best catches', 'award'], ['map', 'The map', 'map'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);
 function _gdcTab() { const t = _gdG().prefs.catchTab; return GDC_TABS.some(x => x[0] === t) ? t : 'bag'; }
 function _gdcSetTab(t) { const a = document.activeElement; if (a && a.classList && a.classList.contains('gdb-search')) a.blur(); _gdG().prefs.catchTab = t; if (typeof saveUI === 'function') saveUI(); _gdc.n = 36; _gdc.pick = null; _gdc.q = ''; _gdxRepaintTab(); }
 function _gdcRar(r) { return GARDEN_RARITY[r] || GARDEN_RARITY.common; }
 function _gdcPill(r) { return r === 'common' ? null : _gdpEl('span', 'gd-rar gd-rar-' + r, _gdcRar(r).label); }
 function _gdcWhen(def, level) {
-  const bits = [];
-  if (def.cat === 'bug') bits.push(def.hab.map(h => ({ flower: 'flowers', lawn: 'the lawn', ground: 'the ground', tree: 'trees', water: 'the water’s edge', light: 'lights', woods: 'the woods' })[h] || h).slice(0, 2).join(' or '));
+  const bits = [], rgn = gardenRegionShort(def);
+  if (rgn) bits.push(rgn);
+  else if (def.cat === 'bug') bits.push(def.hab.map(h => ({ flower: 'flowers', lawn: 'the lawn', ground: 'the ground', tree: 'trees', water: 'the water’s edge', light: 'lights', woods: 'the woods' })[h] || h).slice(0, 2).join(' or '));
   else bits.push(def.zone.map(z => (GARDEN_FISH_ZONES[z] || {}).label || z).slice(0, 2).join(' or '));
-  if (def.cat !== 'bug' && def.zone.length === 1 && def.zone[0] === 'pond' && (level || 1) < 7) bits.push('the pond opens at garden level 7');
+  if (!rgn && def.cat !== 'bug' && def.zone.length === 1 && def.zone[0] === 'pond' && (level || 1) < 7) bits.push('the pond opens at garden level 7');
   if (def.tod && def.tod.length && def.tod.length < 3) bits.push(def.tod.map(t => ({ dawn: 'at dawn', day: 'by day', dusk: 'at dusk', night: 'at night' })[t]).join(' or '));
   if (def.seasons && def.seasons.length) bits.push('in ' + def.seasons.join(', '));
   if (def.rain) bits.push('when it rains');
@@ -41,6 +42,7 @@ function gardenCatchTab(el, m) {
   if (tab === 'bag') _gdcBag(el, m, bag);
   else if (tab === 'fish') _gdcBook(el, m, 'fish');
   else if (tab === 'bugs') _gdcBook(el, m, 'bug');
+  else if (tab === 'map') gardenRegionTab(el, m);
   else if (tab === 'tackle') _gdcTackle(el, m);
   else if (tab === 'best') gardenSpecTab(el);
   else if (tab === 'lake') gardenLakeTab(el, m);
