@@ -22,7 +22,7 @@
    (Friends.registerPanel); opening a friend's card adds one to their
    visitors count, once a day (counts only; Settings > Profile can stop it).
    ============================================================ */
-const _pfUI = { sec: 'card', tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null, lookTab: 'banner', lookUndo: [], lookRedo: [], sceneQ: '', sceneN: 40, curK: '', thumbs: new Map() };
+const _pfUI = { sec: 'card', tab: 'face', undo: [], redo: [], walk: true, preview: false, mode: null, lookTab: 'banner', lookUndo: [], lookRedo: [], sceneQ: '', curK: '', thumbs: new Map() };
 const _PF_FACE_CROP = new Set(['eyes', 'eyeCol', 'brows', 'mouth', 'facial', 'marks']);
 const _PF_HEAD_CROP = new Set(['hair', 'hat', 'glasses', 'headphones']);
 const _PF_UNTIL = [['0', "Don't clear"], ['1h', 'In an hour'], ['4h', 'In 4 hours'], ['today', 'Tonight'], ['week', 'In a week']];
@@ -446,21 +446,17 @@ function _pfLookScenes(host, look, apply) {
     list.replaceChildren();
     const s = q.value.trim().toLowerCase();
     const hits = all.filter(it => !s || String(it.label || '').toLowerCase().includes(s) || String(it.ref).toLowerCase().includes(s));
-    const shown = hits.slice(0, _pfUI.sceneN);
-    for (const it of shown) {
+    const place = 'profile:scenes' + (s ? '?' : '');
+    gardenPager(list, { key: place, sig: s, items: hits, grid: 'pf-l-pagegrid', row: 26, rows: 7, draw: (it) => {
       const on = it.ref === look.scene;
       const b = _pfEl('button', 'chip chip-lg pf-l-scene', it.label || it.ref); b.type = 'button';
       b.setAttribute('role', 'option'); b.setAttribute('aria-selected', on ? 'true' : 'false'); b.setAttribute('aria-pressed', on ? 'true' : 'false');
       b.onclick = () => { if (!on) apply({ banner: 'scene', scene: it.ref }); };
-      list.appendChild(b);
-    }
+      return b;
+    }, guess: 21 });
     if (!hits.length) list.appendChild(emptyLine('No scene matches that. Try another word.'));
-    else if (hits.length > shown.length) {
-      const more = uiButton({ label: `Show more (${hits.length - shown.length})`, icon: 'chevron-down', kind: 'ghost', size: 'sm', run: () => { _pfUI.sceneN += 40; paint(); } });
-      list.appendChild(more);
-    }
   };
-  q.oninput = _pfDebounce(() => { _pfUI.sceneQ = q.value; _pfUI.sceneN = 40; paint(); }, 150);
+  q.oninput = _pfDebounce(() => { _pfUI.sceneQ = q.value; paint(); }, 150);
   sec.append(q, list);
   paint();
 }

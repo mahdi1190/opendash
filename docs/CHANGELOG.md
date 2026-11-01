@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.56.0]
+
+### Changed
+- **Garden lists now turn pages with side arrows or arrow keys,** instead of "show more" and the scroll wheel: the shop, the books, your bag, tackle, crafting, Play and more. They have tabs and a sensible order.
+- **Panel headers and tabs are easier to read,** in light and dark.
+
 ## [2.55.0]
 
 ### Added
