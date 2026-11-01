@@ -382,6 +382,38 @@ const GARDEN_DECOR = _gdRows([
   _gD('festive-lights', 'Festive lights', 'seasonal', { w: 2, price: 30, unlock: { event: 'winter-lights' }, look: { c: '#2f5f2e', c2: '#ffd36a', h: 1.2 }, v: 2, effect: { kind: 'light' }, blurb: 'A twinkling garland for the darkest weeks.' }),
   _gD('bunting', 'Bunting', 'seasonal', { w: 2, price: 15, unlock: { season: 'summer' }, look: { c: '#d83a3a', c2: '#3a6fc4', h: 1.3 }, v: 2, blurb: 'Little flags for a summer fete.' }),
   _gD('painted-eggs', 'Painted eggs', 'seasonal', { price: 10, unlock: { event: 'spring-bloom' }, look: { c: '#f2a7c8', c2: '#7fb3f0', h: 0.25 }, blurb: 'Hidden in the grass for someone to find.' }),
+  // 2.40: play (docs/dev/HUNDRED_PLAY.md). Won or given, never sold, except the coop. They travel as any decoration does, so friends see them.
+  _gD('play-coop', 'Hen coop', 'wildlife', { price: 60, lv: 3, w: 2, effect: { kind: 'coop' }, look: { c: '#b5763e', c2: '#d8453a', h: 1, parts: [['box', { w: 62, h: 28, y: -8 }], ['block', { y: -38, w: 72, h: 8, c: '#d8453a' }], ['block', { y: -46, w: 48, h: 8, c: '#d8453a' }], ['box', { x: -14, w: 14, h: 16, y: -8, c: '#3a2c20' }], ['orb', { x: 16, y: -24, r: 5, c: '#f4e6b0' }], ['post', { x: -26, w: 4, h: 8 }], ['post', { x: 26, w: 4, h: 8 }]] }, blurb: 'Hens potter about wherever it stands, and there are eggs each morning.' }),
+  _gD('play-pot', 'Cooking pot', 'ornament', { craft: 1, price: 0, effect: { kind: 'play', game: 'cook' }, look: { c: '#3a3f46', c2: '#e8843c', h: 0.7, parts: [['stone', { x: -12, w: 12 }], ['stone', { x: 12, w: 12 }], ['orb', { y: -22, r: 15 }], ['block', { y: -35, w: 34, h: 4 }], ['orb', { y: -8, r: 5, c: '#e8843c' }]] }, blurb: 'Put in what you like, and see what comes out.' }),
+  _gD('play-mill', 'The old mill', 'structure', { craft: 1, price: 0, w: 2, effect: { kind: 'play', game: 'mill' }, look: { c: '#a89a84', c2: '#6a4a2c', h: 2 }, blurb: 'A ruin, for now. It mends as you bring it what it needs.' }),
+  _gD('play-jar', 'Marble jar', 'ornament', { craft: 1, price: 0, effect: { kind: 'play', game: 'marbles' }, look: { c: '#cfe6ee', c2: '#e8843c', h: 0.7 }, blurb: 'It fills up with every lost marble you find.' }),
+  _gD('play-chair', 'The old gardener\u2019s chair', 'seat', { craft: 1, price: 0, effect: { kind: 'sit' }, look: { c: '#8a5e36', c2: '#d8b070', h: 0.9, parts: [['post', { x: -12, w: 4, h: 16 }], ['post', { x: 12, w: 4, h: 16 }], ['block', { y: -16, w: 30, h: 5, c: '#d8b070' }], ['post', { x: -13, w: 4, h: 46 }], ['post', { x: 13, w: 4, h: 46 }], ['block', { y: -44, w: 30, h: 5 }], ['block', { y: -34, w: 30, h: 4 }]] }, blurb: 'Worn smooth by somebody who sat here a long time, looking at all this.' }),
+  _gD('play-fos-raptor', 'Raptor skeleton', 'ornament', { craft: 1, price: 0, w: 2, look: { c: '#ece3cf', c2: '#7a6a54', h: 1.2 }, blurb: 'Dug up piece by piece. It looks hungry, but it was a long time ago.' }),
+  _gD('play-fos-turtle', 'Giant turtle fossil', 'ornament', { craft: 1, price: 0, w: 2, look: { c: '#ece3cf', c2: '#7a6a54', h: 0.8 }, blurb: 'It was slow then, too.' }),
+  _gD('play-fos-mammoth', 'Mammoth skeleton', 'ornament', { craft: 1, price: 0, w: 2, look: { c: '#ece3cf', c2: '#7a6a54', h: 1.7 }, blurb: 'It took a lot of digging. Worth every tap.' }),
+  _gD('play-ros-bronze', 'Bronze rosette', 'ornament', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#c8803c', h: 0.9, parts: [['post', { w: 4, h: 34 }], ['orb', { y: -44, r: 13, c: '#c8803c' }], ['orb', { y: -44, r: 6, c: '#f4e6d0' }]] }, blurb: 'Won by a pet, on a course, in front of nobody at all.' }),
+  _gD('play-ros-silver', 'Silver rosette', 'ornament', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#c8d0d8', h: 0.9, parts: [['post', { w: 4, h: 34 }], ['orb', { y: -44, r: 14, c: '#aeb8c2' }], ['orb', { y: -44, r: 7, c: '#f4f6f8' }]] }, blurb: 'A clean round, or very nearly.' }),
+  _gD('play-ros-gold', 'Gold rosette', 'ornament', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#f2c21e', h: 1, parts: [['post', { w: 4, h: 40 }], ['orb', { y: -52, r: 15, c: '#f2c21e' }], ['orb', { y: -52, r: 8, c: '#fff4c8' }]] }, blurb: 'The best in the garden. Possibly the only one in the garden.' }),
+  // souvenirs: what a pet brings home the first time it goes somewhere
+  _gD('play-sv-sea', 'Seashell', 'ornament', { craft: 1, price: 0, look: { c: '#f0c8b0', c2: '#e88a8a', h: 0.6, parts: [['orb',{y:-10,r:12}],['orb',{y:-16,r:6,c:'#e88a8a'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-harbour', 'Little anchor', 'ornament', { craft: 1, price: 0, look: { c: '#5a6a78', c2: '#c8453a', h: 0.6, parts: [['post',{w:5,h:30}],['block',{y:-6,w:30,h:5}],['orb',{y:-34,r:5,c:'#c8453a'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-market', 'Market basket', 'ornament', { craft: 1, price: 0, look: { c: '#b08a58', c2: '#7fbf5a', h: 0.6, parts: [['box',{w:30,h:16}],['orb',{x:-7,y:-20,r:6,c:'#7fbf5a'}],['orb',{x:7,y:-20,r:6,c:'#d8453a'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-farm', 'Tiny haystack', 'ornament', { craft: 1, price: 0, look: { c: '#e0c060', c2: '#b89038', h: 0.6, parts: [['orb',{y:-12,r:17}],['orb',{y:-26,r:11,c:'#b89038'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-hills', 'Painted stone', 'ornament', { craft: 1, price: 0, look: { c: '#9aa6ae', c2: '#5a8fe0', h: 0.6, parts: [['stone',{w:26}],['orb',{y:-12,r:6,c:'#5a8fe0'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-island', 'Coconut', 'ornament', { craft: 1, price: 0, look: { c: '#6a4a2c', c2: '#f4ead8', h: 0.6, parts: [['orb',{y:-12,r:13}],['orb',{x:-3,y:-16,r:3,c:'#f4ead8'}],['orb',{x:4,y:-16,r:3,c:'#f4ead8'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-forest', 'Giant pine cone', 'ornament', { craft: 1, price: 0, look: { c: '#7a5230', c2: '#4a3220', h: 0.6, parts: [['orb',{y:-10,r:12}],['orb',{y:-22,r:9,c:'#4a3220'}],['orb',{y:-31,r:5}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-mountain', 'Summit flag', 'ornament', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#d8405a', h: 0.6, parts: [['stone',{w:24}],['post',{w:4,h:44}],['flag',{x:2,y:-42,w:20,h:11,clip:'flutter',c:'#d8405a'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-castle', 'Toy castle', 'ornament', { craft: 1, price: 0, look: { c: '#b9b2a4', c2: '#5a78c8', h: 0.6, parts: [['box',{w:34,h:22}],['post',{x:-15,w:9,h:32}],['post',{x:15,w:9,h:32}],['block',{y:-24,w:12,h:5,c:'#5a78c8'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-fair', 'Fairground balloon', 'ornament', { craft: 1, price: 0, look: { c: '#d8405a', c2: '#f2c21e', h: 0.6, parts: [['post',{w:2,h:30}],['orb',{y:-42,r:14}],['orb',{y:-42,r:6,c:'#f2c21e'}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-station', 'Station lamp', 'ornament', { craft: 1, price: 0, look: { c: '#3a4048', c2: '#ffe08a', h: 0.6, parts: [['post',{w:4,h:42}],['lantern',{y:-42,r:8}]] }, blurb: 'Brought home from a journey.' }),
+  _gD('play-sv-snow', 'Snow globe', 'ornament', { craft: 1, price: 0, look: { c: '#cfe6f4', c2: '#ffffff', h: 0.6, parts: [['box',{w:24,h:7,c:'#6a4a2c'}],['orb',{y:-20,r:14}],['orb',{y:-14,r:5,c:'#ffffff'}]] }, blurb: 'Brought home from a journey.' }),
+  // the prize stall: tickets only
+  _gD('play-pz-gnome', 'Fishing gnome', 'ornament', { craft: 1, price: 0, look: { c: '#3a6aa8', c2: '#d8453a', h: 0.7, parts: [['orb', { y: -10, r: 11 }], ['orb', { y: -24, r: 8, c: '#f4d8b8' }], ['orb', { y: -20, r: 7, c: '#f4f2e8' }], ['post', { y: -30, w: 12, h: 13, c: '#d8453a' }], ['post', { y: -42, w: 6, h: 7, c: '#d8453a' }]] }, blurb: 'He has never caught anything. He has never stopped trying.' }),
+  _gD('play-pz-flamingo', 'Plastic flamingo', 'ornament', { craft: 1, price: 0, look: { c: '#f08ab0', c2: '#2a2622', h: 1, parts: [['post', { w: 2, h: 26, c: '#2a2622' }], ['orb', { y: -32, r: 12 }], ['post', { x: 9, y: -36, w: 4, h: 18 }], ['orb', { x: 9, y: -56, r: 5 }]] }, blurb: 'The height of taste.' }),
+  _gD('play-pz-trophy', 'Big silly trophy', 'ornament', { craft: 1, price: 0, look: { c: '#f2c21e', c2: '#7a5a3a', h: 1, parts: [['box', { w: 24, h: 10, c: '#7a5a3a' }], ['post', { y: -10, w: 6, h: 14 }], ['orb', { y: -36, r: 15 }], ['orb', { x: -16, y: -38, r: 5 }], ['orb', { x: 16, y: -38, r: 5 }]] }, blurb: 'For being you, it says. It really does.' }),
+  _gD('play-pz-balloon', 'Balloon on a string', 'ornament', { craft: 1, price: 0, look: { c: '#5a8fe0', c2: '#ffffff', h: 1.3, parts: [['post', { w: 1, h: 52, c: '#8a8a8a' }], ['orb', { y: -66, r: 15, clip: 'bob' }]] }, blurb: 'It never goes down. Nobody can say why.' }),
+  _gD('play-pz-marble', 'Giant marble', 'ornament', { craft: 1, price: 0, look: { c: '#3aa8c8', c2: '#f4f6f8', h: 0.7, parts: [['orb', { y: -18, r: 18 }], ['orb', { x: -5, y: -24, r: 5, c: '#f4f6f8' }]] }, blurb: 'Somebody, somewhere, lost this too.' }),
+  _gD('play-pz-stand', 'Tiny bandstand', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#f4f2e8', c2: '#c8453a', h: 1.4, parts: [['box', { w: 70, h: 7 }], ['post', { x: -28, y: -7, w: 4, h: 42 }], ['post', { x: 28, y: -7, w: 4, h: 42 }], ['post', { y: -7, w: 4, h: 42 }], ['block', { y: -48, w: 78, h: 7, c: '#c8453a' }], ['block', { y: -55, w: 50, h: 7, c: '#c8453a' }]] }, blurb: 'Big enough for one very small band.' }),
   // 2.23: made at the crafting bench (94-garden-craft-0rules.js), never sold: craft: 1 keeps them out of the shop, price 0 means the market pays nothing for them
   _gD('flower-barrow', 'Flower barrow', 'planter', { craft: 1, price: 0, w: 2, look: { c: '#a86a3a', c2: '#e87a9a', h: 0.7, parts: [['box', { w: 40, h: 18, y: -6 }], ['post', { x: -24, w: 4, h: 10, y: 0 }], ['orb', { x: 16, r: 6, y: 2, c: '#3a3a3a' }], ['bush', { x: -8, y: -22, w: 20, clip: 'sway' }], ['bush', { x: 10, y: -22, w: 16, clip: 'sway' }]] }, blurb: 'Parked for good.' }),
   _gD('herb-rack', 'Drying rack', 'ornament', { craft: 1, price: 0, look: { c: '#8a6a44', c2: '#7aa45a', h: 0.9, parts: [['post', { x: -16, w: 4, h: 44 }], ['post', { x: 16, w: 4, h: 44 }], ['block', { y: -42, w: 42, h: 4 }], ['bush', { x: -9, y: -20, w: 11, h: 18, clip: 'sway' }], ['bush', { x: 9, y: -20, w: 11, h: 18, clip: 'sway' }]] }, blurb: 'Hang it, forget it, cook with it.' }),
@@ -390,6 +422,19 @@ const GARDEN_DECOR = _gdRows([
   _gD('driftwood-seat', 'Driftwood seat', 'seat', { craft: 1, price: 0, w: 2, effect: { kind: 'sit' }, look: { c: '#b8a58a', c2: '#8a7a60', h: 0.5, parts: [['block', { w: 54, h: 9, y: -10 }], ['stone', { x: -18, w: 14 }], ['stone', { x: 18, w: 14 }]] }, blurb: 'It came a long way to be sat on.' }),
   _gD('bee-skep', 'Straw skep', 'wildlife', { craft: 1, price: 0, look: { c: '#d8b060', c2: '#8a6a3a', h: 0.7, parts: [['post', { w: 7, h: 16 }], ['block', { y: -16, w: 28, h: 4 }], ['orb', { y: -18, r: 14 }], ['orb', { y: -34, r: 8 }]] }, blurb: 'Bees approve of the thatch.' }),
   _gD('fish-flag', 'Fish flag', 'angling', { craft: 1, price: 0, look: { c: '#4a7ab0', c2: '#f4ead8', h: 1.1, parts: [['post', { w: 4, h: 62 }], ['flag', { x: 2, y: -60, w: 24, h: 12, clip: 'flutter' }]] }, blurb: 'It tells the wind which way the fish went.' }),
+  /* the catching overhaul: bugs come to these (effect.what: their shape), and what the lake gives you. Drawn by gartDefine in 94-garden-fish-9world.js */
+  _gD('log-pile', 'Log pile', 'wildlife', { price: 30, lv: 3, look: { c: '#7a5636', c2: '#a87c4f', h: 0.5 }, effect: { kind: 'habitat', what: ['beetle', 'stag', 'ladybird', 'spider', 'snail'] }, blurb: 'Beetles move in. So do things that eat beetles.' }),
+  _gD('butterfly-bush', 'Butterfly bush', 'wildlife', { price: 45, lv: 4, look: { c: '#5a8a4a', c2: '#a86ad8', h: 1.1 }, effect: { kind: 'habitat', what: ['butterfly', 'bee'] }, blurb: 'Long purple spikes. Butterflies come from all over.' }),
+  _gD('moth-sheet', 'Moth sheet', 'wildlife', { price: 40, lv: 5, look: { c: '#f4f0e6', c2: '#8a6a3a', h: 1.2 }, effect: { kind: 'habitat', what: ['moth', 'firefly', 'cicada'] }, blurb: 'A white sheet and a lamp. What flies at night comes to look.' }),
+  _gD('firefly-jar', 'Firefly jar', 'angling', { craft: 1, price: 0, look: { c: '#d8ecd8', c2: '#ffe25a', h: 0.7 }, blurb: 'Dark all day. At dusk it wakes up.' }),
+  _gD('boot-planter', 'Boot planter', 'angling', { craft: 1, price: 0, look: { c: '#7a5a3a', c2: '#e8607a', h: 0.8 }, blurb: 'Somebody lost this. Now it has daisies.' }),
+  _gD('can-chimes', 'Tin can chimes', 'angling', { craft: 1, price: 0, look: { c: '#b8bcc0', c2: '#6a4426', h: 1.3 }, blurb: 'They clink in the wind. Not badly.' }),
+  _gD('sea-chest', 'Sunken chest', 'angling', { craft: 1, price: 0, look: { c: '#7a4a2a', c2: '#e8c24a', h: 0.6 }, blurb: 'You read the map, and you found it.' }),
+  _gD('ship-wheel', 'Ship’s wheel', 'angling', { craft: 1, price: 0, look: { c: '#7a4a2a', c2: '#c8a23a', h: 1.2 }, blurb: 'From the old wreck, by way of a second map.' }),
+  _gD('figurehead', 'Figurehead', 'angling', { craft: 1, price: 0, look: { c: '#c8a46a', c2: '#3f6f8a', h: 1.5 }, blurb: 'She has looked out over this lake a long time.' }),
+  _gD('rosette-stand', 'Festival rosette', 'angling', { craft: 1, price: 0, look: { c: '#d8452a', c2: '#e8c24a', h: 1 }, blurb: 'Weighed in, and judged. Friends can see the ribbon.' }),
+  _gD('thing-cast', 'Plaster footprint', 'angling', { craft: 1, price: 0, w: 2, look: { c: '#e8e4d8', c2: '#3f6f8a', h: 0.5 }, blurb: 'Five sightings, and this washed up. Nobody can say what made it.' }),
+  _gD('legend-plaque', 'Legend plaque', 'angling', { craft: 1, price: 0, look: { c: '#6a4a2e', c2: '#e8c24a', h: 1.1 }, blurb: 'The old angler carved it himself. All four.' }),
   _gD('rose-arch', 'Rose arch', 'structure', { craft: 1, price: 0, w: 2, look: { c: '#7a5a3a', c2: '#d8405a', h: 1.4, parts: [['post', { x: -24, w: 5, h: 72 }], ['post', { x: 24, w: 5, h: 72 }], ['block', { y: -70, w: 58, h: 6 }], ['bush', { x: -24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { x: 24, y: -22, w: 14, h: 30, clip: 'sway' }], ['bush', { y: -74, w: 40, h: 16, clip: 'sway' }]] }, blurb: 'Left by a friend, with a note.' }),
 ]);
 const _GD_DECOR = new Map(GARDEN_DECOR.map(d => [d.id, d]));
@@ -503,6 +548,11 @@ const GARDEN_PROPS = _gdRows([
   { id: 'post-box', name: 'Post box', x: 32, y: 19, w: 1, h: 1, col: 'soft', door: _gdF({ x: 32, y: 20 }), act: 'friends', kind: 'postbox', tall: 1.5, blurb: 'Friends’ gardens, parcels and your guestbook.' },
   { id: 'craft-bench', name: 'Crafting bench', x: 15, y: 19, w: 2, h: 1, door: _gdF({ x: 15, y: 20 }), act: 'craft', kind: 'bench', tall: 1.5, verb: 'make something', blurb: 'Turn what you grow, catch and find into hats, collars, decorations and treats.' },
   { id: 'sundial', name: 'Sundial', x: 38, y: 19, w: 1, h: 1, col: 'soft', door: _gdF({ x: 38, y: 20 }), act: 'timelapse', kind: 'sundial', tall: 1.4, blurb: 'Watch your garden’s story as a time-lapse.' },
+  // the catching overhaul: drawn by gardenCatchPropArt, opened through _gwOpenProp (94-garden-fish-9world.js). `needs` keeps one that is not built from taking a click
+  { id: 'lake-hall', name: 'The lake hall', kind: 'hall', x: 34, y: 19, w: 3, h: 1, door: _gdF({ x: 35, y: 20 }), act: 'hall', tall: 3, blurb: 'Give one of each fish and bug. It grows as you do.' },
+  { id: 'lake-board', name: 'The lake board', kind: 'lakeboard', x: 39, y: 19, w: 1, h: 1, col: 'soft', door: _gdF({ x: 39, y: 20 }), act: 'lake', tall: 1.8, blurb: 'The forecast, who is wanted this week, and the lake records.' },
+  { id: 'old-angler', name: 'The old angler', kind: 'angler', x: 26, y: 20, w: 1, h: 1, col: 'none', door: _gdF({ x: 27, y: 20 }), act: 'angler', tall: 1.4, blurb: 'Has fished here longer than anybody can remember.' },
+  { id: 'smoker', name: 'Smoker', kind: 'smoker', x: 11, y: 19, w: 1, h: 1, col: 'soft', door: _gdF({ x: 11, y: 20 }), act: 'smoker', needs: 'smoker', tall: 1.5, blurb: 'Fish go in. Hours later, something wonderful comes out.' },
   { id: 'jetty-post', name: 'Mooring post', x: 16, y: 20, w: 1, h: 1, walk: 0, col: 'none', tall: 1, blurb: 'A rope, a post and a very patient rowing boat.' },
   // the rowing boat is drawn by gardenWorldProps (key 'boat'); clicking it opens the trip to a friend's garden. x and w are fractions on
   // purpose: its box is the boat's own width, so the water beside it still casts a line.
@@ -574,10 +624,17 @@ const GARDEN_RIBBONS = _gdRows([
   { id: 'rare-catch', label: 'Rare catch', hint: 'Catch 3 rare fish.', icon: 'sparkles', fact: 'rareFish', of: 3, reward: { c: 90, i: { 'bait:golden-fly': 2 } } },
   { id: 'big-one', label: 'The big one', hint: 'Land a fish a metre long.', icon: 'ruler', fact: 'bigFish', of: 1, reward: { c: 80, i: { 'decor:trophy-board': 1 } } },
   { id: 'master-angler', label: 'Master angler', hint: 'Catch 28 kinds of fish. The golden rod is yours.', icon: 'crown', fact: 'fishSpecies', of: 28, reward: { c: 250, i: { 'gear:rod-5': 1 } } },
+  { id: 'fish-log-60', label: 'Keen naturalist', hint: 'Catch 60 kinds of fish.', icon: 'book-open', fact: 'fishSpecies', of: 60, reward: { c: 150, i: { 'bait:golden-fly': 2 } } },
+  { id: 'fish-log-120', label: 'Fish scholar', hint: 'Catch 120 kinds of fish.', icon: 'library', fact: 'fishSpecies', of: 120, reward: { c: 250, i: { 'bait:golden-fly': 3 } } },
+  { id: 'fish-log-200', label: 'Keeper of the lake', hint: 'Catch 200 kinds of fish.', icon: 'crown', fact: 'fishSpecies', of: 200, reward: { c: 400, i: { 'bait:golden-fly': 5 } } },
+  { id: 'rare-catch-30', label: 'Rare company', hint: 'Catch 30 kinds of rare fish.', icon: 'sparkles', fact: 'rareFish', of: 30, reward: { c: 200, i: { 'bait:glow-lure': 6 } } },
   { id: 'first-bug', label: 'First bug', hint: 'Net your first bug.', icon: 'bug', fact: 'netted', of: 1, reward: { c: 15, i: { 'decor:bug-case': 1 } } },
   { id: 'bug-catcher', label: 'Bug catcher', hint: 'Net 25 bugs.', icon: 'bug', fact: 'netted', of: 25, reward: { c: 50, i: { 'decor:bug-hotel': 1 } } },
   { id: 'butterfly-book', label: 'Bug book', hint: 'Net 12 kinds of bug.', icon: 'book-open', fact: 'bugSpecies', of: 12, reward: { c: 70, i: { 'seed:*rare': 1 } } },
   { id: 'entomologist', label: 'Entomologist', hint: 'Net 24 kinds of bug. The golden net is yours.', icon: 'crown', fact: 'bugSpecies', of: 24, reward: { c: 250, i: { 'gear:net-4': 1 } } },
+  { id: 'bug-log-60', label: 'Bug spotter', hint: 'Net 60 kinds of bug.', icon: 'book-open', fact: 'bugSpecies', of: 60, reward: { c: 150, i: { 'seed:*rare': 1 } } },
+  { id: 'bug-log-120', label: 'Bug scholar', hint: 'Net 120 kinds of bug.', icon: 'library', fact: 'bugSpecies', of: 120, reward: { c: 250, i: { 'seed:*rare': 2 } } },
+  { id: 'bug-log-200', label: 'Keeper of the meadow', hint: 'Net 200 kinds of bug.', icon: 'crown', fact: 'bugSpecies', of: 200, reward: { c: 400, i: { 'seed:*rare': 3 } } },
   { id: 'market-trader', label: 'Market trader', hint: 'Fill 10 orders on the board.', icon: 'handshake', fact: 'ordersDone', of: 10, reward: { c: 80, i: { 'decor:fish-weathervane': 1 } } },
   { id: 'show-off', label: 'Show-off', hint: 'Put 6 catches in your showcase.', icon: 'trophy', fact: 'showcased', of: 6, reward: { c: 60 } },
   { id: 'fish-for-friends', label: 'Fish for friends', hint: 'Give 5 catches to friends.', icon: 'gift', fact: 'catchGifts', of: 5, reward: { c: 70, i: { 'bait:dough': 10 } } },
@@ -751,7 +808,9 @@ function gardenPropAt(x, y) {
 /** What a prop does to your feet: 'full', 'soft' or 'none' (see the table). */
 function gardenPropCol(p) { return !p ? 'none' : p.col === 'none' || p.col === 'soft' || p.col === 'full' ? p.col : p.walk ? 'none' : 'full'; }
 /** Walkable prop cell (the pier boards)? */
-function gardenPropWalk(x, y) { const p = gardenPropAt(x, y); return !!(p && p.walk); }
+/* Cells over water you can stand on with no prop: the island, always; the stones and the moon road while they are open (94-garden-wonder-4isle.js). */
+const _GD_WALK_EXTRA = new Set();
+function gardenPropWalk(x, y) { if (_GD_WALK_EXTRA.has(x + ',' + y)) return true; const p = gardenPropAt(x, y); return !!(p && p.walk); }
 /** Can this plant (or decoration) go at x, y (its top-left cell) at this level? '' = yes, else why not (one short line). */
 function gardenCellOk(def, x, y, level, kind) {
   const W = GARDEN_WORLD;
@@ -853,6 +912,7 @@ function gardenSnapshotClean(raw) {
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
   { const tz = int(raw.tz, -840, 840), sr = int(raw.sr, 0, 1439), ss = int(raw.ss, 0, 1439); if (tz !== null) { out.tz = tz; if (sr !== null && ss !== null) { out.sr = sr; out.ss = ss; } } }   // 2.28: their time zone, so a visit has their light
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);
+  if (raw.wd && typeof raw.wd === 'object') { const wd = {}; if (Array.isArray(raw.wd.sk)) wd.sk = raw.wd.sk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x)); if (Number.isInteger(raw.wd.st) && raw.wd.st > 0) wd.st = Math.min(999, raw.wd.st); if (raw.wd.w === 1) wd.w = 1; if (Number.isInteger(raw.wd.f) && raw.wd.f > 0) wd.f = Math.min(99, raw.wd.f); out.wd = wd; }   // docs/dev/HUNDRED_WORLD.md
   if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 12).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know
   if (Array.isArray(raw.plants)) for (const p of raw.plants.slice(0, GARDEN_SNAPSHOT_MAX.plants)) {
@@ -870,5 +930,7 @@ function gardenSnapshotClean(raw) {
   // 2.22: the showcase (the tank and the bug case): ids from the fish and bug tables, sizes in bounds (94-garden-fish-0catalog.js)
   if (typeof gardenLandsClean === 'function') gardenLandsClean(raw, out);   // the sections and features they have (94-garden-lands-0table.js); an older app drops these
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
+  if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
+  if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
   return out;
 }

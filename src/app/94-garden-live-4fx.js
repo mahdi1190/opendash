@@ -62,6 +62,8 @@ function _gllFxPlay(A, ev) {
   if (c === 'snap') { if (typeof _glsHear === 'function') _glsHear(A, ev); return; }   // (a group photo: 94-garden-live-7snap.js)
   if (c === 'sync') { if (e === 'ask') { if (typeof _glyAsked === 'function') _glyAsked(A); } else if (e === 'away' || e === 'back') { if (typeof _glyAwayIn === 'function') _glyAwayIn(A, e === 'away'); } else if (typeof _glyAtIn === 'function') _glyAtIn(A, ev); return; }   // (staying in step: 94-garden-live-8sync.js)
   if (c === 'fs') { if (typeof _gfsHeard === 'function') _gfsHeard(A, ev); return; }   // (the fish at a guest's line: the host decides)
+  if (c === 'got' && e === 'fish' && typeof gardenCatchHeard === 'function') { try { gardenCatchHeard(A, ev); } catch (err) { /* only a record */ } }   // (the lake's records, and the second line)
+  if (c === 'fish' && (e === 'big' || e === 'help')) { if (typeof gardenHelpHeard === 'function') gardenHelpHeard(A, e, ev); return; }   // a monster on someone's line
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {
     if (e === 'sneak') A.sneakUntil = Date.now() + 4500;   // clock-ok: how long a creep lasts
@@ -75,16 +77,18 @@ function _gllFxPlay(A, ev) {
   if (c === 'make') { _gllPose(A, 'dig', 1200); if (!_gllOffscreen(A)) _gllFloat(_gw.svg, A.x, A.y - 1.2, '🔨', A.n); return; }
   if (c === 'got') {
     if (_gll.role === 'host' && typeof _glgFxGot === 'function') _glgFxGot(A, ev);   // (a guest's fish counts towards a shared goal, at a real line's pace)
-    const kind = _GLL_FX_KIND[e], spec = kind ? gardenMomentSpec(kind, ev.i, { cm: ev.n, q: ev.ql, isNew: (ev.nw & 1) === 1, record: (ev.nw & 2) === 2 }) : null;
+    const kind = _GLL_FX_KIND[e], spec = kind ? gardenMomentSpec(kind, ev.i, { cm: ev.n, q: ev.ql, isNew: (ev.nw & 1) === 1, record: (ev.nw & 2) === 2, v: ev.v }) : null;
     if (!spec) return;   // an id this version does not know
     const who = String(A.n).split(/\s+/)[0];
     if (_gllOffscreen(A) || gardenFun() === 'off') { _gllFeed(`${who} ${spec.verb} ${_gscA(spec.name)}`); return; }
     A.fish = null; _gllFxClear(A);
-    A.dir = 's'; _gllPose(A, 'hold', GART_MOMENT_MS);
+    const holdMs = gardenMomentMs(spec);
+    if (spec.rank >= 3) _gllFeed(`${who} ${spec.verb} ${_gscA(spec.name)}! ${spec.tier}!`);
+    A.dir = 's'; _gllPose(A, 'hold', holdMs);
     const g = _gllSvgEl('g', 'gll-held'); g.setAttribute('transform', 'scale(.74)'); g.innerHTML = gardenMomentSvg(spec, { who });
     A.root.appendChild(g); A.heldG = g;
     const tag = A.root.querySelector('.gll-name'); if (tag) tag.style.display = 'none';
-    setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; const now = A.root && A.root.querySelector('.gll-name'); if (now) now.style.display = ''; }, GART_MOMENT_MS);
+    setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; const now = A.root && A.root.querySelector('.gll-name'); if (now) now.style.display = ''; }, holdMs);
     if (typeof _fxSound === 'function') _fxSound('sparkle');
   }
 }
@@ -191,6 +195,8 @@ function _gllFxStep(A, dt) {
     if (typeof gardenRodLook === 'function') { const rl = gardenRodLook(A.g && A.g.r); e.rod.style.stroke = rl.c; e.rod.style.strokeWidth = String(rl.w); }   // (their rod)
     e.bob.innerHTML = `<circle cx="0" cy="-1" r="4.2" fill="${bob.c}" stroke="#2a2018" stroke-width="0.8"/><path d="M-4 -1.6a4.2 4.2 0 0 1 8 0z" fill="${bob.c2}"/>`;
     e.bub.innerHTML = '<ellipse cx="0" cy="0" rx="9" ry="9.6" fill="#fff6c8" stroke="#d89a1a" stroke-width="1.6"/><path d="M-1.6 -5.4h3.2l-0.6 6.2h-2z" fill="#d8301a"/><circle cx="0" cy="4.4" r="1.5" fill="#d8301a"/>';
+    if (typeof gardenLineLook === 'function') { const ll = gardenLineLook(A.g && A.g.ln); e.line.style.stroke = ll.c; e.line.style.strokeWidth = String(ll.w); }   // (their line)
+    if (typeof gardenLureSvg === 'function') e.bob.innerHTML += gardenLureSvg(F.bait);   // (their lure)
     g.append(e.rod, e.line, e.bob, e.bub); A.root.appendChild(g); A.fxg = g; A.fxe = e;
   }
   const e = A.fxe, W = GARDEN_WORLD, f = A.face < 0 ? -1 : 1;

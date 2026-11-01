@@ -215,7 +215,7 @@ function gardenContestBugsNow(m) {
   const r = gardenContestLive('bug'); if (!r || gardenFun() === 'off' || typeof GARDEN_BUGS === 'undefined') return [];
   const el = Math.max(0, Date.now() - (r.t1 - r.tt * 1000)), W = GARDEN_WORLD;   // clock-ok: how far into the round
   const last = Math.floor(el / (GL_CT.waveSec * 1000)), first = Math.max(0, Math.floor((el - GL_CT.bugLife * 1000) / (GL_CT.waveSec * 1000)) + 1);
-  const pool = GARDEN_BUGS.filter(b => b.lv <= 3 && !b.rain && (b.hab.includes('flower') || b.hab.includes('lawn') || b.hab.includes('ground')));
+  const pool = GARDEN_BUGS.filter(b => b.lv <= 3 && !b.rain && !b.needs && (b.hab.includes('flower') || b.hab.includes('lawn') || b.hab.includes('ground')));
   if (!pool.length) return [];
   const wt = pool.map(b => (GARDEN_RARITY[b.rarity] || GARDEN_RARITY.common).weight), tot = wt.reduce((a, b) => a + b, 0), out = [];
   for (let k = first; k <= last && k < 200; k++) {

@@ -329,7 +329,7 @@ function _gdrSceneFromSnapshot(snap, o) {
   }
   // 2.22: a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4
   const areas = gardenLandsOfSnap(snap).areas; if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
-  return { plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap) };
+  return { plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '', landShow: gardenLandShowOf(snap), ca: snap.ca || {} };
 }
 /**
  * Draw anyone's garden into el, read-only. snapshot: from gardenSnapshot() or a friend (cleaned here).

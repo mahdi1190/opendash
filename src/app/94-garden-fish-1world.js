@@ -324,6 +324,7 @@ function gardenWorldProps(sc, o) {
   const wrap = (cls, z, x, inner, key) => ({ z, x, html: `<g class="gd-it gd-prop ${cls}" data-sig="${gardenHash(key + inner.length + sc.tod + sc.season).toString(36)}" data-prop="${key}" data-z="${z}" data-x="${x}">${inner}</g>` });
   // a row of GARDEN_PROPS is drawn by its `kind`, from this table: a new building is one row there and one function here
   const art = { tackle: (p) => _gwHouse(p, sc, o, _GW_HOUSES.tackle), shop: (p) => _gwHouse(p, sc, o, _GW_HOUSES.shop), stall: (p) => _gwStall(p, sc, o), board: (p) => _gwBoard(p, sc, o), lectern: (p) => _gwLectern(p, sc, o), tripod: (p) => _gwTripod(p, sc, o), postbox: (p) => _gwPostbox(p, sc, o), sundial: (p) => _gwSundial(p, sc, o), bench: (p) => (typeof gardenCraftBenchArt === 'function' ? gardenCraftBenchArt(p, sc, o) : ''), boat: () => _gwBoat(sc, o), reeds: () => _gwReeds(sc, o) };
+  if (typeof gardenCatchPropArt === 'function') Object.assign(art, gardenCatchPropArt(sc, o));   // the lake hall, the board, the old angler, the smoker
   for (const p of GARDEN_PROPS) {
     const draw = p.kind && art[p.kind]; if (!draw) continue;
     const inner = draw(p);
@@ -332,6 +333,7 @@ function gardenWorldProps(sc, o) {
   if (typeof gardenLandWorldProps === 'function') for (const r of gardenLandWorldProps(sc, o)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // the land office and what has been built on the land
   // what has been built for the lake stands where it is (94-garden-fish-7gear.js). pointer-events: a click there is still a click on the water
   if (typeof gardenWorksArt === 'function') for (const r of gardenWorksArt(sc)) out.push(wrap('gd-prop-work', r.y, r.x, `<g pointer-events="none" transform="translate(${_gwN(r.x * cw)} ${_gwN(base + r.y * ch)})">${r.svg}</g>`, 'work-' + r.key));
+  if (typeof gardenCatchWorldArt === 'function') for (const r of gardenCatchWorldArt(sc, o)) { const it = wrap('gd-prop-work', r.z, r.x, r.svg, 'ca-' + r.key); if (r.wide) it.html = it.html.replace(/ data-x="[^"]*"/, ''); out.push(it); }   // spots, events, the rack: 94-garden-fish-9world.js
   // trees in the thickets, all over the map (94-garden-lands-0table.js): woodland is spread about, not a wall
   const pal = (GART_PAL.leaf[sc.season] || GART_PAL.leaf.summer);
   if (typeof gardenLandTrees === 'function') for (const t of gardenLandTrees()) {
@@ -349,8 +351,8 @@ function gardenWorldProps(sc, o) {
   if (typeof gartDefine !== 'function') return;
   const A = GART, P = A.P, S = A.S, f1 = A.f1;
   const wood = GART_PAL.wood, glass = '#cfe8f2';
-  const fishAt = (id, uid, x, y, k, flip, cls, style) => {
-    const art = gardenFishArt(id, { uid });
+  const fishAt = (id, uid, x, y, k, flip, cls, style, v) => {
+    const art = gardenFishArt(id, { uid, v });
     return `<g class="${cls || ''}" style="${style || ''}"><g transform="translate(${f1(x)} ${f1(y)}) scale(${flip ? -k : k} ${k})">${art}</g></g>`;
   };
   gartDefine('decor:aquarium', {
@@ -375,7 +377,7 @@ function gardenWorldProps(sc, o) {
         const row = i % 3, col = Math.floor(i / 3);
         const x = tx + 18 + col * 34 + (i % 2) * 8, y = ty + 9 + row * 11;
         const k = show.length ? 0.2 + Math.min(0.14, (Number(e[2]) || 20) / 700) : 0.22;
-        s += fishAt(e[0], o.uid + 'q' + i, x, y, k, i % 2, 'gfa-swim', `--sx:${f1(5 + r() * 10)}px;animation-delay:-${f1(r() * 6)}s;animation-duration:${f1(6 + r() * 6)}s`);
+        s += fishAt(e[0], o.uid + 'q' + i, x, y, k, i % 2, 'gfa-swim', `--sx:${f1(5 + r() * 10)}px;animation-delay:-${f1(r() * 6)}s;animation-duration:${f1(6 + r() * 6)}s`, e[3]);
       });
       // the glass: a frame, a lid light, a shine
       s += `<rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="3" fill="none" stroke="#e8f4f8" stroke-width="2.2" stroke-opacity="0.9"/>` + P('#ffffff', A.rect(tx + 4, ty + 4, 6, th - 14), 0.22) + P('#ffffff', A.rect(tx + 14, ty + 4, 2, th - 14), 0.16);
@@ -397,7 +399,7 @@ function gardenWorldProps(sc, o) {
       bugs.forEach((id, i) => {
         const col = i % 3, row = Math.floor(i / 3);
         const x = -15 + col * 15, y = -48 + row * 14;
-        s += `<g transform="translate(${f1(x)} ${f1(y)}) scale(0.5) rotate(${(i * 37) % 50 - 25})">${gardenBugArt(id, { uid: o.uid + 'b' + i, glow: false })}</g>${P('#3a3a3a', A.circ(x, y, 0.8))}`;
+        s += `<g transform="translate(${f1(x)} ${f1(y)}) scale(0.5) rotate(${(i * 37) % 50 - 25})">${gardenBugArt(id, { uid: o.uid + 'b' + i, glow: false, v: ((o.show && o.show.bv) || [])[i] })}</g>${P('#3a3a3a', A.circ(x, y, 0.8))}`;
       });
       if (!bugs.length) s += S('#b8a678', 1, `M-16 -30h32M-16 -44h32`, 0.5);
       s += `<rect x="-23" y="-58" width="46" height="44" fill="${glass}" fill-opacity="0.2"/>` + P('#ffffff', 'M-21 -56l14 0 -10 40 -4 0z', 0.35);
@@ -416,7 +418,7 @@ function gardenWorldProps(sc, o) {
       const picks = show.length ? show : [['carp', 2, 60], ['perch', 1, 30], ['pike', 3, 90]];
       picks.forEach((e, i) => {
         const x = -32 + i * 32, y = -46;
-        s += `<g transform="translate(${f1(x)} ${f1(y)}) scale(${f1(0.34 + Math.min(0.1, (Number(e[2]) || 30) / 800))}) rotate(${(i - 1) * 6})">${gardenFishArt(e[0], { uid: o.uid + 't' + i })}</g>`;
+        s += `<g transform="translate(${f1(x)} ${f1(y)}) scale(${f1(0.34 + Math.min(0.1, (Number(e[2]) || 30) / 800))}) rotate(${(i - 1) * 6})">${gardenFishArt(e[0], { uid: o.uid + 't' + i, v: e[3] })}</g>`;
         s += P('#e8c24a', A.rrect(x - 7, -36, 14, 3.4, 1)) + P('#8a6a1a', A.rect(x - 5, -35.4, 10, 0.8), 0.5);
       });
       s += P('#ffffff', A.rect(-48, -62, 30, 1.6), 0.18);

@@ -232,7 +232,7 @@ function _gplDraw(a, dir, pose, o) {
         + `<g class="gpl-hd" style="${headO}">${_gplG(port, L.ears + L.skull + L.face + L.hair + L.glasses + L.hat + L.phones + L.extra)}</g>`;
     }
   }
-  return `<g class="gpl gpl-${pose} gpl-d${dir}"><g class="gpl-root" style="transform-origin:0px 0px">${legs}<g class="gpl-up" style="transform-origin:0px ${_gplN(hipY)}px">${back ? '' : slung}${upper}${back ? slung : ''}</g></g></g>`;
+  return `<g class="gpl gpl-${pose} gpl-d${dir}"><g class="gpl-root" style="transform-origin:0px 0px">${legs}<g class="gpl-up" style="transform-origin:0px ${_gplN(hipY)}px">${back ? '' : slung}${upper}${back ? slung : ''}</g></g></g>${o.gear && o.gear.bt && typeof gardenBoatOnFigure === 'function' ? gardenBoatOnFigure() : ''}`;
 }
 
 /** The figure as a fragment (cached per look, way round and pose). */

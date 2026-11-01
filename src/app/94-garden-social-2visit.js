@@ -280,6 +280,7 @@ function _gsvGiftMenu(f, anchor) {
       el.appendChild(_gsvBtn('Open the shop', { icon: 'store', run: () => { close(); setView('garden:shop'); } }));
       return;
     }
+    if (typeof gardenWonderHideRow === 'function') { const row = gardenWonderHideRow(); if (row) el.appendChild(row); }
     const list = _gsvEl('div', 'gsv-gift-list');
     const add = (k, it) => {
       const b = _gsvEl('button', 'gsv-gift'); b.type = 'button';

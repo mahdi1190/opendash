@@ -10,6 +10,38 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.45.0]
+
+### Added
+- **Fishing goes deeper.** Reels, lines, hooks and new baits, with saved setups. Fish dart, sulk, run and leap, and weak lines can snap, while easy fish stay easy.
+- **Seven places in the lake and seven events,** so where and when you fish matters.
+- **Row your own boat, grow a lake hall, help the old angler, hunt treasure maps,** and watch for the thing in the lake. There are also legends to chase, lake records, a smoker and meals, a wanted poster and a board for friends, a firefly jar, a hand lantern and bug habitats.
+
+## [2.44.0]
+
+### Added
+- **Your garden is now a world.** Characters call by and remember what you did. A snail brings letters, and a stranger's letters lead you to things buried in your garden. An island in the lake can be reached at dawn, at dusk, or by moonlight at full moon. Sit on any seat and watch a day pass. Learn the stars. See friends' lamps across the water, leave a stone at their cairn, or hide a gift for them. Find the mice in your oldest tree, and small days through the year. Settings > Garden world turns each kind off.
+
+## [2.43.0]
+
+### Added
+- **Play, a new menu in the garden.** Pack your pet a lunch and it goes away for hours, then sends a postcard and brings a souvenir. Play hide and seek in your own garden. Solve a daily riddle, cook anything in the pot and fill a cookbook, keep hens, dig up fossils that become skeletons, run agility courses, skip stones, play four in a row against your pet, sing with a bird and learn tunes, lay a patchwork map, mend the old mill, read your pet's diary, hunt 24 lost marbles, and follow an old gardener's torn pages. Games pay tickets for a prize stall, and prizes stand in your garden, where friends can see them.
+
+## [2.42.0]
+
+### Added
+- **300 kinds of fish and 300 kinds of bug,** with new shapes such as rays, jellies and crabs. Some need the right bait, weather, moon, flower or decoration.
+- **A new dictionary** shows how to catch each one, with search and simple filters. What you have not found yet shows as a silhouette.
+
+## [2.41.0]
+
+Every catch is now one of a kind.
+
+### Added
+- **47 variants of fish and bugs,** from speckled to once in a lifetime, including shiny, glowing, evil, angel, golden and frozen. You can spot them in the water, and the chances are shown.
+- **Every catch is kept** with its own size, weight, day and number. See your best catches and every variant, with how to find it.
+- **A friends board** of the rarest and biggest catches. Friends see your best catches when they visit, unless you have turned off sharing your garden with them.
+
 ## [2.40.1]
 
 ### Fixed

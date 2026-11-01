@@ -111,6 +111,7 @@ function _gwBuildGrid(m) {
   return g;
 }
 function _gwGrid(m) {
+  if (_gw.boat && typeof gardenBoatGrid === 'function') return gardenBoatGrid();   // in a boat the water is the ground: 94-garden-fish-9world.js
   const key = (m && m.visit ? m.visit.key : _gd.memoKey) + '|' + (m && m.level.level);
   if (!_gw.grid || _gw.gridKey !== key) { const mm = m || gardenHere(); _gw.grid = _gwBuildGrid(mm); _gw.solids = _gwBuildSolids(mm); _gw.gridKey = key; }
   return _gw.grid;
@@ -666,6 +667,7 @@ function _gwFrame(ts) {
     want = sneak ? GW_SPEED.sneak : (rem > 170 ? GW_SPEED.run : GW_SPEED.walk) * gardenLandWalkK();
     want = Math.min(want, Math.sqrt(2 * GW_ACC * rem) + 34);   // ease in to the stop
   }
+  if (typeof gardenPlayWalk === 'function') want *= gardenPlayWalk();   // a dish that gives you light feet (94-garden-play-3cook.js)
   _gw.spd = _gw.spd || 0;
   if (!want) _gw.spd = 0;
   else if (!gardenMotionOn()) _gw.spd = want;
@@ -798,7 +800,7 @@ function _gwPropAtPt(wx, wy, ev) {
     const el = document.elementFromPoint(ev.clientX, ev.clientY), g = el && el.closest ? el.closest('.gd-prop[data-prop]') : null;
     if (g) { const id = g.getAttribute('data-prop'), p = gardenPropsNow().find(x => x.id === id) || gardenLandSiteProp(id); if (p && p.act) return p; }
   }
-  for (const p of gardenPropsNow()) { if (p.act && wx >= p.x && wx <= p.x + p.w && wy >= p.y && wy <= p.y + p.h) return p; }
+  for (const p of gardenPropsNow()) { if (p.act && (!p.needs || gardenWorkOwned(p.needs)) && wx >= p.x && wx <= p.x + p.w && wy >= p.y && wy <= p.y + p.h) return p; }
   return null;
 }
 function _gwOpenProp(p) {
@@ -807,7 +809,9 @@ function _gwOpenProp(p) {
     tackle: () => gardenPopupOpen('catch', { sub: 'tackle', title: 'Tackle shop' }), journal: () => gardenPopupOpen('catch', { sub: 'fish', title: 'Field journal' }),
     shop: () => gardenPopupOpen('shop'), basket: () => gardenPopupOpen('basket'), almanac: () => gardenPopupOpen('almanac'), friends: () => gardenPopupOpen('friends'),
     photo: () => { if (typeof gardenPhotoOpen === 'function') gardenPhotoOpen(); }, timelapse: () => { if (typeof gardenTimelapseOpen === 'function') gardenTimelapseOpen(); },
-    sail: () => gardenPopupOpen('sail'),
+    sail: () => { if (typeof gardenBoatAsk === 'function' && gardenBoatAsk()) return; gardenPopupOpen('sail'); },
+    hall: () => gardenPopupOpen('catch', { sub: 'hall', title: 'The lake hall' }), lake: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }),
+    angler: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The old angler' }), smoker: () => gardenPopupOpen('catch', { sub: 'lake', title: 'The smoker' }),
     craft: () => gardenPopupOpen('craft'),
     lands: () => gardenPopupOpen('lands'),
     lf: () => gardenLandPropOpen(p),
@@ -1111,7 +1115,7 @@ function gardenWorldStop(keepOn) {
   if (!keepOn && typeof _gwFishReset === 'function') _gwFishReset(); else _gw.fx = null;
   if (typeof _gwBugsReset === 'function') _gwBugsReset();
   gardenBubbleClose();
-  if (!keepOn) { if (typeof gardenLiveHostGone === 'function') gardenLiveHostGone(); if (typeof gardenLifeStop === 'function') gardenLifeStop(); _gw.on = false; _gw.routeEls = null; _gw.reach = null; _gw.root = null; _gw.svg = null; _gw.box = null; _gw.node = null; _gw.pet = null; _gw.grid = null; }
+  if (!keepOn) { if (typeof gardenLiveHostGone === 'function') gardenLiveHostGone(); if (typeof gardenLifeStop === 'function') gardenLifeStop(); if (typeof gardenWonderStop === 'function') gardenWonderStop(); _gw.on = false; _gw.routeEls = null; _gw.reach = null; _gw.root = null; _gw.svg = null; _gw.box = null; _gw.node = null; _gw.pet = null; _gw.grid = null; }
 }
 /** After every paint of the stage: the svg may be a new element (a mount), or the patch may have dropped our nodes. */
 function gardenWorldPainted(m) {
@@ -1126,6 +1130,7 @@ function gardenWorldPainted(m) {
   if (typeof _gwBugsSync === 'function') _gwBugsSync(m);
   _gwApplyCam(0.016, !_gw.cam.init);
   if (typeof gardenLifeSync === 'function') gardenLifeSync(m);   // the creatures (94-garden-life-*.js)
+  if (typeof gardenWonderSync === 'function') gardenWonderSync(m);   // callers, the island, the sky (94-garden-wonder-*.js)
   if (typeof gardenLiveHostPainted === 'function') gardenLiveHostPainted(m);   // friends in your garden (94-garden-live-3host.js)
   _gwEnsureLoop();
 }

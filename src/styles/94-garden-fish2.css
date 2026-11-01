@@ -1,0 +1,53 @@
+/* The catching overhaul (docs/dev/CATCH_FEATURES.md): the reel's new parts, what is on at the lake, the two new tabs. */
+.gd-reel-say { min-height: 16px; max-width: 170px; font-size: var(--text-xs); font-weight: 600; text-align: center; color: var(--fg); line-height: 1.25; }
+.gd-reel-say.is-warn { color: var(--sw-red, #c8402a); }
+.gd-reel-pips { display: flex; justify-content: center; gap: 4px; margin-top: 3px; }
+.gd-reel-pips i { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--fg) 18%, var(--surface)); }
+.gd-reel-pips i.on { background: var(--sw-amber, #e8a83a); }
+.gd-reel-tn { position: relative; width: 10px; border-radius: 5px; background: color-mix(in srgb, var(--fg) 12%, var(--surface)); overflow: hidden; border: 1px solid var(--border-subtle); }
+.gd-reel-tn i { position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: linear-gradient(#e8503a, #f2c432); }
+.gd-reel-tn.is-hot { box-shadow: 0 0 0 2px color-mix(in srgb, #e8503a 60%, transparent); }
+.gd-lakenote { position: absolute; z-index: 5; left: 12px; top: 150px; max-width: min(420px, calc(100% - 180px)); display: flex; align-items: center; gap: 6px; padding: 5px 12px 5px 8px; border: 1px solid var(--border-subtle); border-radius: 999px; background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-md); font: inherit; font-size: var(--text-xs); color: var(--fg); cursor: pointer; text-align: left; }
+.gd-lakenote span { display: none; color: var(--fg-muted); }
+.gd-lakenote.is-full { border-radius: var(--radius-xl); }
+.gd-lakenote.is-full span { display: inline; }
+.gd-boathud { position: absolute; z-index: 5; right: 12px; bottom: 150px; display: flex; align-items: center; gap: 6px; padding: 6px 14px; border: 1px solid var(--border-subtle); border-radius: 999px; background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow-md); font: inherit; font-size: var(--text-sm); color: var(--fg); cursor: pointer; }
+.gd-helpbtn { position: absolute; z-index: 6; left: 50%; top: 70px; transform: translateX(-50%); padding: 7px 16px; border: 1px solid color-mix(in srgb, var(--sw-amber) 70%, var(--border-subtle)); border-radius: 999px; background: color-mix(in srgb, var(--sw-amber) 26%, var(--surface)); box-shadow: var(--shadow-md); font: inherit; font-size: var(--text-sm); font-weight: 600; color: var(--fg); cursor: pointer; }
+@keyframes gca-drift { 0%, 100% { transform: translateX(-26px); } 50% { transform: translateX(26px); } }
+@keyframes gca-flash { 0%, 91%, 95%, 100% { fill-opacity: 0; } 92%, 96% { fill-opacity: .36; } }
+@keyframes gca-streak { 0%, 86% { opacity: 0; transform: translate(0, 0); } 90% { opacity: 1; } 100% { opacity: 0; transform: translate(-90px, 44px); } }
+@keyframes gca-splash { 0%, 62% { opacity: 0; transform: scale(.3); transform-box: fill-box; transform-origin: center; } 70% { opacity: 1; } 100% { opacity: 0; transform: scale(1.5); transform-box: fill-box; transform-origin: center; } }
+@keyframes gca-smoke { 0% { opacity: 0; transform: translate(0, 0) scale(.6); } 25% { opacity: .9; } 100% { opacity: 0; transform: translate(9px, -28px) scale(1.6); } }
+.gca-drift { animation: gca-drift 26s ease-in-out infinite; }
+.gca-flash { animation: gca-flash 11s linear infinite; }
+.gca-streak { opacity: 0; animation: gca-streak 7s linear infinite; }
+.gca-splash { opacity: 0; animation: gca-splash 3.2s ease-out infinite; }
+.gca-smoke { transform-box: fill-box; transform-origin: center; animation: gca-smoke 3.6s ease-out infinite; }
+html[data-motion="reduced"] .gca-drift, html[data-motion="reduced"] .gca-flash, html[data-motion="reduced"] .gca-streak, html[data-motion="reduced"] .gca-splash, html[data-motion="reduced"] .gca-smoke { animation: none; }
+html[data-motion="reduced"] .gca-streak, html[data-motion="reduced"] .gca-splash, html[data-motion="reduced"] .gca-smoke { opacity: .7; }
+@media (prefers-reduced-motion: reduce) { .gca-drift, .gca-flash, .gca-streak, .gca-splash, .gca-smoke { animation: none; } .gca-streak, .gca-splash, .gca-smoke { opacity: .7; } }
+.gca-card { display: flex; flex-direction: column; gap: 8px; padding: var(--space-3, 12px) var(--space-4, 16px); margin-bottom: 12px; }
+.gca-p { margin: 0; font-size: var(--text-sm); line-height: 1.45; }
+.gca-ev { margin: 0; display: flex; align-items: baseline; gap: 6px; font-size: var(--text-sm); padding: 6px 10px; border-radius: var(--radius-md, 8px); background: color-mix(in srgb, var(--sw-amber) 12%, var(--surface)); }
+.gca-setup { display: flex; flex-wrap: wrap; gap: 12px; }
+.gca-setup-i { display: grid; justify-items: center; gap: 1px; min-width: 84px; text-align: center; font-size: var(--text-xs); }
+.gca-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.gca-slot { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: var(--radius-md, 8px); font-size: var(--text-xs); }
+.gca-quick { display: flex; align-items: center; gap: 4px; }
+.gca-angler { display: flex; gap: 14px; align-items: flex-start; }
+.gca-angler-t { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+.gca-say { margin: 0; font-size: var(--text-sm); font-style: italic; line-height: 1.45; }
+.gca-ask { margin: 0; font-size: var(--text-sm); font-weight: 600; }
+.gca-poster { padding: 8px; background: #f4ead0; border: 1px solid #b8a678; border-radius: 3px; box-shadow: var(--shadow-sm); }
+.gca-rank { margin: 0; padding-left: 20px; font-size: var(--text-sm); }
+.gca-rank li span { margin-right: 8px; }
+.gca-art-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.gca-art-i { display: grid; justify-items: center; font-size: var(--text-xs); }
+.gca-map { overflow: hidden; border-radius: 4px; width: max-content; max-width: 100%; }
+.gca-hall { flex-direction: row; align-items: center; gap: 16px; flex-wrap: wrap; }
+.gca-tank { overflow-x: auto; border-radius: var(--radius-lg, 10px); border: 3px solid #6a4a2e; margin-bottom: 12px; }
+.gca-tank svg { display: block; }
+.gca-ready { display: flex; flex-direction: column; gap: 8px; padding: 12px; }
+.gca-ready-l { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font-size: var(--text-sm); }
+.gca-ready-l li { display: flex; align-items: center; gap: 6px; }
+.gca-ready-l li.is-no { color: var(--fg-muted); }

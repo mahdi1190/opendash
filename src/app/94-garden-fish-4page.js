@@ -2,17 +2,16 @@
    GARDEN, the Catch page (2.22): #view=garden:catch, with five pages of its own.
      Bag and market   what you carry (sell one or the lot, give a catch to a friend, pin it), the market's appetite today,
                       and the order board: three requests a day, paid in coins and goods
-     Fish book        every fish and find: a silhouette and a hint until you meet it, then your best size, how many, the stars
-     Bug book         the same for bugs
+     Fish book, Bug book  the dictionary (94-garden-fish-4book.js)
      Tackle           rods, nets, bait and floats: buy, equip, see what each one does
      Showcase         your tank (6 fish) and bug case (9 bugs): what the aquarium, the case and the trophy board in your garden
                       show, and what friends see when they visit
    Also the little card in the garden's side panel (gardenCatchSideCard): your rod, your bait, the casts you have left, the bugs about.
    ============================================================ */
 const _gdc = { zone: '', found: '', n: 36 };
-const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['fish', 'Fish book', 'fish'], ['bugs', 'Bug book', 'bug'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy']]);
+const GDC_TABS = Object.freeze([['bag', 'Bag and market', 'shopping-basket'], ['fish', 'Fish book', 'fish'], ['bugs', 'Bug book', 'bug'], ['tackle', 'Tackle', 'store'], ['show', 'Showcase', 'trophy'], ['best', 'My best catches', 'award'], ['lake', 'The lake', 'waves'], ['hall', 'The lake hall', 'landmark']]);
 function _gdcTab() { const t = _gdG().prefs.catchTab; return GDC_TABS.some(x => x[0] === t) ? t : 'bag'; }
-function _gdcSetTab(t) { _gdG().prefs.catchTab = t; if (typeof saveUI === 'function') saveUI(); _gdc.n = 36; _gdxRepaintTab(); }
+function _gdcSetTab(t) { const a = document.activeElement; if (a && a.classList && a.classList.contains('gdb-search')) a.blur(); _gdG().prefs.catchTab = t; if (typeof saveUI === 'function') saveUI(); _gdc.n = 36; _gdc.pick = null; _gdc.q = ''; _gdxRepaintTab(); }
 function _gdcRar(r) { return GARDEN_RARITY[r] || GARDEN_RARITY.common; }
 function _gdcPill(r) { return r === 'common' ? null : _gdpEl('span', 'gd-rar gd-rar-' + r, _gdcRar(r).label); }
 function _gdcWhen(def, level) {
@@ -36,13 +35,16 @@ function gardenCatchTab(el, m) {
   const bag = gardenCatchBag();
   const f = gardenCatchFacts();
   const sum = _gdpEl('span', 'gdc-sum muted');
-  sum.textContent = `${f.fishSpecies} of ${GARDEN_FISH_ONLY.length} fish · ${f.bugSpecies} of ${GARDEN_BUGS.length} bugs`;
+  sum.textContent = `${f.fishSpecies} of ${GARDEN_FISH_ONLY.length} fish · ${f.bugSpecies} of ${GARDEN_BUGS.length} bugs · ${gardenSpecFound()} of ${GARDEN_VARIANTS.length} variants`;
   top.appendChild(sum);
   el.appendChild(top);
   if (tab === 'bag') _gdcBag(el, m, bag);
   else if (tab === 'fish') _gdcBook(el, m, 'fish');
   else if (tab === 'bugs') _gdcBook(el, m, 'bug');
   else if (tab === 'tackle') _gdcTackle(el, m);
+  else if (tab === 'best') gardenSpecTab(el);
+  else if (tab === 'lake') gardenLakeTab(el, m);
+  else if (tab === 'hall') gardenHallTab(el, m);
   else _gdcShow(el, m);
 }
 
@@ -99,15 +101,18 @@ function _gdcItemName(k) {
 }
 function _gdcBagCard(kind, r, m) {
   const c = _gdpEl('div', 'gd-card gdc-bag gd-r-' + r.def.rarity);
-  const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = gardenCatchSvg(kind, r.id, 84, { uid: 'bg' + kind + r.id + (r.q || 0) }); c.appendChild(art);
+  const sv = gardenSpecInBag(kind, r);   // a variant is on top of the pile, and sells for more
+  const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = gardenCatchSvg(kind, r.id, 84, { uid: 'bg' + kind + r.id + (r.q || 0), v: sv ? sv.v : '' }); c.appendChild(art);
   const t = _gdpEl('div', 'gd-card-t');
   const b = _gdpEl('b'); b.innerHTML = `${esc(r.def.name)} ${kind === 'fish' ? _gdcStars(r.q) : ''}`; t.appendChild(b);
   const p = _gdcPill(r.def.rarity); if (p) t.appendChild(p);
   const each = gardenCatchEach(r.key);
   t.appendChild(_gdpEl('small', 'muted', `×${r.n} · ${each} coin${each === 1 ? '' : 's'} each`));
+  if (sv) t.appendChild(_gdpEl('small', 'gd-facts', `One is ${_gscA(gardenVariantDef(sv.v).name.toLowerCase())} one: it sells for ${gardenVariantTier(sv.v).sell} times the price. Your records keep it either way.`));
   c.appendChild(t);
   const f = _gdpEl('div', 'gd-card-f');
   f.appendChild(_gdpBtn('Sell', { icon: 'coins', tip: 'Sell one', run: () => _gdcSay(gardenCatchSell(r.key, 1)) }));
+  if (typeof gardenBagExtras === 'function') gardenBagExtras(f, kind, r);   // let it go, give it to the hall
   if (r.n > 1) f.appendChild(_gdpBtn(`All ${r.n}`, { kind: 'btn-ghost', run: () => _gdcSay(gardenCatchSell(r.key, r.n)) }));
   if (kind === 'bug' || r.def.cat === 'fish') {
     const gb = _gdpBtn('', { icon: 'gift', kind: 'btn-ghost', aria: 'Give one to a friend', tip: 'Give one to a friend' });
@@ -135,50 +140,6 @@ function _gdcGiftMenu(kind, id, anchor) {
     el.appendChild(list);
     el.appendChild(_gdpEl('p', 'gsv-pop-p muted gsv-small', 'It leaves your bag. A few seconds to Undo before it goes. One parcel a day for each friend.'));
   }, { align: 'end', width: 280 });
-}
-
-/* ---------- the books ---------- */
-function _gdcBook(el, m, kind) {
-  const log = gardenCatchLog(), rows = kind === 'fish' ? log.fish : log.bugs, level = m.level.level;
-  const show = gardenShowGet();
-  const isFish = kind === 'fish';
-  const top = _gdpEl('div', 'gdc-filters');
-  if (isFish) top.appendChild(_gdxChips([['', 'All water'], ['pond', 'Pond'], ['shallow', 'Shallows'], ['mid', 'Open water'], ['deep', 'Deep'], ['finds', 'Finds']], _gdc.zone, (k) => { _gdc.zone = k; _gdc.n = 36; _gdxRepaintTab(); }));
-  top.appendChild(_gdxChips([['', 'Everything'], ['yes', 'Found'], ['no', 'Not yet']], _gdc.found, (k) => { _gdc.found = k; _gdc.n = 36; _gdxRepaintTab(); }));
-  el.appendChild(top);
-  let list = rows;
-  if (isFish && _gdc.zone) list = list.filter(r => _gdc.zone === 'finds' ? r.def.cat !== 'fish' : r.def.cat === 'fish' && r.def.zone.includes(_gdc.zone));
-  if (_gdc.found) list = list.filter(r => (_gdc.found === 'yes') === !!r.rec);
-  const found = rows.filter(r => r.rec).length, tot = rows.length;
-  const prog = _gdpEl('p', 'gdc-prog muted'); prog.textContent = `${found} of ${tot} found${isFish ? ' (fish and finds)' : ''}. Unknown ones show a shadow and where to look.`; el.appendChild(prog);
-  const grid = _gdpEl('div', 'gd-grid gdc-grid');
-  for (const r of list.slice(0, _gdc.n)) {
-    const d = r.def, rec = r.rec, known = !!rec;
-    const c = _gdpEl('div', 'gd-card gdc-book' + (known ? '' : ' is-unknown') + ' gd-r-' + d.rarity);
-    const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = gardenCatchSvg(kind, d.id, 92, { uid: 'bk' + d.id, silhouette: !known }); c.appendChild(art);
-    const t = _gdpEl('div', 'gd-card-t');
-    t.appendChild(_gdpEl('b', null, known ? d.name : '???'));
-    const p = known ? _gdcPill(d.rarity) : null; if (p) t.appendChild(p);
-    if (known) {
-      const bits = isFish && d.cat === 'fish' ? [`Best ${Math.round(Number(rec.b) || 0)} cm${rec.q ? ' ' + gardenQuality(rec.q).stars : ''}`, `${rec.n || 0} caught`] : [`${rec.n || 0} caught`];
-      if (rec.g) bits.push('came as a gift');
-      t.appendChild(_gdpEl('small', 'muted', bits.join(' · ')));
-      t.appendChild(_gdpEl('small', 'gd-facts', _gdcWhen(d, level)));
-      if (d.blurb) c.title = d.blurb;
-    } else t.appendChild(_gdpEl('small', 'muted', _gdcWhen(d, level) || 'Somewhere out there'));
-    c.appendChild(t);
-    if (known && (kind === 'bug' || d.cat === 'fish')) {
-      const f = _gdpEl('div', 'gd-card-f');
-      const on = (kind === 'bug' ? show.b : show.f).includes(d.id);
-      const pb = _gdpBtn(on ? 'In showcase' : 'Show it off', { icon: on ? 'check' : 'trophy', kind: on ? 'btn-secondary' : 'btn-ghost', tip: on ? 'Take it out of your showcase' : `Put your ${kind === 'bug' ? 'specimen' : 'best one'} in the ${kind === 'bug' ? 'bug case' : 'tank'}`, run: () => _gdcSay(gardenShowToggle(kind, d.id)) });
-      pb.setAttribute('aria-pressed', on ? 'true' : 'false');
-      f.appendChild(pb); c.appendChild(f);
-    }
-    grid.appendChild(c);
-  }
-  el.appendChild(grid);
-  if (list.length > _gdc.n) { const more = _gdpEl('div', 'gd-shop-more'); more.appendChild(_gdpBtn(`Show more (${list.length - _gdc.n})`, { run: () => { _gdc.n += 36; _gdxRepaintTab(); } })); el.appendChild(more); }
-  if (!list.length) el.appendChild(_gdpEl('p', 'muted gdc-none', 'Nothing here with those filters.'));
 }
 
 /* ---------- tackle ---------- */
@@ -239,7 +200,10 @@ function _gdcTackle(el, m) {
     const grid = _gdpEl('div', 'gd-grid gd-shop-grid gdc-grid'); for (const d of list) grid.appendChild(_gdcGearCard(d, m)); el.appendChild(grid);
     if (extra) el.appendChild(extra);
   };
-  sec('Rods', GARDEN_RODS); sec('Nets', GARDEN_NETS); sec('Bait', GARDEN_BAITS); sec('Build for the lake', GARDEN_WORKS);
+  gardenSetupPanel(el, m);
+  sec('Rods', GARDEN_RODS);
+  gardenTackleShelves(el, m);
+  sec('Nets', GARDEN_NETS); sec('Bait', GARDEN_BAITS); sec('Build for the lake', GARDEN_WORKS);
   el.appendChild(_gdpEl('h3', 'gdc-h', 'Floats'));
   const grid = _gdpEl('div', 'gd-grid gdc-grid gdc-bobbers');
   const cur = gardenBobber();
@@ -278,21 +242,22 @@ function _gdcShow(el, m) {
   el.appendChild(wrap);
   // what is pinned
   const pins = _gdpEl('div', 'gdc-pins');
-  for (const [id, q, cm] of ent.f) {
+  for (const [id, q, cm, v] of ent.f) {
     const b = _gdpEl('button', 'gdc-pin'); b.type = 'button'; b.setAttribute('data-tip', 'Take it out');
-    b.innerHTML = gardenCatchSvg('fish', id, 54, { uid: 'pn' + id }) + `<span>${esc(gardenFishDef(id).name)}</span><small>${cm} cm ${gardenQuality(q).stars}</small>`;
+    b.innerHTML = gardenCatchSvg('fish', id, 54, { uid: 'pn' + id, v }) + `<span>${esc(gardenSpecName('fish', id, v))}</span><small>${cm} cm ${gardenQuality(q).stars}</small>`;
     b.onclick = () => _gdcSay(gardenShowToggle('fish', id));
     pins.appendChild(b);
   }
-  for (const id of ent.b) {
+  for (const [bi, id] of ent.b.entries()) {
     const b = _gdpEl('button', 'gdc-pin'); b.type = 'button'; b.setAttribute('data-tip', 'Take it out');
-    b.innerHTML = gardenCatchSvg('bug', id, 46, { uid: 'pb' + id, glow: false }) + `<span>${esc(gardenBugDef(id).name)}</span>`;
+    b.innerHTML = gardenCatchSvg('bug', id, 46, { uid: 'pb' + id, glow: false, v: ent.bv[bi] }) + `<span>${esc(gardenSpecName('bug', id, ent.bv[bi]))}</span>`;
     b.onclick = () => _gdcSay(gardenShowToggle('bug', id));
     pins.appendChild(b);
   }
   if (!ent.f.length && !ent.b.length) pins.appendChild(_gdpEl('p', 'muted', 'Nothing pinned yet. Open the Fish book or the Bug book and choose Show it off on something you have caught.'));
   el.appendChild(pins);
   const row = _gdpEl('div', 'gdc-acts');
+  row.appendChild(_gdpBtn('My best catches', { icon: 'award', run: _gdcGoto('best') }));
   row.appendChild(_gdpBtn('Fish book', { icon: 'fish', run: _gdcGoto('fish') }));
   row.appendChild(_gdpBtn('Bug book', { icon: 'bug', run: _gdcGoto('bugs') }));
   el.appendChild(row);
@@ -313,6 +278,7 @@ function gardenCatchSideCard(m) {
   for (const b of GARDEN_BAITS) { if (!b.own && gardenHas('bait:' + b.id) < 1) continue; const o = document.createElement('option'); o.value = b.id; o.textContent = b.own ? b.name : `${b.name} (${gardenHas('bait:' + b.id)})`; if (b.id === bait.id) o.selected = true; sel.appendChild(o); }
   sel.onchange = () => { gardenGearEquip('bait', sel.value); sel.blur(); };
   row.appendChild(sel); card.appendChild(row);
+  if (typeof gardenSetupQuick === 'function') gardenSetupQuick(card);
   const n = typeof _gw !== 'undefined' && _gw.bugs ? _gw.bugs.size : 0;
   const tip = _gdpEl('p', 'muted gdc-side-tip');
   tip.textContent = m.tod === 'night' ? 'Night: eels, zander and the deep lantern fish are about. ' : m.rain.now ? 'Rain: the trout and the catfish are biting. ' : '';
@@ -322,17 +288,18 @@ function gardenCatchSideCard(m) {
 }
 /** A friend's showcase as a card on their visit page (null when they have none): their best fish with size and stars, their bugs, their gear. */
 function gardenCatchVisitCard(f, snap) {
-  const sh = snap && snap.sh ? gardenShowClean(snap.sh) : null;
-  if (!sh || (!sh.f.length && !sh.b.length)) return null;
+  const sh = (snap && snap.sh ? gardenShowClean(snap.sh) : null) || { f: [], b: [], rod: 0, net: 0 }, best = typeof gardenSpecVisitRow === 'function' ? gardenSpecVisitRow(snap) : null;
+  if (!sh.f.length && !sh.b.length && !best) return null;
   const card = _gdpEl('div', 'card gsv-card-s gdc-visit');
   card.appendChild(_gdpEl('h3', 'gd-h3', `${typeof _gscFirst === 'function' ? _gscFirst(f.id) : 'Their'}'s catches`));
   const row = _gdpEl('div', 'gdc-visit-row');
-  for (const [id, q, cm] of sh.f) {
+  for (const [id, q, cm, v] of sh.f) {
     const d = gardenFishDef(id); if (!d) continue;
-    const s = _gdpEl('span', 'gdc-visit-i'); s.innerHTML = gardenCatchSvg('fish', id, 58, { uid: 'vf' + id }) + `<small>${cm} cm ${gardenQuality(q).stars}</small>`; s.setAttribute('data-tip', d.name); row.appendChild(s);
+    const s = _gdpEl('span', 'gdc-visit-i'); s.innerHTML = gardenCatchSvg('fish', id, 58, { uid: 'vf' + id, v }) + `<small>${cm} cm ${gardenQuality(q).stars}</small>`; s.setAttribute('data-tip', gardenSpecName('fish', id, v)); row.appendChild(s);
   }
-  for (const id of sh.b) { const d = gardenBugDef(id); if (!d) continue; const s = _gdpEl('span', 'gdc-visit-i is-bug'); s.innerHTML = gardenCatchSvg('bug', id, 40, { uid: 'vb' + id, glow: false }); s.setAttribute('data-tip', d.name); row.appendChild(s); }
-  card.appendChild(row);
+  for (const [bi, id] of sh.b.entries()) { const d = gardenBugDef(id); if (!d) continue; const v = (sh.bv || [])[bi], s = _gdpEl('span', 'gdc-visit-i is-bug'); s.innerHTML = gardenCatchSvg('bug', id, 40, { uid: 'vb' + id, glow: false, v }); s.setAttribute('data-tip', gardenSpecName('bug', id, v)); row.appendChild(s); }
+  if (row.children.length) card.appendChild(row);
+  if (best) card.appendChild(best);
   const rod = sh.rod ? GARDEN_RODS.find(r => r.tier === sh.rod) : null, net = sh.net ? GARDEN_NETS.find(r => r.tier === sh.net) : null;
   if (rod || net) card.appendChild(_gdpEl('p', 'muted gsv-small', [rod && rod.name, net && net.name].filter(Boolean).join(' · ')));
   return card;

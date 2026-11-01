@@ -38,7 +38,9 @@ const _gd = { rev: 0, obj: null, memo: null, memoKey: '', wallet: null, walletKe
 /* ---------- state ---------- */
 const _GD_MAPS = ['plants', 'decor', 'led', 'bank', 'wl', 'vd', 'disc', 'rib', 'dt', 'wq', 'gr', 'seen', 'prefs',
   'fl', 'bl', 'fd',   // 2.22: the fish log, the bug book, per-day fishing (94-garden-fish-2core.js)
-  'gl', 'gq', 'gv', 'glt'];  // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
+  'sp', 'vl',   // every catch as a record, and the variants found (94-garden-fish-8spec.js)
+  'gl', 'gq', 'gv', 'glt',
+  'wd'];  // what visitors did here, what is still to post to them, what you planted in friends' gardens, what they touched since the visit's copy (`glc`) (94-garden-live-*.js)
 function _gdG() {
   if (typeof state === 'undefined' || !state) { const z = { v: 1 }; for (const k of _GD_MAPS) z[k] = {}; return z; }
   if (!state.garden || typeof state.garden !== 'object' || Array.isArray(state.garden)) state.garden = { v: 1 };
@@ -436,7 +438,8 @@ function gardenWallet() {
   for (const id of Object.keys(g.rib)) { const r = _gdRewardOf('rib', id); if (r) { coins += r.c; xp += r.x; _gdAddItems(items, r.i); } }
   for (const key of Object.keys(g.gr)) { const m = /^(ach|ev):([a-z0-9-]+)/.exec(key); if (m && gardenPlant(m[2])) _gdAddItems(items, { ['seed:' + m[2]]: 1 }); }
   xp += 10 * Object.keys(g.disc).filter(id => gardenPlant(id) || gardenVisitor(id)).length;
-  xp += 8 * (Object.keys(g.fl).filter(id => gardenFishDef(id)).length + Object.keys(g.bl).filter(id => gardenBugDef(id)).length);   // 2.22: every new kind of fish or bug
+  const kinds = Object.keys(g.fl).filter(id => gardenFishDef(id)).length + Object.keys(g.bl).filter(id => gardenBugDef(id)).length;
+  xp += 8 * Math.min(kinds, 80) + 3 * Math.max(0, kinds - 80);   // 2.22: every new kind of fish or bug. Past the first 80 (all there were before the book of 300) each counts for less, so a long book is not a ladder of levels
   // decorations placed are not in your bag (never below none: a copy synced from elsewhere may lead the ledger)
   for (const d of Object.values(g.decor)) if (d && !d.own && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;   // (own: a friend's, from their bag: docs/dev/GARDEN_TOGETHER.md)
   for (const k of Object.keys(items)) if (items[k] < 0) items[k] = 0;
@@ -466,6 +469,7 @@ function gardenWaterInfo(model) {
   for (const t of GARDEN_TOOLS) if (t.kind === 'can' && _gdOwnsTool(t.id)) cap += t.n;
   const per = {};
   for (const d of Object.values(g.decor)) { const dd = d && gardenDecor(d.d); if (dd && dd.effect && dd.effect.kind === 'can' && (per[dd.id] || 0) < 2) { per[dd.id] = (per[dd.id] || 0) + 1; cap += dd.effect.n || 0; } }
+  if (typeof gardenPlayWater === 'function') cap += gardenPlayWater(today);   // a dish that gives you a strong arm (94-garden-play-3cook.js)
   cap += gardenLandWaterExtra(g, today);   // a rain barrel, the morning's dew
   const A = _gdAct(), doneToday = A.days.has(today) ? A.days.get(today).n : 0;
   const wal = gardenWallet(), bonus = today >= wal.econFrom ? wal.econToday.water : Math.min(10, 2 * doneToday);
@@ -615,7 +619,10 @@ function gardenSnapshot() {
       if (Number.isFinite(up) && Number.isFinite(dn) && up >= 0 && up < 1440 && dn >= 0 && dn < 1440) { out.sr = up; out.ss = dn; }
     } catch (e) { /* their own clock then */ }
     try { const sh = typeof gardenShowWire === 'function' ? gardenShowWire() : null; if (sh) out.sh = sh; } catch (e) { /* the showcase is optional */ }   // 2.22: the tank and the case
+    try { const sp = typeof gardenSpecWire === 'function' ? gardenSpecWire() : null; if (sp) out.sp = sp; } catch (e) { /* specimens are optional */ }   // your best few, for friends: ids and numbers, an older app drops the field
+    try { const ca = typeof gardenCatchWire === 'function' ? gardenCatchWire() : null; if (ca) out.ca = ca; } catch (e) { /* the lake is optional */ }   // the lake: its hall, its rack, its records
     try { const tk = typeof petBookWire === 'function' ? petBookWire() : null; if (tk && tk.length) out.tk = tk; } catch (e) { /* tricks are optional */ }   // 2.23: ids of what your pet can do, for friends who visit
+    try { const wd = typeof gardenWonderWire === 'function' ? gardenWonderWire() : null; if (wd) out.wd = wd; } catch (e) { /* optional */ }   // the sky you have learned, your cairn (94-garden-wonder-*.js)
     return out;
   } catch (e) { console.error('[garden]', e); return null; }
 }
@@ -1239,6 +1246,7 @@ function gardenCollectInfo(uid, mArg) {
     const slot = Math.floor(Date.parse(m.today + 'T12:00:00Z') / (2 * _GD_DAY)), key = 'hy.' + slot + '.' + uid;   // clock-ok: a two-day slot from the ISO day
     return { kind: k, key, ready: !g.led[key] && m.blooms >= 3, label: 'Collect the honey', soon: m.blooms < 3 ? 'The bees want three flowers in bloom' : 'More honey in a day or two' };
   }
+  if (k === 'coop') { const key = 'eg.' + m.today + '.' + uid; return { kind: k, key, ready: !g.led[key], label: 'Collect the eggs', soon: 'More eggs tomorrow' }; }
   if (k === 'wish') { const key = 'wi.' + m.today; return { kind: k, key, ready: !g.led[key], label: 'Make a wish (1 coin)', soon: 'One wish a day' }; }
   return null;
 }
@@ -1250,6 +1258,7 @@ function gardenCollect(uid) {
   const g = _gdG(), mark = _gdMark([['led', info.key]]);
   let msg = '';
   if (info.kind === 'compost') { g.led[info.key] = { d: m.today, k: 'cp', i: { fertiliser: 1 }, n: 1 }; msg = 'One bag of fertiliser from the compost'; }
+  else if (info.kind === 'coop') { g.led[info.key] = { d: m.today, k: 'pl', i: { egg: 2 }, x: 1, n: 1 }; msg = 'Two eggs, still warm'; }
   else if (info.kind === 'hive') { g.led[info.key] = { d: m.today, k: 'hy', i: { honey: 1 }, x: 2, n: 1 }; msg = 'A jar of honey from the hive'; }
   else {
     if (gardenWallet().coins < 1) return _gdNo('A wish costs one coin');

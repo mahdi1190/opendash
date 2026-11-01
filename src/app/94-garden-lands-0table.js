@@ -252,7 +252,7 @@ const GARDEN_LAND_MAZE = _gdF(['##.#####', '#...#.C#', '###.#.##', '#.....##', '
 const GARDEN_LAND_OFFICE = _gdF({ id: 'land-office', name: 'Land office', x: 24, y: 19, w: 3, h: 1, door: _gdF({ x: 25, y: 20 }), act: 'lands', kind: 'lf-office', tall: 2.4, verb: 'look at the land', blurb: 'What you can buy and build, and what is still to come.' });
 const GARDEN_LAND_LAMPS = _gdF([3, 8, 41, 46, 50]);   // x along the lane's north edge, out where there are no shops
 /* Your finds, laid out on a table on the lane from the first one you dig up, until a museum takes them in. */
-const GARDEN_LAND_FINDS = _gdF({ id: 'land-finds', name: 'Your finds', x: 35, y: 19, w: 2, h: 1, col: 'soft', walk: 0, act: 'lf', lf: 'land-finds', door: _gdF({ x: 35, y: 20 }), kind: 'lf-finds', tall: 1, blurb: 'What has turned up so far.' });
+const GARDEN_LAND_FINDS = _gdF({ id: 'land-finds', name: 'Your finds', x: 40, y: 19, w: 2, h: 1, col: 'soft', walk: 0, act: 'lf', lf: 'land-finds', door: _gdF({ x: 40, y: 20 }), kind: 'lf-finds', tall: 1, blurb: 'What has turned up so far.' });
 const GARDEN_LAND_KEY_ID = 'old-key';
 
 /* ---------- what you can collect ---------- */
