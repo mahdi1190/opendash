@@ -654,6 +654,13 @@ function gardenLevelOf(xp) {
 
 /* ---------- ribbons (the garden's achievements; facts from gardenFacts, 94-garden-1core.js) ---------- */
 const GARDEN_RIBBONS = _gdRows([
+  // a region's page finished (94-garden-regions-1core.js)
+  { id: 'region-garden', label: 'Knows the garden', hint: 'Find everything that lives in the main garden.', icon: 'flower-2', fact: 'rg-garden', of: 1, reward: { c: 100 } },
+  { id: 'region-lake', label: 'Knows the lake', hint: 'Find everything that lives in the lake.', icon: 'fish', fact: 'rg-lake', of: 1, reward: { c: 150 } },
+  { id: 'region-hill', label: 'Knows the hill', hint: 'Find everything that lives on the north hill.', icon: 'flower', fact: 'rg-hill', of: 1, reward: { c: 150 } },
+  { id: 'region-orchards', label: 'Knows the orchards', hint: 'Find everything that lives in the east orchards.', icon: 'trees', fact: 'rg-orchards', of: 1, reward: { c: 150 } },
+  { id: 'region-fields', label: 'Knows the fields', hint: 'Find everything that lives in the west fields.', icon: 'carrot', fact: 'rg-fields', of: 1, reward: { c: 150 } },
+  { id: 'region-marsh', label: 'Knows the marsh', hint: 'Find everything that lives in the south marsh.', icon: 'waves', fact: 'rg-marsh', of: 1, reward: { c: 150 } },
   { id: 'first-sprout', label: 'First sprout', hint: 'Plant your first seed.', icon: 'sprout', fact: 'planted', of: 1, reward: { c: 15 } },
   { id: 'green-fingers', label: 'Green fingers', hint: 'Plant 25 seeds.', icon: 'hand', fact: 'planted', of: 25, reward: { c: 40, i: { 'seed:peony': 2 } } },
   { id: 'master-gardener', label: 'Master gardener', hint: 'Plant 150 seeds.', icon: 'crown', fact: 'planted', of: 150, reward: { c: 150, i: { 'seed:titan-arum': 1 } } },

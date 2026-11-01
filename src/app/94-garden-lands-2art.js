@@ -259,6 +259,7 @@ const _GLD_ART = (function () {
     // the mini squares, and the brooks
     for (const [cx, cy, rx, ry] of GARDEN_LAND_SQUARES) s += paving(r, px(cx), py(cy), rx, ry);
     for (const pts of GARDEN_LAND_BROOKS) { const d = curve(pts.map(q => [px(q[0]), py(q[1])]), false); s += `<path d="${d}" fill="none" stroke="#6e8a5a" stroke-width="11" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${season === 'winter' ? '#c0d8e6' : '#5fb0cc'}" stroke-width="7" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#ffffff" stroke-width="1.200" stroke-opacity="0.5" stroke-dasharray="6 9"/>`; }
+    if (typeof gardenRegionWaterArt === 'function') s += gardenRegionWaterArt(px, py, season);   // the regions' small waters
     // the lake's three far shores: a beach with a wandering edge, over the straight ends of the water, with its corners rounded by rocks and reeds
     { const r2 = A.rng(A.hash('gld-shore')), x0 = px(12), x1 = px(40), y0 = py(21) + 8, y1 = py(38), q = 26, pts = [];
       for (let y = y0; y < y1 - q; y += 16) pts.push([x0 + Math.sin(y * 0.03) * 9 + rr(r2, -3, 3), y]);
@@ -467,7 +468,7 @@ function gardenLandWorldProps(sc, o) {
       push('gd-prop-lf gd-prop-click', f.y + f.h, f.x, _gldDraw(f.art, f, sc, o), f.id);
       continue;
     }
-    if (!o.interactive || o.photo || o.readOnly) continue;
+    if (!o.interactive || o.photo || o.readOnly || f.prize) continue;
     if (f.sec && !open.has(f.sec)) continue;
     if (occ.has(f.x + ',' + f.y) || f.lv > lv + 2) continue;   // (further off, the land office lists it: a field of stakes would only be clutter)
     push('gd-prop-lf gd-prop-click', f.y + f.h, f.x, _gldSiteArt(f, sc, lv), 'site:' + f.id);

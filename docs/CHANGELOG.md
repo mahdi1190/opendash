@@ -10,6 +10,13 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.48.0]
+
+### Added
+- **Every fish and bug now lives somewhere on the map,** and opening that land is how you find it. The book says where to go.
+- New ponds and brooks, and fish in the marsh pools.
+- Finish a region's page for coins, a decoration, a ribbon and a prize in your garden. See your progress on the new map tab.
+
 ## [2.47.0]
 
 ### Added

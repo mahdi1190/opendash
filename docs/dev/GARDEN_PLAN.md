@@ -308,3 +308,13 @@ The same in every garden, so friends see them with no field in a snapshot. Paved
 ## Adding more later
 
 A feature is one row in `GARDEN_LAND_FEATURES`, one drawing in `_GLD_PROP_ART`, and, if it does something new, one branch in `_gldUseBubble`. It goes to friends by itself through `lf`. Its spot in its section is worked out for it. Check any change to a map with a throwaway script: every section touches its `via`, every trail its `from`.
+
+## Regions: every fish and bug has a home
+
+The owner, 1 Nov 2026: "we can relate these fish and bugs to specific areas of the map, and unlockables." Tables and words: `src/app/94-garden-regions-0table.js` (pure). Progress, prizes and bugs on open land: `94-garden-regions-1core.js`. The waters, the prizes' drawings and The map tab of the Catch page: `94-garden-regions-2page.js`.
+
+- **Six regions**: the main garden, the lake, the north hill, the east orchards, the west fields, the south marsh. A home is a region, a water or a named place, worked out at load from each kind's habitat, name and size (hashed by id, so it never moves), then the hand-placed ones. It is not saved. Commons up to level 3 stay in the garden, the lake and the pond.
+- **Reaching it unlocks it**: a kind whose home is not open is not there. A bug's home is a trail by rarity, or round a sight (read from the sight, so it moves with it). The book says where and what to open.
+- **Waters** (`GARDEN_REGION_WATERS`, world cells): the school has a band for each once open, one fish each (`_gfsWant`), and `GF_SCHOOL.max` still rules. New ones stand on thicket cells, so no path is cut and no plant is under water; the falls pool is the east end of the pond; the six bought pools now have fish. `GARDEN_AREAS` stays at 12 rows. The west fields have no thicket left, so they have bugs only.
+- **Bugs**: how many is still `_gcBugsBase`'s sum and its cap. Regions only choose which kinds and where; each region gets an equal share of the draw and the garden two, so opening land does not empty the front bed.
+- **Prizes**: half a page pays coins and a decoration; a whole page pays coins, a ribbon and a feature with no price (`prize` in `GARDEN_LAND_FEATURES`), on thicket or the lane's ends, sent through `lf`. Paid in the ledger, keyed `rg.<region>.<half|full>` in `seen`. All six regions: 3,100 coins and 850 from ribbons, against 48,390 for the land.
