@@ -17,7 +17,7 @@ function _ptSilhouette(id, size) {
 function _ptCostIcon(pay, n, size) {
   const c = _ptEl('span', 'ptl-cost');
   c.innerHTML = pay === 'coins' ? icon('coins', 'i-xs') : petTreatSvg('cookie', size || 15);
-  c.appendChild(_ptEl('b', null, String(n)));
+  c.appendChild(_ptEl('b', null, pay === 'coins' && n === Infinity ? '∞' : String(n)));
   return c;
 }
 function _ptBar(pct, cls) {

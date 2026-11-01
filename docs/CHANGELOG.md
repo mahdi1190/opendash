@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.33.0]
+
+### Added
+- The garden shop has a search box: type a word and Seeds, Decorations, Tools or Sell show only what matches its name, kind or description
+- A new hair style, "Balding", for your look: a bare, shining top with a narrow band of hair round the sides and back
+
 ## [2.32.2]
 
 ### Fixed

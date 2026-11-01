@@ -219,7 +219,7 @@ function petCollectSeen() {
 function _ptcSpendCoins(n, why) {
   const w = _ptcWallet();
   if (!w || w.coins < n || typeof _gdLed !== 'function') return null;
-  const key = _gdLed('pet', { c: -n, i: {} });
+  const key = _gdLed('pet', { c: typeof _gdCost === 'function' ? _gdCost(n) : -n, i: {} });
   try { if (typeof _gdSave === 'function') _gdSave(); } catch (e) { /* saved below */ }
   return key;
 }

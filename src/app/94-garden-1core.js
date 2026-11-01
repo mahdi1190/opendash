@@ -393,7 +393,7 @@ function _gdGameQuestsByDay() {
 }
 function gardenWallet() {
   const g = _gdG(), A = _gdAct();
-  const key = _gd.rev + '|' + _gd.actKey + '|' + Object.keys(g.led).length;
+  const key = _gd.rev + '|' + _gd.actKey + '|' + Object.keys(g.led).length + (g.inf === 1 ? '|i' : '');
   if (_gd.wallet && _gd.walletKey === key) return _gd.wallet;
   const items = {}, n = { planted: 0, harvests: 0, bouquets: 0, sold: 0, fed: 0, pruned: 0, bought: 0, wishes: 0, collected: 0, daily: 0, quests: 0, fished: 0, netted: 0, traded: 0, gifted: 0, crafted: 0 };
   let coins = 0, xp = 0, earned = 0, today = _gdToday();
@@ -440,9 +440,20 @@ function gardenWallet() {
   for (const d of Object.values(g.decor)) if (d && !d.own && gardenDecor(d.d)) items['decor:' + d.d] = (items['decor:' + d.d] || 0) - 1;   // (own: a friend's, from their bag: docs/dev/GARDEN_TOGETHER.md)
   for (const k of Object.keys(items)) if (items[k] < 0) items[k] = 0;
   const lv = gardenLevelOf(xp);
-  _gd.wallet = { coins: Math.max(0, Math.round(coins)), xp: Math.max(0, xp), level: lv, items, n, earned, econToday: econToday || gardenEconDay({ sessions: [], done: [] }), econFrom: _gdEconFrom(g) };
+  _gd.wallet = { coins: g.inf === 1 ? Infinity : Math.max(0, Math.round(coins)), xp: Math.max(0, xp), level: lv, items, n, earned, econToday: econToday || gardenEconDay({ sessions: [], done: [] }), econFrom: _gdEconFrom(g) };
   _gd.walletKey = key;
   return _gd.wallet;
+}
+/** What a purchase writes in the ledger: its price taken off, or nothing while the coins never run out. */
+function _gdCost(n) { return _gdG().inf === 1 ? 0 : -n; }
+/** The coin counter that never runs out. A switch on this computer's own garden (nothing about it goes to a friend: a visit shows the visitor's own wallet and snapshots hold no coins).
+ *  From the console: gardenInfinite(true) / gardenInfinite(false); with no argument it says whether it is on. What is bought is still bought, the real balance underneath is left as it was. */
+function gardenInfinite(on) {
+  const g = _gdG();
+  if (on === undefined) return g.inf === 1;
+  if (on) g.inf = 1; else delete g.inf;
+  _gdSave();
+  return g.inf === 1;
 }
 function gardenHas(item) { const w = gardenWallet(); return Math.max(0, Math.floor(w.items[item] || 0)); }
 function _gdOwnsTool(id) { return gardenHas('tool:' + id) > 0; }
@@ -1126,7 +1137,7 @@ function gardenBuyLand(id) {
   const m = gardenModel();
   if (!info.afford) return _gdNo(`That costs ${info.cost} coins: you have ${m.wallet.coins}`);
   const lk = 'b.' + m.today + '.' + _gdUid(''), mark = _gdMark([['led', lk]]);
-  _gdG().led[lk] = { d: m.today, k: 'b', c: -info.cost, i: { ['land:' + id]: 1 }, n: 1 };
+  _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(info.cost), i: { ['land:' + id]: 1 }, n: 1 };
   _gdEmit('land', { id, x: info.def.x, y: info.def.y, w: info.def.w, h: info.def.h });
   return _gdDone(`${info.def.name} is yours`, `buying ${info.def.name.toLowerCase()}`, mark, { icon: 'trees' });
 }
@@ -1144,7 +1155,7 @@ function gardenBuy(item, n) {
   const id = key.split(':')[1] || key;
   const mark = _gdMark([['led', lk], ['disc', id]]);
   const g = _gdG();
-  g.led[lk] = { d: m.today, k: 'b', c: -cost, i: { [key]: n }, n };
+  g.led[lk] = { d: m.today, k: 'b', c: _gdCost(cost), i: { [key]: n }, n };
   if (key.startsWith('decor:') && !g.disc[id]) g.disc[id] = m.today;
   const name = key.startsWith('seed:') ? gardenPlant(id).name + ' seed' + (n > 1 ? 's' : '') : key.startsWith('decor:') ? gardenDecor(id).name : gardenTool(item).name;
   _gdEmit('buy', { item: key, n });

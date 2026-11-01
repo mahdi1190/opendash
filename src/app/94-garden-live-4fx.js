@@ -46,6 +46,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'cr' || c === 'egg' || c === 'pick') { _glcFx(A, ev); return; }
   if (c === 'roam') { if (typeof _gllRoamAdd === 'function') _gllRoamAdd(e); return; }
   if (c === 'cheer') { _gllCheerFx(A, e, ev); return; }
+  if (c === 'hall') { if (typeof _eeHear === 'function') _eeHear(A, ev); return; }
   if (c === 'snap') { if (typeof _glsHear === 'function') _glsHear(A, ev); return; }   // (a group photo: 94-garden-live-7snap.js)
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {

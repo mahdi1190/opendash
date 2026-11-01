@@ -196,7 +196,7 @@ const PF_PARTS = Object.freeze([
     ['slick', 'Slicked back'], ['undercut', 'Undercut'], ['spiky', 'Spiky'], ['pixie', 'Pixie'], ['curly', 'Curly'], ['afro', 'Afro'], ['hightop', 'High top'],
     ['puffs', 'Afro puffs'], ['cornrows', 'Cornrows'], ['locs', 'Locs'], ['boxbraids', 'Box braids'], ['bob', 'Bob'], ['shag', 'Shag'], ['mullet', 'Mullet'],
     ['long', 'Long'], ['wavy', 'Wavy'], ['sweep', 'Side-swept'], ['halfup', 'Half up'], ['pony', 'Ponytail'], ['pigtails', 'Pigtails'], ['bun', 'Bun'],
-    ['topknot', 'Top knot'], ['braids', 'Braids'], ['buzz', 'Buzz cut'], ['bald', 'Bald'],
+    ['topknot', 'Top knot'], ['braids', 'Braids'], ['buzz', 'Buzz cut'], ['bald', 'Bald'], ['norwood7', 'Balding'],
     ['buns', 'Space buns', { level: 6 }], ['mohawk', 'Mohawk', { level: 12 }]]) },
   { k: 'hairCol', tab: 'hair', label: 'Colour', colour: 'hair' },
   { k: 'dye', tab: 'hair', label: 'Dye', opts: _pfO([['none', 'None'], ['highlights', 'Highlights'], ['ombre', 'Ombré'], ['tips', 'Dipped tips'], ['streak', 'Streak'],

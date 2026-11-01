@@ -363,7 +363,7 @@ function petStageMount(root, g, o) {
     hudR.replaceChildren();
     const j1 = _ptEl('span', 'pts-chip'); j1.innerHTML = petTreatSvg('cookie', 22); j1.appendChild(_ptEl('b', null, String(t.have))); j1.setAttribute('data-tip', 'Treats'); hudR.appendChild(j1);
     const w = _ptcWallet();
-    if (w) { const j2 = _ptEl('span', 'pts-chip'); j2.innerHTML = icon('coins', 'i-sm'); j2.appendChild(_ptEl('b', null, String(w.coins))); j2.setAttribute('data-tip', 'Garden coins'); hudR.appendChild(j2); }
+    if (w) { const j2 = _ptEl('span', 'pts-chip'); j2.innerHTML = icon('coins', 'i-sm'); j2.appendChild(_ptEl('b', null, typeof _gdpNum === 'function' ? _gdpNum(w.coins) : String(w.coins))); j2.setAttribute('data-tip', 'Garden coins'); hudR.appendChild(j2); }
     paintMood();
   };
   S.paintHud = paintHud;

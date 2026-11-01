@@ -55,7 +55,7 @@ function gardenGearBuy(id) {
     if (w.coins < d.price) return _gdNo(`That costs ${d.price} coins: you have ${w.coins}`);
     const lk = 'b.' + m.today + '.' + _gdUid('');
     const mark = _gdMark([['led', lk]]);
-    _gdG().led[lk] = { d: m.today, k: 'b', c: -d.price, i: { ['bait:' + id]: d.pack || 1 }, n: 1 };
+    _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(d.price), i: { ['bait:' + id]: d.pack || 1 }, n: 1 };
     _gdEmit('buy', { item: 'bait:' + id, n: d.pack || 1 });
     return _gdDone(`Bought ${d.pack || 1} × ${d.name.toLowerCase()} for ${d.price} coins`, 'buying bait', mark, { icon: 'shopping-bag' });
   }
@@ -67,7 +67,7 @@ function gardenGearBuy(id) {
   if (w.coins < d.price) return _gdNo(`That costs ${d.price} coins: you have ${w.coins}`);
   const lk = 'b.' + m.today + '.' + _gdUid('');
   const mark = _gdMark([['led', lk]]);
-  _gdG().led[lk] = { d: m.today, k: 'b', c: -d.price, i: { ['gear:' + id]: 1 }, n: 1 };
+  _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(d.price), i: { ['gear:' + id]: 1 }, n: 1 };
   const g = _gdG(); g.prefs[d.kind] = id;     // the new one goes straight in your hand
   _gdEmit('buy', { item: 'gear:' + id, n: 1 });
   return _gdDone(`Bought the ${d.name.toLowerCase()} for ${d.price} coins`, 'buying a ' + d.kind, mark, { icon: 'shopping-bag' });

@@ -160,9 +160,10 @@ function _gplBackBust(a, fo, uid) {
 /** The back of the head: a head of hair (or the headscarf, or the bare head), then the kit's own hair shapes and hat over it. */
 function _gplBackHead(a, L) {
   const hc = pfTone(_pfHexOf('hair', a.hairCol, '#4a3324')), sk = pfTone(_pfHexOf('skin', a.skin, '#e2b08c'));
-  const scarfOn = a.hat === 'headscarf', bald = a.hair === 'bald' && !scarfOn;
+  const scarfOn = a.hat === 'headscarf', bald = (a.hair === 'bald' || a.hair === 'norwood7') && !scarfOn;
   const c = scarfOn ? pfTone(_pfHexOf('cloth', a.hatCol, '#b83a30')) : bald ? sk : hc;
-  return L.ears + _pfP(PF_HEAD_D, c[0]) + (bald ? _pfE(41, 31, 6, 3.2, sk[2], 0.45) : _pfP('M63 28 C69.6 35 70.6 52 60.6 63.2 C65.6 53.6 66.8 40.6 63 28 Z', c[1], 0.45) + _pfE(41, 31, 6.6, 3.4, c[2], 0.4)) + L.hair + L.hat + L.phones;
+  const rim = a.hair === 'norwood7' && !scarfOn ? _pfP('M30.8 45 C31 55 38 63 50 63.6 C62 63 69 55 69.2 45 C66 51 58 54 50 54 C42 54 34 51 30.8 45 Z', hc[0]) : '';   // seen from behind: the band round the back
+  return L.ears + _pfP(PF_HEAD_D, c[0]) + rim + (bald ? _pfE(41, 31, 6, 3.2, sk[2], 0.45) : _pfP('M63 28 C69.6 35 70.6 52 60.6 63.2 C65.6 53.6 66.8 40.6 63 28 Z', c[1], 0.45) + _pfE(41, 31, 6.6, 3.4, c[2], 0.4)) + L.hair + L.hat + L.phones;
 }
 /** What shows on the back: a backpack, a cape. */
 function _gplBackPack(a, fo, T) {
