@@ -71,7 +71,7 @@
       if (r.status === 202 && r.body.remote) { waitRemote(r.body.remote); return; }
       if (r.status === 202 || (r.status === 409 && r.body.job)) { if (r.body.job) R.job = r.body.job; startPolling(); }
       else R.startErr = (r.body.skipped && r.body.message) || r.body.error || ('Couldn’t start the update: HTTP ' + r.status + '.');
-    } catch (e) { R.startErr = 'Freeflo isn’t answering. Is it running?'; }
+    } catch (e) { R.startErr = 'Freeflo isn’t answering. Open it from your shortcut, then try again.'; }
     paintUpdate();
   }
   // "Sync bank" on a device that shows another device's finances: that device

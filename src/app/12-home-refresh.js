@@ -456,7 +456,7 @@ function _hrChip(run, id, r) {
   const ic = st === 'running' ? '<span class="spinner" aria-hidden="true"></span>'
     : icon(st === 'done' || st === 'fresh' ? 'check' : st === 'away' ? 'moon' : st === 'elsewhere' ? 'monitor' : st === 'skipped' || st === 'cancelled' ? 'minus' : st === 'slow' ? 'clock' : 'x', 'i-xs');
   const word = st === 'running' ? '…' : st === 'fresh' ? ' up to date' : st === 'skipped' ? ` · ${r.reason || 'not connected'}` : st === 'cancelled' ? ' · stopped' : st === 'slow' ? ' · still working' : st === 'elsewhere' || st === 'away' ? ' · ' + (st === 'away' ? 'away' : 'elsewhere') : st === 'error' ? ' · failed' : '';
-  const tip = r.reason || (st === 'fresh' && r.at ? `Already up to date (${_hrHM(r.at)})` : '');
+  const tip = (r.reason && netPlainError(r.reason)) || (st === 'fresh' && r.at ? `Already up to date (${_hrHM(r.at)})` : '');
   return `<span class="hr-chip s-${escAttr(st)}"${tip ? ` title="${escAttr(tip)}"` : ''}>${ic}<span>${esc(label)}${esc(word)}</span></span>`;
 }
 function _hrSummaryText(run) {
@@ -487,7 +487,7 @@ function _hrPaint() {
   const head = busy ? `<span class="spinner" aria-hidden="true"></span><b>Refreshing everything</b>`
     : `${icon(_hrProblems(run).length || run.offline ? 'triangle-alert' : 'circle-check', 'i-sm')}<b>${esc(_hrSummaryText(run))}</b><span class="hr-at">${esc(_hrHM(_hr.lastAt || Date.now()))}</span>`;
   const rows = busy ? '' : (run.offline ? [['server', run.results.server]] : _hrProblems(run)).map(([id, r]) =>
-    `<div class="hr-row s-${escAttr(r.status)}"><span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || 'It did not finish.')}</span><button type="button" class="btn btn-ghost btn-sm" data-hr-retry="${escAttr(id)}">${icon('refresh-cw', 'i-xs')}<span>Try again</span></button></div>`).join('');
+    `<div class="hr-row s-${escAttr(r.status)}"><span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason ? netPlainError(r.reason) : 'It did not finish. Try again.')}</span><button type="button" class="btn btn-ghost btn-sm" data-hr-retry="${escAttr(id)}">${icon('refresh-cw', 'i-xs')}<span>Try again</span></button></div>`).join('');
   const calm = busy ? '' : Object.entries(run.results).filter(([, r]) => r && (r.status === 'away' || r.status === 'elsewhere')).map(([id, r]) =>
     `<div class="hr-row is-calm">${icon(r.status === 'away' ? 'moon' : 'monitor', 'i-xs')}<span class="hr-row-t"><b>${esc(_hrLabel(run, id))}:</b> ${esc(r.reason || '')}</span></div>`).join('');
   el.classList.toggle('is-busy', busy);

@@ -331,7 +331,7 @@
       onClose: () => { gone = true; if (ac) ac.abort(); },
       body: (el, close) => { box = h('div', { class: 'yd-review' }); foot = h('div', { class: 'modal-f' }); el.append(box, foot); closeIt = close; },
     });
-    const fail = (e) => lay([h('p', { class: 'yd-err', text: `That didn’t work: ${(e && e.message) || 'Freeflo is not answering'}. Nothing has changed.` })],
+    const fail = (e) => lay([h('p', { class: 'yd-err', text: `That didn’t work: ${netErrorReason(e, 'Freeflo isn’t answering')}. Nothing has changed.` })],
       [h('button', { type: 'button', class: 'btn btn-secondary', text: 'Close', onclick: () => closeIt() }), h('button', { type: 'button', class: 'btn btn-primary', text: 'Try again', onclick: () => { closeIt(); ydReview(label); } })]);
     wait('Working out the difference…', () => closeIt());
     ydPost('/preview', choice, ac ? ac.signal : undefined).then((p) => {
@@ -469,7 +469,7 @@
             toast(`${r.name} is deleted.`, { kind: 'ok', icon: 'trash-2', action: 'Undo', onAction: () => ydRestore({ token: out.token }) });
           } catch (e) {
             del.disabled = false; del.textContent = 'Delete for good';
-            box.replaceChildren(h('p', { class: 'yd-err', text: `It was not deleted: ${e.message}` }));
+            box.replaceChildren(h('p', { class: 'yd-err', text: `It was not deleted: ${netErrorReason(e)}.` }));
           }
         } });
         const box = h('div');

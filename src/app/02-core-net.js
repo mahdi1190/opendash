@@ -59,9 +59,11 @@ function netPlainWords(raw) {
   if (!s) return null;
   // 'PUT 500', 'PUT 500 — detail', 'AI request failed: 502', 'HTTP 500: detail'
   const st = /^(?:(?:HTTP|GET|POST|PUT|PATCH|DELETE|health)\s*|AI request failed:\s*)(\d{3})(?:\s*(?:[—:-]\s*)?(.*))?$/is.exec(s);
-  if (st) return (st[2] && st[2].trim() ? netPlainWords(st[2]) || st[2].trim() : null) || _netStatusWords(Number(st[1])) || 'Something went wrong. Try again.';
+  if (st) return (st[2] && /[a-z]/i.test(st[2]) ? netPlainWords(st[2]) || st[2].trim() : null) || _netStatusWords(Number(st[1])) || 'Something went wrong. Try again.';
   const pre = /^(?:Uncaught\s+)?(?:Error|Exception):\s*(.+)$/is.exec(s);
   if (pre) return netPlainWords(pre[1]) || pre[1].trim();
+  if (/\bEADDRINUSE\b|address already in use/i.test(s)) return 'Another copy of Freeflo, or another program, is already using the connection it needs. Close it, then try again.';
+  if (/AUTHENTICATIONFAILED|invalid credentials|authentication failed|username and password not accepted|invalid login/i.test(s)) return 'That email address or password wasn’t accepted. Check them and try again. Some email services ask for a special app password: their help pages explain how.';
   if (/\bENOSPC\b|no space left/i.test(s)) return 'This computer’s disk is full. Free up some space, then try again.';
   if (/\b(?:EACCES|EPERM|EBUSY|EROFS)\b|permission denied|operation not permitted|resource busy|used by another process/i.test(s)) return 'This computer wouldn’t let Freeflo use that file. Close any other program using it, then try again.';
   if (/\bENOENT\b|no such file/i.test(s)) return 'Freeflo couldn’t find a file it needed. If you moved or renamed it, put it back and try again.';

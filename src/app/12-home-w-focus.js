@@ -117,7 +117,7 @@ function _hfHead(nOpen, total, nDone) {
   const act = document.createElement('span'); act.className = 'hf-h-act';
   const all = uiButton({ label: 'Collapse all', icon: 'minimize-2', iconCls: 'i-sm', kind: 'ghost', size: 'sm', cls: 'hf-collapse-all', run: () => homeFocusCollapseAll() });
   all.hidden = true;
-  const tune = uiButton({ label: 'Tune', kind: 'ghost', size: 'sm', cls: 'hf-tune', run: (e, b) => _homeTunePopover(b) });
+  const tune = uiButton({ label: 'Adjust', tip: 'Choose what Focus shows', kind: 'ghost', size: 'sm', cls: 'hf-tune', run: (e, b) => _homeTunePopover(b) });
   tune.insertAdjacentHTML('beforeend', icon('sliders-horizontal', 'i-sm'));
   tune.setAttribute('aria-haspopup', 'dialog');
   const add = uiButton({ icon: 'plus', iconCls: 'i-sm', label: 'New task', kind: 'ghost', size: 'sm', cls: 'hf-new', tip: 'Add a new task', run: (e, b) => openNewTask('', { from: b }) });
