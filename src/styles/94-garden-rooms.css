@@ -70,3 +70,6 @@ body.gd-room-in .gd-stagebox > *, body.gd-room-in .fo-orb { display: none !impor
 .grm-room > .ee-svg { position: absolute; inset: 0; }
 .grm-layer { pointer-events: none; }
 .grm-layer.is-still { will-change: transform; }
+/* What moves in a room moves on the graphics card where the browser can: the picture is not painted again for it. */
+.grm-room .grm-sway, .grm-room .grm-mote, .grm-room .grm-rip, .grm-room .grm-bub, .grm-room .grm-cloud, .grm-room .grm-spray, .grm-room .grm-steam, .grm-room .grm-fall, .grm-room .grm-sail, .grm-room .gpl-up, .grm-room .gpl-hd { will-change: transform; }
+.grm-room .grm-tw, .grm-room .grm-ray, .grm-room .grm-glowp, .grm-room .grm-outmark { will-change: opacity; }
