@@ -46,7 +46,7 @@ function _ghTreats() {
   return null;
 }
 function _ghHud(box, m) {
-  const w = m.wallet, lv = w.level, wi = m.water, sky = _gdpSkyChip(m), treats = _ghTreats(), ci = typeof gardenCastsInfo === 'function' ? gardenCastsInfo(m) : null;
+  const w = m.wallet, lv = w.level, wi = m.water, sky = _gdpSkyChip(m), treats = _ghTreats();
   const pct = Math.round(lv.pct * 100);
   const stat = (cls, ic, val, tip) => `<span class="gd-stat ${cls}" data-tip="${escAttr(tip)}">${ic}<b>${esc(String(val))}</b></span>`;
   const html = `<div class="gd-hud-lv" data-tip="${escAttr(`Garden level ${lv.level}, ${lv.title}: ${_gdpNum(lv.into)} of ${_gdpNum(lv.need)} XP`)}"><span class="gd-hud-n">${lv.level}</span><span class="gd-hud-bar" role="progressbar" aria-label="Garden level progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></span></div>`
@@ -54,7 +54,6 @@ function _ghHud(box, m) {
     + stat('is-coins', _GH_GLYPH.coin, _gdpNum(w.coins), 'Coins: earned by focusing on tasks and finishing them')
     + (treats != null ? stat('is-treats', icon('cookie'), treats, 'Treats for your pet') : '')
     + stat('is-water', icon('droplet'), wi.raining ? '∞' : wi.left, wi.raining ? 'The rain is watering everything' : 'Water left in the can today')
-    + (ci ? stat('is-casts', icon('fish'), ci.free ? '∞' : ci.left, ci.free ? 'Casts are free while the contest is on' : 'Casts left today') : '')
     + '</div>'
     + `<div class="gd-hud-sky" data-tip="${escAttr(_gdpWeatherNote(m) || sky.text)}">${icon(sky.ic)}<span>${esc(sky.text)}</span></div>`;
   if (_gh.hud === html && box.querySelector(':scope > .gd-hud')) return;

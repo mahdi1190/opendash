@@ -10,6 +10,20 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.34.0]
+
+Fishing is now about the fish you can see, like Animal Crossing.
+
+### Added
+- **Fish in the water.** Every fish is a shadow you can see swimming. Bigger fish have bigger shadows and live further out. The rarest and the great hunters show a fin above the water, and ghostly ones glow pale.
+- **Bites come only from those fish.** Cast near a shadow and it may turn, swim to your float and nibble. Wait for the big splash and strike: strike on a nibble and it bolts. Cast right on top of one and it bolts too. Nothing near your float, and nothing happens.
+- **Fishing together.** In a live garden everyone sees the same fish in the same places, and can watch one swim to a friend's float. Each fish goes to one line, so only one of you can catch it. The fish you land is the size you saw. Both of you need this version: with a host on an older one, a guest sees fish of its own.
+
+### Changed
+- **No daily limit on casts.** You can fish as long as there are fish to see, and a new one swims in after a while. The first 30 fish a day earn XP; the market's daily limits stay.
+- **Rods reach further:** the carbon rod 6 cells, the master rod 8, the golden rod 10. The rod no longer changes how long a bite takes: where you can reach decides which fish you can get.
+- **Bait draws fish.** Fish notice better bait from further away, shy fish come more readily for the best bait, and the glow lure works best at night. Bait is only used up when a fish bites.
+
 ## [2.33.1]
 
 ### Changed

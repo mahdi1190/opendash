@@ -4,7 +4,7 @@
 
      state.garden.fl   {fishId: {n, b (best cm), q (best quality), d (first day), l (last day), g (came as a gift)}}
      state.garden.bl   {bugId: {n, d, l, g}}
-     state.garden.fd   {day: {c (casts used), k: [bug sightings already caught], mf, mb (market coins at full rate), o: {orderId: 1}}}
+     state.garden.fd   {day: {c (fish landed: past GARDEN_CATCH_ECON.xpFish they earn no XP; before 2.34, casts), k: [bug sightings already caught], mf, mb (market coins at full rate), o: {orderId: 1}}}
      state.garden.prefs.{rod, net, bait, bobber, show: {f: [fishIds], b: [bugIds]}, px, py}
      ledger kinds      fc (a fish caught), bc (a bug netted), ct (a cast's bait), od (an order filled), gv (a catch given),
                        gu (a catch unwrapped), plus b (buying gear) and s (selling) as before
@@ -74,40 +74,34 @@ function gardenGearBuy(id) {
 }
 
 /* ---------- casts ---------- */
-function gardenCastsInfo(mArg) {
-  const m = mArg || gardenModel();
-  const max = gardenCastsFor(m.wallet.econToday.credited), used = Number((_gdG().fd[m.today] || {}).c) || 0;
-  // (contests) in a fishing contest casts are free: they cost nothing, use no bait and keep no fish (94-garden-live-7contest.js)
-  return { max, used, left: Math.max(0, max - used), free: typeof gardenContestLive === 'function' && !!gardenContestLive('fish') };
+function gardenCastsInfo() {
+  // (contests) in a fishing contest a cast uses no bait and keeps no fish (94-garden-live-7contest.js). There is no daily count of casts since 2.34: what limits you is the fish you can see
+  return { free: typeof gardenContestLive === 'function' && !!gardenContestLive('fish') };
 }
 /** Can you cast at this water cell from where you stand? A walk is the page's job; this says how far the rod reaches. */
 function gardenCastReach(rod) { return (rod || gardenRod()).st.range; }
 
 /**
- * Cast: spends a cast (and a piece of bait if you carry some) and decides what will bite and when.
- * Returns {ok, zone, id, def, wait, strike, diff, beh, bar, line, tier, bait} or {ok: false, msg}.
+ * Cast: nothing is spent and nothing is decided; what bites is whichever fish in the water comes to the float (94-garden-fish-6school.js, gardenFishBite).
+ * Returns {ok, zone, strike, bar, line, tier, qmax, baitDef, x, y, contest} or {ok: false, msg}.
  */
 function gardenFishPlan(x, y) {
   const m = gardenModel(), zone = gardenWaterZone(x, y);
   if (!zone) return _gdNo('Nothing to fish in there');
   if (zone === 'pond' && !m.areas.includes('pond')) return _gdNo('The pond opens at garden level 7');
-  const info = gardenCastsInfo(m), contest = info.free;
-  if (info.left < 1 && !contest) return _gdNo('No casts left today: work a little and there will be more tomorrow, or sooner.');
-  const rod = gardenRod(), bait = contest ? GARDEN_BAITS[0] : gardenBait(), g = _gdG();
-  const useBait = !bait.own;
-  if (!contest) {   // a contest cast spends nothing
-    _gcFd(g, m.today).c = info.used + 1;
-    if (useBait) g.led['ct.' + m.today + '.' + _gdUid('')] = { d: m.today, k: 'ct', i: { ['bait:' + bait.id]: -1 }, n: 1 };
-    _gdSave();
-  }
-  const odds = gardenFishOdds({ zone, tod: m.tod, season: m.season, rain: !!m.rain.now, level: m.level.level, rare: bait.st.rare + (rod.tier - 1) * 0.03, night: !!bait.st.night });
-  const id = gardenFishPick(odds, _gcRand), def = gardenFishDef(id);
-  const E = GARDEN_CATCH_ECON;
-  let wait = E.biteMin + _gcRand() * (E.biteMax - E.biteMin) - rod.st.bite - bait.st.lure;
-  if (m.rain.now) wait *= 0.85;
-  if (m.tod === 'dawn' || m.tod === 'dusk') wait *= 0.88;
-  wait = Math.max(1.4, wait);
-  return { ok: true, zone, id, def, wait, strike: E.strike + rod.st.react, diff: def.diff, beh: def.beh, bar: rod.st.bar, line: rod.st.line, tier: rod.tier, qmax: rod.st.q, bait: useBait ? bait.id : '', x, y, contest };
+  const contest = gardenCastsInfo(m).free;
+  const rod = gardenRod(), bait = contest ? GARDEN_BAITS[0] : gardenBait();
+  return { ok: true, zone, strike: GARDEN_CATCH_ECON.strike + rod.st.react, bar: rod.st.bar, line: rod.st.line, tier: rod.tier, qmax: rod.st.q, baitDef: bait, x, y, contest };
+}
+/** That very fish has bitten your line: the plan gets it, and a piece of bait is eaten (a cast that nothing took costs nothing). */
+function gardenFishBite(plan, f) {
+  plan.id = f.id; plan.def = f.def; plan.diff = f.def.diff; plan.beh = f.def.beh; plan.cm = f.cm;
+  const bait = plan.baitDef;
+  if (plan.contest || !bait || bait.own || plan.spent) return;
+  plan.spent = true;
+  const today = _gdToday();
+  _gdG().led['ct.' + today + '.' + _gdUid('')] = { d: today, k: 'ct', i: { ['bait:' + bait.id]: -1 }, n: 1 };
+  _gdSave();
 }
 const _GC_XP = { common: 1, uncommon: 2, rare: 4, epic: 7, legendary: 12 };
 /** A fish is landed: add it to the bag and the log. res {perfect}. Returns {ok, def, cm, q, isNew, record, coins?, items?}. */
@@ -122,11 +116,13 @@ function gardenCatchFish(plan, res) {
     if (perfect) q = Math.min(plan.qmax || 1, 1 + (rnd() < 0.35 ? 1 : 0) + (rnd() < 0.08 ? 1 : 0));
     else q = rnd() < 0.12 + 0.06 * (plan.tier || 1) ? Math.min(plan.qmax || 1, 1) : 0;
   }
-  const cm = def.cat === 'fish' ? gardenFishSize(def, rnd, (perfect ? 0.1 : 0) + 0.02 * ((plan.tier || 1) - 1) + (plan.zone === 'deep' ? 0.04 : 0)) : 0;
+  const cm = def.cat === 'fish' ? Math.max(def.cm[0], Math.min(def.cm[1], Math.round(Number(plan.cm) || def.cm[0]))) : 0;   // the size of the very fish you saw (a host's number is kept to what that kind can be)
   const key = gardenFishKey(def.id, q);
   const out = { ok: true, def, cm, q, perfect, isNew: false, record: false };
   if (plan.contest) return Object.assign(out, { contest: true });   // (contests) let go again: a contest fish is points and a story, never an item, a coin or a record
-  const entry = { d: today, k: 'fc', n: 1, x: def.cat === 'fish' ? (_GC_XP[def.rarity] || 1) + (perfect ? 1 : 0) : 0, i: {} };
+  const fdDay = _gcFd(g, today), landed = Number(fdDay.c) || 0;
+  fdDay.c = landed + 1;
+  const entry = { d: today, k: 'fc', n: 1, x: def.cat === 'fish' && landed < GARDEN_CATCH_ECON.xpFish ? (_GC_XP[def.rarity] || 1) + (perfect ? 1 : 0) : 0, i: {} };   // fishing has no limit; levelling from it has
   if (def.opens) {
     if (def.id === 'coin-purse') { out.coins = 20 + Math.floor(rnd() * 60); entry.c = out.coins; }
     else if (def.id === 'message-bottle') { const lk0 = _gdUid(''); out.items = _gdResolve({ 'seed:*rare': 1 }, 'bottle|' + lk0); entry.i = Object.assign({}, out.items); entry.c = 10; }

@@ -50,13 +50,12 @@ function gardenCatchTab(el, m) {
 function _gdcStars(q) { return q ? `<b class="gd-stars q${q}" title="${esc(gardenQuality(q).label)}">${gardenQuality(q).stars}</b>` : ''; }
 function _gdcBag(el, m, bag) {
   const mk = gardenMarketInfo(m), E = GARDEN_CATCH_ECON;
-  const info = gardenCastsInfo(m);
   const head = _gdpEl('section', 'card gdc-market');
   head.innerHTML = `<div class="gdc-market-h">${icon('coins')}<b>The market</b><span class="muted" data-tip="Full price up to a limit each day, then a fifth"></span></div>`;
   const meters = _gdpEl('div', 'gdc-meters');
   const meter = (label, left, cap) => { const d = _gdpEl('div', 'gdc-meter'); d.innerHTML = `<span>${esc(label)}</span><span class="gdc-bar"><i style="width:${Math.round((cap - left) / cap * 100)}%"></i></span><b>${cap - left} of ${cap} coins</b>`; return d; };
   meters.appendChild(meter('Fish today', mk.fishLeft, mk.fishCap)); meters.appendChild(meter('Bugs today', mk.bugsLeft, mk.bugCap));
-  const castLine = _gdpEl('div', 'gdc-casts muted'); castLine.innerHTML = `${icon('fish', 'i-sm')} <span>${info.left} of ${info.max} casts left today. Every 12 minutes of focused work adds one.</span>`;
+  const castLine = _gdpEl('div', 'gdc-casts muted'); castLine.innerHTML = `${icon('fish', 'i-sm')} <span>Fish as long as you like: cast near a shadow in the water. Further out, the fish are bigger.</span>`;
   head.appendChild(meters); head.appendChild(castLine);
   const acts = _gdpEl('div', 'gdc-acts');
   acts.appendChild(_gdpBtn('Sell spare fish', { icon: 'coins', disabled: !bag.nFish, tip: 'Sell every fish except the best of each kind', run: () => _gdcSay(gardenCatchSellAll('fish', 1)) }));
@@ -185,7 +184,7 @@ function _gdcBook(el, m, kind) {
 /* ---------- tackle ---------- */
 function _gdcGearStats(d) {
   const s = d.st;
-  if (d.kind === 'rod') return [`Reaches ${s.range} cells`, `Bar ${Math.round(s.bar * 100)}%`, s.line < 1 ? `Line ${Math.round((1 - s.line) * 100)}% kinder` : '', s.bite ? `Bites ${s.bite.toFixed(1)}s sooner` : '', `Lands up to ${gardenQuality(s.q).stars || 'plain'}`].filter(Boolean);
+  if (d.kind === 'rod') return [`Reaches ${s.range} cells`, `Bar ${Math.round(s.bar * 100)}%`, s.line < 1 ? `Line ${Math.round((1 - s.line) * 100)}% kinder` : '', `Lands up to ${gardenQuality(s.q).stars || 'plain'}`].filter(Boolean);
   if (d.kind === 'net') return [`Reaches ${s.reach} cells`, `Swing ${s.swing}s`, s.luck ? `+${Math.round(s.luck * 100)}% luck` : ''].filter(Boolean);
   return [s.lure ? `Bites ${s.lure.toFixed(1)}s sooner` : 'Always there', s.rare ? `+${Math.round(s.rare * 100)}% better fish` : '', s.night ? 'Best at night' : ''].filter(Boolean);
 }
@@ -300,12 +299,11 @@ function _gdcShow(el, m) {
 function gardenCatchSideCard(m) {
   const card = _gdpEl('section', 'card gdc-side');
   const rod = gardenRod(), net = gardenNet(), bait = gardenBait();
-  const info = gardenCastsInfo(m);
   const h = _gdpEl('div', 'gdc-side-h');
   h.innerHTML = `<span class="gdc-side-art">${gardenCatchSvg('rod', rod.id, 36)}</span>`;
   const t = _gdpEl('div', 'gdc-side-t');
   t.appendChild(_gdpEl('b', null, 'Fishing and bugs'));
-  t.appendChild(_gdpEl('small', 'muted', `${rod.name} · ${info.left} of ${info.max} casts left · ${net.name}`));
+  t.appendChild(_gdpEl('small', 'muted', `${rod.name} · ${net.name}`));
   h.appendChild(t); card.appendChild(h);
   const row = _gdpEl('label', 'gdc-baitrow'); row.appendChild(_gdpEl('span', 'muted', 'Bait'));
   const sel = _gdpEl('select', 'control'); sel.setAttribute('aria-label', 'Bait');

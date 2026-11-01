@@ -160,6 +160,7 @@ function _glhEvent(ev) {
       _glhSnapshotTake();
       if (!ev.again) setTimeout(() => _gllEmote(A, 'wave'), 400);
       _glhSendSnap(ev.f);
+      if (typeof _gfs !== 'undefined') _gfs.dirty = true;   // (the fish in the water, at once)
       if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
       if (typeof eeTell === 'function') eeTell(ev.f);
       if (typeof _glcJoin === 'function') _glcJoin(ev.f);
