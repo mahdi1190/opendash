@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.43.0]
+
+### Added
+- **Play, a new menu in the garden.** Pack your pet a lunch and it goes away for hours, then sends a postcard and brings a souvenir. Play hide and seek in your own garden. Solve a daily riddle, cook anything in the pot and fill a cookbook, keep hens, dig up fossils that become skeletons, run agility courses, skip stones, play four in a row against your pet, sing with a bird and learn tunes, lay a patchwork map, mend the old mill, read your pet's diary, hunt 24 lost marbles, and follow an old gardener's torn pages. Games pay tickets for a prize stall, and prizes stand in your garden, where friends can see them.
+
 ## [2.42.0]
 
 ### Added
