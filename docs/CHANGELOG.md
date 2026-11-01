@@ -10,6 +10,12 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.59.0]
+
+### Fixed
+- **The garden no longer flashes as you move.** Saving something or news from a friend no longer rebuilds the whole scene.
+- **The light is right when you open the garden and changes gently by itself,** and the time of day no longer flips back and forth.
+
 ## [2.58.3]
 
 ### Changed

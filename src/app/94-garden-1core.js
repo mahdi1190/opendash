@@ -177,7 +177,26 @@ function _gdEconInputs(A) {
 
 /* ---------- weather, rain, time of day ---------- */
 const _GD_WET = new Set(['rain', 'drizzle', 'showers', 'thunder']);
-function _gdWeather() { try { return typeof _bf !== 'undefined' && _bf && _bf.weather && _bf.weather.ok ? _bf.weather : null; } catch (e) { return null; } }
+/* The weather the garden goes by. A refresh that fails (the app replaces the weather with {ok: false}) does not make the sun move: the last good answer holds for a few hours. Without this the time of day jumped between the real sunset and the rough table in _gdTod each time a refresh failed or came back. */
+const GD_SUN_KEY = 'opendash.garden.sun', GD_WX_HOLD = 3 * 3600000, GD_SUN_DAYS = 14;
+function _gdWeather() {
+  let w = null;
+  try { w = typeof _bf !== 'undefined' && _bf && _bf.weather && _bf.weather.ok ? _bf.weather : null; } catch (e) { w = null; }
+  const t = Date.now();   // clock-ok: how old an answer is
+  if (w) { if (w !== _gd.wxLast) { _gd.wxLast = w; _gd.wxAt = t; _gdSunKeep(w); } return w; }
+  return _gd.wxLast && t - _gd.wxAt < GD_WX_HOLD ? _gd.wxLast : null;
+}
+/* The last sunrise and sunset, kept on this device (never sent anywhere), so the garden opens in the right light before the weather has answered. A sun a few days old is out by minutes; the table by hours. */
+function _gdSunKeep(w) {
+  const t = w.today; if (!t || !t.sunrise || !t.sunset) return;
+  _gd.sun = { up: String(t.sunrise), down: String(t.sunset), at: Date.now(), z: Clock.zone() };   // clock-ok: how old it is
+  try { localStorage.setItem(GD_SUN_KEY, JSON.stringify(_gd.sun)); } catch (e) { /* private window: the table until the weather answers */ }
+}
+function _gdSunKept() {
+  if (_gd.sun === undefined) { try { _gd.sun = JSON.parse(localStorage.getItem(GD_SUN_KEY) || 'null'); } catch (e) { _gd.sun = null; } }
+  const s = _gd.sun;
+  return s && s.z === Clock.zone() && Date.now() - s.at < GD_SUN_DAYS * 86400000 ? s : null;   // clock-ok: how old it is. (somewhere else, the kept sun is the wrong one)
+}
 /** The fallback shower: about one morning in five, the same on every device. */
 function _gdShowerAt(iso) { const h = gardenHash('gd-rain|' + iso); return h % 5 === 0 ? _gdDayMs(iso, 6 * 60 + (h >> 8) % 50) : 0; }
 /** {now: raining, snow, last: when it last rained (ms, 0 = not in 3 days), label} */
@@ -213,7 +232,8 @@ function _gdTod(now, season, o) {
   else { const p = Clock.parts(now); h = p.h + p.mi / 60; }
   const w = theirs ? null : _gdWeather();
   const hm = (s) => { const m = /(\d{1,2}):(\d{2})/.exec(String(s || '')); return m ? +m[1] + m[2] / 60 : NaN; };
-  let up = theirs && Number.isFinite(o.sr) ? o.sr / 60 : w && w.today ? hm(w.today.sunrise) : NaN, down = theirs && Number.isFinite(o.ss) ? o.ss / 60 : w && w.today ? hm(w.today.sunset) : NaN;
+  const kept = theirs || (w && w.today) ? null : _gdSunKept();
+  let up = theirs && Number.isFinite(o.sr) ? o.sr / 60 : w && w.today ? hm(w.today.sunrise) : kept ? hm(kept.up) : NaN, down = theirs && Number.isFinite(o.ss) ? o.ss / 60 : w && w.today ? hm(w.today.sunset) : kept ? hm(kept.down) : NaN;
   if (!isFinite(up) || !isFinite(down)) { const t = { spring: [6.3, 19.6], summer: [5, 21.2], autumn: [7, 18], winter: [8, 16.2] }[season] || [7, 19]; up = t[0]; down = t[1]; }
   if (h >= up - 0.75 && h < up + 0.75) return 'dawn';
   if (h >= down - 0.75 && h < down + 0.75) return 'dusk';
@@ -625,7 +645,7 @@ function gardenSnapshot() {
     try {
       out.tz = Math.max(-840, Math.min(840, Math.round(Clock.offset(m.now))));
       const w = _gdWeather(), mn = (s) => { const x = /(\d{1,2}):(\d{2})/.exec(String(s || '')); return x ? +x[1] * 60 + +x[2] : NaN; };
-      const up = w && w.today ? mn(w.today.sunrise) : NaN, dn = w && w.today ? mn(w.today.sunset) : NaN;
+      const kept = w && w.today ? null : _gdSunKept(), up = w && w.today ? mn(w.today.sunrise) : kept ? mn(kept.up) : NaN, dn = w && w.today ? mn(w.today.sunset) : kept ? mn(kept.down) : NaN;
       if (Number.isFinite(up) && Number.isFinite(dn) && up >= 0 && up < 1440 && dn >= 0 && dn < 1440) { out.sr = up; out.ss = dn; }
     } catch (e) { /* their own clock then */ }
     try { const sh = typeof gardenShowWire === 'function' ? gardenShowWire() : null; if (sh) out.sh = sh; } catch (e) { /* the showcase is optional */ }   // 2.22: the tank and the case
