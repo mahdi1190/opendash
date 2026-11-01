@@ -273,7 +273,7 @@ function _gdpIntent(ev, m, it, cell) {
     case 'bug': return { cur: 'net', label: k.bug.def.name };
     case 'sprite': return { cur: k.sprite.cursor || 'hand', label: k.sprite.label || '' };
     case 'water': return { cur: 'rod' };
-    case 'land': { const a = gardenArea(k.land); if (m.visit) return { cur: 'no', label: a.name }; if (a.buy && m.level.level >= a.lv) return { cur: 'buy', label: `${a.name} · ${_gdpNum(a.buy)}` }; return { cur: 'no', label: `${a.name} · Lv ${a.lv}` }; }
+    case 'land': { const a = gardenArea(k.land); if (m.visit) return { cur: 'no', label: a.name }; const li = a.buy ? gardenLandInfo(a.id, m) : null; if (li && li.lvOk && li.reach && li.keyOk) return { cur: 'buy', label: `${a.name} · ${_gdpNum(a.buy)}` }; return { cur: 'no', label: li && li.lvOk && !li.keyOk ? `${a.name} · needs a key` : `${a.name} · Lv ${a.lv}` }; }
     case 'spot': return { cur: 'trowel', spot: k.cell };
     case 'decor': return { cur: m.visit && tool === 'dig' && !gardenVisitMay('take', k.decor) ? 'no' : tool === 'hand' ? 'hand' : tool === 'dig' ? 'spade' : 'no', node: nodeOf(k.decor.uid), label: m.visit && k.decor.by ? k.decor.def.name + ' · ' + _gllByLine('d', k.decor.by) : k.decor.def.name };
     case 'plant': {

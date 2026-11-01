@@ -13,12 +13,24 @@ function gardenLiveFx(c, e, o) {
     const body = Object.assign({ c, e: String(e) }, o || {});
     for (const k of Object.keys(body)) if (body[k] == null || (body[k] === 0 && (k === 'n' || k === 'ql' || k === 'nw'))) delete body[k];
     if (glFxOk(body)) return;
+    if (c === 'fish' && e === 'cast') _gllGoNow();   // (where you really stand goes first: everyone's figure must be there for the line)
     if (c === 'got' && _gll.role === 'host' && typeof _glgOwnGot === 'function') _glgOwnGot(String(e), body.i);   // (the host's own catch counts towards a shared goal)
     if (_gll.role === 'visit') { if (_glvLive()) _glvSend('fx', body); return; }
     if (_gll.role === 'host' && _glh.on && _glhAnyone()) _glhSend('all', 'fx', body);
   } catch (err) { /* only a message */ }
 }
 function gardenLivePet(c, e) { gardenLiveFx(c, e); }
+/** You have stopped and are about to do something where you stand: if that is not quite where you last said you were going, they hear it now. */
+function _gllGoNow() {
+  if (typeof _gw === 'undefined') return;
+  const x = _gw.px, y = _gw.py;
+  if (_gll.role === 'visit') {
+    if (!_glvLive() || Math.hypot(x - _glv.goX, y - _glv.goY) < 0.15) return;
+    clearTimeout(_glv.goT);
+    _glv.lastGo = _glv.goAt = Date.now(); _glv.goX = x; _glv.goY = y;   // clock-ok: spacing messages
+    _glvSend('go', { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 });
+  } else if (_gll.role === 'host' && _glh.on && _glhAnyone() && Math.hypot(x - (_glh.goX || 0), y - (_glh.goY || 0)) >= 0.15) gardenLiveWalked({ x, y });
+}
 /** A moment of yours that the others in the garden cheer (2.29.0): a garden level (v: the level), an achievement (v: its id) or a photo taken. Nothing when nobody is there. */
 function gardenLiveCheer(e, v) {
   if (e === 'level') { const n = Math.round(Number(v)); if (n >= 1 && n <= 99) gardenLiveFx('cheer', 'level', { n }); }
@@ -48,7 +60,7 @@ function _gllFxPlay(A, ev) {
   if (c === 'cheer') { _gllCheerFx(A, e, ev); return; }
   if (c === 'hall') { if (typeof _eeHear === 'function') _eeHear(A, ev); return; }
   if (c === 'snap') { if (typeof _glsHear === 'function') _glsHear(A, ev); return; }   // (a group photo: 94-garden-live-7snap.js)
-  if (c === 'sync') { if (e === 'ask') { if (typeof _glyAsked === 'function') _glyAsked(A); } else if (typeof _glyAtIn === 'function') _glyAtIn(A, ev); return; }   // (staying in step: 94-garden-live-8sync.js)
+  if (c === 'sync') { if (e === 'ask') { if (typeof _glyAsked === 'function') _glyAsked(A); } else if (e === 'away' || e === 'back') { if (typeof _glyAwayIn === 'function') _glyAwayIn(A, e === 'away'); } else if (typeof _glyAtIn === 'function') _glyAtIn(A, ev); return; }   // (staying in step: 94-garden-live-8sync.js)
   if (c === 'fs') { if (typeof _gfsHeard === 'function') _gfsHeard(A, ev); return; }   // (the fish at a guest's line: the host decides)
   if (c === 'fish') { _gllFishFx(A, e, ev); return; }
   if (c === 'bug') {
@@ -63,16 +75,18 @@ function _gllFxPlay(A, ev) {
   if (c === 'make') { _gllPose(A, 'dig', 1200); if (!_gllOffscreen(A)) _gllFloat(_gw.svg, A.x, A.y - 1.2, '🔨', A.n); return; }
   if (c === 'got') {
     if (_gll.role === 'host' && typeof _glgFxGot === 'function') _glgFxGot(A, ev);   // (a guest's fish counts towards a shared goal, at a real line's pace)
-    const kind = _GLL_FX_KIND[e], spec = kind ? gardenMomentSpec(kind, ev.i, { cm: ev.n, q: ev.ql, isNew: (ev.nw & 1) === 1, record: (ev.nw & 2) === 2 }) : null;
+    const kind = _GLL_FX_KIND[e], spec = kind ? gardenMomentSpec(kind, ev.i, { cm: ev.n, q: ev.ql, isNew: (ev.nw & 1) === 1, record: (ev.nw & 2) === 2, v: ev.v }) : null;
     if (!spec) return;   // an id this version does not know
     const who = String(A.n).split(/\s+/)[0];
     if (_gllOffscreen(A) || gardenFun() === 'off') { _gllFeed(`${who} ${spec.verb} ${_gscA(spec.name)}`); return; }
     A.fish = null; _gllFxClear(A);
-    A.dir = 's'; _gllPose(A, 'hold', GART_MOMENT_MS);
+    const holdMs = gardenMomentMs(spec);
+    if (spec.rank >= 3) _gllFeed(`${who} ${spec.verb} ${_gscA(spec.name)}! ${spec.tier}!`);
+    A.dir = 's'; _gllPose(A, 'hold', holdMs);
     const g = _gllSvgEl('g', 'gll-held'); g.setAttribute('transform', 'scale(.74)'); g.innerHTML = gardenMomentSvg(spec, { who });
     A.root.appendChild(g); A.heldG = g;
     const tag = A.root.querySelector('.gll-name'); if (tag) tag.style.display = 'none';
-    setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; if (tag) tag.style.display = ''; }, GART_MOMENT_MS);
+    setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; const now = A.root && A.root.querySelector('.gll-name'); if (now) now.style.display = ''; }, holdMs);
     if (typeof _fxSound === 'function') _fxSound('sparkle');
   }
 }
@@ -112,8 +126,10 @@ function _gllFishFx(A, e, ev) {
   const t = Date.now();   // clock-ok: how long they have been quiet
   if (e === 'cast') {
     const bx = ev.x + 0.5, by = ev.y + 0.5;
-    A.tx = null; A.moving = false; A.way = null;
-    if (Math.abs(bx - A.x) > 0.1) A.face = bx > A.x ? 1 : -1;
+    if (A.fish && A.fish.bx === bx && A.fish.by === by) { A.fish.at = t; return; }   // (told again: the line that is out stays out)
+    // (a figure still on its way finishes the walk, then the line goes out: stopping it here left it short of where they really stand)
+    const fx = A.tx != null ? (A.gx != null ? A.gx : A.tx) : A.x;
+    if (Math.abs(bx - fx) > 0.1) A.face = bx > fx ? 1 : -1;
     A.fish = { state: 'cast', t: 0, bx, by, at: t, bait: typeof ev.i === 'string' ? ev.i : '' }; A.key = '';
     _gllFxClear(A);
     return;
@@ -163,10 +179,12 @@ function _gllFireStep() {
 function _gllFxStep(A, dt) {
   _gllFireStep();
   if (typeof _glpStep === 'function') _glpStep();   // (2.32: two pets close for a moment play, 94-garden-live-7pals.js)
-  if (A.heldG && A.root && !A.root.contains(A.heldG)) A.root.appendChild(A.heldG);   // (a redraw gave them a new figure: what they caught stays held up)
+  if (A.heldG && A.root && !A.root.contains(A.heldG)) { A.root.appendChild(A.heldG); const tag = A.root.querySelector('.gll-name'); if (tag) tag.style.display = 'none'; }   // (a redraw gave them a new figure: what they caught stays held up)
   const F = A.fish;
   if (!F) return;
-  if (A.moving || Date.now() - F.at > 150000) { A.fish = null; A.key = ''; _gllFxClear(A); return; }   // clock-ok: a line forgotten
+  if (Date.now() - F.at > 150000) { A.fish = null; A.key = ''; _gllFxClear(A); return; }   // clock-ok: a line forgotten (their app says every 30 s that it is out)
+  // Only they can say a line has gone (in, lost, the catch, or their next check). A figure that moves is one being put right, or finishing its walk: it used to take the line away here, on this screen and in the host's water, while they sat there fishing.
+  if (A.moving) { if (A.fxg) _gllFxClear(A); return; }
   F.t += dt;
   if (!A.fxe || !A.fxe.rod.isConnected) {
     _gllFxClear(A);
