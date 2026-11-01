@@ -109,6 +109,7 @@
     host.append(txTop(v));
     if (TX.d.rolledFrom) host.append(txRolled(v));
     if (v.yearState === 'past' && v.carried && !v.confirmed) host.append(txCarried(v));
+    if (v.yearState === 'future') host.append(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `A look ahead at ${v.yearLabel}, worked out from this year's list of income${v.figuresFromLabel ? ` and the ${v.figuresFromLabel} tax rates, because the new ones are not out yet` : ''}. Change anything on this year's page.${v.codedOut ? ` It includes ${gbp2(v.codedOut.amount)} of tax from ${v.codedOut.fromLabel}, taken through your tax code.` : ''}` })));
     if (TX.paste) host.append(txPasteCard(v));
     if (TX.slip) host.append(txSlipCard(v));
     const lo = txLooksOff(v); if (lo) host.append(lo);
@@ -145,7 +146,7 @@
       h('p', { class: 'fv-pl-mute', text: `An estimate from official ${v.regionName} rates and what you tell Freeflo. You file on GOV.UK yourself.` }),
       v.estimated ? h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { text: `The ${v.yearLabel} figures are not in Freeflo yet, so this uses the ${v.figuresFromLabel} ones as an estimate. An update brings the real ones.` })) : null,
       h('div', { class: 'fv-pl-acts fv-tx-acts' },
-        v.filing.answer !== 'no' || v.yearState === 'past' ? txBtn('File my return', 'send', () => txOpenWalk(), 'primary') : null,
+        v.yearState !== 'future' && (v.filing.answer !== 'no' || v.yearState === 'past') ? txBtn('File my return', 'send', () => txOpenWalk(), 'primary') : null,
         txBtn('Add a payslip', 'file-up', () => { TX.slip = TX.slip && TX.slip.choose ? null : { choose: true }; txPaint(); }),
         txBtn('Your answers', 'pencil', () => ansOpen()),
         txBtn('Tell Freeflo in one go', 'sparkles', () => { TX.paste = TX.paste ? null : { text: '' }; txPaint(); }, 'ghost')));
@@ -174,12 +175,12 @@
     const b = v.bill;
     if (b.noReturn) {
       if (b.balance > 0.5 && b.balance < 10) return { big: gbp(b.balance), word: 'difference', tone: 'good', say: 'Nothing to do. Tax codes round a little, so payroll and the year’s tax end a few pounds apart.' };
-      if (b.viaCode && b.balance > 0.5) return { big: gbp(b.balance), word: 'collected through your tax code', tone: 'good', say: 'You do not need a tax return for this, and it is not a bill to pay. HMRC normally collects it through your tax code next tax year, so your pay will be a little lower then. Nothing is kept aside for it.' };
+      if (b.viaCode && b.balance > 0.5) return { big: gbp(b.balance), word: 'collected through your tax code', tone: 'good', say: 'You do not need a tax return for this, and it is not a bill to pay. HMRC normally writes to you after the tax year ends, then collects it through your tax code in ' + b.collectIn + ', so your pay will be a little lower then. Nothing is kept aside for it.' };
       if (b.balance > 0.5) return { big: gbp(b.balance), word: 'tax not yet taken', tone: 'owe', say: 'You do not need a tax return for this, but it is too much to collect through a tax code. HMRC writes to you about how to pay it, so it is kept aside.' };
       if (b.balance < -0.5) return { big: gbp(-b.balance), word: 'paid too much', tone: 'good', say: 'You may be due a refund. HMRC usually writes to you after the tax year ends, in a letter called a P800.' };
       return { big: gbp(0), word: 'left to pay', tone: 'good', say: 'What your jobs take through payroll covers the year.' };
     }
-    if (b.viaCode) return { big: gbp(b.balance), word: 'collected through your tax code', tone: 'good', say: 'This is not a January bill. HMRC takes it through your pay next tax year, so your pay will be a little lower then. Nothing is kept aside for it.' };
+    if (b.viaCode) return { big: gbp(b.balance), word: 'collected through your tax code', tone: 'good', say: 'This is not a January bill. HMRC takes it through your pay in ' + b.collectIn + ', so your pay will be a little lower then. Nothing is kept aside for it.' };
     // (nothing paid yet: the advance payments last year's return will ask for are more than this year's bill)
     if ((b.parts.poaToCome || 0) > 0.5 && b.balance < -0.5 && b.balance + b.parts.poaToCome > -0.5) return { big: gbp(-b.balance), word: 'should come back after your advance payments', tone: 'good', say: `Because of last year\u2019s return, HMRC will ask for ${gbp(b.parts.poaToCome)} in advance next January and July. That is more than this year\u2019s bill, so the difference should come back. You have not paid it yet. If your income has dropped, you can ask HMRC to lower those payments.` };
     if (b.parts.paidOnAccount + (b.parts.poaToCome || 0) > 0.5 && b.balance < -0.5) return { big: gbp(-b.balance), word: 'to come back', tone: 'good', say: 'The payments you made in advance were more than the year\'s bill. HMRC refunds it, or takes it off your next payment.' };

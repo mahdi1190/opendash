@@ -225,6 +225,7 @@ function _xpDetail(e) {
   box.appendChild(meta);
   if (e.note) box.appendChild(_xe('p', 'xp-d-note', esc(e.note)));
   const acts = _xe('div', 'xp-d-acts');
+  if (e.status === 'paid' && !e.paidTxKey && !e.paidNoBank) box.appendChild(_xe('p', 'xp-hint', 'No bank payment is linked to this, so the money back may still count as income.'));
   if (e.status === 'to-claim') acts.appendChild(uiButton({ label: 'Submit', icon: 'send', size: 'sm', run: () => expSubmitDialog([e.id]) }));
   else if (e.status === 'submitted') acts.appendChild(uiButton({ label: 'Mark as paid', icon: 'circle-check', size: 'sm', run: () => expMarkPaid([e.id]) }));
   acts.append(uiButton({ label: 'Edit', icon: 'pencil', size: 'sm', run: () => expAddDialog({ edit: e.id }) }),
@@ -246,6 +247,7 @@ function _xpRowMenu(e, anchor) {
   const items = [{ label: 'Edit', icon: 'pencil', run: () => expAddDialog({ edit: e.id }) }, { label: 'Receipts…', icon: 'paperclip', run: () => expReceiptsDialog(e.id) }];
   if (e.status === 'to-claim') items.push({ label: 'Submit…', icon: 'send', run: () => expSubmitDialog([e.id]) });
   if (e.status !== 'paid') items.push({ label: 'Mark as paid', icon: 'circle-check', run: () => expMarkPaid([e.id]) });
+  if (e.status === 'paid' && !e.paidTxKey && !e.paidNoBank) items.push({ label: 'Pick the bank payment…', icon: 'landmark', hint: 'So it is not counted as income', run: async () => { const j = await expDo('/paid-candidates', { ids: [e.id], date: e.paidAt }, { quiet: true, what: 'look that up' }); if (j && j.unlinked) expPickCredit(j.unlinked); else if (j) toast('This one does not count as income.', { icon: 'info' }); } });
   if (e.status === 'paid') items.push({ label: 'Not paid after all', icon: 'rotate-ccw', run: () => expDo('/unpaid', { ids: [e.id] }, { done: 'Moved back', what: 'change that' }) });
   if (e.status === 'submitted') items.push({ label: 'Not sent after all', icon: 'rotate-ccw', run: () => expDo('/unsubmit', { ids: [e.id] }, { done: 'Moved back to to claim', what: 'change that' }) });
   const linked = (e.taskIds || []).map(id => getItem(id)).filter(Boolean);

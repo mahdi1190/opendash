@@ -139,7 +139,7 @@ export default function register(app) {
     const out = taxSummary(v.view);
     if (out.hasTaxTab) {
       out.expenseFinder = v.finder ? { possible: v.finder.suggestions.slice(0, 25).map(s => ({ tx: s.tx, date: s.date, merchant: s.merchant, amount: s.amount, what: s.what, businessPct: s.pct, confidence: s.confidence, why: s.why, saves: s.saves, savesOnceCostsAreUsed: s.savesIfCosts })), total: v.finder.total, cannotClaim: v.finder.cannot.map(x => ({ what: x.title, why: x.why, total: x.total })) } : null;
-      out.yearsAvailable = taxYears(doc, opts().today).map(y => ({ id: y.id, label: y.label, state: y.state }));
+      out.yearsAvailable = (v.view.years || taxYears(doc, opts().today)).map(y => ({ id: y.id, label: y.label, state: y.state }));
       out.memory = doc.memory.map(m => ({ id: m.id, text: m.text, date: m.date, source: m.source, open: !!m.open }));
     }
     return out;
