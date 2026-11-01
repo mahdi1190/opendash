@@ -62,13 +62,13 @@ function gardenGearBuy(id) {
   if (gardenGearOwned(id)) return _gdNo('Yours already');
   if (d.ribbon) { const r = GARDEN_RIBBONS.find(x => x.id === d.ribbon); return _gdNo('A prize for the ribbon “' + (r ? r.label : d.ribbon) + '”'); }
   if ((d.lv || 1) > m.level.level) return _gdNo('Garden level ' + d.lv);
-  const list = d.kind === 'rod' ? GARDEN_RODS : GARDEN_NETS, prev = list.find(x => x.tier === d.tier - 1);
+  const list = d.kind === 'rod' ? GARDEN_RODS : GARDEN_NETS, prev = d.kind === 'lake' ? (d.needs ? gardenGearDef(d.needs) : null) : list.find(x => x.tier === d.tier - 1);
   if (prev && !gardenGearOwned(prev.id)) return _gdNo('Needs the ' + prev.name.toLowerCase() + ' first');
   if (w.coins < d.price) return _gdNo(`That costs ${d.price} coins: you have ${w.coins}`);
   const lk = 'b.' + m.today + '.' + _gdUid('');
   const mark = _gdMark([['led', lk]]);
   _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(d.price), i: { ['gear:' + id]: 1 }, n: 1 };
-  const g = _gdG(); g.prefs[d.kind] = id;     // the new one goes straight in your hand
+  const g = _gdG(); if (d.kind !== 'lake') g.prefs[d.kind] = id;     // the new one goes straight in your hand
   _gdEmit('buy', { item: 'gear:' + id, n: 1 });
   return _gdDone(`Bought the ${d.name.toLowerCase()} for ${d.price} coins`, 'buying a ' + d.kind, mark, { icon: 'shopping-bag' });
 }
@@ -90,12 +90,18 @@ function gardenFishPlan(x, y) {
   if (!zone) return _gdNo('Nothing to fish in there');
   if (zone === 'pond' && !m.areas.includes('pond')) return _gdNo('The pond opens at garden level 7');
   const contest = gardenCastsInfo(m).free;
-  const rod = gardenRod(), bait = contest ? GARDEN_BAITS[0] : gardenBait();
-  return { ok: true, zone, strike: GARDEN_CATCH_ECON.strike + rod.st.react, bar: rod.st.bar, line: rod.st.line, tier: rod.tier, qmax: rod.st.q, baitDef: bait, x, y, contest };
+  const rod = gardenRod(), bait = contest ? GARDEN_BAITS[0] : gardenBait(), station = gardenWorkOwned('fishing-station');
+  // chum goes in with the cast: it is spent whether or not anything comes
+  if (!contest && bait.st.chum) { const today = _gdToday(); _gdG().led['ct.' + today + '.' + _gdUid('')] = { d: today, k: 'ct', i: { ['bait:' + bait.id]: -1 }, n: 1 }; _gdSave(); }
+  return { ok: true, zone, strike: GARDEN_CATCH_ECON.strike + rod.st.react + (station ? 0.3 : 0), bar: rod.st.bar + (station ? 0.05 : 0), line: rod.st.line, spent: !!bait.st.chum, tier: rod.tier, qmax: rod.st.q, baitDef: bait, x, y, contest };
 }
 /** That very fish has bitten your line: the plan gets it, and a piece of bait is eaten (a cast that nothing took costs nothing). */
 function gardenFishBite(plan, f) {
-  plan.id = f.id; plan.def = f.def; plan.diff = f.def.diff; plan.beh = f.def.beh; plan.cm = f.cm;
+  plan.id = f.id; plan.def = f.def; plan.beh = f.def.beh; plan.cm = f.cm;
+  // how hard: the kind of fish, then how big this one is for its kind (a giant of its kind fights up to 2 points harder), and a weak rod feels it more
+  const span = Math.max(1, f.def.cm[1] - f.def.cm[0]), size = Math.max(0, Math.min(1, (f.cm - f.def.cm[0]) / span));
+  plan.diff = f.def.diff ? Math.min(12, f.def.diff + size * 2) : 0;
+  plan.line = plan.line * (1 + 0.1 * Math.max(0, plan.diff - (plan.tier || 1) * 2.2));
   const bait = plan.baitDef;
   if (plan.contest || !bait || bait.own || plan.spent) return;
   plan.spent = true;
@@ -142,7 +148,7 @@ function _gcWindow(now) { return Math.floor(now / 1200000); }   // 20 minutes: t
  * The bugs about right now (not yet caught): [{key, id, x, y (cells), hab}]. Seeded by the 20-minute window, so a reload shows
  * the same ones; a caught one stays gone until the window turns over. Where they live follows what you have grown.
  */
-const GARDEN_BUGS_MAX = 3;   // about at once in the whole garden: the owner, 1 Nov 2026: a pleasant surprise, not everywhere all the time
+const GARDEN_BUGS_MAX = 6;   // the most at once, in a big, late garden. The owner, 1 Nov 2026: start with very few, and more as the garden grows, but never many
 function gardenBugsNow(mArg) {
   const base = _gcBugsBase(mArg);
   if (typeof gardenContestBugsNow !== 'function') return base;
@@ -174,7 +180,9 @@ function _gcBugsBase(mArg) {
   };
   const pool = GARDEN_BUGS.filter(b => b.lv <= m.level.level && b.tod.includes(m.tod) && (!b.seasons.length || b.seasons.includes(m.season)) && (b.rain ? wet : !wet || b.hab.includes('light')) && !(m.season === 'winter'));
   if (!pool.length) return [];
-  const n = Math.max(1, Math.min(GARDEN_BUGS_MAX, 1 + Math.floor(blooms.length / 15) + (woods ? 1 : 0) + hotels + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
+  // flowers bring them, up to what a garden of this level holds: 2 at the start, one more every 5 levels. A bug hotel adds one of its own
+  const cap = Math.min(GARDEN_BUGS_MAX, 2 + Math.floor(m.level.level / 5) + Math.min(2, hotels));
+  const n = Math.max(1, Math.min(cap, 1 + Math.floor(blooms.length / 8) + Math.floor(trees.length / 6) + (woods ? 1 : 0) + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
   const weights = pool.map(b => (GARDEN_RARITY[b.rarity] || GARDEN_RARITY.common).weight);
   const out = [];
   for (let i = 0; i < n * 3 && out.length < n; i++) {

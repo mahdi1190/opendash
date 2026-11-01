@@ -10,6 +10,22 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.38.0]
+
+Fishing is a proper game again, and it grows with your garden.
+
+### Changed
+- **The reel game is back.** After the strike you fight the fish in the bar. How hard depends on the kind of fish, how big this one is, and your rod.
+- **Every shadow is a real fish.** The small decorative ones in the water are gone.
+- **Careful fishing.** Cast right on top of a fish and it bolts, so land just in front. Your footsteps scare fish near the surface: hold Shift to creep. A big hunter with a fin scares small fish away.
+- **Further out, bigger and rarer.** The far deep water is where the giants and the fins are, and great fish give themselves away with rings on the surface.
+- **Fish and bugs start few and grow with your garden.** Fish come with your level and what you build for the lake. Bugs come with your flowers and trees, up to a limit for your level, and a bug hotel adds to it. Butterflies and bees you cannot catch are now rare.
+
+### Added
+- **Build for the lake**, at the tackle shop: a longer pier and a deep-water pier that reach further out, a fish feeder, reed beds, a fishing station (a bigger bar and longer to strike), a night lantern and stocked pools. Friends walk on your longer pier when they visit.
+- **Fish chum:** a new bait that brings a fish up near your float.
+- **Feeding times:** fish are keener at dawn and dusk, come back faster in the rain, and now and then there is a short feeding frenzy.
+
 ## [2.37.0]
 
 Messages are quieter, and Freeflo notices when your pay is not what it expected.

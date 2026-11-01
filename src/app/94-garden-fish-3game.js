@@ -4,15 +4,18 @@
 
    FISHING (2.34: every bite comes from a fish you can see in the water, 94-garden-fish-6school.js):
      1. click the water near a shadow: you walk to a spot the rod reaches, turn to face it and cast
-     2. the bobber floats; a fish near it may notice, swim over and nibble. Wait: strike on a nibble and it bolts. It bites with a plunge, ripples and a "!" over your head
-     3. press in time (click, Space or E) and it is yours, as in Animal Crossing (2.36: the reel game is gone). The sooner you press, the better the catch can be.
-     Press Esc, move or change tool to wind the line in. Casting is free; bait is spent when a fish bites.
+     2. the bobber floats; a fish near it may notice, swim over and nibble. Wait: strike on a nibble and it bolts. Cast right on top of one, or stomp along the bank above one, and it bolts too. It bites with a plunge, ripples and a "!" over your head
+     3. strike in time (click, Space or E): a fish that is hard to land starts the reel (how hard: the kind of fish, how big this one is, against your rod)
+     4. the reel: a bar and a fish on a track. HOLD (the mouse, Space, E or Up) to lift the bar, let go to let it fall; keep
+        the fish inside the bar to fill the meter. Fill it and the fish is yours; let it empty and the fish is gone
+        (a perfect reel, never losing the fish, lands a better one).
+     Junk and treasure need no reel. Press Esc, move or change tool to wind the line in. Casting is free; bait is spent when a fish bites.
    BUGS, a gentle Animal Crossing:
      click a bug: you creep up on it (slowly: run at a bug and it bolts), and swing when you are in reach.
      Resting bugs are easy to net; ones in the air dodge. Space / E swings at the nearest one.
 
    Everything drawn here goes into the scene's 'actors' layer (<g class="gd-actors">), which the scene patch never touches; the reel
-   State: _gw.fishing, _gw.netting, _gw.bugs (94-garden-world-0walk.js declares _gw).
+   is an HTML panel over the stage. State: _gw.fishing, _gw.reel, _gw.netting, _gw.bugs (94-garden-world-0walk.js declares _gw).
    ============================================================ */
 const NS_SVG = 'http://www.w3.org/2000/svg';
 function _gwActors() { return _gw.svg ? _gw.svg.querySelector('.gd-actors') : null; }
@@ -46,9 +49,11 @@ function _gwHeldUp(svgFrag, ms) {
 function _gwFishResume() {
   const F = _gw.fishing; if (!F || F.state === 'idle') return;
   _gw.fx = null; _gwFx(); _gwFishFocus(true);
+  const R = _gw.reel, box = _gdgBox();
+  if (R && box) { box.appendChild(R.el); box.addEventListener('pointerdown', R.down, true); box.focus({ preventScroll: true }); }
 }
 function _gwFishBusy() { return !!(_gw.fishing && _gw.fishing.state !== 'idle'); }
-function _gwFishReset() { _gwFishClearFx(); _gw.fishing = null; _gwFishFocus(false); }
+function _gwFishReset() { _gwFishClearFx(); _gw.fishing = null; _gwReelClose(); _gwFishFocus(false); }
 /** Fishing locks you in: the camera closes in on you, nothing under the pointer lights up, the toolbar rests; a little bar says what to do. */
 function _gwFishFocus(on) {
   if (!_gdp.root) return;
@@ -59,7 +64,7 @@ function _gwFishFocus(on) {
   else if (box) { const h = box.querySelector('.gd-fishhud'); if (h) h.remove(); }
   _gw.cam.dirty = true; _gw.cam.snap = false;
 }
-const _GW_FISH_SAY = { cast: 'Casting…', wait: 'Waiting for a fish…', bite: 'Now! Click or press Space', reel: '', land: '' };
+const _GW_FISH_SAY = { cast: 'Casting…', wait: 'Waiting for a fish…', bite: 'Now! Click or press Space', reel: 'Hold to lift the bar', land: '' };
 function _gwFishHud(F) {
   const box = _gdgBox(); if (!box) return;
   let say = _GW_FISH_SAY[F.state] || '';
@@ -137,7 +142,8 @@ function _gwFishFrame(dt) {
     if (F.t >= F.plan.strike) { _gfsSay('free', F.fu); _gwFishLost('It got away: too slow.'); return; }
   } else if (F.state === 'reel') {
     by = ty + Math.sin(F.t * 12) * 1.4; bx = tx + Math.sin(F.t * 9) * 1.2; sag = 1.2;
-    if (F.t >= 0.25) _gwFishLand(F.res || {});   // (a moment on the line, then it comes in)
+    _gwReelStep(dt);
+    if (_gw.fishing !== F || F.state !== 'reel') return;
   } else if (F.state === 'land') {
     const u = Math.min(1, F.t / 0.5); bx = tx + (R.tipX - tx) * u; by = ty + (R.tipY - ty) * u - Math.sin(u * Math.PI) * 30; sag = 2;
     if (F.t >= 0.5) { _gwFishFinish(); return; }
@@ -159,12 +165,12 @@ function _gwFishCancel() {
   // you wound it in yourself: that is not a mistake, so nothing is said
   if (!_gwFishBusy()) return;
   if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'in');
-  _gw.fishing.state = 'idle'; _gwFishClearFx(); _gwFishFocus(false);
+  _gw.fishing.state = 'idle'; _gwReelClose(); _gwFishClearFx(); _gwFishFocus(false);
 }
 function _gwFishCancelWalkAway() { if (_gwFishBusy() && _gw.fishing.state !== 'cast') _gwFishCancel(''); }
 function _gwFishLost(msg) {
   if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'lost');
-  _gw.fishing.state = 'idle'; _gwFishClearFx(); _gwFishFocus(false);
+  _gw.fishing.state = 'idle'; _gwReelClose(); _gwFishClearFx(); _gwFishFocus(false);
   if (msg) { const s = _ghProject(_gw.fishing.bx, _gw.fishing.by), r = _gw.box && _gw.box.getBoundingClientRect(); gameDeny(null, { at: s && r ? { x: r.left + s.x, y: r.top + s.y } : null, say: msg }); }
   if (gardenMotionOn()) { const [x, y] = _gwPx(_gw.fishing.bx, _gw.fishing.by); _gwRing(x, y, 1.2); }
   _gdpRefreshChromeSoon();
@@ -204,6 +210,7 @@ function _gwFishCast(pt0) {
   _gwFacePt(pt);
   const plan = gardenFishPlan(Math.floor(pt.x), Math.floor(pt.y));
   if (!plan.ok) { _gdpSay(plan); return; }
+  if (typeof _gfsTooClose === 'function' && _gfsTooClose(pt)) _gdpSay({ ok: false, msg: 'Too close! Your float landed on it and scared it. Cast just in front of a shadow.' });
   _gw.fishing = { state: 'cast', t: 0, plan, bx: pt.x, by: pt.y, nibN: 0, nibble: 0, hold: false, fu: null, mood: '' };
   _gwFishClearFx(); _gwFx(); _gwBody(); _gwFishFocus(true);
   if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'cast', { x: Math.floor(pt.x), y: Math.floor(pt.y), i: plan.baitDef.id });
@@ -225,22 +232,23 @@ function _gwFishClick() { _gwFishPress(true); return true; }
 function _gwFishPress(fromClick) {
   const F = _gw.fishing; if (!F) return;
   if (F.state === 'bite') { _gwFishStrike(); return; }
-  if (F.state === 'wait') {   // locked in: a click while you wait does nothing (Esc or the Reel in button winds the line in), but press on a nibble and the fish bolts
+  if (F.state === 'wait') {   // locked in: a click while you wait does nothing (Esc or the Reel in button winds the line in), but strike on a nibble and the fish bolts
     const mine = _gfsMine();
     if (mine && mine.st === GF_ST.nibble) { _gfsSay('free', mine.u); _gwFishLost('Too soon! It got a fright. Wait for the big splash.'); }
     return;
   }
+  if (F.state === 'reel' && _gw.reel) _gw.reel.hold = true;
 }
-function _gwFishRelease() { /* nothing is held since the reel game went (2.36) */ }
+function _gwFishRelease() { if (_gw.reel) _gw.reel.hold = false; }
 function _gwFishStrike() {
   const F = _gw.fishing, plan = F.plan;
-  // the sooner you press, the better it can be (a good rod lands better ones)
-  F.res = { perfect: !!plan.diff && F.t <= plan.strike * 0.45 };
   F.state = 'reel'; F.t = 0; if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'reel');
   _gfsSay('hook', F.fu);
+  if (!plan.diff) { _gwFishLand({ perfect: false, easy: true }); return; }   // junk and treasure just come in
+  _gwReelOpen(plan);
 }
 function _gwFishLand(res) {
-  const F = _gw.fishing; F.state = 'land'; F.t = 0; F.res = res; if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'land');
+  const F = _gw.fishing; F.state = 'land'; F.t = 0; F.res = res; _gwReelClose(); if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'land');
   if (gardenMotionOn()) { const [x, y] = _gwPx(F.bx, F.by); _gwRing(x, y, 1.6); }
 }
 function _gwFishFinish() {
@@ -256,7 +264,7 @@ function _gwFishFinish() {
   const rare = ['rare', 'epic', 'legendary'].includes(d.rarity);
   let sub, name = d.name;
   if (r.contest) sub = d.cat === 'fish' ? `${r.cm} cm · ${gardenQuality(r.q).label} · let go` : 'Let go again';
-  else if (d.cat === 'fish') sub = `${r.cm} cm${r.q ? ' · ' + gardenQuality(r.q).label : ''}`;
+  else if (d.cat === 'fish') sub = `${r.cm} cm${r.q ? ' · ' + gardenQuality(r.q).label : ''}${r.perfect ? ', a perfect reel' : ''}`;
   else if (r.coins) { sub = `${r.coins} coins inside`; name = 'A coin purse'; }
   else if (r.items) { const k = Object.keys(r.items)[0], pl = gardenPlant(String(k).replace('seed:', '')); sub = pl ? `A ${pl.name.toLowerCase()} seed packet and 10 coins` : 'A seed packet'; }
   else sub = d.cat === 'junk' ? 'Junk, but the market takes it' : 'Treasure!';
@@ -264,6 +272,66 @@ function _gwFishFinish() {
   _gwCatchCard({ svg: gardenCatchSvg('fish', d.id, 64, { uid: 'cc' }), name: `You ${d.cat === 'fish' ? 'caught' : 'fished up'} ${_gscA(name.toLowerCase())}!`, sub: d.blurb ? `${sub}. ${d.blurb}` : sub, q: r.q, isNew: r.isNew, record: r.record, rare, open: 'fish', ms: 5200 });
   if (typeof gardenFloat === 'function' && !r.contest) gardenFloat(d.cat === 'fish' ? `+${(_GC_XP[d.rarity] || 1)} XP` : '', Math.floor(_gw.px), Math.floor(_gw.py) - 1, 1, 1, 'is-xp');
   _gdpRefreshChromeSoon();
+}
+
+/* ---------- the reel ---------- */
+function _gwReelOpen(plan) {
+  const box = _gdgBox(); if (!box) { _gwFishLand({ perfect: false }); return; }
+  _gwReelClose();
+  const el = document.createElement('div'); el.className = 'gd-reel'; el.setAttribute('role', 'application'); el.setAttribute('aria-label', 'Reeling in a fish. Hold the mouse button, Space or E to lift the bar.');
+  el.innerHTML = `<div class="gd-reel-head"><b>${esc(plan.def.cat !== 'fish' ? 'Reeling in' : plan.cm >= 100 || plan.diff >= 8 ? 'A monster! Hold on!' : plan.diff >= 5 ? 'Something big!' : 'A fish on the line')}</b></div><div class="gd-reel-body"><div class="gd-reel-track"><div class="gd-reel-bar"></div><div class="gd-reel-fish">${gardenCatchSvg('fish', plan.id, 30, { uid: 'rf' })}</div></div><div class="gd-reel-prog"><i></i></div></div><div class="gd-reel-hint">Hold to lift the bar · keep the fish inside · Esc lets go</div>`;
+  // the fish's real name only after it is landed: a dark shape while you fight it
+  el.querySelector('.gd-reel-fish').classList.add('is-hidden');
+  box.appendChild(el);
+  const barH = plan.bar, beh = plan.beh, diff = plan.diff;
+  _gw.reel = { el, bar: el.querySelector('.gd-reel-bar'), fish: el.querySelector('.gd-reel-fish'), prog: el.querySelector('.gd-reel-prog i'),
+    b: 0.05, vb: 0, f: 0.5, vf: 0, target: 0.5, tt: 0, p: 0.3, barH, beh, diff, line: plan.line, hold: false, lostFor: 0, everLost: false, t: 0, perfect: true };
+  // holding the mouse on the stage lifts the bar
+  const down = (ev) => { if (_gw.reel) { _gw.reel.hold = true; ev.preventDefault(); } };
+  const up = () => { if (_gw.reel) _gw.reel.hold = false; };
+  _gw.reel.down = down; _gw.reel.up = up;
+  box.addEventListener('pointerdown', down, true); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  box.focus({ preventScroll: true });
+}
+function _gwReelClose() {
+  const R = _gw.reel; if (!R) return;
+  const box = _gdgBox();
+  if (box && R.down) box.removeEventListener('pointerdown', R.down, true);
+  if (R.up) { window.removeEventListener('pointerup', R.up); window.removeEventListener('pointercancel', R.up); }
+  if (R.el && R.el.parentNode) R.el.remove();
+  _gw.reel = null;
+}
+function _gwReelStep(dt) {
+  const R = _gw.reel; if (!R) return;
+  R.t += dt;
+  // the bar: lifted while held, falls when let go
+  const acc = R.hold ? 3.1 : -2.3;
+  R.vb = Math.max(-1.25, Math.min(1.25, R.vb + acc * dt)); R.b += R.vb * dt;
+  if (R.b < 0) { R.b = 0; R.vb = R.vb < -0.5 ? -R.vb * 0.28 : 0; }
+  const top = 1 - R.barH; if (R.b > top) { R.b = top; R.vb = 0; }
+  // the fish picks a place to be, by how it swims
+  R.tt -= dt;
+  const spd = 0.22 + 0.075 * R.diff, jump = 0.14 + 0.05 * R.diff;
+  if (R.tt <= 0) {
+    const beh = R.beh === 'mixed' ? ['smooth', 'dart', 'floater', 'sinker'][Math.floor(Math.random() * 4)] : R.beh;
+    R.cur = beh;
+    if (beh === 'smooth') { R.target = Math.max(0.06, Math.min(0.94, R.f + (Math.random() - 0.5) * 2 * jump * 2)); R.tt = 0.8 + Math.random() * 1.2; R.sp = spd; }
+    else if (beh === 'dart') { R.target = 0.06 + Math.random() * 0.88; R.tt = 0.45 + Math.random() * 0.8; R.sp = spd * 2.6; }
+    else if (beh === 'floater') { R.target = Math.min(0.94, R.f + 0.12 + Math.random() * 0.3); if (R.f > 0.8) R.target = 0.2 + Math.random() * 0.3; R.tt = 0.7 + Math.random() * 1.1; R.sp = spd * 0.9; }
+    else { R.target = Math.max(0.06, R.f - 0.12 - Math.random() * 0.3); if (R.f < 0.2) R.target = 0.6 + Math.random() * 0.3; R.tt = 0.7 + Math.random() * 1.1; R.sp = spd * 0.9; }
+  }
+  const d = R.target - R.f, step = Math.sign(d) * Math.min(Math.abs(d), (R.sp || spd) * dt * (0.5 + Math.min(1, Math.abs(d) * 3)));
+  R.f += step;
+  // the meter
+  const inBar = R.f >= R.b - 0.015 && R.f <= R.b + R.barH + 0.015;
+  if (inBar) { R.p += 0.2 * dt; R.lostFor = 0; } else { R.p -= 0.13 * (R.line || 1) * dt; R.lostFor += dt; if (R.lostFor > 0.3) R.perfect = false; }
+  R.p = Math.max(0, Math.min(1, R.p));
+  R.bar.style.bottom = (R.b * 100).toFixed(2) + '%'; R.bar.style.height = (R.barH * 100).toFixed(2) + '%';
+  R.fish.style.bottom = `calc(${(R.f * 100).toFixed(2)}% - 15px)`;
+  R.prog.style.height = (R.p * 100).toFixed(1) + '%';
+  R.el.classList.toggle('is-in', inBar);
+  if (R.p >= 1) { const perfect = R.perfect; _gwFishLand({ perfect }); }
+  else if (R.p <= 0) { _gfsSay('free', _gw.fishing.fu); _gwFishLost('It slipped the hook.'); }
 }
 
 /* ---------- bugs: they live in the actors layer and wander by themselves ---------- */

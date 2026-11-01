@@ -430,7 +430,7 @@ const _GARTW = (function () {
       const rq = A.rng(A.hash('lake-live'));
       for (let i = 0; i < Math.min(14, w / 90); i++) { const cx = rq() * w, cy = wy + 10 + rq() * (wh - 16); if (!offPier(cx, 14) && cy < W.sky + (pier.y + pier.h) * ch + 12) continue; live += `<ellipse class="gart-ring" cx="${f1(cx)}" cy="${f1(cy)}" rx="${f1(rr(rq, 7, 13))}" ry="2.2" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1" style="animation-delay:-${f1(rq() * 6)}s"/>`; }
       if (sc.tod === 'day' || sc.tod === 'dusk') for (let i = 0; i < Math.min(12, w / 110); i++) { const cx = rq() * w, cy = wy + 6 + rq() * (wh - 10); if (!offPier(cx, 6) && cy < W.sky + (pier.y + pier.h) * ch + 8) continue; live += `<path class="gd-glint" d="M${f1(cx - 3.4)} ${f1(cy)}h6.8M${f1(cx)} ${f1(cy - 1.6)}v3.2" stroke="#ffffff" stroke-width="1.3" stroke-opacity="0.85" stroke-linecap="round" style="animation-delay:-${f1(rq() * 5)}s"/>`; }
-      if (!night) for (let i = 0; i < Math.min(6, w / 220); i++) { const cy = wy + (1.2 + rq() * 3.2) * ch, cx = rq() * w, k = 0.8 + (cy - wy) / wh * 0.9; if (cx < px1 + 40 && cx + 260 > px0 - 40) continue; live += `<g class="gd-shadowfish" style="--dx:${Math.round(90 + rq() * 160)}px;animation-duration:${Math.round(34 + rq() * 40)}s;animation-delay:-${Math.round(rq() * 40)}s"><path fill="#06223c" fill-opacity="0.16" d="${A.ell(cx, cy, 10 * k, 3.2 * k)}M${f1(cx - 9 * k)} ${f1(cy)}l${f1(-6 * k)} ${f1(-3 * k)}v${f1(6 * k)}z"/></g>`; }
+      // (no fish are drawn here: every shadow in the water is a real fish, 94-garden-fish-6school.js)
     }
     return { s, live };
   }
