@@ -24,6 +24,7 @@ const _GDPOP = Object.freeze({
   sail: { title: 'Where to?', icon: 'ship', fill: (el) => gardenSailTab(el) },
   visit: { title: 'Guestbook', icon: 'feather', fill: (el) => gardenVisitNotes(el) },
   craft: { title: 'Crafting bench', icon: 'hammer', fill: (el, m) => gardenCraftTab(el, m) },
+  play: { title: 'Play', icon: 'gamepad-2', fill: (el, m) => gardenPlayTab(el, m) },
   tricks: { title: 'Trick book', icon: 'wand-sparkles', fill: (el) => { el.textContent = ''; petBookPage(el, { panel: true }); } },
 });
 /** The rowing boat: the friends whose gardens you can row over to (the cards the Post box shows), and a click on one takes you there. */
