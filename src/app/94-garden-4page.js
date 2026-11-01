@@ -273,7 +273,7 @@ function _gdpIntent(ev, m, it, cell) {
     case 'bug': return { cur: 'net', label: k.bug.def.name };
     case 'sprite': return { cur: k.sprite.cursor || 'hand', label: k.sprite.label || '' };
     case 'water': return { cur: 'rod' };
-    case 'land': { const a = gardenArea(k.land); if (m.visit) return { cur: 'no', label: a.name }; const li = a.buy ? gardenLandInfo(a.id, m) : null; if (li && li.lvOk && li.reach && li.keyOk) return { cur: 'buy', label: `${a.name} · ${_gdpNum(a.buy)}` }; return { cur: 'no', label: li && li.lvOk && !li.keyOk ? `${a.name} · needs a key` : `${a.name} · Lv ${a.lv}` }; }
+    case 'land': { const a = gardenArea(k.land); if (a.solid) return { cur: 'no', label: '' }; if (m.visit) return { cur: 'no', label: a.name }; const li = a.buy ? gardenLandInfo(a.id, m) : null; if (li && li.lvOk && li.reach && li.keyOk) return { cur: 'buy', label: `${a.name} · ${_gdpNum(a.buy)}` }; return { cur: 'no', label: li && li.lvOk && !li.keyOk ? `${a.name} · needs a key` : `${a.name} · Lv ${a.lv}` }; }
     case 'spot': return { cur: 'trowel', spot: k.cell };
     case 'decor': return { cur: m.visit && tool === 'dig' && !gardenVisitMay('take', k.decor) ? 'no' : tool === 'hand' ? 'hand' : tool === 'dig' ? 'spade' : 'no', node: nodeOf(k.decor.uid), label: m.visit && k.decor.by ? k.decor.def.name + ' · ' + _gllByLine('d', k.decor.by) : k.decor.def.name };
     case 'plant': {
@@ -411,7 +411,7 @@ function _gdpBindStage(box) {
   box.addEventListener('pointercancel', () => { _gdp.press = null; if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); if (_gdp.sweep) _gdpSweepEnd(); _gdpGhostClear(); });
   box.addEventListener('lostpointercapture', () => { if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); });
   box.addEventListener('keydown', (ev) => { if (ev.target !== box && ev.target && ev.target.closest && ev.target.closest('button, a, input, select, textarea') && (ev.key === ' ' || ev.key === 'Enter')) return; _gdpKey(ev); });
-  box.addEventListener('focus', () => { if (!_gdp.cur) _gdp.cur = { x: 9, y: 6, kb: false }; });
+  box.addEventListener('focus', () => { if (!_gdp.cur) _gdp.cur = { x: GARDEN_WORLD.start.x, y: GARDEN_WORLD.start.y, kb: false }; });
 }
 function _gdpAct(r) { if (r && !r.ok) _gdpSay(r); return r; }
 function _gdpRefreshChromeSoon() { if (_gdp.root) gardenHudPaint(gardenHere()); }

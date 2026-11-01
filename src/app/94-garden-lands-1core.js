@@ -21,7 +21,7 @@ function _gldPay(label, msg, body, seen, icon) {
   return _gdDone(msg, label, mark, { icon: icon || 'sparkles' });
 }
 function _gldInt(seed, a, b) { return a + gardenHash(seed) % (b - a + 1); }
-function _gldOwnedSections() { return GARDEN_LAND_SECTIONS.filter(s => gardenHas('land:' + s.id) > 0 || gardenHas('land:' + s.plot) > 0); }
+function _gldOwnedSections() { return GARDEN_LAND_SECTIONS.filter(s => s.buy && gardenHas('land:' + s.id) > 0); }
 
 /* ---------- the land you have, as a snapshot says it ---------- */
 /** What shows of your finds, whether you are at home or it came in a snapshot: {c: curio ids and the key, z: stars logged, r: garden stars}. For the drawings. */
@@ -30,7 +30,6 @@ function gardenLandShowOf(snap) { return { c: (snap && snap.lc) || [], z: (snap 
 /** For gardenSnapshot: {areas (at most 12, and a plot you own part of, so an older friend can walk on your plants), ls, lf, lc, lz, lr}. */
 function gardenLandsWire(m) {
   const ls = [], lf = [], plots = new Set();
-  for (const a of GARDEN_AREAS) if (a.buy && gardenHas('land:' + a.id) > 0) { ls.push(a.id); plots.add(a.id); }
   for (const s of GARDEN_LAND_SECTIONS) if (gardenHas('land:' + s.id) > 0) { ls.push(s.id); plots.add(s.plot); }
   for (const f of GARDEN_LAND_FEATURES) if (f.x != null && gardenLandOwnsFeature(f.id)) lf.push(f.id);
   const areas = GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id);
@@ -52,7 +51,7 @@ function gardenLandFeatureInfo(id, mArg) {
   if (!built) {
     const sec = def.sec ? gardenLandRow(def.sec) : null;
     if (m.level.level < def.lv) why = `Opens at garden level ${def.lv}`;
-    else if (sec && !(gardenHas('land:' + sec.id) > 0 || gardenHas('land:' + sec.plot) > 0)) why = `Needs ${sec.name} (buy that land first)`;
+    else if (sec && !m.areas.includes(sec.id)) why = sec.buy ? `Needs ${sec.name} (buy that land first)` : `Needs ${sec.name} to be open`;
   }
   let spot = '';
   if (!built && def.x != null) for (const [x, y] of _gldFootprint(def)) { const c = m.occ.get(x + ',' + y); if (c && (c.plant || c.decor)) { const p = c.plant ? gardenPlantById(m, c.plant) : gardenDecorById(m, c.decor); spot = (p && p.def.name) || 'Something'; break; } }
@@ -245,7 +244,7 @@ function gardenLandSkyLog() {
 /** Garden points and stars: land, what you built, how many kinds grow, what you have placed. */
 function gardenLandStars(m) {
   const kinds = new Set(m.plants.map(p => p.def.id)).size, placed = m.decor.filter(d => d.def.layer !== 'ground').length;
-  const land = _gldOwnedSections().length, built = GARDEN_LAND_FEATURES.filter(f => gardenLandOwnsFeature(f.id)).length;
+  const land = GARDEN_LAND_SECTIONS.filter(s => m.areas.includes(s.id)).length, built = GARDEN_LAND_FEATURES.filter(f => gardenLandOwnsFeature(f.id)).length;
   const pts = land + built * 2 + Math.min(40, kinds) + Math.min(30, Math.floor(placed / 2)) + gardenLandCurioCount();
   const stars = GARDEN_LAND_STAR_AT.filter(n => pts >= n).length;
   return { pts, stars, next: GARDEN_LAND_STAR_AT[stars] || 0, land, built, kinds, placed };
@@ -267,9 +266,7 @@ const _GLD_FINDS = { cells: null };
 function _gldFindCells() {
   if (_GLD_FINDS.cells) return _GLD_FINDS.cells;
   const out = [];
-  for (let x = 32; x < GARDEN_WORLD.cols; x++) out.push([x, 12]);
-  for (let y = 0; y < GARDEN_WORLD.rows; y++) for (let x = 28; x < GARDEN_WORLD.cols; x++) { const c = gardenLandCell(x, y); if (c && !c.pool) out.push([x, y]); }
-  for (let y = 8; y < 11; y++) for (let x = 1; x < 20; x++) out.push([x, y]);
+  for (let y = 0; y < GARDEN_WORLD.rows; y++) for (let x = 0; x < GARDEN_WORLD.cols; x++) { const c = gardenLandCell(x, y); if (c && !c.pool && !c.solid && c.fam !== 'pond' && !(c.lane && y === 19)) out.push([x, y]); }
   return (_GLD_FINDS.cells = out);
 }
 function _gldSpotOk(m, x, y) { if (String(gardenAreaAt(x, y, m.level.level)).startsWith('locked:') || gardenIsWater(x, y) || gardenPropAt(x, y)) return false; const c = m.occ.get(x + ',' + y); return !(c && (c.plant || c.decor)); }
@@ -301,7 +298,7 @@ function gardenLandDig() {
 /** Today's forage (two at most, only in wild land of your own): [{i, x, y, item, name}]. */
 function gardenLandForageSpots(m) {
   if (m.visit || m.level.level < 3) return [];
-  const wild = _gldOwnedSections().filter(s => GARDEN_LAND_WILD.includes(s.kind)); if (!wild.length) return [];
+  const wild = GARDEN_LAND_SECTIONS.filter(s => m.areas.includes(s.id) && GARDEN_LAND_WILD.includes(s.kind)); if (!wild.length) return [];
   const st = _gdG().seen[_gldKey('forage')], taken = st && st.d === m.today ? st.n || [] : [], F = GARDEN_LAND_FORAGE[m.season], out = [];
   for (let i = 0; i < 2; i++) {
     if (taken.includes(i)) continue;
@@ -344,6 +341,77 @@ function gardenLandCartBuy(key) {
 /** New level: the trails it opens, and one line about what you can now buy. */
 function gardenLandsTick(was, lv, moments) {
   for (const t of GARDEN_LAND_TRAILS) if (t.lv > was && t.lv <= lv) moments.push({ kind: 'area', text: `${t.name} is open`, icon: 'footprints', area: t.id });
-  const n = GARDEN_LAND_SECTIONS.filter(s => s.lv > was && s.lv <= lv).length + GARDEN_LAND_FEATURES.filter(f => f.lv > was && f.lv <= lv).length;
+  const n = GARDEN_LAND_SECTIONS.filter(s => s.buy && s.lv > was && s.lv <= lv).length + GARDEN_LAND_FEATURES.filter(f => f.lv > was && f.lv <= lv).length;
   if (n) moments.push({ kind: 'grant', text: `${n} new thing${n === 1 ? '' : 's'} at the land office`, icon: 'map-pin' });
+}
+
+/* ---------- the map's small secrets ---------- */
+function gardenLandEggs() { return GARDEN_LAND_SIGHTS.filter(d => d.egg); }
+function gardenLandEggFound(id) { return !!_gdG().seen['lde.' + id]; }
+function gardenLandEggCount() { return gardenLandEggs().filter(d => gardenLandEggFound(d.id)).length; }
+function gardenLandEgg(id) {
+  { const v = _gdvAsk('take', { uid: id }); if (v) return v; }
+  const d = gardenLandSight(id), m = gardenModel(); if (!d || !d.egg) return _gdNo('Nothing here');
+  if (gardenLandEggFound(id)) return _gdNo('You have had what was there');
+  const E = d.egg;
+  if (E.tod && m.tod !== E.tod) return _gdNo(E.soon || 'Not now');
+  const body = {}; let msg = E.found;
+  if (E.c) body.c = E.c; if (E.x) body.x = E.x;
+  if (E.curio) { const cur = _gldNextCurio('egg|' + id); if (cur) { body.i = { ['cur:' + cur.id]: 1 }; msg += `: ${cur.name.toLowerCase()}.`; } else { body.c = 10; msg += ': ten coins.'; } }
+  return _gldPay('a find', msg, body, [['lde.' + id, m.today]], 'sparkles');
+}
+
+/* ---------- a save from the old world ----------
+   The owner, 1 Nov 2026: "because the game is in alpha, if it means destroying existing gardens, that is fine." The map changed, so a cell in an old save means nothing. Once, the first time a save from
+   an older world is seen: everything planted goes back as its seed and everything placed back in the bag, land and buildings are paid back in coins, and what was in a kettle or under the oak is paid out.
+   Coins, level, XP, the books, gear and everything that is not a position stay. A short note says so.
+   Two devices: every refund has its own ledger key, the same on both, so doing it twice adds nothing, and `seen.world` and `seen.worldAt` sync. What another device's copy brings back later (a plant from
+   before the move, by its date, or one on a cell where nothing can grow now) goes back to the bag the same way, by the same key. */
+const GARDEN_LAND_HEART = _gdF({ x: 16, y: 13 });   // world cells: the old oak, at the back of the front bed
+function _gldBackToBag(g, uid, pl, today) {
+  const def = gardenPlant(pl.p), key = 'wv2.p.' + uid;
+  if (def && !g.led[key]) g.led[key] = { d: today, k: 'wv', i: { ['seed:' + def.id]: 1 } };
+  delete g.plants[uid];
+}
+function gardenWorldCheck() {
+  const g = _gdG(); if (!g.since) return;
+  if ((Number(g.seen.world) || 1) >= GARDEN_WORLD.v) {
+    // (keep it cheap: once per change to the garden)
+    if (_gd.worldRev === _gd.rev || !g.seen.worldAt) return;
+    _gd.worldRev = _gd.rev;
+    const at = Number(g.seen.worldAt), today = _gdToday(); let n = 0;
+    for (const [uid, pl] of Object.entries(g.plants)) {
+      const def = pl && gardenPlant(pl.p); if (!def || def.special === 'heart') continue;
+      const c = gardenLandCell(pl.x, pl.y);
+      if (Number(pl.t) < at || (c && (c.solid || c.trail || c.lane || c.green))) { _gldBackToBag(g, uid, pl, today); n++; }
+    }
+    for (const [uid, d] of Object.entries(g.decor)) if (d && Number(d.at) < at) { delete g.decor[uid]; n++; }
+    if (n) { _gd.rev++; _gd.memoKey = ''; _gd.walletKey = ''; if (typeof saveUI === 'function') saveUI(); }
+    return;
+  }
+  if (!gardenReady()) return;
+  const now = _gdNow(), today = _gdToday(), items = gardenWallet().items, inf = g.inf === 1;
+  for (const [uid, pl] of Object.entries(g.plants)) {
+    const def = pl && gardenPlant(pl.p);
+    if (def && def.special === 'heart') { pl.x = GARDEN_LAND_HEART.x; pl.y = GARDEN_LAND_HEART.y; continue; }
+    if (def) _gldBackToBag(g, uid, pl, today); else delete g.plants[uid];
+  }
+  for (const [uid, d] of Object.entries(g.decor)) {   // (what is placed comes off the bag's count by being placed: taking it up is all it takes)
+    if (d && d.own && typeof _gdDecorBack === 'function') { try { _gdDecorBack(d, false); } catch (e) { /* it stays with you, then */ } }
+    delete g.decor[uid];
+  }
+  for (const k of Object.keys(items)) {
+    if (!(items[k] > 0)) continue;
+    const land = k.startsWith('land:') ? gardenArea(k.slice(5)) : null, feat = k.startsWith('feat:') ? gardenLandFeature(k.slice(5)) : null;
+    if (k.startsWith('land:')) g.led['wv2.land.' + k.slice(5)] = { d: today, k: 'wv', c: inf || !land ? 0 : (land.buy || 0) * items[k], i: { [k]: -items[k] } };
+    else if (feat && feat.does !== 'boots') g.led['wv2.feat.' + feat.id] = { d: today, k: 'wv', c: inf ? 0 : feat.cost * items[k], i: { [k]: -items[k] } };   // (the boots are not on the map)
+  }
+  for (const k of Object.keys(g.seen)) if (k.startsWith('ldm.')) { const st = g.seen[k]; if (st && Number(st.pay) > 0) g.led['wv2.' + k] = { d: today, k: 'wv', c: Number(st.pay) }; delete g.seen[k]; }
+  { const st = g.seen.ldo; if (st && Number(st.c) > 0) g.led['wv2.ldo'] = { d: today, k: 'wv', c: inf ? 0 : Number(st.c) }; delete g.seen.ldo; }
+  g.seen.world = GARDEN_WORLD.v; g.seen.worldAt = Math.floor(now); g.seen.worldMoved = today;
+  _gd.undo = []; _gd.rev++; _gd.memoKey = ''; _gd.walletKey = '';
+  if (typeof _gw !== 'undefined') { _gw.placed = false; _gw.px = GARDEN_WORLD.start.x + 0.5; _gw.py = GARDEN_WORLD.start.y + 0.5; _gw.path = []; }
+  if (typeof GW_POS_KEY !== 'undefined') { try { localStorage.removeItem(GW_POS_KEY); } catch (e) { /* private mode */ } }
+  if (typeof saveUI === 'function') saveUI();
+  gardenRepaintSoon();
 }

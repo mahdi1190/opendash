@@ -379,7 +379,7 @@ function _gwBugPick(b, far) {
     const base = far ? { x: b.x, y: b.y } : b.anchor;
     const x = Math.max(0.5, Math.min(W.cols - 0.5, base.x + Math.cos(ang) * r)), y = Math.max(0.8, Math.min(W.rows - 0.4, base.y + Math.sin(ang) * r * 0.7));
     const water = gardenIsWater(Math.floor(x), Math.floor(y)), flyer = b.def.rest !== 'crawl';
-    if (b.hab === 'water' || b.def.hab.includes('water') && Math.random() < 0.5) { if (water || y >= 12) return { x, y: Math.max(y, 12.4) }; }
+    if (b.hab === 'water' || b.def.hab.includes('water') && Math.random() < 0.5) { if (water || y >= 20) return { x, y: Math.max(y, 20.4) }; }
     if (flyer ? !!gardenPropAt(Math.floor(x), Math.floor(y)) || gardenAreaAt(Math.floor(x), Math.floor(y), 99).startsWith('locked') : !gardenWalkable(Math.floor(x), Math.floor(y))) continue;
     if (!flyer && water) continue;
     return { x, y };

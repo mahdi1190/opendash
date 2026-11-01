@@ -56,21 +56,21 @@ function gardenBaitLikes(bait, def) {
 /* ---------- spots ----------
    x, y, r in cells, in the lake. They are drawn where they are (gardenCatchWorldArt) and stand still, so you learn them. says: what the spot is good for, in words. */
 const GARDEN_SPOTS = Object.freeze([   // world cells
-  { id: 'reed-bank', name: 'The reed bank', x: 22.8, y: 13.9, r: 1.8, zone: 'shallow', says: 'Reeds, right by the shore. Shy fish feel safe in them.' },
-  { id: 'lily-pads', name: 'The lily pads', x: 6.2, y: 14.3, r: 1.7, zone: 'shallow', says: 'Warm and still under the leaves. Carp and tench love it. It grows when you let fish go.' },
-  { id: 'weed-bed', name: 'The weed bed', x: 17.6, y: 15.7, r: 1.8, zone: 'mid', says: 'Thick weed where small fish hide, and hunters wait for them.' },
-  { id: 'sunken-log', name: 'The sunken log', x: 8.8, y: 16.3, r: 1.5, zone: 'mid', says: 'An old trunk, half under. Things with whiskers live below it.' },
-  { id: 'cold-spring', name: 'The cold spring', x: 23.4, y: 16.8, r: 1.3, zone: 'mid', says: 'Bubbles of cold clean water come up here. Trout come for it.' },
-  { id: 'drop-off', name: 'The drop-off', x: 5.4, y: 18.8, r: 2.3, zone: 'deep', says: 'The bottom falls away here. Big fish patrol the edge.' },
-  { id: 'old-wreck', name: 'The old wreck', x: 18.6, y: 22.4, r: 2.1, zone: 'deep', says: 'A boat that never came home. You need a boat, a long pier or a great rod to reach it.' },
+  { id: 'reed-bank', name: 'The reed bank', x: 34.8, y: 21.9, r: 1.8, zone: 'shallow', says: 'Reeds, right by the shore. Shy fish feel safe in them.' },
+  { id: 'lily-pads', name: 'The lily pads', x: 18.2, y: 22.3, r: 1.7, zone: 'shallow', says: 'Warm and still under the leaves. Carp and tench love it. It grows when you let fish go.' },
+  { id: 'weed-bed', name: 'The weed bed', x: 29.6, y: 23.7, r: 1.8, zone: 'mid', says: 'Thick weed where small fish hide, and hunters wait for them.' },
+  { id: 'sunken-log', name: 'The sunken log', x: 20.8, y: 24.3, r: 1.5, zone: 'mid', says: 'An old trunk, half under. Things with whiskers live below it.' },
+  { id: 'cold-spring', name: 'The cold spring', x: 35.4, y: 24.8, r: 1.3, zone: 'mid', says: 'Bubbles of cold clean water come up here. Trout come for it.' },
+  { id: 'drop-off', name: 'The drop-off', x: 17.4, y: 26.8, r: 2.3, zone: 'deep', says: 'The bottom falls away here. Big fish patrol the edge.' },
+  { id: 'old-wreck', name: 'The old wreck', x: 30.6, y: 30.4, r: 2.1, zone: 'deep', says: 'A boat that never came home. You need a boat, a long pier or a great rod to reach it.' },
 ].map(Object.freeze));
 const _GT_SPOT = new Map(GARDEN_SPOTS.map(s => [s.id, s]));
 /* Where the rest of it stands, all in one place. */
 const GARDEN_CATCH_CELLS = Object.freeze({   // world cells
-  rack: Object.freeze({ x: 16.6, y: 12.9 }),                 // today's catch, hung up by the pier
-  boatIn: Object.freeze({ x: 5.3, y: 14.2 }), boatOut: Object.freeze({ x: 5.5, y: 12.6 }),   // getting in and out of the rowing boat, by the mooring post
-  bunting: Object.freeze({ x0: 6, x1: 21, y: 12.5 }),        // the festival's flags, along the shore
-  thing: Object.freeze({ y0: 19, yN: 5, out: 6, secs: 90 }),  // the thing in the lake: its row, how many rows it may vary by, how far beyond the water it starts and ends, how long a pass takes
+  rack: Object.freeze({ x: 28.6, y: 20.9 }),                 // today's catch, hung up by the pier
+  boatIn: Object.freeze({ x: 17.3, y: 22.2 }), boatOut: Object.freeze({ x: 17.5, y: 20.6 }),   // getting in and out of the rowing boat, by the mooring post
+  bunting: Object.freeze({ x0: 18, x1: 33, y: 20.5 }),        // the festival's flags, along the shore
+  thing: Object.freeze({ y0: 27, yN: 5, out: 6, secs: 90 }),  // the thing in the lake: its row, how many rows it may vary by, how far beyond the water it starts and ends, how long a pass takes
 });
 /** The lake's water, from the areas table: {x, y, w, h}. */
 function gardenLakeWater() { const a = GARDEN_AREAS.find(q => q.water && q.fishing); return a ? a.water : { x: 0, y: 13, w: 28, h: 15 }; }

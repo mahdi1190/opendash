@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.46.0]
+
+**Your garden is now the middle of a bigger world. Update every computer you use, and friends should update too: live play needs the same version on both sides.**
+
+### Changed
+- Land to find in every direction: hills to the north, orchards east, fields west and marshes round the far side of the lake. The old garden is rebuilt as small beds and greens joined by stone paths, with a village square.
+- **Because the map changed, your garden is reset once.** Everything you planted is back in your bag as seeds, everything you placed is in your bag, and land and buildings you bought are paid back in coins. Your level, coins, books and gear stay.
+
+### Added
+- Waterfalls, ruins, a lighthouse, mini squares and dozens of places to find, many hiding a small secret. A well, a bandstand, a fountain and a windmill to build.
+
 ## [2.45.0]
 
 ### Added

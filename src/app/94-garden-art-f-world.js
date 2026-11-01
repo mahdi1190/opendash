@@ -96,100 +96,11 @@ const _GARTW = (function () {
     return s;
   }
 
-  /* ---------- timber and brick edges ---------- */
-  function timber(r, x, y, w, h, t) {
-    // four sleepers with lit tops, end grain at the corners, a shadow thrown on the ground to the right and below
-    t = t || 7;
-    const W0 = ['#5f4028', '#8a6238', '#ad8350', '#c9a26c'];
-    let s = A.P('#2c2418', A.rrect(x - t + 2, y - t + 3, w + 2 * t + 1, h + 2 * t + 1, 3), 0.14);
-    const hbar = (yy) => A.P(W0[1], A.rrect(x - t, yy, w + 2 * t, t, 1.6)) + A.P(W0[2], A.rect(x - t + 1, yy + 0.8, w + 2 * t - 2, 2)) + A.P(W0[0], A.rect(x - t + 1, yy + t - 1.8, w + 2 * t - 2, 1.4), 0.75);
-    const vbar = (xx) => A.P(W0[1], A.rrect(xx, y, t, h, 1.6)) + A.P(W0[2], A.rect(xx + 0.8, y + 1, 2, h - 2)) + A.P(W0[0], A.rect(xx + t - 1.8, y + 1, 1.4, h - 2), 0.75);
-    s += vbar(x - t) + vbar(x + w) + hbar(y - t) + hbar(y + h);
-    let g = '';
-    for (let i = 0; i < w / 26; i++) { const gx = x + r() * w; g += `M${f1(gx)} ${f1(y - t + 3.6)}h${f1(rr(r, 6, 16))}M${f1(gx * 0.7 + x * 0.3)} ${f1(y + h + 3.6)}h${f1(rr(r, 6, 16))}`; }
-    for (let i = 0; i < h / 26; i++) { const gy = y + r() * h; g += `M${f1(x - t + 3.6)} ${f1(gy)}v${f1(rr(r, 5, 12))}M${f1(x + w + 3.6)} ${f1(gy * 0.8 + y * 0.2)}v${f1(rr(r, 5, 12))}`; }
-    s += A.S(W0[0], 0.7, g, 0.6);
-    for (const [cx, cy] of [[x - t / 2, y - t / 2], [x + w + t / 2, y - t / 2], [x - t / 2, y + h + t / 2], [x + w + t / 2, y + h + t / 2]]) s += A.P(W0[3], A.circ(cx, cy, t * 0.42)) + A.S(W0[0], 0.6, A.circ(cx, cy, t * 0.42) + A.circ(cx, cy, t * 0.2), 0.8);
-    return s;
-  }
-  function bricks(r, x, y, w, h) {
-    // a low wall of rounded bricks round the front garden
-    const c = ['#b5573a', '#c56a48', '#a34a30', '#cf7a56'], acc = ['', '', '', ''], B = 13, T = 6.5;
-    const row = (x0, x1, yy) => { for (let bx = x0; bx < x1; bx += B + 0.8) acc[Math.floor(r() * 4)] += A.rrect(bx, yy + rr(r, -0.4, 0.4), Math.min(B, x1 - bx), T, 2); };
-    const col = (xx, y0, y1) => { for (let by = y0; by < y1; by += B + 0.8) acc[Math.floor(r() * 4)] += A.rrect(xx + rr(r, -0.4, 0.4), by, T, Math.min(B, y1 - by), 2); };
-    row(x - T, x + w + T, y - T); row(x - T, x + w + T, y + h); col(x - T, y, y + h); col(x + w, y, y + h);
-    let s = A.P('#2c2418', A.rrect(x - T + 2, y - T + 3, w + 2 * T, h + 2 * T, 3), 0.14) + A.S('#6e3a26', 1.6, A.rect(x - T / 2, y - T / 2, w + T, h + T), 0.25);
-    acc.forEach((d, i) => { s += `<path fill="${c[i]}" stroke="#7c3d27" stroke-width="0.7" d="${d}"/>`; });
-    s += A.S('#f0a880', 0.9, `M${x - T + 1} ${f1(y - T + 1.3)}H${x + w + T - 1}M${x - T + 1} ${f1(y + h + 1.3)}H${x + w + T - 1}`, 0.5);
-    return s;
-  }
-
-  /* ---------- soil ---------- */
-  function soil(r, x, y, w, h, base, deep, lod, bare) {
-    let s = bare ? '' : A.P(base, A.rrect(x, y, w, h, 4));
-    let dk = '', lt = '';
-    for (let i = 0; i < w * h / 1500; i++) { const d = A.blob(r, x + 10 + r() * (w - 20), y + 8 + r() * (h - 16), rr(r, 14, 40), rr(r, 6, 14), 7, 0.6); if (i % 2) dk += d; else lt += d; }
-    s += A.P(deep, dk, 0.42) + A.P(A.lt(base, 0.14), lt, 0.3);
-    let c1 = '', c2 = '', st = '', stl = '';
-    for (let i = 0; i < w * h / 42 * lod; i++) { const cx = x + 2 + r() * (w - 4), cy = y + 2 + r() * (h - 4), rad = rr(r, 0.5, 1.4), d = A.ell(cx, cy, rad, rad * 0.66); if (i % 2) c1 += d; else c2 += d; }
-    for (let i = 0; i < w * h / 1400; i++) { const cx = x + 4 + r() * (w - 8), cy = y + 4 + r() * (h - 8), rx = rr(r, 1.4, 2.6); st += A.ell(cx, cy, rx, rx * 0.66); stl += A.ell(cx - rx * 0.3, cy - rx * 0.24, rx * 0.46, rx * 0.26); }
-    s += A.P(deep, c1, 0.75) + A.P(A.lt(base, 0.28), c2, 0.65) + A.P('#a39684', st) + A.P('#d8ccb8', stl, 0.8);
-    // the wall's shade falls on the soil along the top and the left (the light comes from the upper left)
-    if (!bare) s += A.P('#1c120a', A.rect(x, y, w, 6), 0.16) + A.P('#1c120a', A.rect(x, y, w, 2.6), 0.14) + A.P('#1c120a', A.rect(x, y, 3.4, h), 0.1);
-    return s;
-  }
-  function furrows(r, x, y, w, h, ch, base, deep) {
-    let dark = '', lit = '', cr = '';
-    for (let yy = y + ch * 0.5; yy < y + h - 2; yy += ch) {
-      const line = wander(r, x + 4, x + w - 18, yy + ch * 0.28, 1.1, 18);
-      dark += smooth(line, false);
-      lit += smooth(line.map(p => [p[0], p[1] - 5.4 + (r() - 0.5)]), false);
-      for (let i = 0; i < w / 7; i++) cr += A.ell(x + 4 + r() * (w - 8), yy - 2 + r() * 3.4, rr(r, 0.6, 1.3), 0.6);
-    }
-    return A.S(deep, 5, dark, 0.62) + A.S(A.lt(base, 0.3), 2.2, lit, 0.5) + A.P(A.lt(base, 0.36), cr, 0.65);
-  }
-
-  const POND_PADS = [[0.2, 0.7, 7], [0.32, 0.8, 5], [0.78, 0.62, 6.4]];
-  /* ---------- open areas ---------- */
-  /** A bed's soft outline: traced round its cells, the same every season. */
-  function softBed(seed, a, inset, wob2) { const cells = []; for (let cy = a.y; cy < a.y + a.h; cy++) for (let cx = a.x; cx < a.x + a.w; cx++) cells.push([cx, cy]); return gartLandsBlob(cells, 'bed|' + seed, inset, wob2); }
-  /** What a bed has in it, without a square block under it. */
-  function soilOn(r, x, y, w, h, base, deep, lod) { return soil(r, x, y, w, h, base, deep, lod, true); }
-  /** A curving edge of stones (or of low logs for the veg patch) along a bed's outline. */
-  function edging(d, logs) {
-    const c = logs ? ['#6e4c2a', '#9a7244', '#c9a26c'] : ['#7a6a5a', '#b8ac98', '#dcd2c0'];
-    return `<path d="${d}" fill="none" stroke="#2c2418" stroke-opacity="0.16" stroke-width="7" transform="translate(1 2)"/><path d="${d}" fill="none" stroke="${c[0]}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${c[1]}" stroke-width="4.200" stroke-linecap="round" stroke-dasharray="${logs ? '13 2.400' : '6 3.400'}"/><path d="${d}" fill="none" stroke="${c[2]}" stroke-width="1.100" stroke-linecap="round" stroke-dasharray="${logs ? '9 6' : '3 6'}" stroke-opacity="0.8"/>`;
-  }
   function wildPatch(r, x, y, w, h, base) {
     // a soft-edged different meadow on the lawn: no box round it
     return A.P(A.shift(base, 4, 1, -0.05), wob(r, x, y, w, h, 18, 7, 30), 0.5) + A.P(base, wob(r, x + 3, y + 3, w - 6, h - 6, 16, 6, 30), 0.92);
   }
-  function orchard(r, sc, x, y, w, h, base, lod) {
-    let s = wildPatch(r, x, y, w, h, base), sh = '', t1 = '', t2 = '', cl = '';
-    for (let i = 0; i < w * h / 3400; i++) sh += A.blob(r, x + 20 + r() * (w - 40), y + 16 + r() * (h - 26), rr(r, 22, 40), rr(r, 9, 15), 9, 0.5);
-    s += A.P(A.shift(base, 8, 1, -0.14), sh, 0.34);
-    for (let i = 0; i < w * h / 240 * lod; i++) { const d = tuft(x + 6 + r() * (w - 12), y + 6 + r() * (h - 8), rr(r, 4, 7), rr(r, -2, 2)); if (i % 2) t1 += d; else t2 += d; }
-    for (let i = 0; i < w * h / 2200; i++) { const cx = x + 8 + r() * (w - 16), cy = y + 8 + r() * (h - 14); for (let k = 0; k < 3; k++) { const q = k / 3 * 6.28; cl += A.ell(cx + Math.cos(q) * 1.6, cy + Math.sin(q) * 1.2, 1.5, 1.2); } }
-    s += A.P(A.shift(base, 8, 1, -0.12), cl, 0.7) + A.S(A.shift(base, 8, 1, -0.16), 0.9, t1, 0.7) + A.S(A.lt(base, 0.28), 0.8, t2, 0.65);
-    if (sc.season === 'autumn' || sc.season === 'summer') { let ap = '', gl = ''; for (let i = 0; i < w * h / 3600; i++) { const cx = x + 10 + r() * (w - 20), cy = y + 10 + r() * (h - 16); ap += A.circ(cx, cy, 2.4); gl += A.circ(cx - 0.7, cy - 0.8, 0.8); } s += A.P('#c0392b', ap) + A.P('#f08a6a', gl, 0.9); }
-    return s;
-  }
-  function meadow(r, sc, x, y, w, h, base, lod) {
-    let s = wildPatch(r, x, y, w, h, base), b1 = '', b2 = '', b3 = '', hd = '';
-    for (let i = 0; i < w * h / 150 * lod; i++) {
-      const bx = x + 6 + r() * (w - 12), by = y + 8 + r() * (h - 10), lean = rr(r, -3, 3), hh = rr(r, 7, 13), d = `M${f1(bx)} ${f1(by)}q${f1(lean * 0.3)} ${f1(-hh * 0.6)} ${f1(lean)} ${f1(-hh)}`;
-      if (i % 3 === 0) b1 += d; else if (i % 3 === 1) b2 += d; else b3 += d;
-      if (i % 7 === 0) hd += `M${f1(bx + lean)} ${f1(by - hh)}l${f1(lean * 0.1)} -2.6`;
-    }
-    s += A.S(A.shift(base, 10, 1, -0.18), 1, b1, 0.8) + A.S(A.shift(base, 2, 1, -0.08), 0.9, b2, 0.85) + A.S(A.lt(base, 0.3), 0.8, b3, 0.8) + A.S(sc.season === 'winter' ? '#c0b090' : '#d8c47a', 1.5, hd);
-    if (sc.season === 'spring' || sc.season === 'summer') {
-      // flowers come in drifts, not evenly: a few colours, each in its own patches
-      const cols = ['#f7d417', '#fbfbf6', '#e05a8a', '#8aa0e8', '#e8452a'], acc = cols.map(() => '');
-      for (let i = 0; i < w * h / 1500; i++) { const cx = x + 12 + r() * (w - 24), cy = y + 10 + r() * (h - 16), c = Math.floor(r() * cols.length); for (let k = 0; k < 7; k++) acc[c] += A.circ(cx + rr(r, -15, 15), cy + rr(r, -8, 8) - 6, rr(r, 1.1, 1.9)); }
-      acc.forEach((d, i) => { s += A.P(cols[i], d, 0.95); });
-    }
-    return s;
-  }
+  const POND_PADS = [[0.2, 0.7, 7], [0.32, 0.8, 5], [0.78, 0.62, 6.4]];
   function pond(r, sc, x, y, w, h, wa, W, frozen) {
     const cw = W.cellW, ch = W.cellH, wx = wa.x * cw, wy = W.sky + wa.y * ch, ww = wa.w * cw, wh = wa.h * ch, P = waterOf(sc);
     let s = wildPatch(r, x, y, w, h, tileC('pond-edge', sc.season, '#9aa88a'));
@@ -243,119 +154,9 @@ const _GARTW = (function () {
     s += A.P(frame, A.circ(mid, top - 3, 3)) + A.S(fd, 0.8, A.circ(mid, top - 3, 3));
     return s;
   }
-  /* Land that is not yours yet looks like somewhere you would like to go: a meadow nobody has mown, a low fence, a closed gate and a worn path up to it.
-     It is all baked ground, so it costs one image however rich it is. What it will become shows faintly: old furrows, a reedy pool, a few young trees. */
-  const WILD = { spring: ['#a2c866', '#88b254', '#bcd97c'], summer: ['#9cc264', '#82ac52', '#b6d278'], autumn: ['#b9b264', '#a09a50', '#cec47a'], winter: ['#bac6a8', '#a4b292', '#d2dac4'] };
-  /** Where a piece of land's gate is: on its side facing the shore's lane, in the middle. */
-  function lockGate(a, x, y, w, h) { const south = a.y >= 11; return { x: x + w / 2, y: south ? y + 7 : y + h - 7, south }; }
-  /** Is another closed piece of land drawn before this one on this side? Then its fence is there already. */
-  function fenceShared(a, open, cx, cy) { for (const b of GARDEN_AREAS) { if (b === a) return false; if (!open.has(b.id) && cx >= b.x && cx < b.x + b.w && cy >= b.y && cy < b.y + b.h) return true; } return false; }
-  function locked(r, sc, a, x, y, w, h, W, open) {
-    const season = sc.season, P = WILD[season] || WILD.summer, base = P[0], deep = P[1], light = P[2], cw = W.cellW, ch = W.cellH, gate = lockGate(a, x, y, w, h);
-    let s = A.P(deep, wob(r, x + 1, y + 1, w - 2, h - 2, 16, 4, 28), 0.55) + A.P(base, wob(r, x + 4, y + 4, w - 8, h - 8, 16, 4, 28));
-    let dk = '', lt = '';
-    for (let i = 0; i < w * h / 2600; i++) { const d = A.blob(r, x + 14 + r() * (w - 28), y + 10 + r() * (h - 18), rr(r, 18, 48), rr(r, 7, 16), 8, 0.55); if (i % 2) dk += d; else lt += d; }
-    s += A.P(deep, dk, 0.42) + A.P(light, lt, 0.55);
-    // what it will become, faintly
-    if (a.tile === 'tilled') { let f = ''; for (let yy = y + ch * 0.7; yy < y + h - 10; yy += ch) f += smooth(wander(r, x + 14, x + w - 14, yy, 1.4, 26), false); s += A.S(A.shift(deep, 6, 1, -0.14), 3.4, f, 0.4); }
-    if (a.water) {
-      const c = waterOf(sc), mx = (a.water.x + a.water.w / 2) * cw, my = W.sky + (a.water.y + a.water.h / 2) * ch - ch, rx = Math.min(a.water.w * cw * 0.3, 70), ry = Math.min(a.water.h * ch * 0.3, 26);
-      let reeds = ''; for (let i = 0; i < 16; i++) { const q = i / 16 * 6.283; reeds += tuft(mx + Math.cos(q) * (rx + 5), my + Math.sin(q) * (ry + 3) + 3, rr(r, 6, 11), rr(r, -2, 2)); }
-      s += A.P(deep, A.blob(r, mx, my, rx + 7, ry + 5, 12, 0.14), 0.8) + A.P(c[1], A.blob(r, mx, my, rx, ry, 12, 0.12)) + A.P(c[0], A.ell(mx - rx * 0.26, my - ry * 0.3, rx * 0.42, ry * 0.3), 0.8) + A.S(A.shift(deep, 10, 1, -0.2), 1.2, reeds, 0.9);
-    }
-    // the worn path: out from the lane, through the gate, wandering in
-    const sand = tileC('sand', season, '#e3d3a2'), dir = gate.south ? 1 : -1, cellX = Math.floor(gate.x / cw);
-    let out = 0;
-    if (!gate.south) { let row = a.y + a.h; while (row < 11 && gardenAreaAt(cellX, row) === 'lawn') { out++; row++; } if (row < 11) out = 0; }
-    const pts = [];
-    if (out) { const y1 = W.sky + 11 * ch + 6; pts.push([gate.x + rr(r, -4, 4), y1]); pts.push([gate.x + rr(r, -8, 8), (y1 + gate.y) / 2]); }
-    pts.push([gate.x, gate.y + (gate.south ? -4 : 4)]);
-    const reach = Math.min(h * 0.62, 150), sway = Math.min(w * 0.2, 56) * (r() < 0.5 ? -1 : 1);
-    pts.push([gate.x + sway * 0.45, gate.y + dir * reach * 0.34]); pts.push([gate.x + sway, gate.y + dir * reach * 0.7]); pts.push([gate.x + sway * 0.7, gate.y + dir * reach]);
-    const trail = smooth(pts, false), mud = A.mix(sand, deep, 0.42);
-    s += `<path d="${trail}" fill="none" stroke="${mud}" stroke-width="15" stroke-linecap="round" stroke-opacity="0.55"/><path d="${trail}" fill="none" stroke="${A.mix(sand, base, 0.12)}" stroke-width="10.5" stroke-linecap="round"/>`;
-    // long grass in clumps, thick along the fence and thinner in the middle
-    let t1 = '', t2 = '', t3 = '';
-    const clump = (cx, cy, n) => { for (let k = 0; k < n; k++) { const d = tuft(cx + rr(r, -8, 8), cy + rr(r, -3, 3), rr(r, 5, 10), rr(r, -2.6, 2.6)), v = r(); if (v < 0.4) t1 += d; else if (v < 0.75) t2 += d; else t3 += d; } };
-    for (let i = 0; i < w * h / 620; i++) clump(x + 10 + r() * (w - 20), y + 12 + r() * (h - 16), 2 + Math.floor(r() * 3));
-    for (let k = x + 10; k < x + w - 10; k += 22) { clump(k, y + 15 + r() * 6, 2); clump(k, y + h - 8 - r() * 6, 2); }
-    s += A.S(A.shift(deep, 4, 1, -0.05), 0.9, t1, 0.5) + A.S(A.lt(base, 0.24), 0.9, t2, 0.65) + A.S(A.shift(base, -6, 1, -0.03), 0.9, t3, 0.5);
-    // in flower: drifts of a colour or two (autumn: seed heads and leaves; winter: frost)
-    if (season === 'spring' || season === 'summer') {
-      const cols = season === 'spring' ? ['#fbfbf2', '#f6d23a', '#d88ad8', '#8ab0ec'] : ['#fbfbf2', '#f6d23a', '#ea5f4a', '#c78ae0'], acc = cols.map(() => ''), eye = [];
-      for (let i = 0; i < w * h / 2200; i++) { const cx = x + 16 + r() * (w - 32), cy = y + 14 + r() * (h - 22), c = Math.floor(r() * cols.length), n = 3 + Math.floor(r() * 4); for (let k = 0; k < n; k++) { const fx = cx + rr(r, -15, 15), fy = cy + rr(r, -7, 7), R = rr(r, 1.5, 2.2); acc[c] += A.circ(fx, fy, R); eye.push(A.circ(fx, fy, R * 0.34)); } }
-      acc.forEach((d, i) => { s += A.P(cols[i], d, 0.96); }); s += A.P('#7a5a1e', eye.join(''), 0.7);
-    } else if (season === 'autumn') {
-      const cols = ['#d9671c', '#e8a23a', '#c0392b'], acc = ['', '', '']; let hd = '';
-      for (let i = 0; i < w * h / 900; i++) acc[i % 3] += A.leaf(x + 8 + r() * (w - 16), y + 8 + r() * (h - 14), r() * 6.2, rr(r, 3, 5), 1.3);
-      for (let i = 0; i < w * h / 700; i++) { const hx = x + 10 + r() * (w - 20), hy = y + 12 + r() * (h - 18); hd += `M${f1(hx)} ${f1(hy)}q${f1(rr(r, -1, 1))} -6 ${f1(rr(r, -2, 2))} -11`; }
-      acc.forEach((d, i) => { s += A.P(cols[i], d, 0.85); }); s += A.S('#e0cf8c', 1.3, hd, 0.9);
-    } else { let fr = ''; for (let i = 0; i < w * h / 1800; i++) fr += A.blob(r, x + 12 + r() * (w - 24), y + 10 + r() * (h - 16), rr(r, 10, 28), rr(r, 3, 8), 7, 0.5); s += A.P('#f4f7f8', fr, sc.rain && sc.rain.snow ? 0.85 : 0.5); }
-    // a few round bushes, a stone or two: enough that it is a place, never in a grid
-    const bushes = Math.max(2, Math.round(w * h / 22000)), leaf = season === 'winter' ? ['#7c8c74', '#9aa890'] : season === 'autumn' ? ['#a4742e', '#c8963e'] : ['#4f8a44', '#74ac58'];
-    for (let i = 0; i < bushes; i++) {
-      const bx = x + 26 + r() * (w - 52), by = y + 26 + r() * (h - 40), R = rr(r, 11, 19);
-      if (Math.abs(bx - gate.x) < 48 && Math.abs(by - gate.y) < 70) continue;
-      s += A.P('#1c2a14', A.ell(bx + 3, by + R * 0.42, R * 1.05, R * 0.34), 0.2) + `<path fill="${leaf[0]}" stroke="${A.dk(leaf[0], 0.3)}" stroke-width="0.8" d="${A.blob(r, bx, by - R * 0.42, R, R * 0.82, 9, 0.16)}"/>` + A.P(leaf[1], A.blob(r, bx - R * 0.26, by - R * 0.66, R * 0.56, R * 0.42, 8, 0.2), 0.95);
-      if (season === 'summer' || season === 'spring') { let bl = ''; for (let k = 0; k < 4; k++) bl += A.circ(bx + rr(r, -R * 0.7, R * 0.7), by - R * 0.4 + rr(r, -R * 0.5, R * 0.3), 1.3); s += A.P(season === 'spring' ? '#fbe6ee' : '#f6d23a', bl, 0.95); }
-    }
-    for (let i = 0; i < Math.max(1, bushes - 1); i++) { const sx = x + 20 + r() * (w - 40), sy = y + 22 + r() * (h - 32), R = rr(r, 4, 7); s += `<path fill="#a8a294" stroke="#6e6a5e" stroke-width="0.8" d="${A.blob(r, sx, sy, R, R * 0.66, 7, 0.2)}"/>` + A.P('#d8d2c4', A.ell(sx - R * 0.3, sy - R * 0.24, R * 0.42, R * 0.2), 0.9); }
-    // a low post-and-rail fence round a soft outline, broken where the path comes through. The gate is drawn below.
-    const wood = season === 'winter' ? ['#6a5a48', '#8f7c66', '#b09c86'] : ['#6e4c2a', '#9a7244', '#c9a26c'];
-    const inset = 6, y0 = y + inset + 8, y1 = y + h - inset, gapW = 30;
-    {
-      const cellsOf = []; for (let cy = a.y; cy < a.y + a.h; cy++) for (let cx = a.x; cx < a.x + a.w; cx++) cellsOf.push([cx, cy]);
-      const lp = (_GLD_ART.loops(cellsOf, a.id + '|f', 9, 9)[0] || []), n = lp.length;
-      const near = (q) => Math.abs(q.x - gate.x) < gapW / 2 + 4 && Math.abs(q.y - (gate.south ? y0 : y1)) < 14;
-      let at = lp.findIndex(near); if (at < 0) at = 0;
-      let run = [];
-      for (let i = 1; i <= n; i++) { const q = lp[(at + i) % n]; if (near(q)) { if (run.length > 1) s += gartFenceAlong(r, run, season); run = []; } else run.push([q.x, q.y]); }
-      if (run.length > 1) s += gartFenceAlong(r, run, season);
-    }
-    // the gate: two taller posts and a little barred gate, shut
-    const gy = gate.south ? y0 : y1, gl = gate.x - gapW / 2, gr = gate.x + gapW / 2, G = season === 'winter' ? '#c8bca6' : '#d8bc88';
-    let gatePosts = `M${f1(gl - 2.4)} ${f1(gy + 1)}V${f1(gy - 17)}h4.8V${f1(gy + 1)}zM${f1(gr - 2.4)} ${f1(gy + 1)}V${f1(gy - 17)}h4.8V${f1(gy + 1)}z`;
-    s += A.P('#1c2a14', A.ell(gate.x + 3, gy + 1.2, gapW / 2 + 5, 1.6), 0.2);
-    s += `<path fill="${wood[1]}" stroke="${wood[0]}" stroke-width="0.9" d="${gatePosts}"/>` + A.P(wood[2], A.ell(gl, gy - 17, 2.8, 1.3) + A.ell(gr, gy - 17, 2.8, 1.3));
-    s += A.S(wood[0], 2.7, `M${f1(gl + 2)} ${f1(gy - 11)}H${f1(gr - 2)}M${f1(gl + 2)} ${f1(gy - 3.4)}H${f1(gr - 2)}M${f1(gl + 3)} ${f1(gy - 3.4)}L${f1(gr - 3)} ${f1(gy - 11)}`) + A.S(G, 1.6, `M${f1(gl + 2)} ${f1(gy - 11.5)}H${f1(gr - 2)}M${f1(gl + 2)} ${f1(gy - 3.9)}H${f1(gr - 2)}M${f1(gl + 3)} ${f1(gy - 3.9)}L${f1(gr - 3)} ${f1(gy - 11.5)}`);
-    return s;
-  }
-  /** The sign by the gate: what stands between you and this land, in as few marks as possible. Not baked: it may be redrawn when the level changes. */
-  function lockSign(a, x, y, w, h, sc) {
-    const gate = lockGate(a, x, y, w, h), forSale = a.buy && (sc.lv == null || sc.lv >= a.lv), txt = forSale ? String(a.buy) : `Level ${a.lv}`, bw = Math.round(txt.length * 4.7 + 18), bh = 13.5;
-    const gy = gate.south ? y + 6 + 8 : y + h - 6, sx = gate.x + 16 + bw / 2 + 3, sy = gy + 2, top = sy - 23;
-    const mark = forSale ? `<circle cx="${f1(sx - bw / 2 + 7.8)}" cy="${f1(top + bh / 2)}" r="4.2" fill="#f2b01e" stroke="#a87412" stroke-width="1"/><circle cx="${f1(sx - bw / 2 + 6.6)}" cy="${f1(top + bh / 2 - 1.2)}" r="1.2" fill="#ffe9a8"/>`
-      : `<rect x="${f1(sx - bw / 2 + 4.4)}" y="${f1(top + 5.6)}" width="6.8" height="5.6" rx="1.2" fill="#8a7a5a"/><path d="M${f1(sx - bw / 2 + 5.7)} ${f1(top + 5.6)}v-1.600a2.100 2.100 0 0 1 4.200 0v1.600" stroke="#8a7a5a" stroke-width="1.3" fill="none"/>`;
-    return `<g class="gd-locksign${forSale ? ' is-sale' : ''}"${a.buy ? ` data-land="${a.id}"` : ''}><path fill="#2c2418" fill-opacity="0.18" d="${A.ell(sx + 3, sy + 0.5, 9, 2)}"/><path fill="#7a5636" stroke="#4c3420" stroke-width="0.8" d="M${f1(sx - 1.7)} ${f1(sy)}V${f1(top + bh - 1)}h3.400V${f1(sy)}z"/><rect x="${f1(sx - bw / 2)}" y="${f1(top)}" width="${bw}" height="${bh}" rx="3" fill="${forSale ? '#f8ecc8' : '#e8ddc2'}" stroke="#8a6238" stroke-width="1.3"/><rect x="${f1(sx - bw / 2 + 1.6)}" y="${f1(top + 1.4)}" width="${bw - 3.2}" height="2" rx="1" fill="#fff9e8" fill-opacity="0.8"/>`
-      + `<text x="${f1(sx + 6)}" y="${f1(top + 10)}" font-size="8.4" font-family="Inter, Arial, sans-serif" font-weight="700" text-anchor="middle" fill="#5a4630">${txt}</text>${mark}</g>`;
-  }
-  function woods(r, sc, x, y, w, h) {
-    const base = tileC('forest', sc.season, '#6f9a4a'), deep = A.shift(base, 8, 1, -0.16);
-    let s = A.P(deep, wob(r, x, y, w, h, 14, 6, 28), 0.7) + A.P(base, wob(r, x + 5, y + 4, w - 10, h - 8, 14, 6, 28), 0.95);
-    let sh = '', li = '';
-    for (let i = 0; i < w * h / 2600; i++) sh += A.blob(r, x + 20 + r() * (w - 40), y + 14 + r() * (h - 24), rr(r, 22, 54), rr(r, 10, 22), 9, 0.55);
-    for (let i = 0; i < w * h / 7000; i++) li += A.blob(r, x + 20 + r() * (w - 40), y + 14 + r() * (h - 24), rr(r, 12, 30), rr(r, 5, 12), 8, 0.5);
-    s += A.P(A.shift(base, 12, 1, -0.2), sh, 0.42) + A.P('#fff8c8', li, 0.14);
-    const lit = sc.season === 'autumn' ? ['#c8702a', '#e0a040', '#a8501c'] : sc.season === 'winter' ? ['#d8d4c4', '#b4b0a0', '#c8c4b4'] : ['#8aaa4a', '#6a9038', '#a8c460'];
-    const acc = lit.map(() => '');
-    for (let i = 0; i < w * h / 190; i++) acc[i % 3] += A.leaf(x + 6 + r() * (w - 12), y + 6 + r() * (h - 12), r() * 6.2, rr(r, 2.4, 4.6), 1.1);
-    acc.forEach((d, i) => { s += A.P(lit[i], d, 0.8); });
-    // ferns, each a fan of arching fronds with a lit side
-    let f1d = '', f2d = '';
-    for (let i = 0; i < w * h / 1500; i++) { const fx = x + 12 + r() * (w - 24), fy = y + 12 + r() * (h - 16); for (let k = -2; k <= 2; k++) { const d = A.leaf(fx, fy, k * 0.62 + rr(r, -0.1, 0.1), rr(r, 9, 14), 1.8, 0.4); if (k < 0) f2d += d; else f1d += d; } }
-    const fc = sc.season === 'winter' ? ['#7a8a6a', '#94a484'] : sc.season === 'autumn' ? ['#8a7a34', '#b09a44'] : ['#2f6a34', '#4f8f44'];
-    s += `<path fill="${fc[0]}" stroke="#20402a" stroke-width="0.5" d="${f1d}"/><path fill="${fc[1]}" stroke="#20402a" stroke-width="0.5" d="${f2d}"/>`;
-    // mushrooms in small families
-    for (let i = 0; i < 6; i++) { const mx = x + 18 + r() * (w - 36), my = y + 18 + r() * (h - 30), c = ['#d8452a', '#f0e4c8', '#c88a3a'][i % 3]; for (let k = 0; k < 3; k++) { const dx = k * 5 - 5 + r(), sz = rr(r, 2.6, 4.2); s += `<path fill="#f4ecd8" stroke="#8a7a5a" stroke-width="0.5" d="M${f1(mx + dx - sz * 0.3)} ${f1(my)}V${f1(my - sz * 0.9)}h${f1(sz * 0.6)}V${f1(my)}z"/><path fill="${c}" stroke="${A.dk(c, 0.5)}" stroke-width="0.6" d="M${f1(mx + dx - sz)} ${f1(my - sz * 0.8)}Q${f1(mx + dx)} ${f1(my - sz * 2.4)} ${f1(mx + dx + sz)} ${f1(my - sz * 0.8)}z"/>`; } }
-    // a fallen log with moss along its top
-    const lx = x + w * 0.42, ly = y + h * 0.62;
-    s += A.P('#1a2414', A.ell(lx + 22, ly + 10.5, 26, 3.4), 0.26) + `<path fill="#6a4a2e" stroke="#3e2a18" stroke-width="1" d="${A.rrect(lx, ly, 42, 10, 5)}"/>` + `<path fill="#c8a06a" stroke="#6a4a2e" stroke-width="0.8" d="${A.ell(lx + 2.6, ly + 5, 3.8, 5)}"/>` + A.S('#6a4a2e', 0.6, A.ell(lx + 2.6, ly + 5, 1.7, 2.4)) + A.S('#3e2a18', 0.7, `M${f1(lx + 9)} ${f1(ly + 3.4)}h26M${f1(lx + 11)} ${f1(ly + 6.6)}h22`, 0.6) + `<path fill="#6aa040" d="M${f1(lx + 12)} ${f1(ly + 1)}q3 -4 7 -1q3 -3 7 -1q4 -2 7 1q-3 2 -21 1z"/>`;
-    return s;
-  }
-
   /* ---------- the lake ---------- */
   /** Where the lake's lily pads float: [x, y, radius] in stage units. Near the pier too, so you can see a frog on one from the shore. */
-  function lakePads(a, W) { const w = (a.x + a.w) * W.cellW, wy = W.sky + a.water.y * W.cellH; return [32, 66, 96, 452, 500, 736, 782, w - 340, w - 54, w - 92, w - 130].map(px => [px, wy + 16 + (Math.abs(px) % 13), 6 + (Math.abs(px) % 4)]); }
+  function lakePads(a, W) { const x0 = a.x * W.cellW, w = a.w * W.cellW, wy = W.sky + a.water.y * W.cellH; return [32, 66, 96, 452, 500, 736, 782, w - 340, w - 54, w - 92, w - 130].map(px => [x0 + px, wy + 16 + (Math.abs(px) % 13), 6 + (Math.abs(px) % 4)]); }
   /** Every pad painted on open water, as rows a creature can land on: {x, y (cells), r}. Not while it is frozen. */
   function pads(sc, W) {
     const out = [], open = new Set(sc.areas || []), add = (x, y, r) => out.push({ x: x / W.cellW, y: (y - W.sky) / W.cellH, r });
@@ -368,7 +169,7 @@ const _GARTW = (function () {
     }
     return out;
   }
-  function lake(sc, o, a, W, r) {
+  function lake(sc, o, a, W, r, shift) {   // (drawn from x 0, in a group moved by `shift`: the sums below are its own width)
     const cw = W.cellW, ch = W.cellH, base = W.sky, w = (a.x + a.w) * cw, y0 = base + a.y * ch, wa = a.water, wy = base + wa.y * ch, wh = wa.h * ch, season = sc.season;
     const sand = tileC('sand', season, '#e3d3a2'), frozen = season === 'winter' && sc.rain && sc.rain.snow, P = frozen ? ['#d6e8f0', '#c0d8e6', '#a8c8dc', '#92b8d0'] : waterOf(sc), night = sc.tod === 'night';
     let s = '', live = '';
@@ -385,7 +186,7 @@ const _GARTW = (function () {
     s += A.P(A.shift(sand, 10, 1, -0.28), sp, 0.45) + `<path fill="#a89e8a" stroke="#74695a" stroke-width="0.5" d="${peb}"/>` + A.P('#e8e0cc', pebl, 0.85) + `<path fill="#f6e8e0" stroke="#c49a84" stroke-width="0.5" d="${shell}"/>`;
     // the water, from the shore out: a line of wet sand, then shallows, middle and deep with soft wandering edges
     const shore = wander(r, -20, w + 20, wy, 3.6, 26);
-    const closed = (pts, dy) => smooth(pts.map(p => [p[0], p[1] + dy]).concat([[w + 90, wy + dy], [w + 2400, wy + dy], [w + 2400, wy + wh + 2400], [-2400, wy + wh + 2400], [-2400, wy + dy], [-90, wy + dy]]), true);
+    const closed = (pts, dy) => smooth(pts.map(p => [p[0], p[1] + dy]).concat([[w + 40, wy + dy + 20], [w + 40, wy + wh + 40], [-40, wy + wh + 40], [-40, wy + dy + 20]]), true);
     s += A.P(A.shift(sand, 8, 1, -0.2), closed(shore, -7), 0.5) + A.P(A.shift(sand, 10, 1.05, -0.3), closed(shore, -3.4), 0.55);
     s += A.P(P[0], closed(shore, 0));
     const b1 = wander(r, -20, w + 20, wy + ch * 0.75, 7, 44), b2 = wander(r, -20, w + 20, wy + ch * 2, 9, 54), b3 = wander(r, -20, w + 20, wy + ch * 3.5, 9, 60);
@@ -418,7 +219,7 @@ const _GARTW = (function () {
     // what moves: the waves' lines of foam on the shore, ripples, glints and fish going about their day
     const mv = !o.still && !frozen;
     // (the pier stands over the water: what moves on the water goes round it, or it would be painted across the planks)
-    const pier = (GARDEN_PROPS.find(q => q.id === 'pier') || { x: 0, w: 0 }), px0 = pier.x * cw - 7, px1 = (pier.x + pier.w) * cw + 7, offPier = (x, m) => x < px0 - (m || 0) || x > px1 + (m || 0);
+    const pier = (GARDEN_PROPS.find(q => q.id === 'pier') || { x: 0, w: 0 }), px0 = pier.x * cw - shift - 7, px1 = (pier.x + pier.w) * cw - shift + 7, offPier = (x, m) => x < px0 - (m || 0) || x > px1 + (m || 0);
     const twoRuns = (pts) => { const L = pts.filter(q => q[0] <= px0), R = pts.filter(q => q[0] >= px1); return (L.length > 1 ? smooth(L, false) : '') + (R.length > 1 ? smooth(R, false) : ''); };
     live += `<path d="${twoRuns(shore.map(p => [p[0], p[1] + 1]))}" fill="none" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-opacity="${frozen ? 0.9 : 0.72}"${mv ? ' class="gd-foam"' : ''}/>`;
     if (mv) {
@@ -442,47 +243,30 @@ const _GARTW = (function () {
     const flush = () => { if (s) groups.push(`<g>${s}</g>`); s = ''; };
     const TW = 720, TH = 420, lw0 = W.cols * cw, lh0 = W.rows * ch;
     for (let ty = 0; ty < lh0; ty += TH) for (let tx = 0; tx < lw0; tx += TW) { s = lawn(sc, o, r, tx, W.sky + ty, Math.min(TW, lw0 - tx), Math.min(TH, lh0 - ty)); flush(); }
+    // the lake, then everything round it (the land covers the lake's rough edges), then the pond and the greenhouse on their sections
+    const lakeA = gardenArea('lake');
+    { flush(); const ar = A.rng(A.hash('area|lake|' + season)), L = lake(sc, o, Object.assign({}, lakeA, { x: 0 }), W, ar, lakeA.x * cw); s += `<g transform="translate(${lakeA.x * cw} 0)">${L.s}</g>`; live += `<g transform="translate(${lakeA.x * cw} 0)">${L.live}</g>`; }
+    for (const id of Object.keys(GARDEN_LAND_MAPS)) { flush(); const LP = gartLandsPlot(id, sc, o, open); s += LP.s; live += LP.live; }
+    flush();
+    if (open.has('pond')) { const a = gardenArea('pond'), ar = A.rng(A.hash('area|pond|' + season)); s += pond(ar, sc, a.x * cw, W.sky + a.y * ch, a.w * cw, a.h * ch, a.water, W, snowy); live += pondLive(sc, o, a.water, W); }
     const late = [];
-    for (const a of GARDEN_AREAS) {
-      flush();
-      const x = a.x * cw, y = W.sky + a.y * ch, w = a.w * cw, h = a.h * ch, ar = A.rng(A.hash('area|' + a.id + '|' + season));
-      if ((a.look || a.id) === 'lake') { const L = lake(sc, o, a, W, ar); s += L.s; live += L.live; continue; }
-      if (a.buy && !open.has(a.id)) { const LP = gartLandsPlot(a, sc, o, open); s += LP.s; live += LP.live; continue; }   // a plot not owned whole is sections and trails (94-garden-lands-2art.js)
-      if (!open.has(a.id)) { s += locked(ar, sc, a, x, y, w, h, W, open); if (!o.photo) live += lockSign(a, x, y, w, h, sc); continue; }
-      const col = tileC(a.tile, season, '#8a5a3a'), look = a.look || a.id;
-      if (look === 'woods') s += woods(ar, sc, x, y, w, h);
-      else if (look === 'orchard') s += orchard(ar, sc, x, y, w, h, col, lod);
-      else if (look === 'meadow') s += meadow(ar, sc, x, y, w, h, col, lod);
-      else if (a.water) { s += pond(ar, sc, x, y, w, h, a.water, W, snowy); live += pondLive(sc, o, a.water, W); }
-      else if (a.tile === 'glasshouse') late.push(greenhouse(ar, sc, a, x, y, w, h, W));
-      else if (a.tile === 'tilled' || a.tile === 'soil') {
-        const deep = A.shift(col, 6, 1, -0.1), S = A.shift(col, 0, 1.02, a.tile === 'tilled' ? -0.02 : -0.03);
-        const bx = x + 7, by = y + 7, bw = w - 14, bh = h - 14, bed = softBed(a.id, a, 7, 7);
-        s += `<path d="${bed}" fill="${deep}" transform="translate(0 3)" fill-opacity="0.6"/>` + A.P(S, bed);
-        s += soilOn(ar, bx, by, bw, bh, S, deep, lod);
-        if (a.tile === 'tilled') s += furrows(ar, bx, by, bw, bh, ch, S, deep);
-        if (season === 'winter') { let sn = ''; for (let i = 0; i < bw * bh / 2200; i++) sn += A.blob(ar, bx + 14 + ar() * (bw - 28), by + 10 + ar() * (bh - 18), rr(ar, 12, 30), rr(ar, 3, 7), 7, 0.5); s += A.P('#dfe6ec', sn, snowy ? 0.95 : 0.82); }
-        s += edging(bed, a.tile === 'tilled');
-      } else s += wildPatch(ar, x, y, w, h, col);
-    }
+    if (open.has('greenhouse')) { const a = gardenArea('greenhouse'), ar = A.rng(A.hash('area|greenhouse|' + season)); late.push(greenhouse(ar, sc, a, a.x * cw, W.sky + a.y * ch, a.w * cw, a.h * ch, W)); }
     flush();
     for (const g of late) groups.push(`<g>${g}</g>`);
-    if (W.coreCols && W.cols > W.coreCols) {
-      // the lane east along the shore, worn into the grass, with the land you can buy either side of it. It wanders, inside its two rows of cells
-      const lx = W.coreCols * cw, ly = W.sky + 11 * ch, lw = (W.cols - W.coreCols) * cw, lh = 2 * ch, ls = tileC('sand', season, '#e3d3a2'), lr = A.rng(A.hash('lane'));
-      const edge = (yy, ph, amp) => { const pts = []; for (let x = lx - 10; x <= lx + lw + 20; x += 30) pts.push([x, yy + Math.sin(x / 67 + ph) * amp + (lr() - 0.5) * 3]); return pts; };
-      const up = edge(ly + 5, 0.4, 4), low = edge(ly + lh - 5, 2.2, 4).reverse();
-      s += A.P(A.shift(ls, 8, 1, -0.1), smooth(edge(ly + 1, 0.4, 4).concat(edge(ly + lh - 1, 2.2, 4).reverse()), true), 0.6) + A.P(ls, smooth(up.concat(low), true));
-      let pb = ''; for (let i = 0; i < lw / 14; i++) pb += A.ell(lx + lr() * lw, ly + 7 + lr() * (lh - 14), rr(lr, 0.8, 2), rr(lr, 0.5, 1.2));
+    // the lane through the middle of the world: it wanders, inside its two rows of cells
+    {
+      const ly = W.sky + 19 * ch, lh = 2 * ch, ls = tileC('sand', season, '#e3d3a2'), lr = A.rng(A.hash('lane')), lw = W.cols * cw;
+      const edge = (yy, ph, amp) => { const pts = []; for (let x = -10; x <= lw + 20; x += 30) pts.push([x, yy + Math.sin(x / 67 + ph) * amp + (lr() - 0.5) * 3]); return pts; };
+      s += A.P(A.shift(ls, 8, 1, -0.1), smooth(edge(ly + 1, 0.4, 4).concat(edge(ly + lh - 1, 2.2, 4).reverse()), true), 0.6) + A.P(ls, smooth(edge(ly + 5, 0.4, 4).concat(edge(ly + lh - 5, 2.2, 4).reverse()), true));
+      let pb = ''; for (let i = 0; i < lw / 14; i++) pb += A.ell(lr() * lw, ly + 7 + lr() * (lh - 14), rr(lr, 0.8, 2), rr(lr, 0.5, 1.2));
       s += A.P(A.shift(ls, 10, 1, -0.22), pb, 0.7);
     }
     { flush(); const LT = gartLandsTrails(sc, o, open); s += LT.s; live += LT.live; flush(); }
     try { if (typeof gardenPierGround === 'function') s += gardenPierGround(sc, o); } catch (e) { /* no pier */ }
     if (snowy) { let sn = ''; for (let i = 0; i < 60; i++) sn += A.blob(r, r() * W.cols * cw, W.sky + r() * W.rows * ch, rr(r, 14, 36), rr(r, 4, 8), 8, 0.5); s += A.P('#ffffff', sn, 0.72); }
     // past the edge of the world (a window of another shape, zoomed right out): more lawn, and the lake carrying on
-    const W2 = W.cols * cw, H0 = W.sky + W.rows * ch, lakeA = GARDEN_AREAS.find(a => (a.look || a.id) === 'lake'), pal = LAWN[season] || LAWN.summer;
-    let margin = `<path fill="${pal[0]}" d="M-3000 ${W.sky}H${W2 + 3000}V${H0 + 3000}H-3000z"/>`;
-    if (lakeA) margin += `<path fill="${(snowy ? '#92b8d0' : waterOf(sc)[3])}" d="M-3000 ${W.sky + lakeA.water.y * ch}H${(lakeA.x + lakeA.w) * cw}V${H0 + 3000}H-3000z"/>`;
+    const W2 = W.cols * cw, H0 = W.sky + W.rows * ch, pal = LAWN[season] || LAWN.summer;
+    const margin = `<path fill="${pal[0]}" d="M-3000 ${W.sky}H${W2 + 3000}V${H0 + 3000}H-3000z"/>`;
     flush();
     return `${margin}<g class="gart-bake" data-bake="ground" data-split="1">${groups.join('')}</g><g class="gart-live">${live}</g>`;
   }
