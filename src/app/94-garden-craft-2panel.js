@@ -61,9 +61,9 @@ function gardenCraftTab(el, m) {
   pills.appendChild(pill('', 'All', 'layout-grid', canN));
   for (const [id, label, ic] of _GR_GROUPS) pills.appendChild(pill(id, label, ic, all.filter(r => r.can && r.def.group === id).length));
   left.appendChild(pills);
-  const grid = _gcrEl('div', 'gcr-grid');
-  const rows = all.filter(r => !_gcr.group || r.def.group === _gcr.group).sort((a, b) => (b.can - a.can) || (b.known - a.known) || (a.missing.length - b.missing.length));
-  for (const r of rows) {
+  left.classList.add('gpg-box');
+  const place = 'craft:' + _gcr.group, rows = gardenPagerOrder(place, all.filter(r => !_gcr.group || r.def.group === _gcr.group), r => r.id, (a, b) => (b.can - a.can) || (b.known - a.known) || (a.missing.length - b.missing.length));
+  gardenPager(left, { key: place, items: rows, grid: 'gcr-grid', row: 122, draw: (r) => {
     const c = _gcrEl('button', 'gcr-card' + (r.can ? ' is-can' : r.known ? ' is-miss' : ' is-unknown') + (r.id === _gcr.sel ? ' is-sel' : '')); c.type = 'button';
     c.setAttribute('aria-label', r.known ? r.def.name : 'A recipe you have not found yet'); c.dataset.rid = r.id;
     const art = _gcrEl('span', 'gcr-card-art'); art.innerHTML = r.known ? gardenCraftArt(r.def, 62) : icon('circle-help'); c.appendChild(art);
@@ -71,9 +71,8 @@ function gardenCraftTab(el, m) {
     if (r.known && !r.seen) c.appendChild(_gcrEl('i', 'gcr-new'));
     if (r.owned) c.appendChild(_gcrEl('b', 'gcr-own', String(r.owned)));
     c.onclick = () => { _gcr.sel = r.id; _gcrRepaint(el); };
-    grid.appendChild(c);
-  }
-  left.appendChild(grid);
+    return c;
+  } });
   const sel = all.find(r => r.id === _gcr.sel);
   if (sel) right.appendChild(_gcrDetail(sel, el));
   el.textContent = '';

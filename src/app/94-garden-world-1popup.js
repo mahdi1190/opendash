@@ -57,6 +57,7 @@ function gardenPopupOpen(tab, o) {
   gardenBubbleClose();
   if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel('');
   _gdpGhostClear();
+  gardenPagerFresh();
   openDialog({
     // a panel is as big as what is in it; the long lists keep a steady height so paging through them does not jump
     title: o.title || def.title, size: tab === 'goals' ? 'md' : 'xl', fixed: !['goals', 'basket'].includes(tab), height: ['goals', 'basket'].includes(tab) ? '' : '82vh', className: 'gd-popup gd-popup-' + tab, keepOnOutside: false,

@@ -14,7 +14,7 @@
 const GP_ECON = Object.freeze({ ticketsDay: 30, xpDay: 20 });
 const GP_GROUPS = Object.freeze([['pet', 'With your pet'], ['games', 'Games'], ['make', 'Make and mend'], ['secret', 'Secrets'], ['stall', 'Prizes']]);
 const _gpRows = [];
-const _gp = { hudAt: 0, ac: null };
+const _gp = { hudAt: 0, ac: null, group: '' };
 function gardenPlayAdd(row) { _gpRows.push(row); }
 function gpGet(k, d) { const v = _gdG().seen['pl.' + k]; return v === undefined ? d : v; }
 function gpSet(k, v) { _gdG().seen['pl.' + k] = v; _gdSave(); }
@@ -85,7 +85,8 @@ function gpTone(notes, o) {
 function gpStage(title, build, o) {
   o = o || {};
   try { if (typeof _gw !== 'undefined') { _gw.keys.clear(); _gw.path = []; } gardenBubbleClose(); if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel(''); } catch (e) { /* not in the world */ }
-  return openDialog({ title, size: o.size || 'lg', className: 'gd-popup gp-stage', keepOnOutside: false, resizable: false,
+  gardenPagerFresh();
+  return openDialog({ title, size: o.size || 'lg', fixed: !!o.fixed, height: o.fixed ? '82vh' : '', className: 'gd-popup gp-stage', keepOnOutside: false, resizable: false,
     body(el, close) { el.classList.add('gd-body', 'gp-body'); build(el, close); },
     actions: [{ label: 'Back to Play', icon: 'gamepad-2', run: () => { setTimeout(() => gardenPopupOpen('play'), 0); } }],
     onClose: o.onClose });
@@ -107,20 +108,18 @@ function gardenPlayTab(el) {
   head.innerHTML = `<span class="gp-tickets">${icon('ticket')}<b>${gpTickets()}</b> tickets</span><span class="muted">${esc(day.tickets >= GP_ECON.ticketsDay ? 'All of today’s tickets are won. Keep playing if you like, it is just for fun now.' : `Games pay tickets, up to ${GP_ECON.ticketsDay} a day. The prize stall takes them.`)}</span>`;
   el.appendChild(head);
   if (given || !Object.values(_gdG().decor).some(d => d && d.d === 'play-pot') && gardenHas('decor:play-pot')) el.appendChild(gpEl('p', 'gp-lead', 'There is a cooking pot and an old mill in your bag. Put them in the garden, and click them to use them.'));
-  for (const [g, label] of GP_GROUPS) {
-    const rows = _gpRows.filter(r => r.group === g); if (!rows.length) continue;
-    el.appendChild(gpEl('h3', 'gp-h', label));
-    const grid = gpEl('div', 'gp-grid');
-    for (const r of rows) {
-      let st = ''; try { st = r.status ? r.status() : ''; } catch (e) { st = ''; }
-      let fresh = false; try { fresh = !!(r.fresh && r.fresh()); } catch (e) { /* no */ }
-      const b = gpEl('button', 'gp-card' + (fresh ? ' is-fresh' : '')); b.type = 'button'; b.dataset.game = r.id;
-      b.innerHTML = `<span class="gp-ic">${icon(r.icon)}</span><span class="gp-t"><b>${esc(r.name)}</b><span>${esc(r.blurb)}</span>${st ? `<em>${esc(st)}</em>` : ''}</span>`;
-      b.onclick = () => { try { r.open(); } catch (e) { console.error('[play]', e); toastError('open that', e); } };
-      grid.appendChild(b);
-    }
-    el.appendChild(grid);
-  }
+  // the kinds as tabs, in the panel's order; All goes through them in that order
+  const groups = GP_GROUPS.filter(([g]) => _gpRows.some(r => r.group === g)), nameOf = new Map(groups);
+  el.appendChild(_gdxChips([['', 'All'], ...groups], _gp.group, (k) => { _gp.group = k; _gdxRepaintTab(); }));
+  const rows = groups.flatMap(([g]) => _gpRows.filter(r => r.group === g && (!_gp.group || _gp.group === g)));
+  gardenPager(el, { key: 'play:' + _gp.group, items: rows, grid: 'gp-grid', row: 132, rowSm: 132, label: (r) => nameOf.get(r.group), draw: (r) => {
+    let st = ''; try { st = r.status ? r.status() : ''; } catch (e) { st = ''; }
+    let fresh = false; try { fresh = !!(r.fresh && r.fresh()); } catch (e) { /* no */ }
+    const b = gpEl('button', 'gp-card' + (fresh ? ' is-fresh' : '')); b.type = 'button'; b.dataset.game = r.id;
+    b.innerHTML = `<span class="gp-ic">${icon(r.icon)}</span><span class="gp-t"><b>${esc(r.name)}</b><span>${esc(r.blurb)}</span>${st ? `<em>${esc(st)}</em>` : ''}</span>`;
+    b.onclick = () => { try { r.open(); } catch (e) { console.error('[play]', e); toastError('open that', e); } };
+    return b;
+  } });
 }
 function gardenPlayOpen(id) { const r = _gpRows.find(x => x.id === id); if (r) r.open(); }
 function gardenPlayBubble(d, items) {

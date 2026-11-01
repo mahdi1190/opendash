@@ -53,12 +53,6 @@ function _gcpTackleCard(d, m) {
   c.appendChild(f);
   return c;
 }
-function gardenTackleShelves(el, m) {
-  for (const [title, list] of [['Reels', GARDEN_REELS], ['Lines', GARDEN_LINES], ['Hooks', GARDEN_HOOKS], ['For bugs', GARDEN_KIT]]) {
-    el.appendChild(_gdpEl('h3', 'gdc-h', title));
-    const grid = _gdpEl('div', 'gd-grid gd-shop-grid gdc-grid'); for (const d of list) grid.appendChild(_gcpTackleCard(d, m)); el.appendChild(grid);
-  }
-}
 /** On a card in your bag: let it go, give it to the hall. */
 function gardenBagExtras(f, kind, r) {
   if (kind === 'fish' && r.def.cat !== 'fish') return;

@@ -6,29 +6,29 @@ function _gsFigure(px) {
   let art = ''; try { art = gartPlayerSvg(_gplAvatar(), { dir: 's', pose: 'idle', gear }); } catch (e) { art = ''; }
   return `<svg viewBox="-60 -112 120 128" width="${px}" height="${Math.round(px * 128 / 120)}" aria-hidden="true" focusable="false">${art}</svg>`;
 }
+let _gsLooksTab = 'rod';
 function _gsLooksPage() {
   gpStage('Things you hold', (el) => {
     const paint = () => {
-      const m = gardenModel(), ctx = _gsCtx(m);
+      const m = gardenModel(), ctx = _gsCtx(m), tabs = [['rod', 'Rod looks', GARDEN_ROD_SKINS], ['net', 'Net looks', GARDEN_NET_SKINS], ['held', 'To carry', GARDEN_HELD]], [kind, , list] = tabs.find(t => t[0] === _gsLooksTab) || tabs[0];
       el.textContent = '';
       el.appendChild(gpEl('p', 'gp-lead', 'A rod or net look changes how it looks, not how it fishes: keep your best rod and wear your favourite. Friends see all of it.'));
-      const you = gpEl('div', 'gs-you'); you.innerHTML = _gsFigure(150); el.appendChild(you);
-      for (const [kind, label, rows] of [['rod', 'Rod looks', GARDEN_ROD_SKINS], ['net', 'Net looks', GARDEN_NET_SKINS], ['held', 'To carry', GARDEN_HELD]]) {
-        el.appendChild(gpEl('h3', 'gp-h', label));
-        const grid = gpEl('div', 'gp-prizes'), worn = gardenLookWorn(kind);
-        for (const r of rows) {
-          const own = gardenLookOwned(r.id), open = own || gardenLookOpen(r, m, ctx);
-          const c = gpEl('div', 'gp-prize' + (open ? '' : ' is-locked'));
-          c.innerHTML = `<div class="gp-prize-art">${gardenLookSvg(r.id, 72)}</div><b>${esc(r.name)}</b><span class="muted">${esc(own ? 'Yours' : open ? gardenLookCostLine(r.cost) : r.how)}</span>`;
-          if (own) c.appendChild(uiButton({ label: worn === r.id ? 'Take it off' : 'Wear it', icon: worn === r.id ? 'x' : 'check', size: 'sm', run: () => { gardenLookWear(kind, worn === r.id ? '' : r.id); paint(); } }));
-          else if (open) c.appendChild(uiButton({ label: 'Get it', icon: 'sparkles', size: 'sm', disabled: !_gsCanPay(r.cost, m), run: () => { gardenLookBuy(r.id); paint(); } }));
-          grid.appendChild(c);
-        }
-        el.appendChild(grid);
-      }
+      const worn = gardenLookWorn(kind), wrap = gpEl('div', 'gs-looks'), you = gpEl('div', 'gs-you'), side = gpEl('div', 'gs-looks-r');
+      you.innerHTML = _gsFigure(150); wrap.append(you, side); el.appendChild(wrap);
+      side.appendChild(_gdxChips(tabs.map(t => [t[0], t[1]]), kind, (k) => { _gsLooksTab = k; paint(); }));
+      // what is yours, then what you can get, then what is still locked
+      const rank = (r) => (gardenLookOwned(r.id) ? 0 : gardenLookOpen(r, m, ctx) ? 1 : 2), place = 'looks:' + kind;
+      gardenPager(side, { key: place, items: gardenPagerOrder(place, list, r => r.id, (a, b) => rank(a) - rank(b)), grid: 'gp-prizes', row: 196, rowSm: 196, draw: (r) => {
+        const own = gardenLookOwned(r.id), open = own || gardenLookOpen(r, m, ctx);
+        const c = gpEl('div', 'gp-prize' + (open ? '' : ' is-locked'));
+        c.innerHTML = `<div class="gp-prize-art">${gardenLookSvg(r.id, 72)}</div><b>${esc(r.name)}</b><span class="muted">${esc(own ? 'Yours' : open ? gardenLookCostLine(r.cost) : r.how)}</span>`;
+        if (own) c.appendChild(uiButton({ label: worn === r.id ? 'Take it off' : 'Wear it', icon: worn === r.id ? 'x' : 'check', size: 'sm', run: () => { gardenLookWear(kind, worn === r.id ? '' : r.id); paint(); } }));
+        else if (open) c.appendChild(uiButton({ label: 'Get it', icon: 'sparkles', size: 'sm', disabled: !_gsCanPay(r.cost, m), run: () => { gardenLookBuy(r.id); paint(); } }));
+        return c;
+      } });
     };
     paint();
-  });
+  }, { fixed: true });
 }
 function _gsPaintPage(firstId) {
   gpStage('Paint the buildings', (el) => {
