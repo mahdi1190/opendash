@@ -117,8 +117,8 @@ function gardenVisitModel() {
   if (_gdv.memo && _gdv.memoKey === key) return _gdv.memo;
   const today = _gdToday(), season = s.season, tod = _gdTod(now, season, s), rain = { now: s.wx > 0, snow: s.wx === 2, last: s.wx ? now : 0, label: s.wx === 2 ? 'Snow' : s.wx === 1 ? 'Rain' : '' };   // (their weather: what the snapshot said)
   // (a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4)
-  const areas = s.areas.slice(); if (!areas.includes('lake')) areas.push('lake'); if (s.lv >= 4 && !areas.includes('woods')) areas.push('woods');
-  gardenLandSet(areas.filter(id => { const a = gardenArea(id); return a && a.buy; }));
+  const landOf = gardenLandsOfSnap(s), areas = landOf.areas; if (!areas.includes('lake')) areas.push('lake'); if (s.lv >= 4 && !areas.includes('woods')) areas.push('woods');
+  gardenLandSet(landOf.land);
   gardenWorksSet(s.wk || []);
   const rows = _gdvRows(s), by = (kind, x, y) => (_glvLive() ? _gll.by.get(kind + '|' + x + '|' + y) || '' : '');
   const plants = [], decor = [], cats = {};

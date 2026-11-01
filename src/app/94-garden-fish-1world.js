@@ -330,6 +330,7 @@ function gardenWorldProps(sc, o) {
     const inner = draw(p);
     if (inner) out.push(wrap('gd-prop-' + p.kind + (p.act ? ' gd-prop-click' : ''), Math.ceil(p.y + p.h), p.x, inner, p.id));
   }
+  if (typeof gardenLandWorldProps === 'function') for (const r of gardenLandWorldProps(sc, o)) out.push(wrap(r.cls, r.z, r.x, r.inner, r.key));   // the land office and what has been built on the land
   // the forest edge: big trees all down the east side, so the woods have a back wall
   const pal = (GART_PAL.leaf[sc.season] || GART_PAL.leaf.summer);
   const rnd = gardenRand('forest-edge');

@@ -715,10 +715,10 @@ function gardenLifeStop() {
 }
 /* ---------- a friend's garden: the same creatures, from their objects, in a small loop of its own ---------- */
 function _glVisitWorld(svg, snap) {
-  const G = GARDEN_WORLD, areas = (snap.areas || []).slice(), lvl = snap.lv || 1;
+  const G = GARDEN_WORLD, areas = gardenLandsOfSnap(snap).areas, lvl = snap.lv || 1;
   // (as the scene does: a friend on an older version has no lake or woods in their list)
   if (!areas.includes('lake')) areas.push('lake'); if (lvl >= 4 && !areas.includes('woods')) areas.push('woods');
-  const open = (x, y) => { for (const a of GARDEN_AREAS) { if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return areas.includes(a.id); } return x < G.coreCols && y < G.coreRows; };
+  const open = (x, y) => { const lc = gardenLandCell(x, y); if (lc && !areas.includes(gardenLandPlotAt(x, y))) return areas.includes(lc.id); for (const a of GARDEN_AREAS) { if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return areas.includes(a.id); } return x < G.coreCols && y < G.coreRows; };
   const plants = [], decor = [];
   for (const r of snap.plants || []) { const def = gardenPlant(r[0]); if (def) plants.push({ uid: `p${r[1]},${r[2]}`, def, x: r[1], y: r[2], fp: def.fp || 1, stage: r[3], ripe: !!(r[5] & 4) }); }
   for (const r of snap.decor || []) { const def = gardenDecor(r[0]); if (def) decor.push({ uid: `d${r[1]},${r[2]}`, def, x: r[1], y: r[2] }); }

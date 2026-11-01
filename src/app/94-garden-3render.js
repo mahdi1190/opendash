@@ -273,6 +273,7 @@ function gardenSceneParts(sc, o) {
     if (ob.kind === 'plant' && ob.def.glow && ob.it.stage >= 3) lights.push({ x: (ob.it.x + (ob.def.fp || 1) / 2) * W.cellW, y: W.sky + (ob.it.y + (ob.def.fp || 1)) * W.cellH - 64 * (ob.def.look.h || 0.6) * 0.5, r: 48 });
   }
   while (vi < vis.length) push(_gdrVisitor(vis[vi++], sc, o));
+  if (typeof gardenLandLights === 'function') lights.push(...gardenLandLights(sc));   // the lantern walk, the moon stone
   layers.push(['objects', null]);
   layers.push(['actors', '<g class="gd-actors"></g>']);   // 2.22: bugs, the line and the bobber, drawn by the page's own loop
   layers.push(['pets', '<g class="gd-pets"></g>']);
@@ -327,7 +328,7 @@ function _gdrSceneFromSnapshot(snap, o) {
     if (snap.decor.some(d => ['bird-bath', 'bird-feeder', 'bird-box'].includes(d[0]))) { const d = snap.decor.find(q => ['bird-bath', 'bird-feeder', 'bird-box'].includes(q[0])); visitors.push({ id: 'robin', x: d[1] + 0.5, y: d[2] + 0.8, lift: 0.7, motion: 'hop', t: rnd() }); }
   }
   // 2.22: a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4
-  const areas = snap.areas.slice(); if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
+  const areas = gardenLandsOfSnap(snap).areas; if (!areas.includes('lake')) areas.push('lake'); if (snap.lv >= 4 && !areas.includes('woods')) areas.push('woods');
   return { plants, decor, areas, season, tod, rain: { now: false, snow: false }, visitors, lv: snap.lv, hour: p.h + p.mi / 60, day, show: snap.sh || null, showSig: typeof gardenShowSig === 'function' ? gardenShowSig(snap.sh) : '' };
 }
 /**
