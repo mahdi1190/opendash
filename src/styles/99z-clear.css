@@ -1,8 +1,9 @@
 /* Nothing a person needs waits for a mouse to pass over it (owner, Nov 2026: "buttons are hidden").
    Row and card actions stay quiet at rest and full on hover or focus, on any screen. Each selector
    repeats the one that hid it (same weight, later file), so the :hover rules beside it still win.
-   Left hover-only on purpose: drag grips (they mean nothing without a mouse), and the row
-   checkboxes, which have a visible Select button and a long press. */
+   Drag grips stay hover-only: dragging needs a mouse, and on a touch screen the task menu has Move up and
+   Move down (a subtask's menu too). The row checkboxes show at rest on a touch screen (below), beside the
+   visible Select button and the long press. */
 .hg-body [data-row] .hg-row-acts,
 .hgap-ra,
 .hw-add,
@@ -44,6 +45,8 @@
 .pc-cover-btn,
 .pc-av-edit { opacity: 0.8; transform: none; }
 
+@media (hover: none) { .pk-check { opacity: 0.6; } }
+
 /* Hidden with display: these take their place in the row all the time now. */
 .calrow-more { display: inline-grid; opacity: 0.55; }
 .calrow:hover .calrow-more, .calrow:focus-within .calrow-more { opacity: 1; }
@@ -79,3 +82,12 @@ small { font-size: max(11px, 0.85em); }
 
 /* A shop card's rank and its Details button are both on show now: side by side, not on top of each other. */
 :root .fv-vc-rank, :root .fv-vc:hover .fv-vc-rank, :root .fv-vc:focus-within .fv-vc-rank, :root .fv-vc.is-current .fv-vc-rank { margin-right: 28px; opacity: 1; }
+
+/* The row checkbox stays small to look at, with a finger-sized area to press. */
+@media (hover: none) {
+  .pk-td > .pk-check { position: relative; }
+  .pk-check::before { content: ""; position: absolute; inset: -8px; }
+}
+
+/* Focus title and its count at phone width: the count gives way, not the title. */
+.hf-h > h3 { flex: none; }

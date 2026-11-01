@@ -131,7 +131,7 @@ registerSettingsGroup({
     }
     const opts = active.map(s => [s.id, s.label]);
     el.appendChild(_settingsRow('New tasks go to', 'When the view doesn’t pick one.', _settingsSelect(opts, defaultStreamId(), (v) => {
-      state.defaultStream = v; saveData(); toast('Saved', { kind: 'ok' });
+      state.defaultStream = v; saveData();
     })));
   },
 });

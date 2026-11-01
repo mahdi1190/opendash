@@ -138,7 +138,7 @@ async function syncRunFix(fix) {
     const j = await _shFetch(url, body, 'fix:' + fix.action, fix.action === 'compact' || fix.action === 'keep-offline' ? 120000 : 60000);
     if (j && j.health) { _shHealth = j.health; _shHealthAt = Date.now(); }
     if (j && j.enabled !== undefined) _syncSt = j; else syncLoad();
-    toast((j && j.message) || done || 'Done', { kind: j && j.ok === false ? 'info' : 'ok' });
+    toast((j && j.message) || done || 'Done', { dismiss: true, kind: j && j.ok === false ? 'info' : 'ok' });
     if (!(j && j.health)) syncHealthLoad(false);
   } catch (e) { _shHealthErr = _shErrText(e); }
   _syncRefresh();

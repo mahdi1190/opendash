@@ -113,7 +113,7 @@ async function settingsSaveConfig(patch, okMsg) {
       if (j[k] && typeof j[k] === 'object' && !Array.isArray(j[k])) APP_CONFIG[k] = Object.assign({}, APP_CONFIG[k] || {}, j[k]);
       else APP_CONFIG[k] = j[k];
     }
-    if (okMsg !== false) toast(okMsg || 'Saved', { kind: 'ok' });
+    if (okMsg) toast(okMsg, { kind: 'ok' }); else if (okMsg !== false && typeof saveStatusFlash === 'function') saveStatusFlash();
     return true;
   } catch (e) {
     // Try again sends the same change (and repaints the page so the control shows it).
@@ -400,7 +400,7 @@ registerPage({ id: 'animations', view: 'settings:animations', match: v => v === 
 registerPage({ id: 'diagnostics', view: 'settings:diagnostics', match: v => v === 'settings:diagnostics', label: 'Diagnostics', icon: 'stethoscope', area: 'system', order: 70, family: 'settings',
   desc: 'Problems, versions and what the app is doing', keywords: 'diagnostics problems errors version logs health debug' });
 registerPage({ id: 'settings', view: 'settings', match: v => v === 'settings' || (/^settings:[a-z-]+$/.test(v) && !_SET_OWN_PAGES.has(v)), label: 'Settings', icon: 'settings', area: 'system', order: 10, ownTabs: true, family: 'settings',
-  desc: 'Every setting: sync, relay, privacy, updates and more', keywords: 'settings preferences options configuration sync relay privacy updates' });
+  desc: 'Every setting: sync, friends, privacy, updates and more', keywords: 'settings preferences options configuration sync relay privacy updates' });
 registerSection('settings', {
   group: 'system',
   match: v => v === 'settings' || /^settings:[a-z-]+$/.test(v),

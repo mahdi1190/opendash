@@ -547,7 +547,7 @@ async function _alSaveSettings(patch, msg) {
   try {
     const s = await _alPost('/api/autolink/settings', patch, 'PUT');
     if (_alStatus) _alStatus.settings = s;
-    if (msg !== false) toast(msg || 'Saved', { kind: 'ok' });
+    if (msg) toast(msg, { kind: 'ok' }); else if (msg !== false && typeof saveStatusFlash === 'function') saveStatusFlash();
     alStatus(true).then(() => _alPaintSettings());
     return s;
   } catch (e) { toastError('save the setting', e, () => _alSaveSettings(patch, msg)); return null; }
@@ -645,7 +645,7 @@ function _alSettingsRender(el) {
   el.appendChild(fh);
   const fl = document.createElement('div'); fl.className = 'al-folders card';
   const roots = (s.index && s.index.roots) || [];
-  if (!(cfg.folders || []).length) fl.appendChild(emptyLine('Folders you add show up here. Try a Documents folder, git repositories or OneDrive.'));
+  if (!(cfg.folders || []).length) fl.appendChild(emptyLine('Folders you add show up here. Try a Documents folder, your project folders or OneDrive.'));
   for (const f of cfg.folders || []) {
     const st = roots.find(r => String(r.path).toLowerCase() === String(f.path).toLowerCase());
     const row = document.createElement('div'); row.className = 'al-folder';

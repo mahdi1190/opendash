@@ -79,7 +79,7 @@
 .fv-txx-h { font-size: var(--text-xs); color: var(--fg-muted); }
 .fv-txx-h b { color: var(--fg); font-weight: var(--weight-semibold); }
 .fv-txx-spk { height: 46px; }
-.fv-txx-ax { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--fg-subtle); }
+.fv-txx-ax { display: flex; justify-content: space-between; font-size: 11px; color: var(--fg-subtle); }
 .fv-txx-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: var(--space-1); }
 .fv-txx-acts .fv-btn { height: 26px; font-size: 12px; padding: 0 9px; gap: 5px; }
 .fv-txx-acts .fv-btn .i { width: 13px; height: 13px; }

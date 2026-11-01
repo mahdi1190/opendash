@@ -458,7 +458,7 @@ function _frSettingsSec(d, o) {
   body.appendChild(_settingsRow('Your friend code', 'A 4-letter code for a friend to type. It works once, for 10 minutes.', uiButton({ label: 'Show my friend code', icon: 'key-round', size: 'sm', run: () => friendsAddDialog('code') })));
   // your connection to friends
   const home = d.relay && d.relay.home;
-  body.appendChild(_settingsRow(home ? (home.role === 'owner' ? 'Relay: yours' : 'Relay: a friend’s') : 'Relay: not set up', '',
+  body.appendChild(_settingsRow(home ? (home.role === 'owner' ? 'Connection to friends: your own' : 'Connection to friends: a friend’s') : 'Connection to friends: not set up', '',
     home ? uiButton({ label: 'Your connection to friends', size: 'sm', icon: 'cloud', run: () => _frOpenRelaySettings(false) }) : _frRelayBtn(d, { size: 'sm' })));
   if (d.relay && d.relay.outbox) body.appendChild(emptyLine(`${d.relay.outbox} message${d.relay.outbox === 1 ? '' : 's'} waiting to send.`));
   // More: who you blocked
@@ -678,7 +678,7 @@ function _frInviteOut(out, r, d, close) {
   if (!r.short) {
     const owner = d && d.relay && d.relay.home && d.relay.home.role === 'owner';
     out.appendChild(_frEl('p', 'muted fr-small', r.shortWhy === 'old-relay'
-      ? (owner ? 'A long link (your connection to friends is older). It works the same. Update my connection for short links.' : 'A long link (the relay you use is older). It works the same.')
+      ? (owner ? 'A long link (your connection to friends is older). It works the same. Press Update my connection for short links.' : 'A long link (the connection you use is older). It works the same.')
       : "The short link couldn't be made just now, so this is the long one. It works the same."));
     if (r.shortWhy === 'old-relay' && owner) { const a = _frEl('div', 'fr-add-acts'); a.appendChild(_frRelayBtn(d, { size: 'sm', close })); out.appendChild(a); }
   }
@@ -709,7 +709,7 @@ function _frAddCode(pane, d, close) {
       const cur = _fr.data && _fr.data.me && _fr.data.me.live;
       if (!cur && live.expiresAt > Date.now() && document.body.contains(left)) {
         clearInterval(_frLiveTick); _frLiveTick = null; close(); _frRepaint();
-        toast('Someone typed your code. Check it is your friend, then press Accept.', { icon: 'user-plus', kind: 'ok' });
+        toast('Someone typed your code. Check it is your friend, then press Accept.', { dismiss: true, icon: 'user-plus', kind: 'ok' });
         return 0;
       }
       const s = Math.max(0, Math.round((live.expiresAt - Date.now()) / 1000));
@@ -759,7 +759,7 @@ function _frAddCode(pane, d, close) {
   setTimeout(() => inp.focus(), 30);
 }
 function _frAddPaste(pane, close) {
-  pane.appendChild(_frEl('p', null, "Got an invite link from a friend? Paste the whole thing here. If it comes with their relay, you'll join it too."));
+  pane.appendChild(_frEl('p', null, "Got an invite link from a friend? Paste the whole thing here. If it comes with their connection, you'll join it too."));
   const ta = document.createElement('textarea');
   ta.className = 'input fr-invite-text'; ta.rows = 3; ta.placeholder = 'https://…/i#ODF1.…'; ta.spellcheck = false;
   ta.setAttribute('aria-label', 'Invite link');
@@ -829,7 +829,7 @@ function _frKeysEl(d) {
   const progress = n ? `${r.moved} of ${n} friend${n === 1 ? ' has' : 's have'} moved over${r.moved < n ? '; the rest follow when their Freeflo is next on' : ''}.` : '';
   if (r.step === 'done') box.appendChild(_frLine('check', `Locked out ${_frAgo(r.doneAt || r.at)}. ${progress}`.trim()));
   else if (r.waiting === 'relay-update') { box.appendChild(_frLine('key-round', `Locked out here. ${progress}`.trim())); box.appendChild(_frRelayRotateEl()); }
-  else if (r.waiting === 'relay-owner') box.appendChild(_frLine('hourglass', `Locked out here. ${progress} Waiting for your connection to friends's owner to let the change in; until then the lost computer can still use that relay.`.replace(/\s+/g, ' ')));
+  else if (r.waiting === 'relay-owner') box.appendChild(_frLine('hourglass', `Locked out here. ${progress} Waiting for the owner of your connection to friends to let the change in; until then the lost computer can still use it.`.replace(/\s+/g, ' ')));
   else if (r.waiting === 'friends') box.appendChild(_frLine('hourglass', `Locked out here. ${progress}`.trim()));
   else box.appendChild(_frLine('loader-circle', 'Locking it out and telling your friends…'));
   if (r.error) {

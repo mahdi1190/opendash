@@ -270,7 +270,7 @@ function _pfcBuild(el, close) {
   const friends = _pfcEl('div', 'pfc-friends');
   el.appendChild(friends);
   el.appendChild(_pfcEl('div', 'pop-sep'));
-  const sys = _pfcEl('div', 'pfc-menu'); sys.setAttribute('role', 'menu'); sys.setAttribute('aria-label', 'Relay and sync');
+  const sys = _pfcEl('div', 'pfc-menu'); sys.setAttribute('role', 'menu'); sys.setAttribute('aria-label', 'Your connection and sync');
   el.appendChild(sys);
   const paintFriends = () => { _pfcFriendsPaint(friends, close, paintFriends); _pfcSysPaint(sys, close); };
   paintFriends();

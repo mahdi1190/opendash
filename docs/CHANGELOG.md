@@ -10,6 +10,17 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.38.2]
+
+### Fixed
+- **People no longer vanish in a shared garden.** After anything saved, such as a catch, anyone standing still was drawn in the wrong place until they next moved. Creatures too.
+- **Fish stay in step.** A visitor no longer sees made-up fish for a moment on arrival or during a dropped connection, so fish do not vanish and swap. "Too close" is only said when you are the one running the water.
+- Messages no longer cover each other or an Undo. Long explanations stay readable on phones. Results that finish later, and things from friends, now show instead of waiting silently.
+- On touch screens, Skip, Done, Tomorrow and row checkboxes are visible, and tasks have Move up and down. Clearer words throughout.
+
+### Changed
+- Live play sends far fewer messages: fish only say something when it matters, and the checks run less often, so it stays smooth and uses less of your relay's free allowance.
+
 ## [2.38.1]
 
 ### Fixed

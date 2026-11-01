@@ -12,7 +12,7 @@
      Add a bank or wallet the provider chooser in three groups:
                           A via Claude (Aureli), B direct (Plasma One,
                           Monzo, other UK/EU banks via Enable Banking),
-                          C import a CSV. Every card shows the same facts
+                          C import a statement. Every card shows the same facts
                           in the same order, then one button.
 
    finMoneyBlock()        the block (called by 56-connections.js)
@@ -80,18 +80,18 @@ const FIN_PROVIDERS = [
     },
     more: 'Enable Banking is a regulated open-banking service. You create your own free app with them; its key file is saved only on this computer (never in your data folder: keep the original to connect another computer). You sign in at your bank, which gives read-only access for a limited time. Only accounts you link yourself are visible.',
     action: 'Check my bank' },
-  { id: 'csv', group: 'file', name: 'Import a CSV', sub: 'Any bank · a statement file', mark: 'csv', flow: 'csv',
+  { id: 'csv', group: 'file', name: 'Import a statement', sub: 'Any bank · a CSV file from your bank', mark: 'csv', flow: 'csv',
     keywords: 'csv file import statement export spreadsheet any bank',
     line: 'Any bank · CSV file',
     facts: {
       covers: 'Any bank that lets you download a statement (CSV).',
       cost: 'Free. No account, no connection.',
       limits: 'Manual: import again to update.',
-      need: 'A CSV export from your bank’s website or app.',
+      need: 'A statement file (usually called CSV) downloaded from your bank’s website or app.',
       time: '1 minute',
     },
     more: 'The file is read on this computer. Duplicates are skipped, so overlapping date ranges are fine.',
-    action: 'Import a CSV' },
+    action: 'Import a statement' },
 ];
 // Credit cards have no group of their own in sources: a card is an account from Enable Banking, or a file.
 FIN_PROVIDERS.push({ id: 'credit-card', group: 'cards', name: 'A credit card', sub: 'Amex, Barclaycard and others', mark: 'card', flow: 'card',
@@ -377,7 +377,7 @@ const FIN_ERRORS = {
   CONSENT_EXPIRED: 'Your bank’s permission ended. Sign in again to renew it.', NOT_APPROVED: 'Approve Freeflo in your Monzo app first.',
   RATE_LIMITED: 'The provider asked us to slow down. Try again in a few minutes.', NETWORK: 'Couldn’t reach the provider. Check your internet connection.',
   BAD_RESPONSE: 'The provider sent something unexpected. Try again later.', POLICY: 'That request was blocked: finance connections can only read.',
-  NOT_SUPPORTED: 'That bank is not available through Enable Banking. Import a CSV instead.',
+  NOT_SUPPORTED: 'That bank is not available through Enable Banking. Import a statement instead.',
   SECRET_REFUSED: 'That looks like your secret recovery phrase or key. Never paste it anywhere. Freeflo only needs your public address.',
 };
 function finErrorText(code) { return FIN_ERRORS[code] || ''; }
@@ -496,7 +496,7 @@ async function finSyncSource(s) {
   _srcAfterChange('bank');
   // How it went for this source: its own result in the update (reason and the fix when it failed).
   const mine = job && job.result && Array.isArray(job.result.sources) ? job.result.sources.find(x => x && x.id === s.id) : null;
-  if (mine && mine.ok) toast(`${label} is up to date`, { kind: 'ok' });
+  if (mine && mine.ok) toast(`${label} is up to date`, { dismiss: true, kind: 'ok' });
   else if (mine && !mine.ok) {
     const fresh = ((SourcesStore.data && SourcesStore.data.sources) || []).find(x => x.id === s.id) || s;
     toastError('update ' + label, new Error(mine.error || 'the update failed'), _finSyncFix(fresh, fresh.lastError && fresh.lastError.code));
@@ -734,7 +734,7 @@ function _finGroupCard(group, nameOf) {
   lock.appendChild(_finEl('span', null, s.kind === 'csv' ? 'Local' : 'Read-only'));
   head.appendChild(lock);
   const acts = _finEl('div', 'fc-group-acts');
-  if (s.kind === 'csv') acts.appendChild(uiButton({ label: 'Import a CSV', icon: 'upload', kind: 'ghost', size: 'sm', run: (e, b) => finImportCsv(b) }));
+  if (s.kind === 'csv') acts.appendChild(uiButton({ label: 'Import a statement', icon: 'upload', kind: 'ghost', size: 'sm', run: (e, b) => finImportCsv(b) }));
   else if (st === 'setup' && s.kind === 'direct') {
     acts.appendChild(uiButton({ label: 'Finish connecting', icon: 'arrow-right', kind: 'secondary', size: 'sm', run: () => finStartProvider(group.provider, { reauth: s.id }) }));
   } else if (st === 'auth' || due.tone === 'past' || (due.tone === 'red' && s.kind === 'direct')) {
@@ -1076,9 +1076,9 @@ function _finChooser(groups) {
         results.appendChild(line);
       } else if (match.ebNone) {
         results.appendChild(_finEl('span', null, bankInfo.source === 'live'
-          ? `“${_finQuery.trim()}” is not available through Enable Banking yet: import a CSV instead.`
-          : bankInfo.source === 'snapshot' ? `“${_finQuery.trim()}” is not in Enable Banking’s list we have. Check the live list during setup, or import a CSV.`
-          : `We can’t confirm “${_finQuery.trim()}” before you set up Enable Banking (their bank list needs your own free app). Check during setup, or import a CSV.`));
+          ? `“${_finQuery.trim()}” is not available through Enable Banking yet: import a statement instead.`
+          : bankInfo.source === 'snapshot' ? `“${_finQuery.trim()}” is not in Enable Banking’s list we have. Check the live list during setup, or import a statement.`
+          : `We can’t confirm “${_finQuery.trim()}” before you set up Enable Banking (their bank list needs your own free app). Check during setup, or import a statement.`));
       }
     }
     let shown = 0;
@@ -1103,8 +1103,8 @@ function _finChooser(groups) {
     }
     if (!shown) {
       const empty = _finEl('div', 'fc-none');
-      empty.append(_finEl('b', null, 'Nothing matches.'), _finEl('span', null, 'Any bank works with a CSV export.'));
-      empty.appendChild(uiButton({ label: 'Import a CSV', icon: 'upload', kind: 'secondary', size: 'sm', run: (e, b) => finImportCsv(b) }));
+      empty.append(_finEl('b', null, 'Nothing matches.'), _finEl('span', null, 'Any bank works with a downloaded statement.'));
+      empty.appendChild(uiButton({ label: 'Import a statement', icon: 'upload', kind: 'secondary', size: 'sm', run: (e, b) => finImportCsv(b) }));
       body.appendChild(empty);
     }
   };

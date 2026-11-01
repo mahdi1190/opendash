@@ -39,7 +39,7 @@ function settingsCleanJsonExport() {
   const a = document.createElement('a'); a.href = url; a.download = `opendash-data-${todayStr()}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast('Exported your data as JSON', { kind: 'ok' });
+  toast('Your data was downloaded', { kind: 'ok' });
 }
 
 async function _sdRestore(b) {

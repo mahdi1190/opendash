@@ -210,7 +210,7 @@ function _gwFishCast(pt0) {
   _gwFacePt(pt);
   const plan = gardenFishPlan(Math.floor(pt.x), Math.floor(pt.y));
   if (!plan.ok) { _gdpSay(plan); return; }
-  if (typeof _gfsTooClose === 'function' && _gfsTooClose(pt)) _gdpSay({ ok: false, msg: 'Too close! Your float landed on it and scared it. Cast just in front of a shadow.' });
+  if (typeof _gfsTooClose === 'function' && _gfsDecides() && _gfsTooClose(pt)) _gdpSay({ ok: false, msg: 'Too close! Your float landed on it and scared it. Cast just in front of a shadow.' });
   _gw.fishing = { state: 'cast', t: 0, plan, bx: pt.x, by: pt.y, nibN: 0, nibble: 0, hold: false, fu: null, mood: '' };
   _gwFishClearFx(); _gwFx(); _gwBody(); _gwFishFocus(true);
   if (typeof gardenLiveFx === 'function') gardenLiveFx('fish', 'cast', { x: Math.floor(pt.x), y: Math.floor(pt.y), i: plan.baitDef.id });

@@ -78,8 +78,6 @@ document.addEventListener('keydown', (e) => {
   const cur = _VW_CYCLE.indexOf(state.viewMode || 'list');
   const next = _VW_CYCLE[(cur + (e.shiftKey ? -1 : 1) + _VW_CYCLE.length) % _VW_CYCLE.length];
   viewsSetMode(next);
-  const m = VIEW_MODES.find(x => x.k === next);
-  if (m) toast(m.label + ' layout', { icon: m.icon });
 });
 for (const m of VIEW_MODES) {
   if (m.k === 'review') continue;
