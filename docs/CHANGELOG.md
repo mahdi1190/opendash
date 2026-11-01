@@ -10,6 +10,11 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.60.0]
+
+### Fixed
+- **The garden walks far more smoothly,** especially large, well-grown gardens. Things out of view now rest. A few fewer plants sway at once.
+
 ## [2.59.3]
 
 ### Fixed
