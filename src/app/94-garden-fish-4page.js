@@ -65,6 +65,7 @@ function _gdcBag(el, m, bag) {
   acts.appendChild(_gdpBtn('Sell spare bugs', { icon: 'coins', disabled: !bag.nBugs, tip: 'Sell every bug except one of each kind', run: () => _gdcSay(gardenCatchSellAll('bug', 1)) }));
   head.appendChild(acts);
   el.appendChild(head);
+  gardenRewardBagCard(el);
   // the order board
   const orders = gardenOrdersNow(m);
   const board = _gdpEl('section', 'card gdc-orders');

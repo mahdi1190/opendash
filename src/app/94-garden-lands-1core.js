@@ -33,6 +33,7 @@ function gardenLandsWire(m) {
   for (const a of GARDEN_AREAS) if (a.buy && gardenHas('land:' + a.id) > 0) { ls.push(a.id); plots.add(a.id); }
   for (const s of GARDEN_LAND_SECTIONS) if (gardenHas('land:' + s.id) > 0) { ls.push(s.id); plots.add(s.plot); }
   for (const f of GARDEN_LAND_FEATURES) if (f.x != null && gardenLandOwnsFeature(f.id)) lf.push(f.id);
+  if (typeof gardenRewardTrailsWire === 'function') ls.push(...gardenRewardTrailsWire(m));   // a path opened early with pegs: friends see it open too
   const areas = GARDEN_AREAS.filter(a => (a.buy ? plots.has(a.id) : m.areas.includes(a.id))).map(a => a.id);
   const S = gardenLandShowMine(m);
   return { areas, ls, lf, lc: S.c, lz: S.z, lr: S.r };
@@ -65,9 +66,10 @@ function gardenBuildFeature(id) {
   if (info.why) return _gdNo(info.why);
   if (info.spot) return _gdNo(`${info.spot} is in the way: move it first`);
   const m = gardenModel();
-  if (!info.afford) return _gdNo(`That costs ${info.cost} coins: you have ${m.wallet.coins}`);
+  const rq = typeof gardenRewardQuote === 'function' ? gardenRewardQuote(info.cost) : null, pay = rq ? rq.c : info.cost;   // (part paid in materials: 94-garden-rewards-0rules.js)
+  if (m.wallet.coins < pay) return _gdNo(`That costs ${pay} coins: you have ${m.wallet.coins}`);
   const lk = 'b.' + m.today + '.' + _gdUid(''), mark = _gdMark([['led', lk]]), d = info.def;
-  _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(info.cost), x: 10, i: { ['feat:' + id]: 1 }, n: 1 };
+  _gdG().led[lk] = { d: m.today, k: 'b', c: _gdCost(pay), x: 10, i: Object.assign({ ['feat:' + id]: 1 }, rq && rq.i), n: 1 };
   _gdEmit('land', { id, x: d.x == null ? 30 : d.x, y: d.y == null ? 11 : d.y, w: d.w || 3, h: d.h || 1 });
   const done = _gdDone(`${d.name}: done`, `building ${d.name.toLowerCase()}`, mark, { icon: d.icon });
   gardenModel();   // (it stands in the world from this moment)

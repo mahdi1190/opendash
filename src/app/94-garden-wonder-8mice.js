@@ -61,6 +61,7 @@ function _wdMiceSvg(m) {
 function _wdMiceOpen() {
   const m = gardenModel(), W = _wdG(), n = Number(W.mv) || 0;
   W.mv = n + 1; _wdSave();
+  gardenRewardDid('mice');
   const line = W.mg && W.mg.d && !W.mg.seen && _wdDaysBetween(W.mg.d, m.today) >= 0 ? `Your ${W.mg.name.toLowerCase()} has been put on the table, and everyone is looking at it.` : _WD_MICE_LINES[n < _WD_MICE_LINES.length ? n : gardenHash(m.today) % _WD_MICE_LINES.length];
   if (W.mg && !W.mg.seen) { W.mg = Object.assign({}, W.mg, { seen: 1 }); }
   wdPage({
