@@ -224,6 +224,15 @@ const _GLD_FEATURE_ROWS = [
   { id: 'lf-circle', name: 'Stone circle', art: 'circle', does: 'collect', per: 'season', give: { x: 150, i: { 'seed:*rare': 1 } }, verb: 'Stand in the circle', sec: 'ls-mist-meadow', w: 3, h: 1, col: 'none', lv: 20, cost: 2400, tall: 1.3, icon: 'mountain', blurb: 'Stand in it once each season for a big share of experience and a rare seed.' },
 ];
 /* The spot for each one in its section: the first row of cells wide enough with somewhere to stand below, kept clear of the others. */
+// prizes for finishing a region's page in the book (94-garden-regions-*): nothing to buy, only to earn. World cells: thicket beside a trail, or the far ends of the lane, away from the shops.
+_GLD_FEATURE_ROWS.push(
+  { id: 'lf-rg-garden', name: 'The gardeners’ flag', art: 'rg-garden', does: 'prize', prize: 'garden', sec: '', x: 34, y: 14, w: 1, h: 1, door: { x: 34, y: 13 }, col: 'soft', lv: 1, cost: 0, tall: 2, icon: 'flag', blurb: 'For finding everything that lives in the main garden.' },
+  { id: 'lf-rg-lake', name: 'The anglers’ board', art: 'rg-lake', does: 'prize', prize: 'lake', sec: '', x: 11, y: 20, w: 1, h: 1, door: { x: 10, y: 20 }, col: 'soft', lv: 1, cost: 0, tall: 1.8, icon: 'fish', blurb: 'For finding everything that lives in the lake.' },
+  { id: 'lf-rg-hill', name: 'The hill flag', art: 'rg-hill', does: 'prize', prize: 'hill', sec: '', x: 29, y: 1, w: 1, h: 1, door: { x: 30, y: 1 }, col: 'soft', lv: 1, cost: 0, tall: 2, icon: 'flag', blurb: 'For finding everything that lives on the north hill.' },
+  { id: 'lf-rg-orchards', name: 'The cider press', art: 'rg-orchards', does: 'prize', prize: 'orchards', sec: '', x: 46, y: 2, w: 1, h: 1, door: { x: 46, y: 3 }, col: 'soft', lv: 1, cost: 0, tall: 1.6, icon: 'apple', blurb: 'For finding everything that lives in the east orchards.' },
+  { id: 'lf-rg-fields', name: 'The corn stook', art: 'rg-fields', does: 'prize', prize: 'fields', sec: '', x: 5, y: 19, w: 1, h: 1, door: { x: 5, y: 20 }, col: 'soft', lv: 1, cost: 0, tall: 1.5, icon: 'wheat', blurb: 'For finding everything that lives in the west fields.' },
+  { id: 'lf-rg-marsh', name: 'The heron post', art: 'rg-marsh', does: 'prize', prize: 'marsh', sec: '', x: 47, y: 26, w: 1, h: 1, door: { x: 46, y: 26 }, col: 'soft', lv: 1, cost: 0, tall: 1.9, icon: 'waves', blurb: 'For finding everything that lives in the south marsh.' },
+);
 const GARDEN_LAND_FEATURES = (function () {
   const used = new Set(), key = (x, y) => x + ',' + y;
   for (const f of _GLD_FEATURE_ROWS) if (f.x != null && f.does !== 'maze') { used.add(key(f.x, f.y)); used.add(key(f.door.x, f.door.y)); }
@@ -427,6 +436,7 @@ function gardenPropsNow() { return GARDEN_PROPS.concat(gardenLandProps()); }
 /** A cell of the land: is it water? null: the lake and the pond, which gardenIsWater knows from their own rectangles. */
 function gardenLandWaterAt(x, y) {
   const c = gardenLandCell(x, y); if (!c) return null;
+  if (c.solid && typeof gardenRegionWaterAt === 'function' && gardenRegionWaterAt(x, y)) return true;   // a region's own water, on the thicket (94-garden-regions-0table.js)
   if (c.fam === 'pond') return null;
   return !!c.pool;
 }
@@ -445,6 +455,6 @@ function gardenLandTotals() { return { sections: GARDEN_LAND_SECTIONS.length, tr
 function gardenLandTrees() {
   const out = [], taken = new Set();
   for (const d of GARDEN_LAND_SIGHTS) for (let k = -1; k <= d.w; k++) taken.add((d.x + k) + ',' + d.y);
-  for (const [rid, M] of Object.entries(GARDEN_LAND_MAPS)) M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) if (row[dx] === '#' && gardenHash(rid + dx + ',' + dy) % 5 === 0 && !taken.has((M.x + dx) + ',' + (M.y + dy))) out.push({ x: M.x + dx, y: M.y + dy, theme: M.theme }); });
+  for (const [rid, M] of Object.entries(GARDEN_LAND_MAPS)) M.rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) if (row[dx] === '#' && gardenHash(rid + dx + ',' + dy) % 5 === 0 && !taken.has((M.x + dx) + ',' + (M.y + dy)) && !(typeof gardenRegionWaterAt === 'function' && gardenRegionWaterAt(M.x + dx, M.y + dy))) out.push({ x: M.x + dx, y: M.y + dy, theme: M.theme }); });
   return out;
 }

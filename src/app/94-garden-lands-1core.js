@@ -51,7 +51,8 @@ function gardenLandFeatureInfo(id, mArg) {
   let why = '';
   if (!built) {
     const sec = def.sec ? gardenLandRow(def.sec) : null;
-    if (m.level.level < def.lv) why = `Opens at garden level ${def.lv}`;
+    if (def.prize) why = 'A prize: finish this part of the map in the book';
+    else if (m.level.level < def.lv) why = `Opens at garden level ${def.lv}`;
     else if (sec && !m.areas.includes(sec.id)) why = sec.buy ? `Needs ${sec.name} (buy that land first)` : `Needs ${sec.name} to be open`;
   }
   let spot = '';

@@ -143,14 +143,14 @@ function gardenEventFactor(k) { let f = 1; for (const id of gardenEventsNow()) {
 /* ---------- the same for everyone, from the date or the lake's own number ---------- */
 /** This week's wanted poster: a fish anybody can go and get. */
 function gardenWantedFor(weekFrom) {
-  const list = GARDEN_FISH.filter(f => f.cat === 'fish' && f.lv <= 4 && (f.rarity === 'common' || f.rarity === 'uncommon') && !f.tod.length && !f.seasons.length && !f.needs && f.zone.some(z => z !== 'pond'));
+  const list = GARDEN_FISH.filter(f => f.cat === 'fish' && f.lv <= 4 && (f.rarity === 'common' || f.rarity === 'uncommon') && !f.tod.length && !f.seasons.length && !f.needs && f.zone.some(z => z !== 'pond') && (typeof gardenRegionInLake !== 'function' || gardenRegionInLake(f)));
   return list.length ? list[gardenHash('wanted|' + weekFrom) % list.length] : null;
 }
 const _gtKnown = new Map();
 /** Every lake is known for four fish, from its own number: they come more often there. A reason to go and fish at a friend's. */
 function gardenLakeKnownFor(seed) {
   const k = String(seed); if (_gtKnown.has(k)) return _gtKnown.get(k);
-  const pool = GARDEN_FISH.filter(f => f.cat === 'fish' && f.lv <= 8 && !f.needs && ['common', 'uncommon', 'rare'].includes(f.rarity) && f.zone.some(z => z !== 'pond')), out = [];
+  const pool = GARDEN_FISH.filter(f => f.cat === 'fish' && f.lv <= 8 && !f.needs && ['common', 'uncommon', 'rare'].includes(f.rarity) && f.zone.some(z => z !== 'pond') && (typeof gardenRegionInLake !== 'function' || gardenRegionInLake(f))), out = [];
   for (let i = 0; i < 40 && out.length < 4 && pool.length; i++) { const d = pool[gardenHash('known|' + k + '|' + i) % pool.length]; if (!out.includes(d.id)) out.push(d.id); }
   _gtKnown.set(k, out);
   return out;

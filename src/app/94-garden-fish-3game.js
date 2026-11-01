@@ -188,7 +188,7 @@ function gardenFishClickPt(pt, m) {
   const cell = { x: Math.floor(pt.x), y: Math.floor(pt.y) };
   if (!gardenIsWater(cell.x, cell.y)) return false;
   const zone = gardenWaterZone(cell.x, cell.y);
-  if (zone === 'pond' && !m.areas.includes('pond')) { _gdpSay({ ok: false, msg: 'The pond opens at garden level 7.' }); return true; }
+  if (zone === 'pond') { const no = gardenRegionWaterNo(cell.x, cell.y, m.areas); if (no) { _gdpSay({ ok: false, msg: no }); return true; } }
   const rod = gardenRod(), reach = rod.st.range, W = GARDEN_WORLD;
   const dist = (x, y) => Math.hypot(x - pt.x, y - pt.y);
   const d0 = dist(_gw.px, _gw.py);

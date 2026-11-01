@@ -187,6 +187,7 @@ function _gfsClock() {
 function _gfsBands(m) {
   const out = GF_SCHOOL.bands.map((b, i) => Object.assign({ key: 'b' + i }, b));
   for (const a of GARDEN_AREAS) if (a.water && !a.fishing && m.areas.includes(a.id)) { const w = a.water; out.push({ key: 'a' + a.id, zone: 'pond', x0: w.x + 0.4, x1: w.x + w.w - 0.4, y0: w.y + 0.3, y1: w.y + w.h - 0.3, n: GF_SCHOOL.pond }); }
+  out.push(...gardenRegionBands(m.areas));   // the regions' waters, once they are open (94-garden-regions-0table.js)
   return out;
 }
 /** Somewhere in this water, clear of the pier. Near the pier a fish keeps to its own side, so it never swims under the planks in plain sight. */
@@ -215,8 +216,10 @@ function _gfsSpawn(b, m, at) {
   const outward = b.zone === 'deep' ? 1 + Math.max(0, p.y - 17) / 2.5 : 1;
   let odds = gardenFishOdds(ctx).map(([k, w]) => { const d0 = gardenFishDef(k); return [k, d0.cat !== 'fish' ? w * GF_SCHOOL.finds : d0.rarity === 'common' ? w : w * outward]; });
   if (b.zone === 'deep' && !odds.some(([k]) => gardenFishDef(k).cat === 'fish')) odds = odds.concat(gardenFishOdds(Object.assign({}, ctx, { zone: 'mid' })).filter(([k]) => gardenFishDef(k).cat === 'fish'));
+  odds = gardenRegionOdds(odds, b, ctx); if (!odds.length) return;   // only what lives in this water
   if (plus && plus.weigh) odds = odds.map(([k, w]) => [k, plus.weigh(gardenFishDef(k), w, p)]);
-  const forced = plus && plus.forced ? plus.forced(ctx) : null;   // the one that got away, a legend, a fish you let go
+  let forced = plus && plus.forced ? plus.forced(ctx) : null;
+  if (forced && !gardenRegionBandHas(forced.id, b)) forced = null;   // the one that got away, a legend, a fish you let go
   const id = forced ? forced.id : gardenFishPick(odds, Math.random), def = gardenFishDef(id); if (!def) return;
   // further out is bigger, in the same kind as well as in the kinds that live there
   const out = b.zone === 'pond' ? 0.05 : Math.max(0, Math.min(0.55, (p.y - 13) / 24));
