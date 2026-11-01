@@ -61,6 +61,8 @@
 const GARDEN_V = 1;
 function _gdF(o) { return Object.freeze(o); }
 function _gdRows(list) { return Object.freeze(list.map(r => Object.freeze(r))); }
+/* Rows the garden designer can move: the list is fixed, a row's x, y and door are not (gardenDesignShow, 94-garden-design-0rules.js). */
+function _gdMovable(list) { return Object.freeze(list); }
 
 /* ---------- the world ---------- */
 /* 2.22: the garden grew. The first 20 x 11 cells are exactly where they were (every saved x, y stays valid); the Wild
@@ -588,7 +590,7 @@ function gardenPierMore() { return _GD_WORKS.has('pier-3') ? 8 : _GD_WORKS.has('
    walk: you can stand on it; door: the cell you stand on to knock; act: what the page does when you get there.
    col (2.28.1, what it does to your feet): 'full' (the default: its whole footprint is a wall: a shop, a stall, the bench), 'soft' (a small box at its base:
    a lectern, a post box, you slip past) or 'none' (you walk through it: a post at the water's edge, reeds, the boat on the water). A walk prop is 'none'. */
-const GARDEN_PROPS = _gdRows([
+const GARDEN_PROPS = _gdMovable([
   { id: 'pier', name: 'The pier', x: 24, y: 20, w: 2, h: 5, walk: 1, blurb: 'Walk out over the water: the fish are bigger past the end of it.' },
   // what you can build on to it (GARDEN_WORKS): no kind, so nothing of their own is drawn: gardenPierGround draws the whole length
   { id: 'pier-2', name: 'The pier', x: 24, y: 25, w: 2, h: 4, walk: 1, needs: 'pier-2', blurb: 'New planks towards the bigger fish.' },
@@ -840,7 +842,7 @@ function gardenAreaAt(x, y, level) {
   // the world is one map (94-garden-lands-0table.js). A trail, the lane and the mown green are lawn to everything else: you walk there, nothing grows there. The thicket is locked for good.
   if (typeof gardenLandCell === 'function') {
     const c = gardenLandCell(x, y);
-    if (c) { if (c.lane) return 'lawn'; if (c.solid) return 'locked:' + c.id; return level == null || _GD_LAND.has(c.id) ? (c.trail || c.green ? 'lawn' : c.id) : 'locked:' + c.id; }
+    if (c) { if (c.lane) return 'lawn'; if (c.solid) return 'locked:' + c.id; if (level != null && !_GD_LAND.has(c.id)) return 'locked:' + c.id; if (c.green && level != null && typeof gardenDesignBedAt === 'function') { const b = gardenDesignBedAt(x, y); if (b) return b; } return c.trail || c.green ? 'lawn' : c.id; }   // (a bed plotted on the green grows like that area: the designer)
   }
   for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
   return 'lawn';
@@ -996,5 +998,6 @@ function gardenSnapshotClean(raw) {
   if (raw.sh && typeof gardenShowClean === 'function') { const sh = gardenShowClean(raw.sh); if (sh) out.sh = sh; }
   if (raw.sp && typeof gardenSpecClean === 'function') { const sp = gardenSpecClean(raw.sp); if (sp) out.sp = sp; }   // their best specimens (94-garden-fish-0variants.js)
   if (raw.ca && typeof gardenCatchWireClean === 'function') { const ca = gardenCatchWireClean(raw.ca); if (ca) out.ca = ca; }   // the lake: what it shows to friends
+  if (raw.dz && typeof gardenDesignClean === 'function') { const dz = gardenDesignClean(raw.dz); if (dz) out.dz = dz; }   // their garden design (94-garden-design-0rules.js); an older app drops the field
   return out;
 }
