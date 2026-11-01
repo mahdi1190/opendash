@@ -978,6 +978,7 @@ function gardenSnapshotClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const W = GARDEN_WORLD, int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null; };
   const out = { v: 1, wv: int(raw.wv, 1, 9) || 1, cv: int(raw.cv, 0, 9) || 0, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
+  { const pa = Number(raw.pa); if (Number.isInteger(pa) && pa > 0 && pa < 1e14) out.pa = pa; }   // their pet is away until then: 94-garden-play-1pet.js
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
   { const tz = int(raw.tz, -840, 840), sr = int(raw.sr, 0, 1439), ss = int(raw.ss, 0, 1439); if (tz !== null) { out.tz = tz; if (sr !== null && ss !== null) { out.sr = sr; out.ss = ss; } } }   // 2.28: their time zone, so a visit has their light
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);

@@ -1,5 +1,9 @@
 /* PLAY (2.40; docs/dev/HUNDRED_PLAY.md). */
-html.gp-away .gd-pet.is-me, html.gp-seeking .gd-pet.is-me { display: none; }
+html.gp-away .gd-pet.is-me, html.gp-seeking .gd-pet.is-me, html.gp-away .gd-pet-follow, html.gp-seeking .gd-pet-follow { display: none; }
+.pt-badge.is-away { position: relative; } .pt-badge.is-away > :first-child { opacity: 0.35; filter: grayscale(0.6); }
+.pt-badge-away { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--surface, #fff); box-shadow: 0 1px 4px rgb(0 0 0 / 0.25); }
+.pt-trip .pt-trip-pic { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 50%; background: color-mix(in srgb, #5a8fe0 14%, var(--surface, #fff)); }
+.pt-trip.is-big { padding: 28px 24px; font-size: 16px; }
 .gp-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .gp-tickets { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: color-mix(in srgb, #f2b01e 22%, var(--surface, #fff)); font-size: 14px; }
 .gp-h { margin: 16px 0 8px; font-size: 13px; font-weight: 700; color: var(--text-2, inherit); }

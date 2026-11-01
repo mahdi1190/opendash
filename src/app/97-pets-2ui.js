@@ -50,11 +50,13 @@ function _ptMount(container, view) {
   container.appendChild(root);   // 2.23: in the document while it is built: the stage measures itself
   try {
     if (!g.has) { headerSubTabs(null); if (sub) sub.textContent = 'A little companion that grows with what you do'; _ptAdopt(root); return; }
-    if (sub) sub.textContent = (petMood() || {}).line || '';
+    const onTrip = typeof gpPetAway === 'function' && gpPetAway();   // a little journey (94-garden-play-1pet.js)
+    if (sub) sub.textContent = onTrip ? `${petName(g)} is away on a little journey` : (petMood() || {}).line || '';
     // 2.19.1: Together (your pet, its care, tricks and journal) and Wardrobe are the page header's pills; the journal is part of Together now
     headerSubTabs(subTabs({ label: 'Your pet', active: tab === 'journal' ? 'together' : tab, onChange: (id) => setView(id === 'together' ? 'pet' : 'pet:' + id),
       tabs: [['together', 'Together', 'heart'], ['collection', 'Collection', 'paw-print'], ['tricks', 'Tricks', 'wand-sparkles'], ['wardrobe', 'Wardrobe', 'shirt']].map(([id, label, ic]) => ({ id, label, icon: ic })) }), /^pet(:|$)/);
     if (!g.on) root.appendChild(_ptAwayNote(g));
+    if (onTrip && tab !== 'together' && tab !== 'journal') root.appendChild(_ptTripNote(g));
     if (_ptFun() === 'off') {
       const n = _ptEl('div', 'card pt-note'); n.innerHTML = icon('circle-x', 'i-sm');
       n.appendChild(_ptEl('span', null, `The Fun level is Off: ${petName(g)} stays on this page and keeps still, and is not on Home, your card or the garden.`));
@@ -64,6 +66,7 @@ function _ptMount(container, view) {
     if (tab === 'wardrobe') _ptWardrobe(root, g);
     else if (tab === 'collection') _ptCollection(root);
     else if (tab === 'tricks' && typeof petBookPage === 'function') petBookPage(root);
+    else if (onTrip) { if (_ptUI.stage) { try { _ptUI.stage.stop(); } catch (e2) { /* gone */ } _ptUI.stage = null; } root.appendChild(_ptTripNote(g, true)); }   // it is not here to play with
     else _ptTogether(root, g);
   } catch (e) {
     console.error('[pets] page', e);
@@ -71,6 +74,14 @@ function _ptMount(container, view) {
     mountEmptyState(root, { icon: 'circle-alert', compact: true, title: 'Your pet couldn’t load just now', text: 'Nothing is lost.', actions: [{ label: 'Try again', icon: 'refresh-cw', primary: true, run: () => { if (typeof render === 'function') render(); } }] });
   }
   if (tab === 'journal') requestAnimationFrame(() => { const e = root.querySelector('.pt-journal-sec'); if (e) { e.open = true; e.scrollIntoView({ block: 'start' }); } });   // #view=pet:journal: Together, at the journal
+}
+/** Away on a little journey: where it is, when it is back, and how to call it home. big: it stands in for the page. */
+function _ptTripNote(g, big) {
+  const n = _ptEl('div', 'card pt-note pt-trip' + (big ? ' is-big' : '')), j = gpJourney();
+  const pic = _ptEl('span', 'pt-trip-pic'); pic.innerHTML = icon('luggage'); n.appendChild(pic);
+  n.appendChild(_ptEl('span', null, `${petName(g)} is away on a little journey. Back ${j ? gpJourneyDueWords(j) : 'soon'}, with a postcard.`));
+  n.appendChild(_ptBtn('Call it home now', 'undo-2', () => { gpJourneyCall(); _ptRefresh(); }, 'btn-primary'));
+  return n;
 }
 function _ptAwayNote(g) {
   const n = _ptEl('div', 'card pt-note');
@@ -621,7 +632,8 @@ if (typeof registerSidebarBlock === 'function') {
     id: 'pet-nav', order: 15, label: 'Your pet', hiddenByDefault: true,
     render(el) {
       const g = petGet();
-      el.appendChild(sbNavItem({ label: g.has ? petName(g) : 'Your pet', icon: 'paw-print', view: 'pet', active: /^pet(:|$)/.test(String(state.view || '')), title: g.has ? (petMood() || {}).line || '' : 'Adopt a pet' }));
+      const trip = g.has && typeof gpPetAway === 'function' && gpPetAway();
+      el.appendChild(sbNavItem({ label: g.has ? petName(g) + (trip ? ' (away)' : '') : 'Your pet', icon: trip ? 'luggage' : 'paw-print', view: 'pet', active: /^pet(:|$)/.test(String(state.view || '')), title: trip ? `${petName(g)} is away on a little journey` : g.has ? (petMood() || {}).line || '' : 'Adopt a pet' }));
     },
   });
 }
@@ -631,7 +643,7 @@ function _ptNavBlockShown() {
   try { return typeof sbBlockHidden === 'function' && typeof sbLayout === 'function' && !sbBlockHidden(sbLayout(), 'home', { id: 'pet-nav', hiddenByDefault: true }); } catch (e) { return false; }
 }
 if (typeof gardenFunNavAdd === 'function') {
-  gardenFunNavAdd({ id: 'pet', order: 10, icon: 'paw-print', view: 'pet', get label() { try { return petName(); } catch (e) { return 'Your pet'; } }, when: () => petHas() && !_ptNavBlockShown() });
+  gardenFunNavAdd({ id: 'pet', order: 10, icon: 'paw-print', view: 'pet', get label() { try { return petName() + (typeof gpPetAway === 'function' && gpPetAway() ? ' (away)' : ''); } catch (e) { return 'Your pet'; } }, when: () => petHas() && !_ptNavBlockShown() });
 }
 if (typeof registerCommand === 'function') {
   registerCommand({ id: 'pet-open', label: 'Your pet', icon: 'paw-print', group: 'Go to', keywords: 'pet companion cat dog animal tamagotchi buddy', run: () => setView('pet') });

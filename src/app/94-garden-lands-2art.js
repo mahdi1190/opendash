@@ -9,6 +9,8 @@
      gardenLandLights(sc)                pools of light for the night layer
      gardenLandMini(open, season)        the land on the little map
    ============================================================ */
+const _GLD_OVER = { fn: null };
+function _gldOvergrown(cells, id, sc, zones) { return _GLD_OVER.fn ? _GLD_OVER.fn(cells, id, sc, zones) : ''; }
 const _GLD_ART = (function () {
   const A = GART, f1 = A.f1, rr = A.rr;
   const W = () => GARDEN_WORLD;
@@ -179,6 +181,7 @@ const _GLD_ART = (function () {
     }
     return lay.map(d => (d ? A.P(col, d, 0.045) : '')).join('');
   }
+  _GLD_OVER.fn = overgrown;
   function plot(id, sc, o, open) {
     const M = GARDEN_LAND_MAPS[id], season = sc.season, P = WILD[season] || WILD.summer, r = A.rng(A.hash('gld-plot|' + id + '|' + season)), secs = GARDEN_LAND_SECTIONS.filter(q => q.region === id);
     let s = '', live = '';
@@ -322,6 +325,15 @@ const _GLD_ART = (function () {
       s += `<path d="${d}" fill="none" stroke="${wet}" stroke-width="22" stroke-opacity="0.55" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="${sand}" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>`;
       let st = '', hi = ''; for (const [cx, cy] of [[x0 + 8, y1 - 10], [x1 - 8, y1 - 10]]) for (let i = 0; i < 6; i++) { const x = cx + rr(r2, -16, 16), y = cy + rr(r2, -9, 9), R = rr(r2, 4, 8); st += A.blob(r2, x, y, R, R * 0.7, 7, 0.2); hi += A.ell(x - R * 0.3, y - R * 0.26, R * 0.4, R * 0.18); }
       s += `<path fill="#a8a294" stroke="#6e6a5e" stroke-width="0.8" d="${st}"/>` + A.P('#d8d2c4', hi, 0.9); }
+    // the lane past a gate has grown over too
+    { const shut = []; for (const y of [19, 20]) for (let x = 0; x < GARDEN_WORLD.cols; x++) { const n = gardenZoneOf(x, y); if (n && !open.has('zn-' + n)) shut.push([x, y]); }
+      if (shut.length) { let f0 = 1; while (f0 < GARDEN_ZONES.length && open.has('zn-' + f0)) f0++; s += _gldOvergrown(shut, 'lane', sc, (x, y) => Math.max(0, gardenZoneOf(x, y) - f0)); } }
+    // the world's edges: the same woods as past the edge, so there is no straight line where the picture stops
+    { const C = season === 'winter' ? ['#6f8470', '#7d9280'] : season === 'autumn' ? ['#6f6a34', '#7d7638'] : ['#3f7040', '#4c7e46'], r3 = A.rng(A.hash('gld-rim|' + season)), wpx = W().cols * W().cellW, y9 = py(W().rows); let d0 = '', d1 = '';
+      const rim = (x, y) => { const R = 12 + r3() * 16; d0 += A.circ(x, y, R); d1 += A.circ(x - R * 0.2, y - R * 0.3, R * 0.62); };
+      for (let y = py(0); y < y9; y += 24) { rim(2 + r3() * 8, y); rim(wpx - 2 - r3() * 8, y); }
+      for (let x = 0; x < wpx; x += 26) rim(x, y9 - 2 - r3() * 8);
+      s += A.P(C[0], d0) + A.P(C[1], d1); }
     // the far water: a line of floats across the lake, a sign, and mist beyond it until its zone opens
     { const to = typeof sc.lakeTo === 'number' ? sc.lakeTo : gardenLakeOpenToOf(open), last = GARDEN_ZONES[GARDEN_ZONES.length - 1].lake;
       if (to < last) {
@@ -361,12 +373,12 @@ const _GLD_ART = (function () {
 })();
 /** Past the edge of the world, woods go on: three soft masses of leaves along the left, right and bottom. Not baked: it lies outside the picture (a window zoomed right out). */
 function gartLandsFringe(sc) {
-  const A = GART, W = GARDEN_WORLD, wpx = W.cols * W.cellW, y0 = W.sky, y1 = W.sky + W.rows * W.cellH, season = sc.season, C = season === 'winter' ? ['#6f8470', '#859a84', '#a4b4a0'] : season === 'autumn' ? ['#7f7a34', '#9a8c3c', '#b89c48'] : ['#3f7040', '#528a4a', '#6ea458'], r = A.rng(A.hash('gld-fringe|' + season));
+  const A = GART, W = GARDEN_WORLD, wpx = W.cols * W.cellW, y0 = W.sky, y1 = W.sky + W.rows * W.cellH, season = sc.season, C = season === 'winter' ? ['#6f8470', '#7d9280', '#8a9e8c'] : season === 'autumn' ? ['#6f6a34', '#7d7638', '#8b8240'] : ['#3f7040', '#4c7e46', '#5a8c4e'], r = A.rng(A.hash('gld-fringe|' + season));
   const lays = ['', '', ''];
-  const clump = (x, y) => { const R = 22 + r() * 26; lays[0] += A.circ(x, y, R); lays[1] += A.circ(x - R * 0.2, y - R * 0.3, R * 0.68); lays[2] += A.circ(x - R * 0.3, y - R * 0.5, R * 0.34); };
+  const clump = (x, y) => { const R = 18 + r() * 22; lays[0] += A.circ(x, y, R); lays[1] += A.circ(x - R * 0.2, y - R * 0.3, R * 0.68); lays[2] += A.circ(x - R * 0.3, y - R * 0.5, R * 0.34); };
   for (let i = 0; i < 2; i++) for (let y = y0 - 30; y < y1 + 300; y += 30) { for (let d = 8; d < 240; d += 46) { const dd = d + (r() - 0.5) * 18; clump(i ? wpx + dd : -dd, y + (r() - 0.5) * 16); } }
   for (let x = -30; x < wpx + 30; x += 34) for (let d = 10; d < 240; d += 42) clump(x + (r() - 0.5) * 18, y1 + d + (r() - 0.5) * 14);
-  return A.P(C[0], lays[0]) + A.P(C[1], lays[1]) + A.P(C[2], lays[2], 0.8);
+  return A.P(C[0], `M-3000 ${y0}H${wpx + 3000}V${y1 + 3000}H-3000z`) + A.P(C[1], lays[1], 0.8) + A.P(C[2], lays[2], 0.55);
 }
 function gartLandsPlot(a, sc, o, open) { return _GLD_ART.plot(a, sc, o, open); }
 function gartLandsTrails(sc, o, open) { return _GLD_ART.trails(sc, o, open); }
@@ -522,12 +534,16 @@ function _gldGateArt(g, sc, open) {
   const board = (x, y, txt) => { const bw = Math.round(txt.length * 5.1 + 22), bh = 15; return `<g class="gd-zonegate-board"><path fill="#7a5636" stroke="#4c3420" stroke-width="0.8" d="M${_gwN(x - 1.7)} ${_gwN(y)}V${_gwN(y - bh - 4)}h3.400V${_gwN(y)}z"/><rect x="${_gwN(x - bw / 2)}" y="${_gwN(y - bh - 16)}" width="${bw}" height="${bh}" rx="4" fill="#f8ecc8" stroke="#6e4c2a" stroke-width="1.4"/><rect x="${_gwN(x - bw / 2 + 5)}" y="${_gwN(y - bh - 10.4)}" width="7" height="5.8" rx="1.2" fill="#8a6a3a"/><path d="M${_gwN(x - bw / 2 + 6.3)} ${_gwN(y - bh - 10.4)}v-1.700a2.200 2.200 0 0 1 4.400 0v1.700" stroke="#8a6a3a" stroke-width="1.300" fill="none"/><text x="${_gwN(x + 6)}" y="${_gwN(y - bh - 5.200)}" font-size="9.500" font-family="Inter, Arial, sans-serif" font-weight="800" text-anchor="middle" fill="#4c3420">${txt}</text></g>`; };
   const z = gardenZone(g.n), lab = `Level ${z.lv}`;
   if (g.dx) {   // the way through is across the screen: the gate runs up the screen, the far post behind
-    const d = g.h * W.cellH, x = (g.dx > 0 ? g.x : g.x + 1) * W.cellW, yb = W.sky + (g.y + g.h) * W.cellH - 2, yt = yb - d + 8, S = open ? 26 * (g.dx > 0 ? -1 : 1) : 0;
-    let s = post(x, yt, 0.82);
-    if (!open) { const rail = (h, c, w) => `<path d="M${_gwN(x)} ${_gwN(yt - h * 0.82)}L${_gwN(x)} ${_gwN(yb - h)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" fill="none"/>`; s += rail(21, wood[0], 3) + rail(13, wood[0], 3) + rail(6, wood[0], 3) + rail(21.6, wood[1], 1.3) + rail(13.6, wood[1], 1.3) + rail(6.6, wood[1], 1.3); for (let t = 0.2; t < 1; t += 0.2) s += `<path d="M${_gwN(x)} ${_gwN(yt + (yb - yt) * t - 22)}V${_gwN(yt + (yb - yt) * t - 4)}" stroke="${wood[0]}" stroke-width="2.4"/>`; }
-    else s += `<path d="M${_gwN(x)} ${_gwN(yb - 18)}L${_gwN(x + S)} ${_gwN(yb - 24)}M${_gwN(x)} ${_gwN(yb - 7)}L${_gwN(x + S)} ${_gwN(yb - 13)}M${_gwN(x)} ${_gwN(yb - 7)}L${_gwN(x + S)} ${_gwN(yb - 24)}" stroke="${wood[0]}" stroke-width="2.6" stroke-linecap="round" fill="none"/>`;
-    s += post(x, yb, 1);
-    return s + (open ? '' : board(x - g.dx * 16, yb + 2, lab));
+    const d = g.h * W.cellH, x = (g.dx > 0 ? g.x : g.x + 1) * W.cellW, yb = W.sky + (g.y + g.h) * W.cellH - 2, yt = yb - d + 8, skew = 7 + g.h * 5, xt = x - skew, xb = x + skew, S = open ? 26 * (g.dx > 0 ? -1 : 1) : 0;
+    let s = post(xt, yt, 0.84);
+    if (!open) {
+      const n = g.h * 5; let pick = '', top = '';
+      for (let i = 1; i < n; i++) { const t = i / n, px0 = xt + (xb - xt) * t, py0 = yt + (yb - yt) * t; pick += A.rrect(px0 - 2.6, py0 - 24, 5.2, 24, 1.2); top += A.rect(px0 - 1.6, py0 - 23, 1.2, 21); }
+      const rail = (h, c, w) => `<path d="M${_gwN(xt)} ${_gwN(yt - h * 0.84)}L${_gwN(xb)} ${_gwN(yb - h)}" stroke="${c}" stroke-width="${w}" stroke-linecap="round" fill="none"/>`;
+      s += rail(18, wood[0], 3.4) + rail(7, wood[0], 3.4) + `<path fill="${wood[1]}" stroke="${wood[0]}" stroke-width="0.9" d="${pick}"/>` + A.P(wood[2], top, 0.7);
+    } else s += `<path d="M${_gwN(xb)} ${_gwN(yb - 18)}L${_gwN(xb + S)} ${_gwN(yb - 24)}M${_gwN(xb)} ${_gwN(yb - 7)}L${_gwN(xb + S)} ${_gwN(yb - 13)}M${_gwN(xb)} ${_gwN(yb - 7)}L${_gwN(xb + S)} ${_gwN(yb - 24)}" stroke="${wood[0]}" stroke-width="2.6" stroke-linecap="round" fill="none"/>`;
+    s += post(xb, yb, 1);
+    return s + (open ? '' : board(xb - g.dx * 34, yb + 6, lab));
   }
   // the way through is up or down the screen: the gate stands facing you
   const cx = (g.x + 0.5) * W.cellW, by = W.sky + (g.dy > 0 ? g.y : g.y + 1) * W.cellH - 1, hw = 19;
@@ -535,7 +551,7 @@ function _gldGateArt(g, sc, open) {
   if (!open) { s += `<path d="M${_gwN(cx - hw)} ${_gwN(by - 20)}H${_gwN(cx + hw)}M${_gwN(cx - hw)} ${_gwN(by - 12)}H${_gwN(cx + hw)}M${_gwN(cx - hw)} ${_gwN(by - 5)}H${_gwN(cx + hw)}M${_gwN(cx - hw + 1)} ${_gwN(by - 5)}L${_gwN(cx + hw - 1)} ${_gwN(by - 20)}" stroke="${wood[0]}" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M${_gwN(cx - hw)} ${_gwN(by - 20.6)}H${_gwN(cx + hw)}M${_gwN(cx - hw)} ${_gwN(by - 12.6)}H${_gwN(cx + hw)}M${_gwN(cx - hw)} ${_gwN(by - 5.6)}H${_gwN(cx + hw)}" stroke="${wood[2]}" stroke-width="1.100" fill="none"/>`; }
   else s += `<path d="M${_gwN(cx - hw)} ${_gwN(by - 18)}L${_gwN(cx - hw - 13)} ${_gwN(by - 13)}M${_gwN(cx - hw)} ${_gwN(by - 7)}L${_gwN(cx - hw - 13)} ${_gwN(by - 3)}M${_gwN(cx + hw)} ${_gwN(by - 18)}L${_gwN(cx + hw + 13)} ${_gwN(by - 13)}M${_gwN(cx + hw)} ${_gwN(by - 7)}L${_gwN(cx + hw + 13)} ${_gwN(by - 3)}" stroke="${wood[0]}" stroke-width="2.600" stroke-linecap="round" fill="none"/>`;
   s += post(cx - hw, by, 1) + post(cx + hw, by, 1);
-  return s + (open ? '' : board(cx, by + 1, lab));
+  return s + (open ? '' : board(cx + hw + 34, by + 8, lab));
 }
 /** The marker on a spot you could build on: a stake and a small sign saying the price, or the level. */
 function _gldSiteArt(f, sc, lv) {

@@ -613,6 +613,11 @@ html[data-motion="reduced"] .pts *, html[data-motion="reduced"] .ptc *, html[dat
 .ptw { cursor: pointer; pointer-events: auto; }
 .ptw .ptw-face { transform-box: view-box; }
 .ptw-wild { cursor: help; }
+.ptw-ripple { pointer-events: none; }
+.ptw-ring { transform-box: fill-box; transform-origin: center; animation: ptw-ring 2.6s ease-out infinite; }
+@keyframes ptw-ring { from { transform: scale(0.7); opacity: 0.9; } to { transform: scale(1.3); opacity: 0; } }
+html[data-motion="reduced"] .ptw-ring { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ptw-ring { animation: none; } }
 .ptw-glow { animation: ptw-glow 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes ptw-glow { 50% { opacity: .55; transform: scale(1.15); } }
 .ptw-sparks { animation: pt-twinkle 1.2s ease-in-out infinite; }
