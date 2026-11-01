@@ -190,6 +190,9 @@ function _gplDraw(a, dir, pose, o) {
   const Fp = profileFigureSvg(bare, { layers: true, arms: hang, uid: uid + 'a', size: 240, plain: true });   // the arms, without the fine pieces (they would only be smudges, scaled like this)
   const T = PP.TOPS[fo.o.top.kind] || PP.TOPS.tee, B = PP.BUILD[fo.o.build] || PP.BUILD.average;
   const S = _GPL_S, KY = _GPL_KY, Tools = _gplTools();
+  // (the can they own, on every screen: 94-garden-fish-7gear.js)
+  { const col = o.gear && o.gear.c && typeof GARDEN_CAN_LOOK !== 'undefined' ? GARDEN_CAN_LOOK[o.gear.c] : null; if (col) { const can0 = Tools.can; Tools.can = () => can0().split('#6f9ab0').join(col); } }
+  const slung = o.gear && typeof _gplSlung === 'function' ? _gplSlung(o.gear, pose) : '';
   const side = dir === 'e', back = dir === 'n';
   const hipY = PP.HIP * KY * S, headO = `transform-origin:0px ${_gplN(_gplY(66))}px`;
   const P = _gplPoseArms(pose, side, Tools, o.stageRod);
@@ -229,7 +232,7 @@ function _gplDraw(a, dir, pose, o) {
         + `<g class="gpl-hd" style="${headO}">${_gplG(port, L.ears + L.skull + L.face + L.hair + L.glasses + L.hat + L.phones + L.extra)}</g>`;
     }
   }
-  return `<g class="gpl gpl-${pose} gpl-d${dir}"><g class="gpl-root" style="transform-origin:0px 0px">${legs}<g class="gpl-up" style="transform-origin:0px ${_gplN(hipY)}px">${upper}</g></g></g>`;
+  return `<g class="gpl gpl-${pose} gpl-d${dir}"><g class="gpl-root" style="transform-origin:0px 0px">${legs}<g class="gpl-up" style="transform-origin:0px ${_gplN(hipY)}px">${back ? '' : slung}${upper}${back ? slung : ''}</g></g></g>`;
 }
 
 /** The figure as a fragment (cached per look, way round and pose). */
@@ -239,7 +242,7 @@ function gartPlayerSvg(avatar, o) {
   const pose = GPL_POSES.includes(o.pose) ? o.pose : 'idle';
   let a;
   try { a = profileAvatarNormalize(avatar); } catch (e) { return ''; }
-  const key = JSON.stringify(a) + dir + pose + (o.motion ? 'm' : '') + (o.stageRod ? 'r' : '');
+  const key = JSON.stringify(a) + dir + pose + (o.motion ? 'm' : '') + (o.stageRod ? 'r' : '') + (o.gear ? JSON.stringify(o.gear) : '');
   let s = _GPL.cache.get(key);
   if (s == null) { try { s = _gplDraw(a, dir, pose, o); } catch (e) { s = ''; } if (_GPL.cache.size > 40) _GPL.cache.clear(); _GPL.cache.set(key, s); }
   return s;
@@ -264,9 +267,10 @@ function gartPlayerPaint(inner, gw) {
     if ((gw.fishing && gw.fishing.state !== 'idle') || gw.casting) { pose = 'fish'; stageRod = true; }   // the fishing game draws the rod and the line itself
     if (_GPL.pose && now < _GPL.until && !moving) pose = _GPL.pose;
     const av = _gplAvatar(), dir = GPL_POSE_FRONT.has(pose) ? 's' : stageRod ? 'e' : _GPL.dir;   // fishing is side on: the game's rod starts from the hand on the side you face; a catch held up faces you
-    const key = pose + dir + (motion ? 'm' : '') + (stageRod ? 'r' : '') + JSON.stringify(av);   // a compare: a wardrobe change shows at once, nothing else redraws
+    const gear = typeof _gplMyGear === 'function' ? _gplMyGear() : null;
+    const key = pose + dir + (motion ? 'm' : '') + (stageRod ? 'r' : '') + JSON.stringify(av) + JSON.stringify(gear);   // a compare: a wardrobe change shows at once, nothing else redraws
     if (_GPL.key !== key || !inner.firstChild || inner._gplKey !== key) {
-      const s = gartPlayerSvg(av, { dir, pose, motion, stageRod });
+      const s = gartPlayerSvg(av, { dir, pose, motion, stageRod, gear });
       if (!s) return false;
       _GPL.key = key; inner._gplKey = key;
       inner.innerHTML = s;

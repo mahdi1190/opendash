@@ -192,3 +192,6 @@ html[data-motion="reduced"] .glg, html[data-motion="reduced"] .glg-bar i { anima
 .gll-link-b { flex: none; border: 0; border-radius: 999px; padding: 3px 9px; background: var(--bg-muted); color: var(--fg); font: inherit; cursor: pointer; }
 .gll-link-b:hover { background: color-mix(in srgb, var(--fg) 12%, var(--bg-muted)); }
 .gd-page.is-fishing .gll-link { display: none; }
+/* what someone carries (94-garden-fish-7gear.js) */
+.gll-gear { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: var(--text-xs); color: var(--fg-muted); }
+.gll-gear-i { display: inline-flex; align-items: center; gap: 4px; }

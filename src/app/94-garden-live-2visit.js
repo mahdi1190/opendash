@@ -263,7 +263,7 @@ function _glvGotBug(u, item) {
 function _glvActorAdd(ev) {
   let A = _gll.actors.get(ev.w);
   if (!A) { A = _gllActor(ev); _gll.actors.set(ev.w, A); }
-  else if (A.n !== ev.n || JSON.stringify([A.a, A.pet]) !== JSON.stringify([ev.a || A.a, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
+  else if (A.n !== ev.n || JSON.stringify([A.a, A.g, A.pet]) !== JSON.stringify([ev.a || A.a, ev.g || A.g, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.g = ev.g || A.g; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
   else A.lv = ev.lv;
   A.stale = false;
   if (!_glv.sprites.has(ev.w)) _glv.sprites.set(ev.w, _gllSprite(A, () => _glvPersonMenu(A)));
@@ -280,6 +280,7 @@ function _glvPersonMenu(A) {
   openPopover(A.root, (el, close) => {
     el.classList.add('gsv-pop', 'gll-menu');
     el.appendChild(_gsvEl('b', null, A.n));
+    { const carries = typeof gardenGearRow === 'function' ? gardenGearRow(A.g) : null; if (carries) el.appendChild(carries); }
     const r = _gsvEl('div', 'gll-menu-row');
     const go = (label, ic, fn) => r.appendChild(_gsvBtn(label, { icon: ic, kind: 'btn-ghost', run: () => { close(); fn(); } }));
     go('Wave', 'hand', () => { if (typeof gartEmoteRun === 'function') gartEmoteRun('wave', { quiet: true }); _glvSend('em', { c: 'em', e: 'wave', to: A.w }); });
@@ -428,6 +429,7 @@ function _glvDelta(ops) {
   if (typeof document === 'undefined') return;
   let t = 0;
   // (only a real change: the same look again means "tell me everything", and a pet says it changed for many small reasons)
-  const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role !== 'visit' || !_glvLive()) return; const l = _glvLook(), sig = JSON.stringify([l.a || null, l.pet || null]); if (sig === _glv.lookSig) return; const first = !_glv.lookSig; _glv.lookSig = sig; if (!first) _glvSend('me', l); } catch (e) { /* the next beat has it */ } }, 1500); };
+  const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_gll.role !== 'visit' || !_glvLive()) return; const l = _glvLook(), sig = JSON.stringify([l.a || null, l.g || null, l.pet || null]); if (sig === _glv.lookSig) return; const first = !_glv.lookSig; _glv.lookSig = sig; if (!first) _glvSend('me', l); } catch (e) { /* the next beat has it */ } }, 1500); };
   document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
+  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear') soon(); });   // (a new rod: they see it now)
 })();

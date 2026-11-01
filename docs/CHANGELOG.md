@@ -10,6 +10,32 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.40.0]
+
+The garden's land is now small sections joined by winding paths, with much more to build and find.
+
+### Changed
+- **Dozens of small sections.** The big plots are now 79 small sections joined by 17 winding trails, opening as your level rises. Land you already own stays yours. The ground looks softer and less square, with curved paths, beds and a lake beach.
+
+### Added
+- **Over 20 new things to build on your land,** from way posts, a rain barrel and bee skeps to a hedge maze, an observatory and a stone circle, each with its own use.
+- **Things to find:** a daily dig spot, curios, foraging, a weekend cart, and an old key to a walled garden.
+- **Friends see it.** Sections and what you build show on a visit.
+
+### Fixed
+- Garden creatures stopped appearing after 2.38.0, because of a crash. They are back.
+- A friend looking at a saved copy of your garden now sees your longer pier, what you built for the lake, and your showcase.
+
+## [2.39.0]
+
+What you buy now shows, and friends can see it.
+
+### Added
+- **Your gear shows on you.** A better rod or net hangs on your back, your rod in your hand and your float on the water look like the ones you own, and your watering can matches too. Friends see all of this.
+- **What you build stands in the garden.** The fish feeder, reed beds, fishing station, night lantern and stocked pools are drawn where they are, as well as the longer piers. Friends see them when they visit, and as soon as you build them if they are in your garden.
+- **New things are held up.** Buy something and you hold it over your head, and friends see "Sam got a carbon rod!"
+- **See what a friend carries.** Click them in the garden for their rod, net, float and can. A visit also says what they have built.
+
 ## [2.38.2]
 
 ### Fixed

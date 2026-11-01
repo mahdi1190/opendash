@@ -51,7 +51,7 @@ function _gsvAvatar(f, size) {
   el.style.setProperty('--size', size + 'px');
   return el;
 }
-function _gsvSig(snap) { return snap ? String(gardenHash(JSON.stringify([snap.lv, snap.season, snap.areas, snap.plants, snap.decor, snap.heart]))) : ''; }
+function _gsvSig(snap) { return snap ? String(gardenHash(JSON.stringify([snap.lv, snap.season, snap.areas, snap.plants, snap.decor, snap.heart, snap.ls, snap.lf, snap.lc, snap.lz, snap.lr]))) : ''; }
 function _gsvLevelTitle(lv) { return typeof GARDEN_LEVEL_TITLES !== 'undefined' ? GARDEN_LEVEL_TITLES[Math.max(0, Math.min(GARDEN_LEVEL_TITLES.length - 1, (lv || 1) - 1))] || '' : ''; }
 /* ---------- the section, the palette, Home's Fun list ---------- */
 registerSection('garden-visit', {
@@ -133,6 +133,7 @@ function gardenVisitNotes(el) {
   const how = _gsvEl('section', 'card gsv-how');
   how.appendChild(_gsvEl('b', null, `You are visiting ${_gscFirst(fid)}`));
   how.appendChild(_gsvEl('p', 'muted', live ? 'They are here, and they see what you do. What you plant or place comes from your own bag.' : (typeof _GLV_NOTES !== 'undefined' && _GLV_NOTES[_glv.why]) || 'This is their garden as they last shared it. Walk wherever you like: nothing here leaves your computer unless you do one of the things below.'));
+  { let built = ''; try { built = typeof gardenWorksWords === 'function' ? gardenWorksWords((_gdvSnap() || {}).wk) : ''; } catch (e) { built = ''; } if (built) how.appendChild(_gsvEl('p', 'muted', built)); }
   el.appendChild(how);
   el.appendChild(_gsvQuick(f, c));
   el.appendChild(_gsvToday(f, c));

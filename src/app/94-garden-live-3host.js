@@ -159,7 +159,7 @@ function _glhQuickSoon() { setTimeout(() => { try { if (typeof gardenHudPaint ==
 function _glhAdd(ev) {
   let A = _gll.actors.get(ev.w);
   if (!A) { A = _gllActor(ev); A.f = ev.f; _gll.actors.set(ev.w, A); }
-  else if (A.n !== ev.n || JSON.stringify([A.a, A.pet]) !== JSON.stringify([ev.a || A.a, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
+  else if (A.n !== ev.n || JSON.stringify([A.a, A.g, A.pet]) !== JSON.stringify([ev.a || A.a, ev.g || A.g, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.g = ev.g || A.g; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
   else A.lv = ev.lv;
   A.f = ev.f;
   if (!_glh.sprites.has(ev.w) && typeof gardenWorldAdd === 'function') _glh.sprites.set(ev.w, _gllSprite(A, () => _glhPersonMenu(A)));
@@ -641,6 +641,7 @@ function _glhPersonMenu(A) {
   openPopover(A.root, (el, close) => {
     el.classList.add('gsv-pop', 'gll-menu');
     el.appendChild(_gsvEl('b', null, A.n));
+    { const carries = typeof gardenGearRow === 'function' ? gardenGearRow(A.g) : null; if (carries) el.appendChild(carries); }
     const r = _gsvEl('div', 'gll-menu-row');
     r.appendChild(_gsvBtn('Wave', { icon: 'hand', kind: 'btn-ghost', run: () => { close(); if (typeof gartEmoteRun === 'function') gartEmoteRun('wave', { quiet: true }); _glhSend('all', 'em', { c: 'em', e: 'wave', to: A.w }); } }));
     r.appendChild(_gsvBtn('High five', { icon: 'hand', kind: 'btn-ghost', run: () => { close(); gardenWalkToPoint({ x: A.x - 0.7, y: A.y + 0.1 }, () => { if (typeof gartEmoteRun === 'function') gartEmoteRun('clap', { quiet: true }); _gllEmote(A, 'clap'); _glhSend('all', 'em', { c: 'do', e: 'high5', to: A.w }); }); } }));
@@ -781,7 +782,10 @@ function _glhPanel(el, v) {
 /* your own garden actions, for who is here: the can tips, the plant appears */
 document.addEventListener('opendash:garden', (ev) => {
   if (!_glh.on || !_glhAnyone()) return;
-  const d = ev && ev.detail; if (!d || d.x == null) return;
+  const d = ev && ev.detail;
+  // land, something built, a find: everyone here sees it now, not when they next come (after the action has finished saving)
+  if (d && (d.kind === 'land' || d.kind === 'landshow')) { setTimeout(() => { if (_glh.on) for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f); }, 0); return; }
+  if (!d || d.x == null) return;
   const t = { water: 'water', plant: 'plant', harvest: 'harvest', prune: 'weed', feed: 'water' }[d.kind]; if (!t) return;
   _glhSend('all', 'res', { w: 0, t, ok: true, x: Math.floor(d.x), y: Math.floor(d.y) });
 });
@@ -792,4 +796,5 @@ document.addEventListener('opendash:garden', (ev) => {
   let t = 0;
   const soon = () => { clearTimeout(t); t = setTimeout(() => { try { if (_glh.on && _glhAnyone()) _gllApi('/api/garden-live/here', _glhHereBody(true)).catch(() => {}); } catch (e) { /* the next beat has it */ } }, 1500); };
   document.addEventListener('opendash:profile', soon); document.addEventListener('opendash:pet', soon);
+  document.addEventListener('opendash:garden', (ev) => { const k = ev && ev.detail && ev.detail.kind; if (k === 'buy' || k === 'gear') soon(); });   // (a new rod: they see it now)
 })();

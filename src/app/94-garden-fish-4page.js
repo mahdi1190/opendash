@@ -195,7 +195,7 @@ function _gdcGearCard(d, m) {
   const cur = kind === 'lake' ? d : kind === 'rod' ? gardenRod() : kind === 'net' ? gardenNet() : gardenBait();
   const equipped = kind !== 'lake' && cur.id === d.id;
   const c = _gdpEl('div', 'gd-card gdc-gear' + (equipped ? ' is-equipped' : '') + (!owned && kind !== 'bait' ? ' is-locked' : ''));
-  const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = kind === 'lake' ? icon(d.icon || 'waves') : gardenCatchSvg(kind, d.id, 64); c.appendChild(art);
+  const art = _gdpEl('div', 'gd-card-art'); art.innerHTML = kind === 'lake' ? gardenWorkSvg(d.id, 64) : gardenCatchSvg(kind, d.id, 64); c.appendChild(art);
   const t = _gdpEl('div', 'gd-card-t');
   t.appendChild(_gdpEl('b', null, d.name));
   if (kind === 'bait' && !d.own) t.appendChild(_gdpEl('small', 'gd-have', `${gardenHas('bait:' + d.id)} in your bag`));
