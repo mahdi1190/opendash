@@ -202,7 +202,7 @@ function _gartWatch(svg) {
 
 /* ---------- the one slow heartbeat ---------- */
 function _gartTick() {
-  if (document.hidden) return;
+  if (document.hidden || _grm.on || _ee.on) return;   // (a room covers the stage)
   const list = document.querySelectorAll('.gd-svg');
   if (!list.length) return;
   for (const svg of list) {

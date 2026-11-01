@@ -601,6 +601,7 @@ function _gwCalmSet(on) { if (_gwCalm.on === on) return; _gwCalm.on = on; if (_g
  * Only the drawing goes: the loop still looks in twice a second, and the fish clock, the host's answers and friends' messages run on as they were.
  */
 function _gwIndoors(on) {
+  if (!on && _gdp.owed) { _gdp.owed = false; gardenRepaintSoon(); }
   if (_gwCalm.hid === on) return;
   _gwCalm.hid = on; document.body.classList.toggle('gd-room-in', on);   // (on the body: the stage can be rebuilt while you are in a room, and the new one must stay hidden too)
   if (on) { _gwCalmSet(true); return; }
