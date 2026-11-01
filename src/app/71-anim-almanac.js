@@ -110,9 +110,11 @@ function almSeasonMark(day) {
 }
 
 /* ---------- the clocks ---------- */
+const _almOffFmts = new Map();
 function _almOffsetMin(ms, tz) {
   try {
-    const f = new Intl.DateTimeFormat('en-GB', { timeZone: tz, timeZoneName: 'longOffset' });
+    let f = _almOffFmts.get(tz);
+    if (!f) _almOffFmts.set(tz, f = new Intl.DateTimeFormat('en-GB', { timeZone: tz, timeZoneName: 'longOffset' }));
     const p = f.formatToParts(new Date(ms)).find(x => x.type === 'timeZoneName');
     const m = /GMT([+-])(\d{2}):?(\d{2})?/.exec(p ? p.value : '');
     return m ? (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +(m[3] || 0)) : 0;

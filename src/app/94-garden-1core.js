@@ -84,6 +84,7 @@ function gardenRepaintSoon() {
 
 /* ---------- the data: tasks and focus per day ---------- */
 function _gdActKey() {
+  if (_gd.actHeld) return _gd.actHeld;   // inside one gardenModel: the log cannot change, and the wallet asks for this per plant
   const log = (typeof state !== 'undefined' && state && state.completionLog) || {};
   let n = 0, mx = 0;
   for (const arr of Object.values(log)) if (Array.isArray(arr)) { n += arr.length; for (const t of arr) if (t > mx) mx = t; }
@@ -520,6 +521,11 @@ function _gdAreasOpen(level) {
   return base.concat([...openSet].filter(id => !base.includes(id)));   // (the scene draws by these ids; a snapshot says it differently: gardenLandsWire)
 }
 function gardenModel(nowArg) {
+  if (_gd.actHeld) return _gardenModel(nowArg);
+  _gd.actHeld = _gdActKey();
+  try { return _gardenModel(nowArg); } finally { _gd.actHeld = ''; }
+}
+function _gardenModel(nowArg) {
   const g = _gdG();
   if (!g.since) gardenEnsure();
   gardenWorldCheck();   // a save from the old world moves over, once (94-garden-lands-1core.js)

@@ -824,17 +824,37 @@ function _calChipClick(chip, o) {
 /** Hide the chips that do not fit in each cell and add "N more". */
 function calFitMonth(grid) {
   if (!grid || !grid.isConnected) return;
-  for (const cell of grid.querySelectorAll('.mc')) {
-    cell.querySelectorAll('.ce.more').forEach(n => n.remove());
-    const chips = [...cell.querySelectorAll('.ce')];
-    chips.forEach(c => { c.hidden = false; });
-    if (cell.scrollHeight <= cell.clientHeight + 1 || chips.length < 2) continue;
-    const more = document.createElement('button'); more.type = 'button'; more.className = 'ce more';
-    cell.appendChild(more);
-    let hidden = 0;
-    for (let i = chips.length - 1; i >= 0 && cell.scrollHeight > cell.clientHeight + 1; i--) { chips[i].hidden = true; hidden++; more.textContent = `${hidden} more`; }
-    more.setAttribute('aria-label', `${hidden} more on this day`);
+  // All the cells together, not one chip at a time: every hidden chip used to force a layout of the page (20 s on a full month).
+  const cells = [...grid.querySelectorAll('.mc')].map(cell => ({ cell, chips: [...cell.querySelectorAll('.ce:not(.more)')] }));
+  for (const c of cells) {
+    c.cell.querySelectorAll('.ce.more').forEach(n => n.remove());
+    c.chips.forEach(n => { n.hidden = false; });
   }
+  // One read: which cells overflow, and how many chips could fit even without the "more" button.
+  const over = [];
+  for (const c of cells) {
+    c.room = c.cell.clientHeight + 1;
+    if (c.chips.length < 2 || c.cell.scrollHeight <= c.room) continue;
+    const top = c.cell.getBoundingClientRect().top + c.cell.clientTop;
+    let keep = c.chips.length - 1;
+    while (keep > 0 && c.chips[keep - 1].getBoundingClientRect().bottom - top > c.room) keep--;
+    c.keep = keep;
+    over.push(c);
+  }
+  for (const c of over) {
+    c.more = document.createElement('button'); c.more.type = 'button'; c.more.className = 'ce more';
+    c.cell.appendChild(c.more);
+    for (let i = c.keep; i < c.chips.length; i++) c.chips[i].hidden = true;
+  }
+  // The "more" button takes room too: one more chip off each cell that still overflows, a round at a time.
+  const label = (c) => { c.more.textContent = `${c.chips.length - c.keep} more`; };
+  over.forEach(label);
+  let pending = over;
+  while (pending.length) {
+    pending = pending.filter(c => c.keep > 0 && c.cell.scrollHeight > c.room);
+    for (const c of pending) { c.keep--; c.chips[c.keep].hidden = true; label(c); }
+  }
+  for (const c of over) c.more.setAttribute('aria-label', `${c.chips.length - c.keep} more on this day`);
 }
 function calDayPopover(anchor, iso, entries, o) {
   openPopover(anchor, (el, close) => {

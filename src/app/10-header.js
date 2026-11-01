@@ -113,9 +113,13 @@ function _tbShortDate(iso, withWeekday) {
   return _tbFmtParts(d, o) || iso;
 }
 /** A locale date without the commas some locales put after the weekday ("Fri 18 Dec 2026"). */
+const _tbFmts = new Map();
 function _tbFmtParts(d, o) {
   try {
-    return new Intl.DateTimeFormat(_tbLocale(), o).formatToParts(d)
+    const k = _tbLocale() + JSON.stringify(o);
+    let fmt = _tbFmts.get(k);
+    if (!fmt) _tbFmts.set(k, fmt = new Intl.DateTimeFormat(_tbLocale(), o));   // (a new formatter is the slow part)
+    return fmt.formatToParts(d)
       // Newer ICU writes "Sept" for en-GB; the design uses three letters like every other month.
       .map(p => (p.type === 'literal' ? p.value.replace(/,\s*/g, ' ') : p.type === 'month' && p.value === 'Sept' ? 'Sep' : p.value)).join('').replace(/\s+/g, ' ').trim();
   } catch (e) { return ''; }

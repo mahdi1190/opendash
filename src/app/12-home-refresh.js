@@ -67,7 +67,33 @@ function homeCurrentSummary() {
 function homeUseCurrentSummary() {
   return Clock.parts(Clock.now()).h >= 12 || _homeCurrentDate === todayStr() || (typeof _homeAdvice !== 'undefined' && _homeAdvice && _homeAdvice.date === todayStr());
 }
-function homeRefreshDerived() {
+/**
+ * The minute tick on Home. Repainting every widget in one go, each with its own measure-and-glide, froze the page for half a second
+ * once a minute. Here the widgets repaint one at a time between frames, and the grid is measured once, at the end.
+ */
+let _hrSoftQ = null;
+function homeRefreshSoft() {
+  if (_hrSoftQ) return;
+  homeRefreshDerived({ soft: true });
+}
+function _hrSoftNext(q) {
+  if (_hrSoftQ !== q) return;
+  const t0 = performance.now();
+  const grid = q.grid;
+  if (state.view !== 'home' || !grid.isConnected) { _hrSoftQ = null; return; }
+  while (q.ids.length && performance.now() - t0 < 12) {
+    const id = q.ids.shift(), rec = typeof _homeW !== 'undefined' ? _homeW.get(id) : null;
+    if (!rec || !rec.frame.isConnected || rec.frame.contains(document.activeElement)) continue;
+    const w = homeLayout().widgets.find(x => x.id === id) || { id, size: rec.size, hidden: false };
+    try { _homePaintWidget(rec.frame, rec.def, w, false); } catch (e) { console.error('[home]', e); }
+  }
+  if (q.ids.length) { setTimeout(() => _hrSoftNext(q), 16); return; }
+  _hrSoftQ = null;
+  homeGridPack(grid);
+  homeGridRemember(grid, homeFlipPlay(grid, q.first));
+  _homeKeepFocus();
+}
+function homeRefreshDerived(o) {
   if (typeof _sgSnap !== 'undefined') _sgSnap = null;
   if (typeof _sgEval !== 'undefined') _sgEval = null;
   if (typeof _homeMemoCache !== 'undefined') _homeMemoCache.clear();
@@ -76,6 +102,7 @@ function homeRefreshDerived() {
   if (typeof _hdRepaintIdeas === 'function') _hdRepaintIdeas();
   if (typeof homeAdvisorPaint === 'function') homeAdvisorPaint();
   if (typeof homeRerenderWidget === 'function') {
+    const soft = o && o.soft ? [] : null;
     for (const frame of document.querySelectorAll('#main-body .hg-w[data-wid]')) {
       // Editors and receipt controls keep their DOM and focus during a refresh.
       const id = frame.dataset.wid, base = id.split('~')[0];
@@ -88,8 +115,10 @@ function homeRefreshDerived() {
         try { k = String(def.refreshKey() || ''); } catch (e) { k = ''; }
         if (k && frame.dataset.refreshKey === k) continue;
       }
-      homeRerenderWidget(id);
+      if (soft) soft.push(id); else homeRerenderWidget(id);
     }
+    const grid = document.querySelector('#main-body .home-grid');
+    if (soft && soft.length && grid) { const q = _hrSoftQ = { grid, ids: soft, first: homeFlipCapture(grid) }; setTimeout(() => _hrSoftNext(q), 16); }
   }
 }
 
@@ -541,7 +570,7 @@ function homeRefreshClock() {
   _homeClockMinute = minute; // Set before painting; hero painting invokes its ticker.
   const active = document.activeElement;
   if (active && active.closest && active.closest('.home-head, .hg-w')) return;
-  homeRefreshDerived();
+  homeRefreshSoft();
   if (typeof homeAdvisorTick === 'function') homeAdvisorTick();
 }
 function homeRefreshButton(crumb) {
