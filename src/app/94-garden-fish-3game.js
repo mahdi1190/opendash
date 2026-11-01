@@ -453,13 +453,13 @@ function _gwBugsFrame(dt) {
 }
 /** Put a bug on the stage: only what changed, and nothing at all while it is out of view (a frame that writes is a frame the stage paints). True when it is in view. */
 function _gwBugDraw(b, flying) {
-  if (!_gwInView(b.x, b.y, 1) && b.node.parentNode && b.zk != null) return false;
+  if (!_gwInView(b.x, b.y, 1) && b.node.parentNode && b.zk != null) { if (b.cls && b.cls.includes(' is-seen')) { b.cls = ''; b.node.classList.remove('is-seen'); } return false; }
   const [x, y] = _gwPx(b.x, b.y), tf = `translate(${x.toFixed(1)} ${y.toFixed(1)})`;
   if (b.tf !== tf) { b.tf = tf; b.node.setAttribute('transform', tf); b.node.setAttribute('data-z', b.y.toFixed(2)); }
   const lf = `translate(0 ${(-b.lift).toFixed(1)})`;
   if (b.lf !== lf) { b.lf = lf; b.liftEl.setAttribute('transform', lf); }
   if (b.fc !== b.face) { b.fc = b.face; const k = GW_BUG_SCALE * b.def.size; b.inEl.setAttribute('transform', `scale(${(b.face * k).toFixed(2)} ${k.toFixed(2)})`); }
-  const cls = 'gd-bug' + (flying ? ' is-fly' : '') + (b.state === 'flee' ? ' is-flee' : '') + ((_gw.netting && _gw.netting.actor === b) || _gw.hoverBug === b.key ? ' is-target' : '') + (b.def.glow || b.def.id === 'firefly' ? ' is-glow' : '');
+  const cls = 'gd-bug is-seen' + (b.state !== 'rest' ? ' is-go' : '') + (flying ? ' is-fly' : '') + (b.state === 'flee' ? ' is-flee' : '') + ((_gw.netting && _gw.netting.actor === b) || _gw.hoverBug === b.key ? ' is-target' : '') + (b.def.glow || b.def.id === 'firefly' ? ' is-glow' : '');
   if (b.cls !== cls) { b.cls = cls; b.node.setAttribute('class', cls); }
   const zk = Math.floor(b.y * 3);
   if (b.zk !== zk || !b.node.parentNode) { b.zk = zk; _gwPlace(b.node, b.y); }
