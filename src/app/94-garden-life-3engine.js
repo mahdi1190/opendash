@@ -719,7 +719,7 @@ function _glVisitWorld(svg, snap) {
   const G = GARDEN_WORLD, areas = gardenLandsOfSnap(snap).areas, lvl = snap.lv || 1;
   // (as the scene does: a friend on an older version has no lake or woods in their list)
   if (!areas.includes('lake')) areas.push('lake'); if (lvl >= 4 && !areas.includes('woods')) areas.push('woods');
-  const open = (x, y) => { const lc = gardenLandCell(x, y); if (lc && !areas.includes(gardenLandPlotAt(x, y))) return areas.includes(lc.id); for (const a of GARDEN_AREAS) { if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return areas.includes(a.id); } return x < G.coreCols && y < G.coreRows; };
+  const open = (x, y) => { const lc = gardenLandCell(x, y); if (lc) return !lc.solid && (lc.lane || areas.includes(lc.id)); return areas.includes('lake'); };   // (the map says, as it does for the feet: only the lake is not on it)
   const plants = [], decor = [];
   for (const r of snap.plants || []) { const def = gardenPlant(r[0]); if (def) plants.push({ uid: `p${r[1]},${r[2]}`, def, x: r[1], y: r[2], fp: def.fp || 1, stage: r[3], ripe: !!(r[5] & 4) }); }
   for (const r of snap.decor || []) { const def = gardenDecor(r[0]); if (def) decor.push({ uid: `d${r[1]},${r[2]}`, def, x: r[1], y: r[2] }); }
@@ -736,7 +736,7 @@ function _glVisitWorld(svg, snap) {
     own: false, visit: true, svg, tod: _gdTod(now, season, snap), season, rain: snap.wx === 1, snow: snap.wx === 2, wet: !!snap.wx, level: lvl, still: !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()),
     cell: (x, y) => x >= 0 && y >= 0 && x < G.cols && y < G.rows && !grid[y * G.cols + x],
     water: (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); return cx >= 0 && cy >= 0 && cx < G.cols && cy < G.rows && gardenIsWater(cx, cy) && open(cx, cy); },
-    view() { const b = svg.viewBox && svg.viewBox.baseVal; return b && b.width ? { x0: Math.max(0, b.x / G.cellW), y0: (b.y - G.sky) / G.cellH, x1: Math.min(G.cols, (b.x + b.width) / G.cellW), y1: Math.min(G.rows + 1, (b.y + b.height - G.sky) / G.cellH) } : { x0: 0, y0: 0, x1: G.coreCols, y1: G.coreRows }; },
+    view() { const b = svg.viewBox && svg.viewBox.baseVal; return b && b.width ? { x0: Math.max(0, b.x / G.cellW), y0: (b.y - G.sky) / G.cellH, x1: Math.min(G.cols, (b.x + b.width) / G.cellW), y1: Math.min(G.rows + 1, (b.y + b.height - G.sky) / G.cellH) } : { x0: 0, y0: 0, x1: G.cols, y1: G.rows }; },
     player: () => null, pets: () => [], cap: () => GL_CAP.visit,
     add: (spec) => _glVisitAdd(spec),
   });

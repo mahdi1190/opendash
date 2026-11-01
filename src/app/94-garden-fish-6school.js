@@ -24,9 +24,9 @@
    ============================================================ */
 const GF_SCHOOL = Object.freeze({
   bands: Object.freeze([
-    Object.freeze({ zone: 'shallow', x0: 0.6, x1: 27.4, y0: 13.35, y1: 14.9, n: 1 }),
-    Object.freeze({ zone: 'mid', x0: 0.6, x1: 27.4, y0: 15.1, y1: 16.9, n: 1 }),
-    Object.freeze({ zone: 'deep', x0: 0.6, x1: 27.4, y0: 17.2, y1: 27.5, n: 1 }),
+    Object.freeze({ zone: 'shallow', x0: 12.6, x1: 39.4, y0: 21.35, y1: 22.9, n: 1 }),
+    Object.freeze({ zone: 'mid', x0: 12.6, x1: 39.4, y0: 23.1, y1: 24.9, n: 1 }),
+    Object.freeze({ zone: 'deep', x0: 12.6, x1: 39.4, y0: 25.2, y1: 35.5, n: 1 }),
   ]),
   pond: 1, max: 20,                             // fish in each still pool; the most in the water at once (the wire takes 20). The owner, 1 Nov 2026: a fish should be a pleasant surprise, not everywhere all the time
   tick: 0.25, beat: 6000, beatEmpty: 20000, msgGap: 400, oldHostMs: 12000, // the clock (seconds); a list at least this often (ms: a guest carries each fish on between lists), an empty one this often, never closer than this; how long a guest waits for a host's first list
@@ -197,9 +197,9 @@ function _gfsSpot(b0, near0) {
     const x = near ? inX(near.x + (Math.random() - 0.5) * 8) : b.x0 + Math.random() * (b.x1 - b.x0);
     const y = near ? inY(near.y + (Math.random() - 0.5) * 3) : b.y0 + Math.random() * (b.y1 - b.y0);
     if (!gardenIsWater(Math.floor(x), Math.floor(y))) continue;
-    const end = 17.4 + gardenPierMore();
-    if (lake && y < end && x > 11.5 && x < 14.5) continue;
-    if (lake && near && y < end && (x < 13) !== (near.x < 13)) continue;
+    const end = 25.4 + gardenPierMore();
+    if (lake && y < end && x > 23.5 && x < 26.5) continue;
+    if (lake && near && y < end && (x < 25) !== (near.x < 25)) continue;
     return { x, y };
   }
   return near;

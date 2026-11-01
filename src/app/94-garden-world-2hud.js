@@ -204,12 +204,7 @@ function _ghQuick(box, m) {
 function _ghMini(box, m) {
   const W = GARDEN_WORLD, marks = m.plants.filter(p => p.ripe || (p.thirsty && p.def.thirst)).slice(0, 60).map(p => `<circle cx="${p.x + 0.5}" cy="${p.y + 0.5}" r="0.8" fill="${p.ripe ? '#ffc93c' : '#62c2ff'}"/>`).join('');
   const open = new Set(m.areas);
-  const area = GARDEN_AREAS.map((a) => {
-    const isOpen = open.has(a.id), wa = a.water;
-    const col = !isOpen ? 'rgba(40,40,30,.55)' : _gdrTileCol(a.tile, m.season);
-    if (a.buy && !isOpen) return `<rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}" fill="${col}"/>`;   // (its sections, below)
-    return `<rect x="${a.x}" y="${a.y}" width="${a.w}" height="${a.h}" fill="${col}"/>` + (wa ? `<rect x="${wa.x}" y="${wa.y}" width="${wa.w}" height="${wa.h}" fill="#4f93c8"/>` : '');
-  }).join('') + gardenLandMini(open, m.season);
+  const area = gardenLandMini(open, m.season) + GARDEN_AREAS.filter(a => a.water && open.has(a.id)).map(a => `<rect x="${a.water.x}" y="${a.water.y}" width="${a.water.w}" height="${a.water.h}" fill="#4f93c8"/>`).join('');
   const html = `<svg viewBox="0 0 ${W.cols} ${W.rows}" preserveAspectRatio="none" aria-hidden="true"><rect width="${W.cols}" height="${W.rows}" fill="#7ea85a"/>${area}${marks}<rect class="gd-mini-view" fill="none" stroke="#fff" stroke-width=".35"/><circle class="gd-mini-me" r="1.100" fill="#fff" stroke="#2a2a2a" stroke-width=".3"/></svg>`;
   const el = _ghHost(box, 'gd-mini');
   if (_gh.mini !== html || !el.firstChild) {
@@ -340,6 +335,7 @@ function gardenLandBubble(id, m) {
 /** A click on land that is not yours. A section you can buy: you walk to it and the price opens there. Otherwise: a padlock, and it says what is needed. */
 function gardenLandClick(id, ev) {
   const a = gardenArea(id), at = ev && ev.clientX != null ? { x: ev.clientX, y: ev.clientY } : null; if (!a) return;
+  if (a.solid) { gameDeny(null, { at, say: 'Too thick to walk through.' }); return; }
   const m = gardenHere();
   if (m.visit) { gameDeny(null, { kind: 'lock', at, say: 'That land is not open in this garden.' }); return; }
   if (!a.buy) { gameDeny(null, { kind: 'lock', badge: 'Lv ' + a.lv, at, say: `${a.name} opens at garden level ${a.lv}.` }); return; }

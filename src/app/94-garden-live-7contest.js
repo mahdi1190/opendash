@@ -223,7 +223,7 @@ function gardenContestBugsNow(m) {
     let v = rnd() * tot, i = 0; for (; i < pool.length - 1; i++) { v -= wt[i]; if (v <= 0) break; }
     let spot = null;
     for (let t = 0; t < 10 && !spot; t++) {
-      const x = 2 + rnd() * (W.coreCols - 4), y = 6.2 + rnd() * 5, cx = Math.floor(x), cy = Math.floor(y);
+      const x = W.ox + 2 + rnd() * 24, y = W.oy + 6.2 + rnd() * 5, cx = Math.floor(x), cy = Math.floor(y);
       if (m.occ && m.occ.has(cx + ',' + cy) || gardenPropAt(cx, cy) || gardenIsWater(cx, cy)) continue;
       spot = { x, y };
     }

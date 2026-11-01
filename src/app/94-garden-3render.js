@@ -24,10 +24,10 @@
    ============================================================ */
 const _GDR = { cache: new Map(), seq: 0 };
 const GARDEN_CROPS = Object.freeze({
-  all: Object.freeze({ x: 0, y: 0, w: GARDEN_WORLD.coreCols * GARDEN_WORLD.cellW, h: GARDEN_WORLD.sky + GARDEN_WORLD.coreRows * GARDEN_WORLD.cellH }),   // the garden as it has always been: 1344 x 690 (a card, a photo, a friend without bought land)
+  all: Object.freeze({ x: GARDEN_WORLD.ox * GARDEN_WORLD.cellW, y: GARDEN_WORLD.sky + (GARDEN_WORLD.oy - 3) * GARDEN_WORLD.cellH, w: 28 * GARDEN_WORLD.cellW, h: 22 * GARDEN_WORLD.cellH }),   // the garden as it has always been: 1344 x 690 (a card, a photo, a friend without bought land)
   world: Object.freeze({ x: 0, y: 0, w: GARDEN_WORLD.cols * GARDEN_WORLD.cellW, h: GARDEN_WORLD.sky + GARDEN_WORLD.rows * GARDEN_WORLD.cellH }),   // 2.23: everything, the land you can buy too
-  wide: Object.freeze({ x: 120, y: 112, w: 720, h: 360 }),
-  bed: Object.freeze({ x: 236, y: 168, w: 496, h: 252 }),
+  wide: Object.freeze({ x: 15 * GARDEN_WORLD.cellW, y: GARDEN_WORLD.sky + 8 * GARDEN_WORLD.cellH, w: 720, h: 360 }),
+  bed: Object.freeze({ x: 15 * GARDEN_WORLD.cellW, y: GARDEN_WORLD.sky + 11 * GARDEN_WORLD.cellH, w: 496, h: 252 }),
 });
 function gardenCropBox(crop) { return GARDEN_CROPS[crop] || GARDEN_CROPS.all; }
 /** The crop that shows a whole garden: bought land widens it. */
@@ -149,7 +149,7 @@ function _gdrGround(sc, o) {
     if (look === 'greenhouse') { for (let gx = 0; gx < a.w; gx++) for (let gy = 0; gy < a.h; gy++) if ((gx + gy) % 2) s += `<rect x="${x0 + gx * cw + 3}" y="${y0 + gy * ch + 3}" width="${cw - 6}" height="${ch - 6}" fill="${_gdaShade(col, -0.06)}"/>`; s += `<path d="M${x0} ${y0 + 2}V${y0 - 30}L${x0 + w / 2} ${y0 - 50}L${x0 + w} ${y0 - 30}V${y0 + 2}Z" fill="#dff0f6" fill-opacity="0.28" stroke="#f4f8f6" stroke-width="2.4" stroke-linejoin="round"/>`; for (let gx = 1; gx < a.w; gx++) { const lx = x0 + gx * cw, top = y0 - 30 - 20 * (1 - Math.abs(gx / a.w - 0.5) * 2); s += `<path d="M${lx} ${_gdrN(top)}V${y0 + 2}" stroke="#f4f8f6" stroke-opacity="0.8" stroke-width="1.4"/>`; } s += `<path d="M${x0} ${y0 - 30}H${x0 + w}" stroke="#f4f8f6" stroke-opacity="0.8" stroke-width="1.4"/>`; }
   }
   // 2.23: the lane east along the shore: it is always open, and all the land you can buy lies either side of it
-  { const lane = _gdrTileCol('sand', season), ly = base + 11 * ch, lx = W.coreCols * cw, lw = (W.cols - W.coreCols) * cw, rnd = gardenRand('lane');
+  { const lane = _gdrTileCol('sand', season), ly = base + 19 * ch, lx = 0, lw = W.cols * cw, rnd = gardenRand('lane');
     s += `<rect x="${lx}" y="${ly + 3}" width="${lw}" height="${2 * ch - 6}" fill="${lane}"/><path d="${_gdrDotsD(rnd, lx, ly, lw, 2 * ch, 80)}" stroke="${_gdaShade(lane, -0.14)}" stroke-width="2.4" stroke-linecap="round" fill="none"/>`; }
   s += gardenPierGround(sc, o);   // 2.22: the pier, over the lake
   if (season === 'winter' && sc.rain && sc.rain.snow) { const rnd = gardenRand('snowground'); for (let i = 0; i < 60; i++) s += `<ellipse cx="${_gdrN(rnd() * W.cols * cw)}" cy="${_gdrN(base + rnd() * W.rows * ch)}" rx="${_gdrN(10 + rnd() * 24)}" ry="${_gdrN(3 + rnd() * 5)}" fill="#ffffff" fill-opacity="0.8"/>`; }
@@ -340,6 +340,7 @@ function gardenRender(el, snapshot, o) {
   if (!el) return null;
   const snap = gardenSnapshotClean(snapshot);
   el.textContent = '';
+  if (snap && !gardenSnapSameWorld(snap)) { const p = document.createElement('p'); p.className = 'gd-empty muted'; p.textContent = 'This garden is from an older version of the app. It will show here once they update.'; el.appendChild(p); return null; }
   if (!snap) {
     const p = document.createElement('p'); p.className = 'gd-empty muted'; p.textContent = 'This garden could not be shown.';
     el.appendChild(p);

@@ -71,13 +71,13 @@ function gardenWorkSvg(id, px) {
 }
 /** Where they stand: [{id, x, y, svg}] in cells. Beside the pier they follow its end; a pond's stock stands by each pond you have. */
 function gardenWorksArt(sc) {
-  const out = [], end = 17 + gardenPierMore(), put = (id, x, y) => { if (gardenWorkOwned(id)) { const svg = gardenWorkArt(id, sc); if (svg) out.push({ id, key: id + '-' + x + '-' + y, x, y, svg }); } };
-  put('pier-2', 12.1, 17.1);
-  put('pier-3', 13.85, end - 0.4);
-  put('fish-feeder', 9.6, 14.5);
-  put('reed-beds', 3.4, 15.2); put('reed-beds', 18.6, 14.6); put('reed-beds', 25, 15.6);
-  put('fishing-station', 13.45, end - 1);
-  put('night-lantern', 12.15, end - 0.15);
+  const out = [], end = 25 + gardenPierMore(), put = (id, x, y) => { if (gardenWorkOwned(id)) { const svg = gardenWorkArt(id, sc); if (svg) out.push({ id, key: id + '-' + x + '-' + y, x, y, svg }); } };
+  put('pier-2', 24.1, 25.1);
+  put('pier-3', 25.85, end - 0.4);
+  put('fish-feeder', 21.6, 22.5);
+  put('reed-beds', 15.4, 23.2); put('reed-beds', 30.6, 22.6); put('reed-beds', 37, 23.6);
+  put('fishing-station', 25.45, end - 1);
+  put('night-lantern', 24.15, end - 0.15);
   const open = new Set(sc.areas || []);
   for (const a of GARDEN_AREAS) if (a.water && !a.fishing && open.has(a.id)) put('pool-stock', a.water.x - 0.5, a.water.y + a.water.h - 0.2);
   return out;

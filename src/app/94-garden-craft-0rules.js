@@ -221,8 +221,8 @@ function gardenBottleNow(mArg) {
     if (g.prefs.bt === m.today || gardenHash('bottle|' + m.today) % 3 !== 0) return null;
     const left = GARDEN_RECIPES.filter(r => r.learn.bottle && !(m.wallet.items['recipe:' + r.id] > 0));
     if (!left.length) return null;
-    const h = gardenHash('bottle-at|' + m.today), x = 6 + (h % 20);
-    return { recipe: left[h % left.length].id, x: x + 0.5, y: 12.75 };
+    const h = gardenHash('bottle-at|' + m.today), x = 18 + (h % 20);
+    return { recipe: left[h % left.length].id, x: x + 0.5, y: 20.75 };
   } catch (e) { return null; }
 }
 function gardenBottleOpen() {
