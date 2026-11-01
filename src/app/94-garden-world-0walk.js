@@ -666,6 +666,7 @@ function _gwFrame(ts) {
     want = sneak ? GW_SPEED.sneak : (rem > 170 ? GW_SPEED.run : GW_SPEED.walk) * gardenLandWalkK();
     want = Math.min(want, Math.sqrt(2 * GW_ACC * rem) + 34);   // ease in to the stop
   }
+  if (typeof gardenPlayWalk === 'function') want *= gardenPlayWalk();   // a dish that gives you light feet (94-garden-play-3cook.js)
   _gw.spd = _gw.spd || 0;
   if (!want) _gw.spd = 0;
   else if (!gardenMotionOn()) _gw.spd = want;
