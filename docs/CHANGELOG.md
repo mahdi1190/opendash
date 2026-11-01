@@ -10,6 +10,20 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.35.1]
+
+The garden is calmer, and fishing is simpler and fixed.
+
+### Changed
+- **Far fewer fish, bugs and creatures.** A few fish in the whole lake and one in each pool, up to 3 bugs, and up to 3 birds, butterflies and other visitors at once, with long quiet spells. They are a nice surprise now. A fishing contest still has plenty of fish.
+- **Fishing works like Animal Crossing.** Wait for the big splash and press once: the fish is yours. The bar game is gone. You also have a little longer to press. Press quickly for a better catch.
+- Casting right on a fish no longer scares it, so just click the shadow.
+
+### Fixed
+- A frightened fish could run out of the pond and across the land. It now stays in the water.
+- **What you catch is held up over your head again.** Saving the catch redrew the garden and wiped it straight away, so it hardly ever showed, for you or for friends watching.
+- What you caught also says so in words, where the top bar cannot cover it, with a line about the catch.
+
 ## [2.35.0]
 
 You choose how much Freeflo reads your email, and it can now suggest calendar events too.

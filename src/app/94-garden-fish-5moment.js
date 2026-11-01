@@ -60,8 +60,13 @@ function gardenCatchMoment(kind, id, o) {
   if (typeof _fxSound === 'function') _fxSound(spec.isNew ? 'chime' : 'sparkle');
   _gmo.t = setTimeout(gardenMomentEnd, GART_MOMENT_MS);
   // any key or click ends it (and does what it was going to do); moving ends it too
-  const end = () => { setTimeout(gardenMomentEnd, 0); };
-  const iv = setInterval(() => { if (_gw.moving) end(); }, 120);
+  // (not for the first moment: a press that was still going when the fish came in must not take it away before you have seen it)
+  const shown = performance.now(), end = () => { if (performance.now() - shown > 1300) setTimeout(gardenMomentEnd, 0); };
+  const iv = setInterval(() => {
+    if (_gw.moving) end();
+    // saving what you caught draws the garden again, which empties this layer: it goes back, or nobody ever saw it
+    if (_gmo.g === g && !g.isConnected) { const la = _gwActors(); if (la) la.appendChild(g); }
+  }, 60);
   document.addEventListener('keydown', end, true); document.addEventListener('pointerdown', end, true);
   _gmo.off = () => { clearInterval(iv); document.removeEventListener('keydown', end, true); document.removeEventListener('pointerdown', end, true); };
   return true;

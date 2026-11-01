@@ -70,9 +70,9 @@ function _gllFxPlay(A, ev) {
     A.fish = null; _gllFxClear(A);
     A.dir = 's'; _gllPose(A, 'hold', GART_MOMENT_MS);
     const g = _gllSvgEl('g', 'gll-held'); g.setAttribute('transform', 'scale(.74)'); g.innerHTML = gardenMomentSvg(spec, { who });
-    A.root.appendChild(g);
+    A.root.appendChild(g); A.heldG = g;
     const tag = A.root.querySelector('.gll-name'); if (tag) tag.style.display = 'none';
-    setTimeout(() => { g.remove(); if (tag) tag.style.display = ''; }, GART_MOMENT_MS);
+    setTimeout(() => { g.remove(); if (A.heldG === g) A.heldG = null; if (tag) tag.style.display = ''; }, GART_MOMENT_MS);
     if (typeof _fxSound === 'function') _fxSound('sparkle');
   }
 }
@@ -163,6 +163,7 @@ function _gllFireStep() {
 function _gllFxStep(A, dt) {
   _gllFireStep();
   if (typeof _glpStep === 'function') _glpStep();   // (2.32: two pets close for a moment play, 94-garden-live-7pals.js)
+  if (A.heldG && A.root && !A.root.contains(A.heldG)) A.root.appendChild(A.heldG);   // (a redraw gave them a new figure: what they caught stays held up)
   const F = A.fish;
   if (!F) return;
   if (A.moving || Date.now() - F.at > 150000) { A.fish = null; A.key = ''; _gllFxClear(A); return; }   // clock-ok: a line forgotten

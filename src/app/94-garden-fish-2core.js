@@ -142,7 +142,7 @@ function _gcWindow(now) { return Math.floor(now / 1200000); }   // 20 minutes: t
  * The bugs about right now (not yet caught): [{key, id, x, y (cells), hab}]. Seeded by the 20-minute window, so a reload shows
  * the same ones; a caught one stays gone until the window turns over. Where they live follows what you have grown.
  */
-const GARDEN_BUGS_MAX = 8;   // about at once in the whole garden: enough to go looking for, not a swarm
+const GARDEN_BUGS_MAX = 3;   // about at once in the whole garden: the owner, 1 Nov 2026: a pleasant surprise, not everywhere all the time
 function gardenBugsNow(mArg) {
   const base = _gcBugsBase(mArg);
   if (typeof gardenContestBugsNow !== 'function') return base;
@@ -174,7 +174,7 @@ function _gcBugsBase(mArg) {
   };
   const pool = GARDEN_BUGS.filter(b => b.lv <= m.level.level && b.tod.includes(m.tod) && (!b.seasons.length || b.seasons.includes(m.season)) && (b.rain ? wet : !wet || b.hab.includes('light')) && !(m.season === 'winter'));
   if (!pool.length) return [];
-  const n = Math.max(2, Math.min(GARDEN_BUGS_MAX, 2 + Math.floor(blooms.length / 6) + (woods ? 2 : 0) + hotels * 2 + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
+  const n = Math.max(1, Math.min(GARDEN_BUGS_MAX, 1 + Math.floor(blooms.length / 15) + (woods ? 1 : 0) + hotels + (m.tod === 'night' ? -1 : 0) + (wet ? -1 : 0)));
   const weights = pool.map(b => (GARDEN_RARITY[b.rarity] || GARDEN_RARITY.common).weight);
   const out = [];
   for (let i = 0; i < n * 3 && out.length < n; i++) {
