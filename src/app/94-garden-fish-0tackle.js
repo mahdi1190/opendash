@@ -62,7 +62,7 @@ const GARDEN_SPOTS = Object.freeze([   // world cells
   { id: 'sunken-log', name: 'The sunken log', x: 20.8, y: 24.3, r: 1.5, zone: 'mid', says: 'An old trunk, half under. Things with whiskers live below it.' },
   { id: 'cold-spring', name: 'The cold spring', x: 35.4, y: 24.8, r: 1.3, zone: 'mid', says: 'Bubbles of cold clean water come up here. Trout come for it.' },
   { id: 'drop-off', name: 'The drop-off', x: 17.4, y: 26.8, r: 2.3, zone: 'deep', says: 'The bottom falls away here. Big fish patrol the edge.' },
-  { id: 'old-wreck', name: 'The old wreck', x: 30.6, y: 30.4, r: 2.1, zone: 'deep', says: 'A boat that never came home. You need a boat, a long pier or a great rod to reach it.' },
+  { id: 'old-wreck', name: 'The old wreck', x: 29.4, y: 30.4, r: 2.1, zone: 'deep', says: 'A boat that never came home. You need a boat, a long pier or a great rod to reach it.' },
 ].map(Object.freeze));
 const _GT_SPOT = new Map(GARDEN_SPOTS.map(s => [s.id, s]));
 /* Where the rest of it stands, all in one place. */

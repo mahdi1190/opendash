@@ -48,7 +48,14 @@ function gardenRoomGo(R, here) {
   if (here || !P || Math.hypot(_gw.px - P.x, _gw.py - P.y) < 1.6 || !gardenWalkToPoint(P, go, { radius: 2 })) go();
 }
 function _grmDoorProp(R) { try { return gardenPropsNow().find(p => p.lf === R.at && !p.site) || null; } catch (e) { return null; } }
-function _grmDoorPt(R) { const p = _grmDoorProp(R); return p ? { x: p.x + p.w * 0.5 + 0.9, y: p.y + p.h + 0.45 } : null; }
+function _grmDoorPt(R) {
+  const p = _grmDoorProp(R); if (!p) return null;
+  // beside its sight: on the right if it can be, never in water or inside a building, where you could not see it or get to it
+  const cx = p.x + p.w * 0.5, foot = p.y + p.h, spots = [[cx + 0.9, foot + 0.45], [cx - 0.9, foot + 0.45], [cx, foot + 1.45], [cx + 0.9, foot + 1.45]];
+  const ok = ([x, y]) => !gardenIsWater(Math.floor(x), Math.floor(y)) && !gardenPropsNow().some(q => !q.walk && (q.col || 'full') === 'full' && x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h + 0.2);
+  const at = spots.find(ok) || spots[0];
+  return { x: at[0], y: at[1] };
+}
 /* each way in stands at its sight, on every land that has it. It follows the sight if the land is laid out again; a building's door comes when it is built */
 const _grd = { list: new Map() };
 wdMod({
@@ -58,7 +65,7 @@ wdMod({
   paint() {
     for (const R of GRM_ROOMS) {
       const P = _grmDoorPt(R), S = _grd.list.get(R.id);
-      if (!P || !GRM_SYM[R.id]) { if (S) { S.remove(); _grd.list.delete(R.id); } continue; }
+      if (!P || !GRM_SYM[R.id] || gardenZoneLockAt(Math.floor(P.x), Math.floor(P.y))) { if (S) { S.remove(); _grd.list.delete(R.id); } continue; }
       if (S) { if (S.x !== P.x || S.y !== P.y - 0.3) { S.x = P.x; S.y = P.y - 0.3; S.z = P.y; S.tf = null; } continue; }
       _grd.list.set(R.id, wdSprite({ id: 'grm-door-' + R.id, x: P.x, y: P.y - 0.3, z: P.y, still: true, hit: 0.9, hitUp: 30, label: R.verb, cursor: 'hand', svg: `<g class="grm-wayin" transform="scale(.82)">${GRM_SYM[R.id]()}</g>`, onClick: () => gardenRoomGo(R) }));
     }
