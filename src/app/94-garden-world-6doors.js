@@ -50,6 +50,7 @@ function gardenRoomGo(R, here) {
 function _grmDoorProp(R) { try { return gardenPropsNow().find(p => p.lf === R.at && !p.site) || null; } catch (e) { return null; } }
 function _grmDoorPt(R) {
   const p = _grmDoorProp(R); if (!p) return null;
+  if (R.doorAt) return { x: R.doorAt[0], y: R.doorAt[1] };   // (its sight is hidden behind the shops: the steps are by the path round to it)
   // beside its sight: on the right if it can be, never in water or inside a building, where you could not see it or get to it
   const cx = p.x + p.w * 0.5, foot = p.y + p.h, spots = [[cx + 0.9, foot + 0.45], [cx - 0.9, foot + 0.45], [cx, foot + 1.45], [cx + 0.9, foot + 1.45]];
   const ok = ([x, y]) => !gardenIsWater(Math.floor(x), Math.floor(y)) && !gardenPropsNow().some(q => !q.walk && (q.col || 'full') === 'full' && x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h + 0.2);
