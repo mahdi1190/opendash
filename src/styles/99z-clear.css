@@ -76,3 +76,6 @@
 .btn-link, .link-btn { padding-block: 2px; }
 /* Fine print stays readable. */
 small { font-size: max(11px, 0.85em); }
+
+/* A shop card's rank and its Details button are both on show now: side by side, not on top of each other. */
+:root .fv-vc-rank, :root .fv-vc:hover .fv-vc-rank, :root .fv-vc:focus-within .fv-vc-rank, :root .fv-vc.is-current .fv-vc-rank { margin-right: 28px; opacity: 1; }
