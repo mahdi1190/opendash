@@ -963,17 +963,22 @@ function gardenShowClean(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const E = GARDEN_CATCH_ECON, int = (v, lo, hi) => { const n = Number(v); return Number.isInteger(n) && n >= lo && n <= hi ? n : null; };
   const f = [], b = [];
-  if (Array.isArray(raw.f)) for (const x of raw.f.slice(0, E.showFish)) {
+  const vOf = (kind, d, id) => (typeof gardenVariantFor === 'function' ? gardenVariantFor(kind, d, id) : null);
+  if (Array.isArray(raw.f)) for (const [i, x] of raw.f.slice(0, E.showFish).entries()) {
     if (!Array.isArray(x)) continue;
     const def = gardenFishDef(x[0]); if (!def || def.cat !== 'fish') continue;
     const q = int(x[1], 0, 3), cm = int(x[2], 1, 400);
     if (q === null || cm === null) continue;
-    f.push([def.id, q, cm]);
+    const V = vOf('fish', def, (Array.isArray(raw.fv) ? raw.fv[i] : null) || x[3]);   // a variant, in a list of its own on the wire
+    f.push(V ? [def.id, q, cm, V.id] : [def.id, q, cm]);
   }
-  if (Array.isArray(raw.b)) for (const id of raw.b.slice(0, E.showBugs)) if (gardenBugDef(id) && !b.includes(id)) b.push(id);
+  const bv = [];
+  if (Array.isArray(raw.b)) for (const [i, id] of raw.b.slice(0, E.showBugs).entries()) if (gardenBugDef(id) && !b.includes(id)) { b.push(id); const V = vOf('bug', gardenBugDef(id), Array.isArray(raw.bv) ? raw.bv[i] : null); bv.push(V ? V.id : '-'); }
   const rod = int(raw.rod, 1, 5) || 0, net = int(raw.net, 1, 4) || 0;
   if (!f.length && !b.length && !rod && !net) return null;
-  return { f, b, rod, net };
+  const out = { f, b, rod, net };
+  if (bv.some(v => v !== '-')) out.bv = bv;
+  return out;
 }
 /** A short key for a showcase (the art cache and change detection). */
-function gardenShowSig(show) { return show ? gardenHash(JSON.stringify([show.f || [], show.b || []])).toString(36) : ''; }
+function gardenShowSig(show) { return show ? gardenHash(JSON.stringify([show.f || [], show.b || [], show.bv || []])).toString(36) : ''; }

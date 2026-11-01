@@ -88,7 +88,8 @@ function gardenFishArt(id, o) {
   o = o || {};
   const f = gardenFishDef(id);
   if (!f) return '';
-  const look = f.look, uid = _gfaUid(o, id), rnd = _gfaRng('fish|' + id);
+  if (o.v && typeof gardenVariantArt === 'function') { const va = gardenVariantArt('fish', id, o); if (va) return va; }   // a variant: this drawing again in its colours, with its marks (94-garden-fish-1vart.js)
+  const look = o.look || f.look, uid = _gfaUid(o, id), rnd = _gfaRng('fish|' + id);
   if (f.cat !== 'fish') return _gfaFind(f, uid);
   const S0 = _GFA_SHAPES[look.s] || _GFA_SHAPES.slim;
   if (look.s === 'crayfish') return _gfaCrayfish(look);
@@ -197,7 +198,8 @@ function gardenBugArt(id, o) {
   o = o || {};
   const b = gardenBugDef(id);
   if (!b) return '';
-  const L = b.look, c = L.c, c2 = L.c2, c3 = L.c3 || c2, e = _gfaDk(c, 0.5), p = L.p || '', line = `stroke="${e}" stroke-width="1.1" stroke-linejoin="round"`;
+  if (o.v && typeof gardenVariantArt === 'function') { const va = gardenVariantArt('bug', id, o); if (va) return va; }
+  const L = o.look || b.look, c = L.c, c2 = L.c2, c3 = L.c3 || c2, e = _gfaDk(c, 0.5), p = L.p || '', line = `stroke="${e}" stroke-width="1.1" stroke-linejoin="round"`;
   let s = '<g class="gba-bug">';
   switch (b.shape) {
     case 'butterfly': {
@@ -327,6 +329,7 @@ function gardenGearArt(kind, id, o) {
 function gardenCatchSvg(kind, id, px, o) {
   o = Object.assign({ uid: 'ci' + (gardenHash(kind + id) % 99999).toString(36) }, o || {});
   px = px || 48;
+  if (o.v && (kind === 'fish' || kind === 'bug') && typeof gardenVariantSvg === 'function') { const vs = gardenVariantSvg(kind, id, px, o); if (vs) return vs; }
   if (kind === 'fish') {
     const f = gardenFishDef(id); if (!f) return '';
     const big = f.cat === 'fish';
