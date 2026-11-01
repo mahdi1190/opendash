@@ -98,7 +98,7 @@ jobs:
             "$RUNNER_TEMP/dist/SHA256SUMS.txt" \
             "$RUNNER_TEMP/dist/SHA256SUMS.txt.sig" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "OpenDash v$VERSION" \
+            --title "Freeflo v$VERSION" \
             --notes-file "$RUNNER_TEMP/dist/release-notes.md" \
             --verify-tag \
             "${latest[@]}"

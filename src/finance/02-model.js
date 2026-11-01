@@ -5,23 +5,31 @@
     const exclude = Array.isArray(a.exclude_from_spending) && a.exclude_from_spending.length
       ? a.exclude_from_spending.map(String) : ['Income', 'Internal transfers'];
     const tx = [];
-    raw.forEach((r, idx) => {
-      if (!r || !validIso(r.d)) return;
-      const amt = Number(r.a); if (!isFinite(amt)) return;
+    const toRow = (r, idx, off) => {
+      if (!r || !validIso(r.d)) return null;
+      const amt = Number(r.a); if (!isFinite(amt)) return null;
       const c = String(r.c || 'Uncategorised');
-      const kind = exclude.includes(c) ? (c === 'Income' ? 'income' : 'transfer') : 'spend';
-      tx.push({
+      const kind = off ? 'off' : exclude.includes(c) ? (c === 'Income' ? 'income' : 'transfer') : 'spend';
+      const bk = Number(r.bk) > 0 ? Number(r.bk) : 0, sa = Number(r.sa) > 0 ? Number(r.sa) : 0;   // Owed to me: what came back for this payment; the part of this money in that was someone paying back
+      return {
+        // pe: the bank has not settled it yet. tk: the key its links use, from when it was pending. off: left out by hand (a row in M.off with no off: the setting left it out).
+        pe: r.pe ? 1 : 0, tk: r.tk ? String(r.tk) : '', pas: Array.isArray(r.pas) ? r.pas : null, off: r.off ? 1 : 0,
         i: idx, d: r.d.slice(0, 10), n: dnum(r.d), m: String(r.m || 'Unknown'), c, a: amt,
         acct: r.acct ? String(r.acct) : '', memo: r.memo ? String(r.memo) : '', how: r.how ? String(r.how) : '',
-        bc: r.bc ? String(r.bc) : null, k: r.k ? String(r.k) : 'i' + idx, kind,
-        s: kind === 'spend' ? -amt : 0, inc: kind === 'income' && amt > 0 ? amt : 0, abs: Math.abs(amt),
+        bc: r.bc ? String(r.bc) : null, k: r.k ? String(r.k) : 'i' + idx, kind, oa: r.oa ? 1 : 0,
+        s: kind === 'spend' ? -amt - bk + sa : 0, inc: kind === 'income' && amt > 0 ? amt - sa : 0, abs: Math.abs(amt),
+        bk, sa, sb: r.sb ? 1 : 0,
         // @fux-begin where it was paid (lib/finance/place.mjs; 25-place-model.js reads these)
         cc: typeof r.cc === 'string' && /^[A-Z]{2}$/.test(r.cc) ? r.cc : '', city: typeof r.city === 'string' ? r.city.slice(0, 40) : '',
         lc: typeof r.lc === 'string' && /^[A-Z]{3}$/.test(r.lc) && Number(r.la) > 0 ? r.lc : '', la: Number(r.la) > 0 ? Number(r.la) : 0, ol: r.ol ? 1 : 0,
         // @fux-end
-      });
-    });
+      };
+    };
+    raw.forEach((r, idx) => { const t = toRow(r, idx, false); if (t) tx.push(t); });
     tx.sort((p, q) => q.n - p.n || p.i - q.i);
+    // Payments that do not count (lib/finance/pending.mjs): listed in Transactions, in no total, because they are not in tx.
+    const off = [];
+    (Array.isArray(a.uncounted) ? a.uncounted : []).forEach((r, idx) => { const t = toRow(r, -1 - idx, true); if (t) { t.s = 0; t.inc = 0; off.push(t); } });
     const today = validIso(a.today) ? dnum(a.today) : localToday();
     const maxN = tx.length ? tx[0].n : today;
     const anchor = Math.max(today, maxN);
@@ -69,20 +77,11 @@
       s.med = median(s.amts);
       s.cat = Object.entries(s.cats).sort((p, q) => q[1] - p[1])[0][0];
     }
-    // Card payments the bank has not settled yet (analysis.pending, lib/finance.mjs): shown, never counted in the totals.
-    const pending = [];
-    for (const g of Array.isArray(a.pending) ? a.pending : []) for (const r of (g && g.rows) || []) {
-      const amt = Number(r && r.a);
-      if (!r || !validIso(r.d) || !isFinite(amt) || !amt) continue;
-      pending.push({ pending: true, i: -1 - pending.length, d: r.d.slice(0, 10), n: Math.min(dnum(r.d), today), m: String(r.memo || 'Card payment').slice(0, 60), c: 'Pending', a: amt, acct: r.acct ? String(r.acct) : '',
-        kind: amt < 0 ? 'spend' : 'income', s: amt < 0 ? -amt : 0, inc: amt > 0 ? amt : 0, abs: Math.abs(amt), k: 'p' + pending.length, cc: '', city: '', lc: '', la: 0, ol: 0 });
-    }
-    pending.sort((p, q) => q.n - p.n);
     const spendAmts = tx.filter(t => t.s > 0).map(t => t.s);
     const M = {
       a, tx, exclude, categories, spendCats, accts, acctNames, acctInfo, sources, minN, maxN, anchor, today, mstats,
       p99: quantile(spendAmts, 0.99), maxAmt: Math.max(10, ...spendAmts, ...tx.map(t => t.abs)),
-      pending, slots: {},
+      off, slots: {},
     };
     // Stable colour slots: the 7 biggest named categories get a hue; a
     // category keeps its hue across reloads for as long as it stays top-7.

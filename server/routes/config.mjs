@@ -17,7 +17,10 @@ export default function register(app) {
       const patch = await c.body();
       delete patch.financeDir;          // paths are set on the command line, not from the page
       const cfg = await c.setConfig(patch);
-      return publicConfig(cfg);
+      const pub = publicConfig(cfg);
+      // Other tabs, and a change the assistant made: they see it without a reload (src/app/86-live-sync.js).
+      try { c.liveSync?.emit('config', pub); } catch { /* no open tabs */ }
+      return pub;
     },
   });
 }

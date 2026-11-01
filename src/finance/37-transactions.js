@@ -16,11 +16,45 @@
   };
   UPDATE.transactions = ctx => txTable(S.tx, ctx);
   function txRows(ctx) {
-    const rows = ctx.cur.spend.concat(F.inc ? ctx.cur.income : [], F.xfer ? ctx.cur.xfer : []);
+    // What does not count is still listed, on its date, and says so; it is in no total (M.off, 02-model.js).
+    const off = (ctx.M.off || []).filter(t => t.n >= ctx.rg.from && t.n <= ctx.rg.to && ctx.p(t) && (!F.cats.length || F.cats.includes(t.c)));
+    const rows = ctx.cur.spend.concat(F.inc ? ctx.cur.income : [], F.xfer ? ctx.cur.xfer : [], off);
     const { key, dir } = F.sort;
     const val = { d: x => x.n, m: x => x.m.toLowerCase(), c: x => x.c, acct: x => x.acct, a: x => x.a };
     const f = val[key] || val.d;
     return rows.sort((p, q) => { const a = f(p), b = f(q); return (a < b ? -1 : a > b ? 1 : 0) * dir || q.n - p.n || p.i - q.i; });
+  }
+  // ── Pending payments (lib/finance/pending.mjs) ────────────────────────
+  /** "Don't count this" and back, one payment or several: stored, synced, and remembered when it settles. */
+  async function txCount(rows, count, isUndo) {
+    const ks = rows.map(x => x.k);
+    try {
+      const r = await api('/api/finance/count', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ks, count }) });
+      if (r.ok && r.body && r.body.analysis) {
+        applyAnalysis(r.body.analysis);
+        if (isUndo) toast('Undone');
+        else toast(count ? (rows.length === 1 ? `${rows[0].m} counts again` : `${rows.length} payments count again`) : (rows.length === 1 ? `${rows[0].m} no longer counts` : `${rows.length} payments no longer count`), { action: 'Undo', onAction: () => txCount(rows, !count, true) });
+        return true;
+      }
+      toast(r.status === 409 ? 'An update is running. Try again when it finishes.' : (r.body && r.body.error) || 'HTTP ' + r.status, { bad: true });
+    } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); }
+    return false;
+  }
+  /** The quick action on a row. A row the setting left out has no button: Settings > Money is the way back. */
+  function txCountBtn(x) {
+    if (!x.pe && !x.off) return null;
+    if (x.kind === 'off' && !x.off) return null;
+    const off = x.kind === 'off';
+    return h('button', { type: 'button', class: 'fv-txr-q', 'data-tip': off ? 'Count this payment again' : 'Leave this out of your spending and totals', 'aria-label': `${off ? 'Count' : 'Do not count'} ${x.m}`, onclick: e => { e.stopPropagation(); txCount([x], off); } },
+      ic(off ? 'plus' : 'minus', 'i-sm'), h('span', { class: 'l', text: off ? 'Count this' : 'Don’t count' }));
+  }
+  /** A line for a payment that settled at another amount, or never settled, with something attached (66-owed-3more.js). */
+  function txPaintNotices() {
+    const el = S.txNote; if (!el) return;
+    el.replaceChildren();
+    const n = window.Owed && window.Owed.pendingNoticeEls ? window.Owed.pendingNoticeEls() : [];
+    for (const x of n) el.append(x);
+    el.hidden = !n.length;
   }
   // The list as shown: txRows plus this view's own Money in / out and type filters.
   function txVisible(ctx) {
@@ -30,9 +64,9 @@
     if (R.txKinds && R.txKinds.size) rows = rows.filter(x => R.txKinds.has(VK.kind(x)));
     return rows;
   }
-  const TX_SORTS = [['d-1', 'Newest first', { key: 'd', dir: -1 }], ['d1', 'Oldest first', { key: 'd', dir: 1 }], ['a1', 'Largest out', { key: 'a', dir: 1 }], ['a-1', 'Largest in', { key: 'a', dir: -1 }], ['m1', 'Merchant A–Z', { key: 'm', dir: 1 }], ['c1', 'Category A–Z', { key: 'c', dir: 1 }]];
+  const TX_SORTS = [['d-1', 'Newest first', { key: 'd', dir: -1 }], ['d1', 'Oldest first', { key: 'd', dir: 1 }], ['a1', 'Largest out', { key: 'a', dir: 1 }], ['a-1', 'Largest in', { key: 'a', dir: -1 }], ['m1', 'Name A–Z', { key: 'm', dir: 1 }], ['c1', 'Category A–Z', { key: 'c', dir: 1 }]];
   function txBuildBar(cd) {
-    S.txSearch = h('input', { type: 'search', class: 'fv-input', placeholder: 'Search merchants, descriptions, categories…', 'aria-label': 'Search transactions' });
+    S.txSearch = h('input', { type: 'search', class: 'fv-input', placeholder: 'Search names, descriptions, categories…', 'aria-label': 'Search transactions' });
     let qt = 0;
     S.txSearch.addEventListener('input', () => { clearTimeout(qt); qt = setTimeout(() => { F.q = S.txSearch.value; R.page = 0; changed(); }, 220); });
     S.txFlowSeg = seg([['all', 'All'], ['in', 'Money in'], ['out', 'Money out']], R.txFlow || 'all', v => { R.txFlow = v; S.txFlowSeg.set(v); txTable(cd, R.ctx); }, 'Money in or out');
@@ -40,16 +74,24 @@
     S.txKindBtn = h('button', { type: 'button', class: 'fv-btn fv-menu-btn', 'aria-haspopup': 'true', onclick: e => txKindMenu(e.currentTarget) }, ic('credit-card'), h('span', { class: 'l', text: 'Type' }), ic('chevron-down'));
     S.txSortBtn = h('button', { type: 'button', class: 'fv-btn fv-menu-btn', 'aria-haspopup': 'true', onclick: e => txSortMenu(e.currentTarget) }, ic('arrow-up-down'), h('span', { class: 'l' }), ic('chevron-down'));
     S.txCount = h('span', { class: 'fv-tx-count' });
-    S.txExport = h('button', { type: 'button', class: 'fv-btn ghost', 'data-tip': 'The transactions shown, as a CSV file', onclick: () => exportCsv(txVisible(R.ctx), R.ctx) }, ic('download'), h('span', { text: 'CSV' }));
+    S.txExport = h('button', { type: 'button', class: 'fv-btn ghost', 'data-tip': 'The transactions shown, as a CSV file', onclick: () => exportCsv(txVisible(R.ctx), R.ctx) }, ic('download'), h('span', { text: 'Download' }));
+    // What is on shows on the controls; one click turns it all off.
+    S.txClear = h('button', { type: 'button', class: 'fv-link fv-tx-clear', hidden: true, onclick: () => clearFilters() }, ic('x', 'i-sm'), h('span', { text: 'Clear filters' }));
     S.txBar = h('div', { class: 'fv-tx-tools' },
       h('div', { class: 'fv-tx-search' }, ic('search'), S.txSearch),
-      h('div', { class: 'fv-tx-ctl' }, S.txFlowSeg.el, S.txCatBtn, S.txKindBtn, S.txSortBtn, h('span', { class: 'fv-grow' }), S.txCount, S.txExport));
+      h('div', { class: 'fv-tx-ctl' }, S.txFlowSeg.el, S.txCatBtn, S.txKindBtn, S.txSortBtn, S.txClear, h('span', { class: 'fv-grow' }), S.txCount, S.txExport));
     S.txList = h('div', { class: 'fv-txl', role: 'list', 'aria-label': 'Transactions' });
     S.txMore = h('div', { class: 'fv-tx-more', 'aria-hidden': 'true' });
     cd.el.querySelector(':scope > .fv-card-h').append(S.txBar);   // 2.19.4: the title and the tools are one row
-    cd.body.append(S.txList, S.txMore);
+    S.txNote = h('div', { class: 'fv-tx-pend', hidden: true });
+    cd.body.append(S.txNote, S.txList, S.txMore);
+    S.txCtl = cd.el.querySelector('.fv-tx-ctl');
     S.txList.addEventListener('click', e => {
       if (e.target.closest('select,button,input,a,.fv-txx')) return;
+      // One click to change: the category under a name is a menu, the name opens everything about that shop.
+      const cell = e.target.closest('.fv-txr .meta .c, .fv-txr .meta .cd, .fv-txr .nm .n');
+      const hit = cell && cell.closest('.fv-txr');
+      if (hit && hit._x) { if (cell.classList.contains('n')) openMerchant(hit._x.m); else txCatEdit(cell, hit._x); return; }
       const row = e.target.closest('.fv-txr'); if (row) txToggle(row);
     });
     S.txList.addEventListener('keydown', e => {
@@ -104,8 +146,10 @@
     if (!S.txBar) txBuildBar(cd);
     if (document.activeElement !== S.txSearch) S.txSearch.value = F.q;
     const rows = txVisible(ctx);
-    const out = sum(rows.filter(x => x.a < 0), x => -x.a), inn = sum(rows.filter(x => x.a > 0), x => x.a);
-    cd.setSub(`${nf0.format(rows.length)} shown · ${gbp2(out)} out · ${gbp2(inn)} in`);
+    const counted = rows.filter(x => x.kind !== 'off');
+    const out = sum(counted.filter(x => x.a < 0), x => -x.a), inn = sum(counted.filter(x => x.a > 0), x => x.a);
+    const pendOut = sum(counted.filter(x => x.pe && x.a < 0), x => -x.a);
+    cd.setSub(bdHidden() ? `${nf0.format(rows.length)} shown` + (pendOut > 0.004 ? ' · some still pending' : '') : `${nf0.format(rows.length)} shown · ${gbp2(out)} out · ${gbp2(inn)} in` + (pendOut > 0.004 ? ` · including ${gbp2(pendOut)} pending` : ''));
     S.txCount.textContent = `${nf0.format(rows.length)} transaction${rows.length === 1 ? '' : 's'}`;
     // Toolbar state
     const sk = (TX_SORTS.find(s => s[2].key === F.sort.key && s[2].dir === F.sort.dir) || TX_SORTS[0]);
@@ -116,16 +160,28 @@
     S.txKindBtn.querySelector('.l').textContent = nk === 1 ? VK.kindInfo([...R.txKinds][0]).label : nk ? `${nk} types` : 'Type';
     S.txKindBtn.classList.toggle('on', !!nk);
     S.txFlowSeg.set(R.txFlow || 'all');
+    S.txClear.hidden = !(F.q || nc || nk || F.merchant || F.accts.length || F.amt || F.country || F.trip || (R.txFlow && R.txFlow !== 'all'));
     // List
     const first = S.txFirst && !MK.reduced(); S.txFirst = false;
     S.txAll = rows; S.txShown = 0; S.txByDate = F.sort.key === 'd';
+    S.txKeys = new Set(rows.map(x => x.k));
+    txPickAttach();
     S.txDays = new Map(S.txByDate ? VL.dayGroups(rows).map(d => [d.n, d]) : []);
     S.txNew = txNewSet(M);
+    if (S.txNew && S.txNew.size && !M._faPrinted) { M._faPrinted = true; faReceipt(S.txCtl, S.txNew.size); }   // new payments: a tiny receipt prints
     S.txEnter = first;
+    txPaintNotices();
     S.txList.innerHTML = ''; S.txGroupEl = null;
     S.txList.classList.toggle('flat', !S.txByDate);
-    if (!rows.length) { cd.setEmpty('No transactions match these filters.'); S.txMore.hidden = true; return; }
     cd.setEmpty(null);
+    if (!rows.length) {
+      // Never a dead end: say why, and the way out.
+      const anyOn = !S.txClear.hidden;
+      S.txList.append(h('div', { class: 'fv-tx-none' }, h('b', { text: anyOn ? 'Nothing matches these filters' : 'No payments in these dates' }),
+        h('span', { text: anyOn ? 'Clear them to see everything in these dates.' : 'Try a longer time with the dates above.' }),
+        anyOn ? h('button', { type: 'button', class: 'fv-btn', onclick: () => clearFilters() }, ic('x'), h('span', { text: 'Clear filters' })) : null));
+      S.txMore.hidden = true; return;
+    }
     txRenderMore(TX_CHUNK);
     if (!first && typeof S.txList.animate === 'function' && !MK.reduced()) S.txList.animate([{ opacity: 0.55 }, { opacity: 1 }], { duration: 180, easing: 'ease-out' });
     // An open row stays open across updates (if it is still listed).
@@ -170,6 +226,7 @@
     if (start > 0) MK.inView(S.txList, { sel: ':scope > .fv-dg', step: 40, max: 240, distance: 10 });
     else S.txList.querySelectorAll(':scope > .fv-dg').forEach(el => MK.once(el, 'iv'));
     S.txMore.hidden = end >= rows.length;
+    { const fs = FSY(); if (fs && fs.activate) fs.activate(S.txList); }   // tiles on screen may move a little; the Fun level sets how many
     S.txMore.textContent = end >= rows.length ? '' : `${nf0.format(rows.length - end)} more`;
   }
   function txRow(x, G, showAcct, withDate) {
@@ -177,22 +234,31 @@
     const kind = VK.kind(x);
     const isNew = S.txNew && S.txNew.has(x.k);
     const sel = isSelMerchant(x.m);
-    const name = G.label(G.keyOf(x.m));
+    const name = x.kind === 'off' && !G.members.has(G.keyOf(x.m)) ? x.m : G.label(G.keyOf(x.m));   // a payment that does not count may be in no shop's group
     const row = h('div', { class: 'fv-txr fsym-host' + (x.kind !== 'spend' ? ' alt' : '') + (isNew ? ' is-new' : '') + (sel ? ' is-current' : ''), role: 'listitem', tabindex: '0', 'aria-expanded': 'false', 'data-k': x.k,
-      'aria-label': `${name}, ${sgbp2(x.a)}, ${fDayW(x.n)}${isNew ? ', new' : ''}` },
-      VK.tile(x.m, x.c, { size: 'md', bc: x.bc }),
+      'aria-label': `${name}, ${sgbp2(x.a)}, ${fDayW(x.n)}${x.pe ? ', pending' : ''}${x.kind === 'off' ? ', not counted' : ''}${isNew ? ', new' : ''}` },
+      VK.txTile(x, { size: 'md', bc: x.bc, live: 'view' }),
       h('div', { class: 'fv-txr-main' },
-        h('div', { class: 'nm' }, h('span', { class: 'n', text: name }), isNew ? h('span', { class: 'fv-new-dot', title: 'New since your last visit' }, 'New') : null),
+        h('div', { class: 'nm' }, h('span', { class: 'n', text: name }), txPendTag(x), txCountBtn(x), isNew ? h('span', { class: 'fv-new-dot', title: 'New since your last visit' }, 'New') : null),
         h('div', { class: 'meta' },
           withDate ? h('span', { class: 'dt', text: fDay(x.n) + (dobj(x.n).getUTCFullYear() !== dobj(M.anchor).getUTCFullYear() ? ' ' + dobj(x.n).getUTCFullYear() : '') }) : null,
           h('i', { class: 'cd', style: { background: catColor(x.c) } }), h('span', { class: 'c', text: x.c }),
           // "Payment" says nothing (the bank gave no method), so it is left out.
           kind !== 'payment' ? [h('span', { class: 'sep', text: '·' }), VK.badge(kind, { size: 'sm' })] : null,
           showAcct ? h('span', { class: 'ac', text: M.acctNames[x.acct] || x.acct || '' }) : null,
-          x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txChip ? window.Expenses.txChip(x) : null)),   // an expense, or the "Expense?" hint
-      h('span', { class: 'fv-txr-am' + (x.a > 0 ? ' in' : ''), text: x.a > 0 ? sgbp2(x.a) : gbp2(x.a) }));
+          x.a < 0 && (x.kind === 'spend' || x.kind === 'off') && window.Expenses && window.Expenses.txChip ? window.Expenses.txChip(x) : null,   // an expense, or the "Expense?" hint
+          window.Owed && window.Owed.txChip ? window.Owed.txChip(x) : null)),   // a split, "Paid back", or "Split this?"
+      h('span', { class: 'fv-txr-am' + (x.a > 0 ? ' in' : '') + (x.kind === 'off' ? ' off' : ''), text: x.a > 0 ? sgbp2(x.a) : gbp2(x.a) }));
     row._x = x;
     return row;
+  }
+  /** The category menu of a row (one click on it): pick and it is done, with Undo in the toast. It applies to every payment from that shop. */
+  function txCatEdit(anchor, x) {
+    const name = R.model ? VK.groups(R.model).label(VK.groups(R.model).keyOf(x.m)) : x.m;
+    fvMenu(anchor, { label: `Category for ${name}`, single: true,
+      items: [...R.model.categories.map(c => ({ key: c, label: c, on: c === x.c, icon: VK.cat(c, { size: 'xs', plain: false }) })), { key: '__new', label: '+ New category…' }],
+      note: `Changes every payment from ${name}, now and in future.`,
+      onPick: k => { if (k === '__new') confirmCat(anchor, x.m, null, x.c, x.how, true); else categorise(x.m, k, x.c, x.how); } });
   }
   function txWatchMore() {
     if (typeof IntersectionObserver === 'undefined') return;
@@ -206,6 +272,51 @@
       }, { rootMargin: '0px 0px 900px 0px' });
     }
     S.txIo.unobserve(S.txMore); S.txIo.observe(S.txMore);
+  }
+
+  // ── Several at once (11-ui-pick.js) ───────────────────────────────────
+  // A category belongs to a merchant here (rules.json), so a change moves every payment from those merchants, and says so.
+  function txPickRows(ids) { const want = new Set(ids); return (S.txAll || []).filter(x => want.has(x.k)); }
+  function txPickAttach() {
+    if (typeof multiPick !== 'function' || multiPickIsOn(S.txList)) { if (S.txPick) S.txPick.paint(); return; }
+    S.txPick = multiPick(S.txList, { key: 'fin-tx', rows: '.fv-txr', idOf: r => r.dataset.k, noun: ['transaction', 'transactions'],
+      nameOf: r => r.getAttribute('aria-label') || '',
+      exists: k => !!(S.txKeys && S.txKeys.has(k)),
+      allIds: () => (S.txAll || []).map(x => x.k),
+      actions: () => [
+        { label: 'Category', icon: 'layout-grid', tip: 'Change the category (every payment from the same place moves too)', keep: true, run: (ids, a, ms) => {
+          const pick = c => { const rows = txPickRows(ms.ids()); ms.clear(true); txBulkCategorise(rows, c); };
+          openMenu(a, [{ heading: 'Every payment from the same place moves too' },
+            ...R.model.categories.map(c => ({ label: c, run: () => pick(c) })),
+            'sep',
+            { label: 'New category…', icon: 'plus', run: async () => { const c = await promptDialog({ title: 'New category', label: 'Name', placeholder: 'e.g. Health' }); if (!c) return; if (!CAT_RE.test(c)) { toast('Use 2 to 31 letters, spaces, &, / or -, starting with a letter.', { bad: true }); return; } pick(c); } }], { align: 'center', width: 260 });
+        } },
+        { label: 'Not spending', icon: 'repeat', tip: 'Count these as transfers, not spending (every payment from the same place too)', run: ids => txBulkCategorise(txPickRows(ids), 'Internal transfers') },
+        (R.model.tx.some(x => x.pe)) ? { label: 'Don’t count', icon: 'minus', tip: 'Leave the pending ones among these out of your totals', run: ids => { const rows = txPickRows(ids).filter(x => x.pe && x.kind !== 'off'); if (rows.length) txCount(rows, false); else toast('Only pending payments can be left out.'); } } : null,
+        window.Expenses && window.Expenses.fromTransactions ? { label: 'Mark as expense', icon: 'receipt', keep: true, run: (ids, a, ms) => window.Expenses.fromTransactions(txPickRows(ids), () => ms.clear(true)) } : null,
+        window.Owed && window.Owed.fromTransactions ? { label: 'Split', icon: 'handshake', tip: 'Share between people and see who has paid', keep: true, run: (ids, a, ms) => window.Owed.fromTransactions(txPickRows(ids), () => ms.clear(true)) } : null,
+        { label: 'Download', icon: 'download', tip: 'The selected ones as a CSV file', keep: true, run: ids => exportCsv(txPickRows(ids), R.ctx) },
+      ] });
+    S.txCtl.insertBefore(S.txPick.button({ cls: 'fv-btn ghost' }), S.txExport);
+  }
+  async function txBulkCategorise(rows, category, undoing) {
+    const M = R.model; const byM = new Map();
+    for (const x of rows) if (!byM.has(x.m)) byM.set(x.m, x);
+    const changes = undoing || [...byM.keys()].map(merchant => ({ merchant, category }));
+    if (!changes.length) return false;
+    const back = undoing ? null : [...byM.values()].map(x => ({ merchant: x.m, category: x.how === 'override' ? x.c : null }));
+    const n = undoing ? 0 : M.tx.filter(x => byM.has(x.m)).length;
+    try {
+      const r = await api('/api/finance/categorise-batch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ changes }) });
+      if (r.ok && r.body && r.body.analysis) {
+        applyAnalysis(r.body.analysis);
+        if (undoing) toast('Undone');
+        else toast(`Moved ${nf0.format(n)} transaction${n === 1 ? '' : 's'} from ${byM.size} place${byM.size === 1 ? '' : 's'} to ${category}`, { action: 'Undo', onAction: () => txBulkCategorise([], null, back) });
+        return true;
+      }
+      toast(r.status === 404 ? 'This Freeflo server can’t do that yet: restart it to pick up the new version.' : r.status === 409 ? 'An update is running. Try again when it finishes.' : (r.body && r.body.error) || 'HTTP ' + r.status, { bad: true });
+    } catch (e) { toast('Could not reach the Freeflo server', { bad: true }); }
+    return false;
   }
 
   // ── Row detail (open in place) ────────────────────────────────────────
@@ -273,8 +384,8 @@
     const nM = all.length && monthIdx(Math.min(...all.map(y => y.n))) <= endMi - 11 ? 12 : 6;
     const mons = new Array(nM).fill(0);
     for (const y of all) { const k = monthIdx(y.n) - (endMi - nM + 1); if (k >= 0 && k < nM) mons[k] += y.s; }
-    const how = { override: 'your rule', rule: 'a keyword rule', bank: 'the bank’s category', default: 'the default', unmatched: 'nothing matched', 'own-transfer': 'a matching payment into another of your accounts' }[x.how] || (x.how || 'the import');
-    const counts = x.kind === 'spend' ? 'Spending' : x.kind === 'income' ? 'Money in' : 'A transfer (not spending)';
+    const how = { 'owed-back': 'you matching it to someone who owed you', override: 'your choice', carried: 'your choice while it was pending', rule: 'its name', bank: 'the bank’s category', default: 'the default', unmatched: 'no match yet', 'card-payment': 'a payment to a credit card, already counted when you bought things', 'own-transfer': 'a matching payment into another of your accounts' }[x.how] || (x.how || 'the import');
+    const counts = x.kind === 'off' ? (x.off ? 'Not counted: you said not to count this' : 'Not counted yet: pending payments are switched off in Settings') : x.pe ? 'Counted now. Your bank has not finished this payment, so the amount can still change' : x.sa ? `${gbp2(x.sa)} is someone paying you back; the other ${gbp2(x.a - x.sa)} counts as it did` : x.sb ? 'Someone paying you back (not income; it comes off what they paid back)' : x.bk ? `Spending: ${gbp2(x.s)} after ${gbp2(x.bk)} paid back` : x.oa ? 'Money from your other account (not income or spending)' : x.kind === 'spend' ? 'Spending' : x.kind === 'income' ? 'Money in' : 'A transfer (not spending)';
     const filt = isSelMerchant(x.m);
     const det = h('div', { class: 'fv-txx', role: 'region', 'aria-label': 'Details' },
       h('dl', null,
@@ -285,14 +396,22 @@
         h('dt', { text: 'Account' }), h('dd', { text: M.acctNames[x.acct] || x.acct || '—' }),
         h('dt', { text: 'Counts as' }), h('dd', { text: counts })),
       h('div', { class: 'fv-txx-side' },
-        h('div', { class: 'fv-txx-h' }, h('b', { text: label }), visits ? ` · ${nf0.format(visits)} visit${visits === 1 ? '' : 's'} · ${gbp(tot)} in total · avg ${gbp2(tot / Math.max(1, visits))}` : ' · no spending'),
+        h('div', { class: 'fv-txx-h' }, h('b', { text: label }), visits ? ` · ${nf0.format(visits)} payment${visits === 1 ? '' : 's'} · ${gbp(tot)} in total · about ${gbp2(tot / Math.max(1, visits))} each` : ' · no spending'),
         visits ? h('div', { class: 'fv-txx-spk' }, VK.spark(mons.map(round2), { color: catColor(x.c), h: 46, enter: !MK.reduced() })) : null,
         visits ? h('div', { class: 'fv-txx-ax' }, h('span', { text: fMonthS(endMi - nM + 1) }), h('span', { text: fMonthS(endMi) })) : null,
         h('div', { class: 'fv-txx-acts' },
-          h('button', { type: 'button', class: 'fv-btn', onclick: () => setMerchant(filt ? '' : G.primary(key)) }, ic(filt ? 'x' : 'filter'), filt ? 'Clear merchant filter' : 'Only this merchant'),
+          h('button', { type: 'button', class: 'fv-btn', onclick: () => setMerchant(filt ? '' : G.primary(key)) }, ic(filt ? 'x' : 'filter'), filt ? 'Show all shops' : 'Only this shop'),
           h('button', { type: 'button', class: 'fv-btn', onclick: () => openDay(x.n) }, ic('calendar'), 'This day'),
-          x.a < 0 && x.kind === 'spend' && window.Expenses && window.Expenses.txAction ? window.Expenses.txAction(x) : null,   // Expenses (src/app/66-expenses-2widget.js)
-          x.how === 'override' ? h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => categorise(x.m, null, x.c, 'override') }, ic('rotate-ccw'), 'Remove my rule') : null,
+          (x.pe || x.off) && !(x.kind === 'off' && !x.off) ? h('button', { type: 'button', class: 'fv-btn', onclick: () => txCount([x], x.kind === 'off') }, ic(x.kind === 'off' ? 'plus' : 'minus'), x.kind === 'off' ? 'Count this' : 'Don’t count this') : null,
+          x.a < 0 && (x.kind === 'spend' || x.kind === 'off') && window.Expenses && window.Expenses.txAction ? window.Expenses.txAction(x) : null,   // Expenses (src/app/66-expenses-2widget.js)
+          window.Owed && window.Owed.txAction ? window.Owed.txAction(x) : null,   // Split this, or Who paid this? (src/app/66-owed-3more.js)
+          window.Owed && window.Owed.txAttach ? window.Owed.txAttach(x) : null,   // Attach to something you owe, a split, an expense or a trip
+          window.Owed && window.Owed.txRefund ? window.Owed.txRefund(x) : null,
+          window.Owed && window.Owed.txNote ? window.Owed.txNote(x) : null,
+          x.how === 'override' ? h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => categorise(x.m, null, x.c, 'override') }, ic('rotate-ccw'), 'Use the automatic category') : null,
+          !VK.who(x) ? (FSY() && FSY().ownImage(x.m, x.c)
+            ? h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => VK.removeOwnImage(x.m, x.c) }, ic('x'), 'Remove my picture')
+            : h('button', { type: 'button', class: 'fv-btn ghost', title: 'Pick a picture from this computer. It stays on this computer.', onclick: () => VK.pickOwnImage(x.m, x.c) }, ic('image'), 'Use my own picture')) : null,
           h('button', { type: 'button', class: 'fv-btn ghost fv-txx-all', onclick: () => openMerchant(x.m) }, `All at ${label}`, ic('arrow-right')))));
     return det;
   }
@@ -337,8 +456,8 @@
       if (/^[=+\-@\t\r]/.test(s) && typeof v === 'string') s = "'" + s;   // spreadsheet formula injection
       return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
-    const lines = [['Date', 'Merchant', 'Category', 'Account', 'Amount', 'Description', 'Categorised by', 'Type'].join(',')];
-    for (const x of rows) lines.push([x.d, cell(x.m), cell(x.c), cell(ctx.M.acctNames[x.acct] || x.acct), x.a.toFixed(2), cell(x.memo), cell(x.how), cell(VK.kindInfo(VK.kind(x)).label)].join(','));
+    const lines = [['Date', 'Merchant', 'Category', 'Account', 'Amount', 'Description', 'Categorised by', 'Type', 'Status'].join(',')];
+    for (const x of rows) lines.push([x.d, cell(x.m), cell(x.c), cell(ctx.M.acctNames[x.acct] || x.acct), x.a.toFixed(2), cell(x.memo), cell(x.how), cell(VK.kindInfo(VK.kind(x)).label), x.kind === 'off' ? (x.pe ? 'Pending, not counted' : 'Not counted') : x.pe ? 'Pending' : ''].join(','));
     const blob = new Blob(['﻿' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
     const a = h('a', { href: URL.createObjectURL(blob), download: `finances-${diso(ctx.rg.from)}-to-${diso(ctx.rg.to)}.csv` });
     document.body.append(a); a.click(); a.remove();

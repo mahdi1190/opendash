@@ -167,7 +167,7 @@ function _hinAiOn() { return !(APP_CONFIG.features && APP_CONFIG.features.ai ===
 
 function _hinHead(ctx, size, o) {
   const h = hglHead({ icon: 'inbox', title: 'Needs reply', n: o.n,
-    link: ctx.preview ? null : { label: 'Triage', title: 'Open Email triage', run: () => _hinTriage() } });
+    link: ctx.preview ? null : { label: 'Sort email', title: 'Open Sort email', run: () => _hinTriage() } });
   const link = h.querySelector('.hgl-link');
   const put = (b) => (link ? h.insertBefore(b, link) : h.appendChild(b));
   if (!ctx.preview && (o.running || homeInboxStale(o.fetchedAt))) {
@@ -240,7 +240,7 @@ function _hinFoot(ctx, model, fetchedAt, draftsOk) {
   if (model.more > 0) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm hin-more';
     b.innerHTML = `<span>+${model.more} more</span>${icon('arrow-right', 'i-sm')}`;
-    b.title = 'The rest in Email triage';
+    b.title = 'The rest in Sort email';
     if (!ctx.preview) b.onclick = () => _hinTriage();
     f.appendChild(b);
   }

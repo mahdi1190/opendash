@@ -166,6 +166,7 @@ function renderBin(container) {
   const entries = [...tasks.map(t => ({ kind: 'task', d: t })), ...notes.map(n => ({ kind: 'note', d: n }))].sort((a, b) => b.d.binTs - a.d.binTs);
   for (const e of entries) {
     const row = document.createElement('div'); row.className = 'bin-row';
+    row.dataset.pickId = _binPickId(e);
     const ic = document.createElement('span'); ic.className = 'bin-icon';
     ic.innerHTML = icon(e.kind === 'task' ? 'circle-check' : 'message-square');
     const info = document.createElement('div'); info.className = 'bin-info';
@@ -183,7 +184,7 @@ function renderBin(container) {
     restore.innerHTML = icon('rotate-ccw') + '<span>Restore</span>';
     // Restored: say so, and offer the task (it left this list, so it is easy to lose track of).
     restore.onclick = () => {
-      const tid = e.kind === 'task' ? restoreTask(e.d.binTs) : restoreNote(e.d.binTs);
+      const tid = e.kind === 'task' ? restoreTask(e.d.binTs, { id: e.d.id }) : restoreNote(e.d.binTs, { id: e.d.note && e.d.note.id });
       const it = tid && getItem(tid);
       toast(e.kind === 'task' ? 'Task restored' : 'Note restored', { kind: 'ok', icon: 'rotate-ccw',
         action: it ? { label: 'Open', run: () => (typeof openTask === 'function' ? openTask(tid) : selectTask(tid)) } : { label: 'Undo', run: () => undo() } });
@@ -191,9 +192,26 @@ function renderBin(container) {
     // One item: no "are you sure?" first, Undo in the toast instead (Ctrl+Z works too).
     const del = document.createElement('button'); del.type = 'button'; del.className = 'btn-icon btn-sm bin-del';
     del.innerHTML = icon('x'); del.setAttribute('aria-label', 'Delete for good'); del.setAttribute('data-tip', 'Delete for good');
-    del.onclick = () => { purgeBinEntry(e.kind, e.d.binTs); toast('Deleted for good', { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } }); };
+    del.onclick = () => { purgeBinEntry(e.kind, e.d.binTs, { id: e.kind === 'task' ? e.d.id : (e.d.note && e.d.note.id) }); toast('Deleted for good', { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } }); };
     row.append(ic, info, restore, del);
     list.appendChild(row);
   }
   container.appendChild(list);
+  // Several at once: restore or delete for good, one Undo for the lot (11-ui-pick.js).
+  const ms = multiPick(list, { key: 'bin', rows: '.bin-row', noun: ['item', 'items'],
+    nameOf: (r) => (r.querySelector('.bin-title') || {}).textContent || '',
+    exists: (id) => _binEntries().some(x => _binPickId(x) === id),
+    actions: () => [
+      { label: 'Restore', icon: 'rotate-ccw', run: (ids) => { const n = _binEach(ids, (x, o) => (x.kind === 'task' ? restoreTask(x.d.binTs, o) : restoreNote(x.d.binTs, o))); saveData(); render(); toast(`${n} item${n === 1 ? '' : 's'} restored`, { kind: 'ok', icon: 'rotate-ccw', action: { label: 'Undo', run: () => undo() } }); } },
+      { label: 'Delete for good', icon: 'trash-2', danger: true, run: (ids) => { const n = _binEach(ids, (x, o) => purgeBinEntry(x.kind, x.d.binTs, o)); saveData(); render(); toast(`${n} deleted for good`, { icon: 'trash-2', action: { label: 'Undo', run: () => undo() } }); } },
+    ] });
+  head.insertBefore(ms.button(), head.children[1] || null);
+}
+function _binEntries() { return [...(state.bin.tasks || []).map(t => ({ kind: 'task', d: t })), ...(state.bin.notes || []).map(n => ({ kind: 'note', d: n }))]; }
+function _binPickId(e) { return `${e.kind}:${e.d.binTs}:${e.kind === 'task' ? e.d.id : (e.d.note && e.d.note.id)}`; }
+function _binEach(ids, fn) {
+  const all = _binEntries(), want = new Set(ids);
+  let n = 0;
+  for (const x of all) if (want.has(_binPickId(x))) { fn(x, { noSave: true, id: x.kind === 'task' ? x.d.id : (x.d.note && x.d.note.id) }); n++; }
+  return n;
 }

@@ -70,7 +70,7 @@ function _hgdFill(card, m, size, preview) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm ' + (primary ? 'btn-primary' : 'btn-secondary');
     b.innerHTML = icon(ic) + (size === 's' ? '' : `<span>${esc(label)}</span>`);
     b.setAttribute('data-tip', tip); b.setAttribute('aria-label', tip);
-    b.onclick = (e) => { e.stopPropagation(); if (preview) return; const r = run(); if (r && !r.ok && r.msg) toast(r.msg, { icon: 'sprout', timeout: 3200 }); };
+    b.onclick = (e) => { e.stopPropagation(); if (preview) return; const r = run(); if (r && !r.ok && r.msg) { if (typeof gameDenyOf === 'function') gameDenyOf(r, b); else toast(r.msg, { icon: 'sprout', timeout: 3200 }); } };
     acts.appendChild(b);
   };
   const thirsty = m.plants.filter(p => p.thirsty && p.def.thirst).length;

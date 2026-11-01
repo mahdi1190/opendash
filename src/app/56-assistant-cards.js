@@ -2,13 +2,13 @@
    and Connections. Browser availability is distinct from local tool access. */
 const ASSISTANT_OPTIONS = Object.freeze([
   { id: 'claude', name: 'Claude', mark: 'claude', browser: 'https://claude.ai', docs: 'https://code.claude.com/docs/en/setup',
-    text: 'Finds or installs Claude Code, signs you in and adds OpenDash’s tools.' },
+    text: 'Finds or installs Claude Code, signs you in and adds Freeflo’s tools.' },
   { id: 'codex', name: 'ChatGPT / Codex', mark: 'chatgpt', browser: 'https://chatgpt.com', docs: 'https://learn.chatgpt.com/docs/extend/mcp?surface=cli',
-    text: 'Lets Codex use your tasks. OpenDash’s own AI still uses Claude.' },
+    text: 'Lets Codex use your tasks. Freeflo’s own AI still uses Claude.' },
   { id: 'grok', name: 'Grok', mark: 'grok', browser: 'https://grok.com', docs: 'https://docs.x.ai/grok/connectors/custom-mcp-tunneling',
-    text: 'Opens Grok in your browser; it can’t see OpenDash yet.' },
+    text: 'Opens Grok in your browser; it can’t see Freeflo yet.' },
   { id: 'gemini', name: 'Gemini', mark: 'gemini', browser: 'https://gemini.google.com', docs: 'https://geminicli.com/docs/tools/mcp-server/',
-    text: 'Lets Gemini CLI use your tasks. OpenDash’s own AI still uses Claude.' },
+    text: 'Lets Gemini CLI use your tasks. Freeflo’s own AI still uses Claude.' },
 ]);
 let _assistantBusy = null;
 let _localClaudeUi = null;
@@ -16,7 +16,7 @@ function localClaudeProgress(all) {
   const flow = _localClaudeUi || all.localClaude;
   return flow && (flow.busy || flow.phase === 'error' || flow.phase === 'browser-error' || flow.phase === 'browser-opened') ? flow : null;
 }
-function localClaudePhaseLabel(flow) { return ({ checking: 'Looking for Claude', installing: 'Installing Claude', 'awaiting-login': 'Finish browser sign-in', 'adding-tools': 'Adding OpenDash’s tools', verifying: 'Checking the connection', 'awaiting-approval': 'Approve the terminal prompts', 'opening-browser': 'Opening Claude in your browser', 'browser-opened': 'Finish browser setup', 'browser-error': 'The browser session didn’t open', error: 'Setup didn’t finish' })[flow.phase] || 'Connecting Claude'; }
+function localClaudePhaseLabel(flow) { return ({ checking: 'Looking for Claude', installing: 'Installing Claude', 'awaiting-login': 'Finish browser sign-in', 'adding-tools': 'Adding Freeflo’s tools', verifying: 'Checking the connection', 'awaiting-approval': 'Approve the terminal prompts', 'opening-browser': 'Opening Claude in your browser', 'browser-opened': 'Finish browser setup', 'browser-error': 'The browser session didn’t open', error: 'Setup didn’t finish' })[flow.phase] || 'Connecting Claude'; }
 function localClaudeBrowserUrl(flow) {
   if (!flow || typeof flow.browserUrl !== 'string') return null;
   try {
@@ -88,7 +88,7 @@ async function assistantConnect(id, repaint, action = 'link') {
         const url = localClaudeBrowserUrl(_localClaudeUi);
         if (!url) throw new Error(_localClaudeUi.message || 'Dashboard AI is connected. The browser session could not open; press Open connected Claude to retry.');
         if (popup && !popup.closed) { try { popup.location.replace(url); handedOff = true; } catch {} }
-        const message = _localClaudeUi.browserReady ? (handedOff ? 'Connected Claude is open in your browser.' : 'Press Open connected Claude to open the browser session.') : (_localClaudeUi.message || 'Finish terminal confirmations, then select OpenDash in Claude Code in your browser.');
+        const message = _localClaudeUi.browserReady ? (handedOff ? 'Connected Claude is open in your browser.' : 'Press Open connected Claude to open the browser session.') : (_localClaudeUi.message || 'Finish terminal confirmations, then select Freeflo in Claude Code in your browser.');
         toast(handedOff ? message : message + ' Press Open connected Claude if the browser did not open.', { kind: 'ok', timeout: 10000 });
       } else toast('Claude connected. AI features are on', { kind: 'ok' });
       await connRefresh({ force: true });
@@ -110,15 +110,15 @@ function assistantGuideFill(el, id, all, repaint) {
   const provider = ASSISTANT_OPTIONS.find(p => p.id === id);
   const facts = all.assistants && all.assistants[id];
   const configured = !!(facts && facts.configured);
-  if (facts && facts.conflict) el.appendChild(_connEl('p', 'callout warn conn-msg', 'An existing configuration needs review. OpenDash leaves it unchanged.'));
+  if (facts && facts.conflict) el.appendChild(_connEl('p', 'callout warn conn-msg', 'An existing configuration needs review. Freeflo leaves it unchanged.'));
   if (id === 'claude') {
     const help = _connHelp(CONNECTION_INFO[0], { state: 'setup', status: 'not-installed' }, { cli: { installed: false } });
     if (help) el.appendChild(help);
-    el.appendChild(_connEl('p', 'conn-note', 'Press Link Claude. It finds Claude Code (or installs it), signs you in and adds OpenDash’s tools.'));
+    el.appendChild(_connEl('p', 'conn-note', 'Press Link Claude. It finds Claude Code (or installs it), signs you in and adds Freeflo’s tools.'));
   } else if (id === 'codex') {
-    el.appendChild(_connEl('p', 'conn-text', configured ? 'OpenDash’s tools are in Codex. Open Codex and sign in if asked, and restart open sessions to load them.' : 'Install and sign in to Codex with its official guide, then come back and press Connect Codex.'));
+    el.appendChild(_connEl('p', 'conn-text', configured ? 'Freeflo’s tools are in Codex. Open Codex and sign in if asked, and restart open sessions to load them.' : 'Install and sign in to Codex with its official guide, then come back and press Connect Codex.'));
   } else if (id === 'gemini') {
-    el.appendChild(_connEl('p', 'conn-text', configured ? 'OpenDash’s tools are in Gemini CLI. Open it and sign in if asked.' : 'Install and sign in to Gemini CLI, then come back and press Connect Gemini CLI.'));
+    el.appendChild(_connEl('p', 'conn-text', configured ? 'Freeflo’s tools are in Gemini CLI. Open it and sign in if asked.' : 'Install and sign in to Gemini CLI, then come back and press Connect Gemini CLI.'));
   }
   const acts = _connEl('div', 'assistant-actions');
   acts.appendChild(uiButton({ label: 'Official connection guide', icon: 'external-link', kind: 'secondary', size: 'sm', run: () => window.open(provider.docs, '_blank', 'noopener') }));
@@ -129,11 +129,11 @@ function assistantGuideFill(el, id, all, repaint) {
       body.appendChild(_connEl('p', 'conn-note', 'Open connected Claude starts a browser session through Remote Control: approve its terminal prompts and keep this computer running. Claude chats on claude.ai are a separate connection.'));
       body.appendChild(_connEl('p', 'conn-note', 'Claude Code needs a supported subscription or provider account. ' + (all.assistants && all.assistants.claudeDesktop && all.assistants.claudeDesktop.detected ? 'Claude Desktop was found; it is optional.' : 'Claude Desktop is optional.')));
     } else if (id === 'gemini') {
-      body.appendChild(_connEl('p', 'conn-note', 'OpenDash adds its tools to your user settings and never skips Gemini’s own confirmations or folder permissions. The Gemini website is a separate connection.'));
+      body.appendChild(_connEl('p', 'conn-note', 'Freeflo adds its tools to your user settings and never skips Gemini’s own confirmations or folder permissions. The Gemini website is a separate connection.'));
     } else if (id === 'codex') {
       body.appendChild(_connEl('p', 'conn-note', 'ChatGPT in a browser doesn’t read Codex on this computer.'));
     } else {
-      body.appendChild(_connEl('p', 'conn-note', 'Opening the website doesn’t connect your local OpenDash tools.'));
+      body.appendChild(_connEl('p', 'conn-note', 'Opening the website doesn’t connect your local Freeflo tools.'));
     }
   });
 }

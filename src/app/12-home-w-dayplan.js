@@ -467,6 +467,7 @@ function _hdpApplySlots(slots) {
   let n = 0;
   selUndoGroup(() => { for (const s of slots) if (setPlannedSlot(s.id, today, s.time, s.minutes, { toast: false, render: false, reason: 'Auto-plan on Home' })) n++; });
   render();
+  if (n && typeof gameStreakTick === 'function') gameStreakTick('dayplan');   // achievements (71-ach-pack-plan.js)
   if (n) toast(`Planned ${n} task${n === 1 ? '' : 's'} into today’s free time · the deadlines stay`, { kind: 'ok', icon: 'calendar-clock', action: { label: 'Undo', run: () => undo() } });
   if (typeof homeAnnounce === 'function') homeAnnounce(n ? `Planned ${n} task${n === 1 ? '' : 's'}` : 'Nothing changed');
   return n;
@@ -484,6 +485,7 @@ function _hdpApplyPull(ids) {
   const list = ids.filter(id => { const it = getItem(id); return it && it.plannedFor !== today; });
   if (!list.length) return 0;
   batchTasks(list, (id) => { const it = getItem(id); const from = it.plannedFor || null; it.plannedFor = today; logActivity(id, 'plan', { from, to: today, reason: 'Pulled into today on Home' }); });
+  if (typeof gameStreakTick === 'function') gameStreakTick('dayplan');   // achievements (71-ach-pack-plan.js)
   toast(`Added ${list.length} task${list.length === 1 ? '' : 's'} to today`, { kind: 'ok', icon: 'sun', action: { label: 'Undo', run: () => undo() } });
   return list.length;
 }

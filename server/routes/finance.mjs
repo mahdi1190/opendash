@@ -5,14 +5,20 @@
 //   POST /api/finance/update      {full?:true, bank?:false} -> 202 {job}; 409 if one is running
 //                                 (one source only: POST /api/fin-connect/sources/:id/sync)
 //                                 bank:false = no bank fetch, just import inbox/ and rebuild
-//   POST /api/finance/import      {name, data: base64 of a CSV export, force?} -> {ok, rows, imported, analysis}
+//   POST /api/finance/import      {name, data: base64 of a CSV export, force?, card?} -> {ok, rows, imported, analysis}
 //                                 (5 MB file limit; works with no connection at all)
+//                                 {needsCardCheck, preview}: it looks like a credit card and nothing is imported yet;
+//                                 send it again with card: {key, name, flip, flipped}, or false (lib/finance/cards.mjs)
 //                                 409 {code:'LOOKS_LIKE_DUPLICATE'}: the file's account is new but most of
 //                                 its rows match another account's (an export of a synced account);
 //                                 nothing imported - send again with force:true to import anyway
 //   POST /api/finance/here        {} -> {ok, job?} | {ok, already}: this computer becomes the finance
 //                                 computer (409 SIGN_IN_FIRST without a bank connection of its own)
 //   POST /api/finance/categorise  {merchant, category|null} -> {ok, changed, analysis}
+//   POST /api/finance/categorise-batch  {changes: [{merchant, category|null}]} -> the same, one rebuild
+//   GET  /api/finance/count       -> {countPending}
+//   POST /api/finance/count       {ks: [payment keys], count: bool} ("Don't count this" and back) or {countPending: bool}
+//                                 (Settings > Money) -> {ok, analysis}; lib/finance/pending.mjs
 //   GET  /api/finance/budgets     -> {budgets};  PUT {budgets} -> {ok, budgets}
 //   GET  /api/finance/export      -> text/csv of every transaction (same-origin only)
 //   GET  /api/finance/brief       ?mode=cycle|month[&ai=1|&regenerate=1] -> the Overview's money brief
@@ -32,9 +38,9 @@
 // and the export is built from the copy.
 
 import {
-  financeData, financeJob, startFinanceUpdate, categoriseMerchant, getBudgets, setBudgets,
+  financeData, financeJob, startFinanceUpdate, categoriseMerchant, categoriseMerchants, getBudgets, setBudgets,
   importUpload, exportTransactions, setFinanceHooks, MAX_UPLOAD_BYTES,
-  localFinanceData, localBudgets, writeBudgetsFile, applyMerchantOverrides,
+  localFinanceData, localBudgets, writeBudgetsFile, applyMerchantOverrides, getCounting, setCounting, applyCountingEdits, rebuildOldAnalysis,
 } from '../../lib/finance.mjs';
 import { createFinanceShare } from '../../lib/finance-share.mjs';
 import { EDITS_REL, SHARE_REL } from '../../lib/sync/finance-share.mjs';
@@ -47,6 +53,7 @@ import { HttpError } from '../http.mjs';
 import { skippedBody } from '../../lib/main-computer.mjs';
 import { clockTodayIn, canonZone } from '../../lib/clock.mjs';
 import { financeDir } from '../../lib/finance.mjs';
+import { readCards } from '../../lib/finance/cards.mjs';
 import { MBM, briefFor, aiBrief, readBriefCache, writeBriefCache, briefCacheFile, DEFAULT_BRIEF_MODEL } from '../../lib/finance/brief.mjs';
 import { askJson, aiStatus } from '../../lib/ai.mjs';
 
@@ -105,6 +112,7 @@ export default function register(app) {
       }
     }
     // Accounts in the data that no source names: CSV imports (or a bank that was removed).
+    const fileCards = financeDir() ? (await readCards(financeDir())).cards : {};
     const csv = list.find(s => s.kind === 'csv');
     const aureli = list.find(s => s.preset === 'aureli');
     const tx = analysis && Array.isArray(analysis.transactions) ? analysis.transactions : [];
@@ -115,9 +123,10 @@ export default function register(app) {
       const isAureli = !generic && aureli && /^[A-Za-z0-9_-]{8,64}$/.test(k) && /[A-Za-z]/.test(k);
       const src = generic || (isAureli ? aureli : csv) || null;
       out.push({ ...(stats[k] || { transactionCount: 0, latestTransaction: null }), key: k, sourceId: src ? src.id : null, sourceLabel: src ? src.label : 'Imported', sourceColour: src ? src.colour : 'slate', provider: providerOf(src), kind: null,
-        // Account numbers are shortened; a readable label from a CSV is kept as it is.
-        name: /\d{5,}/.test(k) || (isAureli && !generic) ? 'Account …' + String(k).replace(/^.*\./, '').replace(/\s+/g, '').slice(-4) : String(k).replace(/^.*\./, '').slice(0, 30),
+        // A card from a file has its own name; account numbers are shortened; a readable label from a CSV is kept as it is.
+        name: fileCards[k] && fileCards[k].name ? fileCards[k].name : /\d{5,}/.test(k) || (isAureli && !generic) ? 'Account …' + String(k).replace(/^.*\./, '').replace(/\s+/g, '').slice(-4) : String(k).replace(/^.*\./, '').slice(0, 30),
         colour: null, enabled: true, lastSync: (src && src.lastSync) || null });
+      if (fileCards[k]) out[out.length - 1].kind = 'credit';
     }
     return out;
   }
@@ -137,11 +146,12 @@ export default function register(app) {
     sync: () => app.ctx.sync || null, remoteJobs: () => app.ctx.remoteJobs || null,
     hooks: {
       localData: () => localFinanceData(),
-      extraMeta: async (analysis) => { const m = await sourcesMeta(analysis); return { sources: m.sources, accounts: m.accounts }; },
+      extraMeta: async (analysis) => { const m = await sourcesMeta(analysis); const dataSources = app.ctx.financeDataSvc ? await app.ctx.financeDataSvc.publicOverview().catch(() => null) : null; return { sources: m.sources, accounts: m.accounts, ...(dataSources ? { dataSources } : {}) }; },
       financeDir: () => financeDir(),
       localBudgets: () => localBudgets(),
       writeBudgets: (map) => writeBudgetsFile(map),
       applyOverrides: (list) => applyMerchantOverrides(list),
+      applyCounting: (o) => applyCountingEdits(o),
       // An account's name, colour or Show in Finances chosen on another device: into this computer's sources.
       applyAccounts: async (list) => {
         const svc = finConnectFor(app.ctx);
@@ -154,11 +164,13 @@ export default function register(app) {
           const patch = {};
           if (x.name && x.name !== cur.name) patch.name = x.name;
           if (x.colour && x.colour !== cur.colour) patch.colour = x.colour;
-          if (typeof x.hidden === 'boolean' && x.hidden === (cur.enabled !== false)) patch.enabled = !x.hidden;
           if (!Object.keys(patch).length) continue;
           try { await svc.patchAccount(x.k, patch); n++; } catch (e) { log('warn', `finance share: an account edit was not applied (${e.code || 'error'})`); }
         }
-        return n > 0;
+        // What counts (the tick and the last day): every source, one rebuild (lib/finance-data.mjs).
+        const data = app.ctx.financeDataSvc;
+        const counted = data ? await data.applyEdits(list).catch((e) => { log('warn', `finance share: what counts was not applied (${e.code || 'error'})`); return false; }) : false;
+        return n > 0 || counted;
       },
     },
   });
@@ -183,6 +195,7 @@ export default function register(app) {
       });
     }
     const first = setTimeout(applyEdits, 15000); first.unref?.();
+    const upgrade = setTimeout(() => { rebuildOldAnalysis().catch(() => {}); }, 8000); upgrade.unref?.();
     shareTimer = setInterval(applyEdits, 5 * 60 * 1000); shareTimer.unref?.();
   });
   app.onClose(() => { clearInterval(shareTimer); });
@@ -271,7 +284,9 @@ export default function register(app) {
         const name = (v.host && v.host.name) || 'your other computer';
         return c.json(409, { code: 'FINANCE_ELSEWHERE', runsOn: name, error: `Your finances come from ${name}, so a CSV is imported there: open OpenDash on ${name} and import it in Finances. It shows here after that.` });
       }
-      const r = await importUpload({ name: body.name, data: body.data, force: body.force === true });
+      const card = body.card === false || (body.card && typeof body.card === 'object' && !Array.isArray(body.card)) ? body.card : undefined;
+      const r = await importUpload({ name: body.name, data: body.data, force: body.force === true, card });
+      if (r.needsCardCheck) { log('note', 'finance import: looks like a card file, asking first'); return r; }
       log('note', `finance import: ${r.rows} rows, ${r.imported} new`);
       return r;
     },
@@ -287,6 +302,26 @@ export default function register(app) {
     },
   });
 
+  app.route({
+    path: '/api/finance/categorise-batch', method: 'POST', methodError: 'POST only', maxBody: 256 * 1024,
+    handler: async (c) => {
+      const body = await c.body();
+      const r = await categoriseMerchants(body.changes);
+      return { ok: true, changed: r.changed, analysis: r.analysis };
+    },
+  });
+
+  app.route({ path: '/api/finance/count', method: 'GET', methodError: 'GET or POST only', handler: () => getCounting() });
+  app.route({
+    path: '/api/finance/count', method: 'POST', methodError: 'GET or POST only',
+    handler: async (c) => {
+      const body = await c.body();
+      const r = await setCounting({ ks: body.ks, count: body.count, countPending: body.countPending });
+      log('note', 'finance: what counts changed');
+      return { ok: true, changed: r.changed, analysis: r.analysis };
+    },
+  });
+
   app.route({ path: '/api/finance/budgets', method: 'GET', methodError: 'GET or PUT only', handler: () => getBudgets() });
   app.route({
     path: '/api/finance/budgets', method: 'PUT', methodError: 'GET or PUT only',
@@ -297,7 +332,7 @@ export default function register(app) {
   /** The export on a device that shows another device's finances: built from that copy. */
   function mirrorCsv(analysis) {
     const exclude = Array.isArray(analysis.exclude_from_spending) ? analysis.exclude_from_spending : ['Income', 'Internal transfers'];
-    const rows = (analysis.transactions || []).filter(t => t && typeof t.d === 'string').map(t => {
+    const rows = (analysis.transactions || []).filter(t => t && typeof t.d === 'string' && !t.pe).map(t => {
       const amount = Number(t.a) || 0;
       return { date: t.d, n: Date.parse(t.d + 'T12:00:00Z') / 864e5, merchant: String(t.m || ''), category: String(t.c || 'Uncategorised'), amount,
         spend: exclude.includes(t.c) ? 0 : -amount, account: String(t.acct || ''), subcategory: '', memo: String(t.memo || ''), source: '' };

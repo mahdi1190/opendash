@@ -1,0 +1,59 @@
+/* @part 29-money-alive.css · NEW (30 Oct 2026) · OWNER: Finance symbols (29-money-alive.js). Calm by default; static under reduced motion. */
+/* the sky's sun and clouds */
+.fa-sun { position: absolute; left: var(--x); top: var(--y); width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: radial-gradient(closest-side, rgb(255 255 255 / 0.9), rgb(255 244 214 / 0.55) 55%, transparent 72%); pointer-events: none; animation: fa-sun 14s ease-in-out infinite alternate; }
+@keyframes fa-sun { from { transform: scale(0.97); opacity: 0.86; } to { transform: scale(1.05); opacity: 1; } }
+.fa-cloud { position: absolute; left: var(--x); top: var(--y); width: calc(140px * var(--s)); height: calc(34px * var(--s)); border-radius: 40px; background: rgb(255 255 255 / 0.3); pointer-events: none; animation: fa-drift calc(38s + var(--k) * 11s) ease-in-out infinite alternate; }
+.fa-cloud::before { content: ''; position: absolute; left: 24%; top: -60%; width: 46%; height: 150%; border-radius: 50%; background: inherit; }
+@keyframes fa-drift { from { translate: -14px 0; } to { translate: 26px 0; } }
+
+/* payday */
+.fa-payday { position: relative; z-index: 1; display: grid; gap: 8px; max-width: 560px; margin: 4px 0 2px; padding: 10px 40px 12px 14px; border-radius: 14px; background: rgb(255 255 255 / 0.2); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.3); overflow: hidden; color: inherit; font-size: var(--text-sm, 13px); backdrop-filter: blur(6px); }
+.fa-payday.is-enter { animation: fa-rise 620ms cubic-bezier(0.2, 0.9, 0.3, 1.1) 1 both; }
+@keyframes fa-rise { from { transform: translateY(8px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+.fa-pd-t b { font-weight: 760; }
+.fa-pd-t .fv-amt { font-weight: 720; font-variant-numeric: tabular-nums; }
+.fa-pd-flow { display: flex; gap: 4px; }
+.fa-pd-flow > span { display: grid; gap: 1px; min-width: 76px; padding: 6px 9px; border-radius: 9px; transform-origin: 0 50%; animation: fa-grow 760ms 240ms cubic-bezier(0.2, 0.8, 0.3, 1) 1 both; }
+.fa-pd-b { background: rgb(0 0 0 / 0.2); }
+.fa-pd-r { background: rgb(255 255 255 / 0.28); animation-delay: 420ms !important; }
+.fa-pd-flow em { font-style: normal; font-size: var(--text-2xs, 11px); opacity: 0.86; white-space: nowrap; }
+.fa-pd-flow b { font-size: var(--text-sm, 13px); font-weight: 740; font-variant-numeric: tabular-nums; white-space: nowrap; }
+@keyframes fa-grow { from { transform: scaleX(0.2); opacity: 0; } to { transform: none; opacity: 1; } }
+.fa-pd-x { position: absolute; right: 6px; top: 6px; width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: 8px; background: none; color: inherit; cursor: pointer; opacity: 0.8; }
+.fa-pd-x:hover { background: rgb(255 255 255 / 0.2); opacity: 1; }
+.fa-coins { position: absolute; inset: 0; pointer-events: none; }
+.fa-coins i { position: absolute; left: var(--x); bottom: -14px; width: 11px; height: 11px; border-radius: 50%; background: #fde68a; box-shadow: inset 0 0 0 2px #d97706; animation: fa-coin 1.8s calc(var(--k) * 110ms) cubic-bezier(0.2, 0.7, 0.4, 1) 1 both; }
+@keyframes fa-coin { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 25% { opacity: 1; } 70% { transform: translateY(-58px) rotate(120deg); opacity: 1; } 100% { transform: translateY(-70px) rotate(170deg); opacity: 0; } }
+
+/* the new-import receipt */
+.fa-receipt { display: inline-flex; align-items: center; gap: 6px; position: relative; padding-left: 22px; font-size: var(--text-2xs, 11px); color: var(--fg-muted); transition: opacity 500ms ease-out; }
+.fa-receipt.is-done { opacity: 0; }
+.fa-receipt b { font-weight: 660; color: var(--accent); }
+.fa-rc-printer { position: absolute; left: 0; top: 0; width: 17px; height: 6px; border-radius: 2px; background: var(--fg-muted); z-index: 1; }
+.fa-rc-paper { position: absolute; left: 3px; top: 4px; width: 11px; height: 15px; display: flex; flex-direction: column; gap: 2px; padding: 3px 2px; border-radius: 0 0 1px 1px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--border-strong); clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); transform-origin: 50% 0; animation: fa-print 1.5s steps(9) 1 both; }
+.fa-rc-paper i { display: block; height: 1.5px; background: var(--fg-subtle); }
+@keyframes fa-print { from { clip-path: polygon(0 0, 100% 0, 100% 0, 0 0); } to { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); } }
+
+/* living categories: jars */
+.fa-jars { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; padding: 6px 2px; }
+.fa-jar { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 6px 10px; border: 0; border-radius: var(--radius-md, 10px); background: none; color: inherit; font: inherit; cursor: pointer; }
+.fa-jar:hover { background: var(--bg-subtle, var(--bg-muted)); }
+.fa-jar:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fa-jar-glass { position: relative; display: block; width: 62px; height: 74px; overflow: hidden; border-radius: 10px 10px 16px 16px; background: color-mix(in oklab, var(--c) 8%, var(--surface)); box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--c) 40%, var(--border-subtle)); }
+.fa-jar-liquid { position: absolute; inset: 0; transform-origin: 50% 100%; transform: scaleY(var(--f)); background: color-mix(in oklab, var(--c) 72%, transparent); animation: fa-fill 900ms calc(var(--k) * 60ms) cubic-bezier(0.2, 0.8, 0.3, 1) 1 both; }
+@keyframes fa-fill { from { transform: scaleY(0); } to { transform: scaleY(var(--f)); } }
+.fa-jar-ic { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); line-height: 0; filter: drop-shadow(0 1px 1px rgb(255 255 255 / 0.6)); }
+.fa-jar-v { margin-top: 5px; font-size: var(--text-sm, 13px); font-weight: 680; font-variant-numeric: tabular-nums; }
+.fa-jar-n { font-size: var(--text-2xs, 11px); color: var(--fg-muted); text-align: center; line-height: 1.2; }
+
+/* a number landing */
+.fa-land { animation: fa-land 440ms cubic-bezier(0.3, 1.6, 0.5, 1) 1; }
+@keyframes fa-land { 0% { transform: none; } 45% { transform: scale(1.06); } 100% { transform: none; } }
+
+@media (prefers-reduced-motion: reduce) { .fa-sun, .fa-cloud, .fa-payday, .fa-pd-flow > span, .fa-coins i, .fa-jar-liquid, .fa-rc-paper, .fa-land { animation: none !important; } }
+html[data-motion="reduced"] :is(.fa-sun, .fa-cloud, .fa-payday, .fa-pd-flow > span, .fa-coins i, .fa-jar-liquid, .fa-rc-paper, .fa-land),
+html.anim-off :is(.fa-sun, .fa-cloud, .fa-payday, .fa-pd-flow > span, .fa-coins i, .fa-jar-liquid, .fa-rc-paper, .fa-land) { animation: none !important; }
+html.anim-paused :is(.fa-sun, .fa-cloud) { animation-play-state: paused !important; }
+
+/* jars mode: the chart and its list step aside */
+.fa-mode-jars .c1-where-wrap { display: none; }

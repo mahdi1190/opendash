@@ -15,10 +15,10 @@
    panels where they belong with Friends.registerPanel({..., tab, zone}) (96-friends-0core.js).
    Friend strings are set with textContent only (the owner's rule).
    ============================================================ */
-const _FR_TABS = Object.freeze([['friends', 'Friends', 'users'], ['data', 'Shared with me', 'folder-open'], ['feed', 'Feed', 'newspaper'], ['requests', 'Requests', 'user-check'], ['shared', 'Shared', 'handshake'], ['settings', 'Settings', 'settings']]);
+const _FR_TABS = Object.freeze([['friends', 'Friends', 'users'], ['groups', 'Groups', 'building-2'], ['data', 'Shared with me', 'folder-open'], ['feed', 'Feed', 'newspaper'], ['requests', 'Requests', 'user-check'], ['shared', 'Shared', 'handshake'], ['settings', 'Settings', 'settings']]);
 const _FR_FEED_PAGE = 10, _FR_FEED_FETCH = 40;
 _frUI.sel = ''; _frUI.listTop = 0; _frUI.feedC = new Map(); _frUI.folds = new Set(); _frUI.tab = '';
-function _frTabOf(view) { const m = /^friends:(feed|requests|shared|settings|data)(?::[0-9a-f]{16})?$/.exec(String(view || '')); return m ? m[1] : 'friends'; }
+function _frTabOf(view) { if (/^friends:groups(:|$)/.test(String(view || ''))) return 'groups'; const m = /^friends:(feed|requests|shared|settings|data)(?::[0-9a-f]{16})?$/.exec(String(view || '')); return m ? m[1] : 'friends'; }
 function _frViewOfTab(tab) { return tab === 'friends' ? 'friends' : 'friends:' + tab; }
 /** Requests that wait for you, and friends that need a look (the Requests tab's badge and the Friends tab's one line). */
 function _frNeedsYou(d) {
@@ -29,7 +29,7 @@ function _frSubTabs(tab, d) {
   const need = _frNeedsYou(d).length;
   return subTabs({
     label: 'Friends', active: tab, onChange: (id) => setView(_frViewOfTab(id)),
-    tabs: _FR_TABS.map(([id, label, ic]) => ({ id, label, icon: ic, badge: id === 'requests' ? need : id === 'shared' ? inv : 0 })),
+    tabs: _FR_TABS.map(([id, label, ic]) => ({ id, label, icon: ic, badge: id === 'requests' ? need : id === 'shared' ? inv : id === 'groups' && typeof grWaiting === 'function' ? grWaiting() : 0 })),
   });
 }
 /** Paint the open tab (called by _frRender, 96-friends-1ui.js). */
@@ -40,7 +40,7 @@ function _frRenderTabs(root, view) {
   headerSubTabs(_frSubTabs(tab, d), /^friends(:|$)/);
   const sub = document.getElementById('view-subtitle');
   if (sub) sub.textContent = '';
-  ({ friends: _frTabFriends, data: _frTabData, feed: _frTabFeed, requests: _frTabRequests, shared: _frTabShared, settings: _frTabSettings })[tab](root, view, d);
+  ({ friends: _frTabFriends, groups: _frTabGroups, data: _frTabData, feed: _frTabFeed, requests: _frTabRequests, shared: _frTabShared, settings: _frTabSettings })[tab](root, view, d);
 }
 
 /* ---------- panels other modules registered ---------- */
@@ -107,7 +107,7 @@ function _frTabFriends(root, view, d) {
   }
   if (!friends.length) {
     if (!d.relay || !d.relay.home) { root.appendChild(_frNoRelay(d)); return; }
-    mountEmptyState(root, { icon: 'users', compact: true, title: 'Bring your people', text: 'Send someone an invite link, or add them with their friend code if they use your relay. You can cheer each other on and do quests together.',
+    mountEmptyState(root, { icon: 'users', compact: true, title: 'Bring your people', text: 'Send someone an invite link, or show them your 4-letter friend code. You can cheer each other on and do quests together.',
       actions: [{ label: 'Add a friend', icon: 'user-plus', primary: true, run: () => friendsAddDialog() }] });
     return;
   }
@@ -119,12 +119,29 @@ function _frTabFriends(root, view, d) {
       for (const x of friends) {
         const fx = typeof funFor === 'function' && typeof funOn === 'function' && funOn() ? funFor(x.id) : null;
         const costume = typeof funFriendInCostume === 'function' && fx && funFriendInCostume(x) ? ' 🧙' : '';
-        host.appendChild(mdRow({ avatar: _frAvatarWrap(x, 30), title: friendName(x) + costume, sub: _frRowSub(x), badge: fx && fx.gifts ? '🎁' + (fx.gifts > 1 ? fx.gifts : '') : '', active: x.id === f.id, tip: `${friendName(x)}'s page`, run: () => { if (x.id !== f.id) setView('friends:' + x.id); } }));
+        const row = mdRow({ pickable: true, avatar: _frAvatarWrap(x, 30), title: friendName(x) + costume, sub: _frRowSub(x), badge: fx && fx.gifts ? '🎁' + (fx.gifts > 1 ? fx.gifts : '') : '', active: x.id === f.id, tip: `${friendName(x)}'s page`, run: () => { if (x.id !== f.id) setView('friends:' + x.id); } });
+        row.dataset.pickId = x.id;
+        host.appendChild(row);
       }
     },
     detail: () => _frFriendDetail(f),
   });
   root.appendChild(md);
+  // Several at once: a cheer each. It goes out at once, so there is nothing to undo (11-ui-pick.js).
+  if (friends.length > 1) {
+    const tools = document.createElement('div'); tools.className = 'pk-list-tools';
+    const pick = multiPick(md.mdList, { key: 'friends', rows: '.md-row', noun: ['friend', 'friends'],
+      nameOf: (r) => (r.querySelector('.md-row-n') || {}).textContent || '',
+      exists: (id) => friends.some(x => x.id === id),
+      actions: () => [{ label: 'Send a cheer', icon: 'heart', run: async (ids) => {
+        let ok = 0, err = null;
+        for (const id of ids) { try { await friendsCheer(id); ok++; } catch (e) { err = e; } }
+        if (ok) toast(`Cheered ${ok} friend${ok === 1 ? '' : 's'}`, { kind: 'ok', icon: 'heart' });
+        if (err) { toastError(ok ? 'cheer everyone' : 'send the cheers', err); return false; }
+      } }] });
+    tools.appendChild(pick.button());
+    md.mdList.insertBefore(tools, md.mdList.firstChild);
+  }
   md.mdList.scrollTop = _frUI.listTop || 0;
   md.mdList.addEventListener('scroll', () => { _frUI.listTop = md.mdList.scrollTop; }, { passive: true });
   const on = md.mdList.querySelector('.md-row.on');
@@ -207,6 +224,7 @@ function _frFriendHero(f) {
   const acts = _frEl('div', 'fr-fhero-a');
   if (typeof fdOpen === 'function') acts.appendChild(uiButton({ label: 'View their data', icon: 'eye', kind: 'ghost', size: 'sm', tip: `What ${friendName(f)} shares with you: tasks, calendar, money, places, memories`, run: () => fdOpen(f.id) }));
   acts.appendChild(uiButton({ label: 'Cheer', icon: 'heart', size: 'sm', run: (e, b) => _frCheerMenu(b, f) }));
+  if (typeof musicFriendAction === 'function') { try { const mb = musicFriendAction(f); if (mb) acts.appendChild(mb); } catch (e) { console.error('[friends] music action', e); } }   // 2.26: Send a song
   acts.appendChild(uiButton({ icon: 'ellipsis', kind: 'ghost', size: 'sm', aria: 'More', tip: 'More', run: (e, b) => openMenu(b, _frFriendMore(f), { align: 'end' }) }));
   el.appendChild(acts);
   if (typeof funFriendHero === 'function') { try { funFriendHero(el, f); } catch (e) { console.error('[friends] fun hero', e); } }   // agent 'fun': wave, high five, gift
@@ -299,7 +317,7 @@ function _frTabRequests(root, view, d) {
       const declined = all.filter(f => f.status === 'declined');
       if (declined.length) stack.appendChild(_frDeclinedSec(declined));
       if (!attn.length && !pend.length && !declined.length) {
-        mountEmptyState(stack, { icon: 'user-check', compact: true, title: 'Nobody is waiting', text: 'Requests you send and requests from friends show here, with the check code to compare.',
+        mountEmptyState(stack, { icon: 'user-check', compact: true, title: 'Nobody is waiting', text: 'Requests you send and requests from friends show here, with the pictures to compare.',
           actions: [{ label: 'Add a friend', icon: 'user-plus', primary: true, run: () => friendsAddDialog() }] });
       }
     },
@@ -309,7 +327,7 @@ function _frTabRequests(root, view, d) {
 /* ---------- Shared: spaces, gardens, pets ---------- */
 function _frTabShared(root, view, d) {
   if (typeof tgSpacesPane === 'function' && typeof tgOn === 'function' && tgOn()) root.appendChild(tgSpacesPane({ embedded: true }));
-  else root.appendChild(emptyLine('Shared lists and boards are not on this computer yet. Update OpenDash to use them.'));
+  else root.appendChild(emptyLine('Shared lists and boards are not on this computer yet. Update Freeflo to use them.'));
   const rest = _frEl('div', 'fr-stack fr-shared-rest');
   _frPanelsFor(rest, 'hangout', 'shared', d);
   if (rest.childNodes.length) root.appendChild(rest);

@@ -2,17 +2,17 @@
 
 ## General
 
-**What is OpenDash?**
+**What is Freeflo?**
 A calm, local-first productivity dashboard: tasks, calendar, finances, people,
 files and links, a morning brief and an optional Claude assistant, in one page
 that runs on your own computer.
 
 **Is it free?**
-Yes. OpenDash is open source under the MIT licence. The optional AI features
-use your own Claude plan through Claude Code; OpenDash adds no cost.
+Yes. Freeflo is open source under the MIT licence. The optional AI features
+use your own Claude plan through Claude Code; Freeflo adds no cost.
 
 **Do I need an account?**
-No. There is no OpenDash account or cloud service. You only sign in to the
+No. There is no Freeflo account or cloud service. You only sign in to the
 services you choose to connect (Claude, and through it Gmail, Google Calendar
 or your bank).
 
@@ -20,12 +20,19 @@ or your bank).
 Yes. Everything except the connected features works without a network.
 
 **Which systems does it run on?**
-Windows, macOS and Linux, with Node.js 20 or newer and a modern browser.
+Windows, macOS and Linux, in a modern browser. On Windows the installer
+includes everything; the zip version (any system) needs Node.js 20 or newer.
+See [INSTALL.md](INSTALL.md).
+
+**Windows says "Windows protected your PC" when I run the installer.**
+That is SmartScreen. The installer is not code-signed yet, so Windows does
+not recognise it. Click **More info**, then **Run anyway**. To check your
+copy, compare it with `SHA256SUMS-installer.txt` on the release page.
 
 **Can I use it on my phone?**
 Not yet. The page adapts to narrow windows and touch screens, but the server
 runs on your computer and only answers on that computer (`127.0.0.1`), and it
-refuses requests addressed to any other host name. OpenDash is not designed to
+refuses requests addressed to any other host name. Freeflo is not designed to
 be reached from other devices, and opening it to your network is not
 supported. A supported way to do this is on the
 [roadmap](../README.md#roadmap) as an idea; share your use case in
@@ -33,21 +40,38 @@ supported. A supported way to do this is on the
 
 ## Data and privacy
 
+**Is the cloud required?**
+No. Freeflo works fully on one computer, and that is how it starts. Syncing
+your own devices and Friends are optional extras, and both run through a
+relay you host on your own (free) Cloudflare account, or a friend's, never
+a Freeflo server. See
+[Cloud and sync](PRIVACY.md#cloud-and-sync-optional-in-three-levels).
+
+**Does anyone else see my data?**
+Not unless you choose. There is no Freeflo company server, account or
+telemetry, so the project never sees anything. Sync between your own devices
+is end-to-end encrypted: your relay and your cloud folder only hold scrambled
+records. A friend sees your profile, game progress and garden, and only what
+else you turn on for that one friend. Claude sees what a Claude feature needs, through
+your own Claude Code (below). Details in [PRIVACY.md](PRIVACY.md).
+
 **Where is my data?**
-In one folder, `data/` next to the app unless you chose another with
+In one folder: `%LOCALAPPDATA%\OpenDash\data` with the Windows installer,
+`data/` next to the app for a zip install, or the folder you chose with
 `--data-dir`. See [INSTALL.md](INSTALL.md#where-your-data-lives).
 
 **Is anything sent anywhere?**
 Only for features you switch on, and only to the service the feature names
 (Claude through your own Claude Code, the connectors you added, an iCal host,
-Open-Meteo for weather). No analytics or telemetry. One exception: if Claude
-Code is already installed and signed in on your computer, OpenDash uses it
+Open-Meteo for weather, GitHub when you check for updates). No analytics or
+telemetry. One exception: if Claude
+Code is already installed and signed in on your computer, Freeflo uses it
 without being asked (a tiny test prompt at start-up, and the Morning brief's
-daily summary and story scripts; Settings > Morning brief > *AI summary* turns
+daily summary and story scripts; Settings > Brief and stories > *AI summary* turns
 those off). Details in [PRIVACY.md](PRIVACY.md).
 
 **Is my data encrypted?**
-OpenDash does not encrypt the data folder itself. Use your operating system's
+Freeflo does not encrypt the data folder itself. Use your operating system's
 disk encryption. The optional *daily encrypted copy* (below) is encrypted
 before it leaves your computer.
 
@@ -65,20 +89,29 @@ use the new one).
 
 **Can I keep the data folder in OneDrive, Dropbox or iCloud?**
 It works, but it is not a good idea: sync tools copy files, they do not merge
-edits made on two computers, so edits can be lost. OpenDash says so (*Your data
+edits made on two computers, so edits can be lost. Freeflo says so (*Your data
 is in OneDrive*) and offers **Move my data out of OneDrive** in Settings > Data:
 it copies everything to a folder on this computer, checks every file, updates
 the start-up and assistant settings that use the old place, keeps the old
 folder (renamed, never deleted) and can be undone. Your computers then stay in
-step through Settings > Sync. Until you move it, use OpenDash on one computer
+step through Settings > Sync. Until you move it, use Freeflo on one computer
 at a time: it pauses changes when another computer has the folder open (choose
 *Use here anyway* to go on).
+
+**How do I add another computer?**
+Install Freeflo there, open Settings > Sync and choose *No, join my other
+computer*. Your first computer shows a 4-letter code and a picture; type the
+letters on the new one, check both screens show the same picture, and press
+*Yes*. The code works once and for ten minutes. You can also print an optional
+10-word emergency backup sheet (Settings > Sync); you only need it if you ever
+lose every computer. Removing a computer in Settings > Sync stops it reading
+new data and locks it out of Friends.
 
 **I moved my data. Where did it go, and can I go back?**
 Settings > Data shows the new place and the name of the kept old folder (there
 is a `README` in it). **Undo move** puts everything back, including changes you
 made since: they are copied back into the old folder first. Delete the old
-folder yourself once you are happy; OpenDash never deletes it.
+folder yourself once you are happy; Freeflo never deletes it.
 
 **Why does a job say "Runs on HOME-PC"?**
 That computer is your *main computer* (Settings > Sync > Main computer). Only
@@ -87,13 +120,21 @@ story scripts, calendar and email updates. That way your bank is not asked
 twice and Claude does not do the same work on two computers. A click still
 runs the job where you are.
 
+**I used the zip version. How do I move my data to the installer version?**
+Stop the zip version (and turn off its start-up switches in Settings >
+Server), install, stop the new copy, copy everything inside the old `data`
+folder into `%LOCALAPPDATA%\OpenDash\data`, then start Freeflo from the
+Start menu. Step by step:
+[INSTALL.md](INSTALL.md#moving-to-the-installer-version).
+
 **How do I move to a new computer?**
-*Export all data (.zip)* on the old one, install OpenDash on the new one,
+*Export all data (.zip)* on the old one, install Freeflo on the new one,
 *Import data*. Connections are set up again on the new computer.
 
 **What can friends see?**
-Only your profile (name, character, bio) and game progress, until you turn
-more on for one friend you mark *Trusted*. Messages between friends are
+Your profile (name, character, bio, pet), game progress and garden, and
+nothing more until you turn it on for one friend you mark *Trusted*. Each of
+those three can be hidden per friend too. Messages between friends are
 end-to-end encrypted, and nothing a friend sends reaches Claude or changes
 your tasks. See [FRIENDS_GUIDE.md](FRIENDS_GUIDE.md#what-friends-can-see).
 
@@ -108,6 +149,18 @@ join with their invite. It only holds sealed messages it cannot read. See
 their app to delete its copy. That deletion cannot be forced on their device,
 so only share what you are happy for them to have seen.
 
+**Can I send a friend a song?**
+Yes. Link your own Spotify once (Connections > Spotify; it needs a free Spotify app made with a Premium account, about two minutes), then open a friend's page and choose *Send a song*. They get a card with the cover and Open in Spotify, and do not need Spotify linked to Freeflo. Only the name and Spotify id travel. See [Connections](CONNECTIONS.md#spotify-songs-for-friends-favourites-and-top-artists).
+
+**Do I need Spotify Premium?**
+To link Spotify, yes: since February 2026 Spotify lets an app in Development Mode work only while its owner has Premium. Playing or queueing a song from Freeflo needs Premium and a Spotify app open. Friends who just receive songs need nothing.
+
+**Can friends see what I'm listening to?**
+Only if you turn on *Show what I'm listening to* (Profile > Music; it is off by default). Then a friend who opens your card sees the song playing right now. It is sent only when they look, never for a podcast or a Spotify private session, and only to friends who can see your card.
+
+**Can my friends use my Spotify app?**
+Yes, up to 4 of them. A friend pastes your Client ID (it is not a secret) in their Spotify set-up and signs in with their own Spotify account, and you add them under User management in your Spotify dashboard. Spotify allows 5 people per app in Development Mode, and only organisations with a large audience can lift that, so Freeflo cannot ship one Client ID for everyone.
+
 ## Claude and connections
 
 **Do I need Claude?**
@@ -116,22 +169,26 @@ the brief and the stories all work without it. Claude adds the assistant,
 smart suggestions, AI summaries and the connectors.
 
 **Why Claude Code and not an API key?**
-OpenDash runs Claude through the Claude Code CLI signed in to your own account,
+Freeflo runs Claude through the Claude Code CLI signed in to your own account,
 so it never handles an API key or password, and calls use the plan you already
 have.
 
 **Can the assistant change my data without asking?**
-No. It proposes changes; nothing happens until you press Apply, and every
-change can be undone. Text inside emails or calendar invitations cannot change
-your data on its own.
+It can do nearly everything you can do in the dashboard, and every change can
+be undone. Ordinary changes (tasks, people, tags) are proposed first and happen
+when you press Apply. Anything sensitive (friends, your computers, your relay,
+sign-ins, money rules, changes to existing expenses, updates) is only ever a
+proposal you approve on screen. Text inside emails or calendar invitations
+cannot change your data on its own.
 
-**Can OpenDash send email, change my calendar or move money?**
+**Can Freeflo send email, change my calendar or move money?**
 No. Gmail, Calendar and bank connectors are only ever used with read tools,
 and tools that could send, change or delete anything are locked.
 
-**What is the "OpenDash MCP"?**
+**What is the "Freeflo MCP"?**
 A way for your own Claude (Claude Code, T3 Code or Claude Desktop) to read and
-change your tasks from a chat. See [MCP.md](MCP.md).
+change nearly everything in the dashboard from a chat, with Undo. Sensitive
+things need a dry run or your approval. See [MCP.md](MCP.md).
 
 ## Using it
 
@@ -158,7 +215,7 @@ Choose *Load demo data* in the welcome. Everything in it is invented.
 **Which time zone does it use?**
 Your computer's: a new data folder starts on it, and the page always shows your
 computer's clock. "Today" for the stories, the assistant and calendar and bank
-updates comes from Settings > Name & region > *Time zone*. If your computer
+updates comes from Settings > Region & language > *Time zone*. If your computer
 is somewhere else (a trip, a data folder copied from another machine), that
 row says so and offers *Use* with your computer's zone in one click. Calendar
 events keep their own time zones and show at your local time, including on the
@@ -167,22 +224,29 @@ days the clocks change.
 ## Running it
 
 **The page says the server isn't running.**
-Start OpenDash with its launcher. Settings > Server > *Open log* (or
+Start Freeflo with its launcher. Settings > Server > *Open log* (or
 `data/logs/server.log`) says why it stopped.
 
-**"Port 4173 is in use by something that is not OpenDash".**
-If OpenDash is already running, the launcher simply opens it. Otherwise start
+**"Port 4173 is in use by something that is not Freeflo".**
+If Freeflo is already running, the launcher simply opens it. Otherwise start
 it on another port from a terminal in the app folder: `.\start-opendash.bat
 --port 4174` on Windows, `sh start-opendash.sh --port 4174` on macOS and Linux
 (see [launcher options](INSTALL.md#launcher-options)).
 
 **Can it start when I log in?**
-On Windows, turn on *Start automatically when I log in* in Settings > Server.
-On macOS and Linux, Settings > Server shows how to add a login item.
+With the Windows installer, tick *Start Freeflo when I sign in* while
+installing. With a zip install on Windows, turn on *Start automatically when I
+log in* in Settings > Server. On macOS and Linux, Settings > Server shows how
+to add a login item.
 
-**How do I update?**
-Unzip the new release into a new folder, move your `data` folder across, and
-start it. See [INSTALL.md](INSTALL.md#updating).
+**How do updates work?**
+Settings > Updates > *Check for updates* asks GitHub's releases page whether
+there is a newer version; *Update and restart* downloads it, checks its
+checksum, keeps a copy of the files it replaces, and restarts. Your data is
+never touched. Checking only downloads; nothing about you is sent. It checks
+only when you ask, unless you turn on *Check for updates once a day*. With the
+installer you can also run the newer `OpenDash-Setup` over the old one. See
+[INSTALL.md](INSTALL.md#updating).
 
 ## Contributing
 

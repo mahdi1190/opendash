@@ -5,7 +5,7 @@ function connCloudSignIn(source, legacyId) {
   _connReturningSignIn = { source, legacyId, at: Date.now() };
   window.open('https://claude.ai/customize/connectors', '_blank', 'noopener,noreferrer');
   const name = (source && source.label) || (legacyId && typeof CONN_NAMES !== 'undefined' && CONN_NAMES[legacyId] && CONN_NAMES[legacyId].label) || 'it';
-  toast(`Sign in to ${name} in Claude’s window. OpenDash checks when you come back.`, { icon: 'external-link' });
+  toast(`Sign in to ${name} in Claude’s window. Freeflo checks when you come back.`, { icon: 'external-link' });
 }
 async function connVerifySignInReturn() {
   const pending = _connReturningSignIn;

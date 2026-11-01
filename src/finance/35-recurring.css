@@ -58,6 +58,11 @@
 .fv-rl { display: flex; flex-direction: column; margin: 0 calc(-1 * var(--space-5)); }
 .fv-rl-row { display: grid; grid-template-columns: 36px minmax(0, 1.3fr) 120px minmax(0, 1fr) 96px 92px; align-items: center; gap: var(--space-3); padding: 9px var(--space-5); border: 0; border-top: 1px solid var(--border-subtle); background: transparent; font: inherit; color: var(--fg); text-align: left; cursor: pointer; transition: background-color var(--fv-fast), opacity var(--fv-base); }
 .fv-rl-row:hover { background: var(--bg-subtle); }
+.fv-rl-wrap { display: flex; align-items: center; border-top: 1px solid var(--border-subtle); }
+.fv-rl-wrap:hover { background: var(--bg-subtle); }
+.fv-rl-wrap .fv-rl-row { flex: 1; min-width: 0; border-top: 0; background: transparent; }
+.fv-rl-split { flex: none; margin-right: var(--space-3); font-size: var(--text-xs); white-space: nowrap; }
+.fv-rl-split.on { color: var(--accent-ink, var(--accent)); }
 .fv-rl-row.off { opacity: 0.6; }
 .fv-rl-row.is-current { background: var(--accent-soft); }
 .fv-rl-main { display: grid; gap: 1px; min-width: 0; }
@@ -94,5 +99,7 @@
   .fv-rl-row > .fsym-tx, .fv-rl-yr, .fv-rl-nx { display: none; }
   /* @p1: the empty badge placeholder took the amount's column, so rows without a type badge wrapped */
   .fv-rl-row > .fv-kind-none { display: none; }
+  .fv-rl-split { margin-right: var(--space-2); }
+  .fv-rl-split span { display: none; }
   .fv-rl-am small { white-space: nowrap; }
 }

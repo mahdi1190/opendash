@@ -17,7 +17,7 @@
    locs, braids, buns), bags and scarves. Face details (eyes, make-up, paint, piercings) are not drawn: the
    scene people have no faces.
    ============================================================ */
-const _PF_FIG_HAIR = Object.freeze({ bald: 'bald', buzz: 'crop', crop: 'crop', mohawk: 'crop', pixie: 'crop', cornrows: 'crop', hightop: 'crop',
+const _PF_FIG_HAIR = Object.freeze({ bald: 'bald', norwood7: 'bald', buzz: 'crop', crop: 'crop', mohawk: 'crop', pixie: 'crop', cornrows: 'crop', hightop: 'crop',
   short: 'short', side: 'short', spiky: 'short', fringe: 'short', curtains: 'short', quiff: 'short', slick: 'short', undercut: 'short',
   curly: 'curly', afro: 'curly', puffs: 'curly', bob: 'long', long: 'long', wavy: 'long', braids: 'long', sweep: 'long', halfup: 'long', shag: 'long',
   mullet: 'long', locs: 'long', boxbraids: 'long', pony: 'pony', pigtails: 'pony', bun: 'bun', buns: 'bun', topknot: 'bun' });
@@ -36,7 +36,7 @@ const _PF_FIG_BOTTOM = Object.freeze({ jeans: 'jeans', trousers: 'trousers', chi
   shorts: 'shorts', skirt: 'skirt', pleated: 'skirt', midi: 'skirt', dungarees: 'jeans' });
 /** Shoes the people builder draws itself; the others are drawn here instead (its shoe is taken off first). */
 const _PF_FIG_SHOE_OWN = Object.freeze(new Set(['trainer', 'shoe', 'boot', 'sandal']));
-const _PF_FIG_HAT = Object.freeze({ beanie: 'beanie', slouch: 'beanie', bearbeanie: 'beanie', trapper: 'beanie', cap: 'cap', flatcap: 'flatcap', sunhat: 'sunhat',
+const _PF_FIG_HAT = Object.freeze({ strawhat: 'sunhat', beekeeper: 'sunhat', anglerhat: 'sunhat', pith: 'sunhat', beanie: 'beanie', slouch: 'beanie', bearbeanie: 'beanie', trapper: 'beanie', cap: 'cap', flatcap: 'flatcap', sunhat: 'sunhat',
   headscarf: 'beanie', santa: 'beanie' });
 const _PF_FIG_BAG = Object.freeze({ crossbody: 'crossbody', satchel: 'crossbody', messenger: 'crossbody', bumbag: 'crossbody', shoulder: 'shoulder', tote: 'shoulder', backpack: 'backpack' });
 const _PF_SUNGLASSES = Object.freeze(new Set(['sun', 'aviatorsun', 'roundsun', 'mirror', 'sport', 'heart', 'starsun', '3d']));

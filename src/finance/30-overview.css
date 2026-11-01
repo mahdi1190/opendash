@@ -361,3 +361,8 @@
    ellipsis; the chip's title keeps the full name) */
 .fv-mb-ent:not(.t-money) { display: inline-block; max-width: 100%; height: auto; line-height: 1.3; overflow: clip; text-overflow: ellipsis; }
 .fv-mb-ent:not(.t-money) > .fv-mb-ei { margin-right: 0.24em; vertical-align: -0.08em; }
+
+/* 2.21: the hero on Money's main page: its quiet way to the rest of the brief */
+.fv-mb-full { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: var(--text-sm); color: var(--mb-ink2, var(--fg-muted)); }
+.fv-mb-full:hover { color: var(--mb-ink, var(--fg)); }
+.fv-mb-btn:disabled { opacity: .5; cursor: not-allowed; }

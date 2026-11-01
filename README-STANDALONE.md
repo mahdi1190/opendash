@@ -1,6 +1,6 @@
-# OpenDash — running it standalone
+# Freeflo — running it standalone
 
-The long-form reference: every detail of running OpenDash on your own
+The long-form reference: every detail of running Freeflo on your own
 computer, in one file. New here? Start with [README.md](README.md) and the
 guides in [docs/](docs/README.md) ([install](docs/INSTALL.md),
 [privacy](docs/PRIVACY.md)); they are kept current and win where the two differ.
@@ -228,9 +228,9 @@ credentials and does not change Gmail or Calendar permissions.
 
 Google currently pauses access for new API projects; an approved Google Cloud
 project is needed. Follow the linked Google setup guide, register the exact
-callback address shown in OpenDash, and choose the downloaded OAuth credentials
+callback address shown in Freeflo, and choose the downloaded OAuth credentials
 JSON. Sign in to the Google Health mobile app first, then sign in with Google
-from OpenDash and allow activity, sleep, or both.
+from Freeflo and allow activity, sleep, or both.
 
 The first connection reads the last seven days. **Sync now** refreshes them.
 Credentials, tokens and the health snapshot stay on this computer only; disconnect

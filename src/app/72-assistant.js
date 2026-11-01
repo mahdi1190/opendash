@@ -437,6 +437,7 @@ async function _asstAdopt(version) {
 /** Why a proposal needs a second click, from the server's reasons (bin/delete/merge, or a large batch). */
 function _asstConfirmText(p) {
   const rs = Array.isArray(p.reasons) ? p.reasons.map(String) : [];
+  if (rs.some(r => /^sensitive/i.test(r))) return 'This sends something to another person, changes what is shared, starts a sign-in, or changes a device. Check it is what you asked for.';
   const danger = !rs.length || rs.some(r => /delete|merge/i.test(r));
   const bulk = rs.some(r => /more than/i.test(r));
   if (danger && bulk) return 'This changes a lot at once, and includes moving something to the bin, deleting or merging.';
@@ -460,7 +461,7 @@ function _asstPartLive(p, part) {
 }
 async function _asstApply(msg, p) {
   if (p.needsConfirm) {
-    const ok = await confirmDialog({ title: 'Apply these changes?', text: _asstConfirmText(p) + ' You can undo it afterwards.', confirmLabel: 'Apply', danger: true });
+    const ok = await confirmDialog({ title: 'Apply these changes?', text: _asstConfirmText(p) + (Array.isArray(p.reasons) && p.reasons.some(r => /^sensitive/i.test(String(r))) ? '' : ' You can undo it afterwards.'), confirmLabel: 'Apply', danger: true });
     if (!ok) return;
   }
   p = _asstPLive(p);
@@ -471,6 +472,8 @@ async function _asstApply(msg, p) {
     const j = await _asstPost('/api/actions', { proposalId: p.id, source: 'assistant', client: 'dashboard assistant' });
     p = _asstPLive(p);
     p.state = 'applied'; p.undo = j.undo || null; p.appliedOn = _asstHere();
+    // A sensitive action's next step, in the person's words ("The sign-in page is opening in the browser...").
+    p.notice = (Array.isArray(j.effects) ? j.effects : []).map(x => x && x.result && x.result.next).filter(s => typeof s === 'string').join(' ').slice(0, 400) || null;
     _asst.applying.delete(p.id);
     _asstSave();
     await _asstAdopt(j.version);
@@ -735,7 +738,7 @@ async function _asstSend(text) {
     });
     if (!r.ok || !r.body) {
       const j = await r.json().catch(() => ({}));
-      acc.error = { code: j.code || 'HTTP_' + r.status, message: j.error || `The assistant could not start (${r.status}).` };
+      acc.error = { code: j.code || 'HTTP_' + r.status, message: j.error || 'The assistant could not start. Try again in a moment.' };
     } else {
       const reader = r.body.getReader();
       const dec = new TextDecoder();
@@ -791,6 +794,11 @@ function _asstOnEvent(id, acc, ev) {
       m.proposals = [...(m.proposals || []), Object.assign({}, ev.proposal, { state: 'pending' })];
       _asstSave();
     }
+  } else if (ev.type === 'whatif' && Array.isArray(ev.parts)) {
+    // The assistant's scenario: open What if? once, and leave a button on the message for later.
+    const m = _asstMsgById(id);
+    if (m) { m.whatif = ev.parts; _asstSave(); }
+    try { if (window.FinanceView && window.FinanceView.openWhatIf) window.FinanceView.openWhatIf(ev.parts); } catch (e) { console.error('[assistant] what if', e); }
   } else if (ev.type === 'done') { acc.text = ev.text || ''; acc.via = ev.via; }
   else if (ev.type === 'error') acc.error = { code: ev.code, message: ev.error };
   _asst.live.set(id, live);
@@ -815,6 +823,7 @@ function _asstBuild() {
     <div class="asst-gate" hidden></div>
     <div class="asst-compose">
       <div class="asst-box">
+        <button type="button" class="btn btn-ghost btn-icon asst-attach" aria-label="Attach a payslip" title="Attach a payslip (PDF or photo)">${icon('paperclip')}</button>
         <textarea class="asst-input" rows="1" placeholder="Ask about your tasks, or say what to change…" aria-label="Message the assistant"></textarea>
         <button type="button" class="btn btn-primary btn-icon asst-send" aria-label="Send">${icon('arrow-up')}</button>
       </div>
@@ -822,6 +831,16 @@ function _asstBuild() {
     </div>`;
   const ta = el.querySelector('.asst-input');
   const send = el.querySelector('.asst-send');
+  // A payslip: the Tax tab says what is sent and asks before anything goes (37-tax-filing.js); the chat never reads files.
+  const takeSlip = (file) => { if (file && window.FinanceView && window.FinanceView.taxPayslip) window.FinanceView.taxPayslip(file); };
+  el.querySelector('.asst-attach').addEventListener('click', () => {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/pdf,image/*'; inp.hidden = true;
+    inp.addEventListener('change', () => { takeSlip(inp.files && inp.files[0]); inp.remove(); });
+    document.body.appendChild(inp); inp.click();
+  });
+  const box = el.querySelector('.asst-compose');
+  box.addEventListener('dragover', (e) => { if (e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files')) e.preventDefault(); });
+  box.addEventListener('drop', (e) => { const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) { e.preventDefault(); takeSlip(f); } });
   const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; send.disabled = !_asst.busy && !ta.value.trim(); };
   ta.addEventListener('input', grow);
   ta.addEventListener('keydown', (e) => {
@@ -894,7 +913,7 @@ function _asstBubble(m, i) {
   } else if (m.error) {
     const code = m.error.code || '';
     const connect = ['CLI_MISSING', 'NOT_SIGNED_IN', 'UNAVAILABLE'].includes(code);
-    html += `<div class="callout danger asst-err">${icon('circle-alert', 'i-sm')}<div><div>${esc(m.error.message || 'Something went wrong.')}</div>`
+    html += `<div class="callout danger asst-err">${icon('circle-alert', 'i-sm')}<div><div>${esc(netPlainError(m.error.message || 'Something went wrong. Try again.'))}</div>`
       + `<div class="asst-err-a">${connect ? '<button type="button" class="btn btn-secondary btn-sm" data-asst-connect>Open Connections</button>' : ''}`
       + `<button type="button" class="btn btn-ghost btn-sm" data-asst-retry="${escAttr(m.id)}">${icon('refresh-cw')}<span>Try again</span></button></div></div></div>`;
   } else {
@@ -902,6 +921,11 @@ function _asstBubble(m, i) {
   }
   row.innerHTML = html;
   for (const p of (m.proposals || [])) row.appendChild(_asstProposalCard(m, p));
+  if (Array.isArray(m.whatif) && m.whatif.length) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-secondary btn-sm asst-whatif'; b.innerHTML = icon('git-branch') + '<span>Open this in What if?</span>';
+    b.addEventListener('click', () => { try { window.FinanceView.openWhatIf(m.whatif); } catch (e) { console.error('[assistant] what if', e); } });
+    row.appendChild(b);
+  }
   if (!m.pending && !m.error && (m.model || m.ms)) {
     const meta = document.createElement('div'); meta.className = 'asst-meta';
     const on = chatWriterName(m);   // answered on another computer

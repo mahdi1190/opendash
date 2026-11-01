@@ -19,7 +19,7 @@
     let nNew = 0;
     for (const x of rows) {
       const st = M.mstats.get(x.m);
-      if (st && st.first === x.n && x.n >= ctx.rg.from && x.s >= 25 && nNew < 6 && x.n > M.minN + 14) { out.push({ sev: 'info', kind: 'New merchant', m: x.m, n: x.n, amt: x.s, note: 'first payment here' }); nNew++; }
+      if (st && st.first === x.n && x.n >= ctx.rg.from && x.s >= 25 && nNew < 6 && x.n > M.minN + 14) { out.push({ sev: 'info', kind: 'New shop', m: x.m, n: x.n, amt: x.s, note: 'first payment here' }); nNew++; }
     }
     if (ctx.hasPrev) {
       const a = ctx.catTotals(rows), b = ctx.catTotals(ctx.prv.spend);
@@ -38,7 +38,7 @@
     const flags = computeFlags(ctx);
     cd.body.querySelectorAll('.fv-list').forEach(x => x.remove());
     cd.setSub(flags.length ? `${flags.length} item${flags.length === 1 ? '' : 's'} to check` : '');
-    if (!flags.length) { cd.setEmpty('Nothing unusual in this range.'); return; }
+    if (!flags.length) { cd.setEmpty('Nothing unusual in these dates.'); return; }
     cd.setEmpty(null);
     const ul = h('ul', { class: 'fv-list c1-flags' });
     for (const f of flags.slice(0, limit || 50)) {

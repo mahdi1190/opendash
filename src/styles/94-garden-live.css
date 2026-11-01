@@ -1,0 +1,194 @@
+/* Playing together, live (docs/dev/GARDEN_TOGETHER.md). The people in a garden, the row over it, the gate panel. */
+.gll-actor { pointer-events: none; }
+.gll-shadow { fill: #1a2a14; fill-opacity: .2; }
+.gll-name { font: 600 8.5px/1 var(--font-sans, system-ui, sans-serif); fill: #fff; stroke: rgba(30, 40, 24, .72); stroke-width: 2.4px; paint-order: stroke; letter-spacing: .01em; }
+.gll-actor.is-me .gll-name { fill: #fff6c8; }
+.gll-say { pointer-events: none; }
+.gll-say-b { fill: #fffdf5; stroke: #cdbf9b; stroke-width: .8; }
+.gll-say-t { font: 500 8.6px/1 var(--font-sans, system-ui, sans-serif); fill: #3a3424; }
+.gll-float { pointer-events: none; }
+.gll-float-in { animation: gll-float 1.8s ease-out both; }
+.gll-float-t { font: 600 10px/1 var(--font-sans, system-ui, sans-serif); fill: #fff; stroke: rgba(30, 40, 24, .7); stroke-width: 2.4px; paint-order: stroke; }
+@keyframes gll-float { 0% { transform: translateY(6px); opacity: 0; } 14% { opacity: 1; } 70% { opacity: 1; } 100% { transform: translateY(-22px); opacity: 0; } }
+.gll-ghost { fill: rgba(120, 220, 120, .28); stroke: #5fbf63; stroke-width: 1.4; stroke-dasharray: 4 3; pointer-events: none; }
+.gll-ghost.is-bad { fill: rgba(230, 80, 70, .24); stroke: #d24b3f; }
+.gsv-stagebox.is-gl-live { cursor: pointer; }
+.gsv-stagebox.gll-cant { cursor: not-allowed; }
+.is-gl-live .gsv-over .gsv-fig { display: none; }
+.is-gl-live .gsv-water-note, .gsv-page.is-gl-live .gsv-toolbar .gd-tools { display: none; }
+.gll-parcel, .gll-bug { pointer-events: none; }
+.gll-bug { animation: gll-flit 2.4s ease-in-out infinite alternate; }
+@keyframes gll-flit { from { translate: -5px 2px; } to { translate: 6px -5px; } }
+@media (prefers-reduced-motion: reduce) { .gll-bug, .gll-float-in { animation: none; } }
+.gll-by { position: fixed; z-index: 90; padding: 3px 8px; border-radius: 8px; background: rgba(32, 40, 28, .9); color: #fff; font-size: 12px; pointer-events: none; white-space: nowrap; }
+
+/* a visit: the row over the garden */
+.gll-hud { position: absolute; left: 12px; top: 84px; right: 58px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; z-index: 6; pointer-events: none; }
+.gll-hud > * { pointer-events: auto; }
+.gll-chip, .gll-note { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(255, 253, 245, .94); color: #3a3424; font-size: 13px; box-shadow: 0 1px 4px rgba(30, 40, 20, .18); }
+.gll-note { max-width: 520px; border-radius: 12px; line-height: 1.3; }
+.gll-note .btn { margin-left: 4px; }
+.gll-note.is-wait svg { animation: gll-spin 1.2s linear infinite; }
+@keyframes gll-spin { to { transform: rotate(360deg); } }
+.gll-level.is-play { background: #e8f6dc; }
+.gll-level.is-help { background: #e2f1fb; }
+.gll-road { width: 7px; height: 7px; border-radius: 50%; background: #d1a93f; }
+.gll-road.is-direct { background: #4fb65a; }
+.gll-tools { display: inline-flex; gap: 2px; padding: 2px; border-radius: 12px; background: rgba(255, 253, 245, .94); box-shadow: 0 1px 4px rgba(30, 40, 20, .18); }
+.gll-tool.is-on { background: #d9eec7; }
+.gll-people { display: inline-flex; gap: 3px; }
+.gll-person { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #5a8a5a; color: #fff; font-size: 12px; font-weight: 600; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+.gll-person.is-host { background: #b5762f; }
+.gll-menu-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.gll-menu-col { display: flex; flex-direction: column; align-items: stretch; gap: 2px; }
+.gll-menu-col .btn { justify-content: flex-start; }
+.gll-bag-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.gll-coins { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+.gll-bag .gsv-gift-list { max-height: 210px; overflow: auto; }
+
+/* your gate, on your own garden */
+.gll-elsewhere { position: absolute; left: 12px; top: 118px; z-index: 6; }
+.gll-gate { position: absolute; left: 12px; top: 118px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: min(560px, calc(100% - 96px)); z-index: 6; }
+.gll-gate-b { position: relative; gap: 4px; background: rgba(24, 32, 18, .86); color: #fff; border-color: transparent; }
+.gll-gate-b:hover { background: rgba(24, 32, 18, .96); color: #fff; }
+.gll-gate-b[aria-pressed="true"] { box-shadow: 0 0 0 2px #e8c64a; }
+.gll-gate-b.is-knock { animation: gll-knock 1.1s ease-in-out infinite alternate; }
+@keyframes gll-knock { from { box-shadow: 0 0 0 0 rgba(232, 148, 60, .55); } to { box-shadow: 0 0 0 6px rgba(232, 148, 60, 0); } }
+@media (prefers-reduced-motion: reduce) { .gll-gate-b.is-knock { animation: none; box-shadow: 0 0 0 3px rgba(232, 148, 60, .6); } .gll-note.is-wait svg { animation: none; } }
+.gll-count { font-weight: 600; }
+.gll-dot { position: absolute; right: 3px; top: 3px; width: 8px; height: 8px; border-radius: 50%; background: #e0683c; box-shadow: 0 0 0 2px #fff; }
+.gll-knock { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 6px 4px 10px; border-radius: 12px; background: #fff6df; color: #3a3424; font-size: 13px; box-shadow: 0 1px 4px rgba(30, 40, 20, .2); }
+.gll-panel { position: absolute; left: 12px; top: 164px; bottom: 12px; width: min(380px, calc(100% - 24px)); padding: 14px 14px 16px; overflow: auto; border-radius: 14px; background: var(--surface, #fffdf7); color: var(--text, #2d2a20); box-shadow: 0 8px 28px rgba(20, 30, 14, .3); z-index: 7; }
+.gll-panel-x { position: absolute; right: 6px; top: 6px; }
+.gll-panel-note { margin: 8px 0 0; }
+.gll-h { margin: 14px 0 6px; font-size: 13px; font-weight: 600; color: var(--muted, #6b6a5a); }
+.gll-switch { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--surface-2, #f1ede0); }
+.gll-seg { border: 0; background: none; padding: 4px 10px; border-radius: 8px; font: inherit; font-size: 13px; color: inherit; cursor: pointer; }
+.gll-seg.is-on { background: var(--surface, #fff); box-shadow: 0 1px 3px rgba(20, 30, 14, .22); font-weight: 600; }
+.gll-friends { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.gll-friend-t { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.gll-here { font-size: 12px; color: #2f8f46; }
+.gll-friend-o { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; }
+.gll-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.gll-select { max-width: 190px; padding: 3px 6px; font-size: 13px; }
+.gll-diary { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.gll-diary li { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; font-size: 13px; }
+.gll-diary li.is-new { background: #fff6df; }
+.gll-diary li.is-undone { opacity: .5; text-decoration: line-through; }
+.gll-diary-t { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+@media (max-width: 640px) { .gll-hud { left: 6px; top: 76px; right: 6px; } .gll-gate { top: 106px; left: 6px; } .gll-panel { top: 150px; left: 6px; width: calc(100% - 12px); } }
+
+/* a visit is the garden (94-garden-visit-0world.js): one small tag, and how what is on its way looks */
+.gsv-worldhost { position: relative; height: 100%; }
+.gd-it.is-pend { opacity: .55; }
+.gd-it.is-wait { opacity: .72; }
+.gd-waitmark { pointer-events: none; }
+.gd-visittag { position: absolute; left: 12px; top: 116px; z-index: 6; display: flex; align-items: center; gap: 2px; max-width: min(70%, 420px); padding: 3px 4px 3px 4px; color: var(--gh-ink, #fff8e1); background: var(--gh-glass, rgba(28, 34, 22, .86)); border: 2px solid rgba(255, 248, 225, .22); border-radius: 999px; box-shadow: 0 2px 8px rgba(0, 0, 0, .28); }
+.gd-vt-who { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 3px 8px; color: inherit; background: none; border: 0; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; }
+.gd-vt-who:hover { background: rgba(255, 248, 225, .12); }
+.gd-vt-who b { min-width: 0; overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.gd-vt-how { flex: none; font-size: 11.5px; font-weight: 500; color: rgba(255, 248, 225, .72); white-space: nowrap; }
+.gd-vt-dot { flex: none; width: 9px; height: 9px; background: #c4b48a; border-radius: 50%; }
+.gd-visittag.is-live .gd-vt-dot { background: #7fd05a; box-shadow: 0 0 0 3px rgba(127, 208, 90, .25); }
+.gd-visittag .btn { flex: none; color: inherit; }
+.gd-visittag .btn:hover { color: inherit; background: rgba(255, 248, 225, .14); }
+.gsv-quick { position: static; display: flex; flex-wrap: wrap; gap: 6px; margin-left: 0; }
+.gd-bubble.is-ask { max-width: 240px; }
+@media (max-width: 760px) { .gd-visittag { left: 6px; right: 6px; top: 72px; max-width: none; width: max-content; } .gd-stagebox.is-visit .gd-notes { top: 116px; } }
+
+/* what people do that you can see (94-garden-live-4fx.js): a catch held up, a line out, the corner line */
+.gmo { pointer-events: none; }
+.gmo-pop { animation: gmo-pop .45s cubic-bezier(.3, 1.7, .5, 1) both; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes gmo-pop { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.gmo-spark { animation: gmo-spark 1.1s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes gmo-spark { from { transform: scale(.4) rotate(0); opacity: .3; } to { transform: scale(1.1) rotate(40deg); opacity: 1; } }
+.gmo-t { font: 700 9.5px/1 var(--font-sans, system-ui, sans-serif); fill: #3a3424; }
+.gmo-s { font: 600 7.5px/1 var(--font-sans, system-ui, sans-serif); fill: #6a5e44; }
+.gmo-new { font: 800 7.5px/1 var(--font-sans, system-ui, sans-serif); fill: #fff; }
+.gmo-b { fill: #fffdf5; stroke: #cdbf9b; stroke-width: .9; }
+.gmo-nb { fill: #e0683c; }
+html[data-motion="reduced"] .gmo-pop, html[data-motion="reduced"] .gmo-spark { animation: none; }
+@media (prefers-reduced-motion: reduce) { .gmo-pop, .gmo-spark { animation: none; } }
+.gll-feed { position: absolute; left: 12px; bottom: 74px; z-index: 6; display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+.gll-feed-l { padding: 3px 9px; border-radius: 999px; background: rgba(255, 253, 245, .9); color: #3a3424; font-size: 12px; box-shadow: 0 1px 3px rgba(30, 40, 20, .16); animation: gll-feed 5.5s ease-out both; }
+@keyframes gll-feed { 0% { opacity: 0; transform: translateY(6px); } 8% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
+.gll-fxline { fill: none; stroke: #fbfbf2; stroke-opacity: .85; stroke-width: .9; stroke-linecap: round; }
+.gll-fxrod { fill: none; stroke: #6a4a2a; stroke-width: 2.2; stroke-linecap: round; }
+
+.gll-flop { animation: gll-flop .7s ease-in-out infinite alternate; transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes gll-flop { from { transform: rotate(-14deg) translateY(0); } to { transform: rotate(12deg) translateY(-3px); } }
+html[data-motion="reduced"] .gll-flop { animation: none; }
+@media (prefers-reduced-motion: reduce) { .gll-flop { animation: none; } }
+
+/* 2.29 contests: the board over the stage (94-garden-live-7contest.js). The host's page is the referee; this is only how it looks. */
+.gll-ct { position: absolute; left: 50%; top: 66px; transform: translateX(-50%); z-index: 7; width: min(250px, calc(100% - 24px)); display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 9px; color: var(--gh-ink); background: var(--gh-glass); border-radius: 14px; box-shadow: var(--gh-shadow); backdrop-filter: blur(6px); animation: gll-ct-in .35s ease-out both; }
+@keyframes gll-ct-in { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.gll-ct { pointer-events: none; }
+.gll-ct .btn { pointer-events: auto; }
+.gll-ct-h { display: flex; align-items: center; gap: 7px; min-height: 24px; }
+.gll-ct-ic { display: inline-flex; color: var(--gh-gold, #f2b01e); }
+.gll-ct-ic svg { width: 16px; height: 16px; }
+.gll-ct-title { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gll-ct-t { font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 800; color: var(--gh-gold, #f2b01e); }
+.gll-ct.is-over .gll-ct-t { color: var(--gh-ink); }
+.gll-ct-end { color: var(--gh-ink) !important; padding-inline: 6px; font-size: 11px; }
+.gll-ct-bar { height: 5px; overflow: hidden; background: rgba(0, 0, 0, .35); border-radius: 3px; }
+.gll-ct-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(#ffe48a, #f2b01e); border-radius: 3px; transition: width .5s linear; }
+.gll-ct.is-over .gll-ct-bar i { background: rgba(255, 255, 255, .35); }
+.gll-ct-l { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.gll-ct-row { position: relative; display: flex; align-items: center; gap: 7px; padding: 3px 8px 3px 6px; font-size: 12.5px; border-radius: 8px; overflow: hidden; isolation: isolate; }
+.gll-ct-row::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--ct-w, 0%); background: rgba(255, 255, 255, .14); border-radius: 8px; z-index: -1; transition: width .5s ease-out; }
+.gll-ct-row.is-me { box-shadow: inset 0 0 0 1.5px rgba(255, 226, 138, .8); }
+.gll-ct-row.is-win { background: rgba(242, 176, 30, .28); font-weight: 700; }
+.gll-ct-row.muted { opacity: .75; justify-content: center; }
+.gll-ct-rank { flex: none; width: 18px; text-align: center; font-weight: 700; opacity: .8; }
+.gll-ct-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gll-ct-pts { flex: none; font-variant-numeric: tabular-nums; }
+.gll-ct-w { min-height: 0; font-size: 12.5px; font-weight: 700; text-align: center; }
+.gll-ct-w:empty { display: none; }
+.gll-ct-menu { max-width: 260px; }
+.gll-ct-menu p { margin: 4px 0 6px; }
+@media (max-width: 640px) { .gll-ct { top: auto; bottom: 150px; left: 6px; transform: none; width: min(230px, calc(100% - 12px)); animation-name: gll-ct-in-m; } @keyframes gll-ct-in-m { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } } }
+@media (prefers-reduced-motion: reduce) { .gll-ct { animation: none; } .gll-ct-bar i, .gll-ct-row::before { transition: none; } }
+html[data-motion="reduced"] .gll-ct { animation: none; }
+
+/* shared goals (94-garden-live-7goal.js): one small card over the world, the same on every screen in the garden */
+.glg { position: absolute; right: 14px; top: 74px; z-index: 6; box-sizing: border-box; width: min(330px, calc(100% - 28px)); padding: 7px 10px 8px; border-radius: 14px; background: rgba(255, 253, 245, .95); color: #3a3424; box-shadow: 0 2px 8px rgba(30, 40, 20, .22); animation: glg-in .35s ease-out; }
+.glg-top { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.glg-ic { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; color: #2f8f46; }
+.glg-ic svg { width: 17px; height: 17px; }
+.glg-t { flex: 1; min-width: 0; overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.glg-n { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; color: #6b6a5a; }
+.glg-skip { flex: none; width: 22px; height: 22px; padding: 0; color: #6b6a5a; }
+.glg-skip[hidden] { display: none; }
+.glg-bar { height: 8px; margin-top: 6px; overflow: hidden; border-radius: 999px; background: #e6e1cd; }
+.glg-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7cc45a, #3fa65a); transition: width .45s ease-out; }
+.glg-who { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.glg-p { padding: 1px 8px; border-radius: 999px; background: #efeadb; font-size: 11.5px; line-height: 1.5; }
+.glg-p.is-me { background: #dcefc9; font-weight: 600; }
+.glg-p.is-full::after { content: ' \2713'; color: #2f8f46; }
+.glg-none { background: none; padding-left: 0; color: #6b6a5a; }
+.glg.is-done { background: #fff6c8; box-shadow: 0 2px 10px rgba(216, 154, 26, .4); }
+.glg.is-done .glg-bar i { background: linear-gradient(90deg, #f2c744, #e8a83a); }
+/* (it only moves: in the garden's calm mode animations are paused, and a card that began transparent would stay invisible) */
+@keyframes glg-in { from { translate: 0 -10px; } to { translate: 0 0; } }
+@media (max-width: 760px) { .glg { top: 150px; right: 12px; } }
+html[data-motion="reduced"] .glg, html[data-motion="reduced"] .glg-bar i { animation: none; transition: none; }
+@media (prefers-reduced-motion: reduce) { .glg, .glg-bar i { animation: none; transition: none; } }
+
+/* the group photo (2.32, 94-garden-live-7snap.js): a countdown over the stage with a way out, and a flash */
+.gls-count { position: absolute; left: 50%; top: 18%; z-index: 7; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 999px; background: rgba(255, 253, 245, .94); color: #3a3424; box-shadow: 0 2px 10px rgba(30, 40, 20, .25); font-size: 14px; }
+.gls-n { min-width: 1.2em; text-align: center; font-size: 22px; font-weight: 800; }
+.gls-skip { height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: rgba(58, 52, 36, .1); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.gls-skip:hover { background: rgba(58, 52, 36, .18); }
+.gls-skip:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.gls-flash { position: absolute; inset: 0; z-index: 8; background: #fff; opacity: 0; pointer-events: none; animation: gls-flash .6s ease-out both; }
+@keyframes gls-flash { 0% { opacity: .9; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .gls-flash { display: none; } }
+/* how you are connected (94-garden-live-8sync.js) */
+.gll-link { position: absolute; left: 12px; bottom: 14px; z-index: 6; display: flex; align-items: center; gap: 8px; max-width: min(420px, calc(100% - 24px)); padding: 4px 6px 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--border-subtle); color: var(--fg-muted); font-size: var(--text-xs); line-height: 1.3; }
+.gll-link::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--sw-green, #3f8f5a); }
+.gll-link.is-wait::before { background: var(--sw-amber, #c98a12); }
+.gll-link-b { flex: none; border: 0; border-radius: 999px; padding: 3px 9px; background: var(--bg-muted); color: var(--fg); font: inherit; cursor: pointer; }
+.gll-link-b:hover { background: color-mix(in srgb, var(--fg) 12%, var(--bg-muted)); }
+.gd-page.is-fishing .gll-link { display: none; }

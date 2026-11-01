@@ -49,7 +49,7 @@ async function _mwrMoney(year) {
 function _mwrSlides(Y) {
   const S = [], yr = Y.year, first = typeof userName === 'function' ? String(userName() || '').split(/\s+/)[0] : '';
   const big = (n, label) => `<div class="mwr-big"><b data-count="${n}">${esc(String(n))}</b><span>${esc(label)}</span></div>`;
-  S.push({ id: 'intro', html: `<div class="mwr-over">${esc(first ? `Hello, ${first}` : 'Hello')}</div><h1 class="mwr-h1">Your <span>${yr}</span> in OpenDash</h1><p class="mwr-p">${esc(Y.partial ? 'The year so far, wrapped up.' : 'A whole year, wrapped up.')}</p><div class="mwr-hint">Tap or press → to begin</div>` });
+  S.push({ id: 'intro', html: `<div class="mwr-over">${esc(first ? `Hello, ${first}` : 'Hello')}</div><h1 class="mwr-h1">Your <span>${yr}</span> in Freeflo</h1><p class="mwr-p">${esc(Y.partial ? 'The year so far, wrapped up.' : 'A whole year, wrapped up.')}</p><div class="mwr-hint">Tap or press → to begin</div>` });
   S.push({ id: 'total', html: `<div class="mwr-over">This year you finished</div>${big(Y.total, Y.total === 1 ? 'task' : 'tasks')}<p class="mwr-p">${esc(`On ${_memPlural(Y.activeDays, 'different day')}: about ${Y.perWeek} a week.`)}</p>` });
   if (Y.total) S.push({ id: 'squares', html: `<div class="mwr-over">Your year in squares</div><div class="mwr-hm" data-heatmap="${yr}"></div><p class="mwr-p">${esc(Y.streak.days > 1 ? `Your longest streak: ${Y.streak.days} days in a row, from ${_memFmt(Y.streak.from, { day: 'numeric', month: 'short' })} to ${_memFmt(Y.streak.to, { day: 'numeric', month: 'short' })}.` : 'Every square is a day you showed up.')}</p>` });
   if (Y.busiest.n >= 2) S.push({ id: 'busiest', html: `<div class="mwr-over">Your biggest day</div><h2 class="mwr-h2">${esc(_memFmt(Y.busiest.iso, { weekday: 'long', day: 'numeric', month: 'long' }))}</h2>${big(Y.busiest.n, 'tasks in one day')}<ul class="mwr-list">${Y.busiest.titles.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` });
@@ -96,7 +96,7 @@ function memWrappedOpen(year) {
   if (!Y.total && !Y.journalLines) { toast(`Nothing to wrap for ${year} yet. Finish a task or two first.`, { icon: 'party-popper' }); return; }
   const slides = _mwrSlides(Y);
   const el = document.createElement('div');
-  el.className = 'mwr'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', `Your ${year} in OpenDash`);
+  el.className = 'mwr'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', `Your ${year} in Freeflo`);
   el.innerHTML = `<div class="mwr-bars">${slides.map(() => '<i><b></b></i>').join('')}</div>`
     + `<div class="mwr-top"><span class="mwr-brand">${icon('party-popper', 'i-sm')}<span>Wrapped ${year}</span></span><span class="spacer"></span>`
     + `<button type="button" class="mwr-ctl" data-act="pause" aria-label="Pause or play"><span class="mwr-pz" aria-hidden="true"></span></button><button type="button" class="mwr-ctl" data-act="close" aria-label="Close">${icon('x', 'i-sm')}</button></div>`
@@ -232,7 +232,7 @@ function _mwrSaveImage(Y) {
     g.globalAlpha = 0.12; g.fillStyle = '#fff';
     for (let i = 0; i < 26; i++) { const x = (_memHash('x' + i) % W), y = (_memHash('y' + i) % H), r = 6 + _memHash('r' + i) % 40; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
     g.globalAlpha = 1; g.fillStyle = '#fff'; g.textBaseline = 'alphabetic';
-    g.font = `600 44px ${font}`; g.fillText(`My ${Y.year} in OpenDash`, 90, 170);
+    g.font = `600 44px ${font}`; g.fillText(`My ${Y.year} in Freeflo`, 90, 170);
     g.font = `800 300px ${font}`; g.fillText(String(Y.total), 80, 500);
     g.font = `500 52px ${font}`; g.fillText('tasks finished', 92, 580);
     const top = Y.streams[0], tp = Y.people[0] && getPerson(Y.people[0].id);
@@ -243,7 +243,7 @@ function _mwrSaveImage(Y) {
       g.globalAlpha = 1; g.font = `700 50px ${font}`; g.fillText(String(v).slice(0, 34), 92, y + 58);
       y += 110;
     }
-    g.globalAlpha = 0.7; g.font = `500 30px ${font}`; g.fillText('Made with OpenDash', 92, H - 70);
+    g.globalAlpha = 0.7; g.font = `500 30px ${font}`; g.fillText('Made with Freeflo', 92, H - 70);
     c.toBlob((blob) => {
       if (!blob) { toastError('make the picture', null, () => _mwrSaveImage(Y)); return; }
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `opendash-wrapped-${Y.year}.png`;

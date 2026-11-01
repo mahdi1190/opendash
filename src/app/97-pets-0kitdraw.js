@@ -24,6 +24,10 @@
      petTreatSvg(kind, size)        a treat (fish, bone, carrot, seed, leaf, berry, strawberry, pellet, bamboo, pea, millet,
                                     chilli, sunberry, apple, battery, cookie) as an <svg> string
      petAutoEye(pet)                the species' own eye colour for 'auto'
+     petItemShapes(item, a, species) / petItemMatrix(slot, a, fit)   a custom accessory's shapes on the pet's anchors (2.22)
+
+   A pet drawn with custom accessories is a pet object with `items`: {itemHead: design, itemFace: design, itemNeck: design}
+   (the page resolves the ids in the look to designs: 97-pets-1core.js petWithItems). Without `items` the ids draw nothing.
    ============================================================ */
 const _PTK_INK = '#2a2124', _PTK_PINK = '#f29aab', _PTK_BLUSH = '#f4808f';
 const _ptR = (v) => { const r = Math.round(v * 10) / 10; return r === 0 ? 0 : r; };
@@ -74,14 +78,26 @@ function petAutoEye(pet) {
   if (sp === 'owl' && co === 'barn') return '';
   if (sp === 'frog' && co === 'tree') return '#e0473e';
   if (sp === 'axolotl' && co === 'white') return '#e86a8a';
-  return _PT_AUTO_EYE[sp] || '';
+  return (petSpecies(sp) || {}).eye || _PT_AUTO_EYE[sp] || '';
+}
+/**
+ * The coat as the drawing reads it: {id, a (main), b (second: belly, muzzle), c (third: pattern), n (nose or bill)}. A custom
+ * main colour (petHexOf) gets a belly 55% towards white and a pattern 40% towards the ink; coatB / coatC override either one,
+ * on a named coat too. The nose or bill colour stays the species' own.
+ */
+function _ptCoatOf(sp, pet) {
+  const hit = sp.coats.find(c => c.id === pet.coat) || null;
+  const a = petHexOf(pet.coat), b = petHexOf(pet.coatB), c = petHexOf(pet.coatC);
+  if (hit && !b && !c) return hit;
+  const base = hit || sp.coats[0], main = a || base.a;
+  return { id: hit ? hit.id : String(pet.coat), label: 'Custom', a: main, b: b || (a ? _ptMix(a, '#ffffff', 0.55) : base.b), c: c || (a ? _ptMix(a, '#1a1420', 0.4) : base.c), n: base.n };
 }
 function _ptPal(pet) {
   const sp = petSpecies(pet.species) || PET_SPECIES[0];
-  const coat = sp.coats.find(c => c.id === pet.coat) || sp.coats[0];
-  const accHex = (k) => (PET_ACC_COLS[pet[k]] || PET_ACC_COLS.red).hex;
-  const ey = PET_EYES[pet.eyes] || PET_EYES.auto;
-  const eye = pet.eyes && pet.eyes !== 'auto' ? ey.hex : petAutoEye(pet), eye2 = pet.eyes === 'odd' ? ey.hex2 : eye;
+  const coat = _ptCoatOf(sp, pet);
+  const accHex = (k) => petHexOf(pet[k]) || (PET_ACC_COLS[pet[k]] || PET_ACC_COLS.red).hex;
+  const eyeHex = petHexOf(pet.eyes), ey = PET_EYES[pet.eyes] || PET_EYES.auto;
+  const eye = eyeHex || (pet.eyes && pet.eyes !== 'auto' ? ey.hex : petAutoEye(pet)), eye2 = pet.eyes === 'odd' ? ey.hex2 : eye;
   return { sp, coat, a: _ptTone(coat.a), b: _ptTone(coat.b), c: _ptTone(coat.c), nose: coat.n || '', eye, eye2,
     rainbow: (k) => pet[k] === 'rainbow', acc: { collar: _ptTone(accHex('collarCol')), bandana: _ptTone(accHex('bandanaCol')), bow: _ptTone(accHex('bowCol')), hat: _ptTone(accHex('hatCol')), glasses: accHex('glassesCol') } };
 }
@@ -232,6 +248,11 @@ function _ptHat(pet, X, top) {
       _pF(_pP`M${x + w * 0.12} ${y - w * 0.62}Q${x + w * 0.5} ${y - w * 0.5} ${x + w * 0.5} ${y + w * 0.08}L${x + w * 0.28} ${y + w * 0.08}Q${x + w * 0.32} ${y - w * 0.35} ${x + w * 0.12} ${y - w * 0.62}z`, t[1], 0.5),
       _pF(_pP`M${x - w * 0.56} ${y - w * 0.08}Q${x} ${y - w * 0.18} ${x + w * 0.56} ${y - w * 0.08}L${x + w * 0.57} ${y + w * 0.14}Q${x} ${y + w * 0.04} ${x - w * 0.57} ${y + w * 0.14}z`, t[1]),
       _pF(_pC(x, y - w * 0.72, w * 0.16), _ptMix(t[0], '#ffffff', 0.6)), _pF(_pC(x - w * 0.05, y - w * 0.77, w * 0.06), '#ffffff', 0.7)]);
+    case 'anglerhat': return add([_pF(_pE(x, y + w * 0.02, w * 0.62, w * 0.14), t[1]), _pF(_pP`M${x - w * 0.36} ${y}Q${x - w * 0.38} ${y - w * 0.55} ${x} ${y - w * 0.58}Q${x + w * 0.38} ${y - w * 0.55} ${x + w * 0.36} ${y}z`, t[0]),
+      _pF(_pP`M${x - w * 0.37} ${y - w * 0.16}Q${x} ${y - w * 0.1} ${x + w * 0.37} ${y - w * 0.16}L${x + w * 0.37} ${y - w * 0.04}Q${x} ${y + w * 0.02} ${x - w * 0.37} ${y - w * 0.04}z`, t[3]),
+      _pF(_pP`M${x + w * 0.04} ${y - w * 0.1}q${w * 0.1} ${-w * 0.1} ${w * 0.2} 0q${-w * 0.1} ${w * 0.1} ${-w * 0.2} 0z`, '#f2b13a'), _pL(_pP`M${x - w * 0.2} ${y - w * 0.12}L${x - w * 0.12} ${y - w * 0.3}`, '#e8503a', Math.max(0.7, w * 0.06))]);
+    case 'explorer': return add([_pF(_pE(x, y + w * 0.02, w * 0.62, w * 0.13), t[0]), _pF(_pP`M${x - w * 0.4} ${y}Q${x - w * 0.42} ${y - w * 0.55} ${x} ${y - w * 0.6}Q${x + w * 0.42} ${y - w * 0.55} ${x + w * 0.4} ${y}z`, t[0]),
+      _pF(_pP`M${x - w * 0.41} ${y - w * 0.14}Q${x} ${y - w * 0.06} ${x + w * 0.41} ${y - w * 0.14}L${x + w * 0.4} ${y - w * 0.02}Q${x} ${y + w * 0.06} ${x - w * 0.4} ${y - w * 0.02}z`, t[3]), _pF(_pC(x, y - w * 0.58, w * 0.06), t[1])]);
     case 'party': return add([_pF(_pP`M${x - w * 0.3} ${y + w * 0.04}L${x + w * 0.04} ${y - w * 0.95}L${x + w * 0.34} ${y + w * 0.04}Q${x} ${y + w * 0.14} ${x - w * 0.3} ${y + w * 0.04}z`, t[0]),
       _pL(_pP`M${x - w * 0.16} ${y - w * 0.32}L${x + w * 0.22} ${y - w * 0.48}M${x - w * 0.24} ${y - w * 0.08}L${x + w * 0.3} ${y - w * 0.22}`, '#ffffff', Math.max(0.6, w * 0.07), 0.7),
       _pF(_pC(x + w * 0.04, y - w * 0.98, w * 0.11), '#f6d35e'), _pF(_pC(x - w * 0.14, y - w * 0.66, w * 0.035), '#ffffff', 0.9), _pF(_pC(x + w * 0.16, y - w * 0.15, w * 0.035), '#ffffff', 0.9)]);
@@ -251,6 +272,11 @@ function _ptHat(pet, X, top) {
     case 'pumpkin': return add([_pF(_pE(x - w * 0.18, y - w * 0.22, w * 0.24, w * 0.26), '#e0782c'), _pF(_pE(x + w * 0.18, y - w * 0.22, w * 0.24, w * 0.26), '#e0782c'), _pF(_pE(x, y - w * 0.24, w * 0.24, w * 0.28), '#f08a3c'),
       _pL(_pP`M${x - w * 0.1} ${y - w * 0.42}Q${x - w * 0.14} ${y - w * 0.22} ${x - w * 0.1} ${y - w * 0.02}M${x + w * 0.1} ${y - w * 0.42}Q${x + w * 0.14} ${y - w * 0.22} ${x + w * 0.1} ${y - w * 0.02}`, '#c0601e', Math.max(0.5, w * 0.03), 0.8),
       _pL(_pP`M${x} ${y - w * 0.5}Q${x + w * 0.02} ${y - w * 0.66} ${x + w * 0.12} ${y - w * 0.7}`, '#5f7a3a', Math.max(0.7, w * 0.07)), _pF(_pE(x + w * 0.2, y - w * 0.62, w * 0.12, w * 0.06), '#7aa04a', 1, _ptRot(-20, x + w * 0.2, y - w * 0.62))]);
+    case 'beret': return add([_pF(_pP`M${x - w * 0.5} ${y - w * 0.02}Q${x - w * 0.72} ${y - w * 0.44} ${x - w * 0.1} ${y - w * 0.52}Q${x + w * 0.56} ${y - w * 0.52} ${x + w * 0.5} ${y - w * 0.04}Q${x} ${y + w * 0.1} ${x - w * 0.5} ${y - w * 0.02}z`, t[0]), _pL(_pP`M${x + w * 0.02} ${y - w * 0.52}l${w * 0.04} ${-w * 0.12}`, t[3], Math.max(0.8, w * 0.06)), _pF(_pE(x - w * 0.18, y - w * 0.32, w * 0.2, w * 0.07), t[2], 0.5)]);
+    case 'chef': return add([_pF(_pP`M${x - w * 0.34} ${y}L${x - w * 0.36} ${y - w * 0.34}Q${x - w * 0.62} ${y - w * 0.52} ${x - w * 0.38} ${y - w * 0.72}Q${x - w * 0.24} ${y - w * 0.94} ${x} ${y - w * 0.8}Q${x + w * 0.24} ${y - w * 0.94} ${x + w * 0.38} ${y - w * 0.72}Q${x + w * 0.62} ${y - w * 0.52} ${x + w * 0.36} ${y - w * 0.34}L${x + w * 0.34} ${y}Q${x} ${y + w * 0.08} ${x - w * 0.34} ${y}z`, '#fbf8f2'), _pL(_pP`M${x - w * 0.34} ${y - w * 0.12}Q${x} ${y - w * 0.04} ${x + w * 0.34} ${y - w * 0.12}`, '#d8d2c6', Math.max(0.6, w * 0.04)), _pF(_pE(x + w * 0.2, y - w * 0.44, w * 0.12, w * 0.24), '#d8d2c6', 0.5)]);
+    case 'cowboy': return add([_pF(_pP`M${x - w * 0.84} ${y - w * 0.14}Q${x - w * 0.3} ${y + w * 0.14} ${x + w * 0.84} ${y - w * 0.14}Q${x + w * 0.5} ${y + w * 0.22} ${x} ${y + w * 0.2}Q${x - w * 0.5} ${y + w * 0.22} ${x - w * 0.84} ${y - w * 0.14}z`, t[1]), _pF(_pP`M${x - w * 0.34} ${y + w * 0.02}Q${x - w * 0.4} ${y - w * 0.66} ${x - w * 0.08} ${y - w * 0.56}Q${x} ${y - w * 0.5} ${x + w * 0.08} ${y - w * 0.56}Q${x + w * 0.4} ${y - w * 0.66} ${x + w * 0.34} ${y + w * 0.02}Q${x} ${y + w * 0.1} ${x - w * 0.34} ${y + w * 0.02}z`, t[0]), _pF(_pP`M${x - w * 0.35} ${y - w * 0.14}Q${x} ${y - w * 0.06} ${x + w * 0.35} ${y - w * 0.14}L${x + w * 0.34} ${y - w * 0.02}Q${x} ${y + w * 0.06} ${x - w * 0.34} ${y - w * 0.02}z`, t[3])]);
+    case 'leaf': return add([_pF(_pP`M${x - w * 0.5} ${y}Q${x - w * 0.4} ${y - w * 0.56} ${x + w * 0.1} ${y - w * 0.6}Q${x + w * 0.54} ${y - w * 0.42} ${x + w * 0.5} ${y}Q${x} ${y - w * 0.14} ${x - w * 0.5} ${y}z`, '#6cbf4a'), _pL(_pP`M${x - w * 0.42} ${y - w * 0.04}Q${x} ${y - w * 0.26} ${x + w * 0.4} ${y - w * 0.06}`, '#3f8a2e', Math.max(0.6, w * 0.05)), _pL(_pP`M${x + w * 0.1} ${y - w * 0.6}q${w * 0.02} ${-w * 0.14} ${w * 0.12} ${-w * 0.2}`, '#7a5a3a', Math.max(0.8, w * 0.06))]);
+    case 'halo': return add([_pL(_pE(x, y - w * 0.4, w * 0.44, w * 0.12), '#f6d35e', Math.max(1.2, w * 0.1)), _pL(_pE(x, y - w * 0.4, w * 0.44, w * 0.12), '#fff6c8', Math.max(0.5, w * 0.03), 0.9)]);
     case 'flowers': {
       const cols = ['#f6a5c0', '#fff4f8', '#f6d35e', '#c9a7f0', '#f6a5c0'];
       for (let i = 0; i < 5; i++) {
@@ -264,10 +290,76 @@ function _ptHat(pet, X, top) {
     default: return out;
   }
 }
-/** The accessories on a pet: {neck, head} shapes. a: anchors {neck: {x, y, w, rot}, top: [x, y, w, tilt], eyes: [x1, x2, y, r], ear: [x, y, s]}. */
-function _ptAccs(pet, X, a) {
+/* ---------- custom accessories (2.22): a design's shapes, placed on the head circle or the neck ---------- */
+const _ptAffMul = (A, B) => [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3], A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]];
+const _ptAffRot = (deg) => { const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r); return [c, s, -s, c, 0, 0]; };
+/**
+ * The matrix that carries a design's frame onto the pet. head / face: the head circle (a.hc = [x, y, r]: the design's circle of
+ * radius 50 becomes the pet's head, tilted like the head); neck: the collar line (a.neck = {x, y, w, rot}, 100 = its width).
+ * fit {dx, dy, s, rot} is the person's nudge, in the design's own units. null when the species has no such anchor.
+ */
+function petItemMatrix(slot, a, fit) {
+  fit = fit || { dx: 0, dy: 0, s: 1, rot: 0 };
+  let ox, oy, k, tilt = 0;
+  if (slot === 'neck') { const n = a && a.neck; if (!n) return null; ox = n.x; oy = n.y; k = n.w / 100; tilt = n.rot || 0; }
+  else { const h = a && a.hc; if (!h) return null; ox = h[0]; oy = h[1]; k = h[2] / 50; tilt = (a.top && a.top[3]) || 0; }
+  let M = [1, 0, 0, 1, ox, oy];
+  M = _ptAffMul(M, _ptAffRot(tilt));
+  M = _ptAffMul(M, [1, 0, 0, 1, fit.dx * k, fit.dy * k]);
+  M = _ptAffMul(M, _ptAffRot(fit.rot));
+  return _ptAffMul(M, [fit.s * k, 0, 0, fit.s * k, 0, 0]);
+}
+/** A canonical path (absolute M L C Q Z) carried through a matrix, to the drawing's own one-decimal numbers. The transform is baked into the numbers, so nothing downstream (the page's svg, the scene sprites) needs to know it. */
+function _ptXformPath(p, M) {
+  const segs = petItemPathSegs(p);
+  if (!segs) return '';
+  return segs.map(s => {
+    let o = s[0];
+    for (let k = 1; k < s.length; k += 2) o += (k > 1 ? ' ' : '') + _ptR(M[0] * s[k] + M[2] * s[k + 1] + M[4]) + ' ' + _ptR(M[1] * s[k] + M[3] * s[k + 1] + M[5]);
+    return o;
+  }).join('');
+}
+/** One worn design as drawing shapes {f, s, w, d, op, cap} (colours from its own slots, toned like every colour of the kit). */
+function petItemShapes(item, a, species) {
+  if (!item) return [];
+  const M = petItemMatrix(item.slot, a, petItemFitOf(item, species));
+  if (!M) return [];
+  const tones = item.cols.map(_ptTone), k = Math.sqrt(Math.abs(M[0] * M[3] - M[1] * M[2]));
+  const col = (ref) => (ref === 'w' ? '#ffffff' : ref === 'i' ? _PTK_INK : (tones[Number(ref[1]) - 1] || tones[0])[ref.length > 2 ? 'sld'.indexOf(ref[2]) + 1 : 0]);
+  const out = [];
+  for (const s of item.shapes) {
+    const d = _ptXformPath(s.p, M);
+    if (d) out.push({ f: s.f ? col(s.f) : null, s: s.s ? col(s.s) : null, w: _ptR((s.w || 0) * k), d, op: s.o == null ? 1 : s.o, cap: 'round', m: null });
+  }
+  return out;
+}
+/** The designs a pet wears right now: {itemHead, itemFace, itemNeck} -> clean designs, from pet0.items {field: design} (the page resolves ids to designs). Only a design whose id is the one worn counts. */
+function _ptWornItems(pet, src) {
+  const items = src && src.items && typeof src.items === 'object' ? src.items : null;
+  let out = null;
+  for (const f of _PT_ITEM_FIELDS) {
+    // 2.23: one made at the crafting bench is the kit's own (94-garden-craft-1art.js), so only its id ever travels
+    const made = pet[f] && typeof petCraftDesign === 'function' ? petCraftDesign(pet[f]) : null;
+    if (made) { (out = out || {})[f] = made; continue; }
+    const it = pet[f] && items && items[f] ? petItemTrusted(items[f]) : null;
+    if (it && it.id === pet[f]) (out = out || {})[f] = it;
+  }
+  return out;
+}
+/** Where wings grow: on the shoulders, from the collar towards the middle of the body (a pet that faces you stays centred), and never too small to see. */
+function _ptBackAt(n) { return { x: _ptR(n.x + (50 - n.x) * 0.75), y: _ptR(n.y - 2), w: _ptR(Math.max(n.w, 24) * 1.05), rot: 0 }; }
+function _ptItemAcc(pet, worn, a) {
+  const out = { neck: [], head: [], back: [] };
+  if (!worn) return out;
+  for (const [field, list] of [['itemNeck', out.neck], ['itemHead', out.head], ['itemFace', out.head]]) if (worn[field]) list.push(...petItemShapes(worn[field], a, pet.species));
+  if (worn.itemBack && a.neck) out.back.push(...petItemShapes(worn.itemBack, Object.assign({}, a, { neck: _ptBackAt(a.neck) }), pet.species));
+  return out;
+}
+/** The accessories on a pet: {neck, head} shapes. a: anchors {neck: {x, y, w, rot}, top: [x, y, w, tilt], eyes: [x1, x2, y, r], ear: [x, y, s], hc: [x, y, r] (the head circle)}. worn: the custom designs (see _ptWornItems). */
+function _ptAccs(pet, X, a, worn) {
   const rb = (sh, key) => (X.rainbow(key) ? _ptRainbow(sh) : sh);
-  return { neck: rb(_ptCollar(pet, X, a.neck), 'collarCol').concat(rb(_ptBandana(pet, X, a.neck), 'bandanaCol')), head: rb(_ptBow(pet, X, a.ear), 'bowCol').concat(rb(_ptHat(pet, X, a.top), 'hatCol')).concat(_ptGlasses(pet, X, a.eyes)) };
+  const it = _ptItemAcc(pet, worn, a);
+  return { neck: rb(_ptCollar(pet, X, a.neck), 'collarCol').concat(rb(_ptBandana(pet, X, a.neck), 'bandanaCol'), it.neck), head: rb(_ptBow(pet, X, a.ear), 'bowCol').concat(rb(_ptHat(pet, X, a.top), 'hatCol')).concat(_ptGlasses(pet, X, a.eyes), it.head), back: it.back };
 }
 /** Rainbow accessories: the base-coloured shapes take the rainbow in turn. */
 function _ptRainbow(list) {
@@ -278,6 +370,7 @@ function _ptRainbow(list) {
 
 /* ---------- the drawing, assembled ---------- */
 const PET_POSES = Object.freeze(['sit', 'walk', 'sleep']);
+function _ptNameHash(s) { let h = 7; s = String(s); for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) >>> 0; return h; }
 /** The pet's parts for a pose and a mood, with its accessories and the mood's extras. */
 function petArt(pet0, pose, mood) {
   const pet = petNormalize(pet0);
@@ -285,11 +378,12 @@ function petArt(pet0, pose, mood) {
   mood = Object.assign({}, mood && typeof mood === 'object' ? mood : {});
   if (pose === 'sleep') { mood.eyes = 'closed'; mood.mouth = 'calm'; }
   const X = _ptPal(pet);
-  const fn = (typeof _PT_ART !== 'undefined' && _PT_ART[pet.species]) || null;
+  const fn = typeof _ptArtFor === 'function' ? _ptArtFor(petSpecies(pet.species) || PET_SPECIES[0]) : null;   // its own drawing, or the kit its row names; never a hole
   if (!fn) return null;
   const A = fn(pet, pose, mood, X);
-  const acc = _ptAccs(pet, X, A.acc || {});
+  const acc = _ptAccs(pet, X, A.acc || {}, _ptWornItems(pet, pet0));
   if (pose !== 'sleep') A.parts.neck.push(...acc.neck);   // curled up, the chin hides the collar
+  if (pose !== 'sleep' && acc.back.length && A.acc && A.acc.neck) { A.parts.back = acc.back; { const B = _ptBackAt(A.acc.neck); A.piv.back = [B.x, B.y]; } A.order = ['back', ...A.order]; }   // 2.23: wings, behind everything
   A.parts.acc = acc.head;
   if (!A.order.includes('acc')) A.order.splice(A.order.indexOf('eyes') + 1, 0, 'acc');
   // the mood's extras, by the head
@@ -301,12 +395,14 @@ function petArt(pet0, pose, mood) {
   return A;
 }
 /** One shape as SVG (every value a table colour, a number or path data written here). */
-function _ptShapeSvg(s, small) {
+function _ptShapeSvg(s, small, mono) {
   if (!s || !s.d || s.op === 0 || (small && s.detail)) return '';
-  let a = `<path d="${s.d}" fill="${s.f && s.f !== 'none' ? s.f : 'none'}"`;
-  if (s.s) a += ` stroke="${s.s}" stroke-width="${_ptR(s.w || 1)}" stroke-linecap="${s.cap === 'butt' ? 'butt' : 'round'}" stroke-linejoin="round"`;
+  // a silhouette (a pet you have not met yet): every solid shape in one colour, the shading left out
+  if (mono && (s.dash || (s.op != null && s.op < 0.8))) return '';
+  let a = `<path d="${s.d}" fill="${s.f && s.f !== 'none' ? (mono || s.f) : 'none'}"`;
+  if (s.s) a += ` stroke="${mono || s.s}" stroke-width="${_ptR(s.w || 1)}" stroke-linecap="${s.cap === 'butt' ? 'butt' : 'round'}" stroke-linejoin="round"`;
   if (s.dash && /^[0-9. ]+$/.test(s.dash)) a += ` stroke-dasharray="${s.dash}"`;
-  if (s.op != null && s.op !== 1) a += ` opacity="${Math.round(s.op * 100) / 100}"`;
+  if (!mono && s.op != null && s.op !== 1) a += ` opacity="${Math.round(s.op * 100) / 100}"`;
   if (Array.isArray(s.m)) a += ` transform="matrix(${s.m.map(_ptR).join(' ')})"`;
   return a + '/>';
 }
@@ -317,11 +413,12 @@ function _ptPivot(name, inner, p) {
   return `<g transform="translate(${_ptR(p[0])} ${_ptR(p[1])})"><g class="pt-${name}"><g transform="translate(${_ptR(-p[0])} ${_ptR(-p[1])})">${inner}</g></g></g>`;
 }
 /** The parts as nested groups (the head, its eyes and accessories turn together). */
-function _ptGroupsSvg(A, small) {
-  const sh = (name) => (A.parts[name] || []).map(s => _ptShapeSvg(s, small)).join('');
+function _ptGroupsSvg(A, small, mono) {
+  const sh = (name) => (A.parts[name] || []).map(s => _ptShapeSvg(s, small, mono)).join('');
   let body = '', headIn = '';
   for (const name of A.order) {
-    if (name === 'head') headIn += sh('head');
+    if (name === 'ears') headIn += _ptPivot('ears', sh('ears'), A.piv.ears);
+    else if (name === 'head') headIn += sh('head');
     else if (name === 'eyes') headIn += _ptPivot('eyes', sh('eyes'), A.piv.eyes);
     else if (name === 'acc') headIn += sh('acc');
     else if (name === 'fx') continue;
@@ -344,10 +441,12 @@ function petSvg(pet, o) {
   let vb = '0 0 100 100';
   if (o.crop === 'head' && A.acc && A.acc.eyes) { const e = A.acc.eyes, cx = (e[0] + e[1]) / 2, cy = e[2] + 2; vb = `${_ptR(cx - 27)} ${_ptR(cy - 30)} 54 54`; }
   else if (o.crop !== 'none') { const t = Math.max(0, Math.min(30, (A.top || 10) - 4)); if (t > 6) vb = `${_ptR(t / 2)} ${_ptR(t)} ${_ptR(100 - t)} ${_ptR(100 - t)}`; }
-  const cls = 'pt-svg pt-sp-' + A.pet.species + ' pt-pose-' + A.pose + (o.motion ? ' pt-live' : '') + (o.cls ? ' ' + String(o.cls).replace(/[^a-z0-9 _-]/gi, '') : '');
-  const sw = A.bird ? 14 : A.pet.species === 'dog' && (A.pet.breed === 'dachshund' || A.pet.breed === 'corgi') ? 30 : 24;
-  const shadow = o.shadow === false ? '' : `<ellipse cx="${A.pose === 'walk' ? 48 : 50}" cy="90.4" rx="${sw}" ry="2.6" fill="#1a1420" opacity="0.13"/>`;
-  return `<svg class="${cls}" viewBox="${vb}" width="${size}" height="${size}" aria-hidden="true" focusable="false">${shadow}${_ptGroupsSvg(A, small)}</svg>`;
+  const cls = 'pt-svg pt-sp-' + A.pet.species + ' pt-pose-' + A.pose + ' pt-gait-' + ((petSpecies(A.pet.species) || {}).gait || 'trot') + (A.flap ? ' pt-flap-' + A.flap : '') + (o.motion ? ' pt-live' : '') + (o.cls ? ' ' + String(o.cls).replace(/[^a-z0-9 _-]/gi, '') : '');
+  const sw = A.bird ? 14 : A.long || (A.pet.species === 'dog' && (A.pet.breed === 'dachshund' || A.pet.breed === 'corgi')) ? 30 : 24;
+  const mono = /^#[0-9a-f]{6}$/i.test(String(o.mono || '')) ? o.mono : '';
+  const shadow = o.shadow === false || mono ? '' : `<ellipse class="pt-shadow" cx="${A.pose === 'walk' ? 48 : 50}" cy="90.4" rx="${sw}" ry="2.6" fill="#1a1420" opacity="0.13"/>`;
+  const ph = o.motion ? ` style="--pt-ph:-${_ptR((_ptNameHash(A.pet.species + (A.pet.coat || '')) % 70) / 10)}s"` : '';   // two pets never blink as one
+  return `<svg class="${cls}"${ph} viewBox="${vb}" width="${size}" height="${size}" aria-hidden="true" focusable="false">${shadow}${_ptGroupsSvg(A, small, mono)}</svg>`;
 }
 /**
  * The same drawing as a <g> string with its feet at (0, 0) in the caller's units: o {h (the pet's height there, default 24),
@@ -358,8 +457,8 @@ function petSvgGroup(pet, o) {
   const A = petArt(pet, o.pose || 'walk', o.mood);
   if (!A) return '';
   const top = Math.max(0, Math.min(60, A.top || 20)), k = (Number(o.h) || 24) / (90 - top), f = o.face === -1 ? -1 : 1;
-  const shadow = o.shadow === false ? '' : `<ellipse cx="0" cy="0.4" rx="${_ptR(22 * k)}" ry="${_ptR(2.4 * k)}" fill="#1a1420" opacity="0.14"/>`;
-  return `<g class="pt-g pt-sp-${A.pet.species} pt-pose-${A.pose}${o.cls ? ' ' + String(o.cls).replace(/[^a-z0-9 _-]/gi, '') : ''}">${shadow}<g transform="scale(${Math.round(f * k * 1000) / 1000} ${Math.round(k * 1000) / 1000}) translate(-50 -90)">${_ptGroupsSvg(A, (Number(o.h) || 24) < 30)}</g></g>`;
+  const shadow = o.shadow === false ? '' : `<ellipse class="pt-shadow" cx="0" cy="0.4" rx="${_ptR(22 * k)}" ry="${_ptR(2.4 * k)}" fill="#1a1420" opacity="0.14"/>`;
+  return `<g class="pt-g pt-sp-${A.pet.species} pt-pose-${A.pose} pt-gait-${(petSpecies(A.pet.species) || {}).gait || 'trot'}${A.flap ? ' pt-flap-' + A.flap : ''}${o.cls ? ' ' + String(o.cls).replace(/[^a-z0-9 _-]/gi, '') : ''}" style="--pt-ph:-${_ptR((_ptNameHash(A.pet.species + (A.pet.coat || '')) % 70) / 10)}s">${shadow}<g transform="scale(${Math.round(f * k * 1000) / 1000} ${Math.round(k * 1000) / 1000}) translate(-50 -90)">${_ptGroupsSvg(A, (Number(o.h) || 24) < 30)}</g></g>`;
 }
 
 /* ---------- treats ---------- */
@@ -379,6 +478,8 @@ const _PT_TREATS = {
   sunberry: () => [_pF(_pC(12, 13, 6.4), '#f6b93b'), _pF(_pC(12, 13, 4.4), '#fbd56a'), _pF(_ptStar(12, 13, 2.6, 1, 5), '#fff4c0'), _pL('M12 6.6L13 3', '#5f9a52', 1.2)],
   apple: () => [_pF('M12 7Q6 4 4 10Q4 18 10 20Q12 19.4 14 20Q20 18 20 10Q18 4 12 7z', '#e8433e'), _pL('M12 7L13 3', '#7a5a3a', 1.2), _pF('M13 5Q16 2 19 4Q16 6 13 5z', '#5fae4a'), _pF(_pE(8, 10, 1.4, 2.4), '#ffffff', 0.4)],
   battery: () => [_pF('M6 6h12v14h-12z', '#3a3d44'), _pF('M10 4h4v2h-4z', '#9aa2ae'), _pF('M7.5 12h9v6.5h-9z', '#6cd06a'), _pF('M12.6 7.4L10 12.4h2.4L11.4 16.4L14.4 11h-2.4z', '#f6d35e')],
+  candy: () => [_pF(_pP`M4 8L8 12L4 16z`, '#f28fb3'), _pF(_pP`M20 8L16 12L20 16z`, '#f28fb3'), _pF(_pC(12, 12, 5.4), '#f2607a'), _pL('M8.8 10Q12 8 15.2 10M8.8 14Q12 16 15.2 14', '#ffffff', 1, 0.8)],
+  jar: () => [_pF('M7 7h10v13q0 1.4 -1.4 1.4h-7.2q-1.4 0 -1.4 -1.4z', '#cfe8f4', 0.9), _pF('M6.5 4.4h11v3h-11z', '#a8783e'), _pF(_pC(12, 14.4, 3.8), '#f6d35e'), _pF(_pC(12, 14.4, 2), '#fff6c8'), _pL('M9 9v8', '#ffffff', 1, 0.6)],
   cookie: () => [_pF(_pC(12, 12, 8.4), '#d9a35a'), _pF(_pC(12, 12, 6.8), '#e3b06a'), ...[[9, 9], [14, 8.4], [15.4, 13], [10, 14.6], [12.4, 11.4]].map(([x, y]) => _pF(_pC(x, y, 1.1), '#6a4228'))],
 };
 function petTreatSvg(kind, size) {

@@ -99,7 +99,7 @@ function _pfSettings(el) {
     // your card stays in view beside the forms that change it
     cardHost = _pfEl('div', 'pf-set-card');
     paintCard();
-    el.appendChild(pageLayout({ main: zone(_pfAboutCard(changed), _pfLookCard(changed)), side: zone(cardHost), sideWidth: 380, sticky: true, cls: 'pf-layout' }));   // the avatar is a tab; the look is the card beside it: no hint and no second way there
+    el.appendChild(pageLayout({ main: zone(...[_pfAboutCard(changed), _pfLookCard(changed), typeof musicProfileCard === 'function' ? musicProfileCard(changed) : null].filter(Boolean)), side: zone(cardHost), sideWidth: 380, sticky: true, cls: 'pf-layout' }));   // the avatar is a tab; the look is the card beside it: no hint and no second way there
   } else if (sec === 'avatar') {
     el.appendChild(pageLayout({ main: _pfBuilderCard(changed), cls: 'pf-layout pf-wide' }));
   } else {
@@ -438,7 +438,7 @@ function _pfLookScenes(host, look, apply) {
   const sec = _pfLookSection(host, 'Your scene');
   if (!all.length) { sec.appendChild(emptyLine('The scenes are still loading, or this dashboard has none yet. Your colour shows meanwhile.')); return; }
   const chosen = all.find(it => it.ref === look.scene) || null;
-  sec.appendChild(_pfEl('div', 'set-h', chosen ? `Showing ${chosen.label}. Friends see it if their OpenDash has it too; otherwise your colour.` : 'Pick a scene. Friends see it if their OpenDash has it too; otherwise your colour.'));
+  sec.appendChild(_pfEl('div', 'set-h', chosen ? `Showing ${chosen.label}. Friends see it if their Freeflo has it too; otherwise your colour.` : 'Pick a scene. Friends see it if their Freeflo has it too; otherwise your colour.'));
   const q = _pfEl('input', 'control control-sm set-input pf-l-q'); q.type = 'search'; q.placeholder = `Search ${all.length} scenes`; q.setAttribute('aria-label', 'Search the scenes');
   q.value = _pfUI.sceneQ || '';
   const list = _pfEl('div', 'pf-l-scenes'); list.setAttribute('role', 'listbox'); list.setAttribute('aria-label', 'Scenes');

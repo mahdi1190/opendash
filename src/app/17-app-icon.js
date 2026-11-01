@@ -51,7 +51,10 @@ function applyAppIconFavicon(pref) {
   }
   const choice = pref !== undefined ? pref : (APP_CONFIG.appIcon || '');
   const custom = _appIconSvg(choice);
-  const want = custom ? links.map(() => custom) : _appIconOrigHref.all;
+  // Automatic and the logo: the tab shows today's orb (the season's, or the holiday's); the .ico keeps the built-in one.
+  const ck = appIconKind(choice), orb = (!ck || ck === 'logo') && typeof FreefloBrand !== 'undefined' ? FreefloBrand.favicon() : '';
+  const want = orb ? links.map((l, i) => (l.getAttribute('type') === 'image/svg+xml' ? orb : _appIconOrigHref.all[i]))
+    : custom ? links.map(() => custom) : _appIconOrigHref.all;
   links.forEach((l, i) => { if (want[i] && l.getAttribute('href') !== want[i]) l.setAttribute('href', want[i]); });
 }
 
@@ -67,6 +70,25 @@ async function _appIconSave(val) {
     if (state.view === 'settings' || String(state.view || '').startsWith('settings')) renderMain();
   }
   return ok;
+}
+
+/** Which orb the logo shows: follows the season and the holidays (default), seasons only, the classic colours, or any one of them (a preview). */
+function _appIconStyleRow() {
+  const B = FreefloBrand, V = B.VARIANTS, row = document.createElement('label'); row.className = 'appicon-style';
+  const opt = (v, l) => '<option value="' + esc(v) + '">' + esc(l) + '</option>';
+  const group = (l, kind) => '<optgroup label="' + l + '">' + Object.keys(V).filter(k => V[k].kind === kind).map(k => opt(k, V[k].label)).join('') + '</optgroup>';
+  row.innerHTML = '<span>Logo style</span><select class="control control-sm" aria-label="Logo style">' + opt('auto', 'Seasons and holidays') + opt('seasons', 'Seasons only') + opt('classic', 'Classic colours')
+    + group('Pin a season', 'season') + group('Pin a holiday', 'holiday') + '</select><span>The opening picks it up the next time you open the app.</span>';
+  const sel = row.querySelector('select');
+  sel.value = B.saved();
+  if (sel.value !== B.saved()) sel.value = 'auto';
+  sel.onchange = () => {
+    try { localStorage.setItem('freeflo-logo', sel.value); } catch (e) { /* storage blocked: the choice lasts until reload */ }
+    document.querySelectorAll('.brand-mark').forEach(m => { delete m.dataset.mark; });
+    if (typeof renderShell === 'function') renderShell();
+    applyAppIconFavicon();
+  };
+  return row;
 }
 
 /**
@@ -92,17 +114,18 @@ function openAppIconPicker(anchor, opts) {
     };
     const top = document.createElement('div'); top.className = 'appicon-top'; top.setAttribute('role', 'radiogroup'); top.setAttribute('aria-label', 'Built-in choices');
     const name = opts.name !== undefined ? opts.name : (typeof userName === 'function' ? userName() : '');
-    for (const [val, label] of [['', 'Automatic'], ['logo', 'OpenDash logo'], ['initial', 'Initial']]) {
+    for (const [val, label] of [['', 'Automatic'], ['logo', 'Freeflo logo'], ['initial', 'Initial']]) {
       const b = document.createElement('button'); b.type = 'button'; b.className = 'appicon-opt'; b.dataset.val = val;
       b.setAttribute('role', 'radio');
       const mk = document.createElement('span'); mk.className = 'brand-mark'; mk.setAttribute('aria-hidden', 'true');
-      setBrandMark(mk, val === 'initial' ? (name || 'OpenDash') : name, val);
+      setBrandMark(mk, val === 'initial' ? (name || 'Freeflo') : name, val);
       b.append(mk, Object.assign(document.createElement('span'), { textContent: label }));
-      b.title = val ? label : 'Nearby animated art when available, otherwise your initial or the OpenDash logo';
+      b.title = val ? label : 'Nearby animated art when available, otherwise your initial or the Freeflo logo';
       b.onclick = () => pick(val);
       top.appendChild(b);
     }
     pop.appendChild(top);
+    if (typeof FreefloBrand !== 'undefined') pop.appendChild(_appIconStyleRow());
     const bar = document.createElement('div'); bar.className = 'cz-symbar';
     const tabs = document.createElement('div'); tabs.className = 'seg cz-tabs'; tabs.setAttribute('role', 'tablist');
     const q = document.createElement('input'); q.type = 'search'; q.className = 'control control-sm cz-q'; q.setAttribute('aria-label', 'Search icons, or paste an emoji');

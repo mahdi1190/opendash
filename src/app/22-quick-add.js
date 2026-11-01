@@ -345,7 +345,7 @@ function addCustomTask(title, dueDate, priority, tags, stream, recurrence, extra
     subtasks: (extra.subtasks || []).map(t => ({ id: _newSubId(), title: String(t), done: false, ts: Date.now() })),
     recurrence: recurrence || 'none',
     people,
-    createdAt: Date.now(), createdVia: 'ui',
+    createdAt: Date.now(), createdVia: extra.via === 'template' || extra.via === 'wrapup' || extra.via === 'bulk' ? extra.via : (extra.inbox ? 'capture' : 'ui'),
   };
   if (extra.dueTime && item.dueDate) item.dueTime = extra.dueTime;
   if (extra.estimate) item.estimate = extra.estimate;
@@ -369,11 +369,19 @@ function addParsedTask(parsed, defaults) {
   const d = defaults || {};
   const tags = [...new Set([...(d.tags || []), ...(parsed.tags || [])])];
   const people = [...new Set([...(d.people || []), ...(parsed.people || [])])];
-  return addCustomTask(parsed.title, parsed.dueDate || d.dueDate || null, parsed.priority !== 'p0' ? parsed.priority : (d.priority || 'p0'),
+  const _id = addCustomTask(parsed.title, parsed.dueDate || d.dueDate || null, parsed.priority !== 'p0' ? parsed.priority : (d.priority || 'p0'),
     tags, parsed.stream || d.stream || null, parsed.recurrence || 'none',
     { dueTime: parsed.dueTime, people, newPeople: parsed.newPeople, estimate: parsed.estimate || d.estimate || null, plannedFor: d.plannedFor, status: d.status,
       contexts: [...new Set([...(d.contexts || []), ...(parsed.contexts || [])])], energy: parsed.energy || d.energy || null,
-      inbox: !!d.inbox, peopleExcluded: parsed.peopleExcluded || [] });
+      inbox: !!d.inbox, via: d.via, peopleExcluded: parsed.peopleExcluded || [] });
+  try {   // achievements (71-ach-src-b2-work.js): quick-add shortcuts used, and a date + priority + tag in one line
+    if (_id && typeof gameCount === 'function') {
+      const dated = !!parsed.dueDate, prio = parsed.priority && parsed.priority !== 'p0', tagged = (parsed.tags || []).length > 0;
+      if (dated || prio || tagged || parsed.estimate || parsed.dueTime) gameCount('qa-syntax');
+      if (dated && prio && tagged) gameCount('qa-rich');
+    }
+  } catch (e) { /* never in the way */ }
+  return _id;
 }
 /** Parse + create in one go (dialogs, bulk add). Returns the id or null. */
 function addTaskFromText(text, defaults) {

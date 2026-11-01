@@ -67,9 +67,10 @@
         const amt = Number(r.a); if (!isFinite(amt)) return;
         const c = String(r.c || 'Uncategorised');
         const kind = exclude.includes(c) ? (c === 'Income' ? 'income' : 'transfer') : 'spend';
+        const bk = Number(r.bk) > 0 ? Number(r.bk) : 0, sa = Number(r.sa) > 0 ? Number(r.sa) : 0;   // Owed to me: what came back for this payment; the part of this money in that was someone paying back
         tx.push({ i: idx, d: r.d.slice(0, 10), n: dnum(r.d), m: String(r.m || 'Unknown'), c, a: amt, acct: r.acct ? String(r.acct) : '', memo: r.memo ? String(r.memo) : '',
           how: r.how ? String(r.how) : '', bc: r.bc ? String(r.bc) : null, ty: r.ty ? String(r.ty) : '', k: r.k ? String(r.k) : 'i' + idx, kind,
-          s: kind === 'spend' ? -amt : 0, inc: kind === 'income' && amt > 0 ? amt : 0 });
+          s: kind === 'spend' ? -amt - bk + sa : 0, inc: kind === 'income' && amt > 0 ? amt - sa : 0 });
       });
       tx.sort((p, q) => q.n - p.n || p.i - q.i);
       // No day given: the home day on the page (Clock; money days stay on home time); without Clock,
@@ -79,7 +80,7 @@
       const maxN = tx.length ? tx[0].n : today;
       const anchor = Math.max(today, maxN);
       const minN = tx.length ? Math.min(tx[tx.length - 1].n, anchor) : anchor - 90;
-      return { tx, anchor, minN, balances: a.balances, history: a.balance_history, recurring: recurring(tx, a.recurring, anchor) };
+      return { tx, anchor, minN, balances: a.balances, history: a.balance_history, recurring: recurring(tx, a.recurring, anchor), cards: a.cards };
     }
 
     /* ---------- recurring payments (same rules as 02-model.js detectRecurring / mkRec) ---------- */
@@ -194,7 +195,27 @@
     }
     // mode 'cycle' needs a salary; otherwise the calendar month. Previous
     // cycles must start inside the data (a part cycle would read as "low").
-    function cycleOf(anchor, mode, sal, minN) {
+    function cycleOf(anchor, mode, sal, minN, planDays) {
+      // The plan's real paydays (lib/finance/pay-dates.mjs): the money that arrived wins, the plan says when the next one is.
+      if (mode === 'cycle' && planDays && planDays.length) {
+        const paid = sal ? sal.days.filter(d => d <= anchor) : [];
+        const lastPaid = paid.length ? paid[paid.length - 1] : null;
+        const past = planDays.filter(d => d <= anchor);
+        const expected = past.length ? past[past.length - 1] : null;
+        if (expected != null || lastPaid != null) {
+          // Expected a few days ago and not here yet: the cycle has not turned ("any day now").
+          const late = expected != null && lastPaid != null && lastPaid < expected - 5;
+          const start = lastPaid != null && (expected == null || late || lastPaid >= expected - 5) ? lastPaid : expected;
+          const coming = planDays.find(d => d > anchor);
+          const next = late ? anchor + 1 : coming != null ? coming : anchor + 30;
+          const all = (paid.length >= 2 ? paid : past).filter(d => d >= minN);
+          const prev = [];
+          for (let i = 0; i < all.length - 1; i++) if (all[i + 1] <= start) prev.push({ start: all[i], next: all[i + 1] });
+          const planned = finish({ mode: 'cycle', start, next, prev: prev.slice(-MAX_CYCLES) }, anchor);
+          if (late) planned.late = true;
+          return planned;
+        }
+      }
       if (mode === 'cycle' && sal) {
         const past = sal.days.filter(d => d <= anchor);
         const start = past[past.length - 1];
@@ -251,12 +272,15 @@
     /* ---------- balances ---------- */
     // Money you can spend: current / transaction accounts (not credit cards,
     // savings or loans). null when the bank sent no balance.
+    // (A connected card's balance never reaches here: the pipeline keeps it in analysis.cards.)
     function spendable(balances) {
       const list = (Array.isArray(balances) ? balances : []).filter(b => b && isFinite(+b.balance));
       const cur = list.filter(b => /current|transaction|checking|cheque/i.test(String(b.kind || '')));
-      const use = cur.length ? cur : list.filter(b => !/credit|saving|loan|mortgage|invest|isa|pension/i.test(String(b.kind || '')));
+      const use = cur.length ? cur : list.filter(b => !/credit|card|saving|loan|mortgage|invest|isa|pension/i.test(String(b.kind || '')));
       if (!use.length) return null;
-      return { total: r2(sumBy(use, b => +b.balance)), accts: use.map(b => String(b.acct || '')), asOf: validIso(use[0].asOf) ? use[0].asOf.slice(0, 10) : null, n: use.length };
+      // pend: pending payments the bank's figure does not have in it yet (lib/finance/pending.mjs). Safe to spend takes them off; the balance shown stays the bank's.
+      const pend = r2(sumBy(use, b => (isFinite(+b.pend) ? +b.pend : 0)));
+      return { total: r2(sumBy(use, b => +b.balance)), accts: use.map(b => String(b.acct || '')), asOf: validIso(use[0].asOf) ? use[0].asOf.slice(0, 10) : null, n: use.length, ...(pend ? { pend } : {}) };
     }
     function balanceSeries(history, accts) {
       const pts = [];
@@ -311,6 +335,48 @@
       if (k >= 2) return top;
       const last = ch[ch.length - 1].n;
       return domOf(last) === dimOf(mIdx(last)) ? Math.max(...ch.map(c => domOf(c.n))) : domOf(last);
+    }
+
+    /* ---------- credit cards (lib/finance/cards.mjs fills analysis.cards) ---------- */
+    // A card's balance and date: the hook for the money plan's debts.
+    const cardDebts = a => (a && Array.isArray(a.cards) ? a.cards : []).filter(c => c && isFinite(c.owed) && c.owed != null).map(c => ({ key: c.key, name: c.name, balance: c.owed, asOf: c.asOf, from: c.from }));
+    const CARD_MIN = 25, CARD_MIN_SHARE = 0.025, PAID_ALREADY = 20;
+    // The next payment to a card that the person pays from their current account, or null.
+    // The day it falls due this month or next; a payment seen in the 20 days before it means this
+    // one is done. In full: all that is owed now. Minimum: the figure they typed, else about what card
+    // companies ask for (the larger of 25 or 2.5%). Never more than is owed.
+    function cardNext(c, anchor) {
+      const pay = c && c.pay;
+      if (!pay || pay.fromCurrent === false || !(pay.day >= 1)) return null;
+      const on = mi => mStart(mi) + Math.min(pay.day, dimOf(mi)) - 1;
+      let mi = mIdx(anchor), n = on(mi);
+      if (n < anchor) n = on(++mi);
+      if (validIso(c.lastPaid) && dnum(c.lastPaid) > n - PAID_ALREADY) n = on(++mi);
+      const owed = isFinite(c.owed) && c.owed != null ? +c.owed : null;
+      if (owed != null && owed < 0.005) return null;
+      let amount = null;
+      if (pay.how === 'fixed') amount = +pay.amount;
+      else if (pay.how === 'min') amount = pay.amount > 0 ? +pay.amount : owed == null ? null : Math.max(CARD_MIN, owed * CARD_MIN_SHARE);
+      else amount = owed;
+      if (!(amount > 0)) return null;
+      return { n, amount: r2(owed == null ? amount : Math.min(amount, owed)), how: pay.how, guess: pay.how === 'min' && !(pay.amount > 0) };
+    }
+    // A card's next payment as a bill: it leaves the current account, so it is spoken for like one.
+    function cardBills(cards, anchor) {
+      const out = [];
+      for (const c of cards) {
+        const x = cardNext(c, anchor);
+        if (x) out.push({ m: `${c.name} payment`, c: 'Internal transfers', n: x.n, due: x.n <= anchor, amount: x.amount, freq: 'Card payment', card: c.key });
+      }
+      return out;
+    }
+    // A bill charged to a card does not leave the current account: the card's payment covers it.
+    // Judged by the account of the merchant's newest charge (tx: newest first).
+    function homeBills(recs, tx, cards) {
+      if (!cards.length) return recs;
+      const onCard = new Set(cards.map(c => c.key)), lastAcct = new Map();
+      for (const t of tx) if (t.kind === 'spend' && t.s > 0 && !lastAcct.has(t.m)) lastAcct.set(t.m, t.acct);
+      return recs.filter(r => !onCard.has(lastAcct.get(r.m)));
     }
 
     /* ---------- movers ---------- */
@@ -396,8 +462,11 @@
       const fmt = opts.fmt ? withSeps(opts.fmt) : makeFmt();
       const tx = input.tx || [], anchor = input.anchor, minN = input.minN;
       const sal = salary(tx, anchor);
-      const mode = opts.mode === 'month' || !sal ? 'month' : 'cycle';
-      const cyc = cycleOf(anchor, mode, sal, minN);
+      // opts.plan (Your money plan, lib/finance/money-plan.mjs): real paydays, and bills the bank has not shown yet.
+      const planDays = opts.plan && Array.isArray(opts.plan.paydays) && opts.plan.paydays.length ? opts.plan.paydays.slice().sort((p, q) => p - q) : null;
+      const planHasCycle = !!planDays && planDays.some(d => d <= anchor);
+      const mode = opts.mode === 'month' || (!sal && !planHasCycle) ? 'month' : 'cycle';
+      const cyc = cycleOf(anchor, mode, sal, minN, planDays);
       const cur = curve(tx, cyc.start, cyc.len, cyc.day);
       const spent = cur.length ? cur[cur.length - 1] : 0;
       const pace = bands(tx, cyc);
@@ -422,12 +491,20 @@
       const bal30 = at30.length ? at30[at30.length - 1].v : null;
       // Bills: before payday (spoken for) and the next 30 days.
       const recs = input.recurring || [];
-      const before = billsBetween(recs, anchor, cyc.next);
+      // Credit cards: charges wait for the card's payment, and that payment is what leaves the account.
+      const cards = Array.isArray(input.cards) ? input.cards.filter(c => c && c.key) : [];
+      const homeRecs = homeBills(recs, tx, cards);
+      const cardPays = cardBills(cards, anchor);
+      const billOrder = (p, q) => p.n - q.n || q.amount - p.amount || (p.m < q.m ? -1 : 1);
+      // Your money plan's bills join them.
+      const planBills = opts.plan && Array.isArray(opts.plan.bills) ? opts.plan.bills : [];
+      const planIn = (to) => planBills.filter(b => b.n >= anchor && b.n < to).map(b => ({ m: b.m, c: b.c, n: b.n, due: false, amount: b.amount, freq: b.freq || 'Planned' }));
+      const before = billsBetween(homeRecs, anchor, cyc.next).concat(cardPays.filter(b => b.n < cyc.next), planIn(cyc.next)).sort(billOrder);
       const billsTotal = r2(sumBy(before, b => b.amount));
-      const upcoming = billsBetween(recs, anchor, anchor + 31);
+      const upcoming = billsBetween(homeRecs, anchor, anchor + 31).concat(cardPays.filter(b => b.n < anchor + 31), planIn(anchor + 31)).sort(billOrder);
       const cushion = Number.isFinite(opts.cushion) ? opts.cushion : CUSHION;
       const safe = bal ? (() => {
-        const left = r2(bal.total - billsTotal - cushion);
+        const left = r2(bal.total + (bal.pend || 0) - billsTotal - cushion);
         return { perDay: r2(Math.max(0, left) / Math.max(1, cyc.daysLeft)), left, cushion, bills: billsTotal, daysLeft: cyc.daysLeft };
       })() : null;
       // Movers and who leads each category this cycle.
@@ -443,11 +520,12 @@
       const cats = [...catNow.entries()].filter(e => e[1] > 0.004).sort((p, q) => q[1] - p[1]).map(([c, v]) => ({ c, v: r2(v) }));
       const phase = cyc.day <= 4 ? 'Fresh start' : cyc.daysLeft <= 6 ? 'Home stretch' : cyc.mode === 'month' ? 'Mid-month' : 'Mid-cycle';
       const B = {
-        anchor, minN, mode, auto: sal ? 'cycle' : 'month', hasSalary: !!sal, salaryDom: sal ? sal.dom : null, salaryAmount: sal ? sal.amount : null, paydays: sal ? sal.days.slice() : [], cycle: cyc, phase,
+        anchor, minN, mode, auto: sal || planHasCycle ? 'cycle' : 'month', hasSalary: !!sal || planHasCycle, salaryDom: sal ? sal.dom : null, salaryAmount: sal ? sal.amount : null, paydays: sal ? sal.days.slice() : [], cycle: cyc, phase,
         curve: cur, pace, spent, usual, usualEnd, projected, mood,
         moneyIn, inCount, net: r2(moneyIn - spent), netCurve, inPer,
         balance: bal, balSeries: series, bal30,
         bills: before, billsTotal, upcoming, safe, cushion,
+        cards, owed: cards.some(c => isFinite(c.owed) && c.owed != null) ? r2(sumBy(cards, c => +c.owed || 0)) : null, cardPays,
         movers: mv, moversM: mvM, lead, cats, visits,
       };
       B.insights = insights(B, tx, recs, fmt);
@@ -543,8 +621,10 @@
         ? (B.safe.perDay >= 1 ? [', so about ', money(B.safe.perDay, 'good'), ' a day is free to spend.'] : [', which leaves nothing spare after a ', money(B.safe.cushion), ' cushion.'])
         : ['.'];
       const when = b => { if (b.due) return 'due now'; const r = dayRef(b.n, B.anchor, fmt); return r === 'today' || r === 'tomorrow' ? r : 'on ' + r; };
-      if (n >= 2) out.push(sentence([`${n} bills worth `, money(B.billsTotal), ' leave ', ...until, ', starting with ', merch(first.m), ' ' + when(first), ...tail]));
-      else if (n === 1) out.push(sentence([merch(first.m), ' (', money(first.amount, 'out', fmt.money2), ') is the only bill ', ...until, ...tail]));
+      // A card's payment is not a shop to open: plain words, not a chip.
+      const billName = b => (b.card ? nameOf(fmt, b.m) : merch(b.m));
+      if (n >= 2) out.push(sentence([`${n} bills worth `, money(B.billsTotal), ' leave ', ...until, ', starting with ', billName(first), ' ' + when(first), ...tail]));
+      else if (n === 1) out.push(sentence([billName(first), ' (', money(first.amount, 'out', fmt.money2), ') is the only bill ', ...until, ...tail]));
       else out.push(sentence(['No bills are due ', ...until, ...tail]));
       return out;
     }
@@ -814,7 +894,7 @@
 
     return {
       FIXED, isFixed, NOT_BILLS, SALARY_MIN, CUSHION, FREQS,
-      fromAnalysis, recurring, salary, nextPayday, cycleOf, curve, bands, moodOf, spendable, balanceSeries, billsBetween, movers,
+      fromAnalysis, recurring, salary, nextPayday, cycleOf, curve, bands, moodOf, spendable, balanceSeries, billsBetween, movers, cardDebts, cardNext,
       makeFmt, compute, insights, sentences, facts, factsKey, numbersIn, validate, allowed,
       util: { dnum, diso, dowOf, mIdx, mStart, domOf, med, qt, r2 },
     };

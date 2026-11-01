@@ -10,7 +10,8 @@
 // nothing written. Same origin only. The log gets counts, never amounts or merchants.
 // (An exact path: it wins over finance.mjs's /api/finance/ catch-all.)
 
-import { financeData } from '../../lib/finance.mjs';
+import { financeData, getPlan } from '../../lib/finance.mjs';
+import { briefPlan } from '../../lib/finance/money-plan.mjs';
 import { financeGlance, glanceParams, todayIn } from '../../lib/finance/glance.mjs';
 import { HttpError } from '../http.mjs';
 
@@ -29,9 +30,12 @@ export default function register(app) {
       const lu = d.meta && d.meta.lastUpdate;
       // cfg.timezone is the HOME zone, on purpose: banks date transactions at home,
       // so money days stay on home time while the user travels (travel spec 2.3).
+      const today = todayIn(cfg.timezone), currency = cfg.currency || (d.meta && d.meta.currency) || 'GBP';
+      // Your money plan, when there is one: its real paydays and the bills it knows about.
+      const plan = await getPlan().then(x => briefPlan(x.plan, d.analysis, { today, currency, locale: cfg.locale })).catch(() => null);
       const g = financeGlance(d.analysis, {
-        mode: p.mode, cushion: p.cushion, currency: cfg.currency || (d.meta && d.meta.currency) || 'GBP', locale: cfg.locale,
-        today: todayIn(cfg.timezone), lastUpdateAt: lu && (lu.state === 'ok' || lu.state === 'warning') && typeof lu.at === 'string' ? lu.at : null,
+        mode: p.mode, cushion: p.cushion, currency, locale: cfg.locale, plan,
+        today, lastUpdateAt: lu && (lu.state === 'ok' || lu.state === 'warning') && typeof lu.at === 'string' ? lu.at : null,
       });
       if (remote) g.remote = remote;
       log('info', `finance glance: ${g.bills.length} bills before payday, ${g.balance ? g.balance.accounts.length : 0} accounts`);

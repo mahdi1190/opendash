@@ -667,7 +667,7 @@ function _bfPaintAi(card, typeIt) {
   } else {
     // Never a "Writing…" that nothing is writing: say why there is no summary.
     const why = s && s.error ? s.error
-      : typeof _serverAvailable !== 'undefined' && _serverAvailable === false ? 'The OpenDash server is not running, so there is no summary yet.'
+      : typeof _serverAvailable !== 'undefined' && _serverAvailable === false ? 'The Freeflo server is not running, so there is no summary yet.'
       : typeof briefPrefs === 'function' && !briefPrefs().ai ? 'The AI summary is off in Settings.'
       : 'Writing your summary…';
     t.textContent = ai ? why : 'Connect Claude to get a short summary of your day here.';
@@ -738,6 +738,7 @@ function _bfIntro(root, m) {
 /* ---------- seen + snapshot ---------- */
 function _bfMarkSeen() {
   seenMarkDay('brief', todayStr());   // synced: the other computer does not open it again today (06-core-seen.js)
+  if (typeof gameStreakTick === 'function') gameStreakTick('brief');   // achievements (71-ach-pack-plan.js): seen days are pruned, ticks are kept
   _bfSaveSnapshot(false);
 }
 let _bfSnapTimer = null;

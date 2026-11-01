@@ -128,16 +128,16 @@ function saveData() {
     else _saveLocalFull();
     maybeAutoBackup();
   }
-  catch (e) { showToast('⚠ save failed', true); }
+  catch (e) { showToast('Your last change could not be saved in this browser. Keep this page open and try again in a moment.', true); }
 }
 let _localFullToastAt = 0;
 /** Browser storage refused the copy: say where the edit went (at most once a minute). */
 function _saveLocalFull() {
   const server = typeof _serverAvailable === 'undefined' || _serverAvailable;
-  if (!server) { showToast('⚠ save failed: browser storage is full and the OpenDash server isn’t running', true); return; }
+  if (!server) { showToast('Your last change could not be saved: this browser’s storage is full and Freeflo isn’t running. Open Freeflo from your shortcut, and keep this page open until it says Saved.', true); return; }
   if (Date.now() - _localFullToastAt < 60000) return;
   _localFullToastAt = Date.now();
-  showToast('Browser storage is full; saved to the server', false);
+  showToast('This browser’s storage is full, but your change is safely saved in Freeflo', false);
 }
 /**
  * Save a UI change (view, selection, sort, theme, calendar month, caches): no
@@ -333,6 +333,7 @@ function downloadBackup(silent) {
   state._lastBackup = Date.now();
   saveUI();
   if (!silent) showToast('✓ backed up — saved to Downloads', false);
+  if (!silent && typeof gameMark === 'function') gameMark('backup-month', todayStr().slice(0, 7));   // achievements: a month with a backup you took
 }
 let _autoBackupTimer = null;
 function maybeAutoBackup() {
@@ -352,7 +353,7 @@ function importBackup(file) {
   const fail = (msg) => {
     const pick = () => { const inp = document.getElementById('import-file'); if (inp) { inp.value = ''; inp.click(); } };
     if (typeof toast === 'function' && document.getElementById('toast-host')) toast('Not restored: ' + msg, { kind: 'err', action: { label: 'Choose another file', run: pick } });
-    else alert('Failed to import: ' + msg);
+    else alert('Not restored: ' + msg);
   };
   reader.onerror = () => fail('the file could not be read.');
   reader.onload = async e => {
@@ -360,15 +361,15 @@ function importBackup(file) {
     try {
       data = JSON.parse(e.target.result);
       if (typeof data !== 'object' || !data || Array.isArray(data)) throw new Error('Not a JSON object');
-      if (!Array.isArray(data.custom)) throw new Error('This file has no task list, so it is not an OpenDash backup.');
-    } catch (err) { fail(err.message === 'Not a JSON object' || err instanceof SyntaxError ? 'this file is not an OpenDash backup (it is not JSON).' : err.message); return; }
+      if (!Array.isArray(data.custom)) throw new Error('This file has no task list, so it is not a Freeflo backup.');
+    } catch (err) { fail(err.message === 'Not a JSON object' || err instanceof SyntaxError ? 'this file is not a Freeflo backup (it is not JSON).' : err.message); return; }
     try {
       const when = data._lastSave ? new Date(data._lastSave).toLocaleString(undefined, { timeZone: Clock.zone() }) : 'an unknown date';
       // Replacing everything cannot be undone with Ctrl+Z, so this one does ask (in the app's own dialog).
       const text = `File: ${file.name}. Backup from ${when}: ${data.custom.length} tasks (you have ${state.custom.length} now). Everything you have now is replaced, and this cannot be undone with Ctrl+Z; the server keeps its own backups in your data folder.`;
       const ok = typeof confirmDialog === 'function'
         ? await confirmDialog({ title: 'Replace your data with this backup?', text, confirmLabel: 'Replace my data', danger: true })
-        : confirm('Replace your current OpenDash data with this backup?\n\n' + text);
+        : confirm('Replace your current Freeflo data with this backup?\n\n' + text);
       if (!ok) return;
       for (const k of RETIRED_STATE_KEYS) delete data[k];
       if (data.bin && Array.isArray(data.bin.tasks)) data.bin.tasks = data.bin.tasks.filter(t => !(t && t.kind === 'board'));

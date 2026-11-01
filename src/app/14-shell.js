@@ -208,6 +208,8 @@ function pagesFresh() { return pagesAll().filter(pageIsFresh); }
 /** Opening a page clears its dot (renderShell calls this for every view shown). */
 function pagesMarkSeen(view) {
   const p = pageFor(view);
+  if (p && typeof gameMark === 'function') gameMark('view', p.id);   // achievements (71-ach-src-b2-work.js): pages opened, ever
+  if (typeof gameMark === 'function' && /^settings:[a-z-]+$/.test(String(view || ''))) gameMark('settings-group', String(view).slice(9));   // and Settings groups
   if (!p || typeof seenGet !== 'function' || seenGet('pages', p.id)) return false;
   return seenSet('pages', p.id, todayStr());
 }
@@ -239,6 +241,7 @@ function navNoteMove(from, to) {
 function navBackTarget() {
   if (!_navBack || _navBack.to !== state.view) return null;
   const v = _navBack.from;
+  if (/^(finance|expenses|owed)$/.test(v) && /^(finance|expenses|owed)$/.test(String(state.view))) return null;   // both Money: its tabs are the way back, and nothing moves
   let label = '';
   const p = pageFor(v);
   const sec = typeof sectionFor === 'function' ? sectionFor(v) : null;
@@ -613,22 +616,22 @@ function renderSaveStatus() {
   const offline = _serverAvailable && ((typeof srvIsOffline === 'function' && srvIsOffline()) || (window.DashboardNet && DashboardNet.down) || /isn.t running|not running/i.test(err));
   if (!_serverAvailable) {
     kind = 'local'; text = 'Local only';
-    tip = 'Saved in this browser only. Start OpenDash with start-opendash to save to your data folder.';
+    tip = 'Saved in this browser only. Open Freeflo from your shortcut so your changes are kept safely on this computer.';
   } else if (offline) {
     kind = 'offline'; text = 'Offline · changes kept';
-    tip = 'The OpenDash server isn’t running. Your changes are kept in this browser and saved as soon as it is back. Click to check again.';
+    tip = 'Freeflo isn’t running. Your changes are kept in this browser and saved as soon as it is back. Click to check again.';
   } else if (/paused/i.test(err)) {
     kind = 'paused'; text = 'Paused · changes kept';
     tip = err.charAt(0).toUpperCase() + err.slice(1) + '. Your changes are kept in this browser and saved when it resumes.';
   } else if (err) {
     kind = 'err'; text = 'Not saved · retry';
-    tip = 'Saving to the data folder failed: ' + err + '. Your work is still in this browser. Click to try again.';
+    tip = 'Your latest change isn’t saved yet: ' + (typeof netPlainError === 'function' ? netPlainError(err) : err) + ' Your work is still safe in this browser. Click to try again.';
   } else if (state._localDirty || _persistInFlight || _persistTimer) {
     kind = 'busy'; text = 'Saving…';
-    tip = 'Saving to the data folder';
+    tip = 'Saving your changes';
   } else {
     kind = 'ok'; text = 'Saved';
-    tip = 'Saved to the data folder' + (state._lastSave ? ' · ' + formatTimestamp(state._lastSave) : '');
+    tip = 'All your changes are saved' + (state._lastSave ? ' · ' + formatTimestamp(state._lastSave) : '');
   }
   btn.classList.remove('ok', 'err', 'busy', 'local', 'offline', 'paused');
   btn.classList.add(kind);
@@ -671,7 +674,7 @@ window.addEventListener('resize', () => { if (typeof state !== 'undefined') _fit
    page that lists sections and does not draw its own tabs (Achievements, Places). Both live in the
    page header (#view-tabs), so they stay put while the page below changes, and repaint only when
    something on them changes. Re-selecting the current tab or section only scrolls back to the top. */
-const _AREA_STRIP = new Set(['life', 'money']);   // money: Money and Expenses (66-expenses-1page.js)
+const _AREA_STRIP = new Set(['life']);   // (2.21: Expenses is one of Money's own tabs now, 12-bar.js)
 function areaTabsModel(view) {
   const v = String(view || '');
   const pg = pageFor(v);
@@ -842,8 +845,9 @@ function renderPageHeaderControls() {
   if (typeof _lifeOffPaint === 'function') { try { _lifeOffPaint(); } catch (e) { console.error('[shell] off note', e); } }   // 15-nav-life.js
 }
 
-/** The OpenDash logo as an image URL: the SVG favicon build.mjs inlines ('' without one). */
+/** The Freeflo orb for today (the season's, or the holiday's) as an image URL; the built-in SVG favicon without the brand module ('' without either). */
 function brandLogoSrc() {
+  if (typeof FreefloBrand !== 'undefined') return FreefloBrand.favicon();
   if (typeof _appIconOrigHref !== 'undefined' && _appIconOrigHref && _appIconOrigHref.svg) return _appIconOrigHref.svg;
   const l = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
   return (l && l.getAttribute('href')) || '';
@@ -884,11 +888,13 @@ function setBrandMark(el, name, pref) {
   }
   el.classList.toggle('has-sym', false);
   const src = (kind === 'logo' || (!n && kind !== 'initial')) ? brandLogoSrc() : '';
-  const key = src ? 'logo' : (n || 'O').slice(0, 1).toUpperCase();
+  const orb = !!src && typeof FreefloBrand !== 'undefined';
+  const key = src ? 'logo' + (orb ? ':' + FreefloBrand.current().id : '') : (n || 'F').slice(0, 1).toUpperCase();
   if (el.dataset.mark === key) return;
   el.dataset.mark = key;
   el.classList.toggle('has-logo', !!src);
   if (!src) { el.textContent = key; return; }
+  if (orb) { el.innerHTML = FreefloBrand.orb({ cls: 'brand-logo' }); return; }   // the live orb: its liquid moves (src/brand/freeflo-orb.js)
   const img = document.createElement('img'); img.className = 'brand-logo'; img.alt = ''; img.src = src;
   el.replaceChildren(img);
 }
@@ -954,7 +960,7 @@ function renderShell() {
   let you = false;
   if (typeof profileCornerPaint === 'function') { try { you = profileCornerPaint(); } catch (e) { console.error('[corner]', e); } }
   if (!you) {
-    const name = userName() || 'OpenDash';
+    const name = userName() || 'Freeflo';
     const bn = document.getElementById('brand-name'); if (bn && bn.textContent !== name) bn.textContent = name;
     setBrandMark(document.getElementById('brand-mark'), userName());
   }
@@ -970,6 +976,7 @@ function renderShell() {
 /* ---------- default More / workspace items ---------- */
 registerMoreItem({ id: 'new-task', label: 'New task', icon: 'plus', order: 10, kbd: 'Q', run: () => openNewTask() });
 registerMoreItem({ id: 'bulk-add', label: 'Bulk add tasks…', icon: 'clipboard-list', order: 20, run: () => openBulkImport() });
+registerMoreItem({ id: 'recent-messages', label: 'Recent messages…', icon: 'message-square', order: 25, run: () => openRecentMessages() });
 registerMoreItem({ id: 'templates', label: 'Templates…', icon: 'layout-template', order: 30, run: () => openTemplatesModal() });
 registerMoreItem({ id: 'density', label: 'Compact rows', icon: 'list', order: 110, checked: () => state.density === 'compact',
   run: () => { state.density = state.density === 'compact' ? 'normal' : 'compact'; saveUI(); render(); } });
@@ -980,6 +987,7 @@ registerMoreItem({ id: 'reduce-motion', label: 'Reduce motion', icon: 'sparkle',
   disabled: () => (window.Motion && Motion.systemReduced ? Motion.systemReduced() : !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)),
   title: 'Turn interface animations down to the minimum (saved on this device)',
   run: () => { if (window.Motion) Motion.setReduced(!Motion.prefersReduced()); } });
+registerMoreItem({ id: 'undo', label: 'Undo my last change', icon: 'undo-2', order: 205, where: ['more', 'workspace'], kbd: _TOAST_MOD + '+Z', run: () => undo() });
 registerMoreItem({ id: 'briefing', label: 'Morning briefing', icon: 'sunrise', order: 210, hidden: () => !HAS_COWORK, run: () => runMorningBriefing() });
 registerMoreItem({ id: 'backup', label: 'Back up now', icon: 'download', order: 310, where: ['more', 'workspace'],
   hint: () => lastBackupLabel(), run: () => downloadBackup(false) });

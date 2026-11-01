@@ -38,6 +38,10 @@ const SETTINGS_SEARCH_CATALOG = {
     { label: 'Quick-add templates', description: 'Starter title, stream, tags, priority, date and repeat schedule.', selector: '.set-tpls' },
     ['Full task templates', 'Saved tasks with their subtasks and notes.'],
   ],
+  'money-look': [
+    ['Count pending payments', 'Count payments your bank has not finished yet as spending straight away.', 'money finance unsettled hold split budget'],
+    ['Show company logos', 'Logos on payments, or our own symbols.', 'money finance pictures'],
+  ],
   home: [
     ['Widgets', 'Customise Home, add widgets, drag, resize or hide panels.'],
     ['Suggestions on Home', 'Show one-click ideas on the Home board.'],
@@ -48,7 +52,7 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Auto-linking', 'Find the folders, repositories, meetings, emails and people related to tasks.', 'status last run'],
     ['Auto-attach confident links', 'Automatically attach links above your confidence threshold.'],
     ['Check with Claude', 'Have Claude check suggested links.'],
-    ['Run every', 'How often auto-linking runs while OpenDash is open.', 'interval hours'],
+    ['Run every', 'How often auto-linking runs while Freeflo is open.', 'interval hours'],
     { label: 'Workspace folders', description: 'Add or browse folders to index for related files.', selector: '.al-add' },
     { label: 'Never read', description: 'Folders whose contents are never read or sent to Claude.', keywords: 'names only privacy secrets confidential exclusions', selector: '.al-names + .al-add' },
     { label: 'Auto-link now', description: 'Run auto-linking now, or review the suggested links.', keywords: 'review suggestions run', selector: '.al-runbtns' },
@@ -128,7 +132,7 @@ const SETTINGS_SEARCH_CATALOG = {
     ['Set by hand', 'Scenes chosen manually for particular tasks or events.'],
     ['Unmatched titles', 'Ask Claude to suggest scenes for unmatched events.'],
     { label: 'Achievements', description: 'Earn animation rewards for using your dashboard.', selector: '#ach-panel' },
-    ['Your year and month in OpenDash', 'Animated monthly and yearly recaps.', 'review summary export image'],
+    ['Your year and month in Freeflo', 'Animated monthly and yearly recaps.', 'review summary export image'],
   ],
   notifications: [
     ['Show notifications', 'Allow desktop notifications in this browser.', 'permission reminders'],
@@ -178,6 +182,7 @@ function settingsSearchEntries() {
       ['calendar', 'Calendar connections', 'Connect calendar accounts and sources.', 'Google Outlook events meetings'],
       ['money', 'Money connections', 'Connect banks or import financial data.', 'bank finance CSV'],
     ]) entries.push({ group: 'connections', groupTitle: 'Connections', label, description, keywords, icon: 'plug', run: () => connOpen(id) });
+    if (typeof spotifySetup === 'function') entries.push({ group: 'connections', groupTitle: 'Connections', label: 'Spotify', description: 'Link Spotify to search music, show top artists on your card and send friends songs.', keywords: 'music songs playlist albums artists listen friends premium client id', icon: 'music', run: () => { connOpen('spotify'); spotifySetup(); } });
     if (typeof googleHealthConnectionSetup === 'function') entries.push({ group: 'connections', groupTitle: 'Connections', label: 'Google Health', description: 'Connect activity and sleep from Google Health and Fitbit.', keywords: 'fitness wellness steps OAuth integration', icon: 'heart', run: () => { connOpen('google-health'); googleHealthConnectionSetup(); } });
   }
   return entries;

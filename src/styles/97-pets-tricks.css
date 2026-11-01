@@ -1,0 +1,84 @@
+/* ============================================================
+   PETS, the clip library's small needs, the trick book, the spectacles' canvas, the emote wheel (2.23, agent 'craft').
+   ============================================================ */
+/* while a library clip plays it owns the body: the idle CSS rests */
+.pt-clip .pt-bodyg, .pt-clip .pt-head, .pt-clip .pt-tail, .pt-clip .pt-ears, .pt-clip .pt-paw, .pt-clip .pt-legsN, .pt-clip .pt-legsF, .pt-clip .pt-legsG { animation: none !important; }
+.pt-svg g.pt-cfx, .pt-g g.pt-cfx { transform-box: view-box; transform-origin: 0 0; }
+.pt-back { transform-origin: 0 0; }
+.pt-live .pt-back { animation: pt-backwing 1.8s ease-in-out infinite alternate; }
+.pt-pose-walk.pt-live .pt-back { animation-duration: .5s; }
+@keyframes pt-backwing { from { transform: rotate(-5deg) scale(1); } to { transform: rotate(7deg) scale(1.03, .97); } }
+@media (prefers-reduced-motion: reduce) { .pt-live .pt-back { animation: none; } }
+
+/* the spectacles: one canvas over everything, only while one plays */
+.pfx-canvas { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; z-index: 2400; pointer-events: none; }
+
+/* the book */
+.ptb { display: flex; flex-direction: column; gap: 12px; }
+.ptb.is-panel { height: 100%; min-height: 0; padding: 12px 14px; }
+.ptb-stage .pts.pts-compact { height: 230px; min-height: 230px; }
+.ptb-stage .pts.pts-compact .pts-floor { bottom: 30px; }
+.ptb.is-panel .ptb-stage .pts.pts-compact { height: 178px; min-height: 178px; }
+.ptb.is-panel .ptb-stage .pts.pts-compact .pts-floor { bottom: 18px; }
+.ptb-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ptb-count { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; height: 30px; border-radius: 15px; background: var(--bg-subtle); color: var(--fg); font-size: var(--text-sm); }
+.ptb-tiers { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.ptb-tier { height: 30px; padding: 0 11px; border-radius: 15px; border: 2px solid var(--border-subtle); background: transparent; color: var(--fg-muted); font: inherit; font-size: 12px; cursor: pointer; }
+.ptb-tier:hover { color: var(--fg); }
+.ptb-tier.is-on { border-color: var(--tc, var(--accent)); color: var(--tc, var(--accent)); font-weight: var(--weight-semibold); }
+.ptb-purse { font-size: var(--text-sm); }
+.ptb-body { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 14px; align-items: start; min-height: 0; flex: 1; }
+.ptb.is-panel .ptb-body { overflow: hidden; }
+.ptb.is-panel .ptb-grid { overflow-y: auto; height: 100%; }
+.ptb-pages > :first-child { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; list-style: none; margin: 0; padding: 2px; }
+.ptb-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 6px 4px 8px; border-radius: 14px; border: 2px solid var(--border-subtle); border-bottom-width: 4px; border-bottom-color: var(--tc); background: var(--surface, #fff); color: var(--fg); font: inherit; cursor: pointer; overflow: hidden; transition: transform .14s cubic-bezier(.3,1.5,.5,1), box-shadow .14s ease; }
+.ptb-card:hover { transform: translateY(-3px); box-shadow: 0 8px 16px rgba(0, 0, 0, .12); }
+.ptb-card.is-sel { border-color: var(--tc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tc) 28%, transparent); }
+.ptb-card.is-locked { background: var(--bg-subtle); }
+.ptb-card.ptr-legendary, .ptb-card.ptr-mythical { background: linear-gradient(170deg, color-mix(in srgb, var(--tc) 13%, var(--surface, #fff)), var(--surface, #fff) 60%); }
+.ptb-card.is-secret { background: linear-gradient(170deg, #2a2340, #41355e); color: #d8ccf0; border-color: #5a4c80; border-bottom-color: var(--tc); }
+.ptb-card.is-secret .ptb-art { opacity: .55; }
+.ptb-art { display: block; width: 78px; height: 78px; pointer-events: none; overflow: hidden; border-radius: 10px; }
+.ptb-art > svg { width: 78px; height: 78px; overflow: visible; }
+.ptb-name { font-size: 12px; line-height: 1.2; text-align: center; font-weight: var(--weight-medium); }
+.ptb-wow { position: absolute; top: 6px; right: 6px; color: var(--tc); display: grid; }
+.ptb-side { position: sticky; top: 8px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: var(--bg-subtle); min-height: 96px; }
+.ptb-tap { margin: 0; color: var(--fg-muted); font-size: var(--text-sm); }
+.ptb-s-h { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.ptb-s-name { font-size: var(--text-md); color: var(--fg); }
+.ptb-s-tier { padding: 1px 8px; border-radius: 9px; background: color-mix(in srgb, var(--tc) 18%, transparent); color: var(--tc); font-size: 11px; font-weight: var(--weight-semibold); }
+.ptb-s-acts { display: flex; flex-wrap: wrap; gap: 8px; }
+.ptb-s-how { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: var(--text-sm); color: var(--fg-muted); }
+.ptb-s-hint { display: flex; gap: 8px; margin: 0; font-size: var(--text-sm); color: var(--fg-muted); }
+.ptb-buy.is-off { filter: grayscale(.8) opacity(.6); }
+.ptb-ask { position: absolute; right: 14px; bottom: 14px; z-index: 5; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: #fff; color: #7a4ccc; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); cursor: pointer; transition: transform .14s cubic-bezier(.3,1.6,.5,1); }
+.ptb-ask:hover { transform: scale(1.1); }
+/* a secret, found */
+.ptc.ptb-reveal { background: radial-gradient(circle at 50% 42%, #2a2150e8, #0a0820f6); }
+.ptc.ptb-reveal .ptc-rays { opacity: .4; }
+.ptc .ptc-card.ptb-rcard { background: linear-gradient(170deg, #2a2340, #41355e); color: #fff; border: 2px solid var(--tc); box-shadow: 0 0 60px color-mix(in srgb, var(--tc) 60%, transparent); }
+.ptc .ptb-rcard .ptc-rar { color: var(--tc); background: transparent; }
+.ptb-rq { font-size: 30px; font-weight: 700; letter-spacing: .02em; text-align: center; min-height: 40px; margin-top: 4px; color: #d8ccf0; }
+.ptb-rq.is-named { animation: ptb-named .7s cubic-bezier(.2,1.5,.4,1) both; color: #fff; text-shadow: 0 0 22px var(--tc); }
+@keyframes ptb-named { from { transform: scale(.5); opacity: 0; filter: blur(8px); } }
+@media (max-width: 760px) { .ptb-body { grid-template-columns: 1fr; } .ptb-side { position: static; order: -1; } .ptb-pages > :first-child { grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); } }
+
+/* the wardrobe's strip of made things */
+.ptb-made { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; }
+.ptb-made-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.ptb-made-b { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 84px; padding: 6px 4px; border-radius: 12px; border: 2px solid var(--border-subtle); background: var(--surface, #fff); color: var(--fg); font: inherit; font-size: 11px; cursor: pointer; }
+.ptb-made-b.is-on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* the emote wheel */
+.gd-hush .gd-objects .gd-it *, .gd-hush .gart-live *, .gd-hush .gd-needs *, .gd-hush .gart-cloud { animation-play-state: paused !important; }
+.pew { position: absolute; z-index: 30; width: 0; height: 0; pointer-events: none; }
+.pew-b { position: absolute; left: -31px; top: -31px; width: 62px; height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; border-radius: 50%; border: 3px solid #fff; background: #fbf5e7; color: #6a5636; box-shadow: 0 4px 14px rgba(40, 30, 10, .3); cursor: pointer; pointer-events: auto; transform: translate(var(--x), var(--y)); animation: pew-in .26s cubic-bezier(.2,1.5,.4,1) both; animation-delay: calc(var(--i) * 18ms); transition: background .1s ease, scale .1s ease; }
+.pew-b:hover { background: #fff; scale: 1.12; }
+.pew-n { font-size: 10px; font-weight: 600; line-height: 1.05; text-align: center; max-width: 56px; }
+.pew-b.is-locked { background: #e8e0d0; color: #8f8168; }
+.pew-b.is-locked .i { opacity: .55; }
+.pew-b .ptl-cost { position: absolute; bottom: -9px; padding: 0 5px; border-radius: 9px; background: #fff; font-size: 10px; box-shadow: 0 1px 4px rgba(0, 0, 0, .2); }
+@keyframes pew-in { from { transform: translate(0, 0) scale(.3); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pew-b { animation: none; } }
+.gpl-emote .gpl-limb, .gpl-emote .gpl-up, .gpl-emote .gpl-hd, .gpl-emote .gpl-root { animation: none !important; }
+.gd-pill.is-emote { color: #7a5a30; }

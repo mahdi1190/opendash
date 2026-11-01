@@ -1,157 +1,396 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OpenDash: plan your day, keep your data</title>
-<meta name="description" content="A calm, local-first dashboard for your tasks, calendar, money and people, running on your own computer. Free and open source.">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Freeflo: plan your day, keep your data</title>
+<meta name="description" content="A calm, local-first dashboard for your tasks, calendar, money, expenses and friends, on your own computer. No account, no telemetry, end-to-end encrypted sync through a relay you host. Free and open source.">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f6fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121228" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="Freeflo: plan your day, keep your data">
+<meta property="og:description" content="A calm, local-first dashboard on your own computer. Private by design, secure by default.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mahdi1190.github.io/opendash/">
 <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/InterVariable-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to the content</a>
+
 <header class="bar">
   <div class="wrap bar-in">
-    <a class="brand" href="./">
+    <a class="brand" href="./" aria-label="Freeflo home">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="img/lockup-dark.svg">
-        <img src="img/lockup.svg" alt="OpenDash" height="32">
+        <img src="img/lockup.svg" alt="Freeflo" width="136" height="32">
       </picture>
     </a>
-    <nav>
-      <a href="#features">Features</a>
-      <a href="#privacy">Privacy</a>
-      <a href="#start">Quick start</a>
+    <nav aria-label="Sections">
+      <a href="#day">Tour</a>
+      <a href="#security">Security</a>
+      <a href="#cloud">Cloud</a>
+      <a href="#faq">FAQ</a>
       <a href="https://github.com/mahdi1190/opendash">GitHub</a>
     </nav>
   </div>
 </header>
 
-<main>
-<section class="hero wrap">
-  <h1>Plan your day. Keep your data.</h1>
-  <p class="lead">A calm, local-first dashboard for your tasks, calendar, money and people. It runs on your own computer, with no account and no cloud.</p>
-  <p class="cta">
-    <a class="btn" href="https://github.com/mahdi1190/opendash/releases/latest">Download the latest release</a>
-    <a class="btn ghost" href="https://github.com/mahdi1190/opendash">View on GitHub</a>
-  </p>
-  <p class="small">Free and open source (MIT). Windows, macOS and Linux. Needs Node.js 20 or newer.</p>
-  <figure class="shot hero-shot">
+<main id="main">
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <h1 id="hero-title">Plan your day.<br>Keep your data.</h1>
+      <p class="lead">Freeflo is a calm dashboard for your tasks, calendar, money and friends. It runs on your own computer. No account, no Freeflo server, no telemetry.</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/mahdi1190/opendash/releases/latest">Download for Windows</a>
+        <a class="btn quiet" href="https://github.com/mahdi1190/opendash/blob/main/docs/INSTALL.md#which-file-to-download">macOS and Linux (zip)</a>
+      </div>
+      <p class="fine">Free and open source, MIT licence. The Windows installer includes everything it needs. The zip needs Node.js 20 or newer.</p>
+    </div>
+    <svg class="sun" viewBox="8 8 48 44" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="sun-g" x1="0" y1="12" x2="0" y2="52" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#ffd36b"/>
+          <stop offset="0.6" stop-color="#ffa257"/>
+          <stop offset="1" stop-color="#ff7a7a"/>
+        </linearGradient>
+      </defs>
+      <path fill="url(#sun-g)" d="M12 32A20 20 0 0 1 52 32ZM12.404 36H51.596A20 20 0 0 1 48 44H16A20 20 0 0 1 12.404 36ZM20 48H44A20 20 0 0 1 20 48Z"/>
+    </svg>
+  </div>
+  <div class="horizon" aria-hidden="true"></div>
+  <figure class="wrap hero-shot">
     <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="img/home-dark.png">
-      <img src="img/home-light.png" alt="OpenDash Home: good morning, today in a sentence, the first Focus task and ideas for today (demo data)" width="1440" height="900">
+      <source media="(prefers-color-scheme: dark)" srcset="img/home-today-dark.png">
+      <img src="img/home-today.png" alt="Freeflo Home: a morning card with today's meetings and tasks, the day so far in one sentence, and ideas for today (demo data)" width="1440" height="900" fetchpriority="high">
     </picture>
   </figure>
 </section>
 
-<section id="features" class="wrap">
-  <h2>Everything for your day, on one page</h2>
+<div id="day" class="day">
+  <p class="wrap note">A day with Freeflo, from first coffee to lights out. Every picture shows invented demo data.</p>
 
-  <article class="feature">
-    <div class="text">
-      <h3>Home and the morning brief</h3>
-      <p>Today in a few sentences, the tasks that matter now, your schedule and its free stretches, the weather and your countdowns. <strong>Play my morning</strong> opens the day as a story, read aloud; <strong>Finish the day</strong> and the <strong>Weekly review</strong> close the loop.</p>
+  <section class="hour dawn" aria-labelledby="h-home">
+    <div class="wrap hour-in">
+      <p class="clock"><time>07:30</time> Morning</p>
+      <div class="hour-body">
+        <div class="lede">
+          <h2 id="h-home">Your day, at a glance</h2>
+          <p>A morning card, the day so far in one sentence, the next meeting and ideas for today. <strong>Play my morning</strong> reads the day to you as a short story. Resize any card by dragging its edge; the others make room.</p>
+        </div>
+        <figure class="shot wide">
+          <img src="img/home-board.gif" alt="Customising Home: dragging the edge of a card to resize it while the others reflow" width="894" height="675" loading="lazy" decoding="async">
+        </figure>
+      </div>
     </div>
-  </article>
+  </section>
 
-  <article class="feature">
-    <div class="text">
-      <h3>Tasks</h3>
-      <p>Streams, priorities, tags, subtasks, people, repeats and estimates. List or board, quick add in plain words, search with operators, a Bin, and undo everywhere.</p>
+  <section class="hour" aria-labelledby="h-tasks">
+    <div class="wrap hour-in">
+      <p class="clock"><time>09:00</time> Work</p>
+      <div class="hour-body">
+        <div class="lede">
+          <h2 id="h-tasks">Write it the way you would say it</h2>
+          <p>Press <kbd>Q</kbd> and type <code>Send Alex the slides fri 3pm #work !p1 ~1h</code>. The date, stream, priority and estimate turn into chips before you press Enter.</p>
+        </div>
+        <div class="pair">
+          <figure class="shot">
+            <img src="img/quick-add.gif" alt="Quick add: typing a sentence and watching the date, stream, priority and estimate chips appear" width="894" height="675" loading="lazy" decoding="async">
+            <figcaption><strong>Quick add.</strong> One line in, one tidy task out.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/task-card.png" alt="A task card with subtasks, a time suggestion and a focus timer" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>One card per task.</strong> Subtasks, notes, people, repeats, an estimate and a focus timer. Select many things at once and one Undo puts them all back.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/calendar-week.png" alt="The calendar week view with events and due tasks side by side" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Calendar.</strong> Meetings and due dates together. Drag a task onto the week to plan it.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/palette.gif" alt="The Ctrl+K command palette: typing money and moving through the results" width="768" height="480" loading="lazy" decoding="async">
+            <figcaption><strong>Ctrl+K.</strong> Jump to any page, task, person or setting, or run a command, by a few letters.</figcaption>
+          </figure>
+        </div>
+      </div>
     </div>
-    <figure class="shot">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="img/task-card-dark.png">
-        <img src="img/task-card-light.png" alt="A task open in the centre card, with subtasks and details (demo data)" width="1440" height="900" loading="lazy">
-      </picture>
-    </figure>
-  </article>
+  </section>
 
-  <article class="feature flip">
-    <div class="text">
-      <h3>Calendar</h3>
-      <p>Month, week, day and agenda views with tasks, planned blocks and countdowns beside your events. Drag a task onto the week to plan it. Events come from Google Calendar through Claude, a read-only source, or a plain iCal link.</p>
+  <section class="hour" aria-labelledby="h-money">
+    <div class="wrap hour-in">
+      <p class="clock"><time>12:30</time> Lunch</p>
+      <div class="hour-body">
+        <div class="lede">
+          <h2 id="h-money">Know what is safe to spend</h2>
+          <p>The Money board shows what you can spend today, your bills and subscriptions, and budgets with a pace marker. Import a bank CSV with no connection at all, or connect a bank read-only. The Money brief puts your month in three sentences.</p>
+        </div>
+        <figure class="shot wide">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="img/money-overview-dark.png">
+            <img src="img/money-overview.png" alt="The Money board: safe to spend today, upcoming bills and subscriptions, and budgets" width="1440" height="900" loading="lazy" decoding="async">
+          </picture>
+        </figure>
+        <div class="pair">
+          <figure class="shot">
+            <img src="img/money-brief.png" alt="The Money brief in three sentences with Read aloud and Play story buttons" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>The Money brief.</strong> Three sentences on how the month is going, read aloud if you like.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/money-story.gif" alt="The money story playing: short animated scenes about the month" width="864" height="540" loading="lazy" decoding="async">
+            <figcaption><strong>The money story.</strong> A short animated film of where your month went.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/expenses.png" alt="Expenses: to claim, waiting and paid, with one expense open" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Expenses.</strong> Money you spent for someone else, with receipts, until it is paid back. Repayments are matched for you.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/expense-report.png" alt="The Make expense report dialog" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Expense reports.</strong> One click to a PDF laid out exactly like the paper expense form, with the receipts zipped and named to match.</figcaption>
+          </figure>
+        </div>
+      </div>
     </div>
-    <figure class="shot">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="img/calendar-week-dark.png">
-        <img src="img/calendar-week-light.png" alt="The calendar week view with events and due tasks (demo data)" width="1440" height="900" loading="lazy">
-      </picture>
-    </figure>
-  </article>
+  </section>
 
-  <article class="feature">
-    <div class="text">
-      <h3>Finances</h3>
-      <p><strong>Connections &gt; Money</strong> brings every bank and wallet into one place: Aureli (via Claude), Plasma One, Monzo directly, UK and EU banks through Enable Banking, or a CSV export with no connection at all. Every connector is read-only and credentials stay on your computer. The money brief tells you what is safe to spend.</p>
+  <section class="hour" aria-labelledby="h-ai">
+    <div class="wrap hour-in">
+      <p class="clock"><time>15:00</time> Afternoon</p>
+      <div class="hour-body split">
+        <div class="lede">
+          <h2 id="h-ai">Ask, then approve</h2>
+          <p>"Move everything for Acme to next Monday." The assistant looks things up and can do nearly everything in the dashboard, and every change can be undone. Anything sensitive asks for your approval first.</p>
+          <p>It is optional, and runs through your own Claude Code on your own plan. It has no shell and no file tools.</p>
+        </div>
+        <figure class="shot">
+          <img src="img/assistant.png" alt="The assistant panel with a made-up conversation and a proposed change waiting for Apply" width="1440" height="900" loading="lazy" decoding="async">
+        </figure>
+      </div>
     </div>
-    <figure class="shot">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="img/connections-money-dark.png">
-        <img src="img/connections-money-light.png" alt="Connections &gt; Money: Aureli, Plasma One, Monzo and Enable Banking side by side (demo data)" width="1440" height="900" loading="lazy">
-      </picture>
-    </figure>
-  </article>
+  </section>
 
-  <article class="feature flip">
-    <div class="text">
-      <h3>Stories and animations with the live sky</h3>
-      <p>Openings and scenes for places around the world that follow the real sky where you are: sun, moon, season and weather. Browse them all in a searchable gallery with dawn, day, dusk and night previews. Motion can be reduced or switched off.</p>
+  <section class="hour dusk" aria-labelledby="h-friends">
+    <div class="wrap hour-in">
+      <p class="clock"><time>18:00</time> Evening</p>
+      <div class="hour-body">
+        <div class="lede">
+          <h2 id="h-friends">Friends, privately</h2>
+          <p>See who is around, cheer each other on, make shared lists, boards, parties and trips, and send a friend a song to listen to. A new friend sees only your profile, game progress and garden. Anything more is your choice, per friend, and it travels end-to-end encrypted.</p>
+        </div>
+        <div class="pair">
+          <figure class="shot">
+            <img src="img/friends.png" alt="Friends: a list with presence and a friend's profile card (the friends are made up)" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Friends.</strong> Presence, profile cards and what each friend can see.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/together.gif" alt="Making a shared list with two friends and adding items" width="894" height="675" loading="lazy" decoding="async">
+            <figcaption><strong>Together.</strong> Shared lists, boards, parties and trips.</figcaption>
+          </figure>
+        </div>
+        <div class="pair">
+          <figure class="shot">
+            <img src="img/music-picker.png" alt="Finding a song to send a friend: a search box, tabs for songs, albums, playlists and artists, and results with covers (the music is invented)" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Send a song.</strong> Search Spotify, pick a friend, add a line. They need nothing installed to open it.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/music-friends.png" alt="A friend's page: the song they sent with Play, Queue and Open in Spotify, and their card showing a favourite song, a favourite album and their top artists (the friend and the music are made up)" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Music on your card.</strong> A favourite song, album and playlist, and your top artists, if you choose to show them.</figcaption>
+          </figure>
+        </div>
+      </div>
     </div>
-    <figure class="shot">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="img/animations-dark.png">
-        <img src="img/animations-light.png" alt="Settings &gt; Animations: the Dallas skyline at dusk with time-of-day previews" width="1440" height="900" loading="lazy">
-      </picture>
-    </figure>
-  </article>
+  </section>
 
-  <article class="feature">
-    <div class="text">
-      <h3>The assistant and MCP</h3>
-      <p>Ask in plain words. The optional Claude assistant proposes changes with a preview, and nothing changes until you press <strong>Apply</strong>. OpenDash also ships its own MCP server, so Claude Code, T3 Code or Claude Desktop can work with your dashboard, with the safety rails enforced by OpenDash.</p>
+  <section class="hour dusk" aria-labelledby="h-life">
+    <div class="wrap hour-in">
+      <p class="clock"><time>20:00</time> Wind down</p>
+      <div class="hour-body">
+        <div class="lede">
+          <h2 id="h-life">A garden that grows when you focus</h2>
+          <p>Focus time earns coins for a garden you can really play in: plant, water, harvest and decorate through the seasons. Adopt a pet, dress your character and collect achievements. Turn the fun down to Subtle, or off.</p>
+        </div>
+        <div class="mosaic">
+          <figure class="shot big">
+            <img src="img/garden.png" alt="The garden game: the plot, tools and goals" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Garden.</strong> A shop, an almanac, seasons and visitors.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/pet-treat.gif" alt="Patting a pet, giving a treat and doing a trick" width="894" height="675" loading="lazy" decoding="async">
+            <figcaption><strong>Pets.</strong> Pats, treats and tricks.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/wardrobe.png" alt="The avatar builder with outfits" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Wardrobe.</strong> Dress your character.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/achievements.png" alt="Level, quests, streaks and achievements" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Achievements.</strong> Levels, quests, streaks and 497 hard achievements.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/places.png" alt="Places: an overview and a travel timeline" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Places.</strong> Where you have been, kept on your own devices.</figcaption>
+          </figure>
+          <figure class="shot half">
+            <img src="img/memories.png" alt="The Memories journal" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>Memories.</strong> A private journal written for you each day.</figcaption>
+          </figure>
+          <figure class="shot half">
+            <img src="img/whats-new.png" alt="The What's new tour spotlighting the Money brief" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption><strong>What's new.</strong> A guided tour after each update.</figcaption>
+          </figure>
+        </div>
+      </div>
     </div>
-    <figure class="shot">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="img/assistant-dark.png">
-        <img src="img/assistant-light.png" alt="The assistant panel beside Home, with suggested questions (demo data)" width="1440" height="900" loading="lazy">
-      </picture>
-    </figure>
-  </article>
-  <p class="small center">Every screenshot shows invented demo data.</p>
-</section>
+  </section>
+</div>
 
-<section id="privacy" class="band">
-  <div class="wrap">
-    <h2>Local-first and private</h2>
-    <ul class="grid">
-      <li><strong>Your data stays home.</strong> Plain files in one folder on your computer, with automatic backups. The server only listens on 127.0.0.1.</li>
-      <li><strong>No account, no cloud.</strong> No analytics and no telemetry. Nothing is ever sent to the OpenDash project.</li>
-      <li><strong>Only what you switch on.</strong> The network is used only by features you turn on, and only to reach the service they name.</li>
-      <li><strong>Works offline.</strong> Tasks, the calendar view, Finances with CSV, people and the brief all work without a connection.</li>
-    </ul>
-    <p><a href="https://github.com/mahdi1190/opendash/blob/main/docs/PRIVACY.md">Exactly what is stored where</a></p>
-  </div>
-</section>
+<div class="night">
+  <section id="security" class="hour" aria-labelledby="h-security">
+    <div class="wrap hour-in">
+      <p class="clock"><time>23:00</time> Locked up</p>
+      <div class="hour-body">
+        <div class="lede">
+          <h2 id="h-security">Private by design, secure by default</h2>
+          <p>Your tasks, people, calendar and money are personal. Freeflo is built so they stay yours, and each claim below is backed by the code.</p>
+        </div>
+        <dl class="claims">
+          <div><dt>Local-first</dt><dd>Your data is one folder on your computer. There is no Freeflo server, no account, no analytics and no telemetry.</dd></div>
+          <div><dt>A local server that stays local</dt><dd>It listens only on 127.0.0.1 and checks each request's Host and Origin, so websites you visit can't reach it. A strict Content Security Policy allows no inline scripts but the app's own.</dd></div>
+          <div><dt>End-to-end encrypted</dt><dd>Sync and friends use standard primitives: AES-256-GCM, X25519, Ed25519 and HKDF. The relay carries sealed data it can't read.</dd></div>
+          <div><dt>Your relay, your rules</dt><dd>You host the relay on your own free Cloudflare account. Every request is signed, and only your devices and people you approve can use it.</dd></div>
+          <div><dt>Signed by each device</dt><dd>Every sync record is signed by the device that wrote it. Removing a device rotates the keys and locks it out of Friends.</dd></div>
+          <div><dt>Signed updates</dt><dd>Updates come only from this project's GitHub releases, with an Ed25519 signature checked before anything installs.</dd></div>
+          <div><dt>An assistant on a short lead</dt><dd>No shell, no file tools. It can do nearly everything with Undo; anything sensitive needs your approval.</dd></div>
+          <div><dt>Untrusted text stays text</dt><dd>Emails, calendar invites, bank memos, invites and friends' data are escaped before they reach the page.</dd></div>
+        </dl>
+        <div class="review">
+          <h3>Reviewed end to end before launch</h3>
+          <p>Six independent AI security reviewers each took one area: the local server, encryption and sync, the relay and friends, untrusted content, the AI tools and the release pipeline. They worked from the code with proof scripts against demo data. Every finding was fixed in version 2.20.0, apart from the first two limits below. This was a structured review, not a paid human audit or a certification.</p>
+          <h3>The honest limits</h3>
+          <ul>
+            <li>The Windows installer is not code-signed yet, so SmartScreen warns once. Each release lists SHA-256 checksums to compare.</li>
+            <li>Sign-ins and keys on your computer are files your own user account can read, as with most desktop apps. Use disk encryption.</li>
+            <li>Your relay runs on Cloudflare's free tier, so a flood of requests can pause it until midnight UTC. It never exposes data.</li>
+          </ul>
+          <p class="links"><a href="https://github.com/mahdi1190/opendash/blob/main/docs/PRIVACY.md">What is stored, and when anything leaves</a> <a href="https://github.com/mahdi1190/opendash/blob/main/.github/SECURITY.md">Security policy and threat model</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-<section id="start" class="wrap">
-  <h2>Quick start</h2>
-  <ol class="steps">
-    <li><strong>Download</strong> the zip from the <a href="https://github.com/mahdi1190/opendash/releases/latest">latest release</a> and unzip it. You need <a href="https://nodejs.org">Node.js</a> 20 or newer.</li>
-    <li><strong>Run</strong> <code>start-opendash.bat</code> on Windows, or <code>sh start-opendash.sh</code> on macOS and Linux.</li>
-    <li><strong>Open</strong> <code>http://localhost:4173</code> in your browser (the launcher does it for you) and follow the short welcome.</li>
-  </ol>
-  <p>Updates are built in: <strong>Settings &gt; Updates</strong> checks GitHub for the newest release and installs it, verified and backed up.</p>
-  <p class="cta"><a class="btn" href="https://github.com/mahdi1190/opendash/releases/latest">Download OpenDash</a>
-    <a class="btn ghost" href="https://github.com/mahdi1190/opendash/blob/main/docs/INSTALL.md">Install guide</a></p>
-</section>
+  <section id="cloud" class="hour" aria-labelledby="h-cloud">
+    <div class="wrap hour-in">
+      <p class="clock"><time>23:30</time> Your choice</p>
+      <div class="hour-body">
+        <div class="lede">
+          <h2 id="h-cloud">Cloud is optional</h2>
+          <p>You never need it. You decide how far your data goes, one level at a time. There is no Freeflo cloud at any level.</p>
+        </div>
+        <ol class="levels">
+          <li>
+            <svg viewBox="0 0 120 40" aria-hidden="true" focusable="false"><rect class="dev" x="6" y="12" width="24" height="16" rx="3"/></svg>
+            <h3>Local only</h3>
+            <p class="who">The default. Read by: you.</p>
+            <p>Everything stays in one folder on this computer.</p>
+          </li>
+          <li>
+            <svg viewBox="0 0 120 40" aria-hidden="true" focusable="false"><rect class="dev" x="6" y="12" width="24" height="16" rx="3"/><circle class="relay" cx="60" cy="20" r="7"/><rect class="dev" x="90" y="12" width="24" height="16" rx="3"/><path class="link" d="M32 20H51M69 20H88"/></svg>
+            <h3>Your own devices</h3>
+            <p class="who">Read by: you, on your devices.</p>
+            <p>Your computers stay in step through a relay <em>you</em> host on your own free Cloudflare account, set up with one click. A OneDrive, Google Drive or Dropbox folder can keep an encrypted backup.</p>
+          </li>
+          <li>
+            <svg viewBox="0 0 120 40" aria-hidden="true" focusable="false"><rect class="dev" x="6" y="12" width="24" height="16" rx="3"/><circle class="relay" cx="60" cy="20" r="7"/><circle class="friend" cx="100" cy="9" r="5"/><circle class="friend" cx="100" cy="31" r="5"/><path class="link" d="M32 20H51M67 17L93 10M67 23L93 30"/></svg>
+            <h3>Friends you approve</h3>
+            <p class="who">Read by: each friend, only what you pick.</p>
+            <p>Friends connect to you with an invite link or a 4-letter friend code, you both check the same pictures, and you press Accept. They can use your relay or host their own.</p>
+          </li>
+        </ol>
+        <p class="tip">For the most privacy, host your own relay, or stay local and use the relay only between your own devices.</p>
+        <div class="pair">
+          <figure class="shot">
+            <img src="img/settings-sync.png" alt="Settings, Sync: off, with a note that your data stays on this computer" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption>Sync starts off. Your data stays on this computer.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="img/settings-relay.png" alt="Settings, Your relay: Set up my relay on your own Cloudflare account" width="1440" height="900" loading="lazy" decoding="async">
+            <figcaption>Your own relay, on your own Cloudflare account.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" class="hour" aria-labelledby="h-faq">
+    <div class="wrap hour-in">
+      <p class="clock"><time>23:45</time> Questions</p>
+      <div class="hour-body">
+        <h2 id="h-faq">Questions people ask</h2>
+        <div class="faq">
+          <details>
+            <summary>Is it really free?</summary>
+            <p>Yes. Freeflo is open source under the MIT licence. The optional AI features use your own Claude plan through Claude Code, and the optional relay fits in Cloudflare's free plan.</p>
+          </details>
+          <details>
+            <summary>Do I need the internet or an account?</summary>
+            <p>No. Tasks, the calendar view, money from a CSV, people and the brief all work offline. There is nothing to sign up for.</p>
+          </details>
+          <details>
+            <summary>Why does Windows warn me about the installer?</summary>
+            <p>The installer is not code-signed yet, so SmartScreen does not recognise it. Choose More info, then Run anyway, after comparing the file with the SHA-256 checksum on the release page.</p>
+          </details>
+          <details>
+            <summary>Can the Freeflo project see my data?</summary>
+            <p>No. There is no Freeflo server. Sync and friends go through a relay on your own Cloudflare account, end-to-end encrypted.</p>
+          </details>
+          <details>
+            <summary>Does it work on a Mac or Linux?</summary>
+            <p>Yes. Download the zip, install Node.js 20 or newer, and run <code>sh start-opendash.sh</code>. It opens in your browser.</p>
+          </details>
+          <details>
+            <summary>Can I send friends songs?</summary>
+            <p>Yes, if you link your own Spotify (a free Spotify app made with a Premium account, set up in about two minutes). A friend gets a card with the cover and a link, and needs nothing installed to open it. Freeflo never asks for your Spotify password or a client secret.</p>
+          </details>
+          <details>
+            <summary>Can friends see what I am listening to?</summary>
+            <p>Only if you switch it on. Then a friend who opens your card sees the song playing right now, like a status line. It is sent only when they look, never for a podcast, and only to friends who can see your card.</p>
+          </details>
+          <details>
+            <summary>How do updates work?</summary>
+            <p>Settings, then Updates, asks GitHub when you choose. A new release is checked against its signature and checksum, the old files are backed up, and your data folder is never touched.</p>
+          </details>
+        </div>
+        <p class="more"><a href="https://github.com/mahdi1190/opendash/blob/main/docs/FAQ.md">All questions</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="last" aria-labelledby="h-get">
+    <div class="wrap last-in">
+      <h2 id="h-get">Tomorrow starts calmer</h2>
+      <div class="cta">
+        <a class="btn" href="https://github.com/mahdi1190/opendash/releases/latest">Download for Windows</a>
+        <a class="btn quiet" href="https://github.com/mahdi1190/opendash/blob/main/docs/INSTALL.md">Install guide for macOS and Linux</a>
+      </div>
+    </div>
+  </section>
+</div>
 </main>
 
 <footer class="foot">
-  <div class="wrap">
-    <p>OpenDash is free and open source under the MIT licence. <a href="https://github.com/mahdi1190/opendash">Source</a> · <a href="https://github.com/mahdi1190/opendash/tree/main/docs">Documentation</a> · <a href="https://github.com/mahdi1190/opendash/blob/main/docs/CHANGELOG.md">Changelog</a></p>
-    <p class="small">This page has no trackers, cookies, scripts or external fonts.</p>
-  </div>
+    <div class="wrap foot-in">
+      <p>Freeflo is free and open source under the MIT licence.</p>
+      <ul>
+        <li><a href="https://github.com/mahdi1190/opendash">Source</a></li>
+        <li><a href="https://github.com/mahdi1190/opendash/tree/main/docs">Documentation</a></li>
+        <li><a href="https://github.com/mahdi1190/opendash/blob/main/docs/CHANGELOG.md">Changelog</a></li>
+        <li><a href="https://github.com/mahdi1190/opendash/blob/main/.github/SECURITY.md">Report a security problem</a></li>
+      </ul>
+      <p class="fine">This page has no scripts, cookies, trackers or third-party fonts.</p>
+    </div>
 </footer>
 </body>
 </html>

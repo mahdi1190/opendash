@@ -47,6 +47,12 @@
     // exactly MBM.cycleOf(to, 'month'), the Overview's month mode.
     function periodOf(period, ref, anchor, minN, weekStart) {
       ref = Math.min(Number.isFinite(ref) ? ref : anchor, anchor);
+      if (period === 'year') {
+        // A calendar year, up to today. No "usual" to compare with: the story just tells it.
+        const m0 = U.mIdx(ref) - new Date(ref * 864e5).getUTCMonth();
+        const start = U.mStart(m0), next = U.mStart(m0 + 12), to = Math.min(next - 1, anchor);
+        return { mode: 'year', start, next, len: next - start, day: to - start, daysLeft: next - to, late: false, prev: [] };
+      }
       if (period !== 'week') {
         const next = U.mStart(U.mIdx(ref) + 1);
         return MBM.cycleOf(Math.min(next - 1, anchor), 'month', null, minN);
@@ -63,7 +69,7 @@
       opts = opts || {};
       const fmt = opts.fmt || MBM.makeFmt();
       const tx = input.tx || [], A = input.anchor, minN = input.minN;
-      const period = opts.period === 'week' ? 'week' : 'month';
+      const period = opts.period === 'week' ? 'week' : opts.period === 'year' ? 'year' : 'month';
       const cyc = periodOf(period, opts.ref, A, minN, opts.weekStart);
       const to = cyc.start + cyc.day;
       const days = cyc.day + 1;
@@ -114,6 +120,8 @@
         const run = keys.map(() => 0);
         const frames = [];
         for (let d = 0; d < days; d++) { per.forEach((a, i) => { run[i] = r2(run[i] + a[d]); }); frames.push({ n: cyc.start + d, values: run.slice() }); }
+        // A year races week by week (the last day always stays).
+        if (period === 'year') return { keys, frames: frames.filter((f, i) => i % 7 === 0 || i === frames.length - 1) };
         return { keys, frames };
       })();
       // The biggest purchase: the largest one-off (not a regular payment, not rent or a bill), else the largest.
@@ -156,7 +164,35 @@
         streak: best.len >= 2 ? best : null,
         noSpendDays,
       };
+      // The story's scenes: what kind of place each payment was, when the page says (28-money-scenes.js). Same rows, same sums.
+      const tally = {};
+      if (typeof opts.tallyOf === 'function') {
+        for (const t of spend) {
+          if (!(t.s > 0)) continue;
+          let id = ''; try { id = opts.tallyOf(t) || ''; } catch (e) { id = ''; }
+          if (!id) continue;
+          const g = tally[id] || (tally[id] = { v: 0, n: 0, by: new Map() });
+          g.v += t.s; g.n++; bump(g.by, keyOf(t.m), t.s);
+        }
+        for (const g of Object.values(tally)) {
+          g.v = r2(g.v);
+          const k = top1(g.by), mm = merBy.get(k);
+          if (mm) g.lead = { m: mm.m, c: mm.c, name: mm.name };
+          delete g.by;
+        }
+      }
+      // A year: spending month by month.
+      const months = [];
+      if (period === 'year') {
+        const m0 = U.mIdx(cyc.start);
+        for (let i = 0; i < 12; i++) {
+          const a = U.mStart(m0 + i), b = U.mStart(m0 + i + 1);
+          if (a > to) break;
+          months.push({ n: a, v: r2(sumBy(spend, t => (t.n >= a && t.n < b ? t.s : 0))) });
+        }
+      }
       const S = {
+        tally, months,
         v: 1, period, anchor: A, start: cyc.start, next: cyc.next, to, len: cyc.len, day: cyc.day, days, complete,
         thisPeriod: cyc.next > A, cycle: cyc,
         spent, payments, perDay: r2(spent / Math.max(1, days)), curve, pace, usual, usualEnd, mood,
@@ -177,6 +213,12 @@
     const dayRef = (n, anchor, fmt) => (n === anchor ? 'today' : n === anchor + 1 ? 'tomorrow' : n > anchor && n - anchor < 7 ? 'on ' + fmt.weekday(n) : 'on ' + fmt.short(n));
     // How the period is named in a sentence.
     function words(S, fmt) {
+      if (S.period === 'year') {
+        const y = new Date(S.start * 864e5).getUTCFullYear();
+        return S.thisPeriod
+          ? { when: 'so far this year', in: 'this year', name: String(y), unit: 'year', usual: 'a usual year', headline: `${y} so far`, intro: `Here's ${y} so far, in money.`, close: `That's ${y} so far.` }
+          : { when: `in ${y}`, in: `in ${y}`, name: String(y), unit: 'year', usual: 'a usual year', headline: `${y} in money`, intro: `Here's your ${y} in money.`, close: `That was ${y}. Here's to the next one.` };
+      }
       const mon = fmt.month(S.start);
       if (S.period === 'month') return S.thisPeriod
         ? { when: 'so far this month', in: 'this month', name: mon, unit: 'month', usual: 'your usual pace', headline: `${mon} so far`, intro: `Here's ${mon} so far, in money.`, close: `That's ${mon} so far. Check back when the month is done.` }

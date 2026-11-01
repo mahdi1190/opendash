@@ -33,7 +33,7 @@ export const TOP_DIRS = ['src', 'server', 'lib', 'mcp', 'cloudflare', 'tools', '
 // .claude/skills/animation-pack is committed source that ships: the animation tool's briefs (tools/lib/anim-templates/)
 // tell the reader to open it, and the tool's own tests read it. The rest of .claude is per-machine and never ships.
 // assets/objects holds the raster library objects (docs/dev/OBJECT_IMPORT.md): build.mjs embeds them in the page.
-export const PARTIAL_DIRS = { assets: ['brand', 'objects'], '.claude': ['skills/animation-pack'] };
+export const PARTIAL_DIRS = { assets: ['brand', 'brands', 'objects'], '.claude': ['skills/animation-pack'] };
 
 // Why well-known top-level entries are left out (anything else: "not on the allowlist").
 const TOP_WHY = {

@@ -39,6 +39,7 @@ import { recorder, snapshot, restore, sameSnap } from './entities.mjs';
 import { createJournal } from './journal.mjs';
 import { ensureLocalToken, signConfirm, verifyConfirm, sha } from './auth.mjs';
 import { nearDuplicate } from './find.mjs';
+import { LOW_RISK_OP_NAMES, SENSITIVE_OP_NAMES } from '../../lib/agent-tiers.mjs';
 import { clockFor, systemZone, timeStoreFor } from '../../lib/clock.mjs';
 import {
   ActionError, SOURCES, clock, clone, stable, cleanLine, normTag, tagCounts, tagRegistry, closest, truncate, newActivityId, newToken, weekdayOf,
@@ -48,7 +49,9 @@ import {
 export const MAX_OPS = 200;
 export const CONFIRM_OVER = 25;
 
-export function createActions({ dataDir, store, getConfig, financeDir, log = () => {}, now = () => Date.now(), writeGate = null } = {}) {
+// effects: (list, info) => Promise<[{op, ok, result | error}]>, what the sensitive ops (ops-sensitive.mjs) do outside the state.
+// Only the running dashboard has it (server/routes/agent.mjs): without it they are refused, never half done.
+export function createActions({ dataDir, store, getConfig, financeDir, log = () => {}, now = () => Date.now(), writeGate = null, effects = null } = {}) {
   if (!dataDir) throw new Error('createActions needs dataDir');
   const paths = dataPaths(dataDir);
   // writeGate: for a store made here (MCP embedded mode, tools), see server/state-store.mjs
@@ -159,7 +162,7 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
     value.issued = issued;
     return value;
   }
-  function executeOps(cur, items, { source, client, today, timeNow, idSeed }) {
+  function executeOps(cur, items, { source, client, today, timeNow, idSeed, zone, cfg }) {
     const s = clone(cur);
     s.custom = Array.isArray(s.custom) ? s.custom : [];
     const rec = recorder(s);
@@ -167,10 +170,12 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
     const warnings = [];
     const errors = [];
     const preview = [];
+    const fx = [];
     let current = null;
     const pseudoQ = { s, clock: { today } };
     const ctx = {
-      s, today, now: timeNow, source, client, refs,
+      s, today, now: timeNow, source, client, refs, zone, cfg,
+      effect: (e) => fx.push({ index: current, ...e }),   // done after the state is saved, never in a dry run
       paths,                                         // the data folder (ops-autolink.mjs reads the workspace index)
       warn: (message) => warnings.push({ opIndex: current, message }),
       touch: (key) => rec.touch(key),
@@ -233,15 +238,18 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
     const reasons = [];
     if (items.length > CONFIRM_OVER) reasons.push(`more than ${CONFIRM_OVER} ops (${items.length})`);
     const danger = [...new Set(items.filter(i => i.def.danger).map(i => i.def.name))];
-    if (danger.length) reasons.push(`deletes or merges (${danger.join(', ')})`);
+    const delicate = danger.filter(n => SENSITIVE_OP_NAMES.has(n));
+    if (delicate.length) reasons.push(`sensitive: sends something, shares data, signs in or changes devices (${delicate.join(', ')})`);
+    if (danger.length > delicate.length) reasons.push(`deletes or merges (${danger.filter(n => !delicate.includes(n)).join(', ')})`);
     const taskCount = entities.filter(e => e.key.startsWith('task:')).length;
     if (taskCount > CONFIRM_OVER) reasons.push(`changes more than ${CONFIRM_OVER} tasks (${taskCount})`);
-    return { next: s, preview, warnings, errors, entities, reasons, created: preview.filter(p => p.created).map(p => ({ index: p.index, ...p.created })) };
+    return { next: s, preview, warnings, errors, entities, reasons, effects: fx, created: preview.filter(p => p.created).map(p => ({ index: p.index, ...p.created })) };
   }
 
   const meta = async (source, client, zone) => {
     const cfg = await config();
-    return { source: SOURCES.includes(source) ? source : 'script', client: client ? cleanLine(client, 80) || null : null, today: (await clockNow(cfg, zone)).today, timeNow: now() };
+    const clk = await clockNow(cfg, zone);
+    return { source: SOURCES.includes(source) ? source : 'script', client: client ? cleanLine(client, 80) || null : null, today: clk.today, timeNow: now(), zone: clk.timezone, cfg };
   };
   const summarize = (preview) => {
     const changed = preview.filter(p => p.changes.length);
@@ -266,6 +274,16 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
       } catch { /* the format errors alone are still reported */ }
       errors.sort((a, b) => (a.opIndex ?? 0) - (b.opIndex ?? 0));
       throw batchError(errors);
+    }
+    // The second lock on the tiers (lib/agent-tiers.mjs; the first is mcp/server.mjs): on its own, without a proposal
+    // the person approved, the in-app assistant may only run low-risk ops, and each of those may refuse some values.
+    if (m.source === 'assistant' && !args.dryRun && !internal.proposalId) {
+      const no = items.find(i => !LOW_RISK_OP_NAMES.has(i.def.name));
+      if (no) throw new ActionError('PROPOSE_ONLY', `the assistant cannot run ${no.def.name} by itself`, { hint: 'use propose_changes; the user approves it on screen' });
+      for (const i of items) {
+        const why = i.def.assistantRefuse && i.def.assistantRefuse(i.params);
+        if (why) throw new ActionError('PROPOSE_ONLY', why, { hint: 'use propose_changes; the user approves it on screen' });
+      }
     }
     const key = args.idempotencyKey != null ? String(args.idempotencyKey).slice(0, 200) : null;
     if (args.idempotencyKey != null && (!String(args.idempotencyKey).trim() || ['__proto__', 'constructor', 'prototype'].includes(key))) throw new ActionError('INVALID_PARAMS', 'idempotencyKey must be a non-empty string (and not a reserved word)', { field: 'idempotencyKey' });
@@ -303,6 +321,7 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
     if (key) { const prev = await replay(); if (prev) return prev; }
     const sec = await getSecret();
     let response = null;
+    let pendingFx = [];
     const mopts = {
       ifVersion: args.ifVersion, source: m.source, client: m.client, summary: null,
       afterCommit: async (info) => {
@@ -384,8 +403,20 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
           });
         }
       }
+      if (r.effects.length) {
+        if (!effects) throw new ActionError('NEEDS_DASHBOARD', 'OpenDash has to be open on this computer to do that', { hint: 'ask the user to start OpenDash, then try again' });
+        pendingFx = r.effects;
+        // Marked before anything goes out, under the lock: two clicks can never send it twice.
+        if (internal.proposalId && !r.entities.length) {
+          await journal.update((j) => {
+            const pr = j.proposals[internal.proposalId];
+            if (internal.proposalIdx) markProposalOps(pr, internal.proposalIdx, [], null);
+            else if (pr) Object.assign(pr, { status: 'applied', appliedAt: now(), undo: null });
+          });
+        }
+      }
       if (!r.entities.length) {
-        response = { ok: true, applied: items.length, changed: 0, version: Number(cur._lastSave) || 0, summary: 'nothing changed', preview: publicPreview(r.preview), warnings: r.warnings, created: [], undo: null };
+        response = { ok: true, applied: items.length, changed: 0, version: Number(cur._lastSave) || 0, summary: r.effects.length ? summarize(r.preview) : 'nothing changed', preview: publicPreview(r.preview), warnings: r.warnings, created: [], undo: null };
         return null;
       }
       mopts.summary = summarize(r.preview);
@@ -393,7 +424,44 @@ export function createActions({ dataDir, store, getConfig, financeDir, log = () 
     }, mopts);
     if (!response) response = { ok: true, applied: items.length, changed: 0, version: res.version, summary: 'nothing changed', preview: [], warnings: [], undo: null };
     if (res.written) log('note', `actions: ${items.length} op(s) by ${m.source}${m.client ? ':' + m.client : ''} -> v${res.version}`);
+    if (pendingFx.length) await finishEffects(pendingFx, { response, m, key, oh, internal });
     return response;
+  }
+
+  /** The state part is saved: now do what the sensitive ops asked for, and keep a line of it in the history. */
+  async function finishEffects(list, { response, m, key, oh, internal }) {
+    let results;
+    try { results = await effects(list, { source: m.source, client: m.client }); }
+    catch (e) { results = list.map(x => ({ op: x.op, ok: false, error: String((e && e.message) || 'It could not be done.').slice(0, 300) })); }
+    response.effects = results;
+    const failed = results.filter(r => !r.ok);
+    const stateChanged = response.changed > 0;
+    if (failed.length === results.length && !stateChanged) {
+      // Nothing happened: the person can try again.
+      if (internal.proposalId) {
+        await journal.update((j) => {
+          const pr = j.proposals[internal.proposalId];
+          if (!pr) return;
+          // A proposal's status follows appliedIdx in its synced file (journal.mjs), so that has to go back too.
+          pr.appliedIdx = internal.proposalIdx ? (pr.appliedIdx || []).filter(i => !internal.proposalIdx.includes(i)) : [];
+          pr.status = 'pending'; delete pr.appliedAt;
+        }).catch(() => {});
+      }
+      throw new ActionError('EFFECT_FAILED', failed[0].error || 'That could not be done.', { hint: 'nothing was sent or changed' });
+    }
+    if (failed.length) response.warnings = [...(response.warnings || []), ...failed.map(f => ({ message: `Not done: ${f.error}` }))];
+    const undo = results.map(r => r.ok && r.result && r.result.undo).find(Boolean);
+    if (undo && !response.undo) response.effectUndo = undo;
+    if (!stateChanged) {
+      // In the history too (no undo from here), so "what did the assistant do?" has an answer. A retry with the same key does not repeat it.
+      try {
+        const token = newToken('undo');
+        await journal.update((j) => {
+          j.history.push({ token, at: now(), version: response.version, prevVersion: response.version, source: m.source, client: m.client, summary: truncate(response.summary, 300), ops: list.length, entities: null });
+          if (key) j.idem[key] = { at: now(), response, opsHash: oh };
+        });
+      } catch (e) { log('warn', `actions: could not note a sensitive action in the history (${e.code || e.message})`); }
+    }
   }
 
   // ── Undo ────────────────────────────────────────────────────────────

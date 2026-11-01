@@ -123,14 +123,14 @@ function gartSway(o, r, inner) {
   if (!o.anim || !inner) return inner;
   return `<g class="gda-sway" style="${GART.T(r, 0, 5)}">${inner}</g>`;
 }
-/** Flower heads are not animated on their own (a garden draws a plant up to 250 times): the plant sways. */
-function gartNod(o, r, inner) { return inner; }
 /** A soft halo behind glowing things at dusk and night (the engine's gda-glow pulses it). */
 function gartHalo(o, r, x, y, R, col) {
   const A = GART;
   if (!(o.night || o.dusk) || o.silhouette) return '';
   const c = col || GART_PAL.glow;
-  return `<g class="gda-glow" style="${A.T(r, 0, 3)}">${A.P(c, A.circ(x, y, R), o.night ? 0.22 : 0.12) + A.P(c, A.circ(x, y, R * 0.6), o.night ? 0.3 : 0.16)}</g>`;
+  // five faint discs, not two strong ones: a soft falloff with no ring at its edge, and still no gradient
+  const k = o.night ? 1 : 0.55;
+  return `<g class="gda-glow" style="${A.T(r, 0, 3)}">${A.P(c, A.circ(x, y, R * 1.15), 0.05 * k) + A.P(c, A.circ(x, y, R * 0.95), 0.06 * k) + A.P(c, A.circ(x, y, R * 0.75), 0.08 * k) + A.P(c, A.circ(x, y, R * 0.55), 0.1 * k) + A.P(c, A.circ(x, y, R * 0.35), 0.14 * k)}</g>`;
 }
 
 /* ---------- flower heads ---------- */
@@ -181,17 +181,4 @@ function gartRoseHead(A, x, y, R, cols, open) {
   const sw = `M${A.f1(x - R * 0.55)} ${A.f1(y + R * 0.05)}Q${A.f1(x - R * 0.5)} ${A.f1(y - R * 0.62)} ${A.f1(x + R * 0.12)} ${A.f1(y - R * 0.5)}Q${A.f1(x + R * 0.58)} ${A.f1(y - R * 0.3)} ${A.f1(x + R * 0.3)} ${A.f1(y + R * 0.2)}`
     + `M${A.f1(x - R * 0.28)} ${A.f1(y + R * 0.1)}Q${A.f1(x - R * 0.3)} ${A.f1(y - R * 0.3)} ${A.f1(x + R * 0.08)} ${A.f1(y - R * 0.25)}Q${A.f1(x + R * 0.3)} ${A.f1(y - R * 0.1)} ${A.f1(x + R * 0.05)} ${A.f1(y + R * 0.12)}`;
   return A.P(cols[0], rim) + A.P(cols[1], outer) + A.P(cols[2], A.ell(x - R * 0.3, y - R * 0.28, R * 0.42, R * 0.32), 0.55) + A.S(cols[0], Math.max(0.6, R * 0.13), sw, 0.8);
-}
-/** Hanging bells along an arching stem: count n from (x, y); returns {stem, bells, inner}. */
-function gartBellRow(A, x, y, a, L, bend, n, size) {
-  const s = A.stem(x, y, a, L, bend);
-  let bells = '', inner = '', ped = '';
-  for (let i = 0; i < n; i++) {
-    const t = 0.45 + (i / Math.max(1, n - 1)) * 0.5, p = s.pt(t), g = s.ang(t), side = bend > 0 ? 1 : -1, sz = size * (1 - i * 0.06);
-    const bx = p[0] + Math.cos(g) * side * 2.4, by = p[1] + Math.sin(g) * side * 2.4 + 2.2;
-    ped += `M${A.f1(p[0])} ${A.f1(p[1])}Q${A.f1(bx)} ${A.f1(by - 2.4)} ${A.f1(bx)} ${A.f1(by - 1.4)}`;
-    bells += `M${A.f1(bx - sz * 0.55)} ${A.f1(by + sz * 0.9)}Q${A.f1(bx - sz * 0.6)} ${A.f1(by - sz * 0.3)} ${A.f1(bx)} ${A.f1(by - sz * 0.4)}Q${A.f1(bx + sz * 0.6)} ${A.f1(by - sz * 0.3)} ${A.f1(bx + sz * 0.55)} ${A.f1(by + sz * 0.9)}l${A.f1(-sz * 0.25)} ${A.f1(-sz * 0.25)}l${A.f1(-sz * 0.3)} ${A.f1(sz * 0.3)}l${A.f1(-sz * 0.3)} ${A.f1(-sz * 0.3)}z`;
-    inner += A.ell(bx - sz * 0.18, by + sz * 0.15, sz * 0.18, sz * 0.5);
-  }
-  return { stem: s.d + ped, bells, inner, tip: s.tip };
 }

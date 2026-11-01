@@ -41,6 +41,7 @@ function viewsSetMode(k) {
     return;
   }
   state.viewMode = k; saveUI(); render();
+  if (typeof gameMark === 'function') gameMark('view-mode', k);   // achievements (71-ach-src-b2-work.js)
 }
 function _vwReduced() { return !!(window.Motion && typeof Motion.prefersReduced === 'function' && Motion.prefersReduced()); }
 

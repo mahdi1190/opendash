@@ -498,7 +498,7 @@ async function storyOpen(kind, opts) {
     if (seq !== _story.seq) return;
     root.classList.remove('is-loading'); root.classList.add('is-error');
     root.querySelector('.st-poster-h').textContent = 'The story could not load.';
-    root.querySelector('.st-poster-sub').textContent = _serverAvailable === false ? 'The OpenDash server is not running. Start OpenDash, then press Try again.' : (e.message || 'Try again in a moment.');
+    root.querySelector('.st-poster-sub').textContent = _serverAvailable === false ? 'The Freeflo server is not running. Start Freeflo, then press Try again.' : (e.message || 'Try again in a moment.');
     root.querySelector('.st-bigplay').hidden = true;
     // One click to load it again (no closing and finding the story again).
     const again = document.createElement('button'); again.type = 'button'; again.className = 'btn btn-secondary btn-sm st-retry';
@@ -748,7 +748,7 @@ function storyAutoOpen(kind) {
 /** Rewriting failed: why (signed out, usage limit, timeout...) and the fix or Try again (70-ai.js). */
 function _stAiError(e, retry) {
   if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Claude could not rewrite the story', retry });
-  else toast((e && e.message) || 'Claude could not rewrite the story just now.', { kind: 'err' });
+  else toast((e && e.message) || 'Claude could not rewrite the story just now. Try again in a moment.', { kind: 'err' });
 }
 /** A page-built kind's Claude version: src.ai(payload, {regenerate}) -> a new script or null (quiet unless asked). */
 async function _stSourceAi(src, regenerate) {
@@ -958,6 +958,7 @@ function _stOnEnd() {
   const root = _story.root; if (!root) return;
   root.querySelectorAll('.st-seg').forEach(s => s.style.setProperty('--p', '1'));
   seenMarkDay('storyPlayed:' + _story.kind, todayStrSafe());   // synced: played on one computer, played everywhere (06-core-seen.js)
+  if (typeof gameStreakTick === 'function') gameStreakTick('story-' + _story.kind);   // achievements (71-ach-pack-plan.js)
 }
 function _stPaintProgress() {
   const root = _story.root; if (!root) return;

@@ -8,7 +8,7 @@
    Undo instead of confirms everywhere; text from friends with textContent only.
    ============================================================ */
 const _ptUI = { entry: '', undo: [], redo: [], pose: 'sit', adoptSpecies: '', busy: false, trickT: 0 };
-const PET_TABS = Object.freeze([['together', 'Together', 'heart'], ['wardrobe', 'Wardrobe', 'shirt'], ['journal', 'Journal', 'notebook-pen']]);
+const PET_TABS = Object.freeze([['together', 'Together', 'heart'], ['collection', 'Collection', 'paw-print'], ['tricks', 'Tricks', 'wand-sparkles'], ['wardrobe', 'Wardrobe', 'shirt'], ['journal', 'Journal', 'notebook-pen']]);
 function _ptTab(v) { const m = /^pet:([a-z]+)$/.exec(String(v || '')); return m && PET_TABS.some(t => t[0] === m[1]) ? m[1] : 'together'; }
 function _ptEl(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
 /** The pet page's button: a thin adapter over the kit's uiButton (run(button, event); cls 'btn-primary' | 'btn-ghost'; no label = an icon button). */
@@ -38,7 +38,7 @@ if (typeof registerSection === 'function') {
     crumb: (v) => (_ptTab(v) === 'together' ? [] : [(PET_TABS.find(t => t[0] === _ptTab(v)) || [])[1] || '']),
     group: 'home', layout: 'page', hashable: true, taskControls: false,
     mount(container, view) { _ptMount(container, view || state.view); },
-    unmount() { _ptUI.entry = ''; },
+    unmount() { _ptUI.entry = ''; if (_ptUI.stage) { try { _ptUI.stage.stop(); } catch (e) { /* gone */ } _ptUI.stage = null; } },
   });
 }
 function _ptMount(container, view) {
@@ -47,12 +47,13 @@ function _ptMount(container, view) {
   const sub = document.getElementById('view-subtitle');
   const g = petGet();
   const root = _ptEl('div', 'pt-page pt-tab-' + tab + (entering ? ' is-enter' : ''));
+  container.appendChild(root);   // 2.23: in the document while it is built: the stage measures itself
   try {
-    if (!g.has) { headerSubTabs(null); if (sub) sub.textContent = 'A little companion that grows with what you do'; _ptAdopt(root); container.appendChild(root); return; }
+    if (!g.has) { headerSubTabs(null); if (sub) sub.textContent = 'A little companion that grows with what you do'; _ptAdopt(root); return; }
     if (sub) sub.textContent = (petMood() || {}).line || '';
     // 2.19.1: Together (your pet, its care, tricks and journal) and Wardrobe are the page header's pills; the journal is part of Together now
-    headerSubTabs(subTabs({ label: 'Your pet', active: tab === 'wardrobe' ? 'wardrobe' : 'together', onChange: (id) => setView(id === 'together' ? 'pet' : 'pet:' + id),
-      tabs: [['together', 'Together', 'heart'], ['wardrobe', 'Wardrobe', 'shirt']].map(([id, label, ic]) => ({ id, label, icon: ic })) }), /^pet(:|$)/);
+    headerSubTabs(subTabs({ label: 'Your pet', active: tab === 'journal' ? 'together' : tab, onChange: (id) => setView(id === 'together' ? 'pet' : 'pet:' + id),
+      tabs: [['together', 'Together', 'heart'], ['collection', 'Collection', 'paw-print'], ['tricks', 'Tricks', 'wand-sparkles'], ['wardrobe', 'Wardrobe', 'shirt']].map(([id, label, ic]) => ({ id, label, icon: ic })) }), /^pet(:|$)/);
     if (!g.on) root.appendChild(_ptAwayNote(g));
     if (_ptFun() === 'off') {
       const n = _ptEl('div', 'card pt-note'); n.innerHTML = icon('circle-x', 'i-sm');
@@ -61,14 +62,15 @@ function _ptMount(container, view) {
       root.appendChild(n);
     }
     if (tab === 'wardrobe') _ptWardrobe(root, g);
+    else if (tab === 'collection') _ptCollection(root);
+    else if (tab === 'tricks' && typeof petBookPage === 'function') petBookPage(root);
     else _ptTogether(root, g);
   } catch (e) {
     console.error('[pets] page', e);
     root.replaceChildren();
     mountEmptyState(root, { icon: 'circle-alert', compact: true, title: 'Your pet couldn’t load just now', text: 'Nothing is lost.', actions: [{ label: 'Try again', icon: 'refresh-cw', primary: true, run: () => { if (typeof render === 'function') render(); } }] });
   }
-  container.appendChild(root);
-  if (tab === 'journal') requestAnimationFrame(() => { const e = root.querySelector('.pt-journal-sec'); if (e) e.scrollIntoView({ block: 'start' }); });   // #view=pet:journal: Together, at the journal
+  if (tab === 'journal') requestAnimationFrame(() => { const e = root.querySelector('.pt-journal-sec'); if (e) { e.open = true; e.scrollIntoView({ block: 'start' }); } });   // #view=pet:journal: Together, at the journal
 }
 function _ptAwayNote(g) {
   const n = _ptEl('div', 'card pt-note');
@@ -83,13 +85,14 @@ function _ptRefresh() { if (typeof render === 'function') render(); }
 function _ptAdopt(root) {
   const head = _ptEl('div', 'pt-adopt-h');
   // The shared header draws the title (UX_BLUEPRINT.md 3): one sentence here, then the choice.
-  head.appendChild(_ptEl('p', 'muted', 'Pick a companion: finishing things earns it treats, streaks teach it tricks, and it is never sad because of you (on a quiet day it just naps).'));
+  head.appendChild(_ptEl('p', 'muted', 'Pick your first friend. Finishing things and playing in the garden earns treats and more friends.'));
   root.appendChild(head);
   const ctx = petUnlockCtx();
   const grid = _ptEl('div', 'pt-adopt-grid');
   let rs = _ptHash(_ptToday());
   const rnd = () => ((rs = (Math.imul(rs, 1664525) + 1013904223) >>> 0) / 4294967296);
   for (const sp of PET_SPECIES) {
+    if (sp.lock) continue;   // 2.23: the rest are earned (the collection), an outline below
     const lock = petLockOf('species', sp.id, ctx);
     const look = petRandom(rnd, (f, id, s) => !petLockOf(f, id, ctx, s), { species: sp.id, collar: 'plain', hat: 'none', glasses: 'none', bandana: 'none', bow: 'none' });
     const card = _ptEl('button', 'pt-adopt-card' + (lock ? ' is-locked' : '')); card.type = 'button';
@@ -108,6 +111,11 @@ function _ptAdopt(root) {
     grid.appendChild(card);
   }
   root.appendChild(grid);
+  const teaser = _ptEl('div', 'pt-adopt-more');
+  const locked = PET_SPECIES.filter(s => s.lock);
+  for (const s of locked.slice(0, 12)) { const a = _ptEl('span', 'pt-adopt-sil'); a.innerHTML = _ptSilhouette(s.id, 54); teaser.appendChild(a); }
+  const m = _ptEl('b', 'pt-adopt-n', '+' + locked.length); m.setAttribute('aria-label', locked.length + ' more pets to find'); teaser.appendChild(m);
+  root.appendChild(teaser);
 }
 
 /* ---------- Together: the hero, treats, tricks ---------- */
@@ -152,77 +160,71 @@ function _ptSay(stage, text, ms) {
   b._t = setTimeout(() => b.classList.remove('is-on'), ms || 2200);
 }
 function _ptTogether(root, g) {
-  const hero = _ptEl('section', 'card pt-hero');
-  const stage = _ptStageEl(g, 200, { onPat: () => paintSide() });
-  hero.appendChild(stage);
-  const side = _ptEl('div', 'pt-hero-side');
-  hero.appendChild(side);
+  // 2.23: the page is a game: a big living stage with a dock of big buttons; the collection and the room beside it. Words only where a picture cannot say it.
+  petCollectTick();
+  const wrap = _ptEl('div', 'ptg-page');
+  const left = _ptEl('div', 'ptg-left');
+  const stageHost = _ptEl('div', 'ptg-stage');
+  left.appendChild(stageHost);
+  wrap.appendChild(left);
+  root.appendChild(wrap);
+  if (_ptUI.stage) { try { _ptUI.stage.stop(); } catch (e) { /* gone */ } }
+  const S = petStageMount(stageHost, g, { onChange: () => paintDock() });
+  _ptUI.stage = S;
+  const dock = _ptEl('div', 'pts-dock');
+  stageHost.firstChild.appendChild(dock);
   const sp = petSpecies(g.look.species) || {};
-  const paintSide = () => {
-    const mood = petMood() || {}, t = petTreats();
-    side.replaceChildren();
-    side.appendChild(_ptEl('div', 'overline', [sp.label, g.look.breed && sp.breeds ? (sp.breeds.find(b => b.id === g.look.breed) || {}).label : ''].filter(Boolean).join(' · ')));
-    side.appendChild(_ptEl('p', 'pt-hero-mood', mood.line || ''));
-    side.appendChild(_ptEl('p', 'muted pt-hero-age', _ptAge(g.born)));
-    const acts = _ptEl('div', 'pt-acts');
-    acts.appendChild(_ptBtn('Give a pat', 'heart', () => { const r = petPat(); if (r.ok) { _ptRedrawStage(stage, g, stage._ptSize); petHeartsAt(stage); paintSide(); } }));
-    const feed = _ptBtn(t.have ? `Give a treat (${t.have})` : 'Give a treat', 'cookie', () => _ptFeedNow(stage, () => { paintSide(); paintTricks(); }), 'btn-primary');
-    acts.appendChild(feed);
-    side.appendChild(acts);
-    // the treat count is on the button; one quiet line says what earns more (the jar block said the count again)
-    side.appendChild(_ptEl('p', 'muted pt-hero-age', t.todayEarned ? `+${t.todayEarned} earned today · ${t.todayFed} given today` : (typeof gameOn === 'function' && gameOn() ? 'Each task you finish earns a treat (up to five a day).' : 'Three treats a day while the game is off.')));
+  const big = (label, art, run, o) => {
+    const b = _ptEl('button', 'pts-btn' + (o && o.cls ? ' ' + o.cls : '')); b.type = 'button';
+    b.innerHTML = art;
+    b.setAttribute('aria-label', label); b.setAttribute('data-tip', label);
+    b.onclick = (e) => { e.stopPropagation(); run(b, e); };
+    if (o && o.badge != null) b.appendChild(_ptEl('b', 'pts-badge', String(o.badge)));
+    return b;
   };
-  paintSide();
-  // 2.19.1: your pet on the left (it stays in view), its tricks, journal and settings on the right
-  const main = _ptEl('div', 'pt-stack');
-
-  // tricks
-  const tricksSec = _ptSec('Tricks', 'sparkles');
-  const tgrid = _ptEl('div', 'pt-tricks');
-  tricksSec.appendChild(tgrid);
-  const paintTricks = () => {
-    tgrid.replaceChildren();
-    for (const t of petTricks()) {
-      const c = _ptEl('div', 'pt-trick' + (t.taught ? ' is-taught' : '') + (t.lock ? ' is-locked' : ''));
-      const ic = _ptEl('span', 'pt-trick-ic'); ic.innerHTML = icon(t.lock ? 'lock' : t.icon, 'i-sm'); c.appendChild(ic);
-      const tx = _ptEl('div', 'pt-trick-t');
-      tx.appendChild(_ptEl('b', null, t.label));
-      tx.appendChild(_ptEl('span', 'muted', t.taught ? 'Learned' : t.lock ? 'Unlocks with ' + t.lock.replace(/^Reach /, '').replace(/^A /, 'a ') : `Teach for ${t.cost} treat${t.cost === 1 ? '' : 's'}`));
-      c.appendChild(tx);
-      if (t.taught) c.appendChild(_ptBtn('Do it', 'wand-sparkles', () => _ptPerform(stage, t.id)));
-      else if (!t.lock) c.appendChild(_ptBtn('Teach', 'graduation-cap', () => _ptTeachNow(stage, t, () => { paintTricks(); paintSide(); })));
-      tgrid.appendChild(c);
-    }
+  const paintDock = () => {
+    const t = petTreats();
+    dock.replaceChildren();
+    dock.appendChild(big('Pat', icon('heart'), () => S.pat(), { cls: 'is-pat' }));
+    dock.appendChild(big('Treat', petTreatSvg(sp.treat || 'cookie', 34), (b) => { S.feed(b); paintDock(); }, { cls: 'is-treat' + (t.have ? '' : ' is-empty'), badge: t.have }));
+    dock.appendChild(big('Play', petPropSvg('toy', petToyNow(), 34), (b) => S.playNow(b), { cls: 'is-play' }));
+    dock.appendChild(big('Nap', icon('moon'), () => S.nap(), { cls: 'is-nap' }));
+    dock.appendChild(big('Tricks', icon('wand-sparkles'), () => setView('pet:tricks'), { cls: 'is-tricks' }));
+    dock.appendChild(big('Dress up', icon('shirt'), () => setView('pet:wardrobe'), { cls: 'is-dress' }));
   };
-  paintTricks();
-  main.appendChild(tricksSec);
-
-  // the journal, a page at a time
-  const jSec = _ptSec('Journal', 'notebook-pen'); jSec.classList.add('pt-journal-sec');
+  paintDock();
+  // beside the stage
+  const side = _ptEl('div', 'ptg-side');
+  side.appendChild(_ptCollectPeek());
+  side.appendChild(_ptRoomCard(S));
+  wrap.appendChild(side);
+  // the quieter things, folded away: milestones and settings
+  const more = _ptEl('div', 'ptg-more');
   const jl = petJournal();
-  if (jl.length) { const pl = pagedList({ items: jl, pageSize: 8, tag: 'ol', cls: 'pt-journal-pg', render: _ptJournalItem }); pl.firstChild.classList.add('pt-journal'); jSec.appendChild(pl); }
-  else jSec.appendChild(emptyLine('Milestones land here: treats, tricks, streaks, levels, weeks together.'));
-  main.appendChild(jSec);
-
-  // with you: friends and scenes
-  main.appendChild(_ptPrefsSec(g));
-  root.appendChild(pageLayout({ main, side: hero, sideWidth: 340, sticky: true, cls: 'pt-layout' }));
+  const jDet = _ptEl('details', 'ptg-fold pt-journal-sec');
+  const js = _ptEl('summary'); js.innerHTML = icon('notebook-pen', 'i-sm'); js.appendChild(_ptEl('span', null, 'Journal')); js.appendChild(_ptEl('b', 'muted', String(jl.length))); jDet.appendChild(js);
+  if (jl.length) { const pl = pagedList({ items: jl, pageSize: 8, tag: 'ol', cls: 'pt-journal-pg', render: _ptJournalItem }); pl.firstChild.classList.add('pt-journal'); jDet.appendChild(pl); }
+  else jDet.appendChild(emptyLine('Milestones land here.'));
+  more.appendChild(jDet);
+  const pDet = _ptEl('details', 'ptg-fold');
+  const ps = _ptEl('summary'); ps.innerHTML = icon('settings', 'i-sm'); ps.appendChild(_ptEl('span', null, 'Settings')); pDet.appendChild(ps);
+  pDet.appendChild(_ptPrefsSec(g));
+  more.appendChild(pDet);
+  left.appendChild(more);
 }
 function _ptFeedNow(stage, after) {
   const g = petGet(), r = petFeed();
-  if (!r.ok) { toast(r.msg, { icon: r.full ? 'heart' : 'cookie' }); return; }
+  if (!r.ok) { _ptDeny(stage, { say: r.msg }); return; }
   const treat = _ptEl('span', 'pt-fly-treat'); treat.setAttribute('aria-hidden', 'true');
   treat.innerHTML = petTreatSvg(r.treat, 30);
   stage.appendChild(treat);
   setTimeout(() => treat.remove(), 900);
   setTimeout(() => { _ptRedrawStage(stage, g, stage._ptSize); petHeartsAt(stage); _ptSay(stage, 'Nom nom!', 1500); }, _ptMotionOk() ? 650 : 0);
-  const today = _ptToday();
-  toast(r.msg, { icon: 'cookie', action: { label: 'Undo', run: () => { const p = _ptS(); p.fed[today] = Math.max(0, (Number(p.fed[today]) || 1) - 1); petSet({}, {}); if (after) after(); } } });
   if (after) after();
 }
 function _ptTeachNow(stage, t, after) {
   const g = petGet(), r = petTeach(t.id);
-  if (!r.ok) { toast(r.msg, { icon: 'graduation-cap' }); return; }
+  if (!r.ok) { _ptDeny(stage, { say: r.msg }); return; }
   if (r.already) return;
   _ptPerform(stage, t.id, true);
   toast(`${petName(g)} learned ${t.label.toLowerCase()}`, { icon: 'graduation-cap', action: { label: 'Undo', run: () => { petUnteach(t.id); if (after) after(); } } });
@@ -259,6 +261,7 @@ function _ptPrefsSec(g) {
     rows.appendChild(r);
   };
   row('Friends see ' + petName(g), 'On your profile card and when you visit their scenes: the species, colours, accessories and name, nothing else. Off keeps them to yourself: they still sit on your own card, but not on the one friends see.', g.share, (v) => petSet({ share: v }));
+  row('Show friends\' custom accessories', 'The wigs, hats and scarves friends designed for their pets. Off draws their pets plain, as they were before.', g.friendItems, (v) => { petSet({ friendItems: v }); _ptRefresh(); });
   row('Walks with you in the scenes', 'Trots beside your figure in the Friends hangout, and beside you when you visit a friend\'s scene.', g.scenes, (v) => petSet({ scenes: v }));
   s.appendChild(rows);
   const away = _ptBtn('Put ' + petName(g) + ' away for now', 'moon', () => {
@@ -282,8 +285,26 @@ function _ptLookSet(patch, keepRedo) {
   petSet({ look: after });
   return true;
 }
+/**
+ * A "your own colour" swatch: a round label around a native colour input (opens the browser's picker). cur is the field's
+ * current id (a custom colour shows as picked), seed the colour the picker starts on, pick(id) gets 'x' + six hex digits.
+ * It commits on `change` (when the picker closes), so one pick is one undo step.
+ */
+function _ptCustomSwatch(label, cur, pick, extra, seed) {
+  const hex = petHexOf(cur), on = !!hex;
+  const sw = _ptEl('label', 'pt-sw pt-sw-custom' + (on ? ' is-on' : '') + (extra ? ' ' + extra : ''));
+  sw.style.setProperty('--a', hex || '#ffffff'); sw.style.setProperty('--b', hex || '#ffffff');
+  sw.setAttribute('data-tip', on ? `${label}: your own` : `${label}: pick your own`);
+  const inp = _ptEl('input', 'pt-color-in'); inp.type = 'color';
+  inp.value = hex || (/^#[0-9a-f]{6}$/i.test(String(seed || '')) ? String(seed).toLowerCase() : '#7a4ccc');
+  inp.setAttribute('aria-label', `${label}: pick your own colour`);
+  inp.onchange = () => { const v = String(inp.value || '').toLowerCase(); if (/^#[0-9a-f]{6}$/.test(v)) pick('x' + v.slice(1)); };
+  sw.appendChild(inp);
+  return sw;
+}
 function _ptWardrobe(root, g) {
   const wrap = _ptEl('div', 'pt-ward');
+  if (typeof petCraftStrip === 'function') { const st = petCraftStrip(g); if (st) root.appendChild(st); }   // 2.23: what you made at the bench
   const prev = _ptEl('div', 'card pt-ward-prev');
   const stageBox = _ptEl('div', 'pt-ward-stage');
   prev.appendChild(stageBox);
@@ -310,12 +331,16 @@ function _ptWardrobe(root, g) {
   dice.setAttribute('aria-label', 'Suggest a name'); dice.setAttribute('data-tip', 'Suggest a name');
   nameRow.appendChild(dice);
   prev.appendChild(nameRow);
+  // 2.22: describe a change in words (97-pets-4ai.js); greyed out without Claude like every AI feature
+  const aiRow = _ptEl('div', 'pt-ward-ai');
+  aiRow.appendChild(uiButton({ label: 'Restyle with AI', icon: 'sparkles', kind: 'secondary', size: 'sm', cls: 'ai-only', data: { requires: 'claude' }, run: () => petAiOpen() }));
+  prev.appendChild(aiRow);
   const tools = _ptEl('div', 'pt-ward-tools');
   const undoB = _ptBtn('Undo', 'undo-2', () => { const x = _ptUI.undo.pop(); if (!x) return; _ptUI.redo.push(_ptLook()); delete x.name; petSet({ look: x }); paintAll(); }, 'btn-ghost');
   const redoB = _ptBtn('Redo', 'redo-2', () => { const x = _ptUI.redo.pop(); if (!x) return; _ptUI.undo.push(_ptLook()); delete x.name; petSet({ look: x }); paintAll(); }, 'btn-ghost');
   const rand = _ptBtn('Surprise me', 'wand-sparkles', () => {
     const ctx = petUnlockCtx(), cur = _ptLook();
-    _ptLookSet(petRandom(Math.random, (f, id, s) => !petLockOf(f, id, ctx, s), { species: cur.species }));
+    _ptLookSet(petRandom(Math.random, (f, id, s) => !petLockOf(f, id, ctx, s), { species: cur.species, itemHead: cur.itemHead, itemFace: cur.itemFace, itemNeck: cur.itemNeck }));
     paintAll();
   });
   tools.append(rand, undoB, redoB);
@@ -339,13 +364,17 @@ function _ptWardrobe(root, g) {
     // species
     const sSec = _ptSec('Companion', 'paw-print');
     const sg = _ptEl('div', 'pt-tiles pt-tiles-sp');
-    for (const s of PET_SPECIES) {
-      const lock = petLockOf('species', s.id, ctx);
-      const on = s.id === look.species;
-      const t = _ptTile(lock, on, s.label, petSvg(Object.assign({}, look, { species: s.id, breed: '', coat: '', marks: '' }), { size: 64, pose: 'sit', mood: { eyes: 'open' } }));
-      t.onclick = () => { if (!lock && !on) pick('species', s.id); };
+    // 2.23: your own pets (each keeps its own look and name); the others are in the collection
+    for (const r of petCollection()) {
+      if (!r.owned) continue;
+      const s = r.sp, on = s.id === look.species;
+      const t = _ptTile('', on, s.label, petSvg(on ? look : petRosterLook(s.id), { size: 64, pose: 'sit', mood: { eyes: 'open' } }));
+      t.onclick = () => { if (!on) { petChoose(s.id); paintAll(); } };
       sg.appendChild(t);
     }
+    const toCol = _ptTile('', false, 'Find more', '<span class="pt-more-ic" aria-hidden="true">' + icon('paw-print') + '</span>');
+    toCol.onclick = () => setView('pet:collection');
+    sg.appendChild(toCol);
     sSec.appendChild(sg); opts.appendChild(sSec);
     // breed
     if (sp.breeds) {
@@ -370,7 +399,19 @@ function _ptWardrobe(root, g) {
       b.onclick = () => { if (!on) pick('coat', c.id); };
       sw.appendChild(b);
     }
+    const coatNow = sp.coats.find(c => c.id === look.coat);
+    sw.appendChild(_ptCustomSwatch('Coat colour', look.coat, (id) => pick('coat', id), 'pt-sw-coat', coatNow ? coatNow.a : ''));
     cSec.appendChild(sw);
+    // fine-tune: the second (belly, muzzle) and third (pattern) colours, which are worked out from the coat unless you set them
+    const fine = _ptEl('div', 'pt-swatches pt-fine');
+    fine.appendChild(_ptEl('span', 'muted', 'Fine-tune'));
+    const fineOf = look.coatB || look.coatC ? null : (coatNow || sp.coats[0]);
+    fine.appendChild(_ptEl('span', 'muted pt-fine-l', 'Belly'));
+    fine.appendChild(_ptCustomSwatch('Belly and muzzle colour', look.coatB, (id) => pick('coatB', id), '', fineOf ? fineOf.b : ''));
+    fine.appendChild(_ptEl('span', 'muted pt-fine-l', 'Pattern'));
+    fine.appendChild(_ptCustomSwatch('Pattern colour', look.coatC, (id) => pick('coatC', id), '', fineOf ? fineOf.c : ''));
+    if (look.coatB || look.coatC) fine.appendChild(_ptBtn('Reset', 'rotate-ccw', () => { if (_ptLookSet({ coatB: '', coatC: '' })) paintAll(); }, 'btn-ghost'));
+    cSec.appendChild(fine);
     const mg = _ptEl('div', 'pt-tiles');
     for (const m of sp.marks) {
       const on = m.id === look.marks;
@@ -389,6 +430,7 @@ function _ptWardrobe(root, g) {
       if (lock) b.disabled = true; else b.onclick = () => { if (!on) pick('eyes', id); };
       eg.appendChild(b);
     }
+    eg.appendChild(_ptCustomSwatch('Eye colour', look.eyes, (id) => pick('eyes', id), 'pt-sw-eye', petAutoEye(look) || '#2a2124'));
     cSec.appendChild(eg);
     opts.appendChild(cSec);
     // accessories
@@ -400,8 +442,19 @@ function _ptWardrobe(root, g) {
       for (const o of PET_ACC[field]) {
         const lock = petLockOf(field, o.id, ctx, look.species), on = o.id === look[field];
         const crop = field === 'collar' || field === 'bandana' ? 'none' : 'head';
-        const t = _ptTile(lock, on, o.label, o.id === 'none' ? '<span class="pt-none" aria-hidden="true"></span>' : petSvg(Object.assign({}, look, { [field]: o.id }), { size: 52, pose: 'sit', crop }));
-        t.onclick = () => { if (!lock && !on) pick(field, o.id); };
+        const key = field + ':' + o.id, payable = lock && (o.treats || o.coins);
+        const t = _ptTile(payable ? '' : lock, on, o.label, o.id === 'none' ? '<span class="pt-none" aria-hidden="true"></span>' : petSvg(Object.assign({}, look, { [field]: o.id }), { size: 52, pose: 'sit', crop }));
+        if (payable) { t.classList.add('is-shop'); t.appendChild(_ptCostIcon(o.treats ? 'treats' : 'coins', o.treats || o.coins, 13)); }
+        t.onclick = () => {
+          if (on) return;
+          if (lock && !payable) return;
+          if (payable) {
+            const r = petBuy(key);
+            if (!r.ok) { _ptDeny(t, { kind: r.why === 'coins' ? 'coins' : '', badge: r.need, say: 'Not enough ' + r.why }); return; }
+            toast(o.label + ' is yours', { icon: 'gift', timeout: 6000, action: { label: 'Undo', run: () => { petBuyUndo(key); if (_ptLook()[field] === o.id) _ptLookSet({ [field]: 'none' }); paintAll(); } } });
+          }
+          pick(field, o.id);
+        };
         tg.appendChild(t);
       }
       sub.appendChild(tg);
@@ -409,21 +462,29 @@ function _ptWardrobe(root, g) {
         const cf = field + 'Col', row = _ptEl('div', 'pt-swatches');
         for (const [id, c] of Object.entries(PET_ACC_COLS)) {
           if (field === 'glasses' && id === 'rainbow') continue;
-          const lock = petLockOf(cf, id, ctx, look.species), on = id === look[cf];
-          const b = _ptEl('button', 'pt-sw' + (on ? ' is-on' : '') + (lock ? ' is-locked' : '') + (id === 'rainbow' ? ' is-rainbow' : '')); b.type = 'button';
+          let lock = petLockOf(cf, id, ctx, look.species); const on = id === look[cf];
+          if (lock && (c.treats || c.coins) && petOwnsExtra(cf + ':' + id)) lock = '';   // a colour bought for one accessory is yours for all of them
+          const payCol = lock && (c.treats || c.coins);
+          const b = _ptEl('button', 'pt-sw' + (on ? ' is-on' : '') + (lock && !payCol ? ' is-locked' : '') + (payCol ? ' is-shop' : '') + (id === 'rainbow' ? ' is-rainbow' : '')); b.type = 'button';
           b.style.setProperty('--a', c.hex); b.style.setProperty('--b', c.hex);
           b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', `${label} colour: ${c.label}${lock ? ', ' + lock : ''}`); b.setAttribute('data-tip', lock ? `${c.label}: ${lock}` : c.label);
-          if (lock) b.disabled = true; else b.onclick = () => { if (!on) pick(cf, id); };
+          if (payCol) b.onclick = () => { const r = petBuy(cf + ':' + id); if (!r.ok) { _ptDeny(b, { kind: r.why === 'coins' ? 'coins' : '', badge: r.need, say: 'Not enough ' + r.why }); return; } toast(c.label + ' is yours', { icon: 'gift', timeout: 6000, action: { label: 'Undo', run: () => { petBuyUndo(cf + ':' + id); paintAll(); } } }); pick(cf, id); };
+          else if (lock) b.disabled = true; else b.onclick = () => { if (!on) pick(cf, id); };
           row.appendChild(b);
         }
+        row.appendChild(_ptCustomSwatch(`${label} colour`, look[cf], (id) => pick(cf, id), '', (PET_ACC_COLS[look[cf]] || {}).hex || ''));
         sub.appendChild(row);
       }
       aSec.appendChild(sub);
     }
     opts.appendChild(aSec);
+    // 2.22: accessories the assistant drew for your pet (97-pets-4ai.js)
+    if (typeof petDesignsSection === 'function') opts.appendChild(petDesignsSection(paintAll));
     const m = document.getElementById('main'); if (m && keepScroll) m.scrollTop = keepScroll;
   };
   paintAll();
+  // your designs may have been added on another computer: look again, and repaint when the list is here
+  if (typeof petItemsLoad === 'function') petItemsLoad().then((ok) => { if (ok && opts.isConnected) paintOpts(); });
 }
 /** An option tile: its preview, its name, a lock when it is not yours yet. art is markup from petSvg (allow-listed ids only). */
 function _ptTile(lock, on, label, art) {
@@ -575,6 +636,8 @@ if (typeof gardenFunNavAdd === 'function') {
 if (typeof registerCommand === 'function') {
   registerCommand({ id: 'pet-open', label: 'Your pet', icon: 'paw-print', group: 'Go to', keywords: 'pet companion cat dog animal tamagotchi buddy', run: () => setView('pet') });
   registerCommand({ id: 'pet-wardrobe', label: "Pet: dress up your pet", icon: 'shirt', keywords: 'pet wardrobe hat collar accessories customise colour breed', run: () => setView('pet:wardrobe') });
+  registerCommand({ id: 'pet-ai', label: 'Pet: restyle with AI', icon: 'sparkles', keywords: 'pet ai restyle describe colour change look assistant', run: () => { setView('pet:wardrobe'); setTimeout(() => petAiOpen(), 200); } });
+  registerCommand({ id: 'pet-design', label: 'Pet: design an accessory with AI', icon: 'wand-sparkles', keywords: 'pet ai design accessory wig hat glasses scarf cape draw', run: () => { setView('pet:wardrobe'); setTimeout(() => petAiDesignOpen(), 200); } });
   registerCommand({ id: 'pet-treat', label: 'Pet: give a treat', icon: 'cookie', keywords: 'pet feed treat snack', run: () => { const r = petFeed(); toast(r.msg || 'Adopt a pet first', { icon: 'cookie', action: r.ok ? null : { label: 'Open', run: () => setView('pet') } }); } });
   registerCommand({ id: 'pet-pat', label: 'Pet: give a pat', icon: 'heart', keywords: 'pet pat stroke cuddle', run: () => { const r = petPat(); toast(r.ok ? `${petName()} leans in happily` : 'Adopt a pet first', { icon: 'heart' }); } });
   registerCommand({ id: 'pet-journal', label: "Pet: journal", icon: 'notebook-pen', keywords: 'pet journal milestones', run: () => setView('pet:journal') });

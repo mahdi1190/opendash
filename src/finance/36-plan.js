@@ -1,0 +1,515 @@
+  // @part 36-plan.js · NEW (2.21) · OWNER: budget plan (the Budgets tab's plan: one calm page)
+  // ── Your money plan ───────────────────────────────────────────────────
+  // The Budgets tab opens on the plan: what comes in, what is left, what looks off this month, take-home in plain
+  // words, every planned item against the bank, what is coming up, What if?, then the quieter things (bills calendar,
+  // debts, goals, net worth, the year). The numbers are worked out on the server (GET /api/finance/plan -> {plan, view},
+  // lib/finance/money-plan.mjs); this file draws them and sends back whole-plan saves. Every change has Undo.
+  // Category spending limits (36-budgets.js) stay, below the plan.
+  const MPL = { host: null, plan: null, v: null, err: null, saveErr: null, open: new Set(), per: 'month', edit: null, adding: null, limits: null, answers: false };
+
+  async function planLoad() {
+    try {
+      const r = await api('/api/finance/plan');
+      if (r.ok && r.body && r.body.view) { planTake(r.body); MPL.err = null; }
+      else MPL.err = r.status === 404 ? 'Restart Freeflo to use your money plan.' : ((r.body && r.body.error) || 'Your money plan could not be read.');
+    } catch (e) { MPL.err = 'Freeflo isn’t answering. Your plan is safe.'; }
+  }
+  function planTake(body) {
+    MPL.plan = body.plan; MPL.v = body.view;
+    R.planBrief = body.view && body.view.has ? body.view.forBrief : null;
+    if (typeof MB !== 'undefined') MB.B = null;   // safe to spend and the pay cycle follow the plan (26-money-ui.js)
+  }
+  /** Save the whole plan; o.say: the toast (with Undo unless quiet). -> true when saved. */
+  async function planSave(next, o) {
+    o = o || {};
+    const before = MPL.plan, wasLeft = MPL.v && MPL.v.budget ? MPL.v.budget.left : null;
+    MPL.saveErr = null;
+    try {
+      const r = await api('/api/finance/plan', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: next }) });
+      if (!r.ok || !r.body || !r.body.view) { MPL.saveErr = (r.body && r.body.error) ? r.body.error + '.' : 'That could not be saved.'; if (!o.quiet) toast(MPL.saveErr, { bad: true, action: 'Try again', onAction: () => planSave(next, o) }); return false; }
+      planTake(r.body);
+      ansAfterSave();   // the Tax tab follows a change made from its Your answers page (36-answers.js)
+      if (!o.quiet) { if (!o.noPaint) planPaint(); const nowLeft = r.body.view.budget ? r.body.view.budget.left : null, moved = wasLeft != null && nowLeft != null && Math.abs(nowLeft - wasLeft) >= 1 ? `. Left over a month goes from ${gbp(wasLeft)} to ${gbp(nowLeft)}` : ''; toast((o.say || 'Saved') + moved, o.noUndo ? { icon: o.icon } : { action: 'Undo', icon: o.icon, onAction: () => planSave(before, { say: 'Put back', noUndo: true }) }); }
+      return true;
+    } catch (e) {
+      MPL.saveErr = 'Freeflo isn’t answering, so that was not saved.';
+      if (!o.quiet) toast(MPL.saveErr, { bad: true, action: 'Try again', onAction: () => planSave(next, o) });
+      return false;
+    }
+  }
+  const plChange = (fn, say, o) => { const next = pqClone(MPL.plan); fn(next); return planSave(next, Object.assign({ say }, o || {})); };
+  const plItem = (plan, id) => plan.items.find(i => i.id === id);
+
+  /* ---------- the section's hooks (36-budgets.js) ---------- */
+  function planBuild(g) {
+    MPL.host = h('div', { class: 'fv-pl', style: { '--span': 12, '--span-md': 12 } });
+    g.append(MPL.host);
+    MPW.el = null;
+    if (!MPL.v && !MPL.err) planLoad().then(() => { if (R.sectionId === 'budgets') planPaint(); });
+  }
+  function planUpdate() { planPaint(); }
+  function planLimitsOpen() { return MPL.limits == null ? !(MPL.v && MPL.v.has && MPL.v.done) : MPL.limits; }
+  function planPaint() {
+    const host = MPL.host; if (!host || !host.isConnected) return;
+    const keep = MPW.el;
+    host.textContent = '';
+    if (MPL.err && !MPL.v) { host.append(h('section', { class: 'fv-card fv-pl-invite' }, h('p', { text: MPL.err }), h('button', { type: 'button', class: 'fv-btn', text: 'Try again', onclick: () => { MPL.err = null; planLoad().then(planPaint); } }))); return; }
+    if (!MPL.v) { host.append(h('section', { class: 'fv-card fv-pl-invite' }, h('p', { class: 'fv-pl-mute', text: 'Opening your plan…' }))); return; }
+    if (MPQ.open) { pqPaint(host); plLimits(false); return; }
+    if (MPL.answers && MPL.v) { host.append(ansPage(() => { MPL.answers = false; ANS.edit = null; planPaint(); })); plLimits(false); return; }
+    const v = MPL.v;
+    if (!v.has || !v.done) host.append(plInvite(v));
+    if (v.has && (v.done || v.budget.income > 0 || v.budget.incomeRows.length || v.budget.groups.some(g => g.rows.length))) {
+      host.append(plHero(v));
+      const fl = plFlags(v); if (fl) host.append(fl);
+      if (v.calc) host.append(plTake(v));
+      host.append(plBudget(v));
+      const cu = plComing(v); if (cu) host.append(cu);
+      MPW.el = null; host.append(pwSection());
+      host.append(plExtras(v));
+    }
+    plLimits(true);
+    void keep;
+  }
+  /** The category limits below the plan: folded away once there is a plan. */
+  function plLimits(show) {
+    const items = [S.bBar, S.hero, S.bGrid, S.hist && S.hist.el, S.ed && S.ed.el];
+    const open = show && planLimitsOpen();
+    for (const el of items) if (el) el.classList.toggle('fv-pl-off', !open);
+    if (!S.plBar) return;
+    S.plBar.hidden = !show;
+    const n = Object.keys(R.budgets || {}).filter(c => R.budgets[c] > 0).length;
+    S.plBar.textContent = '';
+    S.plBar.append(h('button', { type: 'button', class: 'fv-pl-fold', 'aria-expanded': open ? 'true' : 'false', onclick: () => { MPL.limits = !open; if (!open && R.ctx) UPDATE.budgets(R.ctx); else plLimits(true); } },
+      ic(open ? 'chevron-down' : 'chevron-right'), h('b', { text: 'Spending limits by category' }), h('span', { class: 'mute', text: n ? `${n} set` : 'Set a monthly limit on any category' })));
+  }
+
+  /* ---------- start ---------- */
+  function plInvite(v) {
+    const started = v.has;
+    return h('section', { class: 'fv-card fv-pl-invite' },
+      h('h2', { text: started ? 'Carry on with your money plan' : 'Your money plan' }),
+      h('p', { text: started ? 'You stopped part way through. Your answers are saved.' : 'A few easy questions, one at a time. We work out what you take home, build a budget, and check it against your bank. Skip anything you like.' }),
+      h('div', { class: 'fv-pl-acts' }, h('button', { type: 'button', class: 'fv-btn primary big', onclick: () => pqStart() }, h('span', { text: started ? 'Carry on' : 'Start' }), ic('arrow-right'))));
+  }
+
+  /* ---------- the big picture ---------- */
+  /** What stops on a date, soonest first: "Northwind Labs ends on 30 Nov 2026. After that, £0 is left over a month." */
+  function plEnding(v) {
+    const b = v.budget;
+    const rows = [...b.incomeRows.map(r => ({ r, sign: -1 })), ...b.groups.flatMap(g => g.rows.map(r => ({ r, sign: 1 })))].filter(x => x.r.ends && ((x.r.state === 'active' && x.r.ends >= v.today) || (x.r.left && x.r.left.length))).sort((p, q) => p.r.ends.localeCompare(q.r.ends));
+    if (!rows.length) return null;
+    const first = rows[0], after = b.left + first.sign * (first.r.monthly || 0);
+    const stopped = first.r.ends < v.today ? 'ended' : first.sign < 0 ? 'ends' : 'stops';
+    const pays = first.r.left && first.r.left.length ? ` ${plLeftWords(first.r.left)}` : '';
+    return { first: first.r, text: `${first.r.name} ${stopped} on ${fDayY(dnum(first.r.ends))}.${pays} After that, about ${gbp(Math.abs(after))} is ${after >= 0 ? 'left over' : 'short'} a month${rows.length > 1 ? `, and ${rows.length - 1} more thing${rows.length > 2 ? 's stop' : ' stops'} later` : ''}.` };
+  }
+  /** The payments left on a job that is ending, in words: the real figures, not an average. */
+  function plLeftWords(left) {
+    const one = (p) => `about ${gbp(p.takeHome)} on ${fDayY(dnum(p.date))}`;
+    if (left.length === 1) return `Its last payment is ${one(left[0])}.`;
+    if (left.length <= 4) return `Its last ${left.length} payments are ${left.slice(0, -1).map(one).join(', ')} and ${one(left[left.length - 1])}.`;
+    return `It has ${left.length} payments left, the last ${one(left[left.length - 1])}.`;
+  }
+  function plHero(v) {
+    const b = v.budget;
+    const ending = plEnding(v);
+    const out = b.groups.reduce((t, g) => t + g.total, 0) + b.aside;
+    const seg = (w, cls, label) => (w > 0 ? h('i', { class: cls, style: { flexGrow: String(w) }, title: label }) : null);
+    return h('section', { class: 'fv-card fv-pl-hero' },
+      h('div', { class: 'fv-pl-hero-top' },
+        h('div', null, h('div', { class: 'fv-pl-big' }, amt(gbp(b.left), 'fv-pl-big-v' + (b.left < 0 ? ' neg' : '')), h('span', { text: b.left >= 0 ? 'left over a month' : 'short a month' })),
+          h('p', { class: 'fv-pl-say' }, amt(gbp(b.income)), ' comes in. ', amt(gbp(out)), ' is planned to go out.', v.paydays.next[0] ? ` Next payday: ${fd(dnum(v.paydays.next[0].date), { weekday: 'long', day: 'numeric', month: 'long' })}.` : '')),
+        h('div', { class: 'fv-pl-acts' }, h('button', { type: 'button', class: 'fv-btn primary', onclick: () => ansOpen() }, ic('pencil'), h('span', { text: 'Your answers' })))),
+      ending ? h('p', { class: 'fv-pl-note info' }, ic('calendar-clock'), h('span', { class: 'fv-amt', text: ending.text })) : null,
+      (b.oneOffs || []).map(x => h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { class: 'fv-amt', text: `${gbp(x.amount)} from ${x.name} is a one-off, so it is not counted as money coming in each month.` }))),
+      h('div', { class: 'fv-pl-split', role: 'img', 'aria-label': 'Where your money goes' },
+        b.groups.map(g => seg(g.total, 'g-' + g.id, g.label)), seg(b.aside, 'g-aside', 'Tax to keep aside'), seg(Math.max(0, b.left), 'g-left', 'Left over')),
+      h('ul', { class: 'fv-pl-key' }, b.groups.filter(g => g.total > 0).map(g => h('li', null, h('i', { class: 'g-' + g.id }), g.label + ' ', amt(gbp(g.total)))),
+        b.aside > 0 ? h('li', null, h('i', { class: 'g-aside' }), 'Tax to keep aside ', amt(gbp(b.aside))) : null,
+        b.left > 0 ? h('li', null, h('i', { class: 'g-left' }), 'Left over ', amt(gbp(b.left))) : null));
+  }
+
+  /* ---------- worth a look ---------- */
+  function plFlags(v) {
+    if (!v.flags.length) return null;
+    const tone = { bad: 'bad', warn: 'warn', good: 'good', info: 'info' };
+    return h('section', { class: 'fv-card fv-pl-flags' }, h('header', { class: 'fv-pl-h' }, h('h3', { text: 'Worth a look' }), h('p', { text: v.cycle.mode === 'cycle' ? 'Your plan against your bank, since payday.' : 'Your plan against your bank, this month.' })),
+      h('ul', null, v.flags.map(f => h('li', { class: 'fv-pl-flag ' + (tone[f.tone] || 'info') },
+        ic(f.tone === 'bad' ? 'circle-alert' : f.tone === 'warn' ? 'triangle-alert' : f.tone === 'good' ? 'circle-check' : 'info'),
+        h('div', { class: 'fv-pl-flag-m' }, h('b', { class: 'fv-amt', text: f.title }, ' ', txAsk(f.title, '', 'money plan')), h('span', { class: 'fv-amt', text: f.text }), f.why && f.why.length ? h('details', { class: 'fv-pl-why' }, h('summary', { text: 'What could cause this?' }), h('ul', null, f.why.map(w => h('li', { text: w })))) : null),
+        h('button', { type: 'button', class: 'fv-btn ghost', title: 'Stop showing this', 'aria-label': 'Stop showing this', onclick: () => plChange(p => { p.dismissed = p.dismissed || {}; p.dismissed[f.id] = v.today; }, 'Hidden') }, ic('x'))))));
+  }
+
+  /* ---------- take-home ---------- */
+  function plTake(v) {
+    const c = v.calc;
+    const onlyOneOffs = !MPL.perChosen && MPL.per === 'month' && !(c.perMonth && c.perMonth.takeHome > 0) && c.perYear && c.perYear.takeHome > 0;
+    const per = onlyOneOffs ? 'year' : c.steps[MPL.per] && c.steps[MPL.per].length ? MPL.per : 'month';
+    const fmtv = per === 'payslip' ? gbp2 : gbp;
+    const s = seg([['year', 'A year'], ['month', 'A month']].concat(c.steps.payslip.length ? [['payslip', 'A payslip']] : []), per, x => { MPL.per = x; MPL.perChosen = true; planPaint(); }, 'Show amounts for');
+    s.set(per);
+    const rows = c.steps[per].map(r => h('div', { class: 'fv-pl-step' + (r.total ? ' total' : '') + (r.k === 'aside' ? ' aside' : '') },
+      h('span', null, r.label, r.help ? h('small', { text: r.help }) : null),
+      h('span', { class: 'fv-pl-step-v' }, amt((r.amount < 0 ? '−' : '') + fmtv(Math.abs(r.amount)), 'v'), plStepFeed(r, c), txAsk(r.label, '', 'money plan')))).concat([]);
+    const kids = [h('header', { class: 'fv-pl-h row' }, h('div', null, h('h3', { text: 'What you take home' }), h('p', { text: c.kind === 'estimate' ? `An estimate for the ${c.yearLabel} tax year, using official ${c.regionName} rates. Your payslip has the final word.` : 'From what you told us.' })), s.el), h('div', { class: 'fv-pl-steps' }, rows)];
+    if (c.code) kids.push(h('p', { class: 'fv-pl-code' }, h('b', { text: `Your tax code: ${c.code.text}. ` }), h('span', { class: 'fv-amt', text: c.code.label + '. ' }), h('button', { type: 'button', class: 'fv-link', text: c.code.given ? 'Change it' : 'Use the one on my payslip', onclick: () => ansOpen('taxcode:job.taxCode') })));
+    const jobs = Object.entries(c.jobs || {});
+    const stops = (v.budget.incomeRows || []).filter(r => r.ending && r.ends);
+    const stopWords = stops.map(r => r.name).join(' and ') + (stops.length > 1 ? ' end' : (stops[0] && stops[0].ends < v.today ? ' ended' : ' ends')) + (stops[0] ? ` on ${fDayY(dnum(stops[0].ends))}` : '');
+    if (stops.length && (per === 'month' || onlyOneOffs)) kids.push(h('p', { class: 'fv-pl-note info' }, ic('calendar-clock'), h('span', { text: onlyOneOffs ? `There is no lasting monthly pay here. ${stopWords}, so this shows the whole tax year.` : `${stopWords}, so a month here counts only the pay that really comes this month. It is not a lasting monthly pay.` })));
+    else if (per === 'month' && c.kind === 'estimate' && jobs.some(([, j]) => j.next)) kids.push(h('p', { class: 'fv-pl-mute small', text: 'A month here means a normal month from now on, worked from your next ordinary payslips. It is not the whole year spread over 12 months.' }));
+    for (const [id, j] of jobs) if (j.next) {
+      const named = jobs.length > 1 && j.name, what = j.final ? 'last payslip' : 'next payslip';
+      kids.push(h('p', { class: 'fv-pl-next' }, ic('calendar-check'), h('span', null, named ? `${j.name}: your ${what}` : `Your ${what}`, ': about ', amt(gbp(j.next.takeHome)), ' on ' + fd(dnum(j.next.date), { weekday: 'short', day: 'numeric', month: 'long' }) + '.', j.next.bonus ? ' It includes a bonus.' : '', j.ending && j.left.length > 1 ? ` ${plLeftWords(j.left)}` : '')));
+    }
+    if (jobs.length > 1) kids.push(h('div', { class: 'fv-pl-jobs' }, jobs.map(([id, j]) => h('div', { class: 'fv-pl-job' }, h('b', { text: j.name || 'Your job' }), h('span', { class: 'fv-amt', text: `${j.codeText}: ${j.codeLabel}` }), j.ending ? h('span', { class: 'fv-amt', text: j.left.length ? plLeftWords(j.left) : 'No payments left.' }) : j.payslip ? h('span', null, amt(gbp(j.payslip.takeHome)), ` each payday. Tax ${''}`, amt(gbp(j.payslip.tax)), ', National Insurance ', amt(gbp(j.payslip.ni)), j.payslip.loans ? ', loan ' : '', j.payslip.loans ? amt(gbp(j.payslip.loans)) : '', '.') : null))));
+    for (const w of c.warnings || []) kids.push(h('p', { class: 'fv-pl-note ' + w.level }, ic(w.level === 'warn' ? 'triangle-alert' : 'info'), h('span', { text: w.text })));
+    for (const n of c.notes || []) kids.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', { class: 'fv-amt', text: n })));
+    if (c.collectedByCode > 0.5) { const w = (c.codedAhead || []).find(x => x.from === c.yearId); kids.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', null, 'About ', amt(gbp(c.collectedByCode)), ' of tax has not been taken this tax year. You do not need to pay it as a bill: HMRC normally collects it through your tax code', w ? ` in ${w.inLabel}, after writing to you, so your pay will be about ` : ' later, so your pay will be a little lower then', w ? amt(gbp2(w.perMonth)) : '', w ? ' a month lower that year' : '', '. Nothing is kept aside for it.'))); }
+    for (const x of (c.codedAhead || []).filter(a => a.from !== c.yearId)) kids.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', null, `In ${x.inLabel} your pay will be about `, amt(gbp2(x.perMonth)), ' a month lower: ', amt(gbp2(x.amount)), ` of tax from ${x.fromLabel}, taken through your tax code.`)));
+    if (c.codedNow && !c.codedNow.inCode) kids.push(h('p', { class: 'fv-pl-note info' }, ic('info'), h('span', null, 'Your pay this tax year includes ', amt(gbp2(c.codedNow.amount)), ` of tax from ${c.codedNow.fromLabel}, taken a little at a time through your tax code.`)));
+    if (c.stillToPay > 0.5) kids.push(h('p', { class: 'fv-pl-note warn' }, ic('triangle-alert'), h('span', null, 'No tax is taken from some of your income before it reaches you. About ', amt(gbp(c.stillToPay)), ' is still to pay for this tax year. Your plan keeps ', amt(gbp(v.budget.aside)), ' a month aside for it. '), h('button', { type: 'button', class: 'fv-link', text: 'See your tax', onclick: () => setSection('tax') })));
+    if (c.soFar) kids.push(plSoFar(c));
+    return h('section', { class: 'fv-card fv-pl-take' }, kids);
+  }
+  /** Where a take-home line comes from, on the Tax tab, one click away. */
+  function plStepFeed(r, c) {
+    const why = c.kind === 'estimate' ? { gross: 'row:income', tax: 'row:taxDue', ni: 'row:ni', loan: 'row:loan' }[r.k] : null;
+    return why ? h('button', { type: 'button', class: 'fv-tx-ask', title: 'Where this comes from', 'aria-label': `Where ${r.label} comes from`, onclick: () => { TX.why = why; TX.year = null; TX.edit = null; setSection('tax'); } }, ic('circle-help')) : null;
+  }
+  function plSoFar(c) {
+    const t = c.soFar;
+    const rows = [['Pay so far', t.pay], ['Tax taken', t.tax], ['National Insurance', t.ni]].concat(t.loans ? [['Student loan', t.loans]] : []).concat([['Reached your bank', t.takeHome]]);
+    const d = plDisclosure('sofar', 'So far this tax year', `${t.periods} of ${t.ofYear} paydays`,
+      h('div', { class: 'fv-pl-mini' }, rows.map(([l, a]) => h('div', null, h('span', { text: l }), amt(gbp(a), 'v')))),
+      h('p', { class: 'fv-pl-mute' }, 'Tax-free amount used so far: ', amt(gbp(t.allowanceUsed)), ' of ', amt(gbp(t.allowanceYear)), '. PAYE, the way your employer takes tax, spreads it evenly over the year, so a bonus, a new job or a change of pay evens out on later paydays.'),
+      t.nextDate ? h('p', { class: 'fv-pl-mute' }, `Next payday, ${fd(dnum(t.nextDate), { weekday: 'long', day: 'numeric', month: 'long' })}: about `, amt(gbp(t.expectedNext)), '.') : null);
+    return d;
+  }
+  function plDisclosure(id, title, sub, ...kids) {
+    const d = h('details', { class: 'fv-pl-more' }, h('summary', null, h('b', { text: title }), sub ? h('span', { class: 'mute fv-amt', text: sub }) : null), h('div', { class: 'fv-pl-more-b' }, kids));
+    d.open = MPL.open.has(id);
+    d.addEventListener('toggle', () => { if (d.open) MPL.open.add(id); else MPL.open.delete(id); });
+    return d;
+  }
+
+  /* ---------- the plan against the bank ---------- */
+  const PL_STATUS = { paid: ['Paid', 'good', 'circle-check'], coming: ['Coming up', 'sched', 'calendar-check'], due: ['Due now', 'sched', 'clock'], late: ['Not seen yet', 'warn', 'triangle-alert'], unmatched: ['Not matched yet', 'none', 'link'], ok: ['On track', 'good', 'circle-check'], over: ['Over', 'bad', 'circle-alert'] };
+  function plAmountInput(val, label, onCommit) {
+    const n = h('input', { type: 'text', inputmode: 'decimal', class: 'fv-input fv-pl-amt fv-amt', 'aria-label': label });
+    n.value = val != null ? moneyNice(val) : '';
+    n.addEventListener('change', () => { const x = moneyParse(n.value); if (x != null && (!isFinite(x) || x < 0)) { n.classList.add('bad'); n.title = MONEY_HELP; return; } n.classList.remove('bad'); n.title = ''; onCommit(x); });
+    n.addEventListener('keydown', e => { if (e.key === 'Enter') n.blur(); });
+    return h('span', { class: 'fv-plq-unit' }, h('i', { text: SYM }), moneyWire(n));
+  }
+  function plBudget(v) {
+    const b = v.budget;
+    const inRows = b.incomeRows.map(r => plRow(r, v));
+    const body = [h('div', { class: 'fv-pl-group in' }, h('div', { class: 'fv-pl-group-h' }, h('b', { text: 'Coming in' }), amt(gbp(b.income), 'v'), plAddBtn('income', 'Add money in')), inRows.length ? inRows : h('p', { class: 'fv-pl-mute', text: 'Nothing yet.' }), plAddForm('income'))];
+    for (const g of b.groups) {
+      const grp = h('div', { class: 'fv-pl-group', 'data-g': g.id }, h('div', { class: 'fv-pl-group-h' }, h('b', { text: g.label }), amt(gbp(g.total), 'v'), plAddBtn(g.id, { bills: 'Add a bill', everyday: 'Add', savings: 'Add a goal', debts: 'Add a debt' }[g.id])), g.rows.length ? g.rows.map(r => plRow(r, v)) : h('p', { class: 'fv-pl-mute fv-amt', text: { bills: 'No bills yet.', everyday: 'Nothing planned yet.', savings: b.suggestedSaving ? `You could put aside about ${gbp(b.suggestedSaving)} a month: half of what is left.` : 'Nothing set aside yet.', debts: 'No debts. Nice.' }[g.id] }), g.id === 'everyday' ? plEverydayHelp(v, g) : null, plAddForm(g.id));
+      // Drag a row to another group (bills, everyday): the phone's way is the row's own panel.
+      grp.addEventListener('dragover', e => { if (e.dataTransfer && e.dataTransfer.types.includes('text/x-plan-row') && (g.id === 'bills' || g.id === 'everyday')) { e.preventDefault(); grp.classList.add('drop'); } });
+      grp.addEventListener('dragleave', () => grp.classList.remove('drop'));
+      grp.addEventListener('drop', e => { grp.classList.remove('drop'); const id = e.dataTransfer && e.dataTransfer.getData('text/x-plan-row'); if (id) plMoveTo(id, g.id); });
+      body.push(grp);
+    }
+    if (b.aside > 0) body.push(h('div', { class: 'fv-pl-group' }, h('div', { class: 'fv-pl-group-h' }, h('b', { text: 'Tax to keep aside' }), amt(gbp(b.aside), 'v')), h('p', { class: 'fv-pl-mute', text: 'For tax still to pay on money with no tax taken.' })));
+    body.push(h('div', { class: 'fv-pl-leftline' + (b.left < 0 ? ' neg' : '') }, h('b', { text: 'Left over a month' }), amt(gbp(b.left), 'v')));
+    return h('section', { class: 'fv-card fv-pl-plan' }, h('header', { class: 'fv-pl-h' }, h('h3', { text: 'Your plan' }), h('p', { text: `Amounts are a month. “So far” is ${v.cycle.mode === 'cycle' ? 'since payday' : 'this month'}. Tap any row to change it.` })), body);
+  }
+  // A sensible start: what you usually spend, one click; and the plan's Everyday as category limits.
+  function plEverydayHelp(v, g) {
+    const kids = [];
+    const s = v.budget.suggestEveryday || [];
+    if (s.length) kids.push(h('button', { type: 'button', class: 'fv-link', onclick: () => plChange(p => { for (const x of s) p.items.push({ id: x.type, kind: 'everyday', type: x.type, name: x.label, amount: x.amount, per: 'month', status: 'now' }); }, 'Added what you usually spend') }, 'Add what you usually spend: ', amt(s.map(x => `${x.label} ${gbp(x.amount)}`).join(', '))));
+    const withCat = g.rows.filter(r => r.link && r.link.c && r.amount > 0 && r.state === 'active' && !((R.budgets || {})[r.link.c] > 0));
+    if (withCat.length) kids.push(h('button', { type: 'button', class: 'fv-link', onclick: () => plUseLimits(withCat) }, `Warn me if I go over these (${withCat.length})`));
+    return kids.length ? h('div', { class: 'fv-pl-help' }, kids) : null;
+  }
+  async function plUseLimits(rows) {
+    const was = cleanBudgets(R.budgets || {}), next = Object.assign({}, was);
+    for (const r of rows) next[r.link.c] = round2(r.monthly);
+    const put = async (b, base) => { const res = await api('/api/finance/budgets', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ budgets: b, base }) }); if (res.ok && res.body && res.body.budgets) { R.budgets = cleanBudgets(res.body.budgets); if (R.sectionId === 'budgets' && R.ctx) UPDATE.budgets(R.ctx); return true; } toast('Those limits could not be saved. Try again in a moment.', { bad: true }); return false; };
+    try { if (await put(next, was)) toast('Spending limits set', { action: 'Undo', onAction: () => put(was, next).catch(() => {}) }); }
+    catch (e) { toast('Freeflo isn’t answering, so those limits were not saved.', { bad: true }); }
+  }
+  function plMoveTo(id, g) {
+    const kind = g === 'bills' ? 'bill' : 'everyday';
+    plChange(p => { const it = plItem(p, id); if (it && (it.kind === 'bill' || it.kind === 'everyday')) it.kind = kind; }, g === 'bills' ? 'Moved to Bills' : 'Moved to Everyday');
+  }
+  function plAddBtn(group, label) {
+    return h('button', { type: 'button', class: 'fv-btn ghost fv-pl-add', onclick: () => { MPL.adding = MPL.adding === group ? null : group; planPaint(); const inp = MPL.host.querySelector('.fv-pl-addf input'); if (inp) inp.focus(); } }, ic('plus'), h('span', { text: label }));
+  }
+  /** Add one thing. What is typed stays through any repaint; only Add or Cancel clears it. */
+  function plAddForm(group) {
+    if (MPL.adding !== group) return null;
+    const d0 = (MPL.addDraft = MPL.addDraft || {})[group] || {};
+    const pers = group === 'savings' || group === 'debts' ? null : [['month', 'a month'], ['year', 'a year'], ['quarter', 'every 3 months'], ['4weeks', 'every 4 weeks'], ['fortnight', 'a fortnight'], ['week', 'a week']];
+    const name = h('input', { type: 'text', class: 'fv-input', placeholder: { income: 'For example, side income', bills: 'For example, car insurance', everyday: 'For example, eating out', savings: 'For example, a holiday', debts: 'For example, credit card' }[group], maxlength: '60', 'aria-label': 'Name' });
+    const amount = moneyWire(h('input', { type: 'text', inputmode: 'decimal', class: 'fv-input fv-pl-amt', placeholder: group === 'savings' ? 'Target' : group === 'debts' ? 'Owed now' : 'How much', 'aria-label': 'Amount' }));
+    const per = pers ? h('select', { class: 'fv-input', 'aria-label': 'How often' }, pers.map(([v, l]) => h('option', { value: v, text: l }))) : null;
+    const later = h('input', { type: 'date', class: 'fv-input', 'aria-label': 'Starts on (leave empty for now)' });
+    const ends = pers ? h('input', { type: 'date', class: 'fv-input', 'aria-label': 'Stops on (leave empty if it carries on)' }) : null;
+    name.value = d0.name || ''; amount.value = d0.amount || ''; later.value = d0.later || '';
+    if (per && d0.per) per.value = d0.per;
+    if (ends) ends.value = d0.ends || '';
+    const say = h('small', { class: 'fv-tx-say fv-pl-addsay', role: 'alert', hidden: true });
+    const tell = (text, el) => { say.textContent = text; say.hidden = false; if (el) { el.classList.add('bad'); el.focus(); } };
+    const keep = () => { MPL.addDraft[group] = { name: name.value, amount: amount.value, later: later.value, per: per ? per.value : null, ends: ends ? ends.value : '' }; };
+    const go = () => {
+      for (const el of [name, amount, later]) el.classList.remove('bad');
+      if (ends) ends.classList.remove('bad');
+      say.hidden = true;
+      const nm = name.value.trim(), a = moneyParse(amount.value);
+      if (!nm) { tell('Give it a name first.', name); return; }
+      if (a == null) { tell(group === 'savings' ? 'Add the amount you are aiming for.' : group === 'debts' ? 'Add how much you owe now.' : 'Add how much it is.', amount); return; }
+      if (!isFinite(a) || a < 0) { tell(MONEY_HELP, amount); return; }
+      if (ends && ends.value && later.value && ends.value < later.value) { tell('It stops before it starts. Change one of the dates.', ends); return; }
+      const base = { id: PL_NEW_ID(group), name: nm, status: later.value ? 'later' : 'now' };
+      if (later.value) base.starts = later.value;
+      if (ends && ends.value) base.ends = ends.value;
+      const often = per ? per.value : 'month';
+      const when = often === 'year' || often === 'quarter' ? { t: 'months', every: often === 'year' ? 12 : 3, month: (new Date().getMonth() + 1) % 12 + 1, day: 1, adjust: 'next' } : { t: 'day', day: 1, adjust: 'next' };
+      const it = group === 'income' ? { ...base, kind: 'income', incomeType: 'side', amount: a, per: often }
+        : group === 'bills' ? { ...base, kind: 'bill', amount: a, per: often, when }
+          : group === 'everyday' ? { ...base, kind: 'everyday', amount: a, per: often }
+            : group === 'savings' ? { ...base, kind: 'saving', target: a } : { ...base, kind: 'debt', balance: a };
+      MPL.adding = null; delete MPL.addDraft[group];
+      if (group === 'bills' && often !== 'month') MPL.edit = it.id;   // a yearly bill's date is the next thing to say
+      plChange(p => { p.items.push(it); }, `Added ${nm}`);
+    };
+    const cancel = () => { MPL.adding = null; delete MPL.addDraft[group]; planPaint(); };
+    for (const el of [name, amount, later, per, ends].filter(Boolean)) {
+      el.addEventListener('input', keep); el.addEventListener('change', keep);
+      el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } if (e.key === 'Escape') { MPL.adding = null; planPaint(); } });
+    }
+    const dates = (d0.later || d0.ends)
+      ? [h('label', { class: 'fv-pl-startl' }, h('span', { text: 'Starts on' }), later), ends ? h('label', { class: 'fv-pl-startl' }, h('span', { text: 'Stops on' }), ends) : null]
+      : [h('details', { class: 'fv-pl-adddates' }, h('summary', { text: ends ? 'It starts or stops on a date' : 'It starts on a date' }), h('div', { class: 'fv-pl-addf-d' }, h('label', { class: 'fv-pl-startl' }, h('span', { text: 'Starts on' }), later), ends ? h('label', { class: 'fv-pl-startl' }, h('span', { text: 'Stops on' }), ends) : null))];
+    return h('div', { class: 'fv-pl-addf' }, name, h('span', { class: 'fv-plq-unit' }, h('i', { text: SYM }), amount), per, ...dates, h('button', { type: 'button', class: 'fv-btn primary', text: 'Add', onclick: go }), h('button', { type: 'button', class: 'fv-btn ghost', text: 'Cancel', onclick: cancel }), say);
+  }
+  /** The line under a plan item. Every date and the amount in it is a button with a pencil: tap it and the item opens to change it. */
+  function plRowSub(r) {
+    const bits = [];
+    const open = () => { MPL.edit = r.id; planPaint(); setTimeout(() => { const w = MPL.host && MPL.host.querySelector('.fv-pl-panel'); if (w) w.scrollIntoView({ block: 'nearest' }); }, 40); };
+    const date = (iso, fmt) => h('button', { type: 'button', class: 'fv-ie-b date', title: 'Change this date', 'aria-label': `Change the date: ${fDayY(dnum(iso))}`, onclick: open }, fmt ? fmt(dnum(iso)) : fDayY(dnum(iso)), ic('pencil'));
+    const wd = n => fd(n, r.per === 'year' ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { weekday: 'short', day: 'numeric', month: 'short' });
+    if (r.state === 'future') bits.push(r.starts ? ['Starts ', date(r.starts)] : 'Starts later');
+    else if (r.state === 'paused') bits.push('Paused');
+    else if (r.state === 'ended') { bits.push(['Ended ', date(r.ends)]); if (r.nextPay) bits.push([r.nextPay.final ? 'Last payslip' : 'Next payslip', ' about ', amt(gbp(r.nextPay.takeHome)), ' on ', date(r.nextPay.date, wd)]); }
+    else if (r.nextPay) bits.push([r.nextPay.final ? 'Last payslip' : 'Next payslip', ' about ', amt(gbp(r.nextPay.takeHome)), ' on ', date(r.nextPay.date, wd)]);
+    else if (r.next && r.next[0]) bits.push(['Next ', date(r.next[0].date, wd)]);
+    if (r.ends && r.state === 'active') bits.push(['until ', date(r.ends)]);
+    if (r.oneOff) bits.push('a one-off, not counted each month');
+    else if (!bdHidden() && r.amount != null && r.per && r.per !== 'month') bits.push(`counted by the month, from ${gbp(r.amount)} ${{ week: 'a week', fortnight: 'a fortnight', '4weeks': 'every 4 weeks', quarter: 'a quarter', year: 'a year', total: 'in total' }[r.per] || ''}`);
+    if (r.incomeType === 'self') bits.push('no tax taken');
+    if (r.codeText) bits.push(`tax code ${r.codeText}`);
+    if (r.linkLabel) bits.push(r.link && r.link.m ? `matched to ${r.linkLabel}` : `from ${r.linkLabel}`);
+    if (r.splitWith) bits.push(`split with ${r.splitWith}`);
+    return bits.map((b, i) => [i ? ' · ' : '', b]);
+  }
+  function plRow(r, v) {
+    const st = PL_STATUS[r.statusKey];
+    const monthlyAmount = !r.per || r.per === 'month';
+    const editable = monthlyAmount && r.per !== 'total' && (r.kind === 'bill' || r.kind === 'everyday' || (r.kind === 'income' && r.incomeType !== 'job'));
+    const isOpen = MPL.edit === r.id;
+    const setField = (k, label) => x => plChange(p => { const it = plItem(p, r.id); if (it) { if (x == null) delete it[k]; else it[k] = x; } }, 'Saved');
+    // Every figure is tap-to-change: a job opens on the Tax tab (its pay, last payments, bonus), a goal opens its own panel, the rest edit right here.
+    // A job that is ending shows its next real payment, and how many are left. A one-off shows its whole amount.
+    const nextLeft = r.ending && r.left.length ? r.left[0] : null;
+    const planned = nextLeft ? h('button', { type: 'button', class: 'fv-ie-b', title: 'Change this job', 'aria-label': `${r.name}: ${r.left.length === 1 ? 'last payment' : r.left.length + ' payments left'}, about ${gbp(nextLeft.takeHome)} on ${fDayY(dnum(nextLeft.date))}. Change this job`, onclick: () => ansOpenJob(r.id) }, amt(gbp(nextLeft.takeHome), 'fv-pl-planned'), h('small', { class: 'fv-pl-oneoff', text: `${r.left.length === 1 ? 'last payment' : `next of ${r.left.length} payments`}, ${fDayY(dnum(nextLeft.date))}${r.monthly > 0 ? '' : ', not this month'}` }), ic('pencil'))
+      : r.oneOff ? h('button', { type: 'button', class: 'fv-ie-b', title: `Change ${r.name}`, 'aria-label': `${r.name}: a one-off of ${gbp(r.amount || 0)}. Change it`, onclick: () => { MPL.edit = r.id; planPaint(); } }, amt(gbp(r.amount || 0), 'fv-pl-planned'), h('small', { class: 'fv-pl-oneoff', text: 'one-off' }), ic('pencil'))
+      : r.kind === 'income' && r.incomeType === 'job' ? h('button', { type: 'button', class: 'fv-ie-b', title: 'Change this job', 'aria-label': `${r.name}: ${gbp(r.monthly)} a month. Change this job`, onclick: () => ansOpenJob(r.id) }, amt(gbp(r.monthly), 'fv-pl-planned'), ic('pencil'))
+      : editable ? plAmountInput(r.amount, `Amount for ${r.name}`, setField('amount'))
+        : r.kind === 'debt' ? ansInlineAmount(r.minimum, `Least you pay a month on ${r.name}`, setField('minimum'))
+          : r.kind === 'saving' ? h('button', { type: 'button', class: 'fv-ie-b', title: 'Change this goal', onclick: () => { MPL.edit = r.id; planPaint(); } }, amt(gbp(r.monthly), 'fv-pl-planned'), ic('pencil'))
+            : r.per && r.per !== 'month' ? h('button', { type: 'button', class: 'fv-ie-b', title: `Change ${r.name}`, 'aria-label': `${r.name}: about ${gbp(r.monthly)} a month. Change it`, onclick: () => { MPL.edit = r.id; planPaint(); } }, amt(gbp(r.monthly), 'fv-pl-planned'), ic('pencil'))
+              : ansInlineAmount(r.amount, `Amount for ${r.name}`, setField('amount'), { empty: gbp(r.monthly) });
+    const toggle = () => { MPL.edit = isOpen ? null : r.id; planPaint(); };
+    const el = h('div', { class: 'fv-pl-row' + (r.state !== 'active' ? ' dim' : '') + (isOpen ? ' open' : ''), draggable: r.kind === 'bill' || r.kind === 'everyday' ? 'true' : null, 'data-id': r.id },
+      h('div', { class: 'fv-pl-row-main' },
+        h('button', { type: 'button', class: 'fv-pl-row-name', 'aria-expanded': isOpen ? 'true' : 'false', onclick: toggle }, h('b', { text: r.name })), h('span', { class: 'fv-pl-row-sub' }, plRowSub(r))),
+      h('div', { class: 'fv-pl-row-n' }, planned, r.actual != null && r.state === 'active' ? h('span', { class: 'fv-pl-row-act' }, 'so far ', amt(gbp(r.actual))) : null),
+      st ? h('span', { class: 'fv-bst ' + st[1] }, ic(st[2]), st[0]) : h('span', { class: 'fv-pl-row-gap' }),
+      h('button', { type: 'button', class: 'fv-btn ghost fv-pl-row-x', 'aria-label': (isOpen ? 'Close ' : 'Open ') + r.name, onclick: toggle }, ic(isOpen ? 'chevron-down' : 'chevron-right')));
+    if (el.draggable) el.addEventListener('dragstart', e => { e.dataTransfer.setData('text/x-plan-row', r.id); e.dataTransfer.effectAllowed = 'move'; });
+    return isOpen ? [el, plRowPanel(r, v)] : el;
+  }
+  function plRowPanel(r, v) {
+    const dateF = (label, key) => {
+      const d = h('input', { type: 'date', class: 'fv-input' });
+      if (r[key]) d.value = r[key];
+      const say = h('small', { class: 'fv-tx-say', role: 'alert', hidden: true });
+      d.addEventListener('blur', () => {
+        const val = d.value || null;
+        if (val === (r[key] || null)) { say.hidden = true; return; }
+        const starts = key === 'starts' ? val : r.starts, ends = key === 'ends' ? val : r.ends;
+        if (starts && ends && ends < starts) { say.textContent = key === 'ends' ? `That is before it starts, on ${fDayY(dnum(starts))}. Pick a later date, or change the start.` : `That is after it ends, on ${fDayY(dnum(ends))}. Pick an earlier date, or change the end.`; say.hidden = false; d.classList.add('bad'); return; }
+        say.hidden = true; d.classList.remove('bad');
+        plChange(p => {
+          const it = plItem(p, r.id); if (!it) return;
+          if (val) it[key] = val; else delete it[key];
+          if (key === 'starts') it.status = val ? (val > v.today ? 'later' : 'now') : 'now';
+        }, key === 'ends' ? (val ? `${r.name} stops on ${fDayY(dnum(val))}` : `${r.name} has no end date`) : 'Saved');
+      });
+      d.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); d.blur(); } });
+      return h('label', { class: 'fv-pl-pf' }, h('span', { text: label }), d, say);
+    };
+    const kids = [], rare = [], rareSay = [];
+    const nameIn = h('input', { type: 'text', class: 'fv-input', maxlength: '60', 'aria-label': 'Name' });
+    nameIn.value = r.name;
+    nameIn.addEventListener('change', () => { const t = nameIn.value.trim(); if (t) plChange(p => { const it = plItem(p, r.id); if (it) it.name = t; }, 'Saved'); });
+    kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Name' }), nameIn), dateF('Starts on', 'starts'), dateF('Ends on', 'ends'));
+    if (r.kind === 'debt') {
+      for (const [k, l] of [['balance', 'Owed now'], ['minimum', 'Least you pay a month']]) kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: l }), plAmountInput(r[k], l, x => plChange(p => { const it = plItem(p, r.id); if (it) { if (x == null) delete it[k]; else it[k] = x; } }, 'Saved'))));
+      const apr = h('input', { type: 'text', inputmode: 'decimal', class: 'fv-input fv-pl-amt fv-amt', 'aria-label': 'Yearly interest %' });
+      apr.value = r.apr != null ? String(r.apr) : '';
+      apr.addEventListener('change', () => { const x = Number(apr.value); if (isFinite(x) && x >= 0 && x <= 100) plChange(p => { const it = plItem(p, r.id); if (it) it.apr = x; }, 'Saved'); });
+      kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Yearly interest (APR %)' }), apr));
+    }
+    if (r.kind === 'saving') {
+      kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Target' }), plAmountInput(r.target, 'Target', x => plChange(p => { const it = plItem(p, r.id); if (it) it.target = x || 0; }, 'Saved'))));
+      kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Saved so far' }), plAmountInput(r.saved, 'Saved so far', x => plChange(p => { const it = plItem(p, r.id); if (it) it.saved = x || 0; }, 'Saved'))));
+      const by = h('input', { type: 'date', class: 'fv-input' }); if (r.by) by.value = r.by;
+      by.addEventListener('change', () => plChange(p => { const it = plItem(p, r.id); if (it) { if (by.value) it.by = by.value; else delete it.by; } }, 'Saved'));
+      kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'By' }), by));
+    }
+    if (r.per !== 'total' && (r.kind === 'bill' || r.kind === 'everyday' || r.kind === 'fund' || (r.kind === 'income' && r.incomeType !== 'job'))) {
+      kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'How much' }), plAmountInput(r.amount, `How much for ${r.name}`, x => plChange(p => { const it = plItem(p, r.id); if (it) { if (x == null) delete it.amount; else it.amount = x; } }, 'Saved'))));
+      const per = h('select', { class: 'fv-input', 'aria-label': 'How often' }, [['month', 'A month'], ['4weeks', 'Every 4 weeks'], ['fortnight', 'A fortnight'], ['week', 'A week'], ['quarter', 'A quarter'], ['year', 'A year']].map(([x, l]) => h('option', { value: x, text: l })));
+      per.value = r.per || (r.kind === 'fund' ? 'year' : 'month');
+      per.addEventListener('change', () => plChange(p => { const it = plItem(p, r.id); if (!it) return; it.per = per.value; if (it.kind === 'bill' && (per.value === 'year' || per.value === 'quarter')) { const every = per.value === 'year' ? 12 : 3, w = it.when || {}; if (!(w.t === 'months' && w.every === every)) it.when = { t: 'months', every, month: w.month || ((new Date().getMonth() + 1) % 12 + 1), day: w.day || 1, adjust: w.adjust || 'next' }; } else if (it.kind === 'bill' && it.when && it.when.t === 'months' && per.value === 'month') it.when = { t: 'day', day: it.when.day || 1, adjust: it.when.adjust || 'next' }; }, `${r.name}: ${gbp(r.amount || 0)} ${({ month: 'a month', '4weeks': 'every 4 weeks', fortnight: 'a fortnight', week: 'a week', quarter: 'a quarter', year: 'a year' })[per.value]}`));
+      kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'How often' }), per));
+    }
+    if (r.per === 'total') kids.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Money in, total' }), plAmountInput(r.amount, 'Money in, total', x => plChange(p => { const it = plItem(p, r.id); if (it) it.amount = x || 0; }, 'Saved'))));
+    if (r.kind === 'income' && r.incomeType === 'job') kids.push(h('button', { type: 'button', class: 'fv-btn', onclick: () => ansOpenJob(r.id) }, ic('pencil'), h('span', { text: r.main ? 'Change my pay and job details' : 'Change this job' })));
+    if (r.kind === 'bill' || r.kind === 'everyday') {
+      // Names here make it a split that repeats (Owed to me): each time it leaves the bank, they owe you their share.
+      const sw = h('input', { type: 'text', class: 'fv-input', maxlength: '120', placeholder: 'For example, Sam and Alex', 'aria-label': `Who you split ${r.name} with` });
+      sw.value = r.splitWith || '';
+      sw.addEventListener('change', () => {
+        const t = sw.value.trim();
+        plChange(p => { const it = plItem(p, r.id); if (it) { if (t) it.splitWith = t; else delete it.splitWith; } }, t ? `Each time it leaves the bank, ${r.name} splits with ${t}` : 'Saved');
+        setTimeout(() => { if (window.Owed && window.Owed.planChanged) window.Owed.planChanged(); }, 700);
+      });
+      rare.push(h('label', { class: 'fv-pl-pf' }, h('span', { text: 'Split with (optional)' }), sw));
+      rareSay.push(r.splitWith ? `split with ${r.splitWith}` : 'split it');
+    }
+    const panel = h('div', { class: 'fv-pl-panel' }, h('div', { class: 'fv-pl-pgrid' }, kids));
+    // When.
+    if (r.kind !== 'saving' && r.kind !== 'everyday') {
+      panel.append(h('div', { class: 'fv-pl-pwhen' }, h('b', { text: r.kind === 'income' ? 'When it arrives' : 'When it goes out' }), r.ruleAuto ? h('span', { class: 'mute', text: ' (from your bank)' }) : null,
+        plRuleEditor(r.rule, x => { clearTimeout(plRowTimer); plRowTimer = setTimeout(() => plChange(p => { const it = plItem(p, r.id); if (it) it.when = x; }, 'Saved', { noPaint: true }), 500); }, { kind: r.kind === 'income' ? 'pay' : 'bill', showNext: true })));
+      rare.push(h('label', { class: 'fv-pl-pf tol' }, h('span', { text: 'Allow this many days either side before we say it is late' }), plTolInput(r)));
+      if (r.tol != null) rareSay.push(`late after ${r.tol} days`);
+    }
+    // Which payment it is.
+    const ch = v.choices || {};
+    if (r.kind !== 'saving') {
+      const opts = [h('option', { value: '', text: r.link ? 'Not matched' : 'Choose a payment' })];
+      const pays = r.kind === 'income' ? ch.payers || [] : ch.payments || [];
+      if (pays.length) opts.push(h('optgroup', { label: r.kind === 'income' ? 'Who pays you' : 'Regular payments' }, pays.map(x => h('option', { value: 'm:' + x.m, text: bdHidden() ? x.m : `${x.m} (about ${gbp(x.amount)})` }))));
+      if (r.kind !== 'income' && (ch.categories || []).length) opts.push(h('optgroup', { label: 'A whole category' }, ch.categories.map(c => h('option', { value: 'c:' + c, text: c }))));
+      const sel = h('select', { class: 'fv-input', 'aria-label': `Match ${r.name} to a payment` }, opts);
+      sel.value = r.link ? (r.link.m ? 'm:' + r.link.m : 'c:' + r.link.c) : '';
+      sel.addEventListener('change', () => plChange(p => {
+        const it = plItem(p, r.id); if (!it) return;
+        const was = r.link && r.link.m;
+        delete it.link;
+        if (sel.value.startsWith('m:')) it.link = { m: sel.value.slice(2) };
+        else if (sel.value.startsWith('c:')) it.link = { c: sel.value.slice(2) };
+        else if (was) it.notM = [...new Set([...(it.notM || []), was])];
+      }, 'We’ll remember that'));
+      rare.unshift(h('label', { class: 'fv-pl-pf match' }, h('span', { text: r.link && r.link.by === 'guess' ? 'We matched this by name, amount and date. Is it right?' : 'Matched to' }), sel));
+      rareSay.unshift(r.linkLabel ? `matched to ${r.linkLabel}` : 'match it to a payment');
+    }
+    if (rare.length) {
+      const fold = h('details', { class: 'fv-pl-more fv-pl-rare' }, h('summary', null, h('b', { text: 'More' }), h('span', { class: 'mute fv-amt', text: rareSay.join(' · ') })), h('div', { class: 'fv-pl-pgrid' }, rare));
+      fold.open = MPL.open.has('rare:' + r.id);
+      fold.addEventListener('toggle', () => { if (fold.open) MPL.open.add('rare:' + r.id); else MPL.open.delete('rare:' + r.id); });
+      panel.append(fold);
+    }
+    panel.append(h('div', { class: 'fv-pl-pacts' },
+      r.kind === 'bill' || r.kind === 'everyday' ? h('button', { type: 'button', class: 'fv-btn ghost', onclick: () => plMoveTo(r.id, r.kind === 'bill' ? 'everyday' : 'bills') }, h('span', { text: r.kind === 'bill' ? 'Move to Everyday' : 'Move to Bills' })) : null,
+      h('span', { class: 'fv-grow' }),
+      h('button', { type: 'button', class: 'fv-btn', onclick: () => plChange(p => { const it = plItem(p, r.id); if (it) { if (r.paused) delete it.paused; else it.paused = true; } }, r.paused ? `${r.name} is back on` : `${r.name} paused`) }, ic(r.paused ? 'play' : 'pause'), h('span', { text: r.paused ? 'Carry on' : 'Pause' })),
+      r.main ? null : h('button', { type: 'button', class: 'fv-btn', onclick: () => { MPL.edit = null; plChange(p => { p.items = p.items.filter(i => i.id !== r.id); }, `${r.name} removed`); } }, ic('trash-2'), h('span', { text: 'Remove' }))));
+    return panel;
+  }
+  let plRowTimer = 0;
+  function plTolInput(r) {
+    const n = h('input', { type: 'number', min: '0', max: '15', class: 'fv-input fv-plr-day', 'aria-label': 'Days either side' });
+    n.value = String(r.tol != null ? r.tol : 4);
+    n.addEventListener('change', () => { const x = clamp(Math.floor(Number(n.value) || 0), 0, 15); plChange(p => { const it = plItem(p, r.id); if (it) it.tol = x; }, 'Saved'); });
+    return n;
+  }
+
+  /* ---------- coming up ---------- */
+  function plComing(v) {
+    if (!v.comingUp.length) return null;
+    const row = x => h('li', null,
+      h('div', null, h('b', { text: x.name }), h('span', { class: 'mute' }, x.from ? ' from ' + fd(dnum(x.from), { day: 'numeric', month: 'long', year: 'numeric' }) : ' from a date you choose', x.amount ? ' · ' : '', x.amount ? amt(gbp(x.amount)) : '', x.amount ? (x.oneOff ? ' one-off' : ' a month') : '')),
+      x.leftAfter != null
+        ? h('p', { class: 'fv-pl-mute' }, 'From ' + fd(dnum(x.from), { month: 'long' }) + ' you would have ', amt(gbp(x.leftAfter), x.leftAfter < 0 ? 'neg' : ''), x.leftAfter < 0 ? ' short a month.' : ' left a month.')
+        : h('p', { class: 'fv-pl-mute' }, h('button', { type: 'button', class: 'fv-link', text: 'Add a date', onclick: () => { MPL.edit = x.id; planPaint(); } })));
+    return h('section', { class: 'fv-card fv-pl-coming' },
+      h('header', { class: 'fv-pl-h' }, h('h3', { text: 'Coming up' }), h('p', { text: 'Not counted yet. Nothing here is flagged as missing until it starts.' })),
+      h('ul', null, v.comingUp.map(row)));
+  }
+
+  /* ---------- the quieter things ---------- */
+  function plExtras(v) {
+    const wrap = h('section', { class: 'fv-card fv-pl-extras' });
+    const add = (id, title, sub, ...kids) => wrap.append(plDisclosure(id, title, sub, ...kids));
+    // The bills calendar.
+    const cal = v.calendar;
+    add('calendar', `${fd(dnum(cal.month), { month: 'long' })}’s bills`, `${gbp(cal.still)} still to go`,
+      cal.rows.length ? h('ul', { class: 'fv-pl-cal' }, cal.rows.map(x => h('li', { class: x.state === 'late' ? 'late' : x.state === 'paid' ? 'paid' : '' },
+        h('span', { class: 'd', text: fd(dnum(x.date), { weekday: 'short', day: 'numeric' }) }), h('span', { class: 'n' }, x.name, x.moved && x.why ? h('small', { text: ` moved for ${x.why}` }) : null), h('span', { class: 's', text: x.state === 'paid' ? 'Paid' : x.state === 'late' ? 'Not seen yet' : '' }),
+        amt((x.kind === 'income' ? '+' : '') + gbp(x.amount), 'v' + (x.kind === 'income' ? ' in' : ''))))) : h('p', { class: 'fv-pl-mute', text: 'No dates this month yet. Give a bill a date and it shows here.' }),
+      h('p', { class: 'fv-pl-mute' }, 'After all this month’s bills: ', amt(gbp(cal.leftAfter)), ' left.'));
+    // Debts.
+    if (v.debts) add('debts', 'Your debts', `${gbp(v.debts.total)} owed`, plDebts(v.debts));
+    // Goals and yearly bills.
+    if (v.goals.length || v.funds.length) add('goals', 'Goals and yearly bills', null,
+      v.goals.map(g => h('div', { class: 'fv-pl-goal' }, h('div', { class: 'fv-pl-goal-h' }, h('b', { text: g.name }), amt(`${gbp(g.saved)} of ${gbp(g.target)}`)), h('div', { class: 'fv-pl-bar' }, h('i', { style: { width: (g.frac * 100).toFixed(1) + '%' } })),
+        g.perMonth != null ? h('p', { class: 'fv-pl-mute' }, 'That takes ', amt(gbp(g.perMonth)), ` a month to reach by ${fDayY(dnum(g.by))}.`) : h('p', { class: 'fv-pl-mute', text: 'Give it a date and we will say how much a month it takes.' }))),
+      v.funds.map(f => h('div', { class: 'fv-pl-goal' }, h('div', { class: 'fv-pl-goal-h' }, h('b', { text: f.name }), amt(`${gbp(f.perMonth)} a month`)), f.nextDate ? h('p', { class: 'fv-pl-mute' }, `Next due ${fDayY(dnum(f.nextDate))}: `, amt(gbp(f.amount)), '. By now you would want about ', amt(gbp(f.shouldHave)), ' put by.') : null)));
+    // Net worth.
+    const nw = v.netWorth;
+    add('networth', 'What you own and owe', null,
+      h('div', { class: 'fv-pl-big small' }, amt(gbp(nw.total), 'fv-pl-big-v' + (nw.total < 0 ? ' neg' : '')), h('span', { text: 'net worth' })),
+      nw.series.length > 2 ? h('div', { class: 'fv-pl-spark', html: sparkSvg(nw.series, 'var(--accent)', { w: 240, h: 44 }) }) : null,
+      h('div', { class: 'fv-pl-mini' }, h('div', null, h('span', { text: 'In your accounts' }), amt(gbp(nw.accounts), 'v')), nw.assets.map(a => h('div', null, h('span', { text: a.name }), amt(gbp(a.amount), 'v'))), h('div', null, h('span', { text: 'What you owe' }), amt('−' + gbp(nw.owed), 'v'))),
+      h('button', { type: 'button', class: 'fv-link', text: 'Add savings, an ISA or a pension pot', onclick: () => pqStart('assets') }));
+    // The year.
+    const an = v.annual;
+    const top = Math.max(1, ...an.months.map(m => Math.max(m.income, m.spent)));
+    add('year', 'Your year', an.full ? `${gbp(an.yearIn)} in, ${gbp(an.yearOut)} out` : null,
+      h('table', { class: 'fv-pl-year' }, h('thead', null, h('tr', null, h('th', { text: 'Month' }), h('th', { class: 'r', text: 'In' }), h('th', { class: 'r', text: 'Out' }), h('th', { class: 'r', text: 'Left' }), h('th', { class: 'bars', 'aria-hidden': 'true' }))),
+        h('tbody', null, an.months.map(m => h('tr', { class: m.part ? 'part' : '' }, h('td', { text: fd(dnum(m.month), { month: 'short', year: '2-digit' }) + (m.part ? ' so far' : '') }), h('td', { class: 'r' }, amt(gbp(m.income))), h('td', { class: 'r' }, amt(gbp(m.spent))), h('td', { class: 'r' }, amt(gbp(m.income - m.spent))),
+          h('td', { class: 'bars', 'aria-hidden': 'true' }, h('i', { class: 'in', style: { width: (m.income / top * 100).toFixed(1) + '%' } }), h('i', { class: 'out', style: { width: (m.spent / top * 100).toFixed(1) + '%' } })))))),
+      h('p', { class: 'fv-pl-mute' }, 'Your plan expects ', amt(gbp(an.plannedIn)), ' in and ', amt(gbp(an.plannedOut)), ' out a month.'));
+    // End of the tax year.
+    if (v.checks.length) add('checks', 'Things to check before 5 April', null, h('ul', { class: 'fv-pl-checks' }, v.checks.map(c => h('li', { class: c.soon ? 'soon' : '' }, ic(c.soon ? 'calendar-clock' : 'circle-check'), h('span', { text: c.text })))));
+    return wrap;
+  }
+  function plDebts(d) {
+    const sel = MPL.debtExtra != null ? MPL.debtExtra : 2;
+    const e = d.extras[sel] || d.extras[0];
+    const mon = iso => (iso ? fd(dnum(iso + '-01'), { month: 'long', year: 'numeric' }) : 'never, at this rate');
+    const box = h('div', null,
+      h('ul', { class: 'fv-pl-debts' }, d.rows.map(r => h('li', null, h('div', null, h('b', { text: r.name }), h('span', { class: 'mute' }, ' ', amt(gbp(r.balance)), r.apr ? ` at ${r.apr}%` : '')), h('div', { class: 'fv-pl-mute' }, 'Interest about ', amt(gbp2(r.monthlyInterest)), ' a month. Paid off by ', amt(r.stuck ? 'never: the payment does not cover the interest' : mon(r.payoff)), '.')))),
+      h('p', null, 'All together, interest costs you about ', amt(gbp(d.monthlyInterest)), ' a month. At what you pay now you are debt-free by ', amt(d.base.stuck ? 'never' : mon(d.base.date)), '.'));
+    const pick = h('select', { class: 'fv-input', 'aria-label': 'How much more a month' }, d.extras.map((x, i) => h('option', { value: String(i), text: gbp(x.extra) })));
+    pick.value = String(sel);
+    pick.addEventListener('change', () => { MPL.debtExtra = Number(pick.value); planPaint(); });
+    box.append(...[h('div', { class: 'fv-pl-more-q' }, h('span', { text: 'If you paid ' }), pick, h('span', { text: ' more a month:' })),
+      e.sooner != null ? h('p', null, h('b', { class: 'fv-amt', text: e.sooner > 0 ? `Debt-free ${e.sooner} month${e.sooner === 1 ? '' : 's'} sooner.` : 'About the same date.' })) : null,
+      d.rows.length < 2 ? null : h('div', { class: 'fv-pl-compare' },
+        h('div', null, h('b', { text: 'Highest interest first' }), h('span', { class: 'mute', text: 'Costs the least.' }), h('span', null, 'Done by ', amt(mon(e.avalanche.date))), h('span', null, 'Interest ', amt(gbp(e.avalanche.interest)))),
+        h('div', null, h('b', { text: 'Smallest debt first' }), h('span', { class: 'mute', text: 'Quick wins keep you going.' }), h('span', null, 'Done by ', amt(mon(e.snowball.date))), h('span', null, 'Interest ', amt(gbp(e.snowball.interest)))))].filter(Boolean));
+    return box;
+  }

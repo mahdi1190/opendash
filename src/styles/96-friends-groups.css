@@ -1,0 +1,53 @@
+/* ============================================================
+   FRIENDS > Groups: src/app/96-friends-4groups.js (docs/dev/GROUPS.md).
+   ============================================================ */
+.gr-top { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.gr-note { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.gr-note > div { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-width: 12rem; }
+.gr-logo { --size: 40px; display: inline-flex; align-items: center; justify-content: center; width: var(--size); height: var(--size); flex: none; border-radius: 26%;
+  background: var(--c, var(--accent)); color: #fff; font-weight: 650; font-size: calc(var(--size) * 0.46); user-select: none; }
+.gr-hero { display: flex; align-items: flex-start; gap: var(--space-3); flex-wrap: wrap; }
+.gr-hero-t { flex: 1; min-width: 12rem; display: flex; flex-direction: column; gap: var(--space-1); }
+.gr-hero-t h2, .gr-hero-t h3 { margin: 0; overflow-wrap: anywhere; }
+.gr-hero-a { display: flex; gap: var(--space-2); align-items: center; }
+.gr-pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.gr-welcome { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); align-items: flex-start; background: var(--accent-soft); }
+.gr-layout { align-items: flex-start; }
+.gr-posts { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+.gr-post { padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); background: var(--surface-2, var(--surface)); border: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-1); }
+.gr-post.is-ann { background: var(--accent-soft); border-color: transparent; }
+.gr-post-h { display: flex; gap: var(--space-2); align-items: baseline; flex-wrap: wrap; }
+.gr-post-k { display: inline-flex; gap: var(--space-1); align-items: center; font-size: var(--text-xs); font-weight: 650; color: var(--accent-text, var(--accent)); }
+.gr-people { display: flex; flex-direction: column; gap: 2px; margin-top: var(--space-1); max-height: 34rem; overflow: auto; }
+.gr-person { display: flex; gap: var(--space-3); align-items: center; }
+.gr-person > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.gr-person-a { margin-top: var(--space-3); }
+.gr-pics { justify-content: flex-start; gap: var(--space-1) var(--space-2); }
+.gr-pics .fr-check-pic { min-width: 3.6rem; }
+.gr-pics .fr-check-e { font-size: 1.5rem; }
+.gr-pics .fr-check-w { font-size: var(--text-xs); }
+.gr-settings .gr-set-b { padding: var(--space-3) 0; }
+.gr-field { display: flex; flex-direction: column; gap: var(--space-1); }
+.gr-radio { display: flex; gap: var(--space-2); align-items: flex-start; cursor: pointer; padding: var(--space-2) 0; }
+.gr-radio > span { display: flex; flex-direction: column; gap: 2px; }
+.gr-open-opts { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; padding-left: var(--space-5); }
+.gr-open-opts[hidden] { display: none; }
+.gr-logos { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.gr-logo-b.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.gr-colors { display: flex; gap: var(--space-1); flex-basis: 100%; margin-top: var(--space-1); }
+.gr-color { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: var(--c); cursor: pointer; }
+.gr-color.on { outline: 2px solid var(--fg); outline-offset: 1px; }
+.gr-dialog { display: flex; flex-direction: column; gap: var(--space-3); }
+.gr-step { display: flex; flex-direction: column; gap: 2px; }
+.gr-preview { display: flex; gap: var(--space-3); padding: var(--space-3); align-items: flex-start; }
+.gr-code { border-top: 1px solid var(--border); padding-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.gr-print-sheet { display: none; }
+@media print {
+  body.gr-printing > *:not(.gr-print-sheet) { display: none !important; }
+  body.gr-printing > .gr-print-sheet { display: block; padding: 2cm; color: #000; background: #fff; text-align: center; }
+  .gr-print-sheet h1 { font-size: 40pt; line-height: 1.15; margin: 0 0 0.4cm; overflow-wrap: anywhere; }
+  .gr-print-lead { font-size: 20pt; margin: 0 0 1cm; }
+  .gr-print-sheet svg { width: 9cm; height: 9cm; }
+  .gr-print-sheet p { font-size: 14pt; margin: 0.4cm 0; }
+  .gr-print-link { font-size: 10pt; overflow-wrap: anywhere; font-family: monospace; }
+}

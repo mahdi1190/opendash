@@ -48,7 +48,7 @@ function imapConnectFlow(o) {
 
     /* ---- 1: the address ---- */
     function paintEmail(box) {
-      box.appendChild(_connEl('p', 'conn-text', 'Type the email address you want to add. OpenDash works out the rest.'));
+      box.appendChild(_connEl('p', 'conn-text', 'Type the email address you want to add. Freeflo works out the rest.'));
       const field = _connEl('label', 'field');
       field.appendChild(_connEl('span', 'field-label', 'Your email address'));
       const input = document.createElement('input'); input.className = 'control'; input.type = 'email'; input.autocomplete = 'email'; input.spellcheck = false;
@@ -141,7 +141,7 @@ function imapConnectFlow(o) {
       eye.onclick = () => { pw.type = pw.type === 'password' ? 'text' : 'password'; eye.textContent = pw.type === 'password' ? 'Show' : 'Hide'; };
       row.append(pw, eye); pf.appendChild(row);
       const pwHint = _connEl('span', 'field-hint'); pwHint.id = 'imap-pw-hint'; pwHint.setAttribute('aria-live', 'polite');
-      const paintHint = () => { pwHint.textContent = imapPasswordHint(pw.value, s.id) || 'Spaces are fine: OpenDash removes them. The password stays on this computer.'; };
+      const paintHint = () => { pwHint.textContent = imapPasswordHint(pw.value, s.id) || 'Spaces are fine: Freeflo removes them. The password stays on this computer.'; };
       pw.oninput = () => { st.form.password = pw.value; paintHint(); test.disabled = st.busy || !pw.value.trim(); };
       pf.appendChild(pwHint); box.appendChild(pf);
 
@@ -169,7 +169,7 @@ function imapConnectFlow(o) {
 
       if (st.error) box.appendChild(errorBox(st.error));
       const promise = _connEl('p', 'conn-note acc-promise'); promise.innerHTML = icon('shield-check', 'i-xs');
-      promise.appendChild(_connEl('span', null, 'OpenDash only reads your mail. It never sends, changes or deletes anything, and the password is kept on this computer only.'));
+      promise.appendChild(_connEl('span', null, 'Freeflo only reads your mail. It never sends, changes or deletes anything, and the password is kept on this computer only.'));
       box.appendChild(promise);
       const actions = _connEl('div', 'assistant-actions');
       const test = uiButton({ label: st.busy ? `Checking with ${s.name}…` : 'Test connection', icon: st.busy ? null : 'plug', kind: 'primary', size: 'sm', run: (e, b) => connect(b) });

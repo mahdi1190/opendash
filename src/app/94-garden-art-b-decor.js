@@ -123,45 +123,6 @@
       return s;
     },
   });
-  gartDefine('decor:obelisk', {
-    box: [64, 92], fit: 'none',
-    draw(o, r) {
-      const c = lc(o, '#3f5a4a'), c2 = lc2(o, '#2f3438');
-      // a tall four-sided trellis tapering to a ball; a sweet pea climbing it in summer
-      let s = A.shadow(14, 3) + A.S(c, 2.2, 'M-12 0L-3 -84M12 0L3 -84M-4 0L-1 -84M4 0L1 -84') + A.S(c, 1.6, 'M-10.4 -14h20.8M-8.2 -34h16.4M-6 -54h12M-4 -72h8') + A.S(c, 0.9, 'M-10 -14L8 -34M10 -14L-8 -34M-8 -34L6 -54M8 -34L-6 -54', 0.8) + A.P(c2, A.circ(0, -88, 4)) + A.P(A.lt(c2, 0.4), A.circ(-1.2, -89.2, 1.4), 0.6);
-      if (o.season === 'summer' || o.season === 'spring') { let lv = '', fl = ''; for (let i = 0; i < 12; i++) { const y = -6 - i * 6, x = Math.sin(i * 1.3) * (11 - i * 0.7); lv += A.leaf(x, y, (i % 2 ? 1 : -1) * 1.1, 4.4, 1.6); if (i % 3 === 1) fl += A.circ(x + 2, y - 1, 1.8); } s += A.P('#6fa84a', lv) + A.P('#d58ae0', fl); }
-      if (o.season === 'winter') s += A.P(PAL.snow, A.ell(0, -91, 3, 1.4));
-      return s;
-    },
-  });
-  const MILL = [['#f4f1ea', '#d83a3a'], ['#f6d34a', '#3a6fc4']];
-  gartDefine('decor:windmill', {
-    box: [64, 80], fit: 'none',
-    draw(o, r) {
-      const [c, c2] = MILL[o.variant % 2];
-      // a little tower on a stake, four sails that turn (gda-spin, origin at the hub)
-      let s = A.shadow(12, 3) + A.P('#8a6a4a', A.rect(-1.4, -30, 2.8, 30)) + A.P(c, 'M-7 -30L-5 -56H5L7 -30z') + A.P(c2, 'M-8 -56L0 -64L8 -56z') + A.P(A.dk(c, 0.15), A.rect(-2, -44, 4, 6)) + A.P(c2, A.rect(-7, -32, 14, 2.4));
-      let sails = '', sails2 = '';
-      for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.3, [ex, ey] = A.at(0, -56, a, 18), [mx, my] = A.at(0, -56, a + 0.22, 16); const d = `M0 -56L${f1(ex)} ${f1(ey)}L${f1(mx)} ${f1(my)}z`; (k % 2 ? (sails += d) : (sails2 += d)); }
-      const rot = A.P(c, sails) + A.P(c2, sails2) + A.P('#5a5a5a', A.circ(0, -56, 2));
-      s += o.anim ? `<g class="gda-spin" style="transform-origin:0px -56px;transform-box:view-box;${A.T(r, 0, 6)}">${rot}</g>` : rot;
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-8 -56L0 -64L8 -56L6 -57L0 -62L-6 -57z');
-      return s;
-    },
-  });
-  gartDefine('decor:weather-vane', {
-    box: [64, 98], fit: 'none',
-    draw(o, r) {
-      const c = lc(o, '#2f3438'), gold = lc2(o, '#c98a12');
-      // a pole, the four points of the compass, a gilded cockerel and its arrow
-      let s = A.shadow(10, 2.6) + A.P(c, A.rect(-1.6, -78, 3.2, 78)) + A.S(c, 1.4, 'M-14 -66h28M0 -72v12') + A.P(gold, A.circ(-14, -66, 1.4) + A.circ(14, -66, 1.4));
-      s += A.S(gold, 1.4, 'M-18 -80h34') + A.P(gold, 'M16 -80l-5-3v6z') + A.P(gold, 'M-16 -84l-4-2 2 6z');
-      // the cockerel: body, tail plumes, comb
-      s += A.P(gold, 'M-8 -82q2-8 8-8q4-2 4-6q2 0 2 3q2 3 0 5l-2 2q3 2 3 6q-4 2-10 0q-4 0-5-2z') + A.P(A.dk(gold, 0.2), 'M-8 -82q-6-4-4-12q2 4 5 6q-3-8 2-10q0 6 3 9z') + A.P('#c83a2a', 'M4 -97q1-3 3-1q1-2 2 1z');
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-8 -91q4-3 8-1z');
-      return s;
-    },
-  });
   gartDefine('decor:sundial', {
     box: [64, 46], fit: 'none',
     draw(o, r) {
@@ -172,21 +133,6 @@
       // the shadow on the dial follows the light: none at night
       if (!o.night) s += A.S('#5a4a2a', 1.2, o.dusk ? 'M0 -36.6l-9 1' : 'M0 -36.6l-6 2.6', 0.6);
       if (o.season === 'winter') s += A.P(PAL.snow, A.ell(-6, -37.6, 6, 1.6), 0.9);
-      return s;
-    },
-  });
-  gartDefine('decor:dovecote', {
-    box: [64, 118], fit: 'none',
-    draw(o, r) {
-      const c = lc(o, '#f4f1ea'), wood = lc2(o, '#7a5636');
-      // a pole, a little white house of three storeys with round doors, a pointed roof, doves
-      let s = A.shadow(12, 3) + A.P(wood, A.rect(-2.4, -60, 4.8, 60)) + A.P(c, A.rect(-14, -100, 28, 40)) + A.P(A.dk(c, 0.15), A.rect(4, -100, 10, 40), 0.6);
-      let doors = '', ledges = '';
-      for (let row = 0; row < 3; row++) for (let k = 0; k < 2; k++) { const x = -7 + k * 13, y = -66 - row * 12; doors += A.ell(x, y, 2.6, 3.2); ledges += A.rect(x - 4, y + 3, 8, 1.4); }
-      s += A.P('#2a2a2a', doors) + A.P(wood, ledges) + A.P('#5a4a3a', 'M-18 -100L0 -118L18 -100z') + A.P('#7a6a5a', 'M0 -118L18 -100H4z', 0.6) + A.P(c, A.circ(0, -120, 1.8));
-      // a dove on a ledge
-      s += A.P('#e8e8ee', 'M8 -79q4-4 8-1q-2 3-8 1z') + A.P('#ffffff', A.circ(15.4, -80, 1.6)) + A.P('#e8a08a', 'M17 -80l1.6 0.4-1.6 0.4z');
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-18 -100L0 -118L18 -100L15 -101L0 -115L-15 -101z');
       return s;
     },
   });
@@ -209,33 +155,6 @@
     },
   });
 
-  /* ================= wildlife homes ================= */
-  gartDefine('decor:bird-feeder', {
-    box: [64, 74], fit: 'none',
-    draw(o, r) {
-      const wood = lc(o, '#a87c4f'), seed = lc2(o, '#e8c33a');
-      // a post, a little roofed table of seed, a hanging seed tube, a fat ball
-      let s = A.shadow(12, 3) + A.P(A.dk(wood, 0.2), A.rect(-2.4, -50, 4.8, 50)) + A.P(wood, A.rect(-16, -52, 32, 3)) + A.P(A.dk(wood, 0.15), A.rect(-16, -49, 32, 1.4));
-      s += A.P(seed, A.ell(0, -53, 13, 2)) + A.P('#a87c4f', A.circ(-5, -54, 0.9) + A.circ(3, -54.4, 0.8) + A.circ(8, -53.6, 0.8));
-      s += A.P(wood, A.rect(-14, -66, 2.4, 14) + A.rect(11.6, -66, 2.4, 14)) + A.P('#7a4a3a', 'M-20 -64L0 -74L20 -64L18 -62L0 -71L-18 -62z');
-      s += A.S('#9aa0a6', 0.6, 'M-12 -52v6') + A.P('#d8e8f0', A.rrect(-15, -46, 6, 16, 2), 0.85) + A.P(seed, A.rect(-14, -40, 4, 9), 0.9) + A.P('#5a6066', A.rect(-15.4, -47, 6.8, 2) + A.rect(-15.4, -31, 6.8, 2));
-      s += A.S('#9aa0a6', 0.6, 'M12 -52v4') + A.P('#c8a86a', A.circ(12, -44, 4)) + A.P('#8a6a3a', A.circ(11, -45, 0.7) + A.circ(13.4, -43, 0.7) + A.circ(11.6, -42.4, 0.6));
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-20 -64L0 -74L20 -64L17 -64L0 -72L-17 -64z');
-      return s;
-    },
-  });
-  gartDefine('decor:bird-box', {
-    box: [64, 80], fit: 'none',
-    draw(o, r) {
-      const wood = lc(o, '#8a6a4a'), roof = lc2(o, '#3f6f5a');
-      let s = A.shadow(10, 2.6) + A.P(A.dk(wood, 0.3), A.rect(-2.4, -48, 4.8, 48)) + A.P(wood, A.rect(-10, -72, 20, 26)) + A.P(A.dk(wood, 0.2), A.rect(4, -72, 6, 26), 0.6);
-      s += A.P(roof, 'M-14 -70L0 -80L14 -70L12 -68L0 -77L-12 -68z') + A.P('#2a1a10', A.circ(0, -62, 3)) + A.P(A.dk(wood, 0.3), A.rect(-0.8, -56, 1.6, 4));
-      // a blue tit peeping out in spring and summer
-      if (o.season === 'spring' || o.season === 'summer') s += A.P('#4a8fd8', 'M-2.6 -62a2.6 2.6 0 0 1 5.2 0z') + A.P('#ffffff', A.ell(0, -61.4, 1.6, 1)) + A.P('#1a1a1a', A.circ(0.6, -62, 0.5));
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-14 -70L0 -80L14 -70L11 -70L0 -77.6L-11 -70z');
-      return s;
-    },
-  });
   gartDefine('decor:bug-hotel', {
     box: [64, 60], fit: 'none',
     draw(o, r) {
@@ -359,16 +278,6 @@
       return s;
     },
   });
-  gartDefine('decor:flamingo', {
-    box: [64, 62], fit: 'none',
-    draw(o, r) {
-      const c = lc(o, '#f27aa8'), c2 = lc2(o, '#2f3438');
-      let s = A.shadow(10, 2.4) + A.S(c2, 1, 'M-1 0V-30M3 0l-1-14 -6-4') + A.P(c, 'M-12 -34q2-10 14-10q10 0 10 6q-4 6-14 8q-8 1-10-4z') + A.P(A.dk(c, 0.15), 'M-12 -34q4 2 10 0q-4 6-10 0z', 0.7);
-      s += A.S(c, 2.2, 'M8 -40q4-6 0-12q-4-6 2-10') + A.P(c, A.circ(11, -63, 3)) + A.P('#f4f1ea', 'M13 -63l5 2-5 2z') + A.P(c2, 'M16 -62l2 1-1 2z') + A.P('#2a2a2a', A.circ(11.4, -64, 0.6));
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-4 -44q6-3 12 0q-6 1-12 0z') + A.P('#d83a3a', 'M7 -54q4 2 6 0l-1 3q-3 1-5-1z');
-      return s;
-    },
-  });
   gartDefine('decor:topiary-peacock', {
     box: [64, 88], fit: 'none',
     draw(o, r) {
@@ -402,70 +311,6 @@
       return s;
     },
   });
-  const BALL = [['#5aa0d8', '#2a5a9a'], ['#a868c4', '#5a2a7a'], ['#e8c86a', '#a8742a']];
-  gartDefine('decor:gazing-ball', {
-    box: [64, 46], fit: 'none',
-    draw(o, r) {
-      const [c, dk] = BALL[o.variant % 3], stand = lc2(o, '#c7c2b8');
-      // a mirrored ball on a pedestal: a curved little garden reflected in it, a bright window highlight
-      let s = A.shadow(12, 3) + A.P(A.dk(stand, 0.15), 'M-10 0h20l-2-4h-16z') + A.P(stand, 'M-5 -4q-2-12 -1-20h12q1 8-1 20z') + A.P(A.dk(stand, 0.1), A.ell(0, -24, 8, 2.4));
-      s += A.P(dk, A.circ(0, -35, 11)) + A.P(c, A.circ(-1.4, -36.4, 9.4)) + A.P('#5a9a4a', 'M-10 -32q10 6 20 0q-2 6-10 8q-8-2-10-8z', 0.7) + A.P('#ffffff', A.ell(-4.4, -40.4, 3, 2), 0.85) + A.P('#ffffff', A.circ(3, -42, 1), 0.6);
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-6 -45q6-3 12 0q-6 1-12 0z');
-      return s;
-    },
-  });
-  gartDefine('decor:wind-chimes', {
-    box: [64, 86], fit: 'none',
-    draw(o, r) {
-      const metal = lc(o, '#c98a12'), wood = lc2(o, '#a87c4f');
-      // a shepherd's crook post, a wooden disc, five tubes of different lengths and a clapper (they swing)
-      let s = A.shadow(10, 2.4) + A.S('#2f3438', 2.4, 'M-14 0V-74Q-14 -84 -4 -84Q4 -84 4 -76');
-      let tubes = '', tubesL = '';
-      for (let k = 0; k < 5; k++) { const x = -4 + k * 4, len = 22 - Math.abs(k - 2) * 4; tubes += A.rrect(x - 1.1, -66, 2.2, len, 1); tubesL += A.rect(x - 0.8, -65, 0.6, len - 2); }
-      const hang = A.S('#9aa0a6', 0.4, 'M4 -76v6M-4 -70l8-4 8 4M-4 -70v4M0 -70v4M4 -70v4M8 -70v4M12 -70v4') + A.P(wood, A.ell(4, -70, 10, 2)) + A.P(metal, tubes) + A.P('#ffffff', tubesL, 0.5) + A.S('#9aa0a6', 0.4, 'M4 -68v18') + A.P(wood, A.ell(4, -50, 2.4, 3.4));
-      s += o.anim ? `<g class="gart-swing" style="${A.T(r, 0, 3)}">${hang}</g>` : hang;
-      return s;
-    },
-  });
-  gartDefine('decor:signpost', {
-    box: [64, 72], fit: 'none',
-    draw(o, r) {
-      const wood = lc(o, '#a87c4f'), paint = lc2(o, '#f4f1ea');
-      const k = o.r === 2 ? -1 : 1;
-      // a post with two arrow boards, each with a painted picture: a carrot this way, a flower that way
-      let s = A.shadow(10, 2.4) + A.P(A.dk(wood, 0.2), A.rect(-2, -66, 4, 66)) + A.P(wood, A.rect(-2, -66, 1.4, 66), 0.5);
-      const arrow = (y, dir) => `M${-14 * dir} ${y}h${26 * dir}l${6 * dir} 4.5l${-6 * dir} 4.5h${-26 * dir}z`;
-      s += A.P(paint, arrow(-62, k) + arrow(-46, -k)) + A.S(A.dk(paint, 0.25), 0.6, arrow(-62, k) + arrow(-46, -k), 0.6);
-      s += A.P('#f28a1a', `M${2 * k} -59l${6 * k} -1.4l${-6 * k} -1.4z`) + A.P('#4fa64a', `M${2 * k} -57.6l${-2 * k} -1l${2 * k} -0.6z`) + A.P('#e86a8a', A.circ(-6 * k, -41.6, 1.6) + A.circ(-8.6 * k, -41.6, 1.6) + A.circ(-7.3 * k, -43.4, 1.6)) + A.P('#f6d34a', A.circ(-7.3 * k, -42.2, 0.8));
-      if (o.season === 'winter') s += A.P(PAL.snow, A.rect(-14 * k, -63, 26 * k, 1.4) + A.rect(-14 * -k, -47, 26 * -k, 1.4) + A.ell(0, -67, 3, 1.2));
-      return s;
-    },
-  });
-  gartDefine('decor:welcome-sign', {
-    box: [64, 52], fit: 'none',
-    draw(o, r) {
-      const wood = lc(o, '#a87c4f'), paint = lc2(o, '#f2a7c8');
-      // a little board on two legs, hand-painted with a heart and flowers (no words: it says hello anyway)
-      let s = A.shadow(16, 3) + A.P(A.dk(wood, 0.2), A.rect(-14, -32, 3, 32) + A.rect(11, -32, 3, 32)) + A.P(wood, A.rrect(-20, -50, 40, 22, 3)) + A.P(A.lt(wood, 0.25), A.rect(-18, -48, 36, 2), 0.6);
-      s += A.P(paint, 'M0 -34c-6-4-8-8-5-11c2-2 4-1 5 1c1-2 3-3 5-1c3 3 1 7-5 11z') + posy(r, -12, -42, 2, 2, 2, '#f6d34a', '#5a9a4a') + posy(r, 12, -42, 2, 2, 2, '#8aa0e8', '#5a9a4a');
-      s += A.P('#5a9a4a', A.leaf(-6, -2, -0.6, 7, 2) + A.leaf(6, -2, 0.6, 7, 2) + A.leaf(14, -2, 0.3, 6, 1.8)) + A.P('#f2a7c8', A.circ(-8, -9, 1.8) + A.circ(15, -8, 1.6));
-      if (o.season === 'winter') s += A.P(PAL.snow, A.rect(-20, -51, 40, 2));
-      return s;
-    },
-  });
-  const POST = [['#d83a3a', '#2f3438'], ['#2f3438', '#c9a24a'], ['#3f7a5a', '#f4f1ea']];
-  gartDefine('decor:letterbox', {
-    box: [64, 66], fit: 'none',
-    draw(o, r) {
-      const [c, c2] = POST[o.variant % 3];
-      // a wooden post, a round-topped box with a flag (up when there is post: on sunny mornings)
-      let s = A.shadow(10, 2.4) + A.P('#8a6a4a', A.rect(-2, -44, 4, 44)) + A.P(c, 'M-12 -44V-56Q-12 -64 0 -64Q12 -64 12 -56V-44z') + A.P(A.dk(c, 0.2), 'M4 -44V-62Q12 -62 12 -56V-44z', 0.5) + A.P(A.lt(c, 0.3), 'M-10 -46V-56q0-5 4-6v16z', 0.5);
-      s += A.P(c2, A.ell(-12, -52, 1.4, 6)) + A.S(c2, 1.2, o.tod === 'dawn' || o.tod === 'day' ? 'M12 -50V-62' : 'M12 -50h8') + A.P('#e8c84a', o.tod === 'dawn' || o.tod === 'day' ? A.rect(12, -62, 6, 4) : A.rect(16, -52, 4, 6));
-      if (o.season === 'winter') s += A.P(PAL.snow, 'M-11 -58Q-10 -66 0 -66Q10 -66 11 -58Q6 -63 0 -63Q-6 -63 -11 -58z');
-      if (o.season === 'spring' || o.season === 'summer') s += A.P('#6fa84a', A.leaf(-2, -2, -0.5, 8, 2) + A.leaf(2, -2, 0.6, 8, 2)) + A.P('#f6d34a', A.circ(-5, -9, 1.6) + A.circ(6, -9, 1.6));
-      return s;
-    },
-  });
 
   /* ================= planters ================= */
   const POTS = [['#e86a8a', '#4f8a3a'], ['#8aa0e8', '#5f8f6a'], ['#f6c445', '#4f8a3a']];
@@ -478,21 +323,6 @@
       // herbs: rosemary needles in one, a mound of thyme, a flowering one
       s += A.S('#3f6a4a', 1.2, 'M-18 -15l-2-10M-15 -15l0-12M-12 -15l2-9') + A.P(lf, A.blob(r, 8, -21, 9, 5, 9, 0.4)) + posy(r, 8, -24, 6, 2, 4, fl, lf) + A.P('#7a9a6a', A.blob(r, 22, -13, 5.4, 3, 7, 0.4)) + A.P('#c49ad8', A.circ(20, -15, 0.9) + A.circ(23, -16, 0.9) + A.circ(24, -13, 0.9));
       if (o.season === 'winter') s += A.P(PAL.snow, A.ell(8, -26, 8, 2) + A.ell(-14, -16, 6, 1.4));
-      return s;
-    },
-  });
-  const BASKET = [['#f27aa8', '#ffffff'], ['#8a5ac8', '#ffffff'], ['#e2443a', '#f6c445']];
-  gartDefine('decor:hanging-basket', {
-    box: [64, 92], fit: 'none',
-    draw(o, r) {
-      const [a, b] = BASKET[o.variant % 3];
-      // a post with a curly iron bracket, a moss basket on chains, petunias trailing over the edge (it sways)
-      let s = A.shadow(10, 2.4) + A.P('#7a5636', A.rect(-14, -88, 5, 88)) + A.S('#2f3438', 1.6, 'M-9 -80H14M-9 -72Q0 -72 4 -80');
-      let flw = '', trail = '';
-      for (let i = 0; i < 9; i++) { const x = -2 + (i % 5) * 8 - 8, y = -54 + Math.floor(i / 5) * 6; flw += A.circ(x + rr(r, -1, 1), y + rr(r, -1, 1), 2.6); }
-      for (let i = 0; i < 4; i++) trail += `M${-8 + i * 8} -46q${(i - 1.5) * 2} 8 ${(i - 1.5) * 3} 16`;
-      const hang = A.S('#9aa0a6', 0.5, 'M14 -80l-12 22M14 -80l12 22') + A.P('#6a7a4a', 'M-2 -50Q14 -36 30 -50z') + A.P('#8a9a5a', 'M-2 -50Q14 -44 30 -50z') + A.S('#4f8a3a', 1.6, trail.replace(/M([-\d.]+)/g, (m, x) => `M${f1(+x + 14)}`)) + A.P(a, flw.replace(/M([-\d.]+)/g, (m, x) => `M${f1(+x + 14)}`)) + A.P(b, A.circ(6, -55, 1.4) + A.circ(22, -54, 1.4) + A.circ(14, -58, 1.4) + A.circ(10, -36, 1.8) + A.circ(20, -38, 1.8));
-      s += o.season === 'winter' ? A.P('#6a7a4a', 'M-2 -50Q14 -36 30 -50z') + A.P('#c8442a', A.circ(10, -52, 1.6) + A.circ(18, -53, 1.6)) + A.P('#2f5a3a', A.leaf(14, -52, 0, 6, 2)) + A.P(PAL.snow, A.ell(14, -52, 12, 2)) + A.S('#9aa0a6', 0.5, 'M14 -80l-12 22M14 -80l12 22') : (o.anim ? `<g class="gart-swing" style="transform-origin:14px -80px;transform-box:view-box;${A.T(r, 0, 3)}">${hang}</g>` : hang);
       return s;
     },
   });
@@ -586,38 +416,6 @@
       s += A.S('#6a4a2a', 1.4, 'M-9 -38L-22 -44l-3-4M-22 -44l-4 1M9 -38L20 -32l4 1M20 -32l2 3');
       // the snowman is not at all sad about spring: he just grows a daisy in his hat brim and slowly smiles
       if (o.season !== 'winter') s += A.P('#ffffff', A.star(-5, -62, 6, 2, 1)) + A.P('#f2c21e', A.circ(-5, -62, 0.8));
-      return s;
-    },
-  });
-  gartDefine('decor:festive-lights', {
-    box: [128, 80], fit: 'none',
-    draw(o, r) {
-      const garland = lc(o, '#2f5f2e'), cols = o.variant % 2 ? ['#ff6a6a', '#ffd36a', '#6ad0ff', '#8af08a'] : ['#ffd36a', '#ffe8a0', '#ffd36a', '#ffe8a0'];
-      const on = lit(o) || o.season === 'winter';
-      let s = A.shadow(50, 4) + A.P('#7a5636', A.rect(-52, -76, 4, 76) + A.rect(48, -76, 4, 76));
-      // a fir garland swagged between the posts, bows at the ends, bulbs along it
-      let g = '';
-      for (let i = 0; i < 22; i++) { const t = i / 21, x = -50 + t * 100, y = -72 + 22 * 4 * t * (1 - t); g += A.blob(r, x, y, 4.4, 3, 6, 0.6); }
-      s += A.P(A.dk(garland, 0.2), g) + A.P(garland, g.replace(/M([-\d.]+) ([-\d.]+)/g, (m, x, y) => `M${f1(+x - 0.8)} ${f1(+y - 1)}`), 0.8);
-      s += A.P('#d83a3a', 'M-50 -74l-6-4v8zM-50 -74l6-4v8zM50 -74l-6-4v8zM50 -74l6-4v8z') + A.P('#a82a24', A.circ(-50, -74, 1.6) + A.circ(50, -74, 1.6));
-      let bulbs = ['', '', '', ''], halo = '';
-      for (let i = 0; i < 10; i++) { const t = (i + 0.5) / 10, x = -50 + t * 100, y = -72 + 22 * 4 * t * (1 - t) + 3; bulbs[i % 4] += A.circ(x, y, 1.8); if (on) halo += A.circ(x, y, 6); }
-      if (on) s += `<g class="gda-glow" style="${A.T(r, 0, 3)}">${A.P('#ffe08a', halo, o.night ? 0.25 : 0.14)}</g>`;
-      cols.forEach((c, i) => { s += A.P(on ? c : '#e8e4d8', bulbs[i]); });
-      if (o.season === 'winter') s += A.P(PAL.snow, g.split('z').filter((d, i) => i % 3 === 0).join('z') + 'z', 0.8);
-      return s;
-    },
-  });
-  const FLAGS = [['#d83a3a', '#f4f1ea', '#3a6fc4'], ['#f2a7c8', '#f6d34a', '#8ad0b4', '#b4a2e2', '#f8b48a']];
-  gartDefine('decor:bunting', {
-    box: [128, 84], fit: 'none',
-    draw(o, r) {
-      const cols = FLAGS[o.variant % 2];
-      let s = A.shadow(50, 4) + A.P('#7a5636', A.rect(-52, -82, 4, 82) + A.rect(48, -82, 4, 82)) + A.S('#5a5a5a', 0.7, 'M-50 -78Q0 -56 50 -78');
-      let flags = cols.map(() => '');
-      for (let i = 0; i < 11; i++) { const t = (i + 0.5) / 11, x = -50 + t * 100, y = -78 + 22 * 4 * t * (1 - t); flags[i % cols.length] += `M${f1(x - 3.6)} ${f1(y)}h7.2l-3.6 8.4z`; }
-      const fl = cols.map((c, i) => A.P(c, flags[i])).join('');
-      s += o.anim ? `<g class="gda-flutter" style="${A.T(r, 0, 2)}">${fl}</g>` : fl;
       return s;
     },
   });

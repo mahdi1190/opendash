@@ -23,20 +23,27 @@
   const LS_KEY = 'dash-finance-ui-v1';
   const DAY_MS = 864e5;
   const FONT = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif';   // Inter is embedded by build.mjs
+  // The small "Pending" tag on a row, everywhere one is listed (lib/finance/pending.mjs). "Not counted" when it is left out.
+  const txPendTag = x => (x && (x.pe || x.kind === 'off') ? h('span', { class: 'fv-pend-tag' + (x.kind === 'off' ? ' off' : ''), title: x.kind === 'off' ? 'In none of your totals' : 'Your bank has not finished this payment. It counts now, and the amount can still change.', text: x.kind === 'off' ? (x.pe ? 'Pending, not counted' : 'Not counted') : 'Pending' }) : null);
   // 'board' = My money (2.16): the page you put together yourself (39-board*.js); 'countries' =
   // Spending by country (38-countries.js).
   const SECTIONS = [
-    ['board', 'My money'], ['overview', 'Money brief'], ['spending', 'Spending'], ['categories', 'Categories'], ['merchants', 'Merchants'],
-    ['countries', 'Countries'], ['cashflow', 'Cash flow'], ['recurring', 'Recurring'], ['budgets', 'Budgets'], ['transactions', 'Transactions'],
+    ['board', 'My money'], ['overview', 'Money brief'], ['spending', 'Spending'], ['categories', 'Categories'], ['merchants', 'Shops'],
+    ['countries', 'Countries'], ['cashflow', 'Cash flow'], ['recurring', 'Regular bills'], ['budgets', 'Budgets'], ['tax', 'Tax'], ['transactions', 'Transactions'], ['data', 'Your data'],
   ];
   // 2.19 (lean UI): the ten sections sit under five tabs in the page header (the shell's subTabs); a tab with
   // more than one section shows a small chooser for them above the filters (12-bar.js). Order = SECTIONS order.
+  // 2.21: Expenses is the sixth tab. It is its own page (#view=expenses, 66-expenses-1page.js), so it has no sections here.
   const GROUPS = [
     ['overview', 'Overview', 'gauge', ['board', 'overview']],
     ['spending', 'Spending', 'chart-column', ['spending', 'categories', 'merchants', 'countries']],
     ['cash', 'Cash flow', 'arrow-up-down', ['cashflow', 'recurring']],
     ['budgets', 'Budgets', 'piggy-bank', ['budgets']],
+    ['tax', 'Tax', 'landmark', ['tax']],   // UK only (37-tax.js): hidden for "Somewhere else"
     ['transactions', 'Transactions', 'receipt', ['transactions']],
+    ['expenses', 'Expenses', 'coins', []],
+    ['owed', 'Owed to me', 'handshake', []],   // Owed to me: its own page too (#view=owed, 66-owed-1page.js)
+    ['data', 'Your data', 'database', ['data']],   // 2.21.1: where every payment comes from, and what counts (44-your-data.js)
   ];
   const groupOf = (id) => (GROUPS.find(g => g[3].includes(id)) || GROUPS[0])[0];
   const INNER_LABEL = { spending: 'Over time', cashflow: 'Cash flow' };   // inside its tab, where the tab's own name would repeat
@@ -208,7 +215,7 @@
   const DEFAULT_F = {
     section: 'board', preset: '3M', from: null, to: null, gran: 'week',
     cats: [], accts: [], merchant: '', q: '', amt: null, inc: true, xfer: false, compare: false, more: false,
-    country: '', trip: '', board: null, boardTripRows: true, heroOff: false, boardSeen: false, ccScope: 'all', billNotes: {},
+    country: '', trip: '', board: null, boardTripRows: true, heroOff: false, briefOff: false, boardSeen: false, ccScope: 'all', billNotes: {},
     catMode: 'donut', stackMode: 'abs', merchSort: 'spend', histMode: 'count', pageSize: 25,
     sort: { key: 'd', dir: -1 }, mSort: { key: 'total', dir: -1 }, budgetCat: '', slots: {}, localBudgets: null,
   };
@@ -219,7 +226,7 @@
   // browser stay in this browser's LS_KEY. No amount, merchant or name goes into the state.
   // board: My money's layout (its widgets, their sizes, order and settings, the preset; 25-board-model.js);
   // boardTripRows: payments with no other sign of where count in the trip's country.
-  const SHARED_F = ['inc', 'xfer', 'compare', 'catMode', 'stackMode', 'merchSort', 'histMode', 'pageSize', 'sort', 'mSort', 'board', 'boardTripRows', 'heroOff', 'ccScope', 'billNotes'];
+  const SHARED_F = ['inc', 'xfer', 'compare', 'catMode', 'stackMode', 'merchSort', 'histMode', 'pageSize', 'sort', 'mSort', 'board', 'boardTripRows', 'heroOff', 'briefOff', 'ccScope', 'billNotes'];
   const sameJ = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   function sharedF() {
     try { const v = typeof uiPrefGet === 'function' ? uiPrefGet('finance') : null; return v && typeof v === 'object' && !Array.isArray(v) ? v : null; } catch (e) { return null; }
@@ -232,7 +239,8 @@
     // The layout is checked in full where it is used (25-board-model.js boardClean); here only its shape.
     if (f.board != null && !(f.board && typeof f.board === 'object' && Array.isArray(f.board.w))) f.board = null;
     if (typeof f.boardTripRows !== 'boolean') f.boardTripRows = true;
-    f.heroOff = f.heroOff === true;   // 2.19.5: My money's welcome banner is hidden (More brings it back)
+    f.heroOff = f.heroOff === true;   // 2.19.5's welcome banner, gone since 2.21: read so old files stay valid, never used
+    f.briefOff = f.briefOff === true;   // 2.21: the Money brief is hidden on Money's main page (More brings it back)
     // Cancel reminders on subscriptions: {merchant hash: {d: 'YYYY-MM-DD' | '', t: note}} (39-board-widgets.js).
     if (!f.billNotes || typeof f.billNotes !== 'object' || Array.isArray(f.billNotes)) f.billNotes = {};
     else {

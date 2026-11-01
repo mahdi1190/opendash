@@ -3,12 +3,12 @@
   const cfPeriod = () => (['range', 'last', 'this'].includes(F.cfPeriod) ? F.cfPeriod : 'range');
   BUILD.cashflow = g => {
     S.sankey = card(g, { title: 'Where the money went', span: 8, md: 12, chart: true, height: 380 });
-    S.sankeySeg = seg([['range', 'Range', 'The dates picked above'], ['last', 'Last month'], ['this', 'This month']], cfPeriod(), v => { F.cfPeriod = v; saveF(); S.sankeySeg.set(v); flowSankey(R.ctx); }, 'Period');
+    S.sankeySeg = seg([['range', 'These dates', 'The dates picked above'], ['last', 'Last month'], ['this', 'This month']], cfPeriod(), v => { F.cfPeriod = v; saveF(); S.sankeySeg.set(v); flowSankey(R.ctx); }, 'Period');
     S.sankey.tools.append(S.sankeySeg.el);
     S.kept = card(g, { title: 'Kept', span: 4, md: 12, chart: true, height: 190, cls: 'c1-kept' });
     S.keptBody = h('div', { class: 'c1-kept-b' }); S.kept.body.append(S.keptBody);
     S.flow = card(g, { title: 'Money in and out', span: 8, md: 12, chart: true, height: 320 });
-    S.cum = card(g, { title: 'Cumulative net', span: 4, md: 12, chart: true, height: 320, fill: true });
+    S.cum = card(g, { title: 'Left over so far', span: 4, md: 12, chart: true, height: 320, fill: true });
     // Balances and their history sit side by side (one story); either takes
     // the full row if the other has nothing to show.
     S.bal = card(g, { title: 'Balances', span: 4, md: 12, cls: 'fv-bal-card' });
@@ -58,7 +58,7 @@
     const narrow = (cd.chart.clientWidth || 800) < 560;
     // On a phone the sources' labels leave the chart (no room on the left), so they go in the caption.
     const srcText = narrow ? model.nodes.filter(n => n.side === 'l').map(n => `${n.label} ${gbp(sum(model.links.filter(l => l.source === n.name), l => l.value))}`).join(' · ') : '';
-    cd.setSub(narrow ? `${label} · from ${srcText || 'nothing'}` : `${label} · hover a stream to follow it${anySel ? ' · the selection is lit' : ''}`);
+    cd.setSub(narrow ? `${label} · from ${srcText || 'nothing'}` : `${label} · hover to follow the money${anySel ? ' · your selection is lit' : ''}`);
     const labelOf = new Map(model.nodes.map(n => [n.name, n.label]));
     const nodeOf = new Map(model.nodes.map(n => [n.name, n]));
     const colOf = n => n.kind === 'in' ? t.income : n.kind === 'refund' ? alpha(t.income, 0.55) : n.kind === 'balance' ? t.dim
@@ -155,7 +155,7 @@
       cd.body.append(h('div', { class: 'fv-mini-stats fv-bal-stats' },
         h('div', null, h('span', { class: 'l', text: 'Lowest' }), h('b', { class: 'num', text: gbp(lo.v) }), h('span', { class: 'l', text: fDay(lo.n) })),
         h('div', null, h('span', { class: 'l', text: 'Highest' }), h('b', { class: 'num', text: gbp(hi.v) }), h('span', { class: 'l', text: fDay(hi.n) })),
-        h('div', { class: 'wide' }, h('span', { class: 'l', text: 'Average balance' }), h('b', { class: 'num', text: gbp(avg) }), h('span', { class: 'l', text: `across ${hist.length} snapshots` }))));
+        h('div', { class: 'wide' }, h('span', { class: 'l', text: 'Average balance' }), h('b', { class: 'num', text: gbp(avg) }), h('span', { class: 'l', text: `across ${hist.length} balance checks` }))));
     }
     cd.body.prepend(h('div', { class: 'fv-bals' }, bs.map(b => h('div', { class: 'fv-bal' }, h('span', { class: 'l', text: b.name || b.acct }), h('b', { class: +b.balance < 0 ? 'neg' : '', text: gbp2(+b.balance) }), h('span', { class: 'mute', text: [b.currency && b.currency !== 'GBP' ? b.currency : '', validIso(b.asOf) ? fDay(dnum(b.asOf)) : ''].filter(Boolean).join(' · ') })))));
   }
@@ -168,7 +168,7 @@
   // Money in above the line, money out below it (one axis), and net as a smooth line with an end dot.
   function flowChart(cd, ctx) {
     const t = tk(); const { B, inc, out, net } = flowSeries(ctx);
-    if (!ctx.cur.spend.length && !ctx.cur.income.length) { cd.setEmpty('No money in or out in this range.'); return; }
+    if (!ctx.cur.spend.length && !ctx.cur.income.length) { cd.setEmpty('No money in or out in these dates.'); return; }
     const ti = sum(inc), to = sum(out);
     cd.setSub(`In ${gbp(ti)} · out ${gbp(to)} · net ${(ti - to >= 0 ? '+' : '') + gbp(ti - to)}`);
     const part = B.map(b => C1.partial(b));
@@ -204,10 +204,10 @@
   // The running net with its stroke and wash split at zero: teal above (saving), red below (drawing down).
   function cumNet(cd, ctx) {
     const t = tk(); const { B, net } = flowSeries(ctx);
-    if (!ctx.cur.spend.length && !ctx.cur.income.length) { cd.setEmpty('Nothing in this range.'); return; }
+    if (!ctx.cur.spend.length && !ctx.cur.income.length) { cd.setEmpty('Nothing in these dates.'); return; }
     let c0 = 0; const cum = net.map(v => round2(c0 += v));
     const last = cum[cum.length - 1];
-    cd.setSub(`${last >= 0 ? 'Up' : 'Down'} ${gbp(Math.abs(last))} over the range`);
+    cd.setSub(`${last >= 0 ? 'Up' : 'Down'} ${gbp(Math.abs(last))} over these dates`);
     const pos = t.income, neg = t.neg;
     const mx = Math.max(0, ...cum), mn = Math.min(0, ...cum);
     // Where zero sits inside the area's box (smoothing never overshoots, so the box is the data's).
@@ -220,7 +220,7 @@
     const fl = lmx > 0 && lmn < 0 ? clamp(lmx / (lmx - lmn), 0, 1) : (lmn >= 0 ? 1 : 0);
     const stroke = hasEcharts() && lmx > lmn ? new window.echarts.graphic.LinearGradient(0, 0, 0, 1, [
       { offset: 0, color: lmx > 0 ? pos : neg }, { offset: fl, color: lmx > 0 ? pos : neg }, { offset: fl, color: lmn < 0 ? neg : pos }, { offset: 1, color: lmn < 0 ? neg : pos }]) : (last >= 0 ? pos : neg);
-    const s = FX.smoothLine({ id: 'cum', name: 'Cumulative net', data: cum, width: 2.25, symbolSize: 8, z: 4, color: last >= 0 ? pos : neg, endLabel: v => (v >= 0 ? '+' : '') + gbpShort(v),
+    const s = FX.smoothLine({ id: 'cum', name: 'Left over so far', data: cum, width: 2.25, symbolSize: 8, z: 4, color: last >= 0 ? pos : neg, endLabel: v => (v >= 0 ? '+' : '') + gbpShort(v),
       markLine: { symbol: 'none', silent: true, animation: false, lineStyle: { color: t.strong, width: 1, type: 'solid' }, label: { show: false }, data: [{ yAxis: 0 }] } });
     s.lineStyle.color = stroke;
     s.itemStyle = { color: last >= 0 ? pos : neg, borderColor: t.card, borderWidth: 2 };
@@ -268,7 +268,7 @@
     cd.el.hidden = !hist.length;
     if (!hist.length) return;
     const pts = hist.map(x => ({ n: dnum(x.date), total: +x.total || 0, acc: x.accounts || {} })).filter(p => p.n >= ctx.rg.from && p.n <= ctx.rg.to).sort((p, q) => p.n - q.n);
-    if (!pts.length) { cd.setEmpty('No balance snapshots in this range.'); return; }
+    if (!pts.length) { cd.setEmpty('No balances saved for these dates. An Update bank adds them.'); return; }
     // With a single account its line is identical to (and would hide) the total.
     const allAccts = [...new Set(pts.flatMap(p => Object.keys(p.acc)))];
     const accts = allAccts.length > 1 ? allAccts.slice(0, 3) : [];
@@ -279,7 +279,7 @@
     // Paydays (money in of at least 500 in one go), drawn as quiet teal lines.
     const pays = [...new Set(ctx.cur.income.filter(x => x.inc >= 500).map(x => x.n))].filter(n => n >= pts[0].n && n <= pts[pts.length - 1].n);
     const payset = new Set(pays);
-    cd.setSub(`Latest ${gbp2(pts[pts.length - 1].total)} · ${pts.length} snapshot${pts.length === 1 ? '' : 's'}${pays.length ? ' · teal lines are paydays' : ''}`);
+    cd.setSub(`Latest ${gbp2(pts[pts.length - 1].total)} ${pays.length ? ' · teal lines are paydays' : ''}`);
     const lastP = pts[pts.length - 1];
     const total = FX.area({ id: 'total', name: 'Total', data: pts.map(p => [diso(p.n), round2(p.total)]), symbols: pts.length < 30, area: t.dark ? 0.3 : 0.2, width: 2.25, endLabel: v => gbpShort(v),
       markLine: pays.length ? { symbol: 'none', silent: true, animation: false, lineStyle: { color: alpha(t.income, 0.45), width: 1, type: 'solid' }, label: { show: false }, data: pays.map(n => ({ xAxis: diso(n) })) } : undefined,
@@ -311,7 +311,7 @@
     const t = tk();
     const agg = new Map(); ctx.cur.income.forEach(x => agg.set(x.m, (agg.get(x.m) || 0) + x.inc));
     const list = [...agg.entries()].filter(e => e[1] > 0).sort((p, q) => q[1] - p[1]).slice(0, 8);
-    if (!list.length) { cd.setEmpty('No income in this range.'); return; }
+    if (!list.length) { cd.setEmpty('No income in these dates.'); return; }
     cd.setSub(`${gbp(sum(list, e => e[1]))} from ${agg.size} source${agg.size === 1 ? '' : 's'} · click one to see its payments`);
     const rich = { n: { color: t.text, fontSize: 11.5, fontFamily: FONT, padding: [0, 0, 0, 7], width: 104 } };
     list.forEach((e, i) => { rich['t' + i] = { backgroundColor: { image: C1.tileImg(e[0], 'Income', 36) }, width: 18, height: 18 }; });
@@ -338,9 +338,9 @@
     const agg = new Map(); rows.forEach(x => agg.set(x.acct || 'Unknown account', (agg.get(x.acct || 'Unknown account') || 0) + x.s));
     const list = [...agg.entries()].filter(e => Math.abs(e[1]) > 0.004).sort((p, q2) => q2[1] - p[1]);
     if (!M.accts.length) { cd.setEmpty('Account names arrive with the next finance update.'); return; }
-    if (!list.length) { cd.setEmpty('No spending in this range.'); return; }
+    if (!list.length) { cd.setEmpty('No spending in these dates.'); return; }
     const only = F.accts.length === 1 ? F.accts[0] : null;
-    cd.setSub(list.length === 1 ? 'Only one account has spending in this range' : only ? 'Selected · clear it with the chip × above' : 'Click an account to keep only its payments');
+    cd.setSub(list.length === 1 ? 'Only one account has spending in these dates' : only ? 'Selected · press the × above to clear it' : 'Click an account to keep only its payments');
     const s = FX.bars({ id: 'a', name: 'Spent', horizontal: true, width: 14, radius: 7, track: true, color: t.accent,
       data: list.map(e => FX.sel({ value: round2(e[1]), itemStyle: { color: t.accent } }, F.accts.includes(e[0]), F.accts.length > 0)),
       label: Object.assign(FX.numLabel({ position: 'right', color: t.text, weight: 600, size: 11.5 }), { distance: 8 }) });

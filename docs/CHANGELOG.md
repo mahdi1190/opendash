@@ -1,14 +1,705 @@
 # Changelog
 
-All notable changes to OpenDash are documented in this file.
+All notable changes to Freeflo (called OpenDash before 2.23) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and OpenDash follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-For OpenDash, a **major** version may need a data-folder upgrade that older
+and Freeflo follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+For Freeflo, a **major** version may need a data-folder upgrade that older
 versions cannot read; the launcher always backs the data folder up before it
 upgrades it.
 
 ## [Unreleased]
+
+## [2.38.1]
+
+### Fixed
+- Tax collected through a tax code now shows on the later year's payslips and says which year it is from.
+- Exact payments in the next tax year now show and count in that year.
+- The money plan and Tax tab now agree on tax returns, including when HMRC asked you to file, for partners, and when you have been abroad.
+- If an expense is marked paid and no bank payment is sure, Freeflo says so and lets you pick it in one tap.
+
+## [2.38.0]
+
+Fishing is a proper game again, and it grows with your garden.
+
+### Changed
+- **The reel game is back.** After the strike you fight the fish in the bar. How hard depends on the kind of fish, how big this one is, and your rod.
+- **Every shadow is a real fish.** The small decorative ones in the water are gone.
+- **Careful fishing.** Cast right on top of a fish and it bolts, so land just in front. Your footsteps scare fish near the surface: hold Shift to creep. A big hunter with a fin scares small fish away.
+- **Further out, bigger and rarer.** The far deep water is where the giants and the fins are, and great fish give themselves away with rings on the surface.
+- **Fish and bugs start few and grow with your garden.** Fish come with your level and what you build for the lake. Bugs come with your flowers and trees, up to a limit for your level, and a bug hotel adds to it. Butterflies and bees you cannot catch are now rare.
+
+### Added
+- **Build for the lake**, at the tackle shop: a longer pier and a deep-water pier that reach further out, a fish feeder, reed beds, a fishing station (a bigger bar and longer to strike), a night lantern and stocked pools. Friends walk on your longer pier when they visit.
+- **Fish chum:** a new bait that brings a fish up near your float.
+- **Feeding times:** fish are keener at dawn and dusk, come back faster in the rain, and now and then there is a short feeding frenzy.
+
+## [2.37.0]
+
+Messages are quieter, and Freeflo notices when your pay is not what it expected.
+
+### Changed
+- **Messages speak from what you pressed.** A small bubble appears beside the button, not a bar at the bottom of the screen. A press that failed shakes with a cross. Things you did not need straight away say nothing and wait under More > Recent messages. Problems, Undo and long waits still show, in the corner.
+- "Your relay" is now called "Your connection to friends".
+
+### Added
+- **Pay that is not what Freeflo expected.** On the Tax tab: "£400 more than expected". It says why it thinks so (a bonus, no pension taken out, a part month, a new tax code), and one tap answers it. It uses your payslips, or what reached your bank if you have not added one.
+- You can say you pay into a pension at work but are not sure how.
+
+### Fixed
+- The Tax tab no longer says money you made in advance is coming back when you have not paid it yet. It now says those advance payments are still to come, and what you can do if your income has dropped.
+
+## [2.36.0]
+
+Clearer screens across the whole dashboard, and the remaining money plan and tax fixes.
+
+### Changed
+- **Clearer everywhere.** When something goes wrong, Freeflo now says what happened and what to do next, instead of showing codes. Buttons that only appeared under the mouse now stay visible. Every picture-only button says what it does when you point at it. Undo is in the More menu. "Email triage" is now "Sort email" and "Logbook" is now "Finished tasks".
+- Your plan asks a few questions first, with the rest folded away. Pay can be typed by the month or the year.
+- Freeflo now says plainly when something it does not work out may apply to you.
+
+### Fixed
+- Job forms ask for your payday, so no extra payment appears before your last one.
+- A job that is ending shows its real payments left, not an average.
+- A one-off self-employed total is no longer counted as monthly money.
+- An overdue tax bill stays in keep-aside until you tick it as paid.
+- A work expense paid back comes off spending and does not count as income.
+- A bill under £3,000 collected through your tax code is no longer shown as a January bill or kept aside.
+- Calendar's name no longer gets cut off, and Reschedule no longer sits on top of a task.
+
+## [2.35.1]
+
+The garden is calmer, and fishing is simpler and fixed.
+
+### Changed
+- **Far fewer fish, bugs and creatures.** A few fish in the whole lake and one in each pool, up to 3 bugs, and up to 3 birds, butterflies and other visitors at once, with long quiet spells. They are a nice surprise now. A fishing contest still has plenty of fish.
+- **Fishing works like Animal Crossing.** Wait for the big splash and press once: the fish is yours. The bar game is gone. You also have a little longer to press. Press quickly for a better catch.
+- Casting right on a fish no longer scares it, so just click the shadow.
+
+### Fixed
+- A frightened fish could run out of the pond and across the land. It now stays in the water.
+- **What you catch is held up over your head again.** Saving the catch redrew the garden and wiped it straight away, so it hardly ever showed, for you or for friends watching.
+- What you caught also says so in words, where the top bar cannot cover it, with a line about the catch.
+
+## [2.35.0]
+
+You choose how much Freeflo reads your email, and it can now suggest calendar events too.
+
+### Added
+- **Settings > Reading your email.** Pick Light, Balanced or Thorough, or set each choice: how often it looks, how far back, how many emails at a time, how sure it must be, and whether to skip automatic email or read only people you know.
+- **Never read email from:** addresses or whole domains Claude never sees. Filters run on your computer, before anything is sent.
+- **Calendar events from email.** Meetings, appointments and deadlines with a clear date appear on the Email page with Add to calendar. Nothing reaches your calendar until you press it.
+- **Add tasks by themselves (off by default):** tasks it is very sure of go straight in, with Undo.
+
+### Fixed
+- Choosing to read further back now sticks: the next automatic read used to go back to 2 weeks.
+- Update inbox and the page's Last days choice now use the same setting.
+
+## [2.34.1]
+
+Playing together stays in step, and fishing has fewer rough edges.
+
+### Added
+- **The garden repairs itself.** Every 10 seconds the host says what it has told everyone about the plants and decorations. If your copy differs, it quietly gets a fresh one. A change that could not be sent goes out again as a whole garden.
+- **A line that says how you are connected:** Connected (direct or through the relay), Catching up, Slow connection or Reconnecting. A visitor gets a Refresh garden button beside it.
+- **Your relay tells you when it needs its update**, in the garden and under Settings > Your relay.
+
+### Fixed
+- When someone joined or refreshed, changes made at that moment could be missed by everyone else already there.
+- Someone shown in the wrong place walks to the right one within 15 seconds, and is left alone if they are only slightly off, so people fishing or sitting are not disturbed.
+- A friend who has just sent you something no longer shows as offline, whatever they share.
+- The host's fish keep swimming while the host's tab is in the background.
+- The bite "!" shows over the float, not behind the top bar. Fish swim under the pier, not over it. The walking hint no longer sits on the fishing bar.
+- A visitor is told when the host's version is too old to share its fish, and "they are not in their garden" says what to do about it.
+
+## [2.34.0]
+
+Fishing is now about the fish you can see, like Animal Crossing.
+
+### Added
+- **Fish in the water.** Every fish is a shadow you can see swimming. Bigger fish have bigger shadows and live further out. The rarest and the great hunters show a fin above the water, and ghostly ones glow pale.
+- **Bites come only from those fish.** Cast near a shadow and it may turn, swim to your float and nibble. Wait for the big splash and strike: strike on a nibble and it bolts. Cast right on top of one and it bolts too. Nothing near your float, and nothing happens.
+- **Fishing together.** In a live garden everyone sees the same fish in the same places, and can watch one swim to a friend's float. Each fish goes to one line, so only one of you can catch it. The fish you land is the size you saw. Both of you need this version: with a host on an older one, a guest sees fish of its own.
+
+### Changed
+- **No daily limit on casts.** You can fish as long as there are fish to see, and a new one swims in after a while. The first 30 fish a day earn XP; the market's daily limits stay.
+- **Rods reach further:** the carbon rod 6 cells, the master rod 8, the golden rod 10. The rod no longer changes how long a bite takes: where you can reach decides which fish you can get.
+- **Bait draws fish.** Fish notice better bait from further away, shy fish come more readily for the best bait, and the glow lure works best at night. Bait is only used up when a fish bites.
+
+## [2.33.1]
+
+### Changed
+- Small touches to the garden extras that came with 2.33.0
+
+## [2.33.0]
+
+### Added
+- The garden shop has a search box: type a word and Seeds, Decorations, Tools or Sell show only what matches its name, kind or description
+- A new hair style, "Balding", for your look: a bare, shining top with a narrow band of hair round the sides and back
+
+## [2.32.2]
+
+### Fixed
+- When your friend's relay turns your knock away (it answers "too many requests", which an older relay does once it has taken a day's share of your messages), the garden now says so and who can fix it: they press Update my relay (Settings > Your relay), or it opens again after midnight UTC.
+- Knocking asks less often after the first round (the later rounds knock once, 90 seconds, 3, 6 and then 12 minutes apart; 10 minutes after a "too many" answer) so a gate left open no longer uses up a relay's daily allowance of messages from you. Pressing Knock starts again at once.
+
+## [2.32.1]
+
+### Fixed
+- **Knocking at a friend's garden is more reliable.** A knock and its answer are no longer lost when your live connection to your relay has dropped: while someone is waiting at a gate, Freeflo reopens that connection and reads your mailbox straight away, and a knock read a moment late still counts. You also knock three times (about 20 seconds) before giving up, and a knock or answer no longer stops silently after 30 a day.
+- When a knock cannot be sent at all, the garden now says so ("Your knock could not be sent just now") instead of "No answer". Your friend's Freeflo needs this version too for their side to benefit.
+
+## [2.32.0]
+
+Pets are where they really are in a live garden, they can have playdates, and a group photo goes into everyone's Memories.
+
+### Added
+- **Pets in the right place.** In a live garden each person's own computer now says where its pets really are, so a friend's pet is where it is on their screen, not just behind them: it wanders, sniffs a flower and trots over to another pet in the same place for everyone. The host's roaming pets too. Older versions keep following their person.
+- **Pet playdates.** Two people's pets that stay close for a moment greet each other. A pet remembers the friend it played with: playdates on different days make them pals, then best pals (a line in the pet's journal, and "Pet friends" on its page), a pet that knows the other trots over from a few cells away, and the first playdate with a friend each day adds a little to your pet's friendship. Nothing is sent for this: each computer sees where both pets are and makes its own pet do it.
+- **Group photo.** A camera button appears in a live garden: one tap and everyone there gets a three-second countdown (with Skip), then each Freeflo draws the same part of the garden itself and keeps it in its own Memories. The picture is never sent to anyone. Memories has a new Photos tab, and photo mode has "Keep in Memories" next to "Save picture". Photos are kept on this computer (not synced), newest first, up to 200.
+
+### Fixed
+- **Tiny pets on a visit.** In a friend's garden your pet was a small stand-in that sat apart from the way pets look and move at home. It is now your real companion at the usual size (the rest of your pack stays home, and no rare visitor comes to a garden that is not yours).
+
+### Security
+- The new `gl:pp` message is checked at both ends against `glPpOk` (a guest may only say where its own companion is; the host's pack is the host's alone; at most four pets, whole numbers within the garden), and the group photo's ask is an ordinary `gl:fx` that carries only an id and a cell. The picture is drawn and kept on each computer and is never part of any message. The photo files are checked again by the server (real image bytes, size and pixel caps, a file name it makes itself, album rows of ids and numbers only).
+
+## [2.31.0]
+
+Putting money in is easier, and many tax figures are corrected.
+
+### Added
+- **Easier money entry.** Type amounts the way you know them: £1,250.50, 1250 or 3k, by the month or the year. Forms point out mistakes next to the box, such as dates the wrong way round or figures in the wrong place, and show what a change will do to your tax bill before you save.
+- Anything you type is kept if you close a form by accident, and Cancel has Undo. A new Tax tab starts with one simple question, and you can type a payslip's figures in directly.
+
+### Changed
+- Jobs and bills that stop now say so, along with what you will have left afterwards, so they no longer look like an ongoing salary.
+
+### Fixed
+- Pay so far from a payslip no longer counts a month twice.
+- Starting a new job after leaving one now works out the tax-free amount and tax correctly.
+- If your job ended part-way through the year, you now see the tax coming back to you.
+- Capital Gains Tax and the Child Benefit charge now show in "still to pay".
+- Payments on account are no longer kept aside twice, and next January's bill now allows for them.
+- Marriage Allowance only applies if you pay the basic rate.
+- A mistyped tax code no longer means no tax.
+- Last year's payslip no longer affects this year, and costs across two tax years count once.
+- New notes explain a trading loss, rent costs and pay after your P45.
+
+## [2.30.2]
+
+### Changed
+- **Tax, a job's form is simpler.** You can type pay by the month or the year, and Freeflo works out the yearly figure for you. When a job ends with exact last payments, the yearly pay and "Paid every" boxes go away, and the last payments sit straight under the end date. Pay from an earlier job and bonuses are folded under Less common until you need them.
+
+## [2.30.1]
+
+### Fixed
+- **Owed to me: a payment you marked by hand no longer comes back as a question.** If you marked someone paid and the bank then showed their money, Freeflo took it for a second payment and asked who else it was for. It now knows it is the same payment, joins the two up, and takes it off your spending like any other money paid back.
+- **Two people the bank can't tell apart.** "M Hart" with both a Max and a Mia Hart owing the same now asks which one it was, and doesn't guess or learn that wording for either.
+
+### Changed
+- When someone really has paid a second time, the question says so: "Sam has already paid their part, and another £10.00 arrived…".
+
+## [2.30.0]
+
+Contests, trading and shared goals for playing together in a live garden.
+
+### Added
+- Live play: contests. With a friend in your garden, tap the trophy beside the gate and start a fishing or bug-netting round of 2, 3 or 5 minutes. Everyone in the garden competes: a live board shows the countdown and everyone's points, and at the end the winner is named, cheers and gets a sparkle.
+- Points come from the size and quality of a fish, or the rarity of a bug. In a round casts are free and use no bait, and what is caught is let go, so a contest costs nothing and cannot be farmed. A bug round shows a fresh bug every few seconds so there is always one to race for.
+- A small reward for playing (5 coins and 2 XP) and for winning (20 coins and 10 XP), at most 40 coins a day from contests. You can start 4 contests a day, and not on your own.
+- Live play: trading. Open a person's menu in a live garden and press Trade: you each offer up to four things from your bag (seeds, decorations, fish, bugs), you both see both offers side by side, and the swap happens only when you have BOTH confirmed the same terms. Change an offer and the confirmations clear; take yours back or cancel any time before. A line in the corner says it is done.
+- Trading works between the host and a guest and between two guests. The host's computer is the referee, and guests never learn each other's friend ids.
+- Your things go on hold when you confirm, so they cannot be spent twice, and come back if the trade is called off. If someone's computer drops between the two confirmations nothing is lost or doubled: the host's decision is posted as well as sent, and a computer that missed it asks when it is back.
+
+- **Live play: shared goals.** While friends are in your garden there is one small goal at a time that you all work on together: catch 6 fish, water 12 plants, net 5 bugs. A card under the menu shows a progress bar and what each of you did, the corner line says when it starts, is half done and is reached, and each person who took part gets a small thank-you of their own (6 coins, 4 XP and a little bait or fertiliser, at most 3 goals a day). It only counts what the host's computer applied or confirmed, nobody's part can be more than 60% of it so it takes two of you, and a goal that no longer fits (rain, nobody who can water) is let go. Turn them off in Your gate (Suggest shared goals while friends are here); skip one with the card's x.
+
+### Security
+- The host referees. Only the host can start or end a contest, send the board or name a winner (both computers refuse a guest's); a guest's catch counts only when the host can match it to the steps of a line it saw. Older apps ignore contest messages. No relay update is needed.
+- Trades are checked like the rest of live play: a strict message shape in the shared rules file, only kinds that can be given as gifts (never coins), four things and twenty of each at most, ten trades a day, both people at Play. Older apps ignore the new messages and a request to one just times out. No relay update is needed.
+- The new `gl:goal` message goes from the host to its guests only, with a strict schema checked at both ends; a guest cannot send one, and an older app ignores it. No relay update is needed.
+
+## [2.29.0]
+
+Cheers and photos you can see, a fire to gather round, listening along, and room to move on the shore.
+
+### Added
+- **Live play: moments.** When someone in the same live garden reaches a new garden level, unlocks an achievement or takes a photo with the camera, their figure cheers (or the camera flashes, with a new shutter sound) and one line in the corner says what: "Sam reached garden level 5", "Sam unlocked “A hundred done”", "Sam took a photo". Only the level, the achievement's id (your app shows its own name for it) or "a photo was taken" is sent, never the picture. Achievements are only the kinds your profile's automatic showcase may show (never money, places, health or memories ones). Older apps ignore it.
+- **Live play: gathered by the fire.** When two or more of you stand near the same fire pit, marshmallows float up from it now and then and the corner says who is there. Nothing is sent: each screen works it out from where people stand.
+- **Listen along.** In a friend's live garden, when they share what they are listening to (Profile > Music) and you have Spotify linked, a small *Listen along* chip sits by the tag with their song, and one click plays it on your own Spotify. It uses the same careful, rarely-asked "Listening to" check as a friend's card: nothing is broadcast.
+
+### Changed
+- **The shore has room to move.** The market stall is one step further along the lane, the notice board one step the other way, and the field journal now stands beside the post box, so there is a gap between every pair of big buildings (the stall, the bench, the shop, the board and the tackle shop). The small things on the shore (the journal, the camera, the post box, the sundial) are small boxes at their base instead of a whole square, so you slip past them. The mooring post, the reeds and the boat no longer block the lane at all; the water under the boat is still water.
+- A step toward a small box now goes further round it before the walk gives up, and a route planned through the middle of a cell that has a small box in it is planned again round the box.
+
+### Fixed
+- You could not walk past a small box or a post on the shore: a click on a door could leave you standing just short of it. Every door on the shore can now be reached from anywhere along it.
+
+## [2.28.1]
+
+### Added
+- Live play: one living garden. The host's birds, insects and animals are the same ones on everyone's screen. Say hello to one and it answers for all of you.
+- Pets notice the creatures, creep up on them, and greet each other, for everyone to see.
+- Surprises (easter eggs) the host's garden finds are seen by everyone there.
+- Something lying about (a creature's gift, a fish flopping on the shore) goes to whoever clicks first. The host decides, so it can only be taken once.
+- A bug is caught only once: if Sam's net got it first, yours is a clean miss with no reward.
+- Someone creeping up on a bug now walks slowly and ducks a little on every screen.
+
+### Security
+- The new live messages are checked like the rest of live play: only the host can spawn, move, give or name a winner; a guest can only poke, claim and say what it is doing. Older apps ignore them. No relay update is needed.
+
+## [2.28.0]
+
+What a friend is listening to, Play that finds your Spotify, and a kinder, calmer garden to play together in.
+
+### Added
+- **Live play: their sky.** When you visit a garden you see the light the owner has now (dawn, day, dusk or night by their clock, with their sunrise and sunset when they have the weather), and their rain or snow. Their time zone's offset, sunrise, sunset and weather travel in the garden snapshot, so a friend can tell roughly where in the world you are.
+- **Live play: the host can talk.** The Say button now shows for the owner while someone is in the garden, with the same phrases a visitor has.
+- **Live play: a change of clothes or of pet shows at once** while you are together, for the host and for visitors, not at the next visit.
+- **Calm.** When the window has not had the focus for 8 seconds, or nobody has touched it for 90 seconds and nobody is in the garden with you, the garden's ambient motion rests in place and its loops look in only a few times a second. Anything you do wakes it. An open idle garden went from about 40% of a core to under 3% in a measured run; leaving the garden already stopped it. A host with nobody else in the garden also reads the levels file every 15 seconds instead of every 3.
+- **Your own card shows what friends would see.** With Show what I'm listening to on, your own Profile card shows your Listening to line, and a *Check what friends see* button tells you what a friend would be told.
+- **Listening to.** Turn on *Show what I'm listening to* (Profile > Music) and a friend who opens your card sees the song you are playing, like a status line, with a small progress bar. It is asked for, never broadcast: opening your card sends your Freeflo one small question, it answers only while a song is playing, and nothing is sent when nobody looks. Never a podcast, a local file or a Spotify private session. It is off until you turn it on, only friends who can see your card get an answer, and Stop sharing stops it. Your friends' Freeflo asks at most once every few minutes, only while your card is on screen.
+- **Check where it can play** (Connections > Spotify > Set up) lists the Spotify apps Spotify can see, so you can tell whether an open app is visible to Freeflo.
+- **Let friends use your Spotify app (up to 4).** The set-up now has your Client ID ready to copy and says what to do: a friend pastes it instead of making an app, and you add them under User management in the Spotify dashboard. Spotify allows 5 people per app in Development Mode (you and 4 more), and only organisations with a large audience can lift that.
+
+### Changed
+- **Collisions in the garden, rethought.** Three sizes: flat things (a picnic blanket) and things you walk under or that hang (an arch, a pergola, string lights, bunting) are walk-through; small decorations (a lantern, a bird bath, a gnome, a pump) are a small box at their base, so you slip past instead of meeting a wall the size of a cell; walls, fences, hedges, seats, a fountain and a shed stay full. Trees block their trunk only; the leaves are for walking behind. A catalogue row can say `col: 'none' | 'soft' | 'full'` for itself.
+
+### Fixed
+- **A speech bubble no longer vanishes** a moment after it appears. It was kept inside the figure, which is made again whenever the garden is painted (every change the host's page applies), so a visitor's bubble often disappeared on the host's screen at once. It now belongs to the person and comes back with the figure until its 3.6 seconds are up.
+- **Play and Queue when your Spotify app is open but idle.** Spotify only treats an app as "active" once it has played something, so Play said "Open Spotify first" although it was open. Freeflo now looks at the devices Spotify can see, names one (the active one, else a computer or phone) and wakes it if it has to. If nothing is playing, Queue starts the song instead, and the message says which app it played on. A refused player command is now told apart from a refused account.
+
+## [2.27.9]
+
+### Added
+- Live play: you see your friend's pet follow them, in its real look, and do what it does (tricks, spectacles, pats, treats, naps). Their roaming pets show too.
+- Live play: you see a friend fish (the rod, the line, the bobber, the bite, the reel) and swing a net, and hear the splash if sounds are on.
+- When anyone catches a fish or a bug, or finds or makes something, they turn to face you and hold it up over their head with a small banner ("Sam caught a bream!"). Off screen it is one short line in a corner. Fun Off skips it.
+- A bug a friend nets is gone from your screen too.
+
+### Fixed
+- A friend's pet never showed up in live play.
+
+## [2.27.8]
+
+### Changed
+- No daily limits on people you have approved: messages, storage up to 1 GB each, mailboxes and live play. Press Update my relay (Settings > Your relay) to apply this.
+- What stays: Cloudflare's own free-plan limits, protection against floods, message size limits, a small allowance for anyone not yet approved, and a whole-relay stop for live play at 60% of the free day so your sync keeps working.
+
+### Fixed
+- Re-adding a friend no longer fails with "Today's share of that relay is used up".
+
+## [2.27.7]
+
+### Fixed
+- Friends could stop responding: Make an invite link and other buttons did nothing, because one job was waiting forever behind itself. Jobs can no longer block each other for good, and a request that takes too long now says so.
+
+## [2.27.6]
+
+Change any answer, and see what each tax figure comes from.
+
+### Added
+- **Your answers.** A button on Budgets and on the Tax tab lists every answer you gave, in plain words ("Registered blind: No"). Tap a line to change just that one, right there. It saves at once, Undo is on the message, and the figures above follow. It is made from the same questions as the first walk-through, so every country gets it.
+- **What feeds a number.** Every Tax figure that comes from something you told Freeflo has a plain Change button: the tax-free amount opens how it is made up (the standard amount, high-income reduction, Blind Person's Allowance, Marriage Allowance, work benefits), each piece changeable. Figures the tax sums produce (tax due, the bands, National Insurance, student loan) say "Worked out from these" and list what they come from.
+- **Use my actual figure.** Type the tax-free amount HMRC gave you (a coding notice), with a note. Freeflo uses it for that tax year, says it is your figure, and one click goes back to worked out.
+- **Jobs in plain words.** Pay so far this tax year (from your latest payslip), pay before this job (a P45), tax code, first and last day, "This job has ended", exact amounts on dates (one or more last payments, or pay that differs each time), and a bonus on a date. Each job shows its own line, such as "£4,000 so far + £2,500 on 30 Nov = £6,500 this year".
+- **Check this.** A calm note, with one tap to put it right or "That is right", when Blind Person's Allowance is on, your tax code and tax-free amount disagree, a job has no pay, two jobs share a name, or pay figures look copied from another job.
+- **Pension.** Say whether the percentage is of all your pay or of qualifying earnings (£6,240 to £50,270), and when it starts.
+- **Budgets.** Tap any amount or date on a plan line to change it there.
+- **The assistant** can set region, student loans, pension and your own tax-free amount with `tax_change` (`answers.set`), and a job's exact payments to come.
+
+### Changed
+- **A normal month, not a year average.** What you take home a month is now each job's next ordinary payslips, so a job that started part way through the year, or has ended, no longer drags it down. Each job shows "Your next payslip: about £X on 30 Nov". What is left in your plan and safe to spend use it.
+
+## [2.27.5]
+
+A friend's garden is now the same world as your own.
+
+### Changed
+- **Visiting a friend is like being in your own garden.** You walk with a click, the keys or by holding the button, go through what is planted, zoom, and use the same hotbar, bag, bubbles and minimap. Your own coins, seeds, basket, shop and crafting come with you. The sidebar stays. One small tag says whose garden it is, and the house in it takes you home. The guestbook, hearts and reactions are in the menu.
+- **When they are there, anything your level allows works as it does at home.** It shows straight away, slightly faded until their computer agrees, and goes back if it says no. What your level does not allow flashes red with a padlock, and one tap asks them for more.
+
+### Added
+- **Help while they are away.** If a friend gave you Help or Play, what you plant, place or water while they are out can wait for them. It comes out of your bag and shows a little clock. When they next open their garden it happens, and their diary says "While you were away, Taylor planted 3 carrots". Anything that is no longer possible comes back to your bag, once, and you are told. Your friend can turn this off at their gate.
+- Visitors can fertilise with their own fertiliser, and turn what they placed.
+
+### Compatibility
+- Live play needs both people on this version or later. With an older friend, either way round, the visit is their garden as they last shared it. No relay update is needed.
+## [2.27.4]
+
+### Fixed
+- The tax-free amount says what it includes, such as Blind Person's Allowance, with a link to change your answers.
+- The assistant can now change the answers behind your tax figures when you tell it one is wrong.
+
+## [2.27.3]
+
+Pending payments count, and you can split them.
+
+### Changed
+- Pending payments now count as normal spending and money in, everywhere: totals, this month, budgets, safe to spend, the brief and the story, Home, your money plan and what Claude reads. They use your categories and rules, show their logo, and sit in Transactions on their date with a small Pending tag. The separate block at the top of Transactions has gone. This works for banks connected directly (Monzo and Enable Banking).
+- Settings > Money has Count pending payments, on by default. Off, they are listed but count only once they settle.
+
+### Added
+- Don't count: a quick action on a pending payment, with Undo. It is remembered on your other computers and when the payment settles.
+- Everything works on a pending payment: split it, mark it as an expense, ask who paid, add a note, pick a category, select several. All of it stays when the payment settles, and each payment is only ever counted once.
+- When a pending payment settles at another amount (a tip, a hotel hold, fuel), Freeflo asks in one tap: "Bowling settled at £42, not £40. Update the split?"
+- When one disappears without settling (a declined or released hold), it leaves your numbers after five days. If it had a split or an expense, Freeflo says so once and offers to delete it or keep it.
+- A pending payment coming in can be suggested for Owed to me too ("We think Sam paid"), and it stays matched when it settles.
+
+## [2.27.2]
+
+### Added
+- Transactions shows pending payments at the top, labelled and not counted in your totals. They go once the bank settles them. This works for banks connected directly (Monzo and Enable Banking).
+
+## [2.27.1]
+
+### Fixed
+- You can walk through what you plant, so a full bed no longer walls you off from the plants in the middle. Only grown trees, and decorations and buildings, still stand in the way.
+
+## [2.27.0]
+
+Music: Spotify, and songs for friends.
+
+### Added
+- **Spotify (Connections > Spotify).** Link your own Spotify: make a free Spotify app, paste its Client ID and sign in. No password and no client secret pass through Freeflo, and the sign-in stays on this computer. Search songs, albums, playlists and artists (10 at a time, with Show more), or paste a Spotify link to find that one. With nothing typed it offers your own playlists, top artists and top songs.
+- **Music on your card (Profile > Music).** Choose a favourite song, album and playlist, and switch on your top five artists from the last 4 weeks, 6 months or all time (read again about once a day). Friends see them on your card, with covers, and a click opens it in Spotify. Nothing shows until you choose it.
+- **Send a friend a song.** From a friend's page (Music), the palette (Send a song to a friend) or the Spotify card: find a song, album, playlist or artist, pick one or more friends, add a line. They get a card in the feed with the cover, your line and Open in Spotify, and if they have Spotify linked too, Play and Queue (Premium, with a Spotify app open). A friend does not need Spotify linked to open what you send.
+- Cover pictures come through your own Freeflo, by id, and are kept on this computer. They are on while Spotify is linked; for a friend's song without Spotify linked there is a switch ("Show cover art for songs friends send") that is off until you turn it on, and the card shows a plain tile and a working link until then.
+
+### Notes
+- Spotify's own rules (February 2026): an app in Development Mode works only while its owner has Premium, for up to 5 people you add under User management, and searches return 10 results a page. Friends who only receive songs need none of this.
+
+### Security
+- Only a 22-character Spotify id and plain text cross to a friend, never a link or a picture. The link and the cover request are made on the receiving side from an id that passed a strict check. Every Spotify request goes through one client with fixed hosts, no redirects and a short list of allowed routes; sign-in uses PKCE and the tokens stay in this computer's secret store.
+
+## [2.26.0]
+
+Play together, live, in each other's gardens.
+
+### Added
+- A friend knocks and you give them Look, Help or Play with one tap. The garden's owner must have it open: their computer checks everything against the normal game rules. A closed garden stays the saved look-only copy.
+- See each other walk, do moves and tricks, with name tags and preset phrases. Wave, high five, follow, sit on one bench, catch a bug together. Up to about 8 people.
+- Every action happens live, with "Planted by Taylor" on hover and in a garden diary.
+- Everyone spends their own coins and seeds. Crops go to whoever planted them by post, or split or to the owner, as you choose per friend. Decorations can be taken back or given. Drop a gift at someone's feet.
+- Undo, Put my garden back and Send home keep your garden safe.
+
+### Security
+- An independent review before release found ways to overspend your Cloudflare allowance, duplicate items and disturb a room. All were fixed before this release: rooms have budgets per person and per relay well under the free day, sync always comes first, and removed friends are cut off at once. Rooms pass messages straight through and store nothing.
+
+Press Update my relay (Settings > Your relay) to play over the relay.
+
+## [2.25.1]
+
+The opening plays all the way through.
+
+### Fixed
+- The opening no longer stalls. The letters were traced by animating the stroke, which needs the page's main thread every frame, so while the app
+  was starting up (about 1.5 s) they froze at a stem and a dot, the orb dropped in beside them, and the word finished in a jump. Each letter is
+  now written by stepping through pre-drawn copies with opacity, which keeps running while the app loads, so the whole word is written and the
+  orb lands on time.
+
+## [2.25.0]
+
+Groups: one link for everyone.
+
+### Added
+- **Friends > Groups.** Start a group for your friends or your organisation: a name, then one link and QR code to share by message, email or poster. Joining shows the group's name and who runs it first.
+- You choose "I approve each person" (the default) or "anyone with the link", with an optional expiry and maximum uses. Reset link kills the old one at once. Short codes are off by default, only work for people already on that connection, and can only ask to join.
+- A waiting list, an end-to-end encrypted noticeboard with announcements, a searchable list of people, pictures to check someone in person, helpers, handing over ownership, remove (with Undo) and block, and a different name per group.
+- Being in a group shares only your name, avatar and status. Add as friend still needs the other person to accept unless they agreed to automatic friends. Tasks, calendar and money are never shared by joining.
+- A small page on your relay explains Freeflo to people who follow a link and do not have it yet.
+
+### Security
+- An independent review before release found ways a dishonest relay could read a group. All were fixed before this release: the link now anchors the group's identity, and every member, role and key is checked against signatures. What a relay can still see and do is written down in docs/dev/GROUPS.md.
+
+Press Update my relay (Settings > Your relay) to use groups. A free Cloudflare account suits about 100 active people; the app warns you before then.
+
+## [2.24.1]
+
+### Fixed
+- The sidebar stays in the garden and in friends' gardens, so the rest of Life is one click away. If you have hidden it, or on a phone, a button at the top brings it back.
+- Crafted flower collars (daisy, rose, lavender) drew nothing and could not be worn.
+- Icons on the crafting bench stay inside their cards.
+
+## [2.24.0]
+
+The garden, overhauled: a cosy game you play inside the world.
+
+### Play
+- The garden fills the window. Tools and seeds sit in a bar with number keys, with a corner display and a menu for Shop, Basket, Crafting, Tricks, Almanac, Nature, Catch, Friends, Goals and Help.
+- Click and you walk there along a dotted route. WASD and arrows work too, as does hold to steer. Walk up and the obvious thing happens: pick, water, or a bubble of seeds at an empty bed. Decorations come out of your bag as a ghost on a soft grid.
+- "You can't do that" messages are gone: a red flash, a shake, an X, a padlock or a shaking coin counter instead, and the cursor changes with what you point at.
+- About 3.8 times the walkable area once all land is open, bought with coins. Existing beds stay where they are.
+- Things are drawn by where their feet are, so you walk behind a sunflower. Plants that need you glow, and there is one seasonal quest a week.
+- Your gardener is now your own avatar, drawn by the avatar kit, with a walk, gardening poses and front, side and back views.
+
+### Look
+- New lawn, beds, pond, lake, sky and pools of light at night. Most plants, trees, visitors, fish, bugs and props redrawn in one storybook style. Wind, ripples, bursts when you harvest.
+
+### Pets
+- 62 species, up from 18. 44 are earned by playing: rare visitors with lures, garden milestones, treats, coins, friendship and achievements. Treats come from garden play, up to 4 a day.
+- A living pet page, a field-guide collection with silhouettes, toys, beds, hats and colours. Your pet follows you and others roam.
+
+### Crafting and tricks
+- A crafting bench with 40 recipes for you, your pets and the garden.
+- 82 tricks in a trick book with five rarities, with a live preview before you buy. 16 spectacles, 11 of them legendary or mythical, and 4 secret ones.
+- 12 moves for your gardener on an emote wheel (Q).
+
+### The living garden
+- 26 creatures that land on what you placed, walk round things and react when clicked, kept few so they stay special: usually 2 to 4 around, 6 at most.
+- 17 easter eggs, at most one a visit and none on about half of them. A Nature book with silhouettes and a small reward per discovery.
+
+### Fixed
+- Fish and bug gifts between friends were refused, and the showcase was lost.
+- App cards no longer open over the garden.
+
+## [2.23.3]
+
+Owed to me, round two.
+
+### Added
+- Repeating splits: rent or a bill splits with the people you named each time it leaves your bank, from the money plan, a regular payment or a split, with dates per person, nudges and Undo.
+- Reminders can carry a pay-me link (https only).
+- Send a friend on Freeflo their own part only, and they can tap "I've paid". They never see anyone else's share, the original payment or your bank data, and you only send it when you press the button.
+- Foreign-currency splits show both amounts.
+- Receipts: read a photo or PDF (only when you press the button, and you confirm it), or type the items in, then tap who had what.
+- Money back this month, "make a group?", "you've paid the last 5 times", "paid back faster than usual", and a settle-up picture for trips.
+
+## [2.23.2]
+
+Money comes to life.
+
+### Added
+- Logos or little pictures on every payment: about 2,400 shops and services, with 262 company logos bundled in the app. Nothing is downloaded while you use it, so nobody learns where you shop. "Show company logos" is in Settings > Money look, and you can pick your own picture for a shop; it stays on that computer.
+- Family and friends show their face, and salary, refunds, cash, fees and interest each look different. Direct Debits, subscriptions and payments abroad get a small corner badge.
+- Small animations on hover: the train crosses, the coffee steams.
+- Story scenes for your spending: a tube train with your total on its side, a scooter, a trolley, payday. "Your year in money" from the command search, the end of the money story or at New Year.
+- A payday note, jars for your categories, a sky that follows your month and a little receipt when new payments arrive, plus a few kind easter eggs. The Fun setting dials all of it down.
+
+### Changed
+- Better reading of bank references: shops behind wallets like Curve and Zettle are recognised, so a category you set on an old merged name such as "CRV" stops applying, and more spellings of one shop now merge.
+- The money story won't open while amounts are hidden.
+
+Logos are trademarks of their owners, used only to identify who a payment went to; no endorsement implied.
+
+## [2.23.1]
+
+Your money plan and your tax year.
+
+### Added
+- **Your money plan**, on the Budgets tab. A questionnaire you can leave and come back to asks your country first ("Somewhere else" skips UK tax) and "now, later or not at all" for each bill. It works out your take-home by year, month and payslip from 2026/27 figures on gov.uk: tax, NI, student loans, pensions, several jobs and self-employed income.
+- Every planned item is matched to your bank, with start and end dates, pause and remove, each with Undo. A "Worth a look" list flags short pay, dearer bills and missing rent. Also Coming up, a bills calendar, debts with payoff dates, goals, yearly bills and net worth.
+- Paydays and bills use real dates, allowing for weekends and UK bank holidays. Your pay cycle and safe to spend follow the plan.
+- **What if?**: scenarios and sliders beside today's figures, to combine, save and compare. Nothing changes until "Make this my plan", which has Undo.
+- **Tax**, a new tab in Money for UK users. Your tax year line by line, how much to keep aside (it comes out of safe to spend), whether payments on account apply, deadlines as real tasks each year, a March review, "Do I need to file?", a finder for expenses you can claim, and a File my return walkthrough with Copy buttons, a PDF, CSV and receipts pack. Freeflo estimates and prepares; you submit on gov.uk yourself.
+- Tell it your situation by pasting text, or give it a payslip PDF. It reads them with Claude only when you press the button, shows everything for you to confirm, and hides your UTR and NI number. A "What Freeflo knows about my money" page, documents by tax year, and job and moving checklists.
+- The assistant can explain your tax and plan using your real numbers, make small changes with Undo, and open a What if?. Anything taken from a file, email or pasted text asks you first. It never sees your UTR or NI number.
+
+### Changed
+- The trading allowance is not used for income from your employer or a connected person, and the screen says which of the allowance or your costs is used and why.
+## [2.23.0] - 2026-10-30
+
+OpenDash is now **Freeflo**, with a new logo that follows the seasons and turns into the holidays.
+
+### Changed
+- **The name is Freeflo.** The app, the tab title, the opening, Settings, the docs and the website say Freeflo. Nothing else moves: your data
+  folder, the `opendash` command and folder names, the MCP server id, the GitHub address and the update check stay exactly as they were, so
+  nothing needs doing on your side.
+- **A new logo and a new opening.** The name is written in one stroke and its last o is an orb of moving liquid that drops in and settles. The
+  orb is bigger than the letters around it, and it is the app icon in the browser tab too.
+- **The orb follows the seasons.** Spring, summer, autumn and winter each colour it (the southern hemisphere is flipped from the time zone),
+  with a small detail of their own: petals, bubbles, a drifting leaf, snow.
+
+### Added
+- **The orb turns into the holiday.** For a few days around each one it becomes a jack-o'-lantern (Halloween), a snow globe (Christmas),
+  fireworks (New Year), a heart (Valentine's Day), a lantern (Lunar New Year), a diya (Diwali), a crescent and star (Eid), an egg (Easter), a
+  flipping pancake (Pancake Day), a bonfire (Bonfire Night), a clover (St Patrick's Day), the Earth (Earth Day), a rainbow (all of June), a
+  cake on your birthday (the one in Settings), and the sun or a starry night at the solstices.
+- **Logo style** in the workspace icon menu: follow the seasons and holidays (the default), seasons only, the classic colours, or pin any season
+  or holiday to preview it. `assets/brand/orbs/` and `assets/brand/preview/orbs.png` show all 21.
+- `prototypes/freeflo-orb-gallery.html`: every orb, animated, with a date picker to see what any day shows.
+
+### Notes
+- The Windows installer, Start menu entries and the `OpenDash-Setup-<version>.exe` file name keep their old names for now; the installer's
+  window text says Freeflo.
+- Screenshots on the website still show the old name until they are retaken.
+
+## [2.22.4]
+
+Owed to me: split a payment, and let your bank tell you who has paid.
+
+### Added
+- **Owed to me**, a new tab in Money. Click a payment, choose Split this, and pick people: equal, exact amounts, shares, percentages or extras. Stray pennies fall to you and are shown.
+- Your bank is checked for who paid back: "We think Sam paid £8. Yes or Not this?". Each Yes teaches it how that person's payments look. Nothing is marked paid by itself unless you turn that on.
+- Paying for others: a payment can cover several people ("Sam paid £16: for himself and one other?"). Click any payment to say what it was for, with editable amounts; the rest can be credit, a gift or not related. Change it later.
+- Views by person, thing and trip, with who pays whom and settle up. Also I owe, Expecting money (refunds, deposits, loans) with a late flag, and moving an expense to Owed to me and back.
+- Remind someone with a friendly message you send yourself; OpenDash never sends anything.
+- A Home widget and a My money widget; search Transactions by amount; a note on any payment; "Expecting a refund" on a payment; "I paid £40 for bowling" typed in one line.
+- The assistant can list what is owed, create a split and mark it paid, with Undo. "Paid" read from an email only asks you on the page.
+
+### Changed
+- Money that is paid back and matched in your bank is no longer income, and comes off the original payment, so bowling counts as your £8 share. It lands in the month of the original payment, so past months can move. You can switch this off.
+
+### Fixed
+- A dialog no longer closes or loses what you typed when saving fails.
+
+## [2.22.3]
+
+Credit cards, like an Amex.
+
+### Added
+- Add a credit card from Connections or Money > Your data: connect it if your card is listed, or import a file from the card's website.
+- Card files are checked before import: you see a few rows ("We read these as money you spent") and can flip the direction with one tap. The choice is remembered, and Your data can change it later with Undo.
+- What you owe on a card shows apart from your money. Safe to spend, the brief and Home keep back the next card payment.
+
+### Fixed
+- A payment to a card no longer counts as spending or income, including for a card you have not added yet (a note says "You pay a card we can't see"). AMEX payments counted as spending before. Refunds reduce spending.
+
+## [2.22.2] - 2026-10-30
+
+The garden: a rowing boat to your friends’ gardens, press and hold to walk, and clicks that always do something.
+
+### Added
+- **The rowing boat is the way to your friends’ gardens.** Click the boat by the mooring post: you walk to it and a menu asks where to; it lists
+  the friends whose gardens are shared with you, and picking one takes you there (the Post box still has your visits and parcels).
+- **Press and hold to walk.** Hold the left button on the ground and you keep walking to the pointer (drag to steer, let go to stop); a quick
+  click still walks to that spot, round whatever is in the way.
+
+### Fixed
+- **The highlight no longer depends on where you point.** A plant lit up only on a petal or at its foot; now the whole drawing lights up, and
+  what lights up is exactly what a click will do.
+- **Clicks that did nothing now do something.** Click a plant that needs nothing (a sunflower still growing) and it tells you how it is doing;
+  a click in the sky or past the edge walks you to the nearest ground; a click that wobbled a few pixels still counts; a click while you creep
+  up on a bug stops the chase instead of being pulled back by it; and a walk carries on when the page is drawn again.
+- **Less getting stuck.** A pop-up closed some other way can no longer leave hover and the keys switched off, and a missed mouse release can no
+  longer leave a press hanging.
+
+## [2.22.1]
+
+Your money, from only the banks you still use.
+
+### Added
+- **Money > Your data**: one row per bank account or imported file, with where
+  it comes from, its dates and number of payments, and a plain status (Updating,
+  Stopped updating, One-off file, Needs you to reconnect) with the next step.
+  Untick "Count this in my money" and press **Update my money**: Money, the
+  brief, the story, budgets, Home, expenses matching, the assistant and sharing
+  with friends then count only what is ticked. You see the difference first
+  (payments, this month's spending, money in, your balance), and one Undo puts
+  it back exactly. Unticking never deletes.
+- **Start fresh**: "Which banks do you still use?" unticks everything else in one go.
+- **Moving banks**: "Only count up to a date", and "Stop counting from the day
+  Monzo starts", keep old history in your long-term trends without counting
+  anything twice; that account's balance leaves your totals.
+- **The same payments, twice**: two sources that share most of their payments
+  are shown plainly, with a one-click choice of which to keep.
+- **Delete this data for good**: says what goes, offers its payments as a CSV
+  first, saves a safety copy for 30 days, and can disconnect the bank too. A
+  connected account that was deleted does not come back unless you bring it back.
+- A calm note when a salary or a bill was only seen on something you unticked.
+
+### Changed
+- A payment between your own accounts stays a transfer when one of the two is
+  left out, so a Barclays-to-Monzo move never looks like income. Money in that
+  was only called income because it was positive is now a transfer whenever it
+  matches money out of another of your accounts.
+- "Update bank" no longer reads a bank whose accounts are all unticked, and that
+  bank no longer counts towards "your data is out of date".
+- A left-out account's balance leaves the totals, net worth and safe to spend
+  (it used to stay in them after being hidden in Connections).
+- Your ticks and dates follow you to your other computers.
+
+## [2.22.0] - 2026-10-30
+
+The garden becomes a world you walk in, with fishing and bug catching, and pets you can customise with words.
+
+### Added
+- **The garden is a world you walk in.** The figure on the grass is you, drawn from your profile (the one the scenes use), and your pet
+  follows. Click the ground to walk there (free movement, not square to square), click a plant with a tool and you walk over and use it, or use W A S D / the arrow keys
+  (Shift creeps, Space or E uses the tool in front of you). The camera follows you; the wheel, + and - zoom, F shows the whole garden.
+  The keys now work wherever you are on the page, not only after clicking the stage. Shift+W waters everything (W alone walks).
+- **A bigger garden**: 28 x 18 cells instead of 20 x 11 (everything you planted stays exactly where it was), with the Lake along the south
+  (a pier, a boat, reeds, fish shadows and leaping fish, a tackle shop) and the Wild woods down the east side (level 4).
+- **Fishing**, like Stardew Valley: just click the water, wait for the bite, strike, then hold to keep the fish in the bar until the
+  meter fills. 39 fish and 9 finds (junk and treasure) by depth, hour, season and rain; quality stars; five rods (the golden one is a ribbon
+  prize), bait and floats; casts a day that grow with the work you do. **Bug catching**: click a bug, creep up on it and swing; 33 bugs
+  that live near flowers, water, lights and trees.
+- **The menus are in the world.** The shop, the market stall, the notice board (your almanac), the field journal (fish and bug books), the tackle shop, the post box (friends), the camera (photos) and the sundial (time-lapse) are buildings along the lake shore: click one and you walk to its door and it opens as a pop-up you close by clicking outside it (or Esc). The garden no longer has a row of menu buttons; your pet is smaller than you.
+- **No more tools to juggle.** Click a plant and it is picked, watered (drag across a row for several) or trimmed, whichever it needs; right-click for fertilise and dig up. Only Plant and Decorate are left as modes. Nothing lights up a square of grass any more: the thing you can click lights up.
+- **Fishing locks you in**: the camera closes in on you and your line, hover effects go quiet, and you reel without the garden moving around. Bugs are easier to catch: you can creep up on one over a flower bed, and it sits still while you do.
+- **The Catch page**: your bag and the market (it only wants so much a day), an order board of three requests a day paid in coins and goods, a
+  fish book and a bug book (shadows and hints until you meet each one), the tackle shop, and a showcase.
+- **Show them off and share them**: an Aquarium, a Bug case and a Trophy board for the garden show your best catches; friends see them when
+  they visit, on a card of their own, and on your profile card. Give a fish or a bug to a friend like any other parcel (they go in the
+  friend's book too). Garden ribbons unlock hats, pins and titles on your profile, and pet hats.
+- Pets can be customised with words. Pets > Wardrobe: your own colours for the
+  coat, the belly and pattern, the eyes and every accessory (a "Custom" swatch);
+  **Restyle with AI** (describe a change, see it before and after, Apply, Undo);
+  and **My designs**: the assistant draws a wig, hat, glasses, scarf or cape for
+  your pet ("Design with AI"), you see it on your pet first, and you can
+  recolour it, nudge its fit for your species, rename it, share it as a code
+  (and import one) or delete it (with Undo). Designs fit every species through
+  the head circle and the collar line.
+- Friends see the accessories your pet wears (a new friends message, `pet:items`,
+  checked again on arrival; an older app just shows the plain pet), and Pets >
+  With you can turn friends' accessories off.
+- Nothing from a friend ever goes to Claude. The sentence you type, your pet's
+  look and (when you ask for a change) your own previous drawing go to your
+  Claude, only when you press the button. See `docs/PRIVACY.md`.
+
+### Changed
+- The garden's whole-garden crop and the aspect of its views follow the new size; the "Every corner" ribbon now needs all eight areas.
+- Icons added to the sprite: fish, zoom-in, zoom-out, maximize, locate-fixed.
+
+### Fixed
+- **You no longer get stuck on things in the garden.** Walking into the corner of a bed, a bench or a building slides you along it and round
+  the corner instead of stopping you dead, and a click re-plans the way if something grows or is put down in your path. If a plant grows
+  where you stand, you step out of it instead of being wedged inside.
+
+## [2.21.0]
+
+Selecting many things at once, a much more capable assistant, 497 hard
+achievements, an exact expense form, and simple 4-letter codes everywhere.
+
+### Added
+- **Select many at once, with one Undo.** Tick several tasks, expenses,
+  transactions, budgets, Bin items, files, people or trips (or press
+  **Select**), change them together, and one Undo puts the whole batch back.
+- **Expenses are a tab in Money**, and the Money page now opens on a short
+  brief of where you stand. Plainer words, a one-click category change, a
+  Clear filters button and no dead ends on the way.
+- **The expense report matches the paper form exactly**, and every report you
+  make is listed with **Undo this report**, which puts its expenses back in
+  To claim (it still works after a restart).
+- **The assistant can do nearly everything in the dashboard**, with Undo: the
+  whole dashboard is now open to Claude Code and the in-app assistant (garden,
+  pet, profile, settings, Home layout, daily notes, people, tags, files,
+  countdowns, expenses and more). Anything sensitive (friends, your computers,
+  your relay, sign-ins, money rules, existing expenses, updates) is always a
+  proposal you approve on screen, or needs a dry run and a confirm token when
+  you use your own MCP client.
+- **497 hard achievements** (419 new), spread over months of steady use, each
+  one earned for something you really did. The visit-every-page secret is in
+  too.
+- **Join my other computer**: adding a computer is now a 4-letter code (shown
+  as `KQ MX`) and a matching picture on both screens. The code is live for
+  ten minutes, works once, and three wrong tries close it.
+- **Show my friend code**: 4 letters, live for ten minutes, works once. Your
+  friend types it, you see who it is, check the pictures and press Accept.
+  Invite links still work. It needs a relay you both use.
+- **An optional emergency backup sheet** of 10 words, offered once and under
+  Settings > Sync. You only need it if you ever lose every computer.
+
+### Changed
+- The recovery code is gone. Old 32-character codes still work if you kept one.
+- The Claude connector code you type to approve a new connection is now 4
+  letters, and three wrong codes close the Connect window.
+- Removing a computer locks it out of Friends automatically, from the server,
+  without asking, and renews the backup sheet's secret (if you made a sheet,
+  you are asked to print a new one).
+- If you use your own relay, **redeploy it once** (Settings > Your relay >
+  Advanced > Update my relay) so live friend codes work. Until you do, friend
+  codes are not offered and invite links still work.
 
 ## [2.20.0]
 

@@ -18,6 +18,10 @@ function rfCleanupOpen() {
       why: (i) => `last touched ${_rfAgo(rfLastTouch(i))}${effDate(i) ? ` · was due ${dueLabel(effDate(i))}` : ''}` }],
     finish(el, ctx) {
       const c = ctx.counts;
+      try {   // achievements (71-ach-pack-plan.js): a clean-up with 1+ decision, and how many stale tasks it decided
+        const decided = Object.values(c || {}).reduce((t, v) => t + (Number(v) || 0), 0);
+        if (decided > 0) { if (typeof gameStreakTick === 'function') gameStreakTick('cleanup'); if (typeof gameCount === 'function') gameCount('cleanup-decided', decided); }
+      } catch (e) { /* never in the way */ }
       const lighter = (c.bin || 0) + (c.someday || 0) + (c.done || 0);
       const art = typeof animSceneHtml === 'function' ? animSceneHtml(lighter ? 'celebration' : 'review', { size: 'hero', once: true }) : '';
       el.innerHTML = `<div class="rf-end-hero">${art}</div><div class="rf-end-h"><h2>${list.length ? (lighter ? `Your lists are ${lighter} task${lighter === 1 ? '' : 's'} lighter` : 'All kept') : 'Nothing has gone stale'}</h2>`

@@ -90,6 +90,8 @@
     // monogram), for ECharts rich-text images. Never fetched; cached per theme.
     tileImg(name, cat, px) {
       const fs = FSY(); const t = tk(); px = px || 44;
+      // A vendor's logo or pictogram comes as one drawn image; only a plain monogram is painted below.
+      if (fs && fs.tileDataUrl) { const u = fs.tileDataUrl(name, cat, px); if (u) return u; }
       const info = fs ? fs.merchantInfo(name, cat) : { key: String(name || ''), color: catColor(cat), ink: '#ffffff', mono: String(name || '?').charAt(0).toUpperCase() };
       const key = info.key + '|' + info.color + '|' + px + (t.dark ? 'd' : 'l');
       if (VK_IMG.has(key)) return VK_IMG.get(key);
@@ -363,7 +365,7 @@
       const out = []; let g = null;
       for (const x of rows) {
         if (!g || g.n !== x.n) { g = { n: x.n, rows: [], spent: 0, inc: 0 }; out.push(g); }
-        g.rows.push(x); g.spent += x.s || 0; if (x.a > 0) g.inc += x.a;
+        g.rows.push(x); g.spent += x.s || 0; if (x.a > 0 && x.kind !== 'off') g.inc += x.a;
       }
       for (const d of out) { d.spent = round2(d.spent); d.inc = round2(d.inc); }
       return out;

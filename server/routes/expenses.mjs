@@ -2,6 +2,7 @@
 //
 //   GET  /api/expenses                  -> {ok, data: {prefs, payers, items, claims, hints, summary}, today}
 //   POST /api/expenses/create           {expense} -> {ok, id, expense, undo, data}     (409 duplicate transaction)
+//   POST /api/expenses/create-batch     {expenses} -> {ok, ids, skipped, undo, data}   one undo for all of them
 //   POST /api/expenses/update           {id, patch} -> {ok, expense, undo, data}
 //   POST /api/expenses/delete           {ids} -> {ok, removed, undo, data}
 //   POST /api/expenses/submit           {ids, payer?, method?, date?, note?} -> {ok, claimId, claim, undo, data}
@@ -19,8 +20,10 @@
 //   POST /api/expenses/pack             {ids, claimId?, format: 'zip'|'html'|'csv'|'text'} -> the file (text: JSON {text})
 //   GET  /api/expenses/year?year=       the yearly summary
 //   POST /api/expenses/report/plan      {ids} -> {rows: [{id, date, description, col, label, amount, hasReceipt}], columns, name, signature: {set}, missing}
-//   POST /api/expenses/report           {ids, cols?: {id: column}, advances?, payer?} -> {ok, dir, count, receipts, missing}: PDF + Receipts.zip in Documents/Expense reports/, folder opened
-//   POST /api/expenses/report/open      {dir} (only a folder made by report) -> opens it in the file manager
+//   POST /api/expenses/report           {ids, cols?: {id: column}, advances?, payer?, name?, unsigned?} -> {ok, report, dir, count, receipts, missing, data}: PDF + Receipts.zip in Documents/Expense reports/, folder opened, the expenses moved to submitted, the report listed
+//   POST /api/expenses/report/open      {id} or {dir} (only a folder made by report) -> opens it in the file manager
+//   POST /api/expenses/report/undo      {id} -> {ok, changed, undo, data}: its expenses back to "to claim"; the folder stays
+//   POST /api/expenses/report/delete    {id} -> {ok, kept?, data}: removes its PDF and zip (and the folder if empty) and the list entry; the expenses stay as they are
 //   GET  /api/expenses/signature[?info=1]; POST /api/expenses/signature {data}; POST /api/expenses/signature/remove   (your signature for the report; private, never shared)
 //   POST /api/expenses/undo             {undo} -> {ok, label, data}
 //
@@ -30,7 +33,8 @@ import { HttpError } from '../http.mjs';
 import { createZip } from '../../lib/zip.mjs';
 import * as X from '../../lib/expenses.mjs';
 import * as R from '../../lib/expense-report.mjs';
-import { join, resolve, sep } from 'node:path';
+import { readStore as readOwed, usedKeys as owedUsed, netPlanAll } from '../../lib/owed.mjs';
+import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
 const FETCH_WAIT_MS = 4000;
@@ -41,9 +45,22 @@ export default function register(app) {
   const todayOf = (c) => (c.clockNow ? c.clockNow().today : new Date().toISOString().slice(0, 10));
   const view = async (c) => X.publicView(await X.readStore(dataDir, { home: home() }), todayOf(c));
   const fail = (r) => { throw new HttpError(r.status || (r.duplicate ? 409 : 400), r.error); };
+  /** What was paid back changed: the analysis is built again, so it comes off spending and out of income (lib/owed.mjs netPlanAll). true when it was. */
+  const syncNet = async () => {
+    try {
+      const F = await import('../../lib/finance.mjs');
+      const d = await F.financeData();
+      if (!d || d.status !== 'ok' || !F.financeAvailable() || (d.meta && d.meta.remote)) return false;
+      const sig = netPlanAll(await readOwed(dataDir, { home: home() }), await X.readStore(dataDir, { home: home() }), home()).sig;
+      if (sig === ((d.analysis.owed_net && d.analysis.owed_net.sig) || '')) return false;
+      const r = await F.refreshFinanceAnalysis().catch(() => null);
+      return !!(r && r.ok);
+    } catch { return false; }
+  };
   const done = async (c, r, extra = {}) => {
     if (r && r.error) fail(r);
-    return { ok: true, ...(r && r.undo ? { undo: r.undo } : {}), ...extra, data: X.publicView(r && r.S ? r.S : await X.readStore(dataDir, { home: home() }), todayOf(c)) };
+    const rebuilt = await syncNet();
+    return { ok: true, ...(rebuilt ? { rebuilt } : {}), ...(r && r.undo ? { undo: r.undo } : {}), ...extra, data: X.publicView(r && r.S ? r.S : await X.readStore(dataDir, { home: home() }), todayOf(c)) };
   };
   const blobs = () => (app.ctx.sync && app.ctx.sync.blobs) || null;
   const post = (path, fn, maxBody) => app.route({ path: '/api/expenses/' + path, method: 'POST', methodError: 'POST only', maxBody: maxBody || 64 * 1024, handler: async (c) => fn(c, await c.body()) });
@@ -55,6 +72,11 @@ export default function register(app) {
     if (!r.error) log('info', 'expenses: one added');
     return done(c, r, { id: r.id, expense: r.expense });
   });
+  post('create-batch', async (c, b) => {
+    const r = await X.createExpenses(dataDir, b && b.expenses, { today: todayOf(c), home: home() });
+    if (!r.error) log('info', `expenses: ${r.ids.length} added together`);
+    return done(c, r, { ids: r.ids, skipped: r.skipped });
+  }, 512 * 1024);
   post('update', async (c, b) => { const r = await X.updateExpense(dataDir, String(b && b.id), b && b.patch, { today: todayOf(c), home: home() }); return done(c, r, { expense: r.expense }); });
   post('delete', async (c, b) => { const r = await X.deleteExpenses(dataDir, ids(b), { home: home() }); return done(c, r, { removed: r.removed }); });
   post('submit', async (c, b) => {
@@ -63,7 +85,23 @@ export default function register(app) {
     return done(c, r, { claimId: r.claimId, claim: r.claim });
   });
   post('unsubmit', async (c, b) => done(c, await X.unsubmit(dataDir, ids(b), { home: home() })));
-  post('paid', async (c, b) => done(c, await X.markPaid(dataDir, ids(b), { date: b.date, today: todayOf(c), home: home() })));
+  post('paid', async (c, b) => {
+    const txKey = b.txKey || await paidCredit(c, b);
+    const r = await X.markPaid(dataDir, ids(b), { date: b.date, txKey, learnFrom: typeof b.memo === 'string' ? b.memo : '', today: todayOf(c), home: home() });
+    // No bank payment was sure: say so, and offer the likely ones, so the money does not sit in income unnoticed.
+    const unlinked = !r.error && !txKey ? await unlinkedOf(c, r.ids || ids(b), b.date) : null;
+    return done(c, r, unlinked ? { unlinked } : {});
+  });
+  /** Which bank payment was it? {ids}: the likely ones. */
+  post('paid-candidates', async (c, b) => ({ ok: true, unlinked: await unlinkedOf(c, ids(b), b.date) }));
+  /** {ids, txKey}: that payment paid them back. {ids, noBank: true}: it did not come through the bank. */
+  post('paid-link', async (c, b) => {
+    if (b.noBank === true) return done(c, await X.linkPaid(dataDir, ids(b), '', { home: home() }));
+    const key = typeof b.txKey === 'string' ? b.txKey : '';
+    const list = await bankCredits(c);
+    if (!key || !list.some(x => x.txKey === key)) throw new HttpError(409, 'That payment is not in your bank list any more. Open it again and pick another.');
+    return done(c, await X.linkPaid(dataDir, ids(b), key, { home: home() }));
+  });
   post('unpaid', async (c, b) => done(c, await X.markUnpaid(dataDir, ids(b), { home: home() })));
   post('payer', async (c, b) => { const r = await X.setPayer(dataDir, String(b && b.name || ''), b && b.patch, { today: todayOf(c), home: home() }); return done(c, r, { payer: r.payer }); });
   post('prefs', async (c, b) => done(c, await X.setPrefs(dataDir, b && b.patch, { home: home() })));
@@ -109,15 +147,49 @@ export default function register(app) {
     },
   });
 
+  /** Money in that can still be matched: not one a friend's payment already took. */
+  const bankCredits = async (c) => {
+    try {
+      const { financeData } = await import('../../lib/finance.mjs');
+      const d = await financeData();
+      if (!d || d.status !== 'ok') return [];
+      const taken = owedUsed(await readOwed(dataDir, { home: home() }));
+      return X.creditsFromAnalysis(d.analysis, { today: todayOf(c) }).filter(x => !taken.has(x.k) && !taken.has(x.txKey));
+    } catch { return []; }
+  };
+  /** Marked paid with no bank payment: how much, and what it might have been. null when nothing is counted either way (the setting is off, or another currency). */
+  const unlinkedOf = async (c, list, date) => {
+    const O = await readOwed(dataDir, { home: home() });
+    if (!O.prefs || !O.prefs.netSpending) return null;
+    const S = await X.readStore(dataDir, { home: home() });
+    const open = X.unlinkedPaid(S, list, home());
+    if (!open.length) return null;
+    return { ids: open.map(e => e.id), amount: Math.round(open.reduce((t, e) => t + e.amount, 0) * 100) / 100, candidates: X.paidCandidates(S, open.map(e => e.id), await bankCredits(c), typeof date === 'string' && date ? date : '') };
+  };
+  /** Marked by hand: the money in it must have been, so that is not counted as income either. */
+  const paidCredit = async (c, b) => {
+    try {
+      const { financeData } = await import('../../lib/finance.mjs');
+      const d = await financeData();
+      if (!d || d.status !== 'ok') return '';
+      const today = todayOf(c);
+      const taken = owedUsed(await readOwed(dataDir, { home: home() }));
+      return X.findPaidCredit(await X.readStore(dataDir, { home: home() }), ids(b), X.creditsFromAnalysis(d.analysis, { today }).filter(x => !taken.has(x.k) && !taken.has(x.txKey)), typeof b.date === 'string' && b.date ? b.date : today);
+    } catch { return ''; }
+  };
   // ── paid back? ──
   post('scan', async (c) => {
     let analysis = null;
     try { const { financeData } = await import('../../lib/finance.mjs'); const d = await financeData(); analysis = d && d.status === 'ok' ? d.analysis : null; } catch { analysis = null; }
     const today = todayOf(c);
     if (!analysis) return { ok: true, auto: [], ask: [], data: await view(c) };
-    const r = await X.scanPaid(dataDir, X.creditsFromAnalysis(analysis, { today }), { today, home: home() });
+    const taken = owedUsed(await readOwed(dataDir, { home: home() }));   // a payment that paid back a friend is not also a claim paid
+    const free = X.creditsFromAnalysis(analysis, { today }).filter(x => !taken.has(x.k) && !taken.has(x.txKey));
+    const r = await X.scanPaid(dataDir, free, { today, home: home() });
     if (r.auto.length) log('info', `expenses: ${r.auto.length} payment(s) matched`);
-    return { ok: true, auto: r.auto, ask: r.ask, ...(r.undo ? { undo: r.undo } : {}), data: await view(c) };
+    const late = await X.linkLatePaid(dataDir, free, { home: home() }).catch(() => 0);
+    const rebuilt = r.auto.length || late ? await syncNet() : false;
+    return { ok: true, ...(rebuilt ? { rebuilt } : {}), auto: r.auto, ask: r.ask, ...(r.undo ? { undo: r.undo } : {}), data: await view(c) };
   });
   post('answer', async (c, b) => {
     const r = await X.answerAsk(dataDir, b && b.ask, b && b.yes === true, { today: todayOf(c), home: home() });
@@ -152,23 +224,42 @@ export default function register(app) {
     const list = goodIds(b).map(id => S.items[id]).filter(Boolean);
     if (!list.length) throw new HttpError(400, 'Choose at least one expense.');
     const cfg = typeof getConfig === 'function' ? getConfig() || {} : {};
-    return { ok: true, rows: R.reportRows(list), columns: R.COLUMN_KEYS.map(k => [k, R.COLUMN_LABELS[k]]), name: typeof cfg.userName === 'string' ? cfg.userName : (typeof cfg.name === 'string' ? cfg.name : ''), signature: await R.signatureInfo(dataDir), payer: list[0].payer || '' };
+    return { ok: true, rows: R.reportRows(list), columns: R.COLUMN_KEYS.map(k => [k, R.COLUMN_LABELS[k]]), name: typeof cfg.userName === 'string' ? cfg.userName : (typeof cfg.name === 'string' ? cfg.name : ''), signature: await R.signatureInfo(dataDir), payer: list[0].payer || '', perPage: 11 };
   });
   post('report', async (c, b) => {
     const S = await X.readStore(dataDir, { home: home() });
     const cfg = typeof getConfig === 'function' ? getConfig() || {} : {};
     const cols = {}; if (b && b.cols && typeof b.cols === 'object') for (const [id, v] of Object.entries(b.cols).slice(0, 200)) if (X.ID_RE.test(id) && R.COLUMN_KEYS.includes(v)) cols[id] = v;
     const name = typeof (b && b.name) === 'string' ? b.name : (typeof cfg.userName === 'string' ? cfg.userName : (typeof cfg.name === 'string' ? cfg.name : ''));
-    const r = await R.makeReport(dataDir, S, { ids: goodIds(b), cols, advances: b && b.advances, name, payer: typeof (b && b.payer) === 'string' ? b.payer : '', today: todayOf(c), currency: home() });
+    const r = await R.makeReport(dataDir, S, { ids: goodIds(b), cols, advances: b && b.advances, name, payer: typeof (b && b.payer) === 'string' ? b.payer : '', today: todayOf(c), currency: home(), unsigned: !!(b && b.unsigned) });
     if (r.error) fail(r);
+    // One step: the folder, the list entry and the expenses moving on. If the save fails, the folder does not stay behind.
+    const rec = await X.recordReport(dataDir, { ids: goodIds(b), dir: r.dir, payer: typeof (b && b.payer) === 'string' ? b.payer : '', count: r.count, total: r.total, from: r.from, to: r.to, today: todayOf(c), home: home() });
+    if (rec.error) { await R.removeReportFolder(r.dir); fail(rec); }
     log('info', `expenses: a report of ${r.count} made`);
     R.openFolder(r.dir);
-    return { ok: true, dir: r.dir, count: r.count, receipts: r.receipts, missing: r.missing };
+    return done(c, rec, { report: rec.report, moved: rec.ids, dir: r.dir, count: r.count, receipts: r.receipts, missing: r.missing, total: r.total });
   });
   post('report/open', async (c, b) => {
-    const root = resolve(join(R.documentsDir(), 'Expense reports')), dir = resolve(String(b && b.dir || ''));
-    if (!dir.startsWith(root + sep) || !existsSync(dir)) throw new HttpError(400, 'That folder is not one of your expense reports.');
-    return { ok: R.openFolder(dir) };
+    let dir = String(b && b.dir || '');
+    if (b && typeof b.id === 'string') { const S = await X.readStore(dataDir, { home: home() }); dir = (S.reports[b.id] || {}).dir || ''; }
+    if (!R.isReportDir(dir) || !existsSync(resolve(dir))) throw new HttpError(400, 'That folder is not on this computer. It may have been moved, or made on another computer.');
+    return { ok: R.openFolder(resolve(dir)) };
+  });
+  post('report/undo', async (c, b) => {
+    const r = await X.undoReport(dataDir, String(b && b.id || ''), { today: todayOf(c), home: home() });
+    return done(c, r, { changed: r.changed, ids: r.ids, report: r.report });
+  });
+  post('report/delete', async (c, b) => {
+    const id = String(b && b.id || '');
+    const S = await X.readStore(dataDir, { home: home() });
+    const rp = S.reports[id];
+    if (!rp) throw new HttpError(404, 'That report is gone.');
+    const rm = await R.removeReportFolder(rp.dir);
+    if (rm.error) throw new HttpError(409, rm.error);
+    const r = await X.deleteReportRecord(dataDir, id, { home: home() });
+    if (r.error) fail(r);
+    return { ok: true, kept: !!rm.kept, gone: !!rm.gone, data: X.publicView(r.S, todayOf(c)) };
   });
   post('signature', async (c, b) => { const r = await R.setSignature(dataDir, b && b.data); if (r.error) fail(r); return { ok: true, signature: { set: true, ext: r.ext } }; }, 4 * 1024 * 1024);
   post('signature/remove', async () => ({ ok: true, ...(await R.removeSignature(dataDir)), signature: { set: false } }));
