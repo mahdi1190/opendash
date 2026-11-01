@@ -36,7 +36,13 @@
 .hab-pw .hab-skip { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); opacity: 0; pointer-events: none; transition: opacity var(--m-fast, 120ms) ease; background: var(--surface); }
 .hab-pw:is(:hover, :focus-within) .hab-skip { opacity: 1; pointer-events: auto; }
 .hab-pw:is(:hover, :focus-within):has(.hab-skip) .hab-pill .hab-sn { opacity: 0; }
-@media (hover: none) { .hab-pw .hab-skip { display: none; } .hab-pw:has(.hab-skip) .hab-pill .hab-sn { opacity: 1; } }
+/* A touch screen has no hover: Skip stays on show at the pill's end, and the streak keeps clear of it. */
+@media (hover: none) {
+  .hab-pw .hab-skip { opacity: 0.8; pointer-events: auto; }
+  .hab-pw:has(.hab-skip) .hab-pill { padding-right: 40px; }
+  .hab-pw:is(:hover, :focus-within):has(.hab-skip) .hab-pill .hab-sn { opacity: 1; }
+  .hab-ch .hab-skip { opacity: 0.8; }
+}
 .hab-more { align-self: flex-start; margin-top: var(--space-1-5); border: 0; background: none; color: var(--fg-muted); font: inherit; font-size: var(--text-xs); cursor: pointer; padding: var(--space-1) var(--space-1-5); border-radius: var(--radius-sm); }
 .hab-more:hover { background: var(--bg-muted); color: var(--fg); }
 .hab-more:focus-visible { outline: none; box-shadow: var(--focus-ring); }

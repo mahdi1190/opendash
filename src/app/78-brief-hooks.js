@@ -394,7 +394,7 @@ registerSettingsGroup({
       }
       if (!titles.size) { toast('Every event in the next 30 days already has a scene.', { kind: 'ok' }); return; }
       ask.disabled = true; ask.innerHTML = '<span class="spinner"></span><span>Asking…</span>';
-      try { const j = await _bfPost('/api/brief/scenes', { titles: [...titles].slice(0, 25) }); _animAi = j.types || _animAi; _animEvCache.clear(); toast(`Claude sorted ${j.asked} title${j.asked === 1 ? '' : 's'}`, { kind: 'ok' }); }
+      try { const j = await _bfPost('/api/brief/scenes', { titles: [...titles].slice(0, 25) }); _animAi = j.types || _animAi; _animEvCache.clear(); toast(`Claude sorted ${j.asked} title${j.asked === 1 ? '' : 's'}`, { dismiss: true, kind: 'ok' }); }
       catch (e) { if (typeof aiErrorToast === 'function') aiErrorToast(e, { what: 'Claude could not sort the titles' }); else toastError('sort the titles', e, askScenes); }
       render();
     };

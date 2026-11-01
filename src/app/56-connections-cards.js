@@ -30,7 +30,7 @@ function _connPageSourceMark(s) {
 }
 function _connPageAccountCaption(s) {
   const accounts = Array.isArray(s.accounts) ? s.accounts : [];
-  if (s.kind === 'csv') return 'CSV import';
+  if (s.kind === 'csv') return 'Statement file';
   if (accounts.length) {
     const n = accounts.filter(a => a.enabled !== false).length;
     const word = s.capability === 'calendar' ? 'calendar' : s.capability === 'email' ? 'mailbox' : 'account';
@@ -157,7 +157,7 @@ function _connPageSourceCard(s) {
   const accountDetails = _connPageSourceAccounts(s, busy); if (accountDetails) card.appendChild(accountDetails);
 
   const foot = _connEl('div', 'cp-card-footer');
-  const when = busy ? 'Updating…' : s.kind === 'csv' ? 'Import CSV in Finances' : s.demo ? 'Example data · never updated' : st === 'off' ? 'Paused' : s.lastSync ? `Updated ${_connAgo(s.lastSync)}` : 'Not updated yet';
+  const when = busy ? 'Updating…' : s.kind === 'csv' ? 'Import a statement in Money' : s.demo ? 'Example data · never updated' : st === 'off' ? 'Paused' : s.lastSync ? `Updated ${_connAgo(s.lastSync)}` : 'Not updated yet';
   const time = _connEl('span', 'conn-when cp-sync-time'); time.innerHTML = icon('clock', 'i-xs'); time.appendChild(_connEl('span', null, when));
   let action;
   if (s.kind === 'csv') action = uiButton({ label: 'Open Finances', icon: 'arrow-right', kind: 'ghost', size: 'sm', run: () => setView('finance') });
@@ -187,7 +187,7 @@ function _connPageSuggestion(cap = 'bank') {
   card.append(_connEl('h3', null, title), _connEl('p', 'cp-description', copy));
   const foot = _connEl('div', 'cp-card-footer');
   foot.appendChild(uiButton({ label: bank ? 'Connect a bank' : cap === 'calendar' ? 'Add a calendar' : 'Connect email', icon: 'plus', kind: 'secondary', size: 'sm', run: () => srcAddFlow({ capability: cap }) }));
-  if (bank) foot.appendChild(uiButton({ label: 'Or import a CSV', icon: 'arrow-right', kind: 'ghost', size: 'sm', run: () => setView('finance') }));
+  if (bank) foot.appendChild(uiButton({ label: 'Or import a statement', icon: 'arrow-right', kind: 'ghost', size: 'sm', run: () => setView('finance') }));
   card.appendChild(foot);
   return card;
 }

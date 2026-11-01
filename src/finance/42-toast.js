@@ -8,7 +8,7 @@
     if (typeof window.toast === 'function' && document.getElementById('toast-host')) {
       window.toast(msg, {
         kind: o.bad ? 'err' : o.kind || '', icon: o.icon,
-        action: o.action ? { label: o.action, run: o.onAction } : null, timeout: o.action ? 7000 : 4200,
+        action: o.action ? { label: o.action, run: o.onAction } : null, timeout: o.bad ? 0 : o.action ? 7000 : 4200,   // (a problem stays for its reading time)
       });
       return;
     }

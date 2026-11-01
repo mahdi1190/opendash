@@ -616,8 +616,8 @@ function _finEbLookup(ctx, body) {
       setup.disabled = true; return;
     }
     if (info.source === 'none' || !info.banks.length) {
-      out.appendChild(_finCallout('warn', 'info', `We could not confirm which banks in ${countryName} Enable Banking covers yet: their full list needs your own free app. Set it up to check the live list (about 5 minutes), or import a CSV instead.`,
-        uiButton({ label: 'Import a CSV instead', icon: 'upload', kind: 'ghost', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
+      out.appendChild(_finCallout('warn', 'info', `We could not confirm which banks in ${countryName} Enable Banking covers yet: their full list needs your own free app. Set it up to check the live list (about 5 minutes), or import a statement instead.`,
+        uiButton({ label: 'Import a statement instead', icon: 'upload', kind: 'ghost', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
       setup.disabled = false; setup.lastChild.textContent = entry.configured ? 'Continue' : 'Set up and check';
       return;
     }
@@ -627,8 +627,8 @@ function _finEbLookup(ctx, body) {
     }
     const hits = info.banks.filter(b => String(b.name).toLowerCase().includes(query)).slice(0, 8);
     if (!hits.length) {
-      out.appendChild(_finCallout('warn', 'circle-alert', `“${w.query.trim()}” is not available through Enable Banking${info.source === 'snapshot' ? ' in the list we have' : ''}. Use CSV import instead.`,
-        uiButton({ label: 'Import a CSV', icon: 'upload', kind: 'secondary', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
+      out.appendChild(_finCallout('warn', 'circle-alert', `“${w.query.trim()}” is not available through Enable Banking${info.source === 'snapshot' ? ' in the list we have' : ''}. Import a statement instead.`,
+        uiButton({ label: 'Import a statement', icon: 'upload', kind: 'secondary', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
       setup.disabled = !entry.configured; return;
     }
     const list = _finEl('div', 'fc-banks');
@@ -758,7 +758,7 @@ function _finEbBank(ctx, body) {
     out.replaceChildren(); psu.replaceChildren();
     const query = (w.query || '').trim().toLowerCase();
     const hits = w.banks.filter(b => !query || String(b.name).toLowerCase().includes(query)).slice(0, 60);
-    if (!hits.length) out.appendChild(_finCallout('warn', 'circle-alert', `No bank called “${w.query.trim()}” in this country through Enable Banking. Use CSV import instead.`, uiButton({ label: 'Import a CSV', icon: 'upload', kind: 'secondary', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
+    if (!hits.length) out.appendChild(_finCallout('warn', 'circle-alert', `No bank called “${w.query.trim()}” in this country through Enable Banking. Import a statement instead.`, uiButton({ label: 'Import a statement', icon: 'upload', kind: 'secondary', size: 'sm', run: () => { ctx.close(); finImportCsv(); } })));
     for (const b of hits) out.appendChild(_finBankRow(b, (pick) => { w.bank = pick; w.psuType = (pick.psuTypes || ['personal'])[0]; next.disabled = false; paint(); }, w.bank && w.bank.name === b.name && w.bank.country === b.country));
     if (w.bank && w.banks.some(b => b.name === w.bank.name)) {
       w.bank = w.banks.find(b => b.name === w.bank.name);

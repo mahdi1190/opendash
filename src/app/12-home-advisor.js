@@ -94,7 +94,7 @@ async function homeAdvisorReview(automatic,o) {
       if(!response.ok)throw new Error(data.error?.message||data.error||'The AI review could not finish.');
       _homeAdvice=data;
       try{localStorage.setItem(_HOME_ADVICE_KEY,JSON.stringify(data));}catch(e){/* Private mode. */}
-      if(!automatic&&!quiet)toast(data.cached?'Showing the recent AI review':'Your AI day review is ready',{kind:'ok'});
+      if(!automatic&&!quiet)toast(data.cached?'Showing the recent AI review':'Your AI day review is ready',{ dismiss: true, kind:'ok'});
     }catch(e){
       if(gen!==_homeAdviceGen||(e&&e.name==='AbortError'))return;
       const msg=typeof netErrorMessage==='function'?netErrorMessage(e,'The AI review could not finish.'):(e&&e.message)||'The AI review could not finish.';

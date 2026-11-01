@@ -313,8 +313,8 @@ function _hinRow(r, ctx, draftsOk) {
   done.onclick = () => _hinDone(r, done, li);
   sec.appendChild(done);
   if (link) {
-    const g = document.createElement('a'); g.className = 'btn btn-ghost btn-sm btn-icon hin-gmail'; g.href = safeUrl(link); g.target = '_blank'; g.rel = 'noopener noreferrer';
-    g.setAttribute('aria-label', 'Open in Gmail'); g.setAttribute('data-tip', 'Open in Gmail · Enter'); g.innerHTML = icon('external-link', 'i-sm');
+    const g = document.createElement('a'); g.className = 'btn btn-ghost btn-sm hin-gmail'; g.href = safeUrl(link); g.target = '_blank'; g.rel = 'noopener noreferrer';
+    g.setAttribute('aria-label', 'Open in Gmail'); g.setAttribute('data-tip', 'Open in Gmail · Enter'); g.innerHTML = icon('external-link', 'i-sm') + '<span>Gmail</span>';
     sec.appendChild(g);
   }
   const pri = document.createElement('div'); pri.className = 'hin-pri';
@@ -371,13 +371,7 @@ function _hinLeave(li) {
 function _hinUnleave(li) { try { if (li && li.getAnimations) for (const a of li.getAnimations()) a.cancel(); } catch (e) { /* gone */ } }
 /** A toast with Undo, plus Open for a new task. */
 function _hinToast(msg, taskId) {
-  toast(msg, { kind: 'ok', action: { label: 'Undo', run: () => undo() } });
-  const host = document.getElementById('toast-host');
-  const t = host && host.lastElementChild;
-  if (!t || !taskId || typeof openTask !== 'function') return;
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-ghost btn-sm'; b.textContent = 'Open';
-  b.onclick = () => { t.classList.add('out'); setTimeout(() => t.remove(), 160); if (getItem(taskId)) openTask(taskId); };
-  t.appendChild(b);
+  toast(msg, { kind: 'ok', action: { label: 'Undo', run: () => undo() }, action2: taskId && typeof openTask === 'function' ? { label: 'Open', run: () => { if (getItem(taskId)) openTask(taskId); } } : null });
 }
 /** The card's Save: what fn() saves folds into the task's own undo step (one Undo takes it all back). */
 function _hinCreated(fn) {

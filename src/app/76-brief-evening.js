@@ -215,8 +215,8 @@ function _evSlipped(m) {
     const tom = document.createElement('button'); tom.type = 'button'; tom.className = 'btn btn-ghost btn-sm';
     tom.innerHTML = icon('sunrise', 'i-sm') + '<span>Tomorrow</span>';
     tom.onclick = (e) => { e.stopPropagation(); _evRoll(x.id, x.field, m.tomorrow, EVENING_ROLL_REASON); saveData(); render(); toast('Moved to tomorrow', { kind: 'ok', action: { label: 'Undo', run: () => undo() } }); };
-    const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'btn btn-ghost btn-sm btn-icon'; pick.setAttribute('aria-label', 'Pick a date'); pick.setAttribute('data-tip', 'Pick a date');
-    pick.innerHTML = icon('calendar', 'i-sm');
+    const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'btn btn-ghost btn-sm'; pick.setAttribute('aria-label', 'Pick a date'); pick.setAttribute('data-tip', 'Pick a date');
+    pick.innerHTML = icon('calendar', 'i-sm') + '<span>Date</span>';
     pick.onclick = (e) => { e.stopPropagation(); openDueDatePopover(pick, { title: 'Move to', onPick: (d) => { if (!d) return; _evRoll(x.id, 'due', d, 'Moved at the end of the day'); saveData(); render(); } }); };
     li.append(tom, pick);
     li.onclick = () => homeOpenSheet(x.id, li);

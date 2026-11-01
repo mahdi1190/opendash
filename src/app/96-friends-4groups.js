@@ -37,7 +37,7 @@ function _grRepaint() {
 }
 /** The server says something changed. */
 function grOnEvent(d) {
-  if (d && d.note === 'in' && typeof d.name === 'string') toast(`You're in ${d.name}`, { kind: 'ok', icon: 'users' });
+  if (d && d.note === 'in' && typeof d.name === 'string') toast(`You're in ${d.name}`, { dismiss: true, kind: 'ok', icon: 'users' });
   clearTimeout(_gr.reloadT);
   _gr.reloadT = setTimeout(() => { Promise.all([grLoad(true), _frGroupId(state.view) ? grOne(_frGroupId(state.view), true).catch(() => {}) : null]).then(_grRepaint).catch(() => {}); }, 300);
 }

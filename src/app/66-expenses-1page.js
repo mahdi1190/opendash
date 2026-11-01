@@ -276,7 +276,7 @@ function _xpMoreItems() {
     { label: 'Deadline reminders', icon: 'bell', checked: p.reminders, run: () => expDo('/prefs', { patch: { reminders: !p.reminders } }, { quiet: true }) },
     'sep',
     { label: 'Payers and deadlines…', icon: 'users', run: () => expPayersDialog() },
-    { label: 'Check for payments now', icon: 'refresh-cw', run: () => { EXP.scanAt = 0; expScan(true).then(() => toast(EXP.asks.length ? 'There is one thing to confirm' : 'Looked: nothing new arrived', { icon: 'search' })); } },
+    { label: 'Check for payments now', icon: 'refresh-cw', run: () => { EXP.scanAt = 0; expScan(true).then(() => toast(EXP.asks.length ? 'There is one thing to confirm' : 'Looked: nothing new arrived', { dismiss: true, icon: 'search' })); } },
     { label: 'Your signature…', icon: 'pencil', run: () => expSignatureDialog() },
     { label: 'Download all as CSV', icon: 'download', run: () => expPack({ ids: expItems().map(e => e.id).slice(0, 200) }, 'csv') },
     { label: 'Paid back this year…', icon: 'calendar-check', run: () => expYearDialog() },

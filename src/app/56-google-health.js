@@ -101,7 +101,7 @@ async function googleHealthSync() {
   if (state.view === 'connections') renderMain();
   try {
     const result = await _srcApi('/api/google-health/sync', { method: 'POST', body: {} });
-    toast(result.snapshot && result.snapshot.warnings && result.snapshot.warnings.length ? 'Google Health updated, with some data missing. See the card for details' : 'Google Health updated', { kind: 'ok' });
+    toast(result.snapshot && result.snapshot.warnings && result.snapshot.warnings.length ? 'Google Health updated, with some data missing. See the card for details' : 'Google Health updated', { dismiss: true, kind: 'ok' });
   } catch (e) { toastError('update Google Health', e, () => googleHealthSync()); }
   finally { _googleHealthBusy = false; await connRefresh({ force: true }); if (state.view === 'connections') renderMain(); }
 }

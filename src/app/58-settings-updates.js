@@ -53,7 +53,7 @@ async function upCheck(opts) {
   _upBusy = true; _upRefresh();
   try {
     _upStatus = await _upPost('/api/update/check', {}); _upError = '';
-    if (!quiet) { const s = upSummary(_upStatus); toast(s.text, { kind: s.tone === 'err' ? 'err' : 'ok' }); }
+    if (!quiet) { const s = upSummary(_upStatus); toast(s.text, { kind: s.tone === 'err' ? 'err' : 'ok', dismiss: true }); }
   } catch (e) { _upError = netErrorMessage(e); if (!quiet) toastError('check for updates', e, () => upCheck()); }
   finally { _upBusy = false; _upRefresh(); }
   return _upStatus;
@@ -153,7 +153,7 @@ function _upAutoCard(el) {
   const card = _settingsCard('Automatic checks');
   card.body.appendChild(_settingsRow('Check once a day', 'Asks GitHub once a day while Freeflo is open. It only tells you; it never installs.',
     _settingsSwitch(!!(st && st.auto), 'Check for updates once a day', async (v) => {
-      try { _upStatus = await _upPost('/api/update/settings', { auto: v }); toast(v ? 'Will check once a day' : 'Automatic checks off', { kind: 'ok' }); }
+      try { _upStatus = await _upPost('/api/update/settings', { auto: v }); }
       catch (e) { toastError('save that', e); }   // the switch shows the old state again: flip it to retry
       _upRefresh();
     }, !st)));

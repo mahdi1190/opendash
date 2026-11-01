@@ -74,7 +74,7 @@ function _srcPill(st) {
 function _srcKindText(s) {
   if (s.kind === 'microsoft') return (s.account ? s.label + ' · ' : '') + 'Microsoft sign-in · read-only';
   if (s.kind === 'google') return (s.account ? s.label + ' · ' : '') + 'Google sign-in · read-only';
-  if (s.kind === 'csv') return 'CSV export · imported in Finances';
+  if (s.kind === 'csv') return 'Statement file · imported in Money';
   if (s.kind === 'ical') return 'iCal link · ' + (s.urlHint || 'calendar feed') + ' · read-only';
   return (s.server || 'MCP server') + ' · read-only';
 }
@@ -143,7 +143,7 @@ function _srcRow(s) {
   }
 
   const foot = _connEl('div', 'src-foot');
-  const when = s.kind === 'csv' ? 'Import a CSV in Finances any time' : s.demo ? 'Example data · never updated' : s.lastSync ? `Updated ${_srcAgo(s.lastSync)}` : 'Not updated yet';
+  const when = s.kind === 'csv' ? 'Import a statement in Money any time' : s.demo ? 'Example data · never updated' : s.lastSync ? `Updated ${_srcAgo(s.lastSync)}` : 'Not updated yet';
   foot.appendChild(_connEl('span', 'conn-when', when));
   if (s.kind !== 'csv') {
     const busy = !!SourcesStore.busy[s.id];
@@ -248,7 +248,7 @@ function _srcSyncOutcome(id, since) {
     const reconnect = _srcNeedsReconnect(s);
     toast(`${s.label} didn’t update: ${String(s.lastError.message || 'the update failed.').replace(/^Last (sync|update) failed:\s*/i, '')}`, { kind: 'err', timeout: 12000,
       action: reconnect ? { label: 'Reconnect', run: () => _connPageSourceHelp(s) } : { label: 'Try again', run: () => _srcSync(s) } });
-  } else if (okAt >= since - 5000) toast(`${s.label} is up to date`, { kind: 'ok' });
+  } else if (okAt >= since - 5000) toast(`${s.label} is up to date`, { dismiss: true, kind: 'ok' });
 }
 async function _srcSync(s, opts) {
   SourcesStore.busy[s.id] = true; renderMain();
@@ -543,7 +543,7 @@ function srcAddFlow(o) {
           () => { if (f.server !== sv.name) { f.tools = null; f.toolsErr = null; f.test = null; } f.kind = 'mcp'; f.server = sv.name; f.selected = new Set(); go('tools'); }, { disabled: used.has(sv.name) || !sv.usable, badge }));
       }
       if (f.capability === 'calendar') g.appendChild(choice('globe', 'An iCal link', 'Any calendar that can be shared as a link (.ics, webcal://). No AI involved.', f.kind === 'ical', () => { f.kind = 'ical'; go('url'); }));
-      if (f.capability === 'bank') g.appendChild(choice('file-up', 'CSV exports', 'Download a CSV from your bank’s website and import it in Finances. Always available.', false, () => { closeFn && closeFn(); setView('finance'); }));
+      if (f.capability === 'bank') g.appendChild(choice('file-up', 'Statement files', 'Download a statement (a CSV file) from your bank’s website and import it in Money. Always available.', false, () => { closeFn && closeFn(); setView('finance'); }));
       bodyEl.appendChild(g);
       if (!servers.length) bodyEl.appendChild(_connEl('p', 'conn-note', 'None found in your Claude. Add one on claude.ai (Settings > Connectors), then click Check on Connections.'));
       back('what'); spacer();

@@ -364,7 +364,10 @@ function openDrawer(o) {
 /* ---------- toasts ---------- */
 /**
  * toast('Saved', {kind:'ok'}) / toast('Deleted', {action:{label:'Undo', run: undo}})
- * o: {kind:'ok'|'err'|'warn'|'info', icon, action:{label,run}, retry: fn, timeout, dismiss, busy}
+ * o: {kind:'ok'|'err'|'warn'|'info', icon, action:{label,run}, action2:{label,run}, retry: fn, timeout, dismiss, now, busy}
+ * dismiss: shows with a ×, even long after any press (a job's result, something from a friend). Without it, or a
+ * button, or a problem to tell, a plain note says nothing unless you pressed something in the last 20 s; it waits in
+ * More > Recent messages. now: also shows in the garden.
  *   - A RUNNING WAIT (o.busy, or a Cancel / Stop button, e.g. "Asking Home
  *     laptop… Cancel", 56-remote-jobs.js) stays until its job ends: the caller
  *     calls close() (o.timeout, if given, is only an upper bound), or the user
@@ -394,9 +397,10 @@ function _toastMs(msg, o, kind, busy) {
   if (busy) return o.timeout || 0;
   if (o.timeout) return o.timeout;
   const read = 2000 + String(msg || '').length * 45;
-  if (kind === 'err') return Math.min(14000, Math.max(8000, read));
-  if (o.action || o.retry) return Math.min(16000, Math.max(12000, read));
-  return Math.min(8000, Math.max(2800, read));
+  // A long reason gets its reading time: it must still be there when you reach the end of it.
+  if (kind === 'err') return Math.min(30000, Math.max(8000, read));
+  if (o.action || o.retry) return Math.min(30000, Math.max(12000, read));
+  return Math.min(12000, Math.max(2800, read));
 }
 /** Is this button the plain global undo (`() => undo()` or `undo`)? Then it is made precise. */
 function _toastIsPlainUndo(a) {
@@ -410,39 +414,65 @@ const _toastHeld = [];
    only a problem, a warning, a wait or an Undo still shows by itself, in the corner under the top bar. */
 const _TOAST_NEAR_MS = 20000, _TOAST_LOG_MAX = 40;
 const _toastPress = { t: 0, el: null, x: 0, y: 0 }, _toastLog = [], _toastRate = [];
+const _TOAST_CONTROL = 'button, a, [role="button"], [role="tab"], label, select, input';
 if (typeof document !== 'undefined') {
-  document.addEventListener('pointerdown', (e) => { _toastPress.t = Date.now(); _toastPress.el = e.target && e.target.closest ? e.target.closest('button, a, [role="button"], [role="tab"], label, select, input') || e.target : null; _toastPress.x = e.clientX; _toastPress.y = e.clientY; }, true);
+  document.addEventListener('pointerdown', (e) => { _toastPress.t = Date.now(); _toastPress.el = e.target && e.target.closest ? e.target.closest(_TOAST_CONTROL) || e.target : null; _toastPress.x = e.clientX; _toastPress.y = e.clientY; }, true);
   document.addEventListener('keydown', (e) => {
+    if (/^(Shift|Control|Alt|Meta|CapsLock|Tab|Escape)$/.test(e.key)) return;   // moving around, not pressing anything
     const a = document.activeElement, typing = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
     if (typing && e.key !== 'Enter') return;
     _toastPress.t = Date.now(); _toastPress.el = a && a !== document.body ? a : null;
-    if (_toastPress.el) { const r = _toastPress.el.getBoundingClientRect(); _toastPress.x = r.left + r.width / 2; _toastPress.y = r.top; } else _toastPress.y = 0;
+    if (_toastPress.el) { const r = _toastPress.el.getBoundingClientRect(); _toastPress.x = r.left + r.width / 2; _toastPress.y = r.top; } else { _toastPress.x = 0; _toastPress.y = 0; }   // a shortcut with nothing focused: the corner
   }, true);
 }
 /** What was said lately, for Recent messages. */
 function toastRecent() { return _toastLog.slice().reverse(); }
 function _toastRemember(text, kind, ic) { if (!text) return; const last = _toastLog[_toastLog.length - 1]; if (last && last.text === text) { last.at = Date.now(); return; } _toastLog.push({ text, kind, ic, at: Date.now() }); if (_toastLog.length > _TOAST_LOG_MAX) _toastLog.shift(); }
 function _toastPressedLately() { return Date.now() - _toastPress.t < _TOAST_NEAR_MS; }
-/** Beside what you pressed, with a tail towards it; the corner if that has gone from the screen. */
+/** Beside what you pressed, with a tail towards it, clear of other messages and of what you pressed; the corner if that has gone from the screen or there is no room. */
 function _toastPlace(t) {
   const el = _toastPress.el && _toastPress.el.isConnected && !_toastPress.el.closest('.toast') ? _toastPress.el : null;
+  const fresh = Date.now() - _toastPress.t <= 4000;
   let ax = _toastPress.x, top = _toastPress.y, bot = _toastPress.y;
-  if (el) { const r = el.getBoundingClientRect(); if (r.width && r.bottom > 0 && r.top < innerHeight) { ax = r.left + r.width / 2; top = r.top; bot = r.bottom; } }
-  else if (Date.now() - _toastPress.t > 4000) return null;   // (a while ago, and what you pressed has gone: the corner)
+  const r = el ? el.getBoundingClientRect() : null;
+  if (r && r.width && r.bottom > 0 && r.top < innerHeight) {
+    // a big area (a whole row or page) says nothing about where: the press itself does
+    if (r.width <= 320) ax = r.left + r.width / 2;
+    if (r.height <= 120) { top = r.top; bot = r.bottom; }
+  } else if (!fresh) return null;   // (a while ago, and what you pressed has gone: the corner)
   if (!top && !ax) return null;
   t.classList.add('near');
-  const w = t.offsetWidth, h = t.offsetHeight, m = 10;
-  const below = top - h - 14 < 56;
+  t.style.left = '0'; t.style.top = '0';   // measured at full width: where it sits changes how much room it thinks it has
+  const w = t.offsetWidth, h = t.offsetHeight, m = 10, gap = 12, head = 56;
   const left = Math.max(m, Math.min(innerWidth - w - m, ax - w / 2));
+  const others = [...t.parentNode.children].filter(x => x !== t && !x.classList.contains('out')).map(x => {
+    if (!x.classList.contains('near')) return x.getBoundingClientRect();
+    const l = parseFloat(x.style.left) || 0, tp = parseFloat(x.style.top) || 0;   // (not its box: it may still be growing in)
+    return { left: l, right: l + x.offsetWidth, top: tp, bottom: tp + x.offsetHeight };
+  });
+  // Upwards or downwards from the wanted place until it sits on nothing, without leaving the screen.
+  const free = (y, dir) => {
+    while (y >= head && y + h <= innerHeight - m) {
+      const o = others.find(q => left < q.right + 4 && q.left < left + w + 4 && y < q.bottom + 6 && q.top < y + h + 6);
+      if (!o) return y;
+      y = dir < 0 ? o.top - h - 8 : o.bottom + 8;
+    }
+    return null;
+  };
+  const wantUp = top - h - gap, wantDown = bot + gap;
+  const up = free(wantUp, -1), down = up == null ? free(wantDown, 1) : null;
+  if (up == null && down == null) { t.classList.remove('near'); t.style.left = t.style.top = ''; return null; }
+  const below = up == null, y = below ? down : up;
   t.style.left = Math.round(left) + 'px';
-  t.style.top = Math.round(below ? Math.min(innerHeight - h - m, bot + 12) : top - h - 12) + 'px';
+  t.style.top = Math.round(y) + 'px';
   t.style.setProperty('--tail', Math.round(Math.max(16, Math.min(w - 16, ax - left))) + 'px');
   t.classList.toggle('below', below);
+  t.classList.toggle('stacked', y !== (below ? wantDown : wantUp));   // moved along by another message: the tail would point at that
   return el;
 }
 function openRecentMessages() {
   const list = toastRecent(), when = (at) => new Date(at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-  showModal(`<div class="modal-h"><h2>Recent messages</h2></div><div class="toast-recent">${list.length ? list.map(m => `<div class="toast-recent-r ${esc(m.kind || '')}">${icon(m.ic)}<span>${esc(m.text)}</span><time>${esc(when(m.at))}</time></div>`).join('') : '<p class="muted">Nothing yet. Messages you did not need straight away wait here.</p>'}</div>`);
+  showModal(`<div class="modal-h"><h2>Recent messages</h2></div><div class="toast-recent">${list.length ? list.map(m => `<div class="toast-recent-r ${esc(m.kind || '')}">${icon(m.ic)}<span>${esc(m.text)}</span><time>${esc(when(m.at))}</time></div>`).join('') : '<p class="muted">Nothing yet. Messages you did not need straight away wait here.</p>'}</div><div class="toast-recent-f"><button type="button" class="btn btn-secondary btn-sm">Close</button></div>`, (card) => { card.querySelector('.toast-recent-f button').onclick = closeModal; });
 }
 /** You left the garden: the notes that waited for you, the newest few. */
 function toastHeldFlush() { const list = _toastHeld.splice(0).slice(-3); list.forEach(([m, o], i) => setTimeout(() => toast(m, o), 500 + i * 300)); }
@@ -463,7 +493,7 @@ function toast(msg, o) {
     const calm = presenceCalmMatch(msg);
     if (calm) {
       if (typeof presenceCalmShowOk === 'function' && !presenceCalmShowOk(calm)) return Object.assign(() => {}, { update: () => {} });
-      o = Object.assign({}, o, { kind: '', icon: 'moon', calm: true, action: o.action && /try again/i.test(o.action.label || '') ? null : o.action });
+      o = Object.assign({}, o, { kind: '', icon: 'moon', calm: true, dismiss: true, action: o.action && /try again/i.test(o.action.label || '') ? null : o.action });
     }
   }
   const kind = Object.prototype.hasOwnProperty.call(_TOAST_KINDS, o.kind) ? _TOAST_KINDS[o.kind] : (o.kind ? String(o.kind).replace(/[^a-z-]/g, '') : '');
@@ -495,7 +525,7 @@ function toast(msg, o) {
     return Object.assign(() => {}, { update: () => {} });
   }
   const near = !busy && _toastPressedLately();
-  const ms = near && plainNote ? Math.min(2800, _toastMs(text, Object.assign({}, o, { action }), kind, busy)) : _toastMs(text, Object.assign({}, o, { action }), kind, busy);
+  const ms = _toastMs(text, Object.assign({}, o, { action }), kind, busy);
 
   // The same message is already showing: count it instead of stacking another (never two waits in one).
   if (!busy) for (const c of _toastLive) {
@@ -506,8 +536,11 @@ function toast(msg, o) {
     return c.close;
   }
 
+  // Three on screen already, each with a button or a problem to read: a plain note waits in Recent messages.
+  if (plainNote && [..._toastLive].filter(x => !x.leaving && (x.busy || x.weight() > 0)).length >= 3) return shy;
   const t = document.createElement('div');
-  t.className = 'toast' + (kind ? ' ' + kind : '') + (busy ? ' busy' : '');
+  // A long message or two buttons: the words get the full width, the buttons go under them.
+  t.className = 'toast' + (kind ? ' ' + kind : '') + (busy ? ' busy' : '') + (text.length > 60 || (action && o.action2) ? ' long' : '');
   const ic0 = o.icon || (busy ? 'loader-circle' : '');
   if (busy && /^(loader|loader-circle|refresh-cw|rotate-cw)$/.test(ic0)) t.classList.add('spin');   // a spinner icon turns
   t.setAttribute('role', kind === 'err' ? 'alert' : 'status');
@@ -516,7 +549,7 @@ function toast(msg, o) {
   t.innerHTML = icon(ic) + `<span class="msg">${esc(text)}</span><span class="toast-n" hidden></span>`
     + (busy ? '<span class="toast-t" aria-hidden="true"></span><span class="toast-bar" hidden><span></span></span>' : '');
   let timer = null, left = ms, startedAt = 0, hover = false, focus = false, btn = null, tick = null, shownProgress = null;
-  const c = { key, count: 1, leaving: false, busy, close: null, setAction: null, restart: null };
+  const c = { key, count: 1, leaving: false, busy, close: null, setAction: null, restart: null, act: 0, weight: () => Math.max(c.act, kind === 'err' ? 2 : 0) };
   const stop = () => { if (timer) { clearTimeout(timer); timer = null; left = Math.max(1200, left - (Date.now() - startedAt)); } };
   const start = () => {
     if (timer || c.leaving || !left) return;                  // !left: a wait, closed by its job
@@ -552,6 +585,7 @@ function toast(msg, o) {
     start();
   };
   c.setAction = (a) => {
+    c.act = !a ? 0 : /^undo$/i.test(a.label) ? 2 : 1;
     if (!a) { if (btn) { btn.remove(); btn = null; } return; }
     if (!btn) {
       btn = document.createElement('button'); btn.type = 'button'; btn.className = 'btn btn-ghost btn-sm toast-act';
@@ -583,20 +617,22 @@ function toast(msg, o) {
     b2.onclick = () => { close(); try { const r = o.action2.run && o.action2.run(); if (r && typeof r.catch === 'function') r.catch(e => console.error(e)); } catch (e) { console.error(e); } };
     t.insertBefore(b2, btn);
   }
-  // At most three on screen: the oldest plain one goes first; a running wait is never dropped.
+  // At most three on screen: the oldest plain one goes first, an Undo or a problem last; a running wait is never dropped.
   const live = [..._toastLive].filter(x => !x.leaving);
   let extra = live.length - 2;
-  for (const x of live) { if (extra <= 0) break; if (!x.busy) { x.close(); extra--; } }
+  for (const x of live.filter(q => !q.busy).sort((p, q) => p.weight() - q.weight())) { if (extra <= 0) break; x.close(); extra--; }
   _toastLive.add(c);
   host.appendChild(t);
   if (near) {
     const at = _toastPlace(t);
     // a press that failed says so with a picture too: it shakes, with a cross (the garden's own "no")
-    if (kind === 'err' && at && typeof gameDeny === 'function') gameDeny(at, { silent: true });
+    // (only just after the press, and only a real button: something failing by itself must not blame what you happened to press)
+    if (kind === 'err' && at && Date.now() - _toastPress.t < 8000 && at.matches && at.matches(_TOAST_CONTROL) && typeof gameDeny === 'function') gameDeny(at, { silent: true });
   }
   start();
   const keep = action || busy ? 4000 : 1800;   // what is left after the pointer or focus leaves, at least
-  t.addEventListener('mouseenter', () => { hover = true; if (!busy) stop(); });
+  // (a tap fires mouseenter and no mouseleave: on a touch screen it would hold the message for good)
+  t.addEventListener('mouseenter', () => { if (typeof matchMedia === 'function' && matchMedia('(hover: none)').matches) return; hover = true; if (!busy) stop(); });
   t.addEventListener('mouseleave', () => { hover = false; if (!busy) { left = Math.max(left, keep); start(); } });
   t.addEventListener('focusin', () => { focus = true; if (!busy) stop(); });
   t.addEventListener('focusout', (e) => { if (t.contains(e.relatedTarget)) return; focus = false; if (!busy) { left = Math.max(left, keep); start(); } });

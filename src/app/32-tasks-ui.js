@@ -254,6 +254,7 @@ function dueMovedToast(id, iso, snap, o) {
 }
 /** toast() with a second button (the toast kit takes one action): added to the toast it just made. */
 function _toastWithExtra(msg, opts, extra) {
+  if (extra && opts && opts.action) return toast(msg, Object.assign({}, opts, { action2: { label: extra.label, run: extra.run } }));
   const close = toast(msg, opts);
   if (!extra) return close;
   const host = document.getElementById('toast-host');
@@ -287,6 +288,7 @@ function taskMenuItems(id) {
   const planned = item.plannedFor && item.plannedFor <= todayStr();
   const rec = effRecurrence(item) !== 'none';
   const anchor = () => document.querySelector(`#main-body .task[data-id="${CSS.escape(id)}"] .due-stamp`) || document.querySelector(`#main-body [data-id="${CSS.escape(id)}"]`) || document.getElementById('main-body');
+  const inList = isTaskView(state.view) && (state.viewMode || 'list') === 'list' ? _lastRenderedTaskIds.indexOf(id) : -1;
   return [
     st === 'done'
       ? { label: wont ? 'Reopen' : 'Mark as not done', icon: 'rotate-ccw', kbd: 'X', run: () => setStatus(id, 'todo') }
@@ -313,6 +315,9 @@ function taskMenuItems(id) {
       : { label: 'Open in the centre', icon: 'scan', run: () => { if (typeof switchItemMode === 'function') switchItemMode('card'); openTask(id, { mode: 'card' }); } }) : null,
     typeof alTaskMenuItem === 'function' ? alTaskMenuItem(id) : null,   // Find related links (66-autolink.js)
     { label: isPinned(id) ? 'Unpin' : 'Pin to top', icon: isPinned(id) ? 'pin-off' : 'pin', run: () => togglePin(id) },
+    // Dragging needs a mouse: the same move, one place at a time, from this menu.
+    ...(inList >= 0 ? [{ label: 'Move up the list', icon: 'arrow-up', disabled: inList === 0, run: () => reorderTask(id, _lastRenderedTaskIds[inList - 1], false) },
+      { label: 'Move down the list', icon: 'arrow-down', disabled: inList >= _lastRenderedTaskIds.length - 1, run: () => reorderTask(id, _lastRenderedTaskIds[inList + 1], true) }] : []),
     { label: 'Duplicate', icon: 'copy', run: () => cloneTask(id) },
     // Said only once it worked; a refusal says what to do instead (copyText, 11-ui-kit.js).
     { label: 'Copy title', icon: 'clipboard-list', run: () => copyText(effTitle(item), 'title') },
