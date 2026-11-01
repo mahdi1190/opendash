@@ -6,10 +6,10 @@
 //                                 requests, offer, found, ...}, skew:{text}, lastSyncAt, conflicts,
 //                                 blobs:{on, used, budget, text: 'Pictures and audio: 34 MB of 200 MB'}, ...}
 //   POST /api/sync/settings   {enabled?, apply?, folder?, deviceName?, relay?, relayNotice?} -> the status
-//                             relay: sync through your relay too (lib/sync/relay.mjs); true is the
+//                             relay: sync through your connection to friends too (lib/sync/relay.mjs); true is the
 //                             person's choice for all their computers (friends/relays.json sync.on),
 //                             false is this computer only; folder:false stops using the folder (only
-//                             with the relay on); relayNotice:false closes "now syncs through your relay"
+//                             with the relay on); relayNotice:false closes "now syncs through your connection to friends"
 //                             apply (default off) = write other computers' changes into this
 //                             data; off = shadow mode: collect them and report what would change
 //                             (400 {error, code} for a folder that is missing, inside the
@@ -36,10 +36,10 @@
 //   POST /api/sync/code/cancel       stop the code on screen (or the code being tried on a new computer)
 //   POST /api/sync/code/join         {code, link?}  the new computer types the 4 letters (with a join
 //                                    link <relay>/j#ODJ1.<secret>: no folder needed; a computer that
-//                                    already syncs gets the key to your relay this way)
-//   POST /api/sync/relay/check       look for your relay again now (friends/relays.json) -> the status
+//                                    already syncs gets the key to your connection to friends this way)
+//   POST /api/sync/relay/check       look for your connection to friends again now (friends/relays.json) -> the status
 //
-// Sync through your relay (lib/sync/relay.mjs, docs/dev/RELAY_PROTOCOL.md): the status carries
+// Sync through your connection to friends (lib/sync/relay.mjs, docs/dev/RELAY_PROTOCOL.md): the status carries
 // `relay` {available, host, on, transport: folder|relay|both, state: live|polling|connecting|offline|
 // rate|busy|quota|denied, outbox, link: {link, expiresAt, state} while a join link is open}. Keys
 // and certificates are never in an answer.
@@ -117,7 +117,7 @@ export default function register(app) {
     }
     // Your choices on sources (names, colours, on/off: lib/source-prefs.mjs) changed on another computer: into this sources.json.
     if (rels.includes(SOURCE_PREFS_REL)) applySourcePrefs(paths.root, { log }).catch((e) => log('warn', `sync: source choices could not be used (${e && (e.code || e.message)})`));
-    // Your relay came from another computer (friends/relays.json): sync through it here too, if chosen.
+    // Your connection to friends came from another computer (friends/relays.json): sync through it here too, if chosen.
     if (rels.includes(RELAYS_REL)) engine.relayChanged().catch(() => {});
     if (!rels.includes('accounts.json')) return;
     accounts().reconcileSources().catch((e) => log('warn', `sync: account sources could not be brought in line (${e && (e.code || e.message)})`));
@@ -175,7 +175,7 @@ export default function register(app) {
       const patch = {};
       for (const k of ['enabled', 'apply', 'folder', 'deviceName']) if (b && b[k] !== undefined) patch[k] = b[k];
       if (b && typeof b.relay === 'boolean') patch.relay = b.relay;
-      if (b && b.relayNotice === false) patch.relayNotice = false;     // close "now syncs through your relay too"
+      if (b && b.relayNotice === false) patch.relayNotice = false;     // close "now syncs through your connection to friends too"
       if (patch.folder !== undefined && patch.folder !== false && typeof patch.folder !== 'string') delete patch.folder;
       try { return await engine.configure(patch); }
       catch (e) { if (e.status === 400) return c.json(400, { error: e.message, code: e.code }); throw e; }

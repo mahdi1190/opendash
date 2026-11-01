@@ -976,6 +976,7 @@ function renderShell() {
 /* ---------- default More / workspace items ---------- */
 registerMoreItem({ id: 'new-task', label: 'New task', icon: 'plus', order: 10, kbd: 'Q', run: () => openNewTask() });
 registerMoreItem({ id: 'bulk-add', label: 'Bulk add tasks…', icon: 'clipboard-list', order: 20, run: () => openBulkImport() });
+registerMoreItem({ id: 'recent-messages', label: 'Recent messages…', icon: 'message-square', order: 25, run: () => openRecentMessages() });
 registerMoreItem({ id: 'templates', label: 'Templates…', icon: 'layout-template', order: 30, run: () => openTemplatesModal() });
 registerMoreItem({ id: 'density', label: 'Compact rows', icon: 'list', order: 110, checked: () => state.density === 'compact',
   run: () => { state.density = state.density === 'compact' ? 'normal' : 'compact'; saveUI(); render(); } });

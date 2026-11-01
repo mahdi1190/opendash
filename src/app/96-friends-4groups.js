@@ -134,7 +134,7 @@ function _grTop(root, data) {
     const n = _frEl('div', 'card gr-note');
     n.innerHTML = icon('info', 'i-sm');
     const t = _frEl('div');
-    t.append(_frEl('b', null, 'Groups need a quick update first'), _frEl('span', 'muted fr-small', c.role === 'owner' ? 'It takes about a minute. Nothing is lost.' : 'Ask the person who set up your connection to press Update in Settings > Your relay. You can still join other people\'s groups with their link.'));
+    t.append(_frEl('b', null, 'Groups need a quick update first'), _frEl('span', 'muted fr-small', c.role === 'owner' ? 'It takes about a minute. Nothing is lost.' : 'Ask the person who set up your connection to press Update in Settings > Your connection to friends. You can still join other people\'s groups with their link.'));
     n.appendChild(t);
     if (c.role === 'owner' && typeof _frRelayBtn === 'function') n.appendChild(_frRelayBtn(_fr.data, { size: 'sm' }));
     root.appendChild(n);
@@ -516,11 +516,11 @@ function grStartDialog() {
       el.classList.add('gr-dialog');
       if (caps && !caps.hasHome) { _frNeedRelay(el, close); return; }
       if (caps && caps.known && !caps.groups) {
-        el.appendChild(_frEl('p', null, caps.role === 'owner' ? 'Your connection needs a quick update first. It takes about a minute, and nothing is lost.' : 'The connection you use needs a quick update first. Ask the person who set it up to press Update in Settings > Your relay.'));
+        el.appendChild(_frEl('p', null, caps.role === 'owner' ? 'Your connection needs a quick update first. It takes about a minute, and nothing is lost.' : 'The connection you use needs a quick update first. Ask the person who set it up to press Update in Settings > Your connection to friends.'));
         if (caps.role === 'owner' && typeof _frRelayBtn === 'function') el.appendChild(_frRelayBtn(_fr.data, { close }));
         return;
       }
-      if (caps && caps.known && !caps.canStart) { el.appendChild(_frEl('p', null, 'Only people the owner of this connection let in themselves can start a group here. Ask them to start it, or set up your own in Settings > Your relay.')); return; }
+      if (caps && caps.known && !caps.canStart) { el.appendChild(_frEl('p', null, 'Only people the owner of this connection let in themselves can start a group here. Ask them to start it, or set up your own in Settings > Your connection to friends.')); return; }
       el.appendChild(_grStep(1, 2, 'What is it called?'));
       const name = _grInput('', { max: 60, placeholder: 'Sunday book club, or Acme Ltd' });
       name.setAttribute('autofocus', '');

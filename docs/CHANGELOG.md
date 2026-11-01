@@ -10,6 +10,21 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.37.0]
+
+Messages are quieter, and Freeflo notices when your pay is not what it expected.
+
+### Changed
+- **Messages speak from what you pressed.** A small bubble appears beside the button, not a bar at the bottom of the screen. A press that failed shakes with a cross. Things you did not need straight away say nothing and wait under More > Recent messages. Problems, Undo and long waits still show, in the corner.
+- "Your relay" is now called "Your connection to friends".
+
+### Added
+- **Pay that is not what Freeflo expected.** On the Tax tab: "£400 more than expected". It says why it thinks so (a bonus, no pension taken out, a part month, a new tax code), and one tap answers it. It uses your payslips, or what reached your bank if you have not added one.
+- You can say you pay into a pension at work but are not sure how.
+
+### Fixed
+- The Tax tab no longer says money you made in advance is coming back when you have not paid it yet. It now says those advance payments are still to come, and what you can do if your income has dropped.
+
 ## [2.36.0]
 
 Clearer screens across the whole dashboard, and the remaining money plan and tax fixes.

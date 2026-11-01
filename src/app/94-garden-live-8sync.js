@@ -8,7 +8,7 @@
                    so a person fishing or sitting is never disturbed.
    A change the host could not send at all sends the whole garden to everyone there, a moment later.
 
-   The line in the garden says how you are connected: Connected (direct or through the relay), Catching up, Slow connection, Reconnecting. It also says when your relay needs its update,
+   The line in the garden says how you are connected: Connected (direct or through the relay), Catching up, Slow connection, Reconnecting. It also says when your connection to friends needs its update,
    and when a host is on an older version, so its fish are not shared.
    ============================================================ */
 const GL_SYNC = Object.freeze({ sumMs: 10000, atMs: 15000, askGap: 20000, handGap: 4000, autoAsks: 6, asked: 8000, slowMs: 25000, near: 1.5, oldHostMs: 12000, relayMs: 300000 });
@@ -87,7 +87,7 @@ function _glyPaint(force) {
     else { say = `Connected, ${way}`; btn = 'refresh'; }
   } else if (guest && _glv.fid && _glv.why === 'lost') { say = 'Reconnecting…'; tone = 'is-wait'; }
   else if (host && _glhAnyone()) { const v = _gll.view && _gll.view.host; say = `Connected, ${v && v.road ? 'through the relay' : 'direct'}`; }
-  if (_gll.role !== 'visit' && _gly.stale) { btn = 'relay'; if (!say) say = 'Your relay needs a quick update'; else say += '. Your relay needs a quick update'; tone = tone || 'is-wait'; }
+  if (_gll.role !== 'visit' && _gly.stale) { btn = 'relay'; if (!say) say = 'Your connection to friends needs a quick update'; else say += '. Your connection to friends needs a quick update'; tone = tone || 'is-wait'; }
   const sig = say + '|' + tone + '|' + btn;
   let el = _gw.box.querySelector(':scope > .gll-link');
   if (!say) { if (el) el.remove(); _gly.sig = ''; return; }

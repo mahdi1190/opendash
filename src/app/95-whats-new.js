@@ -135,10 +135,10 @@ const WHATS_NEW = [
     text: 'Tick a few tasks, expenses or transactions (or press Select), change them all in one go, and one Undo puts them all back. The expense report is now laid out exactly like the paper form, and you can undo a report you made by mistake.',
     view: ['all'], sel: ['#main-body'] },
   { id: 'assistant-more', group: 'n221', icon: 'message-circle', title: '2.21: the assistant can do much more',
-    text: 'Ask it to do nearly anything in the dashboard, and every change can be undone. Anything sensitive, like friends, your computers, your relay, sign-ins or money rules, always asks for your approval first.',
+    text: 'Ask it to do nearly anything in the dashboard, and every change can be undone. Anything sensitive, like friends, your computers, your connection to friends, sign-ins or money rules, always asks for your approval first.',
     view: ['settings'], sel: ['#main-body'] },
   { id: 'simple-codes', group: 'n221', icon: 'key-round', title: '2.21: simple 4-letter codes',
-    text: 'To add a computer, choose Join my other computer and type 4 letters, then check both screens show the same picture. Friends use a 4-letter friend code too. If you use your own relay, redeploy it once in Settings > Your relay so live friend codes work.',
+    text: 'To add a computer, choose Join my other computer and type 4 letters, then check both screens show the same picture. Friends use a 4-letter friend code too. If you use your own relay, redeploy it once in Settings > Your connection to friends so live friend codes work.',
     view: ['settings'], sel: ['#main-body'] },
 
   // ---- 2.19 ----
@@ -169,7 +169,7 @@ const WHATS_NEW = [
     text: 'Settings > Server can add a Freeflo shortcut to your desktop (and the Start menu on Windows) that starts Freeflo if needed and opens it. Windows also has a one-click installer now.',
     view: ['settings'], sel: ['#main-body'] },
   { id: 'security-2200', group: 'n219', icon: 'shield-check', title: '2.20.0: a full security check',
-    text: 'Freeflo was reviewed end to end and hardened: signed updates, safer links in descriptions, friends removed for good when you remove them, and a new recovery code whenever you remove a device. If you use your own relay, redeploy it once in Settings > Your relay.',
+    text: 'Freeflo was reviewed end to end and hardened: signed updates, safer links in descriptions, friends removed for good when you remove them, and a new recovery code whenever you remove a device. If you use your own relay, redeploy it once in Settings > Your connection to friends.',
     view: ['settings'], sel: ['#main-body'] },
 
   // ---- 2.18.1 ----
@@ -304,7 +304,7 @@ const WHATS_NEW = [
     text: 'Three friendly steps: make your character, get a relay (set up your own for free, or paste a friend’s invite), and invite someone.',
     cmd: ['friends-onboard'] },
   { id: 'friends-add', group: 'friends', icon: 'user-plus', title: 'Invites and friend codes',
-    text: 'Send a one-time invite link (or show its QR code), or swap friend codes with people already on your relay. You both check a short code before anything is shared.',
+    text: 'Send a one-time invite link (or show its QR code), or swap friend codes with people already on your connection to friends. You both check a short code before anything is shared.',
     cmd: ['friends-add'] },
   { id: 'friends-privacy', group: 'friends', icon: 'eye-off', title: 'You choose what each friend sees',
     text: 'Profile and game progress by default, nothing else. Per friend, choose tasks, calendar (busy only, titles or full), money, places and memories, for as long as you like, and see exactly what they get.',
@@ -333,7 +333,7 @@ const WHATS_NEW = [
 
   // ---- 2.17: you ----
   { id: 'corner', group: 'you', icon: 'user-round', title: 'The corner is you',
-    text: 'Your avatar and name sit in the top-left corner, with your status (and, since 2.18, a Friends button beside you). Click it for your card, a quick status, your friends, your relay and sync, and the workspace menu.',
+    text: 'Your avatar and name sit in the top-left corner, with your status (and, since 2.18, a Friends button beside you). Click it for your card, a quick status, your friends, your connection to friends and sync, and the workspace menu.',
     sel: ['#ws-btn'] },
   { id: 'profile', group: 'you', icon: 'user-round', title: 'Your profile and character',
     text: 'Build your avatar: hair, face, outfit, hats, glasses and more, with seasonal items to collect and unlocks as you level up. It reacts to your day, too.',
@@ -344,11 +344,11 @@ const WHATS_NEW = [
 
   // ---- 2.17: relay ----
   { id: 'relay', group: 'relay', icon: 'shield-check', title: 'Your own private relay',
-    text: 'Set up my relay takes one click and a free Cloudflare account, and gives you a private relay that only you, your computers and the friends you invite can use.',
+    text: 'Set up my connection takes one click and a free Cloudflare account, and gives you a private relay that only you, your computers and the friends you invite can use.',
     note: 'The relay never sees your data: everything on it is end-to-end encrypted.',
     view: ['settings:relay'], sel: ['#main-body'] },
   { id: 'relay-sync', group: 'relay', icon: 'refresh-cw', title: 'Sync your devices without OneDrive',
-    text: 'Your computers can now sync through your relay, within a second, with no shared folder. Add a new computer with a link and a 4-letter code.',
+    text: 'Your computers can now sync through your connection to friends, within a second, with no shared folder. Add a new computer with a link and a 4-letter code.',
     view: ['settings:sync'], sel: ['#main-body'] },
 
   // ---- 2.16: plan ----

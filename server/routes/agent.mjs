@@ -76,15 +76,15 @@ export default function register(app) {
     'groups.announce': async (e) => { await route('POST', '/api/groups/post', { id: e.id, ch: 'a', text: e.text }); return { done: true }; },
     'devices.add': async () => { await route('POST', '/api/sync/code/start', {}); return { next: 'The code is on screen in Settings > Sync. The person types it on the new computer.' }; },   // the code stays on screen
     'devices.remove': async (e) => { await route('POST', '/api/sync/devices/remove', { id: e.id }); return { done: true }; },
-    'relay.connect': async () => { await route('POST', '/api/relay/connect', {}); return { next: 'Settings > Your relay shows each step. Cloudflare opens in the browser: the person signs in there.' }; },
+    'relay.connect': async () => { await route('POST', '/api/relay/connect', {}); return { next: 'Settings > Your connection to friends shows each step. Cloudflare opens in the browser: the person signs in there.' }; },
     'relay.update': async () => pick(await route('POST', '/api/relay/rotate', {}), ['state']),
-    'relay.disconnect': async () => { await route('POST', '/api/relay/disconnect', {}); return { next: 'The Worker stays on Cloudflare. Reconnecting is in Settings > Your relay.' }; },
+    'relay.disconnect': async () => { await route('POST', '/api/relay/disconnect', {}); return { next: 'The Worker stays on Cloudflare. Reconnecting is in Settings > Your connection to friends.' }; },
     'connection.start': async (e) => {
       if (e.service === 'claude') {
         const r = await route('POST', '/api/connections/local-claude/browser', {});
         return { ...pick(r, ['phase', 'message']), next: 'Finish signing in to Claude in the browser. Check get_app_status {part:"connections"} afterwards.' };
       }
-      if (e.service === 'cloudflare') { await route('POST', '/api/relay/connect', {}); return { next: 'Settings > Your relay shows each step. Cloudflare opens in the browser: the person signs in there.' }; }
+      if (e.service === 'cloudflare') { await route('POST', '/api/relay/connect', {}); return { next: 'Settings > Your connection to friends shows each step. Cloudflare opens in the browser: the person signs in there.' }; }
       const r = await route('POST', '/api/accounts/begin', { provider: e.service, email: e.email, ...(e.kind ? { kind: e.kind } : {}) });
       if (!signInUrlOk(r.url)) throw Object.assign(new Error('The sign-in page could not be opened from here. Use Connections in the app.'), { expected: true });
       const opened = openInBrowser(r.url);    // the link is not passed on: it stays between this server and the browser

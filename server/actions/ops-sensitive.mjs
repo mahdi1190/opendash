@@ -217,9 +217,9 @@ function runDevices(ctx, p) {
   return { summary: 'Remove a computer from your sync group', changes: [line('Remove the computer', p.id)] };
 }
 function runRelay(ctx, p) {
-  const words = { connect: 'Connect Cloudflare and set up your private relay', update: 'Update your relay with your renewed keys', disconnect: 'Stop using your relay on every device' };
+  const words = { connect: 'Connect Cloudflare and set up your private relay', update: 'Update your connection to friends with your renewed keys', disconnect: 'Stop using your connection to friends on every device' };
   ctx.effect({ op: 'relay.' + p.action });
-  return { summary: words[p.action], changes: [line('Your relay', words[p.action])] };
+  return { summary: words[p.action], changes: [line('Your connection to friends', words[p.action])] };
 }
 const START_WORDS = { google: 'Google', microsoft: 'Microsoft', claude: 'Claude', cloudflare: 'Cloudflare' };
 function runConnection(ctx, p) {
