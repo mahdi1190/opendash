@@ -16,18 +16,27 @@ const GL_MARKS = Object.freeze({
   spark: () => GART.P('#ffd94a', GART.star(0, 0, 4, 7, 1.8)) + GART.P('#ffffff', GART.circ(0, 0, 1.3)),
 });
 const _glFxState = { n: 0 };
-function _glSvgEl(cls) { const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); if (cls) g.setAttribute('class', cls); return g; }
+function _glSvgEl(cls, attrs) { return gardenSceneElement('g', { ...(attrs || {}), ...(cls ? { class: cls } : {}) }); }
+function _glNativeWorld(svg) {
+  const native = window.GardenNative, world = native && native.active() && native.world && native.world();
+  return world && world.rootNode === svg && svg.isConnected ? world : null;
+}
 function _glFxLayer() {
   const W = _gl.W; if (!W) return null;
   const svg = W.svg || (typeof _gw !== 'undefined' ? _gw.svg : null); if (!svg) return null;
+  const world = _glNativeWorld(svg);
+  if (world) {
+    const effects = world.effectsNode, actors = world.actorsNode;
+    if (effects && effects.isConnected && effects.parentNode === world.uiNode) return effects;
+    return actors && actors.isConnected && actors.parentNode === world.rootNode ? actors : null;
+  }
   return svg.querySelector('.gd-ui .gd-fx') || svg.querySelector('.gd-actors');
 }
-function _glFxAdd(node, ms) { const L = _glFxLayer(); if (!L || _glFxState.n > 40) return false; L.appendChild(node); _glFxState.n++; setTimeout(() => { node.remove(); _glFxState.n--; }, ms); return true; }
+function _glFxAdd(node, ms) { const L = _glFxLayer(); if (!L || _glFxState.n > 40) return false; if (typeof gardenSoftGlowIn === 'function') gardenSoftGlowIn(node); L.appendChild(node); _glFxState.n++; setTimeout(() => { node.remove(); _glFxState.n--; }, ms); return true; }
 function _glStage(x, y, lift) { const G = GARDEN_WORLD; return { x: x * G.cellW, y: G.sky + y * G.cellH - (lift || 0) }; }
 function _glMark(c, name) {
   const draw = GL_MARKS[name]; if (!draw || !c.S || c.gone) return;
-  const p = _glStage(c.S.x, c.S.y, c.S.lift), g = _glSvgEl('gl-fx gl-mark');
-  g.setAttribute('transform', `translate(${_glF(p.x + 4)} ${_glF(p.y - (c.def.markY || (c.def.habitat === 'air' ? 26 : 30)))})`);
+  const p = _glStage(c.S.x, c.S.y, c.S.lift), g = _glSvgEl('gl-fx gl-mark', { transform: `translate(${_glF(p.x + 4)} ${_glF(p.y - (c.def.markY || (c.def.habitat === 'air' ? 26 : 30)))})` });
   g.innerHTML = `<g class="gl-mark-in">${draw()}</g>`;
   _glFxAdd(g, 1250);
 }
@@ -43,8 +52,7 @@ function _glFx(x, y, kind, o) {
   const B = GL_BURSTS[kind]; if (!B) return;
   if (_gl.W && _gl.W.still) return;
   o = o || {};
-  const p = _glStage(x, y, o.lift), g = _glSvgEl('gl-fx gl-burst'), cols = o.c || B.c;
-  g.setAttribute('transform', `translate(${_glF(p.x)} ${_glF(p.y)})`);
+  const p = _glStage(x, y, o.lift), g = _glSvgEl('gl-fx gl-burst', { transform: `translate(${_glF(p.x)} ${_glF(p.y)})` }), cols = o.c || B.c;
   let s = B.ring ? `<ellipse class="gl-ring" rx="10" ry="3.4" fill="none" stroke="${B.ring}" stroke-width="1"/>` : '';
   const n = o.n || B.n;
   for (let i = 0; i < n; i++) {
@@ -72,8 +80,7 @@ function _glSound(name) {
   try {
     if (typeof _gmG !== 'function' || !_gmG().prefs.sounds || document.hidden) return;
     if (typeof gameOn === 'function' && !gameOn()) return;
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    const ac = _glAudio || (_glAudio = new AC()); if (ac.state === 'suspended') ac.resume();
+    const ac = gardenAudioContext(); if (!ac) return;
     const t0 = ac.currentTime + 0.01;
     for (const [f, d, type, peak, at] of list) {
       const o = ac.createOscillator(), v = ac.createGain(), s = t0 + (at || 0);
@@ -91,7 +98,7 @@ function _glClient(x, y, lift) {
 function _glReact(c, from) {
   if (c.gone || !_gl.W) return;
   const W = _gl.W, R = c.def.react || {}, S = c.S, P = from != null ? (typeof gardenLiveActorAt === 'function' ? gardenLiveActorAt(from) : null) : W.player();
-  if (from == null && typeof gardenLifeFound === 'function') gardenLifeFound('c', c.def.id);
+  if (from == null && typeof gardenLifeFound === 'function') gardenLifeFound('c', c.def.id, { userAction: true });
   if (typeof gardenLiveCr === 'function') gardenLiveCr('react', c.id);   // everyone there sees it
   if (P) c.faceTo = P.x > S.x ? 1 : -1;
   c.calm = 3.5; c.reacting = 1.6; c.after = c.clip || 'rest';
@@ -119,7 +126,7 @@ function _glDropGift(id, x, y, lift) {
   const S = W.add({
     id: 'gift-' + id, svg: `<g class="gl-gift"><g class="gl-glint">${GL_MARKS.spark()}</g>${gardenKeepsakeSvg(k)}</g>`, x: at.x, y: at.y, lift, hit: 0.7, label: k.name, cursor: 'hand', ground: false,
     update(dt) { if (S.lift > 0) { S.lift = Math.max(0, S.lift - dt * Math.max(40, S.lift * 3)); if (S.lift === 0) _glFx(S.x, S.y, 'flurry', { n: 3 }); } },
-    onClick() { if (typeof gardenLivePickGift === 'function' && gardenLivePickGift(S, id)) return; if (typeof gardenLifeFound === 'function') gardenLifeFound('k', id); const q = _glClient(S.x, S.y, 16); if (typeof gameCheer === 'function') gameCheer(q, { quiet: false, sound: true }); _glGifts.delete(S); S.remove(); },
+    onClick() { if (typeof gardenLivePickGift === 'function' && gardenLivePickGift(S, id)) return; if (typeof gardenLifeFound === 'function') gardenLifeFound('k', id, { userAction: true }); const q = _glClient(S.x, S.y, 16); if (typeof gameCheer === 'function') gameCheer(q, { quiet: false, sound: true }); _glGifts.delete(S); S.remove(); },
   });
   _glGifts.add(S);
   if (typeof gardenLivePickSpawn === 'function') gardenLivePickSpawn(S, 'keep', id, at.x, at.y);   // shared: anyone there may take it, the first click wins
@@ -148,7 +155,8 @@ function _glBrushFrame(W, now) {
 }
 function _glRustle(pl, P) {
   const svg = _gl.W.svg || (typeof _gw !== 'undefined' ? _gw.svg : null); if (!svg) return;
-  const n = svg.querySelector(`.gd-it[data-uid="${CSS.escape(pl.uid)}"]`), inner = n && n.firstElementChild;
+  const world = _glNativeWorld(svg), record = world && world.entities.get('plant:' + pl.uid);
+  const n = world ? record && record.node && record.node.isConnected ? record.node.firstElementChild : null : svg.querySelector(`.gd-it[data-uid="${CSS.escape(pl.uid)}"]`), inner = n && n.firstElementChild;
   if (inner && inner.animate) { const dir = P.x < pl.x + pl.fp / 2 ? 1 : -1; try { inner.animate({ rotate: ['0deg', `${dir * 7}deg`, `${-dir * 4}deg`, `${dir * 2}deg`, '0deg'] }, { duration: 620, easing: 'ease-out' }); } catch (e) { /* an old browser just doesn't rustle */ } }
   const lk = pl.def.look || {}, h = Math.max(12, Math.min(40, (lk.h || 0.7) * 34));
   _glFx(pl.x + pl.fp / 2, pl.y + pl.fp - 0.3, 'petals', { lift: h, c: pl.stage >= 4 && lk.c ? [lk.c, lk.c2 || lk.c] : [lk.leaf || '#6a9a4a'], n: pl.stage >= 4 ? 5 : 3 });
@@ -157,6 +165,13 @@ function _glRustle(pl, P) {
 const _glPud = { key: '', node: null, list: [] };
 function _glPuddles(W) {
   if (!W.own) return;
+  const native = window.GardenNative;
+  if (native && native.active() && native.surface && native.surface()) {
+    // NativeSurface owns pools and their contact splashes. Hiding this legacy
+    // layer after compilation still paid for all its paths on every wet change.
+    if (_glPud.node) { _glPud.node.remove(); _glPud.node = null; }
+    _glPud.list.length = 0; _glPud.key = ''; return;
+  }
   const svg = typeof _gw !== 'undefined' ? _gw.svg : null, layer = svg && svg.querySelector('.gd-objects');
   const on = (W.wet || W.rain) && !W.snow && W.season !== 'winter-freeze';
   if (!on || !layer) { if (_glPud.node) { _glPud.node.remove(); _glPud.node = null; } _glPud.list = []; _glPud.key = ''; return; }

@@ -48,7 +48,7 @@ function _scshCol(L) { return _scMixHex('#14202e', (L && L.shade) || '#14202e', 
 function _scshSilhouette(sp, col) {
   let s = _scshSil.get(sp.c);
   if (s && s.col === col) return s.c;
-  const c = _sccCanvas(sp.c.width, sp.c.height), cx = c.getContext('2d');
+  const c = _sccCanvas(sp.c.width, sp.c.height), cx = c.getContext('2d', _SCC_CPU);
   cx.drawImage(sp.c, 0, 0);
   cx.globalCompositeOperation = 'source-in'; cx.fillStyle = col; cx.fillRect(0, 0, c.width, c.height);
   _scshSil.set(sp.c, { c, col });
@@ -125,6 +125,20 @@ sceneRenderPassDefine({
     if (when !== 'under' || !gx || !env.shadow) return;
     _scshBake(env, layer, gx);
   },
+  *layerSteps(env, layer, gx, when) {
+    if (when !== 'under' || !gx || !env.shadow) return;
+    yield* _scshBakeSteps(env, layer, gx);
+  },
+  warmFrameSlice(env, t, sliceMs) {
+    const st = env.shadow;
+    if (!st || env.warmFrames === false) return true;
+    if (st.warmT !== t) { st.warmT = t; st.warmJob = _scshWarmSteps(env, t); }
+    if (!st.warmJob) return true;
+    const a = _sccNow(); let r = st.warmJob.next();
+    while (!r.done && _sccNow() - a < (sliceMs || 8)) r = st.warmJob.next();
+    if (r.done) st.warmJob = null;
+    return !!r.done;
+  },
   frameGroup(env, grp, ctx, t, below) {
     const st = env.shadow;
     if (!st) return 0;
@@ -151,8 +165,67 @@ sceneRenderPassDefine({
   stats(env) { const st = env.shadow || {}; return { sun: st.sun ? st.sun.kind : null, op: st.sun ? _scR2(st.sun.op) : 0, casters: st.casters || 0, contacts: st.contacts || 0, lampPairs: st.lampPairs || 0 }; },
 });
 
+/** First-sight actor views and shadow sprites, one mover per scheduler step. */
+function* _scshWarmSteps(env, t) {
+  const S = env.out, st = env.shadow;
+  if (!S || !st || typeof _sccMoversNow !== 'function') return;
+  const cx = st.warmCx || (st.warmCx = _sccCanvas(1, 1).getContext('2d', { alpha: false, willReadFrequently: true }));
+  const flow = env.C.flows && env.C.flows.length && typeof _scflfLayerOf === 'function' ? _scflfLayerOf(env).layer : null;
+  {
+    _sccMoversNow(env, S, t, env.Lnow || env.L);
+    if (flow) { flow.beginFrame(true); env.flowNow = flow.agents(t); }
+    yield;
+    // Flocks and animated placements use baked parts too, but are not actor
+    // records. Include only the movers this frame can actually draw.
+    if (env.requireWarmSprite) for (let gi = 0; gi < S.groups.length; gi++) {
+      const below = S.hideBelow[gi] == null ? env.H : S.hideBelow[gi];
+      for (const m of S.groups[gi].movers) {
+        if (m.kind === 'bird' && m.p && (typeof sceneMoverDrawn !== 'function' || sceneMoverDrawn(m.p, m.box, env.vs, env.ox, env.oy, env.W, below))) for (const pt of m.parts) env.requireWarmSprite(pt.sp);
+        else if (m.kind === 'item' && m.b[1] * env.vs + env.oy <= below) for (const pt of m.parts) env.requireWarmSprite(pt.sp);
+        else if (m.kind === 'sign' && m.top < below) env.requireWarmSprite(m.c);
+        yield;
+      }
+    }
+    for (const a of env.actorsNow) {
+      const m = a.m, p = m && m.p;
+      // Prepare exactly the heading view the frame asks for, one actor at a
+      // time, before the unseen frame's mover loop needs several at once.
+      if (p && p.vo && p.vo !== m.actor.o && m.viewOf) {
+        const vv = p.vv == null ? m.actor.v : p.vv, key = p.vo + '|' + vv;
+        if (!m.views.has(key)) m.views.set(key, m.viewOf(p.vo, vv));
+      }
+      if (env.requireWarmSprite && p) {
+        const vv = p.vv == null ? m.actor.v : p.vv, view = p.vo && p.vo !== m.actor.o ? m.views.get(p.vo + '|' + vv) : null;
+        const pp = view ? Object.assign({}, p, { s: p.s * view.k }) : p, box = view ? view.box : m.box;
+        const below = S.hideBelow[a.gi] == null ? env.H : S.hideBelow[a.gi];
+        if (typeof sceneMoverDrawn !== 'function' || sceneMoverDrawn(pp, box, env.vs, env.ox, env.oy, env.W, below)) for (const pt of view ? view.parts : m.parts) env.requireWarmSprite(pt.sp);
+      }
+      yield;
+      const below = S.hideBelow[a.gi] == null ? env.H : S.hideBelow[a.gi];
+      if (_SCSH_NO_CAST.has(a.cls) || a.y * env.vs + env.oy > below) continue;
+      if (typeof sceneMoverDrawn === 'function' && !sceneMoverDrawn(a, a.box, env.vs, env.ox, env.oy, env.W, below)) continue;
+      _scshMover(env, cx, { X: a.x, Y: a.y, s: a.s, flip: a.dir < 0, d: a.d, cls: a.cls, box: a.box, alpha: a.alpha, o: a.o, v: a.v, sp: a.sp, rec: a });
+      yield;
+    }
+    for (const f of env.flowNow || []) {
+      if (!f) continue;
+      // Warm the same frame's actual palette/scale recipes before the full
+      // mover loop. Keep its original reflection/shadow input unchanged.
+      if (flow) { const sp = f.sp; flow.drawAgent(null, f, t, env.requireWarmSprite); if (sp === undefined) delete f.sp; else f.sp = sp; }
+      yield;
+      if (f.shadowDone) continue;
+      const cls = f.cls || (f.o ? sceneObjClassOf(f.o) : null);
+      if (_SCSH_NO_CAST.has(cls) || !(f.s > 0) || (f.alpha != null && !(f.alpha > 0))) continue;
+      _scshMover(env, cx, { X: f.X != null ? f.X : f.x, Y: f.Y != null ? f.Y : f.y, s: f.s, flip: !!f.flip, d: f.d, cls, box: f.box, alpha: f.alpha, o: f.o, v: f.v, sp: f.sp, rec: f });
+      yield;
+    }
+    env.preparedMoversT = t; env.preparedMoversL = env.Lnow || env.L;
+  }
+}
+
 /** Bake one layer's shadows into its group bitmap: the cast silhouettes (one scratch), lamp shadows, contact shadows. */
-function _scshBake(env, layer, gx) {
+function _scshBake(env, layer, gx) { for (const step of _scshBakeSteps(env, layer, gx)) { /* synchronous standalone hook */ } }
+function* _scshBakeSteps(env, layer, gx) {
   const st = env.shadow, recs = st.byLayer[layer];
   if (!recs || !recs.length) return;
   const { vs, ox, oy, cam, C } = env, grp = env.grp, sun = st.sun, L = env.L;
@@ -161,16 +234,21 @@ function _scshBake(env, layer, gx) {
   // the water surfaces a shadow of this layer may lie over (this layer's and the farther layers'; a nearer one covers it)
   const waterCut = (C.water || []).filter(w => w && w.d && w.layer <= layer && (!w.v2 || !w.v2.kind || w.v2.kind !== 'puddle'));
   /** One scratch the size of a box (device px, clipped to the group), drawn by fill(sx, ox', oy'), then silhouetted and composited. */
-  const composite = (bounds, op, blur, fill) => {
+  const composite = function* (bounds, op, blur, fill) {
     if (!bounds || op <= 0.004) return;
     const pad = Math.ceil(blur * vs * 3 + 2);
     const x0 = Math.max(grp.x, Math.floor(bounds[0] * vs + ox) - pad), y0 = Math.max(grp.y, Math.floor(bounds[1] * vs + oy) - pad);
     const x1 = Math.min(grp.x + grp.w, Math.ceil(bounds[2] * vs + ox) + pad), y1 = Math.min(grp.y + grp.h, Math.ceil(bounds[3] * vs + oy) + pad);
     if (x1 <= x0 || y1 <= y0) return;
     const c = _sccCanvas(x1 - x0, y1 - y0), sx = c.getContext('2d', _SCC_CPU);
-    fill(sx, ox - x0, oy - y0);
+    yield* fill(sx, ox - x0, oy - y0);
+    // This scratch is CPU backed. Flush the last small batch here, so its
+    // final silhouette/composite does not inherit all deferred caster work.
+    try { sx.getImageData(0, 0, 1, 1); } catch (e) { /* no pending raster */ }
+    yield;
     sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalAlpha = 1;
     sx.globalCompositeOperation = 'source-in'; sx.fillStyle = st.col; sx.fillRect(0, 0, c.width, c.height);
+    yield;
     // never a dark solid shadow on water (shared fix, 9 Oct: tree shadows lay on ponds as dark ovals and stripes): the water
     // of this layer and every farther one (what shows through this bitmap) is cut out of the silhouette, leaving a faint tint
     if (waterCut.length) {
@@ -179,12 +257,14 @@ function _scshBake(env, layer, gx) {
       for (const w of waterCut) sx.fill(_sccPath(w.d));
       sx.setTransform(1, 0, 0, 1, 0, 0); sx.globalAlpha = 1; sx.globalCompositeOperation = 'source-over';
     }
+    yield;
     gx.setTransform(1, 0, 0, 1, 0, 0);
     const b = blur * vs;
     if (typeof gx.filter === 'string' && b >= 0.5) { gx.filter = `blur(${_scR1(b)}px)`; gx.globalAlpha = op; gx.drawImage(c, x0 - grp.x, y0 - grp.y); gx.filter = 'none'; }
     else if (b >= 0.5) { gx.globalAlpha = op / 4; for (const [dx, dy] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) gx.drawImage(c, x0 - grp.x + dx * b, y0 - grp.y + dy * b); }
     else { gx.globalAlpha = op; gx.drawImage(c, x0 - grp.x, y0 - grp.y); }
     gx.globalAlpha = 1;
+    yield;
     // the water reflections mirror this bitmap: keep the shadow's coverage (grey = alpha, half resolution) so the water pass
     // lifts it back out of the mirrored ground (shared fix, 9 Oct: ground shadows on the far bank mirrored into ponds as dark
     // ovals and diagonal stripes; a reflection shows what stands above the water, not the shade on the grass)
@@ -213,7 +293,8 @@ function _scshBake(env, layer, gx) {
         try { const poly = sceneBuildingShadow(b, sun.g, sun.tan, cam); if (poly && poly.length > 2) { prisms.push(poly); for (const p of poly) bounds = _scshUnion(bounds, [p[0], p[1], p[0], p[1]]); } } catch (e) { /* no prism */ }
       }
     }
-    composite(bounds, sun.op, sun.blur, (sx, ox2, oy2) => {
+    yield* composite(bounds, sun.op, sun.blur, function* (sx, ox2, oy2) {
+      let pending = 0;
       for (const r of casters) {
         if (r.direct) continue;
         const sp = spriteOf(r);
@@ -221,9 +302,11 @@ function _scshBake(env, layer, gx) {
         const draw = (sh, a) => { const M = sceneShadowMatrix(cam, r.foot, r.it.s, r.hTop, r.it.flip, sh, vs, ox2, oy2); sx.globalAlpha = a; sx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]); sx.drawImage(sp.c, sp.x0, sp.y0, sp.w, sp.h); };
         if (sun.fade) { draw(sun, 0.5); draw({ g: sun.g, tan: sun.tan * 0.5 }, 1); } else draw(sun, 1);
         st.casters++;
+        if (++pending % 4 === 0) { try { sx.getImageData(0, 0, 1, 1); } catch (e) { /* CPU scratch */ } }
+        yield;
       }
       sx.globalAlpha = 1; sx.setTransform(vs, 0, 0, vs, ox2, oy2); sx.fillStyle = '#000';
-      for (const poly of prisms) { sx.beginPath(); poly.forEach((p, k) => (k ? sx.lineTo(p[0], p[1]) : sx.moveTo(p[0], p[1]))); sx.closePath(); sx.fill(); }
+      for (const poly of prisms) { sx.beginPath(); poly.forEach((p, k) => (k ? sx.lineTo(p[0], p[1]) : sx.moveTo(p[0], p[1]))); sx.closePath(); sx.fill(); if (++pending % 4 === 0) { try { sx.getImageData(0, 0, 1, 1); } catch (e) { /* CPU scratch */ } } yield; }
     });
   }
   // 4. lamp shadows: short, away from each lamp, faded with the distance to it
@@ -237,9 +320,11 @@ function _scshBake(env, layer, gx) {
       const sh = { g: p.g, tan: 0.8 }, M1 = sceneShadowMatrix(cam, r.foot, r.it.s, r.hTop, r.it.flip, sh, 1, 0, 0);
       bounds = _scshUnion(bounds, _scshBounds(M1, r.sh.box));
       draws.push({ r, sp, sh, k: p.k });
+      yield;
     }
-    composite(bounds, 0.25 * (1 - 0.4 * (L && L.cover > 0.75 ? 1 : 0)), 2, (sx, ox2, oy2) => {
-      for (const q of draws) { const M = sceneShadowMatrix(cam, q.r.foot, q.r.it.s, q.r.hTop, q.r.it.flip, q.sh, vs, ox2, oy2); sx.globalAlpha = _scClamp(q.k * 1.4, 0.15, 1); sx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]); sx.drawImage(q.sp.c, q.sp.x0, q.sp.y0, q.sp.w, q.sp.h); }
+    yield* composite(bounds, 0.25 * (1 - 0.4 * (L && L.cover > 0.75 ? 1 : 0)), 2, function* (sx, ox2, oy2) {
+      let pending = 0;
+      for (const q of draws) { const M = sceneShadowMatrix(cam, q.r.foot, q.r.it.s, q.r.hTop, q.r.it.flip, q.sh, vs, ox2, oy2); sx.globalAlpha = _scClamp(q.k * 1.4, 0.15, 1); sx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]); sx.drawImage(q.sp.c, q.sp.x0, q.sp.y0, q.sp.w, q.sp.h); if (++pending % 4 === 0) { try { sx.getImageData(0, 0, 1, 1); } catch (e) { /* CPU scratch */ } } yield; }
     });
   }
   // 5. contact shadows: always on (ambient occlusion: objects sit on the ground in every light)
@@ -254,6 +339,7 @@ function _scshBake(env, layer, gx) {
       gx.drawImage(blob, X - rx * vs, Y - ry * vs, 2 * rx * vs, 2 * ry * vs);
       st.contacts++;
     }
+    yield;
   }
   gx.globalAlpha = 1;
 }
@@ -317,6 +403,9 @@ function sceneShadowProjected(env, ctx, m) {
   // the tip (sprite (0, -hTop) through M, in scene units): over water, the caller falls back to the contact blob
   if (env.water && typeof sceneWaterRegionAt === 'function' && sceneWaterRegionAt(env, (M[4] - M[2] * hTop - ox) / vs, (M[5] - M[3] * hTop - oy) / vs)) return 0;
   const sil = _scshSilhouette(sp, st.col);
+  if (env.requireWarmSprite) env.requireWarmSprite(sil);
+  if (!st.silCanvases) st.silCanvases = new WeakSet();
+  if (!st.silCanvases.has(sil)) { st.silCanvases.add(sil); env.keep({ c: sil, bytes: sil.width * sil.height * 4 }); }
   ctx.setTransform(M[0], M[1], M[2], M[3], M[4], M[5]);
   ctx.globalAlpha = sun.op * (m.alpha == null ? 1 : m.alpha);
   ctx.drawImage(sil, sp.x0, sp.y0, sp.w, sp.h);

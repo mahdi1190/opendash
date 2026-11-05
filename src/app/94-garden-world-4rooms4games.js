@@ -11,6 +11,7 @@ function _grmGated(game, after, opened) {
     act(R, S, i) { if (S.open) after.act(R, S, i); else game.act(R, S, i); },
     frame(R, S, dt) { if (!S.open && game.frame) game.frame(R, S, dt); else if (S.open && after.frame) after.frame(R, S, dt); },
     up(R, S) { if (!S.open && game.up) game.up(R, S); },
+    cancel(R, S) { if (!S.open && game.cancel) game.cancel(R, S); },
     key(R, S, k) { return !S.open && game.key ? game.key(R, S, k) : false; },
     tap(R, S, p) { return !S.open && game.tap ? game.tap(R, S, p) : false; },
     lock(R, S) { return !S.open && game.lock ? game.lock(R, S) : false; },
@@ -19,7 +20,6 @@ function _grmGated(game, after, opened) {
 /** The small game is done: what it was in front of happens at once. */
 function _grmSolved(R, S, after) { S.open = true; try { after.act(R, S, 0); } catch (e) { console.error('[garden rooms]', e); } _grmPaint(); }
 const _grmTone = (f, o) => { try { gpTone(Array.isArray(f) ? f : [f], Object.assign({ force: true, len: 0.16, vol: 0.06 }, o)); } catch (e) { /* no sound, no matter */ } };
-const _grmQ = (sel) => (_grm.props ? _grm.props.querySelector(sel) : null);
 
 /* ---------- the jars: open two, find the pairs ---------- */
 const _GRM_JARS = Object.freeze([
@@ -124,7 +124,7 @@ const _grmKnock = {
 
 /* ---------- the stove: pump the bellows and keep the needle in the green ---------- */
 GRM_PLAY.stoke = {
-  begin(R, S) { S.h = 0.25; S.m = 0; S.won = _grmDone(R); },
+  begin(R, S) { S.h = 0.25; S.m = 0; S.pump = 0; S.won = _grmDone(R); },
   spots(R, S) {
     const A = _grmA, T = R.stove, a = -60 + S.h * 120;
     return [
@@ -136,16 +136,18 @@ GRM_PLAY.stoke = {
   act(R, S) {
     if (S.won) { _grmSay(_grmDoneLine(R)); return; }
     S.h += 0.14; _grmTone(150 + S.h * 80, { len: 0.08, vol: 0.05 });
-    const g = _grmQ('.grm-bel'); if (g) { g.setAttribute('transform', 'translate(0 5)'); setTimeout(() => { if (g.isConnected) g.removeAttribute('transform'); }, 110); }
+    S.pump = 1;
     if (S.h > 1) { S.h = 0.62; S.m *= 0.4; _grmSay(R.overLine, 2600); }
   },
   frame(R, S, dt) {
+    S.pump = (S.pump || 0) * Math.exp(-dt * 18); if (S.pump < .002) S.pump = 0;
+    _grmAttr(_grmQ('.grm-bel'), 'transform', `translate(0 ${(gardenMotionOn() ? S.pump * 5 : 0).toFixed(2)})`);
     if (S.won) return;
     S.h = Math.max(0, S.h - dt * 0.12);
     const inG = S.h >= 0.45 && S.h <= 0.8; S.m = Math.max(0, S.m + (inG ? dt / 6 : -dt / 16));
-    const n = _grmQ('.grm-needle'); if (n) n.setAttribute('transform', `rotate(${(-60 + S.h * 120).toFixed(1)})`);
-    const f = _grmQ('.grm-fire'); if (f) f.setAttribute('transform', `translate(0 -24) scale(${(0.5 + S.h * 1.1).toFixed(2)})`);
-    const st = _grm.props.querySelectorAll('.grm-kettle-s'); st.forEach(e => e.setAttribute('opacity', String(Math.min(1, S.m * 1.3).toFixed(2))));
+    _grmAttr(_grmQ('.grm-needle'), 'transform', `rotate(${(-60 + S.h * 120).toFixed(1)})`);
+    _grmAttr(_grmQ('.grm-fire'), 'transform', `translate(0 -24) scale(${(0.5 + S.h * 1.1).toFixed(2)})`);
+    const st = _grmQ('.grm-kettle-s', true); if (st) st.forEach(e => _grmAttr(e, 'opacity', Math.min(1, S.m * 1.3).toFixed(2)));
     if (S.m >= 1) { S.won = true; _grmTone([660, 880, 990], { gap: 0.12, len: 0.4 }); _grmPay(R, R.gotLine); _grmPaint(); if (R.won) R.won(R); }
   },
 };
@@ -153,10 +155,10 @@ function _grmArc(cx, cy, r, a0, a1) { const p = (a) => { const t = (a - 90) * Ma
 
 /* ---------- pouring for the mice: hold to pour, let go on the line, three times ---------- */
 const _grmPour = {
-  begin(R, S) { S.fill = [0, 0, 0]; S.i = 0; S.pouring = false; },
+  begin(R, S) { S.fill = [0, 0, 0]; S.i = 0; S.pouring = false; S.pourTilt = 0; },
   spots(R, S) {
     const A = _grmA, P = R.pour;
-    const cups = P.cups.map((x, i) => { const f = S.fill[i]; return { id: 'c' + i, still: true, x, y: P.y, w: 0, h: 0, art: A.e(0, 2, 26, 5, '#000', 0.25) + A.p('M-22 -56L-18 0H18L22 -56Z', '#c8ccd0') + A.p('M-17 -50L-14 -6H14L17 -50Z', '#3a3430') + `<rect class="grm-lv grm-lv${i}" x="-15" y="${(-6 - f * 44).toFixed(1)}" width="30" height="${(f * 44).toFixed(1)}" fill="#c87a3a"/>` + A.r(-20, -46, 40, 2, '#ffd86a') + A.r(-20, -38, 40, 2, '#ffd86a') + [[-22, -46], [-22, -38]].map(([, y]) => A.r(-27, y - 1, 5, 4, '#ffd86a')).join('') + A.e(0, -56, 22, 4, '#e8ecf0') + (i === S.i ? A.p('M-7 -74L7 -74L0 -64z', '#ffd86a') : '') }; });
+    const cups = P.cups.map((x, i) => { const f = S.fill[i]; return { id: 'c' + i, still: true, x, y: P.y, w: 0, h: 0, art: A.e(0, 2, 26, 5, '#000', 0.25) + A.p('M-22 -56L-18 0H18L22 -56Z', '#c8ccd0') + A.p('M-17 -50L-14 -6H14L17 -50Z', '#3a3430') + `<rect class="grm-lv grm-lv${i}" x="-15" y="${(-6 - f * 44).toFixed(1)}" width="30" height="${(f * 44).toFixed(1)}" fill="#c87a3a"/>` + A.r(-20, -46, 40, 2, '#ffd86a') + A.r(-20, -38, 40, 2, '#ffd86a') + [[-22, -46], [-22, -38]].map(([, y]) => A.r(-27, y - 1, 5, 4, '#ffd86a')).join('') + A.e(0, -56, 22, 4, '#e8ecf0') + `<g class="grm-cup-next" opacity="${i === S.i ? 1 : 0}">${A.p('M-7 -74L7 -74L0 -64z', '#ffd86a')}</g>` }; });
     const x = P.cups[Math.min(2, S.i)];
     return cups.concat([{ id: 'pot', x: x + 54, y: P.y - 70, w: 150, h: 110, now: true, tip: 'Hold to pour', art: `<g class="grm-pot">${A.e(0, -40, 34, 28, '#b8843a')}${A.c(-12, -66, 6, '#7a5a2a')}${A.p('M-30 -40Q-52 -48 -56 -66L-46 -66Q-42 -54 -24 -52Z', '#a8743a')}${A.s('M32 -54Q52 -40 32 -24', '#7a5a2a', 5)}</g><path class="grm-stream" d="M-56 -64Q-58 -30 -54 ${70 - 8}" fill="none" stroke="#c87a3a" stroke-width="4" opacity="0"/>` }]);
   },
@@ -164,16 +166,21 @@ const _grmPour = {
   act(R, S) { if (_grmCrop() || gpVisiting()) { S.pouring = true; } else _grmSay(R.emptyLine); },
   up(R, S) {
     if (!S.pouring) return; S.pouring = false;
-    const st = _grmQ('.grm-stream'); if (st) st.setAttribute('opacity', '0');
+    _grmAttr(_grmQ('.grm-stream'), 'opacity', '0');
     const f = S.fill[S.i];
     if (f >= 0.72 && f <= 0.94) { _grmTone(700 + S.i * 90); S.i += 1; if (S.i >= 3) { _grmTone([660, 880], { gap: 0.1 }); _grmSolved(R, S, GRM_PLAY.give); return; } _grmPaint(); }
     else if (f > 0.94) { S.fill[S.i] = 0; _grmSay(R.spillLine, 2500); _grmPaint(); }
   },
+  cancel(R, S) { S.pouring = false; _grmAttr(_grmQ('.grm-stream'), 'opacity', '0'); },
   frame(R, S, dt) {
+    const tilt = S.pouring ? -12 : 0;
+    S.pourTilt = gardenMotionOn() ? (S.pourTilt || 0) + (tilt - (S.pourTilt || 0)) * Math.min(1, dt * 18) : tilt;
+    if (Math.abs(S.pourTilt - tilt) < .02) S.pourTilt = tilt;
+    _grmAttr(_grmQ('.grm-pot'), 'transform', `rotate(${S.pourTilt.toFixed(2)} -56 -64)`);
     if (!S.pouring) return;
     S.fill[S.i] = Math.min(1.02, S.fill[S.i] + dt * 0.42);
-    const f = S.fill[S.i], e = _grmQ('.grm-lv' + S.i); if (e) { e.setAttribute('y', (-6 - Math.min(1, f) * 44).toFixed(1)); e.setAttribute('height', (Math.min(1, f) * 44).toFixed(1)); }
-    const st = _grmQ('.grm-stream'); if (st) st.setAttribute('opacity', '1');
+    const f = S.fill[S.i], e = _grmQ('.grm-lv' + S.i); _grmAttr(e, 'y', (-6 - Math.min(1, f) * 44).toFixed(1)); _grmAttr(e, 'height', (Math.min(1, f) * 44).toFixed(1));
+    _grmAttr(_grmQ('.grm-stream'), 'opacity', '1');
     if (f >= 1.02) { S.pouring = false; S.fill[S.i] = 0; _grmSay(R.spillLine, 2500); _grmPaint(); }
   },
   key(R, S, k) { if (k === ' ' || k === 'e' || k === 'Enter') { this.act(R, S); return true; } return false; },
@@ -208,9 +215,9 @@ GRM_PLAY.beam = {
       const d = Math.abs(S.bx - S.ox), lit = d < 70;
       S.m = Math.max(0, Math.min(1, S.m + (lit ? dt / 3 : -dt / 7)));
       const L = R.lamp, B = _grmQ('.grm-beamp'), b = _grmQ('.grm-boat'), mm = _grmQ('.grm-beamm');
-      if (B) { B.setAttribute('d', `M${L.x - 20} ${L.y - 126}L${S.bx - 90} ${L.sea + 16}H${S.bx + 90}L${L.x + 20} ${L.y - 126}Z`); B.setAttribute('opacity', '0.32'); }
-      if (b) { b.setAttribute('transform', `translate(${S.ox.toFixed(1)} ${L.sea})`); b.setAttribute('opacity', (lit ? 1 - d / 90 : 0).toFixed(2)); }
-      if (mm) mm.setAttribute('stroke-dasharray', `${(S.m * 377).toFixed(0)} 377`);
+      _grmAttr(B, 'd', `M${L.x - 20} ${L.y - 126}L${S.bx - 90} ${L.sea + 16}H${S.bx + 90}L${L.x + 20} ${L.y - 126}Z`); _grmAttr(B, 'opacity', '0.32');
+      _grmAttr(b, 'transform', `translate(${S.ox.toFixed(1)} ${L.sea})`); _grmAttr(b, 'opacity', (lit ? 1 - d / 90 : 0).toFixed(2));
+      _grmAttr(mm, 'stroke-dasharray', `${(S.m * 377).toFixed(0)} 377`);
       if (S.m >= 1) { S.on = false; S.won = true; _grmTone([523, 659, 784, 1046], { gap: 0.12, len: 0.4 }); _grmPay(R, R.gotLine); _grmPaint(); }
     }
   },
@@ -267,18 +274,20 @@ const _grmSlide = {
     { const [gx, gy] = self.at(R, S.L.goal[0], S.L.goal[1]); f += A.r(gx - G.cw / 2 + 4, gy - G.ch + 3, G.cw - 8, G.ch - 6, '#d8b65a', null, 3); for (let i = 0; i < 9; i++) f += A.s(`M${gx - 30 + i * 7} ${gy - 8 - (i % 3) * 7}l9 -3`, '#8a6a2a', 1.6); }
     for (const [x, y] of S.L.pegs) { const [px, py] = self.at(R, x, y); f += A.e(px, py - 4, 24, 8, '#000', 0.2) + A.blob(px, py - 16, 24, 18, 'p' + x + y, 0.3, '#7a8a94') + A.e(px - 6, py - 22, 9, 5, '#a8b8c0'); }
     out.push({ id: 'ice', still: true, x: 0, y: 0, w: 0, h: 0, art: f });
-    const [bx, by] = self.at(R, S.px, S.py);
+    const motion = gardenMotionOn(), [bx, by] = self.at(R, motion ? S.px : S.x, motion ? S.py : S.y);
     out.push({ id: 'blk', still: true, x: 0, y: 0, w: 0, h: 0, art: `<g class="grm-block" transform="translate(${bx} ${by})">${A.e(0, -2, 34, 8, '#000', 0.25)}${A.r(-30, -52, 60, 48, '#bfe6f4', 0.95, 6)}${A.p('M-30 -52L-18 -62H40L30 -52Z', '#e4f6fc')}${A.p('M30 -52L40 -62V-14L30 -4Z', '#94c8dc')}${A.s('M-20 -40L-6 -20M4 -44L14 -30', '#fff', 2.4, 0.8)}</g>` });
     for (const [id, dx, dy, a] of [['r', 1, 0, 0], ['l', -1, 0, 180], ['d', 0, 1, 90], ['u', 0, -1, 270]]) {
       const [q, w] = _grmIceMove(S.L, S.x, S.y, dx, dy, S.W, S.H); if (q === S.x && w === S.y) continue;
-      out.push({ id, x: bx + dx * 62, y: by - 18 + dy * 40 + 22, w: 54, h: 44, now: true, tip: 'Push the block this way', art: `<g transform="translate(0 -22) rotate(${a})">${A.c(0, 0, 18, '#1a3a4a', 0.82)}${A.p('M-8 -7L8 0L-8 7Z', '#ffe9a8')}</g>` });
+      out.push({ id, still: !!S.moving, x: bx + dx * 62, y: by - 18 + dy * 40 + 22, w: 54, h: 44, now: true, tip: 'Push the block this way', art: `<g opacity="${S.moving ? 0 : 1}" transform="translate(0 -22) rotate(${a})">${A.c(0, 0, 18, '#1a3a4a', 0.82)}${A.p('M-8 -7L8 0L-8 7Z', '#ffe9a8')}</g>` });
     }
     return out;
   },
   act(R, S, id) {
+    if (S.moving) return;   // pointer pushes, like keys, wait for the current stop
     const D = { r: [1, 0], l: [-1, 0], d: [0, 1], u: [0, -1] }[id]; if (!D) return;
     const [a, b] = _grmIceMove(S.L, S.x, S.y, D[0], D[1], S.W, S.H); if (a === S.x && b === S.y) return;
     S.grip = true; S.x = a; S.y = b; S.n += 1; _grmTone(240, { len: 0.22, vol: 0.05, type: 'triangle' }); S.moving = true;
+    _grmPaint();   // hide/remove arrow targets once; the retained block keeps moving
   },
   frame(R, S, dt) {
     if (!S.moving) return;
@@ -289,7 +298,7 @@ const _grmSlide = {
       _grmPaint(); return;
     }
     S.px += dx / d * st; S.py += dy / d * st;
-    const g = _grmQ('.grm-block'); if (g) { const [x, y] = this.at(R, S.px, S.py); g.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`); }
+    const g = _grmQ('.grm-block'); if (g) { const motion = gardenMotionOn(), [x, y] = this.at(R, motion ? S.px : S.x, motion ? S.py : S.y); _grmAttr(g, 'transform', `translate(${x.toFixed(1)} ${y.toFixed(1)})`); }
   },
   key(R, S, k) { const id = { ArrowRight: 'r', ArrowLeft: 'l', ArrowDown: 'd', ArrowUp: 'u' }[k]; if (id && S.grip && !S.moving) { this.act(R, S, id); return true; } return false; },
   tap(R, S) { S.grip = false; return false; },

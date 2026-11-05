@@ -71,7 +71,7 @@ function petVisitPerform(holder, snap, f) {
     const ids = (snap && Array.isArray(snap.tk) ? snap.tk : []).filter(id => petBookRow(id));
     if (!ids.length || !_ptMotionOk() || _ptFun() === 'off') return;
     const clips = ids.map(petBookRow).filter(r => !r.wow), wows = ids.map(petBookRow).filter(r => r.wow);
-    const box = holder.closest('.gsv-stage') || holder.parentElement || holder;
+    const box = gardenVisualIsNative(holder) ? _gw.box : holder.closest('.gsv-stage') || holder.parentElement || holder;
     const pet = () => _ptlFriendPets(holder)[0];
     const play = (r) => { const n = pet(); if (!n) return; if (r.wow) { petFriendWow(r.wow, n); return; } const clip = r.clip || r.id, sp = (/pt-sp-([a-z]+)/.exec(n.getAttribute('class') || '') || [])[1]; if (!petClipSuits(clip, sp)) return; petClipRun(n, clip); };
     const ask = _ptEl('button', 'ptb-ask'); ask.type = 'button'; ask.innerHTML = icon('wand-sparkles', 'i-sm'); ask.setAttribute('data-tip', 'Ask for a trick'); ask.setAttribute('aria-label', 'Ask their pet for a trick');

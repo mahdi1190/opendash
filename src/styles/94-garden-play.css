@@ -13,6 +13,8 @@ html.gp-away .gd-pet.is-me, html.gp-seeking .gd-pet.is-me, html.gp-away .gd-pet-
 .gp-card { display: flex; gap: 12px; align-items: flex-start; text-align: left; padding: 12px; border-radius: 12px; border: 1px solid var(--border, rgba(0,0,0,.12)); background: var(--surface, #fff); color: inherit; cursor: pointer; font: inherit; transition: transform .12s ease, box-shadow .12s ease; }
 .gp-card:hover, .gp-card:focus-visible { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.1); }
 .gp-card.is-fresh { border-color: #f2b01e; box-shadow: 0 0 0 2px color-mix(in srgb, #f2b01e 35%, transparent); }
+.gp-card.is-selected { border-color: #518347; background: color-mix(in srgb, #7fbf5a 12%, var(--surface, #fff)); box-shadow: inset 3px 0 #518347; }
+.gp-card.is-selected .gp-current { color: var(--text, inherit); font-size: 12px; font-weight: 600; }
 .gp-ic { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: color-mix(in srgb, #7fbf5a 22%, var(--surface, #fff)); }
 .gp-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; }
 .gp-t b { font-size: 14px; } .gp-t em { font-style: normal; font-size: 12px; color: #a06c0c; }

@@ -41,7 +41,7 @@ All are friends kinds with a strict schema (`lib/friends/live.mjs`): ids, cells 
 | `gl:em` | both | `{s, q, w?, e, c?, to?}`: an emote, a preset phrase or an interaction, ids from tables on each side |
 | `gl:fx` | both | `{s, q, w?, c, e, i?, x?, y?, n?, ql?, nw?}`: what people SEE each other do (2.27.9; `GL_FX_KINDS`): `pet` a clip id or pat / eat, `wow` a spectacle, `nap` on / off, `roam` a species of the host's pack, `fish` cast (with the cell) / bite / reel / land / lost / in, `bug` sneak / swing / miss / gone (`i` the bug's key), `got` what was caught or found (`e` kind, `i` id, `n` cm, `ql`, `nw` bit 1 new, bit 2 record), `make` a recipe, `ct` a contest round (2.30, host to guests only: start / board / end / stop, with `tt` its length and `l` the board; section 15), `snap` ask for a group photo (2.32: `i` its id, `x` and `y` the cell its frame is centred on; section 19). A kind of its own, so an older app drops it and `GL_V` stays 2 |
 | `gl:pp` | both | `{s, q, w?, l: [{u, e?, x, y, gx?, gy?, r?, f?}]}` (2.32; `GL_PP`, `glPpOk`): where pets really are, section 18. `u` 0 is the sender's own companion, 1 to 3 the host's pack (`e` its species, the host alone); tenths of a cell; `gx`, `gy` where it is walking to. A guest's goes to the host and on to the others. A kind of its own, so an older app drops it and `GL_V` stays 2 |
-| `gl:cr` | H to V | `{s, q, l: [{u, e, x, y, h, f, k?}]}` (2.28.1): the creatures about in the host's garden, the whole list (at most 8) every 2 s while one moves and every 7 s when they rest, a kind of its own (an older app drops it). A guest takes each leg at the pace they come in. Tenths of a cell; `k` the clip |
+| `gl:cr` | H to V | `{s, q, l: [{u, e, x, y, h, f, k?, m?}]}` (2.28.1): the creatures about in the host's garden, the whole list (at most 8) every 2 s while one moves and every 7 s when they rest, a kind of its own (an older app drops it). A guest takes each leg at the pace they come in. Tenths of a cell; `k` the clip; optional `m` the host's ground/air/water medium (2.63.7) |
 | `gl:fs` | H to V | `{s, q, l: [{u, e, c, x, y, tx, ty, st, to?, n?}]}` (2.34): the fish in the host's water (section 20), the whole list (at most 20) when a fish changes state, at most every 0.4 s, and every 6 s anyway (20 s when there are none). A kind of its own: an older app drops it |
 | `gl:sum` | H to V | `{s, q, h, n}` (2.34.1): a fingerprint of the plants and decorations the host has told everyone about, every 30 s (section 21) |
 | `gl:tr` | both | `{s, q, w?, t, e, to?, v?, n?, an?, o?, p?, c?, d?, r?, why?}` (2.30; `GL_TRADE`, `glTradeOk`): a trade between two people there, section 16. `t` its id, `e` the step (guest to host: ask, hi, offer, ok, no, end, chk; host to guest: st, go, x). A kind of its own, so an older app drops it and `GL_V` stays 2 |
@@ -213,7 +213,21 @@ The owner, 31 October 2026: "when you visit someone's garden it should make it t
 
 `94-garden-live-6life.js` (the header there is the full design). In a live visit the host's engine owns the creatures (`gl:cr`); guests draw ghosts from the same art and clips and run no spawning (`_glDirect` returns early). New `gl:fx` families: `cr` (poke by a guest to the host alone; react, look, greet by the host), `egg` fire (each screen runs the surprise from its own tables, no reward for a guest), `pick` (spawn, claim, take, gone: a creature's gift or a fish on the shore, the first claim the host hears wins, once), and for bugs `claim` (guest to host), `gone` (`to` is the winner) and `lost`. A guest takes a bug only after the host says so, and a pick-up only if it saw it spawn and its caps allow. `GL_FX_HOST_ONLY` and `GL_FX_TO_HOST` in the rules say who may say what; both ends refuse a guest's host-only fx. The field `kd` (not `k`: the page's event names it) says the pick-up's kind.
 
-**A dishonest guest** can poke, claim and say what it is doing, like any guest; it cannot spawn, move, give, name a winner, or award the host anything, and claims cost the host a lookup by number. It can award ITSELF what its own computer holds (as ever). **A dishonest host** can show creatures, offer a gift and name a winner; a guest acts only on what it saw, for kinds it knows, within the daily caps a gift has. No garden data beyond a snapshot is sent: creature kinds, tenths of cells, clip names.
+Creature rows may carry optional `m: 'ground' | 'air' | 'water'` (2.63.7), set by
+the host's current physical medium. Visitors apply it to their retained
+`data-med` presentation along with the existing clip. When it is absent, an
+existing ghost keeps its medium and a new ghost falls back to the species'
+habitat. Older schema cleaners strip the unknown field and keep the known row
+fields. This addition keeps `GL_V`, message cadence and creature authority
+unchanged.
+
+Visitor creatures use the current world's canonical numeric picking and the
+host's vertical hit reach. Detached, culled and hidden sprites are excluded.
+A temporary remote reaction remembers the authoritative host clip; host updates
+received during the reaction replace that remembered clip. When the reaction
+ends, it restores the latest host clip instead of forcing rest.
+
+**A dishonest guest** can poke, claim and say what it is doing, like any guest; it cannot spawn, move, give, name a winner, or award the host anything, and claims cost the host a lookup by number. It can award ITSELF what its own computer holds (as ever). **A dishonest host** can show creatures, offer a gift and name a winner; a guest acts only on what it saw, for kinds it knows, within the daily caps a gift has. No garden data beyond a snapshot is sent: creature kinds, tenths of cells, clip names and medium.
 
 Not a relay change, `GL_V` stays 2. Left out: the host decides a bug only when a host and a guest swing within a moment of each other as they see it (both are told by the host: one wins); and sync of weather, wardrobe, achievement cheers, photos and new sounds is tracked separately.
 
@@ -422,7 +436,7 @@ Code: `src/app/94-garden-zz-*.js`, `src/styles/94-garden-together.css`. The owne
 
 **World cells** are in tables marked `// world cells`: `GTG_PROJECTS`, `GTG_SEASON_AT`, `GTG_GHOST_AT`, `GTG_EVE_AT`, `GTG_GN_AT`, `GTG_BOTTLE_AT`, `GTG_VEG_AT`.
 
-**A dishonest friend** can claim any part of a project up to its cost, or send a gnome or a bottle: they can show you a finished thing, but your thanks need your own tenth. Not built: a friend's pose is not shown as a hold-up (only the flash), and a project has one partner.
+**A dishonest friend** can claim any part of a project up to its cost, or send a gnome or a bottle: they can show you a finished thing, but your thanks need your own tenth. A project has one partner. Photo hold-up sharing is described in section 28.
 
 ## 24. A garden's design
 
@@ -456,3 +470,261 @@ While you are in a room, `_gwActors`, `_gwFeet`, `_gwPx` and `_gdgBox` answer fo
 **Pets in the world.** Nothing new is sent. Where a pet is goes out as before (`gl:pp`, tenths of a cell); what it is doing there is worked out from where it is and what stands in the garden (`_ptwStand`, `97-pets-7roam.js`): a water pet on an open water cell is swimming, a flying pet at a perch's point is on that perch. Perch points are kept to tenths of a cell, so the place sent lands on them exactly. Only open land and open water count; perches come from the live rows, so moved objects keep theirs. With reduced motion or Fun off none of it runs.
 
 **A pet away on a little journey.** Who is here hears it once (`fx pet away` and `back`: an older app ignores the id). A later arrival gets no pet in your look, because `petPayload()` says `walks: false` while away. No places are sent. A saved copy says when it is due back: snapshot field `pa`, a time, so an old copy stops saying so by itself. It is in `gardenSnapshot`, `gardenSnapshotClean`, `_gscSnapBody` and `GARDEN_SCHEMA`; a saved copy can lag by up to the 15 minutes between publishes.
+
+## 27. Ordered state and a fuller drift check
+
+The drawing engine and the network are separate. The game still sends destinations and host-approved actions, rather than a rendered frame or a 60 Hz stream of positions. The direct link, pair encryption, relay room, permission checks and exactly-once intent ids are unchanged.
+
+- The browser combines superseded fish, creature, checksum, snapshot and movement state while it is waiting for the local server. Pet lists are partial updates, so combining them retains each pet's newest row. Superseding state moves to the back of the queue, and never crosses an action or result. A timed-out request is aborted before the next request starts; an already accepted host update remains in the server's ordered lane.
+- The server sends a whole snapshot before the next host update. Snapshot chunks have an optional generation id and must form one ordered set beginning at chunk zero; incomplete or mixed sets ask for a fresh copy. Older peers can still use snapshots without an id.
+- Queued visitor requests name their original friend, visit generation and server boot on the local HTTP hop. Generations increase across separate visits, including a return to the same friend. A request left over after changing gardens or restarting the server is discarded or refused, rather than applying to the new visit. These guards add nothing to the encrypted friend protocol.
+- The original `gl:sum.h` stays for older peers. The optional `h2` also covers plant variants, thirsty/overgrown/ripe flags, decoration variants and attribution. A host changing a plant's variant now sends a replacement row. Heart-tree level and time-zone changes also take the existing full-snapshot path.
+- A path and a decoration can occupy one cell. Attribution has separate `g` and `d` rows in version 2 of the snapshot's `by` table; older peers continue to use their original attribution table.
+- Repeated identical fish and pet rows are suppressed until the existing heartbeat is due. Joining or returning explicitly forces the current state, and failed sends mark it due again. The bounded heartbeat intervals remain compatible with older peers: fish 6 s (20 s for an empty list), pets 30 s at rest, creatures 7 s at rest. Moving fish and creatures still receive their normal changed-state updates.
+
+Diagnostics are counts only: `_gllQ` has `coalesced`, `highWater` and `failed`; `_gfs.sameSkipped` and `_gllPp.sameSkipped` count suppressed identical state. `/api/garden-live` includes `stats.bodyBytesSent`, the UTF-8 JSON-body bytes attempted, before encryption and transport overhead. These are instrumentation, not a measured bandwidth or latency claim.
+
+The local send response also reports whether the friend transport accepted the message. A route or rate refusal no longer looks like a successful send to the page; a failed snapshot takes the existing retry/resynchronization path. Acceptance is not an acknowledgement that another computer rendered it.
+
+Limits remain: at most eight people; snapshots cap plants and decorations; world changes outside those rows still send a snapshot; a room's small games are local; and the real public relay and two separate computers need their own play session before claiming end-to-end smoothness. A renderer change does not remove those limits.
+
+## 28. Photo-mode poses together
+
+`94-garden-live-7photo.js` shares the existing outdoor photo mode's current
+look. `fx pose on` is full state: `p` is a short random photo token, optional
+`kd` / `i` name the held fish, bug or gear, `v` its catalogue variant, `n` its
+size and `ql` its quality. Empty hands omit those item fields. `pose off` names
+the same token, so an old end cannot clear a newer photo. Worn gear continues
+through the existing live look. No name, specimen provenance, photo pixels,
+inventory transaction or reward is sent by a pose.
+
+A visitor's pose goes only to the host. The server supplies that visitor's
+authenticated slot; the host's page checks catalogue ids and variant fit,
+then forwards normalized state. This validates a visual, not proof that a
+visitor owns a specimen. Nothing is awarded or removed. Older clients ignore
+the new FX family; the protocol version, pair encryption and relay are unchanged.
+
+Changes send no faster than every 400 ms, using photo mode's existing slow
+heartbeat. An unchanged pose refreshes every 6 s and expires after 18 s without
+a refresh. Pending full pose state can supersede pending pose state from the
+same actor, without crossing an action/result barrier. Joining receives current
+unexpired poses. Closing, leaving, starting another action, walking, a room
+transition, or a changed/reconnected visit clears old held art. Photo mode then
+may announce fresh state in the current session. A lost end is bounded by expiry.
+
+The photo selector uses the chosen showcase specimen or the best recorded
+specimen, so its variant matches the held picture locally and remotely. Capture
+still applies the selected colour filter once on the saved image. Capture remains
+an outdoor feature: entering an indoor room closes photo mode, rather than
+photographing the hidden outdoor stage.
+
+A focused synthetic encrypted pair observation exercised pose begin/change/end,
+variants, empty hands, the gear schema, unknown catalogue ids, token-matched ends,
+late-arrival state, expiry, room clearing and reconnect clearing. This was source
+VM/protocol observation with made-up data, not a rendered two-computer play session.
+
+**Focused runtime observation (3 Nov 2026).** Two made-up friends, independent data folders and two local relays exercised the real encrypted friend engines and garden-live services. The actual client functions ran in isolated JavaScript contexts, with a small synthetic garden. The session covered variant/flag propagation and drift recovery, separate path/object attribution, heart/time-zone snapshots, snapshot-before-delta ordering, join/rejoin generations, old-visit/old-boot refusal, queued-intent targeting, repeated fish/pet suppression and the photo poses described above. This was a local protocol/source-function session, not two browser windows, a real public relay, multiplayer rendering or a bandwidth benchmark.
+
+**Native ambient phase (2.63.12).** Live native hosts attach optional `ac: [phaseMs, runningBit]` to full garden snapshots and the existing periodic `gl:sum` message. The host phase advances monotonically while that native scene exists, independently of a screen's local freeze, hush, reduced-motion or hidden state. A visitor records the phase with its own monotonic receipt time for the current friend and visit session. A first running sample anchors the presentation; subsequent drift and time held locally converge gradually after resuming. Leaving or changing the visit clears its received clock. Older peers omit or drop the optional field and keep their existing local clock. The summary cadence, protocol version and message-size cap are unchanged; no ambient stream was added.
+
+A rendered synthetic encrypted pair observation exercised late arrival, different provider weather, normal movement and wheel zoom, visitor-local freeze/thaw, hush and reduced-motion holds, and an ordinary periodic host clock sample. Held presentation time stayed fixed and the resumed clock converged; both actual SSE sessions stayed live with no reported application errors. This is local two-page play evidence, not a public-relay latency or universal frame-rate claim. Host-local pauses are not broadcast as global weather freezes, and different cameras need not show identical precipitation glyph coordinates.
+
+**Listening Walk.** The optional `wd.el` snapshot field carries three discovery
+bits and the restored-harp bit, bounded to 0..15. The owner saves discoveries
+through existing garden wonder state; a visitor reads the host mask and can play
+the restored instrument without altering either garden's progress. A rendered
+encrypted pair covered physical post interactions, the visible phrase, wrong-note
+reset, completion, remount persistence and read-only visitor play. No economy or
+separate action authority was added.
+
+**Wind kite.** The physical west-shore reel works with the live gate closed and
+with visitors. A `kite` kind on the existing `gl:fx` lane carries explicit take,
+let-go and complete membership state. The host checks Play permission, the
+actor's actual proximity, the current round, request identity and slot ownership.
+Up to eight lines use existing numeric actors; walking apart raises the sail.
+Accepted membership is echoed to the requester and peers, sent on arrival, and
+repaired periodically while active. Room entry, hidden views, departed actors
+and changed slot ownership release lines. Existing message caps and cadence
+limits still apply; no frame-by-frame kite stream or economic outcome is added.
+Brief grab/release animation owns only an idle free-hand joint, yields to other
+activities and remains quiet on repeated state repair.
+
+A rendered encrypted pair covered closed-gate solo use, physical reel clicks,
+accepted membership, walking together, a local freeze, explicit release, room
+transitions and leaving/rejoining without an inherited line. A natural periodic
+state repair preserved the accepted-action gesture count. Read-only frame and
+LongTask observations during shared flight reported no application errors or
+LongTasks in that narrow idle interval; this is not a universal frame-rate claim
+or evidence of an eight-client public-relay session.
+
+**Puddle play.** Companion routes and the host's owned pack keep using their
+ordinary `gl:pp` positions and goals. The `petplay` puddle branch carries
+one of four species endpoint clips and a required `pc: [xTenths, yTenths,
+facingBit]` presentation target. Omitted `u` addresses the sender's companion;
+`u` 1..3 plus species `i` addresses only the host's actual pack. The sender asks
+for its ordinary position update before the cue. A receiving copy waits near
+that already-received endpoint, cancels on changed activity, and expires the
+pending cue after six seconds. The tuple neither moves a pet nor selects its
+route. Older peers discard the unknown family before their legacy pet handler
+can interrupt a companion's walk.
+
+Host-pack announcements can arrive before the visitor's selected renderer.
+At most three pending rows retain the latest same-session position intent until
+that scene is ready. The existing simulation updater then creates pets with the
+current renderer's factory. A remount rebuilds the graph nodes in the new scene;
+visit, boot and generation changes clear pending state. Classic retains its DOM
+factory. This prevents an early SVG placeholder from being inserted into a
+native container later.
+
+Rendered encrypted play covered a host dog, a visitor duck and an owned host
+pack cat through physical invitations and ordinary travel. The cat's focused
+observation waited for a naturally valid open route, held both cameras in Fit,
+and recorded the actual targeted packet, matching active native clip handles,
+the same endpoint and completed route on both pages. Earlier observations found
+the early renderer race and ambient greetings interrupting pet travel; those
+paths now defer to the current scene and owned movement. The duck also yielded
+to ordinary player movement. The rabbit clip and every seasonal or motion
+preference branch have not all been exercised in rendered play.
+
+**Requested pet discoveries.** **Show me around** keeps the same ownership:
+the local player directs their companion, and only the host directs the host's
+actual pack. The guide's short lead legs, waiting and physical rejoin use
+ordinary `gl:pp`. A copy never chooses the guide's route or discovery. The
+`petplay` IDs `guide-owl`, `guide-otter`, `guide-fox` and `guide-rabbit` require
+the existing typed request ID `p` as well as the exact endpoint tuple `pc`.
+Pack cues additionally require matching `u` 1..3 and species `i`, from host
+slot 0. The endpoint tuple is presentation only; positions still come from the
+actual place messages, and same-goal repairs preserve an owned clip.
+
+An emitted guide endpoint can be retired with `guide-stop-<species>`, carrying
+that exact request and endpoint. One critical explicit stop bypasses the
+ambient clip cadence. It is dispatched before clip suitability checks and has
+no fake clip definition. The receiver clears only a matching pending cue or
+the matching root, clip handle and callback; another user/newer animation is
+preserved. A bounded per-pet marker also rejects a late start for the retired
+request. Old peers reject these unfamiliar IDs or the family before entering
+the legacy generic pet handler. There is no schema/cap/version increase,
+reward message or new persistent discovery state.
+
+Separate rendered encrypted observations proved the otter, visiting owl,
+rabbit and host-pack fox invitations, lead/wait/follow, actual paired endpoint
+clips and normal completion. The plant-based observations followed the fix
+that resolves occupancy UIDs through the current model's plant rows. A focused
+fox-pack run additionally pressed real Escape during the paired endpoint and
+received the exact `guide-stop-fox` request, slot/species and endpoint before
+the copy retired its clip and pending cue. That proves active retirement in a
+local pair; it does not prove arbitrary packet reorderings or every late-join,
+renderer, season or public-relay condition. See
+[Companion guided discoveries](GARDEN_COMPANION_GUIDES.md) for the source
+contract and separate artifact scopes.
+
+**Giant soap films.** The `soap` family uses the same FX lane for take, let-go,
+consent and authoritative state. The host accepts at most two nearby players
+with Play access, measures their actual steady stretch, and requires every
+holder's consent before launching one bubble. Solo play uses the tray anchor.
+Optional `sb` describes that flight's identity, quantized starting point, radius
+and age; visitors render the bounded flight from its authoritative start. State
+changes and a slow active repair replace frame messages. Room, tool, hidden-view,
+departure and slot-ownership changes release holds. Toy state with a request
+acknowledgement stays in the queue; only unacknowledged whole-state repairs may
+coalesce with a later state for the same toy and recipient.
+
+A rendered encrypted pair exercised closed-gate solo play before joining,
+physical tray and hand-loop clicks, natural film charge, and each player's
+separate consent. The first consent left the film waiting; the second launched
+one matching flight on both pages. The guest's retained bubble moved and rose
+from its received origin. Normal local freeze, reduced motion, natural expiry
+and room release were observed, with no application errors. This is a local
+two-page session; public relay conditions and every device remain unmeasured.
+
+A focused extension also used ordinary walking to overstretch and tear the
+shared film once, kept both holders, and recovered by walking back together.
+After the normal bubble flight, the visitor physically launched a leaf boat
+while holding a soap wand; accepted launch released that holder on both pages.
+Retrieval and later room release completed without application errors.
+
+**Leaf-boat Yard.** Each live slot owns at most one transient boat. The host
+simulates sail trim, rudder, current and continuous water-footprint probes; guests
+interpolate accepted positions and send coalesced steering intent. A `leaf`
+state contains optional `lc` course points and `lb` boat tuples for at most
+eight slots, preserving the existing FX size cap. Active fleet snapshots use
+a 1.2-second cadence; steering requests are coalesced over 850 milliseconds and
+do not trigger a broadcast for every control click. Launch, retrieve, round,
+generation, permission and slot ownership are checked on the host. Departures
+and ordinary activity handoffs retrieve the relevant boat. Closing the yard can
+leave a boat drifting; only actively viewing its controls takes pet-play priority.
+The native world supplies those same hulls to its existing water reflection,
+wake and shadow paths rather than creating a separate water renderer.
+
+Rendered local encrypted play covered the read-only Look panel, an ordinary Play
+grant, physical launch and steering controls, shoreline deflection and retrieval.
+The paper and oak hulls completed the visible course through normal control
+inputs; the visitor received their completed state. Hull reflection snapshots
+and clipped drawing bands were present on both screens. Normal pause, reduced
+motion, room release and an empty yard after remount were also observed without
+application errors. Initial helper clicks were blocked by a player standing in
+front of the sign; opposite dry approaches exposed the intended yard face.
+This does not establish eight-player or public-relay behavior on every device.
+
+**The marble workshop.** The `marble` FX family carries desired fork/bridge
+settings, lift and recovery requests to the host, and complete authoritative
+`state` back. Optional `mr` is an exact ten-integer tuple for attempt, phase,
+rail, quantized progress/speed, both gates, bell mask, laps and running bit.
+The host checks Play access and the actor's actual handle proximity, deduplicates
+round-scoped requests and alone advances the marble or accepts a bell contact.
+An accepted handle action releases that actor's soap/kite hold; guide reading
+does not. State repairs coalesce only without request acknowledgements, under
+the unchanged 512-byte cap. No visitor supplies an outcome or per-frame position.
+
+A local encrypted pair on the repaired layout physically operated different
+sides and completed both bell lanes, return, star cup, incomplete early finish,
+recovery, host freeze, room hold and fresh remount without application errors.
+Physical help opening/closing also kept the board above the measured panel.
+An intermediate missed reset was a helper camera-easing coordinate issue;
+settled projection and per-handle accepted outcomes resolved it without a
+production reset change. This is local two-page evidence, not every device or
+public-relay condition. See
+[The marble workshop](GARDEN_MARBLE_WORKSHOP.md) for exact tuple, lifecycle,
+placement and evidence limits.
+
+**Chosen world activity (2.63.16).** Optional `wd.aw` is an integer from zero to
+six for the owner's chosen kite, leaf boats, soap film, listening walk, shadow
+courtyard or marble workshop; zero means packed away. Only one setup runs at a
+time. Visitors follow the host's selection and cannot replace it. Selection uses
+the existing snapshot and world fingerprint, with no new per-frame stream.
+Own-garden publication reads the owner's saved choice even while visiting a
+friend. Shelved toy families ignore late FX, and changed-module retirement
+clears held/transient state through the existing activity lifecycle. Saved
+discoveries remain intact. Older peers can drop the optional selection field
+and retain their earlier presentation. See [Garden pacing](GARDEN_PACING.md)
+for progression, UI behavior and the actual isolated play evidence.
+
+**Courtyard of borrowed shadows.** The owner saves the bounded nine-integer
+arrangement as `garden.wd['shadow.court']`: lantern rail and height, each of
+three cutouts' slide and turn, then the restored bit. The snapshot carries it
+as optional `wd.sc`; optional `wd.sa` carries the physical centre in centicells.
+The owner validates dry reachable approaches and saves that anchor even before
+the first cutout moves, so a visitor can locate the unfinished mechanism before
+`sc` exists. A remount can choose a safe nearby owner anchor if scenery blocks
+the previous approaches. Visitors follow the host anchor, rebuild on its change,
+and hide the mechanism when it is absent; they never choose a private fallback.
+Both fields pass the existing snapshot schema and cleaner. Older peers omit or
+drop them without changing their garden protocol.
+
+The existing three-second world fingerprint notices arrangement and anchor
+changes and sends the ordinary garden snapshot. The saved garden copy includes
+the same `wd` fields. There is no courtyard FX family, per-frame stream,
+visitor mutation command, reward or separate economy. Visitors can read the
+unfinished projection feedback. Once restored, their “Set the shadows dancing”
+button changes only local presentation; it cannot alter either garden's saved
+arrangement. `_wdSave()` now marks pending gameplay changes and schedules the
+normal short persistence delay, retaining the existing no-app-Undo save path.
+
+A rendered local encrypted pair used physical world faces and visible controls
+to calibrate the lantern and fit all three silhouettes from the displayed
+contour feedback. It covered partial save/remount, a read-only unfinished visit,
+an ordinary live arrangement update, final save/remount and the visitor's
+finished tableau. The host anchor matched on both pages; visitor-local theatre
+play left both saved arrangements unchanged. Retained animation, local pause
+and browser reduced motion were observed without application errors. This is
+local two-page evidence, not every renderer, device or public-relay condition.

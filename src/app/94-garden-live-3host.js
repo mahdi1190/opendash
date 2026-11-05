@@ -17,6 +17,7 @@
 const _glh = { on: false, beatT: 0, lastGo: 0, watch: null, sent: new Map(), diffT: 0, hud: null, panel: false, unseen: 0, seenAt: 0, drops: new Map(), bugT: 0, bugs: new Map(), posting: false, sprites: new Map(), hoverBound: null };
 const _GLH_SEEN_KEY = 'opendash.gardenLive.seen.v1';
 function _glhSend(to, k, body) { return _gllPipe('/api/garden-live/host', { to, k, body, tab: _GLL_TAB }); }
+function _glhAmbientClock() { const native = window.GardenNative, light = native && native.active() && native.lighting(); return light && light.ambientClock ? light.ambientClock() : null; }
 function _glhHereBody(on) { const l = gardenLiveLook(); if (typeof _gw !== 'undefined') { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return { role: 'host', on, look: l, name: _gllMyName(), tab: _GLL_TAB, hidden: typeof document !== 'undefined' && !!document.hidden }; }
 function _glhPerm(fid) { const v = _gll.view; const p = v && v.perms && v.perms[fid]; return p || { lv: 'none', touch: false, share: 'keeper' }; }
 
@@ -48,6 +49,10 @@ function _glhClaim() {
 }
 function _glhStart() {
   _glh.on = true; _gll.role = 'host';
+  if (typeof gardenKiteHostStart === 'function') gardenKiteHostStart();
+  if (typeof gardenSoapHostStart === 'function') gardenSoapHostStart();
+  if (typeof gardenLeafBoatHostStart === 'function') gardenLeafBoatHostStart();
+  if (typeof gardenMarbleHostStart === 'function') gardenMarbleHostStart();
   _glhElsewhere(false);
   _glhOldDrops();
   if (typeof _gltHostStart === 'function') _gltHostStart();
@@ -83,6 +88,12 @@ function _glhElsewhere(on) {
 function gardenLiveHostGone() {
   clearTimeout(_glh.claimT); _glh.claimT = 0; _glhElsewhere(false);
   if (!_glh.on) return;
+  if (typeof gardenKiteHostStop === 'function') gardenKiteHostStop();
+  if (typeof gardenSoapHostStop === 'function') gardenSoapHostStop();
+  if (typeof gardenLeafBoatHostStop === 'function') gardenLeafBoatHostStop();
+  if (typeof gardenMarbleHostStop === 'function') gardenMarbleHostStop();
+  if (typeof gardenLivePhoto === 'function') gardenLivePhoto(null);
+  if (typeof _gllPhotoReset === 'function') _gllPhotoReset();
   if (typeof gardenContestHostGone === 'function') gardenContestHostGone();   // (a round ends with a clean stop, while the host can still speak)
   if (typeof _gltHostStop === 'function') _gltHostStop();   // (an open trade is called off while the server can still carry the word)
   _glh.on = false; clearInterval(_glh.beatT);
@@ -141,6 +152,7 @@ function _glhAnyone() { return _gll.actors.size > 0; }
 function _glhLooking() { for (const A of _gll.actors.values()) if (!A.away || A.fish) return true; return false; }
 /** Someone has just come in, or is back after a drop: what is going on now that they would otherwise only hear when it ended. A line out, a seat. */
 function _glhCatchUp(fid, who) {
+  if (typeof _gllPhotoTell === 'function') _gllPhotoTell(fid);
   const F = typeof _gw !== 'undefined' ? _gw.fishing : null;
   if (F && F.state && F.state !== 'idle' && F.state !== 'land') _glhSend(fid, 'fx', { c: 'fish', e: 'cast', x: Math.floor(F.bx), y: Math.floor(F.by), ...(F.plan && F.plan.baitDef ? { i: F.plan.baitDef.id } : {}) });
   if (typeof _pe !== 'undefined' && _pe.hold) _glhSend(fid, 'em', { c: 'em', e: 'sit' });
@@ -158,19 +170,23 @@ function _glhQuickSoon() { setTimeout(() => { try { if (typeof gardenHudPaint ==
 /* ---------- the people here ---------- */
 function _glhAdd(ev) {
   let A = _gll.actors.get(ev.w);
+  if (A && ev.pet && A.petAway) A.petAway = false;
   if (!A) { A = _gllActor(ev); A.f = ev.f; _gll.actors.set(ev.w, A); }
-  else if (ev.pet && A.petAway) { A.petAway = false; A.pet = ev.pet; }   // (their look has a pet in it again: it is home)
-  else if (A.n !== ev.n || JSON.stringify([A.a, A.g, A.pet]) !== JSON.stringify([ev.a || A.a, ev.g || A.g, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.g = ev.g || A.g; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
-  else A.lv = ev.lv;
+  else _gllActorLook(A, ev);   // the same complete look changes nothing on screen
   A.f = ev.f;
   if (!_glh.sprites.has(ev.w) && typeof gardenWorldAdd === 'function') _glh.sprites.set(ev.w, _gllSprite(A, () => _glhPersonMenu(A)));
   _glhQuickSoon();   // (the Say button shows while somebody is here)
   return A;
 }
 function _glhRemove(w) {
+  if (typeof gardenKiteLeft === 'function') gardenKiteLeft(w);
+  if (typeof gardenSoapLeft === 'function') gardenSoapLeft(w);
+  if (typeof gardenLeafBoatLeft === 'function') gardenLeafBoatLeft(w);
+  if (typeof gardenMarbleLeft === 'function') gardenMarbleLeft(w);
   if (typeof _glgLeft === 'function') _glgLeft(w);   // (a slot is given to the next person to come in: what this one did in a shared goal stays counted, and is theirs no longer)
   const S = _glh.sprites.get(w); if (S) { S.remove(); _glh.sprites.delete(w); }
   const A = _gll.actors.get(w); if (A && typeof _gllPetDrop === 'function') _gllPetDrop(A);
+  if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A);
   _gll.actors.delete(w);
   _glhQuickSoon();
 }
@@ -180,11 +196,12 @@ function _glhEvent(ev) {
     case 'join': {
       const A = _glhAdd(ev);
       if (ev.lookOnly) return;   // (new clothes, nothing else)
+      if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A);
       A.away = false;
       _glhSnapshotTake();
       if (!ev.again) setTimeout(() => _gllEmote(A, 'wave'), 400);
       _glhSendSnap(ev.f);
-      if (typeof _gfs !== 'undefined') _gfs.dirty = true;   // (the fish in the water, at once)
+      if (typeof _gfs !== 'undefined') { _gfs.dirty = true; _gfs.forceTell = true; }   // the new person needs the list even when nothing in it changed
       if (typeof _gllRoamTell === 'function') _gllRoamTell(ev.f);
       if (typeof eeTell === 'function') eeTell(ev.f);
       if (typeof gardenRoomTell === 'function') gardenRoomTell(ev.f);
@@ -222,20 +239,21 @@ function _glhByTable() {
   const g = _gdG(), m = gardenModel(), names = [], idx = new Map(), rows = [];
   const add = (kind, x, y, fid) => { if (!fid) return; let i = idx.get(fid); if (i == null) { if (names.length >= 16) return; i = names.length; names.push(_glhByName(fid)); idx.set(fid, i); } rows.push([kind, x, y, i]); };
   for (const p of m.plants) { const r = g.plants[p.uid]; if (r && r.by) add('p', p.x, p.y, r.by); }
-  for (const d of m.decor) { const r = g.decor[d.uid]; if (r && r.by) add('d', d.x, d.y, r.by); }
-  return { n: names, r: rows };
+  for (const d of m.decor) { const r = g.decor[d.uid]; if (r && r.by) add(d.def.layer === 'ground' ? 'g' : 'd', d.x, d.y, r.by); }
+  return { v: 2, n: names, r: rows };
 }
 function _glhSendSnap(fid) {
   const s = gardenSnapshot(); if (!s) return;
+  const ac = _glhAmbientClock(); if (ac) s.ac = ac;
   _glhDiff();   // what has changed goes to everyone first: the line below counts it as told, and everyone else must not miss it
   _glhRemember(gardenModel());
-  _glhSend(fid, 'snap', { g: s, by: _glhByTable() });
+  return _glhSend(fid, 'snap', { g: s, by: _glhByTable() }).then((r) => { if (r == null && typeof _glySendFailed === 'function') _glySendFailed(); if (r != null && typeof gardenKiteSend === 'function') gardenKiteSend(fid); if (r != null && typeof gardenSoapSend === 'function') gardenSoapSend(fid); if (r != null && typeof gardenLeafBoatSend === 'function') gardenLeafBoatSend(fid); if (r != null && typeof gardenMarbleSend === 'function') gardenMarbleSend(fid); return r; });
 }
 /**
  * Plants and decorations go as changes (gl:d). Everything else a snapshot says (the land, what is built, the design, how buildings are painted, rooms, the lake, wonders, weather, the season) has no change message: when any of it differs from
  * what everyone was last given, everyone gets the whole garden. Looked at every few seconds and only sent on a real change, so it costs next to nothing. The draft in the designer is not in a snapshot: only what is saved.
  */
-function _glhWorldSig(s) { const { v, at, plants, decor, heart, hearts, tz, ...rest } = s; void v; void at; void plants; void decor; void heart; void hearts; void tz; return JSON.stringify(rest); }
+function _glhWorldSig(s) { const { v, at, ac, plants, decor, hearts, ...rest } = s; void v; void at; void ac; void plants; void decor; void hearts; return JSON.stringify(rest); }
 function _glhSnapAll() {
   const s = gardenSnapshot(); if (s) _glh.worldSig = _glhWorldSig(s);
   for (const A of _gll.actors.values()) if (A.f) _glhSendSnap(A.f);
@@ -263,7 +281,7 @@ function _glhDiff() {
   const now = _glhRows(m), ops = [];
   for (const [k, r] of now) {
     const was = _glh.sent.get(k);
-    if (!was || was.id !== r.id || was.by !== r.by) { ops.push(r.o === 'p' ? { o: '+p', id: r.id, x: r.x, y: r.y, s: r.s, v: r.v, f: r.f, ...(r.by ? { by: _glhByName(r.by) } : {}) } : { o: '+d', id: r.id, x: r.x, y: r.y, r: r.r, v: r.v, ...(r.by ? { by: _glhByName(r.by) } : {}) }); continue; }
+    if (!was || was.id !== r.id || was.by !== r.by || r.o === 'p' && was.v !== r.v) { ops.push(r.o === 'p' ? { o: '+p', id: r.id, x: r.x, y: r.y, s: r.s, v: r.v, f: r.f, ...(r.by ? { by: _glhByName(r.by) } : {}) } : { o: '+d', id: r.id, x: r.x, y: r.y, r: r.r, v: r.v, ...(r.by ? { by: _glhByName(r.by) } : {}) }); continue; }
     if (r.o === 'p' && (was.s !== r.s || was.f !== r.f)) ops.push({ o: '~p', x: r.x, y: r.y, s: r.s, f: r.f });
     if (r.o === 'd' && (was.r !== r.r || was.v !== r.v)) ops.push({ o: '~d', id: r.id, x: r.x, y: r.y, r: r.r, v: r.v });
   }
@@ -306,7 +324,7 @@ function _glhIntent(ev) {
   _glhLine(key, e);
   _glhPrune();
   _gdSave();
-  if (!ev.away) _glhSend('all', 'res', _glhResOf(ev, e));
+  if (!ev.away) { const result = _glhResOf(ev, e); _glhSend('all', 'res', result); _gllToolFeedback(result, false); }
   const A = _gll.actors.get(ev.w);
   if (A) _gllPose(A, _GL_POSE[ev.t] || 'pick', 760);
   if (ev.x != null && _GL_EMOJI[ev.t]) _gllFloat(_gw.svg, ev.x, ev.y, _GL_EMOJI[ev.t], A ? A.n : '');
@@ -341,11 +359,16 @@ function _glhQueueRun(d) {
     done.push(q.f + '.' + q.i);
   }
   _glhFlushPosts(); _glhDiffSoon(60); _glhHud();
-  _glhDiaryGroups().filter(x => x.e.away === pass).slice(0, 3).forEach((G, i) => setTimeout(() => gardenMessage(_glhDiaryLine(G.e, G.keys.length)), i * 4000));   // (one line at a time: each has its moment)
+  // The durable diary already contains these applied changes. Keep a few
+  // useful summaries in Recent while viewing home, without a popup schedule
+  // that could run over a later activity or a different garden.
+  if (typeof _gw !== 'undefined' && _gw.on && _gdOnPage() && !(typeof gardenVisitOn === 'function' && gardenVisitOn())) {
+    for (const G of _glhDiaryGroups().filter(x => x.e.away === pass).slice(0, 3)) gardenMessage(_glhDiaryLine(G.e, G.keys.length), { ambient: true, source: 'return-diary:' + G.keys[0], icon: 'book-open' });
+  }
   _gllApi('/api/garden-live/queued', { ids: done }).then(() => gardenLiveLoad(true)).then(_glhHud).catch(() => {}).finally(() => { _glh.queueBusy = false; });
 }
 function _glhResOf(ev, e) {
-  return { i: ev.i, w: ev.w, t: e.t, ok: true, ...(e.p ? { p: e.p } : {}), ...(e.x != null ? { x: e.x, y: e.y } : {}), ...(e.gi ? { u: e.gi } : {}), ...(e.n ? { n: e.n } : {}), ...(e.bug ? { item: e.bug, u: ev.u } : {}), ...(e.dropU ? { u: e.dropU, k: e.k, item: e.item, to: e.to } : {}) };
+  return { i: ev.i, w: ev.w, t: e.t, ok: true, ...(e.p ? { p: e.p } : {}), ...(e.x != null ? { x: e.x, y: e.y } : {}), ...(e.tx != null ? { tx: e.tx, ty: e.ty } : {}), ...(e.gi ? { u: e.gi } : {}), ...(e.n ? { n: e.n } : {}), ...(e.t === 'harvest' && e.gold === true ? { gold: true } : {}), ...(e.bug ? { item: e.bug, u: ev.u } : {}), ...(e.dropU ? { u: e.dropU, k: e.k, item: e.item, to: e.to } : {}) };
 }
 /** A new line in the diary: the lines before it about the same record can no longer be undone, nor your own Undo steps on it, and Put my garden back knows what it did. */
 function _glhLine(key, e) {
@@ -408,7 +431,7 @@ function _glhApply(ev, key) {
       const r = _gdHarvestOne(m, p, { visitor: true });
       if (g.led[lk]) g.led[lk].x = 0;   // the host earns no XP for a friend's picking
       // a harvest of their own plant has been posted: it is theirs, there is no taking it back
-      return put(r.mark, { u: p.uid, n: r.n, noUndo: !!mine });
+      return put(r.mark, { u: p.uid, n: r.n, noUndo: !!mine, ...(r.gold ? { gold: true } : {}) });
     }
     case 'dig': {
       const p = hit.p; if (p.def.special === 'heart') return 'heart';
@@ -437,7 +460,7 @@ function _glhApply(ev, key) {
       const whyNot = _gdPlaceOk(m, it.def, ev.tx, ev.ty, kind, it.uid); if (whyNot) return whyNot;
       const mark = _gdMark([[hit.p ? 'plants' : 'decor', it.uid]]);
       rec.x = ev.tx; rec.y = ev.ty;
-      return put(mark, { u: it.uid });
+      return put(mark, { u: it.uid, tx: ev.tx, ty: ev.ty });
     }
     case 'take': {
       const d = hit.d, mark = _gdMark([['decor', d.uid]]);
@@ -648,7 +671,8 @@ function _glhHoverBind() {
   _glh.hoverBound = box;
   box.addEventListener('pointermove', (ev) => {
     if (_gll.role !== 'host') return;
-    const n = ev.target && ev.target.closest ? ev.target.closest('.gd-it[data-uid]') : null;
+    const visual = typeof gardenWorldVisualPick === 'function' ? gardenWorldVisualPick(ev) : null;
+    const n = visual && visual.node ? visual.node.closest('.gd-it[data-uid]') : ev.target && ev.target.closest ? ev.target.closest('.gd-it[data-uid]') : null;
     if (!n) { _gllTip(box, '', ev); return; }
     const g = _gdG(), uid = n.getAttribute('data-uid'), plant = n.classList.contains('gd-plant'), r = plant ? g.plants[uid] : g.decor[uid];
     _gllTip(box, r && r.by ? _gllByLine(plant ? 'p' : 'd', _glhByName(r.by)) : '', ev);
@@ -799,6 +823,30 @@ function _glhPanel(el, v) {
   _glh.seenAt = _gdNow(); try { localStorage.setItem(_GLH_SEEN_KEY, String(_glh.seenAt)); } catch (e) { /* this page only */ }
   el.scrollTop = keepY;
 }
+/** One bounded presentation packet per visitor. The canonical action is
+ * complete; nearest-cell selection only limits what that screen animates. */
+function _glhBulkFeedback(detail) {
+  const rows = [], harvest = detail.kind === 'harvest', kind = harvest ? 'harvest' : 'water';
+  for (const cell of detail.cells) {
+    if (!Array.isArray(cell) || !Number.isInteger(cell[0]) || !Number.isInteger(cell[1]) || cell[0] < 0 || cell[0] > 63 || cell[1] < 0 || cell[1] > 63) continue;
+    const def = harvest && gardenPlant(cell[3]); if (harvest && !def) continue;
+    rows.push({ x: cell[0], y: cell[1], fp: Math.max(1, Math.min(4, Math.round(Number(cell[2]) || def && def.fp || 1))), id: def && def.id, gold: harvest && cell[4] === true });
+  }
+  if (!rows.length) return;
+  const operation = _gllNewId(), sent = new Set();
+  for (const A of _gll.actors.values()) {
+    if (!A.f || sent.has(A.f)) continue; sent.add(A.f);
+    const chosen = [], x = Number(A.x) || 0, y = Number(A.y) || 0;
+    for (const row of rows) {
+      const dx = row.x + row.fp / 2 - x, dy = row.y + row.fp - y, distance = dx * dx + dy * dy * 2.25;
+      let at = chosen.length; while (at > 0 && distance < chosen[at - 1].distance) at--;
+      if (at >= _GLL_TOOL_CELLS) continue;
+      chosen.splice(at, 0, { row, distance }); if (chosen.length > _GLL_TOOL_CELLS) chosen.pop();
+    }
+    const anchor = chosen[0].row;
+    _glhSend(A.f, 'res', { i: operation, w: 0, t: kind, ok: true, ...(anchor.id ? { p: anchor.id } : {}), x: anchor.x, y: anchor.y, ...(anchor.gold ? { gold: true } : {}), cells: chosen.map(({ row }) => [row.x, row.y, row.fp, row.gold ? 1 : 0]) });
+  }
+}
 /* your own garden actions, for who is here: the can tips, the plant appears */
 document.addEventListener('opendash:garden', (ev) => {
   if (!_glh.on || !_glhAnyone()) return;
@@ -806,9 +854,11 @@ document.addEventListener('opendash:garden', (ev) => {
   // land, something built, a find: everyone here sees it now, not when they next come (after the action has finished saving)
   if (d && (d.kind === 'land' || d.kind === 'landshow')) { setTimeout(() => { if (_glh.on) _glhSnapAll(); }, 0); return; }
   if (d && d.what && d.x != null) { gardenLiveFx('use', d.what === 'wish' ? 'wish' : 'collect', { x: Math.floor(d.x), y: Math.floor(d.y) }); return; }   // (a wish in the well, the honey: they see you do it)
+  if (d && (d.kind === 'harvest' || d.kind === 'water') && Array.isArray(d.cells)) { _glhBulkFeedback(d); return; }
   if (!d || d.x == null) return;
-  const t = { water: 'water', plant: 'plant', harvest: 'harvest', prune: 'weed', feed: 'water' }[d.kind]; if (!t) return;
-  _glhSend('all', 'res', { w: 0, t, ok: true, x: Math.floor(d.x), y: Math.floor(d.y) });
+  const t = { water: 'water', plant: 'plant', harvest: 'harvest', prune: 'weed', feed: 'feed', move: 'move', dig: 'dig', take: 'take', decor: 'place' }[d.kind]; if (!t) return;
+  const p = d.id || (d.uid && _gdG().plants[d.uid] || {}).p;
+  _glhSend('all', 'res', { i: _gllNewId(), w: 0, t, ok: true, x: Math.floor(d.x), y: Math.floor(d.y), ...(p ? { p } : {}), ...(t === 'harvest' && d.gold === true ? { gold: true } : {}), ...(Number.isFinite(d.tx) && Number.isFinite(d.ty) ? { tx: Math.floor(d.tx), ty: Math.floor(d.ty) } : {}) });
 });
 
 /* 2.28: the same for the host: the server tells everyone who is here as soon as your look changes (it hears it with the next "here") */

@@ -1,0 +1,20 @@
+/* Deliberate catalogue discovery, kept beside the existing Shop controls. */
+.gd-shop-discovery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 8px 0;
+}
+.gd-shop-discovery > [data-shop-reveal] { flex: none; }
+.gd-shop-discovery > [data-shop-reveal][aria-pressed="true"] {
+  background: var(--surface-2, var(--surface));
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.gd-shop-discovery-note {
+  flex: 1 1 220px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}

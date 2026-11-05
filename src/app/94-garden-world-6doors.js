@@ -12,7 +12,7 @@ const GRM_SYM = Object.freeze({
   den() { const A = _GD(); return A.r(-18, -22, 36, 22, '#5a4026', null, 2) + A.s('M-6 -22V0M6 -22V0', '#2a1c0e', 2) + `<circle cx="0" cy="-11" r="6.5" fill="none" stroke="#9a9aa8" stroke-width="2.6"/>` + A.r(-20, -38, 12, 16, '#a8a498', null, 3) + `<text x="-14" y="-26" text-anchor="middle" font-size="9" font-weight="800" fill="#3a3a32">0</text>`; },
   boatloft() { const A = _GD(); return A.r(-16, -40, 32, 40, '#3a4a54', null, 2) + A.p('M-16 -40L0 -48L16 -40Z', '#27323a') + A.r(-11, -34, 22, 34, '#20282e') + A.p('M-10 -24H10Q7 -13 0 -11Q-7 -13 -10 -24Z', '#b8623a') + A.s('M-6 -34V-24M6 -34V-24', '#c8b488', 1); },
   lampcup() { const A = _GD(); return A.r(-7, -46, 14, 46, '#2a3040') + A.r(-5, -16, 10, 14, '#10121e', null, 1) + A.c(3, -9, 1.2, '#d8b24a') + A.p('M-9 -46H9L6 -56H-6Z', '#3a4254') + `<path class="grm-glowp" d="M0 -48Q-4 -52 0 -56Q4 -52 0 -48Z" fill="#ffc15a"/>` + A.c(0, -52, 9, '#ffc15a', 0.3); },
-  nowhere() { const A = _GD(); return A.r(-2, -44, 4, 44, '#7a6a58') + A.p('M0 -42H22L28 -36L22 -30H0Z', '#efe6cc') + A.e(-4, -6, 22, 6, '#fff', 0.8) + A.e(10, -14, 18, 5, '#fff', 0.6) + A.e(-10, -22, 16, 4, '#fff', 0.5); },
+  nowhere() { const A = _GD(); return A.r(-2, -44, 4, 44, '#7a6a58') + A.p('M0 -42H22L28 -36L22 -30H0Z', '#efe6cc') + A.s('M-25 -6Q-13 -11 -1 -7T24 -8', '#eef4ec', 2.4, 0.28) + A.s('M-7 -14Q4 -18 15 -14T28 -15', '#eef4ec', 1.8, 0.24) + A.s('M-25 -22Q-14 -26 -3 -22T8 -23', '#eef4ec', 1.6, 0.2); },
   owl() { const A = _GD(); return A.e(0, -22, 18, 24, '#3a2412') + A.e(0, -22, 14, 20, '#140a04') + `<g class="grm-glowp">${A.c(-5, -26, 3.6, '#ffe28a')}${A.c(5, -26, 3.6, '#ffe28a')}</g>` + A.c(-5, -26, 1.4, '#140a04') + A.c(5, -26, 1.4, '#140a04') + A.s('M-18 -8q-5 4 -8 8M18 -8q5 4 8 8', '#3a2412', 4); },
   grotto() { const A = _GD(); return A.p('M-24 0Q-27 -38 0 -44Q27 -38 24 0Z', '#3a4a40') + A.p('M-16 0Q-18 -28 0 -33Q18 -28 16 0Z', '#061410') + A.e(0, -3, 12, 3, '#62e0c0', 0.8) + A.e(0, -16, 12, 14, '#62e0c0', 0.22) + `<circle class="grm-glowp" cx="-4" cy="-20" r="1.6" fill="#a0ffe0"/><circle class="grm-glowp" cx="5" cy="-24" r="1.3" fill="#a0ffe0" style="animation-delay:-.8s"/>` + A.e(-16, -32, 12, 6, '#5a9a4e') + A.e(14, -36, 13, 6, '#6aaa56') + A.e(0, -42, 12, 5, '#4f8a48') + A.e(-22, -14, 6, 8, '#5a9a4e') + A.e(22, -18, 6, 9, '#4f8a48'); },
   falls() { const A = _GD(); return A.r(-20, -46, 40, 46, '#a8dcf0', 0.85, 4) + A.s('M-14 -46V0M-6 -46V0M6 -46V0M14 -46V0', '#f4fdff', 3, 0.85) + A.p('M-7 0V-22Q0 -30 7 -22V0Z', '#10181c') + A.e(0, -12, 3, 5, '#ffd27a'); },
@@ -142,9 +142,10 @@ wdMod({
     this.on = on; if (_gw.box) _gw.box.addEventListener('pointermove', on, { passive: true });
   },
   tick() {
-    // going up to one: said once, in words that fade. In a boat, on the pier, on the shore.
+    // Passing scenery is kept in Recent; the pointer tooltip remains available
+    // when you choose to look, without narrating over another activity.
     if (_grm.on) return;
-    for (const s of GARDEN_SPOTS) if (!_gwt.said.has(s.id) && Math.hypot(_gw.px - s.x, (_gw.py - s.y) * 1.3) <= s.r + 1.6) { _gwt.said.add(s.id); wdWhisper(`${s.name}. ${s.says}`, 7000); return; }
+    for (const s of GARDEN_SPOTS) if (!_gwt.said.has(s.id) && Math.hypot(_gw.px - s.x, (_gw.py - s.y) * 1.3) <= s.r + 1.6) { _gwt.said.add(s.id); gardenMessage(`${s.name}. ${s.says}`, { ambient: true, source: 'landmark:' + s.id, icon: 'map-pin' }); return; }
   },
   end() { if (_gw.box && this.on) _gw.box.removeEventListener('pointermove', this.on); if (_gwt.el) { _gwt.el.remove(); _gwt.el = null; } },
 });

@@ -10,6 +10,498 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.63.30] - 2026-11-05
+
+### Changed
+
+- The garden and indoor rooms now use a native Phaser scene, with sharper zooming, retained artwork and disposable graphics caches. Existing gardens and the Classic graphics choice stay available.
+- Curved shores, water depth, rod and pet reflections, shadows, warm night windows and weather share the garden's existing world and clock. Clouds, small weather particles and short action bursts reuse native images.
+- The default garden is calmer: optional world activities stay packed away until chosen, unlock gradually, and appear one at a time. Passive discoveries go to Recent while requested actions keep their feedback.
+- Companion movement and environmental routines have species-specific animation. Shared tools, creature poses, activities and saved progress continue through the existing multiplayer authority.
+- Bag shortcuts, zoom controls, fishing presentation, photo capture, room controls and scene cleanup have been repaired across the overhaul. This release includes the local garden updates since v2.60.1; measured performance still depends on the device and scene.
+
+## [2.63.29] - 2026-11-05
+
+### Changed
+
+- Fireflies, pollen and drifting autumn leaves reuse native image glyphs, preserving their existing motion, colors and separate halos.
+
+## [2.63.28] - 2026-11-05
+
+### Changed
+
+- Drifting clouds reuse native image lobes instead of replaying vector shapes. Their existing outline, separate overlap opacity and shared motion stay intact.
+
+## [2.63.27] - 2026-11-05
+
+### Changed
+
+- Windmill, shepherd hut and old mill panes turn warm at night without restarting their moving parts. Reflection captures follow the pane material change.
+
+## [2.63.26] - 2026-11-05
+
+### Changed
+
+- Village windows use warm night materials, with a discrete cache key so the pane colors and their reflections refresh together.
+- Existing outdoor lamps retain their warmth above the cool night grade. The two village window lights cover the window span; no light sources were added.
+
+## [2.63.25] - 2026-11-05
+
+### Changed
+
+- The garden camera skips offscreen vector drawings beyond a small motion guard while keeping those objects ready for caches and reflections.
+- Static seasonal ground patches use the native graphics cache. Falling petals and ice remain separate live artwork.
+
+## [2.63.24] - 2026-11-05
+
+### Changed
+
+- Repeated water-reflection clipping reuses exact shoreline queries through a bounded cache. Moving reflections and geometry changes keep their existing clipping behavior.
+- Graphics-cache captures request the engine's final texture dimensions initially, avoiding an extra resize for odd sizes.
+- The lake page groups undiscovered fish into one summary and keeps event titles readable beside their descriptions.
+
+## [2.63.23] - 2026-11-05
+
+### Fixed
+
+- Opening directly into the garden loads missing local weather once the server becomes available, using the existing slow light check.
+- A companion's old walking prompt retires when its observation starts or another activity takes over.
+
+### Changed
+
+- Automatic lake-condition notes enter Recent instead of covering the garden. The lake page still describes the current conditions and their fishing effects.
+
+## [2.63.22] - 2026-11-05
+
+### Fixed
+
+- Number shortcuts select tools and owned seeds while the Bag has focus. Q opens Moves without opening the dashboard's task form.
+- Switching tools during a Bag drag cancels the pending placement. Moves takes keyboard focus, closes with Escape or Q and returns focus to its opener.
+- A companion finishes its pat response before passive roaming can take over. "Show me around" waits through that response or an ordinary stationary settle instead of asking you to repeat the request.
+
+## [2.63.21] - 2026-11-05
+
+### Changed
+
+- A ribbon earned during an on-screen catch joins the existing catch card and Recent receipt, keeping the held fish and its result clear. Standalone ribbons keep their normal presentation.
+- Help uses the same warm cream and brown palette as the garden's other panels.
+
+## [2.63.20] - 2026-11-05
+
+### Fixed
+
+- Personal Goals actions return to your own garden before becoming available during a visit. Shared goals keep the host's context, and personal daily/weekly/coin progress is labelled clearly.
+- An already-open Goals panel updates when a shared goal arrives or its progress changes, preserving local focus and expanded sections.
+
+### Changed
+
+- Automatic fish-feeding announcements go to Recent messages while the feeding event keeps its existing behavior.
+
+## [2.63.19] - 2026-11-05
+
+### Changed
+
+- Goals leads with one useful action. Daily goals, weekly quests and coin details open when requested; Help uses short sections for the task at hand.
+- Garden panels retain the focused action and expanded sections when their contents refresh. An action that is no longer available returns focus to Close.
+- Bag and Menu visibility no longer invalidates the native world's presentation. Real tool and garden changes still update the scene.
+
+### Fixed
+
+- Cancelling an inventory drag clears the pending release, so releasing afterward cannot place or spend the item.
+- Dropping over the Bag or another panel leaves the garden behind it unchanged.
+
+## [2.63.18] - 2026-11-05
+
+### Changed
+
+- The Shop starts with available stock and things already owned. Future items can be revealed deliberately or found through search, keeping their existing unlock requirements.
+- The garden Bag has named seed and decoration sections, visible item names and counts, a close button and a Shop link. Empty bags use a plain explanation instead of a bouncing arrow.
+- Automatic visit receipts, local wildlife notes and summaries of friends' work go to Recent messages without a delayed popup sequence. Rewards and the garden diary remain available.
+- Play marks the activity already set out, so returning to it is distinct from choosing another setup.
+
+### Fixed
+
+- The walking tip stays out of the way while the Bag is open, then returns if it is still needed.
+- Escape and B close the Bag while one of its controls has keyboard focus.
+
+## [2.63.17] - 2026-11-05
+
+### Fixed
+
+- Shared watering-goal cards yield to a chosen garden activity or photo view, even when the watering can remains selected. Normal watering progress and participant rewards are unchanged.
+
+## [2.63.16] - 2026-11-05
+
+### Changed
+
+- The garden starts with its optional workshops packed away. Choose one through Play, set it out when you want it, and put it away afterward; friends see the host's chosen activity. New activities open gradually through existing garden levels, and saved discoveries remain available.
+- Play opens one group at a time. Browsing it no longer adds unsolicited cooking-pot and mill props to the bag.
+- Garden status, the map and extra view controls open on demand. The grouped menu keeps tools and social actions reachable with fewer permanent overlays and badges.
+- Closed areas keep clear entrance boundaries without repeating price and level placards across the whole map. Prices and requirements remain available by inspecting land or visiting the land office.
+- Passive sightings, scenery notes and shared-goal suggestions stay in Recent messages. Explicit actions, errors, rewards and fishing feedback remain visible; shared goals appear when relevant and can always be inspected through Goals.
+
+### Fixed
+
+- The first walking hint dismisses after actual movement in the native engine, including pointer, keyboard and touch movement.
+- Menu arrow navigation and panel Escape take priority over native movement input.
+
+## [2.63.15] - 2026-11-05
+
+### Added
+
+- A marble-run workshop with visible fork mechanisms, rolling routes, branch bells and a finishing cup. Players can operate separate handles together or reconfigure the course alone.
+- A courtyard of borrowed shadows: move a lantern and physical cutouts to fit a projected heron, moon and reeds scene, then restore an animated shadow theatre.
+- Companion-led discoveries: ask a pet to show you a real nearby interest, follow its route and look-back pauses, and watch its species-specific observation at the destination.
+
+### Fixed
+
+- World interaction labels follow a retained handle's state and disappear when it is removed or leaves the view, even when the pointer stays still.
+- Wonder discoveries and courtyard arrangements use the normal gameplay save path, so partial progress does not wait for the longer UI-only save timer.
+- Activity framing leaves room for the courtyard and workshop control panels, keeping their mechanisms visible above the controls.
+- Ground pets keep their footing while stepping off seats, avoiding a drop to ground height before they clear the furniture.
+
+### Changed
+
+- Loading the bundled game engine copies decoded bytes directly, avoiding per-character conversion callbacks while preserving the same offline bundle and script policy.
+
+## [2.63.14] - 2026-11-05
+
+### Added
+
+- A Leaf-boat Yard with three hull styles, a reed-gate course, rudder and sail controls, shoreline sliding, and shared boats with water reflections and wakes.
+- Giant soap films: stretch two wands with a friend, stand steady, and agree to release a wind-carried bubble. A tray anchor supports solo play.
+- Species-specific puddle play for companions and the owner's roaming pack: cats stalk and tap, dogs loop and splash, ducks dabble and preen, and rabbits approach cautiously before hopping. Pet interactions offer an optional invitation alongside ordinary pats.
+
+### Changed
+
+- Native activity framing keeps the player together with the kite, soap film or their leaf boat and course marker. Wheel and HUD controls adjust a temporary lens, restoring the saved walking zoom on exit; fishing and the garden designer retain priority.
+- Camera mode and zoom-button limits reflect the active fishing or activity lens. Accepted toy handoffs release the previous held activity, and acknowledged toy state stays in the multiplayer queue.
+
+### Fixed
+
+- A host's roaming pets wait for the visitor's selected scene before creating their graphics. Early arrivals and scene remounts keep their received positions without trying to insert an SVG pet into the native scene.
+- Automatic pet greetings and wildlife notices wait while an invited puddle routine or received endpoint cue owns a pet, so a nearby greeting cannot replace its approach or splash.
+- Shared pet greetings wait for walks to finish, and a cat's final hop requires a seat it can actually use.
+
+## [2.63.13] - 2026-11-05
+
+### Added
+
+- A Listening Walk across three carved village posts. Follow numbered visual and musical clues, play the phrase at the copper-and-wood harp, and restore a permanent instrument for the owner and visitors to enjoy.
+- A shared wind kite on the west shore. Take a line, walk and spread out with friends to lift its articulated fish sail; accepted grabs and releases use a brief free-hand gesture. It also works alone with the live gate closed.
+- Rain refuges for small birds and mammals, using reachable mature tree canopies and roots with species-specific resting clips. Established planted habitat now gives its advertised wildlife a bounded attraction bonus in the ordinary Life director.
+
+### Fixed
+
+- The ready native garden stops drawing while the initial opening covers it, while scene updates and multiplayer rules continue. Drawing resumes as the splash fades or is skipped, after the same complete graphics preparation.
+- Long opening captions use their own line spacing so wrapped place descriptions remain readable.
+
+## [2.63.12] - 2026-11-05
+
+### Changed
+
+- The local server reuses its prepared app page until the build or public configuration changes. The first gzip response streams while it compresses; later page loads reuse the completed encoding. The page keeps its offline copy, exact script policy and fresh configuration; API and event-stream responses keep their existing delivery.
+- Native live visits follow the host's environmental animation phase for wind, clouds, lamp flicker and precipitation. Local freeze, hush and reduced-motion settings hold that screen's presentation, which eases back into alignment after resuming. Host-local holds leave other players' weather running.
+
+## [2.63.11] - 2026-11-05
+
+### Fixed
+
+- Native pet Still poses keep their remaining lifetime during a full freeze on their own scene. Hush and reduced motion retain normal pose expiry; Classic keeps its existing timer behaviour.
+- Delayed book and discovery messages stay with the room visit that started them. Quiz buttons from a previous visit cannot answer a reopened room's question or apply its rewards.
+
+### Changed
+
+- Native garden startup uses four-texture batches and prepares every reachable shader variant before play. Loading can prepare up to six cache jobs per frame under the existing time check, with the same readiness checks, image quality, memory limits and normal-play capture allowance.
+
+## [2.63.10] - 2026-11-04
+
+### Fixed
+
+- Water all and Harvest all show accepted feedback to live visitors, including golden harvests. Repeating a completed bulk action stays quiet.
+- Native pet clip cues and completion follow the articulated animation's time. A world freeze holds paused clips and their pending cues until the animation resumes.
+- Repeated updates for the same peer pet follow destination preserve its active trick and retained body.
+- Room tunes give the latest note its own feedback window on the engine clock. Rapid notes no longer compete with older clear timers, and a native world freeze holds the active response.
+
+### Changed
+
+- Bulk garden actions animate up to 16 nearby visible plants per screen. Every accepted plant still changes, with the same rewards, watering capacity and Undo; live bulk feedback uses one compact message per visitor.
+- Boat-loft hulls and bell ropes keep their authored strike poses, with a short settling motion on retained instrument wrappers and quiet feedback under reduced motion.
+- Water clipping reuses empty and single-interval results directly, avoiding repeated sorting and copying.
+
+## [2.63.9] - 2026-11-04
+
+### Fixed
+
+- Native tool feedback follows accepted host and visitor actions: feeding uses feed particles, pruning uses trim particles, and moves show the source lift and destination contact without repeating the mover's lift. Shared harvest feedback also preserves an accepted golden outcome.
+- Native decoration contact effects follow accepted garden state. Pending placement, move, turn and style previews stay quiet until accepted; rejected previews and initial snapshots do not play success effects.
+- Icehouse arrows stop accepting clicks during a slide and return at the landed block. Reduced motion snaps the visible block to its destination while preserving puzzle timing, move counts and rewards.
+- Native gardens check for fresh weather and time changes while idle, so provider updates can reach the scene without waiting for another garden action. Visits retain host weather and indoor precipitation stays suppressed.
+
+### Changed
+
+- Native tools use distinct droplets, feed grains, leaves, soil and sparkles, with separate turn and style marks. Empty feedback layers skip repeated scene lookups and Graphics clears once their effects finish.
+- Pet ears and tails respond to the same outdoor wind and gusts as scenery. Swimming pets gain restrained buoyancy and roll, using the ambient clock while preserving their waterline, authored clips, pause and reduced-motion settings.
+
+## [2.63.8] - 2026-11-04
+
+### Fixed
+
+- Swimming frogs and mammals keep their water poses while resting or greeting. Creature click targets follow the visible pose, including sinking and banking; hidden burrowers cannot be clicked.
+- Wildlife habitat checks follow the continuous lake, pond and pool shorelines used by feet and floats, while retaining locked-land restrictions.
+- Startled frogs can leave a lily pad or raised perch for nearby water, keeping their departure height through the jump before entering the water.
+- Native water includes host and visitor wildlife reflections, with small wakes matched to swimming creatures and quieter ripples while they rest.
+- Native duck footprints use a smaller rounded heel and three-toe web, replacing broad chevrons while keeping their actual foot positions and fading trails.
+
+### Changed
+
+- Live creature updates can include the host's banking, burrowing, raised-perch, visibility and depth-order state. These optional fields retain older-peer defaults and leave host authority, message cadence and protocol version unchanged.
+
+## [2.63.7] - 2026-11-04
+
+### Fixed
+
+- Native creature clip and medium changes refresh their animation styles, including selector-driven legs, wings and water poses.
+- Starting child motion invalidates covering native body captures and rebuilds their static partitions. Moving joints and animated paint opacity remain live while bugs and creatures use the existing cache allowance.
+- Contextual Hand clicks can reach an exact exposed bug in front of a building or through its faded facade. Opaque covering props retain their interaction priority.
+- Visitor creatures participate in the current world's numeric picking with the same vertical reach as host creatures; detached, culled and hidden sprites are excluded. Overlapping creatures and door proxies resolve by proximity to the visible body rather than registration order.
+- Temporary visitor creature reactions restore the latest host clip when they finish, instead of forcing a resting pose.
+- Unbuilt construction sites leave their empty future footprints available for ground picking. Their actual price markers remain interactive.
+
+### Changed
+
+- Unchanged physical collision inputs reuse their prepared grid before scanning cells and solid boxes; detailed comparisons remain available when the preflight changes.
+- Native Life bodies compile their initial class, medium, clip and animation delay in their final hierarchy. Native CSS matching uses bounded caches keyed by actual selector dependencies and sibling positions.
+- Live creature rows can include the host's ground, air or water medium. The field is optional, with older-peer and missing-field fallbacks; message cadence, protocol version and host authority stay unchanged.
+
+## [2.63.6] - 2026-11-04
+
+### Fixed
+
+- Native plants update their dry or watered pose in place when their botanical artwork is unchanged. Growth, ripeness, weeds, pending state and placement changes still rebuild the affected drawing. Classic rendering keeps its existing artwork.
+- Native gardens skip the old puddle artwork already supplied by the native surface system. Animal discovery trails remain available, with bounds that follow the actual trail and shared static caching.
+
+### Changed
+
+- Native rain and snow reuse Images from one small shared atlas instead of tessellating precipitation Graphics each frame. They keep the shared ambient clock, pause, reduced-motion and room-transition behaviour.
+- Native plant definition IDs and adjacent soil, weed and ripe details stay stable when only thirst changes.
+- Temporary native container poses restore their underlying styles without recompiling descendant artwork or restarting descendant animation phases.
+- Native flower rustles use direct retained plant and effects-layer lookups instead of searching the whole scene tree.
+
+## [2.63.5] - 2026-11-04
+
+### Fixed
+- Native snowfall reads the snow flag independently of rain. Home and visitor gardens agree on snow without treating it as rain for plant watering.
+- Ambient pauses and reduced motion hold wind, cloud drift, precipitation phase and light flicker together. Entering a room clears outdoor weather particles; outdoor wetness remains available when leaving.
+- Precipitation changes retain the existing terrain geometry and caches. Actual ice and shoreline changes still invalidate the ground.
+- Visiting puddles use the host's calendar day, so visitors in another time zone see the same layout.
+- Visible players, pets and creatures keep their shadows when their original artwork is hidden by native GPU caches.
+- Indoor activity props retain their native bodies across cup changes, lamp updates and mill brake hits. Furniture changes no longer replace unrelated activity props, and delayed room dialogue stays with the session that started it.
+- Native ground effects replace the old per-frame weather-footprint sprite rebuilds. Unchanged collision geometry retains prepared shoreline routes across ordinary model refreshes, and native cache visibility checks reuse their matrix/vector scratch storage.
+
+### Changed
+- Puddles have organic contours checked against complete shorelines and occupied ground. Paint, foot contact and ripple clipping share the same outline; unchanged pools survive ordinary model updates and fade as the ground dries.
+- Pouring tips the teapot around its spout and settles it after release. Repeated bellows pumps use a single frame-driven recovery.
+
+## [2.63.4] - 2026-11-04
+
+### Fixed
+- Native Design painting keeps its owned ground/path layer connected, so Undo and Cancel restore what is drawn. Snapping no longer throws, and made objects and building facades can be picked up through the canvas.
+- Native short round-ended strokes render as filled spots rather than thin strips, restoring painted ground patches and their flower details.
+- Design mode owns pointer and wheel input as well as keys. Normal gardening previews and actions stay clear while editing; interrupted drags restore the original item.
+- Hand clicks reach visible decorations through faded building facades, preserving doors and physical footprints.
+- Moving previews preserve plant growth, decoration rotation and style. Visitor placement and movement retain their orientation and attribution while waiting for the host.
+- Garden Undo respects the visit boundary and refuses to overwrite later shared changes or restore an item onto an occupied footprint. Owner edits also protect an item from older visitor diary Undo and Put Back actions.
+
+### Changed
+- Native dragging shows the full item. Carry artwork stays retained between cells, and Design lifts reuse the actual native facade rather than an incomplete copy.
+- Lifting and placing have small ground dust cues; turning and restyling use brief grounded marks on the existing effects clock, with quiet reduced-motion feedback.
+
+## [2.63.3] - 2026-11-04
+
+### Fixed
+- Plant tools and valid seed placement reach canonical beds beneath decorative building overhangs. Hand clicks reach visible plants through faded facades; solid footprints, doors and opaque buildings keep their interaction priority.
+- Native room controls release held actions when focus changes, stop movement while choices are open, and keep held keys from carrying into another room or the outdoor garden. Leaving directly restores the outdoor HUD.
+- Harvest feedback targets a visible basket, bag or menu control, including the compact garden HUD.
+- Authoritative visitor watering produces the same local soil/water feedback on host and guest, without replaying previous waterings or adding rewards. Fresh plant models clear stale thirsty and ripe hover cards.
+- Native Design mode keeps arrow keys for editor panning. Closing the garden also clears its tool-effects pause state and resources before another scene opens.
+
+### Changed
+- Native watering has falling droplets, soil impacts and a fading wet-ground cue. Planting, feeding, growth and harvest use distinct grounded feedback; net swings animate the equipped net through its sweep. Quiet feedback remains available with reduced motion.
+- Waterfall highlights follow the rock channel, accelerate toward the pool and meet connected foam, low wash arcs and drifting spray. Ambient pauses and reduced motion keep a quiet waterfall.
+- Only the foreground tree crowns covering the player soften, keeping the actual character visible without changing trunks, tree depth or physical boundaries.
+
+## [2.63.2] - 2026-11-04
+
+### Fixed
+- Repeated zooms share cache scheduling and keep working captures until replacements are ready. Hidden detail is released before visible artwork; fit-view terrain stays retained, and stale cache jobs are discarded.
+- Photo export uses retained vectors without deleting the normal view's caches, avoiding their rebuild after a snapshot.
+- Fishing companions clear owned routes and watch targets on cancellation or landing. Interrupting tricks retain their pose and completion handler; settled companions show subtle attention locally and from existing multiplayer cast state.
+
+### Changed
+- Ponds and pools have contour-following shallows, broken bank highlights and sparse reeds and pebbles. The details stay in cached terrain and preserve existing water and walking boundaries.
+- Fishing rod, line, skin and float reflections share a continuous water ripple and fade with depth. Reduced motion keeps a quiet mirror, and ambient pauses hold the ripple clock.
+
+## [2.63.1] - 2026-11-04
+
+### Fixed
+- Walking and grounded pets use their continuous foot shape against lake, pond and pool contours. Routes can use the dry part of shoreline cells; movement projects along the bank while retaining obstacles, locked land, piers, ice and island rules.
+- Player and pet reflection captures use the correct draw offset, restoring artwork that was captured outside its texture. Subject captures take priority over background scenery and retain correct visibility through native caches.
+- Native fishing mirrors the visible rod, equipped skin, line and float with retained vector geometry. Body reflections keep their full height and clip to the actual water.
+- Indoor peers display their real fishing rig in the correct native room, allowing the same rig to appear in water reflections.
+- Classic water artwork uses the shared physical contours too, including the active authored renderer and detached snapshots.
+
+### Changed
+- Locked-land mist uses a cached distance field with a broad, drifting edge and wisps. Palette changes reuse an unchanged boundary instead of rebuilding the field. Locked status no longer paints a separate rectangular dark lawn underneath the mist.
+- Your companion can walk beside you to watch the float while you fish, using valid ground or its existing swimming abilities.
+
+## [2.63.0] - 2026-11-04
+
+### Added
+- Animated dark mist follows the exact locked-land boundaries, with prominent district arches and smaller gates along the trails.
+- Pet species use distinct strides, hops, waddles, swimming strokes, wingbeats and idle joints. Seasonal behaviours include shade, warmth, flower visits, puddles and snow exploration.
+- Rain puddles shimmer and react to feet and raindrops. Snow retains directional shoe and species tracks; wet feet leave short trails, autumn steps stir leaves, and people and mammals breathe small winter clouds.
+- Bugs and wildlife receive ground, sun and nearby lamp shadows that follow their altitude and visibility.
+
+### Changed
+- Taller village facades, forest canopies and landmark scenery make the player feel smaller. Windmill sails, waterfall streams, spray, gate leaves and pennants use the shared engine clock.
+- The main lake has an asymmetric curved shoreline shared by its rendering, walking and fishing rules. Existing occupied water footprints retain attached coves without moving saved objects.
+- Fish inspect and bite at their family-specific mouths, then lunge, recoil and struggle around the float. Local, indoor and multiplayer floats follow the same contact motion, with one water reaction per real hit.
+- New effects use retained components, cached geometry and bounded particle pools, and respect the stopped clock and reduced motion.
+
+### Fixed
+- Routine dashboard refreshes retain the visitor's active garden scene and fishing line. A scene reset also tells peers to clear its fishing rig.
+
+## [2.62.5] - 2026-11-04
+
+### Fixed
+- Showing a hidden native group refreshes inherited visibility in its children, restoring fishing floats, bite cues and tackle details.
+- Fishing presentation keeps the rod, line, float and held catch attached to their current positions and clears old effects when a cast ends.
+- Indoor fishing poses distinguish rod-bearing artwork. Blocked room movement stops walking animation, and pets respect stopped-clock effects.
+- Catch sparkles retain their position above the player while their scale animation runs.
+
+### Changed
+- Fish shadows follow their swimming heading with eased turns, independent tail and fin motion, and smoother presentation between simulation updates. Native indoor fish share the animation.
+- Casting, float wakes, line tension and catch presentation have clearer motion cues. Player and pet turns and arrivals settle subtly without rebuilding their artwork.
+- Multiplayer fishing rigs share the float and wake artwork and cast/reel presentation while retaining each player's tackle.
+- Photo frames and held-item presentation follow the native scene clock. Night fireflies have soft glows, autumn leaves flutter, and warm-season daylight has sparse pollen.
+
+## [2.62.4] - 2026-11-04
+
+### Changed
+- Native water clipping prepares the shore's crossing edges once, so reflection strips reuse that structure while the camera moves.
+- Camera movement no longer rebuilds ambient water highlights for every subpixel change.
+- Native artwork compiles and indexes its style selectors once, and single-node lookups stop at their first match.
+
+### Fixed
+- A pet's initial pose is compiled in its actual world hierarchy, avoiding a full geometry refresh on its first return to sitting.
+- Unrelated dashboard refreshes reuse an unchanged native garden presentation instead of repainting its scene and HUD.
+- Small garden sound effects share a context prepared during native loading, avoiding first audio-device creation in the middle of walking. The Sounds preference and browser playback permission still apply.
+
+## [2.62.3] - 2026-11-04
+
+### Changed
+- Native woodland uses fuller asymmetric crowns, quieter gravel and soil edges, and a softer autumn leaf scatter. The land office and crafting bench share the village's timber, plaster and slate materials.
+- The native HUD uses a compact labelled Menu at every screen width, a quieter hotbar and smaller minimap. Plant needs remain visible without bouncing markers.
+- Soft native water-depth and spring cues replace hard-edged spot overlays. Reflections stop refreshing settled, nonanimated sources and release stale captures after leaving water.
+- Loading prepares visible artwork, common current-avatar poses and small whole-map terrain captures before play, with bounded work on the engine clock. First movement and the first map-wide view reuse those captures.
+
+### Fixed
+- Indoor scenery clips to its authored room bounds and uses its own background colour around the edges.
+- Multiplayer visitor bodies reuse recent compiled poses instead of rebuilding the same artwork on direction changes.
+- Pets reuse recent native poses without replacing their authored species root. Returning to a sitting or walking pose keeps its compiled artwork, and completed clips leave no retained animation state.
+
+## [2.62.2] - 2026-11-04
+
+### Added
+- Native water surfaces share wind, daylight and weather with the scene: moving highlights, shoreline detail, rain impacts, swimming wakes and cast/landing splashes.
+- Water reflections use the actual nearby player, pet, held-item and scenery artwork, with fading and distortion clipped to the shore, islands and indoor pools.
+- Players, multiplayer visitors, pets and physical wildlife receive moving sun and lamp shadows. Indoor performers share the same shadow system; existing contact shadows are preserved.
+
+### Changed
+- Cloud shade, wet lighting, ground rain impacts and snow settling respond to the same environment. Frozen lake surfaces retain ice and open fishing holes without liquid ripples.
+- Water and reflections use bounded geometry, culled source captures and the engine clock. Room transitions, reduced motion, effect pausing and photos share their lifecycle.
+
+## [2.62.1] - 2026-11-04
+
+### Changed
+- The native garden uses quieter gravel lanes, planted shorelines, connected woodland canopies and a consistent timber-and-plaster village palette.
+- Daylight preserves the artwork's colours. Soft directional shadows replace long hard slabs; weather stays a restrained size while zooming.
+- Zoom retains covered GPU captures during camera transitions and keeps small terrain captures available when close-view textures are evicted.
+- Texture-batching shaders are prepared during loading, and recent player bodies are reused across direction and pose changes.
+
+### Fixed
+- Compound vector paths preserve holes and shared translucent fills. Gradients interpolate smoothly and use the correct colours, opacity and bounds.
+- The camera clips the outer scene without cutting newly created fish and actors into partial silhouettes. Mist cues use subtle wisps rather than solid white discs.
+- Individual CSS transforms, transform origins, animation selectors and fill-opacity tracks render correctly. Explicit effects use per-property tracks and restore their authored styles when they finish.
+- Pet gradients no longer accumulate into white or drift while the camera moves. Player walking no longer adds the same bounce twice, and indoor fish interpolate their school movement.
+
+## [2.62.0] - 2026-11-04
+
+### Changed
+- Phaser now draws the outdoor game and indoor rooms through native game objects and is the default when no graphics choice has been saved. The hidden SVG display and image-decoding bridge are removed from this path; an explicit Classic choice is preserved in Garden > Graphics.
+- Outdoor terrain and village facades have connected paving, rounded shore and bed edges, material details and woodland frontiers. Saved plants, decorations and custom building appearances are preserved.
+- Movement, fishing, room activities, pets, weather and animation share the engine clock. Wheel, pinch, keyboard and fishing zoom use the same camera and picking projection.
+- Camera culling, terrain chunks and bounded GPU caches reduce repeated drawing. Close zoom prepares higher-resolution captures and raises text resolution, with resident vectors visible during preparation.
+- Daylight, directional and contact shadows, local lamps, clouds, wind, rain, snow and seasonal ambient effects share the scene's environment.
+- Garden photos capture the engine view, refresh culling for the photo frame and restore the live camera without remounting the game.
+
+### Fixed
+- Native room map tiles stay inside their viewports. Indoor controls replace the outdoor HUD, and the den lamp uses a soft engine light.
+- Hold-to-walk, right-click item actions, room pointer movement and held fishing input are connected to native input.
+
+### Current limits
+- Isolated desktop play covers movement, close zoom, gardening, saved catches, indoor puzzle and music controls, photos, pet effects and two-player actions/poses. Mobile performance, arbitrary authored CSS effects and complete remote multiplayer play are not established by this update. Saves and multiplayer authority use the existing formats and protocol.
+
+## [2.61.1] - 2026-11-04
+
+### Changed
+- The garden graphics preview compiles a retained scene graph and updates changed objects. Static geometry and visibility use cached transforms and spatial buckets.
+- Character and pet artwork can use continuous native transform tracks instead of a small sampled animation atlas.
+- Phaser follows the browser's display cadence, with no separate 60 fps limiter or smoothed simulation clock.
+- Artwork styles are indexed once; a bounded local texture cache reuses compiled drawings on later visits.
+- Walking, collisions, the HUD and garden life share cached simulation inputs and avoid unchanged presentation writes. Visiting creatures share the main world clock.
+- Graphics settings identify Phaser explicitly and report whether it is drawing the garden or still preparing.
+- Artwork preparation continues during movement, and the engine can take control while a movement key remains held. Newly visible scenery receives priority over optional preparation.
+
+### Preview limitations
+- SVG artwork still supplies initial textures and gameplay compatibility nodes. This is a staged rendering overhaul, with existing indoor rooms and partial support for uncommon CSS effects.
+- The first visit still prepares artwork. The local texture cache is disposable and fills during idle time.
+
+## [2.61.0] - 2026-11-03
+
+### Added
+- **New garden graphics preview:** choose it in Garden → Menu → Graphics. A locally bundled Phaser renderer draws retained objects through WebGL, with camera-aware picking, bounded texture caching and animation frames. The standard view remains available.
+- **Starting-area redesign preview:** connected stone paving, richer default shop fronts, a waterfall, mist over locked land and clear gate labels. Existing plants, purchases and custom building looks stay in place.
+- Live visitors can see photo poses and the selected held specimen, including its variant. Poses expire after a disconnect and recover for late joiners.
+
+### Changed
+- Cinematic openings compose at most 60 frames per second without slowing their animation. Optional scene preparation yields to active play, and artwork caches survive unrelated app updates.
+- Pending multiplayer visual updates are coalesced without crossing action barriers; unchanged fish and pet state is suppressed while join and reconnect updates are retained.
+- The graphics preview retains common weather, moving decorative parts and pet animation targets; background texture preparation yields during walking.
+- The standard view keeps its normal controls and animation while the graphics preview prepares. The hidden game scene starts drawing only when its visible assets are ready.
+
+### Fixed
+- Live garden visits now propagate plant variants, attribution, heart-tree changes and time-zone changes more reliably. Extended checksums retain compatibility with earlier clients.
+- Snapshot generations cannot mix during reassembly. Host updates remain ordered, and queued visitor actions are guarded against switching gardens or sessions.
+- Scene discovery inspects newly added content instead of repeatedly scanning the entire dashboard.
+- Indoor games reuse geometry and DOM lookups, skip unchanged drawing updates, and keep fishing active while the outdoor renderer rests.
+- Holding Space or E through a fishing strike now continues lifting the reel bar until the key is released.
+- Garden transactions use the short server-save delay while keeping their own undo history separate from dashboard tasks.
+- Opening scenes prepare the actual first-frame artwork and upload it in small batches before drawing it, reducing preparation stalls.
+- The graphics preview avoids full-canvas pixel readback during texture upload, retains usable textures while zooming, and cancels superseded preparation work.
+- Preview mist respects bought plots, gate labels sort with their gates, and replacement buildings fade when the player walks behind them.
+- Photo frames retain their masks, pointer events share a single visual hit lookup, and indoor friends' fishing continues while outdoor graphics rest.
+- Complete friend look updates now clear removed pets and gear.
+- Routine dashboard refreshes retain the home garden stage instead of restarting its renderer and controls.
+- Ground and night artwork remain visible in the preview and captured photos. The native painter and game renderer no longer prepare the same background simultaneously.
+- Interactive sprites retain a sharp resolution across camera changes; background atlas work is isolated from the dashboard's stylesheet and paced between frames.
+
+### Preview limitations
+- The renderer retains a transitional logical SVG display list. Indoor rooms continue using their existing renderer; the outdoor engine sleeps while a room is open.
+- The redesign is staged, starting with the central area. It is not a complete replacement map or a guarantee of frame rate on every computer.
+- First use prepares textures, and newly revealed areas can still hitch while their artwork loads. Arbitrary CSS effects and transitions still have partial parity, and decorative detail has explicit limits.
+
 ## [2.60.1]
 
 ### Fixed

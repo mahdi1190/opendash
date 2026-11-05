@@ -188,9 +188,12 @@ function sceneRendererCreate(canvas, src, o) {
   let S = null;            // the live baked state (bitmaps, draw lists); replaced whole by a re-bake
   let pending = null;      // a re-bake in progress { gen, target }
   let raf = 0, running = false, destroyed = false, t0 = _sccNow(), warming = false, warmed = null, shown = false;
+  const frameInterval = Number.isFinite(o.maxFps) && o.maxFps > 0 ? 1000 / Math.min(240, o.maxFps) : 0;
+  let frameAt = null;
   const prof = {}, drawTimes = [], dynTimes = [], st = { bakeMs: 0, firstBakeMs: 0, bakes: 0, blitPx: 0, animatedDraws: 0 };
   // the last bake's phases (ms of CPU on the main thread; the load profiler, tools/scene-load-profile.mjs, reads them)
   let ph = {}, phNew = { sprites: 0, bytes: 0 };
+  let warmSpriteLog = null, warmFrameProfile = null;
   const phAdd = (k, ms) => { ph[k] = (ph[k] || 0) + ms; };
   let tl0 = 0;
   const tl = (label) => { (ph.tl || (ph.tl = [])).push(label + '@' + Math.round(_sccNow() - tl0)); };
@@ -201,6 +204,19 @@ function sceneRendererCreate(canvas, src, o) {
   let scK = 1, MX = null;
 
   const compile = () => fixed || sceneCompile(data, { season, lod, L });
+  // Incremental pass hooks use the same failure isolation and CPU accounting
+  // as normal passes, while returning their completion state to the scheduler.
+  const passSlice = (env, p, stage, args) => {
+    if (env.broken && env.broken.has(p.id)) return true;
+    const a = _sccNow(); let ready = true;
+    try { ready = p[stage].apply(p, [env].concat(args)) !== false; }
+    catch (e) { if (env.broken) env.broken.add(p.id); if (typeof console !== 'undefined') console.warn('scene pass ' + p.id + ' (' + stage + ') failed:', e && e.message); }
+    if (env.passStats) {
+      const s = env.passStats[p.id] || (env.passStats[p.id] = { bakeMs: 0, frameMs: 0, frames: 0, draws: 0, frame: -1 });
+      s.bakeMs += _sccNow() - a;
+    }
+    return ready;
+  };
   /** Device size of the backing store for a css size (dpr-aware, capped at 2560 x 1440). */
   const deviceSize = (w, h) => {
     let W = Math.max(1, Math.round(w * dpr)), H = Math.max(1, Math.round(h * dpr));
@@ -259,7 +275,11 @@ function sceneRendererCreate(canvas, src, o) {
     }
     const sp = sceneSprites.get(key, () => {
       const ta = _sccNow();
-      try { const r = buildSprite(); if (r && r.c) { phNew.sprites++; phNew.bytes += r.bytes; } return r; } finally { phAdd('spritesMs', _sccNow() - ta); }
+      try { const r = buildSprite(); if (r && r.c) { phNew.sprites++; phNew.bytes += r.bytes; if (warmSpriteLog) warmSpriteLog.push({ object: oid, variant: v, part: which, scale: Math.round(sc * 1000) / 1000, haze }); } return r; }
+      finally {
+        const took = _sccNow() - ta; phAdd('spritesMs', took);
+        if (took > (ph.spriteBuildMaxMs || 0)) { ph.spriteBuildMaxMs = took; ph.spriteBuildMaxObject = oid; ph.spriteBuildMaxPart = which; }
+      }
     });
     function buildSprite() {
       const sh = sceneObjShapes(oid, v, se);
@@ -308,19 +328,29 @@ function sceneRendererCreate(canvas, src, o) {
    * A projected building (V2 13.2, 19): its shapes (scene units) filled straight into the layer bitmap with the item's colour
    * function (haze, lift); after real dusk its glow shapes light by the item's glowOn, else by the window share (7.3).
    */
-  const drawDirect = (gx, TG, it, col, Lx, share) => {
+  const drawDirect = function* (gx, TG, it, col, Lx, share, pause, flushRaster) {
     const dr = it.direct, night = !!(Lx && Lx.windows), plain = x => x;
-    let gi = 0;
+    let gi = 0, n = 0, batchAt = _sccNow();
     for (const sh of dr.shapes || []) {
       gx.setTransform(TG[0], TG[1], TG[2], TG[3], TG[4], TG[5]);
+      let paintShape = sh, paintColour = col;
       if (sh.glow) {
         const on = night && (Array.isArray(dr.glowOn) ? !!dr.glowOn[gi % dr.glowOn.length] : _sccWindowU((it.seed | 0) + '|g|' + gi) < (share == null ? 0.6 : share));
         gi++;
-        if (on) { drawShape(gx, Object.assign({}, sh, { f: (dr.glowCol && dr.glowCol[sh.glow]) || (sh.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }), plain); continue; }
+        if (on) { paintShape = Object.assign({}, sh, { f: (dr.glowCol && dr.glowCol[sh.glow]) || (sh.glow === 'lamp' ? '#ffe2a0' : '#ffd98a'), s: null, op: 1 }); paintColour = plain; }
       }
-      drawShape(gx, sh, col);
+      drawShape(gx, paintShape, paintColour);
+      if (++n % 16 === 0) {
+        // Only the offscreen CPU layer is read. Draining a small shape batch
+        // here avoids collecting an entire facade/backdrop in one later raster.
+        flushRaster(gx);
+        const took = _sccNow() - batchAt;
+        if (took > (ph.directBatchMaxMs || 0)) { ph.directBatchMaxMs = took; ph.directBatchMaxObject = it.o || 'backdrop'; }
+        yield* pause(); batchAt = _sccNow();
+      }
     }
     gx.globalAlpha = 1;
+    yield* pause(gx);
   };
   const drawSprite = (cx, sp, M, alpha) => {
     if (!sp || !sp.c) return false;
@@ -374,12 +404,47 @@ function sceneRendererCreate(canvas, src, o) {
     let tick = _sccNow();
     // 2D canvases record their drawing and rasterise it later (when a bitmap is first drawn from): force that work here, in
     // the bake's own slices (a 1-pixel read), or the first frame after a swap would pay for the whole bake at once
-    const flushCx = (cx) => { try { cx.getImageData(0, 0, 1, 1); } catch (e) { /* nothing pending */ } };
-    let since = 0, phName = 'sky', phT = _sccNow();
-    const phMark = (name) => { const n = _sccNow(); phAdd(phName + 'Ms', n - phT); phName = name; phT = n; };
+    const flushCx = (cx) => {
+      const a = _sccNow();
+      try { cx.getImageData(0, 0, 1, 1); } catch (e) { /* nothing pending */ }
+      const took = _sccNow() - a;
+      if (took > (ph.rasterFlushMaxMs || 0)) { ph.rasterFlushMaxMs = took; ph.rasterFlushMaxPhase = phName; ph.rasterFlushMaxWork = rasterWork; ph.rasterFlushMaxSize = [cx.canvas.width, cx.canvas.height]; }
+    };
+    let phName = 'sky', phT = _sccNow(), rasterWork = 'sky';
+    const phMark = (name) => { const n = _sccNow(); phAdd(phName + 'Ms', n - phT); phName = rasterWork = name; phT = n; };
     const slice = function* (cx) {
-      if (cx && ++since % 8 === 0) flushCx(cx);
-      if (_sccNow() - tick > SCENE_SLICE_MS) { if (cx) flushCx(cx); phAdd(phName + 'Ms', _sccNow() - phT); yield; tick = phT = _sccNow(); }
+      // This is an offscreen CPU layer. Rasterize each independent item or
+      // pass before queueing the next, rather than deferring eight of them to
+      // one native read that the JavaScript scheduler cannot interrupt.
+      if (cx) flushCx(cx);
+      if (_sccNow() - tick > SCENE_SLICE_MS) { phAdd(phName + 'Ms', _sccNow() - phT); yield; tick = phT = _sccNow(); }
+    };
+    // A costly pass can yield between independent drawing operations while
+    // keeping the same scratch and layer canvases. Other layer hooks retain
+    // their normal order and failure isolation.
+    const layerPasses = function* (layer, gx, when) {
+      const stage = 'layer:' + when, list = sceneRenderPasses(stage, C);
+      for (const p of list) {
+        if (env.broken.has(p.id)) continue;
+        rasterWork = stage + ':' + p.id;
+        if (typeof p.layerSteps !== 'function') {
+          env.passes[stage] = [p]; sceneRunPasses(env, stage, [layer, gx, when]);
+          yield* slice(gx);
+          continue;
+        }
+        yield* slice(gx);
+        let it = null, done = false;
+        while (!done) {
+          const a = _sccNow();
+          try { if (!it) it = p.layerSteps(env, layer, gx, when); done = it.next().done; }
+          catch (e) { env.broken.add(p.id); done = true; if (typeof console !== 'undefined') console.warn('scene pass ' + p.id + ' (' + stage + ') failed:', e && e.message); }
+          const ps = env.passStats[p.id] || (env.passStats[p.id] = { bakeMs: 0, frameMs: 0, frames: 0, draws: 0, frame: -1 });
+          const took = _sccNow() - a; ps.bakeMs += took;
+          if (took > (ph.layerStepMaxMs || 0)) { ph.layerStepMaxMs = took; ph.layerStepMaxPass = p.id; }
+          if (!done) { phAdd(phName + 'Ms', _sccNow() - phT); yield; tick = phT = _sccNow(); }
+        }
+      }
+      env.passes[stage] = list;
     };
 
     // 1. the sky bitmap: gradient, the sun's glow and disc, the moon in its real phase (stars and clouds move: per frame)
@@ -398,6 +463,7 @@ function sceneRendererCreate(canvas, src, o) {
     phMark('clouds');
     let ci = 0;
     for (const p of sceneCloudPlan(C, Lx)) {
+      rasterWork = 'cloud:' + ci;
       const kept = R ? R.get('cl' + ci) : null;
       ci++;
       const c = kept || _sccCloudSprite(p, vs);
@@ -455,9 +521,10 @@ function sceneRendererCreate(canvas, src, o) {
         const haze = hz(l), col = colourFn(Lx, haze, null);
         if (gx) {
           // ground
-          for (const gd of C.ground) if (gd.layer === l) { gx.setTransform(...TG); gx.globalAlpha = 1; gx.fillStyle = paint(gx, gd.fill, col); gx.fill(_sccPath(gd.d)); }
-          if (bd1 && bdL === l) for (const it of bd1.items) drawDirect(gx, TG, it, col, Lx, null);
-          if (env) { sceneRunPasses(env, 'ground', [l, gx]); _sccReset(gx); }
+          for (const gd of C.ground) if (gd.layer === l) { rasterWork = 'ground:' + l + ':' + C.ground.indexOf(gd); gx.setTransform(...TG); gx.globalAlpha = 1; gx.fillStyle = paint(gx, gd.fill, col); gx.fill(_sccPath(gd.d)); yield* slice(gx); }
+          rasterWork = 'backdrop';
+          if (bd1 && bdL === l) for (const it of bd1.items) yield* drawDirect(gx, TG, it, col, Lx, null, slice, flushCx);
+          if (env) { rasterWork = 'ground-passes:' + l; sceneRunPasses(env, 'ground', [l, gx]); _sccReset(gx); yield* slice(gx); }
           // water: the live sky's colours, then the reflection of what stands above its line (sky, farther bitmaps, its own bank)
           for (const w of C.water) if (w.layer === l) {
             if (env && env.own.water.has(w)) continue;   // v2: the water pass draws it (V2 5.3)
@@ -487,7 +554,7 @@ function sceneRendererCreate(canvas, src, o) {
             if (wet.length) gx.restore();
           }
           // v2: the passes under the layer's objects (water 20, shadows 30)
-          if (env) { sceneRunPasses(env, 'layer:under', [l, gx, 'under']); _sccReset(gx); }
+          if (env) { yield* layerPasses(l, gx, 'under'); _sccReset(gx); }
         } else if (rg) {
           // restored: the v1 water's moving light still plays (its stillness is in the bitmap)
           for (const w of C.water) if (w.layer === l && !(env && env.own.water.has(w)) && (w.shimmer || w.lightPath)) grp.water.push(_sccWaterFx(w, Lx, vs, ox, oy, C.id));
@@ -496,7 +563,8 @@ function sceneRendererCreate(canvas, src, o) {
         for (const i of byLayer[l]) {
           const it = C.items[i];
           if (it.strip >= 0) continue;
-          if (env && it.direct) { if (gx) drawDirect(gx, TG, it, colourFn(Lx, v2Haze(i, it, hz(l)), it.tint, false, v2Lift(i), env.liftCol), Lx, env.windowShare); yield* slice(gx); continue; }
+          rasterWork = 'item:' + it.o;
+          if (env && it.direct) { if (gx) yield* drawDirect(gx, TG, it, colourFn(Lx, v2Haze(i, it, hz(l)), it.tint, false, v2Lift(i), env.liftCol), Lx, env.windowShare, slice, flushCx); else yield* slice(); continue; }
           const x2 = env ? { env, flip: it.flip, lift: v2Lift(i), cls: it.cls, i } : undefined, haze = env ? v2Haze(i, it, hz(l)) : hz(l);
           // a floater on the water sits in it (10 Oct): drawn its sink lower, clipped at its waterline
           const fcls = it.cls || (typeof sceneObjClassOf === 'function' ? sceneObjClassOf(it.o) : null);
@@ -528,10 +596,11 @@ function sceneRendererCreate(canvas, src, o) {
           yield* slice(gx);
         }
         // v2: the passes over the layer's objects (pools, spill, halos, streaks)
-        if (env && gx) { sceneRunPasses(env, 'layer:over', [l, gx, 'over']); _sccReset(gx); }
+        if (env && gx) { yield* layerPasses(l, gx, 'over'); _sccReset(gx); }
         // signs (8.3): plain board, line-colour stripes, the name in the system font (fillText never parses markup)
         // (in its own small bitmap, drawn in depth order with the movers, so the layer's wind strips never cover it)
         for (const s of C.signs) if (s.layer === l) {
+          rasterWork = 'sign:' + l;
           const g = sceneSignLayout(s), parts = [g.board, ...g.bars.map(b => b.slice(0, 4))].concat(g.post ? [g.post] : []);
           const sb = clipBox(box([Math.min(...parts.map(p => p[0])) - 2, Math.min(...parts.map(p => p[1])) - 2, Math.max(...parts.map(p => p[0] + p[2])) + 2, Math.max(...parts.map(p => p[1] + p[3])) + 2]));
           if (sb[2] <= sb[0] || sb[3] <= sb[1]) continue;
@@ -581,6 +650,7 @@ function sceneRendererCreate(canvas, src, o) {
         if (c) { grp.strips.push(s.dw ? { c, x: s.x, y: s.y, base: s.base, xMid: s.xMid, amp: s.amp, dw: s.dw, dh: s.dh } : { c, x: s.x, y: s.y, base: s.base, xMid: s.xMid, amp: s.amp }); out.sprites.add({ c, bytes: c.width * c.height * 4 }); }
       }
       else for (const s of C.strips) if (gr.layers.includes(s.layer)) {
+        rasterWork = 'strip:' + s.layer;
         let sb = null;
         const its = s.items.map(i => C.items[i]);
         for (const it of its) { const sh = sceneObjShapes(it.o, it.v, it.season); if (sh) sb = union(sb, itemBox(it, sh)); }
@@ -603,6 +673,7 @@ function sceneRendererCreate(canvas, src, o) {
       }
       // v2: the group bitmap is complete (water: reflection bitmaps and masks; atmosphere: the depth veil); restored: the
       // passes take back what they kept (the 'restore' stage) and draw nothing
+      rasterWork = 'group:' + gi;
       if (env) { if (rg) sceneRunPasses(env, 'restore', [grp, R]); else sceneRunPasses(env, 'group', [grp]); if (gx) _sccReset(gx); }
       if (gx) flushCx(gx);
       phMark('layers');
@@ -620,6 +691,22 @@ function sceneRendererCreate(canvas, src, o) {
     out.fogVeil = Lx && Lx.fog ? `rgba(${_scHex(_scMixHex('#dfe4e6', '#2a3040', Lx.dark || 0)).join(',')},0.32)` : null;
     // motes are specks catching the sun: ungraded by day, graded like everything else after dark (ungraded, they glowed at night as
     // white and yellow points over the whole scene; SCENE_LESSONS H)
+    out.hideBelow = []; let opaqueBelow = H;
+    for (let i = out.groups.length - 1; i >= 0; i--) { out.hideBelow[i] = opaqueBelow; opaqueBelow = Math.min(opaqueBelow, out.groups[i].opaqueY); }
+    out.skyBelow = opaqueBelow;
+    // A pass may own a larger incremental bake. Finish it after the base
+    // groups and sprite helpers exist, but before adopting the hidden canvas.
+    // The first visible frame never needs to synchronously drain that work.
+    phMark('prepare');
+    if (env) for (const p of sceneRenderPasses('prepare', C)) {
+      let ready = false;
+      while (!ready) {
+        ready = passSlice(env, p, 'prepare', [SCENE_SLICE_MS]);
+        phAdd('prepareMs', _sccNow() - phT);
+        yield;
+        phT = _sccNow();
+      }
+    }
     out.pcol = (c) => ((C.particles.kind === 'motes' && !(Lx && (Lx.dark || 0) > 0.3)) || !Lx ? c : colourFn(Lx, 0, null)(c));
     out.rasterWait = rasterWait;
     out.restored = !!R;
@@ -643,9 +730,9 @@ function sceneRendererCreate(canvas, src, o) {
   }
   function frameBody(t, LY) {
     if (!S || destroyed) return;
-    const F = o.flush || false, tStart = _sccNow(), P = o.profile ? prof : null;
+    const F = o.flush || false, tStart = _sccNow(), P = o.profile ? prof : null, WP = warming ? {} : null;
     let pm = tStart;
-    const mark = P ? (name) => { flush(); const n = _sccNow(); P[name] = (P[name] || 0) + n - pm; pm = n; } : () => {};
+    const mark = P || WP ? (name) => { if (P) flush(); const n = _sccNow(); if (P) P[name] = (P[name] || 0) + n - pm; if (WP) WP[name] = (WP[name] || 0) + n - pm; pm = n; } : () => {};
     let blit = 0, blitPx = 0, draws = 0, occDraws = 0;
     const Lx = L || S.L, W = S.W, H = S.H, vs = S.vs, ox = S.ox, oy = S.oy;
     // the drawn-vs-simulated contract (merge package "crowd", 15 Oct): window.__sceneOpts.records -> stats().movers, this frame's
@@ -666,11 +753,13 @@ function sceneRendererCreate(canvas, src, o) {
     };
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
     // what the nearer bitmaps hide: nothing farther needs drawing below their opaque rows
-    const hideBelow = []; let hb = H;
-    for (let i = S.groups.length - 1; i >= 0; i--) { hideBelow[i] = hb; hb = Math.min(hb, S.groups[i].opaqueY); }
+    const hideBelow = S.hideBelow, hb = S.skyBelow;
     // v2: every mover's place now, before the frame passes (water wakes and reflections, actor shadows read them)
     const env = S.env;
-    if (env) _sccMoversNow(env, S, t, Lx);
+    if (env) {
+      if (env.preparedMoversT !== t || env.preparedMoversL !== Lx) _sccMoversNow(env, S, t, Lx);
+      env.preparedMoversT = null; env.preparedMoversL = null;
+    }
     if (env && moversOff) env.actorsNow.length = 0;
     mark('pre'); if (!LY) blitAt(S.sky, 0, 0, 0, hb); mark('blit');
     // stars: three twinkle groups
@@ -844,7 +933,7 @@ function sceneRendererCreate(canvas, src, o) {
     if (F) flush();
     mark('weather');
     if (P) P.frames = (P.frames || 0) + 1;
-    if (warming) return;   // a warm-up frame (unseen, overdrawn at once): no stats, no governor
+    if (warming) { warmFrameProfile = Object.fromEntries(Object.entries(WP).map(([k, v]) => [k, Math.round(v * 10) / 10])); return; }   // no frame stats or governor; diagnostics never force a read-back
     const total = _sccNow() - tStart;
     drawTimes.push(total); dynTimes.push(Math.max(0, total - blit));
     if (drawTimes.length > 900) { drawTimes.splice(0, 300); dynTimes.splice(0, 300); }
@@ -890,16 +979,94 @@ function sceneRendererCreate(canvas, src, o) {
     };
     warmed = state;
     if (o.warm === false || o.still || typeof document === 'undefined') { done(); return; }
-    let list = null, i = 0, k = 0, passed = false;
+    let list = null, i = 0, k = 0, passed = false, warmPasses = null, warmIndex = 0, warmTime = null;
+    let frameTime = null, framePasses = null, frameIndex = 0, preparedTime = null, finalTime = null, frameUpload = null;
+    const uploaded = new WeakSet();
     const later = eager ? _sccSoon : _sccIdle, now = () => (o.still ? 0 : timeFn());
+    const prepareFrame = (t) => {
+      const env = state.env;
+      if (!env || o.warmFrames === false) return true;
+      if (!framePasses) framePasses = sceneRenderPasses('warmFrameSlice', state.C);
+      if (preparedTime !== t) {
+        preparedTime = t; frameIndex = 0;
+        env.warmFrameSprites = new Set();
+        env.requireWarmSprite = (sp) => { const c = sp && (sp.c || sp); if (c && c.width && c.height) env.warmFrameSprites.add(c); };
+      }
+      const a = _sccNow(); env.warming = true;
+      try {
+        while (frameIndex < framePasses.length) {
+          const p = framePasses[frameIndex], ready = passSlice(env, p, 'warmFrameSlice', [t, SCENE_SLICE_MS]);
+          if (ready) frameIndex++;
+          if (!ready || _sccNow() - a >= SCENE_SLICE_MS) break;
+        }
+      } finally { env.warming = false; }
+      phAdd('warmFramePrepareMs', _sccNow() - a);
+      ph.warmFramePrepareMaxMs = Math.max(ph.warmFramePrepareMaxMs || 0, _sccNow() - a);
+      return frameIndex >= framePasses.length;
+    };
+    // The first use of a CPU-backed sprite on a GPU canvas can upload all of
+    // its pixels synchronously. Send only this frame's required canvases in
+    // bounded batches before the mover loop, and remember them for the later
+    // sky/layer upload phase instead of uploading them twice.
+    const uploadSlice = (q, early) => {
+      const a = _sccNow(); let bytes = 0, count = 0;
+      // Warm the very GPU context used by the unseen frame, without painting
+      // temporary sprite uploads onto an already visible live canvas.
+      if (early && !_sccWarmCx) _sccWarmCx = _sccCanvas(1, 1).getContext('2d', { alpha: false });
+      const target = early ? _sccWarmCx : ctx;
+      target.setTransform(1, 0, 0, 1, 0, 0); target.globalAlpha = 1; target.globalCompositeOperation = 'source-over';
+      while (q.index < q.canvases.length && bytes < _SCC_WARM_BYTES && _sccNow() - a < SCENE_SLICE_MS) {
+        const c = q.canvases[q.index++];
+        if (uploaded.has(c)) continue;
+        target.drawImage(c, 0, 0); uploaded.add(c); bytes += c.width * c.height * 4; count++;
+      }
+      if (count) {
+        const took = _sccNow() - a;
+        ph.warmMB = Math.round(((ph.warmMB || 0) + bytes / 1048576) * 10) / 10;
+        phAdd('warmUploadMs', took); ph.warmUploadSteps = (ph.warmUploadSteps || 0) + 1;
+        ph.warmUploadMaxSliceMs = Math.max(ph.warmUploadMaxSliceMs || 0, took);
+        if (early) { phAdd('warmEarlyUploadMs', took); ph.warmEarlyUploadSteps = (ph.warmEarlyUploadSteps || 0) + 1; ph.warmEarlyUploadCanvases = (ph.warmEarlyUploadCanvases || 0) + count; }
+        tl(early ? 'w:early-upload' : 'w:upload');
+      }
+      q.count = count;
+      return q.index >= q.canvases.length;
+    };
+    const uploadFrame = (t) => {
+      const env = state.env;
+      if (!env || o.warmFrames === false) return true;
+      if (!frameUpload || frameUpload.t !== t) frameUpload = { t, canvases: [...env.warmFrameSprites], index: 0, flushed: false };
+      if (frameUpload.flushed) return true;
+      const complete = uploadSlice(frameUpload, true);
+      if (frameUpload.count) {
+        if (complete) frameUpload.flushed = true;
+        const a = _sccNow();
+        _sccFlushAsync(_sccWarmCx.canvas).then(() => { phAdd('warmUploadWaitMs', _sccNow() - a); later(step); });
+        return false;
+      }
+      if (complete) { frameUpload.flushed = true; return true; }
+      later(step); return false;
+    };
     const step = () => {
       if (destroyed || S !== state || warmed !== state) return;
       const a = _sccNow();
       try {
         if (!passed) {
           // 1. the passes' own first-sight work (the flows: the sprites of the agents of the next minute and a half)
-          passed = true;
-          if (state.env) { state.env.warming = true; try { sceneRunPasses(state.env, 'warm', [now()]); } finally { state.env.warming = false; } }
+          if (state.env) {
+            const env = state.env;
+            if (!warmPasses) { env.warmFrames = o.warmFrames !== false; warmPasses = sceneRenderPasses('warmSlice', state.C); warmTime = now(); }
+            env.warming = true;
+            try {
+              while (warmIndex < warmPasses.length) {
+                const p = warmPasses[warmIndex], ready = passSlice(env, p, 'warmSlice', [warmTime, SCENE_SLICE_MS]);
+                if (ready) warmIndex++;
+                if (!ready || _sccNow() - a >= SCENE_SLICE_MS) break;
+              }
+              if (warmIndex >= warmPasses.length) { sceneRunPasses(env, 'warm', [warmTime]); passed = true; }
+            } finally { env.warming = false; }
+          } else passed = true;
+          ph.warmPassSteps = (ph.warmPassSteps || 0) + 1;
+          ph.warmMaxSliceMs = Math.max(ph.warmMaxSliceMs || 0, Math.round((_sccNow() - a) * 10) / 10);
           phAdd('warmPassesMs', _sccNow() - a); tl('w:passes');
           later(step);
           return;
@@ -910,12 +1077,22 @@ function sceneRendererCreate(canvas, src, o) {
           // 2. unseen frames at the sample times build what a frame builds on first sight (flow sprites, shadow silhouettes,
           // wakes), drawn into a 1 x 1 scratch: the sprites are made, no full-screen raster is paid (24 full frames queued on
           // the GPU held the first real frames back by a tenth of a second or more)
-          const t = now(), real = ctx;
+          if (frameTime == null) frameTime = now() + _SCC_WARM_T[k];
+          if (!prepareFrame(frameTime)) { later(step); return; }
+          if (!uploadFrame(frameTime)) return;
+          const real = ctx;
           if (!_sccWarmCx) _sccWarmCx = _sccCanvas(1, 1).getContext('2d', { alpha: false });
           warming = true; ctx = _sccWarmCx;
           if (state.env) state.env.warming = true;
-          try { while (k < _SCC_WARM_T.length && _sccNow() - a < SCENE_SLICE_MS) frame(t + _SCC_WARM_T[k++]); }
-          finally { ctx = real; warming = false; if (state.env) state.env.warming = false; }
+          try {
+            const fa = _sccNow(), sn = phNew.sprites; warmSpriteLog = [];
+            frame(frameTime); k++;
+            const took = _sccNow() - fa;
+            if (took > (ph.warmFrameMaxMs || 0)) { ph.warmFrameMaxMs = took; ph.warmFrameMaxSample = k - 1; ph.warmFrameMaxNewSprites = phNew.sprites - sn; ph.warmFrameMaxLateSprites = warmSpriteLog.slice(0, 8); ph.warmFrameMaxSections = warmFrameProfile; }
+            if (warmSpriteLog.length && (ph.warmLateSprites || []).length < 16) (ph.warmLateSprites || (ph.warmLateSprites = [])).push({ sample: k - 1, sprites: warmSpriteLog.slice(0, 8) });
+            frameTime = null;
+          }
+          finally { warmSpriteLog = null; ctx = real; warming = false; if (state.env) { state.env.warming = false; state.env.requireWarmSprite = null; } }
           phAdd('warmFramesMs', _sccNow() - a); tl('w:frames' + k);
           later(step);
           return;
@@ -927,21 +1104,19 @@ function sceneRendererCreate(canvas, src, o) {
           // strips, clouds, signs and passes, with those the unseen frames made (a static placement's sprite is in a bitmap
           // already: sending it would only fill the GPU)
           list = [state.sky, ...state.groups.map(g => g.c), ...[...state.sprites].filter(x => !x.sc || state.frameSprites.has(x))]
-            .filter(Boolean).map(x => (x.c !== undefined ? x.c : x)).filter(c => c && c.width && c.height);
+            .filter(Boolean).map(x => (x.c !== undefined ? x.c : x)).filter(c => c && c.width && c.height && !uploaded.has(c));
         }
         if (i < list.length) {
-          ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
-          let bytes = 0;
-          // eager (a scene about to show): everything in one step and one wait at the end (each wait is a GPU round trip);
-          // in idle time: at most _SCC_WARM_BYTES a step with a wait between, so other frames on the page never wait long
-          const cap = eager ? Infinity : _SCC_WARM_BYTES;
-          while (i < list.length && bytes < cap) { const c = list[i++]; ctx.drawImage(c, 0, 0); bytes += c.width * c.height * 4; }
-          ph.warmMB = Math.round(((ph.warmMB || 0) + bytes / 1048576) * 10) / 10;
-          phAdd('warmUploadMs', _sccNow() - a); ph.warmUploadSteps = (ph.warmUploadSteps || 0) + 1; tl('w:upload');
+          const q = { canvases: list, index: i }; uploadSlice(q, false); i = q.index;
           if (i < list.length) { const wa = _sccNow(); _sccFlushAsync(canvas).then(() => { phAdd('warmUploadWaitMs', _sccNow() - wa); later(step); }); return; }
         }
         // 4. the real frame over it all, then one wait for the raster
-        frame(now());
+        if (finalTime == null) finalTime = now();
+        if (!prepareFrame(finalTime)) { later(step); return; }
+        if (!uploadFrame(finalTime)) return;
+        const fa = _sccNow(), sn = phNew.sprites; warmSpriteLog = [];
+        try { frame(finalTime); ph.warmFinalFrameMs = _sccNow() - fa; ph.warmFinalNewSprites = phNew.sprites - sn; ph.warmFinalLateSprites = warmSpriteLog.slice(0, 8); }
+        finally { warmSpriteLog = null; if (state.env) state.env.requireWarmSprite = null; }
         const wb = _sccNow();
         _sccFlushAsync(canvas).then(() => { phAdd('warmWaitMs', _sccNow() - wb); tl('w:flushed'); done(); });
         return;
@@ -1139,11 +1314,17 @@ function sceneRendererCreate(canvas, src, o) {
       }).then((ok) => saved(!!ok), () => saved(false));
     }), o.hideUntilReady ? 4000 : 0);
   }
-  function loop() {
-    if (!running) return;
+  function loop(ts) {
+    raf = 0;
+    if (!running || destroyed) return;
     // o.hideUntilReady (the host: its canvas shows from onReady): the first warm-up is not held back by unseen full frames
-    if (S && !(o.hideUntilReady && !shown)) frame(timeFn());
-    raf = requestAnimationFrame(loop);
+    if (S && !(o.hideUntilReady && !shown) && (!frameInterval || frameAt == null || ts - frameAt >= frameInterval - 0.5)) {
+      // Skip redundant compositions on high-refresh screens. Scene time still
+      // comes from its clock, so movement and animation never run in slow motion.
+      frameAt = !frameInterval || frameAt == null ? ts : ts - Math.max(0, ts - frameAt) % frameInterval;
+      frame(timeFn());
+    }
+    if (running && !destroyed) raf = requestAnimationFrame(loop);
   }
   const api = {
     get baked() { return !!S; },
@@ -1178,7 +1359,7 @@ function sceneRendererCreate(canvas, src, o) {
     },
     setSeason(s) { if (!s || s === season) return; season = s; if (S) bakeLater(S.W, S.H); },
     setLod(k) { if (k == null || k === lod) return; lod = k; if (S) bakeLater(S.W, S.H); },
-    start() { if (running || destroyed) return; if (!S && !pending) api.resize(cssW, cssH); running = true; raf = requestAnimationFrame(loop); },
+    start() { if (running || destroyed) return; if (!S && !pending) api.resize(cssW, cssH); running = true; frameAt = null; raf = requestAnimationFrame(loop); },
     stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; },
     get running() { return running; },
     /** Draw one frame at time t (seconds). The still (reduced motion, tiles) is frame(0). */

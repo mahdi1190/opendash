@@ -10,6 +10,7 @@
    ============================================================ */
 function _gdzT() { return _gdzT.s || (_gdzT.s = { on: false, draft: null, lay: null, dm: {}, hist: [], tool: 'path', pathStyle: 0, groundStyle: 0, rubbing: false, cam: null, say: '', bad: false, lifted: null, stroke: null, press: null, was: null, make: { kind: 0, pair: 0, pat: 0, text: '' } }); }
 function gardenDesignOn() { return !!_gdzT.s && _gdzT.s.on; }
+function _gdzNativeWorld() { return window.GardenNative && GardenNative.active() ? GardenNative.world() : null; }
 function gardenDesignCam(ar, wpx, hpx) {
   if (!gardenDesignOn()) return null;
   const C = _gdzT().cam; let vh = C.vh, vw = vh * ar;
@@ -138,13 +139,15 @@ function gardenDesignUndo() {
   _gdzStage(); _gdzSay('Undone.'); gardenDesignPanel();
 }
 /** Bring the whole stage up to the draft: after something that stands has moved. */
-function _gdzStage() { gardenDesignShow(_gdzT().draft); _gd.rev++; _gd.memoKey = ''; if (typeof _gdpPaintStage === 'function') _gdpPaintStage(gardenHere()); _gwEnsureLoop(); }
+function _gdzStage() { const native = _gdzNativeWorld(); if (native) native.designPreview(null); gardenDesignShow(_gdzT().draft); _gd.rev++; _gd.memoKey = ''; if (typeof _gdpPaintStage === 'function') _gdpPaintStage(gardenHere()); _gwEnsureLoop(); }
 /** Only the ground and paths changed: swap that one layer, leave the rest of the stage alone. */
 function _gdzLayerOnly() {
   const T = _gdzT(); gardenDesignShow(T.draft);
+  const native = _gdzNativeWorld(); if (native) { native.designLayer(T.draft); return; }
   const svg = _gdp.svg, old = svg && svg.querySelector(':scope > .gd-dz'); if (!old) { _gdzStage(); return; }
-  const html = gardenDesignLayer({ dz: T.draft }), t = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); t.innerHTML = html;
+  const html = gardenDesignLayer({ dz: T.draft }), t = gardenSceneElement('svg'); t.innerHTML = html;
   const nu = t.firstElementChild; svg.replaceChild(nu, old);
+  if (t._native) { old.destroy(); t.destroy(); nu.target.setDepth(-9400); }
   if (svg._gdParts) svg._gdParts.layers.design = html;
 }
 function _gdzSay(text, bad) { const T = _gdzT(); T.say = text || ''; T.bad = !!bad; const el = document.querySelector('.gdz-say'); if (el) { el.textContent = T.say; el.classList.toggle('is-bad', T.bad); } }
@@ -152,10 +155,10 @@ function _gdzSay(text, bad) { const T = _gdzT(); T.say = text || ''; T.bad = !!b
 function _gdzLiveNode() {
   const svg = _gdp.svg, ui = svg && svg.querySelector('.gd-ui'); if (!ui) return null;
   let g = ui.querySelector('.gdz-live');
-  if (!g) { g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'gdz-live'); g.setAttribute('pointer-events', 'none'); ui.appendChild(g); }
+  if (!g) { g = gardenSceneElement('g'); g.setAttribute('class', 'gdz-live'); g.setAttribute('pointer-events', 'none'); ui.appendChild(g); }
   return g;
 }
-function _gdzLive(html) { const g = _gdzLiveNode(); if (g) { g.innerHTML = html; if (!html) _gdzDroppedMarks(g); } const el = _gdp.svg && _gdp.svg.querySelector('.gdz-lifted'); if (el && !_gdzT().lifted) el.classList.remove('gdz-lifted'); }
+function _gdzLive(html) { const g = _gdzLiveNode(); if (g) { g.innerHTML = html; if (!html) _gdzDroppedMarks(g); } const native = _gdzNativeWorld(); if (native && !_gdzT().lifted) native.designPreview(null); const el = _gdp.svg && _gdp.svg.querySelector('.gdz-lifted'); if (el && !_gdzT().lifted) el.classList.remove('gdz-lifted'); }
 /** What will not fit when friends get this: dashed, so you can see which. */
 function _gdzDroppedMarks(g) {
   const T = _gdzT(), w = gardenDesignWire(T.draft); let s = '';
@@ -175,6 +178,10 @@ function gardenDesignEnter() {
   if (typeof gardenVisitOn === 'function' && gardenVisitOn()) { gardenToast('You can only design your own garden.', { now: true, icon: 'paintbrush' }); return; }
   if (typeof _gwFishBusy === 'function' && _gwFishBusy() && typeof _gwFishCancel === 'function') _gwFishCancel();
   const T = _gdzT(), g = _gdG(), box = _gdp.root && _gdp.root.querySelector('.gd-stagebox'); if (!box) return;
+  if (_gdp.moving && typeof gardenMoveEnd === 'function') gardenMoveEnd();
+  if (_gdp.carry && typeof _gdpCarryEnd === 'function') _gdpCarryEnd();
+  if (typeof gardenHoldEnd === 'function') gardenHoldEnd();
+  if (_gdp.press) { for (const node of _gdp.svg.querySelectorAll('.is-lifted')) node.classList.remove('is-lifted'); _gdp.press = null; }
   const z = g.dz && g.dz.lay ? g.dz : { cur: 'l1', lay: { l1: { n: 'My garden', d: gardenDesignEmpty() } } };
   T.lay = JSON.parse(JSON.stringify(z));
   const cur = T.lay.lay[T.lay.cur] || (T.lay.lay[T.lay.cur] = { n: 'My garden', d: gardenDesignEmpty() });
@@ -184,6 +191,7 @@ function gardenDesignEnter() {
   _gw.path = []; _gw.then = null; _gw.keys.clear();
   T.cam = { cx: _gw.px * GARDEN_WORLD.cellW, cy: GARDEN_WORLD.sky + _gw.py * GARDEN_WORLD.cellH, vh: 690 };
   box.classList.add('is-designing');
+  if (typeof _gdpGhostClear === 'function') _gdpGhostClear();
   gardenBubbleClose();
   _gdzBind(box);
   _gdzStage();
@@ -192,7 +200,8 @@ function gardenDesignEnter() {
 }
 /** Leaving by any door: back to what is saved. */
 function _gdzClose() {
-  const T = _gdzT(); T.on = false; T.lifted = null; T.stroke = null; T.press = null;
+  const native = _gdzNativeWorld(); if (native) native.designPreview(null);
+  const T = _gdzT(); T.on = false; T.lifted = null; T.stroke = null; T.paint = null; T.press = null;
   _gdzHold().draftOf = null;
   const box = _gdp.root && _gdp.root.querySelector('.gd-stagebox');
   if (box) { box.classList.remove('is-designing'); const p = box.querySelector(':scope > .gdz'); if (p) p.remove(); }
@@ -267,7 +276,7 @@ function _gdzBind(box) {
   box.addEventListener('pointerdown', (ev) => { if (!own(ev)) return; ev.stopImmediatePropagation(); ev.preventDefault(); if (ev.button !== 0) { _gdzDropCancel(); return; } try { box.setPointerCapture(ev.pointerId); } catch (e) { /* fine */ } _gdzDown(ev); }, true);
   box.addEventListener('pointermove', (ev) => { if (!own(ev)) return; ev.stopImmediatePropagation(); _gdzMove(ev); }, true);
   box.addEventListener('pointerup', (ev) => { if (!own(ev)) return; ev.stopImmediatePropagation(); try { box.releasePointerCapture(ev.pointerId); } catch (e) { /* fine */ } _gdzUp(ev); }, true);
-  box.addEventListener('pointercancel', (ev) => { if (!own(ev)) return; ev.stopImmediatePropagation(); const T = _gdzT(); T.stroke = null; T.press = null; _gdzLive(''); }, true);
+  box.addEventListener('pointercancel', (ev) => { if (!own(ev)) return; ev.stopImmediatePropagation(); const T = _gdzT(); T.stroke = null; T.paint = null; T.press = null; if (T.lifted) _gdzDropCancel(); else _gdzLive(''); }, true);
   box.addEventListener('click', (ev) => { if (own(ev)) ev.stopImmediatePropagation(); }, true);
   box.addEventListener('contextmenu', (ev) => { if (!own(ev)) return; ev.stopImmediatePropagation(); ev.preventDefault(); _gdzDropCancel(); }, true);
   box.addEventListener('wheel', (ev) => { if (!own(ev)) return; ev.stopImmediatePropagation(); ev.preventDefault(); gardenDesignZoom(ev.deltaY > 0 ? 1 : -1); }, { capture: true, passive: false });
@@ -320,7 +329,7 @@ function _gdzStrokeMore(pt) {
   const T = _gdzT(), S = T.stroke; if (!pt) return;
   const l = S.pts[S.pts.length - 1]; if (Math.hypot(pt.x - l[0], (pt.y - l[1]) * 0.7) < 0.3) return;
   S.pts.push([pt.x, pt.y]);
-  if (!S.raf) S.raf = requestAnimationFrame(() => { S.raf = 0; if (_gdzT().stroke === S) _gdzStrokePaint(); });
+  if (!S.raf) { const native = _gdzNativeWorld(), paint = () => { S.raf = 0; if (_gdzT().stroke === S) _gdzStrokePaint(); }; if (native) { S.raf = 1; native.scheduleDesignPreview(paint); } else S.raf = requestAnimationFrame(paint); }
 }
 /** A ring where this end would join (green), or where it would not (red). */
 function _gdzRing(x, y, good) { const W = GARDEN_WORLD; return `<circle cx="${_gdzN(x * W.cellW)}" cy="${_gdzN(W.sky + y * W.cellH)}" r="13" fill="${good ? '#2fa84f' : '#d0402c'}" fill-opacity="0.3" stroke="${good ? '#2fa84f' : '#d0402c'}" stroke-width="3.500"/>`; }
@@ -417,7 +426,7 @@ function _gdzPaintEnd() {
 /* ---------- moving things ---------- */
 function _gdzFootName(L) { return L.kind === 'decor' ? L.def.name : L.kind === 'prop' ? L.row.name : GDZ_MADE[L.c[0]].name; }
 function _gdzLift(ev, cell) {
-  const T = _gdzT(), m = _gdzModel(), n = ev.target && ev.target.closest ? ev.target.closest('.gd-prop[data-prop]') : null, id = n ? n.getAttribute('data-prop') : '';
+  const T = _gdzT(), m = _gdzModel(), native = _gdzNativeWorld(), visual = native ? GardenNative.pick(ev.clientX, ev.clientY) : null, n = visual && visual.node ? visual.node : ev.target && ev.target.closest ? ev.target.closest('.gd-prop[data-prop]') : null, id = visual && visual.prop ? visual.prop : n ? n.getAttribute('data-prop') : '';
   let L = null, node = n;
   if (id && /^dzc\d+-/.test(id)) { const i = Number(id.slice(3, id.indexOf('-'))), c = T.draft.c[i]; if (c) L = { kind: 'made', i, c, w: 1, h: 1 }; }
   else if (id && gardenDesignRow(id)) { if (gardenDesignLandmark(id)) { _gdzSay(`${gardenDesignRow(id).name} is a landmark: it stays where it is.`, true); return false; } if (!gardenDesignMovable(id)) { _gdzSay(`${gardenDesignRow(id).name} stays where it is: it is part of the place.`, true); return false; } L = { kind: 'prop', row: gardenDesignRow(id) }; L.w = L.row.w || 1; L.h = L.row.h || 1; }
@@ -434,14 +443,16 @@ function _gdzLift(ev, cell) {
   L.ox = L.kind === 'prop' ? L.row.x : L.kind === 'made' ? L.c[1] : gardenDecorById(m, L.uid).x;
   L.oy = L.kind === 'prop' ? L.row.y : L.kind === 'made' ? L.c[2] : gardenDecorById(m, L.uid).y;
   T.lifted = L; L.node = node;
-  if (node) node.classList.add('gdz-lifted');
-  L.clone = node ? node.cloneNode(true) : null;
+  if (node && !native) node.classList.add('gdz-lifted');
+  L.clone = node && !native ? node.cloneNode(true) : null;
+  if (native) L.nativeSource = L.kind === 'decor' ? 'decor:' + L.uid : 'prop:' + (id || L.row && L.row.id || gardenDesignMadeKey(L.c, L.i));
   _gdzGhostAt(cell); gardenDesignPanel();
   return true;
 }
 /** Starting a thing you made: it follows the pointer until you put it down. */
 function gardenDesignPlaceNew() {
   const T = _gdzT(), M = T.make;
+  if (T.lifted) _gdzDropCancel();
   if (T.draft.c.length >= GDZ_LIMITS.made) { _gdzSay(`You have made ${GDZ_LIMITS.made} things, which is all there is room for. Put one away first.`, true); return; }
   const c = [M.kind, 0, 0, 0, 0, M.pat, M.kind === 0 ? gardenDesignText(M.text) : ''];
   { const P = GDZ_STRICT.pairs[GDZ_MADE[M.kind].id], pr = P[M.pair] || P[0]; c[3] = pr[0]; c[4] = pr[1]; c[6] = c[6].slice(0, GDZ_STRICT.signText); }
@@ -450,7 +461,7 @@ function gardenDesignPlaceNew() {
 }
 function _gdzGhostAt(cell) {
   const T = _gdzT(), L = T.lifted; if (!L || !cell) return;
-  const x = cell.x - Math.floor(L.w / 2), y = cell.y - (L.h - 1), key = x + ',' + y;
+  let x = cell.x - Math.floor(L.w / 2), y = cell.y - (L.h - 1); const key = x + ',' + y;
   if (L.key === key) return; L.key = key; L.x = x; L.y = y;
   const check = (qx, qy) => (L.kind === 'prop' ? gardenDesignMoveCheck(L.row, qx, qy) : L.kind === 'decor' ? _gdzDecorCheck(gardenDecorById(_gdzModel(), L.uid), qx, qy) : _gdzMadeCheck(qx, qy, L.i, L.c));
   let r = check(x, y), snapped = false; const why0 = r.why;
@@ -461,10 +472,14 @@ function _gdzGhostAt(cell) {
   if (r.door) s += `<ellipse cx="${(r.door.x + 0.5) * cw}" cy="${W.sky + (r.door.y + 0.5) * ch}" rx="11" ry="7" fill="#ffffff" fill-opacity="0.92" stroke="#2fa84f" stroke-width="2.600"/>`;
   const g = _gdzLiveNode(); if (!g) return;
   g.innerHTML = s;
-  const wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g'); wrap.setAttribute('opacity', r.why ? '0.55' : '0.85');
-  if (L.clone) { wrap.setAttribute('transform', `translate(${(x - L.ox) * cw} ${(y - L.oy) * ch})`); wrap.appendChild(L.clone.cloneNode(true)); }
-  else if (L.fresh) { wrap.setAttribute('transform', `translate(${(x + 0.5) * cw} ${W.sky + (y + 1) * ch - 4})`); wrap.innerHTML = gardenDesignMadeArt(L.c, 0); gardenDesignPainted(wrap, { c: [L.c] }); }
-  g.appendChild(wrap);
+  const native = _gdzNativeWorld();
+  if (native) native.designPreview({ key: L, source: L.nativeSource, html: L.fresh ? gardenDesignMadeArt(L.c, 0) : '', words: L.fresh ? { c: [L.c] } : null, x, y, ox: L.ox, oy: L.oy, valid: !r.why });
+  else {
+    const wrap = gardenSceneElement('g'); wrap.setAttribute('opacity', r.why ? '0.55' : '0.85');
+    if (L.clone) { wrap.setAttribute('transform', `translate(${(x - L.ox) * cw} ${(y - L.oy) * ch})`); wrap.appendChild(L.clone.cloneNode(true)); }
+    else if (L.fresh) { wrap.setAttribute('transform', `translate(${(x + 0.5) * cw} ${W.sky + (y + 1) * ch - 4})`); wrap.innerHTML = gardenDesignMadeArt(L.c, 0); gardenDesignPainted(wrap, { c: [L.c] }); }
+    g.appendChild(wrap);
+  }
   if (r.why) _gdzSay(r.why, true); else if (snapped) _gdzSay(`Moved to the nearest good spot. (${why0})`); else _gdzSay(L.door ? 'That works. The white mark is where you will stand to go in.' : 'That works. Tap to put it down.');
 }
 function _gdzDrop() {
@@ -480,7 +495,7 @@ function _gdzDrop() {
   _gdzSay(`${_gdzFootName(L)} is there now. It stays a preview until you keep your changes.`);
 }
 function _gdzDropCancel() {
-  const T = _gdzT(), L = T.lifted; if (!L) return;
+  const T = _gdzT(), L = T.lifted; if (!L) { T.stroke = null; T.paint = null; T.press = null; _gdzLive(''); return; }
   if (L.node) L.node.classList.remove('gdz-lifted');
   T.lifted = null; _gdzLive(''); gardenDesignPanel(); _gdzSay('Put back down.');
 }

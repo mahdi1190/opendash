@@ -11,8 +11,8 @@
                reflection and mask), as lossless PNG blobs, with the layout they need ({ groups, strips, ... }), plus a
                still of the scene's first frame (the first paint while the live canvas restores)
 
-   The version is a SHA-1 of the app's own script (the engine, the object library and the scenes are in it), so any code
-   change invalidates every entry. The light key carries the season, the quantised light and every pass's own key, exactly
+   The version is the build's scene-content hash, so unrelated app changes keep their prepared scenes. Older builds and
+   standalone scene tools fall back to hashing the app script. The light key carries the season, the quantised light and every pass's own key, exactly
    what the renderer re-bakes on, so a restored bake is the bake the renderer would make. Entries are evicted least recently
    used past SCENE_STORE_MAX_BYTES and after SCENE_STORE_MAX_AGE_MS. Encoding runs in a worker where the page allows one
    (CSP worker-src blob:), else in the browser's own async encoder; decoding is createImageBitmap (off the main thread).
@@ -45,10 +45,15 @@ function _scstScriptText() {
   } catch (e) { /* no document */ }
   return '';
 }
-/** A SHA-1 of the app script (+ the format): any engine, library or scene change gives a new version. */
+/** The scene-content version (+ format), or a script hash for older builds and standalone tools. */
 function sceneStoreVersion() {
   if (_scstVer) return _scstVer;
   _scstVer = (async () => {
+    try {
+      const meta = document.querySelector('meta[name="freeflo-scene-version"]');
+      const version = meta && meta.getAttribute('content');
+      if (typeof version === 'string' && /^[a-f0-9]{16,64}$/.test(version)) return version + '.' + SCENE_STORE_FORMAT;
+    } catch (e) { /* standalone tools use the script hash */ }
     const text = _scstScriptText();
     if (!text) return 'none';
     try {

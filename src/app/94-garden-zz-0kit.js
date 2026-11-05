@@ -96,7 +96,12 @@ function _gtgPlaceTick(m) {
   if (W[key] === m.today || _gtgk.said.has(key)) return;
   _gtgk.said.add(key);
   const here = gardenPlaceKinds(gardenPlaceKey()), mine = gardenPlaceKinds(gardenPlaceOwnKey()).ids, news = here.fish.concat(here.bugs).filter(d => !mine.has(d.id) && !_gtgCaught(d));
-  if (news.length) { W[key] = m.today; _gdSave(); setTimeout(() => wdWhisper(`Something lives here that you have not seen at home: ${news.length === 1 ? 'one kind' : news.length + ' kinds'} to look for.`, 7000), 2500); }
+  if (news.length) {
+    W[key] = m.today; _gdSave();
+    // An arrival fact belongs to this visit's Recent notes. No delayed whisper
+    // can interrupt a chosen activity or follow the player through the gate.
+    if (gardenVisitOn() && _gdv.fid === fid) gardenMessage(`Something lives here that you have not seen at home: ${news.length === 1 ? 'one kind' : news.length + ' kinds'} to look for.`, { ambient: true, source: 'visit-kinds:' + fid, icon: 'map-pin' });
+  }
 }
 function _gtgKindCard(d) {
   const got = _gtgCaught(d), it = gpEl('div', 'tg-kind' + (got ? ' is-got' : ''));

@@ -17,15 +17,20 @@ const _gly = { sumAt: 0, atAt: 0, heard: 0, bad: 0, asks: 0, askAt: 0, catching:
 
 /* ---------- the fingerprint: the same sum from what was sent and from what arrived ---------- */
 function _glySum(rows) { return { h: gardenHash(rows.sort().join(';')) >>> 0, n: rows.length }; }
-function _glyHostRows() {
+function _glyHostRows(detail) {
   const rows = [];
-  for (const r of _glh.sent.values()) rows.push(r.o === 'p' ? `p|${r.id}|${r.x}|${r.y}|${r.s || 0}` : `d|${r.id}|${r.x}|${r.y}|${r.r || 0}`);
+  const by = new Map();
+  if (detail) { const table = _glhByTable(); for (const [kind, x, y, i] of table.r) by.set(kind + '|' + x + '|' + y, table.n[i] || ''); }
+  for (const [key, r] of _glh.sent) {
+    if (!detail) rows.push(r.o === 'p' ? `p|${r.id}|${r.x}|${r.y}|${r.s || 0}` : `d|${r.id}|${r.x}|${r.y}|${r.r || 0}`);
+    else rows.push(JSON.stringify(r.o === 'p' ? ['p', r.id, r.x, r.y, r.s || 0, r.v || 0, r.f || 0, by.get(key) || ''] : [key[0], r.id, r.x, r.y, r.r || 0, r.v || 0, by.get(key) || '']));
+  }
   return rows;
 }
-function _glyGuestRows(s) {
+function _glyGuestRows(s, detail) {
   const layer = (id) => { const d = gardenDecor(id); return d && d.layer === 'ground' ? 'g' : 'd'; }, seen = new Map();
-  for (const r of s.plants || []) seen.set('p|' + r[1] + '|' + r[2], `p|${r[0]}|${r[1]}|${r[2]}|${r[3] || 0}`);
-  for (const r of s.decor || []) seen.set(layer(r[0]) + '|' + r[1] + '|' + r[2], `d|${r[0]}|${r[1]}|${r[2]}|${r[3] || 0}`);
+  for (const r of s.plants || []) { const key = 'p|' + r[1] + '|' + r[2]; seen.set(key, detail ? JSON.stringify(['p', r[0], r[1], r[2], r[3] || 0, r[4] || 0, r[5] || 0, _gll.by.get(key) || '']) : `p|${r[0]}|${r[1]}|${r[2]}|${r[3] || 0}`); }
+  for (const r of s.decor || []) { const kind = layer(r[0]), key = kind + '|' + r[1] + '|' + r[2]; seen.set(key, detail ? JSON.stringify([kind, r[0], r[1], r[2], r[3] || 0, r[4] || 0, _gll.by.get(key) || '']) : `d|${r[0]}|${r[1]}|${r[2]}|${r[3] || 0}`); }
   return [...seen.values()];
 }
 /** A garden too big for a snapshot can never match one: no sum for it. */
@@ -50,9 +55,10 @@ function _glyAsked(A) {
 /* ---------- a guest ---------- */
 function _glySumIn(ev) {
   _gly.heard = Date.now();   // clock-ok: when the host was last heard
+  if (ev.ac && typeof _glvAmbientClock === 'function') _glvAmbientClock(ev.ac);
   const s = _glv.snap; if (!s || !Number.isInteger(ev.h)) return;
-  const mine = _glySum(_glyGuestRows(s));
-  if (mine.h === ev.h) { _gly.bad = 0; _gly.catching = 0; return; }
+  const detail = Number.isInteger(ev.h2), mine = _glySum(_glyGuestRows(s, detail));
+  if (mine.h === (detail ? ev.h2 : ev.h) && mine.n === ev.n) { _gly.bad = 0; _gly.catching = 0; return; }
   _gly.bad += 1;
   if (_gly.bad >= 2 && _gly.asks < GL_SYNC.autoAsks) _glyAsk(false);
 }
@@ -97,7 +103,7 @@ function _glyAwayIn(A, away) {
   if (_gll.role !== 'host' || !A) return;
   A.away = away;
   if (away) return;
-  if (typeof _gfs !== 'undefined') _gfs.dirty = true;
+  if (typeof _gfs !== 'undefined') { _gfs.dirty = true; _gfs.forceTell = true; }
   if (typeof _glc !== 'undefined') { _glc.sig = ''; _glc.sentAt = 0; }
   if (typeof _ptw !== 'undefined' && _ptw.pets) for (const P of _ptw.pets) if (P.lf) P.lf.force = true;
   _gly.sumAt = 0; _gly.atAt = 0;
@@ -167,7 +173,7 @@ function _glyTick() {
   if (hostLive && looking && now - _gly.sumAt >= GL_SYNC.sumMs) {
     _gly.sumAt = now;
     _glhDiff();   // (what is still to go goes first)
-    if (!_glyTooBig()) { const s = _glySum(_glyHostRows()); _glhSend('all', 'sum', s); }
+    if (!_glyTooBig()) { const s = _glySum(_glyHostRows()); s.h2 = _glySum(_glyHostRows(true)).h; const ac = _glhAmbientClock(); if (ac) s.ac = ac; _glhSend('all', 'sum', s); }
   }
   if ((hostLive || guestLive) && looking && now - _gly.atAt >= GL_SYNC.atMs && !_gw.moving) {
     _gly.atAt = now;

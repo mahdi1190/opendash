@@ -1,7 +1,7 @@
 # Third-party notices
 
 OpenDash is MIT licensed (see `LICENSE`) and has no npm dependencies. It ships
-three third-party components, vendored in `vendor/` and built into the single
+third-party components, vendored in `vendor/` and built into the single
 `index.html`. Each keeps its own licence; the full texts are next to the files.
 The travel features also carry three public data sets, reduced into one
 generated file (see "Travel place tables"). Scene recipes may hold layouts
@@ -11,6 +11,7 @@ derived from OpenStreetMap and hill outlines derived from open elevation data
 | Component | Version | Used for | Licence (SPDX) | Full text |
 |---|---|---|---|---|
 | Apache ECharts | 5.6.1 | Charts in Finances | Apache License 2.0 (`Apache-2.0`) | `vendor/echarts.LICENSE`, `vendor/echarts.NOTICE` |
+| Phaser | 4.2.1 | Optional WebGL garden renderer; loaded on first use | MIT (`MIT`) | `vendor/phaser/LICENSE`, `vendor/phaser/SOURCE.md` |
 | Inter (rsms/inter), variable, Latin subset | 4.x | The interface font | SIL Open Font License 1.1 (`OFL-1.1`) | `vendor/fonts/Inter-OFL.txt` |
 | Lucide icons (lucide-static), subset as an SVG sprite | current | Interface icons | ISC License (`ISC`); the Feather-derived icons MIT (`MIT`) | `vendor/icons/Lucide-LICENSE.txt` |
 | GeoNames cities15000 and countryInfo, a subset | 2026-10 | The travel features' city and country tables (`src/app/69-travel-data.js`) | Creative Commons Attribution 4.0 (`CC-BY-4.0`) | below |

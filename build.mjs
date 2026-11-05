@@ -39,8 +39,10 @@ import { readFileSync, writeFileSync, existsSync, readdirSync, mkdtempSync, rmSy
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { rasterAssetBlocks } from './tools/lib/raster-assets.mjs';
+import { GAME_ENGINE_VERSION, GAME_ENGINE_JS, GAME_ENGINE_SHA256 } from './lib/game-engine.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -127,6 +129,21 @@ const scriptBlock = (code) => `<script>\n${code.replace(/<\/script/gi, '<\\/scri
 export function collectSources(root = HERE) {
   const app = concatDir(join(root, 'src', 'app'), '.js');
   const styles = concatDir(join(root, 'src', 'styles'), '.css');
+  // Bundled as inert data: Phaser is parsed only when the player chooses the
+  // new garden renderer, rather than adding startup work to every dashboard.
+  const engineBytes = readFileSync(join(root, GAME_ENGINE_JS));
+  if (createHash('sha256').update(engineBytes).digest('hex') !== GAME_ENGINE_SHA256) throw new Error('The bundled Phaser file does not match its pinned version');
+  const raster = rasterAssetBlocks(root);
+  const sceneHash = createHash('sha256').update('freeflo-scenes-v1\0');
+  // Keep persistent scene artwork across releases that change only gardens,
+  // finances or tasks. Changes to scene code, styles or rasters still rebake.
+  for (const file of app.files.filter(f => /^7[0-9]-/.test(f))) sceneHash.update(file + '\0').update(readFileSync(join(root, 'src', 'app', file)));
+  for (const file of styles.files.filter(f => /^7[0-9]-/.test(f))) sceneHash.update(file + '\0').update(readFileSync(join(root, 'src', 'styles', file)));
+  sceneHash.update('08-utils-dates.js\0').update(readFileSync(join(root, 'src', 'app', '08-utils-dates.js')));
+  const fontDir = join(root, 'vendor', 'fonts');
+  if (existsSync(fontDir)) for (const file of readdirSync(fontDir).filter(f => /\.(woff2?|ttf|otf)$/i.test(f)).sort()) sceneHash.update(file + '\0').update(readFileSync(join(fontDir, file)));
+  for (const file of ['src/motion.js', 'src/motion.css']) if (existsSync(join(root, file))) sceneHash.update(file + '\0').update(readFileSync(join(root, file)));
+  sceneHash.update(raster);
   return {
     appFiles: app.files,
     styleFiles: styles.files,
@@ -135,7 +152,10 @@ export function collectSources(root = HERE) {
     sprite: iconSprite(root),
     orbJs: existsSync(join(root, ORB_JS)) ? readFileSync(join(root, ORB_JS), 'utf8') : '',
     body: readFileSync(join(root, 'src', 'body.html'), 'utf8'),
-    raster: rasterAssetBlocks(root),
+    raster,
+    sceneVersion: sceneHash.digest('hex').slice(0, 24),
+    gameEngineJs: engineBytes.toString('utf8'),
+    gameEngineBlock: `<script id="freeflo-game-engine" type="application/octet-stream" data-version="${GAME_ENGINE_VERSION}">${engineBytes.toString('base64')}</script>\n`,
     beforeJs: readExtras(root, EXTRA_JS_BEFORE, '.js'),
     afterJs: readExtras(root, EXTRA_JS_AFTER, '.js'),
   };
@@ -148,6 +168,7 @@ export function buildHtml(root = HERE) {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="freeflo-scene-version" content="${s.sceneVersion}">
 <title>Freeflo</title>
 ${faviconLinks(root)}
 ${CONFIG_TAG}
@@ -156,7 +177,7 @@ ${s.css}
 </style>
 </head>
 <body>
-${s.sprite}${s.body.replace(ORB_MARKER, () => (s.orbJs ? scriptBlock(s.orbJs) : ''))}${s.raster}${s.beforeJs.map(scriptBlock).join('')}<script>
+${s.sprite}${s.body.replace(ORB_MARKER, () => (s.orbJs ? scriptBlock(s.orbJs) : ''))}${s.raster}${s.gameEngineBlock}${s.beforeJs.map(scriptBlock).join('')}<script>
 ${s.appJs.replace(/<\/script/gi, '<\\/script')}
 </script>
 ${s.afterJs.map(scriptBlock).join('')}</body>
@@ -168,7 +189,7 @@ ${s.afterJs.map(scriptBlock).join('')}</body>
 export function syntaxCheck(root = HERE) {
   const s = collectSources(root);
   const dir = mkdtempSync(join(tmpdir(), 'dash-syntax-'));
-  const blocks = [['src/app/*.js (bundle)', s.appJs], ...(s.orbJs ? [[ORB_JS, s.orbJs]] : []),
+  const blocks = [['src/app/*.js (bundle)', s.appJs], [GAME_ENGINE_JS, s.gameEngineJs], ...(s.orbJs ? [[ORB_JS, s.orbJs]] : []),
     ...EXTRA_JS_AFTER.map(r => [r.endsWith('/') ? r + '*.js (one IIFE)' : r, readExtra(root, r, '.js')]).filter(b => b[1] != null)];
   const failures = [];
   try {

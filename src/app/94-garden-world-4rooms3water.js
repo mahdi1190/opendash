@@ -10,7 +10,7 @@
    SAVES: nothing new. FRIENDS: nothing new: `hall` says who is in which room, `fish` and `fs` carry the rest.
    ============================================================ */
 const GRW = Object.freeze({ k: EE.fig / GW_SCALE, cw: 48 * EE.fig / GW_SCALE, ch: 30 * EE.fig / GW_SCALE, rows: 8, gap: 0.3 });
-const _grwa = { w: null, map: new Map() };
+const _grwa = { w: null, map: new Map(), all: null };
 
 /* ---------- the shape ---------- */
 function _grwOf(R) {
@@ -23,13 +23,15 @@ function _grwOf(R) {
   }
   return w;
 }
-function _grwAll() { return GRM_ROOMS.map(_grwOf).filter(Boolean); }
+// The room catalogue is fixed. A fish or float projection must not rebuild its
+// water list on every frame; individual shapes are already cached by _grwOf.
+function _grwAll() { return _grwa.all || (_grwa.all = GRM_ROOMS.map(_grwOf).filter(Boolean)); }
 function _grwByCell(x, y) { for (const w of _grwAll()) if (y >= w.cy && y < w.cy + GRW.rows) return w; return null; }
 function _grwIn(w, x, y, pad) { const p = pad || 0; return w.e.some(([cx, cy, rx, ry]) => { const a = (x - cx) / (rx + p), b = (y - cy) / (ry + p * 0.6); return a * a + b * b <= 1; }); }
 function _grwCell(w, x, y) { return { x: w.cx + (x - w.x0) / GRW.cw, y: w.cy + (y - w.y0) / GRW.ch }; }
 function _grwRoomPt(w, vx, vy) { return { x: w.x0 + (vx - w.cx) * GRW.cw, y: w.y0 + (vy - w.cy) * GRW.ch }; }
 /** _gwPx for a room's cells: the game's layer is scaled, so its units are the outdoor ones. */
-function gardenRoomPx(x, y) { const w = _grwByCell(x, y); if (!w) return [-999, -999]; const p = _grwRoomPt(w, x, y); return [p.x / GRW.k, p.y / GRW.k]; }
+function gardenRoomPx(x, y) { const w = _grwByCell(x, y); if (!w) return [-999, -999]; return [(w.x0 + (x - w.cx) * GRW.cw) / GRW.k, (w.y0 + (y - w.cy) * GRW.ch) / GRW.k]; }
 function gardenRoomMeCell() { const M = _grm.me, w = _grwa.w; return M && w ? _grwCell(w, M.x, M.y) : { x: GARDEN_ROOM_X, y: 0 }; }
 
 /* ---------- the one list: a band for each water with somebody at it ---------- */
@@ -45,11 +47,13 @@ function gardenRoomBands() {
 }
 /** Somewhere in this water. */
 function gardenRoomSpot(b, near) {
-  const w = b.w;
+  const w = b.w, base = near ? _grwRoomPt(w, near.x, near.y) : null;
   for (let i = 0; i < 24; i++) {
-    const base = near ? _grwRoomPt(w, near.x, near.y) : null;
-    const x = base ? base.x + (Math.random() - 0.5) * 300 : w.x0 + Math.random() * (w.x1 - w.x0), y = base ? base.y + (Math.random() - 0.5) * 80 : w.y0 + Math.random() * (w.y1 - w.y0);
-    if (_grwIn(w, x, y, -22)) return _grwCell(w, x, y);
+    const forward = base && near.st === GF_ST.swim && near.swimDX != null && i < 10, angle = forward ? Math.atan2(near.swimDY * GRW.ch, near.swimDX * GRW.cw) + (Math.random() - .5) * 2.1 : 0, reach = 55 + Math.random() * 100;
+    const x = base ? base.x + (forward ? Math.cos(angle) * reach : (Math.random() - 0.5) * 300) : w.x0 + Math.random() * (w.x1 - w.x0), y = base ? base.y + (forward ? Math.sin(angle) * reach : (Math.random() - 0.5) * 80) : w.y0 + Math.random() * (w.y1 - w.y0);
+    if (!_grwIn(w, x, y, -22) || base && Math.hypot(x - base.x, y - base.y) < 30) continue;
+    if (base && [.25, .5, .75].some(k => !_grwIn(w, base.x + (x - base.x) * k, base.y + (y - base.y) * k, -12))) continue;
+    const p = _grwCell(w, x, y); if (i < 16 && !_gfsSpaced(b, p.x, p.y, near)) continue; return p;
   }
   const e = w.e[0]; return _grwCell(w, e[0], e[1]);
 }
@@ -59,21 +63,20 @@ function _grwStock(R) { if (_grwOf(R) && typeof _gfs !== 'undefined' && !_gfs.ba
 /* ---------- the shadows: as _gfsFrame, but in the room's layer and every frame ---------- */
 function _grwFishFrame(dt) {
   const w = _grwa.w, layer = _grm.school; if (!w || !layer) return;
-  const k = Math.min(1, dt * 4), t = _grm.t, moving = gardenMotionOn();
+  const t = _grm.t, moving = gardenMotionOn();
   for (const f of _gfs.list.values()) {
     if (f.x < GARDEN_ROOM_X) continue;
     if (f.y < w.cy || f.y >= w.cy + GRW.rows) { if (f.node) { f.node.remove(); f.node = null; } continue; }
     if (!f.node) { f.node = _gwEl('g', { class: 'gd-fs is-seen', opacity: '0' }); f.node.innerHTML = _gfsArt(f.def, f.cm, f.v) + (f.z && typeof gardenFishMark === 'function' ? gardenFishMark(f) : ''); f.a = 0; f.sx = f.x; f.sy = f.y; layer.appendChild(f.node); }
-    const dx = f.x - f.sx; if (Math.abs(dx) > 0.015) f.face = dx > 0 ? 1 : -1;
-    f.sx += dx * k; f.sy += (f.y - f.sy) * k;
-    if (f.a < 1) { f.a = Math.min(1, f.a + dt * 0.8); f.node.setAttribute('opacity', f.a.toFixed(2)); }
-    if (f.st === GF_ST.nibble && f.n !== f.dn) _gfsRing(f.x, f.y, 0.6);
+    _gfsVisualStep(f, f, dt, t, moving);
+    if (f.a < 1) { f.a = Math.min(1, f.a + dt * 0.8); _grmAttr(f.node, 'opacity', f.a.toFixed(2)); }
     f.dn = f.n;
-    if (f.st !== f.dst) { if (f.st === GF_ST.bite) { _gfsRing(f.x, f.y, 1.3); _gfsRing(f.x, f.y, 0.8); } else if (f.st === GF_ST.bolt) _gfsRing(f.sx, f.sy, 1.1); f.dst = f.st; }
+    f.dst = f.st;
     const [px, py] = _gwPx(f.sx, f.sy);
-    const fast = f.st === GF_ST.hooked ? 16 : f.st === GF_ST.bolt ? 12 : 3 + 2 * Math.min(1, 40 / Math.max(10, f.cm));
-    const wob = moving ? Math.sin(t * fast + f.seed) * (f.st === GF_ST.hooked ? 11 : 4 * gardenFishWobble(f.def)) : 0;
-    f.node.setAttribute('transform', `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${wob.toFixed(1)}) scale(${f.face} 1)`);
+    _gfsVisualProject(f, f, px, py);
+    _grmAttr(f.node, 'transform', _gfsVisualTransform(f, px, py));
+    _gfsVisualParts(f, f.node, f, moving);
+    _gfsVisualReaction(f, f, moving);
   }
 }
 /** Out of the room: its layer goes with it, so the shadows are made again next time. */
@@ -89,6 +92,7 @@ function _grwSnap(w, c) {
 }
 /** Cast there, walking up to the bank first if the rod does not reach. */
 function _grwCastAt(x, y) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.castAt(x, y); return; }
   const w = _grwa.w, M = _grm.me; if (!w || !M) return;
   const t = _grwSnap(w, _grwCell(w, x, y)); if (!t) return;
   const reach = gardenRod().st.range - 0.15, tp = _grwRoomPt(w, t.x, t.y), me = _grwCell(w, M.x, M.y), d = Math.hypot(me.x - t.x, me.y - t.y);
@@ -105,6 +109,7 @@ function _grwCastAt(x, y) {
   _grmWalk(best.x, best.y, go);
 }
 function _grwFront() {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.front(); return; }
   const w = _grwa.w, M = _grm.me; let best = null, bd = 1e9;
   for (const [cx, cy, rx, ry] of w.e) { const n = Math.hypot((M.x - cx) / rx, (M.y - cy) / ry) || 1, x = cx + (M.x - cx) / n * 0.55, y = cy + (M.y - cy) / n * 0.55, d = Math.hypot(x - M.x, y - M.y); if (d < bd) { bd = d; best = { x, y }; } }
   if (best) _grwCastAt(best.x, best.y);
@@ -121,6 +126,7 @@ function _grmPose(M) {
   return { pose, rod, gear: M.me ? _gplMyGear() : (A && A.g) || null, dir: GPL_POSE_FRONT.has(pose) ? 's' : rod ? 'e' : M.dir };
 }
 function _grmPaintFig(M, t) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.poseActor(M); return; }
   const P = _grmPose(M), motion = gardenMotionOn(), key = P.pose + P.dir + (motion ? 'm' : '') + JSON.stringify(P.gear);
   if (M.key !== key) { M.key = key; let s = ''; try { s = gartPlayerSvg(M.a, { dir: P.dir, pose: P.pose, motion, stageRod: P.rod, gear: P.gear }); } catch (e) { s = ''; } M.in.innerHTML = s || _eeFigure(M.a, P.dir, M.moving); }
   const bob = !motion ? 0 : M.moving ? -Math.abs(Math.sin(t * 11)) * 2 : 0;
@@ -132,18 +138,20 @@ function _grmPaintFig(M, t) {
 }
 /** Is that person's line in the room you are in? null: it is out in the garden. false: in a room, not yours. Else where to draw it from. */
 function gardenRoomFxAt(A, F) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) return GardenNativeRooms.fishingAnchor(A, F);
   if (!F || F.bx < GARDEN_ROOM_X) return null;
   if (!_grm.on || !_grm.game) return false;
   const w = _grwa.w, Q = _grm.m.get(A.w);
   if (!w || !Q || F.by < w.cy || F.by >= w.cy + GRW.rows) return false;
   if (!Q.fxr || !Q.fxr.isConnected) { Q.fxr = _gwEl('g', { class: 'grm-fxr' }); _grm.game.appendChild(Q.fxr); }
-  Q.fxr.setAttribute('transform', `translate(${(Q.x / GRW.k).toFixed(1)} ${(Q.y / GRW.k).toFixed(1)})`);
+  _grmAttr(Q.fxr, 'transform', `translate(${(Q.x / GRW.k).toFixed(1)} ${(Q.y / GRW.k).toFixed(1)})`);
   const c = _grwCell(w, Q.x, Q.y), face = F.bx >= c.x ? 1 : -1;
   A.face = face; Q.face = face;
   return { root: Q.fxr, x: c.x, y: c.y };
 }
 /** They are inside somewhere and caught something. True: dealt with here. */
 function gardenRoomGot(A, spec, who) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) return GardenNativeRooms.got(A, spec, who);
   if (!A.rm) return false;
   A.fish = null; _gllFxClear(A);
   const Q = _grm.on && _grm.R && _grm.R.id === A.rm ? _grm.m.get(A.w) : null;
@@ -156,6 +164,7 @@ function gardenRoomGot(A, spec, who) {
   return true;
 }
 function gardenRoomSwing(A) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { const Q = _grm.m.get(A.w); if (Q) GardenNativeRooms.swing(Q); return !!A.rm; }
   if (!A.rm) return false;
   const Q = _grm.on && _grm.R && _grm.R.id === A.rm ? _grm.m.get(A.w) : null;
   if (Q && gardenMotionOn()) {
@@ -169,6 +178,7 @@ function gardenRoomSwing(A) {
 
 /** A little word going up over your head (gardenFloat, while you are in a room). */
 function gardenRoomFloat(text) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.float(text); return; }
   const M = _grm.me, g = _grm.game; if (!M || !g || !text) return;
   const t = _gwEl('text', { class: 'grm-float', x: (M.x / GRW.k).toFixed(1), y: (M.y / GRW.k - 84).toFixed(1), 'text-anchor': 'middle' }); t.textContent = text;
   g.appendChild(t); setTimeout(() => t.remove(), 1700);
@@ -199,6 +209,7 @@ function _grbPick(b, far) {
   return { x: b.ax, y: b.ay };
 }
 function _grbFrame(dt) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.bugs(dt); return; }
   const S = _grm.S, M = _grm.me; if (!S || !S.bugs) return;
   const motion = gardenMotionOn(), sneak = _grm.keys.has('shift') || !!M.net;
   for (const b of S.bugs) {
@@ -217,9 +228,9 @@ function _grbFrame(dt) {
         if (b.state === 'flee') { b.fleeT -= dt; if (b.fleeT <= 0) { b.state = 'fly'; b.timer = 3; } }
       }
     }
-    b.node.setAttribute('transform', `translate(${b.x.toFixed(1)} ${b.y.toFixed(1)})`);
-    b.liftEl.setAttribute('transform', `translate(0 ${(-b.lift).toFixed(1)})`);
-    b.inEl.setAttribute('transform', `scale(${(b.face * GRB.scale * b.def.size).toFixed(2)} ${(GRB.scale * b.def.size).toFixed(2)})`);
+    _grmAttr(b.node, 'transform', `translate(${b.x.toFixed(1)} ${b.y.toFixed(1)})`);
+    _grmAttr(b.liftEl, 'transform', `translate(0 ${(-b.lift).toFixed(1)})`);
+    _grmAttr(b.inEl, 'transform', `scale(${(b.face * GRB.scale * b.def.size).toFixed(2)} ${(GRB.scale * b.def.size).toFixed(2)})`);
   }
   // creeping up on one
   if (M.net) {
@@ -254,7 +265,7 @@ function _grbTake(b) {
   S.bugs = S.bugs.filter(x => x !== b);
   _gwBugTaken(b);   // the bag, the book, the moment, the card, friends told
   if (!S.won && !gpVisiting()) { S.won = true; _grmPay(R, R.gotLine || 'That is a good one.'); }
-  if (!S.bugs.length) setTimeout(() => { if (_grm.R === R) _grmSay(R.goneLine, 7000); }, 6000);
+  if (!S.bugs.length) _grmLater(R, S, () => _grmSay(R.goneLine, 7000), 6000);
 }
 /** Somebody here netted it. True: it was one of a room's. */
 function gardenRoomBugGone(key) {

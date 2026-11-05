@@ -3,7 +3,7 @@
    that can visit ... it's cool to have something fly around and settle on a placed object" and "think Animal Crossing ... build it in a way where
    we can add so much content and scale it easily."
 
-   A creature's picture is a kit plus a few colours: art: ['butterfly', {fore: '#...', marks: 'eyes'}]. A kit returns {svg, clips}:
+   A creature's picture is a kit plus a few colours: art: ['butterfly', {fore: '#...', marks: 'eyes'}]. A kit returns {svg, clips, waterPose?}:
      svg     drawn facing RIGHT with its feet at 0,0, in stage units (the player is about 52 tall). Moving parts are <g class="gl-wing ..."> pivoting
              about their own hinge (_glPart). Plain flat colours, the same light from the upper left as the rest of the garden.
      clips   {name: 'token token'}: what each named clip does. A token is one rule in src/styles/94-garden-life.css that moves parts by their class:
@@ -11,6 +11,8 @@
              and the page repaints only that little creature.
    Clip names the behaviours ask for: rest, fly, preen, walk, run, hop, peck, sleep, swim, sniff, alert, react, hide, dig. A kit leaves out what it has
    no use for: the engine falls back to rest. A row's own `clips` replace single names.
+   waterPose optional {y, scaleY}: authored in-water body transform for picking. y is downward stage pixels AFTER the kit's scale;
+             scaleY is its aquatic vertical multiplier. It applies only while the active tokens contain 'in-water'.
 
    GL_KITS[name](params) is the whole interface: a new kit is one function here and needs no engine code. PURE: nothing is drawn at load.
    ============================================================ */
@@ -112,7 +114,7 @@ GL_KITS.frog = function (p) {
   const throat = _glPart('throat', 6, -3.4, A.P(b, A.ell(5.6, -3.2, 3.6, 2.2)));
   const eyes = A.P(c, A.circ(5.4, -9.8, 2.6)) + _glEye(5.9, -10.2, 1.5) + A.S(d, 0.6, 'M7.2 -6Q9 -5.4 9.4 -6.4');
   const upper = _glPart('dry', 0, 0, legs + front) ;
-  return { svg: `<g transform="scale(${k})">${_glPart('frog', 0, 0, upper + body + throat + eyes)}</g>`, clips: { rest: 'blink', hop: 'stretch', react: 'croak', swim: 'in-water blink', hide: 'in-water', fly: 'stretch', sleep: 'blink' } };
+  return { svg: `<g transform="scale(${k})">${_glPart('frog', 0, 0, upper + body + throat + eyes)}</g>`, waterPose: { y: 2.6 * k, scaleY: 0.76 }, clips: { rest: 'blink', hop: 'stretch', react: 'croak', swim: 'in-water blink', hide: 'in-water', fly: 'stretch', sleep: 'blink' } };
 };
 
 /* ---------- birds: a plump side-on bird: wing, head and tail are parts, legs tuck up to fly ---------- */
@@ -173,7 +175,7 @@ GL_KITS.quad = function (p) {
   const curled = _glPart('curl', 0, -SR * 0.5, A.P(c, `M${-SR} -0.6C${-SR * 1.1} ${-SR * 0.86} ${-SR * 0.3} ${-SR * 1.06} ${SR * 0.3} ${-SR * 0.96}C${SR * 0.9} ${-SR * 0.88} ${SR * 1.06} ${-SR * 0.3} ${SR} -0.6z`) + A.P(p.saddle || A.dk(c, 0.12), `M${-SR * 0.84} ${-SR * 0.42}C${-SR * 0.54} ${-SR * 0.86} ${SR * 0.04} ${-SR * 0.96} ${SR * 0.3} ${-SR * 0.84}C${SR * 0.02} ${-SR * 0.72} ${-SR * 0.44} ${-SR * 0.5} ${-SR * 0.84} ${-SR * 0.42}z`, 0.8)
     + (tailKind === 'long' || tailKind === 'whip' || tailKind === 'brush' ? A.S(p.tailC || (tailKind === 'brush' ? c : A.dk(c, 0.06)), Math.max(2.4, H * 0.3), `M${-SR * 0.94} ${-SR * 0.16}C${-SR * 0.4} ${SR * 0.02} ${SR * 0.3} ${SR * 0.02} ${SR * 0.8} ${-SR * 0.16}`) + (p.tip ? A.S(p.tip, Math.max(2.4, H * 0.3), `M${SR * 0.58} ${-SR * 0.08}L${SR * 0.8} ${-SR * 0.16}`) : '') : '')
     + earS(sx - br * 0.5, d) + A.P(c, A.ell(sx, sy, br * 1.04, br * 0.88)) + earS(sx + br * 0.42, c) + A.P(p.muzzle || b, A.ell(sx + br * 0.62, sy + br * 0.36, br * 0.5, br * 0.36)) + A.P('#201612', A.circ(sx + br * 1.06, sy + br * 0.24, Math.max(0.7, br * 0.13))) + A.S('#201612', 0.8, `M${_glF(sx + br * 0.04)} ${_glF(sy - br * 0.08)}q${_glF(br * 0.3)} ${_glF(br * 0.24)} ${_glF(br * 0.6)} 0`));
-  return { svg: `<g transform="scale(${k})">${stand}${curled}</g>`, clips: { rest: 'curl-off blink tail-sway', walk: 'curl-off legs-walk tail-sway', run: 'curl-off legs-run', sniff: 'curl-off sniff', alert: 'curl-off look blink', react: 'curl-off look', sleep: 'stand-off breathe-curl', hop: 'curl-off legs-run', peck: 'curl-off sniff', hide: 'curl-off look' } };
+  return { svg: `<g transform="scale(${k})" style="--gl-swim-depth:${legH}px">${stand}${curled}</g>`, waterPose: { y: legH * k, scaleY: 1 }, clips: { rest: 'curl-off blink tail-sway', walk: 'curl-off legs-walk tail-sway', run: 'curl-off legs-run', sniff: 'curl-off sniff', alert: 'curl-off look blink', react: 'curl-off look', sleep: 'stand-off breathe-curl', hop: 'curl-off legs-run', peck: 'curl-off sniff', hide: 'curl-off look', swim: 'curl-off in-water blink tail-sway' } };
 };
 
 /* ---------- squirrel: sits up with a great S of tail ---------- */
@@ -198,14 +200,14 @@ GL_KITS.rabbit = function (p) {
 /* ---------- things that do not move much (eggs, gifts): kit 'thing' takes ready markup ---------- */
 GL_KITS.thing = function (p) { return { svg: p.svg || '', clips: Object.assign({ rest: p.clip || '' }, p.clips || {}) }; };
 
-/** The art for a row: {svg, clips}, built once per row. */
+/** The art for a row: {svg, clips, waterPose?}, built once per row. */
 const _glArtCache = new Map();
 function gardenLifeArt(def) {
   let a = _glArtCache.get(def);
   if (a) return a;
   const spec = def.art || ['thing', {}], fn = GL_KITS[spec[0]];
   try { a = fn ? fn(spec[1] || {}) : { svg: '', clips: {} }; } catch (e) { console.error('[garden life]', def.id, e); a = { svg: '', clips: {} }; }
-  if (def.clips) a = { svg: a.svg, clips: Object.assign({}, a.clips, def.clips) };
+  if (def.clips) a = { ...a, clips: Object.assign({}, a.clips, def.clips) };
   _glArtCache.set(def, a);
   return a;
 }

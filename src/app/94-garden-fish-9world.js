@@ -11,6 +11,10 @@
    ============================================================ */
 function _gcwP(x, y) { const W = GARDEN_WORLD; return [x * W.cellW, W.sky + y * W.cellH]; }
 const _gcwN = (v) => (Math.round(v * 10) / 10).toString();
+function _gcwNativeWaterDepth(kind, rx, ry, o) {
+  if (!(o && o.native && window.GardenNativeWater)) return '';
+  return `<g data-water-spot="${kind}" data-water-rx="${_gcwN(rx)}" data-water-ry="${_gcwN(ry)}" pointer-events="none"/>`;
+}
 /* ---------- the spots ---------- */
 const _GCW_SPOT = Object.freeze({
   'reed-bank': (s, o) => {
@@ -27,15 +31,17 @@ const _GCW_SPOT = Object.freeze({
   'weed-bed': (s, o) => {
     const r = gardenRand('sp-weed'); let d = '';
     for (let i = 0; i < 14; i++) { const x = (r() - 0.5) * s.r * 70, y = (r() - 0.5) * 30; d += `M${_gcwN(x)} ${_gcwN(y)}q${_gcwN(5 + r() * 6)} -6 ${_gcwN(2 + r() * 7)} -13q-6 -5 -2 -12`; }
-    return `<ellipse cx="0" cy="0" rx="${_gcwN(s.r * 42)}" ry="20" fill="#1f5a3a" fill-opacity=".28"/><g class="${o.still ? '' : 'gda-sway'}"><path d="${d}" stroke="#2f7a4a" stroke-opacity=".8" stroke-width="2" fill="none" stroke-linecap="round"/></g>`;
+    return (_gcwNativeWaterDepth('weed-bed', s.r * 42, 20, o) || `<ellipse cx="0" cy="0" rx="${_gcwN(s.r * 42)}" ry="20" fill="#1f5a3a" fill-opacity=".28"/>`) + `<g class="${o.still ? '' : 'gda-sway'}"><path d="${d}" stroke="#2f7a4a" stroke-opacity=".8" stroke-width="2" fill="none" stroke-linecap="round"/></g>`;
   },
   'sunken-log': () => '<ellipse cx="0" cy="7" rx="44" ry="8" fill="#0a2a46" fill-opacity=".25"/><path d="M-40 6Q-42 -6 -30 -8L30 -14Q42 -14 42 -4Q42 4 32 4L-30 10Q-38 10 -40 6z" fill="#6a4a2e" stroke="#3a2818" stroke-width="1"/><ellipse cx="34" cy="-5" rx="8" ry="9" fill="#a87c4f" stroke="#3a2818" stroke-width="1"/><ellipse cx="34" cy="-5" rx="4" ry="5" fill="none" stroke="#6a4a2e" stroke-width="1"/><path d="M-20 -6q10 -3 22 -4M-24 2q14 -3 36 -6" stroke="#3a2818" stroke-width="1" fill="none"/><path d="M-6 -11l-4 -9M-10 -20l5 -3" stroke="#6a4a2e" stroke-width="2" stroke-linecap="round"/><path d="M-46 10q10 3 22 0M6 8q12 3 26 0" stroke="#ffffff" stroke-opacity=".6" stroke-width="1.2" fill="none" stroke-linecap="round"/>',
   'cold-spring': (s, o) => {
     let b = ''; for (let i = 0; i < 6; i++) b += `<circle class="${o.still ? '' : 'gda-bob'}" cx="${(i - 2.5) * 7}" cy="${(i % 3) * -4 - 1}" r="${1.4 + (i % 3) * 0.7}" fill="#ffffff" fill-opacity=".7" stroke="#8ad0ff" stroke-width=".5" style="animation-delay:-${i * 0.5}s"/>`;
-    return `<ellipse cx="0" cy="0" rx="32" ry="14" fill="#bfe8ff" fill-opacity=".38"/><ellipse cx="0" cy="0" rx="18" ry="8" fill="#e8fbff" fill-opacity=".4"/><ellipse cx="0" cy="0" rx="26" ry="11" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width="1"/>${b}`;
+    const nativeDepth = _gcwNativeWaterDepth('cold-spring', 32, 14, o);
+    return nativeDepth ? nativeDepth + '<path d="M-25 1Q-15 5-5 3M5 -5Q15 -7 24 -3" fill="none" stroke="#c5e1df" stroke-opacity=".3" stroke-width=".8" stroke-linecap="round"/>' + b : `<ellipse cx="0" cy="0" rx="32" ry="14" fill="#bfe8ff" fill-opacity=".38"/><ellipse cx="0" cy="0" rx="18" ry="8" fill="#e8fbff" fill-opacity=".4"/><ellipse cx="0" cy="0" rx="26" ry="11" fill="none" stroke="#ffffff" stroke-opacity=".55" stroke-width="1"/>${b}`;
   },
-  'drop-off': (s) => {   // only the darker water: the deep reads by itself. (It had a dashed line and a buoy with a yellow flag, which nobody could read. The owner had them removed.)
+  'drop-off': (s, o) => {   // only the darker water: the deep reads by itself. (It had a dashed line and a buoy with a yellow flag, which nobody could read. The owner had them removed.)
     const w = s.r * 48;
+    const nativeDepth = _gcwNativeWaterDepth('drop-off', w, 29, o); if (nativeDepth) return nativeDepth;
     return `<path d="M${_gcwN(-w)} 7Q${_gcwN(-w)} -8 ${_gcwN(-w * 0.72)} -11Q0 -22 ${_gcwN(w * 0.72)} -11Q${_gcwN(w)} -8 ${_gcwN(w)} 7Q${_gcwN(w)} 20 ${_gcwN(w * 0.72)} 24Q0 34 ${_gcwN(-w * 0.72)} 24Q${_gcwN(-w)} 20 ${_gcwN(-w)} 7z" fill="#04233f" fill-opacity=".34"/>`;
   },
   'old-wreck': () => '<ellipse cx="0" cy="8" rx="60" ry="10" fill="#04233f" fill-opacity=".32"/><path d="M-46 4L-34 -10L34 -22L46 -14L40 6Q0 16 -40 8z" fill="#4a3424" stroke="#2a1a10" stroke-width="1.2"/><path d="M-30 -8L32 -19M-34 0L38 -10" stroke="#2a1a10" stroke-width="1.1"/><path d="M-6 -2L-16 -6L-12 4z" fill="#04233f" fill-opacity=".85"/><path d="M6 -16L14 -78" stroke="#3a2818" stroke-width="4" stroke-linecap="round"/><path d="M-2 -60L26 -66" stroke="#3a2818" stroke-width="2.6" stroke-linecap="round"/><path d="M4 -58Q-4 -40 8 -30L18 -32Q10 -44 22 -62z" fill="#d8ceb0" fill-opacity=".72"/><path d="M-52 10q12 3 24 0M18 10q12 3 28 0" stroke="#ffffff" stroke-opacity=".55" stroke-width="1.2" fill="none" stroke-linecap="round"/>',
@@ -236,18 +242,13 @@ function gardenThingFrame() {
   }
 }
 
-/* ---------- the note on the stage ---------- */
-let _gcwNoteT = 0;
-/** What is on, in plain words: a line that stays for a moment when it begins, then a small tag. Click it for the lake page. */
+/* ---------- passive lake conditions ---------- */
+/** Keep the receipt in Recent; the lake page has the current conditions. */
 function gardenLakeNote(list, fresh) {
   const box = _gdgBox(); if (!box) return;
-  let n = box.querySelector('.gd-lakenote');
+  const n = box.querySelector('.gd-lakenote'); if (n) n.remove();
   const e = GARDEN_LAKE_EVENTS[(list || [])[0]];
-  if (!e) { if (n) n.remove(); return; }
-  if (!n) { n = document.createElement('button'); n.type = 'button'; n.className = 'gd-lakenote'; n.onclick = (ev) => { ev.stopPropagation(); gardenPopupOpen('catch', { sub: 'lake', title: 'The lake' }); }; box.appendChild(n); }
-  n.innerHTML = `${icon(e.icon)}<b>${esc(e.name)}</b><span>${esc(e.says)}</span>`;
-  n.classList.toggle('is-full', !!fresh);
-  clearTimeout(_gcwNoteT); if (fresh) _gcwNoteT = setTimeout(() => n.classList.remove('is-full'), 14000);
+  if (fresh && e && typeof gardenMessage === 'function') gardenMessage(e.name + '. ' + e.says, { ambient: true, source: 'lake-event:' + e.id, icon: e.icon });
 }
 
 /* ---------- decorations ---------- */

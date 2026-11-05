@@ -63,7 +63,14 @@ function gardenRewardDid(id) {
   try {
     const r = GR_DID[id]; if (!r) return;
     if (id !== 'visit' && gpVisiting()) return;
-    if (_grGive('did.' + id, r) && r.say) gpNote(r.say);
+    if (_grGive('did.' + id, r) && r.say) {
+      if (id === 'visit') {
+        const m = gardenHere();
+        // The automatic gate ticket is still earned once by the same ledger.
+        // Its receipt is a quiet arrival note, not another activity prompt.
+        if (m.visit && gpVisiting()) gardenMessage(r.say, { ambient: true, source: 'visit-ticket:' + m.visit.fid, icon: 'ticket' });
+      } else gpNote(r.say);
+    }
   } catch (e) { console.error('[garden rewards]', e); }
 }
 function gardenRewardTick(m) {

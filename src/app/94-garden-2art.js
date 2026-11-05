@@ -628,10 +628,14 @@ function gardenArtPlaceholder(id, o) {
  */
 function _gdArt(id, o) {
   const tq = Math.round((o.t || 0) * 8) / 8;
-  const key = [o.kind, id, o.stage | 0, o.season || '', o.variant | 0, o.size || 'm', tq, o.tod || '', o.r | 0, o.thirsty ? 1 : 0, o.overgrown ? 1 : 0, o.ripe ? 1 : 0, o.silhouette ? 1 : 0, o.heart == null ? '' : o.heart, o.glow ? 1 : 0, o.shw || ''].join('|');
+  const fields = [o.kind, id, o.stage | 0, o.season || '', o.variant | 0, o.size || 'm', tq, o.tod || '', o.r | 0, o.thirsty ? 1 : 0, o.overgrown ? 1 : 0, o.ripe ? 1 : 0, o.silhouette ? 1 : 0, o.heart == null ? '' : o.heart, o.glow ? 1 : 0, o.shw || ''];
+  if (o.nativeHealth) fields.push('nativeHealth');
+  const key = fields.join('|');
   const hit = _GDA_CACHE.get(key);
   if (hit !== undefined) return hit;
-  const oo = Object.assign({}, o, { t: tq, uid: 'g' + (gardenHash(key) % 1e8).toString(36) });
+  // Native health changes only the retained pose; its botanical definitions keep their IDs.
+  if (o.nativeHealth) fields[9] = 0;
+  const oo = Object.assign({}, o, { t: tq, uid: 'g' + (gardenHash(o.nativeHealth ? fields.join('|') : key) % 1e8).toString(36) });
   let s = '';
   if (typeof gardenArt === 'function') {
     try { const r = gardenArt(id, oo); s = typeof r === 'string' ? r : r && r.outerHTML ? r.outerHTML : ''; } catch (e) { s = ''; }

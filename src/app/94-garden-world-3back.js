@@ -106,6 +106,7 @@ function _eeFigure(a, dir, moving) {
   return s || '<rect x="-6" y="-40" width="12" height="26" rx="5" fill="#5a8a5a"/><circle cx="0" cy="-48" r="8" fill="#e8b890"/><rect x="-5" y="-14" width="4" height="14" rx="2" fill="#3a3a4a"/><rect x="1" y="-14" width="4" height="14" rx="2" fill="#3a3a4a"/>';
 }
 function _eeMake(M) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.addActor(M); return M.g; }
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ee-p' + (M.me ? ' is-me' : ''));
   g.innerHTML = '<ellipse class="ee-pshadow" cx="0" cy="1" rx="17" ry="4.6"/><g class="ee-pb"><g class="ee-pin"></g></g><text class="ee-pname" y="-112" text-anchor="middle"></text>';
   g.querySelector('.ee-pname').textContent = M.me ? 'You' : M.n;
@@ -133,6 +134,7 @@ function _eeMove(M, dt, speed) {
   M.dir = Math.abs(dx) >= Math.abs(dy) * 0.8 ? 'e' : dy > 0 ? 's' : 'n';
 }
 function _eePaint(M, t) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.poseActor(M); return; }
   const key = M.dir + (M.moving ? 'w' : 'i');
   if (M.key !== key) { M.key = key; M.in.innerHTML = _eeFigure(M.a, M.dir, M.moving); }
   const calm = typeof gardenMotionOn === 'function' && !gardenMotionOn();
@@ -229,6 +231,7 @@ function _eeNote(x, y) {
   n.addEventListener('animationend', () => n.remove()); _ee.notes.appendChild(n);
 }
 function _eeFrame(ts) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) return;
   _ee.raf = 0;
   if (!_ee.on) return;
   if (!_gw.on) { _eeLeave(); return; }   // the garden itself went away (another page, a visit that ended)
@@ -266,10 +269,11 @@ function _eeFrame(ts) {
   if (!same) for (const r of all) _ee.actors.appendChild(r.g);
   _ee.raf = requestAnimationFrame(_eeFrame);
 }
-function _eeStartLoop() { if (_ee.on && !_ee.raf && !document.hidden) { _ee.last = 0; _ee.raf = requestAnimationFrame(_eeFrame); } }
+function _eeStartLoop() { if (window.GardenNativeRooms && GardenNativeRooms.current()) return; if (_ee.on && !_ee.raf && !document.hidden) { _ee.last = 0; _ee.raf = requestAnimationFrame(_eeFrame); } }
 
 /* ---------- coming in and going out ---------- */
 function _eePt(ev) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) return GardenNativeRooms.point(ev.clientX, ev.clientY);
   const r = _ee.svg.getBoundingClientRect(), k = Math.min(r.width / EE.W, r.height / EE.H);
   return { x: (ev.clientX - (r.left + (r.width - EE.W * k) / 2)) / k, y: (ev.clientY - (r.top + (r.height - EE.H * k) / 2)) / k };
 }
@@ -308,6 +312,7 @@ function _eeMute() {
 function _eeMayEnter() { return !_ee.on && !_ee.closing && !(typeof _grm !== 'undefined' && (_grm.on || _grm.closing)) && !!(typeof _gw !== 'undefined' && _gw.on && _gw.box); }
 /** Open the room. quiet: you were brought here by somebody else (they already know where you are). */
 function eeEnter(o) {
+  if (window.GardenNative && GardenNative.active()) return GardenNative.enterRoom('back');
   if (!_eeMayEnter()) return false;
   o = o || {};
   const root = document.createElement('div'); root.className = 'ee-room'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'A room behind the garden');
@@ -344,6 +349,7 @@ function eeEnter(o) {
   return true;
 }
 function _eeLeave() {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.leave(); return; }
   if (!_ee.on || _ee.closing) return;
   _ee.closing = true; _ee.on = false;
   try { if (typeof gardenLiveFx === 'function') gardenLiveFx('hall', 'out'); } catch (e) { /* only a message */ }

@@ -1,0 +1,1657 @@
+{
+  "formatVersion": 1,
+  "title": "Garden expansion candidates",
+  "status": "unimplemented_candidate_catalogue",
+  "note": "These 200 concepts are unimplemented design candidates. Each needs deeper design, feasibility work and deduplication against the evolving game before implementation.",
+  "scopeNote": "The catalogue excludes the current Listening Walk, shared wind-kite activity and rain-refuge work, and avoids simple particle, coin, badge or cosmetic variants as standalone concepts.",
+  "inventoryBasis": [
+    "docs/dev/HUNDRED_WORLD.md",
+    "docs/dev/HUNDRED_PLAY.md",
+    "docs/dev/GARDEN_PLAN.md",
+    "docs/dev/CATCH_FEATURES.md",
+    "docs/dev/GARDEN_ENGINE.md",
+    "src/app/94-garden-0catalog.js",
+    "src/app/94-garden-lands-0table.js",
+    "src/app/94-garden-play-*.js",
+    "src/app/94-garden-wonder-*.js"
+  ],
+  "designPrinciples": [
+    "Keep the calm, optional nature of the garden and avoid missed-day punishment.",
+    "Keep persistent outcomes under the existing owner and host authority model.",
+    "Design meaningful solo access and clear visitor permissions alongside shared play.",
+    "Preserve reduced-motion and non-audio ways to understand essential information.",
+    "Use bounded retained rendering and simulation appropriate to the browser engine."
+  ],
+  "categories": [
+    {
+      "id": "exploration",
+      "title": "Exploration and discovery"
+    },
+    {
+      "id": "ecosystems_pets",
+      "title": "Living ecosystems and companions"
+    },
+    {
+      "id": "cooperative_play",
+      "title": "Cooperative play"
+    },
+    {
+      "id": "water_weather_seasons",
+      "title": "Water, weather and seasons"
+    },
+    {
+      "id": "construction_art",
+      "title": "Creative construction and art"
+    },
+    {
+      "id": "village_progression",
+      "title": "Village characters and progression"
+    },
+    {
+      "id": "accessibility_interaction",
+      "title": "Accessibility and interaction"
+    }
+  ],
+  "concepts": [
+    {
+      "id": "exp-root-network-atlas",
+      "category": "exploration",
+      "title": "The root-network atlas",
+      "playerExperience": "Trace connected roots beneath mature trees to navigate an underground network whose passages reflect the actual orchard above.",
+      "multiplayerOpportunity": "Visitors can survey separate branches and combine their route sketches at the surface.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-chain-ferry-crossing",
+      "category": "exploration",
+      "title": "The hand-pulled chain ferry",
+      "playerExperience": "Pull a ferry across a narrow inlet while choosing when to release the chain and let the current carry it.",
+      "multiplayerOpportunity": "One passenger can handle the chain while another watches the landing and gives clear signals.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-hillside-funicular",
+      "category": "exploration",
+      "title": "The hillside funicular",
+      "playerExperience": "Restore a counterbalanced hillside railway and operate its passing loop to reach gardens on several terraces.",
+      "multiplayerOpportunity": "Players can coordinate the two cars or ride together while one operates the station controls.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-underground-river",
+      "category": "exploration",
+      "title": "The river below the garden",
+      "playerExperience": "Explore a branching underground river by matching surface streams to cave channels and choosing safe mooring points.",
+      "multiplayerOpportunity": "A shore navigator can read surface measurements while a boat crew maps the caves.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-wind-powered-lift",
+      "category": "exploration",
+      "title": "The wind-powered ridge lift",
+      "playerExperience": "Adjust a wind-powered lift to carry yourself and a modest load between sheltered ledges without losing the return route.",
+      "multiplayerOpportunity": "A friend can operate the ground controls while the rider chooses a landing.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-fallen-tree-interior",
+      "category": "exploration",
+      "title": "Inside the fallen giant",
+      "playerExperience": "Enter a huge fallen tree and find connected chambers formed by roots, old nests and weathered hollows.",
+      "multiplayerOpportunity": "Friends can open passages from different entrances and meet in the central hollow.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-rotating-view-tower",
+      "category": "exploration",
+      "title": "The tower of moving views",
+      "playerExperience": "Rotate a tower room to line up narrow viewing slots with distant landmarks and reveal a route across the valley.",
+      "multiplayerOpportunity": "Observers at the landmarks can supply the missing alignment information.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-riverbed-archaeology",
+      "category": "exploration",
+      "title": "The exposed riverbed",
+      "playerExperience": "Investigate an old riverbed as falling water reveals structures in their original positions instead of scattering loose treasure.",
+      "multiplayerOpportunity": "A group can map different exposed sections before assembling the settlement plan.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-inspection-railway",
+      "category": "exploration",
+      "title": "The abandoned inspection railway",
+      "playerExperience": "Drive a small inspection trolley through overgrown rail branches, repairing switches to reconnect isolated parts of the garden.",
+      "multiplayerOpportunity": "Passengers can manage signals and cargo while the driver controls the trolley.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-model-borough",
+      "category": "exploration",
+      "title": "The model borough",
+      "playerExperience": "Step into a scale-changing model village where familiar garden objects become streets, buildings and climbing routes.",
+      "multiplayerOpportunity": "Players at normal and miniature scales can cooperate through carefully limited object interactions.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-geode-fracture-labyrinth",
+      "category": "exploration",
+      "title": "The geode fracture labyrinth",
+      "playerExperience": "Read the matching fracture faces of a giant geode to work out which crystalline chambers connect through its interior.",
+      "multiplayerOpportunity": "Explorers can compare drawings of chamber boundaries from opposite entrances.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-cliff-basket-route",
+      "category": "exploration",
+      "title": "The cliffside basket route",
+      "playerExperience": "Send carefully packed survey equipment through a network of cliff baskets and follow its route to an unreachable camp.",
+      "multiplayerOpportunity": "Friends can receive, repack and redirect loads from different cliff stations.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-shadow-courtyard",
+      "category": "exploration",
+      "title": "The courtyard of borrowed shadows",
+      "playerExperience": "Reposition a courtyard model so real architectural shadows reveal a walkable pattern across its stone floor.",
+      "multiplayerOpportunity": "Players can stand at different viewing points and describe the parts hidden from the operator.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-expedition-camps",
+      "category": "exploration",
+      "title": "The unfinished expedition",
+      "playerExperience": "Reconstruct an explorer's route from camp layouts, damaged equipment and geographical observations rather than a sequence of map markers.",
+      "multiplayerOpportunity": "Each visitor can contribute an observation to the shared expedition chart.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-canopy-traverse",
+      "category": "exploration",
+      "title": "The canopy traverse",
+      "playerExperience": "Plan a route through connected tree crowns using rope spans, branch clearances and quiet wildlife observation platforms.",
+      "multiplayerOpportunity": "Friends can travel by separate branches and operate paired platforms.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-in-situ-museum",
+      "category": "exploration",
+      "title": "The museum under the village",
+      "playerExperience": "Excavate a buried street as a continuous place and preserve its rooms in position as a walk-through historical exhibit.",
+      "multiplayerOpportunity": "Groups can work on separate rooms while an owner chooses what remains covered or displayed.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-orbital-garden",
+      "category": "exploration",
+      "title": "The orbital garden",
+      "playerExperience": "Move miniature planets around a large physical garden model to understand and open its changing paths.",
+      "multiplayerOpportunity": "Players can control different orbital arms and coordinate alignments.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-belay-ridge",
+      "category": "exploration",
+      "title": "The belay ridge",
+      "playerExperience": "Explore a high ridge by placing reliable rope anchors and choosing a route with a clearly preserved way down.",
+      "multiplayerOpportunity": "A companion can hold a belay or scout the next anchor from a nearby ledge.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-sleeping-stone-giant",
+      "category": "exploration",
+      "title": "The sleeping stone giant",
+      "playerExperience": "Explore a landscape-sized stone figure and restore its internal mechanisms until its hands form new bridges.",
+      "multiplayerOpportunity": "Different teams can work inside separate limbs before coordinating the final movement.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-lost-viewpoints",
+      "category": "exploration",
+      "title": "The lost viewpoints",
+      "playerExperience": "Match historical garden pictures to present-day viewpoints and use their parallax to locate vanished paths and structures.",
+      "multiplayerOpportunity": "Friends can hold reference frames at different positions and compare alignments.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-archipelago-charting",
+      "category": "exploration",
+      "title": "The uncharted lake archipelago",
+      "playerExperience": "Chart an interconnected chain of lake islands by measuring landmarks, currents and safe distances from your boat.",
+      "multiplayerOpportunity": "A crew can divide navigation, rowing and chart annotation.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-boundary-palimpest",
+      "category": "exploration",
+      "title": "The boundary palimpsest",
+      "playerExperience": "Compare old boundary stones with living hedges to uncover how the garden changed shape across several eras.",
+      "multiplayerOpportunity": "Visitors can survey separate boundaries and assemble competing historical maps.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-sounding-well",
+      "category": "exploration",
+      "title": "The sounding well",
+      "playerExperience": "Lower interchangeable instruments into a deep well to map its chambers and discover a concealed maintenance passage.",
+      "multiplayerOpportunity": "Friends can compare surface measurements with observations from the lower chamber.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-seed-vault-chambers",
+      "category": "exploration",
+      "title": "The dormant seed vault",
+      "playerExperience": "Open a historical seed vault by reconstructing the temperature and moisture conditions described by its surviving instruments.",
+      "multiplayerOpportunity": "Players can operate separate climate controls and read different instrument panels.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-reflection-ruins",
+      "category": "exploration",
+      "title": "The ruins seen only in reflection",
+      "playerExperience": "Use pools and polished stones to map a ruined structure whose hidden geometry is visible only from reflected viewpoints.",
+      "multiplayerOpportunity": "A partner can mark positions in the physical world while another reads the reflection.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-magnetic-courtyard",
+      "category": "exploration",
+      "title": "The magnetic courtyard",
+      "playerExperience": "Learn how buried iron changes your compass and use controlled magnetic interference to trace a hidden courtyard route.",
+      "multiplayerOpportunity": "Friends can carry reference compasses outside the interference field.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-wind-cut-canyon",
+      "category": "exploration",
+      "title": "The wind-cut canyon",
+      "playerExperience": "Cross a narrow canyon by reading wind shadows, choosing sheltered rests and operating old folding windbreaks.",
+      "multiplayerOpportunity": "Partners can open windbreaks from opposite sides while keeping a return passage available.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-invisible-printing-house",
+      "category": "exploration",
+      "title": "The invisible printing house",
+      "playerExperience": "Recover a printing house's layered maps by combining ink, pressure and transparent plates in the correct physical arrangement.",
+      "multiplayerOpportunity": "Players can align separate print layers and compare the resulting route.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-clockwork-causeway",
+      "category": "exploration",
+      "title": "The clockwork causeway",
+      "playerExperience": "Reconfigure a causeway of rotating stone sections to create a continuous route while retaining a safe standing platform.",
+      "multiplayerOpportunity": "Friends can operate remote gearing that the traveler cannot reach directly.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-walking-island",
+      "category": "exploration",
+      "title": "The walking island",
+      "playerExperience": "Discover that a tiny island is a gentle moving creature and learn its travel pattern to visit places along its route.",
+      "multiplayerOpportunity": "Visitors can compare observations from shore and from the moving island.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-sunken-conservatory",
+      "category": "exploration",
+      "title": "The sunken conservatory",
+      "playerExperience": "Explore a submerged glasshouse using a tethered air bell, reading its planting records to reopen connected underwater rooms.",
+      "multiplayerOpportunity": "A surface partner can operate the air bell and manage the guide rope.",
+      "status": "candidate"
+    },
+    {
+      "id": "exp-mosaic-bridge",
+      "category": "exploration",
+      "title": "The mosaic bridge",
+      "playerExperience": "Reconstruct an outdoor bridge from surviving mosaic directions and landscape sightlines rather than simply donating building materials.",
+      "multiplayerOpportunity": "Players can examine either bank and agree on how the missing sections fit.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-compartment-greenhouse",
+      "category": "ecosystems_pets",
+      "title": "The compartment greenhouse",
+      "playerExperience": "Create adjoining greenhouse climates and observe how opening vents and moving shade changes the communities living inside.",
+      "multiplayerOpportunity": "Friends can tend different compartments and compare the connected results.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-migration-observatory",
+      "category": "ecosystems_pets",
+      "title": "The migration observatory",
+      "playerExperience": "Recognize individual migrating birds and prepare useful resting habitats along the routes they actually choose.",
+      "multiplayerOpportunity": "A shared migration record can connect sightings from several gardens without requiring simultaneous visits.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-graft-family-orchard",
+      "category": "ecosystems_pets",
+      "title": "The graft-family orchard",
+      "playerExperience": "Build an orchard of documented rootstock and scion relationships, then observe how each graft changes growth and flowering.",
+      "multiplayerOpportunity": "Gardeners can exchange explicitly identified cuttings and compare their growing conditions.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-habitat-field-experiments",
+      "category": "ecosystems_pets",
+      "title": "The habitat field station",
+      "playerExperience": "Run small reversible habitat experiments and learn from visible animal choices instead of receiving an unexplained attraction bonus.",
+      "multiplayerOpportunity": "Friends can maintain different comparison plots and pool their observations.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-mycelium-underworld",
+      "category": "ecosystems_pets",
+      "title": "The mycelium underworld",
+      "playerExperience": "Reveal a living fungal network and guide beneficial connections between trees by changing the ground conditions above it.",
+      "multiplayerOpportunity": "Players can work on different surface patches while watching the same underground response.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-beaver-wetland",
+      "category": "ecosystems_pets",
+      "title": "The beaver wetland",
+      "playerExperience": "Make room for a beaver colony whose dams gradually reshape side channels, wet meadows and accessible observation routes.",
+      "multiplayerOpportunity": "Visitors can help redirect overflow through owner-approved channels.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-bird-territory-mosaic",
+      "category": "ecosystems_pets",
+      "title": "The bird territory mosaic",
+      "playerExperience": "Arrange perches and vegetation so neighboring birds establish compatible territories with visible boundaries and changing songs.",
+      "multiplayerOpportunity": "Friends can design adjoining habitat sections and observe how their boundaries interact.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-bee-foraging-language",
+      "category": "ecosystems_pets",
+      "title": "The bee foraging language",
+      "playerExperience": "Watch bees communicate useful flower routes and improve the route network through planting choices rather than repeated harvesting.",
+      "multiplayerOpportunity": "Players can compare foraging paths between connected flower patches.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-pond-succession",
+      "category": "ecosystems_pets",
+      "title": "The changing pond community",
+      "playerExperience": "Guide a pond from open water to a layered wetland by balancing light, aquatic plants and natural filtration.",
+      "multiplayerOpportunity": "Different gardeners can propose and tend complementary habitat zones.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-companion-apprenticeship",
+      "category": "ecosystems_pets",
+      "title": "Companion apprenticeships",
+      "playerExperience": "Teach a pet a useful multi-step garden routine through demonstrations while its species and preferences affect how it performs it.",
+      "multiplayerOpportunity": "A trusted visitor can assist a demonstration without taking control of the owner's pet.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-pet-social-lives",
+      "category": "ecosystems_pets",
+      "title": "Pets with social lives",
+      "playerExperience": "Help persistent pets develop friendships, shared games and preferred meeting places through repeated voluntary encounters.",
+      "multiplayerOpportunity": "Visiting companions can form relationships that continue across later visits.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-companion-body-language",
+      "category": "ecosystems_pets",
+      "title": "The companion body-language book",
+      "playerExperience": "Learn a pet's contextual gestures well enough to respond to its intentions without turning every interaction into a text menu.",
+      "multiplayerOpportunity": "Friends can learn the same gestures and coordinate their responses around shared activities.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-scent-garden",
+      "category": "ecosystems_pets",
+      "title": "The scent garden",
+      "playerExperience": "Plant a connected scent landscape and follow how wind carries different trails that your companion can interpret.",
+      "multiplayerOpportunity": "One player can read a companion's responses while another adjusts a scent source.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-nest-architects",
+      "category": "ecosystems_pets",
+      "title": "The nest architects",
+      "playerExperience": "Provide varied natural building materials and watch birds choose, transport and assemble them into distinct functional nests.",
+      "multiplayerOpportunity": "Friends can contribute different materials while the resident gardener controls placement.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-seed-carrier-web",
+      "category": "ecosystems_pets",
+      "title": "The seed-carrier web",
+      "playerExperience": "Observe where animals cache seeds and decide which unexpected seedlings become part of the future garden.",
+      "multiplayerOpportunity": "Visitors can document cache locations without disturbing another gardener's choices.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-dragonfly-life-cycle",
+      "category": "ecosystems_pets",
+      "title": "A dragonfly's whole life",
+      "playerExperience": "Follow a recognizable dragonfly from pond larva through emergence and adult flight by maintaining suitable connected habitats.",
+      "multiplayerOpportunity": "Friends can observe different stages and contribute to one shared natural-history account.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-tortoise-landscape-routes",
+      "category": "ecosystems_pets",
+      "title": "The tortoise landscape routes",
+      "playerExperience": "Reshape a gentle garden route around a tortoise's chosen destinations, resting rocks and seasonal preferences.",
+      "multiplayerOpportunity": "Players can prepare different parts of its continuous route and watch it make its own choices.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-grazing-meadow-mosaic",
+      "category": "ecosystems_pets",
+      "title": "The grazing meadow mosaic",
+      "playerExperience": "Guide a small grazing herd to create varied grass heights that support different plants and wildlife.",
+      "multiplayerOpportunity": "Friends can move temporary barriers and guide the herd from separate positions.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-wildlife-corridors",
+      "category": "ecosystems_pets",
+      "title": "The connected wildlife corridors",
+      "playerExperience": "Link fragmented habitats with safe tunnels, canopy spans and ground cover that animals visibly learn to use.",
+      "multiplayerOpportunity": "Neighbors can plan compatible corridor ends across their visiting routes.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-compost-food-web",
+      "category": "ecosystems_pets",
+      "title": "The compost food web",
+      "playerExperience": "Manage a visible decomposer community whose layers change as you vary the mixture, moisture and turning of a compost system.",
+      "multiplayerOpportunity": "Players can compare different compost recipes and observe their inhabitants together.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-canopy-light-gardening",
+      "category": "ecosystems_pets",
+      "title": "Canopy light gardening",
+      "playerExperience": "Prune and train tree crowns to create a moving mosaic of light that changes what can flourish beneath them.",
+      "multiplayerOpportunity": "A partner can observe ground-level light while another adjusts the canopy.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-lichen-chronicle",
+      "category": "ecosystems_pets",
+      "title": "The lichen chronicle",
+      "playerExperience": "Cultivate a rock garden whose slowly changing lichen communities record long-term shade, moisture and exposure.",
+      "multiplayerOpportunity": "Friends can compare differently exposed gardens through shared observation plates.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-connected-aquarium",
+      "category": "ecosystems_pets",
+      "title": "The connected aquarium",
+      "playerExperience": "Build a living aquarium system of planted basins, filters and species relationships instead of a row of isolated display tanks.",
+      "multiplayerOpportunity": "Visitors can help rearrange approved habitat components and inspect the same flowing system.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-gentle-herding",
+      "category": "ecosystems_pets",
+      "title": "The gentle herding language",
+      "playerExperience": "Guide a loose group of geese through space using calm gestures and positioning rather than chasing individual animals.",
+      "multiplayerOpportunity": "Players can coordinate their positions to guide the flock through a wide route.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-adaptive-camouflage",
+      "category": "ecosystems_pets",
+      "title": "The camouflage observation garden",
+      "playerExperience": "Discover how individual creatures alter their appearance and posture across backgrounds, light levels and social situations.",
+      "multiplayerOpportunity": "Friends can arrange observation backgrounds and compare what each observer notices.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-animal-social-learning",
+      "category": "ecosystems_pets",
+      "title": "Animals that learn from one another",
+      "playerExperience": "Create opportunities for companions to observe and gradually adopt useful behaviors from other compatible animals.",
+      "multiplayerOpportunity": "Visiting pets can demonstrate learned behaviors without transferring ownership or progression directly.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-companion-intentions",
+      "category": "ecosystems_pets",
+      "title": "A companion's own plans",
+      "playerExperience": "Notice a pet setting its own small goals and choose whether to join its activity, change the environment or let it proceed alone.",
+      "multiplayerOpportunity": "Visitors can participate when the companion invites a shared activity.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-hibernation-observatory",
+      "category": "ecosystems_pets",
+      "title": "The hibernation observatory",
+      "playerExperience": "Observe a sheltered animal's seasonal rest through a quiet den window and prepare its eventual emergence without daily upkeep pressure.",
+      "multiplayerOpportunity": "Friends can contribute observations over a season rather than needing to attend every day.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-amphibian-nurseries",
+      "category": "ecosystems_pets",
+      "title": "The amphibian nurseries",
+      "playerExperience": "Maintain linked shallow pools and watch tadpoles develop into frogs that gradually move into the surrounding garden.",
+      "multiplayerOpportunity": "Players can tend different pool edges while following the same developing group.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-leafcutter-colony",
+      "category": "ecosystems_pets",
+      "title": "The leafcutter colony",
+      "playerExperience": "Observe an ant colony build a transport network and fungal nursery while you supply safe crossings and varied vegetation.",
+      "multiplayerOpportunity": "Friends can design alternative crossings and compare which routes the colony adopts.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-living-hedge-succession",
+      "category": "ecosystems_pets",
+      "title": "The living hedge succession",
+      "playerExperience": "Develop a layered hedge over several seasons as changing structure supports different nesters, climbers and understory plants.",
+      "multiplayerOpportunity": "Visitors can help with an owner-approved pruning plan and document later habitat changes.",
+      "status": "candidate"
+    },
+    {
+      "id": "eco-rehabilitation-reserve",
+      "category": "ecosystems_pets",
+      "title": "The wildlife rehabilitation reserve",
+      "playerExperience": "Care for a small number of temporary wildlife guests through species-specific enrichment before choosing a suitable voluntary release site.",
+      "multiplayerOpportunity": "Friends can assist enrichment and prepare the release habitat without punishment for missed visits.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-coastal-signal-relay",
+      "category": "cooperative_play",
+      "title": "The coastal signal relay",
+      "playerExperience": "Operate one station in a chain of shutters and lamps to pass a changing navigational message across the lake.",
+      "multiplayerOpportunity": "Players must relay information between stations that cannot all see one another.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-rowing-crew",
+      "category": "cooperative_play",
+      "title": "The rowing crew",
+      "playerExperience": "Take a distinct crew role while a shared boat responds to rowing rhythm, steering and load distribution.",
+      "multiplayerOpportunity": "Friends can switch roles between rower, navigator and lookout during one trip.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-split-field-notebooks",
+      "category": "cooperative_play",
+      "title": "The split field notebooks",
+      "playerExperience": "Investigate a shared mystery using observations that are intentionally different in each explorer's field notebook.",
+      "multiplayerOpportunity": "Players combine complementary evidence through in-world references rather than one player reading every answer.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-travelling-theatre",
+      "category": "cooperative_play",
+      "title": "The traveling theatre company",
+      "playerExperience": "Help stage a play by moving sets, operating lighting and performing short scenes on a physical outdoor stage.",
+      "multiplayerOpportunity": "The production supports actors, stagehands and a director with separate useful controls.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-canopy-bridge-rigging",
+      "category": "cooperative_play",
+      "title": "The canopy bridge riggers",
+      "playerExperience": "Work from a tree platform to tension ropes and fit bridge sections into a shared construction that becomes traversable.",
+      "multiplayerOpportunity": "Different players hold lines, align sections and secure supports under the owner's authority.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-counterbalanced-sculpture",
+      "category": "cooperative_play",
+      "title": "The counterbalanced sculpture workshop",
+      "playerExperience": "Control one part of a large balancing machine while shaping a suspended sculpture that changes the machine's load.",
+      "multiplayerOpportunity": "Operators must communicate how their adjustments affect the other workstations.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-mapmaker-and-walker",
+      "category": "cooperative_play",
+      "title": "The mapmaker and the walker",
+      "playerExperience": "Navigate a changing expedition site while a partner sees its symbolic plan but cannot directly move through it.",
+      "multiplayerOpportunity": "The two roles exchange landmarks and instructions through a shared set of clear signals.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-garden-ensemble",
+      "category": "cooperative_play",
+      "title": "The garden ensemble",
+      "playerExperience": "Arrange a short composition across several playable instruments with forgiving shared musical timing.",
+      "multiplayerOpportunity": "Friends can perform separate parts or schedule accessible phrase-based contributions.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-habitat-design-council",
+      "category": "cooperative_play",
+      "title": "The habitat design council",
+      "playerExperience": "Propose a habitat arrangement and see how it interacts with designs made by other gardeners in the same reserve.",
+      "multiplayerOpportunity": "The host accepts a combined plan while visitors contribute separate specialist perspectives.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-permissioned-tool-library",
+      "category": "cooperative_play",
+      "title": "The shared tool library",
+      "playerExperience": "Borrow a specialized virtual tool for a planned activity with clear return rules and visible ownership.",
+      "multiplayerOpportunity": "Friends can lend tools under limited permissions without copying inventory or requiring both to remain online.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-expedition-basecamp",
+      "category": "cooperative_play",
+      "title": "The shared expedition basecamp",
+      "playerExperience": "Prepare a persistent expedition hub with maps, equipment choices and routes that remain useful across several group sessions.",
+      "multiplayerOpportunity": "Returning teams can take over unfinished work without replacing the host's world authority.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-searchlight-directors",
+      "category": "cooperative_play",
+      "title": "The searchlight directors",
+      "playerExperience": "Guide a traveler through a theatrical night course using controllable light fields and large environmental signals.",
+      "multiplayerOpportunity": "The traveler and light operators have different views and can choose untimed play.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-human-animal-switchyard",
+      "category": "cooperative_play",
+      "title": "The human-and-companion switchyard",
+      "playerExperience": "Use the different movement abilities of a person and companion to deliver a train through a shared mechanical course.",
+      "multiplayerOpportunity": "Friends can control separate permitted stations while companions carry out learned local commands.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-distributed-relief-puzzle",
+      "category": "cooperative_play",
+      "title": "The distributed relief puzzle",
+      "playerExperience": "Restore one panel of a large landscape relief whose mechanisms depend on observations made in other gardens.",
+      "multiplayerOpportunity": "Players coordinate across hosted gardens without allowing remote visitors to alter private state directly.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-raft-expedition",
+      "category": "cooperative_play",
+      "title": "The raft expedition",
+      "playerExperience": "Keep a shared modular raft stable while choosing a route through currents and distributing useful cargo.",
+      "multiplayerOpportunity": "Crew members manage balance, steering and navigation with roles that can be reassigned freely.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-glassblowing-team",
+      "category": "cooperative_play",
+      "title": "The glassblowing team",
+      "playerExperience": "Operate one station in a shared glass workshop where heat, turning and air pressure shape a large finished object.",
+      "multiplayerOpportunity": "Friends coordinate furnace, pipe and mold roles through forgiving visible state changes.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-harbor-banquet",
+      "category": "cooperative_play",
+      "title": "The harbor banquet service",
+      "playerExperience": "Help run a small lakeside meal service by coordinating cooking, carrying, table layout and the pace of arriving guests.",
+      "multiplayerOpportunity": "A group can divide useful roles without making speed or perfect attendance mandatory.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-archipelago-logistics",
+      "category": "cooperative_play",
+      "title": "The archipelago logistics board",
+      "playerExperience": "Move boats and shared supplies across a physical island strategy board whose routes change with collective choices.",
+      "multiplayerOpportunity": "Players plan complementary moves in a cooperative turn structure rather than competing for hidden rewards.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-simultaneous-field-survey",
+      "category": "cooperative_play",
+      "title": "The simultaneous field survey",
+      "playerExperience": "Observe one part of a broad natural event while teammates record what happens elsewhere at the same moment.",
+      "multiplayerOpportunity": "A shared report combines the distributed observations into a result no single station can provide.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-counterweight-adventure",
+      "category": "cooperative_play",
+      "title": "The counterweight adventure",
+      "playerExperience": "Explore paired mechanical rooms whose platforms and gates are linked by clearly visible counterweights.",
+      "multiplayerOpportunity": "Partners work from different rooms and can pause at safe intermediate configurations.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-scene-director-and-crew",
+      "category": "cooperative_play",
+      "title": "The scene director and crew",
+      "playerExperience": "Create a short garden film while one player frames the camera and others perform or operate scene elements.",
+      "multiplayerOpportunity": "A director can cue actions without moving another person's avatar or changing their saved appearance.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-tabletop-story-garden",
+      "category": "cooperative_play",
+      "title": "The tabletop story garden",
+      "playerExperience": "Play an authored adventure on a miniature physical garden board using figures, environmental mechanisms and preset narrative choices.",
+      "multiplayerOpportunity": "A host can guide the scenario while friends control their own figures and decisions.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-naturalist-charades",
+      "category": "cooperative_play",
+      "title": "The naturalist charades trail",
+      "playerExperience": "Describe a living thing through an agreed vocabulary of gestures, shapes and environmental demonstrations.",
+      "multiplayerOpportunity": "Teams alternate observer and interpreter roles without needing free-text chat or fast reactions.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-relay-hospitality",
+      "category": "cooperative_play",
+      "title": "The relay of hosts",
+      "playerExperience": "Travel through a sequence of friends' gardens where each host prepares a distinct stop in a shared journey.",
+      "multiplayerOpportunity": "The route can support both live arrivals and prepared asynchronous visits.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-animal-view-partnership",
+      "category": "cooperative_play",
+      "title": "The animal-view partnership",
+      "playerExperience": "Experience a contained activity from a small animal's viewpoint while a partner prepares the larger landscape around it.",
+      "multiplayerOpportunity": "Both roles retain meaningful choices and can switch perspectives between rounds.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-mosaic-mystery-exchange",
+      "category": "cooperative_play",
+      "title": "The mosaic mystery exchange",
+      "playerExperience": "Restore a local section of an enormous mosaic while discoveries from other gardens change how its remaining pieces are understood.",
+      "multiplayerOpportunity": "Participants share bounded pattern information while each owner approves changes to their own section.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-floating-night-market",
+      "category": "cooperative_play",
+      "title": "The floating night market",
+      "playerExperience": "Help operate a moving boat market by connecting docks, unloading cargo and arranging the evening route.",
+      "multiplayerOpportunity": "Friends can crew different market boats and coordinate their stopping places.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-braided-garden-paths",
+      "category": "cooperative_play",
+      "title": "The braided garden paths",
+      "playerExperience": "Solve a contained route puzzle where moving an authorized bridge in one garden changes a linked route seen in another.",
+      "multiplayerOpportunity": "Partners communicate between complementary hosted spaces with explicit opt-in connections.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-pocket-world-nursery",
+      "category": "cooperative_play",
+      "title": "The pocket-world nursery",
+      "playerExperience": "Maintain one part of a miniature world whose water, shade and growth cycles depend on work done at other stations.",
+      "multiplayerOpportunity": "Players coordinate interdependent ecological roles in a cooperative strategy session.",
+      "status": "candidate"
+    },
+    {
+      "id": "coop-in-world-makerschool",
+      "category": "cooperative_play",
+      "title": "The in-world makerschool",
+      "playerExperience": "Learn a creative technique through a live demonstration and practice it in a separate reversible work area.",
+      "multiplayerOpportunity": "A teacher can point, annotate and demonstrate without taking over a learner's controls.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-canal-lock-system",
+      "category": "water_weather_seasons",
+      "title": "The canal lock system",
+      "playerExperience": "Raise and lower a small canal through working locks to reach basins with different shorelines and navigation possibilities.",
+      "multiplayerOpportunity": "Friends can operate gates and signals while the boat remains under one clear authority.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-weather-forecast-station",
+      "category": "water_weather_seasons",
+      "title": "The practical weather station",
+      "playerExperience": "Use readable instruments and nearby environmental signs to make forecasts that help plan optional garden activities.",
+      "multiplayerOpportunity": "Players can compare observations from exposed and sheltered stations.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-stream-diversion-garden",
+      "category": "water_weather_seasons",
+      "title": "The stream-diversion garden",
+      "playerExperience": "Move reversible stream gates to create pools, flowing channels and damp meadows with visibly different inhabitants.",
+      "multiplayerOpportunity": "A group can design branches while the host approves the final water layout.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-shifting-estuary-bars",
+      "category": "water_weather_seasons",
+      "title": "The shifting estuary bars",
+      "playerExperience": "Explore sandbanks whose shapes change with a gentle tidal cycle while boats preserve a reliable route home.",
+      "multiplayerOpportunity": "Friends can survey different banks and share current landing information.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-rain-garden-chain",
+      "category": "water_weather_seasons",
+      "title": "The rain-garden chain",
+      "playerExperience": "Shape connected infiltration beds and watch rainfall travel from roofs through pools, soil and planted swales.",
+      "multiplayerOpportunity": "Visitors can help tune separate sections of the same visible water journey.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-snow-load-engineering",
+      "category": "water_weather_seasons",
+      "title": "Snow-load engineering",
+      "playerExperience": "Adjust the angles and supports of garden structures so snow collects into useful sheltered shapes without destroying anything.",
+      "multiplayerOpportunity": "Players can inspect loads from different sides and propose reversible structural changes.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-frost-weave-trellis",
+      "category": "water_weather_seasons",
+      "title": "The frost-weave trellis",
+      "playerExperience": "Guide water along a trellis to grow temporary frost structures whose branching patterns reveal safe little passages.",
+      "multiplayerOpportunity": "Friends can control separate water feeds and compare the resulting shapes.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-mist-harvest-network",
+      "category": "water_weather_seasons",
+      "title": "The mist-harvest network",
+      "playerExperience": "Position mesh catchers and channels so passing mist supplies a connected hanging garden through visible droplets and flow.",
+      "multiplayerOpportunity": "Players can compare catcher positions and manage different branches of the distribution system.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-thermal-spring-convection",
+      "category": "water_weather_seasons",
+      "title": "The thermal spring garden",
+      "playerExperience": "Mix warm and cool spring channels to shape circulation patterns that support different aquatic planting arrangements.",
+      "multiplayerOpportunity": "Friends can operate source controls while another observes the circulation basin.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-floating-monsoon-walkways",
+      "category": "water_weather_seasons",
+      "title": "The floating rain-season walkways",
+      "playerExperience": "Adapt a floodplain garden with anchored floating paths and raised beds as optional seasonal water levels rise.",
+      "multiplayerOpportunity": "Visitors can help reposition approved anchors while the host retains a safe permanent access route.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-wind-shadow-gardening",
+      "category": "water_weather_seasons",
+      "title": "Wind-shadow gardening",
+      "playerExperience": "Arrange permeable screens and vegetation to create useful wind corridors for plants and moving garden mechanisms.",
+      "multiplayerOpportunity": "Friends can observe different wind zones while one player adjusts a screen.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-storm-exposure-photography",
+      "category": "water_weather_seasons",
+      "title": "Storm-exposure photography",
+      "playerExperience": "Use a controllable long-exposure camera to capture how lightning illuminates a landscape without putting the player in danger.",
+      "multiplayerOpportunity": "A group can coordinate camera positions and visible exposure signals.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-snowmelt-irrigation",
+      "category": "water_weather_seasons",
+      "title": "The snowmelt irrigation calendar",
+      "playerExperience": "Guide gradual snowmelt through reversible channels to reveal and water different garden terraces over spring.",
+      "multiplayerOpportunity": "Friends can maintain sections of the same slow seasonal water system.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-living-shoreline",
+      "category": "water_weather_seasons",
+      "title": "The living shoreline workshop",
+      "playerExperience": "Use planted edges and porous barriers to guide sediment into coves, reed beds and calm boat landings.",
+      "multiplayerOpportunity": "Players can compare proposed shore sections before the owner commits a layout.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-water-power-grid",
+      "category": "water_weather_seasons",
+      "title": "The water-power grid",
+      "playerExperience": "Route flow through working wheels and mechanical transmissions to power different garden installations.",
+      "multiplayerOpportunity": "Friends can operate branches and observe how the connected mechanisms share available power.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-layered-lake-observatory",
+      "category": "water_weather_seasons",
+      "title": "The layered lake observatory",
+      "playerExperience": "Read temperature and depth instruments to understand changing layers of water and where different lake life chooses to gather.",
+      "multiplayerOpportunity": "Boaters can take measurements at different depths and combine them into one cross-section.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-estuary-salinity-garden",
+      "category": "water_weather_seasons",
+      "title": "The estuary salinity garden",
+      "playerExperience": "Blend fresh and tidal water in a contained estuary and discover which plants and animals settle along its gradient.",
+      "multiplayerOpportunity": "Players can tend complementary zones and share observations of the moving boundary.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-seasonal-lake-turnover",
+      "category": "water_weather_seasons",
+      "title": "The seasonal lake turnover",
+      "playerExperience": "Observe a lake's seasonal mixing through visible clarity, circulation and changing wildlife routes.",
+      "multiplayerOpportunity": "Friends can record the event from several shoreline stations.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-rooftop-water-routing",
+      "category": "water_weather_seasons",
+      "title": "The rooftop water route",
+      "playerExperience": "Design a network of gutters, tipping vessels and downpipes that turns real garden rainfall into a visible mechanical journey.",
+      "multiplayerOpportunity": "A partner can monitor the lower route while another changes a roof connection.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-lighthouse-weather-planning",
+      "category": "water_weather_seasons",
+      "title": "The lighthouse weather desk",
+      "playerExperience": "Plan safe optional shoreline journeys using a working lighthouse desk that combines visibility, wave exposure and landing information.",
+      "multiplayerOpportunity": "Friends can report conditions from observation posts along the planned route.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-seasonal-ground-mosaic",
+      "category": "water_weather_seasons",
+      "title": "The seasonal ground mosaic",
+      "playerExperience": "Develop meadow patches whose moisture and seasonal growth gradually reshape the open routes between them.",
+      "multiplayerOpportunity": "Visitors can contribute observations and help maintain an owner-approved route.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-rainbow-optics-workshop",
+      "category": "water_weather_seasons",
+      "title": "The rainbow optics workshop",
+      "playerExperience": "Build a working arrangement of water jets and prisms to understand and paint with separated sunlight.",
+      "multiplayerOpportunity": "Friends can adjust different optical elements and compare the resulting projection.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-miniature-glacier-table",
+      "category": "water_weather_seasons",
+      "title": "The miniature glacier table",
+      "playerExperience": "Shape a contained model landscape and watch compressed seasonal cycles carve its valleys with ice and meltwater.",
+      "multiplayerOpportunity": "Players can propose different terrain interventions and compare reversible model runs.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-under-ice-ecology-window",
+      "category": "water_weather_seasons",
+      "title": "The under-ice ecology window",
+      "playerExperience": "Maintain an observation window beneath a frozen pond and follow the quiet seasonal life below its surface.",
+      "multiplayerOpportunity": "Friends can annotate different depths and compare observations across winter visits.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-drifting-garden-gyre",
+      "category": "water_weather_seasons",
+      "title": "The drifting garden gyre",
+      "playerExperience": "Create anchored floating gardens that move through a slow lake current and form changing connections between docks.",
+      "multiplayerOpportunity": "Players can coordinate moorings and meet when their floating plots come alongside.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-dew-lens-projections",
+      "category": "water_weather_seasons",
+      "title": "The dew-lens laboratory",
+      "playerExperience": "Use dew droplets on carefully positioned leaves as tiny lenses that project readable patterns onto a nearby observation plate.",
+      "multiplayerOpportunity": "Friends can arrange leaves and record projections from different positions.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-solar-pond-heat-store",
+      "category": "water_weather_seasons",
+      "title": "The solar pond heat store",
+      "playerExperience": "Collect daytime warmth in a layered garden pond and distribute it through visible channels during cool evenings.",
+      "multiplayerOpportunity": "Players can operate collection and distribution stations as separate roles.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-underwater-sound-survey",
+      "category": "water_weather_seasons",
+      "title": "The underwater sound survey",
+      "playerExperience": "Lower hydrophones into a lake and use spatial sound or equivalent visual notation to map activity hidden below the surface.",
+      "multiplayerOpportunity": "Boat crews can compare simultaneous recordings from different listening points.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-brine-crystal-garden",
+      "category": "water_weather_seasons",
+      "title": "The brine crystal garden",
+      "playerExperience": "Arrange shallow evaporation basins and watch season, shade and flow create large patterned mineral structures.",
+      "multiplayerOpportunity": "Friends can maintain comparison basins and assemble a shared crystal exhibition.",
+      "status": "candidate"
+    },
+    {
+      "id": "wws-phenology-observatory",
+      "category": "water_weather_seasons",
+      "title": "The phenology observatory",
+      "playerExperience": "Build a living seasonal forecast from observed budding, insect emergence and flowering in the actual garden.",
+      "multiplayerOpportunity": "Friends in different garden climates can compare their seasonal sequences without competing on dates.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-living-hedge-cathedral",
+      "category": "construction_art",
+      "title": "The living hedge cathedral",
+      "playerExperience": "Train compatible living arches into an explorable structure whose chambers continue growing around your design.",
+      "multiplayerOpportunity": "Friends can design adjoining bays while the owner approves the shared plan.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-braided-tree-bridge",
+      "category": "construction_art",
+      "title": "The braided tree bridge",
+      "playerExperience": "Guide living roots and branches across a gap until they form a durable garden bridge with visible growth stages.",
+      "multiplayerOpportunity": "Players can tend opposite banks and agree on the bridge's shape.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-topiary-theatre",
+      "category": "construction_art",
+      "title": "The topiary theatre",
+      "playerExperience": "Sculpt a connected arrangement of living forms whose openings and silhouettes create a walk-through theatrical scene.",
+      "multiplayerOpportunity": "Visitors can perform within the finished scene or contribute approved sculpting suggestions.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-pneumatic-garden-post",
+      "category": "construction_art",
+      "title": "The pneumatic garden post",
+      "playerExperience": "Build a transparent tube network and route virtual parcels through it with bellows, valves and branching stations.",
+      "multiplayerOpportunity": "Friends can operate separate terminals and coordinate deliveries within the hosted garden.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-discovery-relief-mural",
+      "category": "construction_art",
+      "title": "The discovery relief mural",
+      "playerExperience": "Create a large physical map whose raised forms and chosen details grow into a personal record of explored places.",
+      "multiplayerOpportunity": "Visitors can inspect the relief and leave owner-approved symbolic contributions.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-contour-landforming",
+      "category": "construction_art",
+      "title": "The contour landforming studio",
+      "playerExperience": "Sculpt bounded terrain contours and preview the resulting paths, drainage and sightlines before committing a reversible change.",
+      "multiplayerOpportunity": "Friends can propose edits on separate layers without changing the host's terrain directly.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-modular-roof-architecture",
+      "category": "construction_art",
+      "title": "The modular roof workshop",
+      "playerExperience": "Construct a building from compatible structural pieces so its exterior, interior volume and usable entrances match.",
+      "multiplayerOpportunity": "Players can co-design a blueprint while one owner authorizes placement and materials.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-clockwork-workbench",
+      "category": "construction_art",
+      "title": "The clockwork workbench",
+      "playerExperience": "Connect gears, cams and linkages into working garden mechanisms with visible motion and understandable inputs.",
+      "multiplayerOpportunity": "Friends can operate different inputs and help diagnose a mechanism through observation.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-composing-music-boxes",
+      "category": "construction_art",
+      "title": "The composing music-box workshop",
+      "playerExperience": "Arrange a bounded mechanical score and build an instrument that performs your composition in the world.",
+      "multiplayerOpportunity": "Friends can contribute parts or listen through their own sound and sensory preferences.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-origami-pavilions",
+      "category": "construction_art",
+      "title": "The origami pavilion workshop",
+      "playerExperience": "Fold structural paper models and expand successful designs into walkable temporary pavilions.",
+      "multiplayerOpportunity": "Players can coordinate folds and inspect the model from different sides.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-perspective-path-design",
+      "category": "construction_art",
+      "title": "The perspective path studio",
+      "playerExperience": "Build an installation whose disconnected forms appear to join from chosen viewpoints and reveal a navigable route.",
+      "multiplayerOpportunity": "Friends can guide an observer toward the intended perspective without changing their camera directly.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-stained-glass-garden",
+      "category": "construction_art",
+      "title": "The stained-glass garden",
+      "playerExperience": "Design glass panels whose colors and shapes cast changing compositions across a real garden floor.",
+      "multiplayerOpportunity": "Players can assemble panel sections and compare the combined projection.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-balanced-kinetic-mobiles",
+      "category": "construction_art",
+      "title": "The balanced kinetic mobiles",
+      "playerExperience": "Build large wind-driven sculptures by balancing mass, pivot placement and moving forms instead of choosing a preset animation.",
+      "multiplayerOpportunity": "Friends can add proposed parts and observe how the balance changes.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-woven-habitat-structures",
+      "category": "construction_art",
+      "title": "The woven habitat workshop",
+      "playerExperience": "Weave flexible structures that become functional nesting walls, climbing surfaces or planted partitions.",
+      "multiplayerOpportunity": "Players can work on distinct sections of a shared pattern.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-ceramic-kiln-studio",
+      "category": "construction_art",
+      "title": "The ceramic kiln studio",
+      "playerExperience": "Shape useful ceramic objects and choose a firing and cooling process that produces readable material differences.",
+      "multiplayerOpportunity": "Friends can coordinate a shared kiln load while retaining ownership of their individual pieces.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-growing-moss-drawings",
+      "category": "construction_art",
+      "title": "The growing moss drawings",
+      "playerExperience": "Compose a large moss drawing whose pattern slowly changes according to the moisture and shade you provide.",
+      "multiplayerOpportunity": "Visitors can help tend approved parts without repainting the owner's design.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-shadow-puppet-machinery",
+      "category": "construction_art",
+      "title": "The shadow-puppet machinery",
+      "playerExperience": "Build articulated figures and lighting arrangements that project a controllable story onto a garden wall.",
+      "multiplayerOpportunity": "Friends can operate puppets, light and scenery as distinct performance roles.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-garden-dye-loom",
+      "category": "construction_art",
+      "title": "The garden dye loom",
+      "playerExperience": "Develop plant-based palettes and weave large patterned textiles from a readable physical loom plan.",
+      "multiplayerOpportunity": "Players can exchange pattern proposals and coordinate separate loom controls.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-acoustic-landscapes",
+      "category": "construction_art",
+      "title": "The acoustic landscape studio",
+      "playerExperience": "Shape a listening space through material, geometry and placement so water, footsteps and instruments respond to its structure.",
+      "multiplayerOpportunity": "Visitors can compare listening positions using audio or an equivalent visual representation.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-garden-automata",
+      "category": "construction_art",
+      "title": "The garden automata workshop",
+      "playerExperience": "Build small mechanical figures whose constrained cam routines interact with clearly defined garden props.",
+      "multiplayerOpportunity": "Friends can demonstrate routines or contribute approved components without granting unrestricted automation.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-optical-instrument-making",
+      "category": "construction_art",
+      "title": "The optical instrument workshop",
+      "playerExperience": "Assemble useful surveying instruments from lenses and marked scales, then use them for actual spatial observations.",
+      "multiplayerOpportunity": "Players can take complementary measurements and compare their assembled instruments.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-marble-run-engineering",
+      "category": "construction_art",
+      "title": "The marble-run garden",
+      "playerExperience": "Construct a persistent outdoor marble course with lifts, switches and water-driven elements that can be operated as a machine.",
+      "multiplayerOpportunity": "Friends can control branches or design adjoining course sections.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-mechanical-drawing-machines",
+      "category": "construction_art",
+      "title": "The mechanical drawing machines",
+      "playerExperience": "Connect simple drawing mechanisms to produce large bounded geometric artworks from your chosen motion relationships.",
+      "multiplayerOpportunity": "Players can operate separate controls during a shared drawing performance.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-reusable-snow-architecture",
+      "category": "construction_art",
+      "title": "The snow architecture archive",
+      "playerExperience": "Design substantial seasonal snow structures whose saved plans can be rebuilt even after the physical snow melts.",
+      "multiplayerOpportunity": "Friends can construct compatible rooms and preserve a shared plan with owner approval.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-rope-and-pulley-cranes",
+      "category": "construction_art",
+      "title": "The rope-and-pulley cranes",
+      "playerExperience": "Rig a working crane to place large sculptural pieces through deliberate lifting and balancing decisions.",
+      "multiplayerOpportunity": "Players can handle guide ropes, counterweights and placement signals.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-cloth-canopy-design",
+      "category": "construction_art",
+      "title": "The cloth canopy studio",
+      "playerExperience": "Design the supports and tension of a broad fabric installation, then see how it changes wind and light underneath.",
+      "multiplayerOpportunity": "Friends can adjust separate supports and inspect the resulting structure.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-player-curated-exhibitions",
+      "category": "construction_art",
+      "title": "The player-curated exhibitions",
+      "playerExperience": "Build a walk-through exhibit that explains a garden story through arranged objects, diagrams and chosen observation viewpoints.",
+      "multiplayerOpportunity": "Visitors can tour together and contribute explicitly permitted exhibit pieces.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-nature-print-darkroom",
+      "category": "construction_art",
+      "title": "The nature-print darkroom",
+      "playerExperience": "Compose botanical contact prints and develop them through controllable light, masking and washing stages.",
+      "multiplayerOpportunity": "Friends can prepare different masks and combine their prints into a shared display.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-clay-stop-motion-studio",
+      "category": "construction_art",
+      "title": "The clay stop-motion studio",
+      "playerExperience": "Shape a small articulated character and make a short garden film by arranging and recording clear physical poses.",
+      "multiplayerOpportunity": "Friends can divide animation, camera and set-building work.",
+      "status": "candidate"
+    },
+    {
+      "id": "art-kaleidoscope-pavilion",
+      "category": "construction_art",
+      "title": "The kaleidoscope pavilion",
+      "playerExperience": "Arrange mirrors and patterned screens inside an explorable pavilion that transforms selected garden views into geometric compositions.",
+      "multiplayerOpportunity": "Visitors can choose different viewing stations and coordinate the pavilion's movable elements.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-traveling-surveyor",
+      "category": "village_progression",
+      "title": "The traveling surveyor",
+      "playerExperience": "Work with a recurring surveyor whose commissions reveal how actual player-made landscape changes alter routes and views.",
+      "multiplayerOpportunity": "Friends can contribute measurements and compare the surveyor's maps of their gardens.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-village-parade-route",
+      "category": "village_progression",
+      "title": "The village parade route",
+      "playerExperience": "Plan a moving celebration through restored places, balancing route width, stopping points and the needs of its participants.",
+      "multiplayerOpportunity": "Visitors can perform, steward a junction or operate a parade installation.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-island-settlement",
+      "category": "village_progression",
+      "title": "The island settlement",
+      "playerExperience": "Develop a small remote settlement through useful facilities and recurring relationships that change what residents can do.",
+      "multiplayerOpportunity": "Friends can contribute to owner-approved development without replacing local decisions.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-artisan-apprenticeships",
+      "category": "village_progression",
+      "title": "The artisan apprenticeships",
+      "playerExperience": "Learn a profession through hands-on commissions that introduce new game verbs rather than only increasing item statistics.",
+      "multiplayerOpportunity": "A skilled visitor can demonstrate a technique in a separate practice workspace.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-village-planning-council",
+      "category": "village_progression",
+      "title": "The village planning council",
+      "playerExperience": "Negotiate a physical village plan by understanding residents' different access, habitat and gathering needs.",
+      "multiplayerOpportunity": "Visitors can submit proposals while the owner makes the final reversible planning choice.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-character-home-visits",
+      "category": "village_progression",
+      "title": "Character home visits",
+      "playerExperience": "Visit lived-in character homes whose activities and useful interactions change with their ongoing stories.",
+      "multiplayerOpportunity": "Friends can join an invited visit and take complementary roles in a household activity.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-traveling-library",
+      "category": "village_progression",
+      "title": "The traveling library",
+      "playerExperience": "Circulate virtual illustrated books whose journeys accumulate bounded garden observations before returning to their home shelf.",
+      "multiplayerOpportunity": "Friends can contribute approved observations without exposing unrelated dashboard data.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-mobile-workshop-caravan",
+      "category": "village_progression",
+      "title": "The mobile workshop caravan",
+      "playerExperience": "Help an artisan move a functioning workshop between remote job sites and adapt its tools to the work found there.",
+      "multiplayerOpportunity": "Players can prepare the route and operate different workshop stations.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-village-mystery-hearings",
+      "category": "village_progression",
+      "title": "The village mystery hearings",
+      "playerExperience": "Resolve gentle village disputes by gathering environmental evidence and presenting a clear explanation that changes a shared place.",
+      "multiplayerOpportunity": "Friends can investigate separate leads and compare interpretations before the owner chooses an outcome.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-neighborhood-routines",
+      "category": "village_progression",
+      "title": "The neighborhood routines",
+      "playerExperience": "Design useful public routes and places, then watch recognizable residents build their daily lives around the resulting layout.",
+      "multiplayerOpportunity": "Visitors can accompany residents or propose better connections without controlling their behavior directly.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-player-household",
+      "category": "village_progression",
+      "title": "The garden household",
+      "playerExperience": "Develop a functional home whose rooms support distinct shared activities and relationships instead of serving only as decoration storage.",
+      "multiplayerOpportunity": "Invited friends can use permitted rooms and participate in household activities.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-regional-cultural-exchanges",
+      "category": "village_progression",
+      "title": "The regional garden exchanges",
+      "playerExperience": "Host fictional gardeners from different climates and learn their practical approaches through activities adapted to your own landscape.",
+      "multiplayerOpportunity": "Friends can compare adapted designs and arrange reciprocal hosted activities.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-local-newspaper",
+      "category": "village_progression",
+      "title": "The local newspaper workshop",
+      "playerExperience": "Create an illustrated village paper from confirmed garden events, interviews and diagrams through a physical editorial workflow.",
+      "multiplayerOpportunity": "Friends can contribute approved reports or illustrations and assemble an issue together.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-friendship-through-activities",
+      "category": "village_progression",
+      "title": "Friendship through shared activities",
+      "playerExperience": "Learn a character's habits through meaningful joint activities that open new ways to interact with them and the world.",
+      "multiplayerOpportunity": "Friends can participate when the character's activity supports a group without receiving another player's private story state.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-preparedness-rehearsals",
+      "category": "village_progression",
+      "title": "The village preparedness rehearsals",
+      "playerExperience": "Plan and rehearse calm evacuation and supply routes in a contained village exercise where mistakes are reversible and nobody is harmed.",
+      "multiplayerOpportunity": "Visitors can guide groups, operate access points or observe route bottlenecks.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-croquet-club",
+      "category": "village_progression",
+      "title": "The landscape croquet club",
+      "playerExperience": "Play a complete outdoor croquet game on terrain-aware courses that players can design and residents can learn.",
+      "multiplayerOpportunity": "Friends can play doubles or collaborate on a fair course layout.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-school-field-trips",
+      "category": "village_progression",
+      "title": "The school field trips",
+      "playerExperience": "Prepare an engaging route for a small fictional school group and teach through real garden observations and interactive stops.",
+      "multiplayerOpportunity": "Visitors can act as guides at different stops or accompany the group.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-public-transit-network",
+      "category": "village_progression",
+      "title": "The village transit network",
+      "playerExperience": "Connect useful village destinations through a modest working transport network with readable stops and schedules.",
+      "multiplayerOpportunity": "Friends can operate services or help plan connections while the owner controls persistent infrastructure.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-walkable-memory-scenes",
+      "category": "village_progression",
+      "title": "The walkable memory scenes",
+      "playerExperience": "Enter a character's carefully staged recollection and compare its garden with the present to understand a personal mystery.",
+      "multiplayerOpportunity": "Invited companions can observe complementary details without changing another player's completed story.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-workshop-succession",
+      "category": "village_progression",
+      "title": "The workshop succession",
+      "playerExperience": "Help an established artisan teach a successor, choosing which traditions and new capabilities their shared workshop will preserve.",
+      "multiplayerOpportunity": "Friends can assist practical commissions while the host chooses the workshop's direction.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-public-seed-bank",
+      "category": "village_progression",
+      "title": "The public seed bank",
+      "playerExperience": "Curate a living conservation collection whose useful diversity depends on documented growing conditions and thoughtful propagation.",
+      "multiplayerOpportunity": "Gardeners can exchange identified accessions under clear ownership and permission rules.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-player-made-rituals",
+      "category": "village_progression",
+      "title": "Player-made seasonal rituals",
+      "playerExperience": "Create a recurring local celebration from chosen places, actions and meanings rather than selecting a preset festival skin.",
+      "multiplayerOpportunity": "Friends can accept specific roles and contribute parts while attendance remains optional.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-character-expedition-partners",
+      "category": "village_progression",
+      "title": "Character expedition partners",
+      "playerExperience": "Invite a resident on an expedition where their interests and practical knowledge reveal different interactions along the route.",
+      "multiplayerOpportunity": "A group can bring complementary guides without multiplying mandatory chores.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-conservation-charters",
+      "category": "village_progression",
+      "title": "The conservation charters",
+      "playerExperience": "Choose how a special area is cared for through a clear charter that affects access, building choices and future wildlife activity.",
+      "multiplayerOpportunity": "Visitors can take limited caretaker roles chosen by the owner.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-village-radio",
+      "category": "village_progression",
+      "title": "The village radio station",
+      "playerExperience": "Program a fictional local broadcast from field recordings, music and confirmed village events through an in-world studio.",
+      "multiplayerOpportunity": "Friends can contribute approved segments or perform a shared broadcast.",
+      "status": "candidate"
+    },
+    {
+      "id": "vil-language-of-the-garden",
+      "category": "village_progression",
+      "title": "The language of the garden",
+      "playerExperience": "Learn an invented visual language through character activities and use it to interpret optional inscriptions and places.",
+      "multiplayerOpportunity": "Friends can compare contextual evidence and help translate longer messages without requiring free-text chat.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-sound-first-expeditions",
+      "category": "accessibility_interaction",
+      "title": "Sound-first expeditions",
+      "playerExperience": "Explore complete routes through spatial audio landmarks and an equivalent semantic map without relying on small visual details.",
+      "multiplayerOpportunity": "A partner can share named landmarks through accessible in-world signals.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-comfort-route-planning",
+      "category": "accessibility_interaction",
+      "title": "Comfort-aware route planning",
+      "playerExperience": "Choose routes that respect your preferences for narrow passages, heights, busy spaces and travel pace without losing essential content.",
+      "multiplayerOpportunity": "A group can plan a mutually suitable route before starting an activity.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-raised-relief-wayfinding",
+      "category": "accessibility_interaction",
+      "title": "The raised-relief wayfinding table",
+      "playerExperience": "Explore a keyboard-readable physical model of the garden that explains connections, elevation and reachable interactions.",
+      "multiplayerOpportunity": "Friends can refer to the same named locations from different viewpoints.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-single-control-companion",
+      "category": "accessibility_interaction",
+      "title": "The single-control companion interface",
+      "playerExperience": "Express high-level movement and tool intentions through a small input vocabulary while retaining meaningful choices in puzzles and exploration.",
+      "multiplayerOpportunity": "A trusted companion player can assist only with explicitly shared controls.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-shared-cadence-buffer",
+      "category": "accessibility_interaction",
+      "title": "The shared cadence buffer",
+      "playerExperience": "Participate in cooperative timing activities by queuing understandable actions onto a forgiving shared sequence.",
+      "multiplayerOpportunity": "Different input speeds can contribute to the same activity without changing its canonical outcome rules.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-sensory-notation-language",
+      "category": "accessibility_interaction",
+      "title": "The garden sensory notation",
+      "playerExperience": "Learn a consistent visible and spoken notation for environmental sounds so audio-based discoveries remain fully playable through other senses.",
+      "multiplayerOpportunity": "Friends can communicate with the same semantic cues regardless of their chosen presentation.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-semantic-exploration-guide",
+      "category": "accessibility_interaction",
+      "title": "The semantic exploration guide",
+      "playerExperience": "Receive concise descriptions of nearby routes, obstacles and meaningful changes while exploring at your own pace.",
+      "multiplayerOpportunity": "A friend can point to a named world object without moving another player's camera.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-rehearsal-theatre",
+      "category": "accessibility_interaction",
+      "title": "The exploration rehearsal theatre",
+      "playerExperience": "Practice an unfamiliar route or mechanism in a clearly separate reversible model before choosing to attempt it in the world.",
+      "multiplayerOpportunity": "Friends can rehearse complementary roles without awarding progression for practice outcomes.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-assisted-creative-drawing",
+      "category": "accessibility_interaction",
+      "title": "The assisted creative drawing studio",
+      "playerExperience": "Create substantial garden designs through shape intentions, constraints and adjustable guides instead of requiring steady pointer drawing.",
+      "multiplayerOpportunity": "Partners can offer separate editable suggestions while the creator keeps control.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-shared-read-along-routes",
+      "category": "accessibility_interaction",
+      "title": "The shared read-along routes",
+      "playerExperience": "Experience a story walk with synchronized place references and individually controlled reading or listening pace.",
+      "multiplayerOpportunity": "Players can remain together while advancing their own narration and subtitles independently.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-semantic-world-focus",
+      "category": "accessibility_interaction",
+      "title": "The semantic world focus system",
+      "playerExperience": "Move focus through actual world objects in a logical spatial order and perform their full interactions from the keyboard or controller.",
+      "multiplayerOpportunity": "Shared object names let friends coordinate without relying on identical screen coordinates.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-icon-storybook-play",
+      "category": "accessibility_interaction",
+      "title": "The icon storybook adventures",
+      "playerExperience": "Follow complete optional adventures through a taught visual grammar with spoken and text equivalents rather than language-heavy instructions.",
+      "multiplayerOpportunity": "Players using different interface languages can refer to the same story symbols.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-motion-free-kinetic-play",
+      "category": "accessibility_interaction",
+      "title": "Motion-free kinetic play",
+      "playerExperience": "Play movement-dependent activities through deliberate discrete states and clear predictions while preserving their meaningful decisions.",
+      "multiplayerOpportunity": "The same shared activity can offer different local presentations under one authoritative logical sequence.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-personal-memory-landmarks",
+      "category": "accessibility_interaction",
+      "title": "Personal memory landmarks",
+      "playerExperience": "Place private, persistent semantic landmarks that help you recognize places and recall unfinished intentions without adding public clutter.",
+      "multiplayerOpportunity": "Players can explicitly share selected landmarks when planning a group route.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-strategy-alternatives-to-precision",
+      "category": "accessibility_interaction",
+      "title": "Strategy alternatives to precision",
+      "playerExperience": "Choose fully designed decision-based alternatives for selected precision activities instead of merely bypassing them or granting automatic success.",
+      "multiplayerOpportunity": "Friends can use equivalent activity roles with outcomes governed by the same accepted rules.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-conversation-map",
+      "category": "accessibility_interaction",
+      "title": "The conversation map",
+      "playerExperience": "Revisit heard clues and character relationships through a spatial conversation record that preserves context without revealing unearned answers.",
+      "multiplayerOpportunity": "A group can share only the clues each participant deliberately chooses to discuss.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-readable-world-lighting",
+      "category": "accessibility_interaction",
+      "title": "The readable world lighting",
+      "playerExperience": "Use a coherent local lighting and outline treatment that keeps people, tools and active objects legible beneath dense scenery.",
+      "multiplayerOpportunity": "Every player keeps their own legibility treatment while sharing the same physical world.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-gesture-command-navigation",
+      "category": "accessibility_interaction",
+      "title": "The gesture command navigation",
+      "playerExperience": "Use a consistent controller or pointer gesture language for travel, camera work and garden actions without navigating many small controls.",
+      "multiplayerOpportunity": "Semantic action signals remain understandable to friends using different input methods.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-tandem-copiloting",
+      "category": "accessibility_interaction",
+      "title": "Tandem copilot play",
+      "playerExperience": "Explicitly divide camera, navigation or tool assistance with a trusted player while preserving your ownership of decisions and saved progress.",
+      "multiplayerOpportunity": "Each shared control has a visible scope and can be handed back immediately.",
+      "status": "candidate"
+    },
+    {
+      "id": "acc-activity-playstyles",
+      "category": "accessibility_interaction",
+      "title": "Activity playstyles",
+      "playerExperience": "Switch between saved combinations of input, sensory presentation and pacing appropriate to exploration, creation or social play.",
+      "multiplayerOpportunity": "A group activity can respect each participant's local playstyle without forcing identical settings.",
+      "status": "candidate"
+    }
+  ]
+}

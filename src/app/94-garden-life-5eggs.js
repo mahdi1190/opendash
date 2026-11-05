@@ -177,7 +177,7 @@ function _glThingClick(e, cfg, S) {
   const C = cfg.click || {};
   if (C.mark) _glMark({ S, def: { markY: cfg.markY || 34 } }, C.mark);
   if (C.sound) _glSound(C.sound);
-  if (C.keep && typeof gardenLifeFound === 'function') gardenLifeFound('k', C.keep);
+  if (C.keep && typeof gardenLifeFound === 'function') gardenLifeFound('k', C.keep, { userAction: true });
   if (C.read) _glNote(C.read[Math.floor(Math.random() * C.read.length)]);
   if (C.gone) { _glFx(S.x, S.y, 'sparkle', { lift: 6 }); _glE.things.delete(S); S.remove(); }
 }

@@ -94,6 +94,22 @@ function _gdrSky(sc, o, W, base) {
 
 /* ---------- the ground ---------- */
 function _gdrTileCol(id, season) { const t = gardenTile(id) || GARDEN_TILES[0]; return season === 'winter' ? t.winter : season === 'autumn' ? t.autumn : t.c; }
+const _gdrWaterShapes = new WeakMap();
+/** Classic scenes can be thumbnails of another garden. Their derived water
+ * stays in the detached contour cache, never in the physical host/visit map. */
+function _gdrOtherWaterShape(sc, id) {
+  if (!sc || typeof gardenOtherWaterShapes !== 'function') return null;
+  let shapes = _gdrWaterShapes.get(sc); if (!shapes) { shapes = gardenOtherWaterShapes(sc, { detached: true }); _gdrWaterShapes.set(sc, shapes); }
+  return shapes.find(shape => shape.area === id || shape.id === id || shape.areas && shape.areas.includes(id)) || null;
+}
+function _gdrWaterShapePath(shape, shiftX) {
+  const W = GARDEN_WORLD, path = points => points.map((p, i) => `${i ? 'L' : 'M'}${_gdrN(p.x * W.cellW - (shiftX || 0))} ${_gdrN(W.sky + p.y * W.cellH)}`).join('') + 'Z';
+  return path(shape.points) + (shape.holes || []).map(path).join('');
+}
+function _gdrWaterRim(shape, fraction, pad) {
+  const W = GARDEN_WORLD, points = shape.points, i = Math.floor(fraction * points.length) % points.length, p = points[i], a = points[(i - 1 + points.length) % points.length], b = points[(i + 1) % points.length], dx = (b.x - a.x) * W.cellW, dy = (b.y - a.y) * W.cellH, length = Math.hypot(dx, dy) || 1;
+  return { x: p.x * W.cellW + dy / length * (pad || 0), y: W.sky + p.y * W.cellH - dx / length * (pad || 0) };
+}
 function _gdrGround(sc, o) {
   if (typeof gartGroundLayer === 'function') { try { return gartGroundLayer(sc, o); } catch (e) { /* the engine's own below */ } }   // agent 'garden-art'
   const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky, season = sc.season;
@@ -131,10 +147,13 @@ function _gdrGround(sc, o) {
       s += `<rect x="${x0 + 2}" y="${y0 + 2}" width="${w - 4}" height="${h - 4}" rx="14" fill="${col}"/>`;
       const wa = a.water, wx = wa.x * cw, wy = base + wa.y * ch, ww = wa.w * cw, wh = wa.h * ch;
       const water = sc.season === 'winter' && sc.rain && sc.rain.snow ? '#b8d4e4' : _gdrTileCol('pond-water', season);
-      s += `<rect x="${wx - 6}" y="${wy - 5}" width="${ww + 12}" height="${wh + 10}" rx="22" fill="${_gdaShade(water, -0.25)}"/><rect x="${wx - 2}" y="${wy - 1}" width="${ww + 4}" height="${wh + 2}" rx="18" fill="${water}"/>`;
+      const shape = _gdrOtherWaterShape(sc, a.id), contour = shape ? _gdrWaterShapePath(shape) : '', clip = o.uid + '-pond-water';
+      if (shape) s += `<defs><clipPath id="${clip}"><path d="${contour}" clip-rule="evenodd"/></clipPath></defs><path d="${contour}" fill="none" stroke="${_gdaShade(water, -0.25)}" stroke-width="7" stroke-linejoin="round"/><path d="${contour}" fill="${water}" fill-rule="evenodd"/><g clip-path="url(#${clip})">`;
+      else s += `<rect x="${wx - 6}" y="${wy - 5}" width="${ww + 12}" height="${wh + 10}" rx="22" fill="${_gdaShade(water, -0.25)}"/><rect x="${wx - 2}" y="${wy - 1}" width="${ww + 4}" height="${wh + 2}" rx="18" fill="${water}"/>`;
       for (let i = 0; i < 5; i++) { const rnd = gardenRand('ripple' + i); s += `<ellipse class="${o.still ? '' : 'gda-ripple'}" cx="${_gdrN(wx + 20 + rnd() * (ww - 40))}" cy="${_gdrN(wy + 10 + rnd() * (wh - 20))}" rx="${_gdrN(10 + rnd() * 12)}" ry="2.2" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="1.2"/>`; }
+      if (shape) s += '</g>';
       const rnd = gardenRand('pondstones');
-      for (let i = 0; i < 22; i++) { const t = i / 22, ang = t * Math.PI * 2, rx = ww / 2 + 8, ry = wh / 2 + 7; s += `<ellipse cx="${_gdrN(wx + ww / 2 + Math.cos(ang) * rx)}" cy="${_gdrN(wy + wh / 2 + Math.sin(ang) * ry)}" rx="${_gdrN(6 + rnd() * 4)}" ry="${_gdrN(4 + rnd() * 2)}" fill="${['#b8b2a6', '#a49e92', '#c8c2b6'][i % 3]}"/>`; }
+      for (let i = 0; i < 22; i++) { const t = i / 22, ang = t * Math.PI * 2, rx = ww / 2 + 8, ry = wh / 2 + 7, p = shape ? _gdrWaterRim(shape, t, 5) : { x: wx + ww / 2 + Math.cos(ang) * rx, y: wy + wh / 2 + Math.sin(ang) * ry }; s += `<ellipse cx="${_gdrN(p.x)}" cy="${_gdrN(p.y)}" rx="${_gdrN(6 + rnd() * 4)}" ry="${_gdrN(4 + rnd() * 2)}" fill="${['#b8b2a6', '#a49e92', '#c8c2b6'][i % 3]}"/>`; }
       continue;
     }
     s += `<rect x="${x0 + 3}" y="${y0 + 3}" width="${w - 6}" height="${h - 6}" rx="${look === 'meadow' || look === 'orchard' ? 10 : 4}" fill="${col}"/>`;
@@ -166,7 +185,7 @@ function _gdrItem(kind, it, sc, o) {
   const ax = (it.x + fw / 2) * cw, ay = base + (it.y + fh) * ch - (ground ? 0 : 4);
   const showy = kind === 'decor' && def.effect && def.effect.kind === 'show';   // 2.22: the aquarium, the case and the board draw what you caught
   const frag = _gdArt(it.id, kind === 'plant'
-    ? { kind, stage: it.stage, season: sc.season, variant: it.variant, size: o.size, t: it.t || 0, tod: sc.tod, thirsty: it.thirsty, overgrown: it.overgrown, ripe: it.ripe, glow: !!def.glow, heart: it.heart }
+    ? { kind, stage: it.stage, season: sc.season, variant: it.variant, size: o.size, t: it.t || 0, tod: sc.tod, thirsty: it.thirsty, nativeHealth: !!o.native, overgrown: it.overgrown, ripe: it.ripe, glow: !!def.glow, heart: it.heart }
     : { kind, season: sc.season, variant: it.v || 0, v: it.v || 0, size: o.size, t: it.t || 0, tod: sc.tod, r: it.r || 0, show: showy ? sc.show || null : null, shw: showy ? sc.showSig || '' : '' });
   if (!frag) return '';
   const tr = ground ? `translate(${_gdrN(ax)} ${_gdrN(ay)}) scale(${_gdrN(cw / 64 * fw / fw)} ${_gdrN(ch / 40)})` : `translate(${_gdrN(ax)} ${_gdrN(ay)}) scale(0.75)`;
@@ -308,11 +327,13 @@ function _gdrShowOf() { try { return typeof gardenShowEntries === 'function' ? g
 function _gdrShowSig() { try { return typeof gardenShowSig === 'function' ? gardenShowSig(_gdrShowOf()) : ''; } catch (e) { return ''; } }
 function gardenSceneFromModel(m) {
   const p = Clock.parts(m.now);
+  const snap = m.visit && m.visit.snap, hostTime = snap && Number.isFinite(snap.tz) ? new Date(m.now + snap.tz * 60000) : null;
+  const hour = hostTime ? hostTime.getUTCHours() + hostTime.getUTCMinutes() / 60 : p.h + p.mi / 60;
   return {
     plants: m.plants.map(x => ({ id: x.def.id, uid: x.uid, x: x.x, y: x.y, stage: x.stage, variant: x.variant, thirsty: x.thirsty, overgrown: x.overgrown, ripe: x.ripe, t: x.t, heart: x.heart, pend: x.pend })),
     dz: typeof gardenDesignShown === 'function' ? gardenDesignShown() : null,
     decor: (typeof gardenDesignDecorDraft === 'function' ? gardenDesignDecorDraft(m.decor) : m.decor).map(d => ({ id: d.def.id, uid: d.uid, x: d.x, y: d.y, r: d.r, v: d.v, t: (gardenHash(d.uid) % 100) / 100, pend: d.pend })),
-    areas: m.areas, season: m.season, tod: m.tod, rain: m.rain, visitors: m.visitors, lv: m.level.level, hour: Math.round((p.h + p.mi / 60) * 4) / 4, day: m.today,
+    areas: m.areas, season: m.season, tod: m.tod, rain: m.rain, visitors: m.visitors, lv: m.level.level, hour: Math.round(hour * 4) / 4, day: m.today,
     show: m.visit ? m.visit.sh : _gdrShowOf(), showSig: m.visit ? m.visit.shSig : _gdrShowSig(), landShow: m.visit ? gardenLandShowOf(m.visit.snap) : gardenLandShowMine(m),
   };
 }
@@ -465,6 +486,7 @@ function _gdrRemember(svg, parts, kids) {
 }
 /** SVG markup to nodes in the SVG namespace. */
 function _gdrParse(html) {
+  if (window.GardenNative && GardenNative.scene()) { const root = gardenSceneElement('g'); root.innerHTML = html; const nodes = [...root.children]; for (const node of nodes) root.removeChild(node); root.destroy(); return nodes; }
   const t = document.createElement('template');
   t.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + html + '</svg>';
   return [...t.content.firstElementChild.children];

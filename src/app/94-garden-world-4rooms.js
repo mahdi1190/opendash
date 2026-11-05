@@ -18,7 +18,16 @@ function _grmG(R, k, d) { return gpGet('rm.' + R.id + '.' + k, d); }
 function _grmP(R, k, v) { if (!gpVisiting()) gpSet('rm.' + R.id + '.' + k, v); }
 function _grmDone(R) { return !gpVisiting() && _grmG(R, 'p') === _gdToday(); }
 function _grmHash(R, salt) { return gardenHash('room|' + R.id + '|' + (salt || '') + '|' + _gdToday()); }
+function _grmInSession(R, S) { return _grm.on && _grm.R === R && _grm.S === S; }
+/** Delayed words belong to this visit, including when the same room reopens. */
+function _grmLater(R, S, run, ms) { return setTimeout(() => { if (_grmInSession(R, S)) run(); }, ms); }
 function _grmSay(text, ms) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) {
+    const el = _grm.root && _grm.root.querySelector('.grm-say'); if (!el) return;
+    el.textContent = text; el.classList.remove('is-gone');
+    clearTimeout(_grm.sayT); _grm.sayT = setTimeout(() => el.classList.add('is-gone'), ms || Math.max(5000, String(text).length * 75));
+    return;
+  }
   // what somebody says or a page reads, in quotation marks, stays on the room's strip at the bottom. Any other message is the same line as everywhere
   if (!/[“”]/.test(String(text)) && gardenMessage(text, { ms })) return;
   const el = _grm.root && _grm.root.querySelector('.grm-say'); if (!el) return;
@@ -45,12 +54,22 @@ function _grmCrop() { let best = '', n = 0; for (const [k, v] of Object.entries(
 function _grmCropName(k) { const p = gardenPlant(String(k).slice(5)); return p ? p.name.toLowerCase() : 'something you picked'; }
 function _grmDoneLine(R) { return R.doneLine || 'Nothing more here today. Come back tomorrow.'; }
 function _grmAsk(q, opts, pick) {
-  const el = _grm.root && _grm.root.querySelector('.grm-ask'); if (!el) return;
+  const R = _grm.R, S = _grm.S, el = _grm.root && _grm.root.querySelector('.grm-ask'); if (!el) return;
   el.innerHTML = ''; el.appendChild(gpEl('p', 'grm-q', q));
-  opts.forEach((o, i) => { const b = gpEl('button', 'btn btn-secondary btn-sm', o); b.type = 'button'; b.onclick = () => { el.innerHTML = ''; pick(i); }; el.appendChild(b); });
+  opts.forEach((o, i) => { const b = gpEl('button', 'btn btn-secondary btn-sm', o); b.type = 'button'; b.onclick = () => { if (!_grmInSession(R, S)) return; el.innerHTML = ''; pick(i); if (window.GardenNativeRooms && GardenNativeRooms.current() && !el.childElementCount) GardenNativeRooms.controlsClose(el); }; el.appendChild(b); });
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) GardenNativeRooms.controlsOpen(el);
 }
 
 /* ---------- what there is to do: spots(R, S) is what you can click, act(R, S, id) is a click, begin(R, S) sets up the day, frame(R, S, dt) only if it moves ---------- */
+function _grmTuneRest(S) {
+  const m = S.tuneMotion; if (!m) return;
+  if (m.node.isConnected) _grmAttr(m.node, 'transform', m.rest);
+  S.tuneMotion = null;
+}
+function _grmTuneStrike(R, S, i) {
+  const swing = R.things[i].swing, node = swing && _grmQ('.grm-tune-part' + i);
+  if (node) S.tuneMotion = { node, swing, rest: node.getAttribute('transform') || '' };
+}
 const GRM_PLAY = {
   /* A book that gets one page further each day you come. */
   serial: {
@@ -62,22 +81,37 @@ const GRM_PLAY = {
       const i = S.n; S.n++; _grmP(R, 'n', S.n);
       const first = i <= last, page = first ? P[i] : P[_grmHash(R) % P.length];
       _grmPay(R, page, first ? R.gift : R.after);
-      if (i === last && R.end && _grmOnce(R, 'end', R.end.items)) setTimeout(() => _grmSay(R.end.say, 9000), 7000);
+      if (i === last && R.end && _grmOnce(R, 'end', R.end.items)) _grmLater(R, S, () => _grmSay(R.end.say, 9000), 7000);
       _grmPaint();
     },
   },
   /* Play the marks on the wall, in order: a different tune each day. */
   tune: {
-    begin(R, S) { const h = _grmHash(R); S.seq = []; for (let k = 0; k < 4; k++) { let v = (h >>> (k * 5)) % R.things.length; if (k && v === S.seq[k - 1]) v = (v + 1 + (h >>> (k + 20)) % (R.things.length - 1)) % R.things.length; S.seq.push(v); } S.i = 0; S.won = _grmDone(R); },   // (never the same note twice running: that was no tune)
-    spots(R, S) { return R.things.map((t, i) => ({ id: i, x: t.x, y: t.y, w: t.w || 90, h: t.h || 130, now: true, tip: R.tip, art: t.art(S.hot === i) })).concat([{ id: 'chart', x: R.chart.x, y: R.chart.y, w: 0, h: 0, art: R.chart.art(S.seq, S.i), still: true }]); },
+    begin(R, S) { const h = _grmHash(R); S.seq = []; for (let k = 0; k < 4; k++) { let v = (h >>> (k * 5)) % R.things.length; if (k && v === S.seq[k - 1]) v = (v + 1 + (h >>> (k + 20)) % (R.things.length - 1)) % R.things.length; S.seq.push(v); } S.i = 0; S.hot = null; S.hotFor = 0; S.tuneMotion = null; S.leave = () => _grmTuneRest(S); S.won = _grmDone(R); },   // (never the same note twice running: that was no tune)
+    spots(R, S) { return R.things.map((t, i) => ({ id: i, x: t.x, y: t.y, w: t.w || 90, h: t.h || 130, now: true, tip: R.tip, art: `<g class="grm-tune-part${i}" transform="translate(0 0)">${t.art(S.hot === i)}</g>` })).concat([{ id: 'chart', x: R.chart.x, y: R.chart.y, w: 0, h: 0, art: R.chart.art(S.seq, S.i), still: true }]); },
     act(R, S, i) {
       gpTone([R.things[i].f], { force: true, type: R.wave || 'triangle', len: R.len || 0.7, vol: 0.12 });
-      S.hot = i; _grmPaint(); setTimeout(() => { if (_grm.S === S) { S.hot = null; _grmPaint(); } }, 260);
-      if (S.won) return;
+      // The latest note owns its feedback window. Independent clear timers
+      // let an earlier knock cut off the next hull/rope's visible response.
+      _grmTuneRest(S); S.hot = i; S.hotFor = 0.26;
+      if (S.won) { _grmPaint(); _grmTuneStrike(R, S, i); return; }
       if (i === S.seq[S.i]) { S.i++; if (S.i >= S.seq.length) { _grmPay(R, R.gotLine); gpTone(S.seq.map(q => R.things[q].f), { force: true, type: R.wave || 'triangle', gap: 0.24, len: 0.7, vol: 0.1 }); } }
       else { S.i = i === S.seq[0] ? 1 : 0; _grmSay(R.missLine); }
-      _grmPaint();
+      _grmPaint(); _grmTuneStrike(R, S, i);
     },
+    frame(R, S, dt) {
+      if (S.hot == null) return;
+      const light = window.GardenNative && GardenNative.active() && GardenNative.lighting(), env = light && light.environment();
+      if (env && env.paused) return;   // hold the visible feedback pose while frozen
+      S.hotFor = Math.max(0, S.hotFor - dt);
+      if (!S.hotFor) { _grmTuneRest(S); S.hot = null; _grmPaint(); return; }
+      const m = S.tuneMotion; if (!m) return;
+      if (!m.node.isConnected) { S.tuneMotion = null; return; }
+      if (!gardenMotionOn()) { _grmAttr(m.node, 'transform', m.rest); return; }
+      const p = 1 - S.hotFor / 0.26, decay = (1 - p) ** 2, angle = Math.sin(p * Math.PI * 2) * m.swing.angle * decay, drop = Math.sin(p * Math.PI) * (1 - p) * m.swing.drop;
+      _grmAttr(m.node, 'transform', `${m.rest} translate(0 ${drop.toFixed(3)}) rotate(${angle.toFixed(3)} 0 ${m.swing.pivot})`);
+    },
+    cancel(R, S) { _grmTuneRest(S); },
   },
   /* Five wicks on one wire: touch one and it and its neighbours change. Light them all. */
   wicks: {
@@ -104,7 +138,7 @@ const GRM_PLAY = {
       if (S.won) { _grmSay(_grmDoneLine(R)); return; }
       S.n = Math.min(R.max, S.n + 1); _grmP(R, 'n', S.n);
       _grmPay(R, R.lines[Math.min(S.n, R.lines.length) - 1]);
-      if (S.n >= R.goal && R.end && _grmOnce(R, 'end', R.end.items)) setTimeout(() => _grmSay(R.end.say, 9000), 7000);
+      if (S.n >= R.goal && R.end && _grmOnce(R, 'end', R.end.items)) _grmLater(R, S, () => _grmSay(R.end.say, 9000), 7000);
       _grmPaint();
     },
   },
@@ -180,7 +214,7 @@ const GRM_PLAY = {
     frame(R, S, dt) {
       if (S.won) return;
       S.a = (S.a + dt * (1.5 + S.hits * 0.7)) % (Math.PI * 2);
-      const g = _grm.props && _grm.props.querySelector('.grm-turn'); if (g) g.setAttribute('transform', `rotate(${(S.a * 180 / Math.PI).toFixed(1)})`);
+      _grmAttr(_grmQ('.grm-turn'), 'transform', `rotate(${(S.a * 180 / Math.PI).toFixed(1)})`);
     },
     act(R, S) {
       if (S.won) { _grmSay(_grmDoneLine(R)); return; }
@@ -194,7 +228,22 @@ const GRM_PLAY = {
 };
 
 /* ---------- drawing what you can click ---------- */
+// Props are replaced only by _grmPaint. Keep frame-time lookups until that
+// replacement, including absent optional art; never retain a previous room's nodes.
+function _grmQ(sel, all) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) return GardenNativeRooms.query(sel, all);
+  const p = _grm.props; if (!p) return null;
+  const c = p._grmQueries || (p._grmQueries = new Map()), key = (all ? '*' : '') + sel;
+  if (!c.has(key)) c.set(key, all ? p.querySelectorAll(sel) : p.querySelector(sel));
+  return c.get(key);
+}
+function _grmAttr(el, key, value) {
+  if (!el) return;
+  const c = el._grmAttrs || (el._grmAttrs = Object.create(null));
+  if (c[key] !== value) { c[key] = value; el.setAttribute(key, value); }
+}
 function _grmPaint() {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.paint(); return; }
   const R = _grm.R, S = _grm.S; if (!R || !_grm.props) return;
   let s = '';
   for (const q of _grmAllSpots(R, S)) {
@@ -202,6 +251,7 @@ function _grmPaint() {
     s += `<g class="grm-spot${q.cls ? ' ' + q.cls : ''}" data-s="${q.id}" transform="translate(${q.x} ${q.y})"><title>${esc(q.tip || '')}</title><rect x="${-q.w / 2}" y="${-q.h}" width="${q.w}" height="${q.h}" fill="transparent"/>${q.art}</g>`;
   }
   _grm.props.innerHTML = s;
+  _grm.props._grmQueries = null;
 }
 function _grmSpot(id) { return _grmAllSpots(_grm.R, _grm.S).find(q => String(q.id) === String(id) && !q.still) || null; }
 function _grmAct(id) {
@@ -212,6 +262,7 @@ function _grmAct(id) {
 
 /* ---------- people: the stage's figures and steps (_eeFigure, _eeMove, _eePaint) ---------- */
 function _grmMake(M) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.addActor(M); return; }
   const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'ee-p' + (M.me ? ' is-me' : ''));
   g.innerHTML = '<ellipse class="ee-pshadow" cx="0" cy="1" rx="17" ry="4.6"/><g class="ee-pb"><g class="ee-pin"></g></g><text class="ee-pname" y="-112" text-anchor="middle"></text>';
   g.querySelector('.ee-pname').textContent = M.me ? 'You' : M.n;
@@ -243,6 +294,7 @@ function _grmSend(x, y, e) {
 
 /* ---------- the loop ---------- */
 function _grmFrame(ts) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) return;
   _grm.raf = 0;
   if (!_grm.on) return;
   if (!_gw.on) { gardenRoomLeave(); return; }
@@ -270,15 +322,29 @@ function _grmFrame(ts) {
   }
   const P = P0; if (P.frame) P.frame(_grm.R, _grm.S, dt);
   _grmExtraFrame(ts);
+  // The outdoor renderer sleeps indoors and owns the suppressed garden RAF.
+  // Keep the shared cast/reel state advancing here; the standard view already
+  // advances it from its own garden loop.
+  if (window.GardenPhaser && GardenPhaser.active(_gw.svg)) {
+    if (typeof _gwFishFrame === 'function') _gwFishFrame(dt);
+    // Host routing also uses these outdoor positions. Advance their existing
+    // walk state at 10 Hz without touching the hidden figures or GPU loop.
+    _grm.peerDt = (_grm.peerDt || 0) + dt;
+    if (_grm.peerDt >= 0.1) { const elapsed = _grm.peerDt; _grm.peerDt = 0; for (const A of _gll.actors.values()) _gllStep(A, elapsed, true); }
+    // Friends' indoor rods normally advance through the suppressed world
+    // sprites loop too. Only this room's visible lines need that drawing tick.
+    if (typeof _gllFxStep === 'function') for (const A of _gll.actors.values()) if (A.fish && A.rm === _grm.R.id) _gllFxStep(A, dt);
+  }
   if (_grwa.w) _grwFishFrame(dt);
   const all = [..._grm.m.values(), M].sort((a, b) => a.y - b.y), kids = _grm.actors.children;
   if (all.some((r, i) => kids[i] !== r.g)) for (const r of all) _grm.actors.appendChild(r.g);
   _grm.raf = requestAnimationFrame(_grmFrame);
 }
-function _grmStartLoop() { if (_grm.on && !_grm.raf && !document.hidden) { _grm.last = 0; _grm.raf = requestAnimationFrame(_grmFrame); } }
+function _grmStartLoop() { if (window.GardenNativeRooms && GardenNativeRooms.current()) return; if (_grm.on && !_grm.raf && !document.hidden) { _grm.last = 0; _grm.raf = requestAnimationFrame(_grmFrame); } }
 
 /* ---------- walking and clicking ---------- */
 function _grmPt(ev) {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) return GardenNativeRooms.point(ev.clientX, ev.clientY);
   const r = _grm.svg.getBoundingClientRect(), k = Math.min(r.width / GRM.W, r.height / GRM.H);
   return { x: (ev.clientX - (r.left + (r.width - GRM.W * k) / 2)) / k, y: (ev.clientY - (r.top + (r.height - GRM.H * k) / 2)) / k };
 }
@@ -311,12 +377,12 @@ function _grmUp() { if (!_grm.on) return; const P = GRM_PLAY[_grm.R.play]; if (P
 function _grmKey(ev) {
   if (!_grm.on || ev.ctrlKey || ev.metaKey || ev.altKey || /^F\d+$/.test(ev.key)) return;
   const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key, down = ev.type === 'keydown';
-  if (ev.target && ev.target.closest && ev.target.closest('.ee-ui, .grm-ask, .grm-bag') && k !== 'Escape') return;   // a button you are on is yours to use
+  if (!down) { _grm.keys.delete(k === 'Shift' ? 'shift' : k); if (k === ' ' || k === 'e' || k === 'Enter') { _gwFishRelease(); _grmUp(); } else if (k === 'ArrowUp') _gwFishRelease(); return; }
+  if (ev.target && ev.target.closest && k !== 'Escape' && (ev.target.closest('input,textarea,select,[contenteditable="true"]') || ev.target.closest('.ee-ui, .grm-ask, .grm-bag') && (k === 'Enter' || k === ' ' || k === 'Tab'))) return;   // controls keep their own activation and editing keys
   ev.stopImmediatePropagation();
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's', ' ', 'Enter', 'Escape', 'e'].includes(k)) ev.preventDefault();
   if (k === 'Shift') { if (down) _grm.keys.add('shift'); else _grm.keys.delete('shift'); return; }
   const busy = _gwFishBusy();
-  if (!down) { _grm.keys.delete(k); if (k === ' ' || k === 'e' || k === 'Enter' || (k === 'ArrowUp' && busy)) { _gwFishRelease(); _grmUp(); } return; }
   if (k === 'Escape') { if (busy) { _gwFishCancel(); return; } gardenRoomLeave(); return; }
   if (ev.repeat && (k === ' ' || k === 'e' || k === 'Enter')) return;
   if (busy) { if (k === ' ' || k === 'e' || k === 'Enter') _gwFishPress(); else if (k === 'ArrowUp' && _gw.reel) _gw.reel.hold = true; return; }   // as outside: strike, then hold to lift the bar
@@ -411,6 +477,7 @@ function _grmMarkFound(R) {
   return first && _grmOnce(R, 'found', GRM.firstFind);
 }
 function gardenRoomEnter(R) {
+  if (window.GardenNative && GardenNative.active()) return GardenNative.enterRoom(R);
   if (!_grmMayEnter() || !R) return false;
   try { _gw.keys.clear(); _gw.path = []; gardenBubbleClose(); if (typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel(''); } catch (e) { /* not in the way */ }
   const root = document.createElement('div'); root.className = `ee-room grm-room grm-r-${R.id}`; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', R.name);
@@ -422,7 +489,7 @@ function gardenRoomEnter(R) {
   document.body.appendChild(root);
   _grm.root = root; _grm.svg = root.querySelector('.ee-svg:not(.grm-layer)'); _grm.actors = root.querySelector('.ee-actors'); _grm.props = root.querySelector('.grm-props'); _grm.game = root.querySelector('.grm-game'); _grm.school = root.querySelector('.grm-school-in'); _grm.bugL = root.querySelector('.grm-bugs');
   _grwa.w = w;
-  _grm.R = R; _grm.S = {}; _grm.fu = false; _grm.carry = ''; _grm.icons = null; _grm.fuKey = ''; _grm.fuAt = 0; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.closing = false;
+  _grm.R = R; _grm.S = {}; _grm.fu = false; _grm.carry = ''; _grm.icons = null; _grm.fuKey = ''; _grm.fuAt = 0; _grm.m.clear(); _grm.keys.clear(); _grm.t = 0; _grm.last = 0; _grm.peerDt = 0; _grm.closing = false;
   GRM_PLAY[R.play].begin(R, _grm.S);
   _grmPaint();
   const sp0 = R.spawn || GRM.spawn, p0 = _grmClamp(sp0.x + Math.random() * 40 - 20, sp0.y + Math.random() * 24 - 12);
@@ -444,6 +511,7 @@ function gardenRoomEnter(R) {
   return true;
 }
 function gardenRoomLeave() {
+  if (window.GardenNativeRooms && GardenNativeRooms.current()) { GardenNativeRooms.leave(); return; }
   if (!_grm.on || _grm.closing) return;
   try { if (_gwFishBusy()) _gwFishCancel(); gardenMomentEnd(); _gwReelClose(); } catch (e) { /* nothing was out */ }   // (while the helpers still answer for the room)
   _grwFishForget();

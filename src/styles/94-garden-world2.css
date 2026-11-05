@@ -1,0 +1,9 @@
+.gd-graphics { display: grid; gap: var(--space-3, 12px); }
+.gd-graphics p { margin: 0; line-height: 1.5; }
+.gd-graphics fieldset { border: 1px solid var(--line); border-radius: var(--radius-md, 12px); padding: var(--space-3, 12px); }
+.gd-graphics legend { font-weight: 600; padding: 0 var(--space-2, 8px); }
+.gd-graphics-choice { display: flex; align-items: flex-start; gap: var(--space-3, 12px); padding: var(--space-3, 12px); cursor: pointer; }
+.gd-graphics-choice input { margin-top: 4px; flex: none; accent-color: var(--accent); }
+.gd-graphics-choice span { display: grid; gap: var(--space-1, 4px); }
+.gd-graphics-choice small { color: var(--muted); line-height: 1.5; }
+.gd-graphics-choice.is-disabled { opacity: 0.55; cursor: default; }

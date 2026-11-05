@@ -35,8 +35,31 @@ function _gartGrain() {
   return c;
 }
 function _gartBakeCap() { const dpr = window.devicePixelRatio || 1; return Math.min(2, Math.max(1.5, dpr)); }
+function _gartEngineBaking(svg) { const engine = window.GardenPhaser; return !!(engine && (engine.active(svg) || typeof engine.preparing === 'function' && engine.preparing(svg))); }
+/** Serialized SVG images cannot load the native painter's nested blob URLs. */
+function gardenArtRestoreVectors(svg) {
+  if (!svg) return;
+  for (const group of svg.querySelectorAll('.gart-bake.is-baked')) if (typeof group._gartVectorMarkup === 'string') { group.innerHTML = group._gartVectorMarkup; group.classList.remove('is-baked'); }
+}
+function gardenArtRestoreClone(svg, clone) {
+  const restore = (source, copy) => {
+    if (typeof source._gartVectorMarkup === 'string') { copy.innerHTML = source._gartVectorMarkup; copy.classList.remove('is-baked'); return; }
+    const children = [...source.children], copies = [...copy.children];
+    children.forEach((child, i) => { if (copies[i]) restore(child, copies[i]); });
+    if (source._gartKids) {
+      const fragment = source._gartKids.cloneNode(true);
+      const originals = [...source._gartKids.children], restored = [...fragment.children];
+      originals.forEach((child, i) => { if (restored[i]) restore(child, restored[i]); });
+      copy.appendChild(fragment); copy.classList.remove('gart-off');
+    }
+  };
+  // A photo may need distant artwork. Restore it only on the capture copy;
+  // bringing every culled live object back would start another asset burst.
+  restore(svg, clone);
+}
 /** Turn one group into a bitmap. Resolves to a blob: URL (cached by the group's own markup), or null when it cannot. */
-async function _gartBakeOne(markup, box, scale, alpha, pieces) {
+async function _gartBakeOne(markup, box, scale, alpha, pieces, wanted) {
+  if (wanted && !wanted()) return null;
   const key = gardenHash(markup) + '|' + markup.length + '|' + box.join(',') + '|' + scale;
   if (_gartLife.urls.has(key)) return _gartLife.urls.get(key);
   const w = Math.max(1, Math.round(box[2] * scale)), h = Math.max(1, Math.round(box[3] * scale));
@@ -44,22 +67,25 @@ async function _gartBakeOne(markup, box, scale, alpha, pieces) {
   const x = c.getContext('2d');
   // one piece at a time, with a breath for the page between them: the picture only appears when it is whole
   for (const part of pieces && pieces.length ? pieces : [markup]) {
+    if (wanted && !wanted()) return null;
     const img = new Image(); img.decoding = 'async';
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="${box.join(' ')}">${part}</svg>`);
     await img.decode();
+    if (wanted && !wanted()) return null;
     x.drawImage(img, 0, 0, w, h);
     await new Promise(res => setTimeout(res, 16));
   }
   // the paper's grain, only where there is paint: 'source-atop' leaves the transparent parts of the picture alone
   if (!alpha) { x.globalCompositeOperation = 'source-atop'; x.globalAlpha = 0.07; x.fillStyle = x.createPattern(_gartGrain(), 'repeat'); x.fillRect(0, 0, w, h); x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1; }
   const blob = await new Promise(res => { try { c.toBlob(res, 'image/webp', 0.92); } catch (e) { res(null); } });
-  if (!blob) return null;
+  if (!blob || wanted && !wanted()) return null;
   const url = URL.createObjectURL(blob);
   _gartLife.urls.set(key, url);
   if (_gartLife.urls.size > 16) { const first = _gartLife.urls.keys().next().value, u = _gartLife.urls.get(first); _gartLife.urls.delete(first); try { URL.revokeObjectURL(u); } catch (e) { /* gone */ } }
   return url;
 }
 async function _gartBakeNext(svg) {
+  if (_gartEngineBaking(svg)) return false;
   const el = svg.querySelector('.gart-bake:not(.is-baked):not(.no-bake)');
   if (!el) return false;
   _gartLife.busy = true;
@@ -70,12 +96,14 @@ async function _gartBakeNext(svg) {
     if (el.dataset.bake === 'far') box = [0, 0, ww, W.sky + 8];
     const cap = Math.min(_gartBakeCap() * wanted, 6000 / box[2], 4096 / box[3]);
     const markup = el.innerHTML;
+    el._gartVectorMarkup = markup;
     const pieces = el.dataset.split ? [...el.children].map(k => k.outerHTML) : null;
-    const url = await _gartBakeOne(markup, box, cap, el.dataset.alpha === '1', pieces);
-    if (!url) { el.classList.add('no-bake'); return true; }
+    const stillWanted = () => el.isConnected && !_gartEngineBaking(svg);
+    const url = await _gartBakeOne(markup, box, cap, el.dataset.alpha === '1', pieces, stillWanted);
+    if (!url) { if (stillWanted() && el.innerHTML === markup) el.classList.add('no-bake'); return true; }
     const pre = new Image(); pre.src = url; await pre.decode();
-    if (!el.isConnected || el.innerHTML !== markup) return true;   // redrawn meanwhile: the next look bakes the new one
-    const im = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    if (!stillWanted() || el.innerHTML !== markup) return true;   // a redraw or renderer handover superseded the native bake
+    const im = gardenSceneElement('image');
     im.setAttribute('x', box[0]); im.setAttribute('y', box[1]); im.setAttribute('width', box[2]); im.setAttribute('height', box[3]);
     im.setAttribute('preserveAspectRatio', 'none'); im.setAttribute('href', url);
     el.classList.add('is-baked');
@@ -107,6 +135,7 @@ function gardenArtAllBack(svg) {
   svg._gartViewKey = '';
 }
 function _gartRestItems(svg) {
+  if (window.GardenPhaser && GardenPhaser.active(svg)) return;
   const layer = svg.querySelector('.gd-objects'); if (!layer) return;
   const vb0 = svg.viewBox && svg.viewBox.baseVal; if (!vb0) return;
   // what is on the page covers the view and the view the camera is going to: zooming out never shows a thing being put back
@@ -159,7 +188,7 @@ function _gartPop(el, big) {
   if (!_gartMotionOk() || !el || !el.isConnected) return;
   let wrap = el.querySelector(':scope > .gart-popw');
   if (!wrap) {
-    wrap = document.createElementNS('http://www.w3.org/2000/svg', 'g'); wrap.setAttribute('class', 'gart-popw');
+    wrap = gardenSceneElement('g'); wrap.setAttribute('class', 'gart-popw');
     while (el.firstChild) wrap.appendChild(el.firstChild);
     el.appendChild(wrap);
   }
@@ -174,11 +203,12 @@ function _gartPop(el, big) {
 /** A small burst of particles in the scene's fx layer. kinds: 'harvest' | 'water' | 'plant' | 'feed' | 'prune'. */
 function _gartBurst(kind, x, y, fp, col) {
   if (!_gartMotionOk()) return;
+  if (window.GardenNative && GardenNative.active()) { const W = GARDEN_WORLD; GardenNative.lighting().effect(kind, (x + (fp || 1) / 2) * W.cellW, W.sky + (y + (fp || 1)) * W.cellH, col); return; }
   const svg = document.querySelector('.gd-page .gd-svg') || document.querySelector('.gd-svg');
   const layer = svg && svg.querySelector('.gd-fx'); if (!layer) return;
   const W = GARDEN_WORLD, A = GART, px = (x + (fp || 1) / 2) * W.cellW, py = W.sky + (y + (fp || 1)) * W.cellH - 8;
   const NS = 'http://www.w3.org/2000/svg';
-  const g = document.createElementNS(NS, 'g'); g.setAttribute('transform', `translate(${A.f1(px)} ${A.f1(py)})`); g.setAttribute('class', 'gart-fx');
+  const g = gardenSceneElement('g'); g.setAttribute('transform', `translate(${A.f1(px)} ${A.f1(py)})`); g.setAttribute('class', 'gart-fx');
   const c = A.HEX.test(String(col)) ? col : '#f2c21e', r = A.rng(((px * 7 + py * 13) | 0) + (Date.now() & 1023));   // clock-ok: only which way the bits fly
   const spec = {
     harvest: { n: 12, up: 46, wide: 34, dur: 760, shapes: [A.star(0, 0, 4, 3.6, 1.3), A.petal(0, 0, 0.6, 4.4, 2.2), A.circ(0, 0, 1.8)], cols: [c, '#fff3b0', A.lt(c, 0.4)] },
@@ -189,12 +219,12 @@ function _gartBurst(kind, x, y, fp, col) {
   }[kind];
   if (!spec) return;
   if (kind === 'water') {
-    const ring = document.createElementNS(NS, 'ellipse'); ring.setAttribute('rx', '6'); ring.setAttribute('ry', '2'); ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', '#d8f0fc'); ring.setAttribute('stroke-width', '1.4');
+    const ring = gardenSceneElement('ellipse'); ring.setAttribute('rx', '6'); ring.setAttribute('ry', '2'); ring.setAttribute('fill', 'none'); ring.setAttribute('stroke', '#d8f0fc'); ring.setAttribute('stroke-width', '1.4');
     g.appendChild(ring);
     try { ring.animate([{ transform: 'scale(.4)', opacity: 0.9 }, { transform: 'scale(2.4)', opacity: 0 }], { duration: 620, easing: 'ease-out', fill: 'forwards' }); } catch (e) { /* none */ }
   }
   for (let i = 0; i < spec.n; i++) {
-    const p = document.createElementNS(NS, 'path');
+    const p = gardenSceneElement('path');
     p.setAttribute('d', spec.shapes[i % spec.shapes.length]); p.setAttribute('fill', spec.cols[i % spec.cols.length]);
     g.appendChild(p);
     const a = (i / spec.n - 0.5) * 2.4 + (r() - 0.5) * 0.5, dx = Math.sin(a) * spec.wide * (0.6 + r() * 0.6), top = -spec.up * (0.6 + r() * 0.6), fall = 8 + r() * 12, rot = (r() - 0.5) * 540;
@@ -241,10 +271,11 @@ function _gartTick() {
   const list = document.querySelectorAll('.gd-svg');
   if (!list.length) return;
   for (const svg of list) {
+    if (window.GardenPhaser && GardenPhaser.active(svg)) continue;
     if (!(svg === _gw.svg && _gw.sizeOk) && svg.getBoundingClientRect().width < 240) continue;   // a thumbnail stays as it is (the stage's size is known: asking forces a layout)
     _gartWatch(svg);
     _gartRestItems(svg);
-    if (!_gartLife.busy) _gartBakeNext(svg);
+    if (!_gartLife.busy && !_gartEngineBaking(svg)) _gartBakeNext(svg);
   }
   if ((_gartLife.beat = (_gartLife.beat || 0) + 1) % 8 === 1 && typeof gardenLightCheck === 'function') { try { gardenLightCheck(); } catch (e) { console.error('[garden]', e); } }   // about every 2.5 s: is the light still the right one?
 }

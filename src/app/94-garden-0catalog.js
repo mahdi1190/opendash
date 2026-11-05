@@ -847,12 +847,14 @@ function gardenAreaAt(x, y, level) {
     if (c) { if (c.lane) { const zl = level != null ? gardenZoneLockAt(x, y) : ''; return zl ? 'locked:' + zl : 'lawn'; } if (c.solid) return 'locked:' + c.id; if (level != null && !_GD_LAND.has(c.id)) return 'locked:' + (c.zn && !_GD_LAND.has('zn-' + c.zn) ? 'zn-' + c.zn : c.id); if (c.trail && level != null) { const zl = gardenZoneLockAt(x, y); if (zl) return 'locked:' + zl; } if (c.green && level != null && typeof gardenDesignBedAt === 'function') { const b = gardenDesignBedAt(x, y); if (b) return b; } return c.trail || c.green ? 'lawn' : c.id; }   // (a bed plotted on the green grows like that area: the designer)
   }
   if (level != null && typeof gardenLakeOpenTo === 'function' && y >= gardenLakeOpenTo() && y < 38 && x >= 12 && x < 40 && !_GD_WALK_EXTRA.has(x + ',' + y)) return 'locked:' + gardenLakeZoneOfRow(y).id;   // the far water: it opens with its zone
+  if (x >= 12 && x < 40 && y >= 21 && y < 38 && typeof gardenLakeGeometry === 'function') return gardenLakeGeometry().cellContains(x, y) ? 'lake' : 'lawn';
   for (const a of GARDEN_AREAS) if (x >= a.x && x < a.x + a.w && y >= a.y && y < a.y + a.h) return level == null || (a.buy ? _GD_LAND.has(a.id) : (level || 1) >= a.lv) ? a.id : 'locked:' + a.id;
   return 'lawn';
 }
 /** Is this cell open water (the pond's or the lake's)? A pier stands over water but is not water to walk on. */
 function gardenIsWater(x, y) {
   if (typeof gardenLandWaterAt === 'function') { const q = gardenLandWaterAt(x, y); if (q !== null) return q && !gardenPropWalk(x, y); }
+  if (x >= 12 && x < 40 && y >= 21 && y < 38 && typeof gardenLakeGeometry === 'function') return gardenLakeGeometry().cellContains(x, y) && !gardenPropWalk(x, y);
   for (const a of GARDEN_AREAS) { const w = a.water; if (w && x >= w.x && x < w.x + w.w && y >= w.y && y < w.y + w.h) return !gardenPropWalk(x, y); }
   return false;
 }
@@ -863,6 +865,7 @@ function gardenWaterZone(x, y) {
   for (const a of GARDEN_AREAS) {
     const w = a.water; if (!w || x < w.x || x >= w.x + w.w || y < w.y || y >= w.y + w.h) continue;
     if (!a.fishing) return 'pond';
+    if (typeof gardenLakeGeometry === 'function' && !gardenLakeGeometry().cellContains(x, y)) return '';
     const d = y - w.y;
     return d <= 1 ? 'shallow' : d <= 3 ? 'mid' : 'deep';
   }
@@ -880,8 +883,8 @@ function gardenPropCol(p) { return !p ? 'none' : p.col === 'none' || p.col === '
 /* Cells over water you can stand on with no prop: the island, always; the stones and the moon road while they are open (94-garden-wonder-4isle.js). */
 const _GD_WALK_EXTRA = new Set();
 const _GD_ICE = new Set();   // the lake while it is frozen (94-garden-zz-2season.js): you can stand on it, nothing can be built on it
-function gardenIceAt(x, y) { return _GD_ICE.has(Math.floor(x) + ',' + Math.floor(y)); }
-function gardenPropWalk(x, y) { if (_GD_WALK_EXTRA.has(x + ',' + y) || _GD_ICE.has(x + ',' + y)) return true; const p = gardenPropAt(x, y); return !!(p && p.walk); }
+function gardenIceAt(x, y) { const cx = Math.floor(x), cy = Math.floor(y); return _GD_ICE.has(cx + ',' + cy) && (!(cx >= 12 && cx < 40 && cy >= 21 && cy < 38) || typeof gardenLakeGeometry !== 'function' || gardenLakeGeometry().cellContains(cx, cy)); }
+function gardenPropWalk(x, y) { if (_GD_WALK_EXTRA.has(x + ',' + y) || _GD_ICE.has(x + ',' + y) && gardenIceAt(x, y)) return true; const p = gardenPropAt(x, y); return !!(p && p.walk); }
 /** Can this plant (or decoration) go at x, y (its top-left cell) at this level? '' = yes, else why not (one short line). */
 function gardenCellOk(def, x, y, level, kind) {
   const W = GARDEN_WORLD;
@@ -983,9 +986,12 @@ function gardenSnapshotClean(raw) {
   const out = { v: 1, wv: int(raw.wv, 1, 9) || 1, cv: int(raw.cv, 0, 9) || 0, lv: int(raw.lv, 1, 99) || 1, season: GARDEN_SEASONS.includes(raw.season) ? raw.season : 'summer', areas: [], plants: [], decor: [], heart: int(raw.heart, 0, 6) || 0, at: int(raw.at, 0, 8.64e15) || 0 };
   { const pa = Number(raw.pa); if (Number.isInteger(pa) && pa > 0 && pa < 1e14) out.pa = pa; }   // their pet is away until then: 94-garden-play-1pet.js
   { const wx = int(raw.wx, 1, 2); if (wx) out.wx = wx; }   // 2.28: their rain (1) or snow (2) now
+  { const ac = raw.ac; if (Array.isArray(ac) && ac.length === 2 && Number.isSafeInteger(ac[0]) && ac[0] >= 0 && ac[0] <= 8.64e15 && (ac[1] === 0 || ac[1] === 1)) out.ac = [ac[0], ac[1]]; }   // optional live ambient phase and canonical running state
   { const tz = int(raw.tz, -840, 840), sr = int(raw.sr, 0, 1439), ss = int(raw.ss, 0, 1439); if (tz !== null) { out.tz = tz; if (sr !== null && ss !== null) { out.sr = sr; out.ss = ss; } } }   // 2.28: their time zone, so a visit has their light
   if (Array.isArray(raw.areas)) for (const a of raw.areas.slice(0, 12)) if (_GD_AREA.has(a) && !out.areas.includes(a)) out.areas.push(a);
-  if (raw.wd && typeof raw.wd === 'object') { const wd = {}; if (Array.isArray(raw.wd.sk)) wd.sk = raw.wd.sk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x)); if (Number.isInteger(raw.wd.st) && raw.wd.st > 0) wd.st = Math.min(999, raw.wd.st); if (raw.wd.w === 1) wd.w = 1; if (Number.isInteger(raw.wd.f) && raw.wd.f > 0) wd.f = Math.min(99, raw.wd.f); out.wd = wd; }   // docs/dev/HUNDRED_WORLD.md
+  if (raw.wd && typeof raw.wd === 'object') { const wd = {}; if (Array.isArray(raw.wd.sk)) wd.sk = raw.wd.sk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x)); if (Number.isInteger(raw.wd.st) && raw.wd.st > 0) wd.st = Math.min(999, raw.wd.st); if (raw.wd.w === 1) wd.w = 1; if (Number.isInteger(raw.wd.f) && raw.wd.f > 0) wd.f = Math.min(99, raw.wd.f); if (Number.isInteger(raw.wd.el) && raw.wd.el > 0 && raw.wd.el <= 15) wd.el = raw.wd.el; if (Array.isArray(raw.wd.sc) && raw.wd.sc.length === 9 && raw.wd.sc.every((n, i) => Number.isInteger(n) && n >= 0 && n <= [2, 2, 4, 7, 4, 7, 4, 7, 1][i])) wd.sc = raw.wd.sc.slice(); out.wd = wd; }   // docs/dev/HUNDRED_WORLD.md
+  if (out.wd && Array.isArray(raw.wd.sa) && raw.wd.sa.length === 2 && raw.wd.sa.every((n, i) => Number.isInteger(n) && n >= 0 && n <= (i ? W.rows : W.cols) * 100)) out.wd.sa = raw.wd.sa.slice();   // the host courtyard's physical anchor
+  if (out.wd && Number.isInteger(raw.wd.aw) && raw.wd.aw >= 0 && raw.wd.aw <= 6) out.wd.aw = raw.wd.aw;   // one owner-selected optional world activity; zero keeps the garden clear
   if (Array.isArray(raw.wk)) out.wk = raw.wk.slice(0, 12).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.38: what they have built for the lake (ids; one this version does not know is ignored)
   if (Array.isArray(raw.bk)) { const bk = raw.bk.slice(0, 12).filter(r => Array.isArray(r) && r.length === 8 && typeof r[0] === 'string' && /^[a-z0-9-]{1,32}$/.test(r[0]) && r.slice(1).every(n => Number.isInteger(n) && n >= 0 && n <= 31)); if (bk.length) out.bk = bk; }   // how they have painted their buildings, by building id; a number this version does not know draws as built
   if (Array.isArray(raw.tk)) out.tk = raw.tk.slice(0, 24).filter(x => typeof x === 'string' && /^[a-z0-9-]{1,32}$/.test(x));   // 2.23: ids of tricks; the page ignores any it does not know

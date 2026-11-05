@@ -68,12 +68,47 @@ function _glsFlash() {
   if (!_gllReduced()) { const f = document.createElement('div'); f.className = 'gls-flash'; box.appendChild(f); setTimeout(() => f.remove(), 700); }
   if (typeof _fxSound === 'function') _fxSound('shutter');
 }
+/** Compose only the view currently presented. Preview roots are deliberately
+ * hidden in the logical SVG during engine preparation and have no native SVG
+ * paint order until their retained depth is applied to this capture copy. */
+function _glsCaptureLayers(svg, clone) {
+  const layers = [...clone.querySelectorAll(':scope > [data-gp-layer]')];
+  const preview = window.GardenPhaser && GardenPhaser.active(svg);
+  if (!preview) { for (const layer of layers) layer.remove(); return; }
+  clone.style.removeProperty('display');
+  const replaced = new Set(layers.map(n => n.getAttribute('data-prop')).filter(Boolean));
+  for (const node of clone.querySelectorAll('[data-prop]')) if (!node.closest('[data-gp-layer]') && replaced.has(node.getAttribute('data-prop'))) node.setAttribute('display', 'none');
+  if (layers.length && window.GardenPlazaArt && GardenPlazaArt.replaceGround === true) for (const node of clone.querySelectorAll('.gd-ground,.gd-paths')) if (!node.closest('[data-gp-layer]')) node.setAttribute('display', 'none');
+  const bands = { 'gd-sky': -10000, 'gd-clouds': -9900, 'gd-far': -9800, 'gd-ground': -9700, 'gd-gridlines': -9550, 'gd-paths': -9400, 'gd-dz': -9350, 'gd-school': -9300, 'gd-actors': 50000, 'gd-weather': 79000, 'gd-nightlayer': 80000, 'gd-ui': 90000 };
+  const depth = node => {
+    if (node.hasAttribute('data-gp-depth')) return Number(node.getAttribute('data-gp-depth')) || 0;
+    if (node.hasAttribute('data-z')) return GARDEN_WORLD.sky + (Number(node.getAttribute('data-z')) || 0) * GARDEN_WORLD.cellH;
+    for (const name of node.classList) if (bands[name] != null) return bands[name];
+    return 0;
+  };
+  const objects = clone.querySelector(':scope > .gd-objects');
+  for (const layer of layers.sort((a, b) => depth(a) - depth(b))) {
+    layer.style.removeProperty('display');
+    const z = depth(layer);
+    if (objects && z >= 0 && z < bands['gd-actors']) {
+      layer.setAttribute('data-z', String((z - GARDEN_WORLD.sky) / GARDEN_WORLD.cellH));
+      const before = [...objects.querySelectorAll(':scope > [data-z],:scope > .gd-row > [data-z]')].find(node => node !== layer && depth(node) > z);
+      if (before) before.parentNode.insertBefore(layer, before); else objects.appendChild(layer);
+    } else clone.appendChild(layer);
+  }
+  // The retained renderer's ground/design bands differ from native SVG order.
+  // Sort the copy's coarse layers too, so original paths cannot cover paving.
+  if (layers.length) for (const node of [...clone.children].filter(n => !['defs', 'title', 'desc', 'style'].includes(n.localName)).sort((a, b) => depth(a) - depth(b))) clone.appendChild(node);
+}
 /** The part of the live stage a photo shows, as a PNG (the same drawing photo mode uses; the people's name tags and the walking guides are left out). */
 function _glsBlob(frame) {
+  if (window.GardenNative && GardenNative.active()) return GardenNative.capture(frame);
   return new Promise((resolve, reject) => {
     const svg = _gw.svg; if (!svg) { reject(new Error('The garden is not on screen.')); return; }
-    if (typeof gardenArtAllBack === 'function') gardenArtAllBack(svg);   // (what is out of the window is lifted off the page)
     const clone = svg.cloneNode(true);
+    if (typeof gardenArtRestoreClone === 'function') gardenArtRestoreClone(svg, clone);
+    if (typeof gardenWorldCaptureDepth === 'function') gardenWorldCaptureDepth(clone);
+    _glsCaptureLayers(svg, clone);
     for (const n of clone.querySelectorAll('.gd-row .gart-off')) n.remove();   // (what moves, out of the view: it is not where it was last drawn)
     // (a photo has no pointer guides, grid, thirst bubbles, lock signs, name tags or speech: they are the screen's, not the garden's. The classes are dropped when it is drawn, so what a class dimmed is dimmed here)
     for (const n of clone.querySelectorAll('.gd-gridlines, .gd-ui, .gd-needs, .gd-locksign, .gd-route, .gd-pl-halo, .gll-name, .gll-say, .gll-fx')) n.remove();

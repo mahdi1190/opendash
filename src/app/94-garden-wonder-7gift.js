@@ -59,7 +59,7 @@ wdMod({
   tick(m) {
     if (gardenEarlyGiftTaken()) { _wdgDrop(); return; }   // (opened on another device)
     _wdgPlace(m);
-    if (_wdg.S && !_wdgHinted && (_wdg.hintT -= 1) <= 0) { _wdgHinted = true; wdWhisper(`Something is glinting near ${_wdLandmark(_wdg.at.x, _wdg.at.y)}.`, 8000); }
+    if (_wdg.S && !_wdgHinted && (_wdg.hintT -= 1) <= 0) { _wdgHinted = true; wdAmbient(`Something is glinting near ${_wdLandmark(_wdg.at.x, _wdg.at.y)}.`, 8000, 'gift'); }
   },
   end() { _wdgDrop(); },
 });

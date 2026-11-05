@@ -43,6 +43,7 @@ const _WN_QS_KEY = 'dashboard-quickstart';
 
 // The current release's groups come first (the tour walks only those); older releases' groups follow, labelled.
 const WHATS_NEW_GROUPS = Object.freeze([
+  ['n261', 'A livelier garden (2.63)', 'sprout'],
   ['n227', 'Music with friends (2.27)', 'music'],
   ['n224', 'The garden, overhauled (2.24)', 'sprout'],
   ['n221', 'Money, codes and more (2.21 to 2.23)', 'sparkles'],
@@ -66,11 +67,17 @@ const WHATS_NEW_GROUPS = Object.freeze([
   ['fun', 'Fun and motivation (2.16)', 'party-popper'],
   ['money', 'Money (2.16)', 'wallet'],
 ]);
-const _WN_CURRENT_GROUPS = ['n227', 'n224'];
+const _WN_CURRENT_GROUPS = ['n261'];
 function _wnHasPage(id) { try { const p = typeof pageById === 'function' ? pageById(id) : null; return !!(p && pageAvailable(p)); } catch (e) { return false; } }
 const _wnGarden = () => _wnHasPage('garden'), _wnPets = () => _wnHasPage('pets');
 
 const WHATS_NEW = [
+  { id: 'garden-graphics-preview', group: 'n261', icon: 'monitor', title: 'Try the new garden graphics',
+    text: 'Play outdoors and indoors through Phaser, with camera zoom, lighting and weather. Classic graphics remain available in Garden → Graphics.', cmd: ['garden-graphics'] },
+  { id: 'garden-plaza-preview', group: 'n261', icon: 'sprout', title: 'Grander scenery and living shores',
+    text: 'Taller village buildings and woodland, moving windmill sails and waterfalls, curved lake shores and drifting mist over locked land.', view: ['garden'] },
+  { id: 'garden-species-motion', group: 'n261', icon: 'paw-print', title: 'Every pet moves its own way',
+    text: 'Distinct strides, hops, wingbeats and swimming strokes, seasonal habits, puddle splashes and little tracks in the snow.', view: ['garden'] },
   // ---- 2.21 ----
   // ---- 2.27 ----
   { id: 'pending-count', group: 'n227', icon: 'handshake', title: '2.27.3: pending payments count',

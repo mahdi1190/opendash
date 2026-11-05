@@ -265,6 +265,16 @@ const GARDEN_ZONE_GATES = (function () {
 })();
 const _GLD_GATE = new Map(GARDEN_ZONE_GATES.map(g => [g.id, g]));
 function gardenZoneGate(id) { return _GLD_GATE.get(String(id)) || null; }
+/** Presentation only: keep the next reachable boundary, rather than furnishing
+ * every already-open crossing. A saved custom facade always remains visible.
+ * Physical zone membership and unlock rules do not read this helper. */
+function gardenLandGatePresented(gate, open, customized) {
+  if (!gate || !open) return false;
+  if (customized) return true;
+  if (open.has('zn-' + gate.n)) return false;
+  const inner = gardenZoneOf(gate.door.x, gate.door.y);
+  return !inner || open.has('zn-' + inner);
+}
 /** What a cell is: a section's row, a trail's row, the lane, the thicket, or null (the lake). */
 function gardenLandCell(x, y) { const W = GARDEN_WORLD; return x >= 0 && y >= 0 && x < W.cols && y < W.rows ? _GLD_GRID[y * W.cols + x] : null; }
 function gardenLandIsTrail(r) { return !!r && !!r.trail; }

@@ -18,9 +18,9 @@
 // (a set-up problem the supervisor does not retry).
 
 import { createServer } from 'node:http';
-import { readFile, readdir } from 'node:fs/promises';
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { createHash, randomBytes } from 'node:crypto';
+import { readdir } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -43,7 +43,8 @@ import { initFinance, financeAvailable, cleanupPartials } from '../lib/finance.m
 import { createApp } from './router.mjs';
 import { createLogger } from './log.mjs';
 import { createStateStore } from './state-store.mjs';
-import { send, injectConfig, hostAllowed, MIME } from './http.mjs';
+import { send, hostAllowed } from './http.mjs';
+import { createAppShell } from './app-shell.mjs';
 import { EXIT, initLifecycle, lastStopFromLog, readTail } from './lifecycle.mjs';
 
 export async function main(argv = process.argv.slice(2)) {
@@ -137,16 +138,10 @@ export async function main(argv = process.argv.slice(2)) {
   // Writes also pause while Settings > Data moves the data folder (lib/relocate/gate.mjs).
   const moveGate = createMoveGate();
   const store = createStateStore({ stateDir, log, writeGate: () => { moveGate.check(); hostGate.check(); } });
-  // A short hash of index.html as it is on disk now (cached by size + mtime).
-  let buildCache = { key: null, id: null };
+  // The build id and delivered page share one file read until the build changes.
+  const shell = createAppShell(join(REPO_ROOT, 'index.html'));
   function buildId() {
-    const file = join(REPO_ROOT, 'index.html');
-    try {
-      const st = statSync(file);
-      const key = `${st.size}:${st.mtimeMs}`;
-      if (buildCache.key !== key) buildCache = { key, id: createHash('sha256').update(readFileSync(file)).digest('hex').slice(0, 12) };
-      return buildCache.id;
-    } catch { return null; }
+    try { return shell.buildId(); } catch { return null; }
   }
 
   const ctx = {
@@ -178,10 +173,8 @@ export async function main(argv = process.argv.slice(2)) {
       if (url.pathname === '/' || url.pathname === '/index.html') {
         const file = join(REPO_ROOT, 'index.html');
         if (!existsSync(file)) return send(res, 500, 'index.html is missing: run node build.mjs');
-        // build: which index.html this page is (Settings > Server reloads the page after a rebuild).
-        const html = injectConfig(await readFile(file, 'utf8'), { ...publicConfig(config), build: buildId(), pageKey: ctx.pageKey });
         // X-Dashboard-App: the offline-page worker (src/sw.js) keeps only a page with this mark.
-        return send(res, 200, req.method === 'HEAD' ? '' : html, MIME['.html'], { 'X-Dashboard-App': 'dashboard' });
+        return await shell.respond(req, res, { ...publicConfig(config), pageKey: ctx.pageKey });
       }
       if (url.pathname === '/favicon.ico') return send(res, 204, '');
       return send(res, 404, 'not found');

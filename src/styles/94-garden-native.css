@@ -1,0 +1,134 @@
+/* The native canvas stays mounted while room controls replace the outdoor HUD. */
+.gd-stagebox.gd-native-indoor > :not(.gd-stage):not(.grm-native-room) { display: none !important; }
+.gd-stagebox.gd-native-indoor { cursor: default !important; }
+.gd-stagebox.gd-native-indoor > .gd-stage { display: block; }
+.gd-native-stage canvas { display: block; width: 100%; height: 100%; }
+.gd-native-world .gd-pl-halo { fill: #e9dab2; opacity: .15; }
+.gd-native-world .gd-need-ring { opacity: .14; }
+.gd-native-world .gd-need-b { animation: none; transform: scale(.86); opacity: .88; }
+
+/* Keep the full action menu available without a permanent strip across the
+   artwork. The existing Menu button owns opening, focus and aria-expanded. */
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) {
+  --gh-ink: #f2ecdf;
+  --gh-glass: rgba(25, 36, 30, .86);
+  --gh-glass-strong: rgba(21, 30, 25, .95);
+  --gh-gold: #dfbd74;
+  --gh-shadow: 0 3px 12px rgba(12, 22, 17, .2);
+  --gh-slot: rgba(255, 248, 225, .06);
+  container-type: inline-size;
+}
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-hud {
+  min-width: 182px;
+  gap: 5px;
+  padding: 8px 11px;
+  border: 1px solid rgba(242, 236, 223, .14);
+  border-radius: 12px;
+}
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-hud-n { width: 26px; height: 26px; font-size: 13px; border-width: 1px; box-shadow: none; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-hud-bar { height: 6px; box-shadow: none; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-hud-bar i { background: #91b67a; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-stat { font-size: 13px; font-weight: 650; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-hud-sky { font-size: 10.5px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-menu { gap: 6px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-menu > .gd-mmore {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  width: 88px;
+  height: 40px;
+  order: 1;
+  border: 1px solid rgba(242, 236, 223, .16);
+  border-radius: 11px;
+  font-size: 12px;
+}
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-mmore::after { content: 'Menu'; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-menu > .gd-mleave { order: 2; border: 1px solid rgba(242, 236, 223, .16); border-radius: 11px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-menu > .gd-mlist {
+  display: none;
+  position: absolute;
+  top: 48px;
+  right: 0;
+  width: 274px;
+  max-height: min(440px, calc(100cqh - 110px));
+  overflow-y: auto;
+  padding: 8px;
+  gap: 4px;
+  border: 1px solid rgba(242, 236, 223, .16);
+  border-radius: 13px;
+  background: var(--gh-glass-strong);
+}
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-menu.is-open > .gd-mlist { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-mlist .gd-mbtn { width: 100%; min-height: 58px; height: auto; padding: 8px 4px; gap: 5px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-mbadge { min-width: 15px; height: 15px; line-height: 15px; top: 2px; right: 9px; font-size: 9px; font-weight: 700; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-toolbar.gd-hotbar { gap: 4px; padding: 5px; border: 1px solid rgba(242, 236, 223, .14); border-radius: 13px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-hotbar .gd-slot { display: grid; width: 44px; height: 44px; border-width: 1px; border-radius: 9px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-slot svg { width: 28px; height: 28px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-slot[aria-pressed="true"] { background: rgba(223, 189, 116, .2); border-color: #dfbd74; box-shadow: inset 0 0 0 1px rgba(223, 189, 116, .25); transform: none; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-slot:hover { transform: none; background: rgba(242, 236, 223, .14); }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-slotgap { height: 28px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-slotn { min-width: 16px; height: 16px; line-height: 16px; right: -2px; bottom: -2px; font-size: 10px; font-weight: 650; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-mini { width: 144px; height: 74px; border-width: 1px; opacity: .88; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-mini:hover,
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-mini:focus-visible { opacity: 1; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-msgs { top: 64px; max-width: min(440px, calc(100% - 32px)); }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-hovercard { border: 1px solid rgba(242, 236, 223, .14); border-radius: 10px; }
+
+@container (max-width: 760px) {
+  .gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-hud { min-width: 0; max-width: calc(100% - 166px); padding: 6px 9px; }
+  .gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-toolbar.gd-hotbar { left: 10px; right: 10px; bottom: 10px; width: auto; max-width: none; transform: none; overflow-x: auto; justify-content: flex-start; scrollbar-width: thin; }
+  .gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-quick { bottom: 72px; }
+  .gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-camui { bottom: 72px; flex-direction: row; }
+  .gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-mini { display: block; right: 12px; bottom: 124px; width: 128px; height: 66px; }
+  .gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-msgs { top: 100px; }
+}
+@container (max-width: 480px) {
+  .gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-menu > .gd-mmore { width: 40px; }
+  .gd-stagebox:has(> .gd-stage > .gd-native-stage) .gd-mmore::after { display: none; }
+}
+
+.grm-native-room { color: #ffeccd; cursor: default; }
+.grm-native-room > .ee-ui {
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none !important;
+}
+.grm-native-room .ee-ui .btn {
+  min-height: 40px;
+  padding: 8px 14px;
+  background: rgba(24, 19, 15, .94);
+  color: #fff0d6;
+  border: 1px solid rgba(255, 220, 160, .45);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+  backdrop-filter: none;
+  pointer-events: auto;
+}
+.grm-native-room .ee-ui .btn:hover { background: #493326; border-color: #ffd28a; }
+.grm-native-room .ee-ui .btn:focus-visible { outline: 2px solid #ffd28a; outline-offset: 3px; }
+.grm-native-room .ee-sound {
+  min-height: 40px;
+  max-width: calc(100% - 82px);
+  gap: 8px;
+  padding: 0 12px 0 0;
+  background: rgba(24, 19, 15, .94);
+  border-color: rgba(255, 220, 160, .45);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+  backdrop-filter: none;
+}
+.grm-native-room .ee-sound .btn { flex: none; background: transparent; border: 0; box-shadow: none; }
+.grm-native-room .ee-vol { min-width: 48px; width: 110px; max-width: 24vw; }
+.grm-native-room > .grm-bag { top: max(64px, calc(env(safe-area-inset-top) + 52px)); max-height: min(148px, 30%); }
+.grm-native-room > .grm-ask { width: min(620px, calc(100% - 24px)); }
+.grm-native-room > .grm-say { max-width: min(680px, calc(100% - 24px)); bottom: max(14px, env(safe-area-inset-bottom)); overflow-wrap: anywhere; }
+
+@media (max-width: 480px) {
+  .grm-native-room > .ee-ui { gap: 8px; }
+  .grm-native-room .ee-ui .btn { padding-inline: 10px; }
+  .grm-native-room .ee-sound { gap: 4px; padding-right: 8px; }
+  .grm-native-room .ee-vol { width: 80px; }
+}

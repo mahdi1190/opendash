@@ -16,7 +16,13 @@ const _WD_MODS = [];
 function wdMod(o) { _WD_MODS.push(o); }
 function _wdG() { return _gdG().wd; }
 function _wdGet(k) { return _wdG()[k]; }
-function _wdSave() { try { if (typeof saveUI === 'function') saveUI(); } catch (e) { /* the next save takes it */ } }
+function _wdSave() {
+  // Discoveries and physical arrangements are gameplay changes: keep the
+  // normal short save delay and pending-change merge guard, without app Undo.
+  if (typeof state !== 'undefined' && state) state._localDirty = true;
+  try { if (typeof saveUI === 'function') saveUI(); } catch (e) { /* the queued server save still carries the change */ }
+  if (typeof schedulePersist === 'function') schedulePersist();
+}
 function _wdSet(k, v) { _wdG()[k] = v; _wdSave(); }
 function _wdToday() { return _gdToday(); }
 function _wdDaysBetween(a, b) { const x = Date.parse(a + 'T12:00:00Z'), y = Date.parse(b + 'T12:00:00Z'); return Number.isFinite(x) && Number.isFinite(y) ? Math.round((y - x) / 86400000) : 0; }   // clock-ok: the distance between two ISO days
@@ -76,17 +82,25 @@ function wdMoon(iso) {
   return { age: a, full, name, toFull: Math.round(toFull) };
 }
 /* ---------- the world's loop: one sprite that does nothing but this; it stops when the world's loop stops ---------- */
-function _wdActive(M) { return (M.fun === false || gardenFun() !== 'off') && (!M.pref || _wdOn(M.pref)); }
+function _wdActive(M, m) { return (M.fun === false || gardenFun() !== 'off') && (!M.pref || _wdOn(M.pref)) && gardenActivityActive(M.id, m); }
+function _wdReconcile(m) {
+  const wanted = _WD_MODS.filter(M => (!m.visit || M.visit) && _wdActive(M, m)), keep = new Set(wanted);
+  for (const M of _wd.live) if (!keep.has(M)) {
+    try { if (M.end) M.end(); gardenActivityRetire(M.id, m); } catch (e) { console.error('[garden wonder]', M.id, e); }
+  }
+  const previous = new Set(_wd.live); _wd.live = wanted;
+  for (const M of wanted) if (!previous.has(M) && M.begin) { try { M.begin(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
+}
 function gardenWonderSync(m) {
   if (typeof _gw === 'undefined' || !_gw.on || !m) return;
   const key = m.visit ? 'v' + (_wdFriendId() || '') : 'o';
   if (_wd.on && _wd.key !== key) gardenWonderStop();
   if (!_wd.on) {
     _wd.on = true; _wd.key = key; _wd.t = 0; _wd.tickAt = 0; _wd.lastF = 0;
-    _wd.live = _WD_MODS.filter(M => (!m.visit || M.visit) && _wdActive(M));
-    _wd.dir = gardenWorldAdd({ id: 'wonder', svg: '', x: 0, y: -2, lift: 0, still: true, update: _wdFrame });
-    for (const M of _wd.live) if (M.begin) { try { M.begin(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
+    _wd.live = [];
+    _wd.dir = gardenWorldAdd({ id: 'wonder', simulationOnly: true, svg: '', x: 0, y: -2, lift: 0, still: true, update: _wdFrame });
   }
+  _wdReconcile(m);
   for (const M of _wd.live) if (M.painted) { try { M.painted(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
 }
 function _wdFrame(dt) {
@@ -96,6 +110,7 @@ function _wdFrame(dt) {
   if (now - _wd.tickAt < 1000) return;
   _wd.tickAt = now;
   const m = gardenHere();
+  _wdReconcile(m);
   if (_wd.talk) _wdTalkCheck();
   for (const M of _wd.live) if (M.tick) { try { M.tick(m); } catch (e) { console.error('[garden wonder]', M.id, e); } }
 }
@@ -122,7 +137,7 @@ function wdGlow(id, markup, x, y) {
   let g = _wd.glows.get(id);
   if (!g || !g.isConnected || g._mk !== markup) {
     if (g) g.remove();
-    g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'wd-glow'); g.innerHTML = markup; g._mk = markup; host.appendChild(g); _wd.glows.set(id, g);
+    g = gardenSceneElement('g'); g.setAttribute('class', 'wd-glow'); g.innerHTML = markup; g._mk = markup; if (typeof gardenSoftGlowIn === 'function') gardenSoftGlowIn(g); host.appendChild(g); _wd.glows.set(id, g);
   }
   const W = GARDEN_WORLD, tf = `translate(${(x * W.cellW).toFixed(1)} ${(W.sky + y * W.cellH).toFixed(1)})`;
   if (g.getAttribute('transform') !== tf) g.setAttribute('transform', tf);
@@ -136,8 +151,7 @@ function wdFreeNear(x, y, r) { return typeof _gwNearestFreePt === 'function' ? _
 function wdSound(list) {
   try {
     if (typeof _gmG !== 'function' || !_gmG().prefs.sounds || document.hidden) return;
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    const ac = _glAudio || (_glAudio = new AC()); if (ac.state === 'suspended') ac.resume();
+    const ac = gardenAudioContext(); if (!ac) return;
     const t0 = ac.currentTime + 0.01;
     for (const [f, d, type, peak, at] of list) {
       const o = ac.createOscillator(), v = ac.createGain(), s = t0 + (at || 0);
@@ -176,6 +190,7 @@ function wdTalkClose(quiet) { const T = _wd.talk; if (!T) return; _wd.talk = nul
 /** Walked away from whoever you were talking to: they stop. */
 function _wdTalkCheck() { const T = _wd.talk; if (!T) return; const a = T.o.at; if (a && !wdNear(a.x, a.y, 6)) wdTalkClose(); else if (!T.el.isConnected) { const box = _wdBox(); if (box) box.appendChild(T.el); } }
 function wdWhisper(text, ms) { gardenMessage(text, { ms }); }
+function wdAmbient(text, ms, source) { gardenMessage(text, { ms, ambient: true, source: source || 'wonder' }); }
 /** A page to read, or something found: the kit's own dialog, since you asked to see it. */
 function wdPage(o) {
   openDialog({
@@ -198,6 +213,10 @@ function gardenWonderWire() {
   if (st) out.st = Math.min(999, st);
   if (f) out.f = Math.min(99, f);
   if (w['lr.w7']) out.w = 1;
+  const activity = gardenActivityRow(gardenActivitySelection(gardenModel())); out.aw = activity ? activity.n : 0;
+  if (typeof gardenListeningWalkMask === 'function') { const el = gardenListeningWalkMask(w); if (el) out.el = el; }
+  if (typeof gardenShadowCourtyardWire === 'function') { const sc = gardenShadowCourtyardWire(w); if (sc) out.sc = sc; }
+  if (typeof gardenShadowCourtyardAnchor === 'function') { const sa = gardenShadowCourtyardAnchor(w); if (sa) out.sa = sa; }
   return Object.keys(out).length ? out : null;
 }
 function _wdTheir(m) { return (m && m.visit && m.visit.snap && m.visit.snap.wd) || {}; }

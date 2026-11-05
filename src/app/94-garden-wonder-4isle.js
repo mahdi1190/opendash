@@ -61,7 +61,7 @@ function _wdIsleApply(way) {
   for (const c of _WD_ROADCELLS) { if (way) _GD_WALK_EXTRA.add(c); else _GD_WALK_EXTRA.delete(c); }
   if (typeof _gw !== 'undefined') { _gw.grid = null; _gw.gridKey = ''; _gw.reach = null; }
   _wdIsleDraw();
-  if (way && !was && wdNear(WD_ROAD[0][0], WD_ROAD[0][1], 9) && !_wdGet('isle')) wdWhisper(way === 'moon' ? 'There is a road on the water.' : 'Something has come up out of the lake.', 7000);
+  if (way && !was && wdNear(WD_ROAD[0][0], WD_ROAD[0][1], 9) && !_wdGet('isle')) wdAmbient(way === 'moon' ? 'There is a road on the water.' : 'Something has come up out of the lake.', 7000, 'island');
 }
 /* ---------- the drawing: land, a willow, a stone seat, a bell ---------- */
 /** A rounded, slightly uneven shape: never a plain oval. */

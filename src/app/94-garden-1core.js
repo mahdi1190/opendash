@@ -70,7 +70,10 @@ function _gdSouth() { try { return gardenSouthern(typeof Clock !== 'undefined' ?
 /** Save, forget the memos, repaint what shows the garden. */
 function _gdSave() {
   _gd.rev++; _gd.memoKey = ''; _gd.walletKey = '';
+  // Gameplay changes need the normal short save delay, without an app undo step.
+  if (typeof state !== 'undefined' && state) state._localDirty = true;
   if (typeof saveUI === 'function') saveUI();
+  if (typeof schedulePersist === 'function') schedulePersist();
   gardenRepaintSoon();
 }
 function gardenRepaintSoon() {
@@ -835,6 +838,24 @@ function _gdMoment(x) {
   _gd.lastToastAt = now + wait;
   setTimeout(() => {
     try {
+      if (x.kind === 'ribbon' && _gdOnPage() && typeof _gmsgWhere === 'function' && typeof gardenMessage === 'function') {
+        const view = _gmsgWhere(), card = view && view.querySelector('.gd-catchcard:not(.is-out)'), text = card && card.querySelector('.gd-cc-txt');
+        if (card && text) {
+          const rect = card.getBoundingClientRect(), style = getComputedStyle(card), px = Math.max(0, Math.min(innerWidth - 1, rect.left + rect.width / 2)), py = Math.max(0, Math.min(innerHeight - 1, rect.top + rect.height / 2));
+          const top = document.elementFromPoint(px, py);
+          // The entrance starts at opacity zero: its current hit surface still
+          // owns this presentation, without waiting for the animation to end.
+          if (card.isConnected && rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.left < innerWidth && rect.bottom > 0 && rect.top < innerHeight && style.display !== 'none' && style.visibility !== 'hidden' && top && card.contains(top)) {
+            const key = String(x.ribbon || x.text), existing = [...text.querySelectorAll('em[data-catch-ribbon]')].find(el => el.dataset.catchRibbon === key), line = existing || document.createElement('em');
+            line.dataset.catchRibbon = key; line.textContent = String(x.text);
+            if (!existing) text.appendChild(line);
+            // This earned ribbon belongs with the visible catch. Keep its full
+            // receipt in Recent without another message or burst between them.
+            gardenMessage(x.text, { ambient: true, source: 'catch-ribbon:' + key, icon: x.icon || 'award' });
+            return;
+          }
+        }
+      }
       const away = state.view !== 'garden' && !String(state.view || '').startsWith('garden:');
       if (_gdOnPage() && typeof _gdgNote === 'function') _gdgNote(String(x.text).split('. ')[0], icon(x.icon || 'sprout'));   // in the garden, a note in the sky, not a toast
       else if (typeof toast === 'function') gardenToast(x.text, { icon: x.icon || 'sprout', kind: x.kind === 'level' || x.kind === 'ribbon' ? 'ok' : '', action: away ? { label: 'Open the garden', run: () => setView(x.kind === 'ribbon' ? 'garden:almanac' : 'garden') } : undefined });
@@ -850,7 +871,8 @@ function _gdMark(paths) {
   return paths.map(([k, id]) => [k, id, g[k] && Object.prototype.hasOwnProperty.call(g[k], id) ? JSON.parse(JSON.stringify(g[k][id])) : undefined]);
 }
 function _gdPushUndo(label, mark) {
-  _gd.undo.push({ label, mark, at: _gdNow() });
+  const paths = new Map(); for (const [k, id] of mark) paths.set(k + '\0' + id, [k, id]);
+  _gd.undo.push({ label, mark, after: _gdMark([...paths.values()]), at: _gdNow() });
   if (_gd.undo.length > 40) _gd.undo.shift();
 }
 function gardenCanUndo() { return _gd.undo.length > (typeof gardenVisitUndoFloor === 'function' ? gardenVisitUndoFloor() : 0); }
@@ -860,10 +882,54 @@ function _gdUndoDrop(map, id) {
   _gd.undo = _gd.undo.filter(u => !u.mark.some(r => r[0] === map && r[1] === id));
   if (_gd.undo.length !== before) gardenRepaintSoon();
 }
+function _gdUndoSame(a, b) {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false;
+  const keys = Object.keys(a); return keys.length === Object.keys(b).length && keys.every(k => Object.prototype.hasOwnProperty.call(b, k) && _gdUndoSame(a[k], b[k]));
+}
+/** Only this step's rows may roll back. A visitor or another synced copy can
+ * change them or fill a former footprint without adding to this Undo stack. */
+function _gdUndoWhy(u, g) {
+  for (const [k, id, expected] of u.after || []) {
+    const current = g[k] && g[k][id], value = current === undefined ? undefined : JSON.parse(JSON.stringify(current));
+    if (!_gdUndoSame(expected, value)) return 'That changed after this step. It cannot be undone now.';
+  }
+  const restore = new Map(), changed = { plants: new Set(), decor: new Set() }, spatial = [];
+  for (const row of u.mark) {
+    const [k, id] = row; if (!changed[k]) continue;
+    const key = k + '\0' + id; if (!restore.has(key)) restore.set(key, row);
+  }
+  for (const row of restore.values()) {
+    const [k, id, old] = row, current = g[k] && g[k][id], identity = k === 'plants' ? 'p' : 'd';
+    if (!old && !current || old && current && old.x === current.x && old.y === current.y && old[identity] === current[identity]) continue;
+    changed[k].add(id); spatial.push(row);
+  }
+  if (!spatial.length) return '';
+  const m = gardenModel(), occ = new Map();
+  for (const [cell, occupied] of m.occ) {
+    const c = { ...occupied };
+    if (changed.plants.has(c.plant)) delete c.plant;
+    if (changed.decor.has(c.decor)) delete c.decor;
+    if (changed.decor.has(c.ground)) delete c.ground;
+    occ.set(cell, c);
+  }
+  const view = { ...m, occ };
+  for (const [k, id, old] of spatial) {
+    if (!old) continue;
+    const def = k === 'plants' ? gardenPlant(old.p) : gardenDecor(old.d); if (!def) continue;
+    const kind = k === 'plants' ? 'plant' : 'decor', why = _gdPlaceOk(view, def, old.x, old.y, kind);
+    if (why) return 'Cannot undo here: ' + why + '.';
+    const w = kind === 'plant' ? def.fp || 1 : def.w || 1, h = kind === 'plant' ? def.fp || 1 : def.h || 1, layer = kind === 'plant' ? 'plant' : def.layer === 'ground' ? 'ground' : 'decor';
+    for (let y = old.y; y < old.y + h; y++) for (let x = old.x; x < old.x + w; x++) { const key = x + ',' + y; let c = occ.get(key); if (!c) occ.set(key, c = {}); c[layer] = id; }
+  }
+  return '';
+}
 function gardenUndo() {
-  const u = _gd.undo.pop();
+  const u = gardenCanUndo() && _gd.undo[_gd.undo.length - 1];
   if (!u) { if (typeof toast === 'function') gardenToast('Nothing to undo in the garden.', { icon: 'undo-2' }); return false; }
   const g = _gdG();
+  const why = _gdUndoWhy(u, g); if (why) { if (typeof toast === 'function') gardenToast(why, { icon: 'undo-2' }); return false; }
+  _gd.undo.pop();
   // newest first, so a path marked twice ends at its oldest value
   for (const [k, id, old] of u.mark.slice().reverse()) { if (!g[k]) g[k] = {}; if (old === undefined) delete g[k][id]; else g[k][id] = old; }
   _gdSave();
@@ -1003,7 +1069,7 @@ function gardenWaterAll(o) {
   const g = _gdG(), today = m.today, list = want.slice(0, left);
   const mark = _gdMark([['wl', today], ...list.map(p => ['plants', p.uid])]);
   for (const p of list) { const pl = g.plants[p.uid]; pl.dh = Math.round(((Number(pl.dh) || 0) + p.dry) * 10) / 10; pl.w = m.now; (g.wl[today] = g.wl[today] || {})[p.uid] = 1; }
-  _gdEmit('water', { n: list.length });
+  _gdEmit('water', { n: list.length, cells: list.map(p => [p.x, p.y, p.fp]) });
   const more = want.length - list.length;
   return _gdDone(`Watered ${list.length} plant${list.length === 1 ? '' : 's'}${more ? ` · ${more} more when the can refills` : ''}`, 'watering', mark, { icon: 'droplets', quiet: o.quiet });
 }
@@ -1037,7 +1103,7 @@ function gardenPrune(uid) {
   const mark = _gdMark([['plants', uid], ['led', lk]]);
   pl.pr = m.now;
   g.led[lk] = { d: m.today, k: 'r', x: 2, n: 1, i: cut ? { ['seed:' + p.def.id]: 1 } : undefined };
-  _gdEmit('prune', { uid });
+  _gdEmit('prune', { uid, id: p.def.id, x: p.x, y: p.y, fp: p.fp });
   return _gdDone(cut ? `A tidy trim, and a cutting: +1 ${p.def.name} seed` : `A tidy trim for the ${p.def.name.toLowerCase().replace(/^the /, '')}`, 'trimming', mark, { icon: 'scissors' });
 }
 /** Harvest one plant: its crop into your basket. */
@@ -1056,10 +1122,10 @@ function gardenHarvestAll() {
   { const v = _gdvAsk('harvestAll', {}); if (v) return v; }
   const m = gardenModel(), ready = m.plants.filter(p => p.ripe && p.def.yield);
   if (!ready.length) return _gdNo('Nothing is ready to pick yet');
-  const marks = [];
+  const marks = [], cells = [];
   let items = 0, extra = '';
-  for (const p of ready) { const r = _gdHarvestOne(m, p); marks.push(...r.mark); items += r.n; if (r.extra && !extra) extra = r.extra; }
-  _gdEmit('harvest', { n: items, plants: ready.length, cells: ready.map(p => [p.x, p.y, p.fp, p.def.id]) });
+  for (const p of ready) { const r = _gdHarvestOne(m, p); marks.push(...r.mark); cells.push([p.x, p.y, p.fp, p.def.id, !!r.gold]); items += r.n; if (r.extra && !extra) extra = r.extra; }
+  _gdEmit('harvest', { n: items, plants: ready.length, cells });
   return _gdDone(`Harvested ${ready.length} plant${ready.length === 1 ? '' : 's'}: ${items} into your basket${extra}`, 'the harvest', marks, { icon: 'shopping-basket' });
 }
 /** o.visitor: a visitor picks (their share posts at once, no Undo of yours applies, and 94-garden-live-3host.js keeps the diary). */
@@ -1095,6 +1161,7 @@ function gardenDig(uid) {
   if (p.def.special === 'heart') return _gdNo('The old oak stays: it is your garden’s heart');
   const mark = [..._gdMark([['plants', uid]]), ..._gdLiveTouched(uid)];
   delete _gdG().plants[uid];
+  _gdEmit('dig', { uid, id: p.def.id, x: p.x, y: p.y, fp: p.fp });
   return _gdDone(`Dug up the ${p.def.name.toLowerCase().replace(/^the /, '')}`, 'digging up', mark, { icon: 'shovel' });
 }
 function gardenMovePlant(uid, x, y) {
@@ -1103,8 +1170,9 @@ function gardenMovePlant(uid, x, y) {
   if (!p) return _gdNo('Nothing to move');
   if (p.x === x && p.y === y) return { ok: true, msg: '' };
   const why = _gdPlaceOk(m, p.def, x, y, 'plant', uid); if (why) return _gdNo(why);
-  const mark = _gdMark([['plants', uid]]);
+  const mark = [..._gdMark([['plants', uid]]), ..._gdLiveTouched(uid)];
   const pl = _gdG().plants[uid]; pl.x = x; pl.y = y;
+  _gdEmit('move', { uid, id: p.def.id, type: 'plant', x: p.x, y: p.y, tx: x, ty: y, fp: p.fp });
   return _gdDone(`Moved the ${p.def.name.toLowerCase().replace(/^the /, '')}`, 'moving', mark, { icon: 'move' });
 }
 function gardenPlaceDecor(decorId, x, y, r) {
@@ -1118,7 +1186,7 @@ function gardenPlaceDecor(decorId, x, y, r) {
   const g = _gdG();
   g.decor[uid] = { d: def.id, x, y, r: def.rot ? ((Number(r) || 0) & 3) : 0, v: 0, at: m.now };
   if (!g.disc[def.id]) g.disc[def.id] = m.today;
-  _gdEmit('decor', { id: def.id });
+  _gdEmit('decor', { uid, id: def.id, x, y });
   return _gdDone(`Placed ${_gdA(def.name)}`, 'placing ' + def.name.toLowerCase(), mark, { icon: 'armchair' });
 }
 function gardenMoveDecor(uid, x, y) {
@@ -1127,8 +1195,9 @@ function gardenMoveDecor(uid, x, y) {
   if (!d) return _gdNo('Nothing to move');
   if (d.x === x && d.y === y) return { ok: true, msg: '' };
   const why = _gdPlaceOk(m, d.def, x, y, 'decor', uid); if (why) return _gdNo(why);
-  const mark = _gdMark([['decor', uid]]);
+  const mark = [..._gdMark([['decor', uid]]), ..._gdLiveTouched(uid)];
   const e = _gdG().decor[uid]; e.x = x; e.y = y; e.at = m.now;
+  _gdEmit('move', { uid, id: d.def.id, type: 'decor', x: d.x, y: d.y, tx: x, ty: y });
   return _gdDone('', 'moving ' + d.def.name.toLowerCase(), mark, { quiet: true });
 }
 function gardenRotateDecor(uid) {
@@ -1136,7 +1205,7 @@ function gardenRotateDecor(uid) {
   const m = gardenModel(), d = gardenDecorById(m, uid);
   if (!d) return _gdNo('Nothing to turn');
   if (!d.def.rot && !(d.def.v > 1)) return _gdNo(`${d.def.name} looks the same every way round`);
-  const mark = _gdMark([['decor', uid]]);
+  const mark = [..._gdMark([['decor', uid]]), ..._gdLiveTouched(uid)];
   const e = _gdG().decor[uid];
   if (d.def.rot) e.r = ((Number(e.r) || 0) + 1) & 3; else e.v = ((Number(e.v) || 0) + 1) % d.def.v;
   e.at = m.now;
@@ -1147,7 +1216,7 @@ function gardenStyleDecor(uid) {
   { const v = _gdvAsk('turn', { uid, style: true }); if (v) return v; }
   const m = gardenModel(), d = gardenDecorById(m, uid);
   if (!d || !(d.def.v > 1)) return _gdNo('Only one style');
-  const mark = _gdMark([['decor', uid]]);
+  const mark = [..._gdMark([['decor', uid]]), ..._gdLiveTouched(uid)];
   const e = _gdG().decor[uid]; e.v = ((Number(e.v) || 0) + 1) % d.def.v; e.at = m.now;
   return _gdDone('', 'restyling ' + d.def.name.toLowerCase(), mark, { quiet: true });
 }
@@ -1157,6 +1226,7 @@ function gardenRemoveDecor(uid) {
   if (!d) return _gdNo('Nothing to put away');
   const mark = [..._gdMark([['decor', uid]]), ..._gdDecorBack(_gdG().decor[uid], true), ..._gdLiveTouched(uid)];   // a friend's goes back to them
   delete _gdG().decor[uid];
+  _gdEmit('take', { uid, id: d.def.id, x: d.x, y: d.y });
   return _gdDone(`Put the ${d.def.name.toLowerCase()} back in your bag`, 'putting away', mark, { icon: 'package' });
 }
 /** The price of something in the shop (null = not for sale now) and why not. */

@@ -137,6 +137,8 @@ function sceneFlowLayer(C, L, o) {
   const pool = new Map(), byBase = new Map(), st = { agents: 0, draws: 0, built: 0, fallbacks: 0, frames: 0 };
   let mults = typeof sceneFlowMults === 'function' ? sceneFlowMults(C, L, data) : [], budget = Infinity, lastT = NaN, now = [];
   const viewMemo = new Map();   // the facing's hysteresis per agent (sceneHeadingView): one view switch per corner
+  const shapePlans = new WeakMap();   // immutable walk parts and their drawing order, shared by every agent of this form
+  const clock = () => typeof performance !== 'undefined' ? performance.now() : Date.now();
   const hazeOf = (a) => {
     if (typeof sceneHazeAt !== 'function' || !L) return 0;
     try { return Math.round(sceneHazeAt(a.d, C.atmos, L) * 10) / 10; } catch (e) { return 0; }
@@ -188,9 +190,15 @@ function sceneFlowLayer(C, L, o) {
   const planOf = (a) => {
     const sh = typeof sceneObjShapes === 'function' ? sceneObjShapes(a.o, a.v, season) : null;
     if (!sh) return null;
-    const px = (sh.box[3] - sh.box[1]) * a.s * vs, walk = (sh.anim || []).find(h => h.kind === 'walk'), whole = (sh.anim || []).find(h => (h.part || '*') === '*' && !h.parts && h.kind !== 'walk');
-    const near = px >= _SCFLF_FAR_PX && !!walk && a.moving;
-    return { sh, px, walk: near ? walk : null, whole: whole || null };
+    let p = shapePlans.get(sh);
+    if (!p) {
+      const walk = (sh.anim || []).find(h => h.kind === 'walk'), whole = (sh.anim || []).find(h => (h.part || '*') === '*' && !h.parts && h.kind !== 'walk');
+      const parts = walk ? walk.parts || [walk.part] : [], body = sh.order.find(q => !parts.includes(q) && q !== 'lit');
+      p = { walk, whole: whole || null, parts, rest: 'rest:' + parts.join(','), order: sh.order.filter(q => parts.includes(q) || q === body).map(q => ({ part: q, j: parts.indexOf(q) })) };
+      shapePlans.set(sh, p);
+    }
+    const px = (sh.box[3] - sh.box[1]) * a.s * vs, near = px >= _SCFLF_FAR_PX && !!p.walk && a.moving;
+    return { sh, px, walk: near ? p.walk : null, whole: p.whole, plan: p };
   };
   const api = {
     /** The density multipliers for a new light (the hour, the weather): the crowd changes, no sprite is re-made. */
@@ -207,40 +215,51 @@ function sceneFlowLayer(C, L, o) {
       return now;
     },
     /** Build the pool: the far sprite of every palette pair (and the bus, the umbrella walker), then the agents at t = 0. */
-    prebake() {
+    *prebakeSteps() {
       const save = budget; budget = Infinity;
-      for (const f of C.flows || []) {
-        const objs = (f.pairs || []).map(p => [p[0], p[1]]);
-        if (f.bus) objs.push([f.bus.obj, 0]);
-        if (f.rainObj) objs.push([f.rainObj, 0]);
-        // the far sprite: at the bucket of the lane's farthest visible agent
-        const dFar = Math.max(...f.lanes.map(ln => Math.max(...ln.path.map(p => p[1])))), cam = C.cam || null;
-        for (const [oid, v] of objs) {
-          const def = typeof sceneObj === 'function' ? sceneObj(oid) : null, real = typeof _scflReal === 'function' ? _scflReal(oid) : { h: 1.7 };
-          if (!def) continue;
-          const s = cam ? cam.f / dFar * real.h / def.size[1] : 0.1;
-          get(oid, v, '*', 0, _scflfBucket(s), true);
+      try {
+        for (const f of C.flows || []) {
+          const objs = (f.pairs || []).map(p => [p[0], p[1]]);
+          if (f.bus) objs.push([f.bus.obj, 0]);
+          if (f.rainObj) objs.push([f.rainObj, 0]);
+          // the far sprite: at the bucket of the lane's farthest visible agent
+          const dFar = Math.max(...f.lanes.map(ln => Math.max(...ln.path.map(p => p[1])))), cam = C.cam || null;
+          for (const [oid, v] of objs) {
+            const def = typeof sceneObj === 'function' ? sceneObj(oid) : null, real = typeof _scflReal === 'function' ? _scflReal(oid) : { h: 1.7 };
+            if (!def) continue;
+            const s = cam ? cam.f / dFar * real.h / def.size[1] : 0.1;
+            get(oid, v, '*', 0, _scflfBucket(s), true);
+            yield;
+          }
         }
-      }
-      for (const a of api.agents(0)) api.drawAgent(null, a, 0);   // the still is exact; later agents build lazily, 2 a frame
-      lastT = NaN; budget = save;
+        for (const a of api.agents(0)) { api.drawAgent(null, a, 0); yield; }   // the still is exact; later agents build lazily, 2 a frame
+      } finally { lastT = NaN; budget = save; }
     },
+    prebake() { for (const step of api.prebakeSteps()) { /* standalone synchronous caller */ } },
     /**
      * The warm-up (the renderer's, before the canvas shows): the sprites of every agent of the next `horizon` seconds (a half
      * second apart), so no agent is built, or drawn from a neighbouring scale bucket, on first sight. Bounded by maxMs.
      */
-    warm(t0, horizon, maxMs) {
-      const save = budget, a0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-      budget = Infinity;
+    *warmSteps(t0, horizon, maxMs) {
+      let spent = 0;
       try {
         for (let t = t0; t <= t0 + (horizon || 90); t += 0.5) {
-          for (const a of api.agents(t)) api.drawAgent(null, a, t);
-          if ((typeof performance !== 'undefined' ? performance.now() : Date.now()) - a0 > (maxMs || 250)) break;
+          const start = clock(), agents = api.agents(t);
+          spent += clock() - start;
+          yield;
+          for (const a of agents) {
+            const save = budget, a0 = clock(); budget = Infinity;
+            try { api.drawAgent(null, a, t); } finally { budget = save; }
+            spent += clock() - a0;
+            yield;
+          }
+          if (spent > (maxMs || 250)) break;
         }
-      } finally { lastT = NaN; budget = save; }
+      } finally { lastT = NaN; }
     },
-    /** Draw one agent (null ctx: only make its sprites). Returns the draws. */
-    drawAgent(ctx, a, t) {
+    warm(t0, horizon, maxMs) { for (const step of api.warmSteps(t0, horizon, maxMs)) { /* standalone synchronous caller */ } },
+    /** Draw one agent (null ctx: make its sprites; optional use(sp) collects required canvases). Returns the draws. */
+    drawAgent(ctx, a, t, use) {
       const pl = planOf(a);
       if (!pl) return 0;
       const haze = hazeOf(a), b = _scflfBucket(a.s);
@@ -249,25 +268,26 @@ function sceneFlowLayer(C, L, o) {
       if (a.lean) { const c = Math.cos(a.lean), sn = Math.sin(a.lean), f = a.flip ? -1 : 1; M = mul(M, [c, f * sn, -f * sn, c, 0, 0]); }
       let n = 0;
       if (pl.walk) {
-        const parts = pl.walk.parts || [pl.walk.part], rest = spriteFor(a.o, a.v, 'rest:' + parts.join(','), haze, b);
+        const parts = pl.plan.parts, rest = spriteFor(a.o, a.v, pl.plan.rest, haze, b);
         const per = (pl.walk.period || 0.9) * Math.max(0.7, Math.min(1.4, 1.3 / Math.max(0.3, a.speed || 1.3)));
         // the stride foreshortens with the heading (fs: 1 side-on, 0 head-on): the legs' swing narrows and the bob shrinks; seen
         // from the front or back the legs alternate by lifting (no sideways swing)
         const fs = a.fs == null ? 1 : a.fs, wk = Object.assign({}, pl.walk, { period: per, phase: a.phase || 0, deg: (pl.walk.deg || 22) * fs, bob: (pl.walk.bob == null ? 1.5 : pl.walk.bob) * (0.45 + 0.55 * fs) });
         const pose = typeof sceneAnimPose === 'function' ? sceneAnimPose(wk, t, L, a.X) : { m: [1, 0, 0, 1, 0, 0], bob: 0 };
         const liftU = (1 - fs) * (pl.sh.box[3] - pl.sh.box[1]) * 0.03, ph = 2 * Math.PI * (t / per + (a.phase || 0));
-        if (!ctx) { for (const p of parts) spriteFor(a.o, a.v, p, haze, b); return 0; }
+        if (!ctx) { if (use) use(rest); for (const p of parts) { const sp = spriteFor(a.o, a.v, p, haze, b); if (use) use(sp); } return 0; }
         // the far leg first, the body (bobbing), then the near leg: the people builder's order (legB, body, legA)
-        const order = pl.sh.order.filter(p => parts.includes(p) || p === pl.sh.order.find(q => !parts.includes(q) && q !== 'lit'));
-        for (const p of order) {
-          if (!parts.includes(p)) { const MM = M.slice(); MM[5] += (pose.bob || 0) * vs * a.s; n += draw(ctx, rest, MM, a.alpha); continue; }
-          const j = parts.indexOf(p), A = j === 1 && pose.m2 ? pose.m2 : pose.m, MM = mul(M, A);
+        for (const q of pl.plan.order) {
+          const p = q.part, j = q.j;
+          if (j < 0) { const MM = M.slice(); MM[5] += (pose.bob || 0) * vs * a.s; n += draw(ctx, rest, MM, a.alpha); continue; }
+          const A = j === 1 && pose.m2 ? pose.m2 : pose.m, MM = mul(M, A);
           if (liftU > 0) MM[5] -= Math.max(0, Math.sin(ph + j * Math.PI)) * liftU * vs * a.s;
           n += draw(ctx, spriteFor(a.o, a.v, p, haze, b), MM, a.alpha);
         }
         return n;
       }
       const sp = spriteFor(a.o, a.v, '*', haze, b);
+      if (use) use(sp);
       if (sp && sp.c) a.sp = sp;   // the passes that mirror or shade an agent draw this very sprite (no second rasterising)
       if (!ctx) return 0;
       let MM = M;
@@ -356,7 +376,16 @@ if (typeof sceneRenderPassDefine === 'function') {
     id: 'flow',
     order: { prebake: 30, frameGroup: 10, movers: 50, relight: 50, warm: 30, stats: 50, default: 50 },
     applies(C) { return !!(C && Array.isArray(C.flows) && C.flows.length); },
-    prebake(env) { _scflfLayerOf(env).layer.prebake(); },
+    prebake(env) { const s = _scflfLayerOf(env); s.prebakeJob = s.layer.prebakeSteps(); },
+    prepare(env, sliceMs) {
+      const s = _scflfLayerOf(env);
+      if (!s.prebakeJob) return true;
+      const now = () => typeof performance !== 'undefined' ? performance.now() : Date.now(), a = now();
+      let r = s.prebakeJob.next();
+      while (!r.done && now() - a < (sliceMs || 8)) r = s.prebakeJob.next();
+      if (r.done) s.prebakeJob = null;
+      return !!r.done;
+    },
     frameGroup(env, grp, ctx, t) {
       const s = _scflfLayerOf(env);
       if (s.t !== t) { s.t = t; s.layer.beginFrame(!!env.warming); env.flowNow = s.layer.agents(t); }
@@ -380,7 +409,16 @@ if (typeof sceneRenderPassDefine === 'function') {
       return 0;
     },
     relight(env, L) { _scflfLayerOf(env).layer.relight(L); },
-    warm(env, t) { _scflfLayerOf(env).layer.warm(t, 90, 250); },
+    warmSlice(env, t, sliceMs) {
+      const s = _scflfLayerOf(env);
+      if (s.warmDone) return true;
+      if (!s.warmJob) s.warmJob = s.layer.warmSteps(t, 90, 250);
+      const now = () => typeof performance !== 'undefined' ? performance.now() : Date.now(), a = now();
+      let r = s.warmJob.next();
+      while (!r.done && now() - a < (sliceMs || 8)) r = s.warmJob.next();
+      if (r.done) { s.warmDone = true; s.warmJob = null; }
+      return !!r.done;
+    },
     stats(env) { return _scflfLayerOf(env).layer.stats(); },
   });
 }

@@ -62,14 +62,26 @@ function _gfFlash(el) {
   el.classList.add('gf-flash');
   clearTimeout(el._gfT); el._gfT = setTimeout(() => el.classList.remove('gf-flash'), 460);
 }
+function gardenAudioContext(prepare) {
+  try {
+    if (typeof _gmG !== 'function' || !_gmG().prefs.sounds || document.hidden || typeof gameOn === 'function' && !gameOn()) return null;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    // Share small garden effects and prepare their device before movement.
+    // A prepared context stays suspended until playback is actually requested.
+    const ac = _gfel.ac || (typeof _glAudio !== 'undefined' && _glAudio) || new AC();
+    _gfel.ac = ac; if (typeof _glAudio !== 'undefined') _glAudio = ac;
+    if (!prepare && ac.state === 'suspended') { const ready = ac.resume(); if (ready && ready.catch) ready.catch(() => {}); }
+    return ac;
+  } catch (e) { return null; }
+}
+function gardenAudioPrepare() { return gardenAudioContext(true); }
 function _gfSound(kind) {
   // only when Sounds is on (the game's own setting); never more than a few a second
   try {
     if (performance.now() - _gfel.soundT < 180) return; _gfel.soundT = performance.now();
     if (typeof _gmG !== 'function' || !_gmG().prefs.sounds || document.hidden) return;
     if (typeof gameOn === 'function' && !gameOn()) return;
-    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    const ac = _gfel.ac || (_gfel.ac = new AC()); if (ac.state === 'suspended') ac.resume();
+    const ac = gardenAudioContext(); if (!ac) return;
     const t = ac.currentTime + 0.01, deny = kind === 'deny';
     const notes = deny ? [196, 164.8] : [880, 1174.7];
     notes.forEach((f, i) => {
@@ -85,13 +97,14 @@ const _GF_X = '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true
 const _GF_LOCK = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="#fff" stroke-width="1.6"/><rect x="3.5" y="7" width="9" height="7" rx="1.6" fill="#fff"/></svg>';
 /*
  * THE MESSAGE LINE. The owner: messages belong "top middle of the screen", plain, not said by your character. Every short message in the garden, a room or a friend's garden goes through here:
- *   gardenMessage(text, o)        one line, top middle, fading by itself. A newer one replaces it. o: { kind: 'err', ms, action, action2, retry, log: false }. Falsy when the garden is not showing
+ *   gardenMessage(text, o)        one line, top middle, fading by itself. A newer one replaces it. o: { kind: 'err'|'ok', ms, action, action2, retry, log: false }. Falsy when the garden is not showing
+ *                                {ambient:true, source:'stable-producer'} keeps a passive note in Recent only: no sound, card, deferred queue or interruption. Errors, rewards and actionable replies still show.
  *   gardenMessageHold(key, text, o)  a line that stays while it applies (fishing). o: { urgent, tone: 'now' | 'err' }. urgent: shown at once, and passing messages wait in Recent messages until it ends
  *   gardenMessageDrop(key)        that line no longer applies
  *   gardenMessageHost()           the column it sits in, so the Nature book card and the connection strip stack with it
  *   gardenToast(msg, o)           takes toast's arguments: the line in the garden, the app's toast anywhere else, and for a running wait with its Cancel
  */
-const _gmsg = { host: null, el: null, temp: null, hold: null, shown: null, t: 0, outT: 0 };
+const _gmsg = { host: null, el: null, temp: null, hold: null, shown: null, t: 0, outT: 0, ambient: new Map() };
 function _gmsgWhere() {
   const room = document.querySelector('.ee-room'); if (room) return room;   // (a room is drawn over the stage)
   if (typeof _gw === 'undefined' || !_gw.on || !_gw.box || !_gw.box.isConnected || typeof _gdOnPage !== 'function' || !_gdOnPage()) return null;
@@ -160,9 +173,20 @@ function gardenMessage(text, o) {
     } else acts.push(a);
   }
   if (!acts.length && typeof o.retry === 'function') acts.push({ label: 'Try again', run: o.retry });
-  if (o.log !== false && typeof _toastRemember === 'function') _toastRemember(t, kind, o.icon || (kind === 'err' ? 'circle-alert' : 'info'));
   const M = { text: t, kind, acts, ms: o.ms };
   const close = Object.assign(() => { if (_gmsg.temp === M) { _gmsg.temp = null; _gmsgPaint(); } }, { update: () => {}, progress: () => {} });
+  const ambient = o.ambient === true && o.kind !== 'err' && o.kind !== 'ok' && !acts.length;
+  if (o.log !== false && typeof _toastRemember === 'function') {
+    // Repeated scenery checks must not crowd a useful action out of the bounded
+    // Recent list. Keep changes, but remember an unchanged source at most once
+    // in ten minutes. The cache itself has a fixed upper bound as gardens vary.
+    const key = String(o.source || t).slice(0, 160), prev = ambient && _gmsg.ambient.get(key), now = Date.now();
+    if (!prev || prev.text !== t || now - prev.at >= 600000) {
+      _toastRemember(t, kind, o.icon || (kind === 'err' ? 'circle-alert' : 'info'));
+      if (ambient) { _gmsg.ambient.delete(key); _gmsg.ambient.set(key, { text: t, at: now }); if (_gmsg.ambient.size > 64) _gmsg.ambient.delete(_gmsg.ambient.keys().next().value); }
+    }
+  }
+  if (ambient) return close;   // never replay passive chatter over a later activity
   if (_gmsg.hold && _gmsg.hold.urgent && !kind && !acts.length) return close;   // ("Now!" wins over chatter)
   const T = _gmsg.temp;
   if (T && T.text === t && !acts.length && !T.acts.length && _gmsg.shown === T && _gmsg.el && _gmsg.el.isConnected) { T.ms = o.ms; _gmsgArm(); return close; }   // (the same words again: they stay a little longer)
@@ -183,8 +207,11 @@ function gardenMessageDrop(key) { if (!_gmsg.hold || _gmsg.hold.key !== key) ret
 function gardenMessageClear() { _gmsg.hold = _gmsg.temp = null; _gmsgPaint(); }
 function gardenToast(msg, o) {
   const opt = o || {};
+  // Classified passive notes cannot escape into app toasts when a garden is
+  // closing. A real error/action/busy reply keeps its existing delivery path.
+  if (opt.ambient === true && !opt.busy && opt.kind !== 'err' && opt.kind !== 'ok' && !opt.action && !opt.action2 && !opt.retry) return gardenMessage(msg, { ambient: true, source: opt.source, icon: opt.icon, log: opt.log }) || Object.assign(() => {}, { update: () => {}, progress: () => {} });
   if (opt.busy || !_gmsgWhere()) return toast(msg, opt);
-  return gardenMessage(msg, { kind: opt.kind, ms: opt.timeout, action: opt.action, action2: opt.action2, retry: opt.retry, icon: opt.icon }) || toast(msg, opt);
+  return gardenMessage(msg, { kind: opt.kind, ms: opt.timeout, action: opt.action, action2: opt.action2, retry: opt.retry, icon: opt.icon, ambient: opt.ambient, source: opt.source, log: opt.log }) || toast(msg, opt);
 }
 function gameDeny(target, opts) {
   const o = opts || {};

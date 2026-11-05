@@ -78,20 +78,78 @@ function gardenPopupClose() {
   _gdp.pop = null;
   try { if (typeof _dialogClose === 'function' && _dialogClose) _dialogClose(); } catch (e) { /* closed already */ }
 }
-/** The pop-up's content again, keeping where you had scrolled; not while you are typing in it. */
+/** Local identities survive a panel repaint; positions in a changing goods list
+ * do not. New repeated controls can supply data-garden-action/section keys. */
+function _gdpopMark(el) {
+  for (const attr of ['data-garden-action', 'data-game', 'data-activity-return', 'data-focus-key', 'data-shop-item', 'data-shop-deal', 'data-garden-section', 'data-rid', 'data-uid', 'data-item', 'data-id', 'data-action', 'data-tab', 'data-shop-reveal', 'id', 'name']) {
+    if (el.hasAttribute(attr)) return { attr, value: el.getAttribute(attr) };
+  }
+  return null;
+}
+function _gdpopWords(text) { return String(text || '').replace(/\s+/g, ' ').trim(); }
+function _gdpopClasses(el) { return [...el.classList].filter(c => !/^(?:is-|has-)|^(?:active|chip-accent)$/.test(c)).sort().join(' '); }
+function _gdpopPart(el) {
+  const mark = _gdpopMark(el);
+  if (mark) return { tag: el.tagName, mark };
+  if (el.tagName === 'DETAILS') return { tag: 'DETAILS', cls: _gdpopClasses(el), summary: _gdpopWords(el.querySelector(':scope > summary')?.textContent) };
+  return null;
+}
+function _gdpopPartIs(el, key) {
+  if (el.tagName !== key.tag) return false;
+  if (key.mark) return el.getAttribute(key.mark.attr) === key.mark.value;
+  return key.cls ? _gdpopClasses(el) === key.cls : _gdpopWords(el.querySelector(':scope > summary')?.textContent) === key.summary;
+}
+function _gdpopFindPart(root, key) {
+  const matches = [...root.querySelectorAll(key.mark ? '[' + key.mark.attr + ']' : 'details')].filter(el => _gdpopPartIs(el, key));
+  return matches.length === 1 ? matches[0] : null;
+}
+function _gdpopFocusState(el, root) {
+  if (!el || !root.contains(el)) return null;
+  let scope = null;
+  for (let p = el.parentElement; p && p !== root; p = p.parentElement) { scope = _gdpopPart(p); if (scope) break; }
+  return { el, tag: el.tagName, type: el.getAttribute('type') || '', mark: _gdpopMark(el), scope, aria: el.getAttribute('aria-label') || '', words: _gdpopWords(el.textContent), cls: _gdpopClasses(el) };
+}
+function _gdpopCanFocus(el) { return !!(el && el.isConnected && !el.disabled && el.getAttribute('aria-disabled') !== 'true' && !el.closest('[hidden],[inert],[aria-hidden="true"]') && el.getClientRects().length); }
+function _gdpopFindFocus(root, saved) {
+  const scope = saved.scope ? _gdpopFindPart(root, saved.scope) : root;
+  if (!scope) return null;   // the item/section went away: never choose its neighbour
+  const controls = [...scope.querySelectorAll('button,input,textarea,select,summary,a[href],[role="button"],[tabindex]')].filter(el => el.tagName === saved.tag && (el.getAttribute('type') || '') === saved.type);
+  const one = list => list.length === 1 && _gdpopCanFocus(list[0]) ? list[0] : null;
+  if (saved.mark) return one(controls.filter(el => el.getAttribute(saved.mark.attr) === saved.mark.value));
+  let match = saved.aria && one(controls.filter(el => el.getAttribute('aria-label') === saved.aria));
+  if (!match && saved.words) match = one(controls.filter(el => _gdpopWords(el.textContent) === saved.words));
+  // A price or progress label can change inside the same specifically keyed
+  // item. Its unique action class/sole control is safe; a global index is not.
+  if (!match && saved.scope && saved.cls) match = one(controls.filter(el => _gdpopClasses(el) === saved.cls));
+  if (!match && saved.scope) match = one(controls);
+  return match || null;
+}
+/** Refresh the actual model while retaining local focus, disclosures and scroll;
+ * the existing editing guard leaves a live text/select interaction alone. */
 function gardenPopupRefresh() {
   const P = _gdp.pop;
   if (!P) return;
   if (!P.el.isConnected) { _gdp.pop = null; return; }
   const ae = document.activeElement;
   if (ae && P.el.contains(ae) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName)) return;
-  const scroller = P.el, y = scroller.scrollTop;
+  const scroller = P.el, y = scroller.scrollTop, x = scroller.scrollLeft, focus = _gdpopFocusState(ae, scroller);
   if (P.tab === 'tricks') return;   // the book has its own stage: it paints itself
+  const details = [...scroller.querySelectorAll('details')].map(el => ({ key: _gdpopPart(el), open: el.open }));
   if (P.tab !== 'friends' && P.tab !== 'craft') scroller.textContent = '';
   const def = _GDPOP[P.tab];
   if (P.tab === 'friends') { if (typeof gardenFriendsTabRepaint === 'function') gardenFriendsTabRepaint(); }
   else def.fill(scroller, gardenModel());
-  scroller.scrollTop = y;
+  if (_gdp.pop !== P || !scroller.isConnected) return;
+  for (const saved of details) { const el = _gdpopFindPart(scroller, saved.key); if (el && el.open !== saved.open) el.open = saved.open; }
+  scroller.scrollTop = y; scroller.scrollLeft = x;
+  if (!focus) return;   // refreshing a panel never summons focus from elsewhere
+  const current = document.activeElement;
+  if (current === ae && _gdpopCanFocus(ae)) return;   // a retained control stayed put
+  if (current && current !== ae && current !== document.body && current !== document.documentElement) return;   // the action/fill deliberately focused something else
+  const close = scroller.closest('[role="dialog"]')?.querySelector('.modal-h button[aria-label="Close"]');
+  const stage = _gdp.root && _gdp.root.querySelector('.gd-stagebox');
+  const target = _gdpopFindFocus(scroller, focus) || (_gdpopCanFocus(close) ? close : _gdpopCanFocus(stage) ? stage : null);
+  if (target) target.focus({ preventScroll: true });
 }
 /** A link between the garden's own pages: in the garden it is a pop-up, anywhere else the page. */
 function gardenGoPage(view) {

@@ -12,10 +12,10 @@
      gardenPlayHud(box, m)                   from the garden's HUD paint: rows' `hud(m)`, at most once every few seconds
    ============================================================ */
 const GP_ECON = Object.freeze({ ticketsDay: 30, xpDay: 20 });
-const GP_GROUPS = Object.freeze([['pet', 'With your pet'], ['games', 'Games'], ['make', 'Make and mend'], ['secret', 'Secrets'], ['stall', 'Prizes']]);
+const GP_GROUPS = Object.freeze([['games', 'Games'], ['pet', 'With your pet'], ['world', 'In the garden'], ['make', 'Make and mend'], ['secret', 'Stories and finds'], ['stall', 'Prizes']]);
 const _gpRows = [];
-const _gp = { hudAt: 0, ac: null, group: '' };
-function gardenPlayAdd(row) { _gpRows.push(row); }
+const _gp = { hudAt: 0, ac: null, group: 'games' };
+function gardenPlayAdd(row) { _gpRows.push(gardenActivityRow(row.id) ? Object.assign({}, row, { group: 'world' }) : row); }
 function gpGet(k, d) { const v = _gdG().seen['pl.' + k]; return v === undefined ? d : v; }
 function gpSet(k, v) { _gdG().seen['pl.' + k] = v; _gdSave(); }
 function gpEsc(s) { return esc(String(s == null ? '' : s)); }
@@ -103,31 +103,54 @@ function gpBest(key, v, low) { const b = gpGet('best.' + key); if (v != null && 
 /* ---------- the panel ---------- */
 function gardenPlayTab(el) {
   el.textContent = '';
-  const given = gpGrant('start', { 'decor:play-pot': 1, 'decor:play-mill': 1 });
-  const day = gpToday(), head = gpEl('div', 'gp-head');
-  head.innerHTML = `<span class="gp-tickets">${icon('ticket')}<b>${gpTickets()}</b> tickets</span><span class="muted">${esc(day.tickets >= GP_ECON.ticketsDay ? 'All of today’s tickets are won. Keep playing if you like, it is just for fun now.' : `Games pay tickets, up to ${GP_ECON.ticketsDay} a day. The prize stall takes them.`)}</span>`;
-  el.appendChild(head);
-  if (given || !Object.values(_gdG().decor).some(d => d && d.d === 'play-pot') && gardenHas('decor:play-pot')) el.appendChild(gpEl('p', 'gp-lead', 'There is a cooking pot and an old mill in your bag. Put them in the garden, and click them to use them.'));
-  // the kinds as tabs, in the panel's order; All goes through them in that order
-  const groups = GP_GROUPS.filter(([g]) => _gpRows.some(r => r.group === g)), nameOf = new Map(groups);
-  el.appendChild(_gdxChips([['', 'All'], ...groups], _gp.group, (k) => { _gp.group = k; _gdxRepaintTab(); }));
-  const rows = groups.flatMap(([g]) => _gpRows.filter(r => r.group === g && (!_gp.group || _gp.group === g)));
+  const m = gardenHere(), selected = gardenActivitySelection(m), activity = gardenActivityRow(selected);
+  const shown = r => r.group !== 'world' || (m.visit ? r.id === selected : gardenActivityUnlocked(r.id, m));
+  const groups = GP_GROUPS.filter(([g]) => g === 'world' || _gpRows.some(r => r.group === g && shown(r))), nameOf = new Map(groups);
+  if (!groups.some(([g]) => g === _gp.group)) _gp.group = groups[0][0];
+  el.appendChild(_gdxChips(groups, _gp.group, (k) => { _gp.group = k; _gdxRepaintTab(); }));
+  if (_gp.group === 'world') {
+    const lead = gpEl('div', 'gp-head');
+    lead.appendChild(gpEl('p', 'gp-lead', activity ? activity.name + ' is set out.' : m.visit ? 'Your host chooses what to set out here.' : 'Set out one activity when you feel like it. The rest stays packed away.'));
+    if (activity) {
+      const back = uiButton({ label: 'Return to it', icon: 'arrow-right', size: 'sm', run: () => gardenPlayOpen(selected) });
+      back.dataset.activityReturn = selected; lead.appendChild(back);
+    }
+    if (activity && !m.visit) lead.appendChild(uiButton({ label: 'Put it away', icon: 'archive', size: 'sm', run: () => { gardenActivityChoose(''); _gdxRepaintTab(); } }));
+    el.appendChild(lead);
+    if (!m.visit) {
+      const next = GARDEN_WORLD_ACTIVITIES.find(r => !gardenActivityUnlocked(r.id, m));
+      if (next) el.appendChild(gpEl('p', 'muted', 'Next, at garden level ' + next.level + ': ' + next.name + '.'));
+    }
+  } else if (_gp.group === 'stall') {
+    el.appendChild(gpEl('p', 'gp-lead', gpTickets() + ' tickets. Play games whenever you like; spend tickets here when something appeals.'));
+  }
+  const rows = _gpRows.filter(r => r.group === _gp.group && shown(r));
   gardenPager(el, { key: 'play:' + _gp.group, items: rows, grid: 'gp-grid', row: 132, rowSm: 132, label: (r) => nameOf.get(r.group), draw: (r) => {
     let st = ''; try { st = r.status ? r.status() : ''; } catch (e) { st = ''; }
     let fresh = false; try { fresh = !!(r.fresh && r.fresh()); } catch (e) { /* no */ }
-    const b = gpEl('button', 'gp-card' + (fresh ? ' is-fresh' : '')); b.type = 'button'; b.dataset.game = r.id;
-    b.innerHTML = `<span class="gp-ic">${icon(r.icon)}</span><span class="gp-t"><b>${esc(r.name)}</b><span>${esc(r.blurb)}</span>${st ? `<em>${esc(st)}</em>` : ''}</span>`;
-    b.onclick = () => { try { r.open(); } catch (e) { console.error('[play]', e); toastError('open that', e); } };
+    const active = r.group === 'world' && selected === r.id;
+    const b = gpEl('button', 'gp-card' + (fresh ? ' is-fresh' : '') + (active ? ' is-selected' : '')); b.type = 'button'; b.dataset.game = r.id;
+    if (active) b.setAttribute('aria-current', 'true');
+    b.innerHTML = `<span class="gp-ic">${icon(r.icon)}</span><span class="gp-t"><b>${esc(r.name)}</b>${active ? '<small class="gp-current">Set out · Return to it</small>' : ''}<span>${esc(r.blurb)}</span>${st ? `<em>${esc(st)}</em>` : ''}</span>`;
+    b.onclick = () => { try { gardenPlayOpen(r.id); } catch (e) { console.error('[play]', e); toastError('open that', e); } };
     return b;
   } });
 }
-function gardenPlayOpen(id) { const r = _gpRows.find(x => x.id === id); if (r) r.open(); }
+function gardenPlayOpen(id) {
+  const r = _gpRows.find(x => x.id === id); if (!r) return;
+  if (gardenActivityRow(id)) {
+    if (!gardenActivityChoose(id)) { if (gardenHere().visit) gardenMessage('Your host chooses the activity in this garden.', { ms: 4500 }); return; }
+    gardenPopupClose();
+  }
+  if (!gpGet('opened.' + id)) gpSet('opened.' + id, _gdToday());
+  r.open();
+}
 function gardenPlayBubble(d, items) {
   const r = _gpRows.find(x => x.id === (d.def.effect && d.def.effect.game)); if (!r) return;
-  items.unshift({ ic: r.icon, label: r.verb || r.name, cls: 'is-go', run: () => { gardenBubbleClose(); r.open(); } });
+  items.unshift({ ic: r.icon, label: r.verb || r.name, cls: 'is-go', run: () => { gardenBubbleClose(); gardenPlayOpen(r.id); } });
   if (r.bubble) r.bubble(d, items);
 }
-function gardenPlayBadge() { let n = 0; for (const r of _gpRows) { try { if (r.fresh && r.fresh()) n++; } catch (e) { /* no */ } } return n; }
+function gardenPlayBadge() { let n = 0; for (const r of _gpRows) { try { if (gpGet('opened.' + r.id) && r.fresh && r.fresh()) n++; } catch (e) { /* no */ } } return n; }
 function _gpTidy() {
   const today = _gdToday(); if (_gp.tidied === today) return; _gp.tidied = today;
   const s = _gdG().seen, cut = _gdAddDays(today, -30); let n = 0;

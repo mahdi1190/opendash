@@ -59,6 +59,7 @@ registerSection('garden-visit', {
   title: () => 'Garden',
   crumb: v => { const id = _gsvIdOf(v); return [id ? `${gardenSocialName(id)}'s garden` : "A friend's garden"]; },
   group: 'home', layout: 'bare', hashable: true, taskControls: false, icon: 'sprout',
+  keepRoot(main) { return _gsv.view === state.view && !!(_gsv.root && _gsv.root.isConnected && main.contains(_gsv.root)); },
   mount(container, view) { document.documentElement.classList.add('gsv-immersive'); _gsvMount(container, view || state.view); },
   unmount() { document.documentElement.classList.remove('gsv-immersive'); clearTimeout(_gsv.visitT); if (typeof gardenVisitUnmount === 'function') gardenVisitUnmount(); _gsv.root = null; _gsv.view = ''; if (typeof gardenLiveVisitLeave === 'function') gardenLiveVisitLeave(); },
 });
@@ -67,6 +68,7 @@ if (typeof gardenFunNavAdd === 'function') gardenFunNavAdd({ id: 'garden-friends
 
 /* ---------- the visit ---------- */
 function _gsvMount(container, view) {
+  if (_gsv.view === view && _gsv.root && _gsv.root.isConnected && container.contains(_gsv.root)) { _gsvPaint(); return; }
   const fid = _gsvIdOf(view);
   const entering = _gsv.entered !== view;
   _gsv.entered = view; _gsv.view = view; _gsv.fid = fid;

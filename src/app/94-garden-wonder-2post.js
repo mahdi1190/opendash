@@ -95,7 +95,7 @@ function _wdSnailStart(r, m) {
       if (S.hold) return;
       S.x += 0.14 * dt;
       S.lift = 0;
-      if (S.x >= dest.x) { _wdLetterArrive(S.letter); _wdPostFlag(); wdWhisper('Perpetua has left something in the post box.', 5000); S.remove(); _wdp.snail = null; }
+      if (S.x >= dest.x) { _wdLetterArrive(S.letter); _wdPostFlag(); wdAmbient('Perpetua has left something in the post box.', 5000, 'post'); S.remove(); _wdp.snail = null; }
     },
     onAim(S) { S.hold = true; },
     onClick(S) {

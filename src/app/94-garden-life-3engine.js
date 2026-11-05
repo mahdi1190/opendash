@@ -79,12 +79,17 @@ function _glCamView() {
   if (!c || !c.w) return { x0: 0, y0: 0, x1: G.cols, y1: G.rows };
   return { x0: Math.max(0, c.x / G.cellW), y0: (c.y - G.sky) / G.cellH, x1: Math.min(G.cols, (c.x + c.w) / G.cellW), y1: Math.min(G.rows + 1, (c.y + c.h - G.sky) / G.cellH) };
 }
+function _glWaterPoint(W, x, y) {
+  // The active game shares the same continuous water as feet and floats.
+  // Detached saved-garden illustrations keep their existing cell projection.
+  return typeof _gw !== 'undefined' && _gw.on && W.svg === _gw.svg && typeof gardenWaterContainsPoint === 'function' ? gardenWaterContainsPoint(x, y) : gardenIsWater(Math.floor(x), Math.floor(y));
+}
 function _glOwnWorld(m) {
   const G = GARDEN_WORLD;
   const W = _glMakeWorld({
     own: true, svg: null,
     cell: (x, y) => { const g = W.grid; return !!g && x >= 0 && y >= 0 && x < G.cols && y < G.rows && !g[y * G.cols + x]; },
-    water: (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); return cx >= 0 && cy >= 0 && cx < G.cols && cy < G.rows && gardenIsWater(cx, cy) && !String(gardenAreaAt(cx, cy, W.level)).startsWith('locked:'); },
+    water: (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); return cx >= 0 && cy >= 0 && cx < G.cols && cy < G.rows && _glWaterPoint(W, x, y) && !String(gardenAreaAt(cx, cy, W.level)).startsWith('locked:'); },
     view: _glCamView,
     player: () => (typeof _gw !== 'undefined' && _gw.on ? { x: _gw.px, y: _gw.py, moving: !!_gw.moving, sneak: !!_gw.sneak || (_gw.keys && _gw.keys.has('shift')), face: _gw.face } : null),
     pets() {
@@ -114,7 +119,12 @@ function _glPadRows(sc) {
 
 /* ---------- moving: the helpers the behaviours are made of ---------- */
 function _glClip(c, name) {
-  const clips = c.art.clips, t = clips[name] != null ? clips[name] : (clips.rest || '');
+  const clips = c.art.clips;
+  let t = clips[name] != null ? clips[name] : (clips.rest || '');
+  // A surface pose belongs to the medium, including while greeting or resting.
+  // Only kits whose authored swim clip supplies it receive this context token.
+  if (c.medium === 'water' && /(?:^|\s)in-water(?:\s|$)/.test(clips.swim || '') && !/(?:^|\s)in-water(?:\s|$)/.test(t)) t = (t + ' in-water').trim();
+  c.waterPosed = !!c.art.waterPose && /(?:^|\s)in-water(?:\s|$)/.test(t);
   c.clip = name;
   if (c.tokens === t) return;
   c.tokens = t;
@@ -153,10 +163,15 @@ function _glHover(c, dt, amp) {
   const S = c.S; c.vx *= Math.exp(-dt * 8); c.vy *= Math.exp(-dt * 8);
   S.x += (c.vx * dt + Math.sin(c.t * 7 + c.seed) * amp * dt * 2) / GARDEN_WORLD.cellW; S.lift += Math.sin(c.t * 5.1 + c.seed) * amp * dt * 5; c.bank = 0;
 }
+/** Release the perch without changing the sprite's current position or height. */
+function _glUnperch(c, W) {
+  const was = c.perched; if (!was) return null;
+  c.perched = null; _glRelease(c, W); c.zHold = 1; c.mem0 = null;
+  return was;
+}
 /** Off the thing it stands on: for a flyer the air; for walkers a little jump to the ground. It keeps sorting with what it stood on till it is clear. */
 function _glTakeOff(c, W) {
-  const was = c.perched; if (!was) return;
-  c.perched = null; _glRelease(c, W); c.zHold = 1; c.mem0 = null;
+  const was = _glUnperch(c, W); if (!was) return;
   if (c.medium === 'ground' && was.lift > 0) {
     const q = _glFreeAround(W, c.S.x, c.S.y + 0.7, c.def.foot, 2.5) || { x: c.S.x, y: c.S.y + 0.6 };
     _glHopTo(c, q.x, q.y, Math.min(0.55, 0.3 + was.lift / 160), 8); _glClip(c, 'hop');
@@ -262,14 +277,18 @@ function _glHopSpot(c, W, p) {
   return null;
 }
 function _glSwim(c, W, dt, tx, ty, speed) {
-  const G = GARDEN_WORLD, S = c.S, dxp = (tx - S.x) * G.cellW, dyp = (ty - S.y) * G.cellH, d = Math.hypot(dxp, dyp) || 1, step = speed * G.cellW * dt;
+  const G = GARDEN_WORLD, S = c.S, dxp = (tx - S.x) * G.cellW, dyp = (ty - S.y) * G.cellH, d = Math.hypot(dxp, dyp), step = Math.min(d, speed * G.cellW * dt);
+  if (!d || step <= 0) return;
   const nx = S.x + dxp / d * step / G.cellW, ny = S.y + dyp / d * step / G.cellH;
   _glFaceFrom(c, dxp);
   if (W.water(nx, ny)) { S.x = nx; S.y = ny; } else { c.mem.tx = 0; }
 }
 function _glEnterWater(c, W) { c.medium = 'water'; c.S.lift = 0; c.path = []; _glFx(c.S.x, c.S.y, 'splash'); c.medEl = true; _glSyncMedium(c); void W; }
 function _glLeaveWater(c) { c.medium = 'ground'; _glFx(c.S.x, c.S.y, 'splash'); _glSyncMedium(c); }
-function _glSyncMedium(c) { if (c.node) c.node.setAttribute('data-med', c.medium); }
+function _glSyncMedium(c) {
+  if (c.node && c.node.getAttribute('data-med') !== c.medium) c.node.setAttribute('data-med', c.medium);
+  _glClip(c, c.clip || 'rest');
+}
 function _glShoreNear(c, W) { return _glFreeAround(W, c.S.x, c.S.y, c.def.foot, 4); }
 function _glDartNext(c, W) {
   const m = c.mem, S = c.S, a = Math.random() * 6.283, r = _glR(1.2, 3.4);
@@ -310,6 +329,8 @@ function _glRelease(c, W) { if (!c.slot) return; const n = (W.taken.get(c.slot) 
  */
 function _glSurfaceOf(o, W) {
   const G = GARDEN_WORLD, fallback = { x: o.top.x, y: o.top.y, lift: o.top.lift, obj: o };
+  if (window.GardenNative && GardenNative.active()) return fallback;   // native surfaces use canonical collision and perch metadata
+  if (window.GardenPhaser && GardenPhaser.active()) return fallback;   // retained object metadata is authoritative while the SVG is a logical display list
   let node = null; try { node = o.node && o.node(); } catch (e) { node = null; }
   if (!node || !node.getBBox) return fallback;
   try {
@@ -366,9 +387,15 @@ function _glStartle(c, W, tx, ty, p) {
     _glTakeOff(c, W); c.boost = 1.9; const r = _glR(4, 7); c.mem.x = S.x + Math.cos(ang) * r; c.mem.y = S.y + Math.sin(ang) * r * 0.7; c.mem.tl = Math.max(50, (c.def.alt || 30) * 1.7); _glClip(c, 'fly');
     if (c.onScreen) _glFx(S.x, S.y - S.lift / GARDEN_WORLD.cellH, 'flurry');
   } else if (c.mem.action === 'hide') { if (c.perched && c.perched.lift > 0) { /* it holds on */ } _glClip(c, 'hide'); c.mem.quiet = 0; if (c.onScreen) _glMark(c, 'bang'); }
-  else if (c.mem.action === 'dive' && !c.perched) {
+  else if (c.mem.action === 'dive') {
     const q = W.waterNear(S.x, S.y, 3.5);
-    if (q) { _glHopTo(c, q.x, q.y, 0.42, 13); _glClip(c, 'hop'); c.mem.diving = true; }
+    if (q) {
+      // A lily pad or raised bath is a departure point, not a reason to wait.
+      // Keep its lift/depth through the hop; enter water only after landing.
+      _glUnperch(c, W);
+      _glHopTo(c, q.x, q.y, Math.min(0.85, 0.42 + Math.max(0, S.lift || 0) / 180), 13);
+      _glClip(c, 'hop'); c.mem.diving = true;
+    }
     else c.mem.action = 'run';
   }
   if (c.mem.action === 'run') {
@@ -408,7 +435,7 @@ function _glPrey(c, W, p) {
   for (const n of _gl.list) { if (n === c || n.left || n.hidden || !n.def.tags || !n.def.tags.includes(p.tag)) continue; const d = _glDist(n.S.x, n.S.y, c.S.x, c.S.y); if (d < bd) { bd = d; best = n; } }
   return best;
 }
-function _glSink(c, f) { c.sink = f; }
+function _glSink(c, f) { c.sink = Math.max(0, Math.min(1, Number(f) || 0)); }
 
 /* ---------- the brain ---------- */
 function _glParseBrain(def) {
@@ -483,33 +510,44 @@ function _glArrivalStep(c, W, dt) {
 /* ---------- a creature on stage ---------- */
 function _glMarkup(c) {
   const rx = c.def.habitat === 'air' ? 4.5 : Math.max(5, ((c.def.foot == null ? 0.15 : c.def.foot) * 48) + 2);
-  return `<ellipse class="gl-sh" cx="0" cy="0.5" rx="${_glF(rx)}" ry="${_glF(rx * 0.3)}" fill="#1a2a14" fill-opacity="0.2"/><ellipse class="gl-wake" cx="0" cy="-0.6" rx="${_glF(rx * 2)}" ry="${_glF(rx * 0.55)}"/><g class="gl-pose"><g class="gl-art" data-clip="">${c.art.svg}</g></g>`;
+  return `<ellipse class="gl-sh" cx="0" cy="0.5" rx="${_glF(rx)}" ry="${_glF(rx * 0.3)}" fill="#1a2a14" fill-opacity="0.2"/><ellipse class="gl-wake" cx="0" cy="-0.6" rx="${_glF(rx * 2)}" ry="${_glF(rx * 0.55)}"/><g class="gl-pose"><g class="gl-art" data-clip="${c.tokens || ''}" style="--sd:${(c.seed % 3).toFixed(2)}s">${c.art.svg}</g></g>`;
 }
 /** Some creatures shine (a row's light: {c, r}): the night is painted over everything in the garden, so their light goes above it. */
 function _glLightNode(c) {
   const L = c.def.light, svg = (_gl.W && _gl.W.svg) || (typeof _gw !== 'undefined' ? _gw.svg : null); if (!L || !svg) return null;
   if (c.lightEl && c.lightEl.isConnected) return c.lightEl;
   const host = svg.querySelector('.gd-ui .gd-fx') || svg.querySelector('.gd-actors'); if (!host) return null;
-  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'gl-fx gl-light');
+  const g = gardenSceneElement('g'); g.setAttribute('class', 'gl-fx gl-light');
   const r = L.r || 12; g.innerHTML = `<g class="gl-glow-b" style="animation-delay:-${_glF(c.seed % 3)}s"><circle r="${r}" fill="${L.c}" fill-opacity="0.14"/><circle r="${_glF(r * 0.5)}" fill="${L.c}" fill-opacity="0.32"/><circle r="${_glF(Math.max(1.4, r * 0.17))}" fill="#fdffd8"/></g>`;
+  if (typeof gardenSoftGlowIn === 'function') gardenSoftGlowIn(g);
   host.appendChild(g); c.lightEl = g; return g;
 }
 function _glBind(c) {
   const n = c.S.node; if (!n || c.node === n) return;
   c.node = n; c.tf = ''; c.shTf = '';
-  n.setAttribute('class', 'gd-sprite gl-c gl-h-' + c.def.habitat);
+  const cls = 'gd-sprite gl-c gl-h-' + c.def.habitat;
+  if (n.getAttribute('class') !== cls) n.setAttribute('class', cls);
   c.artEl = n.querySelector('.gl-art'); c.poseEl = n.querySelector('.gl-pose'); c.shEl = n.querySelector('.gl-sh');
-  c.artEl.setAttribute('data-clip', c.tokens || ''); c.artEl.style.setProperty('--sd', (c.seed % 3).toFixed(2) + 's');
+  const tokens = c.tokens || '', delay = (c.seed % 3).toFixed(2) + 's';
+  if (c.artEl.getAttribute('data-clip') !== tokens) c.artEl.setAttribute('data-clip', tokens);
+  if (c.artEl.style.getPropertyValue('--sd') !== delay) c.artEl.style.setProperty('--sd', delay);
   _glSyncMedium(c);
 }
 function _glPaint(c, dt) {
-  const n = c.node; if (!n) return;
+  const n = c.node; if (!n || c.gone) return;
   // a turn is a quick squeeze through the middle, not a snap
   const k = 1 - Math.exp(-dt * 14); c.fx += (c.faceTo - c.fx) * k; if (Math.abs(c.fx) < 0.12) c.fx = c.faceTo * 0.12;
-  const s = c.sink ? 1 - c.sink * 0.92 : 1, tf = `translate(0 ${c.sink ? _glF(c.sink * 2) : 0}) rotate(${_glF(c.bank * (c.fx >= 0 ? 1 : -1) * 0.6)}) scale(${_glF(c.fx)} ${_glF(s)})`;
+  const sink = Math.max(0, Math.min(1, Number(c.sink) || 0)), s = 1 - sink * 0.92, down = sink * 2, angle = c.bank * (c.fx >= 0 ? 1 : -1) * 0.6;
+  const tf = `translate(0 ${_glF(down)}) rotate(${_glF(angle)}) scale(${_glF(c.fx)} ${_glF(s)})`;
   if (c.tf !== tf) { c.tf = tf; c.poseEl.setAttribute('transform', tf); }
-  const S = c.S, on = c.perched && c.perched.lift > 0, l = _glF(S.lift), shTf = on || c.medium === 'water' ? 'off' : `translate(0 ${l}) scale(${_glF(Math.max(0.55, 1 - S.lift / 160))})`;
+  const S = c.S, on = c.raisedPerch || c.perched && c.perched.lift > 0, l = _glF(S.lift), shTf = on || c.medium === 'water' ? 'off' : `translate(0 ${l}) scale(${_glF(Math.max(0.55, 1 - S.lift / 160))})`;
   if (c.shTf !== shTf) { c.shTf = shTf; if (shTf === 'off') c.shEl.setAttribute('visibility', 'hidden'); else { c.shEl.removeAttribute('visibility'); c.shEl.setAttribute('transform', shTf); } }
+  // Host brains and visitor ghosts share the same painted body and hit center.
+  // A burrowing body no longer leaves a full-sized target above the ground.
+  const hitUp = c.def.habitat === 'air' ? 10 : 12, hit = c.def.hit || (c.def.habitat === 'air' ? 0.34 : 0.5);
+  const water = c.waterPosed && c.art.waterPose, waterScale = water ? water.scaleY : 1, waterDown = water ? water.y : 0;
+  S.hitUp = (hitUp * waterScale - waterDown) * s * Math.cos(angle * Math.PI / 180) - down;
+  S.hit = c.arriving || c.hidden || c.left || sink >= 0.95 ? 0 : hit * Math.sqrt(s * waterScale);
   if (c.fade < 1 || c.fadeOut) {
     c.fade = c.fadeOut ? Math.max(0, c.fade - dt * 1.6) : Math.min(1, c.fade + dt * 1.8);
     n.setAttribute('opacity', _glF(c.fade));
@@ -524,7 +562,6 @@ function _glUpdate(c, dt) {
   const W = _gl.W; if (!W || c.gone) return;
   const S = c.S;
   _glBind(c);
-  if (c.hidden) { if (c.node.getAttribute('display') !== 'none') c.node.setAttribute('display', 'none'); }
   const v = W.view();
   const lifted = { x: S.x, y: S.y - (S.lift || 0) / GARDEN_WORLD.cellH };
   c.onScreen = _glInView(lifted, v, 1.2);
@@ -542,14 +579,16 @@ function _glUpdate(c, dt) {
     return;
   }
   if (c.offscreen) { c.offscreen = false; c.offT = 0; }
-  if (!c.hidden && c.node.getAttribute('display') === 'none') c.node.removeAttribute('display');
   if (!W.still) _glStep(c, dt, W);
   else if (c.reacting > 0) { c.reacting -= dt; if (c.reacting <= 0) _glClip(c, 'rest'); }
+  if (c.gone) return;
+  // The burrow step can hide or emerge this frame, before it is painted/picked.
+  if (c.hidden) { if (c.node.getAttribute('display') !== 'none') c.node.setAttribute('display', 'none'); }
+  else if (c.node.getAttribute('display') === 'none') c.node.removeAttribute('display');
   // the moment it is clear of what it stood on, it sorts by its own row again
   if (c.zHold > 0) { c.zHold -= dt; if (c.zHold <= 0 && !c.perched) { c.zHold = 0; S.z = null; } }
   else if (!c.perched && S.z != null && !(c.cur && c.mem && (c.mem.s || c.mem.o)) && !(c.mem && c.mem.up)) S.z = null;
   _glPaint(c, dt);
-  S.hit = c.hidden || c.left ? 0 : (c.def.hit || (c.def.habitat === 'air' ? 0.34 : 0.5)); S.hitUp = c.def.habitat === 'air' ? 10 : 12;
   if (W.own && !c.foundDone) { c.seenT = (c.seenT || 0) + dt; if (c.seenT > 1.4) { c.foundDone = true; if (typeof gardenLifeFound === 'function') { gardenLifeFound('c', c.def.id); gardenLifeSeenToday(c.def.id); } } }
 }
 function _glRemove(c) {
@@ -593,7 +632,7 @@ function _glOdds(def, W) {
   let w = GL_RARITY_ODDS[def.rarity] || 0.5;
   const b = def.when && def.when.boost;
   if (b) { if (b.wet && W.wet) w *= b.wet; if (b[W.season]) w *= b[W.season]; }
-  return w;
+  return w * _glHabitatWeight(def, W);
 }
 /** A place outside your view to come in from. */
 function _glArrivalPoint(def, W, v) {
@@ -634,15 +673,17 @@ function gardenLifeSpawn(id, o) {
   if (!at) { at = _glArrivalPoint(def, W, v); if (at && at.fade !== 0) c.arriving = true; }
   if (!at) return null;
   if (!W.still && at.fade === 0) c.fade = 0; else if (W.still) c.fade = 1;
+  // Compile the body with its first clip, medium and delay already in place.
+  // Binding it later only obtains the joints; it need not restyle the body.
+  _glClip(c, W.still ? 'rest' : (c.medium === 'air' && !s ? 'fly' : 'rest'));
   c.S = W.add({
-    id: 'life-' + def.id + '-' + c.id, svg: _glMarkup(c), x: at.x, y: at.y, lift: at.lift || 0, hit: 0, ground: false, label: def.name, cursor: 'hand',
+    id: 'life-' + def.id + '-' + c.id, svg: _glMarkup(c), nodeAttrs: { class: 'gd-sprite gl-c gl-h-' + c.def.habitat, 'data-med': c.medium }, x: at.x, y: at.y, lift: at.lift || 0, hit: 0, ground: false, label: def.name, cursor: 'hand',
     update: (dt) => _glUpdate(c, dt),
     onAim: () => { c.calm = 9; },
     onClick: () => { if (typeof _glReact === 'function') _glReact(c); },
   });
   _gl.list.add(c);
   if (s) { _glReserve(c, W, s); _glSettle(c, s); }
-  _glClip(c, W.still ? 'rest' : (c.medium === 'air' && !s ? 'fly' : 'rest'));
   if (c.medium === 'air' && !s && !W.still) c.vy = 4;
   return c;
 }
@@ -699,7 +740,7 @@ function gardenLifeSync(m) {
   if (!_gl.on || !_gl.W || !_gl.W.own) {
     gardenLifeVisitStop(); gardenLifeStop();
     _gl.on = true; _gl.m = m; _gl.W = _glOwnWorld(m);
-    _gl.dir = gardenWorldAdd({ id: 'life-director', svg: '', x: 0, y: -2, lift: 0, update: (dt) => { _glDirector(dt); if (typeof gardenLifeFrame === 'function') gardenLifeFrame(dt, _gl.W); } });
+    _gl.dir = gardenWorldAdd({ id: 'life-director', simulationOnly: true, svg: '', x: 0, y: -2, lift: 0, update: (dt) => { _glDirector(dt); if (typeof gardenLifeFrame === 'function') gardenLifeFrame(dt, _gl.W); } });
     _gl.tickT = 0.2; _gl.spawnT = _glR(GL_TUNE.firstIn[0], GL_TUNE.firstIn[1]); _gl.rareN = 0;
     if (typeof gardenLifeBegin === 'function') gardenLifeBegin(_gl.W);
     return;
@@ -735,8 +776,8 @@ function _glVisitWorld(svg, snap) {
   const W = _glMakeWorld({
     own: false, visit: true, svg, tod: _gdTod(now, season, snap), season, rain: snap.wx === 1, snow: snap.wx === 2, wet: !!snap.wx, level: lvl, still: !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()),
     cell: (x, y) => x >= 0 && y >= 0 && x < G.cols && y < G.rows && !grid[y * G.cols + x],
-    water: (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); return cx >= 0 && cy >= 0 && cx < G.cols && cy < G.rows && gardenIsWater(cx, cy) && open(cx, cy); },
-    view() { const b = svg.viewBox && svg.viewBox.baseVal; return b && b.width ? { x0: Math.max(0, b.x / G.cellW), y0: (b.y - G.sky) / G.cellH, x1: Math.min(G.cols, (b.x + b.width) / G.cellW), y1: Math.min(G.rows + 1, (b.y + b.height - G.sky) / G.cellH) } : { x0: 0, y0: 0, x1: G.cols, y1: G.rows }; },
+    water: (x, y) => { const cx = Math.floor(x), cy = Math.floor(y); return cx >= 0 && cy >= 0 && cx < G.cols && cy < G.rows && _glWaterPoint(W, x, y) && open(cx, cy); },
+    view() { if (window.GardenNative && GardenNative.active()) return _glCamView(); const b = svg.viewBox && svg.viewBox.baseVal; return b && b.width ? { x0: Math.max(0, b.x / G.cellW), y0: (b.y - G.sky) / G.cellH, x1: Math.min(G.cols, (b.x + b.width) / G.cellW), y1: Math.min(G.rows + 1, (b.y + b.height - G.sky) / G.cellH) } : { x0: 0, y0: 0, x1: G.cols, y1: G.rows }; },
     player: () => null, pets: () => [], cap: () => GL_CAP.visit,
     add: (spec) => _glVisitAdd(spec),
   });
@@ -749,15 +790,26 @@ function _glVisitAdd(S) {
   _glVisitSprites.add(S);
   return S;
 }
-function _glVisitFrame(ts) {
+function _glVisitFrame(ts, worldTick) {
   const V = _gl.visit; if (!V) return;
   if (!V.svg.isConnected) { gardenLifeVisitStop(); return; }
   V.raf = 0;
   if (document.hidden) { V.last = 0; return; }   // the visibility listener starts it again
+  const owned = typeof _gw !== 'undefined' && _gw.on && _gw.svg === V.svg;
+  if (owned && !worldTick) return;
+  if (owned && (typeof _grm !== 'undefined' && _grm.on || typeof _ee !== 'undefined' && _ee.on)) { V.last = 0; return; }
   const dt = Math.min(0.1, V.last ? (ts - V.last) / 1000 : 0.016); V.last = ts;
-  const G = GARDEN_WORLD, layer = V.svg.querySelector('.gd-objects');
+  const native = window.GardenNative && GardenNative.world ? GardenNative.world() : null;
+  const nativeLayer = native && native.rootNode === V.svg && native.objectsNode && native.objectsNode.isConnected ? native.objectsNode : null;
+  const G = GARDEN_WORLD, layer = nativeLayer || V.svg.querySelector('.gd-objects');
   if (layer) for (const S of _glVisitSprites) {
-    if (!S.node) { const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'gd-sprite'); g.setAttribute('data-live', '1'); g.innerHTML = S.svg || ''; S.node = g; S.zk = null; }
+    if (!S.node) {
+      const g = gardenSceneElement('g', { class: 'gd-sprite', 'data-live': '1', ...(S.nodeAttrs || {}) });
+      // Native descendants compile once under their final inherited styles.
+      // Classic keeps its existing detached construction and row placement.
+      if (nativeLayer && g._native) nativeLayer.appendChild(g);
+      g.innerHTML = S.svg || ''; S.node = g; S.zk = null;
+    }
     if (S.update) { try { S.update(dt, S); } catch (e) { console.error('[garden life]', e); S.remove(); continue; } }
     if (!S.node) continue;
     if (gardenCull(S, S.node, S.x, S.y) && S.node.parentNode) continue;
@@ -769,9 +821,11 @@ function _glVisitFrame(ts) {
   }
   V.t = (V.t || 0) + dt; if (V.t > 1) { V.t = 0; _glDirect(_gl.W); }
   if (typeof _glcVisitFrame === 'function') _glcVisitFrame(dt);
-  V.raf = requestAnimationFrame(_glVisitFrame);
+  if (!owned) V.raf = requestAnimationFrame(_glVisitFrame);
 }
-function _glVisitWake() { const V = _gl.visit; if (V && !V.raf && !document.hidden) { V.last = 0; V.raf = requestAnimationFrame(_glVisitFrame); } }
+/** The world clock also drives visiting creatures, including under Phaser. */
+function gardenLifeVisitFrame(ts) { const V = _gl.visit; if (V && typeof _gw !== 'undefined' && _gw.on && _gw.svg === V.svg) _glVisitFrame(ts, true); }
+function _glVisitWake() { const V = _gl.visit; if (V && !V.raf && !document.hidden) { V.last = 0; if (typeof _gw !== 'undefined' && _gw.on && _gw.svg === V.svg) { _gwEnsureLoop(); return; } V.raf = requestAnimationFrame(_glVisitFrame); } }
 /** A friend's garden is on screen: creatures that suit what grows and stands there. Their snapshot is all it reads. */
 function gardenLifeVisit(svg, snap) {
   if (!svg || !snap || gardenFun() === 'off') return;

@@ -10,8 +10,10 @@
    ============================================================ */
 const _glv = { fid: '', state: '', why: '', lv: 'none', w: null, road: null, touch: false, mode: 'normal', snap: null, beatT: 0, goAt: 0, goT: 0, lastGo: 0, goX: 0, goY: 0, watch: null, pending: new Map(), follow: null, followGo: false, parcels: new Map(), bugs: new Map(), sprites: new Map(), doQ: [], doT: 0, doAt: 0, selfName: '', ver: 0 };
 function _glvLive() { return _glv.state === 'live'; }
+function _glvAmbientClock(ac) { return !!(window.GardenNativeLight && GardenNativeLight.receiveClock(ac, _glv.fid, [_glv.fid, _glv.boot, _glv.gen].join('|'))); }
+function _glvAmbientClear() { if (window.GardenNativeLight) GardenNativeLight.clearClock(); }
 function _glvFriend() { return _gscFriend(_glv.fid); }
-function _glvSend(k, body) { return _gllPipe('/api/garden-live/send', { k, body }); }
+function _glvSend(k, body) { return _gllPipe('/api/garden-live/send', { k, body, f: _glv.fid, gen: _glv.gen, boot: _glv.boot }); }
 function _glvLookSig(l) { return JSON.stringify([l.a || null, l.g || null, l.pet || null]); }
 function _glvLook() { const l = gardenLiveLook(); if (typeof _gw !== 'undefined' && _gw.on) { l.x = Math.round(_gw.px * 10) / 10; l.y = Math.round(_gw.py * 10) / 10; } return l; }
 function gardenLiveVisitEnter(fid) {
@@ -35,12 +37,14 @@ function _glvBeat() {
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('pagehide', () => { if (!_glv.fid) return; try { fetch('/api/garden-live/here', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role: 'visit', on: 'gone', f: _glv.fid }) }); } catch (e) { /* the server sees the silence */ } });
 function gardenLiveVisitLeave() {
   if (_gll.role !== 'visit') return;
+  if (typeof gardenLivePhoto === 'function') gardenLivePhoto(null);
   const fid = _glv.fid;
   _glvClear();
   _gll.role = '';
   if (fid) _gllApi('/api/garden-live/here', { role: 'visit', on: false, f: fid }).catch(() => {});
 }
 function _glvPeopleOut() {
+  if (typeof _gllPhotoReset === 'function') _gllPhotoReset();
   for (const S of _glv.sprites.values()) S.remove();
   _glv.sprites.clear();
   for (const A of _gll.actors.values()) if (typeof _gllPetDrop === 'function') _gllPetDrop(A);
@@ -55,6 +59,11 @@ function _glvPeopleOut() {
   if (_glv.watch) { _glv.watch.remove(); _glv.watch = null; }
 }
 function _glvClear() {
+  if (typeof gardenKiteGuestClear === 'function') gardenKiteGuestClear();
+  if (typeof gardenSoapGuestClear === 'function') gardenSoapGuestClear();
+  if (typeof gardenLeafBoatGuestClear === 'function') gardenLeafBoatGuestClear();
+  if (typeof gardenMarbleGuestClear === 'function') gardenMarbleGuestClear();
+  _glvAmbientClear();
   clearInterval(_glv.beatT); clearTimeout(_glv.goT); clearTimeout(_glv.doT);
   _glvPeopleOut();
   _gll.by.clear();
@@ -64,11 +73,14 @@ function _glvClear() {
 }
 function _glvTake(d) {
   const v = d && d.visit;
-  if (v && v.boot !== _glv.boot) { _glv.boot = v.boot; _glv.ver = 0; }   // (this server restarted: its count started again)
+  if (v && v.f !== _glv.fid) return;
+  if (v && v.boot !== _glv.boot) { _glvAmbientClear(); _glv.boot = v.boot; _glv.ver = 0; }   // (this server restarted: its count started again)
   if (!v || v.f !== _glv.fid || (v.ver || 0) < (_glv.ver || 0)) return;   // (an answer that left before the latest event)
   _glv.ver = v.ver || 0;
   const was = _glv.state, wasWhy = _glv.why, wasGen = _glv.gen;
   _glv.state = v.state; _glv.why = v.why; _glv.lv = v.lv; _glv.w = v.w; _glv.road = v.road; _glv.touch = v.touch; _glv.mode = v.mode || 'normal'; _glv.gen = v.gen;
+  if (wasGen != null && wasGen !== _glv.gen) _glvAmbientClear();
+  if ((was === 'live' && _glv.state !== 'live' || wasWhy !== 'resume' && _glv.why === 'resume' || wasGen != null && wasGen !== _glv.gen) && typeof _gllPhotoReset === 'function') _gllPhotoReset();
   if (_glv.state === 'live' && _glv.why === 'resume') { if (wasWhy !== 'resume') _glv.resumeAt = Date.now(); } else _glv.resumeAt = 0;   // clock-ok: a brief drop is not worth a word
   // A dropped connection takes nobody away: everyone stays where they are, the garden stays as it is, until it is back or it really is over (a plain note says so).
   const hold = _glv.state !== 'live' && _glv.why === 'lost';
@@ -168,13 +180,28 @@ function _glvEcho(t, f) {
   const s = _glv.snap; if (!s || !f) return;
   const name = _glv.selfName, same = (r) => r[1] === f.x && r[2] === f.y && (!f.p || r[0] === f.p);
   if (t === 'plant') { if (!s.plants.some(r => r[1] === f.x && r[2] === f.y)) s.plants.push([f.p, f.x, f.y, 0, 0, 0]); if (name) _gll.by.set('p|' + f.x + '|' + f.y, name); }
-  else if (t === 'place') { if (!s.decor.some(same)) s.decor.push([f.p, f.x, f.y, f.r || 0, 0]); if (name) _gll.by.set('d|' + f.x + '|' + f.y, name); }
+  else if (t === 'place') { if (!s.decor.some(same)) s.decor.push([f.p, f.x, f.y, f.r || 0, 0]); const def = gardenDecor(f.p); if (name) _gll.by.set((def && def.layer === 'ground' ? 'g|' : 'd|') + f.x + '|' + f.y, name); }
   else if (t === 'water') { const r = s.plants.find(same); if (r) r[5] &= ~1; }
   else if (t === 'weed') { const r = s.plants.find(same); if (r) r[5] &= ~2; }
   else if (t === 'harvest') { const r = s.plants.find(same); if (r) { r[5] &= ~4; r[3] = Math.min(3, r[3]); } }
-  else if (t === 'dig') s.plants = s.plants.filter(r => !same(r));
-  else if (t === 'take') s.decor = s.decor.filter(r => !same(r));
-  else if (t === 'move') { const r = s.plants.find(same) || s.decor.find(same); if (r) { r[1] = f.tx; r[2] = f.ty; } }
+  else if (t === 'dig') { s.plants = s.plants.filter(r => !same(r)); _gll.by.delete('p|' + f.x + '|' + f.y); }
+  else if (t === 'take' || t === 'give') {
+    const def = gardenDecor(f.p), layer = def && def.layer === 'ground' ? 'g|' : 'd|';
+    if (t === 'take') s.decor = s.decor.filter(r => !same(r)); _gll.by.delete(layer + f.x + '|' + f.y);
+  }
+  else if (t === 'move') {
+    const plant = s.plants.find(same), r = plant || s.decor.find(same);
+    if (r) {
+      const def = !plant && gardenDecor(r[0]), layer = plant ? 'p|' : def && def.layer === 'ground' ? 'g|' : 'd|', from = layer + f.x + '|' + f.y, to = layer + f.tx + '|' + f.ty, owner = _gll.by.get(from);
+      _gll.by.delete(from); if (owner) _gll.by.set(to, owner); else _gll.by.delete(to);
+      r[1] = f.tx; r[2] = f.ty;
+    }
+  }
+  else if (t === 'turn') {
+    const r = s.decor.find(same), def = r && gardenDecor(r[0]);
+    if (def && f.r !== 1 && def.rot) r[3] = ((Number(r[3]) || 0) + 1) & 3;
+    else if (def && def.v > 1) r[4] = ((Number(r[4]) || 0) + 1) % def.v;
+  }
 }
 function _glvResult(b) {
   const me = b.w === _glv.w;
@@ -193,6 +220,13 @@ function _glvResult(b) {
     }
     return;
   }
+  if (b.t === 'water' && typeof _gdgWaterVisualMark === 'function') {
+    if (Array.isArray(b.cells) && b.cells.length) {
+      for (const row of b.cells.slice(0, _GLL_TOOL_CELLS)) if (Array.isArray(row) && Number.isInteger(row[0]) && Number.isInteger(row[1]) && (typeof _gwInView !== 'function' || _gwInView(row[0] + row[2] / 2, row[1] + row[2], 1))) _gdgWaterVisualMark(_glv.fid, row[0], row[1], b.i);
+    } else _gdgWaterVisualMark(_glv.fid, b.x, b.y, b.i);
+  }
+  const pendingFeedback = me && b.i && _glv.pending.get(b.i);
+  _gllToolFeedback(pendingFeedback ? Object.assign({}, pendingFeedback.f, b) : b, me);
   if (A) _gllPose(A, _GL_POSE[b.t] || 'pick', 760);
   if (b.t === 'drop') { _glvParcelAdd(b); }
   // a gift is what this page saw left for you, not what any message says it is
@@ -263,10 +297,9 @@ function _glvGotBug(u, item) {
 /* ---------- the people here: sprites in your world, as they are in the host's ---------- */
 function _glvActorAdd(ev) {
   let A = _gll.actors.get(ev.w);
+  if (A && ev.pet && A.petAway) A.petAway = false;
   if (!A) { A = _gllActor(ev); _gll.actors.set(ev.w, A); }
-  else if (ev.pet && A.petAway) { A.petAway = false; A.pet = ev.pet; }   // (their look has a pet in it again: it is home)
-  else if (A.n !== ev.n || JSON.stringify([A.a, A.g, A.pet]) !== JSON.stringify([ev.a || A.a, ev.g || A.g, ev.pet || A.pet])) { A.n = ev.n; A.a = ev.a || A.a; A.g = ev.g || A.g; A.pet = ev.pet || A.pet; A.lv = ev.lv; A.key = ''; if (A.root) _gllDress(A, A.root); }   // (the same person told again changes nothing on screen)
-  else A.lv = ev.lv;
+  else _gllActorLook(A, ev);   // the same complete look changes nothing on screen
   A.stale = false;
   if (!_glv.sprites.has(ev.w)) _glv.sprites.set(ev.w, _gllSprite(A, () => _glvPersonMenu(A)));
   return A;
@@ -274,6 +307,7 @@ function _glvActorAdd(ev) {
 function _glvActorGone(w) {
   const S = _glv.sprites.get(w); if (S) { S.remove(); _glv.sprites.delete(w); }
   const A = _gll.actors.get(w); if (A && typeof _gllPetDrop === 'function') _gllPetDrop(A);
+  if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A);
   _gll.actors.delete(w);
   if (_glv.follow === w) _glv.follow = null;
 }
@@ -388,7 +422,9 @@ function _glvEvent(ev) {
     case 'snap': {
       const first = !_glv.snap;
       _glv.snap = ev.snap;
+      if (!_glvAmbientClock(ev.snap && ev.snap.ac)) _glvAmbientClear();
       _gll.by.clear();
+      _gll.byVersion = ev.by && ev.by.v === 2 ? 2 : 1;
       if (ev.by) for (const [kind, x, y, n] of ev.by.r) _gll.by.set(kind + '|' + x + '|' + y, ev.by.n[n]);
       if (typeof _glySnapIn === 'function') _glySnapIn();
       if (first && typeof _gsvPaint === 'function') _gsvPaint();   // (no saved copy to look at: this may be the first the page has seen of it)
@@ -398,10 +434,16 @@ function _glvEvent(ev) {
     case 'cr': _glcGuestCr(ev.l); return;
     case 'fs': if (typeof _gfsIn === 'function') _gfsIn(ev.l); return;
     case 'sum': if (typeof _glySumIn === 'function') _glySumIn(ev); return;
+    case 'snap-missed': if (typeof _glyAsk === 'function') _glyAsk(false); return;
     case 'pp': _gllPlacesIn(ev); return;
     case 'tr': if (typeof _gltFromHost === 'function') _gltFromHost(ev); return;
     case 'goal': if (typeof _glgGuestIn === 'function') _glgGuestIn(ev); return;
     case 'fx': {
+      if (!gardenActivityFxAllowed(ev.c)) return;
+      if (ev.c === 'soap') { if (typeof gardenSoapGuestState === 'function') gardenSoapGuestState(ev); return; }
+      if (ev.c === 'leaf') { if (typeof gardenLeafBoatGuestState === 'function') gardenLeafBoatGuestState(ev); return; }
+      if (ev.c === 'marble') { if (typeof gardenMarbleGuestState === 'function') gardenMarbleGuestState(ev); return; }
+      if (ev.c === 'kite') { if (typeof gardenKiteGuestState === 'function') gardenKiteGuestState(ev); return; }
       if (ev.c === 'ct') { if (typeof _ctGuestEvent === 'function') _ctGuestEvent(ev); return; }   // the host's contest round (94-garden-live-7contest.js)
       const A = _gll.actors.get(ev.w); if (A && typeof _gllFxPlay === 'function') _gllFxPlay(A, ev); return;
     }
@@ -415,10 +457,10 @@ function _glvDelta(ops) {
   // (a path and a bench can share a cell: a decoration's row is told apart by what it is, and by its layer)
   const layer = (id) => { const d = gardenDecor(id); return d && d.layer === 'ground' ? 1 : 0; };
   for (const o of ops) {
-    const key = (o.o.endsWith('p') ? 'p|' : 'd|') + o.x + '|' + o.y;
+    const key = (o.o.endsWith('p') ? 'p|' : o.id && layer(o.id) ? 'g|' : 'd|') + o.x + '|' + o.y;
     if (o.o === '+p') { s.plants = s.plants.filter(r => !(r[1] === o.x && r[2] === o.y)); s.plants.push([o.id, o.x, o.y, o.s || 0, o.v || 0, o.f || 0]); if (o.by) _gll.by.set(key, o.by); else _gll.by.delete(key); }
     else if (o.o === '-p') { s.plants = s.plants.filter(r => !(r[1] === o.x && r[2] === o.y)); _gll.by.delete(key); }
-    else if (o.o === '~p') { const r = s.plants.find(q => q[1] === o.x && q[2] === o.y); if (r) { r[3] = o.s ?? r[3]; r[5] = o.f ?? r[5]; } }
+    else if (o.o === '~p') { const r = s.plants.find(q => q[1] === o.x && q[2] === o.y); if (r) { r[3] = o.s ?? r[3]; r[4] = o.v ?? r[4]; r[5] = o.f ?? r[5]; } }
     else if (o.o === '+d') { s.decor = s.decor.filter(r => !(r[1] === o.x && r[2] === o.y && layer(r[0]) === layer(o.id))); s.decor.push([o.id, o.x, o.y, o.r || 0, o.v || 0]); if (o.by) _gll.by.set(key, o.by); else _gll.by.delete(key); }
     else if (o.o === '-d') { s.decor = s.decor.filter(r => !(r[1] === o.x && r[2] === o.y && (!o.id || r[0] === o.id))); _gll.by.delete(key); }
     else if (o.o === '~d') { const r = s.decor.find(q => q[1] === o.x && q[2] === o.y && (!o.id || q[0] === o.id)); if (r) { r[3] = o.r ?? r[3]; r[4] = o.v ?? r[4]; } }

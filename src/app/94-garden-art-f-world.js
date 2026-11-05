@@ -101,31 +101,33 @@ const _GARTW = (function () {
     return A.P(A.shift(base, 4, 1, -0.05), wob(r, x, y, w, h, 18, 7, 30), 0.5) + A.P(base, wob(r, x + 3, y + 3, w - 6, h - 6, 16, 6, 30), 0.92);
   }
   const POND_PADS = [[0.2, 0.7, 7], [0.32, 0.8, 5], [0.78, 0.62, 6.4]];
-  function pond(r, sc, x, y, w, h, wa, W, frozen) {
+  function pond(r, sc, x, y, w, h, wa, W, frozen, o) {
     const cw = W.cellW, ch = W.cellH, wx = wa.x * cw, wy = W.sky + wa.y * ch, ww = wa.w * cw, wh = wa.h * ch, P = waterOf(sc);
+    const shape = _gdrOtherWaterShape(sc, 'pond'), contour = shape ? _gdrWaterShapePath(shape) : '', clip = (o.uid || 'gd') + '-pond-auth';
     let s = wildPatch(r, x, y, w, h, tileC('pond-edge', sc.season, '#9aa88a'));
     let lush = '';
-    for (let i = 0; i < 26; i++) { const q = i / 26 * 6.283; lush += tuft(wx + ww / 2 + Math.cos(q) * (ww / 2 + 22 + r() * 6), wy + wh / 2 + Math.sin(q) * (wh / 2 + 15 + r() * 4), rr(r, 5, 9), rr(r, -2, 2)); }
+    for (let i = 0; i < 26; i++) { const q = i / 26 * 6.283, p = shape ? _gdrWaterRim(shape, i / 26, 18 + r() * 5) : { x: wx + ww / 2 + Math.cos(q) * (ww / 2 + 22 + r() * 6), y: wy + wh / 2 + Math.sin(q) * (wh / 2 + 15 + r() * 4) }; lush += tuft(p.x, p.y, rr(r, 5, 9), rr(r, -2, 2)); }
     s += A.S(sc.season === 'winter' ? '#a8a080' : '#4f7f3f', 1, lush, 0.85);
     const sq = v => Math.pow(Math.abs(v), 0.72) * Math.sign(v);
     const pool = (grow, n) => { const pts = []; for (let i = 0; i < n; i++) { const q = i / n * 6.283, k = 1 + (r() - 0.5) * 0.05; pts.push([wx + ww / 2 + sq(Math.cos(q)) * (ww / 2 + grow) * k, wy + wh / 2 + sq(Math.sin(q)) * (wh / 2 + grow * 0.8) * k]); } return smooth(pts, true); };
-    s += A.P('#4a3a26', pool(9, 20), 0.75);
-    s += A.P(frozen ? '#a8c8d8' : P[3], pool(3, 20));
+    if (shape) s += `<defs><clipPath id="${clip}"><path d="${contour}" clip-rule="evenodd"/></clipPath></defs><path d="${contour}" fill="none" stroke="#4a3a26" stroke-opacity=".75" stroke-width="14" stroke-linejoin="round"/><g clip-path="url(#${clip})">` + A.P(frozen ? '#a8c8d8' : P[3], contour);
+    else s += A.P('#4a3a26', pool(9, 20), 0.75) + A.P(frozen ? '#a8c8d8' : P[3], pool(3, 20));
     if (!frozen) {
       s += A.P(P[2], pool(-3, 18));
       s += A.P(P[1], `M${f1(wx + ww * 0.08)} ${f1(wy + wh * 0.42)}Q${f1(wx + ww * 0.3)} ${f1(wy + wh * 0.06)} ${f1(wx + ww * 0.72)} ${f1(wy + wh * 0.14)}Q${f1(wx + ww * 0.92)} ${f1(wy + wh * 0.32)} ${f1(wx + ww * 0.6)} ${f1(wy + wh * 0.46)}Q${f1(wx + ww * 0.3)} ${f1(wy + wh * 0.62)} ${f1(wx + ww * 0.08)} ${f1(wy + wh * 0.42)}z`, 0.8);
       s += A.P('#ffffff', A.ell(wx + ww * 0.36, wy + wh * 0.22, ww * 0.16, wh * 0.06) + A.ell(wx + ww * 0.62, wy + wh * 0.36, ww * 0.1, wh * 0.04), 0.3);
     } else s += A.S('#ffffff', 1, `M${f1(wx + ww * 0.2)} ${f1(wy + wh * 0.4)}l18 8 8 16M${f1(wx + ww * 0.6)} ${f1(wy + wh * 0.3)}l-10 14 16 10`, 0.7);
+    if (shape) s += '</g>';
     // the stones round the rim, each with its own light
     const nst = 26, sd = [];
-    for (let i = 0; i < nst; i++) { const q = i / nst * 6.283; sd.push([wx + ww / 2 + sq(Math.cos(q)) * (ww / 2 + 8), wy + wh / 2 + sq(Math.sin(q)) * (wh / 2 + 6.5), rr(r, 4.4, 8)]); }
+    for (let i = 0; i < nst; i++) { const q = i / nst * 6.283, p = shape ? _gdrWaterRim(shape, i / nst, 6) : { x: wx + ww / 2 + sq(Math.cos(q)) * (ww / 2 + 8), y: wy + wh / 2 + sq(Math.sin(q)) * (wh / 2 + 6.5) }; sd.push([p.x, p.y, rr(r, 4.4, 8)]); }
     ['#a39d90', '#b8b2a4', '#8f8a7e'].forEach((c, t) => { let d = ''; sd.forEach((q, i) => { if (i % 3 === t) d += A.blob(r, q[0], q[1], q[2], q[2] * 0.68, 7, 0.2); }); s += `<path fill="${c}" stroke="#5e5a50" stroke-width="0.8" d="${d}"/>`; });
     let lit = ''; sd.forEach(q => { lit += A.ell(q[0] - q[2] * 0.25, q[1] - q[2] * 0.22, q[2] * 0.4, q[2] * 0.2); });
     s += A.P('#ece6d8', lit, sc.tod === 'night' ? 0.3 : 0.7);
     if (!frozen) {
       let pad = '', pl = '';
       for (const [fx, fy, R] of POND_PADS) { const px = wx + ww * fx, py = wy + wh * fy; pad += `M${f1(px)} ${f1(py)}L${f1(px + R)} ${f1(py - R * 0.1)}A${R} ${f1(R * 0.46)} 0 1 0 ${f1(px + R * 0.86)} ${f1(py + R * 0.24)}z`; pl += A.ell(px - R * 0.3, py - R * 0.14, R * 0.34, R * 0.12); }
-      s += `<path fill="#4f8f42" stroke="#2f5f2c" stroke-width="0.7" d="${pad}"/>` + A.P('#8cc468', pl, 0.8);
+      s += (shape ? `<g clip-path="url(#${clip})">` : '') + `<path fill="#4f8f42" stroke="#2f5f2c" stroke-width="0.7" d="${pad}"/>` + A.P('#8cc468', pl, 0.8) + (shape ? '</g>' : '');
     }
     return s;
   }
@@ -134,7 +136,8 @@ const _GARTW = (function () {
     const cw = W.cellW, ch = W.cellH, wx = wa.x * cw, wy = W.sky + wa.y * ch, ww = wa.w * cw, wh = wa.h * ch, q = A.rng(A.hash('pond-live'));
     let s = '';
     for (let i = 0; i < 4; i++) s += `<ellipse class="gart-ring" cx="${f1(wx + ww * (0.2 + q() * 0.6))}" cy="${f1(wy + wh * (0.25 + q() * 0.5))}" rx="${f1(rr(q, 7, 12))}" ry="2.4" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="1" style="animation-delay:-${f1(q() * 6)}s"/>`;
-    return s;
+    const shape = _gdrOtherWaterShape(sc, 'pond'); if (!shape) return s;
+    const clip = (o.uid || 'gd') + '-pond-live'; return `<defs><clipPath id="${clip}"><path d="${_gdrWaterShapePath(shape)}" clip-rule="evenodd"/></clipPath></defs><g clip-path="url(#${clip})">${s}</g>`;
   }
   function greenhouse(r, sc, a, x, y, w, h, W) {
     const cw = W.cellW, c = tileC('glasshouse', sc.season, '#c9b8a0');
@@ -184,6 +187,8 @@ const _GARTW = (function () {
     for (let i = 0; i < w / 42; i++) { const px = r() * w, py = y0 + 6 + r() * (wy - y0 - 12), rx = rr(r, 1.2, 3); peb += A.ell(px, py, rx, rx * 0.66); pebl += A.ell(px - rx * 0.3, py - rx * 0.2, rx * 0.4, rx * 0.2); }
     for (let i = 0; i < w / 150; i++) { const px = r() * w, py = y0 + 8 + r() * (wy - y0 - 14); shell += `M${f1(px - 2.2)} ${f1(py)}a2.2 2 0 0 1 4.4 0z`; }
     s += A.P(A.shift(sand, 10, 1, -0.28), sp, 0.45) + `<path fill="#a89e8a" stroke="#74695a" stroke-width="0.5" d="${peb}"/>` + A.P('#e8e0cc', pebl, 0.85) + `<path fill="#f6e8e0" stroke="#c49a84" stroke-width="0.5" d="${shell}"/>`;
+    const canonical = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(sc, { detached: true }) : null, clip = (o.uid || 'gd') + '-lake-auth', contour = canonical ? _gdrWaterShapePath(canonical, shift) : '';
+    if (canonical) s += `<defs><clipPath id="${clip}"><path d="${contour}" clip-rule="evenodd"/></clipPath></defs><g clip-path="url(#${clip})">`;
     // the water, from the shore out: a line of wet sand, then shallows, middle and deep with soft wandering edges
     const shore = wander(r, -20, w + 20, wy, 3.6, 26);
     const closed = (pts, dy) => smooth(pts.map(p => [p[0], p[1] + dy]).concat([[w + 40, wy + dy + 20], [w + 40, wy + wh + 40], [-40, wy + wh + 40], [-40, wy + dy + 20]]), true);
@@ -230,6 +235,7 @@ const _GARTW = (function () {
       if (sc.tod === 'day' || sc.tod === 'dusk') for (let i = 0; i < Math.min(12, w / 110); i++) { const cx = rq() * w, cy = wy + 6 + rq() * (wh - 10); if (!offPier(cx, 6) && cy < W.sky + (pier.y + pier.h) * ch + 8) continue; live += `<path class="gd-glint" d="M${f1(cx - 3.4)} ${f1(cy)}h6.8M${f1(cx)} ${f1(cy - 1.6)}v3.2" stroke="#ffffff" stroke-width="1.3" stroke-opacity="0.85" stroke-linecap="round" style="animation-delay:-${f1(rq() * 5)}s"/>`; }
       // (no fish are drawn here: every shadow in the water is a real fish, 94-garden-fish-6school.js)
     }
+    if (canonical) { s += '</g>'; const liveClip = clip + '-live'; live = `<defs><clipPath id="${liveClip}"><path d="${contour}" clip-rule="evenodd"/></clipPath></defs><g clip-path="url(#${liveClip})">${live}</g>`; }
     return { s, live };
   }
 
@@ -248,7 +254,7 @@ const _GARTW = (function () {
     { flush(); const ar = A.rng(A.hash('area|lake|' + season)), L = lake(sc, o, Object.assign({}, lakeA, { x: 0 }), W, ar, lakeA.x * cw); s += `<g transform="translate(${lakeA.x * cw} 0)">${L.s}</g>`; live += `<g transform="translate(${lakeA.x * cw} 0)">${L.live}</g>`; }
     for (const id of Object.keys(GARDEN_LAND_MAPS)) { flush(); const LP = gartLandsPlot(id, sc, o, open); s += LP.s; live += LP.live; }
     flush();
-    if (open.has('pond')) { const a = gardenArea('pond'), ar = A.rng(A.hash('area|pond|' + season)); s += pond(ar, sc, a.x * cw, W.sky + a.y * ch, a.w * cw, a.h * ch, a.water, W, snowy); live += pondLive(sc, o, a.water, W); }
+    if (open.has('pond')) { const a = gardenArea('pond'), ar = A.rng(A.hash('area|pond|' + season)); s += pond(ar, sc, a.x * cw, W.sky + a.y * ch, a.w * cw, a.h * ch, a.water, W, snowy, o); live += pondLive(sc, o, a.water, W); }
     const late = [];
     if (open.has('greenhouse')) { const a = gardenArea('greenhouse'), ar = A.rng(A.hash('area|greenhouse|' + season)); late.push(greenhouse(ar, sc, a, a.x * cw, W.sky + a.y * ch, a.w * cw, a.h * ch, W)); }
     flush();

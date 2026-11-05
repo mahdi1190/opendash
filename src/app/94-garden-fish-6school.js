@@ -98,16 +98,19 @@ function _gfsLayer() {
   if (_gfs.layer && _gfs.layer.isConnected && _gw.svg && _gfs.layer.ownerSVGElement === _gw.svg) return _gfs.layer;
   if (!_gw.svg) return null;
   const objs = _gw.svg.querySelector('.gd-objects'); if (!objs || !objs.parentNode) return null;
-  const g = _gwEl('g', { class: 'gd-school', 'pointer-events': 'none', 'aria-hidden': 'true', 'clip-path': 'url(#gd-school-clip)' });
+  const native = window.GardenNative && GardenNative.active();
+  const g = _gwEl('g', Object.assign({ class: 'gd-school', 'pointer-events': 'none', 'aria-hidden': 'true' }, native ? {} : { 'clip-path': 'url(#gd-school-clip)' }));
+  if (native && g.target) g.target.setDepth(-9300);
   // the pier is drawn with the ground, so a fish is cut away where the planks are: it swims under them
-  if (!_gw.svg.querySelector('#gd-school-clip')) {
+  if (!native && !_gw.svg.querySelector('#gd-school-clip')) {
     const W = GARDEN_WORLD, p = GARDEN_PROPS.find(q => q.id === 'pier'), x0 = p.x * W.cellW - 3, x1 = (p.x + p.w) * W.cellW + 3, y0 = W.sky + p.y * W.cellH, y1 = W.sky + (p.y + p.h + gardenPierMore()) * W.cellH + 5;
     const cp = _gwEl('clipPath', { id: 'gd-school-clip' }), path = _gwEl('path', { 'clip-rule': 'evenodd', d: `M-200 -200H${W.cols * W.cellW + 200}V${W.sky + W.rows * W.cellH + 200}H-200ZM${x0} ${y0}H${x1}V${y1}H${x0}Z` });
     cp.appendChild(path); objs.parentNode.insertBefore(cp, objs);
   }
   objs.parentNode.insertBefore(g, objs);
+  if (native && GardenNative.world()) GardenNative.world().depthChanged();
   _gfs.layer = g;
-  for (const f of _gfs.list.values()) if (f.node && f.x < GARDEN_ROOM_X) g.appendChild(f.node);
+  for (const f of _gfs.list.values()) if (f.node && f.x < GARDEN_ROOM_X) { if (!f.node.isConnected) f.node = null; else g.appendChild(f.node); }
   return g;
 }
 function _gfsRing(x, y, k) {
@@ -129,32 +132,155 @@ function _gfsAdd(r) {
 function _gfsDrop(f) {
   _gfs.list.delete(f.u);
   const n = f.node; if (!n) return;
-  if (gardenMotionOn()) { n.setAttribute('style', 'transition:opacity .5s'); n.setAttribute('opacity', '0'); setTimeout(() => n.remove(), 520); } else n.remove();
+  if (gardenMotionOn() && gardenVisualIsNative(n)) { const a = gardenVisualAnimate(n, { opacity: [n.target.alpha, 0] }, { duration: 500, fill: 'forwards' }); a.finished.then(() => n.remove(), () => n.remove()); }
+  else if (gardenMotionOn()) { n.setAttribute('style', 'transition:opacity .5s'); n.setAttribute('opacity', '0'); setTimeout(() => n.remove(), 520); } else n.remove();
 }
-function _gfsReset() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); _gfs.lineWait.clear(); _gfs.lines.clear(); _gfs.seen.clear(); _gfs.chum.clear(); _gfs.hostAt = 0; _gfs.hostSeen = false; _gfs.liveAt = 0; _gfs.m = null; _gfs.dirty = true; }
+function _gfsReset() { for (const f of [..._gfs.list.values()]) { if (f.node) f.node.remove(); } _gfs.list.clear(); _gfs.band.clear(); _gfs.lineWait.clear(); _gfs.lines.clear(); _gfs.seen.clear(); _gfs.chum.clear(); _gfs.hostAt = 0; _gfs.hostSeen = false; _gfs.liveAt = 0; _gfs.m = null; _gfs.dirty = true; _gfs.forceTell = true; _gfs.wireSig = ''; _gfs.sentAt = 0; }
+/** Presentation follows the existing shared segment. Predict only to its end:
+ * the four-Hz host clock must not make every fish brake between its ticks. */
+function _gfsVisualStep(f, state, dt, time, motion) {
+  dt = Math.max(0, Math.min(.08, dt || 0));
+  if (!state.motionPlan) state.motionPlan = gardenFishShadowMotion(f.def, _gfsLen(f.cm));
+  const plan = state.motionPlan;
+  const dx = f.tx - f.x, dy = f.ty - f.y, distance = Math.hypot(dx, dy), speed = _gfsSpeed(f), direction = Math.atan2(dy * .625, dx);
+  if (state.heading == null) { state.heading = distance > .025 ? direction : f.face < 0 ? Math.PI : 0; state.sx = f.x; state.sy = f.y; state.phase = f.seed || 0; state.effort = 1; }
+  if (_gfs.ambientPaused) return state;
+  if (state.sampleX !== f.x || state.sampleY !== f.y || state.sampleTX !== f.tx || state.sampleTY !== f.ty || state.sampleState !== f.st) {
+    state.sampleX = f.x; state.sampleY = f.y; state.sampleTX = f.tx; state.sampleTY = f.ty; state.sampleState = f.st; state.sampleAge = 0;
+  } else state.sampleAge = Math.min(.32, (state.sampleAge || 0) + dt);
+  const ahead = distance > .001 ? Math.min(distance, speed * state.sampleAge) / distance : 0, x = f.x + dx * ahead, y = f.y + dy * ahead;
+  const catchup = 1 - Math.exp(-dt * (f.st === GF_ST.come || f.st === GF_ST.bolt ? 15 : 11));
+  if (Math.hypot(x - state.sx, y - state.sy) > 3) { state.sx = x; state.sy = y; } else { state.sx += (x - state.sx) * catchup; state.sy += (y - state.sy) * catchup; }
+  let turn = 0;
+  if (speed > 0 && distance > .025) {
+    turn = Math.atan2(Math.sin(direction - state.heading), Math.cos(direction - state.heading));
+    const rate = (f.st === GF_ST.bolt ? 5.8 : f.st === GF_ST.come ? 4.3 : 2.8) * plan.turn, amount = Math.max(-rate * dt, Math.min(rate * dt, turn * (1 - Math.exp(-dt * 7))));
+    state.heading += amount; state.heading = Math.atan2(Math.sin(state.heading), Math.cos(state.heading));
+  }
+  const effort = f.st === GF_ST.hooked ? 2.1 : f.st === GF_ST.bolt ? 2 : f.st === GF_ST.come ? 1.25 : speed ? .85 : .3;
+  state.effort += (effort - state.effort) * (1 - Math.exp(-dt * 5));
+  if (motion) state.phase += dt * (4.6 + Math.min(2.2, 60 / Math.max(12, f.cm))) * state.effort * plan.stroke;
+  state.turn = turn; state.wobble = motion ? Math.sin(state.phase) * (f.st === GF_ST.hooked ? 4.5 : 1.25) * gardenFishWobble(f.def) : 0;
+  state.angle = state.heading + state.wobble * Math.PI / 180;
+  state.side = motion && f.st === GF_ST.swim ? Math.sin(state.phase * .47 + f.seed) * Math.min(1.5, _gfsLen(f.cm) * .025) + Math.sin(turn) * 2 : 0;
+  state.size = 1 - (f.x < GARDEN_ROOM_X ? Math.max(0, Math.min(.055, (f.y - 23) * .004)) : 0);
+  _gfsVisualInteraction(f, state, dt, motion, distance);
+  f.face = Math.cos(state.heading) < 0 ? -1 : 1;
+  return state;
+}
+function _gfsVisualInteraction(f, state, dt, motion, distance) {
+  const plan = state.motionPlan, before = f._fishSeenState, oldN = f._fishSeenN || 0;
+  let kind = '';
+  if (f.st === GF_ST.nibble && f.n > 0 && (before !== GF_ST.nibble || f.n !== oldN)) kind = 'nibble';
+  else if (f.st === GF_ST.bite && before !== GF_ST.bite) kind = 'bite';
+  else if (f.st === GF_ST.hooked && before !== GF_ST.hooked) kind = 'hook';
+  else if (f.st === GF_ST.bolt && before != null && before !== GF_ST.bolt) kind = 'bolt';
+  f._fishSeenState = f.st; f._fishSeenN = f.n;
+  if (kind) { f._fishHit = { id: (f._fishHitSerial || 0) + 1, kind }; f._fishHitSerial = f._fishHit.id; f._fishHitAge = 0; } else if (f._fishHit) f._fishHitAge = Math.min(10, (f._fishHitAge || 0) + dt);
+  if (state.interactionState !== f.st) { state.interactionState = f.st; state.stateAge = 0; state.contactHeading = state.heading; } else state.stateAge = (state.stateAge || 0) + dt;
+  const assigned = f.to != null && f.st >= GF_ST.come && f.st <= GF_ST.hooked, near = assigned ? f.st === GF_ST.come ? Math.max(0, Math.min(1, (plan.length * 2.6 - distance * GARDEN_WORLD.cellW) / (plan.length * 2))) : 1 : 0;
+  state.anchorBlend = (state.anchorBlend || 0) + (near - (state.anchorBlend || 0)) * (1 - Math.exp(-dt * 9));
+  const hit = f._fishHit, age = f._fishHitAge || 0, hitting = hit && (hit.kind === 'nibble' && f.st === GF_ST.nibble || hit.kind === 'bite' && f.st === GF_ST.bite || hit.kind === 'hook' && f.st === GF_ST.hooked), pulse = motion && hitting && age < .25 ? Math.sin(age / .25 * Math.PI) ** 2 : 0, recoil = motion && hitting && age > .19 && age < .66 ? Math.sin((age - .19) / .47 * Math.PI) ** 2 : 0;
+  let gap = 0, dip = 0, tug = 0, tilt = 0;
+  if (assigned && (f.st === GF_ST.come || f.st === GF_ST.nibble)) {
+    gap = plan.inspectGap * (f.st === GF_ST.come ? .7 : 1) * (motion ? 1 + Math.sin(state.stateAge * 1.6 + f.seed) * .13 : 1);
+    if (motion) { state.angle += Math.sin(state.stateAge * 1.7 + f.seed) * .065 * state.anchorBlend; gap = gap * (1 - pulse) + recoil * plan.recoil; }
+    if (f.st === GF_ST.nibble) { dip = pulse * 1.8; tug = pulse * plan.strike * 1.6; tilt = pulse * 8 - recoil * 3; }
+  } else if (assigned && f.st === GF_ST.bite) {
+    gap = motion ? plan.inspectGap * Math.exp(-state.stateAge * 20) : 0;
+    const sink = Math.min(1, state.stateAge / .14); dip = 3.5 * sink + (motion ? Math.sin(state.stateAge * 17) * .55 : 0); tug = motion ? 1.5 * pulse + Math.sin(state.stateAge * 12) * .65 : 0; tilt = motion ? 12 * pulse + Math.sin(state.stateAge * 16) * 4 : 0;
+    if (motion) state.angle = state.contactHeading + Math.sin(state.stateAge * 13) * .045;
+  } else if (assigned && f.st === GF_ST.hooked) {
+    if (motion) state.angle = state.contactHeading + Math.sin(state.stateAge * 2.7) * .24 + Math.sin(state.stateAge * 6.8) * .06;
+    dip = 1.1 + (motion ? Math.sin(state.stateAge * 7) * .55 : 0); tug = motion ? Math.sin(state.stateAge * 3.8) * 2 : 0; tilt = motion ? Math.sin(state.stateAge * 3.8) * 10 : 0;
+  }
+  state.bodyScaleX = 1 + pulse * .025 - recoil * .012; state.bodyScaleY = 1 - pulse * .018 + recoil * .008; state.mouthOpen = pulse * (f.st === GF_ST.bite ? 1 : .7); state.effort = Math.max(state.effort, pulse * 1.8);
+  const angle = state.angle, c = Math.cos(angle), s = Math.sin(angle), mx = plan.mouthX * state.size * state.bodyScaleX, my = plan.mouthY * state.size * state.bodyScaleY, alongX = Math.cos(state.heading), alongY = Math.sin(state.heading);
+  state.offsetX = (-(c * mx - s * my) + alongX * (tug - gap)) * state.anchorBlend;
+  state.offsetY = (-(s * mx + c * my) + alongY * (tug - gap) + dip) * state.anchorBlend;
+  const contact = state.contact || (state.contact = {}); contact.active = assigned; contact.kind = hit && hit.kind || ''; contact.hit = hit && hit.id || 0; contact.age = age; contact.pulse = pulse; contact.tugX = assigned ? alongX * tug : 0; contact.tugY = assigned ? alongY * tug : 0; contact.dip = assigned ? dip : 0; contact.tilt = assigned ? tilt * (alongX < 0 ? -1 : 1) : 0; contact.state = f.st; contact.n = f.n;
+}
+function _gfsVisualProject(f, state, px, py) {
+  const angle = state.angle == null ? state.heading || 0 : state.angle, c = Math.cos(angle), s = Math.sin(angle), side = state.side || 0, plan = state.motionPlan, size = state.size || 1;
+  state.drawX = px - s * side + (state.offsetX || 0); state.drawY = py + c * side + (state.offsetY || 0);
+  if (state.contact && plan) {
+    const contact = state.contact, mx = plan.mouthX * size * (state.bodyScaleX || 1), my = plan.mouthY * size * (state.bodyScaleY || 1), p = _gwPx(f.tx, f.ty);
+    contact.mouthX = state.drawX + c * mx - s * my; contact.mouthY = state.drawY + s * mx + c * my; contact.floatX = p[0] + contact.tugX; contact.floatY = p[1] + contact.tugY + contact.dip;
+  }
+  f.visualState = state; return state;
+}
+function _gfsFloatContact(f) { const state = f && f.visualState, contact = state && state.contact; return contact && contact.active && contact.state === f.st && contact.n === f.n ? contact : null; }
+function _gfsFishForSlot(slot) { for (const fish of _gfs.list.values()) if (fish.to === slot) return fish; return null; }
+/** One water response per actual counter/state hit, shared by fish and rigs. */
+function _gfsVisualReaction(f, state, motion) {
+  const contact = state.contact; if (!contact || !contact.hit || contact.hit === f._fishEmittedHit || contact.age < .085 || contact.age > .4) return;
+  f._fishEmittedHit = contact.hit;
+  if (!motion || _gfs.ambientPaused || f.x < GARDEN_ROOM_X && _grm.on) return;
+  const water = window.GardenNative && GardenNative.active() && GardenNative.water(), scale = f.x >= GARDEN_ROOM_X ? GRW.k : 1;
+  if (water) { const bolt = contact.kind === 'bolt'; water.effect(contact.kind === 'bite' ? 'bite' : contact.kind === 'hook' ? 'splash' : 'ripple', (bolt ? contact.mouthX : contact.floatX) * scale, (bolt ? contact.mouthY : contact.floatY - contact.dip) * scale, { scale: contact.kind === 'nibble' ? .55 : contact.kind === 'bolt' ? .7 : 1.05 }); }
+  else _gfsRing(contact.kind === 'bolt' ? state.sx : f.tx, contact.kind === 'bolt' ? state.sy : f.ty, contact.kind === 'nibble' ? .6 : 1.1);
+}
+/** Each joint is found once. Native numeric transforms replace its CSS track,
+ * keeping tail cadence tied to swimming effort and avoiding two pose writers. */
+function _gfsVisualParts(f, node, state, motion) {
+  if (!node || _gfs.ambientPaused) return;
+  if (state.partsNode !== node) {
+    state.partsNode = node; state.parts = []; state.partsMotion = null; let segment = 0;
+    for (const part of node.querySelectorAll('.gcs-tail,.gcs-seg,.gcs-flap,.gcs-pulse,.gcs-fin,.gcs-claw,.gcs-bob,.gcs-mouth')) {
+      const kind = ['tail', 'seg', 'flap', 'pulse', 'fin', 'claw', 'bob', 'mouth'].find(name => part.classList.contains('gcs-' + name)), base = part.getAttribute('transform') || '';
+      if (part._native) { part._nativeFishMotion = true; part._nativeAnimating = true; } else part.style.animation = 'none';
+      let pivotX = 0, pivotY = 0; if (kind === 'pulse') { const b = part.getBBox(); pivotX = b.x + b.width / 2; pivotY = b.y + b.height / 2; }
+      const direct = part._native && !base, matrix = direct ? { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } : null; if (direct) { part._matrix = matrix; part._inner.setRotation(0); }
+      state.parts.push({ node: part, kind, base, phase: kind === 'seg' ? segment++ * .85 : 0, pivotX, pivotY, direct, matrix, transform: '' });
+    }
+  }
+  if (state.partsMotion === false && !motion) return;
+  state.partsMotion = motion;
+  for (const part of state.parts) {
+    const phase = state.phase - part.phase, wave = motion ? Math.sin(phase) : 0, effort = Math.min(1.65, state.effort), slow = motion ? Math.sin(phase * .47) : 0; let x = 0, y = 0, rotation = 0, sx = 1, sy = 1;
+    if (part.kind === 'tail') rotation = -wave * (7 + effort * 5) * Math.PI / 180;
+    else if (part.kind === 'seg') rotation = (wave * (3 + effort * 2) + (motion ? Math.sin(state.turn) * 2 : 0)) * Math.PI / 180;
+    else if (part.kind === 'flap') sy = 1 - (motion ? .1 + slow * .1 : 0);
+    else if (part.kind === 'fin') sy = 1 - (motion ? .045 + wave * .045 : 0);
+    else if (part.kind === 'pulse') { const pulse = motion ? Math.sin(phase * .52) * .025 : 0; sx = 1 + pulse; sy = 1 - pulse * .7; x = part.pivotX * (1 - sx); y = part.pivotY * (1 - sy); }
+    else if (part.kind === 'claw') x = wave * .6;
+    else if (part.kind === 'bob') y = slow * .7;
+    else if (part.kind === 'mouth') { sx = 1 + (state.mouthOpen || 0) * .22; sy = 1 + (state.mouthOpen || 0) * 3.8; }
+    if (part.direct) {
+      part.node.target.setPosition(x, y).setRotation(rotation).setScale(sx, sy);
+      const m = part.matrix, c = Math.cos(rotation), s = Math.sin(rotation); m.a = c * sx; m.b = s * sx; m.c = -s * sy; m.d = c * sy; m.e = x; m.f = y; part.node._matrix = m;
+      continue;
+    }
+    const transform = part.base + (part.base ? ' ' : '') + `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${(rotation * 180 / Math.PI).toFixed(2)}) scale(${sx.toFixed(3)} ${sy.toFixed(3)})`;
+    if (part.transform !== transform) { part.transform = transform; part.node.setAttribute('transform', transform); }
+  }
+}
+function _gfsVisualTransform(state, px, py, scale) {
+  const angle = state.angle == null ? state.heading || 0 : state.angle, size = (scale || 1) * (state.size || 1);
+  return `translate(${(state.drawX == null ? px : state.drawX).toFixed(2)} ${(state.drawY == null ? py : state.drawY).toFixed(2)}) rotate(${(angle * 180 / Math.PI).toFixed(2)}) scale(${(size * (state.bodyScaleX || 1)).toFixed(3)} ${(size * (state.bodyScaleY || 1)).toFixed(3)})`;
+}
 /** Once a frame: the shadows go where they are. Nothing is written for one out of view. */
 function _gfsFrame(dt) {
   if (!_gfs.clock && _gw.on) { _gfs.last = 0; _gfsClockStart(); _gfsClock(); }
   const key = _gfsPlaceKey(); if (key !== _gfs.key) { _gfs.key = key; _gfsReset(); }
   const layer = _gfsLayer(); if (!layer) return;
-  const k = Math.min(1, dt * 4), t = _gw.t || 0, moving = gardenMotionOn();
+  const t = _gw.t || 0, moving = gardenMotionOn();
   for (const f of _gfs.list.values()) {
     if (f.x >= GARDEN_ROOM_X) continue;   // (a room's water: _grwFishFrame)
     if (!f.node) { f.node = _gwEl('g', { class: 'gd-fs', opacity: '0' }); f.node.innerHTML = _gfsArt(f.def, f.cm, f.v) + (f.z && typeof gardenFishMark === 'function' ? gardenFishMark(f) : ''); layer.appendChild(f.node); }   // (it was made before the stage was there)
-    const dx = f.x - f.sx; if (Math.abs(dx) > 0.015) f.face = dx > 0 ? 1 : -1;
-    f.sx += dx * k; f.sy += (f.y - f.sy) * k;
+    _gfsVisualStep(f, f, dt, t, moving);
     if (f.a < 1) { f.a = Math.min(1, f.a + dt * 0.8); if (f.node) f.node.setAttribute('opacity', f.a.toFixed(2)); }
-    if (f.st === GF_ST.nibble && f.n !== f.dn) { _gfsRing(f.x, f.y, 0.6); }
     if (f.st === GF_ST.swim && f.a >= 1 && (['epic', 'legendary'].includes(f.def.rarity) || (f.v && gardenVariantRank(f.v) >= 3))) { f.bub = (f.bub == null ? 2 + f.seed : f.bub) - dt; if (f.bub <= 0) { f.bub = 3 + Math.random() * 4; _gfsRing(f.sx, f.sy, 0.5); } }   // (rings on the surface give a great fish away)
     f.dn = f.n;
-    if (f.st !== f.dst) { if (f.st === GF_ST.bite) { _gfsRing(f.x, f.y, 1.3); _gfsRing(f.x, f.y, 0.8); } else if (f.st === GF_ST.bolt) _gfsRing(f.sx, f.sy, 1.1); f.dst = f.st; }
+    f.dst = f.st;
     const seen = !!f.node && _gwInView(f.sx, f.sy, 1); if (f.node && f.seen !== seen) { f.seen = seen; f.node.classList.toggle('is-seen', seen); }   // (its family's moves run only while you can see it: 94-garden-fish3-creatures.css)
     if (f.node) gardenCull(f, f.node, f.sx, f.sy);
     if (!seen) continue;
     const [px, py] = _gwPx(f.sx, f.sy);
-    const fast = f.st === GF_ST.hooked ? 16 : f.st === GF_ST.bolt ? 12 : 3 + 2 * Math.min(1, 40 / Math.max(10, f.cm));
-    const wob = moving ? Math.sin(t * fast + f.seed) * (f.st === GF_ST.hooked ? 11 : 4 * gardenFishWobble(f.def)) : 0;
-    f.node.setAttribute('transform', `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${wob.toFixed(1)}) scale(${f.face} 1)`);
+    _gfsVisualProject(f, f, px, py);
+    const transform = _gfsVisualTransform(f, px, py); if (f.drawTransform !== transform) { f.drawTransform = transform; f.node.setAttribute('transform', transform); }
+    _gfsVisualParts(f, f.node, f, moving);
+    _gfsVisualReaction(f, f, moving);
     if (f.v && moving) { const tw = f.vt === undefined ? (f.vt = f.node.querySelector('.gd-fsv')) : f.vt; if (tw) tw.setAttribute('opacity', (0.5 + 0.5 * Math.sin(t * 2.6 + f.seed)).toFixed(2)); }   // (a sparkle twinkles only while you can see it)
   }
 }
@@ -167,6 +293,7 @@ function _gfsSpeed(f) {
 function _gfsMove(f, dt) {
   const sp = _gfsSpeed(f); if (!sp) return true;
   const dx = f.tx - f.x, dy = f.ty - f.y, d = Math.hypot(dx, dy);
+  if (d > .025) { f.swimDX = dx / d; f.swimDY = dy / d; }
   if (d <= sp * dt || d < 0.02) { f.x = f.tx; f.y = f.ty; return true; }
   f.x += dx / d * sp * dt; f.y += dy / d * sp * dt;
   return false;
@@ -192,6 +319,25 @@ function _gfsClock() {
 }
 
 /* ---------- the water, for the one who decides ---------- */
+function _gfsWaterAt(x, y) { return typeof gardenWaterContainsPoint === 'function' ? gardenWaterContainsPoint(x, y) : gardenIsWater(Math.floor(x), Math.floor(y)); }
+function _gfsWaterClear(fish, x, y) {
+  if (!_gfsWaterAt(x, y)) return false;
+  if (!fish || !fish.def || x >= GARDEN_ROOM_X) return true;
+  const r = Math.max(.27, Math.min(.7, _gfsLen(fish.cm) * .35 / GARDEN_WORLD.cellW)), ry = r * GARDEN_WORLD.cellW / GARDEN_WORLD.cellH;
+  return _gfsWaterAt(x - r, y) && _gfsWaterAt(x + r, y) && _gfsWaterAt(x, y - ry) && _gfsWaterAt(x, y + ry);
+}
+function _gfsWaterSegment(a, b, fish) { const steps = Math.max(2, Math.min(24, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) * 3))); for (let i = 1; i < steps; i++) { const k = i / steps; if (!_gfsWaterClear(fish, a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k)) return false; } return true; }
+/** A reshaped shore can strand an old idle fish. Only the deciding host
+ * moves it to the nearest valid cell in its existing water/depth band. */
+function _gfsRehome(f, band) {
+  if (!band) return false; let best = null, distance = Infinity;
+  for (let y = Math.floor(band.y0); y < Math.ceil(band.y1); y++) for (let x = Math.floor(band.x0); x < Math.ceil(band.x1); x++) {
+    const px = Math.max(band.x0 + .05, Math.min(band.x1 - .05, x + .5)), py = Math.max(band.y0 + .05, Math.min(band.y1 - .05, y + .5)), d = (px - f.x) ** 2 + ((py - f.y) * .625) ** 2;
+    if (d >= distance || !_gfsWaterClear(f, px, py)) continue; best = { x: px, y: py }; distance = d;
+  }
+  if (!best) return false;
+  f.x = f.sx = f.tx = best.x; f.y = f.sy = f.ty = best.y; f.heading = null; f.anchorBlend = 0; f.drawTransform = ''; _gfs.dirty = true; return true;
+}
 function _gfsBands(m) {
   // only the lake that is open: past the line of floats nothing swims (the zones, 94-garden-lands-0table.js)
   const to = gardenLakeOpenTo() - 0.4, out = GF_SCHOOL.bands.map((b, i) => Object.assign({ key: 'b' + i }, b, { y1: Math.min(b.y1, to) })).filter(b => b.y1 > b.y0);
@@ -207,21 +353,35 @@ function _gfsSpot(b0, near0) {
   const b = b0 || GF_SCHOOL.bands[0], inX = (v) => Math.max(b.x0, Math.min(b.x1, v)), inY = (v) => Math.max(b.y0, Math.min(b.y1, v));
   const near = near0 ? { x: inX(near0.x), y: inY(near0.y) } : null, lake = b.zone !== 'pond';   // (wherever it was asked to go, it stays in this water: a bolting fish once ran out over the farmland)
   for (let i = 0; i < 12; i++) {
-    const x = near ? inX(near.x + (Math.random() - 0.5) * 8) : b.x0 + Math.random() * (b.x1 - b.x0);
-    const y = near ? inY(near.y + (Math.random() - 0.5) * 3) : b.y0 + Math.random() * (b.y1 - b.y0);
-    if (!gardenIsWater(Math.floor(x), Math.floor(y))) continue;
+    const forward = near && near0.st === GF_ST.swim && near0.swimDX != null && i < 6, angle = forward ? Math.atan2(near0.swimDY / .45, near0.swimDX) + (Math.random() - .5) * 2.1 : 0, reach = forward ? 1.1 + Math.random() * 3 : 0;
+    const x = near ? inX(near.x + (forward ? Math.cos(angle) * reach : (Math.random() - 0.5) * 8)) : b.x0 + Math.random() * (b.x1 - b.x0);
+    const y = near ? inY(near.y + (forward ? Math.sin(angle) * reach * .45 : (Math.random() - 0.5) * 3)) : b.y0 + Math.random() * (b.y1 - b.y0);
+    if (!_gfsWaterClear(near0, x, y)) continue;
+    if (near && Math.hypot(x - near.x, (y - near.y) * .625) < .55) continue;
+    if (i < 8 && !_gfsSpaced(b, x, y, near0)) continue;
+    if (near && _gfsWaterAt(near.x, near.y) && !_gfsWaterSegment(near, { x, y }, _gfsWaterClear(near0, near.x, near.y) ? near0 : null)) continue;
     const end = 25.4 + gardenPierMore();
     if (lake && y < end && x > 23.5 && x < 26.5) continue;
     if (lake && near && y < end && (x < 25) !== (near.x < 25)) continue;
     return { x, y };
   }
-  return near;
+  return near && _gfsWaterClear(near0, near.x, near.y) ? near : null;
+}
+/** Separation is considered only when choosing a destination, never by a
+ * per-frame flock solver or by a guest deciding its own fishing rules. */
+function _gfsSpaced(b, x, y, origin) {
+  for (const other of _gfs.list.values()) {
+    if (other === origin || other.band !== b.key) continue;
+    const radius = Math.min(1.5, .45 + (_gfsLen(origin && origin.cm) + _gfsLen(other.cm)) * .004);
+    if (Math.hypot(x - other.x, (y - other.y) * .625) < radius) return false;
+  }
+  return true;
 }
 /** A new fish in this water. at: right there (chum, or a line waiting: o.plain says it is no special treat). o.near: the person to come near, in water as big as the lake. */
 function _gfsSpawn(b, m, at, o) {
   const plus = typeof gardenCatchSpawnPlan === 'function' ? gardenCatchSpawnPlan(b, m, at) : null, near = o && o.near;   // spots, events and what you have done raise the odds: 94-garden-fish-8catch.js
   const plusP = plus && plus.p && plus.p.y <= b.y1 + 0.3 && (!near || b.zone === 'pond' || Math.hypot(plus.p.x - near.x, plus.p.y - near.y) <= GF_SCHOOL.near) ? plus.p : null;   // (a favourite spot past the floats, or a long way off: not now)
-  const p = at && gardenIsWater(Math.floor(at.x), Math.floor(at.y)) ? at : plusP || _gfsSpot(b, near && b.zone !== 'pond' ? near : null); if (!p) return;
+  let p = at && _gfsWaterAt(at.x, at.y) ? at : plusP && _gfsWaterAt(plusP.x, plusP.y) ? plusP : _gfsSpot(b, near && b.zone !== 'pond' ? near : null); if (!p || !_gfsWaterAt(p.x, p.y)) return;
   const ctx = { zone: b.zone, tod: m.tod, season: m.season, rain: !!(m.rain && m.rain.now), level: m.level.level, moon: gardenMoonPhase(m.today), decor: (id) => m.decor.some(d => d.def.id === id) || gardenWorkOwned(id), caught: (id) => !!_gdG().fl[id] };
   if (b.room) ctx.room = b.room;
   if (typeof gardenPlaceHas === 'function') ctx.home = gardenPlaceHas;
@@ -241,7 +401,9 @@ function _gfsSpawn(b, m, at, o) {
   const out = b.zone === 'pond' ? 0.05 : Math.max(0, Math.min(0.55, (p.y - 13) / 24));
   const cm0 = forced && forced.cm ? forced.cm : def.cat === 'fish' ? gardenFishSize(def, Math.random, out) : Math.round((def.cm[0] + def.cm[1]) / 2);
   const sv = forced && forced.cm ? { v: '', cm: cm0 } : typeof gardenVariantSpawn === 'function' ? gardenVariantSpawn(def, cm0, b, m, { chum: !!at && !(o && o.plain), frenzy: _gfsFrenzy(), room: b.room || '' }) : { v: '', cm: cm0 }, cm = sv.cm;   // what it is, decided here and now: everyone sees the same one
-  const go = _gfsSpot(b, p) || p;
+  const footprint = { x: p.x, y: p.y, def, cm };
+  if (!_gfsWaterClear(footprint, p.x, p.y)) { const safe = _gfsSpot(b, footprint); if (!safe || !_gfsWaterClear(footprint, safe.x, safe.y)) return; p = safe; footprint.x = p.x; footprint.y = p.y; }
+  const go = _gfsSpot(b, footprint) || p;
   _gfs.u = (_gfs.u + 1) % 1000;
   _gfsAdd({ u: _gfs.u, id, v: sv.v, z: forced ? forced.z || 0 : 0, cm, x: p.x, y: p.y, tx: go.x, ty: go.y, band: b.key, life: GF_SCHOOL.life[0] + Math.random() * (GF_SCHOOL.life[1] - GF_SCHOOL.life[0]) });
   _gfs.dirty = true;
@@ -281,7 +443,7 @@ function _gfsMakeRoom(far, folk) {
 }
 function _gfsBolt(f, b) {
   const ang = Math.random() * Math.PI * 2, r = 2.5 + Math.random() * 2;
-  const near = { x: f.x + Math.cos(ang) * r, y: f.y + Math.sin(ang) * r * 0.5 };
+  const near = { x: f.x + Math.cos(ang) * r, y: f.y + Math.sin(ang) * r * 0.5, def: f.def, cm: f.cm };
   const go = b ? _gfsSpot(b, near) : null;   // (no water known for it: it darts about where it is)
   f.st = GF_ST.bolt; f.to = null; f.n = 0; f.cool = 8; f.tx = go ? go.x : f.x; f.ty = go ? go.y : f.y;
   _gfs.dirty = true;
@@ -318,6 +480,8 @@ function _gfsRun(dt) {
       taken.delete(f.to); f.st = GF_ST.swim; f.to = null; f.n = 0; f.cool = 3; const go = _gfsSpot(byKey.get(f.band) || bands[0], f) || f; f.tx = go.x; f.ty = go.y; _gfs.dirty = true;
     }
     if (f.st === GF_ST.swim) {
+      if (f.x < GARDEN_ROOM_X && !_gfsWaterAt(f.x, f.y)) _gfsRehome(f, byKey.get(f.band) || bands.find(b => f.y >= b.y0 && f.y <= b.y1 && f.x < GARDEN_ROOM_X && !b.room));
+      if (f.x < GARDEN_ROOM_X && !_gfsWaterAt(f.tx, f.ty)) { const go = _gfsSpot(byKey.get(f.band) || bands[0], f) || f; f.tx = go.x; f.ty = go.y; _gfs.dirty = true; }
       f.life -= dt;
       if (f.life <= 0 || (f.band && !byKey.has(f.band))) { _gfsDrop(f); _gfs.dirty = true; continue; }
       // With people here a fish waits where it got to until the next list says where it goes next, here as on their screens. It used to go on here at once while they saw it stop, and then glide after it: the same fish, in two places.
@@ -374,7 +538,7 @@ function _gfsRun(dt) {
     }
   }
   // fill the water up again, one at a time
-  if (!contest && !_gfsFrenzy() && Math.random() < E.frenzy.chance * dt) { _gfs.frenzyUntil = performance.now() + E.frenzy.secs * 1000; _gfsSay2('The fish are feeding! For a little while there are more about.'); }
+  if (!contest && !_gfsFrenzy() && Math.random() < E.frenzy.chance * dt) { _gfs.frenzyUntil = performance.now() + E.frenzy.secs * 1000; gardenMessage('The fish are feeding! For a little while there are more about.', { ambient: true, source: 'fish-feeding', icon: 'fish' }); }
   const fast = contest ? E.contestGap : _gfsFrenzy() ? E.frenzy.gap : m.rain && m.rain.now ? 0.7 : 1;
   // the water nearest to people first: with only a few fish in all, a far pool must not take them while the water you stand at stays empty. In the lake only the fish near someone count: the lake is too big to call one water
   const count = new Map(), distant = new Map();
@@ -413,13 +577,17 @@ function _gfsTell() {
   const now = Date.now();   // clock-ok: spacing
   if (!_glhLooking()) return;   // (nobody is looking: it goes when someone is back)
   if (now - _gfs.sentAt < (_gfs.dirty ? GF_SCHOOL.msgGap : _gfs.list.size ? GF_SCHOOL.beat : GF_SCHOOL.beatEmpty)) return;
-  _gfs.sentAt = now; _gfs.dirty = false;
+  const forced = _gfs.forceTell === true;
   // those that have got where they were going set off now, on every screen at once
   const bands = _gfs.m ? new Map(_gfsBands(_gfs.m).map(b => [b.key, b])) : null;
   for (const f of _gfs.list.values()) if (f.rest) { f.rest = false; if (f.st === GF_ST.swim && bands) { const go = _gfsSpot(bands.get(f.band) || GF_SCHOOL.bands[0], f) || f; f.tx = go.x; f.ty = go.y; } }
   const n10 = (v) => Math.max(0, Math.min(640, Math.round(v * 10)));
   const l = [..._gfs.list.values()].slice(0, GF_SCHOOL.wire).map(f => Object.assign({ u: f.u, e: f.id, c: Math.round(f.cm), x: n10(f.x), y: n10(f.y), tx: n10(f.tx), ty: n10(f.ty), st: f.st }, f.v ? { v: f.v } : {}, f.to != null ? { to: f.to } : {}, f.n ? { n: Math.min(9, f.n) } : {}, f.z ? { z: f.z } : {}));
-  _glhSend('all', 'fs', { l });
+  const sig = JSON.stringify(l), heartbeat = l.length ? GF_SCHOOL.beat : GF_SCHOOL.beatEmpty;
+  _gfs.dirty = false;
+  if (!forced && sig === _gfs.wireSig && now - _gfs.sentAt < heartbeat) { _gfs.sameSkipped = (_gfs.sameSkipped || 0) + 1; return; }
+  _gfs.sentAt = now; _gfs.wireSig = sig; _gfs.forceTell = false;
+  _glhSend('all', 'fs', { l }).then((r) => { if (r == null) { _gfs.dirty = true; _gfs.forceTell = true; } });
 }
 /** A guest hears the host's water. Anything not listed has left it. */
 function _gfsIn(l) {
@@ -439,7 +607,7 @@ function _gfsIn(l) {
 
 /* ---------- a line and its fish ---------- */
 /** The fish at your line, if there is one. */
-function _gfsMine() { const me = _gfsSlot(); for (const f of _gfs.list.values()) if (f.to === me) return f; return null; }
+function _gfsMine() { return _gfsFishForSlot(_gfsSlot()); }
 /** Is that fish no longer yours? One gone from the list has just been landed; one still there has to be biting or hooked on your line. It bit you and nobody else, so only the host's clock (too slow) can take it back. */
 function _gfsLostIt(u) { const f = _gfs.list.get(u); return !!f && !(f.to === _gfsSlot() && (f.st === GF_ST.bite || f.st === GF_ST.hooked)); }
 /** You struck, landed or let go: to whoever decides. */

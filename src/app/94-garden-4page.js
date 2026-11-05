@@ -25,7 +25,7 @@ const GARDEN_TABS = Object.freeze([['garden', 'Garden', 'sprout'], ['catch', 'Ca
   ['friends', 'Friends', 'users']]);   // 'friends': ── garden-social ── friends' gardens, visits and your guestbook (94-garden-social-2visit.js)
 /* 2.23: what can be in your hand. The hand needs nothing else: it does what the thing in front of it needs. The rest are for when you want to choose (the hotbar, 94-garden-world-2hud.js). */
 const GARDEN_TOOLS_UI = Object.freeze(['hand', 'water', 'feed', 'trim', 'dig', 'seed', 'decorate']);
-const _gdp = { entry: '', root: null, svg: null, mode: '', tool: '', seed: '', decor: '', sel: '', hoverUid: '', cur: null,
+const _gdp = { entry: '', root: null, svg: null, mode: '', tool: '', seed: '', decor: '', sel: '', hoverUid: '', hoverSprite: null, cur: null,
   press: null, sweep: null, carry: null, keyBound: false, burstT: 0, wasVisible: false };
 
 function _gdpTab(v) { const m = /^garden:([a-z]+)$/.exec(String(v || '')); const t = m ? m[1] : 'garden'; return GARDEN_TABS.some(x => x[0] === t) ? t : 'garden'; }
@@ -62,6 +62,7 @@ registerSection('garden', {
   crumb: v => (_gdpTab(v) === 'garden' ? [] : [GARDEN_TABS.find(t => t[0] === _gdpTab(v))[1]]),
   group: 'home', layout: 'bare', hashable: true, taskControls: false, icon: 'sprout',
   mount(container, view) { _gdpMount(container, view || state.view); },
+  keepRoot(container) { return state.view === 'garden' && _gdp.entry === 'garden' && !(typeof gardenVisitOn === 'function' && gardenVisitOn()) && !!(_gdp.root && _gdp.root.isConnected && container.contains(_gdp.root)); },
   unmount() { _gdpWorldUnmount(); },
 });
 /* Home's sidebar: a 'Fun' heading with the Garden (and the Game page while the Fun level is on). Other modules may add
@@ -104,10 +105,11 @@ function _gdpMount(container, view) {
 }
 /** The world on the page: your own garden, or on a visit your friend's. The same stage and the same everything: gardenHere() says which garden it is. */
 function _gdpWorldMount(container, view) {
+  const m = gardenHere();
+  if (view === 'garden' && !m.visit && _gdp.entry === view && _gdp.root && _gdp.root.isConnected && container.contains(_gdp.root)) { _gdpRepaint(); return; }
   if (typeof gardenDesignAbort === 'function') gardenDesignAbort();   // the app can draw the page again with no unmount: the designer's draft waits and comes back below
   const entering = _gdp.entry !== view;
   _gdp.entry = view;
-  const m = gardenHere();
   const root = _gdpEl('div', 'gd-page gd-full gd-tab-garden' + (entering ? ' is-enter' : '') + (gardenFun() === 'off' ? ' is-funoff' : ''));
   const body = _gdpEl('div', 'gd-body');
   root.appendChild(body);
@@ -125,7 +127,7 @@ function _gdpWorldMount(container, view) {
   if (typeof gardenDesignResume === 'function') gardenDesignResume();
   if (_gdp.then) { const t = _gdp.then; _gdp.then = ''; setTimeout(() => { if (_gdp.root === root) gardenPopupOpen(t); }, 60); }
 }
-function _gdpWorldUnmount() { if (typeof gardenDesignAbort === 'function') gardenDesignAbort(); document.documentElement.classList.remove('gd-immersive'); if (typeof toastHeldFlush === 'function') toastHeldFlush(); gardenHudReset(); gardenGameStop(); if (typeof gardenPopupClose === 'function') gardenPopupClose(); if (typeof gardenWorldStop === 'function') gardenWorldStop(); _gdp.entry = ''; _gdp.root = null; _gdp.svg = null; _gdp.press = null; _gdp.sweep = null; _gdpCarryEnd(); }
+function _gdpWorldUnmount() { if (window.GardenNative && GardenNative.active()) GardenNative.destroy(); if (typeof gardenDesignAbort === 'function') gardenDesignAbort(); document.documentElement.classList.remove('gd-immersive'); if (typeof toastHeldFlush === 'function') toastHeldFlush(); gardenHudReset(); gardenGameStop(); if (typeof gardenPopupClose === 'function') gardenPopupClose(); if (typeof gardenWorldStop === 'function') gardenWorldStop(); _gdp.entry = ''; _gdp.root = null; _gdp.svg = null; _gdp.press = null; _gdp.sweep = null; _gdpCarryEnd(); }
 /** Is the world what is on screen? Your garden, or a garden you are visiting. */
 function _gdpWorldView() { return state.view === 'garden' || (typeof gardenVisitOn === 'function' && gardenVisitOn()); }
 function _gdpBasketCount(m) { let n = 0; for (const [k, v] of Object.entries(m.wallet.items)) if (v > 0 && (k.startsWith('crop:') || k.startsWith('bq:') || k === 'honey')) n += v; return n; }
@@ -139,19 +141,29 @@ function _gdpRepaint() {
 function _gdpLightKey(m) { return [m.tod, m.season, m.rain.now ? 1 : 0, m.rain.snow ? 1 : 0].join('|'); }
 function gardenLightCheck() {
   if (!_gdp.root || !_gdp.root.isConnected || !_gdp.svg || document.hidden) return;
-  if (_gdpLightKey(gardenHere()) !== _gdp.lightKey) gardenRepaintSoon();
+  const m = gardenHere();
+  // A direct Garden opening can mount before the server probe answers. Its
+  // retained stage then needs this existing slow heartbeat to load the weather.
+  // Visitors keep the host's weather; rooms do not start an outdoor request.
+  if (!m.visit && !(typeof gardenVisitOn === 'function' && gardenVisitOn()) && !_grm.on && !_ee.on
+    && typeof briefLoadWeather === 'function' && typeof _bf !== 'undefined' && !_bf.weather && !_bf.weatherLoading
+    && typeof _serverAvailable !== 'undefined' && _serverAvailable && typeof APP_CONFIG !== 'undefined' && APP_CONFIG.location) briefLoadWeather();
+  if (_gdpLightKey(m) !== _gdp.lightKey) gardenRepaintSoon();
 }
 function _gdpRepaintInner() {
   if (!_gdp.root || !_gdp.root.isConnected) return;
   const m = gardenHere();
-  _gdpPaintStage(m); gardenHudPaint(m);
+  _gdpPaintStage(m);
+  // A mounted native scene synchronizes its HUD with the model. Repeating the
+  // paint here also rescans catch bags and native needs on dashboard refresh.
+  if (!(window.GardenNative && GardenNative.active() && GardenNative.world())) gardenHudPaint(m);
 }
 
 /* ---------- the sky, for the HUD ---------- */
 function _gdpSkyChip(m) {
   const tod = { dawn: 'Dawn', day: 'Daytime', dusk: 'Evening', night: 'Night' }[m.tod] || '';
   const ic = m.rain.snow ? 'snowflake' : m.rain.now ? 'droplets' : m.tod === 'night' ? 'moon' : m.tod === 'dawn' ? 'sunrise' : m.tod === 'dusk' ? 'sunset' : 'sun';
-  const wx = m.rain.now ? (m.rain.snow ? 'snowing' : 'raining') : '';
+  const wx = m.rain.snow ? 'snowing' : m.rain.now ? 'raining' : '';
   return { ic, text: `${GARDEN_SEASON_LABEL[m.season]} · ${tod.toLowerCase()}${wx ? ' · ' + wx : ''}` };
 }
 /* ---------- the garden: one stage that fills the page, and overlays on it (94-garden-world-2hud.js) ---------- */
@@ -166,7 +178,7 @@ function _gdpGardenTab(body, m) {
   game.appendChild(stage);
   _gdp.svg = null;
   _gdpPaintStage(m);
-  _gdpBindStage(stage);
+  if (!(window.GardenNative && GardenNative.wanted())) _gdpBindStage(stage);
 }
 function _gdpPickTool(k) {
   if (typeof _gwFishCancel === 'function' && typeof _gwFishBusy === 'function' && _gwFishBusy()) _gwFishCancel();
@@ -194,6 +206,7 @@ function _gdpRefreshChrome() {
 function _gdpPaintStage(m, force) {
   if (!_gdp.root) return;
   const inner = _gdp.root.querySelector('.gd-stage'); if (!inner) return;
+  if (window.GardenNative && GardenNative.wanted()) { const box = _gdp.root.querySelector('.gd-stagebox'); box.dataset.mode = _gdpMode(); box.dataset.tool = _gdpTool(); _gdp.lightKey = _gdpLightKey(m); GardenNative.mount(inner, box, m); return; }
   const mode = _gdpMode(), still = !gardenMotionOn();
   const sc = gardenSceneFromModel(m);
   _gdp.lightKey = _gdpLightKey(m);
@@ -207,10 +220,13 @@ function _gdpPaintStage(m, force) {
   try { if (typeof gardenWorldPainted === 'function') gardenWorldPainted(m); } catch (e) { console.error('[garden world]', e); }
   try { gardenGamePainted(m); } catch (e) { console.error('[garden]', e); }
   if (typeof gardenDesignPainted === 'function') gardenDesignPainted(_gdp.svg, sc.dz);   // the words on signs: textContent, after the markup
+  if (window.GardenPhaser) { GardenPhaser.ensure(_gdp.svg, box); GardenPhaser.patch(_gdp.svg); }
   // visitors you can see go in the almanac (only while the page is on screen)
   if (!m.visit && document.visibilityState === 'visible' && m.visitors.length) setTimeout(() => gardenNoteVisitors(typeof gardenLifeOwns === 'function' ? m.visitors.filter(v => !gardenLifeOwns(v.id)) : m.visitors), 1200);   // (the live creatures note themselves when you really see them)
 }
 function _gdpCellOf(ev) {
+  if (window.GardenNative && GardenNative.active()) { const p = GardenNative.point(ev.clientX, ev.clientY); if (!p || p.x < 0 || p.y < 0 || p.x >= GARDEN_WORLD.cols || p.y >= GARDEN_WORLD.rows) return null; return { x: Math.floor(p.x), y: Math.floor(p.y) }; }
+  if (window.GardenPhaser && GardenPhaser.active(_gdp.svg)) { const p = GardenPhaser.point(ev.clientX, ev.clientY); if (!p || p.x < 0 || p.y < 0 || p.x >= GARDEN_WORLD.cols || p.y >= GARDEN_WORLD.rows) return null; return { x: Math.floor(p.x), y: Math.floor(p.y) }; }
   const svg = _gdp.svg; if (!svg || !svg.getScreenCTM) return null;
   const ctm = svg.getScreenCTM(); if (!ctm) return null;
   const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
@@ -223,12 +239,15 @@ function _gdpItemOf(ev) {
   const g = ev.target && ev.target.closest ? ev.target.closest('.gd-it[data-uid]') : null;
   return g ? { uid: g.getAttribute('data-uid'), kind: g.classList.contains('gd-plant') ? 'plant' : 'decor', ground: !!g.closest('.gd-paths') } : null;
 }
+function _gdpStageContains(target) { if (window.GardenNative && GardenNative.active()) return !!(GardenNative.scene() && GardenNative.scene().game.canvas === target); return !!(_gdp.svg && (_gdp.svg.contains(target) || window.GardenPhaser && GardenPhaser.isTarget(target))); }
 /**
  * The plant or decoration under the pointer, the same answer for the hover, the press and the right-click: whatever is painted under the
  * pointer; else the one whose drawing's box the pointer is inside (a tall flower used to light up only on a petal or at its foot, and
  * nowhere between); else null (the cell then decides).
  */
 function _gdpPickItem(ev, cell) {
+  if (window.GardenNative && GardenNative.active()) { const p = GardenNative.pick(ev.clientX, ev.clientY); return p && p.uid ? { uid: p.uid, kind: p.kind, ground: !!p.ground || !!(p.node && p.node.closest('.gd-paths')) } : null; }
+  if (window.GardenPhaser && GardenPhaser.active(_gdp.svg)) { const p = gardenWorldVisualPick(ev); return p && p.uid ? { uid: p.uid, kind: p.kind, ground: !!p.node.closest('.gd-paths') } : null; }
   const exact = _gdpItemOf(ev);
   if (exact && !exact.ground) return exact;
   const svg = _gdp.svg, pt = typeof _gwPointAt === 'function' ? _gwPointAt(ev) : null;
@@ -284,7 +303,7 @@ function _gdpIntent(ev, m, it, cell) {
   switch (k.kind) {
     case 'prop': return { cur: 'door', node: _gdp.svg.querySelector(`.gd-prop[data-prop="${k.prop.id}"]`), label: k.prop.name };
     case 'bug': return { cur: 'net', label: k.bug.def.name };
-    case 'sprite': return { cur: k.sprite.cursor || 'hand', label: k.sprite.label || '' };
+    case 'sprite': return { cur: k.sprite.cursor || 'hand', label: k.sprite.label || '', sprite: k.sprite };
     case 'water': return { cur: 'rod' };
     case 'land': { const a = gardenArea(k.land); if (a.solid) return { cur: 'no', label: '' }; if (m.visit) return { cur: 'no', label: a.name }; const li = a.buy ? gardenLandInfo(a.id, m) : null; if (li && li.lvOk && li.reach && li.keyOk) return { cur: 'buy', label: `${a.name} · ${_gdpNum(a.buy)}` }; return { cur: 'no', label: li && li.lvOk && !li.keyOk ? `${a.name} · needs a key` : `${a.name} · Lv ${a.lv}` }; }
     case 'spot': return { cur: 'trowel', spot: k.cell };
@@ -302,12 +321,13 @@ function _gdpIntent(ev, m, it, cell) {
   }
 }
 function _gdpHover(ev) {
+  _gdp.hoverSprite = null;
   if (!_gdp.svg) return;
   const box = _gdp.root && _gdp.root.querySelector('.gd-stagebox'), status = _gdp.root && _gdp.root.querySelector('.gd-status');
   if (!box) return;
-  const onWorld = _gdp.svg.contains(ev.target);
+  const onWorld = _gdpStageContains(ev.target);
   // fishing locks you in and a pop-up is on top of the garden: nothing under the pointer lights up. Nor does the world under the hotbar or the HUD
-  if (_gdpPopOpen() || !onWorld || (typeof _gwFishBusy === 'function' && _gwFishBusy())) { _gdpHighlight(null); _gdpGhostClear(); gardenHoverCardHide(); gameCursor(box, ''); box.dataset.hover = ''; if (status) status.hidden = true; return; }
+  if (_gdpPopOpen() || !onWorld || (typeof gardenDesignOn === 'function' && gardenDesignOn()) || (typeof _gwFishBusy === 'function' && _gwFishBusy())) { _gdpHighlight(null); _gdpGhostClear(); gardenHoverCardHide(); gameCursor(box, ''); box.dataset.hover = ''; if (status) status.hidden = true; return; }
   const m = gardenHere(), cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell), tool = _gdpTool(), mode = _gdpMode();
   if (_gdp.carry) return;
   const placing = _gdp.moving ? (_gdp.moving.kind === 'decor' ? (gardenDecorById(m, _gdp.moving.uid) || {}).def : (gardenPlantById(m, _gdp.moving.uid) || {}).def)
@@ -322,8 +342,10 @@ function _gdpHover(ev) {
     return;
   }
   // a pet under the pointer: a click pats it (97-pets-7roam.js takes the click)
-  if (ev.target.closest && ev.target.closest('.ptw')) { gameCursor(box, 'hand'); box.dataset.hover = ''; _gdpHighlight(null); gardenHoverCardHide(); if (status) status.hidden = true; return; }
+  const petVisual = gardenWorldVisualPick(ev);
+  if (ev.target.closest && ev.target.closest('.ptw') || petVisual && petVisual.node.closest('.ptw')) { gameCursor(box, 'hand'); box.dataset.hover = ''; _gdpHighlight(null); gardenHoverCardHide(); if (status) status.hidden = true; return; }
   const I = _gdpIntent(ev, m, it, cell);
+  _gdp.hoverSprite = I.sprite || null;
   gameCursor(box, I.cur);
   box.dataset.hover = I.cur === 'door' ? 'prop' : '';
   _gdpHighlight(I.node || null);
@@ -338,26 +360,86 @@ function _gdpHover(ev) {
     } else status.hidden = true;
   }
 }
+/** A retained handle can change or disappear without another pointer move. */
+function _gdpSpriteHintChanged(S, removed) {
+  if (!S || _gdp.hoverSprite !== S) return;
+  const box = _gdp.root && _gdp.root.querySelector('.gd-stagebox'), status = box && box.querySelector('.gd-status');
+  if (removed || !S.node || !S.node.isConnected || S._off || _gdpPopOpen()) {
+    _gdp.hoverSprite = null;
+    if (status) status.hidden = true;
+    if (box) { box.dataset.hover = ''; gameCursor(box, ''); }
+    return;
+  }
+  if (status && !status.hidden && status.textContent !== (S.label || '')) { status.textContent = S.label || ''; if (!S.label) status.hidden = true; }
+}
 function _gdpGhost(m, def, kind, x, y, ignore) {
   const gh = _gdp.svg && _gdp.svg.querySelector('.gd-ghost'); if (!gh) return;
   const why = _gdPlaceOk(m, def, x, y, kind, ignore);
   const W = GARDEN_WORLD, fw = kind === 'decor' ? def.w || 1 : def.fp || 1, fh = kind === 'decor' ? def.h || 1 : def.fp || 1;
-  const key = [def.id, x, y, why ? 1 : 0, _gdp.carry ? 1 : 0].join('|');
+  const source = ignore ? kind === 'plant' ? gardenPlantById(m, ignore) : gardenDecorById(m, ignore) : null;
+  const showy = kind === 'decor' && def.effect && def.effect.kind === 'show', show = showy ? m.visit && m.visit.snap ? m.visit.snap.sh : typeof _gdrShowOf === 'function' ? _gdrShowOf() : null : null;
+  const artOptions = kind === 'plant'
+    ? { kind, stage: source ? source.stage : 1, variant: source ? source.variant : 0, season: m.season, size: 'l', tod: m.tod, t: source && source.t || 0, thirsty: !!(source && source.thirsty), overgrown: !!(source && source.overgrown), ripe: !!(source && source.ripe), glow: !!def.glow, heart: source && source.heart }
+    : { kind, season: m.season, size: 'l', tod: m.tod, r: source && source.r || 0, v: source && source.v || 0, variant: source && source.v || 0, t: source && source.t || 0, show, shw: show && typeof gardenShowSig === 'function' ? gardenShowSig(show) : '' };
+  const artKey = [def.id, kind, ignore || '', JSON.stringify(artOptions)].join('|'), key = [artKey, x, y, why || '', _gdp.carry ? 1 : 0].join('|');
   if (gh.dataset.k === key) return;
   gh.dataset.k = key;
-  const frag = _gdArt(def.id, kind === 'plant' ? { kind, stage: 1, season: m.season, size: 'm', tod: 'day' } : { kind, season: m.season, size: 'm', tod: 'day', r: 0 });
   const ground = kind === 'decor' && def.layer === 'ground';
-  const tr = ground ? `translate(${(x + fw / 2) * W.cellW} ${W.sky + (y + fh) * W.cellH}) scale(0.75)` : `translate(${(x + fw / 2) * W.cellW} ${W.sky + (y + fh) * W.cellH - 4}) scale(0.75)`;
+  const tr = ground ? `translate(${(x + fw / 2) * W.cellW} ${W.sky + (y + fh) * W.cellH}) scale(${W.cellW / 64} ${W.cellH / 40})` : `translate(${(x + fw / 2) * W.cellW} ${W.sky + (y + fh) * W.cellH - 4}) scale(0.75)`;
+  if (gh._native) {
+    let preview = gh._gdPreview;
+    if (!preview || preview.key !== artKey || !preview.art.isConnected) {
+      const frag = _gdArt(def.id, artOptions);
+      gh.innerHTML = `<rect class="gd-ghostcell" rx="4"/><g class="gd-ghostart is-still">${frag}</g>`;
+      preview = gh._gdPreview = { key: artKey, cell: gh.firstChild, art: gh.lastChild, bad: null };
+    }
+    // Moving a carry preview changes its native root transform, not its parsed
+    // art. Mature plants and rotated/restyled decorations retain their look.
+    _gdpRect(preview.cell, x, y, fw, fh);
+    if (preview.bad !== !!why) { preview.bad = !!why; preview.cell.setAttribute('class', 'gd-ghostcell' + (why ? ' is-bad' : '')); preview.art.style.opacity = why ? '.35' : '.75'; }
+    preview.art.setAttribute('transform', tr);
+    gh.setAttribute('data-placement-error', why || '');
+    return;
+  }
+  const frag = _gdArt(def.id, artOptions);
   gh.innerHTML = `<rect class="gd-ghostcell${why ? ' is-bad' : ''}" x="${x * W.cellW + 1}" y="${W.sky + y * W.cellH + 1}" width="${fw * W.cellW - 2}" height="${fh * W.cellH - 2}" rx="4"/><g class="gd-ghostart${why ? ' is-bad' : ''}" transform="${tr}">${frag}</g>`;
 }
-function _gdpGhostClear() { const gh = _gdp.svg && _gdp.svg.querySelector('.gd-ghost'); if (gh && gh.dataset.k) { gh.dataset.k = ''; gh.innerHTML = ''; } }
+function _gdpGhostClear() { const gh = _gdp.svg && _gdp.svg.querySelector('.gd-ghost'); if (gh && (gh.dataset.k || gh._gdPreview)) { gh.dataset.k = ''; gh._gdPreview = null; if (gh._native) gh.setAttribute('data-placement-error', ''); gh.innerHTML = ''; } }
+
+function _gdpPlacementFeedback(kind, item, type) {
+  if (!item || !window.GardenNativeActions || !window.GardenNative || !GardenNative.active()) return;
+  const def = item.def, W = GARDEN_WORLD, w = type === 'plant' ? item.fp || 1 : def.w || 1, h = type === 'plant' ? item.fp || 1 : def.h || 1;
+  GardenNativeActions.effect(kind, (item.x + w / 2) * W.cellW, W.sky + (item.y + h) * W.cellH - 2, { width: w * W.cellW * .65, height: h * W.cellH * .3 });
+}
+/** Called once per HUD model paint, after canonical decoration changes settle. */
+function _gdpDecorationPainted(m) {
+  const native = window.GardenNative && GardenNative.active(), root = _gdp.root, scope = m.visit ? 'visit:' + m.visit.fid : 'home';
+  const old = _gdp.decorFeedback, baseline = !old || old.root !== root || old.scope !== scope, now = new Map();
+  const record = d => {
+    const value = { id: d.def.id, x: d.x, y: d.y, r: d.r, v: d.v }; now.set(d.uid, value);
+    if (!native || baseline) return;
+    const was = old.rows.get(d.uid);
+    if (!was) _gdpPlacementFeedback('place', d, 'decor');
+    else if (was.id === value.id) {
+      if (was.x !== d.x || was.y !== d.y) _gdpPlacementFeedback('place', d, 'decor');
+      else if (was.r !== d.r) _gdpPlacementFeedback('turn', d, 'decor');
+      else if (was.v !== d.v) _gdpPlacementFeedback('style', d, 'decor');
+    }
+  };
+  if (m.visit && m.visit.snap && Array.isArray(m.visit.snap.decor)) {
+    // Pending visitor previews move and turn immediately, but only an accepted
+    // host snapshot earns a placement effect. A rejected preview stays quiet.
+    for (const row of m.visit.snap.decor) { const def = gardenDecor(row[0]); if (def) record({ uid: 'vd' + (def.layer === 'ground' ? 'g' : '') + row[1] + '_' + row[2], def, x: row[1], y: row[2], r: row[3], v: row[4] }); }
+  } else for (const d of m.decor) record(d);
+  _gdp.decorFeedback = { root, scope, rows: now };
+}
 
 /* ---------- pointer: click, sweep, drag ---------- */
 function _gdpBindStage(box) {
   box.addEventListener('pointermove', (ev) => {
     let pr = _gdp.press;
     // the button came up where we could not see it (outside the window, another window): the press is over, whatever it was doing
-    if (pr && ev.pointerType === 'mouse' && ev.buttons === 0) { _gdp.press = null; pr = null; if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); if (_gdp.sweep) _gdpSweepEnd(); }
+    if (pr && ev.pointerType === 'mouse' && ev.buttons === 0) { _gdpDragCancel(pr); _gdp.press = null; pr = null; if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); if (_gdp.sweep) _gdpSweepEnd(); }
     // a click may wobble a little (a mouse, a trackpad): only more than a few pixels is a drag. A press that wobbled 5 pixels used to be thrown away.
     if (pr && (Math.abs(ev.clientX - pr.x0) > 9 || Math.abs(ev.clientY - pr.y0) > 9)) pr.moved = true;
     if (pr && pr.hold) { if (typeof gardenHoldMove === 'function') gardenHoldMove(ev); return; }   // holding the button on the ground: you keep walking to the pointer
@@ -365,10 +447,10 @@ function _gdpBindStage(box) {
     _gdpHover(ev);
   });
   box.addEventListener('pointerleave', () => { if (_gdp.press) return; if (typeof _gw !== 'undefined') _gw.hoverBug = ''; box.dataset.hover = ''; gameCursor(box, ''); gardenHoverCardHide(); _gdpGhostClear(); const st = _gdp.root && _gdp.root.querySelector('.gd-status'); if (st) st.hidden = true; });
-  box.addEventListener('pointerleave', () => { _gdpHighlight(null); });
+  box.addEventListener('pointerleave', () => { _gdpSpriteHintChanged(_gdp.hoverSprite, true); _gdp.hoverSprite = null; _gdpHighlight(null); });
   // right-click a plant or a decoration: its bubble, right there
   box.addEventListener('contextmenu', (ev) => {
-    if (!_gdp.svg || !_gdp.svg.contains(ev.target) || _gdpPopOpen() || (typeof _gwFishBusy === 'function' && _gwFishBusy())) return;
+    if (!_gdp.svg || !_gdpStageContains(ev.target) || _gdpPopOpen() || (typeof _gwFishBusy === 'function' && _gwFishBusy())) return;
     const m = gardenHere(), cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell);
     ev.preventDefault();
     if (_gdpMode() === 'decorate' || _gdp.moving || _gdpTool() === 'seed') { _gdpEsc(); return; }   // in games a right click puts down what you carry
@@ -381,11 +463,11 @@ function _gdpBindStage(box) {
   const touches = new Map();
   const pinchEnd = (ev) => { touches.delete(ev.pointerId); if (touches.size < 2) _gdp.pinch = null; };
   box.addEventListener('pointerdown', (ev) => {
-    if (ev.pointerType === 'touch' && _gdp.svg && _gdp.svg.contains(ev.target)) {
+    if (ev.pointerType === 'touch' && _gdp.svg && _gdpStageContains(ev.target)) {
       touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
-      if (touches.size === 2) { const [a, b] = [...touches.values()]; _gdp.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) }; _gdp.press = null; _gdp.sweep = null; return; }
+      if (touches.size === 2) { const [a, b] = [...touches.values()]; _gdp.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y) }; _gdpDragCancel(_gdp.press); _gdp.press = null; _gdp.sweep = null; return; }
     }
-    if (_gdp.pinch || ev.button !== 0 || !_gdp.svg || !_gdp.svg.contains(ev.target)) return;
+    if (_gdp.pinch || ev.button !== 0 || !_gdp.svg || !_gdpStageContains(ev.target)) return;
     const cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell);
     _gdp.press = { x0: ev.clientX, y0: ev.clientY, it, cell, moved: false, id: ev.pointerId };
     const mode = _gdpMode(), tool = _gdpTool();
@@ -421,8 +503,8 @@ function _gdpBindStage(box) {
     if (pr.moved && pr.drag) { _gdpDragDrop(ev, pr); return; }
     if (!pr.moved) _gdpClick(pr.it, pr.cell, ev);
   });
-  box.addEventListener('pointercancel', () => { _gdp.press = null; if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); if (_gdp.sweep) _gdpSweepEnd(); _gdpGhostClear(); });
-  box.addEventListener('lostpointercapture', () => { if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); });
+  box.addEventListener('pointercancel', () => { _gdpDragCancel(_gdp.press); _gdp.press = null; if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); if (_gdp.sweep) _gdpSweepEnd(); _gdpGhostClear(); });
+  box.addEventListener('lostpointercapture', () => { if (_gdp.press) { _gdpDragCancel(_gdp.press); _gdp.press = null; if (_gdp.sweep) _gdpSweepEnd(); } if (typeof gardenHoldEnd === 'function') gardenHoldEnd(); });
   box.addEventListener('keydown', (ev) => { if (ev.target !== box && ev.target && ev.target.closest && ev.target.closest('button, a, input, select, textarea') && (ev.key === ' ' || ev.key === 'Enter')) return; _gdpKey(ev); });
   box.addEventListener('focus', () => { if (!_gdp.cur) _gdp.cur = { x: GARDEN_WORLD.start.x, y: GARDEN_WORLD.start.y, kb: false }; });
 }
@@ -534,6 +616,7 @@ function _gdpSweepEnd() {
   _gdpRefreshChromeSoon();
 }
 function _gdpSplash(p) {
+  if (window.GardenNative && GardenNative.active()) { if (window.GardenNativeActions) GardenNativeActions.effect('water', (p.x + p.fp / 2) * GARDEN_WORLD.cellW, GARDEN_WORLD.sky + (p.y + p.fp) * GARDEN_WORLD.cellH - 3, { width: p.fp * GARDEN_WORLD.cellW * .78, height: p.fp * GARDEN_WORLD.cellH * .4 }); return; }
   if (!gardenMotionOn() || !_gdp.svg) return;
   const fx = _gdp.svg.querySelector('.gd-fx'); if (!fx) return;
   const W = GARDEN_WORLD, x = (p.x + p.fp / 2) * W.cellW, y = W.sky + (p.y + p.fp) * W.cellH - 10;
@@ -554,15 +637,19 @@ function _gdpDragMove(ev) {
   const it = isPlant ? gardenPlantById(m, pr.it.uid) : gardenDecorById(m, pr.it.uid); if (!it) return;
   const node = _gdp.svg.querySelector(`.gd-it[data-uid="${CSS.escape(pr.it.uid)}"]`);
   if (node) node.classList.add('is-lifted');
-  const gh = _gdp.svg.querySelector('.gd-ghost'), W = GARDEN_WORLD;
+  if (!pr.lifted) { pr.lifted = true; _gdpPlacementFeedback('lift', it, isPlant ? 'plant' : 'decor'); }
   const why = _gdPlaceOk(m, it.def, cell.x, cell.y, isPlant ? 'plant' : 'decor', pr.it.uid);
-  const fw = isPlant ? it.def.fp || 1 : it.def.w || 1, fh = isPlant ? it.def.fp || 1 : it.def.h || 1;
-  if (gh) gh.innerHTML = `<rect class="gd-ghostcell${why ? ' is-bad' : ''}" x="${cell.x * W.cellW + 1}" y="${W.sky + cell.y * W.cellH + 1}" width="${fw * W.cellW - 2}" height="${fh * W.cellH - 2}" rx="4"/>`;
+  _gdpGhost(m, it.def, isPlant ? 'plant' : 'decor', cell.x, cell.y, pr.it.uid);
   pr.target = cell;
   gameCursor(_gdp.root.querySelector('.gd-stagebox'), why ? 'no' : 'grab');
 }
+function _gdpDragCancel(pr) {
+  if (!pr || !pr.drag) return;
+  const node = _gdp.svg && pr.it && _gdp.svg.querySelector(`.gd-it[data-uid="${CSS.escape(pr.it.uid)}"]`); if (node) node.classList.remove('is-lifted');
+  _gdpGhostClear();
+}
 function _gdpDragDrop(ev, pr) {
-  const node = _gdp.svg && _gdp.svg.querySelector('.gd-it.is-lifted'); if (node) node.classList.remove('is-lifted');
+  const node = _gdp.svg && pr.it && _gdp.svg.querySelector(`.gd-it[data-uid="${CSS.escape(pr.it.uid)}"]`); if (node) node.classList.remove('is-lifted');
   _gdpGhostClear();
   const cell = pr.target; if (!cell || !pr.it) return;
   const r = pr.it.kind === 'plant' ? gardenMovePlant(pr.it.uid, cell.x, cell.y) : gardenMoveDecor(pr.it.uid, cell.x, cell.y);
@@ -571,15 +658,19 @@ function _gdpDragDrop(ev, pr) {
 
 /* ---------- carrying a seed or decoration from a tray onto the garden ---------- */
 function _gdpCarryStart(kind, id, ev) {
+  _gdpCarryEnd();
   _gdp.carry = { kind, id, x0: ev.clientX, y0: ev.clientY, moved: false };
   window.addEventListener('pointermove', _gdpCarryMove);
   window.addEventListener('pointerup', _gdpCarryUp, { once: true });
+  window.addEventListener('pointercancel', _gdpCarryEnd);
+  window.addEventListener('blur', _gdpCarryEnd);
 }
 function _gdpCarryMove(ev) {
   const c = _gdp.carry; if (!c) return;
   if (Math.abs(ev.clientX - c.x0) + Math.abs(ev.clientY - c.y0) > 6) c.moved = true;
   if (!c.moved || !_gdp.svg) return;
   document.documentElement.classList.add('gd-carrying');
+  if (!_gdpStageContains(document.elementFromPoint(ev.clientX, ev.clientY))) { _gdpGhostClear(); return; }
   const cell = _gdpCellOf(ev), m = gardenHere();
   const def = c.kind === 'decor' ? gardenDecor(c.id) : gardenPlant(c.id);
   if (cell && def) _gdpGhost(m, def, c.kind === 'decor' ? 'decor' : 'plant', cell.x, cell.y); else _gdpGhostClear();
@@ -588,7 +679,9 @@ function _gdpCarryUp(ev) {
   const c = _gdp.carry; _gdpCarryEnd();
   if (!c) return;
   if (!c.moved) return;   // a click: the tray's own handler picks it
-  _gdp.carriedAt = Date.now();   // clock-ok: the click that follows a drag is not a pick
+  // A release over a bag, dialog or other overlay does not target its ground.
+  // Read the actual hit instead of pointer-capture's original event target.
+  if (!_gdpStageContains(document.elementFromPoint(ev.clientX, ev.clientY))) return;
   const cell = _gdp.svg ? _gdpCellOf(ev) : null;
   if (!cell) return;
   const r = c.kind === 'decor' ? gardenPlaceDecor(c.id, cell.x, cell.y, 0) : gardenPlantAt(c.id, cell.x, cell.y);
@@ -597,7 +690,11 @@ function _gdpCarryUp(ev) {
 }
 function _gdpCarryEnd() {
   window.removeEventListener('pointermove', _gdpCarryMove);
+  window.removeEventListener('pointerup', _gdpCarryUp);
+  window.removeEventListener('pointercancel', _gdpCarryEnd);
+  window.removeEventListener('blur', _gdpCarryEnd);
   document.documentElement.classList.remove('gd-carrying');
+  if (_gdp.carry && _gdp.carry.moved) _gdp.carriedAt = Date.now();   // clock-ok: a completed or cancelled drag's click is not a pick
   if (_gdp.carry) { _gdp.carry = null; _gdpGhostClear(); }
 }
 
@@ -625,6 +722,7 @@ function _gdpKey(ev) {
 }
 /** Esc or a right click: put down whatever you are holding. True when there was something. */
 function _gdpEsc() {
+  if (_gdp.carry) { _gdpCarryEnd(); return true; }
   if (_gdp.moving) { gardenMoveEnd(); return true; }
   if (_gh.bubble) { gardenBubbleClose(); gardenSpotMark(null); return true; }
   if (_gh.bag) { _gh.bag = false; _ghBag(); _gh.bar = ''; gardenHudPaint(gardenHere()); return true; }

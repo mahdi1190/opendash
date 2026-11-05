@@ -170,16 +170,29 @@ function _schEnsureInit() {
     }
   });
   new MutationObserver((list) => {
-    let added = false, removed = false;
+    const added = new Set();
+    let removed = false;
     for (const m of list) {
-      if (m.type === 'childList') { if (m.addedNodes.length) added = true; if (m.removedNodes.length) removed = true; continue; }
+      if (m.type === 'childList') {
+        // A moving garden actor is not a new scene. Scan the added subtree,
+        // rather than the whole app, and only sweep when a host was removed.
+        if (m.target.closest && m.target.closest('.gd-svg')) continue;
+        for (const node of m.addedNodes) if (node.nodeType === 1) added.add(node);
+        if (!removed) for (const node of m.removedNodes) {
+          if (node.nodeType === 1 && (node.matches('.ap-composed[data-anim]') || node.querySelector('.ap-composed[data-anim]'))) { removed = true; break; }
+        }
+        continue;
+      }
       const t = m.target;
       if (t === document.documentElement) { for (const rec of _schHosts.values()) _schUpdate(rec); continue; }
       const rec = _schHosts.get(t);
       if (rec) _schUpdate(rec);
     }
     if (removed) _schSweep();
-    if (added) sceneHostScan(document);
+    for (const node of added) {
+      if (!node.isConnected || added.has(node.parentElement)) continue;
+      sceneHostScan(node);
+    }
   }).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) _schHiddenAt = _schNowMs();
@@ -240,11 +253,11 @@ function _schMount(el) {
       // work done (78-scene-canvas.js warmUp), so the first seconds on screen play as smoothly as the rest
       // the persistent bake cache (78-scene-cache.js) for a live scene of the library as it is (no preview data, no weather
       // override): the next load restores its bake instead of baking again, and paints its kept first frame meanwhile
-      const cache = _schCacheId(rec);
+      const cache = _schCacheId(rec), maxFps = el.closest('#od-splash, .od-seq, .ap-cine, .auk-welcome') ? 60 : 0;
       // a scene with a prebaked manifest (78-scene-player.js): its static picture from the build-time images, the renderer only
       // for what moves; when the images cannot be had, the live canvas path below (the fallback)
-      if (_schPrebaked(rec, canvas, { lod, season, L })) { /* the player */ } else
-      rec.r = sceneRendererCreate(canvas, rec.data, { lod, still: rec.still, season, L, time: () => _schTime(rec), flush, profile, cache, hideUntilReady: true,
+      if (_schPrebaked(rec, canvas, { lod, season, L, maxFps })) { /* the player */ } else
+      rec.r = sceneRendererCreate(canvas, rec.data, { lod, still: rec.still, season, L, maxFps, time: () => _schTime(rec), flush, profile, cache, hideUntilReady: true,
         onStill: (blob) => _schStill(rec, blob),
         onLive: () => _schRestart(rec),
         onReady: () => { if (!rec.tReady) rec.tReady = _schNowMs(); if (!rec.tShown) rec.tShown = rec.tReady; el.classList.add('sc-ready'); _schStillDone(rec); _schWant(rec); }, onError: (e) => _schFallback(rec, e) });
@@ -279,7 +292,7 @@ function _schPrebaked(rec, canvas, a) {
   if (!it || !it.prebaked || typeof scenePrebakedPlayer !== 'function' || (typeof window !== 'undefined' && window.__scenePrebakedOff)) return false;
   if (typeof fetch !== 'function' || typeof createImageBitmap !== 'function') return false;
   let fell = false;
-  rec.r = scenePrebakedPlayer(el, it, rec.data, { lod: a.lod, still: rec.still, season: a.season, L: a.L, time: () => _schTime(rec),
+  rec.r = scenePrebakedPlayer(el, it, rec.data, { lod: a.lod, still: rec.still, season: a.season, L: a.L, maxFps: a.maxFps, time: () => _schTime(rec),
     onReady: () => { if (!rec.tReady) rec.tReady = _schNowMs(); if (!rec.tShown) rec.tShown = rec.tReady; el.classList.add('sc-ready'); _schWant(rec); _schUpdate(rec); },
     onLive: () => { rec.tLive = _schNowMs(); el.classList.add('sc-live'); },
     onError: (e) => {
@@ -287,7 +300,7 @@ function _schPrebaked(rec, canvas, a) {
       if (typeof console !== 'undefined') console.warn('prebaked scene: the live canvas instead:', rec.ref, e && e.message);
       try { if (rec.r) rec.r.destroy(); } catch (e2) { /* gone */ }
       try {
-        rec.r = sceneRendererCreate(canvas, rec.data, { lod: a.lod, still: rec.still, season: a.season, L: a.L, time: () => _schTime(rec), hideUntilReady: true,
+        rec.r = sceneRendererCreate(canvas, rec.data, { lod: a.lod, still: rec.still, season: a.season, L: a.L, maxFps: a.maxFps, time: () => _schTime(rec), hideUntilReady: true,
           onReady: () => { if (!rec.tReady) rec.tReady = _schNowMs(); el.classList.add('sc-ready'); _schWant(rec); }, onError: (e2) => _schFallback(rec, e2) });
         const [w, h] = _schSize(el);
         if (w && h) rec.r.bakeIdle(w, h, { eager: true });
@@ -462,16 +475,18 @@ function _schPrepList() {
  * Prepare a list now, one at a time in idle slices: [{ ref, w, h (css px), at (ms), lod (1), sky (a host's data-sc-sky) }]. Resolves to
  * [{ ref, at, kept, restored, ms }] (restored: it was kept already). Tools call it directly.
  */
-async function sceneHostPrepare(list) {
+async function sceneHostPrepare(list, opts) {
+  const background = !!(opts && opts.background);
   const done = [];
   for (const job of list || []) {
-    if (document.hidden) break;
+    if (document.hidden || background && _schPrepareBlocked()) break;
     const it = _schItem(job.ref);
     if (!it || !it.composed) continue;
     const t0 = _schNowMs();
     const r = await new Promise((resolve) => {
-      let rr = null, fin = false;
-      const end = (v) => { if (fin) return; fin = true; setTimeout(() => { try { if (rr) rr.destroy(); } catch (e) { /* gone */ } }, 0); resolve(v); };
+      let rr = null, fin = false, timeout = 0, activity = 0;
+      const end = (v) => { if (fin) return; fin = true; clearTimeout(timeout); clearTimeout(activity); setTimeout(() => { try { if (rr) rr.destroy(); } catch (e) { /* gone */ } }, 0); resolve(v); };
+      const checkActivity = () => { if (fin) return; if (_schPrepareBlocked()) end(null); else activity = setTimeout(checkActivity, 250); };
       try {
         // a stand-in host: no attributes, so the live sky at job.at
         const el = document.createElement('span');
@@ -486,7 +501,10 @@ async function sceneHostPrepare(list) {
           onSaved: (kept) => end({ kept, restored: false }), onError: () => end(null),
           onReady: () => { const st = rr.stats(); if (st.restored) end({ kept: true, restored: true }); } });
         rr.bakeIdle(job.w, job.h);
-        setTimeout(() => end(null), 120000);
+        if (!fin) {
+          timeout = setTimeout(() => end(null), 120000);
+          if (background) activity = setTimeout(checkActivity, 250);
+        }
       } catch (e) { end(null); }
     });
     if (r) done.push(Object.assign({ ref: job.ref, at: job.at, ms: Math.round(_schNowMs() - t0) }, r));
@@ -495,16 +513,22 @@ async function sceneHostPrepare(list) {
 }
 /** Is a scene playing on the page now? (a prepare bake waits until none is) */
 function _schAnyPlaying() { for (const rec of _schHosts.values()) if (rec.r && rec.r.running) return true; return false; }
+/** Optional background work yields to a game or opening, including one started during a bake. */
+function _schPrepareBlocked() {
+  return document.hidden || document.documentElement.classList.contains('gd-immersive')
+    || !!document.querySelector('#od-splash, .ap-cine, .auk-welcome') || _schAnyPlaying();
+}
 /** Run the prepare list in idle time when no scene plays, then again in 10 minutes. */
 function sceneHostPrepareSoon(delayMs) {
   if (typeof window === 'undefined' || typeof sceneStoreOn !== 'function' || !sceneStoreOn()) return;
   clearTimeout(_schPrepTimer);
   _schPrepTimer = setTimeout(function run() {
     if (_schPrepBusy) return;
-    if (document.hidden || _schAnyPlaying()) { _schPrepTimer = setTimeout(run, 30000); return; }
+    if (_schPrepareBlocked()) { _schPrepTimer = setTimeout(run, 30000); return; }
     const go = () => {
+      if (_schPrepareBlocked()) { _schPrepTimer = setTimeout(run, 30000); return; }
       _schPrepBusy = true;
-      sceneHostPrepare(_schPrepList()).catch(() => []).then(() => { _schPrepBusy = false; sceneHostPrepareSoon(_SCH_PREP_EVERY_MS); });
+      sceneHostPrepare(_schPrepList(), { background: true }).catch(() => []).then(() => { _schPrepBusy = false; sceneHostPrepareSoon(_SCH_PREP_EVERY_MS); });
     };
     if (typeof requestIdleCallback === 'function') requestIdleCallback(go, { timeout: 5000 }); else go();
   }, delayMs == null ? 20000 : delayMs);

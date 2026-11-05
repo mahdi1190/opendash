@@ -76,7 +76,7 @@ function gartEmoteRun(id, o) {
   const motion = _ptMotionOk() && _ptFun() !== 'off', anims = [], timers = [];
   node.classList.add('gpl-emote');
   for (const [part, frames] of comp) for (const el of node.querySelectorAll(_PE_SEL[part])) {
-    try { const a = el.animate(frames, { duration: row.ms, fill: row.hold ? 'forwards' : 'none', easing: 'linear' }); if (!motion) { a.pause(); a.currentTime = row.ms * (row.hold ? 1 : 0.5); } anims.push(a); } catch (e) { /* an old browser */ }
+    try { const a = gardenVisualAnimate(el, frames, { duration: row.ms, fill: row.hold ? 'forwards' : 'none', easing: 'linear' }); if (!motion) { a.pause(); a.currentTime = row.ms * (row.hold ? 1 : 0.5); } anims.push(a); } catch (e) { /* an old browser */ }
   }
   const H = { anims, timers, node };
   // on a seat the figure is raised to it (the walker leaves this transform alone while you stand still)
@@ -98,11 +98,22 @@ function _peSit() {
 }
 /* ---------- the wheel ---------- */
 const _PE_ORDER = Object.freeze(['wave', 'cheer', 'clap', 'sit', 'bow', 'shrug', 'dance', 'twirl', 'backflip', 'waltz', 'jazz']);
+function _peWheelClose(restore) {
+  const wheel = _pe.wheel; _pe.wheel = null;
+  if (wheel) wheel.remove(); document.removeEventListener('pointerdown', _peOutside, true);
+  if (!restore || !wheel) return;
+  const origin = wheel._peOrigin, box = _gw && _gw.box;
+  const focus = origin && origin.isConnected && origin.getClientRects().length ? origin : box && box.isConnected ? box : null;
+  if (focus && focus.focus) focus.focus({ preventScroll: true });
+}
 function gartEmoteWheel(force) {
-  if (_pe.wheel && force !== true) { _pe.wheel.remove(); _pe.wheel = null; document.removeEventListener('pointerdown', _peOutside, true); return; }
+  if (_pe.wheel && !_pe.wheel.isConnected) _peWheelClose(false);
+  if (_pe.wheel && force !== true) { _peWheelClose(true); return; }
   const box = _gw && _gw.box; if (!box) return;
-  if (_pe.wheel) _pe.wheel.remove();
+  const origin = _pe.wheel ? _pe.wheel._peOrigin : document.activeElement;
+  if (_pe.wheel) _peWheelClose(false);
   const w = _ptEl('div', 'pew'); w.setAttribute('role', 'menu'); w.setAttribute('aria-label', 'Moves');
+  w._peOrigin = origin;
   const ids = _PE_ORDER.filter(id => GART_EMOTES[id]), n = ids.length, R = 132;
   ids.forEach((id, i) => {
     const e = GART_EMOTES[id], own = gartEmoteOwned(id), a = -Math.PI / 2 + (i / n) * Math.PI * 2;
@@ -129,7 +140,8 @@ function gartEmoteWheel(force) {
   // stand it above the gardener
   try { const m = _gw.node.getScreenCTM(), r = box.getBoundingClientRect(); w.style.left = Math.max(150, Math.min(r.width - 150, m.e - r.left)) + 'px'; w.style.top = Math.max(150, Math.min(r.height - 150, m.f - r.top - 40)) + 'px'; } catch (e) { w.style.left = '50%'; w.style.top = '50%'; }
   document.addEventListener('pointerdown', _peOutside, true);
+  const first = w.querySelector('button'); if (first) first.focus({ preventScroll: true });
 }
-function _peOutside(ev) { if (_pe.wheel && !_pe.wheel.contains(ev.target) && !(ev.target.closest && ev.target.closest('[data-quick="emote"]'))) gartEmoteWheel(); }
+function _peOutside(ev) { if (_pe.wheel && !_pe.wheel.contains(ev.target) && !(ev.target.closest && ev.target.closest('[data-quick="emote"]'))) _peWheelClose(false); }
 /** The walker tells us it moved: sitting ends. */
 function gartEmoteMoved() { if (_pe.hold) gartEmoteStop(); }

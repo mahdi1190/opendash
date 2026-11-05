@@ -8,7 +8,8 @@
      gardenArt(id, o) -> an SVG fragment ('<g>…</g>'), or '' (the engine then draws its placeholder)
        o {kind: 'plant'|'decor'|'visitor'|'tile'|'crop'|'seed'|'tool'|'bouquet', stage 0..4,
           season, variant 0..7, size 's'|'m'|'l', t 0..1, tod 'dawn'|'day'|'dusk'|'night', r 0..3,
-          thirsty, overgrown, ripe, silhouette, uid}
+          thirsty, overgrown, ripe, silhouette, uid, nativeHealth?}
+       nativeHealth keeps the plant's health pose in a retained gart-health group, separate from weeds and ripe marks.
        (0, 0) is the ground anchor at the bottom centre of the footprint; 64 units = one cell; plants grow
        up to about -64 * look.h. Explicit colours only, no references, no text: the photo mode paints the
        garden onto a canvas. Deterministic: the same inputs give the same string.
@@ -269,7 +270,7 @@ function _gartOpts(def, o, cat, kind) {
   const out = Object.assign({}, o, {
     kind, id: String(o.id || ''), cat, look, stage, s5: stage, season, variant, tod, night: tod === 'night', dusk: tod === 'dusk' || tod === 'dawn', t, size,
     lod: size === 's' ? 0 : size === 'l' ? 2 : 1, dn: size === 's' ? 0.5 : size === 'l' ? 1 : 0.75, r: Math.max(0, Math.min(3, Math.round(+o.r || 0))),
-    thirsty: !!o.thirsty, overgrown: !!o.overgrown, ripe: !!o.ripe, silhouette: !!o.silhouette, anim: !o.silhouette,
+    thirsty: !!o.thirsty, nativeHealth: !!o.nativeHealth, overgrown: !!o.overgrown, ripe: !!o.ripe, silhouette: !!o.silhouette, anim: !o.silhouette,
     main: GART.HEX.test(String(main)) ? main : null,
     col: GART.HEX.test(String(main)) ? GART.tone3(main) : null,
     col2: GART.HEX.test(String(look.c2)) ? GART.tone3(look.c2) : null,
@@ -291,10 +292,10 @@ function _gartFit(def, o) {
   return def.fit === 'unit' ? Math.min((U - 8) / b[0], (U - 8) / b[1]) : 1;
 }
 /** One flat colour for the almanac's undiscovered entry: every fill and stroke the same, no motion. */
-function _gartSilhouette(s, col) {
+function _gartSilhouette(s, col, nativeHealth) {
   // glows and faint washes (shadows, halos, dew, highlights) would turn into solid blobs: drop them first
   s = s.replace(/<g class="gda-glow"[^>]*>(?:(?!<\/g>).)*<\/g>/g, '').replace(/<(?:path|ellipse)[^>]* opacity="0?\.(?:[0-3]\d*)"[^>]*\/>/g, '');
-  return s.replace(/(fill|stroke)="#[0-9a-fA-F]{6}"/g, (m, k) => `${k}="${col}"`).replace(/ opacity="[\d.]+"/g, '').replace(/ class="[^"]*"/g, '').replace(/ style="[^"]*"/g, '');
+  return s.replace(/(fill|stroke)="#[0-9a-fA-F]{6}"/g, (m, k) => `${k}="${col}"`).replace(/ opacity="[\d.]+"/g, '').replace(/ class="[^"]*"/g, m => nativeHealth && m === ' class="gart-health"' ? m : '').replace(/ style="[^"]*"/g, '');
 }
 /** Thirsty: the plant droops a little (shorter, leaning), never browns. */
 function _gartDroop(s, r) { return `<g transform="matrix(1 0 ${GART.f1(0.06 + r() * 0.04)} 0.9 0 0)">${s}</g>`; }
@@ -359,7 +360,12 @@ function gardenArt(id, o) {
     const fr = GART.rng(GART.hash('flags|' + id + '|' + opts.t));
     if (kind === 'plant') {
       const bw = def.box[0] * 0.5, bh = def.box[1];
-      if (opts.thirsty && opts.stage > 0) s = _gartDroop(s, fr);
+      if (opts.nativeHealth) {
+        // Reserve the same flags draw in both poses so weeds, sparkles and soil never move on watering.
+        const lean = GART.f1(0.06 + fr() * 0.04);
+        const health = opts.thirsty && opts.stage > 0 ? `matrix(1 0 ${lean} 0.9 0 0)` : 'matrix(1 0 0 1 0 0)';
+        s = `<g class="gart-health" transform="${health}">${s}</g>`;
+      } else if (opts.thirsty && opts.stage > 0) s = _gartDroop(s, fr);
       if (opts.overgrown && opts.stage > 1) s += _gartWeeds(opts, fr, bw * 0.9);
       if (opts.ripe && opts.stage >= 3 && !opts.silhouette) s += _gartRipe(fr, bw, bh * (opts.stage === 4 ? 0.9 : 0.6));
     }
@@ -370,7 +376,7 @@ function gardenArt(id, o) {
     }
     // 2.23: no decoration is all thin line: fine strokes (cords, rails, wires) get a little more weight
     if (kind === 'decor' && !(opts.cat && opts.cat.layer === 'ground')) s = s.replace(/ stroke-width="(0?\.\d+|1(?:\.\d+)?|2)"/g, (m, w) => ` stroke-width="${Math.round(+w * 13) / 10}"`);
-    if (opts.silhouette) s = _gartSilhouette(s, '#5d6658');
+    if (opts.silhouette) s = _gartSilhouette(s, '#5d6658', opts.nativeHealth);
     else if (kind !== 'tile' && kind !== 'seed' && !(opts.cat && opts.cat.layer === 'ground')) {
       // the line stays the same weight on screen, whatever the drawing's own scale; it is painted behind the fill, so small shapes keep their size
       s = `<g stroke-width="${Math.round(0.95 / kk * 100) / 100}" stroke-linejoin="round" paint-order="stroke">${_gartInk(s)}</g>`;

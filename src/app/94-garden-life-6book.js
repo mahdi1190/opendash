@@ -1,7 +1,7 @@
 /* ============================================================
    GARDEN LIFE, the Nature book (2.23). A tidy collection: silhouettes until you have found something, the day you first saw it, hints for where and when. It is a section of the Almanac (the Notice board).
 
-     gardenLifeFound(kind, id)  kind 'c' creature, 'e' surprise, 'k' keepsake: note it (the first time), pay once, show the little card. Synced in state.garden.disc as 'lf.<kind>.<id>': <first day>.
+     gardenLifeFound(kind, id, o)  kind 'c' creature, 'e' surprise, 'k' keepsake: note it (the first time), pay once. Automatic sightings stay in Recent; {userAction:true} answers a real hello/pickup. Synced in state.garden.disc as 'lf.<kind>.<id>': <first day>.
      gardenLifeHas(kind, id)    have you found it?
      gardenLifeBookTab(el, m)   the panel
      gardenLifeFacts()          {creatures, surprises, keepsakes, rare, found: {c: {id: day}, e, k}} for anything that wants to unlock by them: pet unlock rows can say {life: 'fox'} or {lifeCount: 10}
@@ -12,12 +12,12 @@
    ============================================================ */
 const GL_ECON = Object.freeze({ coins: Object.freeze({ common: 1, uncommon: 2, rare: 4, epic: 8, legendary: 15 }), xp: Object.freeze({ common: 1, uncommon: 2, rare: 3, epic: 5, legendary: 8 }), keepsake: 1, dayCoins: 12 });
 const _GL_SHELVES = Object.freeze([['insect', 'Insects', 'bug'], ['bird', 'Birds', 'bird'], ['animal', 'Animals', 'paw-print'], ['pond', 'Pond life', 'waves'], ['surprise', 'Surprises', 'sparkles'], ['keep', 'Keepsakes', 'gem']]);
-const _glb = { shelf: '', queue: [], showing: false };
+const _glb = { shelf: '' };
 
 function _glKey(kind, id) { return `lf.${kind}.${id}`; }
 function gardenLifeHas(kind, id) { try { return !!_gdG().disc[_glKey(kind, id)]; } catch (e) { return false; } }
 function _glDefOf(kind, id) { return kind === 'c' ? GL_CREATURE.get(id) : kind === 'e' ? GL_EGG.get(id) : GL_KEEPSAKE.get(id); }
-function gardenLifeFound(kind, id) {
+function gardenLifeFound(kind, id, o) {
   try {
     const def = _glDefOf(kind, id); if (!def || !gardenReady()) return false;
     const g = _gdG(), key = _glKey(kind, id);
@@ -25,8 +25,8 @@ function gardenLifeFound(kind, id) {
     g.disc[key] = _gdToday();
     if (kind === 'c' && gardenVisitor(id) && !g.disc[id]) g.disc[id] = _gdToday();   // the Almanac's Visitors page knows it too
     gardenLifeSettle(true);
-    _glbShow(kind, def);
-    if (kind === 'k' && typeof gardenCatchMoment === 'function') gardenCatchMoment('keep', id, { isNew: true });
+    _glbShow(kind, def, o);
+    if (kind === 'k' && o && o.userAction && typeof gardenCatchMoment === 'function') gardenCatchMoment('keep', id, { isNew: true });
     return true;
   } catch (e) { console.error('[garden life]', e); return false; }
 }
@@ -56,25 +56,15 @@ function gardenLifeSettle(save) {
   }
   if (changed || save) { if (typeof _gdSave === 'function') _gdSave(); }
 }
-/* ---------- the little card when you find something new: not a toast, it is part of the game ---------- */
-function _glbShow(kind, def) {
-  _glb.queue.push({ kind, def });
-  if (!_glb.showing) _glbNext();
-}
-function _glbNext() {
-  const it = _glb.queue.shift(); if (!it) { _glb.showing = false; return; }
-  const box = typeof _gw !== 'undefined' && _gw.root ? _gw.root.querySelector('.gd-stagebox') : null;
-  if (!box) { _glb.showing = false; _glb.queue.length = 0; return; }
-  _glb.showing = true;
-  const r = _glReward(it.kind, it.def), n = document.createElement('button'); n.type = 'button'; n.className = 'gl-found';
-  n.setAttribute('aria-label', `New in your Nature book: ${it.def.name}. Open the book.`);
-  n.innerHTML = `<span class="gl-found-art">${_glbArt(it.kind, it.def, 56)}</span><span class="gl-found-t"><small>New in your Nature book</small><b>${esc(it.def.name)}</b></span><span class="gl-found-c">+${r.c}</span>`;
-  n.onclick = () => { _glb.shelf = _glbShelfOf(it.kind, it.def); n.remove(); clearTimeout(n._t); _glb.showing = false; _glb.queue.length = 0; if (typeof gardenPopupOpen === 'function') gardenPopupOpen('nature'); };
-  const top = gardenMessageHost() || box;
-  top.insertBefore(n, top.querySelector(':scope > .gd-msg'));   // (over the message line, never on top of it)
-  _glbFit(n);
-  if (typeof gameCheer === 'function') gameCheer(null, { quiet: true, sound: true, at: { x: 0, y: 0 } });
-  n._t = setTimeout(() => { n.classList.add('is-out'); setTimeout(() => { n.remove(); _glbNext(); }, 320); }, 3600);
+/* ---------- discovery feedback: keep the book, not a parade of automatic cards ---------- */
+function _glbShow(kind, def, o) {
+  const r = _glReward(kind, def), paid = !!_gdG().disc['lp.' + kind + '.' + def.id];
+  const text = `New in your Nature book: ${def.name}.` + (paid ? ` ${r.c} coin${r.c === 1 ? '' : 's'} and ${r.x} XP.` : ' Its reward will be paid on a later day.');
+  // The sighting and payment already happened above. Do not defer a card that
+  // could later interrupt a fishing bite or another activity the player chose.
+  // A picked-up keepsake has its existing catch presentation as the main reply.
+  const explicit = !!(o && o.userAction) && kind !== 'k';
+  gardenMessage(text, { ambient: !explicit, source: 'nature:' + kind + ':' + def.id, icon: 'book-open', ...(explicit ? { action: { label: 'Nature book', run: () => { _glb.shelf = _glbShelfOf(kind, def); gardenPopupOpen('nature'); } } } : {}) });
 }
 function _glbShelfOf(kind, def) { return kind === 'e' ? 'surprise' : kind === 'k' ? 'keep' : def.group; }
 /** A picture for the book: the creature's kit art at rest, in an svg of its own, framed by its real size. */

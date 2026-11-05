@@ -1,7 +1,8 @@
 /* ============================================================
    ONE LIVING GARDEN (2.28.0, docs/dev/GARDEN_TOGETHER.md section 12). The owner, 31 Oct 2026: "I want to see a bird that my friend's pet reacts to, and vice versa."
    In a live visit THE HOST OWNS the garden's life. Their engine (94-garden-life-*.js) spawns the creatures, moves them and decides what they do; this file tells everyone there:
-     gl:cr   the whole list of creatures about, about every 0.7 s while one moves (never per frame): {u, e (kind), x, y (tenths of a cell), h (height), f (facing), k (the clip it is in)}.
+     gl:cr   the whole list of creatures about, about every 0.7 s while one moves (never per frame): {u, e (kind), x, y (tenths of a cell), h (height), f (facing), k (the clip it is in), m? (ground/air/water)}.
+             Optional presentation: d sink hundredths (burrowing), b bank tenths of a degree, p raised perch, v false when hidden, z row override hundredths of a cell.
              The list is complete each time, so a lost message costs nothing and a creature that is no longer listed has gone. Guests draw them (a ghost: the same art, clips and markup,
              no brain) and ease towards each position; with Fun Off or an id this version does not know, nothing is drawn.
      fx cr   react (the host: a creature answers someone's hello), poke (a guest clicked one: to the host alone), look and greet (what the pets do)
@@ -22,11 +23,23 @@ function gardenLiveActorAt(slot) { const A = _gll.actors.get(slot); return A ? {
 function gardenLiveCr(e, id, o) { if (_gll.role === 'host' && _glh.on && _glhAnyone() && _GLC_ID.test(String(id))) _glhSend('all', 'fx', Object.assign({ c: 'cr', e, i: String(id) }, o || {})); }
 function gardenLiveEgg(id) { if (_gll.role === 'host' && _glh.on && _glhAnyone() && _GLC_ID.test(String(id))) _glhSend('all', 'fx', { c: 'egg', e: 'fire', i: String(id) }); }
 const _glcNum = (v, a, b) => Math.max(a, Math.min(b, Math.round(v)));
+function _glcMedium(value) { return value === 'ground' || value === 'air' || value === 'water' ? value : ''; }
+function _glcPoseOut(c) {
+  const pose = {}, sink = _glcNum((Number(c.sink) || 0) * 100, 0, 100), bank = _glcNum((Number(c.bank) || 0) * 10, -160, 160);
+  if (sink) pose.d = sink; if (bank) pose.b = bank;
+  if (c.perched && c.perched.lift > 0) pose.p = true;
+  if (c.hidden) pose.v = false;
+  if (Number.isFinite(c.S.z)) pose.z = _glcNum(c.S.z * 100, 0, 5000);
+  return pose;
+}
+function _glcPoseIn(row) {
+  return { sink: Number.isInteger(row.d) && row.d >= 0 && row.d <= 100 ? row.d / 100 : 0, bank: Number.isInteger(row.b) && row.b >= -160 && row.b <= 160 ? row.b / 10 : 0, raisedPerch: row.p === true, hidden: row.v === false, z: Number.isInteger(row.z) && row.z >= 0 && row.z <= 5000 ? row.z / 100 : null };
+}
 
 /* ---------- the host: who is about, and what happens to them ---------- */
 function _glcHostStart() {
   if (_glc.spr || typeof gardenWorldAdd !== 'function') return;
-  _glc.spr = gardenWorldAdd({ id: 'gll-life', svg: '', x: 0, y: 0, still: true, update(dt) { _glcHostTick(dt); } });
+  _glc.spr = gardenWorldAdd({ id: 'gll-life', simulationOnly: true, svg: '', x: 0, y: 0, still: true, update(dt) { _glcHostTick(dt); } });
 }
 function _glcHostStop() {
   if (_glc.spr) { _glc.spr.remove(); _glc.spr = null; }
@@ -42,9 +55,10 @@ function _glcHostTick(dt) {
   if (!_glh.on || !_glhAnyone() || typeof _gl === 'undefined' || !_gl.W || !_gl.W.own) return;
   _glc.tickT -= dt; if (_glc.tickT > 0) return;
   _glc.tickT = 0.7;
+  if (!_glhLooking()) return;
   const now = Date.now(), cs = [];   // clock-ok: spacing
   for (const c of _gl.list) { if (c.gone || c.left || !c.S) continue; cs.push(c); if (cs.length >= 8) break; }
-  const l = cs.map(c => Object.assign({ u: c.id % 100000, e: c.def.id, x: _glcNum(c.S.x * 10, 0, 700), y: _glcNum(c.S.y * 10, 0, 500), h: _glcNum(c.S.lift || 0, 0, 255), f: c.faceTo > 0 ? 1 : 0 }, c.clip && _GLC_ID.test(c.clip) ? { k: c.clip } : {}));
+  const l = cs.map(c => Object.assign({ u: c.id % 100000, e: c.def.id, x: _glcNum(c.S.x * 10, 0, 700), y: _glcNum(c.S.y * 10, 0, 500), h: _glcNum(c.S.lift || 0, 0, 255), f: c.faceTo > 0 ? 1 : 0 }, c.clip && _GLC_ID.test(c.clip) ? { k: c.clip } : {}, _glcMedium(c.medium) ? { m: c.medium } : {}, _glcPoseOut(c)));
   const sig = JSON.stringify(l);
   // every 2 s while one moves, 7 s when they rest (an older guest lets one go after 9 s; a guest takes each leg at the pace they come in), nothing while nobody is looking
   if (_glhLooking() && (!_glc.sentAt || (sig !== _glc.sig && now - _glc.sentAt >= 2000) || (l.length && now - _glc.sentAt >= 7000))) { _glc.sig = sig; _glc.sentAt = now; _glhSend('all', 'cr', { l }); }
@@ -65,7 +79,7 @@ function _glcNotice(cs, now) {
     }
     for (const { P, w } of pets) {
       const k = w + '|' + (P.look && P.look.species);
-      if (P.busy > 0 || P.tx != null || P.wow || P.pose === 'sleep' || now - (_glc.petAt.get(k) || 0) < 14000) continue;
+      if (P.busy > 0 || P.tx != null || P.wow || P.pose === 'sleep' || typeof petGardenPlayBusy === 'function' && petGardenPlayBusy(P) || now - (_glc.petAt.get(k) || 0) < 14000) continue;
       if (Math.hypot(P.x - c.S.x, (P.y - c.S.y) * 1.4) > 3.2 || Math.random() > 0.55) continue;
       _glc.petAt.set(k, now);
       gardenLiveCr('look', c.id, { to: w });
@@ -76,7 +90,7 @@ function _glcNotice(cs, now) {
   }
   for (let i = 0; i < pets.length; i++) for (let j = i + 1; j < pets.length; j++) {
     const a = pets[i], b = pets[j], k = a.w + ':' + j + (b.w);
-    if (Math.hypot(a.P.x - b.P.x, (a.P.y - b.P.y) * 1.4) > 1.9 || now - (_glc.greetAt.get(k) || 0) < 30000 || a.P.busy > 0 || b.P.busy > 0) continue;
+    if (Math.hypot(a.P.x - b.P.x, (a.P.y - b.P.y) * 1.4) > 1.9 || now - (_glc.greetAt.get(k) || 0) < 30000 || a.P.busy > 0 || b.P.busy > 0 || a.P.tx != null || b.P.tx != null || typeof petGardenPlayBusy === 'function' && (petGardenPlayBusy(a.P) || petGardenPlayBusy(b.P))) continue;
     _glc.greetAt.set(k, now);
     gardenLiveCr('greet', a.w, { to: b.w });
     _gllPetGreet(a.P, b.P);
@@ -84,12 +98,14 @@ function _glcNotice(cs, now) {
 }
 /** A pet looks, creeps and pounces: the pet kit's own clips. */
 function _gllPetNotice(P, x, y) {
-  if (!P || P.wow || typeof P.clip !== 'function') return;
+  if (!P || P.wow || P.tx != null || typeof P.clip !== 'function' || typeof petGardenPlayBusy === 'function' && petGardenPlayBusy(P)) return;
   const near = Math.hypot(x - P.x, y - P.y) > 1.6;
   const act = () => { P.dir = x >= P.x ? 1 : -1; P.sit({ eyes: 'open', mouth: 'open' }); const n = typeof petClipDef === 'function' && petClipDef('pounce') && Math.random() < 0.5 ? 'pounce' : 'look'; P.clip(n, 900, () => { P.sit(); P.busy = 1.2; }, { quiet: true }); };
   if (near && typeof P.walkTo === 'function') P.walkTo(x + (P.x < x ? -1 : 1) * 1.1, y + 0.2, true, act); else act();
 }
 function _gllPetGreet(a, b) {
+  if (a && a.tx != null || b && b.tx != null) return;
+  if (typeof petGardenPlayBusy === 'function' && (petGardenPlayBusy(a) || petGardenPlayBusy(b))) return;
   for (const [P, Q] of [[a, b], [b, a]]) { if (!P || P.wow) continue; P.tx = null; P.dir = Q.x >= P.x ? 1 : -1; P.sit({ eyes: 'happy', mouth: 'open' }); P.clip('wiggle', 1400, () => { if (P.hearts) P.hearts(); P.sit(); P.busy = 1; }, { quiet: true }); }
 }
 function _glcPetOf(slot) {
@@ -126,20 +142,26 @@ function _glcGuestCr(l) {
     let g = _glc.ghosts.get(r.u);
     if (g && (g.W !== W || g.c.gone)) { _glc.ghosts.delete(r.u); g = null; }
     if (!g) { if (_glc.ghosts.size >= 8) continue; g = _glcGhostNew(def, r, W); _glc.ghosts.set(r.u, g); }
+    const medium = _glcMedium(r.m);
+    if (medium && medium !== g.c.medium) { g.c.medium = medium; _glSyncMedium(g.c); }
     // (from where it is now to where it was just said to be, in the time until the next word: smooth at any rate, and never ahead of the host)
     const T = Math.max(0.3, Math.min(3, (now - g.at) / 1000));
     g.tx = r.x / 10; g.ty = r.y / 10; g.tl = r.h; g.c.faceTo = r.f ? 1 : -1; g.at = now;
-    if (g.c.S) { g.vx = (g.tx - g.c.S.x) / T; g.vy = (g.ty - g.c.S.y) / T; g.vl = (g.tl - (g.c.S.lift || 0)) / T; g.left = T; }
-    if (r.k && r.k !== g.c.clip && !g.reactUntil) _glClip(g.c, r.k);
+    const pose = _glcPoseIn(r); g.ts = pose.sink; g.tb = pose.bank; g.c.raisedPerch = pose.raisedPerch; g.c.hidden = pose.hidden;
+    if (g.c.S) { g.vx = (g.tx - g.c.S.x) / T; g.vy = (g.ty - g.c.S.y) / T; g.vl = (g.tl - (g.c.S.lift || 0)) / T; g.vs = (g.ts - g.c.sink) / T; g.vb = (g.tb - g.c.bank) / T; g.left = T; g.c.S.z = pose.z; }
+    if (typeof r.k === 'string' && _GLC_ID.test(r.k)) {
+      g.hostClip = r.k;
+      if (r.k !== g.c.clip && !g.reactUntil) _glClip(g.c, r.k);
+    }
   }
   for (const [u, g] of _glc.ghosts) if (!seen.has(u)) g.c.fadeOut = true;
 }
 function _glcGhostNew(def, r, W) {
-  const c = { def, art: gardenLifeArt(def), id: -r.u, seed: r.u, medium: def.habitat, fx: r.f ? 1 : -1, faceTo: r.f ? 1 : -1, bank: 0, fade: 0, sink: 0, onScreen: true, perched: null, tokens: '' };
-  const g = { c, W, tx: r.x / 10, ty: r.y / 10, tl: r.h, at: Date.now(), reactUntil: 0 };   // clock-ok: when it was last heard of
-  _glClip(c, r.k || 'rest');
+  const pose = _glcPoseIn(r), c = { def, art: gardenLifeArt(def), id: -r.u, seed: r.u, medium: _glcMedium(r.m) || def.habitat, fx: r.f ? 1 : -1, faceTo: r.f ? 1 : -1, bank: pose.bank, fade: 0, sink: pose.sink, raisedPerch: pose.raisedPerch, hidden: pose.hidden, onScreen: true, perched: null, tokens: '' };
+  const g = { c, W, tx: r.x / 10, ty: r.y / 10, tl: r.h, ts: pose.sink, tb: pose.bank, at: Date.now(), reactUntil: 0, hostClip: typeof r.k === 'string' && _GLC_ID.test(r.k) ? r.k : 'rest' };   // clock-ok: when it was last heard of
+  _glClip(c, g.hostClip);
   c.S = W.add({
-    id: 'gl-cr-' + r.u, svg: _glMarkup(c), x: g.tx, y: g.ty, lift: r.h, hit: def.hit || (def.habitat === 'air' ? 0.34 : 0.5), label: def.name, cursor: 'hand', ground: false,
+    id: 'gl-cr-' + r.u, svg: _glMarkup(c), nodeAttrs: { class: 'gd-sprite gl-c gl-h-' + def.habitat, 'data-med': c.medium, ...(c.hidden ? { display: 'none' } : {}) }, x: g.tx, y: g.ty, lift: r.h, z: pose.z, hit: def.hit || (def.habitat === 'air' ? 0.34 : 0.5), hitUp: def.habitat === 'air' ? 10 : 12, label: def.name, cursor: 'hand', ground: false,
     update: (dt) => _glcGhostStep(g, dt),
     onClick: () => { if (_glvLive()) _glvSend('fx', { c: 'cr', e: 'poke', i: String(r.u) }); },   // the host decides what it does
   });
@@ -149,8 +171,9 @@ function _glcGhostStep(g, dt) {
   const c = g.c, S = c.S; if (!S || c.gone) { _glc.ghosts.delete(-c.id); return; }
   if (Date.now() - g.at > 20000 && _glvLive() && _glv.why !== 'resume') c.fadeOut = true;   // clock-ok: the host has gone quiet
   _glBind(c);
-  if (g.left > 0) { const u = Math.min(dt, g.left); S.x += g.vx * u; S.y += g.vy * u; S.lift += g.vl * u; g.left -= u; }
-  if (g.reactUntil && Date.now() > g.reactUntil) { g.reactUntil = 0; _glClip(c, 'rest'); }   // clock-ok: a reaction's length
+  if (c.node) { if (c.hidden) { if (c.node.getAttribute('display') !== 'none') c.node.setAttribute('display', 'none'); } else if (c.node.getAttribute('display') === 'none') c.node.removeAttribute('display'); }
+  if (g.left > 0) { const u = Math.min(dt, g.left); S.x += g.vx * u; S.y += g.vy * u; S.lift += g.vl * u; c.sink += g.vs * u; c.bank += g.vb * u; g.left -= u; if (g.left <= 0) { c.sink = g.ts; c.bank = g.tb; } }
+  if (g.reactUntil && Date.now() > g.reactUntil) { g.reactUntil = 0; _glClip(c, g.hostClip || 'rest'); }   // clock-ok: a reaction's length
   c.onScreen = true;
   _glPaint(c, dt);
   if (c.gone) _glc.ghosts.delete(-c.id);
@@ -235,7 +258,7 @@ function _glcClaim(u, w) {
 }
 /** What the winner keeps, on their own computer, within the caps a gift has anyway. */
 function _glcGive(kind, id, u) {
-  if (kind === 'keep') { if (GL_KEEPSAKE.has(id) && typeof gardenLifeFound === 'function') gardenLifeFound('k', id); }
+  if (kind === 'keep') { if (GL_KEEPSAKE.has(id) && typeof gardenLifeFound === 'function') gardenLifeFound('k', id, { userAction: true }); }
   else if (kind === 'fish') { const item = id + '-0'; if (_gll.role === 'visit') _glvGot('pk' + u, 'fish', item); else if (gsocGiftOk('fish', item)) { const g = _gdG(); g.led['gl.g.pk' + u] = { d: _gllToday(), k: 'gl', i: { ['fish:' + item]: 1 }, n: 0 }; if (typeof gardenCatchReceived === 'function') gardenCatchReceived('fish', item); _gdSave(); } }
   if (typeof gameCheer === 'function') gameCheer(null, { text: '🎁', tone: 'gold' });
 }

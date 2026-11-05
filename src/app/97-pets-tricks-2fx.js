@@ -24,6 +24,7 @@ const _fxPick = (v) => (Array.isArray(v) ? v[Math.floor(Math.random() * v.length
 const _fxRng = (v, d) => (Array.isArray(v) ? _fxR(v[0], v[1]) : v == null ? d : v);
 /** How strong a layer is at u (0 to 1): in, hold, out. */
 const _fxEnv = (u, a, b) => (u <= 0 || u >= 1 ? 0 : u < a ? _fxE.s(u / a) : u > 1 - b ? _fxE.s((1 - u) / b) : 1);
+function _fxCanvasPath(d, context) { return context && context.native ? { nativePath: d } : new Path2D(d); }
 
 /* ---------- sprites: drawn once, stamped many times ---------- */
 function _fxSprite(kind, c) {
@@ -202,9 +203,9 @@ const PET_FX = {
         const H = pts[N], N1 = pts[N - 3], ang = Math.atan2(H.y - N1.y, H.x - N1.x), hs = W0 * 1.5 * (1 + (u > 0.46 && u < 0.6 ? 0.2 * Math.sin((u - 0.46) / 0.14 * 3.14) : 0));
         g.translate(H.x, H.y); g.rotate(ang + (Math.cos(ang) < 0 ? 0 : 0)); if (Math.cos(ang) < 0) g.scale(1, -1); g.scale(hs / 50, hs / 50);
         const roar = u > 0.46 && u < 0.62 ? 1 : 0.35;
-        const skull = new Path2D('M-34 -18C-16 -32 8 -34 26 -22C40 -14 56 -12 66 -6C72 -2 70 4 60 5C44 7 26 7 12 9L-6 26L-30 18C-44 8 -44 -8 -34 -18z'), jaw = new Path2D(`M-14 14C4 ${14 + roar * 8} 30 ${16 + roar * 16} 54 ${12 + roar * 22}C40 ${26 + roar * 24} 6 ${34 + roar * 12} -20 24z`);
+        const skull = _fxCanvasPath('M-34 -18C-16 -32 8 -34 26 -22C40 -14 56 -12 66 -6C72 -2 70 4 60 5C44 7 26 7 12 9L-6 26L-30 18C-44 8 -44 -8 -34 -18z', g), jaw = _fxCanvasPath(`M-14 14C4 ${14 + roar * 8} 30 ${16 + roar * 16} 54 ${12 + roar * 22}C40 ${26 + roar * 24} 6 ${34 + roar * 12} -20 24z`, g);
         g.fillStyle = '#ffb040'; g.globalAlpha = 0.72 * env; g.fill(skull); g.fill(jaw);
-        g.fillStyle = '#ffe9a8'; g.globalAlpha = 0.5 * env; g.fill(new Path2D('M-24 -16C-8 -26 12 -28 24 -18C10 -18 -6 -14 -20 -6z'));
+        g.fillStyle = '#ffe9a8'; g.globalAlpha = 0.5 * env; g.fill(_fxCanvasPath('M-24 -16C-8 -26 12 -28 24 -18C10 -18 -6 -14 -20 -6z', g));
         // horns and whiskers
         g.strokeStyle = '#ffe08a'; g.lineCap = 'round'; g.globalAlpha = 0.9 * env; g.lineWidth = 5; g.beginPath(); g.moveTo(-22, -24); g.quadraticCurveTo(-46, -46 - Math.sin(t * 3) * 3, -84, -52); g.moveTo(-4, -30); g.quadraticCurveTo(-24, -56, -58, -74); g.stroke();
         g.lineWidth = 2.2; g.beginPath(); g.moveTo(48, -6); g.quadraticCurveTo(70 + Math.sin(t * 4) * 10, -36, 100, -28 + Math.sin(t * 3) * 14); g.moveTo(44, 10); g.quadraticCurveTo(70, 34 + Math.sin(t * 3.4) * 10, 104, 26 - Math.sin(t * 3) * 12); g.stroke();
@@ -367,6 +368,7 @@ function _fxMotion() { return !(typeof _ptMotionOk === 'function' && !_ptMotionO
 /** Play a spectacle. Only one at a time. Returns {stop()}; o.done when it ends. */
 function petFxRun(def, host, o) {
   o = o || {};
+  if (window.GardenNative && GardenNative.active() && window.GardenNativePetFx) return GardenNativePetFx.run(def, host, o);
   if (_fxS.live) _fxS.live.stop(true);
   const can = document.createElement('canvas'); can.className = 'pfx-canvas'; can.setAttribute('aria-hidden', 'true');
   const W = window.innerWidth, H = window.innerHeight, dpr = Math.min(window.devicePixelRatio || 1, 1.25) * (def.res || 1);   // res: the soft ones need fewer pixels

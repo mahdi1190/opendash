@@ -54,8 +54,9 @@ function _gscToday() { try { return todayStr(); } catch (e) { return new Date(_g
 function _gscFun() { try { return typeof gardenFun === 'function' ? gardenFun() : 'subtle'; } catch (e) { return 'subtle'; } }
 function _gscReduced() { return !!(window.Motion && Motion.prefersReduced && Motion.prefersReduced()); }
 function _gscServer() { return typeof _serverAvailable === 'undefined' || !!_serverAvailable; }
-async function _gscApi(path, body) {
+async function _gscApi(path, body, opts) {
   const init = body === undefined ? { method: 'GET', cache: 'no-store' } : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+  if (opts && opts.signal) init.signal = opts.signal;
   const r = await fetch(path, init);
   let j = null;
   try { j = await r.json(); } catch (e) { j = null; }

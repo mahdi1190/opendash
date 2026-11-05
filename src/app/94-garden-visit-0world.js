@@ -86,9 +86,10 @@ function gardenVisitMayMove(uid) {
 function _gdvAsked() {
   const out = [];
   for (const P of _glv.pending.values()) if (P.f) out.push({ t: P.t, f: P.f, pend: 'pend' });
-  if (typeof gardenReady === 'function' && gardenReady()) for (const [k, e] of Object.entries(_gdG().led)) if (k.startsWith('gl.o.') && e && e.q && !e.ok && e.to === _gdv.fid) out.push({ t: e.t, f: { p: e.p, x: e.x, y: e.y }, pend: 'wait' });
+  if (typeof gardenReady === 'function' && gardenReady()) for (const [k, e] of Object.entries(_gdG().led)) if (k.startsWith('gl.o.') && e && e.q && !e.ok && e.to === _gdv.fid) out.push({ t: e.t, f: { p: e.p, x: e.x, y: e.y, ...(e.r != null ? { r: e.r } : {}) }, pend: 'wait' });
   return out;
 }
+function _gdvBy(kind, x, y) { return _glvLive() ? _gll.by.get(kind + '|' + x + '|' + y) || (kind === 'g' && _gll.byVersion !== 2 ? _gll.by.get('d|' + x + '|' + y) || '' : '') : ''; }
 function _gdvRows(s) {
   const plants = s.plants.map(r => ({ id: r[0], x: r[1], y: r[2], s: r[3], v: r[4], fl: r[5] || 0 })), decor = s.decor.map(r => ({ id: r[0], x: r[1], y: r[2], r: r[3], v: r[4] }));
   const cell = (list, f) => list.findIndex(q => q.x === f.x && q.y === f.y && (!f.p || q.id === f.p));
@@ -98,15 +99,27 @@ function _gdvRows(s) {
   for (const { t, f, pend } of _gdvAsked()) {
     const pi = f.p != null ? cell(plants, f) : -1, di = f.p != null ? cell(decor, f) : -1;
     if (t === 'plant') { if (pi < 0) plants.push({ id: f.p, x: f.x, y: f.y, s: 0, v: 0, fl: 0, pend, mine: true }); }
-    else if (t === 'place') { if (di < 0) decor.push({ id: f.p, x: f.x, y: f.y, r: 0, v: 0, pend, mine: true }); }
+    else if (t === 'place') { if (di < 0) decor.push({ id: f.p, x: f.x, y: f.y, r: (Number(f.r) || 0) & 3, v: 0, pend, mine: true }); }
     else if (t === 'water' && pi >= 0) { plants[pi].fl &= ~1; plants[pi].pend = pend; }
     else if (t === 'weed' && pi >= 0) { plants[pi].fl &= ~2; plants[pi].pend = pend; }
     else if (t === 'feed' && pi >= 0) plants[pi].pend = pend;
     else if (t === 'harvest' && pi >= 0) { plants[pi].fl &= ~4; plants[pi].s = Math.min(3, plants[pi].s); plants[pi].pend = pend; }
     else if (t === 'dig' && pi >= 0) plants.splice(pi, 1);
     else if (t === 'take' && di >= 0) decor.splice(di, 1);
-    else if (t === 'move') { const list = pi >= 0 ? plants : decor, i = pi >= 0 ? pi : di; if (i >= 0) { list[i].x = f.tx; list[i].y = f.ty; list[i].pend = pend; } }
-    else if ((t === 'turn' || t === 'give') && di >= 0) decor[di].pend = pend;
+    else if (t === 'move') {
+      const list = pi >= 0 ? plants : decor, i = pi >= 0 ? pi : di;
+      if (i >= 0) {
+        const row = list[i], def = pi < 0 && gardenDecor(row.id), layer = pi >= 0 ? 'p' : def && def.layer === 'ground' ? 'g' : 'd';
+        row.by = _gdvBy(layer, row.x, row.y); row.mine = row.mine || !!row.by && row.by === _glv.selfName;
+        row.x = f.tx; row.y = f.ty; row.pend = pend;
+      }
+    }
+    else if (t === 'turn' && di >= 0) {
+      const row = decor[di], def = gardenDecor(row.id); row.pend = pend;
+      if (def && f.r !== 1 && def.rot) row.r = ((Number(row.r) || 0) + 1) & 3;
+      else if (def && def.v > 1) row.v = ((Number(row.v) || 0) + 1) % def.v;
+    }
+    else if (t === 'give' && di >= 0) decor[di].pend = pend;
   }
   return { plants, decor };
 }
@@ -115,19 +128,19 @@ function gardenVisitModel() {
   const s = _gdvSnap(); if (!s) return null;
   const now = _gdNow(), key = [_gdv.fid, _gdv.rev, _gd.rev, Math.floor(now / 60000), gardenFun()].join('|');
   if (_gdv.memo && _gdv.memoKey === key) return _gdv.memo;
-  const today = _gdToday(), season = s.season, tod = _gdTod(now, season, s), rain = { now: s.wx > 0, snow: s.wx === 2, last: s.wx ? now : 0, label: s.wx === 2 ? 'Snow' : s.wx === 1 ? 'Rain' : '' };   // (their weather: what the snapshot said)
+  const today = _gdToday(), season = s.season, tod = _gdTod(now, season, s), rain = { now: s.wx === 1, snow: s.wx === 2, last: s.wx === 1 ? now : 0, label: s.wx === 2 ? 'Snow' : s.wx === 1 ? 'Rain' : '' };   // snow shares their sky without becoming a rain watering bonus
   // (a friend on an older version has no lake or woods in their areas: the lake is always there, the woods from level 4)
   const landOf = gardenLandsOfSnap(s), areas = landOf.areas; if (!areas.includes('lake')) areas.push('lake'); if (s.lv >= 4 && !areas.includes('woods')) areas.push('woods');
   gardenLandSet(landOf.land);
   gardenWorksSet(s.wk || []);
   if (typeof gardenDesignShow === 'function') gardenDesignShow(s.dz || null);   // their design decides where things stand and where you can walk. It stays in memory: nothing of it reaches your save
   if (typeof gardenBuildLooksSet === 'function') gardenBuildLooksSet(s.bk);   // how they have painted their buildings
-  const rows = _gdvRows(s), by = (kind, x, y) => (_glvLive() ? _gll.by.get(kind + '|' + x + '|' + y) || '' : '');
+  const rows = _gdvRows(s), by = _gdvBy;
   const plants = [], decor = [], cats = {};
   let blooms = 0, ripe = 0, thirsty = 0, trees = 0;
   for (const r of rows.plants) {
     const def = gardenPlant(r.id); if (!def) continue;
-    const uid = 'vp' + r.x + '_' + r.y, name = by('p', r.x, r.y), isRipe = !!(r.fl & 4), dry = !!(r.fl & 1);
+    const uid = 'vp' + r.x + '_' + r.y, name = r.by == null ? by('p', r.x, r.y) : r.by, isRipe = !!(r.fl & 4), dry = !!(r.fl & 1);
     plants.push({ uid, def, x: r.x, y: r.y, fp: def.fp || 1, t: (gardenHash(uid) % 1000) / 1000, hc: 0, planted: 0, stage: r.s, hours: 0, thirsty: dry, dry: 0, lastWater: 0, ripe: isRipe, overgrown: !!(r.fl & 2), inSeason: true, nextIn: null, variant: r.v, heart: def.special === 'heart' ? s.heart : undefined, by: name, mine: !!r.mine || (!!name && name === _glv.selfName), pend: r.pend || '' });
     if (r.s >= 4 && ['flower', 'wild', 'water', 'exotic'].includes(def.cat)) blooms++;
     if (isRipe) ripe++;
@@ -137,7 +150,7 @@ function gardenVisitModel() {
   }
   for (const r of rows.decor) {
     const def = gardenDecor(r.id); if (!def) continue;
-    const name = by('d', r.x, r.y);
+    const name = r.by == null ? by(def.layer === 'ground' ? 'g' : 'd', r.x, r.y) : r.by;
     decor.push({ uid: 'vd' + (def.layer === 'ground' ? 'g' : '') + r.x + '_' + r.y, def, x: r.x, y: r.y, r: r.r, v: r.v, at: 0, by: name, mine: !!r.mine || (!!name && name === _glv.selfName), pend: r.pend || '' });
   }
   const occ = new Map(), cellOf = (x, y) => { const k = x + ',' + y; let c = occ.get(k); if (!c) occ.set(k, c = {}); return c; };

@@ -1225,7 +1225,20 @@ function _wfrWallImages(ctx, env, S) {
   return 1;
 }
 /** Clip a context (in scene units) to everything but these screen polygons (even-odd with a frame-sized rectangle). */
+const _wfrHolePaths = new WeakMap();
 function _wfrHoleClip(cx, polys) {
+  // These polygons belong to one immutable scene geometry. Compile their
+  // winding once, rather than resubmitting every bank, deck and shore each frame.
+  if (typeof Path2D === 'function' && polys && typeof polys === 'object') {
+    let cached = _wfrHolePaths.get(polys);
+    if (!cached || cached.count !== polys.length) {
+      const p = new Path2D(); p.rect(-1e4, -1e4, 2e4, 2e4);
+      for (const P of polys) { p.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) p.lineTo(P[i][0], P[i][1]); p.closePath(); }
+      cached = { count: polys.length, path: p }; _wfrHolePaths.set(polys, cached);
+    }
+    cx.clip(cached.path, 'evenodd');
+    return;
+  }
   cx.beginPath(); cx.rect(-1e4, -1e4, 2e4, 2e4);
   for (const P of polys) { cx.moveTo(P[0][0], P[0][1]); for (let i = 1; i < P.length; i++) cx.lineTo(P[i][0], P[i][1]); cx.closePath(); }
   cx.clip('evenodd');
@@ -1240,8 +1253,8 @@ function _wfrWetClip(cx, wet, notOver) {
 
 /* ---------- browser: the bake (a generator run in slices) ---------- */
 /**
- * The bake of one renderer bake (env): prebake runs it for a few ms, the warm-up's unseen frames run 8 ms slices, a visible
- * frame finishes what is left at once. Fills S: the context (time, sky, materials), the plan, the chunk bitmaps and every
+ * The bake of one renderer bake (env): prebake starts it, prepare completes it in hidden slices before the canvas is ready.
+ * Fills S: the context (time, sky, materials), the plan, the chunk bitmaps and every
  * static's sprite and device transform (S.draw: the redraws reuse them), the shadow layer, the water, the lights.
  */
 function* _wfrBakeJob(env, S) {
@@ -1301,6 +1314,7 @@ function* _wfrBakeJob(env, S) {
   let plan = rec.frame.plan && rec.frame.planKey === pk ? rec.frame.plan : null;
   if (!plan) { plan = worldFramePlan(world, { season: S.season, nav: rec.driver && rec.driver.nav, regions: S.regions, absent: ab.set, ctx: S.tctx }); rec.frame.plan = plan; rec.frame.planKey = pk; }
   S.plan = plan;
+  S.hasRockingLive = plan.live.some(r => r.rocks);
   // the wind system moves only what is drawn live (the rest is baked: its sway is read by nothing in a frame)
   try { world._swayOnly = new Set(plan.live.map(r => r.ent)); } catch (e) { /* every static keeps its sway */ }
   // the decks of walkways drawn in perspective lie over the water like deck surfaces (planks; the water does not show through)
@@ -1350,6 +1364,8 @@ function* _wfrBakeJob(env, S) {
     yield;
   }
   S.stats.chunkPx = S.chunks.reduce((a, o) => a + (o.c ? o.w * o.h : 0), 0);
+  S.chunkByRef = new Map(S.chunks.map(o => [o.ch, o]));
+  S.lowDeckClips = ((S.wet && S.wet.decks) || []).filter(D => !Number.isFinite(D.s.y) || D.s.y < 0.6).map(D => D.scr);
   for (const r of plan.live) S.draw.set(r.id, { sp: null, M: _wfrM(env, r) });
   // the static night lights (look: library glow parts only; per-window seeded thresholds), before the water: lit windows reflect
   _wfrLightsPlan(env, S);
@@ -1396,12 +1412,22 @@ function* _wfrBakeJob(env, S) {
     let kept = cache.get(wk);
     if (!kept) {
       kept = [];
+      const farToNear = plan.recs.slice().sort((a, b) => b.z - a.z || (a.id < b.id ? -1 : 1));
+      const reflected = new Map(); let reflectedBytes = 0;
       for (const R of S.regions) {
         try {
           const draws = [];
-          for (const r of plan.recs.slice().sort((a, b) => b.z - a.z || (a.id < b.id ? -1 : 1))) {
+          for (const r of farToNear) {
             if (r.z < (R.dNear || 0) - 1 || r.box.x1 < R.box[0] || r.box.x0 > R.box[2] || r.box.y0 > R.box[3]) continue;
-            const img = _wfrImage(env, S, r, S.draw.get(r.id));
+            let img = reflected.get(r);
+            if (img === undefined) {
+              img = _wfrImage(env, S, r, S.draw.get(r.id));
+              // Several water regions may reflect the same wall or tree. Its
+              // pixels are identical in this bake; read them once, bounded to
+              // 32 MB, and release the temporary memo when the bake ends.
+              const bytes = img ? img.img.data.byteLength : 0;
+              if (reflectedBytes + bytes <= 32 * 1024 * 1024) { reflected.set(r, img); reflectedBytes += bytes; }
+            }
             if (img) draws.push({ id: r.id, z: r.z, contact: _wfrContact(R, r, cam), img: img.img, x: img.x, y: img.y });
             if (draws.length % 16 === 0) yield;
           }
@@ -1637,7 +1663,9 @@ function _wfrRun(S, ms) {
     while (!r.done && _wfrNow() - a < ms) r = S.job.next();
     if (r.done) S.ready = true;
   } catch (e) { S.ready = true; S.failed = String(e && e.message || e); S.stats.errors.push('bake: ' + S.failed); }
-  S.stats.bakeMs += _wfrNow() - a;
+  const took = _wfrNow() - a;
+  S.stats.bakeMs += took;
+  S.stats.maxPrepareSliceMs = Math.max(S.stats.maxPrepareSliceMs || 0, took);
 }
 
 /* ---------- browser: a frame ---------- */
@@ -1749,20 +1777,28 @@ function _wfrMirrorAgents(env, S, ctx, aRecs, tau) {
   if (typeof worldWaterContact !== 'function' || typeof worldWaterContactRow !== 'function') return 0;
   const vs = env.vs, ox = env.ox, oy = env.oy, cam = S.rec.world.cam;
   let n = 0;
+  const farToNear = aRecs.length > 1 ? aRecs.slice().sort((a, b) => b.z - a.z) : aRecs;
   for (const w of S.water) {
-    const R = w.R, PP = (Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip]).filter(P => Array.isArray(P) && P.length >= 3);
+    const R = w.R;
+    let clip = w.agentClip;
+    if (!clip || clip.vs !== vs || clip.ox !== ox || clip.oy !== oy) {
+      const PP = (Array.isArray(R.clips) && R.clips.length ? R.clips : [R.clip]).filter(P => Array.isArray(P) && P.length >= 3);
+      const p = typeof Path2D === 'function' ? new Path2D() : null;
+      if (p) for (const P of PP) { p.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) p.lineTo(q[0] * vs + ox, q[1] * vs + oy); p.closePath(); }
+      clip = w.agentClip = { vs, ox, oy, PP, path: p };
+    }
+    const PP = clip.PP;
     if (!PP.length) continue;
-    const over = aRecs.filter(r => r.box.x1 > R.box[0] && r.box.x0 < R.box[2] && r.box.y0 < R.box[3] && r.z >= (R.dNear || 0) - 1 && !/^air/.test(String(r.ent.attach || '')));
+    const over = farToNear.filter(r => r.box.x1 > R.box[0] && r.box.x0 < R.box[2] && r.box.y0 < R.box[3] && r.z >= (R.dNear || 0) - 1 && !/^air/.test(String(r.ent.attach || '')));
     if (!over.length) continue;
     const look = R.look || {}, k = Math.max(0, Math.min(1, (look.mirror == null ? 0.7 : look.mirror))) * 0.6;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.beginPath();
-    for (const P of PP) { ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy); ctx.closePath(); }
-    ctx.clip('nonzero');   // the parts of one water are wound one way (worldWaterPlan): nonzero is their union
+    if (clip.path) ctx.clip(clip.path, 'nonzero');
+    else { ctx.beginPath(); for (const P of PP) { ctx.moveTo(P[0][0] * vs + ox, P[0][1] * vs + oy); for (const q of P) ctx.lineTo(q[0] * vs + ox, q[1] * vs + oy); ctx.closePath(); } ctx.clip('nonzero'); }
     if (S.wet && S.wet.over.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, S.wet.over); }
     ctx.globalAlpha = k;
-    for (const r of over.sort((a, b) => b.z - a.z)) {
+    for (const r of over) {
       let c = null;
       try { c = _wfrContact(R, r, cam); } catch (e) { c = null; }
       if (!c) continue;
@@ -1852,7 +1888,7 @@ function _wfrDraw(env, ctx, t) {
   // a tool measuring the drawn figures (pops.mjs --browser sets S.figRec): every blit of every agent this frame (_wfrDrawMover0)
   S.figs = S.figRec ? (S.drawn.figs = []) : null;
   const tRecs = _wfrNow();
-  const sea = _wfrSea(L), live = S.plan.live.some(r => r.rocks) ? S.plan.live.map(r => (r.rocks ? _wfrRockRec(env, S, r, tau, sea) : r)) : S.plan.live;
+  const sea = _wfrSea(L), live = S.hasRockingLive ? S.plan.live.map(r => (r.rocks ? _wfrRockRec(env, S, r, tau, sea) : r)) : S.plan.live;
   const movers = live.concat(aRecs);
   const order = typeof worldFrameOrder === 'function' ? worldFrameOrder(S.plan.chunks, movers, null) : S.chunks.map(o => ({ kind: 'chunk', ref: o.ch })).concat(movers.map(r => ({ kind: 'agent', ref: r })));
   S.stats.orderMs = _wfrNow() - ta;
@@ -1905,7 +1941,7 @@ function _wfrDraw(env, ctx, t) {
   if (S.groundWalls && S.groundWalls.c) {
     // a deck laid over the water is nearer than the far bank's wall face behind it: the walls never draw over a low deck (the dark
     // band that cut a footbridge in two at the pond's stream, 16 Oct); a high bridge (y over 0.6 m) is judged by the draw order
-    const low = ((S.wet && S.wet.decks) || []).filter(D => !Number.isFinite(D.s.y) || D.s.y < 0.6).map(D => D.scr);
+    const low = S.lowDeckClips || [];
     ctx.save();
     if (low.length) { ctx.setTransform(vs, 0, 0, vs, ox, oy); _wfrHoleClip(ctx, low); }
     ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.drawImage(S.groundWalls.c, S.groundWalls.x, S.groundWalls.y); draws++;
@@ -1952,7 +1988,7 @@ function _wfrDraw(env, ctx, t) {
   }
   // 3. chunks and movers in true depth order, with the occluder redraws (clipped to the mover drawn just before); each chunk's lit
   // glass and halos right after it, each mover's lamps right after it (so whatever is nearer hides a light, as it hides the lamp)
-  const chunkOf = new Map(S.chunks.map(o => [o.ch, o])), litOf = S.lights && S.lights.byChunk ? S.lights.byChunk : null;
+  const chunkOf = S.chunkByRef || (S.chunkByRef = new Map(S.chunks.map(o => [o.ch, o]))), litOf = S.lights && S.lights.byChunk ? S.lights.byChunk : null;
   let clip = null, redraws = 0, clipOpen = false;
   for (const it of order) {
     if (clipOpen && it.kind !== 'redraw') { ctx.restore(); clipOpen = false; }
@@ -2032,6 +2068,12 @@ if (typeof sceneRenderPassDefine === 'function') {
       S.job = _wfrBakeJob(env, S);
       _wfrRun(S, env.still ? Infinity : 6);
     },
+    prepare(env, sliceMs) {
+      const S = env._wfr;
+      if (!S || S.ready) return true;
+      _wfrRun(S, sliceMs || 8);
+      return S.ready;
+    },
     frameGroup(env, grp, ctx, t) {
       const g = env.groups || [];
       if (!g.length || grp !== g[g.length - 1]) return 0;
@@ -2053,6 +2095,7 @@ if (typeof sceneRenderPassDefine === 'function') {
       const s = S.stats;
       return { ready: S.ready, chunks: S.chunks.filter(o => o.c).length, chunkSizes: S.chunks.filter(o => o.c).map(o => o.w + 'x' + o.h + '@' + o.x + ',' + o.y + ':' + o.ch.ents.length), chunkPx: s.chunkPx, chunksMade: s.chunksMade, chunksKept: s.chunksKept, statics: S.plan ? S.plan.recs.length : 0, live: S.plan ? S.plan.live.length : 0,
         agents: s.agents, redraws: s.redraws, occDraws: s.redraws, orderMs: Math.round(s.orderMs * 1000) / 1000, frameMs: Math.round(s.frameMs * 100) / 100, bakeMs: Math.round(s.bakeMs),
+        maxPrepareSliceMs: Math.round((s.maxPrepareSliceMs || 0) * 100) / 100,
         prof: s.prof ? Object.fromEntries(Object.entries(s.prof).filter(([k]) => k !== 'n').map(([k, v]) => [k, Math.round(v / Math.max(1, s.prof.n) * 100) / 100])) : null,
         materials: !!S.mat, shadows: !!S.shadow, water: (S.water || []).length, lights: S.lights ? S.lights.n : 0, tau: Math.round(s.tau * 100) / 100, errors: s.errors.slice(0, 5) };
     },

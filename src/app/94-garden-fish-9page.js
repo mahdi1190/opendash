@@ -102,7 +102,11 @@ function gardenLakeTab(el, m) {
   for (const id of events) { const e = GARDEN_LAKE_EVENTS[id]; if (e) { const p = _gdpEl('p', 'gca-ev'); p.innerHTML = `${icon(e.icon)}<b>${esc(e.name)}.</b> <span>${esc(e.says)}</span>`; F.appendChild(p); } }
   F.appendChild(_gdpEl('p', 'gca-p', `The gulls are over ${hot.name.toLowerCase()} today. ${hot.says}`));
   F.appendChild(_gdpEl('p', 'gca-p muted', _GCP_MOON[_gtMoon(today)] || ''));
-  if (!visit) { const known = gardenLakeKnownFor(gardenLakeSeed()).map(id => gardenFishDef(id)).filter(Boolean); F.appendChild(_gdpEl('p', 'gca-p muted', `Your lake is known for ${_gcpList(known.map(d => _gdG().fl[d.id] ? d.name.toLowerCase() : 'something you have not met yet'))}. A friend’s will be different: go and see.`)); }
+  if (!visit) {
+    const known = gardenLakeKnownFor(gardenLakeSeed()).map(id => gardenFishDef(id)).filter(Boolean), names = known.filter(d => _gdG().fl[d.id]).map(d => d.name.toLowerCase()), unseen = known.length - names.length;
+    const summary = names.length ? `Your lake is known for ${_gcpList(names.concat(unseen ? ['other fish you have not met yet'] : []))}.` : 'Your lake has its own favourite fish to discover.';
+    F.appendChild(_gdpEl('p', 'gca-p muted', summary + ' A friend’s will be different: go and see.'));
+  }
   const fest = gardenNextFestival(today);
   if (fest) {
     const what = fest.kind === 'bug' ? 'The bug-off' : 'The fishing festival';

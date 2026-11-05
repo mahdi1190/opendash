@@ -96,6 +96,8 @@
 [data-clip~="in-water"] .gl-dry { display: none; }
 [data-clip~="in-water"] .gl-frog { transform: translateY(2.6px) scaleY(.76); }
 [data-clip~="in-water"] .gl-throat { display: none; }
+[data-clip~="in-water"] .gl-leg-a, [data-clip~="in-water"] .gl-leg-b { display: none; }
+[data-clip~="in-water"] .gl-stand { transform: translateY(var(--gl-swim-depth, 0px)); }
 [data-clip~="float"] .gl-float { animation: gl-float 2.6s ease-in-out infinite alternate; }
 @keyframes gl-float { from { transform: translateY(0) rotate(-1.2deg); } to { transform: translateY(.7px) rotate(1.2deg); } }
 [data-clip~="dabble"] .gl-float { transform: rotate(38deg) translate(1px, 3px); transition: transform .4s; }

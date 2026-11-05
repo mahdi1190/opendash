@@ -224,6 +224,8 @@ function scenePrebakedPlayer(el, item, data, o) {
   let cssW = el.clientWidth || 1600, cssH = el.clientHeight || 900, season = o.season, Llive = o.L;
   let man = null, G = null, A = null, B = null, mix = { a: null, b: null, w: 0 }, r = null, live = false;
   let raf = 0, running = false, destroyed = false, shown = false, gen = 0, loadingPair = null, stars = [];
+  const frameInterval = Number.isFinite(o.maxFps) && o.maxFps > 0 ? 1000 / Math.min(240, o.maxFps) : 0;
+  let frameAt = null;
   let stack = null, skyC = null, upC = null, LY = null, gradeEl = null;
   const t00 = _scpbNow(), timeFn = o.time || (() => (_scpbNow() - t00) / 1000);
   const ph = { tl: [] }, tl = (s) => ph.tl.push(s + '@' + Math.round(_scpbNow() - t00));
@@ -326,7 +328,15 @@ function scenePrebakedPlayer(el, item, data, o) {
     if (live && r) r.frame(t); else frame1(t);
     frameTimes.push(_scpbNow() - a); if (frameTimes.length > 900) frameTimes.splice(0, 300);
   };
-  const loop = () => { raf = 0; if (!running || destroyed) return; if (shown) draw(timeFn()); raf = requestAnimationFrame(loop); };
+  const loop = (ts) => {
+    raf = 0;
+    if (!running || destroyed) return;
+    if (shown && (!frameInterval || frameAt == null || ts - frameAt >= frameInterval - 0.5)) {
+      frameAt = !frameInterval || frameAt == null ? ts : ts - Math.max(0, ts - frameAt) % frameInterval;
+      draw(timeFn());
+    }
+    if (running && !destroyed) raf = requestAnimationFrame(loop);
+  };
   /** The renderer over the first picture (idle time): the compiled scene (what moves), the frame sprites, a restore of the layout. */
   async function makeRenderer(my, ka) {
     const [C] = await Promise.all([_scpbJson(man, man.seasons[season].c), _scpbSprites(man, ka), _scpbLoadPass(man, A.S)]);
@@ -416,7 +426,7 @@ function scenePrebakedPlayer(el, item, data, o) {
     setLight(L) { if (L) relight(L); },
     setSeason(s) { if (!s || s === season) return; season = s; if (r) { r.destroy(); r = null; live = false; } if (gen) load(); },
     setLod() { /* the images are the scene at full detail */ },
-    start() { if (running || destroyed) return; running = true; if (!gen) load(); if (shown && !raf) raf = requestAnimationFrame(loop); },
+    start() { if (running || destroyed) return; running = true; frameAt = null; if (!gen) load(); if (shown && !raf) raf = requestAnimationFrame(loop); },
     stop() { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; },
     get running() { return running; },
     frame(t) { if (shown) draw(t || 0); },

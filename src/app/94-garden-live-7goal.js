@@ -1,7 +1,7 @@
 /* ============================================================
    SHARED GOALS (2.30, docs/dev/GARDEN_TOGETHER.md section 17). While friends are in a live garden the HOST'S page offers one joint quest at a time: "Catch 6 fish together", "Water 12 plants
-   together", "Net 5 bugs together" (GL_GOALS in 94-garden-live-0rules.js is the table). Everyone in the garden sees one small card with a progress bar and who did how much; when it is done there is a
-   line in the corner feed and a small thank-you for each person who took part.
+   together", "Net 5 bugs together" (GL_GOALS in 94-garden-live-0rules.js is the table). The Goals panel keeps its progress; a small world card appears while you do that activity or briefly after your part counts.
+   Passing suggestions stay in Recent. When it is done each person who took part still gets the normal completion and small thank-you.
 
    THE HOST OWNS THE GOAL. Its page picks it (from what the garden can really do: no water goal in the rain, no bug goal in winter), counts it, and tells everyone the WHOLE state each time (gl:goal: a
    lost message costs nothing, and someone who comes in half way is told at once). Guests only draw it. What counts is what the host's own page applied or confirmed:
@@ -21,7 +21,7 @@
      gardenLiveGoalSkip()          the host lets this one go
      _glgCount(w, c, n)            the host counts something somebody did (w is a slot, 0 the host)
    ============================================================ */
-const _glg = { cur: null, view: null, seen: new Set(), done: new Set(), lastC: '', endAt: 0, arriveAt: 0, tickT: 0, sendT: 0, sentAt: 0, started: { day: '', n: 0 }, hideT: 0, resendT: [], sig: '' };
+const _glg = { cur: null, view: null, seen: new Set(), done: new Set(), lastC: '', endAt: 0, arriveAt: 0, tickT: 0, sendT: 0, sentAt: 0, started: { day: '', n: 0 }, hideT: 0, resendT: [], sig: '', paintT: 0, attention: null };
 
 /* ---------- the host ---------- */
 function gardenLiveGoalsOn() { try { return ((_gdG().prefs || {}).glGoals) !== false; } catch (e) { return true; } }
@@ -128,6 +128,7 @@ function _glgCount(w, c, n) {
   const have = G.by[w] || 0, add = Math.max(0, Math.min(n | 0, glGoalCap(G.of) - have, G.of - G.n));
   if (!add) return 0;
   G.by[w] = have + add; G.n += add; G.at = Date.now();   // clock-ok: pacing
+  if (w === 0) _glgAttention(G.g);
   if (G.n >= G.of) _glgDone(); else { _glgShow(false); _glgSendSoon(); }
   return add;
 }
@@ -198,6 +199,7 @@ function _glgGuestIn(ev) {
   if (ev.st === 2) { if (_glg.view && _glg.view.g === ev.g) { _glg.view = null; gardenLiveGoalPaint(); } return; }
   if (_glg.done.has(ev.g)) return;   // (a repeat of the end)
   _glg.view = view;
+  if ((by[_glv.w] || 0) > (prev && prev.by[_glv.w] || 0)) _glgAttention(view.g);
   if (ev.st === 0) {
     if (!_glg.seen.has(ev.g)) { _glg.seen.add(ev.g); if (_glg.seen.size > 12) _glg.seen.delete(_glg.seen.values().next().value); if (!prev) _glgFeedLine('start', view); }
     else if (prev && ev.n * 2 >= ev.of && prev.n * 2 < ev.of) _glgFeedLine('half', view);
@@ -210,7 +212,7 @@ function _glgGuestIn(ev) {
   }
   gardenLiveGoalPaint();
 }
-function _glgGuestClear() { clearTimeout(_glg.hideT); _glg.view = null; _glg.seen.clear(); _glg.done.clear(); gardenLiveGoalPaint(); }
+function _glgGuestClear() { clearTimeout(_glg.hideT); _glg.view = null; _glg.attention = null; _glg.seen.clear(); _glg.done.clear(); gardenLiveGoalPaint(); }
 
 /* ---------- the reward: each person's own ---------- */
 function _glgItemName(k) {
@@ -242,22 +244,64 @@ function _glgThanks(view, fid) {
 function _glgText(def, view, done) { return (done ? def.d : def.t).replace('{n}', String(view.of)); }
 function _glgFeedLine(what, view) {
   const def = glGoalDef(view.c); if (!def) return;
-  _gllFeed(what === 'start' ? 'New goal: ' + _glgText(def, view) : 'Halfway there: ' + _glgText(def, view).toLowerCase());
+  gardenMessage(what === 'start' ? 'Shared goal: ' + _glgText(def, view) : 'Halfway there: ' + _glgText(def, view).toLowerCase(), { ambient: true, source: 'shared-goal:' + view.g + ':' + what, icon: def.icon });
 }
 function _glgCelebrate(view) {
   const def = glGoalDef(view.c); if (!def) return;
-  _gllFeed('Goal reached: ' + _glgText(def, view, true) + '!');
+  const me = _gll.role === 'host' ? 0 : _glv.w, tookPart = (view.by[me] || 0) > 0;
+  gardenMessage('Goal reached: ' + _glgText(def, view, true) + '!', { ambient: !tookPart, source: 'shared-goal:' + view.g + ':done', icon: def.icon });
+  if (!tookPart) return;
+  _glgAttention(view.g);
   if (typeof gameCheer === 'function' && gardenFun() !== 'off') { try { gameCheer(null, { text: '★', tone: 'gold' }); } catch (e) { /* only a sparkle */ } }
   if (typeof _fxSound === 'function' && gardenFun() !== 'off') { try { _fxSound('chime'); } catch (e) { /* only a sound */ } }
 }
 function _glgShown() { return (_gll.role === 'host' && _glh.on) || (_gll.role === 'visit' && typeof _glvLive === 'function' && _glvLive()); }
+function _glgAttention(g) { _glg.attention = { g, until: performance.now() + 8000 }; }
+/** This goal does not compete with another chosen activity. Tool selection and
+ * actual fishing/netting are local presentation only; counting stays host-owned. */
+function _glgRelevant(v) {
+  if (document.hidden || typeof _grm !== 'undefined' && _grm.on || typeof _ee !== 'undefined' && _ee.on || typeof _gdp !== 'undefined' && _gdp.pop || document.querySelector('.modal')) return false;
+  if (typeof _gwFishBusy === 'function' && _gwFishBusy()) return v.c === 'fish';
+  if (typeof _gw !== 'undefined' && _gw.netting) return v.c === 'bug';
+  if (typeof _gtgo !== 'undefined' && _gtgo.on || window.GardenActivityCamera && GardenActivityCamera.current()) return false;
+  const tool = typeof _gdpTool === 'function' ? _gdpTool() : 'hand';
+  if (tool === 'water') return v.c === 'water';
+  if (tool !== 'hand') return false;
+  return !!(_glg.attention && _glg.attention.g === v.g && performance.now() < _glg.attention.until);
+}
+/** Only fields rendered by the deliberate Goals summary, without local world-card relevance. */
+function gardenLiveGoalSummaryKey() {
+  const v = _glg.view; if (!v || !glGoalDef(v.c) || !_glgShown()) return '';
+  const me = _gll.role === 'host' ? 0 : _glv.w;
+  return [v.g, v.c, v.n, v.of, v.st, _gll.role, me, v.by[me] || 0].join('|');
+}
+/** Explicit access from the existing Goals panel, even when the world card is quiet. */
+function gardenLiveGoalSummary(el) {
+  const v = _glg.view, def = v && glGoalDef(v.c); if (!v || !def || !_glgShown()) return;
+  const me = _gll.role === 'host' ? 0 : _glv.w, section = _gdpEl('section', 'gd-goals');
+  section.appendChild(_gdpEl('h3', null, 'Shared goal'));
+  section.appendChild(_gdpEl('p', null, _glgText(def, v, v.st === 1)));
+  section.appendChild(_gdpEl('p', 'muted', `${v.n} of ${v.of} together · Your part: ${v.by[me] || 0}.`));
+  if (_gll.role === 'host' && v.st === 0) section.appendChild(_gdpBtn('Skip this shared goal', { kind: 'btn-ghost', run: () => { gardenLiveGoalSkip(); if (typeof gardenPopupRefresh === 'function') gardenPopupRefresh(); } }));
+  el.appendChild(section);
+}
 /** The card: one element, kept, with its parts updated in place (so the bar slides and nothing replays). */
 function gardenLiveGoalPaint(boxArg) {
+  const popup = typeof _gdp !== 'undefined' && _gdp.pop;
+  if (popup && popup.tab === 'goals' && popup.el.isConnected && typeof gardenPopupRefresh === 'function') {
+    const key = gardenLiveGoalSummaryKey();
+    if (popup.el._gdGoalViewKey !== key) { popup.el._gdGoalViewKey = key; gardenPopupRefresh(); }
+  }
   const box = boxArg || (typeof _gw !== 'undefined' ? _gw.box : null);
-  if (!box || !box.isConnected) return;
   const v = _glg.view, def = v ? glGoalDef(v.c) : null;
+  const here = !!(v && def && _glgShown() && typeof _gw !== 'undefined' && _gw.on && typeof _gdOnPage === 'function' && _gdOnPage());
+  // One slow, view-scoped watch also hides a card when a cast ends or an
+  // explicit contribution's short grace expires without another model save.
+  if (here && !_glg.paintT) _glg.paintT = setInterval(() => gardenLiveGoalPaint(), 1000);
+  else if (!here && _glg.paintT) { clearInterval(_glg.paintT); _glg.paintT = 0; _glg.attention = null; }
+  if (!box || !box.isConnected) return;
   let el = box.querySelector(':scope > .glg');
-  if (!v || !def || !_glgShown()) { if (el) el.remove(); _glg.sig = ''; return; }
+  if (!here || !_glgRelevant(v)) { if (el) el.remove(); _glg.sig = ''; return; }
   const me = _gll.role === 'host' ? 0 : _glv.w, nameOf = (w) => (w === me ? 'You' : String((_gll.actors.get(w) || {}).n || 'A friend').split(/\s+/)[0]);
   const parts = Object.entries(v.by).map(([w, n]) => [Number(w), n]).sort((a, b) => b[1] - a[1] || a[0] - b[0]);
   const sig = [v.g, v.n, v.of, v.st, _gll.role, parts.map(([w, n]) => w + ':' + n + ':' + nameOf(w)).join(',')].join('|');

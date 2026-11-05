@@ -21,21 +21,22 @@ function gardenLakeGround(sc, o) {
   const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky, a = gardenArea('lake'), season = sc.season, u = o.uid;
   const x0 = 0, y0 = base + a.y * ch, w = a.w * cw;   /* 2.23: the lake keeps its own width: new land starts east of it */
   const wa = a.water, wy = base + wa.y * ch, wh = wa.h * ch;
+  const lake = typeof gardenLakeGeometry === 'function' ? gardenLakeGeometry(o.interactive || o.friend ? null : sc, o.interactive || o.friend ? null : { detached: true }) : null, offsetX = a.x * cw;
+  const outline = lake ? lake.points.map((p, i) => `${i ? 'L' : 'M'}${_gwN(p.x * cw - offsetX)} ${_gwN(base + p.y * ch)}`).join('') + 'Z' : `M0 ${wy}H${w}V${wy + wh}H0Z`;
   const sand = _gdrTileCol('sand', season), [wTop, wBot] = _gwWater(sc);
   const frozen = season === 'winter' && sc.rain && sc.rain.snow;
-  let s = `<defs><linearGradient id="${u}-lake" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${frozen ? '#c8e0ee' : wTop}"/><stop offset="1" stop-color="${frozen ? '#9ec2d8' : wBot}"/></linearGradient></defs>`;
+  let s = `<defs><linearGradient id="${u}-lake" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${frozen ? '#c8e0ee' : wTop}"/><stop offset="1" stop-color="${frozen ? '#9ec2d8' : wBot}"/></linearGradient><clipPath id="${u}-lake-shape"><path d="${outline}"/></clipPath></defs>`;
   // the sand: two rows with a lighter wet band at the water's edge
-  s += `<rect x="${x0}" y="${y0}" width="${w}" height="${(wa.y - a.y) * ch + 2}" fill="${sand}"/>`;
-  s += `<rect x="${x0}" y="${wy - ch * 0.55}" width="${w}" height="${ch * 0.6}" fill="${_gdaShade(sand, -0.1)}" fill-opacity="0.55"/>`;
+  s += `<path d="${outline}" fill="none" stroke="${sand}" stroke-width="21" stroke-linejoin="round"/><path d="${outline}" fill="none" stroke="${_gdaShade(sand, -0.1)}" stroke-width="7" stroke-opacity=".55" stroke-linejoin="round"/>`;
   const rnd = gardenRand('lake-sand');
-  for (let i = 0; i < 70; i++) { const px = rnd() * w, py = y0 + 3 + rnd() * ((wa.y - a.y) * ch - 8); s += `<ellipse cx="${_gwN(px)}" cy="${_gwN(py)}" rx="${_gwN(1.4 + rnd() * 2.4)}" ry="${_gwN(0.9 + rnd() * 1.2)}" fill="${['#cbbd92', '#e8dcb4', '#b4a67e', '#d8ccaa'][i % 4]}" fill-opacity="0.8"/>`; }
+  for (let i = 0; i < 70; i++) { const point = lake && lake.points[Math.floor(rnd() * lake.points.length)], px = point ? point.x * cw - offsetX + (rnd() - .5) * 14 : rnd() * w, py = point ? base + point.y * ch + (rnd() - .5) * 12 : y0 + 3 + rnd() * ((wa.y - a.y) * ch - 8); s += `<ellipse cx="${_gwN(px)}" cy="${_gwN(py)}" rx="${_gwN(1.4 + rnd() * 2.4)}" ry="${_gwN(0.9 + rnd() * 1.2)}" fill="${['#cbbd92', '#e8dcb4', '#b4a67e', '#d8ccaa'][i % 4]}" fill-opacity="0.8"/>`; }
   // the water, in bands: shallows, middle, deep
-  s += `<rect x="${x0}" y="${wy}" width="${w}" height="${wh}" fill="url(#${u}-lake)"/>`;
+  s += `<g clip-path="url(#${u}-lake-shape)"><path d="${outline}" fill="url(#${u}-lake)"/>`;
   const zones = [[0, 2, 0.0], [2, 4, 0.1], [4, wa.h, 0.2]];
   for (const [from, to, dark] of zones) if (dark) s += `<rect x="${x0}" y="${wy + from * ch}" width="${w}" height="${(to - from) * ch}" fill="#08243f" fill-opacity="${dark}"/>`;
   // a wavy foam line along the shore and gentle rows of waves
   const wave = (y, amp, ph) => { let d = `M0 ${y}`; for (let x = 0; x <= w; x += 48) d += `Q${x + 12} ${_gwN(y - amp)} ${x + 24} ${y}T${x + 48} ${y}`; return d; };
-  s += `<path d="${wave(wy + 1, 3, 0)}" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-opacity="${frozen ? 0.9 : 0.6}" ${o.still ? '' : 'class="gd-foam"'}/>`;
+  s += `<path d="${outline}" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-opacity="${frozen ? 0.9 : 0.6}" ${o.still ? '' : 'class="gd-foam"'}/>`;
   for (let r = 0; r < Math.min(wa.h, 11); r += 2) { const y = wy + (r + 0.55) * ch; s += `<g class="${o.still ? '' : 'gd-waves'}" style="--dl:-${r * 1.7}s"><path d="${wave(y, 2.4, r)}" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="${frozen ? 0.5 : 0.24}"/></g>`; }
   const rr = gardenRand('lake-ripples');
   for (let i = 0; i < 9; i++) { const cx = rr() * w, cy = wy + 12 + rr() * (wh - 20); s += `<ellipse class="${o.still ? '' : 'gda-ripple'}" cx="${_gwN(cx)}" cy="${_gwN(cy)}" rx="${_gwN(8 + rr() * 14)}" ry="2" fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-width="1.1" style="animation-delay:-${_gwN(rr() * 4)}s"/>`; }
@@ -44,7 +45,7 @@ function gardenLakeGround(sc, o) {
   if (sc.tod === 'night') { const mx = w * 0.78; s += `<ellipse cx="${_gwN(mx)}" cy="${_gwN(wy + wh * 0.4)}" rx="70" ry="${_gwN(wh * 0.36)}" fill="#dfe8ff" fill-opacity="0.10"/>`; for (let i = 0; i < 9; i++) s += `<path d="M${_gwN(mx - 26 + i * 6)} ${_gwN(wy + 8 + i * 9)}h${_gwN(18 - i)}" stroke="#f4f1e0" stroke-width="1.6" stroke-opacity="0.5" stroke-linecap="round"/>`; }
   // lily pads and reeds at the far edges (flat scenery in the water, never in the way)
   for (const px of [34, 70, w - 50, w - 96]) s += `<ellipse cx="${px}" cy="${_gwN(wy + 14 + (px % 7))}" rx="9" ry="3.4" fill="#5a9a4a" fill-opacity="0.9"/><ellipse cx="${px + 5}" cy="${_gwN(wy + 14 + (px % 7))}" rx="2" ry="1.2" fill="${frozen ? '#e8f0f4' : '#f2c4d8'}"/>`;
-  return s;
+  return `<g transform="translate(${offsetX} 0)">${s}</g></g>`;
 }
 function gardenPierGround(sc, o) {
   const W = GARDEN_WORLD, cw = W.cellW, ch = W.cellH, base = W.sky, p = GARDEN_PROPS.find(x => x.id === 'pier');

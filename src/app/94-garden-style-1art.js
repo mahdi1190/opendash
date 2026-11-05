@@ -68,7 +68,7 @@ function gardenLookRodInHand(id) { return gardenLookRodBetween(id, 0, 3, 19, -30
 /** On the end of a line: over the game's own rod, which goes see-through. el is the path it replaces. */
 function gardenLookRodSkin(id, el, parent) {
   const R = id ? gardenLookDef(id) : null; if (!R || R.kind !== 'rod' || !el || !parent) return null;
-  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g'), night = _gsDark();
+  const g = gardenSceneElement('g'), night = _gsDark();
   g.setAttribute('class', 'gs-skin'); g.setAttribute('pointer-events', 'none');
   g.innerHTML = `<g class="gs-s">${_gsShaft(R)}</g><g class="gs-t">${_gsTip(R.tip, night)}</g>`;
   el.style.strokeOpacity = '0';

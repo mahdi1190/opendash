@@ -9,7 +9,7 @@
      sceneRenderPassDefine({ id, order, applies(C), key(L, C), spriteKey(L, C, req), prebake(env),
        sprite(env, cx, req), ground(env, layer, gx), layer(env, layer, gx, when), group(env, grp),
        frameGroup(env, grp, ctx, t, below), movers(env, grp, t, push), framePost(env, ctx, t),
-       relight(env, L), stats(env) })
+       prepare(env, sliceMs), warmSlice(env, t, sliceMs), relight(env, L), stats(env) })
      sceneRenderPasses(stage, C)     the passes that apply to C and have that stage, in order
      sceneRenderPassList()           every defined pass (ids and orders), for tests and stats
      sceneRenderIsV2(C)              a v2 compiled scene, or a v1 scene that opted into an effect (fx, 14.2)
@@ -18,11 +18,15 @@
    `order` is a number, or an object by stage ({ prebake: 20, sprite: 10, 'layer:under': 20, 'layer:over': 40, ... }) with an
    optional `default`. Stage names: prebake, sprite, ground, layer (called twice per layer: when 'under' and 'over'; the
    order keys 'layer:under' and 'layer:over' sort them separately), group, frameGroup, movers, framePost, relight, stats.
+   Optional prepare(env, sliceMs) finishes an incremental prebake: false asks for another hidden slice, true/undefined means ready.
+   Optional warmSlice(env, t, sliceMs) does the same for first-sight sprite preparation, before the normal warm hook.
+   Optional warmFrameSlice(env, t, sliceMs) prepares only the exact unseen frame about to be drawn; false asks for another slice.
+   Optional layerSteps(env, layer, gx, when) is a generator for an expensive layer hook; the renderer yields between its steps.
    A pass that throws is reported once (console.warn) and skipped for the rest of that bake: a bad pass never blanks a scene.
    v1 scenes: no pass applies unless the scene opts in (C.fx), so the v1 bake and frame paths are untouched.
    ============================================================ */
 const _scpsPasses = [];
-const SCENE_PASS_STAGES = Object.freeze(['prebake', 'sprite', 'ground', 'layer', 'group', 'frameGroup', 'movers', 'framePost', 'relight', 'stats']);
+const SCENE_PASS_STAGES = Object.freeze(['prebake', 'prepare', 'sprite', 'ground', 'layer', 'group', 'frameGroup', 'movers', 'framePost', 'warmSlice', 'warmFrameSlice', 'relight', 'stats']);
 const _SCPS_ID_RE = /^[a-z][a-z0-9-]{0,30}$/;
 
 /** Define (or replace, by id) a render pass. Returns the pass. */

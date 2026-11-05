@@ -88,7 +88,7 @@ function _wdLandmark(x, y) { let best = '', bd = 1e9; for (const p of GARDEN_PRO
 function _wdHiddenParcels() { const d = typeof gardenSocialView === 'function' ? gardenSocialView() : null; return d && Array.isArray(d.pending) ? d.pending.filter(a => a && a.t === 'gift' && a.dir === 'in' && Number.isInteger(a.x) && Number.isInteger(a.y) && !(_gdG().led['gg.' + a.id])) : []; }
 function _wdParcelTick() {
   const W = _wdG(), list = _wdHiddenParcels();
-  for (const a of list) if (!W['ht.' + a.id]) { W['ht.' + a.id] = _wdToday(); _wdSave(); wdWhisper(`${typeof _gscFirst === 'function' ? _gscFirst(a.f) : 'A friend'} hid something in your garden. Somewhere near ${_wdLandmark(a.x, a.y)}.`, 8000); break; }
+  for (const a of list) if (!W['ht.' + a.id]) { W['ht.' + a.id] = _wdToday(); _wdSave(); wdAmbient(`${typeof _gscFirst === 'function' ? _gscFirst(a.f) : 'A friend'} hid something in your garden. Somewhere near ${_wdLandmark(a.x, a.y)}.`, 8000, 'parcel'); break; }
   if (_wdl.glint) { const a = _wdl.parcel; if (!list.some(x => x.id === a.id) || !wdNear(a.x + 0.5, a.y + 0.5, 2)) { _wdl.glint.remove(); _wdl.glint = null; _wdl.parcel = null; } return; }
   for (const a of list) {
     if (!wdNear(a.x + 0.5, a.y + 0.5, 1.5)) continue;

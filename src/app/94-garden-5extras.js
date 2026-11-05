@@ -13,7 +13,7 @@
      _gdpBurst(kind)            a handful of petals over the garden (Full fun level, motion on)
    ============================================================ */
 const GDX_TILE_ROW = 138;
-const _gdx = { shop: 'seeds', shopCat: '', pick: null, qty: 1, alm: 'plants', almCat: '', stems: {}, q: '' };
+const _gdx = { shop: 'seeds', shopCat: '', shopFuture: false, pick: null, qty: 1, alm: 'plants', almCat: '', stems: {}, q: '' };
 
 function _gdxSeg(list, cur, pick, cls) {
   const seg = _gdpEl('div', 'seg ' + (cls || ''));
@@ -45,10 +45,21 @@ function gardenShopTab(el, m) {
   const top = _gdpEl('div', 'gd-shop-top');
   top.appendChild(_gdxSeg([['seeds', 'Seeds', 'sprout'], ['decor', 'Decorations', 'armchair'], ['tools', 'Tools', 'wrench'], ['market', 'Sell', 'coins']], kind, (k) => { _gdx.shop = k; _gdx.shopCat = ''; resetPage(); _gdxRepaintTab(); }, 'gd-shop-seg'));
   const body = _gdpEl('div', 'gd-shop-body');
-  const fill = () => { body.replaceChildren(); _gdxShopBody(body, m, kind); };
+  let disclosure;
+  const fill = () => {
+    body.replaceChildren(); _gdxShopBody(body, m, kind);
+    if (disclosure) disclosure.textContent = _gdxTerms().length ? 'Search includes future items in this category. Their requirements still apply.' : _gdx.shopFuture ? 'Future items are included, with their requirements.' : 'Unlocked items and things you already have. Search also finds future items.';
+  };
   top.appendChild(_gdxSearchRow(() => { resetPage(); fill(); }, kind));   // 2.33: a search box over every shop tab. Typing repaints only the goods below it, so the box keeps its focus and its caret.
   const wallet = _gdpEl('span', 'gd-stat is-coins gd-shop-coins'); wallet.innerHTML = _GH_GLYPH.coin + `<b>${esc(_gdpNum(w.coins))}</b>`; top.appendChild(wallet);
   el.appendChild(top);
+  if (kind !== 'market') {
+    const choices = _gdpEl('div', 'gd-shop-discovery');
+    const reveal = _gdpBtn('Show future items', { kind: 'btn-ghost', run: () => { _gdx.shopFuture = !_gdx.shopFuture; reveal.setAttribute('aria-pressed', String(_gdx.shopFuture)); resetPage(); fill(); } });
+    reveal.setAttribute('data-shop-reveal', 'future'); reveal.setAttribute('aria-pressed', String(_gdx.shopFuture));
+    disclosure = _gdpEl('p', 'muted gd-shop-discovery-note'); disclosure.setAttribute('data-shop-disclosure', ''); disclosure.setAttribute('aria-live', 'polite');
+    choices.append(reveal, disclosure); el.appendChild(choices);
+  }
   const cats = kind === 'seeds' ? [['', 'All'], ['season', 'In season'], ...GARDEN_CAT_ORDER.map(c => [c, GARDEN_CATS[c].label])]
     : kind === 'decor' ? [['', 'All'], ...GARDEN_DECOR_CAT_ORDER.map(c => [c, GARDEN_DECOR_CATS[c].label])] : null;
   if (cats) el.appendChild(_gdxChips(cats, _gdx.shopCat, (k) => { _gdx.shopCat = k; resetPage(); _gdxRepaintTab(); }));
@@ -63,6 +74,7 @@ function _gdxSearchRow(onChange, kind) {
   const q = document.createElement('input'); q.type = 'search'; q.className = 'control control-sm gd-shop-q'; q.autocomplete = 'off'; q.spellcheck = false;
   q.placeholder = kind === 'market' ? 'Search what you can sell' : kind === 'tools' ? 'Search tools' : kind === 'decor' ? 'Search decorations' : 'Search seeds';
   q.setAttribute('aria-label', 'Search the shop'); q.value = _gdx.q || '';
+  if (kind !== 'market') q.setAttribute('aria-description', 'Search includes future items and their unlock requirements.');
   q.addEventListener('input', () => { _gdx.q = q.value; onChange(); });
   q.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && q.value) { ev.stopPropagation(); q.value = ''; _gdx.q = ''; onChange(); } });
   row.appendChild(q);
@@ -73,20 +85,26 @@ function _gdxSearchRow(onChange, kind) {
 /** What the shop sells right now, for the kind of thing and the words in the box. */
 function _gdxShopBody(el, m, kind) {
   if (kind === 'market') { gardenMarket(el, m); return; }
-  const searching = _gdxTerms().length > 0;
-  const none = () => el.appendChild(_gdpEl('p', 'muted gd-shop-none', searching ? `Nothing matches “${String(_gdx.q).trim().slice(0, 40)}”. Try another word.` : 'Nothing here yet.'));
+  const searching = _gdxTerms().length > 0, future = searching || _gdx.shopFuture;
+  el.setAttribute('data-shop-mode', searching ? 'search' : future ? 'future' : 'current');
+  const none = () => el.appendChild(_gdpEl('p', 'muted gd-shop-none', searching ? `Nothing matches “${String(_gdx.q).trim().slice(0, 40)}”. Try another word.` : future ? 'Nothing in this category.' : 'Nothing unlocked in this category yet. Search for an item or show future items.'));
+  const kept = new Set();
+  for (const [item, n] of Object.entries(m.wallet.items)) if (n > 0) kept.add(item.startsWith('tool:') ? item.slice(5) : item);
+  for (const p of m.plants) kept.add('seed:' + p.def.id);
+  for (const d of m.decor) kept.add('decor:' + d.def.id);
+  const shown = item => { const pr = gardenPriceOf(item, m); return future || kept.has(item) || pr.price != null && !pr.why; };
   if (kind === 'tools') {
-    const tools = GARDEN_TOOLS.filter(t => _gdxMatch(t.name, t.blurb, 'tool'));
+    const tools = GARDEN_TOOLS.filter(t => shown(t.id) && _gdxMatch(t.name, t.blurb, 'tool'));
     if (!tools.length) { none(); return; }
-    gardenPager(el, { key: 'shop:tools' + (searching ? '?' : ''), sig: searching ? _gdx.q : '', items: tools, grid: 'gd-grid gd-shop-grid', row: GDX_TILE_ROW, draw: (t) => _gdxCard({ id: t.id, item: t.id, name: t.name, art: () => gardenIconSvg(t.id, { kind: 'tool', px: 56 }), have: t.kind === 'consumable' ? gardenHas('fertiliser') : 0, owned: t.kind !== 'consumable' && _gdOwnsTool(t.id), facts: [t.blurb], blurb: t.blurb }, m) });
+    gardenPager(el, { key: 'shop:tools:' + (future ? 'future' : 'current') + (searching ? '?' : ''), sig: searching ? _gdx.q : '', items: tools, grid: 'gd-grid gd-shop-grid', row: GDX_TILE_ROW, draw: (t) => _gdxCard({ id: t.id, item: t.id, name: t.name, art: () => gardenIconSvg(t.id, { kind: 'tool', px: 56 }), have: t.kind === 'consumable' ? gardenHas('fertiliser') : 0, owned: t.kind !== 'consumable' && _gdOwnsTool(t.id), retained: kept.has(t.id), facts: [t.blurb], blurb: t.blurb }, m) });
     return;
   }
   const uc = gardenUnlockCtx(m), coins = m.wallet.coins;
   let rows;   // [{ key: sort key, o: card options }]
   if (kind === 'seeds') {
     const deal = gardenPlant(gardenDailyDeal(m.today));
-    if (deal && !searching) el.appendChild(_gdxDealStrip(deal, m));
-    let list = GARDEN_PLANTS.filter(p => !(p.unlock && p.unlock.find));
+    if (deal && !searching) { const price = gardenPriceOf('seed:' + deal.id, m); if (price.price != null && !price.why && price.price <= m.wallet.coins) el.appendChild(_gdxDealStrip(deal, m)); }
+    let list = GARDEN_PLANTS.filter(p => (!(p.unlock && p.unlock.find) || kept.has('seed:' + p.id)) && shown('seed:' + p.id));
     if (_gdx.shopCat === 'season') list = list.filter(p => gardenInSeason(p, m.season));
     else if (_gdx.shopCat) list = list.filter(p => p.cat === _gdx.shopCat);
     if (searching) list = list.filter(p => _gdxMatch(p.name, p.blurb, GARDEN_CATS[p.cat] && GARDEN_CATS[p.cat].label, p.rarity, 'seed seeds'));
@@ -98,30 +116,31 @@ function _gdxShopBody(el, m, kind) {
       const sells = p.yield ? `sells for ${sell} coin${sell === 1 ? '' : 's'}` : 'just for looks';
       const inSeason = gardenInSeason(p, m.season);
       return { key: [lock ? 1 : 0, !lock && pr.price != null && pr.price <= coins ? 0 : 1, inSeason ? 0 : 1, GARDEN_CAT_ORDER.indexOf(p.cat), pr.price == null ? 1e9 : pr.price, p.name],
-        o: { id: p.id, item: 'seed:' + p.id, name: p.name, art: () => gardenIconSvg(p.id, { kind: 'seed', px: 56 }), rarity: p.rarity, inSeason, grow: gh ? gh[3] / 1.3 : 0, sell, facts: [GARDEN_CATS[p.cat].one, grows, sells].filter(Boolean), blurb: p.blurb, have: gardenHas('seed:' + p.id) } };
+        o: { id: p.id, item: 'seed:' + p.id, name: p.name, art: () => gardenIconSvg(p.id, { kind: 'seed', px: 56 }), rarity: p.rarity, inSeason, grow: gh ? gh[3] / 1.3 : 0, sell, facts: [GARDEN_CATS[p.cat].one, grows, sells].filter(Boolean), blurb: p.blurb, retained: kept.has('seed:' + p.id), have: gardenHas('seed:' + p.id) } };
     });
   } else {
-    let list = GARDEN_DECOR.filter(d => !d.craft);
+    let list = GARDEN_DECOR.filter(d => (!d.craft || kept.has('decor:' + d.id)) && shown('decor:' + d.id));
     if (_gdx.shopCat) list = list.filter(d => d.cat === _gdx.shopCat);
     if (searching) list = list.filter(d => _gdxMatch(d.name, d.blurb, GARDEN_DECOR_CATS[d.cat] && GARDEN_DECOR_CATS[d.cat].label, 'decoration'));
     rows = list.map(d => {
       const pr = gardenPriceOf('decor:' + d.id, m), lock = !!gardenLockOf(d, uc);
       const size = d.w > 1 || d.h > 1 ? `takes ${d.w} × ${d.h} tiles` : '';
       return { key: [lock ? 1 : 0, !lock && pr.price != null && pr.price <= coins ? 0 : 1, 0, GARDEN_DECOR_CAT_ORDER.indexOf(d.cat), pr.price == null ? 1e9 : pr.price, d.name],
-        o: { id: d.id, item: 'decor:' + d.id, name: d.name, art: () => gardenIconSvg(d.id, { kind: 'decor', px: 56 }), facts: [size, _gdpEffectText(d)].filter(Boolean), blurb: d.blurb, have: gardenHas('decor:' + d.id), placed: m.decor.filter(x => x.def.id === d.id).length } };
+        o: { id: d.id, item: 'decor:' + d.id, name: d.name, art: () => gardenIconSvg(d.id, { kind: 'decor', px: 56 }), facts: [size, _gdpEffectText(d)].filter(Boolean), blurb: d.blurb, retained: kept.has('decor:' + d.id), have: gardenHas('decor:' + d.id), placed: m.decor.filter(x => x.def.id === d.id).length } };
     });
   }
   // What you can buy now comes first (affordable, in season), then by type and price; what is locked comes last. A search puts the names that start with your words first. Once sorted the order holds until the shop is opened again, so buying one thing moves nothing.
   const lead = (r) => { const t = _gdxTerms(); return t.length && String(r.o.name).toLowerCase().startsWith(t[0]) ? 0 : 1; };
   const cmp = (a, b) => { if (searching && lead(a) !== lead(b)) return lead(a) - lead(b); for (let i = 0; i < a.key.length; i++) { if (a.key[i] === b.key[i]) continue; return typeof a.key[i] === 'string' ? a.key[i].localeCompare(b.key[i]) : a.key[i] - b.key[i]; } return 0; };
   if (!rows.length) { none(); return; }
-  const place = `shop:${kind}:${_gdx.shopCat}` + (searching ? '?' : ''), sig = searching ? _gdx.q : '';
+  const place = `shop:${kind}:${_gdx.shopCat}:` + (future ? 'future' : 'current') + (searching ? '?' : ''), sig = searching ? _gdx.q : '';
   gardenPager(el, { key: place, sig, items: gardenPagerOrder(place, rows, r => r.o.id, cmp, sig), grid: 'gd-grid gd-shop-grid', row: GDX_TILE_ROW, rowSm: 128, draw: (r) => _gdxCard(r.o, m) });
 }
 /** Today's deal as one slim strip: the seed, its name and the price button. */
 function _gdxDealStrip(deal, m) {
   const pr = gardenPriceOf('seed:' + deal.id, m);
   const d = _gdpEl('div', 'gd-deal');
+  d.setAttribute('data-shop-deal', deal.id);
   const art = _gdpEl('span', 'gd-deal-art'); art.innerHTML = gardenIconSvg(deal.id, { kind: 'seed', px: 28 }); d.appendChild(art);
   const t = _gdpEl('span', 'gd-deal-t');
   t.appendChild(_gdpEl('span', 'gd-deal-tag', '½ price'));
@@ -146,6 +165,7 @@ function _gdxShortH(h) { return h < 24 ? Math.max(1, Math.round(h)) + 'h' : Math
 function _gdxCard(o, m) {
   const pr = gardenPriceOf(o.item, m);
   const c = _gdpEl('div', 'gd-tile' + (pr.why || pr.price == null ? ' is-locked' : '') + (o.rarity ? ' gd-r-' + o.rarity : ''));
+  c.setAttribute('data-shop-item', o.item); c.setAttribute('data-shop-retained', String(!!o.retained)); c.setAttribute('data-shop-reason', pr.why || '');
   const art = _gdpEl('div', 'gd-tile-art'); art.innerHTML = o.art(); c.appendChild(art);
   if (o.have) c.appendChild(_gdpEl('i', 'gd-slotn gd-tile-have', '×' + o.have));
   if (o.inSeason) { const lf = _gdpEl('span', 'gd-tile-season'); lf.innerHTML = icon('leaf', 'i-xs'); lf.setAttribute('data-tip', 'In season: grows faster now'); c.appendChild(lf); }

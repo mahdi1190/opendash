@@ -12,6 +12,16 @@ function _gsgLum(hex) {
 }
 function _gsgFill(hex) {
   const id = 'gsg-' + hex.slice(1).toLowerCase();
+  if (window.GardenNative && GardenNative.active()) {
+    const svg = _gw.svg;
+    if (_gsg.nativeRoot !== svg) { _gsg.nativeRoot = svg; _gsg.nativeMade = new Set(); _gsg.nativeDefs = null; _gsg.nativeMarkup = ''; }
+    if (!_gsg.nativeDefs || !_gsg.nativeDefs.isConnected) { _gsg.nativeDefs = gardenSceneElement('defs', { class: 'gd-soft-defs' }); svg.appendChild(_gsg.nativeDefs); }
+    if (!_gsg.nativeMade.has(id)) {
+      _gsg.nativeMarkup += `<radialGradient id="${id}"><stop offset="0" stop-color="${hex}" stop-opacity="1"/><stop offset=".6" stop-color="${hex}" stop-opacity=".62"/><stop offset="1" stop-color="${hex}" stop-opacity="0"/></radialGradient>`;
+      _gsg.nativeDefs.innerHTML = _gsg.nativeMarkup; _gsg.nativeMade.add(id);
+    }
+    return `url(#${id})`;
+  }
   if (!_gsg.made.has(id)) {
     const NS = 'http://www.w3.org/2000/svg';
     if (!_gsg.defs || !_gsg.defs.isConnected) {
@@ -27,7 +37,7 @@ function _gsgFill(hex) {
 function _gsgOne(el) {
   const fill = el.getAttribute('fill');
   if (!fill || !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(fill)) return;
-  const size = el.tagName === 'circle' ? Number(el.getAttribute('r')) : Math.max(Number(el.getAttribute('rx')), Number(el.getAttribute('ry')));
+  const size = el.localName === 'circle' ? Number(el.getAttribute('r')) : Math.max(Number(el.getAttribute('rx')), Number(el.getAttribute('ry')));
   if (!(size >= GSG.minR)) return;
   const fo = el.getAttribute('fill-opacity'), op = el.getAttribute('opacity'), a = (fo == null ? 1 : Number(fo)) * (op == null ? 1 : Number(op));
   if (!(a <= GSG.maxOpacity) || _gsgLum(fill) < GSG.minLum || el.closest('.gart-bake')) return;
@@ -35,7 +45,7 @@ function _gsgOne(el) {
 }
 function gardenSoftGlowIn(root) {
   if (!root || root.nodeType !== 1) return;
-  if (root.tagName === 'circle' || root.tagName === 'ellipse') { _gsgOne(root); return; }
+  if (root.localName === 'circle' || root.localName === 'ellipse') { _gsgOne(root); return; }
   for (const el of root.querySelectorAll('circle,ellipse')) _gsgOne(el);
 }
 function _gsgWatch() {
@@ -44,6 +54,9 @@ function _gsgWatch() {
   if (_gsg.mo) _gsg.mo.disconnect();
   _gsg.svg = svg; if (!svg) return;
   gardenSoftGlowIn(svg);
+  // Native components compile their own retained gradients. They never enter
+  // the DOM observer; newly spawned world effects soften themselves once.
+  if (window.GardenNative && GardenNative.active()) return;
   if (!_gsg.mo) _gsg.mo = new MutationObserver((list) => { for (const r of list) for (const n of r.addedNodes) gardenSoftGlowIn(n); });
   _gsg.mo.observe(svg, { childList: true, subtree: true });
 }

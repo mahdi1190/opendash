@@ -50,6 +50,7 @@ function _gtgIceSvg() {
 /* What the season leaves on the ground: scattered, thicker towards the middle, with no flat colour under it (a big see-through oval showed as a hard-edged disc over the paths; the owner, 1 Nov 2026). One path for each colour, not a node for each leaf: summer alone was 900 nodes. */
 function _gtgPatchSvg(season, seed) {
   const W = GARDEN_WORLD, rnd = gardenRand('tg-p|' + seed + season), n = (v) => v.toFixed(1), by = new Map();
+  const native = !!(window.GardenNative && GardenNative.scene());
   const add = (c, d) => by.set(c, (by.get(c) || '') + d);
   const leaf = (x, y, l, w) => { const a = rnd() * 3.142, cx = Math.cos(a), sx = Math.sin(a); return `M${n(x - cx * l)} ${n(y - sx * l)}Q${n(x + sx * w)} ${n(y - cx * w)} ${n(x + cx * l)} ${n(y + sx * l)}Q${n(x - sx * w)} ${n(y + cx * w)} ${n(x - cx * l)} ${n(y - sx * l)}z`; };
   const dot = (x, y, r) => `M${n(x - r)} ${n(y)}a${r} ${r} 0 1 0 ${r * 2} 0a${r} ${r} 0 1 0 ${-r * 2} 0z`;
@@ -60,10 +61,14 @@ function _gtgPatchSvg(season, seed) {
     const at = () => { const a = rnd() * 6.283, d = rnd(); return [px + Math.cos(a) * rx * d, py + Math.sin(a) * ry * d]; };
     if (season === 'spring') for (let k = 0; k < 46; k++, i++) { const [x, y] = at(); add(['#fbdce6', '#f4b4c8', '#ffffff'][i % 3], leaf(x, y, 2.6, 1.5)); }
     else if (season === 'summer') for (let k = 0; k < 44; k++, i++) { const [x, y] = at(); add('stem', `M${n(x)} ${n(y + 3)}v-7`); add(['#e8483a', '#f4d03a', '#ffffff', '#b06ad8', '#5a9ae8'][i % 5], dot(x, y - 5, 2.3)); add('#4a3a14', dot(x, y - 5, 0.8)); }
-    else if (season === 'autumn') for (let k = 0; k < 60; k++, i++) { const [x, y] = at(); add(['#d8682a', '#e8a83a', '#a84a1a', '#c8382a', '#d8b84a'][i % 5], leaf(x, y, 4, 3.4)); }
+    else if (season === 'autumn') for (let k = 0; k < (native ? 32 : 60); k++, i++) {
+      const [x, y] = at(), cell = native && typeof gardenLandCell === 'function' ? gardenLandCell(Math.floor(x / W.cellW), Math.floor((y - W.sky) / W.cellH)) : null;
+      if (cell && (cell.lane || cell.trail) && i % 4) continue;
+      add((native ? ['#b1874f', '#c3a05e', '#976c47', '#ad7950', '#b9ab69'] : ['#d8682a', '#e8a83a', '#a84a1a', '#c8382a', '#d8b84a'])[i % 5], leaf(x, y, native ? 2.8 : 4, native ? 1.5 : 3.4));
+    }
     else s += `<ellipse cx="${n(px)}" cy="${n(py)}" rx="${n(rx * 1.25)}" ry="${n(ry * 1.15)}" fill="url(#tg-snow)"/>`;
   }
-  for (const [c, d] of by) s += c === 'stem' ? `<path d="${d}" stroke="#5a8a3a" stroke-width="1" fill="none"/>` : `<path d="${d}" fill="${c}"/>`;
+  for (const [c, d] of by) s += c === 'stem' ? `<path d="${d}" stroke="#5a8a3a" stroke-width="1" fill="none"/>` : `<path d="${d}" fill="${c}"${native && season === 'autumn' ? ' fill-opacity=".72"' : ''}/>`;
   return s;
 }
 function _gtgFallSvg(season) {
@@ -78,10 +83,17 @@ function _gtgGround(m) {
   let g = svg.querySelector('.tg-ground');
   if (!g || g._k !== key) {
     if (g) g.remove();
-    g = document.createElementNS('http://www.w3.org/2000/svg', 'g'); g.setAttribute('class', 'tg-ground'); g.setAttribute('pointer-events', 'none'); g.setAttribute('aria-hidden', 'true');
-    g.innerHTML = _gtgPatchSvg(m.season, 'a') + (ice ? _gtgIceSvg() : '') + (gardenMotionOn() ? _gtgFallSvg(m.season) : ''); g._k = key;
+    g = gardenSceneElement('g'); g.setAttribute('class', 'tg-ground'); g.setAttribute('pointer-events', 'none'); g.setAttribute('aria-hidden', 'true');
+    g.innerHTML = '<g class="tg-ground-patches">' + _gtgPatchSvg(m.season, 'a') + '</g>' + (ice ? _gtgIceSvg() : '') + (gardenMotionOn() ? _gtgFallSvg(m.season) : ''); g._k = key;
     const school = svg.querySelector('.gd-school');
     objs.parentNode.insertBefore(g, school || objs);
+    const patches = g.querySelector('.tg-ground-patches');
+    if (window.GardenNative && GardenNative.active() && window.GardenNativeArt && patches && patches.target && patches.scene === GardenNative.scene()) {
+      // Only this authored static branch is cached. Ice and falling petals
+      // remain live siblings; the shared policy handles zoom/crop and limits.
+      // staticOnly partitioning skips groups with fewer than four Graphics.
+      GardenNativeArt.cache(patches, { staticOnly: false, quality: 1, adaptive: true, crop: true, tileSize: 512 });
+    }
   }
 }
 /* ---------- what stands in it ---------- */
@@ -118,8 +130,9 @@ function _gtgSeasonApply(m) {
     const first = !_gtgs.season; _gtgs.season = m.season; void first;
     _gtgSeasonDraw(m);
     const y = String(m.today).slice(0, 4), k = 'tg.sw.' + m.season + '.' + y, W = _gtgW(), said = m.visit ? '' : { winter: 'The lake has frozen hard enough to walk on.', spring: 'The cherry trees have come out along the shore.', summer: 'The long grass is full of flowers.', autumn: 'The leaves are down, in drifts along the shore.' }[m.season];
-    if (said && !W[k]) { W[k] = m.today; _gdSave(); setTimeout(() => wdWhisper(said, 7000), 1800); }
-    if (m.visit && m.season !== gardenModel().season) setTimeout(() => wdWhisper(`It is ${m.season} in ${_gscFirst(m.visit.fid)}’s garden.`, 6000), 1800);
+    const scope = _wd.key;
+    if (said && !W[k]) { W[k] = m.today; _gdSave(); setTimeout(() => { if (_wd.on && _wd.key === scope) wdAmbient(said, 7000, 'season'); }, 1800); }
+    if (m.visit && m.season !== gardenModel().season) setTimeout(() => { if (_wd.on && _wd.key === scope) wdAmbient(`It is ${m.season} in ${_gscFirst(m.visit.fid)}’s garden.`, 6000, 'visit-season'); }, 1800);
   }
 }
 function _gtgOnIceTick(m) {

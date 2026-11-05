@@ -2,14 +2,16 @@
    GARDEN, regions: what you see. The small waters in the ground, the prizes standing in the world (one drawing each), and The map tab of the Catch page.
    The drawings go into _GLD_PROP_ART (94-garden-lands-2art.js, loaded before this), so a prize is drawn like any feature, for you and your friends.
    ============================================================ */
-function gardenRegionWaterArt(px, py, season) {
+function gardenRegionWaterArt(px, py, season, sc, o) {
   const A = GART, W = GARDEN_WORLD, ice = season === 'winter';
   let s = '';
   for (const w of GARDEN_REGION_WATERS) {
     if (w.room) continue;   // (indoors: not on the map)
     if (w.area || w.sec) continue;   // (the pond and the bought pools are drawn already)
     const cx = px(w.x + w.w / 2), cy = py(w.y + w.h / 2), rx = w.w * W.cellW / 2, ry = w.h * W.cellH / 2;
-    s += `<path fill="#6e8a5a" d="${A.ell(cx, cy, rx + 5, ry + 4)}"/><path fill="${ice ? '#c0d8e6' : '#5fb0cc'}" d="${A.ell(cx, cy, rx + 1, ry)}"/><path fill="#ffffff" fill-opacity="0.28" d="${A.ell(cx - rx * 0.25, cy - ry * 0.3, rx * 0.4, ry * 0.22)}"/>`;
+    const shape = sc && _gdrOtherWaterShape(sc, w.id), contour = shape ? _gdrWaterShapePath(shape) : '', clip = (o && o.uid || 'gd') + '-region-water-' + w.id;
+    if (shape) s += `<defs><clipPath id="${clip}"><path d="${contour}" clip-rule="evenodd"/></clipPath></defs><path d="${contour}" fill="none" stroke="#6e8a5a" stroke-width="9" stroke-linejoin="round"/><path fill="${ice ? '#c0d8e6' : '#5fb0cc'}" fill-rule="evenodd" d="${contour}"/><g clip-path="url(#${clip})"><path fill="#ffffff" fill-opacity="0.28" d="${A.ell(cx - rx * 0.25, cy - ry * 0.3, rx * 0.4, ry * 0.22)}"/></g>`;
+    else s += `<path fill="#6e8a5a" d="${A.ell(cx, cy, rx + 5, ry + 4)}"/><path fill="${ice ? '#c0d8e6' : '#5fb0cc'}" d="${A.ell(cx, cy, rx + 1, ry)}"/><path fill="#ffffff" fill-opacity="0.28" d="${A.ell(cx - rx * 0.25, cy - ry * 0.3, rx * 0.4, ry * 0.22)}"/>`;
   }
   return s;
 }

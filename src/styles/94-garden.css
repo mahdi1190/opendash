@@ -421,7 +421,7 @@ html[data-motion="reduced"] .gd-burst { display: none; }
 @keyframes gd-floatup { 0% { opacity: 0; transform: translateY(8px) scale(.8); } 15% { opacity: 1; transform: translateY(-6px) scale(1.1); } 100% { opacity: 0; transform: translateY(-48px) scale(1); } }
 .gd-pop i { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: #fff6c8; animation: gd-spark .9s ease-out both; }
 .gd-pop i:nth-child(1) { --dx: -30px; --dy: -26px; } .gd-pop i:nth-child(2) { --dx: 30px; --dy: -22px; } .gd-pop i:nth-child(3) { --dx: -22px; --dy: 18px; } .gd-pop i:nth-child(4) { --dx: 26px; --dy: 20px; }
-.gd-pop.is-grow i { background: #b6f58a; } .gd-pop.is-harvest i, .gd-pop.is-gold i { background: #ffd34d; } .gd-pop.is-feed i { background: #d7b26a; }
+.gd-pop.is-grow i, .gd-pop.is-trim i { background: #b6f58a; } .gd-pop.is-harvest i, .gd-pop.is-gold i { background: #ffd34d; } .gd-pop.is-feed i { background: #d7b26a; }
 @keyframes gd-spark { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.3); } }
 .gd-soil { position: absolute; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(58, 34, 16, .5), rgba(58, 34, 16, 0) 72%); animation: gd-soilfade 30s linear both; }
 @keyframes gd-soilfade { from { opacity: 1; } to { opacity: 0; } }

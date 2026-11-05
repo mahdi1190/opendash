@@ -37,7 +37,7 @@ function gardenMomentSvg(spec, o) {
   const title = o.who ? `${o.who} ${spec.verb} ${_gscA(spec.name)}!` : `${_gscA(spec.name)}!`.replace(/^./, (c) => c.toUpperCase());
   const rank = spec.rank || 0, y = GPL_HOLD.y, Fx = gardenCreatureMomentFx(spec.kind, spec.d, y), px = Math.round((rank >= 4 ? 66 : rank >= 2 ? 54 : 46) * gardenCreatureHoldK(spec.kind, spec.d, spec.cm)), tw = Math.max(40, title.length * 5.4 + 16), sub = o.who ? '' : spec.sub;
   const by = y - 40 - Math.max(0, px * 0.3 - 22), flag = spec.isNew ? 'New!' : spec.record ? 'Record!' : '';
-  const star = (x, yy, s, dl) => `<path class="gmo-spark" style="animation-delay:${dl}s" transform="translate(${x} ${yy}) scale(${s})" d="M0-5L1.3-1.3L5 0L1.3 1.3L0 5L-1.3 1.3L-5 0L-1.3-1.3z" fill="#ffe27a" stroke="#e8a83a" stroke-width=".5"/>`;
+  const star = (x, yy, s, dl) => `<g transform="translate(${x} ${yy}) scale(${s})"><path class="gmo-spark" style="animation-delay:${dl}s" d="M0-5L1.3-1.3L5 0L1.3 1.3L0 5L-1.3 1.3L-5 0L-1.3-1.3z" fill="#ffe27a" stroke="#e8a83a" stroke-width=".5"/></g>`;
   const rays = rank >= 2 && typeof gardenVariantMomentSvg === 'function' ? gardenVariantMomentSvg(rank, y) : '';
   const tag = rank >= 3 ? `${spec.tier}!` : '', tagW = tag.length * 4.8 + 10;
   return `<g class="gmo">${rays}${Fx.back}<g class="gmo-pop"><ellipse cx="0" cy="${y}" rx="26" ry="22" fill="#fff6c8" fill-opacity=".38"/><g transform="translate(${-px / 2} ${y - px / 2 + 2})"><g class="${Fx.cls}">${spec.art(px)}</g></g></g>${Fx.over}`
@@ -59,8 +59,10 @@ function gardenCatchMoment(kind, id, o) {
   const spec = gardenMomentSpec(kind, id, o), a = typeof _gwActors === 'function' ? _gwActors() : null;
   if (!spec || !a) return false;
   gardenMomentEnd();
-  const [x, y] = _gwFeet(), g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  g.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(.74)`);   // (the figure is drawn at this scale)
+  const [x, y] = _gwFeet(), g = gardenSceneElement('g');
+  g.setAttribute('class', 'gd-catch-moment');   // retained renderers can prepare this short-lived hold-up before background art
+  const figureScale = typeof GW_SCALE === 'number' ? GW_SCALE : .74;
+  g.setAttribute('transform', `translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${figureScale})`);
   g.innerHTML = gardenMomentSvg(spec, {});
   a.appendChild(g); _gmo.g = g;
   const holdMs = gardenMomentMs(spec);
@@ -71,13 +73,20 @@ function gardenCatchMoment(kind, id, o) {
   // any key or click ends it (and does what it was going to do); moving ends it too
   // (not for the first moment: a press that was still going when the fish came in must not take it away before you have seen it)
   const shown = performance.now(), end = () => { if (performance.now() - shown > 1300) setTimeout(gardenMomentEnd, 0); };
-  const iv = setInterval(() => {
+  const tick = () => {
+    if (_gmo.g !== g) return;
     if (_gw.moving) end();
-    // saving what you caught draws the garden again, which empties this layer: it goes back, or nobody ever saw it
-    if (_gmo.g === g && !g.isConnected) { const la = _gwActors(); if (la) la.appendChild(g); }
-  }, 60);
+    if (g._native && g._dead) { gardenMomentEnd(); return; }
+    // Follow the gardener during the protected first moment, including a room transition.
+    const layer = _gwActors(); if (layer && g.parentNode !== layer) layer.appendChild(g);
+    const feet = _gwFeet(), transform = `translate(${feet[0].toFixed(1)} ${feet[1].toFixed(1)}) scale(${figureScale})`;
+    if (g.getAttribute('transform') !== transform) g.setAttribute('transform', transform);
+  };
+  const nativeScene = window.GardenNative && GardenNative.active() ? GardenNative.scene() : null;
+  const iv = nativeScene ? null : setInterval(tick, 60);
+  if (nativeScene) nativeScene.events.on('update', tick);
   document.addEventListener('keydown', end, true); document.addEventListener('pointerdown', end, true);
-  _gmo.off = () => { clearInterval(iv); document.removeEventListener('keydown', end, true); document.removeEventListener('pointerdown', end, true); };
+  _gmo.off = () => { if (nativeScene) nativeScene.events.off('update', tick); else clearInterval(iv); document.removeEventListener('keydown', end, true); document.removeEventListener('pointerdown', end, true); };
   return true;
 }
 /** Told to friends now; held up on your screen as soon as you are back in the garden with the shop closed. */

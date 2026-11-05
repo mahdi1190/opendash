@@ -272,10 +272,11 @@ function _pcAnchors(root) {
 }
 function _pcSprite(parent, kind, c, A, o, i) {
   const art = _PCFX[kind]; if (!art) return;
-  const g = document.createElementNS(_PC_NS, 'g'), base = A[o.at || 'top'] || A.top, s = o.s || 1;
+  const create = tag => gardenVisualIsNative(parent) ? gardenSceneElement(tag) : document.createElementNS(_PC_NS, tag);
+  const g = create('g'), base = A[o.at || 'top'] || A.top, s = o.s || 1;
   const x0 = base.x + (o.x || 0), y0 = base.y + (o.y || 0);
   const col = kind === 'rainbow' ? _PC_RAINBOW[i % 6] : (o.c || c);
-  const inner = document.createElementNS(_PC_NS, 'g');
+  const inner = create('g');
   inner.innerHTML = kind === 'rainbow' ? art().replace('#fff', col) : art(col);
   g.appendChild(inner); g.setAttribute('class', 'pt-cfx');
   parent.appendChild(g);
@@ -299,7 +300,7 @@ function _pcSprite(parent, kind, c, A, o, i) {
     const rr = (o.spin || 0) + (kind === 'note' || kind === 'heart' ? (i % 2 ? 12 : -12) : kind === 'dirt' ? 200 : 0);
     frames = [{ offset: 0, transform: T(x0, y0, s * 0.3, 0), opacity: 0, easing: 'cubic-bezier(.2,.8,.4,1)' }, { offset: 0.16, transform: T(x0 + dx * 0.16, y0 + dy * 0.2, s * 1.06, rr * 0.2), opacity: 1, easing: 'linear' }, { offset: 0.6, transform: T(mx, my, s, rr * 0.6), opacity: 1, easing: o.g ? 'cubic-bezier(.5,0,.9,.6)' : 'linear' }, { offset: 1, transform: T(x0 + dx, ey, s * (o.g ? 0.8 : 0.72), rr), opacity: 0 }];
   }
-  try { const a = g.animate(frames, { duration: dur, easing: 'linear', fill: 'both' }); a.onfinish = () => g.remove(); a.oncancel = () => g.remove(); return a; } catch (e) { g.remove(); }
+  try { const a = gardenVisualAnimate(g, frames, { duration: dur, easing: 'linear', fill: 'both' }); a.onfinish = () => g.remove(); a.oncancel = () => g.remove(); return a; } catch (e) { g.remove(); }
   return null;
 }
 function _pcMotionOn() { try { if (typeof _ptMotionOk === 'function' && !_ptMotionOk()) return false; if (typeof _ptFun === 'function' && _ptFun() === 'off') return false; } catch (e) { /* on */ } return true; }
@@ -308,6 +309,49 @@ function _pcOrg(root, c) {
   if (c.org !== 'mid') return Number(c.org) || 0;
   try { const b = root.querySelector('.pt-bodyg').getBBox(); return Math.min(44, Math.round(Math.abs(b.y) * 0.5 / 3) * 3); } catch (e) { return 28; }
 }
+/** Native clip ownership and cues follow the articulated animation, including a world freeze. */
+function _pcNativeClipClock(root, anims, ms, jobs, done) {
+  const events = root.scene && root.scene.events, clock = anims.find(a => a && typeof a.currentTime === 'number');
+  if (!events || !clock) return null;
+  let live = true, next = 0;
+  jobs.sort((a, b) => a.at - b.at);
+  const stop = () => { if (!live) return; live = false; events.off('update', update); events.off('shutdown', shutdown); };
+  const shutdown = () => { stop(); done(true); };
+  const update = () => {
+    if (!live) return;
+    if (root._dead || !root.isConnected || clock.playState === 'idle') { shutdown(); return; }
+    // Existing animations are paused by a spectacle; clips started by that
+    // spectacle remain running. Reading their clock preserves that ownership.
+    if (clock.playState === 'paused') return;
+    const at = Math.min(ms, Number(clock.currentTime));
+    if (!Number.isFinite(at)) return;
+    while (live && next < jobs.length && jobs[next].at <= at) jobs[next++].run();
+    if (live && (at >= ms || clock.playState === 'finished')) { stop(); done(false); }
+  };
+  events.on('update', update); events.once('shutdown', shutdown);
+  return { stop };
+}
+/** A telling pose is intentionally paused; its lifetime uses scene time instead. */
+function _pcNativeStillClock(root, ms, done) {
+  const events = root.scene && root.scene.events;
+  if (!events) return null;
+  const duration = Number.isFinite(Number(ms)) ? Math.max(0, Number(ms)) : 0;
+  let live = true, elapsed = 0;
+  const stop = () => { if (!live) return; live = false; events.off('update', update); events.off('shutdown', shutdown); };
+  const shutdown = () => { stop(); done(true); };
+  const update = (time, delta) => {
+    if (!live) return;
+    if (root._dead || !root.isConnected) { shutdown(); return; }
+    // Only the full freeze on this scene's ancestry stops a still lifetime.
+    // Hush and the reduced-motion preference must leave its timeout running.
+    for (let scope = root; scope; scope = scope.parentNode) if (scope.hasAttribute('data-garden-frozen')) return;
+    elapsed += Math.max(0, Number(delta) || 0);
+    if (elapsed >= duration) { stop(); done(false); }
+    void time;
+  };
+  events.on('update', update); events.once('shutdown', shutdown);
+  return { stop };
+}
 /** Play a clip on a drawn pet. Returns {ms, stop()}; o.done is called when it ends. Nothing is left behind. */
 function petClipRun(root, id, o) {
   o = o || {};
@@ -315,23 +359,27 @@ function petClipRun(root, id, o) {
   if (!c || !root || !root.querySelectorAll || !root.animate) { if (o.done) o.done(); return { ms: 0, stop() {} }; }
   if (o.still || !_pcMotionOn()) return petClipStill(root, id, o.ms || Math.min(1400, c.ms), o.done);
   const comp = _pcCompile(c, _pcOrg(root, c)), rate = o.rate || 1, ms = c.ms / rate;
-  const anims = [], timers = [];
+  const anims = [], timers = [], jobs = [], native = gardenVisualIsNative(root);
   petClipStop(root);
   root.classList.add('pt-clip');
   for (const [part, frames] of comp.tracks) {
-    for (const el of root.querySelectorAll(_PC_SEL[part])) { try { if (part === 'shadow') { el.style.transformBox = 'fill-box'; el.style.transformOrigin = '50% 50%'; } anims.push(el.animate(frames, { duration: ms, easing: 'linear' })); } catch (e) { /* an old browser keeps the CSS */ } }
+    for (const el of root.querySelectorAll(_PC_SEL[part])) { try { if (part === 'shadow') { el.style.transformBox = 'fill-box'; el.style.transformOrigin = '50% 50%'; } anims.push(gardenVisualAnimate(el, frames, { duration: ms, easing: 'linear' })); } catch (e) { /* an old browser keeps the CSS */ } }
   }
   if (c.fx && c.fx.length) {
     const fxp = (root.querySelector('.pt-fx') || {}).parentNode || root;
     for (const [t, kind, p] of c.fx) {
       const n = p.n || 1, gap = (p.gap || 0) / rate;
-      for (let i = 0; i < n; i++) timers.push(setTimeout(() => { if (root.isConnected) _pcSprite(fxp, kind, p.c, _pcAnchors(root), p, i); }, t * ms + i * gap));
+      for (let i = 0; i < n; i++) {
+        const run = () => { if (root.isConnected) _pcSprite(fxp, kind, p.c, _pcAnchors(root), p, i); }, at = t * ms + i * gap;
+        if (native) jobs.push({ at, run }); else timers.push(setTimeout(run, at));
+      }
     }
   }
-  let live = true;
-  const H = { ms, stop(keep) { if (!live) return; live = false; for (const t of timers) clearTimeout(t); for (const a of anims) { try { a.cancel(); } catch (e) { /* gone */ } } root.classList.remove('pt-clip'); if (root._pcH === H) root._pcH = null; if (!keep && o.done) o.done(); } };
+  let live = true, timeline = null;
+  const H = { ms, stop(keep) { if (!live) return; live = false; if (timeline) timeline.stop(); for (const t of timers) clearTimeout(t); for (const a of anims) { try { a.cancel(); } catch (e) { /* gone */ } } root.classList.remove('pt-clip'); if (root._pcH === H) root._pcH = null; if (!keep && o.done) o.done(); } };
   root._pcH = H;
-  timers.push(setTimeout(() => H.stop(), ms));
+  if (native) timeline = _pcNativeClipClock(root, anims, ms, jobs, keep => H.stop(keep));
+  if (!timeline) { for (const job of jobs) timers.push(setTimeout(job.run, job.at)); timers.push(setTimeout(() => H.stop(), ms)); }
   return H;
 }
 function petClipStop(root) { if (root && root._pcH) root._pcH.stop(true); }
@@ -342,10 +390,11 @@ function petClipStill(root, id, ms, done) {
   const comp = _pcCompile(c, _pcOrg(root, c)), at = (c.still == null ? 0.5 : c.still) * c.ms, anims = [];
   petClipStop(root);
   root.classList.add('pt-clip');
-  for (const [part, frames] of comp.tracks) for (const el of root.querySelectorAll(_PC_SEL[part])) { try { const a = el.animate(frames, { duration: c.ms, fill: 'both' }); a.pause(); a.currentTime = at; anims.push(a); } catch (e) { /* no pose */ } }
-  let live = true, T = 0;
-  const H = { ms, stop(keep) { if (!live) return; live = false; clearTimeout(T); for (const a of anims) { try { a.cancel(); } catch (e) { /* gone */ } } root.classList.remove('pt-clip'); if (root._pcH === H) root._pcH = null; if (!keep && done) done(); } };
+  for (const [part, frames] of comp.tracks) for (const el of root.querySelectorAll(_PC_SEL[part])) { try { const a = gardenVisualAnimate(el, frames, { duration: c.ms, fill: 'both' }); a.pause(); a.currentTime = at; anims.push(a); } catch (e) { /* no pose */ } }
+  let live = true, T = 0, timeline = null;
+  const H = { ms, stop(keep) { if (!live) return; live = false; if (timeline) timeline.stop(); clearTimeout(T); for (const a of anims) { try { a.cancel(); } catch (e) { /* gone */ } } root.classList.remove('pt-clip'); if (root._pcH === H) root._pcH = null; if (!keep && done) done(); } };
   root._pcH = H;
-  T = setTimeout(() => H.stop(), ms);
+  if (gardenVisualIsNative(root)) timeline = _pcNativeStillClock(root, ms, keep => H.stop(keep));
+  if (!timeline) T = setTimeout(() => H.stop(), ms);
   return H;
 }

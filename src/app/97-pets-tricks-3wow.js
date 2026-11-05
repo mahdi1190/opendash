@@ -106,6 +106,18 @@ function petWowIds() { return Object.keys(PET_WOW); }
 /** The silhouette as one closed chain of points (and the eyes as two more stars), window pixels. The drawing's own paths are filled on a tiny canvas, and the edge traced. */
 function _fxOutlineOf(svg) {
   const out = [];
+  if (gardenVisualIsNative(svg)) {
+    const body = svg.querySelector('.pt-bodyg'); if (!body) return out;
+    const points = [];
+    for (const path of body.querySelectorAll('path')) { const m = path.getScreenCTM(); for (const contour of GardenNativeArt.parsePath(path.getAttribute('d') || '')) for (const p of contour.points) points.push({ x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f }); }
+    points.sort((a, b) => a.x - b.x || a.y - b.y);
+    const turn = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x), lower = [], upper = [];
+    for (const p of points) { while (lower.length > 1 && turn(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+    for (let i = points.length - 1; i >= 0; i--) { const p = points[i]; while (upper.length > 1 && turn(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+    lower.pop(); upper.pop(); const hull = lower.concat(upper), step = Math.max(1, Math.ceil(hull.length / 64)), line = hull.filter((p, i) => i % step === 0); line.closed = true; if (line.length > 2) out.push(line);
+    const eyes = svg.querySelector('.pt-eyes'); if (eyes) { const r = eyes.getBoundingClientRect(); out.push([{ x: r.left + r.width * .2, y: r.top + r.height / 2 }], [{ x: r.right - r.width * .2, y: r.top + r.height / 2 }]); }
+    return out;
+  }
   try {
     const body = svg.querySelector('.pt-bodyg'); if (!body) return out;
     const N = 96, can = document.createElement('canvas'); can.width = can.height = N;
@@ -155,14 +167,14 @@ function _fxStageHost(S) {
     pet: {
       play(clip) { const c = petClipDef(clip); if (!c) return; A.draw(c.pose || 'sit', c.face || { eyes: 'open', mouth: 'smile' }, true); petClipRun(A.svg, clip); },
       hide(on, ms) { try { A.el.style.transition = `opacity ${ms || 200}ms linear`; A.el.style.opacity = on ? '0' : '1'; } catch (e) { /* fine */ } },
-      lift(y, ms, ease) { const a = A.face.animate({ translate: [getComputedStyle(A.face).translate === 'none' ? '0 0' : getComputedStyle(A.face).translate, `0 ${y}px`] }, { duration: ms, easing: ease || 'ease-in-out', fill: 'forwards' }); lifts.push(a); },
+      lift(y, ms, ease) { const cur = gardenVisualStyle(A.face, 'translate'); const a = gardenVisualAnimate(A.face, { translate: [cur === 'none' ? '0 0' : cur, `0 ${y}px`] }, { duration: ms, easing: ease || 'ease-in-out', fill: 'forwards' }); lifts.push(a); },
       far() { const w = stage.clientWidth, x = A.x > w / 2 ? _fxR(w * 0.14, w * 0.36) : _fxR(w * 0.64, w * 0.86), r = rect(); H._x = x; return { x: stage.getBoundingClientRect().left + x, y: r.top + r.height * 0.9, h: r.height * 0.62 }; },
       hop() { if (H._x != null) { A.x = H._x; A.apply(); } },
     },
     world: {
       nudge(px, ms) { _fxNudge(stage, px, ms); },
       freeze(on) { try { if (on) { for (const a of stage.getAnimations({ subtree: true })) { if (a.playState === 'running' && !(a.effect && a.effect.target && A.el.contains(a.effect.target))) { a.pause(); paused.push(a); } } } else { for (const a of paused.splice(0)) { try { a.play(); } catch (e) { /* gone */ } } } } catch (e) { /* older browser */ } },
-      shake() { for (const n of stage.querySelectorAll('.pts-toy,.pts-bed')) { try { n.animate({ rotate: ['0deg', '6deg', '-5deg', '3deg', '0deg'] }, { duration: 700, easing: 'ease-out' }); } catch (e) { /* fine */ } } },
+      shake() { for (const n of stage.querySelectorAll('.pts-toy,.pts-bed')) { try { gardenVisualAnimate(n, { rotate: ['0deg', '6deg', '-5deg', '3deg', '0deg'] }, { duration: 700, easing: 'ease-out' }); } catch (e) { /* fine */ } } },
       react() {},
     },
     end() { for (const a of lifts) { try { a.cancel(); } catch (e) { /* gone */ } } H.pet.hide(false, 60); H.world.freeze(false); },
@@ -172,14 +184,16 @@ function _fxStageHost(S) {
 /* ---------- where it happens: your garden ---------- */
 function _fxGardenHost(P) {
   const lifts = [], paused = [];
-  const svg = () => (typeof _gdp !== 'undefined' && _gdp.svg) || null;
+  // A spectacle owns the scene it started on, including cleanup after remount.
+  const sceneSvg = (typeof _gdp !== 'undefined' && _gdp.svg) || null;
+  const svg = () => sceneSvg;
   const H = {
     pos() { const m = P.node.getScreenCTM(), r = P.node.getBoundingClientRect(); return { x: m.e, y: m.f, h: Math.max(30, r.height * 0.8) }; },
     outline() { return P.root ? _fxOutlineOf(P.root) : []; },
     pet: {
       play(clip) { const c = petClipDef(clip); if (!c) return; P.draw(c.pose || 'sit', c.face || { eyes: 'open', mouth: 'smile' }); P.clip(clip, c.ms); },
       hide(on, ms) { try { P.lift.style.transition = `opacity ${ms || 200}ms linear`; P.lift.style.opacity = on ? '0' : '1'; } catch (e) { /* fine */ } },
-      lift(y, ms, ease) { const k = P.node.getScreenCTM().a || 1, cur = getComputedStyle(P.lift).translate; const a = P.lift.animate({ translate: [cur === 'none' ? '0 0' : cur, `0 ${y / k}px`] }, { duration: ms, easing: ease || 'ease-in-out', fill: 'forwards' }); lifts.push(a); },
+      lift(y, ms, ease) { const k = P.node.getScreenCTM().a || 1, cur = gardenVisualStyle(P.lift, 'translate'); const a = gardenVisualAnimate(P.lift, { translate: [cur === 'none' ? '0 0' : cur, `0 ${y / k}px`] }, { duration: ms, easing: ease || 'ease-in-out', fill: 'forwards' }); lifts.push(a); },
       far() {
         const W = GARDEN_WORLD, box = (typeof _gw !== 'undefined' && _gw.box) ? _gw.box.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight }, m = svg().getScreenCTM(); H._to = null;
         for (let i = 0; i < 28 && !H._to; i++) { const d = _fxR(4, 9) * (i % 2 ? -1 : 1), x = P.x + d, y = P.y + _fxR(-2, 2); if (!_ptwFree(x, y)) continue; const c = _ptwCell(x, y), sx = m.a * c.x + m.e, sy = m.d * c.y + m.f; if (sx > box.left + 60 && sx < box.left + box.width - 60 && sy > box.top + 80 && sy < box.top + box.height - 60) H._to = { x, y, sx, sy }; }
@@ -190,25 +204,34 @@ function _fxGardenHost(P) {
     },
     world: {
       nudge(px, ms) { const s = svg(); if (s) _fxNudge(s, px, ms); },
-      freeze(on) { const s = svg(); if (!s) return; try { if (on) { _ptw.frozen = true; for (const a of s.getAnimations({ subtree: true })) if (a.playState === 'running') { a.pause(); paused.push(a); } } else { _ptw.frozen = false; for (const a of paused.splice(0)) { try { a.play(); } catch (e) { /* gone */ } } } } catch (e) { /* older browser */ } },
+      freeze(on) {
+        const s = svg(); if (!s) return;
+        _ptw.frozen = !!on;
+        if (on) s.setAttribute('data-garden-frozen', '1'); else s.removeAttribute('data-garden-frozen');
+        try {
+          if (on) { for (const a of s.getAnimations({ subtree: true })) if (a.playState === 'running') { a.pause(); paused.push(a); } }
+          else { for (const a of paused.splice(0)) { try { a.play(); } catch (e) { /* gone */ } } }
+        } catch (e) { /* older browser */ }
+        gardenVisualAmbientPause(s);
+      },
       shake(o) {
         const s = svg(); if (!s) return;
         const c = H.pos(), R = (o && o.r) || 500, wave = o && o.wave, nodes = [...s.querySelectorAll('.gd-objects > .gd-it')].slice(0, 500), hit = [];
         for (const n of nodes) { const m = n.getScreenCTM && n.getScreenCTM(); if (!m) continue; const d = Math.hypot(m.e - c.x, (m.f - c.y) * 1.3); if (d < R && m.e > -80 && m.e < innerWidth + 80 && m.f > -40 && m.f < innerHeight + 200) hit.push([n, d]); }
         hit.sort((a, b) => a[1] - b[1]);
-        for (const [n, d] of hit.slice(0, 70)) { const q = n.firstElementChild; if (!q) continue; try { const k = _fxR(2.2, 5); q.animate({ rotate: ['0deg', k + 'deg', -k * 0.8 + 'deg', k * 0.5 + 'deg', '0deg'], transformOrigin: ['0 0', '0 0'] }, { duration: _fxR(800, 1200), easing: 'ease-in-out', delay: wave ? d * 0.5 : d * 0.12 }); } catch (e) { /* fine */ } }
+        for (const [n, d] of hit.slice(0, 70)) { const q = n.firstElementChild; if (!q) continue; try { const k = _fxR(2.2, 5); gardenVisualAnimate(q, { rotate: ['0deg', k + 'deg', -k * 0.8 + 'deg', k * 0.5 + 'deg', '0deg'], transformOrigin: ['0 0', '0 0'] }, { duration: _fxR(800, 1200), easing: 'ease-in-out', delay: wave ? d * 0.5 : d * 0.12 }); } catch (e) { /* fine */ } }
       },
       react(clip) {
         for (const q of _ptw.pets) { if (q === P || q.pose === 'sleep') continue; q.tx = null; q.dir = q.x < P.x ? 1 : -1; const c = petClipDef(clip); if (c && petClipSuits(clip, q.look.species)) { q.draw(c.pose || 'sit', c.face || { eyes: 'open', mouth: 'smile' }); q.clip(clip, c.ms, () => { q.sit(); q.busy = 1; }); } }
         try { if (typeof gartEmoteRun === 'function') gartEmoteRun(clip === 'startled' ? 'startled' : clip === 'bow' ? 'bow' : 'cheer', { quiet: true }); } catch (e) { /* no gardener */ }
       },
     },
-    end() { for (const a of lifts) { try { a.cancel(); } catch (e) { /* gone */ } } H.pet.hide(false, 60); H.world.freeze(false); P.wow = false; if (!P.tx) { P.sit(); P.busy = 1; } const s = svg(); if (s) s.classList.remove('gd-hush'); },
+    end() { for (const a of lifts) { try { a.cancel(); } catch (e) { /* gone */ } } H.pet.hide(false, 60); H.world.freeze(false); P.wow = false; if (!P.tx) { P.sit(); P.busy = 1; } const s = svg(); if (s) { s.classList.remove('gd-hush'); gardenVisualAmbientPause(s); } },
   };
   return H;
 }
 function _fxNudge(el, px, ms) {
-  try { const f = []; const n = 7; for (let i = 0; i <= n; i++) { const k = 1 - i / n; f.push(i === n ? '0px 0px' : `${(_fxR(-1, 1) * px * k).toFixed(1)}px ${(_fxR(-1, 1) * px * k * 0.7).toFixed(1)}px`); } el.animate({ translate: f }, { duration: ms || 500, easing: 'linear' }); } catch (e) { /* fine */ }
+  try { const f = []; const n = 7; for (let i = 0; i <= n; i++) { const k = 1 - i / n; f.push(i === n ? '0px 0px' : `${(_fxR(-1, 1) * px * k).toFixed(1)}px ${(_fxR(-1, 1) * px * k * 0.7).toFixed(1)}px`); } gardenVisualAnimate(el, { translate: f }, { duration: ms || 500, easing: 'linear' }); } catch (e) { /* fine */ }
 }
 /** Play a spectacle on your pet: where = the page's stage, or 'garden'. */
 function petWowRun(id, where, o) {
@@ -219,10 +242,12 @@ function petWowRun(id, where, o) {
   if (where === 'garden') {
     const P = typeof _ptw !== 'undefined' && _ptw.on ? (_ptw.pets.find(q => q.me) || _ptw.pets[0]) : null;
     if (!P) return null;
+    // End the old host before it can clear the new spectacle's hush and pose.
+    if (_fxS.live) _fxS.live.stop(true);
     if (typeof gardenLivePet === 'function') gardenLivePet('wow', id);
     P.tx = null; P.wow = true; P.busy = def.ms / 1000 + 0.3; P.cb = null; P.sit();
     host = _fxGardenHost(P);
-    if (_gdp.svg) _gdp.svg.classList.add('gd-hush');
+    if (_gdp.svg) { _gdp.svg.classList.add('gd-hush'); gardenVisualAmbientPause(_gdp.svg); }
   } else if (where && where.actor) {
     host = _fxStageHost(where);
     where.busy = true;

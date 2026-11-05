@@ -103,7 +103,7 @@ function _gtgpBridgeSvg(st, m) {
   if (st >= 2) s += A.S('#7e5a34', 7, `M-14 -18L${Math.min(st - 1, 3) * 44 + 8} -18`) + A.S('#a8804e', 3, `M-14 -20L${Math.min(st - 1, 3) * 44 + 8} -20`);
   if (st >= 4) for (let i = 0; i <= 7; i++) { const x = -10 + i * 20; s += A.S('#7e5a34', 2.4, `M${x} -20L${x} -33`); }
   if (st >= 4) s += A.S('#8e6a3e', 2.6, 'M-12 -33L134 -33');
-  if (st >= 5) { s += A.P('#ffffff', A.ell(170, -20, 44, 14), 0.5) + A.P('#ffffff', A.ell(150, -24, 30, 10), 0.7); s += A.S('#3a3024', 1.8, 'M-10 -33L-10 -46') + A.P(dark ? '#ffd98a' : '#d8c49a', A.rrect(-13, -54, 6, 8, 1)); }
+  if (st >= 5) { s += A.S('#e6efea', 2.4, 'M126 -20Q143 -28 161 -22T207 -23', 0.24) + A.S('#f3f6ed', 1.8, 'M137 -28Q151 -33 166 -28T190 -29', 0.2) + A.S('#d6e5df', 1.2, 'M155 -15Q171 -20 186 -16T210 -17', 0.18); s += A.S('#3a3024', 1.8, 'M-10 -33L-10 -46') + A.P(dark ? '#ffd98a' : '#d8c49a', A.rrect(-13, -54, 6, 8, 1)); }
   return s;
 }
 function _gtgpLighthouseSvg(st, m) {

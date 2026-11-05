@@ -10,6 +10,7 @@
 //   cspFor / inlineScriptHashes   the CSP, with the page's inline scripts by hash
 
 import { createHash } from 'node:crypto';
+import { GAME_ENGINE_VERSION, GAME_ENGINE_SHA256 } from '../lib/game-engine.mjs';
 
 export const MIME = Object.freeze({
   '.html': 'text/html; charset=utf-8',
@@ -50,6 +51,19 @@ export function inlineScriptHashes(html) {
   const out = new Set();
   for (const m of String(html || '').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
     const t = /\btype\s*=\s*["']?([^"'\s>]*)/i.exec(m[1]);
+    // The game engine stays inert until selected. Authorize its exact pinned
+    // bytes when it is decoded later, without allowing arbitrary inline code.
+    if (t && t[1] === 'application/octet-stream' && /\bid=["']freeflo-game-engine["']/.test(m[1]) && m[1].includes(`data-version="${GAME_ENGINE_VERSION}"`)) {
+      const encoded = m[2].trim();
+      if (/^[A-Za-z0-9+/]+={0,2}$/.test(encoded)) {
+        const bytes = Buffer.from(encoded, 'base64');
+        if (createHash('sha256').update(bytes).digest('hex') === GAME_ENGINE_SHA256) {
+          const code = bytes.toString('utf8').replace(/\r\n?/g, '\n');
+          out.add(`'sha256-${createHash('sha256').update(code, 'utf8').digest('base64')}'`);
+        }
+      }
+      continue;
+    }
     if (!JS_TYPES.test(t ? t[1].trim() : '') || /\bsrc\s*=/i.test(m[1])) continue;
     // The HTML parser turns CR LF and lone CR into LF before the browser hashes the text.
     const body = m[2].replace(/\r\n?/g, '\n');
@@ -90,7 +104,10 @@ export function send(res, code, body, type = 'text/plain; charset=utf-8', header
     'Content-Security-Policy': typeof body === 'string' && /^text\/html/i.test(type) && /<script/i.test(body) ? cspFor(body) : CSP,
     ...headers,
   });
-  res.end(body);
+  if (body && typeof body.pipe === 'function') {
+    body.once('error', () => res.destroy());
+    body.pipe(res);
+  } else res.end(body);
 }
 
 export const json = (res, code, obj, headers) => send(res, code, JSON.stringify(obj, null, 1), MIME['.json'], headers);

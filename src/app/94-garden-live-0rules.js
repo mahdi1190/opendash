@@ -55,14 +55,14 @@ const GL_PHRASES = Object.freeze([
 const GL_PHRASE_IDS = Object.freeze(GL_PHRASES.map(p => p.id));
 const GL_TOGETHER = Object.freeze(['high5', 'follow', 'unfollow', 'sit', 'greet']);   // what two people do together: an `em` with c: 'do'
 /** What people SEE each other do (gl:fx, a kind of its own: an older app has no such kind and drops it, so GL_V stays). Ids and cells on the wire, each side draws them from its own tables;
- *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
+ *  an id this version does not know is ignored. `c` is the family, `e` the step or the id: pet (a clip of the pet library, or pat / eat), petplay (an environment/guide endpoint or critical exact-request guide stop; optional u 1..3 plus i species addresses the host pack), wow (a pet spectacle), nap (on / off), roam (a species of the host's pack),
  *  fish (a step of the line), bug (a step of the net), got (what was caught or found: `e` its kind, `i` its id), make (a recipe's id), cheer (a moment of yours: a garden level, an achievement's id, a photo taken), ct (a contest round: the host's, see GL_CT), snap (ask for a group photo: `i` its id, `x` and `y` the middle of the frame, see GL_SNAP). `to` and `w` are slots as in gl:em. */
-const GL_FX_KINDS = Object.freeze(['pet', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync', 'use']);
-const GL_FX_STEPS = Object.freeze({ sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']) });
+const GL_FX_KINDS = Object.freeze(['pet', 'petplay', 'wow', 'nap', 'roam', 'fish', 'bug', 'got', 'make', 'cr', 'egg', 'pick', 'cheer', 'ct', 'snap', 'hall', 'fs', 'sync', 'use', 'pose', 'kite', 'soap', 'leaf', 'marble']);
+const GL_FX_STEPS = Object.freeze({ sync: Object.freeze(['ask', 'at', 'away', 'back']), fs: Object.freeze(['hook', 'land', 'free']), fish: Object.freeze(['cast', 'bite', 'reel', 'land', 'lost', 'in', 'big', 'help']), bug: Object.freeze(['sneak', 'swing', 'miss', 'gone', 'claim', 'lost']), cr: Object.freeze(['poke', 'react', 'look', 'greet']), egg: Object.freeze(['fire']), pick: Object.freeze(['spawn', 'claim', 'take', 'gone']), ct: Object.freeze(['start', 'board', 'end', 'stop']), nap: Object.freeze(['on', 'off']), got: Object.freeze(['fish', 'bug', 'keep', 'craft', 'crop', 'gear']), cheer: Object.freeze(['level', 'ach', 'photo']), snap: Object.freeze(['ask']), hall: Object.freeze(['in', 'at', 'out']), use: Object.freeze(['bell', 'wish', 'collect', 'machine']), kite: Object.freeze(['take', 'letgo', 'state']), soap: Object.freeze(['take', 'letgo', 'release', 'state']), leaf: Object.freeze(['launch', 'control', 'retrieve', 'state']), marble: Object.freeze(['set', 'roll', 'reset', 'state']) });
 /** What only the garden's host may say (the host decides: who netted a bug, who took a gift, which creatures are about, what the pets notice), and what goes to the host alone (a claim, a poke). A guest's own fx of these kinds is refused at both ends. */
-const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*']));
-const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back']));
-const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*'));
+const GL_FX_HOST_ONLY = Object.freeze(new Set(['bug|gone', 'bug|lost', 'cr|react', 'cr|look', 'cr|greet', 'egg|fire', 'pick|spawn', 'pick|take', 'pick|gone', 'roam|*', 'ct|*', 'kite|state', 'soap|state', 'leaf|state', 'marble|state']));
+const GL_FX_TO_HOST = Object.freeze(new Set(['bug|claim', 'pick|claim', 'cr|poke', 'fs|hook', 'fs|land', 'fs|free', 'sync|ask', 'sync|away', 'sync|back', 'pose|on', 'pose|off', 'kite|take', 'kite|letgo', 'soap|take', 'soap|letgo', 'soap|release', 'leaf|launch', 'leaf|control', 'leaf|retrieve', 'marble|set', 'marble|roll', 'marble|reset']));
+const glFxHostOnly = (b) => !!b && (GL_FX_HOST_ONLY.has(b.c + '|' + b.e) || GL_FX_HOST_ONLY.has(b.c + '|*') || b.c === 'petplay' && b.u != null);
 const glFxToHost = (b) => !!b && GL_FX_TO_HOST.has(b.c + '|' + b.e);
 const GL_FX_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 /** CONTESTS (docs/dev/GARDEN_TOGETHER.md section 15). The host's page is the referee: it starts a timed round (`ct|start`), keeps the scores, sends the board (`ct|board`) and names the winner (`ct|end`);
@@ -99,8 +99,73 @@ function _glCtBoardOk(l) {
 /** '' when an fx body fits the tables, else why. (The page checks the ids against its own catalogues, and ignores what it does not know.) */
 function glFxOk(b) {
   if (!b || typeof b !== 'object' || !GL_FX_KINDS.includes(b.c) || !GL_FX_ID_RE.test(String(b.e || ''))) return 'kind';
+  if (b.pc != null && b.c !== 'petplay') return 'pet';
+  if ((b.lb != null || b.lc != null) && b.c !== 'leaf') return 'leaf';
+  // Only the new play family addresses a host pack member. A species check
+  // accompanies its transient pp slot, so a changed roster cannot misaddress it.
+  if (b.u != null && b.c !== 'petplay') return 'pet';
+  if (b.c === 'petplay') {
+    const match = /^(?:puddle-(cat|dog|duck|rabbit)|guide-(?:stop-)?(owl|otter|fox|rabbit))$/.exec(String(b.e || '')), species = match && (match[1] || match[2]);
+    if (!species || match[2] && !GL_FX_ID_RE.test(String(b.p || '')) || b.u != null && (!Number.isInteger(b.u) || b.u < 1 || b.u > 3 || b.i !== species) || b.u == null && b.i != null || !Array.isArray(b.pc) || b.pc.length !== 3 || !Number.isInteger(b.pc[0]) || b.pc[0] < 0 || b.pc[0] > 640 || !Number.isInteger(b.pc[1]) || b.pc[1] < 0 || b.pc[1] > GARDEN_WORLD.rows * 10 || b.pc[2] !== 0 && b.pc[2] !== 1) return 'pet';
+    return '';
+  }
+  if (b.c === 'pose') {
+    if (!['on', 'off'].includes(b.e) || !GL_FX_ID_RE.test(String(b.p || ''))) return 'pose';
+    if (b.e === 'off') return b.i == null && b.kd == null && b.v == null && b.n == null && b.ql == null ? '' : 'pose';
+    if (b.i == null) return b.kd == null && b.v == null && b.n == null && b.ql == null ? '' : 'pose';
+    if (!GL_FX_ID_RE.test(String(b.i)) || !['fish', 'bug', 'gear'].includes(b.kd)) return 'pose';
+    if (b.v != null && (!GL_FX_ID_RE.test(String(b.v)) || b.kd === 'gear')) return 'pose';
+    if (b.n != null && (!Number.isInteger(b.n) || b.n < 1 || b.n > (b.kd === 'fish' ? 400 : 999) || b.kd === 'gear')) return 'pose';
+    return b.ql == null || Number.isInteger(b.ql) && b.ql >= 0 && b.ql <= 3 ? '' : 'pose';
+  }
   const steps = GL_FX_STEPS[b.c];
   if (steps && !steps.includes(b.e)) return 'step';
+  if (b.c === 'marble') {
+    const id = v => typeof v === 'string' && v.length <= 13 && GL_FX_ID_RE.test(v), int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    if (!id(b.i) || b.p != null && !id(b.p)) return 'id';
+    if (b.e !== 'state') {
+      if (!id(b.p) || b.mr != null) return 'marble';
+      return b.e === 'set' ? int(b.n, 1, 2) && int(b.ql, 1, 2) ? '' : 'marble' : b.n == null && b.ql == null ? '' : 'marble';
+    }
+    const r = b.mr;
+    if (!id(b.v) || !int(b.x, 0, GARDEN_WORLD.cols - 1) || !int(b.y, 0, GARDEN_WORLD.rows - 1) || !Array.isArray(r) || r.length !== 10) return 'marble';
+    return int(r[0], 0, 999) && int(r[1], 0, 4) && int(r[2], 0, 6) && int(r[3], 0, 1000) && int(r[4], 0, 1200) && int(r[5], 0, 1) && int(r[6], 0, 1) && int(r[7], 0, 3) && int(r[8], 0, 99) && int(r[9], 0, 1) && (r[1] === 1 || !r[9]) ? '' : 'marble';
+  }
+  if (b.c === 'leaf') {
+    const id = v => typeof v === 'string' && v.length <= 13 && GL_FX_ID_RE.test(v), int = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    if (!id(b.i) || b.p != null && !id(b.p)) return 'id';
+    if (b.e !== 'state') {
+      if (!id(b.p) || b.lb != null || b.lc != null) return 'leaf';
+      if (b.e === 'launch') return int(b.n, 1, 3) ? '' : 'leaf';
+      if (b.e === 'control') return int(b.tt, 1, 999) && int(b.n, 1, 3) && int(b.ql, 1, 2) ? '' : 'leaf';
+      return int(b.tt, 0, 999) ? '' : 'leaf';
+    }
+    if (!int(b.x, 0, GARDEN_WORLD.cols - 1) || !int(b.y, 0, GARDEN_WORLD.rows - 1) || !int(b.tt, 0, 1) || !Array.isArray(b.lc) || b.lc.length !== 5 || !Array.isArray(b.lb) || b.lb.length > GL_PEOPLE) return 'leaf';
+    for (const p of b.lc) if (!Array.isArray(p) || p.length !== 2 || !int(p[0], 0, GARDEN_WORLD.cols * 100) || !int(p[1], 0, GARDEN_WORLD.rows * 100)) return 'leaf';
+    const seen = new Set();
+    for (const r of b.lb) {
+      if (!Array.isArray(r) || r.length !== 9 || !int(r[0], 0, GL_PEOPLE) || seen.has(r[0]) || !int(r[1], 1, 999) || !int(r[2], 0, GARDEN_WORLD.cols * 100) || !int(r[3], 0, GARDEN_WORLD.rows * 100) || !int(r[4], 0, 628) || !int(r[5], 0, 2) || !int(r[6], 0, 1) || !int(r[7], 0, 2) || !int(r[8], 0, 4)) return 'leaf';
+      seen.add(r[0]);
+    }
+    return '';
+  }
+  if (b.c === 'soap') {
+    if (!GL_FX_ID_RE.test(String(b.i || '')) || b.p != null && !GL_FX_ID_RE.test(String(b.p))) return 'id';
+    if (b.e !== 'state') return GL_FX_ID_RE.test(String(b.p || '')) ? '' : 'soap';
+    if (!GL_FX_ID_RE.test(String(b.v || '')) || !Number.isInteger(b.x) || !Number.isInteger(b.y) || b.x < 0 || b.x >= GARDEN_WORLD.cols || b.y < 0 || b.y >= GARDEN_WORLD.rows || !Number.isInteger(b.n) || b.n < 0 || b.n > 100 || !Number.isInteger(b.ql) || b.ql < 0 || b.ql > 3 || !Array.isArray(b.l) || b.l.length > 2) return 'soap';
+    const seen = new Set();
+    for (const r of b.l) { if (!Array.isArray(r) || r.length !== 3 || !Number.isInteger(r[0]) || r[0] < 0 || r[0] > GL_PEOPLE || r[1] !== 0 && r[1] !== 1 || r[2] !== 0 || seen.has(r[0])) return 'soap'; seen.add(r[0]); }
+    if (b.sb != null && (!Array.isArray(b.sb) || b.sb.length !== 5 || !GL_FX_ID_RE.test(String(b.sb[0])) || !Number.isInteger(b.sb[1]) || b.sb[1] < 0 || b.sb[1] > GARDEN_WORLD.cols * 10 || !Number.isInteger(b.sb[2]) || b.sb[2] < 0 || b.sb[2] > GARDEN_WORLD.rows * 10 || !Number.isInteger(b.sb[3]) || b.sb[3] < 10 || b.sb[3] > 140 || !Number.isInteger(b.sb[4]) || b.sb[4] < 0 || b.sb[4] > 99)) return 'soap';
+    return (b.ql === 3) === !!b.sb && (b.ql !== 3 || !b.l.length) ? '' : 'soap';
+  }
+  if (b.c === 'kite') {
+    if (!GL_FX_ID_RE.test(String(b.i || '')) || b.p != null && !GL_FX_ID_RE.test(String(b.p))) return 'id';
+    if (b.e !== 'state') return GL_FX_ID_RE.test(String(b.p || '')) ? '' : 'kite';
+    if (!Number.isInteger(b.x) || !Number.isInteger(b.y) || b.x < 0 || b.x >= GARDEN_WORLD.cols || b.y < 0 || b.y >= GARDEN_WORLD.rows || !Array.isArray(b.l) || b.l.length > GL_PEOPLE) return 'kite';
+    const seen = new Set();
+    for (const r of b.l) { if (!Array.isArray(r) || r.length !== 3 || !Number.isInteger(r[0]) || r[0] < 0 || r[0] > GL_PEOPLE || r[1] !== 0 || r[2] !== 0 || seen.has(r[0])) return 'kite'; seen.add(r[0]); }
+    return '';
+  }
   if (b.c === 'ct') {
     if (!GL_ID_RE.test(String(b.i || ''))) return 'id';
     const secs = Number.isInteger(b.n) && b.n >= 0 && b.n <= GL_CT.maxLen;

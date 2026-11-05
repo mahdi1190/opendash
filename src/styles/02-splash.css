@@ -56,8 +56,8 @@
   position: absolute; z-index: 2; left: clamp(24px, 5vw, 88px); bottom: clamp(26px, 7vh, 80px); right: 24px; display: grid; gap: 8px; justify-items: start;
   color: #fff; text-shadow: 0 2px 18px rgb(0 0 0 / 0.45); opacity: 0;
 }
-.od-seq-origin { font-size: clamp(1.3rem, 2.4vw, 2.2rem); font-weight: 650; letter-spacing: -0.015em; }
-.od-seq-skip { font-size: 0.82rem; font-weight: 500; opacity: 0.72; letter-spacing: 0.02em; }
+.od-seq-origin { font-size: clamp(1.3rem, 2.4vw, 2.2rem); font-weight: 650; letter-spacing: -0.015em; line-height: 1.2; }
+.od-seq-skip { font-size: 0.82rem; font-weight: 500; opacity: 0.72; letter-spacing: 0.02em; line-height: 1.4; }
 /* stage 2: the welcome */
 .od-splash.od-st-hello .od-sp-in { animation: od-seq-brand-out 560ms cubic-bezier(0.4, 0, 0.2, 1) both; }
 .od-splash.od-st-hello .od-seq-bg { animation: od-seq-fade 900ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both; }

@@ -5,13 +5,24 @@
      A bird on your head: stand still long enough.
      Coming back: being away is never a failure. Saved: lastIn (the last day you were here), away (how long you had been gone), tr.<day> (those tracks followed).
    ============================================================ */
-const _wdw = { prints: [], S: null, lx: 0, ly: 0, side: 1, mode: '', track: null, trackS: null, bird: null, still: 0, tufts: [], birdT: 0 };
+const _wdw = { prints: [], S: null, lx: 0, ly: 0, side: 1, mode: '', track: null, trackS: null, bird: null, still: 0, tufts: [], birdT: 0, nativePrints: false, printRemovals: 0 };
+function _wdSurfacePrints() {
+  const native = window.GardenNative, active = !!(native && native.active() && native.surface && native.surface());
+  if (!active) { _wdw.nativePrints = false; return false; }
+  if (_wdw.S) { const sprite = _wdw.S; _wdw.S = null; sprite.remove(); _wdw.printRemovals++; }
+  if (!_wdw.nativePrints) for (const sprite of [..._wd.sprites]) if (sprite.id === 'wd-prints') { sprite.remove(); _wdw.printRemovals++; }
+  _wdw.nativePrints = true; _wdw.prints.length = 0; _wdw.lx = _gw.px; _wdw.ly = _gw.py;
+  return true;
+}
 function _wdGround(m) { if (m.rain && m.rain.snow) return 'snow'; if (m.rain && (m.rain.now || (m.rain.last && m.now - m.rain.last < 3 * 3600000))) return 'wet'; return ''; }
 function _wdPrintMark(x, y, side, mode, k) {
   const G = GARDEN_WORLD, px = (x * G.cellW + side * 3).toFixed(1), py = (y * G.cellH).toFixed(1);
   return mode === 'snow' ? `<ellipse cx="${px}" cy="${py}" rx="${3.2 * k}" ry="${1.7 * k}" fill="#a8bcd4" opacity="0.72"/><ellipse cx="${px}" cy="${(y * G.cellH + 0.5).toFixed(1)}" rx="${2.2 * k}" ry="${1 * k}" fill="#8fa8c4" opacity="0.5"/>` : `<ellipse cx="${px}" cy="${py}" rx="${3 * k}" ry="${1.5 * k}" fill="#4a3a24" opacity="0.26"/>`;
 }
 function _wdPrintsDraw() {
+  // NativeSurface supplies player, peer and pet contacts on the engine clock.
+  // Keep Wonder's separate once-a-day animal trail and its discovery reward.
+  if (_wdSurfacePrints()) return;
   if (!_wdw.S) _wdw.S = wdSprite({ id: 'wd-prints', x: 0, y: 0, z: -1, still: true, svg: '' });
   wdArt(_wdw.S, _wdw.prints.map(p => _wdPrintMark(p.x, p.y, p.s, _wdw.mode, 1)).join(''));
 }
@@ -23,12 +34,21 @@ function _wdTrackFor(m, mode) {
   if (!p1 || !end) return null;
   const n = 18, pts = []; let s = '';
   for (let i = 0; i <= n; i++) { const t = i / n, x = p1.x + (end.x - p1.x) * t + Math.sin(t * 7 + h % 5) * 0.5, y = p1.y + (end.y - p1.y) * t + Math.cos(t * 5 + h % 3) * 0.3; pts.push({ x, y }); s += _wdPrintMark(x, y, i % 2 ? 1.6 : -1.6, mode, 0.62); s += _wdPrintMark(x + 0.14, y + 0.1, i % 2 ? -1.6 : 1.6, mode, 0.5); }
-  return { who, end, svg: s };
+  const G = GARDEN_WORLD, x = Math.round((Math.min(...pts.map(p => p.x)) + Math.max(...pts.map(p => p.x))) * .5 * G.cellW * 10) / (G.cellW * 10), y = Math.round((Math.min(...pts.map(p => p.y)) + Math.max(...pts.map(p => p.y))) * .5 * G.cellH * 10) / (G.cellH * 10);
+  return { who, end, x, y, svg: `<g transform="translate(${(-x * G.cellW).toFixed(1)} ${(-y * G.cellH).toFixed(1)})">${s}</g>` };
+}
+function _wdTrackNativeCache(S) {
+  const native = window.GardenNative, node = S.node;
+  if (!native || !native.active() || !window.GardenNativeArt || !node || !node.target || !node.isConnected || !node.target.visible || S._wdCacheNode === node) return;
+  // This is the daily discovery trail, not the player's Surface contacts.
+  // Cache its static feet together after placement; keep the original art and
+  // the shared cache allowance/quality policy for zooming and memory pressure.
+  GardenNativeArt.cache(node, { staticOnly: true, quality: 1, adaptive: true, crop: false }); S._wdCacheNode = node;
 }
 function _wdTrackUp(m, mode) {
   if (_wdw.track !== null) return;
   _wdw.track = _wdTrackFor(m, mode) || false;
-  if (_wdw.track) _wdw.trackS = wdSprite({ id: 'wd-track', x: 0, y: 0, z: -0.5, still: true, svg: _wdw.track.svg });
+  if (_wdw.track) _wdw.trackS = wdSprite({ id: 'wd-track', x: _wdw.track.x, y: _wdw.track.y, z: -0.5, still: true, svg: _wdw.track.svg, update(dt, S) { _wdTrackNativeCache(S); } });
 }
 function _wdTrackOff() { if (_wdw.trackS) { _wdw.trackS.remove(); _wdw.trackS = null; } _wdw.track = null; }
 /* ---------- rainbow's end ---------- */
@@ -69,7 +89,7 @@ function _wdBirdCome(m) {
     } });
   _wdw.bird = S;
   void m;
-  if (!_wdGet('bird')) { _wdSet('bird', _wdToday()); gardenRewardDid('bird'); setTimeout(() => wdWhisper('A bird has landed close by. Stay still.', 4000), 1500); }
+  if (!_wdGet('bird')) { _wdSet('bird', _wdToday()); gardenRewardDid('bird'); setTimeout(() => wdAmbient('A bird has landed close by. Stay still.', 4000, 'wildlife'), 1500); }
   _glSound('chirp');
 }
 /* ---------- coming back ---------- */
@@ -81,7 +101,7 @@ function _wdComeBack(m) {
   _wdSave();
   if (gap < 3) return;
   let line = ''; for (const [n, t] of _WD_WELCOME) if (gap >= n) line = t;
-  setTimeout(() => { if (_wd.on) wdWhisper(line, 8000); }, 3500);
+  setTimeout(() => { if (_wd.on) wdAmbient(line, 8000, 'return'); }, 3500);
   // long grass and a web: gone as you walk through them, and never there again
   const cols = gap >= 30 ? 3 : gap >= 7 ? 2 : 1;
   for (let i = 0; i < cols; i++) {
@@ -96,6 +116,7 @@ wdMod({
   id: 'weather', pref: 'weather',
   begin(m) { _wdw.prints = []; _wdw.S = null; _wdw.mode = ''; _wdw.track = null; _wdw.trackS = null; _wdw.lx = _gw.px; _wdw.ly = _gw.py; void m; },
   frame() {
+    if (_wdSurfacePrints()) return;
     if (!_wdw.mode || !_gw.moving) return;
     if (Math.hypot(_gw.px - _wdw.lx, (_gw.py - _wdw.ly) * 1.2) < 0.42) return;
     _wdw.lx = _gw.px; _wdw.ly = _gw.py; _wdw.side = -_wdw.side;
@@ -105,6 +126,7 @@ wdMod({
   },
   tick(m) {
     if (m.visit) return;
+    _wdSurfacePrints();
     const mode = _wdGround(m);
     if (mode !== _wdw.mode) { _wdw.mode = mode; if (!mode) { _wdw.prints = []; if (_wdw.S) { _wdw.S.remove(); _wdw.S = null; } _wdTrackOff(); } }
     if (mode) _wdTrackUp(m, mode);
@@ -112,7 +134,7 @@ wdMod({
     if (T && !_wdGet('tr.' + m.today) && wdNear(T.end.x, T.end.y, 1.3)) {
       _wdSet('tr.' + m.today, 1); gardenRewardDid('tracks');
       const c = T.who && _gl.W && _gl.W.own ? gardenLifeSpawn(T.who, { at: { x: T.end.x + 0.9, y: T.end.y, fade: 0 } }) : null;
-      wdWhisper(c ? 'That explains the tracks.' : 'The tracks stop here, as if whatever made them simply left the ground.', 6000);
+      wdAmbient(c ? 'That explains the tracks.' : 'The tracks stop here, as if whatever made them simply left the ground.', 6000, 'tracks');
     }
   },
   end() { _wdw.S = null; _wdw.trackS = null; _wdw.track = null; _wdw.prints = []; },

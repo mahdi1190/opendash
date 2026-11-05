@@ -11,39 +11,57 @@
 const _gll = {
   role: '', view: null, viewAt: 0, loading: null,
   actors: new Map(),   // slot -> actor. On a visit you are one of them (me: true). The host is slot 0.
-  by: new Map(),       // 'p|x|y' or 'd|x|y' -> who placed it (a name; a visit only: the host's page reads its own garden)
+  by: new Map(), byVersion: 1,       // 'p|x|y', 'd|x|y' or 'g|x|y': plants, decor and ground have separate attribution
   tipEl: null,
 };
 const _GL_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const GL_ACT_SPEED = 215, GL_ACT_RUN = 300, GL_ACT_SCALE = 0.74, GL_PET_H = 26;   // the walker's own speeds (GW_SPEED); a pet comes up to the knee
 const _GLL_TAB = Math.floor(Math.random() * 2176782336).toString(36) + Math.floor(Math.random() * 2176782336).toString(36);   // this tab, to the server: one tab hosts
 function _gllNewId() { return Math.floor(Date.now()).toString(36).slice(-7) + Math.floor(Math.random() * 2176782336).toString(36);  /* clock-ok: only unique */ }
-function _gllApi(path, body) { return _gscApi(path, body); }
+function _gllApi(path, body, opts) { return _gscApi(path, body, opts); }
 /**
  * What a garden says, to this computer's server, one at a time and in the order it was said. Several requests at once can reach the server in any order, and then a landing goes before its strike, or a change before the whole garden.
  * A newer whole list takes the place of one still waiting. -> Promise: the answer, or null.
  */
-const _gllQ = { list: [], busy: false };
-const _GLL_WHOLE = Object.freeze(['fs', 'cr', 'sum']);
+const _gllQ = { list: [], busy: false, coalesced: 0, highWater: 0, failed: 0 };
+const _GLL_WHOLE = Object.freeze(['fs', 'cr', 'sum', 'snap', 'go', 'pp']);
+function _gllStateKey(path, body) {
+  const fx = body && body.k === 'fx' && body.body;
+  if (!body || !(_GLL_WHOLE.includes(body.k) || fx && (fx.c === 'pose' || fx.e === 'state' && !fx.p && (fx.c === 'soap' || fx.c === 'leaf' || fx.c === 'marble')))) return '';
+  const who = body.body && body.body.w;
+  return path + '|' + body.to + '|' + body.f + '|' + body.gen + '|' + body.boot + '|' + body.k + (fx ? '|' + fx.c : '') + '|' + (who == null ? 0 : who);
+}
 function _gllPipe(path, body) {
   return new Promise((res) => {
-    const was = _GLL_WHOLE.includes(body.k) ? _gllQ.list.find(q => q.path === path && q.body.k === body.k && q.body.to === body.to) : null;
-    if (was) { const r0 = was.res; was.body = body; was.res = (v) => { r0(v); res(v); }; return; }
-    _gllQ.list.push({ path, body, res });
+    const key = _gllStateKey(path, body);
+    let was = null;
+    // Only pending state can be superseded, never a purchase, catch, intent or result. A state generated after an action stays after it.
+    if (key) for (let i = _gllQ.list.length - 1; i >= 0; i--) { const q = _gllQ.list[i]; if (!q.stateKey) break; if (q.stateKey === key) { was = q; break; } }
+    if (was) {
+      if (body.k === 'pp') { const pets = new Map(); for (const r of (was.body.body && was.body.body.l) || []) pets.set(r.u, r); for (const r of (body.body && body.body.l) || []) pets.set(r.u, r); body = { ...body, body: { ...body.body, l: [...pets.values()].slice(0, 4) } }; }
+      was.body = body; was.waiters.push(res);
+      _gllQ.list.splice(_gllQ.list.indexOf(was), 1); _gllQ.list.push(was);
+      _gllQ.coalesced++; return;
+    }
+    _gllQ.list.push({ path, body, stateKey: key, waiters: [res] });
+    _gllQ.highWater = Math.max(_gllQ.highWater, _gllQ.list.length);
     _gllPump();
   });
 }
 function _gllPump() {
   if (_gllQ.busy) return;
   const it = _gllQ.list.shift(); if (!it) return;
+  if (it.path === '/api/garden-live/send' && it.body.f && (_gll.role !== 'visit' || it.body.f !== _glv.fid || it.body.gen != null && it.body.gen !== _glv.gen || it.body.boot != null && it.body.boot !== _glv.boot)) { for (const resolve of it.waiters) resolve(null); _gllPump(); return; }
   _gllQ.busy = true;
-  let done = false, t = 0;
-  const next = (v) => { if (done) return; done = true; clearTimeout(t); _gllQ.busy = false; it.res(v); _gllPump(); };
-  t = setTimeout(() => next(null), 6000);   // (a server that has gone quiet does not hold up what is behind it)
-  _gllApi(it.path, it.body).then(next, () => next(null));
+  let done = false, t = 0, timedOut = false;
+  const controller = new AbortController();
+  const next = (v) => { if (done) return; done = true; clearTimeout(t); _gllQ.busy = false; if (v == null) _gllQ.failed++; for (const resolve of it.waiters) resolve(v); _gllPump(); };
+  // Abort the local request before advancing; the server also keeps a host's complete updates in one ordered lane.
+  t = setTimeout(() => { timedOut = true; controller.abort(); }, 6000);
+  _gllApi(it.path, it.body, { signal: controller.signal }).then((v) => next(timedOut || v && v.accepted === false ? null : v), () => next(null));
 }
 function _gllEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-function _gllSvgEl(tag, cls) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); if (cls) e.setAttribute('class', cls); return e; }
+function _gllSvgEl(tag, cls) { const e = gardenSceneElement(tag); if (cls) e.setAttribute('class', cls); return e; }
 function _gllToday() { return typeof _gdToday === 'function' ? _gdToday() : new Date().toISOString().slice(0, 10); }  // clock-ok: fallback
 function _gllReduced() { return typeof gardenMotionOn === 'function' ? !gardenMotionOn() : false; }
 
@@ -64,9 +82,15 @@ function _gllActor(o) {
   A.petX = A.x - 1.1; A.petY = A.y + 0.2;
   return A;
 }
+/** Roster looks are complete state: an omitted pet means it stayed home. */
+function _gllActorLook(A, ev) {
+  const next = [ev.a || null, ev.g || null, ev.pet || null], changed = A.n !== ev.n || JSON.stringify([A.a, A.g, A.pet]) !== JSON.stringify(next);
+  A.n = ev.n; [A.a, A.g, A.pet] = next; A.lv = ev.lv;
+  if (changed) { A.key = ''; if (A.root) _gllDress(A, A.root); }
+}
 /** Fill a node with this person: the shadow, the figure, their name. The name goes in with textContent. */
 function _gllDress(A, root) {
-  while (root.firstChild) root.removeChild(root.firstChild);
+  while (root.firstChild) { const old = root.firstChild; root.removeChild(old); if (typeof old.destroy === 'function') old.destroy(); }
   root.classList.add('gll-actor');
   if (A.me) root.classList.add('is-me');
   const sh = _gllSvgEl('ellipse', 'gll-shadow'); sh.setAttribute('cx', '0'); sh.setAttribute('cy', '1'); sh.setAttribute('rx', '12'); sh.setAttribute('ry', '3.4');
@@ -85,6 +109,7 @@ function _gllPaint(A) {
   const motion = !_gllReduced(), now = Date.now();   // clock-ok: how long a pose lasts
   if (A.pose && now > A.poseUntil) A.pose = '';
   let pose = A.moving && motion ? 'walk' : A.pose || 'idle', dir = A.dir;
+  if (A.photo && now < A.photo.until && !A.moving) { pose = A.photo.body.i ? 'hold' : 'idle'; dir = 's'; }
   if (A.fish && !A.moving) { pose = 'fish'; dir = 'e'; }   // a line out (94-garden-live-4fx.js): side on, the rod drawn there
   if (typeof GPL_POSE_FRONT !== 'undefined' && GPL_POSE_FRONT.has(pose)) dir = 's';
   const key = pose + dir + (motion ? 'm' : '');
@@ -100,7 +125,7 @@ function _gllPaint(A) {
 }
 function _gllPose(A, pose, ms) { A.pose = pose; A.poseUntil = Date.now() + (ms || 900); A.key = ''; _gllPaint(A); setTimeout(() => { if (A.inner) _gllPaint(A); }, (ms || 900) + 30); }  // clock-ok: how long a pose lasts
 /** Walk there. Destinations only: the walking is worked out on each side, or the host says which way round the beds (_gllWalkVia). */
-function _gllWalkTo(A, x, y, then) { A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
+function _gllWalkTo(A, x, y, then) { if (typeof _gllPhotoClear === 'function') _gllPhotoClear(A); A.tx = x; A.ty = y; A.gx = x; A.gy = y; A.way = null; A.then = then || null; if (A.sit) { A.sit = false; _gllEmoteStop(A); } }
 /** The same with the turns on the way: [[x, y], ...], then there. What they were going to do on arrival still happens. */
 function _gllWalkVia(A, turns, x, y) { const then = A.then; _gllWalkTo(A, x, y, then); const way = (turns || []).map(p => [p[0], p[1]]).concat([[x, y]]); const n = way.shift(); A.tx = n[0]; A.ty = n[1]; A.way = way; }
 /** Keys and holding send a walk as it goes, a place at a time: the figure takes each at the pace they come in, so it neither arrives early and stands nor falls behind. A destination (a click) walks at the walker's own speed. */
@@ -112,8 +137,9 @@ function _gllGoPace(A, ev) {
   A.pace = Math.max(70, Math.min(GL_ACT_RUN * 1.1, A.lastPace ? (A.lastPace + v) / 2 : v));
   A.lastPace = A.pace;
 }
-/** One step along the way, by time. True while moving. */
-function _gllStep(A, dt) {
+/** One step along the way, by time. Quiet updates keep host route origins
+ * current while an indoor room covers the outdoor figures. */
+function _gllStep(A, dt, quiet) {
   const W = GARDEN_WORLD;
   let moving = false;
   if (A.tx != null) {
@@ -140,8 +166,8 @@ function _gllStep(A, dt) {
   }
   if (!moving && A.moving && A.tx == null && Date.now() < (A.stopAt || 0)) moving = true;   // clock-ok: as above
   if (moving !== A.moving) { A.moving = moving; A.key = ''; }
-  if (A.bob) { const bt = moving && !_gllReduced() ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : ''; if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
-  if (!A.key) _gllPaint(A);
+  if (!quiet && A.bob) { const bt = moving && !_gllReduced() ? `translate(0 ${(-Math.abs(Math.sin(Date.now() / 90)) * 1.6).toFixed(2)})` : ''; if (A.bobT !== bt) { A.bobT = bt; A.bob.setAttribute('transform', bt); } }  // clock-ok: a little bob
+  if (!quiet && !A.key) _gllPaint(A);
   return moving;
 }
 /** Put a node in the row it stands in, among the plants, so what is in front of it hides it. */
@@ -159,7 +185,7 @@ function _gllEmote(A, id, instant) {
   let comp = _peCache.get(id); if (!comp) { comp = _peCompile(row); _peCache.set(id, comp); }
   const motion = !_gllReduced(), anims = [];
   for (const [part, frames] of comp) for (const el of node.querySelectorAll(_PE_SEL[part])) {
-    try { const a = el.animate(frames, { duration: row.ms, fill: row.hold ? 'forwards' : 'none', easing: 'linear' }); if (!motion) { a.pause(); a.currentTime = row.ms * (row.hold ? 1 : 0.5); } else if (instant) a.finish(); anims.push(a); } catch (e) { /* an old browser stands still */ }
+    try { const a = gardenVisualAnimate(el, frames, { duration: row.ms, fill: row.hold ? 'forwards' : 'none', easing: 'linear' }); if (!motion) { a.pause(); a.currentTime = row.ms * (row.hold ? 1 : 0.5); } else if (instant) a.finish(); anims.push(a); } catch (e) { /* an old browser stands still */ }
   }
   A.anims = anims; A.sit = !!row.hold; A.hold = row.hold ? id : '';
   if (!row.hold) A.animT = setTimeout(() => _gllEmoteStop(A), motion ? row.ms : 1200);
@@ -326,6 +352,7 @@ function _gllRefundOld() {
 /* ---------- /api/events ---------- */
 /** The page's stream from its own server came back (the computer woke, the server restarted): what it said meanwhile is gone, so everything is asked for again. */
 function gardenLiveStreamBack() {
+  if (typeof _gllPhotoReset === 'function') _gllPhotoReset();
   if (_gll.role === 'visit' && typeof _glvLive === 'function' && _glvLive()) _glvSend('me', _glvLook());   // (the same look: who is here and the whole garden)
   else if (_gll.role === 'host' && typeof _glh !== 'undefined' && _glh.on) gardenLiveLoad(true).then((d) => { for (const p of (d && d.host && d.host.people) || []) _glhEvent({ k: 'join', again: true, ...p }); }).catch(() => {});
 }
