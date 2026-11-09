@@ -700,6 +700,12 @@ function gardenLandLights(sc) {
 /** Canonical coast in cell coordinates; beach width is measured in world pixels. */
 function _gldIslandMini(open, season, level, model) {
   const W = GARDEN_WORLD, data = gardenIslandData(), geo = gardenIslandGeometry(), cw = W.cellW, ch = W.cellH;
+  // Match native terrain: plants and ground decor cultivate whole sections;
+  // owning an empty soil section leaves its existing lawn visible.
+  const cultivated = new Set(), soilKinds = new Set(['bed', 'patch', 'veg', 'rich', 'herb', 'berry']);
+  const remember = (item, w, h) => { for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) { const row = gardenLandCell(item.x + dx, item.y + dy); if (row) cultivated.add(row.id); } };
+  for (const item of model && model.plants || []) { const def = item.def || gardenPlant(item.id); if (def) remember(item, def.fp || 1, def.fp || 1); }
+  for (const item of model && model.decor || []) { const def = item.def || gardenDecor(item.id); if (def && def.layer === 'ground') remember(item, def.w || 1, def.h || 1); }
   const loopPath = (loop, sx, sy) => loop.map((p, i) => (i ? 'L' : 'M') + p[0] * sx + ' ' + p[1] * sy).join('') + 'Z';
   const land = geo.land.map(loop => loopPath(loop, 1, 1)).join(''), shore = geo.land.map(loop => loopPath(loop, cw, ch)).join('');
   const lawn = _gdrTileCol('grass', season), sand = season === 'winter' ? '#dedcc5' : '#e4d6b2', water = season === 'winter' ? '#76a8ad' : '#599f9d';
@@ -712,7 +718,9 @@ function _gldIslandMini(open, season, level, model) {
     if (!cell.land || cell.beach || cell.freshwater || cell.reservation === 'apron' || cell.reservation === 'facade') return '';
     const row = gardenLandCell(x, y), zone = gardenZoneOf(x, y), plot = row && row.plot;
     const locked = plot ? !open.has(row.id) && !(!row.buy && level >= row.lv) : zone && !open.has('zn-' + zone);
-    return locked ? '#526b54' : cell.route || row && (row.lane || row.trail) ? '' : plot ? _gdrTileCol(row.tile, season) : '';
+    if (locked) return '#526b54';
+    if (cell.route || row && (row.lane || row.trail)) return '';
+    return plot && (!soilKinds.has(row.kind) || cultivated.has(row.id)) ? _gdrTileCol(row.tile, season) : '';
   };
   // Paint plot tiles below the paths, then shade closed land above them.
   let lockedLand = '';

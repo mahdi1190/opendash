@@ -191,6 +191,29 @@ captured app errors. The initial render prototype was rejected after counters
 showed that its intended child shortcut never ran. CPU sampling remains a
 current-device diagnostic, rather than a frame-rate or GPU claim.
 
+Water captures can reuse one unexposed spare texture per source when its even
+dimensions and effective quality match exactly. Active and spare buffers share
+the existing memory allowance; unexposed buffers yield first under pressure.
+Source transforms and parentage are restored before switching the reflection
+images, and an unsuccessful candidate retains the previous visible snapshot.
+The water status exposes new allocation, successful reuse and spare-byte counts.
+
+Broad room metadata revisions still update actors, fishing rigs, props and
+lights. An exact normalized water-geometry comparison retains prepared scans,
+intervals, surf and the uploaded depth mask when geometry is unchanged. Shape,
+water bounds, freeze, parent and room transitions keep the full rebuild path.
+The minimap uses the same cultivation footprints as native terrain, leaving
+owned empty soil sections as lawn without changing land ownership or planting.
+
+Ordinary paired shore fishing exercised repeated spare reuse on both clients,
+with no capture errors, then released all active and spare capture bytes on
+Leave. A cellar visit retained the host's existing depth mask when the guest
+joined; the live reel and caption stayed separate at both window sizes. The
+guest's departure propagated while the host remained inside. Window resizes
+also changed room geometry during that route, so the later departure read does
+not independently isolate the mask count for that transition. Map walking,
+reopening and Fit completed with the quieter empty plots and no captured errors.
+
 Phaser **4.2.1** is pinned in `vendor/phaser/` with its licence and source digest.
 The build verifies and embeds the bundle. `FreefloGameEngine.load()` loads it
 on demand without a runtime CDN request. Opening cinematics use their separate

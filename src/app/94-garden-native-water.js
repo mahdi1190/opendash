@@ -106,17 +106,28 @@ window.GardenNativeWater = (function () {
     // Holes only subtract water. Unknown/empty extents keep the original path.
     return Number.isFinite(left) && Number.isFinite(right) && right >= left ? { left, right } : null;
   }
-  function normalizeRegion(region, index) {
+  function regionGeometry(region, index) {
     const point = p => ({ x: finite(Array.isArray(p) ? p[0] : p.x), y: finite(Array.isArray(p) ? p[1] : p.y) }), points = (region.points || []).map(point), holes = (region.holes || []).map(list => list.map(point));
     const ellipses = (region.ellipses || []).map(e => Array.isArray(e) ? { x: finite(e[0]), y: finite(e[1]), rx: Math.abs(finite(e[2])), ry: Math.abs(finite(e[3])) } : { x: finite(e.x), y: finite(e.y), rx: Math.abs(finite(e.rx)), ry: Math.abs(finite(e.ry)) }).filter(e => e.rx > 0 && e.ry > 0);
     const b = region.bounds || boundsOf(points.length ? points : ellipses.flatMap(e => [{ x: e.x - e.rx, y: e.y - e.ry }, { x: e.x + e.rx, y: e.y + e.ry }]));
-    if (points.length > 2) polygonScan(points); for (const hole of holes) polygonScan(hole);
     const bounds = { x: finite(b.x), y: finite(b.y), width: finite(b.width, finite(b.w)), height: finite(b.height, finite(b.h)) };
+    return { id: region.id || index, ocean: !!region.ocean, points, holes, ellipses, holesCrossBoundary: !!region.holesCrossBoundary, bounds, frozen: !!region.frozen };
+  }
+  function sameRegionGeometry(a, b) {
+    const pointsEqual = (x, y) => x.length === y.length && x.every((p, i) => Object.is(p.x, y[i].x) && Object.is(p.y, y[i].y));
+    return a.id === b.id && a.ocean === b.ocean && a.frozen === b.frozen && a.holesCrossBoundary === b.holesCrossBoundary &&
+      Object.is(a.bounds.x, b.bounds.x) && Object.is(a.bounds.y, b.bounds.y) && Object.is(a.bounds.width, b.bounds.width) && Object.is(a.bounds.height, b.bounds.height) &&
+      pointsEqual(a.points, b.points) && a.holes.length === b.holes.length && a.holes.every((p, i) => pointsEqual(p, b.holes[i])) &&
+      a.ellipses.length === b.ellipses.length && a.ellipses.every((e, i) => Object.is(e.x, b.ellipses[i].x) && Object.is(e.y, b.ellipses[i].y) && Object.is(e.rx, b.ellipses[i].rx) && Object.is(e.ry, b.ellipses[i].ry));
+  }
+  function normalizeRegion(region) {
+    const { points, holes, ellipses, bounds } = region;
+    if (points.length > 2) polygonScan(points); for (const hole of holes) polygonScan(hole);
     const reflectionY = [];
     for (const p of points) reflectionY.push(p.y);
     for (const hole of holes) for (const p of hole) reflectionY.push(p.y);
     for (const e of ellipses) reflectionY.push(e.y - e.ry, e.y, e.y + e.ry);
-    return { id: region.id || index, ocean: !!region.ocean, points, holes, ellipses, reflectionY, intervalXBounds: horizontalExtent(points, ellipses), holesCrossBoundary: !!region.holesCrossBoundary, bounds, frozen: !!region.frozen, lineEdges: lineEdgeIndex(points, holes, bounds) };
+    return { ...region, reflectionY, intervalXBounds: horizontalExtent(points, ellipses), lineEdges: lineEdgeIndex(points, holes, bounds) };
   }
   function affine(container, m, quality) {
     const a = m.a * quality, b = m.b * quality, c = m.c * quality, d = m.d * quality, dot = a * c + b * d, inner = container._waterInner;
@@ -133,7 +144,8 @@ window.GardenNativeWater = (function () {
     const rng = random(187731), records = new Map(), ringList = [], particles = [], actorWake = new Map(), spotImages = [];
     const intervalSlots = new Array(INTERVAL_CACHE_LIMIT);
     let intervalCaches = new WeakMap(), intervalCursor = 0, intervalEntries = 0, intervalQueries = 0, intervalHits = 0, intervalMisses = 0, intervalEvictions = 0, intervalBypasses = 0, intervalOutside = 0, intervalInvalidations = 0, intervalEmptyBandQueriesSkipped = 0, intervalHorizontalRegionsSkipped = 0;
-    let model = null, room = null, metadata = {}, regions = [], visibleRegions = [], regionRevision = null, regionSource = null, parent = null, dead = false, frame = 0, lastTime = 0, lastAmbient = 0, pauseAt = null, pauseOffset = 0, motion = true, lastMotion = true, fieldAt = -Infinity, ringAt = -Infinity, rainBudget = 0, captureBytes = 0, sequence = 0, captures = 0, captureErrors = 0, visibleReflections = 0, visibleBands = 0, sortDirty = false, snapshotTime = -Infinity, depthKey = '';
+    let model = null, room = null, metadata = {}, regions = [], visibleRegions = [], regionRevision = null, regionSource = null, parent = null, dead = false, frame = 0, lastTime = 0, lastAmbient = 0, pauseAt = null, pauseOffset = 0, motion = true, lastMotion = true, fieldAt = -Infinity, ringAt = -Infinity, rainBudget = 0, captureBytes = 0, sequence = 0, captures = 0, captureErrors = 0, captureAllocations = 0, captureReuses = 0, captureSpareBytes = 0, visibleReflections = 0, visibleBands = 0, sortDirty = false, snapshotTime = -Infinity, depthKey = '';
+    let geometryPrepared = false;
     // Scene-private data only. A null prototype lets own enumerable snapshot
     // keys (including __proto__) copy as data without inherited setters.
     const environment = Object.assign(Object.create(null), { daylight: 1, rain: 0, snow: 0, windX: 1, windY: 0, gust: 0 });
@@ -145,14 +157,22 @@ window.GardenNativeWater = (function () {
     const depthPlane = GardenNativeWaterDepth.create(scene, { parent: depth, intervals: regionIntervals, subtract: subtractIntervals, merge: mergeIntervals, reserve(bytes) { if (!reserve(bytes, null)) return false; captureBytes += bytes; return true; }, release(bytes) { captureBytes = Math.max(0, captureBytes - bytes); } });
     const fishingReflections = GardenNativeFishingReflections.create(scene, { parent: reflections, clipLine, intervals: waterIntervals });
     function sync(next) { model = next || null; }
-    function setRoom(next) { if (room === next) return; room = next || null; regionRevision = null; spotsDirty = true; fieldAt = -Infinity; visibleReflections = 0; visibleBands = 0; visibleSpots = 0; for (const record of records.values()) { record.selected = false; hideRecord(record); } for (const image of spotImages) image.setVisible(false); ringList.length = 0; particles.length = 0; actorWake.clear(); updateRegions(readMetadata()); }
+    function setRoom(next) { if (room === next) return; room = next || null; regionRevision = null; spotsDirty = true; fieldAt = -Infinity; visibleReflections = 0; visibleBands = 0; visibleSpots = 0; for (const record of records.values()) { record.selected = false; hideRecord(record); releaseSpare(record); } for (const image of spotImages) image.setVisible(false); ringList.length = 0; particles.length = 0; actorWake.clear(); updateRegions(readMetadata()); }
     function pauseAmbient(flags) { const paused = !!(flags && (flags.frozen || flags.hush)), now = lastTime || performance.now(); if (paused && pauseAt == null) { pauseAt = now; for (const record of records.values()) record.motionCheckAt = 0; } else if (!paused && pauseAt != null) { pauseOffset += now - pauseAt; pauseAt = null; for (const record of records.values()) record.motionCheckAt = 0; } }
     function readMetadata() { try { return room ? typeof room.effectsState === 'function' ? room.effectsState() || {} : room : options.world && typeof options.world.effectsState === 'function' ? options.world.effectsState() || {} : {}; } catch (e) { return {}; } }
     function updateRegions(next) {
       const target = next.parent || room && (room.root || room.parent) || options.world && options.world.rootNode && options.world.rootNode._inner;
       if (target !== parent) { if (root.parentContainer) root.parentContainer.remove(root); if (target) target.add(root); parent = target; root.setDepth(room ? 54 : -9275); if (parent && parent.sort) parent.sort('depth'); if (options.world && options.world.depthChanged) options.world.depthChanged(); }
       const revision = next.revision == null ? next.regions : next.revision;
-      if (revision !== regionRevision || regionSource !== target) { clearIntervalCache(); regions = (next.regions || []).map(normalizeRegion); regionRevision = revision; regionSource = target; fieldAt = -Infinity; ringAt = -Infinity; depthKey = ''; spotsDirty = true; if (!depthPlane.rebuild(regions)) captureErrors++; prepareSurf(); }
+      if (revision !== regionRevision || regionSource !== target) {
+        // Peer membership and room prop revisions also carry fresh actor/light
+        // metadata. Only exact normalized water geometry invalidates its scans,
+        // surf and uploaded mask; parent/setRoom changes keep the full rebuild.
+        const geometry = (next.regions || []).map(regionGeometry), retained = regionRevision !== null && regionSource === target && geometryPrepared && geometry.length === regions.length && geometry.every((region, i) => sameRegionGeometry(regions[i], region));
+        if (!retained) { clearIntervalCache(); regions = geometry.map(normalizeRegion); }
+        regionRevision = revision; regionSource = target; fieldAt = -Infinity; ringAt = -Infinity; depthKey = ''; spotsDirty = true;
+        if (!retained) { geometryPrepared = depthPlane.rebuild(regions); if (!geometryPrepared) captureErrors++; prepareSurf(); }
+      }
     }
     function view() { const camera = scene.cameras.main, a = camera.getWorldPoint(0, 0, viewOrigin), b = camera.getWorldPoint(camera.width, camera.height, viewCorner); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y), zoom: camera.zoom }; }
     function inside(region, x, y) { if (x < region.bounds.x || y < region.bounds.y || x > region.bounds.x + region.bounds.width || y > region.bounds.y + region.bounds.height) return false; if (region.ellipses.some(e => ((x - e.x) / e.rx) ** 2 + ((y - e.y) / e.ry) ** 2 <= 1)) return true; return region.points.length > 2 && insidePolygon(x, y, region.points) && !region.holes.some(points => insidePolygon(x, y, points)); }
@@ -347,41 +367,84 @@ window.GardenNativeWater = (function () {
       }
     }
     function hideRecord(record) { for (const image of record.images) if (image.visible) image.setVisible(false); record.usedImages = 0; }
-    function releaseSnapshot(record) { if (!record.snapshot) return; const snapshot = record.snapshot; record.snapshot = null; captureBytes = Math.max(0, captureBytes - snapshot.bytes); if (snapshot.rt && snapshot.rt.active) snapshot.rt.destroy(); if (scene.textures.exists(snapshot.key)) scene.textures.remove(snapshot.key); }
-    function destroyRecord(record) { for (const image of record.images) image.destroy(); releaseSnapshot(record); records.delete(record.id); }
-    function trimSources(time) { for (const record of [...records.values()]) if (!record.selected && (!record.source || !record.source.active || time - record.usedAt > 20000 || records.size > MAX_SOURCES)) destroyRecord(record); }
+    function releaseCapture(target) {
+      if (!target) return;
+      captureBytes = Math.max(0, captureBytes - target.bytes);
+      const texture = target.texture || target.rt && target.rt.texture;
+      if (target.rt && target.rt.active) target.rt.destroy();
+      if (target.key && scene.textures.exists(target.key) && scene.textures.get(target.key) === texture) scene.textures.remove(target.key);
+    }
+    function releaseSnapshot(record) { const snapshot = record.snapshot; record.snapshot = null; releaseCapture(snapshot); }
+    function releaseSpare(record) { const spare = record.spare; if (!spare) return; record.spare = null; captureSpareBytes = Math.max(0, captureSpareBytes - spare.bytes); releaseCapture(spare); }
+    function captureMatches(target, width, height, quality) { return !!(target && target.width === width && target.height === height && target.quality === quality && target.rt && target.rt.active && target.rt.texture === target.texture && target.texture.width === width && target.texture.height === height && target.key && scene.textures.exists(target.key) && scene.textures.get(target.key) === target.texture); }
+    function destroyRecord(record) { for (const image of record.images) image.destroy(); releaseSpare(record); releaseSnapshot(record); records.delete(record.id); }
+    function trimSources(time) { for (const record of [...records.values()]) if (!record.selected) { releaseSpare(record); if (!record.source || !record.source.active || time - record.usedAt > 20000 || records.size > MAX_SOURCES) destroyRecord(record); } }
     function sourceAnimates(source) { for (let parent = source.parentContainer; parent; parent = parent.parentContainer) if (parent._nativeNode && parent._nativeNode._nativeAnimating) return true; const pending = [source]; let visited = 0; while (pending.length && visited++ < 256) { const object = pending.pop(); if (!object || !object.active || !object.visible) continue; const node = object._nativeNode; if (node && (node._nativeAnimating || !node._motionBlocked && !node._clockPauseFlags && node._animations && node._animations.length) || object.anims && object.anims.isPlaying) return true; if (object.list) for (let i = object.list.length - 1; i >= 0; i--) pending.push(object.list[i]); } return false; }
-    function reserve(bytes, keep) { if (bytes > LIMIT_BYTES) return false; const rank = keep ? keep.subjectPriority : -1, candidates = [...records.values()].filter(record => record !== keep && (!record.selected || keep && record.subjectPriority > rank)).sort((a, b) => (a.selected ? 1 : 0) - (b.selected ? 1 : 0) || b.subjectPriority - a.subjectPriority || a.usedAt - b.usedAt); for (const record of candidates) { if (captureBytes + bytes <= LIMIT_BYTES && records.size <= MAX_SOURCES) break; destroyRecord(record); } return captureBytes + bytes <= LIMIT_BYTES; }
+    function reserve(bytes, keep) {
+      if (bytes > LIMIT_BYTES) return false;
+      const rank = keep ? keep.subjectPriority : -1, candidates = [...records.values()].sort((a, b) => (a.selected ? 1 : 0) - (b.selected ? 1 : 0) || b.subjectPriority - a.subjectPriority || a.usedAt - b.usedAt);
+      // Unexposed buffers yield before any existing visible-snapshot policy.
+      for (const record of candidates) { if (captureBytes + bytes <= LIMIT_BYTES) break; releaseSpare(record); }
+      for (const record of candidates) { if (captureBytes + bytes <= LIMIT_BYTES && records.size <= MAX_SOURCES) break; if (record !== keep && (!record.selected || keep && record.subjectPriority > rank)) destroyRecord(record); }
+      return captureBytes + bytes <= LIMIT_BYTES;
+    }
     function sourceVisible(source) { for (let p = source; p; p = p.parentContainer) if (!p.active || p.alpha === 0 || p.visible === false && !(p._nativeCacheHiddenBy && (!p._nativeNode || p._nativeNode._computedVisible !== false))) return false; return true; }
     function parentAlpha(source) { let alpha = 1; for (let p = source.parentContainer; p; p = p.parentContainer) alpha *= p.alpha == null ? 1 : p.alpha; return clamp(alpha); }
     function capture(record, item, quality) {
       const source = item.source, b = item.bounds; if (!source || !source.active || !b || !(b.width > 0 && b.height > 0)) return false;
-      quality = Math.max(.35, Math.min(quality, 768 / Math.max(b.width, b.height))); const width = Math.max(2, Math.ceil(b.width * quality)), height = Math.max(2, Math.ceil(b.height * quality)), bytes = width * height * 4;
-      if (!reserve(bytes, record)) return false;
+      quality = Math.max(.35, Math.min(quality, 768 / Math.max(b.width, b.height)));
+      const width = Math.ceil(Math.max(2, Math.ceil(b.width * quality)) / 2) * 2, height = Math.ceil(Math.max(2, Math.ceil(b.height * quality)) / 2) * 2, bytes = width * height * 4;
+      if (record.spare && !captureMatches(record.spare, width, height, quality)) releaseSpare(record);
+      if (!reserve(record.spare ? 0 : bytes, record)) return false;
       const originalParent = source.parentContainer, displayList = source.displayList, index = originalParent ? originalParent.getIndex(source) : displayList && displayList.getIndex ? displayList.getIndex(source) : -1, sourceState = { x: source.x, y: source.y, scaleX: source.scaleX, scaleY: source.scaleY, rotation: source.rotation, alpha: source.alpha, visible: source.visible };
-      let wrapper = null, inner = null, rt = null, key = null, attached = false; const visibility = [];
+      let wrapper = null, inner = null, candidate = null, attached = false, reused = false; const visibility = [];
       try {
-        const parentMatrix = originalParent && originalParent.getWorldTransformMatrix ? originalParent.getWorldTransformMatrix() : { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 }, opacity = parentAlpha(source);
-        wrapper = scene.add.container(0, 0); inner = scene.add.container(0, 0); wrapper.add(inner); wrapper._waterInner = inner; affine(wrapper, parentMatrix, quality); wrapper.setAlpha(opacity);
-        // A cache above this body can hide the original while its rendered
-        // tile remains visible. Reveal only those external-cache originals;
-        // internal caches retain their own tiles and hidden source geometry.
-        const reveal = object => { const owner = object._nativeCacheHiddenBy; if (owner && object.visible === false && (!object._nativeNode || object._nativeNode._computedVisible !== false)) { let internal = false; for (let p = owner.target; p; p = p.parentContainer) if (p === source) { internal = true; break; } if (!internal) { visibility.push(object); object.setVisible(true); } } for (const child of object.list || []) reveal(child); }; reveal(source);
-        attached = true; inner.add(source);
-        // Phaser 4 DRAW adds its offsets to the object's existing position.
-        // The affine wrapper already contains the parent's world translation;
-        // subtract only the capture origin, rather than adding that parent twice.
-        rt = scene.add.renderTexture(0, 0, Math.ceil(width / 2) * 2, Math.ceil(height / 2) * 2).setVisible(false); rt.clear().draw(wrapper, -b.x * quality, -b.y * quality).render(); key = '__garden-water-' + scene.sys.settings.key + '-' + (++sequence); rt.saveTexture(key);
-        const actualWidth = rt.texture.width, actualHeight = rt.texture.height, actualBytes = actualWidth * actualHeight * 4; if (!reserve(actualBytes, record)) throw new Error('Reflection cache is full');
-        releaseSnapshot(record); record.snapshot = { rt, key, bytes: actualBytes, bounds: { ...b }, width: actualWidth, height: actualHeight }; captureBytes += actualBytes; record.captureKey = String(item.captureKey == null ? item.revision == null ? '' : item.revision : item.captureKey); record.source = source; record.capturedAt = lastTime; record.firstReady = record.firstReady == null ? lastTime : record.firstReady; captures++;
-        for (const image of record.images) image.setTexture(key); return true;
-      } catch (error) { captureErrors++; if (rt && rt.active) rt.destroy(); if (key && scene.textures.exists(key)) scene.textures.remove(key); return false; }
-      finally {
-        for (const object of visibility) if (object.active) object.setVisible(false);
-        if (attached && inner && source.active) inner.remove(source);
-        if (source.active) { source.setPosition(sourceState.x, sourceState.y).setScale(sourceState.scaleX, sourceState.scaleY).setRotation(sourceState.rotation).setAlpha(sourceState.alpha).setVisible(sourceState.visible); if (attached) { if (originalParent && originalParent.active) originalParent.addAt(source, Math.max(0, Math.min(index, originalParent.list.length))); else if (displayList && displayList.addAt) displayList.addAt(source, Math.max(0, Math.min(index, displayList.list.length))); else if (!source.displayList && !source.parentContainer) scene.add.existing(source); } }
-        if (wrapper && wrapper.active) wrapper.destroy(true);
-      }
+        if (record.spare) { candidate = record.spare; record.spare = null; captureSpareBytes = Math.max(0, captureSpareBytes - candidate.bytes); reused = true; }
+        try {
+          const parentMatrix = originalParent && originalParent.getWorldTransformMatrix ? originalParent.getWorldTransformMatrix() : { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 }, opacity = parentAlpha(source);
+          wrapper = scene.add.container(0, 0); inner = scene.add.container(0, 0); wrapper.add(inner); wrapper._waterInner = inner; affine(wrapper, parentMatrix, quality); wrapper.setAlpha(opacity);
+          // A cache above this body can hide the original while its rendered
+          // tile remains visible. Reveal only those external-cache originals;
+          // internal caches retain their own tiles and hidden source geometry.
+          const reveal = object => { const owner = object._nativeCacheHiddenBy; if (owner && object.visible === false && (!object._nativeNode || object._nativeNode._computedVisible !== false)) { let internal = false; for (let p = owner.target; p; p = p.parentContainer) if (p === source) { internal = true; break; } if (!internal) { visibility.push(object); object.setVisible(true); } } for (const child of object.list || []) reveal(child); }; reveal(source);
+          attached = true; inner.add(source);
+          if (!candidate) {
+            const rt = scene.add.renderTexture(0, 0, width, height); captureAllocations++;
+            candidate = { rt, texture: rt.texture, key: null, bytes: 0, width: rt.texture.width, height: rt.texture.height, quality };
+            rt.setVisible(false);
+            const actualBytes = candidate.width * candidate.height * 4;
+            if (!reserve(actualBytes, record)) throw new Error('Reflection cache is full');
+            candidate.bytes = actualBytes; captureBytes += actualBytes;
+          }
+          // Never clear the active target. The affine wrapper already contains
+          // the parent's translation; only subtract the capture origin.
+          candidate.rt.clear().draw(wrapper, -b.x * quality, -b.y * quality).render();
+          if (!candidate.key) { candidate.key = '__garden-water-' + scene.sys.settings.key + '-' + (++sequence); candidate.rt.saveTexture(candidate.key); }
+          if (!captureMatches(candidate, width, height, quality)) throw new Error('Reflection capture texture is unavailable');
+        } finally {
+          for (const object of visibility) if (object.active) object.setVisible(false);
+          if (attached && inner && source.active) inner.remove(source);
+          if (source.active) { source.setPosition(sourceState.x, sourceState.y).setScale(sourceState.scaleX, sourceState.scaleY).setRotation(sourceState.rotation).setAlpha(sourceState.alpha).setVisible(sourceState.visible); if (attached) { if (originalParent && originalParent.active) originalParent.addAt(source, Math.max(0, Math.min(index, originalParent.list.length))); else if (displayList && displayList.addAt) displayList.addAt(source, Math.max(0, Math.min(index, displayList.list.length))); else if (!source.displayList && !source.parentContainer) scene.add.existing(source); } }
+          if (wrapper && wrapper.active) wrapper.destroy(true);
+        }
+        const previous = record.snapshot, bounds = { ...b }, captureKey = String(item.captureKey == null ? item.revision == null ? '' : item.revision : item.captureKey);
+        // Same-size swaps leave crop coordinates untouched. A dimension change
+        // can clamp them, so keep those inputs until every image has switched.
+        const crops = previous && (previous.width !== candidate.width || previous.height !== candidate.height) ? record.images.map(image => image.isCropped ? [image._crop.x, image._crop.y, image._crop.width, image._crop.height] : null) : null;
+        let switched = 0;
+        try { for (; switched < record.images.length; switched++) record.images[switched].setTexture(candidate.key); }
+        catch (error) {
+          if (previous) for (let i = 0; i <= switched && i < record.images.length; i++) {
+            const image = record.images[i]; image.setTexture(previous.key);
+            if (crops) { const crop = crops[i]; if (crop) image.setCrop(crop[0], crop[1], crop[2], crop[3]); else image.setCrop(); }
+          }
+          throw error;
+        }
+        candidate.bounds = bounds; record.snapshot = candidate; candidate = null;
+        record.captureKey = captureKey; record.source = source; record.capturedAt = lastTime; record.firstReady = record.firstReady == null ? lastTime : record.firstReady;
+        if (captureMatches(previous, width, height, quality)) { record.spare = previous; captureSpareBytes += previous.bytes; } else releaseCapture(previous);
+        captures++; if (reused) captureReuses++; return true;
+      } catch (error) { captureErrors++; releaseCapture(candidate); return false; }
     }
     function itemBounds(item) { const b = item.bounds; if (b && Number.isFinite(b.x) && Number.isFinite(b.y) && b.width > 0 && b.height > 0) return { x: b.x, y: b.y, width: b.width, height: b.height }; const width = Math.max(4, finite(item.w, 24)), height = Math.max(4, finite(item.tall, finite(item.h, 40))); return { x: finite(item.x) - width / 2, y: finite(item.sourceFootY, finite(item.y)) - height, width, height }; }
     function reflectionBox(item) { const b = item.bounds, line = finite(item.waterline, finite(item.groundY, finite(item.y, b.y + b.height))), compression = 1; return { x: b.x, y: line + (line - b.y - b.height) * compression, width: b.width, height: b.height * compression, line, compression }; }
@@ -488,7 +551,7 @@ window.GardenNativeWater = (function () {
       if (lastTime - ringAt >= 32 || delta === 0 || ringList.length || particles.length) { paintRipples(); ringAt = lastTime; }
     }
     function destroy() { if (dead) return; dead = true; clearIntervalCache(); for (const record of [...records.values()]) destroyRecord(record); fishingReflections.destroy(); depthPlane.destroy(); if (falloff) { falloff.rt.destroy(); if (scene.textures.exists(falloff.key)) scene.textures.remove(falloff.key); captureBytes = Math.max(0, captureBytes - falloff.bytes); falloff = null; } ringList.length = 0; particles.length = 0; actorWake.clear(); spotNodes.length = 0; root.destroy(true); }
-    function status() { const field = depthPlane.status(); return { native: true, regions: regions.length, visibleRegions: visibleRegions.length, reflections: visibleReflections, bands: visibleBands, subjects: subjectDiagnostics, ...fishingReflections.status(), depthTriangles: 0, depthQuads: field.quads, depthTextureBytes: field.textureBytes, depthMaskBuilds: field.builds, depthError: field.lastError, depthSpots: visibleSpots, spotBands: usedSpotBands, surfSegments, falloffBytes: falloff ? falloff.bytes : 0, captures, captureErrors, captureBytes, captureBudgetBytes: LIMIT_BYTES, cachedSources: records.size, intervalCache: { queries: intervalQueries, hits: intervalHits, misses: intervalMisses, outsideBounds: intervalOutside, bypasses: intervalBypasses, entries: intervalEntries, capacity: INTERVAL_CACHE_LIMIT, maxResultSpans: INTERVAL_CACHE_MAX_SPANS, evictions: intervalEvictions, invalidations: intervalInvalidations, emptyBandQueriesSkipped: intervalEmptyBandQueriesSkipped, horizontalRegionsSkipped: intervalHorizontalRegionsSkipped }, ripples: ringList.length, splashDrops: particles.length, paused: pauseAt != null, reducedMotion: !motion, room: !!room }; }
+    function status() { const field = depthPlane.status(); return { native: true, regions: regions.length, visibleRegions: visibleRegions.length, reflections: visibleReflections, bands: visibleBands, subjects: subjectDiagnostics, ...fishingReflections.status(), depthTriangles: 0, depthQuads: field.quads, depthTextureBytes: field.textureBytes, depthMaskBuilds: field.builds, depthError: field.lastError, depthSpots: visibleSpots, spotBands: usedSpotBands, surfSegments, falloffBytes: falloff ? falloff.bytes : 0, captures, captureErrors, captureAllocations, captureReuses, captureSpareBytes, captureBytes, captureBudgetBytes: LIMIT_BYTES, cachedSources: records.size, intervalCache: { queries: intervalQueries, hits: intervalHits, misses: intervalMisses, outsideBounds: intervalOutside, bypasses: intervalBypasses, entries: intervalEntries, capacity: INTERVAL_CACHE_LIMIT, maxResultSpans: INTERVAL_CACHE_MAX_SPANS, evictions: intervalEvictions, invalidations: intervalInvalidations, emptyBandQueriesSkipped: intervalEmptyBandQueriesSkipped, horizontalRegionsSkipped: intervalHorizontalRegionsSkipped }, ripples: ringList.length, splashDrops: particles.length, paused: pauseAt != null, reducedMotion: !motion, room: !!room }; }
     return { sync, setRoom, update, pauseAmbient, effect, containsWater: contains, destroy, status, root };
   }
   return Object.freeze({ create });

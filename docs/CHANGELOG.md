@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.14] - 2026-11-09
+
+### Changed
+
+- Moving water reflections reuse a compatible spare texture within their existing memory limit. The previous reflection stays visible until the replacement is ready.
+- Unchanged water geometry keeps its prepared depth mask when room players or props change, while their live reflections and lights continue updating.
+- The island minimap keeps empty soil sections green, matching the quieter terrain; cultivated plots and locked-land shading remain visible.
+
 ## [2.64.13] - 2026-11-09
 
 ### Fixed
