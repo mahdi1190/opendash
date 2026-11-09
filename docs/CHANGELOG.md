@@ -10,6 +10,14 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.15] - 2026-11-09
+
+### Changed
+
+- Reflection captures skip branches that remain invisible after cached source artwork is revealed, reducing traversal of inactive pose drawings while retaining visible cached tiles.
+- Optional daily callers meet by reachable public village landmarks instead of gathering beside the active player. Their visits, conversations, gifts and rewards stay available.
+- Native art reuses selector preparation when calculating stylesheet specificity.
+
 ## [2.64.14] - 2026-11-09
 
 ### Changed

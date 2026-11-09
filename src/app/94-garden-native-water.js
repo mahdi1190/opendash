@@ -144,7 +144,7 @@ window.GardenNativeWater = (function () {
     const rng = random(187731), records = new Map(), ringList = [], particles = [], actorWake = new Map(), spotImages = [];
     const intervalSlots = new Array(INTERVAL_CACHE_LIMIT);
     let intervalCaches = new WeakMap(), intervalCursor = 0, intervalEntries = 0, intervalQueries = 0, intervalHits = 0, intervalMisses = 0, intervalEvictions = 0, intervalBypasses = 0, intervalOutside = 0, intervalInvalidations = 0, intervalEmptyBandQueriesSkipped = 0, intervalHorizontalRegionsSkipped = 0;
-    let model = null, room = null, metadata = {}, regions = [], visibleRegions = [], regionRevision = null, regionSource = null, parent = null, dead = false, frame = 0, lastTime = 0, lastAmbient = 0, pauseAt = null, pauseOffset = 0, motion = true, lastMotion = true, fieldAt = -Infinity, ringAt = -Infinity, rainBudget = 0, captureBytes = 0, sequence = 0, captures = 0, captureErrors = 0, captureAllocations = 0, captureReuses = 0, captureSpareBytes = 0, visibleReflections = 0, visibleBands = 0, sortDirty = false, snapshotTime = -Infinity, depthKey = '';
+    let model = null, room = null, metadata = {}, regions = [], visibleRegions = [], regionRevision = null, regionSource = null, parent = null, dead = false, frame = 0, lastTime = 0, lastAmbient = 0, pauseAt = null, pauseOffset = 0, motion = true, lastMotion = true, fieldAt = -Infinity, ringAt = -Infinity, rainBudget = 0, captureBytes = 0, sequence = 0, captures = 0, captureErrors = 0, captureAllocations = 0, captureReuses = 0, captureSpareBytes = 0, captureRevealVisits = 0, captureRevealPrunes = 0, visibleReflections = 0, visibleBands = 0, sortDirty = false, snapshotTime = -Infinity, depthKey = '';
     let geometryPrepared = false;
     // Scene-private data only. A null prototype lets own enumerable snapshot
     // keys (including __proto__) copy as data without inherited setters.
@@ -406,7 +406,15 @@ window.GardenNativeWater = (function () {
           // A cache above this body can hide the original while its rendered
           // tile remains visible. Reveal only those external-cache originals;
           // internal caches retain their own tiles and hidden source geometry.
-          const reveal = object => { const owner = object._nativeCacheHiddenBy; if (owner && object.visible === false && (!object._nativeNode || object._nativeNode._computedVisible !== false)) { let internal = false; for (let p = owner.target; p; p = p.parentContainer) if (p === source) { internal = true; break; } if (!internal) { visibility.push(object); object.setVisible(true); } } for (const child of object.list || []) reveal(child); }; reveal(source);
+          const reveal = object => {
+            captureRevealVisits++;
+            const owner = object._nativeCacheHiddenBy;
+            if (owner && object.visible === false && (!object._nativeNode || object._nativeNode._computedVisible !== false)) { let internal = false; for (let p = owner.target; p; p = p.parentContainer) if (p === source) { internal = true; break; } if (!internal) { visibility.push(object); object.setVisible(true); } }
+            // Decide external-cache reveal first. A still-hidden ancestor
+            // blocks its whole branch; internal cache tiles remain siblings.
+            if (object.visible === false) { captureRevealPrunes++; return; }
+            if (object.list) for (const child of object.list) reveal(child);
+          }; reveal(source);
           attached = true; inner.add(source);
           if (!candidate) {
             const rt = scene.add.renderTexture(0, 0, width, height); captureAllocations++;
@@ -551,7 +559,7 @@ window.GardenNativeWater = (function () {
       if (lastTime - ringAt >= 32 || delta === 0 || ringList.length || particles.length) { paintRipples(); ringAt = lastTime; }
     }
     function destroy() { if (dead) return; dead = true; clearIntervalCache(); for (const record of [...records.values()]) destroyRecord(record); fishingReflections.destroy(); depthPlane.destroy(); if (falloff) { falloff.rt.destroy(); if (scene.textures.exists(falloff.key)) scene.textures.remove(falloff.key); captureBytes = Math.max(0, captureBytes - falloff.bytes); falloff = null; } ringList.length = 0; particles.length = 0; actorWake.clear(); spotNodes.length = 0; root.destroy(true); }
-    function status() { const field = depthPlane.status(); return { native: true, regions: regions.length, visibleRegions: visibleRegions.length, reflections: visibleReflections, bands: visibleBands, subjects: subjectDiagnostics, ...fishingReflections.status(), depthTriangles: 0, depthQuads: field.quads, depthTextureBytes: field.textureBytes, depthMaskBuilds: field.builds, depthError: field.lastError, depthSpots: visibleSpots, spotBands: usedSpotBands, surfSegments, falloffBytes: falloff ? falloff.bytes : 0, captures, captureErrors, captureAllocations, captureReuses, captureSpareBytes, captureBytes, captureBudgetBytes: LIMIT_BYTES, cachedSources: records.size, intervalCache: { queries: intervalQueries, hits: intervalHits, misses: intervalMisses, outsideBounds: intervalOutside, bypasses: intervalBypasses, entries: intervalEntries, capacity: INTERVAL_CACHE_LIMIT, maxResultSpans: INTERVAL_CACHE_MAX_SPANS, evictions: intervalEvictions, invalidations: intervalInvalidations, emptyBandQueriesSkipped: intervalEmptyBandQueriesSkipped, horizontalRegionsSkipped: intervalHorizontalRegionsSkipped }, ripples: ringList.length, splashDrops: particles.length, paused: pauseAt != null, reducedMotion: !motion, room: !!room }; }
+    function status() { const field = depthPlane.status(); return { native: true, regions: regions.length, visibleRegions: visibleRegions.length, reflections: visibleReflections, bands: visibleBands, subjects: subjectDiagnostics, ...fishingReflections.status(), depthTriangles: 0, depthQuads: field.quads, depthTextureBytes: field.textureBytes, depthMaskBuilds: field.builds, depthError: field.lastError, depthSpots: visibleSpots, spotBands: usedSpotBands, surfSegments, falloffBytes: falloff ? falloff.bytes : 0, captures, captureErrors, captureAllocations, captureReuses, captureSpareBytes, captureRevealVisits, captureRevealPrunes, captureBytes, captureBudgetBytes: LIMIT_BYTES, cachedSources: records.size, intervalCache: { queries: intervalQueries, hits: intervalHits, misses: intervalMisses, outsideBounds: intervalOutside, bypasses: intervalBypasses, entries: intervalEntries, capacity: INTERVAL_CACHE_LIMIT, maxResultSpans: INTERVAL_CACHE_MAX_SPANS, evictions: intervalEvictions, invalidations: intervalInvalidations, emptyBandQueriesSkipped: intervalEmptyBandQueriesSkipped, horizontalRegionsSkipped: intervalHorizontalRegionsSkipped }, ripples: ringList.length, splashDrops: particles.length, paused: pauseAt != null, reducedMotion: !motion, room: !!room }; }
     return { sync, setRoom, update, pauseAmbient, effect, containsWater: contains, destroy, status, root };
   }
   return Object.freeze({ create });

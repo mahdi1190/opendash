@@ -161,9 +161,38 @@ function _wdFolkPick(m) {
   for (const r of rows) if (!ever || gardenHash('wd-folk|' + today + '|' + r.id) % 100 < r.chance) { _wdSet('fd', { d: today, id: r.id }); return r; }
   return null;
 }
+// Optional callers wait by public destinations instead of gathering around
+// whichever player happens to be fishing when the daily caller arrives.
+const WD_FOLK_MEET = Object.freeze({
+  tam: Object.freeze(['market-stall', 1.2, 1.1]),
+  bramble: Object.freeze(['notice-board', -1.6, 1.1]),
+  pip: Object.freeze(['tackle-shop', -1.6, 1.1]),
+  thistle: Object.freeze(['post-box', 1.6, 1.1]),
+  wick: Object.freeze(['sundial', -1.6, 1.1]),
+});
+const WD_FOLK_MEET_FALLBACKS = Object.freeze([Object.freeze(['notice-board', -1.6, 1.1]), Object.freeze(['post-box', 1.6, 1.1])]);
+function _wdFolkMeeting(row) {
+  const preferred = WD_FOLK_MEET[row.id], choices = preferred ? [preferred, ...WD_FOLK_MEET_FALLBACKS] : WD_FOLK_MEET_FALLBACKS;
+  for (let i = 0; i < choices.length; i++) {
+    const at = choices[i]; if (i && preferred && at[0] === preferred[0]) continue;
+    // A missing landmark is not the kit's generic fallback coordinate. Every
+    // meeting also needs public ground, today's foot clearance and a route.
+    const prop = GARDEN_PROPS.find(p => p.id === at[0]);
+    if (!prop || prop.needs && !gardenWorkOwned(prop.needs)) continue;
+    const want = _wdPt(at[0], at[1], at[2]), to = wdFreeNear(want.x, want.y, 1.25); if (!to || !gardenIslandPublicCell(Math.floor(to.x), Math.floor(to.y))) continue;
+    let route = null; try { route = _gwRoute({ x: _gw.px, y: _gw.py }, to); } catch (e) { /* try the next public meeting point */ }
+    if (route) return to;
+  }
+  return null;
+}
 function _wdFolkSpawn(row) {
-  const v = _glCamView(), want = { x: Math.max(1, Math.min(GARDEN_WORLD.cols - 1, _gw.px + (Math.random() < 0.5 ? -2.4 : 2.4))), y: _gw.py + (Math.random() < 0.5 ? 1.2 : -1.2) };
-  const to = wdFreeNear(want.x, want.y, 3); if (!to) return;
+  const v = _glCamView(); let to = null;
+  if (GARDEN_WORLD.v >= 3) to = _wdFolkMeeting(row);
+  else {
+    const want = { x: Math.max(1, Math.min(GARDEN_WORLD.cols - 1, _gw.px + (Math.random() < 0.5 ? -2.4 : 2.4))), y: _gw.py + (Math.random() < 0.5 ? 1.2 : -1.2) };
+    to = wdFreeNear(want.x, want.y, 3);
+  }
+  if (!to) return;
   const side = _gw.px - v.x0 > v.x1 - _gw.px ? v.x0 - 1 : v.x1 + 1;
   let from = wdFreeNear(Math.max(0.5, Math.min(GARDEN_WORLD.cols - 0.5, side)), to.y, 5) || to;
   let route = null;

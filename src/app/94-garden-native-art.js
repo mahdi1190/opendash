@@ -64,8 +64,8 @@ window.GardenNativeArt = (function () {
   }
   function compileSelector(value) {
     const selector = String(value || ''); let compiled = compiledSelectors.get(selector); if (compiled) return compiled;
-    compiled = [];
-    for (const branch of selectorBranches(selector)) { const parts = splitSelector(branch), steps = []; if (!parts.length) continue; steps.push({ atom: compileAtom(parts.pop()), direct: false }); while (parts.length) { let part = parts.pop(), direct = part === '>'; if (direct) part = parts.pop(); steps.push({ atom: compileAtom(part || ''), direct }); } compiled.push(steps); }
+    compiled = []; const branches = selectorBranches(selector);
+    for (const branch of branches) { const parts = splitSelector(branch), steps = []; if (branches.length === 1) compiled.partCount = parts.length; if (!parts.length) continue; steps.push({ atom: compileAtom(parts.pop()), direct: false }); while (parts.length) { let part = parts.pop(), direct = part === '>'; if (direct) part = parts.pop(); steps.push({ atom: compileAtom(part || ''), direct }); } compiled.push(steps); }
     compiledSelectors.set(selector, compiled); if (compiledSelectors.size > 4096) compiledSelectors.delete(compiledSelectors.keys().next().value); return compiled;
   }
   function nodeClasses(node) { const source = String(node.attrs.class || ''); if (node._selectorClassSource !== source) { node._selectorClassSource = source; node._selectorClasses = new Set(source.split(/\s+/).filter(Boolean)); } return node._selectorClasses; }
@@ -139,7 +139,7 @@ window.GardenNativeArt = (function () {
       // trigger a stylesheet cascade or replace any retained drawing.
       if (/\.gd-hush\b/.test(head) && Object.keys(style).every(key => key === 'animation-play-state')) return;
       for (const selector of selectorBranches(head)) {
-        const compiled = compileSelector(selector), right = compiled[0] && compiled[0][0].atom, specificity = (selector.match(/#/g) || []).length * 100 + (selector.match(/[.\[]/g) || []).length * 10 + splitSelector(selector).length;
+        const compiled = compileSelector(selector), right = compiled[0] && compiled[0][0].atom, specificity = (selector.match(/#/g) || []).length * 100 + (selector.match(/[.\[]/g) || []).length * 10 + (compiled.partCount == null ? splitSelector(selector).length : compiled.partCount);
         const rule = { selector: selector.trim(), compiled, style, specificity, order: ruleOrder++ }; rules.push(rule);
         selectorInputs(compiled);
         const key = right && right.classes.length ? 'c:' + right.classes[right.classes.length - 1] : right && right.ids.length ? 'i:' + right.ids[0] : right && right.tag ? 't:' + right.tag : '*'; let list = indexedRules.get(key); if (!list) indexedRules.set(key, list = []); list.push(rule);

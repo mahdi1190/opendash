@@ -214,6 +214,33 @@ also changed room geometry during that route, so the later departure read does
 not independently isolate the mask count for that transition. Map walking,
 reopening and Fit completed with the quieter empty plots and no captured errors.
 
+Capture traversal reveals externally cached original artwork before deciding
+whether to descend. Branches that remain invisible stop there, including
+retained hidden room poses and internal-cache originals whose visible tiles are
+already siblings in the captured source. An inactive flag alone does not prune
+artwork: Phaser can still render such objects. Status counts examined targets
+and stopped branches without estimating how many descendants were skipped.
+
+Canonical-world daily callers choose a role-related fixed public landmark,
+with public fallbacks, instead of a point beside the player. Current foot
+clearance and a real player-to-meeting route are required; their existing
+camera-side entrance and walking path remain. Daily selection, lifetime,
+conversations, gifts, rewards and earlier-world behavior are unchanged.
+Native stylesheet preparation also reuses the exact private compiled selector
+part count for its existing specificity formula and retains its old fallback.
+
+An ordinary night visit observed the scheduled caller arrive on public, free,
+dry ground, then used Map walking, a visible body click and the normal
+conversation and Goodbye controls. The visit count advanced once. A wildlife
+friendship reward appeared during the approach, while the actual conversation
+ledger stayed unchanged. Paired fishing exercised visible reflections, spare
+reuse and hidden-branch pruning without capture errors. In the cellar, the
+guest departure reduced the host's people from two to one while its mask count
+stayed unchanged. One smaller-window caption comparison was unplayed because
+the normal text was fading; the unchanged layout was played in the prior batch.
+A fresh-browser startup CPU profile reached actual native shader/cache readiness
+and normal Leave without captured errors; it is not an opening or GPU benchmark.
+
 Phaser **4.2.1** is pinned in `vendor/phaser/` with its licence and source digest.
 The build verifies and embeds the bundle. `FreefloGameEngine.load()` loads it
 on demand without a runtime CDN request. Opening cinematics use their separate
