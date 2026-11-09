@@ -115,6 +115,82 @@ ordinary shore visit kept the own-pet pat at one trusted action, with its menu,
 hearts and Escape cleanup. Both completed normal departures without captured
 app errors. The earlier failed runs remain separate observations.
 
+Native actor effect bounds transform the same four corners with scalar math,
+returning fresh rectangles. The actor row reuses its current world matrix for
+the bounds and source foot after the original local-bounds read. Water supplies
+two private output points to Phaser's existing camera conversion, retaining
+Phaser's camera math and fresh outward view bounds. These changes remove
+temporary collections and duplicate transform reads without changing poses,
+clipping, culling, quality, update cadence or capture ownership.
+
+An ordinary paired shore route retained the actor, pet and fishing reflections,
+camera controls and one own-pet pat. The first indoor observation lost Guest's
+debug-protocol response after entry, without a captured app exception; its
+cause remains undetermined. A fresh normal indoor run completed, and a focused
+repeat completed its reel and caption captures at both sizes without activating
+the on-timeout debugger. These observations do not establish a frame-rate gain
+or a cause for the original timeout.
+
+Native shore fishing controls share the indoor controls' warm, dark colours,
+including the reel hint and button focus state. The existing outdoor layout,
+track, input and motion rules remain in place. Painted pet picking rejects
+conservative geometry-leaf bounds misses before clipping and paint queries;
+text, wrappers, unsupported stroke widths and actual painted hits keep the
+existing query path. This adds no animation or per-frame work.
+
+The ordinary shore repeat reached a natural bite and accepted one trusted
+strike. Its live reel stayed within the stage, used the dark palette, and
+cleared through Escape; one own-pet pat and both departures completed without
+captured errors. An earlier shore attempt lost one renderer's debug-protocol
+response. The focused repeat did not activate its on-timeout debugger, so that
+stall remains unexplained rather than being counted as fixed. A separate
+initialized walking and camera-control CPU profile completed normally; that
+JavaScript sample is not a GPU or frame-rate measurement.
+
+The canonical island minimap uses its actual coast and inward beach, routes,
+inland water, ownership shading and a few service markers. The legacy rectangular
+water overlay is omitted for this world: its full-map ocean bounds previously
+covered the island drawing. The built pier uses its current upgraded length;
+map navigation and camera coordinates retain the same cell space.
+
+Native pointerdown shares its first scene hit between the item mapping and
+the later free-hand pet branch. Other callers still perform their own current
+pick. No across-event hit cache or input-policy change is introduced.
+
+Moving reflection captures request the same even texture dimensions that
+Phaser already produces, avoiding its intermediate odd-sized allocation and
+resize. Quality, bounds, texture admission and atomic replacement of the old
+snapshot remain unchanged. This does not establish a cause for the stalls.
+
+Ordinary Map navigation reached a public path, reopened the restored island
+map and returned to Fit. A paired shore cast retained the float, line and
+reflections through a natural bite, strike and reel. One visible own-pet click
+produced one pat, hearts and its menu; both players left normally. Earlier
+edge-click observations used fractional pointer coordinates that Chrome's
+compatibility mouse event truncated, so those attempts did not hit the same
+painted point. Their traces remain separate from the successful interior click.
+
+NativeArt's inner containers can omit neutral alpha and scroll-factor setter
+propagation to owned native child containers. This uses the pinned engine's
+normal render order, transforms, camera membership and blend handling, and
+falls back to its original final render step for unsupported state, transforms,
+opacity, scroll factors, masks or custom child behavior. The existing art stats
+expose invocation and fallback counts. Raster quality, animation and the vendor
+bundle are unchanged.
+
+Owner and peer float wakes include the existing contact's vertical surface tug,
+matching the reaction rings. Downward bob dip remains separate; the rod, line,
+mouth anchors, timing and shared activity state keep their existing behavior.
+
+The corrected native render path ran during ordinary two-player shore fishing
+and an initialized walking/camera profile; transformed and transparent inner
+containers used the original renderer. A separate cellar visit retained the
+live reel, caption and Leave at both window sizes, while a rainy shore walk
+retained puddle contact and public beaches. These routes completed without
+captured app errors. The initial render prototype was rejected after counters
+showed that its intended child shortcut never ran. CPU sampling remains a
+current-device diagnostic, rather than a frame-rate or GPU claim.
+
 Phaser **4.2.1** is pinned in `vendor/phaser/` with its licence and source digest.
 The build verifies and embeds the bundle. `FreefloGameEngine.load()` loads it
 on demand without a runtime CDN request. Opening cinematics use their separate

@@ -227,8 +227,8 @@ window.GardenNative = (function () {
       touches.set(pointer.id, { x: ev.clientX, y: ev.clientY });
       if (touches.size === 2) { const [a, b] = [...touches.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); gardenHoldEnd(); _gdpDragCancel(_gdp.press); _gdp.press = null; return; }
       if (ev.button !== 0) return;
-      const cell = _gdpCellOf(ev), it = _gdpPickItem(ev, cell), mode = _gdpMode(), tool = _gdpTool(), model = gardenHere();
-      const petHit = typeof _ptwFreeHand === 'function' && _ptwFreeHand() ? pick(ev.clientX, ev.clientY) : null;
+      const cell = _gdpCellOf(ev), nativeHit = pick(ev.clientX, ev.clientY), it = _gdpNativeItemOfHit(nativeHit), mode = _gdpMode(), tool = _gdpTool(), model = gardenHere();
+      const petHit = typeof _ptwFreeHand === 'function' && _ptwFreeHand() ? nativeHit : null;
       if (petHit && petHit.kind === 'pet' && typeof _ptwClick === 'function') { _ptwClick({ ...ev, type: 'pointerdown', target: petHit.node }); _gdp.press = null; return; }
       _gdp.press = { x0: ev.clientX, y0: ev.clientY, it, cell, moved: false, id: pointer.id };
       if (_gh.bubble) gardenBubbleClose(); gardenSpotMark(null);

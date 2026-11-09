@@ -1258,9 +1258,18 @@ window.GardenNativeWorld = (function () {
     }
     function resize(w, h) { size = { w: Math.max(1, w), h: Math.max(1, h) }; _gw.size = { ...size }; _gw.sizeOk = true; _gw.cam.init = false; updateCamera(.016, true); }
     function destroy() { if (dead) return; dead = true; designPreview(null); restoreCanopyAlpha(); for (const row of drawings.values()) row.handle.destroy(); for (const row of dynamic.values()) row.handle.destroy(); for (const record of specialMainActors.values()) drawingMainExclusion(record, false); specialMainActors.clear(); drawings.clear(); dynamic.clear(); needRings.clear(); cacheQueue.clear(); terrainBaseQueue.clear(); terrainChunks.clear(); rootNode.remove(); }
-    function effectBounds(node) {
-      const b = node.getBBox(), m = node.target.getWorldTransformMatrix(), matrix = { a: m.a, b: m.b, c: m.c, d: m.d, e: m.tx == null ? m.e || 0 : m.tx, f: m.ty == null ? m.f || 0 : m.ty }, points = [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]].map(([x, y]) => GardenNativeArt.point(matrix, x, y));
-      return terrainBox(points);
+    function effectBounds(node, localBounds, worldMatrix) {
+      const bounds = localBounds || node.getBBox(), matrix = worldMatrix || node.target.getWorldTransformMatrix();
+      const ma = matrix.a, mb = matrix.b, mc = matrix.c, md = matrix.d, tx = matrix.tx == null ? matrix.e || 0 : matrix.tx, ty = matrix.ty == null ? matrix.f || 0 : matrix.ty;
+      const x0 = bounds.x, y0 = bounds.y, x1 = bounds.x + bounds.width, y1 = bounds.y + bounds.height;
+      // The same four corners and affine operation order, without temporary
+      // corner pairs, projected points or the terrainBox coordinate arrays.
+      const ax = ma * x0 + mc * y0 + tx, ay = mb * x0 + md * y0 + ty;
+      const bx = ma * x1 + mc * y0 + tx, by = mb * x1 + md * y0 + ty;
+      const cx = ma * x0 + mc * y1 + tx, cy = mb * x0 + md * y1 + ty;
+      const dx = ma * x1 + mc * y1 + tx, dy = mb * x1 + md * y1 + ty;
+      const x = Math.min(ax, bx, cx, dx), y = Math.min(ay, by, cy, dy);
+      return { x, y, width: Math.max(ax, bx, cx, dx) - x, height: Math.max(ay, by, cy, dy) - y };
     }
     function effectsState() {
       const frame = scene.game.loop.frame;
@@ -1268,7 +1277,7 @@ window.GardenNativeWorld = (function () {
         effectFrame = frame; effectActorRows = []; effectHeldRows = []; effectCreatureRows = []; effectsState.fishingRigs = [];
         const add = (id, node, body, x, y, kind, moving, key, lift) => {
           if (!node || !body || !node.isConnected || !body.target || !body.target.active || !node.target.visible && !node.target._nativeCacheHiddenBy) return;
-          const b = effectBounds(body), matrix = body.target.getWorldTransformMatrix(), sourceFootY = matrix.ty == null ? matrix.f || 0 : matrix.ty;
+          const localBounds = body.getBBox(), matrix = body.target.getWorldTransformMatrix(), b = effectBounds(body, localBounds, matrix), sourceFootY = matrix.ty == null ? matrix.f || 0 : matrix.ty;
           const row = { id, source: body.target, node: body, x, y, groundX: x, groundY: y, waterline: y, w: kind === 'pet' ? Math.min(42, Math.max(12, b.width * .8)) : 22, h: kind === 'pet' ? 7 : 8, tall: Math.min(100, Math.max(12, b.height)), bounds: b, kind, moving: !!moving, dynamic: true, bakedContact: true, captureKey: key || body._gplKey || '', lift: lift == null ? y - sourceFootY : lift, sourceFootY };
           effectActorRows.push(row); return row;
         };

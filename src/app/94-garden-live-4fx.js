@@ -296,7 +296,11 @@ function _gllFxStep(A, dt) {
   _gllFxAttr(e.bob, 'transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)}) rotate(${tilt.toFixed(1)})`);
   const onWater = F.state !== 'cast' && F.state !== 'land', wakeK = 1 + (motion ? Math.sin(F.t * 3) * 0.08 + (contact ? contact.pulse * .14 : 0) : 0);
   _gllFxAttr(e.wake, 'visibility', onWater ? 'visible' : 'hidden');
-  if (onWater) _gllFxAttr(e.wake, 'transform', `translate(${bx.toFixed(1)} ${ty.toFixed(1)}) scale(${wakeK.toFixed(2)} 1)`);
+  if (onWater) {
+    // Follow the surface tug, excluding the float's downward dip.
+    const wakeY = ty + (motion && contact && (F.state === 'wait' || F.state === 'bite' || F.state === 'reel') ? contact.tugY : 0);
+    _gllFxAttr(e.wake, 'transform', `translate(${bx.toFixed(1)} ${wakeY.toFixed(1)}) scale(${wakeK.toFixed(2)} 1)`);
+  }
   _gllFxAttr(e.bub, 'visibility', F.state === 'bite' ? 'visible' : 'hidden');
   if (F.state === 'bite') _gllFxAttr(e.bub, 'transform', `translate(${bx.toFixed(1)} ${(ty - 28 - (motion ? Math.abs(Math.sin(F.t * 7)) * 2 : 0)).toFixed(1)})`);
 }

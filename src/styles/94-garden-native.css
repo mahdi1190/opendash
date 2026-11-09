@@ -132,6 +132,16 @@
 .grm-native-room .ee-vol { min-width: 48px; width: 110px; max-width: 24vw; }
 .grm-native-room > .grm-bag { top: max(64px, calc(env(safe-area-inset-top) + 52px)); max-height: min(148px, 30%); }
 .grm-native-room > .grm-ask { width: min(620px, calc(100% - 24px)); }
+/* Native shore and room fishing controls share colors; their existing layout,
+   motion, track/progress styling and controls keep their own presentation rules. */
+.grm-native-room > .gd-fishhud,
+.grm-native-room > .gd-reel,
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-fishhud,
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-reel {
+  color: #ffeccd;
+  background: rgba(24, 19, 15, .94);
+  border-color: rgba(255, 220, 160, .45);
+}
 /* Narration and the live fishing pill share normal flow. The game's existing
    [hidden] phase and removal rules collapse the pill row when it is absent. */
 .grm-native-room > .grm-say {
@@ -158,15 +168,15 @@
   box-sizing: border-box;
   margin-top: 8px;
   pointer-events: auto;
-  color: #ffeccd;
-  background: rgba(24, 19, 15, .94);
-  border-color: rgba(255, 220, 160, .45);
   box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
   animation-name: grm-native-status-in;
 }
-.grm-native-room > .gd-fishhud .gd-fishhud-b { color: #ffeccd; background: #493326; }
-.grm-native-room > .gd-fishhud .gd-fishhud-b:hover { color: #fff4df; background: #60472f; }
+.grm-native-room > .gd-fishhud .gd-fishhud-b,
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-fishhud .gd-fishhud-b { color: #ffeccd; background: #493326; }
+.grm-native-room > .gd-fishhud .gd-fishhud-b:hover,
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-fishhud .gd-fishhud-b:hover { color: #fff4df; background: #60472f; }
 .grm-native-room > .gd-fishhud .gd-fishhud-b:focus-visible { outline: 2px solid #ffd28a; outline-offset: 2px; }
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-fishhud .gd-fishhud-b:focus-visible { outline-color: #ffd28a; }
 /* A reel uses the space above the caption, including when a short stage makes
    its track smaller. Leave keeps its own clear row at the top of the overlay. */
 .grm-native-room > .gd-reel {
@@ -182,13 +192,11 @@
   max-width: 100%;
   box-sizing: border-box;
   pointer-events: auto;
-  color: #ffeccd;
-  background: rgba(24, 19, 15, .94);
-  border-color: rgba(255, 220, 160, .45);
   box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
   animation-name: grm-native-status-in;
 }
-.grm-native-room > .gd-reel .gd-reel-hint { color: #ddc9aa; }
+.grm-native-room > .gd-reel .gd-reel-hint,
+.gd-stagebox:has(> .gd-stage > .gd-native-stage) > .gd-reel .gd-reel-hint { color: #ddc9aa; }
 .grm-native-room > .gd-reel .gd-reel-body { min-height: 0; flex-shrink: 1; }
 @keyframes grm-native-status-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {

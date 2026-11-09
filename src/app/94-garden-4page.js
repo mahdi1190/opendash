@@ -316,13 +316,14 @@ function _gdpItemOf(ev) {
   return g ? { uid: g.getAttribute('data-uid'), kind: g.classList.contains('gd-plant') ? 'plant' : 'decor', ground: !!g.closest('.gd-paths') } : null;
 }
 function _gdpStageContains(target) { if (window.GardenNative && GardenNative.active()) return !!(GardenNative.scene() && GardenNative.scene().game.canvas === target); return !!(_gdp.svg && (_gdp.svg.contains(target) || window.GardenPhaser && GardenPhaser.isTarget(target))); }
+function _gdpNativeItemOfHit(p) { return p && p.uid ? { uid: p.uid, kind: p.kind, ground: !!p.ground || !!(p.node && p.node.closest('.gd-paths')) } : null; }
 /**
  * The plant or decoration under the pointer, the same answer for the hover, the press and the right-click: whatever is painted under the
  * pointer; else the one whose drawing's box the pointer is inside (a tall flower used to light up only on a petal or at its foot, and
  * nowhere between); else null (the cell then decides).
  */
 function _gdpPickItem(ev, cell) {
-  if (window.GardenNative && GardenNative.active()) { const p = GardenNative.pick(ev.clientX, ev.clientY); return p && p.uid ? { uid: p.uid, kind: p.kind, ground: !!p.ground || !!(p.node && p.node.closest('.gd-paths')) } : null; }
+  if (window.GardenNative && GardenNative.active()) return _gdpNativeItemOfHit(GardenNative.pick(ev.clientX, ev.clientY));
   if (window.GardenPhaser && GardenPhaser.active(_gdp.svg)) { const p = gardenWorldVisualPick(ev); return p && p.uid ? { uid: p.uid, kind: p.kind, ground: !!p.node.closest('.gd-paths') } : null; }
   const exact = _gdpItemOf(ev);
   if (exact && !exact.ground) return exact;

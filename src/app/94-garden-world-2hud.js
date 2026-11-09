@@ -266,7 +266,8 @@ function _ghMini(box, m) {
   if (!_gh.miniOpen) { if (el) el.hidden = true; return; }
   const W = GARDEN_WORLD, marks = m.plants.filter(p => p.ripe || (p.thirsty && p.def.thirst)).slice(0, 60).map(p => `<circle cx="${p.x + 0.5}" cy="${p.y + 0.5}" r="0.8" fill="${p.ripe ? '#ffc93c' : '#62c2ff'}"/>`).join('');
   const open = new Set(m.areas);
-  const area = gardenLandMini(open, m.season) + GARDEN_AREAS.filter(a => a.water && open.has(a.id)).map(a => `<rect x="${a.water.x}" y="${a.water.y}" width="${a.water.w}" height="${a.water.h}" fill="#4f93c8"/>`).join('');
+  const island = typeof gardenIslandActive === 'function' && gardenIslandActive();
+  const area = gardenLandMini(open, m.season, m.level.level, m) + (island ? '' : GARDEN_AREAS.filter(a => a.water && open.has(a.id)).map(a => `<rect x="${a.water.x}" y="${a.water.y}" width="${a.water.w}" height="${a.water.h}" fill="#4f93c8"/>`).join(''));
   const html = `<div class="gd-map-head"><b>Garden map</b><button type="button" data-map="close" aria-label="Close map">${icon('x')}</button></div><svg viewBox="0 0 ${W.cols} ${W.rows}" preserveAspectRatio="none" role="img" aria-label="Garden paths, plants, your position and camera"><rect width="${W.cols}" height="${W.rows}" fill="#7ea85a"/>${area}${marks}<rect class="gd-mini-view" fill="none" stroke="#fff" stroke-width=".35"/><circle class="gd-mini-me" r="1.100" fill="#fff" stroke="#2a2a2a" stroke-width=".3"/></svg><div class="gd-map-foot"><span>Click or tap to walk.</span><button type="button" data-map="fit">Fit whole garden</button></div>`;
   el = _ghHost(box, 'gd-mini', 'section'); el.hidden = false; el.id = 'gd-map-panel';
   if (_gh.mini !== html || !el.firstChild) {

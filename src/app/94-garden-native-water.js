@@ -137,6 +137,9 @@ window.GardenNativeWater = (function () {
     // Scene-private data only. A null prototype lets own enumerable snapshot
     // keys (including __proto__) copy as data without inherited setters.
     const environment = Object.assign(Object.create(null), { daylight: 1, rain: 0, snow: 0, windX: 1, windY: 0, gust: 0 });
+    // Pinned getWorldPoint writes x/y into a supplied output without retaining it.
+    // Keep its scratch points private; each outward bounds result remains fresh.
+    const viewOrigin = { x: 0, y: 0 }, viewCorner = { x: 0, y: 0 };
     let currentView = { x: 0, y: 0, width: 960, height: 600, zoom: 1 };
     let spotNodes = [], spotsDirty = true, falloff = null, visibleSpots = 0, usedSpotBands = 0, subjectDiagnostics = [];
     const depthPlane = GardenNativeWaterDepth.create(scene, { parent: depth, intervals: regionIntervals, subtract: subtractIntervals, merge: mergeIntervals, reserve(bytes) { if (!reserve(bytes, null)) return false; captureBytes += bytes; return true; }, release(bytes) { captureBytes = Math.max(0, captureBytes - bytes); } });
@@ -151,7 +154,7 @@ window.GardenNativeWater = (function () {
       const revision = next.revision == null ? next.regions : next.revision;
       if (revision !== regionRevision || regionSource !== target) { clearIntervalCache(); regions = (next.regions || []).map(normalizeRegion); regionRevision = revision; regionSource = target; fieldAt = -Infinity; ringAt = -Infinity; depthKey = ''; spotsDirty = true; if (!depthPlane.rebuild(regions)) captureErrors++; prepareSurf(); }
     }
-    function view() { const camera = scene.cameras.main, a = camera.getWorldPoint(0, 0), b = camera.getWorldPoint(camera.width, camera.height); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y), zoom: camera.zoom }; }
+    function view() { const camera = scene.cameras.main, a = camera.getWorldPoint(0, 0, viewOrigin), b = camera.getWorldPoint(camera.width, camera.height, viewCorner); return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y), zoom: camera.zoom }; }
     function inside(region, x, y) { if (x < region.bounds.x || y < region.bounds.y || x > region.bounds.x + region.bounds.width || y > region.bounds.y + region.bounds.height) return false; if (region.ellipses.some(e => ((x - e.x) / e.rx) ** 2 + ((y - e.y) / e.ry) ** 2 <= 1)) return true; return region.points.length > 2 && insidePolygon(x, y, region.points) && !region.holes.some(points => insidePolygon(x, y, points)); }
     function contains(x, y, liquidOnly = false) { if (liquidOnly && regions.some(region => region.frozen && inside(region, x, y))) return false; return regions.some(region => (!liquidOnly || !region.frozen) && inside(region, x, y)); }
     function clearIntervalCache() { intervalCaches = new WeakMap(); intervalSlots.fill(null); intervalCursor = 0; intervalEntries = 0; intervalInvalidations++; }
@@ -368,7 +371,7 @@ window.GardenNativeWater = (function () {
         // Phaser 4 DRAW adds its offsets to the object's existing position.
         // The affine wrapper already contains the parent's world translation;
         // subtract only the capture origin, rather than adding that parent twice.
-        rt = scene.add.renderTexture(0, 0, width, height).setVisible(false); rt.clear().draw(wrapper, -b.x * quality, -b.y * quality).render(); key = '__garden-water-' + scene.sys.settings.key + '-' + (++sequence); rt.saveTexture(key);
+        rt = scene.add.renderTexture(0, 0, Math.ceil(width / 2) * 2, Math.ceil(height / 2) * 2).setVisible(false); rt.clear().draw(wrapper, -b.x * quality, -b.y * quality).render(); key = '__garden-water-' + scene.sys.settings.key + '-' + (++sequence); rt.saveTexture(key);
         const actualWidth = rt.texture.width, actualHeight = rt.texture.height, actualBytes = actualWidth * actualHeight * 4; if (!reserve(actualBytes, record)) throw new Error('Reflection cache is full');
         releaseSnapshot(record); record.snapshot = { rt, key, bytes: actualBytes, bounds: { ...b }, width: actualWidth, height: actualHeight }; captureBytes += actualBytes; record.captureKey = String(item.captureKey == null ? item.revision == null ? '' : item.revision : item.captureKey); record.source = source; record.capturedAt = lastTime; record.firstReady = record.firstReady == null ? lastTime : record.firstReady; captures++;
         for (const image of record.images) image.setTexture(key); return true;

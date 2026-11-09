@@ -434,10 +434,59 @@ window.GardenNativeArt = (function () {
     while (bodies.size > 8) { const key = bodies.keys().next().value, expired = bodies.get(key); if (expired === entry) break; bodies.delete(key); destroyPetBody(expired); }
     return true;
   }
+  let neutralInnerComponents = null;
+  function installNeutralInnerRenderer(inner) {
+    const engine = window.Phaser, steps = inner._renderSteps, components = engine && engine.GameObjects && engine.GameObjects.Components, container = engine && engine.GameObjects && engine.GameObjects.Container;
+    // The pinned GameObject constructor owns one final Container render step.
+    // Unknown engines/components/layouts retain that original reference.
+    if (!engine || engine.VERSION !== '4.2.1' || !components || !components.Alpha || !components.AlphaSingle || !components.ScrollFactor || !container || typeof container.prototype.setScrollFactor !== 'function' || !Array.isArray(steps) || steps.length !== 1 || steps[0] !== inner.renderWebGL) return;
+    if (!neutralInnerComponents) neutralInnerComponents = { alpha: components.Alpha.setAlpha, alphaSingle: components.AlphaSingle.setAlpha, scroll: components.ScrollFactor.setScrollFactor, containerScroll: container.prototype.setScrollFactor };
+    const state = stateFor(inner.scene), counts = state.innerRender || (state.innerRender = { installed: 0, invocations: 0, neutralInvocations: 0, nativeChildren: 0, ordinaryChildren: 0, ownedNativeChildren: 0, nativeStepMismatchChildren: 0, nativeAlphaMismatchChildren: 0, nativeScrollMismatchChildren: 0, contextCanvasTrue: 0, contextCanvasFalse: 0, contextCanvasUnknown: 0, contextBlendNormal: 0, contextBlendOther: 0, innerBlendInherited: 0, innerBlendNormal: 0, innerBlendOther: 0, neutralInheritedBlend: 0, neutralFixedBlend: 0, noParentFallback: 0, stepFallback: 0, contextFallback: 0, contextShapeFallback: 0, contextBlendFallback: 0, innerBlendFallback: 0, transformFallback: 0, opacityFallback: 0, scrollFallback: 0, maskFallback: 0 });
+    counts.installed++; inner._nativeInnerRenderCounts = counts; inner._nativeInnerRenderer = steps[0]; steps[0] = renderNeutralInner;
+  }
+  function renderNeutralInner(renderer, container, context, parent, step, displayList, index) {
+    const original = container._nativeInnerRenderer, counts = container._nativeInnerRenderCounts, steps = container._renderSteps; counts.invocations++;
+    // useCanvas selects the main WebGL framebuffer, not the Canvas renderer.
+    // Both main-canvas and texture DrawingContexts run this WebGL final step.
+    if (context && context.useCanvas === true) counts.contextCanvasTrue++; else if (context && context.useCanvas === false) counts.contextCanvasFalse++; else counts.contextCanvasUnknown++;
+    if (context && context.blendMode === 0) counts.contextBlendNormal++; else counts.contextBlendOther++;
+    if (container.blendMode === -1) counts.innerBlendInherited++; else if (container.blendMode === 0) counts.innerBlendNormal++; else counts.innerBlendOther++;
+    const fallback = !parent ? 'noParentFallback' : !steps || steps.length !== 1 || steps[0] !== renderNeutralInner ? 'stepFallback' : !context || typeof context.useCanvas !== 'boolean' ? 'contextShapeFallback' : context.blendMode !== 0 ? 'contextBlendFallback' : container.blendMode !== -1 && container.blendMode !== 0 ? 'innerBlendFallback' : container.x !== 0 || container.y !== 0 || container.rotation !== 0 || container.scaleX !== 1 || container.scaleY !== 1 ? 'transformFallback' : container.alpha !== 1 ? 'opacityFallback' : container.scrollFactorX !== 1 || container.scrollFactorY !== 1 ? 'scrollFallback' : container.mask ? 'maskFallback' : null;
+    if (fallback) { counts[fallback]++; if (fallback === 'contextShapeFallback' || fallback === 'contextBlendFallback' || fallback === 'innerBlendFallback') counts.contextFallback++; return original(renderer, container, context, parent, step, displayList, index); }
+    counts.neutralInvocations++;
+    const fixedBlend = container.blendMode !== -1; if (fixedBlend) counts.neutralFixedBlend++; else counts.neutralInheritedBlend++;
+    const camera = context.camera, children = container.list, count = children.length; camera.addToRenderList(container);
+    if (!count) return;
+    // The same matrix operations and main/texture render-list decisions apply.
+    const transform = container.localTransform; transform.loadIdentity(); transform.multiply(parent); transform.translate(container.x, container.y); transform.rotate(container.rotation); transform.scale(container.scaleX, container.scaleY);
+    let current = context;
+    for (let i = 0; i < count; i++) {
+      const child = children[i]; if (!child.willRender(camera)) continue;
+      const owner = child._nativeNode, childSteps = child._renderSteps, ownedNative = owner && owner.target === child, nativeChild = ownedNative && childSteps && childSteps.length === 1 && childSteps[0] === child.renderWebGL, alpha = child.setAlpha, scroll = child.setScrollFactor;
+      // Container's setter is distinct from Components.ScrollFactor. Its third
+      // cascade argument defaults false; original renderer calls use two args.
+      const neutralAlpha = nativeChild && (alpha === neutralInnerComponents.alpha || alpha === neutralInnerComponents.alphaSingle), neutralScroll = nativeChild && (scroll === neutralInnerComponents.containerScroll || scroll === neutralInnerComponents.scroll);
+      if (ownedNative) counts.ownedNativeChildren++; if (ownedNative && !nativeChild) counts.nativeStepMismatchChildren++; if (nativeChild && !neutralAlpha) counts.nativeAlphaMismatchChildren++; if (nativeChild && !neutralScroll) counts.nativeScrollMismatchChildren++;
+      let topLeft, topRight, bottomLeft, bottomRight, scrollX, scrollY;
+      if (!neutralAlpha) { if (child.alphaTopLeft !== undefined) { topLeft = child.alphaTopLeft; topRight = child.alphaTopRight; bottomLeft = child.alphaBottomLeft; bottomRight = child.alphaBottomRight; } else { topLeft = topRight = bottomLeft = bottomRight = child.alpha; } }
+      if (!neutralScroll) { scrollX = child.scrollFactorX; scrollY = child.scrollFactorY; }
+      // Pinned fixed containers keep their incoming context; only inherited
+      // containers change it for a child's blend mode. Nonzero incoming
+      // contexts fall back above, preserving the original reset/clone branch.
+      if (!fixedBlend && child.blendMode !== current.blendMode && child.blendMode !== -1) { current = context.getClone().setBlendMode(child.blendMode); current.use(); }
+      if (!neutralScroll && child.setScrollFactor) child.setScrollFactor(scrollX * container.scrollFactorX, scrollY * container.scrollFactorY);
+      if (!neutralAlpha && child.setAlpha) child.setAlpha(topLeft * container.alpha, topRight * container.alpha, bottomLeft * container.alpha, bottomRight * container.alpha);
+      if (neutralAlpha && neutralScroll) counts.nativeChildren++; else counts.ordinaryChildren++;
+      child.renderWebGLStep(renderer, child, current, transform, undefined, children, i);
+      if (!neutralAlpha && child.setAlpha) child.setAlpha(topLeft, topRight, bottomLeft, bottomRight);
+      if (!neutralScroll && child.setScrollFactor) child.setScrollFactor(scrollX, scrollY);
+    }
+    if (current !== context) current.release();
+  }
   class NativeNode {
     constructor(scene, tag, attrs, context) {
       this.scene = scene; this._native = true; this.localName = String(tag || 'g').toLowerCase(); this.tagName = this.localName; this.nodeType = 1; this.namespaceURI = 'http://www.w3.org/2000/svg'; this.attrs = { ...(attrs || {}) }; this.children = []; this.parentNode = null; this.context = context || { defs: new Map(), options: {} }; this._styleValues = declarations(this.attrs.style); this._styles = {}; this._dead = false; this._text = ''; this._matrix = ID; this._animations = [];
-      this.target = scene.add.container(0, 0); this._inner = scene.add.container(0, 0); this.target.add(this._inner); this.target._nativeNode = this;
+      this.target = scene.add.container(0, 0); this._inner = scene.add.container(0, 0); this.target.add(this._inner); this.target._nativeNode = this; installNeutralInnerRenderer(this._inner);
       this.style = styleObject(this); const self = this;
       this.classList = { contains(name) { return String(self.attrs.class || '').split(/\s+/).includes(name); }, add(...names) { const set = new Set(String(self.attrs.class || '').split(/\s+/).filter(Boolean)); for (const n of names) set.add(n); self.setAttribute('class', [...set].join(' ')); }, remove(...names) { self.setAttribute('class', String(self.attrs.class || '').split(/\s+/).filter(n => n && !names.includes(n)).join(' ')); }, toggle(name, force) { const on = force == null ? !this.contains(name) : !!force; if (on) this.add(name); else this.remove(name); return on; }, [Symbol.iterator]() { return String(self.attrs.class || '').split(/\s+/).filter(Boolean)[Symbol.iterator](); } };
       this.dataset = new Proxy({}, { get(_, key) { return self.getAttribute('data-' + String(key).replace(/[A-Z]/g, c => '-' + c.toLowerCase())) || undefined; }, set(_, key, value) { self.setAttribute('data-' + String(key).replace(/[A-Z]/g, c => '-' + c.toLowerCase()), value); return true; } });
@@ -594,6 +643,16 @@ window.GardenNativeArt = (function () {
         const p = point(inv(m), x, y), found = child.paintedHit(p.x, p.y); if (found) return found;
       }
       if (!this._geometry && !this._label) return null;
+      if (this._geometry && !this.children.length && !this._label && !this.nativeBounds) {
+        // Leaf getBBox contains geometry plus nonnegative raw stroke padding
+        // for this resolved-width grammar. Add the full resolved radius: a
+        // literal/var spelling change can retain a differently padded cache.
+        const width = resolve(this._styles['stroke-width'], this._styles);
+        if (!width || /^\s*\+?(?:\d*\.\d+|\d+\.?\d*)(?:e[+-]?\d+)?(?:px)?\s*$/i.test(width)) {
+          const b = this._bounds || this.getBBox(), padding = num(width, 1) / 2 + 2;
+          if (Number.isFinite(b.x) && Number.isFinite(b.y) && Number.isFinite(b.width) && Number.isFinite(b.height) && (x < b.x - padding || x > b.x + b.width + padding || y < b.y - padding || y > b.y + b.height + padding)) return null;
+        }
+      }
       const clips = clippingFor(this); if (clips.some(union => !union.some(polygon => insidePolygon(x, y, polygon)))) return null;
       if (this._label && paintedVisible(this._label) && this._label.text.trim()) {
         const label = this._label, m = label.getLocalTransformMatrix();
@@ -1093,7 +1152,7 @@ window.GardenNativeArt = (function () {
     } catch (e) { state.cacheFailures = (state.cacheFailures || 0) + 1; node._inner.setRotation(oldRotation).setScale(oldScaleX, oldScaleY).setAlpha(oldAlpha); for (const tile of tiles) tile.destroy(); if (previous && node._cache === previous) showCache(node, true); else { for (const original of originals) if (original.active) original.setVisible(visible.get(original)); restoreBase(node); } }
   }
   function element(scene, tag, attrs) { const node = new NativeNode(scene, tag, attrs, { defs: stateFor(scene).defs, options: {} }); stateFor(scene).roots.add(node); return node; }
-  function stats(scene) { const s = stateFor(scene), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0; for (const node of s.cacheTrackedNodes) { const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
+  function stats(scene) { const s = stateFor(scene), cacheQualities = {}; let croppedCaches = 0, pinnedBases = 0, pinnedBaseBytes = 0; for (const node of s.cacheTrackedNodes) { const base = node._cacheBase || node._cache && node._cache.recipe.retainBase && !node._cache.cropped && node._cache.quality === (node._cache.recipe.baseQuality || 1) && node._cache; if (base) { pinnedBases++; pinnedBaseBytes += base.bytes; } } for (const node of s.cachedNodes) if (node._cache) { cacheQualities[node._cache.quality] = (cacheQualities[node._cache.quality] || 0) + 1; if (node._cache.cropped) croppedCaches++; } return { created: s.created, shapes: s.shapes, animations: s.animations.size, motionOn: s.motionOn, roots: s.roots.size, labels: s.labels.size, cachedTiles: s.cachedTiles, cacheBytes: s.cacheBytes, cacheBudgetBytes: s.cacheBudget, cacheQualities, croppedCaches, trackedCaches: s.cacheTrackedNodes.size, pendingRecaches: s.recaches.size, capturesThisFrame: s.captureCount || 0, cacheEvictions: s.cacheEvictions || 0, cachePressureDeferrals: s.cachePressureDeferrals || 0, cacheFailures: s.cacheFailures || 0, pinnedBases, pinnedBaseBytes, staticBaseCopies: s.baseCopies || 0, unknownImages: s.unknownImages, innerRender: s.innerRender ? { ...s.innerRender } : null, parsedAssets: parsed.size, cachedPaths: paths.size, styleRules: rules.length, matchedStyleCache: matchedRules.size }; }
   function pauseAmbient(next) {
     next = { hush: !!(next && next.hush), frozen: !!(next && next.frozen) }; if (next.hush === ambientPause.hush && next.frozen === ambientPause.frozen) return;
     ambientPause = next; const now = performance.now();

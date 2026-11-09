@@ -10,6 +10,18 @@ upgrades it.
 
 ## [Unreleased]
 
+## [2.64.13] - 2026-11-09
+
+### Fixed
+
+- The island minimap shows the actual coastline, beaches, paths, inland water and key services. Its built pier reflects the current upgrade, and map clicks retain normal walking and camera controls.
+- Fishing float wakes follow the complete surface tug for both players, keeping the wake aligned during nibbles, bites and reeling.
+
+### Changed
+
+- Outdoor native fishing controls share the warm, dark room palette, with readable hints and keyboard focus.
+- Reduced repeated native container property updates, pointer picking, transform allocation and reflection texture resizing. Existing poses, lighting, shoreline clipping, animation quality and reduced-motion behavior are retained.
+
 ## [2.64.9] - 2026-11-09
 
 ### Fixed

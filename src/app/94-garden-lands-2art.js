@@ -697,8 +697,56 @@ function gardenLandLights(sc) {
   if (open.has('lf-moon') && (!physical || physical.has('lf-moon'))) { const f = gardenLandFeature('lf-moon'); out.push({ x: (f.x + 0.5) * W.cellW, y: W.sky + f.y * W.cellH, r: 56 }); }
   return out;
 }
+/** Canonical coast in cell coordinates; beach width is measured in world pixels. */
+function _gldIslandMini(open, season, level, model) {
+  const W = GARDEN_WORLD, data = gardenIslandData(), geo = gardenIslandGeometry(), cw = W.cellW, ch = W.cellH;
+  const loopPath = (loop, sx, sy) => loop.map((p, i) => (i ? 'L' : 'M') + p[0] * sx + ' ' + p[1] * sy).join('') + 'Z';
+  const land = geo.land.map(loop => loopPath(loop, 1, 1)).join(''), shore = geo.land.map(loop => loopPath(loop, cw, ch)).join('');
+  const lawn = _gdrTileCol('grass', season), sand = season === 'winter' ? '#dedcc5' : '#e4d6b2', water = season === 'winter' ? '#76a8ad' : '#599f9d';
+  const clip = 'gd-mini-island-land';
+  let s = '<defs><clipPath id="' + clip + '"><path d="' + land + '" clip-rule="evenodd"/></clipPath></defs><rect width="' + W.cols + '" height="' + W.rows + '" fill="' + water + '"/><path d="' + land + '" fill="' + lawn + '" fill-rule="evenodd"/><g clip-path="url(#' + clip + ')">';
+  // Scale the authored pixel-width shore back into the map's cell space.
+  s += '<g transform="scale(' + 1 / cw + ' ' + 1 / ch + ')"><path d="' + shore + '" fill="none" stroke="' + sand + '" stroke-width="' + geo.beachWidthPx * 2 + '" stroke-linejoin="round"/></g>';
+  const colorAt = (x, y) => {
+    const cell = gardenIslandBaseCell(x, y);
+    if (!cell.land || cell.beach || cell.freshwater || cell.reservation === 'apron' || cell.reservation === 'facade') return '';
+    const row = gardenLandCell(x, y), zone = gardenZoneOf(x, y), plot = row && row.plot;
+    const locked = plot ? !open.has(row.id) && !(!row.buy && level >= row.lv) : zone && !open.has('zn-' + zone);
+    return locked ? '#526b54' : cell.route || row && (row.lane || row.trail) ? '' : plot ? _gdrTileCol(row.tile, season) : '';
+  };
+  // Paint plot tiles below the paths, then shade closed land above them.
+  let lockedLand = '';
+  for (let y = 0; y < W.rows; y++) {
+    let x = 0;
+    while (x < W.cols) {
+      const color = colorAt(x, y); let end = x + 1;
+      while (end < W.cols && colorAt(end, y) === color) end++;
+      if (color) {
+        const run = '<rect x="' + x + '" y="' + y + '" width="' + (end - x) + '" height="1" fill="' + color + '"/>';
+        if (color === '#526b54') lockedLand += run; else s += run;
+      }
+      x = end;
+    }
+  }
+  for (const route of data.routes) if (route.points && route.points.length > 1) s += '<path d="' + route.points.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join('') + '" fill="none" stroke="#cec4a6" stroke-width="' + route.widthCells + '" stroke-linecap="round" stroke-linejoin="round"/>';
+  s += lockedLand;
+  // The existing inland contours include current bridges, ice and pool cuts.
+  for (const shape of gardenOtherWaterShapes(model)) {
+    const pathOf = loop => loop.map((p, i) => (i ? 'L' : 'M') + p.x + ' ' + p.y).join('') + 'Z';
+    s += '<path d="' + pathOf(shape.points) + (shape.holes || []).map(pathOf).join('') + '" fill="' + water + '" fill-rule="evenodd"/>';
+  }
+  s += '</g><path d="' + land + '" fill="none" stroke="#c6ddd0" stroke-width=".18"/>';
+  // Only the main services and the actual built pier need map symbols.
+  const places = new Set(['garden-shop', 'land-office', 'tackle-shop', 'market-stall', 'lake-hall']);
+  for (const prop of gardenPropsNow()) {
+    if (prop.id === 'pier') s += '<rect x="' + prop.x + '" y="' + prop.y + '" width="' + prop.w + '" height="' + (prop.h + gardenPierMore()) + '" fill="#bb9664" stroke="#66533b" stroke-width=".18"><title>' + esc(prop.name) + '</title></rect>';
+    else if (places.has(prop.id)) s += '<g transform="translate(' + (prop.x + prop.w / 2) + ' ' + (prop.y + prop.h / 2) + ')"><title>' + esc(prop.name) + '</title><path d="M-1.2 0L0 -1.15 1.2 0V1.1H-1.2Z" fill="#ae7850" stroke="#fff0cf" stroke-width=".22" stroke-linejoin="round"/></g>';
+  }
+  return s;
+}
 /** The land on the little map: open land in its colour, paths pale, closed land and thicket dark. Rows of cells joined up. */
-function gardenLandMini(open, season) {
+function gardenLandMini(open, season, level, model) {
+  if (typeof gardenIslandActive === 'function' && gardenIslandActive()) return _gldIslandMini(open, season, level || 1, model);
   let s = '';
   const colOf = (c, x, y) => (c.lane ? (gardenZoneOf(x, y) && !open.has('zn-' + gardenZoneOf(x, y)) ? 'rgba(40,40,30,.55)' : '#e3d3a2') : c.trail && gardenZoneOf(x, y) && !open.has('zn-' + gardenZoneOf(x, y)) ? 'rgba(40,40,30,.55)' : c.solid ? 'rgba(30,50,26,.75)' : c.id !== 'lawn' && !open.has(c.id) ? 'rgba(40,40,30,.55)' : c.trail ? '#efe2b4' : _gdrTileCol(c.tile, season));
   for (let y = 0; y < GARDEN_WORLD.rows; y++) {

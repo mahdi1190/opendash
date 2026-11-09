@@ -198,7 +198,11 @@ function _gwFishFrame(dt) {
   fx.bob.setAttribute('visibility', 'visible'); fx.bob.setAttribute('transform', `translate(${bx.toFixed(1)} ${by.toFixed(1)}) rotate(${tilt.toFixed(1)})`);
   const onWater = F.state !== 'cast' && F.state !== 'land', wakeK = 1 + (motion ? Math.sin(F.t * 3) * 0.08 + (contact ? contact.pulse * .14 : 0) : 0);
   fx.wake.setAttribute('visibility', onWater ? 'visible' : 'hidden');
-  if (onWater) fx.wake.setAttribute('transform', `translate(${bx.toFixed(1)} ${ty.toFixed(1)}) scale(${wakeK.toFixed(2)} 1)`);
+  if (onWater) {
+    // Follow the surface tug, excluding the float's downward dip.
+    const wakeY = ty + (motion && contact && (F.state === 'wait' || F.state === 'bite' || F.state === 'reel') ? contact.tugY : 0);
+    fx.wake.setAttribute('transform', `translate(${bx.toFixed(1)} ${wakeY.toFixed(1)}) scale(${wakeK.toFixed(2)} 1)`);
+  }
   fx.bubble.setAttribute('visibility', F.state === 'bite' ? 'visible' : 'hidden');
   if (F.state === 'bite') fx.bubble.setAttribute('transform', `translate(${bx.toFixed(1)} ${(ty - 28 - (motion ? Math.abs(Math.sin(F.t * 7)) * 2 : 0)).toFixed(1)})`);   // stays over the surface while the float dips
 }
